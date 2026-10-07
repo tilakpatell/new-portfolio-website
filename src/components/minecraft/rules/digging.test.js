@@ -270,6 +270,41 @@ describe('using and dropping', () => {
   });
 });
 
+describe('stairs and doors', () => {
+  it('stairs face the way the player looks, and are two boxes to stand on', () => {
+    const g = flat();
+    g.inventory.slots[0] = { item: 'oak_stairs', count: 1, damage: 0 };
+    g.player.yaw = Math.PI / 2; // looking west
+    expect(placeBlock(g, { x: -2, y: 63, z: 0, face: FACE.top, t: 2 })).toBe(true);
+    expect(g.world.getState(-2, 64, 0)).toBe(FACING.west);
+    expect(g.world.boxes(-2, 64, 0)).toEqual([[0, 0, 0, 1, 0.5, 1], [0, 0.5, 0, 0.5, 1, 1]]);
+  });
+
+  it('a door goes down as two blocks, opens on use, both halves, and breaks as one', () => {
+    const g = flat();
+    g.inventory.slots[0] = { item: 'oak_door', count: 1, damage: 0 };
+    g.player.yaw = 0; // looking north
+    expect(placeBlock(g, { x: 0, y: 63, z: -2, face: FACE.top, t: 2 })).toBe(true);
+    expect(g.world.get(0, 65, -2)).toBe(B('oak_door'));
+    expect(g.world.getState(0, 65, -2) & 8).toBe(8);
+    expect(g.world.boxes(0, 64, -2)).toEqual([[0, 0, 0, 1, 1, 3 / 16]]);
+    const events = tick(g, { ...idle, ...aim(g, 0, 65, -2), use: true });
+    expect(events).toContainEqual(expect.objectContaining({ type: 'door', open: true }));
+    expect(g.world.getState(0, 64, -2) & 4).toBe(4);
+    expect(g.world.getState(0, 65, -2) & 4).toBe(4);
+    breakBlock(g, 0, 64, -2);
+    expect(g.world.get(0, 65, -2)).toBe(0);
+    expect(g.drops.map((d) => d.item)).toEqual(['oak_door']);
+  });
+
+  it('a door needs room for its upper half', () => {
+    const g = flat();
+    g.world.set(0, 65, -2, B('stone'));
+    g.inventory.slots[0] = { item: 'oak_door', count: 1, damage: 0 };
+    expect(placeBlock(g, { x: 0, y: 63, z: -2, face: FACE.top, t: 2 })).toBe(false);
+  });
+});
+
 describe('the bed', () => {
   const bed = (g) => {
     g.inventory.slots[0] = { item: 'red_bed', count: 1, damage: 0 };

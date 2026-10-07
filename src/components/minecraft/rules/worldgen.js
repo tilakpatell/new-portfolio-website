@@ -32,6 +32,7 @@ const B = {
   sandstone: ID('sandstone'),
   gravel: ID('gravel'),
   bedrock: ID('bedrock'),
+  lava: ID('lava'),
   water: ID('water'),
   snow: ID('snow_block'),
   leaves: new Set(['oak_leaves', 'birch_leaves', 'spruce_leaves'].map(ID)),
@@ -75,6 +76,9 @@ export function makeGenerator(seed) {
   const temp = octaves(n(5).noise2, { octaves: 3 });
   const humid = octaves(n(6).noise2, { octaves: 3 });
   const bedrockNoise = n(7);
+  const cheese = n(8).noise3;
+  const spagA = n(9).noise3;
+  const spagB = n(10).noise3;
 
   // continentalness, stretched so the sea and the land each get their share
   const continental = (x, z) => Math.max(-1, Math.min(1, cont(x / 700, z / 700) * 2.4 + 0.15));
@@ -162,6 +166,9 @@ export function makeGenerator(seed) {
         for (let y = h + 1; y <= SEA; y++) ids[index(x, y, z)] = B.water;
       }
 
+    carve(chunk, heights);
+    ores(chunk, heights);
+
     // the trees of this chunk and its eight neighbours, kept to this chunk
     const put = (x, y, z, id) => {
       const lx = x - ox;
@@ -196,6 +203,116 @@ export function makeGenerator(seed) {
 
     chunk.generated = true;
     return { features: [] };
+  }
+
+  // Caves, two kinds as 1.18 has them: cheese (big rooms where a slow 3D noise
+  // rises over a threshold, lower deeper down) and spaghetti (long tunnels
+  // where two noises are both near zero). Sampled every 4 blocks and
+  // interpolated between, as the game samples its density. Lava fills what's
+  // carved below y 10. Under the sea and the beach the floor's top is left
+  // whole, so the water stays where it is; a tunnel that reaches the dirt
+  // under the grass opens to the sky.
+  function carve(chunk, heights) {
+    const { ids } = chunk;
+    const ox = chunk.cx * 16;
+    const oz = chunk.cz * 16;
+    let top = 0;
+    for (const h of heights) top = Math.max(top, h);
+    const GY = Math.floor(top / 4) + 2;
+    const at = (gx, gy, gz) => (gy * 5 + gz) * 5 + gx;
+    const ch = new Float32Array(5 * 5 * GY);
+    const sp = new Float32Array(5 * 5 * GY);
+    for (let gy = 0; gy < GY; gy++)
+      for (let gz = 0; gz < 5; gz++)
+        for (let gx = 0; gx < 5; gx++) {
+          const x = ox + gx * 4;
+          const y = gy * 4;
+          const z = oz + gz * 4;
+          ch[at(gx, gy, gz)] = cheese(x / 64, y / 40, z / 64);
+          const a = spagA(x / 32, y / 24, z / 32);
+          const b = spagB(x / 32, y / 24, z / 32);
+          sp[at(gx, gy, gz)] = a * a + b * b;
+        }
+    const lerp3 = (f, x, y, z) => {
+      const gx = x >> 2;
+      const gy = y >> 2;
+      const gz = z >> 2;
+      const tx = (x & 3) / 4;
+      const ty = (y & 3) / 4;
+      const tz = (z & 3) / 4;
+      const v = (dx, dy, dz) => f[at(gx + dx, gy + dy, gz + dz)];
+      const l = (a, b, t) => a + (b - a) * t;
+      return l(l(l(v(0, 0, 0), v(1, 0, 0), tx), l(v(0, 0, 1), v(1, 0, 1), tx), tz), l(l(v(0, 1, 0), v(1, 1, 0), tx), l(v(0, 1, 1), v(1, 1, 1), tx), tz), ty);
+    };
+    for (let z = 0; z < 16; z++)
+      for (let x = 0; x < 16; x++) {
+        const h = heights[z * 16 + x];
+        const sealed = h <= SEA + 2; // the sea's floor and the beach keep their top
+        for (let y = 5; y < h; y++) {
+          const i = index(x, y, z);
+          if (ids[i] === B.bedrock || ids[i] === B.water) continue;
+          const deep = y < h - 4;
+          const room = deep && lerp3(ch, x, y, z) > (y < 30 ? 0.45 : 0.55);
+          const tunnel = lerp3(sp, x, y, z) < 0.0045 && (!sealed || y < h - 3);
+          if (!room && !tunnel) continue;
+          ids[i] = y < 10 ? B.lava : B.air;
+          // a tunnel into the dirt under the grass opens to the sky
+          if (tunnel && !sealed && y >= h - 3) for (let k = y + 1; k <= h; k++) ids[index(x, k, z)] = B.air;
+        }
+      }
+  }
+
+  // The ores, in veins as the game's WorldGenMinable lays them: a run of
+  // blobs along a short line, so many a chunk at so many blocks each, at the
+  // game's depths; they take the place of stone and nothing else. Dirt and
+  // gravel pockets the same way.
+  const VEINS = [
+    ['dirt', 10, 33, 0, 255],
+    ['gravel', 8, 33, 0, 255],
+    ['coal_ore', 20, 17, 0, 127],
+    ['iron_ore', 20, 9, 0, 63],
+    ['gold_ore', 2, 9, 0, 31],
+    ['redstone_ore', 8, 8, 0, 15],
+    ['lapis_ore', 1, 7, 0, 31],
+    ['diamond_ore', 1, 8, 0, 15],
+  ];
+  function ores(chunk) {
+    const { ids } = chunk;
+    const rand = chunkRandom(s ^ 0x07e5, chunk.cx, chunk.cz);
+    const int = (k) => Math.floor(rand() * k);
+    for (const [name, count, size, lo, hi] of VEINS) {
+      const ore = ID(name);
+      for (let v = 0; v < count; v++) {
+        const cx = int(16);
+        const cz = int(16);
+        // lapis clusters round 16, as the game spreads it
+        const cy = name === 'lapis_ore' ? int(16) + int(16) : lo + int(hi - lo + 1);
+        const f = rand() * Math.PI;
+        const x0 = cx + (Math.sin(f) * size) / 8;
+        const x1 = cx - (Math.sin(f) * size) / 8;
+        const z0 = cz + (Math.cos(f) * size) / 8;
+        const z1 = cz - (Math.cos(f) * size) / 8;
+        const y0 = cy + int(3) - 2;
+        const y1 = cy + int(3) - 2;
+        for (let i = 0; i < size; i++) {
+          const px = x0 + ((x1 - x0) * i) / size;
+          const py = y0 + ((y1 - y0) * i) / size;
+          const pz = z0 + ((z1 - z0) * i) / size;
+          const r = ((Math.sin((Math.PI * i) / size) + 1) * ((rand() * size) / 16) + 1) / 2;
+          for (let y = Math.floor(py - r); y <= Math.floor(py + r); y++)
+            for (let z = Math.floor(pz - r); z <= Math.floor(pz + r); z++)
+              for (let x = Math.floor(px - r); x <= Math.floor(px + r); x++) {
+                if (x < 0 || x > 15 || z < 0 || z > 15 || y < Math.max(1, lo) || y > hi) continue;
+                const dx = (x + 0.5 - px) / r;
+                const dy = (y + 0.5 - py) / r;
+                const dz = (z + 0.5 - pz) / r;
+                if (dx * dx + dy * dy + dz * dz >= 1) continue;
+                const k = index(x, y, z);
+                if (ids[k] === B.stone) ids[k] = ore;
+              }
+        }
+      }
+    }
   }
 
   return { height: heightAt, biome: biomeAt, generate, seed: s };

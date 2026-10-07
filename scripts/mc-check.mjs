@@ -1,4 +1,4 @@
-/* global window, requestAnimationFrame */
+/* global window, document, requestAnimationFrame */
 // A browser check of the Minecraft tribute (src/components/minecraft/): with
 // the dev server up (npx vite --port 5188 --strictPort --host 127.0.0.1),
 //   OUT=/tmp/shots node scripts/mc-check.mjs
@@ -284,6 +284,60 @@ if (log) {
   await run('g.player.pitch = -0.2;');
   await ticks(4);
   await step('morning');
+
+  // ── a stage: stairs, a door opened by hand, water and lava flowing ──
+  const at = await run(`const p = g.player, X = Math.floor(p.x), Y = Math.floor(p.y), Z = Math.floor(p.z), put = x.debug.put;
+    for (let dx = -7; dx <= 7; dx++) for (let dz = -12; dz <= 1; dz++) { put(X + dx, Y - 1, Z + dz, 'stone'); for (let dy = 0; dy < 6; dy++) put(X + dx, Y + dy, Z + dz, 'air'); }
+    put(X - 3, Y, Z - 4, 'oak_stairs', 3); put(X - 2, Y, Z - 4, 'oak_stairs', 3); put(X - 1, Y, Z - 4, 'cobblestone');
+    put(X + 1, Y, Z - 3, 'oak_door', 1); put(X + 1, Y + 1, Z - 3, 'oak_door', 9);
+    put(X + 3, Y, Z - 8, 'water'); put(X - 4, Y, Z - 10, 'lava');
+    for (let dy = 0; dy < 3; dy++) { put(X - 6, Y + dy, Z - 5, 'cobblestone'); put(X - 6, Y + dy, Z - 4, 'ladder', 3); }
+    return { X, Y, Z };`);
+  // a tap (held past 4 ticks a use repeats, and the door would swing back)
+  await run('x.debug.aim(args[0] + 1, args[1] + 1, args[2] - 3); x.press("use", true); x.press("use", false);', at.X, at.Y, at.Z);
+  await ticks(2);
+  const door = await run('return [g.world.getState(args[0] + 1, args[1], args[2] - 3), g.world.getState(args[0] + 1, args[1] + 1, args[2] - 3)];', at.X, at.Y, at.Z);
+  console.log('  the door, both halves after a use:', JSON.stringify(door));
+  if (!(door[0] & 4 && door[1] & 4)) errors.push('the door did not open');
+  await ticks(140);
+  const flow = await run('const n = (name) => { let c = 0; for (let dx = -7; dx <= 7; dx++) for (let dz = -12; dz <= 1; dz++) if (g.world.get(args[0] + dx, args[1], args[2] + dz) === x.debug.id(name)) c++; return c; }; return { water: n("water"), lava: n("lava"), frames: x.scene.materials.water.uniforms.anim.value.map((v) => v.toArray()) };', at.X, at.Y, at.Z);
+  console.log('  flowed:', JSON.stringify(flow));
+  if (flow.water < 20 || flow.lava < 5) errors.push('water or lava did not flow');
+  await run('g.player.yaw = 0; g.player.pitch = -0.35;');
+  await ticks(4);
+  await step('stage');
+
+  // ── a furnace at work, a chest, the hearts and hunger, and a death ──
+  const tap = async (cx, cy, cz) => {
+    await run('x.debug.aim(args[0], args[1], args[2]); x.press("use", true); x.press("use", false);', cx, cy, cz);
+    await ticks(2);
+  };
+  await run('const p = args[0]; x.debug.put(p.X + 1, p.Y, p.Z - 1, "furnace", 1); x.debug.put(p.X - 1, p.Y, p.Z - 1, "chest", 1);', at);
+  await tap(at.X + 1, at.Y, at.Z - 1);
+  const furnace = await run('const f = g.furnaces[args.join(",")]; if (!f) return null; f.slots = [{ item: "iron_ore", count: 5, damage: 0 }, { item: "coal", count: 1, damage: 0 }, null]; return true;', [at.X + 1, at.Y, at.Z - 1]);
+  if (!furnace) errors.push('the furnace did not open');
+  await ticks(330);
+  console.log('  furnace:', JSON.stringify(await run('const f = g.furnaces[args.join(",")]; return { out: f.slots[2], burn: f.burn, cook: f.cook, lit: x.debug.nearest("^lit_furnace$", 4) };', [at.X + 1, at.Y, at.Z - 1])));
+  await step('furnace');
+  await run('x.closeScreen();');
+  await tap(at.X - 1, at.Y, at.Z - 1);
+  await run('const c = g.chests[args.join(",")]; c[0] = { item: "diamond", count: 3, damage: 0 }; c[4] = { item: "bread", count: 12, damage: 0 }; c[13] = { item: "iron_pickaxe", count: 1, damage: 40 }; c[26] = { item: "cobblestone", count: 64, damage: 0 };', [at.X - 1, at.Y, at.Z - 1]);
+  await ticks(4);
+  await step('chest');
+  await run('x.closeScreen(); Object.assign(g.player, { health: 7, hunger: 13, saturation: 0.5, pitch: 0 });');
+  await ticks(4);
+  await step('hud');
+  await run('g.player.health = 0;');
+  await ticks(3);
+  const died = await page.evaluate(() => Boolean(document.querySelector('[aria-label="You died!"]')));
+  if (!died) errors.push('no death screen');
+  await page.waitForTimeout(1300);
+  await step('dead');
+  await run('x.respawn();');
+  await ticks(4);
+  const back = await run('return { dead: g.dead, health: g.player.health, carried: g.inventory.slots.filter(Boolean).length, dropped: g.drops.length };');
+  console.log('  after respawning:', JSON.stringify(back));
+  if (back.dead || back.health !== 20) errors.push('the respawn did not happen');
 }
 
 // from above: the lie of the land

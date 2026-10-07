@@ -150,6 +150,8 @@ const LIST = [
   cube('netherrack', 'netherrack', { hardness: 0.4, ...pickaxe() }),
   // a bed is two blocks, the foot and the head (state bit 8), facing by state & 3
   make('red_bed', column('red_bed_side', 'red_bed_top', 'oak_planks'), { shape: 'slab', height: 9, opaque: false, hardness: 0.2, sound: 'wood' }),
+  // a furnace while it burns, as the game's own block: its front alight, glowing 13
+  make('lit_furnace', fronted('furnace_front_on', 'furnace_side', 'furnace_top'), { hardness: 3.5, ...pickaxe(), light: 13, drops: () => one('furnace') }),
 ];
 
 // What a block drops, by the game's rule: nothing when it needs a tool of a

@@ -99,6 +99,16 @@ if (vanilla) {
       most = Math.max(most, s);
       if (s >= 0.9) copies.push(`${where} (${Math.round(s * 100)}%)`);
     });
+  // an animation's every frame, against every one of the game's for that strip
+  const framesOf = (a, an) => (an ? [an.layer, ...Array.from({ length: an.frames - 1 }, (_, k) => an.extra + k)].map((i) => a.blocks.data.subarray(i * T, (i + 1) * T)) : []);
+  for (const [id, an] of Object.entries(atlas.manifest.anim)) {
+    const theirs = framesOf(game, game.manifest.anim[id]);
+    framesOf(atlas, an).forEach((f, k) => {
+      const s = Math.max(0, ...theirs.map((t) => same(f, t)));
+      most = Math.max(most, s);
+      if (s >= 0.9) copies.push(`block/${id} frame ${k} (${Math.round(s * 100)}%)`);
+    });
+  }
   for (const kind of ['skins', 'sprites'])
     for (const k of Object.keys(atlas[kind])) {
       const s = same(atlas[kind][k].data, game[kind][k]?.data);

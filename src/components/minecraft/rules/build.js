@@ -17,6 +17,9 @@
 
 import { BLOCKS, byName } from './blocks.js';
 import { breakTicks } from './breaking.js';
+import { delayOf, isFluid, stepFluid } from './fluids.js';
+import { makeFurnace } from './furnace.js';
+import { EAT_TICKS, EXHAUST, MAX_HUNGER, eat, exhaust } from './hunger.js';
 import { give, held } from './inventory.js';
 import { ITEMS } from './items.js';
 import { moveBox } from './physics.js';
@@ -42,16 +45,33 @@ const id = (n) => byName.get(n).id;
 const REPLACEABLE = new Set(['air', 'water', 'lava', 'short_grass', 'fern', 'dead_bush', 'snow'].map(id));
 const SOIL = new Set(['grass_block', 'dirt', 'podzol', 'farmland'].map(id));
 const SAND = id('sand');
-const FRONTED = new Set(['furnace', 'chest', 'pumpkin', 'jack_o_lantern', 'oak_stairs'].map(id));
+const FRONTED = new Set(['furnace', 'chest', 'pumpkin', 'jack_o_lantern'].map(id));
+const STAIRS = id('oak_stairs');
+const CHEST = id('chest');
+const FURNACES = new Set([id('furnace'), id('lit_furnace')]);
+export const CHEST_SLOTS = 27;
+const DOOR = id('oak_door');
 const LOGS = new Set(BLOCKS.filter((b) => b.name.endsWith('_log')).map((b) => b.id));
 
 const toolOf = (s) => (s ? ITEMS[s.item]?.tool ?? null : null);
 
 // a change to a cell: it and the one over it look again next tick (sand falls)
+// a change to a cell: it and the six round it look again next tick (sand
+// falls; a liquid beside it will flow, after its own delay)
 export function setBlock(g, x, y, z, blockId, state = 0) {
   if (!g.world.set(x, y, z, blockId, state)) return false;
-  g.updates.push({ x, y, z, at: g.ticks + 1 }, { x, y: y + 1, z, at: g.ticks + 1 });
+  const at = g.ticks + 1;
+  g.updates.push({ x, y, z, at }, { x, y: y + 1, z, at }, { x, y: y - 1, z, at }, { x: x + 1, y, z, at }, { x: x - 1, y, z, at }, { x, y, z: z + 1, at }, { x, y, z: z - 1, at });
   return true;
+}
+
+// a liquid's own look, after its delay, once however many changes ask for it
+function scheduleFluid(g, x, y, z, delay) {
+  const k = `${x},${y},${z}`;
+  g.fluidPending ??= new Set();
+  if (g.fluidPending.has(k)) return;
+  g.fluidPending.add(k);
+  g.updates.push({ x, y, z, at: g.ticks + delay, fluid: true });
 }
 
 // a bed's other half: the head lies the way the bed faces from the foot
@@ -70,9 +90,20 @@ export function breakBlock(g, x, y, z) {
     const [ox, oy, oz] = otherHalf(g, x, y, z);
     if (g.world.get(ox, oy, oz) === BED) setBlock(g, ox, oy, oz, AIR);
   }
+  if (blockId === DOOR) {
+    const oy = g.world.getState(x, y, z) & 8 ? y - 1 : y + 1;
+    if (g.world.get(x, oy, z) === DOOR) setBlock(g, x, oy, z, AIR);
+  }
+  // a chest or a furnace spills what it holds
+  const k = `${x},${y},${z}`;
+  const holding = blockId === CHEST ? g.chests[k] : FURNACES.has(blockId) ? g.furnaces[k]?.slots : null;
+  for (const st of holding ?? []) if (st) spillDrop(g, st, x, y, z);
+  if (blockId === CHEST) delete g.chests[k];
+  if (FURNACES.has(blockId)) delete g.furnaces[k];
   const inv = g.inventory;
   const hand = held(inv);
   const tool = toolOf(hand);
+  exhaust(g.player, EXHAUST.dig);
   for (const d of b.drops(g.world.getState(x, y, z), tool, g.rand)) spawnDrop(g, d.item, d.count, x + 0.5, y + 0.25, z + 0.5);
   setBlock(g, x, y, z, AIR);
   g.events.push({ type: 'break', id: blockId, x, y, z });
@@ -84,6 +115,12 @@ export function breakBlock(g, x, y, z) {
     }
   }
   return true;
+}
+
+// a container's stack thrown out of its cell, as the game scatters them
+function spillDrop(g, st, x, y, z) {
+  const r = g.rand;
+  g.drops.push({ item: st.item, count: st.count, damage: st.damage ?? 0, x: x + 0.1 + r() * 0.8, y: y + 0.1 + r() * 0.8, z: z + 0.1 + r() * 0.8, vx: (r() - 0.5) * 0.1, vy: r() * 0.05 + 0.2, vz: (r() - 0.5) * 0.1, age: 0 });
 }
 
 export function spawnDrop(g, item, count, x, y, z) {
@@ -118,6 +155,12 @@ export function placeBlock(g, hit, name = held(g.inventory)?.item) {
     return cx < p.x + p.w / 2 && cx + 1 > p.x - p.w / 2 && cz < p.z + p.w / 2 && cz + 1 > p.z - p.w / 2 && cy < p.y + p.h && cy + 1 > p.y;
   };
   if (b.solid && inBody(x, y, z)) return false;
+  // a door needs the cell above for its upper half, and a floor
+  let upper = null;
+  if (b.id === DOOR) {
+    upper = { state: OPPOSITE[facingOf(g.player.yaw)] };
+    if (y >= 255 || !REPLACEABLE.has(g.world.get(x, y + 1, z)) || inBody(x, y + 1, z) || !g.world.solid(x, y - 1, z)) return false;
+  }
   // a bed needs its head's cell too, the way the player looks
   let head = null;
   if (b.id === BED) {
@@ -134,11 +177,14 @@ export function placeBlock(g, hit, name = held(g.inventory)?.item) {
   if ((b.shape === 'torch' || b.shape === 'ladder') && (!g.world.solid(sx, sy, sz) || face === 1)) return false;
   let state = 0;
   if (head) state = head.foot;
+  else if (upper) state = upper.state;
+  else if (b.id === STAIRS) state = OPPOSITE[facingOf(g.player.yaw)];
   else if (LOGS.has(b.id)) state = ny ? 0 : nx ? 1 : 2;
   else if (FRONTED.has(b.id)) state = facingOf(g.player.yaw);
   else if (b.shape === 'torch' || b.shape === 'ladder') state = face;
   if (!setBlock(g, x, y, z, b.id, state)) return false;
   if (head) setBlock(g, head.x, y, head.z, b.id, head.state);
+  if (upper) setBlock(g, x, y + 1, z, b.id, upper.state | 8);
   const inv = g.inventory;
   const s = inv.slots[inv.selected];
   if (s?.item === name) {
@@ -169,12 +215,38 @@ export function stepHands(g, input, { onGround, inWater }) {
       }
     }
   }
-  if (input.use && hit) {
-    // a crafting table opens on use; sneaking builds against it instead
-    if (hit.id === TABLE && !input.sneak) g.events.push({ type: 'open', what: 'table', x: hit.x, y: hit.y, z: hit.z });
-    else if (hit.id === BED && !input.sneak) sleep(g, hit);
-    else placeBlock(g, hit);
+  // a table, a chest or a furnace opens on use; sneaking builds against it instead
+  const food = ITEMS[held(g.inventory)?.item]?.food ?? null;
+  let used = false;
+  if (input.use && hit && !input.sneak) {
+    used = true;
+    const k = `${hit.x},${hit.y},${hit.z}`;
+    const at = { x: hit.x, y: hit.y, z: hit.z };
+    if (hit.id === TABLE) g.events.push({ type: 'open', what: 'table', ...at });
+    else if (hit.id === CHEST) {
+      g.chests[k] ??= new Array(CHEST_SLOTS).fill(null);
+      g.events.push({ type: 'open', what: 'chest', ...at });
+    } else if (FURNACES.has(hit.id)) {
+      g.furnaces[k] ??= makeFurnace();
+      g.events.push({ type: 'open', what: 'furnace', ...at });
+    } else if (hit.id === BED) sleep(g, hit);
+    else if (hit.id === DOOR) swing(g, hit);
+    else used = false;
   }
+  if (input.use && hit && !used && !food) placeBlock(g, hit);
+  // eating: use held for 32 ticks with food in hand, when hungry
+  if (food && input.using && !used && g.player.hunger < MAX_HUNGER) {
+    g.eating = (g.eating ?? 0) + 1;
+    if (g.eating % 4 === 0) g.events.push({ type: 'munch' });
+    if (g.eating >= EAT_TICKS) {
+      const inv = g.inventory;
+      const s = held(inv);
+      eat(g.player, food);
+      g.events.push({ type: 'eat', item: s.item });
+      if (!--s.count) inv.slots[inv.selected] = null;
+      g.eating = 0;
+    }
+  } else g.eating = 0;
 }
 
 // A bed at night: the night passes (one player, so no waiting for the others)
@@ -199,8 +271,21 @@ export function sleep(g, { x, y, z }) {
       }
     }
   g.spawn = spot;
+  g.bed = { x, y, z };
   g.events.push({ type: 'sleep', x, y, z });
   return true;
+}
+
+// a door opens or shuts, both halves together
+function swing(g, { x, y, z }) {
+  const st = g.world.getState(x, y, z);
+  const lower = st & 8 ? y - 1 : y;
+  const open = !(st & 4);
+  for (const yy of [lower, lower + 1]) {
+    const s = g.world.getState(x, yy, z);
+    if (g.world.get(x, yy, z) === DOOR) setBlock(g, x, yy, z, DOOR, open ? s | 4 : s & ~4);
+  }
+  g.events.push({ type: 'door', open, x, y: lower, z });
 }
 
 // Q: one of what's held (or the stack) thrown the way the player looks,
@@ -225,8 +310,21 @@ export function dropHeld(g, all = false) {
 export function stepUpdates(g) {
   const due = g.updates.filter((u) => u.at <= g.ticks);
   g.updates = g.updates.filter((u) => u.at > g.ticks);
-  for (const { x, y, z } of due) {
+  for (const u of due) {
+    const { x, y, z } = u;
     const here = g.world.get(x, y, z);
+    if (isFluid(here)) {
+      if (!u.fluid) scheduleFluid(g, x, y, z, delayOf(here));
+      else {
+        g.fluidPending?.delete(`${x},${y},${z}`);
+        stepFluid(g.world, x, y, z, (fx, fy, fz, id, level) => {
+          if (!setBlock(g, fx, fy, fz, id, level)) return;
+          if (isFluid(id)) scheduleFluid(g, fx, fy, fz, delayOf(id));
+        });
+      }
+      continue;
+    }
+    if (u.fluid) g.fluidPending?.delete(`${x},${y},${z}`);
     if (!BLOCKS[here].gravity || y <= 0) continue;
     if (!REPLACEABLE.has(g.world.get(x, y - 1, z))) continue;
     const state = g.world.getState(x, y, z);
