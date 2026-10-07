@@ -28,21 +28,24 @@
 
 import { POSITIONS, SUN } from './layout';
 import { DEEP_SOLIDS, WONDERS } from './deep';
+import { SPREAD } from './scale';
 
 const solidAt = (id) => DEEP_SOLIDS.find((o) => o.id === id)?.at;
 
-// (the reaches are the map's since it was scaled up, scale.js: the worlds
-// lie 2000 to 5700 out from the home sun, the deep stars among them)
+// (the reaches are the map's since it was scaled up, scale.js, and spread
+// (SPREAD): the worlds lie 8,000 to 23,000 out from the home sun, the deep
+// stars among them; every reach grows with the gaps, so each star lights
+// what it lit before)
 export const STARS = [
-  { id: 'sun', at: SUN.at, r: SUN.r, colour: '#ffd6a8', strength: 1, reach: 9000 },
+  { id: 'sun', at: SUN.at, r: SUN.r, colour: '#ffd6a8', strength: 1, reach: 9000 * SPREAD },
   // (a star can light further, as the home sun does, `light` says: the Rick and Morty sector's sun lights all of its sector, deep.js)
-  ...WONDERS.filter((w) => w.kind === 'star').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: w.light?.strength ?? 0.8, reach: w.light?.reach ?? 7000 })),
+  ...WONDERS.filter((w) => w.kind === 'star').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: w.light?.strength ?? 0.8, reach: w.light?.reach ?? 7000 * SPREAD })),
   ...WONDERS.filter((w) => w.kind === 'binary').flatMap((w) => [
-    { id: w.id, at: solidAt(w.id) ?? w.at, r: w.r, colour: w.color, strength: 0.5, reach: 7000 },
-    { id: `${w.id}-2`, at: solidAt(`${w.id}-2`) ?? w.at, r: w.pair.r, colour: w.pair.color, strength: 0.5, reach: 7000 },
+    { id: w.id, at: solidAt(w.id) ?? w.at, r: w.r, colour: w.color, strength: 0.5, reach: 7000 * SPREAD },
+    { id: `${w.id}-2`, at: solidAt(`${w.id}-2`) ?? w.at, r: w.pair.r, colour: w.pair.color, strength: 0.5, reach: 7000 * SPREAD },
   ]),
-  ...WONDERS.filter((w) => w.kind === 'pulsar').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: '#cfe6ff', strength: 0.3, reach: 3000 })),
-  ...WONDERS.filter((w) => w.kind === 'graveyard').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: 0.25, reach: 2500 })),
+  ...WONDERS.filter((w) => w.kind === 'pulsar').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: '#cfe6ff', strength: 0.3, reach: 3000 * SPREAD })),
+  ...WONDERS.filter((w) => w.kind === 'graveyard').map((w) => ({ id: w.id, at: w.at, r: w.r, colour: w.color, strength: 0.25, reach: 2500 * SPREAD })),
 ];
 const HOME = STARS[0];
 const NEBULAE = WONDERS.filter((w) => w.kind === 'nebula');
@@ -76,11 +79,11 @@ export function weightOf(star, point) {
   const r = star.r ?? 1;
   return (star.strength / Math.max(d * d, r * r)) * smooth(star.reach * 1.5, star.reach, d);
 }
-// (the home sun's weight 6000 out, past the farthest world: where the key is
+// (the home sun's weight 24,000 out, past the farthest world: where the key is
 // still at its full strength, so every world is lit as brightly as the map
 // always lit them, in its own star's colour and from its way; only out past
 // the stars does the light fall toward the floor)
-export const FULL_AT = 6000;
+export const FULL_AT = 6000 * SPREAD;
 const FULL = weightOf(HOME, [FULL_AT, 0, 0]);
 
 // the stars by weight at a point, heaviest first; past every star's reach, by
@@ -92,7 +95,7 @@ function ranked(point, stars) {
 }
 
 export function lightAt(point, { stars = STARS, nova = null } = {}) {
-  const all = nova ? [...stars, { id: 'nova', at: nova.at, r: 1, colour: nova.colour, strength: nova.strength, reach: 4000 }] : stars;
+  const all = nova ? [...stars, { id: 'nova', at: nova.at, r: 1, colour: nova.colour, strength: nova.strength, reach: 4000 * SPREAD }] : stars;
   const [first, second] = ranked(point, all);
   const key = {
     id: first.s.id,
