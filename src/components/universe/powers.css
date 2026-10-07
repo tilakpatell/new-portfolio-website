@@ -90,6 +90,7 @@
   .ship-powers { left: auto; top: auto; right: calc(var(--panel-w, 0px) + 200px); bottom: 104px; flex-direction: row-reverse; }
   .ship-power { width: 58px; height: 58px; border-radius: 50%; grid-template-rows: 24px auto; padding-top: 7px; }
   .ship-power kbd { display: none; }
+  .ship-power-name { font-size: 0.44rem; letter-spacing: 0.02em; }
   .ship-power small { right: 50%; top: auto; bottom: -15px; translate: 50% 0; text-shadow: 0 1px 4px rgb(0 0 0 / 0.9); }
 }
 /* a phone: over the sheet, left of the climbs, above Fire and View */

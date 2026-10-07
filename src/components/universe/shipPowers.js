@@ -58,7 +58,8 @@ export const POWERS = {
   salvo: { crew: 'xwing', slot: 'ultimate', name: 'Torpedo salvo', short: 'Torpedoes', about: 'Four torpedoes away, each locked on a target of its own.', dur: 3.4, count: 4, every: 0.15, punch: 8, sub: 4, speed: 30, life: 2.8, turn: 2.4, cone: 0.6, range: 60, near: 1 },
   // Han and Chewie
   odds: { crew: 'falcon', slot: 'primary', name: 'Never tell me the odds', short: 'Evade', about: 'A corkscrew no gunner can follow: nothing hits you, and whoever was on you overshoots.', cool: 12, dur: 2.2, jink: 3, spins: 2, agility: 1.3 },
-  quad: { crew: 'falcon', slot: 'ultimate', name: 'Chewie on the quad guns', short: 'Chewie', about: 'Chewie takes the turrets and shoots at anything near, all the way round.', dur: 12, every: 0.22, range: 35, punch: 1, chance: 0.7, speed: 90, miss: 1.5 },
+  // (his bolts at the guns' own speed: any quicker and they're gone before they're seen)
+  quad: { crew: 'falcon', slot: 'ultimate', name: 'Chewie on the quad guns', short: 'Chewie', about: 'Chewie takes the turrets and shoots at anything near, all the way round.', dur: 12, every: 0.22, range: 35, punch: 1, chance: 0.7, speed: 60, miss: 1.5 },
   // Rick and Morty
   portal: { crew: 'cruiser', slot: 'primary', name: 'Portal gun', short: 'Portal', about: 'Through a portal and out on your target’s tail (or a long hop ahead).', cool: 10, dur: 0.35, behind: 5, hop: 40, swallow: 6, range: 60, mouth: 2 },
   wubba: { crew: 'cruiser', slot: 'ultimate', name: 'Wubba lubba dub dub', short: 'Death ray', about: 'The cruiser’s big laser, straight ahead, into whatever’s first in its way.', dur: 3.5, length: 45, tick: 0.1, punch: 0.6, sub: 0.3, turn: 0.6 },
