@@ -15,6 +15,7 @@ import { paintStation } from './plating';
 import { paintGiant, paintPlanet } from './planetPaint';
 import { pixelRatio } from '../../lib/device';
 import { precompile, precompilePasses, quiet, releaseContext } from '../../lib/three/renderer';
+import { sharpen } from '../../lib/three/textures';
 
 const DS = { x: 505, y: 292, r: 145 };
 const DISH = { x: 446, y: 232, r: 38 };
@@ -37,6 +38,7 @@ function glowTexture(stops) {
   x.fillStyle = g;
   x.fillRect(0, 0, 128, 128);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -187,6 +189,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
       x.fillRect(0, y, 64, 1);
     }
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     t.wrapS = THREE.RepeatWrapping;
     t.repeat.set(24, 1);
@@ -319,6 +322,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
     if (!giants.has(id)) {
       const c = paintGiant(id, big ? { w: 1024, h: 512 } : { w: 768, h: 384 });
       const t = new THREE.CanvasTexture(c);
+      sharpen(t);
       t.colorSpace = THREE.SRGBColorSpace;
       giants.set(id, t);
     }
@@ -348,6 +352,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
     x.fillStyle = g;
     x.fillRect(0, 0, 512, 512);
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
@@ -568,6 +573,7 @@ export function createDeathStar3D(canvas, { onLost } = {}) {
       x.fillRect(gx - r, gy - r, r * 2, r * 2);
     }
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.9 }));
     m.frustumCulled = false;

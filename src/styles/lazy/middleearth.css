@@ -31,7 +31,7 @@
 /* the Bridge of Khazad-dûm */
 .bridge-stage { overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card); background: #0a0705; box-shadow: var(--shadow-card); }
 .bridge-stone { transform-box: fill-box; transform-origin: 50% 50%; }
-.bridge-stone.falling { animation: stone-fall 1.3s cubic-bezier(0.55, 0, 1, 0.45) var(--d, 0ms) forwards; }
+.bridge-stone.falling { animation: stone-fall 1.3s var(--ease-in) var(--d, 0ms) forwards; }
 @keyframes stone-fall { to { transform: translateY(190px) rotate(var(--r)); opacity: 0; } }
 .balrog-fire { transform-box: fill-box; transform-origin: 50% 100%; animation: fire-flicker 0.32s ease-in-out infinite alternate; }
 .balrog.flare .balrog-fire { animation-duration: 0.14s; }

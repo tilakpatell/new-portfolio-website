@@ -240,7 +240,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .station-list a:hover { background: rgb(255 255 255 / 0.05); }
 .station-list a span:last-child { font-size: 0.8rem; }
 .station-term { margin-bottom: 0; padding: 0.75rem 0.9rem; border-radius: 10px; background: #05080a; color: #7dff9a; font-family: var(--font-mono); font-size: 0.8rem; white-space: pre-wrap; }
-.universe-fade { position: absolute; z-index: 3; inset: 0; opacity: 0; pointer-events: none; transition: opacity 0.6s cubic-bezier(0.55, 0, 1, 0.45); }
+.universe-fade { position: absolute; z-index: 3; inset: 0; opacity: 0; pointer-events: none; transition: opacity 0.6s var(--ease-in); }
 .universe-page:is([data-leaving='dive'], [data-leaving='portal'], [data-leaving='crash'], [data-leaving='phone']) .universe-fade { opacity: 1; }
 
 /* through the black hole: black, with where you're going written over it and the crew's last words above */

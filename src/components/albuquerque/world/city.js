@@ -397,6 +397,7 @@ function atlas(names, draw) {
   tex.colorSpace = THREE.SRGBColorSpace;
   sharpen(tex);
   const glow = new THREE.CanvasTexture(e);
+  sharpen(glow);
   glow.colorSpace = THREE.SRGBColorSpace;
   return { tex, glow, rects };
 }

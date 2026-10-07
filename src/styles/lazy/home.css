@@ -3,7 +3,7 @@
 /* The home page's way into the travel page */
 .travel-teaser { min-height: clamp(320px, 42vw, 520px); display: grid; align-items: center; }
 .element-sym { position: absolute; inset: 0; display: grid; place-items: center; padding-top: 0.08em; font-size: 0.66em; letter-spacing: -0.02em; }
-.element-in { animation: element-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.element-in { animation: element-in 0.7s var(--ease-out) backwards; }
 
 /* Northeastern's lockup: black wordmark in light mode, white in dark */
 .nu-logo-dark { display: none; }

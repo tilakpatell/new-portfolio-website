@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { CRYSTALS } from './rules';
+import { sharpen } from '../../../lib/three/textures';
 
 const seeded = (seed) => () => {
   seed |= 0;
@@ -29,6 +30,7 @@ export function glowTexture() {
   g.fillStyle = grad;
   g.fillRect(0, 0, 128, 128);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -404,6 +406,7 @@ export function createPizza() {
     g.fill();
   }
   const map = new THREE.CanvasTexture(c);
+  sharpen(map);
   map.colorSpace = THREE.SRGBColorSpace;
   const geometry = new THREE.CylinderGeometry(1.25, 1.25, 0.07, 28);
   const top = new THREE.MeshStandardMaterial({ map, roughness: 0.8 });

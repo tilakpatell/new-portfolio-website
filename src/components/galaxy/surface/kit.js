@@ -23,6 +23,7 @@ import { bake, canvasTexture, panelTexture, part, place, rod, between, compose, 
 import { rng } from './noise';
 import { faceless, wind, wrapLighting } from '../../../lib/three/foliage';
 import SCANS from '../../../../public/cc0/galaxy/index.json';
+import { loadCore as loadScan } from '../../../lib/three/core';
 
 export { part, place, rod, between, compose, mirror, ball, upright };
 
@@ -311,8 +312,6 @@ function keepCoverage(t, cut = 0.3) {
 
 // The scanned surfaces, each loaded once for the page: the site's one core
 // kit (lib/three/core), which every world shares.
-import { loadCore as loadScan } from '../../../lib/three/core';
-
 export { loadScan };
 
 // How each solid role wears its scan: how far it repeats (a metre of

@@ -7,6 +7,7 @@
 
 import * as THREE from 'three';
 import { clamp01, color, createRenderer, disposeTree, easeOut, precompile } from '../../../lib/three/renderer';
+import { sharpen } from '../../../lib/three/textures';
 
 const FPS_GAP = 1000 / 30 - 2;
 const TRAIL = 70;
@@ -58,6 +59,7 @@ function paperTexture() {
   g.lineTo(40, 256);
   g.stroke();
   const tex = new THREE.CanvasTexture(c);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }

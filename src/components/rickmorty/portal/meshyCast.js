@@ -146,6 +146,15 @@ export const MESHY = {
   plague: { a: 'plague', h: 2.2 },
   ecoli: { a: 'ecoli', h: 1.4 },
   'needful-shop': { a: 'needful-shop', h: 5 },
+  nebulon: { a: 'nebulon', h: 2.05 },
+  storylord: { a: 'storylord', h: 1.95 },
+  ticketsguy: { a: 'ticketsguy', h: 1.75 },
+  rickprime: { a: 'rickprime', h: 2.35 },
+  simman: { a: 'simman', h: 1.8 },
+  poptart: { a: 'poptart', h: 1.6 },
+  toasterhouse: { a: 'toasterhouse', h: 3.8 },
+  omegadevice: { a: 'omegadevice', h: 3.4 },
+  primedrone: { a: 'primedrone', h: 0.9 },
   ...Object.fromEntries(
     [
       ['jerry-robe', 1.75],
@@ -162,6 +171,8 @@ export const MESHY = {
       ['gearperson-a', 1.8],
       ['gearperson-b', 1.8],
       ['zigerion', 1.95],
+      ['zigerion-b', 1.95],
+      ['zigerion-c', 1.95],
     ].map(([a, h]) => [a, { a, h }]),
   ),
 };
@@ -169,8 +180,8 @@ const RICKALL_FIGURES = ['pencilvester', 'sleepygary', 'hamurai', 'amishcyborg',
 const RICKALL_PROPS = ['reversegiraffe', 'ghostinajar', 'photographyraptor', 'tinkles', 'babywizard', 'mrsrefrigerator'];
 const FAMILY_FIGURES = ['spacebeth', 'drwong', 'nancy', 'tricia', 'diane'];
 const FAMILY_PROPS = ['snuffles'];
-const DEST_FIGURES = ['vance', 'supernova', 'alanrails', 'millionants', 'crocubot', 'noobnoob', 'squanchy', 'birdperson', 'phoenixperson', 'unity', 'marsha', 'mortyjr', 'krombopulos', 'kingjellybean', 'zeep', 'kyle', 'xenonbloom', 'poncho', 'annie', 'needful', 'arthricia', 'flippynips', 'scroopy', 'gearhead'];
-const DEST_PROPS = ['vindicators-ship', 'squanchy-house', 'birdperson-house', 'zigerion', 'thirstystep', 'giant', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli', 'needful-shop', 'jerry-robe', 'jerry-golf', 'jerry-tux', 'jerry-track', 'jerry-gown', 'jerry-cardigan', 'magdalian-a', 'magdalian-b', 'magdalian-c', 'plutonian-a', 'plutonian-b', 'gearperson-a', 'gearperson-b'];
+const DEST_FIGURES = ['vance', 'supernova', 'alanrails', 'millionants', 'crocubot', 'noobnoob', 'squanchy', 'birdperson', 'phoenixperson', 'unity', 'marsha', 'mortyjr', 'krombopulos', 'kingjellybean', 'zeep', 'kyle', 'xenonbloom', 'poncho', 'annie', 'needful', 'arthricia', 'flippynips', 'scroopy', 'gearhead', 'nebulon', 'storylord', 'ticketsguy', 'rickprime'];
+const DEST_PROPS = ['vindicators-ship', 'squanchy-house', 'birdperson-house', 'zigerion', 'thirstystep', 'giant', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli', 'needful-shop', 'jerry-robe', 'jerry-golf', 'jerry-tux', 'jerry-track', 'jerry-gown', 'jerry-cardigan', 'magdalian-a', 'magdalian-b', 'magdalian-c', 'plutonian-a', 'plutonian-b', 'gearperson-a', 'gearperson-b', 'zigerion-b', 'zigerion-c', 'simman', 'poptart', 'toasterhouse', 'omegadevice', 'primedrone'];
 export const RIGGED = new Set(['rick', 'morty', 'meeseeks', 'gromflomite', 'gazorpian', 'cop', 'evilmorty', 'summer', 'beth', 'jerry', 'president', 'fedagent', 'general', 'secretservice', 'goldenfold', 'principal', 'jessica', 'brad', 'tammy', 'ethan', 'tinyrick', ...RICKALL_FIGURES, ...FAMILY_FIGURES, ...DEST_FIGURES]);
 // the models not in the cast's own folder, by name: where they are
 // (and Mortytown's two shopfronts, rickmorty/citadel/district.js)

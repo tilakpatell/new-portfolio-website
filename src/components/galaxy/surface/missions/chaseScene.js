@@ -16,6 +16,7 @@ import { buildFigure } from '../figures';
 import { RIDES } from '../rides';
 import { groundAt } from '../walker';
 import { aimAssist, chaseView, firstSolid, hitScout, knockYou, laneHits, newChase, planRoute, scoutAt, starsFor, stepChase } from './chase';
+import { sharpen } from '../../../../lib/three/textures';
 
 const V = THREE.Vector3;
 const CHEST = 0.88; // metres over the bike's frame: where a bolt aims for, and lands
@@ -47,6 +48,7 @@ export function createChaseMission({ parent, world, placer, blaster, mission, em
       g.stroke();
       g.fill();
       const t = new THREE.CanvasTexture(c);
+      sharpen(t);
       t.colorSpace = THREE.SRGBColorSpace;
       return t;
     })(),

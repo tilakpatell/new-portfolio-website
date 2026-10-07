@@ -2,12 +2,19 @@ import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { HEROES, HILTS, SABER_COLORS, defaultHeroId, heroSpec, readHero, writeHero } from './heroes';
 import { GUNS } from '../universe/gunplay';
+import { RIGGED } from '../rickmorty/portal/meshyCast';
+import { ABILITIES } from './surface/abilityRules';
 
 describe('the heroes', () => {
   it('each have a rigged figure in the site, a weapon the hands know, and a word about them', () => {
     expect(HEROES.length).toBeGreaterThanOrEqual(6);
     for (const h of HEROES) {
-      expect(existsSync(new URL(`../../../public${h.src.url}`, import.meta.url)), h.id).toBe(true);
+      // (a file of the site's, or a Meshy figure the cast rigs)
+      if (h.src.meshy) expect(RIGGED.has(h.src.meshy), h.id).toBe(true);
+      else expect(existsSync(new URL(`../../../public${h.src.url}`, import.meta.url)), h.id).toBe(true);
+      expect(ABILITIES[h.abilities.power], `${h.id} on G`).toBeTruthy();
+      expect(ABILITIES[h.abilities.second], `${h.id} on V`).toBeTruthy();
+      expect(['galaxy', 'elsewhere']).toContain(h.side);
       expect(h.tall).toBeGreaterThan(1);
       expect(GUNS[h.weapon], `${h.id} carries ${h.weapon}`).toBeTruthy();
       if (h.weapon === 'saber') {
@@ -22,6 +29,15 @@ describe('the heroes', () => {
   it('reads the kept choice, and falls back to the ship’s lead on nothing or nonsense', () => {
     expect(readHero(null, 'xwing')).toMatchObject({ id: 'luke', color: 'green', hilt: 'luke' });
     expect(readHero(null, 'falcon').id).toBe('han');
+    // the crews from elsewhere walk in as themselves
+    expect(readHero(null, 'cruiser')).toMatchObject({ id: 'rick', gun: 'portal' });
+    expect(readHero(null, 'rv')).toMatchObject({ id: 'walt', gun: 'revolver' });
+    // and may carry the galaxy's guns, or their own that nobody else may
+    expect(readHero({ id: 'rick', gun: 'blaster' }).gun).toBe('blaster');
+    expect(readHero({ id: 'morty', gun: 'laser' }).gun).toBe('laser');
+    expect(readHero({ id: 'han', gun: 'laser' }).gun).toBe('blaster');
+    expect(heroSpec(readHero(null, 'cruiser'))).toMatchObject({ id: 'rick', src: { meshy: 'rick' }, abilities: { power: 'hop', second: 'overcharge' } });
+    expect(heroSpec({ id: 'bobafett' })).toMatchObject({ gun: 'ee3', abilities: { power: 'jetpack', second: 'rocket' } });
     expect(readHero('{bad json', 'xwing').id).toBe('luke');
     expect(readHero({ id: 'vader' }).id).toBe(defaultHeroId('xwing'));
     expect(readHero(writeHero({ id: 'ahsoka', color: 'purple', hilt: 'dooku' }))).toMatchObject({ id: 'ahsoka', color: 'purple', hilt: 'dooku' });

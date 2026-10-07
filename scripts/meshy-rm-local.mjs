@@ -162,6 +162,18 @@ const PHASE6 = {
   storylord: { hero: true, height: 1.9, prompt: `Story Lord from Rick and Morty: a tall heavily muscled man with swept-back grey hair and a grey chinstrap beard, a smug face, in a white tunic with gold trim and three round gold medallions joined by thin gold lines across the chest, a tall gold collar, dark orange shoulder pieces and a dark orange cape, a brown belt with a round gold buckle, yellow jodhpurs, dark brown gloves and boots, an emerald ring and a ruby ring. ${BODY}` },
   ticketsguy: { height: 1.75, prompt: `The Tickets Please Guy from Rick and Morty: a balding older man with grey hair at the sides, thick grey eyebrows, a curled grey moustache and a full grey beard, a round pink nose, small round glasses, a navy conductor's cap with a gold band and badge, a red conductor's jacket with gold buttons and two gold stripes on each cuff over a white shirt and a dark red tie, black trousers, black boots, white gloves. ${BODY}` },
 };
+// Phase 6's set pieces in models rather than shapes (the user's rule: never
+// a figure or a prop drawn in code where a model can stand): the
+// simulation's two identical men, its pop-tart and his toaster, the Omega
+// Device, and Rick Prime's security drones. None are rigged; they stand or
+// are moved whole (stage.js's NPC behaviour slides a prop figure along).
+const PHASE7 = {
+  simman: { rig: false, poly: 14000, prompt: `A simulated human pedestrian from the Zigerions' simulation in Rick and Morty: a plain middle-aged man with a blank calm face, short flat brown hair, a long brown overcoat over a white shirt, dark grey trousers, brown shoes, both arms down by his sides, standing stiffly. ${AT_EASE}` },
+  poptart: { rig: false, poly: 14000, prompt: `A living pop-tart character from the Zigerions' simulation in Rick and Morty: a tall upright rectangular toaster pastry with pink frosting and rainbow sprinkles on the front, a golden-brown crust edge, a simple smiling face with dot eyes, thin stick arms and legs, one hand raised in a wave. ${PROP}` },
+  toasterhouse: { rig: false, prompt: `A giant chrome toaster as a small house, from Rick and Morty: a shiny silver two-slot toaster the size of a garden shed with a front door and a round window cut into its side, a black lever and dial on the end, two slots on top, standing on a patch of grass. ${BUILDING}` },
+  omegadevice: { rig: false, hero: true, prompt: `The Omega Device from Rick and Morty: a sinister science-fiction machine, a black metal sphere held in a frame of three thin gold rings over a squat dark steel plinth with riveted panels, a red glow leaking from gaps in the sphere, thick cables running from the plinth's base, no text. ${PROP}` },
+  primedrone: { rig: false, poly: 14000, prompt: `A security drone from Rick Prime's fortress in Rick and Morty: a hovering drone shaped like a flattened dark grey metal egg, one big round red glowing lens at the front, two small thruster pods underneath, a thin antenna on top, a few orange warning stripes, no text. ${PROP}` },
+};
 // The plan's Task 3.1: Mortytown's people and buildings, two Ricks for the
 // Citadel's crowd, the Citadel from space and the NX-5. The plan's prompts
 // were checked against the wiki on 6 October and put right where the show
@@ -241,6 +253,7 @@ for (const [phase, set] of [
   [4, PHASE4],
   [5, PHASE5],
   [6, PHASE6],
+  [7, PHASE7],
 ]) {
   for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: !a.crowd, poly: a.crowd ? 9000 : a.hero ? 40000 : 30000, tex: a.crowd || SMALL.has(n) ? 1024 : 2048, ...a };
 }

@@ -24,7 +24,7 @@
 .pp-hud-centre { display: grid; justify-items: center; text-align: center; }
 .pp-hud-right { display: grid; justify-items: end; margin-right: 8.6rem; }
 .pp-hearts { display: flex; gap: 0.25rem; }
-.pp-hearts span { width: clamp(20px, 1.1rem + 0.6vw, 28px); height: clamp(20px, 1.1rem + 0.6vw, 28px); color: rgba(255, 255, 255, 0.2); filter: drop-shadow(0 1px 0 #1b1424) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); transition: color 0.2s ease, transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.pp-hearts span { width: clamp(20px, 1.1rem + 0.6vw, 28px); height: clamp(20px, 1.1rem + 0.6vw, 28px); color: rgba(255, 255, 255, 0.2); filter: drop-shadow(0 1px 0 #1b1424) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5)); transition: color 0.2s ease, transform 0.25s var(--ease-spring); }
 .pp-hearts span[data-on] { color: #ff4f6a; }
 .pp-hearts svg { width: 100%; height: 100%; fill: currentColor; stroke: #1b1424; stroke-width: 1.5; }
 .pp-dashes { display: flex; align-items: center; gap: 0.3rem; }

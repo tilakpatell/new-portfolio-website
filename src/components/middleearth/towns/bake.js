@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { sharpen } from '../../../lib/three/textures';
 
 // Merge every static mesh under `root` that shares a material into one, in
 // world space; `keep` (and what's under them) stay as they are, to move.
@@ -76,6 +77,7 @@ export function dotTexture() {
   g.fillStyle = grad;
   g.fillRect(0, 0, 64, 64);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

@@ -36,6 +36,12 @@
   --r-photo: 24px;
   --eyebrow-tracking: 0.12em;
   --shadow-card: 0 1px 2px rgba(15, 17, 17, 0.05), 0 6px 20px -12px rgba(15, 17, 17, 0.18);
+  /* the site's easing, one family: out for anything arriving or settling, smooth
+     for a change of state, spring for a bounce, in for anything leaving */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.3, 1.6, 0.5, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
 
   --font-sans: 'Archivo Variable', 'Archivo', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -240,6 +246,12 @@ html[data-mode='dark'] {
   --btn-ink: #0b0b0b;
   --route-plan: #35383e;
   --shadow-card: none;
+  /* the site's easing, one family: out for anything arriving or settling, smooth
+     for a change of state, spring for a bounce, in for anything leaving */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.3, 1.6, 0.5, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
   color-scheme: dark;
 }
 html[data-mode='dark'][data-theme='bose'] { --accent: #ffffff; --accent-text: #ffffff; --btn-bg: #ffffff; --btn-ink: #131317; --saber: #b4bec7; --surface: #0d0d10; --surface-2: #18181c; }
@@ -319,6 +331,12 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
   --btn-ink: #0f1111;
   --route-plan: #4a5563;
   --shadow-card: none;
+  /* the site's easing, one family: out for anything arriving or settling, smooth
+     for a change of state, spring for a bounce, in for anything leaving */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.3, 1.6, 0.5, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
   color: var(--text-body);
   color-scheme: dark;
 }
@@ -459,7 +477,7 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     box-shadow: var(--shadow-card);
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   }
-  .card-lift { transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+  .card-lift { transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.35s var(--ease-out); }
   .card-lift:hover { transform: translateY(-3px); }
   .card-tint { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
   a.card:hover, .card-hover:hover {
@@ -520,7 +538,7 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
   .skip-link:focus-visible { top: 12px; }
 
   /* Reveal on scroll: hidden until the shared observer marks it in view */
-  .reveal { transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+  .reveal { transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out); }
   .reveal:not([data-in='true']) { opacity: 0; transform: translateY(18px); }
 
   /* Route line — composited segments; JS only changes transforms */
@@ -610,7 +628,7 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
 /* ─── Nav + lightsaber scroll progress ──────────────────────────────────── */
 .site-nav {
   pointer-events: none;
-  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 0.35s var(--ease-smooth);
   will-change: transform;
 }
 .site-nav[data-hidden='true'] { transform: translateY(calc(-100% - 16px)); }
@@ -746,18 +764,18 @@ html[data-mode='dark'] .saber-progress .blade { background: #ffffff; box-shadow:
   box-shadow: 0 0 2px 0 var(--saber), 0 0 10px 1px color-mix(in srgb, var(--saber) 60%, transparent);
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 0.05s;
+  transition: transform 0.45s var(--ease-smooth) 0.05s;
 }
 .saber[data-lit='true'] .saber-blade { transform: scaleX(1); }
 
 /* ─── Role diagrams (one-shot) ───────────────────────────────────────────── */
 .motif .m-fade { opacity: 0; transition: opacity 0.35s ease var(--d, 0ms); }
 .motif[data-seen='true'] .m-fade { opacity: 1; }
-.motif .m-draw { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 0.9s cubic-bezier(0.3, 0.6, 0.2, 1) var(--d, 0ms); }
+.motif .m-draw { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 0.9s var(--ease-smooth) var(--d, 0ms); }
 .motif[data-seen='true'] .m-draw { stroke-dashoffset: 0; }
-.motif .m-move { transform: translateY(0); transition: transform 0.6s cubic-bezier(0.3, 0.6, 0.2, 1) var(--d, 0ms); }
+.motif .m-move { transform: translateY(0); transition: transform 0.6s var(--ease-smooth) var(--d, 0ms); }
 .motif[data-seen='true'] .m-move { transform: translateY(var(--to, 44px)); }
-.motif .m-grow { transform: scaleY(0.08); transform-box: fill-box; transform-origin: 50% 100%; transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0ms); }
+.motif .m-grow { transform: scaleY(0.08); transform-box: fill-box; transform-origin: 50% 100%; transition: transform 0.6s var(--ease-smooth) var(--d, 0ms); }
 .motif[data-seen='true'] .m-grow { transform: scaleY(1); }
 
 /* ─── Experience hero (the current role) ─────────────────────────────────── */
@@ -784,7 +802,7 @@ html[data-mode='dark'] .saber-progress .blade { background: #ffffff; box-shadow:
   border-radius: calc(var(--r-card) + 6px);
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(15, 17, 17, 0.06), 0 30px 60px -30px color-mix(in srgb, var(--accent) 55%, transparent);
-  animation: logo-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  animation: logo-in 0.6s var(--ease-smooth) backwards;
 }
 html[data-mode='dark'] .hero-logo-card { background: var(--surface); }
 .chapter-logo-card.is-small { width: clamp(150px, 16vw, 200px); }
@@ -800,10 +818,10 @@ html[data-mode='dark'] .hero-logo-card { background: var(--surface); }
   box-shadow: 0 1px 2px rgba(15, 17, 17, 0.06), 0 24px 48px -28px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 .reveal.chapter-logo-card:not([data-in='true']) { opacity: 0; transform: scale(0.9) translateY(14px); }
-.aws-logo .aws-letters { fill: #252f3e; animation: hero-up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s backwards; }
+.aws-logo .aws-letters { fill: #252f3e; animation: hero-up 0.6s var(--ease-smooth) 0.15s backwards; }
 html[data-mode='dark'] .aws-logo .aws-letters { fill: #ffffff; }
 .aws-logo .aws-smile { fill: #ff9900; fill-rule: evenodd; transform-box: fill-box; transform-origin: 0 50%; animation: smile-in 0.6s cubic-bezier(0.6, 0, 0.2, 1) backwards; }
-.hero-in { animation: hero-up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0ms) backwards; }
+.hero-in { animation: hero-up 0.6s var(--ease-smooth) var(--d, 0ms) backwards; }
 @keyframes hero-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes logo-in { from { opacity: 0; transform: scale(0.92) translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes smile-in { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
@@ -816,7 +834,7 @@ html[data-mode='dark'] .aws-logo .aws-letters { fill: #ffffff; }
 .page-enter { animation: page-in 0.2s ease-out backwards; }
 @keyframes page-in { from { opacity: 0; } to { opacity: 1; } }
 
-.toast { animation: toast-in 3.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.toast { animation: toast-in 3.6s var(--ease-smooth) both; }
 @keyframes toast-in {
   0% { transform: translateY(24px); }
   7%, 88% { opacity: 1; transform: none; }
@@ -879,3 +897,9 @@ html[data-mode='dark'] .aws-logo .aws-letters { fill: #ffffff; }
      it just shows, for as long as it's up */
   .toast { animation: none !important; }
 }
+
+/* A page scene's first frame fades in over whatever it replaces instead of
+   popping (lib/three/useScene marks the box data-gl="on" once a frame has
+   drawn; reduced motion makes it instant, with every other transition) */
+.scene-canvas { opacity: 0; transition: opacity 0.4s var(--ease-out); }
+[data-gl='on'] > .scene-canvas { opacity: 1; }

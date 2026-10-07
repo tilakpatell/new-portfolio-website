@@ -16,6 +16,7 @@ import { LOOK_KEY, readLooks } from './wardrobe/looks';
 import { bodyAsset, bodyKind, dress, withWardrobe } from './wardrobe/wear';
 import { pixelRatio } from '../../lib/device';
 import { precompile, quiet, releaseContext } from '../../lib/three/renderer';
+import { sharpen } from '../../lib/three/textures';
 
 const INK = 0x1b1424;
 // (the saucer's measurements are shared with the C-137 world, which draws it bigger: scale them by its height over TALL)
@@ -86,6 +87,7 @@ function glowTexture() {
   x.fillStyle = g;
   x.fillRect(0, 0, 64, 64);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

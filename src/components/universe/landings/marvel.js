@@ -11,6 +11,7 @@ import { box, part } from '../../galaxy/surface/kit';
 import { buildQuinjet, canopyGeometry, coniferGeometry } from '../../avengers/compound/models';
 import { loadPerson, person } from '../../avengers/world/people';
 import { AVENGERS_MODELS } from '../../avengers/people/models';
+import { sharpen } from '../../../lib/three/textures';
 
 const hot = (hex, k) => new THREE.Color(hex).multiplyScalar(k);
 
@@ -50,6 +51,7 @@ function logo(ground = null, ink = '#ffffff', size = 256) {
   x.closePath();
   x.fill();
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

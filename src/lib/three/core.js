@@ -23,6 +23,7 @@
 import * as THREE from 'three';
 import SCANS from '../../../public/cc0/galaxy/index.json';
 import { budget } from '../device';
+import { sharpen } from './textures';
 
 export const CORE = SCANS;
 export const coreOf = (role) => SCANS[role] ?? null;
@@ -38,7 +39,7 @@ export function loadCore(role) {
     const get = (file, srgb) =>
       loader.loadAsync(`${BASE}/${role}/${file}.webp`).then((t) => {
         t.wrapS = t.wrapT = THREE.RepeatWrapping;
-        t.anisotropy = budget().aniso ?? 8;
+        sharpen(t);
         if (srgb) t.colorSpace = THREE.SRGBColorSpace;
         return t;
       });

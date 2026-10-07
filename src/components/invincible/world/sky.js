@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { rng } from './map';
+import { sharpen } from '../../../lib/three/textures';
 
 function puffTexture() {
   const c = document.createElement('canvas');
@@ -23,6 +24,7 @@ function puffTexture() {
     x.fillRect(0, 0, 128, 128);
   }
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

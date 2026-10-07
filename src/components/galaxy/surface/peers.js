@@ -19,6 +19,7 @@ import { modelFigure } from './actors';
 import { createGunplay } from '../../universe/gunplay';
 import { createSaber } from './saber';
 import { HILTS } from '../heroes';
+import { sharpen } from '../../../lib/three/textures';
 
 const CREW_MODELS = { artoo: 'r2d2' }; // (scene.js's)
 
@@ -42,6 +43,7 @@ function nameTag(text) {
   g.textBaseline = 'middle';
   g.fillText(text, 128, 33);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthWrite: false, transparent: true }));
   s.scale.set(2.2, 0.55, 1);

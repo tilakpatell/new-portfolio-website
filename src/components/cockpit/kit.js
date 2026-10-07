@@ -37,6 +37,7 @@ export function painted(w, h, draw, { srgb = true, repeat = null, aniso = null, 
   const x = c.getContext('2d');
   draw(x, w, h);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   if (repeat) {
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -316,6 +317,7 @@ export function screen(w, h, draw, { px = 256, fps = 12, glow = 1.4 } = {}) {
   c.height = ch;
   const g = c.getContext('2d');
   const tex = new THREE.CanvasTexture(c);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.minFilter = THREE.LinearFilter;
   tex.generateMipmaps = false;
