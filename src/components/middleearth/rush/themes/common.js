@@ -26,6 +26,7 @@ import * as THREE from 'three';
 import { hot } from '../../../../lib/stage3d';
 import { B, ball, barrelParts, cyl, lathe } from '../../shire/props';
 import { dotTexture } from '../../towns/bake';
+import { sharpen } from '../../../../lib/three/textures';
 
 export const TOP = 0.92; // a counter's top
 export const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -134,6 +135,7 @@ export function stream({ bk, at, wet, W, D, X, Z, mats }, { lava = false, kerb =
     g.stroke();
   }
   const tex = new THREE.CanvasTexture(cv);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   const water = lava ? new THREE.MeshBasicMaterial({ map: tex, color: hot(0xffffff, 1.6) }) : new THREE.MeshStandardMaterial({ map: tex, color: 0xbfe0ea, roughness: 0.12, metalness: 0.15, emissive: 0x0a2a36, emissiveIntensity: 0.6 });
@@ -183,6 +185,7 @@ export function skyBehind({ room, W, Z }, stops, { z = -4, y = 4, h = 12 } = {})
   g.fillStyle = grad;
   g.fillRect(0, 0, 16, 256);
   const tex = new THREE.CanvasTexture(cv);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sky = new THREE.Mesh(new THREE.PlaneGeometry(W + 30, h), new THREE.MeshBasicMaterial({ map: tex, fog: false }));
   sky.position.set(0, y, Z(0) + z);
@@ -222,6 +225,7 @@ export function webTexture() {
     g.stroke();
   }
   const tex = new THREE.CanvasTexture(cv);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
@@ -289,6 +293,7 @@ export function sign({ room }, lines, { at, turn = 0, w = 1.1, h = 0.55, board =
   g.textBaseline = 'middle';
   lines.forEach((l, k) => g.fillText(l, cv.width / 2, ((k + 1) * cv.height) / (lines.length + 1)));
   const tex = new THREE.CanvasTexture(cv);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   const group = new THREE.Group();
   const face = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));

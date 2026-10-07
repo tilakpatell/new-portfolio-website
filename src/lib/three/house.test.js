@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { LOOK, createHouse, houseShader } from './house';
+import { createGroundMap } from './groundmap';
 
 // three's chunks as this version has them (the lines the rewrite looks for)
 const CHUNKS = {
@@ -65,7 +66,7 @@ describe('the house look in the shader', () => {
   it('works against the chunks three actually ships', () => {
     for (const kind of ['meshlambert', 'meshphong', 'meshtoon', 'meshphysical']) {
       const out = houseShader({ vertexShader: THREE.ShaderChunk[`${kind}_vert`], fragmentShader: THREE.ShaderChunk[`${kind}_frag`] }, {}, THREE.ShaderChunk);
-      expect(out.swapped, kind).toEqual({ look: true, fog: true });
+      expect(out.swapped, kind).toEqual({ look: true, fog: true, ground: false });
     }
   });
 });
@@ -162,5 +163,64 @@ describe('a world’s house', () => {
     expect(house.toneMapping).toBe(THREE.NeutralToneMapping);
     expect(house.exposure).toBe(LOOK.exposure);
     expect(createHouse({ exposure: 1.1 }).exposure).toBe(1.1);
+  });
+});
+
+describe('the light the ground bounces up', () => {
+  const GROUNDED = {
+    vertexShader: '#include <common>\nvoid main() {\n#include <beginnormal_vertex>\n#include <begin_vertex>\n#include <project_vertex>\n}',
+    fragmentShader: '#include <common>\nvoid main() {\n#include <color_fragment>\n#include <opaque_fragment>\n}',
+  };
+
+  it('tints the albedo of low, downward faces toward the ground’s colour under them, before the light', () => {
+    const out = houseShader(GROUNDED, { fog: false, ground: true }, CHUNKS);
+    expect(out.swapped.ground).toBe(true);
+    expect(out.vertexShader).toContain('varying vec3 vLookPos;');
+    expect(out.vertexShader).toContain('vLookN = mat3(modelMatrix) * ln;');
+    expect(out.vertexShader).toMatch(/USE_INSTANCING[\s\S]*instanceMatrix \* lp/);
+    const fs = out.fragmentShader;
+    expect(fs).toContain('uniform sampler2D uGroundMap;');
+    expect(fs).toContain('groundHeight(vLookPos.xz)');
+    expect(fs.indexOf('groundColour(vLookPos.xz)')).toBeGreaterThan(fs.indexOf('#include <color_fragment>'));
+    expect(fs.indexOf('groundColour(vLookPos.xz)')).toBeLessThan(fs.indexOf('uLookShadow, '));
+  });
+
+  it('declares the ground once when the floor is already painted by the map', () => {
+    const painted = { ...GROUNDED, fragmentShader: GROUNDED.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uGroundMap;\nvec3 groundColour(vec2 xz) { return vec3(1.0); }') };
+    const fs = houseShader(painted, { fog: false, ground: true }, CHUNKS).fragmentShader;
+    expect(fs.split('uniform sampler2D uGroundMap;').length).toBe(2);
+  });
+
+  it('bounces nothing without a ground', () => {
+    const out = houseShader(GROUNDED, { fog: false }, CHUNKS);
+    expect(out.swapped.ground).toBe(false);
+    expect(out.fragmentShader).not.toContain('groundColour');
+    expect(out.vertexShader).not.toContain('vLookPos');
+  });
+
+  it('works against the chunks three actually ships', () => {
+    for (const kind of ['meshlambert', 'meshphysical']) {
+      const out = houseShader({ vertexShader: THREE.ShaderChunk[`${kind}_vert`], fragmentShader: THREE.ShaderChunk[`${kind}_frag`] }, { ground: true }, THREE.ShaderChunk);
+      expect(out.swapped, kind).toEqual({ look: true, fog: true, ground: true });
+    }
+  });
+
+  it('takes a world’s ground map, and its materials compile with it from then on', () => {
+    const house = createHouse();
+    const m = new THREE.MeshLambertMaterial();
+    house.adopt(new THREE.Mesh(new THREE.BufferGeometry(), m));
+    expect(m.customProgramCacheKey()).toMatch(/\|house$/);
+    const map = createGroundMap({ size: 2, area: { x0: 0, z0: 0, w: 10, d: 10 }, paint: () => 1 });
+    const version = m.version;
+    house.ground(map, { height: 2, strength: 0.4 });
+    // (already patched: told to compile again, now with the ground)
+    expect(m.version).toBeGreaterThan(version);
+    expect(m.customProgramCacheKey()).toMatch(/\|house:ground$/);
+    expect(house.uniforms.uGroundMap.value).toBe(map.texture);
+    expect(house.uniforms.uLookBounce.value.toArray()).toEqual([2, 0.4, 0.6]);
+    const sh = compiled(m);
+    expect(sh.fragmentShader).toContain('groundColour(vLookPos.xz)');
+    expect(sh.uniforms.uGroundRect).toBe(map.uniforms.uGroundRect);
+    map.dispose();
   });
 });

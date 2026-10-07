@@ -10,6 +10,7 @@ import { box, cyl, part } from '../../galaxy/surface/kit';
 import { rng } from '../../galaxy/surface/noise';
 import { canopyGeometry } from '../../avengers/compound/models';
 import { METRE } from '../foot';
+import { sharpen } from '../../../lib/three/textures';
 
 const { PI, cos, sin } = Math;
 const hot = (hex, k) => new THREE.Color(hex).multiplyScalar(k);
@@ -46,6 +47,7 @@ function jaliTexture() {
       x.fill();
     }
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
 }

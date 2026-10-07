@@ -21,7 +21,7 @@
 import * as THREE from 'three';
 import { disposeTree, precompile } from '../../lib/three/renderer';
 import { gltfLoader } from '../../lib/three/gltf';
-import { loadTexture, sharpenMaterial } from '../../lib/three/textures';
+import { loadTexture, sharpen, sharpenMaterial } from '../../lib/three/textures';
 import { device } from '../../lib/device';
 import { CLOUD_ALT, HOME_V, STAMPS, TRAIL as LOG, cross, placeById, routeArc, unit, unpackPose } from './rules';
 
@@ -241,6 +241,7 @@ function glowTexture() {
   g.fillStyle = r;
   g.fillRect(0, 0, 64, 64);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -286,6 +287,7 @@ function nameSprite(name, h = 0.028) {
   g.textBaseline = 'middle';
   g.fillText(name, 14, 23);
   const tex = new THREE.CanvasTexture(c);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, sizeAttenuation: false, opacity: 0 }));
   sp.scale.set((w / 44) * h, h, 1);

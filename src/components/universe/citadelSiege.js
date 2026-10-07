@@ -19,6 +19,7 @@
 
 import * as THREE from 'three';
 import { BLAST_S, GENS, blastShape } from './siege';
+import { sharpen } from '../../lib/three/textures';
 
 const NEAR = 1600; // map units: closer than this a change plays out, and the siege is drawn at all
 const GLOW = new THREE.Color('#5dffb0'); // the shield's and the generators' light (portal-fluid green)
@@ -89,6 +90,7 @@ const radial = () => {
   g.fillStyle = grad;
   g.fillRect(0, 0, 128, 128);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 };

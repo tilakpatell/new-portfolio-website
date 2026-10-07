@@ -18,6 +18,7 @@ import { makeProp } from './props';
 import { DOC_SIZE, build as buildDocument } from './document';
 import { build as buildFriends } from './friends';
 import { barkTexture, glowTexture, heartwoodTexture, islandFloorTexture, plaqueTexture, rng } from './textures';
+import { sharpen } from '../../lib/three/textures';
 
 export const RING = 17; // metres from the centre to each exhibit
 export const ISLAND = 27;
@@ -258,8 +259,7 @@ export function build({ renderer, exhibits, doc, tribute }) {
     const ring = new THREE.Group();
     list.forEach((src, i) => {
       const tex = keep(loader.load(src));
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.anisotropy = 8;
+      sharpen(tex, { color: true });
       const a = (i / list.length) * Math.PI * 2;
       const holder = framePlane(9, 9 * (9 / 16), frames);
       holder.children[0].geometry = keep(holder.children[0].geometry);

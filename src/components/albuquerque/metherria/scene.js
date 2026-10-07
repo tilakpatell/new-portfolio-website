@@ -23,6 +23,7 @@ import { loadProps, PROPS, spoutOf } from './props';
 import { paintDial, paintFloor, paintHazard, paintLabel, paintPollosBox, paintSteel, paintTile, paintWood } from './paint';
 import { pixelRatio } from '../../../lib/device';
 import { precompile, quiet, releaseContext } from '../../../lib/three/renderer';
+import { sharpen } from '../../../lib/three/textures';
 
 export const STATIONS = { order: -4.4, serve: -4.4, idle: -4.4, build: -1.7, cook: 0.7, break: 3.0, pack: 5.3 };
 const BENCH_Y = 0.92;
@@ -240,6 +241,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
     x.fillStyle = '#a07c5a';
     x.fillRect(0, 410, 1024, 102);
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     const back = new THREE.Mesh(new THREE.PlaneGeometry(9, 4.5), new THREE.MeshBasicMaterial({ map: t }));
     back.position.set(-4.4, 1.6, -4.5);
@@ -272,6 +274,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   cabinet.receiveShadow = true;
   room.add(cabinet);
   const hazardTex = new THREE.CanvasTexture(paintHazard());
+  sharpen(hazardTex);
   hazardTex.colorSpace = THREE.SRGBColorSpace;
   hazardTex.wrapS = THREE.RepeatWrapping;
   hazardTex.repeat.set(24, 1);
@@ -460,6 +463,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   const dialCanvas = document.createElement('canvas');
   dialCanvas.width = dialCanvas.height = 256;
   const dialTex = new THREE.CanvasTexture(dialCanvas);
+  sharpen(dialTex);
   dialTex.colorSpace = THREE.SRGBColorSpace;
   const gauge = new THREE.Group();
   {
@@ -569,6 +573,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   const scaleDialCanvas = document.createElement('canvas');
   scaleDialCanvas.width = scaleDialCanvas.height = 256;
   const scaleDialTex = new THREE.CanvasTexture(scaleDialCanvas);
+  sharpen(scaleDialTex);
   scaleDialTex.colorSpace = THREE.SRGBColorSpace;
   const scaleDial = new THREE.Group();
   {
@@ -666,6 +671,7 @@ export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
       x.fillText('MADRIGAL', 0, 8);
     }
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     stickerTex[kind] = new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2 });
     return stickerTex[kind];

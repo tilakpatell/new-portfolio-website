@@ -24,6 +24,10 @@ Session of 2026-10-05. The ask: "really improve and make 3d models and stuff for
   - E by Dad scrolls down to *Think, Mark!*;
   - the minimap is placed for phones.
 
+## Part 2 (2026-10-07): seen, alive, with a story
+
+The owner's ask: the world “is hard to see, has bugs, and nothing to do and needs better NPC AI, missions, everything”, with better, cohesive models (Meshy, the PC's gen3d runner, or Sketchfab). Spec: `docs/superpowers/specs/2026-10-07-invincible-world-2-design.md`. Plan: `docs/superpowers/plans/2026-10-07-invincible-world-2.md`, eleven tasks, one pull request each. Shots from the sweep that started it are described in the spec's first section. On 2026-10-07 the egress proxy allowed `api.meshy.ai` and `api.sketchfab.com`, and `MESHY_API_KEY` and `SKETCHFAB_API_TOKEN` were in the environment.
+
 ## Blocked
 
 The session's network policy refused `api.meshy.ai`, `api.sketchfab.com` and Poly Haven, with a 403 from the egress proxy. Every new model is code. The owner can allow those hosts in the environment's network settings. Then `scripts/meshy-invincible.mjs` could make HD figures for Atom Eve, Debbie, Cecil and Allen, in place of the kit figures in `people.js`. The `CAST` pattern in `../cast.js` and `lib/three/rig.js` already pose any rigged GLB.

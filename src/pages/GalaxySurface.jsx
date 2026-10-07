@@ -462,8 +462,8 @@ export default function GalaxySurface() {
           )}
           <ul className="surface-powers">
             {[
-              ['G', combat.saber ? 'Push' : 'Detonator', 'power'],
-              ['V', combat.saber ? 'Pull' : 'Overcharge', 'second'],
+              ['G', combat.powers?.power ?? (combat.saber ? 'Push' : 'Detonator'), 'power'],
+              ['V', combat.powers?.second ?? (combat.saber ? 'Pull' : 'Overcharge'), 'second'],
               ['X', 'Dodge', 'dodge'],
             ].map(([key, name, slot]) => {
               const left = combat.cool?.[slot] ?? 0;
@@ -472,7 +472,7 @@ export default function GalaxySurface() {
                 <li key={slot} className={left > 0 ? 'surface-power is-cooling' : 'surface-power'} style={{ '--k': left > 0 ? left / full : 0 }}>
                   <kbd>{key}</kbd>
                   <span>{name}</span>
-                  {left > 0.05 && <small>{left.toFixed(left < 10 ? 1 : 0)}</small>}
+                  {left > 0.05 && !(slot === 'power' && combat.powers?.hold) && <small>{left.toFixed(left < 10 ? 1 : 0)}</small>}
                 </li>
               );
             })}

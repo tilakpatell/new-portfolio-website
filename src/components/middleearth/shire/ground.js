@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { canvasTexture } from '../../../lib/stage3d';
 import { fbm, makeCanvas, makeNoise, normalFromField, paintPixels, smooth } from '../../../lib/paint';
+import { createGroundMap } from '../../../lib/three/groundmap';
 import { BRIDGE, FIELD, HOLES, BAG_END, INN, POND, ROADS, STREAM, WATER_Y, WORLD, height, inWater, onRoad, roadAmount, seeded } from './rules';
 
 const lerp3 = (out, a, b, t) => {
@@ -51,56 +52,82 @@ function grassTextures(renderer) {
   };
 }
 
-// The ground: a square of the world, shaped and painted. `seg` squares a side.
-export function makeTerrain(renderer, { seg = 200 } = {}) {
+// The Shire's ground at a point, as one function (lib/three/groundmap paints
+// it into the ground map, which colours the ground, the grass on it and the
+// light it bounces up): its colour into `out` (linear), and how much grass
+// grows there, 0 to 1. Green deeper in the hollows and sunnier on the tops,
+// dry in patches; the lanes worn to dirt, trodden round the doors and the
+// inn; Maggot's tilled rows; mud at the water's edge and the bed under it.
+const groundNoise = makeNoise(13);
+const fieldMidX = (FIELD.x0 + FIELD.x1) / 2;
+const fieldMidZ = (FIELD.z0 + FIELD.z1) / 2;
+const DOORS = [...HOLES, { ...BAG_END }];
+const tmpC = [0, 0, 0];
+export function groundAt(x, z, out) {
+  const n = groundNoise;
+  const h = height(x, z);
+  let grass = 1;
+  const patch = fbm(n, x * 0.05 + 4, z * 0.05, { octaves: 3 });
+  lerp3(out, GRASS_DEEP, GRASS, smooth(-0.6, 1.6, h + (patch - 0.5) * 2));
+  lerp3(out, out, GRASS_SUN, smooth(2.5, 9, h) * 0.55 + smooth(0.62, 0.8, patch) * 0.35);
+  lerp3(out, out, DRY, smooth(0.66, 0.84, fbm(n, x * 0.09, z * 0.09 + 7, { octaves: 2 })) * 0.45);
+  // Maggot's field: tilled rows running east-west
+  const inF = Math.max(Math.abs(x - fieldMidX) - (FIELD.x1 - FIELD.x0) / 2, Math.abs(z - fieldMidZ) - (FIELD.z1 - FIELD.z0) / 2);
+  const tilled = 1 - smooth(-0.6, 0.4, inF);
+  if (tilled > 0) {
+    const row = 0.5 + 0.5 * Math.sin(z * 2.4);
+    lerp3(tmpC, SOIL, GRASS_DEEP, row * 0.35);
+    lerp3(out, out, tmpC, tilled);
+    grass *= 1 - tilled;
+  }
+  // the lanes and paths, worn to dirt
+  const road = roadAmount(x, z);
+  if (road > 0) {
+    lerp3(out, out, DIRT, road * (0.82 + fbm(n, x * 0.4, z * 0.4, { octaves: 2 }) * 0.18));
+    grass *= 1 - smooth(0.05, 0.6, road);
+  }
+  // round the doors: trodden; and no grass on the mounds' fronts
+  for (const hole of DOORS) {
+    const d = Math.hypot(x - hole.x, z - (hole.z + hole.r * 0.95));
+    if (d < 2.2) {
+      lerp3(out, out, DIRT, (1 - smooth(0.8, 2.2, d)) * 0.6);
+      grass *= smooth(0.8, 2.2, d);
+    }
+    if (Math.hypot(x - hole.x, z - hole.z) < hole.r * 0.95) grass = 0;
+  }
+  const inn = Math.hypot(x - INN.x, z - (INN.z - INN.d / 2 - 1.5));
+  if (inn < 5) {
+    lerp3(out, out, DIRT, (1 - smooth(2, 5, inn)) * 0.7);
+    grass *= smooth(2, 5, inn);
+  }
+  // the bridge's footing
+  if (Math.abs(x - BRIDGE.x) < 2.5 && z > BRIDGE.z0 - 1 && z < BRIDGE.z1 + 1) grass = 0;
+  // mud at the water's edge, and the bed under it
+  if (h < 0.15) lerp3(out, out, MUD, smooth(0.15, -0.3, h));
+  if (h < WATER_Y) lerp3(out, out, BED, smooth(WATER_Y, -1.2, h));
+  grass *= smooth(0.02, 0.25, h);
+  return grass;
+}
+
+// The Shire's ground map: its colour and grass `size` texels a side over
+// the whole floor, its height at a quarter of that (lib/three/groundmap).
+export function shireGroundMap({ size = 512 } = {}) {
+  const e = WORLD.edge;
+  return createGroundMap({ area: { x0: -e, z0: -e, w: e * 2, d: e * 2 }, size, heightSize: Math.max(64, size / 2), paint: groundAt, height });
+}
+
+// The ground: a square of the world, shaped, and painted by the ground map
+// per point (sharper lanes than the old colour per vertex, a metre apart).
+// `seg` squares a side.
+export function makeTerrain(renderer, { seg = 200, map } = {}) {
   const size = WORLD.edge * 2;
   const geo = new THREE.PlaneGeometry(size, size, seg, seg).rotateX(-Math.PI / 2);
   const p = geo.attributes.position;
-  const colours = new Float32Array(p.count * 3);
-  const n = makeNoise(13);
-  const tmp = [0, 0, 0];
-  const out = [0, 0, 0];
-  const fieldMidX = (FIELD.x0 + FIELD.x1) / 2;
-  const fieldMidZ = (FIELD.z0 + FIELD.z1) / 2;
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i);
-    const z = p.getZ(i);
-    const h = height(x, z);
-    p.setY(i, h);
-    // grass: deeper in the hollows, sunnier on the tops, dry in patches
-    const patch = fbm(n, x * 0.05 + 4, z * 0.05, { octaves: 3 });
-    lerp3(out, GRASS_DEEP, GRASS, smooth(-0.6, 1.6, h + (patch - 0.5) * 2));
-    lerp3(out, out, GRASS_SUN, smooth(2.5, 9, h) * 0.55 + smooth(0.62, 0.8, patch) * 0.35);
-    lerp3(out, out, DRY, smooth(0.66, 0.84, fbm(n, x * 0.09, z * 0.09 + 7, { octaves: 2 })) * 0.45);
-    // Maggot's field: tilled rows running east-west
-    const inF = Math.max(Math.abs(x - fieldMidX) - (FIELD.x1 - FIELD.x0) / 2, Math.abs(z - fieldMidZ) - (FIELD.z1 - FIELD.z0) / 2);
-    const tilled = 1 - smooth(-0.6, 0.4, inF);
-    if (tilled > 0) {
-      const row = 0.5 + 0.5 * Math.sin(z * 2.4);
-      lerp3(tmp, SOIL, GRASS_DEEP, row * 0.35);
-      lerp3(out, out, tmp, tilled);
-    }
-    // the lanes and paths, worn to dirt
-    const road = roadAmount(x, z);
-    if (road > 0) lerp3(out, out, DIRT, road * (0.82 + fbm(n, x * 0.4, z * 0.4, { octaves: 2 }) * 0.18));
-    // round the doors: trodden
-    for (const hole of [...HOLES, { ...BAG_END }]) {
-      const d = Math.hypot(x - hole.x, z - (hole.z + hole.r * 0.95));
-      if (d < 2.2) lerp3(out, out, DIRT, (1 - smooth(0.8, 2.2, d)) * 0.6);
-    }
-    const inn = Math.hypot(x - INN.x, z - (INN.z - INN.d / 2 - 1.5));
-    if (inn < 5) lerp3(out, out, DIRT, (1 - smooth(2, 5, inn)) * 0.7);
-    // mud at the water's edge, and the bed under it
-    if (h < 0.15) lerp3(out, out, MUD, smooth(0.15, -0.3, h));
-    if (h < WATER_Y) lerp3(out, out, BED, smooth(WATER_Y, -1.2, h));
-    colours[i * 3] = out[0];
-    colours[i * 3 + 1] = out[1];
-    colours[i * 3 + 2] = out[2];
-  }
-  geo.setAttribute('color', new THREE.BufferAttribute(colours, 3));
+  for (let i = 0; i < p.count; i++) p.setY(i, height(p.getX(i), p.getZ(i)));
   geo.computeVertexNormals();
   const tex = grassTextures(renderer);
-  const material = new THREE.MeshStandardMaterial({ vertexColors: true, map: tex.map, normalMap: tex.normalMap, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.96 });
+  const material = new THREE.MeshStandardMaterial({ map: tex.map, normalMap: tex.normalMap, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.96 });
+  map.paint(material);
   const mesh = new THREE.Mesh(geo, material);
   mesh.receiveShadow = true;
   mesh.name = 'terrain';
