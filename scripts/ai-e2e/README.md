@@ -187,6 +187,46 @@ Beside the brains, in `npm run test:ai` (and out of `npm test` by name):
 A new brain gets a `<brain>.scenario.test.js` of its own, from its header;
 `all.scenario.test.js` picks it up from `BRAINS` by itself.
 
+## Tier 5: the judges still judge right (GPU, nightly)
+
+A judge that drifts is the quietest failure in the whole system: an engine
+update makes it stricter and good models are remade for ever, or softer
+and bad ones ship. Each judge has a small labelled set and a line it must
+stay above. `node scripts/ai-e2e/evals/run.mjs` runs both, every one even
+when another fails, and writes `results/<date>-evals.json`.
+
+- **Vision** (`evals/vision.mjs`): `vlm.judge()` over `evals/sheets/` (16
+  four-view sheets, no captions: ten right models, and six deliberate
+  wrongs: the wrong ship asked about, a sitar asked about as a guitar, the
+  fake engine's box, an X-wing on its back) against `sheets/labels.json`,
+  each a score band a fair judge falls in; and `vlm.pick()` over
+  `evals/pick-sets/` (five sets of four, one the thing). It reports the
+  share in band, the mean error to the band's middle and good/bad
+  confusion, for every backend reachable (Claude Code, Qwen3-VL), each in a
+  process of its own. The lines: 85% in band for Claude (the judge that
+  gates a reseed), 70% for Qwen (a note, not a veto), and 80% of picks
+  right for both. `results/<date>-vision.json`.
+- **Hearing** (`scripts/voices/eval_judge.py`): the voices' ears over
+  `evals/takes/` (twelve good takes, two of each of six speakers, from the
+  lines the site ships; a speaker's words labelled as another's; a take
+  played backwards) with `refs/<who>.mp3` for each speaker. The lines: the
+  word error rate on the good takes at most 10%; the labelled speaker the
+  most alike for 90%; every bad take under every good one on the score
+  `generate.py` ranks takes by. `results/<date>-hearing.json`.
+
+The sets are made by `evals/make-sheets.mjs` (Chromium, a dev server) and
+`evals/make-takes.mjs` (ffmpeg), so they can be grown: add a model or a
+take to the list, run the script, write its label by hand. Both evals have
+a self-test against fixtures with the fake judge and ears
+(`evals/vision.test.mjs`, `scripts/voices/test_eval_judge.py`), in
+`npm run test:ai`.
+
+`.github/workflows/ai-health.yml` runs on the desktop's `[self-hosted, gpu]`
+runner at 04:00 UTC and on demand (`gh workflow run ai-health.yml`): the
+doctor (what the runner can see), every model rendered in both looks
+(`AI_RENDER_ALL=1`), the evals; the results and the renders are kept as
+the run's artifact.
+
 ## Adding a case
 
 A contract test is a vitest file under `scripts/ai-e2e/<tier>/`, its
