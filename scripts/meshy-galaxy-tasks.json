@@ -51,5 +51,103 @@
   "leia": {
     "rig": "01a10e7a-1f00-7687-a85e-4f9f528ae872",
     "source": "sketchfab:e5efdd35a5e4462cbc013db44e80d31e"
+  },
+  "obiwan": {
+    "source": "sketchfab:416a8f0c9c1742ee8fd71274d27bc305",
+    "rig": "01a11438-fb1f-7674-bb41-5ff4cc750a92"
+  },
+  "anakin": {
+    "rig": "01a1142a-67a4-7305-84a6-9b1f47627ef4",
+    "source": "sketchfab:afde81fe035b4e0aa8d1b3b96c9fd7ff"
+  },
+  "jango": {
+    "rig": "01a1142a-c6f2-750e-8d91-37f18664118e",
+    "source": "sketchfab:4ce40f867ff84df6bab5a3e060cb5e69"
+  },
+  "krennic": {
+    "source": "sketchfab:59c66eb5d470436f9d29d5720c9b402a",
+    "rig": "01a1143a-1516-71ea-9516-039ab5b30925"
+  },
+  "cassian": {
+    "rig": "01a1142c-6dad-7691-8d2c-ecdfd9956c4f",
+    "source": "sketchfab:1ef27f2978d442e39eac1e62cf28e226"
+  },
+  "chirrut": {
+    "source": "sketchfab:9340db8a8aab4091886d25a187b956fa",
+    "rig": "01a11441-a67f-724b-9e20-4568c989f9fa"
+  },
+  "shaak": {
+    "rig": "01a1142d-5a25-71c6-b478-4d1d72ac83fb",
+    "source": "sketchfab:7af69133613e4035939b1bcc42a5d652"
+  },
+  "dindjarin": {
+    "rig": "01a1142d-f682-77f2-8e97-e3671f7ee39a",
+    "source": "sketchfab:65383411ba6f4a56aac823d5d014df20"
+  },
+  "maul": {
+    "rig": "01a1142e-6eec-72b5-b45d-fcfb41e7035f",
+    "source": "sketchfab:102ed10dfcd441029b4586bf4c88ec20"
+  },
+  "palpatine": {
+    "rig": "01a1142e-b1a3-70cb-acd8-f5a12f9459b0",
+    "source": "sketchfab:8f6f188ba2ee4708aa277789c830cbb8"
+  },
+  "mace": {
+    "source": "sketchfab:ba2eaba7ff6b45c89c1b2c4919e46880",
+    "rig": "01a11440-ff4d-7068-8c6a-bb7560536b73"
+  },
+  "rex": {
+    "rig": "01a11430-ecbb-73ad-8e77-e9f1da5c7ccc",
+    "source": "sketchfab:18a73ab03ac84cf49015559c522a2965"
+  },
+  "bokatan": {
+    "rig": "01a11431-4536-73aa-b8bc-589bee4a9190",
+    "source": "sketchfab:c1e33e1c34304b879a1c2fdb5ee4c8cd"
+  },
+  "vader": {
+    "rig": "01a11431-7f1d-7577-8a61-679c21ae4440",
+    "source": "sketchfab:62a4273131f949ed9559721f7fb9cf14"
+  },
+  "fennec": {
+    "rig": "01a11431-d6c0-70a8-bb85-3a3d3b53c03b",
+    "source": "sketchfab:bdf5d6140fde4c6bb8f265680bf8231f"
+  },
+  "caradune": {
+    "rig": "01a11432-0f75-75f0-8a91-12929935c21a",
+    "source": "sketchfab:67940dad3a484fddb4d6d1127d233460"
+  },
+  "greef": {
+    "rig": "01a11432-4887-7680-9a7e-8abc7cf79af0",
+    "source": "sketchfab:6cc95642575445aca67733c4bffa2559"
+  },
+  "rodian": {
+    "rig": "01a11432-822b-7259-ac54-2a0297e804eb",
+    "source": "sketchfab:ba7389be15774e7786b50d9ff839f51f"
+  },
+  "inquisitor": {
+    "rig": "01a11432-c4fa-74ee-96e4-feb9147c920c",
+    "source": "sketchfab:c3af0bd197f348c4a4819a45e78faa53"
+  },
+  "tiepilot": {
+    "rig": "01a11432-fedf-7342-9318-422aebe5c13d",
+    "source": "sketchfab:33a466f49ff3496c8f76d3f4cb845e30"
+  },
+  "tusken": {
+    "image": "01a114ca-15c0-7014-abac-acc3b3648e16"
+  },
+  "lando": {
+    "image": "01a114cc-3799-7772-ab53-bb7e2f263f30"
+  },
+  "twilek": {
+    "image": "01a114ce-5f6b-7522-93e6-9addab309a85"
+  },
+  "ugnaught": {
+    "image": "01a114cf-1273-76af-b86c-82ba05de2eab"
+  },
+  "rebel": {
+    "image": "01a114cf-c2fa-7530-9431-0cd87874c937"
+  },
+  "jedi": {
+    "image": "01a114d1-87f6-729a-93d3-c3261064b604"
   }
 }

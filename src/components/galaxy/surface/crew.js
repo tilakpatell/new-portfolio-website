@@ -27,6 +27,28 @@ export const CREW = {
   bith: { name: 'bith', tall: 1.8 },
   ahsoka: { name: 'ahsoka', tall: 1.85 },
   hutt: { name: 'jabba', tall: 1.8, still: true },
+  // the worlds' named people, from Sketchfab, rigged with Meshy onto the
+  // same skeleton (scripts/meshy-galaxy.mjs): Obi-Wan on Mustafar, Jango on
+  // Kamino, Shaak Ti, the Mandalorian; the Wookiees are Chewie's model.
+  // (Anakin, Krennic, Cassian, Chirrut and Mace stand still instead,
+  // catalog/library.js: their arms-down poses didn't rig)
+  obiwan: { url: '/models/galaxy/crew/obiwan.glb', tall: 1.82 },
+  jango: { url: '/models/galaxy/crew/jango.glb', tall: 1.83 },
+  shaak: { url: '/models/galaxy/crew/shaak.glb', tall: 1.88 },
+  mando: { url: '/models/galaxy/crew/dindjarin.glb', tall: 1.85 },
+  wookiee: { url: '/models/cockpit/chewie.glb', tall: 2.28 },
+  // and the galaxy's who's who, for the worlds and heroes to come
+  maul: { url: '/models/galaxy/crew/maul.glb', tall: 1.75 },
+  palpatine: { url: '/models/galaxy/crew/palpatine.glb', tall: 1.73 },
+  rex: { url: '/models/galaxy/crew/rex.glb', tall: 1.83 },
+  bokatan: { url: '/models/galaxy/crew/bokatan.glb', tall: 1.7 },
+  vader: { url: '/models/galaxy/crew/vader.glb', tall: 2.02 },
+  fennec: { url: '/models/galaxy/crew/fennec.glb', tall: 1.7 },
+  caradune: { url: '/models/galaxy/crew/caradune.glb', tall: 1.78 },
+  greef: { url: '/models/galaxy/crew/greef.glb', tall: 1.85 },
+  rodian: { url: '/models/galaxy/crew/rodian.glb', tall: 1.7 },
+  inquisitor: { url: '/models/galaxy/crew/inquisitor.glb', tall: 1.85 },
+  tiepilot: { url: '/models/galaxy/crew/tiepilot.glb', tall: 1.8 },
 };
 
 export async function crewFigure(kind) {
