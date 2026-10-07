@@ -8,10 +8,11 @@
 export const EMBLEM_BOX = '0 0 24 24';
 
 export const EMBLEMS = {
-  // the Republic: a compass star in a ring
+  // the Republic: the Senate's column (a star in a ring, at first, looked like the map's + for a front)
   republic: [
-    { d: 'M1 12a11 11 0 1 0 22 0a11 11 0 1 0 -22 0Z M3.4 12a8.6 8.6 0 1 1 17.2 0a8.6 8.6 0 1 1 -17.2 0Z', evenodd: true },
-    { d: 'M12 4.6L13.9 10.1L19.4 12L13.9 13.9L12 19.4L10.1 13.9L4.6 12L10.1 10.1Z' },
+    { d: 'M4 3.5H20V6.5H4Z' },
+    { d: 'M6.5 7.5H17.5V17.5H6.5Z M8.9 9V16H10.3V9Z M11.3 9V16H12.7V9Z M13.7 9V16H15.1V9Z', evenodd: true },
+    { d: 'M3 18.5H21V21H3Z' },
   ],
   // the Separatists: a hexagon, a droid's eye in it
   separatists: [

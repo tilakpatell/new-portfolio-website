@@ -29,7 +29,7 @@ const RIM_GON = 96;
 const EPS = 1e-9;
 
 // how far a system's territory reaches (grid squares): further for a worthier one
-export const capOf = (id) => 1.1 + 0.35 * worthOf(id);
+export const capOf = (id) => 1.5 + 0.4 * worthOf(id);
 
 // what's left of a convex polygon (vertices tagged with the edge leaving them)
 // on the near side of a line (n·p ≤ c), the new edge tagged `tag`
