@@ -69,5 +69,10 @@ describe('the people down on the planets', () => {
     expect(figureVoice({ name: 'Bumblebee', line: '[a burst of radio] …roll out!' })).toBeNull();
     expect(FIGURES).toContainEqual({ who: 'mark', text: 'Think, Mark!' });
     expect(FIGURES.some((l) => l.who === 'jim')).toBe(false);
+    // (and the ones down in a planet's biomes)
+    expect(FIGURES).toContainEqual({ who: 'gus', text: 'I hide in plain sight, same as you.' });
+    expect(FIGURES).toContainEqual({ who: 'jack', text: 'Not all treasure is silver and gold, mate.' });
+    expect(FIGURES.some((l) => l.who === 'risotto')).toBe(true);
+    for (const { who } of FIGURES) expect(voiceOf(who), who).toBe(who);
   });
 });

@@ -310,7 +310,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
             break;
           case 'away':
             unlock('trench');
-            onWin?.();
+            onWin?.({ force: e.force }); // (with the Force, Han has nothing to say down here: the page says it)
             message = e.text;
             changed = true;
             break;
