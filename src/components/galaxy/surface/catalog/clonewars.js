@@ -10,5 +10,5 @@ export const MODELS = {
   // Made with Meshy from the production painting of Geonosis (the back
   // lane's scripts/meshy-galaxy-buildings-back.mjs; listed in
   // public/cc0/README.md): a hive, an eroded mesa with its tall spires
-  geohive: { made: 'meshy', as: 'the hives of Geonosis', metres: 150, hero: true, lod: true, detail: 'redrock', detailLook: { strength: 0.55, normal: 0.9 } },
+  geohive: { made: 'meshy', as: 'the hives of Geonosis', metres: 150, hero: true, lod: true, detail: 'redrock', detailLook: { strength: 0.55, normal: 0.9 }, ultra: { tris: 119999, tex: 8192 } },
 };

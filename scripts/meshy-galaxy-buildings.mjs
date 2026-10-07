@@ -30,10 +30,10 @@
 // turns the names down; a refused task costs nothing).
 //
 // --ultra (models and fetch, scripts/ultra/cut.mjs): the ultra level's cut.
-// `models --ultra` asks Meshy again from the same input at its most polygons
-// (300k) and its finest texture (MESHY_ULTRA_TEXTURE, 8k unless set: Meshy's
-// top is 8k), kept as the kind's `ultra` task so the plain one is
-// untouched; `fetch --ultra`
+// `models --ultra` asks Meshy again from the same input at the cut's
+// polygons, up to its most (300k), and its finest texture
+// (MESHY_ULTRA_TEXTURE, 8k unless set: Meshy's top is 8k), kept as the
+// kind's `ultra` task so the plain one is untouched; `fetch --ultra`
 // makes <kind>.ultra.glb from it, up to four times the kind's tris with
 // 8192 maps, under 24 MB, no light copy (ultra draws the whole model at
 // every distance), and prints the catalogue's `ultra` line for it.
@@ -202,9 +202,19 @@ async function squeeze(from, to, a) {
     centre.addChild(child);
   }
   scene.addChild(holder);
-  let count = 0;
-  for (const m of root.listMeshes()) for (const p of m.listPrimitives()) count += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
-  if (count > a.tris) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: a.tris / count, error: 0.001 }));
+  const triangles = () => {
+    let count = 0;
+    for (const m of root.listMeshes()) for (const p of m.listPrimitives()) count += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
+    return count;
+  };
+  // (the simplifier stops where its error bound is reached, short of the
+  // ratio on a model full of thin parts: then it is asked again with a
+  // looser bound, until the cut is under its budget)
+  for (const error of [0.001, 0.005, 0.02, 0.1]) {
+    const count = triangles();
+    if (count <= a.tris) break;
+    await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: a.tris / count, error }));
+  }
   await doc.transform(dedup(), prune());
   // (its colours to the films': a catalogue-style `recolor`, scripts/recolor.mjs)
   if (a.recolor) {
@@ -212,8 +222,7 @@ async function squeeze(from, to, a) {
     for (const r of await recolorDoc(doc, a.recolor)) console.log(`  recolor ${r.material}: ${r.from} → ${r.to}`);
   }
   await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [a.tex, a.tex] }), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
-  let tris = 0;
-  for (const m of root.listMeshes()) for (const p of m.listPrimitives()) tris += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
+  const tris = triangles();
   await mkdir(dirname(to), { recursive: true });
   await io.write(to, doc);
   return { tris, tex: await mapsOf(doc), size: size.map((v) => +(v * k).toFixed(1)) };
@@ -306,6 +315,8 @@ const steps = {
     if (todo.length * 30 > balance) throw new Error('not enough credits');
     for (const n of names) {
       if (BUILDINGS[n].prompt && !s[n]?.image) throw new Error(`${n}: no image yet`);
+      // (a pictured kind that wasn't lifted has no entry yet)
+      s[n] ??= {};
       if (!s[n][task]) {
         const from = BUILDINGS[n].prompt ? null : await inputs(n);
         const multi = from && from.length > 1;
@@ -316,7 +327,11 @@ const steps = {
           enable_pbr: true,
           should_remesh: true,
           topology: 'triangle',
-          target_polycount: ultra ? MESHY_MAX_POLYCOUNT : BUILDINGS[n].tris,
+          // (an ultra model at its cut's polygons, up to Meshy's most: a
+          // 300k remesh can't be cut below about 90k without smearing,
+          // its atlas being thousands of charts whose seams the simplifier
+          // keeps, so a small kind's is remeshed at its budget by Meshy)
+          target_polycount: ultra ? Math.min(MESHY_MAX_POLYCOUNT, ultraSpec(BUILDINGS[n]).tris) : BUILDINGS[n].tris,
           texture_resolution: ultra ? (process.env.MESHY_ULTRA_TEXTURE ?? '8k') : '2k',
           target_formats: ['glb'],
           enable_thumbnail: true,

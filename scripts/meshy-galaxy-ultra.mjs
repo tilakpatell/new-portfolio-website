@@ -55,11 +55,15 @@ export const BUILDINGS = {
     hero: true,
   },
   // Endor: the second Death Star over the forest (the film's picture of it
-  // half built, on black, so it is not lifted; the Sketchfab plain model is a
-  // noisy black shell with the trench and the dish barely legible): the
-  // catalogue's cut (forest.js: 14,000 triangles) sets its ultra cut
+  // half built; the Sketchfab plain model is a noisy black shell with the
+  // trench and the dish barely legible): the catalogue's cut (forest.js:
+  // 14,000 triangles) sets its ultra cut. Asked from the picture itself,
+  // Meshy's mesh repair failed to close the open superstructure, so it is
+  // lifted first with that side rendered as one solid mass
   ds2sky: {
     ref: 'File:DeathStar2.jpg',
+    lift: 'the great unfinished grey battle-station sphere (a huge sphere of grey panelled metal, a wide round concave dish set into its upper half, a trench round its equator, its right-hand side still open with its inner decks and girders showing as one dense solid jagged mass, not hollow)',
+    shot: 'The whole station in frame, seen as in the picture, isolated on a plain light grey background, no stars, no text.',
     metres: 640,
     along: 'w',
     tris: 14000,

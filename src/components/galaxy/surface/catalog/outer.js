@@ -36,5 +36,5 @@ export const MODELS = {
   nevarrodome: { made: 'meshy', as: 'the domes of Nevarro City', metres: 3.5 },
   lothtemple: { made: 'meshy', as: 'the Jedi temple of Lothal', metres: 70, hero: true },
   lothdome: { made: 'meshy', as: 'the domed farmhouses of Lothal', metres: 11 },
-  sundaridome: { made: 'meshy', as: 'Sundari', metres: 51, hero: true, lod: true },
+  sundaridome: { made: 'meshy', as: 'Sundari', metres: 51, hero: true, lod: true, ultra: { tris: 159995, tex: 8192 } },
 };
