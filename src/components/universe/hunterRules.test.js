@@ -123,6 +123,16 @@ describe('where they come in', () => {
     }
   });
 
+  it('lays an ambush `lead` further along, where you will be once they have the drive down', () => {
+    const ship = start();
+    const near = entryPoint(ship, 0, 3, { ahead: true, rand: seeded(5) });
+    const far = entryPoint(ship, 0, 3, { ahead: true, lead: 250, rand: seeded(5) });
+    expect(-far.z - -near.z).toBeCloseTo(250, 6);
+    expect(far.x).toBeCloseTo(near.x, 6);
+    // (behind you, a lead's nothing to do with it)
+    expect(entryPoint(ship, 0, 3, { lead: 250, rand: seeded(5) })).toEqual(entryPoint(ship, 0, 3, { rand: seeded(5) }));
+  });
+
   it('moves a point out of a solid the way it already is from its middle', () => {
     const p = clearOf({ x: 1, y: 0, z: 30 }, [moon], 2);
     expect(apart(p, { x: 0, y: 0, z: 30 })).toBeCloseTo(11, 6);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, GOALS, OVERDRIVE, PLANETS, SHIP, SOLIDS, SPACE, STARTS, autopilot, boostAt, brakeAt, ceilingAt, driveAt, forward, inTrench, noseOf, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
+import { EDGE, GOALS, OVERDRIVE, PLANETS, SHIP, SOLIDS, SPACE, STARTS, autopilot, boostAt, brakeAt, ceilingAt, driveAt, forward, holdReach, inTrench, noseOf, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
 import { DEEP, WONDERS, easeOpen, gapAlong, trenchBand } from './deep';
 import { MAW } from './maw';
 import { NOSE, UP, fromAngles, rotate } from './orient';
@@ -410,6 +410,24 @@ describe('the pulse drive near a place: no wall to hit', () => {
 
 describe('deep space', () => {
   const open = { ...spawn(null), x: 0, z: DEEP.open + 200, heading: Math.PI }; // out past the system, facing further out
+
+  it('knows how far it carries on while hunters pull the pulse drive down, flown as the scene flies it', () => {
+    const fast = fly(open, { throttle: 1, boost: true }, 6, []).ship;
+    const reach = holdReach(fast, { ramp: 2, solids: [] });
+    // (the same, flown: the hold eased in over the ramp, the boost held)
+    let s = fast;
+    let gone = 0;
+    for (let t = 0; t < 2.5; t += 1 / 60) {
+      const p = Math.min(1, t / 2);
+      s = step(s, { throttle: 1, boost: true, interdicted: p * p * (3 - 2 * p) }, 1 / 60, []).ship;
+      gone += s.speed / 60;
+    }
+    expect(s.speed).toBeLessThan(SHIP.boost + 1);
+    expect(reach).toBeGreaterThan(150);
+    expect(Math.abs(reach - gone)).toBeLessThan(25);
+    // (and the faster it's going, the further)
+    expect(holdReach({ ...open, speed: SHIP.boost }, { ramp: 2, solids: [] })).toBeLessThan(reach - 50);
+  });
 
   it('boosts up to the pulse drive out there, and at home opens it between the stations, down by any of them', () => {
     expect(fly(open, { throttle: 1, boost: true }, 6, []).ship.speed).toBeGreaterThan(SHIP.pulse - 2);

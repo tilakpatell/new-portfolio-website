@@ -30,7 +30,7 @@
 //
 // createSetPieces(parent, { small, fleet, solids }) → { destroyer(ship, kind) → { hangar } | null, leave(), cleared(),
 //   destroyerHere, targets, hit(from, to, punch) → hit | null, drain() → events (capitalRules.js's),
-//   roadblock(ship) → boolean, chopperHere,
+//   roadblock(ship, lead) → boolean, chopperHere,
 //   portals(points), comet(ship), flare(star, ship) → { arrives } | null,
 //   rift(ship) → boolean, riftAt, riftInside(ship), closeRift(),
 //   update(dt, t, camera, ship) → busy, dispose() }
@@ -335,14 +335,16 @@ export function createSetPieces(parent, { small = false, fleet = createFleet(), 
       return capEvents.splice(0);
     },
     // the DEA's helicopter over the roadblock, ahead of you and facing you
-    roadblock(ship) {
+    // (`lead` further on: where the ship will be once the roadblock has its
+    // drive down, at speed: hunterRules.js's entryPoint)
+    roadblock(ship, lead = 0) {
       if (hover.state) return false;
       if (!chopper) {
         chopper = fleet.make('deachopper');
         parent.add(chopper.group);
       }
       const [fx, fz] = forward(ship.heading);
-      hover.at.set(ship.x + fx * CHOPPER.ahead, ship.y + CHOPPER.above, ship.z + fz * CHOPPER.ahead);
+      hover.at.set(ship.x + fx * (CHOPPER.ahead + lead), ship.y + CHOPPER.above, ship.z + fz * (CHOPPER.ahead + lead));
       hover.heading = ship.heading + Math.PI; // (nose on to you)
       hover.state = 'here';
       hover.age = 0;
