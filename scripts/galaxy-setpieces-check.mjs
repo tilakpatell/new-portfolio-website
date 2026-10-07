@@ -65,6 +65,12 @@ await page.goto(`${base}/?quality=${quality}#/galaxy/${SYS}`, { waitUntil: 'domc
 await page.waitForFunction((id) => typeof window.__galaxy === 'function' && window.__galaxy().system === id, SYS, { timeout: 180000 });
 await page.waitForFunction(() => !window.__galaxy().jump, null, { timeout: 120000 }).catch(() => {});
 await page.addStyleTag({ content: '.galaxy-panel, .universe-hint { display: none !important; }' });
+// sworn to the Rebellion: the set pieces' targets are a side's to take (the
+// moon's generator, an enemy Star Destroyer's reactor), and the unsworn
+// pilot's shots count for nobody
+await page.waitForFunction(() => Boolean(window.__galaxyOath), null, { timeout: 30000 });
+await ev(() => window.__galaxyOath.swear('rebel'));
+await page.waitForTimeout(500);
 await ev((a) => window.__galaxyDebug.war.force(a), what === 'hoth' ? 'empire' : 'rebel');
 await page.waitForTimeout(1500);
 check(await ev(() => Boolean(window.__galaxyDebug.war.battle)), `a battle at ${SYS}`);

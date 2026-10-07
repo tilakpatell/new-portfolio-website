@@ -8,11 +8,12 @@
 // (ctx.solidsOff), and once in, the ship's kept inside the tunnel (a wall
 // is a bump, and costs shields) and slowed to what it can be flown at. Its
 // reactor, once you're in, is a target: its damage is shared with the
-// pilots in the system (the battle's tally: `key`). When it's gone the
+// pilots in the system (the battle's tally: `key`), counted only from the
+// side it's `team`'s to take (ctx.mineAs). When it's gone the
 // lights go red and there's `escape` seconds to get out; then it blows
 // (onBlown), and anyone still inside goes with it.
 //
-// createRun(ctx, { key, name, mouth, inward, up, path, radius, chamber,
+// createRun(ctx, { key, team, name, mouth, inward, up, path, radius, chamber,
 //   look, hp, escape, speed, open(), solidsOff(off), onBlown(), enter })
 //   → { update(dt, t, live) → { ship?, hurt?, speedCap?, kill? }, hit(from, to,
 //   damage), targets, markers, state, inside, dispose() }
@@ -26,7 +27,7 @@ const OPEN = '#ffb347';
 const HOT = '#ff5a4a';
 
 export function createRun(ctx, o) {
-  const { key, name, mouth, inward, up, path, radius, chamber, look = 'ds2', hp, escape = 20, speed = 9 } = o;
+  const { key, team, name, mouth, inward, up, path, radius, chamber, look = 'ds2', hp, escape = 20, speed = 9 } = o;
   const frame = frameOf(mouth, inward, up);
   const tube = { path, radius, chamber };
   let state = 'shut'; // 'open', 'blown', 'done'
@@ -150,7 +151,7 @@ export function createRun(ctx, o) {
       if (state !== 'open' || !inside || !drawn) return null;
       const k = sweptHit(from, to, core, core, coreR);
       if (k === null) return null;
-      ctx.mine(key, damage);
+      ctx.mineAs(team, key, damage);
       const down = ctx.shared(key) >= hp;
       if (down) blow(true);
       return { id: tgt.id, kind: 'reactor', at: { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k, z: from.z + (to.z - from.z) * k }, size: coreR, down: false, sub: key };

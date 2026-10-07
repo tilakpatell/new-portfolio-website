@@ -18,6 +18,9 @@
 // for your side: the attacker's objectives are only the attacker's to take
 // (a defender's shots at their own flagship are nobody's business), and a
 // defender scores the attacker's fighters down, a bomber as an intercept.
+// A set piece's target that's one side's to take whoever attacks (an enemy
+// Star Destroyer's reactor, Endor's generator) counts only that side's
+// shots (ctx.mineAs).
 //
 // And the set pieces (warpieces/: Endor's shield generator, superlaser and
 // reactor run, Hoth's ion cannon and transports, Scarif's ram onto the gate,
@@ -129,8 +132,18 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       setVisible: (ship, there) => draw.setVisible?.(ship, there),
     },
     shared: (key) => fight.value(key),
+    // your shots on a set piece's target, shared with the pilots here: `mine`
+    // counts them only while you're the attacker (the battle's objectives),
+    // `mineAs(team)` only while you're on that team (a target that's one
+    // side's to take whoever attacks: an enemy Star Destroyer's reactor,
+    // Endor's generator)
     mine: (key, damage) => {
       if (!attacking()) return;
+      fight.add(key, damage);
+      fightDirty = true;
+    },
+    mineAs: (side, key, damage) => {
+      if (team === null || team !== side) return;
       fight.add(key, damage);
       fightDirty = true;
     },

@@ -11,6 +11,11 @@
 //   (run.js), down to the main reactor, shoot it, and out before the station
 //   goes up. When it goes, the Rebellion's won.
 //
+// The generator and the reactor are the Rebellion's to take (team 0's),
+// whether it's attacking Endor or holding it: only its pilots' shots count
+// on them (ctx.mineAs), and the station's fall ends the battle only when
+// it's the Empire the Rebellion's fighting there.
+//
 // createEndor(ctx) → { update(dt, t, live, events), hit, targets,
 //   markers(live), dispose() }
 
@@ -112,6 +117,8 @@ export function createEndor(ctx) {
 
   // ── the Executor, its bridge gone ──
   const exec = battle.capitals.find((c) => c.team === EMPIRE && c.role === 'flagship');
+  // (the Death Star's the Empire's: its fall is the Rebellion's win only against the Empire)
+  const againstEmpire = (ctx.on?.sides?.[EMPIRE] ?? 'empire') === 'empire';
   let dive = null; // { age }
 
   // ── the reactor run ──
@@ -122,6 +129,7 @@ export function createEndor(ctx) {
   const run = createRun(ctx, {
     id: 5.15e6,
     key: 'ds2-core',
+    team: REBELS,
     name: 'the main reactor',
     wayIn: 'Fly in: the main reactor',
     mouth,
@@ -146,7 +154,7 @@ export function createEndor(ctx) {
       world?.war?.station('deathstar2', false);
       ctx.event('gcw-ds2');
       if (mine || ctx.tookPart()) ctx.points(GCW.points.objective * 3);
-      if (!battle.over) battle.end(REBELS, 'deathstar');
+      if (!battle.over && againstEmpire) battle.end(REBELS, 'deathstar');
     },
   });
 
@@ -204,7 +212,8 @@ export function createEndor(ctx) {
         }
       }
       // the Executor's bridge gone: it turns, and dives into the station
-      if (!dive && exec && events.some((e) => e.type === 'sub' && e.kind === 'bridge')) {
+      // (its own bridge: with the Empire attacking, the objectives are the Rebels')
+      if (!dive && exec?.objective && events.some((e) => e.type === 'sub' && e.kind === 'bridge')) {
         dive = { age: 0, speed: 1 };
         for (const s of exec.subs) if (s.phase === 3) s.hidden = true; // (its reactor's not the way now: the Death Star's is)
         exec.disabled = 1e9;
@@ -233,7 +242,7 @@ export function createEndor(ctx) {
     },
     hit(from, to, damage) {
       if (!genDown && sweptHit(from, to, genTop, genTop, 2) !== null) {
-        ctx.mine('moon-gen', damage);
+        ctx.mineAs(REBELS, 'moon-gen', damage);
         if (ctx.shared('moon-gen') >= GEN_HP) knockOut(true);
         return { id: genTgt.id, kind: 'shieldgen', at: { ...genTop }, size: 1, down: genDown, sub: 'moon-gen' };
       }

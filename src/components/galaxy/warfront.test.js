@@ -230,6 +230,28 @@ describe('the side you swore to', () => {
   });
 });
 
+describe('a set piece’s target that’s one side’s to take, whoever attacks (ctx.mineAs)', () => {
+  const atEndor = (side) => {
+    const k = kit(side);
+    k.front.enter(systemById('endor'), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    k.front.force('empire');
+    const gen = k.front.pieces[0].targets.find((t) => t.kind === 'shieldgen');
+    for (let i = 0; i < 10; i++) shoot(k.front, gen.at, 1);
+    k.front.update(1, 0, camera, null);
+    return k;
+  };
+  it('counts a Rebel defender’s shots on Endor’s moon generator, and sends them', () => {
+    const k = atEndor('rebel');
+    expect(k.front.battle.attacker).toBe(1);
+    expect(k.sent.fight.at(-1).m['moon-gen']).toBeGreaterThan(0);
+  });
+  it('sends nothing of an Imperial attacker’s: the generator’s theirs', () => {
+    const k = atEndor('empire');
+    for (const m of k.sent.fight) expect(m.m['moon-gen'] ?? 0).toBe(0);
+  });
+});
+
 describe('every kind of battle', () => {
   it('a battle of each kind, in each war, starts and runs ten seconds without throwing', async () => {
     const { BATTLE_KINDS } = await import('./battles');

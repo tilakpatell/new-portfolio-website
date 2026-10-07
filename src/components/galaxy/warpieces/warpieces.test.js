@@ -3,20 +3,23 @@ import { createBattle } from '../../universe/battle';
 import { createTally } from '../../universe/tally';
 import { layBattle } from '../battles';
 import { systemById } from '../systems';
-import { seeded } from '../gcw';
+import { seeded, teamsOf } from '../gcw';
 import { createEndor } from './endor';
 import { createHoth } from './hoth';
 import { createScarif } from './scarif';
 import { createHangars } from './hangar';
 import { piecesFor } from './index';
 
-const make = (id, attacker = 'rebel') => {
+// (a battle of the old shape, the Rebellion and the Empire, unless a
+// defender's named: then with its sides by team, as gcw.js's battleAt has it)
+const make = (id, attacker = 'rebel', you = 0, defender = null) => {
   const sys = systemById(id);
-  const on = { id: `c0.${id}.5`, sys: id, step: 5, seed: 99, attacker, start: 0, fightEnd: 600e3, end: 720e3, fighting: true };
+  const sides = defender ? teamsOf(attacker, defender) : null;
+  const on = { id: `c0.${id}.5`, sys: id, step: 5, seed: 99, attacker, ...(sides ? { war: 'gcw', defender, sides, attackerTeam: sides.indexOf(attacker) } : {}), start: 0, fightEnd: 600e3, end: 720e3, fighting: true };
   const laid = layBattle(sys, on, { now: 0, tier: 'low' });
   const battle = createBattle({ ...laid, rand: seeded(on.id), perSide: 4 });
   // (an evacuation's runners are the battle's own: battles.js's BATTLE_KINDS)
-  battle.setYou(0);
+  battle.setYou(you);
   const fight = createTally(on.id);
   const world = { solids: [{ id: 'deathstar2', r: 66, reach: 90, at: [0, 0, 0] }], war: { holdShield: vi.fn(), station: vi.fn(), planetShield: vi.fn() } };
   const events = [];
@@ -30,7 +33,10 @@ const make = (id, attacker = 'rebel') => {
     on,
     draw: { flash() {}, burn() {}, setVisible: vi.fn() },
     shared: (k) => fight.value(k),
-    mine: (k, d) => fight.add(k, d),
+    // your shots, counted as warfront.js counts them: `mine` only while
+    // you're the attacker, `mineAs(team)` only when you're on that team
+    mine: (k, d) => battle.you.team === battle.attacker && fight.add(k, d),
+    mineAs: (team, k, d) => team === battle.you.team && fight.add(k, d),
     event: (e) => events.push(e),
     points: vi.fn(),
     tookPart: () => true,
@@ -38,7 +44,7 @@ const make = (id, attacker = 'rebel') => {
     moveHull: vi.fn(),
     solid: vi.fn(),
   };
-  return { sys, laid, battle, fight, world, events, ctx };
+  return { sys, on, laid, battle, fight, world, events, ctx };
 };
 const step = (piece, battle, seconds, live = null, dt = 0.1) => {
   const all = [];
@@ -140,6 +146,62 @@ describe('Endor', () => {
   });
 });
 
+describe('Endor, whoever attacks', () => {
+  // (the moon's generator and the Death Star's reactor are the Rebellion's
+  // to take, team 0's, whether it attacks Endor or holds it)
+  const gen = (e) => e.targets.find((t) => t.kind === 'shieldgen');
+  it('counts the Rebels’ shots on the moon’s generator when they hold Endor', () => {
+    const k = make('endor', 'empire', 0);
+    const e = createEndor(k.ctx);
+    const at = gen(e).at;
+    for (let i = 0; i < 40 && gen(e); i++) shoot(e, at, 1);
+    expect(k.fight.value('moon-gen')).toBeGreaterThan(0);
+    expect(k.world.war.holdShield).toHaveBeenLastCalledWith(false);
+    e.dispose();
+  });
+  it('doesn’t count an Imperial attacker’s shots on it: the shield’s theirs', () => {
+    const k = make('endor', 'empire', 1);
+    const e = createEndor(k.ctx);
+    const at = gen(e).at;
+    for (let i = 0; i < 40; i++) shoot(e, at, 1);
+    expect(k.fight.value('moon-gen')).toBe(0);
+    expect(k.world.war.holdShield).not.toHaveBeenCalledWith(false);
+    e.dispose();
+  });
+  it('keeps the Executor on station when it’s the Rebels’ bridge that goes (the Empire attacking)', () => {
+    const k = make('endor', 'empire', 0);
+    const e = createEndor(k.ctx);
+    const exec = k.battle.capitals.find((c) => c.kind === 'executor');
+    const was = { ...exec.pos };
+    e.update(0.1, 0, null, [{ type: 'sub', kind: 'bridge' }]);
+    step(e, k.battle, 5, null, 0.2);
+    expect(k.events).not.toContain('gcw-executor');
+    expect(Math.hypot(exec.pos.x - was.x, exec.pos.y - was.y, exec.pos.z - was.z)).toBeLessThan(1e-9);
+    e.dispose();
+  });
+  const blowDs2 = (k, e) => {
+    k.fight.receive('p', { e: k.fight.epoch, m: { 'moon-gen': 100, 'ds2-core': 100 }, t: {} });
+    step(e, k.battle, 30, null, 0.25);
+  };
+  it('wins it for the Rebellion when the Death Star goes, holding Endor as much as taking it', () => {
+    const k = make('endor', 'empire', 0);
+    const e = createEndor(k.ctx);
+    blowDs2(k, e);
+    expect(k.events).toContain('gcw-ds2');
+    expect(k.battle.over).toEqual({ winner: 0, why: 'deathstar' });
+    e.dispose();
+  });
+  it('doesn’t end a battle the Empire isn’t in: the Rebellion against the Hutts', () => {
+    const k = make('endor', 'hutt', 0, 'rebel');
+    expect(k.on.sides).toEqual(['rebel', 'hutt']);
+    const e = createEndor(k.ctx);
+    blowDs2(k, e);
+    expect(k.events).toContain('gcw-ds2');
+    expect(k.battle.over?.why).not.toBe('deathstar');
+    e.dispose();
+  });
+});
+
 describe('Hoth', () => {
   it('disables a Star Destroyer with the ion cannon now and then', () => {
     const k = make('hoth', 'empire');
@@ -210,6 +272,40 @@ describe('a hangar run', () => {
     }
     expect(k.ctx.setHull).toHaveBeenCalledWith(isd.id, false);
     expect(hs.inside).toBe(true);
+    hs.dispose();
+  });
+  const into = (k, hs, isd) => {
+    const live = { x: isd.pos.x - isd.up.x * isd.size * 0.3, y: isd.pos.y - isd.up.y * isd.size * 0.3, z: isd.pos.z - isd.up.z * isd.size * 0.3 };
+    hs.update(0.1, 0, live, []);
+    for (let i = 0; i < 75; i++) {
+      live.x += isd.up.x * 0.12;
+      live.y += isd.up.y * 0.12;
+      live.z += isd.up.z * 0.12;
+      const r = hs.update(0.05, i * 0.05, live, []);
+      if (r.ship) Object.assign(live, r.ship);
+    }
+    return live;
+  };
+  it('lays none in your own side’s: an Imperial pilot has no Star Destroyer of theirs to blow up', () => {
+    const k = make('tatooine', 'empire', 1);
+    const hs = createHangars(k.ctx);
+    const isd = k.battle.capitals.find((c) => c.team === 1 && c.kind === 'destroyer' && c.role !== 'flagship');
+    const live = into(k, hs, isd);
+    expect(hs.markers(live)).toEqual([]);
+    expect(hs.inside).toBe(false);
+    hs.dispose();
+  });
+  it('counts a defender’s shots on the reactor: a Rebel holding Tatooine blows an Imperial Star Destroyer', () => {
+    const k = make('tatooine', 'empire', 0);
+    const hs = createHangars(k.ctx);
+    const isd = k.battle.capitals.find((c) => c.team === 1 && c.kind === 'destroyer' && c.role !== 'flagship');
+    into(k, hs, isd);
+    expect(hs.inside).toBe(true);
+    const core = hs.targets.find((t) => t.kind === 'reactor');
+    expect(core).toBeTruthy();
+    for (let i = 0; i < 60 && hs.targets.some((t) => t.kind === 'reactor'); i++) shoot(hs, core.at, 1);
+    expect(k.events).toContain('gcw-reactor');
+    expect(k.fight.keys().some((key) => key.startsWith('core-'))).toBe(true);
     hs.dispose();
   });
 });
