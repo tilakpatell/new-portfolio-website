@@ -214,7 +214,7 @@ if (fake) {
       }, DEBUG);
 
     // the trip: re-aimed as Fakey drifts, and over within 8 of them
-    await place(galaxy ? 45 : 60, galaxy ? 0.15 : 0.4); // (slower in a system: its frames come slower still, and the scene's clock goes by them)
+    await place(galaxy ? 45 : 60, 0.15); // (slow: software GL's frames come slowly, the scene's clock goes by them, and Fakey drifts by the wall's)
     ok(await go('super'), 'the scene takes a trip to pilot:fake');
     const first = await look();
     ok(first.pilot === 'fake' && first.goal, `state.auto is { id: ${first.auto}, pilot: ${first.pilot} } with their goal in its space`);
@@ -251,10 +251,11 @@ if (fake) {
     }
 
     // gone mid-trip: the autopilot off, their goal gone, the HUD says so, no error
-    await place(galaxy ? 90 : 150);
+    // (far enough off that super speed is still on its way a second in)
+    await place(galaxy ? 90 : 1500);
     await page.evaluate(() => (window.__hud = []));
     ok(await go('super'), 'a trip to Fakey again');
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(galaxy ? 3000 : 1000);
     const mid = await look();
     ok(mid.pilot === 'fake', `under way (${JSON.stringify(mid)})`);
     const before = errors.length;
