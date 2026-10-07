@@ -17,6 +17,7 @@
 
 import { BLOCKS, byName } from './blocks.js';
 import { breakTicks } from './breaking.js';
+import { delayOf, isFluid, stepFluid } from './fluids.js';
 import { give, held } from './inventory.js';
 import { ITEMS } from './items.js';
 import { moveBox } from './physics.js';
@@ -48,10 +49,22 @@ const LOGS = new Set(BLOCKS.filter((b) => b.name.endsWith('_log')).map((b) => b.
 const toolOf = (s) => (s ? ITEMS[s.item]?.tool ?? null : null);
 
 // a change to a cell: it and the one over it look again next tick (sand falls)
+// a change to a cell: it and the six round it look again next tick (sand
+// falls; a liquid beside it will flow, after its own delay)
 export function setBlock(g, x, y, z, blockId, state = 0) {
   if (!g.world.set(x, y, z, blockId, state)) return false;
-  g.updates.push({ x, y, z, at: g.ticks + 1 }, { x, y: y + 1, z, at: g.ticks + 1 });
+  const at = g.ticks + 1;
+  g.updates.push({ x, y, z, at }, { x, y: y + 1, z, at }, { x, y: y - 1, z, at }, { x: x + 1, y, z, at }, { x: x - 1, y, z, at }, { x, y, z: z + 1, at }, { x, y, z: z - 1, at });
   return true;
+}
+
+// a liquid's own look, after its delay, once however many changes ask for it
+function scheduleFluid(g, x, y, z, delay) {
+  const k = `${x},${y},${z}`;
+  g.fluidPending ??= new Set();
+  if (g.fluidPending.has(k)) return;
+  g.fluidPending.add(k);
+  g.updates.push({ x, y, z, at: g.ticks + delay, fluid: true });
 }
 
 // a bed's other half: the head lies the way the bed faces from the foot
@@ -225,8 +238,21 @@ export function dropHeld(g, all = false) {
 export function stepUpdates(g) {
   const due = g.updates.filter((u) => u.at <= g.ticks);
   g.updates = g.updates.filter((u) => u.at > g.ticks);
-  for (const { x, y, z } of due) {
+  for (const u of due) {
+    const { x, y, z } = u;
     const here = g.world.get(x, y, z);
+    if (isFluid(here)) {
+      if (!u.fluid) scheduleFluid(g, x, y, z, delayOf(here));
+      else {
+        g.fluidPending?.delete(`${x},${y},${z}`);
+        stepFluid(g.world, x, y, z, (fx, fy, fz, id, level) => {
+          if (!setBlock(g, fx, fy, fz, id, level)) return;
+          if (isFluid(id)) scheduleFluid(g, fx, fy, fz, delayOf(id));
+        });
+      }
+      continue;
+    }
+    if (u.fluid) g.fluidPending?.delete(`${x},${y},${z}`);
     if (!BLOCKS[here].gravity || y <= 0) continue;
     if (!REPLACEABLE.has(g.world.get(x, y - 1, z))) continue;
     const state = g.world.getState(x, y, z);

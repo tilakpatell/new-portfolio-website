@@ -28,6 +28,7 @@
 
 import { BLOCKS, TINTS, byName } from './blocks.js';
 import { index } from './chunk.js';
+import { liquidHeight } from './fluids.js';
 
 export const FACE = { top: 0, bottom: 1, north: 2, south: 3, east: 4, west: 5, cross: 6 };
 export const STRIDE = 6;
@@ -238,7 +239,8 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
           continue;
         }
         // a liquid's surface sits at 14/16 unless more of it is above
-        const lowered = kind === 4 && KIND[ids[pad(x, y + 1, z)]] !== 4 ? 2 : 0;
+        // a liquid's surface stands by its level (a source at 14/16), full under more of it
+        const lowered = kind === 4 && KIND[ids[pad(x, y + 1, z)]] !== 4 ? 16 - liquidHeight(chunk.state?.[base + z * 16 + x] ?? 0) : 0;
         for (let f = 0; f < 6; f++) {
           const face = CUBE[f];
           const [dx, dy, dz] = face.d;

@@ -66,6 +66,13 @@ describe('the mesher', () => {
     expect(verts(m.opaque).some((p) => p.face === FACE.top && p.y === 5 * 16)).toBe(true);
   });
 
+  it('flowing water stands lower the further it has come: level 7 is 2 high', () => {
+    const c = makeChunk(0, 0);
+    set(c, 5, 5, 5, id('water'), 7);
+    const v = verts(mesh(c).water).filter((p) => p.face === FACE.top);
+    expect(v.every((p) => p.y === 5 * 16 + 2)).toBe(true);
+  });
+
   it('water under water is a full block with no top', () => {
     const c = makeChunk(0, 0);
     set(c, 5, 5, 5, id('water'));
