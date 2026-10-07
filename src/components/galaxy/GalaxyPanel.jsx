@@ -90,7 +90,7 @@ function SystemWarCard({ sys, oath, suggested, onSwear }) {
       <dl className="holomap-stats">
         <SystemWar row={row} war={oath.war} now={now} side={oath.side} />
       </dl>
-      {row.battle && !oath.side && <Oath oath={oath} suggested={suggested} onSwear={onSwear} compact />}
+      {row.battle && !oath.side && <Oath oath={oath} suggested={suggested} onSwear={onSwear} />}
     </div>
   );
 }
