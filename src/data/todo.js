@@ -6,8 +6,10 @@
 // world by its headline things, the rest left for the world to show.
 //
 // A row: `area` is a key of the guide's GUIDES (guide/routes.js), so the
-// checklist groups as the guide does. `done` is an achievement id, or a
-// route that counts once visited (it or anything under it). `seconds` is how
+// checklist groups as the guide does. `done` is what ticks it (isDone,
+// below): an achievement, a route seen, one of the shell's keys, or null for
+// a row with no honest tick. `to` and `visited` carry no hash. No row needs a
+// password, a ROM, someone else online or a first visit. `seconds` is how
 // long it takes to see the thing work once, not to finish it. `phone` is
 // true when it works on one, touch controls included. Within an area, the
 // most showable comes first.
@@ -66,15 +68,15 @@ export const THINGS_TO_DO = [
   },
   {
     id: 'site-colours',
-    title: 'Try the site’s colours',
+    title: 'Pick the site’s colours',
     to: '/home',
     area: '/home',
     kind: 'tool',
     audience: 'both',
     seconds: 10,
     phone: true,
-    blurb: 'Every company I’ve worked at has a colour scheme, fan ones open as you play, or pick your own. See all six companies’.',
-    done: { achievement: 'cartographer' },
+    blurb: 'The dot in the menu: each company I’ve worked at, the fan schemes you’ve opened, or a colour of your own.',
+    done: { key: 'tp-theme-pin' },
   },
   {
     id: 'site-tour',
@@ -126,15 +128,27 @@ export const THINGS_TO_DO = [
   },
   {
     id: 'hidden-collectibles',
-    title: 'Find the eight hidden collectibles',
+    title: 'Find a hidden collectible',
     to: '/home',
     area: '/home',
     kind: 'easter-egg',
     audience: 'player',
     seconds: 20,
     phone: true,
-    blurb: 'A small, faint icon tucked into each page: a 1-UP on the home page, Mjolnir on Experience. Find all eight.',
-    done: { achievement: 'collector' },
+    blurb: 'A small, faint icon tucked into a page: a 1-UP on the home page, Mjolnir on Experience. All eight is Collector.',
+    done: { key: 'tp-eggs' },
+  },
+  {
+    id: 'scripts',
+    title: 'Read the site in Aurebesh',
+    to: '/home',
+    area: '/home',
+    kind: 'easter-egg',
+    audience: 'player',
+    seconds: 10,
+    phone: true,
+    blurb: 'Type “aurebesh”, “cybertronian” or “runes” anywhere. Back to English is always at the bottom.',
+    done: { key: 'tp-scripts-read' },
   },
 
   // the classic pages
@@ -294,7 +308,7 @@ export const THINGS_TO_DO = [
     seconds: 10,
     phone: true,
     blurb: 'Type achievements: everything you’ve unlocked so far, of over two hundred, kept between visits.',
-    done: { visited: '/terminal' },
+    done: null,
   },
   {
     id: 'order66',
@@ -332,7 +346,7 @@ export const THINGS_TO_DO = [
     seconds: 15,
     phone: true,
     blurb: 'M puts everywhere on one chart, with a trip time for each drive. The routing is plain data, tested without a screen.',
-    done: { visited: '/universe' },
+    done: null,
   },
   {
     id: 'land-on-a-planet',
@@ -348,27 +362,27 @@ export const THINGS_TO_DO = [
   },
   {
     id: 'hangar',
-    title: 'Fit out your ship',
+    title: 'Pick a ship and fit it out',
     to: '/universe',
     area: '/universe',
     kind: 'tool',
     audience: 'both',
     seconds: 30,
     phone: true,
-    blurb: 'H opens the hangar: paint and parts on a power budget that feeds the flight model, or a ship you build from a seed.',
-    done: { visited: '/universe' },
+    blurb: 'Four crews’ ships, or one you build from a seed. H opens the hangar: paint and parts on a power budget.',
+    done: { key: 'tp-universe-ship' },
   },
   {
     id: 'go-online',
-    title: 'Go online with other visitors',
+    title: 'Go online',
     to: '/universe',
     area: '/universe',
     kind: 'multiplayer',
     audience: 'both',
     seconds: 20,
     phone: true,
-    blurb: 'Multiplayer with no server: signed events over public Nostr relays. Other pilots fly in your sky.',
-    done: { visited: '/universe' },
+    blurb: 'Multiplayer with no server: signed events over public Nostr relays. Anyone else flying shows up in your sky.',
+    done: null,
   },
   {
     id: 'citadel-siege',
@@ -461,7 +475,7 @@ export const THINGS_TO_DO = [
   {
     id: 'trench-run',
     title: 'Fly the trench run',
-    to: '/deathstar#trench',
+    to: '/deathstar',
     area: '/deathstar',
     kind: 'game',
     audience: 'both',
@@ -697,19 +711,7 @@ export const THINGS_TO_DO = [
     audience: 'both',
     seconds: 300,
     phone: true,
-    blurb: 'My Super Mario 64 tribute: triple jumps, wall kicks, star doors and paintings into worlds.',
-    done: { visited: '/dot-matrix/64' },
-  },
-  {
-    id: 'n64',
-    title: 'Play your own ROM on an N64 emulator',
-    to: '/dot-matrix/64',
-    area: '/dot-matrix/64',
-    kind: 'game',
-    audience: 'both',
-    seconds: 120,
-    phone: true,
-    blurb: 'A Nintendo 64 emulated in the browser. Bring your own ROM; it never leaves your device.',
+    blurb: 'Press Play the fan tribute: my Super Mario 64, built from scratch. Triple jumps, wall kicks and paintings into worlds.',
     done: { visited: '/dot-matrix/64' },
   },
   {
@@ -721,7 +723,7 @@ export const THINGS_TO_DO = [
     audience: 'both',
     seconds: 300,
     phone: true,
-    blurb: 'An endless seeded world meshed in a worker, with the game’s own lighting and tick rules, and 125 tests of them.',
+    blurb: 'Press Walk the tribute: an endless world from a seed to dig and build in, meshed in a worker, its rules tested.',
     done: { visited: '/dot-matrix/minecraft' },
   },
 
@@ -825,15 +827,45 @@ export function todoFor(audience) {
   return THINGS_TO_DO;
 }
 
-// Whether a row is ticked, from the unlocked achievements and the routes
-// visited ever. A route counts for itself and anything under it, so a
-// world's row ticks from any of its places, but '/experience' not from
-// '/experiences'; a list of routes ticks once every one has been seen (both
-// views, for the switch). What's kept may be anything, so it's checked.
-const seen = (visited, path) => visited.some((v) => typeof v === 'string' && (v === path || v.startsWith(`${path}/`)));
-export function isDone(row, { unlocked = [], visited = [] } = {}) {
-  const { achievement, visited: path } = row.done ?? {};
-  if (achievement) return Array.isArray(unlocked) && unlocked.includes(achievement);
-  if (!path || !Array.isArray(visited)) return false;
-  return [].concat(path).every((p) => seen(visited, p));
+
+// Whether a row is ticked. `done` comes in four kinds:
+// - { achievement }: once it's unlocked.
+// - { visited }: a route, or a list of routes every one of which has been
+//   seen. A route counts for itself and anything under it, so a world's row
+//   ticks from any of its places, but '/experience' not from '/experiences'.
+//   The shell keeps the guide key beside the path when they differ, and the
+//   same prefix match reads both.
+// - { key, is }: one of the shell's own keys (lib/visited's SHELL_KEYS),
+//   read through `stored`. Without `is`, any value counts; with it, the value
+//   must be `is`, or a list holding it.
+// - null: never ticked; the row is there for its Show me.
+// Whatever's kept may be anything, so all of it is checked, and nothing throws.
+const seen = (visited, path) => typeof path === 'string' && visited.some((v) => typeof v === 'string' && (v === path || v.startsWith(`${path}/`)));
+const filled = (value) => value != null && value !== false && value !== '' && !(Array.isArray(value) && value.length === 0);
+const read = (stored, key) => {
+  if (typeof stored !== 'function') return null;
+  try {
+    return stored(key);
+  } catch {
+    return null;
+  }
+};
+
+export function isDone(row, kept = {}) {
+  const { unlocked = [], visited = [], stored = () => null } = kept ?? {};
+  const done = row?.done;
+  if (!done || typeof done !== 'object' || Array.isArray(done)) return false;
+  if ('achievement' in done) return typeof done.achievement === 'string' && Array.isArray(unlocked) && unlocked.includes(done.achievement);
+  if ('visited' in done) {
+    const paths = [].concat(done.visited);
+    return Array.isArray(visited) && paths.length > 0 && paths.every((p) => seen(visited, p));
+  }
+  if ('key' in done) {
+    if (typeof done.key !== 'string') return false;
+    const value = read(stored, done.key);
+    if (!('is' in done)) return filled(value);
+    if (typeof done.is !== 'string') return false;
+    return value === done.is || (Array.isArray(value) && value.includes(done.is));
+  }
+  return false;
 }
