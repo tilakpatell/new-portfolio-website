@@ -10,6 +10,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { loadSky } from './assets';
+import { houseOn } from '../../../lib/three/house';
 import { device } from '../../../lib/device';
 import { fitRatio, maxSide, precompile as compileFor, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 
@@ -69,6 +70,13 @@ export function createEngine(canvas, opts = {}) {
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.03;
   scene.add(sun, sun.target);
+  // the house look (lib/three/house): the shade one colour, from the sky's
+  // own light (each game's HDR sky, measured when it's set), on everything
+  // a game puts in the scene (taken on now and then); a game's Neutral
+  // exposure is kept, an ACES one lifted
+  const envRef = { texture: null, intensity: () => scene.environmentIntensity };
+  const house = houseOn({ renderer, scene, sun, env: envRef, keepExposure: toneMapping === THREE.NeutralToneMapping });
+  let houseFrames = 0;
 
   // the composer renders into a multisampled half-float target (anti-aliased,
   // with room for highlights above 1), then bloom, then tone mapping
@@ -174,6 +182,7 @@ export function createEngine(canvas, opts = {}) {
     const env = pmrem.fromEquirectangular(sky.hdr).texture;
     skyAssets = { env };
     scene.environment = env;
+    envRef.texture = sky.hdr;
     scene.environmentIntensity = envIntensity;
     scene.environmentRotation.y = rotate;
     scene.backgroundRotation.y = rotate;
@@ -233,6 +242,7 @@ export function createEngine(canvas, opts = {}) {
       setTier(stepTo);
       stepTo = null;
     }
+    house.follow({ adopt: houseFrames++ % 30 === 0 });
     renderer.info.reset();
     composer.render();
     // One long gap is the loop coming back (the game was scrolled away, or the

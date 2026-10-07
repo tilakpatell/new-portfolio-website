@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { LOOK, createHouse, houseOn, houseShader, shadowFor } from './house';
+import { LOOK, createHouse, envLevel, houseOn, houseShader, shadowFor } from './house';
 import { createGroundMap } from './groundmap';
 
 // three's chunks as this version has them (the lines the rewrite looks for)
@@ -288,5 +288,51 @@ describe('a world with its own tone map and an ambient light (the universe map)'
     expect(house.uniforms.uLookShadow.value.getHex()).toBe(shadowFor({ hemiSky: 0xb8c4ff, hemi: 0.4 }));
     // (full light: the key and the ambient, over pi)
     expect(house.uniforms.uLookRef.value.g).toBeCloseTo((2 + new THREE.Color(0xb8c4ff).g * 0.4) / Math.PI, 5);
+  });
+});
+
+describe('a world lit by an HDR environment', () => {
+  // a 4 x 2 equirect: a blue sky over a dark ground, floats
+  const equirect = () => {
+    const data = new Float32Array(4 * 2 * 4);
+    for (let i = 0; i < 4; i++) data.set([0.4, 0.6, 1.2, 1], i * 4); // the top row (the sky)
+    for (let i = 4; i < 8; i++) data.set([0.1, 0.08, 0.05, 1], i * 4); // the bottom (the ground)
+    const t = new THREE.DataTexture(data, 4, 2, THREE.RGBAFormat, THREE.FloatType);
+    return t;
+  };
+
+  it('measures the light an environment gives, its mean radiance, the sky weighted by its area', () => {
+    const level = envLevel(equirect());
+    expect(level.r).toBeCloseTo(0.25, 2);
+    expect(level.b).toBeCloseTo(0.625, 2);
+  });
+
+  it('counts it in the full light, and takes the shade’s hue from it', () => {
+    const scene = new THREE.Scene();
+    scene.environment = equirect();
+    scene.environmentIntensity = 2;
+    const sun = new THREE.DirectionalLight(0xffffff, 0);
+    scene.add(sun, new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial()));
+    const renderer = { toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1 };
+    const house = houseOn({ renderer, scene, sun, env: { texture: scene.environment, intensity: () => scene.environmentIntensity } });
+    // (the environment's mean, at its intensity, is the full light where the sun is out)
+    expect(house.uniforms.uLookRef.value.b).toBeCloseTo(0.625 * 2, 2);
+    const shade = house.uniforms.uLookShadow.value;
+    expect(shade.b).toBeGreaterThan(shade.r);
+  });
+});
+
+describe('an environment that changes (a game\u2019s sky swapped for another)', () => {
+  it('is measured again when its picture changes', () => {
+    const scene = new THREE.Scene();
+    const sun = new THREE.DirectionalLight(0xffffff, 0);
+    scene.add(sun);
+    const pic = (v) => new THREE.DataTexture(new Float32Array([v, v, v, 1, v, v, v, 1]), 2, 1, THREE.RGBAFormat, THREE.FloatType);
+    const env = { texture: pic(0.5), intensity: 1 };
+    const house = houseOn({ renderer: { toneMappingExposure: 1 }, scene, sun, env });
+    expect(house.uniforms.uLookRef.value.r).toBeCloseTo(0.5, 3);
+    env.texture = pic(2);
+    house.follow();
+    expect(house.uniforms.uLookRef.value.r).toBeCloseTo(2, 3);
   });
 });
