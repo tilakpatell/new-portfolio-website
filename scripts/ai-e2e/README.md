@@ -274,6 +274,16 @@ wrong); a red real run is the pipeline (its `make.log` and the takes'
 report are in `results/real-work/`); drift is a question for a person, and
 `bless.mjs` is the answer when the new numbers are right.
 
+## Tier 7: the agent and the jobs
+
+| file | what it proves |
+| --- | --- |
+| `agent/budget.test.mjs` | `scripts/autopilot-budget.mjs`, the check the autopilot makes before anything: paused stops; 80% of the plan stops and 79% goes; no figure with status `allowed` goes, any other status stops; overage stops; `runsPerDay` entries today stop |
+| `agent/changes.test.mjs` | every ship's log entry (`src/data/changes/`) is well-formed, its screenshots exist, and `autopilot-log.mjs --next` is one past the highest |
+| `agent/revert.test.mjs` | in a temporary repository with three merged pull requests, `autopilot-revert.mjs 2` takes the second out and keeps its entry marked reverted; it stops and names #103 when the third built on the same lines; it refuses a change reverted already |
+| `agent/jobs.test.mjs` | 100 generated gen3d requests and 50 voices requests: what `ask.mjs --dry-run` writes, `parseIssue` reads back as the same job; `status.mjs --json` over the fake gh in every state; `doctor.mjs` over a made-up AppData finds a tool in the Claude app's box and says how to fix a missing one |
+| `agent/workflows.test.mjs` | every job on `[self-hosted, gpu]` has a time limit, a concurrency group (or runs only by hand) and a trusted trigger or condition; the queue and check jobs and all of CI run on GitHub's own runners; nothing a pull request starts runs on the desktop |
+
 ## Adding a case
 
 A contract test is a vitest file under `scripts/ai-e2e/<tier>/`, its

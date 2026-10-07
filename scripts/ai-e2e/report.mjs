@@ -18,7 +18,8 @@ const pct = (x) => `${Math.round(x * 100)}%`;
 const mins = (s) => (s == null ? '' : `${Math.round(s / 60)} min`);
 
 export function report(dir, date) {
-  const read = (name) => (existsSync(join(dir, name)) ? JSON.parse(readFileSync(join(dir, name), 'utf8')) : null);
+  // (Windows PowerShell's Out-File -Encoding utf8, how the workflow saves the doctor's, starts with a byte-order mark)
+  const read = (name) => (existsSync(join(dir, name)) ? JSON.parse(readFileSync(join(dir, name), 'utf8').replace(/^\uFEFF/, '')) : null);
   const rows = [];
   const row = (tier, ok, says, time = '') => rows.push({ tier, ok, says, time });
 

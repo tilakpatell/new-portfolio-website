@@ -58,6 +58,12 @@ describe('the nightly report', () => {
     expect(r.markdown).toMatch(/\| 6 real \| \*\*red\*\* \| did not run \|/);
   });
 
+  it('reads the doctor’s file as Windows PowerShell writes it, with a byte-order mark', () => {
+    const dir = night(GOOD);
+    writeFileSync(join(dir, 'doctor.json'), `\uFEFF${JSON.stringify(GOOD['doctor.json'])}`);
+    expect(report(dir, DATE).markdown).toMatch(/\| doctor \| ok \| 2 of 2 ready \|/);
+  });
+
   it('notes a night with no golden yet without calling it red', () => {
     const r = report(night({ ...GOOD, [`${DATE}-drift.json`]: { ok: true, blessed: false, moves: [] } }), DATE);
     expect(r.markdown).toMatch(/\| 6 drift \| ok \| no golden yet: bless a good night \|/);

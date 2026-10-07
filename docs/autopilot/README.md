@@ -44,6 +44,7 @@ node scripts/autopilot-log.mjs --next                  # the next entry number
 | `src/data/changes/*.json`, `src/data/changes.js` | the ship's log, one file an entry |
 | `src/pages/Changes.jsx` | the `/changes` page |
 | `public/changes/` | the screenshots |
+| `scripts/autopilot-budget.mjs` | the budget check a run makes first: `go`, or `stop: <why>` |
 | `scripts/autopilot-check.mjs` | the gate: lint, tests, build, bundle, smoke, screenshots |
 | `scripts/autopilot-log.mjs` | writes an entry |
 | `scripts/autopilot-revert.mjs` | takes a change out |
