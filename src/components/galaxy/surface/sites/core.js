@@ -207,8 +207,8 @@ export const SITES = {
           rv: [['jesse', 'This is like, Indiana Jones, yo.'], ['walt', 'Don’t take anything.']],
         },
         things: [
-          { kind: 'stonehead', at: [8, -6], yaw: -0.4, sink: 2.2, roll: 0.12 },
-          { kind: 'stonehead', at: [-14, 10], yaw: 0.7, sink: 3, scale: 1.4, roll: -0.18 },
+          { kind: 'stonehead', at: [8, -6], yaw: -0.4, sink: 1.0, roll: 0.12 },
+          { kind: 'stonehead', at: [-14, 10], yaw: 0.7, sink: 1.4, scale: 1.4, roll: -0.18 },
           { kind: 'stonehead', at: [20, 18], yaw: -1.6, sink: 4, scale: 0.8, pitch: 0.4 },
           { kind: 'ruins', at: [0, 0], opts: { seed: 4 } },
           { kind: 'grove', at: [-36, -30], opts: { n: 14, r: 26, seed: 11 } },

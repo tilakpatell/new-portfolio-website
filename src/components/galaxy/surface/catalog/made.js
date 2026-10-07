@@ -47,8 +47,6 @@ export const MODELS = {
   wroshyrgreat: { made: 'meshy', lod: true, as: 'the great wroshyrs', metres: 230, along: 'y', hero: true },
   // Coruscant: the Senate Building's dome (its plaza stays built)
   senate: { made: 'meshy', lod: true, as: 'the Senate Building', metres: 190, along: 'x', hero: true },
-  // Dagobah: Yoda's hut, the cluster of it
-  yodahut: { made: 'meshy', as: "Yoda's hut", metres: 10, along: 'x' },
   // The three worlds' lane (scripts/meshy-galaxy-three.mjs, each lifted out
   // of a film still or the game's render of Cloud City's streets): Cloud
   // City's towers (scattered round the deck in the built city's place) and

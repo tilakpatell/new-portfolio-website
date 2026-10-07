@@ -2526,20 +2526,6 @@
       "galaxy"
     ]
   },
-  "surface-jeditemple": {
-    "title": "Jedi Temple",
-    "author": "Owen Cornelius",
-    "authorUrl": "https://sketchfab.com/omcstudios333",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/jedi-temple-317dedec15a845cbb1abc8c90804b840",
-    "where": "galaxy-surface",
-    "as": "the Jedi Temple",
-    "file": "/models/galaxy/surface/jeditemple.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-juggernaut": {
     "title": "Clone Turbo Tank HAVw A6 Juggernaut",
     "author": "bruhepic925",

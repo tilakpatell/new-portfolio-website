@@ -6,8 +6,6 @@
 export const MODELS = {
   // Jar Jar Binks
   gungan: { uid: '85aef3e496d44e9b95c7386035c0ef10', as: 'the Gungans', metres: 1.96, yaw: 0, tris: 8000, tex: 384 },
-  // the Jedi Temple on Coruscant
-  jeditemple: { uid: '317dedec15a845cbb1abc8c90804b840', lod: true, as: 'the Jedi Temple', metres: 300, along: 'max', yaw: -Math.PI / 2, up: 'y', tris: 35000, tex: 1024, drop: /Plane001/ },
   // the Republic gunship
   laat: { uid: 'cf7f6043210a418abdd818d5e8dd0fd8', as: 'the Republic gunships', metres: 17.4, along: 'z', yaw: -Math.PI / 2, up: 'y', tris: 20000, tex: 2048, maps: 1024 },
   // (R3negadeAidan's, rigged with its walk: the AT-TEs on the plain walk it)
