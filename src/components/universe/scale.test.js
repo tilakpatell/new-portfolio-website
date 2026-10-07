@@ -6,14 +6,14 @@ import { PLANETS, SHIP } from './ship';
 import { TYPES } from './traffic';
 import { STAR_DESTROYER } from './setpieces';
 import { poseFor } from './poses';
-import { UNIVERSES } from './universes';
+import { UNIVERSES, byId } from './universes';
 import { WONDERS, reachOf } from './deep';
 import { PHONE } from './phone';
 
-const stations = PLANETS.filter((p) => UNIVERSES.find((u) => u.id === p.id).kind === 'core');
+const stations = PLANETS.filter((p) => byId(p.id).kind === 'core');
 const worlds = PLANETS.filter((p) => {
-  const u = UNIVERSES.find((x) => x.id === p.id);
-  return u.kind !== 'core' && !u.portal;
+  const u = byId(p.id);
+  return u.kind === 'fandom' && !u.portal;
 });
 const flat = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 

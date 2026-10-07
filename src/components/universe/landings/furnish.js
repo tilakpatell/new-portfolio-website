@@ -47,6 +47,11 @@ const PLANETS = {
   travel: () => import('./travel.js'),
   caribbean: () => import('./caribbean.js'),
   invincible: () => import('./invincible.js'),
+  // the Rick and Morty system's moons, round the Citadel (universes.js's MOONS), one file between them
+  gazorpazorp: () => import('./rmmoons.js'),
+  squanch: () => import('./rmmoons.js'),
+  birdworld: () => import('./rmmoons.js'),
+  gearworld: () => import('./rmmoons.js'),
 };
 export const furnished = (id) => Boolean(PLANETS[id]);
 // (a thing that won't build is just missing; in development, say so)

@@ -8,7 +8,7 @@
 // its own height: getting between them is a journey (ship.js's pulse
 // drive), and a fight (hunters.js). deep.js keeps them clear of its wonders.
 
-import { UNIVERSES, byId } from './universes';
+import { MOONS, UNIVERSES, byId } from './universes';
 import { HOME_SPREAD } from './scale';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
@@ -37,7 +37,7 @@ export const HOME_RADIUS = 230 * HOME_SPREAD;
 export const RIM = { inner: 8000, outer: 8600, height: 60 };
 
 // how far a universe's moons, rings and orbiting things reach from its centre
-export const REACH = Object.fromEntries(UNIVERSES.map((u) => [u.id, u.size * (u.reach ?? (u.kind === 'core' ? 2.0 : 1.9))]));
+export const REACH = Object.fromEntries([...UNIVERSES, ...MOONS].map((u) => [u.id, u.size * (u.reach ?? (u.kind === 'core' ? 2.0 : 1.9))]));
 
 const core = UNIVERSES.filter((u) => u.kind === 'core');
 const fandoms = UNIVERSES.filter((u) => u.kind !== 'core');
@@ -51,7 +51,11 @@ export const POSITIONS = Object.fromEntries([
     const a = i * GOLDEN + 0.32;
     return [u.id, [r * Math.cos(a), HEIGHT * Math.sin(i * 2.4 + 1), r * Math.sin(a)]];
   }),
+  // the Rick and Morty system's moons, where universes.js puts them, round the Citadel
+  ...MOONS.map((m) => [m.id, m.at]),
 ]);
+// everything the ship can set down on or dock at: the map's order, then the moons
+export const BODIES = [...ORDER, ...MOONS.map((m) => m.id)];
 
 // how far out the furthest fandom reaches
 export const MAP_RADIUS = Math.max(...ORDER.map((id) => Math.hypot(POSITIONS[id][0], POSITIONS[id][2]) + REACH[id]));

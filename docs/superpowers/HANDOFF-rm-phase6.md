@@ -42,6 +42,20 @@ own); NPCs that do things, not just stand and talk.
   ('caught', 'bark', 'done'); `RmWorld.jsx`'s `npc()` handles them after
   each frame (`s.events`). Anyone who roams is marked `roams` and left out
   of the colliders (`rules.js`).
+- **Task 6.5, the Rick and Morty system on the map**: four small planets
+  round the Citadel, `universes.js`'s `MOONS` (kind `moon`, found by `byId`
+  but not in `UNIVERSES`, so not in the map's order, the mini-map or the
+  pages' links). `layout.js` places them at their `at` and lists them with
+  the order in `BODIES`; `ship.js`'s `PLANETS`, the scene's planets,
+  `deep.js`'s `PLACES` and `nav.js`'s `DESTINATIONS` read `BODIES`/`MOONS`,
+  so they're solid, lit, drawn (plain spheres in their palette and air),
+  closed to the drive, and the autopilot goes to them. Landed on like a
+  fandom's planet: `landings/landings.js` entries and `landings/rmmoons.js`
+  (the C-137 landing's portal, the women's gate, suckulents and cat trees,
+  perches, cogs; the houses and the people are models). Tests in
+  `deep.test.js` (clear of the Citadel's parts, each other, the fandoms and
+  the wars), `landings.test.js`, `nav.test.js` (a moon's last leg to the
+  autopilot is slower, inside the Citadel's space). Not on the mini-map yet.
 - **Rows 30–34**: Mr. Goldenfold's dream (`dream.js`, Scary Terry hunts
   from the start, `lose` lets a hider shake him), the agency (`agency.js`,
   id `agency`, Jaguar's cell door swings on 'unlocked'), the Meeseeks' golf
@@ -97,11 +111,6 @@ own); NPCs that do things, not just stand and talk.
 
 ## Not done
 
-- **Task 6.5**, the Rick and Morty system on the universe map. The map
-  lands only on the fandoms' planets (`universes.js`, `landings/`), so four
-  landable planets round the Citadel need a new kind of wonder in
-  `deep.js`, drawn by `deepspace.js` and landed on by `footScene.js`
-  (`planetOf`), plus `landings/` entries. Scoped but not started.
 - The rest of the plan's Phase 7: Jaguar and the Pickle Rick sewer run (a
   game of its own), and Mr. Frundles. (The cable figures went to a studio
   of their own rather than the alien street, which has no NPC layer.)
