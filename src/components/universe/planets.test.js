@@ -26,7 +26,7 @@ describe('the planet maps by detail level', () => {
 
 describe('the fandoms’ baked maps', () => {
   it('come in all three sizes where they need them, and one where they don’t', () => {
-    expect(mapFile('middleearth', 'ultra')).toBe('middleearth-hq.webp');
+    expect(mapFile('middleearth', 'ultra', { xl: false })).toBe('middleearth-hq.webp');
     expect(mapFile('caribbean-clouds', 'mid')).toBe('caribbean-clouds-sm.webp');
     expect(mapFile('middleearth-night', 'ultra')).toBe('middleearth-night.webp');
     expect(mapFile('middleearth-night', 'low')).toBe('middleearth-night-sm.webp');
@@ -298,6 +298,27 @@ describe('a world seen from across the map', () => {
   });
 });
 
+describe('the -xl maps, 4096 on ultra', () => {
+  it('a strong card asks for the -xl KTX2 of a baked planet’s colour map', () => {
+    expect(mapFile('middleearth', 'ultra')).toBe('middleearth-xl.ktx2');
+    for (const id of ['breakingbad', 'caribbean', 'rickmorty', 'office', 'music', 'marvel']) expect(mapFile(id, 'ultra')).toBe(`${id}-xl.ktx2`);
+  });
+  it('the rest are as they were', () => {
+    expect(mapFile('middleearth-normal', 'ultra')).toBe('middleearth-normal-hq.webp');
+    expect(mapFile('transformers', 'ultra')).toBe('transformers.webp');
+    expect(mapFile('earth', 'ultra')).toBe('earth-hq.webp');
+    expect(mapFile('middleearth', 'high')).toBe('middleearth.webp');
+  });
+  it('the -hq copy is there to fall back on: what ultra wears from the start, and the near set’s second try', async () => {
+    const { nearSet } = await import('./planets');
+    expect(mapFile('middleearth', 'ultra', { xl: false })).toBe('middleearth-hq.webp');
+    // (ultra already wears the -hq set: the -xl is all it adds, its fallback the file it wears)
+    expect(nearSet('middleearth', 'ultra')).toEqual([{ name: 'middleearth', file: 'middleearth-xl.ktx2', colour: true }]);
+    // high near: the -hq copies, never the -xl
+    expect(nearSet('middleearth', 'high').map((m) => m.file)).not.toContain('middleearth-xl.ktx2');
+  });
+});
+
 describe('a planet’s near maps', () => {
   it('knows its own maps by name', async () => {
     const { mapsOf } = await import('./planets');
@@ -347,6 +368,61 @@ describe('a planet’s near maps', () => {
     expect(p.body.material.map).toBe(T.middleearth);
     expect(clouds[0].material.map).toBe(T['middleearth-clouds']);
     expect(p.body.material.userData.ground.uClouds.value).toBe(T['middleearth-clouds']);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('the sphere, finer near', () => {
+  const stub = () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+  };
+  it('has near segments on mid and up, none on low', async () => {
+    const { NEAR_SEG, nearSegments } = await import('./planets');
+    expect(NEAR_SEG.low).toBeUndefined();
+    expect(nearSegments('high')).toEqual([160, 100]);
+    expect(nearSegments('ultra')).toEqual([160, 100]);
+    expect(nearSegments('mid')).toEqual([96, 60]);
+    expect(nearSegments('low')).toBeNull();
+  });
+  it('swaps a planet’s sphere for the finer one and back, making it once', async () => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const THREE = await import('three');
+    const clouds = new THREE.Texture();
+    const p = buildPlanet(byId('middleearth'), { middleearth: new THREE.Texture(), 'middleearth-clouds': clouds });
+    const far = p.body.geometry;
+    let cloudMesh = null;
+    p.group.traverse((o) => (cloudMesh ??= o.isMesh && o.material?.map === clouds ? o : null));
+    const cloudFar = cloudMesh.geometry;
+    expect(far.parameters.widthSegments).toBe(64);
+    p.nearGeometry(true, 'high');
+    const near = p.body.geometry;
+    expect([near.parameters.widthSegments, near.parameters.heightSegments]).toEqual([160, 100]);
+    expect(near.parameters.radius).toBe(far.parameters.radius);
+    // the cloud layer's too, at its own height
+    expect(cloudMesh.geometry.parameters.widthSegments).toBe(160);
+    expect(cloudMesh.geometry.parameters.radius).toBe(cloudFar.parameters.radius);
+    p.nearGeometry(false);
+    expect(p.body.geometry).toBe(far);
+    expect(cloudMesh.geometry).toBe(cloudFar);
+    p.nearGeometry(true, 'high');
+    expect(p.body.geometry).toBe(near);
+    // (nothing on low: the sphere it has)
+    p.nearGeometry(false);
+    p.nearGeometry(true, 'low');
+    expect(p.body.geometry).toBe(far);
+    vi.unstubAllGlobals();
+  });
+  it('leaves a world whose builder made its own shape alone, and a station', async () => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    // (the Office's crumpled ball is its own geometry, facets and all)
+    expect(buildPlanet(byId('office'), {}).nearGeometry).toBeUndefined();
+    expect(buildPlanet(byId('home'), {}).nearGeometry).toBeUndefined();
     vi.unstubAllGlobals();
   });
 });

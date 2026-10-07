@@ -208,7 +208,7 @@ export async function bake() {
 
   // (ONLY=normal: just the relief, at 2048 for ultra too, the others left as they are)
   const only = process.env.ONLY;
-  if (only !== 'normal') await save(albedo, W, H, 3, 'caribbean', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
+  if (only !== 'normal') await save(albedo, W, H, 3, 'caribbean', [[4096, '-xl'], [2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
   await save(normalMap(height, W, H, 1), W, H, 3, 'caribbean-normal', [[2048, '-hq'], [1024, '']], { quality: 90 });
   if (only === 'normal') return;
   await save(rough, W, H, 3, 'caribbean-rough', [[1024, '']], { quality: 84 });
