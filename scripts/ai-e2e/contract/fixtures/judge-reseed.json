@@ -1,0 +1,3 @@
+[
+  { "match": "four sides", "reply": ["{\"score\": 4, \"problems\": [\"the wings are fused\"], \"fix\": \"a side view\"}", "{\"score\": 9, \"problems\": [], \"fix\": \"\"}"] }
+]

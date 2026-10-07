@@ -21,7 +21,7 @@
 //   = path         : grass, one up ! grass, two up  % grass, three up
 //   T tree         Y tree, one up  o boulder        O stepping stone
 //   # stone wall   H house         G the Game Boy   P pipe
-//   N the N64
+//   N the N64     C the crafting table
 //   B the dock     s a sign        L the lighthouse M the windmill, three up
 export const MAP = [
   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~', // 0
@@ -34,8 +34,8 @@ export const MAP = [
   '~~~~~~~~~%%!!!::........T..........,,~O~~~~~~~~~', // 7
   '~~~~~~~~%%%%%!!::...T.........s.....,~~~~~~~~~~~', // 8
   '~~~~~~~!M%%%%%!Y:...............T...,,~~~~~~~~~~', // 9
-  '~~~~~~!!!%%%%!!::.==========NNNN.....,,~~~~~~~~~', // 10
-  '~~~~~~Y:!!!!!!!::.==========NNNN......,,~~~~~~~~', // 11
+  '~~~~~~!!!%%%%!!::.==========NNNN.CC..,,~~~~~~~~~', // 10
+  '~~~~~~Y:!!!!!!!::.==========NNNN.CC...,,~~~~~~~~', // 11
   '~~~~~~,::!!!!!:::.=====GGGG=NNNN.......,~~~~~~~~', // 12
   '~~~~~~,,::::::::..=====GGGG=====.##########~~~~~', // 13
   '~~~~~~,,.:::::.T..==============.#........#~~~~~', // 14
@@ -89,6 +89,7 @@ const LEGEND = {
   H: { kind: 'house', ground: 0, top: 2 },
   G: { kind: 'gameboy', ground: 0, top: 7 },
   N: { kind: 'n64', ground: 0, top: 1.1 },
+  C: { kind: 'craft', ground: 0, top: 2 },
   P: { kind: 'pipe', ground: 0, top: 1.25 },
   B: { kind: 'dock', ground: SEA, top: 0 },
   s: { kind: 'sign', ground: 0, top: 1.1 },
@@ -156,6 +157,11 @@ export const GAMEBOY = { x0: 23, z0: 12, x1: 27, z1: 14, front: { x0: 22.4, x1: 
 // ../mario64/). The console is a jump up, and the cartridge another.
 export const N64 = { x0: 28, z0: 10, x1: 32, z1: 13, top: 1.1, front: { x0: 27.7, x1: 32.3, z0: 13, z1: 15.4 } };
 export const N64_CART = { x0: 29, z0: 11, x1: 31, z1: 12, top: 2.1 };
+
+// The giant crafting table east of it, a block two across and as tall (too
+// high to jump onto), and where to stand to play Minecraft at it (the
+// tribute, ../minecraft/): on its south side, before the pen's wall.
+export const CRAFT = { x0: 33, z0: 10, x1: 35, z1: 12, top: 2, front: { x0: 32.7, x1: 35.3, z0: 12, z1: 13 } };
 
 // The snake's pen: it goes round and round a loop inside the walls, and the
 // way in is a gap in the west wall.
@@ -723,7 +729,7 @@ function hurt(g, from, ev) {
 }
 
 // What the B button would do where the hero's standing: a pipe to go down,
-// the Game Boy or the N64 to play, a sign to read. Or null.
+// the Game Boy, the N64 or the crafting table to play, a sign to read. Or null.
 export function nearAction(g) {
   const h = g.hero;
   if (g.over > 0) return null;
@@ -735,6 +741,8 @@ export function nearAction(g) {
   if (h.x > f.x0 && h.x < f.x1 && h.z > f.z0 && h.z < f.z1 && h.y < 0.5) return { kind: 'gameboy', id: 'gameboy' };
   const n = N64.front;
   if (h.x > n.x0 && h.x < n.x1 && h.z > n.z0 && h.z < n.z1 && h.y < 0.5) return { kind: 'n64', id: 'n64' };
+  const c = CRAFT.front;
+  if (h.x > c.x0 && h.x < c.x1 && h.z > c.z0 && h.z < c.z1 && h.y < 0.5) return { kind: 'craft', id: 'craft' };
   let best = null;
   let bd = 1.25;
   for (const v of VILLAGERS) {

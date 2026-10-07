@@ -32,12 +32,6 @@ export const EXTRA = {
       { id: 'cave', name: 'The cave', giver: 'master', steps: [{ type: 'reach', at: [-70, -120], r: 10, text: 'Go into the cave' }, { type: 'shoot', tag: 'vision', n: 1, text: 'Face what’s inside', lines: [[null, '(A figure in black steps out of the dark.)']], spawn: { kind: 'vader', at: [-66, -114], hp: 4, leash: 14, roam: 2, tag: 'vision', hostile: { range: 14, chase: 1.8, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.75, guard: 3, blade: { color: '#ff3b3b' } } } }], done: [['Yoda', 'Your weapons… you will not need them.']] },
     ],
   },
-  yavin: {
-    life: [{ kind: 'rebel', id: 'dodonna', at: [10, -100], still: true, face: 3, name: 'General Dodonna', named: true, quest: 'remotes', says: ['The battle station will be in range in thirty minutes.'] }],
-    quests: [
-      { id: 'remotes', name: 'Blast shield down', giver: 'dodonna', intro: [['General Dodonna', 'Pilots warm up on the remotes by the lookout. Your turn.']], steps: [{ type: 'shoot', tag: 'remote', n: 6, text: 'Hit the training remotes', spawn: { kind: 'remote', n: 6, at: [-200, -120], spread: 8, roam: 6, speed: 2, hp: 1, tag: 'remote' } }, { type: 'reach', at: [0, -256], r: 5, text: 'Climb to the throne room for the ceremony' }], done: [[null, '(The doors open. The whole Rebellion is standing there, and they’re cheering for you.)']] },
-    ],
-  },
   naboo: {
     life: [
       { kind: 'gungan', id: 'tarpals', at: [250, -230], still: true, face: 2.5, name: 'Captain Tarpals', named: true, quest: 'grassfield', says: ['Wesa ready to do our-n part.'] },
@@ -48,16 +42,6 @@ export const EXTRA = {
       { id: 'kaadurace', name: 'Kaadu run', giver: 'herder', steps: [{ type: 'ride', kind: 'kaadu', text: 'Get on a kaadu' }, { type: 'race', ride: 'kaadu', gates: [[60, 60], [70, 120], [-40, 200], [-130, 290]], r: 12, time: 60, text: 'Race to the falls' }], done: [[null, '(The kaadu honks, very pleased with itself.)']] },
     ],
   },
-  coruscant: {
-    life: [
-      { kind: 'jedi', id: 'master', at: [10, 160], still: true, face: 3, name: 'A Jedi Master', quest: 'training', says: ['Stretch out with your feelings.'] },
-      { kind: 'villager', id: 'dex', at: [-142, -262], still: true, face: 2.4, name: 'Dexter Jettster', named: true, quest: 'dart', says: ['Hey, ol’ buddy!'] },
-    ],
-    quests: [
-      { id: 'training', name: 'Training remotes', giver: 'master', steps: [{ type: 'shoot', tag: 'remote', n: 8, text: 'Hit the training remotes', spawn: { kind: 'remote', n: 8, at: [0, 150], spread: 8, roam: 5, speed: 2.4, hp: 1, tag: 'remote' } }], done: [['A Jedi Master', 'Good. The Force is with you.']] },
-      { id: 'dart', name: 'The saberdart', giver: 'dex', intro: [['Dexter Jettster', 'A dart like that? Kamino. Bring me the one they found at the club and I’ll prove it.']], steps: [{ type: 'collect', item: 'dart', n: 1, spots: [[200, -290]], text: 'Find the saberdart at the club' }, { type: 'talk', actor: 'dex', text: 'Bring it to Dex' }], done: [['Dexter Jettster', 'Kamino saberdart. Those funny little cuts on the side give it away.']] },
-    ],
-  },
   kamino: {
     life: [{ kind: 'kaminoan', id: 'taunwe', at: [10, 140], still: true, face: 3, name: 'Taun We', named: true, quest: 'jango', says: ['The Prime Minister expects you.'] }],
     quests: [
@@ -65,7 +49,7 @@ export const EXTRA = {
     ],
   },
   geonosis: {
-    life: [{ kind: 'jedi', id: 'mace', at: [-230, 170], still: true, face: -2, name: 'Mace Windu', named: true, quest: ['arena', 'foundry'], says: ['This party’s over.'] }],
+    life: [{ kind: 'mace', id: 'mace', at: [-230, 170], still: true, face: -2, name: 'Mace Windu', named: true, quest: ['arena', 'foundry'], says: ['This party’s over.'] }],
     quests: [
       { id: 'arena', name: 'The Petranaki arena', giver: 'mace', intro: [['Mace Windu', 'They’ve let the beasts out. Take the acklay.']], steps: [{ type: 'reach', at: [-260, 200], r: 30, text: 'Into the arena' }, { type: 'shoot', tag: 'acklay', n: 1, text: 'Bring down the acklay', spawn: { kind: 'acklay', at: [-260, 210], hp: 14, leash: 40, tag: 'acklay', hostile: { range: 40, chase: 3, melee: true, reach: 3.4, every: 1.4, damage: 25, delay: 1 } } }], done: [['Mace Windu', 'Not bad. Now the droids.']] },
       { id: 'foundry', name: 'The droid foundry', giver: 'mace', steps: [{ type: 'collect', item: 'part', n: 3, spots: [[-320, -220], [-340, -240], [-326, -246]], text: 'Find Threepio’s pieces in the foundry' }], done: [['C-3PO', 'Oh, thank the Maker. Though I do believe my head is on backwards.']] },

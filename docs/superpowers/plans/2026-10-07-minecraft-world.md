@@ -39,6 +39,18 @@
 
 Branch: `claude/minecraft-phase-1`.
 
+**As built (Phase 1 is merged; where the code differs from the tasks below, the code is right and later tasks build on it):**
+- *Vertex (1.6, 1.11):* six 16-bit numbers, 12 bytes, not the 8 the task names (its own list was 9 bytes and had no texel corner or sub-block height): `x, y, z` in sixteenths of a block within the chunk (y is the height in the column, 0–4096), `layer`, `face | ao << 3 | tint << 5 | light << 8`, `u | v << 5`. Face 6 is a plant's cross. Tints are six: none, grass, foliage, water, birch, spruce (birch and spruce leaves have the game's fixed colours).
+- *Meshes (1.11):* one mesh per pass per chunk column, its sixteen sections laid end to end, not a mesh per section (that was 630 draws on hills at distance 10, over the task's own 600; the column is 400–450). `scene/chunks.js` keeps sections apart and rebuilds a column's mesh on `flush()`; it detaches the shared index before disposing a geometry (three deletes the index buffer with it).
+- *Worker (1.9):* `{ type: 'chunk', key, seed, cx, cz, priority }` generates a chunk and meshes all sixteen sections against its eight neighbours, which the worker generates itself (cached), rather than `generate` then `mesh` with page-sent borders (the page has no neighbours when a chunk is first made, so every edge would be drawn as a wall). `mesh` with borders stays for edits. `makeClient` is in `rules/jobs.js`.
+- *Trees (1.5):* no `Feature` lists: every chunk grows the trees of the nine chunks round it from their deterministic lists and keeps the cells inside itself; `generate` returns `{ features: [] }`.
+- *Physics (1.7):* the walking test measures 20 ticks after a 20-tick run-up (from rest the game's 0.546 friction needs a few ticks, so 20 from rest is 4.06). A ladder clamps falls to 0.15 a tick and climbs at the game's 0.1176 (2.35 m/s). `world.boxes(x, y, z)` gives a cell's boxes for the shapes Phase 4 adds.
+- *Pack (1.3):* Pixel Perfection Legacy 25.4-75.1 (Nova_Wostra's continuation, Modrinth, modern 1.21 names), with the 1.12 aliases kept for visitors' packs. The atlas also writes `public/mc/sprites/` (sun, moon phases, clouds, hotbar, its selection, crosshair, hearts, food, air, and the grass and foliage colormaps) and `--vanilla <jar>` refuses any tile 90% the same as the game's. Chest and bed tiles are cut from their entity sheets.
+- *Tints (1.11):* grass and foliage come from the pack's colormaps at the biome's climate (`pack/colormap.js`), as the game reads them; Pixel Perfection's plains grass is 0x6dc475.
+- *Shaders:* three r186's GLSL3 has no `gl_FragColor`: each fragment shader declares `out highp vec4 outColour`.
+- *Island (1.12):* the table is two across and two high (top 2, too high to jump), at x 33–34, z 10–11, east of the N64, played from its south side. `universes.test.js` lists the world pages, so it gains the route.
+- *Save (1.10):* Phase 1 keeps only `{ seed }` under `tp-mc` v1, so the same world comes back; Task 2.5 grows it.
+
 ### Task 1.1: The block registry
 
 **Files:**
@@ -290,6 +302,13 @@ Branch: `claude/minecraft-phase-1`.
 
 Branch `claude/minecraft-phase-2` from `origin/main`.
 
+**As built (Phase 2):**
+- *Break times (2.3)* are whole ticks, as the game counts them: stone with a wooden pickaxe is 23 ticks, 1.15 s (the task's 0.5625 contradicts its own formula, 1.125), obsidian with diamond 188 ticks, 9.4 s. Shears take leaves at once. Five ticks between breaks.
+- *Where the hands live:* `rules/build.js` (breaking, placing, falling blocks, dropped items, Q, using a crafting table), re-exported by `game.js`; `rules/breaking.js` the times. The cursor is recomputed from the eye every tick (`g.cursor`).
+- *State drawn now:* logs lie along their axis and furnaces, chests and jack o'lanterns face where they were set (the mesher reads `state`), not in Phase 4.
+- *Saves (2.5):* chunk jobs carry the player's edits for the chunk and its eight neighbours, so an edited chunk arrives meshed with them; `mesh` jobs with borders re-mesh what an edit touches, first in the queue; an edit on a chunk's edge dirties the neighbour too.
+- *The screens:* `rules/gui.js` is the containers' click logic (tested); `Minecraft.jsx` draws the inventory and the crafting table on the pack's own panels (`gui/container/inventory`, `crafting_table`, added to the sprites). Using a crafting table opens the 3 × 3 now (the plan put 3 × 3 recipes in Phase 4, but a pickaxe needs it, and Phase 2's "done" asks for one). Paper joined the items for the book.
+
 ### Task 2.1: The raycast and the cursor
 
 **Files:** `rules/raycast.js`, `rules/raycast.test.js`; `scene/cursor.js`.
@@ -322,6 +341,13 @@ Branch `claude/minecraft-phase-2` from `origin/main`.
 - Browser check: cut a tree, planks, table, pickaxe; build; reload; it is there. Screenshot. Merge as PR 2.
 
 ## Phase 3: light and the day (PR 3)
+
+**As built (Phase 3):**
+- *Light (3.1)* is computed in the worker over the 3 × 3 chunks it already makes (a 14-block margin is exact for 15 levels; 7 ms a chunk), not by a main-thread `relight(world, x, y, z)`: an edit re-lights and re-meshes its chunk and the eight round it as chunk jobs carrying the edits, each ask numbered so a stale answer can't land as the newer one. Water, ice and leaves take 1 off (modern opacity).
+- *Smooth lighting:* each corner averages the four cells round it, a dark one counting as the face's own, as the game's `getAoBrightness` does.
+- *The lightmap (3.2):* not `max(sky × daylight, block)` but the game's sum (1.12's `updateLightmap`): the sky's light dimmed and blued by the sun's brightness (0.2 at night), the block's warm, added and clamped (`rules/time.js`'s `lightmap`, the shader the same). `daylight`/`skyDarken` (the game's 11 levels) are there for spawning.
+- *Torches* hang from the face they're put against (state = face) and draw as the game's post (2 × 10 sixteenths, leaning off walls); put on tall grass, one stands on the block under it. *Slabs* draw at their height (oak slab 8, bed 9, snow layer 2) with collision boxes.
+- *The bed* is two blocks (foot, and head with state bit 8, facing by state & 3), placed the way the player looks; breaking either half takes both. Sleeping (12541 to 23458) moves the clock to the next morning and the spawn beside the bed; by day, "You can only sleep at night".
 
 ### Task 3.1: Light
 **Files:** `rules/light.js`, `rules/light.test.js`, `worker.js` (lights a chunk after generating, before meshing), `rules/game.js` (relights on `set` and sends the affected sections to re-mesh).

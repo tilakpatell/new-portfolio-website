@@ -436,6 +436,9 @@ export function nearCast(x, z, sky, r = 2.6) {
 // Gandalf: on the bench by day, at his cart while the fireworks are on, and
 // at dawn at the edge of the Shire seeing you off.
 export const GANDALF_LINES = ['A wizard is never late, Frodo Baggins. Nor is he early. He arrives precisely when he means to.', 'All we have to decide is what to do with the time that is given us.', 'You can learn all there is to know about their ways in a month, and after a hundred years they can still surprise you.'];
+// the lines the site has the films' own recordings of (lib/clips); the rest
+// are said in the speaker's made voice, where it's been made (./voicelines.js)
+export const SPOKEN = { 'A wizard is never late, Frodo Baggins. Nor is he early. He arrives precisely when he means to.': 'wizardLate', 'What about second breakfast?': 'secondBreakfast', 'We’ve had one, yes. What about second breakfast?': 'secondBreakfast' };
 
 // ── 1. Shortcut to mushrooms ──
 
@@ -726,6 +729,13 @@ export function stepShow(show, dt) {
 // fire, the letters, out with the tongs.
 export const RING_STEPS = ['envelope', 'fire', 'letters', 'safe'];
 export const nextRingStep = (step) => RING_STEPS[Math.min(RING_STEPS.length - 1, RING_STEPS.indexOf(step) + 1)];
+// what each step says, the button that does it, and (`who`) whose words are in it
+export const INSIDE_TEXT = {
+  envelope: { say: 'Bilbo has gone. On the mantelpiece is an envelope with your name on it.', act: 'Open it' },
+  fire: { say: 'A plain gold ring. Gandalf says, “Throw it in the fire.”', act: 'Throw it in the fire', who: 'gandalf' },
+  letters: { say: 'Letters in a fiery script come up round the band, and Gandalf goes very still.', act: 'Take it out with the tongs' },
+  safe: { say: 'Gandalf: “Keep it secret. Keep it safe.”', act: null, who: 'gandalf' },
+};
 
 // Wearing the Ring: the longer it's on, the nearer the Eye. At the top it
 // comes off by itself.
@@ -839,6 +849,13 @@ export const SIDE = { id: 'spoons', name: 'Bilbo’s spoons', where: 'Lobelia, a
 export const LOBELIA_LINES = {
   before: ['Bilbo Baggins has hidden the good silver about the place, I know he has. Well, I shall find it.', 'Bag End should have come to us, by rights. Otho says so.', 'Don’t you look at me like that, young Frodo. I’m only taking the air.'],
   after: ['Hmph. Spoons! As if I wanted his old spoons.', 'You’re as bad as your cousin Bilbo, Frodo Baggins. Worse!'],
+};
+// The toasts where someone says something aloud (in “quotes”; the rest of a
+// toast is narration, and isn't said): who says it, and the toast.
+export const SAYS = {
+  spoons: { who: 'lobelia', text: '“Bilbo’s hidden the good silver about Hobbiton, I know he has,” says Lobelia, and off she goes. Beat her to the spoons: two to a pocket, up to Bag End’s gate. Five home wins.' },
+  finders: { who: 'lobelia', text: 'Two spoons in Lobelia’s bag, and that’s that. “Finders keepers,” she says. Ask her again, and she’ll ‘find’ them back.' },
+  through: { who: 'gandalf', text: 'Through again! “Well, Frodo Baggins!”' },
 };
 export const SPOONS = { pocket: 2, need: 5, lose: 2, reach: 1.3, take: 0.9, wait: 2.5, speed: 2.7, home: { x: BAG_END.x, z: BAG_END.z + 8.1, r: 2.5 } };
 export const SPOON_SPOTS = [

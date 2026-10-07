@@ -46,7 +46,12 @@ export function localDir(name, base = LOCAL) {
 if (process.env.GITHUB_REPOSITORY && !process.env.GH_REPO) process.env.GH_REPO = process.env.GITHUB_REPOSITORY;
 
 export const sh = (cmd, args, opts = {}) => String(execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], maxBuffer: 64 * 1024 * 1024, ...opts }) ?? '').trim();
-export const gh = (...args) => sh('gh', args);
+// GH_BIN: another gh, such as the contract tests' fake (scripts/ai-e2e/fakes/gh.mjs, run with node)
+export const ghCommand = (args) => {
+  const bin = process.env.GH_BIN ?? 'gh';
+  return /\.m?js$/i.test(bin) ? [process.execPath, [bin, ...args]] : [bin, args];
+};
+export const gh = (...args) => sh(...ghCommand(args));
 export const git = (root, ...args) => sh('git', ['-C', root, ...args]);
 
 // gh, retried: GitHub's API fails now and then (a 502, a reset), and one
@@ -77,7 +82,9 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const slug = (s) =>
   String(s ?? '')
     .toLowerCase()
-    .replace(/^\s*(gen3d|3d|model|voices?|audio|lines)\s*[:-]\s*/, '')
+    // a prefix written as one ("gen3d: …", "3D - …"), not a name's own first word ("model-627", which
+    // is what ask.mjs writes for "Model 627" and must read back the same)
+    .replace(/^\s*(gen3d|3d|model|voices?|audio|lines)(\s*:\s*|\s+-\s+)/, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
@@ -360,7 +367,7 @@ export function pullRequest(root, { branch, title, body }) {
     quietly(() => gh('pr', 'edit', open[0].url, '--title', title, '--body', body), 'pr edit');
     return open[0].url;
   }
-  return sh('gh', ['pr', 'create', '--base', 'main', '--head', branch, '--title', title, '--body', body], { cwd: root });
+  return sh(...ghCommand(['pr', 'create', '--base', 'main', '--head', branch, '--title', title, '--body', body]), { cwd: root });
 }
 
 // Pushes a branch, retried (the desktop's network drops; HTTP/1.1 because

@@ -1,4 +1,5 @@
-// The core worlds, from the ground: Naboo, Coruscant, Kamino and Geonosis.
+// The core worlds, from the ground: Naboo, Kamino and Geonosis (Coruscant
+// is coruscant.js's).
 // (sites/index.js has what a site is.)
 
 // level ground stepping evenly from a to b (a road up a slope): flats
@@ -7,7 +8,7 @@ const ramp = (a, b, h0, h1, n = 12, r = 8) =>
 
 // a skybridge from a to b, its ends just inside the platforms there (ra,
 // rb: how far from each middle its edge is, along the way)
-const span = (a, b, ra, rb, w = 6, style = 'coruscant', y = 0) => {
+export const span = (a, b, ra, rb, w = 6, style = 'coruscant', y = 0) => {
   const dx = b[0] - a[0];
   const dz = b[1] - a[1];
   const L = Math.hypot(dx, dz);
@@ -17,7 +18,7 @@ const span = (a, b, ra, rb, w = 6, style = 'coruscant', y = 0) => {
   return { kind: 'skybridge', at: [a[0] + (dx / L) * mid, a[1] + (dz / L) * mid], yaw: Math.atan2(dx, dz), abs: true, y, opts: { len: e - s, w, style } };
 };
 // a tower of the city, standing on its floor far below
-const tower = (at, style, h, w = 26) => ({ kind: 'skyscraper', at, abs: true, y: -330, yaw: (at[0] * 0.013 + at[1] * 0.007) % 3, solid: false, opts: { style, h, w, seed: Math.abs(at[0] + at[1]) } });
+export const tower = (at, style, h, w = 26) => ({ kind: 'skyscraper', at, abs: true, y: -330, yaw: (at[0] * 0.013 + at[1] * 0.007) % 3, solid: false, opts: { style, h, w, seed: Math.abs(at[0] + at[1]) } });
 
 export const SITES = {
   naboo: {
@@ -207,8 +208,8 @@ export const SITES = {
         },
         things: [
           { kind: 'stonehead', at: [8, -6], yaw: -0.4, sink: 2.2, roll: 0.12 },
-          { kind: 'stonehead', at: [-14, 10], yaw: 0.7, sink: 3, opts: { s: 1.4 }, roll: -0.18 },
-          { kind: 'stonehead', at: [20, 18], yaw: -1.6, sink: 4, opts: { s: 0.8 }, pitch: 0.4 },
+          { kind: 'stonehead', at: [-14, 10], yaw: 0.7, sink: 3, scale: 1.4, roll: -0.18 },
+          { kind: 'stonehead', at: [20, 18], yaw: -1.6, sink: 4, scale: 0.8, pitch: 0.4 },
           { kind: 'ruins', at: [0, 0], opts: { seed: 4 } },
           { kind: 'grove', at: [-36, -30], opts: { n: 14, r: 26, seed: 11 } },
           { kind: 'grove', at: [36, -26], opts: { n: 12, r: 22, seed: 12 } },
@@ -323,9 +324,9 @@ export const SITES = {
       { kind: 'rebel', n: 1, at: [-292, 200], roam: 8, speed: 1.1, name: 'Captain Panaka', says: ['Your Highness, we have a problem: the Federation has landed its army.', 'We’ll take the hangar first. Then the throne room.', 'Our people are dying. We must act.'] },
       { kind: 'pilot', n: 3, at: [-300, 188], spread: 14, roam: 10, speed: 1.2, name: 'Bravo Squadron pilot', says: ['We’re going after the droid control ship. Who’s with us?', 'Bravo Flight, fly with me!', 'There was a kid in one of the fighters. He blew the control ship from the inside!'] },
       { kind: 'droid', n: 1, at: [-296, 176], roam: 6, speed: 0.7, name: 'R2-D2', says: ['(A proud whistle. It was the only droid to get the Queen’s ship through the blockade.)', '(A cheeky beep, and a look at the N-1’s astromech socket.)'] },
-      { kind: 'jedi', n: 1, at: [60, 170], roam: 10, speed: 0.9, name: 'Qui-Gon Jinn', says: ['There’s always a bigger fish.', 'The ability to speak does not make you intelligent.', 'Feel, don’t think. Use your instincts.'] },
+      { kind: 'quigon', n: 1, at: [60, 170], roam: 10, speed: 0.9, name: 'Qui-Gon Jinn', says: ['There’s always a bigger fish.', 'The ability to speak does not make you intelligent.', 'Feel, don’t think. Use your instincts.'] },
       { kind: 'villager', n: 1, at: [366, 336], roam: 5, speed: 0.8, name: 'Padmé', says: ['When I was in the Legislative Youth Program, we came here for school retreat. We’d swim to that island every day.', 'I love the water. We’d lie on the sand and let the sun dry us.', 'It’s so peaceful here.'] },
-      { kind: 'jedi', n: 1, at: [376, 324], roam: 5, speed: 0.8, name: 'Anakin', says: ['I don’t like sand. It’s coarse and rough and irritating, and it gets everywhere. Not like here.', 'Here, everything is soft and smooth.'] },
+      { kind: 'anakin', n: 1, at: [376, 324], still: true, name: 'Anakin', says: ['I don’t like sand. It’s coarse and rough and irritating, and it gets everywhere. Not like here.', 'Here, everything is soft and smooth.'] },
     ],
     rides: [
       { kind: 'kaadu', at: [214, -196], yaw: 2.2 },
@@ -338,249 +339,6 @@ export const SITES = {
     ],
   },
 
-  coruscant: {
-    place: 'The Federal District',
-    line: 'A city to the edge of the world, and down further than anyone’s been.',
-    sky: {
-      zenith: '#26335e',
-      horizon: '#f2a46a',
-      haze: 0.95,
-      hazeColor: '#f7b47c',
-      below: '#6a4a52',
-      suns: [{ az: -1.9, el: 0.07, color: '#ffb072', size: 0.03, glow: 1.7 }],
-      clouds: { cover: 0.22, color: '#f6c49c', shade: '#6e5674', scale: 0.45, speed: 0.004, sharp: 1.5 },
-      stars: 0.25,
-      bodies: [
-        { az: 0.9, el: 0.42, size: 0.016, color: '#d8d0c8', color2: '#b8aca0' },
-        { az: 1.2, el: 0.3, size: 0.008, color: '#e0d8d0' },
-      ],
-    },
-    fog: { color: '#c88c72', density: 0.0016 },
-    light: { sun: 2.4, sky: '#8a92c4', ground: '#6a4a48', ambient: 0.9 },
-    ground: {
-      seed: 5,
-      layers: [{ type: 'level', height: -330 }],
-      palette: { low: '#4a3a3e', high: '#4a3a3e', rock: '#3a2e30', hLow: -340, hHigh: -320, grain: 0.2 },
-    },
-    fall: -40,
-    dust: '#b8a8a0',
-    edge: 'More city. All the way round the planet, and all the way down. Better turn back before you get lost on level 1313.',
-    lines: {
-      out: {
-        xwing: [['luke', 'Coruscant. The whole planet is one city, Artoo. I didn’t think it’d be this… big.'], ['r2', '(A nervous warble about the long drop.)']],
-        falcon: [['han', 'Imperial Center. Or whatever they call it now. Watch your pockets, Chewie.'], ['chewie', '(A low, wary growl.)']],
-        cruiser: [['rick', 'An ecumenopolis, Morty. One city, one planet, a trillion people and not one decent parking spot.'], ['morty', 'Rick, I can’t see the ground. Where’s the ground?']],
-        rv: [['jesse', 'Yo, Mr. White, it’s like, all city. Where do people even cook?'], ['walt', 'Down there, Jesse. Where nobody looks.']],
-      },
-    },
-    land: { at: [0, 0], yaw: 0.6 },
-    places: [
-      {
-        id: 'temple',
-        name: 'The Jedi Temple',
-        at: [0, 400],
-        r: 125,
-        about: 'Home of the Jedi Order for a thousand generations: a ziggurat of pale stone under five spires, the High Council meeting in the tallest. Until the night of Order 66.',
-        lines: {
-          xwing: [['luke', 'The Jedi Temple. Ben trained here, Artoo. And my father.'], ['r2', '(A long, sad, low whistle.)']],
-          falcon: [['han', 'So this is where they kept all the Jedi. Huh. Bigger than I figured, for a bunch of hokey religion.'], ['chewie', '(A respectful rumble.)']],
-          cruiser: [['morty', 'Rick, it’s the Jedi Temple! Can we go in?'], ['rick', 'It’s a monastery for space wizards, Morty. Ten thousand years and they never put in an elevator.']],
-          rv: [['jesse', 'Yo, that’s where the Jedi live. Like, the actual Jedi.'], ['walt', 'Lived, Jesse. Something happened here.']],
-        },
-        things: [
-          { kind: 'jeditemple', at: [0, 32], yaw: Math.PI, abs: true, y: 0, solid: { box: [100, 100] } },
-          { kind: 'plinth', at: [0, 32], abs: true, y: 0, solid: false, opts: { w: 196, d: 196 } },
-        ],
-      },
-      {
-        id: 'processional',
-        name: 'The Processional Way',
-        at: [0, 150],
-        r: 36,
-        about: 'The avenue of statues to the Temple’s doors, Jedi of old standing over it. On the night of Order 66, Anakin Skywalker marched the 501st up it.',
-        lines: {
-          xwing: [['luke', 'Jedi, all the way up. I wonder if Ben’s master is one of them.'], ['r2', '(A quiet beep. Artoo saw that night, from Padmé’s window.)']],
-          falcon: [['han', 'Nice statues. Bet nobody’s dusted ’em in twenty years.']],
-          cruiser: [['rick', 'Statues of dead wizards lining the road to a building full of dead wizards, Morty. Subtle.'], ['morty', 'You’re really a buzzkill today, Rick.']],
-        },
-        things: [],
-      },
-      {
-        id: 'senate',
-        name: 'The Galactic Senate',
-        at: [400, 40],
-        r: 100,
-        about: 'The Senate Rotunda, a dome as big as a city, where a thousand worlds argued, and where liberty died, with thunderous applause.',
-        lines: {
-          xwing: [['luke', 'The Senate. The Emperor dissolved it. Leia sat in it, though, when she was a senator.'], ['r2', '(An indignant squawk at the Emperor’s name.)']],
-          falcon: [['han', 'Politicians. Give me a Hutt any day: at least you know where you stand.']],
-          cruiser: [['morty', 'That’s where the Emperor took over, Rick. They all clapped!'], ['rick', 'A thousand senators cheered for a dictator, Morty. That’s the most realistic thing in the franchise.']],
-          rv: [['walt', 'A man can say anything in a room like that, if they’re afraid enough.'], ['jesse', 'Yo, that’s dark, Mr. White.']],
-        },
-        things: [
-          { kind: 'deck', at: [-60, 0], abs: true, y: 0, opts: { hw: 50, hd: 40 } },
-          { kind: 'senate', at: [70, 0], abs: true, y: 0, solid: { r: 56 } },
-          { kind: 'plinth', at: [70, 0], abs: true, y: 0, solid: false, opts: { w: 112, round: true } },
-          { kind: 'statue', at: [-96, 34], abs: true, y: 0, yaw: Math.PI },
-          { kind: 'statue', at: [-66, 34], abs: true, y: 0, yaw: Math.PI },
-          { kind: 'statue', at: [-36, 34], abs: true, y: 0, yaw: Math.PI },
-          { kind: 'statue', at: [-96, -34], abs: true, y: 0 },
-          { kind: 'statue', at: [-66, -34], abs: true, y: 0 },
-          { kind: 'statue', at: [-36, -34], abs: true, y: 0 },
-        ],
-      },
-      {
-        id: 'republica',
-        name: '500 Republica',
-        at: [-308, 65],
-        r: 26,
-        about: 'The tallest of the Senate’s apartment towers: Senator Amidala lived at the top. Assassins sent kouhuns to her bed here, and Anakin went out the window after the droid.',
-        lines: {
-          xwing: [['luke', 'This was my mother’s home? Artoo, you’ve been here before, haven’t you?'], ['r2', '(A soft, sad whistle, and a bleep of yes.)']],
-          falcon: [['han', 'Senator’s penthouse. Swanky. I’d steal the furniture, but it’d never fit in the Falcon.']],
-          cruiser: [['morty', 'Rick, Anakin jumped out of this window. Onto a flying droid.'], ['rick', 'And then he married her, Morty. Real “guy who jumps out of windows” energy.']],
-        },
-        things: [{ kind: 'republica', at: [-22, 4.6], yaw: 1.78, abs: true, y: 0 }],
-      },
-      {
-        id: 'dex',
-        name: 'Dex’s Diner',
-        at: [-150, -270],
-        r: 26,
-        about: 'Dexter Jettster’s diner in CoCo Town, where Obi-Wan came with a strange dart: a Kamino saberdart, said Dex, from a planet the Jedi Archives didn’t have.',
-        lines: {
-          xwing: [['luke', 'A diner! Artoo, I could really go for something that isn’t a ration bar.'], ['r2', '(A grumpy beep: the sign says no droids.)']],
-          falcon: [['han', 'Now this is my kind of place. Grease, caf and nobody asking questions.'], ['chewie', '(A hungry rumble.)']],
-          cruiser: [['rick', 'Finally, Morty! A 1950s diner run by a four-armed alien. The one constant in the multiverse.'], ['morty', 'Do you think they do milkshakes?']],
-          rv: [['jesse', 'Yo, a diner! Do you think they have, like, space pancakes?'], ['walt', 'Order something cheap. We’re not here to eat.']],
-        },
-        things: [
-          { kind: 'cplatform', at: [0, 0], abs: true, y: 0, opts: { r: 24, light: '#ffb070' } },
-          { kind: 'dexdiner', at: [0, 4], yaw: 0.6, abs: true, y: 0.3 },
-          { kind: 'airspeeder', at: [-12, -8], yaw: 2.3, abs: true, y: 0.3 },
-          { kind: 'lamp', at: [12, -10], abs: true, y: 0.3, opts: { h: 4, light: '#ffb070' } },
-        ],
-      },
-      {
-        id: 'club',
-        name: 'The Outlander Club',
-        at: [200, -290],
-        r: 26,
-        about: 'A gambling club in the Uscru entertainment district, all neon and noise: where Obi-Wan cornered the changeling Zam Wesell, and turned down some death sticks.',
-        lines: {
-          xwing: [['luke', 'Ben said never to go into places like this. I think. Stay close, Artoo.'], ['r2', '(A nervous little burble.)']],
-          falcon: [['han', 'Uscru. I know a guy in there owes me money. Let’s not go in.'], ['chewie', '(A knowing growl.)']],
-          cruiser: [['morty', 'Rick, a guy in there tried to sell me death sticks.'], ['rick', 'You don’t want to buy death sticks, Morty. You want to go home and rethink your life.']],
-          rv: [['jesse', 'Death sticks, yo? Are they… is it like, a pyramid thing?'], ['walt', 'Jesse. Go home and rethink your life.']],
-        },
-        things: [
-          { kind: 'cplatform', at: [0, 0], abs: true, y: 0, opts: { r: 24, light: '#ff6ad0' } },
-          { kind: 'club', at: [0, 8], yaw: Math.PI + 0.6, abs: true, y: 0.3 },
-          { kind: 'airspeeder', at: [10, -10], yaw: -0.5, abs: true, y: 0.3, opts: { color: '#c8c8cc' } },
-        ],
-      },
-      {
-        id: 'works',
-        name: 'The Works',
-        at: [-430, -250],
-        r: 38,
-        about: 'A dead industrial district of rusting cranes and empty factories. Darth Sidious met his apprentices here, out of sight of the Jedi just across the skyline.',
-        lines: {
-          xwing: [['luke', 'I don’t like this place, Artoo. Something… cold happened here.'], ['r2', '(A frightened, falling whistle.)']],
-          falcon: [['han', 'Abandoned factories. Perfect place for a deal. Or an ambush.'], ['chewie', '(A tense growl.)']],
-          cruiser: [['rick', 'Every Sith Lord needs a creepy warehouse, Morty. It’s in the bylaws.'], ['morty', 'Can we not be in the creepy warehouse, Rick?']],
-        },
-        things: [
-          { kind: 'cplatform', at: [0, 0], abs: true, y: 0, opts: { r: 36, light: '#ff8a4a', color: '#7a6a5c' } },
-          { kind: 'works', at: [0, 0], yaw: 0.4, abs: true, y: 0.3 },
-        ],
-      },
-    ],
-    things: [
-      // where you land, and the bridges out
-      { kind: 'cplatform', at: [0, 0], abs: true, y: 0, opts: { r: 30 } },
-      { kind: 'deck', at: [0, 290], abs: true, y: 0, opts: { hw: 60, hd: 40 } },
-      span([0, 0], [0, 290], 30, 40, 16),
-      span([0, 0], [340, 40], 30, 50.4, 7),
-      span([0, 0], [-308.5, 65.4], 30, 15.6, 6),
-      span([0, 0], [-150, -270], 30, 24, 6),
-      span([0, 0], [200, -290], 30, 24, 6),
-      span([-150, -270], [-430, -250], 24, 36, 6),
-      // the statues along the Processional Way
-      ...[60, 100, 140, 180, 220].flatMap((z) => [
-        { kind: 'statue', at: [-14, z], yaw: Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200 } },
-        { kind: 'statue', at: [14, z], yaw: -Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200 } },
-      ]),
-      // Anakin's airspeeder, by your ship, and the platform's clutter: cargo
-      // waiting for a lift, a lamp over it
-      { kind: 'airspeeder', at: [16, -14], yaw: 0.9, abs: true, y: 0.3 },
-      { kind: 'cratecube', at: [-18, -10], yaw: 0.4, abs: true, y: 0 },
-      { kind: 'cratecube', at: [-16.6, -9.4], yaw: 1.2, abs: true, y: 0 },
-      { kind: 'empirecrate', at: [-19, -13], yaw: 2.1, abs: true, y: 0 },
-      { kind: 'cooler', at: [-15, -12], yaw: 0.8, abs: true, y: 0 },
-      { kind: 'lamp', at: [-22, -6], abs: true, y: 0, opts: { h: 5, light: '#ffd9a0' } },
-      { kind: 'lamp', at: [22, 10], abs: true, y: 0, opts: { h: 5, light: '#ffd9a0' } },
-      // the skylanes
-      { kind: 'airlane', at: [0, 60], yaw: Math.PI / 2, abs: true, y: 40, solid: false, opts: { len: 1700, n: 30, seed: 1 } },
-      { kind: 'airlane', at: [110, 0], yaw: 0, abs: true, y: -45, solid: false, opts: { len: 1700, n: 30, seed: 2 } },
-      { kind: 'airlane', at: [-60, -100], yaw: 0.8, abs: true, y: 85, solid: false, opts: { len: 1700, n: 26, seed: 3, speed: 40 } },
-      { kind: 'airlane', at: [0, -170], yaw: Math.PI / 2, abs: true, y: -90, solid: false, opts: { len: 1700, n: 30, seed: 4 } },
-      { kind: 'airlane', at: [-200, 150], yaw: -0.6, abs: true, y: 22, solid: false, opts: { len: 1500, n: 24, seed: 5, speed: 28 } },
-      { kind: 'airlane', at: [300, 200], yaw: 0.3, abs: true, y: 140, solid: false, opts: { len: 1700, n: 24, seed: 6, speed: 46 } },
-      // the towers nearest, rising past you: Galactic City's own first
-      { kind: 'corutower', at: [-120, 170], abs: true, y: -140, yaw: 0.4, scale: 1.7, solid: false },
-      { kind: 'corutower', at: [130, 170], abs: true, y: -170, yaw: 2.3, scale: 1.9, solid: false },
-      { kind: 'corutower', at: [-300, -120], abs: true, y: -120, yaw: 1.1, scale: 1.6, solid: false },
-      { kind: 'corutower', at: [330, -160], abs: true, y: -150, yaw: 3.0, scale: 1.5, solid: false },
-      { kind: 'corutower', at: [-250, 250], abs: true, y: -200, yaw: 0.9, scale: 2.1, solid: false },
-      { kind: 'corutower', at: [560, 250], abs: true, y: -180, yaw: 2.7, scale: 2.0, solid: false },
-      tower([-210, -70], 1, 380, 30),
-      tower([190, -110], 2, 440),
-      tower([60, -210], 1, 300, 28),
-      tower([-60, -400], 3, 480),
-      tower([260, 220], 0, 500),
-      tower([420, -320], 1, 460, 34),
-      tower([-470, 60], 3, 440),
-      tower([-560, -380], 0, 520),
-      tower([150, 520], 2, 560),
-      tower([-200, 470], 1, 480, 32),
-      tower([540, -120], 2, 470),
-      tower([20, -560], 0, 500),
-    ],
-    scatter: [
-      { kind: 'skyscraper', n: 70, within: [640, 2600], scale: [1, 1.6], stretch: [1.3, 2.5], solid: false, opts: { style: 0, seed: 3 } },
-      { kind: 'skyscraper', n: 60, within: [640, 2600], scale: [1, 1.6], stretch: [1.3, 2.4], solid: false, opts: { style: 1, seed: 4 } },
-      { kind: 'skyscraper', n: 60, within: [640, 2600], scale: [1, 1.6], stretch: [1.3, 2.6], solid: false, opts: { style: 2, seed: 5 } },
-      { kind: 'skyscraper', n: 60, within: [640, 2600], scale: [1, 1.6], stretch: [1.3, 2.5], solid: false, opts: { style: 3, seed: 6 } },
-      { kind: 'skyscraper', n: 40, within: [60, 620], scale: [0.7, 1.1], stretch: [0.6, 1.25], solid: false, opts: { style: 0, seed: 7 } },
-      { kind: 'skyscraper', n: 40, within: [60, 620], scale: [0.7, 1.1], stretch: [0.6, 1.25], solid: false, opts: { style: 1, seed: 8 } },
-      { kind: 'skyscraper', n: 40, within: [60, 620], scale: [0.7, 1.1], stretch: [0.6, 1.25], solid: false, opts: { style: 3, seed: 9 } },
-    ],
-    life: [
-      { kind: 'jedi', n: 5, at: [0, 290], spread: 30, roam: 14, speed: 1.0, name: 'Jedi Knight', says: ['May the Force be with you.', 'The Council is in session. Even the Masters are worried.', 'Clouded, the future is. Even here.', 'The Archives are open to all Jedi. If an item does not appear in our records, it does not exist.'] },
-      { kind: 'jedi', n: 1, at: [8, 300], roam: 6, speed: 0.6, scale: 0.38, r: 0.3, name: 'Yoda', says: ['Begun, the Clone War has.', 'Clouded, this boy’s future is.', 'Do, or do not. There is no try.', 'Lost a planet, Master Obi-Wan has. How embarrassing.'] },
-      { kind: 'clone', n: 4, path: [[-5, 40], [-5, 245], [5, 245], [5, 40]], speed: 1.5, name: 'Clone trooper', says: ['Sir.', 'Yes, sir.', 'Move along. The Temple is closed.', 'Execute Order Sixty-Six.'] },
-      { kind: 'senateguard', n: 4, at: [320, 40], spread: 24, roam: 5, speed: 0.6, r: 0.5, name: 'Senate Guard', says: ['(The guard says nothing. The helmet tilts, very slightly, toward the way out.)', 'The Senate is in session. State your business.'] },
-      { kind: 'villager', n: 1, at: [330, 30], roam: 8, speed: 0.8, name: 'Padmé Amidala', says: ['So this is how liberty dies. With thunderous applause.', 'I truly believe that the Republic is worth fighting for.', 'Aggressive negotiations? What’s that?'] },
-      { kind: 'villager', n: 5, path: [[34, 5], [288, 40]], speed: 1.2, name: 'Senate aide', says: ['The Chancellor has emergency powers now. Just until the crisis is over, they say.', 'The Military Creation Act vote is today. Everyone’s nervous.', 'I’m late, I’m late: the Senator from Alderaan is waiting.'] },
-      { kind: 'villager', n: 3, path: [[-20, -22], [-138, -250]], speed: 1.1, name: 'Coruscanti', says: ['Don’t look down. Seriously, don’t.', 'Dex does the best nuna legs this side of the Federal District.', 'Mind the skylanes. Some of those drivers are maniacs.'] },
-      { kind: 'villager', n: 1, at: [-150, -262], still: true, scale: 1.45, r: 0.8, name: 'Dexter Jettster', says: ['Hey, old buddy! Take a seat, I’ll be right with you.', 'That baby belongs to them cloners. What you got here is a Kamino saberdart.', 'Those Kaminoans keep to themselves. They’re cloners. Damn good ones, too.', 'I’d expect better from you Jedi. You oughta be able to tell the difference between knowledge and wisdom.'] },
-      { kind: 'villager', n: 1, at: [196, -280], roam: 4, speed: 0.8, name: 'Elan Sleazebaggano', says: ['You wanna buy some death sticks?', '(You don’t want to sell me death sticks.) …I don’t want to sell you death sticks.', '(You want to go home and rethink your life.) …I want to go home and rethink my life.'] },
-      { kind: 'c3po', n: 1, at: [-306, 70], still: true, r: 0.4, name: 'C-3PO', says: ['Oh, Master Anakin! I’m so glad you’re back. Mistress Padmé has been terribly worried.', 'I do believe the Senator’s apartment is the finest view on Coruscant. Not that I would know what to do with a view.', 'Don’t go too near the edge! It’s a long way down.'] },
-      { kind: 'droid', n: 2, at: [6, 10], spread: 8, roam: 8, speed: 0.8, name: 'Astromech', says: ['(A busy, beeping hurry: it has somewhere to be.)'] },
-      { kind: 'mousedroid', n: 2, at: [-8, 6], spread: 10, roam: 12, speed: 1.6, r: 0.2, solid: false },
-      { kind: 'clone', n: 2, at: [-12, -4], spread: 4, still: true, face: 0.6, name: 'Coruscant Guard', says: ['Platform’s clear, sir.', 'The Temple is that way. Mind the drop.'] },
-      { kind: 'villager', n: 3, at: [10, 18], spread: 10, roam: 10, speed: 1.0, name: 'Commuter', says: ['Skylane’s backed up to the 500 block again.', 'Don’t look down. I never look down.', 'Dex’s is that way, if you’re hungry.'] },
-    ],
-    flyovers: [
-      { kind: 'shuttle', n: 1, metres: 20, alt: 380, speed: 70, every: 40 },
-      { kind: 'arc170', n: 3, metres: 14.5, alt: 420, speed: 130, every: 60 },
-      { kind: 'delta7', n: 2, metres: 8, alt: 360, speed: 140, every: 70 },
-      { kind: 'nubian', n: 1, metres: 76, alt: 470, speed: 60, every: 90 },
-      { kind: 'transport', n: 1, metres: 40, alt: 300, speed: 50, every: 70 },
-    ],
-    skyships: [{ kind: 'acclamator', metres: 752, at: [-2200, 520, 2600], yaw: 0.5 }],
-  },
   kamino: {
     place: 'Tipoca City',
     line: 'Rain, and the sea, and white domes on stilts in the storm.',
@@ -787,8 +545,8 @@ export const SITES = {
       { kind: 'kaminoan', n: 1, at: [12, 6], roam: 5, speed: 0.7, name: 'Taun We', says: ['Master Jedi. So good to see you. The Prime Minister expects you.', 'I trust you will find everything you need. The clones are most impressive.', 'They are totally obedient, taking any order without question.'] },
       { kind: 'kaminoan', n: 3, at: [0, 112], spread: 10, roam: 7, speed: 0.7, name: 'Kaminoan', says: ['The clones are bred for combat. They show much less independence than the original host.', 'Ten years ago a Jedi Master placed the order. We have been working ever since.', 'Please, this way. The weather is most inclement today.'] },
       { kind: 'kaminoan', n: 1, at: [228, 216], still: true, scale: 1.08, name: 'Lama Su', says: ['I trust you are going to stay for a while?', 'You will be delighted to hear we are on schedule. Two hundred thousand units are ready, with a million more well on the way.', 'Magnificent, aren’t they?'] },
-      { kind: 'jango', n: 1, at: [-164, -44], roam: 6, speed: 0.9, name: 'Jango Fett', says: ['I’m just a simple man, trying to make my way in the universe.', 'Ever make your way as far into the interior as Coruscant?', 'Boba, pack your things. We’re leaving.'] },
-      { kind: 'villager', n: 1, at: [-198, 108], roam: 4, speed: 1.0, scale: 0.68, name: 'Boba Fett', says: ['My dad’s the best bounty hunter in the galaxy.', 'Dad! There’s a Jedi on the landing platform!', 'Get him, Dad! Get him!'] },
+      { kind: 'jango', n: 1, at: [-164, -44], roam: 6, speed: 0.9, name: 'Jango Fett', named: true, says: ['I’m just a simple man, trying to make my way in the universe.', 'Ever make your way as far into the interior as Coruscant?', 'Boba, pack your things. We’re leaving.'] },
+      { kind: 'villager', n: 1, at: [-198, 108], roam: 4, speed: 1.0, scale: 0.68, name: 'Boba Fett', voice: 'youngboba', says: ['My dad’s the best bounty hunter in the galaxy.', 'Dad! There’s a Jedi on the landing platform!', 'Get him, Dad! Get him!'] },
       // (gliding over the storm, and now and then down into the sea and out)
       { kind: 'aiwha', n: 2, path: [[300, -150], [430, -260], [300, -400], [170, -300]], y: 72, speed: 9, solid: false, dive: { high: 32, low: -4, every: 46 } },
       { kind: 'aiwha', n: 2, path: [[-300, -140], [-440, -40], [-380, 180], [-260, 40]], y: 66, speed: 8, solid: false, dive: { high: 26, low: -4, every: 38 } },
@@ -1023,7 +781,7 @@ export const SITES = {
     life: [
       { kind: 'geonosian', n: 8, at: [-250, 190], spread: 30, roam: 16, speed: 1.2, name: 'Geonosian', says: ['(A dry, clicking chatter.)', '(It buzzes its wings and points you back toward the gate.)', '(Clicks, a hiss, and something like a laugh.)'] },
       { kind: 'geonosian', n: 1, at: [-262, 220], still: true, scale: 1.1, name: 'Poggle the Lesser', says: ['(The Archduke clicks a command. Somewhere, the crowd roars.)', '(He gestures at the pillars, and then at you, and then at the pillars again.)'] },
-      { kind: 'acklay', n: 1, at: [-262, 196], roam: 22, speed: 1.6, r: 2, model: false },
+      { kind: 'acklay', n: 1, at: [-262, 196], roam: 22, speed: 1.6, r: 2 },
       { kind: 'jedi', n: 2, at: [-256, 202], spread: 6, roam: 8, speed: 1.0, name: 'Jedi', says: ['This party’s over.', 'Hold on. This whole operation’s about to get a lot more interesting.', 'I’ve a bad feeling about this.'] },
       { kind: 'geonosian', n: 6, path: [[-80, -360], [10, -400], [-30, -490], [-110, -440]], y: 18, speed: 5, name: 'Geonosian drone', says: ['(A buzzing dive past your head.)'] },
       { kind: 'geonosian', n: 4, at: [-320, -210], spread: 24, roam: 14, speed: 1.1, name: 'Geonosian worker', says: ['(It clicks irritably and hauls a droid torso past you.)', '(Click. Click-click. Back to work.)'] },
@@ -1033,11 +791,11 @@ export const SITES = {
       { kind: 'battledroid', n: 4, at: [56, -20], spread: 10, roam: 8, speed: 1.2, name: 'Battle droid', says: ['Roger, roger.', 'The spider droid is… down. Uh-oh.', 'Fall back! Fall back!'] },
       { kind: 'clone', n: 10, at: [256, 176], spread: 36, roam: 14, speed: 1.6, name: 'Clone trooper', says: ['Move up! Move up!', 'Gunship coming in, keep your heads down!', 'Sir, the droids are pulling back to the core ships.', 'Watch the spider droids!'] },
       { kind: 'clone', n: 3, at: [120, 326], spread: 6, roam: 5, speed: 1, name: 'Clone commander', says: ['Master Yoda, all forward positions are advancing.', 'Target the core ships, sir?', 'Concentrate all fire on the nearest starship.'] },
-      { kind: 'jedi', n: 1, at: [116, 334], still: true, scale: 0.38, r: 0.3, name: 'Yoda', says: ['Concentrate all fire on the nearest starship.', 'Around the survivors a perimeter create.', 'Begun, the Clone War has.', 'Victory? Victory, you say? Not victory.'] },
+      { kind: 'yoda', n: 1, at: [116, 334], still: true, r: 0.3, name: 'Yoda', says: ['Concentrate all fire on the nearest starship.', 'Around the survivors a perimeter create.', 'Begun, the Clone War has.', 'Victory? Victory, you say? Not victory.'] },
       { kind: 'battledroid', n: 10, path: [[420, -60], [380, -10], [330, 30], [380, -100], [440, -140]], speed: 1.4, name: 'Battle droid', says: ['Roger, roger.', 'Retreat! Retreat! To the core ships!', 'Uh-oh.'] },
       { kind: 'superdroid', n: 4, at: [430, -110], spread: 20, roam: 12, speed: 1.0, name: 'Super battle droid', says: ['(It raises a wrist blaster and stomps past.)', 'Halt. Identify.'] },
       { kind: 'atte', n: 2, path: [[200, 260], [340, 120], [300, 40], [160, 180]], speed: 2.2, r: 5, model: false, solid: false },
-      { kind: 'jedi', n: 1, at: [306, -296], roam: 6, speed: 0.8, name: 'Count Dooku', says: ['Master Kenobi, you disappoint me. Yoda holds you in such high esteem.', 'I have become more powerful than any Jedi.', 'This is just the beginning.'] },
+      { kind: 'dooku', n: 1, at: [306, -296], roam: 6, speed: 0.8, name: 'Count Dooku', says: ['Master Kenobi, you disappoint me. Yoda holds you in such high esteem.', 'I have become more powerful than any Jedi.', 'This is just the beginning.'] },
     ],
     rides: [
       { kind: 'speederbike', at: [290, -282], yaw: 2.4 },

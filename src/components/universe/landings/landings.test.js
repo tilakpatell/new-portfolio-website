@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { MOONS, UNIVERSES } from '../universes';
 import { STYLES } from './ground';
 import { CLEAR, LANDINGS, SCATTER_MAX, landingOf, scatterSpots, seedOf } from './landings';
+import { biomeAt } from './biomes';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), '../../../../public');
@@ -31,11 +32,17 @@ const FILES = {
   squanch: () => import('./rmmoons.js'),
   birdworld: () => import('./rmmoons.js'),
   gearworld: () => import('./rmmoons.js'),
+  pluto: () => import('./rmmoons.js'),
+  snakeplanet: () => import('./rmmoons.js'),
+  nuptia: () => import('./rmmoons.js'),
 };
+
+// each landing as it is, and as each of its biomes has it (biomes.js), by name
+const PLACES = Object.entries(LANDINGS).flatMap(([id, l]) => [[id, id, l], ...(l.biomes ?? []).map((b) => [id, `${id}/${b.id}`, biomeAt({ ...l, biomes: [b] }, [0, 0, 0])])]);
 
 describe('planet landings', () => {
   it('give every planet you can land on its own place: a name, a ground and a sky', () => {
-    expect(LANDABLE.length).toBe(15);
+    expect(LANDABLE.length).toBe(18);
     const titles = new Set();
     for (const id of LANDABLE) {
       const l = landingOf(id);
@@ -54,7 +61,7 @@ describe('planet landings', () => {
   });
 
   it('only name models that are there to load', () => {
-    for (const [id, l] of Object.entries(LANDINGS)) {
+    for (const [, id, l] of PLACES) {
       for (const [kind, m] of Object.entries(l.models ?? {})) {
         expect(existsSync(join(PUBLIC, m.url)), `${id}'s ${kind}: ${m.url}`).toBe(true);
         expect(Boolean(m.tall || m.long || m.wide), `${id}'s ${kind} has a size`).toBe(true);
@@ -63,10 +70,10 @@ describe('planet landings', () => {
   });
 
   it("build every thing and scatter from a model or the planet's own file", async () => {
-    for (const [id, l] of Object.entries(LANDINGS)) {
+    for (const [planet, id, l] of PLACES) {
       if (!l.things && !l.scatter) continue;
-      expect(FILES[id], `${id} has a file`).toBeTruthy();
-      const P = await FILES[id]();
+      expect(FILES[planet], `${id} has a file`).toBeTruthy();
+      const P = await FILES[planet]();
       const models = l.models ?? {};
       // (a figure is built by furnish itself: landings/people.js)
       for (const t of l.things ?? []) expect(Boolean(models[t.kind] || P.PROPS?.[t.kind] || (t.kind === 'figure' && (t.opts?.url || t.opts?.meshy))), `${id}: ${t.kind}`).toBe(true);
@@ -76,7 +83,7 @@ describe('planet landings', () => {
   });
 
   it('stand things clear of the ship and of each other', () => {
-    for (const [id, l] of Object.entries(LANDINGS)) {
+    for (const [, id, l] of PLACES) {
       const things = (l.things ?? []).filter((t) => !t.strip && !t.around);
       for (const t of things) {
         expect(t.at, `${id}: ${t.kind}`).toHaveLength(2);
@@ -92,14 +99,14 @@ describe('planet landings', () => {
   });
 
   it('scatter within its ring, clear of the things and (if solid) the ship, within budget', () => {
-    for (const [id, l] of Object.entries(LANDINGS)) {
+    for (const [planet, id, l] of PLACES) {
       let total = 0;
       for (const e of l.scatter ?? []) {
         expect(e.n, `${id}: ${e.kind}`).toBeLessThanOrEqual(SCATTER_MAX);
         expect(e.from).toBeLessThan(e.to);
         total += e.n;
         const reach = 0.6;
-        const spots = scatterSpots(e, l.things ?? [], seeded(seedOf(id)), { reach });
+        const spots = scatterSpots(e, l.things ?? [], seeded(seedOf(planet)), { reach });
         expect(spots.length, `${id}: ${e.kind} found room`).toBeGreaterThan(e.n * 0.8);
         for (const p of spots) {
           const d = Math.hypot(p.x, p.z);
@@ -143,8 +150,8 @@ describe('the sky on foot', () => {
       return [c.r, c.g, c.b];
     };
     let checked = 0;
-    for (const u of UNIVERSES) {
-      const landing = landingOf(u.id);
+    // (each biome's own sky too, under its planet's air)
+    for (const [u, landing] of UNIVERSES.flatMap((u) => [[u, landingOf(u.id)], ...(landingOf(u.id)?.biomes ?? []).filter((b) => b.sky).map((b) => [u, b])])) {
       if (!u.air || !landing?.sky) continue;
       checked++;
       const noon = skyAt(landing.sky, u.air, 1);

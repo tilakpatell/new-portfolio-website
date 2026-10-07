@@ -109,7 +109,7 @@ export const CONVOS = {
         ],
       },
       lost: { who: 'councilb', say: '“Lost it. In a disintegration ray, no doubt. Contempt of Council.”', next: 'face' },
-      dog: { who: 'councila', say: 'The three of them lean together and mutter behind their hands. Somewhere a gavel is found.', next: 'dismissed' },
+      dog: { who: 'narrator', say: 'The three of them lean together and mutter behind their hands. Somewhere a gavel is found.', next: 'dismissed' },
       dismissed: { who: 'councilb', say: '“Dismissed. Get out of our chamber, C-137.”' },
     },
   },
@@ -119,7 +119,7 @@ export const CONVOS = {
     nodes: {
       booth: { who: 'evilmorty', say: '“Vote Morty. A Citadel for all of us.” He holds out a ballot, and doesn’t blink.', next: 'cast' },
       cast: {
-        who: 'pa',
+        who: 'narrator',
         say: 'The ballot has three boxes.',
         choices: [
           { text: 'Candidate Morty', to: 'morty' },
@@ -136,7 +136,7 @@ export const CONVOS = {
   },
 };
 
-// Who says what in a conversation
+// Who says what in a conversation (the narrator, nobody: nothing said aloud)
 export const SPEAKERS = {
   councila: 'Council Rick',
   councilb: 'Zeta Alpha Rick',
@@ -144,6 +144,7 @@ export const SPEAKERS = {
   evilmorty: 'Candidate Morty',
   pa: 'The Citadel’s PA',
   rick: 'Rick C-137',
+  narrator: '',
 };
 
 // ── the Cop Ricks ──

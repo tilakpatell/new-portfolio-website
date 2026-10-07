@@ -14,8 +14,9 @@ export default defineConfig({
   optimizeDeps: { include: ['react-icons/lib'] },
   base: '/',
   // the skills and the other branches' worktrees under .claude, and the
-  // scratch checkouts under lab/, bring their own tests
-  test: { exclude: [...configDefaults.exclude, '.claude/**', '.agents/**', 'lab/**', 'scripts/health/fixtures/**'] },
+  // scratch checkouts under lab/, bring their own tests; the AI tiers are
+  // `npm run test:ai` (vitest.ai.config.js), slower than this run promises
+  test: { exclude: [...configDefaults.exclude, '.claude/**', '.agents/**', 'lab/**', 'scripts/health/fixtures/**', 'scripts/ai-e2e/**', '**/*.fuzz.test.js', '**/*.scenario.test.js'] },
   build: {
     rolldownOptions: {
       output: {

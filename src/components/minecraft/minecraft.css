@@ -1,0 +1,425 @@
+/* The Minecraft tribute: the stage, the HUD over it, the title, the game
+   menu and the touch pad. The game's own look: its pixel font (Press Start 2P
+   stands in), grey stone buttons with a bevel, white text with a dark shadow
+   one pixel down and right, and the pack's sprites drawn at a whole GUI scale,
+   pixelated. */
+
+.mc {
+  --gui: 2;
+  --mc-font: 'Press Start 2P', ui-monospace, monospace;
+  position: relative;
+  color: #fff;
+  font-family: var(--mc-font);
+  user-select: none;
+  -webkit-user-select: none;
+}
+@media (min-width: 1000px) and (min-height: 700px) {
+  .mc {
+    --gui: 3;
+  }
+}
+/* a phone on its side: the screens (166 high) must fit in what's left under the bar */
+@media (max-height: 420px) {
+  .mc {
+    --gui: 1.5;
+  }
+}
+.mc[data-mode='page'] {
+  height: calc(100svh - var(--nav-h, 64px));
+  /* (a phone on its side has under 320 to give) */
+  min-height: 280px;
+}
+.mc[data-mode='overlay'] {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: #000;
+}
+.mc-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #78a7ff;
+  touch-action: none;
+}
+.mc-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.mc img {
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+/* ── screens over the world ── */
+.mc-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 16px;
+  text-align: center;
+  z-index: 3;
+}
+.mc-dirt {
+  background:
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.12) 0 6px, transparent 6px 12px),
+    #3b2a1d;
+}
+.mc-dim {
+  background: rgba(16, 16, 16, 0.6);
+}
+.mc-text {
+  font-size: 14px;
+  line-height: 1.6;
+  text-shadow: 2px 2px 0 #3f3f3f;
+}
+.mc-small {
+  font-size: 10px;
+  color: #e0e0e0;
+}
+
+/* ── the title ── */
+.mc-title {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.35));
+}
+.mc-logo {
+  margin: 0;
+  font-size: clamp(30px, 7vw, 68px);
+  letter-spacing: 0.04em;
+  color: #c6c6c6;
+  background: linear-gradient(to bottom, #e8e8e8 0%, #b5b5b5 45%, #8a8a8a 55%, #a7a7a7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(3px 3px 0 #2d2d2d) drop-shadow(-1px -1px 0 #3c3c3c);
+}
+.mc-splash {
+  margin: -6px 0 6px clamp(120px, 30vw, 330px);
+  font-size: 13px;
+  color: #ffff3f;
+  text-shadow: 2px 2px 0 #3f3f00;
+  transform: rotate(-18deg);
+  animation: mc-splash 0.5s ease-in-out infinite alternate;
+}
+@keyframes mc-splash {
+  to {
+    transform: rotate(-18deg) scale(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mc-splash {
+    animation: none;
+  }
+}
+.mc-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(400px, 92vw);
+}
+.mc-seed {
+  display: flex;
+  gap: 10px;
+}
+.mc-disclaimer {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  margin: 0;
+  font-size: 8px;
+  line-height: 1.6;
+  text-shadow: 1px 1px 0 #3f3f3f;
+}
+
+/* the game's stone button */
+.mc-btn {
+  font: inherit;
+  font-size: 12px;
+  color: #e0e0e0;
+  text-shadow: 2px 2px 0 #383838;
+  min-height: 40px;
+  padding: 0 12px;
+  background: #6f6f6f;
+  border: 2px solid #000;
+  box-shadow:
+    inset 2px 2px 0 #aaa,
+    inset -2px -4px 0 #555;
+  cursor: pointer;
+}
+.mc-btn:hover,
+.mc-btn:focus-visible {
+  background: #7d86c8;
+  color: #ffffa0;
+  box-shadow:
+    inset 2px 2px 0 #bcc4f4,
+    inset -2px -4px 0 #59609a;
+  outline: none;
+}
+.mc-btn-half {
+  flex: 0 0 auto;
+}
+.mc-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 11px;
+  color: #e0e0e0;
+  background: #000;
+  border: 2px solid #a0a0a0;
+  padding: 0 8px;
+  min-height: 40px;
+}
+.mc-input:focus {
+  outline: none;
+  border-color: #fff;
+}
+
+/* ── the HUD ── */
+.mc-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.mc-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(15px * var(--gui));
+  height: calc(15px * var(--gui));
+  transform: translate(-50%, -50%);
+  mix-blend-mode: difference;
+}
+.mc-bar {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 2px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: calc(2px * var(--gui));
+}
+.mc-hotbar {
+  position: relative;
+  width: calc(182px * var(--gui));
+  height: calc(22px * var(--gui));
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+}
+.mc-selection {
+  position: absolute;
+  top: calc(-1px * var(--gui));
+  left: calc((-1px + 20px * var(--slot)) * var(--gui));
+  width: calc(24px * var(--gui));
+  height: calc(23px * var(--gui));
+}
+.mc-air {
+  display: flex;
+  flex-direction: row-reverse;
+  width: calc(81px * var(--gui));
+}
+.mc-air img {
+  width: calc(9px * var(--gui));
+  height: calc(9px * var(--gui));
+  margin-left: calc(-1px * var(--gui));
+}
+
+/* ── the touch pad, Pocket Edition's ── */
+.mc-pad {
+  position: absolute;
+  inset: auto 0 calc(env(safe-area-inset-bottom, 0px) + 60px) 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 18px;
+  z-index: 4;
+  pointer-events: none;
+}
+.mc-stick {
+  pointer-events: auto;
+  position: relative;
+  width: 124px;
+  height: 124px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  touch-action: none;
+}
+.mc-stick span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+}
+.mc-keys {
+  display: flex;
+  gap: 12px;
+}
+.mc-key {
+  pointer-events: auto;
+  width: 60px;
+  height: 60px;
+  font: inherit;
+  font-size: 18px;
+  color: #fff;
+  background: rgba(60, 60, 60, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  touch-action: none;
+}
+.mc-pause-key {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  font-size: 12px;
+}
+
+/* ── stacks: the picture, the count, the wear ── */
+.mc-stack {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+.mc-stack img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.mc-stack b {
+  position: absolute;
+  right: calc(-1px * var(--gui));
+  bottom: calc(-2px * var(--gui));
+  font-weight: normal;
+  font-size: calc(8px * var(--gui));
+  line-height: 1;
+  color: #fff;
+  text-shadow: calc(1px * var(--gui)) calc(1px * var(--gui)) 0 #3f3f3f;
+}
+.mc-stack > i {
+  position: absolute;
+  left: calc(2px * var(--gui));
+  bottom: calc(1px * var(--gui));
+  width: calc(13px * var(--gui));
+  height: calc(2px * var(--gui));
+  background: #000;
+}
+.mc-stack > i > i {
+  display: block;
+  height: 50%;
+}
+.mc-hotslot {
+  position: absolute;
+  left: calc((3px + 20px * var(--slot)) * var(--gui));
+  top: calc(3px * var(--gui));
+  width: calc(16px * var(--gui));
+  height: calc(16px * var(--gui));
+}
+
+/* ── the screens, on the pack's own panels (176 × 166 of a 256 sheet) ── */
+.mc-panel {
+  position: relative;
+  width: calc(176px * var(--gui));
+  height: calc(166px * var(--gui));
+  background-size: calc(256px * var(--gui)) calc(256px * var(--gui));
+  background-position: 0 0;
+  image-rendering: pixelated;
+}
+.mc-slot {
+  position: absolute;
+  left: calc(var(--x) * 1px * var(--gui));
+  top: calc(var(--y) * 1px * var(--gui));
+  width: calc(16px * var(--gui));
+  height: calc(16px * var(--gui));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+  font: inherit;
+}
+.mc-slot:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+.mc-held {
+  position: absolute;
+  width: calc(16px * var(--gui));
+  height: calc(16px * var(--gui));
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+}
+.mc-hotslot {
+  pointer-events: auto;
+}
+.mc-hud .mc-bar {
+  pointer-events: none;
+}
+.mc-inv-key {
+  position: fixed;
+  right: 10px;
+  /* under the pause button, clear of the jump key and the site's guide button */
+  top: calc(env(safe-area-inset-top, 0px) + 62px);
+  width: 44px;
+  height: 44px;
+}
+.mc-close-key {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  font: inherit;
+  color: #fff;
+  background: rgba(60, 60, 60, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+@media (hover: hover) {
+  .mc-close-key {
+    display: none;
+  }
+}
+
+/* the game's line over the hotbar, and the night passing in a bed */
+.mc-say {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 2px + 40px * var(--gui));
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: calc(8px * var(--gui));
+  white-space: nowrap;
+  text-shadow: calc(1px * var(--gui)) calc(1px * var(--gui)) 0 #3f3f3f;
+}
+.mc-sleep {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #101020;
+  pointer-events: none;
+  animation: mc-sleep 2.4s ease-in-out forwards;
+}
+@keyframes mc-sleep {
+  0% {
+    opacity: 0;
+  }
+  40%,
+  60% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}

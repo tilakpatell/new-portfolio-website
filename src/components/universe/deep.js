@@ -16,7 +16,7 @@
 // back. What's on its far side (`beyond`) is a friend's universe, their own
 // site, and the page goes on to it (Universe.jsx).
 
-import { BODIES, HOME_RADIUS, POSITIONS, REACH, SUN } from './layout';
+import { BODIES, HOME_RADIUS, POSITIONS, REACH, SECTORS, SUN, inSector } from './layout';
 import { byId } from './universes';
 import { HOLE_SCALE, STAR_SCALE } from './scale';
 
@@ -25,7 +25,7 @@ export const DEEP = {
   open: HOME_RADIUS + 440, // out past this (and this far from any place), the pulse drive's full speed and the full height
   near: 40, // how far past a place's reach you're still at it (the drive stays down)
   ramp: 400, // and how much further the drive takes to open all the way
-  edge: 9000, // turned back here
+  edge: SECTORS.main.edge, // turned back here (the main sector's: the Rick and Morty sector has its own, layout.js)
   ceiling: 1400, // how far above or below the disc it can go out in deep space
 };
 
@@ -52,6 +52,16 @@ function grown(w) {
   if (w.kind === 'binary') return { ...w, r: w.r * STAR_SCALE, pair: { ...w.pair, r: w.pair.r * STAR_SCALE } };
   if (w.kind === 'black-hole') return { ...w, r: w.r * HOLE_SCALE, disk: w.disk * HOLE_SCALE };
   return w;
+}
+
+// beside the Rick and Morty planet: 2.5 of its reaches out, turned a way
+// round from the line in from home (so a ship flying in to land isn't
+// taken through), a little above its middle
+function besideRickAndMorty() {
+  const [x, y, z] = POSITIONS.rickmorty;
+  const a = Math.atan2(-z, -x) + 1.2;
+  const d = REACH.rickmorty * 2.5;
+  return [x + Math.cos(a) * d, y + 12, z + Math.sin(a) * d];
 }
 
 export const WONDERS = [
@@ -93,7 +103,14 @@ export const WONDERS = [
   },
   { id: 'veil', kind: 'nebula', name: 'The Veil', at: [-2230, 505, 4725], r: 700, colors: ['#5b3fd1', '#d14f9a', '#3fb7d1'], solid: false },
   { id: 'cradle', kind: 'nebula', name: 'The Cradle', at: [4995, -505, 2230], r: 600, colors: ['#2f9e6b', '#c9d14f', '#2f6e9e'], solid: false },
-  { id: 'citadel', kind: 'citadel', name: 'The Citadel', at: [1755, -135, -4660], r: 60, crew: 'rickmorty', world: 'rickmorty', page: '/c-137/citadel' }, // (as big as the biggest world: scale.js)
+  // the Rick and Morty sector (layout.js's SECTORS): the Citadel at its middle, and its own sun off to one side, past its worlds
+  { id: 'citadel', kind: 'citadel', name: 'The Citadel', sector: 'rickmorty', at: inSector('rickmorty', [0, 0, 0]), r: 60, crew: 'rickmorty', world: 'rickmorty', page: '/c-137/citadel' }, // (as big as the biggest world: scale.js)
+  { id: 'curvesun', kind: 'star', name: 'The Curve’s Sun', sector: 'rickmorty', at: inSector('rickmorty', [-2200, 450, 2000]), r: 80, color: '#e4ffb0', planets: [] },
+  // the portals between the two (portals.js): one beside the Rick and Morty
+  // planet, off to the side of the way in from home, and its other end
+  // beside the Citadel. Not solid: flown into, they take the ship through
+  { id: 'rmportal', kind: 'portal', name: 'The Portal', at: besideRickAndMorty(), r: 10, color: '#7dff9a', solid: false, leadsTo: { sector: 'rickmorty', exit: 'rmportal-back' } },
+  { id: 'rmportal-back', kind: 'portal', name: 'The Portal Home', sector: 'rickmorty', at: inSector('rickmorty', [0, 20, 420]), r: 10, color: '#7dff9a', solid: false, leadsTo: { sector: 'main', exit: 'rmportal' } },
   { id: 'lantern', kind: 'pulsar', name: 'The Lantern', at: [-6200, 300, 2600], r: 12, color: '#bfe0ff' },
   { id: 'twins', kind: 'binary', name: 'The Twins', at: [6100, -220, -1500], r: 60, color: '#ffd27a', pair: { r: 42, color: '#f4f6ff', apart: 230, period: 300 } }, // (at: the point the two go round, once in period seconds)
   { id: 'wanderer', kind: 'rogue', name: 'The Wanderer', at: [-900, -700, -6600], r: 55, ring: true, color: '#7fd8c8', colors: ['#1a2238', '#3a4a70', '#7fd8c8'] }, // (color: its auroras, for the chart and its name; colors: its rock, its accent, its auroras)

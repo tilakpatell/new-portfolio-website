@@ -19,7 +19,11 @@ import { fileURLToPath } from 'node:url';
 import { TIERS, check, cutsFor, triangles } from './budget.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+// GEN3D_OUT: another root for public/models/gen3d and public/games/credits.json,
+// so a test or the nightly health run never writes into the repository's own
+const root = () => (process.env.GEN3D_OUT ? resolve(process.env.GEN3D_OUT) : ROOT);
 export const OUT = join(ROOT, 'public', 'models', 'gen3d');
+const out = () => join(root(), 'public', 'models', 'gen3d');
 
 export async function io() {
   await Promise.all([MeshoptEncoder.ready, MeshoptDecoder.ready, MeshoptSimplifier.ready]);
@@ -79,7 +83,7 @@ export const permissive = (tris) => async (doc) => {
 // `top` ({ faces, tex }) scales the three cuts down for a model asked to be smaller (budget.mjs cutsFor).
 export async function publish(raw, name, { what, engine = 'TRELLIS.2', acrossSeams = false, match, tiers = Object.keys(TIERS), tris, tex, top }) {
   const nio = await io();
-  await mkdir(OUT, { recursive: true });
+  await mkdir(out(), { recursive: true });
   const scaled = cutsFor(top?.faces, top?.tex);
   const cuts = tris ? { custom: { suffix: '', faces: tris, tex: tex ?? 2048, bytes: TIERS.mid.bytes } } : Object.fromEntries(tiers.map((t) => [t, scaled[t]]));
   const results = {};
@@ -96,11 +100,11 @@ export async function publish(raw, name, { what, engine = 'TRELLIS.2', acrossSea
     const bytes = (await nio.writeBinary(doc)).byteLength;
     const problems = check({ tris: cut.faces, after, bytes, max: cut.bytes });
     if (problems.length) throw new Error(`${name} (${tier}): ${problems.join('; ')}`);
-    const out = join(OUT, `${name}${cut.suffix}.glb`);
-    await nio.write(out, doc);
-    results[tier] = { out, before, after, bytes };
+    const file = join(out(), `${name}${cut.suffix}.glb`);
+    await nio.write(file, doc);
+    results[tier] = { out: file, before, after, bytes };
   }
-  const creditsFile = join(ROOT, 'public', 'games', 'credits.json');
+  const creditsFile = join(root(), 'public', 'games', 'credits.json');
   const credits = JSON.parse(await readFile(creditsFile, 'utf8'));
   credits[`gen3d/${name}`] = { source: 'https://github.com/microsoft/TRELLIS.2', name: `${what}, made for this site with ${engine} on the site owner's machine (scripts/gen3d)`, authors: ['Tilak Patel, with Microsoft TRELLIS.2'], license: 'Generated for this site; TRELLIS.2 is MIT' };
   await writeFile(creditsFile, `${JSON.stringify(credits, null, 2)}\n`);

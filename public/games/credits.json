@@ -3300,5 +3300,556 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "mc/pixel-perfection": {
+    "source": "https://modrinth.com/resourcepack/pixel-perfection-legacy",
+    "id": "pixel-perfection-legacy 25.4-75.1",
+    "name": "Pixel Perfection Legacy (resource pack)",
+    "authors": [
+      "XSSheep",
+      "Nova_Wostra"
+    ],
+    "license": "CC BY-SA 4.0",
+    "use": "The Minecraft tribute’s block tiles and mob skins, rebuilt into public/mc/ by scripts/mc-atlas.mjs; the built files are under the same licence"
+  },
+  "meshy/ackbar": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-babd-7262-86fc-796c788a93fd",
+    "name": "Admiral Ackbar, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/aqualish": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-a981-772b-a8ed-67ef16dabc87",
+    "name": "the Aqualish, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/bibfortuna": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-a6ca-74ef-bdfb-a6265be2d7f5",
+    "name": "Bib Fortuna, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/dooku": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-bfe0-729e-8d0b-a865aeccae0d",
+    "name": "Count Dooku, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/hondo": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-b74c-75b9-97b1-e0e3028d7f03",
+    "name": "Hondo Ohnaka, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/jedi": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114f2-ec09-707d-bb90-9b9169bb6442",
+    "name": "the Jedi, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/lando": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-8d2a-706a-a527-de62df5a6356",
+    "name": "Lando Calrissian, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/lobot": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-a06d-71aa-ab3d-709786316f44",
+    "name": "Lobot, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/mustafarian": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-afe3-7181-a239-ea0b59276e14",
+    "name": "the Mustafarians, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/neimoidian": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-a3fb-701e-919d-48254c31c965",
+    "name": "the Neimoidians, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/officer": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1150d-1e17-7590-9082-f1aea6eea70b",
+    "name": "the Imperial officers, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/quigon": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114ed-a2c3-729e-800e-5691062bc7ca",
+    "name": "Qui-Gon Jinn, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rebel": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-973b-70d3-9d84-41110ac7dc74",
+    "name": "the Rebel soldiers, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/senateguard": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-9de9-73bf-b240-7c1af9209de0",
+    "name": "the Senate guards, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/tusken": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-88f0-74a6-883d-f1a99981a730",
+    "name": "the Tusken Raiders, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/twilek": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-9047-76ff-8000-3bc60361f40c",
+    "name": "the Twi’leks, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/ugnaught": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-93e2-7458-9357-940fb9f72e82",
+    "name": "the Ugnaughts, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/wuher": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114da-ac83-77ba-8202-e990a20c1a01",
+    "name": "Wuher, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/eta2": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-e1f6-7722-9c47-01738b2d8a30",
+    "name": "the Eta-2 interceptor, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/fang": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-efb9-7292-bbad-3a224aec32aa",
+    "name": "the Fang fighter, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/gauntlet": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-d14e-7007-a3d1-fe855184f64b",
+    "name": "the Gauntlet, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/hammerhead": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-cb47-76c8-93fc-9b77c103be24",
+    "name": "the Hammerhead corvette, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/houndstooth": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-c54e-7223-85ad-138507eef1a0",
+    "name": "the Hound’s Tooth, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/hyena": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-e5c5-7662-9a80-6233eb164447",
+    "name": "the Hyena bomber, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/naboocruiser": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-f2a2-72d6-953c-d81a1a949f8f",
+    "name": "the Naboo yacht, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/punishingone": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-c839-7143-ae4a-555e15507497",
+    "name": "the Punishing One, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/scimitar": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-d986-73c2-8f2c-24d0c754d27e",
+    "name": "the Scimitar, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/sentinel": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-e901-7645-a702-921784ea3d48",
+    "name": "the Sentinel landing craft, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/tiedefender": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-dc02-73ef-9642-67efa4c2986a",
+    "name": "the TIE Defender, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/twilight": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-d5e8-775a-90e8-642b55028723",
+    "name": "the Twilight, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/vwing": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-df76-74de-be16-9e883678197f",
+    "name": "the V-wing, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/zeta": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-ebea-759d-b552-ef35bd93abe3",
+    "name": "the Zeta shuttle, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/acklay": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114d2-d8f7-763b-a485-32e0c6a3daaf",
+    "name": "the acklay, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/aiwha": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114d2-e5f0-769b-bbc2-2f727fb39a6b",
+    "name": "the aiwhas, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/atdp": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-bc34-7225-bdd5-faa136103863",
+    "name": "the AT-DP, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/blurrg": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-a299-75ac-8ca5-c645a38e4f9b",
+    "name": "the blurrgs, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/bogwing": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114d2-e2ca-7434-b91a-cc3766832e93",
+    "name": "the bogwings, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/bongo": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-b1b1-71e9-8d26-6c2da9ac8dc2",
+    "name": "the Gungan bongo, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/cantina": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114ea-9393-744c-b600-e962221ac13d",
+    "name": "the Mos Eisley cantina, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from a description)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/fambaa": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-aa2e-775c-b15d-8e45415fd29c",
+    "name": "the fambaas, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/flash": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-beba-72f4-8602-8c61fc6a7561",
+    "name": "the flash speeder, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/happabore": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-a65b-7287-8005-d9dc7a066c8f",
+    "name": "the happabores, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/itt": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-c1c6-7268-bb44-5da61c9e3922",
+    "name": "the Imperial troop transport, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/kaadu": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114d2-dc44-75ee-8eaa-dc88948c02e6",
+    "name": "the kaadu, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/lavacollector": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114ea-9690-7613-bcda-5692df715d02",
+    "name": "Mustafar’s lava collector, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from a description)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/lavaflea": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114d2-e8e6-7362-be5c-c5c8abda6bba",
+    "name": "the lava fleas, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/lothcat": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114d2-f5ec-75f7-944c-e03b4edea286",
+    "name": "the loth-cats, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/lothwolf": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114d2-f9a9-76b1-aa34-840f376af307",
+    "name": "the loth-wolves, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/mtt": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-ae77-73e2-913c-51fcebb0174a",
+    "name": "the MTT, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nexu": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114d2-ec16-70c4-b693-99758cd8a4d6",
+    "name": "the nexu, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/reek": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114d2-ef68-73dc-a5a8-3adfaa388da6",
+    "name": "the reek, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/shieldgen": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114ea-a366-72c7-b6a1-e8cbf977bf3e",
+    "name": "Endor’s shield generator, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/skiff": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-b5a1-772c-9ba2-496e7949e957",
+    "name": "the desert skiff, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/stap": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-b955-7059-93e0-2d5f5d5e0512",
+    "name": "the STAP, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/stonehead": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114ea-9933-725d-8a66-e080d87c3aee",
+    "name": "the Gungans’ stone heads, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from a description)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/swoop": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114e3-9fa7-75a2-bb04-76e01ac8d436",
+    "name": "the swoop bike, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from a description)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/tauntaun": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114d2-d4db-739a-9f80-ff3127bd569f",
+    "name": "the tauntauns, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/varactyl": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114d2-f2b6-7626-bb00-2ebccf8fbba2",
+    "name": "the varactyls, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/varykino": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114ea-9d16-73c0-a09a-7c86ba89110e",
+    "name": "the lake retreat at Varykino, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/womprat": {
+    "source": "https://www.meshy.ai",
+    "id": "01a114d2-df68-73e7-a6ca-ed70895ae253",
+    "name": "the womp rats, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }

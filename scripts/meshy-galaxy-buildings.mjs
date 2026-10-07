@@ -44,9 +44,12 @@ import { recolorDoc } from './recolor.mjs';
 import { BUILDINGS as BACK_LANE } from './meshy-galaxy-buildings-back.mjs';
 import { BUILDINGS as FILL_LANE } from './meshy-galaxy-buildings-fill.mjs';
 import { BUILDINGS as BASES_LANE } from './meshy-galaxy-buildings-bases.mjs';
+import { BUILDINGS as THREE_LANE } from './meshy-galaxy-three.mjs';
+import { BUILDINGS as LIBRARY_LANE } from './meshy-galaxy-library.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models', 'galaxy', 'surface');
+const GALAXY = join(ROOT, 'public', 'models', 'galaxy');
 const REVIEW = process.env.MESHY_REVIEW ?? join(ROOT, 'lab', 'meshy', 'buildings');
 const TASKS = process.env.MESHY_TASKS ? join(ROOT, process.env.MESHY_TASKS) : join(ROOT, 'scripts', 'meshy-galaxy-buildings-tasks.json');
 const API = 'https://api.meshy.ai/openapi';
@@ -107,6 +110,9 @@ Object.assign(BUILDINGS, BACK_LANE);
 Object.assign(BUILDINGS, FILL_LANE);
 // and the bases' (Phase 2: scripts/meshy-galaxy-buildings-bases.mjs)
 Object.assign(BUILDINGS, BASES_LANE);
+// the three worlds' lane (scripts/meshy-galaxy-three.mjs)
+Object.assign(BUILDINGS, THREE_LANE);
+Object.assign(BUILDINGS, LIBRARY_LANE);
 
 async function api(method, path, body) {
   const r = await fetch(`${API}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
@@ -167,7 +173,11 @@ async function squeeze(from, to, a) {
   const k = a.metres / (a.along === 'h' ? size[1] : Math.max(size[0], size[2]));
   // (centred, stood on y = 0, scaled; then turned by `yaw` about its middle,
   // its front brought round to +z)
-  const centre = doc.createNode(`${a.kind}-centred`).setScale([k, k, k]).setTranslation([-((b.min[0] + b.max[0]) / 2) * k, -b.min[1] * k, -((b.min[2] + b.max[2]) / 2) * k]);
+  // (`mirror`: flipped left for right, for one made the other way round from
+  // the built one it stands over; three.js turns the faces round itself for
+  // a node scaled through zero)
+  const kx = a.mirror ? -k : k;
+  const centre = doc.createNode(`${a.kind}-centred`).setScale([kx, k, k]).setTranslation([-((b.min[0] + b.max[0]) / 2) * kx, -b.min[1] * k, -((b.min[2] + b.max[2]) / 2) * k]);
   const yaw = a.yaw ?? 0;
   const holder = doc.createNode(a.kind).setRotation([0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)]).addChild(centre);
   for (const child of scene.listChildren()) {
@@ -237,7 +247,7 @@ const steps = {
       for (const [i, buf] of raw.entries()) {
         if (!s[n].lift[i]) {
           const what = BUILDINGS[n].lift ?? 'the main building';
-          const { result } = await api('POST', '/v1/image-to-image', { ai_model: 'nano-banana', prompt: `Lift ${what} out of this picture. ${LIFT} ${SHOT}`, reference_image_urls: [dataUri(buf)] });
+          const { result } = await api('POST', '/v1/image-to-image', { ai_model: 'nano-banana', prompt: `Lift ${what} out of this picture. ${LIFT} ${BUILDINGS[n].shot ?? SHOT}`, reference_image_urls: [dataUri(buf)] });
           s[n].lift[i] = result;
           await save(s);
         }
@@ -251,7 +261,7 @@ const steps = {
     for (const n of prompted(names)) {
       s[n] ??= {};
       if (!s[n].image) {
-        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-2', prompt: `${BUILDINGS[n].prompt} ${LOOK} ${SHOT}` });
+        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-2', prompt: `${BUILDINGS[n].prompt} ${BUILDINGS[n].look ?? LOOK} ${BUILDINGS[n].shot ?? SHOT}` });
         s[n].image = result;
         await save(s);
       }
@@ -319,10 +329,12 @@ const steps = {
       const t = await wait(path, id, `${n}`);
       const raw = join(REVIEW, 'raw', `${n}.glb`);
       if (!existsSync(raw)) await download(t.model_urls.glb, raw);
-      const to = join(OUT, `${n}.glb`);
+      // (a ship of the galaxy's goes beside its others, its far-off copy made
+      // by scripts/galaxy-lod.mjs)
+      const to = a.galaxy ? join(GALAXY, `${n}.glb`) : join(OUT, `${n}.glb`);
       const { tris, size } = await squeeze(raw, to, a);
       console.log(`fetch    ${n.padEnd(13)} ${tris} triangles, ${size.join(' × ')} m, ${Math.round((await stat(to)).size / 1024)} KB`);
-      const lod = await makeLod(to, join(OUT, `${n}.lod1.glb`));
+      const lod = a.galaxy ? null : await makeLod(to, join(OUT, `${n}.lod1.glb`));
       if (lod && !lod.skipped) console.log(`         ${''.padEnd(13)} LOD ${lod.low} triangles, ${Math.round(lod.bytes / 1024)} KB (lod: true)`);
     }
   },
@@ -334,7 +346,7 @@ const steps = {
       const tile = (buf) => sharp(buf).resize(640, 480, { fit: 'contain', background: '#202020' }).jpeg().toBuffer();
       if (BUILDINGS[n].ref) for (const buf of await pictures(n)) tiles.push(await tile(buf));
       for (const f of [`${n}-lift.png`, `${n}.png`]) if (existsSync(join(REVIEW, f))) tiles.push(await tile(await readFile(join(REVIEW, f))));
-      for (const view of await shoot(join(OUT, `${n}.glb`), ['three', 'close'])) tiles.push(await tile(view));
+      for (const view of await shoot(join(BUILDINGS[n].galaxy ? GALAXY : OUT, `${n}.glb`), ['three', 'close'])) tiles.push(await tile(view));
       const cols = Math.min(3, tiles.length);
       const out = join(REVIEW, `${n}-gate.jpg`);
       await sharp({ create: { width: 640 * cols, height: 480 * Math.ceil(tiles.length / cols), channels: 3, background: '#111' } })

@@ -53,7 +53,10 @@ export const LOOK = {
 };
 
 const PARS = /* glsl */ `
+#ifndef LOOK_REF
+#define LOOK_REF
 uniform vec3 uLookRef;
+#endif
 uniform vec3 uLookShadow;
 uniform vec2 uLookEdge;
 uniform float uLookMix;
@@ -191,6 +194,10 @@ export function createHouse(look = {}) {
     m.userData.house = uniforms;
     patched.add(m);
     m.needsUpdate = true;
+    // (the mark made one a copy doesn't take: Material.copy copies userData
+    // through JSON, which would carry it, and the textures in it, to a
+    // material the look was never put on)
+    Object.defineProperty(m.userData, 'house', { value: uniforms, enumerable: false, configurable: true });
     return true;
   };
 

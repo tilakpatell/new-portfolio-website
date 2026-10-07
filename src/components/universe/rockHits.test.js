@@ -64,14 +64,14 @@ describe('sweep', () => {
 
 describe('rockDamage', () => {
   it('is nothing at the boost or under', () => {
-    expect(rockDamage(20, 1)).toBe(0);
+    expect(rockDamage(12, 1)).toBe(0);
     expect(rockDamage(ROCK_HIT.fast, 2)).toBe(0);
   });
 
   it('grows with speed and the rock’s size, to at most 45', () => {
-    expect(rockDamage(420, 1)).toBeCloseTo(6 + 7 + 0.035 * (420 - 23), 6);
-    expect(rockDamage(420, 2)).toBeGreaterThan(rockDamage(420, 1));
-    expect(rockDamage(1260, 2)).toBe(45);
+    expect(rockDamage(300, 1)).toBeCloseTo(6 + 7 + 0.05 * (300 - ROCK_HIT.fast), 6);
+    expect(rockDamage(300, 2)).toBeGreaterThan(rockDamage(300, 1));
+    expect(rockDamage(900, 2)).toBe(45);
     expect(ROCK_HIT.most).toBe(45);
   });
 });

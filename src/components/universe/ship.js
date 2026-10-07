@@ -54,23 +54,27 @@
 // rate into a wall.
 
 import { DEEP, DEEP_SOLIDS, WONDERS, driveOpen, easeOpen, gapAlong, openness, reachOf, trenchBand } from './deep';
-import { BODIES, HOME_RADIUS, MAP_RADIUS, POSITIONS, REACH, SUN } from './layout';
+import { BODIES, HOME_RADIUS, POSITIONS, REACH, SECTOR_RADIUS, SUN, sectorOf, sectorOut } from './layout';
 import { MAW } from './maw';
 import { NOSE, UP, axisAngle, conj, fromAngles, mul, normalize, rotate, toAngles, turnToward } from './orient';
 import { byId } from './universes';
 import { sunFor } from './lighting';
 
+// (the speeds as they were till October 2026, cruise 5.5, boost 20 and the
+// pulse drive 420, got there in under a second and felt far too fast for a
+// ship a quarter of a unit long: about 13 of its own lengths a second at
+// cruise now, 46 at the boost)
 export const SHIP = {
-  cruise: 5.5, // map units a second (the ship is 0.26 long)
-  boost: 20,
-  pulse: 420, // the boost out in the open
-  pulseAccel: 170, // map units a second, a second, getting up to it
-  drop: 470, // the hardest it falls back to what the drive allows, when it's well over it (and harder past the pulse drive: out of super speed)
+  cruise: 3.3, // map units a second (the ship is 0.26 long)
+  boost: 12,
+  pulse: 300, // the boost out in the open
+  pulseAccel: 120, // map units a second, a second, getting up to it
+  drop: 340, // the hardest it falls back to what the drive allows, when it's well over it (and harder past the pulse drive: out of super speed)
   settle: 8, // and short of that, how quickly it eases down onto it: the speed it's over by, this many times a second (and a little more, so it gets there)
-  reverse: 2,
-  accel: 5.5,
-  brake: 11,
-  coast: 2.4,
+  reverse: 1.5,
+  accel: 3.6,
+  brake: 10,
+  coast: 1.8,
   turn: 2.0, // radians a second the nose swings left or right, at cruise and under
   turnFast: 0.6, // of that (and of the pitch and the roll), at boost speed (and a little less again at pulse speed)
   yawEase: 9, // how quickly the turn gets to the rate asked for (a second, roughly a ninth of one)
@@ -86,8 +90,31 @@ export const SHIP = {
   hover: 1.5, // map units a second the autopilot can nudge it up or down, parking
   ceiling: 100, // how far above or below the disc it can go (the big ships' lanes start at 105; the sun's 75 across leaves room to fly over it)
   crash: 2.4, // flying into something faster than this is a crash, not a bump
-  approach: 11, // its cruise coming in to a world to land, throttle all the way (approachAt): under what a landing allows, entry.js's ENTRY.fast
+  approach: 9, // its cruise coming in to a world to land, throttle all the way (approachAt): under what a landing allows, entry.js's ENTRY.fast
 };
+// How fast everything else flies for the ship's speeds: the hunters, the
+// wingmen, the crews' NPCs and the battles' fighters were all tuned against
+// a boost of 20, and each is that many times as quick (sides.js, wars.js,
+// npcs/), so which you can outrun, and how a fight paces, stays as it was
+export const PACE = SHIP.boost / 20;
+// a ship's numbers at PACE: its speed and its acceleration (and any of its
+// stages'), its turn and the rest as they are (so it turns as tightly for
+// its speed as you do for yours)
+export function paced(o) {
+  const out = { ...o };
+  if (typeof o.speed === 'number') out.speed = o.speed * PACE;
+  if (typeof o.accel === 'number') out.accel = o.accel * PACE;
+  if (Array.isArray(o.stages)) out.stages = o.stages.map(paced);
+  return out;
+}
+export const pacedAll = (table) => Object.fromEntries(Object.entries(table).map(([k, v]) => [k, paced(v)]));
+
+// What the parts fitted can do (outfit.js's statsOf: 1 each as it comes),
+// held to what any fit flies with: [least, most] of each. A heavy hull's
+// slower cruise counts as much as a fast one's. The hangar's read-out shows
+// these too (tuned), so what it says is what it flies.
+export const TUNE = { boost: [1, 1.6], cruise: [0.9, 1.2], accel: [1, 1.8], agility: [0.6, 1.4], level: [1, 1.8] };
+export const tuned = (tune) => Object.fromEntries(Object.entries(TUNE).map(([k, [lo, hi]]) => [k, clamp(tune?.[k] ?? 1, lo, hi)]));
 // super speed: how many times the pulse drive's speed, at most
 export const OVERDRIVE = 3;
 // how many times as fast the ship goes at a spot `open` (the drive's
@@ -113,7 +140,7 @@ const PLANET = Object.fromEntries(PLANETS.map((p) => [p.id, p]));
 // 0 … 1: all of it from where it parks at a world with air to land in, on
 // in, fading out a little further off. The worlds are drawn big (scale.js)
 // and parked at past their moons, so at its cruise the last of the way in
-// took eight seconds; at the approach it's under five, and flying into the air is
+// took eleven seconds; at the approach it's under six, and flying into the air is
 // still a landing.
 const LANDS = PLANETS.filter((p) => {
   const u = byId(p.id);
@@ -150,11 +177,13 @@ export const isGoal = (id) => Boolean(GOALS[id]);
 // over HOME_RAMP from each station and the sun (and the ceiling or the floor,
 // climbing or diving toward one), the same way, and is down again close by
 // one: a hop between two is quick, and still comes up on the next at the
-// boost. That gives way to deep space's once well out past the home system
-// (by then deep space's is open all the way anyway). (each with how close to
-// its surface the drive's all the way down: a station's door, and well clear
-// of the sun, which the autopilot goes round)
+// boost. It only ever opens HOME_TOP of the way there (a hop between two
+// stations is a hop, not a launch), and that gives way to deep space's once
+// well out past the home system (by then deep space's is open all the way
+// anyway). (each with how close to its surface the drive's all the way down:
+// a station's door, and well clear of the sun, which the autopilot goes round)
 const HOME_RAMP = 300;
+const HOME_TOP = 0.4;
 const HOME_BODIES = [...PLANETS.filter((p) => byId(p.id).kind === 'core').map((p) => ({ at: p.at, r: p.r, room: 8 })), { at: SUN.at, r: SUN.r, room: 20 }];
 // how much of the home system's own handling there is at (x, z): 1 in it
 // and out past it till deep space's drive is open all the way, then easing
@@ -174,7 +203,7 @@ export function driveAlong(x, y, z, f = null) {
   const up = f ? f[1] * (y < 0 ? -1 : 1) : 1;
   let k = up > 0.02 ? easeOpen((ceilingAt(x, z) - Math.abs(y) - 8) / up, HOME_RAMP) : 1;
   for (const b of HOME_BODIES) k = Math.min(k, easeOpen(gapAlong(x, y, z, f, b.at, b.r + b.room), HOME_RAMP));
-  return Math.min(o, 1 - w * (1 - k));
+  return Math.min(o, 1 - w * (1 - k * HOME_TOP));
 }
 export const driveAt = (x, y, z) => driveAlong(x, y, z);
 
@@ -252,7 +281,8 @@ export function parkAt(id, from = [0, HOME_RADIUS]) {
     const z = p.at[2] + dz * d;
     let clear = Infinity;
     for (const o of SOLIDS) if (o !== p) clear = Math.min(clear, Math.sqrt((x - o.at[0]) ** 2 + (z - o.at[2]) ** 2) - o.reach);
-    const inMap = Math.sqrt(x * x + z * z) < MAP_RADIUS + 30;
+    const { sec, out } = sectorOut(x, z);
+    const inMap = out < SECTOR_RADIUS[sec.id] + 30;
     // (clear of the others: up to 4, less the less clear it is; a spot not quite clear never outscores one that is)
     const day = sun ? (dx * sun[0] + dz * sun[2]) / sl : 0;
     const score = dx * ax + dz * az + (4 * Math.min(clear, ORBIT_IN + 0.2)) / (ORBIT_IN + 0.2) + (inMap ? 2 : 0) + (day >= -1e-9 ? 3 : 0);
@@ -272,9 +302,10 @@ export function parkAt(id, from = [0, HOME_RADIUS]) {
 const startOff = (reach, r) => Math.max(reach * 1.15 + 12, r * 2.4);
 export const STARTS = [
   { id: 'sun', at: SUN.at, y: SHIP.height, d: HOME_RADIUS + 1.5 }, // (the home system's middle)
-  ...PLANETS.filter((p) => byId(p.id).kind !== 'core').map((p) => ({ id: p.id, at: p.at, y: p.at[1] + SHIP.height, d: startOff(p.reach, p.r) })),
+  // (all in the main sector: the Rick and Morty sector is through its portal)
+  ...PLANETS.filter((p) => byId(p.id).kind !== 'core' && sectorOf(...p.at) === 'main').map((p) => ({ id: p.id, at: p.at, y: p.at[1] + SHIP.height, d: startOff(p.reach, p.r) })),
   // (off a wonder: clear of its solid, which can reach past the wonder's own radius: a pulsar's glare)
-  ...WONDERS.filter((w) => w.id !== MAW.id).map((w) => ({ id: w.id, at: w.at, y: w.at[1], d: startOff(reachOf(w), w.solid === false ? 0 : (DEEP_SOLIDS.find((o) => o.id === w.id)?.r ?? w.r)) })),
+  ...WONDERS.filter((w) => w.id !== MAW.id && w.kind !== 'portal' && sectorOf(...w.at) === 'main').map((w) => ({ id: w.id, at: w.at, y: w.at[1], d: startOff(reachOf(w), w.solid === false ? 0 : (DEEP_SOLIDS.find((o) => o.id === w.id)?.r ?? w.r)) })),
 ];
 // the near edge of the home system, facing its middle: where a ship starts
 // unless told otherwise
@@ -326,6 +357,22 @@ export function spawn(id, start = HOME_EDGE) {
 // (the galaxy's star systems: galaxy/space.js), to step() and autopilot().
 export const SPACE = { edge: EDGE, ceilingAt, openness, driveAt, driveAlong, homeAt, boostAt, brakeAt, coastAt, approachAt, solids: SOLIDS, goals: GOALS };
 
+// How far the ship carries on, boosting straight on, while hunters pull the
+// pulse drive down over `ramp` seconds (eased in, as the scene does it), till
+// it's down to the boost: where an ambush laid ahead of it has to be to
+// still be ahead of it then (hunterRules.js's entryPoint, `lead`)
+export function holdReach(s, { ramp = 2, solids = SOLIDS, space = SPACE, dt = 1 / 30 } = {}) {
+  let ship = s;
+  let gone = 0;
+  for (let t = 0; t < ramp + 1; t += dt) {
+    const p = Math.min(1, t / ramp);
+    ship = step(ship, { throttle: 1, boost: true, interdicted: p * p * (3 - 2 * p) }, dt, solids, space).ship;
+    gone += Math.abs(ship.speed) * dt;
+    if (p >= 1 && ship.speed <= SHIP.boost * 1.6 + 0.5) break;
+  }
+  return gone;
+}
+
 // One step of `dt` seconds. Returns the new ship and what happened on the
 // way: { type: 'bump', id, hard }, { type: 'crash', id, at: [x, y, z],
 // normal: [x, y, z], speed, swallowed? } (into something too fast, or into
@@ -341,15 +388,15 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
   const climb = clamp(input.climb || 0, -1, 1);
   const roll = clamp(input.roll || 0, -1, 1);
   // what's fitted (held to what any fit can do)
-  const tune = input.tune;
-  const boost = SHIP.boost * clamp(tune?.boost ?? 1, 1, 1.6);
-  const cruise = SHIP.cruise * clamp(tune?.cruise ?? 1, 1, 1.2);
-  const accelK = clamp(tune?.accel ?? 1, 1, 1.8);
-  const agileK = clamp(tune?.agility ?? 1, 0.6, 1.4);
+  const tune = tuned(input.tune);
+  const boost = SHIP.boost * tune.boost;
+  const cruise = SHIP.cruise * tune.cruise;
+  const accelK = tune.accel;
+  const agileK = tune.agility;
   const turnK = clamp(input.turnRate ?? 1, 0.25, 3) * agileK;
   const pitchK = clamp(input.pitchRate ?? 1, 0.25, 3) * agileK;
   const rollK = clamp(input.rollRate ?? 1, 0.25, 3) * agileK;
-  const levelK = clamp(input.level ?? 1, 0, 3) * clamp(tune?.level ?? 1, 1, 1.8);
+  const levelK = clamp(input.level ?? 1, 0, 3) * tune.level;
   // how far it's held down (hunters' interdiction, a battle), and how open
   // the drive is the way it's going (another map's space: where it is)
   const held = input.interdicted === true ? 1 : clamp(Number(input.interdicted) || 0, 0, 1);
@@ -377,8 +424,9 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
   if (faster) {
     // (boosting toward more than the boost, the pulse drive pushes from the
     // start, all of it once it's a third of the way open: a hop between two
-    // stations gets going straight away)
-    accel = (input.boost ? (SHIP.accel * 1.8 * (1 + 2 * space.homeAt(s.x, s.z)) + (want > boost + 1 ? SHIP.pulseAccel * Math.min(1, open * 3) : 0)) * odK : SHIP.accel * (1 + near)) * accelK; // (and up to the approach quicker)
+    // stations gets going straight away. Boosters fitted push the boost, not
+    // the pulse drive, which is the same for everyone)
+    accel = input.boost ? (SHIP.accel * 1.8 * (1 + space.homeAt(s.x, s.z)) * accelK + (want > boost + 1 ? SHIP.pulseAccel * Math.min(1, open * 3) : 0)) * odK : SHIP.accel * (1 + near) * accelK; // (and up to the approach quicker)
   } else {
     // slowing. What the drive takes off, past what it allows the way it's
     // going (coming up on a place at pulse speed, turning toward one, held
@@ -414,13 +462,17 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
   const spin = Math.sqrt(tipRate * tipRate + rate * rate + rollRate * rollRate);
   if (spin > 1e-9) q = normalize(mul(q, axisAngle([tipRate / spin, rate / spin, -rollRate / spin], spin * dt)));
 
-  // turned back at the edge: the nose comes round toward the middle
-  const out = Math.sqrt(s.x * s.x + s.z * s.z);
-  if (out > space.edge - 2) {
-    const k = clamp((out - (space.edge - 2)) / 2, 0, 1);
+  // turned back at the edge: the nose comes round toward the middle (of
+  // the sector it's in: layout.js's SECTORS, each with an edge of its own;
+  // the main one's is space.edge)
+  const { sec, out } = sectorOut(s.x, s.z);
+  const [ox, , oz] = sec.origin;
+  const edgeR = sec.id === 'main' ? space.edge : sec.edge;
+  if (out > edgeR - 2) {
+    const k = clamp((out - (edgeR - 2)) / 2, 0, 1);
     const f = rotate(q, NOSE);
     const level = Math.hypot(f[0], f[2]);
-    q = turnToward(q, [(-s.x / out) * level, f[1], (-s.z / out) * level], 2.2 * dt * k);
+    q = turnToward(q, [(-(s.x - ox) / out) * level, f[1], (-(s.z - oz) / out) * level], 2.2 * dt * k);
   }
 
   // the ceiling and the floor: going out toward one, the nose is never
@@ -463,14 +515,14 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
   let y = s.y + (f[1] * speed + lift) * dt;
   let z = s.z + f[2] * speed * dt;
   let v = speed;
-  const r = Math.sqrt(x * x + z * z);
+  const r = Math.hypot(x - ox, z - oz);
   const ceil = space.ceilingAt(x, z);
-  let edge = s.edge && (r > space.edge - 1 || Math.abs(y) > ceil - 1); // clears once well back inside
-  if (r > space.edge) {
-    x *= space.edge / r;
-    z *= space.edge / r;
+  let edge = s.edge && (r > edgeR - 1 || Math.abs(y) > ceil - 1); // clears once well back inside
+  if (r > edgeR) {
+    x = ox + (x - ox) * (edgeR / r);
+    z = oz + (z - oz) * (edgeR / r);
   }
-  if (r > space.edge) {
+  if (r > edgeR) {
     if (!edge) events.push({ type: 'edge' });
     edge = true;
   } else if (Math.abs(y) > ceil) edge = true; // (eased back from the ceiling or the floor without a word)

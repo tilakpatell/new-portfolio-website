@@ -211,7 +211,10 @@ const FANDOMS = [
     world: 'Dot Matrix',
     place: 'Dot Matrix island',
     to: '/dot-matrix',
-    pages: [{ to: '/dot-matrix/64', world: 'Super Mario 64' }],
+    pages: [
+      { to: '/dot-matrix/64', world: 'Super Mario 64' },
+      { to: '/dot-matrix/minecraft', world: 'Minecraft' },
+    ],
     swatch: '#9bbc0f',
     accent: '#9bbc0f',
     rim: '#6f9a1c', // the screen's lightest green would glare as air
@@ -258,15 +261,16 @@ const FANDOMS = [
 
 export const UNIVERSES = [...CORE, ...FANDOMS];
 
-// The Rick and Morty system: four small planets round the Citadel, out in
-// deep space (deep.js's wonder), each a place from the show the portal gun
-// dials on the C-137 page, and each landed on like a fandom's planet (the
-// ship sets down, the crew gets out: landings/landings.js). They aren't in
-// UNIVERSES (not in the map's order, the mini-map or the pages' links): a
-// kind of their own, 'moon', found by byId, placed by layout.js at `at`,
-// solid and landable through ship.js's PLANETS and the scene's planets.
-// Sizes are a quarter of a fandom planet's; the Citadel is at
-// [1755, -135, -4660], r 60, reaching 114.
+// The Rick and Morty sector's worlds: small planets out in a sector of
+// space of their own (layout.js's SECTORS.rickmorty, far past the main
+// map's rim), round the Citadel (deep.js's wonder, at the sector's middle),
+// each a place from the show the portal gun dials on the C-137 page, and
+// each landed on like a fandom's planet (the ship sets down, the crew gets
+// out: landings/landings.js). They aren't in UNIVERSES (not in the map's
+// order, the mini-map or the pages' links): a kind of their own, 'moon',
+// found by byId, placed by layout.js on the sector's own spiral (in this
+// order), solid and landable through ship.js's PLANETS and the scene's
+// planets. Sizes are a quarter of a fandom planet's.
 const MOON = 7 * 3;
 export const MOONS = [
   {
@@ -282,7 +286,7 @@ export const MOONS = [
     accent: '#ffb080',
     rim: '#ffb080',
     size: 0.42 * MOON,
-    at: [2210, -75, -4860],
+    sector: 'rickmorty',
     palette: { base: '#b84a2a', dark: '#6a2a1a', light: '#e08a5a', glow: '#ff9a6a' },
     air: { colour: '#ffb080', density: 1.3, top: 1.06 },
   },
@@ -299,7 +303,7 @@ export const MOONS = [
     accent: '#ff9a8a',
     rim: '#7ad2c8',
     size: 0.4 * MOON,
-    at: [2000, -190, -4400],
+    sector: 'rickmorty',
     palette: { base: '#b83a3a', dark: '#7a2a2a', light: '#d85a4a', glow: '#7ad2c8' },
     air: { colour: '#7ad2c8', density: 1.6, top: 1.07 },
   },
@@ -316,7 +320,7 @@ export const MOONS = [
     accent: '#9ad86a',
     rim: '#bfe4ff',
     size: 0.44 * MOON,
-    at: [1900, -30, -4150],
+    sector: 'rickmorty',
     palette: { base: '#4a8a3a', dark: '#2a5a2a', light: '#6aa84a', glow: '#bfe4ff' },
     air: { colour: '#bfe4ff', density: 1.8, top: 1.07 },
   },
@@ -333,9 +337,61 @@ export const MOONS = [
     accent: '#ffd080',
     rim: '#ffe0a0',
     size: 0.38 * MOON,
-    at: [1480, -20, -5090],
+    sector: 'rickmorty',
     palette: { base: '#b88a3a', dark: '#6a4a2a', light: '#d8aa5a', glow: '#ffe0a0' },
     air: { colour: '#ffe0a0', density: 1.2, top: 1.05 },
+  },
+  // and three more from the dial, in the sector since: Pluto, the snakes' planet, and Nuptia 4
+  {
+    id: 'pluto',
+    label: 'Pluto',
+    kind: 'moon',
+    world: null,
+    place: 'Pluto',
+    go: 'Land on',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#a8b8d0',
+    accent: '#d8e4f4',
+    rim: '#e8f0ff',
+    size: 0.36 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#8a9ab0', dark: '#4a5468', light: '#c8d4e4', glow: '#e8f0ff' },
+    air: { colour: '#d8e6ff', density: 1.0, top: 1.04 },
+  },
+  {
+    id: 'snakeplanet',
+    label: 'Snake Planet',
+    kind: 'moon',
+    world: null,
+    place: 'Snake Planet',
+    go: 'Land on',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#7ab84a',
+    accent: '#c8f08a',
+    rim: '#d8f07a',
+    size: 0.4 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#5a8a3a', dark: '#2a4a1a', light: '#8ab85a', glow: '#d8f07a' },
+    air: { colour: '#c8f08a', density: 1.4, top: 1.06 },
+  },
+  {
+    id: 'nuptia',
+    label: 'Nuptia 4',
+    kind: 'moon',
+    world: null,
+    place: 'Nuptia 4',
+    go: 'Land on',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#e08ac0',
+    accent: '#ffc8e8',
+    rim: '#ffc8e8',
+    size: 0.38 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#b85a9a', dark: '#5a2a4a', light: '#e08ac0', glow: '#ffc8e8' },
+    air: { colour: '#ffc8e8', density: 1.3, top: 1.06 },
   },
 ];
 export const MOON_IDS = MOONS.map((m) => m.id);

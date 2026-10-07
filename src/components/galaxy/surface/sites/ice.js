@@ -108,7 +108,7 @@ export const SITES = {
         },
         life: [
           { kind: 'hothtrooper', at: [0.9, 19], still: true, face: Math.PI, name: 'Rebel trooper', says: ['Stay clear of the hangar doors when they open. It’s minus sixty out there tonight.', 'Command centre’s left at the junction. Medical’s right.'] },
-          { kind: 'rebel', at: [-24, -2], still: true, face: -Math.PI / 2, name: 'General Rieekan', named: true, says: ['Our first catch of the day. An Imperial probe droid.', 'Prepare for ground assault. Send all troops in sector twelve to the south slope.', 'Commence the evacuation. The transports go first, one at a time, behind the ion cannon.'] },
+          { kind: 'rebel', at: [-21.8, -2], still: true, face: -Math.PI / 2, name: 'General Rieekan', named: true, says: ['Our first catch of the day. An Imperial probe droid.', 'Prepare for ground assault. Send all troops in sector twelve to the south slope.', 'Commence the evacuation. The transports go first, one at a time, behind the ion cannon.'] },
           { kind: 'rebel', at: [-30, 3.6], still: true, face: Math.PI, name: 'Toryn Farr', named: true, says: ['First transport is away.', 'Stand by, ion control. Fire!', 'Shield’s holding. For now.'] },
           { kind: 'rebel', at: [-21, -8.1], still: true, face: 0, name: 'Controller', says: ['(Eyes on the scope.) Something’s out there, past the north ridge.'] },
           { kind: 'c3po', at: [-27.6, -5], roam: 2, speed: 0.4, name: 'C-3PO', named: true, says: ['Sir, the odds of surviving a night on the surface are seven hundred and twenty-five to one.', 'Master Luke is still out there. Oh dear.'] },

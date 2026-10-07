@@ -19,7 +19,7 @@
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cli } from '../desktop/jobs.mjs';
 import { deps, fetchImage, fields, fresh, git, imageUrls, push, pullRequest, repoName, slug, tee, urlIn, workspace } from '../desktop/lib.mjs';
@@ -33,7 +33,8 @@ const SIDES = ['front', 'left', 'back', 'right'];
 export const KEYS = ['what', 'prompt', 'image', ...SIDES, 'faces', 'tex', 'seed', 'res', 'fov', 'engine', 'faithful', 'bake', 'fresh', 'more'];
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const PORT = 5298;
-const prefix = /^\s*(gen3d|3d|model)\s*[:-]\s*/i;
+// (a prefix written as one, as lib.mjs's slug has it: not "model-627"'s own first word)
+const prefix = /^\s*(gen3d|3d|model)(\s*:\s*|\s+-\s+)/i;
 
 // An issue → a job for make.mjs, or null when it says nothing to make.
 // A job that can't be made says why in `error`.
@@ -92,6 +93,8 @@ export function makeArgs(job, image, sides = {}) {
   a.push('--what', job.what);
   for (const k of ['faces', 'tex', 'seed', 'res', 'fov', 'engine']) if (job[k] !== undefined) a.push(`--${k}`, String(job[k]));
   if (image && job.faithful && Object.keys(sides).length <= 1) a.push('--faithful');
+  // make.mjs follows a single picture with Pixal3D unless told not to
+  if (image && !job.faithful) a.push('--no-faithful');
   if (job.noBake) a.push('--no-bake');
   if (job.fresh) a.push('--fresh');
   return a;
@@ -114,6 +117,10 @@ export function request({ name, what, image, prompt, faces, tex, options, more }
   if (check?.error) throw new Error(check.error);
   return { title, body };
 }
+
+// Where make.mjs keeps a job's sheet, log and outcome: GEN3D_CACHE when it's
+// set (make.mjs reads the same), else the checkout's own cache.
+export const cacheOf = (root, name) => join(process.env.GEN3D_CACHE ? resolve(root, process.env.GEN3D_CACHE) : join(root, 'scripts', 'gen3d', 'cache'), name);
 
 // A dev server on the job's checkout, for the judging sheet's renders.
 function serve(root) {
@@ -157,7 +164,7 @@ export async function make(job, root, { log = console.log } = {}) {
   log(`#${job.number} ${job.name}: ${job.image ? `from ${job.views ? `${Object.keys(job.views).length} pictures` : 'a picture'}${job.faithful ? ' (Pixal3D)' : ''}` : `"${job.prompt}"`}`);
   fresh(root, branch);
   deps(root, log);
-  const cache = join(root, 'scripts', 'gen3d', 'cache', job.name);
+  const cache = cacheOf(root, job.name);
   mkdirSync(cache, { recursive: true });
   const image = job.image ? await fetchImage(job.image, join(cache, 'from-issue.png')) : null;
   const sides = {};

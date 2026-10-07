@@ -22,6 +22,8 @@
 // round, as spheres along its length ([z, radius], shares of its length;
 // the galaxy's set pieces fly round the same ones).
 
+import { paced } from './ship';
+
 const rebels = {
   id: 'rebels',
   name: 'Rebel Alliance',
@@ -173,17 +175,18 @@ export const WARS = {
     name: 'The War for the Multiverse',
     ready: true,
     sides: [council, federation],
-    // at its real places on the map: from just off the Citadel (deep.js's) to
-    // the sky over Earth C-137 (the Rick and Morty world), which the
-    // Federation took, as it did in the show
+    // in the main map's deep space (the Citadel and the show's worlds are
+    // through the portal, in a sector of their own: layout.js), from the
+    // Council's picket out in the dark to the sky over Earth C-137 (the Rick
+    // and Morty world), which the Federation took, as it did in the show
     sectors: line(
       [1216, -135, -4464],
       [-288, -135, -3916],
       [
-        ['citadel', 'The Citadel'],
-        ['birdworld', 'Bird World'],
-        ['gazorpazorp', 'Gazorpazorp'],
-        ['squanch', 'Planet Squanch'],
+        ['picket', 'The Council’s picket'],
+        ['blips', 'Blips and Chitz'],
+        ['anatomy', 'Anatomy Park'],
+        ['froopy', 'Froopyland'],
         ['unity', 'Unity’s world'],
         ['gromflom', 'Gromflom Prime'],
         ['c137', 'Earth C-137'],
@@ -224,7 +227,8 @@ export const warFor = (sideId) => (sideId && Object.hasOwn(WARS, sideId) ? WARS[
 // three]), range (how far it opens fire), cone (radians: how near its nose
 // must be), damage (a bolt's), and for a bomber its torpedoes (seconds
 // between runs' shots: `reload`)
-const F = (o) => ({ accel: o.speed * 0.8, burst: [0.12, 0.7], range: 14, cone: 0.1, damage: 1, ...o });
+// (at the ship's pace: ship.js's PACE)
+const F = (o) => paced({ accel: o.speed * 0.8, burst: [0.12, 0.7], range: 14, cone: 0.1, damage: 1, ...o });
 export const FIGHTERS = {
   // Star Wars
   xwing: F({ size: 0.36, speed: 20, turn: 2.3, hp: 5 }),
