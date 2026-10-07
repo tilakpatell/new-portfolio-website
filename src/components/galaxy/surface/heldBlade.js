@@ -24,5 +24,8 @@ export function heldBlade({ color = '#ff3b3b', hilt = null } = {}, tall = 1.8) {
   arm.position.set(-0.19 * tall, 0.47 * tall, 0.08 * tall);
   arm.add(gun);
   gun.rotation.set(-0.35, 0, -0.2);
+  // (the arm's rest: the blade up and a little forward; a duellist's swings
+  // turn it from here, activity.js)
+  arm.rotation.set(-0.2, 0, 0.25);
   return { arm, gun, owned };
 }
