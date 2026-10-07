@@ -18,7 +18,8 @@ import { createGhosts } from '../../middleearth/towns/ghosts';
 import { createChallenges } from './challenges';
 import { DAD, newDad, stepDad } from './companions';
 import { buildCity } from './city';
-import { createFlaxans } from './flaxans';
+import { anyOf, standing } from './foes';
+import { createVillains } from './villains';
 import { surfaceAt } from './flight';
 import { createFlightFx } from './fx';
 import { buildGround } from './ground';
@@ -28,7 +29,7 @@ import { buildLife } from './life';
 import { LINES } from './lines';
 import { createNpcs } from './npcs';
 import { buildClouds, buildHaze, skyBands } from './sky';
-import { createTraffic, stepTraffic } from './traffic';
+import { carAt, createTraffic, stepTraffic, takeCar } from './traffic';
 import { CITY, WATER_Y, WORLD, buildWorld, groundAt, near } from './map';
 import { BODIES, altitudeOf } from './orbit';
 import { castMaterial, loadCast, personFor, setCastRim } from './people';
@@ -41,6 +42,8 @@ const damp = (v, to, rate, dt) => v + (to - v) * (1 - Math.exp(-rate * dt));
 const luma = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 const Y = new THREE.Vector3(0, 1, 0);
 const Z = new THREE.Vector3(0, 0, 1);
+// what the villains do that's drawn and felt (./villains.js's fx)
+const VILLAIN_EV = new Set(['spawn', 'hit', 'ko', 'down', 'hurt', 'won', 'swing', 'throw', 'carHit', 'carAway', 'carDown', 'quake', 'blast', 'shake']);
 
 // the times of day: the sky, how it sits, the light, the haze, the night,
 // the light that follows Mark (`spot`) and the rim round the cast (`rim`).
@@ -122,7 +125,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   scene.add(ground.group, city.group, landmarks.group);
   // who's about, the clouds, and the airliner going round
   // (the HD figures for those the cast has; the kit's people for the rest)
-  const people = await loadCast(['eve', 'debbie', 'cecil', 'allen', 'civA', 'civB', 'civC']);
+  const people = await loadCast(['eve', 'debbie', 'cecil', 'allen', 'civA', 'civB', 'civC', 'mauler', 'seismic']);
   const npcs = createNpcs(scene, world, people);
   const clouds = buildClouds({ small });
   scene.add(clouds.mesh);
@@ -212,7 +215,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
 
   const fx = createFlightFx(scene, { calm, small });
   const challenges = createChallenges(scene, world, fx.vfx);
-  const flaxans = createFlaxans(scene, fx.vfx, { calm });
+  const villains = createVillains(scene, fx.vfx, { calm, templates: { mauler: people.mauler, seismic: people.seismic }, rim: LOOK.noon.rim });
   const feel = createFeel({ calm, baseFov: FOV, offset: 0.4 });
 
   // ── the time of day ──
@@ -297,7 +300,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   await setTime('noon');
 
   // ── the city or space: one or the other is drawn ──
-  const cityOnly = [ground.group, city.group, landmarks.group, clouds.mesh, hazeSky.mesh, jet.group, life.group, challenges.group, flaxans.group, omni.holder];
+  const cityOnly = [ground.group, city.group, landmarks.group, clouds.mesh, hazeSky.mesh, jet.group, life.group, challenges.group, villains.group, omni.holder];
   function spaceLook() {
     scene.background = new THREE.Color(0, 0, 0.004);
     scene.fog = null;
@@ -615,11 +618,11 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     // what happened this frame (and what sends the people and the traffic running)
     const scare = [];
     // and what the townspeople make of it (./brains.js)
-    const crowd = { slam: null, hit: null, fight: Boolean(sim.fight?.on), won: false, time: timeName, lesson: sim.quests?.lesson ?? null, mission: sim.mission?.id ?? null };
+    const crowd = { slam: null, hit: null, fight: Boolean(sim.foes?.on), won: false, time: timeName, lesson: sim.quests?.lesson ?? null, mission: sim.mission?.id ?? null };
     // (Eve goes for the foes still standing)
     crowd.talk = Boolean(sim.talkEve);
     sim.talkEve = false;
-    crowd.foes = sim.fight?.on ? sim.fight.foes.filter((e) => e.state === 'fight').map((e) => ({ id: e.id, p: e.p })) : [];
+    crowd.foes = sim.foes ? standing(sim.foes).map((e) => ({ id: e.id, p: e.p })) : [];
     // what Eve and Dad say and do this frame, for ./InvWorld.jsx
     sim.companion ??= [];
     for (const e of sim.events) {
@@ -653,14 +656,21 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
           splashed.speed = e.speed;
         }
       } else if (e.type === 'takeoff') fx.takeoff(e.at);
-      else if (e.type === 'spawn' || e.type === 'ko' || e.type === 'down' || e.type === 'hurt' || e.type === 'won') {
-        // the Flaxans: coming through, knocked out, hitting him
-        flaxans.fx(e);
+      else if (VILLAIN_EV.has(e.type)) {
+        // the villains (./foes.js): coming through, hit, knocked out, hitting him
+        villains.fx(e);
         if (e.type === 'ko') {
-          feel.trauma(0.3);
+          // (the camera's knock goes by their size)
+          feel.trauma(e.kind === 'mauler' ? 0.5 : e.kind === 'seismic' ? 0.4 : 0.3);
           feel.hitstop(60);
           scare.push({ x: e.at[0], z: e.at[2], r: 30 });
-        } else if (e.type === 'hurt') feel.trauma(0.35);
+        } else if (e.type === 'hit') {
+          feel.trauma(0.15);
+          feel.hitstop(40);
+        } else if (e.type === 'hurt') feel.trauma(e.by === 'car' || e.by === 'mauler' ? 0.5 : 0.35);
+        else if (e.type === 'shake') feel.trauma(clamp(0.9 - Math.hypot(e.at[0] - h.p[0], e.at[2] - h.p[2]) / 200, 0.2, 0.9));
+        else if (e.type === 'carHit' || e.type === 'carDown') scare.push({ x: e.at[0], z: e.at[2], r: 25 });
+        else if (e.type === 'throw' && e.car != null && traffic.cars[e.car]) traffic = takeCar(traffic, traffic.cars[e.car].id);
       } else if (e.type === 'land' && e.n) {
         // down on the Moon or Mars: a ring of dust thrown out round him
         const at = new THREE.Vector3(...e.at);
@@ -731,7 +741,17 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         jet.update(frameDt, t);
       }
       if (sim.quests) challenges.update(sim.quests, frameDt, t);
-      if (sim.fight) flaxans.update(sim.fight, frameDt, t, h);
+      if (sim.foes) {
+        villains.update(sim.foes, frameDt, t, h);
+        // (a Mauler about: where the traffic's cars are, for him to take one; a car he's taken is nowhere)
+        sim.cars = anyOf(sim.foes, 'mauler')
+          ? traffic.cars.map((c) => {
+              if (c.gone) return [1e9, 0, 1e9];
+              const [x, z] = carAt(c);
+              return [x, 0, z];
+            })
+          : null;
+      }
       // (no traffic to speak of from up where the clouds are)
       if (h.p[1] < 2200 || scare.length) {
         traffic = stepTraffic(traffic, frameDt, { cx: camera.position.x, cz: camera.position.z, yaw: sim.yaw, scare });
@@ -796,6 +816,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     debug: {
       npcs,
       jet,
+      villains,
       world,
       bodies: BODIES,
       allen: ALLEN,
@@ -814,6 +835,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     dispose() {
       skyLight?.dispose();
       fx.dispose();
+      villains.dispose();
       ghosts.dispose();
       for (const c of casts) c.dispose();
       mark.dispose();

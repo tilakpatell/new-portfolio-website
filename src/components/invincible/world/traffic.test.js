@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BRIDGES, CITY, GRID, RIVER } from './map';
-import { LANE, WALK, carAt, createTraffic, segmentOk, stepTraffic, walkerAt } from './traffic';
+import { LANE, WALK, carAt, createTraffic, segmentOk, stepTraffic, takeCar, walkerAt } from './traffic';
 
 // distance from a coordinate to the nearest street centre line
 const offLine = (v) => Math.abs(((((v - GRID.cell / 2) % GRID.cell) + GRID.cell * 1.5) % GRID.cell) - GRID.cell / 2);
@@ -95,6 +95,16 @@ describe('the cars', () => {
     const s1 = st.cars[0].s;
     st = run(st, 1, { cx: x, cz: z });
     expect((st.cars[0].s - s1) * c0.dir).toBeGreaterThanOrEqual(-1);
+  });
+  it('lose one a Mauler takes, and get it back out of sight', () => {
+    let st = createTraffic({ cars: 3, walkers: 0 });
+    const [x, z] = carAt(st.cars[1]);
+    st = takeCar(st, 1);
+    expect(st.cars[1].gone).toBe(true);
+    st = stepTraffic(st, 1 / 30, { cx: x, cz: z });
+    const [x1, z1] = carAt(st.cars[1]);
+    expect(st.cars[1].gone).toBe(false);
+    expect(Math.hypot(x1 - x, z1 - z)).toBeGreaterThan(200);
   });
 });
 
