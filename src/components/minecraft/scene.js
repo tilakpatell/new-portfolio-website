@@ -10,7 +10,7 @@
 
 import * as THREE from 'three';
 import { byName } from './rules/blocks.js';
-import { NOON } from './rules/game.js';
+import { sunBrightness } from './rules/time.js';
 import { EYE } from './rules/player.js';
 import { BIOME_CLIMATE, colormapAt } from './pack/colormap.js';
 import { MC, loadBlockArray, loadItemArray, loadSprite, pixels } from './scene/atlasTexture.js';
@@ -37,10 +37,11 @@ export function createScene(rt, { manifest }) {
 
   const ready = (async () => {
     const map = (name) => pixels(`${MC}sprites/${name}.webp`).catch(() => null);
-    const [array, items, sun, clouds, grassMap, foliageMap] = await Promise.all([
+    const [array, items, sun, moon, clouds, grassMap, foliageMap] = await Promise.all([
       loadBlockArray(manifest),
       manifest.items?.length ? loadItemArray(manifest).catch(() => null) : null,
       loadSprite('sun').catch(() => null),
+      loadSprite('moon_phases').catch(() => null),
       loadSprite('clouds').catch(() => null),
       map('colormap_grass'),
       map('colormap_foliage'),
@@ -52,7 +53,7 @@ export function createScene(rt, { manifest }) {
     if (foliageMap) colours.foliage = colormapAt(foliageMap, ...climate);
     materials = { opaque: blockMaterial({ array, pass: 'opaque', colours }), cutout: blockMaterial({ array, pass: 'cutout', colours }), water: blockMaterial({ array, pass: 'water', colours }) };
     chunks = createChunks(scene, { materials });
-    sky = createSky(scene, { sun, clouds });
+    sky = createSky(scene, { sun, moon, clouds });
     const blockLayers = new Map(manifest.blocks.map((t, i) => [t, i]));
     const itemLayers = new Map((manifest.items ?? []).map((t, i) => [t, i]));
     const tints = { ...TINT_COLOURS, ...colours };
@@ -83,8 +84,10 @@ export function createScene(rt, { manifest }) {
     camera.position.set(prev.x + (p.x - prev.x) * alpha, prev.y + (p.y - prev.y) * alpha + eye, prev.z + (p.z - prev.z) * alpha);
     camera.rotation.set(p.pitch, p.yaw, 0);
     if (!materials) return;
-    // (Phase 1 holds noon: the clock runs, the sky and the light wait for Phase 3's day)
-    sky.update(NOON, camera, distance * 16, g.ticks + alpha);
+    // the hour: the sky, and how much of the sky's light reaches the blocks
+    sky.update(g.time + alpha, camera, distance * 16, g.ticks + alpha);
+    const sun = sunBrightness(g.time + alpha);
+    for (const m of Object.values(materials)) m.uniforms.sun.value = sun;
     // the block under the crosshair, and its crack while it's being broken
     const br = g.breaking;
     cursor.set(g.cursor, br && g.cursor && br.x === g.cursor.x && br.y === g.cursor.y && br.z === g.cursor.z ? Math.min(9, Math.floor(br.progress * 10)) : -1);

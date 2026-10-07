@@ -24,7 +24,7 @@ import { makeChunk, packEdits } from './rules/chunk.js';
 import { addChunk, drain, dropFar, dropHeld, newGame, spawnDrop, tick, wantedChunks } from './rules/game.js';
 import { click, close, makeScreen, result } from './rules/gui.js';
 import { ITEMS } from './rules/items.js';
-import { borders, chunkKey } from './rules/jobs.js';
+import { chunkKey } from './rules/jobs.js';
 import { SAVE, SAVE_VERSION, pack, restore } from './rules/save.js';
 import { createScene } from './scene.js';
 import { MC } from './scene/atlasTexture.js';
@@ -127,7 +127,7 @@ export default {
 
     function begin(save, seed) {
       for (const k of flying.keys()) client.cancel(k);
-      for (const k of remeshing.keys()) client.cancel(`${k}:m`);
+      for (const ask of remeshing.values()) client.cancel(ask);
       flying.clear();
       remeshing.clear();
       if (g) for (const c of g.world.chunks.values()) scene.chunks.drop(c.cx, c.cz);
@@ -184,6 +184,7 @@ export default {
           c.ids = msg.ids;
           c.state = msg.state;
           c.light = msg.light;
+          c.lit = true;
           c.generated = true;
           addChunk(g, c);
           for (let s = 0; s < 16; s++) scene.chunks.setMesh(cx, cz, s, msg.meshes[s]);
@@ -195,27 +196,35 @@ export default {
         const [cx, cz] = k.split(',').map(Number);
         scene.chunks.drop(cx, cz);
         if (remeshing.has(k)) {
-          client.cancel(`${k}:m`);
+          client.cancel(remeshing.get(k));
           remeshing.delete(k);
         }
       }
     }
 
-    // what an edit changed, meshed again (first in the worker's queue)
+    // What an edit changed, lit and meshed again first in the worker's queue: its
+    // chunk and the eight round it, since light reaches 14 blocks. Each ask has its
+    // own number, so an older answer still on its way can't land as the newer one.
+    let asked = 0;
     function remesh() {
-      for (const [k, c] of g.world.chunks) {
+      const want = new Set();
+      for (const c of g.world.chunks.values()) {
         if (!c.dirty.size) continue;
-        const sections = [...new Set([...(remeshing.get(k) ?? []), ...c.dirty])].sort((a, b) => a - b);
         c.dirty.clear();
-        remeshing.set(k, sections);
-        const seed = g.seed;
-        client
-          .request({ type: 'mesh', key: `${k}:m`, cx: c.cx, cz: c.cz, sections, priority: -1, chunk: { ids: c.ids.slice(), state: c.state.slice(), light: c.light.slice(), lit: c.lit }, borders: borders(g.world.neighbours(c.cx, c.cz)) })
-          .then((msg) => {
-            if (gone || !msg || g.seed !== seed || !g.world.chunks.has(k)) return;
-            remeshing.delete(k);
-            msg.sections.forEach((s, i) => scene.chunks.setMesh(c.cx, c.cz, s, msg.meshes[i]));
-          });
+        for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if (g.world.chunks.has(chunkKey(c.cx + dx, c.cz + dz))) want.add(chunkKey(c.cx + dx, c.cz + dz));
+      }
+      const seed = g.seed;
+      for (const k of want) {
+        const c = g.world.chunks.get(k);
+        if (remeshing.has(k)) client.cancel(remeshing.get(k));
+        const ask = `${k}:m${++asked}`;
+        remeshing.set(k, ask);
+        client.request({ type: 'chunk', key: ask, seed, cx: c.cx, cz: c.cz, priority: -1, edits: editsAround(c.cx, c.cz) }).then((msg) => {
+          if (gone || !msg || g.seed !== seed || g.world.chunks.get(k) !== c || remeshing.get(k) !== ask) return;
+          remeshing.delete(k);
+          c.light = msg.light;
+          for (let s = 0; s < 16; s++) scene.chunks.setMesh(c.cx, c.cz, s, msg.meshes[s]);
+        });
       }
     }
 
@@ -413,7 +422,12 @@ export default {
               touch.pressed.clear();
             }
           }
-          for (const e of drain(g)) if (e.type === 'open' && mode === 'play') openScreen(3);
+          for (const e of drain(g)) {
+            if (e.type === 'open' && mode === 'play') openScreen(3);
+            // the game's own words over the hotbar
+            else if (e.type === 'no_sleep') tell('say', { text: 'You can only sleep at night' });
+            else if (e.type === 'sleep') tell('say', { text: 'Respawn point set', sleep: true });
+          }
           remesh();
           saveAt += dt;
           if (saveAt > SAVE_EVERY) {

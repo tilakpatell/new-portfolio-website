@@ -653,7 +653,7 @@ export const BRIEFS = {
     {
       id: 'goal',
       title: 'Coming',
-      text: 'The night, caves and mobs arrive a piece at a time. New world on the title gives another seed.',
+      text: 'Night falls after ten minutes: torches keep it back, and a bed sleeps it away. Caves and mobs arrive a piece at a time.',
     },
     help('the world'),
   ],

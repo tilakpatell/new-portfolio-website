@@ -239,6 +239,53 @@ if (log) {
   await step('reloaded');
 }
 
+// ── the day: a sunset to the west, the night, a torch against it, and a bed's morning ──
+if (log) {
+  await run('g.time = 12600; g.player.yaw = Math.PI / 2; g.player.pitch = 0.05;');
+  await ticks(4);
+  await step('sunset');
+  await run('g.time = 18000; g.player.pitch = -0.3;');
+  await ticks(4);
+  await step('night');
+  // a torch on the ground before the player, and a bed beside
+  await run('g.inventory.slots[2] = { item: "torch", count: 4, damage: 0 }; g.inventory.slots[3] = { item: "red_bed", count: 1, damage: 0 }; x.select(2);');
+  // (the ground two blocks off: the column's top solid block within reach below the eye)
+  const spot = await run('const p = g.player; for (const [dx, dz] of [[-2, 0], [0, 2], [2, 0], [0, -2], [-2, 2], [2, 2]]) { const sx = Math.floor(p.x) + dx, sz = Math.floor(p.z) + dz; for (let y = Math.floor(p.y) + 1; y > Math.floor(p.y) - 3; y--) if (g.world.solid(sx, y, sz) && !g.world.solid(sx, y + 1, sz) && !g.world.solid(sx, y + 2, sz)) return { x: sx, y, z: sz }; } return null;');
+  console.log('  ground for the torch:', JSON.stringify(spot));
+  const placeAt = async (c) => {
+    await run('x.debug.aim(args[0], args[1], args[2], 0.5, 0.98, 0.5); x.press("use", true);', c.x, c.y, c.z);
+    await ticks(1);
+    await run('x.press("use", false);');
+    await ticks(6);
+  };
+  await placeAt(spot);
+  const torch = await run('return x.debug.nearest("^torch$", 6);');
+  console.log('  torch:', JSON.stringify(torch));
+  if (!torch) errors.push('the torch was not placed');
+  await ticks(30);
+  console.log('  light by the torch:', JSON.stringify(await run('const L = (x0, y, z0) => { const cx = Math.floor(x0 / 16), cz = Math.floor(z0 / 16); const c = g.world.chunkAt(cx, cz); const i = (y * 16 + (z0 - cz * 16)) * 16 + (x0 - cx * 16); return [c.light[i] >> 4, c.light[i] & 15, c.lit]; }; const t = args; return { at: L(t[0], t[1], t[2]), beside: L(t[0] + 1, t[1], t[2]), remeshing: x.debug.stats().remeshing };', torch.x, torch.y, torch.z)));
+  await ticks(30);
+  await run('g.player.yaw = Math.PI / 2; g.player.pitch = -0.45;');
+  await ticks(4);
+  await step('torch');
+  await run('x.select(3); g.player.yaw = Math.PI / 2;');
+  const bedAt = { x: spot.x, y: spot.y, z: spot.z + 2 };
+  await placeAt(bedAt);
+  const bed = await run('return x.debug.nearest("^red_bed$", 6);');
+  console.log('  bed:', JSON.stringify(bed));
+  if (!bed) errors.push('the bed was not placed');
+  else await run('x.debug.aim(args[0], args[1], args[2], 0.5, 0.5, 0.5); x.press("use", true);', bed.x, bed.y, bed.z);
+  await ticks(2);
+  await run('x.press("use", false);');
+  const hour = await run('return g.time % 24000;');
+  console.log('  after sleeping, the hour:', hour);
+  if (hour > 200) errors.push('the night did not pass');
+  await page.waitForTimeout(2600);
+  await run('g.player.pitch = -0.2;');
+  await ticks(4);
+  await step('morning');
+}
+
 // from above: the lie of the land
 await page.evaluate((w) => {
   const x = eval(w);

@@ -342,6 +342,13 @@ Branch `claude/minecraft-phase-2` from `origin/main`.
 
 ## Phase 3: light and the day (PR 3)
 
+**As built (Phase 3):**
+- *Light (3.1)* is computed in the worker over the 3 × 3 chunks it already makes (a 14-block margin is exact for 15 levels; 7 ms a chunk), not by a main-thread `relight(world, x, y, z)`: an edit re-lights and re-meshes its chunk and the eight round it as chunk jobs carrying the edits, each ask numbered so a stale answer can't land as the newer one. Water, ice and leaves take 1 off (modern opacity).
+- *Smooth lighting:* each corner averages the four cells round it, a dark one counting as the face's own, as the game's `getAoBrightness` does.
+- *The lightmap (3.2):* not `max(sky × daylight, block)` but the game's sum (1.12's `updateLightmap`): the sky's light dimmed and blued by the sun's brightness (0.2 at night), the block's warm, added and clamped (`rules/time.js`'s `lightmap`, the shader the same). `daylight`/`skyDarken` (the game's 11 levels) are there for spawning.
+- *Torches* hang from the face they're put against (state = face) and draw as the game's post (2 × 10 sixteenths, leaning off walls); put on tall grass, one stands on the block under it. *Slabs* draw at their height (oak slab 8, bed 9, snow layer 2) with collision boxes.
+- *The bed* is two blocks (foot, and head with state bit 8, facing by state & 3), placed the way the player looks; breaking either half takes both. Sleeping (12541 to 23458) moves the clock to the next morning and the spawn beside the bed; by day, "You can only sleep at night".
+
 ### Task 3.1: Light
 **Files:** `rules/light.js`, `rules/light.test.js`, `worker.js` (lights a chunk after generating, before meshing), `rules/game.js` (relights on `set` and sends the affected sections to re-mesh).
 **Interfaces:** `lightChunk(chunk, neighbours)` (sky columns from the top, then the flood), `relight(world, x, y, z) → Set<sectionKey>` (the game's removal-then-spread with a queue; returns the sections touched for re-meshing).
