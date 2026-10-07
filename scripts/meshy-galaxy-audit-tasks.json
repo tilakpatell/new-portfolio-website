@@ -106,5 +106,30 @@
       "01a1189b-0500-7763-8abe-8140dad86860"
     ],
     "model": "01a1189b-7d29-7680-8bd9-f440a8fa41aa"
+  },
+  "stall": {
+    "lift": [
+      "01a1189e-0351-7228-bfae-38c2f0a6211e"
+    ]
+  },
+  "wookieehouse": {
+    "lift": [
+      "01a1189e-377f-7002-a22b-d71da543db4c"
+    ]
+  },
+  "droidplatform": {
+    "lift": [
+      "01a1189e-9549-70b9-9e1e-d28d6cb6a4d2"
+    ]
+  },
+  "tent": {
+    "lift": [
+      "01a1189e-de36-751e-9a16-06c21c7c1b47"
+    ]
+  },
+  "mosspire": {
+    "lift": [
+      "01a1189f-1120-7742-96d2-2b8c3b136da3"
+    ]
   }
 }
