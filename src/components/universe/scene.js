@@ -87,6 +87,7 @@
 // `page`, where a wonder with a page of its own goes instead).
 
 import * as THREE from 'three';
+import { EMOTES } from '../../lib/emote';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { capturePointer } from '../../lib/pointer';
 import { local as remembered } from '../../lib/hooks';
@@ -4236,6 +4237,12 @@ export async function create(canvas, ctx) {
     else if (state.note && wall() < state.note.until && !onFoot()) {
       text = state.note.text;
       plain = true;
+    } else if (info && foot.phase === 'walk' && info.emote?.open) {
+      text = EMOTES.map((id, i) => `${i + 1} ${id}`).join(' · ');
+      plain = true;
+    } else if (info && foot.phase === 'walk' && info.emote?.fresh && info.emote.on) {
+      text = `${info.emote.on[0].toUpperCase()}${info.emote.on.slice(1)} · Z again, hold Z for more`;
+      plain = true;
     } else if (info && foot.phase === 'walk' && info.gadget?.fresh) {
       text = `${info.gadget.name} · B for the next`;
       plain = true;
@@ -4835,9 +4842,20 @@ export async function create(canvas, ctx) {
   };
   // the keys on foot: walking (W A S D, Q E to step sideways), Shift to
   // run, Space to jump, F to fire, T the next trooper, X to play the other
-  // one, B Rick's next gadget, V out of your own eyes, Enter into the
-  // planet's world (wayin.js)
+  // one, B Rick's next gadget, Z an emote (held, the wheel of five), V out
+  // of your own eyes, Enter into the planet's world (wayin.js)
   const footKey = (e, key, onControl) => {
+    // Z held: the emote wheel; 1 to 5 picks one while it's open (lib/emote.js's five)
+    if (key === 'z') {
+      e.preventDefault();
+      if (!e.repeat) foot.emote('down');
+      return;
+    }
+    if (foot.info()?.emote?.open && /^[1-5]$/.test(key)) {
+      e.preventDefault();
+      foot.emote('pick', Number(key));
+      return;
+    }
     if (key === 'b') {
       e.preventDefault();
       const gun = foot.gadget();
@@ -4893,6 +4911,8 @@ export async function create(canvas, ctx) {
   const onKeyUp = (e) => {
     const key = e.key.toLowerCase();
     held.delete(key);
+    // (Z let go on foot: the emote pointed at, or a tap's last)
+    if (key === 'z' && onFoot() && foot.emote('up')) ctx.invalidate();
     const now = onFoot() ? FOOT_KEYS : KEYS;
     for (const map of [KEYS, FOOT_KEYS]) {
       const k = map[key];
