@@ -25,10 +25,11 @@ const corner = () =>
 
 // Two corridors one above the other, joined at their west ends by a lift
 // and at their east ends by a stair room 46 m round by foot; the lower
-// corridor is `levels` levels down, 4 m each.
-function tower(levels) {
-  const y = -4 * levels;
-  return station(
+// corridor is `levels` levels down, each `levelHeight` metres (12, DS1’s,
+// when the station gives none).
+function tower(levels, levelHeight) {
+  const y = -(levelHeight ?? 12) * levels;
+  const s = station(
     [
       room('up', 0, 0, 20, 4),
       room('car-up', -11.5, 0, 3, 3, { kind: 'lift' }),
@@ -39,6 +40,7 @@ function tower(levels) {
     [door('up-car', 'up', 'car-up', -10, 0, 'z'), door('down-car', 'down', 'car-down', -10, 10, 'z'), door('up-stair', 'up', 'stair', 10, 0, 'z'), door('stair-down', 'stair', 'down', 10, 10, 'z')],
     [{ id: 'lift', stops: ['car-up', 'car-down'] }],
   );
+  return levelHeight === undefined ? s : { ...s, levelHeight };
 }
 
 describe('routes through doors', () => {
@@ -106,15 +108,24 @@ describe('routes by lift', () => {
     expect(path.at(-1)).toEqual({ x: -40, z: -110, room: 'lift1-l6' });
   });
 
-  it('counts 8 m a level for a ride, so four levels down rides and five walks the 46 m stair', () => {
-    const from = { room: 'up', x: -8, z: 0 };
-    const to = { room: 'down', x: -8, z: 10 };
+  // Riding costs 7 m of walking to and from the cars plus 8 m a level, so
+  // four levels (39 m) beat the 46 m stair and five (47 m) don’t.
+  const from = { room: 'up', x: -8, z: 0 };
+  const to = { room: 'down', x: -8, z: 10 };
+  const rides = (path) => path.some((p) => p.lift === 'lift');
+
+  it('counts 8 m a level of 12 m, DS1’s, so four levels down rides and five walks the 46 m stair', () => {
     const four = route(navOf(tower(4)), from, to);
     expect(doorsOf(four)).toEqual(['up-car', 'down-car']);
-    expect(four.some((p) => p.lift === 'lift')).toBe(true);
+    expect(rides(four)).toBe(true);
     const five = route(navOf(tower(5)), from, to);
     expect(doorsOf(five)).toEqual(['up-stair', 'stair-down']);
-    expect(five.some((p) => p.lift)).toBe(false);
+    expect(rides(five)).toBe(false);
+  });
+
+  it('counts a level by the station’s own `levelHeight` when it gives one', () => {
+    expect(rides(route(navOf(tower(4, 5)), from, to))).toBe(true);
+    expect(rides(route(navOf(tower(5, 5)), from, to))).toBe(false);
   });
 });
 

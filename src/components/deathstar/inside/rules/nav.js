@@ -7,7 +7,8 @@
 // ship) it would cross, kept 0.4 m clear of them. A* weighs each leg as
 // bent, so furniture in the way of one door sends people by another. Pure.
 //
-//   createNav(layout) → nav      the graph of a buildLayout(station), worked out once
+//   createNav(layout) → nav      the graph of a buildLayout(station), worked out once; a ride’s
+//     levels are counted in the station’s `levelHeight` (12 m, DS1’s, when it gives none)
 //   route(nav, from: { x, z, room }, to: { x, z, room }, { canPass, solidsOf }) → [point] | null
 //     canPass(doorId, door) → bool   whether this walker may go through a door (absent: every door)
 //     solidsOf(roomId) → [{ box: { x0, x1, z0, z1 } } | { circle: { x, z, r } }]   what stands on its floor
@@ -17,7 +18,7 @@
 //     null when no way is left; a single point when from and to are the same place in one room
 
 const RIDE = 8; // what a ride costs a level, in metres walked
-const LEVEL = 4; // the height of a level, for counting a ride’s levels
+const LEVEL = 12; // a level’s height where the station gives no `levelHeight`: DS1’s levels are 12 m apart
 const SAME = 1e-6; // points nearer than this are one point
 const GROW = 0.4; // how far a route keeps from a solid, and its corners from a wall: a body’s radius and a little
 const HAIR = 0.01; // corners stand this far outside a grown solid, so a leg between two of them never grazes it
@@ -47,9 +48,11 @@ export function createNav(layout) {
       if (car && !nodes.has(`stop:${id}`)) add({ key: `stop:${id}`, x: car.x, z: car.z, y: car.y, room: id, rides: [] }, id);
     }
   }
+  // a ride’s levels are counted in the station’s own spacing, so a 36 m ride on DS1 is three levels
+  const level = layout.station?.levelHeight ?? LEVEL;
   for (const lift of layout.lifts.values()) {
     const stops = (lift.stops ?? []).map((id) => nodes.get(`stop:${id}`)).filter(Boolean);
-    for (const s of stops) for (const t of stops) if (s !== t) s.rides.push({ to: t, lift: lift.id, cost: RIDE * Math.max(1, Math.round(Math.abs(t.y - s.y) / LEVEL)) });
+    for (const s of stops) for (const t of stops) if (s !== t) s.rides.push({ to: t, lift: lift.id, cost: RIDE * Math.max(1, Math.round(Math.abs(t.y - s.y) / level)) });
   }
   const stops = [...nodes.values()].filter((n) => n.rides);
   for (const n of nodes.values()) n.near = nearest(stops, n);
