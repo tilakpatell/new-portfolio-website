@@ -32,6 +32,7 @@ import { createPortalFx, meshyJoints } from '../../../lib/three/portalFx';
 import { createGadgetFx } from '../../../lib/three/gadgetFx';
 import { SHOW_KILLS } from './weaponRules';
 import { dress } from './saber';
+import { sharpen } from '../../../lib/three/textures';
 
 const BEAM_VERT = `
 varying vec2 vUv;
@@ -141,6 +142,7 @@ function healthBar() {
   canvas.height = 10;
   const c = canvas.getContext('2d');
   const texture = new THREE.CanvasTexture(canvas);
+  sharpen(texture);
   texture.minFilter = THREE.LinearFilter;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false }));
   sprite.scale.set(0.9, 0.14, 1);

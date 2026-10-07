@@ -15,6 +15,7 @@ import * as THREE from 'three';
 import { hot } from '../../../../lib/stage3d';
 import { fbm, makeCanvas, makeNoise, normalFromField, paintPixels } from '../../../../lib/paint';
 import { B, ball, lathe, parts, tube } from '../../shire/props';
+import { sharpen } from '../../../../lib/three/textures';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -58,6 +59,7 @@ function puffTexture() {
   g.fillStyle = grad;
   g.fillRect(0, 0, 64, 64);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

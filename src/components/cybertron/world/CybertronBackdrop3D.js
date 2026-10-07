@@ -25,6 +25,7 @@ import { megaGeometry } from '../rollout/kaon';
 import { pixelRatio } from '../../../lib/device';
 import { precompile, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 import { gltfLoader } from '../../../lib/three/gltf';
+import { sharpen } from '../../../lib/three/textures';
 
 const GROUND = -90; // the deck the towers stand on, deep in the haze
 const HALL = { x: 0, z: -1150 }; // the Hall of Records, at the end of the boulevard
@@ -1147,6 +1148,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     g.fillStyle = grad;
     g.fillRect(0, 0, 128, 128);
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();

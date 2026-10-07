@@ -5,6 +5,7 @@
 // alive. `calm` (reduced motion) skips the flashes and halves the counts.
 
 import * as THREE from 'three';
+import { sharpen } from '../../../lib/three/textures';
 
 // soft round sprites painted once
 function spriteTexture(kind) {
@@ -34,6 +35,7 @@ function spriteTexture(kind) {
     x.fillRect(0, 0, 128, 128);
   }
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

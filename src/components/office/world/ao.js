@@ -9,6 +9,7 @@
 
 import * as THREE from 'three';
 import { CEILING, COLLIDERS, LOT, SOLID, PANES, WAREHOUSE } from './layout';
+import { sharpen } from '../../../lib/three/textures';
 
 const canvas = (w, h) => {
   const c = document.createElement('canvas');
@@ -38,6 +39,7 @@ function blobTex(round) {
     }
   x.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.NoColorSpace;
   return t;
 }
@@ -53,6 +55,7 @@ function edgeTex() {
   x.fillStyle = g;
   x.fillRect(0, 0, 4, 64);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.NoColorSpace;
   return t;
 }

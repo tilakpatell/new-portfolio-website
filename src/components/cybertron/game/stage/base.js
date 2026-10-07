@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { createLibrary } from '../../../../lib/cc0';
 import { makeThing } from '../bots';
 import { drum, makeStrips, merged, platedMaterial, slab } from './common';
+import { sharpen } from '../../../../lib/three/textures';
 
 // a vortex: the ground bridge's green, or the space bridge's blue
 const VORTEX = /* glsl */ `
@@ -40,6 +41,7 @@ function screens(w, h) {
   c.height = 384;
   const g = c.getContext('2d');
   const tex = new THREE.CanvasTexture(c);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   const glyph = (x, y, s, seed) => {
     g.beginPath();

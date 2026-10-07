@@ -19,6 +19,7 @@
 import * as THREE from 'three';
 import { pose } from '../mapFigures';
 import { makePerson } from '../shire/people';
+import { sharpen } from '../../../lib/three/textures';
 
 const TINT = new THREE.Color(0xcfe0ff);
 const GLOW = new THREE.Color(0x6a8cff);
@@ -56,6 +57,7 @@ function nameTag(name, size = 0.42) {
   g.textBaseline = 'middle';
   g.fillText(name, 14, 23);
   const tex = new THREE.CanvasTexture(c);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 }));
   sp.scale.set((w / 44) * size, size, 1);
