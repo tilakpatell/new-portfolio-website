@@ -80,6 +80,13 @@ function centroid(group) {
   return [0, 1, 2].map((i) => group.reduce((s, p) => s + p.at[i] * p.reach, 0) / w);
 }
 
+// how far a lone place's hub is past its reach, toward home
+const ALONE = 600;
+const toward = (p, d) => {
+  const k = (p.reach * CLEAR + d) / Math.hypot(p.at[0], p.at[2]);
+  return [p.at[0] * (1 - k), p.at[1], p.at[2] * (1 - k)];
+};
+
 // out of everything it's inside: straight away from that thing's middle to
 // just past its edge, round again until nothing holds it (a few rounds at
 // most: the places are thousands apart)
@@ -104,7 +111,11 @@ function build() {
     .sort((a, b) => Math.atan2(a.mid[2], a.mid[0]) - Math.atan2(b.mid[2], b.mid[0]));
   const rest = groups.map(({ g, mid }, i) => {
     const biggest = g.reduce((a, b) => (b.reach > a.reach ? b : a));
-    const lifted = [mid[0], mid[1] + (i % 2 ? -HUB_LIFT : HUB_LIFT), mid[2]];
+    // (a region of one: its middle is the place itself, and pushed out of it
+    // straight up or down the hub would sit over it; instead it's out from it
+    // toward home, where its lanes come in from)
+    const at = g.length > 1 ? mid : toward(g[0], ALONE);
+    const lifted = [at[0], at[1] + (i % 2 ? -HUB_LIFT : HUB_LIFT), at[2]];
     return { id: biggest.id, name: `Near ${nameOf(biggest.id)}`, members: g.map((p) => p.id), hub: clearOf(lifted) };
   });
   const home = { id: 'home', name: 'The home system', members: STATIONS, hub: [0, 0, HOME_RADIUS + 240] };
