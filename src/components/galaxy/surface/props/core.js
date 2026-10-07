@@ -11,6 +11,7 @@ import { box, cyl, dome, part, ring, rod, upright } from '../kit';
 import { canvasTexture, loft, trap8, turned } from '../../../universe/trafficKit';
 import { rng } from '../noise';
 import { canopy } from './forest';
+import { boltPath, strikeAt } from '../storm';
 
 const { PI, cos, sin, abs } = Math;
 const lit = (c, k = 2.5) => new THREE.Color(c).multiplyScalar(k);
@@ -1151,7 +1152,8 @@ export const PROPS = {
   // over the sea, its landing lights round the rim
   kpad(k, { r: R = 28, depth = 28 } = {}) {
     const parts = [
-      part(cyl(R, R, 0.7, 48), { at: [0, -0.4, 0], color: '#d8dde2', to: 'paint' }),
+      // (its deck a tread plate, white, the wet catching the light)
+      part(cyl(R, R, 0.7, 48), { at: [0, -0.4, 0], color: '#e2e6ea', to: 'deck' }),
       part(ring(R * 0.7, 0.35, 40), { at: [0, 0.32, 0], color: '#9aa4ae', to: 'paint' }),
       part(cyl(R * 0.3, R * 0.9, 5, 32), { at: [0, -5.4, 0], color: '#b8c0c8', to: 'paint' }),
       part(cyl(R * 0.22, R * 0.26, depth, 20), { at: [0, -depth, 0], color: '#a8b0b8', to: 'paint' }),
@@ -1176,6 +1178,42 @@ export const PROPS = {
     parts.push(part(new THREE.SphereGeometry(2.6, 16, 8, 0, PI * 2, 0, PI * 0.35), { at: [0, 20, 1.6], rot: [-1.2, 0, 0], color: '#dfe4e8', to: 'paint' }));
     parts.push(part(new THREE.SphereGeometry(0.6, 10, 8), { at: [0, 26.6, 0], color: lit('#ff3a2a', 3.5), to: 'glow' }));
     return { object: k.build(parts, { name: 'kmast' }), solids: [{ circle: [0, 0, 2.4] }] };
+  },
+
+  // a static discharge tower (Wookieepedia: Tipoca City has "several static
+  // discharge towers to secure the city during electrical storms"): a
+  // slender white mast in rings, a collector ball at its tip, a red beacon;
+  // now and then the storm's lightning comes down onto it (storm.js says
+  // when, and the bolt's path)
+  kdischarge(k, { h = 16, seed = 1, every = 11 } = {}) {
+    const parts = [
+      part(cyl(1.6, 1.9, 1.2, 16), { color: '#c8ced4', to: 'paint' }),
+      part(cyl(0.55, 0.9, h - 1.2, 14), { at: [0, 1.2, 0], color: '#e4e8ec', to: 'paint' }),
+      part(new THREE.SphereGeometry(1.1, 16, 12), { at: [0, h + 0.6, 0], color: '#9aa4ae', to: 'metal' }),
+      part(cyl(0.12, 0.05, 2.4, 6), { at: [0, h + 1.6, 0], color: '#5a6066', to: 'metal' }),
+      part(new THREE.SphereGeometry(0.3, 8, 6), { at: [0, h - 1.4, 0.75], color: lit('#ff3a2a', 3.5), to: 'glow' }),
+    ];
+    for (let y = 3; y < h - 1; y += Math.max(3, h / 6)) parts.push(part(ring(0.95 - (y / h) * 0.3, 0.12, 16), { at: [0, y, 0], color: '#9aa4ae', to: 'metal' }));
+    const object = k.build(parts, { name: 'kdischarge' });
+    // the bolt, from the cloud to the tip, and the flare round the ball
+    const tip = [0, h + 3.8, 0];
+    const path = boltPath([0, h + 150, 0], tip, seed);
+    const boltParts = [];
+    for (let i = 1; i < path.length; i++) boltParts.push(rod(path[i - 1], path[i], 0.35, 0.35, { color: lit('#d8e8ff', 4), to: 'glow' }, 5));
+    boltParts.push(part(new THREE.SphereGeometry(2.4, 12, 8), { at: [0, h + 0.8, 0], color: lit('#cfe0ff', 3), to: 'glow' }));
+    const bolt = k.build(boltParts, { name: 'kdischarge-bolt', shadows: false });
+    bolt.visible = false;
+    object.add(bolt);
+    return {
+      object,
+      solids: [{ circle: [0, 0, 1.9] }],
+      update(t) {
+        const v = strikeAt(t, { seed, every });
+        bolt.visible = v > 0.3;
+        // (a different way down each time)
+        if (bolt.visible) bolt.rotation.y = Math.floor(t / every) * 2.39;
+      },
+    };
   },
 
   // Slave I, Jango Fett's Firespray, standing on its tail as it lands:
