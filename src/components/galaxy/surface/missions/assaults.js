@@ -9,6 +9,7 @@
 //   phases     [{ name, posts: [ids], tickets }]: the attackers take every
 //              post of one and the next begins, their tickets topped up to it
 //   tickets    { attack, defend } at the start
+//   forward?   the attackers' staging distance, metres short of their objective (RULES.forward unless said)
 //   hideLife   the site's life kinds kept out of the way while it's fought
 //   start      where you stand (and `yaw`) while choosing a side
 //   lines      what your crew say: start, won, lost (by ship's crew)
@@ -226,6 +227,10 @@ export const ASSAULTS = {
       { name: 'The shield generator', posts: ['generator'], tickets: 70 },
     ],
     tickets: { attack: 110, defend: 175 },
+    // (the staging line nearer than the rule's 100 m: the posts are far
+    // apart here and the walk between is through the trees, so with the
+    // rule's distance the first minute of the battle was all walking)
+    forward: 80,
     hideLife: ['stormtrooper', 'scouttrooper', 'rebel'],
     ends: {
       won: 'The shield is down',

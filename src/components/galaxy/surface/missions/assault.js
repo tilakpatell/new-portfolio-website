@@ -165,7 +165,8 @@ export function forwardOf(b, p, objective, r = b.r, times = 1) {
   const dx = objective[0] - p.at[0];
   const dz = objective[1] - p.at[1];
   const d = Math.hypot(dx, dz);
-  const along = Math.max(0, d - RULES.forward * times);
+  // (a map may set its own staging distance: Endor's is shorter, its posts far apart through the trees)
+  const along = Math.max(0, d - (b.mission.forward ?? RULES.forward) * times);
   if (along <= p.r) return spotIn(b, p);
   const k = along / d;
   // (a few metres across the line, so a wave doesn't come back in a stack)
