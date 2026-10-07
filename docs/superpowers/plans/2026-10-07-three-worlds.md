@@ -42,10 +42,10 @@
 **Interfaces:**
 - Produces: `lookOf(site) → { shadow: number (hex int), edge: [a, b], mix, fogLow (hex int), fogHigh, fogBelow, halo, fogMix, exposure }` (the house's `LOOK` shape) and `exposureOf(site) → number`.
 
-- [ ] **Step 1:** Write `look.test.js`: "defaults from the sky: no `look` gives `fogLow` = the sky's horizon, `fogHigh` = its zenith, and a shadow a third from zenith toward horizon darkened by 0.55"; "a site's `look` wins over the defaults, key by key" (`{ shadow: '#5a4a7a', fogBelow: 0.7 }` → those two, the rest defaulted); "nonsense is dropped" (`edge: 'x'`, `shadow: 12` → defaults); "`exposureOf` is `site.exposure ?? 1` times `LOOK.exposure`".
-- [ ] **Step 2:** `npx vitest run src/components/galaxy/surface/look.test.js` — fails: module not found.
-- [ ] **Step 3:** Implement. Colours in as `'#rrggbb'` strings or ints, out as ints (what `createHouse` takes); use `THREE.Color` for the mix (three is fine to import in a pure-ish module here; the Shire's `sky.js` does).
-- [ ] **Step 4:** Run — pass. Commit: "look.js: a site's look for the house, defaulted from its sky".
+- [x] **Step 1:** Write `look.test.js`: "defaults from the sky: no `look` gives `fogLow` = the sky's horizon, `fogHigh` = its zenith, and a shadow a third from zenith toward horizon darkened by 0.55"; "a site's `look` wins over the defaults, key by key" (`{ shadow: '#5a4a7a', fogBelow: 0.7 }` → those two, the rest defaulted); "nonsense is dropped" (`edge: 'x'`, `shadow: 12` → defaults); "`exposureOf` is `site.exposure ?? 1` times `LOOK.exposure`".
+- [x] **Step 2:** `npx vitest run src/components/galaxy/surface/look.test.js` — fails: module not found.
+- [x] **Step 3:** Implement. Colours in as `'#rrggbb'` strings or ints, out as ints (what `createHouse` takes); use `THREE.Color` for the mix (three is fine to import in a pure-ish module here; the Shire's `sky.js` does).
+- [x] **Step 4:** Run — pass. Commit: "look.js: a site's look for the house, defaulted from its sky".
 
 ### Task 2: `surface/groundPaint.js`
 
@@ -57,10 +57,10 @@
 - Produces: `groundPainter(site, grid, { shade = [] }) → { paint(x, z, out) → grass, height(x, z) }`, where `out` is `[r, g, b]` linear, `shade` is `[{ at: [x, z], r }]` (tree crowns: the colour darkened by 0.75 and the grass by 0.4 under one).
 - Consumes: `grid.heightAt(x, z)`, `grid.normalAt(x, z)` (terrain.js), `site.ground.palette` (ground.js's fields), `site.water`, `site.grass`.
 
-- [ ] **Step 1:** Write `groundPaint.test.js`: "height below hLow is `low`, above hHigh is `high`, between is a mix" (a flat grid at three heights); "a slope past rockAt is `rock`"; "under the water level the colour is `deep` and the grass 0"; "the landing flat and a place's flat have grass 0"; "a shade circle darkens the colour and thins the grass"; "a site without `grass` paints grass 0 everywhere".
-- [ ] **Step 2:** Run — fail.
-- [ ] **Step 3:** Implement the rule from `ground.js`'s `color_fragment` block in JS (height mix, slope rock, accent by `noise.js`'s `fbm` at the shader's `xz/70` scale with `accentCover`, `deep` below water, the `wet` band), and the grass from `grass.js`'s `coverAt`.
-- [ ] **Step 4:** Run — pass; `npx vitest run src/components/galaxy/surface/grass.test.js` still passes. Commit: "groundPaint.js: the ground's colour and grass as one function, for the ground map".
+- [x] **Step 1:** Write `groundPaint.test.js`: "height below hLow is `low`, above hHigh is `high`, between is a mix" (a flat grid at three heights); "a slope past rockAt is `rock`"; "under the water level the colour is `deep` and the grass 0"; "the landing flat and a place's flat have grass 0"; "a shade circle darkens the colour and thins the grass"; "a site without `grass` paints grass 0 everywhere".
+- [x] **Step 2:** Run — fail.
+- [x] **Step 3:** Implement the rule from `ground.js`'s `color_fragment` block in JS (height mix, slope rock, accent by `noise.js`'s `fbm` at the shader's `xz/70` scale with `accentCover`, `deep` below water, the `wet` band), and the grass from `grass.js`'s `coverAt`.
+- [x] **Step 4:** Run — pass; `npx vitest run src/components/galaxy/surface/grass.test.js` still passes. Commit: "groundPaint.js: the ground's colour and grass as one function, for the ground map".
 
 ### Task 3: the scene onto the house
 
@@ -71,11 +71,11 @@
 - Consumes: `createHouse(look)` → `{ uniforms, toneMapping, exposure, adopt(root), set, light({ sun, hemi }), sky({ low, high, below, sunDir, halo }), ground(map) }` (`lib/three/house.js`); Task 1's `lookOf`, `exposureOf`.
 - Produces: `createPlacer({ …, adopt })`, `createActors({ …, adopt })`, `createActivity({ …, adopt })`: each calls `adopt(object)` after adding an object to the scene; `scene.js` passes `house.adopt`.
 
-- [ ] **Step 1:** Write `scene.test.js` for two pure helpers in `look.js`: `adoptLater(house, object)` — "materials of an object adopted after the scene count as patched" (a stub house whose `adopt` records roots; the helper returns the count of lit materials under the root); `groundPieces(site) → { map, grass, bounce }` — "a `noGround` site gets none; a site without `grass` gets the map and the bounce but no grass". And in `sky.test.js`: "`lightOf` gives the sun's direction and the dome's horizon and zenith as the site's".
-- [ ] **Step 2:** Run — fail.
-- [ ] **Step 3:** Implement: `const house = createHouse(lookOf(site))`; `renderer.toneMapping = house.toneMapping`; `renderer.toneMappingExposure = exposureOf(site)` (where the post pass sets exposure, set it there instead); keep `scene.fog` (the house swaps its colour for the sky's). Each frame after `sky.update`: `house.light({ sun, hemi })`, `house.sky({ low: horizon, high: zenith, below: look.fogBelow, sunDir, halo })`. In `ready`, after `groundWorld` (or at once on `noGround`): `house.adopt(scene)`. Pass `adopt: house.adopt` into the placer, the actors and the activity; they call it on each added object (zones' builds included).
-- [ ] **Step 4:** `npx vitest run src/components/galaxy` — pass. `npx vite --port 5188 --strictPort --host 127.0.0.1 &` then `OUT=lab/shots node scripts/surface-shot.mjs tatooine "0,0,30,200,land"` and the same for `bespin` and `yavin`: a shot each, no page error, shade visibly tinted.
-- [ ] **Step 5:** Commit: "The galaxy's surfaces draw through the house look".
+- [x] **Step 1:** Write `scene.test.js` for two pure helpers in `look.js`: `adoptLater(house, object)` — "materials of an object adopted after the scene count as patched" (a stub house whose `adopt` records roots; the helper returns the count of lit materials under the root); `groundPieces(site) → { map, grass, bounce }` — "a `noGround` site gets none; a site without `grass` gets the map and the bounce but no grass". And in `sky.test.js`: "`lightOf` gives the sun's direction and the dome's horizon and zenith as the site's".
+- [x] **Step 2:** Run — fail.
+- [x] **Step 3:** Implement: `const house = createHouse(lookOf(site))`; `renderer.toneMapping = house.toneMapping`; `renderer.toneMappingExposure = exposureOf(site)` (where the post pass sets exposure, set it there instead); keep `scene.fog` (the house swaps its colour for the sky's). Each frame after `sky.update`: `house.light({ sun, hemi })`, `house.sky({ low: horizon, high: zenith, below: look.fogBelow, sunDir, halo })`. In `ready`, after `groundWorld` (or at once on `noGround`): `house.adopt(scene)`. Pass `adopt: house.adopt` into the placer, the actors and the activity; they call it on each added object (zones' builds included).
+- [x] **Step 4:** `npx vitest run src/components/galaxy` — pass. `npx vite --port 5188 --strictPort --host 127.0.0.1 &` then `OUT=lab/shots node scripts/surface-shot.mjs tatooine "0,0,30,200,land"` and the same for `bespin` and `yavin`: a shot each, no page error, shade visibly tinted.
+- [x] **Step 5:** Commit: "The galaxy's surfaces draw through the house look".
 
 ### Task 4: the ground map, Bruno's grass and one wind
 
@@ -86,11 +86,11 @@
 **Interfaces:**
 - Consumes: `createGroundMap({ area, size, heightSize, paint, height })` (`lib/three/groundmap.js`), `createGrass({ ground, wind, side, size, height, width, root })` → `{ mesh, material, uniforms, update(centre), set, dispose }` (`lib/three/grass.js`), `createWind({ strength, angle })` (`lib/three/wind.js`), Task 2's `groundPainter`.
 
-- [ ] **Step 1:** Tests in `groundPaint.test.js`: "`mapAreaOf(site)` is the walkable square `±HALF` round the landing"; "a site without `grass` paints colour and alpha 0"; in `kit.test.js` (new): "a kit made with a wind sways its fronds (the material's `onBeforeCompile` is set) and not its stone".
-- [ ] **Step 2:** Run — fail.
-- [ ] **Step 3:** Implement: when `!site.noGround`: `const painter = groundPainter(site, grid, { shade: treeCrowns })` where `treeCrowns` are the scatter items of kinds whose `SCATTER` entry has `canopy: true` (`jungletree`, `redwood`, `wroshyr`, `gnarl`: set the flag in `props/forest.js`); `const map = createGroundMap({ area, size: small ? 256 : 512, heightSize: 128, paint: painter.paint, height: grid.heightAt })`; `house.ground(map)`; `groundMaterial(site, { small, map })`. `const wind = createWind({ strength: site.grass?.wind ?? 0.4, angle: site.ground.wind ?? 0 })`; `createKit({ seed: 31, wind })`. Grass: `site.grass && !site.noGround ? createGrass({ ground: map, wind, side: tier side, size: 44, height: site.grass.h[1], width: site.grass.w ?? 0.05, root: 0.35 })`; `grass.update(me)` each frame; `floorShadow(grass.material, lit.mask)` as before; `house.adopt` covers it. `wind.update(dt)` each frame.
-- [ ] **Step 4:** Tests pass; shots of `yavin`, `naboo`, `endor`, `sorgan` (grass worlds) and `hoth` (none): grass on the first four, blades the ground's colour, moving; none on Hoth; no page error.
-- [ ] **Step 5:** Commit: "The ground map, Bruno's grass and one wind on every world".
+- [x] **Step 1:** Tests in `groundPaint.test.js`: "`mapAreaOf(site)` is the walkable square `±HALF` round the landing"; "a site without `grass` paints colour and alpha 0"; in `kit.test.js` (new): "a kit made with a wind sways its fronds (the material's `onBeforeCompile` is set) and not its stone".
+- [x] **Step 2:** Run — fail.
+- [x] **Step 3:** Implement: when `!site.noGround`: `const painter = groundPainter(site, grid, { shade: treeCrowns })` where `treeCrowns` are the scatter items of kinds whose `SCATTER` entry has `canopy: true` (`jungletree`, `redwood`, `wroshyr`, `gnarl`: set the flag in `props/forest.js`); `const map = createGroundMap({ area, size: small ? 256 : 512, heightSize: 128, paint: painter.paint, height: grid.heightAt })`; `house.ground(map)`; `groundMaterial(site, { small, map })`. `const wind = createWind({ strength: site.grass?.wind ?? 0.4, angle: site.ground.wind ?? 0 })`; `createKit({ seed: 31, wind })`. Grass: `site.grass && !site.noGround ? createGrass({ ground: map, wind, side: tier side, size: 44, height: site.grass.h[1], width: site.grass.w ?? 0.05, root: 0.35 })`; `grass.update(me)` each frame; `floorShadow(grass.material, lit.mask)` as before; `house.adopt` covers it. `wind.update(dt)` each frame.
+- [x] **Step 4:** Tests pass; shots of `yavin`, `naboo`, `endor`, `sorgan` (grass worlds) and `hoth` (none): grass on the first four, blades the ground's colour, moving; none on Hoth; no page error.
+- [x] **Step 5:** Commit: "The ground map, Bruno's grass and one wind on every world".
 
 ### Task 5: the core kit on every built surface
 
@@ -101,11 +101,11 @@
 - Consumes: `wear(material, scan, { metres, strength, normal, mean })`, `loadCore(role)` (`lib/three/core.js`).
 - Produces: `KIT_ROLES = { paint: 'paint', metal: 'metal', stone: 'stone', rock: 'rock', adobe: 'adobe', bark: 'bark', wood: 'wood', concrete: 'concrete', tiles: 'tiles', deck: 'deck', sand: 'sand', snow: 'snow', mud: 'mud' }` exported from `kit.js`; a thing spec's `wear: role`.
 
-- [ ] **Step 1:** `kit.test.js`: "every LOOKS role is a core role with a scan in `public/cc0/galaxy/index.json`"; `placer.test.js`: "a spec with `wear` is laid over (a stub `wear` is called once per lit material of a stub model)".
-- [ ] **Step 2:** Run — fail.
-- [ ] **Step 3:** Implement: in `createKit.ready`, for each owned material with a role, `wear(m, scan, { metres: scanOf(role).metres, strength: LOOKS[role].strength ?? 0.55, normal: LOOKS[role].normal, mean: scanOf(role).mean })` and keep the roughness/metalness from `LOOKS` (set before `wear`). Drop `m.map = scan.map` (the triplanar path replaces the UV one). `placer.put` with `spec.wear`: after the model loads, `loadCore(role).then((scan) => traverse lit materials → wear)`.
-- [ ] **Step 4:** Tests pass; shots: `tatooine` (adobe), `scarif` (concrete/metal), `naboo` (stone/tiles): grain at the same density on walls of different sizes.
-- [ ] **Step 5:** Commit: "Every built surface wears the core kit's scans at real scale".
+- [x] **Step 1:** `kit.test.js`: "every LOOKS role is a core role with a scan in `public/cc0/galaxy/index.json`"; `placer.test.js`: "a spec with `wear` is laid over (a stub `wear` is called once per lit material of a stub model)".
+- [x] **Step 2:** Run — fail.
+- [x] **Step 3:** Implement: in `createKit.ready`, for each owned material with a role, `wear(m, scan, { metres: scanOf(role).metres, strength: LOOKS[role].strength ?? 0.55, normal: LOOKS[role].normal, mean: scanOf(role).mean })` and keep the roughness/metalness from `LOOKS` (set before `wear`). Drop `m.map = scan.map` (the triplanar path replaces the UV one). `placer.put` with `spec.wear`: after the model loads, `loadCore(role).then((scan) => traverse lit materials → wear)`.
+- [x] **Step 4:** Tests pass; shots: `tatooine` (adobe), `scarif` (concrete/metal), `naboo` (stone/tiles): grain at the same density on walls of different sizes.
+- [x] **Step 5:** Commit: "Every built surface wears the core kit's scans at real scale".
 
 ### Task 6: `?debug` tuning, the sweep, the PR
 
@@ -113,10 +113,10 @@
 - Create: `src/components/galaxy/surface/tune.js` (`surfaceTuning({ house, grass, wind, look }) → panel groups`, the Shire's `tune.js` shape; the copy button prints `look: { … }` as a site block)
 - Modify: `scene.js` (mount the panel when `lib/debugPanel`'s `debugOn()`), `docs/superpowers/HANDOFF-galaxy-surfaces.md` (a "The house look" section), `docs/architecture.md` (the galaxy's surfaces on the house pieces, one sentence)
 
-- [ ] **Step 1:** `tune.test.js`: "the copy text is a valid site `look` block" (`toCode(values)` parses as an object with `shadow`, `edge`, `fogBelow`, `halo`, `exposure`).
-- [ ] **Step 2:** Run — fail; implement; pass.
-- [ ] **Step 3:** Baseline on main (`git stash` not needed: use a worktree of `origin/main` at `/tmp/main` with `npm ci`, dev server on 5189, `BASE=http://127.0.0.1:5189 OUT=lab/baseline JSON=1 node scripts/galaxy-check.mjs surface <all 17 ids>`), then on the branch `OUT=lab/check JSON=1 BUDGET=lab/baseline/surface-high.json node scripts/galaxy-check.mjs surface <all 17>`: no breach, no page error. Before/after sheet: `scripts/surface-shot.mjs` per world at its landing into `lab/shots/{before,after}`; a montage with `sharp` (a scratch script in `lab/`) attached to the PR.
-- [ ] **Step 4:** lint, test, build, health. Commit: "A ?debug panel for a world's look; the handoff and the architecture note". Push, open the PR ("The galaxy's worlds, through the house look"), wait for CI, merge.
+- [x] **Step 1:** `tune.test.js`: "the copy text is a valid site `look` block" (`toCode(values)` parses as an object with `shadow`, `edge`, `fogBelow`, `halo`, `exposure`).
+- [x] **Step 2:** Run — fail; implement; pass.
+- [x] **Step 3:** Baseline on main (`git stash` not needed: use a worktree of `origin/main` at `/tmp/main` with `npm ci`, dev server on 5189, `BASE=http://127.0.0.1:5189 OUT=lab/baseline JSON=1 node scripts/galaxy-check.mjs surface <all 17 ids>`), then on the branch `OUT=lab/check JSON=1 BUDGET=lab/baseline/surface-high.json node scripts/galaxy-check.mjs surface <all 17>`: no breach, no page error. Before/after sheet: `scripts/surface-shot.mjs` per world at its landing into `lab/shots/{before,after}`; a montage with `sharp` (a scratch script in `lab/`) attached to the PR.
+- [x] **Step 4:** lint, test, build, health. Commit: "A ?debug panel for a world's look; the handoff and the architecture note". Push, open the PR ("The galaxy's worlds, through the house look"), wait for CI, merge.
 
 ---
 
