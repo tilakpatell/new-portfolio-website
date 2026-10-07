@@ -37,12 +37,12 @@ Branch `claude/eloquent-darwin-foskak`. The owner asked for high-quality Star Wa
 - `npx eslint .`, `npx vitest run` (4197 passed), `npx vite build`.
 
 ## Left, in order
-1. **Small things the checks saw**: Coruscant's five temple Jedi and Geonosis's two are one face (the Meshy Jedi); a second and third Jedi would vary them. Obi-Wan on Mustafar idles turned a little off his facing (the borrowed idle clip). Static models that roam (the acklay, Yoda, the creatures) bob and slide rather than walk. The bantha ride's seat (2.7 m) wasn't measured against the Sketchfab bantha (it's skinned). The parked X-wing's `opts.stripe` doesn't recolour the model.
+1. **Small things the checks saw**: the temple's Jedi alternate two faces now (`jedi`, `jedi2`: a crew kind's `faces` in `crewList.js`, taken in turn by a life entry's figures); a third would vary them more. Obi-Wan on Mustafar idles turned a little off his facing (the borrowed idle clip). Static models that roam (the acklay, Yoda, the creatures) bob and slide rather than walk. The bantha ride's seat (2.7 m) wasn't measured against the Sketchfab bantha (it's skinned). The parked X-wing's `opts.stripe` doesn't recolour the model.
 2. **Wire the library into worlds**: Utapau isn't a world (varactyls wait); Lothal could take loth-cats and loth-wolves (`sites/outer.js`), Nevarro and Arvala blurrgs and happabores, Naboo fambaas in the Gungan army, the arena nexu and reek beside the acklay, Jabba's skiff over the Sarlacc.
 3. **Heroes**: Obi-Wan, Maul, Vader, Rex, Bo-Katan, Mace (standing only), Qui-Gon and Dooku are figures on the crew's skeleton; `galaxy/heroes.js` could offer them, with their sabers.
 4. **Fleets**: the ten Meshy library ships fly as their stand-ins only if a set piece asks; `systems.js`'s `traffic` lists are still never read.
 5. **Redo**: the dragonsnake (Meshy made a crocodile; the built one stays) and the TIE Striker (Wookieepedia's picture was a plain TIE) were dropped. The Hound's Tooth's stern and canopy are a little melted; a second take from `File:HoundsTooth_3quarters_view-SWE.png` with a cleaner lift would help.
-6. **Meshy credits**: about 480 left on the second account at the end of this lane; another session spends from the same account.
+6. **Meshy credits**: 21 left on the second account after the second Jedi (44); another session spends from the same account, and the other two keys here have 1 each.
 
 ## Checking it
 - Dev server: `npx vite --port 5188 --strictPort --host 127.0.0.1`.

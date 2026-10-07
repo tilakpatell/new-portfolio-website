@@ -3366,6 +3366,15 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
+  "meshy/jedi2": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116b7-6993-7287-8da6-04729d7fe42f",
+    "name": "the second Jedi, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
   "meshy/lando": {
     "source": "https://www.meshy.ai",
     "id": "01a114da-8d2a-706a-a527-de62df5a6356",

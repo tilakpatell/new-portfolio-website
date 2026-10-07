@@ -98,7 +98,7 @@ import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePa
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SUN, sectorOf } from './layout';
+import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SECTOR_OF, SUN, sectorOf } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
@@ -125,6 +125,7 @@ import { createSectorPortals } from './sectorPortals';
 import { GUN, gunHit, gunTransit } from './gunPortal';
 import { createGunPortal } from './gunPortalFx';
 import { createCurve } from './curve';
+import { createSectorFleet } from './sectorFleetView';
 import { portalById, portalHit, transit } from './portals';
 import { ROCK_RELIEF } from '../../lib/three/rock';
 import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
@@ -881,6 +882,9 @@ export async function create(canvas, ctx) {
   let front = null;
   let frontSide = null;
   let battleModels = null;
+  // the Rick and Morty sector's standing ships: the Federation's fleet and
+  // the Council's patrol, in the war's own models (sectorFleet.js)
+  const sectorFleet = createSectorFleet(map, () => (battleModels ??= createBattleModels({ prepare: (o) => warm(o) })));
   const frontFor = () => {
     if (reduced) return null;
     const side = sideFor(state.kind);
@@ -1341,13 +1345,15 @@ export async function create(canvas, ctx) {
     const els = props.labels?.current;
     if (!els) return;
     const entering = onFoot() && Boolean(foot.entry()); // (once, not for every name)
+    // (the sector the ship's in: the other sector's places, tens of thousands off, have no name here)
+    const sector = state.ship ? sectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main';
     for (const s of screen) {
       const el = els[s.id];
       if (!el) continue;
       // (none while the ship falls into the Maw: nothing to pick, and the
       // camera's going in; nor, on foot, the planet you're on or anything
       // below its horizon, nor anything on the way in through its air)
-      const off = Boolean(state.crash?.swallow) || s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60 || entering || (onFoot() && (s.id === foot.id || underground(s.id)));
+      const off = Boolean(state.crash?.swallow) || SECTOR_OF[s.id] !== sector || s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60 || entering || (onFoot() && (s.id === foot.id || underground(s.id)));
       // tucked behind a nearer planet, or a station's sign
       const ly = s.y + s.r + 10;
       let behind = false;
@@ -4611,6 +4617,7 @@ export async function create(canvas, ctx) {
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     sectorPortals.update(t, camera);
     curve.update(t);
+    sectorFleet.update(t, Boolean(state.ship) && sectorOf(state.ship.x, state.ship.y, state.ship.z) === 'rickmorty');
     // the Citadel's siege: rebuilt or patched up when it's time, what's left
     // of it drawn, and your word on it out to everyone (soon after a hit of
     // yours; every few seconds while there's anything to tell)
@@ -4629,6 +4636,8 @@ export async function create(canvas, ctx) {
     }
     placeArms();
     beacons.update(camLocal);
+    // (the beacons are the main map's places: from the Rick and Morty sector there's nothing of theirs to see)
+    beacons.points.visible = !state.ship || sectorOf(state.ship.x, state.ship.y, state.ship.z) === 'main';
     phone.update(t, camera);
     // the fall into the Maw: the ship's trail and glow, and its last light
     if (infall) {
@@ -5398,6 +5407,7 @@ export async function create(canvas, ctx) {
       sectorPortals.dispose();
       gunPortal.dispose();
       curve.dispose();
+      sectorFleet.dispose();
       for (const tr of trenches) tr.dispose();
       beacons.dispose();
       phone.dispose();

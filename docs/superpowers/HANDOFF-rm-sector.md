@@ -66,12 +66,15 @@ models). The sector's sun got the home sun's reach (`light` in
 strength. And a hand-flown trip through a portal now lets go of a place
 picked on the other side (`pages/Universe.jsx`, on `sector`).
 
+The sector's standing ships (`sectorFleet.js`, drawn by
+`sectorFleetView.js`): the Galactic Federation's fleet holds station in a
+wedge of three battleships, and the Council's dreadnought patrols round the
+Citadel. Both are the fleet war's Meshy flagships (`fedbattleship`,
+`councildread`), loaded the first time the ship's in the sector. From inside
+the sector, the main map's planet names and beacons are hidden.
+
 ## Not done, or left as is
 
-- The Galactic Federation's own sector fleet from the plan (the
-  `fleetRickmorty*` hulls as set dressing), and a Council of Ricks patrol
-  kept near the Citadel. The sector uses the Rick and Morty side's
-  existing hunters, director pieces (the Council, the NX-5) and traffic.
 - The plan's other candidate worlds are still out: Cronenberg World and
   the Purge Planet. They need models the repo doesn't have yet (Meshy).
 - The four older worlds' landings still use code-built rocks, gates, cogs

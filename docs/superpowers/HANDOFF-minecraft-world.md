@@ -10,18 +10,19 @@ The design is `specs/2026-10-07-minecraft-world-design.md`; the plan, in seven p
 
 - **Phase 3, light and the day** (Tasks 3.1 to 3.3, PR #524, 2026-10-07). Sky and block light computed in the worker and re-lit round every edit; the game's smooth lighting and its lightmap (warm torchlight, the blue-grey night); a 20-minute day with the sun's eased arc, sunrise and sunset glow, stars, the moon's eight phases, clouds greying at night; torches standing and on walls, slabs, and the two-block bed that sleeps the night away and sets the spawn. `scripts/mc-check.mjs` shows a sunset, the night, a torch and the morning after sleeping.
 
+- **Phase 4, underground** (Tasks 4.1 to 4.4, PR #533, 2026-10-07). Caves (cheese and spaghetti), ore veins at the game's counts and lava below 10; water and lava that flow, fall and meet as obsidian and cobblestone, drawn as the game's sloping, animated surfaces; stairs, doors that open and ladders; the furnace (lit while it burns), the chest, hunger by the game's `FoodStats` with eating, regen and starving; the hearts, hunger, air and experience bar over the hotbar; dying, the death screen, and respawning at the bed. `scripts/mc-check.mjs` builds a stage (stairs, a door opened by hand, water and lava left to flow), smelts iron, fills a chest and dies.
+
 ## Left, in order
 
-1. **Phase 4, underground.** Tasks 4.1 to 4.4. Stairs, doors, ladders and fences mesh as cubes today (slabs, torches and the bed are drawn: `emitBox` in the mesher makes any box with the game's position-derived texels); `physics.js` takes per-cell boxes through `world.boxes(x, y, z)`. Snow layers were left out of the snowy biome until slabs mesh.
-2. **Phase 5, mobs.** Tasks 5.1 to 5.3. The skins are in `public/mc/skins/` (the pack’s `temperate_` farm animals are the classic layout; `cow.png` and `chicken` fall back through `SKINS` in `pack/aliases.js`).
-3. **Phase 6, biomes and builds.** Tasks 6.1 to 6.4. Tints are the pack’s colormaps at plains’ climate today (`pack/colormap.js` has every biome’s climate); per-place tints need the biome in the vertex (there are two spare bits in the `u | v << 5` word, or grow the vertex).
-4. **Phase 7, polish.** The list in the plan, plus: view bobbing, fancy (3D) clouds, the dirt-textured loading screen.
+1. **Phase 5, mobs.** Tasks 5.1 to 5.3. Nothing hurts the player yet but falling, drowning and starving: lava doesn't burn (it should: 4 a half-second and fire), and a mob's blow should go through `exhaust(p, EXHAUST.hurt)` and the `hurt` event like the rest. The death screen's message comes from the last `hurt` event's `cause` (`DEATH` in `module.js`). The skins are in `public/mc/skins/` (the pack’s `temperate_` farm animals are the classic layout; `cow.png` and `chicken` fall back through `SKINS` in `pack/aliases.js`).
+2. **Phase 6, biomes and builds.** Tasks 6.1 to 6.4. Tints are the pack’s colormaps at plains’ climate today (`pack/colormap.js` has every biome’s climate); per-place tints need the biome in the vertex (there are two spare bits in the `u | v << 5` word, or grow the vertex). Snow layers can go back on the snowy biome now that slabs draw.
+3. **Phase 7, polish.** The list in the plan, plus: view bobbing, fancy (3D) clouds, the dirt-textured loading screen, fences' posts and bars (they mesh as cubes), double chests, the hurt flash and the regen ripple on the hearts.
 
 ## Checking it
 
 - The route: `#/dot-matrix/minecraft`. From the island: `#/dot-matrix`, walk to the crafting table east of the N64 (x 33–34, z 10–11), stand on its south side, press B (or F, J, X, Enter).
 - `?quality=low|mid|high` pins the tier (the render distance follows it: 4, 6, 10 chunks).
-- In development `window.__RUNTIME__.current.world` is the world: `.game` the sim, `.debug.stats()` the chunks, columns, meshes, vertices and draw calls, `.debug.teleport(x, y, z)`, `.newWorld(seed)`.
+- In development `window.__RUNTIME__.current.world` is the world: `.game` the sim, `.debug.stats()` the chunks, columns, meshes, vertices and draw calls, `.debug.teleport(x, y, z)`, `.debug.put(x, y, z, name, state)` (sets a block as the game does, so water flows), `.newWorld(seed)`, `.respawn()`.
 - The browser check: `npx vite --port 5188 --strictPort --host 127.0.0.1`, then `OUT=<folder> node scripts/mc-check.mjs`. On this Windows desktop: `CHROME="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" GPU=1` (the GPU is real and fast; without `GPU=1` it draws in software, slowly). `SEED` picks the world (1 by default). It prints frames a second and draw calls and writes `mc-*.png`.
 - Gates: `npm run lint`, `npm test`, `npx vite build` (not `npm run build`: its prebuild rewrites `public/github.json`), `node scripts/autopilot-check.mjs --routes /dot-matrix/minecraft`.
 
@@ -39,3 +40,6 @@ The design is `specs/2026-10-07-minecraft-world-design.md`; the plan, in seven p
 - `src/data/modelCredits.json` is Sketchfab-only (its test checks the source URL); the pack is credited in `public/games/credits.json`, `public/cc0/README.md`, `CREDITS.md`, the page and the title screen.
 - The Bash tool in the Claude desktop app strips backslashes from heredocs; write files with the Write tool.
 - `npm ci` in a worktree needs `--ignore-scripts`.
+- **New blocks go at the end of `BLOCKS`.** Saved edits are block ids; a block put in the middle moves every id after it and scrambles every save (`lit_furnace` is last for that reason).
+- **The pack paints its own title scrolls** on the container panels; the screens write the game's labels ("Chest", "Inventory") onto them. A chest's panel is two cuts of `generic_54` (rows 0–71, then 126 down), as `GuiChest` draws it: the sheet's edges are transparent, so the whole sheet underneath shows through.
+- Some files here are checked out with mixed line endings: an edit script that replaces text should normalise to LF first (git stores LF), and never rewrite files it didn't mean to touch.
