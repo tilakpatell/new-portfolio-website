@@ -1282,5 +1282,29 @@
   "frundleshouse": {
     "image": "01a114dc-b3a5-7174-9d62-4c062951674a",
     "model": "01a114dd-3133-7047-8ea6-10c7fc18e41b"
+  },
+  "cronhouse": {
+    "image": "01a116e9-e9f7-766a-a72f-ba4e72b02f98"
+  },
+  "croncar": {
+    "image": "01a116e9-e9f4-778c-988f-7770cc897a08"
+  },
+  "purgebarn": {
+    "image": "01a116e9-e9d4-7073-bd09-854c6924c4a7"
+  },
+  "purgesiren": {
+    "image": "01a116e9-e9d5-76ef-bf2f-d59fe228a31b"
+  },
+  "gazorpgate": {
+    "image": "01a116ea-657a-71cf-85d6-dd555af75dfe"
+  },
+  "birdperch": {
+    "image": "01a116ea-661d-73a9-908f-92bca280acd4"
+  },
+  "gearbig": {
+    "image": "01a116ea-b5e0-7077-9083-49a84c608e94"
+  },
+  "gearcog": {
+    "image": "01a116ea-caab-711c-b31f-e291a2cb0d5f"
   }
 }
