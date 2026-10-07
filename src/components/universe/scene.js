@@ -107,7 +107,7 @@ import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { houseOn } from '../../lib/three/house';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
-import { HYPER, driveById, hyperState, parkFor, riftExit } from './nav';
+import { HYPER, driveById, hyperState, legOf, parkFor, riftExit } from './nav';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { AHEAD_OF, factionsOf, kindsOf, pick as pickFaction, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
@@ -121,7 +121,7 @@ import { createMines } from './mines';
 import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
 import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
 import { createSectorPortals } from './sectorPortals';
-import { portalHit, transit } from './portals';
+import { portalById, portalHit, transit } from './portals';
 import { ROCK_RELIEF } from '../../lib/three/rock';
 import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
 import { createFront } from './front';
@@ -944,6 +944,7 @@ export async function create(canvas, ctx) {
     yaw: 0,
     vel: 0, // radians per ms, after a flick
     sel: props.selected ?? null,
+    then: null, // a trip on from the far side of a portal: { id, drive } (travel, portalThrough)
     hover: null,
     drag: null,
     flight: null,
@@ -1479,6 +1480,7 @@ export async function create(canvas, ctx) {
   // the autopilot's trip dropped before it's done (the pilot, a rift, the
   // page): the page hears, so a tour or a trip on through the gate ends
   const dropAuto = () => {
+    state.then = null; // (and a trip on through a portal with it)
     if (!state.auto) return;
     const id = state.auto.id;
     state.auto = null;
@@ -1487,6 +1489,15 @@ export async function create(canvas, ctx) {
   const travel = (id, drive = props.drive) => {
     const s = state.ship;
     if (!s || state.crash || state.dive || state.jump || props.frozen || onFoot() || !(isGoal(id) || (id === 'front' && front))) return false;
+    // (somewhere in the other sector of the map: to the portal first, and on
+    // from its far end once through: portalThrough. nav.js legOf)
+    const leg = id === 'front' ? id : legOf(s, id);
+    if (leg !== id) {
+      if (!travel(leg, drive)) return false;
+      state.then = { id, drive };
+      return true;
+    }
+    state.then = null;
     // (the Maw's own spot is past its point of no return: to the edge of its pull instead; the
     // front's is just inside the fight, on your side of it)
     const park = id === 'front' ? frontPark([s.x, s.z]) : parkFor(id, [s.x, s.z]);
@@ -1502,7 +1513,7 @@ export async function create(canvas, ctx) {
       state.auto = null;
       arriveAt(park);
       ctx.invalidate();
-      setTimeout(() => emit({ type: 'arrived', id, done: true }), 0); // (there: the page's tour and a trip through the gate go on; after the page's own select)
+      if (!portalById(id)) setTimeout(() => emit({ type: 'arrived', id, done: true }), 0); // (there: the page's tour and a trip through the gate go on; after the page's own select. Through a portal, its trip ends at the far end: portalThrough)
       return true;
     }
     const hyper = drive === 'hyper' ? hyperState({ last: state.hyperAt, now: wall(), interdicted: state.interdicted }) : null;
@@ -3633,10 +3644,12 @@ export async function create(canvas, ctx) {
   const portalThrough = (id) => {
     const out = transit(state.ship, id);
     if (!out) return;
+    const then = state.then;
+    state.then = null;
     if (state.auto) {
       const going = state.auto.id;
       state.auto = null;
-      emit({ type: 'arrived', id: going, done: going === id });
+      if (!(then && going === id)) emit({ type: 'arrived', id: going, done: going === id });
     }
     state.ship = out.ship;
     hunters?.clear();
@@ -3652,6 +3665,8 @@ export async function create(canvas, ctx) {
     crashFx.arrive({ point: new THREE.Vector3(out.ship.x, out.ship.y, out.ship.z), kind: 'cruiser', heading: out.ship.heading }); // (a portal, whatever the ship)
     state.note = { text: `Through the portal: ${SECTORS[out.sector].name}`, until: wall() + 3.5 };
     emit({ type: 'sector', id: out.sector, through: id });
+    // (on to where the trip was going: the jump's charging now, so at super speed)
+    if (then) travel(then.id, then.drive === 'hyper' ? 'super' : then.drive);
   };
 
   const fly = (dt, t) => {
@@ -5224,7 +5239,9 @@ export async function create(canvas, ctx) {
     // pilots online (null for the ship with none picked)
     where() {
       const s = state.ship;
-      const going = state.jump ? { id: state.jump.id, drive: 'hyper' } : state.auto ? { id: state.auto.id, drive: (state.auto.od ?? 1) > 1 ? 'super' : 'cruise' } : null;
+      const leg = state.jump ? { id: state.jump.id, drive: 'hyper' } : state.auto ? { id: state.auto.id, drive: (state.auto.od ?? 1) > 1 ? 'super' : 'cruise' } : null;
+      // (bound for the other sector: where it's going, and the portal it's going by)
+      const going = leg && state.then ? { ...leg, id: state.then.id, via: leg.id } : leg;
       return {
         ship: s ? { x: s.x, y: s.y, z: s.z, heading: s.heading, speed: s.speed } : null,
         at: state.at,
