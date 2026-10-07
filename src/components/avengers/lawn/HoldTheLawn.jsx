@@ -8,7 +8,9 @@ import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
 import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
+import { useSays } from '../hq/useSays';
 import { LAWN, LIFT, WAVES, callLightning, liftInput, newLawn, recallHammer, setMove, skipLift, startLawn, stepLawn, throwHammer } from './rules';
+import { LINES } from './lines';
 import './lawn.css';
 import '../../../styles/lazy/avengers.css';
 
@@ -31,18 +33,8 @@ const media = (q) => (typeof window !== 'undefined' ? window.matchMedia?.(q) : n
 const narrow = media('(max-width: 760px)');
 // a mouse and keyboard; lawn.css hides the touch buttons for these
 const fine = media('(hover: hover) and (pointer: fine)');
-
-// What Thor says as each wave comes in.
-const LINES = [
-  'Chitauri, out of the trees. Throw the hammer, then call it back through them.',
-  'These ones stop to shoot. With Mjolnir in your hand you knock bolts away. With it out, you don’t.',
-  'Shields on the big ones. Throw past them, walk along the terrace, and call it back through their backs.',
-  'Chariots. Point at one to throw high.',
-  'They’re pushing. Kills charge the lightning: E, or right-click.',
-  'A swarm. Lightning jumps from one to the next.',
-  'Everything they have left.',
-  'Cull Obsidian. His shield turns the hammer from the front. Get it behind him.',
-];
+// what Thor says as each wave comes in (./lines.js), in his own voice where it's been made (lib/voiced.js)
+const VOICED = new Set(LINES);
 
 // The most urgent thing to throw at, for keyboard play.
 function urgent(g) {
@@ -81,6 +73,7 @@ export default function HoldTheLawn({ fallback }) {
   const [ui, setUi] = useState({ phase: 'ready', wave: 1, title: WAVES[0].title, hp: LAWN.hearts, score: 0, charge: 0, hammer: 'held', message: '', result: null, lift: 0, liftX: 0, holding: false });
   const [paused, setPaused] = useState(false);
   const playing = ui.phase === 'wave' || ui.phase === 'break';
+  useSays('thor', ui.message, VOICED);
 
   const sync = useCallback((extra = {}) => {
     const g = game.current;
