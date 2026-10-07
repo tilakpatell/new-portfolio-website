@@ -29,6 +29,7 @@ import { SWIRL_GLSL } from '../../lib/three/swirl';
 import { globeData } from '../travel/globe3d/data';
 import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
 import { STATIONS } from './stations';
+import { RM_WORLDS } from './rmWorlds';
 import { buildGateway } from '../galaxy/gateway';
 import { SIDES, cybertronSkin } from '../cybertron/skin';
 import { createAtmosphere } from '../../lib/three/atmosphere';
@@ -1200,6 +1201,8 @@ const BUILDERS = {
     }
   },
   ...STATIONS,
+  // the Central Finite Curve's worlds, alive (rmWorlds.js)
+  ...RM_WORLDS,
 };
 
 // The sphere's segments near (nearMaps.js swaps it in with the near maps):

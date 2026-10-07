@@ -7,6 +7,7 @@ import { useMouth } from '../../lib/mouth';
 import { preloadVoiced, voicedSrc } from '../../lib/voiced';
 import { SHIP_KEY, parseShip } from '../universe/crews';
 import { audioContext } from '../../lib/audio';
+import { noteArrival } from '../../lib/arrival';
 import Hyperspace from '../Hyperspace';
 import Face from '../universe/Faces';
 import { VEHICLES, firstVehicle, stepVehicle, vehicleById } from './vehicles';
@@ -46,9 +47,12 @@ export default function Cockpit({ start, onPeak, onDone }) {
   idNow.current = id;
   // the flash: into the universe, in this vehicle's ship
   const peak = useCallback(() => {
-    const ship = parseShip(vehicleById(idNow.current)?.ship);
+    const vehicle = vehicleById(idNow.current);
+    const ship = parseShip(vehicle?.ship);
     if (ship) {
       local.set(SHIP_KEY, ship);
+      // (and out where its launch went: Rick's portal opens on his dimension)
+      noteArrival(vehicle.arrive ?? null);
       window.dispatchEvent(new CustomEvent('tp:arrive', { detail: { ship } }));
     }
     cbs.current.onPeak?.();

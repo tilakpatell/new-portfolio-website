@@ -93,6 +93,7 @@ import { local as remembered } from '../../lib/hooks';
 import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
+import { takeArrival } from '../../lib/arrival';
 import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, revealAll, singlePass, texturesUnder, uploadTexture, uploadTextures } from '../../lib/three/renderer';
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
@@ -121,6 +122,8 @@ import { createMines } from './mines';
 import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
 import { DEBRIS_DRIFT, buildDeepSpace } from './deepspace';
 import { createSectorPortals } from './sectorPortals';
+import { GUN, gunHit, gunTransit } from './gunPortal';
+import { createGunPortal } from './gunPortalFx';
 import { createCurve } from './curve';
 import { createSectorFleet } from './sectorFleetView';
 import { portalById, portalHit, transit } from './portals';
@@ -687,6 +690,19 @@ export async function create(canvas, ctx) {
   map.add(deep.group);
   // the portals between the map's sectors (sectorPortals.js; flown through below: portalThrough)
   const sectorPortals = createSectorPortals(map);
+  // and Rick's portal gun's, fired from the cruiser in flight (gunPortal.js; flown through below: gunThrough)
+  const gunPortal = createGunPortal(map);
+  let gunAt = -Infinity;
+  // the cockpit's launch came through Rick's portal (cockpit/vehicles.js's
+  // `arrive`, lib/arrival.js): the cruiser comes out in that sector, once
+  // it's flying (fly, below); taken now if the map came up after the flash
+  let arriving = null; // { sector, until }
+  const takeArrive = () => {
+    const sector = takeArrival();
+    if (!sector) return;
+    arriving = { sector, until: wall() + 12 };
+    ctx.invalidate();
+  };
   // and the Rick and Morty sector's edge, the Central Finite Curve (curve.js)
   const curve = createCurve(map);
   const trenches = PLANETS.filter((p) => p.trench).map((p) => createTrench({ at: p.at, r: p.r, trench: p.trench }, { small }));
@@ -3654,8 +3670,7 @@ export async function create(canvas, ctx) {
   // comes out, the hunters and the traffic left behind. A trip to the portal
   // is done there (the page takes a trip on through it on from here); a
   // trip anywhere else that went through it is dropped
-  const portalThrough = (id) => {
-    const out = transit(state.ship, id);
+  const portalThrough = (id, out = transit(state.ship, id)) => {
     if (!out) return;
     const then = state.then;
     state.then = null;
@@ -3684,8 +3699,42 @@ export async function create(canvas, ctx) {
     if (then) travel(then.id, then.drive === 'hyper' ? 'super' : then.drive);
   };
 
+  // Rick's portal gun (P, or the HUD's Portal button): in any ship, flying
+  // (Rick's cruiser, or whoever's got hold of one: crews.js has how), a
+  // portal splats open ahead on the way it's going (gunPortal.js), on Rick's
+  // dimension from anywhere at home, on home from there. False if it can't
+  // be fired now (on foot, mid-jump, too soon)
+  const portalGun = () => {
+    if (!state.kind || !flying() || onFoot() || state.crash || state.jump || state.held || state.view === 'map') return false;
+    if (state.clock - gunAt < GUN.cool || !gunPortal.fire(state.ship)) return false;
+    gunAt = state.clock;
+    heard();
+    const home = sectorOf(state.ship.x, state.ship.y, state.ship.z) !== 'rickmorty';
+    emit({ type: 'event', id: 'portalgun', sub: home ? 'out' : 'home' });
+    ctx.invalidate();
+    return true;
+  };
+  // through it: out by the far end of the sector portal it's the other end
+  // of, facing what's worth seeing there (the Citadel, or the C-137 planet)
+  const gunThrough = () => {
+    const { via, out } = gunTransit(state.ship);
+    gunPortal.shut();
+    if (!out) return;
+    portalThrough(via, out);
+    if (out.label) state.note = { text: `Through the portal: ${out.label}, in Rick’s dimension`, until: wall() + 4 };
+    emit({ type: 'event', id: 'gunThrough', sub: out.sector });
+  };
+
   const fly = (dt, t) => {
     if (state.crash) return crashing(dt);
+    // out of the cockpit through Rick's portal: the cruiser comes out in
+    // his dimension, as soon as it's flying (it may still be being made)
+    if (arriving && wall() > arriving.until) arriving = null;
+    if (arriving && state.kind === 'cruiser' && state.ship && !state.jump && !state.held) {
+      const { sector } = arriving;
+      arriving = null;
+      if (sectorOf(state.ship.x, state.ship.y, state.ship.z) !== sector) gunThrough();
+    }
     let input;
     if (state.jump && wall() >= state.jump.at) {
       // out of hyperspace, under the jump's flash: parked at the place, the
@@ -3769,6 +3818,7 @@ export async function create(canvas, ctx) {
     if (!state.jump && !state.held) {
       const into = portalHit(before, state.ship);
       if (into) portalThrough(into);
+      else if (gunPortal.spot && gunHit(before, state.ship, gunPortal.spot, gunPortal.age)) gunThrough();
     }
     // into a planet's air (entry.js): at a speed it can land at, the way in
     // takes it on down onto the ground; any faster it's no landing (it goes
@@ -4483,7 +4533,8 @@ export async function create(canvas, ctx) {
     const crashBusy = crashFx.update(dt, camera);
     const popBusy = pops.update(dt, camera);
     blasts.update(dt);
-    const fxBusy = crashBusy || popBusy || Boolean(state.crash?.swallow);
+    const gunBusy = gunPortal.update(dt);
+    const fxBusy = crashBusy || popBusy || gunBusy || Boolean(state.crash?.swallow);
     if (traffic) {
       for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null, { fight: Boolean(hunters?.active), feared: standing.feared, wanted: standing.wanted })) {
         if (e.type === 'spotted') {
@@ -4658,6 +4709,12 @@ export async function create(canvas, ctx) {
       footKey(e, key, onControl);
       return;
     }
+    if (key === 'p') {
+      // Rick's portal gun
+      e.preventDefault();
+      portalGun();
+      return;
+    }
     if (key === 'm') {
       // the nav map (the page opens it); from the whole map in 3D, back to the ship
       heard();
@@ -4805,6 +4862,8 @@ export async function create(canvas, ctx) {
   };
   const onHidden = () => engine?.set({ speed: 0, on: !document.hidden && state.shown });
   window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('tp:arrive', takeArrive);
+  takeArrive();
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', onBlur);
   document.addEventListener('visibilitychange', onHidden);
@@ -5199,6 +5258,10 @@ export async function create(canvas, ctx) {
       if (down) fire();
       ctx.invalidate();
     },
+    // the HUD's Portal button (P): Rick's portal gun, in any ship
+    portalGun() {
+      return portalGun();
+    },
     // the phone's Ship button (G on foot): a door, or back in the ship
     out() {
       heard();
@@ -5308,6 +5371,7 @@ export async function create(canvas, ctx) {
       setBoosterPlumes();
       panelRO?.disconnect();
       window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('tp:arrive', takeArrive);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
       document.removeEventListener('visibilitychange', onHidden);
@@ -5342,6 +5406,7 @@ export async function create(canvas, ctx) {
       fleet.dispose();
       deep.dispose();
       sectorPortals.dispose();
+      gunPortal.dispose();
       curve.dispose();
       sectorFleet.dispose();
       for (const tr of trenches) tr.dispose();
