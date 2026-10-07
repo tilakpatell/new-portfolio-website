@@ -5,7 +5,7 @@ The design is `specs/2026-10-07-minecraft-world-design.md`; the plan, in seven p
 ## Done
 
 - The design and the plan (PR #472).
-- **Phase 1, blocks and a chunk you can walk on** (Tasks 1.1 to 1.13, PR of 2026-10-07, branch `claude/minecraft-phase-1-e3bde6`). `#/dot-matrix/minecraft` draws an endless seeded world (nine biomes, oak, birch and spruce, plants, the sea at 63) in Pixel Perfection’s tiles; the player walks, sprints, sneaks, jumps and swims by the game’s numbers; the island’s crafting table opens it and Esc from the title returns. 125 rule tests. At distance 10 (441 chunks): 400–450 draw calls, 74 frames a second in Edge on the desktop’s GPU; a chunk takes 2 ms to generate and 3 ms to mesh in the worker.
+- **Phase 1, blocks and a chunk you can walk on** (Tasks 1.1 to 1.13, PR #497, 2026-10-07). `#/dot-matrix/minecraft` draws an endless seeded world (nine biomes, oak, birch and spruce, plants, the sea at 63) in Pixel Perfection’s tiles; the player walks, sprints, sneaks, jumps and swims by the game’s numbers; the island’s crafting table opens it and Esc from the title returns. 125 rule tests. At distance 10 (441 chunks): 400–450 draw calls, 74 frames a second in Edge on the desktop’s GPU; a chunk takes 2 ms to generate and 3 ms to mesh in the worker.
 
 ## Left, in order
 
