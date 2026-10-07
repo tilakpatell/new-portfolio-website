@@ -216,7 +216,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   const pct = (v) => `${(v / SIZE) * 100}%`;
 
   return createPortal(
-    <div className="holomap dark-scope" role="dialog" aria-modal="true" aria-labelledby="holomap-title" style={{ '--btn-bg': picked?.accent ?? '#7fd6ff', '--btn-ink': '#03040a', '--accent': picked?.accent ?? '#7fd6ff', '--accent-text': picked?.accent ?? '#7fd6ff', '--lib': SIDES[w.liberator].colour, '--raid': SIDES[w.raider].colour, '--hutt': SIDES.hutt.colour }}>
+    <div className="holomap dark-scope" role="dialog" aria-modal="true" aria-labelledby="holomap-title" style={{ '--btn-bg': picked?.accent ?? '#7fd6ff', '--btn-ink': '#03040a', '--accent': picked?.accent ?? '#7fd6ff', '--accent-text': picked?.accent ?? '#7fd6ff' }}>
       <div className="holomap-frame">
         <header className="holomap-head">
           <div>

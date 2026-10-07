@@ -1,9 +1,8 @@
 /* The galaxy's wars on the holotable (HoloMap.jsx, WarLayers.jsx, WarStrip.jsx,
    WarLegend.jsx, WarCard.jsx): the holotable's own cyan and mono type, with
-   each war's three powers in their colours (sides.js), set on the map as
-   --lib, --raid and --hutt, and on each mark as --held (who holds it) and
-   --by (who's after it). Everything that moves stops for
-   prefers-reduced-motion, at the end. */
+   each war's powers in their colours (sides.js), set on each mark as --held
+   (who holds it) and --by (who's after it), or --side. Everything that moves
+   stops for prefers-reduced-motion, at the end. */
 
 .holomap-map { container: holomap-map / inline-size; }
 
