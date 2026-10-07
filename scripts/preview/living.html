@@ -50,6 +50,9 @@
         morty: { url: '/games/meshy/morty.glb', clips: '/games/meshy/morty', h: 1.55 },
         stormtrooper: { url: '/models/galaxy/troops/stormtrooper.glb', h: 1.83 },
       };
+      // (anyone else named is one of Middle-earth's cast, scripts/meshy-middleearth.mjs's)
+      const ME = { frodo: 1.15, sam: 1.12, merry: 1.14, pippin: 1.12, bilbo: 1.12, rosie: 1.08, hobbit: 1.12, gandalfwhite: 1.85, aragorn: 1.88, legolas: 1.88, gimli: 1.35, boromir: 1.9, faramir: 1.85, galadriel: 1.95, elrond: 1.92, arwen: 1.8, elf: 1.88, theoden: 1.83, eowyn: 1.72, rohirrim: 1.83, gondorguard: 1.85, saruman: 1.9, butterbur: 1.75, breeman: 1.8, orc: 1.7, uruk: 1.95, easterling: 1.85, goblin: 1.3 };
+      for (const [n, h] of Object.entries(ME)) WHO[n] ??= { url: `/models/middleearth/cast/${n}.glb`, clips: `/models/middleearth/cast/${n}`, h };
       const who = (q.get('who') ?? 'frodo,gandalf,rick,luke').split(',').filter((n) => WHO[n]);
 
       const renderer = new THREE.WebGLRenderer({ antialias: true });
