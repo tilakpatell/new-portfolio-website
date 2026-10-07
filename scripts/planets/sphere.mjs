@@ -294,7 +294,8 @@ async function writeKtx2(buf, w, h, channels, width, file, max) {
   let ktx2 = null;
   let how = '';
   for (const [opts, label] of [[{ rdo: 1 }, 'UASTC'], [{ rdo: 3 }, 'UASTC rdo 3'], [{ rdo: 6 }, 'UASTC rdo 6'], [{ etc1s: true }, 'ETC1S']]) {
-    ({ ktx2 } = await encodeImage(png, { role: 'color', flipY: true, ...opts }));
+    // (at 8192, UASTC level 1: level 2 takes over 20 minutes a map)
+    ({ ktx2 } = await encodeImage(png, { role: 'color', flipY: true, ...(width > 4096 ? { level: 1 } : {}), ...opts }));
     how = label;
     if (ktx2.byteLength <= max) break;
   }

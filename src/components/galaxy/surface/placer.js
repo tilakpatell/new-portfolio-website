@@ -179,8 +179,8 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   };
   // stood on the lowest ground under its footprint (seat.js), so no side
   // floats over a slope: only what's stood on the ground itself (not one
-  // hung at a height, nor a room's), and not a big thing far off the level
-  // (a building is put on a flat; on a slope, its own foundations hold it)
+  // hung at a height, nor a room's); a big one (a building, put on a flat)
+  // goes down a metre at most, its own foundations holding the rest
   const seatable = (spec) => !spec.abs && spec.y == null && !spec.zone;
   const seat = (spec, at, r, max = 2) => {
     if (!seatable(spec) || !(r > 0.3)) return at;

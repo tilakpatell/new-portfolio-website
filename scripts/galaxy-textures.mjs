@@ -116,7 +116,7 @@ export async function xlMap(img, dir, file, role) {
   const webp = await sharp(png, { limitInputPixels: false }).webp({ quality: 84, effort: 4 }).toBuffer();
   let ktx2 = null;
   for (const rdo of [1, 3, 6]) {
-    ({ ktx2 } = await encodeImage(png, { role, rdo, flipY: true }));
+    ({ ktx2 } = await encodeImage(png, { role, rdo, level: 1, flipY: true })); // (level 1: level 2 takes over 20 minutes a map at 8192)
     if (ktx2.byteLength <= XL_MAX) break;
   }
   const say = verdict({ role, mime: 'image/webp', before: webp.byteLength, after: ktx2.byteLength, gpuBefore: gpuBytes(XL, XL, 'rgba'), gpuAfter: gpuBytes(XL, XL, 'uastc'), width: XL });
