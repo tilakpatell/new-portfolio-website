@@ -69,7 +69,8 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
   const load = (kinds) => {
     const key = kinds.join(',');
     if (!fetched.has(key)) {
-      const clips = kinds.some((k) => RIGGED.has(k)) ? ['idle', 'walk'] : [];
+      // (the run too: a place's hunters run at Morty)
+      const clips = kinds.some((k) => RIGGED.has(k)) ? ['idle', 'walk', 'run'] : [];
       fetched.set(
         key,
         kit.need(kinds, { clips }).catch(() => null),

@@ -43,7 +43,7 @@ export async function buildVisitors(kit, { roadY = 0 } = {}) {
   // the people's models, waited on a while at most
   try {
     const walkers = PEOPLE.filter((p) => p.area === 'street' && p.ai).map((p) => p.who ?? p.id);
-    const need = kit.need ? Promise.all([kit.need(['president', 'secretservice', 'fedagent'], { clips: ['idle', 'walk', 'sit'] }), kit.need([...new Set(walkers)], { clips: ['idle', 'walk'] })]) : null;
+    const need = kit.need ? Promise.all([kit.need(['president', 'secretservice', 'fedagent'], { clips: ['idle', 'walk', 'sit'] }), kit.need([...new Set(walkers)], { clips: ['idle', 'walk', 'run'] })]) : null;
     await Promise.race([need, new Promise((done) => setTimeout(done, 9000))]);
   } catch {
     /* stand-ins */
