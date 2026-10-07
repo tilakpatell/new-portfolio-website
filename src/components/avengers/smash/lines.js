@@ -9,5 +9,18 @@ export const TEACH = {
   chariot: () => 'Chariots. A lane glowing red is about to burn: get out of it, or be in the air when it goes up.',
 };
 
+// And what he says the first time something gets you, by what it was, and as
+// the Time Stone's taken (the first time, and again).
+export const HIT = {
+  barrier: 'Not even Hulk goes through an energy wall. Change lanes.',
+  crater: 'Leap a crater, a moment before the edge.',
+  chariot: 'When a lane glows red, leave it, or leap as the fire comes.',
+};
+export const STONE = {
+  first: 'The Time Stone is yours: the Ancient One would have let you have it. Keep running.',
+  again: 'The Time Stone again. Keep running.',
+};
+
 // all of it, either way it's played: what can be said in his own voice (lib/voiced.js)
-export const SPOKEN = [...new Set(Object.values(TEACH).flatMap((t) => [t(true), t(false)]))];
+// ("HULK SMASH." is the film's own clip)
+export const SPOKEN = [...new Set([...Object.values(TEACH).flatMap((t) => [t(true), t(false)]), ...Object.values(HIT), ...Object.values(STONE)])];

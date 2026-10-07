@@ -38,11 +38,20 @@
 // side took while you were up (once each), which pages/GalaxySurface.jsx
 // counts for your side; sideFor(mission, side) is the war's side on this map
 // ('attack', 'defend' or null) and warSideOf(mission, k) the other way.
+//
+// And for the soldiers' bodies (assaultScene.js draws them): soldierBody(b,
+// s) reads what a soldier's doing as a brain's step for lib/ai/body's
+// bodyFrom (its mode: down, cover, pinned, retreat, covering, flank, fight
+// or advance; and what it aims at), BATTLE_BODY says what each mode looks
+// like, a `down` event says where the killing shot came `from` ([x, z]) and
+// a soldier's shot at another names its `target`. They read the battle and
+// never change it.
 
 import { pushOut, turnToward } from '../walker';
 import { rng } from '../noise';
 import { starsFor } from './chase';
 import { advance, confidence, createSquads, createTokens, flankers, frontline, posture, withdraw } from '../../../../lib/ai/squad';
+import { MODE_BODY } from '../../../../lib/ai/body';
 
 export const RULES = {
   capture: 0.08, // a post's meter, a second, for each soldier of advantage
@@ -89,6 +98,9 @@ export const TACTICS = {
 
 const other = (side) => (side === 'attack' ? 'defend' : 'attack');
 const byId = (b, id) => b.soldiers.find((s) => s.id === id);
+// its head kept down by the fire coming its way, or hurt: it shoots worse,
+// moves at a crouch and looks for cover
+const keptDown = (s) => s.suppress > RULES.suppressed || s.hp < RULES.hp * 0.4;
 const dist = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
 const inPost = (p, x, z) => dist(p.at[0], p.at[1], x, z) <= p.r;
 const livePosts = (b) => b.mission.phases[b.phaseIndex].posts.map((id) => b.posts.find((p) => p.id === id));
@@ -294,7 +306,8 @@ function hurt(b, s, damage, by, out) {
   s.flankTo = null;
   s.hold = false;
   b.losses[s.side].push(b.t);
-  const ev = { type: 'down', id: s.id, by: by === 'you' ? 'you' : by.id };
+  // (where the shot came from, for the way it falls)
+  const ev = { type: 'down', id: s.id, by: by === 'you' ? 'you' : by.id, from: by === 'you' ? [b.you.x, b.you.z] : [by.x, by.z] };
   out.push(ev);
   out.push({ type: 'kill', victim: s.id, side: s.side, by: ev.by });
   if (by === 'you') {
@@ -311,6 +324,47 @@ export function hitSoldier(b, id, damage = RULES.yours, by = 'you') {
   if (!s || !s.up) return null;
   return hurt(b, s, damage, by, []);
 }
+
+// What a soldier's doing, as a brain's step for its body (lib/ai/body's
+// bodyFrom, through BATTLE_BODY): where it is and faces, and its mode:
+// down; behind its cover (cover); kept down in the open (pinned); its
+// half falling back (retreat) or holding while the other half goes
+// (covering); round the enemy's flank (flank); a target in range (fight);
+// else on its way (advance). aim: what it's firing at ({ x, z }: a
+// soldier, or you), or null; fire: its next shot is a moment off (one in
+// cover comes up for it). Reads, never changes.
+const RISE_LEAD = 0.3; // seconds before a shot its body's up for it
+export function soldierBody(b, s) {
+  const t = s.target === 'you' ? b.you : s.target != null ? byId(b, s.target) : null;
+  const aim = s.up && t ? { x: t.x, z: t.z } : null;
+  const fire = Boolean(aim) && !s.unarmed && s.cool <= RISE_LEAD;
+  let mode = 'advance';
+  if (!s.up) mode = 'down';
+  else if (s.inCover) mode = 'cover';
+  else if (keptDown(s)) mode = 'pinned';
+  else if (s.fallback) mode = 'retreat';
+  else if (s.hold) mode = 'covering';
+  else if (s.flankTo) mode = 'flank';
+  else if (aim) mode = 'fight';
+  return { x: s.x, z: s.z, yaw: s.yaw, mode, aim, fire, hurt: Math.max(0, Math.min(1, 1 - s.hp / RULES.hp)), down: s.up ? 0 : 1 };
+}
+
+// What each of soldierBody's modes looks like (lib/ai/body's MODE_BODY,
+// with the battle's own): behind its cover it crouches and comes up to
+// fire; the half that covers the other's going does it from a knee; and
+// whatever it's doing, its head's on what it's firing at, so a half
+// falling back looks back at the enemy as it goes.
+export const BATTLE_BODY = {
+  ...MODE_BODY,
+  down: {},
+  cover: { base: 'crouch', rise: true, look: 'aim' },
+  pinned: { look: 'aim' },
+  retreat: { look: 'aim' },
+  covering: { base: 'crouch', look: 'aim' },
+  flank: { look: 'aim' },
+  fight: { look: 'aim' },
+  advance: {},
+};
 
 // The galaxy's war's side (sides.js) on this map: 'attack', 'defend' or null
 // (a map's sides are the assault's own: its Rebels are 'rebels'), and back.
@@ -514,7 +568,7 @@ function step(b, h, you, env, out) {
     }
     s.target = target ? (target.you ? 'you' : target.id) : null;
     // kept down by the fire coming its way (or hurt), it looks for cover
-    const down = s.suppress > RULES.suppressed || s.hp < RULES.hp * 0.4;
+    const down = keptDown(s);
     if (target && down && !s.cover && !s.frozen) {
       const c = coverFrom(env.solids, s, target.x, target.z);
       if (c) {
@@ -631,7 +685,7 @@ function step(b, h, you, env, out) {
         else if (target.dug) chance *= RULES.dugIn;
         const hit = b.r() < chance;
         target.suppress = Math.min(1, target.suppress + RULES.suppress);
-        out.push({ type: 'shot', id: s.id, side: s.side, from: [s.x, s.z], to: [target.x, target.z], atYou: false, hit });
+        out.push({ type: 'shot', id: s.id, side: s.side, from: [s.x, s.z], to: [target.x, target.z], atYou: false, hit, target: target.id });
         if (hit) hurt(b, target, RULES.damage, s, out);
       }
     }

@@ -14,6 +14,8 @@ export const FIGURE_VOICES = {
   Sam: 'sam',
   Saul: 'saul',
   Mike: 'mike',
+  Gus: 'gus',
+  Jesse: 'jesse',
   Jerry: 'jerry',
   Summer: 'summer',
   'The President': 'uspresident',
@@ -32,6 +34,10 @@ export const FIGURE_VOICES = {
   Phoenixperson: 'birdperson',
   Unity: 'unity',
   Gearhead: 'gearhead',
+  'King Flippy Nips': 'flippynips',
+  'Scroopy Noopers': 'scroopy',
+  'Glexo Slim Slom': 'glexo',
+  'Risotto Groupon': 'risotto',
 };
 
 // The voice someone's line (a say: { name, line }) is said in, or null:
@@ -41,6 +47,10 @@ export function figureVoice(say) {
   return voice && spoken(say.line.replace(/\[[^\]]*\]/g, ' ')) ? voice : null;
 }
 
+// every landing's figures: the landing's own, and each of its biomes'
+// (biomes.js: where on the planet you come down)
 export const VOICELINES = Object.values(LANDINGS).flatMap((l) =>
-  (l.things ?? []).filter((t) => figureVoice(t.say)).map((t) => ({ who: figureVoice(t.say), text: t.say.line })),
+  [...(l.things ?? []), ...(l.biomes ?? []).flatMap((b) => b.things ?? [])]
+    .filter((t) => figureVoice(t.say))
+    .map((t) => ({ who: figureVoice(t.say), text: t.say.line })),
 );

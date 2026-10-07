@@ -1,0 +1,209 @@
+{
+  "monmothma": {
+    "show": "star-wars",
+    "quotes": ["the ultimate victory of evil", "the loss of an objective reality"],
+    "search": [
+      "Andor season 2 Mon Mothma Senate speech Ghorman scene",
+      "Andor season 1 Mon Mothma Perrin dinner argument scene",
+      "Andor Mon Mothma Luthen Rael gallery scene",
+      "Rogue One Mon Mothma Yavin council Jyn Erso scene"
+    ],
+    "avoid": ["caroline blakiston", "return of the jedi", "many bothans", "reaction", "interview", "lego", "fan dub", "breakdown", "review"]
+  },
+  "bail": {
+    "show": "star-wars",
+    "quotes": ["I'll take the girl", "adopting a baby girl"],
+    "search": [
+      "Revenge of the Sith Bail Organa I'll take the girl Yoda Obi-Wan scene",
+      "Revenge of the Sith Bail Organa Jedi Temple clone troopers scene",
+      "Obi-Wan Kenobi series Bail Organa asks Obi-Wan to find Leia scene",
+      "Rogue One Bail Organa Mon Mothma Yavin council scene"
+    ],
+    "avoid": ["clone wars", "rebels", "west wing", "nypd", "dexter", "sons of anarchy", "reaction", "interview", "lego", "fan dub"]
+  },
+  "piett": {
+    "show": "star-wars",
+    "quotes": ["Intensify the forward batteries", "don't want anything to get through", "sighted the Millennium Falcon"],
+    "search": [
+      "Empire Strikes Back Captain Piett probe droid Hoth report Admiral Ozzel scene",
+      "Empire Strikes Back Admiral Piett Vader asteroid field Millennium Falcon scene",
+      "Empire Strikes Back Admiral Piett Vader bounty hunters scene",
+      "Return of the Jedi Admiral Piett intensify the forward batteries Executor scene"
+    ],
+    "avoid": ["battlefront", "squadrons", "reaction", "interview", "lego", "fan dub"]
+  },
+  "tarkin": {
+    "show": "star-wars",
+    "quotes": ["You may fire when ready", "In our moment of triumph", "Charming to the last"],
+    "search": [
+      "A New Hope Grand Moff Tarkin Leia Alderaan you may fire when ready scene",
+      "A New Hope Tarkin Death Star conference room Vader scene",
+      "A New Hope Tarkin evacuate in our moment of triumph scene",
+      "A New Hope Tarkin Leia charming to the last scene"
+    ],
+    "avoid": ["rogue one", "guy henry", "cgi", "deepfake", "clone wars", "rebels", "andor", "reaction", "interview", "lego", "fan dub"]
+  },
+  "ozzel": {
+    "show": "star-wars",
+    "quotes": ["I want proof, not leads", "so many uncharted settlements", "It could be smugglers"],
+    "search": [
+      "Empire Strikes Back Admiral Ozzel probe droid proof not leads scene",
+      "Empire Strikes Back Executor bridge Ozzel Piett Vader the Rebels are there scene",
+      "Empire Strikes Back Admiral Ozzel Vader force choke scene"
+    ],
+    "avoid": ["grange hill", "indiana jones", "last crusade", "battlefront", "reaction", "interview", "lego", "fan dub"]
+  },
+  "jerjerrod": {
+    "show": "star-wars",
+    "quotes": ["We shall double our efforts", "this is an unexpected pleasure", "The Emperor's coming here?"],
+    "search": [
+      "Return of the Jedi Moff Jerjerrod Vader Death Star arrival scene",
+      "Return of the Jedi Jerjerrod we shall double our efforts scene",
+      "Return of the Jedi Jerjerrod Emperor second Death Star fire at will scene"
+    ],
+    "avoid": ["battlefront", "reaction", "interview", "lego", "fan dub"]
+  },
+  "raddus": {
+    "show": "star-wars",
+    "quotes": ["Rogue One, may the Force"],
+    "search": [
+      "Rogue One Admiral Raddus Profundity bridge battle of Scarif scene",
+      "Rogue One Raddus Rogue One may the Force be with you scene",
+      "Rogue One battle of Scarif shield gate Hammerhead corvette scene"
+    ],
+    "avoid": ["battlefront", "squadrons", "reaction", "interview", "lego", "fan dub"]
+  },
+  "hera": {
+    "show": "star-wars",
+    "quotes": ["This is Spectre 2"],
+    "search": [
+      "Star Wars Rebels Hera Syndulla Ghost cockpit Kanan scene",
+      "Star Wars Rebels Hera Syndulla Ezra Chopper scene",
+      "Star Wars Rebels Hera Syndulla Phoenix Squadron briefing scene",
+      "Star Wars Rebels Hera Syndulla Cham Syndulla Ryloth scene"
+    ],
+    "avoid": ["mary elizabeth winstead", "winstead", "live action", "ahsoka episode", "squadrons", "reaction", "interview", "lego", "fan dub"]
+  },
+  "thrawn": {
+    "show": "star-wars",
+    "quotes": ["To defeat an enemy", "Not simply their battle tactics", "their history, philosophy, art"],
+    "search": [
+      "Star Wars Rebels Grand Admiral Thrawn to defeat an enemy you must know them scene",
+      "Star Wars Rebels Thrawn Governor Pryce Lothal scene",
+      "Ahsoka series Grand Admiral Thrawn Lars Mikkelsen Peridea Elsbeth scene",
+      "Ahsoka series Thrawn Chimaera bridge scene",
+      "Star Wars Rebels Thrawn Kallus Fulcrum scene"
+    ],
+    "avoid": ["audiobook", "marc thompson", "timothy zahn", "heir to the empire", "theory", "reaction", "interview", "lego", "fan dub"]
+  },
+  "gideon": {
+    "show": "star-wars",
+    "quotes": ["You have something I want", "what you are in possession of"],
+    "search": [
+      "The Mandalorian Moff Gideon you have something I want scene",
+      "The Mandalorian season 2 finale Moff Gideon Darksaber Din Djarin scene",
+      "The Mandalorian season 3 Moff Gideon shadow council scene",
+      "The Mandalorian Moff Gideon Cara Dune Greef Karga Nevarro scene"
+    ],
+    "avoid": ["breaking bad", "better call saul", "gus fring", "the boys", "reaction", "interview", "lego", "fan dub"]
+  },
+  "rex": {
+    "show": "star-wars",
+    "quotes": ["Experience outranks everything"],
+    "search": [
+      "Clone Wars Rookies Captain Rex experience outranks everything scene",
+      "Clone Wars Captain Rex Ahsoka Siege of Mandalore scene",
+      "Clone Wars Umbara Captain Rex Krell Fives scene",
+      "Clone Wars Captain Rex Order 66 Ahsoka scene"
+    ],
+    "avoid": ["temuera morrison", "live action", "toy story", "fan film", "battlefront", "fortnite", "reaction", "interview", "lego", "fan dub"]
+  },
+  "yularen": {
+    "show": "star-wars",
+    "quotes": [],
+    "search": [
+      "Clone Wars Shadow of Malevolence Admiral Yularen Anakin briefing scene",
+      "Clone Wars Admiral Yularen Resolute bridge Anakin Skywalker scene",
+      "Star Wars Rebels Through Imperial Eyes Colonel Yularen Kallus scene"
+    ],
+    "avoid": ["andor", "malcolm sinclair", "a new hope", "robert clarke", "reaction", "interview", "lego", "fan dub"]
+  },
+  "grievous": {
+    "show": "star-wars",
+    "quotes": ["Kenobi, you are a bold one", "a fine addition to my collection", "you must realize you are doomed"],
+    "search": [
+      "Revenge of the Sith General Grievous Obi-Wan Utapau hello there scene",
+      "Revenge of the Sith General Grievous Invisible Hand Anakin Obi-Wan scene",
+      "Clone Wars General Grievous Kenobi duel scene",
+      "Clone Wars General Grievous Malevolence bridge scene"
+    ],
+    "avoid": ["2003", "tartakovsky", "genndy", "micro-series", "battlefront", "fortnite", "meme", "reaction", "interview", "lego", "fan dub"]
+  },
+  "ventress": {
+    "show": "star-wars",
+    "quotes": ["every enemy I have ever faced", "All except for you"],
+    "search": [
+      "Clone Wars Asajj Ventress Obi-Wan Kenobi duel scene",
+      "Clone Wars Asajj Ventress Count Dooku betrayal scene",
+      "Clone Wars Asajj Ventress Ahsoka Tano The Wrong Jedi scene",
+      "Clone Wars Asajj Ventress Boba Fett bounty hunters scene"
+    ],
+    "avoid": ["2003", "tartakovsky", "bad batch", "fan film", "battlefront", "reaction", "interview", "lego", "fan dub"]
+  },
+  "elsbeth": {
+    "show": "star-wars",
+    "quotes": [],
+    "search": [
+      "The Mandalorian Chapter 13 The Jedi Morgan Elsbeth Magistrate Din Djarin beskar spear scene",
+      "The Mandalorian The Jedi Morgan Elsbeth Ahsoka Tano duel Calodan scene",
+      "Ahsoka series Morgan Elsbeth Baylan Skoll Eye of Sion scene",
+      "Ahsoka series Morgan Elsbeth Thrawn Peridea scene"
+    ],
+    "avoid": ["reaction", "interview", "lego", "fan dub", "theory"]
+  },
+  "teva": {
+    "show": "star-wars",
+    "quotes": ["They can't ignore me face-to-face", "the Empire is growing again"],
+    "search": [
+      "The Mandalorian The Passenger Carson Teva X-wing pilots Razor Crest scene",
+      "The Mandalorian The Pirate Carson Teva Colonel Tuttle Adelphi scene",
+      "Ahsoka series Captain Carson Teva Hera Syndulla scene",
+      "The Mandalorian Carson Teva Cara Dune Nevarro scene"
+    ],
+    "avoid": ["kim's convenience", "kims convenience", "reaction", "interview", "lego", "fan dub"]
+  },
+  "younganakin": {
+    "show": "star-wars",
+    "quotes": ["Are you an angel?", "Now this is podracing!", "my name is Anakin"],
+    "search": [
+      "The Phantom Menace young Anakin Padme are you an angel scene",
+      "The Phantom Menace Anakin Skywalker podrace now this is podracing scene",
+      "The Phantom Menace Anakin Qui-Gon Shmi Tatooine dinner scene",
+      "The Phantom Menace Anakin I'll try spinning that's a good trick scene",
+      "The Phantom Menace Anakin says goodbye to his mother scene"
+    ],
+    "avoid": ["hayden", "christensen", "attack of the clones", "revenge of the sith", "clone wars", "reaction", "interview", "lego", "fan dub"]
+  },
+  "ezra": {
+    "show": "star-wars",
+    "quotes": ["you to see this through"],
+    "search": [
+      "Ahsoka series Ezra Bridger hologram message to Sabine scene",
+      "Ahsoka series Ezra Bridger Sabine reunion Peridea Noti scene",
+      "Ahsoka series Ezra Bridger Eman Esfandi Thrawn Star Destroyer scene",
+      "Ahsoka series Ezra Bridger Ahsoka Sabine Hera Ghost scene"
+    ],
+    "avoid": ["star wars rebels", "taylor gray", "animated", "reaction", "interview", "lego", "fan dub", "theory"]
+  },
+  "caradune": {
+    "show": "star-wars",
+    "quotes": ["Nice bedside manner"],
+    "search": [
+      "The Mandalorian Chapter 4 Sanctuary Cara Dune Din Djarin fight scene",
+      "The Mandalorian Chapter 7 The Reckoning Cara Dune Greef Karga scene",
+      "The Mandalorian The Siege Marshal Cara Dune Nevarro scene",
+      "The Mandalorian The Believer Cara Dune Mayfeld prison scene"
+    ],
+    "avoid": ["mma", "ufc", "deadpool", "fast and furious", "fired", "reaction", "interview", "lego", "fan dub"]
+  }
+}

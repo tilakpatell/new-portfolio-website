@@ -262,3 +262,103 @@ export function hostileStep(t, world, dt, r = Math.random) {
   out.guessed = lost;
   return out;
 }
+
+// ── An enemy's body (lib/ai/body) ──
+//
+// What a step of its head looks like on its figure (activity.js draws it).
+// The motion comes from the step itself, so its feet go with the ground it
+// covers: a strafer's hips turn toward its travel while its chest stays on
+// you (locomotion.js does that from the motion's `side`). Its head goes
+// where its mode says (HOSTILE_BODY): on its mark while it holds, strafes,
+// backs off or crouches; on where it thinks you are while it closes or
+// goes to look; sweeping across its way while it searches. In cover it
+// crouches only once it's stopped there a moment, and stands to fire (a
+// crouch is a base state in place of the walk: crouched feet that moved
+// would slide). Its gun is up while it has a mark in range or is about to
+// fire, and down while it crouches. Over its head: '?' while it looks for
+// you, '!' for a moment when it has you again after a while without you
+// (and `alert` that frame, for the start it gives). Pure, so it's tested
+// in Node.
+//
+//   HOSTILE_BODY: lib/ai/body's MODE_BODY with the hostiles' own modes
+//   createPosture({ seed }) → what a figure's body carries from frame to
+//     frame (one each; seed: where in its sweep its head starts)
+//   hostileBody(posture, step, dt, { t, firing }) → { motion, look, base,
+//     action, scan, aim (0 or 1: the gun down or up), mark ('?' | '!' |
+//     null), alert (it has just seen you) }
+//     step: hostileStep's, plus `belief` (its belief of you, t.belief) and
+//     `sees` (whether it sees you now, t.sees); t: seconds (the world's
+//     clock); firing: it's about to fire, or just has
+//   whereHit(y, ground, tall) → 'head' | 'chest': where a hit at height y lands
+//   fallOf({ push, from, at, yaw }) → { x, z }: the way it goes down, along
+//     the ground: the way the shot went (push), else away from where it
+//     came from (from → at), else backward from its facing
+
+import { MODE_BODY, bodyFrom } from '../../../lib/ai/body';
+import { seeded } from '../../../lib/seeded';
+
+export const HOSTILE_BODY = {
+  ...MODE_BODY,
+  // holding its ground, its eyes on its mark
+  hold: { look: 'aim' },
+  // coming for you (a rancor, a duellist, a brawler): its eyes on where it thinks you are
+  close: { look: 'belief' },
+  // round your side, watching you as it goes
+  flank: { look: 'belief' },
+  // to where it last had you, staring there
+  look: { look: 'belief' },
+  // about its business
+  wander: {},
+};
+
+// the head's sweep while it searches: so far either side of its way
+// (radians), at so many radians a second, on a spot this far out (metres)
+export const SCAN = { yaw: 0.95, rate: 1.4, far: 6 };
+const STILL = 0.25; // m/s: under this it's stopped (for the crouch)
+const SETTLE = 0.25; // seconds stopped in cover before it crouches
+const SPRINT = 9; // m/s: a step faster than this is a jump (a knock, a put back), not feet
+const STARTLE = 1.2; // seconds the '!' stays up
+const AGAIN = 3; // seconds out of its sight before it starts at you again (so a glimpse at the edge of its cone doesn't keep starting it)
+
+export const createPosture = ({ seed = 0 } = {}) => ({ prev: null, still: 0, seenAt: -Infinity, startAt: -Infinity, phase: seeded(seed)() * Math.PI * 2 });
+
+export function hostileBody(posture, step, dt, { t = 0, firing = false } = {}) {
+  const prev = posture.prev;
+  const body = bodyFrom(prev, { ...step, fire: firing }, dt, { table: HOSTILE_BODY });
+  posture.prev = { x: step.x, z: step.z, yaw: step.yaw };
+  const motion = body.motion;
+  let speed = Math.hypot(motion.speed, motion.side);
+  if (speed > SPRINT) {
+    motion.speed = 0;
+    motion.side = 0;
+    speed = 0;
+  }
+  posture.still = speed < STILL ? posture.still + dt : 0;
+  // crouched only stopped in cover a moment, and not to fire
+  const base = body.base === 'crouch' ? (posture.still >= SETTLE ? 'crouch' : null) : body.base;
+  // searching: the head swept across its way, out ahead of it
+  let look = body.look;
+  if (body.scan) {
+    const a = step.yaw + SCAN.yaw * Math.sin(t * SCAN.rate + posture.phase);
+    look = { x: step.x + Math.sin(a) * SCAN.far, z: step.z + Math.cos(a) * SCAN.far };
+  }
+  const aim = (step.aim || firing) && base !== 'crouch' ? 1 : 0;
+  // it has you again: a start, and a '!' for a moment
+  const sees = step.sees ?? Boolean(step.aim && !step.guessed);
+  const alert = sees && t - posture.seenAt > AGAIN;
+  if (sees) posture.seenAt = t;
+  if (alert) posture.startAt = t;
+  const hunting = step.mode === 'look' || step.mode === 'search';
+  const mark = t - posture.startAt < STARTLE ? '!' : hunting ? '?' : null;
+  return { motion, look, base, action: body.action, scan: body.scan, aim, mark, alert };
+}
+
+export const whereHit = (y, ground, tall) => (Number.isFinite(y) && y - ground > tall * 0.82 ? 'head' : 'chest');
+
+export function fallOf({ push = null, from = null, at = null, yaw = 0 } = {}) {
+  const flat = (x, z) => {
+    const l = Math.hypot(x, z);
+    return l > 1e-6 ? { x: x / l, z: z / l } : null;
+  };
+  return (push && flat(push.x, push.z)) ?? (from && at && flat(at.x - from.x, at.z - from.z)) ?? { x: -Math.sin(yaw), z: -Math.cos(yaw) };
+}

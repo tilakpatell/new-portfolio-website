@@ -1,0 +1,42 @@
+{
+  "v": 2,
+  "kdf": {
+    "name": "PBKDF2",
+    "hash": "SHA-256",
+    "iterations": 600000,
+    "salt": "1b0xYj+GDqSBat7gTLbhZw==",
+    "expand": "HKDF-SHA-256"
+  },
+  "check": "VFBFRwJbd4uIrX/PCYBFNw56dGqn2WbLGaVj9TIjTQcg0mRVZX2aEQ2WGYG3RtjU5nBdeXIqP4iWfg==",
+  "clients": [
+    {
+      "id": "1.12.2",
+      "label": "Minecraft 1.12.2",
+      "note": "The World of Color, concrete, parrots, the 1.9 combat; worlds import, export and open to LAN.",
+      "file": "1.12.2.bin",
+      "plainBytes": 83353941,
+      "sha256": "974ab3d56ebf19344c0a333515d92a6944d2a183c73c134b45afa0eb0adffc2e",
+      "bytes": 23274698
+    },
+    {
+      "id": "1.8.8",
+      "label": "Minecraft 1.8.8",
+      "note": "The steadiest: lax1dude’s EaglercraftX, the one most servers run.",
+      "file": "1.8.8.bin",
+      "plainBytes": 18002895,
+      "sha256": "ec66cfc5c0728483c04a331be66407edbee2bcdb702191c42707e76ba94df9a5",
+      "bytes": 13542646
+    }
+  ],
+  "worlds": [
+    {
+      "id": "the-plaza-1-12-2",
+      "name": "The Plaza",
+      "client": "1.12.2",
+      "kind": "zip",
+      "file": "worlds/the-plaza-1-12-2.bin",
+      "bytes": 2034148,
+      "sha256": "29ae49f9e68ea6061b49c5048fb807f3c712374614ae3adb0fc63ed5306f076f"
+    }
+  ]
+}
