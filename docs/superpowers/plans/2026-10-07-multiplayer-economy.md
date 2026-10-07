@@ -92,7 +92,7 @@
 - Test: `src/components/universe/economy.test.js` (the mapping `deedToEarn`)
 
 **Interfaces:**
-- Consumes: A1's `earn`. Produces: `deedToEarn(what) → earn key | null` in `economy.js` (`killHunter → killHunter`, `killPirate → killPirate`, `rescued → rescued`, `helped → helped`, `capitalKill → killCapital`, `capitalHurt → siegePart`? no: `capitalHurt → null`; `killCivil`, `killPatrol`, `ran`, `shotLaw`, `busted`, `paidToll`, `angeredPirates`, `clean` → null).
+- Consumes: A1's `earn`. Produces: `deedToEarn(what) → earn key | null` in `economy.js` (`killHunter → killHunter`, `killPirate → killPirate`, `rescued → rescued`, `helped → helped`, `capitalKill → killCapital`; `capitalHurt`, `killCivil`, `killPatrol`, `ran`, `shotLaw`, `busted`, `paidToll`, `angeredPirates`, `clean` → null). The siege's `gen` event earns `siegePart` directly, not through a deed.
 
 - [ ] **Step 1: Write the failing test** `deedToEarn maps the paying deeds and nothing else`.
 - [ ] **Step 2: Run it**: FAIL.
