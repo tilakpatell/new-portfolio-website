@@ -55,6 +55,14 @@ pull request, *Failed* gives the log's tail and a hint. Each run in the
 Actions tab has the full log, and a gen3d run keeps the judging sheet as an
 artifact.
 
+The runner also takes one job of its own every night at 04:00 UTC:
+`ai-health.yml` (`scripts/ai-e2e/README.md`) evaluates the judges, makes
+one real model and one real line, renders every model, and keeps one issue
+labelled `ai-health` open while a night is red. The status shows the last
+night. The jobs' own contract (what `ask.mjs` writes, the runners read
+back the same; the status; the doctor; the workflows' guards) is tested on
+every pull request with a fake `gh` (`GH_BIN`).
+
 - **Queued**: the desktop is off or asleep. GitHub holds a run for up to a
   day, and the hourly sweep finds the issue after that.
 - **Waiting for the GPU**: something else is using the GPU, such as a long

@@ -284,15 +284,65 @@ report are in `results/real-work/`); drift is a question for a person, and
 | `agent/jobs.test.mjs` | 100 generated gen3d requests and 50 voices requests: what `ask.mjs --dry-run` writes, `parseIssue` reads back as the same job; `status.mjs --json` over the fake gh in every state; `doctor.mjs` over a made-up AppData finds a tool in the Claude app's box and says how to fix a missing one |
 | `agent/workflows.test.mjs` | every job on `[self-hosted, gpu]` has a time limit, a concurrency group (or runs only by hand) and a trusted trigger or condition; the queue and check jobs and all of CI run on GitHub's own runners; nothing a pull request starts runs on the desktop |
 
+
+## Every command
+
+```
+npm test                                     tier 0, the unit tests (the AI tiers left out)
+npm run test:ai                              tiers 1, 2, 4 and 7 (CI's AI job)
+npm run test:ai:render                       tier 3 (gen3d cuts; AI_RENDER_ALL=1 for every model)
+npm run test:ai:gpu                          tiers 6 then 5, on the desktop (stops at a red one; the night runs each)
+node scripts/ai-e2e/evals/run.mjs            tier 5 alone: both judges
+node scripts/ai-e2e/evals/vision.mjs [--backend claude|qwen|fake]
+python scripts/voices/eval_judge.py [--takes DIR] [--out FILE]
+node scripts/ai-e2e/real/health.mjs          tier 6 alone
+node scripts/ai-e2e/real/drift.mjs [results/<date>-real.json]
+node scripts/ai-e2e/real/bless.mjs [results/<date>-real.json]
+node scripts/ai-e2e/report.mjs [date]        the night's table
+node scripts/ai-e2e/issue.mjs [date]         the ai-health issue (GH_TOKEN)
+node scripts/ai-e2e/evals/make-sheets.mjs    the vision set, made again (CHROME)
+node scripts/ai-e2e/evals/make-takes.mjs     the hearing set, made again (ffmpeg)
+gh workflow run ai-health.yml                the night, now
+```
+
+## Every knob
+
+| knob | where | what |
+| --- | --- | --- |
+| `GEN3D_ENGINE`, `GEN3D_JUDGE`, `GEN3D_JUDGE_SCRIPT`, `GEN3D_PICTURE`, `GEN3D_SHEET`, `BLENDER`, `GH_BIN`, `GH_LOG`, `GH_FIXTURES`, `GH_FAIL` | the pipelines | the fakes (above) |
+| `GEN3D_FAKE_FAIL_AT`, `GEN3D_FAKE_TRIS`, `GEN3D_FAKE_TEX`, `GEN3D_FAKE_NOISE`, `GEN3D_FAKE_SLEEP`, `GEN3D_FAKE_LOG` | the fakes | failing on cue, size, weight, time, a log |
+| `GEN3D_OUT`, `GEN3D_CACHE` | `web.mjs`, `make.mjs` | where the cuts and credit, and the cache, go |
+| `VOICES_ENGINE`, `VOICES_JUDGE` | `generate.py` | the fake worker and ears |
+| `VOICES_LINES`, `VOICES_OUT`, `VOICES_CACHE`, `VOICES_REFS`, `VOICES_PYTHON` | `generate.py`, the runner | the list, the mp3s and manifest, the takes, the references, the Python |
+| `VOICES_LINES_FROM=voicelines` | `export-lines.mjs` | only the worlds' `voicelines.js` (a fixture tree) |
+| `VOICES_TEST_PYTHON` | the voices contract tests | a Python with numpy and soundfile |
+| `CHROME`, `AI_RENDER_ALL` | tier 3, the judging sheet | the browser; every model |
+| `AI_RESULTS`, `AI_DATE` | tiers 5 and 6, the report | where results go; the night's date |
+| `AUTOPILOT_UTILIZATION`, `AUTOPILOT_STATUS`, `AUTOPILOT_OVERAGE` (and `AUTOPILOT_BUDGET`, `AUTOPILOT_CHANGES`, `AUTOPILOT_TODAY` for tests) | `autopilot-budget.mjs` | the plan's figures |
+
 ## Adding a case
 
-A contract test is a vitest file under `scripts/ai-e2e/<tier>/`, its
-fixtures in `fixtures/` beside it. A test that spawns a pipeline says “up to
-10 s” in its `describe` name; anything else runs under a second and touches
-no network.
-
-## The nightly (tiers 5 and 6)
-
-`npm run test:ai:gpu` runs the real engines and the judges' evaluations on
-the desktop. Until those land it says which part is missing and fails, so it
-can't pass by doing nothing.
+- **A contract test**: a vitest file under `scripts/ai-e2e/<tier>/`, its
+  fixtures in `fixtures/` beside it, a sandbox from `contract/repo.mjs` for
+  anything that runs a pipeline. A test that spawns one says “up to 10 s”
+  in its `describe` name; anything else runs under a second and touches no
+  network. On CI nothing skips: a tool a test needs is installed there.
+- **A judging sheet**: add the model to `SHEETS` in
+  `evals/make-sheets.mjs` (or a pick set to `PICKS`), run it, and write its
+  label in `evals/sheets/labels.json`: what it is meant to be, the band a
+  fair judge's score falls in, and why. A deliberate wrong is the best
+  kind: the wrong question asked of a right model.
+- **A take**: add a speaker to `SPEAKERS` in `evals/make-takes.mjs` (it
+  takes two of their shipped lines and a longer one as the reference), or
+  a wrong by hand, and label it in `evals/takes/labels.json`.
+- **A brain's scenario**: `<brain>.scenario.test.js` beside it, from the
+  promise in its header (write the promise into the header first if it
+  isn't there), flown with `meet()` from `harness.js`; the properties in
+  `all.scenario.test.js` pick a new brain up from `BRAINS` by themselves. A
+  world's pure `rules.js` gets the same with `simulate()`.
+- **A golden**: after a night a person has looked at,
+  `node scripts/ai-e2e/real/bless.mjs` (the latest night's results), and
+  commit `real/golden.json`.
+- **An allow-list entry**: never added by hand to make a test pass. The
+  lists hold what was wrong when the tests were first run; fix the thing
+  and take it off.
