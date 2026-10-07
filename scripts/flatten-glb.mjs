@@ -4,11 +4,13 @@
 // flat-coloured things it reads as a collage). Its shape and its UVs are
 // kept; its atlas is painted again in a few flat colours.
 //
-// By default (texture mode) the atlas is smoothed of the generator's mush
-// (a median), enlarged (`--scale`, so the edges between flat regions are
-// drawn at twice the texels), its colours gathered into a few (k-means),
+// By default (texture mode) the atlas is enlarged (`--scale`, so the edges
+// between flat regions are drawn at more texels), smoothed of the
+// generator's speckle (a small median, after the enlarging, so thin lines
+// stay), its colours gathered into a few (k-means),
 // pulled toward a world's palette if one is given, and every texel set to
-// its cluster's colour: the windows, the brick and the trim stay, as clean
+// its cluster's colour (one far from every cluster, rare and distinct,
+// keeps its own): the windows, the brick and the trim stay, as clean
 // flat shapes. The material goes matte; the world's house look
 // (src/lib/three/house.js) shades it, and its core kit (src/lib/three/
 // core.js) lays real grain over it at a fixed size, which is what a close
@@ -23,7 +25,7 @@
 //
 //   kmeans(colours, k, { seed, iterations }) → { centres, label }    (pure)
 //   nearestOf(colour, palette) → the palette's nearest entry        (pure)
-//   posterize(pixels, { colours, palette, pull }) → { pixels, colours } (pure)
+//   posterize(pixels, { colours, palette, pull, keep }) → { pixels, colours } (pure)
 //   flattenPrimitive(doc, primitive, pixels, opts) → { colours } | null
 
 import { fileURLToPath } from 'node:url';
@@ -150,21 +152,24 @@ export function flattenPrimitive(doc, prim, pixels, { colours = 10, palette = nu
 // A picture ({ width, height, data: RGBA bytes }) in `colours` flat colours:
 // its clusters (k-means over up to 24k of its texels, sRGB), pulled toward
 // `palette` by `pull`, every texel set to its own (alpha kept).
-export function posterize({ width, height, data }, { colours = 16, palette = null, pull = 0.5, seed = 1 } = {}) {
+export function posterize({ width, height, data }, { colours = 16, palette = null, pull = 0.5, seed = 1, keep = 0.1 } = {}) {
   const n = width * height;
   const step = Math.max(1, Math.floor(n / 24000));
   const sample = [];
   for (let i = 0; i < n; i += step) if (data[i * 4 + 3] > 8) sample.push([data[i * 4] / 255, data[i * 4 + 1] / 255, data[i * 4 + 2] / 255]);
   if (!sample.length) return { pixels: { width, height, data }, colours: [] };
-  let { centres } = kmeans(sample, colours, { seed });
+  // (the clusters as found decide which a texel belongs to, and whether it's
+  // far from them all; what's written is each one pulled toward the palette)
+  const { centres } = kmeans(sample, colours, { seed });
+  let paint = centres;
   if (palette?.length) {
     const pal = palette.map(rgbOf);
-    centres = centres.map((c) => {
+    paint = centres.map((c) => {
       const p = nearestOf(c, pal);
       return c.map((v, j) => v + (p[j] - v) * pull);
     });
   }
-  const bytes = centres.map((c) => c.map((v) => Math.round(Math.max(0, Math.min(1, v)) * 255)));
+  const bytes = paint.map((c) => c.map((v) => Math.round(Math.max(0, Math.min(1, v)) * 255)));
   const out = new Uint8Array(data.length);
   for (let i = 0; i < n; i++) {
     const c = [data[i * 4] / 255, data[i * 4 + 1] / 255, data[i * 4 + 2] / 255];
@@ -177,12 +182,15 @@ export function posterize({ width, height, data }, { colours = 16, palette = nul
         bi = k;
       }
     }
-    out[i * 4] = bytes[bi][0];
-    out[i * 4 + 1] = bytes[bi][1];
-    out[i * 4 + 2] = bytes[bi][2];
+    // (a colour far from every cluster, rare and distinct, a hose or a sign,
+    // keeps its own: the flats are the common colours)
+    const far = bd > keep * keep;
+    out[i * 4] = far ? data[i * 4] : bytes[bi][0];
+    out[i * 4 + 1] = far ? data[i * 4 + 1] : bytes[bi][1];
+    out[i * 4 + 2] = far ? data[i * 4 + 2] : bytes[bi][2];
     out[i * 4 + 3] = data[i * 4 + 3];
   }
-  return { pixels: { width, height, data: out }, colours: centres.map(hexOf) };
+  return { pixels: { width, height, data: out }, colours: paint.map(hexOf) };
 }
 
 async function main() {
@@ -191,7 +199,7 @@ async function main() {
     const i = argv.indexOf(`--${name}`);
     return i >= 0 ? argv[i + 1] : d;
   };
-  const files = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && argv[i - 1].startsWith('--') && !['--keep-normal'].includes(argv[i - 1])));
+  const files = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && argv[i - 1].startsWith('--') && !['--keep-normal', '--keep-pbr', '--vertex'].includes(argv[i - 1])));
   const [from, to = from] = files;
   if (!from) {
     console.error("usage: node scripts/flatten-glb.mjs <in.glb> [out.glb] [--colours 10] [--blur 96] [--palette '#…,#…'] [--pull 0.6] [--keep-normal]");
@@ -233,9 +241,11 @@ async function main() {
         done.add(tex);
         const img = sharp(Buffer.from(tex.getImage()));
         const meta = await img.metadata();
-        const { data, info } = await img
-          .median(5)
-          .resize(Math.round(meta.width * scale), Math.round(meta.height * scale), { kernel: 'lanczos3' })
+        // (enlarged first, then a small median: the generator's speckle goes,
+        // a two-texel line, a window's frame, a hoop's square, stays)
+        const big = await img.resize(Math.round(meta.width * scale), Math.round(meta.height * scale), { kernel: 'lanczos3' }).png().toBuffer();
+        const { data, info } = await sharp(big)
+          .median(3)
           .ensureAlpha()
           .raw()
           .toBuffer({ resolveWithObject: true });
