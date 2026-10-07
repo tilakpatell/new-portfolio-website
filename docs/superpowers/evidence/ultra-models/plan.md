@@ -2,7 +2,7 @@
 
 Branch `claude/ultra-models`. Spec: `docs/superpowers/specs/2026-10-07-quality-modes-design.md` §2 (the ultra cut's numbers) and §4 Lane C. Plan: `docs/superpowers/plans/2026-10-07-ultra-models.md`.
 
-The ultra quality level may load a `<kind>.ultra.glb` beside a surface model's plain file: up to four times the catalogue's triangles, maps up to 8192, never over 24 MB, and at ultra the whole model at every distance (no far copy). The plain file, and so every other level, stays exactly as it is. This page says which twenty kinds get one, where each plain model came from, the command that makes its ultra cut, and what was checked.
+The ultra quality level may load a `<kind>.ultra.glb` beside a surface model's plain file: up to four times the catalogue's triangles, maps up to 8192, never over 24 MB, and at ultra the whole model at every distance (no far copy). The plain file, and so every other level, stays exactly as it is. This page says which twenty kinds were picked, where each plain model came from, the command that makes its ultra cut, which fifteen ultra cuts were made and kept, which were made and turned down, which were not made and why, and what was checked.
 
 ## How often each world places each kind
 
@@ -32,18 +32,18 @@ The ultra quality level may load a `<kind>.ultra.glb` beside a surface model's p
 
 `node scripts/ultra/kinds.mjs` (its rule is tested in `scripts/ultra/kinds.test.mjs`): every world's landmark first (the hero kind it places; where it places several, the most placed), then the most-placed buildings and vehicles across all the worlds until there are twenty. Crates, coolers, people, troopers, creatures and the scattered ground cover (palms, ferns, roots, glass, lava rock) are not buildings or vehicles, however many of them there are; the scattered ones are drawn instanced anyway. Four worlds have no hero kind and nothing placed often enough to make the twenty (Tatooine's landmark, Jabba's palace, stands once; Dagobah, Nevarro and Sorgan are mostly trees and rock): the next in line are `ewokhut` (7), `turret` (7), `corutower` (6), `nevarrodome` (5), `stilthut` (5) and `palace` (1).
 
-A Meshy kind's high cut is its lane's `tris` and `tex` (the catalogue entry doesn't carry them); a Sketchfab kind's is its catalogue entry's. The ultra cut is four times the triangles with 8192 maps (`catalog/ultra.js`'s `ultraCut`), unless the fetch prints a smaller `ultra: { tris, tex }` line because the source had fewer.
+A Meshy kind's high cut is its lane's `tris` and `tex` (the catalogue entry doesn't carry them); a Sketchfab kind's is its catalogue entry's. The ultra cut is four times the triangles with 8192 maps (`catalog/ultra.js`'s `ultraCut`), unless the kind's entry carries a smaller `ultra: { tris, tex }` because its source had fewer: the table's ultra column is the entry's where one shipped. The four remakes run through the ultra lane (`scripts/meshy-galaxy-ultra.mjs`), which keeps its tasks, lifts and raw models apart from the plain lanes', so the great wroshyr no longer borrows Kachirho's task.
 
 | # | kind | role | placed | worlds | source | lane / group | high (tris, maps) | ultra cut (tris, maps) | command |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | `tipocadome` | landmark | 48 | kamino | meshy | meshy-galaxy-buildings-fill | 30000, 2048 | 120000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-buildings-fill-tasks.json node scripts/meshy-galaxy-buildings.mjs models --ultra tipocadome && MESHY_TASKS=scripts/meshy-galaxy-buildings-fill-tasks.json node scripts/meshy-galaxy-buildings.mjs fetch --ultra tipocadome` |
+| 1 | `tipocadome` | landmark | 48 | kamino | meshy | meshy-galaxy-ultra | 30000, 2048 | 120000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-ultra-tasks.json MESHY_REVIEW=lab/meshy/ultra node scripts/meshy-galaxy-buildings.mjs models --ultra tipocadome && MESHY_TASKS=scripts/meshy-galaxy-ultra-tasks.json MESHY_REVIEW=lab/meshy/ultra node scripts/meshy-galaxy-buildings.mjs fetch --ultra tipocadome` |
 | 2 | `theed` | landmark | 13 | naboo | meshy | meshy-galaxy-buildings | 30000, 2048 | 120000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-buildings-tasks.json node scripts/meshy-galaxy-buildings.mjs models --ultra theed && MESHY_TASKS=scripts/meshy-galaxy-buildings-tasks.json node scripts/meshy-galaxy-buildings.mjs fetch --ultra theed` |
 | 3 | `geohive` | landmark | 9 | geonosis | meshy | meshy-galaxy-buildings-back | 30000, 2048 | 120000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-buildings-back-tasks.json node scripts/meshy-galaxy-buildings.mjs models --ultra geohive && MESHY_TASKS=scripts/meshy-galaxy-buildings-back-tasks.json node scripts/meshy-galaxy-buildings.mjs fetch --ultra geohive` |
 | 4 | `lothtemple` | landmark | 5 | lothal | meshy | meshy-galaxy-buildings-back | 16000, 2048 | 64000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-buildings-back-tasks.json node scripts/meshy-galaxy-buildings.mjs models --ultra lothtemple && MESHY_TASKS=scripts/meshy-galaxy-buildings-back-tasks.json node scripts/meshy-galaxy-buildings.mjs fetch --ultra lothtemple` |
-| 5 | `wroshyrgreat` | landmark | 3 | kashyyyk | meshy | meshy-galaxy-buildings-fill (as `kachirho`) | 45000, 2048 | 180000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-buildings-fill-tasks.json node scripts/meshy-galaxy-buildings.mjs models --ultra kachirho && MESHY_TASKS=scripts/meshy-galaxy-buildings-fill-tasks.json node scripts/meshy-galaxy-buildings.mjs fetch --ultra kachirho && mv public/models/galaxy/surface/kachirho.ultra.glb public/models/galaxy/surface/wroshyrgreat.ultra.glb` |
-| 6 | `atat` | landmark | 1 | hoth | sketchfab | ice | 40000, 2048 | 160000, 8192 | `node scripts/sketchfab-surface.mjs ice --ultra atat` |
+| 5 | `wroshyrgreat` | landmark | 3 | kashyyyk | meshy | meshy-galaxy-ultra | 45000, 2048 | 180000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-ultra-tasks.json MESHY_REVIEW=lab/meshy/ultra node scripts/meshy-galaxy-buildings.mjs models --ultra wroshyrgreat && MESHY_TASKS=scripts/meshy-galaxy-ultra-tasks.json MESHY_REVIEW=lab/meshy/ultra node scripts/meshy-galaxy-buildings.mjs fetch --ultra wroshyrgreat` |
+| 6 | `atat` | landmark | 1 | hoth | sketchfab | ice | 40000, 2048 | 74295, 1024 | `node scripts/sketchfab-surface.mjs ice --ultra atat` |
 | 7 | `citadel` | landmark | 1 | scarif | meshy | meshy-galaxy-buildings-fill | 40000, 2048 | 160000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-buildings-fill-tasks.json node scripts/meshy-galaxy-buildings.mjs models --ultra citadel && MESHY_TASKS=scripts/meshy-galaxy-buildings-fill-tasks.json node scripts/meshy-galaxy-buildings.mjs fetch --ultra citadel` |
-| 8 | `cloudplaza` | landmark | 1 | bespin | meshy | meshy-galaxy-three | 20000, 2048 | 80000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-three-tasks.json node scripts/meshy-galaxy-buildings.mjs models --ultra cloudplaza && MESHY_TASKS=scripts/meshy-galaxy-three-tasks.json node scripts/meshy-galaxy-buildings.mjs fetch --ultra cloudplaza` |
+| 8 | `cloudplaza` | landmark | 1 | bespin | meshy | meshy-galaxy-ultra | 20000, 2048 | 80000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-ultra-tasks.json MESHY_REVIEW=lab/meshy/ultra node scripts/meshy-galaxy-buildings.mjs models --ultra cloudplaza && MESHY_TASKS=scripts/meshy-galaxy-ultra-tasks.json MESHY_REVIEW=lab/meshy/ultra node scripts/meshy-galaxy-buildings.mjs fetch --ultra cloudplaza` |
 | 9 | `ds2sky` | landmark | 1 | endor | sketchfab | forest | 14000, 2048 | 56000, 8192 | `node scripts/sketchfab-surface.mjs forest --ultra ds2sky` |
 | 10 | `massassi` | landmark | 1 | yavin | meshy | meshy-galaxy-buildings-fill | 40000, 2048 | 160000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-buildings-fill-tasks.json node scripts/meshy-galaxy-buildings.mjs models --ultra massassi && MESHY_TASKS=scripts/meshy-galaxy-buildings-fill-tasks.json node scripts/meshy-galaxy-buildings.mjs fetch --ultra massassi` |
 | 11 | `mining` | landmark | 1 | mustafar | meshy | meshy-galaxy-buildings-fill | 45000, 2048 | 180000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-buildings-fill-tasks.json node scripts/meshy-galaxy-buildings.mjs models --ultra mining && MESHY_TASKS=scripts/meshy-galaxy-buildings-fill-tasks.json node scripts/meshy-galaxy-buildings.mjs fetch --ultra mining` |
@@ -51,60 +51,96 @@ A Meshy kind's high cut is its lane's `tris` and `tex` (the catalogue entry does
 | 13 | `sundaridome` | landmark | 1 | mandalore | meshy | meshy-galaxy-buildings-back | 40000, 2048 | 160000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-buildings-back-tasks.json node scripts/meshy-galaxy-buildings.mjs models --ultra sundaridome && MESHY_TASKS=scripts/meshy-galaxy-buildings-back-tasks.json node scripts/meshy-galaxy-buildings.mjs fetch --ultra sundaridome` |
 | 14 | `cloudtower` | placed | 14 | bespin | meshy | meshy-galaxy-three | 12000, 1024 | 48000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-three-tasks.json node scripts/meshy-galaxy-buildings.mjs models --ultra cloudtower && MESHY_TASKS=scripts/meshy-galaxy-three-tasks.json node scripts/meshy-galaxy-buildings.mjs fetch --ultra cloudtower` |
 | 15 | `tipoca` | placed | 14 | kamino | sketchfab | core | 35000, 1024 | 140000, 8192 | `node scripts/sketchfab-surface.mjs core --ultra tipoca` |
-| 16 | `vaporator` | placed | 12 | tatooine | sketchfab | desert | 3000, 512 | 12000, 8192 | `node scripts/sketchfab-surface.mjs desert --ultra vaporator` |
+| 16 | `vaporator` | placed | 12 | tatooine | sketchfab | desert | 3000, 512 | 12000, 1024 | `node scripts/sketchfab-surface.mjs desert --ultra vaporator` |
 | 17 | `adobe` | placed | 11 | tatooine | sketchfab | desert | 35000, 1024 | 140000, 8192 | `node scripts/sketchfab-surface.mjs desert --ultra adobe` |
 | 18 | `bunker` | placed | 10 | endor, scarif, nevarro, lothal | sketchfab | forest | 35000, 1024 | 140000, 8192 | `node scripts/sketchfab-surface.mjs forest --ultra bunker` |
 | 19 | `cloudtower2` | placed | 10 | bespin | meshy | meshy-galaxy-three | 12000, 1024 | 48000, 8192 | `MESHY_TASKS=scripts/meshy-galaxy-three-tasks.json node scripts/meshy-galaxy-buildings.mjs models --ultra cloudtower2 && MESHY_TASKS=scripts/meshy-galaxy-three-tasks.json node scripts/meshy-galaxy-buildings.mjs fetch --ultra cloudtower2` |
-| 20 | `n1fighter` | placed | 9 | naboo | sketchfab | library | 12000, 1024 | 48000, 8192 | `node scripts/sketchfab-surface.mjs library --ultra n1fighter` |
+| 20 | `n1fighter` | placed | 9 | naboo | sketchfab | library | 12000, 1024 | 32101, 1024 | `node scripts/sketchfab-surface.mjs library --ultra n1fighter` |
 
-The great wroshyr's Meshy task is kept as `kachirho` in the fill lane's tasks file (the model was lifted out of the picture of Kachirho; `catalog/made.js` says so), which is why its command runs as `kachirho` and renames the file. If the owner would rather the lane carried a `wroshyrgreat` entry, copy `kachirho`'s under that name first.
+## What was made: fifteen ultra cuts, four turned down or not made, one in a lane of its own
 
-## Where the requests stand
+Every file is under 24 MB and the catalogue test (`catalog.test.js`) holds each to its entry: the ultra `tris` never over four times the entry's where the entry has one, never under it, `tex` at most 8192. The `ultra` line in each entry is what the fetch printed, which is what the file carries (`mapsOf` in `scripts/ultra/cut.mjs` reads the widest map back, so a Sketchfab kind whose source maps are 1024s says 1024 and not the 8192 asked for).
 
-- **Meshy (13 kinds):** `MESHY_API_KEY` is not set in this environment, and its network policy denies `api.meshy.ai`, so nothing was re-asked from here. Each `models --ultra` is one image-to-3D task at Meshy's most polygons (300k, `MESHY_MAX_POLYCOUNT`) and its finest texture (`MESHY_ULTRA_TEXTURE`, 4k unless set): 30 credits a kind, about 390 for the thirteen. The task is kept as the kind's `ultra` in its tasks file, apart from the plain one, so running a step twice never pays twice. `fetch --ultra` is free, writes the `.ultra.glb`, refuses one over its budget or 24 MB, and prints the catalogue's `ultra: { tris, tex }` line to paste into the kind's entry. Nothing was in the Meshy review cache either (`lab/meshy/` is git-ignored and empty here), so no import step could be run.
-- **Sketchfab (7 kinds):** `SKETCHFAB_API_TOKEN` is not set here and `api.sketchfab.com` is denied, so nothing was downloaded. `sketchfab-surface.mjs <group> --ultra <kind>` downloads the same model again (or reuses `/tmp/sketchfab-surface/`), keeps up to four times the catalogue's triangles and its maps up to 8192, and prints the `ultra` line. A download with fewer triangles than the cut keeps them all, so the AT-AT and the adobe houses (both from models far denser than their cuts) will gain the most and the vaporators the least.
-- **gen3d (0 of the twenty, 2 desktop jobs):** no surface kind was made by gen3d; the site's made models are the galaxy's ships. The two the Star Wars worlds show, through `lib/three/gen3d`, were asked of the owner's desktop for an ultra remake (`faces: 300000  tex: 8192  ultra: yes`, each a pull request when the desktop is awake; not polled):
-  - X-wing: https://github.com/tilakpatell/new-portfolio-website/issues/552
-  - TIE interceptor: https://github.com/tilakpatell/new-portfolio-website/issues/553
+| kind | world | ultra (tris, maps) | MB | what it is | judged |
+|---|---|---|---|---|---|
+| `theed` | naboo | 125,793, 8192 | 13.6 | the same concept, remeshed at 120k with 8k maps | kept: the copper dome's seams, the cornices and the window pediments are modelled where the plain file smears them; a small lump sits at the dome's front-left foot |
+| `geohive` | geonosis | 119,999, 8192 | 11.6 | the same lift, at 120k | kept: thinner, more upright spires and the mesa's strata read as the painting's |
+| `citadel` | scarif | 160,000, 8192 | 10.8 | the same lift, at 160k | kept: the panel lines and the stepped base are crisp; its tone came out paler than the plain file's dark grey, which is nearer the film |
+| `massassi` | yavin | 159,998, 8192 | 11.0 | the same lift, at 160k | kept: the block courses of every tier are modelled |
+| `mining` | mustafar | 179,999, 8192 | 15.0 | the same lift, at 180k | kept: the lattice crane, the drums and the catwalks are all there, finer |
+| `senate` | coruscant | 159,999, 8192 | 9.4 | the same lift, at 160k | kept: the rim's window bands and the spires have relief |
+| `sundaridome` | mandalore | 159,995, 8192 | 8.0 | the same lift, at 160k | kept: the dome's panel relief and the rim's windows are crisp |
+| `cloudtower` | bespin | 41,798, 8192 | 2.1 | the same lift, remeshed by Meshy at 48k | kept: the window slots and the ribbed base are sharper, the shape unchanged |
+| `cloudtower2` | bespin | 44,200, 8192 | 2.8 | the same lift, at 48k | kept: the dome's panel lines and the doorways are sharper |
+| `tipocadome` | kamino | 119,997, 8192 | 10.0 | **remade** from the rounded dome at the front right of the Clone Wars city shot (`File:TipocaCity-CC.png`, crop `[0.7, 0.43, 0.2, 0.31]`) | kept: a rounded two-step dome on eight lit pylons with three slim needles, where the plain file is a saucer with a tall flared spire; a faint fold crosses the dome's near side |
+| `cloudplaza` | bespin | 79,998, 8192 | 3.8 | **remade** from the stepped terraces round the tower's foot in the game's street shot (`File:Cloud City Streets SWB.png`, crop `[0.46, 0.26, 0.4, 0.32]`), the court left open | kept: two ring tiers with flights of steps and planters round an open court on a square plinth, where the plain file is a bare half-ring |
+| `wroshyrgreat` | kashyyyk | see below | | **remade** from the tall straight-trunked tree at the far right of the Kachirho panorama (`File:Kachirho BF2.jpg`, crop `[0.72, 0.03, 0.17, 0.72]`) | see below |
+| `atat` | hoth | 74,295, 1024 | 2.1 | the whole Sketchfab download (the plain cut keeps 40,000 of it) | kept: the same model less simplified, its knee joints and foot pads whole; the maps stay the source's 1024s, so the gain is geometry |
+| `n1fighter` | naboo | 32,101, 1024 | 0.4 | the whole download (the plain keeps 12,000) | kept: rounder engine nacelles and canopy, no faceting |
+| `vaporator` | tatooine | 12,000, 1024 | 0.4 | four times the cut, from a 34,981-triangle download | kept: round rings and fine vanes where the plain is faceted |
 
-After any of these lands: add the `ultra` line to the kind's catalogue entry (`catalog.test.js` holds each `.ultra.glb` to an entry and each entry to a file), run `npm run credits` (the credit audit reads `<kind>.ultra.glb` as the kind's, `scripts/ai-e2e/assets/credits.mjs`), and `node scripts/galaxy-surface-lod.mjs` leaves the ultra files alone.
+Turned down or not made:
+
+- **`lothtemple`** (lothal): made at 64,000 with 8k maps (35 credits), judged against `File:Jedi Temple on Lothal.png`, and turned down: its colour drifted to brown-grey from the plain file's blue-grey, and its strata came out as cloth-like folds rather than the smooth banded stone. The file is not shipped; its task stays in the back lane's tasks file so it is not paid for again.
+- **`ds2sky`** (endor): asked of Meshy twice through the ultra lane. From the film picture itself (`File:DeathStar2.jpg`) Meshy's mesh repair failed to close the half-built side (`RepairDidNotCloseError`, no charge). Lifted first with that side described as one solid mass (3 credits) it succeeded (35 credits) and came out a pale, crumpled sphere with the trench but no dish in any of the four views: not the Death Star. Not shipped; the Sketchfab download has no more triangles than the plain cut keeps (12,214 against 14,000), so nothing can be had from it either. The lane entry stays as the record of the attempt.
+- **`bunker`** (endor, scarif, nevarro, lothal): the Sketchfab download has 23,886 triangles and 1024 maps, all of which the plain cut already keeps, so an ultra cut would be the plain file again.
+- **`tipoca`** (kamino): the download has 1,520 triangles and a 512 map. The heavier Sketchfab models of Tipoca City under a licence the site can credit (`237ab55186c540b19ad25f164983e64a`, 134k faces, and `4cdaed56ac5a4843887419faed5f7161`, 87k) are whole cities of domes on pillars with 256-pixel maps and no separable landing platform, and the plain file is a flat landing pad; the audit lane's Meshy remake of `tipoca` is a 64 m tower, a different thing for a different lane. Left out.
+- **`adobe`** (tatooine): the download has 3,812 triangles, all kept by the plain cut. The heavier Sketchfab sources are `7deab9277e134026b33a051b7a571422` (a 999,898-triangle diorama scan of a tapered house with a garage door on a slab of sand, one 1024 map) and `3e6cb7d8ba3c45909787dbfba47e067d` (a façade-only scan of the Mos Espa set with holes to the sky); neither is the domed house with wings that the eleven adobes are, and the scan's one 1024 map would be no sharper over 10 m than the plain file's. Left out.
+- **gen3d (0 of the twenty, 2 desktop jobs)**: the galaxy's X-wing (#552) and TIE interceptor (#553) were asked of the owner's desktop earlier; not polled here.
+
+<!-- wroshyr -->
+
+## How the cuts were made, and two things the runs taught the scripts
+
+- Meshy's image-to-3D takes `texture_resolution` of `2k`, `4k` or `8k`; the script's `'4k'` default was a guess and is now `'8k'` (`MESHY_ULTRA_TEXTURE` still overrides). An 8k model costs 35 credits, not 30.
+- A 300k Meshy remesh cannot be simplified below about 90k triangles: its atlas is thousands of charts and the simplifier keeps every seam, whatever error it is allowed (tried on the tower's raw model: 288k to 92,786 at any bound from 0.01 to 1). So `models --ultra` now asks Meshy for the cut's own polygons where that is under 300k (`Math.min(MESHY_MAX_POLYCOUNT, ultraSpec(entry).tris)`), and Meshy's remesh lands at budget; the simplifier is only needed for a kind whose budget is near 300k. Cloud City's two towers and the great wroshyr were asked again this way after their 300k models would not cut (70 and 35 credits more). The simplify loop in `squeeze` also loosens its error bound in steps when a cut comes out over budget, which is what let Theed's 165k first pass land at 125,793.
+- A prompted kind (Theed) is asked for from its downloaded concept picture as a data URI, so the model can be made on another account than the one that drew the picture: a Meshy task is readable only with the key that made it, and the three accounts' tasks are spread across all three.
+- Nothing is paid twice: each kind's ultra task id is kept in its lane's tasks file, and a `models --ultra` for a kind that has one only waits for it.
+
+### Credits
+
+| account | before | after | spent here | on what |
+|---|---|---|---|---|
+| `MESHY_API_KEY` | 1 | 1 | 0 | reading back the plain lanes' lifts and Theed's picture (free) |
+| `MESHY_API_KEY_ACC_2` | 21 | 21 | 0 | reading back the Bespin lane's lifts (free) |
+| `MESHY_API_KEY_ACC_3` | 3,798 at the first request | <!-- acc3-after --> | <!-- acc3-spent --> | 18 models at 35 (nine of the twenty, the four Bespin-tower and wroshyr re-asks, the Lothal temple, Tipoca's dome, the plaza, the Death Star) and 4 lifts at 3 |
+
+The third account read 3,960 when this session first looked and 3,798 when its first request went in; the 162 credits between were consumed by something outside this session.
 
 ## Accuracy: the judge sheets
 
-`docs/gen3d/ultra/<kind>.webp`, one a kind, is the plain model today from four views (`scripts/gen3d/judge.mjs` through `scripts/glb-shot.mjs`: three-quarter, front, side, top; the caption has its triangles and size). They are the "before" of each ultra cut, and what to hold the ultra fetch's `sheet --ultra` against. The reference pictures could not be put beside them from here: `lab/refs/` is git-ignored and empty in this container, and Wookieepedia's images (`static.wikia.nocookie.net`) are denied by the network policy. The Meshy lane's `sheet --ultra <kind>` makes that comparison on the owner's machine (the picture, the lift, the plain model and the ultra cut side by side, `lab/meshy/<lane>/<kind>-gate-ultra.jpg`). Looking at the plain sheets alone:
+`docs/gen3d/ultra/<kind>.webp`, one a kind: the plain model over its ultra cut, four views each (`scripts/gen3d/judge.mjs` through `scripts/glb-shot.mjs`: three-quarter, front, side, top; each row's caption has its triangles and size). The reference pictures stay out of the repository (`lab/refs/`, Lucasfilm's and the wiki's): the comparison against them was made on the Meshy lanes' gate sheets (`sheet --ultra`: the picture, the lift, the plain model and the ultra cut side by side, `lab/meshy/<lane>/<kind>-gate-ultra.jpg`) and, for the Sketchfab kinds, on the same four-view sheets with the picture put beside them. The pictures used:
 
-- **Shape right, worth the polygons** (an ultra cut from the same source is the whole job): `theed`, `massassi`, `atat`, `citadel`, `senate`, `sundaridome`, `mining`, `geohive`, `bunker`, `n1fighter`, `cloudtower`, `cloudtower2`, `vaporator`. These read as the thing from every view; what they lack at ultra is the fine relief a 120k to 180k cut keeps (Theed's balustrades and window reveals, the AT-AT's plating, the Senate's panel lines), and 8192 maps where the lane's lift was sharp enough.
-- **Remake from a better three-quarter reference, not just more polygons:** `tipocadome` (a saucer with a tall spire; Tipoca City's domes are rounded on thin stilts with a slim needle, and this is the most-seen kind of all, 48 on Kamino), `wroshyrgreat` (a spreading, bonsai-shaped crown on a short trunk; a wroshyr is a straight trunk hundreds of metres tall with the crown far above), `cloudplaza` (a plain half-ring; the plaza terraces are stepped and read as part of the city), `ds2sky` (its surface is a noisy black shell with the trench and the dish barely legible, and at 640 m across the sky it is the one thing on Endor that must be right).
-- **The source is lighter than its cut, so an ultra cut adds nothing:** `tipoca` (1,520 triangles; its catalogue cut is 35,000) and `adobe` (3,812; cut 35,000). Both are Sketchfab models that arrived light; `sketchfab-surface.mjs --ultra` will keep every triangle they have and print an `ultra` line no bigger than the plain file. For these two the gain has to come from a remake (Meshy from a still of Tipoca City's platform and of a Mos Espa house), or from a denser Sketchfab model under a licence the site can credit.
-- `lothtemple` is a smooth banded cone and an ultra cut will stay one: its detail is in the strata texture, so 8192 maps matter more than triangles for it.
+| kind | reference |
+|---|---|
+| `theed` | `File:Theedroyalpalace.png` (the concept image is the lane's own) |
+| `geohive` | `File:Geonosis.jpg` |
+| `lothtemple` | `File:Jedi Temple on Lothal.png` |
+| `citadel` | `File:CitadelTowerDestroyedStarWars.png` |
+| `massassi` | `File:Great Temple RO.png` |
+| `mining` | `File:KCMMiningFacility-TotR.png` |
+| `senate` | `File:Galactic Senate RotS.png` |
+| `sundaridome` | `File:Sundari HoM1.png` |
+| `cloudtower`, `cloudtower2`, `cloudplaza` | `File:Cloud City Streets SWB.png` |
+| `tipocadome` | `File:TipocaCity-CC.png` (and `File:Tipoca-City-concept.jpg` looked at) |
+| `wroshyrgreat` | `File:Kachirho BF2.jpg` (and `File:Kachirho.png`, `File:House exterior rmq.jpg` looked at) |
+| `ds2sky` | `File:DeathStar2.jpg` |
+| `atat` | `File:AT-AT 2 Fathead.png` |
+| `n1fighter` | `File:N-1 BF2.png` |
+| `vaporator` | `File:GX-8 water vaporator.jpg` |
+| `bunker` | `File:EndorBunker-ROTJ.png` |
+| `adobe` | `File:Mos Eisley street.png` |
+| `tipoca` | `File:TipocaCity-CC.png` |
 
 ## Loading at ultra: galaxy-check
 
-`QUALITY=ultra` and `QUALITY=high` runs of `scripts/galaxy-check.mjs surface` on the worlds the twenty stand on, in headless Chromium on software GL (so frame times mean nothing here; the shots and the counts do). No `.ultra.glb` is on disk yet, so at ultra every kind still loads its plain file (the fallback the placer test pins), and the one difference in what is drawn is that nothing swaps to its far copy at ultra.
+`QUALITY=ultra` and `QUALITY=high` runs of `scripts/galaxy-check.mjs surface` on the worlds the kept kinds stand on, one world after another in one headless Chromium on software GL with `WAIT=20000` (an earlier attempt with three checks running at once, beside the judge sheets' browsers, gave frames of six to sixteen seconds and one world captured before it had drawn, and was thrown away). Frame times mean nothing here; the shots, the counts and the model megabytes do. At ultra each kept kind loads its `.ultra.glb` and nothing swaps to its far copy; at high every file is the one it was.
 
-| world | kinds of the twenty on it | level | draw calls | triangles | models MB | errors | shot |
-|---|---|---|---|---|---|---|---|
-| Kamino | `tipocadome`, `tipoca` | ultra | 100 | 1,505,151 | 6.1 | none | [kamino-ultra](kamino-ultra.webp) |
-| | | high | 100 | 1,084,197 | 6.6 | none | [kamino-high](kamino-high.webp) |
-| Naboo | `theed`, `n1fighter` | ultra | 752 | 2,821,418 | 18.1 | none | [naboo-ultra](naboo-ultra.webp) |
-| | | high | 752 | 2,443,752 | 20.8 | none | [naboo-high](naboo-high.webp) |
-| Bespin | `cloudplaza`, `cloudtower`, `cloudtower2` | ultra | 163 | 935,390 | 10.7 | none | [bespin-ultra](bespin-ultra.webp) |
-| | | high | 160 | 921,583 | 10.7 | none | [bespin-high](bespin-high.webp) |
-| Tatooine | `vaporator`, `adobe` | ultra | 77 | 852,997 | 18.2 | none | [tatooine-ultra](tatooine-ultra.webp) |
-| | | high | 77 | 819,248 | 18.6 | none | [tatooine-high](tatooine-high.webp) |
-| Hoth | `atat` | ultra | 250 | 1,512,876 | 12.0 | none | [hoth-ultra](hoth-ultra.webp) |
-| | | high | 250 | 1,512,876 | 12.2 | none | [hoth-high](hoth-high.webp) |
-
-Every run loaded with no page or console errors. The draw calls match level for level (Bespin's three more at ultra are its towers drawn whole where high had swapped the far ones for light copies), and the triangles rise at ultra by what `lib/detail` already does there (twice the segments on what is built in code) plus the far copies not taken; the models' megabytes are the same files at both levels, as they must be until an `.ultra.glb` exists. Kamino at ultra was run on its own first, the rest in two passes (ultra, then high) on the same software GL, so the frame times the check prints are not comparable and are left out.
+<!-- galaxy-check table -->
 
 ## What was verified, and how
 
-- `npx eslint .` clean; `npx vitest run`: 445 files, 5,133 passed, 1 skipped, and 12 that timed out at 5 s while two headless browsers were rendering the shots above, all 12 passing when run again on an idle machine (446 tests in those 12 files).
-- `catalog/ultra.test.js`, `catalog.test.js`, `placer.test.js`: the rule, the file pairing and size cap, the URL the placer loads at each level and its fallback.
-- `scripts/gen3d/gen3d.test.mjs`: the gen3d `ULTRA` tier, `cutsFor(…, { ultra })`, `fileFor`, `ultra: yes` on a desktop job becoming `--ultra`.
-- `scripts/ultra/cut.test.mjs`, `scripts/ultra/kinds.test.mjs`: the importers' `--ultra` arithmetic and refusal, and the picking rule.
-- `node scripts/ultra/counts.mjs` and `node scripts/ultra/kinds.mjs` run against the live catalogue and sites (the tables above).
-- The judge sheets and screenshots above rendered without page errors.
+<!-- verified -->
 
 ## Lane A
 
