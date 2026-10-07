@@ -1,0 +1,115 @@
+// After `vite build`: each world's pack as a manifest the install reads
+// (src/runtime/install.js): its page's JS and CSS chunks (from the bundler's
+// dist/.vite/manifest.json, every chunk the page can import, now or later)
+// and the files its pack.js names under public/, each with its size and a
+// content hash, and `v`, a hash over them all, so a deploy that changes one
+// file is a new version and an old install is not served for it. Writes
+// dist/packs/<slug>.json and dist/packs/index.json ({ [to]: { slug, bytes, v } }).
+// A Vite plugin (vite.config.js), and a CLI to run again over a dist/.
+// Fails the build when a world's source names an asset its pack misses
+// (scripts/pack-check.mjs).
+//
+// buildManifest(pack, { dist, publicDir, chunksOf }) → { v, id, bytes, files: [{ url, bytes, hash }] }
+
+import { createHash } from 'node:crypto';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { globRe, missing, undeclared } from './pack-check.mjs';
+
+export const slugOf = (to) => to.replace(/\//g, '-').replace(/^-/, '');
+const sha = (buf) => createHash('sha256').update(buf).digest('hex').slice(0, 16);
+
+const walk = (dir) => (existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? walk(join(dir, d.name)) : [join(dir, d.name)])) : []);
+
+// the chunks a page module can reach, static and dynamic imports both, from the bundler's manifest
+export function chunksFrom(manifest, pages) {
+  const urls = new Set();
+  const seen = new Set();
+  const visit = (key) => {
+    const c = manifest[key];
+    if (!c || seen.has(key)) return;
+    seen.add(key);
+    for (const f of [c.file, ...(c.css ?? []), ...(c.assets ?? [])]) if (f) urls.add(`/${f}`);
+    for (const k of [...(c.imports ?? []), ...(c.dynamicImports ?? [])]) visit(k);
+  };
+  for (const p of pages) visit(p);
+  return [...urls];
+}
+
+export async function buildManifest(pack, { dist, publicDir, chunksOf = () => [] }) {
+  const pub = walk(publicDir).map((f) => `/${relative(publicDir, f).split('\\').join('/')}`);
+  const res = (pack.globs ?? []).map(globRe);
+  const urls = new Set([...(pack.urls ?? []), ...pub.filter((u) => res.some((re) => re.test(u))), ...chunksOf(pack.id)]);
+  const files = [...urls].sort().flatMap((url) => {
+    const path = [join(dist, url), join(publicDir, url)].find((p) => existsSync(p) && statSync(p).isFile());
+    if (!path) return [];
+    const buf = readFileSync(path);
+    return [{ url, bytes: buf.length, hash: sha(buf) }];
+  });
+  const v = sha(files.map((f) => `${f.url} ${f.hash}`).join('\n'));
+  return { v, id: pack.id, bytes: files.reduce((s, f) => s + f.bytes, 0), files };
+}
+
+// every world's manifest and the index, into dist/packs; throws when a pack is out of step
+export async function writePacks(root, dist = join(root, 'dist'), log = console.log) {
+  const publicDir = join(root, 'public');
+  const { PACKS } = await import(pathToFileURL(join(root, 'src/components/worlds/packs.js')).href);
+  const bad = Object.values(PACKS).flatMap((p) => [...undeclared((p.src ?? []).map((s) => join(root, s)), p), ...missing(p, publicDir)].map((r) => `${p.id}: ${r}`));
+  if (bad.length) throw new Error(`packs: not in step with the source (node scripts/pack-check.mjs):\n  ${bad.join('\n  ')}`);
+  const bundled = join(dist, '.vite/manifest.json');
+  if (!existsSync(bundled)) throw new Error('packs: no dist/.vite/manifest.json (vite.config.js build.manifest)');
+  const manifest = JSON.parse(readFileSync(bundled, 'utf8'));
+  await mkdir(join(dist, 'packs'), { recursive: true });
+  const index = {};
+  for (const pack of Object.values(PACKS)) {
+    const m = await buildManifest(pack, { dist, publicDir, chunksOf: () => chunksFrom(manifest, pack.pages ?? []) });
+    const slug = slugOf(pack.id);
+    await writeFile(join(dist, 'packs', `${slug}.json`), JSON.stringify(m));
+    index[pack.id] = { slug, bytes: m.bytes, v: m.v };
+    log(`  ${(m.bytes / 1048576).toFixed(1).padStart(7)} MB  ${String(m.files.length).padStart(5)} files  ${pack.id}`);
+  }
+  await writeFile(join(dist, 'packs', 'index.json'), JSON.stringify(index));
+  return index;
+}
+
+// the build's own step (vite.config.js), so `vite build` alone writes the packs
+export default function packs() {
+  let root = process.cwd();
+  let outDir = 'dist';
+  let failed = false;
+  return {
+    name: 'world-packs',
+    apply: 'build',
+    configResolved(c) {
+      root = c.root;
+      outDir = resolve(c.root, c.build.outDir);
+    },
+    buildStart() {
+      failed = false;
+    },
+    buildEnd(error) {
+      if (error) failed = true;
+    },
+    renderError() {
+      failed = true;
+    },
+    async closeBundle(error) {
+      if (error || failed) return;
+      const index = await writePacks(root, outDir, () => {});
+      console.log(`packs: ${Object.keys(index).length} worlds written to dist/packs`);
+    },
+  };
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  try {
+    const index = await writePacks(root);
+    console.log(`packs: ${Object.keys(index).length} worlds written to dist/packs`);
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
+}

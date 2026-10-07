@@ -1,7 +1,8 @@
 // The runtime's public surface: runtime() is the one runtime of the page
 // visit, made the first time a world asks and kept across routes; useWorld
 // puts a module on it from a page; WorldHost is the box it draws in;
-// fromScene wraps a scene module written for lib/three/useScene.
+// fromScene wraps a scene module written for lib/three/useScene; rt.install
+// (installer()) fetches a world's pack into the cache.
 //
 // Nothing here imports three.js: the backends and the loaders come in
 // through browser.js on the first mount, so a page that never draws a
@@ -14,11 +15,13 @@ import { createAssets } from './assets';
 import { createAudioBus } from './audio';
 import { createRuntime } from './runtime';
 import { readOverride } from './backend';
+import { installer } from './install';
 import './runtime.css';
 
 export { useWorld } from './useWorld';
 export { default as WorldHost } from './WorldHost';
 export { fromScene } from './module';
+export { installer } from './install';
 
 const GPU_KEY = 'tp-gpu';
 const browser = () => import('./browser');
@@ -62,6 +65,8 @@ export function runtime() {
     override: readOverride(win?.location.search ?? '', win?.location.hash ?? '', stored),
     visible: () => !(typeof document !== 'undefined' && document.hidden) && !covered(),
   });
+  // a world's install (install.js): the same one the gate and /worlds use
+  instance.install = installer();
   if (win) {
     const wake = () => instance.invalidate();
     document.addEventListener('visibilitychange', wake);
