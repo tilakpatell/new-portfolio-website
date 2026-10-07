@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { STEPS } from '../lib/three/pace';
+import { STEPS, createPace } from '../lib/three/pace';
 import { createQuality } from './quality';
 
 // a stand-in pace: `levels` is what each frame() call returns, in turn
@@ -69,7 +69,11 @@ describe('createQuality', () => {
 
   it('floors once when the last step still misses', () => {
     const last = STEPS.length - 1;
-    const q = createQuality({ tier: 'low', pace: fakePace([last, ...Array(400).fill(null)]), floorAfter: 2500 });
+    const pace = fakePace([last, ...Array(400).fill(null)]);
+    // (the stand-in now says it's still late at its softest: the floor
+    // waits for that, where it used to come on a clock alone)
+    pace.stuck = 1;
+    const q = createQuality({ tier: 'low', pace, floorAfter: 2500 });
     const seen = [];
     q.on((l) => seen.push(l));
     expect(q.frame(0)).toBe(last);
@@ -88,6 +92,72 @@ describe('createQuality', () => {
     expect(seen).toEqual([last, STEPS.length]);
     q.reset();
     expect(q.level).toBe(0);
+  });
+
+  it('sits at the last step without flooring while frames there come on time, and floors once they are late', () => {
+    const last = STEPS.length - 1;
+    const pace = fakePace([last, ...Array(800).fill(null)]);
+    pace.stuck = 0;
+    const q = createQuality({ tier: 'high', pace, floorAfter: 2500 });
+    q.frame(0);
+    let now = 0;
+    for (let i = 0; i < 400; i++) expect(q.frame((now += 16))).toBe(null); // 6 s at the last step, keeping up
+    expect(q.level).toBe(last);
+    pace.stuck = 2; // (late again there)
+    expect(q.frame((now += 16))).toBe(STEPS.length);
+    for (let i = 0; i < 100; i++) expect(q.frame((now += 16))).toBe(null); // once
+  });
+
+  it('a hold lets frames go by unjudged from the first one after it, then judges them again', () => {
+    const pace = fakePace([1]);
+    pace.frame = vi.fn(pace.frame);
+    const q = createQuality({ tier: 'high', pace });
+    q.hold(3000);
+    expect(q.frame(1000)).toBe(null); // (the hold runs from here)
+    expect(q.frame(2500)).toBe(null);
+    expect(q.frame(3990)).toBe(null);
+    expect(pace.frame).not.toHaveBeenCalled(); // (late or not, nothing goes to the pace)
+    expect(q.frame(4010)).toBe(1);
+  });
+
+  it('a reset and a hold give a new world a clean start', () => {
+    const pace = fakePace([2, null]);
+    const q = createQuality({ tier: 'high', pace, dpr: 2 });
+    q.frame(0);
+    expect(q.level).toBe(2);
+    q.reset();
+    q.hold(3000);
+    expect(pace.reset).toHaveBeenCalled();
+    expect(q.level).toBe(0);
+    expect(q.ratioUnder(1.5)).toBe(1.5);
+    expect(q.frame(10000)).toBe(null);
+  });
+
+  // An arrival on a strong graphics card (8 ms frames at 60 Hz) with six
+  // hitches of 50 to 80 ms in its first second (models parsed, uploaded and
+  // linked): the real pace under the governor stepped down at 0.7 s and back
+  // up at 5.2 s, two blinks and three sharpnesses in five seconds, for
+  // frames that were fine from then on. Held for the arrival, nothing moves.
+  it("a world's first three seconds held: an arrival's hitches move nothing", () => {
+    const trace = (held) => {
+      const q = createQuality({ tier: 'high', dpr: 2, pace: createPace({ onFloor: () => {} }) });
+      if (held) q.hold(3000);
+      const beat = 1000 / 60;
+      const changes = [];
+      let t = 1000;
+      q.frame(t);
+      for (let i = 0; t < 1000 + 40000; i++) {
+        const cost = t - 1000 < 1000 && i % 3 === 0 ? 50 + (i % 4) * 10 : 8;
+        t += Math.ceil(cost / beat - 1e-6) * beat; // (on the next vsync)
+        const l = q.frame(t);
+        if (l !== null) changes.push({ at: Math.round(t - 1000), l });
+      }
+      return changes;
+    };
+    const free = trace(false);
+    expect(free.length).toBeGreaterThan(0);
+    expect(free[0].at).toBeLessThan(3000);
+    expect(trace(true)).toEqual([]);
   });
 
   it('a listener can leave', () => {

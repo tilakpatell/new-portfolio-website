@@ -27,6 +27,7 @@ const MAX_DT = 0.05; // s: a tab coming back doesn't leap
 const HOLD_MAX = 3000; // ms at most a held cover waits for the next page to adopt its world
 const SNAP_WAIT = 250; // ms at most a handover waits for the old world's last frame (none comes off screen)
 const AFTER_MAX = 15000; // ms at most a handover waits on `after` once the new world is made
+const WARM_UP = 3000; // ms of a new world's first frames the quality governor lets go by unjudged
 
 export function createEvents() {
   const by = new Map();
@@ -85,8 +86,10 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       // a new quality level before the draw: a new ratio resizes the drawing
       // buffer, which clears it, and drawn after that in this same task it's
       // never shown empty (resized after the draw, the browser showed the
-      // cleared buffer for a frame: the picture blinked out)
-      const level = quality.frame(t);
+      // cleared buffer for a frame: the picture blinked out). Not while the
+      // next world is made behind this one: these frames carry its making,
+      // and its warm-up starts at its own first frame.
+      const level = rt.loading ? null : quality.frame(t);
       if (level !== null) {
         gfx.setRatio(ratioFor(current.module));
         world.lowerQuality?.(level);
@@ -222,6 +225,11 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
   const build = async (module, props, host, token) => {
     const made = await backendFor(module);
     if (token !== seq || !made) return null;
+    // the governor starts afresh with each world, at its sharpest and deaf
+    // to its arrival's hitches for a moment, and before the ratio's set, so
+    // that's the sharpest (not the last world's softened one)
+    quality.reset?.();
+    quality.hold?.(WARM_UP);
     made.setRatio?.(ratioFor(module));
     rt.host = host;
     assets.owner?.(module.id);

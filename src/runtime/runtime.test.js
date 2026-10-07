@@ -438,6 +438,43 @@ describe('createRuntime', () => {
     expect(world.dispose).toHaveBeenCalled();
   });
 
+  it('each world gives the governor a fresh start: reset and held before its ratio is set, so that ratio is the sharpest', async () => {
+    const order = [];
+    const quality = fakeQuality();
+    let scale = 0.72; // (the last world had it softened)
+    quality.ratioUnder = (cap) => Math.min(cap ?? Infinity, 2) * scale;
+    quality.reset = vi.fn(() => {
+      order.push('reset');
+      scale = 1;
+    });
+    quality.hold = vi.fn((ms) => order.push(`hold ${ms}`));
+    const gfx = fakeBackend();
+    gfx.setRatio = vi.fn((r) => order.push(`setRatio ${r}`));
+    const { rt } = make({ quality, makeBackend: () => gfx });
+    await rt.mount({ id: 'galaxy', ratio: 1.5, create: () => fakeWorld() }, {}, fakeHost());
+    expect(order).toEqual(['reset', 'hold 3000', 'setRatio 1.5']);
+  });
+
+  it("the governor isn't fed the old world's frames while the next world is made", async () => {
+    const { rt, loop, quality } = make();
+    await rt.mount({ id: 'old', create: () => fakeWorld({ wants: () => true }) }, {}, fakeHost());
+    loop.tick(0);
+    expect(quality.frame).toHaveBeenCalledTimes(1);
+    let readyNew;
+    const p = rt.handover({ id: 'next', create: () => fakeWorld({ wants: () => true, ready: new Promise((r) => (readyNew = r)) }) }, {}, fakeHost());
+    await flush();
+    loop.tick(100);
+    loop.tick(200); // (the old world drawing on, its frames carrying the new one's making)
+    expect(quality.frame).toHaveBeenCalledTimes(1);
+    readyNew();
+    await settled();
+    loop.tick(300); // (the cover)
+    await p;
+    loop.tick(400); // the new world's first frame: its own from here
+    expect(quality.frame).toHaveBeenCalledTimes(2);
+    expect(quality.frame).toHaveBeenLastCalledWith(400);
+  });
+
   it("a module's ratio caps the sharpness it's drawn at", async () => {
     const quality = fakeQuality();
     quality.ratioUnder = vi.fn((cap) => Math.min(cap ?? Infinity, 2));
