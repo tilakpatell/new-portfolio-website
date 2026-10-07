@@ -23,8 +23,11 @@ export default function SurfaceView({ system, mission = null, ship, hero = null,
   events.current = onEvent;
   const [coarse] = useState(() => (typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false));
   const reduced = useReducedMotion();
+  // (a hero picked goes on in the world as it is: scene.js's setHero; another
+  // mission is another world, made again)
   const { host, on, meant, rt } = useWorld(surfaceModule, {
     props: { system, mission, ship, hero, loadout, build, found, done, compass, net, reduced, effects },
+    rebuild: mission ?? 'explore',
     onEvent: (e) => events.current?.(e),
   });
   // the scene itself, while it's the world on the runtime

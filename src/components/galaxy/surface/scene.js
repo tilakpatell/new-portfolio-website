@@ -100,7 +100,7 @@ import { fallTurn } from '../../../lib/three/locomotion';
 import { createSaber } from './saber';
 import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, lungeTo, parried, pushVelocity } from './combatRules';
 import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
-import { heroById, heroSpec } from '../heroes';
+import { heroById, heroSpec, partyFor, refitOf, writeHero } from '../heroes';
 import { perkEffects } from '../perks';
 import { ABILITIES, JET, abilitiesOf, jetStep, newJet } from './abilityRules';
 import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
@@ -560,14 +560,16 @@ export async function create(canvas, ctx) {
 
   // ── You, and your crewmate ──
   // (the hero you've picked to play as (heroes.js) walks in the lead; the
-  // ship's own crew otherwise, and the one of them you aren't stays your mate)
+  // ship's own crew otherwise, and the one of them you aren't stays your mate.
+  // A hero, gun, blade or perk picked down here goes on there and then: setHero)
   const crewOf = PARTY[shipKind] ?? PARTY.xwing;
-  const hero = ctx.hero ? heroSpec(ctx.hero) : null;
-  const perks = perkEffects(hero?.perks ?? []); // (galaxy/perks.js: the multipliers the hero's perks give)
-  const guardMax = GUARD.max * perks.guard;
+  let picked = ctx.hero ? writeHero(ctx.hero) : null; // (the choice as kept, to know a new one)
+  let hero = ctx.hero ? heroSpec(ctx.hero) : null;
+  let perks = perkEffects(hero?.perks ?? []); // (galaxy/perks.js: the multipliers the hero's perks give)
+  let guardMax = GUARD.max * perks.guard;
   // (your mate carries their own two abilities too, where they're on the roster)
   const withAbilities = (s) => (s.abilities || !heroById(s.id)?.abilities ? s : { ...s, abilities: heroById(s.id).abilities });
-  const party = (hero ? [hero, crewOf[0].id === hero.id ? crewOf[1] : crewOf[1].id === hero.id ? crewOf[0] : crewOf[1]] : crewOf).map(withAbilities);
+  const party = partyFor(hero, crewOf).map(withAbilities);
   const out = new V(Math.cos(site.land.yaw), 0, -Math.sin(site.land.yaw)); // the ship's right
   // (a mission on foot starts you at its start, facing its way)
   const onFoot = Boolean(mission && !mission.ride);
@@ -576,8 +578,8 @@ export async function create(canvas, ctx) {
   const mateAt = [spawnAt[0] + out.x * 1.6, spawnAt[1] + out.z * 1.6];
   const mate = walker(mateAt[0], mateAt[1], groundAt(world, ...mateAt), you.yaw);
   const people = [
-    { spec: party[0], st: you, holder: new THREE.Group(), fig: null },
-    { spec: party[1], st: mate, holder: new THREE.Group(), fig: null },
+    { spec: party[0], st: you, holder: new THREE.Group(), fig: null, fitting: 0 },
+    { spec: party[1], st: mate, holder: new THREE.Group(), fig: null, fitting: 0 },
   ];
   let lead = 0; // which of them you are
   let cast = null;
@@ -585,52 +587,128 @@ export async function create(canvas, ctx) {
     p.holder.visible = false;
     scene.add(p.holder);
   }
-  (async () => {
-    if (people.some((p) => p.spec.src.meshy)) {
-      cast = createMeshyCast(withWardrobe());
-      await cast
-        .load(
-          null,
-          people.filter((p) => p.spec.src.meshy).map((p) => p.spec.src.meshy),
-        )
-        .catch(() => {});
+  // the gun's numbers (weaponRules.js), with the mods they picked and the hero's perks
+  const weaponOf = (spec, fig) => {
+    const w = withMods(fig.gun ?? spec.gun, spec.mods ?? []);
+    w.heat *= perks.heat;
+    w.cool *= perks.cool;
+    w.every *= perks.cycle;
+    return w;
+  };
+  // what's in a figure's hand for `spec`: the gun (universe/gunplay.js; the
+  // world here is in metres) and a lightsaber on it (surface/saber.js: lit,
+  // swung, held up and thrown from here)
+  const armsFor = (spec, fig, own) => {
+    if (!spec.gun || own) return { gp: null, saber: null, weapon: null };
+    const gp = createGunplay(fig, fig.gun ?? spec.gun, { unit: 1, who: fig.built ? 'built' : spec.id });
+    const saber = spec.saber && gp ? createSaber(gp, { color: spec.saber.color, hilt: spec.saber.hilt, stance: spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what), fig }) : null;
+    return { gp, saber, weapon: weaponOf(spec, fig) };
+  };
+  const unarm = (a) => {
+    a.saber?.dispose();
+    a.gp?.dispose();
+  };
+  // a person's body and what's in their hand, for `spec`: made and warmed
+  // apart from them, so it goes on in one frame (wear) and nobody's ever missing
+  async function kitOut(spec) {
+    if (spec.src.meshy) {
+      cast ??= createMeshyCast(withWardrobe());
+      await cast.load(null, [spec.src.meshy]).catch(() => {});
     }
-    await Promise.all(
-      people.map(async (p) => {
-        // (one of the crew with a model of their own here: that, in metres)
-        const own = CREW_MODELS[p.spec.id] ? await modelFigure(CREW_MODELS[p.spec.id]).catch(() => null) : null;
-        const fig = own ?? (await loadPartyFigure(p.spec, cast).catch(() => null));
-        if (!fig || disposed) return;
-        const inner = new THREE.Group();
-        if (!own) inner.scale.setScalar(1 / METRE);
-        inner.add(fig.model);
-        fig.model.traverse((o) => {
-          if (o.isMesh) o.castShadow = true;
-        });
-        p.holder.add(inner);
-        p.fig = fig;
-        // (a model of their own reads its motion in metres a second, as the
-        // world's people do; a party figure in the map's units)
-        p.own = Boolean(own);
-        // the gun they carry, in the hand (universe/gunplay.js; the world here is in metres)
-        if (p.spec.gun && !own) {
-          p.holder.updateMatrixWorld(true);
-          p.gp = createGunplay(fig, fig.gun ?? p.spec.gun, { unit: 1, who: fig.built ? 'built' : p.spec.id });
-          // a lightsaber (surface/saber.js): lit, swung, held up and thrown from here
-          if (p.spec.saber && p.gp) p.saber = createSaber(p.gp, { color: p.spec.saber.color, hilt: p.spec.saber.hilt, stance: p.spec.saber.stance, parent: scene, sound: (what) => sounds.saber?.(what) ?? sounds.combat?.(what), fig });
-          // the gun's numbers (weaponRules.js), with the mods they picked
-          p.weapon = withMods(fig.gun ?? p.spec.gun, p.spec.mods ?? []);
-          p.weapon.heat *= perks.heat;
-          p.weapon.cool *= perks.cool;
-          p.weapon.every *= perks.cycle;
-        }
-        await warm(p.holder);
-      }),
-    );
+    // (one of the crew with a model of their own here: that, in metres)
+    const own = CREW_MODELS[spec.id] ? await modelFigure(CREW_MODELS[spec.id]).catch(() => null) : null;
+    const fig = own ?? (await loadPartyFigure(spec, cast).catch(() => null));
+    if (!fig) return null;
+    const inner = new THREE.Group();
+    if (!own) inner.scale.setScalar(1 / METRE);
+    inner.add(fig.model);
+    fig.model.traverse((o) => {
+      if (o.isMesh) o.castShadow = true;
+    });
+    inner.updateMatrixWorld(true);
+    // (a model of their own reads its motion in metres a second, as the
+    // world's people do; a party figure in the map's units)
+    const body = { spec, fig, inner, own: Boolean(own), ...armsFor(spec, fig, own) };
+    if (!disposed) await warm(inner).catch(() => {});
+    return body;
+  }
+  // what a person had on, gone (each figure frees what's its own: a cast's
+  // meshes are the cast's)
+  function shed(p) {
+    if (!p.fig) return;
+    if (emoteFig === p.fig) endEmote();
+    unarm(p);
+    p.fig.dispose?.();
+    p.inner?.removeFromParent();
+  }
+  function wear(p, body) {
+    shed(p);
+    p.holder.add(body.inner);
+    // (a seat, a fall and a turn are the old body's: the new one takes them up afresh)
+    Object.assign(p, { spec: body.spec, fig: body.fig, inner: body.inner, own: body.own, gp: body.gp, saber: body.saber, weapon: body.weapon, seat: null, downed: null, prevYaw: null });
+  }
+  const dropBody = (body) => {
+    if (!body) return;
+    unarm(body);
+    body.fig.dispose?.();
+  };
+  // a person in `spec`: the numbers at once; new arms in the same hands at
+  // once; a new body when it's made (the last asked for wins). True once
+  // it's on them.
+  async function fit(p, spec) {
+    const how = p.fig ? refitOf(p.spec, spec) : 'body';
+    const token = ++p.fitting;
+    if (how === 'same') {
+      p.spec = spec;
+      if (p.gp) p.weapon = weaponOf(spec, p.fig);
+      return true;
+    }
+    if (how === 'arms') {
+      if (emoteFig === p.fig) endEmote();
+      unarm(p);
+      Object.assign(p, { spec, ...armsFor(spec, p.fig, p.own) });
+      warm(p.holder).catch(() => {});
+      ctx.invalidate();
+      return true;
+    }
+    const body = await kitOut(spec);
+    if (disposed || token !== p.fitting) {
+      dropBody(body);
+      return false;
+    }
+    if (!body) return false;
+    wear(p, body);
+    ctx.invalidate();
+    return true;
+  }
+  (async () => {
+    await Promise.all(people.map((p) => fit(p, p.spec)));
     // (the clips the two of you react with, fetched now, so a roll or a
     // flinch starts on the frame it's asked for, not a fetch later)
     if (!disposed && people.some((p) => p.fig?.anim)) preload(['roll', 'hit.chest', 'hit.head', ...(mission?.kind === 'assault' ? ['die.fwd', 'die.back', 'die.blown'] : [])]).catch(() => {});
   })();
+  // another hero picked (the page's HeroPanel): who you are now walks where
+  // you were, and your mate is whoever of the crew isn't them; the guard as
+  // full as it was, of the new perks' most (a swap mid-fight refills
+  // nothing); a mission, your health and where you are kept
+  function setHero(choice) {
+    const kept = writeHero(choice);
+    if (kept === picked) return;
+    picked = kept;
+    hero = heroSpec(choice);
+    perks = perkEffects(hero.perks ?? []);
+    const share = state.guard.value / guardMax;
+    guardMax = GUARD.max * perks.guard;
+    state.guard = { ...state.guard, value: share * guardMax };
+    const [lead1, mate1] = partyFor(hero, crewOf).map(withAbilities);
+    // (the page hears once they're on: `ok` false when the body wouldn't load)
+    const was = picked;
+    fit(me(), lead1).then((ok) => {
+      if (!disposed && picked === was) emit({ type: 'hero', who: lead1.id, ok });
+    });
+    fit(other(), mate1);
+    ctx.invalidate();
+  }
   // ── Your mate, in a fight (MATE): its health, how long it's been down,
   // what it's shooting at and when it can next, how far its gun's up, the
   // bolts on their way to it, and when it last looked ──
@@ -3039,6 +3117,7 @@ export async function create(canvas, ctx) {
       props = next;
       for (const id of next.found ?? []) state.found.add(id);
       for (const id of next.done ?? []) state.done.add(id);
+      if (next.hero) setHero(next.hero);
     },
     setVisible(on) {
       shown = on;
@@ -3295,7 +3374,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name } : null, guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug() }),
+    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug() }),
     dispose() {
       disposed = true;
       lit?.dispose();
@@ -3334,6 +3413,7 @@ export async function create(canvas, ctx) {
       groundMap?.dispose();
       shadowPhase?.dispose();
       for (const p of people) {
+        p.fitting += 1; // (a body still on its way is let go as it comes)
         p.gp?.dispose();
         p.fig?.dispose?.();
       }

@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { HEROES, HILTS, SABER_COLORS, defaultHeroId, heroById, heroSpec, leanText, readHero, writeHero } from './heroes';
+import { HEROES, HILTS, SABER_COLORS, defaultHeroId, heroById, heroSpec, leanText, loadoutLine, partyFor, readHero, refitOf, writeHero } from './heroes';
 import { GUNS } from '../universe/gunplay';
 import { RIGGED } from '../rickmorty/portal/meshyCast';
 import { ABILITIES } from './surface/abilityRules';
@@ -108,5 +108,47 @@ describe('the perks', () => {
     expect(readHero({ id: 'luke' }).perks).toEqual([]);
     expect(heroSpec(readHero({ id: 'han', perks: ['heatsink'] })).perks).toEqual(['heatsink']);
     expect(JSON.parse(writeHero(readHero({ id: 'leia', perks: ['deflector'] }))).perks).toEqual(['deflector']);
+  });
+});
+
+describe('a change of hero down on a world (applied there and then, not on the next visit)', () => {
+  const xwing = [{ id: 'luke', name: 'Luke' }, { id: 'artoo', name: 'Artoo' }];
+  const falcon = [{ id: 'chewie', name: 'Chewie' }, { id: 'han', name: 'Han' }];
+  const spec = (choice) => heroSpec(readHero(choice));
+  it('the hero leads; the mate is the ship’s second, or its first when the hero is the second', () => {
+    expect(partyFor(spec({ id: 'han' }), xwing).map((p) => p.id)).toEqual(['han', 'artoo']);
+    expect(partyFor(spec({ id: 'han' }), falcon).map((p) => p.id)).toEqual(['han', 'chewie']);
+    expect(partyFor(spec({ id: 'chewie' }), falcon).map((p) => p.id)).toEqual(['chewie', 'han']);
+    expect(partyFor(spec({ id: 'leia' }), falcon).map((p) => p.id)).toEqual(['leia', 'han']);
+    expect(partyFor(null, falcon)).toEqual(falcon);
+  });
+  it('says what a figure needs: a new body for another person, new arms for another gun, blade or mods, nothing for perks', () => {
+    const luke = spec({ id: 'luke', color: 'green', hilt: 'luke', stance: 'single' });
+    expect(refitOf(luke, spec({ id: 'luke', color: 'green', hilt: 'luke', stance: 'single' }))).toBe('same');
+    expect(refitOf(luke, spec({ id: 'luke', color: 'green', hilt: 'luke', stance: 'single', perks: ['survivor'] }))).toBe('same');
+    expect(refitOf(luke, spec({ id: 'luke', color: 'red', hilt: 'luke', stance: 'single' }))).toBe('arms');
+    expect(refitOf(luke, spec({ id: 'luke', color: 'green', hilt: 'temple', stance: 'single' }))).toBe('arms');
+    expect(refitOf(luke, spec({ id: 'luke', color: 'green', hilt: 'luke', stance: 'dual' }))).toBe('arms');
+    expect(refitOf(luke, spec({ id: 'han' }))).toBe('body');
+    const han = spec({ id: 'han' });
+    expect(refitOf(han, spec({ id: 'han', gun: 'ee3' }))).toBe('arms');
+    expect(refitOf(han, spec({ id: 'han', mods: ['scope'] }))).toBe('arms');
+    expect(refitOf(null, han)).toBe('body');
+    // (the ship's crew, not on the roster: the same when it's them again)
+    expect(refitOf(xwing[1], { ...xwing[1] })).toBe('same');
+  });
+});
+
+describe('the loadout in a line (the panel’s summary, the note when it goes on)', () => {
+  it('a Jedi: the blade’s colour, the hilt and the stance', () => {
+    expect(loadoutLine(readHero({ id: 'luke', color: 'green', hilt: 'luke', stance: 'single' }))).toBe('Green blade · Luke’s own hilt · Single blade');
+  });
+  it('a gunslinger: the gun and its mods', () => {
+    expect(loadoutLine(readHero({ id: 'han', gun: 'ee3', mods: ['scope', 'barrel'] }))).toBe('EE-3 · Scope, Long barrel');
+    expect(loadoutLine(readHero({ id: 'han' }))).toBe('DL-44');
+  });
+  it('and the perks, counted', () => {
+    expect(loadoutLine(readHero({ id: 'han', perks: ['survivor'] }))).toBe('DL-44 · 1 perk');
+    expect(loadoutLine(readHero({ id: 'han', perks: ['survivor', 'focus'] }))).toBe('DL-44 · 2 perks');
   });
 });
