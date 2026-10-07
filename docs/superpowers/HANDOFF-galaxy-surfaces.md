@@ -129,4 +129,12 @@ What the films' games do, borrowed: Battlefront II's block stamina, its 5.5 m do
 - The duellist's arm is a fixed pose that swings; a rigged duellist (a Meshy-rigged Vader) would let `gunplay.js` hold the saber properly.
 - Perks are picked, not earned; the missions' stars could unlock them.
 
+## Heroes from everywhere, each with their own abilities (7 October 2026)
+
+The plan: `docs/superpowers/plans/2026-10-07-heroes-from-everywhere.md`.
+
+- **The ship's own lead walks in** (`galaxy/heroes.js`'s `LEADS`: Rick off the cruiser, Walt off the RV, Han off the Falcon, Luke off the X-wing) until a hero is picked. Rick, Morty, Walt and Jesse are on the roster now (`side: 'elsewhere'`; Rick and Morty as Meshy figures through the wardrobe cast, Walt and Jesse from `public/models/albuquerque/`), and anyone may carry the galaxy's guns or their own (`readHero` keeps a hero's own gun though it isn't `PICKABLE`).
+- **Abilities** are `surface/abilityRules.js` (pure, tested): `ABILITIES` by kind, `abilitiesOf(spec)` (a spec's own pair, else the Force for a saber, else the detonator and the overcharge, so the party's mate from `footScene.js` still has something), `JET` and `jetStep`. Each hero names their pair on `heroes.js`; `scene.js`'s `power(slot)` plays them by kind (a push or a roar through `combatRules.js`'s `forceAt`/`pushVelocity`, which now take a push's own numbers; a thrown thing through `state.bombs` with its `spec`; the overcharge; the medpack; the sprint as walk rules; the hop as a teleport that stays inside the world's reach) and `stepJet` holds the jetpack (G held, or the touch button held: `state.buttons.power`). The HUD's `combat` event carries `powers` (the names, and `hold`), and a held one's tank shows as a cooldown of one second.
+- **Checked** in a headless browser on SwiftShader at `quality=mid` (`lab/heroes/check.mjs`, git-ignored): Rick leads off the cruiser with the portal gun and hops 7 m, Tab to Morty and his sprint, Walt's fulminate thrown and blown, Boba Fett up 3 m and more in 1.5 s, dry, down and refilled, the wrist rocket, Han with the DL-44 and the detonator, Chewie's roar, Rick with a DL-44.
+- **Not done:** the world still remounts on a hero change (the view's key); Rick's B gadget cycle from the universe map isn't on the surface (pick the freeze or shrink ray in the panel instead); no voice lines for the abilities.
 
