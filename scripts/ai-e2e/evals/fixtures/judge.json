@@ -1,0 +1,22 @@
+[
+ {
+  "match": "good.png",
+  "reply": "{\"score\": 9}"
+ },
+ {
+  "match": "bad.png",
+  "reply": "{\"score\": 3}"
+ },
+ {
+  "match": "missed.png",
+  "reply": "{\"score\": 8}"
+ },
+ {
+  "match": "c.png",
+  "reply": "{\"score\": 9}"
+ },
+ {
+  "match": "thing",
+  "reply": "{\"score\": 4}"
+ }
+]

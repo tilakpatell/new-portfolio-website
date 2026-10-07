@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { RiArrowLeftLine, RiPauseFill, RiPlayFill } from 'react-icons/ri';
 import { audioContext } from '../../lib/audio';
+import { sayVoiced, voicedSrc, voiceOf } from '../../lib/voiced';
 import Gif from '../Gif';
 import { PARTS } from './parts';
+import { quoteVoice } from './voicelines';
 import '../../styles/lazy/deathstar.css';
 
 // The stolen plans: a cutaway of the station. Every numbered part opens what
@@ -68,8 +70,10 @@ function Blueprint() {
   );
 }
 
-// Hear the scene the quote comes from, where there's a clip of it.
-function Hear({ clip }) {
+// Hear the scene the quote comes from, where there's a clip of it; or, where
+// there isn't, the line in the speaker's own voice once it's been made
+// (lib/voiced.js). `play` starts it: a handle to stop it by, or null.
+function Hear({ play, what }) {
   const [playing, setPlaying] = useState(false);
   const handle = useRef(null);
   useEffect(() => () => handle.current?.stop(), []);
@@ -81,8 +85,7 @@ function Hear({ clip }) {
       return;
     }
     audioContext();
-    const { playClip } = await import('../../lib/clips');
-    const h = await playClip(clip);
+    const h = await play();
     if (!h) return;
     handle.current = h;
     setPlaying(true);
@@ -96,16 +99,34 @@ function Hear({ clip }) {
   return (
     <button type="button" className="btn btn-ghost btn-sm mt-3" onClick={toggle} aria-pressed={playing}>
       {playing ? <RiPauseFill className="h-4 w-4" aria-hidden="true" /> : <RiPlayFill className="h-4 w-4" aria-hidden="true" />}
-      {playing ? 'Stop the scene' : 'Hear the scene'}
+      {playing ? `Stop the ${what}` : `Hear the ${what}`}
     </button>
   );
 }
+
+// Whether a line has been made in its speaker's voice (found once the manifest's in).
+function useMade(who, text) {
+  const [made, setMade] = useState(null);
+  useEffect(() => {
+    if (!who) return undefined;
+    let live = true;
+    voicedSrc(voiceOf(who), text).then((src) => live && src && setMade(`${who}|${text}`));
+    return () => {
+      live = false;
+    };
+  }, [who, text]);
+  return Boolean(who) && made === `${who}|${text}`;
+}
+
+const playScene = (clip) => import('../../lib/clips').then((c) => c.playClip(clip));
 
 function PartDetails({ part, onBack, onAction }) {
   const back = useRef(null);
   useEffect(() => {
     back.current?.focus({ preventScroll: true });
   }, [part.id]);
+  const who = quoteVoice(part);
+  const made = useMade(who, part.quote[0]);
   return (
     <div className="readout-panel" aria-labelledby="readout-part-title">
       <button ref={back} type="button" className="readout-back" onClick={onBack}>
@@ -123,7 +144,8 @@ function PartDetails({ part, onBack, onAction }) {
         <blockquote className="text-lg text-ink">“{part.quote[0]}”</blockquote>
         <figcaption className="mt-1 text-sm text-muted">{part.quote[1]}</figcaption>
       </figure>
-      {part.clip && <Hear key={part.id} clip={part.clip} />}
+      {part.clip && <Hear key={part.id} what="scene" play={() => playScene(part.clip)} />}
+      {made && <Hear key={part.id} what="line" play={() => sayVoiced(who, part.quote[0])} />}
       {part.action && (
         <button type="button" className="btn btn-primary btn-sm mt-5" onClick={() => onAction(part.action)}>
           {part.action === 'fire' ? 'Fire the superlaser' : 'Fly the trench run'}

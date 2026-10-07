@@ -112,7 +112,8 @@ import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { AHEAD_OF, factionsOf, kindsOf, pick as pickFaction, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
 import { GLB, createFleet } from './glbFleet';
-import { createDirector } from './director';
+import { createDirector, withWhere } from './director';
+import { ECLIPSE, bodyAt, canEclipse, eclipseAt, eclipsePlan } from './eclipse';
 import { createSetPieces } from './setpieces';
 import { createLeviathans } from './leviathans';
 import { createMeteors } from './meteors';
@@ -162,6 +163,8 @@ import { createCitadelSiege } from './citadelSiege';
 import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
 import { wayIn } from './landings/wayin';
+import { figureVoice } from './landings/voicelines';
+import { sayVoiced, stopVoiced } from '../../lib/voiced';
 import { ENTRY, LANDABLE, airTop, entering } from './entry';
 import { createNearMaps } from './nearMaps';
 import { poseFor } from './poses';
@@ -898,6 +901,20 @@ export async function create(canvas, ctx) {
   const mines = createMines(map, { small }); // (a minefield across your way)
   // a ship you're seeing to the next place (escort.js): { plan, run (traffic's), t0, sent, hull, side }
   let escort = null;
+  // an eclipse (eclipse.js): { plan, t0, star }, its moon (made when first
+  // wanted), how much of the sun it hides now (the key light and its glare
+  // dim by it), and the moon as something that hides a star from the lens
+  let eclipse = null;
+  let eclipseMoon = null;
+  let eclipseK = 0;
+  const eclipseSolid = { id: 'eclipse', at: [0, 0, 0], r: 0 };
+  const eclipseEye = new THREE.Vector3();
+  const dropEclipse = () => {
+    eclipse = null;
+    eclipseK = 0;
+    eclipseSolid.r = 0;
+    if (eclipseMoon) eclipseMoon.visible = false;
+  };
   const dropEscort = () => {
     escort = null;
   };
@@ -990,7 +1007,7 @@ export async function create(canvas, ctx) {
     npcAt: 70 + Math.random() * 50, // when the next character may come by (state.clock)
     npcLast: null, // who came by last (someone else next time)
     skirmishHelped: 0, // hunters you've hit in this one
-    saw: new Set(), // the wonders out in deep space you've come up on
+    saw: new Set(), // the wonders out in deep space you've come up on, and the places you've been
     phoneNear: false, // at the phone out past the belt (phone.js)
     phoneIn: false, // flown right into it (it asks once, until you back off)
     deepSaid: false,
@@ -1737,6 +1754,7 @@ export async function create(canvas, ctx) {
       meteors.clear();
       mines.clear();
       dropEscort();
+      dropEclipse();
       wingmen?.clear();
       skirmishes?.clear();
       npcs?.clear();
@@ -2613,6 +2631,7 @@ export async function create(canvas, ctx) {
       meteors.clear();
       mines.clear();
       dropEscort();
+      dropEclipse();
       wingmen?.clear();
       skirmishes?.clear();
       npcs?.clear();
@@ -2653,6 +2672,7 @@ export async function create(canvas, ctx) {
     meteors.clear();
     mines.clear();
     dropEscort();
+    dropEclipse();
     wingmen?.clear();
     skirmishes?.clear();
     npcs?.clear();
@@ -2940,6 +2960,23 @@ export async function create(canvas, ctx) {
       later.push({ at: state.clock + 3, run: () => emit({ type: 'event', id: 'leviathan', sub }) });
     } else if (id === 'meteors') {
       if (meteors.storm(ship)) emit({ type: 'event', id: 'meteors' });
+    } else if (id === 'eclipse') {
+      // a moon across the sun that lights you, from where you are
+      const star = litBy.key && LIT_STARS.find((st) => st.id === litBy.key.id);
+      if (!star || eclipse) return;
+      // (from the eye: the chase camera sits a few units off the ship, enough
+      // to put the moon off the sun's middle 70 units out)
+      camera.getWorldPosition(eclipseEye);
+      eclipse = { plan: eclipsePlan({ eye: map.worldToLocal(eclipseEye).toArray(), sun: star }), t0: state.clock, star };
+      if (!eclipseMoon) {
+        // (round, its night side to you: a dark disc on the sun)
+        eclipseMoon = new THREE.Mesh(new THREE.SphereGeometry(1, small ? 32 : 64, small ? 24 : 48), new THREE.MeshStandardMaterial({ color: '#3a3634', roughness: 0.95, metalness: 0 }));
+        eclipseMoon.name = 'eclipse moon';
+        map.add(eclipseMoon);
+      }
+      eclipseMoon.scale.setScalar(eclipse.plan.r);
+      eclipseMoon.visible = true;
+      emit({ type: 'event', id: 'eclipse' });
     } else if (id === 'minefield') {
       if (mines.lay(ship)) emit({ type: 'event', id: 'minefield' });
     } else if (id === 'escort') {
@@ -3286,6 +3323,23 @@ export async function create(canvas, ctx) {
       if (e.damage > 0 && state.clock >= state.safeUntil) hurt(e.damage);
       if (e.damage > 0 && !reduced) state.shake = Math.max(state.shake, 0.4 + e.damage / 60);
     }
+    // the eclipse: the moon along its way, and how much of the sun it hides
+    // from the eye (the light and the lens's glare dim by it)
+    if (eclipse) {
+      busy = true;
+      const since = state.clock - eclipse.t0;
+      if (since > eclipse.plan.time) dropEclipse();
+      else {
+        camera.getWorldPosition(eclipseEye);
+        const eye = map.worldToLocal(eclipseEye).toArray();
+        const at = bodyAt(eclipse.plan, since, eye, eclipse.star);
+        eclipseMoon.position.set(at[0], at[1], at[2]);
+        eclipseMoon.rotation.y = since * 0.02;
+        eclipseSolid.at = at;
+        eclipseSolid.r = eclipse.plan.r;
+        eclipseK = eclipseAt({ eye, sun: eclipse.star, bodies: [eclipseSolid] })?.k ?? 0;
+      }
+    }
     // the escort: the pirates when the plan says, its hull worn down by the
     // ones on it, and how it ends (there, or lost)
     if (escort) {
@@ -3321,7 +3375,10 @@ export async function create(canvas, ctx) {
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
-        const id = director.update(dt, { hurt: state.hurtNow ?? 0, side: sideFor(state.kind), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.busy || meteors.count > 0 || mines.count > 0 || Boolean(escort) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
+        // (where you are: a sun lighting you, at a station, in the gate)
+        const sunNow = litBy.key && litBy.key.strength > 1.2 ? LIT_STARS.find((st) => st.id === litBy.key.id) : null;
+        const where = { sun: Boolean(sunNow && canEclipse({ eye: [live.x, live.y, live.z], sun: sunNow })), station: Boolean(state.at && byId(state.at)?.kind === 'core'), gate: state.at === 'starwars' };
+        const id = director.update(dt, { hurt: state.hurtNow ?? 0, side: withWhere(sideFor(state.kind), where), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
         state.hurtNow = 0;
         if (id) happen(id, live);
         // the drive comes back once they're off you (or have had their go)
@@ -3541,7 +3598,7 @@ export async function create(canvas, ctx) {
   // out: parked there, the hunters left behind, a flash where it comes out)
   const riftThrough = () => {
     const s = state.ship;
-    const exit = riftExit(state.at, Math.random, sectorOf(s.x, s.y, s.z)); // (out in the sector it opened in)
+    const exit = riftExit(state.at, Math.random, sectorOf(s.x, s.y, s.z), state.saw); // (out in the sector it opened in, somewhere you haven't been)
     const park = parkFor(exit, [s.x, s.z]);
     pieces.closeRift();
     if (!park) return;
@@ -3551,6 +3608,7 @@ export async function create(canvas, ctx) {
     meteors.clear();
     mines.clear();
     dropEscort();
+    dropEclipse();
     wingmen?.clear();
     skirmishes?.clear();
     npcs?.clear();
@@ -3610,6 +3668,7 @@ export async function create(canvas, ctx) {
       meteors.clear();
       mines.clear();
       dropEscort();
+      dropEclipse();
       wingmen?.clear();
       skirmishes?.clear();
       npcs?.clear();
@@ -3742,6 +3801,7 @@ export async function create(canvas, ctx) {
           props.onPick?.(now);
         }
         emit({ type: 'arrive', id: now });
+        state.saw.add(now); // (been here: a rift takes you somewhere else)
         pulseAt = { id: now, age: 0 };
         cabLook.glanceAt = state.clock; // the crew have their say: a look over at them
       } else if (left && state.sel === left && !target) {
@@ -4040,7 +4100,7 @@ export async function create(canvas, ctx) {
     const el = props.prompt?.current;
     if (!el) return;
     let text = '';
-    let say = false; // (a line someone says to you: nothing for G to do)
+    let say = null; // (a line someone says to you, { name, line }: nothing for G to do)
     let plain = false; // (a word on the HUD: nothing for G to do either)
     const info = onFoot() ? foot.info() : null;
     if (props.frozen) text = '';
@@ -4054,7 +4114,7 @@ export async function create(canvas, ctx) {
     else if (info && foot.phase === 'walk' && info.ship.near) text = `Get back in ${SHIP_NAMES[state.kind]?.replace(/^The /, 'the ') ?? 'the ship'}`;
     else if (info && foot.phase === 'walk' && info.near?.say) {
       text = `${info.near.say.name}: “${info.near.say.line}”`;
-      say = true;
+      say = info.near.say;
     }
     else if (!onFoot() && state.landable && !state.auto && Math.abs(state.ship?.speed ?? 0) < SHIP.boost && LANDABLE.some((p) => p.id === state.landable)) {
       // (no key for it: flying in is the way down)
@@ -4064,9 +4124,12 @@ export async function create(canvas, ctx) {
     else if (!onFoot() && state.phoneNear && !state.auto && !state.jump && flying()) text = 'Unlock the phone';
     if (text === promptWas) return;
     promptWas = text;
+    // what they say, in their own voice where it's been made (landings/voicelines.js); walking off stops it
+    if (say) sayVoiced(figureVoice(say), say.line);
+    else if (el.hasAttribute('data-say')) stopVoiced();
     el.textContent = text;
     el.toggleAttribute('data-on', Boolean(text));
-    el.toggleAttribute('data-say', say);
+    el.toggleAttribute('data-say', Boolean(say));
     el.toggleAttribute('data-plain', plain);
   };
 
@@ -4092,7 +4155,7 @@ export async function create(canvas, ctx) {
   // (what can hide each star: everything but the star itself, made once a star)
   const hiders = new Map();
   const hidersOf = (id) => {
-    if (!hiders.has(id)) hiders.set(id, [...SOLIDS.filter((o) => o.id !== id), shipSolid]);
+    if (!hiders.has(id)) hiders.set(id, [...SOLIDS.filter((o) => o.id !== id), shipSolid, eclipseSolid]);
     return hiders.get(id);
   };
   const starAt = new THREE.Vector3();
@@ -4125,6 +4188,7 @@ export async function create(canvas, ctx) {
           share += sunShareOf({ ndc, size }) * (1 - hidden) * k;
           // (half as strong over the map, which is a chart, not a place you're in)
           weight = post.flareOn ? flareWeight({ ndc, occluded: hidden, size }) * k * (flying() && state.view !== 'map' ? 1 : 0.5) : 0;
+          if (eclipse && star.id === eclipse.star.id) weight *= 1 - ECLIPSE.dim * eclipseK; // (the moon over it)
         }
       }
       flares[i]?.set({ ndc, weight, colour: star?.colour ?? null, camera });
@@ -4210,7 +4274,9 @@ export async function create(canvas, ctx) {
     fill.position.copy(lightNow.fill).multiplyScalar(50);
     tint(key.color, lightColour.setRGB(...l.key.colour), k);
     tint(fill.color, lightColour.setRGB(...l.fill.colour), k);
-    key.intensity += Math.max(-k, Math.min(k, l.key.strength - key.intensity));
+    // (dimmed by a moon across it: the eclipse)
+    const covered = eclipse && l.key.id === eclipse.star.id ? 1 - ECLIPSE.dim * eclipseK : 1;
+    key.intensity += Math.max(-k, Math.min(k, l.key.strength * covered - key.intensity));
     fill.intensity += Math.max(-k, Math.min(k, l.fill.strength - fill.intensity));
     ambient.color.setRGB(...l.ambient);
     ambient.intensity = 1;
@@ -4913,6 +4979,7 @@ export async function create(canvas, ctx) {
     meteors.clear();
     mines.clear();
     dropEscort();
+    dropEclipse();
     burst.clear();
     const [x, y, z] = p.at;
     state.ship = { ...state.ship, x, y, z, heading: p.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
@@ -4944,7 +5011,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, remover: () => remover, removerView };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -5191,6 +5258,7 @@ export async function create(canvas, ctx) {
     },
     dispose() {
       disposed = true;
+      stopVoiced(); // (anyone down on a planet, mid-line)
       window.removeEventListener('tp:looks', onLooks);
       engine?.stop();
       well?.stop();
@@ -5233,6 +5301,8 @@ export async function create(canvas, ctx) {
       leviathans.dispose();
       meteors.dispose();
       mines.dispose();
+      eclipseMoon?.geometry.dispose();
+      eclipseMoon?.material.dispose();
       fleet.dispose();
       deep.dispose();
       sectorPortals.dispose();

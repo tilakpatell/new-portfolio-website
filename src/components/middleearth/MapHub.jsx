@@ -3,12 +3,16 @@ import { Link } from 'react-router-dom';
 import { useAchievements } from '../Achievements';
 import ModelCredits from '../ModelCredits';
 import { local, storage } from '../../lib/hooks';
+import { useVoiced } from '../../lib/useVoiced';
 import { CHAPTERS } from './chapters';
 import { hidden as hiddenPlace, hiddenAt } from './hidden';
+import { SPOKEN } from './mapCast';
 import { roadRecord } from './record';
 import { bestKey } from './rush/levels';
 import { useTravellers } from './towns/useTravellers';
 import '../../styles/lazy/middleearth.css';
+
+const clip = (id) => import('../../lib/clips').then((c) => c.playClip(id)).catch(() => null);
 
 // the map is part of a page you scroll: the page's pointers stay on it
 const MAP_ROOM = { pointers: true };
@@ -42,6 +46,9 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
   const bubble = useRef(null);
   const prompt = useRef(null);
   const [talk, setTalk] = useState(null); // { id, name, line, n }
+  // what they say, in their own voice: the films' recording where the site has
+  // it (SPOKEN), else the made one, where it's been made (./voicelines.js)
+  useVoiced(talk?.id, talk && !SPOKEN[talk.line] ? talk.line : null);
   const [near, setNear] = useState(null); // the place Frodo is at
   const nearRef = useRef(null);
   const heard = useRef(null);
@@ -70,7 +77,9 @@ export default function MapHub({ api, hover, onHover, onGo, leaving, hidden, fra
     if (a.on && heard.current !== a) {
       heard.current = a;
       a.on((e) => {
-        if (e.type === 'talk') setTalk((t) => ({ ...e, n: (t?.n || 0) + 1 }));
+        if (e.type !== 'talk') return;
+        setTalk((t) => ({ ...e, n: (t?.n || 0) + 1 }));
+        if (SPOKEN[e.line]) clip(SPOKEN[e.line]);
       });
     }
     // the speech bubble over whoever is talking

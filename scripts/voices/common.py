@@ -11,7 +11,9 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = ROOT / "scripts" / "voices"
-OUT = ROOT / "public" / "audio" / "voiced"
+# VOICES_OUT: another folder for the mp3s and the manifest, so the nightly health run
+# (scripts/ai-e2e/real/health.mjs) never writes into the site's own
+OUT = Path(os.environ.get("VOICES_OUT", ROOT / "public" / "audio" / "voiced"))
 
 
 def unboxed(path):

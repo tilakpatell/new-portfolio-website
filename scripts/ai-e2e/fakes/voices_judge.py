@@ -71,5 +71,10 @@ def naturalness(wav):
     return 4.0
 
 
+def feeling(wav):
+    """(arousal, dominance, valence): the fake hears every clip as even, neither calm nor agitated."""
+    return (0.5, 0.5, 0.5)
+
+
 def speech(wav, gap=0.3):
     return [(0.0, len(wav) / SR)] if len(wav) else []

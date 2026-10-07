@@ -2,44 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { COUNTRY_COUNT } from '../../data/places';
 import { countWord } from '../travel/PlacesExplorer';
 import { audioContext } from '../../lib/audio';
+import { useVoiced } from '../../lib/useVoiced';
+import { ABOUT_ME, ABOUT_THE_BRANCH, PER_ROUND, verdict } from './facts';
 import './office.css';
 import '../../styles/lazy/office.css';
 
 // Dwight checks the facts: half about me, half about the branch, eight a
 // round, shuffled. F says fact, X says false, Enter moves on. Dwight's
-// verdicts are his own.
+// verdicts are his own, in his voice where it's been made (lib/voiced.js).
 
-const ABOUT_ME = [
-  { q: 'Tilak plays the sitar.', fact: true, dwight: 'Fact. Around twenty strings, and most of them ring on their own. I respect an instrument with backup.' },
-  { q: 'Tilak’s Game Boy emulator runs games at 30 frames per second.', fact: false, dwight: 'False. Sixty, like the real hardware. Thirty is for amateurs and the Stamford branch.' },
-  { q: 'Tilak is interning at Amazon Web Services.', fact: true, dwight: 'Fact. Technical Infrastructure PM intern. Before that RTX, Bose, Pendar and SRC. A strong résumé. Almost as strong as mine.' },
-  { q: 'Tilak’s AI translator turns Gujarati scripture into Klingon.', fact: false, dwight: 'False. Into English, verse by verse. Klingon is a hobby, not a career.' },
-  { q: `Tilak has been to ${countWord(COUNTRY_COUNT).toLowerCase()} countries.`, fact: true, dwight: `Fact. ${countWord(COUNTRY_COUNT)} countries and the Caribbean. I have been to Pennsylvania, which is all a man needs.` },
-  { q: 'Tilak studies computer science at Northeastern.', fact: true, dwight: 'Fact. Boston. A fine city, if you don’t count the people, the traffic or the Red Sox.' },
-  { q: 'Tilak once worked on lasers.', fact: true, dwight: 'Fact. Laser software at Pendar Technologies. I have asked for a laser for my desk. Request denied.' },
-  { q: 'Tilak’s Game Boy emulator passes Blargg’s CPU tests.', fact: true, dwight: 'Fact. Every instruction, checked. That is how I do my taxes.' },
-  { q: 'Tilak wrote his Unix shell in Python.', fact: false, dwight: 'False. In C. Python is for people who do not fear death.' },
-  { q: 'Tilak interned at Dunder Mifflin.', fact: false, dwight: 'False. There is no record of him in the employee files. I checked. Twice. With a flashlight.' },
-  { q: 'Tilak’s code was merged into GitHub’s awesome-copilot.', fact: true, dwight: 'Fact. Thirty-nine thousand stars. I have one star. It is gold, and Michael gave it to me.' },
-];
-
-const ABOUT_THE_BRANCH = [
-  { q: 'Bears eat beets.', fact: true, dwight: 'Fact. Bears. Beets. Battlestar Galactica.', clip: 'bearsBeets' },
-  { q: 'Identity theft is a joke.', fact: false, dwight: 'False. Identity theft is not a joke. Millions of families suffer every year.', clip: 'identityTheft' },
-  { q: 'Dwight’s middle name is Kurt.', fact: true, dwight: 'Fact. Dwight Kurt Schrute. The Kurt is for my grandfather, who could kill a man with a tuba.' },
-  { q: 'Michael bought his own World’s Best Boss mug.', fact: true, dwight: 'Fact. At Spencer Gifts. Which does not make it less true.' },
-  { q: 'Dunder Mifflin Scranton is in Pittsburgh.', fact: false, dwight: 'False. The Scranton Business Park, Slough Avenue. Pittsburgh has no Dwight Schrute.' },
-  { q: 'Dwight is a volunteer sheriff’s deputy.', fact: true, dwight: 'Fact. Lackawanna County. I have the badge, the hat, and a list.' },
-  { q: 'Michael’s screenplay is called Threat Level Midnight.', fact: true, dwight: 'Fact. I play Samuel L. Chang. It is the best role of my career.' },
-  { q: 'Schrute Farms grows corn.', fact: false, dwight: 'False. Beets. Also a bed and breakfast. Corn is for the weak.' },
-  { q: 'Andy Bernard went to Princeton.', fact: false, dwight: 'False. Cornell. He will tell you. He will tell you again.' },
-  { q: 'Michael drove into a lake because his GPS told him to.', fact: true, dwight: 'Fact. The machine knows. That is what he said, as the car sank.' },
-  { q: 'The Office Olympics medals were yogurt lids.', fact: true, dwight: 'Fact. I did not win one. The competition was rigged.' },
-  { q: 'Ryan started a fire in the kitchen making a cheese pita.', fact: true, dwight: 'Fact. In the toaster oven. I led the evacuation. Nobody thanked me.' },
-  { q: 'Toby moved to Costa Rica.', fact: true, dwight: 'Fact. He came back. Like a rash.' },
-];
-
-const PER_ROUND = 8;
+// the facts about me (./facts.js), and how many countries: counted from the
+// places, so its words change with them (and it has no voice made)
+const MINE = [...ABOUT_ME, { q: `Tilak has been to ${countWord(COUNTRY_COUNT).toLowerCase()} countries.`, fact: true, dwight: `Fact. ${countWord(COUNTRY_COUNT)} countries and the Caribbean. I have been to Pennsylvania, which is all a man needs.` }];
 const BEST = 'tp-factcheck-best';
 
 function shuffle(list) {
@@ -51,16 +25,7 @@ function shuffle(list) {
   return a;
 }
 // four about me, four about the branch, in any order
-const deal = () => shuffle([...shuffle(ABOUT_ME).slice(0, PER_ROUND / 2), ...shuffle(ABOUT_THE_BRANCH).slice(0, PER_ROUND / 2)]);
-
-const verdict = (score) =>
-  score === PER_ROUND
-    ? 'Perfect. You would make an excellent assistant to the regional manager.'
-    : score >= PER_ROUND - 2
-      ? 'Acceptable. You may keep your desk.'
-      : score >= PER_ROUND / 2
-        ? 'You are no Schrute. But you are not Toby either.'
-        : 'You are no Schrute. Go back to the beginning.';
+const deal = () => shuffle([...shuffle(MINE).slice(0, PER_ROUND / 2), ...shuffle(ABOUT_THE_BRANCH).slice(0, PER_ROUND / 2)]);
 
 const readBest = () => {
   try {
@@ -80,15 +45,19 @@ export default function FactCheck({ onDone } = {}) {
   const box = useRef(null);
   const done = i >= deck.length;
   const f = deck[i];
+  // what Dwight's saying (his verdict on this one, then on the round), in his
+  // voice where it's been made; it stops when it's gone from the card
+  const [said, setSaid] = useState(null);
+  useVoiced(said && 'dwight', said);
+  const round = useRef(0);
 
   const pick = (fact) => {
     if (answer !== null || done) return;
     setAnswer(fact);
+    audioContext(); // in the click, so he can be heard
     // the two the show said out loud, as the show said them
-    if (f.clip) {
-      audioContext();
-      import('../../lib/clips').then((c) => c.playClip(f.clip));
-    }
+    if (f.clip) import('../../lib/clips').then((c) => c.playClip(f.clip));
+    setSaid(f.clip ? null : f.dwight);
     if (fact === f.fact) {
       setScore((n) => n + 1);
       setStreak((n) => n + 1);
@@ -97,10 +66,16 @@ export default function FactCheck({ onDone } = {}) {
   const next = () => {
     if (answer === null) return;
     audioContext(); // in the click, so the verdict can be heard
-    // the last one: Michael takes the score well, or very badly
+    setSaid(null);
+    // the last one: Michael takes the score well, or very badly, and then Dwight gives his verdict
     if (i === deck.length - 1) {
       onDone?.(score);
-      import('../../lib/clips').then((c) => c.playClip(score >= PER_ROUND - 2 ? 'thankYou' : 'noGod'));
+      const mine = round.current;
+      import('../../lib/clips')
+        .then((c) => c.playClip(score >= PER_ROUND - 2 ? 'thankYou' : 'noGod'))
+        .then((h) => h?.ended)
+        .then(() => mine === round.current && setSaid(verdict(score)))
+        .catch(() => null);
       if (score > best) {
         setBest(score);
         try {
@@ -114,6 +89,8 @@ export default function FactCheck({ onDone } = {}) {
     setI((n) => n + 1);
   };
   const again = () => {
+    round.current += 1;
+    setSaid(null);
     setDeck(deal());
     setI(0);
     setScore(0);
