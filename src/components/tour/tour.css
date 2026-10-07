@@ -55,3 +55,5 @@ html[data-touring] .guide-btn[data-tucked] { transform: none; opacity: 1; }
   .tour-card { animation: none; }
 }
 @media print { .tour { display: none !important; } }
+/* a stop showing a thing to do that's done (data/todo.js) */
+.tour-ticked { color: var(--accent-text, var(--accent)); }

@@ -121,7 +121,7 @@ function Tours({ pathname, onGo }) {
                 <ol>
                   {plan(a).map((c) => (
                     <li key={c.id}>
-                      <button type="button" className="guide-chapter" onClick={take({ audience: a, chapter: c.id })}>
+                      <button type="button" className="guide-chapter" onClick={take({ audience: a, chapter: c.id, only: true })}>
                         {c.title}
                       </button>
                     </li>

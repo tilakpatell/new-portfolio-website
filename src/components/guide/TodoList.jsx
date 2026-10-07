@@ -19,10 +19,11 @@ const FILTERS = [
   ['mixed', 'Everything'],
 ];
 
-// the last audience tour taken or under way, else everything
+// the last audience tour under way or taken (the whole one is everything),
+// else everything
 function lastAudience() {
   const p = readProgress(local.get(TOUR_KEY, null));
-  const was = p?.audience ?? p?.done.filter((d) => d === 'recruiter' || d === 'player').at(-1);
+  const was = p?.audience ?? p?.done.filter((d) => d !== 'view').at(-1);
   return was === 'recruiter' || was === 'player' ? was : 'mixed';
 }
 

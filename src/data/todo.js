@@ -26,7 +26,7 @@ export const THINGS_TO_DO = [
     seconds: 5,
     phone: true,
     blurb: 'The same site twice, from one set of data: a universe to fly, or plain pages. The switch at the top lands on the same place.',
-    done: { visited: '/universe' },
+    done: { visited: ['/home', '/universe'] },
   },
   {
     id: 'command-palette',
@@ -313,7 +313,7 @@ export const THINGS_TO_DO = [
   {
     id: 'universe',
     title: 'Fly the universe map',
-    to: '/',
+    to: '/universe',
     area: '/universe',
     kind: 'world',
     audience: 'both',
@@ -589,7 +589,7 @@ export const THINGS_TO_DO = [
   {
     id: 'roll-out',
     title: 'Play Roll out on the highway',
-    to: '/cybertron#roll-out',
+    to: '/cybertron',
     area: '/cybertron',
     kind: 'game',
     audience: 'both',
@@ -641,7 +641,7 @@ export const THINGS_TO_DO = [
   {
     id: 'portal-panic',
     title: 'Play Portal panic',
-    to: '/c-137#portal-panic',
+    to: '/c-137',
     area: '/c-137',
     kind: 'game',
     audience: 'both',
@@ -769,7 +769,7 @@ export const THINGS_TO_DO = [
   {
     id: 'dead-mans-tide',
     title: 'Take the Black Pearl’s helm',
-    to: '/caribbean#tide',
+    to: '/caribbean',
     area: '/caribbean',
     kind: 'game',
     audience: 'both',
@@ -807,7 +807,7 @@ export const THINGS_TO_DO = [
   {
     id: 'think-mark',
     title: 'Play Think, Mark!',
-    to: '/invincible#inv-game',
+    to: '/invincible',
     area: '/invincible',
     kind: 'game',
     audience: 'both',
@@ -828,10 +828,12 @@ export function todoFor(audience) {
 // Whether a row is ticked, from the unlocked achievements and the routes
 // visited ever. A route counts for itself and anything under it, so a
 // world's row ticks from any of its places, but '/experience' not from
-// '/experiences'.
+// '/experiences'; a list of routes ticks once every one has been seen (both
+// views, for the switch). What's kept may be anything, so it's checked.
+const seen = (visited, path) => visited.some((v) => typeof v === 'string' && (v === path || v.startsWith(`${path}/`)));
 export function isDone(row, { unlocked = [], visited = [] } = {}) {
   const { achievement, visited: path } = row.done ?? {};
-  if (achievement) return unlocked.includes(achievement);
-  if (path) return visited.some((v) => v === path || v.startsWith(`${path}/`));
-  return false;
+  if (achievement) return Array.isArray(unlocked) && unlocked.includes(achievement);
+  if (!path || !Array.isArray(visited)) return false;
+  return [].concat(path).every((p) => seen(visited, p));
 }

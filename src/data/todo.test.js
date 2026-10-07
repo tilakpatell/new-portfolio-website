@@ -52,7 +52,7 @@ describe('the things to do', () => {
       const keys = Object.keys(t.done);
       expect(keys.length, t.id).toBe(1);
       if (t.done.achievement) expect(ids.has(t.done.achievement), `${t.id}: ${t.done.achievement}`).toBe(true);
-      else expect(rs.some((r) => r.test(t.done.visited)), `${t.id}: ${t.done.visited}`).toBe(true);
+      else for (const v of [].concat(t.done.visited)) expect(rs.some((r) => r.test(v)), `${t.id}: ${v}`).toBe(true);
     }
   });
 
@@ -103,6 +103,17 @@ describe('isDone', () => {
     expect(isDone(section, { visited: ['/experience/aws'] })).toBe(true);
     expect(isDone(section, { visited: ['/experiences'] })).toBe(false);
     expect(isDone(page, { visited: ['/projects'] })).toBe(false);
+  });
+
+  it('ticks a row with several pages once every one has been seen', () => {
+    const both = { done: { visited: ['/home', '/universe'] } };
+    expect(isDone(both, { visited: ['/universe/marvel'] })).toBe(false);
+    expect(isDone(both, { visited: ['/universe/marvel', '/home'] })).toBe(true);
+  });
+
+  it('ticks nothing from what it can’t read, without throwing', () => {
+    for (const visited of [null, 'x', 7, [null, 3]]) expect(isDone(page, { visited }), String(visited)).toBe(false);
+    expect(isDone(ach, { unlocked: null })).toBe(false);
   });
 
   it('ticks nothing with nothing done', () => {

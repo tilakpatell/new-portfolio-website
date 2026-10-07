@@ -4,7 +4,11 @@ import { RiArrowLeftLine, RiArrowRightLine, RiArrowRightUpLine, RiCheckLine } fr
 import { textOf } from './steps';
 import { rowsFor } from './briefs';
 import { KeyTable } from '../guide/KeyTable';
-import { litBox, nextIndex, placeCard, resolveSteps, stepState, waitUntil } from '../../lib/tour';
+import { litBox, nextIndex, placeCard, resolveSteps, samePage, stepState, waitUntil } from '../../lib/tour';
+import { useAchievements } from '../Achievements';
+import { THINGS_TO_DO, isDone } from '../../data/todo';
+import { local } from '../../lib/hooks';
+import { VISITED_KEY } from '../../lib/visited';
 import { shortcutLabel } from '../../lib/palette';
 import { prefersReducedMotion } from '../../lib/hooks';
 import './tour.css';
@@ -52,11 +56,6 @@ function inertBehind() {
 }
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-const under = (pathname, path) => pathname === path || pathname.startsWith(`${path}/`);
-// the feed's pages are one page: once the tour has opened one, the feed may
-// move the address to its neighbour as it settles, and that's still there
-const FEED = /^\/(home|experience|projects|resume|contact|travel)(\/[^/]+)?$/;
-const onPage = (pathname, path) => under(pathname, path) || (FEED.test(pathname) && FEED.test(path) && !path.startsWith('/projects/') && !pathname.startsWith('/projects/'));
 
 // what covers the page, other than this tour: the intro, the cockpit, the
 // phone menu, a dialog, a world asking before it downloads
@@ -111,6 +110,7 @@ export default function Tour({ list, kind = 'tour', start = 0, pathname, onEnd, 
   act.current = { forward, back: () => go(i - 1), skip: () => onEnd('skipped'), release: step.keys === 'release' && !waiting, pause: () => onEnd('paused') };
   const here = useRef(pathname);
   here.current = pathname;
+  const opened = useRef(null); // the page this tour last opened, or started on
   const frees = useRef([]);
 
   // On: html[data-touring] (it brings the nav and the guide's button back if
@@ -147,7 +147,7 @@ export default function Tour({ list, kind = 'tour', start = 0, pathname, onEnd, 
       }
       e.stopImmediatePropagation();
       if (e.key === 'Tab') {
-        const els = [...(card.current?.querySelectorAll('button') ?? [])];
+        const els = [...(card.current?.querySelectorAll('button:not(:disabled)') ?? [])];
         const at = els.indexOf(document.activeElement);
         const to = e.shiftKey ? (at <= 0 ? els.length - 1 : at - 1) : at === els.length - 1 ? 0 : at + 1;
         e.preventDefault();
@@ -183,9 +183,14 @@ export default function Tour({ list, kind = 'tour', start = 0, pathname, onEnd, 
     const step = steps[i];
     onProgress?.(step);
     setWaiting(true);
-    if (!under(here.current, step.path)) onNavigate(step.path);
+    // A new chapter's page is opened unless you're on it; within a chapter
+    // it's opened again only if you've somehow left it (the feed moving the
+    // address to its neighbour as it settles isn't leaving).
+    const there = opened.current === step.path ? samePage(here.current, step.path) : here.current === step.path;
+    if (!there) onNavigate(step.path);
+    opened.current = step.path;
     let off = false;
-    const page = { busy: covered, rendered: () => drawn() && onPage(here.current, step.path), hasTarget: (at) => Boolean(targetOf(at)) };
+    const page = { busy: covered, rendered: () => drawn() && samePage(here.current, step.path), hasTarget: (at) => Boolean(targetOf(at)) };
     const check = (waited) => {
       const s = stepState(step, page, waited);
       return s === 'wait' ? null : s;
@@ -193,7 +198,8 @@ export default function Tour({ list, kind = 'tour', start = 0, pathname, onEnd, 
     waitUntil(check, { tick: (fn) => setTimeout(fn, 120), now: () => performance.now(), cancelled: () => off }).then((how) => {
       if (off || how === 'cancelled') return;
       if (how === 'skip') {
-        const to = nextIndex(steps, i, i === 0 ? 1 : dir.current);
+        if (i === 0) dir.current = 1; // (nothing before the first: on, and on from here)
+        const to = nextIndex(steps, i, dir.current);
         if (to !== i) return setI(to);
       }
       frees.current.push(inertBehind());
@@ -238,6 +244,10 @@ export default function Tour({ list, kind = 'tour', start = 0, pathname, onEnd, 
     if ('touring' in html.dataset) html.dataset.touring = release ? 'release' : '';
   }, [release]);
 
+  // a stop showing a thing to do says so when it's done (spec 3.2)
+  const { unlocked } = useAchievements();
+  const thing = step.todo && !waiting ? THINGS_TO_DO.find((t) => t.id === step.todo) : null;
+  const ticked = thing ? isDone(thing, { unlocked, visited: local.get(VISITED_KEY, []) }) : false;
   const text = waiting ? 'One moment…' : textOf(step, ctx);
   // (keys: 'release' says which keys go through, not which to show)
   const shown = waiting ? null : rowsFor(step, touch);
@@ -262,6 +272,12 @@ export default function Tour({ list, kind = 'tour', start = 0, pathname, onEnd, 
       >
         <p className="tour-count">
           {crosses ? step.chapterTitle : words.count} · {at + 1} of {chapter.length}
+          {ticked && (
+            <span className="tour-ticked">
+              {' '}
+              · <RiCheckLine className="inline h-3.5 w-3.5" aria-hidden="true" /> Done
+            </span>
+          )}
         </p>
         <h2 id={`${ids}-title`} className="tour-title">
           {waiting ? step.chapterTitle : step.title}

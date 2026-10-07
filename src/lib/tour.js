@@ -52,7 +52,9 @@ export function writeProgress(prev, patch) {
 }
 
 // The audience tour left part way, for the guide's "Carry on…", or null.
-export const unfinished = (p) => (p?.audience && p.chapter && !p.done.includes(p.audience) ? { audience: p.audience, chapter: p.chapter } : null);
+// (Finishing forgets where it was, so one kept is part way, even of a tour
+// finished once before.)
+export const unfinished = (p) => (p?.audience && p.chapter ? { audience: p.audience, chapter: p.chapter } : null);
 
 // ?tour=recruiter|player|all[&chapter=id] on any page: the owner's links. A
 // visitor never types "mixed", so the link says "all".
@@ -64,6 +66,13 @@ export function parseTourLink(search) {
   const chapter = q.get('chapter');
   return chapter ? { audience, chapter } : { audience };
 }
+
+// Whether you're on a chapter's page: the page itself, or, the feed's pages
+// being one long page that moves the address as it settles, any of them for
+// another. A project is its own page, not the projects page; a place on the
+// map isn't the map (the tour opens /universe itself).
+const FEED_PAGE = /^\/(home|experience(\/[^/]+)?|projects|resume|contact|travel)$/;
+export const samePage = (pathname, path) => pathname === path || (FEED_PAGE.test(pathname) && FEED_PAGE.test(path));
 
 // The pages an audience tour may take you to by itself: quick to open and
 // always the same. Not the front door (it may send you on, or ask which

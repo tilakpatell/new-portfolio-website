@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { RiCompass3Line } from 'react-icons/ri';
 import { useAchievements } from '../Achievements';
 import { local } from '../../lib/hooks';
-import { TOUR_EVENT, TOUR_KEY, flatten, offerHere, openTour, parseTourLink, planFor, readProgress, stopIndexFor, tourFor, writeProgress } from '../../lib/tour';
+import { TOUR_EVENT, TOUR_KEY, flatten, offerHere, openTour, parseTourLink, planFor, readProgress, samePage, stopIndexFor, tourFor, writeProgress } from '../../lib/tour';
 import { isFeedMove } from '../feed/feed';
 import { BRIEF_EVENT, BRIEF_KEY, briefHere, briefKeyFor, sawBrief } from './brief';
 import { guideKeyFor } from '../guide/routes';
@@ -24,14 +24,16 @@ const loadTour = () => import('./Tour');
 const Tour = lazy(loadTour);
 
 // the stops, and where to start: a world's basics, the view's tour, or an
-// audience's chapters laid out as one run
+// audience's chapters laid out as one run (one chapter of it, `only`, when
+// the guide's list of chapters asks for one alone); `view` when an audience
+// had none written yet and the view's tour stands in
 async function loadList(run) {
   if (run.kind === 'brief') return { list: (await import('./briefs')).BRIEFS[run.name], start: 0 };
   const { TOURS } = await import('./steps');
   if (!run.audience) return { list: TOURS[run.name], start: 0 };
   const list = flatten(planFor(TOURS, run.audience, run.view, run.here));
-  // (an audience whose chapters aren't written yet gets the view's tour)
-  if (!list.length && !run.todo) return { list: TOURS[run.view], start: 0 };
+  if (!list.length && !run.todo) return { list: TOURS[run.view], start: 0, view: true };
+  if (run.only && run.chapter) return { list: list.filter((s) => s.chapter === run.chapter), start: 0 };
   return { list, start: stopIndexFor(list, run) };
 }
 
@@ -42,7 +44,6 @@ const busy = () => {
   return ['covered', 'intro', 'menu', 'touring'].some((k) => k in html.dataset) || Boolean(document.querySelector('[aria-modal="true"], .world-gate'));
 };
 
-const under = (pathname, path) => pathname === path || pathname.startsWith(`${path}/`);
 const BOTH = { mixed: ['recruiter', 'player'] };
 const PRIZE = { recruiter: 'tourRecruiter', player: 'tourPlayer' };
 
@@ -73,7 +74,7 @@ export default function TourHost() {
       const view = tourFor(where.current);
       expected.current = null;
       starts.current += 1;
-      setRun(d?.audience ? { kind: 'tour', name: d.audience, audience: d.audience, chapter: d.chapter, stop: d.stop, todo: d.todo, to: d.to, view, here: where.current, n: starts.current } : { kind: 'tour', name: view, n: starts.current });
+      setRun(d?.audience ? { kind: 'tour', name: d.audience, audience: d.audience, chapter: d.chapter, stop: d.stop, todo: d.todo, to: d.to, only: d.only, view, here: where.current, n: starts.current } : { kind: 'tour', name: view, n: starts.current });
     };
     const onBrief = (e) => {
       const name = e.detail?.key ?? briefKeyFor(where.current);
@@ -108,8 +109,14 @@ export default function TourHost() {
   useEffect(() => {
     if (!run) return undefined;
     let live = true;
-    loadList(run).then(({ list, start }) => {
+    loadList(run).then(({ list, start, view }) => {
       if (!live) return;
+      // the view's tour standing in is the view's tour: its prizes, its
+      // ending when the view changes, not the audience's
+      if (view) {
+        setRun({ kind: 'tour', name: run.view, n: run.n });
+        return;
+      }
       // Nothing to show: the audience's chapters aren't written, or what was
       // asked for isn't in them. A thing to do with no stop of its own is
       // still a place to go.
@@ -136,7 +143,7 @@ export default function TourHost() {
   useEffect(() => setRun((r) => (r && (r.kind === 'brief' ? r.page !== page : !r.audience && r.name !== kind) ? null : r)), [kind, page]);
   const feedMove = isFeedMove(location, navType);
   useEffect(() => {
-    if (expected.current && !feedMove && !under(pathname, expected.current)) {
+    if (expected.current && !feedMove && !samePage(pathname, expected.current)) {
       expected.current = null;
       setRun((r) => (r?.audience ? null : r));
     }
@@ -198,6 +205,8 @@ export default function TourHost() {
       if (was?.kind === 'tour') remember({});
       return;
     }
+    // (one chapter alone is a chapter seen, not the tour taken)
+    if (was.only) return remember({ audience: undefined, chapter: undefined, stop: undefined });
     unlock('tour');
     if (!was.audience) return remember({ done: ['view'] });
     const done = BOTH[was.audience] ?? [was.audience];

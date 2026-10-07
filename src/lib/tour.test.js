@@ -14,6 +14,7 @@ import {
   planFor,
   readProgress,
   readyFor,
+  samePage,
   resolveSteps,
   stepState,
   stopIndexFor,
@@ -179,7 +180,8 @@ describe('what the tour remembers', () => {
     expect(unfinished(null)).toBeNull();
     expect(unfinished({ offered: true, done: [] })).toBeNull();
     expect(unfinished({ offered: true, audience: 'player', chapter: 'worlds', done: [] })).toEqual({ audience: 'player', chapter: 'worlds' });
-    expect(unfinished({ offered: true, audience: 'player', chapter: 'worlds', done: ['player'] })).toBeNull();
+    // (taken again after finishing it once, and left part way: still offered)
+    expect(unfinished({ offered: true, audience: 'player', chapter: 'worlds', done: ['player'] })).toEqual({ audience: 'player', chapter: 'worlds' });
   });
 });
 
@@ -342,5 +344,29 @@ describe('when a stop is ready to show', () => {
     const ctl = { cancelled: false };
     const timers = { now: () => t, tick: (fn) => ((t += 100), (ctl.cancelled = t >= 300), Promise.resolve().then(fn)) };
     await expect(waitUntil(() => null, { ...timers, cancelled: () => ctl.cancelled })).resolves.toBe('cancelled');
+  });
+});
+
+describe('whether you’re on a chapter’s page', () => {
+  it('is the page itself', () => {
+    expect(samePage('/projects', '/projects')).toBe(true);
+    expect(samePage('/universe', '/universe')).toBe(true);
+  });
+
+  it('is any of the feed’s pages for another of them, since the feed moves the address as it settles', () => {
+    expect(samePage('/experience/aws', '/experience')).toBe(true);
+    expect(samePage('/projects', '/experience')).toBe(true);
+  });
+
+  it('is not a project for the projects page, nor the projects page for a project', () => {
+    expect(samePage('/projects/gameboy-emulator', '/projects')).toBe(false);
+    expect(samePage('/projects', '/projects/gameboy-emulator')).toBe(false);
+    expect(samePage('/projects/a', '/projects/b')).toBe(false);
+  });
+
+  it('is not a place on the map for the map, nor another page', () => {
+    expect(samePage('/universe/marvel', '/universe')).toBe(false);
+    expect(samePage('/terminal', '/home')).toBe(false);
+    expect(samePage('/home', '/changes')).toBe(false);
   });
 });
