@@ -23,6 +23,15 @@ through `useVoiced` (src/lib/useVoiced.js); `voiceOf` in src/lib/voiced.js
 says who sounds like whom and who has no voice. A voice in
 `export-lines.mjs`'s lists with no reference yet just stays quiet.
 
+A world wires its people in by itself, with no change here: a
+`voicelines.js` beside its data exports `VOICELINES`, a list of
+`{ who, text }` with each line exactly as the world passes it to
+`useVoiced` or `sayVoiced`. `export-lines.mjs` reads every `voicelines.js`
+under `src/`, and `generate.py` makes the lines of every voice with a
+reference. The new voices' searches and quotes go in
+`sources/<world>.json`, in the same shape as `sources.json` (grab.py reads
+them all).
+
 ## How
 
 1. **References** (`grab.py`). For each voice it gathers candidates (the
