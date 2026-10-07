@@ -120,6 +120,7 @@ export default function JumpCanvas({ frag, uniforms, fallback, onPeak, onDone })
       if (!start) {
         start = t0 = now;
         markJumpStart(now); // (a scene flying its own part of the jump keeps time with this: timeline.js)
+        if (import.meta.env?.DEV) window.__jumpStartedAt = now; // (for the checks)
       }
       start = holdStart(now, start); // (held in the middle while the galaxy builds its next system)
       const ms = now - start;
