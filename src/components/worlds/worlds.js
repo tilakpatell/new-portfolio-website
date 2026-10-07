@@ -28,5 +28,9 @@ export const WORLD_MB = {
   '/dot-matrix/minecraft': 2, // drawn in code from the pack's tiles: the block strip, the skins and the sky's and HUD's sprites (under a tenth of an MB today)
 };
 
-// The world a path is in: '/middle-earth/moria' is Middle-earth.
-export const worldAt = (pathname) => WORLDS.find((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)) ?? null;
+// The world a path is in: '/middle-earth/moria' is Middle-earth. Some
+// worlds sit inside another's address ('/dot-matrix/64' inside
+// '/dot-matrix'), so the longest match wins: each gets its own download size
+// and its own phone gate, not its parent's.
+export const worldAt = (pathname) =>
+  WORLDS.filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
