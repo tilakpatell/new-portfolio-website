@@ -28,6 +28,7 @@ export const BRIEFED = new Set([
   '/c-137/citadel',
   '/dot-matrix',
   '/dot-matrix/64',
+  '/dot-matrix/minecraft',
   '/earth',
   '/music',
 ]);

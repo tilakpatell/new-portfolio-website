@@ -76,11 +76,11 @@
 
 ## PR 5: Tier 3, every model draws
 
-- [ ] **5.1** `scripts/glb-shot.mjs`: `shoot()` returns the console errors and page errors it saw (`shoot.last.errors`) so a test can assert on them; `W`/`H` overridable (already `w`, `h`). A dev server helper `scripts/ai-e2e/render/server.mjs` starts vite on a free port and stops it (reuse `autopilot-check.mjs`’s port-finding).
-- [ ] **5.2** `render/coverage.mjs`: `coverage(png, bg)` → fraction of pixels farther than a tolerance from the background colour (`sharp` raw pixels). Test on a blank and a drawn fixture.
-- [ ] **5.3** `render/gen3d.test.mjs` (“up to 60 s, needs Chromium”): for each cut, the `three` view at 320×240 → coverage ≥ 0.04, no error outside `NOISE` (export `NOISE` from `autopilot-check.mjs` into `scripts/lib/noise.mjs` and import it in both). Skips with a clear reason when `CHROME` is unset and no Chromium is found; writes each PNG to `scripts/ai-e2e/render/out/` (git-ignored).
-- [ ] **5.4** `ci.yml`: the `ai` job gets a step that runs tier 3 only when `public/models/**` or `src/lib/three/**` changed (`dorny/paths-filter` or a `git diff --name-only origin/main...` check in a script), after `npx playwright@<pinned> install --with-deps chromium` cached on the version. The render folder is excluded from the plain `test:ai` run and run by `test:ai:render`.
-- [ ] **5.5** Gate, PR, CI green, merge.
+- [x] **5.1** `scripts/glb-shot.mjs`: `shoot()` returns the console errors and page errors it saw (`shoot.last.errors`) so a test can assert on them; `W`/`H` overridable (already `w`, `h`). A dev server helper `scripts/ai-e2e/render/server.mjs` starts vite on a free port and stops it (reuse `autopilot-check.mjs`’s port-finding).
+- [x] **5.2** `render/coverage.mjs`: `coverage(png, bg)` → fraction of pixels farther than a tolerance from the background colour (`sharp` raw pixels). Test on a blank and a drawn fixture.
+- [x] **5.3** `render/gen3d.test.mjs` (“up to 60 s, needs Chromium”): for each cut, the `three` view at 320×240 → coverage ≥ 0.04, no error outside `NOISE` (export `NOISE` from `autopilot-check.mjs` into `scripts/lib/noise.mjs` and import it in both). Skips with a clear reason when `CHROME` is unset and no Chromium is found; writes each PNG to `scripts/ai-e2e/render/out/` (git-ignored).
+- [x] **5.4** `ci.yml`: the `ai` job gets a step that runs tier 3 only when `public/models/**` or `src/lib/three/**` changed (`dorny/paths-filter` or a `git diff --name-only origin/main...` check in a script), after `npx playwright@<pinned> install --with-deps chromium` cached on the version. The render folder is excluded from the plain `test:ai` run and run by `test:ai:render`.
+- [x] **5.5** Gate, PR, CI green, merge.
 
 ## PR 6: Tier 4, the brains scripted and fuzzed
 

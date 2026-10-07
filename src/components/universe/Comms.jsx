@@ -274,6 +274,8 @@ export default function Comms({ crew, reduced, control }) {
           // (an offer or a tip waits for the hello it comes with to be said)
           const news = e.key === 'tip' || e.key === 'offer';
           if (lines) say(e.part ? lines.map((l) => retold(crew, l, l[1].replace('{part}', e.part))) : lines, { urgent: e.key === 'hello', after: news });
+        } else if (e.type === 'sector') {
+          portalSound(); // (through a portal into another sector of the map: portals.js)
         } else if (e.type === 'wonder') {
           const key = `wonder:${e.id}`;
           if (said.current.has(key)) return;

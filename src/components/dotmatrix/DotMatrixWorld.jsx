@@ -22,7 +22,8 @@ import GuideCue from '../guide/GuideCue';
 // the giant Game Boy in the square, which is the real console from the
 // emulator's project page, or the giant N64 beside it: a real N64 emulated
 // (../n64/), playing the player's own Super Mario 64 ROM, or else the Mario
-// 64 tribute (../mario64/), full screen over the island. The rules are in ./rules.js, the drawing in
+// 64 tribute (../mario64/), or the giant crafting table east of it, which
+// opens the Minecraft tribute (../minecraft/), each full screen over the island. The rules are in ./rules.js, the drawing in
 // ./scene.js and ./dither.js; this is the keys, the HUD and the talking.
 // Everyone else online on the island shows as a pale ghost with their name
 // over them (the Middle-earth towns' travellers, in a room of its own).
@@ -30,6 +31,7 @@ import GuideCue from '../guide/GuideCue';
 
 const GameBoyStage = lazy(() => import('../../stages/GameBoyStage'));
 const Mario64 = lazy(() => import('../mario64/Mario64'));
+const Minecraft = lazy(() => import('../minecraft/Minecraft'));
 const N64 = lazy(() => import('../n64/N64'));
 const sounds = () => import('./sounds');
 const PALETTE = 'tp-dmg-palette';
@@ -105,7 +107,7 @@ function World({ gl, setGl }) {
   const [shown, setShown] = useState(0); // letters of the dialog typed so far
   const [list, setList] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [n64, setN64] = useState(false); // false | 'emu' (the emulator) | 'tribute'
+  const [n64, setN64] = useState(false); // what's over the island: false | 'emu' (the N64's emulator) | 'tribute' (Mario 64's) | 'minecraft'
   const [banner, setBanner] = useState(null);
   const [moved, setMoved] = useState(false);
   const dialogRef = useRef(null);
@@ -384,6 +386,10 @@ function World({ gl, setGl }) {
       s.keys.clear();
       s.stick = { x: 0, y: 0 };
       setN64('emu');
+    } else if (near.kind === 'craft') {
+      s.keys.clear();
+      s.stick = { x: 0, y: 0 };
+      setN64('minecraft');
     } else if (near.kind === 'pipe') {
       s.warp = { id: near.id, t: 0, done: false };
       api.current?.fx('warp', { dir: -1 });
@@ -566,7 +572,7 @@ function World({ gl, setGl }) {
   }, live);
 
   const p = progress(sim.current.g);
-  const prompt = hud.near && !dialog ? { sign: 'Read', talk: 'Talk', gameboy: 'Play the Game Boy', n64: 'Play the N64', pipe: 'Go down the pipe' }[hud.near.kind] : null;
+  const prompt = hud.near && !dialog ? { sign: 'Read', talk: 'Talk', gameboy: 'Play the Game Boy', n64: 'Play the N64', craft: 'Play Minecraft', pipe: 'Go down the pipe' }[hud.near.kind] : null;
 
   return (
     <div ref={box}>
@@ -738,7 +744,7 @@ function World({ gl, setGl }) {
       {n64 &&
         createPortal(
           <Suspense fallback={<div className="dm-n64-wait" role="status">Switching on…</div>}>
-            {n64 === 'tribute' ? <Mario64 mode="overlay" onExit={closeN64} /> : <N64 mode="overlay" onExit={closeN64} onTribute={tribute} />}
+            {n64 === 'minecraft' ? <Minecraft mode="overlay" onExit={closeN64} /> : n64 === 'tribute' ? <Mario64 mode="overlay" onExit={closeN64} /> : <N64 mode="overlay" onExit={closeN64} onTribute={tribute} />}
           </Suspense>,
           document.body,
         )}

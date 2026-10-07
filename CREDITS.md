@@ -10,6 +10,7 @@ Everything here is credited on the page that uses it too. This file is made by `
 
 - [3D models from Sketchfab](#3d-models-from-sketchfab)
 - [Models used with permission](#models-used-with-permission)
+- [Textures shared alike](#textures-shared-alike)
 - [Scans, skies and kits (CC0)](#scans-skies-and-kits-cc0)
 - [Photos](#photos)
 - [Fonts](#fonts)
@@ -305,6 +306,14 @@ From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005),
 | [Battlefront 2 Remaster: imp_inf_snowtrooper](https://www.moddb.com/mods/hd-graphics-mod) | [Harrisonfog](https://www.moddb.com/members/harrisonfog) | the snowtroopers |
 | [Battlefront 2 Remaster: imp_inf_stormtrooper](https://www.moddb.com/mods/hd-graphics-mod) | [Harrisonfog](https://www.moddb.com/members/harrisonfog) | the stormtroopers |
 | [Battlefront 2 Remaster: rep_inf_ep3trooper](https://www.moddb.com/mods/hd-graphics-mod) | [Harrisonfog](https://www.moddb.com/members/harrisonfog) | the clone troopers |
+
+## Textures shared alike
+
+Used under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); what the site builds from them is shared under the same licence.
+
+| Texture pack | By | On the site |
+| --- | --- | --- |
+| [Pixel Perfection Legacy (resource pack)](https://modrinth.com/resourcepack/pixel-perfection-legacy) | XSSheep, Nova_Wostra | The Minecraft tribute’s block tiles and mob skins, rebuilt into public/mc/ by scripts/mc-atlas.mjs; the built files are under the same licence |
 
 ## Scans, skies and kits (CC0)
 

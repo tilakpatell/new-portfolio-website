@@ -39,6 +39,18 @@
 
 Branch: `claude/minecraft-phase-1`.
 
+**As built (Phase 1 is merged; where the code differs from the tasks below, the code is right and later tasks build on it):**
+- *Vertex (1.6, 1.11):* six 16-bit numbers, 12 bytes, not the 8 the task names (its own list was 9 bytes and had no texel corner or sub-block height): `x, y, z` in sixteenths of a block within the chunk (y is the height in the column, 0–4096), `layer`, `face | ao << 3 | tint << 5 | light << 8`, `u | v << 5`. Face 6 is a plant's cross. Tints are six: none, grass, foliage, water, birch, spruce (birch and spruce leaves have the game's fixed colours).
+- *Meshes (1.11):* one mesh per pass per chunk column, its sixteen sections laid end to end, not a mesh per section (that was 630 draws on hills at distance 10, over the task's own 600; the column is 400–450). `scene/chunks.js` keeps sections apart and rebuilds a column's mesh on `flush()`; it detaches the shared index before disposing a geometry (three deletes the index buffer with it).
+- *Worker (1.9):* `{ type: 'chunk', key, seed, cx, cz, priority }` generates a chunk and meshes all sixteen sections against its eight neighbours, which the worker generates itself (cached), rather than `generate` then `mesh` with page-sent borders (the page has no neighbours when a chunk is first made, so every edge would be drawn as a wall). `mesh` with borders stays for edits. `makeClient` is in `rules/jobs.js`.
+- *Trees (1.5):* no `Feature` lists: every chunk grows the trees of the nine chunks round it from their deterministic lists and keeps the cells inside itself; `generate` returns `{ features: [] }`.
+- *Physics (1.7):* the walking test measures 20 ticks after a 20-tick run-up (from rest the game's 0.546 friction needs a few ticks, so 20 from rest is 4.06). A ladder clamps falls to 0.15 a tick and climbs at the game's 0.1176 (2.35 m/s). `world.boxes(x, y, z)` gives a cell's boxes for the shapes Phase 4 adds.
+- *Pack (1.3):* Pixel Perfection Legacy 25.4-75.1 (Nova_Wostra's continuation, Modrinth, modern 1.21 names), with the 1.12 aliases kept for visitors' packs. The atlas also writes `public/mc/sprites/` (sun, moon phases, clouds, hotbar, its selection, crosshair, hearts, food, air, and the grass and foliage colormaps) and `--vanilla <jar>` refuses any tile 90% the same as the game's. Chest and bed tiles are cut from their entity sheets.
+- *Tints (1.11):* grass and foliage come from the pack's colormaps at the biome's climate (`pack/colormap.js`), as the game reads them; Pixel Perfection's plains grass is 0x6dc475.
+- *Shaders:* three r186's GLSL3 has no `gl_FragColor`: each fragment shader declares `out highp vec4 outColour`.
+- *Island (1.12):* the table is two across and two high (top 2, too high to jump), at x 33–34, z 10–11, east of the N64, played from its south side. `universes.test.js` lists the world pages, so it gains the route.
+- *Save (1.10):* Phase 1 keeps only `{ seed }` under `tp-mc` v1, so the same world comes back; Task 2.5 grows it.
+
 ### Task 1.1: The block registry
 
 **Files:**
