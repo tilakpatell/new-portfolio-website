@@ -102,8 +102,12 @@ export function createDirector({ plan, seed }) {
   const R = plan.runners ?? null;
   const luck = R ? Array.from({ length: R.count }, () => R.luck[0] + rand() * (R.luck[1] - R.luck[0])) : [];
 
-  // the AI's pressure by `t`: its curve, and what's come of the waves and the aces since
-  const base = (t) => (H * g(t)) / tAi;
+  // the AI's pressure by `t`: its curve, and what's come of the waves and the
+  // aces since. (The curve's for the chain less what the AI's own waves will
+  // strike if nobody stops them, so the AI alone, waves and all, still takes
+  // tAi, and every bomber of a wave a defender brings down is a real loss to it.)
+  const W = waves.reduce((sum, w) => sum + DIRECTOR.wave * Math.max(0, w.n - w.aiKills), 0);
+  const base = (t) => (Math.max(H / 2, H - W) * g(t)) / tAi;
   const bonus = (t, v) => {
     let b = 0;
     for (const w of waves) if (t >= w.arriveAt) b += DIRECTOR.wave * Math.max(0, w.n - w.aiKills - v(w.id));
