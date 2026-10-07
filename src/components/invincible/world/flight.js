@@ -1,14 +1,15 @@
 // Flying as Invincible, as plain numbers: walking and running on the ground,
 // taking off, hanging in the air, cruising where the camera looks, going
 // flat out (the sound barrier goes with a boom), coming down soft or hard
-// enough to crack the street, and bouncing off a tower hit too fast.
-// Pure: the scene reads the hero and the events each step leaves in `ev`.
+// enough to crack the street (or into the water, with a splash), and
+// bouncing off a tower hit too fast. Pure: the scene reads the hero and the
+// events each step leaves in `ev`.
 //
 // The hero: { p: [x, y, z] (his feet), v (velocity), spd and dir (his air
 // speed and its direction), face (the way he faces, as a yaw: forward is
 // (sin, cos)), mode: 'ground' | 'air', crouch (seconds left of a hard
 // landing), stun (seconds left of a crash), boomed, exited (gone up
-// through the top of the sky), ev }.
+// through the top of the sky, until he's back under it), ev }.
 //
 // Input: { fwd, side (−1…1, from the camera), up, down (0…1), boost, run,
 // jump (this step only), look: the camera's forward, a unit vector }.
@@ -200,18 +201,18 @@ function stepAir(h, input, dt, world) {
     h.p[1] = s.y;
     const down = -h.v[1];
     const flat = Math.hypot(h.v[0], h.v[2]);
-    if (s.water) {
-      if (down > FLY.slam) h.ev.push({ type: 'splash', at: [...h.p], speed: h.spd });
-      h.p[1] = s.y + 0.4;
-      if (h.dir[1] < 0) h.dir = flatten(h.dir);
-      h.v[1] = Math.max(0, h.v[1]);
-    } else if (down > FLY.slam) {
-      land(h, 'slam');
-    } else if (flat < FLY.skim && (down > 0.5 || (input.down ?? 0) > 0)) {
-      land(h, 'land');
-    } else if (h.dir[1] < 0) {
+    const hard = down > FLY.slam;
+    const soft = !hard && flat < FLY.skim && (down > 0.5 || (input.down ?? 0) > 0);
+    if (s.water && (hard || soft)) {
+      // the splash only on the way down onto it; once he's at its surface,
+      // holding down or a boost into it just goes nowhere (no splash every step)
+      if (prev[1] > s.y + 1e-6) splash(h);
+      else h.v[1] = Math.max(0, h.v[1]);
+    } else if (hard) land(h, 'slam');
+    else if (soft) land(h, 'land');
+    else if (h.dir[1] < 0) {
       // skimming along it
-      h.dir = flatten(h.dir);
+      h.dir = flatten(h.dir, h.face);
       h.v = [h.dir[0] * h.spd, 0, h.dir[2] * h.spd];
     }
   }
@@ -222,9 +223,19 @@ function stepAir(h, input, dt, world) {
   }
 }
 
-function flatten(d) {
-  const l = Math.hypot(d[0], d[2]) || 1;
-  return [d[0] / l, 0, d[2] / l];
+// a direction along the ground (from one straight up or down, the way he faces)
+function flatten(d, face) {
+  const l = Math.hypot(d[0], d[2]);
+  return l > 1e-6 ? [d[0] / l, 0, d[2] / l] : forwardOf(face);
+}
+
+// He can't stand on the water, so where he'd land or crack the street he
+// stops dead at its surface instead, hanging there: no crater, a splash.
+function splash(h) {
+  h.ev.push({ type: 'splash', at: [...h.p], speed: h.spd });
+  h.spd = 0;
+  h.v = [0, 0, 0];
+  h.dir = flatten(h.dir, h.face);
 }
 
 function land(h, type) {
@@ -301,14 +312,16 @@ export function stepHero(hero, input, dt, world) {
       }
     }
     if (h.p[1] >= WORLD.ceiling) {
-      // the top of the sky: going up through it fast, he's out ('exit': ./orbit.js takes over)
-      if (h.v[1] > 20 && !h.exited) {
+      // the top of the sky: going up into it at all, he's out ('exit': ./orbit.js takes over).
+      // (Not only fast: held against it, his rise is taken away every step,
+      // so a slow one could never build into a fast one and he'd be stuck.)
+      if (h.v[1] > 0 && !h.exited) {
         h.exited = true;
         h.ev.push({ type: 'exit', at: [...h.p], speed: Math.hypot(...h.v) });
       }
       h.p[1] = WORLD.ceiling;
       if (h.v[1] > 0) h.v[1] = 0;
-    } else if (h.exited && h.p[1] < WORLD.ceiling - 600) h.exited = false;
+    } else if (h.exited) h.exited = false;
     if (h.mode === 'air') {
       h.spd = len(h.v[0], h.v[1], h.v[2]);
       if (h.spd > 1e-6) h.dir = [h.v[0] / h.spd, h.v[1] / h.spd, h.v[2] / h.spd];

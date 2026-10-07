@@ -65,8 +65,12 @@
 .iw-players:hover, .iw-players:active { transform: none; box-shadow: 3px 3px 0 #000; }
 .iw-players b { color: var(--iw-yellow); font-variant-numeric: tabular-nums; }
 
-.iw-compass { position: absolute; left: 50%; top: clamp(0.6rem, 2vw, 1.1rem); z-index: 2; width: min(420px, 50vw); height: 33px; transform: translateX(-50%); pointer-events: none; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7)); }
-@media (max-width: 640px) { .iw-compass { top: 5.2rem; } }
+/* the compass: under the buttons, clear of them and of the eyebrow. The
+   world sets --iw-under to the bottom of the buttons, however many rows they
+   wrap to; its canvas is sized to this box at the screen's density, and
+   leaves out whatever of the HUD still sits over it. */
+.iw-compass { position: absolute; left: 50%; top: max(calc(clamp(0.75rem, 2vw, 1.25rem) + 2.45rem), var(--iw-under, 0px)); z-index: 2; width: min(420px, 50vw); height: 33px; transform: translateX(-50%); pointer-events: none; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7)); }
+@media (max-width: 640px) { .iw-compass { top: max(5.2rem, var(--iw-under, 0px)); width: min(420px, 60vw); } }
 
 .iw-help { position: absolute; right: clamp(0.75rem, 2vw, 1.25rem); top: 4rem; z-index: 3; width: min(22rem, calc(100% - 1.5rem)); padding: 0.9rem 1rem; border: 2px solid #000; border-radius: 8px; background: var(--iw-glass-hi); color: var(--iw-ink); box-shadow: 4px 4px 0 var(--iw-yellow); font: 500 0.84rem/1.4 var(--font-sans); }
 .iw-help dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 0.8rem; margin: 0; }

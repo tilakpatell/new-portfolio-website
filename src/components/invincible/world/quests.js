@@ -12,7 +12,10 @@
 //   spinning down. Catch them before the ground, and set them down.
 //
 // stepQuests(q, hero, dt, world) → the next state, with this step's events
-// in `ev`. The hero is ./flight.js's: { p (his feet), v, mode }.
+// in `ev`. The hero is ./flight.js's: { p (his feet), v, mode, zone }; out
+// in space (zone 'space', his p the space's) the city goes on without him.
+// A step is never longer than a twentieth of a second, whatever `dt` says
+// (a tab hidden for a minute comes back as one step).
 
 import { COAST, groundAt, rng } from './map';
 
@@ -59,12 +62,15 @@ const CARD_R = 5;
 // ── rescues ──
 const FIRST_CALL = 25;
 const G = 9.8;
+const JUMP = 300; // m in one step: further than he flies, so he was put there, not flown
 
-export function newQuests(saved = {}) {
+// (what was kept can be anything by the time it's read back: only what makes sense is taken)
+export function newQuests(saved) {
+  const s = saved && typeof saved === 'object' ? saved : {};
   return {
-    lesson: { on: false, next: 0, t: 0, best: Number.isFinite(saved.best) ? saved.best : null },
-    cards: Array.isArray(saved.cards) ? [...saved.cards] : [],
-    saved: Number.isFinite(saved.saved) ? saved.saved : 0,
+    lesson: { on: false, next: 0, t: 0, best: Number.isFinite(s.best) && s.best > 0 ? s.best : null },
+    cards: Array.isArray(s.cards) ? CARDS.map((c) => c.ep).filter((ep) => s.cards.includes(ep)) : [],
+    saved: Number.isFinite(s.saved) && s.saved > 0 ? Math.floor(s.saved) : 0,
     rescue: null,
     nextCall: FIRST_CALL,
     calls: 0,
@@ -82,6 +88,14 @@ function through(ring, a, b) {
   const k = d0 / (d0 - d1);
   const x = [a[0] + (b[0] - a[0]) * k - ring.p[0], a[1] + (b[1] - a[1]) * k - ring.p[1], a[2] + (b[2] - a[2]) * k - ring.p[2]];
   return Math.hypot(...x) < ring.r;
+}
+
+// how near the move a→b came to c (flat out, a slow frame carries him further than a card is wide)
+function nearest(a, b, c) {
+  const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const dd = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+  const k = dd ? Math.max(0, Math.min(1, ((c[0] - a[0]) * d[0] + (c[1] - a[1]) * d[1] + (c[2] - a[2]) * d[2]) / dd)) : 0;
+  return Math.hypot(a[0] + d[0] * k - c[0], a[1] + d[1] * k - c[1], a[2] + d[2] * k - c[2]);
 }
 
 // somewhere for the next emergency: a tall roof's edge, or the sky over town
@@ -102,14 +116,20 @@ function call(q, hero, world) {
   return { kind, p: [x, 300, z], v: [0, -4, 0], out: [0, 0, 0], t: 0, phase: 'fall', carried: false, spin: 0 };
 }
 
-export function stepQuests(state, hero, dt, world) {
+export function stepQuests(state, hero, rawDt, world) {
+  // a twentieth of a second at most (and a step of NaN is no step at all)
+  const dt = Math.min(0.05, Math.max(0, rawDt || 0));
   const q = { ...state, lesson: { ...state.lesson }, cards: state.cards, ev: [] };
+  const away = hero.zone === 'space';
   const chest = [hero.p[0], hero.p[1] + 1, hero.p[2]];
-  const prev = q.prev ?? chest;
+  // where he was a step ago, unless he was put here (the dev hook, the way back from space)
+  const prev = q.prev && Math.hypot(chest[0] - q.prev[0], chest[1] - q.prev[1], chest[2] - q.prev[2]) < JUMP ? q.prev : chest;
 
   // the rings
   const L = q.lesson;
-  if (!L.on) {
+  if (away) {
+    if (L.on) L.t += dt;
+  } else if (!L.on) {
     if (through(RINGS[0], prev, chest)) {
       Object.assign(L, { on: true, next: 1, t: 0 });
       q.ev.push({ type: 'lesson-start' });
@@ -134,27 +154,26 @@ export function stepQuests(state, hero, dt, world) {
   }
 
   // the title cards
-  if (q.cards.length < CARDS.length) {
+  if (!away && q.cards.length < CARDS.length) {
     q.cardAt ??= CARDS.map((c) => c.at(world));
     CARDS.forEach((c, i) => {
       if (q.cards.includes(c.ep)) return;
-      const p = q.cardAt[i];
-      if (Math.hypot(chest[0] - p[0], chest[1] - p[1], chest[2] - p[2]) < CARD_R) {
+      if (nearest(prev, chest, q.cardAt[i]) < CARD_R) {
         q.cards = [...q.cards, c.ep].sort((a, b) => a - b);
         q.ev.push({ type: 'card', ep: c.ep, title: c.title, all: q.cards.length === CARDS.length });
       }
     });
   }
 
-  // the rescues
-  if (!q.rescue) {
+  // the rescues (nobody calls him while he's out in space)
+  if (!q.rescue && !away) {
     q.nextCall -= dt;
     if (q.nextCall <= 0) {
       q.rescue = call(q, hero, world);
       q.calls++;
       q.ev.push({ type: 'emergency', kind: q.rescue.kind, p: [...q.rescue.p] });
     }
-  } else {
+  } else if (q.rescue) {
     const r = { ...q.rescue, p: [...q.rescue.p], v: [...q.rescue.v] };
     q.rescue = r;
     r.t += dt;
@@ -175,7 +194,7 @@ export function stepQuests(state, hero, dt, world) {
         r.spin += dt * (r.kind === 'heli' ? 4 : 2);
       }
       const p = r.kind === 'heli' ? [r.p[0], r.p[1] + 1.5, r.p[2]] : [r.p[0], r.p[1] + 1, r.p[2]];
-      if (Math.hypot(chest[0] - p[0], chest[1] - p[1], chest[2] - p[2]) < reach) {
+      if (!away && nearest(prev, chest, p) < reach) {
         r.carried = true;
         q.ev.push({ type: 'caught', kind: r.kind });
       } else if (r.phase === 'fall' && r.p[1] <= groundAt(r.p[0], r.p[2])) {
@@ -184,8 +203,8 @@ export function stepQuests(state, hero, dt, world) {
         q.nextCall = 50 + rng(31 + q.calls)() * 30;
       }
     }
-    if (q.rescue?.carried) {
-      // in his arms (or held up over his head), until he lands
+    if (q.rescue?.carried && !away) {
+      // in his arms (or held up over his head), until he lands (in the city: not on the Moon)
       const off = r.kind === 'heli' ? [0, 2.4, 0] : [0, 0.9, 0.35];
       r.p = [hero.p[0] + off[0], hero.p[1] + off[1], hero.p[2] + off[2]];
       r.v = [...hero.v];
@@ -198,7 +217,7 @@ export function stepQuests(state, hero, dt, world) {
     }
   }
 
-  q.prev = chest;
+  q.prev = away ? null : chest;
   return q;
 }
 

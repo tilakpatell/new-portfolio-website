@@ -46,6 +46,8 @@ const NONE = { update() {}, resident: () => [], dispose() {} };
 
 export function createNearMaps({ level = detailLevel(), small = false, load = loadTexture, forget = forgetTexture, resident: max = 2, near = NEAR } = {}) {
   if (level === 'low' || small) return NONE;
+  // (DEV: off, to measure what they cost: scripts/universe-check.mjs --near off)
+  if (import.meta.env?.DEV && globalThis.localStorage?.getItem('tp-near') === 'off') return NONE;
   // id → { planet, state: 'loading' | 'on', T2, urls }
   const sets = new Map();
   let gone = false;

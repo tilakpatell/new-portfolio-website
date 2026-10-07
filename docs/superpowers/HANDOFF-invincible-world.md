@@ -55,13 +55,111 @@ Found: the first cast was made on `meshy-6-lite` at 16 k triangles, whose own te
 - The townspeople are simplified to 12 k triangles in the bake (`tris`): a dozen can be in sight at once, and at 31 k the plaza drew 1.70 M triangles on the low tier, over the 1.5 M budget. With them at 12 k: plaza 1.48 M, Eve's shot 1.46 M, Burger Mart 1.36 M, the school 1.41 M.
 - Credits for this round: about 1,020 on account 2 (fifteen meshy-7.1 models at 30 and two remade, rigs at 5, clips at 3 each and the two motions at 10, two retextures at 10). Account 2 had 2,973 left after it; its balance moved by more than this session spent while it ran, as before.
 
+### Task 1: the sweep, the metrics and one clock (2026-10-07)
+
+Every shot in `scripts/inv-world-check.mjs` was run on the low tier at 960×540: the city shots at noon and again at night, plus a phone run (W=390). A scratch diag script covered corrupt saves, a dive into the river, Eve, a lost WebGL context and a click on the time button while the city loads. The fixes went in file by file, then a review. At the end `npm run lint`, `npm test` (367 files, 4,347 tests; the one skip, `dickansh/seal.test.js`, needs a password) and `npm run build` pass. `npx vitest run src/components/invincible` runs 109 tests in 8 files.
+
+One finding changes the spec. The old script set the time only when a shot named one, so every shot after `streetnight` kept the night while the button said Noon. The spec's “from high up the city is murk” (item 3) came from such a frame. At noon, `high` reads: downtown, the river and the hills. What's left there is the low tier's aliasing (no MSAA, `avengers/hq/engine.js:22`), which turns the outer suburbs to speckle. Shots now default to noon.
+
+#### The metrics
+
+`--metrics` prints `name band=… mark=…` after each shot. It measures the saved PNG itself, decoded with sharp, on the canvas only: the `.iw-canvas` box under the site header (x 0, y 76, 960×477 at 960×540), cut to what's on screen. The HUD over the canvas counts, as a player sees it.
+
+- Luma is 0.2126 R + 0.7152 G + 0.0722 B on the sRGB values as stored, 0 to 1, not made linear.
+- band: the mean over every column, rows 35–75 % of the canvas.
+- mark: the difference between the mean of the 60×90 px box round him and the mean of the ring out to 100×130 px. The box is centred on `api.project([x, y + 0.9, z])` from `sim.h.p` (his feet), through the scene's own camera, read just after the shot. It prints `mark=off` when he's behind the camera or off the canvas.
+- `BOX=1` also writes `inv-<name>.box.png` with the band (cyan), the box (magenta) and the ring (yellow) drawn on. The shots themselves stay clean.
+- Two runs agree to 3 decimals. Porch moves by 0.001–0.002, because the title card spins.
+
+“Before” is HEAD's world measured with the new script; “after” is this task's tree. Every shot is at noon except `streetnight`. Task 2's targets: band 0.30–0.65 at noon and 0.12–0.35 at night; mark ≥ 0.18.
+
+| Shot | Band before | Band after | Mark before | Mark after |
+|---|---|---|---|---|
+| spawn | 0.498 | 0.498 | 0.167 | 0.167 |
+| street | 0.365 | 0.365 | 0.047 | 0.047 |
+| downtown | 0.316 | 0.316 | 0.042 | 0.044 |
+| streetnight (night) | 0.172 | 0.172 | 0.015 | 0.015 |
+| high | 0.442 | 0.442 | 0.039 | 0.041 |
+| porch | 0.506 | 0.506 | 0.128 | 0.126 |
+
+The bands are already in range. Mark misses everywhere: the best is spawn at 0.167, the worst streetnight at 0.015, and he's 0.04–0.05 in the air over the city. This task didn't change the look, so the numbers barely move; that's Task 2's job.
+
+#### The sweep
+
+Fixed here:
+
+- A `null` in `tp-inv-world-quests` took the whole `/invincible` page down, *Think, Mark!* too, on every reload. `newQuests` read `null.best` in `World`'s `useState`, and the route's error boundary caught it. `newQuests` now takes anything (`quests.js:68`) and keeps only real card episodes, once each, a `best` above 0 and a whole number of rescues. `keptQuests` can't throw (`InvWorld.jsx:81`). Before, `cards: ['x', 99, 1, 1, …]` counted 9 of 8, and the last card could never be found.
+- The time label could lie. `api.setTime` changed only the scene, and a click during “Over the city…” changed the label but not the sky. Now `time` is one state (`InvWorld.jsx:127`). `syncTime` (`:159`) gives the scene the latest time, one call at a time, and the loader awaits it. `scene.setTime` (`scene.js:188`) queues too, latest wins: two quick presses of T can't land the wrong way round, and a sky that loads as he goes up to space leaves space's look alone. The dev hook keeps its shape; its `api.setTime(name)` sets the state and resolves once the scene has the time. `streetnight`'s button now says Night.
+- A saved position was barely checked. A string `face` gave a black canvas of NaN geometry and was saved back; inside a tower he was pushed out sideways; at y 9,500 he was stuck. `isSafeStart(world, at)` (`map.js:358`) turns down anything that isn't three finite numbers, or is off the world, at or above 9,000 m, over water, under the land, or inside a building, house, shop, landmark or bridge. A roof, a bridge deck and the pavement by a wall pass. `placeHero` (`InvWorld.jsx:93`) checks it once the scene's world exists; a place it turns down gives the spawn and the first-visit drop. A bad face becomes the spawn's. Only a place `isSafeStart` takes is saved back (`:247`). A bad `tp-inv-world-time` gives noon.
+- The ceiling trap. At the top of the sky only a climb faster than 20 m/s got him out, and a hero pinned there could never make one. Now any climb into it goes out, flying level along it doesn't, and after re-entry he can go straight back up (`flight.js:314`).
+- A boost into the river skimmed at 260 m/s, splashed 7–8 times in 0.35 s and hit the next bridge. Now there's one `splash {at, speed}` and a stop at the surface, in the air; holding down or boost into the water does nothing more (`flight.js:207`, `:234`). It's drawn as a crown of spray, mist and droplets, with no crater (`fx.js:278`). It knocks the camera, and above 40 m/s it scares the people near it. It's heard as `splashSound(speed)`, at most once every 0.4 s.
+- The river ran through the hills in a sheer slot, its walls 60–180 m high. Now it's a 450 m valley with its banks at town level (`map.js:21`, `:81`), and 74 hill pines that stood in the water are gone. Everything else in `buildWorld` is unchanged.
+- `dt`: `stepQuests`, `stepFight` and `npcs.update` clamp it to 0.05 s themselves; NaN or below 0 is no step at all. Tested with `dt = 60`. This also stopped bolts tunnelling through him under the dev speedup.
+- Tunnelling: a card, a catch and a Flaxan ram now test the path since the last step, so at 260 m/s and 20 fps he can't fly through one (`quests.js:94`, `fight.js:76`). A move of 300 m or more in one step is a jump, not a flight: before, a dev-hook jump across ring 0 started Dad's lesson.
+- The rescue in space. There was no stray beacon in any case (checked in the browser), but the faller hung in mid-air while he was away. `stepQuests` now runs in space too (`InvWorld.jsx:464`): the faller falls and is missed, nobody calls, and whoever he carries stays carried. In space the goal chip shows no city distance.
+- Eve already resumed when he left. Now she also gives up on a hero who parks by her (`npcs.js:38`, `EVE`): she stops within 55 m and waits while he's within 75 m, 45 s with him or 6 s if he hangs back.
+- The camera ended up inside Mark beside a tower (`eve`, `rescue`, and with his back to a wall). `placeCamera` (`scene.js:335`) swings round him or up off the wall, and the near plane is capped at 0.3 × its distance to him. New shot: `wallback`.
+- The wind played on while the tab was hidden or the world scrolled away. It fades out now (`sounds.js` `hush`, `InvWorld.jsx:357`).
+- Input: a blur, a hidden tab or the world going out of view clears the keys, the stick, the touch buttons and drags (`release`, `InvWorld.jsx:300`). The stick follows one finger, so a second finger lifting off no longer zeroes it.
+- DPR: a `matchMedia(resolution)` listener refits the canvas and the HUD when only the density changes. The compass and the map are sized to their CSS box × DPR, so they're sharp on 2× screens; the minimap stays round.
+- The HUD's Height in space is over the nearest of the Earth, the Moon and Mars (`InvWorld.jsx:573`). On the Moon it reads 0 m, not 81 km.
+- The re-entry plasma was a cream egg with a hard top edge: the sheath's fill over the bright Earth tipped the bloom's near-hard threshold. The sheath now glows at its outline and leading cap (`fx.js:186`), and Mark shows through it.
+- Found while fixing: a time change in space moved the planets' sun but not the light on Mark (`scene.js` `putUpTime`).
+- Found in review: a soft landing in the city unlocked Mars, since every `land` event was taken as the Moon's or Mars'. Now only a `land` with a `body` counts (`InvWorld.jsx:553`).
+- The HUD overlap, as a stopgap. The compass sits under the buttons, however many rows they wrap to (`--iw-under`, `world.css:72`). Its type is in CSS px, 10.5 px on phones (it was about 5). Labels never overlap each other or N, E, S and W. Task 3's `layoutCompass` replaces all this.
+- The script: shots default to noon; a jump between shots clears `sim.quests.prev`; a city shot after a space shot now comes down through the top of the sky first. Before, `dusk` and `night` in a full run were black frames of space, 200 m over the Earth's sphere.
+
+Left for a later task:
+
+- Mark is hard to see at night (`streetnight` mark 0.015, `orbitnight`) and about 25 px tall at speed (`boost`). Task 2.
+- Noon is flat: black tower windows, and one grey for the streets and walls. Task 2.
+- The far hills bleach white at noon, since the fog tint is fixed (`scene.js:44`), and the HDRI's own clouds show as dark banks at 7.6 km. Task 2, fog from the sky.
+- From high up, the outer city is speckle on the low tier. Task 2, the street widths at distance.
+- The river ends where the mountains rise at the world's north edge (`ground.js` `landAt`); the old slot hid it. Task 2, with the river's edge.
+- In the city the HUD's Height counts from the river bed (`InvWorld.jsx:573`; `groundAt` is −8 there). `river` reads 33 m at y 25, which is 27.5 m over the water. It wants `Math.max(groundAt, WATER_Y)`, as `:56` has. Task 3.
+- Compass labels butt up against the cardinals (“Burger MartW”, “GDAN”), a label can sit up to 48 px off its dot (`porch`'s Graysons'), and a mark whose label won't fit is a bare dot (`rings`, `photo`). Task 3, `layoutCompass`'s second row.
+- The site's “Achievement unlocked” toast covers the HUD's bottom centre (`boost`). Task 3.
+- Bolts hit a point. They no longer tunnel through a hovering hero, but one meeting a hero flat out head-on can still pass through. Task 7, `foes.js`.
+- The Flaxan portal's swirl has a horizontal seam across its left half (`flaxans.js`, the `fight` shot). Task 7, `villains.js`.
+- The `fight` shot shows the portal and “12 left” but no Flaxans: with `dt` clamped, `sim.speedup` no longer fast-forwards them. Task 7's `fight` shot should wait on `sim.fight` (a foe in the `fight` state), not on 9 s.
+- The person he carries isn't drawn in space, because the whole challenges group is hidden there. Task 9, `challenges.js`.
+- Dad's “lesson lost” comes on Mark's first step back in the city, not as he leaves. Task 6.
+- `eve`: Mark is whole now, but Eve is behind a tower and only her balloon shows. Task 6, with its `eve` shot.
+- The script waits on the wall clock, and headless Chromium draws about a frame a second, so the minimap can be the previous shot's (`suburb` shows `curb`'s, `seismic` shows `chase`'s). `sim.snap` is never cleared, so his clips jump a second a frame and the poses are arbitrary (`scene.js:495`). Task 9, which drives the shots through the dev hook and waits on state.
+- `moon` and `mars` look straight down at the surface from 70 and 90 m, and the side step lands him on the Moon, so they come out a flat grey and a flat brown. Task 11, with its shots.
+
+Checked and already right, so nothing to reproduce: Eve resuming once he's gone, the cards and Try again after a lost WebGL context, keys cleared on blur, the stick cleared on a cancelled touch, and the rescue beacon.
+
+Not the world's: the small grey and orange pill at the bottom left of every shot is a site-wide widget, and it shows on the error page too.
+
+#### The stubs
+
+Eight new shots frame where Task 9's missions will be. Nothing is started yet. Numbers are from this task's tree, at noon.
+
+| Shot | What it frames | band | mark |
+|---|---|---|---|
+| `bank` | The hall's east colonnade, the plaza's east strip and the crossing | 0.307 | 0.002 |
+| `chase` | West along the downtown street at z −120, 30 m up | 0.142 | 0.004 |
+| `seismic` | The school's front and quad from 20 m up | 0.410 | 0.079 |
+| `maulers` | Street level on x 40: the hall on the left, the east block on the right | 0.312 | 0.032 |
+| `eveescort` | Eve flying off his left among the towers | 0.184 | 0.065 |
+| `dadlesson` | Behind ring 0, lit, looking along the course toward downtown | 0.453 | 0.005 |
+| `gdasiege` | From 90 m over the east bank: the GDA's hangar and office, small, under the card's light shaft | 0.393 | 0.026 |
+| `photo` | The hall's front from the plaza's south-east corner | 0.475 | 0.135 |
+
+`chase` is dark even at noon: it's a street between glass towers. Place shots now take `pitch`. Follow shots take `side` (how far he sits to the right of the target) and `turn` (added to the target's heading; 0.5 by default).
+
 ## How to check
 
-- `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic (51 tests at the space merge).
-- With the dev server running, `OUT=/tmp/shots node scripts/inv-world-check.mjs [shot …]`.
-  - Shots: `spawn street curb downtown high suburb river boost porch gda burger school plaza eve jet clouds rings card rescue climb orbit orbitnight moon reentry allen mars thragg dusk night streetnight`.
+- `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic and fight (51 tests at the space merge, 89 after Task 1).
+- With the dev server running, `OUT=/tmp/shots node scripts/inv-world-check.mjs [--metrics] [shot …]`.
+  - Shots, in the order they run: `spawn street curb streetnight downtown high suburb river boost porch gda burger school plaza eve jet clouds rings card wallback rescue fight climb orbit orbitnight moon reentry allen mars thragg dusk night`.
+  - The mission stubs, which only frame the places for now: `bank chase seismic maulers eveescort dadlesson gdasiege photo`.
+  - A shot is at noon unless it names a time.
+  - `--metrics` prints `name band=… mark=…` after each shot (see Task 1 above for how it measures). `BOX=1` with it also writes `inv-<name>.box.png`, the band, box and ring drawn on.
   - Each shot is roughly 10 s in SwiftShader at 960×540, low tier.
 - Dev hook: `window.__INVWORLD__ = { api, sim }`.
+  - `api.setTime(name)` sets the HUD's one clock and resolves once the scene has the time.
   - `sim.h` is the hero; `sim.yaw` and `sim.pitch` are the camera.
   - `sim.snap` puts the camera and the pose where they're going.
   - `sim.hold` freezes Eve and the jet.
