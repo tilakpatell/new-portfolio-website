@@ -107,7 +107,8 @@ say(await page.evaluate(() => window.__universeDebug.travel('home', 'super')), '
 say(await until(() => window.__universeDebug.state.ship.z > -20000, null, 400), 'back through into the main map');
 w = await where();
 console.log('     out at', w.x.toFixed(0), w.y.toFixed(0), w.z.toFixed(0), '·', w.note);
-say(await until(() => window.__universeDebug.state.at === 'home' && !window.__universeDebug.state.auto, null, 400), 'home');
+// (the longest leg: out of the portal by the Rick and Morty planet, and the whole way in; slow in software GL)
+say(await until(() => window.__universeDebug.state.at === 'home' && !window.__universeDebug.state.auto, null, 1200), 'home');
 await shot('sector-4-home');
 
 console.log(errors.length ? `${errors.length} errors:\n${[...new Set(errors)].slice(0, 30).join('\n')}` : 'no errors');
