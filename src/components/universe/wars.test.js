@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SYSTEMS } from '../galaxy/systems';
 import { WONDERS, reachOf } from './deep';
-import { HOME_RADIUS, POSITIONS, RIM } from './layout';
+import { HOME_RADIUS, POSITIONS, RIM, sectorOf } from './layout';
 import { FIGHTERS, HULLS, SUBSYSTEMS, TURRETS, WARS, warFor } from './wars';
 
 const all = Object.values(WARS);
@@ -77,13 +77,13 @@ describe('the wars', () => {
     for (const banned of ['first order', 'resistance', 'starkiller', 'kylo', 'snoke', 'rey ', 'exegol', 'jakku', 'crait', 'finalizer', 'supremacy']) expect(words.includes(banned), banned).toBe(false);
   });
 
-  it('fights Rick and Morty’s war at its real places: out from the Citadel to the Federation’s Earth, C-137', () => {
+  it('fights Rick and Morty’s war in the main map: out from the Council’s picket to the Federation’s Earth, C-137', () => {
     const w = WARS.rickmorty;
     expect(w.ready).toBe(true);
-    const citadel = WONDERS.find((o) => o.id === 'citadel');
     const [first, last] = [w.sectors[0], w.sectors[w.sectors.length - 1]];
-    expect(first.id).toBe('citadel');
-    expect(Math.hypot(...first.at.map((v, i) => v - citadel.at[i]))).toBeLessThan(reachOf(citadel) + 700);
+    expect(first.id).toBe('picket');
+    // (the Citadel is through the portal, in the Rick and Morty sector: the war stays this side)
+    for (const s of w.sectors) expect(sectorOf(...s.at), s.id).toBe('main');
     expect(last.id).toBe('c137');
     expect(Math.hypot(...last.at.map((v, i) => v - POSITIONS.rickmorty[i]))).toBeLessThan(900);
     // (the Council's end is the Citadel's, the Federation's the Earth it took)

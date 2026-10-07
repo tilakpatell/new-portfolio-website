@@ -81,9 +81,51 @@ leaving the machine.
 | `contract/gen3d-budget.test.mjs` | a model too heavy for its cut is refused in `budget.mjs`'s words, nothing credited |
 | `contract/gen3d-runner.test.mjs` | an issue through the runner ends as a branch, a pull request with the sheet, verdict and cuts, a comment and a closed issue; every field reaches the pipeline; a bad field and a dead engine end as `gen3d:failed` with nothing pushed; four sides reach the engine at once |
 
+| `contract/voices.test.mjs` | `export-lines.mjs` over a fixture `src/` tree (two worlds' `voicelines.js`) lists every line with the id `lineId()` gives in JavaScript; `generate.py` with the fake worker and ears makes an mp3 for each speaker with a reference, names the one without, marks the mumbled line doubtful, and writes a manifest the site finds each line in; the Python side's own tests of the fakes |
+| `contract/voices-runner.test.mjs` | a voices issue through the runner ends as a branch and a pull request that counts the lines made and names who has no voice |
+
+The voices tests need a Python with numpy and soundfile (the voices venv,
+`VOICES_TEST_PYTHON`, or `python3` on the PATH) and ffmpeg. Without them
+they skip and say why, except on CI, where the AI job installs both and a
+missing one fails.
+
+The voices fakes:
+
+| knob | stands in for | what it does |
+| --- | --- | --- |
+| `VOICES_ENGINE=fake` | the TTS engines (`generate.py`'s `engines_for`) | `fakes/voices_worker.py`: each take a tone as long as its words take to say, and a sidecar (`<take>.said.json`) saying what was said and how alike the voice is; a line with the word “mumbles” comes out scrambled and in another voice |
+| `VOICES_JUDGE=fake` | Whisper, WavLM, UTMOS (`common.ears()`) | `fakes/voices_judge.py`: hears the sidecar's words, similarity 0.9 (0.3 for a mumbled take), naturalness 4.0; no models, no torch |
+| `VOICES_LINES_FROM=voicelines` | the site's own line lists (`export-lines.mjs`) | only the `voicelines.js` files under `src/`, for a fixture tree with none of the site's other lists |
+
+(The marker is a word, not `[bad]`: the site's `spoken()` and the
+pipeline's `speakable()` both drop bracketed asides, so a bracket never
+reaches the worker.)
+
 The fixtures: `x-wing-ref.png` (the site's X-wing rendered on white at
 512², with `scripts/glb-shot.mjs`), issue bodies (`issue-*.md`, with
 `{{BASE}}` where the picture server goes) and judge scripts (`judge-*.json`).
+
+## Tier 2: the assets as shipped
+
+Tests over the repository as it is, so a model or a voice line added by
+hand is held to the same bar as a generated one.
+
+| file | what it holds to |
+| --- | --- |
+| `assets/gen3d.test.mjs` | every `public/models/gen3d/<name>.glb` has its `.hq` and `.lo` cuts; each within its budget for the ask the cuts imply (`budget.mjs`'s `inferFaces`), and no less than a quarter of it (a smaller cut copied over); each under its tier's size cap; WebP textures no bigger than its tier's; meshopt; one scene; credited `gen3d/<name>` |
+| `assets/credits.test.mjs` | every credit (`public/games/credits.json`, `src/data/modelCredits.json`, a folder's own `credits.json`) is for a file that exists; every GLB under `public/models/` has a credit, but those on `allow-uncredited.json` |
+| `assets/voiced.test.mjs` | every mp3 in `public/audio/voiced/` is in the manifest and every entry is a file; each is a run of real MPEG frames (`mp3.mjs`) between 0.3 and 30 s; each is a line the site still says (`export-lines.mjs --out`); every speaker with lines has a folder, but those on `allow-voiceless.json` |
+
+`assets/glb.mjs`'s `inspect(file)` reads a GLB as the site's loader would
+(meshopt decoded): triangles, bytes, textures, extensions, scenes, the
+bounding box. `assets/credits.mjs` says which file each credit is for,
+since none of the three lists names its file outright.
+
+**The allow-lists are findings.** `allow-uncredited.json`,
+`allow-orphans.json` (mp3s the manifest doesn't list; lines the site no
+longer says) and `allow-voiceless.json` hold what was wrong when the tests
+were first run. They only shrink: an entry fixed since fails the test
+until it is taken off.
 
 ## Adding a case
 
