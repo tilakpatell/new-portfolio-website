@@ -55,15 +55,24 @@
 // evacuation's or a blockade's, launched through it, `need` of them out
 // winning it for their side, all of them down losing it).
 //
+// And in the galaxy, the battle every pilot there shares: with a `plan`
+// (battlePlan.js: its objectives stage by stage) and a `director`
+// (battleDirector.js's state, now), the battle doesn't decide itself. Its
+// objectives' hp and stage, its shield and its end are the director's
+// (battleStages.js takes them in); your shots on an objective count a punch
+// each and are told (onMine); the AI's fire on an objective only lights it
+// up, and on a capital ship's hull wears it down but never sinks it; and it
+// ends only when it's told to (end).
+//
 // createBattle({ war, attacker, at, axis, perSide, rand, lines, radius,
 //   avoid, clock, elapsed, shared, onMine, tickets, objectivesOn, ace,
-//   runners }) → battle (with
+//   runners, plan, director }) → battle (with
 //   runners, disable(id, s), wreck(id), moveCapital(cap, d), turnCapital(cap, axis, a),
 //   addRunner({ team, kind, size, hp, from, to, speed })):
 //   { teams, capitals, fighters, bolts, phase, clock, over, you, defender, lines, radius, length,
-//   attacker, ahead, setYou(team | null), update(dt, you) → events, hit(from, to,
+//   attacker, ahead, stageOpen, opensIn, setYou(team | null), update(dt, you) → events, hit(from, to,
 //   damage) → hit | null, fire(team, from, dir, kind, target), targets,
-//   info, end(winner) }
+//   info, end(winner, why) }
 // `you`: { x, y, z, alive } (the ship, as the scene has it), or null.
 // update(dt) steps the battle BATTLE.step at a time, whatever the frame
 // rate, so the same seed fights the same battle on any screen; `ahead` is
@@ -83,10 +92,11 @@ import { BATTLE, UP, ZERO, copy, cross, dist2, len, norm, set, turnToward, v3 } 
 import { flyFighter, muster, spawn } from './battleAi';
 import { ageCapitals, fireBatteries, holdCapitals, hullHit, layCapitals } from './battleCapitals';
 import { createRunners } from './battleRunners';
+import { createStages } from './battleStages';
 
 export { BATTLE, WIDTH, inSights, perSide, turnToward } from './battleKit';
 
-export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0], perSide: n = 20, rand = Math.random, lines = BATTLE.lines, radius = BATTLE.radius, avoid = [], clock = BATTLE.clock, elapsed = 0, shared = null, onMine = null, tickets = true, objectivesOn = 'flagship', ace = {}, runners = null }) {
+export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0], perSide: n = 20, rand = Math.random, lines = BATTLE.lines, radius = BATTLE.radius, avoid = [], clock = BATTLE.clock, elapsed = 0, shared = null, onMine = null, tickets = true, objectivesOn = 'flagship', ace = {}, runners = null, plan = null, director = null }) {
   const defender = 1 - attacker;
   const C = v3(...at);
   const A = norm(v3(axis[0], 0, axis[1])); // from the first side's line to the second's
@@ -111,6 +121,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     defender,
     you: { pos: v3(), prev: v3(), vel: v3(), alive: false, team: null, on: 0 },
     runners: [],
+    stageOpen: true, // (with a director: whether the stage's open yet, and if not, how long till it is)
+    opensIn: 0,
   };
 
   // ── the battle's inner context, for its parts (battleAi, battleCapitals, battleRunners) ──
@@ -122,13 +134,21 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     b.over = { winner, why };
     out.push({ type: 'over', winner, why });
   };
-  const k = { b, rand, between, C, A, S, lines, radius, avoid, attacker, defender, pending, newId: () => nextId++, flagOf, objOf, youIn, finish };
+  const subDown = (s, mine) => {
+    s.alive = false;
+    return { type: 'sub', sub: s.id, kind: s.kind, phase: s.phase, at: copy(v3(), s.pos), mine };
+  };
+  // (with the galaxy's director it's the director that decides the battle:
+  // the battle never ends itself, and the AI's fire sinks no capital ship)
+  const decides = !(plan && director);
+  const k = { b, rand, between, C, A, S, lines, radius, avoid, attacker, defender, pending, newId: () => nextId++, flagOf, objOf, youIn, finish, decides, onMine, subDown };
 
   // the capital ships in their lines, the fighters up, the runners ready
   layCapitals(k, objectivesOn);
   muster(k, n, ace);
   holdCapitals(k);
   const runs = createRunners(k, runners);
+  const stages = decides ? null : createStages(k, plan, director);
 
   // ── the bolts ──
   let cursor = 0;
@@ -170,11 +190,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     if (b.you.on && f.target === b.you) b.you.on -= 1;
     return { type: 'down', team: f.team, kind: f.kind, role: f.role, at: copy(v3(), f.pos), mine, ...(f.ace ? { ace: true } : {}) };
   };
-  const subDown = (s, mine) => {
-    s.alive = false;
-    return { type: 'sub', sub: s.id, kind: s.kind, phase: s.phase, at: copy(v3(), s.pos), mine };
-  };
-  const shielded = (cap) => cap.objective && b.phase === 1;
+  const shielded = (cap) => cap.objective && (stages ? b.shieldUp : b.phase === 1);
 
   // the first of the other side's capital ships (its objectives, then its
   // hull) a segment from p0 to p1 meets: { cap, sub, k, at } or null
@@ -200,6 +216,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // (its hp: what it started with, less what's been dealt it here and what other pilots did: shared)
   const subHp = (s) => s.hpMax - s.dealt - (shared ? shared(s.id) : 0);
   const subHit = (s, dmg, mine, out) => {
+    if (stages) return stages.hit(s, dmg, mine, out);
     if (s.phase !== b.phase) return false;
     if (s.cap.disabled > 0) dmg *= BATTLE.ionSubs;
     s.dealt += dmg;
@@ -303,7 +320,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
             // (counted on the objective)
           } else if (shielded(h.cap)) out.push({ type: 'impact', at: h.at, size: o.kind === 'turbo' ? 1.6 : 0.6, shield: true });
           else {
-            hullHit(h.cap, o.damage * BATTLE.hullShare[o.kind], out);
+            hullHit(h.cap, o.damage * BATTLE.hullShare[o.kind], out, !decides);
             if (o.kind !== 'laser' && o.kind !== 'flak') out.push({ type: 'impact', at: h.at, size: o.kind === 'turbo' ? 1.4 : 1, shield: false });
           }
         }
@@ -395,10 +412,13 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     runs.judge(out, before);
     if (!b.over) for (const cap of b.capitals) fireBatteries(k, cap, dt);
     moveBolts(dt, out);
-    if (!b.over) sharedSubs(out);
-    checkPhase(out);
+    if (stages) stages.sync(out);
+    else {
+      if (!b.over) sharedSubs(out);
+      checkPhase(out);
+    }
     ageCapitals(k, dt, out);
-    if (!b.over) {
+    if (!b.over && decides) {
       const t = b.teams[attacker];
       if (tickets && t.tickets <= 0 && !b.fighters.some((f) => f.alive && f.team === attacker)) finish(defender, 'tickets', out);
       else if (b.clock >= clock) finish(defender, 'clock', out);
@@ -475,7 +495,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       return { id: hitF.id, kind: hitF.kind, at: copy(v3(), hitF.seen), size: hitF.size, down };
     }
     if (!h) return null;
-    if (h.sub && subHit(h.sub, damage * BATTLE.youShare, true, pending)) return { id: h.sub.num, kind: 'subsystem', sub: h.sub.id, at: h.at, size: 1, down: !h.sub.alive };
+    // (with a director a hit's a punch of the objective's hp: what it's worth is shared out by the director)
+    if (h.sub && subHit(h.sub, damage * (stages ? 1 : BATTLE.youShare), true, pending)) return { id: h.sub.num, kind: 'subsystem', sub: h.sub.id, at: h.at, size: 1, down: !h.sub.alive };
     if (shielded(h.cap)) {
       pending.push({ type: 'impact', at: h.at, size: 0.6, shield: true });
       return { id: h.cap.id, kind: 'shield', at: h.at, size: 0.4, down: false, shield: true };
@@ -520,7 +541,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       if (b.you.team === attacker) {
         const flag = objOf();
         for (const s of flag?.subs ?? []) {
-          if (!s.alive || s.hidden || s.phase !== b.phase) continue;
+          if (!s.alive || s.hidden || s.phase !== b.phase || !b.stageOpen) continue;
           s.tgt ??= { id: s.num, at: s.pos, vel: ZERO, size: s.r, kind: 'subsystem', name: NAMES[s.kind], sub: s.id, threat: 0, hp: 0, hpMax: s.hpMax };
           s.tgt.hp = s.hp;
           targets.push(s.tgt);

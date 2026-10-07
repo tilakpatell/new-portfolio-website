@@ -167,7 +167,7 @@ describe('the side you swore to', () => {
     expect(k.front.battle.you.team).toBe(0);
     expect(k.said.filter((e) => e.sub === 'join')).toHaveLength(1);
   });
-  it('an Imperial pilot at a liberation is on the defence, sends no fight keys, and scores for the Empire', () => {
+  it('an Imperial pilot at a liberation is on the defence, sends no damage to objectives, and scores for the Empire', () => {
     const k = kit('empire');
     const here = into(k);
     k.front.update(1 / 30, 0, camera, here);
@@ -178,18 +178,26 @@ describe('the side you swore to', () => {
     for (let i = 0; i < 30; i++) shoot(k.front, g.pos, 3);
     downOne(k, 0, 'fighter');
     for (let i = 0; i < 10; i++) k.front.update(1, 0, camera, null);
-    for (const m of k.sent.fight) expect(Object.keys(m.m)).toEqual([]);
+    // (a defender's in the shared battle too since the director: it counts
+    // itself in, here:d, and only an intercept would shore anything up; a
+    // fighter down is no intercept, and its own flagship's not its to hurt)
+    for (const m of k.sent.fight) expect(Object.keys(m.m).filter((key) => key !== 'here:d')).toEqual([]);
+    expect(k.sent.fight.some((m) => m.m['here:d'] === 1)).toBe(true);
     expect(warTally(k.ms).mine(pointsKey('empire', FRONT_ID, k.front.on.step))).toBeGreaterThan(0);
     expect(warTally(k.ms).mine(pointsKey('rebel', FRONT_ID, k.front.on.step))).toBe(0);
     expect(Object.keys(k.sent.war.at(-1).m).some((key) => key.startsWith('imp:'))).toBe(true);
   });
-  it('a bomber of the attacker’s brought down by a defender is an intercept', () => {
+  it('a bomber of the attacker’s brought down by a defender is an intercept, and shores up the objective the attacker’s AI is on', () => {
     const k = kit('empire');
     const here = into(k);
     k.front.update(1 / 30, 0, camera, here);
+    const target = k.front.info.shared.target;
+    expect(target).toBeTruthy();
     downOne(k, 0, 'bomber');
     expect(warTally(k.ms).mine(pointsKey('empire', FRONT_ID, k.front.on.step))).toBeCloseTo(GCW.points.intercept, 5);
     expect(k.said.filter((e) => e.sub === 'intercept')).toHaveLength(1);
+    for (let i = 0; i < 3; i++) k.front.update(1, 0, camera, null);
+    expect(k.sent.fight.at(-1).m[`g:${target}`]).toBeGreaterThan(0);
   });
   it('the battle won is the side’s that won it', () => {
     const k = kit('empire');
@@ -227,6 +235,72 @@ describe('the side you swore to', () => {
     g.front.update(1 / 30, 0, camera, null);
     g.front.force('empire');
     expect(g.front.pieces.length).toBeGreaterThan(0);
+  });
+});
+
+describe('the battle every pilot shares (the director)', () => {
+  // a pilot at the front, flying in among the battle
+  const at = (side, ms) => {
+    const k = kit(side);
+    k.at(ms);
+    k.front.enter(systemById(FRONT_ID), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    const p = k.front.info.laid.at;
+    k.front.update(1 / 30, 0, camera, { x: p[0], y: p[1], z: p[2] });
+    return k;
+  };
+  const objectives = (k) => k.front.battle.capitals.find((c) => c.objective).subs.filter((s) => s.planned).map((s) => [s.id, +s.hp.toFixed(6), s.alive]);
+  const allDown = (k) => {
+    const m = Object.fromEntries(k.front.director.keys().filter((key) => !key.includes(':')).map((key) => [key, 1e4]));
+    return { type: 'fight', from: 'p3', msg: { e: k.front.on.id, m, t: {} } };
+  };
+
+  it('counts each pilot in once, on its side (here:a, here:d)', () => {
+    const k = at('rebel', MS);
+    for (let i = 0; i < 4; i++) k.front.update(1, 0, camera, { x: k.front.info.laid.at[0], y: k.front.info.laid.at[1], z: k.front.info.laid.at[2] });
+    expect(k.sent.fight.at(-1).m['here:a']).toBe(1);
+  });
+
+  it('two pilots, one on each side, hearing the same, see the same battle end the same way, and only the winners score it', () => {
+    const rebel = at('rebel', MS);
+    const empire = at('empire', MS);
+    const start = rebel.front.on.start;
+    for (const k of [rebel, empire]) {
+      k.front.onNet(allDown(k));
+      k.at(start + 301e3);
+      k.front.update(1 / 30, 0, camera, null);
+      k.front.update(1 / 30, 0, camera, null);
+    }
+    expect(rebel.front.battle.over).toMatchObject({ winner: 0 });
+    expect(empire.front.battle.over).toMatchObject({ winner: 0 });
+    expect(warTally(rebel.ms).value(winKey('rebel', FRONT_ID, rebel.front.on.step))).toBe(1);
+    expect(warTally(rebel.ms).value(winKey('empire', FRONT_ID, rebel.front.on.step))).toBe(0);
+    expect(rebel.said.filter((e) => e.sub === 'won')).toHaveLength(1);
+    expect(empire.said.filter((e) => e.sub === 'lost')).toHaveLength(1);
+  });
+
+  it('a pilot joining at nine minutes sees the same objectives as one who’s been there since the start', () => {
+    const from = at('rebel', MS);
+    const start = from.front.on.start;
+    const word = { type: 'fight', from: 'p3', msg: { e: from.front.on.id, m: { 'gen-port': 90, 'g:gen-star': 2 }, t: {} } };
+    from.front.onNet(word);
+    for (let s = 90; s <= 540; s += 30) {
+      from.at(start + s * 1000);
+      from.front.update(1 / 30, 0, camera, null);
+    }
+    const late = at('rebel', start + 540e3);
+    late.front.onNet(word);
+    late.front.update(1 / 30, 0, camera, null);
+    // (the late one counted itself in, here:a, and the other never flew in after; that's no damage either way)
+    expect(objectives(late)).toEqual(objectives(from));
+    expect(late.front.battle.phase).toBe(from.front.battle.phase);
+  });
+
+  it('ends a battle only when the director says, not on the battle’s own clock', () => {
+    const k = at('rebel', MS);
+    k.front.battle.clock = 650;
+    for (let i = 0; i < 20; i++) k.front.update(0.1, 0, camera, null);
+    expect(k.front.battle.over).toBeNull();
   });
 });
 

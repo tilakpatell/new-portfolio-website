@@ -9,18 +9,30 @@
 // (crews.js's battle lines, each with the side, the war and the system); the
 // system's own fleets stand aside while it's on (world.js's quiet).
 //
-// Shared: the damage every pilot here does to its objectives is a tally
-// (universe/tally.js, its epoch the battle's id) sent to the others in the
-// system (the client's `fight`), so a shield generator one pilot takes down
-// goes down for all of them; and what you did counts in the war (warState.js:
-// points for each objective and fighter you take down, the battle won once
-// for everyone in it), sent to everyone online (`war`). What you did counts
+// Shared: the battle is the one every pilot in the system sees. What the
+// pilots here have done is a tally (universe/tally.js, its epoch the
+// battle's id) sent to the others in the system (the client's `fight`), and
+// the battle's course is worked out from it, the battle's seed and the
+// clock everyone shares (universe/battleDirector.js, running the battle's
+// plan, universe/battlePlan.js): its objectives' hp, its stages, its
+// runners, the capital ships it loses, and its end, so a shield generator
+// one pilot takes down goes down for all of them, a pilot dropping in late
+// sees what one who's been there all along does, and the battle's won by
+// one side for everyone in it. The dogfight round you (universe/battle.js)
+// is your own: the spectacle, and your part in it.
+//
+// What you did counts in the war (warState.js: points for each objective
+// and fighter you take down, the battle won by the side that won it,
+// counted once for everyone in it), sent to everyone online (`war`), and
 // for your side: the attacker's objectives are only the attacker's to take
 // (a defender's shots at their own flagship are nobody's business), and a
-// defender scores the attacker's fighters down, a bomber as an intercept.
-// A set piece's target that's one side's to take whoever attacks (an enemy
-// Star Destroyer's reactor, Endor's generator) counts only that side's
-// shots (ctx.mineAs).
+// defender scores the attacker's fighters down, a bomber as an intercept,
+// which shores up the objective the attacker's AI is on (`g:<id>`). Each
+// pilot counts itself in once, on its side (`here:a`, `here:d`), and the
+// more pilots a side has, the less each one's damage counts (the director's
+// scale). A set piece's target that's one side's to take whoever attacks
+// (an enemy Star Destroyer's reactor, Endor's generator) counts only that
+// side's shots (ctx.mineAs).
 //
 // And the set pieces (warpieces/: Endor's shield generator, superlaser and
 // reactor run, Hoth's ion cannon and transports, Scarif's ram onto the gate,
@@ -32,12 +44,14 @@
 //   now, allegiance }) → { enter(sys, world), update(dt, t, camera, live) → { busy, hurt,
 //   ship?, speedCap?, kill? },
 //   hit(from, to, damage), targets, solids, setNet(client), onNet(e), battle,
-//   info, win(team), dispose() }
+//   director, info, win(team), dispose() }
 // `allegiance()` → { war, side } (allegiance.js's current). `live`: the ship ({ x, y, z }) while it's flying, or null. `solids`: the
 // capital ships' hulls, for the ship to bump into (ship.js's, like the
 // world's), changed when a battle starts or ends (onSolids is told).
 
 import { createBattle } from '../universe/battle';
+import { createDirector } from '../universe/battleDirector';
+import { planFor } from '../universe/battlePlan';
 import { createBattleScene } from '../universe/battleScene';
 import { createTally } from '../universe/tally';
 import { GCW, battleAt, campaignAt, history, seeded, teamsOf } from './gcw';
@@ -64,6 +78,12 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   let battle = null; // battle.js's
   let on = null; // gcw.js's battleAt: which battle it is, and its clock
   let laid = null; // battles.js's layBattle
+  let director = null; // battleDirector.js's: the battle every pilot here shares
+  let skew = 0; // seconds the dev hooks have run the shared clock on by
+  let version = 0; // (the fight tally's changes, so the director's state is worked out again only when it's changed)
+  let sharedAt = null;
+  let sharedKey = '';
+  const here = new Set(); // the sides you've counted yourself in on, this battle
   let shown = false;
   let joined = false; // in among it (said once a battle)
   let tookPart = false; // you were in it at some point (a win's yours too)
@@ -138,14 +158,10 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     // side's to take whoever attacks: an enemy Star Destroyer's reactor,
     // Endor's generator)
     mine: (key, damage) => {
-      if (!attacking()) return;
-      fight.add(key, damage);
-      fightDirty = true;
+      if (attacking()) addFight(key, damage);
     },
     mineAs: (theirs, key, damage) => {
-      if (team === null || team !== theirs) return;
-      fight.add(key, damage);
-      fightDirty = true;
+      if (team !== null && team === theirs) addFight(key, damage);
     },
     event: (id) => sayEvent(id),
     points: (n) => score(n),
@@ -183,6 +199,30 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     },
   };
 
+  // what you've done, in the tally the pilots here share
+  const addFight = (key, n) => {
+    fight.add(key, n);
+    fightDirty = true;
+    version += 1;
+  };
+  // the shared clock: seconds since the battle began (and what the dev hooks have run it on by)
+  const sharedT = (ms = now()) => (on ? (ms - on.start) / 1000 + skew : 0);
+  // the director's state now, worked out again only when the clock or the tally's moved
+  const shared = () => {
+    if (!director) return null;
+    const t = sharedT();
+    const key = `${t}:${version}`;
+    if (key !== sharedKey) {
+      sharedAt = director.state(t, fight.value);
+      sharedKey = key;
+    }
+    return sharedAt;
+  };
+  // what each of your side's damage counts for, by how many of you there are
+  const scale = () => (director && team !== null ? director.scale(team, fight.value) : 1);
+  // a capital ship of the director's losses: its side's `index`th
+  const lost = (l) => battle?.capitals.filter((c) => c.team === l.team)[l.index] ?? null;
+
   const hulls = () => {
     const out = [];
     for (const cap of battle?.capitals ?? [])
@@ -200,6 +240,11 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     battle = null;
     on = null;
     laid = null;
+    director = null;
+    sharedAt = null;
+    sharedKey = '';
+    skew = 0;
+    here.clear();
     joined = false;
     tookPart = false;
     ended = false;
@@ -215,21 +260,29 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   const start = (b, ms) => {
     laid = layBattle(sys, b, { now: ms, tier });
     fight.reset(b.id);
+    version += 1;
     on = b;
+    director = createDirector({ plan: planFor({ id: b.id, kind: laid.kind, attacker: laid.attacker, objectivesOn: laid.objectivesOn, runners: laid.runners, length: laid.clock }), seed: b.id });
     battle = createBattle({
       ...laid,
       rand: seeded(b.id),
-      // what the other pilots here did to an objective (the tally's, less your own share of it)
-      shared: (id) => Math.max(0, fight.value(id) - fight.mine(id)),
+      plan: director.plan,
+      director: { state: shared },
+      // your shot on an objective: the attacker's to take, and each pilot's
+      // worth less the more of them there are
       onMine: (id, damage) => {
-        if (!attacking()) return;
-        fight.add(id, damage);
-        fightDirty = true;
+        if (attacking()) addFight(id, damage / scale());
       },
     });
     team = teamFor(side(), b);
     battle.setYou(team);
+    // (the capital ships lost long before you came: gone already)
+    for (const l of shared().losses) {
+      const cap = l.dead && sharedT(ms) - l.at > 10 ? lost(l) : null;
+      if (cap) Object.assign(cap, { alive: false, gone: true, hull: 0 });
+    }
     draw.show(battle, laid.war);
+    for (const cap of battle.capitals) if (cap.gone) draw.setVisible?.(cap, false);
     shown = true;
     world?.quiet?.(true);
     solids = hulls();
@@ -303,6 +356,13 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         battle.setYou(team);
       }
       let hurt = 0;
+      // the battle as the director has it: its end, and the capital ships it's lost by now
+      const st = shared();
+      if (st.winner !== null && !battle.over) battle.end(st.winner, st.why);
+      for (const l of st.losses) {
+        const cap = l.dead ? lost(l) : null;
+        if (cap?.alive && cap.dying <= 0 && !battle.over) battle.wreck(cap.id);
+      }
       const events = battle.update(dt, live ? { x: live.x, y: live.y, z: live.z, alive: true } : null);
       if (live) {
         const d = Math.hypot(live.x - laid.at[0], live.y - laid.at[1], live.z - laid.at[2]);
@@ -314,6 +374,11 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
           }
         }
       }
+      // in it: counted in, once, on your side
+      if (tookPart && team !== null && !here.has(team) && !battle.over) {
+        here.add(team);
+        addFight(team === on.attackerTeam ? 'here:a' : 'here:d', 1);
+      }
       for (const e of events) {
         if (e.type === 'hurt') hurt += e.damage;
         else if (e.type === 'down' && e.mine && team !== null && e.team !== team) {
@@ -323,6 +388,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
           } else if (e.role === 'bomber' && !attacking()) {
             score(GCW.points.intercept, ms);
             say('intercept');
+            // (and the objective the attacker's AI is on, shored up)
+            const target = shared()?.target;
+            if (target && !battle.over) addFight(`g:${target}`, 1 / scale());
           } else score(GCW.points.kill, ms);
         } else if (e.type === 'runner' && e.mine && team !== null && e.team !== team) {
           score(GCW.points.intercept, ms);
@@ -382,6 +450,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     get battle() {
       return battle;
     },
+    get director() {
+      return director;
+    },
     get on() {
       return on;
     },
@@ -389,7 +460,22 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       const t = warTally(now());
       // (mine: what you've done in the war this campaign, in points)
       const mine = +t.keys().reduce((sum, k) => sum + (k.startsWith('win:') ? 0 : t.mine(k)), 0).toFixed(2);
-      return { sys: sys?.id ?? null, on, laid: laid ? { at: laid.at, axis: laid.axis, lines: laid.lines, radius: laid.radius, name: laid.war.name, attacker: laid.attacker, kind: laid.kind, objectivesOn: laid.objectivesOn } : null, battle: battle?.info ?? null, joined, tookPart, mine, team, asked, side: side(), war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR };
+      const st = shared();
+      return {
+        sys: sys?.id ?? null,
+        on,
+        laid: laid ? { at: laid.at, axis: laid.axis, lines: laid.lines, radius: laid.radius, name: laid.war.name, attacker: laid.attacker, kind: laid.kind, objectivesOn: laid.objectivesOn } : null,
+        battle: battle?.info ?? null,
+        // (the battle every pilot here shares: where it's got to, and how it ended)
+        shared: st ? { t: +st.t.toFixed(1), stage: st.stage, open: st.open, opensIn: st.opensIn, target: st.target, winner: st.winner, why: st.why, endsAt: st.endsAt } : null,
+        joined,
+        tookPart,
+        mine,
+        team,
+        asked,
+        side: side(),
+        war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR,
+      };
     },
 
     setNet(client) {
@@ -398,7 +484,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     // what the other pilots say: the war (from anywhere), the battle here
     onNet(e) {
       if (e.type === 'war') receiveWar(e.from, e.msg, now());
-      else if (e.type === 'fight' && battle && e.msg.e === fight.epoch) fight.receive(e.from, e.msg);
+      else if (e.type === 'fight' && battle && e.msg.e === fight.epoch && fight.receive(e.from, e.msg)) version += 1;
     },
 
     // (dev hooks: end the battle now, `winner` the team that wins; a battle
@@ -423,10 +509,17 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     get pieces() {
       return pieces;
     },
-    // (and the battle run on `seconds`, a tenth at a time, without the ship:
-    // software GL in the browser checks runs it at a crawl)
+    // (and the battle run on `seconds`, a tenth at a time, without the ship,
+    // the shared clock with it: software GL in the browser checks runs it at
+    // a crawl; or the shared clock alone moved on, to get past a stage's gate)
     skip(seconds) {
-      for (let k = 0; k < seconds * 10 && battle && !battle.over; k++) front.update(0.1, last.t + k * 0.1, last.camera, null);
+      for (let k = 0; k < seconds * 10 && battle && !battle.over; k++) {
+        skew += 0.1;
+        front.update(0.1, last.t + k * 0.1, last.camera, null);
+      }
+    },
+    jump(seconds) {
+      if (battle) skew += seconds;
     },
     dispose() {
       stop();

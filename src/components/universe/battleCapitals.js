@@ -9,9 +9,9 @@
 //
 // Each takes the battle's inner context `k` (battle.js's createBattle makes
 // it): { b, rand, between, C, A, S, lines, attacker, defender, pending,
-// newId(), youIn(), finish(winner, why, out) }.
+// newId(), youIn(), finish(winner, why, out), decides }.
 // layCapitals(k, objectivesOn); fireBatteries(k, cap, dt); hullHit(cap,
-// damage, out); ageCapitals(k, dt, out); holdCapitals(k) gives the battle
+// damage, out, spare); ageCapitals(k, dt, out); holdCapitals(k) gives the battle
 // disable(id, s), wreck(id), moveCapital(cap, d) and turnCapital(cap, axis, a).
 
 import { HULLS, SUBSYSTEMS, TURRETS } from './wars';
@@ -125,10 +125,18 @@ export function fireBatteries(k, cap, dt) {
 }
 
 // ── hit, and breaking up ──
-// damage to a capital's hull (the ship with the defender's objectives takes none: it falls by them)
-export function hullHit(cap, dmg, out) {
+// damage to a capital's hull (the ship with the defender's objectives takes
+// none: it falls by them); `spare`: the AI's fire with the galaxy's director
+// deciding the battle, which wears a hull down but never sinks it (a capital
+// ship goes when the director says, the same for every pilot)
+export function hullHit(cap, dmg, out, spare = false) {
   if (!cap.tracked || !cap.alive || cap.dying > 0) return;
-  cap.hull -= dmg * (cap.disabled > 0 ? BATTLE.ionHull : 1);
+  const d = dmg * (cap.disabled > 0 ? BATTLE.ionHull : 1);
+  if (spare) {
+    cap.hull = Math.max(Math.min(cap.hull, 1), cap.hull - d);
+    return;
+  }
+  cap.hull -= d;
   if (cap.hull <= 0) {
     cap.hull = 0;
     cap.dying = cap.role === 'flagship' ? BATTLE.dying : 2.5;
@@ -144,6 +152,7 @@ export function ageCapitals(k, dt, out) {
     cap.dying = 0;
     cap.alive = false;
     out.push({ type: 'capital', id: cap.id, kind: cap.kind, team: cap.team, at: copy(v3(), cap.pos) });
+    if (k.decides === false) continue; // (the director's battle ends when the director says)
     if (cap.objective && cap.role !== 'flagship') k.finish(attacker, cap.kind, out);
     else if (cap.role === 'flagship') k.finish(cap.team === defender ? attacker : defender, 'flagship', out);
   }

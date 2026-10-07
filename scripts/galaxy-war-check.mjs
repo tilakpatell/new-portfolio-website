@@ -146,6 +146,9 @@ if (attacking) {
   await page.waitForTimeout(3000);
   check((await page.evaluate(() => window.__galaxyDebug.war.battle.phase)) === 2, 'both shield generators down: phase 2');
   await snap('shield-down');
+  // (each stage opens no sooner than its gate on the shared clock: 2:30 for
+  // the bridge, 5:00 for the reactor; the dev hook moves the clock past it)
+  await page.evaluate(() => window.__galaxyDebug.war.jump(150));
   await hitAll(2);
   await page.waitForTimeout(2000);
   // (watching the ship the objectives are on, for the break-up)
@@ -154,6 +157,7 @@ if (attacking) {
     const s = f.size; const x = f.pos.x + f.right.x * s * 1.1 - f.fwd.x * s * 0.1, z = f.pos.z + f.right.z * s * 1.1 - f.fwd.z * s * 0.1;
     return { x, y: f.pos.y + s * 0.3, z, heading: Math.atan2(x - f.pos.x, z - f.pos.z), pitch: -0.25, bank: 0 };
   `);
+  await page.evaluate(() => window.__galaxyDebug.war.jump(150));
   await hitAll(3);
   await page.waitForTimeout(12000);
   await snap('breaking');

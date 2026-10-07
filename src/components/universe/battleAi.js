@@ -92,7 +92,7 @@ function bomberTarget(k, f) {
   if (runs.length && rand() < 0.5) return runs[Math.floor(rand() * runs.length)];
   if (f.team === k.attacker) {
     const flag = k.objOf();
-    const subs = flag?.alive ? flag.subs.filter((s) => s.alive && s.phase === b.phase) : [];
+    const subs = flag?.alive ? flag.subs.filter((s) => s.alive && !s.hidden && s.phase === b.phase) : [];
     if (subs.length) return subs[Math.floor(rand() * subs.length)];
   }
   // a point on one of the other side's capital ships
