@@ -1,0 +1,100 @@
+import { describe, expect, it } from 'vitest';
+import { JUMP, SNAP, jumpTime, laneGraph, routeBetween } from './routes';
+import { LANES, systemById } from './systems';
+
+const len = (pts) => pts.slice(1).reduce((d, p, i) => d + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0);
+const run = LANES.find((l) => l.id === 'corellian-run');
+
+describe('laneGraph', () => {
+  it('has every lane’s points as nodes, joined in order', () => {
+    const { nodes, edges } = laneGraph();
+    expect(nodes.length).toBeGreaterThan(20);
+    // the Run’s six points make five edges of it, and one more where the Hydian Way crosses it
+    expect(edges.filter((e) => e.lane === 'corellian-run').length).toBe(run.pts.length);
+  });
+  it('joins lanes that share a point', () => {
+    const { nodes } = laneGraph();
+    // the Perlemian, the Run and the Western Reaches all start at Coruscant: one node
+    const at = nodes.filter((n) => Math.hypot(n.at[0] - 11.5, n.at[1] - 8.5) < 0.3);
+    expect(at.length).toBe(1);
+  });
+  it('joins lanes where they cross: the Hydian Way meets the Perlemian and the Run', () => {
+    const r = routeBetween('yavin', 'coruscant');
+    expect(r.onLane).toBe(true);
+    expect(r.lanes).toEqual(['hydian', 'perlemian']);
+    expect(routeBetween('naboo', 'tatooine').onLane).toBe(true);
+  });
+  it('joins the Rimma to the Run where it branches off it', () => {
+    const { nodes } = laneGraph();
+    const fork = nodes.find((n) => n.lanes.includes('rimma') && n.lanes.includes('corellian-run'));
+    expect(fork.at).toEqual([12.6, 10.6]);
+  });
+  it('joins every lane into one web', () => {
+    const { nodes, edges } = laneGraph();
+    const seen = new Set([0]);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const e of edges) if (seen.has(e.a) !== seen.has(e.b)) grew = seen.add(e.a).add(e.b);
+    }
+    expect(seen.size).toBe(nodes.length);
+  });
+  it('snaps a system within SNAP of a lane point onto it, and no further', () => {
+    const { snap } = laneGraph();
+    expect(snap.coruscant).toBeDefined();
+    expect(snap.hoth).toBeDefined(); // half a square off the Spine
+    expect(snap.dagobah).toBeUndefined(); // the swamp’s nearly two squares from any lane
+    expect(SNAP).toBe(1.2);
+  });
+});
+
+describe('routeBetween', () => {
+  it('takes Coruscant to Tatooine down the Corellian Run', () => {
+    const r = routeBetween('coruscant', 'tatooine');
+    expect(r.onLane).toBe(true);
+    expect(r.lanes).toContain('corellian-run');
+    const along = len(run.pts.slice(0, run.pts.findIndex((p) => p[0] === 17.6 && p[1] === 15.4) + 1));
+    expect(Math.abs(r.squares - along) / along).toBeLessThan(0.1);
+    // it bends: longer than the straight line
+    expect(r.squares).toBeGreaterThan(Math.hypot(17.6 - 11.5, 15.4 - 8.5));
+  });
+  it('goes straight where an end is off the lanes (Dagobah to Hoth)', () => {
+    const r = routeBetween('dagobah', 'hoth');
+    expect(r.onLane).toBe(false);
+    expect(r.pts.length).toBe(2);
+    expect(r.squares).toBeCloseTo(Math.hypot(12.5 - 10.4, 18.5 - 17.4), 6);
+    expect(r.lanes).toEqual([]);
+  });
+  it('starts and ends at the systems', () => {
+    for (const [a, b] of [['coruscant', 'tatooine'], ['dagobah', 'hoth'], ['yavin', 'kamino'], ['sorgan', 'naboo']]) {
+      const r = routeBetween(a, b);
+      expect(r.pts[0]).toEqual(systemById(a).pos);
+      expect(r.pts[r.pts.length - 1]).toEqual(systemById(b).pos);
+      expect(r.squares).toBeCloseTo(len(r.pts), 6);
+    }
+  });
+  it('is the same length both ways', () => {
+    expect(routeBetween('tatooine', 'coruscant').squares).toBeCloseTo(routeBetween('coruscant', 'tatooine').squares, 6);
+  });
+  it('is null for a system it doesn’t know', () => {
+    expect(routeBetween('jakku', 'hoth')).toBeNull();
+  });
+});
+
+describe('jumpTime', () => {
+  it('is 2.5 s and 1.2 s a square along the route', () => {
+    expect(jumpTime({ squares: 3, onLane: true })).toBeCloseTo(JUMP.base + 3 * JUMP.perSquare, 6);
+    expect(jumpTime({ squares: 0, onLane: true })).toBe(2.5);
+  });
+  it('is 1.6 times that off the lanes (Dagobah to Hoth)', () => {
+    const r = routeBetween('dagobah', 'hoth');
+    expect(jumpTime(r)).toBeCloseTo((JUMP.base + JUMP.perSquare * r.squares) * 1.6, 6);
+  });
+  it('is never over 12 s', () => {
+    expect(jumpTime({ squares: 40, onLane: true })).toBe(12);
+    expect(jumpTime({ squares: 7, onLane: false })).toBe(12);
+    for (const a of ['coruscant', 'sorgan', 'scarif', 'nevarro']) for (const b of ['tatooine', 'lothal', 'hoth', 'endor']) expect(jumpTime(routeBetween(a, b))).toBeLessThanOrEqual(12);
+  });
+  it('takes the Run’s nine squares at the most a jump takes', () => {
+    expect(jumpTime(routeBetween('coruscant', 'tatooine'))).toBe(JUMP.max);
+  });
+});
