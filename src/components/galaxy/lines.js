@@ -201,38 +201,7 @@ export const GALAXY_LINES = {
         ['morty', 'They all made it, Rick!'],
         ['rick', 'Mostly. That’s a win in a war, Morty. Mostly.'],
       ],
-      // the war's battles (warfront.js), in the galaxy's own words: called out
-      // as you drop in, in among it, its phases, and how it went
-      battle: {
-        front: [
-          ['morty', 'Rick, there’s a whole space battle going on out there!'],
-          ['rick', 'Galactic Civil War, Morty. Rebels versus space fascists. Easy pick.'],
-        ],
-        join: [
-          ['rick', 'We’re in it, Morty. Shoot the white ones. The TIEs. Not the X-wings.'],
-          ['morty', 'O-okay! White ones! Got it!'],
-        ],
-        gens: [
-          ['morty', 'Their shield’s down, Rick!'],
-          ['rick', 'Bridge next, Morty. Cut the head off the bureaucracy.'],
-        ],
-        bridge: [
-          ['rick', 'Bridge is toast. Reactor, Morty. Make it go boom.'],
-          ['morty', 'I’m on it! Kind of!'],
-        ],
-        reactor: [
-          ['morty', 'It’s breaking in half, Rick! Look at it!'],
-          ['rick', 'Space is mostly vacuum, Morty. And now, a little more debris.'],
-        ],
-        won: [
-          ['morty', 'We won, Rick! The whole system!'],
-          ['rick', 'Don’t get attached, Morty. Wars move. That’s their whole thing.'],
-        ],
-        lost: [
-          ['morty', 'Rick, the Rebels are pulling out!'],
-          ['rick', 'Then so are we. Live to meddle another day, Morty.'],
-        ],
-      },
+      // (the war's battles: battleLines.js, by the side you swore to)
     },
     interdicted: [
       ['morty', 'Rick! We fell out of hyperspace! Why did we fall out of hyperspace?!'],
@@ -488,38 +457,7 @@ export const GALAXY_LINES = {
         ['comms', 'The last transport’s away. Echo Base is clear.'],
         ['luke', 'They’re clear. Let’s get out of here too, Artoo.'],
       ],
-      // the war's battles (warfront.js), in the galaxy's own words: called out
-      // as you drop in, in among it, its phases, and how it went
-      battle: {
-        front: [
-          ['r2', '[The fleet is engaged. Capital ships on both sides.]'],
-          ['luke', 'It’s the whole fleet. Artoo, let’s get in there.'],
-        ],
-        join: [
-          ['luke', 'Red Five, joining up. S-foils in attack position.'],
-          ['r2', '[an eager whistle]'],
-        ],
-        gens: [
-          ['r2', '[Their shield generators are down.]'],
-          ['luke', 'Their shield’s gone! Now the bridge.'],
-        ],
-        bridge: [
-          ['luke', 'Bridge is out. Go for the reactor!'],
-          ['r2', '[a triumphant chirp]'],
-        ],
-        reactor: [
-          ['luke', 'She’s breaking up! Artoo, look at that!'],
-          ['r2', '[a long, amazed whistle]'],
-        ],
-        won: [
-          ['luke', 'We did it. The system’s free, Artoo.'],
-          ['r2', '[a happy trill]'],
-        ],
-        lost: [
-          ['r2', '[A low tone: the fleet is pulling out.]'],
-          ['luke', 'We’ll be back. We always come back.'],
-        ],
-      },
+      // (the war's battles: battleLines.js, by the side you swore to)
     },
     interdicted: [
       ['r2', '[a panicked shriek]'],
@@ -753,38 +691,7 @@ export const GALAXY_LINES = {
         ['comms', 'The last transport’s away. Echo Base is clear.'],
         ['han', 'Everybody’s out. Our turn, Chewie. Let’s go.'],
       ],
-      // the war's battles (warfront.js), in the galaxy's own words: called out
-      // as you drop in, in among it, its phases, and how it went
-      battle: {
-        front: [
-          ['han', 'Chewie, there’s a fleet battle out there. Ours and theirs.'],
-          ['chewie', '[a low, ready growl]'],
-        ],
-        join: [
-          ['han', 'Alright, we’re in. Keep ’em off the cruisers, Chewie.'],
-          ['chewie', '[a roar]'],
-        ],
-        gens: [
-          ['han', 'Their deflectors are down. Somebody tell the admiral.'],
-          ['chewie', '[an approving growl]'],
-        ],
-        bridge: [
-          ['han', 'There goes the bridge. Bet they didn’t see that coming.'],
-          ['chewie', '[a pleased bark]'],
-        ],
-        reactor: [
-          ['han', 'She’s going! Stay clear of the pieces, Chewie.'],
-          ['chewie', '[a long, joyful howl]'],
-        ],
-        won: [
-          ['han', 'And that’s how it’s done. Drinks are on the Rebellion.'],
-          ['chewie', '[a happy roar]'],
-        ],
-        lost: [
-          ['han', 'Fleet’s pulling out. No shame in a good retreat. I’ve made a career of it.'],
-          ['chewie', '[a mournful groan]'],
-        ],
-      },
+      // (the war's battles: battleLines.js, by the side you swore to)
     },
     interdicted: [
       ['han', 'That’s an Interdictor! They yanked us right out of hyperspace!'],
@@ -1019,38 +926,7 @@ export const GALAXY_LINES = {
         ['comms', 'The last transport’s away. Echo Base is clear.'],
         ['jesse', 'They got out! Can we get out now too?'],
       ],
-      // the war's battles (warfront.js), in the galaxy's own words: called out
-      // as you drop in, in among it, its phases, and how it went
-      battle: {
-        front: [
-          ['jesse', 'Yo, Mr. White, that’s like a whole space war out there!'],
-          ['walt', 'The Rebellion against the Empire, Jesse. We’re with the Rebellion.'],
-        ],
-        join: [
-          ['walt', 'We’re in. Stay close to the big ships, Jesse.'],
-          ['jesse', 'Yeah, okay. Close. Big ships. Got it.'],
-        ],
-        gens: [
-          ['jesse', 'Their shields are down, Mr. White!'],
-          ['walt', 'The bridge next. Take out the decision-makers.'],
-        ],
-        bridge: [
-          ['walt', 'The bridge is gone. Now the reactor, Jesse.'],
-          ['jesse', 'On it, on it!'],
-        ],
-        reactor: [
-          ['jesse', 'It’s blowing up! That’s, like, chemistry, right?'],
-          ['walt', 'Exothermic, Jesse. Spectacularly so.'],
-        ],
-        won: [
-          ['jesse', 'We won, Mr. White! The whole system!'],
-          ['walt', 'We did. Remember this feeling, Jesse.'],
-        ],
-        lost: [
-          ['walt', 'The fleet’s withdrawing. Pull back, Jesse.'],
-          ['jesse', 'Man, this is so not cool.'],
-        ],
-      },
+      // (the war's battles: battleLines.js, by the side you swore to)
     },
     interdicted: [
       ['jesse', 'Yo, the stretchy stars stopped! Why’d the stretchy stars stop?!'],

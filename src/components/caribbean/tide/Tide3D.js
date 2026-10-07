@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { createStage } from '../../../lib/stage3d';
+import { houseOn } from '../../../lib/three/house';
 import { SUN, createSea, loadSky } from './sea';
 import { DECAL, createBalls, createDecals, createFoam, createParticles } from './fx';
 import { ARM, CHAPTERS, ISLES, SHIPS, TIDE, bearing, fitted } from './rules';
@@ -65,7 +66,13 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
   sun.shadow.normalBias = 0.5;
   scene.add(sun, sun.target);
   // a little cool light from the sky side, so the shadowed side isn't flat
-  scene.add(new THREE.HemisphereLight(0x9cc4ff, 0x1c2f33, 0.35));
+  const hemi = new THREE.HemisphereLight(0x9cc4ff, 0x1c2f33, 0.35);
+  scene.add(hemi);
+  // the house look (lib/three/house): the shade one colour from the sky
+  // light, as in every world, under the house tone mapper (the sea's own
+  // shader, and its fog, left as they are)
+  const house = houseOn({ renderer, scene, sun, hemi, look: { fog: false } });
+  let houseFrames = 0;
 
   const particles = createParticles(scene, sea.ripples);
   const decals = createDecals(scene, sea);
@@ -793,6 +800,8 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
     decals.end();
     particles.update(dt, wind);
     const t1 = performance.now();
+    // (the ships and the crews that came since, taken on now and then)
+    if (houseFrames++ % 60 === 0) house.follow({ adopt: true });
     stage.render(ms);
     cost.sim += (t1 - t0 - cost.sim) * 0.05;
     cost.draw += (performance.now() - t1 - cost.draw) * 0.05;

@@ -1,0 +1,4 @@
+self-hosted-runner:
+  # the desktop with the GPU (scripts/desktop/setup-runner.ps1)
+  labels:
+    - gpu

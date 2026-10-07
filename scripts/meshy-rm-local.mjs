@@ -238,6 +238,14 @@ const PHASE11 = {
   agencyguard: { rig: false, poly: 14000, prompt: `A guard from the agency in Rick and Morty's Pickle Rick episode: a stocky man in grey body armour over a black uniform, a black helmet with a visor, a utility belt, black gloves and boots, standing at attention with an assault rifle held across the chest. ${AT_EASE}` },
   sewerrat: { rig: false, poly: 12000, prompt: `A sewer rat from Rick and Morty's Pickle Rick episode: a big cartoon brown rat the size of a cat, hunched on four legs, a long pink tail, pink ears and nose, small red eyes, whiskers, bared teeth. ${PROP}` },
 };
+// Mr. Frundles' Earth (S6 'Full Meta Jackrick' cold open): the Frundles
+// himself, a man and a dog he bit, and a house gone Frundles.
+const PHASE12 = {
+  frundles: { rig: false, poly: 12000, prompt: `Mr. Frundles from Rick and Morty: a small cute fuzzy creature the size of a rabbit, round and chubby, soft reddish-brown shaggy fur with a lighter tan belly and face, two big round black eyes, a tiny pink nose, a wide friendly mouth, two little pointed ears with pink insides, four short stubby paws, a short fluffy tail, sitting up. ${PROP}` },
+  frundlesman: { hero: true, height: 1.8, prompt: `A man turned into Mr. Frundles from Rick and Morty: an ordinary suburban man's body in a blue checked shirt and khaki trousers and brown shoes, but covered head to toe in soft reddish-brown shaggy fur, with Mr. Frundles' face in place of his own: two big round black eyes, a tiny pink nose, a wide friendly mouth, two little pointed furry ears with pink insides. ${BODY}` },
+  frundlesdog: { rig: false, poly: 12000, prompt: `A dog turned into Mr. Frundles from Rick and Morty: a standing medium-sized dog's body with a red collar, covered in soft reddish-brown shaggy fur, with Mr. Frundles' face in place of its own: two big round black eyes, a tiny pink nose, a wide friendly mouth, two little pointed furry ears with pink insides. ${PROP}` },
+  frundleshouse: { rig: false, hero: true, prompt: `A suburban house turned into Mr. Frundles from Rick and Morty: a two-storey American house with a pitched roof, a porch and a garage, entirely covered in soft reddish-brown shaggy fur, with Mr. Frundles' huge face on its front: two big round black eyes where the upstairs windows were, a pink nose, a wide friendly mouth across the ground floor, two little pointed furry ears with pink insides on the roof. ${BUILDING}` },
+};
 // The plan's Task 3.1: Mortytown's people and buildings, two Ricks for the
 // Citadel's crowd, the Citadel from space and the NX-5. The plan's prompts
 // were checked against the wiki on 6 October and put right where the show
@@ -308,7 +316,7 @@ const PHASE4 = {
   'gearperson-b': { crowd: true, prompt: `A gear-person of Gear World from Rick and Morty: a thick-set humanoid made of brass and grey metal with a round head, gears turning where the ears are, a transparent pink torso with brass gears inside, grey metal arms and legs, in a grey suit jacket and trousers. ${AT_EASE}` },
 };
 // the small props, whose textures the plan keeps to 1024 pixels
-const SMALL = new Set(['snuffles', 'ghostinajar', 'tinkles', 'babywizard', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli']);
+const SMALL = new Set(['frundles', 'frundlesdog', 'snuffles', 'ghostinajar', 'tinkles', 'babywizard', 'stairgoblin', 'hepatitis', 'gonorrhoea', 'tuberculosis', 'plague', 'ecoli']);
 export const ASSETS = {};
 for (const [phase, set] of [
   [1, PHASE1],
@@ -322,6 +330,7 @@ for (const [phase, set] of [
   [9, PHASE9],
   [10, PHASE10],
   [11, PHASE11],
+  [12, PHASE12],
 ]) {
   for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: !a.crowd, poly: a.crowd ? 9000 : a.hero ? 40000 : 30000, tex: a.crowd || SMALL.has(n) ? 1024 : 2048, ...a };
 }

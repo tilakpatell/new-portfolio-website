@@ -20,6 +20,7 @@ import { TRENCH, portZ } from './trench';
 import { precompile, precompilePasses, quiet } from '../../lib/three/renderer';
 import { paintGasGiant, paintPlating, starSprite } from './plating';
 import { pixelRatio } from '../../lib/device';
+import { houseOn } from '../../lib/three/house';
 import { gltfLoader } from '../../lib/three/gltf';
 import { sharpen } from '../../lib/three/textures';
 
@@ -291,8 +292,9 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   scene.fog = new THREE.FogExp2(0x05060c, 0.038);
   const camera = new THREE.PerspectiveCamera(68, 16 / 9, 0.05, 420);
 
-  scene.add(new THREE.AmbientLight(0x6a7488, 0.55));
-  scene.add(new THREE.HemisphereLight(0x8a9ac0, 0x0a0a12, 0.45));
+  const trAmbient = new THREE.AmbientLight(0x6a7488, 0.55);
+  const trHemi = new THREE.HemisphereLight(0x8a9ac0, 0x0a0a12, 0.45);
+  scene.add(trAmbient, trHemi);
   const sun = new THREE.DirectionalLight(0xfff0dc, 1.7);
   sun.position.set(-4, 7, 3);
   scene.add(sun);
@@ -487,10 +489,12 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   // one, five times the detail), when it comes: its shaders made first, so it
   // doesn't stall a frame
   let disposed = false;
+  let house = null; // (the house look, set below once the scene is built)
   gltfLoader()
     .loadAsync(gen3dUrl('x-wing')) // the cut for this device's detail level
     .then(async ({ scene: model }) => {
       if (disposed || lost) return disposeModel(model);
+      house?.adopt(model); // (in the house look, as the rest)
       await precompile(renderer, model, camera, scene, composer.readBuffer); // (drawn through the composer)
       if (disposed || lost) return disposeModel(model);
       mountXwing(xw, model);
@@ -937,6 +941,10 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
 
   // every shader (the scene's, into the composer's buffer, and the passes')
   // linked in the background: the run waits for this before its first 3D frame
+  // the house look (lib/three/house): the shade one colour from the light
+  // out here, under the house tone mapper (its exposure lifted from ACES;
+  // the fog left as it is), on everything, before the shaders are linked
+  house = houseOn({ renderer, scene, sun, hemi: trHemi, ambient: trAmbient, look: { fog: false } });
   const ready = Promise.all([precompile(renderer, scene, camera, scene, composer.readBuffer), precompilePasses(renderer, composer, camera)]);
 
   // where a point in the world is on screen, in CSS pixels

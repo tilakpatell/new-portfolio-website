@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HEROES, HILTS, SABER_COLORS, heroById } from '../heroes';
+import { HEROES, HILTS, SABER_COLORS, heroById, leanText } from '../heroes';
 import { STANCES, STANCE_IDS } from './combatRules';
 import { MAX_MODS, MODS, MOD_IDS, PICKABLE, WEAPONS, withMods } from './weaponRules';
 import { MAX_PERKS, PERKS, PERK_IDS } from '../perks';
@@ -73,6 +73,7 @@ export default function HeroPanel({ hero, onChange, onClose }) {
                           {ARM[x.weapon] ?? 'Blaster'} · G {ABILITIES[ab.power].name} · V {ABILITIES[ab.second].name}
                         </span>
                         <span className="surface-hero-blurb">{x.blurb}</span>
+                        {leanText(x.lean) && <span className="surface-hero-arm">{leanText(x.lean)}</span>}
                       </button>
                     </li>
                   );

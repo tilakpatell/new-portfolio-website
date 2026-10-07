@@ -1,11 +1,12 @@
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { RiCloseLine, RiKeyboardLine, RiSmartphoneLine } from 'react-icons/ri';
+import { RiCloseLine, RiCompass3Line, RiKeyboardLine, RiSmartphoneLine } from 'react-icons/ri';
 import { WORLDS } from './worlds/worlds';
 import { SHORTCUTS, SITE, guideFor } from './guide/pages';
 import { keyTokens } from './guide/keys';
 import { shortcutLabel } from '../lib/palette';
+import { openTour } from '../lib/tour';
 
 // The guide's panel: the page's controls (keyboard or touch) as a table of
 // keys, then its tips; and the site as a whole. Loaded the first time the
@@ -112,6 +113,16 @@ function SiteGuide({ onGo }) {
   return (
     <>
       <h2 className="guide-title">The site</h2>
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm mt-3"
+        onClick={() => {
+          onGo();
+          openTour();
+        }}
+      >
+        <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> Take the tour
+      </button>
       <section className="mt-4" aria-label="Shortcuts">
         <KeyTable rows={[[shortcutLabel().replace(' ', '+'), 'Search and go anywhere (the command palette)'], ...SHORTCUTS]} />
       </section>

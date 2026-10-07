@@ -59,7 +59,7 @@ describe('effectsFor', () => {
   it('Hutt space is no one’s friend, hunts nobody, and sells you to the bounty hunters', () => {
     const t = tableWith('gcw', 'tatooine', { owner: 'hutt' });
     const e = effectsFor('tatooine', t, sworn('gcw', 'rebel'));
-    expect(e).toMatchObject({ owner: 'hutt', hostile: true, hunt: false, escort: false, garrison: 'hutt', troops: 'weequay', capital: null });
+    expect(e).toMatchObject({ owner: 'hutt', hostile: true, hunt: false, escort: false, garrison: 'hutt', troops: 'mercenary', capital: null });
   });
   it('a front adds heat 1, an attack 2', () => {
     expect(effectsFor('hoth', tableWith('gcw', 'hoth', { front: true, attack: null }), sworn('gcw', 'rebel')).heat).toBe(1);

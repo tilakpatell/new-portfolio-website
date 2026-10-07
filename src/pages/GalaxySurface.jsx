@@ -24,6 +24,12 @@ import AssaultHud from '../components/galaxy/surface/AssaultHud';
 import HeroPanel from '../components/galaxy/surface/HeroPanel';
 import { HERO_KEY, heroById, heroSpec, readHero, writeHero } from '../components/galaxy/heroes';
 import { missionOf } from '../components/galaxy/surface/missions';
+import { sideFor, warSideOf } from '../components/galaxy/surface/missions/assault';
+import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../components/galaxy/allegiance';
+import { GCW, campaignAt } from '../components/galaxy/gcw';
+import { warOfSide } from '../components/galaxy/sides';
+import { effectsFor } from '../components/galaxy/warEffects';
+import { addPoints, addWin, warNow } from '../components/galaxy/warState';
 import ModelCredits from '../components/ModelCredits';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
@@ -92,6 +98,30 @@ export default function GalaxySurface() {
   };
   const crew = crewById(ship);
   const { unlocked, unlock } = useAchievements();
+  // the galaxy's war (allegiance.js): the side you swore to, and who holds
+  // this world (warEffects.js: the troopers you meet are theirs); an assault
+  // here is that war's, fought for one of its sides
+  const [oathKept, setOathKept] = useState(() => readAllegiance(local.get(SIDE_KEY)));
+  const oath = useMemo(() => currentOath(oathKept), [oathKept]);
+  const effects = useMemo(() => effectsFor(id, warNow(Date.now(), oath.war), oath), [id, oath]);
+  const assaultWar = mission?.kind === 'assault' ? warOfSide(warSideOf(mission, 'attack')) : null;
+  const sworn = assaultWar ? sideFor(mission, oathKept.oaths[assaultWar]?.side ?? null) : null;
+  const onAssaultSide = (k) => {
+    const side = warSideOf(mission, k);
+    if (warOfSide(side)) {
+      const next = swear(oathKept, side);
+      if (next !== oathKept) {
+        setOathKept(next);
+        local.set(SIDE_KEY, next);
+        unlock('gcwSworn');
+        if (currentOath(next).turncoat) unlock('gcwTurncoat');
+      }
+    }
+    view.current?.input?.('side', k);
+  };
+  // the ground battle's result, counted in the war once: the posts your side
+  // took while you were up, and the battle if you won it
+  const posted = useRef(false);
   const build = useMemo(() => (ship && readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]);
   const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked, build), [ship, unlocked, build]);
   // online: the other pilots down here with you
@@ -301,6 +331,16 @@ export default function GalaxySurface() {
           setChase(v);
         }
         const ev = e.event;
+        if (mission?.kind === 'assault' && v?.result && !posted.current) {
+          posted.current = true;
+          const side = warSideOf(mission, v.result.side);
+          if (warOfSide(side)) {
+            const now = Date.now();
+            const step = campaignAt(now).step;
+            addPoints(side, id, step, (v.result.posts?.[v.result.side] ?? 0) * GCW.points.objective, now);
+            if (v.result.won) addWin(side, id, step, now);
+          }
+        } else if (mission?.kind === 'assault' && v && !v.result) posted.current = false;
         if (ev?.type === 'won' && mission && v?.result) {
           const run = { t: v.result.t, stars: v.result.stars };
           const was = bestRef.current;
@@ -349,7 +389,7 @@ export default function GalaxySurface() {
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}:${hero.stance}:${hero.gun}:${(hero.mods ?? []).join()}:${(hero.perks ?? []).join()}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
+      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}:${hero.stance}:${hero.gun}:${(hero.mods ?? []).join()}:${(hero.perks ?? []).join()}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} effects={effects} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">
@@ -391,7 +431,7 @@ export default function GalaxySurface() {
 
       {/* the quest you're on, and the things to do here */}
       {mission && mission.kind !== 'assault' && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
-      {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={(id) => view.current?.input?.('side', id)} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
+      {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={onAssaultSide} sworn={sworn} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
 
       {phase !== 'landing' && site.quests.length > 0 && !((mission?.kind === 'chase' || mission?.kind === 'assault') && chase && !chase.result) && (
         <div className={quest ? 'surface-quest surface-quest-on' : 'surface-quest'}>

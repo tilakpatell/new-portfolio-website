@@ -4,9 +4,15 @@
 // progress is how much of that hold is gone, and an attacked system's is how
 // much is left.
 //
-// progressOf(row) → 0..1; standing(row, now, war) → a line; heldColour(side).
+// progressOf(row) → 0..1; standing(row, now) → a line; heldColour(side);
+// areaLines(areas, side) → [{ id, name, text, yours }]; recordLine(side,
+// record) → your rank and record (warState.js's mine) | null; oathOf(war,
+// current, suggested) → the war's two sides for the oath's buttons;
+// battleLine(row, now, side) → a system's battle, its kind for your part in it.
 
-import { SIDES } from './sides';
+import { BATTLE_KINDS } from './battles';
+import { rankOf } from './ranks';
+import { AREAS, SIDES, WARS } from './sides';
 
 // how long, as the war table says it: 4:05, 1h 12m, 2d 3h
 export const span = (ms) => {
@@ -31,3 +37,35 @@ export function standing(row, now) {
 }
 
 export const heldColour = (side) => SIDES[side]?.colour;
+
+const theSide = (side) => (side === 'hutt' ? 'Hutt space' : `The ${SIDES[side].short}’s`);
+const ofThe = (side) => (side === 'hutt' ? 'the Hutts’' : `the ${SIDES[side].short}’s`);
+
+export function areaLines(areas, side) {
+  return AREAS.filter((a) => areas[a.id]).map((a) => {
+    const r = areas[a.id];
+    if (r.holder) return { id: a.id, name: a.name, text: `${theSide(r.holder)}, all ${r.total}`, yours: r.holder === side };
+    return { id: a.id, name: a.name, text: side ? `${r[side] ?? 0} of ${r.total} ${ofThe(side)}` : `Contested, ${r.total} systems`, yours: false };
+  });
+}
+
+export function recordLine(side, record) {
+  const rank = rankOf(side, record?.points ?? 0);
+  if (!rank) return null;
+  if (!record?.battles) return `${rank.name} · no battles yet`;
+  return `${rank.name} · ${Math.round(record.points)} points · ${record.wins} won of ${record.battles} ${record.battles === 1 ? 'battle' : 'battles'}`;
+}
+
+export function oathOf(war, current, suggested) {
+  const w = WARS[war];
+  return { war, sides: [w.liberator, w.raider].map((id) => ({ id, name: SIDES[id].name, colour: SIDES[id].colour, sworn: current?.side === id, suggested: suggested === id })) };
+}
+
+export function battleLine(row, now, side) {
+  const b = row.battle;
+  if (!b) return null;
+  const kind = BATTLE_KINDS[row.kind] ?? BATTLE_KINDS.assault;
+  const role = side && side === b.attacker ? 'attack' : side && side === b.defender ? 'defend' : null;
+  if (!b.fighting) return `${kind.name}: regrouping, the next in ${span(b.end - now)}`;
+  return `${role ? kind.text[role] : kind.name} · ${span(b.fightEnd - now)} left`;
+}
