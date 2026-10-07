@@ -22,11 +22,12 @@
   "thragg": {
     "acct": 2,
     "model": "01a1145a-5e39-75f8-9a68-9f1d3accd09c",
-    "rig": "01a1145d-90fa-729c-8f20-1e33cba7af02",
+    "retex": "01a114c6-f65d-766d-a669-bab1717f415e",
+    "rig": "01a114c9-2cbd-7793-bce2-7eb32009daae",
     "anims": {
-      "lib": "01a1145e-56b0-71e0-b923-81ab430edaed",
-      "hover": "01a1145e-5818-719b-aeda-501b6200d624",
-      "fly": "01a1145e-5ad6-766f-bf4a-615e612c6e81"
+      "lib": "01a114c9-79de-758c-8c61-2302ec5ee913",
+      "hover": "01a114c9-7af0-7324-9037-80751282737a",
+      "fly": "01a114c9-7d59-72cb-a131-01b92512fcab"
     }
   },
   "eve": {
@@ -163,6 +164,16 @@
           "lib": "01a11445-d3af-71a1-b76f-1eaeb2142edb",
           "hover": "01a11445-d54c-74c0-9a6f-541422683f5f",
           "fly": "01a11445-d87d-7623-a0dc-6d6948372b08"
+        }
+      },
+      {
+        "acct": 2,
+        "model": "01a1145a-5e39-75f8-9a68-9f1d3accd09c",
+        "rig": "01a1145d-90fa-729c-8f20-1e33cba7af02",
+        "anims": {
+          "lib": "01a1145e-56b0-71e0-b923-81ab430edaed",
+          "hover": "01a1145e-5818-719b-aeda-501b6200d624",
+          "fly": "01a1145e-5ad6-766f-bf4a-615e612c6e81"
         }
       }
     ],

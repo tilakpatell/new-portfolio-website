@@ -78,8 +78,11 @@ export const ASSETS = {
   },
   omni: { out: 'omni-man.glb', as: 'Omni-Man', clips: 'hero', motions: ['hover', 'fly'], height: 1.95, tex: 2048, ref: 'Omni-ManProfile.png' },
   // (a texture prompt overrides the picture's own colours: on meshy-7.1 it
-  // turned his robe, fur and skin white, so neither he nor Cecil has one)
-  thragg: { out: 'thragg.glb', as: 'Thragg', clips: 'hero', motions: ['hover', 'fly'], height: 2.05, tex: 2048, ref: 'GrandRegentThragg-render.png' },
+  // turned his robe, fur and skin white, so neither he nor Cecil has one.
+  // Made from the picture alone his costume still came out pale: `restyle`
+  // paints the model again with the picture as its style, and as Meshy
+  // makes his skin light whatever it is given, `skin` paints it his colour)
+  thragg: { out: 'thragg.glb', as: 'Thragg', clips: 'hero', motions: ['hover', 'fly'], height: 2.05, tex: 2048, ref: 'GrandRegentThragg-render.png', restyle: true, skin: [112, 68, 58] },
   eve: { out: 'eve.glb', as: 'Atom Eve', clips: 'hero', motions: ['hover', 'fly'], height: 1.7, tex: 2048, ref: 'Atom-EveProfile.png' },
   cecil: { out: 'cecil.glb', as: 'Cecil Stedman', clips: 'person', height: 1.8, tex: 2048, ref: 'CecilProfile.png' },
   debbie: { out: 'debbie.glb', as: 'Debbie Grayson', clips: 'person', height: 1.68, tex: 2048, ref: 'DebbieProfile.png' },
@@ -141,6 +144,31 @@ const save = (s) => writeFile(TASKS, `${JSON.stringify(s, null, 2)}\n`);
 
 let io = null;
 let sharp = null;
+
+// The figure's skin, as Meshy paints it (light, a little orange, not much
+// colour), painted `rgb` instead, its light and shade kept: the weight eases
+// in at the edges of what counts as skin, so a border doesn't step.
+async function paintSkin(doc, rgb) {
+  const texture = doc.getRoot().listTextures()[0];
+  const { data, info } = await sharp(texture.getImage()).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const ease = (x, a, b) => Math.min(1, Math.max(0, (x - a) / (b - a)));
+  for (let i = 0; i < data.length; i += 3) {
+    const [r, g, b] = [data[i] / 255, data[i + 1] / 255, data[i + 2] / 255];
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    if (max === 0 || max === min) continue;
+    const sat = (max - min) / max;
+    let hue = max === r ? ((g - b) / (max - min)) * 60 : max === g ? (2 + (b - r) / (max - min)) * 60 : (4 + (r - g) / (max - min)) * 60;
+    if (hue < 0) hue += 360;
+    // orange to red-orange, a little to a fair amount of colour, lit
+    const near = hue <= 40 ? 1 - ease(hue, 32, 40) : hue >= 345 ? ease(hue, 345, 352) : 0;
+    const w = near * ease(sat, 0.08, 0.14) * (1 - ease(sat, 0.48, 0.58)) * ease(max, 0.38, 0.5);
+    if (w <= 0) continue;
+    const k = max / 0.82; // (its shade: Meshy's skin is about 0.82 at its lightest)
+    for (let c = 0; c < 3; c++) data[i + c] = Math.round(data[i + c] * (1 - w) + Math.min(255, rgb[c] * k) * w);
+  }
+  texture.setImage(await sharp(data, { raw: { width: info.width, height: info.height, channels: 3 } }).png().toBuffer()).setMimeType('image/png');
+}
 
 const drop = (clip) => {
   for (const part of [...clip.listChannels(), ...clip.listSamplers()]) part.dispose();
@@ -210,6 +238,7 @@ async function bake(from, to, a, { names = null, extra = [] } = {}) {
   } else for (const clip of clips) drop(clip);
   for (const [file, name] of extra) addClip(doc, await io.read(file), name);
   for (const clip of doc.getRoot().listAnimations()) inPlace(clip);
+  if (a.skin) await paintSkin(doc, a.skin);
   await reatlas(doc, a.tex, { apart: true });
   await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', quality: 90, resize: [a.tex, a.tex] }), meshopt({ encoder: MeshoptEncoder, level: 'high' }));
   await mkdir(dirname(to), { recursive: true });
@@ -291,13 +320,30 @@ const steps = {
       console.log(`model    ${n.padEnd(8)} ${t.consumed_credits ?? '?'} credits`);
     }
   },
+  // the model painted again with its picture as the style (4K; 10 credits)
+  async retexture(names, s) {
+    for (const n of names) {
+      const a = ASSETS[n];
+      if (!a.restyle) continue;
+      if (!s[n]?.model) throw new Error(`${n}: no model yet`);
+      use(s[n]);
+      if (!s[n].retex) {
+        const img = `data:image/png;base64,${(await readFile(join(REFS, `${n}.png`))).toString('base64')}`;
+        s[n].retex = (await api('POST', '/v1/retexture', { input_task_id: s[n].model, image_style_url: img, texture_resolution: '4k', target_formats: ['glb'] })).result;
+        await save(s);
+      }
+      const t = await wait('/v1/retexture', s[n].retex, `${n} retexture`);
+      if (t.thumbnail_url) await download(t.thumbnail_url, join(REVIEW, `${n}-restyled.png`));
+      console.log(`restyle  ${n.padEnd(8)} ${t.consumed_credits ?? '?'} credits`);
+    }
+  },
   async rig(names, s) {
     for (const n of names) {
       if (ASSETS[n].rig === false) continue;
       if (!s[n]?.model) throw new Error(`${n}: no model yet`);
       use(s[n]);
       if (!s[n].rig) {
-        const { result } = await api('POST', '/v1/rigging', { input_task_id: s[n].model, height_meters: ASSETS[n].height });
+        const { result } = await api('POST', '/v1/rigging', { input_task_id: s[n].retex ?? s[n].model, height_meters: ASSETS[n].height });
         s[n].rig = result;
         await save(s);
       }
