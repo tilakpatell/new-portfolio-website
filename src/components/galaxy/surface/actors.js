@@ -213,10 +213,10 @@ function propFigure(kind, spec, kit) {
 // catalogue model walking with its clips or a bob (modelFigure), a built
 // figure (figures.js) or a humanoid prop (props/*.js, given the kit); null
 // for a kind that's none of those. `spec.model: false` builds it even where
-// there's a model.
-export async function anyFigure(kind, spec = {}, kit = null) {
+// there's a model; i is which of the entry's figures (a crew kind's face).
+export async function anyFigure(kind, spec = {}, kit = null, i = 0) {
   if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec, kit);
-  return (await crewFigure(kind)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit);
+  return (await crewFigure(kind, i)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit);
 }
 
 // How far off the fog has someone all but gone (97% fog, FogExp2's
@@ -237,7 +237,7 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   const actors = [];
   let dead = false;
 
-  const figureOf = (kind, spec) => anyFigure(kind, spec, kit);
+  const figureOf = (kind, spec, i) => anyFigure(kind, spec, kit, i);
   // (has something to say: a list with lines, or a tree)
   const talks = (spec) => (Array.isArray(spec.says) ? spec.says.length > 0 : Boolean(spec.says));
 
@@ -254,7 +254,7 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
       (spec.zone ? rooms : group).add(holder);
       const actor = { spec, b, holder, fig: null, said: 0, near: false, i, hidden: Boolean(spec.hidden), culled: false, skip: i % 4 };
       actors.push(actor);
-      figureOf(spec.kind, spec)
+      figureOf(spec.kind, spec, i)
         .then((fig) => {
           if (dead || !fig) return;
           fig.model.scale.multiplyScalar(spec.scale ?? 1);
