@@ -33,13 +33,17 @@ export function report(dir, date) {
   const render = read('render.json');
   if (!render) row('3 render', false, 'did not run');
   else {
-    const bad = render.models.filter((m) => m.errors.length || m.coverage < render.coverage);
-    row('3 render', !bad.length, bad.length ? `${render.models.length} renders, ${bad.length} not drawn: ${bad.slice(0, 5).map((m) => m.file).join(', ')}` : `${render.models.length} renders, every one drawn`);
+    // an animation-only file (a clip, no mesh) has nothing to draw
+    const clips = render.models.filter((m) => m.clip);
+    const drawn = render.models.filter((m) => !m.clip);
+    const bad = drawn.filter((m) => m.errors.length || m.coverage < render.coverage);
+    const also = clips.length ? ` (${clips.length} animation-only file${clips.length > 1 ? 's' : ''}, nothing to draw)` : '';
+    row('3 render', !bad.length, bad.length ? `${drawn.length} renders, ${bad.length} not drawn: ${bad.slice(0, 5).map((m) => m.file).join(', ')}${also}` : `${drawn.length} renders, every one drawn${also}`);
   }
 
   const vision = read(`${date}-vision.json`);
   if (!vision) row('5 vision', false, read(`${date}-evals.json`)?.steps?.find((s) => s.name === 'vision')?.tail?.split('\n').at(-1) ?? 'did not run');
-  else row('5 vision', vision.ok, vision.results.map((r) => `${r.backend}: ${pct(r.judge.accuracy)} in band (MAE ${r.judge.mae.toFixed(2)}), picks ${r.pick.right}/${r.pick.n}`).join('; '), mins(read(`${date}-evals.json`)?.steps?.find((s) => s.name === 'vision')?.seconds));
+  else row('5 vision', vision.ok, vision.results.map((r) => `${r.backend}: ${pct(r.judge.accuracy)} in band (MAE ${r.judge.mae?.toFixed(2) ?? '-'}${r.judge.unanswered ? `, ${r.judge.unanswered} unanswered` : ''}), picks ${r.pick.right}/${r.pick.n}`).join('; '), mins(read(`${date}-evals.json`)?.steps?.find((s) => s.name === 'vision')?.seconds));
 
   const hearing = read(`${date}-hearing.json`);
   if (!hearing) row('5 hearing', false, read(`${date}-evals.json`)?.steps?.find((s) => s.name === 'hearing')?.tail?.split('\n').at(-1) ?? 'did not run');

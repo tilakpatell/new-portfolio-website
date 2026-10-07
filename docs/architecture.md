@@ -101,6 +101,11 @@ A few more models are other people's, from Sketchfab under Creative Commons attr
 
 ## Tests
 
-Tests: `npm test` runs the games' rules (Vitest); they run before every deploy.
+Tests: `npm test` runs the games' rules and every pure module beside it (Vitest, each file under a second); CI runs it on every pull request, and deploy again before it publishes.
 
-The AI and the models (the gen3d and voices pipelines, their judges, the shipped models and voice lines, the desktop jobs, the NPC brains, the autopilot) have a run of their own, `npm run test:ai`, with fake engines behind the pipelines' own seams; CI runs it beside the other checks. `scripts/ai-e2e/README.md` has every tier, its command and how to add a case.
+The AI and the models (the gen3d and voices pipelines, their judges, the shipped models and voice lines, the desktop jobs, the NPC brains, the autopilot) are tested end to end in tiers, `scripts/ai-e2e/README.md` the manual:
+
+- `npm run test:ai` (`vitest.ai.config.js`), CI's `AI` job on every pull request: the pipelines from issue to pull request with fake engines behind their own seams (tier 1), the models, credits and voice lines as shipped (tier 2), every brain scripted and fuzzed and the AI toolkit fuzzed (tier 4), the autopilot's guards and the desktop jobs' contract (tier 7).
+- `npm run test:ai:render` (`vitest.render.config.js`): every gen3d model rendered headless and made to draw (tier 3), on a pull request that touches a model and every night.
+- `npm run test:ai:gpu`, on the desktop: the judges evaluated against labelled sets (tier 5), one real model and one real line made start to end and held to a blessed golden (tier 6).
+- `.github/workflows/ai-health.yml` runs the GPU tiers on the desktop's runner at 04:00 UTC and keeps one issue labelled `ai-health`: opened on a red night, closed on a green one; `node scripts/desktop/status.mjs` shows the last night.
