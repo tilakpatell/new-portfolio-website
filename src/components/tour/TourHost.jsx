@@ -32,7 +32,7 @@ export default function TourHost() {
   // and its stops once loaded
   const [run, setRun] = useState(null);
   const [asked, setAsked] = useState(null); // a page's own basics, waiting to show the first time: { key, page }
-  const [list, setList] = useState(null);
+  const [loaded, setLoaded] = useState(null); // { run, list }: the stops, for the run they were loaded for
   const [offer, setOffer] = useState(false);
   const where = useRef(pathname);
   where.current = pathname;
@@ -57,14 +57,14 @@ export default function TourHost() {
   }, []);
 
   useEffect(() => {
-    setList(null);
     if (!run) return undefined;
     let live = true;
-    loadList(run).then((l) => live && setList(l ?? null));
+    loadList(run).then((list) => live && setLoaded({ run, list }));
     return () => {
       live = false;
     };
   }, [run]);
+  const list = loaded?.run === run ? loaded.list : null;
 
   // a page with another tour (back to the map from the feed, out of a world)
   // ends it (and a page's own basics not shown yet); the feed moving the
