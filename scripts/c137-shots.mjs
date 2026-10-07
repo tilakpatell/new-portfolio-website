@@ -68,6 +68,9 @@ export const VIEWS = {
   pluto: { area: 'pluto', at: [-400, 1916, N], cam: [0, 0.2] },
   gearworld: { area: 'gearworld', at: [-400, 2016, N], cam: [0, 0.2] },
   vindicators: { area: 'vindicators', at: [-400, 2105.4, N], cam: [0, 0.3] },
+  simulation: { area: 'simulation', at: [-400, 2215.4, N], cam: [0, 0.3] },
+  storytrain: { area: 'storytrain', at: [-400, 2310.4, N], cam: [0, 0.2] },
+  fortress: { area: 'fortress', at: [-400, 2413.4, N], cam: [0, 0.3] },
 };
 
 const names = process.argv.slice(2);
