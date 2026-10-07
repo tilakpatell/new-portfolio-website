@@ -38,7 +38,7 @@ const FOOD = {
 const MATERIALS = ['stick', 'paper', 'coal', 'charcoal', 'diamond', 'iron_ingot', 'gold_ingot', 'redstone', 'lapis_lazuli', 'flint', 'clay_ball', 'brick', 'snowball', 'book', 'glowstone_dust', 'wheat', 'wheat_seeds', 'string', 'feather', 'gunpowder', 'leather', 'bone', 'arrow', 'ender_pearl', 'egg'];
 const SIXTEEN = new Set(['egg', 'snowball', 'ender_pearl']);
 // blocks a player never holds as themselves: liquids (buckets come later), the crop, farmland
-const NOT_ITEMS = new Set(['air', 'water', 'lava', 'wheat', 'farmland']);
+const NOT_ITEMS = new Set(['air', 'water', 'lava', 'wheat', 'farmland', 'lit_furnace']);
 // blocks whose item has a tile of its own in the item folder
 const OWN_TILE = { oak_door: 'oak_door', sugar_cane: 'sugar_cane' };
 

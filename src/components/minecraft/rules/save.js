@@ -17,10 +17,11 @@ export function pack(g) {
     v: SAVE_VERSION,
     seed: g.seed,
     time: g.time,
-    player: { x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch, health: p.health, hunger: p.hunger, spawn: g.spawn },
+    player: { x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch, health: p.health, hunger: p.hunger, saturation: p.saturation, exhaustion: p.exhaustion, spawn: g.spawn, home: g.home, bed: g.bed ?? null, dead: Boolean(g.dead) },
     inventory: { slots: g.inventory.slots.map((s) => (s ? { ...s } : null)), selected: g.inventory.selected },
     edits,
     chests: g.chests ?? {},
+    furnaces: g.furnaces ?? {},
   };
 }
 
@@ -36,5 +37,6 @@ export function restore(saved) {
     inventory: saved.inventory ?? null,
     edits: saved.edits ?? {},
     chests: saved.chests ?? {},
+    furnaces: saved.furnaces ?? {},
   };
 }

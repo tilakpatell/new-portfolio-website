@@ -10,12 +10,20 @@
 // and the hands work on it (rules/build.js): breaking, placing, the sand
 // that falls, the items dropped.
 //
+// The furnaces in loaded chunks burn and cook every tick (rules/furnace.js),
+// the player's stomach works (rules/hunger.js), and at no health the player
+// dies: everything carried falls where they stood, and `respawn` stands them
+// up again at the bed they last slept in, or the world's spawn if it's gone.
+//
 // Events (a landing, a step, a hurt, a break, a place, a pickup) collect on
 // the game for the module to `drain` once a frame: sounds, the HUD.
 
 import { seeded } from '../../../lib/seeded.js';
-import { stepDrops, stepHands, stepUpdates } from './build.js';
+import { setBlock, stepDrops, stepHands, stepUpdates } from './build.js';
+import { byName } from './blocks.js';
 import { applyEdits, chunkOf, key, makeChunk, packEdits } from './chunk.js';
+import { stepFurnace } from './furnace.js';
+import { stepHunger } from './hunger.js';
 import { makeInventory } from './inventory.js';
 import { hashSeed } from './noise.js';
 import { inWater } from './physics.js';
@@ -56,13 +64,17 @@ export function spawnPoint(gen) {
 export function newGame({ seed = Date.now(), save = null } = {}) {
   const s = hashSeed(save?.seed ?? seed);
   const gen = makeGenerator(s);
-  const spawn = save?.player?.spawn ?? spawnPoint(gen);
+  // the world's spawn (home), and where the player stands up: home, or beside their bed
+  const home = save?.player?.home ?? spawnPoint(gen);
+  const spawn = save?.player?.spawn ?? home;
   const at = save?.player ?? spawn;
   const player = makePlayer(at);
   player.yaw = save?.player?.yaw ?? 0;
   player.pitch = save?.player?.pitch ?? 0;
   player.health = save?.player?.health ?? player.health;
   player.hunger = save?.player?.hunger ?? player.hunger;
+  player.saturation = save?.player?.saturation ?? player.saturation;
+  player.exhaustion = save?.player?.exhaustion ?? player.exhaustion;
   const inventory = makeInventory();
   if (save?.inventory) {
     save.inventory.slots.forEach((st, i) => (inventory.slots[i] = st ? { ...st } : null));
@@ -74,6 +86,9 @@ export function newGame({ seed = Date.now(), save = null } = {}) {
     world: makeWorld(),
     player,
     spawn,
+    home,
+    bed: save?.player?.bed ?? null,
+    dead: Boolean(save?.player?.dead),
     time: save?.time ?? NOON,
     ticks: 0,
     renderDistance: 10,
@@ -83,6 +98,8 @@ export function newGame({ seed = Date.now(), save = null } = {}) {
     // the edits of chunks not loaded now, packed, by chunk key (rules/save.js)
     edits: { ...(save?.edits ?? {}) },
     chests: { ...(save?.chests ?? {}) },
+    furnaces: { ...(save?.furnaces ?? {}) },
+    eating: 0,
     cursor: null,
     breaking: null,
     cooldown: 0,
@@ -153,14 +170,76 @@ export function tick(g, input) {
   g.time++;
   const p = g.player;
   const from = g.events.length;
-  if (g.world.loaded(p.x, p.z)) {
+  if (g.world.loaded(p.x, p.z) && !g.dead) {
     g.events.push(...stepPlayer(g.world, p, input));
     g.cursor = raycast(g.world, eyeOf(p), lookDir(p.yaw, p.pitch));
     stepHands(g, input, { onGround: p.onGround, inWater: inWater(g.world, p) });
+    stepHunger(p, g.events);
+    if (p.health <= 0) die(g, g.events.slice(from).findLast((e) => e.type === 'hurt')?.cause ?? null);
   }
+  stepFurnaces(g);
   stepUpdates(g);
   stepDrops(g);
   return g.events.slice(from);
+}
+
+const FURNACE = byName.get('furnace').id;
+const LIT_FURNACE = byName.get('lit_furnace').id;
+const BED = byName.get('red_bed').id;
+
+// every furnace in a loaded chunk: a tick of fire, the block lit or not to match
+function stepFurnaces(g) {
+  for (const [k, f] of Object.entries(g.furnaces)) {
+    const [x, y, z] = k.split(',').map(Number);
+    if (!g.world.loaded(x, z)) continue;
+    const here = g.world.get(x, y, z);
+    if (here !== FURNACE && here !== LIT_FURNACE) {
+      delete g.furnaces[k];
+      continue;
+    }
+    const lit = stepFurnace(f);
+    if (lit !== (here === LIT_FURNACE)) setBlock(g, x, y, z, lit ? LIT_FURNACE : FURNACE, g.world.getState(x, y, z));
+  }
+}
+
+// Dying: all that's carried thrown out round where the player stood, as the game scatters it.
+function die(g, cause) {
+  const p = g.player;
+  const r = g.rand;
+  g.dead = true;
+  g.breaking = null;
+  g.eating = 0;
+  const inv = g.inventory;
+  inv.slots.forEach((s, i) => {
+    if (!s) return;
+    const speed = r() * 0.5;
+    const a = r() * Math.PI * 2;
+    g.drops.push({ item: s.item, count: s.count, damage: s.damage ?? 0, x: p.x, y: p.y + 1.32, z: p.z, vx: -Math.sin(a) * speed, vy: 0.2, vz: Math.cos(a) * speed, age: 0, wait: 40 });
+    inv.slots[i] = null;
+  });
+  g.events.push({ type: 'died', cause });
+}
+
+// Back on their feet, whole and fed: beside the bed if it's still there, else at home.
+export function respawn(g) {
+  const out = [];
+  let spot = g.spawn ?? g.home;
+  if (g.bed) {
+    const { x, y, z } = g.bed;
+    if (g.world.loaded(x, z) && g.world.get(x, y, z) !== BED) {
+      out.push({ type: 'no_bed' });
+      g.bed = null;
+      g.spawn = g.home;
+      spot = g.home;
+    }
+  }
+  const yaw = g.player.yaw;
+  Object.assign(g.player, makePlayer(spot), { yaw, pitch: 0 });
+  g.prev = { x: spot.x, y: spot.y, z: spot.z };
+  g.dead = false;
+  out.push({ type: 'respawn' });
+  g.events.push(...out);
+  return out;
 }
 
 export function drain(g) {

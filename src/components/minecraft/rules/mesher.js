@@ -78,7 +78,7 @@ const LOG = new Uint8Array(256);
 const FRONTED = new Uint8Array(256);
 for (const b of BLOCKS) {
   if (b.name.endsWith('_log')) LOG[b.id] = 1;
-  if (['furnace', 'chest', 'jack_o_lantern'].includes(b.name)) FRONTED[b.id] = 1;
+  if (['furnace', 'lit_furnace', 'chest', 'jack_o_lantern'].includes(b.name)) FRONTED[b.id] = 1;
 }
 const ENDS = [[FACE.top, FACE.bottom], [FACE.east, FACE.west], [FACE.north, FACE.south]];
 const FRONT = [FACE.north, FACE.south, FACE.west, FACE.east];

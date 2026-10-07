@@ -18,6 +18,8 @@
 import { BLOCKS, byName } from './blocks.js';
 import { breakTicks } from './breaking.js';
 import { delayOf, isFluid, stepFluid } from './fluids.js';
+import { makeFurnace } from './furnace.js';
+import { EAT_TICKS, EXHAUST, MAX_HUNGER, eat, exhaust } from './hunger.js';
 import { give, held } from './inventory.js';
 import { ITEMS } from './items.js';
 import { moveBox } from './physics.js';
@@ -45,6 +47,9 @@ const SOIL = new Set(['grass_block', 'dirt', 'podzol', 'farmland'].map(id));
 const SAND = id('sand');
 const FRONTED = new Set(['furnace', 'chest', 'pumpkin', 'jack_o_lantern'].map(id));
 const STAIRS = id('oak_stairs');
+const CHEST = id('chest');
+const FURNACES = new Set([id('furnace'), id('lit_furnace')]);
+export const CHEST_SLOTS = 27;
 const DOOR = id('oak_door');
 const LOGS = new Set(BLOCKS.filter((b) => b.name.endsWith('_log')).map((b) => b.id));
 
@@ -89,9 +94,16 @@ export function breakBlock(g, x, y, z) {
     const oy = g.world.getState(x, y, z) & 8 ? y - 1 : y + 1;
     if (g.world.get(x, oy, z) === DOOR) setBlock(g, x, oy, z, AIR);
   }
+  // a chest or a furnace spills what it holds
+  const k = `${x},${y},${z}`;
+  const holding = blockId === CHEST ? g.chests[k] : FURNACES.has(blockId) ? g.furnaces[k]?.slots : null;
+  for (const st of holding ?? []) if (st) spillDrop(g, st, x, y, z);
+  if (blockId === CHEST) delete g.chests[k];
+  if (FURNACES.has(blockId)) delete g.furnaces[k];
   const inv = g.inventory;
   const hand = held(inv);
   const tool = toolOf(hand);
+  exhaust(g.player, EXHAUST.dig);
   for (const d of b.drops(g.world.getState(x, y, z), tool, g.rand)) spawnDrop(g, d.item, d.count, x + 0.5, y + 0.25, z + 0.5);
   setBlock(g, x, y, z, AIR);
   g.events.push({ type: 'break', id: blockId, x, y, z });
@@ -103,6 +115,12 @@ export function breakBlock(g, x, y, z) {
     }
   }
   return true;
+}
+
+// a container's stack thrown out of its cell, as the game scatters them
+function spillDrop(g, st, x, y, z) {
+  const r = g.rand;
+  g.drops.push({ item: st.item, count: st.count, damage: st.damage ?? 0, x: x + 0.1 + r() * 0.8, y: y + 0.1 + r() * 0.8, z: z + 0.1 + r() * 0.8, vx: (r() - 0.5) * 0.1, vy: r() * 0.05 + 0.2, vz: (r() - 0.5) * 0.1, age: 0 });
 }
 
 export function spawnDrop(g, item, count, x, y, z) {
@@ -197,13 +215,38 @@ export function stepHands(g, input, { onGround, inWater }) {
       }
     }
   }
-  if (input.use && hit) {
-    // a crafting table opens on use; sneaking builds against it instead
-    if (hit.id === TABLE && !input.sneak) g.events.push({ type: 'open', what: 'table', x: hit.x, y: hit.y, z: hit.z });
-    else if (hit.id === BED && !input.sneak) sleep(g, hit);
-    else if (hit.id === DOOR && !input.sneak) swing(g, hit);
-    else placeBlock(g, hit);
+  // a table, a chest or a furnace opens on use; sneaking builds against it instead
+  const food = ITEMS[held(g.inventory)?.item]?.food ?? null;
+  let used = false;
+  if (input.use && hit && !input.sneak) {
+    used = true;
+    const k = `${hit.x},${hit.y},${hit.z}`;
+    const at = { x: hit.x, y: hit.y, z: hit.z };
+    if (hit.id === TABLE) g.events.push({ type: 'open', what: 'table', ...at });
+    else if (hit.id === CHEST) {
+      g.chests[k] ??= new Array(CHEST_SLOTS).fill(null);
+      g.events.push({ type: 'open', what: 'chest', ...at });
+    } else if (FURNACES.has(hit.id)) {
+      g.furnaces[k] ??= makeFurnace();
+      g.events.push({ type: 'open', what: 'furnace', ...at });
+    } else if (hit.id === BED) sleep(g, hit);
+    else if (hit.id === DOOR) swing(g, hit);
+    else used = false;
   }
+  if (input.use && hit && !used && !food) placeBlock(g, hit);
+  // eating: use held for 32 ticks with food in hand, when hungry
+  if (food && input.using && !used && g.player.hunger < MAX_HUNGER) {
+    g.eating = (g.eating ?? 0) + 1;
+    if (g.eating % 4 === 0) g.events.push({ type: 'munch' });
+    if (g.eating >= EAT_TICKS) {
+      const inv = g.inventory;
+      const s = held(inv);
+      eat(g.player, food);
+      g.events.push({ type: 'eat', item: s.item });
+      if (!--s.count) inv.slots[inv.selected] = null;
+      g.eating = 0;
+    }
+  } else g.eating = 0;
 }
 
 // A bed at night: the night passes (one player, so no waiting for the others)
@@ -228,6 +271,7 @@ export function sleep(g, { x, y, z }) {
       }
     }
   g.spawn = spot;
+  g.bed = { x, y, z };
   g.events.push({ type: 'sleep', x, y, z });
   return true;
 }

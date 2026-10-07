@@ -69,25 +69,30 @@ export function split(inv, slot) {
   return take(inv, slot, Math.ceil(s.count / 2));
 }
 
-// A shift-click: from the hotbar into the rest, from the rest into the
-// hotbar, filling like stacks first.
-export function quickMove(inv, slot) {
-  const s = inv.slots[slot];
-  if (!s) return;
-  const [lo, hi] = slot < HOTBAR ? [HOTBAR, SLOTS] : [0, HOTBAR];
+// A stack moved into slots lo to hi (a shift-click's way): onto like stacks
+// first, then the first empty; what's moved leaves s, which says what's left.
+export function fill(slots, lo, hi, s) {
   const max = stackOf(s.item);
   if (max > 1)
     for (let i = lo; i < hi && s.count; i++) {
-      const t = inv.slots[i];
+      const t = slots[i];
       if (!t || t.item !== s.item || t.count >= max) continue;
       const n = Math.min(s.count, max - t.count);
       t.count += n;
       s.count -= n;
     }
   for (let i = lo; i < hi && s.count; i++) {
-    if (inv.slots[i]) continue;
-    inv.slots[i] = { ...s };
+    if (slots[i]) continue;
+    slots[i] = { ...s };
     s.count = 0;
   }
-  if (!s.count) inv.slots[slot] = null;
+  return s.count;
+}
+
+// A shift-click: from the hotbar into the rest, from the rest into the hotbar.
+export function quickMove(inv, slot) {
+  const s = inv.slots[slot];
+  if (!s) return;
+  const [lo, hi] = slot < HOTBAR ? [HOTBAR, SLOTS] : [0, HOTBAR];
+  if (!fill(inv.slots, lo, hi, s)) inv.slots[slot] = null;
 }
