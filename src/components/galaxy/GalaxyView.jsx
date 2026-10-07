@@ -8,6 +8,7 @@ import { SYSTEMS, goalsOf, lightYears, systemById } from './systems';
 import '../universe/universe.css';
 import GuideCue from '../guide/GuideCue';
 import WarHud from './WarHud';
+import PowerBar from '../universe/PowerBar';
 
 // The galaxy's 3D view (scene.js, a world module on the world runtime:
 // ./module.js) and everything over it:
@@ -28,6 +29,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   const tags = useRef(null);
   const stick = useRef(null);
   const shield = useRef(null);
+  const powers = useRef(null); // (the crew's ship powers' bar: the scene writes it)
   const hud = useRef(null);
   const [flown, setFlown] = useState(false);
   const [controls, setControlsState] = useState(() => readControls(local.get(CONTROLS_KEY)));
@@ -53,6 +55,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       stars,
       stick,
       shield,
+      powers,
       hud,
       net,
       tags,
@@ -172,6 +175,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
                   <span />
                 </span>
               </div>
+              <PowerBar ship={ship} reduced={reduced} barRef={powers} onPress={(slot) => view.current?.power?.(slot)} />
               <div ref={hud} className="universe-hud" aria-hidden="true">
                 <span className="universe-reticle" />
                 <span className="universe-lock">
@@ -221,10 +225,10 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
               {!flown && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer, <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>V</kbd> cockpit. The named stars are other systems: put the nose on one and <kbd>J</kbd> to jump, or <kbd>M</kbd> for the galaxy map
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer, <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>G</kbd> your crew’s power and <kbd>X</kbd> the big one once it’s charged, <kbd>V</kbd> cockpit. The named stars are other systems: put the nose on one and <kbd>J</kbd> to jump, or <kbd>M</kbd> for the galaxy map
                     <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag to fly, hold Boost and Fire; point at a star and tap Jump to go to lightspeed<GuideCue touch /></span>
+                  <span className="universe-hint-touch">Drag to fly, hold Boost and Fire, tap your crew’s power; point at a star and tap Jump to go to lightspeed<GuideCue touch /></span>
                 </p>
               )}
             </>
