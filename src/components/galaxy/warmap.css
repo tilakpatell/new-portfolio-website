@@ -159,12 +159,14 @@
   .holomap-fleets .holomap-emblem { width: 8px; height: 8px; }
   .holomap-fleets > li[data-kind='decisive'] { width: 16px; height: 16px; }
   .holomap-fleets > li[data-kind='decisive'] .holomap-emblem { width: 9px; height: 9px; }
+  .holomap-systems li:is([data-front], [data-attack]) .holomap-dot::after { width: 9px; height: 9px; font-size: 8px; line-height: 9px; }
 }
 
 /* ── The war card, in the side panel ── */
 /* (the way out of the galaxy, clear of the buttons over it: its own rule's margin pulls it up over them) */
 .holomap-side > .universe-back { margin: 1.1rem 0 0; }
-.holomap-warcard { display: grid; gap: 0.65rem; margin: 0.9rem 0 0.4rem; padding: 0.75rem; border: 1px solid rgb(255 179 71 / 0.28); border-radius: 10px; background: rgb(28 16 4 / 0.35); }
+/* (one column no wider than the card: a button's unbroken line pushed it out past the card's edge) */
+.holomap-warcard { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.65rem; margin: 0.9rem 0 0.4rem; padding: 0.75rem; border: 1px solid rgb(255 179 71 / 0.28); border-radius: 10px; background: rgb(28 16 4 / 0.35); }
 .holomap-warcard .holomap-kicker { color: #ffb347; }
 .holomap-part { display: flex; align-items: center; gap: 0.45rem; margin: 0; color: #fff; font-size: 0.78rem; }
 .holomap-part::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px rgb(255 255 255 / 0.2); }
@@ -188,8 +190,8 @@
 .holomap-order-bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--held) 45%, transparent); overflow: hidden; }
 .holomap-order-bar > span { display: block; width: calc(var(--take, 0) * 100%); height: 100%; background: var(--by); }
 .holomap-order-n { color: rgb(217 243 255 / 0.75); font-size: 0.72rem; }
-.holomap-join { display: flex; align-items: center; justify-content: center; gap: 0.55rem; width: 100%; text-align: left; }
-.holomap-join > span { display: grid; }
+.holomap-join { display: flex; align-items: center; justify-content: center; gap: 0.55rem; width: 100%; padding-block: 0.5rem; line-height: 1.25; text-align: left; white-space: normal; }
+.holomap-join > span { display: grid; gap: 0.1rem; }
 .holomap-join small { font-size: 0.7rem; font-weight: 500; opacity: 0.8; }
 .holomap-feed { display: grid; gap: 0.35rem; }
 .holomap-feed .holomap-kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
