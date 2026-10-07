@@ -170,6 +170,23 @@ describe('createRuntime', () => {
     expect(makeBackend).toHaveBeenCalledTimes(2);
   });
 
+  it("the last world's box out of sight doesn't keep the next world from drawing", async () => {
+    const { rt, loop } = make();
+    await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost());
+    rt.setVisible(false); // (its box scrolled away)
+    rt.unmount();
+    const next = fakeWorld({ wants: () => true, setVisible: vi.fn() });
+    await rt.mount({ id: 'b', create: () => next }, {}, fakeHost());
+    expect(next.setVisible).toHaveBeenLastCalledWith(true);
+    expect(loop.tick(16)).toBe(true);
+    expect(next.draw).toHaveBeenCalled();
+    expect(rt.status).toBe('on');
+    // and its own box going out of sight still stops it
+    rt.setVisible(false);
+    expect(loop.tick(32)).toBe(false);
+    expect(next.draw).toHaveBeenCalledTimes(1);
+  });
+
   it('a frame that throws fails the world', async () => {
     const { rt, loop } = make();
     const world = fakeWorld({ draw: () => { throw new Error('boom'); } });

@@ -261,6 +261,11 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
   const begin = (module, world, host, props) => {
     input.attach({ win: typeof window !== 'undefined' ? window : host, host });
     current = { module, world, host, props };
+    // on screen until its own box says not: whether the last world's box
+    // was in sight says nothing of this one's, and a page's observer heard
+    // while this world was still being made was dropped (useWorld), so
+    // carried over, a box scrolled away kept the next world from ever drawing
+    shown = true;
     world.setVisible?.(shown);
     last = 0;
     setStatus('ready');
