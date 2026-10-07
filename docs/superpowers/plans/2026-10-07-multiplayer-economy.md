@@ -153,7 +153,7 @@
 - Test: `src/components/universe/pilotGoal.test.js`
 
 **Interfaces:**
-- Produces: `PILOT_GOAL = /^pilot:/`; `pilotId(goal) → id | null`; `parkBehind(pose, { back = 6 } = {}) → { x, y, z, heading }` (behind along their heading, at their height, facing their way); `pilotSpace(space, id, pose) → space with goals[`pilot:${id}`] = park`; `reached(ship, pose, within = 8) → boolean`; `REAIM_MS = 1000`.
+- Produces: `PILOT_GOAL = /^pilot:/`; `pilotId(goal) → id | null`; `parkBehind(pose, { back = 6 } = {}) → { x, y, z, heading }` (behind along their heading, at their height, facing their way); `pilotSpace(space, id, pose) → space with goals[`pilot:${id}`] = { id, ...park, at, r: 0, reach: 0 }` (the park, with `at` as the other goals have it; no pose, no goal); `reached(ship, pose, within = 8) → boolean`; `REAIM_MS = 1000`.
 
 - [ ] **Step 1: Write the failing tests**: `the park is six units behind on the heading`, `pilotSpace adds the goal and leaves the rest`, `reached within eight`, `a stale pilot ends the trip` (`pilotSpace(space, id, null)` has no such goal).
 - [ ] **Step 2: Run**: FAIL. **Step 3: Implement.** **Step 4: Run**: PASS.
