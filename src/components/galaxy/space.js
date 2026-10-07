@@ -50,9 +50,10 @@ export function makeSpace(solids, { edge = EDGE, ceiling = CEILING } = {}) {
     openness,
     driveAt: openness, // (how far the sublight drive's open: all of how open it is)
     homeAt: () => 0, // (none of the universe map's home-system handling)
-    boostAt: (x, y, z, boost = SHIP.boost) => boost + (PULSE - boost) * openness(x, y, z),
-    brakeAt: (x, y, z) => SHIP.brake * (1 + 2.5 * openness(x, y, z)),
-    coastAt: (x, y, z) => SHIP.coast * (1 + 3.5 * openness(x, y, z)),
+    // (`open`, how open the drive is, if ship.js knows it already: less, held down by hunters)
+    boostAt: (x, y, z, boost = SHIP.boost, open = openness(x, y, z)) => boost + (PULSE - boost) * open,
+    brakeAt: (x, y, z, open = openness(x, y, z)) => SHIP.brake * (1 + 2.5 * open),
+    coastAt: (x, y, z, open = openness(x, y, z)) => SHIP.coast * (1 + 3.5 * open),
     solids,
     goals,
   };
