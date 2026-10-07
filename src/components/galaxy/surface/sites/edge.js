@@ -146,7 +146,7 @@ export const SITES = {
           rv: [['walt', 'He built his home on the site of his greatest humiliation.'], ['jesse', 'That’s messed up, Mr. White. Even for you.']],
         },
         things: [
-          { kind: 'fortress', at: [0, -18], yaw: 0.67, solid: { box: [36, 28] } },
+          { kind: 'fortress', at: [0, -18], yaw: 0.67 },
           { kind: 'vadermeditation', at: [8, 34], yaw: 2.6 },
           { kind: 'lamp', at: [-6, 42], opts: { h: 6, light: '#ff6a4a', color: '#1a1a1c' } },
           { kind: 'lamp', at: [18, 44], opts: { h: 6, light: '#ff6a4a', color: '#1a1a1c' } },
@@ -253,9 +253,9 @@ export const SITES = {
       { kind: 'lamp', at: [110, 16], opts: { h: 5, light: '#ffb070', color: '#2a2828' } },
       { kind: 'lamp', at: [68, -16], opts: { h: 5, light: '#ffb070', color: '#2a2828' } },
       { kind: 'collector', at: [182, 34], abs: true, y: 2.3, yaw: 0.7 },
-      { kind: 'droidplatform', at: [158, 6], abs: true, y: 2.2 },
-      { kind: 'droidplatform', at: [200, 52], abs: true, y: 2.2 },
-      { kind: 'droidplatform', at: [290, 322], abs: true, y: 2.2 },
+      { kind: 'droidplatform', at: [158, 6], abs: true, y: 1.3 },
+      { kind: 'droidplatform', at: [200, 52], abs: true, y: 1.3 },
+      { kind: 'droidplatform', at: [290, 322], abs: true, y: 1.3 },
     ],
     scatter: [
       { kind: 'lavacrack', n: 900, within: [10, 585], scale: [1.4, 3.4], solid: false },

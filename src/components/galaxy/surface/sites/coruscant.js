@@ -114,7 +114,13 @@ export const SITE = {
         falcon: [['han', 'Senator’s penthouse. Swanky. I’d steal the furniture, but it’d never fit in the Falcon.']],
         cruiser: [['morty', 'Rick, Anakin jumped out of this window. Onto a flying droid.'], ['rick', 'And then he married her, Morty. Real “guy who jumps out of windows” energy.']],
       },
-      things: [{ kind: 'republica', at: [-22, 4.6], yaw: 1.78, abs: true, y: 0 }],
+      // (the veranda stays built; the tower itself is the Meshy model of its
+      // crown, stood behind it on a built shaft)
+      things: [
+        { kind: 'republica', at: [-22, 4.6], yaw: 1.78, abs: true, y: 0, model: false, opts: { tower: false } },
+        { kind: 'republica', at: [-48, 10], yaw: 1.78, abs: true, y: -100, solid: false, windows: true },
+        { kind: 'plinth', at: [-48, 10], abs: true, y: -100, solid: false, opts: { w: 90, round: true, depth: 230 } },
+      ],
     },
     {
       id: 'dex',
@@ -181,9 +187,13 @@ export const SITE = {
     span([0, 0], [200, -290], 30, 24, 6),
     span([-150, -270], [-430, -250], 24, 36, 6),
     // the statues along the Processional Way
+    // (the Meshy Jedi on their pedestals, a built column under each; out at
+    // ±17 so the pedestals clear the bridge rail at ±7.9)
     ...[60, 100, 140, 180, 220].flatMap((z) => [
-      { kind: 'statue', at: [-14, z], yaw: Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200 } },
-      { kind: 'statue', at: [14, z], yaw: -Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200 } },
+      { kind: 'statue', at: [-17, z], yaw: Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200, style: 'jedi' } },
+      { kind: 'statue', at: [17, z], yaw: -Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200, style: 'jedi' } },
+      { kind: 'plinth', at: [-17, z], abs: true, y: -6, solid: false, opts: { w: 8, d: 8, depth: 200 } },
+      { kind: 'plinth', at: [17, z], abs: true, y: -6, solid: false, opts: { w: 8, d: 8, depth: 200 } },
     ]),
     // Anakin's airspeeder, by your ship, and the platform's clutter: cargo
     // waiting for a lift, a lamp over it

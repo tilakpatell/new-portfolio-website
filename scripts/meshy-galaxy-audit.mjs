@@ -278,13 +278,14 @@ export const BUILDINGS = {
     tex: 1024,
     detail: 'stone',
   },
-  // lothal: the old Imperial tower (Sabine's tower) (now quality 3, accuracy
-  // 1; priority unverified): It is Yavin's jungle lookout: a see-through
+  // lothal: lothtower, the old Imperial tower (Sabine's tower; a kind of its
+  // own, since 'lookout' is Yavin's too) (now quality 3, accuracy 1; priority
+  // unverified): It is Yavin's jungle lookout: a see-through
   // steel lattice of thin rods. Ahsoka's Sabine tower is a tall tapering
   // stone-block shaft with a fluted foot, a saucer cabin with two long
   // antenna arms, and a mast. There is a clean live-action still of the whole
   // tower.
-  lookout: {
+  lothtower: {
     ref: 'File:LothalTower-LiveAction.png',
     crop: [0.13,0.015,0.75,0.96],
     lift: 'the very tall slender tower: a long tapering round shaft of grey stone blocks in banded sections, a flared ribbed foot on a low round plinth, a round saucer-shaped cabin near the top with two long thin horizontal antenna arms, and a thin mast with small crossbars above it',

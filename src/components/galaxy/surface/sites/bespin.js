@@ -339,7 +339,7 @@ export const SITE = {
   things: [
     // the city: its deck, its tower, its towers, its bridges and platforms
     { kind: 'bespindeck', at: [0, 0], abs: true, y: 0, opts: { r: 170, gaps: [Math.PI, Math.PI / 2, -Math.PI / 2, 2.356] } },
-    { kind: 'cloudcity', at: [0, 0], abs: true, y: 0, scale: 2.2, model: false },
+    { kind: 'cloudcity', at: [0, 0], abs: true, y: 0, scale: 2.2 },
     // the plaza's terraces, north of the plaza before the tower (the Meshy model)
     { kind: 'cloudplaza', at: [0, 72], abs: true, y: 0, yaw: Math.PI },
     { kind: 'bespinplatform', at: [0, -255], abs: true, y: 0, opts: { r: 28, gap: 0 } },
@@ -374,7 +374,7 @@ export const SITE = {
     // the skyline: towers stood on the deck (lifted from the fall to it)
     // Cloud City's towers and domed halls round the deck (the Meshy models;
     // scripts/meshy-galaxy-three.mjs), sunk into it as the built city's were
-    { kind: 'cloudtower', n: 14, within: [52, 158], scale: [0.35, 0.8], sink: -30, clear: 24 },
+    { kind: 'cloudcity', n: 14, within: [52, 158], scale: [0.35, 0.8], sink: -30, clear: 24 },
     { kind: 'cloudtower2', n: 10, within: [60, 158], scale: [0.4, 0.8], sink: -30, clear: 24 },
     { kind: 'cloudblock', n: 40, within: [36, 150], scale: [0.6, 1.3], sink: -40, clear: 12 },
     { kind: 'lamp', n: 50, within: [24, 160], scale: [1, 1], sink: -40, clear: 6, opts: { h: 4.5, light: '#ffe0b0', color: '#d8d0c4', radius: 0.2 } },

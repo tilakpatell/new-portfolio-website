@@ -396,7 +396,10 @@ export const SITES = {
           rv: [['walt', 'A single structure, housing thousands. Built entirely by hand.'], ['jesse', 'Treehouse goals, man.']],
         },
         things: [
-          { kind: 'kachirho', at: [0, 0], yaw: 0.15 },
+          // (the tree is the Meshy model, leaning out over the lagoon; its
+          // bottom deck, pods and stair stay built round its foot)
+          { kind: 'kachirho', at: [0, 0], yaw: 2.4, opts: { style: 'tree' }, sink: 2, solid: { r: 24 } },
+          { kind: 'kachirho', at: [0, 0], yaw: 0.15, opts: { style: 'deck', R: 34 } },
           { kind: 'fire', at: [14, 38] },
           { kind: 'crates', at: [-16, 40] },
         ],
@@ -487,11 +490,11 @@ export const SITES = {
           cruiser: [['rick', 'Big hairy guys, small cosy houses. That’s the whole species, Morty.'], ['morty', 'I feel like we should take our shoes off.']],
         },
         things: [
-          { kind: 'wookieehouse', at: [0, 16], yaw: 3.1 },
-          { kind: 'wookieehouse', at: [17, 2], yaw: 4.6 },
-          { kind: 'wookieehouse', at: [-16, 4], yaw: 1.7 },
-          { kind: 'wookieehouse', at: [8, -16], yaw: 5.8 },
-          { kind: 'wookieehouse', at: [-10, -15], yaw: 0.6 },
+          { kind: 'wookieehouse', at: [0, 16], yaw: 3.1, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [17, 2], yaw: 4.6, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [-16, 4], yaw: 1.7, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [8, -16], yaw: 5.8, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [-10, -15], yaw: 0.6, solid: { r: 4 } },
           { kind: 'fire', at: [0, 0], scale: 1.3 },
         ],
       },

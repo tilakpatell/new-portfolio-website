@@ -17,12 +17,10 @@ export const MODELS = {
   ahsokafig: { uid: '6979913cf90342ffa37b1151641babd2', as: 'Ahsoka Tano', metres: 1.85, yaw: 0, tris: 6000, tex: 512 },
   // the Mandalorian, Din Djarin
   dindjarin: { uid: 'e70db49d54f04cdfbdbbd2e36f84f0a6', as: 'the Mandalorian', metres: 1.85, yaw: 0, tris: 16000, tex: 1024, maps: 512 },
-  // Sorgan's woods: birches and firs, ferns under them, and the krill
-  // farmers' thatched huts up on stilts over the ponds
+  // Sorgan's woods: birches and firs, ferns under them
   sorganbirch: { uid: 'aa842dffd9654d33b8b91170ce83c172', as: 'the birches of Sorgan', metres: 15, yaw: 0, tris: 3000, tex: 1024 },
   sorganfir: { uid: '3f39aa5485e94477a36b435f7a1a8b54', as: 'the firs of Sorgan', metres: 19, yaw: 0, tris: 2500, tex: 1024 },
   sorganfern: { uid: 'b99bb3d69eb84965ad70a6b2b6a1f2dd', as: 'the ferns of Sorgan', metres: 1.1, yaw: 0, tris: 900, tex: 512 },
-  stilthut: { uid: 'b73d5d61395d45a2bd65768223fb28de', as: 'the krill farmers’ huts', metres: 6, yaw: 0, tris: 10000, tex: 1024 },
   // Nevarro's black lava rock, scanned
   lavarock: { uid: '7a8f0459c26d4a45875b58df38f9e6d9', as: 'the lava rocks of Nevarro', metres: 3, along: 'max', yaw: 0, tris: 3000, tex: 1024, maps: 512 },
   // the glass the Purge left on Mandalore
@@ -33,8 +31,15 @@ export const MODELS = {
   // temple (a banded cone of rock) and a domed farmhouse of its plains, and
   // Sundari, Mandalore's domed capital
   nevarroarch: { made: 'meshy', as: 'the gate of Nevarro City', metres: 11 },
-  nevarrodome: { made: 'meshy', as: 'the domes of Nevarro City', metres: 3.5 },
+  // (remade by the audit lane, scripts/meshy-galaxy-audit.mjs, from the S1
+  // spaceport still: twice as wide as it is tall, on a drum)
+  nevarrodome: { made: 'meshy', as: 'the domes of Nevarro City', metres: 11, detail: 'stone' },
   lothtemple: { made: 'meshy', as: 'the Jedi temple of Lothal', metres: 70, hero: true },
   lothdome: { made: 'meshy', as: 'the domed farmhouses of Lothal', metres: 11 },
   sundaridome: { made: 'meshy', as: 'Sundari', metres: 51, hero: true, lod: true },
+  // The audit lane's (scripts/meshy-galaxy-audit.mjs, each from a screen
+  // still): Lothal's old Imperial tower (Sabine's; Yavin's lookout stays
+  // built) and the krill farmers' round huts on Sorgan
+  lothtower: { made: 'meshy', as: 'the old Imperial tower', metres: 40, along: 'y', hero: true, lod: true, detail: 'stone' },
+  stilthut: { made: 'meshy', as: 'the krill farmers’ huts', metres: 9, along: 'y', detail: 'wood' },
 };

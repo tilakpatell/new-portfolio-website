@@ -928,20 +928,19 @@ export const PROPS = {
   // 500 Republica: the tallest of the residential towers, its fluted
   // spire, and a senator's veranda out over the skylanes (railed, but for
   // the way in from the bridge, at +z)
-  republica(k, { depth = 330 } = {}) {
+  // (tower: false leaves out the shaft, the taper, the spire, the flutes and
+  // the window rings: the veranda alone, with the Meshy tower stood behind it)
+  republica(k, { depth = 330, tower = true } = {}) {
     const BODY = '#c9c2b4';
-    const parts = [
-      part(cyl(16, 13, depth + 120, 16), { at: [0, -depth, 0], color: BODY, to: 'paint' }),
-      part(cyl(13, 6, 150, 16), { at: [0, 120, 0], color: BODY, to: 'paint' }),
-      part(cyl(6, 0.6, 60, 12), { at: [0, 270, 0], color: '#d8d0c0', to: 'metal' }),
-      part(cyl(16, 16, 0.6, 32), { at: [0, -0.3, 22], color: '#bdb6a8', to: 'stone' }),
-      part(cyl(9, 16, 6, 32), { at: [0, -6.3, 22], color: '#8a847a', to: 'paint' }),
-    ];
-    for (let i = 0; i < 16; i++) {
-      const a = (i / 16) * PI * 2;
-      parts.push(part(box(1.4, depth + 260, 1.4), { at: [sin(a) * 16, -depth, cos(a) * 16], color: '#a8a090', to: 'stone' }));
+    const parts = [part(cyl(16, 16, 0.6, 32), { at: [0, -0.3, 22], color: '#bdb6a8', to: 'stone' }), part(cyl(9, 16, 6, 32), { at: [0, -6.3, 22], color: '#8a847a', to: 'paint' })];
+    if (tower) {
+      parts.push(part(cyl(16, 13, depth + 120, 16), { at: [0, -depth, 0], color: BODY, to: 'paint' }), part(cyl(13, 6, 150, 16), { at: [0, 120, 0], color: BODY, to: 'paint' }), part(cyl(6, 0.6, 60, 12), { at: [0, 270, 0], color: '#d8d0c0', to: 'metal' }));
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * PI * 2;
+        parts.push(part(box(1.4, depth + 260, 1.4), { at: [sin(a) * 16, -depth, cos(a) * 16], color: '#a8a090', to: 'stone' }));
+      }
+      for (let y = -depth + 8; y < 260; y += 8) if ((y * 13) % 7 > 1) parts.push(part(cyl(y < 120 ? 16.2 : 12, y < 120 ? 16.2 : 12, 1.1, 16), { at: [0, y, 0], color: lit('#ffe0b0', 1.5), to: 'glow' }));
     }
-    for (let y = -depth + 8; y < 260; y += 8) if ((y * 13) % 7 > 1) parts.push(part(cyl(y < 120 ? 16.2 : 12, y < 120 ? 16.2 : 12, 1.1, 16), { at: [0, y, 0], color: lit('#ffe0b0', 1.5), to: 'glow' }));
     // Padmé's rooms off the veranda: tall lit windows, a low wall of planters
     parts.push(part(box(18, 5, 0.4), { at: [0, 0.3, 15.8], color: lit('#ffd9a8', 1.3), to: 'glow' }));
     for (let i = 0; i < 9; i++) parts.push(part(box(0.5, 5, 0.6), { at: [-8 + i * 2, 0.3, 16.1], color: '#8a847a', to: 'metal' }));
@@ -1659,26 +1658,31 @@ export const PROPS = {
 
   // the Republic's forward command post: a low bunker, the holotable with
   // the battle over it in blue light, antennae, crates
+  // (the hull alone: the Meshy model stands in for it; the holotable is its
+  // own kind, below, placed in front of it)
   commandpost(k) {
     const parts = [
       part(box(14, 3, 9), { at: [0, 0, -6], color: '#c8c4b4', to: 'paint' }),
       part(box(15, 0.6, 10), { at: [0, 3, -6], color: '#8a8a7c', to: 'metal' }),
-      part(cyl(1.8, 2.0, 1.1, 18), { at: [0, 0, 3], color: '#5a5c58', to: 'metal' }),
-      part(cyl(1.7, 1.7, 0.06, 18), { at: [0, 1.12, 3], color: lit('#6ac8ff', 2), to: 'glow' }),
       rod([5, 3.6, -8], [5, 12, -8], 0.08, 0.05, { color: '#5a5c58', to: 'metal' }),
       part(new THREE.SphereGeometry(1.4, 12, 8, 0, PI * 2, 0, PI * 0.4), { at: [-4, 3.6, -8], rot: [-0.9, 0.6, 0], color: '#d8d8d0', to: 'paint' }),
     ];
     parts.push(part(box(2.2, 1.6, 0.2), { at: [0, 1.4, -1.4], color: '#20303a', to: 'glass' }));
     for (let i = 0; i < 5; i++) parts.push(part(box(1.2, 1.2, 1.2), { at: [-6 + i * 1.4, 0, 4 + (i % 2)], rot: [0, i, 0], color: '#a8a48a', to: 'paint' }));
-    const object = k.build(parts, { name: 'commandpost' });
-    // the hologram over the table: the battle, in blue light, turning
+    return { object: k.build(parts, { name: 'commandpost' }), solids: [{ box: [0, -6, 7, 4.5, 0] }] };
+  },
+
+  // the holotable: the battle over it, in blue light, turning
+  holotable(k) {
+    const parts = [part(cyl(1.8, 2.0, 1.1, 18), { color: '#5a5c58', to: 'metal' }), part(cyl(1.7, 1.7, 0.06, 18), { at: [0, 1.12, 0], color: lit('#6ac8ff', 2), to: 'glow' })];
+    const object = k.build(parts, { name: 'holotable' });
     const holo = new THREE.Mesh(k.own(new THREE.SphereGeometry(1.4, 14, 8, 0, PI * 2, 0, PI / 2)), k.own(new THREE.MeshBasicMaterial({ color: lit('#6ac8ff', 1.6), wireframe: true, transparent: true, opacity: 0.6, toneMapped: false })));
-    holo.position.set(0, 1.4, 3);
+    holo.position.set(0, 1.4, 0);
     holo.scale.set(1, 0.6, 1);
     object.add(holo);
     return {
       object,
-      solids: [{ box: [0, -6, 7, 4.5, 0] }, { circle: [0, 3, 2] }],
+      solids: [{ circle: [0, 0, 2] }],
       update(t) {
         holo.rotation.y = t * 0.4;
       },

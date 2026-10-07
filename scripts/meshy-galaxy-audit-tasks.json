@@ -1,0 +1,140 @@
+{
+  "yodahut": {
+    "lift": [
+      "01a11889-f078-76ee-be78-e226240cda65"
+    ],
+    "model": "01a11890-812d-7621-9ca4-e480772aacd6"
+  },
+  "jeditemple": {
+    "lift": [
+      "01a1188a-60a8-7121-a905-392252316244"
+    ],
+    "model": "01a11890-8648-7349-b5ea-d8a37e269d39"
+  },
+  "stonehead": {
+    "lift": [
+      "01a1188b-84f9-753d-9a8d-fb0d08acedb7"
+    ],
+    "model": "01a11890-8a44-74cc-a3c2-b1acfe812fe1"
+  },
+  "kachirho": {
+    "lift": [
+      "01a1188b-b4ab-7065-bcf9-3b5ec01d51cc"
+    ],
+    "model": "01a11890-8fc1-7126-8fb0-1bbed3dea2f6"
+  },
+  "foundry": {
+    "lift": [
+      "01a1188b-f898-72c2-b1c6-207e617da6fe"
+    ],
+    "model": "01a11890-942f-7579-8569-420333622735"
+  },
+  "republica": {
+    "lift": [
+      "01a1188c-5226-7324-a290-99dc4502cf82"
+    ],
+    "model": "01a11890-9807-72ed-96d2-27ad9e4ac55f"
+  },
+  "dexdiner": {
+    "lift": [
+      "01a1188c-8680-7236-bf73-9ce85611b5ed"
+    ],
+    "model": "01a11890-9bd8-75c8-a664-0cd4624f573d"
+  },
+  "cantina": {
+    "lift": [
+      "01a1188c-b7a7-72c3-9364-1bdd2132d3d3"
+    ],
+    "model": "01a11890-9f0f-722f-91ad-bce245f31a77"
+  },
+  "palace": {
+    "lift": [
+      "01a1188c-fbf7-74c2-9954-cf3c307602cf"
+    ],
+    "model": "01a11890-a24b-767b-ab18-19f535f120a1"
+  },
+  "tipoca": {
+    "lift": [
+      "01a1188d-40b4-77a4-9a8b-7441078db602"
+    ],
+    "model": "01a11890-a5bf-75ff-a907-db9068da497e"
+  },
+  "statue": {
+    "lift": [
+      "01a1188d-84a2-74fd-b767-6a374c1e9930"
+    ],
+    "model": "01a11890-a922-7634-9f8d-488f187d2275"
+  },
+  "fortress": {
+    "lift": [
+      "01a1188d-b2c1-75e9-b548-aeb71a8d6f1d"
+    ],
+    "model": "01a11890-ad19-73da-88b5-12fa935d3569"
+  },
+  "commandpost": {
+    "lift": [
+      "01a1188d-e40f-7353-8b69-ce74b36024ac"
+    ],
+    "model": "01a11890-b0c7-7016-8102-22097ba3f46d"
+  },
+  "cloudcity": {
+    "lift": [
+      "01a1188e-294d-7728-8515-662056ee10d8"
+    ],
+    "model": "01a11890-b545-7005-9ef8-8789916f2dc6"
+  },
+  "nevarrodome": {
+    "lift": [
+      "01a1188e-5859-754a-b754-61dac353e8b5"
+    ],
+    "model": "01a11890-b843-717c-9ea4-74c48da5940a"
+  },
+  "stilthut": {
+    "lift": [
+      "01a1188e-cc0d-7273-a5e8-fa88644d2db8"
+    ],
+    "model": "01a11890-c036-73d0-9afd-c734fb66a6f8"
+  },
+  "benhut": {
+    "lift": [
+      "01a1188f-0f29-7225-b1fa-c9ab7f001f14"
+    ],
+    "model": "01a11890-c43a-71b8-acb1-3f288be88bda"
+  },
+  "stall": {
+    "lift": [
+      "01a1188f-3f9b-716b-9919-0638bb3adcea"
+    ],
+    "model": "01a11890-c73c-754f-82d5-00c6bbb3a7f0"
+  },
+  "wookieehouse": {
+    "lift": [
+      "01a1188f-8392-72a0-8a76-a580f34d83f9"
+    ],
+    "model": "01a11890-ca96-7171-b838-6c21ba04613d"
+  },
+  "droidplatform": {
+    "lift": [
+      "01a1188f-c9f2-768c-9765-c3e49958bcd0"
+    ],
+    "model": "01a11890-ce19-70e9-a61d-3d0f64b761a9"
+  },
+  "tent": {
+    "lift": [
+      "01a11890-1076-75d1-a564-fd1e0b7a0271"
+    ],
+    "model": "01a11890-d1a8-7477-a20e-19521a15c727"
+  },
+  "mosspire": {
+    "lift": [
+      "01a11890-3fc0-7504-a3c0-09c27d0f17f4"
+    ],
+    "model": "01a11890-d4f9-7114-9c0b-475d4a81c33a"
+  },
+  "lothtower": {
+    "lift": [
+      "01a1188e-87d7-7379-b79a-3a06be3e3472"
+    ],
+    "model": "01a11890-bd17-72b8-85af-a1d8c467f0ee"
+  }
+}

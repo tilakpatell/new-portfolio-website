@@ -1273,7 +1273,14 @@ const KASHYYYK = {
 
   // Kachirho: the great wroshyr tree on the shore, a city round its foot
   // and up its trunk, a deck you can climb onto at the bottom
-  kachirho(k, { H = 230 } = {}) {
+  // (style 'tree': the trunk, its roots, the upper decks and pods, the
+  // crown and the lights, which the Meshy model stands in for; 'deck': the
+  // bottom deck at y 7 (R across), its pods, stair and rails, which stay
+  // built round the model's foot; neither: all of it)
+  kachirho(k, { H = 230, style, R } = {}) {
+    const tree = style !== 'deck';
+    const deck = style !== 'tree';
+    const R0 = R ?? 34;
     const prof = [
       [24, 0],
       [17, 8],
@@ -1284,19 +1291,20 @@ const KASHYYYK = {
       [4, H],
     ];
     const rand = rng(77);
-    const parts = [part(trunkGeometry(prof, { seg: 24, furrow: 0.08, ridges: 9, seed: 77 }), { color: '#7d6c56', to: 'bark' })];
+    const parts = tree ? [part(trunkGeometry(prof, { seg: 24, furrow: 0.08, ridges: 9, seed: 77 }), { color: '#7d6c56', to: 'bark' })] : [];
     for (let i = 0; i < 9; i++) {
       const a = (i / 9) * TAU + rand() * 0.3;
-      parts.push(rod([cos(a) * 9, 26 + rand() * 10, sin(a) * 9], [cos(a) * (34 + rand() * 8), -1, sin(a) * (34 + rand() * 8)], 6.5, 2.2, { color: '#7d6c56', to: 'bark' }, 7));
+      if (tree) parts.push(rod([cos(a) * 9, 26 + rand() * 10, sin(a) * 9], [cos(a) * (34 + rand() * 8), -1, sin(a) * (34 + rand() * 8)], 6.5, 2.2, { color: '#7d6c56', to: 'bark' }, 7));
     }
     // the city: rings of decks up the trunk, pod-houses on them, lights
     const floors = [];
     for (const [y, R, pods] of [
-      [7, 34, 0],
+      [7, R0, 0],
       [34, 24, 5],
       [62, 21, 4],
       [96, 18, 3],
     ]) {
+      if (y === 7 ? !deck : !tree) continue;
       parts.push(part(new THREE.CylinderGeometry(R, R * 0.96, 1.2, 40), { at: [0, y - 0.6, 0], color: WOOKIEE_WOOD, to: 'bark' }));
       parts.push(part(ring(R, 0.4, 44), { at: [0, y - 0.5, 0], color: WOOKIEE_DARK, to: 'bark' }));
       for (let i = 0; i < 10; i++) {
@@ -1312,20 +1320,20 @@ const KASHYYYK = {
       if (y === 7) floors.push({ x: 0, z: 0, r: R, y });
     }
     // round the bottom deck, pod-houses on the beach side, a broad stair
-    for (const a of [0.6, 1.3, -0.6, -1.3, 2.4, -2.4]) {
-      const d = 26;
+    for (const a of deck ? [0.6, 1.3, -0.6, -1.3, 2.4, -2.4] : []) {
+      const d = R0 - 8;
       for (const p of podParts({ r: 3.4, h: 6.2, y: 7, seed: a * 10, front: a })) parts.push({ ...p, at: [sin(a) * d + (p.at?.[0] ?? 0), p.at?.[1] ?? 7, cos(a) * d + (p.at?.[2] ?? 0)] });
     }
-    const n = 15;
+    const n = deck ? 15 : 0;
     for (let i = 0; i < n; i++) {
-      const z = 34.4 + i * 0.8;
+      const z = R0 + 0.4 + i * 0.8;
       const y = 7 - (i + 1) * 0.45;
       parts.push(part(box(7, 0.25, 0.86), { at: [0, y - 0.25, z], color: WOOKIEE_WOOD, to: 'bark' }));
       floors.push({ x: 0, z, hw: 3.6, hd: 0.44, yaw: 0, y });
     }
-    for (const x of [-3.6, 3.6]) parts.push(rod([x, 7.6, 34], [x, 0.4, 34.4 + n * 0.8], 0.15, 0.15, { color: WOOKIEE_DARK, to: 'bark' }, 5));
+    if (deck) for (const x of [-3.6, 3.6]) parts.push(rod([x, 7.6, R0], [x, 0.4, R0 + 0.4 + n * 0.8], 0.15, 0.15, { color: WOOKIEE_DARK, to: 'bark' }, 5));
     // the crown, vast, far overhead
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < (tree ? 9 : 0); i++) {
       const a = (i / 9) * TAU + rand();
       const y = H * (0.62 + rand() * 0.32);
       const len = 30 + rand() * 30;
@@ -1335,15 +1343,15 @@ const KASHYYYK = {
       const s = 34 + rand() * 18;
       parts.push(...canopy(end, s, { flat: 0.38, color: new THREE.Color('#4a6a2c').offsetHSL(0, 0, (rand() - 0.5) * 0.08), seed: 400 + i }));
     }
-    parts.push(...canopy([0, H, 0], 50, { flat: 0.44, color: '#47662a', seed: 499 }));
+    if (tree) parts.push(...canopy([0, H, 0], 50, { flat: 0.44, color: '#47662a', seed: 499 }));
     // lights in its windows, up the trunk
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < (tree ? 24 : 0); i++) {
       const y = 12 + rand() * 120;
       const a = rand() * TAU;
       const rr = radiusAt(prof, y);
       parts.push(part(new THREE.CircleGeometry(0.9, 8), { at: [cos(a) * rr * 1.01, y, sin(a) * rr * 1.01], rot: [0, PI / 2 - a, 0], color: new THREE.Color('#ffb860').multiplyScalar(1.8), to: 'glow' }));
     }
-    return { object: k.build(parts, { name: 'kachirho', shadows: false }), floors, solids: [{ circle: [0, 0, 18] }] };
+    return { object: k.build(parts, { name: 'kachirho', shadows: false }), floors, solids: tree ? [{ circle: [0, 0, 18] }] : [] };
   },
 
   // a Wookiee catamaran: two slender hulls, a gunner's seat with twin
