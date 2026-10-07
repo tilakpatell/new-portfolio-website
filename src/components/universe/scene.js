@@ -117,7 +117,6 @@ import { TROOPS } from './foot';
 import { GLB, createFleet } from './glbFleet';
 import { createDirector, playAs, withWhere, zoneOf } from './director';
 import { AHEAD, WELL, ahead, ambushStep, offRamp } from './laneEvents';
-import { laneAt } from './hyperlanes';
 import { regionAt } from './regions';
 import { ECLIPSE, bodyAt, canEclipse, eclipseAt, eclipsePlan } from './eclipse';
 import { createSetPieces } from './setpieces';
@@ -2979,6 +2978,7 @@ export async function create(canvas, ctx) {
   // that's a few hundred units on)
   const travelling = (s) => openness(s.x, s.y, s.z) > 0.5 && Math.abs(s.speed) > 40;
   const leadOf = (s) => holdReach(s, { ramp: INTERDICT_IN, solids: siegeSt.down ? SOLIDS_OPEN : SOLIDS });
+  const noLane = () => null;
   const happen = (id, ship, was = id) => {
     const side = sideHere();
     if (!side) return;
@@ -2987,12 +2987,15 @@ export async function create(canvas, ctx) {
     // mines across it; or a pack waiting at your off-ramp
     if (id === 'interdiction') {
       const on = state.ride && ahead(state.ride, AHEAD.interdiction);
-      if (!on) return;
+      if (!on || pieces.capital.state) return; // (past the lane's end, or a capital ship still about)
       state.ride = null;
-      state.auto = null;
+      state.auto = null; // (the trip's broken: pulled out mid-lane, into a fight)
+      // (the well holds the drive down at once, as the hunters' pull does at its full: through hyperState too)
       state.wellUntil = state.clock + WELL;
+      state.interdicted = true;
+      state.interdictAt = state.clock - INTERDICT_IN;
       emit({ type: 'ride', on: false, line: null });
-      emit({ type: 'interdicted', faction: pickFaction(side, 'capital') ?? null });
+      if (was !== 'roadblock') emit({ type: 'interdicted', faction: pickFaction(side, 'capital') ?? null }); // (the DEA's pack says it for itself)
       if (!reduced) state.shake = Math.max(state.shake, 0.6);
       return happen(was === 'council' || was === 'roadblock' ? was : 'destroyer', { ...ship, x: on.at[0], y: on.at[1], z: on.at[2], heading: on.heading, speed: 0 });
     }
@@ -3411,7 +3414,8 @@ export async function create(canvas, ctx) {
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
     if (wingmen) helpFrom(dt, t, live);
     if (skirmishes) farFight(dt, t, live);
-    farFights.update(dt, (state.fights = fightsNow()), camera);
+    if (!state.fights || state.clock - state.fightsAt > 0.25) [state.fights, state.fightsAt] = [fightsNow(), state.clock]; // (four times a second is plenty for a far flicker's place)
+    farFights.update(dt, state.fights, camera);
     if (npcs) meet(dt, t, live);
     let busy = pieces.update(dt, t, camera, live);
     for (const e of pieces.drain()) capitalEvent(e, live);
@@ -3521,7 +3525,7 @@ export async function create(canvas, ctx) {
         // (where you are: a sun lighting you, at a station, in the gate)
         const sunNow = litBy.key && litBy.key.strength > 1.2 ? LIT_STARS.find((st) => st.id === litBy.key.id) : null;
         const where = { sun: Boolean(sunNow && canEclipse({ eye: [live.x, live.y, live.z], sun: sunNow })), station: Boolean(state.at && byId(state.at)?.kind === 'core'), gate: state.at === 'starwars' };
-        const zone = state.ride ? 'lane' : zoneOf(live, { regionAt, laneAt });
+        const zone = state.ride ? 'lane' : zoneOf(live, { regionAt, laneAt: noLane }); // (in a carriageway but not riding it, nothing of the lane's can happen: it needs the ride)
         const id = director.update(dt, { zone, hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: Boolean(state.ambush) || hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
         state.hurtNow = 0;
         if (id) happen(playAs(id, zone), live, id);
@@ -3532,7 +3536,7 @@ export async function create(canvas, ctx) {
           state.ambush = null;
         }
         // the drive comes back once they're off you (or have had their go)
-        if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
+        if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT) && !(state.clock < (state.wellUntil ?? -1))) state.interdicted = false;
       }
       for (const l of [...later]) {
         if (state.clock < l.at) continue;
@@ -3917,11 +3921,11 @@ export async function create(canvas, ctx) {
     // coming in to a battle, eased down the closer it is (front.js holdAt)
     const pack = state.interdicted ? clamp((state.clock - state.interdictAt) / INTERDICT_IN, 0, 1) : 0;
     const fight = front ? front.holdAt(state.ship.x, state.ship.y, state.ship.z, noseOf(state.ship)) : 0;
-    input.interdicted = Math.max(pack * pack * (3 - 2 * pack), fight, state.clock < (state.wellUntil ?? -1) ? 1 : 0); // (and a capital ship's well, laneEvents.js)
+    input.interdicted = Math.max(pack * pack * (3 - 2 * pack), fight);
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     const before = state.ship;
     // on a hyperlane, or getting on or off one (lanePilot.js): the ride poses the ship in place of ship.js's step
-    const lane = state.held || state.jump ? null : laneFrame(state, input, dt, { canEnter: (!state.auto || Boolean(state.auto.route)) && !(state.clock < (state.wellUntil ?? -1)) });
+    const lane = state.held || state.jump ? null : laneFrame(state, input, dt, { canEnter: (!state.auto || Boolean(state.auto.route)) && !(state.interdicted && state.clock < (state.wellUntil ?? -1)) });
     if (lane) rode(lane);
     const { ship: stepped, events } = lane?.ship ? { ship: lane.ship, events: [] } : step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
     // the Maw's pull (maw.js): drawn in, and carried round with its disk

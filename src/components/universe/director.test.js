@@ -237,6 +237,15 @@ describe('where you are: a place, a lane or the void', () => {
     expect(got.length).toBeGreaterThan(40);
   });
 
+  it('brings what it foretold wherever you are when it comes (the scene plays it as there has it)', () => {
+    for (let seed = 1; seed < 12; seed++) {
+      const d = createDirector({ rand: seeded(seed) });
+      const told = d.foretell(SIDES.starwars, { zone: 'place' });
+      const got = run(d, 200, { side: SIDES.starwars, zone: 'lane' });
+      expect(got[0].e, `${seed}`).toBe(told.id);
+    }
+  });
+
   it('plays the capital ships as an interdiction on a lane, and a hunt as the ambush', () => {
     for (const id of ['destroyer', 'council', 'roadblock']) {
       expect(playAs(id, 'lane'), id).toBe('interdiction');

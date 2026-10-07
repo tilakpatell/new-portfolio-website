@@ -177,8 +177,9 @@ export function createDirector({ rand = Math.random, events = EVENTS } = {}) {
       // travelling, the wait runs down faster
       if (travelling) nextAt -= dt * 1.2;
       if (clock < nextAt) return null;
-      // (one foretold comes as it was told, if it still can)
-      const id = told && events[told] && canHave(side, events[told]) && canBe(events[told], zone) && !(calm && events[told].heat > 0) ? told : choose(side, { heat, travelling, calm, wanted, zone });
+      // (one foretold comes as it was told, if it still can, wherever you are
+      // now: the scene plays it as where you are has it, playAs)
+      const id = told && events[told] && canHave(side, events[told]) && !(calm && events[told].heat > 0) ? told : choose(side, { heat, travelling, calm, wanted, zone });
       told = null;
       if (!id) return null;
       last = id;

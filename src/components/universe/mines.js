@@ -20,6 +20,7 @@ import { R } from './hyperlanes';
 
 const LIFE = 75; // seconds a field stays, unless you're long past it
 const GONE = 260; // or once you're this far from it
+const JAM_GONE = 1400; // (a lane jam: laid 900 on along a lane, and come at from there however slow the ride)
 const BOLT_R = 0.12;
 const BLINK = { far: 1.1, near: 6, close: 14 }; // blinks a second, out of range and right by it; and from how far it quickens
 
@@ -108,7 +109,9 @@ export function createMines(parent, { small = false } = {}) {
   };
 
   // the mines laid, live, and drawn
-  const place = (list, rand) => {
+  let gone = GONE; // how far from the field it's let go
+  const place = (list, rand, far = GONE) => {
+    gone = far;
     live.length = 0;
     middle.set(0, 0, 0);
     for (const m of list) {
@@ -131,7 +134,7 @@ export function createMines(parent, { small = false } = {}) {
     },
     // a lane jam: a band across a hyperlane's carriageway (its points) at s
     across(pts, s, r = R, rand = Math.random) {
-      return place(bandAcross(pts, s, r, { seed: Math.floor(rand() * 1e9), solids: SOLIDS }), rand);
+      return place(bandAcross(pts, s, r, { seed: Math.floor(rand() * 1e9), solids: SOLIDS }), rand, JAM_GONE);
     },
 
     update(dt, ship) {
@@ -150,7 +153,7 @@ export function createMines(parent, { small = false } = {}) {
       }
       for (const b of blasts.splice(0)) events.push({ type: 'mine', at: b.at, size: b.size, damage: shipAt ? mineBlast(Math.max(0, shipAt.distanceTo(b.at) - b.size)) : 0 });
       // (gone in time, or once you're long past it)
-      if (age > LIFE || (shipAt && shipAt.distanceTo(middle) > GONE + Math.abs(ship.speed || 0) * MINE.lead)) live.length = 0;
+      if (age > LIFE || (shipAt && shipAt.distanceTo(middle) > gone + Math.abs(ship.speed || 0) * MINE.lead)) live.length = 0;
       draw();
       return events;
     },
