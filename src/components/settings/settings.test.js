@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULTS, KEY, read, subscribe, write } from './settings';
+import { DEFAULTS, KEY, read, subscribe, write } from './settings.js';
 
 const memory = (init = {}) => {
   const m = new Map(Object.entries(init));
@@ -101,7 +101,7 @@ describe('the site’s settings', () => {
 
 describe('the motion setting on the page', () => {
   it('marks the page reduced, and takes the mark off for Auto', async () => {
-    const { applyMotion } = await import('./settings');
+    const { applyMotion } = await import('./settings.js');
     const doc = { documentElement: { dataset: {} } };
     applyMotion('reduced', doc);
     expect(doc.documentElement.dataset.motion).toBe('reduced');

@@ -1,11 +1,11 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import ErrorBoundary from '../ErrorBoundary';
-import { applyMotion, read } from './settings';
+import { applyMotion, read } from './settings.js';
 
 // Always in the shell: puts the kept motion setting on the page, and opens
 // the settings panel when something asks ('tp:settings', lib/palette's
 // openSettings). The panel itself loads the first time it's opened.
-const Settings = lazy(() => import('./Settings'));
+const Settings = lazy(() => import('./Settings.jsx'));
 
 function Shut({ onClose }) {
   useEffect(() => onClose(), [onClose]);

@@ -4,7 +4,7 @@ import { RiCloseLine } from 'react-icons/ri';
 import { BUDGETS, LEVELS, quality, setQuality } from '../../lib/device';
 import { setMode3D } from '../../lib/gpu';
 import { setSound, setVolumes } from '../../lib/audio';
-import { applyMotion, read, write } from './settings';
+import { applyMotion, read, write } from './settings.js';
 import DeviceReadout from './DeviceReadout';
 import '../../styles/lazy/settings.css';
 
