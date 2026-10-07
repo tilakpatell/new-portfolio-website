@@ -8,7 +8,7 @@ import { UNIVERSES } from './universes';
 import { ORDER, keyStep } from './layout';
 import MiniMap from './MiniMap';
 import GuideCue from '../guide/GuideCue';
-import { askBrief } from '../../lib/brief';
+import { askBrief } from '../tour/brief';
 
 // The map: the 3D scene (scene.js and planets.js, through useScene) with the
 // planets' names as buttons over it. React renders the names once; the

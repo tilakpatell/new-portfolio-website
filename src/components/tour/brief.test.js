@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ASKED, BRIEFED, briefHere, briefKeyFor, sawBrief } from './brief';
-import { WORLDS } from '../components/worlds/worlds';
+import { WORLDS } from '../worlds/worlds';
 
 describe('which basics a page gets', () => {
   it('gives every world on the map its own', () => {
