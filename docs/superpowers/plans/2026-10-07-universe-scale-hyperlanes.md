@@ -130,8 +130,8 @@ Branch `claude/universe-lane-traffic` from `origin/main`.
 - Produces: `countFor(lane) -> n` (`ceil(length / TIERS[tier].density)` a carriageway), `slotOf(lane, way, i) -> { off: [u, v], v: 0.9…1.1, phase: 0…1, kind }` (deterministic by a hash of `lane.id`, `way`, `i`; `off` within `R × 0.7`; `kind` from `sides.js`’s everyday traffic of the side that holds the region of `lane.from`, convoys on trunks (`column: true`, 4 to 7), the side’s capital on the express), `flowAt(lane, way, t, dead = new Set()) -> [{ i, s, off, kind, speed }]` with `s = (phase + v * speed * t / length) mod 1`, a dead `i` left out until its next wrap (`wrapsOf(i, t)` counts them: dead is `{ i, wraps }`), `kill(dead, lane, way, i, t)`.
 - Consumes: Lane A’s `LANES`, `TIERS`, `R`, `carriageway`; `sides.js`.
 
-- [ ] **Step 1: Write the failing tests:** `flowAt` at `t = 0` and `t = 1000` give the same count; a ship’s `s` advances by `speed × dt / length`; two pilots (two calls) agree exactly; a killed ship is absent at `t + 0.1` and present again only after its wrap (Review Focus 5); `off` never beyond `R × 0.7`.
-- [ ] **Step 2: Run and fail. Step 3: Implement. Step 4: Run green. Commit.**
+- [x] **Step 1: Write the failing tests:** `flowAt` at `t = 0` and `t = 1000` give the same count; a ship’s `s` advances by `speed × dt / length`; two pilots (two calls) agree exactly; a killed ship is absent at `t + 0.1` and present again only after its wrap (Review Focus 5); `off` never beyond `R × 0.7`.
+- [x] **Step 2: Run and fail. Step 3: Implement. Step 4: Run green. Commit.**
 
 ### Task 2: streaks and ribbons (`laneStreaks.js`, `laneRibbons.js`)
 
