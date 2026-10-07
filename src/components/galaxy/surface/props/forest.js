@@ -1351,7 +1351,8 @@ const KASHYYYK = {
       for (const s of [-1, 1]) parts.push(rod([x - s * 1.0, -0.2, -0.6], [x + s * 1.0, 2.4, 0.9], 0.18, 0.06, B, 6));
     }
     parts.push(rod([-len / 2, 1.1, 0.1], [len / 2, 1.1, 0.1], 0.2, 0.2, B, 6));
-    return { object: k.build(parts, { name: 'barricade' }), solids: [{ box: [0, 0, len / 2, 0.8, 0] }] };
+    // (as high as a soldier's chest standing: he fires over it, and kneeling he's hidden)
+    return { object: k.build(parts, { name: 'barricade' }), solids: [{ box: [0, 0, len / 2, 0.8, 0], top: 1.25 }] };
   },
 
   // an AT-RT: a clone trooper in an open cockpit on two legs, a repeating

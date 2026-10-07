@@ -21,6 +21,8 @@ import { FOUND_KEY, LAUNCH_KEY, QUESTS_KEY, readDone, readFound } from '../compo
 import { runtime } from '../runtime';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
 import AssaultHud from '../components/galaxy/surface/AssaultHud';
+import SkirmishHud from '../components/galaxy/surface/SkirmishHud';
+import { ALLEGIANCE_KEY, allegianceOf, readAllegiance } from '../components/galaxy/allegiance';
 import HeroPanel from '../components/galaxy/surface/HeroPanel';
 import { HERO_KEY, heroById, heroSpec, readHero, writeHero } from '../components/galaxy/heroes';
 import { missionOf } from '../components/galaxy/surface/missions';
@@ -85,6 +87,15 @@ export default function GalaxySurface() {
   // who you play as down here (heroes.js), kept across worlds
   const [hero, setHero] = useState(() => readHero(local.get(HERO_KEY), parseShip(local.get(SHIP_KEY)) ?? 'xwing'));
   const [picking, setPicking] = useState(false);
+  // which side you fight for in the worlds' battles (galaxy/allegiance.js), kept across worlds
+  const [allegiance, setAllegiance] = useState(() => readAllegiance(local.get(ALLEGIANCE_KEY)));
+  const keepAllegiance = (side) => {
+    const a = allegianceOf(side);
+    setAllegiance(a);
+    local.set(ALLEGIANCE_KEY, a);
+  };
+  const [skirmish, setSkirmish] = useState(null); // the world's battle, as its HUD shows it
+  const skirmishShown = useRef('');
   const pickHero = (next) => {
     setHero(next);
     local.set(HERO_KEY, writeHero(next));
@@ -292,7 +303,14 @@ export default function GalaxySurface() {
         later('aim', 3000, () => setAiming(false));
       } else if (e.type === 'leave') goUp();
       else if (e.type === 'bump') comms.current?.handle({ type: 'bump', hard: e.hard });
-      else if (e.type === 'mission') {
+      else if (e.type === 'skirmish') {
+        const v = e.view;
+        const shown = v ? [v.near, v.side, ...Object.values(v.up), v.kills, Math.ceil(v.wave ?? 0)].join('|') : '';
+        if (shown !== skirmishShown.current) {
+          skirmishShown.current = shown;
+          setSkirmish(v);
+        }
+      } else if (e.type === 'mission') {
         for (const f of chaseFeed.current) f(e.view);
         const v = e.view;
         const shown = v ? (v.key ?? `${v.phase}|${v.count}|${v.left}|${v.result ? 1 : 0}`) : '';
@@ -349,7 +367,7 @@ export default function GalaxySurface() {
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}:${hero.stance}:${hero.gun}:${(hero.mods ?? []).join()}:${(hero.perks ?? []).join()}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
+      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}:${hero.stance}:${hero.gun}:${(hero.mods ?? []).join()}:${(hero.perks ?? []).join()}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} allegiance={allegiance} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">
@@ -391,7 +409,8 @@ export default function GalaxySurface() {
 
       {/* the quest you're on, and the things to do here */}
       {mission && mission.kind !== 'assault' && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
-      {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={(id) => view.current?.input?.('side', id)} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
+      {!mission && site.skirmish && phase !== 'landing' && <SkirmishHud view={skirmish} onSide={(id) => (view.current?.input?.('side', id), keepAllegiance(site.skirmish.sides[id]))} />}
+      {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={(id) => (view.current?.input?.('side', id), keepAllegiance(mission.sides[id]))} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
 
       {phase !== 'landing' && site.quests.length > 0 && !((mission?.kind === 'chase' || mission?.kind === 'assault') && chase && !chase.result) && (
         <div className={quest ? 'surface-quest surface-quest-on' : 'surface-quest'}>

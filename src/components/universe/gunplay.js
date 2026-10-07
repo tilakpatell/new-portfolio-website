@@ -524,6 +524,41 @@ export const GUNS = {
     },
     fore: { r: 0.016, axis: 'dir' },
   },
+  // the stormtroopers' E-11: a short black carbine (the Sterling under it),
+  // a ribbed cooling sleeve, the scope on the left, a folding stock
+  e11: {
+    hands: 2,
+    support: false,
+    stock: true,
+    pitch: 0.1,
+    reach: 0.4,
+    rise: -0.12,
+    lateral: -0.3,
+    kick: { back: 0.7, up: 1.4 },
+    casing: false,
+    bolt: '#ff4a3d',
+    flash: { color: '#ff5a3a', size: 0.22 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      k.tube(0.02, 0.26, m.black, [0, 0.055, 0.12]); // the body
+      for (let i = 0; i < 7; i++) k.ring(0.023, 0.003, m.gunmetal, [0, 0.055, 0.02 + i * 0.035], [0, 0, 0]); // its cooling rings
+      k.tube(0.011, 0.07, m.gunmetal, [0, 0.055, 0.28]); // the muzzle
+      k.cone(0.013, 0.017, 0.02, m.black, [0, 0.055, 0.32]);
+      k.box(0.026, 0.07, 0.04, m.black, [-0.03, 0.03, 0.06], [0, 0, 0.5]); // the power cell, out to the right
+      k.tube(0.011, 0.1, m.black, [0.022, 0.095, 0.08]); // the scope, on the left
+      k.box(0.006, 0.02, 0.01, m.black, [0.016, 0.08, 0.05]);
+      k.box(0.006, 0.02, 0.01, m.black, [0.016, 0.08, 0.11]);
+      k.box(0.014, 0.012, 0.16, m.gunmetal, [0, 0.07, -0.12]); // the folding stock, folded over
+      k.box(0.03, 0.08, 0.034, m.black, [0, -0.032, -0.02], [0.28, 0, 0]).name = 'grip';
+      k.box(0.02, 0.006, 0.045, m.steel, [0, 0.002, 0.02]); // the trigger guard
+      k.box(0.004, 0.022, 0.012, m.steel, [0, 0.012, 0.02], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.055, 0.33]);
+      k.point('foregrip', [0, 0.02, 0.17]);
+      k.point('fore', [0, 0.055, 0.17]); // round the body, under the scope
+    },
+    fore: { r: 0.022, axis: 'dir' },
+  },
   // the clones' DC-15A blaster rifle: a long ribbed barrel over a slim
   // receiver, a folding stock, the scope offset, the Republic's blue bolts
   dc15: {

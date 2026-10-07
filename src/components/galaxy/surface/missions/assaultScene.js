@@ -1,6 +1,8 @@
 // A galactic assault, drawn and run in the surface scene: the soldiers of
-// both sides (each kind's figure, as actors.js finds one), placed each
-// frame from the rules (./assault.js), with a chevron over each in the
+// both sides (each a ../soldier.js: its kind's rigged figure with its gun,
+// aiming at what it fires at, flinching, falling on a death clip the way
+// the shot pushed it), placed each frame from the rules (./assault.js),
+// with a chevron over each in the
 // side's colour; every command post as a column of its owner's light with
 // a ring on the ground that fills as it's taken; the soldiers' shots as
 // bolts of their side's colour through the surface's blaster, and the ones
@@ -16,13 +18,13 @@
 
 import * as THREE from 'three';
 import { disposeTree } from '../../../../lib/three/renderer';
-import { anyFigure } from '../actors';
+import { createSoldier } from '../soldier';
 import { groundAt } from '../walker';
 import { RULES, SOLDIERS, battleView, chooseSide as pickSide, deploy as deployAt, endBattle, hitSoldier, newBattle, objectiveFor, stepBattle, youDown as putYouDown } from './assault';
 
 const EYE = 1.4; // metres: where a soldier's bolt leaves from
 const CHEST = 1.0; // metres: where one lands
-const FALL = { over: 0.3, gone: 2.5 }; // seconds: a soldier tipping over, and cleared away
+const FALL = { gone: 6 }; // seconds a soldier lies where it fell
 const TRACERS = { far: 140, most: 12, hear: 40, every: 0.15 }; // metres a shot is drawn within, drawn a frame at most, heard within, heard apart
 const BARK = { first: 14, every: 24, spread: 10 }; // seconds between the sides' shouts
 const NEUTRAL = '#d8d8d0';
@@ -93,27 +95,36 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
 
   // ── the soldiers' bodies: one a soldier, by id, made once ──
   const bodies = [];
+  // (each as your weapons see it: the same object every frame, so a saber stroke counts it once)
+  const handles = [];
   function makeBodies() {
     for (const s of battle.soldiers) {
-      const holder = new THREE.Group();
-      holder.visible = false;
-      group.add(holder);
+      const soldier = createSoldier({ parent: group, kind: s.kind, variant: s.id, kit, warm });
+      const holder = soldier.holder;
       const mark = new THREE.Sprite(marks[s.side]);
       mark.scale.setScalar(0.02);
       mark.position.y = 2.4;
       mark.renderOrder = 8;
       holder.add(mark);
-      const body = { holder, mark, fig: null, kind: s.kind, down: 0, flinch: 0, ready: false };
+      const body = { soldier, holder, mark, kind: s.kind, ready: false };
       bodies.push(body);
-      anyFigure(s.kind, {}, kit)
-        .then((fig) => {
-          if (!fig || dead) return;
-          holder.add(fig.model);
-          body.fig = fig;
-          mark.position.y = (fig.tall ?? 1.8) + 0.6;
-          return warm(holder).then(() => (body.ready = true));
-        })
-        .catch(() => {});
+      const id = s.id;
+      handles.push({
+        id,
+        holder,
+        fig: { tall: 1.8 },
+        spec: { kind: s.kind, hp: RULES.hp / RULES.yours },
+        shield: 0,
+        get hp() {
+          const o = battle?.soldiers[id];
+          return o?.up ? o.hp / RULES.yours : 0;
+        },
+      });
+      soldier.ready.then((ok) => {
+        if (!ok || dead) return;
+        mark.position.y = soldier.tall + 0.6;
+        body.ready = true;
+      });
     }
   }
 
@@ -155,9 +166,7 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
 
   function reset() {
     for (const b of bodies) {
-      b.down = 0;
-      b.flinch = 0;
-      b.holder.rotation.set(0, 0, 0);
+      b.soldier.rise();
       b.holder.visible = false;
     }
     barkAt = t + BARK.first;
@@ -173,9 +182,21 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
 
   const dist = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
   const bodyOf = (id) => bodies[id];
-  const fell = (id) => {
+  let youAt = null; // (where you were last, for which way your shot threw them)
+  // down on a death clip, by which way the shot pushed them: thrown back if it came from in front
+  const fell = (id, by) => {
     const b = bodyOf(id);
-    if (b && !b.down) b.down = 0.001;
+    const s = battle?.soldiers[id];
+    if (!b || !s || b.soldier.dead) return;
+    const from = by === 'you' ? youAt : battle.soldiers[by];
+    let clip = 'die';
+    if (from) {
+      const px = s.x - from.x;
+      const pz = s.z - from.z;
+      const l = Math.hypot(px, pz) || 1;
+      if ((px / l) * Math.sin(s.yaw) + (pz / l) * Math.cos(s.yaw) > 0.3) clip = 'dieFwd';
+    }
+    b.soldier.fall(clip);
   };
 
   return {
@@ -189,11 +210,14 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
       t += dt;
       const atYou = [];
       if (!battle) return { atYou };
+      if (you) youAt = { x: you.x, z: you.z };
       const events = stepBattle(battle, dt, you ? { x: you.x, z: you.z } : null, env);
       let drawn = 0;
       for (const e of events) {
         if (e.type === 'shot') {
-          const from = [e.from[0], groundAt(world, e.from[0], e.from[1]) + EYE, e.from[1]];
+          const near = !you || dist(e.from[0], e.from[1], you.x, you.z) < 120;
+          const from = (near ? bodies[e.id]?.soldier.muzzle() : null) ?? [e.from[0], groundAt(world, e.from[0], e.from[1]) + EYE, e.from[1]];
+          if (e.hit === true && e.target != null) bodies[e.target]?.soldier.flinch();
           if (e.atYou) atYou.push({ from, spread: 0.05, damage: RULES.atYou, color: colourOf(e.side) });
           else if (you && drawn < TRACERS.most && dist(e.from[0], e.from[1], you.x, you.z) < TRACERS.far) {
             drawn += 1;
@@ -206,12 +230,11 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
             heardAt = t;
             sounds.blast?.();
           }
-        } else if (e.type === 'down') fell(e.id);
+        } else if (e.type === 'down') fell(e.id, e.by);
         else if (e.type === 'spawn') {
           const b = bodyOf(e.id);
           if (b) {
-            b.down = 0;
-            b.holder.rotation.set(0, 0, 0);
+            b.soldier.rise();
             b.holder.visible = b.ready;
           }
         } else if (e.type === 'capture' || e.type === 'neutral' || e.type === 'phase') tell(e);
@@ -230,25 +253,26 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
       for (const s of battle.soldiers) {
         const b = bodies[s.id];
         if (!b) continue;
-        if (!s.up && !b.down && b.holder.visible) b.down = 0.001;
-        if (b.down) {
-          b.down += dt;
-          b.holder.rotation.x = -Math.min(Math.PI / 2, (b.down / FALL.over) * (Math.PI / 2));
+        if (!s.up && !b.soldier.dead && b.holder.visible) fell(s.id, null);
+        const far = you ? dist(s.x, s.z, you.x, you.z) : 0;
+        if (b.soldier.dead) {
           b.mark.visible = false;
-          if (b.down > FALL.gone) b.holder.visible = false;
+          if (b.soldier.down > FALL.gone) b.holder.visible = false;
+          else if (b.holder.visible && far < 120) b.soldier.update(dt, { x: s.x, y: groundAt(world, s.x, s.z), z: s.z, yaw: s.yaw });
           continue;
         }
         if (!s.up) continue;
         if (!b.holder.visible && b.ready) b.holder.visible = true;
         b.mark.visible = true;
-        b.holder.position.set(s.x, groundAt(world, s.x, s.z), s.z);
-        b.holder.rotation.y = s.yaw;
-        if (b.flinch > 0) {
-          b.flinch -= dt;
-          b.holder.rotation.z = Math.sin(b.flinch * 60) * b.flinch * 0.3;
-        } else b.holder.rotation.z = 0;
-        // (the far ones' legs aren't seen: their figures rest)
-        if (b.fig && (!you || dist(s.x, s.z, you.x, you.z) < 120)) b.fig.update(dt, s.move * (reduced ? 0.5 : 1));
+        // (the far ones' legs and guns aren't seen: they rest)
+        if (far >= 120) {
+          b.holder.position.set(s.x, groundAt(world, s.x, s.z), s.z);
+          b.holder.rotation.y = s.yaw;
+          continue;
+        }
+        const T = s.target === 'you' ? (you ? { x: you.x, z: you.z, y: (you.y ?? groundAt(world, you.x, you.z)) + 1.1 } : null) : s.target != null ? battle.soldiers[s.target] : null;
+        const at = T ? [T.x, T.y ?? groundAt(world, T.x, T.z) + CHEST, T.z] : null;
+        b.soldier.update(dt, { x: s.x, y: groundAt(world, s.x, s.z), z: s.z, yaw: s.yaw, move: s.move * (reduced ? 0.5 : 1), speed: s.move * RULES.walk, aim: T ? 1 : 0, at });
       }
       paintPosts(dt);
       return { atYou };
@@ -261,17 +285,18 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
         if (!s.up || s.side === battle.you.side) continue;
         const b = bodies[s.id];
         if (!b?.holder.visible) continue;
-        out.push({ id: s.id, holder: b.holder, fig: { tall: b.fig?.tall ?? 1.8 } });
+        const h = handles[s.id];
+        h.fig.tall = b.soldier.tall;
+        out.push(h);
       }
       return out;
     },
     // one of yours landed
     hit(target, damage = RULES.yours) {
       const ev = hitSoldier(battle, target.id, damage, 'you');
-      const b = bodies[target.id];
-      if (b) b.flinch = 0.25;
+      bodies[target.id]?.soldier.flinch();
       if (ev) {
-        fell(ev.id);
+        fell(ev.id, 'you');
         tell(ev);
       }
     },
@@ -309,7 +334,7 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
     },
     dispose() {
       dead = true;
-      for (const b of bodies) b.fig?.dispose?.();
+      for (const b of bodies) b.soldier.dispose();
       for (const m of Object.values(marks)) {
         m.map.dispose();
         m.dispose();

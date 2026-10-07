@@ -382,7 +382,7 @@ function step(b, h, you, env, out) {
       else {
         const [a0, a1] = RULES.accuracy;
         const hit = b.r() < a0 + (a1 - a0) * Math.min(1, d / RULES.range);
-        out.push({ type: 'shot', id: s.id, side: s.side, from: [s.x, s.z], to: [target.x, target.z], atYou: false, hit });
+        out.push({ type: 'shot', id: s.id, side: s.side, from: [s.x, s.z], to: [target.x, target.z], atYou: false, hit, target: target.id });
         if (hit) hurt(b, target, RULES.damage, s, out);
       }
     }

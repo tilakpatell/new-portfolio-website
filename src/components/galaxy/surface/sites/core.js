@@ -872,6 +872,12 @@ export const SITES = {
           { kind: 'atte', at: [-30, 30], yaw: 2.4, model: false },
           { kind: 'crates', at: [0, 4] },
           { kind: 'crates', at: [-8, 14] },
+          // (the droids' line along the south edge, and cover on the way to it)
+          { kind: 'crates', at: [-26, -44], opts: { color: '#7a5a46' } },
+          { kind: 'crates', at: [0, -48], opts: { color: '#6a5a4a' } },
+          { kind: 'crates', at: [24, -44], opts: { color: '#7a5a46' } },
+          { kind: 'crates', at: [-14, -22] },
+          { kind: 'crates', at: [16, -18] },
         ],
       },
       {
@@ -1016,6 +1022,21 @@ export const SITES = {
       { kind: 'atte', n: 2, path: [[200, 260], [340, 120], [300, 40], [160, 180]], speed: 2.2, r: 5, model: false, solid: false },
       { kind: 'jedi', n: 1, at: [306, -296], roam: 6, speed: 0.8, name: 'Count Dooku', says: ['Master Kenobi, you disappoint me. Yoda holds you in such high esteem.', 'I have become more powerful than any Jedi.', 'This is just the beginning.'] },
     ],
+    // the first battle (skirmish.js): the droid army holds the south edge of
+    // the gunships' landing ground, the clones come off the LAATs in waves,
+    // and you fight for whichever side your allegiance is (galaxy/allegiance.js)
+    skirmish: {
+      name: 'The First Battle of Geonosis',
+      hold: 'sep',
+      sides: {
+        rep: { name: 'The Grand Army of the Republic', short: 'Republic', allegiance: 'light', colour: '#7fc4ff', kinds: [['clone', 10]], spawn: { at: [262, 182], spread: 14 }, wave: 18, youAt: [258, 166], youYaw: Math.PI },
+        sep: { name: 'The Separatist droid army', short: 'Separatists', allegiance: 'dark', colour: '#ff9a5a', kinds: [['battledroid', 8], ['superdroid', 3]], spawn: { at: [264, 94], spread: 10 }, respawn: 9, youAt: [262, 104], youYaw: 0 },
+      },
+      front: [262, 124],
+      field: { min: [204, 76], max: [326, 204] },
+      hideLife: ['clone', 'battledroid', 'superdroid'],
+      lines: { wave: [[null, '(Another gunship flares in low, and clones pour out of it.)'], ['Clone trooper', 'Move up! Move up!']] },
+    },
     rides: [
       { kind: 'speederbike', at: [290, -282], yaw: 2.4 },
       { kind: 'speederbike', at: [18, -14], yaw: 2.0 },

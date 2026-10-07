@@ -177,6 +177,14 @@ export const SITES = {
           { kind: 'turret', at: [28, -4.5], yaw: -0.1 },
           { kind: 'crates', at: [-44, -8], opts: { color: '#7a8088' } },
           { kind: 'crates', at: [40, -9], opts: { color: '#7a8088' } },
+          // (what the troopers take cover behind, out on the ice: supply crates dropped by the walkers' line)
+          { kind: 'crates', at: [-30, 22], opts: { color: '#8a9096' } },
+          { kind: 'crates', at: [6, 26], opts: { color: '#7a8088' } },
+          { kind: 'crates', at: [34, 20], opts: { color: '#8a9096' } },
+          { kind: 'crates', at: [-14, 52], opts: { color: '#7a8088' } },
+          { kind: 'crates', at: [20, 56], opts: { color: '#8a9096' } },
+          { kind: 'crates', at: [-40, 74], opts: { color: '#7a8088' } },
+          { kind: 'crates', at: [46, 78], opts: { color: '#8a9096' } },
         ],
       },
       {
@@ -390,6 +398,22 @@ export const SITES = {
         reward: 'One shot from the ion cannon, and the Star Destroyer’s blind long enough for the transport to slip past.',
       },
     ],
+    // the battle at the trenches (skirmish.js): the Rebels hold the trench
+    // line, the Empire's snowtroopers come down off the north ridge behind
+    // the walkers in waves, and you fight for whichever side your
+    // allegiance is (galaxy/allegiance.js); not while the galactic assault's on
+    skirmish: {
+      name: 'The Battle of Hoth',
+      hold: 'rebels',
+      sides: {
+        rebels: { name: 'The Rebel Alliance', short: 'Rebellion', allegiance: 'light', colour: '#ff8a5a', kinds: [['hothtrooper', 9]], spawn: { at: [100, 346], spread: 10 }, respawn: 10, youAt: [100, 360], youYaw: 0 },
+        empire: { name: 'The Galactic Empire', short: 'Empire', allegiance: 'dark', colour: '#9fd0ff', kinds: [['snowtrooper', 11]], spawn: { at: [112, 474], spread: 20 }, wave: 18, youAt: [106, 440], youYaw: Math.PI },
+      },
+      front: [100, 372],
+      field: { min: [36, 330], max: [176, 500] },
+      hideLife: ['hothtrooper', 'snowtrooper'],
+      lines: { wave: [[null, '(More snowtroopers come over the ridge, behind the walkers.)'], ['Rebel trooper', 'Here they come again!']] },
+    },
     rides: [
       { kind: 'tauntaun', at: [14, 12], yaw: -0.8 },
       { kind: 'tauntaun', at: echo([-30, 64]), yaw: 2.2 },

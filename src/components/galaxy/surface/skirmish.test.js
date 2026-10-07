@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createSolids } from './walker';
+import { SITES } from './sites';
+import { CREW } from './crew';
+import { gunOf } from './soldier';
+import { GUNS } from '../../universe/gunplay';
 import { CHEST, EYE, UNITS, coverSpots, hitChance, hitUnit, lineOfSight, newSkirmish, placeUnit, skirmishView, stepSkirmish } from './skirmish';
 
 // a beach: the Republic dug in behind a low wall at z = 12, the droids coming from z = 60
@@ -321,6 +325,52 @@ describe('you, in the fight', () => {
   });
 });
 
+describe('out of the water', () => {
+  it('a droid wading in with the water over its chest doesn’t shoot till it’s out', () => {
+    // the ground falls away into a lagoon past z = 40
+    const ground = (x, z) => (z > 40 ? 1 - (z - 40) * 0.4 : 1);
+    const b = newSkirmish(duel([['clone', 1]], [['battledroid', 1]]), { seed: 19, env: { solids: createSolids(), ground, water: 0 } });
+    const [clone, droid] = b.units;
+    placeUnit(b, clone.id, 0, 10, 0);
+    clone.hold = true;
+    clone.hp = 1e6;
+    clone.cool = 1e9;
+    placeUnit(b, droid.id, 0, 52, Math.PI); // (3.8 m down)
+    let firstShotZ = null;
+    run(b, 20, null, (bb, ev) => {
+      for (const e of ev) if (e.type === 'shot' && e.id === droid.id && firstShotZ == null) firstShotZ = droid.z;
+    });
+    expect(firstShotZ).not.toBeNull();
+    expect(ground(0, firstShotZ) + CHEST.stand).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('fighting for the other side', () => {
+  it('with the droids, it’s the Republic that shoots at you, from behind the barricades they still hold', () => {
+    const b = newSkirmish({ ...SPEC, you: 'sep' }, { seed: 17, env: world() });
+    expect(b.spec.hold).toBe('rep');
+    const you = { x: 4, z: 30, y: 0 };
+    let atYou = new Set();
+    const ev = run(b, 30, you, (bb) => {
+      for (const u of bb.units) if (u.up && u.target === 'you') atYou.add(u.side);
+    });
+    expect([...atYou]).toEqual(['rep']);
+    expect(ev.some((e) => e.type === 'shot' && e.target === 'you' && b.units[e.id].side === 'rep')).toBe(true);
+    for (const u of b.units) if (u.up && u.side === 'rep') expect(u.z).toBeLessThan(16);
+  });
+
+  it('takes its sides from the spec in either order, the holders named', () => {
+    const flipped = { ...SPEC, hold: 'rep', sides: { sep: SPEC.sides.sep, rep: SPEC.sides.rep } };
+    const b = newSkirmish(flipped, { seed: 18, env: world() });
+    expect(b.spec.hold).toBe('rep');
+    expect(b.spec.comes).toBe('sep');
+    expect(b.spec.you).toBe('rep');
+    for (const u of b.units) if (u.side === 'rep') expect(u.z).toBeLessThan(12);
+    const ev = run(b, 60);
+    expect(ev.some((e) => e.type === 'wave' && e.side === 'sep') || !b.units.some((u) => u.side === 'sep' && !u.up)).toBe(true);
+  });
+});
+
 describe('the battle goes on', () => {
   it('ten minutes of it: nobody leaves the field or goes missing, both sides fight on', () => {
     const b = newSkirmish(SPEC, { seed: 16, env: world() });
@@ -339,5 +389,49 @@ describe('the battle goes on', () => {
     expect(b.units.some((u) => u.up && u.side === 'rep')).toBe(true);
     expect(b.units.some((u) => u.up && u.side === 'sep')).toBe(true);
     for (const s of b.spots) if (s.by) expect(s.by.spot).toBe(s);
+  });
+});
+
+describe('the worlds’ battles', () => {
+  const battles = Object.entries(SITES).filter(([, site]) => site.skirmish);
+  const inside = ({ min, max }, [x, z]) => x >= min[0] && x <= max[0] && z >= min[1] && z <= max[1];
+
+  it('are on Kashyyyk, Geonosis and Hoth', () => {
+    expect(battles.map(([id]) => id).sort()).toEqual(['geonosis', 'hoth', 'kashyyyk']);
+  });
+
+  it('each is laid out soundly: rigged soldiers with guns, its spawns, front and rally points on its field, one side holding and one coming in waves', () => {
+    for (const [id, site] of battles) {
+      const sk = site.skirmish;
+      const sides = Object.keys(sk.sides);
+      expect(sides, id).toHaveLength(2);
+      expect(sides, id).toContain(sk.hold);
+      expect(inside(sk.field, sk.front), `${id} front`).toBe(true);
+      const comes = sides.find((x) => x !== sk.hold);
+      expect(sk.sides[comes].wave, `${id} waves`).toBeGreaterThan(0);
+      expect(sk.sides[sk.hold].wave, `${id} holders`).toBeFalsy();
+      for (const side of sides) {
+        const s = sk.sides[side];
+        expect(inside(sk.field, s.spawn.at), `${id} ${side} spawn`).toBe(true);
+        expect(inside(sk.field, s.youAt), `${id} ${side} rally`).toBe(true);
+        expect(s.name && s.short && s.colour, `${id} ${side}`).toBeTruthy();
+        for (const [kind, n] of s.kinds) {
+          expect(CREW[kind]?.url, `${id}: ${kind} has a rigged model`).toBeTruthy();
+          expect(UNITS[kind], `${id}: ${kind} has its numbers`).toBeTruthy();
+          expect(GUNS[gunOf(kind)], `${id}: ${kind}'s gun`).toBeTruthy();
+          expect(n).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it('each runs a few minutes, both sides fighting on', () => {
+    for (const [id, site] of battles) {
+      const b = newSkirmish(site.skirmish, { seed: 3, env: { solids: createSolids() } });
+      const ev = run(b, 180);
+      expect(ev.some((e) => e.type === 'kill'), id).toBe(true);
+      for (const side of Object.keys(site.skirmish.sides)) expect(b.units.some((u) => u.up && u.side === side), `${id} ${side}`).toBe(true);
+      for (const u of b.units) expect(inside(site.skirmish.field, [u.x, u.z]), `${id} ${u.kind}`).toBe(true);
+    }
   });
 });

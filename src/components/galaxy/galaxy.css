@@ -570,3 +570,11 @@
   .holomap-systems li[data-front] .holomap-dot,
   .holomap-systems li[data-attack] .holomap-dot { animation: none; }
 }
+
+/* which side you fight for on the ground (HoloMap.jsx, galaxy/allegiance.js) */
+.holomap-allegiance { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.6rem; }
+.holomap-allegiance .holomap-kicker { flex-basis: 100%; margin: 0; }
+.holomap-allegiance button { padding: 0.3rem 0.6rem; border-radius: 6px; background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px rgb(217 243 255 / 0.25); color: rgb(217 243 255 / 0.8); font-size: 0.74rem; }
+.holomap-allegiance button[aria-checked='true'][data-side='light'] { background: rgb(255 107 74 / 0.16); box-shadow: inset 0 0 0 1px rgb(255 107 74 / 0.8); color: #fff; }
+.holomap-allegiance button[aria-checked='true'][data-side='dark'] { background: rgb(159 208 255 / 0.14); box-shadow: inset 0 0 0 1px rgb(159 208 255 / 0.8); color: #fff; }
+.holomap-allegiance button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

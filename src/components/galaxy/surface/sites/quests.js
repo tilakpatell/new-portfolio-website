@@ -21,7 +21,8 @@ export const EXTRA = {
       { kind: 'wookiee', id: 'tarfful', at: [-130, -24], still: true, face: 2, name: 'Tarfful', named: true, quest: 'escapepod', says: ['(A long, rumbling roar.)'] },
     ],
     quests: [
-      { id: 'beachhead', name: 'The Battle of Kashyyyk', giver: 'gree', intro: [['Commander Gree', 'Separatist droids, coming across the lagoon. Hold the beach.']], steps: [{ type: 'shoot', tag: 'lagoondroids', n: 10, text: 'Hold the beach against the droids', spawn: [{ kind: 'battledroid', n: 8, at: [150, 40], spread: 18, roam: 6, hp: 1, tag: 'lagoondroids', hostile: H(45, 2.4, 7) }, { kind: 'droideka', n: 2, at: [150, 40], spread: 10, roam: 4, hp: 2, tag: 'lagoondroids', hostile: { ...H(40, 1.8, 7), shield: 3, burst: { n: 2, gap: 0.12 } } }] }], done: [['Commander Gree', 'Beach is ours. Good work.']] },
+      // (the droids are the beach's own battle's: forest.js's skirmish counts the ones you bring down)
+      { id: 'beachhead', name: 'The Battle of Kashyyyk', giver: 'gree', intro: [['Commander Gree', 'Separatist droids, coming across the lagoon. Hold the beach.']], steps: [{ type: 'shoot', tag: 'lagoondroids', n: 10, at: [42, 72], text: 'Hold the beach against the droids' }], done: [['Commander Gree', 'Beach is ours. Good work.']] },
       { id: 'escapepod', name: 'A way off-world', giver: 'tarfful', intro: [['Tarfful', '(He points south, to the hidden escape pod, and growls: it needs parts.)']], steps: [{ type: 'collect', item: 'podpart', n: 3, spots: [[-110, -360], [-136, -372], [-104, -392]], text: 'Find the escape pod’s parts' }, { type: 'use', id: 'fix', at: [-120, -380], r: 4, prompt: 'Fit the parts', text: 'Fix the escape pod' }], done: [[null, '(The pod hums into life. Somewhere, a Jedi Master is going to need it.)']] },
     ],
   },

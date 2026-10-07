@@ -565,7 +565,8 @@ export const PROPS = {
     for (let x = -len / 2 + 2; x < len / 2 - 1; x += 2.6 + k.rand() * 2) bits.push(part(box(1.3, 1.25, 0.1), { at: [x, 0, 0.75], rot: [-0.25, (k.rand() - 0.5) * 0.2, 0], color: '#8a9096', to: 'metal' }));
     for (let i = 0; i < 3; i++) bits.push(part(box(0.8, 0.6, 0.6), { at: [(k.rand() - 0.5) * len * 0.8, 0, -0.6], rot: [0, k.rand(), 0], color: '#6a7078', to: 'paint' }));
     object.add(k.build(bits, { name: 'trench' }));
-    return { object, solids: [{ box: [0, 2.1, len / 2, 1.0] }, { box: [0, -1.9, len / 2, 0.75], top: 0.7 }] };
+    // (the front berm as high as a trooper's chest: he fires over it, and ducks down behind it)
+    return { object, solids: [{ box: [0, 2.1, len / 2, 1.0], top: 1.35 }, { box: [0, -1.9, len / 2, 0.75], top: 0.7 }] };
   },
 
   // the wampa's cave: a hollow in a hummock of ice, icicles over its

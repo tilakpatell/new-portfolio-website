@@ -85,6 +85,8 @@ import { endRun, missionOf, newRun, tickRun } from './missions';
 import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
 import { RULES as ASSAULT } from './missions/assault';
+import { createSkirmishScene } from './skirmishScene';
+import { sideFor } from '../allegiance';
 import { groundWorld } from '../../../lib/three/groundwork';
 
 const V = THREE.Vector3;
@@ -260,7 +262,7 @@ export async function create(canvas, ctx) {
   };
   const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound });
   // (a battle fills the air with bolts: room for them)
-  const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
+  const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' || (!mission && site.skirmish) ? 72 : undefined });
   // what a shot does round the gun and where it lands (universe/gunfx.js),
   // and a light that flares with each muzzle flash: in the scene from the
   // start and dark between shots, so the count of lights never changes and
@@ -1034,8 +1036,42 @@ export async function create(canvas, ctx) {
   // ── A battle (missions/assault.js): two armies and the posts, drawn and run here ──
   const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced }) : null;
   const assaultOn = () => Boolean(assault?.running());
-  // what your blaster can hit, and what a hit does: the battle's soldiers while it's on, the quests' targets otherwise
-  const shootable = () => (assaultOn() ? assault.targets : activity.targets);
+  // ── The world's own battle (a site's skirmish: skirmish.js), fought round
+  // you while you're down here on no mission, you on your allegiance's side
+  // (galaxy/allegiance.js; the HUD switches it) ──
+  const skirmishSpec = !mission && site.skirmish ? site.skirmish : null;
+  const skirmish = skirmishSpec ? createSkirmishScene({ parent: scene, world, blaster, spec: skirmishSpec, side: sideFor(skirmishSpec.sides, ctx.allegiance), say, sounds, kit, warm, tier: small ? 'mid' : tier }) : null;
+  let skirmishViewAt = -1;
+  // (the world's own soldiers of the battle's kinds who'd only stand about in its field: gone while it's fought)
+  if (skirmishSpec?.hideLife) {
+    const { min, max } = skirmishSpec.field;
+    life.hideWhere((a) => skirmishSpec.hideLife.includes(a.spec.kind) && !a.spec.id && a.b.x >= min[0] && a.b.x <= max[0] && a.b.z >= min[1] && a.b.z <= max[1]);
+  }
+  // your kills there that a quest of this world counts (Kashyyyk's beachhead: the droids)
+  const countKills = (kills) => {
+    for (const k of kills ?? []) if (skirmishSpec?.quest && k.side === skirmishSpec.quest.side && skirmish.side !== k.side) questEvent({ type: 'kill', tag: skirmishSpec.quest.tag });
+  };
+  // the world's battle fought for the other side now (the page keeps it as
+  // your allegiance), you put down at that side's rally point if it has one
+  const switchSide = (id) => {
+    if (!skirmish || !skirmishSpec.sides[id] || id === skirmish.side) return;
+    skirmish.setSide(id);
+    const at = skirmishSpec.sides[id].youAt;
+    if (at && state.phase === 'walk' && !state.zone) {
+      putAt(me().st, at[0], at[1], skirmishSpec.sides[id].youYaw);
+      camInit = false;
+    }
+    emit({ type: 'skirmish', view: skirmish.view() });
+    ctx.invalidate();
+  };
+  // what your blaster can hit, and what a hit does: the battle's soldiers while it's on, the quests' targets otherwise (and the world's battle's)
+  const shootable = () => (assaultOn() ? assault.targets : skirmish ? [...activity.targets, ...skirmish.targets(state.off ? null : me().st)] : activity.targets);
+  // a hit, a shove, a stagger or a parry on one of them, whichever's it is:
+  // the world's battle's soldiers (a hit's all they take), or the quest's
+  const hitOn = (t, damage, opts = {}) => (t.skirmish ? countKills(skirmish.hit(t, damage, opts.push ?? null, opts)) : activity.hit(t, damage, opts));
+  const knockOn = (t, v) => (t.skirmish ? null : activity.knock(t, v));
+  const staggerOn = (t, secs) => (t.skirmish ? null : activity.stagger(t, secs));
+  const parryOn = (t, o) => (t.skirmish ? { parried: false, broke: false } : activity.parry(t, o));
   // a shot that found someone: the weapon's damage (a shield breaks to a
   // blast), the hit marker, the moment's hold on a kill
   const struck = (hit, damage = me().weapon?.damage ?? 1, { breaks = false, how = null, push = null } = {}) => {
@@ -1044,7 +1080,7 @@ export async function create(canvas, ctx) {
     else {
       const t = hit.target;
       const was = t.hp;
-      activity.hit(t, dealt(damage), { breaks, how, push });
+      hitOn(t, dealt(damage), { breaks, how, push });
       const killed = was > 0 && t.hp <= 0;
       emit({ type: 'hit', kill: killed });
       sounds.combat?.(killed ? 'kill' : 'hit');
@@ -1309,9 +1345,9 @@ export async function create(canvas, ctx) {
         const at = forceAt(p.st, { x: q.x, z: q.z }, kind);
         if (!at.hit) continue;
         any++;
-        activity.knock(t, pushVelocity(p.st, { x: q.x, z: q.z }, at.k, kind));
-        if (f.damage) activity.hit(t, f.damage);
-        if (kind === 'pull') activity.stagger(t, 1.2);
+        knockOn(t, pushVelocity(p.st, { x: q.x, z: q.z }, at.k, kind));
+        if (f.damage) hitOn(t, f.damage, { push: new V(q.x - p.st.x, 0, q.z - p.st.z) });
+        if (kind === 'pull') staggerOn(t, 1.2);
       }
       // a rush of dust out from you (or in, for a pull)
       const from = new V(p.st.x, p.st.y + 1, p.st.z);
@@ -1366,8 +1402,8 @@ export async function create(canvas, ctx) {
         if (d > DETONATOR.radius) continue;
         const k = 1 - d / DETONATOR.radius;
         const was = t.hp;
-        activity.hit(t, Math.max(1, Math.round(DETONATOR.damage * (0.4 + 0.6 * k))), { breaks: true });
-        activity.knock(t, { vx: ((q.x - at.x) / Math.max(0.3, d)) * 8 * k, vz: ((q.z - at.z) / Math.max(0.3, d)) * 8 * k, vy: 4 * k });
+        hitOn(t, Math.max(1, Math.round(DETONATOR.damage * (0.4 + 0.6 * k))), { breaks: true, push: new V(q.x - at.x, 0, q.z - at.z) });
+        knockOn(t, { vx: ((q.x - at.x) / Math.max(0.3, d)) * 8 * k, vz: ((q.z - at.z) / Math.max(0.3, d)) * 8 * k, vy: 4 * k });
         emit({ type: 'hit', kill: was > 0 && t.hp <= 0 });
       }
       const you = me().st;
@@ -1407,7 +1443,7 @@ export async function create(canvas, ctx) {
   function saberHit(t, damage, at, { heavy = false, thrown = false } = {}) {
     // their blade on yours: turned while their guard holds (each turned
     // stroke drains it, a heavy one breaks it and they reel)
-    const turn = thrown ? { parried: false, broke: false } : activity.parry(t, { heavy });
+    const turn = thrown ? { parried: false, broke: false } : parryOn(t, { heavy });
     fx.sparks(at, UP, turn.parried ? '#ffffff' : (me().spec.bolt ?? '#ffffff'), turn.parried ? 16 : heavy ? 22 : 10);
     sounds.saber?.('clash');
     if (turn.broke) {
@@ -1423,8 +1459,8 @@ export async function create(canvas, ctx) {
       return;
     }
     const was = t.hp;
-    activity.hit(t, dealt(damage), { breaks: heavy });
-    if (heavy) activity.stagger(t, 1.2);
+    hitOn(t, dealt(damage), { breaks: heavy, push: new V(t.holder.position.x - me().st.x, 0, t.holder.position.z - me().st.z) });
+    if (heavy) staggerOn(t, 1.2);
     const killed = was > 0 && t.hp <= 0;
     emit({ type: 'hit', kill: killed });
     sounds.combat?.(killed ? 'kill' : 'hit');
@@ -1585,7 +1621,9 @@ export async function create(canvas, ctx) {
     }
     const p = me().st;
     const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
+    const rally = skirmish && skirmishSpec.sides[skirmish.side].youAt;
     if (step?.respawn) putAt(p, step.respawn[0], step.respawn[1]);
+    else if (rally && !state.zone) putAt(p, rally[0], rally[1], skirmishSpec.sides[skirmish.side].youYaw); // (back with your side in the world's battle)
     else if (!state.zone) putAt(p, spawnAt[0], spawnAt[1]);
   }
 
@@ -1779,7 +1817,7 @@ export async function create(canvas, ctx) {
         if (!riding) {
           const aimK = i === lead ? (pp.saber?.lit ? Math.max(state.aim, 0.75) : state.aim) : 0;
           pp.gp.set(dt, { aim: aimK, look: i === lead ? state.aim : 0, dir: i === lead && state.aim > 0 ? state.aimDir : null, forward: fwdV.set(Math.sin(st.yaw), 0, Math.cos(st.yaw)), up: UP });
-          pp.saber?.update(dt, state.t, { forward: fwdV, up: UP, me: st, targets: i === lead ? activity.targets : [], hit: saberHit });
+          pp.saber?.update(dt, state.t, { forward: fwdV, up: UP, me: st, targets: i === lead ? (skirmish ? shootable() : activity.targets) : [], hit: saberHit });
         }
       }
     });
@@ -2052,6 +2090,16 @@ export async function create(canvas, ctx) {
       if (state.t - chaseViewAt > 0.1) {
         chaseViewAt = state.t;
         emit({ type: 'mission', view: assault.view() });
+      }
+    }
+    // the world's battle: on with it, their bolts at you while you're on the field
+    if (skirmish) {
+      const on = (state.phase === 'walk' || state.phase === 'ride') && !state.zone && !state.off;
+      const { atYou } = skirmish.update(dt, on ? me().st : null, me().st);
+      for (const s of atYou) blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, s.color, s.damage);
+      if (state.t - skirmishViewAt > 0.5) {
+        skirmishViewAt = state.t;
+        emit({ type: 'skirmish', view: skirmish.view() });
       }
     }
     // a quest mission's clock
@@ -2328,6 +2376,13 @@ export async function create(canvas, ctx) {
     },
     // from the page's touch controls
     input: {
+      // a side: a galactic assault's (as its choose card picks it), or the
+      // world's battle's, fought for now (the page keeps it as your
+      // allegiance), you put down at that side's rally point if it has one
+      side(id) {
+        if (assault) chooseSide(id);
+        else switchSide(id);
+      },
       stick(x, y) {
         state.stick.x = x;
         state.stick.y = y;
@@ -2367,8 +2422,7 @@ export async function create(canvas, ctx) {
         state.tracked = id;
         if (!q.giver && !q.place && !state.quest) beginQuest(q);
       },
-      // a side for the battle, and onto the field at one of its posts
-      side: chooseSide,
+      // onto the battle's field at one of its posts
       deploy: deployAt,
       // a mission again, from the start, on the bike
       restart() {
@@ -2481,6 +2535,18 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
       return null;
     },
+    // (for tests: the world's battle fought for another side)
+    skirmishSide(id) {
+      if (import.meta.env.DEV) switchSide(id);
+    },
+    // (for tests: the world's battle as it stands, soldier by soldier)
+    skirmishDebug() {
+      if (!import.meta.env.DEV || !skirmish) return null;
+      const b = skirmish.battle();
+      const modes = {};
+      for (const u of b.units) if (u.up) modes[`${u.kind}:${u.mode}:${u.stance}`] = (modes[`${u.kind}:${u.mode}:${u.stance}`] ?? 0) + 1;
+      return { ...skirmish.view(), t: +b.t.toFixed(1), modes, kills: b.kills, health: state.health };
+    },
     // (for tests: pretend others are down here: [{ id, name, walk }])
     fakePeers(list) {
       if (!import.meta.env.DEV) return;
@@ -2536,6 +2602,7 @@ export async function create(canvas, ctx) {
       activity.dispose();
       chase?.dispose();
       assault?.dispose();
+      skirmish?.dispose();
       blaster.dispose();
       markMat.map.dispose();
       markMat.dispose();

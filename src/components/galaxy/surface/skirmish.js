@@ -21,13 +21,19 @@
 //
 // Each kind has its own numbers (UNITS). A soldier goes down the way the
 // shot pushed it (the clip: thrown back, pitched forward, blown off its
-// feet), and comes back: the Republic one at a time at its spawn, the
-// droids together in waves. You are one of the Republic: the droids shoot
-// at you (three at most at once; the scene's bolts decide whether they
-// hit) and your bolts bring them down (hitUnit). Pure and seeded, so it's
-// tested; skirmishScene.js draws it.
+// feet), and comes back: the side holding the front one at a time at its
+// spawn, the side coming at it (a side with a `wave`) together in waves.
+// You fight for either (`spec.you`; galaxy/allegiance.js says which): the
+// other side shoots at you (three at most at once; the scene's bolts decide
+// whether they hit) and your bolts bring them down (hitUnit). Pure and
+// seeded, so it's tested; skirmishScene.js draws it.
 //
-// newSkirmish(spec, { size, seed, env: { solids, ground } }) → battle
+// spec: { sides: { id: { kinds: [[kind, n]…], spawn: { at, spread },
+//   respawn (seconds) | wave (seconds between waves) } }, hold (the side
+//   that holds the front: the first, if not said), you (your side: the
+//   holders, if not said), front: [x, z], field: { min, max } }
+//
+// newSkirmish(spec, { size, seed, env: { solids, ground, water (its level) } }) → battle
 // stepSkirmish(b, dt, you: { x, y, z } | null) → events: shot { id, side,
 //   target (an id, or 'you'), hit, at: [x, z], atY }, melee, hurt { id },
 //   down { id, clip, push, by }, kill { victim, side, kind, by }, spawn,
@@ -74,6 +80,12 @@ export const UNITS = {
   clone: { hp: 100, range: 52, burst: [3, 5], rate: 6, pause: [0.8, 1.6], mag: 30, reload: 2.2, acc: [0.5, 0.1], damage: 20, cover: 0.85, bravery: 0.7, speed: 4.2, walk: 1.6, flank: 0.35 },
   wookiee: { hp: 170, range: 34, burst: [1, 2], rate: 1.6, pause: [0.6, 1.2], mag: 8, reload: 2.4, acc: [0.6, 0.18], damage: 48, cover: 0.4, bravery: 0.95, speed: 4.8, walk: 1.5, charge: 15, melee: { reach: 2.1, every: 1.1, damage: 70 }, taunt: 2.4 },
   battledroid: { hp: 40, range: 46, burst: [2, 3], rate: 4, pause: [1.0, 2.0], mag: 20, reload: 2.8, acc: [0.42, 0.08], damage: 14, cover: 0.25, bravery: 0.5, speed: 2.8, walk: 1.4, stopToShoot: true },
+  // the Empire's troopers and the Rebellion's: soldiers like the clones, a
+  // little less sure of their aim, the troopers slower to go to ground
+  hothtrooper: { hp: 100, range: 50, burst: [2, 4], rate: 5, pause: [0.8, 1.6], mag: 25, reload: 2.4, acc: [0.48, 0.1], damage: 20, cover: 0.9, bravery: 0.65, speed: 4.0, walk: 1.5, flank: 0.25 },
+  snowtrooper: { hp: 100, range: 50, burst: [3, 5], rate: 6, pause: [0.9, 1.7], mag: 30, reload: 2.4, acc: [0.44, 0.09], damage: 20, cover: 0.55, bravery: 0.75, speed: 3.6, walk: 1.5, flank: 0.2 },
+  stormtrooper: { hp: 100, range: 50, burst: [3, 5], rate: 6, pause: [0.9, 1.7], mag: 30, reload: 2.4, acc: [0.42, 0.08], damage: 20, cover: 0.55, bravery: 0.75, speed: 3.8, walk: 1.5, flank: 0.2 },
+  deathtrooper: { hp: 140, range: 54, burst: [3, 4], rate: 5, pause: [0.7, 1.3], mag: 30, reload: 2.0, acc: [0.6, 0.18], damage: 24, cover: 0.7, bravery: 0.95, speed: 4.0, walk: 1.6, flank: 0.4 },
   superdroid: { hp: 170, range: 38, burst: [4, 6], rate: 5, pause: [0.8, 1.4], mag: 40, reload: 2.0, acc: [0.4, 0.1], damage: 16, cover: 0, bravery: 1, speed: 1.7, walk: 1.7, advanceFiring: true, stand: 10 },
 };
 const unitOf = (kind) => UNITS[kind] ?? UNITS.clone;
@@ -211,6 +223,8 @@ const groundOf = (b, x, z) => b.env.ground?.(x, z) ?? 0;
 const eyeOf = (b, u, stance = 'stand') => [u.x, groundOf(b, u.x, u.z) + EYE[stance], u.z];
 const chestOf = (b, o) => (o.id === 'you' ? [o.x, (o.y ?? groundOf(b, o.x, o.z)) + 1.1, o.z] : [o.x, groundOf(b, o.x, o.z) + CHEST[o.stance], o.z]);
 const sees = (b, from, to) => lineOfSight(b.env.solids, from, to, b.env.ground ?? null);
+// still wading in, the water over its chest: it can't see out, or shoot
+const under = (b, u) => b.env.water != null && groundOf(b, u.x, u.z) + CHEST.stand < b.env.water;
 const release = (u) => {
   if (u.spot?.by === u) u.spot.by = null;
   u.spot = null;
@@ -228,8 +242,8 @@ const inField = (b, x, z) => {
   return [clamp(x, min[0], max[0]), clamp(z, min[1], max[1])];
 };
 
-// where a side comes onto the field: round its spawn (the Republic, the
-// first time, along the cover at the front, facing the droids)
+// where a side comes onto the field: round its spawn (the side holding the
+// front, the first time, along the cover there, facing the other)
 function spawn(b, u, first = false) {
   const sp = b.spec.sides[u.side].spawn;
   const r = b.r;
@@ -238,8 +252,8 @@ function spawn(b, u, first = false) {
   [u.x, u.z] = inField(b, sp.at[0] + Math.cos(a) * d, sp.at[1] + Math.sin(a) * d);
   Object.assign(u, { hp: u.u.hp, up: true, down: 0, mode: 'hold', dest: null, stance: 'stand', target: null, seen: false, hiddenFor: 0, hiddenSince: null, threat: null, suppress: 0, think: r() * 0.5, cool: 0.5 + r(), burst: 0, ammo: u.u.mag, reloading: 0, pop: 0, duck: false, move: 0, aim: false, swing: 0, taunt: 0, fled: false, holdUntil: 0 });
   release(u);
-  if (first && u.side !== b.spec.you) u.mode = 'advance';
-  if (first && u.side === b.spec.you) {
+  if (first && u.side !== b.spec.hold) u.mode = 'advance';
+  if (first && u.side === b.spec.hold) {
     // (behind the barricades, each at a spot of its own)
     const free = b.spots.filter((s) => !s.by && progress(b, s.x, s.z) < 0 && progress(b, s.x, s.z) > -10).sort((p, q) => dist(p.x, p.z, b.spec.front[0], b.spec.front[1]) - dist(q.x, q.z, b.spec.front[0], b.spec.front[1]));
     const s = free[Math.floor(r() * Math.min(free.length, 6))];
@@ -253,32 +267,36 @@ function spawn(b, u, first = false) {
     }
   }
   // (each facing the other side)
-  u.yaw = u.side === b.spec.you ? Math.atan2(b.axis[0], b.axis[1]) : Math.atan2(-b.axis[0], -b.axis[1]);
+  u.yaw = u.side === b.spec.hold ? Math.atan2(b.axis[0], b.axis[1]) : Math.atan2(-b.axis[0], -b.axis[1]);
 }
 
 export function newSkirmish(spec, { size = 1, seed = 1, env = {} } = {}) {
   const r = rng(seed);
   const units = [];
-  for (const side of ['rep', 'sep'])
+  // (the side that holds the front, and the one that comes at it; you fight for `you`, either)
+  const [first, second] = Object.keys(spec.sides);
+  const hold = spec.hold ?? first;
+  const comes = hold === first ? second : first;
+  for (const side of [hold, comes])
     for (const [kind, n] of spec.sides[side].kinds) {
       const c = Math.max(1, Math.round(n * size));
       for (let i = 0; i < c; i++) units.push(makeUnit(units.length, side, kind));
     }
   const solids = env.solids ?? { all: [], near: () => [] };
-  const rs = spec.sides.rep.spawn.at;
-  const ss = spec.sides.sep.spawn.at;
+  const rs = spec.sides[hold].spawn.at;
+  const ss = spec.sides[comes].spawn.at;
   const l = dist(rs[0], rs[1], ss[0], ss[1]) || 1;
   const b = {
-    spec: { you: 'rep', ...spec },
+    spec: { ...spec, hold, comes, you: spec.you ?? hold },
     r,
     t: 0,
     units,
-    env: { solids, ground: env.ground ?? null },
+    env: { solids, ground: env.ground ?? null, water: env.water ?? null },
     spots: coverSpots(solids, spec.field, env.ground ?? null),
     axis: [(ss[0] - rs[0]) / l, (ss[1] - rs[1]) / l], // from the Republic's side toward the droids'
-    waveIn: spec.sides.sep.wave ?? 15,
+    waveIn: spec.sides[comes].wave ?? 15,
     you: { kills: 0, on: false, x: 0, z: 0, y: 0 },
-    kills: { rep: 0, sep: 0 },
+    kills: {},
   };
   for (const u of units) spawn(b, u, true);
   return b;
@@ -327,7 +345,7 @@ function damage(b, T, amount, push, by, out, { blown = false } = {}) {
   out.push({ type: 'kill', victim: T.id, side: T.side, kind: T.kind, by: who });
   if (by === 'you') b.you.kills += 1;
   else {
-    b.kills[by.side] += 1;
+    b.kills[by.side] = (b.kills[by.side] ?? 0) + 1;
     // a Wookiee who's brought one down lets the whole beach know
     if (by.u.taunt && by.up) {
       by.mode = 'taunt';
@@ -362,7 +380,7 @@ function threatAt(b, u) {
   if (u.threat && b.t - u.threat.t < 6) return [u.threat.x, u.threat.z];
   const T = targetOf(b, u);
   if (T) return [T.x, T.z];
-  const s = u.side === b.spec.you ? 1 : -1;
+  const s = u.side === b.spec.hold ? 1 : -1;
   return [u.x + b.axis[0] * 30 * s, u.z + b.axis[1] * 30 * s];
 }
 function targetOf(b, u) {
@@ -381,7 +399,7 @@ function chooseCover(b, u, from, { back = false } = {}) {
   let best = null;
   let bestS = Infinity;
   const here = progress(b, u.x, u.z);
-  const mine = u.side === b.spec.you;
+  const mine = u.side === b.spec.hold;
   const away = dist(u.x, u.z, from[0], from[1]);
   for (const s of b.spots) {
     if (s.by && s.by !== u) continue;
@@ -431,13 +449,23 @@ function flankPoint(b, u, T) {
 
 // a point further on toward the front (the droids' way in), a little to one side
 function onward(b, u, metres) {
-  const s = u.side === b.spec.you ? 1 : -1;
+  const s = u.side === b.spec.hold ? 1 : -1;
   const side = (b.r() - 0.5) * metres * 0.6;
   return inField(b, u.x + b.axis[0] * metres * s - b.axis[1] * side, u.z + b.axis[1] * metres * s + b.axis[0] * side);
 }
 
 function think(b, u, onYou, out) {
   const U = u.u;
+  if (under(b, u)) {
+    // (on out of the water, toward the front)
+    u.target = null;
+    u.seen = false;
+    if (!u.hold && !u.dest) {
+      u.mode = 'advance';
+      u.dest = onward(b, u, 8);
+    }
+    return;
+  }
   // ── who's out there: everyone in range it knows of, and which it can see ──
   const eye = eyeOf(b, u);
   let best = null;
@@ -476,7 +504,7 @@ function think(b, u, onYou, out) {
   // ── what to do about it ──
   const T = targetOf(b, u);
   const d = T ? dist(u.x, u.z, T.x, T.z) : Infinity;
-  const mine = u.side === b.spec.you;
+  const mine = u.side === b.spec.hold;
   const brave = u.brave ?? U.bravery;
   if (u.mode === 'taunt' && u.taunt > 0) return;
   if (u.mode === 'charge' && T && T.id !== 'you' && d < U.charge * 1.6) return;
@@ -739,7 +767,7 @@ function act(b, u, h, onYou, out) {
   // ── a shot ──
   const facing = T ? Math.abs(Math.atan2(Math.sin(Math.atan2(T.x - u.x, T.z - u.z) - u.yaw), Math.cos(Math.atan2(T.x - u.x, T.z - u.z) - u.yaw))) < 0.5 : false;
   const steady = !(U.stopToShoot && u.move > 0) && !(u.running && !U.advanceFiring && u.move > 0.3);
-  u.aim = Boolean(T && u.stance === 'stand' && u.reloading <= 0 && steady && d < U.range && u.mode !== 'charge');
+  u.aim = Boolean(T && u.stance === 'stand' && u.reloading <= 0 && steady && d < U.range && u.mode !== 'charge' && !under(b, u));
   if (!u.aim || u.cool > 0 || !facing) return;
   if (!sees(b, eyeOf(b, u, u.stance), chestOf(b, T))) {
     // (it can't see it from here: a look round soon)
@@ -786,7 +814,7 @@ function step(b, h, you, out) {
     if (!u.up) {
       u.down += h;
       // (the Republic comes back one at a time; the droids wait for the next wave)
-      if (u.side === b.spec.you && u.down >= (b.spec.sides[u.side].respawn ?? 9)) {
+      if (!b.spec.sides[u.side].wave && u.down >= (b.spec.sides[u.side].respawn ?? 9)) {
         spawn(b, u);
         out.push({ type: 'spawn', id: u.id });
       }
@@ -804,16 +832,16 @@ function step(b, h, you, out) {
   }
   b.waveIn -= h;
   if (b.waveIn <= 0) {
-    b.waveIn = b.spec.sides.sep.wave ?? 15;
+    b.waveIn = b.spec.sides[b.spec.comes].wave ?? 15;
     let n = 0;
     for (const u of b.units)
-      if (!u.up && u.side !== b.spec.you && u.down >= RULES.corpse) {
+      if (!u.up && b.spec.sides[u.side].wave && u.down >= RULES.corpse) {
         spawn(b, u);
         u.mode = 'advance';
         out.push({ type: 'spawn', id: u.id });
         n += 1;
       }
-    if (n) out.push({ type: 'wave', side: 'sep', n });
+    if (n) out.push({ type: 'wave', side: b.spec.comes, n });
   }
 }
 

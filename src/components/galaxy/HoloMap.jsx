@@ -5,6 +5,8 @@ import { RiCloseLine, RiRocket2Fill, RiArrowGoBackLine } from 'react-icons/ri';
 import { WARS } from '../universe/wars';
 import { onWar, warNow } from './warState';
 import { templateFor } from './battles';
+import { ALLEGIANCES, ALLEGIANCE_KEY, readAllegiance } from './allegiance';
+import { local } from '../../lib/hooks';
 import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKNOWN, edgeAt, eraById, eraOf, erasOf, filmLabel, filmShort, gridAt, jumpSeconds, lightYears, systemById, yearLabel } from './systems';
 
 // The galaxy map, the way a holotable shows it: the galaxy's disc (its
@@ -148,6 +150,12 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave }) {
   const picked = pick ? systemById(pick) : null;
   // the Galactic Civil War, as it stands this second (and when what the players did changes)
   const [now, setNow] = useState(() => Date.now());
+  // which side you fight for on the ground (galaxy/allegiance.js): the worlds' battles put you with it
+  const [allegiance, setAllegiance] = useState(() => readAllegiance(local.get(ALLEGIANCE_KEY)));
+  const pickAllegiance = (a) => {
+    setAllegiance(a);
+    local.set(ALLEGIANCE_KEY, a);
+  };
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     const off = onWar(() => setNow(Date.now()));
@@ -409,7 +417,16 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave }) {
                       ))}
                     </ul>
                   )}
-                  <p className="holomap-meta">Every pilot flies for the Rebellion. What you do in a battle counts here, for everyone online.</p>
+                  <p className="holomap-meta">In space every pilot flies for the Rebellion. What you do in a battle counts here, for everyone online.</p>
+                  {/* on the ground, either side: the battles on Kashyyyk, Geonosis and Hoth put you with yours */}
+                  <div className="holomap-allegiance" role="radiogroup" aria-label="On the ground you fight for">
+                    <p className="holomap-kicker">On the ground you fight for</p>
+                    {Object.values(ALLEGIANCES).map((a) => (
+                      <button key={a.id} type="button" role="radio" aria-checked={allegiance === a.id} data-side={a.id} onClick={() => pickAllegiance(a.id)}>
+                        {a.short}
+                      </button>
+                    ))}
+                  </div>
                 </section>
                 <p className="mt-3 text-sm leading-relaxed text-body">Pick a system to plot a course, then jump. Or skip the map: every system’s star is out there in the sky, so point your nose at one and press J. Filter by era or film to see the galaxy as it was then.</p>
                 <p className="mt-3 text-xs leading-relaxed text-muted">The grid squares and regions are the films’ own atlas, where it gives them; the Unknown Regions are, well, unknown.</p>

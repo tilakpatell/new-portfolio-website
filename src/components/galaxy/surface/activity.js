@@ -27,7 +27,8 @@ import { groundAt, turnToward } from './walker';
 import { stepTarget } from './quests';
 import { rng } from './noise';
 import { absorb, startBurst, stepBurst, strafeStep } from './hostiles';
-import { buildGun } from '../../universe/gunplay';
+import { buildGun, createGunplay } from '../../universe/gunplay';
+import { gunOf } from './soldier';
 import { createPortalFx, meshyJoints } from '../../../lib/three/portalFx';
 import { createGadgetFx } from '../../../lib/three/gadgetFx';
 import { SHOW_KILLS } from './weaponRules';
@@ -132,6 +133,9 @@ function remote() {
 }
 
 const SPECIAL = { womprat: wompRat, remote };
+const _fwd = new THREE.Vector3();
+const _dir = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
 
 // A health bar over a hostile's head: a sprite with a small canvas, red
 // for what's left, blue over it for a shield, redrawn only when they change
@@ -213,6 +217,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     }
     for (const t of targets) {
       t.holder.removeFromParent();
+      t.gp?.dispose();
       t.fig?.dispose?.();
     }
     pickups = [];
@@ -285,6 +290,11 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
             fig.model.scale.multiplyScalar(s.scale ?? 1);
             holder.add(fig.model);
             t.fig = fig;
+            // a rigged soldier who shoots: its kind's gun in its hand (universe/gunplay.js), aimed at you
+            if (fig.rigged && s.hostile && !s.hostile.melee && !s.hostile.blade) {
+              holder.updateMatrixWorld(true);
+              t.gp = createGunplay(fig, gunOf(s.kind), { unit: 1 });
+            }
             // its lightsaber: lit, in the right hand (the models aren't
             // rigged: the hilt sits where the hand of a figure this tall is)
             if (s.hostile?.blade) {
@@ -327,6 +337,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     },
     // `how`: the gun (a kill by one of SHOW_KILLS plays its show), `push` the way the shot went
     hit(t, damage = 1, { breaks = false, how = null, push = null } = {}) {
+      if (push) t.pushed = { x: push.x, z: push.z }; // (which way it'll fall, if this brings it down)
       if (SHOW_KILLS.includes(how) && t.hp - damage <= 0 && !t.down && t.fig) {
         t.how = how;
         t.push = push?.clone() ?? null;
@@ -454,13 +465,27 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           continue;
         }
         if (t.down) {
-          t.down += dt;
-          t.holder.rotation.x = Math.min(Math.PI / 2, t.down * 4) * -1;
+          // (a rigged one goes down on its clip, thrown back or pitched forward by the shot; anything else tips over)
+          if (t.fig?.rigged && t.fig.pose) {
+            if (!t.fell) {
+              t.fell = true;
+              const p = t.pushed;
+              const fwd = p ? (p.x * Math.sin(b.yaw) + p.z * Math.cos(b.yaw)) / (Math.hypot(p.x, p.z) || 1) : -1;
+              t.fig.pose(fwd > 0.3 ? 'dieFwd' : 'die');
+              if (t.bar) t.bar.sprite.visible = false;
+            }
+            t.down += dt;
+            t.fig.update(dt, 0);
+            t.gp?.set(dt, { aim: 0, forward: _fwd.set(Math.sin(b.yaw), 0, Math.cos(b.yaw)), up: _up });
+          } else {
+            t.down += dt;
+            t.holder.rotation.x = Math.min(Math.PI / 2, t.down * 4) * -1;
+          }
           if (t.down > 0.3 && !t.counted) {
             t.counted = true;
             events.push({ type: 'kill', tag: t.tag });
           }
-          if (t.down > 3) t.holder.visible = false;
+          if (t.down > (t.fell ? 5 : 3)) t.holder.visible = false;
           continue;
         }
         const s = t.spec;
@@ -571,9 +596,23 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         // (a flinch where it's hit and doesn't go down)
         if (t.flinch > 0) {
           t.flinch -= dt;
-          t.holder.rotation.z = Math.sin(t.flinch * 60) * t.flinch * 0.3;
-        } else t.holder.rotation.z = 0;
+          // (a rigged one on its clip)
+          if (t.fig?.pose && !t.flinched) {
+            t.flinched = true;
+            t.fig.pose('hit');
+          }
+          if (!t.fig?.rigged) t.holder.rotation.z = Math.sin(t.flinch * 60) * t.flinch * 0.3;
+        } else {
+          t.flinched = false;
+          t.holder.rotation.z = 0;
+        }
         t.fig?.update(dt, moving || (b.to && !near) ? 0.6 : 0);
+        // its gun: up at you while you're in its range, carried otherwise
+        if (t.gp) {
+          t.holder.updateMatrixWorld(true);
+          const aimAt = near && you ? _dir.set(you.x - b.x, (you.y ?? t.holder.position.y) + 1.1 - (t.holder.position.y + (t.fig.tall ?? 1.8) * 0.78), you.z - b.z).normalize() : null;
+          t.gp.set(dt, { aim: near && !t.stagger && !t.knock ? 1 : 0, dir: aimAt, forward: _fwd.set(Math.sin(b.yaw), 0, Math.cos(b.yaw)), up: _up });
+        }
         if (t.bubble?.visible) {
           const f = t.bubble.userData;
           f.flash = Math.max(0, f.flash - dt);
@@ -594,7 +633,11 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           if (t.hostile.melee) t.cool = Math.max(t.cool, 0.4);
           continue;
         }
-        const shot = () => ({ from: [t.b.x, t.holder.position.y + 1.4, t.b.z], spread: t.hostile.spread ?? 0.06, damage: t.hostile.damage ?? 8, who: t });
+        // (from its gun's muzzle, the gun kicking, where it has one in hand)
+        const shot = () => {
+          const m = t.gp && t.holder.visible ? t.gp.fire().muzzle : null;
+          return { from: m ? [m.x, m.y, m.z] : [t.b.x, t.holder.position.y + 1.4, t.b.z], spread: t.hostile.spread ?? 0.06, damage: t.hostile.damage ?? 8, who: t };
+        };
         // the rest of a burst, as its shots fall due
         if (t.burst) {
           for (let i = stepBurst(t.burst, dt, t.hostile.burst.gap); i > 0; i--) out.push(shot());

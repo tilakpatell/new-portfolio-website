@@ -388,6 +388,13 @@ export const SITES = {
           { kind: 'crates', at: [-12, -8] },
           { kind: 'crates', at: [12, -12] },
           { kind: 'lamp', at: [0, -14], opts: { h: 4, light: '#ffd9a0' } },
+          // cover on the sand between the water and the barricades: the droids' way in
+          { kind: 'crates', at: [-20, 26] },
+          { kind: 'crates', at: [1, 30], opts: { color: '#7a6a52' } },
+          { kind: 'crates', at: [22, 27] },
+          { kind: 'log', at: [-8, 33], yaw: 0.2, opts: { len: 6, r: 0.75 } },
+          { kind: 'log', at: [12, 33], yaw: -0.3, opts: { len: 5, r: 0.8 } },
+          { kind: 'log', at: [-27, 18], yaw: 1.2, opts: { len: 5, r: 0.7 } },
         ],
       },
       {
@@ -495,13 +502,8 @@ export const SITES = {
       { kind: 'log', n: 20, within: [40, 520], scale: [0.9, 1.5], solid: false, opts: { seed: 7, bark: '#6a5a46' } },
     ],
     life: [
-      { kind: 'wookiee', n: 6, at: [40, 32], spread: 14, roam: 10, speed: 1.1, name: 'Wookiee warrior', says: ['(A battle roar that rattles your teeth.)', '(It hefts a bowcaster and points across the lagoon.)', 'Rrraaaaaaaaghhh!', '(It thumps its chest, then yours. Friendly. You think.)'] },
-      { kind: 'clone', n: 5, at: [40, 30], spread: 12, roam: 8, speed: 1.2, name: 'Clone trooper', says: ['Droids coming across the lagoon, sir!', 'Hold the line!', 'The Wookiees fight like nothing I’ve ever seen.', 'Execute Order… (He stops, and listens to his helmet.) Nothing, sir. Never mind.'] },
-      { kind: 'battledroid', n: 5, path: [[82, 70], [104, 62], [124, 66], [104, 72]], speed: 1.0, name: 'Battle droid', says: ['Roger, roger.', 'Uh oh.', 'Wookiees! Retreat! Uh… advance! Uh…', 'Halt! Er… we surrender?'] },
-      { kind: 'dwarfspider', n: 2, path: [[100, 80], [120, 70], [136, 80], [120, 90]], speed: 0.9, r: 1.0, name: 'Dwarf spider droid', says: ['(It clicks, and its cannon swings toward the barricades.)'] },
       { kind: 'wookiee', n: 2, at: [6, -34], spread: 5, roam: 6, speed: 1.0, name: 'Wookiee', says: ['(It beats its chest once, and points you up the beach.)', '(A warm growl: a welcome.)'] },
       { kind: 'clone', n: 2, at: [16, -40], spread: 4, roam: 4, speed: 1.0, name: 'Clone trooper', says: ['BARC’s fuelled, sir. The beach is that way.', 'Droids landed at the far end of the lagoon. We hold here.'] },
-      { kind: 'superdroid', n: 2, path: [[90, 60], [116, 56]], speed: 0.8, name: 'Super battle droid', says: ['(It raises its wrist blasters, slowly.)', 'Surrender, Jedi scum.'] },
       { kind: 'atrt', n: 2, path: [[14, 22], [40, 16], [66, 22], [40, 16]], speed: 1.6, r: 0.8, name: 'AT-RT', says: ['(The clone rider nods down at you.) Good hunting, sir.', '(The walker clanks past, its rider scanning the lagoon.)'] },
       { kind: 'atap', n: 1, path: [[22, 44], [58, 44], [58, 36], [22, 36]], speed: 1.0, r: 2.2, name: 'AT-AP', says: ['(Its heavy cannon swings out toward the water.)'] },
       { kind: 'yoda', n: 1, at: [182, -146], still: true, face: 0.6, name: 'Yoda', says: ['Go, I will. Good relations with the Wookiees, I have.', 'A great disturbance in the Force, I feel.', 'Into exile I must go. Failed, I have.'] },
@@ -512,6 +514,25 @@ export const SITES = {
       { kind: 'wookiee', n: 5, at: [-370, -170], spread: 12, roam: 10, speed: 0.9, name: 'Wookiee', says: ['(A friendly, gargling growl.)', '(It offers you a bowl of something. It is moving.)', '(It ruffles your hair. Hard.)'] },
       { kind: 'wookiee', n: 4, at: [-136, 14], spread: 6, roam: 6, speed: 1.0, name: 'Wookiee', says: ['(It waves you up the steps to the city.)', '(A long, musical howl, answered from far up the tree.)'] },
     ],
+    // the battle on the beach (skirmish.js): the Republic holds the barricades
+    // on the sandbar, the droid army wades ashore out of the lagoon to the
+    // north in waves, and you fight for whichever side your allegiance is
+    // (galaxy/allegiance.js)
+    skirmish: {
+      name: 'The Battle of Kashyyyk',
+      hold: 'rep',
+      sides: {
+        rep: { name: 'The Grand Army of the Republic and the Wookiees', short: 'Republic', allegiance: 'light', colour: '#7fc4ff', kinds: [['clone', 5], ['wookiee', 3]], spawn: { at: [42, 34], spread: 7 }, respawn: 10, youAt: [42, 40], youYaw: 0 },
+        sep: { name: 'The Separatist droid army', short: 'Separatists', allegiance: 'dark', colour: '#ff9a5a', kinds: [['battledroid', 10], ['superdroid', 3]], spawn: { at: [42, 102], spread: 14 }, wave: 16, youAt: [40, 82], youYaw: Math.PI },
+      },
+      front: [42, 57],
+      field: { min: [2, 20], max: [80, 118] },
+      // (the droids you bring down count for Commander Gree's beachhead)
+      quest: { tag: 'lagoondroids', side: 'sep' },
+      lines: {
+        wave: [[null, '(More droids come wading up out of the lagoon.)'], [null, '(The water churns: another wave of droids.)'], ['Clone trooper', 'Here they come again!']],
+      },
+    },
     rides: [{ kind: 'speederbike', at: [22, -30], yaw: 0.6 }],
     flyovers: [
       { kind: 'arc170', n: 2, metres: 14.5, alt: 90, speed: 110, every: 50 },

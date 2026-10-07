@@ -11,14 +11,14 @@ import { heroById } from '../heroes';
 // whatever's to hand (E on a keyboard). While the 3D loads the box says
 // so; without 3D, a note that the world needs it.
 
-export default function SurfaceView({ system, mission = null, ship, hero = null, loadout, build = null, found, done, compass, net = null, handle, onEvent }) {
+export default function SurfaceView({ system, mission = null, ship, hero = null, loadout, build = null, allegiance = 'light', found, done, compass, net = null, handle, onEvent }) {
   const saber = Boolean(hero && heroById(hero.id)?.weapon === 'saber');
   const events = useRef(onEvent);
   events.current = onEvent;
   const [coarse] = useState(() => (typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false));
   const reduced = useReducedMotion();
   const { host, on, meant, rt } = useWorld(surfaceModule, {
-    props: { system, mission, ship, hero, loadout, build, found, done, compass, net, reduced },
+    props: { system, mission, ship, hero, loadout, build, allegiance, found, done, compass, net, reduced },
     onEvent: (e) => events.current?.(e),
   });
   // the scene itself, while it's the world on the runtime

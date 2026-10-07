@@ -299,6 +299,15 @@ export function createActors({ parent, world, life = [], seed = 5, warm = (o) =>
           a.holder.visible = !hidden && !a.culled && Boolean(a.fig);
         }
     },
+    // everyone `test(actor)` picks gone for now (a world's battle clearing
+    // its field of the soldiers who'd only stand about in it), or back
+    hideWhere(test, hidden = true) {
+      for (const a of actors)
+        if (test(a)) {
+          a.hidden = hidden;
+          a.holder.visible = !hidden && !a.culled && Boolean(a.fig);
+        }
+    },
     // the nearest one with something to say, within reach of (x, z)
     talker(x, z, reach = 3, y = null) {
       let best = null;

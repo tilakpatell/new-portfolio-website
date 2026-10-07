@@ -842,3 +842,41 @@
 .surface-stats { display: flex; gap: 0.5rem; margin-top: 0.2rem; font-size: 0.64rem; color: rgba(242, 239, 232, 0.65); }
 .surface-stats i { font-style: normal; }
 .surface-mods { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+/* a world's battle (SkirmishHud.jsx) */
+.skirmish-hud {
+  position: absolute;
+  z-index: 2;
+  right: 16px;
+  top: calc(var(--nav-h, 64px) + 104px);
+  display: grid;
+  gap: 0.3rem;
+  min-width: 11rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--side);
+  border-radius: 8px;
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+}
+.skirmish-name { margin: 0 0 0.15rem; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(242, 239, 232, 0.85); }
+.skirmish-side { display: flex; align-items: baseline; gap: 0.5rem; margin: 0; }
+.skirmish-side b { min-width: 1.8rem; font: 600 1.05rem/1 ui-monospace, monospace; font-variant-numeric: tabular-nums; color: var(--side); }
+.skirmish-side span { font-size: 0.72rem; color: rgba(242, 239, 232, 0.7); }
+.skirmish-side[data-mine] span::after { content: ' · you'; color: var(--side); }
+.skirmish-score { margin: 0.2rem 0 0; padding-top: 0.35rem; border-top: 1px solid var(--line); font-size: 0.72rem; color: rgba(242, 239, 232, 0.7); }
+.skirmish-score b { font: 600 0.85rem/1 ui-monospace, monospace; color: var(--text); }
+.skirmish-switch {
+  margin-top: 0.3rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--side) 60%, transparent);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.skirmish-switch:hover, .skirmish-switch:focus-visible { border-color: var(--side); background: color-mix(in srgb, var(--side) 16%, rgba(0, 0, 0, 0.3)); }
+@media (max-width: 640px) {
+  .skirmish-hud { top: auto; bottom: calc(190px + env(safe-area-inset-bottom, 0px)); right: 10px; min-width: 0; padding: 0.45rem 0.6rem; }
+  .skirmish-score { display: none; }
+}
