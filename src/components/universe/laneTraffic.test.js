@@ -6,9 +6,10 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('./glbFleet', () => ({ createFleet: () => null }));
 vi.mock('./trafficModels', () => ({
   TRAFFIC: { starwars: ['tie', 'interceptor', 'xwing', 'shuttle', 'destroyer'], rickmorty: ['patrol', 'federation', 'gromflomite', 'meeseeks', 'birdperson'] },
+  buildTraffic: () => null,
 }));
 
-const { createLaneTraffic } = await import('./laneTraffic');
+const { HEAVY, HEAVY_MAX, createLaneTraffic } = await import('./laneTraffic');
 const { NEAR, RESOLVE, flowAt, positionOf } = await import('./laneFlow');
 const { LANES } = await import('./hyperlanes');
 const { TYPES } = await import('./traffic');
@@ -116,5 +117,29 @@ describe('the lane traffic near you (laneTraffic.js)', () => {
     expect(traffic.count).toBe(0);
     expect(parent.children.length).toBe(0);
     traffic.dispose();
+  });
+
+  it('draws a heavy model for the nearest of them only, and the kit’s stand-ins for the rest', () => {
+    // every model the fleet makes is a heavy one (the X-wing’s 120,000 triangles)
+    const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array((HEAVY + 1) * 9), 3));
+    const fleet = fakeFleet();
+    fleet.make = (kind) => {
+      const group = new THREE.Group();
+      group.add(new THREE.Mesh(geo));
+      return { kind, group, size: new THREE.Vector3(1, 1, 1), model: true, update() {}, dispose() {} };
+    };
+    const built = [];
+    const build = (kind) => {
+      built.push(kind);
+      return { group: new THREE.Group(), size: new THREE.Vector3(1, 1, 1), update() {}, dispose() {} };
+    };
+    const traffic = createLaneTraffic(new THREE.Group(), { fleet, build });
+    // beside a convoy: a column of four to seven, all near
+    const lead = flowAt(trunk, 'out', T0).find((f) => f.m === 3);
+    const p = positionOf(trunk, 'out', lead.s, lead.off);
+    for (let k = 0; k < 4; k++) traffic.update(DT, T0, { x: p[0] + 2, y: p[1], z: p[2] }, new Map());
+    expect(traffic.count).toBeGreaterThan(HEAVY_MAX);
+    expect(traffic.heavy).toBeLessThanOrEqual(HEAVY_MAX);
+    expect(built.length).toBeGreaterThan(0);
   });
 });

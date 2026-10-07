@@ -32,15 +32,24 @@ import * as THREE from 'three';
 import { NEAR, RESOLVE, flowNear, kill, nearest, positionOf } from './laneFlow';
 import { frame } from './ride';
 import { TYPES } from './traffic';
+import { buildTraffic } from './trafficModels';
 
 export const GROW = 0.4; // seconds a ship takes to grow out of its streak
 export const BIG_DRAWN = 4; // map units: the most a ship is drawn, in a tube 6 across
+// a model past HEAVY triangles (the X-wing and the TIE interceptor are 120,000
+// each, made here at the desktop's cut, and a convoy has X-wings front and
+// back) is drawn for the nearest one of its kind only, HEAVY_MAX at a time;
+// the rest get the kit's built stand-in, a few thousand, at a pixel or two a
+// ship this far off (measured at the far-rim pose: four X-wings near were
+// half a million triangles)
+export const HEAVY = 20000;
+export const HEAVY_MAX = 1;
 const HIDDEN = 0.3; // a ship drawn smaller than this (still growing) can’t be hit, as traffic.js’s
 const THROTTLE = 0.9; // their engines (at hyperspeed)
 
 const keyOf = (f) => `${f.lane.id}|${f.way}|${f.i}|${f.m}`;
 
-export function createLaneTraffic(parent, { fleet, engines = null, small = false, types = TYPES } = {}) {
+export function createLaneTraffic(parent, { fleet, engines = null, small = false, types = TYPES, build = buildTraffic } = {}) {
   const pool = {}; // kind → models not in use
   const live = new Map(); // key → { lane, way, i, m, kind, size, model, age }
   const own = new Map(); // the dead, when the scene keeps none of its own
@@ -48,24 +57,40 @@ export function createLaneTraffic(parent, { fleet, engines = null, small = false
   let lastT = 0;
   let kills = []; // since the last update
   const wanted = new Set(); // the kinds asked of the fleet, once each
+  const heavy = new Set(); // the kinds whose model is past HEAVY
+  const trianglesOf = (group) => {
+    let n = 0;
+    group.traverse((o) => {
+      if (o.isMesh && o.geometry) n += (o.geometry.index ? o.geometry.index.count : (o.geometry.attributes.position?.count ?? 0)) / 3;
+    });
+    return n;
+  };
 
   // ── The pool (traffic.js’s take, give and drop) ──
   const drop = (model) => {
     engines?.remove(model.engine);
     model.dispose();
   };
-  const take = (kind) => {
+  const take = (kind, light = false) => {
+    // (a heavy kind's stand-in, built from the kit: in a pool of its own)
+    if (light) {
+      const model = pool[`~${kind}`]?.pop() ?? { ...build(kind), light: true };
+      model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1);
+      if (engines && !model.engine) model.engine = engines.add(kind, model.group, { size: model.size });
+      return model;
+    }
     // a built stand-in waiting in the pool gives way once the model is here
     if (fleet.loaded?.(kind) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) drop(m);
     const model = pool[kind]?.pop() ?? fleet.make(kind);
     model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1); // to its biggest dimension
     // (its engines, once: lit while it’s out, nothing while it’s in the pool)
     if (engines && !model.engine) model.engine = engines.add(kind, model.group, { size: model.size });
+    if (model.model && !heavy.has(kind) && trianglesOf(model.group) > HEAVY) heavy.add(kind);
     return model;
   };
   const give = (kind, model) => {
     model.group.removeFromParent();
-    (pool[kind] ??= []).push(model);
+    (pool[model.light ? `~${kind}` : kind] ??= []).push(model);
   };
   const end = (key) => {
     const r = live.get(key);
@@ -130,17 +155,23 @@ export function createLaneTraffic(parent, { fleet, engines = null, small = false
       const keep = new Set(near.map(keyOf));
       // the ones no longer nearest give theirs back first, so the new ones can take them
       for (const key of [...live.keys()]) if (!keep.has(key)) end(key);
+      // (the heavy models to the nearest of them, HEAVY_MAX at a time; near is nearest first)
+      let heavies = 0;
       for (const f of near) {
         const key = keyOf(f);
         let r = live.get(key);
         // (a lane no side holds is the crew’s side’s: pick another crew and the
         // same slot carries another kind, so its model goes back for the right one)
-        if (r && r.kind !== f.kind) {
+        const known = heavy.has(f.kind);
+        const light = known && heavies >= HEAVY_MAX;
+        if (known && !light) heavies++;
+        if (r && (r.kind !== f.kind || Boolean(r.model.light) !== light)) {
           end(key);
           r = null;
         }
         if (!r) {
-          const model = take(f.kind);
+          const model = take(f.kind, light);
+          if (!known && heavy.has(f.kind)) heavies++; // (found heavy just now, making it)
           parent.add(model.group);
           r = { lane: f.lane, way: f.way, i: f.i, m: f.m, kind: f.kind, size: Math.min(types[f.kind].size, BIG_DRAWN), model, age: 0, grow: 0 };
           live.set(key, r);
@@ -186,14 +217,17 @@ export function createLaneTraffic(parent, { fleet, engines = null, small = false
       return null;
     },
 
-    // how many are out
+    // how many are out, and how many of them are heavy models
     get count() {
       return live.size;
+    },
+    get heavy() {
+      return [...live.values()].filter((r) => heavy.has(r.kind) && !r.model.light).length;
     },
 
     // what’s out, for checking from a browser
     get list() {
-      return [...live.values()].map((r) => ({ lane: r.lane.id, way: r.way, i: r.i, m: r.m, kind: r.kind, at: r.model.group.position.toArray() }));
+      return [...live.values()].map((r) => ({ lane: r.lane.id, way: r.way, i: r.i, m: r.m, kind: r.kind, at: r.model.group.position.toArray(), grow: r.grow, light: Boolean(r.model.light) }));
     },
 
     clear,
