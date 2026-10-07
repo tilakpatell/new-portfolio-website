@@ -5,15 +5,15 @@
 //   node scripts/gen3d/picture.mjs "an X-wing starfighter" cache/xwing.png [--model flux|zimage] [--seed 42] [--size 1024] [--steps N]
 //   picture(prompt, out, opts) → { out, seconds }
 
-import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { live, localDir } from '../desktop/lib.mjs';
 
-const LOCAL = process.env.LOCALAPPDATA ?? join(process.env.USERPROFILE ?? '', 'AppData', 'Local');
-const MODELS = join(LOCAL, 'sdcpp', 'models');
+const SD = localDir('sdcpp'); // %LOCALAPPDATA%\sdcpp, or the Claude app's boxed copy (scripts/desktop/lib.mjs)
+const MODELS = join(SD, 'models');
 export const SDCPP = {
-  exe: join(LOCAL, 'sdcpp', 'bin', 'sd-cli.exe'),
+  exe: join(SD, 'bin', 'sd-cli.exe'),
   vae: join(MODELS, 'ae.safetensors'), // the Flux VAE, which Z-Image shares
   // Z-Image-Turbo (6B, Apache): quick, good at generic things, weak on famous designs
   zimage: { model: join(MODELS, 'z_image_turbo-Q8_0.gguf'), llm: join(MODELS, 'Qwen3-4B-Instruct-2507-Q8_0.gguf'), steps: 8 },
@@ -38,11 +38,7 @@ export async function picture(subject, out, opts = {}) {
   const cmd = command(subject, out, opts);
   if (!cmd) throw new Error('stable-diffusion.cpp and Z-Image-Turbo are not set up here: see scripts/gen3d/README.md');
   const started = Date.now();
-  await new Promise((done, fail) => {
-    const p = spawn(cmd[0], cmd.slice(1), { stdio: ['ignore', 'inherit', 'inherit'] });
-    p.on('error', fail);
-    p.on('exit', (code) => (code === 0 ? done() : fail(new Error(`sd-cli exited ${code}`))));
-  });
+  await live(cmd[0], cmd.slice(1), { name: 'sd-cli', minutes: Number(process.env.GEN3D_PICTURE_MINUTES ?? 10) });
   if (!existsSync(out)) throw new Error(`sd-cli made no ${out}`);
   return { out, seconds: (Date.now() - started) / 1000 };
 }

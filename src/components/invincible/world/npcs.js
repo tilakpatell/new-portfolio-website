@@ -25,6 +25,7 @@ export const LINES = {
 const NAMES = { debbie: 'Mom', cecil: 'Cecil', eve: 'Atom Eve', omni: 'Dad', manager: 'Burger Mart manager', student: 'A classmate', fan: 'Someone from the city' };
 
 const Y = new THREE.Vector3(0, 1, 0);
+const Z = new THREE.Vector3(0, 0, 1);
 const angle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 // a person stood somewhere: a holder at their hips, so they can lean and fly
@@ -128,13 +129,15 @@ export function createNpcs(scene, world, cast = {}) {
     e.look += angle(yaw - e.look) * (1 - Math.exp(-4 * dt));
     e.holder.position.copy(e.p);
     e.holder.rotation.set(0, e.look, 0);
-    // along her flight when she's going, upright when she's not
+    // along her flight when she's going, upright when she's not (her crown
+    // turned along it; or, when her fly clip lies along it itself, her front)
     const k = Math.min(1, Math.max(0, (sp - 6) / 20));
-    dir.copy(sp > 0.1 ? e.v : Y).normalize();
-    dir.lerpVectors(Y, dir, k).normalize();
+    const axis = k > 0.4 && e.person.clips.includes('fly') ? Z : Y;
+    dir.copy(sp > 0.1 ? e.v : axis).normalize();
     yawQ.setFromAxisAngle(Y, -e.look);
     dir.applyQuaternion(yawQ);
-    tmpQ.setFromUnitVectors(Y, dir);
+    dir.lerpVectors(axis, dir, k).normalize();
+    tmpQ.setFromUnitVectors(axis, dir);
     e.lean.slerp(tmpQ, 1 - Math.exp(-5 * dt));
     e.holder.quaternion.multiply(e.lean);
     e.person.pose({ mode: k > 0.4 ? 'fly' : 'hover', t, phase: e.phase }, dt);
