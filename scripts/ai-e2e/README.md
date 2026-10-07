@@ -40,6 +40,13 @@ runs the real orchestration with only the engine swapped.
 | `BLENDER=scripts/ai-e2e/fakes/blender.mjs` | the Blender bake (`bake.mjs`) | copies the raw GLB to the baked one: the plumbing, not the pixels |
 | `GH_BIN=scripts/ai-e2e/fakes/gh.mjs` | `gh` (`scripts/desktop/lib.mjs`) | writes every call's argv to `GH_LOG` (a JSON array) and answers from `GH_FIXTURES/<first>-<second>.json` (`pr-create.json`, `label-list.json`) or `api.json` (keyed by path); `GH_FAIL=pr-create` makes that command fail |
 
+| `GEN3D_SHEET=fake` | the judging sheet's renders (`judge.mjs`) | a blank sheet of the right size, no browser |
+| `GEN3D_OUT=dir` | the repository's `public/` (`web.mjs`) | where `public/models/gen3d/` and `public/games/credits.json` are written, so a test or a health run never writes into the repository's own |
+
+With `GEN3D_ENGINE=fake`, the engine an issue or `--engine` asks for is
+passed to the fake as `--asked` instead of being run, with `--res`, `--fov`
+and `--faithful`, so a test can read back what reached the engine.
+
 The fakes share knobs (`fakes/common.mjs`):
 
 - `GEN3D_FAKE_FAIL_AT=generate|bake|picture`: that fake exits 1 (the engine
@@ -47,8 +54,102 @@ The fakes share knobs (`fakes/common.mjs`):
   at a step and watch the next one resume there.
 - `GEN3D_FAKE_TRIS=N` (or the engine's `--tris N`): a grid of at least N
   triangles, so a budget test can overshoot.
+- `GEN3D_FAKE_TEX=N`: the engine's texture is N² (64 otherwise), so a test
+  can see `--tex` cap it.
+- `GEN3D_FAKE_NOISE=K`: K more parts, each with a 2048² texture of noise
+  that no encoder can shrink, so a model comes out too heavy to ship (the
+  simplifier can bring any mesh to its triangle count, so weight is what
+  overshoots in practice).
 - `GEN3D_FAKE_SLEEP=S`: each fake waits first, for the timeout paths.
 - `GEN3D_FAKE_LOG=file`: each fake appends `{ tool, argv }` as a line of JSON.
+
+## Tier 1: the pipelines with fake engines
+
+`contract/repo.mjs` gives a test a sandbox: a temporary folder with its own
+cache, output root and runner home, every fake switched on, and, for the
+runners, a temporary repository (the pipelines' files, the real
+`node_modules` borrowed through a junction) with a bare `origin` beside it.
+`serveFixtures()` serves `contract/fixtures/` over HTTP on a free port, so
+an issue's picture link is fetched as it would be from GitHub, without
+leaving the machine.
+
+| file | what it proves |
+| --- | --- |
+| `contract/gen3d-make.test.mjs` | `make.mjs` makes three cuts within the budget asked for, credits the model, keeps `result.json`, the sheet and the log; `--tex` caps every texture; a prompt draws candidates and the judge picks; `GEN3D_OUT` keeps `public/` clean |
+| `contract/gen3d-resume.test.mjs` | the raw model and the bake are reused when nothing changed, the run starts again at the bake when it died there, `--fresh` and a one-pixel change make all again |
+| `contract/gen3d-judge.test.mjs` | a miss is made again once with the next seed; a second miss ships with its verdict; `--no-judge` asks nothing |
+| `contract/gen3d-budget.test.mjs` | a model too heavy for its cut is refused in `budget.mjs`'s words, nothing credited |
+| `contract/gen3d-runner.test.mjs` | an issue through the runner ends as a branch, a pull request with the sheet, verdict and cuts, a comment and a closed issue; every field reaches the pipeline; a bad field and a dead engine end as `gen3d:failed` with nothing pushed; four sides reach the engine at once |
+
+| `contract/voices.test.mjs` | `export-lines.mjs` over a fixture `src/` tree (two worlds' `voicelines.js`) lists every line with the id `lineId()` gives in JavaScript; `generate.py` with the fake worker and ears makes an mp3 for each speaker with a reference, names the one without, marks the mumbled line doubtful, and writes a manifest the site finds each line in; the Python side's own tests of the fakes |
+| `contract/voices-runner.test.mjs` | a voices issue through the runner ends as a branch and a pull request that counts the lines made and names who has no voice |
+
+The voices tests need a Python with numpy and soundfile (the voices venv,
+`VOICES_TEST_PYTHON`, or `python3` on the PATH) and ffmpeg. Without them
+they skip and say why, except on CI, where the AI job installs both and a
+missing one fails.
+
+The voices fakes:
+
+| knob | stands in for | what it does |
+| --- | --- | --- |
+| `VOICES_ENGINE=fake` | the TTS engines (`generate.py`'s `engines_for`) | `fakes/voices_worker.py`: each take a tone as long as its words take to say, and a sidecar (`<take>.said.json`) saying what was said and how alike the voice is; a line with the word “mumbles” comes out scrambled and in another voice |
+| `VOICES_JUDGE=fake` | Whisper, WavLM, UTMOS (`common.ears()`) | `fakes/voices_judge.py`: hears the sidecar's words, similarity 0.9 (0.3 for a mumbled take), naturalness 4.0; no models, no torch |
+| `VOICES_LINES_FROM=voicelines` | the site's own line lists (`export-lines.mjs`) | only the `voicelines.js` files under `src/`, for a fixture tree with none of the site's other lists |
+
+(The marker is a word, not `[bad]`: the site's `spoken()` and the
+pipeline's `speakable()` both drop bracketed asides, so a bracket never
+reaches the worker.)
+
+The fixtures: `x-wing-ref.png` (the site's X-wing rendered on white at
+512², with `scripts/glb-shot.mjs`), issue bodies (`issue-*.md`, with
+`{{BASE}}` where the picture server goes) and judge scripts (`judge-*.json`).
+
+## Tier 2: the assets as shipped
+
+Tests over the repository as it is, so a model or a voice line added by
+hand is held to the same bar as a generated one.
+
+| file | what it holds to |
+| --- | --- |
+| `assets/gen3d.test.mjs` | every `public/models/gen3d/<name>.glb` has its `.hq` and `.lo` cuts; each within its budget for the ask the cuts imply (`budget.mjs`'s `inferFaces`), and no less than a quarter of it (a smaller cut copied over); each under its tier's size cap; WebP textures no bigger than its tier's; meshopt; one scene; credited `gen3d/<name>` |
+| `assets/credits.test.mjs` | every credit (`public/games/credits.json`, `src/data/modelCredits.json`, a folder's own `credits.json`) is for a file that exists; every GLB under `public/models/` has a credit, but those on `allow-uncredited.json` |
+| `assets/voiced.test.mjs` | every mp3 in `public/audio/voiced/` is in the manifest and every entry is a file; each is a run of real MPEG frames (`mp3.mjs`) between 0.3 and 30 s; each is a line the site still says (`export-lines.mjs --out`); every speaker with lines has a folder, but those on `allow-voiceless.json` |
+
+`assets/glb.mjs`'s `inspect(file)` reads a GLB as the site's loader would
+(meshopt decoded): triangles, bytes, textures, extensions, scenes, the
+bounding box. `assets/credits.mjs` says which file each credit is for,
+since none of the three lists names its file outright.
+
+**The allow-lists are findings.** `allow-uncredited.json`,
+`allow-orphans.json` (mp3s the manifest doesn't list; lines the site no
+longer says) and `allow-voiceless.json` hold what was wrong when the tests
+were first run. They only shrink: an entry fixed since fails the test
+until it is taken off.
+
+## Tier 3: every model draws
+
+`npm run test:ai:render` (`vitest.render.config.js`, every
+`*.render.test.mjs`): each gen3d cut rendered the way the judge renders it
+(`scripts/glb-shot.mjs`: headless Chromium, SwiftShader, a dev server on a
+free port, `render/server.mjs`), the three-quarter view at 320×240. Each
+must leave no page or console error outside `scripts/lib/noise.mjs`'s
+`NOISE` (what every software renderer says) and cover at least 4% of the
+frame (`render/coverage.mjs`: pixels farther than a few levels from the
+corner's colour). A framed model covers far more (the X-wing, all wings
+and gaps, about 10%; a TIE about 30%); a blank canvas, or a model loaded
+as a speck, covers less. The PNGs and `results.json` go to `render/out/`
+(git-ignored; CI uploads them as the `renders` artifact).
+
+`AI_RENDER_ALL=1` (the nightly) renders every GLB under `public/models/`,
+in the plain look and the toon look the galaxy draws figures with.
+
+The browser: `CHROME`, else the Chromium `npx playwright install chromium`
+installs, else Edge on Windows. Without one the tier skips and says so,
+except on CI. CI's AI job runs it only when the pull request touches
+`public/models/`, `src/lib/three/`, `glb-shot` or the tier itself
+(`render/changed.mjs`), installing the Chromium for the locked
+`playwright-core` version, cached on that version.
 
 ## Adding a case
 

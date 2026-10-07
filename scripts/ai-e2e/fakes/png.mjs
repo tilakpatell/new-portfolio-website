@@ -3,7 +3,7 @@
 // tested for real), and an image library's encoder may change its bytes
 // between versions.
 //
-//   png(width, height, (x, y) => [r, g, b, a]) → Buffer
+//   png(width, height, (x, y) => [r, g, b, a], { level }) → Buffer   (level: zlib's, 9 unless speed matters more)
 
 import { crc32, deflateSync } from 'node:zlib';
 
@@ -16,7 +16,7 @@ const chunk = (type, data) => {
   return Buffer.concat([head, data, crc]);
 };
 
-export function png(width, height, pixel) {
+export function png(width, height, pixel, { level = 9 } = {}) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
@@ -27,7 +27,7 @@ export function png(width, height, pixel) {
     rows[at] = 0; // no filter: the bytes are the pixels
     for (let x = 0; x < width; x++) rows.set(pixel(x, y), at + 1 + x * 4);
   }
-  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(rows, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(rows, { level })), chunk('IEND', Buffer.alloc(0))]);
 }
 
 // A number from 0 to 1 for each call, the same sequence for the same seed

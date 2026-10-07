@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:ai": "vitest run --config vitest.ai.config.js",
+    "test:ai:render": "vitest run --config vitest.render.config.js",
     "test:ai:gpu": "node scripts/ai-e2e/real/health.mjs && node scripts/ai-e2e/evals/run.mjs",
     "preview": "vite preview",
     "predeploy": "npm run build",

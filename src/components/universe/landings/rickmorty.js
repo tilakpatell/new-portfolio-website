@@ -98,10 +98,11 @@ export const SCATTER = {
       radius: 0.4,
     };
   },
-  bush(k, { seed = 9 } = {}) {
+  // (color: the hills' own, out past town)
+  bush(k, { seed = 9, color = null } = {}) {
     const rand = rng(seed);
     const parts = [];
-    for (let i = 0; i < 5; i++) parts.push(ball(0.5 + rand() * 0.3, [(rand() - 0.5) * 1.1, 0.45 + rand() * 0.2, (rand() - 0.5) * 1.1], 1, { color: rand() < 0.5 ? '#3f8a34' : '#4f9a3c', to: 'leaf' }, 9));
+    for (let i = 0; i < 5; i++) parts.push(ball(0.5 + rand() * 0.3, [(rand() - 0.5) * 1.1, 0.45 + rand() * 0.2, (rand() - 0.5) * 1.1], 1, { color: color ?? (rand() < 0.5 ? '#3f8a34' : '#4f9a3c'), to: 'leaf' }, 9));
     return { parts: [{ geometry: k.geometry(parts), material: k.mats.leaf }], radius: 0.8 };
   },
   // a Plumbus: everyone has one

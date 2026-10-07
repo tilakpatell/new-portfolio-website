@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, KINDS, chartAt, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, findDestination, goalOf, parkFor, parseDrive, riftExit, riftSpot, tourFrom, tripTime, TOUR_IDS } from './nav';
-import { GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, inTrench, orbiting, spawn, startAt, step } from './ship';
-import { ORDER } from './layout';
+import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, KINDS, chartAt, tourIdsIn, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, findDestination, goalOf, parkFor, parseDrive, riftExit, riftSpot, tourFrom, tripTime, TOUR_IDS } from './nav';
+import { GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, inTrench, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { ORDER, SECTORS, sectorOf } from './layout';
 import { WONDERS } from './deep';
 import { MAW } from './maw';
 import { byId, MOONS } from './universes';
@@ -10,6 +10,11 @@ import { sunFor } from './lighting';
 const inside = (s) => SOLIDS.some((p) => Math.hypot(s.x - p.at[0], s.y - p.at[1], s.z - p.at[2]) < (inTrench(p, s.x, s.y, s.z) ? p.band.floor : p.r) + SHIP.radius - 1e-6);
 const worlds = [...ORDER.filter((id) => byId(id).kind !== 'core'), ...MOONS.map((m) => m.id)];
 const stations = ORDER.filter((id) => byId(id).kind === 'core');
+// (a place in the Rick and Morty sector is flown to from the Citadel: the
+// main map's edge turns the ship back long before it; the portal comes next)
+const inMain = (id) => destinationById(id).sector === 'main';
+const RM = SECTORS.rickmorty.origin;
+const startFor = (id) => (inMain(id) ? spawn('home') : { ...spawn(null), ...parkAt(id === 'citadel' ? 'curvesun' : 'citadel', [RM[0], RM[2] + 500]), speed: 0 });
 
 // flown there by the autopilot on `od` of overdrive: how long it took, the
 // top speed, and anything it hit or went into on the way
@@ -96,21 +101,20 @@ describe('the drives', () => {
 
   it('gets to every world on super speed in well under the time cruising takes, without touching anything', () => {
     for (const id of worlds) {
-      const cruise = fly(spawn('home'), id, 1);
-      const quick = fly(spawn('home'), id, OVERDRIVE);
+      const cruise = fly(startFor(id), id, 1);
+      const quick = fly(startFor(id), id, OVERDRIVE);
       expect(quick.done, id).toBe(true);
       expect(quick.hits, id).toBe(0);
       expect(orbiting(quick.s, null), id).toBe(id);
       expect(quick.t, id).toBeLessThan(cruise.t * 0.65);
-      // (a moon sits in the Citadel's space, where the drive stays shut for the last leg: a little longer)
-      expect(quick.t, id).toBeLessThan(MOONS.some((m) => m.id === id) ? 33 : 20);
-      if (id !== 'starwars') expect(quick.top, id).toBeGreaterThan(SHIP.pulse * 2); // (well past the pulse drive; the gate's close to home)
+      expect(quick.t, id).toBeLessThan(20);
+      if (id !== 'starwars') expect(quick.top, id).toBeGreaterThan(SHIP.pulse * (inMain(id) ? 2 : 1)); // (well past the pulse drive; the gate's close to home, and the sector's first worlds to the Citadel)
     }
   });
 
   it('flies out to every wonder on super speed, and from world to world all the way round, without touching anything', () => {
     for (const w of WONDERS.filter((w) => w.id !== MAW.id)) {
-      const r = fly(spawn('home'), w.id, OVERDRIVE);
+      const r = fly(startFor(w.id), w.id, OVERDRIVE);
       expect(r.done, w.id).toBe(true);
       expect(r.hits, w.id).toBe(0);
     }
@@ -160,7 +164,8 @@ describe('the drives', () => {
 describe('the chart', () => {
   it('puts the sun in the middle and everything on it, further out the further away', () => {
     expect(chartAt(0, 0)).toEqual([0.5, 0.5]);
-    for (const d of DESTINATIONS) expect(onChart(chartAt(d.at[0], d.at[2])), d.id).toBe(true);
+    for (const d of DESTINATIONS.filter((x) => x.sector === 'main')) expect(onChart(chartAt(d.at[0], d.at[2])), d.id).toBe(true);
+    for (const d of DESTINATIONS) expect(sectorOf(...d.at), d.id).toBe(d.sector);
     const r = (id) => {
       const d = destinationById(id);
       const [u, v] = chartAt(d.at[0], d.at[2]);
@@ -291,7 +296,10 @@ describe('the grand tour', () => {
     const s = spawn(null);
     const tour = tourFrom(s);
     expect(new Set(tour).size).toBe(tour.length);
-    expect(tour.sort()).toEqual([...TOUR_IDS].sort());
+    // (the places in its own sector: the Rick and Morty sector's are through the portal)
+    expect(tour.sort()).toEqual(tourIdsIn('main').sort());
+    expect(tourIdsIn('main').length + tourIdsIn('rickmorty').length).toBe(TOUR_IDS.length);
+    expect(tourIdsIn('rickmorty')).toContain('citadel');
     const first = tourFrom(s)[0];
     const nearest = TOUR_IDS.reduce((a, b) => (distanceTo(s, a) <= distanceTo(s, b) ? a : b));
     expect(first).toBe(nearest);

@@ -1,4 +1,4 @@
-import { guideKeyFor } from '../components/guide/routes';
+import { guideKeyFor } from '../guide/routes';
 
 // A world's basics (components/tour/briefs.js): the first time you arrive in
 // a world, before you're dropped in, the tour's cards say what it is, how to
@@ -10,7 +10,8 @@ import { guideKeyFor } from '../components/guide/routes';
 export const BRIEF_KEY = 'tp-briefs'; // the worlds whose basics have been shown
 export const BRIEF_EVENT = 'tp:brief';
 
-// The worlds with basics (the keys of briefs.js's BRIEFS: its test checks).
+// The worlds with basics, by the page you're on (with ASKED, the keys of
+// briefs.js's BRIEFS: its test checks).
 export const BRIEFED = new Set([
   '/galaxy',
   '/galaxy/surface',
@@ -31,6 +32,10 @@ export const BRIEFED = new Set([
   '/music',
 ]);
 
+// Basics a page asks for itself, when you start doing the thing: the map's
+// first flight (universe/UniverseMap, as a ship takes off under you).
+export const ASKED = new Set(['/universe/fly']);
+
 // the world's basics a path gets, or null
 export function briefKeyFor(pathname) {
   const key = guideKeyFor(pathname);
@@ -48,5 +53,10 @@ export function briefHere(key, seen, driven = false) {
 // the list with this world in it (the last sixty, as the guide's notes)
 export const sawBrief = (seen, key) => [...(Array.isArray(seen) ? seen.filter((k) => k !== key) : []), key].slice(-60);
 
-// Shows the basics of the world you're in again (the guide's button).
-export const openBrief = () => window.dispatchEvent(new Event(BRIEF_EVENT));
+// Shows the basics of the world you're in again (the guide's button), or
+// the ones a page names.
+export const openBrief = (key = null) => window.dispatchEvent(new CustomEvent(BRIEF_EVENT, { detail: { key } }));
+
+// A page's own basics, the first time only (shown as a world's are, once
+// nothing's covering the page).
+export const askBrief = (key) => window.dispatchEvent(new CustomEvent(BRIEF_EVENT, { detail: { key, first: true } }));

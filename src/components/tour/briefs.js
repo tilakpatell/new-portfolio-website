@@ -1,5 +1,5 @@
 // Each world's basics: the tour's cards (Tour.jsx) the first time you arrive,
-// before you're dropped in (lib/brief decides when). What the place is, how
+// before you're dropped in (brief.js decides when). What the place is, how
 // to move, how to do things, what to go for, and where the rest is. Keyed as
 // the guide is (guide/routes); the guide (guide/pages.js) has every control
 // and tip, so this keeps to the few you need in the first minute.
@@ -28,6 +28,57 @@ const WALK_TOUCH = [
 ];
 
 export const BRIEFS = {
+  // the map's first flight: asked for as a ship takes off under you
+  '/universe/fly': [
+    {
+      id: 'hello',
+      title: 'You’re flying',
+      text: 'The stations round the sun are the site’s pages; the planets out in deep space are its worlds. Fly to any of them, or pick one on the panel and let the ship take you.',
+    },
+    {
+      id: 'fly',
+      title: 'The stick',
+      text: 'Throttle up and steer; hold the nose up or down and you loop right over.',
+      keys: [
+        ['W S', 'Throttle'],
+        ['A D', 'Roll'],
+        ['← ↑ ↓ →', 'Steer the nose'],
+        ['Space / Shift', 'Boost'],
+      ],
+      touch: [
+        ['Drag', 'Fly, anywhere on the map'],
+        ['↑ ↓', 'Hold to pull the nose up and down'],
+        ['Boost', 'Hold to go fast'],
+      ],
+    },
+    {
+      id: 'go',
+      title: 'Getting about',
+      text: 'The worlds are far apart. Boost in the open and the pulse drive takes over, or open the nav map and let the ship take you.',
+      keys: [
+        ['M', 'The nav map: pick a place and a drive'],
+        ['J', 'Jump to the place picked'],
+        ['E / Enter', 'Land or dock where you are'],
+      ],
+      touch: [['Tap', 'A planet or station, to fly there']],
+    },
+    {
+      id: 'land',
+      title: 'Landing, and trouble',
+      text: 'Fly down into a planet’s air and you land on it; come in boosting and you crash into its page. Now and then someone comes after you: shoot at the pip ahead of them.',
+      keys: [
+        ['hold F', 'Fire'],
+        ['T', 'Next target'],
+        ['V', 'Cockpit or chase camera'],
+        ['H', 'The hangar: paint and parts'],
+      ],
+      touch: [
+        ['Fire', 'Shoot'],
+        ['View', 'The cockpit'],
+      ],
+    },
+    help('the map'),
+  ],
   '/galaxy': [
     {
       id: 'hello',
