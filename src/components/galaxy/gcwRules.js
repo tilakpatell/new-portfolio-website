@@ -26,6 +26,37 @@ export const GCW = {
   hutts: 0.5, // what of a rate against Hutt space gets through (they buy whoever's going)
   supply: 0.5, // %/hour for each of the attacker's neighbours beyond the first, less each of the holder's
   areaBonus: 1, // %/hour for an area of the attacker's, whole, next to the system
+  // ── the sides' strategy (gcwAI.js) and the campaign's shape ──
+  window: 30, // steps (six hours): fronts' rates are drawn again, and orders given, this often
+  strike: 5, // the step of the raider's opening strike (its next is at attackEvery, then its phase's pace)
+  defence: 1, // %/hour a front's holder puts back (cut off from its capital, cutDefence of that)
+  cutDefence: 0.3,
+  regen: 4, // %/hour a system nobody's fighting over gets back, if it's in supply
+  captured: 0.7, // a system's hold when it's just been taken
+  repelled: 0.25, // what an attack held to the end gives back
+  stall: 30, // steps: a front (not the first) that's moved less than stallDrop in this long is let be as long again
+  stallDrop: 0.1,
+  lastStand: 1, // a side's last this many systems can't fall before the Climax
+  lastHold: 0.02, // (nor its hold of them go below this)
+  underdog: { below: 0.3, boost: 1.35, above: 0.6, damp: 0.8 }, // a side's rates, by its share of the systems
+  counterFor: 10, // steps a side goes back for what it's just lost
+  counterBonus: 6, // %/hour more, for the liberator retaking it
+  climaxMult: 2, // the first front's rate in the Climax: the decisive battle
+  shock: 0.85, // a side's rates when it's lost its capital,
+  shockFor: 30, // for this many steps
+  knee: 0.3, // players: a side's points at a system in a step count in full to this much of its hold,
+  beyond: 0.35, // this share past it,
+  playerCap: 0.45, // and never more than this
+  retry: 5, // steps till a side with nothing to attack looks again
+  // from (a step), the name, every AI rate times mult, and every the raider's pace (steps between attacks)
+  phases: [
+    { from: 0, name: 'Opening', mult: 0.9, every: 15 },
+    { from: 60, name: 'Escalation', mult: 1, every: 20 },
+    { from: 240, name: 'Decisive', mult: 1.1, every: 18 },
+    { from: 330, name: 'Climax', mult: 1.3, every: 12 },
+  ],
+  // a target's weights, past the doctrine's (gcwAI.js's targetOf and orderTarget)
+  weigh: { weak: 2, area: 2, weight: 0.5, reach: 0.8, can: 2, cannot: -4, recent: 3, recentFor: 60, pace: 0.25, again: 4 },
   routeReach: 2.2, // grid squares: how near a route's point a system must be to be on it
   neighbours: 2, // the nearest few, besides the routes
   links: [
