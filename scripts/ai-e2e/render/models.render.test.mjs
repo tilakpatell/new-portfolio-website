@@ -12,13 +12,19 @@ import { join, relative } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { noisy } from '../../lib/noise.mjs';
 import { tracked } from '../assets/credits.mjs';
+import { inspect } from '../assets/glb.mjs';
 import { REPO } from '../contract/repo.mjs';
 import { coverage } from './coverage.mjs';
 import { chromium as findChromium, serve } from './server.mjs';
 
-// a model framed by the three-quarter view covers far more than this; a
-// blank canvas, or a model loaded as a speck, covers less
-const COVERAGE = 0.04;
+// a blank canvas, or a model loaded as a speck, covers less than this; a
+// framed model more: a fighter or a figure 10 to 30%, the longest, thinnest
+// ships seen three-quarter (the Executor, the Nubian, the krayt) about 3.3%,
+// which is why the first night's 4% was too strict
+const COVERAGE = 0.02;
+// a fresh browser this often: hundreds of loads in one ran it out of buffer
+// space (ERR_NO_BUFFER_SPACE) and a model failed to load for that alone
+const RELAUNCH = 100;
 const W = 320;
 const H = 240;
 const OUT = join(REPO, 'scripts', 'ai-e2e', 'render', 'out');
@@ -59,7 +65,18 @@ describe.skipIf(why)(`every model draws (a browser, up to 60 s each)${why ? `: s
   });
 
   const cases = MODELS.flatMap((file) => looks(file).map((look) => [`${file}${look ? ` (${look})` : ''}`, file, look]));
+  let shots = 0;
   it.each(cases)('%s', async (_, file, look) => {
+    // an animation-only file (a clip the figures play, no mesh) has nothing to draw
+    if (!(await inspect(join(REPO, file))).tris) {
+      results.push({ file, look: look || 'plain', clip: true });
+      save();
+      return;
+    }
+    if (++shots % RELAUNCH === 0) {
+      await browser.close();
+      browser = await shoot.launch();
+    }
     const [png] = await shoot(join(REPO, file), ['three'], { w: W, h: H, look: look || undefined, browser }).catch((e) => {
       // a model that never loads is a finding too, written down like the rest
       results.push({ file, look: look || 'plain', coverage: 0, errors: [String(e.message ?? e).slice(0, 300)] });

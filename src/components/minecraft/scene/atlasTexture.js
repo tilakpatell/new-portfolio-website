@@ -24,10 +24,12 @@ export async function pixels(url) {
   return { width: canvas.width, height: canvas.height, data };
 }
 
-export async function loadBlockArray(manifest) {
-  const { width, height, data } = await pixels(`${MC}blocks.webp`);
+// a strip as a texture array; its pixels kept too (the icons are cut from them)
+export async function loadArray(file, count) {
+  const strip = await pixels(`${MC}${file}`);
+  const { width, height, data } = strip;
   const layers = height / width;
-  if (layers !== manifest.blocks.length) throw new Error(`blocks.webp has ${layers} tiles, the manifest ${manifest.blocks.length}`);
+  if (layers !== count) throw new Error(`${file} has ${layers} tiles, the manifest ${count}`);
   const tex = new THREE.DataArrayTexture(new Uint8Array(data.buffer, data.byteOffset, data.length), width, width, layers);
   tex.format = THREE.RGBAFormat;
   tex.type = THREE.UnsignedByteType;
@@ -36,8 +38,11 @@ export async function loadBlockArray(manifest) {
   tex.generateMipmaps = true;
   tex.colorSpace = THREE.NoColorSpace;
   tex.needsUpdate = true;
+  tex.userData.strip = strip;
   return tex;
 }
+export const loadBlockArray = (manifest) => loadArray('blocks.webp', manifest.blocks.length);
+export const loadItemArray = (manifest) => loadArray('items.webp', manifest.items.length);
 
 // A sprite (the sun, the clouds) as a plain texture, nearest-filtered.
 export async function loadSprite(name) {

@@ -475,7 +475,11 @@ export const PAGES = {
           ['Space', 'Jump; swim up'],
           ['Shift', 'Sneak (you won’t walk off an edge)'],
           ['Ctrl / W twice', 'Sprint'],
+          ['Click (hold)', 'Dig the block under the crosshair'],
+          ['Right-click', 'Place the held block; open a crafting table'],
           ['1 – 9 / wheel', 'The hotbar'],
+          ['E', 'The inventory and its 2 × 2 crafting'],
+          ['Q', 'Drop one of what you hold (Ctrl Q: all)'],
           ['Esc', 'Pause'],
         ],
       },
@@ -484,7 +488,10 @@ export const PAGES = {
     tips: [
       ['The world', 'Endless, and made from its seed: the same seed is the same world. New world on the title starts another.'],
       ['The textures', 'Pixel Perfection, a free resource pack by XSSheep and Nova_Wostra, close to the game’s own; Mojang’s may not be shared.'],
-      ['Coming', 'Digging and building, the night, caves and mobs come phase by phase.'],
+      ['Crafting', 'A log makes four planks, two planks four sticks, four planks a crafting table. Right-click the table for its 3 × 3: three planks over two sticks is a pickaxe. In a screen, click picks up and puts down, right-click halves a stack or puts one, Shift-click sends it across.'],
+      ['Saving', 'What you dig and build is kept on this device, and the same world comes back next time.'],
+      ['The night', 'A day is twenty minutes. Torches (coal over a stick) and glowstone push the dark back; a bed (three wool over three planks) sleeps the night away and moves where you wake.'],
+      ['Coming', 'Caves, ores and mobs come phase by phase.'],
     ],
   },
   '/earth': {

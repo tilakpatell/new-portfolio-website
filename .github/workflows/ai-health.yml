@@ -1,8 +1,8 @@
 name: ai health
 
 # The AI and the models, on the desktop's GPU, every night
-# (scripts/ai-e2e/README.md, tiers 3, 5 and 6): every model rendered in both
-# looks, the judges evaluated against their labelled sets, one real model
+# (scripts/ai-e2e/README.md, tiers 3, 5 and 6): every model rendered (the
+# galaxy's in both looks), the judges evaluated against their labelled sets, one real model
 # and one real line made start to end, drift from the blessed golden, and
 # one issue (labelled ai-health) kept: opened red, closed green. Never on a
 # pull request: the GPU runner takes one job at a time and a PR must never

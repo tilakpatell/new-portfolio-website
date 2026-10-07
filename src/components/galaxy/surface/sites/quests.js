@@ -49,7 +49,7 @@ export const EXTRA = {
     ],
   },
   geonosis: {
-    life: [{ kind: 'jedi', id: 'mace', at: [-230, 170], still: true, face: -2, name: 'Mace Windu', named: true, quest: ['arena', 'foundry'], says: ['This party’s over.'] }],
+    life: [{ kind: 'mace', id: 'mace', at: [-230, 170], still: true, face: -2, name: 'Mace Windu', named: true, quest: ['arena', 'foundry'], says: ['This party’s over.'] }],
     quests: [
       { id: 'arena', name: 'The Petranaki arena', giver: 'mace', intro: [['Mace Windu', 'They’ve let the beasts out. Take the acklay.']], steps: [{ type: 'reach', at: [-260, 200], r: 30, text: 'Into the arena' }, { type: 'shoot', tag: 'acklay', n: 1, text: 'Bring down the acklay', spawn: { kind: 'acklay', at: [-260, 210], hp: 14, leash: 40, tag: 'acklay', hostile: { range: 40, chase: 3, melee: true, reach: 3.4, every: 1.4, damage: 25, delay: 1 } } }], done: [['Mace Windu', 'Not bad. Now the droids.']] },
       { id: 'foundry', name: 'The droid foundry', giver: 'mace', steps: [{ type: 'collect', item: 'part', n: 3, spots: [[-320, -220], [-340, -240], [-326, -246]], text: 'Find Threepio’s pieces in the foundry' }], done: [['C-3PO', 'Oh, thank the Maker. Though I do believe my head is on backwards.']] },

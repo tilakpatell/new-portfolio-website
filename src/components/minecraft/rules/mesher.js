@@ -26,7 +26,7 @@
 // Four vertices a quad, wound outward; the scene's one shared index buffer
 // draws each as (0 1 2) (0 2 3).
 
-import { BLOCKS, TINTS } from './blocks.js';
+import { BLOCKS, TINTS, byName } from './blocks.js';
 import { index } from './chunk.js';
 
 export const FACE = { top: 0, bottom: 1, north: 2, south: 3, east: 4, west: 5, cross: 6 };
@@ -61,12 +61,76 @@ const TOP_ONLY = new Uint8Array(256);
 for (let i = 0; i < N; i++) {
   const b = BLOCKS[i];
   OPAQUE[i] = b.opaque ? 1 : 0;
-  KIND[i] = b.shape === 'none' ? 0 : b.shape === 'cross' ? 3 : b.shape === 'liquid' ? 4 : b.shape === 'cube' ? 1 : 2;
+  KIND[i] = b.shape === 'none' ? 0 : b.shape === 'cross' ? 3 : b.shape === 'liquid' ? 4 : b.shape === 'cube' ? 1 : b.shape === 'torch' ? 5 : b.shape === 'slab' ? 6 : 2;
   PASS[i] = b.shape === 'liquid' ? (b.name === 'water' ? 2 : 0) : b.shape === 'cube' && b.opaque ? 0 : 1;
   CULL_SELF[i] = b.cullSelf ? 1 : 0;
   TINT[i] = Math.max(0, TINTS.indexOf(b.tint));
   TOP_ONLY[i] = b.tintTopOnly ? 1 : 0;
 }
+
+// What a block's state turns: a log lies along its axis (0 y, 1 x, 2 z),
+// its rings on the two ends and its bark round the rest, the grain turned to
+// run along it; a furnace, chest or jack o'lantern shows its front on the
+// side it was set facing (0 north, 1 south, 2 west, 3 east).
+const LOG = new Uint8Array(256);
+const FRONTED = new Uint8Array(256);
+for (const b of BLOCKS) {
+  if (b.name.endsWith('_log')) LOG[b.id] = 1;
+  if (['furnace', 'chest', 'jack_o_lantern'].includes(b.name)) FRONTED[b.id] = 1;
+}
+const ENDS = [[FACE.top, FACE.bottom], [FACE.east, FACE.west], [FACE.north, FACE.south]];
+const FRONT = [FACE.north, FACE.south, FACE.west, FACE.east];
+function faceOf(b, f, state) {
+  if (LOG[b.id]) {
+    const axis = state % 3;
+    const end = ENDS[axis].includes(f);
+    // bark beside a lying log: its texture turned a quarter, so the grain runs along it
+    const turn = !end && ((axis === 1 && f !== FACE.east && f !== FACE.west) || (axis === 2 && (f === FACE.east || f === FACE.west)));
+    return { name: end ? b.faces.top : b.faces.north, turn };
+  }
+  if (FRONTED[b.id] && f >= FACE.north) return { name: f === FRONT[state & 3] ? b.faces.north : b.faces.south, turn: false };
+  return { name: b.faces[NAMES[f]], turn: false };
+}
+
+// A box within a cell, in sixteenths ([x0, y0, z0, x1, y1, z1]), as the game's
+// block models are: each face's texel taken from where it sits (the sides'
+// rows from the top down, so a slab's side is the lower half of its
+// picture), or from `uv(f, corner)` when the model says otherwise; `lean`
+// moves a vertex by its height (a wall torch's tilt).
+function emitBox(push, box, faces, { layer, word, uv = null, lean = null }) {
+  const [x0, y0, z0, x1, y1, z1] = box;
+  for (const f of faces) {
+    const face = CUBE[f];
+    for (let k = 0; k < 4; k++) {
+      const [cx, cy, cz] = face.c[k];
+      const X = cx ? x1 : x0;
+      const Y = cy ? y1 : y0;
+      const Z = cz ? z1 : z0;
+      let t = uv?.(f, k);
+      if (!t) {
+        if (f <= FACE.bottom) t = [X, Z];
+        else if (f === FACE.north) t = [16 - X, 16 - Y];
+        else if (f === FACE.south) t = [X, 16 - Y];
+        else if (f === FACE.east) t = [16 - Z, 16 - Y];
+        else t = [Z, 16 - Y];
+      }
+      const [lx, lz] = lean ? lean(Y) : [0, 0];
+      push(X + lx, Y, Z + lz, layer(f), word(f), t[0] | (t[1] << 5));
+    }
+  }
+}
+
+// a torch: the game's post, standing (on a top face) or leaning off the wall it hangs on
+const SIDES4 = [FACE.top, FACE.north, FACE.south, FACE.east, FACE.west];
+function torchBox(state) {
+  const lean = (dx, dz) => (Y) => [Math.round((dx * 4 * (Y - 3)) / 10), Math.round((dz * 4 * (Y - 3)) / 10)];
+  if (state === FACE.east) return { box: [0, 3, 7, 2, 13, 9], lean: lean(1, 0) };
+  if (state === FACE.west) return { box: [14, 3, 7, 16, 13, 9], lean: lean(-1, 0) };
+  if (state === FACE.south) return { box: [7, 3, 0, 9, 13, 2], lean: lean(0, 1) };
+  if (state === FACE.north) return { box: [7, 3, 14, 9, 13, 16], lean: lean(0, -1) };
+  return { box: [7, 0, 7, 9, 10, 9], lean: null };
+}
+const BED = byName.get('red_bed')?.id;
 
 // A growing list of vertices for one pass.
 function buffer() {
@@ -130,7 +194,6 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
   const { ids, light } = gather(chunk, sectionY, nb ?? {});
   const out = [buffer(), buffer(), buffer()];
   const layerOf = (name) => textures.get(name) ?? 0;
-  const solidAt = (x, y, z) => OPAQUE[ids[pad(x, y, z)]];
   const y0 = sectionY * 16;
   let any = false;
   for (let y = 0; y < 16; y++) {
@@ -150,6 +213,30 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
             for (let k = 0; k < 4; k++) buf.push(x * 16 + quad[k][0], (y0 + y) * 16 + quad[k][1], z * 16 + quad[k][2], layer, word, CROSS_UV[k][0] | (CROSS_UV[k][1] << 5));
           continue;
         }
+        if (kind === 5 || kind === 6) {
+          // the shapes that aren't whole cells: lit by their own cell, no corner shading
+          const own = light[pad(x, y, z)];
+          const st = chunk.state?.[base + z * 16 + x] ?? 0;
+          const push = (X, Y, Z, layer, word, uv) => buf.push(x * 16 + X, (y0 + y) * 16 + Y, z * 16 + Z, layer, word, uv);
+          const word = (f) => f | (3 << 3) | ((TOP_ONLY[id] && f !== FACE.top ? 0 : TINT[id]) << 5) | (own << 8);
+          if (kind === 5) {
+            const t = torchBox(st);
+            const layer = layerOf(b.faces.north);
+            // the post's top is the picture's cut at rows 6 to 8, as the game's model has it
+            emitBox(push, t.box, SIDES4, { layer: () => layer, word, lean: t.lean, uv: (f, k) => (f === FACE.top ? [CUBE[f].c[k][0] ? 9 : 7, CUBE[f].c[k][2] ? 8 : 6] : null) });
+          } else {
+            const h = b.height;
+            const faces = [];
+            for (let f = 0; f < 6; f++) {
+              const [dx, dy, dz] = CUBE[f].d;
+              if (f === FACE.top && h < 16) faces.push(f);
+              else if (!OPAQUE[ids[pad(x + dx, y + dy, z + dz)]]) faces.push(f);
+            }
+            const head = id === BED && st & 8;
+            emitBox(push, [0, 0, 0, 16, h, 16], faces, { layer: (f) => layerOf(f === FACE.top && head ? 'red_bed_head_top' : b.faces[NAMES[f]]), word });
+          }
+          continue;
+        }
         // a liquid's surface sits at 14/16 unless more of it is above
         const lowered = kind === 4 && KIND[ids[pad(x, y + 1, z)]] !== 4 ? 2 : 0;
         for (let f = 0; f < 6; f++) {
@@ -162,8 +249,10 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
           else if (nid === id && kind === 1) continue;
           const tint = TOP_ONLY[id] && f !== FACE.top ? 0 : TINT[id];
           const lit = light[pad(x + dx, y + dy, z + dz)];
-          const layer = layerOf(b.faces[NAMES[f]]);
+          const look = faceOf(b, f, chunk.state?.[base + z * 16 + x] ?? 0);
+          const layer = layerOf(look.name);
           const ao = [0, 0, 0, 0];
+          const lights = [lit, lit, lit, lit];
           const px = [];
           for (let k = 0; k < 4; k++) {
             const [cx, cy, cz] = face.c[k];
@@ -174,15 +263,27 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
             const ox = x + dx;
             const oy = y + dy;
             const oz = z + dz;
-            let s1;
-            let s2;
-            if (dx) [s1, s2] = [solidAt(ox, oy + sy, oz), solidAt(ox, oy, oz + sz)];
-            else if (dy) [s1, s2] = [solidAt(ox + sx, oy, oz), solidAt(ox, oy, oz + sz)];
-            else [s1, s2] = [solidAt(ox + sx, oy, oz), solidAt(ox, oy + sy, oz)];
-            const corner = solidAt(ox + sx, oy + sy, oz + sz);
+            const e1 = dx ? pad(ox, oy + sy, oz) : pad(ox + sx, oy, oz);
+            const e2 = dz ? pad(ox, oy + sy, oz) : pad(ox, oy, oz + sz);
+            const ec = pad(ox + sx, oy + sy, oz + sz);
+            const s1 = OPAQUE[ids[e1]];
+            const s2 = OPAQUE[ids[e2]];
+            const corner = OPAQUE[ids[ec]];
             ao[k] = kind === 4 ? 3 : s1 && s2 ? 0 : 3 - (s1 + s2 + corner);
+            // the game's smooth light: the four cells' light averaged, sky and block apart, a dark
+            // one (a solid's, or the corner hidden behind two) counting as the face's own
+            if (kind !== 4) {
+              const cells = [lit, light[e1], light[e2], s1 && s2 ? 0 : light[ec]];
+              let sk = 0;
+              let bl = 0;
+              for (const v of cells) {
+                sk += v >> 4 || lit >> 4;
+                bl += v & 15 || lit & 15;
+              }
+              lights[k] = ((sk >> 2) << 4) | (bl >> 2);
+            }
             const top = cy === 1 ? 16 - lowered : 0;
-            px.push([x * 16 + cx * 16, (y0 + y) * 16 + top, z * 16 + cz * 16, face.uv[k][0] * 16, face.uv[k][1] * 16]);
+            px.push([x * 16 + cx * 16, (y0 + y) * 16 + top, z * 16 + cz * 16, face.uv[look.turn ? (k + 1) & 3 : k][0] * 16, face.uv[look.turn ? (k + 1) & 3 : k][1] * 16]);
           }
           // the side of a lowered liquid shows its texture cut, not squashed
           if (lowered && f >= 2) for (const p of px) if (p[4] === 0) p[4] = lowered;
@@ -191,7 +292,7 @@ export function meshSection(chunk, sectionY, nb, { textures }) {
           for (let k = 0; k < 4; k++) {
             const j = (k + start) & 3;
             const p = px[j];
-            buf.push(p[0], p[1], p[2], layer, f | (ao[j] << 3) | (tint << 5) | (lit << 8), p[3] | (p[4] << 5));
+            buf.push(p[0], p[1], p[2], layer, f | (ao[j] << 3) | (tint << 5) | (lights[j] << 8), p[3] | (p[4] << 5));
           }
         }
       }

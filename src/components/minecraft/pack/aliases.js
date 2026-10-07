@@ -60,7 +60,20 @@ export const ALIASES = {
   ...Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((i) => [`wheat_stage${i}`, [`wheat_stage_${i}`]])),
   farmland: ['farmland_dry'],
   farmland_moist: ['farmland_wet'],
-  chest_top: [{ from: 'entity/chest/normal', parts: [{ x: 28, y: 0, w: 14, h: 14, dx: 1, dy: 1 }] }],
+  // the items' 1.12 names (the same table serves the item folder)
+  ...Object.fromEntries(['pickaxe', 'axe', 'shovel', 'sword', 'hoe'].flatMap((t) => [
+    [`wooden_${t}`, [`wood_${t}`]],
+    [`golden_${t}`, [`gold_${t}`]],
+  ])),
+  ...Object.fromEntries(['porkchop', 'beef', 'chicken', 'mutton'].flatMap((m) => [
+    [m, [`${m}_raw`]],
+    [`cooked_${m}`, [`${m}_cooked`]],
+  ])),
+  wheat_seeds: ['seeds_wheat'],
+  lapis_lazuli: ['dye_powder_blue'],
+  melon_slice: ['melon'],
+  oak_door: ['door_wood'],
+    chest_top: [{ from: 'entity/chest/normal', parts: [{ x: 28, y: 0, w: 14, h: 14, dx: 1, dy: 1 }] }],
   chest_front: [
     {
       from: 'entity/chest/normal',
@@ -71,6 +84,7 @@ export const ALIASES = {
   // the bed lies 9 high: its blanket from the sheet's foot square, its side
   // the mattress's edge turned to lie flat over the legs' three
   red_bed_top: [{ from: 'entity/bed/red', parts: [{ x: 6, y: 28, w: 16, h: 16, dx: 0, dy: 0 }] }],
+  red_bed_head_top: [{ from: 'entity/bed/red', parts: [{ x: 6, y: 6, w: 16, h: 16, dx: 0, dy: 0 }] }],
   red_bed_side: [{ from: 'entity/bed/red', parts: [{ x: 22, y: 28, w: 6, h: 16, dx: 0, dy: 7, rot: true }] }],
 };
 
@@ -113,4 +127,7 @@ export const SPRITES = {
   // the biome tints, read by temperature and rainfall as the game reads them
   colormap_grass: ['colormap/grass'],
   colormap_foliage: ['colormap/foliage'],
+  // the screens: the inventory's and the crafting table's panels
+  inventory: ['gui/container/inventory'],
+  crafting_table: ['gui/container/crafting_table'],
 };

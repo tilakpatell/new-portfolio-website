@@ -265,8 +265,8 @@ export const SITES = {
       { kind: 'stones', n: 240, within: [8, 420], scale: [0.25, 0.8], solid: false, opts: { color: '#2e2624' } },
     ],
     life: [
-      { kind: 'obiwan', at: [300, 364], face: 3.14, still: true, name: 'Obi-Wan Kenobi', says: ['It’s over, Anakin. I have the high ground.', 'Don’t try it.', 'You were the Chosen One! It was said that you would destroy the Sith, not join them!', 'You were my brother, Anakin. I loved you.'] },
-      { kind: 'anakin', at: [301, 339], face: 0, still: true, name: 'Anakin Skywalker', says: ['You underestimate my power!', 'If you’re not with me, then you’re my enemy.', 'From my point of view, the Jedi are evil!', 'I hate you!'] },
+      { kind: 'obiwan', at: [300, 364], face: 3.14, still: true, blade: { color: '#4a8cff' }, name: 'Obi-Wan Kenobi', says: ['It’s over, Anakin. I have the high ground.', 'Don’t try it.', 'You were the Chosen One! It was said that you would destroy the Sith, not join them!', 'You were my brother, Anakin. I loved you.'] },
+      { kind: 'anakin', at: [301, 343.5], face: 0, still: true, blade: { color: '#4a8cff' }, name: 'Anakin Skywalker', says: ['You underestimate my power!', 'If you’re not with me, then you’re my enemy.', 'From my point of view, the Jedi are evil!', 'I hate you!'] },
       { kind: 'vader', at: [-292, -340], face: 0.4, still: true, name: 'Darth Vader', says: ['Be careful not to choke on your aspirations, Director.', 'You were not summoned here to grovel.', '(The breathing. Just the breathing.)', 'I find your lack of faith disturbing.'] },
       { kind: 'mustafarian', n: 2, at: [100, 10], spread: 6, roam: 8, speed: 0.8, name: 'Mustafarian', says: ['(It taps a barrel, then the lava, then the barrel again. The price, presumably.)', '(A hiss through its mask: the heat doesn’t bother it.)'] },
       { kind: 'battledroid', n: 2, at: [74, -8], spread: 6, roam: 8, speed: 1.0, name: 'Battle droid', says: ['Roger, roger.', 'This is a restricted mining zone. Uh… roger?'] },

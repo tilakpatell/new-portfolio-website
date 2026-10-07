@@ -1,0 +1,256 @@
+{
+  "tauntaun": {
+    "lift": [
+      "01a114c8-5a79-7481-9a75-3379ea12072b"
+    ],
+    "model": "01a114d2-d4db-739a-9f80-ff3127bd569f"
+  },
+  "acklay": {
+    "lift": [
+      "01a114c9-13b1-7345-8eed-15f81e8cc8d7"
+    ],
+    "model": "01a114d2-d8f7-763b-a485-32e0c6a3daaf"
+  },
+  "kaadu": {
+    "lift": [
+      "01a114c9-92f7-7497-bf33-736afc8ed2b8"
+    ],
+    "model": "01a114d2-dc44-75ee-8eaa-dc88948c02e6"
+  },
+  "womprat": {
+    "lift": [
+      "01a114c9-fdef-7122-bf5a-9dd0769dc201"
+    ],
+    "model": "01a114d2-df68-73e7-a6ca-ed70895ae253"
+  },
+  "bogwing": {
+    "lift": [
+      "01a114cb-635b-7574-b8f6-d09ea5e7429b"
+    ],
+    "model": "01a114d2-e2ca-7434-b91a-cc3766832e93"
+  },
+  "aiwha": {
+    "lift": [
+      "01a114cc-5cdc-7198-9d96-6e82642635a0"
+    ],
+    "model": "01a114d2-e5f0-769b-bbc2-2f727fb39a6b"
+  },
+  "lavaflea": {
+    "lift": [
+      "01a114cc-9548-7137-bf73-5a2068620b2b"
+    ],
+    "model": "01a114d2-e8e6-7362-be5c-c5c8abda6bba"
+  },
+  "nexu": {
+    "lift": [
+      "01a114cd-8d4e-747e-acb5-8a2583ae139f"
+    ],
+    "model": "01a114d2-ec16-70c4-b693-99758cd8a4d6"
+  },
+  "reek": {
+    "lift": [
+      "01a114cf-2688-73b6-bf9d-5cbdc0619b3d"
+    ],
+    "model": "01a114d2-ef68-73dc-a5a8-3adfaa388da6"
+  },
+  "varactyl": {
+    "lift": [
+      "01a114d1-0758-7524-ab6c-d05bf000ea21"
+    ],
+    "model": "01a114d2-f2b6-7626-bb00-2ebccf8fbba2"
+  },
+  "lothcat": {
+    "lift": [
+      "01a114d1-3c20-72b4-ab66-c6b98d73b90a"
+    ],
+    "model": "01a114d2-f5ec-75f7-944c-e03b4edea286"
+  },
+  "lothwolf": {
+    "lift": [
+      "01a114d1-7200-7557-ac6d-7f6e557eef1e"
+    ],
+    "model": "01a114d2-f9a9-76b1-aa34-840f376af307"
+  },
+  "dragonsnake": {
+    "image": "01a114d6-4a79-7603-9587-b65c1ad3ec4b",
+    "model": "01a114e3-9c5f-73d0-a16a-de97b0c8bab0"
+  },
+  "swoop": {
+    "image": "01a114d6-8e1e-72bc-8742-a5b3823ca7ab",
+    "model": "01a114e3-9fa7-75a2-bb04-76e01ac8d436"
+  },
+  "blurrg": {
+    "lift": [
+      "01a114d7-47f3-74c2-9d55-492c938e84bf"
+    ],
+    "model": "01a114e3-a299-75ac-8ca5-c645a38e4f9b"
+  },
+  "happabore": {
+    "lift": [
+      "01a114d7-93d8-7729-a79e-ac89f07bd44c"
+    ],
+    "model": "01a114e3-a65b-7287-8005-d9dc7a066c8f"
+  },
+  "fambaa": {
+    "lift": [
+      "01a114d7-c9f1-73ea-a9b1-27a152d58c2e"
+    ],
+    "model": "01a114e3-aa2e-775c-b15d-8e45415fd29c"
+  },
+  "mtt": {
+    "lift": [
+      "01a114d9-41c8-77d6-b530-19e24520076f"
+    ],
+    "model": "01a114e3-ae77-73e2-913c-51fcebb0174a"
+  },
+  "bongo": {
+    "lift": [
+      "01a114da-7516-73d8-a2ac-c548255818e6"
+    ],
+    "model": "01a114e3-b1b1-71e9-8d26-6c2da9ac8dc2"
+  },
+  "skiff": {
+    "lift": [
+      "01a114da-eb31-72d8-ae8f-543fbfb73387"
+    ],
+    "model": "01a114e3-b5a1-772c-9ba2-496e7949e957"
+  },
+  "stap": {
+    "lift": [
+      "01a114db-7bcd-7024-a968-84adca8ffdf1"
+    ],
+    "model": "01a114e3-b955-7059-93e0-2d5f5d5e0512"
+  },
+  "atdp": {
+    "lift": [
+      "01a114dc-5e12-7416-8be4-03d528923825"
+    ],
+    "model": "01a114e3-bc34-7225-bdd5-faa136103863"
+  },
+  "flash": {
+    "lift": [
+      "01a114dc-a933-7268-8e68-d959db040e8a"
+    ],
+    "model": "01a114e3-beba-72f4-8602-8c61fc6a7561"
+  },
+  "itt": {
+    "lift": [
+      "01a114dd-1f7e-71ad-a1b3-f5af7e45046f"
+    ],
+    "model": "01a114e3-c1c6-7268-bb44-5da61c9e3922"
+  },
+  "houndstooth": {
+    "lift": [
+      "01a114dd-6bb2-73bb-b421-f1027a759080"
+    ],
+    "model": "01a114e3-c54e-7223-85ad-138507eef1a0"
+  },
+  "punishingone": {
+    "lift": [
+      "01a114dd-b7dd-75ca-84d3-3ef76971fa0b"
+    ],
+    "model": "01a114e3-c839-7143-ae4a-555e15507497"
+  },
+  "hammerhead": {
+    "lift": [
+      "01a114de-2f9b-75da-982c-b0f31f63de22"
+    ],
+    "model": "01a114e3-cb47-76c8-93fc-9b77c103be24"
+  },
+  "gauntlet": {
+    "lift": [
+      "01a114de-93a5-72db-abb5-e77c559b8c58"
+    ],
+    "model": "01a114e3-d14e-7007-a3d1-fe855184f64b"
+  },
+  "twilight": {
+    "lift": [
+      "01a114de-e2da-72f3-af83-89fc02cc8494"
+    ],
+    "model": "01a114e3-d5e8-775a-90e8-642b55028723"
+  },
+  "scimitar": {
+    "lift": [
+      "01a114df-43b9-73d8-a82d-2dbf1557d76b"
+    ],
+    "model": "01a114e3-d986-73c2-8f2c-24d0c754d27e"
+  },
+  "tiedefender": {
+    "lift": [
+      "01a114df-8e6f-750c-b7b7-d581269ed44a"
+    ],
+    "model": "01a114e3-dc02-73ef-9642-67efa4c2986a"
+  },
+  "vwing": {
+    "lift": [
+      "01a114df-dcb3-7728-88c7-3e076c245b14"
+    ],
+    "model": "01a114e3-df76-74de-be16-9e883678197f"
+  },
+  "eta2": {
+    "lift": [
+      "01a114e0-2845-746a-bca2-64c4ccaef681"
+    ],
+    "model": "01a114e3-e1f6-7722-9c47-01738b2d8a30"
+  },
+  "hyena": {
+    "lift": [
+      "01a114e0-b517-73db-87c3-7e038f8e52ed"
+    ],
+    "model": "01a114e3-e5c5-7662-9a80-6233eb164447"
+  },
+  "sentinel": {
+    "lift": [
+      "01a114e1-00ce-734d-b030-f1fb3afb9a0d"
+    ],
+    "model": "01a114e3-e901-7645-a702-921784ea3d48"
+  },
+  "zeta": {
+    "lift": [
+      "01a114e1-ff29-759d-98f9-e21479dd773f"
+    ],
+    "model": "01a114e3-ebea-759d-b552-ef35bd93abe3"
+  },
+  "fang": {
+    "lift": [
+      "01a114e2-a2ab-7111-beec-4e0f31335e54"
+    ],
+    "model": "01a114e3-efb9-7292-bbad-3a224aec32aa"
+  },
+  "naboocruiser": {
+    "lift": [
+      "01a114e3-2f79-7309-9b97-076343055ce8"
+    ],
+    "model": "01a114e3-f2a2-72d6-953c-d81a1a949f8f"
+  },
+  "tiestriker": {
+    "lift": [
+      "01a114e3-652e-76ef-82bd-cba8f3c5283d"
+    ],
+    "model": "01a114e3-f5e7-71d0-9e05-ddf2063a8c19"
+  },
+  "varykino": {
+    "lift": [
+      "01a114e9-1680-762f-b4b7-d228b4e3abfd"
+    ],
+    "model": "01a114ea-9d16-73c0-a09a-7c86ba89110e"
+  },
+  "shieldgen": {
+    "lift": [
+      "01a114e9-4bf7-715c-b25a-7bedb210167f"
+    ],
+    "model": "01a114ea-a366-72c7-b6a1-e8cbf977bf3e"
+  },
+  "cantina": {
+    "image": "01a114e9-ecc3-77a9-95c6-9a301ae375e8",
+    "model": "01a114ea-9393-744c-b600-e962221ac13d"
+  },
+  "stonehead": {
+    "image": "01a114ea-4965-763a-a629-d45787af06d6",
+    "model": "01a114ea-9933-725d-8a66-e080d87c3aee"
+  },
+  "lavacollector": {
+    "image": "01a114ea-1b31-744f-ab61-cb70dd6b0c15",
+    "model": "01a114ea-9690-7613-bcda-5692df715d02"
+  }
+}

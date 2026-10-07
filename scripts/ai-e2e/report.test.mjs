@@ -58,6 +58,11 @@ describe('the nightly report', () => {
     expect(r.markdown).toMatch(/\| 6 real \| \*\*red\*\* \| did not run \|/);
   });
 
+  it('counts an animation-only file as nothing to draw, not as a model that failed to', () => {
+    const r = report(night({ ...GOOD, 'render.json': { coverage: 0.02, models: [{ file: 'a.glb', look: 'plain', coverage: 0.3, errors: [] }, { file: 'clip-die.glb', look: 'plain', clip: true }] } }), DATE);
+    expect(r.markdown).toMatch(/\| 3 render \| ok \| 1 renders, every one drawn \(1 animation-only file, nothing to draw\) \|/);
+  });
+
   it('reads the doctor’s file as Windows PowerShell writes it, with a byte-order mark', () => {
     const dir = night(GOOD);
     writeFileSync(join(dir, 'doctor.json'), `\uFEFF${JSON.stringify(GOOD['doctor.json'])}`);

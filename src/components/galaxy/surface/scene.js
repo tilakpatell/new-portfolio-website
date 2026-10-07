@@ -384,6 +384,17 @@ export async function create(canvas, ctx) {
           holder.add(fig.model);
           ridee.fig = fig;
         }
+        // its catalogue model in place of the build once it's here (the
+        // herd grazing round it is that model: the ridden one should match)
+        modelFigure(spec.figure)
+          .then((model) => {
+            if (!model || !holder.parent) return;
+            if (ridee.fig) holder.remove(ridee.fig.model);
+            ridee.fig?.dispose?.();
+            holder.add(model.model);
+            ridee.fig = model;
+          })
+          .catch(() => {});
       } else {
         // its model (or its build), held in the holder so it can bank
         const tmp = new THREE.Group();
@@ -1661,6 +1672,7 @@ export async function create(canvas, ctx) {
       struck(h, Math.max(1, Math.round((w.damage + (hot ? 1 : 0)) / (n > 1 ? 2 : 1))), { how: w.kind, push: o.dir });
       hit ??= h;
     }
+    activity.heard({ x: o.from.x, z: o.from.z }, { x: o.from.x + o.dir.x * 40, z: o.from.z + o.dir.z * 40 }); // (as for an unrigged shot in fire())
     const spec = p.gp.spec;
     const out = hit.at.clone().sub(r.muzzle).normalize();
     fx.flash(r.muzzle, out, spec.flash);
