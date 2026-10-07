@@ -148,7 +148,8 @@ def take_score(wer, sim, utmos, wps):
     that isn't the speaker's (similarity to the reference under 0.3)."""
     if wer > 0.34 or not 0.8 <= wps <= 6.0 or sim < 0.3:
         return None
-    return sim + 0.15 * (utmos - 3) - 1.5 * wer
+    # sounding like them counts most: a natural take that isn't quite them is the wrong take
+    return 1.5 * sim + 0.1 * (utmos - 3) - 1.5 * wer
 
 
 def centre(prints):

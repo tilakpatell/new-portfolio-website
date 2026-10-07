@@ -14,13 +14,14 @@ from .worker import wsl_path
 
 HERE = Path(__file__).resolve().parent
 # engine: the venv under ~/.venvs it runs in
-VENVS = {"voxcpm2": "voxcpm", "qwen": "qwen", "f5": "voices"}
+VENVS = {"voxcpm2": "voxcpm", "qwen": "qwen", "f5": "voices", "qwenft": "qwen"}
 # engine: (WSL distro, its checkout there, with its venv in .venv), for the ones only Linux runs;
 # $VOICES_WSL_<ENGINE> as "distro:path" puts it elsewhere
 WSL = {"fish": ("Ubuntu-24.04", "~/fish-speech")}
 # the order to fall back in when a voice's engine isn't set up here: the bake-off's order on this
 # project (generate.py --bakeoff), Qwen3 best on every voice by the judge's score
 PREFERENCE = ["qwen", "fish", "voxcpm2", "f5"]
+# and the ones a voice only has once it's been made for them (qwenft: finetune.py), never fallen back on
 ENGINES = list(VENVS) + list(WSL)
 
 

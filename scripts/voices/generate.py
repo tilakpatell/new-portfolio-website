@@ -92,6 +92,22 @@ def redo(line, engine, judge, salts):
     salts[line["id"]] = salts.get(line["id"], 0) + 1
 
 
+def centroids():
+    """Each voice's voiceprint centroid from every scene grab.py heard them in (cache/grab/centroids.json)."""
+    f = CACHE / "grab" / "centroids.json"
+    if not f.exists():
+        return {}
+    import numpy as np
+
+    return {w: np.asarray(c, dtype=np.float32) / np.linalg.norm(c) for w, c in json.loads(f.read_text(encoding="utf-8")).items()}
+
+
+def likeness(d):
+    """How like the speaker a take is: as like the reference as like the speaker in all the scenes
+    grab.py heard them in (their centroid), where there's one; else like the reference."""
+    return d["sim"] if d.get("csim") is None else (d["sim"] + d["csim"]) / 2
+
+
 class Judge:
     """Scores takes (pick.take_score) and remembers every score in cache/takes/scores.jsonl."""
 
@@ -100,13 +116,23 @@ class Judge:
 
         self.j = judge
         self.prints = {who: judge.voiceprint(read(v["wav"])) for who, v in voices.items()}
+        self.cents = centroids()
         self.file = TAKES / "scores.jsonl"
         self.known = {}
         if self.file.exists():
             for line in self.file.read_text(encoding="utf-8").splitlines():
                 d = json.loads(line)
-                d["score"] = pick.take_score(d["wer"], d["sim"], d["utmos"], d["wps"])  # by today's rules
                 self.known[d["take"]] = d
+        for d in self.known.values():
+            d["score"] = pick.take_score(d["wer"], likeness(d), d["utmos"], d["wps"])  # by today's rules
+
+    def centred(self, who, d):
+        """Give d its likeness to the speaker's centroid (csim), from the take's audio."""
+        take = TAKES / d["take"]
+        if who in self.cents and take.exists():
+            d["csim"] = round(float(self.j.voiceprint(read(take)) @ self.cents[who]), 3)
+            d["score"] = pick.take_score(d["wer"], likeness(d), d["utmos"], d["wps"])
+            self.keep(d)
 
     def forget(self, take):
         self.known.pop(str(Path(take).relative_to(TAKES)), None)
@@ -114,7 +140,10 @@ class Judge:
     def __call__(self, who, text, take):
         key = str(Path(take).relative_to(TAKES))
         if key in self.known:
-            return self.known[key]
+            d = self.known[key]
+            if d.get("csim") is None and d.get("heard") and who in self.cents:  # scored before the centroid
+                self.centred(who, d)
+            return d
         wav = read(take)
         if pick.too_long(len(wav) / self.j.SR, text):  # ran on: fails without being heard out
             d = {"take": key, "heard": "", "wer": 1.0, "sim": 0.0, "utmos": 0.0, "wps": 0.0, "speech": None, "score": None}
@@ -122,13 +151,17 @@ class Judge:
             heard = self.j.hear(wav)
             spans = self.j.speech(wav)
             talk = spans[-1][1] - spans[0][0] if spans else len(wav) / self.j.SR
-            d = {"take": key, "heard": heard, "wer": round(self.j.wer(text, heard), 3), "sim": round(float(self.j.voiceprint(wav) @ self.prints[who]), 3), "utmos": self.j.naturalness(wav), "wps": round(len(pick.normal(text).split()) / max(talk, 0.1), 2), "speech": [spans[0][0], spans[-1][1]] if spans else None}
-            d["score"] = pick.take_score(d["wer"], d["sim"], d["utmos"], d["wps"])
+            vp = self.j.voiceprint(wav)
+            d = {"take": key, "heard": heard, "wer": round(self.j.wer(text, heard), 3), "sim": round(float(vp @ self.prints[who]), 3), "csim": round(float(vp @ self.cents[who]), 3) if who in self.cents else None, "utmos": self.j.naturalness(wav), "wps": round(len(pick.normal(text).split()) / max(talk, 0.1), 2), "speech": [spans[0][0], spans[-1][1]] if spans else None}
+            d["score"] = pick.take_score(d["wer"], likeness(d), d["utmos"], d["wps"])
         self.known[key] = d
+        self.keep(d)
+        return d
+
+    def keep(self, d):
         TAKES.mkdir(parents=True, exist_ok=True)
         with open(self.file, "a", encoding="utf-8") as f:
             f.write(json.dumps(d) + "\n")
-        return d
 
 
 def best(scores):
@@ -234,7 +267,7 @@ def main():
     ap = argparse.ArgumentParser(description="Make the crews' unrecorded lines in their own voices.")
     ap.add_argument("--only", help="just these speakers, comma-separated (walt,jesse)")
     ap.add_argument("--limit", type=int, help="make at most this many lines, to try it out")
-    ap.add_argument("--takes", type=int, default=4, help="takes of each line to choose from (a line none pass gets twice as many more)")
+    ap.add_argument("--takes", type=int, default=8, help="takes of each line to choose from (a line none pass gets twice as many more)")
     ap.add_argument("--engine", choices=engines.ENGINES, help="use this engine for every voice (default: refs.json's per voice)")
     ap.add_argument("--force", action="store_true", help="make lines again even if they're already there")
     ap.add_argument("--again", action="store_true", help="choose every line again from its takes, making any missing (after giving a voice another engine)")
