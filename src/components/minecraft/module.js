@@ -239,8 +239,11 @@ export default {
         } else {
           look.dx = look.dy = 0;
           acc = 0;
-          // the title turns slowly round the spawn
-          if (mode === 'title') g.player.yaw += dt * 0.05;
+          // the title turns slowly round the spawn, looking a little down on it
+          if (mode === 'title') {
+            g.player.yaw += dt * 0.05;
+            g.player.pitch = -0.22;
+          }
         }
         report(dt);
       },
@@ -276,7 +279,7 @@ export default {
         selected = slot;
       },
       start() {
-        if (mode === 'title') g.player.yaw = 0;
+        if (mode === 'title') g.player.pitch = 0;
         mode = 'play';
       },
       pause(on) {

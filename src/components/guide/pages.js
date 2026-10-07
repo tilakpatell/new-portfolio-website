@@ -466,6 +466,27 @@ export const PAGES = {
       ['The look', 'On the title and the pause menu: Modern, Ultra or the N64’s own.'],
     ],
   },
+  '/dot-matrix/minecraft': {
+    keys: [
+      {
+        rows: [
+          ['W A S D / ← ↑ ↓ →', 'Walk'],
+          ['Mouse', 'Look (click the world first to hold the pointer)'],
+          ['Space', 'Jump; swim up'],
+          ['Shift', 'Sneak (you won’t walk off an edge)'],
+          ['Ctrl / W twice', 'Sprint'],
+          ['1 – 9 / wheel', 'The hotbar'],
+          ['Esc', 'Pause'],
+        ],
+      },
+    ],
+    touch: [{ rows: [['Stick', 'Walk'], ['Drag', 'Look'], ['Jump', 'Jump; swim up'], ['Sneak', 'Sneak']] }],
+    tips: [
+      ['The world', 'Endless, and made from its seed: the same seed is the same world. New world on the title starts another.'],
+      ['The textures', 'Pixel Perfection, a free resource pack by XSSheep and Nova_Wostra, close to the game’s own; Mojang’s may not be shared.'],
+      ['Coming', 'Digging and building, the night, caves and mobs come phase by phase.'],
+    ],
+  },
   '/earth': {
     keys: [
       { label: 'From orbit', rows: [['Drag', 'Turn the globe'], ['Click', 'A place, to fly there'], ['M', 'Down to the globe, or back up']] },
