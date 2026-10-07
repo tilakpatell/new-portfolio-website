@@ -341,7 +341,7 @@ export const SITES = {
       { kind: 'tauntaun', n: 2, at: [-22, 14], spread: 4, roam: 5, speed: 0.8, r: 0.8 },
       { kind: 'droid', n: 1, at: [12, 14], roam: 6, speed: 0.6, name: 'Astromech', says: ['(A shivering beep. It would like to go inside now.)'] },
       // the walkers, on their way in
-      { kind: 'atat', model: false, n: 4, path: loop([110, 480], [200, 60], 12), speed: 2.2, r: 2.2, name: 'AT-AT', says: ['(Twenty metres up, its head swivels round toward you. Somewhere inside, General Veers is not impressed.)', '(The ground shakes with every step.)'] },
+      { kind: 'atat', n: 4, path: loop([110, 480], [200, 60], 12), speed: 2.2, r: 2.2, name: 'AT-AT', says: ['(Twenty metres up, its head swivels round toward you. Somewhere inside, General Veers is not impressed.)', '(The ground shakes with every step.)'] },
       { kind: 'snowtrooper', n: 3, path: loop([250, 360], [50, 30], 8), speed: 1.3, name: 'Snowtrooper', says: ['Imperial troops have entered the base!', 'Keep moving. The walkers are almost at the generator.', 'Halt! Identify yourself.'] },
       { kind: 'snowtrooper', n: 2, at: [290, 322], spread: 3, still: true, face: 3.6, name: 'Snowtrooper', says: ['Get that E-Web set up!', 'Watch the trenches. Rebels everywhere.'] },
       { kind: 'vader', n: 1, at: [276, 296], still: true, face: 3.4, name: 'Darth Vader', named: true, says: ['(The breathing. Just the breathing.)', 'Admiral Ozzel came out of lightspeed too close to the system. He will not do so again.', 'There is no escape. Don’t make me destroy you.', 'Asteroids do not concern me. I want that ship.'] },
