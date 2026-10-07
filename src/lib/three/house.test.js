@@ -91,7 +91,7 @@ describe('a world’s house', () => {
   });
 
   it('leaves the fog to a world that colours its own, when asked', () => {
-    const house = createHouse({}, { fog: false });
+    const house = createHouse({ fog: false });
     const m = new THREE.MeshLambertMaterial();
     house.adopt(new THREE.Mesh(new THREE.BufferGeometry(), m));
     const sh = compiled(m);

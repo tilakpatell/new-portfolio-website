@@ -149,7 +149,7 @@ export async function create(canvas, ctx) {
   // three's fog line be. The post tone-maps with its own shoulder, so the
   // exposure is the site's, through it.
   const siteLook = lookOf(site);
-  const house = createHouse(siteLook, { fog: false });
+  const house = createHouse({ ...siteLook, fog: false });
   post.exposure(exposureOf(site));
   // (fogged in the sky's colour and in the look before its shaders are
   // made, so they're made once)

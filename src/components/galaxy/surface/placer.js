@@ -242,11 +242,11 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             o.scale.setScalar(spec.scale ?? 1);
             const holder = spec.zone ? rooms : group;
             holder.add(o);
-            // (worn before its shaders are made, so they're made once)
-            const worn = spec.wear ? wearModel(o, spec.wear) : Promise.resolve();
             const entry = SURFACE_MODELS[spec.kind];
             if (entry.solids === 'built') builtSolids(spec, at);
             else footprint(o, spec, at);
+            // (worn before its shaders are made, so they're made once)
+            const worn = spec.wear ? wearModel(o, spec.wear) : Promise.resolve();
             if (!entry.lod) return worn.then(() => warm(o)).then(() => o);
             // far off, its light model (fetched after the full one: the
             // first view doesn't wait for it)
