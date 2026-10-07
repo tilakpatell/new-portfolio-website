@@ -35,6 +35,7 @@ const FILES = {
   pluto: () => import('./rmmoons.js'),
   snakeplanet: () => import('./rmmoons.js'),
   nuptia: () => import('./rmmoons.js'),
+  resort: () => import('./rmmoons.js'),
 };
 
 // each landing as it is, and as each of its biomes has it (biomes.js), by name
@@ -42,7 +43,7 @@ const PLACES = Object.entries(LANDINGS).flatMap(([id, l]) => [[id, id, l], ...(l
 
 describe('planet landings', () => {
   it('give every planet you can land on its own place: a name, a ground and a sky', () => {
-    expect(LANDABLE.length).toBe(18);
+    expect(LANDABLE.length).toBe(19);
     const titles = new Set();
     for (const id of LANDABLE) {
       const l = landingOf(id);

@@ -341,7 +341,7 @@ export const MOONS = [
     palette: { base: '#b88a3a', dark: '#6a4a2a', light: '#d8aa5a', glow: '#ffe0a0' },
     air: { colour: '#ffe0a0', density: 1.2, top: 1.05 },
   },
-  // and three more from the dial, in the sector since: Pluto, the snakes' planet, and Nuptia 4
+  // and more from the dial, in the sector since: Pluto, the snakes' planet, Nuptia 4 and the resort
   {
     id: 'pluto',
     label: 'Pluto',
@@ -392,6 +392,23 @@ export const MOONS = [
     sector: 'rickmorty',
     palette: { base: '#b85a9a', dark: '#5a2a4a', light: '#e08ac0', glow: '#ffc8e8' },
     air: { colour: '#ffc8e8', density: 1.3, top: 1.06 },
+  },
+  {
+    id: 'resort',
+    label: 'Immortality Field Resort',
+    kind: 'moon',
+    world: null,
+    place: 'the Immortality Field Resort',
+    go: 'Land at',
+    to: '/c-137',
+    crew: 'rickmorty',
+    swatch: '#4ac8c0',
+    accent: '#a8f0e8',
+    rim: '#fff0b0',
+    size: 0.4 * MOON,
+    sector: 'rickmorty',
+    palette: { base: '#3a9a9a', dark: '#1a4a5a', light: '#e8d8a0', glow: '#a8f0e8' },
+    air: { colour: '#c8f4ff', density: 1.3, top: 1.06 },
   },
 ];
 export const MOON_IDS = MOONS.map((m) => m.id);
