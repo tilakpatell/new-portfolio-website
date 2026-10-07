@@ -20,14 +20,14 @@ export default {
       light: [
         [
           "r2",
-          "[The fleets are engaged over {place}. Capital ships on both sides.]",
+          "[a sharp run of beeps: the fleets are engaged over {place}, capital ships on both sides]",
         ],
         ["luke", "It’s {us} against {them}, Artoo. Let’s get in there."],
       ],
       dark: [
         [
           "r2",
-          "[The fleets are engaged over {place}. He notes, for the record, whose side we are on.]",
+          "[a flat, dutiful beep: battle over {place}, and he notes for the record whose side we are on]",
         ],
         [
           "luke",
@@ -37,7 +37,7 @@ export default {
       hutt: [
         [
           "r2",
-          "[Hutt gunships. He served drinks on a Hutt’s sail barge once, and will not again.]",
+          "[a sour beep: Hutt gunships. He served drinks on a Hutt’s sail barge once, and never again]",
         ],
         [
           "luke",
@@ -60,10 +60,13 @@ export default {
     },
     gens: {
       light: [
-        ["r2", "[A flagship’s shield generators are down. Its hull is bare.]"],
+        [
+          "r2",
+          "[a quick, excited warble: a flagship’s shield generators are down, its hull bare]",
+        ],
         [
           "luke",
-          "Its shields are gone! If it’s theirs, we go for the bridge. If it’s ours, we cover her.",
+          "Her shields are gone! If she’s theirs, we go for the bridge. If she’s ours, we cover her.",
         ],
       ],
       dark: [
@@ -96,13 +99,16 @@ export default {
         ["r2", "[a frantic whistle: the engines have it]"],
       ],
       dark: [
-        ["r2", "[A reactor is going critical. He would like to leave.]"],
+        [
+          "r2",
+          "[a rising alarm: a reactor is going critical, and he would like to leave]",
+        ],
         ["luke", "So would I, Artoo. This battle, this side, all of it."],
       ],
     },
     won: {
       light: [
-        ["luke", "We did it! Artoo, {place} is with {us} now."],
+        ["luke", "We did it! That’s {place} for {us}, Artoo."],
         ["r2", "[a happy trill]"],
       ],
       dark: [
@@ -115,14 +121,17 @@ export default {
       hutt: [
         [
           "luke",
-          "That’s {place} out of the Hutts’ hands. Somebody tell Jabba.",
+          "We beat the Hutts at {place}! Jabba would have hated this, Artoo.",
         ],
-        ["r2", "[a gleeful trill: he’d deliver the message personally]"],
+        [
+          "r2",
+          "[a satisfied beep: he once delivered a message to a Hutt, and likes this one better]",
+        ],
       ],
     },
     lost: {
       light: [
-        ["r2", "[A low tone: the fleet is pulling out.]"],
+        ["r2", "[a low, falling tone: the fleet is pulling out]"],
         ["luke", "We’ll be back for {place}. We always come back."],
       ],
       dark: [
@@ -130,8 +139,11 @@ export default {
         ["luke", "Artoo! We lost. You could at least pretend to be sorry."],
       ],
       hutt: [
-        ["r2", "[a sour whistle: the Hutts keep {place}]"],
-        ["luke", "We’ll be back. Nobody should have to live under a Hutt."],
+        ["r2", "[a sour whistle: that leaves {place} with the Hutts]"],
+        [
+          "luke",
+          "Nobody should have to live under a Hutt. I’ve seen what Jabba hung on his walls, Artoo.",
+        ],
       ],
     },
     turncoat: {
@@ -146,9 +158,9 @@ export default {
         ["r2", "[a long, disbelieving whistle]"],
         [
           "luke",
-          "I know how it looks, Artoo. We fly for {us} now. Don’t tell Ben.",
+          "I know how it looks, Artoo. We fly for {us} now. Please don’t tell Leia.",
         ],
-        ["r2", "[a scandalised shriek: he is telling everyone]"],
+        ["r2", "[a scandalised shriek: he is telling Leia, and everyone else]"],
       ],
     },
     ace: {
@@ -164,10 +176,7 @@ export default {
     escort: {
       light: [
         ["r2", "[a happy whistle: friendly fighters on our wing]"],
-        [
-          "luke",
-          "Fighters from {us}, forming up on us. Now it’s a fight, Artoo.",
-        ],
+        ["luke", "A whole squadron from {us}! Now it’s a fight, Artoo."],
       ],
       dark: [
         [
@@ -199,13 +208,16 @@ export default {
         ["r2", "[a smug whistle]"],
       ],
       dark: [
-        ["luke", "Got it. That one isn’t getting through."],
+        [
+          "luke",
+          "Got it. I hope that was a bomber, Artoo, and not somebody’s way out.",
+        ],
         ["r2", "[a disapproving whistle: he was rooting for that one]"],
       ],
     },
     runners: {
       light: [
-        ["r2", "[Runners, breaking through the lines.]"],
+        ["r2", "[an alert warble: runners, breaking through the lines]"],
         ["luke", "There they go! Cover ours, stop theirs. Simple, Artoo."],
         ["r2", "[a sceptical beep: it never is]"],
       ],
@@ -219,7 +231,10 @@ export default {
     },
     gate: {
       light: [
-        ["r2", "[The shield is down. The way to the planet is open.]"],
+        [
+          "r2",
+          "[a startled whistle: the shield is down, and the way to the planet is open]",
+        ],
         [
           "luke",
           "The shield’s gone! Whoever holds {place} now, it’s wide open, Artoo.",
@@ -242,7 +257,10 @@ export default {
         ["r2", "[a nervous whistle: including us]"],
       ],
       dark: [
-        ["r2", "[Gravity wells: nobody can jump out. He has checked twice.]"],
+        [
+          "r2",
+          "[a jittery beep: gravity wells, nobody can jump out, and he has checked twice]",
+        ],
         [
           "luke",
           "I know, Artoo. We couldn’t leave even if we wanted to. And I want to.",
@@ -253,16 +271,19 @@ export default {
       light: [
         [
           "luke",
-          "A blockade! Artoo, remember the Tantive IV? Let’s hope this one goes better.",
+          "Somebody’s running a blockade. Artoo, have you ever done this?",
         ],
-        ["r2", "[a wounded whistle: it went perfectly, he got away]"],
+        [
+          "r2",
+          "[a proud whistle: once, on a Naboo royal starship, and the Queen herself thanked him]",
+        ],
       ],
       dark: [
         [
           "luke",
-          "A blockade. Last time I saw one of these, I was rooting for the runners.",
+          "A blockade. Whoever’s running it, Artoo, I hope they make it. Even if they’re not ours.",
         ],
-        ["r2", "[a sharp beep: he still is]"],
+        ["r2", "[a sharp beep: especially if they’re not ours]"],
       ],
     },
   },
@@ -279,7 +300,7 @@ export default {
         dark: [
           [
             "r2",
-            "[an outraged shriek: he spent the whole Clone Wars shooting these droids]",
+            "[an outraged shriek: he spent the whole Clone Wars fighting these droids]",
           ],
           [
             "luke",
@@ -312,7 +333,7 @@ export default {
             "luke",
             "The Rebellion against the Empire. This is what I left Tatooine for, Artoo.",
           ],
-          ["r2", "[an eager whistle]"],
+          ["r2", "[a keen, ready whistle]"],
         ],
         dark: [
           [
@@ -328,14 +349,14 @@ export default {
             "luke",
             "Another one for the Rebellion! The Empire can’t be everywhere, Artoo.",
           ],
-          ["r2", "[a happy trill]"],
+          ["r2", "[a jaunty run of beeps]"],
         ],
         dark: [
           [
             "luke",
             "The Empire wins. Somewhere, the Emperor’s smiling. I feel sick, Artoo.",
           ],
-          ["r2", "[a pointed beep: as he should]"],
+          ["r2", "[a pointed beep: that is called a conscience]"],
         ],
       },
     },
@@ -351,7 +372,7 @@ export default {
         dark: [
           [
             "luke",
-            "Flying for the Imperial Remnant, against Leia’s New Republic. What am I doing, Artoo?",
+            "Flying for the Imperial Remnant, against Leia and the New Republic. What am I doing, Artoo?",
           ],
           ["r2", "[a sharp beep: he has been asking that since take-off]"],
         ],
@@ -365,8 +386,11 @@ export default {
           ["r2", "[a cheerful trill]"],
         ],
         dark: [
-          ["luke", "The Remnant won. Leia’s going to hear about this, Artoo."],
-          ["r2", "[a smug beep: he has already drafted the message]"],
+          [
+            "luke",
+            "The Remnant won. We beat the Empire once, Artoo, and now I’m helping it back up.",
+          ],
+          ["r2", "[a withering whistle: yes, and the whole galaxy saw]"],
         ],
       },
     },
@@ -403,7 +427,10 @@ export default {
             "luke",
             "The Empire holds Endor. The Emperor was right about me. I hate that, Artoo.",
           ],
-          ["r2", "[a stubborn beep: there’s still good in him]"],
+          [
+            "r2",
+            "[a stubborn beep: there’s still good in Luke, whatever the Emperor says]",
+          ],
         ],
       },
     },
@@ -422,21 +449,21 @@ export default {
             "luke",
             "Hoth, flying for the Empire. Those are Rebel transports, Artoo. Those are my friends.",
           ],
-          ["r2", "[a reproachful whistle: and they are running from us]"],
+          ["r2", "[a stricken warble: and they are running from us]"],
         ],
       },
       won: {
         light: [
           [
             "luke",
-            "We held Hoth! The Empire’s fleet is pulling back. Nobody will believe this, Artoo.",
+            "Hoth is ours! The Empire’s fleet is pulling back. Nobody will believe this, Artoo.",
           ],
           ["r2", "[a gleeful whistle: not even the wampa]"],
         ],
         dark: [
           [
             "luke",
-            "The Empire’s taken Hoth. I hope the transports got away, Artoo. I really do.",
+            "The Empire has Hoth. I hope the transports got away, Artoo. I really do.",
           ],
           ["r2", "[a quiet beep: he counted them out, and some did]"],
         ],
@@ -473,7 +500,7 @@ export default {
             "luke",
             "The Empire held Scarif. The plans never got out. Artoo… then how did I ever meet you?",
           ],
-          ["r2", "[a smug beep: he has his ways]"],
+          ["r2", "[an airy beep: he has his ways]"],
         ],
       },
     },
@@ -540,7 +567,7 @@ export default {
         light: [
           [
             "luke",
-            "We’ve won over Bespin! Lando’s opening up the city. And this time I kept both hands, Artoo.",
+            "Bespin is ours! Lando’s opening up the city. And this time I kept both hands, Artoo.",
           ],
           ["r2", "[a relieved trill]"],
         ],
@@ -549,7 +576,7 @@ export default {
             "luke",
             "The Empire holds Bespin. Han’s probably in carbonite by now. I did that, Artoo.",
           ],
-          ["r2", "[a cold, quiet beep: yes, he did]"],
+          ["r2", "[a cold, quiet beep that does not disagree]"],
         ],
       },
     },
@@ -582,7 +609,7 @@ export default {
         dark: [
           [
             "luke",
-            "The Separatists won over Coruscant. Grievous has the Chancellor. Is that… good, Artoo?",
+            "The Separatists won over Coruscant. Grievous got away with the Chancellor. Is that… good, Artoo?",
           ],
           ["r2", "[a long, complicated whistle: honestly, it might be]"],
         ],
@@ -604,9 +631,9 @@ export default {
         dark: [
           [
             "luke",
-            "Holding the blockade over Naboo for the Separatists. Artoo, it’s so beautiful down there.",
+            "Flying for the Separatists over Naboo. Artoo, it’s so beautiful down there.",
           ],
-          ["r2", "[a reproachful whistle: so leave it alone]"],
+          ["r2", "[a pleading whistle: so leave it alone]"],
         ],
       },
       won: {
@@ -617,7 +644,7 @@ export default {
           ],
           [
             "r2",
-            "[a happy trill: he has been to one, there was a giant glowing ball]",
+            "[a fond trill: he went to the last one, the one with the giant glowing ball]",
           ],
         ],
         dark: [
@@ -639,7 +666,7 @@ export default {
           ],
           [
             "r2",
-            "[a delighted whistle: he has met Chopper, and is choosing not to mention it]",
+            "[a guarded whistle: he has met Chopper, and is choosing not to mention it]",
           ],
         ],
         dark: [
@@ -659,7 +686,10 @@ export default {
             "luke",
             "Lothal holds! The Chimaera’s jumped. Somewhere, a loth-wolf is very pleased, Artoo.",
           ],
-          ["r2", "[a happy trill]"],
+          [
+            "r2",
+            "[a long, howling whistle, as near to a loth-wolf as he can manage]",
+          ],
         ],
         dark: [
           [
