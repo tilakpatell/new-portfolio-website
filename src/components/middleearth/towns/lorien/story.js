@@ -85,7 +85,7 @@ export const CONVOS = {
       eight: { who: 'celeborn', say: '“The enemy knows you have entered here. The hope you had in secrecy is now gone. Eight there are here, yet nine there were set out from Rivendell. Tell me, where is Gandalf? For I much desire to speak with him.”', next: 'shadow' },
       shadow: { who: 'galadriel', say: '“Gandalf the Grey did not pass the borders of this land. He has fallen into shadow.”', next: 'knife' },
       knife: { who: 'galadriel', say: '“Your quest stands upon the edge of a knife. Stray but a little, and it will fail, to the ruin of all. Yet hope remains while the company is true.”', next: 'looks' },
-      looks: { who: 'narrator', say: 'She looks at each of them in turn. Boromir looks away first. Then her eyes are on you, and her voice is in your head: “Do not let your heart be troubled.”', choices: [{ text: '(In your mind) “What do you want of me?”', to: 'want' }, { text: 'Hold her gaze.', to: 'hold' }] },
+      looks: { who: 'narrator', voice: 'galadriel', say: 'She looks at each of them in turn. Boromir looks away first. Then her eyes are on you, and her voice is in your head: “Do not let your heart be troubled.”', choices: [{ text: '(In your mind) “What do you want of me?”', to: 'want' }, { text: 'Hold her gaze.', to: 'hold' }] },
       want: { who: 'galadriel', say: '“Nothing that you will not give, Ring-bearer.” She smiles, and something in you eases.', next: 'rest' },
       hold: { who: 'galadriel', say: 'Her eyes are old as the wood. “You are braver than you know.”', next: 'rest' },
       rest: { who: 'galadriel', say: '“Go now and rest, for you are weary with sorrow and much toil. Tonight you will sleep in peace.”', end: 'won' },
@@ -132,6 +132,16 @@ export const CONVOS = {
   },
 };
 
+// what Haldir says as he brings you to the city (his line at the stair,
+// ./layout.js, too)
+export const CARAS = '“Caras Galadhon. The heart of Elvendom on earth. Realm of the Lord Celeborn and of Galadriel, Lady of Light.”';
+// the toasts someone speaks in (../voice.js)
+export const SAYS = {
+  caras: { who: 'haldir', text: `${CARAS} Up the stair round the great tree.`, line: CARAS },
+  touched: { who: 'galadriel', text: 'The Ring swings down on its chain, nearly into the water. Galadriel: “Do not touch the water!” You pull back. Look again, and hold fast when the Eye looks.' },
+  swim: { who: 'sam', text: 'Another! Sam: “Mr. Frodo, I can’t swim!”' },
+};
+
 // what each one says when you give them a gift, or the wrong one
 export const THANKS = {
   legolas: '“The bow of the Galadhrim.” Legolas draws it, and lets it go slack, smiling. “A gift worthy of the Lady.”',
@@ -168,15 +178,18 @@ const pick = (list, n) => list[n % list.length];
 // what Legolas says at the targets
 export const ARCHERY = {
   start: '“Five boards among the trees, and seven arrows. Draw it full, and aim above the far ones: an arrow falls, even an elven one.”',
-  gold: (n) => pick(['“In the gold!”', '“The gold. You have a good eye, Frodo.”', '“Gold again. Are you sure you are a hobbit?”'], n),
-  hit: (n) => pick(['“Struck. Near enough is enough, for a board.”', '“A fair shot.”', '“On the board. The gold next time.”'], n),
+  golds: ['“In the gold!”', '“The gold. You have a good eye, Frodo.”', '“Gold again. Are you sure you are a hobbit?”'],
+  gold: (n) => pick(ARCHERY.golds, n),
+  hits: ['“Struck. Near enough is enough, for a board.”', '“A fair shot.”', '“On the board. The gold next time.”'],
+  hit: (n) => pick(ARCHERY.hits, n),
   again: '“That board is struck already. The others, Frodo.”',
   trunk: '“Mind the trees. They are older than both of us together.”',
   short: '“It hardly left the bow. Draw it full, and let the bow do the work.”',
   low: '“Under it. Aim higher: it falls on the way.”',
   away: '“Over, and into the wood. Some elf will find that in a hundred years.”',
   tired: '“Let it go, or let it down. No one can hold a bow drawn for ever.”',
-  won: (shot, golds) => (shot <= 5 && golds >= 5 ? '“Five arrows, five boards, and every one in the gold. I could not have done better myself.”' : `“All five, with ${shot} arrows. The Galadhrim would not be ashamed of that.”`),
+  perfect: '“Five arrows, five boards, and every one in the gold. I could not have done better myself.”',
+  won: (shot, golds) => (shot <= 5 && golds >= 5 ? ARCHERY.perfect : `“All five, with ${shot} arrows. The Galadhrim would not be ashamed of that.”`),
   out: '“No arrows left. Again? The boards are patient.”',
   best: (n) => `Your best: all five with ${n} arrows. Legolas’s: five with five, all in the gold.`,
 };

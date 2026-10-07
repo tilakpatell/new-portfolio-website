@@ -143,6 +143,17 @@ export const CONVOS = {
 };
 
 // Who says what in a conversation's bubble
+// the toasts someone speaks in (../voice.js); the pints poured, Pippin and
+// then Merry
+const PINT = { who: 'pippin', text: '“This is a pint!”' };
+const PINTS = { who: 'merry', text: '“It comes in pints?! I’m getting one.”' };
+export const SAYS = {
+  pints: { who: 'pippin', text: 'Pippin: “It comes in pints?” Hold the tap, and let go with the head between the two lines.' },
+  poured: { text: `Three good pints. Pippin: ${PINT.text} Merry: ${PINTS.text}`, lines: [PINT, PINTS] },
+  spilt: { who: 'butterbur', text: 'Butterbur takes the jug off you. “Let me show you, little master.” Try again.' },
+  east: { who: 'strider', text: 'Strider: “This way. Quickly, and quietly.” By dawn you’re through, and the rain has stopped.' },
+};
+
 export const SPEAKERS = { harry: 'Harry the gatekeeper', butterbur: 'Barliman Butterbur', strider: 'Strider', pippin: 'Pippin Took', sam: 'Samwise Gamgee', frodo: 'Frodo' };
 
 // ── the Nazgûl ──

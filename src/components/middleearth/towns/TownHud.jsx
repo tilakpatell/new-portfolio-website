@@ -1,6 +1,7 @@
-import { forwardRef } from 'react';
+import { forwardRef, useEffect } from 'react';
 import { useVoiced } from '../../../lib/useVoiced';
-import { personVoice } from './talk';
+import { sayVoiced } from '../../../lib/voiced';
+import { nodeVoice, personVoice } from './talk';
 import '../../../styles/lazy/middleearth.css';
 
 // The HUD parts a walkable town shares (the Shire's look: its shire-*
@@ -68,10 +69,29 @@ export function QuestList({ title, quests, next, onClose, onGo, canGo = () => fa
   );
 }
 
+// A line said while it's up, in its speaker's voice (lib/voiced.js): a new
+// line, or its going, stops it, and nothing else. The bubble goes as you
+// step up to a game, and whoever speaks first there goes on speaking.
+function useOwnLine(who, text) {
+  useEffect(() => {
+    if (!who || !text) return undefined;
+    let gone = false;
+    let said = null;
+    sayVoiced(who, text).then((h) => {
+      said = h;
+      if (gone) h?.stop();
+    });
+    return () => {
+      gone = true;
+      said?.stop();
+    };
+  }, [who, text]);
+}
+
 // Who's talking, over their head, and in their own voice where it's been
 // made (`who`: their id in the town's CAST; ./voicelines.js).
 export const Bubble = forwardRef(function Bubble({ who = null, name, line }, ref) {
-  useVoiced(personVoice(who), line);
+  useOwnLine(personVoice(who), line);
   return (
     <div ref={ref} className="shire-bubble" aria-live="polite">
       <div>
@@ -86,7 +106,7 @@ export const Bubble = forwardRef(function Bubble({ who = null, name, line }, ref
 // their number keys), or a button to go on; and, given onLeave, a way out
 // of it (Esc).
 export function Convo({ title, name, node, onPick, onNext, onLeave = null, touch, className = '' }) {
-  useVoiced(node?.who, node?.say); // in the speaker's own voice, where it's been made (lib/voiced.js)
+  useVoiced(nodeVoice(node), node?.say); // in the speaker's own voice, where it's been made (lib/voiced.js)
   if (!node) return null;
   const leave = onLeave && (
     <button type="button" className="btn btn-ghost btn-sm" onClick={onLeave}>

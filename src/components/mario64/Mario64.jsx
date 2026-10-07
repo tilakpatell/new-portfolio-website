@@ -69,7 +69,7 @@ export default function Mario64({ mode = 'page', onExit = null }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const { unlock } = useAchievements();
   const [ui, setUi] = useState({ mode: 'loading' });
-  // Toad and the king in their own voices, where they've been made (lib/voiced.js), with the sound on
+  // Toad, the king and Peach's note in their own voices, where they've been made (lib/voiced.js), with the sound on
   useVoiced(VOICE[ui.dialog?.title], ui.mode === 'dialog' && ui.sound !== false ? ui.dialog?.text : null);
   const [hud, setHud] = useState(null);
   const [fade, setFade] = useState(false);
