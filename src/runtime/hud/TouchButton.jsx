@@ -10,12 +10,23 @@ export default function TouchButton({ size = 64, onPress, onRelease = null, clas
   const held = useRef(null);
   const released = useRef(onRelease);
   released.current = onRelease;
-  useEffect(
-    () => () => {
-      if (held.current != null) released.current?.();
-    },
-    [],
-  );
+  // let go when it goes, or when the window does (another app, a call: the
+  // lift can be swallowed), so nothing stays held by itself
+  useEffect(() => {
+    const letGo = () => {
+      if (held.current == null) return;
+      held.current = null;
+      released.current?.();
+    };
+    const hidden = () => document.hidden && letGo();
+    window.addEventListener('blur', letGo);
+    document.addEventListener('visibilitychange', hidden);
+    return () => {
+      window.removeEventListener('blur', letGo);
+      document.removeEventListener('visibilitychange', hidden);
+      letGo();
+    };
+  }, []);
   const release = (e) => {
     if (held.current == null || e.pointerId !== held.current) return;
     held.current = null;
