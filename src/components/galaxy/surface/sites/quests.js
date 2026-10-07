@@ -41,7 +41,7 @@ export const EXTRA = {
     ],
   },
   dagobah: {
-    life: [{ kind: 'yoda', id: 'master', at: [-80, 54], still: true, face: 2.4, name: 'Yoda', named: true, quest: ['lift', 'cave'], says: ['Do. Or do not. There is no try.'] }],
+    life: [{ kind: 'yoda', id: 'master', at: [-80, 54], still: true, face: 2.4, name: 'Yoda', named: true, quest: ['lift', 'cave'], says: ['Do. Or do not. There is no try.', 'Size matters not. Judge me by my size, do you?', 'Mudhole? Slimy? My home this is!', 'Away put your weapon. I mean you no harm.', 'Wars not make one great.', 'Luminous beings are we, not this crude matter.'] }],
     quests: [
       { id: 'lift', name: 'Size matters not', giver: 'master', intro: [['Yoda', 'Your ship, in the swamp it is. Raise it, you will.']], steps: [{ type: 'reach', at: [40, 74], r: 12, text: 'Go to the sunken X-wing' }, { type: 'use', id: 'lift', at: [40, 74], r: 10, prompt: 'Reach out with the Force', text: 'Raise the X-wing', end: [{ signal: 'raise' }, { shake: 0.8 }, { say: [[null, '(The swamp boils. The X-wing rises out of it, dripping, and hangs there over the water.)']] }] }, { type: 'reach', at: [-80, 54], r: 6, text: 'Go back to Yoda' }], done: [['Yoda', 'Judge me by my size, do you? Hmm?']] },
       { id: 'cave', name: 'The cave', giver: 'master', steps: [{ type: 'reach', at: [-70, -120], r: 10, text: 'Go into the cave' }, { type: 'shoot', tag: 'vision', n: 1, text: 'Face what’s inside', lines: [[null, '(A figure in black steps out of the dark.)']], spawn: { kind: 'vader', at: [-66, -114], hp: 4, leash: 14, roam: 2, tag: 'vision', hostile: { range: 14, chase: 1.8, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.75, guard: 3, blade: { color: '#ff3b3b' } } } }], done: [['Yoda', 'Your weapons… you will not need them.']] },
@@ -53,12 +53,12 @@ export const EXTRA = {
       { kind: 'villager', id: 'herder', at: [30, -2], still: true, face: 2, name: 'A kaadu herder', quest: 'kaadurace', says: ['Kaadu run faster than they look.'] },
     ],
     quests: [
-      { id: 'grassfield', name: 'The Great Grass Plains', giver: 'tarpals', intro: [['Captain Tarpals', 'Da droids are coming! Hold da line!']], steps: [{ type: 'shoot', tag: 'droidarmy', n: 12, text: 'Hold the line against the droid army', spawn: [{ kind: 'battledroid', n: 10, at: [400, -380], spread: 25, roam: 10, hp: 1, tag: 'droidarmy', hostile: H(45, 2.6, 7) }, { kind: 'droideka', n: 2, at: [400, -380], spread: 12, roam: 5, hp: 2, tag: 'droidarmy', hostile: { ...H(40, 1.8, 7), shield: 3, burst: { n: 2, gap: 0.12 } } }] }], done: [['Captain Tarpals', 'Wesa free! Mesa tinks yousa savin’ da whole planet.']] },
+      { id: 'grassfield', name: 'The Great Grass Plains', giver: 'tarpals', intro: [['Captain Tarpals', 'Da droids are coming! Hold da line!']], steps: [{ type: 'shoot', tag: 'droidarmy', at: [400, -380], n: 12, text: 'Hold the line against the droid army', spawn: [{ kind: 'battledroid', n: 10, at: [400, -380], spread: 25, roam: 10, hp: 1, tag: 'droidarmy', hostile: H(45, 2.6, 7) }, { kind: 'droideka', n: 2, at: [400, -380], spread: 12, roam: 5, hp: 2, tag: 'droidarmy', hostile: { ...H(40, 1.8, 7), shield: 3, burst: { n: 2, gap: 0.12 } } }] }], done: [['Captain Tarpals', 'Wesa free! Mesa tinks yousa savin’ da whole planet.']] },
       { id: 'kaadurace', name: 'Kaadu run', giver: 'herder', steps: [{ type: 'ride', kind: 'kaadu', text: 'Get on a kaadu' }, { type: 'race', ride: 'kaadu', gates: [[60, 60], [70, 120], [-40, 200], [-130, 290]], r: 12, time: 60, text: 'Race to the falls' }], done: [[null, '(The kaadu honks, very pleased with itself.)']] },
     ],
   },
   kamino: {
-    life: [{ kind: 'kaminoan', id: 'taunwe', at: [10, 140], still: true, face: 3, name: 'Taun We', named: true, quest: 'jango', says: ['The Prime Minister expects you.'] }],
+    life: [{ kind: 'kaminoan', id: 'taunwe', at: [10, 140], still: true, face: 3, name: 'Taun We', named: true, quest: 'jango', says: ['The Prime Minister expects you.', 'Master Jedi. So good to see you. The Prime Minister expects you.', 'I trust you will find everything you need. The clones are most impressive.', 'They are totally obedient, taking any order without question.'] }],
     quests: [
       { id: 'jango', name: 'The bounty hunter', giver: 'taunwe', intro: [['Taun We', 'Jango Fett is preparing to leave. His ship is on the far platform.']], steps: [{ type: 'reach', at: [-170, -50], r: 20, text: 'Get to Slave I’s landing platform' }, { type: 'shoot', tag: 'jango', n: 1, text: 'Bring down Jango Fett', spawn: { kind: 'jango', at: [-170, -40], hp: 6, roam: 4, tag: 'jango', hostile: H(30, 1.2, 10) } }], done: [[null, '(Slave I lifts off without him for once. Well: almost.)']] },
     ],
