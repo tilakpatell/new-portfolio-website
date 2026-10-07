@@ -233,7 +233,7 @@ describe('a rift', () => {
     const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < 300; i++) {
       const from = i % 2 ? 'marvel' : null;
-      const id = riftExit(from, rand);
+      const id = riftExit(from, null, rand);
       expect(GOALS[id], id).toBeTruthy();
       expect(id).not.toBe(from);
       expect(id).not.toBe(MAW.id);
@@ -242,6 +242,15 @@ describe('a rift', () => {
     }
     expect(seen.has('aurelia')).toBe(true);
     expect(seen.has('home')).toBe(true);
+  });
+
+  it('takes you somewhere you haven’t been, while there is somewhere left', () => {
+    const all = [...new Set(Array.from({ length: 4000 }, (_, i) => riftExit(null, null, () => (i + 0.5) / 4000)))];
+    expect(all.length).toBeGreaterThan(5);
+    const [left, ...been] = all;
+    for (let i = 0; i < 50; i++) expect(riftExit(been[0], new Set(been), () => i / 50)).toBe(left);
+    // (been everywhere: anywhere but here)
+    for (let i = 0; i < 50; i++) expect(riftExit(been[0], new Set(all), () => i / 50)).not.toBe(been[0]);
   });
 });
 

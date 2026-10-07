@@ -212,9 +212,12 @@ export function parkFor(id, from) {
 // the one you're at (`fromId`, or null for nowhere) and the Maw (nobody's
 // thrown into a black hole), never a part of one (the Citadel's domes)
 const RIFT_EXITS = Object.keys(GOALS).filter((id) => id !== MAW.id && !id.includes('-'));
-export function riftExit(fromId = null, rand = Math.random) {
+// (somewhere you haven't been, from `saw`, while there's anywhere left)
+export function riftExit(fromId = null, saw = null, rand = Math.random) {
   const exits = RIFT_EXITS.filter((id) => id !== fromId);
-  return exits[Math.min(exits.length - 1, Math.floor(rand() * exits.length))];
+  const fresh = saw ? exits.filter((id) => !saw.has(id)) : exits;
+  const pool = fresh.length ? fresh : exits;
+  return pool[Math.min(pool.length - 1, Math.floor(rand() * pool.length))];
 }
 
 // Where a rift opens: ahead of the ship and off to one side, at its height,
