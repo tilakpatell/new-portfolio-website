@@ -306,7 +306,7 @@ export const ASSAULTS = {
       { name: 'The Temple’s doors', posts: ['templedoor'], tickets: 70 },
     ],
     tickets: { attack: 90, defend: 120 },
-    hideLife: ['clone', 'jedi', 'villager', 'senateguard'],
+    hideLife: ['clone', 'jedi', 'yoda', 'villager', 'senateguard'],
     ends: {
       won: 'The Temple holds',
       lost: 'The Temple is lost',
