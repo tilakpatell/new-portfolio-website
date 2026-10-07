@@ -612,47 +612,47 @@
     "by": "local"
   },
   "cronhouse": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "croncar": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "purgecottage": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "purgebarn": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "purgesiren": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "purgewell": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "gazorpgate": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "suckulent": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "birdperch": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "gearbig": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   },
   "gearcog": {
-    "status": "meshy",
+    "status": "done",
     "by": "local"
   }
 }

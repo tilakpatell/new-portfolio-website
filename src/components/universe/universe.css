@@ -1525,6 +1525,11 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .start-remember input { width: 16px; height: 16px; accent-color: var(--accent-text); }
 .start-note { margin-top: 0.85rem; color: var(--muted); font-size: 0.78rem; line-height: 1.5; }
 
+/* on a hyperlane (lanePilot.js's rideLine): a plain line over the arms */
+.universe-lane { position: absolute; left: 50%; bottom: 5.5rem; transform: translateX(-50%); margin: 0; padding: 0.35rem 0.8rem; border-radius: 999px; background: rgb(6 10 20 / 0.6); color: #dbe9ff; font-size: 0.8rem; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.universe-lane-tier { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.7rem; color: #9fd8ff; }
+.universe-lane kbd { font: inherit; padding: 0 0.3rem; border: 1px solid rgb(255 255 255 / 0.35); border-radius: 4px; }
+
 /* what you've just earned (EarnNote.jsx): a moment over the HUD's own note
    (.universe-prompt), in the same pill; a level reached in the engine's colour */
 .universe-earn {

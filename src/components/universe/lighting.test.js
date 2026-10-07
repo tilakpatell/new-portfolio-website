@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STARS, dayYaw, daySideApproach, lightAt, sunFor, weightOf } from './lighting';
 import { POSITIONS, SUN } from './layout';
+import { WONDERS } from './deep';
 
 const len = (a) => Math.hypot(...a);
 const norm = (a) => a.map((v) => v / len(a));
@@ -54,7 +55,7 @@ describe('which star lights a point', () => {
 
   it('tints the ambient toward a nebula you’re in', () => {
     const plain = lightAt([200, 0, 0]).ambient;
-    const veil = lightAt([-2230, 505, 4725]).ambient;
+    const veil = lightAt(WONDERS.find((w) => w.id === 'veil').at).ambient;
     expect(veil).not.toEqual(plain);
   });
 
@@ -108,8 +109,9 @@ describe('the worlds in their stars’ light', () => {
     for (const [id, at] of Object.entries(POSITIONS)) expect(lightAt(at).key.strength, id).toBeCloseTo(2.35, 2);
   });
   it('far out past the stars the light falls toward its floor', () => {
-    // (half way between the main map and the Rick and Morty sector, layout.js: past both their suns)
-    const l = lightAt([0, 0, -20000]);
+    // (out past the main map's edge on the far side from the Rick and Morty
+    // sector, layout.js: past both their suns' reaches since the spread)
+    const l = lightAt([0, 0, 60000]);
     expect(l.key.strength).toBeLessThan(1.5);
     expect(l.key.strength).toBeGreaterThanOrEqual(0.9);
   });

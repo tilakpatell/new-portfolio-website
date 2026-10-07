@@ -16,4 +16,12 @@ describe('the worlds', () => {
     expect(worldAt('/home')).toBeNull();
     expect(worldAt('/')).toBeNull();
   });
+
+  it('are the closest one when a world sits inside another’s address', () => {
+    expect(worldAt('/dot-matrix/64').to).toBe('/dot-matrix/64');
+    expect(worldAt('/dot-matrix/64/castle').to).toBe('/dot-matrix/64');
+    expect(worldAt('/dot-matrix/minecraft').to).toBe('/dot-matrix/minecraft');
+    expect(worldAt('/dot-matrix/tetris').to).toBe('/dot-matrix');
+    expect(worldAt('/deathstar').to).toBe('/deathstar');
+  });
 });

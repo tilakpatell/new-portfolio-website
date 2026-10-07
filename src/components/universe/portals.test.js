@@ -82,7 +82,8 @@ describe('the portals between the sectors', () => {
     let s = spawn('home');
     const park = parkFor('rmportal', [s.x, s.z]);
     let through = null;
-    for (let t = 0; t < 60 && !through; t += 1 / 60) {
+    // (the Rick and Morty planet is 80 s out at cruise since the spread, scale.js's SPREAD)
+    for (let t = 0; t < 100 && !through; t += 1 / 60) {
       const a = autopilot(s, 'rmportal', park, undefined, 1);
       const next = step(s, a.input, 1 / 60).ship;
       through = portalHit(s, next);

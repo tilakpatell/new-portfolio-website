@@ -20,6 +20,7 @@ export const WORLD_MB = {
   '/scranton': 5, // the office cast and set (the walkable office and the one from above share them)
   '/galaxy': 8, // drawn in code (its planets, most of its ships), but for the big ships, the Death Star and its trench, Slave I and the Falcon; and down on a world, its models (its people, walkers, landmarks: a few MB a world)
   '/deathstar': 1, // drawn in code, but for the X-wing (a third of an MB)
+  '/deathstar/inside': 6, // aboard the station: the first room's kit and textures at phone size, and the cast it starts with (people, guns, the borrowed clips)
   '/middle-earth': 1, // drawn in code too, but for two places on the map (under a tenth of an MB)
   '/music': 7, // the music planet's courtyard: its instruments, chhatri, lamps and gaddi (Meshy models), sandstone, a dusk sky
   '/dot-matrix': 1, // drawn in code
@@ -28,5 +29,9 @@ export const WORLD_MB = {
   '/dot-matrix/minecraft': 2, // drawn in code from the pack's tiles: the block strip, the skins and the sky's and HUD's sprites (under a tenth of an MB today)
 };
 
-// The world a path is in: '/middle-earth/moria' is Middle-earth.
-export const worldAt = (pathname) => WORLDS.find((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)) ?? null;
+// The world a path is in: '/middle-earth/moria' is Middle-earth. Some
+// worlds sit inside another's address ('/dot-matrix/64' inside
+// '/dot-matrix'), so the longest match wins: each gets its own download size
+// and its own phone gate, not its parent's.
+export const worldAt = (pathname) =>
+  WORLDS.filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
