@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Revision 2 (read first):** the spec's section 8 lists amendments B1–B6 (and A5–A8, A13, A19, C3, which change what you write against). In short: Flying is the brief, not copy (B1); 13 world cards, galaxy and Death Star in chapter 3, first sentence from `PAGES[key].about` (B2); no achievements target, fold into the checklist chapter (B3); the hiring tour's stop order and targets changed, chapter 7 is `heavy` with a phone version, the end card uses `actions` (B4); the time budget and word caps (B5); end chapters `path: null`, the ships stop reads `ctx.ship` (B6); the stop shape in the Global Constraints below is superseded by spec 3.2 as amended (`actions`, `release`, `wait`; chapter `brief`, `heavy`, `path: null`); the visitor-facing name is "the hiring tour" (C3). Mixed composes by chapter id (spec 3.6).
+
 **Goal:** Write the recruiter, player and mixed tours (chapters and stops), mark their targets in the pages, add the two achievements, and a Playwright walker that takes every tour end to end.
 
 **Architecture:** Copy in `src/components/tour/chapters/{shared,recruiter,player}.js`, exported through `steps.js`'s `TOURS` as chapter lists; `data-tour` markers on the pages' own headings and controls; `scripts/tour-check.mjs` modelled on `scripts/autopilot-check.mjs`. Written against stream A's interfaces (`docs/superpowers/plans/2026-10-07-tours-engine.md`, Tasks 1–3 and 6); rebase on A before the pull request.
