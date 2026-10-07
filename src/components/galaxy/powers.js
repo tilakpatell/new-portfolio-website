@@ -380,6 +380,7 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
       clearRun();
       st = fx && kind ? createPowers(kind, { charge: readKept(session.get(), kind) }) : null;
       m = modsOf(st);
+      this.keep(); // (another crew's charge gone at once: a crew change starts from nothing, and stays so if you change back)
     },
 
     // G or X: on, if it can be (the scene has checked you're flying); what
@@ -411,9 +412,15 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
       return { ok: false, why };
     },
 
-    // what your guns did, toward the big one ('hit', 'kill', 'ace', 'objective')
+    // what your guns did, toward the big one ('hit', 'kill', 'ace', 'objective');
+    // a kill's charge kept at once, not at the next of the every-two-seconds
+    // writes (at a low frame rate those are far apart, and a landing may
+    // come first)
     gain(what) {
-      if (charge(st, what)) say('ready', 'ultimate', st.ultimate.id);
+      if (!st) return;
+      const full = charge(st, what);
+      if (full) say('ready', 'ultimate', st.ultimate.id);
+      if (full || what !== 'hit') this.keep();
     },
     get mods() {
       return m;
