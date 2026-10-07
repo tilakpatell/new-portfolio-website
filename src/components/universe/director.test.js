@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { EVENTS, INTENSITY, PACE, canHave, createDirector, withWhere } from './director';
+import { EVENTS, INTENSITY, PACE, ZONES, canHave, createDirector, playAs, withWhere, zoneOf } from './director';
 import { SIDES } from './sides';
+import { regionAt, REGIONS } from './regions';
+import { LANES, carriageway, laneAt } from './hyperlanes';
+import { bezier } from './lanes';
+import { PLACES } from './deep';
 
 // a seeded random, so a run is the same every time
 const seeded = (seed = 7) => () => {
@@ -188,5 +192,79 @@ describe('the drama’s pace', () => {
     for (let i = 0; i < 6; i++) d3.update(0.5, { side: SIDES.starwars, heat: i, hurt: 0 });
     before = d3.intensity;
     expect(before).toBeGreaterThan(INTENSITY.kill * 3);
+  });
+});
+
+describe('where you are: a place, a lane or the void', () => {
+  const picks = (zone, side = SIDES.starwars, seed = 3) => {
+    const d = createDirector({ rand: seeded(seed) });
+    return run(d, 24000, { side, zone, travelling: zone !== 'place' }).map((g) => g.e);
+  };
+
+  it('says where every event can happen, and only ever there', () => {
+    expect(ZONES).toEqual(['place', 'lane', 'void']);
+    for (const [id, e] of Object.entries(EVENTS)) {
+      expect(e.zones?.length, id).toBeGreaterThan(0);
+      for (const z of e.zones) expect(ZONES, id).toContain(z);
+    }
+    for (const id of ['hunt', 'distress', 'remover', 'eclipse', 'escort', 'meteors', 'convoy']) expect(EVENTS[id].zones, id).toContain('place');
+    for (const id of ['interdiction', 'lanejam', 'convoy', 'ambush']) expect(EVENTS[id].zones, id).toContain('lane');
+    for (const id of ['leviathan', 'comet', 'rift', 'flare', 'supernova', 'bounty']) expect(EVENTS[id].zones, id).toContain('void');
+    for (const id of ['destroyer', 'council', 'roadblock']) expect(EVENTS[id].zones, id).toEqual(['place', 'lane']);
+    // (a hunt never comes into a lane: on one, it is the ambush at your off-ramp)
+    expect(EVENTS.hunt.zones).not.toContain('lane');
+  });
+
+  it('on a lane brings only what can happen on a lane', () => {
+    const got = picks('lane');
+    expect(got.length).toBeGreaterThan(150);
+    for (const e of got) expect(EVENTS[e].zones, e).toContain('lane');
+    const kinds = new Set(got);
+    for (const id of ['interdiction', 'lanejam', 'convoy', 'ambush']) expect(kinds.has(id), id).toBe(true);
+  });
+
+  it('in the void brings only what can happen in the void, and at a place only what can there', () => {
+    for (const zone of ['void', 'place']) {
+      const got = picks(zone);
+      expect(got.length, zone).toBeGreaterThan(150);
+      for (const e of got) expect(EVENTS[e].zones, `${zone} ${e}`).toContain(zone);
+    }
+  });
+
+  it('leaves the lane’s own events out where it isn’t told where you are (the galaxy’s map)', () => {
+    const got = run(createDirector({ rand: seeded(11) }), 6000, { side: SIDES.starwars });
+    for (const { e } of got) expect(['interdiction', 'lanejam', 'ambush']).not.toContain(e);
+    expect(got.length).toBeGreaterThan(40);
+  });
+
+  it('plays the capital ships as an interdiction on a lane, and a hunt as the ambush', () => {
+    for (const id of ['destroyer', 'council', 'roadblock']) {
+      expect(playAs(id, 'lane'), id).toBe('interdiction');
+      expect(playAs(id, 'place'), id).toBe(id);
+    }
+    expect(playAs('hunt', 'lane')).toBe('ambush');
+    expect(playAs('hunt', 'place')).toBe('hunt');
+    expect(playAs('comet', 'lane')).toBe('comet');
+  });
+
+  it('knows a place, a lane and the void when it sees one', () => {
+    const rules = { regionAt, laneAt };
+    for (const p of PLACES.slice(0, 12)) expect(zoneOf({ x: p.at[0], y: p.at[1], z: p.at[2] }, rules), p.id).toBe('place');
+    for (const lane of LANES.filter((l) => l.tier !== 'local' || l.name !== 'The home ring').slice(0, 10)) {
+      const [x, y, z] = bezier(carriageway(lane, 'out'), 0.5);
+      expect(zoneOf({ x, y, z }, rules), lane.id).toBe('lane');
+    }
+    // (out between the regions, off every lane)
+    let found = 0;
+    for (let a = 0; a < 64 && found < 3; a++) {
+      const r = 20000 + (a % 8) * 2500;
+      const x = Math.cos(a * 0.7) * r;
+      const z = Math.sin(a * 0.7) * r;
+      if (regionAt(x, 400, z) || laneAt(x, 400, z)) continue;
+      expect(zoneOf({ x, y: 400, z }, rules)).toBe('void');
+      found += 1;
+    }
+    expect(found).toBe(3);
+    expect(REGIONS.length).toBeGreaterThan(1);
   });
 });

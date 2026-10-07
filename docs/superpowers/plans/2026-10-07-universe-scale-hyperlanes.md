@@ -175,8 +175,8 @@ Branch `claude/universe-spread` from `origin/main`. Touches none of Lane B’s f
 **Interfaces:**
 - Produces: `ZONES = ['place', 'lane', 'void']`; every `EVENTS` entry gains `zones` (the spec §8 table: place: hunt, distress, remover, eclipse, escort, meteors, convoy; lane: interdiction, lanejam, convoy, ambush; void: leviathan, comet, rift, flare, supernova, bounty; `destroyer`, `council`, `roadblock` are `['place', 'lane']`). `update` keeps returning the id; a new pure `playAs(id, zone) -> id` maps those three to `'interdiction'` and `hunt` to `'ambush'` when `zone === 'lane'`, and the scene plays `playAs`’s id. `update(dt, { …, zone })` picks only events whose `zones` has `zone`; `zoneOf(ship, { regionAt, laneAt }) -> zone`.
 
-- [ ] **Step 1: Write the failing tests:** on a lane with a Star Wars side the picks over 200 seeded updates are only lane events; in the void only void events; `playAs('destroyer', 'lane')` is `'interdiction'`, `playAs('destroyer', 'place')` is `'destroyer'`; `zoneOf` at a member’s position is `'place'`, on a carriageway `'lane'`, elsewhere `'void'`.
-- [ ] **Step 2: Fail. Step 3: Implement. Step 4: Green. Commit.**
+- [x] **Step 1: Write the failing tests:** on a lane with a Star Wars side the picks over 200 seeded updates are only lane events; in the void only void events; `playAs('destroyer', 'lane')` is `'interdiction'`, `playAs('destroyer', 'place')` is `'destroyer'`; `zoneOf` at a member’s position is `'place'`, on a carriageway `'lane'`, elsewhere `'void'`.
+- [x] **Step 2: Fail. Step 3: Implement. Step 4: Green. Commit.**
 
 ### Task 2: the lane events in the scene
 
