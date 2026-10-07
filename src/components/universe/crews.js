@@ -643,6 +643,10 @@ export const CREWS = [
         ['morty', 'The Citadel of Ricks!'],
         ['rick', 'A whole city of me, Morty. Worst place in the multiverse.'],
       ],
+      curvesun: [
+        ['morty', 'Rick, wh-why does this sun look kinda green?'],
+        ['rick', 'Everything in the Curve’s a little off, Morty. We built it that way. Well, they did. Me. Other me.'],
+      ],
       maw: [
         ['morty', 'Rick, why’s the light all bendy?'],
         ['rick', 'Black hole, Morty. Fly in there and you’re spaghetti. Literal spaghetti.'],
@@ -1306,6 +1310,10 @@ export const CREWS = [
         ['luke', 'A whole city out here, full of… the same old man?'],
         ['r2', '[a confused warble]'],
       ],
+      curvesun: [
+        ['luke', 'This star’s light is… greener than Tatooine’s twins.'],
+        ['r2', '[an unimpressed beep]'],
+      ],
       maw: [
         ['luke', 'A black hole. Keep us well clear, Artoo.'],
         ['r2', '[an emphatic beep]'],
@@ -1934,6 +1942,7 @@ export const CREWS = [
         ['han', 'Yeah. I see them. Ships don’t end up like that by accident, Chewie.'],
       ],
       citadel: [['han', 'A station full of the same crazy old guy. I’ve seen worse cantinas.']],
+      curvesun: [['han', 'Green sun. Whatever this place is, it isn’t on any of my charts.']],
       maw: [['han', 'Black hole. Even the Falcon can’t outrun that.']],
       aurelia: [['han', 'Big planet. Probably full of smugglers.']],
       glacia: [['han', 'I’ve had enough ice planets for one lifetime.']],
@@ -2646,6 +2655,10 @@ export const CREWS = [
       citadel: [
         ['jesse', 'A whole city of the same old dude?'],
         ['walt', 'Imagine their supply chain.'],
+      ],
+      curvesun: [
+        ['jesse', 'Yo, the sun is green. Like, actually green.'],
+        ['walt', 'A different spectrum entirely. Different chemistry, Jesse.'],
       ],
       maw: [
         ['walt', 'A black hole, Jesse. Not even light gets out.'],

@@ -54,7 +54,7 @@
 // rate into a wall.
 
 import { DEEP, DEEP_SOLIDS, WONDERS, driveOpen, easeOpen, gapAlong, openness, reachOf, trenchBand } from './deep';
-import { BODIES, HOME_RADIUS, MAP_RADIUS, POSITIONS, REACH, SUN } from './layout';
+import { BODIES, HOME_RADIUS, POSITIONS, REACH, SECTOR_RADIUS, SUN, sectorOf, sectorOut } from './layout';
 import { MAW } from './maw';
 import { NOSE, UP, axisAngle, conj, fromAngles, mul, normalize, rotate, toAngles, turnToward } from './orient';
 import { byId } from './universes';
@@ -252,7 +252,8 @@ export function parkAt(id, from = [0, HOME_RADIUS]) {
     const z = p.at[2] + dz * d;
     let clear = Infinity;
     for (const o of SOLIDS) if (o !== p) clear = Math.min(clear, Math.sqrt((x - o.at[0]) ** 2 + (z - o.at[2]) ** 2) - o.reach);
-    const inMap = Math.sqrt(x * x + z * z) < MAP_RADIUS + 30;
+    const { sec, out } = sectorOut(x, z);
+    const inMap = out < SECTOR_RADIUS[sec.id] + 30;
     // (clear of the others: up to 4, less the less clear it is; a spot not quite clear never outscores one that is)
     const day = sun ? (dx * sun[0] + dz * sun[2]) / sl : 0;
     const score = dx * ax + dz * az + (4 * Math.min(clear, ORBIT_IN + 0.2)) / (ORBIT_IN + 0.2) + (inMap ? 2 : 0) + (day >= -1e-9 ? 3 : 0);
@@ -272,9 +273,10 @@ export function parkAt(id, from = [0, HOME_RADIUS]) {
 const startOff = (reach, r) => Math.max(reach * 1.15 + 12, r * 2.4);
 export const STARTS = [
   { id: 'sun', at: SUN.at, y: SHIP.height, d: HOME_RADIUS + 1.5 }, // (the home system's middle)
-  ...PLANETS.filter((p) => byId(p.id).kind !== 'core').map((p) => ({ id: p.id, at: p.at, y: p.at[1] + SHIP.height, d: startOff(p.reach, p.r) })),
+  // (all in the main sector: the Rick and Morty sector is through its portal)
+  ...PLANETS.filter((p) => byId(p.id).kind !== 'core' && sectorOf(...p.at) === 'main').map((p) => ({ id: p.id, at: p.at, y: p.at[1] + SHIP.height, d: startOff(p.reach, p.r) })),
   // (off a wonder: clear of its solid, which can reach past the wonder's own radius: a pulsar's glare)
-  ...WONDERS.filter((w) => w.id !== MAW.id).map((w) => ({ id: w.id, at: w.at, y: w.at[1], d: startOff(reachOf(w), w.solid === false ? 0 : (DEEP_SOLIDS.find((o) => o.id === w.id)?.r ?? w.r)) })),
+  ...WONDERS.filter((w) => w.id !== MAW.id && sectorOf(...w.at) === 'main').map((w) => ({ id: w.id, at: w.at, y: w.at[1], d: startOff(reachOf(w), w.solid === false ? 0 : (DEEP_SOLIDS.find((o) => o.id === w.id)?.r ?? w.r)) })),
 ];
 // the near edge of the home system, facing its middle: where a ship starts
 // unless told otherwise
@@ -414,13 +416,17 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
   const spin = Math.sqrt(tipRate * tipRate + rate * rate + rollRate * rollRate);
   if (spin > 1e-9) q = normalize(mul(q, axisAngle([tipRate / spin, rate / spin, -rollRate / spin], spin * dt)));
 
-  // turned back at the edge: the nose comes round toward the middle
-  const out = Math.sqrt(s.x * s.x + s.z * s.z);
-  if (out > space.edge - 2) {
-    const k = clamp((out - (space.edge - 2)) / 2, 0, 1);
+  // turned back at the edge: the nose comes round toward the middle (of
+  // the sector it's in: layout.js's SECTORS, each with an edge of its own;
+  // the main one's is space.edge)
+  const { sec, out } = sectorOut(s.x, s.z);
+  const [ox, , oz] = sec.origin;
+  const edgeR = sec.id === 'main' ? space.edge : sec.edge;
+  if (out > edgeR - 2) {
+    const k = clamp((out - (edgeR - 2)) / 2, 0, 1);
     const f = rotate(q, NOSE);
     const level = Math.hypot(f[0], f[2]);
-    q = turnToward(q, [(-s.x / out) * level, f[1], (-s.z / out) * level], 2.2 * dt * k);
+    q = turnToward(q, [(-(s.x - ox) / out) * level, f[1], (-(s.z - oz) / out) * level], 2.2 * dt * k);
   }
 
   // the ceiling and the floor: going out toward one, the nose is never
@@ -463,14 +469,14 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
   let y = s.y + (f[1] * speed + lift) * dt;
   let z = s.z + f[2] * speed * dt;
   let v = speed;
-  const r = Math.sqrt(x * x + z * z);
+  const r = Math.hypot(x - ox, z - oz);
   const ceil = space.ceilingAt(x, z);
-  let edge = s.edge && (r > space.edge - 1 || Math.abs(y) > ceil - 1); // clears once well back inside
-  if (r > space.edge) {
-    x *= space.edge / r;
-    z *= space.edge / r;
+  let edge = s.edge && (r > edgeR - 1 || Math.abs(y) > ceil - 1); // clears once well back inside
+  if (r > edgeR) {
+    x = ox + (x - ox) * (edgeR / r);
+    z = oz + (z - oz) * (edgeR / r);
   }
-  if (r > space.edge) {
+  if (r > edgeR) {
     if (!edge) events.push({ type: 'edge' });
     edge = true;
   } else if (Math.abs(y) > ceil) edge = true; // (eased back from the ceiling or the floor without a word)
