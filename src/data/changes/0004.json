@@ -1,0 +1,22 @@
+{
+  "id": 4,
+  "date": "2026-10-07",
+  "title": "One family of easing, and a scene’s first frame fades in",
+  "kind": "graphics",
+  "summary": "The site’s transitions used 48 different easing curves, many near copies of each other. Four named ones now cover 74 of those places, so a card settling, a panel opening and a chip bouncing all move the same way. A page’s 3D scene also fades in over its first frame instead of popping, and two fades that moved by the frame now move by the clock.",
+  "routes": [
+    "/home",
+    "/projects"
+  ],
+  "pr": 429,
+  "shots": [
+    "/changes/0004-a.webp",
+    "/changes/0004-b.webp"
+  ],
+  "measured": {
+    "js": 11939997,
+    "note": "Distinct easing curves 48 → 38; 74 sites on 4 tokens. Total JS unchanged (entry 160 kB)."
+  },
+  "session": "session_016pYnq331w6Gi6gHxQ3fbS5",
+  "reverted": null
+}

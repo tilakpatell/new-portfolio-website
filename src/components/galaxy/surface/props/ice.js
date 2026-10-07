@@ -30,13 +30,13 @@ const hot = (c, k = 2) => new THREE.Color(c).multiplyScalar(k);
 // a material of the props' own, made once per kit: ice (a little glossy),
 // snow (soft and matte)
 const mat = (k, key, make) => (k[key] ??= k.own(make()));
-const iceMat = (k) => mat(k, '_ice', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.06 }));
+export const iceMat = (k) => mat(k, '_ice', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.06 }));
 const snowMat = (k) => mat(k, '_snow', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 }));
 
 // parts baked into one mesh with a material of the props' own; `shade`
 // (x, y, z) → [r, g, b] multipliers tints it vertex by vertex (blue in the
 // ice's depths, darker inside a cave)
-function meshOf(k, parts, material, { shadows = true, density = 0.18, shade = null } = {}) {
+export function meshOf(k, parts, material, { shadows = true, density = 0.18, shade = null } = {}) {
   const geo = bake(parts, density);
   if (shade) {
     const p = geo.attributes.position;
@@ -54,7 +54,7 @@ function meshOf(k, parts, material, { shadows = true, density = 0.18, shade = nu
 
 // a geometry made rough, as ice and rock are: each vertex pushed about by
 // noise of where it is (so pieces that meet stay met), pinned at the base
-function roughen(g, { amp = 1.5, scale = 9, seed = 1, base = true, fine = 0.35 } = {}) {
+export function roughen(g, { amp = 1.5, scale = 9, seed = 1, base = true, fine = 0.35 } = {}) {
   const p = g.attributes.position;
   const n = (a, b, s) => noise2(a / scale, b / scale, s) + noise2(a / (scale * 0.3), b / (scale * 0.3), s + 3) * fine;
   for (let i = 0; i < p.count; i++) {
@@ -76,7 +76,7 @@ function roughBox(w, h, d, at, o = {}) {
 }
 // ice's own variation: bluer in streaks and lower down, whiter on top;
 // `inside` (x, y, z) → true where it's a cave's or a hangar's inside
-const iceShade = (inside = null) => (x, y, z) => {
+export const iceShade = (inside = null) => (x, y, z) => {
   const n = noise2(x / 9 + y / 14, z / 9 - y / 11, 5) * 0.5 + noise2(x / 3, z / 3 + y / 4, 6) * 0.2;
   const deep = Math.max(0, Math.min(1, 0.5 - n)) * 0.22 + (inside?.(x, y, z) ? 0.3 : 0);
   return [1 - deep * 1.4, 1 - deep * 0.8, 1 - deep * 0.25];

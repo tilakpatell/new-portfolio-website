@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { B, ball, cyl } from '../../shire/props';
 import { basin } from './common';
+import { sharpen } from '../../../../lib/three/textures';
 
 // a banner: black with the White Tree (Gondor), or green with the white horse (Rohan)
 function banner(gondor) {
@@ -43,6 +44,7 @@ function banner(gondor) {
     g.fill();
   }
   const tex = new THREE.CanvasTexture(cv);
+  sharpen(tex);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }

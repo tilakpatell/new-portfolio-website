@@ -19,6 +19,7 @@ import { loadPeople } from '../../office/people';
 import { loadPbr, loadTexture } from '../../../lib/hdri';
 import { ABQ } from '../wardrobe';
 import { ROWS } from './rules';
+import { sharpen } from '../../../lib/three/textures';
 
 const SEAT = 0.48; // the wheelchair's seat
 const HECTOR = new THREE.Vector3(-0.25, 0, 0.62);
@@ -107,6 +108,7 @@ function paintDesert() {
     g.fill();
   }
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

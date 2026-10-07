@@ -5,7 +5,7 @@
 // Node; HeroPanel.jsx offers it, pages/GalaxySurface.jsx reads it, and
 // surface/scene.js walks the hero in the lead of the party.
 //
-//   HEROES                   the roster, in order: { id, name, tall, src, weapon ('saber' | a gun kind), bolt, saber?, blurb, film }
+//   HEROES                   the roster, in order: { id, name, tall, src, weapon ('saber' | a gun kind), bolt, saber?, abilities { power, second } (surface/abilityRules.js's kinds, on G and V), blurb, film, side ('galaxy' | 'elsewhere': the crews from other universes walk here too) }
 //   SABER_COLORS, HILTS      what a saber can be: { id, name, hex } and { id, name, ... }
 //   HERO_KEY                 the localStorage key
 //   readHero(raw, ship)      the choice, made good: { id, color, hilt, stance, gun, mods, perks } (the ship's own lead when nothing's kept or it's nonsense; the stance is combatRules.js's, the gun and mods weaponRules.js's)
@@ -40,20 +40,27 @@ export const HILTS = [
   { id: 'temple', name: 'Temple guard', about: 'A long hilt in Jedi gold and bronze.', length: 0.3, emitter: 'shroud', grip: 'ribbed', metal: '#c8a860', trim: '#4a3a20' },
 ];
 
+// (each hero's own two abilities, G then V: what the films give them)
 export const HEROES = [
-  { id: 'luke', name: 'Luke Skywalker', tall: 1.72, src: { url: crew('luke') }, weapon: 'saber', bolt: '#5cff6a', saber: { color: 'green', hilt: 'luke', stance: 'single' }, blurb: 'A farm boy from Tatooine, a Jedi by the end.', film: 'The Original Trilogy' },
-  { id: 'leia', name: 'Leia Organa', tall: 1.5, src: { url: crew('leia') }, weapon: 'blaster', bolt: '#ff3b30', blurb: 'A princess, a senator, a general. Shoots better than the boys.', film: 'The Original Trilogy' },
-  { id: 'han', name: 'Han Solo', tall: 1.85, src: { url: crew('han') }, weapon: 'blaster', bolt: '#ff4a3d', blurb: 'Captain of the Millennium Falcon. Shot first.', film: 'The Original Trilogy' },
-  { id: 'chewie', name: 'Chewbacca', tall: 2.28, src: { url: '/models/cockpit/chewie.glb' }, weapon: 'bowcaster', bolt: '#ff4a3d', blurb: 'Two hundred years old and still winning arguments.', film: 'The Original Trilogy' },
-  { id: 'ahsoka', name: 'Ahsoka Tano', tall: 1.85, src: { url: crew('ahsoka') }, weapon: 'saber', bolt: '#f4f8ff', saber: { color: 'white', hilt: 'ahsoka', stance: 'dual' }, blurb: 'No longer a Jedi. Still the best of them.', film: 'The Clone Wars, Ahsoka' },
-  { id: 'bobafett', name: 'Boba Fett', tall: 1.83, src: { url: crew('bobafett') }, weapon: 'rifle', bolt: '#ff6a3d', blurb: 'The best bounty hunter in the galaxy, and he knows it.', film: 'The Original Trilogy, The Book of Boba Fett' },
+  { id: 'luke', name: 'Luke Skywalker', tall: 1.72, src: { url: crew('luke') }, weapon: 'saber', bolt: '#5cff6a', saber: { color: 'green', hilt: 'luke', stance: 'single' }, abilities: { power: 'push', second: 'pull' }, blurb: 'A farm boy from Tatooine, a Jedi by the end.', film: 'The Original Trilogy', side: 'galaxy' },
+  { id: 'leia', name: 'Leia Organa', tall: 1.5, src: { url: crew('leia') }, weapon: 'blaster', bolt: '#ff3b30', abilities: { power: 'overcharge', second: 'medpack' }, blurb: 'A princess, a senator, a general. Shoots better than the boys.', film: 'The Original Trilogy', side: 'galaxy' },
+  { id: 'han', name: 'Han Solo', tall: 1.85, src: { url: crew('han') }, weapon: 'blaster', bolt: '#ff4a3d', abilities: { power: 'detonator', second: 'overcharge' }, blurb: 'Captain of the Millennium Falcon. Shot first, with the DL-44.', film: 'The Original Trilogy', side: 'galaxy' },
+  { id: 'chewie', name: 'Chewbacca', tall: 2.28, src: { url: '/models/cockpit/chewie.glb' }, weapon: 'bowcaster', bolt: '#ff4a3d', abilities: { power: 'roar', second: 'overcharge' }, blurb: 'Two hundred years old and still winning arguments.', film: 'The Original Trilogy', side: 'galaxy' },
+  { id: 'ahsoka', name: 'Ahsoka Tano', tall: 1.85, src: { url: crew('ahsoka') }, weapon: 'saber', bolt: '#f4f8ff', saber: { color: 'white', hilt: 'ahsoka', stance: 'dual' }, abilities: { power: 'push', second: 'pull' }, blurb: 'No longer a Jedi. Still the best of them.', film: 'The Clone Wars, Ahsoka', side: 'galaxy' },
+  { id: 'bobafett', name: 'Boba Fett', tall: 1.83, src: { url: crew('bobafett') }, weapon: 'ee3', bolt: '#ff6a3d', abilities: { power: 'jetpack', second: 'rocket' }, blurb: 'The best bounty hunter in the galaxy, and he knows it. Flies.', film: 'The Original Trilogy, The Book of Boba Fett', side: 'galaxy' },
+  // (the crews from elsewhere, as the universe's foot party has them: universe/footScene.js's PARTY)
+  { id: 'rick', name: 'Rick Sanchez', tall: 1.88, src: { meshy: 'rick' }, weapon: 'portal', bolt: '#8dff5a', abilities: { power: 'hop', second: 'overcharge' }, blurb: 'The smartest man in the multiverse, with a portal gun and no patience.', film: 'Rick and Morty', side: 'elsewhere' },
+  { id: 'morty', name: 'Morty Smith', tall: 1.6, src: { meshy: 'morty' }, weapon: 'laser', bolt: '#8dff5a', abilities: { power: 'sprint', second: 'medpack' }, blurb: 'Fourteen, nervous, and still here after everything.', film: 'Rick and Morty', side: 'elsewhere' },
+  { id: 'walt', name: 'Walter White', tall: 1.79, src: { url: '/models/albuquerque/walt.glb' }, weapon: 'revolver', bolt: '#ffd36b', abilities: { power: 'fulminate', second: 'overcharge' }, blurb: 'A chemistry teacher. The one who knocks.', film: 'Breaking Bad', side: 'elsewhere' },
+  { id: 'jesse', name: 'Jesse Pinkman', tall: 1.73, src: { url: '/models/albuquerque/jesse.glb' }, weapon: 'pistol', bolt: '#ffd36b', abilities: { power: 'sprint', second: 'overcharge' }, blurb: 'Yeah, science. Quick on his feet, quicker to run.', film: 'Breaking Bad', side: 'elsewhere' },
 ];
 
 const BY_ID = Object.fromEntries(HEROES.map((h) => [h.id, h]));
 export const heroById = (id) => BY_ID[id] ?? null;
 
-// who flies which ship, as the party has it
-const LEADS = { xwing: 'luke', falcon: 'han', cruiser: 'luke', rv: 'luke' };
+// who flies which ship, as the party has it: you walk in as them until you
+// pick someone else
+const LEADS = { xwing: 'luke', falcon: 'han', cruiser: 'rick', rv: 'walt' };
 export const defaultHeroId = (ship) => LEADS[ship] ?? 'luke';
 
 // the choice, from what's kept (a JSON string, an object, or nothing)
@@ -85,5 +92,5 @@ export function heroSpec(hero) {
   const gun = saber ? 'saber' : WEAPONS[hero.gun] && hero.gun !== 'saber' ? hero.gun : h.weapon;
   // (a gun from elsewhere fires yellow; the galaxy's keep the hero's own colour)
   const bolt = saber ? saber.color : WEAPONS[gun]?.side === 'elsewhere' ? '#ffd36b' : h.bolt;
-  return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src: h.src, gun, bolt, saber, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
+  return { id: h.id, name: h.name.split(' ')[0], tall: h.tall, src: h.src, gun, bolt, saber, abilities: h.abilities, mods: saber ? [] : (hero.mods ?? []).filter((m) => MODS[m]).slice(0, MAX_MODS), perks: readPerks(hero.perks), hero: true };
 }

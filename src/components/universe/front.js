@@ -8,7 +8,8 @@
 // for you, paused, till you come back. When it's over the war moves on (the
 // attacker takes the sector if it won), the visit's save remembers it, and a
 // while later the next battle's at the new front. (The Star Wars crews' war
-// is fought in the galaxy, galaxy/gcw.js, not here; Rick and Morty's is here.)
+// is fought in the galaxy, galaxy/gcw.js, not here; Rick and Morty's and
+// Breaking Bad's are here.)
 //
 // zoneOf(dist, was) → 'in' | 'near' | 'out' is pure (tested).
 // createFront(map, { side, war, models, small, tier, reduced, storage, emit,
@@ -25,6 +26,7 @@ import { createBattleScene } from './battleScene';
 import { contested, loadWar, newWar, owner, resolve, saveWar } from './war';
 import { warFor } from './wars';
 import { DEEP } from './deep';
+import { sharpen } from '../../lib/three/textures';
 
 export const ZONE = {
   near: 900, // within sight: the battle's drawn and fought
@@ -56,6 +58,7 @@ function nameCard(title, sub) {
   g.font = '500 22px "JetBrains Mono", ui-monospace, monospace';
   g.fillText(sub, 256, 80);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

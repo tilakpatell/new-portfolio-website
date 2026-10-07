@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { makeThing } from '../bots';
 import { buildSkyline, drum, hash, makeFires, makeSky, makeStrips, merged, platedMaterial, prism, slab, tower, wedge } from './common';
+import { sharpen } from '../../../../lib/three/textures';
 
 const DARK = '#b06bff'; // dark energon
 const RED = '#ff3326';
@@ -40,6 +41,7 @@ function mark(color) {
   }
   g.fillRect(-6, -56, 12, 50);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

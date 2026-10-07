@@ -10,6 +10,7 @@
 // ({ t, x: the exhibit's index, link?, h?: a heading }) or null.
 
 import * as THREE from 'three';
+import { sharpen } from '../../lib/three/textures';
 
 const PAGE_W = 1240; // canvas px, A4
 const PAGE_H = 1754;
@@ -77,8 +78,7 @@ function drawPage(lines, first, n, pages, mark = -1, c = document.createElement(
   g.textAlign = 'center';
   g.fillText(`Page ${pages.i + 1} of ${pages.n}`, PAGE_W / 2, PAGE_H - 60);
   const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 16;
+  sharpen(tex, { color: true });
   return { tex, rects, canvas: c };
 }
 
@@ -104,8 +104,7 @@ function titleBar(title) {
   g.font = '400 40px Arial, sans-serif';
   g.fillText('—     ☐     ✕', 2010, 48);
   const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  sharpen(tex, { color: true });
   return tex;
 }
 

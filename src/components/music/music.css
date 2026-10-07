@@ -4,7 +4,7 @@
 /* ── Tabla ─────────────────────────────────────────────────────────────── */
 .tb2-svg { display: block; width: 100%; max-width: 520px; height: auto; margin-inline: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: pointer; overflow: visible; }
 .tb2-drum { transform-box: fill-box; transform-origin: 50% 50%; }
-.tb2-drum[data-struck] { animation: tb2-struck 0.26s cubic-bezier(0.2, 0.7, 0.3, 1); }
+.tb2-drum[data-struck] { animation: tb2-struck 0.26s var(--ease-smooth); }
 @keyframes tb2-struck { 0% { transform: scale(0.972); } 100% { transform: scale(1); } }
 .tb2-zone { fill: rgba(255, 230, 170, 0); stroke: none; transition: fill 0.15s ease; pointer-events: none; }
 .tb2-zone[data-on] { fill: rgba(255, 230, 170, 0.16); }
@@ -12,7 +12,7 @@
 .tb2-zone-band[data-on] { stroke: rgba(255, 230, 170, 0.2); }
 .tb2-zone-line { stroke: rgba(255, 240, 210, 0); stroke-width: 1; stroke-dasharray: 3 5; transition: stroke 0.15s ease; pointer-events: none; }
 .tb2-zone-line[data-on] { stroke: rgba(255, 240, 210, 0.55); }
-.tb2-ripple { pointer-events: none; animation: tb2-ripple 0.7s cubic-bezier(0.2, 0.6, 0.3, 1) forwards; }
+.tb2-ripple { pointer-events: none; animation: tb2-ripple 0.7s var(--ease-smooth) forwards; }
 .tb2-ripple circle { fill: none; stroke: rgba(255, 246, 225, 0.9); stroke-width: 2; }
 .tb2-ripple text { font: 700 13px/1 var(--font-sans); fill: #fff6e1; paint-order: stroke; stroke: rgba(20, 12, 6, 0.75); stroke-width: 3px; }
 @keyframes tb2-ripple { 0% { transform: scale(0.4); opacity: 1; } 100% { transform: scale(1.9); opacity: 0; } }

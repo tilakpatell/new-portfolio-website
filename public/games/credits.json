@@ -2734,15 +2734,23 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
+<<<<<<< HEAD
   "meshy/nebulon": {
     "source": "https://www.meshy.ai",
     "id": "01a1138c-5903-744b-b5ed-660261d17b02",
     "name": "nebulon, generated for this site with Meshy AI",
+=======
+  "war/superlab": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113a7-902d-70b8-ab2c-882b130ea9ed",
+    "name": "Gus Fring’s superlab barge, generated for this site with Meshy AI",
+>>>>>>> origin/main
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
+<<<<<<< HEAD
   "meshy/storylord": {
     "source": "https://www.meshy.ai",
     "id": "01a1138c-5889-7392-bfa4-40674c836b2d",
@@ -2774,6 +2782,12 @@
     "source": "https://www.meshy.ai",
     "id": "01a1138c-5905-7698-9613-9c0c3767bf03",
     "name": "zigerion-c, generated for this site with Meshy AI",
+=======
+  "war/hacienda": {
+    "source": "https://www.meshy.ai",
+    "id": "01a113a7-dbff-767c-be5e-82e4f7439af2",
+    "name": "Don Eladio’s flying hacienda, generated for this site with Meshy AI",
+>>>>>>> origin/main
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],

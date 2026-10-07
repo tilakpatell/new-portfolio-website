@@ -27,7 +27,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { createRenderer, disposeTree, easeInOut, precompile } from '../../lib/three/renderer';
 import { gltfLoader } from '../../lib/three/gltf';
-import { sharpenMaterial } from '../../lib/three/textures';
+import { sharpen, sharpenMaterial } from '../../lib/three/textures';
 
 const SIDES = {
   autobot: { model: 'optimus-prime', energon: 0x4fd8ff, rim: 0x2fbfff, key: 0xfff1dc },
@@ -376,6 +376,7 @@ export async function create(canvas, ctx) {
     c.height = h;
     draw(c.getContext('2d'));
     const tex = new THREE.CanvasTexture(c);
+    sharpen(tex);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
   };

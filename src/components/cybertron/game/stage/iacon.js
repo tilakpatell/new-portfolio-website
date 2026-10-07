@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import { makeFigure, makeThing } from '../bots';
 import { buildSkyline, drum, hash, makeFires, makeSky, makeStrips, merged, platedMaterial, slab, tower } from './common';
+import { sharpen } from '../../../../lib/three/textures';
 
 const ENERGON = '#3fd2ff';
 const FIRE = '#ff7a2a';
@@ -59,6 +60,7 @@ function insignia(color) {
   g.lineTo(55, 15);
   g.fill();
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

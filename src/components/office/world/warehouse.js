@@ -58,6 +58,7 @@ function signTex(lines, bg, fg, w = 512, h = 256) {
     x.fillText(text, w / 2, h / 2 + (i - (lines.length - 1) / 2) * size * 1.15);
   });
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -95,6 +96,7 @@ function safetyTex() {
   x.fillText('DAYS WITHOUT A', 192, 244);
   x.fillText('LOST TIME ACCIDENT', 192, 276);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -476,6 +478,7 @@ export function buildWarehouse(kit) {
       x.stroke();
     }
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
