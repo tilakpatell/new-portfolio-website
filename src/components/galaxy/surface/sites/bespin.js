@@ -296,6 +296,8 @@ export const SITE = {
           tag: 'vader',
           n: 1,
           text: 'Face Vader on the gantry',
+          // (the Vader standing in the control room steps into the fight: one Vader, not two)
+          start: [{ hide: 'vaderreactor' }],
           lines: [['Darth Vader', 'The Force is with you, young Skywalker. But you are not a Jedi yet.']],
           respawn: [0, 19.5],
           spawn: { kind: 'vader', at: [0, -9.2], hp: 7, leash: 30, roam: 2, tag: 'vader', hostile: { range: 16, chase: 2, melee: true, reach: 2.8, every: 1.5, damage: 16, delay: 1, parry: 0.8, guard: 4, blade: { color: '#ff3b3b' }, force: { every: 7, push: 9 } } },
