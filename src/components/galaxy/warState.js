@@ -11,16 +11,23 @@
 // made for the campaign and kept in tp-gcw with your shares, so a reload (a
 // new peer id online) isn't counted as a second pilot with the same points.
 //
+// The war's worked out from a checkpoint (gcw.js's campaignRun): the war as
+// it stood after the last whole step, kept, so each second's table works
+// only the step that's on now, and a new step only that step. It's worked
+// through from the start again only when what changed is behind it (points
+// told of from steps back); your own, scored in the step that's on, aren't.
+//
 // warTally(now) → the campaign's tally (a new one when a campaign starts);
 // addPoints(side, sys, step, points), addWin(side, sys, step) (nothing for
 // nobody's side, or the Hutts'); receiveWar(peer, msg) → whether it learnt
 // anything; warMessage(); onWar(fn) → off (told when it changes);
 // warNow(now, war) → gcw.js's warTable for now; mine(war, now) → { points,
 // wins, battles, systems: [{ id, wins, losses }], major }: your own record
-// in a war this campaign (ranks.js names you by its points).
+// in a war this campaign (ranks.js names you by its points), gone over once
+// for each change to the tally.
 
 import { TALLY, createTally } from '../universe/tally';
-import { GCW, campaignAt, history, pointsKey, readKey, warTable, winKey } from './gcw';
+import { GCW, campaignAt, campaignRun, pointsKey, readKey, runAt, tableOf, winKey } from './gcw';
 import { DEFAULT_WAR, warOfSide } from './sides';
 
 const KEY = 'tp-gcw';
@@ -31,6 +38,11 @@ let tally = null;
 let version = 0;
 let saveLater = null;
 const subs = new Set();
+let runs = {}; // war → { n, tally, low (the earliest step changed since it was last worked on), run }
+// (something changed at a step: a run that's worked past it must start again)
+const touch = (step) => {
+  for (const r of Object.values(runs)) r.low = Math.min(r.low, step);
+};
 
 const newId = () => [...globalThis.crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join('');
 const store = () => {
@@ -72,6 +84,7 @@ export function warTally(now = Date.now()) {
 export function addPoints(side, sys, step, points, now = Date.now()) {
   if (!(points > 0) || !warOfSide(side)) return;
   warTally(now).add(pointsKey(side, sys, step), points);
+  touch(step);
   changed();
 }
 export function addWin(side, sys, step, now = Date.now()) {
@@ -79,11 +92,13 @@ export function addWin(side, sys, step, now = Date.now()) {
   const t = warTally(now);
   if (t.mine(winKey(side, sys, step)) >= 1) return;
   t.add(winKey(side, sys, step), 1);
+  touch(step);
   changed();
 }
 export function receiveWar(peer, msg, now = Date.now()) {
   const learnt = warTally(now).receive(peer, msg);
-  if (learnt) changed();
+  // (what it learnt could be from any step)
+  if (learnt) (touch(0), changed());
   return learnt;
 }
 export const warMessage = (now = Date.now()) => warTally(now).message();
@@ -93,22 +108,39 @@ export function onWar(fn) {
   return () => subs.delete(fn);
 }
 
+// a war's history for now, from its run: worked on from where it got to, or
+// from the start when it's a new campaign or tally, it's been asked about an
+// earlier moment, or a change is behind where it got to
+function stateNow(war, now) {
+  const t = warTally(now);
+  const n = campaignAt(now).n;
+  let r = runs[war];
+  if (!r || r.n !== n || r.tally !== t || r.low < r.run.s.k) runs[war] = r = { n, tally: t, low: Infinity, run: campaignRun(war, n, (k) => t.value(k)) };
+  const s = runAt(r.run, now);
+  r.low = Infinity;
+  return s;
+}
+
 // a war's table for now (worked out at most once a second, or when the tally changes)
 let cached = {};
 export function warNow(now = Date.now(), war = DEFAULT_WAR) {
-  const t = warTally(now);
+  warTally(now);
   const second = Math.floor(now / 1000);
   const c = cached[war];
-  if (!c || c.second !== second || c.version !== version) cached[war] = { second, version, table: warTable(war, now, (k) => t.value(k)) };
+  if (!c || c.second !== second || c.version !== version) cached[war] = { second, version, table: tableOf(war, now, stateNow(war, now)) };
   return cached[war].table;
 }
 
 // your own record in a war this campaign: the points you scored (your share
 // of each key, not anyone else's), the battles you were in, those your side
 // won and those the other side did, and whether one you won was the major
-// order's
+// order's (in the war as it went, players and all: its every step's major)
+let records = {}; // war → { n, version, record }
 export function mine(war, now = Date.now()) {
   const t = warTally(now);
+  const n = campaignAt(now).n;
+  const kept = records[war];
+  if (kept && kept.n === n && kept.version === version) return kept.record;
   let points = 0;
   const fought = new Map(); // `${sys}:${step}` → { sys, step, side }
   const won = new Set();
@@ -125,23 +157,28 @@ export function mine(war, now = Date.now()) {
   }
   const bySys = new Map();
   let major = false;
-  const n = campaignAt(now).n;
+  let majors = null;
   for (const [at, b] of fought) {
     const row = bySys.get(b.sys) ?? { id: b.sys, wins: 0, losses: 0 };
     bySys.set(b.sys, row);
     if (won.has(at)) {
       row.wins += 1;
-      if (!major && history(war, n, GCW.start + n * GCW.campaign + b.step * GCW.step).major === b.sys) major = true;
+      majors ??= stateNow(war, now).majors;
+      if (majors[b.step] === b.sys) major = true;
     } else if ([...(winners.get(at) ?? [])].some((side) => side !== b.side)) row.losses += 1;
   }
   const systems = [...bySys.values()].sort((a, b) => a.id.localeCompare(b.id));
-  return { points: +points.toFixed(2), wins: won.size, battles: fought.size, systems, major };
+  const record = { points: +points.toFixed(2), wins: won.size, battles: fought.size, systems, major };
+  records[war] = { n, version, record };
+  return record;
 }
 
 // (for the tests: forget the page's war)
 export function resetWar() {
   tally = null;
   cached = {};
+  runs = {};
+  records = {};
   clearTimeout(saveLater);
   saveLater = null;
 }

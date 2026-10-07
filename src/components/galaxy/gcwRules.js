@@ -72,8 +72,10 @@ const BY_ID = Object.fromEntries(SYSTEMS.map((s) => [s.id, s]));
 // what a system is to the war (systems.js's `war`, or what any is without one)
 export const WAR_DEFAULT = Object.freeze({ worth: 1, weight: 1, kind: 'assault', area: null });
 export const warInfo = (id) => ({ ...WAR_DEFAULT, ...(BY_ID[id]?.war ?? {}) });
-export const worthOf = (id) => warInfo(id).worth;
-export const areaOf = (id) => warInfo(id).area;
+// (worth and area, read thousands of times a campaign, from a table made once)
+const INFO = Object.fromEntries(SYSTEMS.map((s) => [s.id, warInfo(s.id)]));
+export const worthOf = (id) => (INFO[id] ?? WAR_DEFAULT).worth;
+export const areaOf = (id) => (INFO[id] ?? WAR_DEFAULT).area;
 
 export const NEIGHBOURS = (() => {
   const out = Object.fromEntries(WAR_SYSTEMS.map((id) => [id, new Set()]));

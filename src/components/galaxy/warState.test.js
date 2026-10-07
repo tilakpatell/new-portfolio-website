@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TALLY, createTally, readTally } from '../universe/tally';
-import { GCW, WAR_SYSTEMS, campaignAt, history, pointsKey, winKey } from './gcw';
+import * as gcw from './gcw';
+import { GCW, WAR_SYSTEMS, campaignAt, history, pointsKey, seeded, warTable, winKey } from './gcw';
 import { CAP, addPoints, addWin, mine, onWar, receiveWar, resetWar, warMessage, warNow, warTally } from './warState';
+
+// (gcw.js as it is, but counting the campaigns worked through from the start)
+vi.mock('./gcw', async (original) => {
+  const real = await original();
+  return { ...real, campaignRun: vi.fn(real.campaignRun) };
+});
 
 const NOW = GCW.start + 30 * 60e3;
 beforeEach(() => resetWar());
@@ -64,6 +71,42 @@ describe('the page’s war', () => {
   });
 });
 
+describe('the war table each second', () => {
+  it('is worked on from the last whole step, and comes to the same as the war worked through whole', () => {
+    // a busy campaign: both sides' pilots somewhere every step, a reload's worth of keys
+    const rand = seeded('busy page');
+    const end = GCW.start + GCW.campaign;
+    for (let i = 0; i < 1500; i++) {
+      const step = Math.floor(rand() * (GCW.campaign / GCW.step));
+      const side = i % 2 ? 'rebel' : 'empire';
+      const sys = WAR_SYSTEMS[Math.floor(rand() * WAR_SYSTEMS.length)];
+      if (i % 9 === 0) addWin(side, sys, step, GCW.start);
+      else addPoints(side, sys, step, 1 + Math.floor(rand() * 30), GCW.start);
+    }
+    const t = warTally(GCW.start);
+    const moments = Array.from({ length: 20 }, () => GCW.start + Math.floor(rand() * GCW.campaign)).sort((a, b) => a - b);
+    moments.splice(10, 0, moments[2]); // (and back)
+    for (const ms of moments) expect(warNow(ms, 'gcw'), `${ms - GCW.start}`).toEqual(warTable('gcw', ms, (k) => t.value(k)));
+    expect(warNow(end - 1, 'gcw')).toEqual(warTable('gcw', end - 1, (k) => t.value(k)));
+  });
+  it('works only the steps since, a second at a time, and only from the start when what changed is behind it', () => {
+    gcw.campaignRun.mockClear();
+    const ms = GCW.start + 30 * 3600e3;
+    for (let i = 0; i < 60; i++) warNow(ms + i * 1000, 'gcw');
+    expect(gcw.campaignRun).toHaveBeenCalledTimes(1);
+    // (your own points now: the step that's on, worked again; the steps before it kept)
+    const k = campaignAt(ms).step;
+    addPoints('rebel', 'hoth', k, 5, ms);
+    warNow(ms + 61e3, 'gcw');
+    expect(gcw.campaignRun).toHaveBeenCalledTimes(1);
+    // (points told of from hours back: from the start again)
+    addPoints('rebel', 'hoth', k - 20, 5, ms);
+    const after = warNow(ms + 62e3, 'gcw');
+    expect(gcw.campaignRun).toHaveBeenCalledTimes(2);
+    expect(after).toEqual(warTable('gcw', ms + 62e3, (key) => warTally(ms).value(key)));
+  });
+});
+
 describe('a reload', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -122,5 +165,35 @@ describe('mine', () => {
     const major = history('gcw', 0, ms).major;
     addWin('rebel', major, k, ms);
     expect(mine('gcw', ms).major).toBe(true);
+  });
+  it('judges the major order by the war as the players made it, not as it would have gone without them', () => {
+    // the Rebellion's pilots take their first order in the first three steps, so it gives another
+    const ai = history('gcw', 0, GCW.start + 6 * 3600e3);
+    const f = history('gcw', 0, GCW.start + 30 * 60e3).major;
+    const pts = (key) => ([0, 1, 2].some((k) => key === pointsKey('rebel', f, k)) ? 100 : 0);
+    const real = history('gcw', 0, GCW.start + 6 * 3600e3, pts);
+    const k = real.majors.findIndex((m, i) => i > 3 && m !== ai.majors[i]);
+    expect(k).toBeGreaterThan(3);
+    for (const step of [0, 1, 2]) addPoints('rebel', f, step, 100, GCW.start);
+    const ms = GCW.start + k * GCW.step + 60e3;
+    addWin('rebel', real.majors[k], k, ms);
+    expect(mine('gcw', ms).major).toBe(true);
+  });
+  it('goes over the tally once for a record of many battles, and not again till it changes', () => {
+    const ms = GCW.start + 40 * 3600e3;
+    const last = campaignAt(ms).step;
+    for (let i = 0; i < 40; i++) {
+      const step = Math.floor((i * last) / 40);
+      addPoints('rebel', WAR_SYSTEMS[i % WAR_SYSTEMS.length], step, 3, ms);
+      addWin('rebel', WAR_SYSTEMS[i % WAR_SYSTEMS.length], step, ms);
+    }
+    gcw.campaignRun.mockClear();
+    const record = mine('gcw', ms);
+    expect(record.wins).toBe(40);
+    expect(gcw.campaignRun.mock.calls.length).toBeLessThanOrEqual(1);
+    expect(mine('gcw', ms + 1000)).toBe(record);
+    expect(gcw.campaignRun.mock.calls.length).toBeLessThanOrEqual(1);
+    addWin('rebel', 'hoth', last, ms);
+    expect(mine('gcw', ms).wins).toBe(41);
   });
 });
