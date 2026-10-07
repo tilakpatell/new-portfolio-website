@@ -4,19 +4,23 @@
 // last step for `floorAfter` ms of frames and the frames are still late,
 // the level goes one past the steps, once, so a module can shed its own
 // effects (what a scene's `onSlow` meant). The pixel ratio to draw at is
-// the budget's, never past the screen's own (`dpr`: a 1× screen draws at
-// 1), under a module's cap where it has one (`ratioUnder`), × scale; the
-// runtime sets it on the renderer.
+// the screen's own (`dpr`), or the budget's least where that's more
+// (`minRatio`: a 1× screen draws at 1.25 on the high tier, 1.5 with a
+// strong card, as lib/device's pixelRatio has it for every renderer),
+// never past the budget's most, under a module's cap where it has one
+// (`ratioUnder`), × scale; the runtime sets it on the renderer, and
+// nothing else does.
 //
-// createQuality({ tier, pace, floorAfter, dpr }) → { tier, budget, level,
-//   scale, ratio, ratioUnder(cap), on(fn) → undo, frame(now) → the new
-//   level or null, reset() }
+// createQuality({ tier, pace, floorAfter, dpr, minRatio }) → { tier,
+//   budget, level, scale, ratio, ratioUnder(cap), on(fn) → undo,
+//   frame(now) → the new level or null, reset() }
 
 import { BUDGETS, device } from '../lib/device';
 import { STEPS, createPace } from '../lib/three/pace';
 
-export function createQuality({ tier = device().tier, pace = createPace(), floorAfter = 2500, dpr = Infinity } = {}) {
+export function createQuality({ tier = device().tier, pace = createPace(), floorAfter = 2500, dpr = Infinity, minRatio = BUDGETS[tier]?.minRatio ?? 0 } = {}) {
   const budget = BUDGETS[tier] ?? BUDGETS.high;
+  const sharpest = (cap) => Math.min(cap ?? Infinity, budget.ratio, Math.max(dpr, minRatio));
   const last = STEPS.length - 1;
   const listeners = new Set();
   let level = 0;
@@ -36,10 +40,10 @@ export function createQuality({ tier = device().tier, pace = createPace(), floor
       return scale;
     },
     get ratio() {
-      return Math.min(budget.ratio, dpr) * scale;
+      return sharpest() * scale;
     },
     ratioUnder(cap = Infinity) {
-      return Math.min(cap ?? Infinity, budget.ratio, dpr) * scale;
+      return sharpest(cap) * scale;
     },
     on(fn) {
       listeners.add(fn);

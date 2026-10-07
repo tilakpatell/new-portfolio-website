@@ -26,14 +26,31 @@ describe('createQuality', () => {
     expect(q.ratio).toBe(1.5);
   });
 
-  it("never draws past the screen's own pixels, nor past a module's cap", () => {
+  // This pinned 1 at a 1× screen on the high tier. But every world on the
+  // runtime really drew at 1.25 there: the WebGL backend's resize went
+  // through lib/three/renderer's own ratio, which keeps the budget's least
+  // (lib/device's minRatio). Now the runtime alone sets the ratio, so it
+  // keeps that least itself, or every world would draw softer than it
+  // always has on a 1× screen.
+  it("draws the screen's own pixels, and at least the budget's least, never past its most nor a module's cap", () => {
     const q = createQuality({ tier: 'high', pace: fakePace([null]), dpr: 1 });
-    expect(q.ratio).toBe(1);
-    expect(q.ratioUnder(1.5)).toBe(1);
+    expect(q.ratio).toBe(1.25);
+    expect(q.ratioUnder(1.5)).toBe(1.25);
+    expect(q.ratioUnder(1.1)).toBe(1.1); // (a module's cap is under it all)
+    const mid = createQuality({ tier: 'mid', pace: fakePace([null]), dpr: 1 });
+    expect(mid.ratio).toBe(1); // (no least on the mid tier: a 1× screen draws at 1)
+    // a strong card (lib/device's ultra row) draws one and a half pixels for each of a 1× screen's
+    const ultra = createQuality({ tier: 'high', pace: fakePace([null]), dpr: 1, minRatio: 1.5 });
+    expect(ultra.ratioUnder(1.5)).toBe(1.5);
+    expect(ultra.ratio).toBe(1.5);
     const sharp = createQuality({ tier: 'high', pace: fakePace([null]), dpr: 3 });
     expect(sharp.ratio).toBe(2);
     expect(sharp.ratioUnder(1.5)).toBe(1.5);
     expect(sharp.ratioUnder(undefined)).toBe(2);
+    // and the pace's scale comes off whatever that is
+    const softer = createQuality({ tier: 'high', pace: fakePace([2]), dpr: 2 });
+    softer.frame(0);
+    expect(softer.ratioUnder(1.5)).toBeCloseTo(1.5 * STEPS[2]);
   });
 
   it('follows the pace down and tells listeners once per change', () => {
