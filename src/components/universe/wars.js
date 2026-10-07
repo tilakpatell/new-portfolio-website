@@ -321,6 +321,17 @@ export const SUBSYSTEMS = {
     [0, 0.06, -0.395],
     [0, -0.035, -0.12],
   ),
+  // the Interdictor: its shield generators the two gravity-well domes on its
+  // back nearest the bridge tower, the bridge in the tower's face, the
+  // reactor's bulb under the hull (an interdiction's objectives: battles.js)
+  interdictor: flagship(
+    [
+      [-0.12, 0.11, -0.12],
+      [0.12, 0.11, -0.12],
+    ],
+    [0, 0.17, -0.31],
+    [0, -0.12, -0.16],
+  ),
   // the Council's dreadnought (scripts/meshy-war.mjs, in the Citadel's look):
   // its two teal shield domes either side of the spire, the glass dome bridge
   // up front, the reactor under the engines (its spire stands tall of the
