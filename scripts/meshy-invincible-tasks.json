@@ -75,7 +75,11 @@
   "seismic": {
     "acct": 2,
     "model": "01a11435-a85a-7717-bb39-76465f646adb",
-    "rig": "01a11444-2c35-773a-a6e8-6d69340acb2b"
+    "rig": "01a11444-2c35-773a-a6e8-6d69340acb2b",
+    "anims": {
+      "lib": "01a11448-c073-763b-951f-caf4e8fa43a6",
+      "hover": "01a11448-c1bd-73df-b82b-73d33c840c7c"
+    }
   },
   "civA": {
     "acct": 2,
