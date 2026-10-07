@@ -159,7 +159,7 @@ export async function buildSquanch(kit) {
     swirls.push([sw, m]);
   }
   let raiding = false;
-  for (const [i, [dx, dz]] of raidAt.entries()) S.figure('gromflomite', { x: P(dx, dz)[0], z: P(dx, dz)[1] + 0.6, face: -Math.PI / 2 + (i - 1.5) * 0.3, when: () => raiding });
+  for (const [i, [dx, dz]] of raidAt.entries()) S.figure('gromflomite', { x: P(dx, dz)[0], z: P(dx, dz)[1] + 0.6, face: -Math.PI / 2 + (i - 1.5) * 0.3, when: () => raiding, id: `raider-${i}`, who: 'A Gromflomite', ai: { hunt: { speed: 2.6 + i * 0.15, catchR: 1.1 } } });
 
   // the guests stay for the wedding, and are gone once the raid comes
   S.people({ extras: { when: (state) => !raiding && !state?.done?.includes('squanch') } });
@@ -183,9 +183,11 @@ export async function buildSquanch(kit) {
   area.actions = {
     raid: () => {
       raiding = true;
+      S.hunt(true); // the agents out of their portals, after him
     },
     calm: () => {
       raiding = false;
+      S.calm();
     },
   };
   return area;

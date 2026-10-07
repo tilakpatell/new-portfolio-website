@@ -57,8 +57,8 @@ export function createWingmen(parent, { fleet = createFleet(), solids = [] } = {
       wing.join(kind, ship, n);
     },
 
-    update(dt, t, ship, targets) {
-      const r = wing.update(dt, ship, targets);
+    update(dt, t, ship, targets, opts) {
+      const r = wing.update(dt, ship, targets, opts);
       parent.updateWorldMatrix(true, false); // (lookAt is in the world, and the map turns: the map's points are carried into it)
       for (const w of shown.keys()) if (!wing.live.includes(w)) give(w); // (a Map can lose the entry it's on)
       for (const w of wing.live) {

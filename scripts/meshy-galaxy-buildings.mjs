@@ -43,6 +43,7 @@ import { makeLod } from './galaxy-surface-lod.mjs';
 import { recolorDoc } from './recolor.mjs';
 import { BUILDINGS as BACK_LANE } from './meshy-galaxy-buildings-back.mjs';
 import { BUILDINGS as FILL_LANE } from './meshy-galaxy-buildings-fill.mjs';
+import { BUILDINGS as BASES_LANE } from './meshy-galaxy-buildings-bases.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models', 'galaxy', 'surface');
@@ -104,6 +105,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 Object.assign(BUILDINGS, BACK_LANE);
 // and the filled worlds' (scripts/meshy-galaxy-buildings-fill.mjs)
 Object.assign(BUILDINGS, FILL_LANE);
+// and the bases' (Phase 2: scripts/meshy-galaxy-buildings-bases.mjs)
+Object.assign(BUILDINGS, BASES_LANE);
 
 async function api(method, path, body) {
   const r = await fetch(`${API}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });

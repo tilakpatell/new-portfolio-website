@@ -17,11 +17,13 @@
 // With nobody left to fight it forms up on you a while, then peels away,
 // climbing, and goes.
 //
-// createWing({ rand, solids }) → { join(kind, ship, n), update(dt, ship, targets) →
+// createWing({ rand, solids }) → { join(kind, ship, n), update(dt, ship, targets, { grudge }) →
 //   { hits: [{ id, damage, at }], events }, down(id), live, bolts, active,
 //   leaving, fired, clear() }
 // `ship` is yours ({ x, y, z, heading, pitch, speed, vy }); `targets` the
-// hunters' (hunters.targets: [{ id, at, vel, size, threat }]). Events:
+// hunters' (hunters.targets: [{ id, at, vel, size, threat }]); `grudge` the
+// id of the hunter that hit you last, which a wingman goes for first when
+// it's near enough to be a choice (people read revenge as sense). Events:
 // { type: 'joined', kind }, { type: 'leaving' }, { type: 'gone' }.
 
 import { clearOf, fightSpeed, shipVelocity, turnToward } from './hunterRules';
@@ -81,8 +83,10 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
   const from = { x: 0, y: 0, z: 0 };
 
   // the hunter each goes for: only one coming at you (on a run, or on your
-  // tail: they're covering you, not clearing the sky), the nearest to it,
-  // and not one another of the wing has while there's a choice
+  // tail: they're covering you, not clearing the sky), the nearest to it
+  // (the one that hit you last counted as half as far), and not one
+  // another of the wing has while there's a choice
+  let grudge = null;
   const choose = (w, targets) => {
     let best = null;
     let score = Infinity;
@@ -92,7 +96,7 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
       const dy = t.at.y - w.pos.y;
       const dz = t.at.z - w.pos.z;
       const taken = live.some((o) => o !== w && o.alive && o.target === t.id);
-      const k = Math.sqrt(dx * dx + dy * dy + dz * dz) + (taken ? 1e6 : 0); // (one nobody has, wherever it is, first)
+      const k = Math.sqrt(dx * dx + dy * dy + dz * dz) * (t.id === grudge ? 0.5 : 1) + (taken ? 1e6 : 0); // (one nobody has, wherever it is, first)
       if (k < score) {
         score = k;
         best = t;
@@ -162,7 +166,8 @@ export function createWing({ rand = Math.random, bolts: boltCount = 16, solids =
       events.push({ type: 'joined', kind });
     },
 
-    update(dt, ship, targets = []) {
+    update(dt, ship, targets = [], { grudge: hitBy = null } = {}) {
+      grudge = hitBy;
       hits.length = 0;
       const ev = events;
       events = spare;

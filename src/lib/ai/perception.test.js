@@ -69,7 +69,7 @@ describe('sight', () => {
     expect(JSON.stringify(m.beliefs)).toBe(before);
     sense(s, m, { targets: [] }, 50);
     expect(belief(m, 'you')).toBeNull();
-    expect(Number.isNaN(m.clock)).toBe(false);
+    expect(Number.isNaN(m.now)).toBe(false);
   });
 
   it('a target never sensed has no belief, and forget drops one', () => {

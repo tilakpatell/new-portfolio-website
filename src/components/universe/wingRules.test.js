@@ -471,3 +471,29 @@ describe('a wing', () => {
     expect(at).toBeLessThan(stay + 0.2);
   });
 });
+
+describe('a grudge', () => {
+  it('goes for the hunter that hit you last when it is near enough to be a choice', () => {
+    const rand = seeded(11);
+    const wing = createWing({ rand });
+    const ship = start();
+    wing.join('xwing', ship, 1);
+    // two hunters coming at you: one nearer, one a little further off; the further one hit you last
+    const near = { id: 1, at: { x: 2, y: 0, z: -12 }, vel: { x: 0, y: 0, z: 4 }, size: 0.3, threat: 1 };
+    const far = { id: 2, at: { x: -3, y: 0, z: -18 }, vel: { x: 0, y: 0, z: 4 }, size: 0.3, threat: 1 };
+    let chose = null;
+    for (let t = 0; t < 8 && chose === null; t += DT) {
+      wing.update(DT, ship, [near, far], { grudge: 2 });
+      chose = wing.live[0]?.target ?? null;
+    }
+    expect(chose).toBe(2);
+    const plain = createWing({ rand: seeded(11) });
+    plain.join('xwing', ship, 1);
+    let chosePlain = null;
+    for (let t = 0; t < 8 && chosePlain === null; t += DT) {
+      plain.update(DT, ship, [near, far]);
+      chosePlain = plain.live[0]?.target ?? null;
+    }
+    expect(chosePlain).toBe(1);
+  });
+});
