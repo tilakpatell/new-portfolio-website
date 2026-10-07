@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, validateStation } from './layout';
-import { clearDoorway, createDoors, passable, stepDoors } from './doors';
+import { clearDoorway, createDoors, passable, stepDoors, unlock } from './doors';
+import { DS1 } from './stations/ds1';
 
 const STEP = 1 / 30;
 
@@ -203,5 +204,115 @@ describe('a door shutting on someone in its doorway', () => {
     const bodies = [{ x: 0, z: 0.5, y: 0, r: 0.35 }, { x: -1.6, z: -0.2, y: 0, r: 0.35 }];
     run(doors, layout, 1, { lockdown: new Set(['north']) }, { bodies });
     expect(bodies).toEqual([{ x: 0, z: 0.5, y: 0, r: 0.35 }, { x: -1.6, z: -0.2, y: 0, r: 0.35 }]);
+  });
+});
+
+describe('a lock', () => {
+  it('opens a hatch dialled 3263827, and not one dialled wrong', () => {
+    const layout = pair({ kind: 'hatch', lock: 'code:3263827' });
+    const doors = createDoors(layout);
+    expect(unlock(doors, layout, 'd', { code: '1138' })).toBe(false);
+    expect(run(doors, layout, 1)).toEqual([]);
+    expect(passable(doors, 'd')).toBe(false);
+
+    expect(unlock(doors, layout, 'd', { code: '3263827' })).toBe(true);
+    expect(run(doors, layout, 0.5)).toEqual([{ type: 'open', door: 'd' }]);
+    expect(passable(doors, 'd')).toBe(true);
+    // a hatch once opened stays open, with nobody near
+    expect(run(doors, layout, 2)).toEqual([]);
+    expect(passable(doors, 'd')).toBe(true);
+  });
+
+  it('takes a code dialled as a number as well as one written as digits', () => {
+    const layout = pair({ kind: 'hatch', lock: 'code:3263827' });
+    const doors = createDoors(layout);
+    expect(unlock(doors, layout, 'd', { code: 3263827 })).toBe(true);
+  });
+
+  it('keeps a hatch shut to anyone who comes near, an Imperial too, until it is unlocked', () => {
+    const layout = pair({ kind: 'hatch' });
+    const doors = createDoors(layout);
+    expect(run(doors, layout, 1, { near: [trooper(0, -1)] })).toEqual([{ type: 'denied', door: 'd' }]);
+    expect(passable(doors, 'd')).toBe(false);
+    expect(unlock(doors, layout, 'd', {})).toBe(true);
+    run(doors, layout, 0.5);
+    expect(passable(doors, 'd')).toBe(true);
+  });
+
+  it('keeps a door shut to a Rebel until its flag is set, then opens it for him', () => {
+    const layout = pair({ lock: 'flag:ramp' });
+    const doors = createDoors(layout);
+    const near = { near: [rebel(0, 1)] };
+    expect(run(doors, layout, 0.5, { ...near, flags: new Set(['other']) })).toEqual([{ type: 'denied', door: 'd' }]);
+    expect(run(doors, layout, 0.5, { ...near, flags: new Set(['ramp']) })).toEqual([{ type: 'open', door: 'd' }]);
+    expect(passable(doors, 'd')).toBe(true);
+  });
+
+  it('unlocks a flag lock for its own flag only', () => {
+    const layout = pair({ lock: 'flag:ramp' });
+    const doors = createDoors(layout);
+    expect(unlock(doors, layout, 'd', { flag: 'other' })).toBe(false);
+    expect(unlock(doors, layout, 'd', { flag: 'ramp' })).toBe(true);
+    run(doors, layout, 0.5, { near: [rebel(0, 1)] });
+    expect(passable(doors, 'd')).toBe(true);
+  });
+
+  it('opens to a scomp link when it is a scomp lock or an Imperial-only one, and not when it wants a code', () => {
+    for (const [lock, opens] of [['scomp', true], ['side:imperial', true], ['code:3263827', false]]) {
+      const layout = pair({ lock });
+      const doors = createDoors(layout);
+      expect(unlock(doors, layout, 'd', { scomp: true }), lock).toBe(opens);
+      run(doors, layout, 0.5, { near: [rebel(0, 1)] });
+      expect(passable(doors, 'd'), lock).toBe(opens);
+    }
+  });
+
+  it('turns away an Imperial at a door that wants a code until it is dialled', () => {
+    const layout = pair({ lock: 'code:2187' });
+    const doors = createDoors(layout);
+    expect(run(doors, layout, 0.5, { near: [trooper(0, 1)] })).toEqual([{ type: 'denied', door: 'd' }]);
+    unlock(doors, layout, 'd', { code: '2187' });
+    expect(run(doors, layout, 0.5, { near: [trooper(0, 1)] })).toEqual([{ type: 'open', door: 'd' }]);
+  });
+});
+
+describe('the first Death Star’s doors', () => {
+  const layout = buildLayout(DS1);
+
+  it('start with one state a door, the magnetic field open and everything else shut', () => {
+    const doors = createDoors(layout);
+    expect(Object.keys(doors).sort()).toEqual([...layout.doors.keys()].sort());
+    for (const id of layout.doors.keys()) expect(passable(doors, id), id).toBe(id === 'bay327-field');
+  });
+
+  it('keep the Falcon’s hatch shut on a Rebel in the hold until the ramp is down', () => {
+    const doors = createDoors(layout);
+    const hiding = { near: [rebel(-12, -7, { y: 1.6 })] };
+    expect(run(doors, layout, 1, hiding)).toEqual([{ type: 'denied', door: 'hold-hatch' }]);
+    expect(passable(doors, 'hold-hatch')).toBe(false);
+    run(doors, layout, 0.5, { ...hiding, flags: new Set(['ramp']) });
+    expect(passable(doors, 'hold-hatch')).toBe(true);
+  });
+
+  it('open the corridor’s blast door for an Imperial at the foot of the stair, and deny a Rebel out of armour there', () => {
+    const doors = createDoors(layout);
+    expect(run(doors, layout, 0.5, { near: [rebel(10, -22, { y: 0 })] })).toEqual([{ type: 'denied', door: 'bay327-corr' }]);
+    expect(run(doors, layout, 0.5, { near: [trooper(10, -22, { y: 0 })] })).toEqual([{ type: 'open', door: 'bay327-corr' }]);
+    expect(passable(doors, 'bay327-corr')).toBe(true);
+  });
+
+  it('open Docking Control’s door for someone on its landing, not for someone on the deck 6 m under it', () => {
+    const doors = createDoors(layout);
+    expect(run(doors, layout, 1, { near: [trooper(22, -22.6, { y: 0 })] })).toEqual([]);
+    expect(passable(doors, 'bay327-ctl')).toBe(false);
+    run(doors, layout, 0.5, { near: [trooper(22, -22.6, { y: 6 })] });
+    expect(passable(doors, 'bay327-ctl')).toBe(true);
+  });
+
+  it('leave someone on the deck under Docking Control’s shut door to the walker', () => {
+    const doors = createDoors(layout);
+    const under = { x: 22, z: -23.9, y: 0, h: 1.8, r: 0.35 };
+    clearDoorway(doors, layout, [under]);
+    expect(under).toEqual({ x: 22, z: -23.9, y: 0, h: 1.8, r: 0.35 });
   });
 });
