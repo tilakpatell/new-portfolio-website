@@ -1,6 +1,6 @@
 {
   "date": "2026-10-07",
-  "sha": "1fa4b1c",
+  "sha": "cc0ba923",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5111
+          "n": 5117
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -57,7 +57,7 @@
         },
         {
           "file": "src/components/universe/crews.js",
-          "n": 2791
+          "n": 2805
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
@@ -65,7 +65,7 @@
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 2666
+          "n": 2669
         },
         {
           "file": "src/components/middleearth/towns/weathertop/props.js",
@@ -80,6 +80,10 @@
           "n": 2285
         },
         {
+          "file": "src/components/rickmorty/world/RmWorld.jsx",
+          "n": 2162
+        },
+        {
           "file": "src/components/avengers/world/scene.js",
           "n": 2075
         },
@@ -88,12 +92,8 @@
           "n": 2071
         },
         {
-          "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 2048
-        },
-        {
           "file": "src/components/galaxy/surface/props/forest.js",
-          "n": 1916
+          "n": 1971
         },
         {
           "file": "src/components/middleearth/towns/edoras/folk.js",
@@ -101,7 +101,7 @@
         },
         {
           "file": "src/components/galaxy/surface/props/core.js",
-          "n": 1762
+          "n": 1763
         },
         {
           "file": "src/lib/sfx.js",
@@ -110,7 +110,7 @@
       ]
     },
     "boundary-breaks": {
-      "value": 290,
+      "value": 289,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
