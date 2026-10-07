@@ -54,7 +54,7 @@
 // rate into a wall.
 
 import { DEEP, DEEP_SOLIDS, WONDERS, driveOpen, easeOpen, gapAlong, openness, reachOf, trenchBand } from './deep';
-import { BODIES, HOME_RADIUS, MAP_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
+import { BODIES, HOME_RADIUS, MAP_RADIUS, POSITIONS, REACH, SUN } from './layout';
 import { MAW } from './maw';
 import { NOSE, UP, axisAngle, conj, fromAngles, mul, normalize, rotate, toAngles, turnToward } from './orient';
 import { byId } from './universes';
