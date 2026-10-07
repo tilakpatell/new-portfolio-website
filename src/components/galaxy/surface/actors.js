@@ -36,6 +36,7 @@ import { pickWant, relate } from './needs';
 import { talkFor } from './talk';
 import { zoneVisibility } from './near';
 import { diveAt } from './floats';
+import { heldBlade } from './heldBlade';
 
 const TALK = 4.5; // metres: close enough to turn to you
 
@@ -259,6 +260,12 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
           fig.model.scale.multiplyScalar(spec.scale ?? 1);
           holder.add(fig.model);
           actor.fig = fig;
+          // a standing Jedi's or Sith's lit blade (`blade`: { color, hilt? }),
+          // held as the figures built in code held theirs
+          if (spec.blade) {
+            actor.saber = heldBlade(spec.blade, (fig.tall ?? 1.8) * (spec.scale ?? 1));
+            holder.add(actor.saber.arm);
+          }
           return warm(holder).then(() => (holder.visible = !actor.hidden && !actor.culled));
         })
         .catch(() => {});
@@ -408,7 +415,10 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
     },
     dispose() {
       dead = true;
-      for (const a of actors) a.fig?.dispose();
+      for (const a of actors) {
+        a.fig?.dispose();
+        a.saber?.owned.forEach((o) => o.dispose?.());
+      }
       group.removeFromParent();
       rooms.removeFromParent();
     },
