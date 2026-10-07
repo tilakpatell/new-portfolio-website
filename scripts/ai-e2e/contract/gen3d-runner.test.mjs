@@ -15,7 +15,7 @@ afterAll(() => server.close());
 // no Chromium for the sheet: the fake sheet stands in, and no dev server starts
 const NO_BROWSER = { CHROME: '/nowhere/chrome' };
 
-function job(file, { title = 'x-wing', judge = 'judge-good.json' } = {}) {
+function job(file, { title = 'contract-wing', judge = 'judge-good.json' } = {}) {
   const box = sandbox({ judge });
   const repo = box.repo();
   box.fixture('api', { 'issues/1': issue(1, title, file, server.base) });
@@ -32,13 +32,13 @@ describe('a gen3d issue through the runner (subprocesses, up to 10 s each)', () 
     const { box, repo } = job('issue-full.md');
     const r = await box.runner('gen3d', ['--issue', '1'], NO_BROWSER);
     expect(r.status, `${r.out}\n${r.err}`).toBe(0);
-    expect(branches(repo)).toContain('gen3d/x-wing');
-    const files = repo.originGit('show', '--name-only', '--format=', 'gen3d/x-wing').split('\n');
-    expect(files.sort()).toEqual(['docs/gen3d/x-wing.png', 'public/games/credits.json', 'public/models/gen3d/x-wing.glb', 'public/models/gen3d/x-wing.hq.glb', 'public/models/gen3d/x-wing.lo.glb']);
+    expect(branches(repo)).toContain('gen3d/contract-wing');
+    const files = repo.originGit('show', '--name-only', '--format=', 'gen3d/contract-wing').split('\n');
+    expect(files.sort()).toEqual(['docs/gen3d/contract-wing.png', 'public/games/credits.json', 'public/models/gen3d/contract-wing.glb', 'public/models/gen3d/contract-wing.hq.glb', 'public/models/gen3d/contract-wing.lo.glb']);
     const [create] = call(box, 'pr', 'create');
     const body = create[create.indexOf('--body') + 1];
-    expect(create[create.indexOf('--head') + 1]).toBe('gen3d/x-wing');
-    expect(body).toContain('https://raw.githubusercontent.com/owner/site/gen3d/x-wing/docs/gen3d/x-wing.png');
+    expect(create[create.indexOf('--head') + 1]).toBe('gen3d/contract-wing');
+    expect(body).toContain('https://raw.githubusercontent.com/owner/site/gen3d/contract-wing/docs/gen3d/contract-wing.png');
     expect(body).toMatch(/verdict: 9\/10/);
     expect(body).toMatch(/hq: [\d,]+ triangles, \d+ KB/);
     expect(body).toMatch(/lo: [\d,]+ triangles, \d+ KB/);
