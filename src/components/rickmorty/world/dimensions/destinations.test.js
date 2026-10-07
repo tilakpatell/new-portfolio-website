@@ -84,7 +84,7 @@ describe('a place’s set of things to find', () => {
   });
   it('is the Zigerions’ three slips', () => {
     const sim = DESTINATIONS.find((d) => d.id === 'simulation');
-    expect(sim.collect).toEqual({ task: 'simulation', spots: ['twins', 'poptart', 'sun'] });
+    expect(sim.collect).toEqual({ task: 'simulation', spots: ['twins', 'poptart', 'sun'], escape: { s: 45 } });
     expect(sim.people.find((p) => p.id === 'nebulon').y).toBe(3.2);
   });
 });

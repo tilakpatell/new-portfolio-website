@@ -386,5 +386,25 @@
   "ticketsguy": {
     "status": "done",
     "by": "local"
+  },
+  "simman": {
+    "status": "done",
+    "by": "local"
+  },
+  "poptart": {
+    "status": "done",
+    "by": "local"
+  },
+  "toasterhouse": {
+    "status": "done",
+    "by": "local"
+  },
+  "omegadevice": {
+    "status": "done",
+    "by": "local"
+  },
+  "primedrone": {
+    "status": "done",
+    "by": "local"
   }
 }

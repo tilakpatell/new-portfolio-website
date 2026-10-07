@@ -59,7 +59,7 @@ import {
   stepMorty,
 } from './rules';
 import { newFedShip, newShipVoice, onTail, shipSays, stepFedShip } from './ship';
-import { DESTINATIONS, DIAL, linkTarget, portalTarget, readDial, writeDial } from './dimensions/destinations';
+import { DESTINATIONS, DIAL, destinationById, linkTarget, portalTarget, readDial, writeDial } from './dimensions/destinations';
 import DimensionDial from './dimensions/DimensionDial';
 import { ROOMS, newTrial, pick as pickRoom, retry as retryRooms } from './dimensions/vindicatorsRules';
 import { setShipVoice, shipVoiceOn, speak, stopSpeaking } from './shipVoice';
@@ -190,7 +190,7 @@ const ESCAPES = Object.fromEntries(DESTINATIONS.filter((d) => d.escape).map((d) 
 // and what using a hotspot tells its place's builder
 const ACTS = Object.assign({}, ...DESTINATIONS.map((d) => Object.fromEntries(Object.entries(d.acts).map(([spot, name]) => [spot, [d.id, name]]))));
 // and the things done by using every one of a set of hotspots (the simulation's slips), by each hotspot
-const COLLECT = Object.assign({}, ...DESTINATIONS.filter((d) => d.collect).map((d) => Object.fromEntries(d.collect.spots.map((spot) => [spot, d.collect]))));
+const COLLECT = Object.assign({}, ...DESTINATIONS.filter((d) => d.collect).map((d) => Object.fromEntries(d.collect.spots.map((spot) => [spot, { ...d.collect, area: d.id }]))));
 // a memory's run in the Mind Blowers chair, and how far Morty can stray from the chair before it stops
 const MEMORY_S = 5.5;
 // Total Rickall: how long a memory of someone stays up over them, and how
@@ -272,6 +272,8 @@ const newSim = () => ({
   near: null,
   moved: false,
   fading: false,
+  events: [],
+  emit: null,
   frame: 0,
   padBefore: {},
   view: { link: null, hotspot: null },
@@ -820,12 +822,48 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       }
       // (done once they've had their say: the President gets in his car then)
       if (TALK_DONE[n.id]) later(() => complete(TALK_DONE[n.id]), TALK_MS);
-      if (COLLECT[n.id] && COLLECT[n.id].spots.every((id) => s.used.has(id))) later(() => complete(COLLECT[n.id].task), TALK_MS);
+      if (COLLECT[n.id] && COLLECT[n.id].spots.every((id) => s.used.has(id))) {
+        const c = COLLECT[n.id];
+        // (the last one found: the place is told, and either it's done or the clock starts)
+        api.current?.act(c.area, 'collected');
+        if (c.escape) {
+          if (!s.escape) s.escape = { area: c.area, task: c.task, s: c.escape.s, at: s.t };
+          sound('portalOpen');
+        } else later(() => complete(c.task), TALK_MS);
+      }
       if (TALK_UNLOCK[n.id]) later(() => unlock(TALK_UNLOCK[n.id]), TALK_MS);
     }
   }, [api, go, board, openPlace, say, complete, unlock, playMemory, shipTalk, later, startRickall, tellRickall]);
+  // what a place's people do to Morty (stage.js's NPC behaviour, through the
+  // render state's emit): caught, he's put back at the way in with what the
+  // catcher said, and the place settles; a bark is a line said in passing
+  const npc = useCallback(
+    (name, e) => {
+      const s = sim.current;
+      if (!s || s.fading || s.area !== e.area) return;
+      if (name === 'caught') {
+        const d = destinationById(e.area);
+        if (!d) return;
+        say({ kind: 'say', who: SAY[e.who]?.who ?? e.who ?? null, text: e.text ?? d.caught ?? 'Caught.' });
+        sound('ouch');
+        s.m = newMorty(d.arrive);
+        s.yaw = behindYaw(d.arrive.face);
+        s.pitch = PITCH;
+        s.dragAt = -1e9;
+        s.keys.clear();
+        s.used = new Set();
+        s.escape = null;
+        api.current?.act(e.area, 'calm');
+      } else if (name === 'bark') {
+        if (s.t - (s.barkAt ?? -1e9) < 6) return;
+        s.barkAt = s.t;
+        say({ kind: 'say', who: e.who, text: e.text });
+      } else if (name === 'done') complete(e.task);
+    },
+    [api, say, complete],
+  );
   const fns = useRef({});
-  fns.current = { act, go, shoot: shootRickall, stop: stopRickall, start: startRickall, end: endRickall };
+  fns.current = { act, go, shoot: shootRickall, stop: stopRickall, start: startRickall, end: endRickall, npc };
 
   // ── the world: made once, kept while something's open over it ──
   useEffect(() => {
@@ -1185,6 +1223,8 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           travellers: tv ? tv.list() : null,
           sight: sightLine,
           rickall: run?.game ? { game: run.game, aim: run.aim, hide: run.hide } : null,
+          fading: s.fading,
+          emit: s.emit,
         },
         ms,
       );
@@ -1194,6 +1234,12 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       api.current = null;
       setGl('failed');
       return;
+    }
+
+    // what the place's people did this frame (stage.js's NPC behaviour)
+    if (s.events.length) {
+      const evs = s.events.splice(0);
+      for (const [name, e] of evs) fns.current.npc?.(name, e);
     }
 
     // its HUD, when what it shows changes, and the memory card over whoever it's about

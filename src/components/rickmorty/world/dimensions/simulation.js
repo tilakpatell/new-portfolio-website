@@ -39,16 +39,6 @@ function house(R, x, z, w, d, h, wall, roof, cellId) {
   f.decal(cellId, 0, h / 2, d / 2 + 0.03, w * 0.9, h * 0.9, { bright: true });
 }
 
-// one of the men: a box figure in a brown coat, drawn twice
-function man(R, x, z, face) {
-  const f = R.frame(x, z, face, { list: 'fixed' });
-  f.box(0x6a4a2a, 0, 0, 0, 0.6, 1.1, 0.36);
-  f.box(0x3a3a4a, -0.15, 0, 0, 0.24, 0.6, 0.3).box(0x3a3a4a, 0.15, 0, 0, 0.24, 0.6, 0.3);
-  f.ball(0xf2c8a0, 0, 1.4, 0, 0.3);
-  f.box(0x6a4a2a, -0.42, 0.5, 0, 0.18, 0.7, 0.18).box(0x6a4a2a, 0.42, 0.5, 0, 0.18, 0.7, 0.18);
-  f.ball(0x111111, -0.1, 1.44, 0.26, 0.04).ball(0x111111, 0.1, 1.44, 0.26, 0.04);
-}
-
 export async function buildSimulation(kit) {
   const S = stage(kit, 'simulation', { floor: FLAT, floorTile: 8, wall: SKY, ceiling: SKY, skirt: GRASS });
   const { R, P, A } = S;
@@ -62,16 +52,7 @@ export async function buildSimulation(kit) {
   R.frame(...P(-19.5, -7), 0, { list: 'fixed' }).box(0xf2e2b8, 0, 0, 0, 5, 3.2, 6).box(0x8a5a3a, 0, 3.2, 0, 5.4, 0.4, 6.4);
   // a tree or two, a ball on a stick
   for (const [dx, dz] of [[-24, 6], [22, -2], [-6, -12]]) R.frame(...P(dx, dz), 0, { list: 'fixed' }).cyl(0x7a5a3a, 0, 0, 0, 0.3, 2.2).ball(0x3aa83a, 0, 3.4, 0, 1.6);
-  // the two men, the same man, out for the same walk
-  man(R, ...P(-0.8, 5.6), Math.PI);
-  man(R, ...P(0.8, 5.6), Math.PI);
-  // the pop-tart's toaster, with him in its slot, waving
-  const T = R.frame(...P(17, 10.4), 0, { list: 'fixed' });
-  T.box(0xd8d8e0, 0, 0, 0, 5, 3.4, 3.6).box(0x9a9aa8, 0, 3.4, 0, 4.6, 0.3, 3.2).box(0x2a2a2a, 0, 3.7, 0, 3.6, 0.1, 0.9);
-  T.box(0x6a3a1a, 0, 0, 1.83, 1.2, 2, 0.08).cyl(0xc8c8d0, 2.2, 1.2, 1.9, 0.12, 0.5, Math.PI / 2);
-  T.box(0xd89a5a, 0, 3.75, 0, 2, 2.4, 0.5).box(0xf2f2f2, 0, 4.6, 0.26, 1.6, 1.2, 0.04);
-  T.ball(0x111111, -0.35, 5.2, 0.3, 0.08).ball(0x111111, 0.35, 5.2, 0.3, 0.08).box(0x111111, 0, 4.8, 0.3, 0.6, 0.06, 0.04);
-  T.box(0xd89a5a, 1.3, 4.6, 0, 0.3, 1.4, 0.3, 0, 0, -0.5);
+  // (the two men, the pop-tart and his toaster are models, placed from ./destinations.js's extras)
   // the sun: a yellow disc painted high on the east wall, rays and all
   R.cell('sim-sun', 128, 128, (g, w, h) => {
     g.fillStyle = '#7fc7ff';
@@ -121,8 +102,36 @@ export async function buildSimulation(kit) {
   });
   R.frame(...P(0, -19.7), 0, { list: 'fixed' }).decal('sim-sign', 0, 8, 0.06, 7, 1.6, { bright: true });
 
+  // the glitch: when the slips are all found, the sim fails round him: a red
+  // wash flickers over everything till he's out or caught
+  const washMat = R.own(new THREE.MeshBasicMaterial({ color: 0xff2a2a, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
+  const wash = new THREE.Mesh(BOX, washMat);
+  wash.position.set(...P(0, 0)[0] !== undefined ? [P(0, 0)[0], H / 2, P(0, 0)[1]] : [0, 0, 0]);
+  wash.scale.set(A.x1 - A.x0 - 0.4, H - 0.2, A.z1 - A.z0 - 0.4);
+  wash.renderOrder = 5;
+  R.add(wash, { ink: false });
+
   S.people();
-  return S.done(LIGHT, (time) => {
-    void time;
+  let glitch = false;
+  const area = S.done(LIGHT, (t) => {
+    washMat.opacity = glitch ? 0.1 + 0.12 * (Math.sin(t * 7) > 0) : 0;
   });
+  area.actions = {
+    ...area.actions,
+    // the last slip spotted: the Zigerions come down off the walkway after him
+    collected: () => {
+      glitch = true;
+      for (const n of S.npcs) {
+        if (!n.id.startsWith('zig-console')) continue;
+        n.y = 0;
+        n.c.group.position.set(...P(n.id.endsWith('a') ? -4 : 4, -14), 0);
+      }
+      S.hunt(true);
+    },
+    calm: () => {
+      glitch = false;
+      S.calm();
+    },
+  };
+  return area;
 }

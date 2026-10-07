@@ -33,12 +33,19 @@ export const GARAGE_BACK = { x: -301.2, z: 101.4, face: 0 };
 // `goal`: the hotspot the map points to for the place's thing to do, where
 // no talk or escape says (the Vindicators' door to Rick's rooms).
 // `collect`: a task done once every one of its `spots` has been used on a
-// visit (the simulation's slips).
-function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [], extras = [], spots = [], solids = [], tasks = [], say = {}, done = {}, unlock = {}, acts = {}, escape = null, goal = null, collect = null, kinds = [] }) {
+// visit (the simulation's slips); with `escape: { s }`, the clock starts
+// then instead, and getting home inside it is the task done.
+// `caught`: what's said when one of the place's hunters catches Morty
+// (stage.js's NPC behaviour); he's put back at the way in.
+// A person or one of the crowd may carry `ai` (stage.js): `wander` points in
+// metres from the middle (turned into the world's here), `watch`, `bark`,
+// `hunt`. Anyone who roams is marked so, and isn't in the way.
+const roams = (ai) => Boolean(ai?.wander || ai?.hunt);
+function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [], extras = [], spots = [], solids = [], tasks = [], say = {}, done = {}, unlock = {}, acts = {}, escape = null, goal = null, collect = null, caught = null, kinds = [] }) {
   const area = destArea(i, deep, wide);
   const cx = DEST_X;
   const cz = destZ(i);
-  const w = (o) => ({ ...o, x: cx + o.dx, z: cz + o.dz });
+  const w = (o) => ({ ...o, x: cx + o.dx, z: cz + o.dz, ...(o.ai && { ai: { ...o.ai, ...(o.ai.wander && { wander: o.ai.wander.map(([dx, dz]) => [cx + dx, cz + dz]) }) }, ...(roams(o.ai) && { roams: true }) }) });
   return {
     id,
     i,
@@ -66,6 +73,7 @@ function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [],
     escape,
     goal,
     collect,
+    caught,
     kinds,
   };
 }
@@ -80,16 +88,16 @@ export const DESTINATIONS = [
     wide: 34,
     ceiling: 8,
     people: [
-      { id: 'customs-agent1', who: 'gromflomite', dx: -4, dz: -4.6, face: S },
-      { id: 'customs-agent2', who: 'gromflomite', dx: 4, dz: -4.6, face: S },
-      { id: 'krombopulos', dx: 10, dz: -8, face: W },
+      { id: 'customs-agent1', who: 'gromflomite', dx: -4, dz: -4.6, face: S, ai: { watch: 9, hunt: { speed: 3.1, catchR: 1.1 } } },
+      { id: 'customs-agent2', who: 'gromflomite', dx: 4, dz: -4.6, face: S, ai: { watch: 9, hunt: { speed: 2.9, catchR: 1.1 } } },
+      { id: 'krombopulos', dx: 10, dz: -8, face: W, ai: { watch: 7, bark: { r: 5, every: 18, lines: ['Oh boy, here I go killing again!', 'I just love killin’. Not you though, Morty. You seem nice.'] } } },
     ],
     extras: [
-      { kind: 'zigerion', dx: -6, dz: 2, face: N },
-      { kind: 'gearperson-a', dx: -6, dz: 4, face: N },
-      { kind: 'zigerion', dx: -6, dz: 6, face: N + 0.3 },
-      { kind: 'plutonian-a', dx: -6, dz: 7.8, face: N },
-      { kind: 'zigerion', dx: -11, dz: -9, face: 0.4 },
+      { kind: 'zigerion', dx: -6, dz: 2, face: N, ai: { wander: [[-6, 2], [-6, 2.6]], speed: 0.4, pause: 6 } },
+      { kind: 'gearperson-a', dx: -6, dz: 4, face: N, ai: { wander: [[-6, 4], [-6, 4.6]], speed: 0.4, pause: 7 } },
+      { kind: 'zigerion', dx: -6, dz: 6, face: N + 0.3, ai: { wander: [[-6, 6], [-6, 6.6]], speed: 0.4, pause: 5 } },
+      { kind: 'plutonian-a', dx: -6, dz: 7.8, face: N, ai: { wander: [[-6, 7.8], [-6, 8.4]], speed: 0.4, pause: 8 } },
+      { kind: 'zigerion', dx: -11, dz: -9, face: 0.4, ai: { wander: [[-11, -9], [-13, -5], [-9, -3], [-11, -9]], speed: 0.9, pause: 3 } },
     ],
     spots: [
       { id: 'seeds', dx: 6, dz: 5.4, label: 'Rick’s Mega Seeds', verb: 'Take' },
@@ -121,6 +129,7 @@ export const DESTINATIONS = [
     },
     acts: { seeds: 'took', scanner: 'alarm' },
     escape: { spot: 'scanner', after: 'seeds', before: { who: 'A customs agent', text: 'The arch stays green. “Clean. Next.”' }, s: 60, task: 'customs' },
+    caught: 'A Gromflomite gets a hand on your collar. “Seeds. Confiscated.” You’re marched back to the door, and the alarm stops.',
     kinds: ['gromflomite', 'krombopulos', 'zigerion', 'gearperson-a', 'plutonian-a'],
   }),
   place(1, {
@@ -132,14 +141,14 @@ export const DESTINATIONS = [
     wide: 70,
     sky: { top: 0x2a8a9a, mid: 0x7ad2c8, low: 0xf2d8b8, sun: 0xfff0d8, clouds: 1, moons: 0 },
     people: [
-      { id: 'squanchy', dx: -10, dz: -6, face: S },
+      { id: 'squanchy', dx: -10, dz: -6, face: S, ai: { watch: 8, bark: { r: 5, every: 20, lines: ['I squanch my family!', 'This is my squanch, Morty. Welcome to it.'] } } },
       { id: 'sbirdperson', who: 'birdperson', dx: 5.2, dz: -11, face: S, until: 'squanch' },
       { id: 'stammy', who: 'tammy', dx: 6.8, dz: -11, face: S, until: 'squanch' },
     ],
     extras: [
-      { kind: 'magdalian-a', dx: 1, dz: -3, face: N },
-      { kind: 'magdalian-c', dx: 11, dz: -3, face: N },
-      { kind: 'magdalian-b', dx: 2.5, dz: 1, face: N + 0.2 },
+      { kind: 'magdalian-a', dx: 1, dz: -3, face: N, ai: { wander: [[1, -3], [6, -1], [9, 2], [3, 3]], speed: 0.8, pause: 4 } },
+      { kind: 'magdalian-c', dx: 11, dz: -3, face: N, ai: { wander: [[11, -3], [13, 1], [8, 3]], speed: 0.7, pause: 5 } },
+      { kind: 'magdalian-b', dx: 2.5, dz: 1, face: N + 0.2, ai: { wander: [[2.5, 1], [-3, 2], [-6, -1], [0, -2]], speed: 0.9, pause: 3 } },
     ],
     spots: [
       { id: 'squanchy', dx: -10, dz: -6, label: 'Squanchy', verb: 'Talk' },
@@ -169,6 +178,7 @@ export const DESTINATIONS = [
     },
     acts: { toast: 'raid' },
     escape: { spot: 'toast', s: 60, task: 'squanch' },
+    caught: 'A Gromflomite agent tackles you into the red grass. “Got the kid.” You come round by the portal, and the wedding’s over.',
     kinds: ['squanchy', 'birdperson', 'tammy', 'gromflomite', 'squanchy-house', 'magdalian-a', 'magdalian-b', 'magdalian-c'],
   }),
   place(2, {
@@ -180,10 +190,10 @@ export const DESTINATIONS = [
     wide: 70,
     sky: { top: 0x3a1a3a, mid: 0xc85a3a, low: 0xf2b070, sun: 0xffd8a0, clouds: 0, moons: 0 },
     people: [
-      { id: 'marsha', dx: 0, dz: -14.6, face: S },
-      { id: 'mortyjr', dx: -9, dz: 9, face: E },
-      { id: 'gazorpian-a', who: 'gazorpian', dx: 13, dz: -1, face: E },
-      { id: 'gazorpian-b', who: 'gazorpian', dx: 17, dz: -1, face: W },
+      { id: 'marsha', dx: 0, dz: -14.6, face: S, ai: { watch: 10 } },
+      { id: 'mortyjr', dx: -9, dz: 9, face: E, ai: { wander: [[-9, 9], [-5, 12], [-12, 13], [-14, 8]], speed: 0.8, pause: 3, bark: { r: 4, every: 16, lines: ['Dad? Is that you? You look smaller.', 'I want to be a writer when I grow up. Or a conqueror.'] } } },
+      { id: 'gazorpian-a', who: 'gazorpian', dx: 13, dz: -1, face: E, ai: { wander: [[13, -1], [15, -9], [20, -4], [12, 4]], speed: 1.4, pause: 1.5, hunt: { speed: 3.4, catchR: 1.3, near: 6.5, lose: 11 } } },
+      { id: 'gazorpian-b', who: 'gazorpian', dx: 17, dz: -1, face: W, ai: { wander: [[17, -1], [22, 8], [16, 10], [10, -6]], speed: 1.3, pause: 2, hunt: { speed: 3.2, catchR: 1.3, near: 6.5, lose: 11 } } },
     ],
     spots: [
       { id: 'marsha', dx: 0, dz: -13, label: 'Mar-Sha', verb: 'Talk' },
@@ -200,7 +210,8 @@ export const DESTINATIONS = [
       { id: 'rock-b', dx: -18, dz: 2, r: 3 },
       { id: 'rock-c', dx: 24, dz: 10, r: 2.2 },
     ],
-    tasks: [{ id: 'gazorp', name: 'Visit the women of Gazorpazorp', hint: 'Dial Gazorpazorp on the portal gun, and knock at the gate of the women’s city.' }],
+    tasks: [{ id: 'gazorp', name: 'Visit the women of Gazorpazorp', hint: 'Dial Gazorpazorp on the portal gun, and knock at the gate of the women’s city. Keep clear of the men.' }],
+    caught: 'A Gazorpian picks you up by the shirt, roars, and throws you back to where you came in.',
     say: {
       marsha: { who: 'Mar-Sha', text: 'Welcome, Morty. The men stay outside. You may come in. You seem harmless.' },
       gate: { who: null, text: 'Men are not allowed in. Mar-Sha makes an exception for a Morty.' },
@@ -222,7 +233,7 @@ export const DESTINATIONS = [
     people: [
       { id: 'bbirdperson', who: 'birdperson', dx: -2.6, dz: -9.6, face: S, until: 'squanch' },
       { id: 'phoenixperson', dx: -2.6, dz: -9.6, face: S, after: 'squanch' },
-      { id: 'unity', dx: 10, dz: -3, face: W },
+      { id: 'unity', dx: 10, dz: -3, face: W, ai: { wander: [[10, -3], [6, 2], [12, 5], [15, 0]], speed: 0.9, pause: 4, bark: { r: 4, every: 18, lines: ['We are Unity. All of us. It’s nice to meet you, Morty.', 'Rick isn’t good for us. We know. We’re here anyway.'] } } },
     ],
     spots: [
       { id: 'bbirdperson', dx: -2.6, dz: -9.6, label: 'Birdperson', verb: 'Talk', until: 'squanch' },
@@ -260,8 +271,8 @@ export const DESTINATIONS = [
     wide: 70,
     sky: { top: 0x3f8fe0, mid: 0x9ad2f5, low: 0xf6efd2, sun: 0xfff2c8, clouds: 1, moons: 0 },
     people: [
-      { id: 'fmeeseeks', who: 'meeseeks', dx: 5, dz: 1, face: S },
-      { id: 'kingjellybean', dx: -13, dz: -6, face: E, until: 'fantasy' },
+      { id: 'fmeeseeks', who: 'meeseeks', dx: 5, dz: 1, face: S, ai: { watch: 8, bark: { r: 5, every: 12, lines: ['I’m Mr. Meeseeks! Look at me!', 'Existence is pain to a Meeseeks, Morty. Give me something to do.', 'Caaan do!'] } } },
+      { id: 'kingjellybean', dx: -13, dz: -6, face: E, until: 'fantasy', ai: { wander: [[-13, -6], [-10, -3], [-15, -1]], speed: 0.7, pause: 5, watch: 6 } },
     ],
     spots: [
       { id: 'fmeeseeks', dx: 5, dz: 1, label: 'The Meeseeks at the well', verb: 'Talk' },
@@ -301,8 +312,8 @@ export const DESTINATIONS = [
     wide: 22,
     ceiling: 5,
     people: [
-      { id: 'zeep', dx: -1.5, dz: -5.2, face: S },
-      { id: 'kyle', dx: 6, dz: -1, face: W, until: 'microverse' },
+      { id: 'zeep', dx: -1.5, dz: -5.2, face: S, ai: { watch: 8, bark: { r: 4, every: 16, lines: ['Welcome to my universe. It powers itself, thank you.', 'You’re from the battery, aren’t you. Don’t say it.'] } } },
+      { id: 'kyle', dx: 6, dz: -1, face: W, until: 'microverse', ai: { wander: [[6, -1], [8, 2], [4, 3]], speed: 0.8, pause: 4 } },
     ],
     spots: [
       { id: 'zeep', dx: -1.5, dz: -5.2, label: 'Zeep Xanflorp', verb: 'Talk' },
@@ -335,9 +346,9 @@ export const DESTINATIONS = [
     wide: 38,
     ceiling: 9,
     people: [
-      { id: 'xenonbloom', dx: 2, dz: 7, face: N },
-      { id: 'poncho', dx: -9, dz: 1, face: E },
-      { id: 'annie', dx: 7, dz: 2, face: W },
+      { id: 'xenonbloom', dx: 2, dz: 7, face: N, ai: { watch: 9, bark: { r: 5, every: 18, lines: ['Welcome to Anatomy Park. Mind the pens, the hepatitis is moody today.', 'Pirates of the Pancreas is this way. It’s my favourite.'] } } },
+      { id: 'poncho', dx: -9, dz: 1, face: E, ai: { wander: [[-9, 1], [-12, 4], [-6, 5], [-4, 0]], speed: 1.0, pause: 3, bark: { r: 4, every: 20, lines: ['Nothing in the bag. Don’t look in the bag.'] } } },
+      { id: 'annie', dx: 7, dz: 2, face: W, ai: { watch: 8 } },
     ],
     spots: [
       { id: 'xenonbloom', dx: 2, dz: 7, label: 'Dr. Xenon Bloom', verb: 'Talk' },
@@ -412,15 +423,15 @@ export const DESTINATIONS = [
     wide: 22,
     ceiling: 4,
     people: [
-      { id: 'jerryreal', who: 'jerry', dx: -6.5, dz: 4.5, face: N },
-      { id: 'receptionist', who: 'rick', dx: 6.5, dz: 2.2, face: S },
+      { id: 'jerryreal', who: 'jerry', dx: -6.5, dz: 4.5, face: N, ai: { watch: 7, bark: { r: 4, every: 14, lines: ['Morty! Oh thank god. Tell them I’m your Jerry.', 'They have a TV here. It only shows one channel. It’s fine.'] } } },
+      { id: 'receptionist', who: 'rick', dx: 6.5, dz: 2.2, face: S, ai: { watch: 9 } },
       { id: 'jerrytv', who: 'jerry-cardigan', dx: -2, dz: -5, face: N },
     ],
     extras: [
-      { kind: 'jerry-robe', dx: -8.5, dz: -3.5, face: 0 },
-      { kind: 'jerry-golf', dx: 2, dz: -1.6, face: W },
-      { kind: 'jerry-tux', dx: -5, dz: 1.5, face: 0.6 },
-      { kind: 'jerry-track', dx: 8.5, dz: -1.5, face: W },
+      { kind: 'jerry-robe', dx: -8.5, dz: -3.5, face: 0, ai: { wander: [[-8.5, -3.5], [-7, -1], [-9, 1]], speed: 0.6, pause: 4 } },
+      { kind: 'jerry-golf', dx: 2, dz: -1.6, face: W, ai: { wander: [[2, -1.6], [4, 0.5], [1, 1]], speed: 0.6, pause: 5 } },
+      { kind: 'jerry-tux', dx: -5, dz: 1.5, face: 0.6, ai: { wander: [[-5, 1.5], [-3, 3.5], [-6, 3]], speed: 0.6, pause: 6 } },
+      { kind: 'jerry-track', dx: 8.5, dz: -1.5, face: W, ai: { wander: [[8.5, -1.5], [8, 1], [6, -3]], speed: 0.6, pause: 7 } },
       { kind: 'jerry-gown', dx: -8.4, dz: -0.6, face: -0.4 },
       { kind: 'jerry-golf', dx: 0.5, dz: 2.5, face: -2.2 },
       { kind: 'jerry-robe', dx: 8.6, dz: -6.4, face: 2.6 },
@@ -464,12 +475,12 @@ export const DESTINATIONS = [
     sky: { top: 0x1c2350, mid: 0x7a4a7a, low: 0xf2a070, sun: 0xffd2a0, clouds: 1, moons: 1 },
     people: [{ id: 'arthricia', dx: 3, dz: -1, face: S }],
     extras: [
-      { kind: 'magdalian-a', dx: -6, dz: 2, face: 0.4 },
-      { kind: 'magdalian-b', dx: 9, dz: -5, face: 2.6 },
-      { kind: 'magdalian-c', dx: -14, dz: -2, face: -0.3 },
-      { kind: 'magdalian-a', dx: 13, dz: 3, face: 3.4 },
-      { kind: 'magdalian-b', dx: -3, dz: -9, face: -1.6 },
-      { kind: 'magdalian-c', dx: 7, dz: 7, face: 1.9 },
+      { kind: 'magdalian-a', dx: -6, dz: 2, face: 0.4, ai: { wander: [[-6, 2], [-4, 4.5], [-8.5, 3]], speed: 0.7, pause: 4, hunt: { speed: 2.7, catchR: 1.2 } } },
+      { kind: 'magdalian-b', dx: 9, dz: -5, face: 2.6, ai: { wander: [[9, -5], [11, -2.5], [6.5, -4]], speed: 0.7, pause: 4, hunt: { speed: 2.7, catchR: 1.2 } } },
+      { kind: 'magdalian-c', dx: -14, dz: -2, face: -0.3, ai: { wander: [[-14, -2], [-12, 0.5], [-16.5, -1]], speed: 0.7, pause: 4, hunt: { speed: 2.7, catchR: 1.2 } } },
+      { kind: 'magdalian-a', dx: 13, dz: 3, face: 3.4, ai: { wander: [[13, 3], [15, 5.5], [10.5, 4]], speed: 0.7, pause: 4, hunt: { speed: 2.7, catchR: 1.2 } } },
+      { kind: 'magdalian-b', dx: -3, dz: -9, face: -1.6, ai: { wander: [[-3, -9], [-1, -6.5], [-5.5, -8]], speed: 0.7, pause: 4, hunt: { speed: 2.7, catchR: 1.2 } } },
+      { kind: 'magdalian-c', dx: 7, dz: 7, face: 1.9, ai: { wander: [[7, 7], [9, 9.5], [4.5, 8]], speed: 0.7, pause: 4, hunt: { speed: 2.7, catchR: 1.2 } } },
     ],
     spots: [
       { id: 'arthricia', dx: 3, dz: -1, label: 'Arthricia', verb: 'Talk' },
@@ -490,6 +501,7 @@ export const DESTINATIONS = [
       siren: { who: null, text: 'The siren howls over the village. The purge has begun. Run for the portal.' },
     },
     acts: { siren: 'siren' },
+    caught: 'The villagers catch you by the lanterns. It’s the purge. You wake up by the portal with your pockets turned out, and the sky is calm again.',
     escape: { spot: 'siren', s: 60, task: 'purge' },
     kinds: ['arthricia', 'magdalian-a', 'magdalian-b', 'magdalian-c'],
   }),
@@ -502,15 +514,15 @@ export const DESTINATIONS = [
     wide: 70,
     sky: { top: 0x070b1e, mid: 0x1d2a55, low: 0x4f6fa8, sun: 0xe8eeff, clouds: 0, moons: 2 },
     people: [
-      { id: 'flippynips', dx: 0, dz: -12, face: S },
-      { id: 'scroopy', dx: 11, dz: -2, face: W },
+      { id: 'flippynips', dx: 0, dz: -12, face: S, ai: { watch: 10, bark: { r: 6, every: 18, lines: ['Pluto is a planet! Say it with me, boy.', 'Scroopy Noopers is a liar and a plutonium hoarder.'] } } },
+      { id: 'scroopy', dx: 11, dz: -2, face: W, ai: { wander: [[11, -2], [13, 2], [9, 4]], speed: 0.8, pause: 5, bark: { r: 4, every: 20, lines: ['Pluto is shrinking. The plutonium mines. Nobody listens.'] } } },
     ],
     extras: [
-      { kind: 'plutonian-a', dx: -4, dz: -5, face: N },
-      { kind: 'plutonian-b', dx: 3.5, dz: -4.5, face: N },
+      { kind: 'plutonian-a', dx: -4, dz: -5, face: N, ai: { wander: [[-4, -5], [-2.5, -3], [-5.5, -4]], speed: 0.5, pause: 6 } },
+      { kind: 'plutonian-b', dx: 3.5, dz: -4.5, face: N, ai: { wander: [[3.5, -4.5], [5.0, -2.5], [2.0, -3.5]], speed: 0.5, pause: 6 } },
       { kind: 'plutonian-a', dx: 1, dz: -3.2, face: N },
-      { kind: 'plutonian-b', dx: -7.5, dz: -3, face: 1.2 },
-      { kind: 'plutonian-a', dx: 7, dz: -6, face: 2.2 },
+      { kind: 'plutonian-b', dx: -7.5, dz: -3, face: 1.2, ai: { wander: [[-7.5, -3], [-6.0, -1], [-9.0, -2]], speed: 0.5, pause: 6 } },
+      { kind: 'plutonian-a', dx: 7, dz: -6, face: 2.2, ai: { wander: [[7, -6], [8.5, -4], [5.5, -5]], speed: 0.5, pause: 6 } },
     ],
     spots: [
       { id: 'flippynips', dx: 0, dz: -12, label: 'King Flippy Nips', verb: 'Talk' },
@@ -545,10 +557,10 @@ export const DESTINATIONS = [
     sky: { top: 0x6a4a2a, mid: 0xc98a4a, low: 0xf2d39a, sun: 0xfff0c8, clouds: 1, moons: 0 },
     people: [{ id: 'gearhead', dx: -7, dz: -7.2, face: S }],
     extras: [
-      { kind: 'gearperson-a', dx: 3, dz: -2, face: 2.4 },
-      { kind: 'gearperson-b', dx: 12, dz: 2, face: W },
-      { kind: 'gearperson-a', dx: -14, dz: 2, face: 0.3 },
-      { kind: 'gearperson-b', dx: 5, dz: 6, face: -2 },
+      { kind: 'gearperson-a', dx: 3, dz: -2, face: 2.4, ai: { wander: [[3, -2], [6, 3], [0, 5]], speed: 0.9, pause: 3 } },
+      { kind: 'gearperson-b', dx: 12, dz: 2, face: W, ai: { wander: [[12, 2], [15, -3], [9, -4]], speed: 0.9, pause: 3 } },
+      { kind: 'gearperson-a', dx: -14, dz: 2, face: 0.3, ai: { wander: [[-14, 2], [-10, 5], [-16, 6]], speed: 0.9, pause: 3 } },
+      { kind: 'gearperson-b', dx: 5, dz: 6, face: -2, ai: { wander: [[5, 6], [8, 9], [2, 9]], speed: 0.9, pause: 3 } },
     ],
     spots: [
       { id: 'gearhead', dx: -7, dz: -7.2, label: 'Gearhead', verb: 'Talk' },
@@ -580,12 +592,12 @@ export const DESTINATIONS = [
     wide: 24,
     ceiling: 6,
     people: [
-      { id: 'vance', dx: -2.6, dz: -5.4, face: S },
-      { id: 'supernova', dx: 2.8, dz: -5.6, face: S },
-      { id: 'alanrails', dx: -7.8, dz: 0.6, face: E },
-      { id: 'millionants', dx: 7.8, dz: -0.6, face: W },
+      { id: 'vance', dx: -2.6, dz: -5.4, face: S, ai: { watch: 8 } },
+      { id: 'supernova', dx: 2.8, dz: -5.6, face: S, ai: { watch: 8 } },
+      { id: 'alanrails', dx: -7.8, dz: 0.6, face: E, ai: { watch: 7 } },
+      { id: 'millionants', dx: 7.8, dz: -0.6, face: W, ai: { watch: 7 } },
       { id: 'crocubot', dx: 6.6, dz: -6.8, face: S + 0.4 },
-      { id: 'noobnoob', dx: -5.8, dz: 4.2, face: E },
+      { id: 'noobnoob', dx: -5.8, dz: 4.2, face: E, ai: { wander: [[-5.8, 4.2], [-2, 2.2], [1.6, 3.4], [-3.5, 5.6]], speed: 0.7, pause: 3, bark: { r: 4, every: 16, lines: ['Ha! Classic Rick.', 'Noob-Noob’s got it. Noob-Noob’s always got it.'] } } },
     ],
     spots: [
       { id: 'vance', dx: -2.6, dz: -4.2, label: 'Vance Maximus', verb: 'Talk' },
@@ -625,9 +637,17 @@ export const DESTINATIONS = [
     wide: 56,
     ceiling: 9,
     people: [
-      { id: 'nebulon', dx: 0, dz: -17.4, y: 3.2, face: S },
-      { id: 'zig-console-a', who: 'zigerion-b', dx: -7, dz: -17.6, y: 3.2, face: S },
-      { id: 'zig-console-b', who: 'zigerion-c', dx: 7, dz: -17.6, y: 3.2, face: S },
+      { id: 'nebulon', dx: 0, dz: -17.4, y: 3.2, face: S, ai: { watch: 30, bark: { r: 9, every: 20, lines: ['Act natural down there. Nothing is wrong with the street.', 'The recipe, Morty. Concentrated dark matter. Just say it out loud, to no one.'] } } },
+      { id: 'zig-console-a', who: 'zigerion-b', dx: -7, dz: -17.6, y: 3.2, face: S, ai: { hunt: { speed: 2.7, catchR: 1.2 } } },
+      { id: 'zig-console-b', who: 'zigerion-c', dx: 7, dz: -17.6, y: 3.2, face: S, ai: { hunt: { speed: 2.5, catchR: 1.2 } } },
+    ],
+    extras: [
+      // the two men, the same man, out for the same walk, a step apart
+      { kind: 'simman', dx: -0.8, dz: 5.6, face: W, ai: { wander: [[-0.8, 5.6], [-9, 5.6], [-9, 12], [6, 12], [6, 5.6]], speed: 1.0, pause: 0.5 } },
+      { kind: 'simman', dx: 0.8, dz: 5.6, face: W, ai: { wander: [[0.8, 5.6], [-7.4, 5.6], [-7.4, 12], [7.6, 12], [7.6, 5.6]], speed: 1.0, pause: 0.5 } },
+      // the pop-tart at his toaster's door, waving
+      { kind: 'poptart', dx: 17, dz: 8.2, face: N, ai: { watch: 9, bark: { r: 5, every: 15, lines: ['Hi! I live in a toaster!', 'Nice day. It’s always a nice day.'] } } },
+      { kind: 'toasterhouse', dx: 17, dz: 10.6, face: N },
     ],
     spots: [
       { id: 'twins', dx: 0, dz: 4, label: 'Two men, the same man', verb: 'Look', r: 1.8 },
@@ -641,22 +661,21 @@ export const DESTINATIONS = [
       { id: 'walkway', dx: 0, dz: -17.6, w: 56, d: 4.8 },
       { id: 'simhouse', dx: -12, dz: -8.6, w: 10, d: 8 },
       { id: 'simhouse-b', dx: 12, dz: -8.6, w: 9, d: 7 },
-      { id: 'toaster', dx: 17, dz: 10.4, w: 5, d: 3.6 },
-      { id: 'twin-a', dx: -0.8, dz: 5.6, r: 0.4 },
-      { id: 'twin-b', dx: 0.8, dz: 5.6, r: 0.4 },
+      { id: 'toaster', dx: 17, dz: 10.6, w: 4.4, d: 3.4 },
     ],
-    tasks: [{ id: 'simulation', name: 'Spot the simulation', hint: 'Dial the Zigerions’ simulation on the portal gun, and find three things they got wrong.' }],
+    tasks: [{ id: 'simulation', name: 'Spot the simulation', hint: 'Dial the Zigerions’ simulation on the portal gun, find three things they got wrong, and get back through the portal before the Zigerions get to you.' }],
     say: {
       twins: { who: null, text: 'Two men walking the same way, the same face, the same step. One of them says “Hello” and the other one says it too. Slip one.' },
       poptart: { who: null, text: 'A pop-tart, living in a toaster. He waves. Nobody in the real street does that. Slip two.' },
-      sun: { who: null, text: 'The sun is a yellow disc painted on the wall. It hasn’t moved all day. Slip three.' },
+      sun: { who: null, text: 'The sun is a yellow disc painted on the wall. It hasn’t moved all day. Slip three. Somewhere above you, somebody says “Shut it down.”' },
       simhouse: { who: null, text: 'The Smiths’ house, in two colours, with the windows painted on. The door doesn’t open.' },
       nebulon: { who: 'Prince Nebulon', text: 'Is it the kid? Of course it’s the kid. We don’t have the processing power for a Rick. Just act natural down there and tell us the recipe for concentrated dark matter.' },
       consoles: { who: null, text: 'Two Zigerions at the consoles, running the street. One of them is scrolling. The other is asleep.' },
     },
-    collect: { task: 'simulation', spots: ['twins', 'poptart', 'sun'] },
+    collect: { task: 'simulation', spots: ['twins', 'poptart', 'sun'], escape: { s: 45 } },
+    caught: 'Four hands close on your shoulders. “Got him, your highness.” The simulation reloads round you, and you’re back at the start of the street.',
     goal: 'twins',
-    kinds: ['nebulon', 'zigerion-b', 'zigerion-c'],
+    kinds: ['nebulon', 'zigerion-b', 'zigerion-c', 'simman', 'poptart', 'toasterhouse'],
   }),
   place(14, {
     id: 'storytrain',
@@ -667,8 +686,8 @@ export const DESTINATIONS = [
     wide: 10,
     ceiling: 3.4,
     people: [
-      { id: 'storylord', dx: 0, dz: -13, face: S },
-      { id: 'ticketsguy', dx: 0, dz: -3, face: S },
+      { id: 'storylord', dx: 0, dz: -13, face: S, ai: { wander: [[0, -13], [1.2, -12.2], [-1.2, -12.2]], speed: 0.5, pause: 4, watch: 8, bark: { r: 5, every: 18, lines: ['Give me a beat, Morty. Any beat. A character wants something.', 'This carriage is Act Two. Nothing ever happens in Act Two.'] } } },
+      { id: 'ticketsguy', dx: 0, dz: -3, face: S, ai: { watch: 6, hunt: { speed: 0.85, catchR: 1.3, always: true, until: 'storytrain', line: '“Tickets, please.” You haven’t got one. He takes you by the ear and walks you to the back of the carriage.' } } },
     ],
     spots: [
       { id: 'storylord', dx: 0, dz: -11.4, label: 'Story Lord', verb: 'Talk' },
@@ -683,7 +702,7 @@ export const DESTINATIONS = [
         { id: `seat-e${dz}`, dx: 3.1, dz, w: 2.9, d: 1.1 },
       ]),
     ],
-    tasks: [{ id: 'storytrain', name: 'Find your ticket', hint: 'Dial the Story Train on the portal gun, and find a ticket before the conductor gets to you.' }],
+    tasks: [{ id: 'storytrain', name: 'Find your ticket', hint: 'Dial the Story Train on the portal gun, and find a ticket under a seat before the conductor reaches you. He walks the aisle; the seats are the way round him.' }],
     say: {
       storylord: { who: 'Story Lord', text: 'I am Story Lord. This train runs on stories, and yours has been meandering for a while, Morty. Give me a beat. Any beat.' },
       ticketsguy: { who: 'The conductor', text: 'Tickets, please. No ticket, no ride. Rules of the anthology.' },
@@ -702,7 +721,13 @@ export const DESTINATIONS = [
     deep: 36,
     wide: 40,
     ceiling: 12,
-    people: [{ id: 'rickprime', dx: 0, dz: -12.4, face: S, until: 'fortress' }],
+    people: [{ id: 'rickprime', dx: 0, dz: -12.4, face: S, until: 'fortress', ai: { watch: 14 } }],
+    extras: [
+      // his security drones, round their loops; one that gets a look at Morty goes for him
+      { kind: 'primedrone', dx: -10, dz: 6, y: 1.5, face: E, ai: { wander: [[-10, 6], [-4, 6], [-4, -2], [-10, -2]], speed: 1.8, pause: 0.2, hunt: { speed: 2.9, catchR: 1.5, near: 3.6, lose: 7 } } },
+      { kind: 'primedrone', dx: 10, dz: -6, y: 1.5, face: W, ai: { wander: [[10, -6], [4, -6], [4, 4], [10, 4]], speed: 1.9, pause: 0.2, hunt: { speed: 2.9, catchR: 1.5, near: 3.6, lose: 7 } } },
+      { kind: 'primedrone', dx: 0, dz: -8, y: 1.5, face: E, ai: { wander: [[0, -8], [8, -9], [-8, -9]], speed: 1.6, pause: 0.5, hunt: { speed: 2.9, catchR: 1.5, near: 3.6, lose: 7 } } },
+    ],
     spots: [
       { id: 'omegadevice', dx: 5, dz: -1.8, label: 'The Omega Device', verb: 'Look', r: 1.9 },
       { id: 'primeconsole', dx: 0, dz: -10.6, label: 'Rick Prime’s console', verb: 'Reach', r: 1.6 },
@@ -710,13 +735,14 @@ export const DESTINATIONS = [
       { id: 'primepicture', dx: 17.6, dz: -8, label: 'A picture on the wall', verb: 'Look', r: 1.6 },
     ],
     solids: [
-      { id: 'plinth', dx: 5, dz: -4, r: 1.5 },
+      { id: 'plinth', dx: 5, dz: -4, r: 1.7 },
       { id: 'primeconsole', dx: 0, dz: -14, w: 7, d: 1.6 },
       ...[-10, -6, -2, 2, 6, 10].map((dz) => ({ id: `tank${dz}`, dx: -18.2, dz, r: 1.1 })),
       { id: 'crate-a', dx: 14, dz: 10, w: 2.4, d: 2.4 },
       { id: 'crate-b', dx: 16.6, dz: 8, w: 1.8, d: 1.8 },
     ],
-    tasks: [{ id: 'fortress', name: 'Reach Rick Prime', hint: 'Dial Rick Prime’s fortress on the portal gun, and get to his console before he’s gone.' }],
+    tasks: [{ id: 'fortress', name: 'Reach Rick Prime', hint: 'Dial Rick Prime’s fortress on the portal gun, and get to his console past the drones. One red eye on you and you’re back at the door.' }],
+    caught: 'A drone’s red eye finds you and shrieks. Rick Prime looks up, says “Nope,” and is gone. You come round at the way in, and he’s back at his console as if nothing happened.',
     say: {
       omegadevice: { who: null, text: 'The Omega Device. Rick built one to erase Diane from every dimension. Rick Prime built this one, and used it.' },
       primeconsole: { who: 'Rick Prime', text: '“Oh, it’s the backup. Tell him I said hi, kid. Tell him he’s still boring.” A portal opens behind him and he steps through it without looking back.' },
@@ -725,7 +751,7 @@ export const DESTINATIONS = [
     },
     done: { primeconsole: 'fortress' },
     acts: { primeconsole: 'gone' },
-    kinds: ['rickprime'],
+    kinds: ['rickprime', 'primedrone', 'omegadevice', 'rick'],
   }),
 ];
 

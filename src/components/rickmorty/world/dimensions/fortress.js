@@ -1,8 +1,10 @@
 // Rick Prime's fortress ("Rickmurai Jack", "Unmortricken"): a cold grey
 // hangar with ribbed steel walls and a grated floor, lit from strips in the
 // ceiling. The Omega Device stands on a plinth in the middle, a black sphere
-// in a cage of gold rings turning slowly, lit red from inside. Along the west
-// wall the tanks of his spares, a half-made Rick floating in each. At the
+// in a cage of gold rings (its Meshy model). Along the west wall the tanks of
+// his spares, a Rick floating in each. His security drones patrol
+// (./destinations.js's extras, stage.js's NPC behaviour): one that sees
+// Morty goes for him, and caught, he's back at the way in. At the
 // far end the console, Rick Prime at it till Morty gets there: then he's
 // gone (`until: 'fortress'`), and a portal's swirl hangs where he stood for a
 // few seconds (the area's 'gone').
@@ -14,7 +16,6 @@ import { stage } from './stage';
 const LIGHT = { sun: [0xdfe8ff, 0.9], hemi: [0xc8d8f0, 0x3a3e4a, 2.3], fog: null, background: 0x0a0c12 };
 const STEEL = 0x5a6070;
 const DARK = 0x2a2e38;
-const GOLD = 0xd8b25a;
 
 // a grated floor: dark plates with a grid of lighter bars
 const GRATE = (g, w, h) => {
@@ -44,36 +45,14 @@ export async function buildFortress(kit) {
   for (let dx = -18; dx <= 18; dx += 4) for (const z of [A.z0 + 0.2, A.z1 - 0.2]) R.frame(P(dx, 0)[0], z, 0, { list: 'fixed' }).box(DARK, 0, 0, 0, 0.6, H, 0.4);
   for (let dz = -14; dz <= 14; dz += 7) R.frame(...P(0, dz), 0, { list: 'fixed' }).box(DARK, 0, H - 0.4, 0, W - 1, 0.3, 0.6).glow(BOX, 0xdfe8ff, 1.5, 0, H - 0.44, 0, 0, W - 2, 0.04, 0.3);
 
-  // the Omega Device: a plinth, a black sphere, three gold rings about it, a red core
+  // the Omega Device on its plinth (its model, which has its own plinth), a
+  // ring of red lights round its foot
   const [ox, oz] = P(5, -4);
   const base = R.frame(ox, oz, 0);
-  base.cyl(DARK, 0, 0, 0, 1.5, 0.4).cyl(STEEL, 0, 0.4, 0, 1.1, 0.8).cyl(GOLD, 0, 1.2, 0, 0.5, 0.1);
-  for (let k = 0; k < 8; k++) base.glow(BALL, 0xff3a2a, 1.6, Math.cos((k / 8) * Math.PI * 2) * 1.3, 0.42, Math.sin((k / 8) * Math.PI * 2) * 1.3, 0, 0.12);
-  const omega = new THREE.Group();
-  omega.position.set(ox, 2.3, oz);
-  const sphere = new THREE.Mesh(BALL, R.own(new THREE.MeshStandardMaterial({ color: 0x0a0a10, roughness: 0.35, metalness: 0.6 })));
-  sphere.scale.setScalar(1.4);
-  omega.add(sphere);
-  const coreMat = R.own(new THREE.MeshBasicMaterial({ color: 0xff3a2a }));
-  const core = new THREE.Mesh(BALL, coreMat);
-  core.scale.setScalar(0.5);
-  omega.add(core);
-  const ringGeo = R.own(new THREE.TorusGeometry(1.1, 0.05, 8, 48));
-  const ringMat = R.own(new THREE.MeshStandardMaterial({ color: GOLD, roughness: 0.4, metalness: 0.8 }));
-  const rings = [0, 1, 2].map((i) => {
-    const r = new THREE.Mesh(ringGeo, ringMat);
-    r.scale.setScalar(1 + i * 0.18);
-    omega.add(r);
-    return r;
-  });
-  R.add(omega);
-  // the device's name on the plinth
-  R.cell('omega-plate', 128, 32, (g, w, h) => {
-    g.fillStyle = '#d8b25a';
-    g.fillRect(0, 0, w, h);
-    fitText(g, 'OMEGA', w / 2, h / 2, w - 10, 18, { color: '#2a1a0a' });
-  });
-  base.decal('omega-plate', 0, 0.8, 1.11, 0.9, 0.22);
+  base.cyl(DARK, 0, 0, 0, 1.7, 0.3);
+  for (let k = 0; k < 10; k++) base.glow(BALL, 0xff3a2a, 1.6, Math.cos((k / 10) * Math.PI * 2) * 1.5, 0.32, Math.sin((k / 10) * Math.PI * 2) * 1.5, 0, 0.12);
+  let omega = null;
+  S.figure('omegadevice', { x: ox, z: oz, y: 0.3, face: -Math.PI / 2, h: 3.4, onPlace: (c) => (omega = c.group) });
 
   // the tanks along the west wall: glass tubes on dark bases, a Rick in each, lit cyan
   const tubeMat = R.own(new THREE.MeshBasicMaterial({ color: 0x6ad8ff, transparent: true, opacity: 0.22, depthWrite: false }));
@@ -87,27 +66,8 @@ export async function buildFortress(kit) {
     const tube = new THREE.Mesh(tubeGeo, tubeMat);
     tube.position.set(x, 2, z);
     R.add(tube, { ink: false });
-    // the spare: a pale figure in a lab coat, eyes shut, floating
-    const rick = new THREE.Group();
-    const skin = R.own(new THREE.MeshStandardMaterial({ color: 0xc8d8e0, roughness: 0.9 }));
-    const coat = R.own(new THREE.MeshStandardMaterial({ color: 0xdfe8ee, roughness: 0.9 }));
-    const hair = R.own(new THREE.MeshStandardMaterial({ color: 0x9ab8c8, roughness: 0.9 }));
-    const b = new THREE.Mesh(BOX, coat);
-    b.scale.set(0.5, 0.9, 0.3);
-    b.position.y = 1.15;
-    const h = new THREE.Mesh(BALL, skin);
-    h.scale.set(0.34, 0.42, 0.34);
-    h.position.y = 1.85;
-    const hr = new THREE.Mesh(BOX, hair);
-    hr.scale.set(0.4, 0.3, 0.3);
-    hr.position.set(0, 2.1, -0.04);
-    const legs = new THREE.Mesh(BOX, R.own(new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: 0.9 })));
-    legs.scale.set(0.42, 0.7, 0.28);
-    legs.position.y = 0.35;
-    rick.add(b, h, hr, legs);
-    rick.position.set(x, 0.55, z);
-    R.add(rick, { ink: false });
-    ricks.push(rick);
+    // the spare: a Rick, floating in it, asleep
+    S.figure('rick', { x, z, y: 0.55, h: 2.0, face: -Math.PI / 2, onPlace: (c) => ricks.push(c.group) });
   }
 
   // the console at the far end, his, the screens green on black
@@ -179,11 +139,7 @@ export async function buildFortress(kit) {
   S.people();
   let goneAt = null;
   const area = S.done(LIGHT, (t, dt, state, camera) => {
-    omega.rotation.y = t * 0.3;
-    rings[0].rotation.x = t * 0.7;
-    rings[1].rotation.y = t * 0.5;
-    rings[2].rotation.z = t * 0.4;
-    coreMat.color.setHex(Math.sin(t * 3) > 0 ? 0xff3a2a : 0xaa1a10);
+    if (omega) omega.rotation.y = -Math.PI / 2 + Math.PI / 2 + t * 0.25;
     for (const [i, r] of ricks.entries()) r.position.y = 0.55 + Math.sin(t * 0.8 + i) * 0.12;
     if (goneAt != null) {
       const age = t - goneAt;
@@ -196,10 +152,15 @@ export async function buildFortress(kit) {
   let now = 0;
   R.tick((t) => (now = t));
   area.actions = {
+    ...area.actions,
     gone: () => {
       goneAt = now;
     },
-    calm: () => {},
+    calm: () => {
+      goneAt = null;
+      swirl.visible = false;
+      S.calm();
+    },
   };
   return area;
 }
