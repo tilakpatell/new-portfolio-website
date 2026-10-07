@@ -31,8 +31,9 @@
 //
 // --ultra (models and fetch, scripts/ultra/cut.mjs): the ultra level's cut.
 // `models --ultra` asks Meshy again from the same input at its most polygons
-// (300k) and its finest texture (MESHY_ULTRA_TEXTURE, 4k unless set), kept
-// as the kind's `ultra` task so the plain one is untouched; `fetch --ultra`
+// (300k) and its finest texture (MESHY_ULTRA_TEXTURE, 8k unless set: Meshy's
+// top is 8k), kept as the kind's `ultra` task so the plain one is
+// untouched; `fetch --ultra`
 // makes <kind>.ultra.glb from it, up to four times the kind's tris with
 // 8192 maps, under 24 MB, no light copy (ultra draws the whole model at
 // every distance), and prints the catalogue's `ultra` line for it.
@@ -49,13 +50,14 @@ import { fileURLToPath } from 'node:url';
 import { REFS, fetchRef } from './galaxy-refs.mjs';
 import { makeLod } from './galaxy-surface-lod.mjs';
 import { recolorDoc } from './recolor.mjs';
-import { MESHY_MAX_POLYCOUNT, checkUltra, takeUltra, ultraName, ultraSpec } from './ultra/cut.mjs';
+import { MESHY_MAX_POLYCOUNT, checkUltra, mapsOf, takeUltra, ultraName, ultraSpec } from './ultra/cut.mjs';
 import { BUILDINGS as BACK_LANE } from './meshy-galaxy-buildings-back.mjs';
 import { BUILDINGS as FILL_LANE } from './meshy-galaxy-buildings-fill.mjs';
 import { BUILDINGS as BASES_LANE } from './meshy-galaxy-buildings-bases.mjs';
 import { BUILDINGS as THREE_LANE } from './meshy-galaxy-three.mjs';
 import { BUILDINGS as LIBRARY_LANE } from './meshy-galaxy-library.mjs';
 import { BUILDINGS as AUDIT_LANE } from './meshy-galaxy-audit.mjs';
+import { BUILDINGS as ULTRA_LANE } from './meshy-galaxy-ultra.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models', 'galaxy', 'surface');
@@ -126,6 +128,8 @@ Object.assign(BUILDINGS, LIBRARY_LANE);
 // and the audit's remakes (scripts/meshy-galaxy-audit.mjs): last, so a kind
 // remade there takes over from its earlier lane's entry
 Object.assign(BUILDINGS, AUDIT_LANE);
+// and the ultra level's remakes (scripts/meshy-galaxy-ultra.mjs), last of all
+Object.assign(BUILDINGS, ULTRA_LANE);
 
 async function api(method, path, body) {
   const r = await fetch(`${API}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
@@ -212,7 +216,7 @@ async function squeeze(from, to, a) {
   for (const m of root.listMeshes()) for (const p of m.listPrimitives()) tris += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
   await mkdir(dirname(to), { recursive: true });
   await io.write(to, doc);
-  return { tris, size: size.map((v) => +(v * k).toFixed(1)) };
+  return { tris, tex: await mapsOf(doc), size: size.map((v) => +(v * k).toFixed(1)) };
 }
 
 const prompted = (names) => names.filter((n) => BUILDINGS[n].prompt);
@@ -240,6 +244,15 @@ async function pictures(n) {
     out.push(await img.resize(2048, 2048, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 90 }).toBuffer());
   }
   return out;
+}
+// what goes into image to 3D for a prompted kind: its concept picture
+// (<kind>.png in the review folder, from the images step) as a data URI,
+// so the model can be asked on another account than the one that drew it
+// (a task is read back only with the key that made it); the task itself
+// only where the picture isn't downloaded
+async function concept(n, s) {
+  const file = join(REVIEW, `${n}.png`);
+  return existsSync(file) ? { image_url: dataUri(await readFile(file), 'image/png') } : { input_task_id: s[n].image };
 }
 // what goes into image to 3D for a pictured kind: each lifted picture (or
 // the picture itself where it wasn't lifted)
@@ -297,14 +310,14 @@ const steps = {
         const from = BUILDINGS[n].prompt ? null : await inputs(n);
         const multi = from && from.length > 1;
         const { result } = await api('POST', multi ? '/v1/multi-image-to-3d' : '/v1/image-to-3d', {
-          ...(from ? (multi ? { image_urls: from } : { image_url: from[0] }) : { input_task_id: s[n].image }),
+          ...(from ? (multi ? { image_urls: from } : { image_url: from[0] }) : await concept(n, s)),
           ai_model: 'latest',
           should_texture: true,
           enable_pbr: true,
           should_remesh: true,
           topology: 'triangle',
           target_polycount: ultra ? MESHY_MAX_POLYCOUNT : BUILDINGS[n].tris,
-          texture_resolution: ultra ? (process.env.MESHY_ULTRA_TEXTURE ?? '4k') : '2k',
+          texture_resolution: ultra ? (process.env.MESHY_ULTRA_TEXTURE ?? '8k') : '2k',
           target_formats: ['glb'],
           enable_thumbnail: true,
         });
@@ -387,12 +400,13 @@ async function fetchUltra(names, s) {
     const raw = join(REVIEW, 'raw', ultraName(n));
     if (!existsSync(raw)) await download(t.model_urls.glb, raw);
     const to = join(a.galaxy ? GALAXY : OUT, ultraName(n));
-    const { tris, size } = await squeeze(raw, to, a);
+    const { tris, tex, size } = await squeeze(raw, to, a);
     const bytes = (await stat(to)).size;
     const problems = checkUltra({ tris: a.tris, after: tris, bytes });
     if (problems.length) throw new Error(`${n} (ultra): ${problems.join('; ')}`);
-    console.log(`fetch    ${n.padEnd(13)} ultra ${tris} triangles, ${size.join(' × ')} m, ${(bytes / 1024 / 1024).toFixed(1)} MB`);
-    console.log(`         ${''.padEnd(13)} catalogue: ultra: { tris: ${Math.round(tris)}, tex: ${a.tex} }`);
+    console.log(`fetch    ${n.padEnd(13)} ultra ${tris} triangles, ${tex} maps, ${size.join(' × ')} m, ${(bytes / 1024 / 1024).toFixed(1)} MB`);
+    // (the maps as they are in the file: Meshy's 8k where it gave them)
+    console.log(`         ${''.padEnd(13)} catalogue: ultra: { tris: ${Math.round(tris)}, tex: ${tex} }`);
   }
 }
 

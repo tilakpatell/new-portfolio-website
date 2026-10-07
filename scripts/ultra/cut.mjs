@@ -31,3 +31,16 @@ export function checkUltra({ tris, after, bytes }) {
   if (bytes > ULTRA.bytes) problems.push(`${(bytes / 1024 / 1024).toFixed(1)} MB, over 24 MB`);
   return problems;
 }
+
+// the widest map in a document, as the catalogue's `tex` for its ultra cut:
+// the maps are the source's where that had less than the cut asked for (a
+// Sketchfab model's 1024s stay 1024), so the entry says what is in the file
+export async function mapsOf(doc) {
+  const { default: sharp } = await import('sharp');
+  let widest = 0;
+  for (const t of doc.getRoot().listTextures()) {
+    const { width = 0, height = 0 } = await sharp(t.getImage()).metadata();
+    widest = Math.max(widest, width, height);
+  }
+  return widest;
+}

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { MESHY_MAX_POLYCOUNT, checkUltra, takeUltra, ultraName, ultraSpec } from './cut.mjs';
+import { Document } from '@gltf-transform/core';
+import sharp from 'sharp';
+import { MESHY_MAX_POLYCOUNT, checkUltra, mapsOf, takeUltra, ultraName, ultraSpec } from './cut.mjs';
 
 describe('an ultra cut asked of an importer', () => {
   it('is asked for with --ultra, anywhere on the command line', () => {
@@ -24,5 +26,14 @@ describe('an ultra cut asked of an importer', () => {
     expect(checkUltra({ tris: 120000, after: 119000, bytes: 10 * 1024 * 1024 })).toEqual([]);
     expect(checkUltra({ tris: 120000, after: 119000, bytes: 25 * 1024 * 1024 })[0]).toMatch(/over 24 MB/);
     expect(checkUltra({ tris: 120000, after: 200000, bytes: 1 })[0]).toMatch(/over the budget of 120000/);
+  });
+
+  it('says the widest map it really carries, not the one asked for', async () => {
+    const doc = new Document();
+    const png = (w, h) => sharp({ create: { width: w, height: h, channels: 3, background: '#888' } }).png().toBuffer();
+    doc.createTexture('a').setImage(await png(64, 32)).setMimeType('image/png');
+    doc.createTexture('b').setImage(await png(16, 128)).setMimeType('image/png');
+    expect(await mapsOf(doc)).toBe(128);
+    expect(await mapsOf(new Document())).toBe(0);
   });
 });

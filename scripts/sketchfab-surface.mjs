@@ -59,7 +59,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join as path } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { recolorDoc } from './recolor.mjs';
-import { checkUltra, takeUltra, ultraName, ultraSpec } from './ultra/cut.mjs';
+import { checkUltra, mapsOf, takeUltra, ultraName, ultraSpec } from './ultra/cut.mjs';
 
 const ROOT = path(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path(ROOT, 'public', 'models', 'galaxy', 'surface');
@@ -164,7 +164,8 @@ async function bring(io, kind, spec, { ultra = false } = {}) {
     `${kind.padEnd(14)} ${Math.round(before)} → ${Math.round(triangles(doc))} triangles, ${draws} draws, ${root.listTextures().length} maps, ${(bytes / 1024).toFixed(0)} KB;` +
       ` ${w.toFixed(1)} wide × ${h.toFixed(1)} tall × ${l.toFixed(1)} long (m)${clips.length ? `; clips: ${clips.join(', ')}` : ''}`,
   );
-  if (ultra) console.log(`${''.padEnd(14)} catalogue: ultra: { tris: ${Math.round(triangles(doc))}, tex: ${spec.tex} }`);
+  // (the maps as they are in the file: the source's, where it had less than 8192)
+  if (ultra) console.log(`${''.padEnd(14)} catalogue: ultra: { tris: ${Math.round(triangles(doc))}, tex: ${await mapsOf(doc)} }`);
 }
 
 async function main() {

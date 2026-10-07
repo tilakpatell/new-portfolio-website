@@ -15,7 +15,7 @@
 // → the owner's command for its ultra cut. counts is scripts/ultra/counts.mjs's.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,8 +50,9 @@ export function pick(counts, models, { n = 20 } = {}) {
   return chosen.map((kind) => ({ kind, placed: total[kind], worlds: worlds[kind], role: landmarks.has(kind) ? 'landmark' : 'placed' }));
 }
 
-// A kind whose Meshy task is kept under another name (the great wroshyr was
-// lifted out of the picture of Kachirho, and its task is Kachirho's)
+// A kind whose Meshy task is kept under another name where no lane has it
+// under its own (the great wroshyr was lifted out of the picture of
+// Kachirho, and its plain task is Kachirho's; its ultra remake is its own)
 export const TASK_NAMES = { wroshyrgreat: 'kachirho' };
 
 // Where a kind's plain model came from: Meshy (made.js's `made: 'meshy'`,
@@ -60,8 +61,12 @@ export const TASK_NAMES = { wroshyrgreat: 'kachirho' };
 // surface kinds yet: the site's made ships are the galaxy's, public/models/gen3d/).
 export function sourceOf(kind, entry, lanes = {}) {
   if (entry?.made === 'meshy') {
-    const task = TASK_NAMES[kind] ?? kind;
-    const lane = Object.entries(lanes).find(([, kinds]) => kinds.includes(task))?.[0] ?? null;
+    // (the last lane that has it wins, as a later lane's entry takes over an
+    // earlier one's in scripts/meshy-galaxy-buildings.mjs)
+    const laneOf = (task) => Object.entries(lanes).findLast(([, kinds]) => kinds.includes(task))?.[0] ?? null;
+    const own = laneOf(kind);
+    const task = own ? kind : (TASK_NAMES[kind] ?? kind);
+    const lane = own ?? laneOf(task);
     return { source: 'meshy', lane, group: entry.group, ...(task !== kind && { task }) };
   }
   if (entry?.uid) return { source: 'sketchfab', lane: null, group: entry.group };
@@ -77,7 +82,9 @@ export function sourceOf(kind, entry, lanes = {}) {
 export function commandFor(kind, { source, lane, group, task = kind }) {
   if (source === 'meshy') {
     const tasks = lane ?? 'scripts/meshy-galaxy-buildings-fill-tasks.json';
-    const made = `MESHY_TASKS=${tasks} node scripts/meshy-galaxy-buildings.mjs models --ultra ${task} && MESHY_TASKS=${tasks} node scripts/meshy-galaxy-buildings.mjs fetch --ultra ${task}`;
+    // (the ultra lane's remakes keep their lifts and raw models in a folder of their own)
+    const env = `MESHY_TASKS=${tasks}${LANE_ENV[tasks] ? ` ${LANE_ENV[tasks]}` : ''}`;
+    const made = `${env} node scripts/meshy-galaxy-buildings.mjs models --ultra ${task} && ${env} node scripts/meshy-galaxy-buildings.mjs fetch --ultra ${task}`;
     return task === kind ? made : `${made} && mv public/models/galaxy/surface/${task}.ultra.glb public/models/galaxy/surface/${kind}.ultra.glb`;
   }
   if (source === 'sketchfab') return `node scripts/sketchfab-surface.mjs ${group} --ultra ${kind}`;
@@ -85,10 +92,13 @@ export function commandFor(kind, { source, lane, group, task = kind }) {
   return null;
 }
 
-const LANES = ['meshy-galaxy-buildings', 'meshy-galaxy-buildings-fill', 'meshy-galaxy-buildings-back', 'meshy-galaxy-buildings-bases', 'meshy-galaxy-three', 'meshy-galaxy-library'];
+// (in the order scripts/meshy-galaxy-buildings.mjs takes them over, the
+// ultra lane's remakes last)
+const LANES = ['meshy-galaxy-buildings', 'meshy-galaxy-buildings-fill', 'meshy-galaxy-buildings-back', 'meshy-galaxy-buildings-bases', 'meshy-galaxy-three', 'meshy-galaxy-library', 'meshy-galaxy-ultra'];
+export const LANE_ENV = { 'scripts/meshy-galaxy-ultra-tasks.json': 'MESHY_REVIEW=lab/meshy/ultra' };
 
 // which Meshy tasks file holds each kind's task
-export const lanesIn = (dir = join(ROOT, 'scripts')) => Object.fromEntries(LANES.map((f) => [`scripts/${f}-tasks.json`, Object.keys(JSON.parse(readFileSync(join(dir, `${f}-tasks.json`), 'utf8')))]));
+export const lanesIn = (dir = join(ROOT, 'scripts')) => Object.fromEntries(LANES.map((f) => [`scripts/${f}-tasks.json`, existsSync(join(dir, `${f}-tasks.json`)) ? Object.keys(JSON.parse(readFileSync(join(dir, `${f}-tasks.json`), 'utf8'))) : []]));
 
 // the Meshy lanes' specs (each lane module's BUILDINGS; the first lane's are
 // in the script itself, so Theed's halls are read off it), for a Meshy

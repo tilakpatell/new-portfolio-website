@@ -41,8 +41,11 @@ describe('the kinds that get an ultra cut', () => {
     const lanes = { 'scripts/meshy-galaxy-buildings-tasks.json': ['hall'], 'scripts/meshy-galaxy-three-tasks.json': ['tower'] };
     expect(sourceOf('hall', models.hall, lanes)).toEqual({ source: 'meshy', lane: 'scripts/meshy-galaxy-buildings-tasks.json', group: 'made' });
     expect(sourceOf('palace', models.palace, lanes)).toEqual({ source: 'meshy', lane: null, group: 'made' });
-    // (the great wroshyr's task is Kachirho's)
+    // (the great wroshyr's task is Kachirho's, unless a lane remade it under its own name)
     expect(sourceOf('wroshyrgreat', models.palace, { fill: ['kachirho'] })).toEqual({ source: 'meshy', lane: 'fill', group: 'made', task: 'kachirho' });
+    expect(sourceOf('wroshyrgreat', models.palace, { fill: ['kachirho'], ultra: ['wroshyrgreat'] })).toEqual({ source: 'meshy', lane: 'ultra', group: 'made' });
+    // (a kind in two lanes is the later lane's: its entry takes over the earlier one's)
+    expect(sourceOf('hall', models.hall, { fill: ['hall'], ultra: ['hall'] }).lane).toBe('ultra');
     expect(sourceOf('hut', models.hut, lanes)).toEqual({ source: 'sketchfab', lane: null, group: 'desert' });
     expect(sourceOf('ship', { group: 'library', url: '/models/gen3d/x-wing.glb' })).toEqual({ source: 'gen3d', lane: null, group: 'library' });
   });
