@@ -3958,5 +3958,86 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrohouse": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188a-49ed-7472-a568-0d0a3ec13fab",
+    "name": "a house of Nevarro City, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, lifted out of a still from the show)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrodomehouse": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188a-44b9-77e3-a359-b985f4e5f19b",
+    "name": "a dome house of Nevarro City, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, lifted out of a still from the show)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrorow": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188c-8773-757c-97e0-f6f3a83c9b8d",
+    "name": "a street front of Nevarro City, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, from a description of how it looks)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrogate": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188a-4d09-77f9-b3b7-4195f12e50ab",
+    "name": "the gate of Nevarro City, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, lifted out of a still from the show)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrotower": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188a-5046-755c-93c5-c464b4528502",
+    "name": "a tower of the new Nevarro City, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, lifted out of a still from the show)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrocantina": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188c-848d-73f8-9899-240fd2a35514",
+    "name": "Greef Karga’s cantina on Nevarro, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, from a description of how it looks)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/nevarrobase": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188a-5592-7032-84e1-bba18b688160",
+    "name": "the Imperial base on Nevarro, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, lifted out of a still from the show)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/charonportal": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188c-8bea-71a2-9664-e2ab4665c982",
+    "name": "the Charon River’s tunnel mouth on Nevarro, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, from a description of how it looks)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/keelboat": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1188c-8ebd-70c0-ae5d-ae554d56d299",
+    "name": "the keelboat on the Charon River, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, from a description of how it looks)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
   }
 }
