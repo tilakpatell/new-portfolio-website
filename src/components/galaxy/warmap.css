@@ -215,8 +215,7 @@
   .holomap-link[data-state='battle'],
   .holomap-border[data-hot] .holomap-border-line,
   .holomap-op-line,
-  .holomap-systems li:is([data-front], [data-attack]) .holomap-dot,
-  .holomap-system[aria-current='location'] .holomap-dot { animation: none; }
+  .holomap-systems li:is([data-front], [data-attack]) .holomap-dot { animation: none; }
   .holomap-fleets > li,
   .holomap-strip-bar span { transition: none; }
 }
