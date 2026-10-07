@@ -272,7 +272,7 @@ const OUT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(
 // instead (UASTC through scripts/ktx2.mjs, flipped for three's UVs, sRGB):
 // a quarter of the graphics memory a 4096 WebP takes once decoded. With
 // PLANETS_XL=only in the environment just the -xl files are written (the
-// rest left as they are).
+// rest left as they are); with PLANETS_XL=skip, all but them (a quick look).
 const XL_MAX = 6 * 1024 * 1024; // (an -xl past this is too much download for one map)
 export async function save(data, w, h, channels, name, sizes, { quality = 86, alphaQuality = 90 } = {}) {
   fs.mkdirSync(OUT, { recursive: true });
@@ -280,6 +280,7 @@ export async function save(data, w, h, channels, name, sizes, { quality = 86, al
   for (let i = 0; i < buf.length; i++) buf[i] = Math.round(clamp(data[i]) * 255);
   for (const [width, suffix] of sizes) {
     if (process.env.PLANETS_XL === 'only' && suffix !== '-xl') continue;
+    if (process.env.PLANETS_XL === 'skip' && suffix === '-xl') continue;
     if (suffix === '-xl') {
       const png = await sharp(buf, { raw: { width: w, height: h, channels } })
         .resize(width, Math.round((width * h) / w), { kernel: 'lanczos3' })
