@@ -34,7 +34,9 @@
 //                  hd, h], rooms?: [[x, z, hw, hd, floor, ceiling]…] (the
 //                  camera keeps in the one you're in), light: { sky,
 //                  ground, ambient, fog, density },
-//                  lamps: [[x, y, z, color, intensity, distance]] }, life
+//                  lamps: [[x, y, z, color, intensity, distance]],
+//                  fall?: a height (relative) below which you've fallen off
+//                  what's in it, respawn?: [x, z] where you're put then }, life
 //                  (as the site's, placed relative to the inside), things
 //                  (placer specs, placed relative to the inside: a model
 //                  in a room) }
@@ -58,11 +60,12 @@ import { SITES as forest } from './forest';
 import { SITES as core } from './core';
 import { SITE as coruscant } from './coruscant';
 import { SITE as yavin } from './yavin';
+import { SITE as bespin } from './bespin';
 import { SITES as edge } from './edge';
 import { SITES as outer } from './outer';
 import { EXTRA } from './quests';
 
-export const SITES = { ...desert, ...ice, ...forest, yavin, ...core, coruscant, ...edge, ...outer };
+export const SITES = { ...desert, ...ice, ...forest, yavin, ...core, coruscant, ...edge, bespin, ...outer };
 
 // the systems with somewhere to land, in the galaxy's own order
 export const LANDABLE = SYSTEMS.filter((s) => SITES[s.id]).map((s) => s.id);

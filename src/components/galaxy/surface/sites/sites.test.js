@@ -84,3 +84,62 @@ describe('the worlds you can land on', () => {
     });
   }
 });
+
+describe('Bespin, inside', () => {
+  const site = siteOf('bespin');
+  const quest = (id) => site.quests.find((q) => q.id === id);
+  const zone = (id) => site.zones.find((z) => z.id === id);
+
+  it('offers the duel and Lobot’s codes only after the freezing', () => {
+    expect(quest('freezing').after).toBeUndefined();
+    expect(quest('duel').after).toEqual(['freezing']);
+    expect(quest('lobot').after).toEqual(['freezing']);
+    for (const id of ['freezing', 'duel', 'lobot']) expect(quest(id).achievement).toBe(`bespin${id}`);
+  });
+
+  it('puts the chamber’s guards and the platform in the freezing chamber, and the freeze lowers the platform', () => {
+    const q = quest('freezing');
+    const o = zone('carbon').origin;
+    const fight = q.steps.find((s) => s.type === 'shoot');
+    expect(fight.spawn.reduce((n, s) => n + s.n, 0)).toBe(6);
+    for (const s of fight.spawn) {
+      expect(Math.abs(s.at[0] - o[0])).toBeLessThan(17);
+      expect(Math.abs(s.at[1] - o[2])).toBeLessThan(17);
+    }
+    expect(fight.spawn.some((s) => s.hostile.melee)).toBe(true);
+    const use = q.steps.find((s) => s.type === 'use');
+    expect(use.at).toEqual([o[0], o[2]]);
+    expect(use.end).toEqual(expect.arrayContaining([{ signal: 'freeze' }]));
+  });
+
+  it('sets Vader on the gantry with a blade and the Force, and you back on the control room floor when you fall', () => {
+    const q = quest('duel');
+    const o = zone('reactor').origin;
+    const duel = q.steps.find((s) => s.type === 'shoot');
+    const [vader] = [].concat(duel.spawn);
+    expect(vader.kind).toBe('vader');
+    expect(Math.hypot(vader.at[0] - o[0], vader.at[1] - o[2])).toBeLessThan(12);
+    expect(vader.hostile.blade).toBeTruthy();
+    expect(vader.hostile.force).toEqual({ every: 7, push: 9 });
+    expect(vader.hostile.parry).toBeGreaterThan(0.5);
+    expect(duel.respawn).toEqual([o[0], o[2] + 19.5]);
+    expect(zone('reactor').inside.fall).toBeLessThan(0);
+  });
+
+  it('sends the Wing Guard in on your side through the corridor, and the codes open its doors', () => {
+    const q = quest('lobot');
+    const fight = q.steps.find((s) => s.type === 'shoot');
+    const guards = fight.spawn.filter((s) => s.side === 'yours');
+    expect(guards.length).toBe(1);
+    expect(guards[0].kind).toBe('wingguard');
+    expect(guards[0].hostile.range).toBeGreaterThan(0);
+    expect(fight.spawn.filter((s) => s.tag === 'escort').reduce((n, s) => n + s.n, 0)).toBe(fight.n);
+    const uses = q.steps.filter((s) => s.type === 'use');
+    expect(uses.map((u) => u.id)).toEqual(['lobot1', 'lobot2']);
+    expect(uses[0].end).toEqual(expect.arrayContaining([{ signal: 'lobot1' }, { solid: 'door1', off: true }]));
+    expect(uses[1].end).toEqual(expect.arrayContaining([{ signal: 'lobot2' }, { solid: 'door2', off: true }, { leave: true }]));
+    const race = q.steps.at(-1);
+    expect(race.type).toBe('race');
+    expect(Math.hypot(race.gates.at(-1)[0], race.gates.at(-1)[1] + 255)).toBeLessThan(28);
+  });
+});
