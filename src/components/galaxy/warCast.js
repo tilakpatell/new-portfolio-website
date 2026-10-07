@@ -16,9 +16,10 @@
 export const CAST_KEYS = ['front', 'join', 'gens', 'bridge', 'reactor', 'won', 'lost'];
 export const HUTT_CAST_KEYS = ['front', 'won', 'lost'];
 
-export const CAST = {};
-export const GENERALS = {};
-export const POSTS = {};
+// (the cast itself: warCastData.js)
+import { CAST, GENERALS, POSTS } from './warCastData';
+
+export { CAST, GENERALS, POSTS };
 
 export function castFor(sys, side) {
   if (!side) return null;

@@ -148,7 +148,7 @@ export const SPEAKERS = { harry: 'Harry the gatekeeper', butterbur: 'Barliman Bu
 // ── the Nazgûl ──
 // Four on foot, walking the lanes (../watchers.js): they see in a narrow
 // cone, but smell you close, and the Ring shows you to them from afar.
-export const NAZGUL = { sight: 9, cone: 0.52, smell: 1.8, hear: 3.2, ringSight: 40, alert: 0.8, chase: 4.6, patrol: 1.25, giveUp: 7, leash: 14, catch: 0.9, look: 1.8 };
+export const NAZGUL = { sight: 9, cone: 0.52, smell: 1.8, hear: 3.2, ringSight: 40, alert: 0.8, chase: 4.6, patrol: 1.25, giveUp: 7, leash: 14, catch: 0.9, look: 1.8, far: 2.4, suspicious: 0.45, search: 14 }; // (far, suspicious, search: ../watchers.js, on the AI toolkit: slow to be sure of a hobbit in the dark, quick to come and look, and they search the lanes together)
 
 // The Ring, slipped on in the common room: how fast the Eye comes.
 export const SLIP = { gaze: 0.42 };

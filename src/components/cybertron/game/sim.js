@@ -10,7 +10,10 @@
 //   sim.enter(areaId, spawnId)       (a bridge's other side)
 
 import { AREAS, MISSIONS, areaOf } from './areas';
+import { createTokens } from '../../../lib/ai/squad';
 import { ENEMY_KINDS, MEND, available, buildWorld, damage, feedMission, fire, hurtEnemy, newEnemy, newMissions, newPlayer, startMission, stepEnemies, stepPickups, stepPlayer, stepShots, nearby } from './rules';
+
+const SHOTS_AT_ONCE = 3; // Decepticons firing at Optimus at once, at most (the rest close in and strafe)
 
 const ALL = { missions: MISSIONS }; // (feedMission looks a mission up here, wherever it's played)
 
@@ -30,6 +33,7 @@ export function createSim({ area: areaId = 'iacon', spawn = 'start', done = [], 
     world: null,
     player: null,
     enemies: [],
+    tokens: createTokens({ pools: { shot: SHOTS_AT_ONCE }, timeout: 1 }), // (so many Decepticons fire at once: lib/ai/squad)
     shots: [],
     pickups: [],
     missions,
@@ -129,7 +133,7 @@ export function createSim({ area: areaId = 'iacon', spawn = 'start', done = [], 
       }
     }
     // the Decepticons
-    const foe = stepEnemies(sim.enemies, p, dt, sim.world, rand);
+    const foe = stepEnemies(sim.enemies, p, dt, sim.world, rand, sim.tokens);
     sim.shots.push(...foe.shots);
     out.push(...foe.events);
     // shots: Optimus's at them, theirs at him

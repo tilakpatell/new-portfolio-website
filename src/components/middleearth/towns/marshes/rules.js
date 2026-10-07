@@ -205,7 +205,7 @@ export function stepFell(f, dt, down) {
 // ── Before the Gate ──
 // The Easterlings' scouts on the slope (../watchers.js): under the cloak
 // they notice nothing, but you can't move.
-export const SCOUTS = { sight: 10, cone: 0.7, smell: 1.2, hear: 3.2, ringSight: 0, alert: 0.6, chase: 4.2, patrol: 1.5, giveUp: 3.5, leash: 22, catch: 1.4, look: 1.6 };
+export const SCOUTS = { sight: 10, cone: 0.7, smell: 1.2, hear: 3.2, ringSight: 0, alert: 0.6, chase: 4.2, patrol: 1.5, giveUp: 3.5, leash: 22, catch: 1.4, look: 1.6, far: 2, suspicious: 0.5, search: 8 }; // (far, suspicious, search: scouts peer across the marsh, come to look, and search the gate together)
 
 // ── On the side: Sméagol's safe way ──
 // A pool of the marsh with tussocks across it in rows, and only some of

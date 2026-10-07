@@ -21,9 +21,10 @@ export const BASE = {
   solids: [
     // Teletraan-1's console, under its screens
     { kind: 'box', x: 0, z: -38, hw: 20, hd: 4, top: 6, tag: 'console' },
-    // Ratchet's bay: the berth and his bench
+    // Ratchet's bay: the berth and his bench (a truck's width apart, so
+    // one driven off the berth's edge drops between them rather than wedging)
     { kind: 'box', x: 52, z: -32, hw: 8, hd: 3.5, top: 3, tag: 'berth' },
-    { kind: 'box', x: 60, z: -18, hw: 3, hd: 7, top: 4.5, tag: 'bench' },
+    { kind: 'box', x: 60, z: -16, hw: 3, hd: 7, top: 4.5, tag: 'bench' },
     // the stairs up to the catwalk round the west end
     { kind: 'box', x: -52, z: -30, hw: 10, hd: 6, top: 1.2, tag: 'step' },
     { kind: 'box', x: -60, z: -30, hw: 6, hd: 8, top: 2.4, tag: 'step' },
