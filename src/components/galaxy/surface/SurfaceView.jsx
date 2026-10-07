@@ -15,7 +15,7 @@ const TOUCH = { detonator: 'Bomb', overcharge: 'Charge', fulminate: 'Bomb', rock
 // whatever's to hand (E on a keyboard). While the 3D loads the box says
 // so; without 3D, a note that the world needs it.
 
-export default function SurfaceView({ system, mission = null, ship, hero = null, loadout, build = null, found, done, compass, net = null, handle, onEvent }) {
+export default function SurfaceView({ system, mission = null, ship, hero = null, loadout, build = null, found, done, compass, net = null, handle, onEvent, effects = null }) {
   const saber = Boolean(hero && heroById(hero.id)?.weapon === 'saber');
   // (the hero's own two abilities, on the buttons: abilityRules.js)
   const powers = abilitiesOf(hero ? heroSpec(hero) : null);
@@ -24,7 +24,7 @@ export default function SurfaceView({ system, mission = null, ship, hero = null,
   const [coarse] = useState(() => (typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false));
   const reduced = useReducedMotion();
   const { host, on, meant, rt } = useWorld(surfaceModule, {
-    props: { system, mission, ship, hero, loadout, build, found, done, compass, net, reduced },
+    props: { system, mission, ship, hero, loadout, build, found, done, compass, net, reduced, effects },
     onEvent: (e) => events.current?.(e),
   });
   // the scene itself, while it's the world on the runtime
