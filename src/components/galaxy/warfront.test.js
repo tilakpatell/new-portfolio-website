@@ -158,6 +158,40 @@ describe('the side you swore to', () => {
     expect(k.front.info.team).toBeNull();
     expect(k.front.info.asked).toBe(true);
   });
+  const paid = (k, what) => k.said.filter((e) => e.type === 'earn' && e.what === what);
+  it('pays the wallet for the war’s points you score, a whole point at a time', () => {
+    const k = kit();
+    k.front.enter(systemById(FRONT_ID), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    const g = flagOf(k.front.battle).subs.find((s) => s.id === 'gen-port');
+    for (let i = 0; i < 200 && g.alive; i++) shoot(k.front, g.pos, 3);
+    k.front.update(1, 0, camera, null);
+    expect(paid(k, 'warPoints').reduce((n, e) => n + e.n, 0)).toBe(GCW.points.objective);
+    expect(paid(k, 'warPoints').every((e) => e.side === 'galaxy' && Number.isInteger(e.n) && e.n > 0)).toBe(true);
+    // fighters are a tenth of a point each: paid once they add up to a whole one
+    const here = { x: k.front.info.laid.at[0], y: k.front.info.laid.at[1], z: k.front.info.laid.at[2] };
+    k.front.update(1 / 30, 0, camera, here);
+    for (let i = 0; i < 12 && k.front.battle.fighters.some((x) => x.alive && x.team === 1); i++) downOne(k, 1);
+    const mine = warTally(k.ms).mine(pointsKey('rebel', FRONT_ID, k.front.on.step));
+    expect(mine).toBeGreaterThan(GCW.points.objective);
+    expect(paid(k, 'warPoints').reduce((n, e) => n + e.n, 0)).toBe(Math.floor(mine + 1e-6));
+  });
+  it('pays the wallet for a battle won, once, and nothing unsworn', () => {
+    const k = kit();
+    const here = into(k);
+    k.front.update(1 / 30, 0, camera, here);
+    k.front.win(0);
+    k.front.update(1 / 30, 0, camera, null);
+    k.front.update(1 / 30, 0, camera, null);
+    expect(paid(k, 'warWin')).toEqual([{ type: 'earn', what: 'warWin', n: 1, side: 'galaxy' }]);
+    const u = kit(null);
+    const there = into(u);
+    u.front.update(1 / 30, 0, camera, there);
+    downOne(u, 1);
+    u.front.win(0);
+    u.front.update(1 / 30, 0, camera, null);
+    expect(u.said.some((e) => e.type === 'earn')).toBe(false);
+  });
   it('swearing in the middle of it puts you in it', () => {
     const k = kit(null);
     const here = into(k);

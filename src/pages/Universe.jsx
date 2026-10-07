@@ -26,6 +26,10 @@ import Wardrobe from '../components/rickmorty/wardrobe/Wardrobe';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { CASTS, castOfCrew } from '../components/rickmorty/wardrobe/looks';
 import { useOnline } from '../components/universe/online/useOnline';
+import EarnNote from '../components/universe/EarnNote';
+import { useEarn } from '../components/universe/useEarn';
+import { goodStanding } from '../components/universe/economy';
+import { createPayLedger } from '../components/universe/earnRules';
 
 const PORTAL = '#97ce4c';
 // the phone out past the belt (universe/phone.js): its lock screen, fetched
@@ -69,6 +73,12 @@ export default function Universe({ ask = false }) {
   const online = useOnline(); // (OnlineProvider, above the pages: the link stays up off the map)
   const { setKind, setLoadout, setBuild: tellBuild } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
+  // the wallet (economy.js): what the scene pays for, a good standing
+  // reached and an alliance made earn into it, with a note over the HUD
+  const { pay, note: earned } = useEarn({ client: online.client });
+  // (a level is paid for once a visit: lost and won back with a shot at the
+  // law and a hunter down, it's no living)
+  const [stood] = useState(createPayLedger);
   // what each ship's fitted with in the hangar (kept between visits): the
   // paint job and parts it flies with, while they're still earned
   const { unlocked, unlock } = useAchievements();
@@ -269,6 +279,11 @@ export default function Universe({ ask = false }) {
   // portal or the RV's Blue Sky: the scene has the ship out at the place
   // under its flash either way), through a gate, or something for the crew to say
   const onEvent = (e) => {
+    if (e.type === 'earn') {
+      pay(e.what, e.n, e.side);
+      return;
+    }
+    if (e.type === 'event' && e.id === 'standing' && goodStanding(e.sub) && stood.once(`${e.side}:${e.sub}`)) pay('standingUp', 1, e.side);
     // a trip ended: on through the gate, or the tour's next leg
     if (e.type === 'arrived' || e.type === 'jumped') {
       const done = e.type === 'jumped' || e.done;
@@ -446,6 +461,7 @@ export default function Universe({ ask = false }) {
         </div>
       )}
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
+      {!leaving && <EarnNote note={earned} />}
       <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} cast={dressing} who={CASTS[dressing][0]} returnTo=".universe-hangar-btn" />
       {!asking && !leaving && <Online online={online} ship={ship} />}
       <UniversePanel
