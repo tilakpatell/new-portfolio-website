@@ -4,21 +4,21 @@
 // loadPartyFigure); Jabba stands still, as he was made. A figure kind
 // with one of these is that model; one without is built (figures.js).
 //
-// crewFigure(kind) → { model (in metres), tall, update(dt, move), dispose }
-// or null
+// crewFigure(kind, i) → { model (in metres), tall, update(dt, move), dispose }
+// or null (i: which of a life entry's figures, for a kind with other faces)
 
 import * as THREE from 'three';
 import { loadPartyFigure } from '../../universe/footScene';
 import { METRE } from '../../universe/foot';
-import { CREW, fileOf } from './crewList';
+import { CREW, faceOf, fileOf } from './crewList';
 import { cloneModel, loadGlb } from './placer';
 
 // (the list itself is crewList.js, plain data a page can read)
 export { CREW, fileOf };
 
-export async function crewFigure(kind) {
-  const c = CREW[kind];
-  if (!c) return null;
+export async function crewFigure(kind, i = 0) {
+  if (!CREW[kind]) return null;
+  const c = faceOf(CREW[kind], i);
   if (c.still) {
     const gltf = await loadGlb(fileOf(c));
     if (!gltf) return null;

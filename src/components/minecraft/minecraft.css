@@ -196,18 +196,36 @@
   transform: translate(-50%, -50%);
   mix-blend-mode: difference;
 }
+/* the hotbar's box, 182 wide, with the bars above it at the game's heights */
 .mc-bar {
   position: absolute;
   left: 50%;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 2px);
   transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: calc(2px * var(--gui));
+  width: calc(182px * var(--gui));
+  height: calc(49px * var(--gui));
+}
+.mc-icon {
+  position: absolute;
+  left: calc(var(--x) * 1px * var(--gui));
+  bottom: calc(var(--b) * 1px * var(--gui));
+  width: calc(9px * var(--gui));
+  height: calc(9px * var(--gui));
+  background-size: 100% 100%;
+  image-rendering: pixelated;
+}
+.mc-xp {
+  position: absolute;
+  left: 0;
+  bottom: calc(24px * var(--gui));
+  width: calc(182px * var(--gui));
+  height: calc(5px * var(--gui));
+  image-rendering: pixelated;
 }
 .mc-hotbar {
-  position: relative;
+  position: absolute;
+  left: 0;
+  bottom: 0;
   width: calc(182px * var(--gui));
   height: calc(22px * var(--gui));
   background-size: 100% 100%;
@@ -219,16 +237,6 @@
   left: calc((-1px + 20px * var(--slot)) * var(--gui));
   width: calc(24px * var(--gui));
   height: calc(23px * var(--gui));
-}
-.mc-air {
-  display: flex;
-  flex-direction: row-reverse;
-  width: calc(81px * var(--gui));
-}
-.mc-air img {
-  width: calc(9px * var(--gui));
-  height: calc(9px * var(--gui));
-  margin-left: calc(-1px * var(--gui));
 }
 
 /* ── the touch pad, Pocket Edition's ── */
@@ -333,10 +341,79 @@
 .mc-panel {
   position: relative;
   width: calc(176px * var(--gui));
-  height: calc(166px * var(--gui));
+  height: calc(var(--h) * 1px * var(--gui));
+  background-image: var(--bg);
   background-size: calc(256px * var(--gui)) calc(256px * var(--gui));
   background-position: 0 0;
+  background-repeat: no-repeat;
   image-rendering: pixelated;
+}
+/* a chest's panel: the sheet's top three rows (71 pixels), then its inventory part from 126 down (GuiChest's) */
+.mc-panel-chest {
+  background-image: none;
+}
+.mc-part {
+  position: absolute;
+  left: 0;
+  top: calc(var(--top) * 1px * var(--gui));
+  width: 100%;
+  height: calc(var(--ph) * 1px * var(--gui));
+  background-image: var(--bg);
+  background-size: calc(256px * var(--gui)) calc(256px * var(--gui));
+  background-position: 0 calc(var(--from) * -1px * var(--gui));
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+.mc-label {
+  position: absolute;
+  left: calc(var(--x) * 1px * var(--gui));
+  top: calc(var(--y) * 1px * var(--gui));
+  font-size: calc(7px * var(--gui));
+  line-height: 1;
+  color: #404040;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.mc-label-centre {
+  left: 50%;
+  transform: translateX(-50%);
+}
+/* the furnace's flame (14 square, shown from the bottom by the fuel left) and arrow (24 × 16, by the cooking) */
+.mc-flame {
+  position: absolute;
+  left: calc(56px * var(--gui));
+  top: calc((36px + (12px - var(--k) * 1px)) * var(--gui));
+  width: calc(14px * var(--gui));
+  height: calc((var(--k) + 1) * 1px * var(--gui));
+  background-size: calc(14px * var(--gui)) calc(14px * var(--gui));
+  background-position: 0 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.mc-arrow {
+  position: absolute;
+  left: calc(79px * var(--gui));
+  top: calc(34px * var(--gui));
+  width: calc((var(--l) + 1) * 1px * var(--gui));
+  height: calc(16px * var(--gui));
+  background-size: calc(24px * var(--gui)) calc(16px * var(--gui));
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+/* the death screen: the game's red wash, its big words and its yellow score */
+.mc-death {
+  z-index: 4;
+  background: linear-gradient(rgba(80, 0, 0, 0.38), rgba(128, 48, 48, 0.63));
+}
+.mc-died {
+  margin: 0 0 calc(10px * var(--gui));
+  font-size: calc(16px * var(--gui));
+  font-weight: 400;
+  color: #fff;
+  text-shadow: calc(2px * var(--gui)) calc(2px * var(--gui)) 0 #3f3f3f;
+}
+.mc-score {
+  color: #ffff55;
 }
 .mc-slot {
   position: absolute;
@@ -396,7 +473,7 @@
 .mc-say {
   position: absolute;
   left: 50%;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 2px + 40px * var(--gui));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 2px + 60px * var(--gui));
   transform: translateX(-50%);
   margin: 0;
   font-size: calc(8px * var(--gui));

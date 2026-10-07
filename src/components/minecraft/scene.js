@@ -18,13 +18,14 @@ import { createChunks } from './scene/chunks.js';
 import { createCursor } from './scene/cursor.js';
 import { createDrops } from './scene/drops.js';
 import { createIcons } from './scene/icons.js';
-import { TINT_COLOURS, blockMaterial } from './scene/shaders.js';
+import { TINT_COLOURS, blockMaterial, setFrames } from './scene/shaders.js';
 import { createSky } from './scene/sky.js';
 
 const WATER = byName.get('water').id;
 const UNDERWATER = new THREE.Vector3(0.02, 0.06, 0.24);
 
 export function createScene(rt, { manifest }) {
+  const anims = Object.values(manifest.anim ?? {});
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 1000);
   camera.rotation.order = 'YXZ';
@@ -87,7 +88,10 @@ export function createScene(rt, { manifest }) {
     // the hour: the sky, and how much of the sky's light reaches the blocks
     sky.update(g.time + alpha, camera, distance * 16, g.ticks + alpha);
     const sun = sunBrightness(g.time + alpha);
-    for (const m of Object.values(materials)) m.uniforms.sun.value = sun;
+    for (const m of Object.values(materials)) {
+      m.uniforms.sun.value = sun;
+      setFrames(m, anims, g.ticks);
+    }
     // the block under the crosshair, and its crack while it's being broken
     const br = g.breaking;
     cursor.set(g.cursor, br && g.cursor && br.x === g.cursor.x && br.y === g.cursor.y && br.z === g.cursor.z ? Math.min(9, Math.floor(br.progress * 10)) : -1);
@@ -107,6 +111,9 @@ export function createScene(rt, { manifest }) {
     ready,
     chunks: null,
     icons: null,
+    get materials() {
+      return materials;
+    },
     sync,
     setRenderDistance,
     render(renderer) {

@@ -13,9 +13,12 @@
 // - On a ladder: no more than 0.15 a tick across or down; walking into the
 //   wall sets 0.2 up, which climbs at 2.35 m/s.
 // - A fall hurts one half-heart a block past three.
+// - Moving tires (rules/hunger.js): a metre sprinted on the ground 0.1, swum
+//   0.01, a jump 0.05 (0.2 sprinting), a hurt 0.1.
 //
 // yaw 0 faces north (−z) and turns left as it grows, as three.js turns.
 
+import { EXHAUST, exhaust } from './hunger.js';
 import { eyeInWater, inWater, moveBox, onLadder } from './physics.js';
 
 export const EYE = { stand: 1.62, sneak: 1.27 };
@@ -25,7 +28,7 @@ const GROUND_SLIP = 0.6 * 0.91;
 const STEP_EVERY = 1.3;
 
 export function makePlayer({ x, y, z }) {
-  return { x, y, z, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, w: SIZE.w, h: SIZE.h, onGround: false, sneak: false, sprint: false, health: 20, hunger: 20, air: 300, fallFrom: y, walked: 0, nextStep: STEP_EVERY, swing: 0, inWater: false };
+  return { x, y, z, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, w: SIZE.w, h: SIZE.h, onGround: false, sneak: false, sprint: false, health: 20, hunger: 20, saturation: 5, exhaustion: 0, foodTimer: 0, air: 300, fallFrom: y, walked: 0, nextStep: STEP_EVERY, swing: 0, inWater: false };
 }
 
 // the input, turned by the yaw and added to the speed
@@ -60,6 +63,7 @@ export function stepPlayer(world, p, input) {
     if (wet) p.vy += 0.04;
     else if (p.onGround) {
       p.vy = 0.42;
+      exhaust(p, p.sprint ? EXHAUST.sprintJump : EXHAUST.jump);
       if (p.sprint) {
         p.vx -= Math.sin(p.yaw) * 0.2;
         p.vz -= Math.cos(p.yaw) * 0.2;
@@ -90,6 +94,10 @@ export function stepPlayer(world, p, input) {
   if (r.hitZ) p.vz = 0;
   if (r.dy !== p.vy) p.vy = 0;
   p.onGround = r.onGround;
+  // the way gone, in whole centimetres, as the game counts it
+  const cm = (d) => Math.round(d * 100) * 0.01;
+  if (wet) exhaust(p, EXHAUST.swim * cm(Math.hypot(p.x - was.x, p.y - was.y, p.z - was.z)));
+  else if (p.onGround && p.sprint) exhaust(p, EXHAUST.sprint * cm(Math.hypot(p.x - was.x, p.z - was.z)));
 
   // the fall, measured from the highest point since the feet left the ground
   if (wet || ladder) p.fallFrom = p.y;
@@ -100,6 +108,7 @@ export function stepPlayer(world, p, input) {
     const hurt = Math.floor(fell - 3 + 1e-9);
     if (hurt > 0) {
       p.health = Math.max(0, p.health - hurt);
+      exhaust(p, EXHAUST.hurt);
       events.push({ type: 'hurt', amount: hurt, cause: 'fall' });
     }
   }
@@ -124,6 +133,7 @@ export function stepPlayer(world, p, input) {
     if (p.air <= -20) {
       p.air = 0;
       p.health = Math.max(0, p.health - 2);
+      exhaust(p, EXHAUST.hurt);
       events.push({ type: 'hurt', amount: 2, cause: 'drown' });
     }
   } else p.air = Math.min(300, p.air + 4);
