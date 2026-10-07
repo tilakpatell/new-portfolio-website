@@ -40,6 +40,7 @@ const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
 const Citadel = lazy(() => import('./pages/Citadel'));
+const RmPlanet = lazy(() => import('./pages/RmPlanet'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Mario64 = lazy(() => import('./pages/Mario64'));
 const Minecraft = lazy(() => import('./pages/Minecraft'));
@@ -353,6 +354,7 @@ function Shell() {
                 <Route path="/albuquerque" element={<Albuquerque />} />
                 <Route path="/c-137" element={<RickMorty />} />
                 <Route path="/c-137/citadel" element={<Citadel />} />
+                <Route path="/c-137/:planet" element={<RmPlanet />} />
                 <Route path="/dot-matrix" element={<DotMatrix />} />
                 <Route path="/dot-matrix/64" element={<Mario64 />} />
                 <Route path="/dot-matrix/minecraft" element={<Minecraft />} />

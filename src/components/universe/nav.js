@@ -122,7 +122,7 @@ export const DESTINATIONS = [
     at: POSITIONS[m.id],
     reach: REACH[m.id],
     color: m.swatch,
-    about: `${m.label}, a planet from Rick and Morty, out in the Citadel's own sector of space. The portal gun on the C-137 page dials it too.`,
+    about: `${m.label}, a planet from Rick and Morty, out in the Citadel's own sector of space. Land on it and you're straight into it, on foot as Morty, with something to do there; its own portal brings you back out to space.`,
     to: m.to,
   })),
   ...WONDERS.map((w) => ({

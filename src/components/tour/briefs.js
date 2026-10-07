@@ -485,7 +485,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Dimension C-137',
-      text: 'The Smiths’ street in 3D, as Morty, with Rick’s cruiser in the garage and a portal to everywhere.',
+      text: 'The Smiths’ street in 3D, as Morty, with Rick’s cruiser in the driveway and his portal gun on the garage bench.',
     },
     {
       id: 'walk',
@@ -508,7 +508,11 @@ export const BRIEFS = {
     {
       id: 'goal',
       title: 'Where to start',
-      text: 'Set the portal gun’s dial on Rick’s bench in the garage and the portal goes there: thirty-six places from the show. Or take the cruiser up (E by it).',
+      text: 'The portal gun’s on Rick’s bench in the garage: dial Blips and Chitz or one of twenty-six places from the show, then step through the portal on the west wall. Or take the cruiser up (E by it). The show’s planets are on the universe map: land on one and you’re in it.',
+      keys: [
+        ['E', 'The portal gun, at Rick’s bench'],
+        ['P', 'The portal gun, from anywhere'],
+      ],
     },
     help('C-137'),
   ],

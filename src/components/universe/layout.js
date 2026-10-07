@@ -116,9 +116,10 @@ export const prev = (id) => step(id, -1);
 // A route param to a universe id, or null (the overview) for anything else.
 export const parseId = (param) => (typeof param === 'string' && byId(param) ? param : null);
 
-// The next universe after `id` that has a world page of its own.
+// The next universe after `id` that has a world page of its own (after a
+// moon of the Rick and Morty sector, the one after its crew's).
 export function nextWorld(id) {
-  let at = id;
+  let at = byId(id)?.crew ?? id;
   for (let n = 0; n < ORDER.length; n++) {
     at = next(at);
     if (byId(at).world) return byId(at);

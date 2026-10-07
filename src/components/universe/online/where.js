@@ -53,6 +53,7 @@ export function placeName(where) {
   }
   const sys = systemOfPath(where);
   if (sys) return inGalaxyFlight(where) ? SYSTEM_NAMES[sys] : where.endsWith('/surface') ? `down on ${SYSTEM_NAMES[sys]}` : `the ${SYSTEM_NAMES[sys]} briefing`;
+  // (a world, or a Rick and Morty planet's: '/c-137/squanch' is Planet Squanch, not C-137)
   const u = byPath(where);
   if (u) return u.world ?? u.place ?? u.label;
   if (where.startsWith('/projects/')) return 'a project';
