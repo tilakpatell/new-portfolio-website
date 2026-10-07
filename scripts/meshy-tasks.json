@@ -1284,27 +1284,48 @@
     "model": "01a114dd-3133-7047-8ea6-10c7fc18e41b"
   },
   "cronhouse": {
-    "image": "01a116e9-e9f7-766a-a72f-ba4e72b02f98"
+    "image": "01a116f2-8a86-7167-913a-04083d9cf4c7"
   },
   "croncar": {
-    "image": "01a116e9-e9f4-778c-988f-7770cc897a08"
+    "image": "01a116f2-8a8e-776b-93f8-d0d9ffb1f82e"
   },
   "purgebarn": {
-    "image": "01a116e9-e9d4-7073-bd09-854c6924c4a7"
+    "image": "01a116e9-e9d4-7073-bd09-854c6924c4a7",
+    "model": "01a116f2-8a86-724e-931f-ba57da716f4a"
   },
   "purgesiren": {
-    "image": "01a116e9-e9d5-76ef-bf2f-d59fe228a31b"
+    "image": "01a116f2-8a8d-7475-89bb-3fc6bb3d9c97"
   },
   "gazorpgate": {
-    "image": "01a116ea-657a-71cf-85d6-dd555af75dfe"
+    "image": "01a116ea-657a-71cf-85d6-dd555af75dfe",
+    "model": "01a116f2-8a8c-701c-b35a-e6e1566fcd7f"
   },
   "birdperch": {
-    "image": "01a116ea-661d-73a9-908f-92bca280acd4"
+    "image": "01a116f2-8a8b-7687-af95-36c9664587f4"
   },
   "gearbig": {
-    "image": "01a116ea-b5e0-7077-9083-49a84c608e94"
+    "image": "01a116f2-dc1f-705e-b481-1d7a34a5cd46"
   },
   "gearcog": {
-    "image": "01a116ea-caab-711c-b31f-e291a2cb0d5f"
+    "image": "01a116ea-caab-711c-b31f-e291a2cb0d5f",
+    "model": "01a116f2-8a97-7488-805b-a4c5c42ad027"
+  },
+  "purgecottage": {
+    "use": {
+      "file": "purgecottage.png",
+      "flip": false
+    }
+  },
+  "purgewell": {
+    "use": {
+      "file": "purgewell.png",
+      "flip": false
+    }
+  },
+  "suckulent": {
+    "use": {
+      "file": "suckulent.png",
+      "flip": false
+    }
   }
 }
