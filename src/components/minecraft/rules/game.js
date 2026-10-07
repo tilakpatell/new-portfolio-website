@@ -10,6 +10,11 @@
 // and the hands work on it (rules/build.js): breaking, placing, the sand
 // that falls, the items dropped.
 //
+// The mobs live here too (rules/mobs/, rules/spawn.js): they spawn, think,
+// walk and fight a tick at a time; the crosshair finds a mob before the
+// block behind it (3 blocks for a blow, as the game's reach), and the
+// skeletons' arrows fly. Lava and fire burn the player as they burn a mob.
+//
 // The furnaces in loaded chunks burn and cook every tick (rules/furnace.js),
 // the player's stomach works (rules/hunger.js), and at no health the player
 // dies: everything carried falls where they stood, and `respawn` stands them
@@ -22,7 +27,12 @@ import { seeded } from '../../../lib/seeded.js';
 import { setBlock, stepDrops, stepHands, stepUpdates } from './build.js';
 import { byName } from './blocks.js';
 import { applyEdits, chunkOf, key, makeChunk, packEdits } from './chunk.js';
+import { hurtPlayer, stepFire } from './combat.js';
 import { stepFurnace } from './furnace.js';
+import { stepArrows } from './mobs/hostile.js';
+import { pickMob } from './mobs/index.js';
+import { handOnMob, restoreMobs, stepMobs, strikeMob } from './mobs/step.js';
+import { despawn, populate, spawnTick } from './spawn.js';
 import { stepHunger } from './hunger.js';
 import { makeInventory } from './inventory.js';
 import { hashSeed } from './noise.js';
@@ -100,6 +110,13 @@ export function newGame({ seed = Date.now(), save = null } = {}) {
     chests: { ...(save?.chests ?? {}) },
     furnaces: { ...(save?.furnaces ?? {}) },
     eating: 0,
+    mobs: restoreMobs(save?.mobs),
+    arrows: [],
+    // the chunks whose herds have been rolled already (rules/spawn.js)
+    populated: new Set(save?.populated ?? []),
+    target: null,
+    // the spawner's own dice, apart from the world's
+    spawnRand: seeded(s ^ 0x5350),
     cursor: null,
     breaking: null,
     cooldown: 0,
@@ -137,6 +154,7 @@ export function addChunk(g, chunk) {
     chunk.dirty.clear();
   }
   g.world.chunks.set(k, chunk);
+  populate(g, chunk);
 }
 
 // a chunk let go of keeps its edits for when it comes back
@@ -171,12 +189,29 @@ export function tick(g, input) {
   const p = g.player;
   const from = g.events.length;
   if (g.world.loaded(p.x, p.z) && !g.dead) {
+    if (p.invuln > 0) p.invuln--;
+    if (p.hurtTime > 0) p.hurtTime--;
     g.events.push(...stepPlayer(g.world, p, input));
-    g.cursor = raycast(g.world, eyeOf(p), lookDir(p.yaw, p.pitch));
+    const eye = eyeOf(p);
+    const dir = lookDir(p.yaw, p.pitch);
+    g.cursor = raycast(g.world, eye, dir);
+    // a mob before the block behind it: the hands are on the mob
+    const hit = pickMob(g.mobs, eye, dir, 3);
+    g.target = hit && (!g.cursor || hit.t < g.cursor.t) ? hit.mob : null;
+    if (g.target) {
+      g.cursor = null;
+      if (input.hit) strikeMob(g, g.target);
+      if (input.use) handOnMob(g, g.target);
+    }
     stepHands(g, input, { onGround: p.onGround, inWater: inWater(g.world, p) });
+    stepFire(g.world, p, (n, cause) => hurtPlayer(g, n, { cause }));
     stepHunger(p, g.events);
-    if (p.health <= 0) die(g, g.events.slice(from).findLast((e) => e.type === 'hurt')?.cause ?? null);
   }
+  stepMobs(g);
+  stepArrows(g);
+  spawnTick(g);
+  despawn(g);
+  if (!g.dead && p.health <= 0) die(g, g.events.slice(from).findLast((e) => e.type === 'hurt')?.cause ?? null);
   stepFurnaces(g);
   stepUpdates(g);
   stepDrops(g);

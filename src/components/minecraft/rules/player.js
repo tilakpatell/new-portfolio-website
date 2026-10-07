@@ -28,7 +28,7 @@ const GROUND_SLIP = 0.6 * 0.91;
 const STEP_EVERY = 1.3;
 
 export function makePlayer({ x, y, z }) {
-  return { x, y, z, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, w: SIZE.w, h: SIZE.h, onGround: false, sneak: false, sprint: false, health: 20, hunger: 20, saturation: 5, exhaustion: 0, foodTimer: 0, air: 300, fallFrom: y, walked: 0, nextStep: STEP_EVERY, swing: 0, inWater: false };
+  return { x, y, z, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, w: SIZE.w, h: SIZE.h, onGround: false, sneak: false, sprint: false, health: 20, hunger: 20, saturation: 5, exhaustion: 0, foodTimer: 0, invuln: 0, hurtTime: 0, lastDamage: 0, fire: 0, air: 300, fallFrom: y, walked: 0, nextStep: STEP_EVERY, swing: 0, inWater: false };
 }
 
 // the input, turned by the yaw and added to the speed

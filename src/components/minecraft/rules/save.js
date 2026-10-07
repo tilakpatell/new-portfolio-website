@@ -5,6 +5,7 @@
 // this code knows is refused, and the world starts fresh rather than wrong.
 
 import { packEdits } from './chunk.js';
+import { packMobs } from './mobs/step.js';
 
 export const SAVE = 'tp-mc';
 export const SAVE_VERSION = 1;
@@ -22,6 +23,8 @@ export function pack(g) {
     edits,
     chests: g.chests ?? {},
     furnaces: g.furnaces ?? {},
+    mobs: packMobs(g.mobs ?? []),
+    populated: [...(g.populated ?? [])],
   };
 }
 
@@ -38,5 +41,7 @@ export function restore(saved) {
     edits: saved.edits ?? {},
     chests: saved.chests ?? {},
     furnaces: saved.furnaces ?? {},
+    mobs: saved.mobs ?? [],
+    populated: saved.populated ?? [],
   };
 }

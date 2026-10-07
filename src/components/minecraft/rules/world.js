@@ -1,7 +1,8 @@
 // Minecraft, the loaded world: the chunks the sim holds, read and written in
 // world coordinates (any real number: it floors to the cell). Outside every
 // loaded chunk the world is stone below the sea and air above, so a body at
-// the edge of what's loaded stands rather than falling through.
+// the edge of what's loaded stands rather than falling through. `light` reads
+// a cell's sky and block light from what the worker lit.
 
 import { BLOCKS } from './blocks.js';
 import { shapeBoxes } from './mesher.js';
@@ -55,6 +56,14 @@ export function makeWorld() {
       return shapeBoxes(b.shape, st, b.height).map((box) => box.map((v) => v / 16));
     },
     loaded: (x, z) => Boolean(find(x, z)),
+    // a cell's light, sky << 4 | block, as the worker lit it (unlit or unloaded: the open sky)
+    light(x, y, z) {
+      const c = find(x, z);
+      const fy = Math.floor(y);
+      if (!c || !c.lit || fy < 0) return 0xf0;
+      if (fy > 255) return 0xf0;
+      return c.light[(fy * 16 + local(Math.floor(z))) * 16 + local(Math.floor(x))];
+    },
     neighbours: (cx, cz) => ({ nx: chunkAt(cx - 1, cz), px: chunkAt(cx + 1, cz), nz: chunkAt(cx, cz - 1), pz: chunkAt(cx, cz + 1), nxnz: chunkAt(cx - 1, cz - 1), pxnz: chunkAt(cx + 1, cz - 1), nxpz: chunkAt(cx - 1, cz + 1), pxpz: chunkAt(cx + 1, cz + 1) }),
   };
 }
