@@ -13,7 +13,8 @@ import TourHost from './components/tour/TourHost';
 // fetches the 3D jump ahead of time (the intro's, and three.js once a page has it)
 import './components/hyperspace3d/load';
 import { audioContext } from './lib/audio';
-import { prefersReducedMotion } from './lib/hooks';
+import { local, prefersReducedMotion } from './lib/hooks';
+import { VISITED_KEY, addVisited } from './lib/visited';
 import { introPlaying } from './lib/stale';
 import { jumpStyle } from './components/jumps/styles';
 import WorldGate from './components/worlds/WorldGate';
@@ -76,6 +77,10 @@ function ScrollToTop() {
   // a page's music and lines stop when you leave it
   useEffect(() => {
     if (!now.current.feed) import('./lib/clips').then((c) => c.stopPageClips());
+  }, [pathname]);
+  // every page shown, the feed's included, for the guide's "Things to do"
+  useEffect(() => {
+    local.set(VISITED_KEY, addVisited(local.get(VISITED_KEY, []), pathname));
   }, [pathname]);
   return null;
 }
