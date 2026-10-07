@@ -4,6 +4,8 @@ import GpuGate from '../../games/GpuGate';
 import { edges, readPad, typing } from '../../games/pad';
 import { audioContext } from '../../../lib/audio';
 import { local, prefersReducedMotion, useMediaQuery } from '../../../lib/hooks';
+import { sayVoiced } from '../../../lib/voiced';
+import { SUNK_BOSS, SUNK_LINE } from '../lines';
 import { CHAPTERS, ISLES, STEP_BOUND, TIDE, UPS, bearing, choose, fitted, newGame, progress, shipStep, step } from './rules';
 import { autopilot } from './pilot';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
@@ -39,8 +41,6 @@ const LEVEL_NOTE = { easy: 'A kind sea', normal: 'As it’s told', hard: 'No qua
 const SAILS = ['Furled', 'Half sail', 'Full sail'];
 const LOOK = 1.55; // how far round the camera swings to face a broadside (radians)
 const LOST_LINE = ['The navy has the Pearl, a mile out of port.', 'The gold stays on the sea bed, and so does she.', 'The fort’s mortars found the range.', 'The Dutchman takes another crew. A hundred years before the mast.', 'The beast drags the Pearl under, captain and all.'];
-// what Jack has to say when one of theirs goes down
-const SUNK_LINE = ['Sunk', 'Savvy?', 'Take what you can', 'Give nothing back'];
 
 const KEYS = {
   left: ['ArrowLeft', 'a', 'A'],
@@ -219,7 +219,12 @@ function Game({ soft, fail }) {
           }
         } else if (e.type === 'sunk') {
           play('sinking');
-          if (e.kind !== 'pearl') say(e.kind === 'fort' ? 'The fort is silenced' : e.kind === 'kraken' ? 'The beast is dead' : e.kind === 'ghost' ? 'Back to the locker with her' : SUNK_LINE[g.stats.sunk % SUNK_LINE.length], e.kind === 'sloop' || e.kind === 'navy' ? 'good' : 'boss');
+          if (e.kind !== 'pearl') {
+            // what Jack has to say when one of theirs goes down, in his own voice where it's been made (lib/voiced.js)
+            const line = SUNK_BOSS[e.kind] ?? SUNK_LINE[g.stats.sunk % SUNK_LINE.length];
+            say(line, e.kind === 'sloop' || e.kind === 'navy' ? 'good' : 'boss');
+            sayVoiced('jack', line);
+          }
         } else if (e.type === 'pickup') play(e.kind === 'chest' ? 'coin' : 'rum');
         else if (e.type === 'boom' || e.type === 'slam') play('boom', near(e));
         else if (e.type === 'mortar') play('cannon', 0.35);
