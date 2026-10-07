@@ -68,11 +68,11 @@
 
 ## PR 4: Tier 2, the assets as shipped
 
-- [ ] **4.1** `scripts/ai-e2e/assets/glb.mjs`: `inspect(file)` → `{ tris, bytes, textures: [{ mime, w, h }], extensions, scenes, bbox, meshopt }` with `@gltf-transform/core` + extensions. Test on the x-wing cuts.
-- [ ] **4.2** `assets/gen3d.test.mjs`: for every `public/models/gen3d/*.glb` family: three cuts; each within its `TIERS` band for the `--faces` inferred from the plain cut (`budget.mjs` exports the inference); under 4 MB; textures WebP; meshopt; one scene; credited `gen3d/<name>`. Failures name the file and the number.
-- [ ] **4.3** `assets/credits.test.mjs`: every credit in `public/games/credits.json` and `src/data/modelCredits.json` points at a file that exists; every GLB under `public/models/` is credited, with `assets/allow-uncredited.json` holding the exceptions and a test that the list only shrinks (each entry must still exist as a file, else it is stale and the test says so).
-- [ ] **4.4** `assets/voiced.test.mjs`: manifest ↔ files both ways; each mp3 has a valid frame header and a duration between 0.3 s and 30 s (a minimal MPEG frame walk, no dependency); each id is `lineId(who, text)` of a line from a `voicelines.js` under `src/` or from `scripts/voices/export-lines.mjs`’s universe lists (`allow-orphans.json`, shrinking only); every speaker `voiceOf` names has a folder or is on the “no reference yet” list.
-- [ ] **4.5** Gate, PR, CI green, merge.
+- [x] **4.1** `scripts/ai-e2e/assets/glb.mjs`: `inspect(file)` → `{ tris, bytes, textures: [{ mime, w, h }], extensions, scenes, bbox, meshopt }` with `@gltf-transform/core` + extensions. Test on the x-wing cuts.
+- [x] **4.2** `assets/gen3d.test.mjs`: for every `public/models/gen3d/*.glb` family: three cuts; each within its `TIERS` band for the `--faces` inferred from the plain cut (`budget.mjs` exports the inference); under 4 MB; textures WebP; meshopt; one scene; credited `gen3d/<name>`. Failures name the file and the number.
+- [x] **4.3** `assets/credits.test.mjs`: every credit in `public/games/credits.json` and `src/data/modelCredits.json` points at a file that exists; every GLB under `public/models/` is credited, with `assets/allow-uncredited.json` holding the exceptions and a test that the list only shrinks (each entry must still exist as a file, else it is stale and the test says so).
+- [x] **4.4** `assets/voiced.test.mjs`: manifest ↔ files both ways; each mp3 has a valid frame header and a duration between 0.3 s and 30 s (a minimal MPEG frame walk, no dependency); each id is `lineId(who, text)` of a line from a `voicelines.js` under `src/` or from `scripts/voices/export-lines.mjs`’s universe lists (`allow-orphans.json`, shrinking only); every speaker `voiceOf` names has a folder or is on the “no reference yet” list.
+- [x] **4.5** Gate, PR, CI green, merge.
 
 ## PR 5: Tier 3, every model draws
 
