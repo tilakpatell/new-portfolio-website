@@ -118,7 +118,7 @@ node scripts/gen3d/make.mjs NAME --image photo.png --what "…"   # no issue at 
 
 To keep the runner off a pipeline while you work on its files by hand
 (generate.py on the same references and cache, say), put a
-`~\.desktop-jobsoices.lock` (or `gen3d.lock`) there: with a process id
+`~/.desktop-jobs/voices.lock` (or `gen3d.lock`) there: with a process id
 in it, it holds while that process lives; empty, for a day. Jobs wait as
 they do for a busy GPU.
 
