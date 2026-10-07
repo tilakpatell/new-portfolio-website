@@ -360,7 +360,38 @@ Complete `rules/stations/ds1.js` with sections and rooms: `bay327`, `field327`, 
 
 ### Task 3.4: The DS1 stories
 
-`rules/story.js` (`storyStep(progress, story, event) → { progress, effects }`; step types `reach`, `talk`, `use`, `hide`, `escort`, `fight`, `kill`, `choose`, `timer`, `scene`, `swap` (play as someone else), each with `start`/`end` effects and a `checkpoint`) and `rules/stories/ds1Rebel.js`, `ds1Imperial.js` as the spec lists. Tests: each story played to its end by a script of events, with no step unreachable.
+**Files:** Create `rules/story.js`, `story.test.js`, `rules/stories/index.js`, `rules/stories/ds1Rebel.js`, `rules/stories/ds1Imperial.js`, `rules/stories/stories.test.js`.
+
+**Interfaces:**
+- A story: `{ id, station, side, hero, title, steps: [step] }`; a step: `{ id, type, text, target?, time?, need?, checkpoint, start: [effect], end: [effect], fail?: [effect] }` where `type` is `reach | talk | use | hide | escort | fight | kill | choose | timer | scene | swap | still`; `target` is `{ spot } | { room } | { npc } | { tag }`; `checkpoint` is `{ spot, hero, armour, helmet, companions: [kind], flags: [name], gun }`.
+- Effects: `{ flag }`, `{ unflag }`, `{ unlock: doorId }`, `{ lock: doorId }`, `{ spawn: { kind, spot, role, squad, hostile, tag } }`, `{ despawn: tag }`, `{ alarm: { section, how } }`, `{ say: { who, text } }`, `{ intercom: { section, text } }`, `{ scene: id }`, `{ hero: kind }`, `{ give: 'armour' | 'helmet' | 'gun:<id>' | 'comlink' | 'beacon' | 'saber' }`, `{ take: … }`, `{ companion: kind, follow: bool }`, `{ to: spot }`, `{ achievement: id }`, `{ music: mood }`, `{ walls: 'close' | 'open' }`, `{ bridge: bool }`, `{ end: true }`.
+- Events it listens to: `{ type: 'at', room, spot }`, `{ type: 'talked', npc, node }`, `{ type: 'used', tag }`, `{ type: 'killed', kind, tag }`, `{ type: 'still', seconds }`, `{ type: 'tick', dt }`, `{ type: 'chose', talk, choice }`, `{ type: 'sceneDone', id }`, `{ type: 'caught' }`, `{ type: 'died' }`.
+- `storyStep(progress, story, event) → { progress, effects }`; `startStory(story) → { progress, effects }`; `checkpointOf(story, progress) → checkpoint`.
+
+**DS1 Rebel, “That’s no moon” (hero Luke; companions Han, Chewbacca, later Leia):**
+1. `scan` — hide: in `hold`, crouched and still for 25 s while two technicians and a trooper search the freighter; moving within their sight fails back to the checkpoint.
+2. `ambush` — use the hold’s panel to call two troopers up the ramp, then down both (melee or stun); `give: armour, helmet` (the egg `tk421` fires on taking the armour).
+3. `control` — reach `ctl327`; the officer’s intercom asks after TK-421 (the one famous line); fight the officer and his aide.
+4. `scomp` — use the scomp link with Artoo: flags `tractor-found`, `leia-found`; Threepio and Artoo stay; Obi-Wan leaves.
+5. `tractor` — swap to Obi-Wan at `core6`; past the guards (Force distraction on `alt`), onto the ledge in `tractor`, use the terminal’s two controls; `flag: tractor-off`; swap back to Luke.
+6. `transfer` — escort Chewbacca (in binders) by the lift to Level 5; at `aa23` choose “a prisoner transfer from cell block 1138”; Chewbacca breaks loose; fight the three guards; shoot the cameras.
+7. `intercom` — talk: Han’s conversation on the intercom (choices; every way ends with the panel shot and the alarm going to alert in `aa23`).
+8. `cell` — reach and open `cell2187`; Leia joins (“Aren’t you a little short…” when your helmet is on).
+9. `cellbay` — fight the squad from the lift; Leia blasts the chute’s grate; reach `chute`.
+10. `compactor` — in `compactor`: the hatch is sealed (a shot ricochets); the dianoga drags you under (mash use for 3 s); `walls: close` starts a 40 s timer; use the comlink to reach Threepio; the walls stop; dial 3263827 on the hatch to get out.
+11. `maint` — reach `chasm` through the maintenance corridors (a squad on the way).
+12. `chasm` — the blast door shuts behind; the bridge’s control is shot out; use the grapple at the ledge’s edge; scene `swing`.
+13. `bay` — reach the bay door; scene `duel` (Vader and Obi-Wan; the robe falls); run to the freighter under fire (30 s); scene `escape`; `end`.
+
+**DS1 Imperial, “Intruder alert” (hero a stormtrooper):**
+1. `muster` — reach the ranks in `bay327`; scene `tractor` (the freighter pulled in).
+2. `scan` — escort the scanning crew to the ramp and back; Vader asks after the droids.
+3. `tk421` — reach `ctl327`: the door is locked; use it; the officer down; the droids in the closet send you to the prison level.
+4. `aa23` — fight the intruders in `aa23` and the cell bay; they escape down the chute.
+5. `sweep` — reach the maintenance level and the chasm’s upper ledge; fight across the chasm while they swing (scene `swing`, seen from the other side).
+6. `beacon` — the order comes over the intercom to let them go; reach the freighter during the duel and use its hull with the homing beacon before it lifts (60 s); scene `escape`; `end`.
+
+Tests (`stories.test.js`): each story played through by a script of events from start to `end`; each step’s target spot exists in its station; no effect names an unknown door, spot, kind or scene; a `fail` returns to the step’s checkpoint.
 
 ### Task 3.5: Scenes and scripted moments
 
@@ -377,12 +408,38 @@ Check script over every DS1 room → fix → gates → commit.
 ### Task 4.1: The DS2 graph — `rules/stations/ds2.js`: `dock` (ST 321’s bay), `command` (the DS2 command centre off the equatorial trench), `hangar272` (vast; troops in ranks are instanced figures), `holding` (the antechamber), `towerlift`, `throne` (the stairs, the throne on its swivel, the round window, the bridge over the reactor shaft, kind `throne`, its shaft a void), `reactorshaft`, `gallery` and `superstructure` (walkways over girders and the reactor chamber’s glow), `corridors2`.
 ### Task 4.2: Room builders for DS2 — red accents, the window’s spoked frame showing Endor, the fleet and the battle (Task 6.3’s views), the unfinished station’s girders.
 ### Task 4.3: Sabers and the Force — `rules/saber.js` (strokes light and heavy, guard, parry window 0.18 s, deflect, stamina), `rules/force.js` (push, pull, choke, lightning, the mind trick, distraction), with tests; `scene/saber.js` (blades with a core and glow, trails, sparks on clash, lightning arcs).
-### Task 4.4: The DS2 stories — `ds2Rebel.js`, `ds2Imperial.js` as the spec lists, with the duel against Vader as a saber fight, the Emperor’s lightning, the unmasking scene, the reactor run out.
+### Task 4.4: The DS2 stories
+
+**Files:** Create `rules/stories/ds2Rebel.js`, `ds2Imperial.js`; extend `stories.test.js`.
+
+**DS2 Rebel, “The Emperor’s Tower” (hero Luke in black, unarmed; his saber is Vader’s):**
+1. `escort` — scene `arrive2`; walk with Vader and two Royal Guards from `dock` to `towerlift`.
+2. `lift` — scene `tower` (the ride up).
+3. `throne` — talk with the Emperor (choices); the saber lies on the throne’s armrest (pulling it with the Force early starts the duel at once and fires the egg `armrest`).
+4. `duel` — saber fight with Vader on the dais, the stairs and the catwalk; at half his health you hide under the stairs for 10 s; “Sister…” — the fight turns; choose to strike him down or throw the saber away.
+5. `lightning` — hold the guard against the Emperor’s lightning until scene `throw` (Vader throws him down the shaft).
+6. `carry` — carry Vader from `throne` to `dock` in 120 s while the station shakes and people run.
+7. `mask` — scene and talk at the shuttle’s ramp.
+8. `escape` — reach the shuttle; scene `escape2`; `end`.
+
+**DS2 Imperial, “Fully armed and operational” (hero a Death Star trooper):**
+1. `clearance` — at the command station’s console, check ST 321’s code and lower the shield; scene `arrive2` (Jerjerrod meets Vader).
+2. `ranks` — take your place in `hangar272`; stand still 40 s as the Emperor arrives (scene `emperor`); moving restarts the step with a reprimand.
+3. `fire` — in `command`, at the order use the firing switch; a Rebel cruiser dies in the window; “It’s a trap!” is heard in the chatter (egg `trap`).
+4. `breach` — the reactor alarm; reach the shuttles in `dock` in 150 s through corridors with fires and falling panels; scene `escape2`; `end`.
+
 Check script over every DS2 room → gates → commit.
 
 ## Phase 5: Easter eggs, voices, sound
 
-### Task 5.1: `rules/eggs.js` — the spec’s list, each `{ id, achievement, when(event, g) }`; tests that each fires from its event and only once.
+### Task 5.1: Easter eggs
+
+**Files:** Create `rules/eggs.js`, `eggs.test.js`.
+
+`EGGS = [{ id, achievement, title, when(event, g) → bool }]`, firing once each (save keeps them). The list, with the event each listens to:
+`bonk` (a squad passes the low door frame of `ctl327`: one trooper hits his head, 1 in 3; you see it), `tk421` (you take TK-421’s armour), `g7` (you keep up with the mouse droid G7 for its whole lap of the Level 5 corridors), `roar` (a mouse droid flees your roar), `1138` (you say “cell block 1138”), `3263827` (you dial it on the compactor’s hatch), `boring` (you finish Han’s intercom with the canon lines), `short` (you open cell 2187 with your helmet on), `krennic` (you sit in the conference room’s empty chair), `faith` (you talk back to Vader in the conference room — and are choked, briefly), `eyestalk` (you look at the dianoga’s eyestalk for 2 s), `librarian` (you watch the archive’s security feed and see the librarian), `robe` (you look at the robe on the floor of Bay 327), `armrest` (you pull Luke’s saber from the armrest), `trap` (you hear “It’s a trap!” in the command centre’s chatter), `moff` (you read Jerjerrod’s nameplate), `charge` (you chase a squad down a corridor and meet the platoon coming back), `port` (you read the maintenance note on the thermal exhaust port), `plans` (you open the plans at a terminal; links to the page’s readout), `droids` (the mind trick on two guards: they repeat that these aren’t the droids you’re looking for).
+Tests: each egg fires from its event; never twice; none fires on a near-miss event.
+
 ### Task 5.2: Achievements — every `ds-*` id in `Achievements.jsx` with a title and a line; unlocked from `'achievement'` events in `Inside.jsx`.
 ### Task 5.3: `voicelines.js` — `VOICELINES` for every spoken line; `npm run voices:lines && npm run voices:tidy`; a GitHub issue labelled `voices` listing new speakers (tarkin, palpatine, jerjerrod, motti, intercom).
 ### Task 5.4: Music and ambience pass in `scene/sounds.js`.
