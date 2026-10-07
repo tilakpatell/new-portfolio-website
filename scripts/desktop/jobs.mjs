@@ -17,7 +17,7 @@
 //   node scripts/<p>/runner.mjs --pending      how many jobs are waiting (prints the number)
 //   node scripts/<p>/runner.mjs --enqueue      an issue from the workflow's inputs (INPUT_* in the environment)
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { HOME, gh, issue as getIssue, keepAwake, labelled, quietly, ready, repoName, runUrl, summary, tail, waitForGpu } from './lib.mjs';
 
@@ -58,6 +58,18 @@ export function lock(name) {
   return { release };
 }
 
+// Someone else on this machine is working on the pipeline's own files (a
+// session running generate.py by hand on the same references and cache):
+// ~/.desktop-jobs/<name>.lock, holding that process's pid, or empty (then
+// it holds for a day from when it was written). → why, or null
+export function held(name, home = HOME) {
+  const file = join(home, `${name}.lock`);
+  if (!existsSync(file)) return null;
+  const pid = Number(readFileSync(file, 'utf8').trim());
+  if (pid) return alive(pid) ? `${file} is held by process ${pid}` : null;
+  return Date.now() - statSync(file).mtimeMs < 24 * 3600000 ? `${file} is there (written ${new Date(statSync(file).mtimeMs).toLocaleString()})` : null;
+}
+
 const comment = (n, body) => quietly(() => gh('issue', 'comment', String(n), '--body', body), `comment on #${n}`);
 const edit = (n, ...args) => quietly(() => gh('issue', 'edit', String(n), ...args), `label #${n}`);
 const run = () => (runUrl() ? ` ([the run](${runUrl()}))` : '');
@@ -92,13 +104,15 @@ export async function take(p, i, root, log = console.log) {
     log(`#${i.number}: can't read it: ${e.message}`);
     return 'failed';
   }
-  if (!(await waitForGpu(p.vram, { minutes: Number(process.env.DESKTOP_GPU_WAIT_MINUTES ?? p.gpuWait ?? 45), log }))) {
+  const hold = held(p.name);
+  if (hold || !(await waitForGpu(p.vram, { minutes: Number(process.env.DESKTOP_GPU_WAIT_MINUTES ?? p.gpuWait ?? 45), log }))) {
+    const why = hold ? `the ${p.name} files are in use on the desktop (${hold})` : 'the GPU is busy';
     if (!i.labels.includes(l.waiting)) {
       edit(i.number, '--add-label', l.waiting);
-      comment(i.number, `Waiting for the GPU (something else on the desktop is using it); the hourly sweep tries again${run()}.`);
+      comment(i.number, `Waiting: ${why}. The hourly sweep tries again${run()}.`);
     }
-    log(`#${i.number}: deferred, the GPU is busy`);
-    summary(`- #${i.number} ${i.title}: deferred, the GPU is busy`);
+    log(`#${i.number}: deferred, ${why}`);
+    summary(`- #${i.number} ${i.title}: deferred, ${why}`);
     return 'deferred';
   }
   edit(i.number, '--add-label', l.running, ...(i.labels.includes(l.waiting) ? ['--remove-label', l.waiting] : []));

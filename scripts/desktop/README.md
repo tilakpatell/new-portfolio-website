@@ -116,6 +116,12 @@ node scripts/gen3d/runner.mjs --watch 60      # keep sweeping (the runner is the
 node scripts/gen3d/make.mjs NAME --image photo.png --what "…"   # no issue at all: scripts/gen3d/README.md
 ```
 
+To keep the runner off a pipeline while you work on its files by hand
+(generate.py on the same references and cache, say), put a
+`~\.desktop-jobsoices.lock` (or `gen3d.lock`) there: with a process id
+in it, it holds while that process lives; empty, for a day. Jobs wait as
+they do for a busy GPU.
+
 A lock in `~\.desktop-jobs\locks` keeps two runners of one pipeline from
 running on this machine at once. An issue still labelled `…:running` with
 no live runner behind it was cut off by sleep or a restart, and the next

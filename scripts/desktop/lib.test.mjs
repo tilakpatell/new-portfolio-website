@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fromEnv, labels } from './jobs.mjs';
+import { fromEnv, held, labels } from './jobs.mjs';
 import { fields, imageUrls, isImage, localDir, normaliseForm, ready, tail, trusted, urlIn } from './lib.mjs';
 
 describe("an issue's fields", () => {
@@ -81,6 +81,16 @@ describe('the plumbing', () => {
   });
   it("keeps a log's last lines", () => {
     expect(tail('a\n\nb\nc\n', 2)).toBe('b\nc');
+  });
+  it("defers to a hold someone else put on the pipeline's files", () => {
+    const home = mkdtempSync(join(tmpdir(), 'hold-'));
+    expect(held('voices', home)).toBeNull();
+    writeFileSync(join(home, 'voices.lock'), '');
+    expect(held('voices', home)).toMatch(/voices\.lock is there/);
+    writeFileSync(join(home, 'voices.lock'), String(process.pid));
+    expect(held('voices', home)).toMatch(new RegExp(`held by process ${process.pid}`));
+    writeFileSync(join(home, 'voices.lock'), '999999999');
+    expect(held('voices', home)).toBeNull(); // a pid that's gone holds nothing
   });
   it("finds a tool in the Claude app's boxed AppData when the real one has none", () => {
     const base = mkdtempSync(join(tmpdir(), 'local-'));
