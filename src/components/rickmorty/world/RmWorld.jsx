@@ -82,6 +82,7 @@ import { useTravellers } from '../../middleearth/towns/useTravellers';
 // in it, F or a click to shoot them, and a card for how it ended.
 
 const Roy = lazy(() => import('./roy/Roy').catch(() => ({ default: RoyDown })));
+const Sewer = lazy(() => import('./sewer/Sewer').catch(() => ({ default: RoyDown })));
 const sound = (name) =>
   import('../../games/gameAudio')
     .then((g) => g[name]?.())
@@ -122,6 +123,7 @@ const PLACES = {
   portalpanic: { title: 'Portal panic', where: 'The cabinet in Rick’s garage', task: 'portalpanic' },
   quiz: { title: 'Mr. Goldenfold’s pop quiz', where: 'Harry Herpson High' },
   roy: { title: 'Roy: A Life Well Lived', where: 'Blips and Chitz', full: true },
+  sewer: { title: 'Pickle Rick’s sewer run', where: 'The agency', full: true },
 };
 // what the people say, and the cabinets that aren't Roy
 const SAY = {
@@ -215,7 +217,7 @@ const BOARD_R = 2.7; // how near the cruiser's middle Morty can get in from
 
 // Where the next thing to do is, for the map's marker: the area and the spot
 // in it, and from anywhere else, the way towards it.
-const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'], ...Object.fromEntries(DESTINATIONS.flatMap((d) => d.tasks.map((t) => [t.id, [d.id, `spot:${Object.keys(d.done).find((k) => d.done[k] === t.id) ?? d.escape?.after ?? d.escape?.spot ?? d.goal}`]]))) };
+const GOAL = { cable: ['house', 'spot:cable'], butter: ['house', 'spot:butter'], meeseeks: ['garage', 'spot:meeseeks'], plumbus: ['garage', 'spot:plumbus'], portalpanic: ['garage', 'spot:portalpanic'], quiz: ['school', 'spot:quiz'], fly: ['street', 'cruiser'], portal: ['garage', 'link:garage-portal'], basement: ['garage', 'link:garage-hatch'], roy: ['arcade', 'spot:roy'], roy55: ['arcade', 'spot:roy'], president: ['street', 'spot:president'], oval: ['garage', 'link:garage-oval'], diner: ['street', 'link:diner-door'], mindblowers: ['mindblowers', 'spot:chair'], rickall: ['house', 'spot:egg'], wong: ['street', 'link:wong-door'], ...Object.fromEntries(DESTINATIONS.flatMap((d) => d.tasks.map((t) => [t.id, [d.id, `spot:${Object.keys(d.done).find((k) => d.done[k] === t.id) ?? d.escape?.after ?? d.escape?.spot ?? d.goal}`]]))), sewer: ['agency', 'spot:sewer'] };
 // (every destination is through the garage's portal)
 const toDest = (via) => Object.fromEntries(DESTINATIONS.map((d) => [d.id, via]));
 const WAY = {
@@ -370,6 +372,15 @@ export default function RmWorld() {
     [complete, close],
   );
 
+  // up the hole from the sewer: the run counts when the far drain was made
+  const sewerLeft = useCallback(
+    (won) => {
+      close();
+      if (won) complete('sewer');
+    },
+    [complete, close],
+  );
+
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setToast(null), toast.kind === 'say' ? 5600 : toast.bad ? 3400 : 4400);
@@ -384,7 +395,7 @@ export default function RmWorld() {
       ) : (
         <Cards done={done} openPlace={openPlace} three={three} gl={gl} toast={toast} retry={() => setGl('loading')} />
       )}
-      {open && <Place id={open} onClose={close} onQuiz={quizDone} onRoy={royLeft} />}
+      {open && <Place id={open} onClose={close} onQuiz={quizDone} onRoy={royLeft} onSewer={sewerLeft} />}
     </section>
   );
 }
@@ -2096,7 +2107,7 @@ function RoyDown({ onLeave }) {
 // ── what opens over the page ──
 // Its component, and the way back to the room (Esc, the button, or B on a
 // controller). Roy fills the screen and has its own way out.
-function Place({ id, onClose, onQuiz, onRoy }) {
+function Place({ id, onClose, onQuiz, onRoy, onSewer }) {
   const p = PLACES[id];
   const back = useRef(null);
   const shell = useRef(null);
@@ -2149,6 +2160,18 @@ function Place({ id, onClose, onQuiz, onRoy }) {
         }
       >
         {() => <Roy onLeave={onRoy} />}
+      </GpuGate>
+    ),
+    sewer: (
+      <GpuGate
+        className="rm-roy-gate"
+        extra={
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onSewer(false)}>
+            Back up the hole
+          </button>
+        }
+      >
+        {() => <Sewer onLeave={onSewer} />}
       </GpuGate>
     ),
   }[id];
