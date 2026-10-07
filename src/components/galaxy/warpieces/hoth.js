@@ -2,7 +2,8 @@
 // - Echo Base's ion cannon fires on Death Squadron: two great blue bolts
 //   every twenty seconds or so, and the Star Destroyer they hit is disabled a
 //   while (battle.js's disable: its guns quiet, its hull and objectives
-//   open to it).
+//   open to it). It's the Rebellion's gun, so it fires only while the light
+//   side holds Hoth; with the Empire holding it, it's quiet.
 // - When it's the Empire attacking (the war's defence of Hoth), the GR-75
 //   transports run from the base for the jump, one after another (Hoth's an
 //   evacuation: battles.js's BATTLE_KINDS, the battle's own runners), and
@@ -13,9 +14,9 @@
 
 import * as THREE from 'three';
 import { GCW, seeded } from '../gcw';
+import { SIDES } from '../sides';
 
 const REBELS = 0;
-const EMPIRE = 1;
 export const HOTH = {
   ionEvery: [16, 26], // seconds between the cannon's shots
   ionFor: 18, // seconds a Star Destroyer's disabled
@@ -45,13 +46,15 @@ export function createHoth(ctx) {
   });
   let nextIon = 6 + rand() * 6;
   let ions = 0;
+  // (Echo Base held by the light side: the defender's stance, or the Rebellion's team for a battle of the old shape)
+  const held = ctx.on?.sides ? SIDES[ctx.on.sides[battle.defender]]?.stance === 'light' : battle.defender === REBELS;
 
   // ── the transports (the battle's runners) ──
   let out = 0;
   let done = false;
 
   const shootIon = () => {
-    const foes = battle.capitals.filter((c) => c.team === EMPIRE && c.alive && c.dying <= 0 && c.disabled <= 0 && !c.gone);
+    const foes = battle.capitals.filter((c) => c.team === battle.attacker && c.alive && c.dying <= 0 && c.disabled <= 0 && !c.gone);
     if (!foes.length) return;
     const flag = foes.find((c) => c.role === 'flagship');
     const target = flag && rand() < 0.4 ? flag : foes[Math.floor(rand() * foes.length)];
@@ -81,8 +84,8 @@ export function createHoth(ctx) {
         }
       }
       if (battle.over) return {};
-      // the cannon
-      nextIon -= dt;
+      // the cannon (Echo Base's, while it's the light side's)
+      if (held) nextIon -= dt;
       if (nextIon <= 0) {
         nextIon = HOTH.ionEvery[0] + rand() * (HOTH.ionEvery[1] - HOTH.ionEvery[0]);
         shootIon();

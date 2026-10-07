@@ -224,6 +224,14 @@ describe('Hoth', () => {
     expect(k.battle.over).toEqual({ winner: 0, why: 'runners' });
     h.dispose();
   });
+  it('keeps the ion cannon quiet when it’s the Rebellion attacking: Echo Base’s guns are the Rebellion’s', () => {
+    const k = make('hoth', 'rebel');
+    const h = createHoth(k.ctx);
+    const { events } = step(h, k.battle, 40, null, 0.1);
+    expect(events.some((ev) => ev.type === 'disabled')).toBe(false);
+    expect(k.events).not.toContain('ion');
+    h.dispose();
+  });
   it('launches no transports of its own when it’s the Rebellion attacking', () => {
     const k = make('hoth', 'rebel');
     const h = createHoth(k.ctx);
