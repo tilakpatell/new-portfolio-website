@@ -28,8 +28,8 @@
 // `why`: the battle's end, said, when the last stage goes; `breaks`: the
 // objective ship breaks up when it does; `on`: where the objective is, a
 // subsystem of the objective ship's ({ sub }))
-// `runners`: layBattle's ({ team, kind, size, hp, count, need, speed, from,
-// to }), or null. runnerSchedule({ count, need, duration, length }) →
+// `runners`: layBattle's ({ team, kind, size, hp, count, need, speed,
+// route (its way, as points), from, to }), or null. runnerSchedule({ count, need, duration, length }) →
 // { startAt, every }.
 
 export const PLAN = {
@@ -65,12 +65,15 @@ function chainOf(objectivesOn) {
   ];
 }
 
+// how long a way of points is
+const lengthOf = (route) => route.slice(1).reduce((sum, p, i) => sum + Math.hypot(p[0] - route[i][0], p[1] - route[i][1], p[2] - route[i][2]), 0);
+
 function runnersOf(r, attacker, length) {
   if (!r) return null;
-  const way = Math.hypot(r.to[0] - r.from[0], r.to[1] - r.from[1], r.to[2] - r.from[2]);
-  const duration = way / r.speed;
+  const route = r.route ?? [r.from, r.to];
+  const duration = lengthOf(route) / r.speed;
   const { startAt, every } = runnerSchedule({ count: r.count, need: r.need, duration, length });
-  return { team: r.team, kind: r.kind, size: r.size, hp: r.hp, count: r.count, need: r.need, speed: r.speed, from: r.from, to: r.to, duration, startAt, every, luck: PLAN.luck[r.team === attacker ? 'attacker' : 'defender'], safe: r.need - 1 };
+  return { team: r.team, kind: r.kind, size: r.size, hp: r.hp, count: r.count, need: r.need, speed: r.speed, route, duration, startAt, every, luck: PLAN.luck[r.team === attacker ? 'attacker' : 'defender'], safe: r.need - 1 };
 }
 
 export function planFor({ id, kind = 'assault', attacker = 0, objectivesOn = 'flagship', runners = null, length = PLAN.length }) {
