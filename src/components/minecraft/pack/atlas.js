@@ -86,7 +86,7 @@ function cut(img, parts) {
   return out;
 }
 
-export async function buildAtlas(read, { blocks = [], items = [], skins = {}, decode, aliases = ALIASES, source = '' }) {
+export async function buildAtlas(read, { blocks = [], items = [], skins = {}, sprites = {}, decode, aliases = ALIASES, source = '' }) {
   const missing = [];
   const frames = {};
   const cache = new Map();
@@ -127,19 +127,26 @@ export async function buildAtlas(read, { blocks = [], items = [], skins = {}, de
 
   const blockStack = await stack('block', blocks);
   const itemStack = await stack('item', items);
-  const skinOut = {};
-  for (const [name, paths] of Object.entries(skins)) {
-    let img = null;
-    for (const p of paths) if ((img = await load(p))) break;
-    if (img) skinOut[name] = { width: img.width, height: img.height, data: img.data };
-    else missing.push(`skin/${name}`);
+  // pictures kept whole: the first file found for each
+  async function whole(kind, list) {
+    const out = {};
+    for (const [name, paths] of Object.entries(list)) {
+      let img = null;
+      for (const p of paths) if ((img = await load(p))) break;
+      if (img) out[name] = { width: img.width, height: img.height, data: img.data };
+      else missing.push(`${kind}/${name}`);
+    }
+    return out;
   }
+  const skinOut = await whole('skin', skins);
+  const spriteOut = await whole('sprite', sprites);
 
   return {
     blocks: blockStack,
     items: itemStack,
     skins: skinOut,
+    sprites: spriteOut,
     missing,
-    manifest: { blocks: [...blocks], items: [...items], skins: Object.keys(skinOut), frames, source },
+    manifest: { blocks: [...blocks], items: [...items], skins: Object.keys(skinOut), sprites: Object.keys(spriteOut), frames, source },
   };
 }

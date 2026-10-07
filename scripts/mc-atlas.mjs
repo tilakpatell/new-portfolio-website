@@ -7,7 +7,8 @@
 // same builder the page uses for a visitor's own pack
 // (src/components/minecraft/pack/atlas.js), and writes what the world draws:
 // blocks.webp (every block tile, a 16-wide strip in TEXTURES' order, lossless),
-// items.webp the same for the items once there are any, skins/<mob>.webp, and
+// items.webp the same for the items once there are any, skins/<mob>.webp,
+// sprites/<name>.webp (the sun, moon, clouds and the HUD's pieces), and
 // manifest.json (the order, the animation frames, the pack's name and licence).
 //
 // The shipped pack is Pixel Perfection (XSSheep, continued as Pixel
@@ -28,7 +29,7 @@ import { unzipSync } from 'fflate';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const load = (p) => import(pathToFileURL(join(ROOT, p)).href);
 const { buildAtlas } = await load('src/components/minecraft/pack/atlas.js');
-const { SKINS } = await load('src/components/minecraft/pack/aliases.js');
+const { SKINS, SPRITES } = await load('src/components/minecraft/pack/aliases.js');
 const { TEXTURES } = await load('src/components/minecraft/rules/blocks.js');
 const ITEM_TEXTURES = (await load('src/components/minecraft/rules/items.js').catch(() => ({}))).ITEM_TEXTURES ?? [];
 
@@ -66,7 +67,7 @@ const decode = async (bytes) => {
   return { width: info.width, height: info.height, data: new Uint8ClampedArray(data.buffer, data.byteOffset, data.length) };
 };
 
-const atlas = await buildAtlas(await opener(pack), { blocks: TEXTURES, items: ITEM_TEXTURES, skins: SKINS, decode, source: PACKS[name]?.source ?? name });
+const atlas = await buildAtlas(await opener(pack), { blocks: TEXTURES, items: ITEM_TEXTURES, skins: SKINS, sprites: SPRITES, decode, source: PACKS[name]?.source ?? name });
 
 const blockMissing = atlas.missing.filter((m) => m.startsWith('block/'));
 if (atlas.missing.length) console.log(`missing (${atlas.missing.length}): ${atlas.missing.join(', ')}`);
@@ -75,7 +76,7 @@ if (atlas.missing.length) console.log(`missing (${atlas.missing.length}): ${atla
 const vanilla = option('vanilla', null);
 if (vanilla) {
   const read = await opener(vanilla);
-  const game = await buildAtlas(read, { blocks: TEXTURES, items: ITEM_TEXTURES, skins: SKINS, decode });
+  const game = await buildAtlas(read, { blocks: TEXTURES, items: ITEM_TEXTURES, skins: SKINS, sprites: SPRITES, decode });
   const same = (a, b) => {
     if (!a || !b || a.length !== b.length) return 0;
     let n = 0;
@@ -96,11 +97,12 @@ if (vanilla) {
     most = Math.max(most, s);
     if (s >= 0.9) copies.push(`block/${t} (${Math.round(s * 100)}%)`);
   });
-  for (const k of Object.keys(atlas.skins)) {
-    const s = same(atlas.skins[k].data, game.skins[k]?.data);
-    most = Math.max(most, s);
-    if (s >= 0.9) copies.push(`skin/${k} (${Math.round(s * 100)}%)`);
-  }
+  for (const kind of ['skins', 'sprites'])
+    for (const k of Object.keys(atlas[kind])) {
+      const s = same(atlas[kind][k].data, game[kind][k]?.data);
+      most = Math.max(most, s);
+      if (s >= 0.9) copies.push(`${kind}/${k} (${Math.round(s * 100)}%)`);
+    }
   console.log(`against the game's own: the closest tile shares ${Math.round(most * 100)}% of its pixels`);
   if (copies.length) {
     console.error(`these are the game's own textures and may not ship: ${copies.join(', ')}`);
@@ -116,10 +118,12 @@ if (blockMissing.length && !flag('allow-missing')) {
 // ── written ──
 const strip = (s) => sharp(Buffer.from(s.data.buffer, s.data.byteOffset, s.data.length), { raw: { width: s.width, height: s.height * s.layers, channels: 4 } }).webp({ lossless: true, effort: 6 });
 await mkdir(join(out, 'skins'), { recursive: true });
+await mkdir(join(out, 'sprites'), { recursive: true });
 await strip(atlas.blocks).toFile(join(out, 'blocks.webp'));
 if (atlas.items.layers) await strip(atlas.items).toFile(join(out, 'items.webp'));
 for (const [k, s] of Object.entries(atlas.skins)) await strip({ ...s, layers: 1 }).toFile(join(out, 'skins', `${k}.webp`));
+for (const [k, s] of Object.entries(atlas.sprites)) await strip({ ...s, layers: 1 }).toFile(join(out, 'sprites', `${k}.webp`));
 const manifest = { ...PACKS[name], id: name, ...atlas.manifest, missing: atlas.missing };
 await writeFile(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 const kb = async (f) => ((await stat(join(out, f))).size / 1024).toFixed(1);
-console.log(`blocks.webp ${atlas.blocks.layers} tiles, ${await kb('blocks.webp')} kB; ${atlas.items.layers} items; ${Object.keys(atlas.skins).length} skins; frames ${JSON.stringify(atlas.manifest.frames)}`);
+console.log(`blocks.webp ${atlas.blocks.layers} tiles, ${await kb('blocks.webp')} kB; ${atlas.items.layers} items; ${Object.keys(atlas.skins).length} skins; ${Object.keys(atlas.sprites).length} sprites; frames ${JSON.stringify(atlas.manifest.frames)}`);

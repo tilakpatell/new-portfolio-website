@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TEXTURES } from '../rules/blocks';
-import { ALIASES, SKINS } from './aliases';
+import { ALIASES, SKINS, SPRITES } from './aliases';
 import { CHECKER, buildAtlas, pathsFor } from './atlas';
 
 // A fake pack: each path is an image whose every pixel is a colour made from
@@ -94,6 +94,16 @@ describe('the atlas builder', () => {
     expect(atlas.manifest.skins).toEqual(['player', 'pig']);
   });
 
+  it('sprites keep their own size and are listed apart from the skins', async () => {
+    const files = { 'assets/minecraft/textures/environment/sun.png': { width: 32, height: 32 }, 'assets/minecraft/textures/gui/sprites/hud/hotbar.png': { width: 182, height: 22 } };
+    const { read, decode } = fakePack(files);
+    const atlas = await buildAtlas(read, { blocks: [], items: [], skins: {}, sprites: { sun: ['environment/sun'], hotbar: ['gui/sprites/hud/hotbar'], gone: ['nowhere'] }, decode });
+    expect(atlas.sprites.hotbar).toMatchObject({ width: 182, height: 22 });
+    expect(atlas.manifest.sprites).toEqual(['sun', 'hotbar']);
+    expect(atlas.manifest.skins).toEqual([]);
+    expect(atlas.missing).toEqual(['sprite/gone']);
+  });
+
   it('items read from the item folder', async () => {
     const { read, decode } = fakePack({ 'assets/minecraft/textures/item/stick.png': { ...tile, colour: [3, 3, 3, 255] } });
     const atlas = await buildAtlas(read, { blocks: [], items: ['stick'], skins: {}, decode });
@@ -104,6 +114,7 @@ describe('the atlas builder', () => {
   it('every block texture has a way to be found: its own name, or aliases', () => {
     for (const t of TEXTURES) expect(pathsFor('block', t, ALIASES).length, t).toBeGreaterThan(0);
     for (const v of Object.values(ALIASES)) expect(Array.isArray(v)).toBe(true);
+    expect(Object.keys(SPRITES)).toEqual(expect.arrayContaining(['sun', 'moon_phases', 'clouds', 'hotbar', 'hotbar_selection', 'crosshair']));
     expect(Object.keys(SKINS)).toEqual(expect.arrayContaining(['player', 'zombie', 'skeleton', 'creeper', 'spider', 'enderman', 'pig', 'cow', 'sheep', 'chicken']));
   });
 });

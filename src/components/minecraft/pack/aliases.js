@@ -91,3 +91,22 @@ export const SKINS = {
   chicken: ['entity/chicken', 'entity/chicken/chicken', 'entity/chicken/temperate_chicken'],
   villager: ['entity/villager/villager'],
 };
+
+// The sky's and the HUD's pictures, each kept at its own size: the sun and
+// the moon's eight phases, the cloud map (a texel a 12-block cell), the
+// hotbar, its selection frame, the crosshair, and the hearts, hunger and air.
+export const SPRITES = {
+  sun: ['environment/celestial/sun', 'environment/sun'],
+  moon_phases: ['environment/celestial/moon_phases', 'environment/moon_phases'],
+  clouds: ['environment/clouds'],
+  hotbar: ['gui/sprites/hud/hotbar'],
+  hotbar_selection: ['gui/sprites/hud/hotbar_selection'],
+  crosshair: ['gui/sprites/hud/crosshair'],
+  heart_full: ['gui/sprites/hud/heart/full'],
+  heart_half: ['gui/sprites/hud/heart/half'],
+  heart_container: ['gui/sprites/hud/heart/container'],
+  food_full: ['gui/sprites/hud/food_full'],
+  food_half: ['gui/sprites/hud/food_half'],
+  food_empty: ['gui/sprites/hud/food_empty'],
+  air: ['gui/sprites/hud/air'],
+};

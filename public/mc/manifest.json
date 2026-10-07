@@ -156,6 +156,21 @@
     "chicken",
     "villager"
   ],
+  "sprites": [
+    "sun",
+    "moon_phases",
+    "clouds",
+    "hotbar",
+    "hotbar_selection",
+    "crosshair",
+    "heart_full",
+    "heart_half",
+    "heart_container",
+    "food_full",
+    "food_half",
+    "food_empty",
+    "air"
+  ],
   "frames": {
     "lava_flow": 16,
     "lava_still": 16,
