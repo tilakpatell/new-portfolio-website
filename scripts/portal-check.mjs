@@ -44,9 +44,22 @@ const ready = where === 'galaxy' ? () => Boolean(window.__galaxy?.()?.ship) : ()
 await page.waitForFunction(ready, null, { timeout: 600000, polling: 1000 }).catch(() => errors.push('the ship never came up'));
 console.log(`${where}: ship up in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 await page.waitForTimeout(4000);
+// (a first frame, with time to draw it: on software WebGL the first after the page loads can take minutes)
+await page.screenshot({ path: `${out}/portal-${where}-first.png`, timeout: 600000 });
+// (the galaxy brings the ship in to the system with a jump's way out first: a jump can't start till it's done)
+if (where === 'galaxy') await page.waitForFunction(() => !window.__galaxy()?.jump, null, { timeout: 120000, polling: 500 }).catch(() => errors.push('still arriving'));
 const to = process.argv[3] ?? (where === 'galaxy' ? 'naboo' : await page.evaluate(() => window.__universeDebug.positions().find((id) => id !== window.__universe().at && id !== 'home') ?? 'starwars'));
 // (the page's clock stopped first: on a slow machine a round trip into the page is a good part of the jump)
-const pause = async () => page.clock.pauseAt((await page.evaluate(() => Date.now())) + 4000); // (well ahead: the clock runs on while the call comes back)
+// (well ahead: the clock runs on while the call comes back, the more so on a heavy page)
+const pause = async () => {
+  for (let ahead = 4000; ; ahead *= 2) {
+    try {
+      return await page.clock.pauseAt((await page.evaluate(() => Date.now())) + ahead);
+    } catch (e) {
+      if (ahead > 60000 || !/past/.test(String(e))) throw e;
+    }
+  }
+};
 await pause();
 if (where === 'galaxy') {
   // (the galaxy comes round onto the course first: stepped through, the jump proper starts at its spool)
@@ -54,7 +67,7 @@ if (where === 'galaxy') {
   for (let i = 0; i < 120 && (await page.evaluate(() => window.__galaxy()?.jump?.phase === 'align')); i++) await page.clock.runFor(50);
 } else console.log(`jump to ${to}: ${await page.evaluate((id) => window.__universeDebug.travel(id, 'hyper'), to)}`);
 for (let t = 0; t <= end; t += step) {
-  await page.screenshot({ path: `${out}/portal-${where}-${String(t).padStart(4, '0')}.png`, timeout: 120000 });
+  await page.screenshot({ path: `${out}/portal-${where}-${String(t).padStart(4, '0')}.png`, timeout: 300000 });
   const s = await page.evaluate(() => (window.__galaxy ? window.__galaxy()?.jump : window.__universeDebug?.state?.portal && { phase: window.__universeDebug.state.portal.phase, off: window.__universeDebug.state.portal.off }));
   console.log(t, JSON.stringify(s));
   // (the galaxy holds its tunnel till the next system's built: let it)
