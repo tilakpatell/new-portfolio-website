@@ -45,11 +45,17 @@ await page.waitForFunction(ready, null, { timeout: 600000, polling: 1000 }).catc
 console.log(`${where}: ship up in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 await page.waitForTimeout(4000);
 const to = process.argv[3] ?? (where === 'galaxy' ? 'naboo' : await page.evaluate(() => window.__universeDebug.positions().find((id) => id !== window.__universe().at && id !== 'home') ?? 'starwars'));
-// (the galaxy comes round onto the course first: the jump proper starts at its spool)
-const go = await page.evaluate((id) => (window.__galaxyDebug ? window.__galaxyDebug.startJump(id) : window.__universeDebug.travel(id, 'hyper')), to);
-console.log(`jump to ${to}: ${go}`);
-if (where === 'galaxy') await page.waitForFunction(() => window.__galaxy()?.jump?.phase === 'spool', null, { timeout: 60000, polling: 50 }).catch(() => errors.push('no spool'));
-await page.clock.pauseAt(Date.now() + 10);
+// (the page's clock stopped first: on a slow machine a round trip into the page is a good part of the jump)
+const pause = async () => page.clock.pauseAt((await page.evaluate(() => Date.now())) + 20);
+if (where === 'galaxy') {
+  // (the galaxy comes round onto the course first: the jump proper starts at its spool)
+  console.log(`jump to ${to}: ${await page.evaluate((id) => window.__galaxyDebug.startJump(id), to)}`);
+  await page.waitForFunction(() => window.__galaxy()?.jump?.phase !== 'align', null, { timeout: 60000, polling: 10 }).catch(() => errors.push('no spool'));
+  await pause();
+} else {
+  await pause();
+  console.log(`jump to ${to}: ${await page.evaluate((id) => window.__universeDebug.travel(id, 'hyper'), to)}`);
+}
 for (let t = 0; t <= end; t += step) {
   await page.screenshot({ path: `${out}/portal-${where}-${String(t).padStart(4, '0')}.png`, timeout: 120000 });
   const s = await page.evaluate(() => (window.__galaxy ? window.__galaxy()?.jump : window.__universeDebug?.state?.portal && { phase: window.__universeDebug.state.portal.phase, off: window.__universeDebug.state.portal.off }));
@@ -58,7 +64,7 @@ for (let t = 0; t <= end; t += step) {
   if (where === 'galaxy' && (await page.evaluate(() => window.__galaxy()?.jump?.phase === 'tunnel'))) {
     await page.clock.resume();
     await page.waitForFunction(() => window.__galaxy()?.jump?.phase !== 'tunnel', null, { timeout: 300000, polling: 200 }).catch(() => errors.push('stuck in the tunnel'));
-    await page.clock.pauseAt(Date.now() + 10);
+    await pause();
   }
   await page.clock.runFor(step);
 }

@@ -118,6 +118,33 @@ export const ASSETS = {
     prompt:
       'A tall thin alien jazz musician with an enormous oversized bulbous bald domed pinkish-tan head, much bigger than a human head, big glossy black eyes, no nose, heavy fleshy folds of wrinkled skin hanging at the cheeks and jaw, long thin fingers, wearing a black high-collared suit.',
   },
+  // ── soldiers for the eras' battles that the Battlefront models don't cover
+  // (surface/skirmish.js; docs/superpowers/plans/2026-10-06-kashyyyk-battle-and-portal-jump.md
+  // says where each goes once it's made) ──
+  // Endor's strike team, for a battle at the shield bunker against the scout troopers
+  endortrooper: {
+    height: 1.8,
+    prompt:
+      'A rebel commando soldier in forest camouflage: a mottled green and brown camouflage poncho over a khaki field uniform, a camouflage-patterned soft helmet with a chin strap, a webbing belt with pouches, a holster on the hip, dark brown boots.',
+  },
+  // the Rebellion's fleet troopers, for Scarif's beach and Yavin's temple
+  rebeltrooper: {
+    height: 1.78,
+    prompt:
+      'A rebel fleet soldier: a light blue collared shirt, a black padded vest, grey-blue trousers, a white rounded helmet with a narrow brim and black ear guards, a black belt with a holster, black boots.',
+  },
+  // Endor's forest people, for the same battle
+  ewok: {
+    height: 1.0,
+    prompt:
+      'A small furry forest creature warrior, about one metre tall, standing upright like a teddy bear: thick shaggy dark brown fur, round dark eyes, a short snout, a leather hood with a feather tied on it, a wooden spear held upright, bare furry feet.',
+  },
+  // Naboo's army, for a battle on the grass plains against the droid army
+  gungan: {
+    height: 1.95,
+    prompt:
+      'A tall lanky amphibian alien soldier: smooth orange-tan skin, a long duck-like bill, eyes on short stalks on top of the head, very long floppy ear flaps hanging down to the chest, a brown leather armour vest and shoulder pads, simple cloth trousers, long three-toed bare feet.',
+  },
 };
 const POLY = 16000;
 const TEX = 1024;

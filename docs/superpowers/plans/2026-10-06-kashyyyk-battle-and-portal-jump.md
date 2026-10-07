@@ -78,3 +78,34 @@
 
 - [ ] Playwright (container Chromium, SwiftShader): Kashyyyk from above and at eye level, a motion capture of soldiers taking cover, firing and falling; the universe map's cruiser jump and the galaxy's, frame by frame.
 - [ ] Full tests, lint, build. Commit and push to `claude/festive-meitner-ctyhqf`.
+
+---
+
+## Status (2026-10-07)
+
+Done in this branch (`claude/festive-meitner-ctyhqf`):
+
+- **Soldiers.** All ten rigged Battlefront soldiers and any Wookiee (Chewie's model, four shades) are crew figures. Every world's troopers, the quests' enemies and the assaults' soldiers walk on Rick's clips with the six fight clips layered on (`crew.js`). Guns: `dc15`, `e5`, `wrist`, `e11` (`gunplay.js`). `scripts/preview/troops.html` lines them up in any pose.
+- **Battles.** `surface/skirmish.js` (rules, 29 tests) and `surface/skirmishScene.js` (drawing) with `surface/soldier.js` (one soldier's figure, gun, aim and poses). Battles on **Kashyyyk** (the Republic holds the sandbar's barricades, the droids wade ashore from the north: the lagoon is north and east of the beach, not where the handoff guessed), **Geonosis** (the droids hold the landing ground's south edge, the clones come off the LAATs) and **Hoth** (the Rebels hold the trenches, the snowtroopers come off the north ridge). None runs during a mission.
+- **Allegiance** (the owner's follow-up: "if we choose the bad guys we can help the Separatists"): `galaxy/allegiance.js`, light or dark, kept in the browser. It's picked on the holotable, taken from the side chosen in a galactic assault, or switched in a battle's HUD (`SkirmishHud.jsx`), which puts you at your side's rally point. In space every pilot still flies for the Rebellion (`gcw.js`'s shared tally is unchanged).
+- **The assaults and the quests' enemies** use the same bodies: guns in hand, aimed, shots from the muzzle, flinches, death clips. Every hit goes through one router in `surface/scene.js`.
+- **Portal jump.** `lib/three/portalGate.js` (choreography tested), staged mode in `PortalJump.jsx` (`timing.js stagedAt`), on the universe map (`universe/scene.js`) and in the galaxy (`galaxy/scene.js`, which now uses the crew's own jump).
+- Checks: `scripts/kashyyyk-check.mjs`, `scripts/portal-check.mjs` (steps the page's clock).
+
+### Other eras: models Meshy has to make first
+
+The battles need rigged soldiers on both sides. These worlds don't have them yet, so they have no battle:
+
+| World | Battle | Missing |
+|---|---|---|
+| Endor | the shield bunker: scout troopers against the strike team and the Ewoks | `endortrooper`, `ewok` |
+| Scarif, Yavin | the beach, the temple: shoretroopers and death troopers against the Rebellion | `rebeltrooper` |
+| Naboo | the grass plains: the droid army against the Gungans | `gungan` |
+
+Their prompts are in `scripts/meshy-galaxy.mjs` (`ASSETS`). With `MESHY_API_KEY` set (about 44 credits each):
+
+```bash
+for step in images models rig fetch; do node --env-file=$HOME/.tilakverse.env scripts/meshy-galaxy.mjs $step endortrooper rebeltrooper ewok gungan; done
+```
+
+Then for each kind: a `CREW` entry in `surface/crew.js` (`{ name, tall }`), a `UNITS` entry in `surface/skirmish.js`, a gun in `surface/soldier.js`'s `SOLDIER_GUNS` (the Ewoks' spears: `melee`, as the Wookiees'), and a `skirmish` on the site, laid out as Kashyyyk's is. Check the field's terrain first; the test in `skirmish.test.js` checks the layout.
