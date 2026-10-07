@@ -1,7 +1,8 @@
 // Which of the site's files each credit is for. The credits are kept in
 // three shapes, none of which names its file outright:
 //
-//   public/games/credits.json        "<kind>/<name>": the file is <name>, under a folder of its own
+//   public/games/credits.json        "<kind>/<name>": the file is <name>, under a folder of its own (or a
+//                                     pack's, the public/…/ folder its text names)
 //                                     (tex/armour → public/games/tex/armour/…, meshy/rm/fart →
 //                                     public/models/c137/rm/fart.glb): any file whose path ends in
 //                                     /<name>, or a folder named <name>
@@ -25,7 +26,8 @@ const original = (f) => f.replace(/\/(lod|sm)\/([^/]+)$/, '/$2');
 
 export function credits(root) {
   const json = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
-  const games = Object.keys(json('public/games/credits.json')).map((key) => ({ list: 'public/games/credits.json', key, name: key.split('/').slice(1).join('/') }));
+  // (a pack credited whole, such as a texture pack rebuilt into a folder of its own, says where in its text: public/mc/)
+  const games = Object.entries(json('public/games/credits.json')).map(([key, c]) => ({ list: 'public/games/credits.json', key, name: key.split('/').slice(1).join('/'), paths: [...JSON.stringify(c).matchAll(/public\/[\w./-]+\//g)].map((m) => m[0]) }));
   const models = Object.entries(json('src/data/modelCredits.json')).map(([key, m]) => ({ list: 'src/data/modelCredits.json', key, file: `public${m.file ?? `/models/sketchfab/${key}.glb`}` }));
   const folders = tracked(root, 'public/models')
     .filter((f) => f.endsWith('/credits.json'))
@@ -42,7 +44,7 @@ export function covers(credit, file) {
     const base = stem(f).slice(credit.dir.length);
     return base === credit.name || base.startsWith(`${credit.name}-`);
   }
-  return stem(f).endsWith(`/${credit.name}`) || f.includes(`/${credit.name}/`);
+  return stem(f).endsWith(`/${credit.name}`) || f.includes(`/${credit.name}/`) || Boolean(credit.paths?.some((p) => f.startsWith(p)));
 }
 
 // The credits that point at nothing, and the models under public/models/ no credit is for.

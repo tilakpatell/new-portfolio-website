@@ -1,0 +1,23 @@
+{
+ "good.png": {
+  "what": "a good thing",
+  "score": [
+   7,
+   10
+  ]
+ },
+ "bad.png": {
+  "what": "a bad thing",
+  "score": [
+   1,
+   4
+  ]
+ },
+ "missed.png": {
+  "what": "a thing the judge gets wrong",
+  "score": [
+   1,
+   3
+  ]
+ }
+}

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { LOOK, createHouse } from '../../../lib/three/house';
 import { adoptLater, exposureOf, groundPieces, lookOf } from './look';
+import { siteOf } from './sites';
 
 const site = (over = {}) => ({ sky: { zenith: '#26335e', horizon: '#f2a46a' }, ...over });
 const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
@@ -56,5 +57,13 @@ describe('a site’s look for the house', () => {
     expect(adoptLater(house, late)).toBe(1);
     expect(adoptLater(house, late)).toBe(0);
     expect(adoptLater(house, null)).toBe(0);
+  });
+
+  it('gives Coruscant its sunset look', () => {
+    const look = lookOf(siteOf('coruscant'));
+    expect(hex(look.shadow)).toBe('#5a4a7a');
+    expect(look.edge).toEqual([0.12, 0.8]);
+    expect(look.fogBelow).toBe(0.7);
+    expect(hex(look.halo)).toBe('#ff9a50');
   });
 });

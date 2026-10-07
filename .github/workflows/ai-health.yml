@@ -1,0 +1,89 @@
+name: ai health
+
+# The AI and the models, on the desktop's GPU, every night
+# (scripts/ai-e2e/README.md, tiers 3, 5 and 6): every model rendered in both
+# looks, the judges evaluated against their labelled sets, and (when it
+# lands) one real model and one real line made start to end. Never on a
+# pull request: the GPU runner takes one job at a time and a PR must never
+# wait on it. Run it by hand from the Actions tab or
+# `gh workflow run ai-health.yml`.
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gpu:
+    runs-on: [self-hosted, gpu]
+    timeout-minutes: 120
+    # one night at a time; the runner itself takes one job at a time, so a
+    # gen3d or voices job waits for this one rather than sharing the GPU
+    concurrency:
+      group: ai-health
+      cancel-in-progress: false
+    env:
+      AI_RESULTS: ${{ github.workspace }}/scripts/ai-e2e/results
+      CHROME: C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # (the runner has no C++ toolchain: scripts/desktop/README.md)
+      - name: Install
+        shell: powershell
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      # what the runner can see: a tool the evals need, missing, is said here first
+      - name: Doctor
+        id: doctor
+        continue-on-error: true
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force $env:AI_RESULTS | Out-Null
+          node scripts/desktop/doctor.mjs --json | Out-File -Encoding utf8 "$env:AI_RESULTS/doctor.json"
+          $code = $LASTEXITCODE
+          Get-Content "$env:AI_RESULTS/doctor.json"
+          exit $code
+
+      - name: Every model draws (tier 3)
+        id: render
+        if: always()
+        continue-on-error: true
+        shell: powershell
+        run: npm run test:ai:render
+        env:
+          AI_RENDER_ALL: '1'
+
+      - name: The judges (tier 5)
+        id: evals
+        if: always()
+        continue-on-error: true
+        shell: powershell
+        run: node scripts/ai-e2e/evals/run.mjs
+
+      - name: Keep what the night made
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ai-health-${{ github.run_number }}
+          path: |
+            scripts/ai-e2e/results/
+            scripts/ai-e2e/render/out/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Red if any tier was
+        if: always()
+        shell: powershell
+        run: |
+          $failed = @()
+          if ('${{ steps.doctor.outcome }}' -ne 'success') { $failed += 'doctor' }
+          if ('${{ steps.render.outcome }}' -ne 'success') { $failed += 'render' }
+          if ('${{ steps.evals.outcome }}' -ne 'success') { $failed += 'evals' }
+          if ($failed.Count) { Write-Output "red: $($failed -join ', ')"; exit 1 }
+          Write-Output 'every tier green'

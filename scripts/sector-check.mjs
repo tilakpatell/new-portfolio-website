@@ -86,7 +86,16 @@ if (landed) {
 
 // 2. the Citadel, close
 say(await page.evaluate(() => window.__universeDebug.travel('citadel', 'super')), 'autopilot to the Citadel');
-say(await until(() => window.__universeDebug.state.at === 'citadel' && !window.__universeDebug.state.auto, null, 300), 'at the Citadel');
+// (a wonder isn't somewhere the ship's `at`, as a planet is: parked off it, the autopilot done)
+say(
+  await until(() => {
+    const d = window.__universeDebug;
+    const w = d.wonders.find((x) => x.id === 'citadel');
+    const s = d.state.ship;
+    return !d.state.auto && Math.hypot(s.x - w.at[0], s.y - w.at[1], s.z - w.at[2]) < w.reach + 60;
+  }, null, 300),
+  'at the Citadel',
+);
 await page.waitForTimeout(2000);
 await shot('sector-1-citadel');
 
