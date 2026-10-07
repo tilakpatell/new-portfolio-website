@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { BATTLE, WIDTH, createBattle, inSights, perSide, turnToward } from './battle';
 import { FIGHTERS, WARS } from './wars';
@@ -201,6 +202,18 @@ describe('the fixed step', () => {
     expect(t.at.z).toBeCloseTo(f.pos.z + f.vel.z * b.ahead, 9);
     // and a shot through where it's drawn hits it
     expect(shotAt(b, t.at)?.id).toBe(f.id);
+  });
+});
+
+describe('the battle’s modules', () => {
+  // (battle.js was one file over a thousand lines: it's split by what each
+  // part does, the fighters' flying, the capital ships, the runners, so each
+  // stays under the health check's warning line, scripts/health/big-files.mjs)
+  it('each stay under 800 lines', () => {
+    for (const file of ['battle.js', 'battleKit.js', 'battleAi.js', 'battleCapitals.js', 'battleRunners.js']) {
+      const lines = readFileSync(new URL(`./${file}`, import.meta.url), 'utf8').split('\n').length;
+      expect(lines, file).toBeLessThan(800);
+    }
   });
 });
 
