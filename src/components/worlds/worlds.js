@@ -1,4 +1,4 @@
-import { UNIVERSES } from '../universe/universes';
+import { UNIVERSES, byPath } from '../universe/universes';
 
 // The hidden worlds, one per fandom, each a page of its own (the universes
 // on the map that have one, and the pages inside them: Star Wars has the
@@ -30,3 +30,10 @@ export const WORLD_MB = {
 
 // The world a path is in: '/middle-earth/moria' is Middle-earth.
 export const worldAt = (pathname) => WORLDS.find((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)) ?? null;
+
+// Where a world's way out goes: its own place on the universe map (the
+// HUD's Menu and the switcher under the stage both say "Universe map").
+export const mapTo = (pathname) => {
+  const here = byPath(pathname);
+  return here ? `/universe/${here.id}` : '/universe';
+};

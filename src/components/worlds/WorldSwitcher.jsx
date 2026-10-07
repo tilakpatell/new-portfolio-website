@@ -1,6 +1,6 @@
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { RiArrowRightLine } from 'react-icons/ri';
-import { WORLDS } from './worlds';
+import { WORLDS, mapTo } from './worlds';
 import { byPath } from '../universe/universes';
 import { nextWorld } from '../universe/layout';
 import '../../styles/lazy/worlds.css';
@@ -8,11 +8,12 @@ import '../../styles/lazy/worlds.css';
 // A way between the hidden worlds, on each of them: back to this world's
 // place on the universe map, on to the next world, or straight to any.
 export default function WorldSwitcher({ className = '' }) {
-  const here = byPath(useLocation().pathname);
+  const { pathname } = useLocation();
+  const here = byPath(pathname);
   const after = nextWorld(here?.id ?? null);
   return (
     <nav className={`world-switcher ${className}`} aria-label="Worlds">
-      <Link to={here ? `/universe/${here.id}` : '/universe'} className="world-link world-link-map">
+      <Link to={mapTo(pathname)} className="world-link world-link-map">
         Universe map
       </Link>
       <Link to={after.to} className="world-link">

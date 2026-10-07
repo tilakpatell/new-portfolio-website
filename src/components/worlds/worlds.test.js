@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WORLD_MB, WORLDS, worldAt } from './worlds';
+import { WORLD_MB, WORLDS, mapTo, worldAt } from './worlds';
 
 describe('the worlds', () => {
   it('each say how much they download, so a phone can be asked first', () => {
@@ -15,5 +15,10 @@ describe('the worlds', () => {
     expect(worldAt('/middle-earthling')).toBeNull();
     expect(worldAt('/home')).toBeNull();
     expect(worldAt('/')).toBeNull();
+  });
+
+  it('lead out to their own place on the universe map', () => {
+    expect(mapTo('/invincible')).toBe('/universe/invincible');
+    expect(mapTo('/nowhere')).toBe('/universe');
   });
 });
