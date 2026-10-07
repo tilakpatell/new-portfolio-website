@@ -4,8 +4,9 @@
 // side gains; and which battle a pilot's nearest to joining. Pure, tested.
 //
 // A front's fleets are the liberator's, from its best-held neighbour of the
-// front; an attack's come from where it was launched (gcw.js's `origin`)
-// while that's still the attacker's, or else from its best-held neighbour.
+// front (the nearest of those, on a tie); an attack's come from where it was
+// launched (gcw.js's `origin`) while that's still the attacker's, or else
+// from its best-held neighbour.
 // The arrow bends to the left of its way (so two sides' arrows at each other
 // part), and stops clear of both systems' dots; a raid's drawn dotted, the
 // decisive battle doubled (the drawing's galaxy.css's).
@@ -21,7 +22,7 @@ import { SIDES, WARS } from './sides';
 import { jumpSeconds, systemById } from './systems';
 
 const CLEAR = 0.42; // grid squares off each end of an arrow: clear of the system's dot and ring
-const WIDTH = [0.05, 0.16]; // an arrow's, by how fast its side's pushing (grid squares)
+const WIDTH = [0.05, 0.13]; // an arrow's, by how fast its side's pushing (grid squares)
 
 const round = (v) => +v.toFixed(3);
 const pt = ([x, z]) => `${round(x)} ${round(z)}`;
@@ -30,10 +31,15 @@ const toward = (p, q, r) => {
   return [p[0] + ((q[0] - p[0]) / l) * r, p[1] + ((q[1] - p[1]) / l) * r];
 };
 
-// where a side's fleets come at a system from: its neighbour of it it holds best (the first by name, on a tie)
+// where a side's fleets come at a system from: its neighbour of it it holds
+// best (on a tie the nearest, then the first by name)
 function bestHeld(rows, to, by) {
+  const far = (o) => Math.hypot(systemById(o).pos[0] - systemById(to).pos[0], systemById(o).pos[1] - systemById(to).pos[1]);
   let from = null;
-  for (const o of NEIGHBOURS[to]) if (rows[o]?.owner === by && (from === null || rows[o].control > rows[from].control)) from = o;
+  for (const o of NEIGHBOURS[to]) {
+    if (rows[o]?.owner !== by) continue;
+    if (from === null || rows[o].control > rows[from].control || (rows[o].control === rows[from].control && far(o) < far(from))) from = o;
+  }
   return from;
 }
 

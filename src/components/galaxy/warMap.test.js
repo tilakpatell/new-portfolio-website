@@ -32,7 +32,7 @@ describe('the operations on the map', () => {
           expect(op.progress).toBeCloseTo(1 - row.control, 9);
           expect(op.colour).toBe(SIDES[op.by].colour);
           expect(op.width).toBeGreaterThanOrEqual(0.05);
-          expect(op.width).toBeLessThanOrEqual(0.16);
+          expect(op.width).toBeLessThanOrEqual(0.13);
           expect(op.major).toBe(row.major);
           seen += 1;
         }
@@ -54,13 +54,16 @@ describe('the operations on the map', () => {
     expect(kind).toEqual({ bespin: 'front', coruscant: 'decisive', hoth: 'attack', kashyyyk: 'counter', naboo: 'raid' });
     const by = Object.fromEntries(ops.map((o) => [o.to, o.by]));
     expect(by).toEqual({ bespin: 'rebel', coruscant: 'rebel', hoth: 'empire', kashyyyk: 'empire', naboo: 'hutt' });
-    // (a faster push is a heavier arrow, up to a cap)
+    // (a faster push is a heavier arrow, up to a cap: 0.13, down from 0.16, which drew an attack's
+    // arrow heavier than anything else on the holotable)
     const width = Object.fromEntries(ops.map((o) => [o.to, o.width]));
     expect(width.coruscant).toBeGreaterThan(width.bespin);
-    expect(width.hoth).toBe(0.16);
+    expect(width.hoth).toBe(0.13);
   });
 
-  it('brings a front from the liberator’s best-held neighbour of it (the first by name, on a tie)', () => {
+  // (on a tie, the nearest, not the first by name as at first: Coruscant's front came all the way from
+  // Hoth, with Kashyyyk next door and as well held)
+  it('brings a front from the liberator’s best-held neighbour of it (the nearest, on a tie)', () => {
     const [op] = opsOf(tableOf({ bespin: { front: true }, hoth: { control: 0.7 } }));
     expect(op.from).toBe('hoth');
     // (Bespin's neighbours: Hoth, Mustafar, Nevarro; give the Rebellion Nevarro whole and Hoth less)
@@ -68,6 +71,8 @@ describe('the operations on the map', () => {
     expect(opsOf(rebelNevarro)[0].from).toBe('nevarro');
     const tie = tableOf({ bespin: { front: true }, nevarro: { owner: 'rebel' } });
     expect(opsOf(tie)[0].from).toBe('hoth');
+    // (Coruscant's next to Hoth, Kashyyyk, Sorgan and Yavin 4, all the Rebellion's and whole: Kashyyyk's nearest)
+    expect(opsOf(tableOf({ coruscant: { front: true } }))[0].from).toBe('kashyyyk');
   });
 
   it('brings an attack from where it was launched while that’s still the attacker’s, or else from its best-held neighbour, or not at all', () => {
@@ -82,7 +87,7 @@ describe('the operations on the map', () => {
   });
 
   it('draws an arrow from clear of one system to clear of the other, and the fleet closes in as its side gains', () => {
-    // (Sorgan, the Empire's, from Endor, the Rebellion's: Hoth's as well held, but later by name)
+    // (Sorgan, the Empire's, from Endor, the Rebellion's: Hoth's as well held, but further)
     const at = (control) => opsOf(tableOf({ sorgan: { owner: 'empire', front: true, control } }))[0];
     const far = at(0.9);
     const near = at(0.1);
