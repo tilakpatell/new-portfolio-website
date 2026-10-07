@@ -199,6 +199,7 @@ export const ROWS = [
     collect: { task: 'prison', spots: ['switch1', 'switch2', 'prick'] },
     acts: { switch1: 'switch1', switch2: 'switch2', prick: 'freed' },
     goal: 'switch1',
+    spotted: 'Four eyes lock on you across the floor. “Intruder!” Behind a pillar, now.',
     caught: 'A Gromflomite’s stun blast catches you behind the knees. You come round at the door with the lights back on and Rick back in the chair, mid-sentence.',
     kinds: ['cornvelious', 'rick', 'gromflomite', 'brainalyzer'],
   }),

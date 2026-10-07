@@ -874,7 +874,13 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         s.barkAt = s.t;
         say({ kind: 'say', who: e.who, text: e.text });
       } else if (name === 'done') complete(e.task);
-      else if (name === 'duel') {
+      else if (name === 'spotted') {
+        // someone's seen him: a word and a sound, not too often
+        if (s.t - (s.spottedAt ?? -1e9) < 8) return;
+        s.spottedAt = s.t;
+        sound('zap');
+        say({ kind: 'say', who: SAY[e.who]?.who ?? null, text: e.text ?? 'They’ve seen you.' });
+      } else if (name === 'duel') {
         // the fight's on: the hearts show, and F fires
         s.duel = { who: e.who, hp: e.hp, max: e.max, mortyHp: e.mortyHp, mortyMax: e.mortyMax };
         setDuel({ ...s.duel });
@@ -1368,7 +1374,11 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       hudKey.current = key;
       setHud({ area: s.area, room, flying: s.flying, landing: s.landing, near, moved: s.moved, alt, kmh });
     }
-    if (++s.frame % 3 === 0) drawMap(map.current, s, goalOf(progRef.current.next, s), s.t);
+    if (++s.frame % 3 === 0) {
+      // the place's people, for the map (stage.js's NPC layer says where they are)
+      s.npcs = api.current?.act(s.area, 'npcs') ?? null;
+      drawMap(map.current, s, goalOf(progRef.current.next, s), s.t);
+    }
   }, live);
 
   // something open over the world: let go of the stick and the up and down buttons
@@ -1945,6 +1955,13 @@ function drawMap(c, s, goal, t) {
   g.lineWidth = 1.4 * u;
   for (const l of LINKS) if (l.area === s.area) disc(l.x, l.z, 3 * u, null, l.kind === 'portal' ? '#9dff5a' : '#ffffff');
   // the next thing to do, pulsing
+  // the place's people: a dot each, red and pulsing for one who's after Morty, grey for one who's down
+  if (Array.isArray(s.npcs))
+    for (const n of s.npcs) {
+      if (!n.visible) continue;
+      if (n.hunting) disc(n.x, n.z, (2.6 + Math.sin(t * 8) * 0.8) * u, '#ff3a3a', '#ffffff');
+      else disc(n.x, n.z, 1.8 * u, n.dead ? '#6a6a6a' : '#ffffff', null);
+    }
   if (goal) {
     g.lineWidth = 2 * u;
     disc(goal.x, goal.z, (6 + Math.sin(t * 4.5) * 1.6) * u, null, '#ffd23a');

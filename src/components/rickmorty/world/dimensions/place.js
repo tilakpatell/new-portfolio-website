@@ -30,12 +30,14 @@ export const GARAGE_BACK = { x: -301.2, z: 101.4, face: 0 };
 // then instead, and getting home inside it is the task done; with `start`,
 // nothing is done yet: the place is only told ('collected': Evil Rick comes).
 // `caught`: what's said when one of the place's hunters catches Morty
-// (stage.js's NPC behaviour); he's put back at the way in.
+// (stage.js's NPC behaviour); he's put back at the way in. `spotted`: what's
+// said when one of them sees him and starts (a hunter's own `hunt.spotted`
+// wins).
 // A person or one of the crowd may carry `ai` (stage.js): `wander` points in
 // metres from the middle (turned into the world's here), `watch`, `bark`,
 // `hunt`. Anyone who roams is marked so, and isn't in the way.
 const roams = (ai) => Boolean(ai?.wander || ai?.hunt);
-export function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [], extras = [], spots = [], solids = [], tasks = [], say = {}, done = {}, unlock = {}, acts = {}, escape = null, goal = null, collect = null, caught = null, kinds = [] }) {
+export function place(i, { id, name, note, kind, deep, wide, sky, ceiling, people = [], extras = [], spots = [], solids = [], tasks = [], say = {}, done = {}, unlock = {}, acts = {}, escape = null, goal = null, collect = null, caught = null, spotted = null, kinds = [] }) {
   const area = destArea(i, deep, wide);
   const cx = DEST_X;
   const cz = destZ(i);
@@ -68,6 +70,7 @@ export function place(i, { id, name, note, kind, deep, wide, sky, ceiling, peopl
     goal,
     collect,
     caught,
+    spotted,
     kinds,
   };
 }

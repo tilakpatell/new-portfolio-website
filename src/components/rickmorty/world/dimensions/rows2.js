@@ -117,6 +117,7 @@ export const ROWS = [
       { id: 'crate-b', dx: 16.6, dz: 8, w: 1.8, d: 1.8 },
     ],
     tasks: [{ id: 'fortress', name: 'Reach Rick Prime', hint: 'Dial Rick Prime’s fortress on the portal gun, and get to his console past the drones. One red eye on you and you’re back at the door.' }],
+    spotted: 'A drone’s eye goes from dull to bright red, and it turns.',
     caught: 'A drone’s red eye finds you and shrieks. Rick Prime looks up, says “Nope,” and is gone. You come round at the way in, and he’s back at his console as if nothing happened.',
     say: {
       omegadevice: { who: null, text: 'The Omega Device. Rick built one to erase Diane from every dimension. Rick Prime built this one, and used it.' },
@@ -247,6 +248,7 @@ export const ROWS = [
     },
     done: { fartcell: 'gromflomites' },
     acts: { fartcell: 'opened' },
+    spotted: 'A guard’s head snaps round. Behind the crates, now.',
     caught: 'A Gromflomite’s four eyes meet yours. “Intruder!” The blaster’s set to stun, and you come round by the door with a headache.',
     kinds: ['krombopulos', 'gromflomite', 'fart'],
   }),
