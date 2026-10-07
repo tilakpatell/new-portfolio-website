@@ -69,6 +69,21 @@ export const MOODS = {
   },
 };
 const SHIRE_MOODS = MOODS;
+
+// A mood's shadow colour for the house look: its own, or (a town that gives
+// none) its sky light's hue leaned a third toward violet, as bright as the
+// sky light lets it be: pale lilac by day, deep blue by night, never grey.
+const VIOLET = new THREE.Color(0x7a6ad8);
+const lumOf = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+export function shadowFor(mood) {
+  if (mood.shadow != null) return mood.shadow;
+  const sky = new THREE.Color(mood.hemiSky ?? 0xcfe2ff);
+  const want = 0.42 * lumOf(sky) * (mood.hemi ?? 1);
+  const c = sky.clone().lerp(VIOLET, 0.35);
+  const l = lumOf(c);
+  if (l > 0) c.multiplyScalar(want / l);
+  return c.getHex();
+}
 const KEYS = ['top', 'horizon', 'sunColour', 'hemiSky', 'hemiGround', 'fog', 'cloudColour', 'water', 'deep'];
 
 export function makeSky(radius) {
@@ -151,14 +166,14 @@ export function makeSky(radius) {
 // Blends the moods: night 0…1 (the party), dawn 0…1 (leaving), and writes
 // them into the sky, the lights, the fog and the water. Another town passes
 // its own `moods`, with the same three keys and fields. With a `house`
-// (lib/three/house), the look's full light, its shadow colour (moods with a
-// `shadow`) and the sky its fog takes its colour from follow too, and the
+// (lib/three/house), the look's full light, its shadow colour (a mood's
+// `shadow`, or one from its sky light: shadowFor) and the sky its fog takes
+// its colour from follow too, and the
 // fog everything else uses is the haze under the horizon, so the two agree.
 export function makeAtmosphere({ sky, sun, hemi, fog, water, stage, house = null, moods: MOODS = SHIRE_MOODS }) {
   const mix = {};
   for (const k of KEYS) mix[k] = new THREE.Color();
-  const shadows = MOODS.day.shadow != null && MOODS.night.shadow != null && MOODS.dawn.shadow != null;
-  if (shadows) mix.shadow = new THREE.Color();
+  mix.shadow = new THREE.Color();
   const halo = new THREE.Color();
   const tmp = new THREE.Color();
   const sunDir = new THREE.Vector3();
@@ -203,7 +218,8 @@ export function makeAtmosphere({ sky, sun, hemi, fog, water, stage, house = null
     water.uniforms.uGlints.value = 1 - night * 0.6;
     stage.renderer.toneMappingExposure = num('exposure', night, dawn) * (house?.exposure ?? 1);
     if (house) {
-      if (shadows) house.set({ shadow: colour('shadow', night, dawn) });
+      // (each mood's own shadow, or one from its sky light)
+      house.set({ shadow: mix.shadow.set(shadowFor(MOODS.day)).lerp(tmp.set(shadowFor(MOODS.night)), night).lerp(tmp.set(shadowFor(MOODS.dawn)), dawn) });
       house.light({ sun, hemi });
       // (the sky dome's own halo round the sun, which the moon hasn't)
       halo.copy(u.uSunColour.value).multiplyScalar(0.35 * (1 - u.uMoon.value));

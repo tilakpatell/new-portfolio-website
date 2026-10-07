@@ -15,6 +15,8 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
@@ -171,6 +173,10 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 900, bloom: { strength: 0.7, radius: 0.6, threshold: 0.8 }, onLost });
   stage.grade({ contrast: 0.08, saturation: 1.04, vignette: 0.26, grain: 0.012, shadow: [0.02, 0.02, 0.04], high: [0.05, 0.035, 0.0] });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; the moods move it
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0xd8c890, 30, 210);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.35;
@@ -187,10 +193,13 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   const sky = makeSky(800);
   scene.add(sky.dome);
   const water = { uniforms: { uSky: { value: new THREE.Color() }, uDeep: { value: new THREE.Color() }, uSun: { value: V(0, 1, 0) }, uSunColor: { value: new THREE.Color() }, uGlints: { value: 1 } } };
-  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, moods: MOODS });
+  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, house: houseLook, moods: MOODS });
 
   const kit = createLorienKit(renderer);
   const mats = kit.mats ?? {};
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(mats, rolesFor(mats), { strength: 0.4, normal: 0.8 });
   const zones = { wood: new THREE.Group(), river: new THREE.Group() };
   for (const [k, g] of Object.entries(zones)) {
     g.position.copy(AT[k]);
@@ -677,6 +686,8 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     const sunDir = atmosphere(A.night, A.dawn);
     // the Lady, terrible as the dawn
     A.tempt += ((s.tempt ? 1 : 0) - A.tempt) * Math.min(1, dt * (s.tempt ? 1.2 : 0.6));
+    // (the fog's own colour while it's this, not the sky's)
+    houseLook.set({ fogMix: 1 - A.tempt * 0.8 });
     if (A.tempt > 0.01) {
       scene.fog.color.lerp(TEMPT_FOG, A.tempt * 0.8);
       hemi.intensity *= 1 - A.tempt * 0.7;
@@ -1040,6 +1051,8 @@ export function createLorienWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked when the town is first drawn ──
   const ground = groundTown({ renderer, scene, terrain, outdoors: wood, sun, height: under, people: movers, skip: [sky.dome, ghosts.group], tier, centre: [-6, 0], radius: 72, shade: 0x26301e, sunFloor: 0.4 });
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts

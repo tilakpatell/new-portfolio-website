@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { CORE, coreOf, dress, meanColour, wear, wearShader } from './core';
+import { CORE, coreOf, dress, meanColour, rolesFor, wear, wearShader } from './core';
 
 const scan = { map: new THREE.Texture(), normalMap: new THREE.Texture() };
 const STUB = {
@@ -88,5 +88,20 @@ describe('a world dressed in the core kit', () => {
     const done = await dress({ m }, { m: 'stone' }, { load: () => Promise.resolve(null) });
     expect(done).toBe(0);
     expect(m.map).not.toBe(null);
+  });
+});
+
+describe('which core surface a world’s material wears, by its name', () => {
+  it('reads the usual names of a world’s materials', () => {
+    const m = () => new THREE.MeshStandardMaterial();
+    const mats = { stone: m(), paving: m(), hearthStone: m(), timber: m(), hallBeam: m(), logs: m(), bark: m(), turf: m(), plaster: m(), iron: m(), rock: m(), thatch: m(), gollumSkin: m(), eagleEye: m(), towerGlow: m(), banner: m() };
+    expect(rolesFor(mats)).toEqual({ stone: 'stone', paving: 'stone', hearthStone: 'stone', timber: 'wood', hallBeam: 'wood', logs: 'wood', bark: 'bark', turf: 'grass', plaster: 'adobe', iron: 'metal', rock: 'rock' });
+  });
+
+  it('leaves alone what glows, what is see-through, and what isn’t lit', () => {
+    const glowing = new THREE.MeshStandardMaterial({ emissive: 0xff8800, emissiveIntensity: 1 });
+    const glass = new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.4 });
+    const basic = new THREE.MeshBasicMaterial();
+    expect(rolesFor({ stone: glowing, wall: glass, rock: basic })).toEqual({});
   });
 });

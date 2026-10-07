@@ -209,3 +209,35 @@ export async function dress(materials, roles, { strength = 0.55, normal = 0.9, l
   });
   return (await Promise.all(jobs)).reduce((a, b) => a + b, 0);
 }
+
+// Which role a world's material wears, by its name: the usual names of
+// stone, wood, bark, turf, plaster, iron and rock in the worlds' kits. What
+// glows, what is see-through, and anything named for skin, eyes, glass,
+// cloth, food, fire or the like wears nothing.
+const NOT_WORN = /skin|eye|glow|hair|lava|flame|fire|water|glass|pane|lamp|lantern|void|smoke|plume|web|silk|wax|food|bread|meat|flower|blossom|leaf|tuft|thatch|banner|flag|cloth|velvet|tapestry|fur|page|parchment|book|mouth|tooth|fang|gold|gilt|brass|pewter|ember|coal|statue|carve|emblem|shadow|robe/i;
+const ROLE_NAMES = [
+  [/bark/i, 'bark'],
+  [/wood|timber|beam|log|plank|board|fence|barn|cart/i, 'wood'],
+  [/turf|grass|lawn|moss/i, 'grass'],
+  [/plaster|adobe|daub|^house$/i, 'adobe'],
+  [/iron|steel|metal|gauntlet|armou?r/i, 'metal'],
+  [/rock|cliff|crag|boulder|obsidian/i, 'rock'],
+  [/stone|paving|wall|court|marble|ashlar|cobble|trim|vault|hearth/i, 'stone'],
+  [/road|gravel/i, 'gravel'],
+  [/sand/i, 'sand'],
+  [/snow/i, 'snow'],
+  [/mud|soil/i, 'mud'],
+  [/^ash$/i, 'ash'],
+];
+export function rolesFor(materials) {
+  const out = {};
+  for (const [name, m] of Object.entries(materials ?? {})) {
+    if (!LIT(m) || m.userData?.noCore || NOT_WORN.test(name)) continue;
+    if (m.transparent && m.opacity < 1) continue;
+    const glow = m.emissive ? Math.max(m.emissive.r, m.emissive.g, m.emissive.b) * (m.emissiveIntensity ?? 1) : 0;
+    if (glow > 0.05) continue;
+    const hit = ROLE_NAMES.find(([re]) => re.test(name));
+    if (hit && coreOf(hit[1])) out[name] = hit[1];
+  }
+  return out;
+}

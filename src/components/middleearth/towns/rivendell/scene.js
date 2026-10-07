@@ -13,6 +13,8 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
@@ -105,6 +107,10 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
   const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 620, bloom: { strength: 0.55, radius: 0.55, threshold: 0.86 }, onLost });
   stage.grade({ contrast: 0.08, saturation: 1.02, vignette: 0.24, grain: 0.012, shadow: [0.02, 0.01, 0.02], high: [0.04, 0.025, 0.0] });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; the moods move it
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0xe0cca4, 50, 260);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.3;
@@ -126,7 +132,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
   const sky = makeSky(560);
   scene.add(sky.dome);
   const water = { uniforms: { uSky: { value: new THREE.Color() }, uDeep: { value: new THREE.Color() }, uSun: { value: V(0, 1, 0) }, uSunColor: { value: new THREE.Color() }, uGlints: { value: 1 } } };
-  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, moods: MOODS });
+  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, house: houseLook, moods: MOODS });
 
   // ── the valley floor ──
   // (the ground kept just under the court's paving and the bridge's
@@ -143,6 +149,9 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
 
   const kit = createRivendellKit(renderer);
   const mats = kit.mats;
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(mats, rolesFor(mats), { strength: 0.4, normal: 0.8 });
   const place = (part, b, y = null) => {
     part.group.position.set(b.x, y ?? height(b.x, b.z), b.z);
     part.group.rotation.y = b.turn || 0;
@@ -439,6 +448,8 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     sky.uniforms.uGrey.value = A.wraith * 0.85;
     sky.uniforms.uEye.value = Math.max(A.wraith * (0.4 + 0.6 * (s.gaze ?? 0)), smooth(0.5, 1, A.eye) * 0.35);
     stage.grade({ saturation: 1.02 - A.wraith * 0.85 - A.eye * 0.25, contrast: 0.08 + A.wraith * 0.18 + A.eye * 0.1, vignette: 0.24 + A.wraith * 0.4 + A.eye * 0.25 });
+    // (the fog's own colour while it's this, not the sky's)
+    houseLook.set({ fogMix: 1 - A.wraith * 0.8 });
     if (A.wraith > 0.01) {
       scene.fog.near *= 1 - A.wraith * 0.7;
       scene.fog.far *= 1 - A.wraith * 0.55;
@@ -734,6 +745,8 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked when the town is first drawn ──
   const ground = groundTown({ renderer, scene, terrain, outdoors: valley, sun, height: under, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WORLD.radius + 10, shade: 0x3a2a1c, matcap: farWoods });
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
