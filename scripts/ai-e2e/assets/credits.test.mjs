@@ -33,6 +33,7 @@ describe('reading a credit', () => {
     expect(covers(credit, 'public/models/c137/rm/fart.glb')).toBe(true);
     expect(covers(credit, 'public/models/c137/rm/fart.lo.glb')).toBe(true);
     expect(covers(credit, 'public/models/c137/rm/lod/fart.glb')).toBe(true);
+    expect(covers(credit, 'public/models/c137/rm/fart.lod1.glb')).toBe(true);
     expect(covers(credit, 'public/models/c137/rm/farter.glb')).toBe(false);
     expect(covers({ key: 'tex/armour', name: 'armour' }, 'public/games/tex/armour/arm.webp')).toBe(true);
     expect(covers({ key: 'x', file: 'public/models/sketchfab/x.glb' }, 'public/models/sketchfab/x.glb')).toBe(true);

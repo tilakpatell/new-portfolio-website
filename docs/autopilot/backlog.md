@@ -30,6 +30,16 @@ The measurements and the plan are the other sessions' `docs/research/2026-10-05-
 - [ ] **Flat surfaces that should have relief.** Audit one world for materials with a colour map but no normal map, or painted surfaces where a CC0 scan would read better (`npm run cc0` fetches Poly Haven and ambientCG sets; `src/lib/cc0.js` loads them). One world a run. Done: before/after screenshots at the same spot.
 - [ ] **Model credits and the hangar's HD ships.** `docs/superpowers/HANDOFF-universe-map.md`: a crewed cruiser (`rickmorty/cruiser3d.js`) the universe could fly; new voice clips through `lib/clips.js`. Only if the models and clips are already in the repo.
 
+## From the AI tests (scripts/ai-e2e, first run 2026-10-07)
+
+What the AI and model tests found when they were first run against `main`. The allow-lists hold them, and only shrink: fix one, take it off its list, and the test checks it stays fixed.
+
+- [ ] **132 models with no credit.** `scripts/ai-e2e/assets/allow-uncredited.json`: models under `public/models/` no credit list names (Albuquerque's people and world, the galaxy's crew, LODs, surfaces and troops, Invincible's extras, the Office's props, eight Sketchfab files, eight universe ships). A folder a run: find each model's source (its import script, `git log`), credit it in `public/games/credits.json`, `src/data/modelCredits.json` or the folder's `credits.json`, take it off the list. Done: the list empty.
+- [ ] **Voice lines the site never plays, or no longer says.** `scripts/ai-e2e/assets/allow-orphans.json`: five mp3s the manifest doesn't list, and eleven manifest lines whose text the site no longer says (nine of Rick's). Delete them (or list them) and take them off. Done: both lists empty.
+- [ ] **Twelve speakers with lines and no voice yet** (`allow-voiceless.json`: the Cybertron bots, Merry, Erin). Needs the owner: a reference each (`scripts/voices/README.md`), then a `voices` issue. Not an autopilot job; tick it when the list is empty.
+- [ ] **The desktop runner's Claude Code isn't signed in**, so the nightly's vision judge is Qwen alone and the gating judge goes unevaluated (the night's log: "Claude Code is here but not logged in"; the doctor only says "claude on PATH (signed in? …)"). Needs the owner: `claude`, then `/login`, once, from a normal terminal (not inside the Claude app). Not an autopilot job.
+- [ ] **NPCs fire from any heading.** `src/components/universe/npcRules.js` fires whenever a target is in range; a nemesis was seen firing 171° off its own nose (measured with the brains’ harness, `npcs/brains/harness.js`). Fire only inside a forward cone (say 60°), keep the hit chance's dodge, and add the cone to the nemesis scenario. Done: no shot more than the cone off the nose over 200 seeds, and the brains' tests green.
+
 ## Features (last, and only as whole slices)
 
 - [ ] **C-137: side roads off the main street**, and a gym and hallway for the school (`docs/superpowers/HANDOFF-c137.md`, "Ideas for later"). Morty's walk animation should pause in the air.
