@@ -18,6 +18,7 @@
         …&move=0.5                                       walking (0…1)
         …&phase=0.3                                      where in its clips each figure is (0…1)
         …&zoom=2                                         closer
+        …&body=0                                         without the body under the saber (saberBody.js): as before it
       window.__pose({ mode, i, k, move, phase }) and window.__view(name, zoom) for a script;
       body[data-metrics] holds, per hero, the hand, the blade's direction and the arms.
     -->
@@ -56,11 +57,14 @@
       import { METRE } from '/src/components/universe/foot.js';
       import { createGunplay } from '/src/components/universe/gunplay.js';
       import { createSaber } from '/src/components/galaxy/surface/saber.js';
+      import { loadSaberBody } from '/src/components/galaxy/surface/saberBody.js';
       import { HEROES, heroSpec, readHero } from '/src/components/galaxy/heroes.js';
+      import { HEAVY } from '/src/components/galaxy/surface/combatRules.js';
 
       const q = new URLSearchParams(location.search);
       const num = (k, d) => Number(q.get(k) ?? d);
       const only = (q.get('only') ?? 'luke,han,bobafett,leia,ahsoka,chewie').split(',');
+      const withBody = q.get('body') !== '0';
       const status = document.getElementById('status');
       const V = THREE.Vector3;
       const deg = (r) => +((r * 180) / Math.PI).toFixed(1);
@@ -97,10 +101,11 @@
         holder.position.x = x;
         holder.updateMatrixWorld(true);
         const gp = fig ? createGunplay(fig, fig.gun ?? spec.gun, { unit: 1, who: fig.built ? 'built' : spec.id }) : null;
-        const saber = gp && spec.saber ? createSaber(gp, { color: spec.saber.color, hilt: spec.saber.hilt, stance: spec.saber.stance, parent: scene }) : null;
+        const saber = gp && spec.saber ? createSaber(gp, { color: spec.saber.color, hilt: spec.saber.hilt, stance: spec.saber.stance, parent: scene, fig: withBody ? fig : null }) : null;
         placed.push({ id: h.id, spec, fig, gp, saber, holder, at: x });
         x += 1.6;
       }
+      await loadSaberBody(); // (the sabers' bodies in before the first pose)
       const span = Math.max(0, x - 1.6);
       const grid = new THREE.GridHelper(Math.ceil(span + 20), Math.ceil(span + 20), '#5a6270', '#363c46');
       grid.position.x = span / 2;
@@ -124,6 +129,10 @@
         for (const p of placed) holdPhase(p, phase);
         clock += 10;
         let t = clock;
+        // a stroke: started so it's `k` through on the last frame
+        const stroke = mode === 'swing' || mode === 'heavy';
+        const end = t + frames * dt;
+        const swung = new Set();
         for (const p of placed) {
           const s = p.saber;
           if (!s) continue;
@@ -136,12 +145,21 @@
           clock = t;
           for (const p of placed) {
             if (!p.fig) continue;
+            const s = p.saber;
+            if (s && stroke && !swung.has(p)) {
+              const dur = mode === 'heavy' ? HEAVY.dur : s.stance.swings[(o.i ?? 0) % s.stance.swings.length].dur;
+              const t0 = end - (o.k ?? 0.5) * dur;
+              if (t >= t0) {
+                s.swing(t0, { heavy: mode === 'heavy' });
+                swung.add(p);
+              }
+            }
             p.fig.update(dt, move);
             if (p.fig.act) holdPhase(p, phase);
             p.fig.mixer?.update(0);
+            s?.stand(dt, t, move);
             p.holder.updateMatrixWorld(true);
             p.fig.after?.(dt, { speed: 0, side: 0, turn: 0, air: 0, hurt: 0, knock: 0.5 }, { forward, up });
-            const s = p.saber;
             if (s) {
               if (mode === 'block') s.block(true);
               if (mode === 'charge') s.setCharge(Math.min(1, f / 10));
@@ -149,19 +167,7 @@
             const lit = s?.lit;
             const aimK = mode === 'aim' ? 1 : lit ? 0.75 : 0;
             p.gp?.set(dt, { aim: aimK, look: mode === 'aim' ? 1 : 0, dir: null, forward, up });
-            if (s) {
-              // a stroke: started so it's `k` through on the last frame
-              const strokeLeft = frames - f;
-              if ((mode === 'swing' || mode === 'heavy') && f === frames - 1) {
-                const dur = mode === 'heavy' ? 0.75 : s.stance.swings[(o.i ?? 0) % s.stance.swings.length].dur;
-                s.swing(t - (o.k ?? 0.5) * dur, { heavy: mode === 'heavy' });
-                if (mode === 'swing' && o.i) {
-                  // (the combo's later strokes: as if the earlier ones just ended)
-                }
-              }
-              s.update(dt, t, { forward, up, me: null, targets: [] });
-              void strokeLeft;
-            }
+            s?.update(dt, t, { forward, up, me: null, targets: [] });
           }
         }
         const P = (b) => b.getWorldPosition(new V());
