@@ -95,7 +95,7 @@ are models now too (`gazorpgate`, `suckulent`, `birdperch`, `gearbig`,
   cat trees, Bird World's feathers and Gear World's bolts
   (`landings/rmmoons.js`). The Meshy set pieces are about 30k triangles
   each, so the scattered suckulents and cogs are small copies
-  (`scripts/rm-scatter.mjs`: `suckulent-small.glb`, `gearcog-small.glb`,
+  (`scripts/rm-scatter.mjs`: `sm/suckulent.glb`, `sm/gearcog.glb`,
   6k to 9k triangles), 14 and 20 of them.
 - No crew lines were added for arriving at the new worlds. Crews have no
   per-moon `arrive` lines, the same as before.

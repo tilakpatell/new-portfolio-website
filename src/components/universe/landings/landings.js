@@ -685,7 +685,7 @@ export const LANDINGS = {
       guest: { url: '/models/c137/rm/magdalian-a.glb', tall: 1.55 },
       guest2: { url: '/models/c137/rm/magdalian-c.glb', tall: 1.6 },
       suckulent: { url: '/models/c137/rm/suckulent.glb', tall: 2.2 },
-      smallsuckulent: { url: '/models/c137/rm/suckulent-small.glb', tall: 1.6 },
+      smallsuckulent: { url: '/models/c137/rm/sm/suckulent.glb', tall: 1.6 },
     },
     things: [
       { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137, the gun dialled back here', reach: 3 } },
@@ -735,7 +735,7 @@ export const LANDINGS = {
       gearperson2: { url: '/models/c137/rm/gearperson-b.glb', tall: 1.8 },
       monument: { url: '/models/c137/rm/gearbig.glb', tall: 12 },
       cog: { url: '/models/c137/rm/gearcog.glb', wide: 5 },
-      smallcog: { url: '/models/c137/rm/gearcog-small.glb', wide: 1.8 },
+      smallcog: { url: '/models/c137/rm/sm/gearcog.glb', wide: 1.8 },
     },
     things: [
       { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'through the portal to C-137, the gun dialled back here', reach: 3 } },

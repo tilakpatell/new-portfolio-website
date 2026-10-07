@@ -4,7 +4,8 @@
 // one is read from public/models/c137/rm/<name>.glb, simplified with
 // meshoptimizer toward 3,000 triangles (as far as its UV seams let it: the
 // suckulent stops at about 8,800, the cog at 6,300), its UVs and texture
-// kept, the texture down to 512 px, and written beside it as <name>-small.glb.
+// kept, the texture down to 512 px, and written to sm/<name>.glb beside it
+// (the credits' way for a smaller copy: credited with the original).
 //
 //   node scripts/rm-scatter.mjs suckulent gearcog
 
@@ -13,6 +14,7 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { dequantize, meshopt, prune, simplify, textureCompress, weld } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
+import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,6 +36,7 @@ for (const name of names) {
   const doc = await io.read(join(DIR, `${name}.glb`));
   const before = triangles(doc);
   await doc.transform(dequantize(), weld(), simplify({ simplifier: MeshoptSimplifier, ratio: Math.min(1, TRIS / before), error: 0.05 }), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [512, 512] }), meshopt({ encoder: MeshoptEncoder, level: 'high' }));
-  await io.write(join(DIR, `${name}-small.glb`), doc);
+  mkdirSync(join(DIR, 'sm'), { recursive: true });
+  await io.write(join(DIR, 'sm', `${name}.glb`), doc);
   console.log(`small    ${name.padEnd(16)} ${Math.round(before)} → ${Math.round(triangles(doc))} triangles`);
 }
