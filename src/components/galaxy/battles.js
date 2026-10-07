@@ -21,7 +21,7 @@
 // it, for the fighters to keep out of and the line to be laid clear of.
 // layBattle(sys, battle, { now, tier }) → createBattle's options for the
 // battle gcw.js has on there (its sides by team: battleAt's `sides`), with
-// its `kind`.
+// its `kind`, and no ticket end (`tickets: false`).
 
 import { WARS as UNIVERSE_WARS } from '../universe/wars';
 import { WIDTH, createBattle, perSide } from '../universe/battle';
@@ -357,5 +357,8 @@ export function layBattle(sys, battle, { now = battle.start, tier = 'high' } = {
     objectivesOn,
     ace,
     runners,
+    // (fought to its clock or its objectives: a ticket end drained the
+    // attacker in a couple of minutes, decided in each pilot's own sim)
+    tickets: false,
   };
 }

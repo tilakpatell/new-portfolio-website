@@ -237,6 +237,9 @@ describe('layBattle', () => {
         }
       }
   });
+  it('fights a galaxy battle to its clock: no ticket end (tickets: false)', () => {
+    for (const id of ['yavin', 'hoth', 'naboo', 'mandalore']) expect(layBattle(systemById(id), fake(id)).tickets, id).toBe(false);
+  });
   it('sizes the battle to its ships, and gives it the shared clock', () => {
     const o = layBattle(systemById('endor'), { ...fake('endor'), start: 1000, fightEnd: 601000 }, { now: 61000 });
     expect(o.lines).toBeGreaterThanOrEqual(110 * 0.5 + 30);

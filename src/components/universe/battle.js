@@ -35,8 +35,9 @@
 // spheres its fighters steer clear of), on the clock every pilot shares
 // (`clock` its length, `elapsed` how far in it is already), with the damage
 // other pilots did to its objectives counted (`shared(id)` → theirs) and
-// yours told (`onMine(id, damage)`), and a defender that can't run out of
-// tickets (`tickets: false`: holding out to the end is how it wins).
+// yours told (`onMine(id, damage)`), and no side that can run out of
+// tickets (`tickets: false`: the fighters keep coming, the count's only a
+// count, and it's fought to its clock or its objectives).
 //
 // The galaxy's set pieces (galaxy/warpieces/) reach in: an ion cannon
 // disables a capital ship a while (disable: its guns quiet, hits on it count
@@ -161,8 +162,9 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     f.alive = false;
     const t = b.teams[f.team];
     if (f.ace) f.respawn = Infinity; // (an ace down is gone for the battle)
-    else if (t.tickets > 0) {
-      t.tickets -= 1;
+    else if (t.tickets > 0 || !tickets) {
+      // (without tickets the count's only a count: it stops at nothing, and the fighters keep coming)
+      t.tickets = Math.max(0, t.tickets - 1);
       f.respawn = between(BATTLE.respawn);
     } else f.respawn = Infinity;
     if (b.you.on && f.target === b.you) b.you.on -= 1;

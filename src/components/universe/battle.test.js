@@ -502,6 +502,20 @@ describe('a battle', () => {
     expect(b.over?.why).toBe('tickets');
   });
 
+  it('without tickets (the galaxy’s), brings a fighter back even once its side’s are spent', () => {
+    // (tickets: false is a battle fought to its clock: the fighters keep
+    // coming, and the count's only a count)
+    const b = make({ tickets: false });
+    b.setYou(1);
+    b.teams[0].tickets = 0;
+    const f = b.fighters.find((o) => o.team === 0);
+    while (f.alive) shotAt(b, f.pos, 5);
+    const events = run(b, BATTLE.respawn[1] + 0.5);
+    expect(f.alive).toBe(true);
+    expect(events.some((e) => e.type === 'arrive' && e.team === 0)).toBe(true);
+    expect(b.teams[0].tickets).toBe(0);
+  });
+
   it('lets the defender hold out: no tickets end when told so', () => {
     const b = make({ tickets: false, perSide: 2 });
     b.teams[0].tickets = 0;
