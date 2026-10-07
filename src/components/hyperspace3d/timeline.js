@@ -64,11 +64,11 @@ export function holdJump(most = 60000) {
 export const holdStart = (now, start) => (holds > 0 && now - start > HOLD_AT ? now - HOLD_AT : start);
 
 // A hold one page takes and the next lets go: the universe map's jump into
-// the galaxy (pages/Universe.jsx) holds the tunnel until the galaxy has
-// drawn its first frame, so the jump clears onto the galaxy and not onto
-// its loading line (galaxy/GalaxyView.jsx lets it go then, or as soon as
-// the galaxy won't draw, or when its page goes; it lets go on its own after
-// `most` ms if nothing does). handJump(most) holds it (a second takes the
+// the galaxy holds the tunnel until the galaxy has drawn its first frame,
+// so the jump clears onto the galaxy and not onto its loading line. It's
+// taken as the page changes (jumps/jumpOut.js), and galaxy/GalaxyView.jsx
+// lets it go then, or as soon as the galaxy won't draw, or when its page
+// goes; it lets go on its own after `most` ms if nothing does. handJump(most) holds it (a second takes the
 // place of the first); letHandedGo() lets it go, harmless with none held.
 let handed = null;
 export function handJump(most = 8000) {

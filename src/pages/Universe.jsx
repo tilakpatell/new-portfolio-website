@@ -15,7 +15,7 @@ import { saveStart } from '../lib/view';
 import { useView } from '../components/ViewSwitch';
 import { portalSound } from '../components/universe/sounds';
 import { jumpEvent } from '../components/jumps/styles';
-import { handJump } from '../components/hyperspace3d/timeline';
+import { jumpOut } from '../components/jumps/jumpOut';
 import UniverseMap from '../components/universe/UniverseMap';
 import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
@@ -35,11 +35,6 @@ const PhoneOverlay = lazy(() => import('../components/dickansh/PhoneOverlay'));
 const SAFFRON = '#ff9a2a';
 const PHONE_MS = 700;
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
-// ms at most a jump out waits for the jump's dark before the page goes
-// anyway: long, since a jump slow to start (its first frame waits for its
-// shaders, after whatever the page was busy with) still says so well before
-// it; only a jump that never comes waits it out
-const JUMP_WAIT = 8000;
 
 // The galaxy's page and its scene, fetched once its gate is picked or
 // flown into, so the jump into it isn't waiting on them (App.jsx loads the
@@ -144,14 +139,14 @@ export default function Universe({ ask = false }) {
     local.set(PANEL_KEY, on ? 'tucked' : 'open');
   };
   const timer = useRef(0);
-  const gone = useRef(false); // (this page has gone: a jump's dark coming late changes nothing)
-  useEffect(() => {
-    gone.current = false;
-    return () => {
-      gone.current = true;
+  const trip = useRef(null); // a jump out (jumps/jumpOut.js): this page gone first, its dark coming late changes nothing
+  useEffect(
+    () => () => {
       clearTimeout(timer.current);
-    };
-  }, []);
+      trip.current?.cancel();
+    },
+    [],
+  );
   // a trip on through the gate: to a star system picked on the nav map, the
   // ship flies to the gate, and when it parks there the page goes on in
   const onward = useRef(null); // { via, to }
@@ -223,27 +218,13 @@ export default function Universe({ ask = false }) {
     audioContext(); // inside the press, so the way out can sound
     setLeaving({ id: u.id, mode: plan.mode });
     if (plan.mode === 'jump') {
-      // into the galaxy: its page and scene fetched now, and the jump's
-      // tunnel held until the galaxy has drawn (timeline.js's handJump,
-      // let go by GalaxyView), so it clears onto the galaxy, not its loading line
-      if (to?.startsWith('/galaxy')) {
-        prefetchGalaxy();
-        handJump();
-      }
-      // the page changes under the jump's dark (at its flash: App's
-      // Lightspeed says when), not on a clock from the click: a jump that
-      // started late showed the change through it, the light page's body
-      // with it. The clock is for a jump that never says.
-      let went = false;
-      const onPeak = () => {
-        if (went || gone.current) return;
-        went = true;
-        clearTimeout(timer.current);
-        navigate(to);
-      };
-      const e = jumpEvent(crew?.jump, { onPeak });
-      window.dispatchEvent(e);
-      timer.current = setTimeout(onPeak, e.detail.taken ? JUMP_WAIT : plan.delay);
+      // the page changes under the jump's dark. Into the galaxy, its page
+      // and scene are fetched now, and the jump's tunnel is held from the
+      // change until the galaxy has drawn, so it clears onto the galaxy,
+      // not its loading line
+      const galaxy = Boolean(to?.startsWith('/galaxy'));
+      if (galaxy) prefetchGalaxy();
+      trip.current = jumpOut({ style: crew?.jump, to, navigate, hold: galaxy, delay: plan.delay });
       return;
     }
     if (plan.mode === 'portal') portalSound();
