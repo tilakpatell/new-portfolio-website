@@ -46,6 +46,43 @@ The design is `docs/superpowers/specs/2026-10-06-fleet-war-design.md` and the pl
 
 - **PR E: Breaking Bad's war** (`claude/peaceful-franklin-fvqb3q`, not yet a PR). On (`ready: true`), at its real places: seven sectors from Los Pollos, about 740 units off Albuquerque (the Breaking Bad world), out past the border to Don Eladio's hacienda at `[5800, 120, 300]`, clear of the Twins and the Maw (`wars.test.js` checks it). Its flagships were made with Meshy from words (`scripts/meshy-war.mjs`; the show has no flying ships to work from): Gus's superlab barge, a steel lab-and-laundry hull with hazard stripes and two roof domes, and Don Eladio's hacienda, terracotta and tile round a pool courtyard on a floating rock. They were made a second time: the first pair's tasks were on another Meshy account (moved to `tried` in `scripts/meshy-war-tasks.json`), which this key couldn't fetch. Noses: superlab `π/2` (thrusters at +x), hacienda `0` (Meshy mirrored its thruster block, so it flies with one either side, like the Federation's engine pods). Each stands in as `madrigal`/`lowrider` till it loads. Their subsystems, batteries and hulls were placed from shots, each objective clear of the hull spheres (a shot stops at the first it meets, so a buried one can't be hit): the superlab's shield generators are its two roof domes, its bridge the deckhouse's front, its reactor in the stern among the thrusters; the hacienda's are the back towers' domes, the main house over the front door, and the foot of the rock, with its batteries on the four towers' cannons.
 
+- **Revision 3: the oath, and three wars at once** (the spec's revision 3 and 3a, `docs/superpowers/specs/2026-10-07-gcw-allegiance-design.md`; the plan `docs/superpowers/plans/2026-10-07-gcw-allegiance.md`, PR 1 to PR 8: #437, #440, #443, #449, #457, #462, #465 and these docs).
+  - `sides.js`: three wars, one an era, at once on the same map: the Clone Wars (the Republic against the Separatists), the Galactic Civil War (the Rebellion against the Empire) and the Remnant War (the New Republic against the Imperial Remnant). The Hutts are a third power in each, holding Tatooine and Nevarro at the start. The systems are grouped in five areas.
+  - `allegiance.js`: you swear to a side of the war you fight in, once a campaign in each war, and may swear again to the other side as a turncoat till the campaign's over. `suggestSide` is what your crew or hero would pick. It's kept in `tp-gcw-side`.
+  - `gcw.js`: the wars move both ways along the films' trade routes. The liberator takes fronts, the raider attacks every four hours, and the Hutts raid every twelve. Supply from the systems round a front and a whole area next door speed it up. A war ends early when one side holds everything.
+  - Each system fights its own kind of battle (`BATTLE_KINDS`): an assault, an evacuation (runners for the jump), a siege, an interdiction (the Interdictor is the objective), a blockade (runners through the line) or an ambush. `battle.js` has runners, aces (Vader, Wedge, Hera in the Ghost) and objectives on the Interdictor. The Clone Wars' and the Remnant War's fleets are in `battlesWars.js`.
+  - `warEffects.js`: holding a system changes who hunts you there (`roamRules.js`), who escorts you (the `escort` event, `universe/wingmen.js`), which fleet parks in orbit (`world.js`'s `setEffects`, `garrisonFleet` where the system has no fleet of the holder's), the heat, and the troops on the ground (`surface/garrison.js`).
+  - On the comms, the commander posted at the system speaks first and calls you by your rank (`warCast.js`, `warCastData.js`: 31 commanders, Jabba for the Hutts; `ranks.js`). Then the crew answers for your side, in the place's, the war's or the side's own lines (`battleLines.js`, `battleCrews/`). The heroes say whose side they lean to (`heroes.js`'s `lean`).
+  - The holotable's `WarCard.jsx` shows the wars as tabs, the oath, your rank and record, the major order ("Liberate" or "Hold"), the battles on now in their kind for your role, and who holds each area. `WarHud.jsx` is the line over the view while a battle's on where you are. There are five achievements: Sworn, Liberator, Major order, Turncoat and Top brass.
+  - The ground battles count: a won assault posts a win and its points for your side's war (`GalaxySurface.jsx`), and the assault HUD's side buttons swear you.
+
+## Revision 3: where the code differs from the plan
+
+The plan was written against an older map of the code. Where they disagreed, the code was trusted and the plan's intent kept:
+
+- **Names.**
+  - Heroes lean with `lean`, not `side`: `side` was already a hero's field.
+  - The areas are `sides.js`'s `AREAS`, not rings of `REGIONS`.
+  - The trade routes are `systems.js`'s `LANES`, not `ROUTES`. Each system's neighbours are the lanes', its nearest two, and two links (Kamino to Lothal, Coruscant to Naboo).
+- **Teams.** Team 0 is the light side and team 1 the dark side, whoever attacks (`teamsOf`); the Hutts take the other's slot. The set pieces already assumed the Rebels were team 0.
+- **The runners** are in the battle engine (`battle.js`'s `runners`), not in a `warpieces/evacuation.js`. Hoth's set piece only counts the transports out.
+- **`BATTLE_KINDS.text`** is keyed by role (`attack`, `defend`), not by stance, so an Imperial evacuation reads right.
+- **The cast.** The commanders' posts are `warCastData.js`'s `POSTS`, not a `cast` field on each system.
+- **The crew's lines.** The blanks are `{us}`, `{them}` and `{place}`; there's no `{flagship}`.
+- **The tally.** The keys are `${code}:${sys}:${step}` and `win:${code}:${sys}:${step}`, with a code for each side (`rep`, `sep`, `reb`, `imp`, `nr`, `rem`). Old `hoth:12` keys count as the Rebellion's.
+- **The checks.** `scripts/galaxy-war-check.mjs` takes `SIDE=` (it swears you to that side, in its war) and `KIND=` (it forces a battle of that kind). The check scripts set `tp-worlds` to `"load"` so the 3D worlds load without the gate.
+
+## Revision 3: left
+
+- `effects.traffic` is worked out but nothing reads it yet: the galaxy's traffic still flies the system's own kinds.
+- Coruscant's siege doesn't raise a planetary shield (`world.war.planetShield` is only Scarif's).
+- An ambush is a brawl with half again the fighters and no line. It doesn't lay out in a rock field yet (`BATTLE_KINDS.ambush.rocks` is unread), and its objective is still the flagship's subsystems.
+- An intercept scores any of the attacker's bombers or runners downed by a defender, however far from the flagship.
+- Unsworn pilots are still hunted by the holder's garrison, as everyone was before the oath (`roamRules.js`'s `galaxySide`). Only in a battle are they nobody's target.
+- On the ground, a garrison changes only who lives in the base (`garrisonLife`). An activity's hostile spawns aren't mapped to the holder's troops yet.
+- The tally carries 96 keys a message; with three wars at once a busy step may need more than one.
+- The new lines and the cast aren't voiced (`npm run voices`, which needs the ElevenLabs key).
+
 ## Left, in order
 
 1. **Smaller:**
@@ -59,13 +96,17 @@ The design is `docs/superpowers/specs/2026-10-06-fleet-war-design.md` and the pl
   - It forces a battle at the system (`war.force`) and runs the battle on with `war.skip(seconds)`, because software GL steps it at about a twentieth of its pace.
   - At Endor it knocks out the generator, flies in through the mouth, pins into the chamber, shoots the reactor, pins out, cuts the escape short (`run.hurry`), and watches the station go.
 
-- Start the dev server with `npx vite --port 5188`, then run `OUT=/tmp/shots node scripts/galaxy-war-check.mjs [system] mid`. Allow about four minutes.
-  - It finds the battle on now (the major order's), drops in, and checks that you're in it on the Rebels' side.
+- Start the dev server with `npx vite --port 5188`, then run `OUT=/tmp/shots SIDE=empire KIND=siege node scripts/galaxy-war-check.mjs [system] mid`. Allow about four minutes.
+  - It swears you to `SIDE` (the Rebellion if it's not given) and makes that side's war the one you fight in.
+  - It finds the battle on now (the major order's), or forces one of `KIND` there, drops in, and checks that you're on your side's team and that a kill scores your side's keys.
   - It looks at it from a few places.
-  - It takes the phases down with `hit()`, then checks that the war counted it and that the holotable shows the war.
+  - It takes the phases down with `hit()`, then checks that the war counted it and that the holotable shows your oath and your war.
   - (The pin's heading is `atan2(-dx, -dz)` to face `(dx, dz)`.)
+- `OUT=/tmp/shots node scripts/assault-check.mjs hoth` plays Hoth's ground assault through and checks that the win reaches the war's tally.
 - `scripts/rocks-check.mjs` and `scripts/flare-check.mjs` check PR A's pieces.
 - Dev hooks:
+  - `window.__galaxyOath` has `swear(side)`, `theatre(war)` and `get()`.
+  - `window.__galaxyDebug.effects()` returns what holding the system you're in means (`warEffects.js`), and `.happen(id)` plays a director event (`escort`, `hunt`).
   - `window.__universeDebug.front()` returns the front: `.where()`, `.info`, `.battle`, `.join(team)` and `.win(team)`.
   - `.rockFields` and `.smashed` hold the rock colliders.
 - **Gotchas:**
