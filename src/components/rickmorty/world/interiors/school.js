@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { AREAS, FURNITURE, LINKS, PEOPLE } from '../rules';
 import { paint, rng } from '../kit';
 import { BOX, CYL8, TAU, ceilings, doorAt, fitText, makeRoom, scribble, tiledPaint, wallLine, win, windowView } from './shell';
-import { facingAhead, needCast, person, sitting } from './people';
+import { needCast, person, seat } from './people';
 
 const H = 2.9;
 const CREAM = 0xf1e7c6;
@@ -246,31 +246,18 @@ const CLASS = [
   ['tinyrick', 1.7, { skin: 0xe8dccb, shirt: 0x9fe0e8, coat: 0xf4f4f0, pants: 0x7a5a3a, shoes: 0x3a3d42, hair: 0xa8d8f0 }],
 ];
 const PRINCIPAL = { skin: 0xf2d0b0, shirt: 0xc8e4f4, coat: 0xc8e4f4, pants: 0x8a7e6a, shoes: 0x8a4a2a, hair: 0x3a2a1e, tie: 0x2f6fb0 };
-const SIT = { back: 0.12, y: -0.4 }; // into the seat from where they're put, for one 1.9 m tall
+// the hips into the seat from where they're put (back, away from the way
+// they face), and how high they are on it: the seat's top, a little more
+const SIT = { back: 0.12, hips: 0.55 };
 async function seatClass(R, kit) {
-  const clip = await sitting();
-  for (const [id, h, look] of CLASS) {
-    const p = PEOPLE.find((o) => o.id === id);
-    const c = clip ? (kit.cast?.make?.(id) ?? null) : null;
-    if (!c?.mixer) {
-      person(R, id, { ...p, h, look, meshy: false });
-      continue;
-    }
-    c.group.scale.setScalar(h / c.height);
-    // (back into the seat: away from the way they face)
-    c.group.position.set(p.x - Math.cos(p.face) * SIT.back, (SIT.y * h) / 1.9, p.z + Math.sin(p.face) * SIT.back);
-    c.group.rotation.y = p.face + Math.PI / 2;
-    R.group.add(c.group);
-    const sit = c.mixer.clipAction(facingAhead(c, clip));
-    sit.play();
-    for (const a of Object.values(c.act)) a.setEffectiveWeight(0);
-    sit.setEffectiveWeight(1);
-    let last = null;
-    R.tick((t) => {
-      c.mixer.update(last == null ? 0 : Math.min(0.1, t - last));
-      last = t;
-    });
-  }
+  await Promise.all(
+    CLASS.map(async ([id, h, look]) => {
+      const p = PEOPLE.find((o) => o.id === id);
+      const c = kit.cast?.make?.(id) ?? null;
+      const sat = await seat(R, c, { ...p, x: p.x - Math.cos(p.face) * SIT.back, z: p.z + Math.sin(p.face) * SIT.back }, { h, seatY: SIT.hips });
+      if (!sat) person(R, id, { ...p, h, look, meshy: false });
+    }),
+  );
 }
 
 function teacherDesk(R, it) {

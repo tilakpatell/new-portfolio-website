@@ -3,7 +3,11 @@
 // they are (or one of them riding what they're riding), eased toward each
 // new place as it comes in so they don't jump, with the pilot's callsign
 // over the one they're playing. Anyone who's taken off, gone to another
-// world or gone quiet goes.
+// world or gone quiet goes. A newer pilot's message says how each of them
+// moves (protocol.js's `motion`: their clips paced to it, as yours are, so
+// their feet don't skate) and what the lead's doing (an `emote`, timed from
+// when it came in and played once: lib/emote.js); an older pilot's, without
+// them, walks as it always did.
 //
 // createPeers({ parent, placer, getCast }) → { update(net, siteId, dt),
 // dispose() }
@@ -20,6 +24,7 @@ import { createGunplay } from '../../universe/gunplay';
 import { createSaber } from './saber';
 import { HILTS } from '../heroes';
 import { sharpen } from '../../../lib/three/textures';
+import { applyEmote, heardEmote, readEmote } from '../../../lib/emote';
 
 const CREW_MODELS = { artoo: 'r2d2' }; // (scene.js's)
 
@@ -76,6 +81,7 @@ export function createPeers({ parent, placer, getCast }) {
         inner.add(fig.model);
         holder.add(inner);
         w.fig = fig;
+        w.own = Boolean(own);
         // their gun, in the hand (up as far as they say theirs is); a saber lit as theirs is
         if (w.gun && !own) {
           holder.updateMatrixWorld(true);
@@ -166,8 +172,22 @@ export function createPeers({ parent, placer, getCast }) {
           wk.holder.position.set(wk.st.x, wk.st.y, wk.st.z);
           wk.holder.rotation.y = wk.st.yaw;
           const going = i === 0 && w.ride ? 0 : Math.min(1, Math.abs(wk.st.speed) / 7.4);
-          wk.fig?.update(dt, going);
+          // (how they say they're moving, in metres a second, to locomotion.js
+          // in the map's units as yours goes; an older pilot's, a rider's, or
+          // a droid's own model: the old pace)
+          const m = s.motion && !(i === 0 && w.ride) && !wk.own ? { speed: s.motion.speed * METRE, side: s.motion.side * METRE, turn: s.motion.turn, air: 0 } : null;
+          if (m) wk.fig?.update(dt, going, m);
+          else wk.fig?.update(dt, going);
           if (!(i === 0 && w.ride)) wk.saber?.stand(dt, now / 1000, going); // (the body under their blade)
+          if (m && wk.fig?.after) {
+            wk.holder.updateMatrixWorld(true);
+            wk.fig.after(dt, m, { forward: fwd.set(Math.sin(wk.st.yaw), 0, Math.cos(wk.st.yaw)), up: UP });
+            const drop = wk.fig.loco?.drop ?? 0;
+            if (drop > 1e-7) wk.holder.position.y -= drop / METRE;
+          }
+          // what they're doing: an emote, timed from when its message came in, played once (none riding)
+          wk.emote = heardEmote(s.emote ?? null, w.at / 1000, wk.emote);
+          wk.shown = applyEmote(wk.fig, i === 0 && w.ride ? null : readEmote(wk, now / 1000), wk.shown);
           if (wk.gp) {
             const riding = i === 0 && Boolean(w.ride);
             wk.gp.gun.visible = !riding;

@@ -18,7 +18,7 @@ import { AREAS, FURNITURE, INNER_WALLS, PEOPLE, RUGS } from '../rules';
 import { toon } from '../../portal/toon';
 import { at, mergeParts, rng } from '../kit';
 import { ceilingLights, DOOR_H, doorAt, doorway, floors, framed, grainOf, innerWalls, lathe, makeRoom, roomAt, TAU, tiledPaint, tintedCeilings, wallLine, win, windowIn, windowView } from './shell';
-import { facingAhead, needCast, onEntry, person, seatOwn, sitting } from './people';
+import { holding, needCast, onEntry, person, seat, seatOwn, wineGlass } from './people';
 import { BROWN, CREAM, HEIGHTS, HOUSE_LIGHT, INNER, LOOKS, TRIM, WOOD_FLOOR, butterRobot, carpet, computer, desk, deskLamp, dresser, shelf, tvStand, bed, woodFloor } from './furniture';
 import { armchair, BOOKS_LIVING, bookcase, chair, clock, coffeeTable, couch, counter, curtains, diningTable, dogBed, fridge, nookTable, onCounter, P, pendant, plant, sconce, sink, stove } from './smiths';
 import { houseCells } from './smithpaint';
@@ -81,7 +81,7 @@ export async function buildHouse(kit) {
   const R = makeRoom(kit, 'house');
   const m = kit.mats;
   const grain = grainOf(kit);
-  const [, clip] = await Promise.all([needCast(kit, ['beth', 'jerry']), sitting()]);
+  await needCast(kit, ['beth', 'jerry']);
 
   // floors: wood planks, the back room's carpet
   const wood = tiledPaint(m, 'c137-in-wood', 256, 2.6, woodFloor());
@@ -184,26 +184,17 @@ export async function buildHouse(kit) {
   const P0 = (id) => PEOPLE.find((p) => p.id === id);
   const beth = P0('beth');
   const b = person(R, 'beth', { ...beth, h: HEIGHTS.beth, look: LOOKS.beth });
-  // Jerry on the couch, facing the TV: Rick's sat clip on his skeleton, or,
-  // without it, sat in shapes
+  // Beth at the stove with her glass of wine (it's always her wine), a sip
+  // now and then while she stands (meshyCast's `drink`, on her upper half)
+  if (b.cast?.anim) {
+    b.cast.anim.idles({ fidgets: ['drink'], every: [9, 22] });
+    holding(R, b.cast, wineGlass(R));
+  }
+  // Jerry on the couch, facing the TV, sat (./people.js's seat), or, if he
+  // can't sit, sat in shapes
   const jerry = P0('jerry');
-  const j = person(R, 'jerry', { ...jerry, h: HEIGHTS.jerry, look: { ...LOOKS.jerry, sit: true }, meshy: !!clip });
-  if (j.cast?.mixer) {
-    const c = j.cast;
-    const sit = c.mixer.clipAction(facingAhead(c, clip));
-    sit.play();
-    for (const a of Object.values(c.act)) a.setEffectiveWeight(0);
-    sit.setEffectiveWeight(1);
-    j.group.position.x -= JERRY_SIT.back;
-    j.group.position.y = JERRY_SIT.y;
-    let last = null;
-    R.tick((t) => {
-      c.mixer.update(last == null ? 0 : Math.min(0.1, t - last));
-      last = t;
-    });
-    // (the tick person() added plays the idle; its weights stay at nought)
-    c.update = () => {};
-  } else j.group.position.x -= 0.15;
+  const jc = kit.cast?.make?.('jerry') ?? null;
+  const j = (await seat(R, jc, { ...jerry, x: jerry.x - JERRY_SIT.back }, { h: HEIGHTS.jerry, seatY: COUCH_HIPS })) ?? person(R, 'jerry', { ...jerry, x: jerry.x - 0.15, h: HEIGHTS.jerry, look: { ...LOOKS.jerry, sit: true }, meshy: false });
 
   // the butter robot on the table by its hotspot
   butterRobot(R, -302.6, 0.765, 0.8, -Math.PI / 2 + 0.3);
@@ -532,8 +523,8 @@ function pictures(R) {
   }, { border: '#2b2b30', inner: 4 }));
 }
 
-// how far Jerry sits back from where he stands, and how low (the sat clip turns his bones only)
-const JERRY_SIT = { back: 0.12, y: -0.45 };
+// how far back Jerry's hips are on the couch from where he stands (they go on it at COUCH_HIPS)
+const JERRY_SIT = { back: 0.12 };
 // the multiverse's people drawn as the Smiths are, a tenth over life (Jerry's
 // 1.78 m is drawn 1.95), and the height of the hips of someone on the couch
 const FAMILY_H = { poopybutthole: 1.65, snuffles: 0.5 };
