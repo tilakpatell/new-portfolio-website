@@ -106,6 +106,13 @@ scripts cache what they've done, so a rerun picks up where one stopped.
   `--check` shows it misheard, correct `refs/<who>.txt` and run again.
 - **A bad line.** `cache/takes/report.md` lists the lines whose best take
   still didn't pass. Delete a line's mp3 and run again for new takes.
+- **Is the judge still right?** Every night the ears are evaluated on a
+  dozen labelled takes (`scripts/voices/eval_judge.py`: word error rate,
+  the right speaker first, bad takes under good ones), and one real line is
+  made start to end (`scripts/ai-e2e/real/health.mjs`); on every pull
+  request the pipeline runs with a fake worker and fake ears
+  (`VOICES_ENGINE=fake`, `VOICES_JUDGE=fake`). `scripts/ai-e2e/README.md`
+  has the tiers.
 
 ## From anywhere: a `voices` issue
 

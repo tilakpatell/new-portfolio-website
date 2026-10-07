@@ -83,11 +83,10 @@ import { lineClear } from './walker';
 import { createTokens } from '../../../lib/ai/squad';
 import { createSearch } from '../../../lib/ai/search';
 import { candidates } from '../../../lib/ai/spatial';
-import { buildGun } from '../../universe/gunplay';
 import { createPortalFx, meshyJoints } from '../../../lib/three/portalFx';
 import { createGadgetFx } from '../../../lib/three/gadgetFx';
 import { SHOW_KILLS } from './weaponRules';
-import { dress } from './saber';
+import { heldBlade } from './heldBlade';
 import { sharpen } from '../../../lib/three/textures';
 
 const SHOTS = 3; // enemies firing at you at once, across a world (the rest move)
@@ -140,40 +139,6 @@ function gateMesh() {
   return m;
 }
 
-// a womp rat: a big-eared rodent, scurrying
-function wompRat() {
-  const g = new THREE.Group();
-  const fur = new THREE.MeshStandardMaterial({ color: '#6b5642', roughness: 1 });
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 8), fur);
-  body.scale.set(0.8, 0.7, 1.4);
-  body.position.y = 0.4;
-  g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), fur);
-  head.position.set(0, 0.5, 0.55);
-  g.add(head);
-  for (const x of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.CircleGeometry(0.16, 10), new THREE.MeshStandardMaterial({ color: '#9a7a62', side: THREE.DoubleSide }));
-    ear.position.set(x * 0.15, 0.72, 0.5);
-    ear.rotation.y = x * 0.6;
-    g.add(ear);
-  }
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.9, 6), fur);
-  tail.rotation.x = -Math.PI / 2 - 0.3;
-  tail.position.set(0, 0.35, -0.9);
-  g.add(tail);
-  g.traverse((o) => o.isMesh && (o.castShadow = true));
-  let t = Math.random() * 9;
-  return {
-    model: g,
-    tall: 0.8,
-    update(dt, move) {
-      t += dt * (4 + move * 14);
-      body.position.y = 0.4 + Math.abs(Math.sin(t)) * 0.08 * move;
-    },
-    dispose() {},
-  };
-}
-
 // a training remote, hovering and darting (for blaster practice)
 function remote() {
   const g = new THREE.Group();
@@ -190,7 +155,8 @@ function remote() {
   return { model: g, tall: 0.45, update() {}, dispose() {}, hover: 1.6 };
 }
 
-const SPECIAL = { womprat: wompRat, remote };
+// (the womp rats are the catalogue's model now: catalog/library.js)
+const SPECIAL = { remote };
 
 // A health bar over a hostile's head: a sprite with a small canvas, red
 // for what's left, blue over it for a shield, redrawn only when they change
@@ -295,7 +261,11 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
   const figure = async (kind, spec) => {
     if (SPECIAL[kind]) return SPECIAL[kind]();
     if (spec.model !== false) {
-      const m = (await crewFigure(kind).catch(() => null)) ?? (await modelFigure(kind).catch(() => null));
+      // (a duellist holds its blade where an unrigged figure's hand is, so its
+      // standing model comes before a walking crew figure's swinging arms)
+      const crew = () => crewFigure(kind).catch(() => null);
+      const still = () => modelFigure(kind).catch(() => null);
+      const m = spec.hostile?.blade ? (await still()) ?? (await crew()) : (await crew()) ?? (await still());
       if (m) return m;
     }
     const f = buildFigure(kind);
@@ -359,24 +329,11 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
             fig.model.scale.multiplyScalar(s.scale ?? 1);
             holder.add(fig.model);
             t.fig = fig;
-            // its lightsaber: lit, in the right hand (the models aren't
-            // rigged: the hilt sits where the hand of a figure this tall is)
+            // its lightsaber: lit, in the right hand (heldBlade.js: the
+            // hilt sits where the hand of a figure this tall is)
             if (s.hostile?.blade) {
-              const owned = [];
-              const gun = buildGun('saber', owned);
-              dress(gun, s.hostile.blade.color ?? '#ff3b3b', s.hostile.blade.hilt ?? null);
-              const blade = gun.getObjectByName('blade');
-              if (blade) {
-                blade.visible = true;
-                blade.scale.y = 1;
-              }
-              const tall = (fig.tall ?? 1.8) * (s.scale ?? 1);
-              const arm = new THREE.Group();
-              arm.position.set(-0.19 * tall, 0.47 * tall, 0.08 * tall);
-              arm.add(gun);
-              gun.rotation.set(-0.35, 0, -0.2); // (the blade up and a little forward, held out)
-              holder.add(arm);
-              t.saber = { arm, gun, owned };
+              t.saber = heldBlade(s.hostile.blade, (fig.tall ?? 1.8) * (s.scale ?? 1));
+              holder.add(t.saber.arm);
             }
             warm(holder).then(() => (holder.visible = true));
           });

@@ -18,9 +18,16 @@
     --gui: 3;
   }
 }
+/* a phone on its side: the screens (166 high) must fit in what's left under the bar */
+@media (max-height: 420px) {
+  .mc {
+    --gui: 1.5;
+  }
+}
 .mc[data-mode='page'] {
   height: calc(100svh - var(--nav-h, 64px));
-  min-height: 420px;
+  /* (a phone on its side has under 320 to give) */
+  min-height: 280px;
 }
 .mc[data-mode='overlay'] {
   position: fixed;
@@ -277,4 +284,142 @@
   width: 44px;
   height: 44px;
   font-size: 12px;
+}
+
+/* ── stacks: the picture, the count, the wear ── */
+.mc-stack {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+.mc-stack img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.mc-stack b {
+  position: absolute;
+  right: calc(-1px * var(--gui));
+  bottom: calc(-2px * var(--gui));
+  font-weight: normal;
+  font-size: calc(8px * var(--gui));
+  line-height: 1;
+  color: #fff;
+  text-shadow: calc(1px * var(--gui)) calc(1px * var(--gui)) 0 #3f3f3f;
+}
+.mc-stack > i {
+  position: absolute;
+  left: calc(2px * var(--gui));
+  bottom: calc(1px * var(--gui));
+  width: calc(13px * var(--gui));
+  height: calc(2px * var(--gui));
+  background: #000;
+}
+.mc-stack > i > i {
+  display: block;
+  height: 50%;
+}
+.mc-hotslot {
+  position: absolute;
+  left: calc((3px + 20px * var(--slot)) * var(--gui));
+  top: calc(3px * var(--gui));
+  width: calc(16px * var(--gui));
+  height: calc(16px * var(--gui));
+}
+
+/* ── the screens, on the pack's own panels (176 × 166 of a 256 sheet) ── */
+.mc-panel {
+  position: relative;
+  width: calc(176px * var(--gui));
+  height: calc(166px * var(--gui));
+  background-size: calc(256px * var(--gui)) calc(256px * var(--gui));
+  background-position: 0 0;
+  image-rendering: pixelated;
+}
+.mc-slot {
+  position: absolute;
+  left: calc(var(--x) * 1px * var(--gui));
+  top: calc(var(--y) * 1px * var(--gui));
+  width: calc(16px * var(--gui));
+  height: calc(16px * var(--gui));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+  font: inherit;
+}
+.mc-slot:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+.mc-held {
+  position: absolute;
+  width: calc(16px * var(--gui));
+  height: calc(16px * var(--gui));
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+}
+.mc-hotslot {
+  pointer-events: auto;
+}
+.mc-hud .mc-bar {
+  pointer-events: none;
+}
+.mc-inv-key {
+  position: fixed;
+  right: 10px;
+  /* under the pause button, clear of the jump key and the site's guide button */
+  top: calc(env(safe-area-inset-top, 0px) + 62px);
+  width: 44px;
+  height: 44px;
+}
+.mc-close-key {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  font: inherit;
+  color: #fff;
+  background: rgba(60, 60, 60, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+@media (hover: hover) {
+  .mc-close-key {
+    display: none;
+  }
+}
+
+/* the game's line over the hotbar, and the night passing in a bed */
+.mc-say {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 2px + 40px * var(--gui));
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: calc(8px * var(--gui));
+  white-space: nowrap;
+  text-shadow: calc(1px * var(--gui)) calc(1px * var(--gui)) 0 #3f3f3f;
+}
+.mc-sleep {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: #101020;
+  pointer-events: none;
+  animation: mc-sleep 2.4s ease-in-out forwards;
+}
+@keyframes mc-sleep {
+  0% {
+    opacity: 0;
+  }
+  40%,
+  60% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
 }

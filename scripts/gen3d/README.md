@@ -246,6 +246,13 @@ CHROME="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" BASE=http:
 
 The GPU is shared with `scripts/voices`: check `nvidia-smi` before a run.
 
+Whether the judge still judges right is tested every night against a
+labelled set of sheets (`scripts/ai-e2e/evals/vision.mjs`: 85% in band for
+Claude, 70% for Qwen), and the pipeline makes one real X-wing from start to
+end (`scripts/ai-e2e/real/health.mjs`), held to a blessed golden; on every
+pull request it runs with fake engines (`GEN3D_ENGINE=fake`,
+`GEN3D_JUDGE=fake`, …). `scripts/ai-e2e/README.md` has the tiers.
+
 ## What was learned making the X-wing
 
 - **A model is only as right as its picture.** From a Z-Image-Turbo concept
