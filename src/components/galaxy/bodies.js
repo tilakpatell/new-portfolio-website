@@ -204,7 +204,8 @@ export const LOOKS = {
 };
 
 const MIN_OCT = 4; // the fewest octaves of noise a ground is worked to, however little detail is asked for
-// the ground scans a world wears up close (bodyShaders.js's DETAIL;
+// the ground scans a world wears up close (bodyShaders.js's DETAIL; at
+// ultra their 8192 set where it's made, lib/three/core's coreFiles;
 // public/cc0/galaxy/), [flat, steep]: by the look's own `detail`, else its
 // family's (a swamp's is mud); a gas giant has no ground
 const DETAIL_SCANS = { desert: ['sand', 'rock'], ice: ['snow', 'rock'], lush: ['grass', 'rock'], city: ['concrete', 'metal'], lava: ['ash', 'rock'], moon: ['gravel', 'rock'] };
@@ -318,7 +319,7 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
       uDetMean: { value: new THREE.Vector2(...scans.map((id) => Math.pow(scanOf(id).mean ?? 0.8, 2.2))) },
       uDetK: { value: new THREE.Vector4(r / TILE, 0.55, 0.22, 0) },
     });
-    Promise.all(scans.map(loadScan)).then(([a, bb]) => {
+    Promise.all(scans.map((id) => loadScan(id, { xl: tier === 'ultra' }))).then(([a, bb]) => {
       if (!a || !bb) return;
       uniforms.uDetA.value = a.map;
       uniforms.uDetAN.value = a.normalMap;
