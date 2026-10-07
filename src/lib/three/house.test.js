@@ -335,4 +335,11 @@ describe('an environment that changes (a game\u2019s sky swapped for another)', 
     house.follow();
     expect(house.uniforms.uLookRef.value.r).toBeCloseTo(2, 3);
   });
+
+  it('reads the level lib/hdri measured off a PMREM’s source, which has no pixels of its own', () => {
+    const pmrem = new THREE.Texture();
+    expect(envLevel(pmrem)).toBe(null);
+    pmrem.userData.level = new THREE.Color(0.3, 0.3, 0.4);
+    expect(envLevel(pmrem).b).toBeCloseTo(0.4, 5);
+  });
 });

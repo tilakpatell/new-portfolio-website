@@ -330,7 +330,8 @@ export function houseOn({ renderer, scene, sun = null, hemi = null, ambient = nu
 export function envLevel(texture) {
   const img = texture?.image;
   const data = img?.data;
-  if (!data || !img.width || !img.height) return null;
+  // (a PMREM has no pixels to read: lib/hdri measures the HDR it was made from)
+  if (!data || !img.width || !img.height) return texture?.userData?.level ?? null;
   const { width: w, height: h } = img;
   const ch = Math.round(data.length / (w * h));
   const half = data instanceof Uint16Array;
