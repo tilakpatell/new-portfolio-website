@@ -229,6 +229,15 @@ const PHASE10 = {
   tophatjones: { rig: false, poly: 14000, prompt: `A tophat cat from Rick and Morty's interdimensional cable: a thin tall black cat standing upright in a top hat and a monocle with a cane, a smug face. ${PROP}` },
   realfakedoors: { rig: false, poly: 14000, prompt: `The Real Fake Doors salesman from Rick and Morty's interdimensional cable: a short bald man in a pale blue shirt and a red tie with a name badge, one arm raised to present, standing in front of a plain white fake door frame with no wall. ${PROP}` },
 };
+// Phase 7, the fourth batch: Mr. Goldenfold's dream and the agency (the
+// Meeseeks' golf course, the vat of acid and Dimension 35-C need nothing new).
+const PHASE11 = {
+  scaryterry: { hero: true, height: 1.95, prompt: `Scary Terry from Rick and Morty: a nightmare creature like a horror-film slasher, a burned red lumpy face with a wide grin of jagged teeth and small yellow eyes, no hair, in a dark brown wide-brimmed hat, a red and green striped sweater, a glove of long silver blades on his right hand, dark trousers, big black boots, a twin pair of tiny baby legs sticking out of his back. ${BODY}` },
+  mrspancakes: { rig: false, poly: 14000, prompt: `Mrs. Pancakes from Rick and Morty, in Mr. Goldenfold's dream: a tall glamorous woman with long wavy blonde hair, heavy eye make-up, a tight red evening dress with a slit, long red gloves, red high heels, one hand on her hip. ${AT_EASE}` },
+  jaguar: { hero: true, height: 1.95, prompt: `Jaguar from Rick and Morty: a tall powerfully built man with long dark hair tied back in a ponytail, a stubbled square jaw and a thin scar on one cheek, a calm stern face, in a tight black tactical bodysuit with grey straps across the chest, grey knee pads and shoulder pads, fingerless black gloves, black combat boots, empty hands. ${BODY}` },
+  agencyguard: { rig: false, poly: 14000, prompt: `A guard from the agency in Rick and Morty's Pickle Rick episode: a stocky man in grey body armour over a black uniform, a black helmet with a visor, a utility belt, black gloves and boots, standing at attention with an assault rifle held across the chest. ${AT_EASE}` },
+  sewerrat: { rig: false, poly: 12000, prompt: `A sewer rat from Rick and Morty's Pickle Rick episode: a big cartoon brown rat the size of a cat, hunched on four legs, a long pink tail, pink ears and nose, small red eyes, whiskers, bared teeth. ${PROP}` },
+};
 // The plan's Task 3.1: Mortytown's people and buildings, two Ricks for the
 // Citadel's crowd, the Citadel from space and the NX-5. The plan's prompts
 // were checked against the wiki on 6 October and put right where the show
@@ -312,6 +321,7 @@ for (const [phase, set] of [
   [8, PHASE8],
   [9, PHASE9],
   [10, PHASE10],
+  [11, PHASE11],
 ]) {
   for (const [n, a] of Object.entries(set)) ASSETS[n] = { phase, rig: !a.crowd, poly: a.crowd ? 9000 : a.hero ? 40000 : 30000, tex: a.crowd || SMALL.has(n) ? 1024 : 2048, ...a };
 }

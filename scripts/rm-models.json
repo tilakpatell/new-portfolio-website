@@ -574,5 +574,25 @@
   "realfakedoors": {
     "status": "done",
     "by": "local"
+  },
+  "scaryterry": {
+    "status": "done",
+    "by": "local"
+  },
+  "mrspancakes": {
+    "status": "done",
+    "by": "local"
+  },
+  "jaguar": {
+    "status": "meshy",
+    "by": "local"
+  },
+  "agencyguard": {
+    "status": "done",
+    "by": "local"
+  },
+  "sewerrat": {
+    "status": "done",
+    "by": "local"
   }
 }

@@ -103,6 +103,11 @@ export const LAZY = {
   blooddome: () => import('./dimensions/blooddome').then((m) => m.buildBlooddome),
   prison: () => import('./dimensions/prison').then((m) => m.buildPrison),
   cablestudio: () => import('./dimensions/cable').then((m) => m.buildCable),
+  dream: () => import('./dimensions/dream').then((m) => m.buildDream),
+  agency: () => import('./dimensions/agency').then((m) => m.buildAgency),
+  meeseeksgolf: () => import('./dimensions/meeseeks').then((m) => m.buildMeeseeks),
+  vat: () => import('./dimensions/vat').then((m) => m.buildVat),
+  dim35c: () => import('./dimensions/dim35c').then((m) => m.buildDim35c),
 };
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's

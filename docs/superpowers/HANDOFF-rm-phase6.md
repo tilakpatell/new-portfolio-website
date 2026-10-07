@@ -37,6 +37,13 @@ own); NPCs that do things, not just stand and talk.
   ('caught', 'bark', 'done'); `RmWorld.jsx`'s `npc()` handles them after
   each frame (`s.events`). Anyone who roams is marked `roams` and left out
   of the colliders (`rules.js`).
+- **Rows 30–34**: Mr. Goldenfold's dream (`dream.js`, Scary Terry hunts
+  from the start, `lose` lets a hider shake him), the agency (`agency.js`,
+  id `agency`, Jaguar's cell door swings on 'unlocked'), the Meeseeks' golf
+  course (`meeseeks.js`, id `meeseeksgolf`: the box is an `escape`, and every
+  Meeseeks hunts on 'swarm'), the vat of acid (`vat.js`) and Dimension 35-C
+  (`dim35c.js`). Scary Terry, Jaguar, Mrs. Pancakes, the agency's guards
+  and the sewer rats are `PHASE11`'s models.
 - **Rows 26–29**: Cronenberg World (`cronenberg.js`, the cast's own
   Cronenbergs hunting), the Blood Dome (`blooddome.js`, a second duel: step
   into the ring and Hemorrhage comes), the Federation prison (`prison.js`,
@@ -102,7 +109,7 @@ own); NPCs that do things, not just stand and talk.
 - `npm run lint`, `npx vitest run`, `npm run build`, and
   `node scripts/health.mjs --check --skip build` (CI runs all four).
 - Dev server `npx vite --port 5197 --strictPort`, then
-  `OUT=/tmp/shots node scripts/c137-shots.mjs simulation storytrain fortress froopyland nimbus gromflomites heistcon snakeplanet nuptia gloopynoops resort schwifty evilrick cronenberg blooddome prison cablestudio`.
+  `OUT=/tmp/shots node scripts/c137-shots.mjs simulation storytrain fortress froopyland nimbus gromflomites heistcon snakeplanet nuptia gloopynoops resort schwifty evilrick cronenberg blooddome prison cablestudio dream agency meeseeksgolf vat dim35c`.
 - A scripted playthrough through the dev hook: `scripts/_play.mjs` is not
   kept; `window.__C137__.warp(area, x, z)`, `.act()`, `.api.act(area, 'npcs')`
   (where the place's people are) and `localStorage['tp-c137-done']` are

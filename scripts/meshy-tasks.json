@@ -1240,5 +1240,28 @@
   "realfakedoors": {
     "image": "01a1141f-f061-7173-9f73-46f60f90944a",
     "model": "01a11425-3c2c-774d-a636-14ad5690e6c0"
+  },
+  "scaryterry": {
+    "image": "01a11428-654b-71ee-afc6-e428829962fc",
+    "model": "01a1142a-9ea0-7059-a817-f3177b8d7c69",
+    "rig": "01a1142b-f9db-7386-9934-dabebaa511b9",
+    "idle": "01a1142c-4420-73b0-8030-92e0499eeaac"
+  },
+  "mrspancakes": {
+    "image": "01a11428-6544-7489-90ff-ba0c064cae0d",
+    "model": "01a1142a-9ea1-75a0-b024-6631b1143a4b"
+  },
+  "jaguar": {
+    "image": "01a1142e-50ff-74e6-a577-e5402c71f608",
+    "model": "01a1142e-d114-7787-b398-6f686e104c26",
+    "rig": "01a11430-5793-7100-b26c-196fed1f109b"
+  },
+  "agencyguard": {
+    "image": "01a11428-6550-743a-bebc-87ed4578ab5e",
+    "model": "01a1142a-9f1b-72fe-a944-f9b8c850cb02"
+  },
+  "sewerrat": {
+    "image": "01a11428-cc43-71bc-9773-9b79b0f18e95",
+    "model": "01a1142a-9f5a-746d-bfbb-b7deca715e00"
   }
 }

@@ -85,6 +85,11 @@ export const VIEWS = {
   blooddome: { area: 'blooddome', at: [-400, 3618, N], cam: [0, 0.2] },
   prison: { area: 'prison', at: [-400, 3715.4, N], cam: [0, 0.3] },
   cablestudio: { area: 'cablestudio', at: [-400, 3813.4, N], cam: [0, 0.3] },
+  dream: { area: 'dream', at: [-400, 3915.4, N], cam: [0, 0.3] },
+  agency: { area: 'agency', at: [-400, 4015.4, N], cam: [0, 0.3] },
+  meeseeksgolf: { area: 'meeseeksgolf', at: [-400, 4118, N], cam: [0, 0.2] },
+  vat: { area: 'vat', at: [-400, 4207.4, N], cam: [0, 0.3] },
+  dim35c: { area: 'dim35c', at: [-400, 4318, N], cam: [0, 0.2] },
 };
 
 const names = process.argv.slice(2);
