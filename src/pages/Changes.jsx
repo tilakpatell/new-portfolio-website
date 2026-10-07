@@ -154,13 +154,13 @@ export default function Changes() {
           )}
         </div>
         {list.length ? (
-          <div className="grid gap-5">
+          <div className="grid gap-5" data-tour="changes-log">
             {list.map((c) => (
               <Entry key={c.id} c={c} />
             ))}
           </div>
         ) : (
-          <p className="card p-6 text-muted">Nothing here yet. The autopilot’s next run is the first entry.</p>
+          <p className="card p-6 text-muted" data-tour="changes-log">Nothing here yet. The autopilot’s next run is the first entry.</p>
         )}
         <p className="mt-10 max-w-2xl text-sm leading-relaxed text-muted">
           How it works: the protocol is <span className="mono">.claude/skills/autopilot</span> in the site’s repository. The checks: lint, tests, the build and every page opened in a browser. Nothing merges

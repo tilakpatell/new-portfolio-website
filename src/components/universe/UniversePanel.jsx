@@ -237,7 +237,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
           </>
         ) : (
           <>
-            <p className="mt-3 text-sm leading-relaxed">
+            <p className="mt-3 text-sm leading-relaxed" data-tour="ships">
               You’re flying {crew.ship.replace(/^(The|An) /, (m) => m.toLowerCase())} with {crew.label}. Fly close to a station or a planet to see what’s there, or pick one by name and the ship takes
               you.
             </p>

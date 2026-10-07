@@ -680,6 +680,7 @@ export default function Terminal() {
             </label>
             <input
               id="term-input"
+              data-tour="terminal-input"
               ref={inputRef}
               value={input}
               disabled={busy}

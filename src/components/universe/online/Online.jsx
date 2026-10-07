@@ -68,7 +68,7 @@ export default function Online({ online, ship = null, floating = false }) {
         ))}
       </div>
       {open && (on ? <Roster online={online} ship={ship} floating={floating} focus={focus} onClose={close} /> : <Join online={online} onClose={close} />)}
-      <button type="button" className="universe-online-pill" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="universe-online-pill" data-tour="online" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="universe-online-dot" data-status={on ? room.status : 'off'} aria-hidden="true" />
         <RiGroupLine className="h-4 w-4" aria-hidden="true" />
         <span className="universe-online-full">{label}</span>
