@@ -13,24 +13,39 @@ export const CUTS = { ultra: '.ultra', high: '.hq', mid: '', low: '.lo' };
 
 export const gen3dFile = (name, detail) => `${name}${CUTS[detail] ?? ''}.glb`;
 
-const there = new Map(); // name → whether its .ultra file is there (once asked)
-export const forgetUltra = () => there.clear();
+const there = new Map(); // name → whether its .ultra file is there (once known)
+const asking = new Map(); // name → the HEAD request on its way
+let era = 0; // (forgetUltra mid-request: the late answer is dropped)
+export const forgetUltra = () => {
+  there.clear();
+  asking.clear();
+  era += 1;
+};
 
 const urlOf = (file) => `${import.meta.env?.BASE_URL ?? '/'}models/gen3d/${file}`.replace(/\/\/models/, '/models');
 
 export const gen3dUrl = (name, detail = device().detail) => urlOf(gen3dFile(name, detail === 'ultra' && !there.get(name) ? 'high' : detail));
 
 // The URL once it's known whether the ultra file is there (asked at ultra
-// only, once a name; a failed ask counts as not there).
+// only, once a name, however many ask at once). Only a 404 counts as not
+// there; a failed ask (offline, a 5xx) loads .hq this time and asks again.
 export async function gen3dUrlChecked(name, detail = device().detail, fetchFn = globalThis.fetch) {
   if (detail === 'ultra' && !there.has(name)) {
-    let ok = false;
-    try {
-      ok = Boolean((await fetchFn(urlOf(gen3dFile(name, 'ultra')), { method: 'HEAD' }))?.ok);
-    } catch {
-      ok = false;
+    if (!asking.has(name)) {
+      const mine = era;
+      const ask = (async () => {
+        try {
+          const res = await fetchFn(urlOf(gen3dFile(name, 'ultra')), { method: 'HEAD' });
+          if (mine === era && (res?.ok || res?.status === 404)) there.set(name, Boolean(res.ok));
+        } catch {
+          /* offline: asked again next time */
+        } finally {
+          if (asking.get(name) === ask) asking.delete(name);
+        }
+      })();
+      asking.set(name, ask);
     }
-    there.set(name, ok);
+    await asking.get(name);
   }
   return gen3dUrl(name, detail);
 }

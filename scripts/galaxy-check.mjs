@@ -21,7 +21,9 @@
 //     it is held to the draw calls and the megabytes, and, drawn on a real
 //     graphics chip (ANGLE=d3d11 or metal), to a frame p95 of 16.7 ms at
 //     1440p (the viewport grows to 2560×1440 for it). In software GL the
-//     ultra frame times are only reported.
+//     ultra frame times are only reported. A world already over its row as
+//     main stands (galaxy-budget.mjs KNOWN_OVER: Endor) is held to its own
+//     baseline +10% instead, and the line says so, until it's trimmed.
 //   A baseline is this script's own JSON (JSON=1) for the level, kept as
 //     lab/baseline/surface-<level>.json:
 //       QUALITY=high JSON=1 OUT=/tmp/b node scripts/galaxy-check.mjs surface <all landable ids>
@@ -37,6 +39,7 @@
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { budget } from '../src/lib/budgets.js';
+import { limitsFor, overBy } from './galaxy-budget.mjs';
 
 const [mode = 'space', list = 'tatooine'] = process.argv.slice(2);
 const out = process.env.OUT ?? '.';
@@ -184,20 +187,10 @@ if (process.env.BUDGET) {
   const k = Number(process.env.BUDGET_SCALE ?? 1);
   for (const r of results) {
     if (r.error) continue;
-    const b = base.find((x) => x.id === r.id);
-    const calls = Math.min(row.calls, (b?.calls ?? row.calls) * 1.1) * k;
-    // (ultra: no triangle ceiling, its triangles only reported)
-    const tris = row.tris === Infinity ? Infinity : Math.min(row.tris, (b?.triangles ?? row.tris) * 1.1) * k;
-    const mb = row.modelsMB * k;
-    const frame = quality === 'ultra' && realGpu ? 16.7 * k : Infinity;
-    const over = [
-      r.calls > calls && `calls ${r.calls} > ${Math.round(calls)}`,
-      r.triangles > tris && `tris ${r.triangles} > ${Math.round(tris)}`,
-      r.glbMB > mb && `models ${r.glbMB} MB > ${mb}`,
-      r.p95 > frame && `frame p95 ${r.p95} ms > ${frame.toFixed(1)}`,
-    ].filter(Boolean);
+    const l = limitsFor({ id: r.id, quality, row, base: base.find((x) => x.id === r.id) ?? null, scale: k, realGpu });
+    const over = overBy(r, l);
     const say = (v) => (v === Infinity ? '–' : Math.round(v));
-    console.log(`budget ${r.id.padEnd(10)} calls ${r.calls}/${say(calls)}  tris ${r.triangles}/${say(tris)}  models ${r.glbMB}/${mb} MB${quality === 'ultra' ? `  p95 ${r.p95}/${realGpu ? frame.toFixed(1) : 'reported'} ms` : ''}  ${over.length ? `FAIL (${over.join(', ')})` : 'pass'}`);
+    console.log(`budget ${r.id.padEnd(10)} calls ${r.calls}/${say(l.calls)}  tris ${r.triangles}/${say(l.tris)}  models ${r.glbMB}/${l.mb} MB${quality === 'ultra' ? `  p95 ${r.p95}/${realGpu ? l.frame.toFixed(1) : 'reported'} ms` : ''}  ${over.length ? `FAIL (${over.join(', ')})` : 'pass'}${l.known ? `  (known over the row, held to its baseline: ${l.known})` : ''}`);
     if (over.length) process.exitCode = 1;
   }
 }

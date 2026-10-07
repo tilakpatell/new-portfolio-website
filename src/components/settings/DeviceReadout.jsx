@@ -20,10 +20,11 @@ function useLive() {
     let last = performance.now();
     let sum = 0;
     let count = 0;
-    let rt = null;
-    // (the runtime only if a world has made it: the readout never makes one)
+    let peek = () => null;
+    // (the runtime only if a world has made it, looked for at every read so
+    // a world opened while the panel is up shows: the readout never makes one)
     import('../../runtime').then((m) => {
-      if (alive) rt = m.peekRuntime();
+      if (alive) peek = m.peekRuntime;
     });
     const tick = (now) => {
       sum += now - last;
@@ -33,6 +34,7 @@ function useLive() {
     };
     frame = requestAnimationFrame(tick);
     const poll = setInterval(() => {
+      const rt = peek();
       const info = rt?.current ? rt.gfx?.renderer?.info : null;
       const ms = count ? sum / count : null;
       sum = 0;

@@ -158,7 +158,10 @@ export default function Settings({ onClose }) {
               {reload && (
                 <p className="settings-reload" role="status">
                   This world builds its detail once.{' '}
-                  <button type="button" className="settings-link" onClick={() => window.dispatchEvent(new Event('tp:world-reload'))}>
+                  <button type="button" className="settings-link" onClick={() => {
+                      setReload(null);
+                      window.dispatchEvent(new Event('tp:world-reload'));
+                    }}>
                     Reload it at {LABEL[reload.level]}
                   </button>
                 </p>
