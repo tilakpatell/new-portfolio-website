@@ -42,7 +42,10 @@
   "cecil": {
     "acct": 2,
     "model": "01a1142d-7ea2-766e-aa41-204df064937e",
-    "rig": "01a11442-f532-75a8-a0fc-aa2aebd816a4"
+    "rig": "01a11442-f532-75a8-a0fc-aa2aebd816a4",
+    "anims": {
+      "lib": "01a11446-bb6f-7013-b97d-cb8e309b91c8"
+    }
   },
   "debbie": {
     "acct": 2,
