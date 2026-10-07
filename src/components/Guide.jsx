@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { RiCloseLine, RiQuestionLine } from 'react-icons/ri';
 import { guideMeta } from './guide/routes';
+import { BRIEFED } from '../lib/brief';
 import { local } from '../lib/hooks';
 
 // A guide to the site, and to whatever the page you're on lets you play. The
@@ -74,7 +75,8 @@ export default function Guide() {
   // uncovered and nothing's asking a question over it. It goes after a while,
   // on a press, or when the guide opens, and isn't shown on that page again.
   const [nudge, setNudge] = useState(false);
-  const nudgeKey = meta?.nudge ? meta.key : null;
+  // (not in a world with basics: they end at the button themselves)
+  const nudgeKey = meta?.nudge && !BRIEFED.has(meta.key) ? meta.key : null;
   useEffect(() => {
     setNudge(false);
     if (!nudgeKey) return undefined;
