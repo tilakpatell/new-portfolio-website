@@ -229,10 +229,10 @@ export const SITE = {
     { kind: 'skyscraper', n: 40, within: [60, 620], scale: [0.7, 1.1], stretch: [0.6, 1.25], solid: false, opts: { style: 1, seed: 8 } },
     { kind: 'skyscraper', n: 40, within: [60, 620], scale: [0.7, 1.1], stretch: [0.6, 1.25], solid: false, opts: { style: 3, seed: 9 } },
   ],
-  // where the people go (needs.js): the commuters between the diner, the
-  // landing and the lanes
+  // where the people go (needs.js): the commuters between the diner (a drink
+  // out front), the landing and the lanes
   wants: [
-    { id: 'dexfront', kind: 'food', at: [-150, -262], pause: 10 },
+    { id: 'dexfront', kind: 'food', at: [-150, -262], slots: 3, clip: 'drink', pause: 10 },
     { id: 'landing', kind: 'transit', at: [26, -34], pause: 5 },
     { id: 'lane', kind: 'view', at: [0, 150], pause: 6 },
     { id: 'senatesteps', kind: 'view', at: [300, 40], pause: 8 },
