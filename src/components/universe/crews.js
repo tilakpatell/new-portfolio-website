@@ -604,6 +604,11 @@ export const CREWS = [
         ['morty', 'Rick! Those are mines! Space mines, Rick!'],
         ['rick', 'Gromflomite minefield, Morty. Shoot a hole or thread the needle. Just don’t bump anything.'],
       ],
+      // a moon across the sun (eclipse.js), the light going and coming back
+      eclipse: [
+        ['morty', 'Rick, it’s getting dark. Something’s in front of the sun!'],
+        ['rick', 'Eclipse, Morty. A moon. Rocks blocking other, bigger, on-fire rocks. Don’t stare at it.'],
+      ],
       escort: [
         ['comms', 'Hey, uh, you in the cruiser? Could you see us to the next stop? Gromflomites have been following us.'],
         ['morty', 'Rick, we should help them.'],
@@ -1308,6 +1313,10 @@ export const CREWS = [
         ['r2', '[an urgent string of beeps]'],
         ['luke', 'A minefield. Artoo, mark the gaps. I’ll shoot us a way through.'],
       ],
+      eclipse: [
+        ['luke', 'Artoo, the light’s going. A moon’s crossing the sun.'],
+        ['r2', '[a low, wondering whistle]'],
+      ],
       escort: [
         ['comms', 'Red Five, this is the transport Sundari Dawn. We’re carrying medical supplies for the fleet. Can you see us to the next system?'],
         ['luke', 'Copy, Sundari Dawn. Stay on my wing.'],
@@ -1975,6 +1984,11 @@ export const CREWS = [
       minefield: [
         ['chewie', '[an alarmed roar]'],
         ['han', 'Mines. Somebody went to a lot of trouble. Hold on, Chewie, I’m threading it.'],
+      ],
+      eclipse: [
+        ['han', 'Huh. Eclipse. Moon right across the sun.'],
+        ['chewie', '[a quiet, impressed rumble]'],
+        ['han', 'Yeah, it’s pretty. Don’t get sentimental on me.'],
       ],
       escort: [
         ['comms', 'Falcon, this is the freighter Kessa Run. Pirates on our tail. We’ll pay you to see us to the next port.'],
@@ -2689,6 +2703,10 @@ export const CREWS = [
       minefield: [
         ['jesse', 'Yo, Mr. White, are those mines? Who puts mines in space?'],
         ['walt', 'Someone who doesn’t want to be followed. Shoot them, Jesse, or go round.'],
+      ],
+      eclipse: [
+        ['jesse', 'Yo, the sun’s going out. Mr. White, the sun’s going out!'],
+        ['walt', 'It’s an eclipse, Jesse. A moon is passing in front of it. Totality lasts a few seconds. Just watch.'],
       ],
       escort: [
         ['comms', 'This is a Madrigal freighter. Our shipment has to reach the next stop, and Jack’s boys know about it. Can you ride along?'],
