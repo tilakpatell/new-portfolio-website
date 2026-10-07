@@ -133,9 +133,11 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
       hunters.breakOff();
     } else if (id === 'quad') run.turret = { next: 0, prev: null, side: 1 };
     else if (id === 'portal') {
-      const mouth = ahead(ship, POWERS.portal.mouth);
+      // (its mouth where the ship will be as the hop goes: it's flown into)
+      const P = POWERS.portal;
+      const mouth = ahead(ship, Math.min(P.mouth, Math.max(0.6, ship.speed * P.dur)));
       crashFx.arrive({ point: v1.set(mouth.x, mouth.y, mouth.z), kind: 'cruiser' });
-      hunters.swallow(mouth, POWERS.portal.swallow);
+      hunters.swallow(mouth, P.swallow);
       run.hop = { exit, target };
     } else if (id === 'wubba') run.beam = { tick: 0, reach: POWERS.wubba.length };
     else if (id === 'magnets') {
@@ -254,7 +256,7 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
         color: LASER.rebel,
         speed: P.speed,
         width: 0.045,
-        length: 1.8,
+        length: 2.2,
         onHit: lands
           ? () => {
               if (was !== gen) return;
@@ -269,8 +271,9 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
 
   // out of the portal, as it closes (the portal's time is the hop's): behind
   // where the target is now, if it's still there and that's not through the
-  // shield, else where it was; the other swirl just behind, so the ship's
-  // seen coming out of it
+  // shield, else where it was; the other swirl just behind, round the ship
+  // as it comes out (any further back and the chase camera is past it before
+  // it's open)
   const exitHop = () => {
     const P = POWERS.portal;
     const s = state;
@@ -281,7 +284,7 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
     }
     teleport({ x: exit.x, y: exit.y, z: exit.z, heading: exit.heading, pitch: exit.pitch, bank: 0, speed: Math.max(s.ship.speed, 3.3) });
     const [fx, fy, fz] = nose(exit);
-    pops.arrive({ point: v1.set(exit.x - fx * 1.2, exit.y - fy * 1.2, exit.z - fz * 1.2), kind: 'cruiser' });
+    pops.arrive({ point: v1.set(exit.x - fx * 0.3, exit.y - fy * 0.3, exit.z - fz * 0.3), kind: 'cruiser' });
   };
 
   const ray = (dt) => {
@@ -315,13 +318,14 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
   const blast = (at) => {
     const P = POWERS.heisenberg;
     fx.crystal(null);
-    // (the shell drawn short of the blast's whole reach: from inside it, the
-    // whole of it would be all you saw)
-    fx.shock(at, P.radius * 0.7);
-    flashes.at(v1.set(at.x, at.y, at.z), { size: 3.5, color: [0.9, 2.1, 5.6], life: 1 });
+    // (the shell and the flash drawn well short of the blast's whole reach:
+    // with the magnet's ball six units ahead, the bang is close, and its
+    // whole size would be all you saw)
+    fx.shock(at, P.radius * 0.55);
+    flashes.at(v1.set(at.x, at.y, at.z), { size: 2.4, color: [0.7, 1.6, 4.2], life: 0.8, bright: 0.6 });
     if (!reduced) {
       state.shake = Math.max(state.shake, 0.6);
-      state.flare = Math.max(state.flare, 1.4);
+      state.flare = Math.max(state.flare, 1.25);
     }
     say('blast', 'ultimate', 'heisenberg');
     for (const t of huntersNow()) {
