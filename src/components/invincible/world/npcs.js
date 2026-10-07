@@ -3,25 +3,16 @@
 // Atom Eve flying her patrol round downtown (she stops to talk if he
 // catches her up), and the townspeople at Burger Mart, outside the school
 // and on the Guardians' plaza, who turn to look at him. The people are
-// ./people.js's; this places them, turns them and says who's near.
+// ./people.js's, and what they say ./lines.js's; this places them, turns
+// them and says who's near.
 
 import * as THREE from 'three';
 import { personFor } from './people';
 import { CAST } from '../cast';
+import { LINES } from './lines';
 
 export const CIVS = ['civA', 'civB', 'civC'];
 
-export const LINES = {
-  debbie: ['You’re home early. Did you fly?', 'There’s lasagna in the fridge.', 'Your father’s out. Again.', 'Be careful up there, sweetie.'],
-  cecil: ['Kid. You’re making a lot of noise over my city.', 'Break the sound barrier over downtown and I get the calls.', 'We should talk about your future with the GDA.', 'Don’t look at the building. It’s a records annex.'],
-  eve: ['Race you to the river?', 'You know you can just float, right? You don’t have to flap.', 'I’m on patrol. You’re… sightseeing?', 'Nice landing. The street disagrees.'],
-  omni: ['Think, Mark!', 'Keep up.', 'You’re flying like a human.', 'Five hundred years from now, this city will be dust. Think about that.'],
-  manager: ['You’re late.', 'Fries don’t drop themselves, Grayson.', 'Is that a costume? Take it off before the dinner rush.'],
-  student: ['Was that you on the news?', 'Grayson! Did you do the reading?', 'There’s a guy on the roof of the gym. Oh, it’s you.'],
-  allen: ['Hi! Allen. Allen the Alien. I test the champions of new worlds for the Coalition of Planets.', 'So you’re Earth’s new guy? You’re younger than I pictured.', 'Your moon’s quieter than I expected. Nice view, though.', 'Ask your dad about the Viltrumites sometime. Really ask.'],
-  thragg: ['So this is Nolan’s son.', 'Viltrum will have this world, boy. Sooner than you think.', 'Go back to your little city while it’s still there.'],
-  fan: ['Is that Invincible?', 'Can I get a picture?', 'My cousin says you can’t even lift a bus.', 'Do you know Omni-Man?', 'You flew over my car. It’s fine. It’s fine.'],
-};
 const NAMES = { debbie: 'Mom', cecil: 'Cecil', eve: 'Atom Eve', omni: 'Dad', manager: 'Burger Mart manager', student: 'A classmate', fan: 'Someone from the city' };
 
 const Y = new THREE.Vector3(0, 1, 0);

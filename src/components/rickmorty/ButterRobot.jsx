@@ -1,23 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioContext } from '../../lib/audio';
 import { prefersReducedMotion } from '../../lib/hooks';
+import { useVoiced } from '../../lib/useVoiced';
+import { BUTTER as SCENES } from './toys';
 
 // The butter robot: switch it on, ask for the butter, and it rolls down the
 // table, fetches it and brings it back. Then it asks what its purpose is,
 // and you tell it.
 
 const INK = '#1b1424';
-// where it is on the table (0 by the plate, 1 by the butter), whether it's
-// carrying the butter, and what it says
-const SCENES = {
-  off: { x: 0.27, line: 'It’s switched off.' },
-  awake: { x: 0.27, line: 'What is my purpose?' },
-  fetch: { x: 0.79, line: '…' },
-  bring: { x: 0.27, carry: true, line: '…' },
-  served: { x: 0.27, line: 'What is my purpose?' },
-  told: { x: 0.27, line: 'Oh my god.', sad: true },
-  club: { x: 0.27, line: 'Yeah, welcome to the club, pal.', sad: true, rick: true },
-};
 const cue = (name) => import('../games/gameAudio').then((m) => m[name]?.());
 // it asks in its own voice
 const ask = () => import('../../lib/clips').then((m) => m.playClip('purpose', { when: 0.3 }));
@@ -29,6 +20,7 @@ export default function ButterRobot() {
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
   const later = (fn, ms) => timers.current.push(setTimeout(fn, ms));
   const s = SCENES[scene];
+  useVoiced(s.who, s.line); // the rest of the scene, in its speaker's voice where it's been made (lib/voiced.js)
 
   const wake = () => {
     audioContext();
@@ -114,7 +106,7 @@ export default function ButterRobot() {
       </figure>
       <div>
         <p className="rm-box-line" role="status" aria-live="polite">
-          {s.rick ? (
+          {s.who === 'rick' ? (
             <>
               <span className="rm-butter-who">Rick:</span> {s.line}
             </>

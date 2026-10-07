@@ -1,0 +1,861 @@
+{
+  "vader": {
+    "show": "star-wars",
+    "clips": [
+      "public/audio/clips/i-am-your-father.mp3",
+      "public/audio/clips/force-is-strong.mp3"
+    ],
+    "quotes": [
+      "I find your lack of faith disturbing",
+      "No, I am your father",
+      "The Force is strong with this one",
+      "Impressive. Most impressive"
+    ],
+    "search": [
+      "A New Hope Darth Vader I find your lack of faith disturbing scene",
+      "Empire Strikes Back Darth Vader Cloud City Lando deal scene",
+      "Empire Strikes Back Vader bounty hunters scene",
+      "Return of the Jedi Vader Luke Endor walkway scene",
+      "Empire Strikes Back Admiral Piett apology accepted scene"
+    ],
+    "avoid": [
+      "obi-wan kenobi series",
+      "rogue one hallway",
+      "reaction",
+      "lego",
+      "voice actor"
+    ]
+  },
+  "threepio": {
+    "show": "star-wars",
+    "quotes": [
+      "We're doomed",
+      "Sir, the possibility of successfully navigating an asteroid field",
+      "I am C-3PO, human-cyborg relations"
+    ],
+    "search": [
+      "Star Wars C-3PO best lines original trilogy",
+      "Empire Strikes Back C-3PO asteroid field odds scene",
+      "A New Hope C-3PO Tatooine desert scene",
+      "Return of the Jedi C-3PO Ewok story scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "anthony daniels interview",
+      "force awakens",
+      "rise of skywalker"
+    ]
+  },
+  "yoda": {
+    "show": "star-wars",
+    "quotes": [
+      "Do or do not. There is no try",
+      "Size matters not",
+      "Judge me by my size, do you?",
+      "Luminous beings are we"
+    ],
+    "search": [
+      "Empire Strikes Back Yoda Luke Dagobah X-wing lifting scene",
+      "Empire Strikes Back Yoda size matters not scene",
+      "Return of the Jedi Yoda death scene",
+      "Empire Strikes Back Yoda first meeting Luke scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "frank oz interview",
+      "last jedi",
+      "clone wars",
+      "cgi yoda"
+    ]
+  },
+  "ben": {
+    "show": "star-wars",
+    "clips": [
+      "public/audio/clips/use-the-force-luke.mp3",
+      "public/audio/clips/not-the-droids.mp3",
+      "public/audio/clips/the-force-will-be-with-you.mp3"
+    ],
+    "quotes": [
+      "These aren't the droids you're looking for",
+      "Use the Force, Luke",
+      "An elegant weapon for a more civilized age",
+      "You will never find a more wretched hive of scum and villainy"
+    ],
+    "search": [
+      "A New Hope Obi-Wan Kenobi Luke lightsaber your father scene",
+      "A New Hope Obi-Wan Mos Eisley wretched hive scene",
+      "A New Hope Obi-Wan Kenobi Vader duel scene",
+      "Return of the Jedi Obi-Wan ghost certain point of view scene"
+    ],
+    "avoid": [
+      "ewan mcgregor",
+      "prequel",
+      "obi-wan kenobi series",
+      "lego",
+      "reaction"
+    ]
+  },
+  "obiwan": {
+    "show": "star-wars",
+    "quotes": [
+      "Hello there",
+      "You were the chosen one",
+      "I have the high ground",
+      "So uncivilized"
+    ],
+    "search": [
+      "Revenge of the Sith Obi-Wan Kenobi hello there General Grievous scene",
+      "Revenge of the Sith Obi-Wan you were the chosen one scene",
+      "Attack of the Clones Obi-Wan Kamino scene",
+      "Obi-Wan Kenobi series Ewan McGregor Obi-Wan dialogue scene"
+    ],
+    "avoid": [
+      "alec guinness",
+      "a new hope",
+      "lego",
+      "reaction",
+      "interview"
+    ]
+  },
+  "lando": {
+    "show": "star-wars",
+    "quotes": [
+      "Hello, what have we here?",
+      "This deal is getting worse all the time",
+      "You old pirate"
+    ],
+    "search": [
+      "Empire Strikes Back Lando Calrissian Cloud City welcome scene",
+      "Empire Strikes Back Lando this deal is getting worse scene",
+      "Return of the Jedi Lando Calrissian Falcon Death Star run scene"
+    ],
+    "avoid": [
+      "solo a star wars story",
+      "donald glover",
+      "rise of skywalker",
+      "lego",
+      "reaction"
+    ]
+  },
+  "hondo": {
+    "show": "star-wars",
+    "quotes": [
+      "Hondo Ohnaka",
+      "This is most unfortunate",
+      "My friend"
+    ],
+    "search": [
+      "Clone Wars Hondo Ohnaka best moments",
+      "Star Wars Rebels Hondo Ohnaka scene",
+      "Clone Wars Hondo Ohnaka pirate base scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "galaxy's edge",
+      "ride"
+    ]
+  },
+  "k2so": {
+    "show": "star-wars",
+    "quotes": [
+      "I have a bad feeling about",
+      "Congratulations, you are being rescued",
+      "The captain says you are a friend"
+    ],
+    "search": [
+      "Rogue One K-2SO best lines",
+      "Rogue One K-2SO congratulations you are being rescued scene",
+      "Rogue One K-2SO Scarif vault scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "interview",
+      "andor season"
+    ]
+  },
+  "padme": {
+    "show": "star-wars",
+    "quotes": [
+      "So this is how liberty dies",
+      "Are you an angel?",
+      "Anakin, you're breaking my heart"
+    ],
+    "search": [
+      "Revenge of the Sith Padme so this is how liberty dies scene",
+      "Attack of the Clones Padme Anakin Naboo scene",
+      "Revenge of the Sith Padme Mustafar scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "interview"
+    ]
+  },
+  "anakin": {
+    "show": "star-wars",
+    "quotes": [
+      "I don't like sand",
+      "From my point of view the Jedi are evil",
+      "This is where the fun begins"
+    ],
+    "search": [
+      "Attack of the Clones Anakin sand Padme scene",
+      "Revenge of the Sith Anakin Palpatine opera scene",
+      "Revenge of the Sith Anakin Obi-Wan Mustafar dialogue scene"
+    ],
+    "avoid": [
+      "jake lloyd",
+      "phantom menace",
+      "lego",
+      "reaction",
+      "clone wars animated"
+    ]
+  },
+  "quigon": {
+    "show": "star-wars",
+    "quotes": [
+      "There's always a bigger fish",
+      "Your focus determines your reality"
+    ],
+    "search": [
+      "Phantom Menace Qui-Gon Jinn Tatooine Watto scene",
+      "Phantom Menace Qui-Gon Jinn bigger fish scene",
+      "Phantom Menace Qui-Gon Anakin Shmi scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "interview"
+    ]
+  },
+  "mace": {
+    "show": "star-wars",
+    "quotes": [
+      "This party's over",
+      "In the name of the Galactic Senate"
+    ],
+    "search": [
+      "Revenge of the Sith Mace Windu Palpatine arrest scene",
+      "Attack of the Clones Mace Windu this party's over scene"
+    ],
+    "avoid": [
+      "pulp fiction",
+      "lego",
+      "reaction"
+    ]
+  },
+  "dooku": {
+    "show": "star-wars",
+    "quotes": [
+      "Twice the pride, double the fall",
+      "I've been looking forward to this"
+    ],
+    "search": [
+      "Attack of the Clones Count Dooku Obi-Wan Geonosis cell scene",
+      "Revenge of the Sith Count Dooku twice the pride scene"
+    ],
+    "avoid": [
+      "clone wars animated",
+      "lego",
+      "reaction",
+      "saruman"
+    ]
+  },
+  "jango": {
+    "show": "star-wars",
+    "quotes": [
+      "I'm just a simple man trying to make my way in the universe"
+    ],
+    "search": [
+      "Attack of the Clones Jango Fett Obi-Wan Kamino apartment scene",
+      "Attack of the Clones Jango Fett simple man scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "book of boba fett"
+    ]
+  },
+  "youngboba": {
+    "show": "star-wars",
+    "quotes": [
+      "Dad, there's a Jedi",
+      "Get him, Dad"
+    ],
+    "search": [
+      "Attack of the Clones young Boba Fett Kamino scene",
+      "Attack of the Clones Boba Fett Daniel Logan Slave I scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "book of boba fett"
+    ]
+  },
+  "bobafett": {
+    "show": "star-wars",
+    "quotes": [
+      "He's no good to me dead",
+      "Jabba won't like this"
+    ],
+    "search": [
+      "Book of Boba Fett Boba Fett dialogue scene",
+      "Mandalorian Boba Fett Temuera Morrison armor scene",
+      "Empire Strikes Back Boba Fett Cloud City scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "jango",
+      "attack of the clones"
+    ]
+  },
+  "jyn": {
+    "show": "star-wars",
+    "quotes": [
+      "Rebellions are built on hope",
+      "Save the rebellion, save the dream"
+    ],
+    "search": [
+      "Rogue One Jyn Erso rebellions are built on hope speech",
+      "Rogue One Jyn Erso council scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "interview"
+    ]
+  },
+  "cassian": {
+    "show": "star-wars",
+    "quotes": [
+      "We've all done terrible things",
+      "Some of us live with it"
+    ],
+    "search": [
+      "Rogue One Cassian Andor we've all done terrible things scene",
+      "Andor Cassian Andor dialogue scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "interview"
+    ]
+  },
+  "krennic": {
+    "show": "star-wars",
+    "quotes": [
+      "We were on the verge of greatness",
+      "You're asking me to be rational"
+    ],
+    "search": [
+      "Rogue One Director Krennic opening Galen scene",
+      "Rogue One Krennic Tarkin Death Star scene",
+      "Rogue One Krennic Vader Mustafar scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "interview"
+    ]
+  },
+  "chirrut": {
+    "show": "star-wars",
+    "quotes": [
+      "I am one with the Force, and the Force is with me"
+    ],
+    "search": [
+      "Rogue One Chirrut Imwe I am one with the force scene",
+      "Rogue One Chirrut Jedha fight scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "interview"
+    ]
+  },
+  "baze": {
+    "show": "star-wars",
+    "quotes": [
+      "The strongest stars have hearts of kyber"
+    ],
+    "search": [
+      "Rogue One Baze Malbus Chirrut scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "mando": {
+    "show": "star-wars",
+    "quotes": [
+      "This is the way",
+      "I can bring you in warm, or I can bring you in cold"
+    ],
+    "search": [
+      "The Mandalorian Din Djarin dialogue scene season 1",
+      "The Mandalorian I can bring you in warm or cold scene",
+      "The Mandalorian Mando Greef Karga scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "interview",
+      "pedro pascal interview"
+    ]
+  },
+  "greef": {
+    "show": "star-wars",
+    "quotes": [
+      "I have a new bounty",
+      "Have a seat"
+    ],
+    "search": [
+      "The Mandalorian Greef Karga cantina scene",
+      "The Mandalorian Greef Karga season 2 Nevarro scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "rocky",
+      "apollo creed"
+    ]
+  },
+  "armorer": {
+    "show": "star-wars",
+    "quotes": [
+      "This is the way",
+      "The songs of eons past"
+    ],
+    "search": [
+      "The Mandalorian Armorer forge scene",
+      "The Mandalorian Armorer clan of two scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "ahsoka": {
+    "show": "star-wars",
+    "quotes": [
+      "I am no Jedi",
+      "Snips"
+    ],
+    "search": [
+      "Ahsoka series Ahsoka Tano dialogue scene",
+      "The Mandalorian Ahsoka Tano Grogu scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "clone wars",
+      "interview"
+    ]
+  },
+  "omera": {
+    "show": "star-wars",
+    "quotes": [
+      "You could stay"
+    ],
+    "search": [
+      "The Mandalorian Omera Sorgan village scene",
+      "The Mandalorian sanctuary episode Omera scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "jarjar": {
+    "show": "star-wars",
+    "quotes": [
+      "Meesa Jar Jar Binks",
+      "How wude",
+      "Exsqueeze me"
+    ],
+    "search": [
+      "Phantom Menace Jar Jar Binks meeting Qui-Gon scene",
+      "Phantom Menace Jar Jar Binks best lines"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "ahmed best interview",
+      "theory"
+    ]
+  },
+  "bossnass": {
+    "show": "star-wars",
+    "quotes": [
+      "Wesa no care-n about da Naboo"
+    ],
+    "search": [
+      "Phantom Menace Boss Nass Otoh Gunga scene",
+      "Phantom Menace Boss Nass Padme alliance scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "tarpals": {
+    "show": "star-wars",
+    "design": "a Gungan captain from Naboo, gruff and boisterous, strong Gungan accent with dropped consonants, loud and bossy"
+  },
+  "panaka": {
+    "show": "star-wars",
+    "quotes": [
+      "Your Highness"
+    ],
+    "search": [
+      "Phantom Menace Captain Panaka Queen Amidala scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "nute": {
+    "show": "star-wars",
+    "quotes": [
+      "Now, Viceroy",
+      "This is getting out of hand"
+    ],
+    "search": [
+      "Phantom Menace Nute Gunray Darth Sidious hologram scene",
+      "Phantom Menace Nute Gunray Queen Amidala treaty scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "clone wars"
+    ]
+  },
+  "dexter": {
+    "show": "star-wars",
+    "quotes": [
+      "Obi-Wan",
+      "Those Kaminoans"
+    ],
+    "search": [
+      "Attack of the Clones Dexter Jettster diner Obi-Wan scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "taunwe": {
+    "show": "star-wars",
+    "quotes": [
+      "Master Jedi",
+      "The Prime Minister expects you"
+    ],
+    "search": [
+      "Attack of the Clones Taun We Kamino Obi-Wan arrival scene",
+      "Attack of the Clones Kamino cloning facility tour scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "lamasu": {
+    "show": "star-wars",
+    "quotes": [
+      "I trust you are going to stay for a while"
+    ],
+    "search": [
+      "Attack of the Clones Lama Su Obi-Wan clone army scene",
+      "Attack of the Clones Kamino cloning facility tour scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "bad batch"
+    ]
+  },
+  "kaminoan": {
+    "show": "star-wars",
+    "design": "a Kaminoan cloner, tall and serene, soft high gentle voice, very calm, polite and precise, unhurried"
+  },
+  "elan": {
+    "show": "star-wars",
+    "quotes": [
+      "You wanna buy some death sticks?"
+    ],
+    "search": [
+      "Attack of the Clones Elan Sleazebaggano death sticks scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "owen": {
+    "show": "star-wars",
+    "quotes": [
+      "Luke, I need you",
+      "That boy is our last hope"
+    ],
+    "search": [
+      "A New Hope Uncle Owen Luke dinner table scene",
+      "A New Hope Owen Lars buying droids Jawas scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "obi-wan kenobi series",
+      "prequel"
+    ]
+  },
+  "camie": {
+    "show": "star-wars",
+    "design": "a young woman from a Tatooine farm town, 1970s American, bored and teasing, a little sulky, casual drawl"
+  },
+  "biggs": {
+    "show": "star-wars",
+    "quotes": [
+      "Luke! I'm right with you",
+      "Red Three standing by"
+    ],
+    "search": [
+      "A New Hope Biggs Darklighter Luke hangar reunion scene",
+      "A New Hope Death Star trench run radio chatter Biggs Wedge"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "wuher": {
+    "show": "star-wars",
+    "quotes": [
+      "We don't serve their kind here"
+    ],
+    "search": [
+      "A New Hope Mos Eisley cantina bartender we don't serve their kind scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "bibfortuna": {
+    "show": "star-wars",
+    "design": "a Twi'lek majordomo in a crime lord's palace, oily and sly, slow wheedling voice, slightly hissing, ingratiating"
+  },
+  "evazan": {
+    "show": "star-wars",
+    "design": "a scarred drunken thug in a desert cantina, menacing, slurred and gravelly, threatening, low"
+  },
+  "rieekan": {
+    "show": "star-wars",
+    "quotes": [
+      "Send the fleet ahead",
+      "Prepare to open shield"
+    ],
+    "search": [
+      "Empire Strikes Back General Rieekan Echo Base command center scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "torynfarr": {
+    "show": "star-wars",
+    "quotes": [
+      "First transport is away"
+    ],
+    "search": [
+      "Empire Strikes Back Toryn Farr Echo Base first transport is away scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "dodonna": {
+    "show": "star-wars",
+    "quotes": [
+      "The battle station is heavily shielded"
+    ],
+    "search": [
+      "A New Hope General Dodonna Death Star briefing scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "ackbar": {
+    "show": "star-wars",
+    "clips": [
+      "public/audio/clips/its-a-trap.mp3"
+    ],
+    "quotes": [
+      "It's a trap",
+      "We have no choice",
+      "Concentrate all fire"
+    ],
+    "search": [
+      "Return of the Jedi Admiral Ackbar briefing and battle of Endor scene",
+      "Return of the Jedi Admiral Ackbar it's a trap scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "last jedi"
+    ]
+  },
+  "leia": {
+    "show": "star-wars",
+    "clips": [
+      "public/audio/clips/help-me-obi-wan-kenobi.mp3",
+      "public/audio/clips/short-for-a-stormtrooper.mp3"
+    ],
+    "quotes": [
+      "Help me, Obi-Wan Kenobi. You're my only hope",
+      "Aren't you a little short for a stormtrooper?",
+      "Why, you stuck up, half-witted, scruffy-looking nerf herder"
+    ],
+    "search": [
+      "A New Hope Princess Leia Tarkin Death Star scene",
+      "Empire Strikes Back Leia Han scruffy looking nerf herder scene",
+      "Return of the Jedi Leia Luke Endor sister scene"
+    ],
+    "avoid": [
+      "force awakens",
+      "last jedi",
+      "rise of skywalker",
+      "lego",
+      "reaction",
+      "rogue one cgi"
+    ]
+  },
+  "ig11": {
+    "show": "star-wars",
+    "quotes": [
+      "I will self-destruct",
+      "I'm a nurse droid"
+    ],
+    "search": [
+      "The Mandalorian IG-11 Taika Waititi lines",
+      "The Mandalorian IG-11 nurse droid scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction"
+    ]
+  },
+  "imperialofficer": {
+    "show": "star-wars",
+    "design": "a clipped Imperial officer, crisp received-pronunciation British accent, cold, efficient and disdainful"
+  },
+  "azadi": {
+    "show": "star-wars",
+    "design": "an older rebel-aligned governor, warm and weathered, steady authoritative baritone, quietly hopeful"
+  },
+  "shinhati": {
+    "show": "star-wars",
+    "design": "a young dark-side warrior woman, cool and quiet, slight Eastern European accent, contemptuous and controlled"
+  },
+  "stormtrooper": {
+    "show": "star-wars",
+    "quotes": [
+      "Move along",
+      "Let me see your identification",
+      "Look sir, droids",
+      "Close the blast doors"
+    ],
+    "search": [
+      "A New Hope stormtroopers Mos Eisley let me see your identification scene",
+      "A New Hope stormtroopers Death Star detention block dialogue",
+      "Star Wars stormtrooper lines compilation original trilogy",
+      "Return of the Jedi scout troopers Endor dialogue scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "cosplay",
+      "parody",
+      "funny dub"
+    ]
+  },
+  "clonetrooper": {
+    "show": "star-wars",
+    "quotes": [
+      "It will be done, my lord",
+      "Execute Order 66",
+      "Yes, sir"
+    ],
+    "search": [
+      "Clone Wars Captain Rex clone troopers dialogue scene",
+      "Revenge of the Sith clone troopers Commander Cody dialogue scene",
+      "The Bad Batch clone troopers dialogue scene",
+      "Attack of the Clones clone troopers Geonosis dialogue"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "cosplay",
+      "battlefront",
+      "parody"
+    ]
+  },
+  "battledroid": {
+    "show": "star-wars",
+    "quotes": [
+      "Roger, roger",
+      "Uh oh",
+      "Hold it right there"
+    ],
+    "search": [
+      "Star Wars battle droid roger roger compilation",
+      "Phantom Menace battle droids dialogue scene",
+      "Clone Wars battle droids funny dialogue scene"
+    ],
+    "avoid": [
+      "lego",
+      "reaction",
+      "battlefront",
+      "parody",
+      "super battle droid"
+    ]
+  },
+  "rebeltrooper": {
+    "show": "star-wars",
+    "design": "a young male Rebel Alliance soldier, American accent, earnest and steady, clipped military delivery, slightly breathless"
+  },
+  "rebelpilot": {
+    "show": "star-wars",
+    "design": "a Rebel X-wing pilot on the radio, American accent, focused and tense, quick clipped radio chatter"
+  },
+  "jedi": {
+    "show": "star-wars",
+    "design": "a calm Jedi Knight, measured and gentle, warm mid-range voice, mindful and kind, unhurried"
+  },
+  "gungan": {
+    "show": "star-wars",
+    "design": "a Gungan from Naboo, goofy and friendly, high nasal voice with a strong Gungan accent and slurred consonants"
+  },
+  "rimlocal": {
+    "show": "star-wars",
+    "design": "a weathered spacer from the Outer Rim, rough and wary, gravelly American drawl, tired and dry"
+  },
+  "corecitizen": {
+    "show": "star-wars",
+    "design": "a well-to-do citizen of a Core World city, polished and a little haughty, refined mid-Atlantic accent, brisk"
+  },
+  "cityguard": {
+    "show": "star-wars",
+    "design": "a city guard on patrol, stern and formal, firm mid-range voice, clipped and procedural"
+  }
+}

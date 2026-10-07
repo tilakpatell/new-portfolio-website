@@ -81,8 +81,10 @@ export const RANGES = [
   [12, 0.5, false, [[640, 40], [680, 46], [722, 40]]],
   // the White Mountains, Mindolluin to Andrast
   [18, 0.95, true, [[516, 440], [496, 432], [466, 428], [430, 430], [394, 434], [360, 442], [328, 454], [302, 472]]],
-  // Mordor's walls: the Mountains of Shadow and the Ash Mountains
-  [13, 0.8, false, [[582, 366], [578, 402], [576, 440], [580, 480], [588, 514], [620, 528], [670, 532], [720, 528], [772, 522]]],
+  // Mordor's walls: the Mountains of Shadow, south from the Morannon, out
+  // west round the Morgul Vale and bending east along the south (no
+  // square corner), and the Ash Mountains along the north
+  [13, 0.8, false, [[582, 366], [574, 384], [570, 404], [574, 424], [581, 440], [577, 458], [573, 476], [579, 494], [593, 510], [612, 522], [636, 530], [662, 536], [690, 534], [720, 530], [748, 526], [772, 522]]],
   [13, 0.8, false, [[584, 362], [620, 356], [670, 352], [720, 354], [770, 360], [804, 374]]],
   // the Emyn Muil, the Weather Hills, the Barrow-downs, the Tower Hills, Dunland's hills, the Hills of Evendim
   [18, 0.3, false, [[504, 334], [524, 346], [542, 356]]],
@@ -95,10 +97,16 @@ export const RANGES = [
   [10, 0.3, false, [[535, 140], [552, 176]]],
   // the Red Mountains, the Orocarni, far in the East
   [22, 0.95, true, [[1000, 60], [1028, 170], [1048, 290], [1036, 420], [1010, 520]]],
-  // and Harad's own ranges
-  [20, 0.7, false, [[700, 620], [780, 650], [862, 640]]],
-  [16, 0.5, false, [[600, 716], [640, 760]]],
-  [18, 0.55, false, [[880, 470], [930, 560]]],
+  // and Harad's own ranges, each two or three ridges side by side, offset
+  // and broken, as desert ranges are (not one smooth line)
+  [12, 0.7, false, [[694, 612], [722, 622], [748, 632], [778, 644]]],
+  [12, 0.62, false, [[744, 652], [772, 660], [804, 664], [834, 658], [860, 648]]],
+  [9, 0.48, false, [[806, 630], [834, 632], [866, 628]]],
+  [11, 0.5, false, [[594, 706], [608, 722], [622, 740], [630, 754]]],
+  [9, 0.42, false, [[616, 718], [632, 736], [646, 754], [654, 770]]],
+  [12, 0.56, false, [[872, 460], [884, 482], [894, 504], [904, 530]]],
+  [10, 0.5, false, [[894, 492], [906, 516], [918, 540], [932, 566]]],
+  [8, 0.38, false, [[862, 502], [870, 520], [880, 540]]],
 ];
 
 // Lone peaks: [x, y, radius, height]. Orodruin, Erebor, Amon Hen and Amon Lhaw.
@@ -130,7 +138,7 @@ export const FORESTS = [
 // Lands that colour the ground: [name, blur, points].
 export const LANDS = {
   // Mordor, inside its walls; Gorgoroth its north-west, Nurn its south
-  mordor: [[584, 364], [804, 372], [776, 524], [588, 516], [578, 440]],
+  mordor: [[584, 364], [804, 372], [790, 450], [776, 524], [748, 524], [720, 528], [690, 532], [662, 532], [636, 526], [612, 518], [596, 506], [584, 490], [578, 470], [580, 440], [576, 418], [574, 398], [578, 380]],
   gorgoroth: [[584, 366], [720, 360], [710, 440], [640, 456], [584, 440]],
   rohan: [[392, 362], [430, 352], [482, 340], [506, 356], [524, 392], [512, 424], [470, 424], [420, 424], [390, 410], [374, 386]],
   shire: [[134, 196], [176, 186], [210, 196], [214, 230], [196, 254], [158, 252], [136, 236]],

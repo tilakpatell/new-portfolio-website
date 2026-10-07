@@ -19,7 +19,7 @@
 // loadTextures({ small }) → the textures (any that fail are just missing)
 // mapFile(name, level) → the file for a planet map at lib/detail's level
 // mapsOf(id), nearSet(id, level) → a planet's maps, and the finer ones it wears near (nearMaps.js)
-// buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount, swapMaps(T2 | null), nearSet(level) }
+// buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount, swapMaps(T2 | null), nearSet(level), nearGeometry(on, level) }
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -556,7 +556,7 @@ const BUILDERS = {
     // grazing light (the creases toward the terminator)
     p.body.material = new THREE.MeshPhysicalMaterial({
       map: T.office ?? null,
-      color: T.office ? '#f2eee4' : u.palette.base, // paper, not snow: a little warm and a little grey
+      color: T.office ? '#ffffff' : u.palette.base, // (the map's own paper, #f1ead8: warm, not snow)
       normalMap: T['office-normal'] ?? tiled(T['paper-normal'], 4, 2),
       normalScale: new THREE.Vector2(1, 1),
       roughnessMap: T['office-rough'] ?? null,
@@ -565,17 +565,17 @@ const BUILDERS = {
       sheenColor: '#f3ecd8',
       sheenRoughness: 0.8,
     });
-    // and its outline a crumpled ball's: the sphere cut by a scatter of flat
-    // planes a little inside it, so it has facets and corners (never out
-    // past the sphere, which the halo and a crash's shockwave are sized to)
+    // and its outline a crumpled ball's: the sphere cut by a few big flat
+    // planes a little inside it, so it has broad facets and corners (never
+    // out past the sphere, which the halo and a crash's shockwave are sized to)
     const [ws, hs] = T.small ? [64, 44] : [112, 72];
     const geo = new THREE.SphereGeometry(r, ws, hs);
     const rand = rng('crumple');
-    const cuts = Array.from({ length: 90 }, () => {
+    const cuts = Array.from({ length: 12 }, () => {
       const z = rand() * 2 - 1;
       const a = rand() * Math.PI * 2;
       const s = Math.sqrt(1 - z * z);
-      return [Math.cos(a) * s, z, Math.sin(a) * s, 0.955 + rand() * 0.04];
+      return [Math.cos(a) * s, z, Math.sin(a) * s, 0.915 + rand() * 0.045];
     });
     const pos = geo.attributes.position;
     const d = new THREE.Vector3();
@@ -1202,6 +1202,13 @@ const BUILDERS = {
   ...STATIONS,
 };
 
+// The sphere's segments near (nearMaps.js swaps it in with the near maps):
+// parked 2.4 radii out the limb is about 1,900 pixels round, and at 64 a
+// chord is 30 of them, a polygon against the air; at 160, 12. Mid gets
+// fewer; low none.
+export const NEAR_SEG = { high: [160, 100], ultra: [160, 100], mid: [96, 60] };
+export const nearSegments = (level) => NEAR_SEG[level] ?? null;
+
 export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null } = {}) {
   const core = u.kind === 'core';
   // the way to the star that lights it, in the world's axes (lighting.js's
@@ -1233,13 +1240,32 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     haloMesh.visible = false;
   }
   const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null, sun: sunW };
+  const sphere = body.geometry;
   BUILDERS[u.id]?.(p, { u, T });
+
   if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night, sun: sunW });
   // the clouds' shadows, the ground's detail and a sea's glint (groundHooks),
   // the cloud layer found by its texture, wherever its builder put it
   const style = styleFor(u, T, { tier });
   let cloudMesh = null;
   if (style.clouds) group.traverse((o) => (cloudMesh ??= o.isMesh && (o.material?.map === style.clouds || o.material?.alphaMap === style.clouds) ? o : null));
+  // its sphere, and its cloud layer's, finer near: the limb a curve, not
+  // chords (a builder that made its own shape keeps it; each finer one
+  // made once, the first time it's near)
+  const fine = new Map();
+  const finer = (mesh, far, on, level) => {
+    const s = on && nearSegments(level);
+    if (s && !fine.has(mesh)) fine.set(mesh, new THREE.SphereGeometry(far.parameters.radius, s[0], s[1]));
+    mesh.geometry = s ? fine.get(mesh) : far;
+  };
+  const cloudSphere = cloudMesh?.geometry?.type === 'SphereGeometry' ? cloudMesh.geometry : null;
+  const nearGeometry =
+    core || body.geometry !== sphere
+      ? undefined
+      : (on, level = 'high') => {
+          finer(body, sphere, on, level);
+          if (cloudSphere) finer(cloudMesh, cloudSphere, on, level);
+        };
   const ground = !core && p.body.material?.isMeshStandardMaterial ? groundHooks(p.body.material, { ...style, clouds: cloudMesh ? style.clouds : null }) : null;
   if (key && !core && p.body.material?.isMeshStandardMaterial) keyHook(p.body.material, key, sunW);
   // (with real air round it, the air draws the limb: the rim in its ground goes)
@@ -1271,6 +1297,7 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     body,
     swapMaps,
     nearSet: (level) => (core ? [] : nearSet(u.id, level)),
+    nearGeometry,
     get air() {
       return air;
     },

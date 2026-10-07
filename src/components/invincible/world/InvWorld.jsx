@@ -3,14 +3,18 @@ import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { settle } from '../../../lib/settle';
+import { useVoiced } from '../../../lib/useVoiced';
+import { sayVoiced } from '../../../lib/voiced';
 import { readPad, typing } from '../../games/pad';
 import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { FIGHT, PORTAL, newFight, startInvasion, stepFight } from './fight';
 import { FLY, newHero, stepHero } from './flight';
+import { CALLS } from './lines';
 import { BODIES, SPACE, altitudeOf, intoSpace, outOfSpace, stepSpace } from './orbit';
 import { CARDS, RINGS, keepQuests, newQuests, stepQuests } from './quests';
 import { CITY, COAST, BEACH, HILLS, PLACES, RIVER, SPAWN, SUBURB, WATER_Y, WORLD, groundAt, waterAt } from './map';
+import { VOICE } from './voicelines';
 import './world.css';
 
 // The Graysons' city, the world: fly about it as Invincible. The rules are
@@ -94,6 +98,8 @@ function World({ gl, setGl }) {
   const [toast, setToast] = useState(null);
   const [near, setNear] = useState(null);
   const [bubble, setBubble] = useState(null);
+  // what they say, in their own voice where it's been made (lib/voiced.js)
+  useVoiced(VOICE[bubble?.who], bubble?.text);
   const [zone, setZoneUi] = useState('city');
   const [flash, setFlash] = useState(null);
   const [card, setCard] = useState(() => !prefersReducedMotion());
@@ -111,10 +117,12 @@ function World({ gl, setGl }) {
     sim.current = { intro: drop, quests: newQuests(local.get(QUESTS, {})), fight: newFight(), punch: false, punchT: 0, invadeAt: 240, h, keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: at.face ?? SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], frame: 0, padBefore: null, moved: false, world: null };
   }
 
-  const say = useCallback((text, ms = 2400) => {
+  // (`who`, for a line someone says: in their own voice where it's been made)
+  const say = useCallback((text, ms = 2400, who = null) => {
     setToast({ text, key: Math.random() });
     clearTimeout(say.t);
     say.t = setTimeout(() => setToast(null), ms);
+    if (who) sayVoiced(VOICE[who], text);
   }, []);
 
   // the world: made once
@@ -183,7 +191,8 @@ function World({ gl, setGl }) {
       s.fight = startInvasion(s.fight);
       s.invaded = true;
       sfx('alarm');
-      say(why === 'cecil' ? 'Cecil: “Portal over the river. Flaxans again. Go.”' : 'Something’s coming through over the river. Purple. Lots of it.', 4600);
+      if (why === 'cecil') say(CALLS.portal.text, 4600, CALLS.portal.who);
+      else say('Something’s coming through over the river. Purple. Lots of it.', 4600);
     },
     [say],
   );
@@ -192,7 +201,7 @@ function World({ gl, setGl }) {
     // next to Dad over downtown: spar with him (Think, Mark!, down the page)
     if (sim.current.talking?.id === 'omni') {
       sfx('drum');
-      say('“Think, Mark!” Down the page, over the city.');
+      say(CALLS.spar.text, 2400, CALLS.spar.who);
       document.getElementById('inv-game')?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
       return;
     }
@@ -491,12 +500,12 @@ function World({ gl, setGl }) {
         if (t) {
           said[t.id] = ((said[t.id] ?? -1) + 1) % t.lines.length;
           s.talkAt = s.t;
-          setBubble({ name: t.name, text: t.lines[said[t.id]] });
+          setBubble({ name: t.name, who: t.role ?? t.id, text: t.lines[said[t.id]] });
         } else setBubble(null);
       } else if (t && s.t - s.talkAt > 5) {
         said[t.id] = (said[t.id] + 1) % t.lines.length;
         s.talkAt = s.t;
-        setBubble({ name: t.name, text: t.lines[said[t.id]] });
+        setBubble({ name: t.name, who: t.role ?? t.id, text: t.lines[said[t.id]] });
       }
       s.talking = t ?? null;
     }
@@ -510,7 +519,7 @@ function World({ gl, setGl }) {
       s.mimicSaid = true;
       sfx('flyby');
       unlock('mimic');
-      say('Dad, in your ear: “Look what they need to mimic a fraction of our power.”', 4200);
+      say(CALLS.mimic.text, 4200, CALLS.mimic.who);
     }
     wind.current?.set({ speed, alt });
   }, live);

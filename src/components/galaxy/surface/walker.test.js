@@ -146,6 +146,21 @@ describe('riding', () => {
     expect(s.bank).toBeGreaterThan(0.1);
   });
 
+  it('flies: climbs while jump is held, holds its ceiling, sinks when let go, and never goes under the floor', () => {
+    const CAR = { ...BIKE, hover: 0, fly: { alt: 6, climb: 8, floor: 0 } };
+    const s = rider(0, 0, 0);
+    run(s, { x: 0, y: 1, jump: true }, 2, flat(0), (st, i, dt, w) => ride(st, i, dt, w, CAR));
+    expect(s.y).toBeGreaterThan(5.5);
+    expect(s.y).toBeLessThanOrEqual(6.05);
+    run(s, { x: 0, y: 1 }, 0.5, flat(0), (st, i, dt, w) => ride(st, i, dt, w, CAR));
+    expect(s.y).toBeLessThan(5);
+    expect(s.y).toBeGreaterThan(3);
+    // (over nothing: the ground far below, the floor holds it up)
+    const v = rider(0, 0, 0);
+    run(v, { x: 0, y: 1 }, 3, flat(-40), (st, i, dt, w) => ride(st, i, dt, w, CAR));
+    expect(v.y).toBeGreaterThanOrEqual(0);
+  });
+
   it('hits a tree: stopped short, slowed, thrown back', () => {
     const solids = createSolids();
     solids.circle(0, 30, 1.5);

@@ -26,7 +26,7 @@ export const CREWS = [
       rick: { name: 'Rick', color: '#a8dcf0', voice: 'rick' },
       morty: { name: 'Morty', color: '#f5d33f', voice: 'morty' },
       meeseeks: { name: 'Mr. Meeseeks', color: '#7cc8ec', voice: 'morty' },
-      birdperson: { name: 'Birdperson', color: '#c98b52', voice: null },
+      birdperson: { name: 'Birdperson', color: '#c98b52', voice: 'birdperson' }, // (no blips: his own voice, where it's made)
     },
     // the Citadel's siege (siege.js): its shield, a generator going, the
     // core shrugging off the lasers, the whole thing going up, and back
@@ -604,6 +604,11 @@ export const CREWS = [
         ['morty', 'Rick! Those are mines! Space mines, Rick!'],
         ['rick', 'Gromflomite minefield, Morty. Shoot a hole or thread the needle. Just don’t bump anything.'],
       ],
+      // a moon across the sun (eclipse.js), the light going and coming back
+      eclipse: [
+        ['morty', 'Rick, it’s getting dark. Something’s in front of the sun!'],
+        ['rick', 'Eclipse, Morty. A moon. Rocks blocking other, bigger, on-fire rocks. Don’t stare at it.'],
+      ],
       escort: [
         ['comms', 'Hey, uh, you in the cruiser? Could you see us to the next stop? Gromflomites have been following us.'],
         ['morty', 'Rick, we should help them.'],
@@ -666,6 +671,14 @@ export const CREWS = [
       citadel: [
         ['morty', 'The Citadel of Ricks!'],
         ['rick', 'A whole city of me, Morty. Worst place in the multiverse.'],
+      ],
+      rmportal: [
+        ['morty', 'Rick, there’s a portal just… hanging out here in space!'],
+        ['rick', 'That’s the back door to the Curve, Morty. Fly in, we come out at the Citadel. Try not to make eye contact with anyone who looks like me.'],
+      ],
+      'rmportal-back': [
+        ['morty', 'Is that the way home?'],
+        ['rick', 'Home-ish, Morty. Our dimension’s side of the map. Close enough.'],
       ],
       curvesun: [
         ['morty', 'Rick, wh-why does this sun look kinda green?'],
@@ -1300,6 +1313,10 @@ export const CREWS = [
         ['r2', '[an urgent string of beeps]'],
         ['luke', 'A minefield. Artoo, mark the gaps. I’ll shoot us a way through.'],
       ],
+      eclipse: [
+        ['luke', 'Artoo, the light’s going. A moon’s crossing the sun.'],
+        ['r2', '[a low, wondering whistle]'],
+      ],
       escort: [
         ['comms', 'Red Five, this is the transport Sundari Dawn. We’re carrying medical supplies for the fleet. Can you see us to the next system?'],
         ['luke', 'Copy, Sundari Dawn. Stay on my wing.'],
@@ -1353,6 +1370,14 @@ export const CREWS = [
       citadel: [
         ['luke', 'A whole city out here, full of… the same old man?'],
         ['r2', '[a confused warble]'],
+      ],
+      rmportal: [
+        ['luke', 'A green whirlpool, just hanging in space. Artoo, is that a hyperspace lane?'],
+        ['r2', '[a doubtful warble]'],
+      ],
+      'rmportal-back': [
+        ['luke', 'The green swirl again. That should take us back the way we came.'],
+        ['r2', '[a hopeful whistle]'],
       ],
       curvesun: [
         ['luke', 'This star’s light is… greener than Tatooine’s twins.'],
@@ -1960,6 +1985,11 @@ export const CREWS = [
         ['chewie', '[an alarmed roar]'],
         ['han', 'Mines. Somebody went to a lot of trouble. Hold on, Chewie, I’m threading it.'],
       ],
+      eclipse: [
+        ['han', 'Huh. Eclipse. Moon right across the sun.'],
+        ['chewie', '[a quiet, impressed rumble]'],
+        ['han', 'Yeah, it’s pretty. Don’t get sentimental on me.'],
+      ],
       escort: [
         ['comms', 'Falcon, this is the freighter Kessa Run. Pirates on our tail. We’ll pay you to see us to the next port.'],
         ['han', 'Now you’re talking.'],
@@ -2008,6 +2038,8 @@ export const CREWS = [
         ['han', 'Yeah. I see them. Ships don’t end up like that by accident, Chewie.'],
       ],
       citadel: [['han', 'A station full of the same crazy old guy. I’ve seen worse cantinas.']],
+      rmportal: [['han', 'Green swirly thing. I’ve flown through worse. Probably.']],
+      'rmportal-back': [['han', 'There’s our way out. Chewie, punch it.']],
       curvesun: [['han', 'Green sun. Whatever this place is, it isn’t on any of my charts.']],
       maw: [['han', 'Black hole. Even the Falcon can’t outrun that.']],
       aurelia: [['han', 'Big planet. Probably full of smugglers.']],
@@ -2672,6 +2704,10 @@ export const CREWS = [
         ['jesse', 'Yo, Mr. White, are those mines? Who puts mines in space?'],
         ['walt', 'Someone who doesn’t want to be followed. Shoot them, Jesse, or go round.'],
       ],
+      eclipse: [
+        ['jesse', 'Yo, the sun’s going out. Mr. White, the sun’s going out!'],
+        ['walt', 'It’s an eclipse, Jesse. A moon is passing in front of it. Totality lasts a few seconds. Just watch.'],
+      ],
       escort: [
         ['comms', 'This is a Madrigal freighter. Our shipment has to reach the next stop, and Jack’s boys know about it. Can you ride along?'],
         ['walt', 'We’ll see it there.'],
@@ -2742,6 +2778,14 @@ export const CREWS = [
       citadel: [
         ['jesse', 'A whole city of the same old dude?'],
         ['walt', 'Imagine their supply chain.'],
+      ],
+      rmportal: [
+        ['jesse', 'Mr. White, there’s a big green hole in the sky.'],
+        ['walt', 'Then we go through it, Jesse. Carefully.'],
+      ],
+      'rmportal-back': [
+        ['jesse', 'Is that the green hole home?'],
+        ['walt', 'Back to our side of things. Yes.'],
       ],
       curvesun: [
         ['jesse', 'Yo, the sun is green. Like, actually green.'],

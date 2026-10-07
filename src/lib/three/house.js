@@ -53,7 +53,10 @@ export const LOOK = {
 };
 
 const PARS = /* glsl */ `
+#ifndef LOOK_REF
+#define LOOK_REF
 uniform vec3 uLookRef;
+#endif
 uniform vec3 uLookShadow;
 uniform vec2 uLookEdge;
 uniform float uLookMix;

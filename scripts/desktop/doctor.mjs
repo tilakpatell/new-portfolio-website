@@ -10,7 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LOCAL, gpuFree, mainRepo, repoName } from './lib.mjs';
+import { LOCAL, ghCommand, gpuFree, mainRepo, repoName } from './lib.mjs';
 
 const quiet = (cmd, args, timeout = 20000) => {
   try {
@@ -43,7 +43,7 @@ export async function checks() {
   const inBox = boxed();
   add('machine', 'where this runs', true, inBox ? 'inside the Claude app: paths under AppData are its boxed copy, not what the runner sees (run me from a normal terminal for the runner\'s view)' : 'outside the Claude app (the runner\'s view)');
   add('machine', 'node', true, process.version);
-  const gh = quiet('gh', ['api', 'user', '-q', '.login']);
+  const gh = quiet(...ghCommand(['api', 'user', '-q', '.login']));
   add('machine', 'gh signed in', gh.ok, gh.ok ? `as ${gh.out}` : gh.out.split('\n')[0], 'gh auth login (in a normal terminal), then gh auth setup-git');
   const helper = quiet('git', ['config', '--get-urlmatch', 'credential.helper', 'https://github.com']);
   add('machine', 'git can push to GitHub', helper.ok && helper.out, helper.out || 'no credential helper for github.com', 'gh auth setup-git (git then pushes with gh\'s login)');
@@ -56,7 +56,7 @@ export async function checks() {
     /* gh not signed in: said above */
   }
   if (repo && gh.ok) {
-    const r = quiet('gh', ['api', `repos/${repo}/actions/runners`, '-q', '[.runners[] | select(.labels[].name == "gpu") | "\\(.name) \\(.status)"] | join(", ")']);
+    const r = quiet(...ghCommand(['api', `repos/${repo}/actions/runners`, '-q', '[.runners[] | select(.labels[].name == "gpu") | "\\(.name) \\(.status)"] | join(", ")']));
     add('machine', 'Actions runner (label gpu)', r.ok && /online/.test(r.out), r.ok ? r.out || 'none registered' : r.out.split('\n')[0], 'powershell -ExecutionPolicy Bypass -File scripts\\desktop\\setup-runner.ps1 (from a normal terminal)', false);
   }
   let root = null;

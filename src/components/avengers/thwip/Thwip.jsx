@@ -8,7 +8,9 @@ import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop } from '../../../lib/hooks';
 import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
+import { useSays } from '../hq/useSays';
 import { BELL, RUN, SCHOOL, distance, newRun, pilot, press, reel, release, startRun, steer, stepRun } from './rules';
+import { QUIPS, SAYS, SPOKEN } from './lines';
 import './thwip.css';
 
 const load = () => import('./scene');
@@ -26,8 +28,8 @@ const BEST = 'tp-hq-thwip-best';
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 const calm = typeof window !== 'undefined' && prefersReducedMotion();
 
-// what Peter says on the way, now and then
-const QUIPS = ['Sorry! Sorry! Late for school!', 'Hey, Mr. Delmar! Can’t stop!', 'Okay, that was a cool one.', 'Karen, how late am I? Don’t answer that.', 'Ned is never going to let me hear the end of this.', 'Whoa. Okay. Big gap. Big gap.'];
+// what Peter says on the way (./lines.js), in his own voice where it's been made (lib/voiced.js)
+const VOICED = new Set(SPOKEN);
 
 export default function Thwip({ fallback }) {
   const three = use3D();
@@ -44,6 +46,7 @@ export default function Thwip({ fallback }) {
   const [ui, setUi] = useState({ phase: 'ready', d: 0, t: 0, hearts: RUN.hearts, score: 0, combo: 0, got: 0, quip: '', result: null });
   const [paused, setPaused] = useState(false);
   const playing = ui.phase === 'run';
+  useSays('peter', ui.quip, VOICED);
 
   const sync = useCallback((extra = {}) => {
     const g = game.current;
@@ -60,7 +63,7 @@ export default function Thwip({ fallback }) {
     keys.current.clear();
     setPaused(false);
     stage.view.current?.snap(game.current);
-    sync({ result: null, quip: 'Okay. Two kilometres. The bell goes in a hundred seconds. No problem.' });
+    sync({ result: null, quip: SAYS.start });
     fxState.current.said = 0;
     focus();
   }, [focus, stage.view, sync]);
@@ -86,14 +89,14 @@ export default function Thwip({ fallback }) {
           case 'pack':
             play('coin');
             f.popups.push({ at: e.at, text: 'BACKPACK', t: 0, big: true });
-            if (e.n === 1 || e.n % 4 === 0) important = { quip: e.n === 1 ? 'My backpack! I’ve been looking for that.' : `That’s ${e.n} backpacks. How do I keep losing these?` };
+            if (e.n === 1 || e.n % 4 === 0) important = { quip: e.n === 1 ? SAYS.pack : `That’s ${e.n} backpacks. How do I keep losing these?` };
             break;
           case 'street':
             play('thunk');
             play('knock');
             buzz(90);
             f.hurt = 1;
-            important = { quip: e.hearts > 0 ? 'Sorry! Sorry! Get up, get up.' : '' };
+            important = { quip: e.hearts > 0 ? SAYS.street : '' };
             break;
           case 'honk':
             play('alarm');
@@ -105,7 +108,7 @@ export default function Thwip({ fallback }) {
             break;
           case 'bell':
             play('ring');
-            important = { quip: 'That’s the bell. Okay. Still going.' };
+            important = { quip: SAYS.bell };
             break;
           case 'won': {
             play('fanfare');

@@ -27,7 +27,8 @@ const BASE = '/textures/universe/';
 // draws its stars); 'sky' itself, with its stars, is the Earth's.
 const map = (names, opts) => names.map((n) => [n, opts]);
 const MAPS = Object.fromEntries([
-  ...map(['music', 'middleearth', 'middleearth-clouds', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty', 'rickmorty-clouds', 'earth', 'earth-night', 'sun'], { sm: true, hq: true, colour: true }),
+  ...map(['music', 'middleearth', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty'], { sm: true, hq: true, xl: true, colour: true }),
+  ...map(['middleearth-clouds', 'rickmorty-clouds', 'earth', 'earth-night', 'sun'], { sm: true, hq: true, colour: true }),
   ...map(['middleearth-normal', 'office-normal', 'breakingbad-normal', 'caribbean-clouds', 'earth-clouds'], { sm: true, hq: true, colour: false }),
   ...map(['caribbean-normal', 'invincible-normal'], { sm: false, hq: true, colour: false }),
   ...map(['transformers-normal'], { sm: true, hq: false, colour: false }),
@@ -39,11 +40,15 @@ const MAPS = Object.fromEntries([
 
 export const MAP_NAMES = Object.keys(MAPS);
 
-// The file for a map at a detail level (lib/detail): the `-hq` copy on a
-// strong card where there is one, the standard file on a desktop, the
-// `-sm` half on a phone or a weak device where there is one.
-export function mapFile(name, level = 'high') {
-  const { sm = true, hq = false } = MAPS[name] ?? {};
+// The file for a map at a detail level (lib/detail): on a strong card the
+// `-xl` (4096, KTX2: a quarter of the memory raw would take) where there is
+// one, else the `-hq` copy where there is one; the standard file on a
+// desktop; the `-sm` half on a phone or a weak device where there is one.
+// `xl: false` passes over the -xl (what ultra wears from the start: the -xl
+// is only ever worn near, nearMaps.js).
+export function mapFile(name, level = 'high', { xl: big = true } = {}) {
+  const { sm = true, hq = false, xl = false } = MAPS[name] ?? {};
+  if (level === 'ultra' && xl && big) return `${name}-xl.ktx2`;
   const suffix = level === 'ultra' ? (hq ? '-hq' : '') : level === 'high' ? '' : sm ? '-sm' : '';
   return `${name}${suffix}.webp`;
 }
@@ -58,16 +63,18 @@ export function mapsOf(id) {
 
 // What a planet wears near (nearMaps.js), at a detail level: the finer copy
 // of each of its maps that has one, never the file it already wears (the
-// loader's cache would hand back that very texture). A desktop's near set
-// is the -hq copies; a weak card's desktop, the standard ones over its -sm.
-// Nothing on low.
+// loader's cache would hand back that very texture). A strong card's near
+// set is the -xl colour maps (the -hq it wears already the fallback); a
+// desktop's, the -hq copies; a weak card's desktop, the standard ones over
+// its -sm. Nothing on low.
 export function nearSet(id, level) {
   if (level === 'low') return [];
-  const up = level === 'mid' ? 'high' : 'ultra';
+  const far = (name) => mapFile(name, level, { xl: false });
+  const files = (name) => (level === 'ultra' ? [mapFile(name, 'ultra'), mapFile(name, 'ultra', { xl: false })] : [mapFile(name, level === 'mid' ? 'high' : 'ultra', { xl: false })]);
   return mapsOf(id)
-    .map((name) => ({ name, file: mapFile(name, up), far: mapFile(name, level), colour: MAPS[name].colour }))
-    .filter((m) => m.file !== m.far)
-    .map(({ name, file, colour }) => ({ name, file, colour }));
+    .map((name) => ({ name, colour: MAPS[name].colour, files: [...new Set(files(name))].filter((f) => f !== far(name)) }))
+    .filter((m) => m.files.length)
+    .map(({ name, colour, files: [file, fallback] }) => ({ name, file, ...(fallback ? { fallback } : {}), colour }));
 }
 
 export async function loadTextures({ small = false, level = small ? 'mid' : detailLevel() } = {}) {
@@ -84,7 +91,7 @@ export async function loadTextures({ small = false, level = small ? 'mid' : deta
   };
   await Promise.all(
     Object.entries(MAPS).map(([name, { colour }]) => {
-      const file = mapFile(name, level);
+      const file = mapFile(name, level, { xl: false });
       const standard = mapFile(name, 'high');
       return get(name, file, colour, file !== standard ? standard : null);
     }),

@@ -48,16 +48,6 @@ export const EXTRA = {
       { id: 'kaadurace', name: 'Kaadu run', giver: 'herder', steps: [{ type: 'ride', kind: 'kaadu', text: 'Get on a kaadu' }, { type: 'race', ride: 'kaadu', gates: [[60, 60], [70, 120], [-40, 200], [-130, 290]], r: 12, time: 60, text: 'Race to the falls' }], done: [[null, '(The kaadu honks, very pleased with itself.)']] },
     ],
   },
-  coruscant: {
-    life: [
-      { kind: 'jedi', id: 'master', at: [10, 160], still: true, face: 3, name: 'A Jedi Master', quest: 'training', says: ['Stretch out with your feelings.'] },
-      { kind: 'villager', id: 'dex', at: [-142, -262], still: true, face: 2.4, name: 'Dexter Jettster', named: true, quest: 'dart', says: ['Hey, ol’ buddy!'] },
-    ],
-    quests: [
-      { id: 'training', name: 'Training remotes', giver: 'master', steps: [{ type: 'shoot', tag: 'remote', n: 8, text: 'Hit the training remotes', spawn: { kind: 'remote', n: 8, at: [0, 150], spread: 8, roam: 5, speed: 2.4, hp: 1, tag: 'remote' } }], done: [['A Jedi Master', 'Good. The Force is with you.']] },
-      { id: 'dart', name: 'The saberdart', giver: 'dex', intro: [['Dexter Jettster', 'A dart like that? Kamino. Bring me the one they found at the club and I’ll prove it.']], steps: [{ type: 'collect', item: 'dart', n: 1, spots: [[200, -290]], text: 'Find the saberdart at the club' }, { type: 'talk', actor: 'dex', text: 'Bring it to Dex' }], done: [['Dexter Jettster', 'Kamino saberdart. Those funny little cuts on the side give it away.']] },
-    ],
-  },
   kamino: {
     life: [{ kind: 'kaminoan', id: 'taunwe', at: [10, 140], still: true, face: 3, name: 'Taun We', named: true, quest: 'jango', says: ['The Prime Minister expects you.'] }],
     quests: [

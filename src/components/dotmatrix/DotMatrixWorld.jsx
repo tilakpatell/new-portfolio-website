@@ -7,11 +7,13 @@ import { audioContext } from '../../lib/audio';
 import { use3D } from '../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
+import { useVoiced } from '../../lib/useVoiced';
 import { readPad, typing } from '../games/pad';
 import { useTravellers } from '../middleearth/towns/useTravellers';
 import { PALETTES, PALETTE_ORDER } from './dither';
 import { cartInfo, readFound, saveFound, useFound } from './found';
 import { CARTRIDGES, COINS, SIGNS, ZOOM, cameraMove, islanderStep, nearAction, newGame, pitchFor, progress, step, talk, walkerAt, WALKERS, warp, zoomTo } from './rules';
+import { VOICE } from './voicelines';
 import './dotmatrix.css';
 import GuideCue from '../guide/GuideCue';
 
@@ -99,7 +101,9 @@ function World({ gl, setGl }) {
   const [palette, setPalette] = useState(() => (PALETTES[local.get(PALETTE, 'dmg')] ? local.get(PALETTE, 'dmg') : 'dmg'));
   const [musicOn, setMusicOn] = useState(() => local.get(MUSIC, true) !== false);
   const [hud, setHud] = useState(() => ({ hearts: 3, coins: 0, found: sim.current.g.found.size, near: null }));
-  const [dialog, setDialog] = useState(null); // { title, text, link, kind }
+  const [dialog, setDialog] = useState(null); // { title, text, link, kind, who }
+  // a villager's words in their own voice, where it's been made (lib/voiced.js)
+  useVoiced(dialog?.kind === 'talk' ? VOICE[dialog.who] : null, dialog?.text);
   const [shown, setShown] = useState(0); // letters of the dialog typed so far
   const [list, setList] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -374,7 +378,7 @@ function World({ gl, setGl }) {
       say({ kind: 'sign', title: sign.title, text: sign.text });
     } else if (near.kind === 'talk') {
       const said = talk(s.g, near.id);
-      if (said) say({ kind: 'talk', title: said.name, text: said.text });
+      if (said) say({ kind: 'talk', who: near.id, title: said.name, text: said.text });
     } else if (near.kind === 'gameboy') {
       s.keys.clear();
       setPlaying(true);
