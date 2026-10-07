@@ -12,7 +12,8 @@
 // BATTLE_KEYS: what's said in a battle; HUTT_KEYS: what the Hutts' battles
 // have their own for; PLACES: the systems with their own.
 // battleLines(crewId, { key, side, war, sys, against }) → exchange | null
-// (the place's, then the war's, then the Hutts', then the side's; `ask`
+// (the Hutts' against the Hutts, else the place's, then the war's, then the
+// side's; `ask`
 // for anyone, even nobody's side); fill(exchange, { side, against, sys }).
 
 import { SIDES } from './sides';
@@ -42,7 +43,8 @@ export function battleLines(crewId, { key, side = null, war, sys, against = null
   if (key === 'ask') return b.battle.ask?.any ? fill(b.battle.ask.any, { side, against, sys }) : null;
   const stance = SIDES[side]?.stance;
   if (stance !== 'light' && stance !== 'dark') return null;
+  // (against the Hutts, their own first: the war's and the place's name the war's other side)
   const at = b.battleAt[sys]?.war === war ? b.battleAt[sys] : null;
-  const ex = at?.[key]?.[stance] ?? b.battleWar[war]?.[key]?.[stance] ?? (against === 'hutt' ? b.battle[key]?.hutt : null) ?? b.battle[key]?.[stance] ?? null;
+  const ex = (against === 'hutt' ? b.battle[key]?.hutt : null) ?? at?.[key]?.[stance] ?? b.battleWar[war]?.[key]?.[stance] ?? b.battle[key]?.[stance] ?? null;
   return ex ? fill(ex, { side, against, sys }) : null;
 }
