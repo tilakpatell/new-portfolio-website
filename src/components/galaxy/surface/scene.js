@@ -1822,12 +1822,17 @@ export async function create(canvas, ctx) {
       state.edgeAt = state.t;
       emit({ type: 'edge' });
     }
-    if (site.fall != null && p.y < site.fall) {
-      // over the edge: back where you landed
-      p.x = spawnAt[0];
-      p.z = spawnAt[1];
-      p.y = groundAt(world, ...spawnAt);
+    // over the edge: back where you landed (in a place with a drop in it,
+    // a zone with `fall`, back at its respawn, or where you came in)
+    const z = state.zone;
+    const fallAt = z?.inside.fall != null ? z.origin[1] + z.inside.fall : z ? null : site.fall;
+    if (fallAt != null && p.y < fallAt) {
+      const [bx, bz] = z ? [z.origin[0] + (z.inside.respawn ?? z.inside.spawn ?? [0, 0])[0], z.origin[2] + (z.inside.respawn ?? z.inside.spawn ?? [0, 0])[1]] : spawnAt;
+      p.x = bx;
+      p.z = bz;
+      p.y = z ? groundAt(world, bx, bz, z.origin[1] + (z.inside.bounds?.[2] ?? 30), 0) : groundAt(world, bx, bz);
       p.vy = 0;
+      if (z) p.yaw = z.inside.yaw ?? 0;
       emit({ type: 'fell' });
     }
     // your crewmate keeps up: a step behind, beside you

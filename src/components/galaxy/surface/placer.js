@@ -459,7 +459,11 @@ export function applyBuilt(made, spec, at, world, { updates, signals, object }) 
   const c = Math.cos(yaw);
   const sn = Math.sin(yaw);
   for (const f of made.floors ?? []) {
-    world.floors.push({ ...f, x: at[0] + (f.x * c + f.z * sn) * k, z: at[2] + (-f.x * sn + f.z * c) * k, y: at[1] + f.y * k, r: f.r != null ? f.r * k : undefined, hw: f.hw != null ? f.hw * k : undefined, hd: f.hd != null ? f.hd * k : undefined, yaw: f.r != null ? undefined : (f.yaw ?? 0) + yaw });
+    const placed = { ...f, x: at[0] + (f.x * c + f.z * sn) * k, z: at[2] + (-f.x * sn + f.z * c) * k, y: at[1] + f.y * k, r: f.r != null ? f.r * k : undefined, hw: f.hw != null ? f.hw * k : undefined, hd: f.hd != null ? f.hd * k : undefined, yaw: f.r != null ? undefined : (f.yaw ?? 0) + yaw };
+    // (one that `moves`, a platform the builder lowers in its update: its
+    // height read from the builder's own floor, live)
+    if (f.moves) Object.defineProperty(placed, 'y', { get: () => at[1] + f.y * k, enumerable: true });
+    world.floors.push(placed);
   }
   if (!object) return;
   if (made.update) updates.push(made.update);

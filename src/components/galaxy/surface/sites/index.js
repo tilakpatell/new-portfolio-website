@@ -34,7 +34,9 @@
 //                  hd, h], rooms?: [[x, z, hw, hd, floor, ceiling]…] (the
 //                  camera keeps in the one you're in), light: { sky,
 //                  ground, ambient, fog, density },
-//                  lamps: [[x, y, z, color, intensity, distance]] }, life
+//                  lamps: [[x, y, z, color, intensity, distance]],
+//                  fall?: a height (relative) below which you've fallen off
+//                  what's in it, respawn?: [x, z] where you're put then }, life
 //                  (as the site's, placed relative to the inside), things
 //                  (placer specs, placed relative to the inside: a model
 //                  in a room) }
