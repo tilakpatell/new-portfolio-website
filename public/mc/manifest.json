@@ -248,5 +248,35 @@
     "water_flow": 16,
     "water_still": 16
   },
+  "anim": {
+    "lava_flow": {
+      "layer": 71,
+      "extra": 132,
+      "frames": 16,
+      "time": 2,
+      "interpolate": false
+    },
+    "lava_still": {
+      "layer": 72,
+      "extra": 147,
+      "frames": 16,
+      "time": 4,
+      "interpolate": false
+    },
+    "water_flow": {
+      "layer": 120,
+      "extra": 162,
+      "frames": 16,
+      "time": 1,
+      "interpolate": false
+    },
+    "water_still": {
+      "layer": 121,
+      "extra": 177,
+      "frames": 16,
+      "time": 100,
+      "interpolate": true
+    }
+  },
   "missing": []
 }

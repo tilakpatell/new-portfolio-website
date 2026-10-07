@@ -284,6 +284,28 @@ if (log) {
   await run('g.player.pitch = -0.2;');
   await ticks(4);
   await step('morning');
+
+  // ── a stage: stairs, a door opened by hand, water and lava flowing ──
+  const at = await run(`const p = g.player, X = Math.floor(p.x), Y = Math.floor(p.y), Z = Math.floor(p.z), put = x.debug.put;
+    for (let dx = -7; dx <= 7; dx++) for (let dz = -12; dz <= 1; dz++) { put(X + dx, Y - 1, Z + dz, 'stone'); for (let dy = 0; dy < 6; dy++) put(X + dx, Y + dy, Z + dz, 'air'); }
+    put(X - 3, Y, Z - 4, 'oak_stairs', 3); put(X - 2, Y, Z - 4, 'oak_stairs', 3); put(X - 1, Y, Z - 4, 'cobblestone');
+    put(X + 1, Y, Z - 3, 'oak_door', 1); put(X + 1, Y + 1, Z - 3, 'oak_door', 9);
+    put(X + 3, Y, Z - 8, 'water'); put(X - 4, Y, Z - 10, 'lava');
+    for (let dy = 0; dy < 3; dy++) { put(X - 6, Y + dy, Z - 5, 'cobblestone'); put(X - 6, Y + dy, Z - 4, 'ladder', 3); }
+    return { X, Y, Z };`);
+  // a tap (held past 4 ticks a use repeats, and the door would swing back)
+  await run('x.debug.aim(args[0] + 1, args[1] + 1, args[2] - 3); x.press("use", true); x.press("use", false);', at.X, at.Y, at.Z);
+  await ticks(2);
+  const door = await run('return [g.world.getState(args[0] + 1, args[1], args[2] - 3), g.world.getState(args[0] + 1, args[1] + 1, args[2] - 3)];', at.X, at.Y, at.Z);
+  console.log('  the door, both halves after a use:', JSON.stringify(door));
+  if (!(door[0] & 4 && door[1] & 4)) errors.push('the door did not open');
+  await ticks(140);
+  const flow = await run('const n = (name) => { let c = 0; for (let dx = -7; dx <= 7; dx++) for (let dz = -12; dz <= 1; dz++) if (g.world.get(args[0] + dx, args[1], args[2] + dz) === x.debug.id(name)) c++; return c; }; return { water: n("water"), lava: n("lava"), frames: x.scene.materials.water.uniforms.anim.value.map((v) => v.toArray()) };', at.X, at.Y, at.Z);
+  console.log('  flowed:', JSON.stringify(flow));
+  if (flow.water < 20 || flow.lava < 5) errors.push('water or lava did not flow');
+  await run('g.player.yaw = 0; g.player.pitch = -0.35;');
+  await ticks(4);
+  await step('stage');
 }
 
 // from above: the lie of the land

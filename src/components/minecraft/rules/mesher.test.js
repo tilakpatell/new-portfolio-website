@@ -68,6 +68,7 @@ describe('the mesher', () => {
 
   it('flowing water stands lower the further it has come: level 7 is 2 high', () => {
     const c = makeChunk(0, 0);
+    for (let x = 4; x <= 6; x++) for (let z = 4; z <= 6; z++) for (let y = 4; y <= 5; y++) set(c, x, y, z, id('stone'));
     set(c, 5, 5, 5, id('water'), 7);
     const v = verts(mesh(c).water).filter((p) => p.face === FACE.top);
     expect(v.every((p) => p.y === 5 * 16 + 2)).toBe(true);
@@ -79,7 +80,78 @@ describe('the mesher', () => {
     set(c, 5, 6, 5, id('water'));
     const v = verts(mesh(c).water);
     expect(v.filter((p) => p.face === FACE.top)).toHaveLength(4); // only the upper one's
-    expect(v.filter((p) => p.face === FACE.north).map((p) => p.y).sort((a, b) => a - b)).toEqual([80, 80, 96, 96, 96, 96, 110, 110]);
+    // (the upper's corners droop to the air round it: 11/16)
+    expect(v.filter((p) => p.face === FACE.north).map((p) => p.y).sort((a, b) => a - b)).toEqual([80, 80, 96, 96, 96, 96, 107, 107]);
+  });
+
+  // the game's corner heights (BlockFluidRenderer.getFluidHeight): each corner the
+  // four cells round it, a source or a falling cell weighing 11, a flowing one 1, an
+  // open cell 1 at nothing, a solid one not at all; any of them under its liquid, full
+  const floor = (c) => {
+    for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) set(c, x, 4, z, id('stone'));
+  };
+  it('a lone source’s corners droop to the air round it: 11/16', () => {
+    const c = makeChunk(0, 0);
+    floor(c);
+    set(c, 5, 5, 5, id('water'));
+    const top = verts(mesh(c).water).filter((p) => p.face === FACE.top);
+    expect(top.map((p) => p.y)).toEqual([91, 91, 91, 91]);
+  });
+
+  it('a flow’s corners meet its source’s: one surface, no gaps', () => {
+    const c = makeChunk(0, 0);
+    floor(c);
+    set(c, 5, 5, 5, id('water'));
+    set(c, 6, 5, 5, id('water'), 1);
+    set(c, 7, 5, 5, id('water'), 2);
+    const top = verts(mesh(c).water).filter((p) => p.face === FACE.top);
+    const at = (x, z) => [...new Set(top.filter((p) => p.x === x * 16 && p.z === z * 16).map((p) => p.y))];
+    for (const x of [6, 7]) for (const z of [5, 6]) expect(at(x, z)).toHaveLength(1);
+    expect(at(6, 5)[0]).toBeGreaterThan(at(7, 5)[0]);
+  });
+
+  // the top quad over the cell (x, z)
+  const topAt = (m, x, z) => {
+    const v = verts(m);
+    for (let i = 0; i < v.length; i += 4) {
+      const q = v.slice(i, i + 4);
+      if (q[0].face === FACE.top && Math.min(...q.map((p) => p.x)) === x * 16 && Math.min(...q.map((p) => p.z)) === z * 16) return q;
+    }
+    return null;
+  };
+
+  it('a top that slopes wears the flowing texture, running downstream; a level one the still', () => {
+    const c = makeChunk(0, 0);
+    floor(c);
+    // a channel east from a source
+    for (let x = 4; x <= 9; x++) for (const z of [4, 6]) set(c, x, 5, z, id('stone'));
+    set(c, 4, 5, 5, id('stone'));
+    set(c, 5, 5, 5, id('water'));
+    set(c, 6, 5, 5, id('water'), 1);
+    set(c, 7, 5, 5, id('water'), 2);
+    const flow = topAt(mesh(c).water, 6, 5);
+    expect(flow.every((p) => p.layer === textures.get('water_flow'))).toBe(true);
+    // v runs east, with the water
+    for (const p of flow) expect(p.v).toBe(p.x === 6 * 16 ? 0 : 16);
+    // a source in a basin lies level: the still texture
+    const d = makeChunk(0, 0);
+    for (let x = 4; x <= 6; x++) for (let z = 4; z <= 6; z++) for (let y = 4; y <= 5; y++) set(d, x, y, z, id('stone'));
+    set(d, 5, 5, 5, id('water'));
+    expect(topAt(mesh(d).water, 5, 5).every((p) => p.layer === textures.get('water_still'))).toBe(true);
+  });
+
+  it('flowing north, the texture turns to run north', () => {
+    const c = makeChunk(0, 0);
+    floor(c);
+    for (let z = 6; z <= 10; z++) for (const x of [4, 6]) set(c, x, 5, z, id('stone'));
+    set(c, 5, 5, 10, id('stone'));
+    set(c, 5, 5, 9, id('water'));
+    set(c, 5, 5, 8, id('water'), 1);
+    set(c, 5, 5, 7, id('water'), 2);
+    const flow = topAt(mesh(c).water, 5, 8);
+    expect(flow.every((p) => p.layer === textures.get('water_flow'))).toBe(true);
+    // v grows toward -z: 0 on the cell's south edge, 16 on its north
+    for (const p of flow) expect(p.v).toBe(p.z === 9 * 16 ? 0 : 16);
   });
 
   it('tall grass is two crossed quads', () => {

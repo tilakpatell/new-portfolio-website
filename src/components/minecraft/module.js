@@ -19,9 +19,9 @@
 // newWorld(seed), toTitle(), and `game`, `scene`, `debug` for the checks.
 
 import * as THREE from 'three';
-import { BLOCKS } from './rules/blocks.js';
+import { BLOCKS, byName } from './rules/blocks.js';
 import { makeChunk, packEdits } from './rules/chunk.js';
-import { addChunk, drain, dropFar, dropHeld, newGame, spawnDrop, tick, wantedChunks } from './rules/game.js';
+import { addChunk, drain, dropFar, dropHeld, newGame, setBlock, spawnDrop, tick, wantedChunks } from './rules/game.js';
 import { click, close, makeScreen, result } from './rules/gui.js';
 import { ITEMS } from './rules/items.js';
 import { chunkKey } from './rules/jobs.js';
@@ -359,6 +359,9 @@ export default {
           p.yaw = Math.atan2(-dx, -dz);
           p.pitch = Math.atan2(dy, Math.hypot(dx, dz));
         },
+        // a block set as the game sets one (its neighbours woken: water flows)
+        put: (x, y, z, name, state = 0) => setBlock(g, x, y, z, byName.get(name).id, state),
+        id: (name) => byName.get(name).id,
         slotOf: (item) => g.inventory.slots.findIndex((s) => s?.item === item),
         // stand beside the nearest trunk (its foot) that has room on a side; says where the foot is
         standBy(pattern = '_log$', r = 40) {

@@ -10,7 +10,9 @@
 // asked for (that order is the texture array's layers, which the mesher
 // writes into every vertex); skins keep their own size. A tile the pack
 // doesn't have is the game's magenta-and-black checker, so it's seen, never
-// thrown; a strip of animation frames gives its first and says how many.
+// thrown. A strip of animation frames (water, lava) gives its first in its
+// place and the rest after every tile, in its .mcmeta's order, and the
+// manifest's `anim` says where they are and how fast they turn over.
 
 import { ALIASES } from './aliases.js';
 
@@ -32,6 +34,17 @@ export function pathsFor(kind, id, aliases = ALIASES) {
 }
 
 const fileOf = (path) => `${ROOT}${path}.png`;
+
+// the frame showing at a tick for one `anim` entry: layer a, the next (b),
+// and how far from a to b (an interpolated strip's blend; the shader mirrors this)
+export function frameAt({ layer, extra, frames, time, interpolate }, ticks) {
+  const at = (n) => (n === 0 ? layer : extra + n - 1);
+  const f = Math.floor(ticks / time) % frames;
+  return { a: at(f), b: at((f + 1) % frames), blend: interpolate ? (ticks % time) / time : 0 };
+}
+
+// the block array's layers: every tile, then the animations' other frames
+export const layerCount = (manifest) => manifest.blocks.length + Object.values(manifest.anim ?? {}).reduce((n, a) => n + a.frames - 1, 0);
 
 function checker() {
   const data = new Uint8ClampedArray(T * T * 4);
@@ -89,6 +102,7 @@ function cut(img, parts) {
 export async function buildAtlas(read, { blocks = [], items = [], skins = {}, sprites = {}, decode, aliases = ALIASES, source = '' }) {
   const missing = [];
   const frames = {};
+  const strips = new Map(); // id → { tiles: the frames after the first, time, interpolate }
   const cache = new Map();
   const load = async (path) => {
     if (!cache.has(path)) {
@@ -109,8 +123,30 @@ export async function buildAtlas(read, { blocks = [], items = [], skins = {}, sp
         const img = await load(where);
         if (!img) continue;
         const size = img.width;
-        if (img.height > size) frames[id] = Math.floor(img.height / size);
-        return toTile(img, size);
+        if (img.height <= size) return toTile(img, size);
+        const n = Math.floor(img.height / size);
+        frames[id] = n;
+        // a flowing liquid's frame is drawn twice the size and the game shows its
+        // middle half on a block (BlockFluidRenderer's 4 to 12 of 16): that, at full size
+        const half = /_flow$/.test(id) && size >= 2 * T ? size / 2 : 0;
+        const frame = (k) => {
+          const f = { width: size, data: img.data.subarray(k * size * size * 4) };
+          if (!half) return toTile(f, size);
+          const mid = new Uint8ClampedArray(half * half * 4);
+          for (let y = 0; y < half; y++) mid.set(f.data.subarray(((y + half / 2) * size + half / 2) * 4, ((y + half / 2) * size + half / 2 + half) * 4), y * half * 4);
+          return toTile({ width: half, data: mid }, half);
+        };
+        if (kind !== 'block') return frame(0);
+        let meta = null;
+        try {
+          const bytes = await read(`${fileOf(where)}.mcmeta`);
+          meta = bytes ? JSON.parse(new TextDecoder().decode(bytes)).animation : null;
+        } catch {
+          meta = null;
+        }
+        const order = (meta?.frames ?? [...Array(n).keys()]).map((f) => (typeof f === 'number' ? f : f.index)).filter((k) => k < n);
+        strips.set(id, { tiles: order.slice(1).map(frame), time: meta?.frametime ?? 1, interpolate: !!meta?.interpolate });
+        return frame(order[0] ?? 0);
       }
       const img = await load(where.from);
       if (img) return cut(img, where.parts);
@@ -126,6 +162,23 @@ export async function buildAtlas(read, { blocks = [], items = [], skins = {}, sp
   }
 
   const blockStack = await stack('block', blocks);
+  // the animations' other frames, after every tile
+  const anim = {};
+  let extra = blocks.length;
+  const extras = [];
+  blocks.forEach((id, i) => {
+    const st = strips.get(id);
+    if (!st || anim[id]) return;
+    anim[id] = { layer: i, extra, frames: st.tiles.length + 1, time: st.time, interpolate: st.interpolate };
+    extra += st.tiles.length;
+    extras.push(...st.tiles);
+  });
+  if (extras.length) {
+    const data = new Uint8ClampedArray((blocks.length + extras.length) * T * T * 4);
+    data.set(blockStack.data);
+    extras.forEach((t, i) => data.set(t, (blocks.length + i) * T * T * 4));
+    Object.assign(blockStack, { layers: blocks.length + extras.length, data });
+  }
   const itemStack = await stack('item', items);
   // pictures kept whole: the first file found for each
   async function whole(kind, list) {
@@ -147,6 +200,6 @@ export async function buildAtlas(read, { blocks = [], items = [], skins = {}, sp
     skins: skinOut,
     sprites: spriteOut,
     missing,
-    manifest: { blocks: [...blocks], items: [...items], skins: Object.keys(skinOut), sprites: Object.keys(spriteOut), frames, source },
+    manifest: { blocks: [...blocks], items: [...items], skins: Object.keys(skinOut), sprites: Object.keys(spriteOut), frames, anim, source },
   };
 }
