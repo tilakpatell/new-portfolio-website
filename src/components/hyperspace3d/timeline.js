@@ -63,6 +63,13 @@ export function holdJump(most = 60000) {
 }
 export const holdStart = (now, start) => (holds > 0 && now - start > HOLD_AT ? now - HOLD_AT : start);
 
+// How far the tunnel's streaks have wound, dt s on at t ms in: on through
+// the tunnel, but not while the jump is held there. Each turn wraps the
+// streaks further round and covers more of the screen, so a tunnel held
+// for the galaxy for seconds kept brightening (its mean light 81 to 140 out
+// of 255 from two to seven seconds held), and its exit then dropped it at once.
+export const swirlOn = (swirl, t, dt) => (t >= T.flash && t < T.tunnel && holds === 0 ? swirl + dt * 0.9 : swirl);
+
 // A hold one page takes and the next lets go: the universe map's jump into
 // the galaxy holds the tunnel until the galaxy has drawn its first frame,
 // so the jump clears onto the galaxy and not onto its loading line. It's

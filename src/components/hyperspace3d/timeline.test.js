@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { HOLD_AT, STALL, T, atPeak, clampStart, handJump, holdJump, holdStart, jumpHeld, jumpStarted, letHandedGo, onJumpStart } from './timeline';
+import { HOLD_AT, STALL, T, atPeak, clampStart, handJump, holdJump, holdStart, jumpHeld, jumpStarted, letHandedGo, onJumpStart, swirlOn } from './timeline';
 
 describe('a jump held in its tunnel', () => {
   afterEach(() => vi.useRealTimers());
@@ -133,5 +133,21 @@ describe("a jump's peak", () => {
       const next = t + STALL;
       if (next >= T.jump + 20) expect(atPeak(next)).toBe(true);
     }
+  });
+});
+
+describe("a jump's tunnel swirl", () => {
+  it('winds on through the tunnel, and only there', () => {
+    expect(swirlOn(0, T.flash - 1, 0.1)).toBe(0);
+    expect(swirlOn(0, T.flash, 0.1)).toBeCloseTo(0.09);
+    expect(swirlOn(0.3, T.tunnel - 1, 0.1)).toBeCloseTo(0.39);
+    expect(swirlOn(0.5, T.tunnel, 0.1)).toBe(0.5);
+  });
+
+  it('stops winding while the jump is held, so a held tunnel stops brightening, and goes on once let go', () => {
+    const go = holdJump();
+    expect(swirlOn(0.45, HOLD_AT, 0.1)).toBe(0.45);
+    go();
+    expect(swirlOn(0.45, HOLD_AT, 0.1)).toBeCloseTo(0.54);
   });
 });

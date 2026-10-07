@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { prefersReducedMotion } from '../lib/hooks';
 import { use3D } from '../lib/gpu';
-import { T, atPeak, clampStart, holdStart, jumpHeld, jumpStarted } from './hyperspace3d/timeline';
+import { T, atPeak, clampStart, holdStart, jumpHeld, jumpStarted, swirlOn } from './hyperspace3d/timeline';
 import { jumpFailed, jumpScene, preloadJump } from './hyperspace3d/load';
 import Hyperspace3D from './hyperspace3d/Hyperspace3D';
 
@@ -197,7 +197,7 @@ function Hyperspace2D({ onPeak, onDone, entry }) {
       const speed = speedAt(t);
       const stretch = stretchAt(t);
       const inTunnel = t >= T.flash && t < T.tunnel;
-      if (inTunnel) swirl += dt * 0.9;
+      swirl = swirlOn(swirl, t, dt); // (not while held: hyperspace3d/timeline.js)
 
       // Background: darken the page, then the deep blue of the tunnel, then clear.
       ctx.clearRect(0, 0, W, H);

@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { createRenderer, precompile } from '../../lib/three/renderer';
-import { T, atPeak, clamp, clampStart, darkAt, ease, exposureAt, flashAt, holdStart, jumpStarted, speedAt } from './timeline';
+import { T, atPeak, clamp, clampStart, darkAt, ease, exposureAt, flashAt, holdStart, jumpStarted, speedAt, swirlOn } from './timeline';
 
 const SEG = 10; // segments along a streak, so the swirl can bend it
 const DEPTH = 80; // how deep the field is (world units)
@@ -320,7 +320,7 @@ export function run(canvas, { entry = false, onPeak, onDone, onFail, uncover }) 
 
     const v = speedAt(t) * PACE;
     travel += v * dt;
-    if (t >= T.flash && t < T.tunnel) swirl += dt * 0.9;
+    swirl = swirlOn(swirl, t, dt); // (not while held: timeline.js)
     const dark = darkAt(t);
     starU.uTravel.value = travel % DEPTH;
     starU.uLen.value = Math.min(MAX_LEN, v * exposureAt(t));
