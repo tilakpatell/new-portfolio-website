@@ -12,9 +12,9 @@
 // across the tube); dropped out on the way (the throttle held back), it
 // flies the rest free.
 
-import { carriageway, nodeById, routeTo } from './hyperlanes';
+import { R, carriageway, nodeById, routeTo } from './hyperlanes';
 import { tangent } from './lanes';
-import { enter, step } from './ride';
+import { enter, poseOf, step } from './ride';
 import { SPACE, headingTo, parkAt } from './ship';
 
 // A trip by the lanes to `id` (parked at `park` at the end): the autopilot's
@@ -56,7 +56,8 @@ const free = (auto) => auto && { id: auto.id, park: auto.park, od: 1, route: nul
 // autopilot of another drive, which mustn't be taken onto a lane), riding,
 // getting off. null when there's no ride and none starts; else { ride (null
 // once off), auto, ship (posed by the ride; none the frame it gets on, when
-// ship.js still flies it), on (it got on), out ('end' | 'dropped') }.
+// ship.js still flies it), on (it got on), out ('end' | 'dropped' | 'lost':
+// moved off the lane by something else) }.
 export function laneFrame({ ride, auto, ship }, input, dt, { canEnter = true } = {}) {
   const route = auto?.route;
   if (!ride) {
@@ -73,6 +74,10 @@ export function laneFrame({ ride, auto, ship }, input, dt, { canEnter = true } =
   // (on the autopilot, the hand still has the stick: drifting across the
   // tube, and the throttle held back drops it out, which ends the route)
   const hand = { turn: input.turn ?? 0, climb: input.climb ?? 0 };
+  // (moved off it since the last frame, through a portal, a respawn or a
+  // pose: off the lane, where it is, and the autopilot flies on free)
+  const was = poseOf(ride);
+  if (Math.hypot(ship.x - was.x, (ship.y ?? 0) - was.y, ship.z - was.z) > R * 4) return { ride: null, auto: route ? free(auto) : auto, out: 'lost' };
   const r = step(ride, ship, route ? { ...rideInput(auto), ...hand, ...((input.throttle ?? 0) < -0.5 ? { throttle: input.throttle } : {}) } : input, dt);
   let next = auto;
   if (route && r.ride && r.ride.lane !== ride.lane) next = { ...auto, leg: auto.leg + 1 }; // (straight on through a junction)

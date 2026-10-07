@@ -123,4 +123,16 @@ describe('the autopilot on the lanes (lanePilot.js)', () => {
     expect(line.next.length).toBeGreaterThan(2);
     expect(line.eta).toBeCloseTo((0.5 * leg.lane.length) / 1500, 6);
   });
+
+  it('lets go of a ride when the ship’s been moved off it: through a portal, a respawn, a pose', () => {
+    const at = homeEdge();
+    const plan = lanePlan(at, 'middleearth', parkAt('middleearth', [at.x, at.z]));
+    const leg = plan.route.legs[1];
+    const ride = { lane: leg.lane, way: leg.way, s: 0.5, off: [0, 0], speed: 1500, from: 1500, age: 3, back: 0, strain: 0, bank: 0 };
+    const r = laneFrame({ ride, auto: { ...plan, leg: 1 }, ship: homeEdge() }, {}, 1 / 60);
+    expect(r.out).toBe('lost');
+    expect(r.ride).toBeNull();
+    expect(r.ship).toBeUndefined();
+    expect(r.auto.route).toBeNull();
+  });
 });
