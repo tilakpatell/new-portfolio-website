@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import SCANS from '../../../../public/cc0/galaxy/index.json';
-import { applyBuilt, clusterSpecs, lodDistance, usesModel, wearModel, withLod } from './placer';
+import { applyBuilt, clusterSpecs, lodDistance, modelUrl, usesModel, wearModel, withLod } from './placer';
 
 const fakeWorld = () => ({ solids: { box: vi.fn(), circle: vi.fn() }, floors: [] });
 const made = () => ({ object: new THREE.Group(), solids: [{ box: [0, 0, 4, 2] }], floors: [{ x: 3, z: 0, y: 1, hw: 2, hd: 2 }], update: () => {}, signal: () => {} });
@@ -104,5 +104,17 @@ describe('a model that wears a core scan', () => {
   it('wears nothing for a role with no scan', async () => {
     const o = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
     expect(await wearModel(o, 'nonsense', { wear: () => {}, load: () => Promise.resolve(null) })).toBe(0);
+  });
+});
+
+describe('the file a kind loads', () => {
+  const ultra = { tris: 20000, ultra: { tris: 80000, tex: 8192 } };
+  it('is the ultra cut at ultra, where the entry has one', () => {
+    expect(modelUrl('theed', 'ultra', ultra)).toBe('/models/galaxy/surface/theed.ultra.glb');
+  });
+  it('is the plain file at every other level, and at ultra for a kind without one', () => {
+    for (const level of ['low', 'mid', 'high']) expect(modelUrl('theed', level, ultra), level).toBe('/models/galaxy/surface/theed.glb');
+    expect(modelUrl('theed', 'ultra', { tris: 20000 })).toBe('/models/galaxy/surface/theed.glb');
+    expect(modelUrl('nothing', 'ultra')).toBe('/models/galaxy/surface/nothing.glb');
   });
 });

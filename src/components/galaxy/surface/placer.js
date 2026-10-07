@@ -31,7 +31,8 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import { gltfLoader } from '../../../lib/three/gltf';
 import { sharpenMaterial } from '../../../lib/three/textures';
 import { detailLevel } from '../../../lib/detail';
-import { SURFACE_MODELS, surfaceLodUrl, surfaceUrl } from './catalog';
+import { SURFACE_MODELS, surfaceLodUrl, surfaceUltraUrl, surfaceUrl } from './catalog';
+import { farCopies, usesUltra } from './catalog/ultra';
 import { withDetail } from './detail';
 import { LOOKS, loadScan, scanOf } from './kit';
 import { wear as wearCore } from '../../../lib/three/core';
@@ -62,13 +63,19 @@ export const hasModel = (kind) => Boolean(SURFACE_MODELS[kind]);
 // one of the styles the model is of (Theed's halls, not its towers)
 export const usesModel = (spec) => hasModel(spec.kind) && spec.model !== false && (!SURFACE_MODELS[spec.kind].styles || SURFACE_MODELS[spec.kind].styles.includes(spec.opts?.style));
 
+// The file a kind's model is at this level: its ultra cut at ultra, where
+// its entry has one (catalog/ultra.js), its plain one otherwise
+export const modelUrl = (kind, level = detailLevel(), entry = SURFACE_MODELS[kind]) => (usesUltra(entry, level) ? surfaceUltraUrl(kind) : surfaceUrl(kind));
+
 // A kind's model, and (its catalogue entry's `detail`: a scan's role) the
 // scan laid over it up close (detail.js), on every tier but the lowest;
-// resolves to the gltf, or null when it won't load
-export function loadModel(kind, url = surfaceUrl(kind)) {
+// resolves to the gltf, or null when it won't load (an ultra cut that won't
+// is the plain file instead)
+export function loadModel(kind, url = modelUrl(kind)) {
   const role = SURFACE_MODELS[kind]?.detail;
   const scan = role && detailLevel() !== 'low' ? loadScan(role) : null;
-  return Promise.all([loadGlb(url), scan]).then(([gltf, got]) => {
+  const model = loadGlb(url).then((g) => (g || url !== surfaceUltraUrl(kind) ? g : loadGlb(surfaceUrl(kind))));
+  return Promise.all([model, scan]).then(([gltf, got]) => {
     // (a model whose own finish reads wrong in the world: `look`, its
     // materials' metalness, roughness, ambient occlusion and reflections set)
     const look = SURFACE_MODELS[kind]?.look;
@@ -282,7 +289,8 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             const worn = spec.wear ? wearModel(o, spec.wear) : Promise.resolve();
             // (a tower: its windows lit in the shader, props/windows.js)
             if (spec.windows) o.traverse((m) => m.isMesh && [].concat(m.material).forEach((mat) => mat.isMeshStandardMaterial && litWindows(mat, { seed: 5, density: 0.5, cell: [4, 5] })));
-            if (!entry.lod) return worn.then(() => warm(o)).then(() => o);
+            // (at ultra, the whole model at every distance)
+            if (!entry.lod || !farCopies(detailLevel())) return worn.then(() => warm(o)).then(() => o);
             // far off, its light model (fetched after the full one: the
             // first view doesn't wait for it)
             const lod = withLod(o, null, radiusOf(gltf) * (spec.scale ?? 1));
@@ -350,7 +358,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           const full = instance(parts, typeof solid === 'number' ? solid : Math.min(size.x, size.z) * 0.35);
           // far off, its light copy: the items past lodDistance drawn with it
           // instead (split again as you walk, with the shadow stand-ins)
-          if (SURFACE_MODELS[kind].lod)
+          if (SURFACE_MODELS[kind].lod && farCopies(detailLevel()))
             loadModel(kind, surfaceLodUrl(kind)).then((lowGltf) => {
               if (dead || !lowGltf) return;
               const lowRoot = prepared(lowGltf);
