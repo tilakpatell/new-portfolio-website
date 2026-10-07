@@ -8,7 +8,9 @@
 //
 //   debugOn(location) → boolean                            (pure)
 //   toCode(groups) → the values as a JS object literal     (pure)
-//   debugPanel({ title, groups }) → { dispose() }
+//   copyText(groups, code = toCode) → what the copy button copies: the
+//     groups' live values through `code` (a world's own printer)  (pure)
+//   debugPanel({ title, groups, code }) → { dispose() }
 //
 // A group is { name, items: [{ key, label, type: 'range' | 'colour', min,
 // max, step, get(), set(v) }] }; a colour's value is '#rrggbb'.
@@ -44,7 +46,9 @@ const STYLE = `
 .tp-debug button { margin-top: 8px; width: 100%; padding: 5px; background: #3a3260; color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
 `;
 
-export function debugPanel({ title = 'Tuning', groups = [] } = {}) {
+export const copyText = (groups, code = toCode) => code(groups.map((g) => ({ name: g.name, items: g.items.map((it) => ({ key: it.key, type: it.type, value: it.get() })) })));
+
+export function debugPanel({ title = 'Tuning', groups = [], code = toCode } = {}) {
   if (typeof document === 'undefined') return { dispose() {} };
   const style = document.createElement('style');
   style.textContent = STYLE;
@@ -86,9 +90,9 @@ export function debugPanel({ title = 'Tuning', groups = [] } = {}) {
   const copy = document.createElement('button');
   copy.textContent = 'Copy values as code';
   copy.addEventListener('click', () => {
-    const code = toCode(groups.map((g) => ({ name: g.name, items: g.items.map((it) => ({ key: it.key, type: it.type, value: it.get() })) })));
-    navigator.clipboard?.writeText(code).catch(() => {});
-    console.info(code);
+    const text = copyText(groups, code);
+    navigator.clipboard?.writeText(text).catch(() => {});
+    console.info(text);
     copy.textContent = 'Copied';
     setTimeout(() => (copy.textContent = 'Copy values as code'), 1200);
   });

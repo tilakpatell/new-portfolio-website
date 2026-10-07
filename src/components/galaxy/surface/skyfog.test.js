@@ -49,6 +49,22 @@ describe('the fog in the sky’s own colour', () => {
     expect(sh.uniforms.uSfMix.value).toBe(0);
   });
 
+  it('takes a world’s look: a halo round the sun and the haze below the horizon as a share of its colour', () => {
+    const fog = createSkyFog(sky(), THREE.ShaderChunk);
+    const m = new THREE.MeshStandardMaterial();
+    fog.patch(m);
+    const sh = { ...standard(), uniforms: {} };
+    m.onBeforeCompile(sh);
+    // (none till it's asked: a world without a look is as it was)
+    expect(sh.uniforms.uSfHalo.value.getHex()).toBe(0);
+    expect(sh.uniforms.uSfBelowK.value).toBe(1);
+    fog.look({ halo: '#ff9a50', below: 0.7 });
+    expect(sh.uniforms.uSfHalo.value.getHexString()).toBe('ff9a50');
+    expect(sh.uniforms.uSfBelowK.value).toBe(0.7);
+    expect(sh.fragmentShader).toContain('uSfHalo * pow(max(dot(dir, uSfSunDir[0]), 0.0), 6.0)');
+    expect(sh.fragmentShader).toContain('uSfBelow * uSfBelowK');
+  });
+
   it('patches each material once, under its own cache key, after any hook already on it', () => {
     const fog = createSkyFog(sky(), THREE.ShaderChunk);
     const m = new THREE.MeshLambertMaterial();

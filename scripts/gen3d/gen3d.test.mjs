@@ -25,6 +25,12 @@ describe('engines', () => {
     expect(cmd.slice(0, 5)).toEqual(['wsl.exe', '-d', 'Ubuntu-24.04', '-e', 'bash']);
     expect(cmd.at(-1)).toContain("'/mnt/c/in/drone.png' '/mnt/c/out/drone.glb' --seed 7");
   });
+  it('run the contract tests’ fake engine with node, every side it was given in turn', () => {
+    const cmd = command('fake', { front: 'f.png', back: 'b.png', left: 'l.png' }, 'o.glb', { seed: 3 });
+    expect(cmd[0]).toBe(process.execPath);
+    expect(cmd[1]).toMatch(/ai-e2e[\\/]fakes[\\/]engine\.mjs$/);
+    expect(cmd.slice(2)).toEqual(['f.png', 'o.glb', '--seed', '3', '--left', 'l.png', '--back', 'b.png']);
+  });
   it('refuse an engine it does not know', () => {
     expect(() => command('meshy', 'a.png', 'b.glb')).toThrow(/no engine meshy/);
   });
