@@ -5,6 +5,7 @@ import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery, useReducedMotion } from '../../../lib/hooks';
 import {
   CUSTOMERS,
+  HANK,
   UPGRADES,
   breakScore,
   buildScore,
@@ -90,6 +91,8 @@ export default function Metherria({ at } = {}) {
   // the customer's word on it, in their own voice where it's been made (lib/voiced.js)
   useVoiced(result?.order.customer, result ? CUSTOMERS[result.order.customer].lines[result.mood] : null);
   const [raid, setRaid] = useState(null); // { left, ticket } while Hank is at the door
+  // and what he says, in his own voice where it's been made
+  useVoiced('hank', raid ? (!raid.done ? HANK.raid : raid.done === 'hidden' ? HANK.hidden : null) : null);
   const [rankUp, setRankUp] = useState(null);
   const [slip, setSlip] = useState(null); // the pinned ticket: open on wide screens unless closed
   const [moving, setMoving] = useState(false); // a station just finished: on to the next
@@ -684,7 +687,7 @@ export default function Metherria({ at } = {}) {
                   {!raid.done ? (
                     <>
                       <p className="wm-card-title">Hank’s in the laundry.</p>
-                      <p className="wm-card-text">“Mind if I take a look around?” Hide the batch.</p>
+                      <p className="wm-card-text">{HANK.raid}</p>
                       <span className="wm-raid-clock">{Math.max(0, raid.left).toFixed(1)}</span>
                       <button type="button" className="btn btn-primary wm-big" onClick={hide} autoFocus>
                         Hide the batch <kbd>H</kbd>
@@ -693,7 +696,7 @@ export default function Metherria({ at } = {}) {
                   ) : (
                     <>
                       <p className="wm-card-title">{raid.done === 'hidden' ? 'He finds a lot of laundry.' : 'You dumped the batch to be safe.'}</p>
-                      <p className="wm-card-text">{raid.done === 'hidden' ? '“Huh. Smells like… soap.” He heads out.' : 'That order starts again at the build.'}</p>
+                      <p className="wm-card-text">{raid.done === 'hidden' ? HANK.hidden : 'That order starts again at the build.'}</p>
                       <button type="button" className="btn btn-primary" onClick={afterRaid} autoFocus>
                         Back to work <kbd>⏎</kbd>
                       </button>

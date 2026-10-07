@@ -154,4 +154,16 @@ export const CONVOS = {
   },
 };
 
+// the toasts someone speaks in (../voice.js); Gandalf's at the shaft, whatever
+// went down it, is one line
+const FOOL = '“Fool of a Baggins!”';
+export const SAYS = {
+  balin: { who: 'gimli', text: 'Gimli runs ahead, through a door in the north wall: “Balin!”' },
+  ankle: { who: 'sam', text: 'It has your ankle! Sam hacks at it: “Frodo!”' },
+  dark: { who: 'gandalf', text: 'Into the dark, and the Watcher tears the doorway down behind you. Gandalf: “We now have but one choice. We must face the long dark of Moria.”' },
+  thanks: { who: 'gandalf', text: 'Back on the floor of the hall, and the pipe safe. Gandalf takes it without a word, then: “Thank you, Frodo.”' },
+  pipe: { who: 'gandalf', text: `You throw your arms out, and Gandalf’s pipe goes down the shaft: tink… tink… tink. Far below, a drum. ${FOOL}`, line: FOOL },
+  dropped: { who: 'gandalf', text: `You throw your arms out, and something goes down the shaft: tink… tink… tink. Far below, a drum. ${FOOL}`, line: FOOL },
+};
+
 export const SPEAKERS = { gandalf: 'Gandalf', frodo: 'Frodo', merry: 'Merry Brandybuck', sam: 'Samwise Gamgee', aragorn: 'Aragorn', boromir: 'Boromir', gimli: 'Gimli', legolas: 'Legolas', narrator: '' };

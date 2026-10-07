@@ -3,7 +3,7 @@ import { spoken, voiceOf } from '../../../lib/voiced';
 import { DESTINATIONS } from './dimensions/destinations';
 import { ROOMS_SAY, SAY } from './say';
 import { SHIP_LINES } from './ship';
-import { PLACE_VOICE, VOICE, VOICELINES, lineVoice } from './voicelines';
+import { PLACE_VOICE, QUOTE_VOICE, VOICE, VOICELINES, lineSaid, lineVoice } from './voicelines';
 
 describe('C-137: whose voice each line is in', () => {
   it('gives every line a voice of its own and something to say', () => {
@@ -13,7 +13,7 @@ describe('C-137: whose voice each line is in', () => {
       expect(voiceOf(who), text).toBe(who);
       expect(spoken(text), text).not.toBe('');
     }
-    for (const v of [...Object.values(VOICE), ...Object.values(PLACE_VOICE).flatMap(Object.values)]) expect(voiceOf(v)).toBe(v);
+    for (const v of [...Object.values(VOICE), ...Object.values(PLACE_VOICE).flatMap(Object.values), ...Object.values(QUOTE_VOICE).map(([v]) => v)]) expect(voiceOf(v)).toBe(v);
   });
   it('never has two voices say the same words', () => {
     const by = new Map();
@@ -34,9 +34,17 @@ describe('C-137: whose voice each line is in', () => {
     expect(lineVoice(SAY.mortyroom.text)).toBeNull();
     expect(lineVoice(SAY.snakeastronaut.text)).toBeNull();
     expect(lineVoice('(He watches you fight. He doesn’t get up.)')).toBeNull();
-    // (two speakers in one line: neither)
-    expect(lineVoice(SAY.fartcell.text)).toBeNull();
     expect(lineVoice('Not a line anybody says.')).toBeNull();
+  });
+  it('says only the one quote that’s theirs, of a line that quotes two people', () => {
+    // (Fart thanks Morty; Krombopulos Michael’s “Oh boy” is only read)
+    expect(lineSaid(SAY.fartcell.text)).toEqual({ who: 'fart', text: 'Thank you, Morty.' });
+    expect(lineSaid(SAY.mic.text)).toEqual({ who: 'cromulon', text: 'I LIKE WHAT YOU GOT.' });
+    expect(lineSaid(SAY.vatrim.text)).toEqual({ who: 'rick', text: 'Told you.' });
+    // and the rest of a line as it's shown, whose quotes are all one person’s
+    expect(lineSaid(SAY.frick.text)).toEqual({ who: 'rick', text: SAY.frick.text });
+    expect(VOICELINES).toContainEqual({ who: 'fart', text: 'Thank you, Morty.' });
+    expect(VOICELINES.some((l) => l.text === SAY.fartcell.text)).toBe(false);
   });
   it('has the places’ people heard as Morty goes about them', () => {
     const d = (id) => DESTINATIONS.find((x) => x.id === id);
@@ -49,6 +57,13 @@ describe('C-137: whose voice each line is in', () => {
     expect(lineVoice(d('evilrick').people.find((p) => p.id === 'evilrick').ai.hunt.duel.won.text)).toBeNull();
     const cable = d('cablestudio').extras.find((e) => e.kind === 'realfakedoors');
     expect(lineVoice(cable.ai.bark.lines[0])).toBe('realfakedoors');
+    // Mr. Frundles' Earth: the family's barks, and Rick slapping you awake
+    const frundles = d('frundles');
+    for (const [id, who] of [['frick', 'rick'], ['fsummer', 'summer'], ['fbeth', 'beth'], ['fjerry', 'jerry']]) {
+      for (const t of frundles.people.find((p) => p.id === id).ai.bark.lines) expect(lineVoice(t), t).toBe(who);
+      expect(lineVoice(SAY[id].text), id).toBe(who);
+    }
+    expect(lineVoice(frundles.caught)).toBe('rick');
   });
   it('lists every one of the cruiser’s lines in its own voice', () => {
     const ship = VOICELINES.filter((l) => l.who === 'ship').map((l) => l.text);

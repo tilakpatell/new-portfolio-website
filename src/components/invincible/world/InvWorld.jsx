@@ -10,7 +10,7 @@ import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { FIGHT, PORTAL, newFight, startInvasion, stepFight } from './fight';
 import { FLY, newHero, stepHero } from './flight';
-import { CALLS } from './lines';
+import { CALLS, RINGS_DONE } from './lines';
 import { BODIES, SPACE, intoSpace, outOfSpace, stepSpace } from './orbit';
 import { CARDS, RINGS, keepQuests, newQuests, stepQuests } from './quests';
 import { CITY, COAST, BEACH, HILLS, PLACES, RIVER, SPAWN, SUBURB, WATER_Y, WORLD, groundAt, isSafeStart } from './map';
@@ -151,12 +151,13 @@ function World({ gl, setGl }) {
     sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), fight: newFight(), punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], companion: [], eveHit: null, frame: 0, padBefore: null, moved: false, world: null };
   }
 
-  // (`who`, for a line someone says: in their own voice where it's been made)
-  const say = useCallback((text, ms = 2400, who = null) => {
+  // (`who`, for a line someone says: in their own voice where it's been made;
+  // `aloud`, what of it they say, if not all of it)
+  const say = useCallback((text, ms = 2400, who = null, aloud = text) => {
     setToast({ text, key: Math.random() });
     clearTimeout(say.t);
     say.t = setTimeout(() => setToast(null), ms);
-    if (who) sayVoiced(VOICE[who], text);
+    if (who) sayVoiced(VOICE[who], aloud);
   }, []);
 
   // The scene's time of day follows `time`. Its setTime waits on the sky's
@@ -487,7 +488,7 @@ function World({ gl, setGl }) {
       else if (e.type === 'lesson-done') {
         sfx('fanfare');
         unlock('dadsrings');
-        say(`${e.best ? 'A best: ' : 'Round in '}${clock(e.time)}. “Not bad. For a start.”`, 4200);
+        say(`${e.best ? 'A best: ' : 'Round in '}${clock(e.time)}. “${RINGS_DONE.text}”`, 4200, RINGS_DONE.who, RINGS_DONE.text);
       } else if (e.type === 'lesson-lost') say('Dad’s given up waiting. Back to the first ring, over the street outside the house.');
       else if (e.type === 'card') {
         sfx('oneUp');

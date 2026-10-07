@@ -1,0 +1,94 @@
+/* Minecraft (Eaglercraft): the password screen and the menu in the game's
+   own look (the tribute's .mc styles), and the game's frame filling the box. */
+
+.eg {
+  background: #000;
+}
+/* (tall content scrolls rather than spilling under the page below: a phone held sideways) */
+.eg-screen {
+  gap: calc(6px * var(--gui));
+  overflow-y: auto;
+  justify-content: safe center;
+}
+.eg-sure {
+  border-color: #ff5555;
+  color: #ffd0d0;
+}
+.eg-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+}
+/* the player while the game opens: there (it must load to open the game) but unseen, under the loading screen */
+.eg-hidden {
+  visibility: hidden;
+}
+/* out of the game's way, top right; plain to see but small */
+.eg-bar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+.eg-bar:hover,
+.eg-bar:focus-within {
+  opacity: 1;
+}
+.eg-chip {
+  font: 10px/1 var(--mc-font);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 7px 9px;
+  cursor: pointer;
+}
+.eg-keep {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #e0e0e0;
+  text-shadow: 1px 1px 0 #3f3f3f;
+}
+.eg-error {
+  color: #ff5555;
+}
+.eg-note {
+  max-width: 34em;
+  color: #e0e0e0;
+  line-height: 1.6;
+}
+.eg-client {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: calc(4px * var(--gui));
+}
+.eg-world {
+  font-size: 0.85em;
+}
+.eg-progress {
+  width: min(300px, 70vw);
+  height: 10px;
+  border: 2px solid #fff;
+  padding: 1px;
+}
+.eg-progress span {
+  display: block;
+  height: 100%;
+  background: #80ff20;
+}
+.eg-foot {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
