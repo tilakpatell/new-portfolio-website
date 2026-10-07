@@ -28,6 +28,7 @@ await ctx.addInitScript(() => {
   localStorage.setItem('tp-universe-ship', '"xwing"');
   localStorage.setItem('tp-galaxy-panel', '"tucked"');
   sessionStorage.setItem('tp-galaxy-intro', '1');
+  localStorage.setItem('tp-worlds', JSON.stringify('load')); // (the 3D, without the gate's asking)
   const held = Date.UTC(2026, 9, 5, 12);
   Date.now = () => held;
   let seed = 7;
