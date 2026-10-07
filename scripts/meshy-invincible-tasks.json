@@ -12,12 +12,22 @@
   "omni": {
     "acct": 2,
     "model": "01a11427-bec7-71ce-8559-8f808ea8b6bd",
-    "rig": "01a11441-e65b-7168-98dc-92019d445c21"
+    "rig": "01a11441-e65b-7168-98dc-92019d445c21",
+    "anims": {
+      "lib": "01a11445-64b5-77c1-b10d-ad4cd309e441",
+      "hover": "01a11445-6627-76cc-b23e-401572453b0f",
+      "fly": "01a11445-6997-70c6-890c-9113fb7d582d"
+    }
   },
   "thragg": {
     "acct": 2,
     "model": "01a11429-4392-72cc-a380-067998bd0247",
-    "rig": "01a11442-32cd-72d1-9318-0917c9b970ef"
+    "rig": "01a11442-32cd-72d1-9318-0917c9b970ef",
+    "anims": {
+      "lib": "01a11445-d3af-71a1-b76f-1eaeb2142edb",
+      "hover": "01a11445-d54c-74c0-9a6f-541422683f5f",
+      "fly": "01a11445-d87d-7623-a0dc-6d6948372b08"
+    }
   },
   "eve": {
     "acct": 2,
@@ -31,34 +41,41 @@
   },
   "debbie": {
     "acct": 2,
-    "model": "01a11430-76c8-7401-b37f-86d9b7f7fde0"
+    "model": "01a11430-76c8-7401-b37f-86d9b7f7fde0",
+    "rig": "01a11443-43f3-7394-a17c-76eb8ed442ea"
   },
   "allen": {
     "acct": 2,
-    "model": "01a11431-fa97-742f-9b0a-3db89eefcda8"
+    "model": "01a11431-fa97-742f-9b0a-3db89eefcda8",
+    "rig": "01a11443-918b-7518-9f14-5df3db273ccd"
   },
   "mauler": {
     "acct": 2,
-    "model": "01a11433-d145-76d9-934b-f4fda2f8afc1"
+    "model": "01a11433-d145-76d9-934b-f4fda2f8afc1",
+    "rig": "01a11443-df9a-751d-9343-9b1bdbad996a"
   },
   "seismic": {
     "acct": 2,
-    "model": "01a11435-a85a-7717-bb39-76465f646adb"
+    "model": "01a11435-a85a-7717-bb39-76465f646adb",
+    "rig": "01a11444-2c35-773a-a6e8-6d69340acb2b"
   },
   "civA": {
     "acct": 2,
     "image": "01a11401-81f8-7717-bc26-53b806d7061c",
-    "model": "01a11438-c430-72f1-a284-43fd84903dd1"
+    "model": "01a11438-c430-72f1-a284-43fd84903dd1",
+    "rig": "01a11444-7894-747c-b6bd-0e2f54f2ffc7"
   },
   "civB": {
     "acct": 2,
     "image": "01a11402-b5c2-7398-a1af-1b6dab6a9ab9",
-    "model": "01a1143a-5ef7-716b-a656-2048d38fdd21"
+    "model": "01a1143a-5ef7-716b-a656-2048d38fdd21",
+    "rig": "01a11444-c7d3-73d9-99b1-038f16dc9f32"
   },
   "civC": {
     "acct": 2,
     "image": "01a11403-1f03-7668-82a8-396035a71fdf",
-    "model": "01a1143c-5eae-7481-ad49-1a3e0439bddd"
+    "model": "01a1143c-5eae-7481-ad49-1a3e0439bddd",
+    "rig": "01a11445-15b2-77f5-b7f5-25546c92cb3b"
   },
   "bank": {
     "acct": 2,
