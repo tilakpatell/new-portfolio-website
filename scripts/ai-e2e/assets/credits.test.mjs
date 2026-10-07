@@ -38,6 +38,12 @@ describe('reading a credit', () => {
     expect(covers({ key: 'x', file: 'public/models/sketchfab/x.glb' }, 'public/models/sketchfab/x.glb')).toBe(true);
     expect(covers({ key: 'x', file: 'public/models/sketchfab/x.glb' }, 'public/models/other/x.glb')).toBe(false);
   });
+  it('finds a pack’s files where its credit says it was rebuilt to', () => {
+    const pack = { key: 'mc/pixel-perfection', name: 'pixel-perfection', paths: ['public/mc/'] };
+    expect(covers(pack, 'public/mc/blocks.webp')).toBe(true);
+    expect(covers(pack, 'public/mc/skins/cow.webp')).toBe(true);
+    expect(covers(pack, 'public/models/mc.glb')).toBe(false);
+  });
   it('finds a cast’s model by the name the cast gives it, in its own folder only', () => {
     const civA = { key: 'civA', dir: 'public/models/invincible/', name: 'civ-a' };
     expect(covers(civA, 'public/models/invincible/civ-a.glb')).toBe(true);

@@ -84,11 +84,11 @@
 
 ## PR 6: Tier 4, the brains scripted and fuzzed
 
-- [ ] **6.1** `src/components/universe/npcs/brains/harness.js`: `meet()` and its helpers lifted from `nemesis.test.js` (seeded random, `fly`, `you`, `foe(brainName)`, frame-by-frame capture, modes seen, a `trace` of events for determinism). `nemesis.test.js` imports it and passes unchanged. Exports `simulate(rules, script)` for the worlds’ `rules.js` files.
-- [ ] **6.2** One `<brain>.scenario.test.js` per brain in `brains/` (inspector, merchant, wingman, bounty, rival, trickster, tagalong, informant), each scenario and assertion taken from the brain’s header comment and the spec’s table. Where a brain’s promise is not in its header, read the brain, write the promise into the header, then the test.
-- [ ] **6.3** `brains/all.scenario.test.js`: over every brain and 200 seeds: no NaN or infinity in any intent or event; speed and turn within `stats`; determinism (same seed, same script → identical trace); liveness (no mode held with the same target over 60 s unless the brain’s header names it terminal).
-- [ ] **6.4** `src/lib/ai/*.fuzz.test.js`: `steer` output length ≤ limit over random fields; `search` finds a path when flood fill does and not otherwise; `spatial.pick` returns only candidates passing every filter; `squad` gives every member exactly one role; `perception` memory decays monotonically with no sightings; `utility.pick` returns an option with the highest score, ties broken by the given `rand`.
-- [ ] **6.5** Gate, PR, CI green, merge.
+- [x] **6.1** `src/components/universe/npcs/brains/harness.js`: `meet()` and its helpers lifted from `nemesis.test.js` (seeded random, `fly`, `you`, `foe(brainName)`, frame-by-frame capture, modes seen, a `trace` of events for determinism). `nemesis.test.js` imports it and passes unchanged. Exports `simulate(rules, script)` for the worlds’ `rules.js` files.
+- [x] **6.2** One `<brain>.scenario.test.js` per brain in `brains/` (inspector, merchant, wingman, bounty, rival, trickster, tagalong, informant), each scenario and assertion taken from the brain’s header comment and the spec’s table. Where a brain’s promise is not in its header, read the brain, write the promise into the header, then the test.
+- [x] **6.3** `brains/all.scenario.test.js`: over every brain and 200 seeds: no NaN or infinity in any intent or event; speed and turn within `stats`; determinism (same seed, same script → identical trace); liveness (no mode held with the same target over 60 s unless the brain’s header names it terminal).
+- [x] **6.4** `src/lib/ai/*.fuzz.test.js`: `steer` output length ≤ limit over random fields; `search` finds a path when flood fill does and not otherwise; `spatial.pick` returns only candidates passing every filter; `squad` gives every member exactly one role; `perception` memory decays monotonically with no sightings; `utility.pick` returns an option with the highest score, ties broken by the given `rand`.
+- [x] **6.5** Gate, PR, CI green, merge.
 
 ## PR 7: Tier 5, the judges, and the nightly workflow
 
