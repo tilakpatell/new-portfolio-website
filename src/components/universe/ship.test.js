@@ -3,7 +3,9 @@ import { EDGE, GOALS, OVERDRIVE, PLANETS, SHIP, SOLIDS, SPACE, STARTS, autopilot
 import { DEEP, WONDERS, easeOpen, gapAlong, trenchBand } from './deep';
 import { MAW } from './maw';
 import { NOSE, UP, fromAngles, rotate } from './orient';
-import { HOME_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
+import { HOME_RADIUS, ORDER, POSITIONS, REACH, SECTORS, SUN, sectorOf } from './layout';
+
+const inMain = (at) => sectorOf(...at) === 'main';
 import { byId } from './universes';
 import { ENTRY, LANDABLE, airTop } from './entry';
 import { sunFor } from './lighting';
@@ -693,7 +695,8 @@ describe('where a new ship starts', () => {
     const ids = STARTS.map((s) => s.id);
     expect(ids).toContain('sun');
     for (const id of ORDER) expect(ids.includes(id), id).toBe(byId(id).kind !== 'core');
-    for (const w of WONDERS) expect(ids.includes(w.id), w.id).toBe(w.id !== MAW.id);
+    // (the Rick and Morty sector's are through its portal: nobody starts there)
+    for (const w of WONDERS) expect(ids.includes(w.id), w.id).toBe(w.id !== MAW.id && inMain(w.at));
   });
 
   it('is clear of everything, at no universe yet, out of the Maw’s pull and facing what it starts by', () => {
@@ -792,8 +795,11 @@ describe('autopilot', () => {
       expect(done, id).toBe(true);
       return { s, top, t };
     };
+    // (a wonder in the Rick and Morty sector flown to from its Citadel, the Citadel from its sun)
     for (const w of WONDERS) {
-      const { s, top } = trip(spawn(ORDER[0]), w.id, 90);
+      const o = SECTORS.rickmorty.origin;
+      const from = inMain(w.at) ? spawn(ORDER[0]) : { ...spawn(null), ...parkAt(w.id === 'citadel' ? 'curvesun' : 'citadel', [o[0], o[2] + 500]), speed: 0 };
+      const { s, top } = trip(from, w.id, 90);
       expect(top, w.id).toBeGreaterThan(SHIP.boost * 2); // on the pulse drive out there
       const g = GOALS[w.id];
       const d = Math.hypot(s.x - g.at[0], s.z - g.at[2]);
@@ -802,7 +808,7 @@ describe('autopilot', () => {
       expect(Math.abs(s.y - g.at[1]), w.id).toBeLessThan(0.5); // level with it
     }
     // and home again from the furthest, at the home system's speeds by the end
-    const far = WONDERS.reduce((a, b) => (Math.hypot(a.at[0], a.at[2]) > Math.hypot(b.at[0], b.at[2]) ? a : b));
+    const far = WONDERS.filter((w) => inMain(w.at)).reduce((a, b) => (Math.hypot(a.at[0], a.at[2]) > Math.hypot(b.at[0], b.at[2]) ? a : b));
     const there = { ...spawn(null), ...parkAt(far.id), speed: 0 };
     const back = trip(there, ORDER[0], 90);
     expect(orbiting(back.s, null)).toBe(ORDER[0]);
