@@ -134,15 +134,20 @@ until it is taken off.
 (`scripts/glb-shot.mjs`: headless Chromium, SwiftShader, a dev server on a
 free port, `render/server.mjs`), the three-quarter view at 320×240. Each
 must leave no page or console error outside `scripts/lib/noise.mjs`'s
-`NOISE` (what every software renderer says) and cover at least 4% of the
+`NOISE` (what every software renderer says) and cover at least 2% of the
 frame (`render/coverage.mjs`: pixels farther than a few levels from the
-corner's colour). A framed model covers far more (the X-wing, all wings
-and gaps, about 10%; a TIE about 30%); a blank canvas, or a model loaded
-as a speck, covers less. The PNGs and `results.json` go to `render/out/`
-(git-ignored; CI uploads them as the `renders` artifact).
+corner's colour). A framed model covers more (a TIE about 30%, the X-wing,
+all wings and gaps, about 10%, the longest thin ships, the Executor and the
+Nubian, about 3.3%: the first night's 4% line failed them); a blank canvas,
+or a model loaded as a speck, covers less. An animation-only file (a clip
+the figures play: no mesh) is written down as one and not drawn. The PNGs
+and `results.json` go to `render/out/` (git-ignored; CI uploads them as
+the `renders` artifact), written after every model.
 
-`AI_RENDER_ALL=1` (the nightly) renders every GLB under `public/models/`,
-in the plain look and the toon look the galaxy draws figures with.
+`AI_RENDER_ALL=1` (the nightly) renders every GLB under `public/models/` in
+the plain look, and the galaxy's again in the toon look it draws figures
+with, in a fresh browser every 100 shots (hundreds of loads in one ran it
+out of buffer space).
 
 The browser: `CHROME`, else the Chromium `npx playwright install chromium`
 installs, else Edge on Windows. Without one the tier skips and says so,
@@ -223,9 +228,10 @@ a self-test against fixtures with the fake judge and ears
 
 `.github/workflows/ai-health.yml` runs on the desktop's `[self-hosted, gpu]`
 runner at 04:00 UTC and on demand (`gh workflow run ai-health.yml`): the
-doctor (what the runner can see), every model rendered in both looks
-(`AI_RENDER_ALL=1`), the evals; the results and the renders are kept as
-the run's artifact.
+doctor (what the runner can see), the evals, the real run and drift, then
+every model rendered (`AI_RENDER_ALL=1`, held to 50 minutes so it can't
+starve the rest), the report and the issue; the results and the renders
+are kept as the run's artifact.
 
 ## Tier 6: one real model, one real line (GPU, nightly)
 

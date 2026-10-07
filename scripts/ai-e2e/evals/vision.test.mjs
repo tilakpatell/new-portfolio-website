@@ -1,7 +1,7 @@
 // The vision judge's evaluation, run against the fake judge over three
 // labelled sheets and a pick set: the numbers it reports, and the lines it
 // holds each backend to.
-import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -44,6 +44,16 @@ describe('the vision judge’s evaluation', () => {
     expect(passes({ backend: 'claude', judge: { accuracy: 0.9 }, pick: { accuracy: 0.8 } })).toEqual([]);
     expect(passes({ backend: 'claude', judge: { accuracy: 0.8 }, pick: { accuracy: 0.6 } })).toEqual(['judge 80% in band, under 85%', 'pick 60% right, under 80%']);
     expect(passes({ backend: 'qwen', judge: { accuracy: 0.75 }, pick: { accuracy: 1 } })).toEqual([]);
+  });
+
+  it('writes a sheet the judge couldn’t answer down as wrong, with why, and goes on to the next', async () => {
+    const script = JSON.parse(readFileSync(join(FIX, 'judge.json'), 'utf8')).filter((e) => !['bad.png', 'thing'].includes(e.match)); // (thing: the pick set's catch-all)
+    writeFileSync(process.env.GEN3D_JUDGE_SCRIPT, JSON.stringify(script));
+    const r = await evaluate({ sheets: join(FIX, 'sheets'), picks: join(FIX, 'pick-sets') });
+    expect(r.judge.n).toBe(3);
+    expect(r.judge.rows.find((x) => x.sheet === 'bad.png')).toMatchObject({ score: null, inBand: false, error: expect.stringMatching(/no scripted reply/) });
+    expect(r.judge.rows.find((x) => x.sheet === 'good.png')).toMatchObject({ score: 9, inBand: true });
+    expect(r.pick.n).toBe(1);
   });
 
   it('writes nothing it was not asked to: the fake judge’s calls stay in its own folder', async () => {
