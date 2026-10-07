@@ -61,7 +61,7 @@ export default function Guide() {
         refocusRef.current();
       }
     };
-    const onOpen = () => setOpen(true);
+    const onOpen = (e) => setOpen((o) => (e.detail?.toggle ? !o : true));
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('tp:guide', onOpen);
     return () => {

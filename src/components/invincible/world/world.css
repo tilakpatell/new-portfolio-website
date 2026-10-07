@@ -53,7 +53,7 @@
 .iw-brand[data-chip] .iw-eyebrow { padding: 0.32rem 0.6rem; border: 2px solid #000; border-radius: 999px; background: var(--iw-glass-hi); box-shadow: 2px 2px 0 #000; font-size: 0.7rem; animation: iw-pop 0.2s ease-out both; }
 /* under the top row, centred, stacked as they come: the compass, the
    objective line, a toast */
-.iw-centre { position: absolute; left: 50%; top: var(--hud-under); z-index: 2; display: grid; justify-items: center; gap: 6px; width: max-content; max-width: 90vw; transform: translateX(-50%); pointer-events: none; }
+.iw-centre { position: absolute; left: 50%; top: var(--hud-under); z-index: 3; /* (a passing toast over the phone's map, which sits beside it) */ display: grid; justify-items: center; gap: 6px; width: max-content; max-width: 90vw; transform: translateX(-50%); pointer-events: none; }
 .iw-goal { max-width: min(30rem, 80vw); margin: 0; padding: 0.4rem 0.75rem; border: 2px solid #000; border-radius: 6px; background: var(--iw-yellow); color: #111; font: 700 0.82rem/1.25 var(--font-sans); box-shadow: 3px 3px 0 #000; }
 .iw-goal:not([data-on='1']) { display: none; }
 .iw-goal[data-purple='1'] { background: #8a2fd0; color: #fff; }

@@ -6,7 +6,7 @@ import { settle } from '../../../lib/settle';
 import { useVoiced } from '../../../lib/useVoiced';
 import { sayVoiced } from '../../../lib/voiced';
 import { readPad, typing } from '../../games/pad';
-import { openGuide } from '../../../lib/palette';
+import { toggleGuide } from '../../../lib/palette';
 import { COMPASS, fitCanvas, layoutCompass, titleMode } from '../../../runtime/hud';
 import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
@@ -358,7 +358,7 @@ function World({ gl, setGl }) {
         if (!(e.target instanceof HTMLButtonElement)) act();
       } else if (e.code === 'KeyT') cycleTime();
       // (H was the world's own list of keys: it's the site's guide now, which ? opens too)
-      else if (e.code === 'KeyH') openGuide();
+      else if (e.code === 'KeyH') toggleGuide();
     };
     const up = (e) => {
       const k = CODES[e.code];
