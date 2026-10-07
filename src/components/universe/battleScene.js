@@ -240,31 +240,34 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
         if (cap.dying > 0 && chain <= 0) flashes.at(onHull(cap, pt), { size: 1.5 + Math.random() * cap.size * 0.08, life: 0.9 + Math.random() * 0.6 });
       }
       if (chain <= 0) chain = 0.12;
-      // the fighters, and their engines
+      // the fighters, and their engines (where the battle has them by now: its
+      // step's 1/30 s, so each is carried on from its last step, `seen`)
       glows.begin();
       for (const f of battle.fighters) {
         const s = slots.get(f);
         if (!s) continue;
         s.holder.visible = f.alive;
         if (!f.alive) continue;
-        s.holder.position.set(f.pos.x, f.pos.y, f.pos.z);
+        const p = f.seen ?? f.pos;
+        s.holder.position.set(p.x, p.y, p.z);
         orient(s.holder, f.fwd, { x: 0, y: 1, z: 0 }, f.bank);
         const c = war.sides[f.team].laser;
-        glows.add({ x: f.pos.x - f.fwd.x * f.size * 0.55, y: f.pos.y - f.fwd.y * f.size * 0.55, z: f.pos.z - f.fwd.z * f.size * 0.55 }, [c[0] * 0.35 + 0.5, c[1] * 0.35 + 0.35, c[2] * 0.35 + 0.25], f.size * 0.4);
+        glows.add({ x: p.x - f.fwd.x * f.size * 0.55, y: p.y - f.fwd.y * f.size * 0.55, z: p.z - f.fwd.z * f.size * 0.55 }, [c[0] * 0.35 + 0.5, c[1] * 0.35 + 0.35, c[2] * 0.35 + 0.25], f.size * 0.4);
       }
       for (const r of battle.runners) {
         const s = slots.get(r);
         if (!s) continue;
         s.holder.visible = r.alive;
         if (!r.alive) continue;
-        s.holder.position.set(r.pos.x, r.pos.y, r.pos.z);
+        const p = r.seen ?? r.pos;
+        s.holder.position.set(p.x, p.y, p.z);
         orient(s.holder, r.fwd, { x: 0, y: 1, z: 0 });
-        glows.add({ x: r.pos.x - r.fwd.x * r.size * 0.5, y: r.pos.y - r.fwd.y * r.size * 0.5, z: r.pos.z - r.fwd.z * r.size * 0.5 }, [1.6, 2.2, 3.4], r.size * 0.35);
+        glows.add({ x: p.x - r.fwd.x * r.size * 0.5, y: p.y - r.fwd.y * r.size * 0.5, z: p.z - r.fwd.z * r.size * 0.5 }, [1.6, 2.2, 3.4], r.size * 0.35);
       }
       // (a glow's size in map units: the canvas's height over the view's height a unit off)
       const high = typeof window !== 'undefined' ? window.innerHeight : 800;
       glows.end(camera?.isPerspectiveCamera ? high / (2 * Math.tan((camera.fov * Math.PI) / 360)) : 600);
-      bolts.sync(battle.bolts, colourOf, camLocal);
+      bolts.sync(battle.bolts, colourOf, camLocal, battle.ahead ?? 0);
       flashes.update(dt, camera);
       shield.update(dt, t);
       fires.update(dt, t);

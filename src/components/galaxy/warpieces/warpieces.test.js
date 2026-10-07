@@ -154,7 +154,7 @@ describe('Hoth', () => {
     // (the Empire's fighters kept off them: nothing shoots in this one)
     for (const f of k.battle.fighters) (f.alive = false), (f.respawn = Infinity);
     const r = k.laid.runners;
-    step(h, k.battle, r.every * r.need + 60, null, 0.1); // (battle.update takes a tenth at most)
+    step(h, k.battle, r.every * r.need + 60, null, 0.1); // (a tenth a frame, as the browser checks’ skip runs it)
     expect(k.battle.runners.filter((x) => x.kind === 'transport').length).toBeGreaterThanOrEqual(r.need);
     expect(h.out).toBe(r.need);
     expect(k.events.filter((e) => e === 'escaped')).toHaveLength(r.need);

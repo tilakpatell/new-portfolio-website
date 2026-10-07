@@ -58,10 +58,14 @@
 //   runners, disable(id, s), wreck(id), moveCapital(cap, d), turnCapital(cap, axis, a),
 //   addRunner({ team, kind, size, hp, from, to, speed })):
 //   { teams, capitals, fighters, bolts, phase, clock, over, you, defender, lines, radius, length,
-//   attacker, setYou(team | null), update(dt, you) → events, hit(from, to,
+//   attacker, ahead, setYou(team | null), update(dt, you) → events, hit(from, to,
 //   damage) → hit | null, fire(team, from, dir, kind, target), targets,
 //   info, end(winner) }
 // `you`: { x, y, z, alive } (the ship, as the scene has it), or null.
+// update(dt) steps the battle BATTLE.step at a time, whatever the frame
+// rate, so the same seed fights the same battle on any screen; `ahead` is
+// how far the frame's past the last step, and each fighter's and runner's
+// `seen` is where it is by then (drawn there, locked on to there).
 // Events: { type: 'down', team, kind, role, at, mine, ace? }, { type: 'hurt', damage,
 // kind }, { type: 'sub', sub, kind, phase, at, mine }, { type: 'phase',
 // phase }, { type: 'shield', down: true }, { type: 'capital', id, kind,
@@ -91,6 +95,8 @@ export const BATTLE = {
   ionSubs: 2, // and its objectives
   onYou: 4, // fighters at most after you at once
   flak: 25, // how near a fighter must come to a battery for its point-defence
+  step: 1 / 30, // seconds the battle moves on at a time, whatever the frame rate
+  steps: 8, // and at most this many steps a frame (a longer frame's rest is dropped)
   bolts: {
     laser: { speed: 60, life: 0.6, damage: 1 },
     flak: { speed: 70, life: 0.35, damage: 0.5 },
@@ -253,6 +259,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       if (d < o.r + 6) set(f.pos, o.c.x + (f.away.x / (d || 1)) * (o.r + 6), o.c.y + (f.away.y / (d || 1)) * (o.r + 6) + (d ? 0 : o.r + 6), o.c.z + (f.away.z / (d || 1)) * (o.r + 6));
     }
     copy(f.prev, f.pos);
+    copy(f.seen, f.pos);
     norm(set(f.fwd, A.x * dir + (rand() - 0.5) * 0.4, (rand() - 0.5) * 0.2, A.z * dir + (rand() - 0.5) * 0.4));
     f.speed = f.type.speed;
     set(f.vel, f.fwd.x * f.speed, f.fwd.y * f.speed, f.fwd.z * f.speed);
@@ -269,8 +276,9 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const makeFighter = (team) => {
     const k = pick(kinds[team], rand);
     const type = FIGHTERS[k.kind];
-    const f = { id: nextId++, team, kind: k.kind, role: k.role, type, size: type.size, pos: v3(), prev: v3(), vel: v3(), fwd: v3(0, 0, 1), speed: 0, hp: 0, alive: false, mode: 'engage', modeT: 0, target: null, retarget: 0, cool: 0, shots: 0, bank: 0, respawn: 0, chased: -1, away: v3(), aim: v3() };
-    f.tgt = { id: f.id, at: f.pos, vel: f.vel, size: f.size, kind: f.kind, name: NAMES[f.kind] ?? f.kind, hp: 0, hpMax: type.hp, threat: 0 };
+    const f = { id: nextId++, team, kind: k.kind, role: k.role, type, size: type.size, pos: v3(), prev: v3(), seen: v3(), vel: v3(), fwd: v3(0, 0, 1), speed: 0, hp: 0, alive: false, mode: 'engage', modeT: 0, target: null, retarget: 0, cool: 0, shots: 0, bank: 0, respawn: 0, chased: -1, away: v3(), aim: v3() };
+    // (locked on to where it's drawn: `seen`, on from its last step by the time owed)
+    f.tgt = { id: f.id, at: f.seen, vel: f.vel, size: f.size, kind: f.kind, name: NAMES[f.kind] ?? f.kind, hp: 0, hpMax: type.hp, threat: 0 };
     spawn(f, true);
     return f;
   };
@@ -783,8 +791,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     }
   };
   b.addRunner = ({ team, kind, size, hp, from, to, speed }) => {
-    const r = { id: nextId++, team, kind, size, hp, hpMax: hp, role: 'runner', pos: v3(from.x, from.y, from.z), prev: v3(from.x, from.y, from.z), vel: v3(), fwd: v3(0, 0, 1), to: v3(to.x, to.y, to.z), speed, alive: true, escaped: false, hitBy: 0, chased: -1 };
-    r.tgt = { id: r.id, at: r.pos, vel: r.vel, size, kind, name: NAMES[kind] ?? kind, hp, hpMax: hp, threat: 0 };
+    const r = { id: nextId++, team, kind, size, hp, hpMax: hp, role: 'runner', pos: v3(from.x, from.y, from.z), prev: v3(from.x, from.y, from.z), seen: v3(from.x, from.y, from.z), vel: v3(), fwd: v3(0, 0, 1), to: v3(to.x, to.y, to.z), speed, alive: true, escaped: false, hitBy: 0, chased: -1 };
+    r.tgt = { id: r.id, at: r.seen, vel: r.vel, size, kind, name: NAMES[kind] ?? kind, hp, hpMax: hp, threat: 0 };
     b.runners.push(r);
     return r;
   };
@@ -831,20 +839,54 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     }
   };
 
+  // ── the clock: a fixed step, whatever the frame rate ──
+  // A turn's limit, a head-on pass's window and a burst's timing all play out
+  // differently in big steps than in small ones, so a battle stepped by the
+  // frame went one way on a 144 Hz screen and another on a phone. It moves on
+  // BATTLE.step at a time instead, each frame's time owed carried over to the
+  // next; what each step said is told together.
+  let owed = 0; // seconds of frames not stepped yet (less than a step)
+  let frame = 0; // the last frame's length (what a fighter's drawn doing over it, for your shots)
+  const youFrom = v3();
+  const youTo = v3();
+  const lerp = (o, p, q, k) => set(o, p.x + (q.x - p.x) * k, p.y + (q.y - p.y) * k, p.z + (q.z - p.z) * k);
+  b.ahead = 0; // (how far past the last step the frame is: the drawing carries everything on by it)
   b.update = (dt, you) => {
-    dt = Math.min(dt, 0.1);
     const out = events;
     out.length = 0;
     out.push(...pending);
     pending.length = 0;
-    if (!b.over) b.clock += dt;
-    // where you are, and how fast you're going
+    frame = Math.min(Math.max(0, dt), BATTLE.step * BATTLE.steps);
+    owed += Math.max(0, dt);
+    const n = Math.min(BATTLE.steps, Math.floor(owed / BATTLE.step + 1e-6));
+    owed = Math.max(0, owed - n * BATTLE.step);
+    if (owed >= BATTLE.step) owed = 0; // (a long frame's rest: the battle slows, rather than leaping)
+    // where you are, and how fast you're going (and at each step, that share of the way across the frame)
     if (you) {
-      copy(b.you.prev, b.you.alive ? b.you.pos : you);
-      set(b.you.pos, you.x, you.y, you.z);
-      set(b.you.vel, (b.you.pos.x - b.you.prev.x) / Math.max(dt, 1e-4), (b.you.pos.y - b.you.prev.y) / Math.max(dt, 1e-4), (b.you.pos.z - b.you.prev.z) / Math.max(dt, 1e-4));
+      copy(youFrom, b.you.alive ? b.you.pos : you);
+      set(youTo, you.x, you.y, you.z);
+      const k = 1 / Math.max(dt, 1e-4);
+      set(b.you.vel, (youTo.x - youFrom.x) * k, (youTo.y - youFrom.y) * k, (youTo.z - youFrom.z) * k);
       b.you.alive = you.alive !== false;
     } else b.you.alive = false;
+    for (let i = 0; i < n; i++) {
+      if (you) {
+        lerp(b.you.prev, youFrom, youTo, i / n);
+        lerp(b.you.pos, youFrom, youTo, (i + 1) / n);
+      }
+      step(BATTLE.step, out);
+    }
+    if (you) copy(b.you.pos, youTo);
+    // where each fighter and runner is drawn (and locked on to): on from its last step by the time owed
+    b.ahead = owed;
+    for (const f of b.fighters) if (f.alive) set(f.seen, f.pos.x + f.vel.x * owed, f.pos.y + f.vel.y * owed, f.pos.z + f.vel.z * owed);
+    for (const r of b.runners) if (r.alive) set(r.seen, r.pos.x + r.vel.x * owed, r.pos.y + r.vel.y * owed, r.pos.z + r.vel.z * owed);
+    return out;
+  };
+
+  // one step of the battle, `dt` long
+  const step = (dt, out) => {
+    if (!b.over) b.clock += dt;
     for (const f of b.fighters) {
       if (f.alive) flyFighter(f, dt);
       else if (Number.isFinite(f.respawn) && !b.over) {
@@ -870,18 +912,20 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       if (tickets && t.tickets <= 0 && !b.fighters.some((f) => f.alive && f.team === attacker)) finish(defender, 'tickets', out);
       else if (b.clock >= clock) finish(defender, 'clock', out);
     }
-    return out;
   };
 
   // your shot, from `from` to `to` this frame: the first of the other side's
-  // fighters, objectives or hulls it meets
+  // fighters, objectives or hulls it meets (a fighter or a runner where it's
+  // drawn, over the frame: back along its way from there by the frame's length)
+  const back = v3();
+  const drawnBack = (o) => set(back, o.seen.x - o.vel.x * frame, o.seen.y - o.vel.y * frame, o.seen.z - o.vel.z * frame);
   b.hit = (from, to, damage = 1) => {
     if (b.you.team === null || b.over) return null;
     let hitF = null;
     let first = Infinity;
     for (const f of b.fighters) {
       if (!f.alive || f.team === b.you.team) continue;
-      const k = sweptHit(from, to, f.prev, f.pos, Math.max(0.35, f.size * 0.9));
+      const k = sweptHit(from, to, drawnBack(f), f.seen, Math.max(0.35, f.size * 0.9));
       if (k !== null && k < first) {
         first = k;
         hitF = f;
@@ -891,7 +935,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     let hitR = null;
     for (const r of b.runners) {
       if (!r.alive || r.team === b.you.team) continue;
-      const k = sweptHit(from, to, r.prev, r.pos, Math.max(0.5, r.size * 0.5));
+      const k = sweptHit(from, to, drawnBack(r), r.seen, Math.max(0.5, r.size * 0.5));
       if (k !== null && k < first) {
         first = k;
         hitR = r;
@@ -931,13 +975,13 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         hitR.alive = false;
         pending.push({ type: 'runner', id: hitR.id, team: hitR.team, kind: hitR.kind, at: copy(v3(), hitR.pos), mine: true });
       }
-      return { id: hitR.id, kind: hitR.kind, at: copy(v3(), hitR.pos), size: hitR.size, down };
+      return { id: hitR.id, kind: hitR.kind, at: copy(v3(), hitR.seen), size: hitR.size, down };
     }
     if (hitF && (!h || first <= h.k)) {
       hitF.hp -= damage;
       const down = hitF.hp <= 0;
       if (down) pending.push(kill(hitF, true));
-      return { id: hitF.id, kind: hitF.kind, at: copy(v3(), hitF.pos), size: hitF.size, down };
+      return { id: hitF.id, kind: hitF.kind, at: copy(v3(), hitF.seen), size: hitF.size, down };
     }
     if (!h) return null;
     if (h.sub && subHit(h.sub, damage * BATTLE.youShare, true, pending)) return { id: h.sub.num, kind: 'subsystem', sub: h.sub.id, at: h.at, size: 1, down: !h.sub.alive };

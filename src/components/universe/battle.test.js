@@ -143,6 +143,67 @@ describe('runners', () => {
   });
 });
 
+describe('the fixed step', () => {
+  // The battle moves on BATTLE.step at a time whatever the frame rate (a
+  // frame's time owed carried to the next), so the same seed fights the same
+  // battle on a 144 Hz screen, a 60 Hz one, a phone at 30 and a browser
+  // check at 10: the same events in the same order, every fighter in the
+  // same place.
+  const transports = { team: 1, kind: 'transport', size: 2.2, hp: 34, count: 4, need: 4, speed: 6, every: 25, from: [60, 0, 0], to: [60, 0, -300] };
+  const stateOf = (b) =>
+    JSON.stringify({
+      clock: b.clock,
+      phase: b.phase,
+      over: b.over,
+      tickets: b.teams.map((t) => t.tickets),
+      fighters: b.fighters.map((f) => [f.alive, f.hp, ...[f.pos.x, f.pos.y, f.pos.z].map((x) => Math.round(x * 1e6))]),
+      subs: b.capitals.flatMap((c) => c.subs.map((s) => s.hp)),
+      hulls: b.capitals.map((c) => c.hull),
+      runners: b.runners.map((r) => [r.alive, r.hp, ...[r.pos.x, r.pos.y, r.pos.z].map((x) => Math.round(x * 1e6))]),
+    });
+  const fight = (dt) => {
+    const b = make({ perSide: 8, rand: seeded(21), runners: transports });
+    const log = [];
+    for (let i = 0, n = Math.round(120 / dt); i < n; i++) for (const e of b.update(dt, null)) log.push(e);
+    return { log: JSON.stringify(log), state: stateOf(b), events: log.length };
+  };
+  it('fights the same battle at any frame rate: same seed, same events and state after 120 s at 1/144, 1/60, 1/30 and 0.1 s a frame', () => {
+    const base = fight(1 / 30);
+    expect(base.events).toBeGreaterThan(50); // (a battle, not a quiet sky)
+    for (const dt of [1 / 144, 1 / 60, 0.1]) {
+      const other = fight(dt);
+      expect(other.state, `state at dt ${dt}`).toBe(base.state);
+      expect(other.log, `events at dt ${dt}`).toBe(base.log);
+    }
+  });
+  it('carries a frame shorter than a step over to the next, and says how far ahead the drawing is', () => {
+    const b = make();
+    b.update(0.02, null);
+    expect(b.clock).toBe(0);
+    expect(b.ahead).toBeCloseTo(0.02, 9);
+    b.update(0.02, null);
+    expect(b.clock).toBeCloseTo(BATTLE.step, 9);
+    expect(b.ahead).toBeCloseTo(0.04 - BATTLE.step, 9);
+  });
+  it('takes at most BATTLE.steps a frame: a long frame’s rest is dropped, so the battle slows rather than leaping', () => {
+    const b = make();
+    b.update(2, null);
+    expect(b.clock).toBeCloseTo(BATTLE.steps * BATTLE.step, 9);
+    expect(b.ahead).toBeLessThan(BATTLE.step);
+  });
+  it('locks on to a fighter where it’s drawn: on along its way by the time still owed', () => {
+    const b = make();
+    b.setYou(0);
+    b.update(0.05, null);
+    const f = b.fighters.find((o) => o.team === 1 && o.alive);
+    const t = b.targets.find((o) => o.id === f.id);
+    expect(t.at.x).toBeCloseTo(f.pos.x + f.vel.x * b.ahead, 9);
+    expect(t.at.z).toBeCloseTo(f.pos.z + f.vel.z * b.ahead, 9);
+    // and a shot through where it's drawn hits it
+    expect(shotAt(b, t.at)?.id).toBe(f.id);
+  });
+});
+
 describe('perSide', () => {
   it('is 32 a side on a strong desktop, 20 on a middling one, 10 on a phone', () => {
     expect(perSide('high')).toBe(32);

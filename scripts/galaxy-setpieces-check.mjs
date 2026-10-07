@@ -14,7 +14,7 @@
 // Each forces a battle at the system (the warfront's dev hook), so it runs
 // whatever the war's doing, and runs the battle on with skip() where it's
 // waiting on the battle's clock (software GL draws a frame a second or so,
-// and the battle steps a frame's worth at most). Screenshots:
+// and the battle steps about a quarter of a second a frame at most). Screenshots:
 // piece-<what>-<n>-<moment>.png.
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';

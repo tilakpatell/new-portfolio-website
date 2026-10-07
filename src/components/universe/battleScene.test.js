@@ -44,6 +44,24 @@ describe('createBattleScene', () => {
     draw.dispose();
   });
 
+  // (the battle steps 1/30 s at a time: drawn where it was at the last step, a
+  // fighter would stutter on a faster screen, so it's carried on along its way
+  // by the time the step still owes, as the guns' lock has it)
+  it('draws a fighter on along its way by the time the battle’s step still owes', () => {
+    const parent = new THREE.Group();
+    const models = stubModels();
+    const draw = createBattleScene(parent, { models, small: true });
+    const battle = createBattle({ war: WARS.starwars, attacker: 0, at: [0, 0, 0], axis: [1, 0], perSide: 6 });
+    draw.show(battle, WARS.starwars);
+    const events = battle.update(0.05, null);
+    expect(battle.ahead).toBeGreaterThan(0);
+    draw.update(0.05, 1, new THREE.PerspectiveCamera(), new THREE.Vector3(), events, 0);
+    const f = battle.fighters[0];
+    const want = new THREE.Vector3(f.pos.x + f.vel.x * battle.ahead, f.pos.y + f.vel.y * battle.ahead, f.pos.z + f.vel.z * battle.ahead);
+    expect(models.slots.some((s) => s.kind === f.kind && s.holder.position.distanceTo(want) < 1e-6)).toBe(true);
+    draw.dispose();
+  });
+
   it('breaks the defender’s flagship in two when it goes', () => {
     const parent = new THREE.Group();
     const models = stubModels();
