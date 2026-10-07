@@ -1,0 +1,74 @@
+{
+ "rick-1.mp3": {
+  "who": "rick",
+  "text": "A Rick from another dimension. Don’t trust him, Morty. I wouldn’t.",
+  "good": true
+ },
+ "rick-2.mp3": {
+  "who": "rick",
+  "text": "We’re in its hangar, Morty. Every ship’s got a soft middle.",
+  "good": true
+ },
+ "morty-1.mp3": {
+  "who": "morty",
+  "text": "Ow! Rick, we hit a rock! A big one!",
+  "good": true
+ },
+ "morty-2.mp3": {
+  "who": "morty",
+  "text": "Oh no. Oh no, Rick, it’s a Cromulon!",
+  "good": true
+ },
+ "han-1.mp3": {
+  "who": "han",
+  "text": "Story of my life. Make it count, kid.",
+  "good": true
+ },
+ "han-2.mp3": {
+  "who": "han",
+  "text": "That cannon’s the only reason anyone got off this ice ball.",
+  "good": true
+ },
+ "luke-1.mp3": {
+  "who": "luke",
+  "text": "Ben stood here. He left my father on that bank, burning.",
+  "good": true
+ },
+ "luke-2.mp3": {
+  "who": "luke",
+  "text": "My mother came here, didn’t she, Artoo? To bring him back.",
+  "good": true
+ },
+ "walt-1.mp3": {
+  "who": "walt",
+  "text": "The RV’s back there, Jesse. Don’t make me come get you.",
+  "good": true
+ },
+ "walt-2.mp3": {
+  "who": "walt",
+  "text": "That’s our shipment, Jesse. Nobody touches our shipment.",
+  "good": true
+ },
+ "jesse-1.mp3": {
+  "who": "jesse",
+  "text": "That’s messed up, yo.",
+  "good": true
+ },
+ "jesse-2.mp3": {
+  "who": "jesse",
+  "text": "A tiny little escape pod. For a tiny little dude.",
+  "good": true
+ },
+ "wrong-voice.mp3": {
+  "who": "morty",
+  "text": "Story of my life. Make it count, kid.",
+  "good": false,
+  "note": "Han saying it, labelled as Morty"
+ },
+ "mumbled.mp3": {
+  "who": "rick",
+  "text": "A Rick from another dimension. Don’t trust him, Morty. I wouldn’t.",
+  "good": false,
+  "note": "Rick’s take played backwards: the voice right, the words gone"
+ }
+}

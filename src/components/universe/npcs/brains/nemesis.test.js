@@ -2,46 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NPC } from './common';
 import { createBrains } from '../../npcRules';
 import nemesis from './nemesis';
-
-// a seeded random, so a meeting is the same every time
-const seeded = (seed = 7) => () => {
-  seed = (seed * 1664525 + 1013904223) >>> 0;
-  return seed / 4294967296;
-};
-const DT = 1 / 60;
-const apart = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
-const you = (over = {}) => ({ x: 0, y: 0, z: 0, heading: 0, pitch: 0, speed: 0, ...over });
-const fly = (s) => ({ ...s, x: s.x - Math.sin(s.heading) * s.speed * DT, z: s.z - Math.cos(s.heading) * s.speed * DT });
-const foe = () => ({ id: 'test-nemesis', side: 'starwars', role: 'enemy', ship: 'tieadvanced', brain: 'nemesis', faction: 'empire', relations: { fears: [], hunts: [] }, stats: { speed: 26, accel: 22, turn: 3.0, hp: 20, fire: [0.45, 0.8], damage: 8 } });
-
-// a meeting flown for `seconds`: steer(ship, t) flies you; world(t, ship) gives what's about; each(me, ship, out, t) looks at every frame
-function meet({ at = { x: 0, y: 0, z: -30 }, seconds = 30, ship = you(), steer = (s) => s, world = () => ({}), seed = 5, each, memory = {} } = {}) {
-  const brains = createBrains({ rand: seeded(seed), memory });
-  const n = brains.add(foe(), at);
-  const me = brains.live[0];
-  let s = ship;
-  const seen = { says: [], events: [], shots: [], n, me, brains, modes: new Set() };
-  for (let t = 0; t < seconds; t += DT) {
-    s = fly(steer(s, t));
-    const out = brains.update(DT, { you: s, hunters: [], stations: [], ...world(t, s) });
-    for (const e of out.events) {
-      seen.events.push(e);
-      if (e.type === 'say') seen.says.push(e.key);
-      if (e.type === 'shot') seen.shots.push({ ...e, t });
-    }
-    if (brains.live[0]) seen.modes.add(brains.live[0].mind.mode);
-    each?.(brains.live[0], s, out, t);
-  }
-  seen.ship = s;
-  return seen;
-}
-// you, turned to keep your nose on it and flying after it: on its tail
-const chase = (me, s, speed) => {
-  if (!me) return s;
-  const dx = me.pos.x - s.x;
-  const dz = me.pos.z - s.z;
-  return { ...s, heading: Math.atan2(-dx, -dz), speed };
-};
+import { DT, apart, chase, foe, meet, seeded, you } from './harness';
 
 describe('a nemesis on the toolkit', () => {
   it('weighs its moves: it passes, jinks and orbits as before, and never stops shooting', () => {
