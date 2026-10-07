@@ -306,6 +306,38 @@ if (log) {
   await run('g.player.yaw = 0; g.player.pitch = -0.35;');
   await ticks(4);
   await step('stage');
+
+  // ── a furnace at work, a chest, the hearts and hunger, and a death ──
+  const tap = async (cx, cy, cz) => {
+    await run('x.debug.aim(args[0], args[1], args[2]); x.press("use", true); x.press("use", false);', cx, cy, cz);
+    await ticks(2);
+  };
+  await run('const p = args[0]; x.debug.put(p.X + 1, p.Y, p.Z - 1, "furnace", 1); x.debug.put(p.X - 1, p.Y, p.Z - 1, "chest", 1);', at);
+  await tap(at.X + 1, at.Y, at.Z - 1);
+  const furnace = await run('const f = g.furnaces[args.join(",")]; if (!f) return null; f.slots = [{ item: "iron_ore", count: 5, damage: 0 }, { item: "coal", count: 1, damage: 0 }, null]; return true;', [at.X + 1, at.Y, at.Z - 1]);
+  if (!furnace) errors.push('the furnace did not open');
+  await ticks(330);
+  console.log('  furnace:', JSON.stringify(await run('const f = g.furnaces[args.join(",")]; return { out: f.slots[2], burn: f.burn, cook: f.cook, lit: x.debug.nearest("^lit_furnace$", 4) };', [at.X + 1, at.Y, at.Z - 1])));
+  await step('furnace');
+  await run('x.closeScreen();');
+  await tap(at.X - 1, at.Y, at.Z - 1);
+  await run('const c = g.chests[args.join(",")]; c[0] = { item: "diamond", count: 3, damage: 0 }; c[4] = { item: "bread", count: 12, damage: 0 }; c[13] = { item: "iron_pickaxe", count: 1, damage: 40 }; c[26] = { item: "cobblestone", count: 64, damage: 0 };', [at.X - 1, at.Y, at.Z - 1]);
+  await ticks(4);
+  await step('chest');
+  await run('x.closeScreen(); Object.assign(g.player, { health: 7, hunger: 13, saturation: 0.5, pitch: 0 });');
+  await ticks(4);
+  await step('hud');
+  await run('g.player.health = 0;');
+  await ticks(3);
+  const died = await page.evaluate(() => Boolean(document.querySelector('[aria-label="You died!"]')));
+  if (!died) errors.push('no death screen');
+  await page.waitForTimeout(1300);
+  await step('dead');
+  await run('x.respawn();');
+  await ticks(4);
+  const back = await run('return { dead: g.dead, health: g.player.health, carried: g.inventory.slots.filter(Boolean).length, dropped: g.drops.length };');
+  console.log('  after respawning:', JSON.stringify(back));
+  if (back.dead || back.health !== 20) errors.push('the respawn did not happen');
 }
 
 // from above: the lie of the land

@@ -127,7 +127,14 @@ export const SPRITES = {
   // the biome tints, read by temperature and rainfall as the game reads them
   colormap_grass: ['colormap/grass'],
   colormap_foliage: ['colormap/foliage'],
-  // the screens: the inventory's and the crafting table's panels
+  // the empty experience bar (nothing earns any yet; the game shows it all the same)
+  experience_bar_background: ['gui/sprites/hud/experience_bar_background'],
+  // the screens: the inventory's, the crafting table's, the furnace's (its flame and
+  // arrow apart) and the chest's panels
   inventory: ['gui/container/inventory'],
   crafting_table: ['gui/container/crafting_table'],
+  furnace: ['gui/container/furnace'],
+  lit_progress: ['gui/sprites/container/furnace/lit_progress'],
+  burn_progress: ['gui/sprites/container/furnace/burn_progress'],
+  chest: ['gui/container/generic_54'],
 };

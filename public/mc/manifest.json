@@ -239,8 +239,13 @@
     "air",
     "colormap_grass",
     "colormap_foliage",
+    "experience_bar_background",
     "inventory",
-    "crafting_table"
+    "crafting_table",
+    "furnace",
+    "lit_progress",
+    "burn_progress",
+    "chest"
   ],
   "frames": {
     "lava_flow": 16,
