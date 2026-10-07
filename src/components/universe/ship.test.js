@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, GOALS, PLANETS, SHIP, SOLIDS, STARTS, autopilot, boostAt, brakeAt, ceilingAt, driveAt, forward, inTrench, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
-import { DEEP, WONDERS, trenchBand } from './deep';
+import { EDGE, GOALS, OVERDRIVE, PLANETS, SHIP, SOLIDS, SPACE, STARTS, autopilot, boostAt, brakeAt, ceilingAt, driveAt, forward, inTrench, noseOf, orbiting, parkAt, spawn, startAt, step, turnAt } from './ship';
+import { DEEP, WONDERS, easeOpen, gapAlong, trenchBand } from './deep';
 import { MAW } from './maw';
 import { NOSE, UP, fromAngles, rotate } from './orient';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
@@ -314,6 +314,89 @@ describe('the pulse drive near a place: no wall to hit', () => {
     const w = WONDERS.find((o) => o.id === 'veil');
     const s = { ...spawn(null), x: w.at[0], y: w.at[1], z: w.at[2] + w.r + 300, heading: 0, speed: SHIP.pulse };
     expect(pulseRun(s, (w.r * 2 + 300) / SHIP.pulse).slowest).toBeGreaterThan(SHIP.pulse * 0.9);
+  });
+
+  it('brakes at least as hard as its brakes just over the limit, as under it', () => {
+    const at = { ...spawn(null), x: 0, z: 2600, heading: Math.PI }; // (out in the open, going further out)
+    const limit = boostAt(at.x, at.y, at.z);
+    for (const over of [-1, 1, 5, 40]) {
+      const s = { ...at, speed: limit + over };
+      const next = step(s, { throttle: -1 }, 1 / 60, []).ship;
+      expect((s.speed - next.speed) * 60, `${over} over`).toBeGreaterThanOrEqual(brakeAt(at.x, at.y, at.z) - 1e-6);
+    }
+  });
+
+  it('flies in on super speed from deep space and parks at a station, as it did', () => {
+    for (const [from, to] of [
+      ['glacia', 'contact'],
+      ['twins', 'home'],
+      ['aurelia', 'contact'],
+    ]) {
+      let s = { ...spawn(null), ...parkAt(from) };
+      const park = parkAt(to, [s.x, s.z]);
+      let done = false;
+      let hit = null;
+      for (let t = 0; t < 90 && !done; t += 1 / 60) {
+        const a = autopilot(s, to, park, undefined, OVERDRIVE);
+        done = a.done;
+        const r = step(s, a.input, 1 / 60);
+        s = r.ship;
+        hit ??= r.events.find((e) => e.type === 'crash' || e.type === 'bump') ?? null;
+      }
+      expect(hit, `${from} to ${to}`).toBeNull();
+      expect(done, `${from} to ${to}`).toBe(true);
+    }
+  });
+
+  it('parks at a battle on super speed without flying through it, held down as it comes in', () => {
+    const at = [5542, 139, 133];
+    const reach = 208;
+    const hold = (x, y, z, f = null) => 1 - easeOpen(gapAlong(x, y, z, f, at, 260), 640);
+    const space = { ...SPACE, goals: { ...SPACE.goals, front: { id: 'front', at, r: 30, reach } } };
+    let s = { ...spawn(null), x: at[0] + 2500, y: at[1], z: at[2], heading: Math.PI / 2 }; // (facing it, along −x)
+    const park = { x: at[0] + reach + 16, y: at[1], z: at[2], heading: Math.PI / 2 };
+    let done = false;
+    let closest = Infinity;
+    let t = 0;
+    for (; t < 60 && !done; t += 1 / 60) {
+      const a = autopilot(s, 'front', park, space, OVERDRIVE, hold);
+      done = a.done;
+      s = step(s, { ...a.input, interdicted: hold(s.x, s.y, s.z, noseOf(s)) }, 1 / 60, [], space).ship;
+      closest = Math.min(closest, Math.hypot(s.x - at[0], s.y - at[1], s.z - at[2]));
+    }
+    expect(done).toBe(true);
+    expect(t).toBeLessThan(25);
+    expect(closest).toBeGreaterThan(reach);
+  });
+
+  it('parks in a nebula at a low frame rate too', () => {
+    for (const dt of [1 / 30, 1 / 45]) {
+      let s = { ...spawn(null), x: 0, z: 2600, heading: Math.PI };
+      const id = 'veil';
+      const park = parkAt(id, [s.x, s.z]);
+      let done = false;
+      for (let t = 0; t < 120 && !done; t += dt) {
+        const a = autopilot(s, id, park, undefined, OVERDRIVE);
+        done = a.done;
+        s = step(s, a.input, dt).ship;
+      }
+      expect(done, `dt ${dt}`).toBe(true);
+    }
+  });
+
+  it('comes off its top speed smoothly between two stations, flown by hand', () => {
+    const [a, b] = ['home', 'experience'].map((id) => PLANETS.find((p) => p.id === id));
+    let s = { ...spawn('home') };
+    s = { ...s, heading: Math.atan2(-(b.at[0] - s.x), -(b.at[2] - s.z)) };
+    let hardest = 0;
+    for (let t = 0; t < 8; t += 1 / 60) {
+      const next = step(s, { throttle: 1, boost: true }, 1 / 60, []).ship;
+      hardest = Math.max(hardest, (s.speed - next.speed) * 60);
+      s = next;
+      if (Math.hypot(s.x - b.at[0], s.z - b.at[2]) < b.r + 10) break;
+    }
+    expect(a.id).toBe('home');
+    expect(hardest).toBeLessThan(440); // (no single frame braking harder than the old drive did at its worst)
   });
 
   it('opens between a sun and its planets, and is down by each of them', () => {
