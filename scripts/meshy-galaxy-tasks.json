@@ -149,5 +149,17 @@
   },
   "jedi": {
     "image": "01a114d1-87f6-729a-93d3-c3261064b604"
+  },
+  "senateguard": {
+    "image": "01a114d3-6a8c-73ef-8df9-38bfd5226c82"
+  },
+  "lobot": {
+    "image": "01a114d3-dbac-7334-800d-7060d6247562"
+  },
+  "neimoidian": {
+    "image": "01a114d4-4e1f-773a-b209-aa288fca7884"
+  },
+  "bibfortuna": {
+    "image": "01a114d4-aadb-75bf-8b3e-61bfc0f10d40"
   }
 }

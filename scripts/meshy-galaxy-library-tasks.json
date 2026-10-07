@@ -1,0 +1,74 @@
+{
+  "tauntaun": {
+    "lift": [
+      "01a114c8-5a79-7481-9a75-3379ea12072b"
+    ],
+    "model": "01a114d2-d4db-739a-9f80-ff3127bd569f"
+  },
+  "acklay": {
+    "lift": [
+      "01a114c9-13b1-7345-8eed-15f81e8cc8d7"
+    ],
+    "model": "01a114d2-d8f7-763b-a485-32e0c6a3daaf"
+  },
+  "kaadu": {
+    "lift": [
+      "01a114c9-92f7-7497-bf33-736afc8ed2b8"
+    ],
+    "model": "01a114d2-dc44-75ee-8eaa-dc88948c02e6"
+  },
+  "womprat": {
+    "lift": [
+      "01a114c9-fdef-7122-bf5a-9dd0769dc201"
+    ],
+    "model": "01a114d2-df68-73e7-a6ca-ed70895ae253"
+  },
+  "bogwing": {
+    "lift": [
+      "01a114cb-635b-7574-b8f6-d09ea5e7429b"
+    ],
+    "model": "01a114d2-e2ca-7434-b91a-cc3766832e93"
+  },
+  "aiwha": {
+    "lift": [
+      "01a114cc-5cdc-7198-9d96-6e82642635a0"
+    ],
+    "model": "01a114d2-e5f0-769b-bbc2-2f727fb39a6b"
+  },
+  "lavaflea": {
+    "lift": [
+      "01a114cc-9548-7137-bf73-5a2068620b2b"
+    ],
+    "model": "01a114d2-e8e6-7362-be5c-c5c8abda6bba"
+  },
+  "nexu": {
+    "lift": [
+      "01a114cd-8d4e-747e-acb5-8a2583ae139f"
+    ],
+    "model": "01a114d2-ec16-70c4-b693-99758cd8a4d6"
+  },
+  "reek": {
+    "lift": [
+      "01a114cf-2688-73b6-bf9d-5cbdc0619b3d"
+    ],
+    "model": "01a114d2-ef68-73dc-a5a8-3adfaa388da6"
+  },
+  "varactyl": {
+    "lift": [
+      "01a114d1-0758-7524-ab6c-d05bf000ea21"
+    ],
+    "model": "01a114d2-f2b6-7626-bb00-2ebccf8fbba2"
+  },
+  "lothcat": {
+    "lift": [
+      "01a114d1-3c20-72b4-ab66-c6b98d73b90a"
+    ],
+    "model": "01a114d2-f5ec-75f7-944c-e03b4edea286"
+  },
+  "lothwolf": {
+    "lift": [
+      "01a114d1-7200-7557-ac6d-7f6e557eef1e"
+    ],
+    "model": "01a114d2-f9a9-76b1-aa34-840f376af307"
+  }
+}

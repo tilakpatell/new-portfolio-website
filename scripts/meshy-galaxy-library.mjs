@@ -62,6 +62,33 @@ export const BUILDINGS = {
     tris: 12000,
     tex: 1024,
   },
+  // ── the worlds' landmarks still built in code: each over the built one's
+  // walls and decks (solids: 'built'), so its doors and floors still work ──
+  cantina: {
+    prompt: 'A desert spaceport tavern seen from outside: a large low whitewashed adobe dome about fourteen metres across, a smaller adobe dome joined to its side, a blocky square entrance vestibule at the front with a round dark doorway, small vent pipes and a short metal mast on top, sand-worn plaster with streaks and patches, sand drifted round the base.',
+    metres: 18.5,
+    along: 'w',
+    tris: 20000,
+    tex: 1024,
+    solids: 'built',
+  },
+  varykino: { ref: 'File:Lake_Retreat_2.png', crop: [0.42, 0.08, 0.5, 0.8], lift: 'the cream-walled lakeside villa with its terracotta roofs, its green-domed tower, its terraces and balustrades, without the trees of the hillside', metres: 46, along: 'w', tris: 24000, tex: 2048, solids: 'built' },
+  shieldgen: { ref: 'File:PlanetaryDeflectorShield.png', lift: 'the shield generator: the great dish turned to the sky on its tapering tower over a round base', metres: 70, along: 'h', tris: 16000, tex: 1024, solids: 'built' },
+  collector: {
+    prompt: 'A heavy industrial lava-mining collector platform: a flat dark steel deck about sixteen metres by eleven with low railings, a leaning lattice tower with lamps at one end, a big scoop arm hanging off a crane boom over the side, scorched soot-blackened dark metal with glowing orange heat stains.',
+    metres: 16,
+    along: 'w',
+    tris: 16000,
+    tex: 1024,
+    solids: 'built',
+  },
+  stonehead: {
+    prompt: 'A colossal ancient carved stone head of an amphibian-like creature, long droopy ear-like lobes hanging down either side, a heavy brow and a wide flat snout, weathered grey stone covered in green moss and lichen, cracked and partly broken.',
+    metres: 7.5,
+    along: 'h',
+    tris: 12000,
+    tex: 1024,
+  },
   // ── the ships the galaxy built in code ──
   houndstooth: ship('File:HoundsTooth_3quarters_view-SWE.png', 'the bulky ochre boxy freighter with its long swept-back wing'),
   punishingone: ship('File:JM-5K.png', 'the crescent-shaped bounty hunter ship with its long central fuselage'),
