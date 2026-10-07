@@ -81,6 +81,20 @@ export function letHandedGo() {
   go?.();
 }
 
+// A jump's first frame, drawn: each version calls jumpStarted() as it
+// draws it, and onJumpStart(fn) → undo hears it. A page waiting on a
+// jump's dark times its fallback from there (jumps/jumpOut.js): timed from
+// the click, a jump slow to start (its first frame five seconds late in a
+// slow browser) had the page change before it was dark.
+const starts = new Set();
+export function onJumpStart(fn) {
+  starts.add(fn);
+  return () => starts.delete(fn);
+}
+export function jumpStarted() {
+  for (const fn of [...starts]) fn();
+}
+
 // A running jump's start, so a frame that comes late moves its clock on by
 // `most` ms at most: starved of frames (the page busy building what comes
 // next), a jump on the wall's clock skipped its tunnel and cleared out at

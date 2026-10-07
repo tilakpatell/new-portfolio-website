@@ -12,36 +12,50 @@
 // the visitor left for another page first, and held a dark tunnel over
 // that page for the rest of its eight seconds.
 //
+// The clock for a jump that never says runs from the jump's first frame
+// (timeline.js's onJumpStart), not from the click: a jump whose first
+// frame came five seconds late had the page change three seconds into it,
+// before it was dark. From the click it runs only until that frame, for a
+// jump that never draws.
+//
 // jumpOut({ style, to, navigate, hold, delay, wait, dispatch }) → { cancel() }
 // (`delay`: when to go with no jump to say, its plan's; `cancel`: the page
 // has gone before its own change, so nothing more happens.)
 
-import { handJump } from '../hyperspace3d/timeline';
+import { handJump, onJumpStart } from '../hyperspace3d/timeline';
 import { jumpEvent } from './styles';
 
 // ms at most a jump out waits for the jump's dark before the page goes
-// anyway: long, since a jump slow to start (its first frame waits for its
-// shaders, after whatever the page was busy with) still says so well before
-// it; only a jump that never comes waits it out
+// anyway: long, since a jump reaches its flash 1.17 s in on its own clock,
+// which a slow machine runs slower than the wall's; only a jump that never
+// says waits it out
 export const JUMP_WAIT = 8000;
 
 export function jumpOut({ style, to, navigate, hold = false, delay = 0, wait = JUMP_WAIT, dispatch = (e) => window.dispatchEvent(e) }) {
   let over = false;
   let timer = 0;
-  const go = () => {
-    if (over) return;
+  let unhear = () => {};
+  const end = () => {
     over = true;
     clearTimeout(timer);
+    unhear();
+  };
+  const go = () => {
+    if (over) return;
+    end();
     if (hold) handJump();
     navigate(to);
   };
   const e = jumpEvent(style, { onPeak: go });
   dispatch(e);
-  if (!over) timer = setTimeout(go, e.detail.taken ? wait : delay);
-  return {
-    cancel() {
-      over = true;
+  if (over) return { cancel: end };
+  timer = setTimeout(go, e.detail.taken ? wait : delay);
+  if (e.detail.taken) {
+    unhear = onJumpStart(() => {
+      unhear();
       clearTimeout(timer);
-    },
-  };
+      timer = setTimeout(go, wait);
+    });
+  }
+  return { cancel: end };
 }

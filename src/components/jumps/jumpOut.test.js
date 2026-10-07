@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { jumpHeld, letHandedGo } from '../hyperspace3d/timeline';
+import { jumpHeld, jumpStarted, letHandedGo } from '../hyperspace3d/timeline';
 import { JUMP_WAIT, jumpOut } from './jumpOut';
 
 // a stand-in for App's Lightspeed: it takes the event's onPeak, as App does
@@ -57,6 +57,30 @@ describe('a page leaving through a jump', () => {
     expect(jumpHeld()).toBe(false);
   });
 
+  it('times its fallback from the jump’s first frame, not the click, so a jump slow to start is dark before the page changes', () => {
+    const { dispatch } = lightspeed();
+    const navigate = vi.fn();
+    jumpOut({ to: '/galaxy', navigate, hold: true, delay: 900, dispatch });
+    vi.advanceTimersByTime(5000); // (the jump's first frame, five seconds late)
+    jumpStarted();
+    vi.advanceTimersByTime(JUMP_WAIT - 1);
+    expect(navigate).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(2);
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(jumpHeld()).toBe(true); // (taken there: from the change)
+    jumpStarted(); // (another jump later: nothing more)
+    vi.advanceTimersByTime(JUMP_WAIT * 2);
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('goes on the clock from the click when the jump never draws', () => {
+    const { dispatch } = lightspeed();
+    const navigate = vi.fn();
+    jumpOut({ to: '/somewhere', navigate, delay: 900, dispatch });
+    vi.advanceTimersByTime(JUMP_WAIT + 1);
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
   it('goes after the plan’s delay when no jump takes the event', () => {
     const navigate = vi.fn();
     jumpOut({ to: '/somewhere', navigate, delay: 900, dispatch: () => {} });
@@ -71,6 +95,7 @@ describe('a page leaving through a jump', () => {
     const navigate = vi.fn();
     const trip = jumpOut({ to: '/galaxy', navigate, hold: true, delay: 900, dispatch });
     trip.cancel();
+    jumpStarted();
     seen.peak();
     vi.advanceTimersByTime(JUMP_WAIT * 2);
     expect(navigate).not.toHaveBeenCalled();

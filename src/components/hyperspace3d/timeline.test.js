@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { HOLD_AT, T, clampStart, handJump, holdJump, holdStart, jumpHeld, letHandedGo } from './timeline';
+import { HOLD_AT, T, clampStart, handJump, holdJump, holdStart, jumpHeld, jumpStarted, letHandedGo, onJumpStart } from './timeline';
 
 describe('a jump held in its tunnel', () => {
   afterEach(() => vi.useRealTimers());
@@ -72,6 +72,27 @@ describe('a jump held from one page to the next', () => {
     expect(jumpHeld()).toBe(true);
     vi.advanceTimersByTime(2);
     expect(jumpHeld()).toBe(false);
+  });
+});
+
+describe("a jump's first frame", () => {
+  it('is heard by whoever listens, until they stop', () => {
+    const fn = vi.fn();
+    const off = onJumpStart(fn);
+    jumpStarted();
+    expect(fn).toHaveBeenCalledTimes(1);
+    off();
+    jumpStarted();
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('reaches every listener, even one that stops listening as it hears it', () => {
+    const a = vi.fn();
+    const offB = onJumpStart(() => offB());
+    const offA = onJumpStart(a);
+    jumpStarted();
+    expect(a).toHaveBeenCalledTimes(1);
+    offA();
   });
 });
 
