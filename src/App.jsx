@@ -18,6 +18,7 @@ import { introPlaying } from './lib/stale';
 import { jumpStyle } from './components/jumps/styles';
 import WorldGate from './components/worlds/WorldGate';
 import Ambience from './components/ambience/Ambience';
+import { flags as aiFlags } from './lib/ai/inspect';
 import { categoryAt, isFeedMove } from './components/feed/feed';
 
 // Feed.jsx, named in full: feed.js sits beside it, and a case-blind disk
@@ -38,6 +39,7 @@ const Avengers = lazy(() => import('./pages/Avengers'));
 const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
+const AiInspector = lazy(() => import('./components/debug/AiInspector.jsx'));
 const Citadel = lazy(() => import('./pages/Citadel'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Mario64 = lazy(() => import('./pages/Mario64'));
@@ -316,6 +318,7 @@ function Shell() {
     <OnlineProvider>
       <div className="backdrop" aria-hidden="true" />
       <Ambience />
+      {(import.meta.env.DEV || aiFlags().ai) && <Suspense fallback={null}><AiInspector /></Suspense>}
       <ScrollToTop />
       <Nav />
       <main id="main" tabIndex={-1} className="relative z-10 outline-none">
