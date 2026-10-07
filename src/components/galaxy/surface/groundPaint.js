@@ -17,7 +17,9 @@
 // accent where its noise is over 1 − accentCover, the deep colour in the
 // hollows of a mid noise, rock where the slope is past rockAt, and a
 // darkening toward the water's edge (the `wet` band); under the water, the
-// deep colour.
+// deep colour. Where grass grows, the grass's own colour over it, as much as
+// grows (its `mid`, toward its `dry` in drifts, as the old blades had them):
+// the blades take the map's colour, and from far off a meadow is its grass.
 
 import * as THREE from 'three';
 import { fbm, smoothstep } from './noise';
@@ -69,6 +71,11 @@ export function groundPainter(site, grid, { shade = [] } = {}) {
   const wetLevel = p.wet?.level ?? null;
   const wetBand = p.wet?.band ?? 1.5;
   const water = site.water?.level ?? null;
+  const g = site.grass ?? null;
+  const grassMid = g?.mid ? col(g.mid).toArray() : null;
+  const grassDry = g?.mid ? col(g.dry ?? g.mid).toArray() : null;
+  const dryScale = (g?.scale ?? 90) * 1.7;
+  const drySeed = seed + 101 + 13;
   const tmp = [0, 0, 0];
   const shadeAt = shade.length ? bucket(shade) : () => null;
   return {
@@ -97,6 +104,10 @@ export function groundPainter(site, grid, { shade = [] } = {}) {
       }
       if (wetLevel != null) mix(out, wetColour, (1 - smoothstep(wetLevel, wetLevel + wetBand, h0)) * 0.75, out);
       let grass = coverAt(grid, site, x, z);
+      if (grass > 0 && grassMid) {
+        mix(grassMid, grassDry, smoothstep(-0.15, 0.45, fbm(x / dryScale, z / dryScale, { octaves: 2, seed: drySeed })), tmp);
+        mix(out, tmp, grass, out);
+      }
       for (const s of shadeAt(x, z) ?? []) {
         if (Math.hypot(x - s.at[0], z - s.at[1]) > s.r) continue;
         for (let i = 0; i < 3; i++) out[i] *= SHADE.colour;

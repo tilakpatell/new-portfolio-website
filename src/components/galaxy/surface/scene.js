@@ -63,6 +63,8 @@ import { createWeather } from './weather';
 import { createKit } from './kit';
 import { createHouse } from '../../../lib/three/house';
 import { adoptLater, exposureOf, groundPieces, lookOf } from './look';
+import { surfaceTuning, siteCode } from './tune';
+import { debugOn, debugPanel } from '../../../lib/debugPanel';
 import { createGrass } from '../../../lib/three/grass';
 import { createWind } from '../../../lib/three/wind';
 import { createGroundMap } from '../../../lib/three/groundmap';
@@ -146,7 +148,8 @@ export async function create(canvas, ctx) {
   // surface's own (skyfog.js: the dome's very colour), so the house leaves
   // three's fog line be. The post tone-maps with its own shoulder, so the
   // exposure is the site's, through it.
-  const house = createHouse(lookOf(site), { fog: false });
+  const siteLook = lookOf(site);
+  const house = createHouse(siteLook, { fog: false });
   post.exposure(exposureOf(site));
   // (fogged in the sky's colour and in the look before its shaders are
   // made, so they're made once)
@@ -159,6 +162,9 @@ export async function create(canvas, ctx) {
   const sky = createSky(site);
   // (the fog the sky's colour that way: everything fogged with it, as it's put in the world)
   const skyFog = createSkyFog(sky, THREE.ShaderChunk);
+  // (the look's halo round the sun, and its haze below the horizon where the
+  // site says: the fog is the surface's, so they go on it)
+  skyFog.look({ halo: siteLook.halo, below: typeof site.look?.fogBelow === 'number' ? siteLook.fogBelow : null });
   scene.add(sky.mesh);
   const sunDir = sky.sunDirs[0] ?? new V(0.3, 0.8, 0.4).normalize();
   const sun = new THREE.DirectionalLight(site.sky.suns?.[0]?.color ?? '#ffffff', site.light.sun ?? 3);
@@ -287,6 +293,9 @@ export async function create(canvas, ctx) {
     ? createGrass({ ground: groundMap, wind, side: tier === 'high' && !small ? 280 : small ? 120 : 200, size: 44, height: site.grass.h?.[1] ?? 0.5, width: site.grass.w ?? 0.05, root: 0.35 })
     : null;
   if (grass) scene.add(grass.mesh);
+  // ?debug: the look, the grass and the wind on sliders, copied out as the
+  // site's own blocks (lib/debugPanel, tune.js)
+  const panel = debugOn() ? debugPanel({ title: site.id, groups: surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), code: siteCode }) : null;
   const life = createActors({ parent: scene, world, life: site.life, seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
 
   // ── The places you go into (zones): built high over the world, out of
@@ -2700,6 +2709,7 @@ export async function create(canvas, ctx) {
       placer.dispose();
       grass?.dispose();
       wind.dispose();
+      panel?.dispose();
       groundMap?.dispose();
       shadowPhase?.dispose();
       for (const p of people) {

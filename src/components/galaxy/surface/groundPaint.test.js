@@ -80,6 +80,16 @@ describe('the ground painted as one function', () => {
     expect(performance.now() - t0).toBeLessThan(1500);
   });
 
+  it('is the grass’s own colour where grass grows (its mid, toward its dry in drifts), the floor’s where none does', () => {
+    const grassy = site({ grass: { cover: 1, mid: '#c6ad72', dry: '#c6ad72' } });
+    const p = groundPainter(grassy, flat(5));
+    const { out, grass } = paintAt(p, 300, 300);
+    expect(grass).toBeGreaterThan(0.9);
+    expect(near(out, lin('#c6ad72'), 0.03)).toBe(true);
+    // (bare on the landing flat: the floor's own colour)
+    expect(near(paintAt(p, 0, 0).out, paintAt(groundPainter(site({ grass: undefined }), flat(5)), 0, 0).out, 1e-6)).toBe(true);
+  });
+
   it('reads the height from the grid', () => {
     expect(groundPainter(site(), flat(7)).height(1, 2)).toBe(7);
   });
