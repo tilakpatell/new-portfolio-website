@@ -67,6 +67,7 @@
 
 import { intercept, nose, sweptHit } from './targeting';
 import { factionsOf, kindsOf, namesOf } from './sides';
+import { PACE } from './ship';
 import { belief, createSenses, sense } from '../../lib/ai/perception';
 import { confidence, createTokens } from '../../lib/ai/squad';
 import { consider, pick } from '../../lib/ai/utility';
@@ -118,7 +119,7 @@ export const FIGHT = {
   tailBack: 5, // how far behind you one on your tail sits
   tailFor: [3.5, 6], // seconds it stays there
   tailSpread: 2, // how much wider its shots scatter from there (it's close)
-  tailAbove: 4, // your speed, under which there's no tail to sit on
+  tailAbove: 4 * PACE, // your speed, under which there's no tail to sit on
   apart: 1.5, // map units the pack keep between them
   clear: 1.2, // and from anything solid, past its surface
   ahead: 1, // seconds ahead they look for something in the way
@@ -128,7 +129,7 @@ export const FIGHT = {
   flinch: 0.3, // how often one that's hit (and not down) breaks off its run
   far: 140, // solids further than this from you aren't looked at
   match: 1.15, // of your speed, in the fight (and FIGHT.margin on top)
-  margin: 2.5, // map units a second over yours
+  margin: 2.5 * PACE, // map units a second over yours
   floor: 0.42, // of its top speed, the least it flies the fight at
   engageAt: 18, // inside this far from you it's wholly at the fight's speed
   closeFrom: 34, // past this it closes flat out (between, in between)
@@ -141,8 +142,8 @@ const between = (rand, a, b) => a + rand() * (b - a);
 
 // How quick a kind's nose is, in radians a second, at the fight's speed (a
 // little quicker than yours at cruise, which is why you can't just out-turn
-// one)
-export const turnRate = (type) => type.turn ?? 1.7 + type.accel / 16;
+// one; its acceleration as it was tuned, before ship.js's PACE)
+export const turnRate = (type) => type.turn ?? 1.7 + type.accel / PACE / 16;
 
 // and at `speed`: all of it up to the floor of the fight's speed, FIGHT.stiff
 // of it gone by its top (the quick pass is a straight one)
@@ -182,8 +183,8 @@ export const NERVE = { pack: 3, you: 0.4, every: 1 };
 // your blind side, or sitting out across the way you're going
 export const ROLES = [
   { id: 'wait', weight: 0.3, considerations: [] },
-  { id: 'flank', weight: 1.2, considerations: [(c) => consider(c.yourSpeed, [3, 16]), (c) => (c.behind ? 1 : 0.6), (c) => (c.holdoff ? 0 : 1)] },
-  { id: 'block', weight: 1.0, considerations: [(c) => consider(c.yourSpeed, [8, 30]), (c) => consider(c.alive, [2, 4]), (c) => (c.holdoff ? 0 : 1)] },
+  { id: 'flank', weight: 1.2, considerations: [(c) => consider(c.yourSpeed, [3 * PACE, 16 * PACE]), (c) => (c.behind ? 1 : 0.6), (c) => (c.holdoff ? 0 : 1)] },
+  { id: 'block', weight: 1.0, considerations: [(c) => consider(c.yourSpeed, [8 * PACE, 30 * PACE]), (c) => consider(c.alive, [2, 4]), (c) => (c.holdoff ? 0 : 1)] },
 ];
 
 // The way you're really going, in the map's space: along your nose at your
