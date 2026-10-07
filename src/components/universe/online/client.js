@@ -27,7 +27,7 @@
 // createClient({ name, kind, loadout, build, looks, where, level, marks }) → { selfId, factions, on(fn) → off, snapshot(),
 //   setProfile({ name, kind, loadout, build, looks, where, level, marks }) (level: the
 //   wallet's; marks: its marks(), your standing and oath, read into factions
-//   for the ship you fly: relations.js's factionsFrom), pose(ship, { hidden, boost, safe,
+//   for the side of the ship you fly: relations.js's factionsFrom), pose(ship, { hidden, boost, safe,
 //   shield }), foot(crew | null) (your crew on foot, protocol.js's writeFoot;
 //   each pilot's comes in as peer.foot, with `at`), walk(crew | null) (the
 //   same down on a world in the galaxy: peer.walk), shot(at, v, weapon),
@@ -58,6 +58,7 @@ import { STOCK_LOADOUT, readLoadout, writeOutfit } from '../outfit';
 import { readSiege } from '../siege';
 import { readTally } from '../tally';
 import { NO_FACTIONS, factionsFrom } from './relations';
+import { sideOf } from '../sides';
 
 const SNAPS = 12; // poses kept per pilot
 const SHOTS = 48; // shots waiting to be drawn, at most
@@ -72,7 +73,7 @@ const levelOf = (lv) => (Number.isInteger(lv) && lv >= 1 ? lv : 1);
 const loadRoom = () => import('./nostr').then((m) => ({ joinRoom: m.joinAsVisitor }));
 
 export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build = null, looks = null, where = UNIVERSE, level = 1, marks = null, load = loadRoom, now = () => performance.now() }) {
-  const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, loadout: readLoadout(loadout), build: build ? readBuildWire(writeBuild(build)) : null, looks: looks ? readLooks(looks) : null, kills: 0, where, level: levelOf(level), marks, factions: factionsFrom(kind, marks) };
+  const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, loadout: readLoadout(loadout), build: build ? readBuildWire(writeBuild(build)) : null, looks: looks ? readLooks(looks) : null, kills: 0, where, level: levelOf(level), marks, factions: factionsFrom(sideOf(kind), marks) };
   const peers = new Map();
   const listeners = new Set();
   let status = 'connecting'; // connecting | online | failed | left
@@ -451,7 +452,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       const hull = b ? readBuildWire(writeBuild(b)) : null;
       const dressed = lk ? readLooks(lk) : null;
       const level = levelOf(lv);
-      const factions = factionsFrom(k, m);
+      const factions = factionsFrom(sideOf(k), m);
       self.marks = m;
       if (clean === self.name && k === self.kind && same(fit, self.loadout) && sameBuild(hull, self.build) && looksKey(dressed) === looksKey(self.looks) && w === self.where && level === self.level && factionsKey(factions) === factionsKey(self.factions)) return;
       self.level = level;

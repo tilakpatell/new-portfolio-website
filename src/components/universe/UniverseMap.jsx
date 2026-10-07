@@ -266,6 +266,18 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-threat" />
                 <span className="universe-threat" />
                 <span className="universe-threat" />
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
                 <span className="universe-lead" />
                 <span className="universe-nav">
                   <i />

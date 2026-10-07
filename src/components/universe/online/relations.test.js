@@ -53,12 +53,12 @@ describe('factionText', () => {
 });
 
 describe('factionsFrom', () => {
-  it('reads the side from the ship and the rest from the wallet\'s marks', () => {
+  it('reads the side\'s standing and the oath from the wallet\'s marks', () => {
     const marks = { standing: { starwars: { ...calm, law: 'trusted' }, rickmorty: calm }, oath: { war: 'gcw', side: 'rebel', rank: 'pilot' } };
-    expect(factionsFrom('xwing', marks)).toEqual({ side: 'starwars', standing: { ...calm, law: 'trusted' }, war: 'gcw', oath: 'rebel', rank: 'pilot' });
+    expect(factionsFrom('starwars', marks)).toEqual({ side: 'starwars', standing: { ...calm, law: 'trusted' }, war: 'gcw', oath: 'rebel', rank: 'pilot' });
   });
-  it('is nothing with no ship and no marks', () => {
+  it('is nothing with no side and no marks', () => {
     expect(factionsFrom(null, null)).toEqual(NONE);
-    expect(factionsFrom('cruiser', null)).toEqual({ ...NONE, side: 'rickmorty' });
+    expect(factionsFrom('rickmorty', null)).toEqual({ ...NONE, side: 'rickmorty' });
   });
 });

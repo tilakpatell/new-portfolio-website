@@ -10,13 +10,13 @@
 //   war they fight in), rank (galaxy/ranks.js: on the oath's side) }
 // relation(me, peer) → 'ally' | 'friend' | 'foe' | 'none' (each { ally,
 //   factions }: me.ally, whether they're your ally); factionText(factions)
-//   → 'Rebellion · Captain · Wanted by the Empire', or ''; factionsFrom(kind,
-//   marks) → your own factions, from the ship you fly and the wallet's
-//   marks (EconomyProvider.jsx's marks()).
+//   → 'Rebellion · Captain · Wanted by the Empire', or ''; factionsFrom(side,
+//   marks) → your own factions, from the side your ship is from (sides.js's
+//   sideOf, which the caller asks: the universe's data stays out of the
+//   roster's download) and the wallet's marks (EconomyProvider.jsx's marks()).
 
 import { SIDES as WAR_SIDES, warOfSide } from '../../galaxy/sides';
 import { RANKS } from '../../galaxy/ranks';
-import { sideOf } from '../sides';
 import { WHO } from '../standing';
 
 export const NO_FACTIONS = Object.freeze({ side: null, standing: null, war: null, oath: null, rank: null });
@@ -62,8 +62,7 @@ export function factionText(factions) {
   return out.join(' · ');
 }
 
-export function factionsFrom(kind, marks) {
-  const side = sideOf(kind);
+export function factionsFrom(side, marks) {
   const oath = marks?.oath ?? null;
-  return { side, standing: (side && marks?.standing?.[side]) || null, war: oath?.war ?? null, oath: oath?.side ?? null, rank: oath?.rank ?? null };
+  return { side: side ?? null, standing: (side && marks?.standing?.[side]) || null, war: oath?.war ?? null, oath: oath?.side ?? null, rank: oath?.rank ?? null };
 }

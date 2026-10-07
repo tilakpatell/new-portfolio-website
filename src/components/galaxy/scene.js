@@ -1591,7 +1591,7 @@ export async function create(canvas, ctx) {
     const root = props.hud?.current ?? null;
     if (root !== hud.root) {
       const q = (c) => root?.querySelector(c) ?? null;
-      hud = { root, reticle: q('.universe-reticle'), lock: q('.universe-lock'), lockName: q('.universe-lock-name'), lockDist: q('.universe-lock-dist'), lead: q('.universe-lead'), nav: q('.universe-nav'), navName: q('.universe-nav-name'), navDist: q('.universe-nav-dist'), threats: [...(root?.querySelectorAll('.universe-threat') ?? [])], text: new Map(), on: new Map() };
+      hud = { root, reticle: q('.universe-reticle'), lock: q('.universe-lock'), lockName: q('.universe-lock-name'), lockDist: q('.universe-lock-dist'), lead: q('.universe-lead'), nav: q('.universe-nav'), navName: q('.universe-nav-name'), navDist: q('.universe-nav-dist'), threats: [...(root?.querySelectorAll('.universe-threat') ?? [])], mates: [...(root?.querySelectorAll('.universe-mate') ?? [])], text: new Map(), on: new Map() };
     }
     return hud;
   };
@@ -1625,6 +1625,7 @@ export async function create(canvas, ctx) {
   };
   const range = (d) => (d < 10 ? d.toFixed(1) : Math.round(d).toString());
   const threatList = [];
+  const mateList = [];
   const placeHud = () => {
     const h = hudEls();
     if (!h.root) return;
@@ -1670,6 +1671,25 @@ export async function create(canvas, ctx) {
       }
     }
     for (let i = n; i < h.threats.length; i++) setOn(h, h.threats[i], false);
+    // your allies off the screen: a green arrow at the edge each, with their
+    // callsign (nearest first, as many as there are arrows), so you can find
+    // your wing
+    let m = 0;
+    if (on && h.mates.length && pilots.count) {
+      mateList.length = 0;
+      for (const c of pilots.mates) mateList.push(c);
+      mateList.sort((a, b) => apart(a.at.x, a.at.y, a.at.z, s.x, s.y, s.z) - apart(b.at.x, b.at.y, b.at.z, s.x, s.y, s.z));
+      for (const c of mateList) {
+        if (m >= h.mates.length) break;
+        toScreen(c.at.x, c.at.y, c.at.z, hudAt);
+        if (onScreen(hudAt.x, hudAt.y, hudAt.z, rect)) continue;
+        const el = h.mates[m++];
+        setOn(h, el, true);
+        setText(h, el.firstChild, c.name);
+        placeMark(el, hudAt);
+      }
+    }
+    for (let i = m; i < h.mates.length; i++) setOn(h, h.mates[i], false);
     const lead = tgt && state.lead && state.lead.t <= AIM.life ? state.lead : null;
     let leadOn = false;
     if (lead) {

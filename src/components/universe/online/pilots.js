@@ -22,8 +22,9 @@
 //
 // createPilots(parent, { T, colors, here, fleet, kinds }) → { update(dt, now, client, view),
 //   hit(from, to, damage) → { id, at, size } (a pilot) or { id, hunter, kind,
-//   at, size, down } (one of the hunters after pilot `id`), targets, count,
-//   at(id), dispose() }
+//   at, size, down } (one of the hunters after pilot `id`), targets, mates
+//   (your allies in view: { id, name, at }, for the HUD's markers at the
+//   edge), count, at(id), dispose() }
 // view: { project(x, y, z, out) (to the canvas: out.x, out.y in px and
 // out.z, the depth), tags (the element the tags go in), locked (the pilot
 // the guns are locked on, whose name the lock shows instead; footOn, the
@@ -490,6 +491,13 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
       const out = [];
       for (const [id, sh] of ships) if (sh.shown && !sh.ally && !sh.safe) out.push({ id: `p:${id}`, peer: id, at: sh.at, vel: sh.vel, size: SIZE, kind: sh.kind, loadout: sh.loadout, name: sh.name, threat: sh.threat });
       for (const g of ghosts.values()) if (clock >= g.goneUntil) out.push(g.target);
+      return out;
+    },
+    // your allies flying here (wherever they are on screen: the HUD puts
+    // the ones off it at the edge)
+    get mates() {
+      const out = [];
+      for (const [id, sh] of ships) if (sh.shown && sh.ally) out.push({ id, name: sh.name, at: sh.at });
       return out;
     },
     // how many there are about: the pilots flying, and the hunters after them

@@ -10,8 +10,11 @@
 // --universe: both fly the universe map instead (Alpha the X-wing, Bravo the
 // Falcon); Bravo is put 300 units off Alpha's nose and Alpha's tag for them
 // should be the far one (callsign and distance, 12px at least on screen, in
-// the tags box, on a phone's width too), then close by, the full one with
-// its level chip.
+// the tags box, on a phone's width too); Alpha's roster row for Bravo has a
+// level chip; then they become allies: the tag goes green and doesn't fade,
+// even past where a stranger's is gone; close by it's the full tag with its
+// level chip, and with Bravo behind, Alpha's HUD has a green marker at the
+// edge with Bravo's callsign.
 // (behind a proxy: HTTPS_PROXY, and BRIDGE=1 NODE_USE_ENV_PROXY=1 if the
 // browser's WebSockets can't get through it)
 // The relays are public, so anyone else online at the time is counted too:
@@ -37,8 +40,8 @@ if (process.env.PROXY_CA_SPKI) proxy.push(`--ignore-certificate-errors-spki-list
 const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium', args: [...proxy, '--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
 
 const errors = [];
-async function visitor(name, ship = null) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+async function visitor(name, ship = null, viewport = { width: 1280, height: 800 }) {
+  const ctx = await browser.newContext({ viewport });
   await ctx.addInitScript(([n, ship]) => {
     window.localStorage.setItem('tp-intro', '1');
     if (ship) window.localStorage.setItem('tp-universe-ship', JSON.stringify(ship));
@@ -91,10 +94,13 @@ const start = (page) =>
   page
     .evaluate(() => [...document.querySelectorAll('button')].find((b) => /^(Load the |Weigh anchor|Play anyway)/.test(b.textContent.trim()))?.click())
     .catch(() => {});
-// the roster's line for a callsign, opened from the corner
+// the roster's line for a callsign, opened from the corner (a click in the
+// page: over the map, a frame comes a second or so apart in software, and
+// Playwright waits on two alike to call the button settled)
+const press = (loc) => loc.evaluate((el) => el.click(), null, { timeout: 120000 });
 async function rosterLine(page, who) {
   const pill = page.locator('.universe-online-pill').first();
-  if ((await pill.getAttribute('aria-expanded')) !== 'true') await pill.click();
+  if ((await pill.getAttribute('aria-expanded')) !== 'true') await press(pill);
   const line = page.locator('.universe-online-pilot', { hasText: who }).first();
   await line.waitFor({ timeout: 60000 });
   return (await line.textContent()).replace(/\s+/g, ' ').trim();
@@ -110,7 +116,9 @@ const waitFor = async (fn, ms, what) => {
 };
 
 const a = await visitor('Alpha', universe ? 'xwing' : null);
-const b = await visitor('Bravo', universe ? 'falcon' : null);
+// (on the map, Bravo's window small: software drawing is slow, and Bravo's
+// poses must come often enough not to go stale on Alpha's screen)
+const b = await visitor('Bravo', universe ? 'falcon' : null, universe ? { width: 480, height: 320 } : undefined);
 let failed = 0;
 const check = (ok, what) => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`);
@@ -159,7 +167,7 @@ if (universe) {
       await placeBravo(300);
       const t = await tagOf(a, 'Bravo');
       return t?.mode === 'far' ? t : null;
-    }, 60000, 'the far tag');
+    }, 150000, 'the far tag');
     check(/^\d(\.\d)? ?k?m$|^\d+ m$/.test(far.dist) && far.px >= 12 && far.inside && far.level === null, `far tag at 300 units: ${JSON.stringify(far)}`);
     if (out) await a.screenshot({ path: `${out}/tags-far.png`, timeout: 120000 });
     await a.setViewportSize({ width: 360, height: 740 });
@@ -167,10 +175,53 @@ if (universe) {
       await placeBravo(300);
       const t = await tagOf(a, 'Bravo');
       return t?.mode === 'far' ? t : null;
-    }, 60000, 'the far tag on a phone');
+    }, 150000, 'the far tag on a phone');
     check(phone.px >= 12 && phone.inside, `far tag on a phone: ${JSON.stringify(phone)}`);
     if (out) await a.screenshot({ path: `${out}/tags-phone.png`, timeout: 120000 });
     await a.setViewportSize({ width: 1280, height: 800 });
+
+    // the roster: Bravo's row, with a level chip and the line of whose side
+    const row = a.locator('.universe-online-pilot', { hasText: 'Bravo' }).first();
+    await rosterLine(a, 'Bravo');
+    const lv = await row.locator('.universe-online-lv').textContent();
+    check(/^Lv \d+$/.test(lv), `roster row: ${JSON.stringify((await row.textContent()).replace(/\s+/g, ' ').trim())}, chip ${JSON.stringify(lv)}, relation ${await row.getAttribute('data-relation')}`);
+    // the record from your own row, and back
+    await press(a.locator('.universe-online-me button', { hasText: 'Record' }));
+    const record = await a.locator('.universe-record h3').textContent({ timeout: 120000 }).catch(() => null);
+    check(record === 'Flight record', `the record opens from the roster (${record})`);
+    await press(a.locator('.universe-record-back')).catch(() => {});
+
+    // allies: Alpha asks, Bravo accepts
+    const ids = await Promise.all([a, b].map((p) => p.evaluate(() => window.__universeDebug.net().selfId)));
+    await a.evaluate((id) => window.__universeDebug.net().ally(id, 'ask'), ids[1]);
+    await waitFor(() => b.evaluate((id) => window.__universeDebug.net().peers.get(id)?.ally === 'got', ids[0]), 60000, 'Bravo is asked');
+    await b.evaluate((id) => window.__universeDebug.net().ally(id, 'accept'), ids[0]);
+    await waitFor(() => a.evaluate((id) => window.__universeDebug.net().peers.get(id)?.ally === 'ally', ids[1]), 60000, 'Alpha and Bravo are allies');
+    console.log('ok   allies');
+    // (Bravo isn't always quite where put: the second one is checked to be
+    // past TAG.far, 600 units, where a stranger's tag is gone)
+    const km = (t) => (/ km$/.test(t.dist) ? parseFloat(t.dist) : parseFloat(t.dist) / 1000);
+    for (const [dist, past] of [[300, 0], [1000, 6]]) {
+      const t = await waitFor(async () => {
+        await placeBravo(dist);
+        const t = await tagOf(a, 'Bravo');
+        return t?.relation === 'ally' && t.mode === 'far' && km(t) > past ? t : null;
+      }, 150000, `the ally's tag at ${dist}`);
+      check(t.opacity === '1' && t.px >= 12 && t.inside, `ally's tag at ${dist} units: ${JSON.stringify(t)}`);
+    }
+    const near = await waitFor(async () => {
+      await placeBravo(20);
+      const t = await tagOf(a, 'Bravo');
+      return t?.mode === 'near' ? t : null;
+    }, 150000, 'the near tag');
+    check(/^Lv \d+$/.test(near.level ?? '') && near.dist === '', `near tag at 20 units: ${JSON.stringify(near)}`);
+    if (out) await a.screenshot({ path: `${out}/tags-near.png`, timeout: 120000 });
+    const mate = await waitFor(async () => {
+      await placeBravo(-60);
+      return a.evaluate(() => [...document.querySelectorAll('.universe-mate[data-on]')].map((m) => ({ name: m.textContent, off: m.hasAttribute('data-off') })).find((m) => m.name === 'Bravo') ?? null);
+    }, 150000, 'the ally behind, marked at the edge');
+    check(mate.off, `ally behind: ${JSON.stringify(mate)}`);
+    if (out) await a.screenshot({ path: `${out}/mate.png`, timeout: 120000 });
   } catch (e) {
     failed++;
     console.log(`FAIL ${e.message}`);
@@ -179,7 +230,7 @@ if (universe) {
       .evaluate(() => {
         const d = window.__universeDebug;
         const bravo = [...(d.net()?.peers.values() ?? [])].find((p) => p.name === 'Bravo');
-        return { ship: d.state.ship, bravo: bravo?.pose ?? null, where: bravo?.where, tags: [...document.querySelectorAll('.universe-tag')].map((t) => ({ on: t.hasAttribute('data-on'), text: t.textContent, mode: t.dataset.mode })) };
+        return { ship: d.state.ship, bravo: bravo?.pose ?? null, quietMs: bravo?.pose ? Math.round(window.performance.now() - bravo.pose.at) : null, where: bravo?.where, tags: [...document.querySelectorAll('.universe-tag')].map((t) => ({ on: t.hasAttribute('data-on'), text: t.textContent, mode: t.dataset.mode })) };
       })
       .catch((err) => ({ error: String(err) }));
     console.log(`     Alpha: ${JSON.stringify(seen)}`);
@@ -227,6 +278,8 @@ if (then) {
       return l.includes('here') ? null : l || null;
     }, 90000, `roster names where Bravo went (${then})`);
     console.log(`ok   roster: ${line}`);
+    const lv = await a.locator('.universe-online-pilot', { hasText: 'Bravo' }).first().locator('.universe-online-lv').textContent();
+    check(/^Lv \d+$/.test(lv), `Bravo's row has a level chip (${lv})`);
   } catch (e) {
     failed++;
     console.log(`FAIL ${e.message}`);
