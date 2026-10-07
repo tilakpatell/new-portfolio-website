@@ -7,7 +7,7 @@ import { SHORTCUTS, SITE, guideFor } from './guide/pages';
 import { KeyTable, Keys } from './guide/KeyTable';
 import { shortcutLabel } from '../lib/palette';
 import { openTour } from '../lib/tour';
-import { briefKeyFor, openBrief } from '../lib/brief';
+import { briefKeyFor, openBrief } from './tour/brief';
 
 // The guide's panel: the page's controls (keyboard or touch) as a table of
 // keys, then its tips; and the site as a whole. Loaded the first time the

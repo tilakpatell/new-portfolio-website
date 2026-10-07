@@ -1,5 +1,5 @@
 // Each world's basics: the tour's cards (Tour.jsx) the first time you arrive,
-// before you're dropped in (lib/brief decides when). What the place is, how
+// before you're dropped in (brief.js decides when). What the place is, how
 // to move, how to do things, what to go for, and where the rest is. Keyed as
 // the guide is (guide/routes); the guide (guide/pages.js) has every control
 // and tip, so this keeps to the few you need in the first minute.

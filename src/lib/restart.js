@@ -11,7 +11,7 @@ export const VISIT_KEYS = [
   'tp-cockpit', // the last cockpit you sat in
   'tp-universe-ship', // the ship you fly on the map
   'tp-tour', // the tour's offer, and whether it was taken (lib/tour)
-  'tp-briefs', // the worlds whose basics have been shown (lib/brief)
+  'tp-briefs', // the worlds whose basics have been shown (components/tour/brief)
 ];
 
 export function forgetVisit(storage) {

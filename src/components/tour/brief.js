@@ -1,4 +1,4 @@
-import { guideKeyFor } from '../components/guide/routes';
+import { guideKeyFor } from '../guide/routes';
 
 // A world's basics (components/tour/briefs.js): the first time you arrive in
 // a world, before you're dropped in, the tour's cards say what it is, how to

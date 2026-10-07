@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { RiCloseLine, RiQuestionLine } from 'react-icons/ri';
 import { guideMeta } from './guide/routes';
-import { BRIEFED } from '../lib/brief';
+import { BRIEFED } from './tour/brief';
 import { local } from '../lib/hooks';
 
 // A guide to the site, and to whatever the page you're on lets you play. The

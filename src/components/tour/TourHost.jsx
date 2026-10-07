@@ -4,7 +4,7 @@ import { RiCompass3Line } from 'react-icons/ri';
 import { useAchievements } from '../Achievements';
 import { local } from '../../lib/hooks';
 import { TOUR_EVENT, TOUR_KEY, offerHere, openTour, tourFor } from '../../lib/tour';
-import { BRIEF_EVENT, BRIEF_KEY, briefHere, briefKeyFor, sawBrief } from '../../lib/brief';
+import { BRIEF_EVENT, BRIEF_KEY, briefHere, briefKeyFor, sawBrief } from './brief';
 import { guideKeyFor } from '../guide/routes';
 import './offer.css';
 

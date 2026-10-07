@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BRIEFS, rowsFor } from './briefs';
-import { ASKED, BRIEFED } from '../../lib/brief';
+import { ASKED, BRIEFED } from './brief';
 import { GUIDES } from '../guide/routes';
 import { keyTokens } from '../guide/keys';
 
@@ -21,7 +21,7 @@ const marked = () => {
 };
 
 describe('the worlds’ basics', () => {
-  it('has them for exactly the worlds and the asks lib/brief names', () => {
+  it('has them for exactly the worlds and the asks brief.js names', () => {
     expect(Object.keys(BRIEFS).sort()).toEqual([...BRIEFED, ...ASKED].sort());
   });
 
