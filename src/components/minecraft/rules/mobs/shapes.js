@@ -31,12 +31,13 @@ function biped({ tex = [64, 64], y = 0, arms = [4, 12, 4], legs = [4, 12, 4], pl
 }
 
 // ModelQuadruped(height): a head, a body lying along z, four legs
-function quadruped({ height, head, headAt, body, bodyAt, bodyTex = [28, 8], legs = [4, height, 4], legAt = [3, 7, -5], extra = {} }) {
+function quadruped({ height, head, headAt, body, bodyAt, bodyTex = [28, 8], legs = [4, height, 4], legAt = [3, 7, -5], texture = [64, 32], extra = {} }) {
   const legY = 24 - height;
   const [lx, lz0, lz1] = legAt;
-  const leg = (name, x, z) => part(name, [x, legY, z], [box([0, 16], [-2, 0, -2], legs, extra.leg)]);
+  // (the modern models mirror the left legs)
+  const leg = (name, x, z) => part(name, [x, legY, z], [box([0, 16], [-2, 0, -2], legs, { ...extra.leg, ...(extra.mirrorLeft && x > 0 ? { mirror: true } : {}) })]);
   return {
-    texture: [64, 32],
+    texture,
     parts: [
       part('head', headAt, [box([0, 0], head[0], head[1], extra.head), ...(extra.headBoxes ?? [])]),
       part('body', bodyAt, [box(bodyTex, body[0], body[1], extra.body), ...(extra.bodyBoxes ?? [])], [HALF_PI, 0, 0]),
@@ -71,6 +72,7 @@ export const MODELS = {
     ],
   },
   pig: quadruped({ height: 6, head: [[-4, -4, -8], [8, 8, 8]], headAt: [0, 12, -6], body: [[-5, -10, -7], [10, 16, 8]], bodyAt: [0, 11, 2], extra: { headBoxes: [box([16, 16], [-2, 0, -9], [4, 3, 1])] } }),
+  // the cow as 1.21.5 made it (CowModel): a 64 × 64 skin, a muzzle, the horns a pixel forward
   cow: quadruped({
     height: 12,
     head: [[-4, -4, -6], [8, 8, 6]],
@@ -78,8 +80,10 @@ export const MODELS = {
     body: [[-6, -10, -7], [12, 18, 10]],
     bodyAt: [0, 5, 2],
     bodyTex: [18, 4],
+    texture: [64, 64],
     extra: {
-      headBoxes: [box([22, 0], [-5, -5, -4], [1, 3, 1]), box([22, 0], [4, -5, -4], [1, 3, 1])],
+      headBoxes: [box([1, 33], [-3, 1, -7], [6, 3, 1]), box([22, 0], [-5, -5, -5], [1, 3, 1]), box([22, 0], [4, -5, -5], [1, 3, 1])],
+      mirrorLeft: true,
       bodyBoxes: [box([52, 0], [-2, 2, -8], [4, 6, 1])],
       legOut: 1,
       legIn: 1,

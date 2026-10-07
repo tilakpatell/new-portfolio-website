@@ -35,9 +35,9 @@ These live outside this folder and are not public domain.
 - `../models/albuquerque/<id>.glb`: Albuquerque's people (Walt and Jesse in hazmat, Metherria's customers, Hank, Hector and the nurse), generated for this site by Tilak Patel with Meshy AI in the same way, then rigged by Meshy: stylized figures described by look and costume, not likenesses of anyone real.
 - `../models/albuquerque/world/<name>.glb`: the Albuquerque world's buildings and cars (Walt's house and his Aztek, Hank's SUV, Saul's office, Los Pollos Hermanos, the laundry over the superlab, Casa Tranquila, the A1A Car Wash, and the rest of town: the KiMo Theatre, the Dog House, the DEA's office, the Crossroads Motel, the house under Vamonos Pest's tent, Jesse's house, Loyola's diner and Hank and Marie's house), generated for this site by Tilak Patel with Meshy AI in the same way, baked to the ground with their longest side set to size. Their atlases are repainted in flat colours (enlarged one and a half times, smoothed of the generator's speckle and posterised, rare colours kept: `scripts/flatten-glb.mjs`), and up close the buildings wear the core kit's plaster (`src/lib/three/core.js`). (`rv.glb` there is the first RV, no longer loaded: the town uses the Sketchfab one below.)
 
-## Not CC0: CC Attribution-ShareAlike
+## Not CC0: Minecraft's own, used with permission
 
-- `../mc/` (`blocks.webp`, `skins/*.webp`, `manifest.json`): the Minecraft tribute's block tiles and mob skins, from [Pixel Perfection Legacy](https://modrinth.com/resourcepack/pixel-perfection-legacy), Nova_Wostra's continuation of XSSheep's Pixel Perfection, under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Cut and stacked by `scripts/mc-atlas.mjs` (the chest's and the bed's tiles cut from their entity sheets); the built files are shared under the same licence. Not Mojang's textures, which may not be redistributed: the script checks every tile against the game's own and refuses a copy.
+- `../mc/` (`blocks.webp`, `items.webp`, `skins/*.webp`, `sprites/*.webp`, `manifest.json`): the Minecraft tribute's block and item tiles, mob skins and HUD pictures, the game's own (Java Edition 1.21.11, © Mojang Studios), used with Mojang's permission. Cut and stacked by `scripts/mc-atlas.mjs` from the owner's copy of the game. Not free to reuse.
 
 ## Not CC0: CC Attribution, from Sketchfab
 

@@ -10,7 +10,7 @@ Everything here is credited on the page that uses it too. This file is made by `
 
 - [3D models from Sketchfab](#3d-models-from-sketchfab)
 - [Models used with permission](#models-used-with-permission)
-- [Textures shared alike](#textures-shared-alike)
+- [Textures used with permission](#textures-used-with-permission)
 - [Scans, skies and kits (CC0)](#scans-skies-and-kits-cc0)
 - [Photos](#photos)
 - [Fonts](#fonts)
@@ -308,13 +308,13 @@ From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005),
 | [Battlefront 2 Remaster: imp_inf_stormtrooper](https://www.moddb.com/mods/hd-graphics-mod) | [Harrisonfog](https://www.moddb.com/members/harrisonfog) | the stormtroopers |
 | [Battlefront 2 Remaster: rep_inf_ep3trooper](https://www.moddb.com/mods/hd-graphics-mod) | [Harrisonfog](https://www.moddb.com/members/harrisonfog) | the clone troopers |
 
-## Textures shared alike
+## Textures used with permission
 
-Used under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); what the site builds from them is shared under the same licence.
+Not the site’s, and not free to reuse: shown here by their owners’ leave.
 
-| Texture pack | By | On the site |
+| Textures | By | On the site |
 | --- | --- | --- |
-| [Pixel Perfection Legacy (resource pack)](https://modrinth.com/resourcepack/pixel-perfection-legacy) | XSSheep, Nova_Wostra | The Minecraft tribute’s block tiles and mob skins, rebuilt into public/mc/ by scripts/mc-atlas.mjs; the built files are under the same licence |
+| [Minecraft (the game's own textures)](https://www.minecraft.net) | Mojang Studios | The Minecraft tribute's block tiles, item tiles, mob skins and HUD pictures, cut and stacked into public/mc/ by scripts/mc-atlas.mjs from the owner's copy of the game (Java Edition 1.21.11) |
 
 ## Scans, skies and kits (CC0)
 

@@ -3301,16 +3301,15 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
-  "mc/pixel-perfection": {
-    "source": "https://modrinth.com/resourcepack/pixel-perfection-legacy",
-    "id": "pixel-perfection-legacy 25.4-75.1",
-    "name": "Pixel Perfection Legacy (resource pack)",
+  "mc/minecraft": {
+    "source": "https://www.minecraft.net",
+    "id": "minecraft-java 1.21.11",
+    "name": "Minecraft (the game's own textures)",
     "authors": [
-      "XSSheep",
-      "Nova_Wostra"
+      "Mojang Studios"
     ],
-    "license": "CC BY-SA 4.0",
-    "use": "The Minecraft tribute’s block tiles and mob skins, rebuilt into public/mc/ by scripts/mc-atlas.mjs; the built files are under the same licence"
+    "license": "Used with Mojang Studios' permission",
+    "use": "The Minecraft tribute's block tiles, item tiles, mob skins and HUD pictures, cut and stacked into public/mc/ by scripts/mc-atlas.mjs from the owner's copy of the game (Java Edition 1.21.11)"
   },
   "meshy/ackbar": {
     "source": "https://www.meshy.ai",
