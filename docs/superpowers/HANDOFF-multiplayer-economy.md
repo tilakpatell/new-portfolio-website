@@ -9,12 +9,14 @@ The design is `docs/superpowers/specs/2026-10-07-multiplayer-economy-design.md` 
 
 - PR B, tags and factions (Tasks B1 to B3): `relations.js` (`relation`, `factionText`, `factionsFrom`) and `tagRules.js` (`tagMode`, `fontPx`, `distText`, `keepIn`). The hello carries `lv` and `f`, read against the lists the reader has; the client takes the wallet's level and `marks()` (through `useEconomy({ ask: false })`, so a portfolio page never fetches the wallet) and the pages send `tp:standing` and `tp:oath` when those change. Tags have a far mode, a distance, a level chip and a colour by relation, stay 12 px on screen and inside their box, and open the roster on a click; the roster rows say whose side and what level; allies off screen get `.universe-mate` arrows in the universe's and the galaxy's HUDs; the roster's “You're …” row opens `Record.jsx`, whose styles moved to `record.css`. `WHO` (who a standing is with) moved from `catalog.js` to `standing.js`. Where the plan and the code disagreed, the plan's lines were fixed to the code.
 
+- PR C, flying to a pilot (Tasks C1 to C3): `pilotGoal.js` (`parkBehind`, `pilotSpace`, `reached`, `REAIM_MS`), `pilots.js`'s `pose(id)`, `travel('pilot:<id>')` in the universe scene (any drive but the lanes, the hyperdrive, through the portal to the other sector) and `flyTo(id)` in the galaxy's, the roster's “Fly to” and the follow hand-off for “Go”, and the flown-to pilot among the edge markers. `scripts/flyto-check.mjs --fake` (and `--galaxy`) passes; Fakey drifts slowly because software rendering runs the scene's clock far behind the wall's.
+
 ## Left
 
-- PR C (flying to a pilot), off main once A is merged. Its edge marker for the pilot being flown to can reuse B's `.universe-mate` list in `placeHud`.
+- Nothing in the plan. Not checked: `flyto-check.mjs` with two real browsers over the relays (only `--fake`, which drives the scene through `pilots.pose`), and the galaxy's tags and markers with a second pilot present. PRs B and C were merged without the separate pre-merge review pass, at the owner's request when usage ran short; a review of #570 and C's PR is still worth doing.
 
 ## Checking it
 
-- Two browsers online: `npx vite --port 5173`, then `node scripts/online-check.mjs --universe` (the tags, the roster's level chip, the record, allies and the edge marker; `PORT=5174` for another port, `BRIDGE=1 NODE_USE_ENV_PROXY=1` behind a proxy), and once PR C is in, `node scripts/flyto-check.mjs`.
+- Two browsers online: `npx vite --port 5173`, then `node scripts/online-check.mjs --universe` (the tags, the roster's level chip, the record, allies and the edge marker; `PORT=5174` for another port, `BRIDGE=1 NODE_USE_ENV_PROXY=1` behind a proxy), and `node scripts/flyto-check.mjs` (`--fake` without the relays, `--galaxy` in a system).
 - The wallet: on `/universe` in dev, `window.__universeDebug` has `state`, `hunters`, `deed` and `economy`; `__universeDebug.deed('killHunter')` shows `+40 ¢`; the hangar's Buy fits the part; `localStorage['tp-pilot']` holds it after a reload.
 - `npm run lint`, `npm test`, `npm run build` all green at every merge.
