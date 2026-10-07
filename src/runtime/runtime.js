@@ -257,19 +257,26 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     return asked.promise;
   };
 
-  // make a module's world; null if something newer came meanwhile
-  const build = async (module, props, host, token) => {
-    const made = await backendFor(module);
-    if (token !== seq || !made) return null;
-    // the governor starts afresh with each world, at its sharpest and deaf
-    // to its arrival's hitches for a moment, and before the ratio's set, so
-    // that's the sharpest (not the last world's softened one)
+  // the governor starts afresh with each world, at its sharpest and deaf
+  // to its arrival's hitches for a moment, and before the ratio's set, so
+  // that's the sharpest (not the last world's softened one)
+  const start = (module) => {
     quality.reset?.();
     quality.hold?.(WARM_UP);
-    made.setRatio?.(ratioFor(module));
-    // (a handover's old world still drawing in the canvas: drawn again at
-    // the new size before the browser next paints, not shown cleared)
-    if (current) loop.kick();
+    gfx.setRatio?.(ratioFor(module));
+  };
+
+  // make a module's world; null if something newer came meanwhile. A mount
+  // starts its world afresh here, before it's made, since nothing is drawn
+  // in the canvas meanwhile. A handover leaves that for the cover: the old
+  // world still draws in the canvas, and a take-off begins inside its draw,
+  // so this runs after that draw and before the browser paints, with the
+  // next frame not due till after it; a new ratio set here cleared the
+  // buffer, and that blank was shown for a frame.
+  const build = async (module, props, host, token, { early }) => {
+    const made = await backendFor(module);
+    if (token !== seq || !made) return null;
+    if (early) start(module);
     rt.host = host;
     assets.owner?.(module.id);
     let world = validateWorld(await module.create(rt, props));
@@ -387,7 +394,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       mark(host);
       setStatus('loading');
       try {
-        const world = await build(mod, props, host, token);
+        const world = await build(mod, props, host, token, { early: true });
         if (!world) return false;
         making = null;
         place(world, host, mod);
@@ -426,7 +433,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       const kept = input.bindings?.() ?? null;
       input.unbind();
       try {
-        const world = await build(mod, { ...props, from }, host, token);
+        const world = await build(mod, { ...props, from }, host, token, { early: false });
         if (!world) return false;
         if (after) {
           await settle(after, AFTER_MAX);
@@ -445,6 +452,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
         if (current === old) letGo(old); // (unless a thrown frame took it already)
         current = null;
         input.detach();
+        start(mod); // (under the cover: the canvas is the new world's from here)
         place(world, host, mod);
         begin(module, world, host, props);
         timeline = snap ? createHandover({ fade }) : null; // (nothing drawn to fade: straight in)

@@ -519,23 +519,55 @@ describe('createRuntime', () => {
     expect(order).toEqual(['reset', 'hold 3000', 'setRatio 1.5']);
   });
 
-  it('a handover whose new ratio resizes the canvas under the old world asks for a frame, so the old world is drawn again before the next paint', async () => {
+  // This replaced a test that pinned a kick after the new ratio was set
+  // under the old world. The kick only helped a handover begun outside a
+  // frame. A take-off begins inside the surface's own draw, so the build
+  // resumed after that draw, in the same task, with the next frame already
+  // queued, and the resize showed the cleared buffer for a frame. The new
+  // world's fresh start now waits for the cover instead.
+  it("a handover begun inside the old world's draw leaves its canvas alone: the new world's fresh start and ratio come under the cover", async () => {
     const order = [];
     const quality = fakeQuality();
-    let scale = 0.72;
+    let scale = 1;
     quality.ratioUnder = (cap) => Math.min(cap ?? Infinity, 2) * scale;
-    quality.reset = () => (scale = 1);
+    quality.reset = vi.fn(() => {
+      order.push('reset');
+      scale = 1;
+    });
+    quality.hold = vi.fn((ms) => order.push(`hold ${ms}`));
     const gfx = fakeBackend();
     gfx.setRatio = vi.fn((r) => order.push(`setRatio ${r}`));
+    gfx.setSize = vi.fn((w, h) => order.push(`setSize ${w}x${h}`));
+    gfx.snapshot = vi.fn(() => {
+      order.push('snapshot');
+      return { set: vi.fn(), remove: vi.fn() };
+    });
     const { rt, loop } = make({ quality, makeBackend: () => gfx });
-    await rt.mount({ id: 'surface', ratio: 1.5, create: () => fakeWorld({ wants: () => true }) }, {}, fakeHost());
+    let board = false;
+    const galaxy = fakeWorld({ wants: () => true, draw: vi.fn(() => order.push('draw galaxy')) });
+    const surface = fakeWorld({
+      wants: () => true,
+      draw: vi.fn(() => {
+        order.push('draw surface');
+        // (taking off: the surface's draw emits 'leaving', and the page hands over there and then)
+        if (board) {
+          board = false;
+          rt.handover({ id: 'galaxy', ratio: 1.5, create: () => galaxy }, {}, fakeHost());
+        }
+      }),
+    });
+    await rt.mount({ id: 'surface', ratio: 1.5, create: () => surface }, {}, fakeHost());
     loop.tick(0);
-    scale = 0.72; // (it struggled: softened)
-    loop.ctl.kick.mockImplementation(() => order.push('kick'));
+    scale = 0.85; // (it struggled: softened, and its canvas drawn at 1.275)
+    board = true;
     order.length = 0;
-    rt.handover({ id: 'galaxy', ratio: 1.5, create: () => fakeWorld({ wants: () => true, ready: new Promise(() => {}) }) }, {}, fakeHost());
-    await flush();
-    expect(order.slice(0, 2)).toEqual(['setRatio 1.5', 'kick']);
+    loop.tick(16);
+    await settled(); // (the microtasks after the frame: still before the browser paints)
+    expect(order).toEqual(['draw surface']); // nothing written to the canvas it has just drawn
+    loop.tick(33); // the old world's last frame, kept as the cover
+    await settled();
+    loop.tick(50);
+    expect(order).toEqual(['draw surface', 'draw surface', 'snapshot', 'reset', 'hold 3000', 'setRatio 1.5', 'setSize 640x360', 'draw galaxy']);
   });
 
   it("the governor isn't fed the old world's frames while the next world is made", async () => {

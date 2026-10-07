@@ -4,7 +4,7 @@
 // last step for `floorAfter` ms of frames and the frames are still late
 // there (the pace's `stuck`), the level goes one past the steps, once, so a
 // module can shed its own effects (what a scene's `onSlow` meant). Each
-// world starts afresh (the runtime calls reset() and hold() as it's made):
+// world starts afresh (the runtime calls reset() and hold() as it starts it):
 // back at the sharpest, and its first few seconds of frames let go by
 // unjudged (`hold(ms)`, from the first frame after it), since an arrival's
 // hitches (models arriving, shaders linking, the page's HUD going up) say
