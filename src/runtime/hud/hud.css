@@ -10,24 +10,6 @@
    index.css), never a world's own class, whichever loads first. */
 
 :where(.hud) {
-  /* spacing: the edge pad, the pad at the foot (the phone's home bar if
-     that's more), the corner the site's "?" keeps (extras.css .guide-btn:
-     right 16, 42 wide), the gap between stacked things */
-  --hud-pad: clamp(0.75rem, 2vw, 1.25rem);
-  --hud-safe-b: env(safe-area-inset-bottom, 0px);
-  --hud-pad-b: max(var(--hud-pad), var(--hud-safe-b));
-  --hud-pad-l: max(var(--hud-pad), env(safe-area-inset-left, 0px));
-  --hud-pad-r: max(var(--hud-pad), env(safe-area-inset-right, 0px));
-  --guide-reserve: calc(16px + 42px + 0.9rem);
-  /* …and its height from the foot (bottom 22 px + the home bar, 42 tall, a gap) */
-  --guide-clear: calc(22px + 42px + 0.5rem + var(--hud-safe-b));
-  --hud-gap: 0.5rem;
-  /* touch buttons: one main action at most, actions, the rest */
-  --touch-primary: 76px;
-  --touch-action: 64px;
-  --touch-secondary: 52px;
-  /* the smallest text a player reads while playing */
-  --hud-min: 0.7rem;
   /* the skin: a world sets these on its own class */
   --hud-ink: #f6f3ea;
   --hud-muted: #cfc8b4;
@@ -146,6 +128,29 @@
 
 @media (prefers-reduced-motion: reduce) {
   :where(.hud-toast) { animation: none; }
+}
+
+/* the spacing, on the root: a world's HUD that isn't in the frame yet
+   (its own rows, as the towns' still are) is spaced by the same numbers */
+:root {
+  /* spacing: the edge pad, the pad at the foot (the phone's home bar if
+     that's more), the corner the site's "?" keeps (extras.css .guide-btn:
+     right 16, 42 wide), the gap between stacked things */
+  --hud-pad: clamp(0.75rem, 2vw, 1.25rem);
+  --hud-safe-b: env(safe-area-inset-bottom, 0px);
+  --hud-pad-b: max(var(--hud-pad), var(--hud-safe-b));
+  --hud-pad-l: max(var(--hud-pad), env(safe-area-inset-left, 0px));
+  --hud-pad-r: max(var(--hud-pad), env(safe-area-inset-right, 0px));
+  --guide-reserve: calc(16px + 42px + 0.9rem);
+  /* …and its height from the foot (bottom 22 px + the home bar, 42 tall, a gap) */
+  --guide-clear: calc(22px + 42px + 0.5rem + var(--hud-safe-b));
+  --hud-gap: 0.5rem;
+  /* touch buttons: one main action at most, actions, the rest */
+  --touch-primary: 76px;
+  --touch-action: 64px;
+  --touch-secondary: 52px;
+  /* the smallest text a player reads while playing */
+  --hud-min: 0.7rem;
 }
 
 /* a world's inner place (a shop, a game over the page): one height for all,
