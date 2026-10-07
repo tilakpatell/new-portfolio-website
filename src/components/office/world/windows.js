@@ -21,6 +21,7 @@
 
 import * as THREE from 'three';
 import { rng } from '../../../lib/texture';
+import { sharpen } from '../../../lib/three/textures';
 
 const GROUND = -4.2; // the lot, two storeys down
 const SCALE = 32; // painted pixels per metre
@@ -44,7 +45,7 @@ function strip(w, h, draw) {
     const t = new THREE.CanvasTexture(c);
     t.wrapS = THREE.RepeatWrapping;
     t.colorSpace = mask ? THREE.NoColorSpace : THREE.SRGBColorSpace;
-    t.anisotropy = 4;
+    sharpen(t);
     out.push(t);
   }
   return out;

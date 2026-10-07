@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EVENTS, PACE, canHave, createDirector } from './director';
+import { EVENTS, INTENSITY, PACE, canHave, createDirector } from './director';
 import { SIDES } from './sides';
 
 // a seeded random, so a run is the same every time
@@ -142,5 +142,27 @@ describe('the law on your back', () => {
     // (and not while your shields are low)
     const calm = run(createDirector({ rand: seeded(21) }), 3000, { side: SIDES.starwars, wanted: true, calm: true });
     expect(calm.some((g) => g.e === 'hunt')).toBe(false);
+  });
+});
+
+describe('the drama’s pace', () => {
+  it('holds off past a peak of intensity, then gives a breather once it has fallen, and carries on', () => {
+    // a hammering from 100 s to 112 s: 40 damage a frame
+    const hurt = (t) => (t > 100 && t < 112 ? 40 : 0);
+    const d = createDirector({ rand: seeded(2) });
+    const got = run(d, 400, (t) => ({ side: SIDES.starwars, hurt: hurt(t) }));
+    const d2 = createDirector({ rand: seeded(2) });
+    const quiet = run(d2, 400, { side: SIDES.starwars });
+    // nothing comes while it's hot, nor in the breather after
+    expect(got.some((g) => g.t > 100 && g.t < 112 + INTENSITY.relax)).toBe(false);
+    expect(got.filter((g) => g.t > 140).length).toBeGreaterThan(0);
+    expect(quiet.length).toBeGreaterThan(got.length);
+    expect(d.intensity).toBeLessThan(INTENSITY.low);
+    // kills count too: heat going up
+    const d3 = createDirector({ rand: seeded(2) });
+    let before = 0;
+    for (let i = 0; i < 6; i++) d3.update(0.5, { side: SIDES.starwars, heat: i, hurt: 0 });
+    before = d3.intensity;
+    expect(before).toBeGreaterThan(INTENSITY.kill * 3);
   });
 });

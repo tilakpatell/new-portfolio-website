@@ -19,6 +19,7 @@ import { antiTile } from '../../../lib/three/surface';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { groundWorld } from '../../../lib/three/groundwork';
 import { EYE, GADDI, INSTRUMENTS, LAMPS, PARAPET, PAVILION, POOL, RUG, TERRACE } from './layout';
+import { sharpen } from '../../../lib/three/textures';
 
 // (the site's shared loader, fetched only once the courtyard is up)
 const loaders = () => import('../../../lib/three/gltf');
@@ -313,6 +314,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
       c.strokeRect(4, 4, w - 8, h - 8);
     });
     const alpha = new THREE.CanvasTexture(jali);
+    sharpen(alpha);
     alpha.wrapS = alpha.wrapT = THREE.RepeatWrapping;
     const lattice = wallMat(2.2, 0.6);
     lattice.alphaMap = alpha;
@@ -374,6 +376,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
       c.putImageData(img, 0, 0);
     });
     const ripples = new THREE.CanvasTexture(rip);
+    sharpen(ripples);
     ripples.wrapS = ripples.wrapT = THREE.RepeatWrapping;
     ripples.repeat.set(3, 3);
     const wmat = new THREE.MeshStandardMaterial({ color: '#0b2226', roughness: 0.06, metalness: 0.0, normalMap: ripples, normalScale: new THREE.Vector2(0.25, 0.25), envMapIntensity: 1.6 });
@@ -617,6 +620,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
         x.fillText(text, w / 2, h / 2 + 4);
       });
       const t = new THREE.CanvasTexture(c);
+      sharpen(t);
       t.colorSpace = THREE.SRGBColorSpace;
       labelCache.set(text, t);
     }

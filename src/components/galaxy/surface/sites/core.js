@@ -151,6 +151,11 @@ export const SITES = {
           { kind: 'n1fighter', at: [14, -8], yaw: -0.1 },
           { kind: 'n1fighter', at: [-22, 30], yaw: 0.5 },
           { kind: 'n1fighter', at: [24, 32], yaw: -0.4 },
+          // (Bravo Squadron's rows, further in: the hangar held at least twenty-seven)
+          { kind: 'n1fighter', at: [-21, -18], yaw: 0 },
+          { kind: 'n1fighter', at: [-7, -19], yaw: 0 },
+          { kind: 'n1fighter', at: [7, -19], yaw: 0 },
+          { kind: 'n1fighter', at: [21, -18], yaw: 0 },
           { kind: 'crates', at: [-26, 8] },
           { kind: 'crates', at: [27, 10] },
         ],
@@ -736,6 +741,14 @@ export const SITES = {
       span([-170, -50], [-200, 110], 28, 16, 5, 'kamino', 22),
       span([0, 0], [70, -230], 30, 22, 5, 'kamino', 22),
       span([200, 50], [230, 220], 40, 18, 5, 'kamino', 22),
+      // the static discharge towers, taking the storm's lightning: two on the
+      // pad's rim, the rest on their own stilts out among the domes
+      { kind: 'kdischarge', at: [24, -14], abs: true, y: 22, opts: { h: 16, seed: 1, every: 9 } },
+      { kind: 'kdischarge', at: [-20, -20], abs: true, y: 22, opts: { h: 16, seed: 2, every: 13 } },
+      { kind: 'kdischarge', at: [-100, 300], abs: true, y: 0, solid: false, opts: { h: 64, seed: 3, every: 10 } },
+      { kind: 'kdischarge', at: [170, 290], abs: true, y: 0, solid: false, opts: { h: 70, seed: 4, every: 12 } },
+      { kind: 'kdischarge', at: [370, -160], abs: true, y: 0, solid: false, opts: { h: 60, seed: 5, every: 8 } },
+      { kind: 'kdischarge', at: [-360, -170], abs: true, y: 0, solid: false, opts: { h: 66, seed: 6, every: 11 } },
       // the rest of the city, out in the storm
       { kind: 'tipocadome', at: [-130, 270], yaw: 0.5, abs: true, y: 0, solid: false },
       { kind: 'tipocadome', at: [130, 330], yaw: 2.1, abs: true, y: 0, solid: false, scale: 1.3 },

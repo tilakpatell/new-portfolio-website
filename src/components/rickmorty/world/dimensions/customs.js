@@ -162,10 +162,12 @@ export async function buildCustoms(kit) {
     },
     alarm: () => {
       alarm = true;
+      S.hunt(true); // the agents come round their desks
     },
     calm: () => {
       alarm = false;
       took = false;
+      S.calm();
     },
   };
   return area;

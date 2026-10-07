@@ -665,7 +665,8 @@ const slab = (id, x0, x1, z0, z1) => box(id, (x0 + x1) / 2, (z0 + z1) / 2, x1 - 
 const circle = (id, x, z, r) => ({ id, kind: 'circle', x, z, r });
 const furnished = (area) => [
   ...FURNITURE.filter((f) => f.area === area).map((f) => box(f.id, f.x, f.z, f.w, f.d, f.turn, f.h)),
-  ...PEOPLE.filter((p) => p.area === area && !p.sits && !p.holo).map((p) => circle(p.id, p.x, p.z, PERSON)),
+  // (someone who roams, stage.js's NPC behaviour, is nowhere in particular: not in the way)
+  ...PEOPLE.filter((p) => p.area === area && !p.sits && !p.holo && !p.roams).map((p) => circle(p.id, p.x, p.z, PERSON)),
 ];
 // the President's motorcade: the limo and the two beside it, in the way till he's met
 export const MOTORCADE = [box('limo', LIMO.x, LIMO.z, LIMO.w, LIMO.d, LIMO.turn), ...PEOPLE.filter((p) => p.until === 'president').map((p) => circle(p.id, p.x, p.z, PERSON))];

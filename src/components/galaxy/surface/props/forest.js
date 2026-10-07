@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { between, box, cyl, dome, part, ring, rockGeometry, rod, upright } from '../kit';
 import { loft, trap8 } from '../../../universe/trafficKit';
 import { rng } from '../noise';
-import { insignia } from '../decals';
+import { insignia, scorch } from '../decals';
 import { buildGalaxyShip } from '../../fleet';
 import { liftNormals, spherifyNormals } from '../../../../lib/three/foliage';
 
@@ -1798,6 +1798,23 @@ function tiers(list, { seed = 1, zo = 0 } = {}) {
 }
 
 const YAVIN = {
+  // the floor of the Great Temple's hangar, laid over the temple's own:
+  // worn stone, the Rebels' painted bays and taxi lines, and the scorches of
+  // a squadron's engines (Red and Gold squadrons flew from here)
+  hangarfloor(k, { w = 30, d = 34 } = {}) {
+    const parts = [part(box(w, 0.04, d), { color: '#7a766a', to: 'stone' })];
+    for (const [x, z] of [[-9, -3], [9, -3], [0, 12]]) {
+      parts.push(part(new THREE.RingGeometry(5.2, 5.6, 40).rotateX(-PI / 2), { at: [x, 0.05, z], color: '#d8b84a', to: 'paint' }));
+      parts.push(part(scorch(4.2, x + z * 3).rotateX(-PI / 2), { at: [x, 0.045, z - 4.5], color: '#56524a', to: 'stone' }));
+      parts.push(part(scorch(2.4, x + z * 3 + 1).rotateX(-PI / 2), { at: [x, 0.048, z - 4.8], color: '#2c2a26', to: 'dark' }));
+    }
+    // the taxi line out of the mouth, and the bays' edge marks
+    parts.push(part(box(0.5, 0.02, d - 2), { at: [0, 0.04, 0], color: '#d8b84a', to: 'paint' }));
+    for (const x of [-w / 2 + 1.2, w / 2 - 1.2]) for (let i = 0; i < 8; i++) parts.push(part(box(0.5, 0.02, 1.6), { at: [x, 0.04, -d / 2 + 2 + i * 4.2], color: i % 2 ? '#2a2a2a' : '#d8b84a', to: 'paint' }));
+    parts.push(part(insignia('rebel', 3.2).rotateX(-PI / 2), { at: [0, 0.05, -d / 2 + 4], color: '#a8452e', to: 'paint' }));
+    return { object: k.build(parts, { name: 'hangarfloor' }) };
+  },
+
   // the Great Temple of Massassi: a broad stone platform 100 m across with
   // the Rebel hangar cut into its front (+z), four tiers stepping up behind
   // it, flights of steps up its east side to the summit; built by the

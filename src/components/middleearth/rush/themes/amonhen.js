@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { B, ball, cyl } from '../../shire/props';
 import { V, campfire, fountain, motes } from './common';
+import { sharpen } from '../../../../lib/three/textures';
 
 export const AMON_HEN = {
   sky: { background: 0x9ec4e0, fog: [0xb8ccd8, 24, 70], hemi: [0xe8f2ff, 0x5a7a3a, 1.5], sun: [0xfff0d0, 2.6] },
@@ -68,6 +69,7 @@ export const AMON_HEN = {
       g.stroke();
     }
     const tex = new THREE.CanvasTexture(cv);
+    sharpen(tex);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set((W + 36) / 3, 8);

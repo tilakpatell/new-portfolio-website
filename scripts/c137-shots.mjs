@@ -68,6 +68,19 @@ export const VIEWS = {
   pluto: { area: 'pluto', at: [-400, 1916, N], cam: [0, 0.2] },
   gearworld: { area: 'gearworld', at: [-400, 2016, N], cam: [0, 0.2] },
   vindicators: { area: 'vindicators', at: [-400, 2105.4, N], cam: [0, 0.3] },
+  simulation: { area: 'simulation', at: [-400, 2215.4, N], cam: [0, 0.3] },
+  storytrain: { area: 'storytrain', at: [-400, 2310.4, N], cam: [0, 0.2] },
+  fortress: { area: 'fortress', at: [-400, 2413.4, N], cam: [0, 0.3] },
+  froopyland: { area: 'froopyland', at: [-400, 2518, N], cam: [0, 0.2] },
+  nimbus: { area: 'nimbus', at: [-400, 2618, N], cam: [0, 0.2] },
+  gromflomites: { area: 'gromflomites', at: [-400, 2713.4, N], cam: [0, 0.3] },
+  heistcon: { area: 'heistcon', at: [-400, 2812.4, N], cam: [0, 0.3] },
+  snakeplanet: { area: 'snakeplanet', at: [-400, 2918, N], cam: [0, 0.2] },
+  nuptia: { area: 'nuptia', at: [-400, 3018, N], cam: [0, 0.2] },
+  gloopynoops: { area: 'gloopynoops', at: [-400, 3112.4, N], cam: [0, 0.3] },
+  resort: { area: 'resort', at: [-400, 3218, N], cam: [0, 0.2] },
+  schwifty: { area: 'schwifty', at: [-400, 3318, N], cam: [0, 0.2] },
+  evilrick: { area: 'evilrick', at: [-400, 3415.4, N], cam: [0, 0.3] },
 };
 
 const names = process.argv.slice(2);

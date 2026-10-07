@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { box, cyl, part } from '../../galaxy/surface/kit';
 import { rng } from '../../galaxy/surface/noise';
 import { projects } from '../../../data/projects';
+import { sharpen } from '../../../lib/three/textures';
 
 // a Game Boy's greens, darkest first
 export const GREENS = ['#0f380f', '#306230', '#8bac0f', '#9bbc0f'];
@@ -40,6 +41,7 @@ function label(text) {
   }
   lines.slice(0, 3).forEach((l, i) => x.fillText(l.slice(0, 12), 128, 246 + i * 28, 236));
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

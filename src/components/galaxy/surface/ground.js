@@ -28,6 +28,7 @@ import { HALF } from './terrain';
 import { noiseTexture } from './noiseTex';
 import { loadScan, scanOf } from './kit';
 import { detailLevel } from '../../../lib/detail';
+import { sharpen } from '../../../lib/three/textures';
 
 // (noise read from noiseTex.js's tile, at a few scales, rather than worked out)
 const NOISE = `
@@ -226,6 +227,7 @@ export function createMarks(size = 512) {
   c.fillStyle = '#000';
   c.fillRect(0, 0, size, size);
   const texture = new THREE.CanvasTexture(canvas);
+  sharpen(texture);
   texture.colorSpace = THREE.NoColorSpace;
   texture.minFilter = THREE.LinearFilter;
   texture.generateMipmaps = false;

@@ -56,7 +56,7 @@
   touch-action: manipulation;
   outline-offset: 8px;
   isolation: isolate;
-  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.7s var(--ease-out), box-shadow 0.7s var(--ease-out);
 }
 /* Picked up: turned a few degrees to face the pointer (useTilt in
    GameBoyStage.jsx sets --gb-nx and --gb-ny, -1 to 1), the rims facing the
@@ -85,7 +85,7 @@
   background-size: 200% 200%;
   background-position: 70% 38%;
   opacity: 0;
-  transition: opacity 0.6s ease, background-position 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.6s ease, background-position 0.7s var(--ease-out);
 }
 .gb[data-tilt]::before {
   opacity: 1;
@@ -225,7 +225,7 @@
 .gb-speaker i { width: 5px; height: 46px; border-radius: 3px; background: #a39e98; box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.38); }
 
 /* ─── GPU checkpoint-restart ──────────────────────────────────────────────── */
-.anim-grow { transform-box: fill-box; transform-origin: 0 50%; animation: grow-x 2s cubic-bezier(0.3, 0.6, 0.2, 1) both; }
+.anim-grow { transform-box: fill-box; transform-origin: 0 50%; animation: grow-x 2s var(--ease-smooth) both; }
 @keyframes grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .gpu-tile { transition: fill 0.4s ease, stroke 0.4s ease; }
 .gpu-link { transition: opacity 0.4s ease; }

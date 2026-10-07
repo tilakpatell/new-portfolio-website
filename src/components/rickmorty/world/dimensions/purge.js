@@ -64,10 +64,12 @@ export async function buildPurge(kit) {
   area.actions = {
     siren: () => {
       purging = true;
+      S.hunt(true); // the villagers turn on him
     },
     // (left: the night's over by the next visit)
     calm: () => {
       purging = false;
+      S.calm();
       glare.intensity = 0;
       veil.material.opacity = 0;
     },

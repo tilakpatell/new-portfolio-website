@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createSolids } from '../walker';
-import { RULES, SOLDIERS, battleView, canDeploy, chooseSide, coverFrom, deploy, endBattle, forwardOf, hitSoldier, leaderOf, newBattle, objectiveFor, stepBattle, youDown } from './assault';
+import { RULES, SOLDIERS, TACTICS, battleView, canDeploy, chooseSide, coverFrom, deploy, endBattle, forwardOf, hitSoldier, newBattle, objectiveFor, stepBattle, youDown } from './assault';
 
 // a small map: the attackers come from the west, two posts to take, then a last one
 const MAP = {
@@ -234,8 +234,9 @@ describe('the soldiers', () => {
     expect(forwardOf(b, post(b, 'line'), [-100, 0])).toEqual(expect.any(Array));
     const near = forwardOf(b, post(b, 'line'), [-100, 0]);
     expect(Math.hypot(near[0] + 120, near[1])).toBeLessThanOrEqual(20);
-    const far = forwardOf(b, post(b, 'line'), [0, 0]);
-    expect(far[0]).toBeCloseTo(-120 + (120 - RULES.forward), 0);
+    // (an objective well past the line: the spot is RULES.forward short of it, on the way from the post)
+    const far = forwardOf(b, post(b, 'line'), [120, 0]);
+    expect(far[0]).toBeCloseTo(-120 + (240 - RULES.forward), 0);
   });
 
   it('shoot at an enemy in range, and at most three of them at you', () => {
@@ -246,12 +247,20 @@ describe('the soldiers', () => {
     // every defender within range of you, every attacker far away
     for (const s of up(b, 'defend')) Object.assign(s, { x: 20, z: 30 });
     for (const s of up(b, 'attack')) Object.assign(s, { x: -400, z: 0 });
-    const ev = run(b, 3, { x: 0, z: 30 });
-    const atYou = ev.filter((e) => e.type === 'shot' && e.atYou);
-    expect(atYou.length).toBeGreaterThan(0);
-    const shooters = new Set(atYou.map((e) => e.id));
-    expect(shooters.size).toBeLessThanOrEqual(RULES.atYouMax);
-    for (const e of atYou) expect(e.side).toBe('defend');
+    // (they take turns: never more than three in any one step, and no more
+    // fire than three soldiers could put out)
+    let most = 0;
+    let shots = 0;
+    for (let i = 0; i < 30; i++) {
+      const ev = run(b, 0.1, { x: 0, z: 30 });
+      const atYou = ev.filter((e) => e.type === 'shot' && e.atYou);
+      shots += atYou.length;
+      most = Math.max(most, new Set(atYou.map((e) => e.id)).size);
+      for (const e of atYou) expect(e.side).toBe('defend');
+    }
+    expect(shots).toBeGreaterThan(0);
+    expect(most).toBeLessThanOrEqual(RULES.atYouMax);
+    expect(shots).toBeLessThanOrEqual(Math.ceil((RULES.atYouMax * 3) / (RULES.every * 0.7)) + 1);
   });
 
   it('shoot each other: a hit does damage, and a kill is told', () => {
@@ -264,46 +273,6 @@ describe('the soldiers', () => {
     expect(shots.some((e) => e.hit)).toBe(true);
     expect(ev.some((e) => e.type === 'down' && e.by !== 'you')).toBe(true);
     expect(ev.some((e) => e.type === 'kill')).toBe(true);
-  });
-});
-
-describe('the squads', () => {
-  it('are RULES.squad to a squad, each with a flank of its own, and a leader who is the first of it standing', () => {
-    const b = newBattle(MAP, { n: 8, seed: 10 });
-    const attackers = b.soldiers.filter((s) => s.side === 'attack');
-    expect(attackers.map((s) => s.squad)).toEqual([0, 0, 0, 0, 1, 1, 1, 1]);
-    expect(attackers[0].flank).not.toBe(attackers[4].flank);
-    chooseSide(b, 'attack');
-    expect(leaderOf(b, attackers[3])).toBe(attackers[0]);
-    attackers[0].up = false;
-    expect(leaderOf(b, attackers[3])).toBe(attackers[1]);
-    for (const s of attackers) s.up = false;
-    expect(leaderOf(b, attackers[3])).toBeNull();
-  });
-
-  it('go where their leader goes', () => {
-    const b = newBattle(MAP, { n: 8, seed: 11 });
-    chooseSide(b, 'attack');
-    for (const s of up(b, 'defend')) Object.assign(s, { x: 500, z: 0, frozen: true, unarmed: true });
-    run(b, RULES.retarget * 3);
-    for (const s of up(b, 'attack')) expect(s.post, `soldier ${s.id}`).toBe(leaderOf(b, s).post);
-  });
-
-  it('come at a post from their own side: a flanking squad’s spots sit round from a straight one’s', () => {
-    const b = newBattle({ ...MAP, phases: [{ name: 'One', posts: ['c'], tickets: 60 }] }, { n: 8, seed: 12 });
-    chooseSide(b, 'attack');
-    for (const s of up(b, 'defend')) Object.assign(s, { x: 500, z: 0, frozen: true, unarmed: true });
-    for (const s of up(b, 'attack')) Object.assign(s, { x: 0, z: 0 });
-    run(b, 0.2);
-    const c = post(b, 'c');
-    const bearing = (s) => Math.atan2(s.spot[1] - c.at[1], s.spot[0] - c.at[0]);
-    const straight = up(b, 'attack').filter((s) => s.flank === 0);
-    const flanking = up(b, 'attack').filter((s) => s.flank !== 0);
-    expect(straight.length).toBeGreaterThan(0);
-    expect(flanking.length).toBeGreaterThan(0);
-    // (from (0, 0) the post is due +x, so the near side is bearing π; the flank is turned off it)
-    for (const s of straight) expect(Math.abs(Math.atan2(Math.sin(bearing(s) - Math.PI), Math.cos(bearing(s) - Math.PI)))).toBeLessThan(0.5);
-    for (const s of flanking) expect(Math.abs(Math.atan2(Math.sin(bearing(s) - Math.PI), Math.cos(bearing(s) - Math.PI)))).toBeGreaterThan(0.3);
   });
 });
 
@@ -562,5 +531,96 @@ describe('a whole battle, with nobody playing', () => {
   it('is won by the defenders when the attackers run out', () => {
     const b = sim({ attack: 8, defend: 400 }, 6, 22);
     expect(b.result?.won).toBe(false);
+  });
+});
+
+describe('the squads', () => {
+  const squadsOf = (b, side) => Object.values(b.tactics[side]);
+  const soldiersOf = (b, side) => b.soldiers.filter((s) => s.side === side && s.up);
+
+  it('a losing squad falls back in halves while the rest hold and cover', () => {
+    const b = newBattle(MAP, { n: 8, seed: 3 });
+    chooseSide(b, 'attack');
+    run(b, 12, null);
+    // the defenders take losses: half of them down, the rest hurt
+    const def = soldiersOf(b, 'defend');
+    for (const s of def.slice(0, 4)) hitSoldier(b, s.id, 999, 'you');
+    for (const s of soldiersOf(b, 'defend')) s.hp = 30;
+    const events = run(b, TACTICS.every * 2.5, null);
+    const retreating = squadsOf(b, 'defend').filter((q) => q.posture === 'retreat');
+    expect(retreating.length).toBeGreaterThan(0);
+    expect(events.some((e) => e.type === 'posture' && e.side === 'defend' && e.posture === 'retreat')).toBe(true);
+    const q = retreating[0];
+    const members = q.members.map((id) => b.soldiers.find((s) => s.id === id));
+    const going = members.filter((s) => s.fallback);
+    const holding = members.filter((s) => s.hold);
+    expect(going.length).toBeGreaterThan(0);
+    if (members.length > 1) expect(holding.length).toBeGreaterThan(0);
+    // the ones going go back, away from the enemy
+    for (const s of going) expect((s.fallback[0] - s.x) * q.front.dir.x + (s.fallback[1] - s.z) * q.front.dir.z).toBeLessThan(0);
+  });
+
+  it('a winning squad presses, and the soldiers at its lane ends go round the flank', () => {
+    const b = newBattle(MAP, { n: 8, seed: 3 });
+    chooseSide(b, 'defend');
+    run(b, 34, null); // (the attackers have come up to the posts)
+    // the attackers have the defenders on the ropes
+    for (const s of soldiersOf(b, 'defend').slice(0, 5)) hitSoldier(b, s.id, 999, 'you');
+    for (const s of soldiersOf(b, 'defend')) s.hp = 30;
+    run(b, TACTICS.every * 2.5, null);
+    const pressing = squadsOf(b, 'attack').filter((q) => q.posture === 'press' && q.members.length >= 2);
+    expect(pressing.length).toBeGreaterThan(0);
+    const flanking = soldiersOf(b, 'attack').filter((s) => s.flankTo);
+    expect(flanking.length).toBeGreaterThan(0);
+    for (const s of flanking) expect(s.hold).toBe(false);
+  });
+
+  it('a holding squad of the defenders keeps behind its frontline’s buffer', () => {
+    const b = newBattle(MAP, { n: 6, seed: 5 });
+    chooseSide(b, 'attack');
+    run(b, 2, null);
+    // the attackers stood frozen 20 m short of post A's defenders, both sides tough: the defenders hold
+    for (const s of soldiersOf(b, 'attack')) Object.assign(s, { x: -24, z: 30 + (s.id % 3) * 3, frozen: true, hp: 1000 });
+    for (const s of soldiersOf(b, 'defend')) Object.assign(s, { x: 0, z: 30 + (s.id % 3) * 3, hp: 1000 });
+    let crossings = 0;
+    let checks = 0;
+    for (let i = 0; i < 30; i++) {
+      run(b, 0.5, null);
+      for (const q of squadsOf(b, 'defend')) {
+        if (q.posture !== 'hold' || !q.front) continue;
+        for (const id of q.members) {
+          const s = b.soldiers.find((o) => o.id === id);
+          if (!s?.up || s.flankTo) continue;
+          checks += 1;
+          if ((s.x - q.front.line.x) * q.front.dir.x + (s.z - q.front.line.z) * q.front.dir.z > RULES.walk * RULES.step + 0.5) crossings += 1;
+        }
+      }
+    }
+    expect(checks).toBeGreaterThan(0);
+    expect(crossings).toBe(0);
+    // (and the line itself is the buffer short of the nearest attacker)
+    const q = squadsOf(b, 'defend').find((x) => x.front);
+    expect(q.front.line.x).toBeGreaterThan(-24 + TACTICS.buffer - 0.5);
+  });
+
+  it('at most three fire at you at once, taking turns', () => {
+    const b = newBattle(MAP, { n: 10, seed: 2 });
+    chooseSide(b, 'attack');
+    run(b, 5, null);
+    const you = { x: 60, z: 0 };
+    deploy(b, 'line');
+    for (const s of soldiersOf(b, 'defend')) {
+      s.x = 70 + (s.id % 5) * 3;
+      s.z = (s.id % 3) * 3;
+      s.frozen = true;
+    }
+    const who = new Set();
+    for (let i = 0; i < 60; i++) {
+      const out = run(b, 0.1, you);
+      const shooters = new Set(out.filter((e) => e.type === 'shot' && e.atYou).map((e) => e.id));
+      expect(b.tokens.count('shot')).toBeLessThanOrEqual(RULES.atYouMax);
+      for (const id of shooters) who.add(id);
+    }
+    expect(who.size).toBeGreaterThan(RULES.atYouMax);
   });
 });

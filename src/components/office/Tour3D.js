@@ -13,6 +13,7 @@ import { loadKit, merge } from './kit';
 import { loadPeople } from './people';
 import { makeProps } from './props';
 import { createStage, lightOffice } from './stage3d';
+import { sharpen } from '../../lib/three/textures';
 import {
   BREAK_TABLES,
   CONFERENCE_TABLE,
@@ -178,6 +179,7 @@ export async function createTour3D(canvas, { onLost, onSlow, onChange } = {}) {
       x.fillRect(0, y, 16, 3);
     }
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     return t;
   })();
@@ -217,6 +219,7 @@ export async function createTour3D(canvas, { onLost, onSlow, onChange } = {}) {
       x.fillRect(i, 0, 5, 8);
     }
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     return t;
   })();
@@ -456,6 +459,7 @@ export async function createTour3D(canvas, { onLost, onSlow, onChange } = {}) {
       x.font = 'bold 16px Arial';
       x.fillText(label, 10, 248);
       const tx = new THREE.CanvasTexture(cv);
+      sharpen(tx);
       tx.colorSpace = THREE.SRGBColorSpace;
       const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 1.3), new THREE.MeshStandardMaterial({ map: tx, emissive: 0xffffff, emissiveMap: tx, emissiveIntensity: 0.6, roughness: 0.1 }));
       glass.position.set(-0.1, 1.15, 0.401);

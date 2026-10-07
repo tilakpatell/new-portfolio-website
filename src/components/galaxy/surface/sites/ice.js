@@ -168,7 +168,11 @@ export const SITES = {
           rv: [['jesse', 'It shoots, like, a big red ball of nope.'], ['walt', 'An electromagnetic pulse. Elegant.']],
         },
         things: [
-          { kind: 'ioncannon', at: [0, 0], yaw: 0.4 },
+          // the sphere (Meshy, from a still of it firing), tipped half a
+          // radian toward its aim and sunk to a third of it in the snow, set
+          // back so its middle stands over the place's; the shot from it
+          { kind: 'v150', at: [-2.43, -5.74], yaw: 0.4, pitch: 0.5, sink: 6.4, solid: false },
+          { kind: 'ioncannon', at: [0, 0], yaw: 0.4, opts: { shell: false, tilt: 1.07, centre: 5, muzzle: 18 } },
           { kind: 'hothconsole', at: [0, -21], yaw: Math.PI },
         ],
       },

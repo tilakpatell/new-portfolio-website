@@ -35,6 +35,10 @@ export const NPC = {
   retreat: 0.15, // of its hull left, and a nemesis breaks off
   nemesis: 90, // seconds a nemesis fights before it breaks off anyway
   dodge: 0.7, // how much of a shot's chance to land hard turning (and the boost) takes away, at most
+  tail: 3, // seconds you sit on a nemesis's tail before it baits you into overshooting
+  bait: 2.2, // seconds it slows for, so you fly past, before it swings in behind you
+  break: 1.2, // seconds it breaks hard off your nose when a shot of yours is coming
+  search: 9, // seconds a fighter looks about where it lost you before it gives up
   chatter: 22, // seconds between a tagalong's words
   tag: 95, // seconds a tagalong stays
   hide: 55, // how far off a tagalong runs from a fight

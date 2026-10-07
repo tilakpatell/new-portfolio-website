@@ -59,7 +59,7 @@ import {
   stepMorty,
 } from './rules';
 import { newFedShip, newShipVoice, onTail, shipSays, stepFedShip } from './ship';
-import { DESTINATIONS, DIAL, linkTarget, portalTarget, readDial, writeDial } from './dimensions/destinations';
+import { DESTINATIONS, DIAL, destinationById, linkTarget, portalTarget, readDial, writeDial } from './dimensions/destinations';
 import DimensionDial from './dimensions/DimensionDial';
 import { ROOMS, newTrial, pick as pickRoom, retry as retryRooms } from './dimensions/vindicatorsRules';
 import { setShipVoice, shipVoiceOn, speak, stopSpeaking } from './shipVoice';
@@ -189,6 +189,8 @@ const TALK_UNLOCK = { therapy: 'wong', ...Object.assign({}, ...DESTINATIONS.map(
 const ESCAPES = Object.fromEntries(DESTINATIONS.filter((d) => d.escape).map((d) => [d.escape.spot, { ...d.escape, area: d.id }]));
 // and what using a hotspot tells its place's builder
 const ACTS = Object.assign({}, ...DESTINATIONS.map((d) => Object.fromEntries(Object.entries(d.acts).map(([spot, name]) => [spot, [d.id, name]]))));
+// and the things done by using every one of a set of hotspots (the simulation's slips), by each hotspot
+const COLLECT = Object.assign({}, ...DESTINATIONS.filter((d) => d.collect).map((d) => Object.fromEntries(d.collect.spots.map((spot) => [spot, { ...d.collect, area: d.id }]))));
 // a memory's run in the Mind Blowers chair, and how far Morty can stray from the chair before it stops
 const MEMORY_S = 5.5;
 // Total Rickall: how long a memory of someone stays up over them, and how
@@ -270,6 +272,9 @@ const newSim = () => ({
   near: null,
   moved: false,
   fading: false,
+  events: [],
+  emit: null,
+  duel: null, // a fight on (hearts in the HUD; F fires)
   frame: 0,
   padBefore: {},
   view: { link: null, hotspot: null },
@@ -491,7 +496,10 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     setList(false);
     if (inside) chip.current?.focus({ preventScroll: true });
   }, []);
-  const [fade, setFade] = useState(null); // null, or the kind of link being gone through
+  const [fade, setFade] = useState(null);
+  const [duel, setDuel] = useState(null); // the fight's hearts, for the HUD
+  const [clock, setClock] = useState(null); // a place left in a hurry: seconds left to the portal
+  const clockRef = useRef(null); // null, or the kind of link being gone through
   const [opening, setOpening] = useState(null); // the place a portal's waiting on while it loads
   const [shipLine, setShipLine] = useState(null); // what the cruiser last said, captioned
   const [memory, setMemory] = useState(null); // the memory playing in the Mind Blowers chair
@@ -810,6 +818,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       const early = e?.after && !s.used?.has(e.after);
       say({ kind: 'say', ...(early ? e.before : SAY[n.id]) });
       (s.used ??= new Set()).add(n.id);
+      if (!early && n.spot?.anim) api.current?.play(n.spot.anim, n.spot.anim === 'dance' ? { loop: false, hold: 0.2 } : {});
       if (!early && ACTS[n.id]) api.current?.act(...ACTS[n.id]);
       // the siren, the scanner, the toast: the clock starts for the portal home
       if (e && !early && !s.escape) {
@@ -818,11 +827,113 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       }
       // (done once they've had their say: the President gets in his car then)
       if (TALK_DONE[n.id]) later(() => complete(TALK_DONE[n.id]), TALK_MS);
+      if (COLLECT[n.id] && COLLECT[n.id].spots.every((id) => s.used.has(id))) {
+        const c = COLLECT[n.id];
+        // (the last one found: the place is told, and either it's done or the clock starts)
+        api.current?.act(c.area, 'collected');
+        if (c.escape) {
+          if (!s.escape) s.escape = { area: c.area, task: c.task, s: c.escape.s, at: s.t };
+          sound('portalOpen');
+        } else if (!c.start) later(() => complete(c.task), TALK_MS);
+      }
       if (TALK_UNLOCK[n.id]) later(() => unlock(TALK_UNLOCK[n.id]), TALK_MS);
     }
   }, [api, go, board, openPlace, say, complete, unlock, playMemory, shipTalk, later, startRickall, tellRickall]);
+  // what a place's people do to Morty (stage.js's NPC behaviour, through the
+  // render state's emit): caught, he's put back at the way in with what the
+  // catcher said, and the place settles; a bark is a line said in passing
+  const npc = useCallback(
+    (name, e) => {
+      const s = sim.current;
+      if (!s || s.fading || s.area !== e.area) return;
+      if (name === 'caught') {
+        const d = destinationById(e.area);
+        if (!d) return;
+        say({ kind: 'say', who: SAY[e.who]?.who ?? e.who ?? null, text: e.text ?? d.caught ?? 'Caught.' });
+        sound('ouch');
+        api.current?.play('scared', { hold: 0.4 });
+        // a blink, and he's back at the way in
+        s.fading = true;
+        s.keys.clear();
+        setFade('door');
+        later(() => {
+          s.m = newMorty(d.arrive);
+          s.yaw = behindYaw(d.arrive.face);
+          s.pitch = PITCH;
+          s.dragAt = -1e9;
+          s.used = new Set();
+          s.escape = null;
+          s.fading = false;
+          api.current?.act(e.area, 'calm');
+          setFade(null);
+        }, FADE_MS);
+      } else if (name === 'bark') {
+        if (s.t - (s.barkAt ?? -1e9) < 6) return;
+        s.barkAt = s.t;
+        say({ kind: 'say', who: e.who, text: e.text });
+      } else if (name === 'done') complete(e.task);
+      else if (name === 'duel') {
+        // the fight's on: the hearts show, and F fires
+        s.duel = { who: e.who, hp: e.hp, max: e.max, mortyHp: e.mortyHp, mortyMax: e.mortyMax };
+        setDuel({ ...s.duel });
+        sound('zap');
+      } else if (name === 'strike') {
+        s.duel = { who: e.who, hp: e.hp, max: e.max, mortyHp: e.mortyHp, mortyMax: e.mortyMax };
+        setDuel({ ...s.duel });
+        sound('ouch');
+        if (e.beaten) {
+          // beaten: he goes down, and comes round at the way in; the fight's off till the next try
+          api.current?.play('fall', { hold: 1.2 });
+          say({ kind: 'say', who: SAY[e.who]?.who ?? e.who ?? null, text: e.text ?? 'Beaten.' });
+          const d = destinationById(e.area);
+          s.fading = true;
+          s.keys.clear();
+          later(() => {
+            setFade('door');
+            later(() => {
+              if (d) {
+                s.m = newMorty(d.arrive);
+                s.yaw = behindYaw(d.arrive.face);
+                s.pitch = PITCH;
+                s.dragAt = -1e9;
+              }
+              s.used = new Set();
+              s.escape = null;
+              s.duel = null;
+              setDuel(null);
+              s.fading = false;
+              api.current?.act(e.area, 'calm');
+              setFade(null);
+            }, FADE_MS);
+          }, 1400);
+        } else api.current?.play('hit');
+      }
+    },
+    [api, say, complete, later],
+  );
+  // Morty's shot in a duel (F): the place says whether it landed
+  const fire = useCallback(() => {
+    const s = sim.current;
+    if (!s?.duel || s.fading || s.t - (s.firedAt ?? -1e9) < 0.5) return;
+    s.firedAt = s.t;
+    api.current?.play('shoot', { hold: 0 });
+    sound('zap');
+    const r = api.current?.act(s.area, 'fire', { x: s.m.x, z: s.m.z, face: s.m.face });
+    if (!r) return;
+    s.duel = { ...s.duel, hp: r.hp, max: r.max };
+    setDuel({ ...s.duel });
+    if (r.down) {
+      sound('splat');
+      if (r.task) complete(r.task);
+      if (r.won) later(() => say({ kind: 'say', ...r.won }), 900);
+      later(() => {
+        s.duel = null;
+        setDuel(null);
+      }, 2500);
+    }
+  }, [api, complete, say, later]);
   const fns = useRef({});
-  fns.current = { act, go, shoot: shootRickall, stop: stopRickall, start: startRickall, end: endRickall };
+  fns.current = { act, go, shoot: shootRickall, stop: stopRickall, start: startRickall, end: endRickall, npc, fire };
 
   // ── the world: made once, kept while something's open over it ──
   useEffect(() => {
@@ -965,6 +1076,12 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         e.preventDefault();
         s.keys.clear();
         setWardrobe(true);
+        return;
+      }
+      // a duel (Evil Rick's lair): F fires
+      if (s.duel && !s.rickall && e.code === 'KeyF' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        if (!e.repeat) fns.current.fire();
         return;
       }
       // Total Rickall: F shoots; Esc stops it (once the list's shut)
@@ -1139,6 +1256,13 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     s.view.hotspot = s.near?.kind === 'spot' ? s.near.id : null;
     // the Federation's patrol ship, round its loop or on the cruiser's tail
     s.fed = stepFedShip(s.fed, s.c, s.flying, dt);
+    // the clock of a place left in a hurry, for the HUD (whole seconds, so it rarely redraws)
+    const left = s.escape && s.area === s.escape.area ? Math.max(0, Math.ceil(s.escape.s - (s.t - s.escape.at))) : null;
+    if (left !== clockRef.current) {
+      clockRef.current = left;
+      setClock(left);
+    }
+    if (s.escape && left === 0) s.escape = null;
     // what the cruiser was about to say when it'd only just spoken
     if (s.shipNext) {
       if (s.t > s.shipNext.until || s.area !== 'street') s.shipNext = null;
@@ -1167,6 +1291,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       if (run.told && (performance.now() - run.told.at > RECALL_MS || run.game.shot.includes(run.told.id))) run.told = null;
     }
 
+    s.emit ??= (name, e) => s.events.push([name, e]);
     try {
       a.render(
         {
@@ -1182,6 +1307,8 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           travellers: tv ? tv.list() : null,
           sight: sightLine,
           rickall: run?.game ? { game: run.game, aim: run.aim, hide: run.hide } : null,
+          fading: s.fading,
+          emit: s.emit,
         },
         ms,
       );
@@ -1191,6 +1318,12 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       api.current = null;
       setGl('failed');
       return;
+    }
+
+    // what the place's people did this frame (stage.js's NPC behaviour)
+    if (s.events.length) {
+      const evs = s.events.splice(0);
+      for (const [name, e] of evs) fns.current.npc?.(name, e);
     }
 
     // its HUD, when what it shows changes, and the memory card over whoever it's about
@@ -1364,6 +1497,36 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
               <span className="rm-swirl rm-swirl-sm" aria-hidden="true" />
               <span>{prog.objective}</span>
             </p>
+          )}
+          {duel && (
+            <div className="rm-fight" aria-live="polite">
+              <div className="rm-fight-row">
+                <b>{SAY[duel.who]?.who ?? 'Them'}</b>
+                <span className="rm-fight-hearts" aria-label={`${duel.hp} of ${duel.max}`}>
+                  {Array.from({ length: duel.max }, (_, i) => (
+                    <span key={i} data-off={i >= duel.hp || undefined}>
+                      ♥
+                    </span>
+                  ))}
+                </span>
+              </div>
+              <div className="rm-fight-row">
+                <b>Morty</b>
+                <span className="rm-fight-hearts" aria-label={`${duel.mortyHp} of ${duel.mortyMax}`}>
+                  {Array.from({ length: duel.mortyMax }, (_, i) => (
+                    <span key={i} data-off={i >= duel.mortyHp || undefined}>
+                      ♥
+                    </span>
+                  ))}
+                </span>
+              </div>
+              <span className="rm-fight-hint">F fires. Keep out of reach.</span>
+            </div>
+          )}
+          {clock != null && (
+            <div className="rm-clock" data-late={clock <= 10 || undefined} aria-live="polite">
+              Back through the portal: {clock} s
+            </div>
           )}
           {hud.flying && (
             <p className="rm-flightstats" aria-live="off">

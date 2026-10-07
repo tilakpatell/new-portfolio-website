@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOMB, FACTIONS, FIGHT, HOLDOFF, HUNTER_KINDS, LOSE, NAMES, TRAITS, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
+import { BOMB, FACTIONS, FIGHT, HOLDOFF, HUNTER_KINDS, HUNTER_SENSES, LOSE, NAMES, TRAITS, blocked, clearOf, createHunt, entryPoint, fightSpeed, hitRadius, packPlan, shipVelocity, slotsFor, turnRate, turnRateAt, turnToward } from './hunterRules';
 import { KINDS as GALAXY_KINDS, FACTIONS as GALAXY_FACTIONS } from '../galaxy/hunted';
 
 // a seeded random, so a fight is the same every time
@@ -840,5 +840,101 @@ describe('an ace with stages', () => {
     expect(quick('slave1').bombs).toBeGreaterThan(0);
     expect(plain('slave1', 10).shots).toBeGreaterThan(0);
     expect(quick('houndstooth').nearest).toBeGreaterThan(HOLDOFF.near * 0.8);
+  });
+});
+
+describe('a pack on the toolkit', () => {
+  it('knows you only as it sees you: a moon between hides you, and its guess of you drifts the way you went', () => {
+    // you, behind a big moon from a hangar the pack comes out of; you fly east, then back west once they can only guess
+    const moon = { id: 'moon', at: [0, 0, 46], r: 36 };
+    const hangar = { x: 0, y: 0, z: 100 };
+    let unseenAtFirst = null;
+    let guessed = 0;
+    let guessApart = 0;
+    fight({
+      solids: [moon],
+      seconds: 4.5,
+      ship: start({ heading: -Math.PI / 2, speed: 12 }),
+      opts: { size: 3, ace: false, from: hangar },
+      fly: (s, t) => ({ ...s, heading: t < 3 ? -Math.PI / 2 : Math.PI / 2, speed: 12 }),
+      each: (hunt, s, t) => {
+        if (Math.abs(t - 0.2) < DT / 2) unseenAtFirst = hunt.live.every((h) => !h.seesYou);
+        if (t < 3.5) return;
+        // past intuition and still blind: its guess, drifting east while you've turned back west
+        for (const h of hunt.live) {
+          if (h.seesYou || !h.belief || h.me.now - h.belief.seenAt <= HUNTER_SENSES.intuition) continue;
+          guessed += 1;
+          guessApart = Math.max(guessApart, apart(h.belief.at, s));
+          expect(h.belief.at.x).toBeGreaterThan(s.x);
+        }
+      },
+    });
+    expect(unseenAtFirst).toBe(true);
+    expect(guessed).toBeGreaterThan(0);
+    expect(guessApart).toBeGreaterThan(5);
+  });
+
+  it('loses its nerve: a pack that has lost most of itself breaks off together, and says why', () => {
+    const hunt = createHunt({ rand: seeded(4) });
+    let s = start({ speed: 5 });
+    const members = hunt.pack('empire', s, { size: 4, ace: false });
+    const whys = [];
+    for (let t = 0; t < 20; t += DT) {
+      s = move(s);
+      if (Math.abs(t - 5) < DT / 2) for (const h of members.slice(0, 3)) hunt.damage(h.id, 99);
+      for (const e of hunt.update(DT, s)) if (e.type === 'escaped') whys.push(e.why);
+    }
+    expect(whys).toEqual(['broke']);
+    expect(hunt.active).toBe(false);
+    // (a pair, or a bounty hunter alone, never loses its nerve; and a hunt told not to never does)
+    const pair = createHunt({ rand: seeded(4) });
+    s = start({ speed: 5 });
+    const two = pair.pack('empire', s, { size: 2, ace: false });
+    const pairWhys = [];
+    for (let t = 0; t < 8; t += DT) {
+      s = move(s);
+      if (Math.abs(t - 2) < DT / 2) pair.damage(two[0].id, 99);
+      for (const e of pair.update(DT, s)) if (e.type === 'escaped') pairWhys.push(e.why);
+    }
+    expect(pairWhys).toEqual([]);
+    expect(pair.active).toBe(true);
+  });
+
+  it('never has two on your tail at once, and a hunter without a run flanks or blocks rather than idling', () => {
+    const roles = new Set();
+    let flanks = 0;
+    let moving = true;
+    for (const seed of [3, 8]) {
+      const seen = fight({
+        seed,
+        opts: { size: 5, ace: false },
+        fly: (s) => ({ ...s, speed: 12 }),
+        seconds: 30,
+        each: (hunt) => {
+          expect(hunt.live.filter((h) => h.mode === 'tail').length).toBeLessThanOrEqual(1);
+          for (const h of hunt.live) {
+            if (h.mode === 'set' && h.role !== 'wait') {
+              roles.add(h.role);
+              if (Math.hypot(h.vel.x, h.vel.y, h.vel.z) < 1) moving = false;
+            }
+          }
+        },
+      });
+      flanks += seen.events.filter((e) => e === 'flank').length;
+    }
+    expect(roles.has('flank')).toBe(true);
+    expect(moving).toBe(true);
+    expect(flanks).toBeGreaterThan(0);
+  });
+
+  it('says who hit you', () => {
+    const seen = fight({ seconds: 30, opts: { size: 3, ace: false } });
+    expect(seen.hits).toBeGreaterThan(0);
+    const hunt = createHunt({ rand: seeded(7) });
+    let s = start();
+    hunt.pack('empire', s, { size: 3, ace: false });
+    let by = null;
+    for (let t = 0; t < 30 && by === null; t += DT) for (const e of hunt.update(DT, s)) if (e.type === 'laser') by = e.by;
+    expect(typeof by).toBe('number');
   });
 });

@@ -19,6 +19,7 @@ import { disposeTree } from '../../../../lib/three/renderer';
 import { anyFigure } from '../actors';
 import { groundAt } from '../walker';
 import { RULES, SOLDIERS, battleView, chooseSide as pickSide, deploy as deployAt, endBattle, hitSoldier, newBattle, objectiveFor, stepBattle, youDown as putYouDown } from './assault';
+import { sharpen } from '../../../../lib/three/textures';
 
 const EYE = 1.4; // metres: where a soldier's bolt leaves from
 const CHEST = 1.0; // metres: where one lands
@@ -70,6 +71,7 @@ function chevron(colour) {
   g.stroke();
   g.fill();
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return new THREE.SpriteMaterial({ map: t, sizeAttenuation: false, depthTest: false, depthWrite: false, transparent: true, opacity: 0.85 });
 }

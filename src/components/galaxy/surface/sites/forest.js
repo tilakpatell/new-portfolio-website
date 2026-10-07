@@ -797,6 +797,7 @@ export const SITES = {
           cruiser: [['rick', 'One-man fighters versus a planet-killer. Bold strategy, Morty.'], ['morty', 'It worked though, didn’t it?']],
         },
         things: [
+          { kind: 'hangarfloor', at: [0, 0], y: 0.57, solid: false }, // (just over the temple model's own floor)
           { kind: 'parked', at: [-9, -2], yaw: 0.15, opts: { kind: 'xwing', metres: 12.5 } },
           { kind: 'parked', at: [9, -4], yaw: -0.1, opts: { kind: 'xwing', metres: 12.5 } },
           { kind: 'ywing', at: [0, 12], yaw: 0.05 },

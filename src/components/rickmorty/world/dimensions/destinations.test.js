@@ -72,3 +72,19 @@ describe('the dial', () => {
     expect(validArrive({ area: d.id, x: 0, z: 0 }, AREAS).area).toBe('garage');
   });
 });
+
+describe('a place’s set of things to find', () => {
+  it('names its own hotspots and one of its own tasks, and the map points at the first', () => {
+    for (const d of DESTINATIONS.filter((d) => d.collect)) {
+      expect(d.tasks.map((t) => t.id)).toContain(d.collect.task);
+      for (const id of d.collect.spots) expect(d.hotspots.map((h) => h.id), `${d.id}: ${id}`).toContain(id);
+      expect(d.collect.spots.length).toBeGreaterThanOrEqual(2);
+      expect(d.goal ?? Object.keys(d.done)[0]).toBeTruthy();
+    }
+  });
+  it('is the Zigerions’ three slips', () => {
+    const sim = DESTINATIONS.find((d) => d.id === 'simulation');
+    expect(sim.collect).toEqual({ task: 'simulation', spots: ['twins', 'poptart', 'sun'], escape: { s: 45 } });
+    expect(sim.people.find((p) => p.id === 'nebulon').y).toBe(3.2);
+  });
+});

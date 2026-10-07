@@ -363,7 +363,7 @@ export const SITES = {
           rv: [['jesse', 'They rolled up in a stolen truck and said they were supposed to be here. Classic.'], ['walt', 'Confidence, Jesse. Nobody questions confidence.']],
         },
         things: [
-          { kind: 'pad', at: [0, 0], opts: { r: 18, color: '#a6a49e', light: '#ffd27a' } },
+          { kind: 'pad', at: [0, 0], opts: { r: 18, color: '#a6a49e', light: '#ffd27a', number: 9 } },
           { kind: 'crates', at: [16, 12], opts: { color: '#8a8a84' } },
           { kind: 'crates', at: [-17, -9], opts: { color: '#8a8a84' } },
           { kind: 'lamp', at: [20, -6], opts: { h: 6, light: '#fff0c8', color: '#5a5c60' } },

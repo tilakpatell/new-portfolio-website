@@ -120,6 +120,10 @@ export const LANES = [
 // pieces     the set pieces (setpieces.js reads them; sizes in map units, the ship is 0.26 long)
 //            (the planet's grown to be wider than its biggest ship's long: fit.js, as SYSTEMS is made)
 // faction    who hunts you here (galaxy/hunted.js), or null for nobody
+// war        { worth: 1 | 2 | 3, weight: 1 | 2 | 4, kind, area }: what it is to
+//            the galaxy's wars (gcw.js: the order of the fronts, how often a
+//            raider picks it), the battle fought there (battles.js's
+//            BATTLE_KINDS) and the area of the war it's in (sides.js's AREAS)
 // traffic    what flies through on its own business
 // game       the mission: { id, objectives, title, film, role, pitch, how, status: 'soon' | 'live', to?, go? (the button: 'Fly it now' unless it says) }
 
@@ -154,6 +158,7 @@ const AS_SET = [
     ],
     pieces: [{ type: 'chase', runner: { kind: 'corvette', size: 3.2 }, hunter: { kind: 'destroyer', size: 32 }, radius: 95, height: 22, tilt: 0.28, speed: 0.016 }],
     faction: 'empire',
+    war: { worth: 1, weight: 1, kind: 'ambush', area: 'arkanis' },
     traffic: ['freighter', 'shuttle', 'slave1', 'xwing'],
     game: {
       id: 'canyonrun',
@@ -209,6 +214,7 @@ const AS_SET = [
       { type: 'rocks', kind: 'field', at: [230, 30, 150], radius: 80, count: 420, seed: 7 },
     ],
     faction: 'empire',
+    war: { worth: 2, weight: 4, kind: 'evacuation', area: 'anoat' },
     traffic: ['transport', 'xwing', 'tie'],
     game: {
       id: 'transport',
@@ -273,6 +279,7 @@ const AS_SET = [
       },
     ],
     faction: 'empire',
+    war: { worth: 2, weight: 1, kind: 'siege', area: 'western' },
     traffic: ['shuttle', 'xwing', 'awing'],
     game: {
       id: 'endor',
@@ -318,6 +325,7 @@ const AS_SET = [
       { type: 'patrol', kind: 'tie', count: 6, at: [170, 26, 150], radius: 46, height: 12, speed: 0.22, size: 0.3 },
     ],
     faction: 'empire',
+    war: { worth: 2, weight: 2, kind: 'evacuation', area: 'north' },
     traffic: ['xwing', 'ywing', 'corvette'],
     game: {
       id: 'trench',
@@ -398,6 +406,7 @@ const AS_SET = [
       { type: 'depart', kind: 'slave1', from: [0, 118, 0], to: [-220, 200, 260], size: 0.6, every: 40 },
     ],
     faction: 'empire',
+    war: { worth: 1, weight: 1, kind: 'blockade', area: 'anoat' },
     traffic: ['shuttle', 'freighter'],
     game: {
       id: 'cloudcity',
@@ -473,6 +482,7 @@ const AS_SET = [
       { type: 'depart', kind: 'shuttle', from: [70, 40, -80], to: [0, 28, 0], size: 0.5, every: 22 },
     ],
     faction: 'empire',
+    war: { worth: 1, weight: 1, kind: 'interdiction', area: 'anoat' },
     traffic: ['shuttle', 'nubian'],
     game: {
       id: 'mustafar',
@@ -532,6 +542,7 @@ const AS_SET = [
       },
     ],
     faction: 'separatists',
+    war: { worth: 3, weight: 1, kind: 'siege', area: 'core' },
     traffic: ['shuttle', 'nubian', 'venator', 'freighter'],
     game: {
       id: 'coruscant',
@@ -582,6 +593,7 @@ const AS_SET = [
       { type: 'patrol', kind: 'vulture', count: 6, at: [-20, 42, -96], radius: 45, height: 8, speed: 0.3, size: 0.26 },
     ],
     faction: 'separatists',
+    war: { worth: 1, weight: 1, kind: 'blockade', area: 'arkanis' },
     traffic: ['n1', 'nubian', 'freighter'],
     game: {
       id: 'naboo',
@@ -621,6 +633,7 @@ const AS_SET = [
       { type: 'patrol', kind: 'vulture', count: 5, at: [80, 30, -60], radius: 30, height: 6, speed: 0.3, size: 0.26 },
     ],
     faction: 'separatists',
+    war: { worth: 1, weight: 1, kind: 'blockade', area: 'core' },
     traffic: ['arc170', 'freighter'],
     game: {
       id: 'kashyyyk',
@@ -659,6 +672,7 @@ const AS_SET = [
       { type: 'chase', runner: { kind: 'slave1', size: 0.6 }, hunter: { kind: 'delta7', size: 0.3 }, radius: 52, height: 6, tilt: -0.2, speed: 0.05, fire: 'small' },
     ],
     faction: null,
+    war: { worth: 1, weight: 1, kind: 'blockade', area: 'arkanis' },
     traffic: ['acclamator', 'delta7'],
     game: {
       id: 'kamino',
@@ -698,6 +712,7 @@ const AS_SET = [
       { type: 'fleet', side: 'republic', ships: [{ kind: 'acclamator', at: [-40, 70, 100], yaw: 2.6, size: 16 }, { kind: 'acclamator', at: [20, 60, 120], yaw: 2.9, size: 16 }, { kind: 'venator', at: [-90, 90, 60], yaw: 2.3, size: 24 }] },
     ],
     faction: 'separatists',
+    war: { worth: 1, weight: 1, kind: 'ambush', area: 'arkanis' },
     traffic: ['slave1', 'acclamator'],
     game: {
       id: 'geonosis',
@@ -758,6 +773,7 @@ const AS_SET = [
       { type: 'superlaser', from: [-260, 120, -320], at: [8, 22, 22], every: 150 },
     ],
     faction: 'empire',
+    war: { worth: 2, weight: 1, kind: 'siege', area: 'north' },
     traffic: ['uwing', 'shuttle'],
     game: {
       id: 'scarif',
@@ -798,6 +814,7 @@ const AS_SET = [
       { type: 'patrol', kind: 'tie', count: 3, at: [21, 30, -21], radius: 7, height: 2, speed: 0.2, size: 0.3 },
     ],
     faction: 'remnant',
+    war: { worth: 1, weight: 1, kind: 'interdiction', area: 'anoat' },
     traffic: ['razorcrest', 'shuttle', 'xwing', 'freighter'],
     game: {
       id: 'nevarro',
@@ -852,6 +869,7 @@ const AS_SET = [
       },
     ],
     faction: 'remnant',
+    war: { worth: 1, weight: 1, kind: 'interdiction', area: 'north' },
     traffic: ['gauntlet', 'n1', 'razorcrest'],
     game: {
       id: 'mandalore',
@@ -890,6 +908,7 @@ const AS_SET = [
     suns: [{ dir: [0.62, 0.36, 0.7], color: '#fff3dc', size: 1 }],
     pieces: [{ type: 'patrol', kind: 'xwing', count: 4, at: [28, 38, 18], radius: 10, height: 2.5, speed: 0.16, size: 0.3 }],
     faction: 'remnant',
+    war: { worth: 2, weight: 2, kind: 'evacuation', area: 'north' },
     traffic: ['xwing', 'shuttle', 'freighter'],
     game: {
       id: 'lothal',
@@ -930,6 +949,7 @@ const AS_SET = [
     suns: [{ dir: [-0.36, 0.44, 0.82], color: '#fff6e6', size: 0.95 }],
     pieces: [{ type: 'depart', kind: 'razorcrest', from: [0, 31, 0], to: [210, 160, -180], size: 0.7, every: 44 }],
     faction: null,
+    war: { worth: 1, weight: 1, kind: 'blockade', area: 'western' },
     traffic: ['razorcrest', 'freighter'],
     game: {
       id: 'sorgan',

@@ -54,7 +54,7 @@ export const ASSAULTS = {
       { name: 'The ion cannon', posts: ['ioncannon'], tickets: 70 },
       { name: 'Echo Base', posts: ['echobase'], tickets: 60 },
     ],
-    tickets: { attack: 140, defend: 140 },
+    tickets: { attack: 100, defend: 160 },
     hideLife: ['snowtrooper', 'hothtrooper'],
     ends: {
       won: 'The field is yours',
@@ -111,7 +111,7 @@ export const ASSAULTS = {
       { name: 'The arena gate', posts: ['gate'], tickets: 80 },
       { name: 'The arena', posts: ['arena'], tickets: 70 },
     ],
-    tickets: { attack: 150, defend: 150 },
+    tickets: { attack: 100, defend: 165 },
     hideLife: ['clone', 'battledroid', 'superdroid'],
     ends: {
       won: 'The arena is yours',
@@ -168,7 +168,7 @@ export const ASSAULTS = {
       { name: 'The landing pads', posts: ['pad9'], tickets: 80 },
       { name: 'The master switch', posts: ['switch'], tickets: 70 },
     ],
-    tickets: { attack: 150, defend: 150 },
+    tickets: { attack: 100, defend: 165 },
     hideLife: ['shoretrooper', 'deathtrooper', 'rebel'],
     ends: {
       won: 'The transmission is through',
@@ -225,7 +225,7 @@ export const ASSAULTS = {
       { name: 'The bunker', posts: ['bunker'], tickets: 80 },
       { name: 'The shield generator', posts: ['generator'], tickets: 70 },
     ],
-    tickets: { attack: 160, defend: 160 },
+    tickets: { attack: 110, defend: 175 },
     hideLife: ['stormtrooper', 'scouttrooper', 'rebel'],
     ends: {
       won: 'The shield is down',

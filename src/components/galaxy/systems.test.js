@@ -38,6 +38,15 @@ describe('the films and eras', () => {
 });
 
 describe('the systems', () => {
+  it('a war entry, where there is one, is worth, weight, a kind and an area', () => {
+    for (const s of SYSTEMS) {
+      if (!s.war) continue;
+      expect([1, 2, 3], s.id).toContain(s.war.worth);
+      expect([1, 2, 4], s.id).toContain(s.war.weight);
+      expect(typeof s.war.kind, s.id).toBe('string');
+      expect(typeof s.war.area, s.id).toBe('string');
+    }
+  });
   it('each has what its card and its scene need', () => {
     const ids = new Set();
     for (const s of SYSTEMS) {
