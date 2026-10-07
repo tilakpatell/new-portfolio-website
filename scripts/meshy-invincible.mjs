@@ -90,10 +90,11 @@ export const ASSETS = {
   // the wiki's picture is the twins side by side: the left half is one
   mauler: { out: 'mauler.glb', as: 'a Mauler twin', clips: 'brute', height: 2.6, tex: 2048, ref: 'MaulerTwin-render.png', crop: 'left' },
   seismic: { out: 'seismic.glb', as: 'Doc Seismic', clips: 'caster', motions: ['hover'], height: 1.8, tex: 2048, ref: 'DocSeismic-render.png' },
-  // the crowd, which the wiki has no art for: from words, in the show's style
-  civA: { out: 'civ-a.glb', as: 'a townsman', clips: 'person', height: 1.75, tex: 2048, prompt: 'An ordinary man in his thirties with short brown hair and light brown skin, wearing a mustard-yellow zip jacket over a white t-shirt, dark blue jeans and white trainers.' },
-  civB: { out: 'civ-b.glb', as: 'a townswoman', clips: 'person', height: 1.66, tex: 2048, prompt: 'An ordinary young woman in her twenties with a black ponytail and warm brown skin, wearing a teal hoodie, grey cargo trousers and red trainers, a small backpack.' },
-  civC: { out: 'civ-c.glb', as: 'an older townsman', clips: 'person', height: 1.72, tex: 2048, prompt: 'An ordinary older man in his sixties with grey hair, a grey beard and pale skin, wearing a brown cardigan over a light blue shirt, beige chinos and brown shoes.' },
+  // the crowd, which the wiki has no art for: from words, in the show's
+  // style; at 12 k triangles, as a dozen of them can be in sight at once
+  civA: { out: 'civ-a.glb', as: 'a townsman', tris: 12000, clips: 'person', height: 1.75, tex: 2048, prompt: 'An ordinary man in his thirties with short brown hair and light brown skin, wearing a mustard-yellow zip jacket over a white t-shirt, dark blue jeans and white trainers.' },
+  civB: { out: 'civ-b.glb', as: 'a townswoman', tris: 12000, clips: 'person', height: 1.66, tex: 2048, prompt: 'An ordinary young woman in her twenties with a black ponytail and warm brown skin, wearing a teal hoodie, grey cargo trousers and red trainers, a small backpack.' },
+  civC: { out: 'civ-c.glb', as: 'an older townsman', tris: 12000, clips: 'person', height: 1.72, tex: 2048, prompt: 'An ordinary older man in his sixties with grey hair, a grey beard and pale skin, wearing a brown cardigan over a light blue shirt, beige chinos and brown shoes.' },
   // props, unrigged
   bank: { out: 'bank.glb', as: 'the bank', tex: 1024, rig: false, prompt: 'The front of a small city bank: a two-storey pale stone facade, four columns, wide steps up to big glass doors, a sign panel above the doors with no lettering. Seen from the front at a slight angle.' },
   heli: { out: 'heli.glb', as: 'the news helicopter', tex: 1024, rig: false, prompt: 'A small white and red news helicopter with a camera pod under its nose, skids, a two-blade main rotor and a tail rotor. Seen from the side at a slight angle.' },
@@ -221,8 +222,8 @@ async function bake(from, to, a, { names = null, extra = [] } = {}) {
   // loaded here, so the paid steps run without the build's dependencies
   const { NodeIO } = await import('@gltf-transform/core');
   const { ALL_EXTENSIONS } = await import('@gltf-transform/extensions');
-  const { dedup, meshopt, prune, textureCompress } = await import('@gltf-transform/functions');
-  const { MeshoptDecoder, MeshoptEncoder } = await import('meshoptimizer');
+  const { dedup, meshopt, prune, simplify, textureCompress, weld } = await import('@gltf-transform/functions');
+  const { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } = await import('meshoptimizer');
   const { reatlas } = await import('./reatlas.mjs');
   sharp ??= (await import('sharp')).default;
   if (!io) {
@@ -240,6 +241,12 @@ async function bake(from, to, a, { names = null, extra = [] } = {}) {
   for (const clip of doc.getRoot().listAnimations()) inPlace(clip);
   if (a.skin) await paintSkin(doc, a.skin);
   await reatlas(doc, a.tex, { apart: true });
+  // (down to its budget, when it has one: the crowd, many at a time)
+  if (a.tris) {
+    await MeshoptSimplifier.ready;
+    const now = doc.getRoot().listMeshes().flatMap((m) => m.listPrimitives()).reduce((n, p) => n + p.getIndices().getCount() / 3, 0);
+    if (now > a.tris) await doc.transform(weld(), simplify({ simplifier: MeshoptSimplifier, ratio: a.tris / now, error: 0.01 }));
+  }
   await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', quality: 90, resize: [a.tex, a.tex] }), meshopt({ encoder: MeshoptEncoder, level: 'high' }));
   await mkdir(dirname(to), { recursive: true });
   await io.write(to, doc);
