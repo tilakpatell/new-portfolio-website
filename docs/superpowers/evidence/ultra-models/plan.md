@@ -74,7 +74,7 @@ Every file is under 24 MB and the catalogue test (`catalog.test.js`) holds each 
 | `cloudtower2` | bespin | 44,200, 8192 | 2.8 | the same lift, at 48k | kept: the dome's panel lines and the doorways are sharper |
 | `tipocadome` | kamino | 119,997, 8192 | 10.0 | **remade** from the rounded dome at the front right of the Clone Wars city shot (`File:TipocaCity-CC.png`, crop `[0.7, 0.43, 0.2, 0.31]`) | kept: a rounded two-step dome on eight lit pylons with three slim needles, where the plain file is a saucer with a tall flared spire; a faint fold crosses the dome's near side |
 | `cloudplaza` | bespin | 79,998, 8192 | 3.8 | **remade** from the stepped terraces round the tower's foot in the game's street shot (`File:Cloud City Streets SWB.png`, crop `[0.46, 0.26, 0.4, 0.32]`), the court left open | kept: two ring tiers with flights of steps and planters round an open court on a square plinth, where the plain file is a bare half-ring |
-| `wroshyrgreat` | kashyyyk | see below | | **remade** from the tall straight-trunked tree at the far right of the Kachirho panorama (`File:Kachirho BF2.jpg`, crop `[0.72, 0.03, 0.17, 0.72]`) | see below |
+| `wroshyrgreat` | kashyyyk | 179,999, 8192 | 13.6 | **remade** from the tall straight-trunked tree at the far right of the Kachirho panorama (`File:Kachirho BF2.jpg`, crop `[0.72, 0.03, 0.17, 0.72]`), remeshed by Meshy at 180k after its 300k model would not cut below 277k | kept: a straight trunk with the crown far above, cone pods hanging on it and spiral walkways round its foot, where the plain file is a spreading bonsai on a short leaning trunk |
 | `atat` | hoth | 74,295, 1024 | 2.1 | the whole Sketchfab download (the plain cut keeps 40,000 of it) | kept: the same model less simplified, its knee joints and foot pads whole; the maps stay the source's 1024s, so the gain is geometry |
 | `n1fighter` | naboo | 32,101, 1024 | 0.4 | the whole download (the plain keeps 12,000) | kept: rounder engine nacelles and canopy, no faceting |
 | `vaporator` | tatooine | 12,000, 1024 | 0.4 | four times the cut, from a 34,981-triangle download | kept: round rings and fine vanes where the plain is faceted |
@@ -87,8 +87,6 @@ Turned down or not made:
 - **`tipoca`** (kamino): the download has 1,520 triangles and a 512 map. The heavier Sketchfab models of Tipoca City under a licence the site can credit (`237ab55186c540b19ad25f164983e64a`, 134k faces, and `4cdaed56ac5a4843887419faed5f7161`, 87k) are whole cities of domes on pillars with 256-pixel maps and no separable landing platform, and the plain file is a flat landing pad; the audit lane's Meshy remake of `tipoca` is a 64 m tower, a different thing for a different lane. Left out.
 - **`adobe`** (tatooine): the download has 3,812 triangles, all kept by the plain cut. The heavier Sketchfab sources are `7deab9277e134026b33a051b7a571422` (a 999,898-triangle diorama scan of a tapered house with a garage door on a slab of sand, one 1024 map) and `3e6cb7d8ba3c45909787dbfba47e067d` (a façade-only scan of the Mos Espa set with holes to the sky); neither is the domed house with wings that the eleven adobes are, and the scan's one 1024 map would be no sharper over 10 m than the plain file's. Left out.
 - **gen3d (0 of the twenty, 2 desktop jobs)**: the galaxy's X-wing (#552) and TIE interceptor (#553) were asked of the owner's desktop earlier; not polled here.
-
-<!-- wroshyr -->
 
 ## How the cuts were made, and two things the runs taught the scripts
 

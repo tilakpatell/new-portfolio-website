@@ -45,7 +45,8 @@ export const MODELS = {
   // Scarif: the Citadel tower (the vault's door stays)
   citadel: { made: 'meshy', lod: true, as: 'the Citadel tower', metres: 170, along: 'y', hero: true, solids: 'built', detail: 'concrete', detailLook: { strength: 0.4, normal: 0.6, metres: 3 }, ultra: { tris: 160000, tex: 8192 } },
   // Kashyyyk: a great wroshyr, from the picture of Kachirho's (the city tree itself stays built, for its decks)
-  wroshyrgreat: { made: 'meshy', lod: true, as: 'the great wroshyrs', metres: 230, along: 'y', hero: true },
+  // (ultra: made again from the tall straight-trunked tree at the right of the Kachirho panorama, scripts/meshy-galaxy-ultra.mjs)
+  wroshyrgreat: { made: 'meshy', lod: true, as: 'the great wroshyrs', metres: 230, along: 'y', hero: true, ultra: { tris: 179999, tex: 8192 } },
   // Coruscant: the Senate Building's dome (its plaza stays built)
   senate: { made: 'meshy', lod: true, as: 'the Senate Building', metres: 190, along: 'x', hero: true, ultra: { tris: 159999, tex: 8192 } },
   // Dagobah: Yoda's hut, the cluster of it
