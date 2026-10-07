@@ -32,4 +32,22 @@ export const MODELS = {
   mosespa: { uid: '3ca4aa22148f4435b7c763f0039c1449', as: 'the Mos Espa houses', metres: 16, along: 'max', yaw: 0, tris: 20000, tex: 1024, lod: true },
   tathouse: { uid: '66893ef6ad5f434e9db954b1f5496dfc', as: 'the Tatooine domed houses', metres: 9, along: 'max', yaw: 0, tris: 6000, tex: 1024 },
   tathouse2: { uid: '9cf63b1dfb234bab823879f78f367128', as: 'the Tatooine domed houses', metres: 9, along: 'max', yaw: 0, tris: 8000, tex: 1024 },
+  // ── made with Meshy from Wookieepedia's picture of each (scripts/meshy-galaxy-library.mjs) ──
+  // the creatures the worlds built in code: Hoth's tauntauns, the Geonosis
+  // arena's acklay, Naboo's kaadu, Beggar's Canyon's womp rats, Dagobah's
+  // bogwings, Kamino's aiwhas, Mustafar's lava fleas
+  tauntaun: { made: 'meshy', as: 'the tauntauns', metres: 2.5, along: 'y' },
+  acklay: { made: 'meshy', as: 'the acklay', metres: 6, along: 'max' },
+  kaadu: { made: 'meshy', as: 'the kaadu', metres: 2.4, along: 'y' },
+  womprat: { made: 'meshy', as: 'the womp rats', metres: 0.85, along: 'max' },
+  bogwing: { made: 'meshy', as: 'the bogwings', metres: 2.2, along: 'max' },
+  aiwha: { made: 'meshy', as: 'the aiwhas', metres: 14, along: 'max' },
+  lavaflea: { made: 'meshy', as: 'the lava fleas', metres: 5, along: 'y' },
+  // and the ones to come: the arena's nexu and reek, Utapau's varactyls,
+  // Lothal's loth-cats and loth-wolves
+  nexu: { made: 'meshy', as: 'the nexu', metres: 4, along: 'max' },
+  reek: { made: 'meshy', as: 'the reek', metres: 5, along: 'max' },
+  varactyl: { made: 'meshy', as: 'the varactyls', metres: 10, along: 'max' },
+  lothcat: { made: 'meshy', as: 'the loth-cats', metres: 0.6, along: 'y' },
+  lothwolf: { made: 'meshy', as: 'the loth-wolves', metres: 2.4, along: 'y' },
 };

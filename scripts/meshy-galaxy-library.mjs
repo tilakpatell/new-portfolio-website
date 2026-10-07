@@ -25,7 +25,8 @@ export const BUILDINGS = {
   tauntaun: beast('File:Tauntaun-SWE.png', 'the white furry bipedal snow lizard with curled horns', 2.5, 'h'),
   acklay: beast('File:Acklay-JTS.png', 'the green mantis-like arena beast on six long clawed legs', 6),
   kaadu: beast('File:Kaadu-SWCT.png', 'the orange duck-billed two-legged riding beast with its saddle', 2.4, 'h'),
-  womprat: beast('File:Womprat-BOBFCE.png', 'the big brown rat-like desert rodent with its long bare tail', 2),
+  // (0.85 m: Beggar's Canyon's womp rats are scaled up 2.4 times, to 2 m)
+  womprat: beast('File:Womprat-BOBFCE.png', 'the big brown rat-like desert rodent with its long bare tail', 0.85),
   bogwing: beast('File:Bogwing-TVE.png', 'the swamp flier with leathery wings and a long beak', 2.2, 'w', { shot: FLIER }),
   aiwha: beast('File:Aiwha-MF44.png', 'the blue-grey winged sea whale with its broad flat wings', 14, 'w', { shot: FLIER }),
   lavaflea: beast('File:LavaFlea-CVDNE.png', 'the dark armoured six-legged lava flea, without its rider', 5, 'h'),
@@ -40,9 +41,9 @@ export const BUILDINGS = {
   // ── and the ones to come: the arena's, Utapau's, Lothal's, the Outer Rim's ──
   nexu: beast('File:Nexu2-SWE.png', 'the cat-like four-legged arena predator with its quills and split jaws', 4),
   reek: beast('File:Reek_SWCT.png', 'the horned red-faced arena bull beast', 5),
-  varactyl: beast('File:Varactyl_DK.png', 'the green feathered lizard mount with its crest and long tail', 10),
-  lothcat: beast('File:LothCat-AG.png', 'the white spotted cat-like loth-cat with its big ears', 0.6, 'h'),
-  lothwolf: beast('File:LothWolf-2025ToppsSWHyperspace.png', 'the huge pale blue-white wolf', 2.4, 'h'),
+  varactyl: beast('File:Varactyl_DK.png', 'the green feathered lizard mount with its crest and long tail', 10, 'w', { yaw: 0.5 }),
+  lothcat: beast('File:LothCat-AG.png', 'the white spotted cat-like loth-cat with its big ears', 0.6, 'h', { yaw: 0.7 }),
+  lothwolf: beast('File:LothWolf-2025ToppsSWHyperspace.png', 'the huge pale blue-white wolf', 2.4, 'h', { yaw: -0.6 }),
   blurrg: beast('File:Blurrg-TSWB.png', 'the grey two-legged blurrg with its huge toothy mouth', 2.6, 'h'),
   happabore: beast('File:Happabore.png', 'the big grey snouted hippo-like happabore', 5),
   fambaa: beast('File:Fambaa-SWE.png', 'the huge four-legged swamp lizard with its riding harness', 11),

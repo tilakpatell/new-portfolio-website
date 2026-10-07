@@ -70,5 +70,31 @@
       "01a114d1-7200-7557-ac6d-7f6e557eef1e"
     ],
     "model": "01a114d2-f9a9-76b1-aa34-840f376af307"
+  },
+  "dragonsnake": {
+    "image": "01a114d6-4a79-7603-9587-b65c1ad3ec4b"
+  },
+  "swoop": {
+    "image": "01a114d6-8e1e-72bc-8742-a5b3823ca7ab"
+  },
+  "blurrg": {
+    "lift": [
+      "01a114d7-47f3-74c2-9d55-492c938e84bf"
+    ]
+  },
+  "happabore": {
+    "lift": [
+      "01a114d7-93d8-7729-a79e-ac89f07bd44c"
+    ]
+  },
+  "fambaa": {
+    "lift": [
+      "01a114d7-c9f1-73ea-a9b1-27a152d58c2e"
+    ]
+  },
+  "mtt": {
+    "lift": [
+      "01a114d9-41c8-77d6-b530-19e24520076f"
+    ]
   }
 }
