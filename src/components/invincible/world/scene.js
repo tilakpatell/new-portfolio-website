@@ -6,7 +6,8 @@
 // what flying leaves behind (./fx.js). The rules (./flight.js) say where
 // he is; this draws it, with a camera behind him that pulls back and
 // widens with speed and never ends up inside a building (nor, with a wall
-// right behind him, inside him: it swings off the wall instead).
+// right behind him, inside him: it swings off the wall instead), and a light
+// from over its shoulder, so he's never a dark shape on a dark street.
 
 import * as THREE from 'three';
 import { createEngine } from '../../avengers/hq/engine';
@@ -25,27 +26,47 @@ import { buildLandmarks } from './landmarks';
 import { buildLife } from './life';
 import { LINES } from './lines';
 import { createNpcs } from './npcs';
-import { buildClouds } from './sky';
+import { buildClouds, buildHaze, skyBands } from './sky';
 import { createTraffic, stepTraffic } from './traffic';
 import { CITY, WATER_Y, WORLD, buildWorld, groundAt, near } from './map';
 import { BODIES, altitudeOf } from './orbit';
-import { loadCast, personFor } from './people';
+import { castMaterial, loadCast, personFor, setCastRim } from './people';
 import { buildSpace } from './space';
 import { groundWorld } from '../../../lib/three/groundwork';
 
 const FOV = 64;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const damp = (v, to, rate, dt) => v + (to - v) * (1 - Math.exp(-rate * dt));
+const luma = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 const Y = new THREE.Vector3(0, 1, 0);
 const Z = new THREE.Vector3(0, 0, 1);
 
-// the times of day: the sky, how it sits, the light, the haze, the night
+// the times of day: the sky, how it sits, the light, the haze, the night,
+// the light that follows Mark (`spot`) and the rim round the cast (`rim`).
+// The haze takes the sky photo's colour at the horizon (skyBands); a fog's
+// `tint` or `color` is only for a photo that can't be read.
 export const TIMES = ['noon', 'dusk', 'night'];
 const LOOK = {
-  noon: { sky: 'noon', rotate: 0.6, env: 1, bg: 1, sun: 3, fill: 0.22, fog: { density: 0.00026, tint: 0.95 }, night: 0, exposure: 1, cloud: { lit: [1, 1, 1], shade: [0.62, 0.66, 0.74] } },
-  dusk: { sky: 'dusk', rotate: 2.2, env: 0.62, bg: 1, sun: 2.6, sunColor: [1, 0.66, 0.4], fill: 0.16, fog: { density: 0.0003, tint: 0.7 }, night: 0.5, exposure: 1, cloud: { lit: [1, 0.74, 0.52], shade: [0.42, 0.36, 0.42] } },
-  night: { sky: 'night', rotate: 0, env: 0.22, bg: 0.2, sun: 0.7, sunDir: [-0.3, 0.75, -0.4], sunColor: [0.62, 0.72, 1], fill: 0.4, fog: { density: 0.00024, color: new THREE.Color(0.05, 0.06, 0.08) }, night: 1, exposure: 1, cloud: { lit: [0.14, 0.16, 0.22], shade: [0.06, 0.07, 0.1], opacity: 0.7 } },
+  noon: { sky: 'noon', rotate: 0.6, env: 1.15, bg: 1, sun: 4.2, fill: 0.3, fog: { density: 0.00026, tint: 0.95 }, night: 0, exposure: 1, spot: 0, rim: 0.35, cloud: { lit: [1, 1, 1], shade: [0.62, 0.66, 0.74] } },
+  dusk: { sky: 'dusk', rotate: 2.2, env: 0.62, bg: 1, sun: 2.6, sunColor: [1, 0.66, 0.4], fill: 0.16, fog: { density: 0.0003, tint: 0.7 }, night: 0.5, exposure: 1, spot: 6, rim: 0.5, cloud: { lit: [1, 0.74, 0.52], shade: [0.42, 0.36, 0.42] } },
+  night: { sky: 'night', rotate: 0, env: 0.22, bg: 0.2, sun: 0.7, sunDir: [-0.3, 0.75, -0.4], sunColor: [0.62, 0.72, 1], fill: 0.4, fog: { density: 0.00024, color: new THREE.Color(0.05, 0.06, 0.08) }, night: 1, exposure: 1, spot: 14, rim: 0.7, cloud: { lit: [0.14, 0.16, 0.22], shade: [0.06, 0.07, 0.1], opacity: 0.7 } },
 };
+
+// The camera hovering or standing: `back` metres behind him, `pull` more
+// flat out (the pull-back with speed, as it was), aimed so his feet sit
+// `feet` of the screen's height up from its bottom. Close enough that he's
+// a good part of the frame, the one thing on it the player has to find.
+// Leaning into a flight, it aims `ahead` metres past him instead, as it
+// always has (his feet trail behind him then).
+const CAM = { back: 5.2, pull: 1.5, feet: 0.35, ahead: 4 };
+
+// The light that follows him: from over the camera's shoulder, `back`
+// metres toward the camera and `up` over his chest, at his chest. Warm
+// white, `range` metres, so it lights him, and the street in a disc round
+// his feet when he's down near it, and not the city. Never off, only dark
+// (its intensity is the time's `spot`): a light switched on and off would
+// recompile every lit material in the city at the turn of the time.
+const SPOT = { color: 0xffeedd, range: 12, angle: 0.5, penumbra: 0.6, back: 2, up: 2.2, chest: 1.25 };
 
 // Down on one knee, a fist on the ground: how a hard landing ends.
 const LAND = {
@@ -99,6 +120,9 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const npcs = createNpcs(scene, world, people);
   const clouds = buildClouds({ small });
   scene.add(clouds.mesh);
+  // (and high up, the sky in the haze's colours over the photo: ./sky.js)
+  const hazeSky = buildHaze();
+  scene.add(hazeSky.mesh);
   const jet = buildJet();
   scene.add(jet.group);
   // the traffic and the people on the pavements, always round the camera
@@ -140,6 +164,12 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     f.snap(POSES.stand);
     scene.add(f.holder);
   }
+  // the cast's one finish (./people.js), its rim set by the time of day
+  const casts = [mark, omni, thragg].map((f) => castMaterial(f.model, { rim: LOOK.noon.rim }));
+  // the light that follows him (SPOT; with no shadow, one more light's sum on each lit pixel)
+  const spot = new THREE.SpotLight(SPOT.color, 0, SPOT.range, SPOT.angle, SPOT.penumbra, 2);
+  spot.castShadow = false;
+  scene.add(spot, spot.target);
   // Omni-Man, over downtown, hands on his hips
   const OMNI = { p: [40, 150, -60], yaw: Math.PI * 0.85 };
 
@@ -180,6 +210,24 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   let timeName = 'noon';
   let zone = 'city';
   const fogBase = new THREE.Color();
+  // The haze's colours, from the sky photo: along the horizon (`fogBase`,
+  // three's fog and the clouds'), overhead (`fogHigh`), and how the haze
+  // under the horizon compares (`fogBelow`). Every lit material here is in
+  // the engine's house look (lib/three/house), which colours fog by its own
+  // sky, by default a fixed cream: the far hills bleached at noon, and the
+  // city faded into cream at night. The engine keeps the house to itself,
+  // but each material it takes on carries the one set of uniforms it shares
+  // (userData.house), so its sky is set from that.
+  const fogHigh = new THREE.Color();
+  let fogBelow = 1;
+  let houseU = null;
+  const houseOf = () => {
+    if (!houseU)
+      scene.traverse((o) => {
+        for (const m of houseU ? [] : [o.material].flat()) if (m?.userData?.house) houseU = m.userData.house;
+      });
+    return houseU;
+  };
   // The sky loads before it's put up, so the times are put up one at a time,
   // in the order asked: two quick changes can't land the wrong way round,
   // one time's sky over the other's streets. Each resolves once its time is
@@ -197,6 +245,8 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   }
   async function putUpTime() {
     const L = LOOK[timeName];
+    // (the cast's rim is the time's, the crowd's too, and out in space)
+    setCastRim(L.rim);
     if (zone === 'space') {
       // out there the sun is the only light, and it moves with the time (as
       // it does on the Earth, the Moon and Mars); the city's sky waits till he's back
@@ -206,7 +256,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     if (look === L) return;
     look = L;
     scene.fog = null;
-    await engine.setSky(L.sky, { rotate: L.rotate, envIntensity: L.env, bgIntensity: L.bg, sunIntensity: L.sun, sunColor: L.sunColor, sunDir: L.sunDir, fill: L.fill, fog: L.fog });
+    const sky = await engine.setSky(L.sky, { rotate: L.rotate, envIntensity: L.env, bgIntensity: L.bg, sunIntensity: L.sun, sunColor: L.sunColor, sunDir: L.sunDir, fill: L.fill, fog: L.fog });
     if (zone === 'space') {
       // he went up while it loaded: the sky's light is the city's, not space's
       look = null;
@@ -218,13 +268,24 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     city.setNight(L.night);
     landmarks.setNight(L.night);
     clouds.setLook(L.cloud);
-    haze = 1;
-    if (scene.fog) fogBase.copy(scene.fog.color);
+    spot.intensity = L.spot;
+    // the haze is the sky's colour along the horizon as it's drawn (the
+    // photo at its brightness), so far towers and hills fade into the sky
+    // behind them, not into grey or white; and the sky's overhead above it
+    const b = skyBands(sky?.background);
+    if (scene.fog) {
+      if (b) scene.fog.color.copy(b.horizon).multiplyScalar(L.bg);
+      fogBase.copy(scene.fog.color);
+      if (b) fogHigh.copy(b.high).multiplyScalar(L.bg);
+      else fogHigh.copy(fogBase);
+      fogBelow = b ? clamp(luma(b.below) / Math.max(luma(b.horizon), 1e-4), 0.7, 1) : 0.92;
+    }
+    haze = NaN; // (the next frame puts the haze up, the house's with it)
   }
   await setTime('noon');
 
   // ── the city or space: one or the other is drawn ──
-  const cityOnly = [ground.group, city.group, landmarks.group, clouds.mesh, jet.group, life.group, challenges.group, flaxans.group, omni.holder];
+  const cityOnly = [ground.group, city.group, landmarks.group, clouds.mesh, hazeSky.mesh, jet.group, life.group, challenges.group, flaxans.group, omni.holder];
   function spaceLook() {
     scene.background = new THREE.Color(0, 0, 0.004);
     scene.fog = null;
@@ -232,6 +293,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     engine.sun.color.setRGB(1, 0.97, 0.92);
     engine.sun.intensity = 3.4;
     engine.hemi.intensity = 0.04;
+    spot.intensity = 0; // (out there the sun's the only light on him)
     engine.sun.userData.dir = space.sun.clone();
     space.stars.visible = true;
     space.stars.material.color.setScalar(1);
@@ -276,7 +338,21 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   }
 
   // ── the camera: behind him, pulled back and widened with speed ──
-  const cam = { dist: 6, fov: FOV, pos: new THREE.Vector3(), at: new THREE.Vector3(), ready: false, near: 0.3, swing: 0 };
+  const cam = { dist: CAM.back, fov: FOV, pos: new THREE.Vector3(), at: new THREE.Vector3(), ready: false, near: 0.3, swing: 0 };
+  // Where to look from `from` so his feet (`feet`, `up` his up) sit CAM.feet
+  // up the screen, centred across it: the point on the line up through him
+  // that's that much above the line to his feet (in the upright plane
+  // through the camera and him, the screen's height goes as the tangent).
+  const aimFeet = new THREE.Vector3();
+  const aimRun = new THREE.Vector3();
+  function feetAim(from, feet, up, fov) {
+    aimRun.subVectors(feet, from);
+    const rise = aimRun.dot(up);
+    aimRun.addScaledVector(up, -rise); // (along the ground to the line up through him)
+    const run = aimRun.length();
+    const a = clamp(Math.atan2(rise, run) + Math.atan((1 - 2 * CAM.feet) * Math.tan(THREE.MathUtils.degToRad(fov / 2))), -1.45, 1.45);
+    return { at: aimFeet.copy(from).add(aimRun).addScaledVector(up, run * Math.tan(a)), steep: run / Math.hypot(run, rise) };
+  }
   const list = [];
   // how far (0…1) along `back` from `anchor` the camera can go before a wall
   // (`list`: the buildings round him, each kept 0.4 m off). One he's hugging
@@ -336,7 +412,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   function placeCamera(h, yaw, pitch, speed, dt) {
     const fly = h.mode === 'air';
     const k = clamp(speed / 260, 0, 1);
-    const want = h.mode === 'ground' ? 5.2 : 6.5 + k * 1.5;
+    const want = h.mode === 'ground' ? CAM.back : CAM.back + k * CAM.pull;
     cam.dist = dt === 0 ? want : damp(cam.dist, want, 2.4, dt);
     // standing on the Moon or Mars, "up" is away from it: the camera's frame turns with it
     const upV = h.mode === 'perch' ? new THREE.Vector3(...h.perch.n) : Y;
@@ -379,7 +455,13 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         const d = pos.clone().sub(new THREE.Vector3(...b.c));
         if (d.length() < b.r + 1.5) pos.copy(new THREE.Vector3(...b.c).addScaledVector(d.normalize(), b.r + 1.5));
       }
-    const at = new THREE.Vector3(anchor[0] + fwd[0] * 4, anchor[1] + fwd[1] * 4, anchor[2] + fwd[2] * 4);
+    // hovering or standing, aimed by his feet (CAM.feet); leaning into a
+    // flight, or with the camera nearly over him (where the line up
+    // through him is nearly the way it looks), at a point ahead of him
+    const ahead = new THREE.Vector3(anchor[0] + fwd[0] * CAM.ahead, anchor[1] + fwd[1] * CAM.ahead, anchor[2] + fwd[2] * CAM.ahead);
+    const lean = fly ? clamp((speed - 8) / 30, 0, 1) : 0;
+    const aim = feetAim(pos, vTmp.set(h.p[0], h.p[1], h.p[2]), upV, FOV + Math.pow(k, 1.2) * 16);
+    const at = aim.at.lerp(ahead, Math.max(lean, 1 - THREE.MathUtils.smoothstep(aim.steep, 0.1, 0.25)));
     if (!cam.ready || dt === 0) {
       cam.pos.copy(pos);
       cam.at.copy(at);
@@ -409,6 +491,13 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     }
     feel.setBaseFov(FOV + Math.pow(k, 1.2) * 16);
     feel.update(dt, camera);
+    // the light that follows him: over the camera's shoulder, above his chest
+    if (zone === 'city') {
+      const chest = spot.target.position.set(h.p[0], h.p[1] + SPOT.chest, h.p[2]);
+      const toCam = vTmp.set(cam.pos.x - chest.x, 0, cam.pos.z - chest.z);
+      if (toCam.lengthSq() < 1e-4) toCam.set(-fwd[0], 0, -fwd[2]);
+      spot.position.copy(chest).addScaledVector(toCam.normalize(), SPOT.back).add(vTmp.set(0, SPOT.up, 0));
+    }
     // the shadows: round him, wider the higher he is (in space, just his own)
     if (zone === 'space') engine.setShadowBox(new THREE.Vector3(...h.p), 6, 40);
     else engine.setShadowBox(new THREE.Vector3(h.p[0], Math.max(0, h.p[1] - alt), h.p[2]), clamp(60 + alt * 0.4, 60, 360), 600 + Math.min(alt, 1500));
@@ -416,11 +505,24 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     if (zone === 'city' && scene.fog?.isFogExp2 && look) {
       const thin = clamp(1 - alt / 2600, 0.3, 1);
       const dark = THREE.MathUtils.smoothstep(alt, 2500, WORLD.ceiling);
-      if (Math.abs(thin - haze) > 0.005 || dark > 0) {
-        haze = thin;
+      if (Number.isNaN(haze) || Math.abs(thin - haze) > 0.005 || dark > 0) {
+        // (until the house has taken the city on, again next frame)
+        const u = houseOf();
+        haze = u ? thin : NaN;
         scene.fog.density = look.fog.density * thin * (1 - dark * 0.5);
-        scene.fog.color.copy(fogBase).lerp(new THREE.Color(0.01, 0.015, 0.04), dark * 0.85);
-        scene.backgroundIntensity = look.bg * (1 - 0.94 * dark);
+        // the haze dims with the sky behind it, so the land meets the sky
+        // at the sky's own tone all the way up (not a cream plain under a
+        // dark sky, its photo's clouds dark banks along the horizon)
+        const sky = 1 - 0.94 * dark;
+        scene.backgroundIntensity = look.bg * sky;
+        scene.fog.color.copy(fogBase).multiplyScalar(sky);
+        if (u) {
+          u.uLookFogLow.value.copy(scene.fog.color);
+          u.uLookFogHigh.value.copy(fogHigh).multiplyScalar(sky);
+          u.uLookFogBelow.value = fogBelow;
+        }
+        // and over the photo, as it dims, the sky the haze has
+        hazeSky.set(scene.fog.color, u ? u.uLookFogHigh.value : fogHigh, fogBelow, THREE.MathUtils.smoothstep(dark, 0.05, 0.5));
       }
       space.stars.visible = dark > 0.02;
       space.stars.material.color.setScalar(dark);
@@ -599,6 +701,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         life.update(traffic, frameDt, camera, look?.night ?? 0);
       }
       clouds.update(t, scene.fog);
+      hazeSky.update(camera);
     } else {
       // Allen, waiting by the Moon; Thragg over Mars
       allen.pose({ mode: 'hover', t }, dt);
@@ -653,7 +756,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     get zone() {
       return zone;
     },
-    debug: { npcs, jet, world, bodies: BODIES, allen: ALLEN, thragg: THRAGG },
+    debug: { npcs, jet, world, bodies: BODIES, allen: ALLEN, thragg: THRAGG, TUNE_TMP: { CAM, SPOT, LOOK, spot, setCastRim, mark, scene, engine } },
     resize: (w, hh) => engine.resize(w, hh),
     get lost() {
       return engine.lost;
@@ -663,6 +766,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       skyLight?.dispose();
       fx.dispose();
       ghosts.dispose();
+      for (const c of casts) c.dispose();
       mark.dispose();
       omni.dispose();
       thragg.dispose();
