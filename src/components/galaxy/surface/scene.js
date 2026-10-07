@@ -167,7 +167,7 @@ export async function create(canvas, ctx) {
     return precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
   };
 
-  const sky = createSky(site);
+  const sky = createSky(site, { clouds: amounts.clouds });
   // (the fog the sky's colour that way: everything fogged with it, as it's put in the world)
   const skyFog = createSkyFog(sky, THREE.ShaderChunk);
   // (the look's halo round the sun, and its haze below the horizon where the

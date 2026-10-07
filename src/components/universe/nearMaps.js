@@ -3,7 +3,8 @@
 // right across the map and soft up close: parked 2.4 radii out, a planet
 // fills 600 pixels with a quarter of its surface, 256 texels of a 1024 map.
 // So the planets the ship comes within six radii of get their near set
-// (planets.js's nearSet: the -hq copies, and on ultra the -xl colour map),
+// (planets.js's nearSet: the -hq copies, and on ultra the -xl colour map,
+// or the 8192 -8k where one has been baked: planetMaps.js's K8),
 // and their finer sphere with it (nearGeometry); at most two at once, the
 // furthest dropped (its textures disposed) when a third comes near. A set
 // that arrives after the ship has gone on is never installed, only freed.
