@@ -247,6 +247,31 @@ export const GALAXY_LINES = {
         ['morty', 'Rick, TIE fighters! I thought the Empire lost!'],
         ['rick', 'It did, Morty. These are the leftovers. Same TIEs, smaller budget. Shoot!'],
       ],
+      // the war's other hunters (warEffects.js: whoever holds a system you're not sworn to), and your own side's wing
+      rebellion: [
+        ['morty', 'Rick, X-wings! The good guys are shooting at us! Are we the bad guys?!'],
+        ['rick', 'In this war, Morty, apparently we’re the bad guys. Shoot back.'],
+      ],
+      rebelnavy: [
+        ['morty', 'Rick, the fish cruiser’s launching fighters!'],
+        ['rick', 'Mon Calamari, Morty. They build ships like coral reefs and they’re mad at us. Shoot!'],
+      ],
+      newrepublic: [
+        ['morty', 'Rick, it’s the New Republic! They’ve got paperwork AND X-wings!'],
+        ['rick', 'Bureaucrats with lasers, Morty. The worst kind. Lose them.'],
+      ],
+      republic: [
+        ['morty', 'Rick, those clone fighters all have the same face in them!'],
+        ['rick', 'Same face, same orders, same aim, Morty. Which is the problem. Move!'],
+      ],
+      republicnavy: [
+        ['morty', 'Rick, the big arrowhead’s full of clones!'],
+        ['rick', 'A Venator, Morty. A flying aircraft carrier staffed by one guy, a million times. Shoot!'],
+      ],
+      escort: [
+        ['morty', 'Rick, fighters on our wing! Are they going to shoot us?'],
+        ['rick', 'They’re ours, Morty. We picked a side, the side sends a welcome party. Wave.'],
+      ],
       // the outlaws (roamRules.js): what the Star Destroyer launches, the bounty hunters, the pirates
       navy: [
         ['morty', 'Rick, the big triangle’s opening up! Stuff’s coming out of it!'],
@@ -509,6 +534,31 @@ export const GALAXY_LINES = {
         ['luke', 'TIEs! The Emperor’s gone, and they’re still out here.'],
         ['r2', '[an urgent warble: some people don’t know when it’s over]'],
       ],
+      // the war's other hunters (warEffects.js: whoever holds a system you're not sworn to), and your own side's wing
+      rebellion: [
+        ['luke', 'X-wings. Red Squadron. I used to fly with them…'],
+        ['r2', '[a reproachful whistle: whose side are we on, exactly?]'],
+      ],
+      rebelnavy: [
+        ['luke', 'A Mon Calamari cruiser, launching. They’ve found us, Artoo.'],
+        ['r2', '[a nervous trill]'],
+      ],
+      newrepublic: [
+        ['luke', 'New Republic fighters. Leia’s pilots. I really don’t want to do this.'],
+        ['r2', '[a sad, low warble]'],
+      ],
+      republic: [
+        ['luke', 'Clone pilots in ARC-170s. Father flew with men like these.'],
+        ['r2', '[a knowing beep: he remembers them]'],
+      ],
+      republicnavy: [
+        ['luke', 'A Venator, launching its fighters. They’re coming for us, Artoo.'],
+        ['r2', '[an urgent whistle]'],
+      ],
+      escort: [
+        ['luke', 'Fighters forming up on our wing, Artoo. They’re ours.'],
+        ['r2', '[a happy whistle: company]'],
+      ],
       weequay: [
         ['comms', 'Hondo Ohnaka, at your service. Your cargo, if you please.'],
         ['luke', 'Pirates. Artoo, they’re after whoever’s nearest. Let’s make it us.'],
@@ -750,6 +800,31 @@ export const GALAXY_LINES = {
         ['han', 'TIEs? The Empire’s finished. Somebody forgot to tell these guys.'],
         ['chewie', '[a defiant roar]'],
       ],
+      // the war's other hunters (warEffects.js: whoever holds a system you're not sworn to), and your own side's wing
+      rebellion: [
+        ['han', 'The Rebellion’s shooting at me. Can’t say I didn’t see that coming.'],
+        ['chewie', '[a told-you-so growl]'],
+      ],
+      rebelnavy: [
+        ['han', 'Mon Cal cruiser, launching. Somebody’s not happy with my career choices.'],
+        ['chewie', '[an exasperated roar]'],
+      ],
+      newrepublic: [
+        ['han', 'New Republic. Same X-wings, more forms to fill in. Punch it, Chewie.'],
+        ['chewie', '[an agreeing bark]'],
+      ],
+      republic: [
+        ['han', 'Clones. Nobody told them the war’s been over for twenty years? Oh. It hasn’t.'],
+        ['chewie', '[an angry roar]'],
+      ],
+      republicnavy: [
+        ['han', 'Venator. Big, slow, and full of guys who look the same. Let’s go.'],
+        ['chewie', '[a grumble]'],
+      ],
+      escort: [
+        ['han', 'Company on our wing. Friendly, for once.'],
+        ['chewie', '[a pleased rumble]'],
+      ],
       weequay: [
         ['comms', 'Hondo Ohnaka, at your service. Your cargo, if you please.'],
         ['han', 'Hondo. I still owe him for Florrum. Chewie, let’s not pay him today.'],
@@ -989,6 +1064,31 @@ export const GALAXY_LINES = {
       remnant: [
         ['jesse', 'Yo, bug zappers again! I thought the bad guys lost!'],
         ['walt', 'An empire never dies all at once, Jesse. The remnants are the dangerous part.'],
+      ],
+      // the war's other hunters (warEffects.js: whoever holds a system you're not sworn to), and your own side's wing
+      rebellion: [
+        ['jesse', 'Yo, the X-wing guys are mad at us! Those are the heroes, Mr. White!'],
+        ['walt', 'Heroes are a matter of whose side you’re on, Jesse. We chose. Fly.'],
+      ],
+      rebelnavy: [
+        ['jesse', 'Yo, the big fish ship’s spitting out fighters!'],
+        ['walt', 'A capital ship launching its wing, Jesse. They want us gone. Move.'],
+      ],
+      newrepublic: [
+        ['jesse', 'Yo, it’s the New Republic! It’s like the DEA but in space!'],
+        ['walt', 'Precisely like the DEA, Jesse. Thorough, underfunded, and persistent. Lose them.'],
+      ],
+      republic: [
+        ['jesse', 'Yo, these dudes are all clones? That’s messed up, man!'],
+        ['walt', 'A perfectly standardised product, Jesse. Admirable. Now outfly it.'],
+      ],
+      republicnavy: [
+        ['jesse', 'Yo, the giant arrow ship’s launching!'],
+        ['walt', 'A Venator, Jesse. Remarkable logistics. Unfortunately for us.'],
+      ],
+      escort: [
+        ['jesse', 'Yo, we got backup! Those guys are with us, right?'],
+        ['walt', 'Our side looks after its own, Jesse. Professional courtesy.'],
       ],
       // the outlaws (roamRules.js): what the Star Destroyer launches, the bounty hunters, the pirates
       navy: [
