@@ -3,5 +3,11 @@
     "image": "01a10a79-cfa3-71f0-92ca-6f2b6ab14e6b",
     "model": "01a10a7a-54a7-7667-acf3-231c201e7171",
     "rig": "01a10a7b-62b5-7202-89b5-b5ba985a6768"
+  },
+  "omni": {
+    "model": "01a113ed-b38a-7753-bed8-f1bfa9437368"
+  },
+  "thragg": {
+    "model": "01a113ef-1717-7150-95e8-aead3d414f9c"
   }
 }
