@@ -5,6 +5,7 @@
 // much is left.
 //
 // progressOf(row) → 0..1; standing(row, now) → a line; heldColour(side);
+// whose(side, the = 'The') → 'The Rebellion’s', 'the Separatists’';
 // areaLines(areas, side) → [{ id, name, text, yours }]; recordLine(side,
 // record) → your rank and record (warState.js's mine) | null; oathOf(war,
 // current, suggested) → the war's two sides for the oath's buttons;
@@ -34,9 +35,15 @@ const rateOf = (r) => `${r > 0 ? '+' : r < 0 ? '−' : '±'}${Math.abs(r).toFixe
 
 export const progressOf = (row) => (row.attack ? row.control : 1 - row.control);
 
+// a side's verb, for one or many (the Separatists and the Hutts are many: the
+// names that end in an s); and whose, theirs with the ’ alone
+const does = (side, one, many) => (SIDES[side].short.endsWith('s') ? many : one);
+const own = (name) => (name.endsWith('s') ? `${name}’` : `${name}’s`);
+export const whose = (side, the = 'The') => own(`${the} ${SIDES[side].short}`);
+
 export function standing(row, now) {
   if (row.attack) {
-    const by = row.attack.by === 'hutt' ? 'The Hutts raid' : `The ${SIDES[row.attack.by].short} attacks`;
+    const by = row.attack.by === 'hutt' ? 'The Hutts raid' : `The ${SIDES[row.attack.by].short} ${does(row.attack.by, 'attacks', 'attack')}`;
     return `${by}: ${pctOf(row.control)} held, ${span(row.attack.until - now)} to hold out`;
   }
   if (row.front) return `${pctOf(progressOf(row))} liberated · ${rateOf(row.effRate ?? row.rate)}`;
@@ -46,8 +53,8 @@ export function standing(row, now) {
 
 export const heldColour = (side) => SIDES[side]?.colour;
 
-const theSide = (side) => (side === 'hutt' ? 'Hutt space' : `The ${SIDES[side].short}’s`);
-const ofThe = (side) => (side === 'hutt' ? 'the Hutts’' : `the ${SIDES[side].short}’s`);
+const theSide = (side) => (side === 'hutt' ? 'Hutt space' : whose(side));
+const ofThe = (side) => whose(side, 'the');
 
 export function areaLines(areas, side) {
   return AREAS.filter((a) => areas[a.id]).map((a) => {
@@ -83,8 +90,6 @@ export function battleLine(row, now, side) {
 const nameOf = (id) => systemById(id)?.name ?? id;
 const The = (side) => (side === 'hutt' ? 'The Hutts' : `The ${SIDES[side].short}`);
 const the = (side) => (side === 'hutt' ? 'the Hutts' : `the ${SIDES[side].short}`);
-// (the Separatists’, the Rebellion’s)
-const whose = (side) => `${The(side)}${The(side).endsWith('s') ? '’' : '’s'}`;
 const PHASE_NEWS = { Opening: 'The campaign opens', Escalation: 'The war escalates', Decisive: 'The decisive phase', Climax: 'The climax' };
 const PHASE_NEXT = { Escalation: 'escalation', Decisive: 'the decisive phase', Climax: 'the climax' };
 const VERBS = { liberate: 'Liberate', hold: 'Hold', take: 'Take' };
@@ -101,11 +106,11 @@ export function ago(ms) {
 export function newsLine(e) {
   const from = e.origin ? ` from ${nameOf(e.origin)}` : '';
   if (e.type === 'captured') return `${nameOf(e.sys)} fell to ${the(e.by)}`;
-  if (e.type === 'capital') return `${nameOf(e.sys)}, ${the(e.from)}’${the(e.from).endsWith('s') ? '' : 's'} capital, fell to ${the(e.by)}`;
-  if (e.type === 'attack') return `${The(e.by)} ${e.counter ? 'strikes back at' : 'attacks'} ${nameOf(e.sys)}${from}`;
+  if (e.type === 'capital') return `${nameOf(e.sys)}, ${whose(e.from, 'the')} capital, fell to ${the(e.by)}`;
+  if (e.type === 'attack') return `${The(e.by)} ${e.counter ? does(e.by, 'strikes back at', 'strike back at') : does(e.by, 'attacks', 'attack')} ${nameOf(e.sys)}${from}`;
   if (e.type === 'raid') return `${The(e.by)} raid ${nameOf(e.sys)}${from}`;
   if (e.type === 'repelled') return `${The(e.holder)} held ${nameOf(e.sys)}`;
-  if (e.type === 'area') return `${The(e.by)} holds all of ${AREAS.find((a) => a.id === e.area)?.name.replace(/^The /, 'the ') ?? e.area}`;
+  if (e.type === 'area') return `${The(e.by)} ${does(e.by, 'holds', 'hold')} all of ${AREAS.find((a) => a.id === e.area)?.name.replace(/^The /, 'the ') ?? e.area}`;
   if (e.type === 'lastStand') return `${whose(e.by)} last stand, at ${nameOf(e.sys)}`;
   if (e.type === 'phase') return e.phase === 'Climax' && e.sys ? `The climax: the decisive battle, at ${nameOf(e.sys)}` : (PHASE_NEWS[e.phase] ?? e.phase);
   return e.type;

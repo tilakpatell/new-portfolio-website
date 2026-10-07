@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { RiCloseLine, RiInformationLine } from 'react-icons/ri';
 import Emblem from './Emblem';
 import { SIDES, WARS } from './sides';
+import { whose } from './warText';
 
 // The holotable's key to its war (WarLayers.jsx and the systems' rings),
 // shut till it's asked for: a picture of each mark in the shown war's own
@@ -24,7 +25,7 @@ export default function WarLegend({ war }) {
       <Mark key="m">
         <rect x="1" y="1" width="26" height="12" rx="2" fill={lib.colour} fillOpacity="0.24" stroke={lib.colour} strokeOpacity="0.5" />
       </Mark>,
-      `Space a power holds: the ${lib.short}’s here (the brighter, the firmer its hold)`,
+      `Space a power holds: ${whose(w.liberator, 'the')} here (the brighter, the firmer its hold)`,
     ],
     [
       <Mark key="m">
@@ -36,7 +37,7 @@ export default function WarLegend({ war }) {
         <rect x="1" y="1" width="26" height="12" rx="2" fill={lib.colour} fillOpacity="0.2" />
         <rect x="1" y="1" width="26" height="12" rx="2" fill="url(#holomap-key-hatch)" />
       </Mark>,
-      `Fought over: hatched in the attacker’s colour (the ${raid.short}’s here)`,
+      `Fought over: hatched in the attacker’s colour (${whose(w.raider, 'the')} here)`,
     ],
     [
       <Mark key="m">
@@ -84,7 +85,7 @@ export default function WarLegend({ war }) {
     ],
     [
       <span key="m" className="holomap-key-ring" data-glyph="+" style={{ '--by': lib.colour, '--held': raid.colour, '--take': 0.35 }} />,
-      `A front: the ${lib.short}’s share of the ring grows as it liberates`,
+      `A front: ${whose(w.liberator, 'the')} share of the ring grows as it liberates`,
     ],
     [
       <span key="m" className="holomap-key-ring" data-glyph="−" style={{ '--by': raid.colour, '--held': lib.colour, '--take': 0.6 }} />,

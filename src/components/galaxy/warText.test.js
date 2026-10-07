@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GCW, warTable } from './gcw';
 import { WAR_IDS } from './sides';
-import { ago, areaLines, battleLine, campaignLine, eventLine, feedOf, heldColour, newsLine, nextOpLine, oathOf, orderLine, partLine, phaseLine, progressOf, recordLine, resultLine, soon, standing, strengthLine } from './warText';
+import { ago, areaLines, battleLine, campaignLine, eventLine, feedOf, heldColour, newsLine, nextOpLine, oathOf, orderLine, partLine, phaseLine, progressOf, recordLine, resultLine, soon, standing, strengthLine, whose } from './warText';
 
 const NOW = 1_000_000;
 const row = (o) => ({ id: 'hoth', owner: 'empire', control: 0.75, front: false, attack: null, rate: null, ...o });
@@ -19,6 +19,9 @@ describe('a system’s place in a war, in words', () => {
     const r = row({ owner: 'rebel', attack: { by: 'empire', until: NOW + 90e3 }, control: 0.6 });
     expect(progressOf(r)).toBeCloseTo(0.6, 5);
     expect(standing(r, NOW, 'gcw')).toBe('The Empire attacks: 60% held, 1:30 to hold out');
+  });
+  it('the Separatists, being many, attack', () => {
+    expect(standing(row({ owner: 'republic', attack: { by: 'separatists', until: NOW + 90e3 }, control: 0.6 }), NOW, 'clone')).toBe('The Separatists attack: 60% held, 1:30 to hold out');
   });
   it('a Hutt raid says so', () => {
     expect(standing(row({ owner: 'empire', attack: { by: 'hutt', until: NOW + 60e3 }, control: 0.5 }), NOW, 'gcw')).toBe('The Hutts raid: 50% held, 1:00 to hold out');
@@ -43,6 +46,15 @@ describe('the war card', () => {
       { id: 'anoat', name: 'Anoat and Atravis', text: '1 of 4 the Rebellion’s', yours: false },
     ]);
     expect(areaLines({ anoat: { total: 4, hutt: 4, holder: 'hutt' } }, null)[0].text).toBe('Hutt space, all 4');
+    // (the Separatists’, not the Separatists’s)
+    const clone = { core: { total: 2, separatists: 2, holder: 'separatists' }, anoat: { total: 4, republic: 3, separatists: 1, holder: null } };
+    expect(areaLines(clone, 'separatists').map((a) => a.text)).toEqual(['The Separatists’, all 2', '1 of 4 the Separatists’']);
+  });
+  it('whose: a side’s, the many’s with the ’ alone', () => {
+    expect(whose('rebel')).toBe('The Rebellion’s');
+    expect(whose('separatists')).toBe('The Separatists’');
+    expect(whose('hutt', 'the')).toBe('the Hutts’');
+    expect(whose('newrepublic', 'the')).toBe('the New Republic’s');
   });
   it('a record line: your rank, your points, your battles', () => {
     expect(recordLine('rebel', { points: 16.2, wins: 2, battles: 3 })).toBe('Flight Leader · 16 points · 2 won of 3 battles');
@@ -87,6 +99,11 @@ describe('the war’s news', () => {
     expect(eventLine({ type: 'raid', sys: 'naboo', by: 'hutt', holder: 'republic', origin: 'tatooine', at }, NOW)).toBe('The Hutts raid Naboo from Tatooine · 2h ago');
     expect(eventLine({ type: 'repelled', sys: 'yavin', by: 'empire', holder: 'rebel', at }, NOW)).toBe('The Rebellion held Yavin 4 · 2h ago');
     expect(eventLine({ type: 'area', area: 'north', by: 'rebel', from: null, at }, NOW)).toBe('The Rebellion holds all of the Northern Rim · 2h ago');
+    // (and the many, the Separatists and the Hutts, as many)
+    expect(newsLine({ type: 'attack', sys: 'kashyyyk', by: 'separatists', holder: 'republic', origin: 'coruscant', at })).toBe('The Separatists attack Kashyyyk from Coruscant');
+    expect(newsLine({ type: 'attack', sys: 'kashyyyk', by: 'separatists', holder: 'republic', counter: true, at })).toBe('The Separatists strike back at Kashyyyk');
+    expect(newsLine({ type: 'area', area: 'north', by: 'separatists', at })).toBe('The Separatists hold all of the Northern Rim');
+    expect(newsLine({ type: 'area', area: 'north', by: 'hutt', at })).toBe('The Hutts hold all of the Northern Rim');
     expect(eventLine({ type: 'lastStand', sys: 'geonosis', by: 'separatists', at }, NOW)).toBe('The Separatists’ last stand, at Geonosis · 2h ago');
     expect(eventLine({ type: 'phase', phase: 'Escalation', sys: null, at }, NOW)).toBe('The war escalates · 2h ago');
     expect(eventLine({ type: 'phase', phase: 'Climax', sys: 'coruscant', at }, NOW)).toBe('The climax: the decisive battle, at Coruscant · 2h ago');

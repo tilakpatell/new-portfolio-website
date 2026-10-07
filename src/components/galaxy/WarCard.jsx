@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { RiSwordFill } from 'react-icons/ri';
 import Emblem from './Emblem';
 import { SIDES, WARS } from './sides';
-import { ago, areaLines, battleLine, campaignLine, feedOf, newsLine, nextOpLine, oathOf, orderLine, partLine, recordLine, resultLine, standing } from './warText';
+import { ago, areaLines, battleLine, campaignLine, feedOf, newsLine, nextOpLine, oathOf, orderLine, partLine, recordLine, resultLine, standing, whose } from './warText';
 import { nearestBattle } from './warMap';
 import { templateFor } from './battles';
 import { jumpSeconds, systemById } from './systems';
@@ -92,7 +92,7 @@ export default function WarCard({ table, now, oath, viewOath, suggested, record,
               <li key={s} data-yours={s === side || undefined}>
                 <button type="button" className="holomap-order" onClick={() => onPick(row.id)} style={pushOf(row, w.liberator)}>
                   <span className="holomap-order-k" style={{ '--side': SIDES[s].colour }}>
-                    <Emblem side={s} /> {s === side ? 'Your order' : `The ${SIDES[s].short}’s order`}
+                    <Emblem side={s} /> {s === side ? 'Your order' : `${whose(s)} order`}
                     {row.major && ' · ★ major order'}
                   </span>
                   <span className="holomap-order-t">{orderLine(o, now)}</span>
