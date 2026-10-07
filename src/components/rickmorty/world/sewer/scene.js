@@ -18,6 +18,7 @@ const SEG = 12; // metres of drain per segment
 const SEGS = 7; // segments ahead of him
 const W = 3 * TUNING.laneW + 1.6; // the drain's width
 const LAMP = 0xffd080;
+const RAT_RUN = Object.freeze({ speed: TUNING.rat, side: 0, turn: 0 }); // (a rat's own run along the drain, m/s)
 
 export async function createSewerScene(canvas, { onLost } = {}) {
   const stage = createStage(canvas, { shadows: false, fov: 55, near: 0.1, far: 160, exposure: 1.05, bloom: { strength: 0.55, radius: 0.4, threshold: 0.9 }, onLost });
@@ -158,7 +159,8 @@ export async function createSewerScene(canvas, { onLost } = {}) {
     hero.position.y = hopK * 1.1;
     hero.position.z = 0;
     hero.rotation.z = (hero.position.x - hx) * 0.5;
-    pickle?.update?.(t, run.stun > 0 ? 0.3 : 1, 0);
+    // (his hops in step with the drain going by under him, as fast as he's running)
+    pickle?.update?.(t, run.stun > 0 ? 0.3 : 1, 0, { dt, motion: { speed: run.speed * (run.stun > 0 ? 0.5 : 1), side: 0, turn: 0 } });
     // the things, by id: made as they appear, gone as they pass
     const seen = new Set();
     for (const o of run.items) {
@@ -170,7 +172,8 @@ export async function createSewerScene(canvas, { onLost } = {}) {
       }
       g.position.set(laneX(o.lane), 0, -(o.at - run.x));
       g.visible = !o.hit || o.kind === 'grate';
-      if (o.kind === 'rat' && !o.hit) g.userData.rat?.update?.(t, 1, 0);
+      // (a rat's scurry in step with its own run at him, each rat in its own stride: the cast's gait.js)
+      if (o.kind === 'rat' && !o.hit) g.userData.rat?.update?.(t, 1, 0, { dt, motion: RAT_RUN });
       if (o.kind === 'screw') g.rotation.y = t * 3;
     }
     for (const [id, g] of things) {
