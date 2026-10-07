@@ -46,7 +46,7 @@ const STOPS = (process.env.STOPS ?? (world === 'kashyyyk' ? '42,50,0;16,64,0.9;0
 const shot = async (name) => {
   await page.screenshot({ path: `${out}/${world}-${name}.png`, timeout: 120000 });
   const v = await page.evaluate(() => window.__surfaceDo('skirmishDebug'));
-  console.log(`${name}:`, JSON.stringify(v && { t: v.t, side: v.side, up: v.up, kills: v.kills, you: v.kills, atYou: v.atYou, modes: v.modes, health: v.health }));
+  console.log(`${name}:`, JSON.stringify(v && { t: v.t, side: v.side, up: v.up, kills: v.kills, yours: v.yours, atYou: v.atYou, modes: v.modes, health: v.health }));
 };
 // (the battle a while on, without drawing it, so it's in full swing)
 await page.evaluate(() => window.__surfaceDo('advance', 15));

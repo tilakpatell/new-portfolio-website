@@ -2553,7 +2553,9 @@ export async function create(canvas, ctx) {
       const b = skirmish.battle();
       const modes = {};
       for (const u of b.units) if (u.up) modes[`${u.kind}:${u.mode}:${u.stance}`] = (modes[`${u.kind}:${u.mode}:${u.stance}`] ?? 0) + 1;
-      return { ...skirmish.view(), t: +b.t.toFixed(1), modes, kills: b.kills, health: state.health };
+      const view = skirmish.view();
+      // (kills: each side's soldiers' kills; yours: your own)
+      return { ...view, t: +b.t.toFixed(1), modes, kills: b.kills, yours: view.kills, health: state.health };
     },
     // (for tests: pretend others are down here: [{ id, name, walk }])
     fakePeers(list) {
