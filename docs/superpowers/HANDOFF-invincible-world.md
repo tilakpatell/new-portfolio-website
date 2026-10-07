@@ -222,9 +222,19 @@ Every band is in range, and Mark passes in spawn, streetnight and porch. He miss
 - Triangles on the low tier: fight 1.00 M, maulers 1.79 M, seismic 1.45 M. `maulers` is over the 1.5 M budget: that street already drew 1.76 M in the stub (the hall and the east block with the traffic); the two figures add about 30 k. Left for Task 11's pass over the budget.
 - Not in this task: missions start them (Task 9); for now only the Flaxans come on their own, and the dev hook spawns the rest.
 
+### Task 8: the missions' rules (2026-10-07)
+
+- `missions.js` (tested, 18 cases) is the season and the radio as rules only. `MISSIONS` has the seven episodes (`ep1`…`ep7`, in the spec's order, with their givers, start points, lines, steps and achievements) and the side calls (`side: true`): `chase`, `everace` and `photo1`…`photo5`. `STORY` is the episodes' ids; `missionOf(id)`, `nextStory(doneIds)`, `placeOf(id)`, `PHOTO_SPOTS`.
+- `startMission(id, now)` gives progress `{ id, step, count, t, stepT, hp, best, seen, away, done, fail }`; `stepOf(progress)` says what the step under way needs set up (`spawn`, `car`, `wave`, its text), and `feedMission(progress, event)` takes one event and gives `{ progress, out }`: `step` (the next one begun, with the same), `count`, `hp`, `done` (with the time and the achievement) or `fail` (why: `time`, `late`, `lost`, `left`, `abandoned`). Events: `at` each frame (his `p`, `mode`, `speed`, `face`, and `npcs` and `car` positions for the steps that want them), `tick`, `talk`, `caught`, `ko`, `ring`, `hurt`, `use`, `land` (with `body` for the Moon), `abandon`. A `tick` is at most 0.05 s.
+- Steps: `reach` (`y: null` is any height), `land` and `slam` (`at` a point, `{ car: true }` or `{ npc }`), `talk`, `catch`, `defeat` (`kind` one or a list, `n`), `race` (`gates` in order; `ring: true` takes `./quests.js`'s ring events for Dad's course, otherwise flying within `r`), `escort` (`npc`, `to`, `r`; failing after `grace` seconds more than `within` from them), `protect` (`what`, `hp`, `time`), `through` (`at`, `r`, `speed`), `use` (`id`; a photo also wants him within `r` of `at`, facing within `within` of `face`).
+- `markerOf(progress, scene)` is the step's marker: a point, the next gate, or what the scene says is there (`npcs[id]`, `car`, `foes[0]`, `faller`, `bodies.moon`); the last seen is kept in progress when the scene has none.
+- `loadStory(saved)` takes anything and keeps real episodes and times; `keepStory(story, id, time)` adds one done.
+- Places the map doesn't name: the bank at `[65, 0, 0]`, where the tower east of the plaza across the street stands (its door at `[50, 0, 0]` on the pavement, facing the hall; Task 9 puts the bank model there and takes the tower out), the hangar's door, the school's roof, Dad's four points for the talk (over downtown, the river, the school, then home), the three gates home from the Moon (space's frame), Eve's eight gates (each over a downtown crossing) and the five photo spots. The test checks every marker, gate and spawn point in the city is on open ground or in the air.
+- Not here: starting them in the world, the cards, the markers drawn, the getaway truck, the waves (Task 9); the radio's timing (Task 10).
+
 ## How to check
 
-- `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic, hud, brains, companions and foes (51 tests at the space merge, 89 after Task 1, 168 after Task 7).
+- `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic, hud, brains, companions and foes (51 tests at the space merge, 89 after Task 1, 168 after Task 7, 186 after Task 8).
 - With the dev server running, `OUT=/tmp/shots node scripts/inv-world-check.mjs [--metrics] [shot …]`.
   - Shots, in the order they run: `spawn street curb streetnight downtown high suburb river boost porch gda burger school plaza eve jet clouds rings card wallback rescue fight climb orbit orbitnight moon reentry allen mars thragg dusk night`.
   - The mission stubs, which only frame the places for now: `bank chase seismic maulers eveescort dadlesson gdasiege photo`.

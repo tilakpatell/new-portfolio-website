@@ -147,6 +147,19 @@ describe('crews on foot', () => {
     expect(f.lead.aim).toBe(1);
     expect(f.mate.who).toBe('jesse');
   });
+  it('carries what the body is doing beside where it is, and reads an older packet as doing nothing', () => {
+    const f = readFoot(JSON.parse(JSON.stringify(writeFoot({ ...crew, lead: walker('walt', { e: ['wave', 1.234], hurt: 0.5, down: 1 }) }))));
+    expect(f.lead.e).toEqual(['wave', 1.23]);
+    expect(f.lead.hurt).toBe(0.5);
+    expect(f.lead.down).toBe(1);
+    expect(f.mate.e).toBeNull();
+    expect(f.mate.hurt).toBe(0);
+    expect(f.mate.down).toBe(0);
+    const old = readFoot({ ...writeFoot(crew), a: ['walt', 0.6, 0.8, 0, 0, 0, 1, 0, 0, 0, 1] });
+    expect(old.lead.e).toBeNull();
+    expect(old.lead.down).toBe(0);
+    expect(readFoot({ ...writeFoot(crew), a: ['walt', 0.6, 0.8, 0, 0, 0, 1, 0, 0, 0, 1, ['wave', 'x'], 9, -1] }).lead).toMatchObject({ e: null, hurt: 1, down: 0 });
+  });
   it('says when the crew are back in, and takes a ship just landing with nobody out', () => {
     expect(readFoot(writeFoot(null))).toEqual({ off: true });
     const landing = readFoot(writeFoot({ ...crew, lead: null, mate: null }));
