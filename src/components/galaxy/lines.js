@@ -201,38 +201,7 @@ export const GALAXY_LINES = {
         ['morty', 'They all made it, Rick!'],
         ['rick', 'Mostly. That’s a win in a war, Morty. Mostly.'],
       ],
-      // the war's battles (warfront.js), in the galaxy's own words: called out
-      // as you drop in, in among it, its phases, and how it went
-      battle: {
-        front: [
-          ['morty', 'Rick, there’s a whole space battle going on out there!'],
-          ['rick', 'Galactic Civil War, Morty. Rebels versus space fascists. Easy pick.'],
-        ],
-        join: [
-          ['rick', 'We’re in it, Morty. Shoot the white ones. The TIEs. Not the X-wings.'],
-          ['morty', 'O-okay! White ones! Got it!'],
-        ],
-        gens: [
-          ['morty', 'Their shield’s down, Rick!'],
-          ['rick', 'Bridge next, Morty. Cut the head off the bureaucracy.'],
-        ],
-        bridge: [
-          ['rick', 'Bridge is toast. Reactor, Morty. Make it go boom.'],
-          ['morty', 'I’m on it! Kind of!'],
-        ],
-        reactor: [
-          ['morty', 'It’s breaking in half, Rick! Look at it!'],
-          ['rick', 'Space is mostly vacuum, Morty. And now, a little more debris.'],
-        ],
-        won: [
-          ['morty', 'We won, Rick! The whole system!'],
-          ['rick', 'Don’t get attached, Morty. Wars move. That’s their whole thing.'],
-        ],
-        lost: [
-          ['morty', 'Rick, the Rebels are pulling out!'],
-          ['rick', 'Then so are we. Live to meddle another day, Morty.'],
-        ],
-      },
+      // (the war's battles: battleLines.js, by the side you swore to)
     },
     interdicted: [
       ['morty', 'Rick! We fell out of hyperspace! Why did we fall out of hyperspace?!'],
@@ -246,6 +215,31 @@ export const GALAXY_LINES = {
       remnant: [
         ['morty', 'Rick, TIE fighters! I thought the Empire lost!'],
         ['rick', 'It did, Morty. These are the leftovers. Same TIEs, smaller budget. Shoot!'],
+      ],
+      // the war's other hunters (warEffects.js: whoever holds a system you're not sworn to), and your own side's wing
+      rebellion: [
+        ['morty', 'Rick, X-wings! The good guys are shooting at us! Are we the bad guys?!'],
+        ['rick', 'In this war, Morty, apparently we’re the bad guys. Shoot back.'],
+      ],
+      rebelnavy: [
+        ['morty', 'Rick, the fish cruiser’s launching fighters!'],
+        ['rick', 'Mon Calamari, Morty. They build ships like coral reefs and they’re mad at us. Shoot!'],
+      ],
+      newrepublic: [
+        ['morty', 'Rick, it’s the New Republic! They’ve got paperwork AND X-wings!'],
+        ['rick', 'Bureaucrats with lasers, Morty. The worst kind. Lose them.'],
+      ],
+      republic: [
+        ['morty', 'Rick, those clone fighters all have the same face in them!'],
+        ['rick', 'Same face, same orders, same aim, Morty. Which is the problem. Move!'],
+      ],
+      republicnavy: [
+        ['morty', 'Rick, the big arrowhead’s full of clones!'],
+        ['rick', 'A Venator, Morty. A flying aircraft carrier staffed by one guy, a million times. Shoot!'],
+      ],
+      escort: [
+        ['morty', 'Rick, fighters on our wing! Are they going to shoot us?'],
+        ['rick', 'They’re ours, Morty. We picked a side, the side sends a welcome party. Wave.'],
       ],
       // the outlaws (roamRules.js): what the Star Destroyer launches, the bounty hunters, the pirates
       navy: [
@@ -463,38 +457,7 @@ export const GALAXY_LINES = {
         ['comms', 'The last transport’s away. Echo Base is clear.'],
         ['luke', 'They’re clear. Let’s get out of here too, Artoo.'],
       ],
-      // the war's battles (warfront.js), in the galaxy's own words: called out
-      // as you drop in, in among it, its phases, and how it went
-      battle: {
-        front: [
-          ['r2', '[The fleet is engaged. Capital ships on both sides.]'],
-          ['luke', 'It’s the whole fleet. Artoo, let’s get in there.'],
-        ],
-        join: [
-          ['luke', 'Red Five, joining up. S-foils in attack position.'],
-          ['r2', '[an eager whistle]'],
-        ],
-        gens: [
-          ['r2', '[Their shield generators are down.]'],
-          ['luke', 'Their shield’s gone! Now the bridge.'],
-        ],
-        bridge: [
-          ['luke', 'Bridge is out. Go for the reactor!'],
-          ['r2', '[a triumphant chirp]'],
-        ],
-        reactor: [
-          ['luke', 'She’s breaking up! Artoo, look at that!'],
-          ['r2', '[a long, amazed whistle]'],
-        ],
-        won: [
-          ['luke', 'We did it. The system’s free, Artoo.'],
-          ['r2', '[a happy trill]'],
-        ],
-        lost: [
-          ['r2', '[A low tone: the fleet is pulling out.]'],
-          ['luke', 'We’ll be back. We always come back.'],
-        ],
-      },
+      // (the war's battles: battleLines.js, by the side you swore to)
     },
     interdicted: [
       ['r2', '[a panicked shriek]'],
@@ -508,6 +471,31 @@ export const GALAXY_LINES = {
       remnant: [
         ['luke', 'TIEs! The Emperor’s gone, and they’re still out here.'],
         ['r2', '[an urgent warble: some people don’t know when it’s over]'],
+      ],
+      // the war's other hunters (warEffects.js: whoever holds a system you're not sworn to), and your own side's wing
+      rebellion: [
+        ['luke', 'X-wings. Red Squadron. I used to fly with them…'],
+        ['r2', '[a reproachful whistle: whose side are we on, exactly?]'],
+      ],
+      rebelnavy: [
+        ['luke', 'A Mon Calamari cruiser, launching. They’ve found us, Artoo.'],
+        ['r2', '[a nervous trill]'],
+      ],
+      newrepublic: [
+        ['luke', 'New Republic fighters. Leia’s pilots. I really don’t want to do this.'],
+        ['r2', '[a sad, low warble]'],
+      ],
+      republic: [
+        ['luke', 'Clone pilots in ARC-170s. Father flew with men like these.'],
+        ['r2', '[a knowing beep: he remembers them]'],
+      ],
+      republicnavy: [
+        ['luke', 'A Venator, launching its fighters. They’re coming for us, Artoo.'],
+        ['r2', '[an urgent whistle]'],
+      ],
+      escort: [
+        ['luke', 'Fighters forming up on our wing, Artoo. They’re ours.'],
+        ['r2', '[a happy whistle: company]'],
       ],
       weequay: [
         ['comms', 'Hondo Ohnaka, at your service. Your cargo, if you please.'],
@@ -703,38 +691,7 @@ export const GALAXY_LINES = {
         ['comms', 'The last transport’s away. Echo Base is clear.'],
         ['han', 'Everybody’s out. Our turn, Chewie. Let’s go.'],
       ],
-      // the war's battles (warfront.js), in the galaxy's own words: called out
-      // as you drop in, in among it, its phases, and how it went
-      battle: {
-        front: [
-          ['han', 'Chewie, there’s a fleet battle out there. Ours and theirs.'],
-          ['chewie', '[a low, ready growl]'],
-        ],
-        join: [
-          ['han', 'Alright, we’re in. Keep ’em off the cruisers, Chewie.'],
-          ['chewie', '[a roar]'],
-        ],
-        gens: [
-          ['han', 'Their deflectors are down. Somebody tell the admiral.'],
-          ['chewie', '[an approving growl]'],
-        ],
-        bridge: [
-          ['han', 'There goes the bridge. Bet they didn’t see that coming.'],
-          ['chewie', '[a pleased bark]'],
-        ],
-        reactor: [
-          ['han', 'She’s going! Stay clear of the pieces, Chewie.'],
-          ['chewie', '[a long, joyful howl]'],
-        ],
-        won: [
-          ['han', 'And that’s how it’s done. Drinks are on the Rebellion.'],
-          ['chewie', '[a happy roar]'],
-        ],
-        lost: [
-          ['han', 'Fleet’s pulling out. No shame in a good retreat. I’ve made a career of it.'],
-          ['chewie', '[a mournful groan]'],
-        ],
-      },
+      // (the war's battles: battleLines.js, by the side you swore to)
     },
     interdicted: [
       ['han', 'That’s an Interdictor! They yanked us right out of hyperspace!'],
@@ -749,6 +706,31 @@ export const GALAXY_LINES = {
       remnant: [
         ['han', 'TIEs? The Empire’s finished. Somebody forgot to tell these guys.'],
         ['chewie', '[a defiant roar]'],
+      ],
+      // the war's other hunters (warEffects.js: whoever holds a system you're not sworn to), and your own side's wing
+      rebellion: [
+        ['han', 'The Rebellion’s shooting at me. Can’t say I didn’t see that coming.'],
+        ['chewie', '[a told-you-so growl]'],
+      ],
+      rebelnavy: [
+        ['han', 'Mon Cal cruiser, launching. Somebody’s not happy with my career choices.'],
+        ['chewie', '[an exasperated roar]'],
+      ],
+      newrepublic: [
+        ['han', 'New Republic. Same X-wings, more forms to fill in. Punch it, Chewie.'],
+        ['chewie', '[an agreeing bark]'],
+      ],
+      republic: [
+        ['han', 'Clones. Nobody told them the war’s been over for twenty years? Oh. It hasn’t.'],
+        ['chewie', '[an angry roar]'],
+      ],
+      republicnavy: [
+        ['han', 'Venator. Big, slow, and full of guys who look the same. Let’s go.'],
+        ['chewie', '[a grumble]'],
+      ],
+      escort: [
+        ['han', 'Company on our wing. Friendly, for once.'],
+        ['chewie', '[a pleased rumble]'],
       ],
       weequay: [
         ['comms', 'Hondo Ohnaka, at your service. Your cargo, if you please.'],
@@ -944,38 +926,7 @@ export const GALAXY_LINES = {
         ['comms', 'The last transport’s away. Echo Base is clear.'],
         ['jesse', 'They got out! Can we get out now too?'],
       ],
-      // the war's battles (warfront.js), in the galaxy's own words: called out
-      // as you drop in, in among it, its phases, and how it went
-      battle: {
-        front: [
-          ['jesse', 'Yo, Mr. White, that’s like a whole space war out there!'],
-          ['walt', 'The Rebellion against the Empire, Jesse. We’re with the Rebellion.'],
-        ],
-        join: [
-          ['walt', 'We’re in. Stay close to the big ships, Jesse.'],
-          ['jesse', 'Yeah, okay. Close. Big ships. Got it.'],
-        ],
-        gens: [
-          ['jesse', 'Their shields are down, Mr. White!'],
-          ['walt', 'The bridge next. Take out the decision-makers.'],
-        ],
-        bridge: [
-          ['walt', 'The bridge is gone. Now the reactor, Jesse.'],
-          ['jesse', 'On it, on it!'],
-        ],
-        reactor: [
-          ['jesse', 'It’s blowing up! That’s, like, chemistry, right?'],
-          ['walt', 'Exothermic, Jesse. Spectacularly so.'],
-        ],
-        won: [
-          ['jesse', 'We won, Mr. White! The whole system!'],
-          ['walt', 'We did. Remember this feeling, Jesse.'],
-        ],
-        lost: [
-          ['walt', 'The fleet’s withdrawing. Pull back, Jesse.'],
-          ['jesse', 'Man, this is so not cool.'],
-        ],
-      },
+      // (the war's battles: battleLines.js, by the side you swore to)
     },
     interdicted: [
       ['jesse', 'Yo, the stretchy stars stopped! Why’d the stretchy stars stop?!'],
@@ -989,6 +940,31 @@ export const GALAXY_LINES = {
       remnant: [
         ['jesse', 'Yo, bug zappers again! I thought the bad guys lost!'],
         ['walt', 'An empire never dies all at once, Jesse. The remnants are the dangerous part.'],
+      ],
+      // the war's other hunters (warEffects.js: whoever holds a system you're not sworn to), and your own side's wing
+      rebellion: [
+        ['jesse', 'Yo, the X-wing guys are mad at us! Those are the heroes, Mr. White!'],
+        ['walt', 'Heroes are a matter of whose side you’re on, Jesse. We chose. Fly.'],
+      ],
+      rebelnavy: [
+        ['jesse', 'Yo, the big fish ship’s spitting out fighters!'],
+        ['walt', 'A capital ship launching its wing, Jesse. They want us gone. Move.'],
+      ],
+      newrepublic: [
+        ['jesse', 'Yo, it’s the New Republic! It’s like the DEA but in space!'],
+        ['walt', 'Precisely like the DEA, Jesse. Thorough, underfunded, and persistent. Lose them.'],
+      ],
+      republic: [
+        ['jesse', 'Yo, these dudes are all clones? That’s messed up, man!'],
+        ['walt', 'A perfectly standardised product, Jesse. Admirable. Now outfly it.'],
+      ],
+      republicnavy: [
+        ['jesse', 'Yo, the giant arrow ship’s launching!'],
+        ['walt', 'A Venator, Jesse. Remarkable logistics. Unfortunately for us.'],
+      ],
+      escort: [
+        ['jesse', 'Yo, we got backup! Those guys are with us, right?'],
+        ['walt', 'Our side looks after its own, Jesse. Professional courtesy.'],
       ],
       // the outlaws (roamRules.js): what the Star Destroyer launches, the bounty hunters, the pirates
       navy: [

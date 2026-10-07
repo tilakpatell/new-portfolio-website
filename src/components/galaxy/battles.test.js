@@ -1,46 +1,159 @@
 import { describe, expect, it } from 'vitest';
 import { createBattle } from '../universe/battle';
-import { SUBSYSTEMS } from '../universe/wars';
+import { FIGHTERS, SUBSYSTEMS } from '../universe/wars';
 import { GALAXY_KINDS } from './fleet';
-import { MODELS } from './models';
+import { MODELS, STAND_IN } from './models';
 import { BUILT_KINDS } from '../universe/trafficModels';
-import { WAR_SYSTEMS } from './gcw';
+import { WAR_SYSTEMS, teamsOf } from './gcw';
+import { SIDES, WARS, WAR_IDS } from './sides';
 import { systemById } from './systems';
-import { SIZE, TEMPLATES, layBattle, obstacles, templateFor } from './battles';
+import { BATTLE_KINDS, HUTTS, SIZE, TEMPLATES, kindFor, layBattle, obstacles, templateFor } from './battles';
 
-const KNOWN = new Set([...Object.keys(MODELS), ...GALAXY_KINDS, ...BUILT_KINDS]);
-const fake = (sys, attacker = 'rebel', seed = 7) => ({ id: `c0.${sys}.3`, sys, step: 3, seed, attacker, start: 0, fightEnd: 600e3, end: 720e3, fighting: true });
+const KNOWN = new Set([...Object.keys(MODELS), ...GALAXY_KINDS, ...BUILT_KINDS, ...Object.keys(STAND_IN)]);
+// a battle as gcw.js's battleAt has it
+const fake = (sys, attacker = 'rebel', defender = null, seed = 7, war = null) => {
+  const w = war ?? (attacker === 'hutt' ? WARS[Object.keys(WARS).find((k) => WARS[k].liberator === defender || WARS[k].raider === defender)].id : Object.values(WARS).find((x) => x.liberator === attacker || x.raider === attacker).id);
+  const def = defender ?? (WARS[w].liberator === attacker ? WARS[w].raider : WARS[w].liberator);
+  const sides = teamsOf(attacker, def);
+  return { id: `c0.${w}.${sys}.3`, war: w, sys, step: 3, seed, attacker, defender: def, sides, attackerTeam: sides.indexOf(attacker), start: 0, fightEnd: 600e3, end: 720e3, fighting: true };
+};
+const lines = (t) => [t.light, t.dark];
+
+describe('the kinds of battle', () => {
+  it('are six, each with words for both sides, an objective, and its runners', () => {
+    expect(Object.keys(BATTLE_KINDS).sort()).toEqual(['ambush', 'assault', 'blockade', 'evacuation', 'interdiction', 'siege']);
+    for (const [id, k] of Object.entries(BATTLE_KINDS)) {
+      expect(k.id).toBe(id);
+      expect(k.name).toMatch(/\S/);
+      expect(k.text.attack, id).toMatch(/\S/);
+      expect(k.text.defend, id).toMatch(/\S/);
+      expect(['flagship', 'interdictor']).toContain(k.objective);
+      if (k.runners) expect(['attacker', 'defender']).toContain(k.runners.side);
+    }
+    expect(BATTLE_KINDS.evacuation.runners.side).toBe('defender');
+    expect(BATTLE_KINDS.blockade.runners.side).toBe('attacker');
+  });
+  it('every war system has a known kind, and one without a war entry gets the defaults', () => {
+    for (const id of WAR_SYSTEMS) expect(BATTLE_KINDS[kindFor(id)], id).toBeTruthy();
+    expect(kindFor('hoth')).toBe('evacuation');
+    expect(kindFor('nowhere')).toBe('assault');
+    expect(templateFor('nowhere', 'gcw').name).toMatch(/\S/);
+    expect(templateFor('nowhere', 'gcw').light.flagship.kind).toBe(templateFor('tatooine', 'gcw').light.flagship.kind);
+  });
+});
 
 describe('the battles’ templates', () => {
-  it('has the set pieces’ own, and one for every system in the war', () => {
-    for (const id of ['endor', 'hoth', 'scarif', 'yavin', 'coruscant']) expect(TEMPLATES[id], id).toBeTruthy();
-    for (const id of WAR_SYSTEMS) expect(templateFor(id).name, id).toMatch(/\S/);
+  it('has the set pieces’ own in the Civil War, and one for every system in every war', () => {
+    for (const id of ['endor', 'hoth', 'scarif', 'yavin', 'coruscant']) expect(TEMPLATES.gcw[id], id).toBeTruthy();
+    for (const war of WAR_IDS) for (const id of WAR_SYSTEMS) expect(templateFor(id, war).name, `${war} ${id}`).toMatch(/\S/);
   });
-  it('builds every ship from a model the galaxy has, at the galaxy’s sizes', () => {
-    for (const id of WAR_SYSTEMS)
-      for (const side of ['rebels', 'empire']) {
-        const t = templateFor(id)[side];
-        for (const c of [t.flagship, ...t.escorts]) {
-          expect(KNOWN.has(c.kind), `${id} ${side} ${c.kind}`).toBe(true);
-          expect(c.size, `${id} ${c.kind}`).toBe(c.size ?? SIZE[c.kind]);
-          expect(c.size).toBeGreaterThan(0);
+  it('builds every ship from a model the galaxy has, at the galaxy’s sizes, every fighter one the battle knows', () => {
+    for (const war of WAR_IDS)
+      for (const id of WAR_SYSTEMS) {
+        const t = templateFor(id, war);
+        for (const l of [...lines(t), HUTTS])
+          for (const c of [l.flagship, ...l.escorts]) {
+            expect(KNOWN.has(c.kind), `${war} ${id} ${c.kind}`).toBe(true);
+            expect(c.size, `${war} ${id} ${c.kind}`).toBeGreaterThan(0);
+            expect(SIZE[c.kind], `${c.kind} has a size`).toBeGreaterThan(0);
+          }
+        for (const f of [...t.fighters.light, ...t.fighters.dark, ...HUTTS.fighters]) {
+          expect(KNOWN.has(f.kind), `${war} ${id} ${f.kind}`).toBe(true);
+          expect(FIGHTERS[f.kind], `${f.kind} flies`).toBeTruthy();
+          if (f.role === 'bomber') expect(FIGHTERS[f.kind].reload, `${f.kind} bombs`).toBeGreaterThan(0);
         }
-        for (const f of templateFor(id).fighters[side]) expect(KNOWN.has(f.kind), `${id} ${f.kind}`).toBe(true);
+        for (const a of Object.values(t.ace ?? {})) {
+          expect(FIGHTERS[a.kind], `${war} ${id} ace ${a.kind}`).toBeTruthy();
+          expect(KNOWN.has(a.kind)).toBe(true);
+          expect(a.name).toMatch(/\S/);
+        }
       }
   });
   it('puts in a flagship with objectives, and four to seven escorts', () => {
-    for (const id of WAR_SYSTEMS)
-      for (const side of ['rebels', 'empire']) {
-        const t = templateFor(id)[side];
-        expect(SUBSYSTEMS[t.flagship.kind], `${id} ${side}`).toBeTruthy();
-        expect(t.escorts.length, `${id} ${side}`).toBeGreaterThanOrEqual(4);
-        expect(t.escorts.length).toBeLessThanOrEqual(7);
-      }
+    for (const war of WAR_IDS)
+      for (const id of WAR_SYSTEMS)
+        for (const l of [...lines(templateFor(id, war)), HUTTS]) {
+          expect(SUBSYSTEMS[l.flagship.kind], `${war} ${id} ${l.flagship.kind}`).toBeTruthy();
+          expect(l.escorts.length, `${war} ${id}`).toBeGreaterThanOrEqual(4);
+          expect(l.escorts.length).toBeLessThanOrEqual(7);
+        }
   });
-  it('has the Executor at Endor and Hoth, two Star Destroyers at Scarif', () => {
-    expect(TEMPLATES.endor.empire.flagship.kind).toBe('executor');
-    expect(TEMPLATES.hoth.empire.flagship.kind).toBe('executor');
-    expect([TEMPLATES.scarif.empire.flagship, ...TEMPLATES.scarif.empire.escorts].filter((c) => c.kind === 'destroyer')).toHaveLength(2);
+  it('fights each war with its own: the Republic’s Venators, the Separatists’ droids, the Remnant’s TIEs', () => {
+    const clone = templateFor('kashyyyk', 'clone');
+    expect([clone.light.flagship, ...clone.light.escorts].some((c) => c.kind === 'venator')).toBe(true);
+    expect(clone.fighters.dark.some((f) => f.kind === 'vulture')).toBe(true);
+    expect(clone.fighters.light.some((f) => f.kind === 'arc170')).toBe(true);
+    expect(templateFor('nevarro', 'remnant').fighters.dark.some((f) => f.kind === 'tie')).toBe(true);
+  });
+  it('has the Executor at Endor and Hoth, two Star Destroyers at Scarif, Vader over Hoth and Hera over Lothal', () => {
+    expect(TEMPLATES.gcw.endor.dark.flagship.kind).toBe('executor');
+    expect(TEMPLATES.gcw.hoth.dark.flagship.kind).toBe('executor');
+    expect([TEMPLATES.gcw.scarif.dark.flagship, ...TEMPLATES.gcw.scarif.dark.escorts].filter((c) => c.kind === 'destroyer')).toHaveLength(2);
+    expect(TEMPLATES.gcw.hoth.ace.dark).toMatchObject({ kind: 'tieadvanced', name: 'Darth Vader' });
+    expect(TEMPLATES.gcw.lothal.ace.light).toMatchObject({ kind: 'ghost' });
+  });
+  it('gives the interdiction worlds’ dark side an Interdictor', () => {
+    for (const war of WAR_IDS)
+      for (const id of WAR_SYSTEMS.filter((x) => kindFor(x) === 'interdiction')) expect(templateFor(id, war).dark.escorts.some((c) => c.kind === 'interdictor'), `${war} ${id}`).toBe(true);
+  });
+});
+
+describe('the flagships’ objectives, from outside', () => {
+  // (as universe/battle.test.js checks the universe's: a fair share of bolts
+  // from round an objective's outer side that meet its ship meet it)
+  const reachable = (laid) => {
+    const b = createBattle({ ...laid, perSide: 0 });
+    b.setYou(b.attacker);
+    const ship = b.capitals.find((c) => c.objective);
+    for (const phase of [1, 2, 3]) {
+      for (const s of ship.subs.filter((o) => o.phase === phase)) {
+        const out = { x: s.pos.x - ship.pos.x, y: s.pos.y - ship.pos.y, z: s.pos.z - ship.pos.z };
+        let reached = 0;
+        let stopped = 0;
+        let seed = 11;
+        const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+        for (let n = 0; n < 60; n++) {
+          let d;
+          do d = { x: rand() * 2 - 1, y: rand() * 2 - 1, z: rand() * 2 - 1 };
+          while (Math.hypot(d.x, d.y, d.z) > 1 || d.x * out.x + d.y * out.y + d.z * out.z <= 0);
+          const l = Math.hypot(d.x, d.y, d.z);
+          let p = { x: s.pos.x + (d.x / l) * 40, y: s.pos.y + (d.y / l) * 40, z: s.pos.z + (d.z / l) * 40 };
+          let hit = null;
+          for (let f = 0; f < 30 && !hit; f++) {
+            const q = { x: p.x - (d.x / l) * 2, y: p.y - (d.y / l) * 2, z: p.z - (d.z / l) * 2 };
+            hit = b.hit(p, q, 0);
+            p = q;
+          }
+          if (hit?.sub === s.id) reached++;
+          else if ((hit?.shield || hit?.capital) && hit.id === ship.id) stopped++;
+        }
+        expect(reached / Math.max(1, reached + stopped), `${ship.kind} ${s.id}`).toBeGreaterThan(0.25);
+      }
+      for (const s of ship.subs.filter((o) => o.phase === phase)) for (let i = 0; i < 400 && s.alive; i++) b.hit(s.pos, { x: s.pos.x, y: s.pos.y - 0.01, z: s.pos.z }, 5);
+      b.update(0.1, null);
+      expect(b.phase, `${ship.kind} past phase ${phase}`).toBe(phase + 1);
+    }
+  };
+  it('can be shot on every flagship the wars and the Hutts fly, and on an Interdictor', () => {
+    const seen = new Set();
+    for (const war of WAR_IDS)
+      for (const id of WAR_SYSTEMS) {
+        const { liberator, raider } = WARS[war];
+        for (const [att, def] of [
+          [liberator, raider],
+          [raider, liberator],
+          [liberator, 'hutt'],
+        ]) {
+          const laid = layBattle(systemById(id), fake(id, att, def, 7, war));
+          const ship = laid.war.sides[1 - laid.attacker].capitals.find((c, i) => (laid.objectivesOn === 'interdictor' ? c.kind === 'interdictor' : i === 0));
+          const key = `${ship.kind}:${laid.objectivesOn}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          reachable(laid);
+        }
+      }
+    expect([...seen].some((k) => k.startsWith('interdictor'))).toBe(true);
+    expect([...seen].some((k) => k.startsWith('venator'))).toBe(true);
   });
 });
 
@@ -61,23 +174,68 @@ describe('layBattle', () => {
   it('is laid out alike for everyone, from the battle’s seed', () => {
     expect(layBattle(systemById('endor'), fake('endor'))).toEqual(layBattle(systemById('endor'), fake('endor')));
   });
-  it('has the Rebels attacking at a front and the Empire at an attack', () => {
-    expect(layBattle(systemById('scarif'), fake('scarif', 'rebel')).attacker).toBe(0);
+  it('puts each side on its team: the light side 0, the dark 1, the Hutts in the other’s place', () => {
+    const lib = layBattle(systemById('scarif'), fake('scarif', 'rebel'));
+    expect(lib.attacker).toBe(0);
+    expect(lib.war.sides.map((s) => s.id)).toEqual(['rebel', 'empire']);
     expect(layBattle(systemById('hoth'), fake('hoth', 'empire')).attacker).toBe(1);
+    const raid = layBattle(systemById('naboo'), fake('naboo', 'hutt', 'separatists'));
+    expect(raid.war.sides.map((s) => s.id)).toEqual(['hutt', 'separatists']);
+    expect(raid.attacker).toBe(0);
+    expect(raid.war.sides[0].capitals[0].kind).toBe(HUTTS.flagship.kind);
   });
-  it('fights it off the planet: every capital ship clear of the planet and its stations', () => {
-    for (const id of WAR_SYSTEMS) {
-      const sys = systemById(id);
-      for (const seed of [1, 2, 3]) {
-        const o = layBattle(sys, fake(id, 'rebel', seed));
-        const b = createBattle({ ...o, perSide: 0 });
-        for (const cap of b.capitals)
-          for (const ob of obstacles(sys)) {
-            const d = Math.hypot(cap.pos.x - ob.c.x, cap.pos.y - ob.c.y, cap.pos.z - ob.c.z);
-            expect(d - cap.size * 0.55, `${id} ${seed} ${cap.kind}`).toBeGreaterThan(ob.r);
-          }
-      }
+  it('colours each side its own', () => {
+    const o = layBattle(systemById('kashyyyk'), fake('kashyyyk', 'republic'));
+    expect(o.war.sides[0].colour).toBe(SIDES.republic.colour);
+    for (const s of o.war.sides) {
+      expect(s.laser).toHaveLength(3);
+      expect(s.turbo).toHaveLength(3);
     }
+  });
+  it('an interdiction puts the objectives on the Interdictor when the dark side defends, on the flagship when the light does', () => {
+    expect(layBattle(systemById('mandalore'), fake('mandalore', 'rebel')).objectivesOn).toBe('interdictor');
+    expect(layBattle(systemById('mandalore'), fake('mandalore', 'empire')).objectivesOn).toBe('flagship');
+    expect(layBattle(systemById('scarif'), fake('scarif', 'rebel')).objectivesOn).toBe('flagship');
+  });
+  it('an evacuation’s runners are the defender’s, a blockade’s the attacker’s', () => {
+    const evac = layBattle(systemById('hoth'), fake('hoth', 'empire'));
+    expect(evac.runners).toMatchObject({ team: 0, kind: 'transport' });
+    expect(evac.runners.need).toBeLessThanOrEqual(evac.runners.count);
+    const block = layBattle(systemById('naboo'), fake('naboo', 'republic'));
+    expect(block.runners).toMatchObject({ team: 0 });
+    expect(layBattle(systemById('scarif'), fake('scarif', 'rebel')).runners).toBeNull();
+  });
+  it('an ambush is a smaller fight: one escort a side, more fighters', () => {
+    const o = layBattle(systemById('tatooine'), fake('tatooine', 'rebel', 'hutt'), { tier: 'mid' });
+    for (const s of o.war.sides) expect(s.capitals.length).toBe(2);
+    expect(o.perSide).toBeGreaterThan(layBattle(systemById('scarif'), fake('scarif', 'rebel'), { tier: 'mid' }).perSide);
+    expect(o.kind).toBe('ambush');
+  });
+  it('lays out the kind a battle asks for, if it’s one', () => {
+    expect(layBattle(systemById('scarif'), { ...fake('scarif', 'rebel'), kind: 'blockade' }).kind).toBe('blockade');
+    expect(layBattle(systemById('scarif'), { ...fake('scarif', 'rebel'), kind: 'nope' }).kind).toBe('siege');
+  });
+  it('flies the system’s aces on their sides', () => {
+    const o = layBattle(systemById('hoth'), fake('hoth', 'empire'));
+    expect(o.ace[1]).toMatchObject({ name: 'Darth Vader' });
+    expect(o.ace[0]).toMatchObject({ kind: 'xwing' });
+    const hutts = layBattle(systemById('hoth'), fake('hoth', 'hutt', 'rebel'));
+    expect(hutts.ace[1] ?? null).toBeNull();
+  });
+  it('fights it off the planet in every war: every capital ship clear of the planet and its stations', () => {
+    for (const war of WAR_IDS)
+      for (const id of WAR_SYSTEMS) {
+        const sys = systemById(id);
+        for (const seed of [1, 2]) {
+          const o = layBattle(sys, fake(id, WARS[war].liberator, null, seed, war));
+          const b = createBattle({ ...o, perSide: 0, runners: null });
+          for (const cap of b.capitals)
+            for (const ob of obstacles(sys)) {
+              const d = Math.hypot(cap.pos.x - ob.c.x, cap.pos.y - ob.c.y, cap.pos.z - ob.c.z);
+              expect(d - cap.size * 0.55, `${war} ${id} ${seed} ${cap.kind}`).toBeGreaterThan(ob.r);
+            }
+        }
+      }
   });
   it('sizes the battle to its ships, and gives it the shared clock', () => {
     const o = layBattle(systemById('endor'), { ...fake('endor'), start: 1000, fightEnd: 601000 }, { now: 61000 });
@@ -87,5 +245,10 @@ describe('layBattle', () => {
     expect(o.elapsed).toBe(60);
     expect(o.war.sides[0].capitals[0].role).toBe('flagship');
     expect(o.war.name).toBe('The Battle of Endor');
+  });
+  it('still lays out a battle of the old shape, with no sides (the Rebellion and the Empire)', () => {
+    const o = layBattle(systemById('endor'), { id: 'c0.endor.3', sys: 'endor', step: 3, seed: 7, attacker: 'empire', start: 0, fightEnd: 600e3, end: 720e3, fighting: true });
+    expect(o.attacker).toBe(1);
+    expect(o.war.sides.map((s) => s.id)).toEqual(['rebel', 'empire']);
   });
 });

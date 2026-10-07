@@ -34,6 +34,15 @@ describe('the water', () => {
     }
   });
 
+  it('gives the cloud sea a second, slower layer and the sun’s glints', () => {
+    const w = createWater(site('clouds'), sun, '#ffffff', { heightAt: beach });
+    const u = w.mesh.material.uniforms;
+    expect(u.uWaves2.value).toBeCloseTo(u.uWaves.value * 2.3, 5);
+    expect(w.mesh.material.fragmentShader).toContain('uWaves2');
+    expect(w.mesh.material.fragmentShader).toContain('glint');
+    w.dispose();
+  });
+
   it('follows the camera in steps', () => {
     const w = createWater(site('sea'), sun, '#ffffff', { heightAt: beach, id: 'scarif' });
     w.update(1, { position: new THREE.Vector3(10.4, 30, -7.9) });

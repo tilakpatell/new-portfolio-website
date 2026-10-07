@@ -1,5 +1,7 @@
-// Bob-omb Ridge's cast. Goombas wander and chase, and are squashed by a
-// stomp. Bob-ombs light their fuse when Mario comes near and chase him for
+// Bob-omb Ridge's cast. Goombas wander and chase what they can see (a
+// Goomba that loses Mario round a wall keeps after him a moment, goes to
+// look where it last saw him, and wanders on: lib/ai/perception), and are
+// squashed by a stomp. Bob-ombs light their fuse when Mario comes near and chase him for
 // 4 seconds before they blow; he can pick one up and throw it. King Bob-omb
 // walks at Mario on the summit, turning slowly enough to be got behind;
 // picked up from behind and thrown down onto the summit three times, he
@@ -7,7 +9,8 @@
 // ground pounds sink its post, and free it bounds off to smash the gate
 // round a star. Iron balls roll down the mountain path.
 
-import { addDynamic, moveDynamic, removeDynamic } from '../collide';
+import { addDynamic, moveDynamic, raycast, removeDynamic } from '../collide';
+import { belief, createSenses, sense } from '../../../../lib/ai/perception';
 import { hurt } from '../physics';
 import { bounce, boxTris, distTo, fall, fly, toward, walk } from './body';
 
@@ -17,11 +20,31 @@ const turn = (a, target, rate) => {
   d = Math.atan2(Math.sin(d), Math.cos(d));
   a.yaw += Math.max(-rate, Math.min(rate, d));
 };
-const marioAt = (g) => g.mario.pos;
 // out of its way: a coin knocked out of it
 const dropCoin = (g, a) => g.spawn({ type: 'coin', pop: true, x: a.pos.x, y: a.pos.y + 40, z: a.pos.z, vx: Math.sin(a.yaw) * 4, vz: Math.cos(a.yaw) * 4 });
 
 // ─── Goomba ────────────────────────────────────────────────────────────────
+// what a Goomba sees: Mario within 600 units and nothing in the way (a
+// wall, a hill), sure of him in a moment; a couple of seconds' intuition
+// after losing him, a guess that fades over a few more
+const GOOMBA_SENSES = createSenses({ sight: { range: 600, cone: -1, far: 0.3 }, memory: 4, intuition: 2.5 });
+const STEP = 1 / 30; // (SM64's 30 steps a second)
+const eyes = (p, h) => ({ x: p.x, y: p.y + h, z: p.z });
+// what it believes of Mario this step: { x, z, sure } or null
+function spot(a, g, range = 600) {
+  const m = g.mario.pos;
+  a.me ??= { pos: { x: a.pos.x, y: a.pos.y, z: a.pos.z }, dir: null, beliefs: {}, now: 0 };
+  a.me.pos.x = a.pos.x;
+  a.me.pos.y = a.pos.y;
+  a.me.pos.z = a.pos.z;
+  const near = distTo(a, m.x, m.z) < range && Math.abs(m.y - a.pos.y) < 300;
+  const clear = near && !raycast(g.world, eyes(a.pos, 40), eyes(m, 80));
+  sense(GOOMBA_SENSES, a.me, { targets: clear ? [{ id: 'mario', at: { x: m.x, y: m.y, z: m.z }, vel: { x: g.mario.vel?.x ?? 0, y: 0, z: g.mario.vel?.z ?? 0 }, hostile: true }] : [] }, STEP);
+  const b = belief(a.me, 'mario');
+  if (!b) return null;
+  const sure = b.visible || a.me.now - b.seenAt <= GOOMBA_SENSES.intuition;
+  return { x: sure ? m.x : b.at.x, z: sure ? m.z : b.at.z, sure, visible: b.visible };
+}
 const goomba = {
   r: 60,
   h: 90,
@@ -31,7 +54,6 @@ const goomba = {
   step(a, g) {
     fall(a, g);
     if (!a.alive) return;
-    const m = marioAt(g);
     if (a.state === 'flat') {
       if (a.t - a.since > 15) {
         a.alive = false;
@@ -46,14 +68,19 @@ const goomba = {
       }
       return;
     }
-    const d = distTo(a, m.x, m.z);
+    const seen = spot(a, g);
     if (a.state === 'wander') {
-      if (d < 600 && Math.abs(m.y - a.pos.y) < 300) a.state = 'chase';
+      if (seen?.visible) a.state = 'chase';
       if (a.t % 90 === 0) a.yaw += 1.7;
       walk(a, g, 4);
     } else if (a.state === 'chase') {
-      if (d > 900) a.state = 'wander';
-      turn(a, toward(a, m.x, m.z), 0.2);
+      // after him as it believes him to be; its guess reached, or the memory
+      // gone (the belief fades to nothing over the memory span), it wanders on
+      if (!seen || (!seen.sure && distTo(a, seen.x, seen.z) < 60)) {
+        a.state = 'wander';
+        return;
+      }
+      turn(a, toward(a, seen.x, seen.z), 0.2);
       walk(a, g, 8);
     }
   },
@@ -163,8 +190,10 @@ const bobomb = {
 };
 
 // ─── King Bob-omb ──────────────────────────────────────────────────────────
-// def: { arena: { x, y, z, r } (the summit), star (its index) }
+// def: { arena: { x, y, z, r } (the summit), star (its index), taunt (what he
+// says when Mario reaches him, if not KING_TAUNT) }
 const KING_HP = 3;
+export const KING_TAUNT = 'You dare climb MY mountain? Try to throw me down, if you can get behind me!';
 const onArena = (a) => {
   const ar = a.def.arena;
   return Math.abs(a.pos.y - ar.y) < 60 && Math.hypot(a.pos.x - ar.x, a.pos.z - ar.z) < ar.r;
@@ -244,7 +273,7 @@ const king = {
     if (a.state === 'wait') {
       if (distTo(a, m.pos.x, m.pos.z) < 1400 && Math.abs(m.pos.y - a.pos.y) < 300) {
         a.state = 'walk';
-        tell(g, 'dialog', { title: 'King Bob-omb', text: a.def.taunt ?? 'You dare climb MY mountain? Try to throw me down, if you can get behind me!' });
+        tell(g, 'dialog', { title: 'King Bob-omb', text: a.def.taunt ?? KING_TAUNT });
       }
       return;
     }

@@ -17,6 +17,12 @@ import surfaceModule from '../components/galaxy/surface/module';
 import { prefetchSurface, surfaceProps } from '../components/galaxy/travel';
 import { runtime } from '../runtime';
 import { galaxyCrew } from '../components/galaxy/lines';
+import { battleSay } from '../components/galaxy/warVoice';
+import { effectsFor } from '../components/galaxy/warEffects';
+import { mine, onWar, warNow } from '../components/galaxy/warState';
+import { SIDE_KEY, current as currentOath, readAllegiance, setTheatre, suggestSide, swear } from '../components/galaxy/allegiance';
+import { HERO_KEY, readHero } from '../components/galaxy/heroes';
+import { RANKS, rankOf } from '../components/galaxy/ranks';
 import GalaxyView from '../components/galaxy/GalaxyView';
 import GalaxyPanel from '../components/galaxy/GalaxyPanel';
 import { holdJump } from '../components/hyperspace3d/timeline';
@@ -60,6 +66,51 @@ export default function Galaxy() {
   useEffect(() => setKind(ship), [setKind, ship]);
   // the ship as it's fitted in the universe map's hangar: its paint and parts
   const { unlocked, unlock } = useAchievements();
+  // the oath (allegiance.js): which war you fight in and the side you swore
+  // to in it, kept for the campaign; the scene, the holotable and the panel
+  // all read it
+  const [oathKept, setOathKept] = useState(() => readAllegiance(local.get(SIDE_KEY)));
+  const oath = useMemo(() => currentOath(oathKept), [oathKept]);
+  const keepOath = useCallback((next) => {
+    setOathKept(next);
+    local.set(SIDE_KEY, next);
+  }, []);
+  const onSwear = useCallback(
+    (side) => {
+      const next = swear(oathKept, side);
+      if (next === oathKept) return;
+      keepOath(next);
+      unlock('gcwSworn');
+      if (currentOath(next).turncoat) unlock('gcwTurncoat');
+    },
+    [oathKept, keepOath, unlock],
+  );
+  const onTheatre = useCallback((war) => keepOath(setTheatre(oathKept, war)), [oathKept, keepOath]);
+  const suggested = useMemo(() => suggestSide({ crew: ship, hero: readHero(local.get(HERO_KEY), ship ?? 'xwing').id }, oath.war), [ship, oath.war]);
+  // (for the checks: swear and pick the war from a browser)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return undefined;
+    window.__galaxyOath = { swear: onSwear, theatre: onTheatre, get: () => oath };
+    return () => delete window.__galaxyOath;
+  }, [onSwear, onTheatre, oath]);
+  // the war's achievements: a system you fought for turned your side's, the top rank
+  const owners = useRef(null);
+  useEffect(() => {
+    const check = () => {
+      if (!oath.side) return;
+      const now = Date.now();
+      const table = warNow(now, oath.war);
+      const record = mine(oath.war, now);
+      if (rankOf(oath.side, record.points)?.id === RANKS[oath.side].at(-1).id) unlock('gcwAdmiral');
+      const was = owners.current;
+      owners.current = Object.fromEntries(table.systems.map((r) => [r.id, r.owner]));
+      if (was && record.systems.some((x) => was[x.id] && was[x.id] !== oath.side && owners.current[x.id] === oath.side)) unlock('gcwLiberator');
+    };
+    check();
+    const id = setInterval(check, 5000);
+    const off = onWar(check);
+    return () => (clearInterval(id), off());
+  }, [oath.side, oath.war, unlock]);
   // and the hull it flies: stock, or its garage build from the hangar's shipyard
   const build = useMemo(() => (ship && readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]);
   const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked, build), [ship, unlocked, build]);
@@ -168,7 +219,7 @@ export default function Galaxy() {
       const after = new Promise((r) => (dove.current = r));
       timer.current = setTimeout(() => dove.current?.(), DIVE_MAX); // (a dive that never ends still lands)
       runtime()
-        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced }), host, { fade: 900, held: true, after })
+        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced, effects: effectsFor(id, warNow(Date.now(), oath.war), oath) }), host, { fade: 900, held: true, after })
         .catch(() => false)
         .then(() => after)
         .then(() => {
@@ -176,7 +227,7 @@ export default function Galaxy() {
           navigate(to); // (not handed over: the page makes its own)
         });
     },
-    [leave, leaving, navigate, ship, loadout, build, online.client, reduced],
+    [leave, leaving, navigate, ship, loadout, build, online.client, reduced, oath],
   );
   // near a planet you can land on: the surface's code, and its page's, come ahead
   useEffect(() => {
@@ -252,6 +303,14 @@ export default function Galaxy() {
         comms.current?.handle({ type: 'event', id: 'boarded' });
         return;
       }
+      // a moment of the war's battle: the commander on the comms, then the crew (warVoice.js)
+      if (e.type === 'event' && e.id === 'battle') {
+        const record = mine(e.war);
+        if (e.sub === 'won' && record.major) unlock('gcwMajor');
+        const lines = battleSay(e, crew?.id, record);
+        if (lines.length) comms.current?.handle({ type: 'lines', lines });
+        return;
+      }
       if (e.type === 'action') {
         const s = systemById(current);
         if (e.id === 'deathstar') leave('/deathstar');
@@ -261,7 +320,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock],
+    [current, leave, navigate, land, unlock, crew],
   );
   const onArrive = useCallback(
     (id) => {
@@ -322,6 +381,7 @@ export default function Galaxy() {
         onBoard={onBoard}
         onCrash={onCrash}
         onMap={() => setMapOpen(true)}
+        oath={oath}
       />
       {crew && <Comms control={comms} crew={galaxyCrew(crew)} reduced={reduced} />}
       {!leaving && <Online online={online} ship={ship} />}
@@ -340,8 +400,11 @@ export default function Galaxy() {
         jumping={jumping}
         held={held}
         balked={balked}
+        oath={oath}
+        suggested={suggested}
+        onSwear={onSwear}
       />
-      {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} />}
+      {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} oath={oath} suggested={suggested} onSwear={onSwear} onTheatre={onTheatre} />}
       {intro && (
         <GalaxyIntro
           onDone={() => {

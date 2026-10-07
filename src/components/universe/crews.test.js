@@ -72,6 +72,9 @@ describe('the crews', () => {
       // the director's events the side can have (the Council's and the bounty hunters' arrivals are their hunted lines), rescuing someone, going out into deep space
       for (const [id, e] of Object.entries(EVENTS)) if (canHave(side, e) && id !== 'hunt' && id !== 'council' && id !== 'bounty') said(linesFor(crew, 'event', id), crew, `event ${id}`);
       said(linesFor(crew, 'event', 'rescued'), crew, 'rescued');
+      // (and what comes where you are rather than with your side: an eclipse, wherever there's a sun)
+      said(linesFor(crew, 'event', 'eclipse'), crew, 'eclipse');
+      for (const id of ['escortPirates', 'escorted', 'escortLost']) if (canHave(side, EVENTS.escort)) said(linesFor(crew, 'event', id), crew, id);
       said(linesFor(crew, 'event', 'deep'), crew, 'deep');
       // the friends who come in a long fight: each of the side's allies
       for (const ally of Object.keys(side.allies)) said(linesFor(crew, 'event', 'wingmen', ally), crew, `wingmen ${ally}`);

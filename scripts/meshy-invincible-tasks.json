@@ -1,7 +1,293 @@
 {
   "mark": {
-    "image": "01a10a79-cfa3-71f0-92ca-6f2b6ab14e6b",
-    "model": "01a10a7a-54a7-7667-acf3-231c201e7171",
-    "rig": "01a10a7b-62b5-7202-89b5-b5ba985a6768"
+    "acct": 2,
+    "model": "01a1141f-efa6-76c7-a8b1-098add675d21",
+    "rig": "01a11424-50a4-707a-b3f8-11456cd60ec9",
+    "anims": {
+      "lib": "01a11424-b45f-7269-a408-244a19ce8763",
+      "hover": "01a11424-b637-7174-93df-e321c47d2fcd",
+      "fly": "01a11424-b956-70f5-bc19-a2186dcf2ffe"
+    }
+  },
+  "omni": {
+    "acct": 2,
+    "model": "01a11427-bec7-71ce-8559-8f808ea8b6bd",
+    "rig": "01a11441-e65b-7168-98dc-92019d445c21",
+    "anims": {
+      "lib": "01a11445-64b5-77c1-b10d-ad4cd309e441",
+      "hover": "01a11445-6627-76cc-b23e-401572453b0f",
+      "fly": "01a11445-6997-70c6-890c-9113fb7d582d"
+    }
+  },
+  "thragg": {
+    "acct": 2,
+    "model": "01a1145a-5e39-75f8-9a68-9f1d3accd09c",
+    "retex": "01a114c6-f65d-766d-a669-bab1717f415e",
+    "rig": "01a114c9-2cbd-7793-bce2-7eb32009daae",
+    "anims": {
+      "lib": "01a114c9-79de-758c-8c61-2302ec5ee913",
+      "hover": "01a114c9-7af0-7324-9037-80751282737a",
+      "fly": "01a114c9-7d59-72cb-a131-01b92512fcab"
+    }
+  },
+  "eve": {
+    "acct": 2,
+    "model": "01a1142b-e600-7161-b6d1-c6be9f5fa3d9",
+    "rig": "01a11442-9482-72f3-8c0e-231602bc6cbe",
+    "anims": {
+      "lib": "01a11446-561b-756e-b8fc-3a44d1ce0f71",
+      "hover": "01a11446-57c3-7340-a116-33d6889a8958",
+      "fly": "01a11446-5a33-7109-94ab-945442553527"
+    }
+  },
+  "cecil": {
+    "acct": 2,
+    "model": "01a1145b-f70c-73b5-b4cd-48c7aa5bb470",
+    "rig": "01a1145d-f3a4-75c6-a98b-2c98023cb7e6",
+    "anims": {
+      "lib": "01a1145e-ec08-7296-9007-e714de85d34b"
+    }
+  },
+  "debbie": {
+    "acct": 2,
+    "model": "01a11430-76c8-7401-b37f-86d9b7f7fde0",
+    "rig": "01a11443-43f3-7394-a17c-76eb8ed442ea",
+    "anims": {
+      "lib": "01a11447-4bd6-7684-bffb-023c915401f8"
+    }
+  },
+  "allen": {
+    "acct": 2,
+    "model": "01a11431-fa97-742f-9b0a-3db89eefcda8",
+    "rig": "01a11443-918b-7518-9f14-5df3db273ccd",
+    "anims": {
+      "lib": "01a11447-c73a-739b-9748-aa30ac2cfce9",
+      "hover": "01a11447-c867-7572-85ea-938ec7f022f8"
+    }
+  },
+  "mauler": {
+    "acct": 2,
+    "model": "01a11433-d145-76d9-934b-f4fda2f8afc1",
+    "rig": "01a11443-df9a-751d-9343-9b1bdbad996a",
+    "anims": {
+      "lib": "01a11448-4584-742f-91bd-c9827042f6fe"
+    }
+  },
+  "seismic": {
+    "acct": 2,
+    "model": "01a11435-a85a-7717-bb39-76465f646adb",
+    "rig": "01a11444-2c35-773a-a6e8-6d69340acb2b",
+    "anims": {
+      "lib": "01a11448-c073-763b-951f-caf4e8fa43a6",
+      "hover": "01a11448-c1bd-73df-b82b-73d33c840c7c"
+    }
+  },
+  "civA": {
+    "acct": 2,
+    "image": "01a11401-81f8-7717-bc26-53b806d7061c",
+    "model": "01a11438-c430-72f1-a284-43fd84903dd1",
+    "rig": "01a11444-7894-747c-b6bd-0e2f54f2ffc7",
+    "anims": {
+      "lib": "01a11449-3ec6-70b7-95d9-b7cf3f9470b9"
+    }
+  },
+  "civB": {
+    "acct": 2,
+    "image": "01a11402-b5c2-7398-a1af-1b6dab6a9ab9",
+    "model": "01a1143a-5ef7-716b-a656-2048d38fdd21",
+    "rig": "01a11444-c7d3-73d9-99b1-038f16dc9f32",
+    "anims": {
+      "lib": "01a11449-e37b-73e8-9220-bc69b3fe6f88"
+    }
+  },
+  "civC": {
+    "acct": 2,
+    "image": "01a11403-1f03-7668-82a8-396035a71fdf",
+    "model": "01a1143c-5eae-7481-ad49-1a3e0439bddd",
+    "rig": "01a11445-15b2-77f5-b7f5-25546c92cb3b",
+    "anims": {
+      "lib": "01a1144a-882d-77c1-a0fc-7747d0eb8460"
+    }
+  },
+  "bank": {
+    "acct": 2,
+    "image": "01a11403-888b-7382-9bb7-db47a308ce0f",
+    "model": "01a1143e-4908-72af-94f5-89d831e0ddc8"
+  },
+  "heli": {
+    "acct": 2,
+    "image": "01a11403-c9e3-70e8-a8ad-c09ffe997acd",
+    "model": "01a1143f-ce1b-723b-b7cc-65717dc6cf18"
+  },
+  "truck": {
+    "acct": 2,
+    "image": "01a11404-ac00-765d-8568-cec6d94cd2fb",
+    "model": "01a11440-c50d-7438-935b-be35e0771353"
+  },
+  "history": {
+    "mark": [
+      {
+        "was": {
+          "image": "01a10a79-cfa3-71f0-92ca-6f2b6ab14e6b",
+          "model": "01a10a7a-54a7-7667-acf3-231c201e7171",
+          "rig": "01a10a7b-62b5-7202-89b5-b5ba985a6768",
+          "acct": 1
+        },
+        "acct": 2,
+        "model": "01a113fc-c59d-72ac-bac0-ddded7f23a3a",
+        "rig": "01a113ff-4517-7454-80f1-cab7232266a7"
+      }
+    ],
+    "omni": [
+      {
+        "model": "01a113ed-b38a-7753-bed8-f1bfa9437368",
+        "rig": "01a113f7-19dc-74af-8829-b1fa4e01ac83",
+        "acct": 1
+      }
+    ],
+    "thragg": [
+      {
+        "was": {
+          "model": "01a113ef-1717-7150-95e8-aead3d414f9c",
+          "rig": "01a113f7-4fac-710d-8295-637d8f6c0cc8",
+          "acct": 1
+        },
+        "acct": 2,
+        "model": "01a113fa-702b-7283-9664-c0b81d32a6c1",
+        "rig": "01a113ff-7990-703f-a8d1-acc6cc19e804"
+      },
+      {
+        "acct": 2,
+        "model": "01a11429-4392-72cc-a380-067998bd0247",
+        "rig": "01a11442-32cd-72d1-9318-0917c9b970ef",
+        "anims": {
+          "lib": "01a11445-d3af-71a1-b76f-1eaeb2142edb",
+          "hover": "01a11445-d54c-74c0-9a6f-541422683f5f",
+          "fly": "01a11445-d87d-7623-a0dc-6d6948372b08"
+        }
+      },
+      {
+        "acct": 2,
+        "model": "01a1145a-5e39-75f8-9a68-9f1d3accd09c",
+        "rig": "01a1145d-90fa-729c-8f20-1e33cba7af02",
+        "anims": {
+          "lib": "01a1145e-56b0-71e0-b923-81ab430edaed",
+          "hover": "01a1145e-5818-719b-aeda-501b6200d624",
+          "fly": "01a1145e-5ad6-766f-bf4a-615e612c6e81"
+        }
+      }
+    ],
+    "eve": [
+      {
+        "model": "01a113f0-2364-7683-85a3-fe8cc0974c8d",
+        "rig": "01a113f7-9af8-75a9-af2d-fdff8b49e78a",
+        "acct": 1
+      }
+    ],
+    "cecil": [
+      {
+        "was": {
+          "model": "01a113f0-f211-7476-96cf-3d220eed06f9",
+          "rig": "01a113f7-d088-75f9-b763-e1cbaaee67cd",
+          "acct": 1
+        },
+        "acct": 2,
+        "model": "01a113fd-e4f1-73db-8d42-4c6fb50576cc",
+        "rig": "01a113ff-eb6d-71b9-ae87-ec11f1d6eb7d"
+      },
+      {
+        "acct": 2,
+        "model": "01a1142d-7ea2-766e-aa41-204df064937e",
+        "rig": "01a11442-f532-75a8-a0fc-aa2aebd816a4",
+        "anims": {
+          "lib": "01a11446-bb6f-7013-b97d-cb8e309b91c8"
+        }
+      }
+    ],
+    "debbie": [
+      {
+        "model": "01a113f1-c0d9-74f2-b986-b4e85c1b8cba",
+        "rig": "01a113f8-05b0-76c2-bce2-84d3fa66ec1d",
+        "acct": 1
+      }
+    ],
+    "allen": [
+      {
+        "model": "01a113f2-b745-703f-bc23-8da2ab480654",
+        "rig": "01a113f8-3a14-7400-8954-092a214a5535",
+        "acct": 1
+      }
+    ],
+    "mauler": [
+      {
+        "model": "01a113f4-261b-73f2-b177-676a5abd81e3",
+        "rig": "01a113f8-6f4f-751a-968e-a3ec9f76f827",
+        "acct": 1
+      }
+    ],
+    "seismic": [
+      {
+        "model": "01a113f5-30dc-7334-a884-32960e36e1d1",
+        "rig": "01a113f8-a3c5-768f-aa0f-8b6a8eeae806",
+        "acct": 1
+      }
+    ],
+    "civA": [
+      {
+        "acct": 2,
+        "image": "01a11401-81f8-7717-bc26-53b806d7061c",
+        "model": "01a11409-9082-70ff-9471-fb5b835800aa",
+        "rig": "01a1140f-ee65-746f-8971-6a9b15f7bea3"
+      }
+    ],
+    "civB": [
+      {
+        "acct": 2,
+        "image": "01a11402-b5c2-7398-a1af-1b6dab6a9ab9",
+        "model": "01a1140a-89ac-75e4-9e89-fa981ca5d08d",
+        "rig": "01a11410-23d1-714b-a23e-c09676543a08"
+      }
+    ],
+    "civC": [
+      {
+        "acct": 2,
+        "image": "01a11403-1f03-7668-82a8-396035a71fdf",
+        "model": "01a1140b-e60b-765c-8213-26654625e3e9",
+        "rig": "01a11410-58df-71ef-8b0a-d1799621022e"
+      }
+    ],
+    "bank": [
+      {
+        "acct": 2,
+        "image": "01a11403-888b-7382-9bb7-db47a308ce0f",
+        "model": "01a1140d-1abb-700a-a3a8-6f655093fabc"
+      }
+    ],
+    "heli": [
+      {
+        "acct": 2,
+        "image": "01a11403-c9e3-70e8-a8ad-c09ffe997acd",
+        "model": "01a1140e-3c24-73ef-b04b-2d3d38a7a7bf"
+      }
+    ],
+    "truck": [
+      {
+        "acct": 2,
+        "image": "01a11404-ac00-765d-8568-cec6d94cd2fb",
+        "model": "01a1140f-1e43-7757-bc57-fb6f4b6d19b8"
+      }
+    ]
+  },
+  "_motions": {
+    "2": {
+      "hover": {
+        "id": "01a11420-53d3-765d-91dd-6f5f0bc08bda",
+        "expires": 1791598256460
+      },
+      "fly": {
+        "id": "01a11420-570c-74f5-bca4-97487dc70595",
+        "expires": 1791598273507
+      }
+    }
   }
 }

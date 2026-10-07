@@ -97,4 +97,37 @@ export const SCATTER = {
     }
     return { parts: [{ geometry: k.geometry(parts), material: k.mats.leaf }], radius: null };
   },
+  // White Sands: a gypsum dune, long and low, its steep face downwind
+  dune(k, { seed = 5 } = {}) {
+    const g = new THREE.SphereGeometry(1, 20, 10, 0, PI * 2, 0, PI / 2);
+    const p = g.attributes.position;
+    const rand = rng(seed);
+    const lump = rand() * 6;
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i);
+      const z = p.getZ(i);
+      // (the slip face: steeper on +x)
+      const y = p.getY(i) * (x > 0 ? 1 - x * 0.35 : 1) * (1 + 0.15 * sin(z * 3 + lump));
+      p.setXYZ(i, x * 9, y * 2.2, z * 4);
+    }
+    g.computeVertexNormals();
+    return { parts: [{ geometry: k.geometry([part(g, { color: '#f2eee4', to: 'stone' })]), material: k.mats.stone }], radius: null };
+  },
+  // a one-seed juniper of the foothills: a short twisted trunk, a dark
+  // blue-green crown in clumps
+  juniper(k, { seed = 7 } = {}) {
+    const rand = rng(seed);
+    const crown = [];
+    for (let i = 0; i < 6; i++) {
+      const a = rand() * PI * 2;
+      crown.push(ball(0.7 + rand() * 0.4, [cos(a) * 0.6, 1.6 + rand() * 1.0, sin(a) * 0.6], [1, 0.85, 1], { color: rand() < 0.5 ? '#3e5a44' : '#4a6a4e', to: 'leaf' }, 8));
+    }
+    return {
+      parts: [
+        { geometry: k.geometry([part(cyl(0.22, 0.14, 1.8, 7), { rot: [0.12, 0, 0.1], color: '#6a5444', to: 'bark' })]), material: k.mats.bark },
+        { geometry: k.geometry(crown), material: k.mats.leaf },
+      ],
+      radius: 0.5,
+    };
+  },
 };

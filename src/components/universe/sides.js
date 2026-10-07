@@ -25,6 +25,8 @@
 //   Meshy cast kind, a model of its own, or built; the cast's own kind if none).
 
 // a weighted pick from [[id, weight]…]
+import { pacedAll } from './ship';
+
 const weighted = (list, rand) => {
   let r = rand() * list.reduce((s, [, w]) => s + w, 0);
   for (const [id, w] of list) if ((r -= w) <= 0) return id;
@@ -200,6 +202,9 @@ const BREAKINGBAD = {
 };
 
 const finish = (s) => {
+  // (their speeds as tuned, at the ship's pace: ship.js's PACE)
+  s.kinds = pacedAll(s.kinds);
+  s.allies = pacedAll(s.allies);
   const roles = new Set(Object.values(s.factions).map((f) => f.role));
   // what the director's events need of a side
   s.has = (need) => roles.has(need) || s.pieces.includes(need) || (need === 'pirates' && Boolean(s.distress.pirates)) || (need === 'leviathan' && Boolean(s.leviathan));
@@ -213,6 +218,19 @@ const BY_CREW = new Map(ALL.flatMap((s) => s.crews.map((c) => [c, s])));
 
 export const sideFor = (crewId) => BY_CREW.get(crewId) ?? null;
 export const sideOf = (crewId) => sideFor(crewId)?.id ?? null;
+
+// Whose space it is where the ship is: a sector of the map that's one
+// side's own (layout.js's SECTORS: the Rick and Morty sector is the Rick and
+// Morty side's) has that side's hunters, traffic and goings-on, whoever's
+// flying; anywhere else, the crew's own side's. sideAt(crewId, sector) → a
+// side; crewAt(crewId, sector) → the crew whose side that is (the traffic
+// is set by crew: traffic.js setCrew), the crew itself where it's its own
+export const SECTOR_SIDES = { rickmorty: 'rickmorty' };
+export const sideAt = (crewId, sector = 'main') => SIDES[SECTOR_SIDES[sector]] ?? sideFor(crewId);
+export const crewAt = (crewId, sector = 'main') => {
+  const side = SIDES[SECTOR_SIDES[sector]];
+  return !side || sideFor(crewId) === side ? crewId : side.crews[0];
+};
 
 const sidesOf = (sideId) => (sideId ? [SIDES[sideId]].filter(Boolean) : ALL);
 // the hunters' factions (hunterRules.js's shape) and kinds: one side's, or every side's (null: for another pilot's hunters, whoever they are)

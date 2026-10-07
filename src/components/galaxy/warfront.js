@@ -84,7 +84,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   let clock = 0;
 
   const side = () => allegiance()?.side ?? null;
-  const say = (sub) => emit({ type: 'event', id: 'battle', sub, side: side(), war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR, sys: sys?.id ?? null });
+  // (with the side the battle's against, from yours: the other of its two, or its defender while you're nobody's)
+  const against = () => (!on ? null : side() ? (on.sides?.find((x) => x !== side()) ?? null) : (on.defender ?? null));
+  const say = (sub) => emit({ type: 'event', id: 'battle', sub, side: side(), against: against(), war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR, sys: sys?.id ?? null });
   // the attacker's objectives count only when you're the attacker
   const attacking = () => team !== null && team === on?.attackerTeam;
   const score = (n, ms = now()) => {
@@ -306,6 +308,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
             score(GCW.points.intercept, ms);
             say('intercept');
           } else score(GCW.points.kill, ms);
+        } else if (e.type === 'runner' && e.mine && team !== null && e.team !== team) {
+          score(GCW.points.intercept, ms);
+          say('intercept');
         } else if (e.type === 'sub') {
           if (e.mine && attacking()) score(GCW.points.objective, ms);
           if (tookPart && e.kind === 'bridge') say('bridge');
@@ -368,7 +373,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       const t = warTally(now());
       // (mine: what you've done in the war this campaign, in points)
       const mine = +t.keys().reduce((sum, k) => sum + (k.startsWith('win:') ? 0 : t.mine(k)), 0).toFixed(2);
-      return { sys: sys?.id ?? null, on, laid: laid ? { at: laid.at, axis: laid.axis, lines: laid.lines, radius: laid.radius, name: laid.war.name, attacker: laid.attacker } : null, battle: battle?.info ?? null, joined, tookPart, mine, team, asked, side: side(), war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR };
+      return { sys: sys?.id ?? null, on, laid: laid ? { at: laid.at, axis: laid.axis, lines: laid.lines, radius: laid.radius, name: laid.war.name, attacker: laid.attacker, kind: laid.kind, objectivesOn: laid.objectivesOn } : null, battle: battle?.info ?? null, joined, tookPart, mine, team, asked, side: side(), war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR };
     },
 
     setNet(client) {
@@ -382,11 +387,12 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
 
     // (dev hooks: end the battle now, `winner` the team that wins; a battle
     // here now, whatever the war says, `attacker` a side of the war you fight
-    // in (its liberator, unless it's said) or the Hutts, for the checks)
+    // in (its liberator, unless it's said) or the Hutts, and `kind` a kind of
+    // battle (battles.js's BATTLE_KINDS) or the system's own, for the checks)
     win(winner) {
       battle?.end?.(winner);
     },
-    force(attacker) {
+    force(attacker, kind = null) {
       if (!sys) return;
       const ms = now();
       const war = warOfSide(attacker) ?? allegiance()?.war ?? DEFAULT_WAR;
@@ -396,7 +402,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       const sides = teamsOf(by, defender);
       stop();
       forced = true;
-      start({ id: `dev.${war}.${sys.id}.${Math.floor(ms / 1000)}`, war, sys: sys.id, step: campaignAt(ms).step, seed: Math.floor(ms / 1000), attacker: by, defender, sides, attackerTeam: sides.indexOf(by), start: ms, fightEnd: ms + GCW.fight, end: ms + GCW.step, fighting: true }, ms);
+      start({ id: `dev.${war}.${sys.id}.${Math.floor(ms / 1000)}`, war, sys: sys.id, step: campaignAt(ms).step, seed: Math.floor(ms / 1000), attacker: by, defender, sides, attackerTeam: sides.indexOf(by), ...(kind ? { kind } : {}), start: ms, fightEnd: ms + GCW.fight, end: ms + GCW.step, fighting: true }, ms);
     },
     get pieces() {
       return pieces;

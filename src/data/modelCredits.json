@@ -1609,17 +1609,6 @@
     "where": "middle-earth",
     "as": "Minas Tirith"
   },
-  "omni-man": {
-    "title": "Omni Man Fortnite",
-    "author": "Swimknot19",
-    "authorUrl": "https://sketchfab.com/RafaMario",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/omni-man-fortnite-4203fb581ef0499a82fb2db5d9f96744",
-    "where": "invincible",
-    "as": "Omni-Man",
-    "file": "/models/invincible/omni-man.glb"
-  },
   "orthanc": {
     "title": "Isengard",
     "author": "AndreOrla",
@@ -3127,6 +3116,20 @@
     ],
     "permission": "From Harrisonfog’s Battlefront 2 Remaster for Star Wars Battlefront II (2005), used with its author’s permission on this non-commercial fan site; Star Wars and everything in it belong to Lucasfilm."
   },
+  "surface-senatepod": {
+    "title": "Star Wars Galaxies - Senate Pod",
+    "author": "Zorg_Sinister",
+    "authorUrl": "https://sketchfab.com/4130ff15fe394c239cc064b5286c43",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-galaxies-senate-pod-64dabc7d11d24b18a56edc4d1d91ae0f",
+    "where": "galaxy-surface",
+    "as": "the Senate pods",
+    "file": "/models/galaxy/surface/senatepod.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-shoretrooper": {
     "title": "Battlefront 2 Remaster: imp_inf_shoretrooper",
     "author": "Harrisonfog",
@@ -3508,17 +3511,6 @@
     "also": [
       "galaxy"
     ]
-  },
-  "thragg": {
-    "title": "Thragg from invincible s4",
-    "author": "Gojiram",
-    "authorUrl": "https://sketchfab.com/geoffscool",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/thragg-from-invincible-s4-b404844894fb4f4d99b8c1648dc901a4",
-    "where": "invincible",
-    "as": "Thragg",
-    "file": "/models/invincible/thragg.glb"
   },
   "tie-interceptor": {
     "title": "Star Wars: TIE/in Interceptor",

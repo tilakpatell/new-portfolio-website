@@ -11,13 +11,13 @@ const dot = (a, b) => a.reduce((s, v, i) => s + v * b[i], 0);
 
 describe('the fixed poses', () => {
   it('knows every pose the spec names', () => {
-    expect(POSE_NAMES).toEqual(['overview', 'falcon-sun', 'middleearth-limb', 'rickmorty', 'gaming', 'caribbean', 'belt', 'maw', 'landing-middleearth', 'station']);
+    expect(POSE_NAMES).toEqual(['overview', 'falcon-sun', 'middleearth-limb', 'rickmorty', 'gaming', 'caribbean', 'middleearth', 'breakingbad', 'office', 'belt', 'maw', 'landing-middleearth', 'station']);
     for (const name of POSE_NAMES) expect(poseFor(name)).toBeTruthy();
     expect(poseFor('nowhere')).toBeNull();
   });
 
   it('puts a planet pose on its day side, dist reaches out', () => {
-    for (const name of ['middleearth-limb', 'rickmorty', 'gaming', 'caribbean']) {
+    for (const name of ['middleearth-limb', 'rickmorty', 'gaming', 'caribbean', 'middleearth', 'breakingbad', 'office']) {
       const p = poseFor(name);
       const planet = POSITIONS[p.planet];
       expect(dot(norm(sub(p.at, planet)), norm(sub(SUN.at, planet)))).toBeGreaterThan(0.85);

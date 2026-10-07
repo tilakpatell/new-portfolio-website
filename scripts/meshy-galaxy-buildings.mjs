@@ -44,6 +44,7 @@ import { recolorDoc } from './recolor.mjs';
 import { BUILDINGS as BACK_LANE } from './meshy-galaxy-buildings-back.mjs';
 import { BUILDINGS as FILL_LANE } from './meshy-galaxy-buildings-fill.mjs';
 import { BUILDINGS as BASES_LANE } from './meshy-galaxy-buildings-bases.mjs';
+import { BUILDINGS as THREE_LANE } from './meshy-galaxy-three.mjs';
 import { BUILDINGS as LIBRARY_LANE } from './meshy-galaxy-library.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -109,6 +110,8 @@ Object.assign(BUILDINGS, BACK_LANE);
 Object.assign(BUILDINGS, FILL_LANE);
 // and the bases' (Phase 2: scripts/meshy-galaxy-buildings-bases.mjs)
 Object.assign(BUILDINGS, BASES_LANE);
+// the three worlds' lane (scripts/meshy-galaxy-three.mjs)
+Object.assign(BUILDINGS, THREE_LANE);
 Object.assign(BUILDINGS, LIBRARY_LANE);
 
 async function api(method, path, body) {

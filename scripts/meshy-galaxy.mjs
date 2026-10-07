@@ -118,6 +118,21 @@ export const ASSETS = {
     prompt:
       'An armoured bounty hunter in a dented olive-green full-face helmet with a T-shaped black visor and a small rangefinder stalk on one side, a grey flight suit, olive-green chest armour, a big dull red armour plate on the right shoulder (and plain olive-green forearm gauntlets), a small jetpack on the back, a ragged brown cape over one shoulder.',
   },
+  // the three worlds' people (docs/superpowers/specs/2026-10-07-three-worlds-design.md)
+  // (Lando, Lobot and the Ugnaughts were made in the galaxy library's lane,
+  // with the worlds' other people further down: one entry each)
+  wingguard: {
+    height: 1.8,
+    prompt:
+      'A city security guard in a smart dark navy-blue double-breasted uniform tunic with gold buttons, matching navy trousers with a thin stripe, a dark navy peaked cap, black boots, a wide black belt with a holster and a dark blue cape hanging from the shoulders.',
+  },
+  dex: {
+    height: 1.9,
+    long: 2.2,
+    still: true,
+    prompt:
+      'A huge fat four-armed alien diner cook, a bulky green-grey wrinkled body with a big belly, a wide toad-like face with a broad mouth, small eyes and a thick neck, four thick arms, a white cook\'s apron over a grubby white sleeveless shirt, standing behind a counter wiping it with a cloth.',
+  },
   bith: {
     height: 1.8,
     prompt:

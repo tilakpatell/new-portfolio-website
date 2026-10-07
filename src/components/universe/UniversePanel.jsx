@@ -24,7 +24,7 @@ import ModelCredits from '../ModelCredits';
 
 function Ships({ ship, onShip }) {
   return (
-    <div className="universe-ships" role="group" aria-label="Pick a ship">
+    <div className="universe-ships" data-tour="ships" role="group" aria-label="Pick a ship">
       {CREWS.map((c) => (
         <button key={c.id} type="button" className="universe-ship" aria-pressed={ship === c.id} onClick={() => onShip(c.id)}>
           <span className="universe-ship-faces" aria-hidden="true">
@@ -137,7 +137,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
 
   if (tucked) {
     return (
-      <aside ref={panel} className="universe-panel" aria-label={universe ? universe.label : 'About the map'} data-tucked="">
+      <aside ref={panel} className="universe-panel" data-tour="panel" aria-label={universe ? universe.label : 'About the map'} data-tucked="">
         <button type="button" className="universe-untuck" onClick={() => toggle(false)} aria-expanded="false">
           <span className="eyebrow truncate" style={universe ? { color: universe.accent } : undefined}>
             {universe ? universe.label : 'The universe'}
@@ -154,14 +154,14 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
   // a wonder, from a link out to it (/universe/aurelia): what it is, and the way there
   if (!universe && wonder) {
     return (
-      <aside ref={panel} className="universe-panel" aria-label={wonder.name}>
+      <aside ref={panel} className="universe-panel" data-tour="panel" aria-label={wonder.name}>
         {onTuck && <Tuck onTuck={toggle} />}
         <div className="universe-links flex flex-wrap items-center gap-x-4 gap-y-1">
           <button type="button" className="universe-back" onClick={onWhole}>
             <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
           </button>
           {onNav && (
-            <button type="button" className="universe-back" onClick={onNav}>
+            <button type="button" className="universe-back" data-tour="navmap" onClick={onNav}>
               <RiCompass3Line className="h-3.5 w-3.5" aria-hidden="true" /> Nav map
             </button>
           )}
@@ -186,12 +186,12 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
 
   if (!universe) {
     return (
-      <aside ref={panel} className="universe-panel" aria-label="About the map">
+      <aside ref={panel} className="universe-panel" data-tour="panel" aria-label="About the map">
         {onTuck && <Tuck onTuck={toggle} />}
         <p className="eyebrow">The universe</p>
         <h2 className="universe-title">My whole site, as a universe</h2>
         {onNav && (
-          <button type="button" className="btn btn-ghost btn-sm universe-nav-open mt-4" onClick={onNav}>
+          <button type="button" className="btn btn-ghost btn-sm universe-nav-open mt-4" data-tour="navmap" onClick={onNav}>
             <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> Open the nav map
           </button>
         )}
@@ -277,19 +277,20 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
       </aside>
     );
   }
-  const Card = CARDS[universe.id] ?? STATION_CARDS[universe.id];
+  // (a moon of the Rick and Morty system shows its crew's card: it's a place from that show)
+  const Card = CARDS[universe.id] ?? STATION_CARDS[universe.id] ?? (universe.kind === 'moon' ? CARDS[universe.crew] : null) ?? null;
   const core = universe.kind === 'core';
   const before = byId(prev(universe.id));
   const after = byId(next(universe.id));
   return (
-    <aside ref={panel} className="universe-panel" aria-label={universe.label}>
+    <aside ref={panel} className="universe-panel" data-tour="panel" aria-label={universe.label}>
       {onTuck && <Tuck onTuck={toggle} />}
       <div className="universe-links flex flex-wrap items-center gap-x-4 gap-y-1">
         <button type="button" className="universe-back" onClick={onWhole}>
           <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
         </button>
         {onNav && (
-          <button type="button" className="universe-back" onClick={onNav}>
+          <button type="button" className="universe-back" data-tour="navmap" onClick={onNav}>
             <RiCompass3Line className="h-3.5 w-3.5" aria-hidden="true" /> Nav map
           </button>
         )}
@@ -308,9 +309,11 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
       <button type="button" className="btn btn-primary universe-enter mt-4" onClick={onEnter} disabled={leaving}>
         {crew ? (universe.go ?? (core ? 'Dock at' : 'Land on')) : 'Go to'} {universe.place} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
       </button>
-      <ul className="universe-card mt-4" key={universe.id}>
-        <Card />
-      </ul>
+      {Card && (
+        <ul className="universe-card mt-4" key={universe.id}>
+          <Card />
+        </ul>
+      )}
       <Exits onClassic={onClassic} />
     </aside>
   );

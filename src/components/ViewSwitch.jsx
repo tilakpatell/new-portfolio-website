@@ -57,7 +57,7 @@ const OPTIONS = [
 export default function ViewSwitch({ size = 'bar', labels = 'all', className = '' }) {
   const { view, switchTo } = useView();
   return (
-    <div className={`view-switch ${className}`} data-size={size} role="group" aria-label="View the site as">
+    <div className={`view-switch ${className}`} data-size={size} data-tour="view" role="group" aria-label="View the site as">
       {OPTIONS.map(({ id, label, title, Icon }) => (
         <button key={id} type="button" aria-pressed={view === id} title={title} onClick={() => switchTo(id)}>
           <Icon className="h-4 w-4 flex-none" aria-hidden="true" />

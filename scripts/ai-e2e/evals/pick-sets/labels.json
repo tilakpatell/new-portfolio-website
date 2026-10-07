@@ -1,0 +1,7 @@
+{
+  "x-wing": { "what": "an X-wing starfighter", "right": "b.webp" },
+  "tie-fighter": { "what": "a TIE fighter", "right": "a.webp" },
+  "falcon": { "what": "the Millennium Falcon", "right": "c.webp" },
+  "sitar": { "what": "a sitar", "right": "d.webp" },
+  "star-destroyer": { "what": "an Imperial Star Destroyer", "right": "c.webp" }
+}

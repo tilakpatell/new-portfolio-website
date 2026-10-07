@@ -42,6 +42,16 @@ function fight({ seed = 5, seconds = 60, size = 3, n = 2, kind = 'xwing', fly = 
   return { ...seen, hunt, wing, ship: s };
 }
 
+describe('the galaxy’s wings', () => {
+  it('fly for every side of its wars: TIEs in the Empire’s green, ARC-170s and Jedi, droids', () => {
+    for (const k of ['tie', 'interceptor', 'arc170', 'delta7', 'vulture', 'trifighter']) {
+      expect(WING_KINDS[k], k).toBeTruthy();
+      expect(WING_KINDS[k].colour, k).toHaveLength(3);
+    }
+    expect(WING_KINDS.tie.colour[1]).toBeGreaterThan(WING_KINDS.tie.colour[0]);
+  });
+});
+
 describe('a wing', () => {
   it('comes up from behind you and says so', () => {
     const wing = createWing({ rand: seeded(1) });
@@ -404,7 +414,7 @@ describe('a wing', () => {
 
   it('knows every kind it can send', () => {
     for (const k of Object.values(WING_KINDS)) {
-      expect(k.speed).toBeGreaterThan(20); // (a boost's speed and more: they can catch you up)
+      expect(k.speed).toBeGreaterThan(SHIP.boost); // (a boost's speed and more: they can catch you up)
       expect(k.fire[0]).toBeLessThan(k.fire[1]);
     }
   });

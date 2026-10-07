@@ -38,7 +38,7 @@ void main() {
 const PLANE_FRAG = `
 varying vec3 vWorld;
 uniform vec3 uColor, uDeep, uSun, uSunColor, uSky;
-uniform float uTime, uKind, uFoam, uGlow, uWaves;
+uniform float uTime, uKind, uFoam, uGlow, uWaves, uWaves2;
 #include <fog_pars_fragment>
 uniform sampler2D uNoise;
 float wFbm(vec2 p) { vec4 a = texture2D(uNoise, p * 0.08); vec4 b = texture2D(uNoise, p * 0.19 + 0.37); return a.r * 0.35 + a.g * 0.3 + b.b * 0.2 + b.a * 0.15; }
@@ -61,6 +61,16 @@ void main() {
     float h0 = wFbm(p + vec2(t * 0.3, t * 0.2));
     float hx = wFbm(p + vec2(e * 0.09, 0.0) + vec2(t * 0.3, t * 0.2));
     float hz = wFbm(p + vec2(0.0, e * 0.09) + vec2(t * 0.3, t * 0.2));
+    if (uKind > 0.5) {
+      // a cloud sea: a second, broader layer drifting the other way under
+      // the first, so the sea has depth
+      vec2 p2 = xz * 0.09 * uWaves2;
+      vec2 d2 = vec2(t * -0.18, t * -0.12);
+      float g0 = wFbm(p2 + d2);
+      h0 = h0 * 0.6 + g0 * 0.4;
+      hx = hx * 0.6 + wFbm(p2 + vec2(e * 0.09, 0.0) + d2) * 0.4;
+      hz = hz * 0.6 + wFbm(p2 + vec2(0.0, e * 0.09) + d2) * 0.4;
+    }
     float fade = 1.0 - smoothstep(80.0, 900.0, dist);
     vec3 n = normalize(vec3((h0 - hx) * 3.0 * fade, 1.0, (h0 - hz) * 3.0 * fade));
     float facing = clamp(dot(n, view), 0.0, 1.0);
@@ -70,6 +80,11 @@ void main() {
     vec3 h = normalize(uSun + view);
     float spec = pow(max(dot(n, h), 0.0), uKind > 0.5 ? 40.0 : 220.0);
     c += uSunColor * spec * (uKind > 0.5 ? 0.25 : 1.6);
+    // the cloud sea's glints: the sun's way, caught on the tops
+    if (uKind > 0.5) {
+      float glint = pow(max(dot(reflect(-view, n), uSun), 0.0), 48.0) * 0.8;
+      c += uSunColor * glint * smoothstep(0.45, 0.7, h0);
+    }
     // foam, in streaks
     c = mix(c, vec3(0.92), smoothstep(0.72, 0.8, wFbm(p * 2.3 + t * 0.4)) * uFoam * fade);
   }
@@ -95,6 +110,7 @@ export function createWater(site, sunDir, sunColor, opts = {}) {
       uFoam: { value: w.foam ?? (w.kind === 'sea' ? 0.5 : 0) },
       uGlow: { value: w.glow ?? 3 },
       uWaves: { value: w.waves ?? (w.kind === 'swamp' ? 2.2 : w.kind === 'clouds' ? 0.12 : 1) },
+      uWaves2: { value: (w.waves ?? (w.kind === 'swamp' ? 2.2 : w.kind === 'clouds' ? 0.12 : 1)) * 2.3 },
       uNoise: { value: noiseTexture() },
     },
   ]);

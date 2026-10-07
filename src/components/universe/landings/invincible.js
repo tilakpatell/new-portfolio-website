@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { box, cyl, part, rockGeometry } from '../../galaxy/surface/kit';
+import { SCATTER as GENERIC } from '../../galaxy/surface/props/generic';
 import { rng } from '../../galaxy/surface/noise';
 import { KIND, facadeMaterial } from '../../../lib/three/facade';
 
@@ -102,6 +103,7 @@ export const PROPS = {
 };
 
 export const SCATTER = {
+  rock: GENERIC.rock,
   // lumps of concrete and road, and the rebar out of them
   rubble(k, { seed = 7 } = {}) {
     const rand = rng(seed);

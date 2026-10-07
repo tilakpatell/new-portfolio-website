@@ -146,6 +146,21 @@ describe('riding', () => {
     expect(s.bank).toBeGreaterThan(0.1);
   });
 
+  it('flies: climbs while jump is held, holds its ceiling, sinks when let go, and never goes under the floor', () => {
+    const CAR = { ...BIKE, hover: 0, fly: { alt: 6, climb: 8, floor: 0 } };
+    const s = rider(0, 0, 0);
+    run(s, { x: 0, y: 1, jump: true }, 2, flat(0), (st, i, dt, w) => ride(st, i, dt, w, CAR));
+    expect(s.y).toBeGreaterThan(5.5);
+    expect(s.y).toBeLessThanOrEqual(6.05);
+    run(s, { x: 0, y: 1 }, 0.5, flat(0), (st, i, dt, w) => ride(st, i, dt, w, CAR));
+    expect(s.y).toBeLessThan(5);
+    expect(s.y).toBeGreaterThan(3);
+    // (over nothing: the ground far below, the floor holds it up)
+    const v = rider(0, 0, 0);
+    run(v, { x: 0, y: 1 }, 3, flat(-40), (st, i, dt, w) => ride(st, i, dt, w, CAR));
+    expect(v.y).toBeGreaterThanOrEqual(0);
+  });
+
   it('hits a tree: stopped short, slowed, thrown back', () => {
     const solids = createSolids();
     solids.circle(0, 30, 1.5);
@@ -153,5 +168,19 @@ describe('riding', () => {
     const outs = run(s, { x: 0, y: 1, run: true }, 4, flat(0, { solids }), (st, i, dt, w) => ride(st, i, dt, w, BIKE));
     expect(outs.some((o) => o.hit > 5)).toBe(true);
     expect(s.z).toBeLessThan(30);
+  });
+});
+
+describe('a line of sight', () => {
+  it('is clear across open ground and blocked by a wall, and clear with no solids at all', async () => {
+    const { createSolids, lineClear } = await import('./walker');
+    const solids = createSolids();
+    solids.box(10, 0, 0.5, 8);
+    expect(lineClear(solids, { x: 0, z: 0 }, { x: 20, z: 0 })).toBe(false);
+    expect(lineClear(solids, { x: 0, z: 0 }, { x: 20, z: 6 })).toBe(false);
+    expect(lineClear(solids, { x: 0, z: 0 }, { x: 20, z: 20 })).toBe(true); // (past the wall's end)
+    expect(lineClear(solids, { x: 0, z: 12 }, { x: 20, z: 12 })).toBe(true);
+    expect(lineClear(solids, { x: 0, z: 0 }, { x: 5, z: 0 })).toBe(true);
+    expect(lineClear(null, { x: 0, z: 0 }, { x: 20, z: 0 })).toBe(true);
   });
 });

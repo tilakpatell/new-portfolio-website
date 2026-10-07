@@ -9,6 +9,7 @@ import Nav from './components/Nav';
 import Footer from './components/Footer';
 import ScrollSaber from './components/ScrollSaber';
 import Guide from './components/Guide';
+import TourHost from './components/tour/TourHost';
 // fetches the 3D jump ahead of time (the intro's, and three.js once a page has it)
 import './components/hyperspace3d/load';
 import { audioContext } from './lib/audio';
@@ -40,6 +41,7 @@ const RickMorty = lazy(() => import('./pages/RickMorty'));
 const Citadel = lazy(() => import('./pages/Citadel'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Mario64 = lazy(() => import('./pages/Mario64'));
+const Minecraft = lazy(() => import('./pages/Minecraft'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
 const Changes = lazy(() => import('./pages/Changes'));
@@ -350,6 +352,7 @@ function Shell() {
                 <Route path="/c-137/citadel" element={<Citadel />} />
                 <Route path="/dot-matrix" element={<DotMatrix />} />
                 <Route path="/dot-matrix/64" element={<Mario64 />} />
+                <Route path="/dot-matrix/minecraft" element={<Minecraft />} />
                 <Route path="/earth" element={<Earth />} />
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="/changes" element={<Changes />} />
@@ -364,6 +367,7 @@ function Shell() {
       {pathname !== '/terminal' && pathname !== '/deathstar' && page !== '/universe' && page !== '/galaxy' && !pathname.endsWith('/surface') && <Footer />}
       <ScrollSaber />
       <Guide />
+      <TourHost />
       <Lightspeed />
       <PaletteHost />
       <ErrorBoundary fallback={<IntroGone />}>

@@ -14,6 +14,8 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
@@ -122,6 +124,10 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
   const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 520, bloom: { strength: 0.7, radius: 0.55, threshold: 0.82 }, onLost });
   stage.grade({ contrast: 0.14, saturation: 0.86, vignette: 0.32, grain: 0.016, shadow: [0.0, 0.01, 0.04], high: [0.03, 0.016, 0.0] });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; the moods move it
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0x7a6a78, 30, 190);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.3;
@@ -146,7 +152,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
   scene.add(sky.dome);
   // what the sky writes to water: the river at the ford reads it
   const water = { uniforms: { uSky: { value: new THREE.Color() }, uDeep: { value: new THREE.Color() }, uSun: { value: V(0, 1, 0) }, uSunColor: { value: new THREE.Color() }, uGlints: { value: 1 } } };
-  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, moods: MOODS });
+  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, house: houseLook, moods: MOODS });
 
   // ── the hill ──
   // (the ground under the ruin's floor kept a little below its flagstones)
@@ -158,6 +164,9 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
 
   const kit = createWeathertopKit(renderer);
   const mats = kit.mats;
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(mats, rolesFor(mats), { strength: 0.3, normal: 0.6, keep: true });
 
   // the ruin of Amon Sûl on the summit
   const ruin = kit.ruin(RUIN);
@@ -578,6 +587,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     sky.uniforms.uGrey.value = A.wraith * 0.85;
     sky.uniforms.uEye.value = A.wraith * (0.4 + 0.6 * (s.gaze ?? 0));
     stage.grade({ saturation: 0.86 - A.wraith * 0.8, contrast: 0.14 + A.wraith * 0.18, vignette: 0.32 + A.wraith * 0.4 + (s.danger ?? 0) * 0.2, shadow: [A.wraith * 0.03, 0.01 + A.wraith * 0.03, 0.04 + A.wraith * 0.06] });
+    // (the fog's own colour while it's this, not the sky's)
+    houseLook.set({ fogMix: 1 - A.wraith * 0.8 });
     if (A.wraith > 0.01) {
       scene.fog.near *= 1 - A.wraith * 0.7;
       scene.fog.far *= 1 - A.wraith * 0.55;
@@ -1002,6 +1013,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked when the town is first drawn ──
   const floorLight = groundTown({ renderer, scene, terrain, outdoors: hill, sun, height: ground, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WORLD.radius + 10, shade: 0x2a2620 });
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? floorLight : null, // for the QA scripts

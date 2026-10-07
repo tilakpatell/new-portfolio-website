@@ -205,7 +205,7 @@ describe('the side you swore to', () => {
     const k = kit('rebel');
     into(k);
     const e = k.said.find((x) => x.sub === 'front');
-    expect(e).toMatchObject({ side: 'rebel', war: 'gcw', sys: FRONT_ID });
+    expect(e).toMatchObject({ side: 'rebel', war: 'gcw', sys: FRONT_ID, against: STATE.owner[FRONT_ID] });
   });
   it('fights the war you fight in: another war’s battle at another system', () => {
     const clone = history('clone', 0, MS, () => 0);
@@ -227,5 +227,50 @@ describe('the side you swore to', () => {
     g.front.update(1 / 30, 0, camera, null);
     g.front.force('empire');
     expect(g.front.pieces.length).toBeGreaterThan(0);
+  });
+});
+
+describe('every kind of battle', () => {
+  it('a battle of each kind, in each war, starts and runs ten seconds without throwing', async () => {
+    const { BATTLE_KINDS } = await import('./battles');
+    const { WARS } = await import('./sides');
+    const { WAR_SYSTEMS, warInfo } = await import('./gcw');
+    for (const kind of Object.keys(BATTLE_KINDS)) {
+      const id = WAR_SYSTEMS.find((x) => warInfo(x).kind === kind) ?? 'tatooine';
+      for (const war of Object.values(WARS))
+        for (const attacker of [war.liberator, war.raider, 'hutt']) {
+          const k = kit(war.liberator);
+          k.front.enter(systemById(id), k.world);
+          k.front.update(1 / 30, 0, camera, null);
+          k.front.force(attacker === 'hutt' ? 'hutt' : attacker);
+          expect(k.front.info.laid, `${kind} ${war.id} ${attacker}`).toBeTruthy();
+          for (let i = 0; i < 100; i++) k.front.update(0.1, i * 0.1, camera, null);
+        }
+    }
+  });
+  it('the dev hook forces a battle of the kind asked for, wherever it is', () => {
+    const k = kit('rebel');
+    k.front.enter(systemById('scarif'), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    k.front.force('empire', 'evacuation');
+    expect(k.front.info.laid.kind).toBe('evacuation');
+    expect(k.front.battle.runners.length + 1).toBeGreaterThan(0);
+    k.front.force('rebel', 'nonsense');
+    expect(k.front.info.laid.kind).toBe('siege');
+  });
+  it('a runner of the other side’s, shot down, is an intercept', () => {
+    const k = kit('empire');
+    k.front.enter(systemById('naboo'), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    k.front.force('rebel');
+    expect(k.front.info.laid.kind).toBe('blockade');
+    const at = k.front.info.laid.at;
+    k.front.update(1 / 30, 0, camera, { x: at[0], y: at[1], z: at[2] });
+    const r = k.front.battle.runners[0];
+    for (let i = 0; i < 40 && r.alive; i++) shoot(k.front, r.pos, 5);
+    k.front.update(1 / 30, 0, camera, null);
+    expect(r.alive).toBe(false);
+    expect(warTally(k.ms).mine(pointsKey('empire', 'naboo', k.front.on.step))).toBeCloseTo(GCW.points.intercept, 5);
+    expect(k.said.filter((e) => e.sub === 'intercept')).toHaveLength(1);
   });
 });

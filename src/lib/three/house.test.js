@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { LOOK, createHouse, houseShader } from './house';
+import { LOOK, createHouse, envLevel, houseOn, houseShader, shadowFor } from './house';
 import { createGroundMap } from './groundmap';
 
 // three's chunks as this version has them (the lines the rewrite looks for)
@@ -90,6 +90,24 @@ describe('a world’s house', () => {
     expect(shader.userData.house).toBeUndefined();
   });
 
+  it('leaves the fog to a world that colours its own, when asked', () => {
+    const house = createHouse({ fog: false });
+    const m = new THREE.MeshLambertMaterial();
+    house.adopt(new THREE.Mesh(new THREE.BufferGeometry(), m));
+    const sh = compiled(m);
+    expect(sh.fragmentShader).toContain('#include <fog_fragment>');
+    expect(sh.fragmentShader).toContain('uLookShadow');
+  });
+
+  it('takes on a copy of a material it already took, made later (the copy isn’t marked as taken)', () => {
+    const house = createHouse();
+    const m = new THREE.MeshLambertMaterial();
+    house.adopt(new THREE.Mesh(new THREE.BufferGeometry(), m));
+    const copy = m.clone();
+    expect(copy.userData.house).toBeUndefined();
+    expect(house.adopt(new THREE.Mesh(new THREE.BufferGeometry(), copy))).toBe(1);
+  });
+
   it('chains a hook the material already had, and shares one set of uniforms', () => {
     const house = createHouse();
     const m = new THREE.MeshStandardMaterial();
@@ -113,6 +131,15 @@ describe('a world’s house', () => {
     const m = new THREE.MeshLambertMaterial();
     m.userData.noHouse = true;
     expect(house.adopt(new THREE.Mesh(new THREE.BufferGeometry(), m))).toBe(0);
+  });
+
+  it('leaves the fog alone in a world whose fog is already the sky’s', () => {
+    const house = createHouse({ fog: false });
+    const m = house.material();
+    const sh = compiled(m);
+    expect(sh.fragmentShader).toContain('uLookShadow');
+    expect(sh.fragmentShader).toContain('#include <fog_fragment>');
+    expect(m.customProgramCacheKey()).toMatch(/\|house:nofog$/);
   });
 
   it('makes new materials already in the look', () => {
@@ -222,5 +249,115 @@ describe('the light the ground bounces up', () => {
     expect(sh.fragmentShader).toContain('groundColour(vLookPos.xz)');
     expect(sh.uniforms.uGroundRect).toBe(map.uniforms.uGroundRect);
     map.dispose();
+  });
+});
+
+describe('a world put on the house look in one call', () => {
+  const world = () => {
+    const scene = new THREE.Scene();
+    const sun = new THREE.DirectionalLight(0xffffff, 2);
+    const hemi = new THREE.HemisphereLight(0x88aaff, 0x443322, 1);
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(sun, hemi, new THREE.Mesh(new THREE.BoxGeometry(), m));
+    return { scene, sun, hemi, m, renderer: { toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.2 } };
+  };
+
+  it('sets the tone mapper, lifts the exposure, and adopts what is there', () => {
+    const w = world();
+    const house = houseOn(w);
+    expect(w.renderer.toneMapping).toBe(THREE.NeutralToneMapping);
+    expect(w.renderer.toneMappingExposure).toBeCloseTo(1.2 * LOOK.exposure, 6);
+    expect(w.m.userData.house).toBe(house.uniforms);
+  });
+
+  it('keeps a world’s exposure where it was tuned under Neutral already', () => {
+    const w = world();
+    houseOn({ ...w, keepExposure: true });
+    expect(w.renderer.toneMappingExposure).toBe(1.2);
+  });
+
+  it('follows the world’s light: full light, and a shadow from the sky light', () => {
+    const w = world();
+    const house = houseOn(w);
+    w.hemi.color.set(0x112244);
+    w.hemi.intensity = 0.5;
+    house.follow();
+    expect(house.uniforms.uLookShadow.value.getHex()).toBe(shadowFor({ hemiSky: 0x112244, hemi: 0.5 }));
+    // (a white sun of 2 and the sky light's red at 0.5, over pi)
+    expect(house.uniforms.uLookRef.value.r).toBeCloseTo((2 + new THREE.Color(0x112244).r * 0.5) / Math.PI, 5);
+    // (anything new in the scene adopted when asked)
+    const late = new THREE.MeshLambertMaterial();
+    w.scene.add(new THREE.Mesh(new THREE.BoxGeometry(), late));
+    house.follow({ adopt: true });
+    expect(late.userData.house).toBe(house.uniforms);
+  });
+});
+
+describe('a world with its own tone map and an ambient light (the universe map)', () => {
+  it('leaves the tone mapping alone, and takes its shade from the ambient light', () => {
+    const scene = new THREE.Scene();
+    const key = new THREE.DirectionalLight(0xffffff, 2);
+    const ambient = new THREE.AmbientLight(0xb8c4ff, 0.4);
+    scene.add(key, ambient, new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial()));
+    const renderer = { toneMapping: THREE.NoToneMapping, toneMappingExposure: 1 };
+    const house = houseOn({ renderer, scene, sun: key, ambient, toneMap: false, look: { fog: false } });
+    expect(renderer.toneMapping).toBe(THREE.NoToneMapping);
+    expect(renderer.toneMappingExposure).toBe(1);
+    expect(house.uniforms.uLookShadow.value.getHex()).toBe(shadowFor({ hemiSky: 0xb8c4ff, hemi: 0.4 }));
+    // (full light: the key and the ambient, over pi)
+    expect(house.uniforms.uLookRef.value.g).toBeCloseTo((2 + new THREE.Color(0xb8c4ff).g * 0.4) / Math.PI, 5);
+  });
+});
+
+describe('a world lit by an HDR environment', () => {
+  // a 4 x 2 equirect: a blue sky over a dark ground, floats
+  const equirect = () => {
+    const data = new Float32Array(4 * 2 * 4);
+    for (let i = 0; i < 4; i++) data.set([0.4, 0.6, 1.2, 1], i * 4); // the top row (the sky)
+    for (let i = 4; i < 8; i++) data.set([0.1, 0.08, 0.05, 1], i * 4); // the bottom (the ground)
+    const t = new THREE.DataTexture(data, 4, 2, THREE.RGBAFormat, THREE.FloatType);
+    return t;
+  };
+
+  it('measures the light an environment gives, its mean radiance, the sky weighted by its area', () => {
+    const level = envLevel(equirect());
+    expect(level.r).toBeCloseTo(0.25, 2);
+    expect(level.b).toBeCloseTo(0.625, 2);
+  });
+
+  it('counts it in the full light, and takes the shade’s hue from it', () => {
+    const scene = new THREE.Scene();
+    scene.environment = equirect();
+    scene.environmentIntensity = 2;
+    const sun = new THREE.DirectionalLight(0xffffff, 0);
+    scene.add(sun, new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial()));
+    const renderer = { toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1 };
+    const house = houseOn({ renderer, scene, sun, env: { texture: scene.environment, intensity: () => scene.environmentIntensity } });
+    // (the environment's mean, at its intensity, is the full light where the sun is out)
+    expect(house.uniforms.uLookRef.value.b).toBeCloseTo(0.625 * 2, 2);
+    const shade = house.uniforms.uLookShadow.value;
+    expect(shade.b).toBeGreaterThan(shade.r);
+  });
+});
+
+describe('an environment that changes (a game\u2019s sky swapped for another)', () => {
+  it('is measured again when its picture changes', () => {
+    const scene = new THREE.Scene();
+    const sun = new THREE.DirectionalLight(0xffffff, 0);
+    scene.add(sun);
+    const pic = (v) => new THREE.DataTexture(new Float32Array([v, v, v, 1, v, v, v, 1]), 2, 1, THREE.RGBAFormat, THREE.FloatType);
+    const env = { texture: pic(0.5), intensity: 1 };
+    const house = houseOn({ renderer: { toneMappingExposure: 1 }, scene, sun, env });
+    expect(house.uniforms.uLookRef.value.r).toBeCloseTo(0.5, 3);
+    env.texture = pic(2);
+    house.follow();
+    expect(house.uniforms.uLookRef.value.r).toBeCloseTo(2, 3);
+  });
+
+  it('reads the level lib/hdri measured off a PMREM’s source, which has no pixels of its own', () => {
+    const pmrem = new THREE.Texture();
+    expect(envLevel(pmrem)).toBe(null);
+    pmrem.userData.level = new THREE.Color(0.3, 0.3, 0.4);
+    expect(envLevel(pmrem).b).toBeCloseTo(0.4, 5);
   });
 });

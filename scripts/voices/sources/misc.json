@@ -1,0 +1,263 @@
+{
+  "omniman": {
+    "show": "invincible",
+    "clips": [],
+    "quotes": [
+      "Think, Mark!",
+      "Look what they need to mimic a fraction of our power",
+      "You'll outlast every fragile, insignificant being on this planet",
+      "What will you have after 500 years?",
+      "I will burn this planet down before I spend another minute living among these animals",
+      "Mark, we need to talk"
+    ],
+    "search": [
+      "Invincible season 1 episode 8 Omni-Man explains Viltrum to Mark scene",
+      "Invincible Omni-Man look what they need to mimic a fraction of our power train scene",
+      "Invincible Omni-Man Think Mark full scene",
+      "Invincible season 1 episode 1 Nolan teaches Mark to fly scene",
+      "Invincible season 2 Nolan on Thraxa with Andressa and Oliver scene",
+      "Invincible season 4 Nolan apologizes to Debbie scene"
+    ],
+    "avoid": ["mortal kombat", "mk1", "jameson", "spider-man", "whiplash", "farmers insurance", "fan animation", "motion comic", "comic dub", "fan dub"]
+  },
+  "mark": {
+    "show": "invincible",
+    "clips": [],
+    "quotes": [
+      "I'd still have you, Dad",
+      "It's me, Mark. It's just me",
+      "You don't understand. All this? This is my fault",
+      "I'm scared, Dad. What if I can't do this?",
+      "How could you say that about Mom?",
+      "I will never work for you again"
+    ],
+    "search": [
+      "Invincible season 1 episode 8 Mark I'd still have you Dad scene",
+      "Invincible season 3 Mark tells Cecil I will never work for you again scene",
+      "Invincible season 2 Mark and Debbie talk in the kitchen scene",
+      "Invincible season 1 Mark and Eve rooftop conversation scene",
+      "Invincible season 2 Mark and Amber breakup scene"
+    ],
+    "avoid": ["walking dead", "glenn", "nope", "beef", "minari", "burning", "okja", "mortal kombat", "fan animation", "motion comic", "comic dub", "fan dub"]
+  },
+  "thragg": {
+    "show": "invincible",
+    "clips": [],
+    "quotes": [
+      "We are Viltrumites. We are without end",
+      "We will honor our fallen. Rebuild ourselves at any cost",
+      "You have work to do yet",
+      "Emperor Argall, you are avenged!",
+      "I offered you forgiveness"
+    ],
+    "search": [
+      "Invincible season 4 Conquest reports to Grand Regent Thragg scene",
+      "Invincible season 4 Thragg speech to the Viltrumites",
+      "Invincible season 4 Thragg offers Nolan forgiveness scene",
+      "Invincible season 4 finale Thragg and Mark conversation scene"
+    ],
+    "avoid": ["guardians of the galaxy", "ronan", "hobbit", "thranduil", "foundation", "pushing daisies", "halt and catch fire", "captain marvel", "mortal kombat", "fan animation", "motion comic", "comic dub", "fan dub", "fan voice"]
+  },
+  "cecil": {
+    "show": "invincible",
+    "clips": [],
+    "quotes": [
+      "I've faced death more times than I can count",
+      "I can buy us a little more time",
+      "Where's Mark, Debbie?",
+      "You're just gonna get yourself killed, Donald",
+      "You can't blame yourself for being a good person, Mark"
+    ],
+    "search": [
+      "Invincible season 1 episode 7 Cecil Stedman confronts Omni-Man scene",
+      "Invincible season 3 Cecil and Mark argument GDA scene",
+      "Invincible season 1 Cecil Stedman offers Mark a GDA job scene",
+      "Invincible season 2 Cecil Stedman and Mark talk scene"
+    ],
+    "avoid": ["justified", "boyd crowder", "fallout", "the ghoul", "white lotus", "righteous gemstones", "hateful eight", "django", "vice principals", "the shield", "mortal kombat", "fan animation", "motion comic", "comic dub", "fan dub"]
+  },
+  "debbie": {
+    "show": "invincible",
+    "clips": [],
+    "quotes": [
+      "Don't lie to me!",
+      "I know you killed them, Nolan!",
+      "That could have been my mom",
+      "You killed the man I loved!"
+    ],
+    "search": [
+      "Invincible season 1 episode 6 Debbie confronts Nolan don't lie to me scene",
+      "Invincible season 4 Debbie and Nolan you killed the man I loved scene",
+      "Invincible season 2 episode 1 Debbie and Mark kitchen scene",
+      "Invincible season 1 Debbie Grayson talks to Mark about Nolan scene"
+    ],
+    "avoid": ["grey's anatomy", "greys anatomy", "cristina", "killing eve", "the chair", "sideways", "mortal kombat", "fan animation", "motion comic", "comic dub", "fan dub"]
+  },
+  "eve": {
+    "show": "invincible",
+    "clips": [],
+    "quotes": [
+      "When you know someone for so long, they're always the same to you",
+      "I wish I had spent more time with Rex",
+      "I'm fine. What's happening with Mark and Omni-Man?"
+    ],
+    "search": [
+      "Invincible Atom Eve special episode Eve and her father dinner scene",
+      "Invincible season 3 episode 8 Atom Eve funeral speech for Rex",
+      "Invincible season 1 episode 5 Atom Eve quits the Teen Team scene",
+      "Invincible season 2 Mark and Eve talk scene"
+    ],
+    "avoid": ["community", "britta", "ghostbusters", "cosplay", "mortal kombat", "fan animation", "motion comic", "comic dub", "fan dub"]
+  },
+  "allen": {
+    "show": "invincible",
+    "clips": [],
+    "quotes": [
+      "What is high school?",
+      "Sorry to rain on your parade. That happens on Earth, right?",
+      "I doubt that. They hit me so hard my eye came out",
+      "Last time that hurt a lot more",
+      "Well, now I feel like a giant douchebag"
+    ],
+    "search": [
+      "Invincible season 1 episode 8 Allen the Alien meets Mark on the Moon scene",
+      "Invincible season 1 episode 4 Allen the Alien evaluates Mark scene",
+      "Invincible season 2 Allen the Alien and Nolan Viltrumite prison scene",
+      "Invincible season 2 Allen the Alien Coalition of Planets scene"
+    ],
+    "avoid": ["superbad", "kung fu panda", "pineapple express", "the studio", "neighbors", "sausage party", "knocked up", "this is the end", "lion king", "pumbaa", "donkey kong", "mortal kombat", "fan animation", "motion comic", "comic dub", "fan dub"]
+  },
+  "invcitizen": {
+    "show": "invincible",
+    "design": "An everyday American city resident in their twenties or thirties, mid-pitched and casual, natural conversational pace, a little starstruck and wry."
+  },
+  "jack": {
+    "show": "pirates-of-the-caribbean",
+    "clips": [
+      "public/audio/clips/almost-caught-captain-jack-sparrow.mp3",
+      "public/audio/clips/why-is-the-rum-always-gone.mp3",
+      "public/audio/clips/welcome-to-the-caribbean.mp3",
+      "public/audio/clips/jar-of-dirt.mp3",
+      "public/audio/clips/not-good.mp3",
+      "public/audio/clips/oh-bugger.mp3",
+      "public/audio/clips/did-everyone-see-that.mp3",
+      "public/audio/clips/without-a-drop-of-rum.mp3"
+    ],
+    "quotes": [
+      "This is the day you will always remember as the day you almost caught Captain Jack Sparrow",
+      "Why is the rum gone?",
+      "Not all treasure is silver and gold, mate",
+      "The problem is not the problem. The problem is your attitude about the problem",
+      "Me? I'm dishonest, and a dishonest man you can always trust to be dishonest",
+      "Now, bring me that horizon",
+      "I've got a jar of dirt",
+      "Did everyone see that? Because I will not be doing it again"
+    ],
+    "search": [
+      "Pirates of the Caribbean Curse of the Black Pearl Jack Sparrow arrives in Port Royal harbor master scene",
+      "Pirates of the Caribbean Jack Sparrow and Elizabeth rum island why is the rum gone scene",
+      "Pirates of the Caribbean Jack Sparrow and Will Turner blacksmith shop scene",
+      "Pirates of the Caribbean Jack Sparrow parley with Barbossa scene",
+      "Pirates of the Caribbean Dead Man's Chest Jack Sparrow jar of dirt scene",
+      "Pirates of the Caribbean Jack Sparrow dishonest man you can always trust scene"
+    ],
+    "avoid": ["kingdom hearts", "disneyland", "sea of thieves", "trial", "court", "testimony", "amber heard", "deposition", "impersonator", "lookalike", "cosplay", "sweeney todd", "willy wonka", "edward scissorhands", "fantastic beasts", "grindelwald"]
+  },
+  "wedge": {
+    "show": "star-wars",
+    "clips": [],
+    "quotes": [
+      "Look at the size of that thing!",
+      "Red Two standing by",
+      "I'm hit! I can't stay with you"
+    ],
+    "search": [
+      "Star Wars A New Hope look at the size of that thing Death Star approach scene",
+      "Star Wars A New Hope Red Squadron standing by report in scene",
+      "Star Wars A New Hope trench run Wedge I'm hit I can't stay with you scene",
+      "Star Wars 1977 Battle of Yavin rebel pilots radio chatter"
+    ],
+    "avoid": ["empire strikes back", "return of the jedi", "rise of skywalker", "denis lawson", "lawson", "star wars rebels", "star wars squadrons", "battlefront", "rogue squadron", "x-wing vs tie fighter"]
+  },
+  "redleader": {
+    "show": "star-wars",
+    "clips": ["public/audio/clips/almost-there.mp3"],
+    "quotes": [
+      "All wings report in",
+      "Cut the chatter, Red Two. Accelerate to attack speed",
+      "Lock S-foils in attack position",
+      "Switch your deflectors on. Double front!",
+      "It's away!",
+      "Negative, negative! It didn't go in. It just impacted on the surface"
+    ],
+    "search": [
+      "Star Wars A New Hope Red Squadron all wings report in scene",
+      "Star Wars A New Hope Red Leader trench run it's away negative impacted on the surface",
+      "Star Wars 1977 Battle of Yavin cut the chatter Red Two accelerate to attack speed",
+      "Star Wars A New Hope Red Leader attack run on the exhaust port"
+    ],
+    "avoid": ["rogue one", "battlefront", "star wars squadrons", "star wars rebels", "x-wing vs tie fighter", "kinect", "rogue squadron"]
+  },
+  "toad": {
+    "show": "super-mario-bros-movie",
+    "clips": [],
+    "quotes": [
+      "Do not touch that mushroom! You'll die!",
+      "Pleased to meet ya. I'm Toad!",
+      "I'm taking you to see the princess. She can help you",
+      "We're going on an adventure!",
+      "I'm too cute to die!",
+      "That is how you princess!"
+    ],
+    "search": [
+      "The Super Mario Bros Movie Toad meets Mario in the mushroom forest scene",
+      "The Super Mario Bros Movie Toad takes Mario to the Mushroom Kingdom scene",
+      "The Super Mario Bros Movie Toad we're going on an adventure scene",
+      "The Super Mario Bros Movie Rainbow Road Toad too cute to die scene",
+      "The Super Mario Bros Movie Toad and Peach training course scene"
+    ],
+    "avoid": ["key and peele", "key & peele", "jack black", "peaches", "toadette", "captain toad", "mario party", "mario kart 8", "super show", "1993", "toadsworth"]
+  },
+  "kingbobomb": {
+    "show": "super-mario",
+    "design": "King Bob-omb from Super Mario 64: a huge, pompous old monarch with a deep booming bass voice, theatrical blustering delivery, slow regal cadence breaking into indignant outbursts, gruff and boastful."
+  },
+  "mario": {
+    "show": "super-mario",
+    "clips": [],
+    "quotes": [
+      "It's-a me, Mario!",
+      "Thank you so much for to playing my game!",
+      "Here we go!",
+      "Let's-a go!",
+      "Mamma mia!",
+      "Okey dokey!",
+      "So long-a Bowser!"
+    ],
+    "search": [
+      "Super Mario 64 all Mario voice clips Charles Martinet",
+      "Super Mario 64 intro it's-a me Mario title screen",
+      "Mario Teaches Typing 2 Mario voice",
+      "Super Mario Sunshine all Mario voice clips",
+      "Super Mario Galaxy all Mario voice clips",
+      "Super Mario 64 DS Mario voice lines"
+    ],
+    "avoid": ["kevin afghani", "afghani", "wonder", "chris pratt", "pratt", "movie", "super show", "lou albano", "bob hoskins", "1993", "smg4", "ytp", "youtube poop", "panel", "convention"]
+  },
+  "dmnana": {
+    "show": "dot-matrix",
+    "design": "An elderly island grandmother: warm and kindly, soft English village accent, slightly creaky timbre, slow unhurried pace, fond and gently teasing."
+  },
+  "dmfisher": {
+    "show": "dot-matrix",
+    "design": "A weathered middle-aged fisherman: low gravelly voice, dry West Country coastal lilt, slow laconic pace, deadpan and wry."
+  },
+  "dmgardener": {
+    "show": "dot-matrix",
+    "design": "A cheerful middle-aged gardener: mellow mid-range voice, rural English accent, easygoing pace, chatty and a little conspiratorial."
+  },
+  "dmkid": {
+    "show": "dot-matrix",
+    "design": "An excitable ten-year-old boy: high bright voice, neutral English accent, quick breathless pace, eager and impatient."
+  }
+}

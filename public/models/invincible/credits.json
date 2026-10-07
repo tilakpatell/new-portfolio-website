@@ -1,8 +1,134 @@
 {
   "mark": {
     "source": "https://www.meshy.ai",
-    "id": "01a10a7a-54a7-7667-acf3-231c201e7171",
-    "name": "Invincible, generated for this site with Meshy AI",
+    "id": "01a1141f-efa6-76c7-a8b1-098add675d21",
+    "name": "Invincible, generated for this site with Meshy AI from the show’s character art on the Invincible wiki (Invincible_(Mark_Grayson).png)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "omni": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11427-bec7-71ce-8559-8f808ea8b6bd",
+    "name": "Omni-Man, generated for this site with Meshy AI from the show’s character art on the Invincible wiki (Omni-ManProfile.png)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "eve": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1142b-e600-7161-b6d1-c6be9f5fa3d9",
+    "name": "Atom Eve, generated for this site with Meshy AI from the show’s character art on the Invincible wiki (Atom-EveProfile.png)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "debbie": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11430-76c8-7401-b37f-86d9b7f7fde0",
+    "name": "Debbie Grayson, generated for this site with Meshy AI from the show’s character art on the Invincible wiki (DebbieProfile.png)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "allen": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11431-fa97-742f-9b0a-3db89eefcda8",
+    "name": "Allen the Alien, generated for this site with Meshy AI from the show’s character art on the Invincible wiki (Allen.png)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "mauler": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11433-d145-76d9-934b-f4fda2f8afc1",
+    "name": "a Mauler twin, generated for this site with Meshy AI from the show’s character art on the Invincible wiki (MaulerTwin-render.png)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "seismic": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11435-a85a-7717-bb39-76465f646adb",
+    "name": "Doc Seismic, generated for this site with Meshy AI from the show’s character art on the Invincible wiki (DocSeismic-render.png)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "thragg": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1145a-5e39-75f8-9a68-9f1d3accd09c",
+    "name": "Thragg, generated for this site with Meshy AI from the show’s character art on the Invincible wiki (GrandRegentThragg-render.png)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "cecil": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1145b-f70c-73b5-b4cd-48c7aa5bb470",
+    "name": "Cecil Stedman, generated for this site with Meshy AI from the show’s character art on the Invincible wiki (CecilProfile.png)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "civA": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11438-c430-72f1-a284-43fd84903dd1",
+    "name": "a townsman, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "civB": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1143a-5ef7-716b-a656-2048d38fdd21",
+    "name": "a townswoman, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "civC": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1143c-5eae-7481-ad49-1a3e0439bddd",
+    "name": "an older townsman, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "bank": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1143e-4908-72af-94f5-89d831e0ddc8",
+    "name": "the bank, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "heli": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1143f-ce1b-723b-b7cc-65717dc6cf18",
+    "name": "the news helicopter, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "truck": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11440-c50d-7438-935b-be35e0771353",
+    "name": "the getaway truck, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],

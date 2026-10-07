@@ -1,0 +1,4 @@
+[
+  { "match": "four sides", "reply": "{\"score\": 9, \"problems\": [], \"fix\": \"\"}" },
+  { "match": "faithfully", "reply": "{\"score\": 8, \"problems\": []}" }
+]
