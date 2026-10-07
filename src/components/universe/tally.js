@@ -14,10 +14,18 @@
 // clock everyone shares; a message from another epoch is ignored, and a new
 // one starts everything over.
 //
-// readTally(data) → { e, m: { key: share }, t: { key: total } } or null.
-// createTally(epoch, { keys, cap }) → { epoch, reset(e), add(key, v), mine(key),
-//   value(key), keys(), receive(peer, msg) → whether anything changed,
-//   message(), forget(peer), save(), load(saved) }
+// A pilot's shares are known by the tally id they tell (`id`, kept in their
+// save with the shares), or by their peer id if they tell none. A reload is a
+// new peer id, but the same tally id, so it's the same pilot's shares again,
+// not a second pilot's. A peer speaks for one pilot only, and a message under
+// your own id (another tab of yours, or your word from before a reload, heard
+// late) is yours already: only its totals are taken.
+//
+// readTally(data) → { e, m: { key: share }, t: { key: total }, i? } or null.
+// createTally(epoch, { keys, cap, id }) → { epoch, id, reset(e), add(key, v),
+//   mine(key), value(key), keys(), receive(peer, msg) → whether anything
+//   changed, message(), forget(peer), save(), load(saved) (before anything's
+//   added: the shares come back with the id they were told under) }
 
 export const TALLY = {
   keys: 96, // keys in a message, and kept, at most
@@ -26,7 +34,9 @@ export const TALLY = {
 };
 const KEY = /^[a-z0-9][a-z0-9:._-]{0,47}$/;
 const EPOCH = /^[a-z0-9][a-z0-9:._-]{0,47}$/;
+const ID = /^[a-z0-9]{8,32}$/;
 
+const isId = (s) => typeof s === 'string' && ID.test(s);
 const value = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.min(TALLY.value, v) : null);
 
 // a { key: value } map as it came in, or null if it isn't one
@@ -50,15 +60,18 @@ export function readTally(data) {
   const m = readMap(data.m);
   const t = readMap(data.t);
   if (!m || !t) return null;
-  return { e, m, t };
+  if (data.i === undefined) return { e, m, t };
+  return isId(data.i) ? { e, m, t, i: data.i } : null;
 }
 
 // `cap`: the most one pilot's share of a key may be (a share told as more is
-// taken as that much, and a total as no more than TALLY.pilots of them)
-export function createTally(epoch, { keys: most = TALLY.keys, cap = TALLY.value } = {}) {
+// taken as that much, and a total as no more than TALLY.pilots of them);
+// `id`: the tally id this pilot tells (null: none)
+export function createTally(epoch, { keys: most = TALLY.keys, cap = TALLY.value, id = null } = {}) {
   const capTotal = Math.min(TALLY.value, cap * TALLY.pilots);
   let mine = new Map();
-  let others = new Map(); // peer → Map(key → share)
+  let others = new Map(); // pilot (`i:` their tally id, or `p:` their peer id) → Map(key → share)
+  const speaks = new Map(); // peer → the pilot they speak for
   let floor = new Map();
   const known = new Set();
   const room = (k) => known.has(k) || known.size < most;
@@ -71,10 +84,12 @@ export function createTally(epoch, { keys: most = TALLY.keys, cap = TALLY.value 
   };
   const t = {
     epoch: String(epoch),
+    id: isId(id) ? id : null,
     reset(e) {
       t.epoch = String(e);
       mine = new Map();
       others = new Map();
+      speaks.clear();
       floor = new Map();
       known.clear();
     },
@@ -89,10 +104,15 @@ export function createTally(epoch, { keys: most = TALLY.keys, cap = TALLY.value 
     keys: () => [...known],
     receive(peer, msg) {
       if (!msg || msg.e !== t.epoch) return false;
+      // whose shares (a peer speaks for one pilot only), and none to take if they're yours
+      const who = msg.i ? `i:${msg.i}` : `p:${peer}`;
+      if ((speaks.get(peer) ?? who) !== who) return false;
+      speaks.set(peer, who);
+      const own = Boolean(t.id) && msg.i === t.id;
       let changed = false;
-      let theirs = others.get(peer);
-      if (!theirs) others.set(peer, (theirs = new Map()));
-      for (const [k, raw] of Object.entries(msg.m)) {
+      let theirs = others.get(who);
+      if (!theirs && !own) others.set(who, (theirs = new Map()));
+      for (const [k, raw] of own ? [] : Object.entries(msg.m)) {
         const v = Math.min(cap, raw);
         if (!room(k) || v <= (theirs.get(k) ?? 0)) continue;
         learn(k);
@@ -116,25 +136,30 @@ export function createTally(epoch, { keys: most = TALLY.keys, cap = TALLY.value 
         const v = t.value(k);
         if (v) tot[k] = v;
       }
-      return { e: t.epoch, m, t: tot };
+      return t.id ? { e: t.epoch, m, t: tot, i: t.id } : { e: t.epoch, m, t: tot };
     },
-    // a pilot gone: what they'd done stays, in the floor
+    // a peer gone: what their pilot had done stays, in the floor (and if
+    // they're back under another, their shares add up to it again, not on top)
     forget(peer) {
-      const theirs = others.get(peer);
+      const who = speaks.get(peer);
+      speaks.delete(peer);
+      const theirs = others.get(who);
       if (!theirs) return;
       for (const k of theirs.keys()) floor.set(k, t.value(k));
-      others.delete(peer);
+      others.delete(who);
     },
     save() {
       const f = {};
       for (const k of known) if (t.value(k)) f[k] = t.value(k);
-      return { e: t.epoch, mine: Object.fromEntries(mine), floor: f };
+      return { e: t.epoch, ...(t.id ? { i: t.id } : {}), mine: Object.fromEntries(mine), floor: f };
     },
     load(saved) {
       if (!saved || typeof saved !== 'object' || saved.e !== t.epoch) return;
+      if (saved.i !== undefined && !isId(saved.i)) return;
       const m = readMap(saved.mine, most);
       const f = readMap(saved.floor, most);
       if (!m || !f) return;
+      if (saved.i) t.id = saved.i;
       for (const [k, v] of Object.entries(m)) {
         learn(k);
         mine.set(k, Math.max(mine.get(k) ?? 0, Math.min(cap, v)));
