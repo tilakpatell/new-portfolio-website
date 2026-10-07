@@ -28,8 +28,9 @@
 //   flyovers       [{ kind (a galaxy ship), n, metres, alt, speed, every }]
 //   skyships       [{ kind, metres, at: [x, y, z], yaw }]: hanging in the sky
 //   floors         walker.js's, over the land (platforms, walkways)
-//   wants          needs.js's: where the people with `needs` go, [{ id,
-//                  kind, at: [x, z], pause? }]
+//   wants          needs.js's: where the people with `needs` go, and what
+//                  they do there, [{ id, kind, at: [x, z], pause?, slots?,
+//                  spots?, clip?, base?, face? }]
 //   zones          places you go into: { id, name, door: { at, r, prompt },
 //                  back: [x, z] (where you come out), inside: { build (a
 //                  props kind), spawn, yaw, exit: { at, r }, bounds: [hw,
@@ -41,7 +42,8 @@
 //                  what's in it, respawn?: [x, z] where you're put then }, life
 //                  (as the site's, placed relative to the inside), things
 //                  (placer specs, placed relative to the inside: a model
-//                  in a room) }
+//                  in a room), wants (as the site's, placed relative to the
+//                  inside: a cantina's bar) }
 //   quests         quests.js's: things to do (talk to someone, get
 //                  somewhere, pick things up, race, shoot, ride, use); a
 //                  step's start and end: what happens then ({ signal (to
@@ -112,6 +114,8 @@ export function siteOf(id) {
     return z && xz ? [z.origin[0] + xz[0], z.origin[2] + xz[1]] : xz;
   };
   const zoneLife = zones.flatMap((z) => (z.life ?? []).map((a) => ({ ...a, zone: z.id, at: a.at && inZone(z.id, a.at), path: a.path?.map((q) => inZone(z.id, q)), level: a.level != null ? z.origin[1] + a.level : undefined })));
+  // (and the places in them its people go to, where they are)
+  const zoneWants = zones.flatMap((z) => (z.wants ?? []).map((w) => ({ ...w, zone: z.id, at: inZone(z.id, w.at), ...(w.spots ? { spots: w.spots.map((q) => inZone(z.id, q)) } : {}) })));
   const levelIn = (id, y) => (y == null ? undefined : zones.find((q) => q.id === id).origin[1] + y);
   const quests = (raw.quests ?? []).map((q) => ({
     ...q,
@@ -128,7 +132,6 @@ export function siteOf(id) {
     accent: sys?.accent ?? '#ffffff',
     reach: REACH,
     weather: [],
-    wants: [],
     things: [],
     scatter: [],
     rides: [],
@@ -141,6 +144,7 @@ export function siteOf(id) {
     zones,
     quests,
     life: [...(raw.life ?? []), ...zoneLife],
+    wants: [...(raw.wants ?? []), ...zoneWants],
     ground: { ...raw.ground, flats, pits },
     things_all: [...(raw.things ?? []), ...places.flatMap((p) => p.things)],
   };

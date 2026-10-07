@@ -47,7 +47,10 @@
 import * as THREE from 'three';
 import { gltfLoader } from '../../lib/three/gltf';
 import { sharpen } from '../../lib/three/textures';
-import { MESHY, createMeshyCast } from '../rickmorty/portal/meshyCast';
+import { MESHY, NO_CALLS, animatorCalls, createMeshyCast, seedOf } from '../rickmorty/portal/meshyCast';
+import { createAnimator } from '../../lib/three/animator';
+import { breathe, createGait, sway } from '../../lib/three/gait';
+import { seeded } from '../../lib/seeded';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { RICK_HIPS, borrowClips, faceForward, heading as headingOf, retarget } from '../rickmorty/portal/clips';
 import { EVERYONE, LOOK_KEY, defaultLook, readLooks, writeLook } from '../rickmorty/wardrobe/looks';
@@ -130,26 +133,28 @@ const getLoader = () => gltfLoader();
 // (Rick’s clips, for every Meshy figure without its own, are borrowed as
 // the wardrobe’s cast borrows them: rickmorty/portal/clips.js)
 
-// idle, walking and running by how fast (move 0…1)
-function blend(act, move) {
-  const run = smooth(0.55, 0.9, move);
-  const idle = 1 - smooth(0.04, 0.3, move);
-  const w = Math.max(0, 1 - run - idle);
-  act.idle?.setEffectiveWeight(idle);
-  act.walk?.setEffectiveWeight(w);
-  act.run?.setEffectiveWeight(run);
-  const pace = 0.8 + move * 0.4;
-  if (act.walk) act.walk.timeScale = pace;
-  if (act.run) act.run.timeScale = pace;
-}
+// each figure's seed: its name and which of that name it is, so two of a
+// kind (a squad's troopers, two pilots' Walts) never breathe or step together
+const seeds = new Map(); // name → how many
+const seedFor = (name) => {
+  const n = seeds.get(name) ?? 0;
+  seeds.set(name, n + 1);
+  return seedOf(name, n);
+};
 
 // a rigged figure: { model (feet on y = 0, facing +z, `tall` metres in map
 // units), bones, update(dt, move, motion?), after(dt, motion, frame), loco,
-// dispose }. With `motion` (locomotion.js: how fast it's going which way,
-// turning, in the air, hit, going down) its clips are paced to the ground
-// and posed on top by `after`, once it's placed; without, they play at the
-// old pace (the galaxy's worlds, until they hand it over too).
-function rigged(model, clips, tall, owned) {
+// mixer, act, anim, play, stop, base, look, react, dispose }, on an animator
+// of its own (lib/three/animator.js). With `motion` (locomotion.js: how fast
+// it's going which way, turning, in the air, hit, going down) its clips are
+// paced to the ground and posed on top by `after`, once it's placed;
+// without, they play at the old pace (the galaxy's worlds, until they hand
+// it over too). play, base, look and react are the animator's
+// (meshyCast.js's animatorCalls: the clip library's clips, on the Meshy
+// skeleton these all stand on). `key`: the figure's template (its file, for
+// the library's copies), `seed`: its clocks; `up` (in the space its hips
+// turn in) and `hipsY`, for the library's clips made for it.
+function rigged(model, clips, tall, owned, { seed = seedFor('rigged'), key = null, up = null, hipsY = null } = {}) {
   const bones = {};
   model.traverse((o) => {
     if (o.isBone) bones[o.name] = o;
@@ -164,31 +169,30 @@ function rigged(model, clips, tall, owned) {
   const k = (tall * METRE) / Math.max(height, 1e-6);
   model.scale.multiplyScalar(k);
   model.position.y -= (top != null ? toes : box.min.y) * k;
-  const mixer = new THREE.AnimationMixer(model);
-  const act = {};
-  for (const [name, clip] of Object.entries(clips)) {
-    if (!clip) continue;
-    const a = mixer.clipAction(clip);
-    a.play();
-    a.setEffectiveWeight(name === 'idle' ? 1 : 0);
-    a.time = Math.random() * clip.duration;
-    act[name] = a;
-  }
-  const loco = createLocomotion({ model, bones }, { mixer, act, root: model, unit: METRE });
+  const own = Object.fromEntries(Object.entries(clips).filter(([, clip]) => clip));
+  const anim = createAnimator(model, { clips: own, bones, hipsY, up, unit: METRE, seed, key: key == null ? null : `${key}:${tall}` });
+  const act = Object.fromEntries(['idle', 'walk', 'run'].filter((n) => anim.actions[n]).map((n) => [n, anim.actions[n]]));
+  const calls = animatorCalls(anim, { model, seed, own: Object.keys(own), act });
   return {
     model,
     bones,
-    loco,
-    mixer,
+    loco: anim.loco,
+    mixer: anim.mixer,
     act,
+    anim,
     update(dt, move, motion) {
-      if (motion) loco.update(dt, { move, ...motion });
-      else blend(act, move);
-      mixer.update(dt);
+      calls.tick(dt, motion ? Math.hypot(motion.speed ?? 0, motion.side ?? 0) > 0.05 * METRE : move > 0.05);
+      anim.locomote(motion ? { move, ...motion } : { move });
+      anim.update(dt);
     },
-    after: (dt, motion, frame) => loco.after(dt, motion, frame),
+    after: (dt, motion, frame) => anim.after(dt, motion, frame),
+    play: calls.play,
+    stop: calls.stop,
+    base: calls.base,
+    look: calls.look,
+    react: calls.react,
     dispose() {
-      mixer.stopAllAction();
+      anim.dispose();
       for (const o of owned) o?.dispose?.();
     },
   };
@@ -203,13 +207,15 @@ const HAND_GUNS = { portalgun: 'portal', laserpistol: 'laser' }; // the wardrobe
 async function loadModel(spec, cast, looks = null) {
   if (spec.src.meshy) {
     const look = lookFor(spec.src.meshy, looks);
+    // (the cast's figure reads its motion in metres: it's told how tall it stands)
+    const opts = { tall: spec.tall, seed: seedFor(spec.id ?? spec.src.meshy) };
     let c = null;
     if (look) {
       const asset = bodyAsset(look);
       if (asset !== spec.src.meshy) await cast.load(null, [asset]).catch(() => {});
-      c = cast.make(bodyKind(look));
+      c = cast.make(bodyKind(look), 0, opts);
     }
-    c ??= cast.make(spec.src.meshy);
+    c ??= cast.make(spec.src.meshy, 0, opts);
     if (!c) return null;
     // (on foot they carry a gun of their own, gunplay.js's: the look's
     // portal gun or laser pistol is that gun, held and fired; anything else
@@ -218,39 +224,53 @@ async function loadModel(spec, cast, looks = null) {
     const undress = look ? dress(c, spec.gun ? { ...look, gear: { ...look.gear, hand: 'none' } } : look) : () => {};
     // the cast stands c.height tall in its own units: to metres, in map units
     c.group.scale.setScalar((spec.tall * METRE) / c.height);
+    const k = c.group.scale.x; // (the cast's units, in the map's)
     const bones = {};
     c.group.traverse((o) => {
       if (o.isBone) bones[o.name] = o;
     });
-    const loco = c.mixer ? createLocomotion({ model: c.group, bones }, { mixer: c.mixer, act: c.act, root: c.group, unit: METRE }) : null;
+    // The cast's own animator (one a figure: never a second over its
+    // mixer), its motion's speeds in the cast's units and its crouch's drop
+    // back in the map's.
+    const anim = c.anim ?? null;
+    const inCast = (m) => m && { ...m, speed: (m.speed ?? 0) / k, side: (m.side ?? 0) / k };
     return {
       model: c.group,
       bones,
-      loco,
+      loco: anim && {
+        get drop() {
+          return anim.loco.drop * k;
+        },
+        rig: anim.loco.rig,
+        strides: anim.loco.strides,
+      },
       mixer: c.mixer ?? null,
       act: c.act ?? null,
+      anim,
       update(dt, move, motion) {
-        if (!c.mixer) return;
-        if (motion) loco.update(dt, { move, ...motion });
-        else blend(c.act, move);
-        c.mixer.update(dt);
+        c.update(0, move, 0, { dt, motion: inCast(motion), after: false });
       },
-      after: (dt, motion, frame) => loco?.after(dt, motion, frame),
+      after: (dt, motion, frame) => c.after(dt, motion, frame),
+      play: c.play,
+      stop: c.stop,
+      base: c.base,
+      look: c.look,
+      react: c.react,
       gun,
       dispose: undress,
     };
   }
   if (spec.src.url) {
     const [gltf, clips] = await Promise.all([getLoader().loadAsync(spec.src.url), borrowClips()]);
-    return rigScene(gltf.scene, clips, spec.tall);
+    return rigScene(gltf.scene, clips, spec.tall, { seed: seedFor(spec.id ?? spec.src.url), key: spec.src.url });
   }
   return built(spec);
 }
 
 // A loaded Meshy figure (its scene, or a copy of one: `shared`, whose
 // geometry and materials are the original's to free) rigged with Rick's
-// clips, turned to walk the way it faces
-function rigScene(model, clips, tall, { shared = false } = {}) {
+// clips, turned to walk the way it faces; `seed` and `key` as rigged's
+function rigScene(model, clips, tall, { shared = false, seed, key = null } = {}) {
   {
     const owned = [];
     model.traverse((o) => {
@@ -270,13 +290,14 @@ function rigScene(model, clips, tall, { shared = false } = {}) {
     const hips = model.getObjectByName('Hips');
     const hipsY = hips?.position.y ?? RICK_HIPS;
     const own = { idle: retarget(clips.idle, hipsY), walk: retarget(clips.walk, hipsY), run: retarget(clips.run, hipsY) };
-    if (hips?.parent && own.walk) {
-      const up = new V(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+    // (up, in the space the hips turn in: the library's clips are turned about it to face ahead too)
+    const up = hips?.parent ? new V(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert()) : null;
+    if (up && own.walk) {
       const ahead = headingOf(own.walk, up);
       if (ahead != null) for (const n of ['idle', 'run']) if (own[n]) faceForward(own[n], up, ahead);
     }
     // (the hips' height at rest goes with it, for clips laid over these: galaxy/surface/saberBody.js)
-    return Object.assign(rigged(model, own, tall, owned), { hipsY: hips ? hipsY : null });
+    return Object.assign(rigged(model, own, tall, owned, { seed, key, up, hipsY: hips ? hipsY : null }), { hipsY: hips ? hipsY : null });
   }
 }
 
@@ -322,8 +343,20 @@ const LOOKS = {
 };
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0, ...extra });
+// (a built figure has no clips to play or head to turn: its calls do nothing)
+const UNPLAYED = { anim: null, play: NO_CALLS.play, stop: NO_CALLS.stop, base: NO_CALLS.base, look: NO_CALLS.look, react: NO_CALLS.react };
+// how fast a built figure's going over the ground, in metres a second: its
+// motion's (map units), else what `move` says of a run; + ahead, − back
+const metresOf = (move, motion) => (motion ? Math.hypot(motion.speed ?? 0, motion.side ?? 0) * ((motion.speed ?? 0) < 0 ? -1 : 1) : move * FOOT.run) / METRE;
+
+// Built from shapes, walking by the ground it covers (gait.js: the legs,
+// Artoo's rock, never on the clock, so none marches on the spot or skates),
+// breathing while it stands, each in its own time (its seed: its name and
+// which it is)
 function built(spec) {
   const owned = [];
+  const seed = seedFor(spec.id ?? spec.src.built);
+  const r = seeded(seed);
   const mat = (c, extra) => {
     const m = std(c, extra);
     owned.push(m);
@@ -362,12 +395,13 @@ function built(spec) {
     body.position.y = 0.72;
     model.add(body);
     model.scale.setScalar(s / 0.95);
-    let t = 0;
+    let t = r() * 20; // (each one somewhere of its own in its drift)
     return {
       model,
       bones: {},
       hand: null,
       built: true,
+      ...UNPLAYED,
       update(dt) {
         t += dt;
         body.position.y = 0.72 + Math.sin(t * 1.6) * 0.03; // (hanging, never still)
@@ -414,14 +448,18 @@ function built(spec) {
     }
     model.add(body);
     model.scale.setScalar(s / 0.98);
-    let t = 0;
+    let t = r() * 20;
+    // (a rock from foot to foot every half metre he rolls)
+    const gait = createGait({ stride: 0.5, cadence: [2, 4], seed });
     return {
       model,
       bones: {},
       hand: null,
-      update(dt, move) {
+      ...UNPLAYED,
+      update(dt, move, motion) {
         t += dt;
-        body.rotation.z = Math.sin(t * 9) * 0.05 * move; // he rocks as he rolls
+        const g = gait.step(dt, metresOf(move, motion));
+        body.rotation.z = Math.sin(g.phase) * 0.05 * g.amount; // he rocks as he rolls
         dome.rotation.y = Math.sin(t * 0.7) * 0.9;
       },
       dispose() {
@@ -528,22 +566,33 @@ function built(spec) {
   }
   model.scale.setScalar(s / 1.1);
   const bones = { Hips: model, Spine: spine, Head: headG, RightArm: arms[0].shoulder, RightForeArm: arms[0].elbow, RightHand: arms[0].wrist, LeftArm: arms[1].shoulder, LeftForeArm: arms[1].elbow, LeftHand: arms[1].wrist };
-  let phase = 0;
+  // A stride of three quarters its height, its legs swung just far enough
+  // that the foot that's down goes back under it as fast as it goes over
+  // the ground (a leg `leg` metres long swung ±amp covers 2·leg·sin(amp) a
+  // step, two steps a stride), so its feet never skate
+  const leg = (0.52 / 1.1) * spec.tall;
+  const stride = 0.75 * spec.tall;
+  const amp = Math.asin(Math.min(0.9, stride / (4 * leg)));
+  const gait = createGait({ stride, cadence: [1.4, 2.4], seed });
+  let t = r() * 20;
   return {
     model,
     bones,
     built: true,
+    ...UNPLAYED,
     // the right hand
     hand: arms[0].hand,
-    update(dt, move) {
-      phase += dt * (3 + move * 7);
-      const swing = Math.sin(phase) * (0.15 + move * 0.55) * Math.min(1, move * 6);
+    update(dt, move, motion) {
+      t += dt;
+      const g = gait.step(dt, metresOf(move, motion));
+      const swing = Math.sin(g.phase) * amp * g.amount;
+      const bend = 0.5 + 0.4 * g.run;
       // (every turn set whole, each frame: gunplay.js and locomotion.js turn
       // these groups too, and a turn left over would add up)
       legs[0].hip.rotation.set(swing, 0, 0);
       legs[1].hip.rotation.set(-swing, 0, 0);
-      legs[0].knee.rotation.set(Math.max(0, -Math.sin(phase + 0.6)) * move * 0.9, 0, 0);
-      legs[1].knee.rotation.set(Math.max(0, Math.sin(phase + 0.6)) * move * 0.9, 0, 0);
+      legs[0].knee.rotation.set(Math.max(0, -Math.sin(g.phase + 0.6)) * bend * g.amount, 0, 0);
+      legs[1].knee.rotation.set(Math.max(0, Math.sin(g.phase + 0.6)) * bend * g.amount, 0, 0);
       spine.rotation.set(0, 0, 0);
       headG.rotation.set(0, 0, 0);
       // the arms swing against the legs (gunplay.js brings the gun arm up over this)
@@ -553,7 +602,8 @@ function built(spec) {
       arms[1].elbow.rotation.set(-0.25, 0, 0);
       arms[0].wrist.rotation.set(0, 0, 0);
       arms[1].wrist.rotation.set(0, 0, 0);
-      torso.position.y = 0.72 - WAIST + Math.abs(Math.sin(phase)) * 0.012 * move;
+      // up over each foot as it walks; a breath as it stands
+      torso.position.y = 0.72 - WAIST + sway(g.phase, g.amount).bob * 0.012 + breathe(t, seed) * 0.004 * (1 - g.amount);
     },
     dispose() {
       for (const o of owned) o.dispose();
@@ -2306,6 +2356,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     } else if (S.phase === 'walk') {
       walkFrame(dt, input);
     } else if (S.phase === 'down') {
+      // (nobody marches while you're down, so the fallen's clocks run here)
+      for (const o of S.troops) if (!o.alive) o.dead += dt;
       if (S.t > LAND.fall) {
         // back on your feet by the ship
         S.me = { ...doorSpot(1), id: 'me' };
@@ -2453,7 +2505,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (S.health <= 0) {
       S.phase = 'down';
       S.t = 0;
-      S.troops = S.troops.map((o) => ({ ...o, alive: false, dead: 2.5 })); // they go, their job done
+      // they go, their job done: down at the knees and over, as a shot one
+      // goes (the down phase below runs their fall), not flat at once
+      S.troops = S.troops.map((o) => (o.alive ? { ...o, alive: false, dead: 0 } : o));
       S.cleared = true;
       S.nextSquad = S.clock + 20;
       emit({ type: 'foot', id: 'down' });
@@ -2610,7 +2664,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         }
         continue;
       }
-      const move = Math.min(1, Math.abs(tr.speed) / (TROOPS[tr.kind].speed * 1.2) + Math.abs(tr.side) / FOOT.run);
+      // (against a runner's pace, as yours is: by their own top speed a
+      // trooper's march read as a run)
+      const move = Math.min(1, Math.abs(tr.speed) / FOOT.run + Math.abs(tr.side) / FOOT.run);
       const hit = tr.hitAt ? Math.max(0, 1 - (S.clock - tr.hitAt) / 0.35) : 0;
       const motion = { speed: tr.speed, side: tr.side, turn: turnRate(got, tr, dt), hurt: hit, knock: tr.knock ? Math.sign(vec.dot(tr.knock, rightOf(tr))) || 1 : 0.4 };
       if (got.loco) {

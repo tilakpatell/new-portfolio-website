@@ -10,6 +10,7 @@ import { LAYER_TYPES, REACH, heightGrid, makeHeight } from '../terrain';
 import { LANDABLE, SITES, siteOf } from '.';
 import { CREW } from '../crew';
 import { talkTree } from '../talk';
+import { CLIPS } from '../../../../lib/three/clipLibrary';
 
 const SHIPS = new Set([...GALAXY_KINDS, ...BUILT_KINDS]);
 const placeable = (kind) => Boolean(PROPS[kind] || SURFACE_MODELS[kind]);
@@ -67,7 +68,20 @@ describe('the worlds you can land on', () => {
         const kinds = new Set(site.wants.map((w) => w.kind));
         const ids = site.wants.map((w) => w.id);
         expect(new Set(ids).size).toBe(ids.length);
-        for (const w of site.wants) expect(Math.hypot(...w.at), w.id).toBeLessThan(REACH);
+        for (const w of site.wants) if (!w.zone) expect(Math.hypot(...w.at), w.id).toBeLessThan(REACH);
+        // (a zone's in its zone, among its people)
+        for (const w of site.wants.filter((q) => q.zone)) {
+          const z = site.zones.find((q) => q.id === w.zone);
+          expect(Math.hypot(w.at[0] - z.origin[0], w.at[1] - z.origin[2]), w.id).toBeLessThan(40);
+          expect(site.life.some((a) => a.zone === w.zone && a.needs?.includes(w.kind)), `someone in ${w.zone} needs ${w.kind}`).toBe(true);
+        }
+        // what's done at each is a clip the library has (a seat: the figure's own), its spots round it, one a slot
+        for (const w of site.wants) {
+          if (w.clip) expect(Object.hasOwn(CLIPS, w.clip), `${w.id}: ${w.clip}`).toBe(true);
+          if (w.base) expect(w.base === 'sit' || Object.hasOwn(CLIPS, w.base), `${w.id}: ${w.base}`).toBe(true);
+          if (w.spots) expect(w.spots.length, w.id).toBe(w.slots ?? 1);
+          for (const q of w.spots ?? []) expect(Math.hypot(q[0] - w.at[0], q[1] - w.at[1]), w.id).toBeLessThan(6);
+        }
         for (const a of site.life) for (const k of a.needs ?? []) expect(kinds.has(k), `${a.kind} needs ${k}`).toBe(true);
         const life = new Set(site.life.map((a) => a.kind));
         for (const a of site.life) for (const k of [...(a.fears ?? []), ...(a.chases ?? [])]) expect(life.has(k), `${a.kind} knows ${k}`).toBe(true);

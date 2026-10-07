@@ -33,9 +33,12 @@
 // `allegiance()` → { war, side } (allegiance.js's current). `live`: the ship ({ x, y, z }) while it's flying, or null. `solids`: the
 // capital ships' hulls, for the ship to bump into (ship.js's, like the
 // world's), changed when a battle starts or ends (onSolids is told).
+// What you score is paid for too: { type: 'earn', what: 'warPoints' | 'warWin',
+// n, side: 'galaxy' } to emit (universe/economy.js's EARN keys).
 
 import { createBattle } from '../universe/battle';
 import { createBattleScene } from '../universe/battleScene';
+import { createCarry } from '../universe/earnRules';
 import { createTally } from '../universe/tally';
 import { GCW, battleAt, campaignAt, history, seeded, teamsOf } from './gcw';
 import { teamFor } from './allegiance';
@@ -89,10 +92,18 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   const say = (sub) => emit({ type: 'event', id: 'battle', sub, side: side(), against: against(), war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR, sys: sys?.id ?? null });
   // the attacker's objectives count only when you're the attacker
   const attacking = () => team !== null && team === on?.attackerTeam;
+  // and the wallet's pay for them (universe/economy.js's warPoints, per
+  // point): the scene's page earns it. A fighter is a tenth of a point, so
+  // the fractions are kept till they make a whole one (earnRules.js).
+  const carry = createCarry();
   const score = (n, ms = now()) => {
     if (team === null || !sys || !on) return;
+    const v = warVersion();
     addPoints(side(), sys.id, on.step, n, ms);
     warDirty = true;
+    if (warVersion() === v) return; // (not counted: nothing to pay)
+    const whole = carry.add(n);
+    if (whole) emit({ type: 'earn', what: 'warPoints', n: whole, side: 'galaxy' });
   };
   // a set piece's line (the galaxy's own: lines.js), not again within a while
   const sayEvent = (id) => {
@@ -328,8 +339,10 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
           ended = true;
           if (tookPart && team !== null) {
             if (e.winner === team) {
+              const v = warVersion();
               addWin(side(), sys.id, on.step, ms);
               warDirty = true;
+              if (warVersion() !== v) emit({ type: 'earn', what: 'warWin', n: 1, side: 'galaxy' }); // (the first time it's counted)
             }
             say(e.winner === team ? 'won' : 'lost');
           }
