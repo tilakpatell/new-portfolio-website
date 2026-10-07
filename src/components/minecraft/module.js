@@ -19,10 +19,11 @@
 // newWorld(seed), toTitle(), and `game`, `scene`, `debug` for the checks.
 
 import * as THREE from 'three';
-import { BLOCKS } from './rules/blocks.js';
+import { BLOCKS, byName } from './rules/blocks.js';
 import { makeChunk, packEdits } from './rules/chunk.js';
-import { addChunk, drain, dropFar, dropHeld, newGame, spawnDrop, tick, wantedChunks } from './rules/game.js';
-import { click, close, makeScreen, result } from './rules/gui.js';
+import { COOK_TICKS } from './rules/furnace.js';
+import { addChunk, drain, dropFar, dropHeld, newGame, respawn, setBlock, spawnDrop, tick, wantedChunks } from './rules/game.js';
+import { click, close, makeChest, makeFurnaceScreen, makeScreen, result } from './rules/gui.js';
 import { ITEMS } from './rules/items.js';
 import { chunkKey } from './rules/jobs.js';
 import { SAVE, SAVE_VERSION, pack, restore } from './rules/save.js';
@@ -70,6 +71,8 @@ const BY_TIER = { high: 10, mid: 6, low: 4 };
 const BY_LEVEL = [10, 8, 6, 4, 4];
 export const distanceFor = (tier, level = 0) => Math.min(BY_TIER[tier] ?? 6, BY_LEVEL[Math.min(level, BY_LEVEL.length - 1)]);
 
+// the modes with a screen open over the world
+const SCREENS = new Set(['inventory', 'table', 'chest', 'furnace']);
 const randomSeed = () => Math.floor(Math.random() * 2 ** 31) - 2 ** 30;
 
 export default {
@@ -270,21 +273,31 @@ export default {
         sprint: held('sprint') || sprintTap || Boolean(pad?.ls),
         attack: touch.held.has('attack') || Boolean(pad?.rt),
         use,
+        // held down (eating)
+        using: useDown,
         yaw: g.player.yaw,
         pitch: g.player.pitch,
       };
     }
-    const still = (p) => ({ forward: 0, strafe: 0, jump: false, sneak: false, sprint: false, attack: false, use: false, yaw: p.yaw, pitch: p.pitch });
+    const still = (p) => ({ forward: 0, strafe: 0, jump: false, sneak: false, sprint: false, attack: false, use: false, using: false, yaw: p.yaw, pitch: p.pitch });
 
     function openScreen(size) {
       screen = makeScreen(size);
       mode = size === 3 ? 'table' : 'inventory';
     }
+    // a chest's or a furnace's screen, over what the world keeps for that cell
+    function openContainer(what, { x, y, z }) {
+      const k = `${x},${y},${z}`;
+      if (what === 'chest' && g.chests[k]) screen = makeChest(g.chests[k]);
+      else if (what === 'furnace' && g.furnaces[k]) screen = makeFurnaceScreen(g.furnaces[k]);
+      else return;
+      mode = what;
+    }
     function closeScreen() {
       if (!screen) return;
       for (const s of close(screen, g.inventory)) spawnDrop(g, s.item, s.count, g.player.x, g.player.y + 1.3, g.player.z);
       screen = null;
-      mode = 'play';
+      if (SCREENS.has(mode)) mode = 'play';
     }
 
     // ── what the page shows ──
@@ -293,6 +306,19 @@ export default {
     let hudAt = 0;
     const tell = (type, data) => rt.events?.emit(type, data);
     const view = (s) => (s ? { item: s.item, count: s.count, wear: ITEMS[s.item]?.tool && s.damage ? 1 - s.damage / ITEMS[s.item].tool.durability : null } : null);
+    function screenView(s) {
+      const out = { kind: s.kind ?? 'craft', cursor: view(s.cursor), slots: g.inventory.slots.map(view) };
+      if (s.kind === 'chest') out.chest = s.slots.map(view);
+      else if (s.kind === 'furnace') {
+        const f = s.furnace;
+        // the flame's height and the arrow's length, in the panel's pixels, as the game scales them
+        Object.assign(out, { furnace: f.slots.map(view), flame: f.burn > 0 ? Math.floor((f.burn * 13) / (f.burnMax || 200)) : -1, arrow: Math.floor((f.cook * 24) / COOK_TICKS) });
+      } else Object.assign(out, { size: s.size, grid: s.grid.map(view), result: result(s) });
+      return out;
+    }
+    // how the player died, in the game's words
+    let death = null;
+    const DEATH = { fall: 'fell from a high place', drown: 'drowned', starve: 'starved to death' };
     function report(dt, force = false) {
       const ready = g.world.loaded(g.player.x, g.player.z);
       const ui = {
@@ -301,7 +327,8 @@ export default {
         loaded: g.world.chunks.size,
         wanted: wanted().keys.length,
         ready,
-        screen: screen ? { size: screen.size, grid: screen.grid.map(view), cursor: view(screen.cursor), result: result(screen), slots: g.inventory.slots.map(view) } : null,
+        screen: screen ? screenView(screen) : null,
+        death: mode === 'dead' ? death : null,
       };
       const k = JSON.stringify(ui);
       if (k !== lastUi) {
@@ -312,7 +339,17 @@ export default {
       if (hudAt < 0.1 && !force) return;
       hudAt = 0;
       const p = g.player;
-      const hud = { selected: g.inventory.selected, hotbar: g.inventory.slots.slice(0, 9).map(view), health: p.health, hunger: p.hunger, air: p.air < 300 ? p.air : null };
+      // low on health the hearts shake, and with no saturation the hunger now and then (GuiIngame's)
+      const shake = (on) => (on ? Array.from({ length: 10 }, () => Math.floor(Math.random() * 2)) : null);
+      const hud = {
+        selected: g.inventory.selected,
+        hotbar: g.inventory.slots.slice(0, 9).map(view),
+        health: Math.ceil(p.health),
+        hunger: p.hunger,
+        air: p.air < 300 ? p.air : null,
+        shakeHearts: shake(p.health <= 4),
+        shakeFood: p.saturation <= 0 && g.ticks % (p.hunger * 3 + 1) === 0 ? Array.from({ length: 10 }, () => Math.floor(Math.random() * 3) - 1) : null,
+      };
       const h = JSON.stringify(hud);
       if (h !== lastHud) {
         lastHud = h;
@@ -359,6 +396,9 @@ export default {
           p.yaw = Math.atan2(-dx, -dz);
           p.pitch = Math.atan2(dy, Math.hypot(dx, dz));
         },
+        // a block set as the game sets one (its neighbours woken: water flows)
+        put: (x, y, z, name, state = 0) => setBlock(g, x, y, z, byName.get(name).id, state),
+        id: (name) => byName.get(name).id,
         slotOf: (item) => g.inventory.slots.findIndex((s) => s?.item === item),
         // stand beside the nearest trunk (its foot) that has room on a side; says where the foot is
         standBy(pattern = '_log$', r = 40) {
@@ -394,7 +434,8 @@ export default {
         load();
         const p = g.player;
         const playing = mode === 'play';
-        const screenOpen = mode === 'inventory' || mode === 'table';
+        const screenOpen = SCREENS.has(mode);
+        const dead = mode === 'dead';
         if (playing) {
           if (pressed(snap, 'pause')) mode = 'pause';
           if (pressed(snap, 'inventory')) openScreen(2);
@@ -408,8 +449,8 @@ export default {
           }
         } else if (screenOpen && (pressed(snap, 'inventory') || pressed(snap, 'pause'))) closeScreen();
         look.dx = look.dy = 0;
-        // the world goes on behind a screen, as the game's does; it holds for the title and the menu
-        if (playing || screenOpen) {
+        // the world goes on behind a screen and a death, as the game's does; it holds for the title and the menu
+        if (playing || screenOpen || dead) {
           acc += dt;
           const { ticks, left } = ticksFor(acc);
           acc = left;
@@ -423,7 +464,15 @@ export default {
             }
           }
           for (const e of drain(g)) {
-            if (e.type === 'open' && mode === 'play') openScreen(3);
+            if (e.type === 'open' && mode === 'play') {
+              if (e.what === 'table') openScreen(3);
+              else openContainer(e.what, e);
+            } else if (e.type === 'died') {
+              closeScreen();
+              death = { text: `Player ${DEATH[e.cause] ?? 'died'}` };
+              mode = 'dead';
+              persist();
+            } else if (e.type === 'no_bed') tell('say', { text: 'Your home bed was missing or obstructed' });
             // the game's own words over the hotbar
             else if (e.type === 'no_sleep') tell('say', { text: 'You can only sleep at night' });
             else if (e.type === 'sleep') tell('say', { text: 'Respawn point set', sleep: true });
@@ -446,7 +495,7 @@ export default {
       },
       draw(frame) {
         take(frame?.renderer ?? rt.gfx.renderer);
-        scene.sync(g, mode === 'play' || mode === 'inventory' || mode === 'table' ? acc / TICK : 1);
+        scene.sync(g, mode === 'play' || mode === 'dead' || SCREENS.has(mode) ? acc / TICK : 1);
         scene.render(renderer);
       },
       wants: () => true,
@@ -489,7 +538,16 @@ export default {
       icon: (name) => scene.icons?.url(name) ?? null,
       start() {
         if (mode === 'title') p0();
+        mode = g.dead ? 'dead' : 'play';
+        if (g.dead) death ??= { text: 'Player died' };
+      },
+      // from the death screen
+      respawn() {
+        if (!g.dead) return;
+        respawn(g);
+        death = null;
         mode = 'play';
+        persist();
       },
       pause(on) {
         if (on && mode === 'play') mode = 'pause';

@@ -107,7 +107,7 @@ export const CONVOS = {
     start: 'horn',
     nodes: {
       horn: { who: 'narrator', say: 'Behind you in the woods, the horn of Gondor, again and again. Boromir, fighting for Merry and Pippin, with an arrow in him, and another, and another.', next: 'brother' },
-      brother: { who: 'narrator', say: 'Later, Aragorn will kneel by him. “I would have followed you, my brother. My captain. My king.” You don’t see it. You are at the water’s edge, alone.', end: 'won' },
+      brother: { who: 'narrator', voice: 'aragorn', say: 'Later, Aragorn will kneel by him. “I would have followed you, my brother. My captain. My king.” You don’t see it. You are at the water’s edge, alone.', end: 'won' },
     },
   },
   // Sam, saved
@@ -140,7 +140,8 @@ export const SKIPPING_SAYS = {
   merry: { who: 'merry', say: '“He got four. The rest were ducks.”' },
   steep: { who: 'pippin', say: '“Plop! Too steep. That one’s gone to see the fishes.”' },
   weak: { who: 'merry', say: '“You have to actually throw it, Frodo.”' },
-  few: (n) => ({ who: 'merry', say: n === 1 ? '“One. It’s a start.”' : `“${n}. Not bad, for a Baggins.”` }),
+  one: { who: 'merry', say: '“One. It’s a start.”' },
+  few: (n) => (n === 1 ? SKIPPING_SAYS.one : { who: 'merry', say: `“${n}. Not bad, for a Baggins.”` }),
   fair: (n) => ({ who: 'pippin', say: `“${n}! Nearly as good as me.”` }),
   same: { who: 'pippin', say: '“Seven. That’s… the same as me. That doesn’t count.”' },
   beat: (n) => ({ who: 'pippin', say: `“${n}! Merry, did you see that? ${n}!” Merry: “I saw. You’ve been beaten, Pip.”` }),
@@ -150,5 +151,16 @@ export const SKIPPING_SAYS = {
 };
 // how flat a stone is, in words
 export const stoneWord = (flat) => (flat > 0.9 ? 'flat as a biscuit' : flat > 0.75 ? 'flattish' : 'a bit lumpy');
+
+// the toasts someone speaks in (../voice.js); at the Seat, Gandalf's words
+// in your head, not the Eye's
+const TAKE_IT_OFF = '“Take it off! Take it off!”';
+export const SAYS = {
+  alone: { who: 'sam', text: '“Where’s Frodo?” Sam looks round, but you have gone off up into the woods to think, alone.' },
+  heard: { who: 'boromir', text: 'He hears you! “Frodo!” He’s coming. Go softly, round the trees.' },
+  seen: { who: 'gandalf', text: `“I see you.” The Eye has you, and Gandalf’s voice in your head: ${TAKE_IT_OFF} You fall from the Seat… Again: pull at the Ring just after its gaze has passed.`, line: TAKE_IT_OFF },
+  run: { who: 'aragorn', text: 'A great black hand reaches for you, and Aragorn’s sword is there first. “Run, Frodo!” Again: down to the shore unseen.' },
+  decoy: { who: 'merry', text: 'Merry and Pippin leap out from behind a tree, waving: “Hey! Over here! This way!” Two of the Uruk-hai go after them. Run, Frodo!' },
+};
 
 export const SPEAKERS = { boromir: 'Boromir', aragorn: 'Aragorn', sam: 'Samwise Gamgee', frodo: 'Frodo', merry: 'Merry Brandybuck', pippin: 'Pippin Took', narrator: '' };

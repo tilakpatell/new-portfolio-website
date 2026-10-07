@@ -112,7 +112,8 @@ export const SKINS = {
 // and the grass and foliage colormaps.
 export const SPRITES = {
   sun: ['environment/celestial/sun', 'environment/sun'],
-  moon_phases: ['environment/celestial/moon_phases', 'environment/moon_phases'],
+  // (since 1.21.9 the game keeps each phase apart: laid out again in the old sheet's order, full moon first)
+  moon_phases: ['environment/celestial/moon_phases', 'environment/moon_phases', { grid: [4, 2], from: ['full_moon', 'waning_gibbous', 'third_quarter', 'waning_crescent', 'new_moon', 'waxing_crescent', 'first_quarter', 'waxing_gibbous'].map((n) => `environment/celestial/moon/${n}`) }],
   clouds: ['environment/clouds'],
   hotbar: ['gui/sprites/hud/hotbar'],
   hotbar_selection: ['gui/sprites/hud/hotbar_selection'],
@@ -127,7 +128,14 @@ export const SPRITES = {
   // the biome tints, read by temperature and rainfall as the game reads them
   colormap_grass: ['colormap/grass'],
   colormap_foliage: ['colormap/foliage'],
-  // the screens: the inventory's and the crafting table's panels
+  // the empty experience bar (nothing earns any yet; the game shows it all the same)
+  experience_bar_background: ['gui/sprites/hud/experience_bar_background'],
+  // the screens: the inventory's, the crafting table's, the furnace's (its flame and
+  // arrow apart) and the chest's panels
   inventory: ['gui/container/inventory'],
   crafting_table: ['gui/container/crafting_table'],
+  furnace: ['gui/container/furnace'],
+  lit_progress: ['gui/sprites/container/furnace/lit_progress'],
+  burn_progress: ['gui/sprites/container/furnace/burn_progress'],
+  chest: ['gui/container/generic_54'],
 };

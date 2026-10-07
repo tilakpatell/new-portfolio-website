@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Compass from '../components/caribbean/Compass';
 import { Jar, Rum } from '../components/caribbean/Effects';
+import { GIBBS, nextGibbs } from '../components/caribbean/lines';
 import DeadMansTide from '../components/caribbean/tide/DeadMansTide';
 import Scenes from '../components/worlds/Scenes';
 import WorldPhotos from '../components/worlds/WorldPhotos';
@@ -11,6 +12,7 @@ import { hasPhotos, hasScenes } from '../components/worlds/media';
 import { useFun } from '../fun/FunProvider';
 import { audioContext } from '../lib/audio';
 import { useDocumentTitle } from '../lib/hooks';
+import { sayVoiced } from '../lib/voiced';
 import { useTheme } from '../theme/ThemeProvider';
 import '../components/caribbean/fonts.css';
 import '../components/caribbean/caribbean.css';
@@ -34,7 +36,6 @@ const CREW = [
   { id: 'davy', name: 'Davy Jones', of: 'The Flying Dutchman', charge: 'A hundred years before the mast, collected from every drowning sailor. Keeps his heart in a chest.', reward: 'Your soul' },
   { id: 'gibbs', name: 'Joshamee Gibbs', of: 'First mate, the Black Pearl', charge: 'Sleeping among pigs, and knowing every piece of bad luck there is.', reward: 'A full flask' },
 ];
-const GIBBS = ['Press it again. Never trust the first telling.', 'It’s frightful bad luck to have a woman aboard. Worse luck to say so near Miss Swann.', 'Never wake a man who’s sleeping. Bad luck. Mostly for me.', 'A ship with black sails, crewed by the damned? Aye. You’re standing on her.', 'Mark my words: whatever that was, it’s bad luck.'];
 
 // the game's five chapters, each with the model that stars in it
 const VOYAGE = [
@@ -134,7 +135,15 @@ export default function Caribbean() {
         savvy('dutchman');
       },
     ],
-    gibbs: ['Ask Mr Gibbs', () => setGibbs((n) => (n % (GIBBS.length - 1)) + 1)],
+    gibbs: [
+      'Ask Mr Gibbs',
+      () => {
+        audioContext();
+        const next = nextGibbs(gibbs);
+        setGibbs(next);
+        sayVoiced('gibbs', GIBBS[next]); // in his own voice, where it's been made (lib/voiced.js)
+      },
+    ],
   };
 
   return (

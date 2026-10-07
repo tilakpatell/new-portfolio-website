@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { TEXTURES } from '../rules/blocks';
 import { ALIASES, SKINS, SPRITES } from './aliases';
-import { CHECKER, buildAtlas, pathsFor } from './atlas';
+import { CHECKER, buildAtlas, frameAt, layerCount, pathsFor } from './atlas';
 
 // A fake pack: each path is an image whose every pixel is a colour made from
 // the path, so a test can tell which file a layer came from.
 function fakePack(files) {
-  const read = async (path) => (path in files ? new TextEncoder().encode(path) : null);
+  // a .mcmeta is its JSON
+  const read = async (path) => (!(path in files) ? null : new TextEncoder().encode(files[path].json ? JSON.stringify(files[path].json) : path));
   const decode = async (bytes) => {
     const path = new TextDecoder().decode(bytes);
     const { width, height, colour = [path.length % 256, 7, 9, 255] } = files[path];
@@ -57,12 +58,68 @@ describe('the atlas builder', () => {
     expect(px(8, 8)).toEqual(CHECKER[0]);
   });
 
-  it('a 16 × 512 strip takes its first frame and records 32 frames', async () => {
+  it('a 16 × 512 strip takes its first frame in its place and records 32 frames', async () => {
     const { read, decode } = fakePack({ [block('water_still')]: { width: 16, height: 512 } });
     const atlas = await buildAtlas(read, { blocks: ['water_still'], items: [], skins: {}, decode });
-    expect(atlas.blocks.layers).toBe(1);
+    expect(atlas.blocks.layers).toBe(32); // the other 31 after
     expect(layer(atlas, 0)[0]).toBe(0); // frame 0's red
     expect(atlas.manifest.frames).toEqual({ water_still: 32 });
+  });
+
+  it('a strip’s other frames go after every tile, with its .mcmeta’s timing', async () => {
+    const { read, decode } = fakePack({
+      [block('stone')]: tile,
+      [block('water_still')]: { width: 16, height: 64 },
+      [`${block('water_still')}.mcmeta`]: { json: { animation: { frametime: 100, interpolate: true, frames: [0, 1, 2, 3] } } },
+      [block('lava_flow')]: { width: 16, height: 48 },
+      [`${block('lava_flow')}.mcmeta`]: { json: { animation: { frametime: 2, frames: [2, 1, { index: 0, time: 9 }] } } },
+    });
+    const atlas = await buildAtlas(read, { blocks: ['water_still', 'stone', 'lava_flow'], items: [], skins: {}, decode });
+    // 3 tiles, then water's frames 1..3, then lava's in the .mcmeta's order after its first
+    expect(atlas.blocks.layers).toBe(3 + 3 + 2);
+    expect([3, 4, 5, 6, 7].map((i) => layer(atlas, i)[0])).toEqual([1, 2, 3, 1, 0]);
+    expect(layer(atlas, 2)[0]).toBe(2); // lava's first is the .mcmeta's first: frame 2
+    expect(atlas.manifest.anim).toEqual({
+      water_still: { layer: 0, extra: 3, frames: 4, time: 100, interpolate: true },
+      lava_flow: { layer: 2, extra: 6, frames: 3, time: 2, interpolate: false },
+    });
+    expect(layerCount(atlas.manifest)).toBe(8);
+  });
+
+  it('a frame at a tick: which layer, the next, and how far between', () => {
+    const a = { layer: 5, extra: 20, frames: 4, time: 10, interpolate: false };
+    expect(frameAt(a, 0)).toEqual({ a: 5, b: 20, blend: 0 });
+    expect(frameAt(a, 15)).toEqual({ a: 20, b: 21, blend: 0 });
+    expect(frameAt(a, 39)).toEqual({ a: 22, b: 5, blend: 0 });
+    expect(frameAt(a, 40)).toEqual({ a: 5, b: 20, blend: 0 });
+    expect(frameAt({ ...a, interpolate: true }, 15).blend).toBeCloseTo(0.5);
+    expect(layerCount({ blocks: ['a', 'b'] })).toBe(2);
+  });
+
+  it('a flowing liquid’s frame at twice the size keeps its middle at full size, as the game shows it', async () => {
+    // a 32-wide frame whose pixels say their own column: the middle 16 are columns 8 to 23
+    const read = async (path) => (path === block('water_flow') ? new Uint8Array([1]) : null);
+    const decode = async () => {
+      const data = new Uint8ClampedArray(32 * 64 * 4);
+      for (let y = 0; y < 64; y++) for (let x = 0; x < 32; x++) data.set([x, y % 32, 0, 255], (y * 32 + x) * 4);
+      return { width: 32, height: 64, data };
+    };
+    const atlas = await buildAtlas(read, { blocks: ['water_flow'], items: [], skins: {}, decode });
+    const px = (x, y) => [...layer(atlas, 0).subarray((y * 16 + x) * 4, (y * 16 + x) * 4 + 2)];
+    expect(px(0, 0)).toEqual([8, 8]);
+    expect(px(15, 15)).toEqual([23, 23]);
+  });
+
+  it('a sprite the pack keeps in pieces (the moon’s phases since 1.21.9) is laid out as one sheet', async () => {
+    const tex = (n) => `assets/minecraft/textures/${n}.png`;
+    const files = {};
+    ['a', 'b', 'c', 'd'].forEach((n, i) => (files[tex(`moon/${n}`)] = { width: 4, height: 4, colour: [i * 10, 0, 0, 255] }));
+    const { read, decode } = fakePack(files);
+    const atlas = await buildAtlas(read, { blocks: [], items: [], skins: {}, sprites: { moon_phases: ['moon_sheet', { grid: [2, 2], from: ['moon/a', 'moon/b', 'moon/c', 'moon/d'] }] }, decode });
+    const m = atlas.sprites.moon_phases;
+    expect([m.width, m.height]).toEqual([8, 8]);
+    const red = (x, y) => m.data[(y * 8 + x) * 4];
+    expect([red(0, 0), red(4, 0), red(0, 4), red(7, 7)]).toEqual([0, 10, 20, 30]);
   });
 
   it('a tile drawn larger than 16 is brought down to 16', async () => {

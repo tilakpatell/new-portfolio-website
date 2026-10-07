@@ -224,3 +224,60 @@ describe('trees', () => {
     expect(Math.max(...ys.map(width))).toBeGreaterThan(width(top));
   });
 });
+
+describe('underground', () => {
+  const sample = [];
+  for (let cx = -2; cx <= 2; cx++) for (let cz = -2; cz <= 2; cz++) sample.push(chunk(cx * 7, cz * 7));
+  const count = (c, name, lo = 0, hi = 255) => {
+    let n = 0;
+    for (let y = lo; y <= hi; y++) for (let z = 0; z < 16; z++) for (let x = 0; x < 16; x++) if (get(c, x, y, z) === id(name)) n++;
+    return n;
+  };
+
+  it('has caves: some air below y 40 in a 5 × 5 chunk sample', () => {
+    const air = sample.reduce((n, c) => n + count(c, 'air', 5, 40), 0);
+    expect(air).toBeGreaterThan(200);
+  });
+
+  it('every ore in its depth range', () => {
+    const ranges = { coal_ore: 127, iron_ore: 63, gold_ore: 31, redstone_ore: 15, lapis_ore: 31, diamond_ore: 15 };
+    for (const c of sample)
+      for (const [ore, top] of Object.entries(ranges)) {
+        expect(count(c, ore, top + 1, 255), ore).toBe(0);
+      }
+    expect(sample.reduce((n, c) => n + count(c, 'coal_ore'), 0)).toBeGreaterThan(25 * 40);
+    expect(sample.reduce((n, c) => n + count(c, 'iron_ore'), 0)).toBeGreaterThan(25 * 20);
+  });
+
+  it('diamond count per chunk between 0 and 12 on average over 50 chunks', () => {
+    let total = 0;
+    for (let i = 0; i < 50; i++) total += count(chunk(i * 3 + 100, -i * 5), 'diamond_ore');
+    expect(total / 50).toBeGreaterThan(0);
+    expect(total / 50).toBeLessThan(12);
+  });
+
+  it('ores take the place of stone, never the dirt under the grass', () => {
+    for (const c of sample)
+      for (let z = 0; z < 16; z++)
+        for (let x = 0; x < 16; x++) {
+          const h = gen.height(c.cx * 16 + x, c.cz * 16 + z);
+          if (get(c, x, h, z) !== id('grass_block')) continue;
+          for (let y = h - 3; y < h; y++) expect(get(c, x, y, z)).toBe(id('dirt'));
+        }
+  });
+
+  it('lava only below 10', () => {
+    for (const c of sample) expect(count(c, 'lava', 10, 255)).toBe(0);
+    expect(sample.reduce((n, c) => n + count(c, 'lava', 0, 9), 0)).toBeGreaterThan(0);
+  });
+
+  it('caves don’t open under the sea', () => {
+    for (const c of sample)
+      for (let z = 0; z < 16; z++)
+        for (let x = 0; x < 16; x++) {
+          const h = gen.height(c.cx * 16 + x, c.cz * 16 + z);
+          if (h >= SEA) continue;
+          expect(get(c, x, h, z), `${c.cx},${c.cz} ${x},${z}`).not.toBe(0);
+        }
+  });
+});

@@ -75,7 +75,6 @@ The plan was written against an older map of the code. Where they disagreed, the
 
 ## Revision 3: left
 
-- Nothing tells the war's tally a pilot has left (`forget` is never called). A pilot who reloads comes back under a new peer id with their saved shares, and pilots who stayed online count that share twice. Everyone still agrees, on too much.
 - `effects.traffic` is worked out but nothing reads it yet: the galaxy's traffic still flies the system's own kinds.
 - Coruscant's siege doesn't raise a planetary shield (`world.war.planetShield` is only Scarif's).
 - An ambush is a brawl: half again the fighters, and each side has only its flagship and one escort. It doesn't lay out in a rock field yet (`BATTLE_KINDS.ambush.rocks` is unread), and its objective is still the flagship's subsystems.

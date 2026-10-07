@@ -12,7 +12,9 @@
 // as you go, and the RV's `wings`, `lift` and `chase` on the long drive, as
 // its wings come out, as it leaves the road and as Hank comes after it
 // (vehicles/rv.js says those). `ship` is the universe map's ship it is
-// (universe/crews.js): the launch comes out in the universe, flying it.
+// (universe/crews.js): the launch comes out in the universe, flying it,
+// and `arrive` the sector it comes out in, when it isn't home (Rick's
+// portal opens on his dimension).
 
 export const VEHICLES = [
   {
@@ -55,6 +57,7 @@ export const VEHICLES = [
     go: 'Portal',
     going: 'Through the portal',
     ship: 'cruiser',
+    arrive: 'rickmorty', // (Rick's portal opens on his dimension, the Central Finite Curve: lib/arrival.js)
     lines: {
       board: [['morty', 'Aw geez, Rick, you’re driving? You’ve been drinking all day!']],
       launch: [['rick', 'Wubba lubba dub dub!', 'wubba']],

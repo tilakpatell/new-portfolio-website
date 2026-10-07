@@ -6,7 +6,9 @@ import { FAN_THEMES, THEMES } from '../theme/themes';
 import { useFun } from '../fun/FunProvider';
 import { SCRIPTS } from '../fun/scripts';
 import { openPalette } from '../lib/palette';
-import { setSound, soundOn } from '../lib/audio';
+import { audioContext, setSound, soundOn } from '../lib/audio';
+import { sayVoiced } from '../lib/voiced';
+import { LIGHTSABER, QUOTES } from '../components/terminal/quotes';
 import { COUNTRY_COUNT, PLACES } from '../data/places';
 import { education, profile, skills } from '../data/profile';
 import { DESTINATIONS, findDestination } from '../components/universe/nav';
@@ -46,19 +48,18 @@ const box = (lines, width = 46) => {
   ].map((l) => ({ ...l, pre: true }));
 };
 
-const QUOTES = [
-  ['Do. Or do not. There is no try.', 'Yoda'],
-  ['I find your lack of faith disturbing.', 'Darth Vader'],
-  ['Never tell me the odds!', 'Han Solo'],
-  ['Rebellions are built on hope.', 'Jyn Erso'],
-  ['This is the way.', 'Din Djarin'],
-  ['In my experience, there’s no such thing as luck.', 'Obi-Wan Kenobi'],
-  ['I am one with the Force, and the Force is with me.', 'Chirrut Îmwe'],
-  ['We are what they grow beyond.', 'Yoda'],
-];
+// A quote's line said aloud too, in its speaker's own voice where it's been
+// made (lib/voiced.js; ../components/terminal/voicelines.js lists them).
+const sayQuote = ([text, , voice]) => {
+  if (!voice) return;
+  audioContext(); // (in the keypress, so it can be heard)
+  sayVoiced(voice, text);
+};
+
 const quote = () => {
-  const [q, who] = QUOTES[Math.floor(Math.random() * QUOTES.length)];
-  return [BLANK, L(`  “${q}”`), L(`   - ${who}`, 'dim')];
+  const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  sayQuote(q);
+  return [BLANK, L(`  “${q[0]}”`), L(`   - ${q[1]}`, 'dim')];
 };
 
 const pad = (s, n) => String(s).padEnd(n);
@@ -424,7 +425,10 @@ export default function Terminal() {
       starwars: quote,
       vader: () => [BLANK, L('  “No, I am your father.”'), L('   - Darth Vader, The Empire Strikes Back', 'dim')],
       yoda: () => [BLANK, L('  “Size matters not.”'), L('   - Yoda, The Empire Strikes Back', 'dim')],
-      lightsaber: () => [BLANK, L('  ▐█▌▬▬▬════════════════════════', 'ascii'), L('  “An elegant weapon for a more civilized age.”'), L('   - Obi-Wan Kenobi', 'dim')],
+      lightsaber: () => {
+        sayQuote(LIGHTSABER);
+        return [BLANK, L('  ▐█▌▬▬▬════════════════════════', 'ascii'), L(`  “${LIGHTSABER[0]}”`), L(`   - ${LIGHTSABER[1]}`, 'dim')];
+      },
       hello: () => [L('  Hello there!'), L('  - General Kenobi', 'dim')],
       sudo: () => [L('  visitor is not in the sudoers file. This incident will be reported to Lord Vader.', 'err')],
       rm: () => [L('  Permission denied. Dark side clearance required.', 'err')],

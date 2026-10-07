@@ -8,6 +8,7 @@
 // game multiplies its light into the sRGB texel, and so does the shader.
 
 import * as THREE from 'three';
+import { layerCount } from '../pack/atlas.js';
 
 export const MC = `${import.meta.env?.BASE_URL ?? '/'}mc/`;
 
@@ -41,7 +42,7 @@ export async function loadArray(file, count) {
   tex.userData.strip = strip;
   return tex;
 }
-export const loadBlockArray = (manifest) => loadArray('blocks.webp', manifest.blocks.length);
+export const loadBlockArray = (manifest) => loadArray('blocks.webp', layerCount(manifest));
 export const loadItemArray = (manifest) => loadArray('items.webp', manifest.items.length);
 
 // A sprite (the sun, the clouds) as a plain texture, nearest-filtered.

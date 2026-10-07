@@ -111,7 +111,9 @@ export const LANES = [
 // moment     { film, title, text }: the scene the system is shown at
 // about      a line or two for its card
 // facts      [label, value] for its card
-// quote      { text, by, film, clip? } (clip: lib/clips.js's, said as you arrive)
+// quote      { text, by, film, clip?, voice? } (clip: lib/clips.js's, said as you arrive;
+//            voice: with no clip, the voice it's made in (lib/voiced.js), the film's own
+//            actor's: Anakin in The Phantom Menace is the boy's; none for a crowd)
 // accent     its colour on the map and the card (readable on #03040a)
 // body       { look, r }: its planet (bodies.js's look), or null
 // parent     { look, r, at }: the gas giant it orbits, seen in its sky
@@ -144,7 +146,7 @@ const AS_SET = [
       ['Terrain', 'Dune seas, canyons, mesas'],
       ['Natives', 'Jawas, Tusken Raiders'],
     ],
-    quote: { text: 'If there’s a bright center to the universe, you’re on the planet that it’s farthest from.', by: 'Luke Skywalker', film: 'anh' },
+    quote: { text: 'If there’s a bright center to the universe, you’re on the planet that it’s farthest from.', by: 'Luke Skywalker', film: 'anh', voice: 'luke' },
     accent: '#f0c27a',
     body: { look: 'tatooine', r: 40 },
     moons: [
@@ -474,7 +476,7 @@ const AS_SET = [
       ['Landmark', 'Fortress Vader'],
       ['Duel', 'Kenobi and Skywalker, 19 BBY'],
     ],
-    quote: { text: 'It’s over, Anakin. I have the high ground.', by: 'Obi-Wan Kenobi', film: 'rots' },
+    quote: { text: 'It’s over, Anakin. I have the high ground.', by: 'Obi-Wan Kenobi', film: 'rots', voice: 'obiwan' },
     accent: '#ff8a4a',
     body: { look: 'mustafar', r: 28 },
     moons: [],
@@ -513,7 +515,7 @@ const AS_SET = [
       ['Landmarks', 'The Senate, the Jedi Temple'],
       ['Coordinates', '0, 0, 0'],
     ],
-    quote: { text: 'This is where the fun begins.', by: 'Anakin Skywalker', film: 'rots' },
+    quote: { text: 'This is where the fun begins.', by: 'Anakin Skywalker', film: 'rots', voice: 'anakin' },
     accent: '#ffd08a',
     body: { look: 'coruscant', r: 46 },
     moons: [
@@ -574,7 +576,7 @@ const AS_SET = [
       ['Capital', 'Theed'],
       ['Moons', 'Ohma-D’un, Rori'],
     ],
-    quote: { text: 'I’ll try spinning. That’s a good trick!', by: 'Anakin Skywalker', film: 'tpm' },
+    quote: { text: 'I’ll try spinning. That’s a good trick!', by: 'Anakin Skywalker', film: 'tpm', voice: 'younganakin' },
     accent: '#7fd8a8',
     body: { look: 'naboo', r: 34 },
     moons: [
@@ -665,7 +667,7 @@ const AS_SET = [
       ['Natives', 'Kaminoans'],
       ['Industry', 'Cloning'],
     ],
-    quote: { text: 'Lost a planet, Master Obi-Wan has. How embarrassing.', by: 'Yoda', film: 'aotc' },
+    quote: { text: 'Lost a planet, Master Obi-Wan has. How embarrassing.', by: 'Yoda', film: 'aotc', voice: 'yoda' },
     accent: '#8ec7e8',
     body: { look: 'kamino', r: 32 },
     moons: [],
@@ -704,7 +706,7 @@ const AS_SET = [
       ['Rings', 'An asteroid ring'],
       ['Industry', 'Droid foundries'],
     ],
-    quote: { text: 'Begun, the Clone War has.', by: 'Yoda', film: 'aotc' },
+    quote: { text: 'Begun, the Clone War has.', by: 'Yoda', film: 'aotc', voice: 'yoda' },
     accent: '#ff9a6a',
     body: { look: 'geonosis', r: 34 },
     moons: [],
@@ -746,7 +748,7 @@ const AS_SET = [
       ['Landmark', 'The Citadel'],
       ['Stolen', 'The Death Star plans, 0 BBY'],
     ],
-    quote: { text: 'Rebellions are built on hope.', by: 'Jyn Erso', film: 'rogue' },
+    quote: { text: 'Rebellions are built on hope.', by: 'Jyn Erso', film: 'rogue', voice: 'jyn' },
     accent: '#6fe0d8',
     body: { look: 'scarif', r: 32 },
     moons: [],
@@ -807,7 +809,7 @@ const AS_SET = [
       ['Hidden', 'The Mandalorians’ covert'],
       ['Magistrate', 'Greef Karga'],
     ],
-    quote: { text: 'This is the Way.', by: 'The Armorer', film: 'mando' },
+    quote: { text: 'This is the Way.', by: 'The Armorer', film: 'mando', voice: 'armorer' },
     accent: '#f4a27c',
     body: { look: 'nevarro', r: 30 },
     moons: [],
@@ -901,7 +903,7 @@ const AS_SET = [
       ['Natives', 'Loth-cats, loth-wolves'],
       ['Lost here', 'Ezra Bridger, and Thrawn’s Chimaera'],
     ],
-    quote: { text: 'I’m counting on you to see this through.', by: 'Ezra Bridger', film: 'ahsoka' },
+    quote: { text: 'I’m counting on you to see this through.', by: 'Ezra Bridger', film: 'ahsoka', voice: 'ezra' },
     accent: '#d8dc84',
     body: { look: 'lothal', r: 34 },
     moons: [
@@ -942,7 +944,7 @@ const AS_SET = [
       ['Raiders', 'Klatooinians, with an AT-ST'],
       ['Moons', 'At least two'],
     ],
-    quote: { text: 'Nice bedside manner.', by: 'Cara Dune', film: 'mando' },
+    quote: { text: 'Nice bedside manner.', by: 'Cara Dune', film: 'mando', voice: 'caradune' },
     accent: '#86d6a6',
     body: { look: 'sorgan', r: 30 },
     moons: [

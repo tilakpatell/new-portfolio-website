@@ -6,7 +6,7 @@ import { ITEMS, ITEM_TEXTURES, stackOf } from './items';
 describe('the items', () => {
   it('every ITEMS block refers to a block in the registry, and every block a player can hold is an item', () => {
     for (const it of Object.values(ITEMS)) if (it.kind === 'block') expect(BLOCKS[it.block]?.name, it.name).toBe(it.name);
-    for (const b of BLOCKS.slice(1)) if (!['water', 'lava', 'wheat', 'farmland'].includes(b.name)) expect(ITEMS[b.name]?.kind, b.name).toBe('block');
+    for (const b of BLOCKS.slice(1)) if (!['water', 'lava', 'wheat', 'farmland', 'lit_furnace'].includes(b.name)) expect(ITEMS[b.name]?.kind, b.name).toBe('block');
     expect(ITEMS.water).toBeUndefined();
   });
 

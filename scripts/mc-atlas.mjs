@@ -1,6 +1,6 @@
 // The Minecraft tribute's textures, built from a resource pack:
 //
-//   node scripts/mc-atlas.mjs <pack folder, .zip or .jar> [--name pixel-perfection]
+//   node scripts/mc-atlas.mjs <pack folder, .zip or .jar> [--name vanilla | pixel-perfection]
 //                             [--vanilla <minecraft .jar>] [--allow-missing] [--out public/mc]
 //
 // Reads the pack as the game does (assets/minecraft/textures/…), through the
@@ -11,17 +11,18 @@
 // sprites/<name>.webp (the sun, moon, clouds and the HUD's pieces), and
 // manifest.json (the order, the animation frames, the pack's name and licence).
 //
-// The shipped pack is Pixel Perfection (XSSheep, continued as Pixel
-// Perfection Legacy by Nova_Wostra; CC BY-SA 4.0), downloaded by hand and
-// kept outside the repository. Mojang's own textures may not be redistributed:
-// `--vanilla` takes the game's jar and fails if any tile written is a copy of
-// the game's (90% or more of its pixels the same), so nothing of Mojang's
-// slips in where a pack fell back on the original.
+// The shipped textures are the game's own, built from the owner's copy of
+// Minecraft (the 1.21.11 jar) with `--name vanilla`, used with Mojang's
+// permission (the owner's, 2026-10-07). Pixel Perfection (XSSheep and
+// Nova_Wostra, CC BY-SA 4.0) builds the same way with `--name
+// pixel-perfection`. For a pack meant to be free of the game's own,
+// `--vanilla` takes the game's jar and fails if any tile written is a copy
+// of the game's (90% or more of its pixels the same).
 //
 // Fails when a block tile is missing (it would draw as the magenta checker)
 // unless --allow-missing.
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
 import { unzipSync } from 'fflate';
@@ -42,10 +43,17 @@ if (!pack) {
   process.exit(2);
 }
 const name = option('name', 'pixel-perfection');
-const out = join(ROOT, option('out', 'public/mc'));
+const out = resolve(ROOT, option('out', 'public/mc'));
 
 // what's written into the manifest (and shown on the page) for each pack the script knows
 const PACKS = {
+  vanilla: {
+    name: 'Minecraft',
+    authors: ['Mojang Studios'],
+    source: 'https://www.minecraft.net',
+    license: "Used with Mojang Studios' permission",
+    licenseUrl: 'https://www.minecraft.net/en-us/eula',
+  },
   'pixel-perfection': {
     name: 'Pixel Perfection Legacy',
     authors: ['XSSheep', 'Nova_Wostra'],
@@ -99,6 +107,16 @@ if (vanilla) {
       most = Math.max(most, s);
       if (s >= 0.9) copies.push(`${where} (${Math.round(s * 100)}%)`);
     });
+  // an animation's every frame, against every one of the game's for that strip
+  const framesOf = (a, an) => (an ? [an.layer, ...Array.from({ length: an.frames - 1 }, (_, k) => an.extra + k)].map((i) => a.blocks.data.subarray(i * T, (i + 1) * T)) : []);
+  for (const [id, an] of Object.entries(atlas.manifest.anim)) {
+    const theirs = framesOf(game, game.manifest.anim[id]);
+    framesOf(atlas, an).forEach((f, k) => {
+      const s = Math.max(0, ...theirs.map((t) => same(f, t)));
+      most = Math.max(most, s);
+      if (s >= 0.9) copies.push(`block/${id} frame ${k} (${Math.round(s * 100)}%)`);
+    });
+  }
   for (const kind of ['skins', 'sprites'])
     for (const k of Object.keys(atlas[kind])) {
       const s = same(atlas[kind][k].data, game[kind][k]?.data);

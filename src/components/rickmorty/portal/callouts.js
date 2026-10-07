@@ -27,6 +27,7 @@ export const ALOUD = {
   [OPENER.pickle]: { clip: 'pickleRick' },
   [OPENER.morty]: { who: 'morty' },
   [BOSS_LINE.cronenberg]: { who: 'morty' },
+  [LOST_LINE.rick]: { who: 'rick' },
   [LOST_LINE.morty]: { who: 'morty' },
   [MEESEEKS]: { clip: 'meeseeks' },
   [PURPOSE]: { clip: 'purpose', then: { who: 'rick', text: 'You stop shots.' } },

@@ -43,6 +43,9 @@ export const CREW = {
   rebel: { url: '/models/galaxy/crew/rebel.glb', tall: 1.78 },
   senateguard: { url: '/models/galaxy/crew/senateguard.glb', tall: 1.85 },
   lobot: { url: '/models/galaxy/crew/lobot.glb', tall: 1.75 },
+  // (the three worlds': a Wing Guard who walks, and Dex still behind the counter that came with him)
+  wingguard: { url: '/models/galaxy/crew/wingguard.glb', tall: 1.8 },
+  dex: { url: '/models/galaxy/crew/dex.glb', tall: 1.9, still: true },
   neimoidian: { url: '/models/galaxy/crew/neimoidian.glb', tall: 1.9 },
   bibfortuna: { url: '/models/galaxy/crew/bibfortuna.glb', tall: 1.8 },
   aqualish: { url: '/models/galaxy/crew/aqualish.glb', tall: 1.8 },

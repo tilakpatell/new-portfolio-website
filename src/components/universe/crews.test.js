@@ -8,6 +8,16 @@ describe('the crews', () => {
     expect(CREWS.map((c) => c.id)).toEqual(['cruiser', 'xwing', 'falcon', 'rv']);
   });
 
+  it('each have something to say firing Rick’s portal gun, either way, and coming out of it', () => {
+    for (const crew of CREWS) {
+      for (const sub of ['out', 'home']) expect(linesFor(crew, 'event', 'portalgun', sub), `${crew.id} portalgun ${sub}`).toEqual(expect.arrayContaining([expect.any(Array)]));
+      for (const sub of ['rickmorty', 'main']) expect(linesFor(crew, 'event', 'gunThrough', sub), `${crew.id} gunThrough ${sub}`).toEqual(expect.arrayContaining([expect.any(Array)]));
+      // (their own people say them, not Rick's)
+      const who = new Set([...linesFor(crew, 'event', 'portalgun', 'out'), ...linesFor(crew, 'event', 'gunThrough', 'rickmorty')].map(([w]) => w));
+      if (crew.id !== 'cruiser') expect([...who].some((w) => w === 'rick' || w === 'morty')).toBe(false);
+    }
+  });
+
   it('each cross the map their own way: the Star Wars ships on the jump to lightspeed, the cruiser through a portal, the RV as Blue Sky', async () => {
     const { JUMP_STYLES, jumpStyle } = await import('../jumps/styles');
     expect(CREWS.map((c) => jumpStyle(c.jump))).toEqual(['portal', 'hyper', 'hyper', 'bluesky']);
