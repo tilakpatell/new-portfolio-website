@@ -4,6 +4,7 @@ import { useFun } from '../fun/FunProvider';
 import { EGGS, EGG_KEY } from '../fun/eggs';
 import { audioContext } from '../lib/audio';
 import { local } from '../lib/hooks';
+import { sayVoiced } from '../lib/voiced';
 
 // A hidden collectible: a small, faint line icon tucked somewhere on a page.
 // Find one and it plays its moment; find them all for the Collector badge.
@@ -92,7 +93,10 @@ export default function Egg({ id, className = '' }) {
     setHave(true);
     setPop((n) => n + 1);
     const total = Object.keys(EGGS).length;
-    if (id === 'cassette') rollOut('soundwave'); // its scene plays the sound
+    // the quote in its speaker's own voice, where it's been made (lib/voiced.js)
+    const said = egg.voice ? sayVoiced(egg.voice, egg.quote).then((h) => h?.ended).catch(() => {}) : Promise.resolve();
+    // (the cassette's scene plays the sound, and Soundwave's own line: once he's said this one)
+    if (id === 'cassette') said.then(() => rollOut('soundwave'));
     else import('../lib/sfx').then((s) => s[egg.sound]?.());
     notify(egg.quote, `${egg.by} · ${egg.from}. Easter egg ${next.length} of ${total}.`, 'note', egg.gif ?? null);
     if (next.length === total) unlock('collector');
