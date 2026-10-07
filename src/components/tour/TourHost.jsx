@@ -5,6 +5,7 @@ import { useAchievements } from '../Achievements';
 import { local } from '../../lib/hooks';
 import { TOUR_EVENT, TOUR_KEY, offerHere, openTour, tourFor } from '../../lib/tour';
 import { BRIEF_EVENT, BRIEF_KEY, briefHere, briefKeyFor, sawBrief } from '../../lib/brief';
+import { guideKeyFor } from '../guide/routes';
 import './offer.css';
 
 // Always in the shell, and small: starts the tour of the site when asked
@@ -27,8 +28,10 @@ export default function TourHost() {
   const { pathname } = useLocation();
   const { unlock } = useAchievements();
   // the one running: { kind: 'tour', name: 'universe' | 'classic' } or
-  // { kind: 'brief', name: a world's key }, and its stops once loaded
+  // { kind: 'brief', name: a world's key, page: the guide's key it's on},
+  // and its stops once loaded
   const [run, setRun] = useState(null);
+  const [asked, setAsked] = useState(null); // a page's own basics, waiting to show the first time: { key, page }
   const [list, setList] = useState(null);
   const [offer, setOffer] = useState(false);
   const where = useRef(pathname);
@@ -39,9 +42,11 @@ export default function TourHost() {
       setOffer(false);
       setRun({ kind: 'tour', name: tourFor(where.current) });
     };
-    const onBrief = () => {
-      const name = briefKeyFor(where.current);
-      if (name) setRun({ kind: 'brief', name });
+    const onBrief = (e) => {
+      const name = e.detail?.key ?? briefKeyFor(where.current);
+      if (!name) return;
+      if (e.detail?.first) setAsked({ key: name, page: guideKeyFor(where.current) });
+      else setRun({ kind: 'brief', name, page: guideKeyFor(where.current) });
     };
     window.addEventListener(TOUR_EVENT, onStart);
     window.addEventListener(BRIEF_EVENT, onBrief);
@@ -62,14 +67,17 @@ export default function TourHost() {
   }, [run]);
 
   // a page with another tour (back to the map from the feed, out of a world)
-  // ends it; the feed moving the address as you scroll doesn't
+  // ends it (and a page's own basics not shown yet); the feed moving the
+  // address as you scroll doesn't, nor picking a place on the map
   const kind = tourFor(pathname);
-  const briefKey = briefKeyFor(pathname);
-  useEffect(() => setRun((r) => (r && (r.kind === 'tour' ? r.name !== kind : r.name !== briefKey) ? null : r)), [kind, briefKey]);
+  const page = guideKeyFor(pathname);
+  useEffect(() => setRun((r) => (r && (r.kind === 'tour' ? r.name !== kind : r.page !== page) ? null : r)), [kind, page]);
 
-  // A world's basics, the first time you're in it: once nothing's covering
-  // it for two checks running, before you've had the chance to be dropped
-  // in. Remembered as soon as they show; the guide shows them again.
+  // A world's basics, the first time you're in it (or a page's own, the
+  // first time it asks): once nothing's covering it for two checks running,
+  // before you've had the chance to be dropped in. Remembered as soon as
+  // they show; the guide shows a world's again.
+  const briefKey = asked?.page === page ? asked.key : briefKeyFor(pathname);
   useEffect(() => {
     if (!briefKey || !briefHere(briefKey, local.get(BRIEF_KEY, []), navigator.webdriver)) return undefined;
     loadTour();
@@ -79,8 +87,7 @@ export default function TourHost() {
       if (calm < 2) return;
       clearInterval(check);
       local.set(BRIEF_KEY, sawBrief(local.get(BRIEF_KEY, []), briefKey));
-      setOffer(false);
-      setRun((r) => r ?? { kind: 'brief', name: briefKey });
+      setRun((r) => r ?? { kind: 'brief', name: briefKey, page: guideKeyFor(where.current) });
     }, 700);
     return () => clearInterval(check);
   }, [briefKey]);

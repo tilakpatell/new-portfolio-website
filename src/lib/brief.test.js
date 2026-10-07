@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BRIEFED, briefHere, briefKeyFor, sawBrief } from './brief';
+import { ASKED, BRIEFED, briefHere, briefKeyFor, sawBrief } from './brief';
 import { WORLDS } from '../components/worlds/worlds';
 
 describe('which basics a page gets', () => {
@@ -17,6 +17,10 @@ describe('which basics a page gets', () => {
 
   it('gives none to the site’s own pages, the map or a mission briefing', () => {
     for (const p of ['/', '/home', '/universe', '/universe/marvel', '/terminal', '/projects/gameboy', '/galaxy/hoth/mission', '/nowhere']) expect(briefKeyFor(p), p).toBeNull();
+  });
+
+  it('never gives a page the basics it asks for itself by its path', () => {
+    for (const key of ASKED) expect(briefKeyFor(key), key).toBeNull();
   });
 
   it('only names worlds it has basics for', () => {
