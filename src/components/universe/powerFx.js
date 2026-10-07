@@ -38,6 +38,23 @@ void main() {
   vN = normalMatrix * normal;
   gl_Position = projectionMatrix * mv;
 }`;
+// (the beam's facing is taken across it, with the view's share along its
+// length taken out: from the chase camera you look nearly down the ray,
+// and the plain facing would have it dark all along. Its own vertex
+// shader hands on its length's direction for that)
+const BEAM_VERT = /* glsl */ `
+varying vec2 vUv;
+varying vec3 vN;
+varying vec3 vV;
+varying vec3 vA;
+void main() {
+  vUv = uv;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vV = -mv.xyz;
+  vN = normalMatrix * normal;
+  vA = (modelViewMatrix * vec4(0.0, 0.0, 1.0, 0.0)).xyz;
+  gl_Position = projectionMatrix * mv;
+}`;
 const BEAM_FRAG = /* glsl */ `
 uniform vec3 uColor;
 uniform float uTime;
@@ -46,8 +63,13 @@ uniform float uK;
 varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vV;
+varying vec3 vA;
 void main() {
-  float facing = abs(dot(normalize(vN), normalize(vV)));
+  vec3 v = normalize(vV);
+  vec3 a = normalize(vA);
+  vec3 across = v - dot(v, a) * a;
+  float l = length(across);
+  float facing = l < 1e-4 ? 1.0 : abs(dot(normalize(vN), across / l));
   float core = facing * facing * facing;
   float crawl = 0.7 + 0.3 * sin(vUv.y * uLen * 5.0 - uTime * 42.0);
   vec3 col = uColor * (0.2 + 1.6 * core) * crawl + vec3(3.2, 3.6, 3.0) * pow(facing, 8.0);
@@ -65,7 +87,7 @@ void main() {
 }`;
 
 const glow = (color) => new THREE.MeshBasicMaterial({ color, toneMapped: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
-const facing = (frag, uniforms) => new THREE.ShaderMaterial({ vertexShader: FACING_VERT, fragmentShader: frag, uniforms, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+const facing = (frag, uniforms, more = {}) => new THREE.ShaderMaterial({ vertexShader: FACING_VERT, fragmentShader: frag, uniforms, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, ...more });
 
 export function createPowerFx(parent) {
   const made = [];
@@ -87,8 +109,10 @@ export function createPowerFx(parent) {
     m.count = 0;
   }
 
-  // the death ray: a beam from the nose to whatever it's into
-  const beamMat = keep(facing(BEAM_FRAG, { uColor: { value: GREEN.clone().multiplyScalar(2.2) }, uTime: { value: 0 }, uLen: { value: 1 }, uK: { value: 0 } }));
+  // the death ray: a beam from the nose to whatever it's into (both its
+  // sides drawn: it's an open tube, and from behind the ship you look into
+  // its end, which would otherwise be a hole)
+  const beamMat = keep(facing(BEAM_FRAG, { uColor: { value: GREEN.clone().multiplyScalar(2.2) }, uTime: { value: 0 }, uLen: { value: 1 }, uK: { value: 0 } }, { vertexShader: BEAM_VERT, side: THREE.DoubleSide }));
   const ray = hidden(new THREE.Mesh(keep(new THREE.CylinderGeometry(1, 1, 1, 16, 1, true).rotateX(Math.PI / 2)), beamMat), 'ray');
 
   // the magnet: three rings round its point, each spinning its own way
