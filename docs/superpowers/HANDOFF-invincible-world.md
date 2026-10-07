@@ -170,6 +170,21 @@ Metrics (`--metrics`; targets: band 0.30–0.65 noon, 0.12–0.35 night; mark �
 Every band is in range, and Mark passes in spawn, streetnight and porch. He misses in street, downtown and high, where he hangs over towers and grid whose mean grey is close to his: the measure compares mean luminance only, and a yellow and blue figure on grey-blue towers averages out the same while reading plainly to the eye (he is about a third of the frame tall and clearly picked out in each of those shots). Not forced further: the suit would have to go pale. A colour-difference measure would judge these better.
 - Low tier, triangles: plaza 1.47 M, boost 1.33 M, dusk and night 1.33 M; within the 1.5 M budget.
 
+### Task 5: the crowd's brains (2026-10-07)
+
+- `brains.js` (tested) gives each townsperson a brain. The states are idle, chat, wander, look, wave, gather, flee and cheer.
+  - wander: a few steps; a passer-by keeps to their pavement, within 20 m of home.
+  - look: when Mark is within 30 m.
+  - wave: when he hangs within 15 m (not again for 20 s).
+  - gather: when he lands within 25 m. They walk to 6 m from him, face him with phones up, and leave after 12 s or when he takes off.
+  - flee: from a slam, an impact, a low boom or a knock-out within 40 m. They run at 4 m/s for 6 s and stay frightened for 20 s, so they don't come and gawp.
+  - cheer: 4 s, when a fight within 80 m is won.
+  - Each step is at most 0.05 s, so a hidden tab is one short step.
+- `npcs.js` steps a brain for each person at Burger Mart, the school steps and the plaza (three groups), moves and turns them from it, and poses them from `poseOf` (their motion-captured clips). The manager keeps his arms folded when idle. Debbie and Cecil keep their own ways.
+- Who is out goes by the time of day (`crowdCount`): all at noon, 70 % at dusk, 35 % at night, and nobody on the school steps at night.
+- `scene.js` passes the crowd what happened in the frame (slam, knock-out, won, the time). Cars within 60 m of a fight's knock-outs and hits back away at 4 m/s for 3 s (`traffic.js`'s `reverse` scare, tested).
+- New shots: `plazanight`, `burgernight`, `schoolnight`.
+
 ## How to check
 
 - `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic and fight (51 tests at the space merge, 89 after Task 1).
