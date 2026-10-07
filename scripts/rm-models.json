@@ -596,19 +596,19 @@
     "by": "local"
   },
   "frundles": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "frundlesman": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "frundlesdog": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   },
   "frundleshouse": {
-    "status": "claimed",
+    "status": "done",
     "by": "local"
   }
 }

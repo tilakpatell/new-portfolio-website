@@ -390,7 +390,7 @@ export const PAGES = {
       ['Total Rickall', 'Pick up the egg on the living-room bookcase. A parasite only ever leaves good memories of itself, so shoot the ones nobody remembers a bad day with, and nobody else.'],
       ['The Meeseeks box', 'Press the button and give him a task. Give him one he can’t do and he gets help.'],
       ['Interdimensional cable', 'Turn the dial.'],
-      ['The portal gun’s dial', 'Set it on Rick’s bench and the garage portal goes there: thirty-five places from the show. Everyone in them does something; some of them come for you, and caught, you’re back at the door. Three slips to spot, a ticket to find, a cell to open, a ring to step into.'],
+      ['The portal gun’s dial', 'Set it on Rick’s bench and the garage portal goes there: thirty-six places from the show. Everyone in them does something; some of them come for you, and caught, you’re back at the door. Three slips to spot, a ticket to find, a cell to open, a ring to step into.'],
       ['The Smiths', 'Four of them are a color scheme for the site. Jerry can ask.'],
     ],
   },
