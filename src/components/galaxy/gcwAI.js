@@ -71,22 +71,24 @@ export function cutOff(owner, id, capital) {
 export const areaWhole = (owner, id, side) => (WAR_SYSTEMS.every((x) => x === id || areaOf(x) !== areaOf(id) || owner[x] === side) ? 1 : 0);
 
 // an attack's target: the border system `by` weighs highest by its doctrine
-// (c: { by, border, owner, control, rate, hours, capitals, lastHit, k, rand });
+// (c: { by, border, owner, control, rate, hours, capitals, lastHit, k, rand,
+// holders? (gcwRules.js's areaHolders, when it's to hand), holdsOut? (the
+// systems that can't fall yet: a side's last stand before the Climax) });
 // the rand jitters each in the border's order, so every pilot picks alike
-export function targetOf({ by, border, owner, control, rate, hours, capitals, lastHit, k, rand }) {
+export function targetOf({ by, border, owner, control, rate, hours, capitals, lastHit, k, rand, holders, holdsOut }) {
   const d = DOCTRINE[by];
   let best = null;
   let bestU = -Infinity;
   for (const id of border) {
     const holder = owner[id];
-    const fall = (pressureOn(holder, rate + supplyOf(id, owner, by) + areaBonusOf(id, owner, by)) * hours) / 100;
+    const fall = (pressureOn(holder, rate + supplyOf(id, owner, by) + areaBonusOf(id, owner, by, holders)) * hours) / 100;
     const u =
       worthOf(id) * d.worth +
       (1 - control[id]) * W.weak * d.weak +
       cutOff(owner, id, capitals[holder]) * d.cut +
       areaWhole(owner, id, by) * W.area * d.area +
       warInfo(id).weight * W.weight +
-      (fall >= W.reach * control[id] ? W.can : W.cannot) -
+      (fall >= W.reach * control[id] && !holdsOut?.has(id) ? W.can : W.cannot) -
       (lastHit[id] > k - W.recentFor ? W.recent : 0) +
       rand() * d.jitter;
     if (u > bestU) (best = id), (bestU = u);
@@ -104,40 +106,43 @@ export function originOf(owner, control, sys, by) {
 
 // the liberator's fronts: what it's after first (`lead`: a system to retake,
 // its order), then the campaign's order of the rest, any let be a while
-// (`rest`) last; none under someone else's attack (`busy`)
-export function frontsFor({ owner, order, liberator, busy, rest, k, lead }) {
+// (`rest`) or holding out (`later`: a last stand) last; none under someone
+// else's attack (`busy`)
+export function frontsFor({ owner, order, liberator, busy, rest, k, lead, later }) {
   const border = order.filter((id) => owner[id] !== liberator && !busy.has(id) && NEIGHBOURS[id].some((o) => owner[o] === liberator));
   const first = [];
   for (const id of lead) if (id && border.includes(id) && !first.includes(id)) first.push(id);
-  const fresh = border.filter((id) => !first.includes(id) && !(rest[id] > k));
-  const rested = border.filter((id) => !first.includes(id) && rest[id] > k);
+  const waits = (id) => rest[id] > k || Boolean(later?.has(id));
+  const fresh = border.filter((id) => !first.includes(id) && !waits(id));
+  const rested = border.filter((id) => !first.includes(id) && waits(id));
   return [...first, ...fresh, ...rested].slice(0, GCW.fronts);
 }
 
 // a front's %/hour off its hold: the liberator's fleets' rate, with its
 // supply and an area of its next to it, less what the holder puts back (less
 // still cut off from its capital), as the holder feels it
-export function frontPace({ id, owner, liberator, rate, supply }) {
+export function frontPace({ id, owner, liberator, rate, supply, holders }) {
   const holder = owner[id];
   const defence = GCW.defence * (supply[holder]?.has(id) ? 1 : GCW.cutDefence);
-  return pressureOn(holder, rate + supplyOf(id, owner, liberator) + areaBonusOf(id, owner, liberator) - defence);
+  return pressureOn(holder, rate + supplyOf(id, owner, liberator) + areaBonusOf(id, owner, liberator, holders) - defence);
 }
 
 // the liberator's order: the front it weighs highest by its doctrine, one
-// it can move (not one stuck), and not its last order over again
-// (c: { liberator, border, owner, control, rates, might, capitals, supply, previous, rand })
-export function orderTarget({ liberator, border, owner, control, rates, might, capitals, supply, previous, rand }) {
+// it can move (not one stuck, nor a last stand), and not its last order
+// over again (c: { liberator, border, owner, control, rates, might,
+// capitals, supply, previous, rand, holders?, holdsOut? })
+export function orderTarget({ liberator, border, owner, control, rates, might, capitals, supply, previous, rand, holders, holdsOut }) {
   const d = DOCTRINE[liberator];
   let best = null;
   let bestU = -Infinity;
   for (const id of border) {
-    const pace = frontPace({ id, owner, liberator, rate: rates[id] * might, supply });
+    const pace = frontPace({ id, owner, liberator, rate: rates[id] * might, supply, holders });
     const u =
       worthOf(id) * d.worth +
       (1 - control[id]) * W.weak * d.weak +
       cutOff(owner, id, capitals[owner[id]]) * d.cut +
       areaWhole(owner, id, liberator) * W.area * d.area +
-      (pace > 0.5 ? pace * W.pace : W.cannot) -
+      (pace > 0.5 && !holdsOut?.has(id) ? pace * W.pace : W.cannot) -
       (id === previous ? W.again : 0) +
       rand() * d.jitter;
     if (u > bestU) (best = id), (bestU = u);

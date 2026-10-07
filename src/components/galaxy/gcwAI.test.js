@@ -99,6 +99,9 @@ describe('picking a target', () => {
     expect(targetOf({ ...c, control: whole(), border: ['kamino', 'naboo'], lastHit: {} })).toBe('kamino');
     expect(targetOf({ ...c, control: whole(), border: ['kamino', 'naboo'], lastHit: { kamino: 90 } })).toBe('naboo');
   });
+  it('won’t attack a last stand before the Climax (it can’t fall): it goes elsewhere', () => {
+    expect(targetOf({ ...at('hutt'), holdsOut: new Set(['naboo']) })).toBe('coruscant');
+  });
   it('has nothing to pick on no border', () => {
     expect(targetOf({ ...at('empire'), border: [] })).toBeNull();
   });
@@ -130,6 +133,10 @@ describe('the liberator’s fronts and orders', () => {
     const rested = frontsFor({ owner, order: plan, liberator: 'rebel', busy: new Set([border[1]]), rest: { [border[0]]: 40 }, k: 10, lead: [] });
     expect(rested).not.toContain(border[1]);
     expect(rested).not.toContain(border[0]);
+    // (a last stand, which can't fall before the Climax, is worked only when there's nothing else)
+    const later = frontsFor({ owner, order: plan, liberator: 'rebel', busy: new Set(), rest: {}, k: 10, lead: [], later: new Set([border[0]]) });
+    expect(later).not.toContain(border[0]);
+    expect(frontsFor({ owner, order: plan, liberator: 'rebel', busy: new Set(border.slice(1)), rest: {}, k: 10, lead: [], later: new Set([border[0]]) })).toEqual([border[0]]);
     // (a rested front comes back when there's nothing else to work)
     const few = frontsFor({ owner, order: plan, liberator: 'rebel', busy: new Set(border.slice(1)), rest: { [border[0]]: 40 }, k: 10, lead: [] });
     expect(few).toEqual([border[0]]);
@@ -152,6 +159,7 @@ describe('the liberator’s fronts and orders', () => {
     expect(orderTarget({ ...c, rates: { coruscant: 0.5, endor: 8 } })).toBe('endor');
     expect(orderTarget({ ...c, rates: { coruscant: 8, endor: 8 } })).toBe('coruscant');
     expect(orderTarget({ ...c, rates: { coruscant: 8, endor: 8 }, previous: 'coruscant' })).toBe('endor');
+    expect(orderTarget({ ...c, rates: { coruscant: 8, endor: 8 }, holdsOut: new Set(['coruscant']) })).toBe('endor');
     expect(orderTarget({ ...c, border: [], rates: {} })).toBeNull();
   });
   it('orders the raider to take what it’s attacking, else hold its weakest system under threat', () => {

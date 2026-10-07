@@ -19,10 +19,10 @@ export const GCW = {
   raidEvery: 12 * 3600e3, // the Hutts', less often
   raidFor: 8 * 12 * 60e3,
   points: { objective: 3, kill: 0.1, turret: 0.5, win: 10, intercept: 1, ace: 2 }, // in hundredths of a system's control
-  rate: [-2, 12], // %/hour the liberator's other fleets take off a front's hold
-  majorRate: [-3, 6], // and a worthier system's, harder
-  attackRate: [30, 75], // %/hour an attack takes off a system's hold (it falls past 62.5)
-  raidRate: [20, 45], // and a Hutt raid
+  rate: [2, 11], // %/hour the liberator's other fleets take off a front's hold (drawn again every GCW.window)
+  majorRate: [1, 8], // and a worthier system's, harder
+  attackRate: [25, 62], // %/hour an attack takes off a system's hold (a whole one holds out below 62.5: an attack takes what's weakened, or with help)
+  raidRate: [12, 30], // and a Hutt raid
   hutts: 0.5, // what of a rate against Hutt space gets through (they buy whoever's going)
   supply: 0.5, // %/hour for each of the attacker's neighbours beyond the first, less each of the holder's
   areaBonus: 1, // %/hour for an area of the attacker's, whole, next to the system
