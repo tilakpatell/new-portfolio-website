@@ -70,6 +70,7 @@ With the venv's Python (`~/.venvs/voices/Scripts/python.exe`):
 ```
 npm run voices:lines                          # the lines with no recording (again after editing any)
 python scripts/voices/grab.py                 # each voice's reference; read cache/grab/report.md
+python scripts/voices/design.py               # the references of the voices with only a "design"
 python scripts/voices/generate.py --check     # the references, their transcripts and engines
 python scripts/voices/generate.py --bakeoff 6 # every engine on 6 lines a voice: which is best for whom
 python scripts/voices/generate.py             # make everything that's missing
@@ -80,6 +81,13 @@ python scripts/voices/generate.py             # make everything that's missing
 scripts cache what they've done, so a rerun picks up where one stopped.
 
 ## Getting a voice right
+
+- **A character with no voice to clone** (the site's own villagers, say):
+  give them `"design"` in their sources, a sentence on how they sound
+  (`"an elderly woman from a seaside village, warm and slow, a little
+  hoarse"`). `design.py` has Qwen3-TTS VoiceDesign say a few of their own
+  lines in that voice, keeps the take the judge hears best as their
+  reference, and grab.py leaves them be.
 
 - **The reference.** `cache/grab/report.md` shows what was chosen and the
   runners-up with their scores, and `cache/grab/listen/<who>/` has them to
