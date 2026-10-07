@@ -239,7 +239,7 @@ export async function create(canvas, ctx) {
   // the war's battle in this system, if it's being fought over (and the clipping
   // planes a broken flagship's halves are cut with)
   renderer.localClippingEnabled = true;
-  const war = reduced ? null : createWarFront(scene, { models, small, reduced, tier, emit: (e) => emit(e), onSolids: () => respace() });
+  const war = reduced ? null : createWarFront(scene, { models, small, reduced, tier, emit: (e) => emit(e), onSolids: () => respace(), allegiance: () => props.allegiance });
 
   // your guns
   const boltGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.6, 6).rotateX(Math.PI / 2);
