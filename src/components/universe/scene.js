@@ -3511,7 +3511,9 @@ export async function create(canvas, ctx) {
     if (state.jump) input = { throttle: 1, boost: true }; // (spooling up: straight on, flat out)
     else if (state.auto) {
       const od = state.interdicted ? 1 : (state.auto.od ?? 1);
-      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.auto.id === 'front' && front ? frontSpace() : undefined, od);
+      // (and the battle's hold on the drive, so it plans its stop for it: front.js holdAt, as it would be coming straight in)
+      const hold = front ? (x, y, z) => front.holdAt(x, y, z, null) : null;
+      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.auto.id === 'front' && front ? frontSpace() : undefined, od, hold);
       input = a.input;
       if (a.done) {
         const id = state.auto.id;
