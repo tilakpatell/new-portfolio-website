@@ -23,6 +23,15 @@ through `useVoiced` (src/lib/useVoiced.js); `voiceOf` in src/lib/voiced.js
 says who sounds like whom and who has no voice. A voice in
 `export-lines.mjs`'s lists with no reference yet just stays quiet.
 
+A world wires its people in by itself, with no change here: a
+`voicelines.js` beside its data exports `VOICELINES`, a list of
+`{ who, text }` with each line exactly as the world passes it to
+`useVoiced` or `sayVoiced`. `export-lines.mjs` reads every `voicelines.js`
+under `src/`, and `generate.py` makes the lines of every voice with a
+reference. The new voices' searches and quotes go in
+`sources/<world>.json`, in the same shape as `sources.json` (grab.py reads
+them all).
+
 ## How
 
 1. **References** (`grab.py`). For each voice it gathers candidates (the
@@ -93,10 +102,15 @@ scripts cache what they've done, so a rerun picks up where one stopped.
 ## From anywhere: a `voices` issue
 
 The desktop makes the lines; any other session (a cloud one, a phone) asks
-for them with a GitHub issue labelled **`voices`**. `runner.mjs` on the
-desktop polls every minute, makes every line the site says that has no
-recording yet, opens a pull request with the recordings and the manifest,
-comments on the issue and closes it. The body is optional:
+for them. `scripts/desktop/README.md` has the whole picture:
+
+```
+node scripts/desktop/ask.mjs voices citadel --only rick,morty --line "rick: Wubba lubba dub dub." --line "morty: Aw geez, Rick."
+```
+
+or Actions → *voices* → *Run workflow*, or a new issue from the *Voice
+lines* form. Each one is an issue labelled **`voices`**, and its body is
+optional:
 
 ```
 only: rick, morty            (just these speakers; else everyone with a voice)
@@ -104,20 +118,24 @@ rick: Wubba lubba dub dub.   (a line to make ahead of the code that will say it:
 morty: Aw geez, Rick.
 ```
 
-So a session adding lines to a world either merges its code to main and
-opens an empty `voices` issue, or lists the lines in the issue first and
-wires them once the PR lands (the id is the same either way:
-`lineId(who, text)` in src/lib/voiced.js). A speaker with no reference
-voice is reported back, not made: that needs the owner, with `grab.py`, or
-five to eleven seconds of them at `refs/<who>.wav` and the transcript
-beside it, plus the name in `export-lines.mjs`'s lists and `voiceOf`.
-A failure is commented and labelled `voices:failed`; fix the issue and
-remove the label to try again.
+The desktop's self-hosted runner makes every line the site says that has
+no recording yet, opens a pull request with the recordings and the
+manifest, comments on the issue and closes it. It waits for the GPU if a
+long run holds it.
 
-On the desktop the runner is kept running from the Startup folder
-(`%LOCALAPPDATA%\gen3d\voices-runner.cmd`, log in `voices-runner.log`)
-in its own checkout beside the repository (`<repo>-voices`), with the
-references and the takes cache in `%LOCALAPPDATA%\voices\` (`VOICES_REFS`,
-`VOICES_CACHE`; `common.py` reads them) and the TTS venv at
-`~/.venvs/voices` (`VOICES_PYTHON` for another). The gen3d runner shares
-the GPU with it.
+So a session adding lines to a world either merges its code to main and
+asks with no lines, or lists the lines first and wires them once the PR
+lands (the id is the same either way: `lineId(who, text)` in
+src/lib/voiced.js). A speaker with no reference voice is reported back, not
+made: that needs the owner, with `grab.py`, or five to eleven seconds of
+them at `refs/<who>.wav` and the transcript beside it, plus the name in
+`export-lines.mjs`'s lists and `voiceOf`. A failure is commented with the
+log's tail and labelled `voices:failed`: fix the issue, then remove the
+label to try again.
+
+On the desktop, the jobs run in their own checkout beside the repository
+(`<repo>-voices`). The references and the takes cache are in
+`%LOCALAPPDATA%\voices\` (`VOICES_REFS`, `VOICES_CACHE`), or the Claude
+app's boxed copy of it, which the runner finds too. The TTS venv is at
+`~/.venvs/voices` (`VOICES_PYTHON` for another). The gen3d jobs share the
+GPU, one job at a time.

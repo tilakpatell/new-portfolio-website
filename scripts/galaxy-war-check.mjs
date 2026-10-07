@@ -1,19 +1,24 @@
 /* global window */
-// A browser check of the Galactic Civil War in the galaxy (galaxy/gcw.js,
-// warfront.js, battles.js; the war table on the holotable). With the dev
-// server up (npx vite --port 5188):
-//   OUT=/tmp/shots node scripts/galaxy-war-check.mjs [system] [quality]
-// It finds the battle on now (the major order's, unless a system's named),
-// drops in there, checks the battle's at its planet and you're in it on the
-// Rebels' side, looks at it from a few places, takes its objectives down
-// with the battle's own hit() (as your shots would), checks the war's tally
-// counted it, and opens the war table: screenshots as it goes
-// (war-<n>-<what>.png).
+// A browser check of the galaxy's wars (galaxy/gcw.js, warfront.js,
+// battles.js; the war table on the holotable). With the dev server up (npx
+// vite --port 5188):
+//   OUT=/tmp/shots SIDE=empire KIND=blockade node scripts/galaxy-war-check.mjs [system] [quality]
+// It swears to SIDE (the Rebellion unless it's said; its war is the one
+// fought) through the page's dev hook, finds that war's battle on now (the
+// major order's, unless a system's named), drops in there (KIND: a battle of
+// that kind forced there instead, battles.js's BATTLE_KINDS), checks the
+// battle's at its planet and you're in it on your side's team, looks at it
+// from a few places, downs one of the other side's fighters and (attacking)
+// takes the objectives down with the battle's own hit() (as your shots
+// would), checks the war's tally counted it for your side, and opens the war
+// table with your oath on it: screenshots as it goes (war-<n>-<what>.png).
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 
 const out = process.env.OUT ?? '.';
 const quality = process.argv[3] ?? 'mid';
+const side = process.env.SIDE ?? 'rebel';
+const kind = process.env.KIND ?? null;
 const base = process.env.BASE ?? 'http://localhost:5188';
 const chrome = process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 mkdirSync(out, { recursive: true });
@@ -43,23 +48,32 @@ const snap = (what) => page.screenshot({ path: `${out}/war-${shot++}-${what}.png
 // which system: the one named, or the major order's
 await page.goto(`${base}/?quality=${quality}#/galaxy`, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof window.__galaxy === 'function' && Boolean(window.__galaxy().system), null, { timeout: 180000 });
-const table = await page.evaluate(async () => (await import('/src/components/galaxy/warState.js')).warNow());
-const sysId = process.argv[2] ?? table.major;
+await page.waitForFunction(() => Boolean(window.__galaxyOath), null, { timeout: 30000 });
+await page.evaluate((s) => window.__galaxyOath.swear(s), side);
+const war = await page.evaluate(() => window.__galaxyOath.get().war);
+const table = await page.evaluate(async (w) => (await import('/src/components/galaxy/warState.js')).warNow(Date.now(), w), war);
+const sysId = process.argv[2] || table.major;
 const row = table.systems.find((s) => s.id === sysId);
 console.log('war:', table.epoch, 'major', table.major, '·', sysId, row?.owner, row?.control, row?.battle?.id, row?.battle?.fighting ? 'fighting' : 'lull');
-check(Boolean(row?.battle), `there's a battle on at ${sysId}`);
+check(kind || Boolean(row?.battle), `there's a battle on at ${sysId} in ${war}`);
 
 await page.goto(`${base}/?quality=${quality}#/galaxy/${sysId}`, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction((id) => typeof window.__galaxy === 'function' && window.__galaxy().system === id, sysId, { timeout: 180000 });
 await page.waitForFunction(() => !window.__galaxy().jump, null, { timeout: 120000 }).catch(() => {});
-await page.waitForFunction(() => Boolean(window.__galaxy().war?.battle), null, { timeout: 60000 }).catch(() => {});
+await page.waitForFunction(() => Boolean(window.__galaxy().war?.battle), null, { timeout: kind ? 5000 : 60000 }).catch(() => {});
+if (kind) {
+  await page.evaluate(([s, k]) => window.__galaxyDebug.war.force(s, k), [side, kind]);
+  check((await page.evaluate(() => window.__galaxy().war?.laid?.kind)) === kind, `a battle of the kind asked for: ${kind}`);
+}
 await page.addStyleTag({ content: '.galaxy-panel, .comms { display: none !important; }' });
 const info = await page.evaluate(() => window.__galaxy().war);
 console.log('battle:', info?.laid?.name, JSON.stringify(info?.battle));
 check(Boolean(info?.battle), 'the battle is there when you drop in');
 check(info?.laid && Math.hypot(...info.laid.at) > 0, 'it’s fought off the planet');
+await page.waitForTimeout(500);
 const you = await page.evaluate(() => window.__galaxyDebug.war.battle?.you.team);
-check(you === 0, 'you’re in it on the Rebels’ side');
+const yours = await page.evaluate((s) => window.__galaxyDebug.war.on?.sides?.indexOf(s), side);
+check(you !== null && you === yours, `you’re in it on your side’s team (${side}: ${you})`);
 
 const pin = (fn, arg) =>
   page.evaluate(
@@ -101,6 +115,19 @@ await page.waitForTimeout(6000);
 await snap('dogfight');
 const lock = await page.evaluate(() => (window.__galaxyDebug.war.targets ?? []).length);
 check(lock > 0, 'its fighters and objectives are there to lock on to');
+// one of the other side's fighters down, for your side
+const before = await page.evaluate(() => window.__galaxy().war.mine);
+await page.evaluate(() => {
+  const w = window.__galaxyDebug.war;
+  const b = w.battle;
+  const f = b.fighters.find((x) => x.alive && x.team !== b.you.team && x.role !== 'bomber');
+  for (let i = 0; i < 40 && f?.alive; i++) w.hit({ x: f.pos.x, y: f.pos.y + 2, z: f.pos.z }, { x: f.pos.x, y: f.pos.y - 0.01, z: f.pos.z }, 5);
+});
+await page.waitForTimeout(1500);
+check((await page.evaluate(() => window.__galaxy().war.mine)) > before, 'a fighter down counts in the war');
+const keys = await page.evaluate(async () => (await import('/src/components/galaxy/warState.js')).warTally().keys());
+const code = await page.evaluate(async (s) => (await import('/src/components/galaxy/sides.js')).SIDES[s].code, side);
+check(keys.some((k) => k.startsWith(`${code}:`)), `and it's your side's (${code}: keys)`);
 
 // the objectives, from your guns
 const hitAll = (phase) =>
@@ -111,7 +138,7 @@ const hitAll = (phase) =>
     for (const s of flag.subs.filter((o) => o.phase === p)) for (let i = 0; i < 300 && s.alive; i++) w.hit({ x: s.pos.x, y: s.pos.y + 2, z: s.pos.z }, { x: s.pos.x, y: s.pos.y - 0.01, z: s.pos.z }, 3);
     return flag.subs.map((s) => s.alive);
   }, phase);
-const attacking = await page.evaluate(() => window.__galaxyDebug.war.battle.attacker === 0);
+const attacking = await page.evaluate(() => window.__galaxyDebug.war.battle.attacker === window.__galaxyDebug.war.battle.you.team);
 if (attacking) {
   await hitAll(1);
   await page.waitForTimeout(3000);
@@ -137,6 +164,10 @@ await page.waitForSelector('.holomap', { timeout: 20000 }).catch(() => {});
 await page.waitForTimeout(1500);
 await snap('war-table');
 check((await page.locator('.holomap-warcard, .holomap-order').count()) > 0, 'the holotable shows the war');
+const sworn = await page.locator('.galaxy-oath-sides button[aria-pressed="true"]').first().textContent().catch(() => '');
+console.log('sworn on the table:', sworn);
+check(/Sworn to/.test(sworn ?? ''), 'the holotable shows your oath');
+check((await page.locator('.galaxy-oath-wars button[aria-pressed="true"]').count()) === 1, 'and the war you fight in');
 console.log(errors.length ? `page errors:\n${errors.join('\n')}` : 'no page errors');
 await browser.close();
 process.exit(problems.length || errors.length ? 1 : 0);

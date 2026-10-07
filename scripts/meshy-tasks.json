@@ -1264,5 +1264,23 @@
   "sewerrat": {
     "image": "01a11428-cc43-71bc-9773-9b79b0f18e95",
     "model": "01a1142a-9f5a-746d-bfbb-b7deca715e00"
+  },
+  "frundles": {
+    "image": "01a114dc-b3a7-743f-b87a-1973a7fc5f69",
+    "model": "01a114dd-312b-73db-9cfc-2dc059dd1ccf"
+  },
+  "frundlesman": {
+    "image": "01a114dc-b3a3-729b-896c-6bd6dd467caa",
+    "model": "01a114dd-312b-70e4-a7d5-9bc796ebd5f9",
+    "rig": "01a114df-30e0-7483-97c5-02a7ee54096d",
+    "idle": "01a114df-7c67-73ae-9a0b-38cb6a3cde81"
+  },
+  "frundlesdog": {
+    "image": "01a114dc-b3b2-77f3-8335-8af4f540185a",
+    "model": "01a114e5-c7bb-73b8-9f60-83b753f0bb62"
+  },
+  "frundleshouse": {
+    "image": "01a114dc-b3a5-7174-9d62-4c062951674a",
+    "model": "01a114dd-3133-7047-8ea6-10c7fc18e41b"
   }
 }

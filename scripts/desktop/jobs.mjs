@@ -12,15 +12,28 @@
 //
 //   node scripts/<p>/runner.mjs --issue N      one job (the Actions workflow, on an issue or a dispatch)
 //   node scripts/<p>/runner.mjs --sweep        every open job (the hourly workflow; --once is the same)
+//   node scripts/<p>/runner.mjs --auto         --issue $JOB_ISSUE when it's set, else --sweep (the workflows)
 //   node scripts/<p>/runner.mjs --watch [60]   sweep every 60 s (by hand; the workflows are the usual way)
 //   node scripts/<p>/runner.mjs --pending      how many jobs are waiting (prints the number)
 //   node scripts/<p>/runner.mjs --enqueue      an issue from the workflow's inputs (INPUT_* in the environment)
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { HOME, gh, issue as getIssue, keepAwake, labelled, quietly, ready, repoName, runUrl, summary, tail, waitForGpu } from './lib.mjs';
 
 export const labels = (p) => ({ label: p.label, running: `${p.label}:running`, failed: `${p.label}:failed`, waiting: `${p.label}:waiting` });
+
+// The labels a pipeline sets, made on the repository if they aren't there
+// (adding a missing label fails), once per run.
+const LOOK = { running: ['FBCA04', 'the runner is making it'], failed: ['D93F0B', 'the runner could not make it; fix and remove this label'], waiting: ['C5DEF5', 'waiting for the GPU; the hourly sweep tries again'] };
+export function ensureLabels(p) {
+  const have = quietly(() => JSON.parse(gh('label', 'list', '--search', p.label, '--limit', '50', '--json', 'name')).map((l) => l.name), 'label list');
+  if (!have) return;
+  for (const [k, name] of Object.entries(labels(p))) {
+    if (k === 'label' || have.includes(name)) continue;
+    quietly(() => gh('label', 'create', name, '--color', LOOK[k][0], '--description', LOOK[k][1], '--force'), `label create ${name}`);
+  }
+}
 
 // One runner per pipeline at a time on this machine: a lock file with its
 // pid. A "running" label with no live lock behind it is a job that was cut
@@ -45,6 +58,18 @@ export function lock(name) {
   return { release };
 }
 
+// Someone else on this machine is working on the pipeline's own files (a
+// session running generate.py by hand on the same references and cache):
+// ~/.desktop-jobs/<name>.lock, holding that process's pid, or empty (then
+// it holds for a day from when it was written). → why, or null
+export function held(name, home = HOME) {
+  const file = join(home, `${name}.lock`);
+  if (!existsSync(file)) return null;
+  const pid = Number(readFileSync(file, 'utf8').trim());
+  if (pid) return alive(pid) ? `${file} is held by process ${pid}` : null;
+  return Date.now() - statSync(file).mtimeMs < 24 * 3600000 ? `${file} is there (written ${new Date(statSync(file).mtimeMs).toLocaleString()})` : null;
+}
+
 const comment = (n, body) => quietly(() => gh('issue', 'comment', String(n), '--body', body), `comment on #${n}`);
 const edit = (n, ...args) => quietly(() => gh('issue', 'edit', String(n), ...args), `label #${n}`);
 const run = () => (runUrl() ? ` ([the run](${runUrl()}))` : '');
@@ -61,7 +86,8 @@ export function unstick(p, issues, log = console.log) {
 }
 
 // One issue made, start to end. → 'made' | 'nothing' | 'failed' | 'deferred' | 'skipped'
-export async function take(p, i, root, log = console.log) {
+// `wait`: minutes to wait for the GPU (DESKTOP_GPU_WAIT_MINUTES, else 45).
+export async function take(p, i, root, log = console.log, { wait = Number(process.env.DESKTOP_GPU_WAIT_MINUTES ?? p.gpuWait ?? 45) } = {}) {
   const l = labels(p);
   const r = ready(i, l);
   if (!r.ok) {
@@ -79,13 +105,15 @@ export async function take(p, i, root, log = console.log) {
     log(`#${i.number}: can't read it: ${e.message}`);
     return 'failed';
   }
-  if (!(await waitForGpu(p.vram, { minutes: p.gpuWait ?? 45, log }))) {
+  const hold = held(p.name);
+  if (hold || !(await waitForGpu(p.vram, { minutes: wait, log }))) {
+    const why = hold ? `the ${p.name} files are in use on the desktop (${hold})` : 'the GPU is busy';
     if (!i.labels.includes(l.waiting)) {
       edit(i.number, '--add-label', l.waiting);
-      comment(i.number, `Waiting for the GPU (something else on the desktop is using it); the hourly sweep tries again${run()}.`);
+      comment(i.number, `Waiting: ${why}. The hourly sweep tries again${run()}.`);
     }
-    log(`#${i.number}: deferred, the GPU is busy`);
-    summary(`- #${i.number} ${i.title}: deferred, the GPU is busy`);
+    log(`#${i.number}: deferred, ${why}`);
+    summary(`- #${i.number} ${i.title}: deferred, ${why}`);
     return 'deferred';
   }
   edit(i.number, '--add-label', l.running, ...(i.labels.includes(l.waiting) ? ['--remove-label', l.waiting] : []));
@@ -119,12 +147,19 @@ export async function take(p, i, root, log = console.log) {
 
 export const pending = (p) => labelled(p.label).filter((i) => ready(i, labels(p)).ok);
 
-// Every open job, one after another.
+// Every open job, one after another. A sweep waits less for the GPU than a
+// job asked for just now (it comes again in an hour), and once one job has
+// had to give up on it the rest don't wait at all.
 export async function sweep(p, root, log = console.log) {
   const all = labelled(p.label);
   unstick(p, all, log);
   const results = [];
-  for (const i of all) results.push(await take(p, i, root, log));
+  let wait = Math.min(15, Number(process.env.DESKTOP_GPU_WAIT_MINUTES ?? 15));
+  for (const i of all) {
+    const r = await take(p, i, root, log, { wait });
+    if (r === 'deferred') wait = 0;
+    results.push(r);
+  }
   return results;
 }
 
@@ -160,7 +195,10 @@ export async function cli(p, argv = process.argv.slice(2), { root: rootFor } = {
     if (has('--issue')) process.exitCode = 0;
     return;
   }
+  ensureLabels(p);
   const root = rootFor();
+  // --auto: the issue the workflow was started for (JOB_ISSUE), else a sweep
+  if (has('--auto') && process.env.JOB_ISSUE) argv = [...argv, '--issue', process.env.JOB_ISSUE];
   if (has('--issue')) {
     const n = Number(val('--issue'));
     if (!n) throw new Error('--issue N');

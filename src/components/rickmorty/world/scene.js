@@ -109,6 +109,7 @@ export const LAZY = {
   meeseeksgolf: () => import('./dimensions/meeseeks').then((m) => m.buildMeeseeks),
   vat: () => import('./dimensions/vat').then((m) => m.buildVat),
   dim35c: () => import('./dimensions/dim35c').then((m) => m.buildDim35c),
+  frundles: () => import('./dimensions/frundles').then((m) => m.buildFrundles),
 };
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's

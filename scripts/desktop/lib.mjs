@@ -42,7 +42,10 @@ export function localDir(name, base = LOCAL) {
   return real;
 }
 
-export const sh = (cmd, args, opts = {}) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], maxBuffer: 64 * 1024 * 1024, ...opts }).trim();
+// in an Actions run, gh acts on the run's repository whatever the directory
+if (process.env.GITHUB_REPOSITORY && !process.env.GH_REPO) process.env.GH_REPO = process.env.GITHUB_REPOSITORY;
+
+export const sh = (cmd, args, opts = {}) => String(execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], maxBuffer: 64 * 1024 * 1024, ...opts }) ?? '').trim();
 export const gh = (...args) => sh('gh', args);
 export const git = (root, ...args) => sh('git', ['-C', root, ...args]);
 
@@ -78,16 +81,18 @@ export const slug = (s) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-// An issue form's body ("### what\n\nan X-wing\n\n### faces\n\n_No response_")
-// as the plain "key: value" lines the runners read; any other body as it is.
+// An issue form's body ("### What it is\n\nan X-wing\n\n### Faces\n\n_No response_")
+// as the plain "key: value" lines the runners read, each keyed by its
+// heading's first word; anything before the first heading kept as it is.
 // A multi-line answer whose lines are themselves "key: value" (voices' lines)
 // stays as those lines.
 export function normaliseForm(body = '') {
   if (!/^###\s+\S/m.test(body)) return body;
-  const out = [];
-  for (const section of body.split(/^###\s+/m).slice(1)) {
+  const [before, ...sections] = body.split(/^###\s+/m);
+  const out = before.trim() ? [before.trim()] : [];
+  for (const section of sections) {
     const [head, ...rest] = section.split(/\r?\n/);
-    const key = head.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const key = head.trim().toLowerCase().match(/[a-z0-9]+/)?.[0] ?? '';
     const value = rest.join('\n').trim();
     if (!value || value === '_No response_') continue;
     const lines = value.split(/\r?\n/).filter((l) => l.trim());
@@ -293,8 +298,10 @@ while (Get-Process -Id $parent -ErrorAction SilentlyContinue) { Start-Sleep -Sec
   }
 }
 
-// The repository proper (this may be one of its worktrees).
-export const mainRepo = () => resolve(git(REPO, 'rev-parse', '--path-format=absolute', '--git-common-dir'), '..');
+// The repository proper (this may be one of its worktrees). The Actions
+// runner's checkout is a sparse, shallow clone of its own, so the runner
+// names the real one in DESKTOP_JOBS_REPO (setup-runner.ps1 sets it).
+export const mainRepo = () => (process.env.DESKTOP_JOBS_REPO ? resolve(process.env.DESKTOP_JOBS_REPO) : resolve(git(REPO, 'rev-parse', '--path-format=absolute', '--git-common-dir'), '..'));
 
 // A pipeline's own checkout beside the repository (<repo>-gen3d,
 // <repo>-voices), made once, where its jobs are made: its branches and its
@@ -303,8 +310,9 @@ export function workspace(suffix, root) {
   root = resolve(root ?? `${mainRepo()}-${suffix}`);
   if (root === REPO) return root;
   if (!existsSync(join(root, '.git'))) {
-    git(REPO, 'fetch', '-q', 'origin', 'main');
-    git(REPO, 'worktree', 'add', '--detach', root, 'origin/main');
+    const base = mainRepo();
+    git(base, 'fetch', '-q', 'origin', 'main');
+    git(base, 'worktree', 'add', '--detach', root, 'origin/main');
   }
   return root;
 }

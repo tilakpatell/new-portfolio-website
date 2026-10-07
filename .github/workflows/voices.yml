@@ -1,0 +1,101 @@
+name: voices
+
+# Voice lines made on the owner's desktop GPU (scripts/desktop/README.md,
+# scripts/voices/README.md): every line the site says that has no recording
+# yet, and any asked for ahead of the code that will say them. Ask from the
+# Actions tab (Run workflow), from a terminal
+# (`gh workflow run voices.yml -f name=citadel -f lines="rick: Wubba lubba dub dub. | morty: Aw geez."`),
+# or with an issue labelled voices (the "Voice lines" issue form). The
+# request is an issue either way, so it keeps while the desktop is off.
+
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch' && format('voices: {0}', inputs.name || 'unmade lines')
+  || github.event_name == 'issues' && format('voices #{0}: {1}', github.event.issue.number, github.event.issue.title)
+  || 'voices: sweep' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'A short name for the batch (the branch: voices/NAME)'
+        required: false
+        type: string
+      only:
+        description: 'Just these speakers, comma-separated (empty: everyone with a voice)'
+        required: false
+        type: string
+      lines:
+        description: 'Lines to make ahead, as who: text, set apart by " | " (rick: Wubba lubba dub dub. | morty: Aw geez.)'
+        required: false
+        type: string
+  issues:
+    types: [opened, reopened, labeled, unlabeled]
+  schedule:
+    - cron: '53 * * * *'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  queue:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      number: ${{ steps.issue.outputs.number }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - id: issue
+        run: node scripts/voices/runner.mjs --enqueue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_NAME: ${{ inputs.name }}
+          INPUT_ONLY: ${{ inputs.only }}
+          INPUT_LINES: ${{ inputs.lines }}
+
+  check:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      pending: ${{ steps.count.outputs.pending }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - id: count
+        run: echo "pending=$(node scripts/voices/runner.mjs --pending)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  make:
+    needs: [queue, check]
+    if: >-
+      always() && !cancelled() && (
+        (github.event_name == 'workflow_dispatch' && needs.queue.result == 'success') ||
+        (github.event_name == 'schedule' && needs.check.outputs.pending != '0' && needs.check.outputs.pending != '') ||
+        (github.event_name == 'issues' && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) && (
+          ((github.event.action == 'opened' || github.event.action == 'reopened') && contains(github.event.issue.labels.*.name, 'voices')) ||
+          (github.event.action == 'labeled' && github.event.label.name == 'voices') ||
+          (github.event.action == 'unlabeled' && github.event.label.name == 'voices:failed' && contains(github.event.issue.labels.*.name, 'voices'))
+        ))
+      )
+    runs-on: [self-hosted, gpu]
+    timeout-minutes: 360
+    concurrency:
+      group: voices-${{ needs.queue.outputs.number || github.event.issue.number || 'sweep' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - name: Make the lines
+        shell: powershell
+        run: node scripts/voices/runner.mjs --auto
+        env:
+          JOB_ISSUE: ${{ needs.queue.outputs.number || github.event.issue.number }}
+          GCM_INTERACTIVE: never
+          GIT_TERMINAL_PROMPT: '0'
