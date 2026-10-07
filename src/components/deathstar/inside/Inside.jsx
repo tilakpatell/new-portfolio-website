@@ -183,7 +183,8 @@ export default function Inside({ mode = 'page', onExit }) {
           </div>
         )}
 
-        {showing && ui.mode !== 'loading' && (
+        {/* (up from the first moment, over the docking cover, so the tour's marks are there whenever it comes) */}
+        {status !== 'failed' && status !== 'lost' && (
           <Hud
             ui={ui}
             hud={hud}

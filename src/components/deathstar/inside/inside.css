@@ -200,10 +200,11 @@
 
 /* ── covers: loading and failure ── */
 
+/* (under the HUD, whose objective and map marks stay up while it docks) */
 .ds-cover {
   position: absolute;
   inset: 0;
-  z-index: 7;
+  z-index: 2;
   display: grid;
   place-content: center;
   justify-items: center;

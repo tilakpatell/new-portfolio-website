@@ -63,8 +63,14 @@ export default function Hud({ ui, hud, say, touch, playing, onMap, onPause, onCh
   const sec = security(hud?.alert);
   const line = playing ? promptLine(ui.prompt, { touch }) : null;
   const hp = Math.round(hud?.hp ?? 100);
-  const objective = ui.mode === 'start' ? 'Choose a station and a side, then come aboard.' : ui.objective || (ui.play === 'roam' ? 'Free roam: walk the station as you like.' : '');
+  const objective =
+    ui.mode === 'start'
+      ? 'Choose a station and a side, then come aboard.'
+      : ui.mode === 'loading'
+        ? 'Coming aboard.'
+        : ui.objective || (ui.play === 'roam' ? 'Free roam: walk the station as you like.' : '');
   const talk = playing ? ui.talk : null;
+  const aboard = playing || ui.mode === 'pause'; // (in a game, walking or not)
   const vitals = playing && hud && (
     <section className="ds-panel ds-vitals" aria-label="Health and gun">
       <Bar label="Health" value={hp} of={100} red={hp <= LOW} segments={10} readout={<span className="ds-num">{hp}</span>} />
@@ -72,13 +78,13 @@ export default function Hud({ ui, hud, say, touch, playing, onMap, onPause, onCh
     </section>
   );
   return (
-    <div className="ds-hud" data-touch={touch || undefined} data-start={ui.mode === 'start' || undefined}>
+    <div className="ds-hud" data-touch={touch || undefined} data-start={ui.mode === 'start' || ui.mode === 'loading' || undefined}>
       <div className="ds-top">
         <div className="ds-top-left">
           <section className="ds-panel ds-objective" data-tour="ds-objective" aria-label="Objective">
             <p className="ds-kicker">
               Objective
-              {ui.mode !== 'start' && <span className="ds-tag">{ui.play === 'roam' ? 'Free roam' : 'Story'}</span>}
+              {aboard && <span className="ds-tag">{ui.play === 'roam' ? 'Free roam' : 'Story'}</span>}
               <span className="aurebesh ds-aurebesh" aria-hidden="true">
                 Orders
               </span>
@@ -100,7 +106,7 @@ export default function Hud({ ui, hud, say, touch, playing, onMap, onPause, onCh
               </p>
             </section>
           )}
-          <MiniMap station={station} seen={ui.map?.seen ?? []} here={ui.mode === 'start' ? null : hud?.room} at={ui.mode === 'start' ? null : hud?.at} onOpen={onMap} />
+          <MiniMap station={station} seen={ui.map?.seen ?? []} here={aboard ? hud?.room : null} at={aboard ? hud?.at : null} onOpen={onMap} />
         </div>
         {playing && (
           <button type="button" className="ds-pause-btn" aria-label="Pause" onClick={onPause}>
