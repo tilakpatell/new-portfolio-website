@@ -24,8 +24,11 @@ export const offerHere = (pathname, seen) => seen == null && (isMapPath(pathname
 
 // The stops whose target is on this screen (`has(name)`), and the cards that
 // point at nothing. A phone folds the nav's links, search and colours into
-// the menu, so their stops drop out and the menu's comes in.
-export const resolveSteps = (steps, has) => steps.filter((s) => !s.at || has(s.at));
+// the menu, so their stops drop out and the menu's comes in. A world's
+// basics (`keep`) say everything at every stop, so one whose target isn't
+// showing stays, as a card in the middle.
+export const resolveSteps = (steps, has, keep = false) =>
+  keep ? steps.map((s) => (!s.at || has(s.at) ? s : { ...s, at: undefined })) : steps.filter((s) => !s.at || has(s.at));
 
 // The box lit round a target: `pad` off it all round, kept 2px inside the
 // window (a phone's sheet of ships runs on past the bottom), or null when
