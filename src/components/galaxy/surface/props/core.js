@@ -910,6 +910,8 @@ export const PROPS = {
 
   // a great statue on its pedestal (the Senate's founders, the Temple's
   // Jedi of old), the pedestal's column down to the city, `drop` metres
+  // (style 'jedi': the Processional Way's, the audit lane's model where it
+  // loads; this one where it won't)
   statue(k, { h = 22, drop = 0 } = {}) {
     const S = '#c4b89c';
     const parts = [

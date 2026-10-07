@@ -2301,20 +2301,6 @@
       "galaxy"
     ]
   },
-  "surface-fortress": {
-    "title": "Vader's Castle",
-    "author": "art16c",
-    "authorUrl": "https://sketchfab.com/art16c",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/vaders-castle-dccd24bde1c0475eab1f1674c108d42a",
-    "where": "galaxy-surface",
-    "as": "Vader's castle",
-    "file": "/models/galaxy/surface/fortress.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-geonosian": {
     "title": "Geonosian Zombie",
     "author": "StrangeUsernames1",
@@ -3354,20 +3340,6 @@
     "where": "galaxy-surface",
     "as": "the Tatooine domed houses",
     "file": "/models/galaxy/surface/tathouse2.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-tipoca": {
-    "title": "Kamino Platform Simple 1",
-    "author": "svemun",
-    "authorUrl": "https://sketchfab.com/svemun",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/kamino-platform-simple-1-9c569d83df584c06b1c6ea1b496a4704",
-    "where": "galaxy-surface",
-    "as": "Tipoca City",
-    "file": "/models/galaxy/surface/tipoca.glb",
     "also": [
       "galaxy"
     ]

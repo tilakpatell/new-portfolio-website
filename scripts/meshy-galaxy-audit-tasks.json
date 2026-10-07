@@ -41,7 +41,7 @@
     ],
     "model": "01a11896-415b-75d9-8de1-1471eaf24319"
   },
-  "cantina": {
+  "moscantina": {
     "lift": [
       "01a11894-617a-77e4-8a43-94c7c69ac2ce"
     ],
@@ -74,31 +74,37 @@
   "commandpost": {
     "lift": [
       "01a11899-97f3-7597-8f4e-5a99c7909bb1"
-    ]
+    ],
+    "model": "01a1189b-6ca7-75ae-a8ef-608a6bc161c6"
   },
   "cloudcity": {
     "lift": [
       "01a11899-f514-725d-8eb5-141c794069fc"
-    ]
+    ],
+    "model": "01a1189b-7091-76d8-ae63-868ff982d18c"
   },
   "nevarrodome": {
     "lift": [
       "01a1189a-3dd0-779b-9830-7e59ccfe2c59"
-    ]
+    ],
+    "model": "01a1189b-73f7-7751-8ded-4cffacf7ec8b"
   },
   "lookout": {
     "lift": [
       "01a1189a-9cfd-70ce-9750-f309ae744829"
-    ]
+    ],
+    "model": "01a1189b-7730-70f2-9ea5-648442391bb4"
   },
   "stilthut": {
     "lift": [
       "01a1189a-d0f4-7174-b122-c56d1a4bf65a"
-    ]
+    ],
+    "model": "01a1189b-79d6-7630-9b89-af15e589b8ff"
   },
   "benhut": {
     "lift": [
       "01a1189b-0500-7763-8abe-8140dad86860"
-    ]
+    ],
+    "model": "01a1189b-7d29-7680-8bd9-f440a8fa41aa"
   }
 }

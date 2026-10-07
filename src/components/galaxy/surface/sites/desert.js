@@ -122,7 +122,7 @@ export const SITES = {
           rv: [['walt', 'A cantina full of smugglers and bounty hunters.'], ['jesse', 'So… basically Albuquerque.']],
         },
         things: [
-          { kind: 'cantina', at: [0, 0], yaw: 0.3 },
+          { kind: 'moscantina', at: [0, 0], yaw: 0.3 },
           { kind: 'dockingbay', at: [-34, 22], yaw: 2.2 },
           { kind: 'adobe', at: [26, 16], opts: { r: 4.5 } },
           { kind: 'adobe', at: [34, -10], opts: { r: 3.6 } },
@@ -252,7 +252,8 @@ export const SITES = {
           cruiser: [['rick', 'A slug with a palace, Morty. That’s the dream.'], ['morty', 'Th-there’s a monster in the basement, Rick! Everybody knows that!']],
         },
         things: [
-          { kind: 'palace', at: [0, 0] },
+          // (the keep's drum front just behind the gate)
+          { kind: 'palace', at: [3.5, -9] },
           // (the gate in front of the keep)
           { kind: 'palacegate', at: [0, 22] },
         ],
@@ -372,8 +373,8 @@ export const SITES = {
         id: 'cantina',
         name: 'the cantina',
         music: 'cantina',
-        door: { at: from(CANTINA, [0, 9.9]), r: 2.6, prompt: 'Go into the cantina' },
-        back: from(CANTINA, [0, 12.5]),
+        door: { at: from(CANTINA, [2.5, 9.9]), r: 2.6, prompt: 'Go into the cantina' },
+        back: from(CANTINA, [2.5, 12.5]),
         inside: {
           build: 'cantinainside',
           spawn: [0, 14.6],

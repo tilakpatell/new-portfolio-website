@@ -19,9 +19,6 @@ export const MODELS = {
   // Tatooine: the Lars homestead's domed hut, its arched door and the
   // machinery against its walls (from a still of it at sunset)
   homestead: { made: 'meshy', as: 'the Lars homestead', metres: 9, along: 'x', detail: 'adobe' },
-  // Tatooine: Jabba's palace, the keep, the watchtower and the rock it
-  // stands on (the owner's model, retextured; its gate is built)
-  palace: { made: 'meshy', as: 'Jabba’s palace', metres: 115, along: 'x', lod: true, detail: 'adobe', solids: 'built' },
   // Naboo: Theed's domed halls (from a concept image of one, which the
   // owner chose); its towers stay built
   theed: { made: 'meshy', as: "Theed's domed halls", metres: 35, along: 'x', hero: true, lod: true, styles: ['hall', 'rotunda'], detail: 'stone' },
@@ -34,7 +31,7 @@ export const MODELS = {
   ewokhut: { made: 'meshy', as: 'the Ewok huts', metres: 4, along: 'x' },
   // Naboo: Theed's royal palace on the cliff (its courtyard stays)
   theedpalace: { made: 'meshy', lod: true, as: "Theed's royal palace", metres: 132, along: 'x', hero: true, solids: 'built' },
-  // Kamino: a dome of Tipoca City on its stilts (its towers stay the Sketchfab one)
+  // Kamino: a dome of Tipoca City on its stilts (its towers are the audit lane's)
   tipocadome: { made: 'meshy', lod: true, as: "Tipoca City's domes", metres: 44, along: 'x', hero: true },
   // Mustafar: the mining facility (its door and podium stay)
   mining: { made: 'meshy', lod: true, as: 'the Mustafar mining facility', metres: 120, along: 'x', hero: true, solids: 'built' },

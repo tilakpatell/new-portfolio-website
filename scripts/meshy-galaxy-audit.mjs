@@ -142,7 +142,8 @@ export const BUILDINGS = {
   // with rounded shoulders, a deep round-arched entrance, a lower left wing
   // with its own doorway, a vent hood on the ledge and a mast. Outlaws'
   // render of the set shows the whole exterior.
-  cantina: {
+  // (made as its own kind, moscantina: Nevarro's town keeps the old cantina)
+  moscantina: {
     ref: 'File:ChalmunsCantina-OutlawsLocations.jpg',
     crop: [0.47,0.3,0.18,0.25],
     lift: 'the domed desert tavern: one large low dome of sand-coloured plaster rising behind a tall flat-topped front wall with rounded shoulders; right of the middle of the front a deep rounded-arch entrance recess with a dark doorway, a plain blank sign plate over the door and a small round window above it; a lower flat-topped wing to the left with its own small doorway; a boxy slatted vent hood on the roof ledge and a thin metal mast on top of the dome; sand-worn tan plaster with streaks, in plain midday daylight (not the dusty haze), without the people, the droid, the pole and the machinery in the foreground and the buildings at either side',

@@ -13,8 +13,6 @@ export const MODELS = {
   // the Petranaki arena on Geonosis
   // (its own map is 256 px over 150 m: the red rock scan carries it up close)
   arena: { uid: '797d475ee192467399c0ee6ee15b41ed', lod: true, hero: true, as: 'the Geonosian arena', metres: 150, along: 'max', yaw: 0, up: 'y', tris: 60000, tex: 2048, maps: 1024, drop: /chariot|Visor|Meathook|setka|WorldGrid|lambert1/, detail: 'redrock', detailLook: { strength: 0.5, normal: 0.9 } },
-  // Tipoca City on Kamino
-  tipoca: { uid: '9c569d83df584c06b1c6ea1b496a4704', as: 'Tipoca City', metres: 40, along: 'max', yaw: 0, up: 'y', tris: 35000, tex: 1024 },
   // a Coruscant airspeeder, nose to +z
   airspeeder: { uid: '7766ca8e7bd047f5ad4bdb86d11ec6d4', as: 'the airspeeders', metres: 6, along: 'z', yaw: 0, up: 'y', tris: 16000, tex: 1024 },
   droideka: { uid: 'f3688d384b2042b6a8fc3360f64b9a48', as: 'the droidekas', metres: 1.8, yaw: Math.PI, up: 'y', tris: 8000, tex: 512 },
