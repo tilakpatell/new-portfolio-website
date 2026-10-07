@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Heroes: UAL vs procedural</title>
+    <title>Heroes on UAL</title>
     <!--
       A spike: the galaxy's heroes (Luke, Han, Boba Fett) on Quaternius's
       Universal Animation Library clips, retargeted onto the Meshy rig
@@ -18,7 +18,7 @@
         UAL raw   the UAL clip alone, the weapon in the hand as gripped (no gunplay posing)
       and, far left, UAL's own mannequin on the clip, to judge the retarget by.
       Through the dev server (npx vite):
-        /scripts/preview/heroes.html                 ?state=carry  weapon down (Idle_Loop)
+        /scripts/preview/heroes-ual.html                 ?state=carry  weapon down (Idle_Loop)
         …?state=aim                                  blaster up / saber lit (Pistol_Idle_Loop, Sword_Idle)
         …?state=swing&k=0.4                          Luke's stroke, k through it (Sword_Attack)
         …&clip=Idle_Loop                             the same UAL clip for everyone
@@ -62,29 +62,23 @@
     <div id="labels"></div>
     <div id="status">loading…</div>
     <script type="module">
-      import * as THREE from "three";
-      import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-      import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
-      import { loadPartyFigure } from "/src/components/universe/footScene.js";
-      import { METRE } from "/src/components/universe/foot.js";
-      import { createGunplay } from "/src/components/universe/gunplay.js";
-      import { createSaber } from "/src/components/galaxy/surface/saber.js";
-      import { heroSpec, readHero } from "/src/components/galaxy/heroes.js";
-      import { retarget } from "/src/components/rickmorty/portal/clips.js";
-      import { gltfLoader } from "/src/lib/three/gltf.js";
-      import {
-        keepRest,
-        prepareUal,
-        retargetUal,
-        toRest,
-        ualRig,
-      } from "./ualRetarget.js";
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+      import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
+      import { loadPartyFigure } from '/src/components/universe/footScene.js';
+      import { METRE } from '/src/components/universe/foot.js';
+      import { createGunplay } from '/src/components/universe/gunplay.js';
+      import { createSaber } from '/src/components/galaxy/surface/saber.js';
+      import { heroSpec, readHero } from '/src/components/galaxy/heroes.js';
+      import { retarget } from '/src/components/rickmorty/portal/clips.js';
+      import { gltfLoader } from '/src/lib/three/gltf.js';
+      import { keepRest, prepareUal, retargetUal, toRest, ualRig } from './ualRetarget.js';
 
       const q = new URLSearchParams(location.search);
       const num = (k, d) => Number(q.get(k) ?? d);
-      const only = q.get("only")?.split(",");
-      const state = q.get("state") ?? "carry";
-      const status = document.getElementById("status");
+      const only = q.get('only')?.split(',');
+      const state = q.get('state') ?? 'carry';
+      const status = document.getElementById('status');
       const V = THREE.Vector3;
 
       const renderer = new THREE.WebGLRenderer({
@@ -97,49 +91,39 @@
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       document.body.prepend(renderer.domElement);
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color("#20242c");
-      const lights = [
-        new THREE.HemisphereLight("#dfe8ff", "#4a3f33", 1.4),
-        new THREE.DirectionalLight("#fff4e0", 2.6),
-      ];
+      scene.background = new THREE.Color('#20242c');
+      const lights = [new THREE.HemisphereLight('#dfe8ff', '#4a3f33', 1.4), new THREE.DirectionalLight('#fff4e0', 2.6)];
       lights[1].position.set(-4, 8, 6);
       scene.add(...lights);
 
       // UAL, once
       const timing = { ualLoadMs: 0, retarget: [] };
       let t0 = performance.now();
-      const ualGltf = await new GLTFLoader().loadAsync(
-        "/scripts/preview/.ual/ual.glb",
-      );
+      const ualGltf = await new GLTFLoader().loadAsync('/scripts/preview/.ual/ual.glb');
       timing.ualLoadMs = Math.round(performance.now() - t0);
       const ual = keepRest(ualRig(ualGltf));
       // ?bake=luke: every clip baked once, on that figure's rest, and played on everyone the way Rick's are (clips.js retarget: the turns as they are, the hips' height scaled)
-      const bakeOn = q.get("bake");
-      const bakeModel = bakeOn
-        ? (await gltfLoader().loadAsync(`/models/galaxy/crew/${bakeOn}.glb`))
-            .scene
-        : null;
+      const bakeOn = q.get('bake');
+      const bakeModel = bakeOn ? (await gltfLoader().loadAsync(`/models/galaxy/crew/${bakeOn}.glb`)).scene : null;
       const baked = new Map();
 
       // which UAL clip each hero's body plays, by state
       const CLIP = {
-        carry: { luke: "Idle_Loop", han: "Idle_Loop", bobafett: "Idle_Loop" },
+        carry: { luke: 'Idle_Loop', han: 'Idle_Loop', bobafett: 'Idle_Loop' },
         aim: {
-          luke: "Sword_Idle",
-          han: "Pistol_Idle_Loop",
-          bobafett: "Pistol_Idle_Loop",
+          luke: 'Sword_Idle',
+          han: 'Pistol_Idle_Loop',
+          bobafett: 'Pistol_Idle_Loop',
         },
         swing: {
-          luke: "Sword_Attack",
-          han: "Pistol_Shoot",
-          bobafett: "Pistol_Shoot",
+          luke: 'Sword_Attack',
+          han: 'Pistol_Shoot',
+          bobafett: 'Pistol_Shoot',
         },
       };
-      const clipFor = (id) => q.get("clip") ?? CLIP[state]?.[id] ?? "Idle_Loop";
+      const clipFor = (id) => q.get('clip') ?? CLIP[state]?.[id] ?? 'Idle_Loop';
 
-      const heroes = ["luke", "han", "bobafett"].filter(
-        (id) => !only || only.includes(id),
-      );
+      const heroes = ['luke', 'han', 'bobafett'].filter((id) => !only || only.includes(id));
       const placed = [];
       let x = 0;
       const STEP = 1.15;
@@ -158,8 +142,8 @@
         const a = mixer.clipAction(ual.clips[clipFor(heroes[0])]);
         a.play();
         placed.push({
-          id: "ual",
-          mode: "mannequin",
+          id: 'ual',
+          mode: 'mannequin',
           holder,
           at: x,
           clip: clipFor(heroes[0]),
@@ -182,7 +166,7 @@
         holder.updateMatrixWorld(true);
         const clip = clipFor(id);
         // the UAL clip in place of Rick's idle (retargeted at rest, before any pose)
-        if (mode !== "now") {
+        if (mode !== 'now') {
           // (the figure back at its rest first: the mixer's stopped actions hand their bones back as they were; Rick's idle may have posed it already)
           fig.mixer.stopAllAction();
           const s = performance.now();
@@ -199,11 +183,7 @@
               );
             }
             const b = baked.get(clip);
-            c = retarget(
-              b,
-              fig.model.getObjectByName("Hips").position.y,
-              b.userData.hips,
-            );
+            c = retarget(b, fig.model.getObjectByName('Hips').position.y, b.userData.hips);
           } else {
             const prep = prepareUal(ual, fig.model);
             (window.__preps ??= []).push({
@@ -212,9 +192,7 @@
               face: prep.face.toArray().map((v) => +v.toFixed(3)),
               hips: prep.align.Hips.toArray().map((v) => +v.toFixed(3)),
               hipsRest: prep.tRest.Hips.q.toArray().map((v) => +v.toFixed(3)),
-              sHips: prep.sRest["DEF-hips"].q
-                .toArray()
-                .map((v) => +v.toFixed(3)),
+              sHips: prep.sRest['DEF-hips'].q.toArray().map((v) => +v.toFixed(3)),
             });
             c = retargetUal(ual, ual.clips[clip], fig.model, { prep });
           }
@@ -223,10 +201,7 @@
             clip,
             ms: Math.round(performance.now() - s),
             frames: c.tracks[0].times.length,
-            bytes: c.tracks.reduce(
-              (n, t) => n + t.values.byteLength + t.times.byteLength,
-              0,
-            ),
+            bytes: c.tracks.reduce((n, t) => n + t.values.byteLength + t.times.byteLength, 0),
           });
           fig.act.idle = fig.mixer.clipAction(c);
           for (const a of Object.values(fig.act)) a?.play();
@@ -254,30 +229,23 @@
           holder,
           trail,
           at: x,
-          clip: mode === "now" ? "rick idle" : clip,
+          clip: mode === 'now' ? 'rick idle' : clip,
         });
         x += STEP;
       };
       for (const id of heroes) {
-        for (const mode of ["now", "ual+ik", "ual raw"])
-          await loadHero(id, mode).catch((e) => console.error(id, mode, e));
+        for (const mode of ['now', 'ual+ik', 'ual raw']) await loadHero(id, mode).catch((e) => console.error(id, mode, e));
         x += GAP;
       }
 
       const span = Math.max(0, x - STEP - GAP);
-      const grid = new THREE.GridHelper(
-        Math.ceil(span + 20),
-        Math.ceil(span + 20),
-        "#5a6270",
-        "#363c46",
-      );
+      const grid = new THREE.GridHelper(Math.ceil(span + 20), Math.ceil(span + 20), '#5a6270', '#363c46');
       grid.position.x = span / 2;
       scene.add(grid);
       const up = new V(0, 1, 0);
       const forward = new V(0, 0, 1);
 
-      const actsOf = (p) =>
-        p.acts ? p.acts : Object.values(p.fig?.act ?? {}).filter(Boolean);
+      const actsOf = (p) => (p.acts ? p.acts : Object.values(p.fig?.act ?? {}).filter(Boolean));
       const hold = (p, phase) => {
         for (const a of actsOf(p)) a.time = phase * a.getClip().duration;
       };
@@ -289,52 +257,41 @@
         const dir = new V(0, Math.sin(0.08), Math.cos(0.08)).normalize();
         for (const p of placed) {
           if (!p.saber) continue;
-          p.saber.light(state !== "carry");
+          p.saber.light(state !== 'carry');
         }
         for (let i = 0; i < frames; i++) {
           const now = i / 30;
           for (const p of placed) {
-            if (p.mode === "mannequin") {
-              hold(p, state === "swing" ? k : phase);
+            if (p.mode === 'mannequin') {
+              hold(p, state === 'swing' ? k : phase);
               p.mixer.update(0);
               continue;
             }
             if (!p.fig) continue;
             p.fig.update(1 / 30, 0);
             // (a stroke: the UAL clip at k through it; the procedural one started so it's k through at the end)
-            hold(p, state === "swing" && p.mode !== "now" ? k : phase);
+            hold(p, state === 'swing' && p.mode !== 'now' ? k : phase);
             p.fig.mixer?.update(0);
             p.holder.updateMatrixWorld(true);
-            if (p.mode === "ual raw") {
+            if (p.mode === 'ual raw') {
               p.saber?.update(1 / 30, now, { forward, up });
               continue;
             }
-            const aim = state === "carry" ? 0 : p.saber ? 0.75 : 1;
+            const aim = state === 'carry' ? 0 : p.saber ? 0.75 : 1;
             p.gp?.set(1 / 30, {
               aim: i > 4 ? aim : 0,
               dir: p.saber ? null : dir,
               forward,
               up,
             });
-            if (
-              p.saber &&
-              state === "swing" &&
-              p.mode !== "ual raw" &&
-              i === frames - 1 - Math.round(k * 0.5 * 30)
-            )
-              p.saber.swing(now);
+            if (p.saber && state === 'swing' && p.mode !== 'ual raw' && i === frames - 1 - Math.round(k * 0.5 * 30)) p.saber.swing(now);
             p.saber?.update(1 / 30, now, { forward, up });
           }
         }
       };
 
-      const camera = new THREE.PerspectiveCamera(
-        28,
-        innerWidth / innerHeight,
-        0.05,
-        500,
-      );
-      const labels = document.getElementById("labels");
+      const camera = new THREE.PerspectiveCamera(28, innerWidth / innerHeight, 0.05, 500);
+      const labels = document.getElementById('labels');
       const VIEWS = {
         three: [0.45, 0.18, 1],
         front: [0, 0.08, 1],
@@ -342,7 +299,7 @@
         back: [0, 0.12, -1],
         left: [-1, 0.1, 0],
       };
-      const view = (name = "front", zoom = 1) => {
+      const view = (name = 'front', zoom = 1) => {
         // (sized now: a hidden pane loads at 0 × 0)
         renderer.setSize(innerWidth, innerHeight);
         camera.aspect = innerWidth / innerHeight;
@@ -350,28 +307,20 @@
         const mid = new V(span / 2, 1.0, 0);
         // (far enough back that the whole row and a head's height fit)
         const half = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-        const far =
-          Math.max((span / 2 + 0.7) / (half * camera.aspect), 1.3 / half) /
-          zoom;
-        camera.position
-          .copy(mid)
-          .add(
-            new V(...(VIEWS[name] ?? VIEWS.front))
-              .normalize()
-              .multiplyScalar(far),
-          );
+        const far = Math.max((span / 2 + 0.7) / (half * camera.aspect), 1.3 / half) / zoom;
+        camera.position.copy(mid).add(new V(...(VIEWS[name] ?? VIEWS.front)).normalize().multiplyScalar(far));
         camera.lookAt(mid);
         renderer.render(scene, camera);
-        labels.innerHTML = "";
+        labels.innerHTML = '';
         placed.forEach((p, i) => {
           const s = new V(p.at, 2.05, 0).project(camera);
-          const d = document.createElement("div");
+          const d = document.createElement('div');
           d.style.left = `${((s.x + 1) / 2) * innerWidth}px`;
           d.style.top = `${((1 - s.y) / 2) * innerHeight - (i % 2) * 18}px`;
           d.textContent = `${p.id} · ${p.mode} · ${p.clip}`;
           labels.append(d);
         });
-        status.textContent = `state ${state} · ${name} · UAL load ${timing.ualLoadMs} ms · retarget ${timing.retarget.map((r) => r.ms).join("/")} ms`;
+        status.textContent = `state ${state} · ${name} · UAL load ${timing.ualLoadMs} ms · retarget ${timing.retarget.map((r) => r.ms).join('/')} ms`;
       };
       // a tile per figure (columns) per side it's seen from (rows): ahead, its left, three-quarter
       const TILE_FROM = {
@@ -381,10 +330,7 @@
         back: new V(0, 0.15, -1),
         top: new V(0.2, 1, 0.5),
       };
-      const tiles = (
-        rows = ["front", "side", "three"],
-        { focus = 1.05, dist = 3.6 } = {},
-      ) => {
+      const tiles = (rows = ['front', 'side', 'three'], { focus = 1.05, dist = 3.6 } = {}) => {
         renderer.setSize(innerWidth, innerHeight);
         const W = innerWidth;
         const H = innerHeight;
@@ -393,9 +339,9 @@
         const th = Math.floor(H / rows.length);
         const cam = new THREE.PerspectiveCamera(30, tw / th, 0.05, 50);
         renderer.setScissorTest(true);
-        renderer.setClearColor("#20242c");
+        renderer.setClearColor('#20242c');
         renderer.clear();
-        labels.innerHTML = "";
+        labels.innerHTML = '';
         placed.forEach((p, c) => {
           const at = new V(p.at, focus, 0);
           // (alone in its tile: the neighbours hidden)
@@ -404,18 +350,16 @@
             if (o.trail) o.trail.visible = o === p;
           }
           rows.forEach((r, i) => {
-            cam.position
-              .copy(at)
-              .addScaledVector(TILE_FROM[r].clone().normalize(), dist);
+            cam.position.copy(at).addScaledVector(TILE_FROM[r].clone().normalize(), dist);
             cam.lookAt(at);
             renderer.setViewport(c * tw, H - (i + 1) * th, tw, th);
             renderer.setScissor(c * tw, H - (i + 1) * th, tw, th);
             renderer.render(scene, cam);
           });
-          const d = document.createElement("div");
+          const d = document.createElement('div');
           d.style.left = `${c * tw + tw / 2}px`;
-          d.style.top = "4px";
-          d.textContent = `${p.id === "ual" ? "UAL" : p.id} · ${p.mode}`;
+          d.style.top = '4px';
+          d.textContent = `${p.id === 'ual' ? 'UAL' : p.id} · ${p.mode}`;
           labels.append(d);
         });
         for (const o of placed) {
@@ -424,7 +368,7 @@
         }
         renderer.setScissorTest(false);
         renderer.setViewport(0, 0, W, H);
-        status.textContent = "";
+        status.textContent = '';
       };
       window.__tiles = tiles;
       window.__pose = pose;
@@ -432,11 +376,10 @@
       window.__timing = timing;
       window.__sheet = { THREE, placed, ual, scene, camera, renderer };
 
-      pose({ phase: num("phase", 0.25), k: num("k", 0.4) });
-      if (q.get("view") === "tiles")
-        tiles(q.get("rows")?.split(",") ?? undefined);
-      else view(q.get("view") ?? "front", num("zoom", 1));
-      document.body.dataset.ready = "1";
+      pose({ phase: num('phase', 0.25), k: num('k', 0.4) });
+      if (q.get('view') === 'tiles') tiles(q.get('rows')?.split(',') ?? undefined);
+      else view(q.get('view') ?? 'front', num('zoom', 1));
+      document.body.dataset.ready = '1';
     </script>
   </body>
 </html>
