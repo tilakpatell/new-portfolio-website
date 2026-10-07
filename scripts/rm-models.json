@@ -610,5 +610,49 @@
   "frundleshouse": {
     "status": "done",
     "by": "local"
+  },
+  "cronhouse": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "croncar": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "purgecottage": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "purgebarn": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "purgesiren": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "purgewell": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "gazorpgate": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "suckulent": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "birdperch": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "gearbig": {
+    "status": "claimed",
+    "by": "local"
+  },
+  "gearcog": {
+    "status": "claimed",
+    "by": "local"
   }
 }
