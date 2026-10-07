@@ -94,7 +94,7 @@
 .earth-fly:hover, .earth-fly:focus-visible { background: var(--earth-stamp); color: #fff; }
 
 /* a postcard from each place */
-.earth-postcard { position: absolute; left: 50%; top: 50%; z-index: 4; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); width: min(46rem, calc(100% - 2rem)); overflow: hidden; border-radius: 10px; background: var(--earth-paper); color: #2a2418; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55); transform: translate(-50%, -50%) rotate(-1.2deg); animation: earth-card 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.earth-postcard { position: absolute; left: 50%; top: 50%; z-index: 4; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); width: min(46rem, calc(100% - 2rem)); overflow: hidden; border-radius: 10px; background: var(--earth-paper); color: #2a2418; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55); transform: translate(-50%, -50%) rotate(-1.2deg); animation: earth-card 0.6s var(--ease-out) both; }
 @keyframes earth-card { from { opacity: 0; transform: translate(-50%, -42%) rotate(-4deg) scale(0.96); } }
 .earth-postcard-photo { position: relative; min-height: 15rem; border-right: 1px dashed rgba(42, 36, 24, 0.25); }
 .earth-stamp { position: absolute; right: 0.9rem; bottom: 0.9rem; display: grid; place-items: center; align-content: center; width: 6.6rem; height: 6.6rem; border: 3px double rgba(31, 95, 153, 0.9); border-radius: 50%; color: rgba(31, 95, 153, 0.95); background: rgba(246, 239, 224, 0.82); text-align: center; transform: rotate(-14deg); animation: earth-stamp 0.5s 0.9s cubic-bezier(0.2, 1.6, 0.4, 1) both; }

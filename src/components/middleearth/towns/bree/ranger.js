@@ -298,7 +298,9 @@ export function makeStrider(renderer) {
       const local = g.worldToLocal(watch.clone());
       want = Math.max(-0.7, Math.min(0.7, Math.atan2(-local.z, local.x)));
     }
-    A.look += (want - A.look) * 0.04;
+    // by the clock, so the turn takes the same time at 30 or 120 frames a second
+    A.look += (want - A.look) * (1 - Math.exp(-(t - (A.t ?? t)) * 2.4));
+    A.t = t;
     head.rotation.y = A.look;
     head.rotation.z = -0.08 - draw * 0.06;
     // where the bowl is now (for the light), and the smoke
