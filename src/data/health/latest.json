@@ -1,6 +1,6 @@
 {
   "date": "2026-10-07",
-  "sha": "ba91a30",
+  "sha": "46c8605",
   "metrics": {
     "big-files": {
       "value": 30,
@@ -69,7 +69,7 @@
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 2570
+          "n": 2586
         },
         {
           "file": "src/components/middleearth/towns/marshes/props.js",
