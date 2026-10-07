@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Prop shot</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #11151c;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- One code-built surface prop (galaxy/surface/props/*.js) from views
+         round it, side by side in one canvas, drawn as glb-shot.html draws a
+         model (the Star Wars buildings audit used it to judge the built ones):
+         ?kind=<kind>&opts=<json>&views=three,close,front,side,back,top&w=640&h=480 -->
+    <script type="module">
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+      import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+      import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+
+      const q = new URLSearchParams(location.search);
+      const views = (q.get('views') ?? 'three,close').split(',');
+      const W = Number(q.get('w') ?? 640);
+      const H = Number(q.get('h') ?? 480);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setSize(W * views.length, H);
+      renderer.setScissorTest(true);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      document.body.appendChild(renderer.domElement);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(q.get('bg') ? `#${q.get('bg')}` : '#1a2029'); // &bg=ffffff for a reference picture
+      const pm = new THREE.PMREMGenerator(renderer);
+      scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environmentIntensity = 0.5;
+      const sun = new THREE.DirectionalLight('#fff4e6', 2.6);
+      sun.position.set(3, 4, 2);
+      scene.add(sun, new THREE.HemisphereLight('#bbccdd', '#332211', 0.3));
+      const { createKit } = await import('/src/components/galaxy/surface/kit.js'); const { PROPS } = await import('/src/components/galaxy/surface/props/index.js'); const kit = createKit({}); try { await kit.ready; } catch {} const built = PROPS[q.get('kind')](kit, JSON.parse(q.get('opts') ?? '{}')); const gltf = { scene: built.object };
+      const root = gltf.scene;
+      // &look=toon: as a Meshy figure or prop is drawn in the game
+      // (rickmorty/portal/meshyCast.js): its colour map only, on three light
+      // steps, no normal or metal maps, with a cool rim
+      if (q.get('look') === 'toon') {
+        const ramp = new THREE.DataTexture(new Uint8Array([165, 165, 165, 255, 215, 215, 215, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat);
+        ramp.minFilter = ramp.magFilter = THREE.NearestFilter;
+        ramp.needsUpdate = true;
+        root.traverse((o) => {
+          if (!o.isMesh) return;
+          const m = new THREE.MeshToonMaterial({ color: 0xffffff, map: o.material.map ?? null, gradientMap: ramp });
+          if (!m.map) m.color.copy(o.material.color ?? new THREE.Color(1, 1, 1));
+          m.onBeforeCompile = (s) => {
+            s.fragmentShader = s.fragmentShader.replace(
+              '#include <opaque_fragment>',
+              'outgoingLight += vec3(0.875, 0.965, 1.0) * diffuseColor.rgb * pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 3.0) * 0.3;\n#include <opaque_fragment>',
+            );
+          };
+          o.material = m;
+        });
+        renderer.toneMapping = THREE.NoToneMapping;
+        scene.environment = null;
+      }
+      scene.add(root);
+      const box = new THREE.Box3().setFromObject(root);
+      const size = box.getSize(new THREE.Vector3());
+      root.position.sub(box.getCenter(new THREE.Vector3()));
+      const R = Math.max(size.x, size.y, size.z);
+      let tris = 0;
+      root.traverse((o) => o.isMesh && (tris += (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3));
+      document.title = JSON.stringify({ size: size.toArray().map((v) => +v.toFixed(2)), tris });
+      const cam = new THREE.PerspectiveCamera(35, W / H, R / 200, R * 20);
+      // where each view stands (a direction, how far out in R, where it looks)
+      const at = {
+        three: [[1.3, 0.8, 1.3], 1.9, [0, 0, 0]],
+        close: [[0.55, 0.12, 1], 0.75, [0, -size.y * 0.25, size.z * 0.2]],
+        front: [[0, 0.3, 1], 1.9, [0, 0, 0]],
+        side: [[1, 0.3, 0], 1.9, [0, 0, 0]],
+        // straight on from each side, for a multi-view 3D job (scripts/gen3d, Hunyuan3D)
+        left: [[-1, 0.3, 0], 1.9, [0, 0, 0]],
+        right: [[1, 0.3, 0], 1.9, [0, 0, 0]],
+        rear: [[0, 0.3, -1], 1.9, [0, 0, 0]],
+        back: [[-0.9, 0.5, -1.6], 1.9, [0, 0, 0]],
+        top: [[0, 2, 0.01], 1.9, [0, 0, 0]],
+        // a standing figure's head, from the front and a little to the side
+        face: [[0.3, 0, 1], 0.8, [0, size.y * 0.39, 0]],
+      };
+      views.forEach((v, i) => {
+        const [dir, far, look] = at[v] ?? at.three;
+        cam.position.set(...dir).normalize().multiplyScalar(R * far);
+        if (v === 'face') cam.position.y += look[1]; // level with the head it looks at
+        cam.lookAt(...look);
+        renderer.setViewport(i * W, 0, W, H);
+        renderer.setScissor(i * W, 0, W, H);
+        renderer.render(scene, cam);
+      });
+      window.__done = true;
+    </script>
+  </body>
+</html>

@@ -7,6 +7,7 @@
 // the galaxy page can make the surface's world before its page is up.
 
 import { local } from '../../lib/hooks';
+import { HERO_KEY, readHero } from './heroes';
 
 export const FOUND_KEY = 'tp-galaxy-found'; // { [system]: [place ids] }: what you've found on each world
 export const QUESTS_KEY = 'tp-galaxy-quests'; // { [system]: [quest ids] }: what you've done on each world
@@ -28,6 +29,7 @@ export function surfaceProps(system, { ship, loadout, build = null, net = null, 
     system,
     mission: null,
     ship,
+    hero: readHero(local.get(HERO_KEY), ship ?? 'xwing'), // (who you picked to play as: the page reads the same)
     loadout,
     build,
     found: Array.isArray(found) ? found : [],
