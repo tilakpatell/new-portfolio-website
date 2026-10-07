@@ -40,15 +40,7 @@ export default function MinecraftPage() {
           The giant crafting table on Dot Matrix island opens a Minecraft world: endless, made from a seed, with its hills, forests, deserts, snow and seas. Walk it, sprint, jump and swim by the game’s own numbers. Digging, building, the night, caves and mobs arrive a piece at a time.
         </p>
         <p className="mt-4 max-w-[62ch] text-sm text-muted">
-          A fan-made tribute, built for this site from scratch in Three.js. The textures are{' '}
-          <a className="underline underline-offset-2" href="https://modrinth.com/resourcepack/pixel-perfection-legacy" target="_blank" rel="noreferrer">
-            Pixel Perfection
-          </a>{' '}
-          by XSSheep, continued by Nova_Wostra, under{' '}
-          <a className="underline underline-offset-2" href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">
-            CC BY-SA 4.0
-          </a>
-          , not the game’s own, which may not be shared. Minecraft is Mojang’s and Microsoft’s. Not an official Minecraft product; not approved by or associated with Mojang or Microsoft.
+          A fan-made tribute, built for this site from scratch in Three.js. The textures are the game’s own, used with Mojang’s permission. Minecraft is Mojang’s and Microsoft’s. Not an official Minecraft product; not approved by or associated with Mojang or Microsoft.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link to="/dot-matrix" className="btn btn-primary">

@@ -423,7 +423,7 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
                 </button>
               )}
             </div>
-            <p className="mc-disclaimer">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Textures: Pixel Perfection (XSSheep, Nova_Wostra), CC BY-SA 4.0.</p>
+            <p className="mc-disclaimer">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Textures © Mojang Studios, used with permission.</p>
           </div>
         )}
 

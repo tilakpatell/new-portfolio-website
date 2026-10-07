@@ -112,7 +112,8 @@ export const SKINS = {
 // and the grass and foliage colormaps.
 export const SPRITES = {
   sun: ['environment/celestial/sun', 'environment/sun'],
-  moon_phases: ['environment/celestial/moon_phases', 'environment/moon_phases'],
+  // (since 1.21.9 the game keeps each phase apart: laid out again in the old sheet's order, full moon first)
+  moon_phases: ['environment/celestial/moon_phases', 'environment/moon_phases', { grid: [4, 2], from: ['full_moon', 'waning_gibbous', 'third_quarter', 'waning_crescent', 'new_moon', 'waxing_crescent', 'first_quarter', 'waxing_gibbous'].map((n) => `environment/celestial/moon/${n}`) }],
   clouds: ['environment/clouds'],
   hotbar: ['gui/sprites/hud/hotbar'],
   hotbar_selection: ['gui/sprites/hud/hotbar_selection'],
