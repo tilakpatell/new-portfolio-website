@@ -269,7 +269,10 @@ describe('every kind of battle', () => {
           for (let i = 0; i < 100; i++) k.front.update(0.1, i * 0.1, camera, null);
         }
     }
-  });
+    // (54 battles of 64 fighters or more, each frame of a tenth three of the
+    // battle's fixed steps of 1/30 s since it stopped stepping by the frame:
+    // about 2.7 s alone, so more room than the default 5 s on a busy machine)
+  }, 20000);
   it('the dev hook forces a battle of the kind asked for, wherever it is', () => {
     const k = kit('rebel');
     k.front.enter(systemById('scarif'), k.world);
