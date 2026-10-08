@@ -57,7 +57,7 @@ Owns: `src/lib/three/palette.js`, `src/lib/three/bloom.js`, `src/lib/stage3d.js`
 
 **Files:**
 - Create: `src/lib/three/bloom.js`, `src/lib/three/bloom.test.js`
-- Modify: `src/lib/stage3d.js:1-5` (the header: Neutral, not ACES), `:90` (`bloom = BLOOM`, `exposure = LOOK.exposure`), `:97-98` (`NeutralToneMapping`), `src/runtime/webgl.js:26` (`p.strength ?? BLOOM.strength` and the rest), `:46` (`toneMapping = THREE.NeutralToneMapping`), `src/runtime/webgpu.js:58`.
+- Modify: `src/lib/stage3d.js:1-5` (the header: Neutral, not ACES), `:90` (`bloom = BLOOM`, `exposure = LOOK.exposure`), `:97-98` (`NeutralToneMapping`), `src/runtime/webgl.js:26` (`p.strength ?? BLOOM.strength` and the rest), `:46` (`toneMapping = THREE.NeutralToneMapping`), `src/runtime/webgpu.js:58`; and the three stage worlds that call `houseOn` on the stage’s default exposure (`middleearth/rush/scene.js`, `rickmorty/citadel/scene.js`, `albuquerque/casa/scene.js`) pass `keepExposure: true`, or the house’s 1.4 would be lifted twice.
 
 **Interfaces (produces):** `BLOOM = { threshold: 1, strength: 0.25, radius: 0.4 }`; `bloomGroups(pass: UnrealBloomPass) → groups` (one group `bloom` with `threshold 0…2`, `strength 0…1.5`, `radius 0…1`, as `lib/debugPanel`’s items). `createStage` defaults to `BLOOM` and Neutral at `LOOK.exposure` (`lib/three/house.js`).
 
@@ -80,6 +80,7 @@ Owns: `src/lib/three/palette.js`, `src/lib/three/bloom.js`, `src/lib/stage3d.js`
 - [ ] **Step 3: Implement** `looks.js`; write the Shire’s look (`scanned`, `house`, `bloom: BLOOM`, its `shadow` left to the moods) and the Expanse’s (`painted`, a palette of its species, ground, sand, rock, crate, barrel, body, cab, dark colours, `house`, `BLOOM`); the Expanse scene and buggy take the palette.
 - [ ] **Step 4: Run** `npm test`, `node scripts/autopilot-check.mjs --routes /middle-earth/shire,/universe/expanse/7 --shots one-feel-art` → PASS; the Expanse’s crates and buggy are one material; `node scripts/perf-probe.mjs expanseDrive` worst frame no worse.
 - [ ] **Step 5: Commit** `Every world says its art: look.js, and the Shire’s and the Expanse’s`.
+- Done; then the driven Expanse went from the site (#705), and its look, its crates and buggy on the palette and its `LOOK_FOLDERS` row went with it. The Shire’s look is the proof that stays; `createPalette` waits for the next painted world.
 
 ### Task 1A.4: The `art-mix` measure
 
@@ -90,7 +91,7 @@ Owns: `src/lib/three/palette.js`, `src/lib/three/bloom.js`, `src/lib/stage3d.js`
 **Interfaces (produces):** `artMix({ root }) → { value, items: [{ folder, scan: file, ramp: file }] }`: for each folder in `LOOK_FOLDERS`, the closure (`src/runtime/shadingClosure.js`’s `closure`) from its scene files; a folder counts when it reaches both a ramp (`MeshToonMaterial` or `gradientMap` in a non-test source) and a scan (`lib/three/core`, `lib/cc0` or `lib/hdri` in an import).
 
 - [ ] **Step 1: Write the failing test** on a fixture tree under `scripts/health/fixtures/art-mix/`: one folder with both counts, one with a scan only doesn’t.
-- [ ] **Step 2: Run** `node --test scripts/health/art-mix.test.mjs` → FAIL.
+- [ ] **Step 2: Run** `npx vitest run scripts/health/art-mix.test.mjs` → FAIL (the health measures’ tests run under Vitest, as `scripts/health.test.mjs` does). `lib/three/frameGuard.js` names `gradientMap` to guard a material’s textures and is exempt; `lib/hdri` counts only where `loadPbr` is imported (its skies are light, not a scan).
 - [ ] **Step 3: Implement**; register the metric as the others are; budget it at its first value (`node scripts/health.mjs --json`).
 - [ ] **Step 4: Run** `node scripts/health.mjs --check --skip build` → green.
 - [ ] **Step 5: Commit** `art-mix: a world that wears a scan and a toon ramp at once, counted and ratcheted`. Open the pull request; fill the handoff row.
@@ -193,7 +194,7 @@ Owns: `src/lib/debugPanel.js`, `src/lib/debugPanel.test.js`, `src/runtime/debug.
 
 **Files:** Modify `src/lib/debugPanel.js`, `src/lib/debugPanel.test.js`.
 
-**Interfaces (produces):** items gain `type: 'bool'` (a checkbox) and `'select'` (`options: string[]`); `debugPanel({ title, groups, code, id = null })`: with `id`, every `set` also writes the values to `sessionStorage` under `tp-tune-<id>` and the panel applies what is stored when it opens (`restore(id, groups)`, pure, exported: returns how many it set); the panel object gains `open(groups, { title, id })` and `close()` so one panel serves worlds in turn; `toCode` prints a bool as `true | false` and a select as a quoted string.
+**Interfaces (produces):** items gain `type: 'bool'` (a checkbox) and `'select'` (`options: string[]`); `debugPanel({ title, groups, code, id = null })`: with `id`, every `set` also writes the values to `sessionStorage` under `tp-tune-<id>` and the panel applies what is stored when it opens (`restore(id, groups)`, pure, exported: returns how many it set; `keep(id, groups)` writes them); the panel object gains `open(groups, { title, id })` and `close()` so one panel serves worlds in turn; `toCode` prints a bool as `true | false` and a select as a quoted string.
 
 - [ ] **Step 1: Write the failing tests**: `toCode` with a bool and a select; `restore` with a fake storage sets only keys the groups have; `debugOn` unchanged.
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
@@ -201,7 +202,7 @@ Owns: `src/lib/debugPanel.js`, `src/lib/debugPanel.test.js`, `src/runtime/debug.
 
 ### Task 1D.2: `rt.debug`, and `tune()` in the contract
 
-**Files:** Create `src/runtime/debug.js`, `src/runtime/debug.test.js`. Modify `src/runtime/runtime.js` (make `rt.debug = createDebug({ on: debugOn() })` once; after a world is placed and `ready`, `rt.debug.show(mod.id, world.tune?.())`; in `unmount` and `handover`’s letting-go, `rt.debug.hide()`), `src/runtime/module.js` (header: `tune?() → groups (lib/debugPanel), asked once the world is ready when the address has ?debug`), `src/runtime/index.js` (export `createDebug`), `docs/superpowers/HANDOFF-world-runtime.md`.
+**Files:** Create `src/runtime/debug.js`, `src/runtime/debug.test.js`. Modify `src/runtime/runtime.js` (make `rt.debug = createDebug({ on: debugOn() })` once; after a world is placed and `ready`, `rt.debug.show(mod.id, world.tune?.())`; in `unmount` and `handover`’s letting-go, `rt.debug.hide()`; `fromScene` passes a scene’s `tune()` through as the world’s), `src/runtime/module.js` (header: `tune?() → groups (lib/debugPanel), asked once the world is ready when the address has ?debug`), `src/runtime/index.js` (export `createDebug`), `docs/superpowers/HANDOFF-world-runtime.md`.
 
 **Interfaces (produces):** `createDebug({ on = debugOn(), panel = debugPanel }) → { on, show(id, groups), hide(), current }`: `show` with `on` false or `groups` empty or undefined does nothing and logs nothing; with groups, opens (or re-opens) the one panel with `title: id`, `id`; `hide` closes it.
 
@@ -211,12 +212,12 @@ Owns: `src/lib/debugPanel.js`, `src/lib/debugPanel.test.js`, `src/runtime/debug.
 
 ### Task 1D.3: The house’s groups, the stage’s `tune`, and the first two takers
 
-**Files:** Create `src/lib/three/houseTuning.js`, `src/lib/three/houseTuning.test.js`. Modify `src/lib/stage3d.js` (returns `tune(groups)`: when `debugOn()`, opens the panel with `bloomGroups(bloomPass)` first and the scene’s groups after, under the canvas’s nearest `[data-route]` or the document title; closed in `dispose`), `src/components/galaxy/surface/tune.js` (its `look` group from `houseGroups`, its own kept), `src/components/earth/module.js` (`tune()` with the globe’s own values: exposure, the cloud height, whatever it reads live).
+**Files:** Create `src/lib/three/houseTuning.js`, `src/lib/three/houseTuning.test.js`. Modify `src/lib/stage3d.js` (returns `tune(groups)`: when `debugOn()`, opens the panel with its bloom group (`stageBloomGroups(bloomPass)`, `lib/stage3d.js`’s own until 1A’s `bloomGroups` lands) first and the scene’s groups after, under the canvas’s nearest `[data-route]` or the document title; closed in `dispose`), `src/components/galaxy/surface/tune.js` (its `look` group from `houseGroups`, its own kept), `src/components/earth/module.js` (`tune()` with the globe’s own values: exposure, the cloud height, whatever it reads live).
 
 **Interfaces (produces):** `houseGroups(house, { exposure = null } = {}) → groups`: one group `look` with `shadow` (colour), `edgeFrom 0…1`, `edgeTo 0…1.5`, `mix 0…1`, `bounce 0…1`, `fogLow`, `fogHigh` (colours), `fogBelow 0…1.5`, `fogMix 0…1`, and `exposure 0.4…3` when `exposure` is `{ get, set }`.
 
 - [ ] **Step 1: Write the failing tests**: `houseGroups(createHouse())` reads the uniforms back and `set` on `shadow` changes `uLookShadow`; `stage.tune` with `debugOn` false makes nothing (fake `document`).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test`; in dev, `/galaxy/yavin?debug` and `/earth?debug` open the panel; without `?debug`, nothing.
+- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test`; in dev, `/#/galaxy/yavin/surface?debug` and `/#/earth?debug` open the panel; without `?debug`, nothing (the site’s routes are hash routes, and the galaxy’s surface, not its map, is the world on the look).
 - [ ] **Step 5: Commit** `One tuning panel for every world: the house’s groups, the stage’s tune, Earth and the surfaces first`. Open the pull request; fill the handoff row.
 
 ## Lane 1E: the colliders (`claude/one-feel-colliders`)

@@ -1,10 +1,11 @@
-// Ask the desktop for a 3D model or voice lines, from any machine with gh
+// Ask the desktop for a 3D model, voice lines or a clip from words, from any machine with gh
 // signed in (a cloud session, a laptop): the request is checked here, then
 // opened as an issue with the pipeline's label, which starts the workflow
 // on the desktop (or waits for it). Prints the issue and how to follow it.
 //
 //   node scripts/desktop/ask.mjs gen3d NAME --what "a TIE fighter" --image URL [--image URL2 …] [--prompt "…"] [--faces 30000] [--options "tex: 2048  seed: 7"] [--note "why"]
 //   node scripts/desktop/ask.mjs voices [NAME] [--only rick,morty] [--line "rick: Wubba lubba dub dub."]… [--note "why"]
+//   node scripts/desktop/ask.mjs motion NAME --prompt "a two-handed overhead sword strike, stepping forward" [--seconds 3] [--seed 42] [--options "model: lite  with: sword.a"] [--note "why"]
 //   add --dry-run to see the issue without opening it
 //
 // Then: node scripts/desktop/status.mjs (or the issue, which says when it's
@@ -16,7 +17,8 @@ import { gh } from './lib.mjs';
 export async function pipelineFor(name) {
   if (name === 'gen3d') return (await import('../gen3d/runner.mjs')).pipeline;
   if (name === 'voices') return (await import('../voices/runner.mjs')).pipeline;
-  throw new Error(`no pipeline "${name}": gen3d or voices`);
+  if (name === 'motion') return (await import('../motion/runner.mjs')).pipeline;
+  throw new Error(`no pipeline "${name}": gen3d, voices or motion`);
 }
 
 // argv after the pipeline's name → the request's inputs (repeated flags collected)
@@ -60,7 +62,7 @@ export async function ask(kind, argv) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [kind, ...argv] = process.argv.slice(2);
   if (!kind || kind === '--help') {
-    console.log('usage:\n  node scripts/desktop/ask.mjs gen3d NAME --what "…" (--image URL | --prompt "…") [--faces N] [--options "tex: 2048  seed: 7"] [--note "…"] [--dry-run]\n  node scripts/desktop/ask.mjs voices [NAME] [--only rick,morty] [--line "who: text"]… [--dry-run]');
+    console.log('usage:\n  node scripts/desktop/ask.mjs gen3d NAME --what "…" (--image URL | --prompt "…") [--faces N] [--options "tex: 2048  seed: 7"] [--note "…"] [--dry-run]\n  node scripts/desktop/ask.mjs voices [NAME] [--only rick,morty] [--line "who: text"]… [--dry-run]\n  node scripts/desktop/ask.mjs motion NAME --prompt "…" [--seconds 3] [--seed 42] [--options "model: lite  with: sword.a"] [--note "…"] [--dry-run]');
     process.exit(kind ? 0 : 1);
   }
   try {

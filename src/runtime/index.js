@@ -28,6 +28,7 @@ export { fromScene } from './module';
 export { localSaves, worldStore };
 export { installer } from './install';
 export { createLook, defaultMode, senseLook, SPIKE, RELOCK, TP_LOOK, PROMPT as LOOK_PROMPT } from './look';
+export { createDebug } from './debug';
 
 const GPU_KEY = 'tp-gpu';
 const browser = () => import('./browser');
