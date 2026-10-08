@@ -19,6 +19,15 @@ const SHIP = 'The whole starship in frame, three-quarter view from slightly abov
 const beast = (ref, lift, metres, along = 'w', more = {}) => ({ ref, lift, shot: BEAST, metres, along, tris: 12000, tex: 1024, ...more });
 const vehicle = (ref, lift, metres, along = 'w', more = {}) => ({ ref, lift, shot: VEHICLE, metres, along, tris: 15000, tex: 1024, ...more });
 const ship = (ref, lift, more = {}) => ({ ref, lift, shot: SHIP, metres: 30, along: 'w', tris: 16000, tex: 1024, galaxy: true, ...more });
+// The galaxy's worst models made again (a flat-shaded wedge, a blurred
+// sphere of grey discs, a blotchy scan, a muddy paint job): Meshy's maps at
+// 4K, which cost the same 30 credits as 2K and come down sharper, squeezed
+// with the colour map at `tex` and the rest at half that, so each stays
+// inside its kind's budget (a fighter 450 KB, a capital 900 KB). Where there
+// are two pictures, each lift keeps its own picture's angle, so multi-image
+// to 3D sees the ship from two sides.
+const KEEP = 'The whole starship in frame, seen from the same angle as in the picture, isolated on a plain light grey background, no stars, no planet, no people, no text.';
+const remake = (ref, lift, more = {}) => ship(ref, lift, { texture: '4k', split: true, ...(Array.isArray(ref) ? { shot: KEEP } : {}), ...more });
 
 export const BUILDINGS = {
   // ── the creatures the worlds ask for ──
@@ -104,4 +113,29 @@ export const BUILDINGS = {
   zeta: ship('File:Zeta-class_shuttle_ROUVG.png', 'the grey cargo shuttle with its tall folding wings'),
   fang: ship('File:FangFighrter-SWESOV.png', 'the narrow Mandalorian fighter with its swept wings'),
   naboocruiser: ship('File:Nabooskiff-SWCTP.png', 'the gleaming chrome boomerang-shaped yacht'),
+  // ── and the galaxy's worst models made again, each over its old file ──
+  // (the half-built station: the better image model for the lift, since the
+  // open side's girders are what the old one lost)
+  deathstar2: remake('File:DeathStar2.jpg', 'the half-built spherical battle station, the open side showing its exposed skeletal superstructure of girders and decks, its round dish in the upper half', {
+    shot: 'The whole space station in frame, seen from the same angle as in the picture, isolated on a plain light grey background, no stars, no planet, no ships, no text.',
+    lifter: 'nano-banana-pro',
+    tris: 40000,
+    tex: 2048,
+  }),
+  interdictor: remake('File:Immobilizer Interdictor Cruiser.jpg', 'the grey wedge-shaped warship with four large domed gravity-well projectors on its back and a stepped bridge tower', { lifter: 'nano-banana-pro', tris: 25000, tex: 2048 }),
+  // (the galaxy's own corvette: the universe map keeps its smaller one)
+  corvette: remake(['File:Rebels-TantiveIVConceptArt-CroppedBackground.png', 'File:CR90corvette-BTMF18.png'], 'the long white corvette with its red trim, a hammer-shaped cockpit block at the front, a thin spine and a wide block of eleven engines at the back', { lifter: 'nano-banana-pro', tris: 15000 }),
+  interceptor: remake('File:TIE Interceptor BF.png', 'the fighter with a ball cockpit and two dagger-shaped dark solar wings with notched tips', { tris: 12000 }),
+  munificent: remake(['File:CISMunificent-TCW.png', 'File:MunificentAft-USWNE.png'], 'the long grey frigate with its dark blue stripes, its tall communications spine at the bow and its long narrow side wings', { lifter: 'nano-banana-pro', tris: 20000, tex: 2048 }),
+  providence: remake(['File:ProvidenceClassDreadnought-SWM42.png', 'File:InvisibleHand-MF75.png'], 'the long grey warship with its blue stripe bands, its tall thin bridge tower and the hangar opening at its bow', { lifter: 'nano-banana-pro', tris: 20000, tex: 2048 }),
+  // (over the universe map's, which the galaxy's bounty hunter flies too)
+  slave1: remake(['File:BobaFettsStarship-MF65.png', 'File:BobaFettsStarshipAft-MF65.png'], 'the green and red patrol craft with its rounded hull, its two curved wing plates and its twin cannons', { tris: 15000, out: 'models/universe/slave1.glb' }),
+  // (the pirates' fighter, for the kind the galaxy calls a skiff: named apart
+  // from the surfaces' cargo skiff)
+  pirateskiff: remake('File:Flarestar-class-attack-shuttle-SWESV.png', 'the battered disc-shaped grey and white pirate attack shuttle with its red markings and its two cockpit canopies', { tris: 10000 }),
+  tieadvanced: remake(['File:Rebels TIE Advanced x1 Fathead.png', 'File:TIEAdvancedx1-MF78.png'], 'the fighter with a ball cockpit, a long rear hull and two bent dark solar wings', { tris: 12000 }),
+  tiebomber: remake('File:TIE Bomber BF2.png', 'the twin-hulled bomber, a ball cockpit beside a long ordnance pod, between two bent dark solar wings', { tris: 12000 }),
+  awing: remake('File:A-wing DICE.png', 'the small wedge-shaped red and white fighter with its two big engines at the back and a cannon on each wingtip', { tris: 12000 }),
+  tie: remake(['File:TIE Fighter DICE.png', 'File:TIE-Fighter-RO-SWCT.png'], 'the fighter with a ball cockpit between two flat hexagonal dark solar wings', { tris: 12000 }),
+  moncal: remake(['File:HomeOneEngines-Chron.png', 'File:HomeOne-SWArmada.jpg'], 'the long rounded organic grey cruiser, bulbous and pod-shaped, its bank of engines at the back', { lifter: 'nano-banana-pro', tris: 30000, tex: 2048 }),
 };

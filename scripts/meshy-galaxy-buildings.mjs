@@ -13,9 +13,16 @@
 //   from    one of the owner's own models (lab/uploads/glb/<from>.glb),
 //           retextured from a `style` prompt
 // Each is stood on y = 0 in the middle, set to its size in metres, its maps
-// WebPs at `tex`, meshopt-compressed, into
-// public/models/galaxy/surface/<kind>.glb, with a light copy beside it when
-// it's big enough (scripts/galaxy-surface-lod.mjs).
+// WebPs at `tex` (with `split`, only the colour and glow maps: the normal,
+// occlusion and metal-rough ones at half that, as scripts/meshy-war.mjs
+// does, since they carry less a viewer sees and were most of a file),
+// meshopt-compressed, into public/models/galaxy/surface/<kind>.glb (or
+// public/<out>), with a light copy beside it when it's big enough
+// (scripts/galaxy-surface-lod.mjs). Two more fields choose what is paid for:
+// `lifter`, the image model that lifts a picture (nano-banana unless said,
+// 3 credits; nano-banana-pro, 9, keeps fine detail and paint better), and
+// `texture`, the maps Meshy makes ('2k' unless said; '4k' costs the same 30
+// credits and squeezes down sharper).
 //
 //   node scripts/meshy-galaxy-buildings.mjs <step> [kind …]
 //
@@ -194,7 +201,13 @@ async function squeeze(from, to, a) {
     await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'png', slots: /baseColor/, resize: [a.tex, a.tex] }));
     for (const r of await recolorDoc(doc, a.recolor)) console.log(`  recolor ${r.material}: ${r.from} → ${r.to}`);
   }
-  await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [a.tex, a.tex] }), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+  const maps = a.split
+    ? [
+        textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /baseColor|emissive/, resize: [a.tex, a.tex], quality: 84 }),
+        textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness/, resize: [a.tex / 2, a.tex / 2], quality: 80 }),
+      ]
+    : [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [a.tex, a.tex] })];
+  await doc.transform(...maps, meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
   let tris = 0;
   for (const m of root.listMeshes()) for (const p of m.listPrimitives()) tris += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
   await mkdir(dirname(to), { recursive: true });
@@ -202,6 +215,9 @@ async function squeeze(from, to, a) {
   return { tris, size: size.map((v) => +(v * k).toFixed(1)) };
 }
 
+// where a kind's model goes on the site: `out` (under public/) if it says,
+// else beside the galaxy's ships or its worlds' buildings
+const fileOf = (n) => (BUILDINGS[n].out ? join(ROOT, 'public', BUILDINGS[n].out) : join(BUILDINGS[n].galaxy ? GALAXY : OUT, `${n}.glb`));
 const prompted = (names) => names.filter((n) => BUILDINGS[n].prompt);
 const owned = (names) => names.filter((n) => BUILDINGS[n].from);
 const pictured = (names) => names.filter((n) => BUILDINGS[n].ref);
@@ -247,7 +263,7 @@ const steps = {
       for (const [i, buf] of raw.entries()) {
         if (!s[n].lift[i]) {
           const what = BUILDINGS[n].lift ?? 'the main building';
-          const { result } = await api('POST', '/v1/image-to-image', { ai_model: 'nano-banana', prompt: `Lift ${what} out of this picture. ${LIFT} ${BUILDINGS[n].shot ?? SHOT}`, reference_image_urls: [dataUri(buf)] });
+          const { result } = await api('POST', '/v1/image-to-image', { ai_model: BUILDINGS[n].lifter ?? 'nano-banana', prompt: `Lift ${what} out of this picture. ${LIFT} ${BUILDINGS[n].shot ?? SHOT}`, reference_image_urls: [dataUri(buf)] });
           s[n].lift[i] = result;
           await save(s);
         }
@@ -289,7 +305,7 @@ const steps = {
           should_remesh: true,
           topology: 'triangle',
           target_polycount: BUILDINGS[n].tris,
-          texture_resolution: '2k',
+          texture_resolution: BUILDINGS[n].texture ?? '2k',
           target_formats: ['glb'],
           enable_thumbnail: true,
         });
@@ -331,7 +347,7 @@ const steps = {
       if (!existsSync(raw)) await download(t.model_urls.glb, raw);
       // (a ship of the galaxy's goes beside its others, its far-off copy made
       // by scripts/galaxy-lod.mjs)
-      const to = a.galaxy ? join(GALAXY, `${n}.glb`) : join(OUT, `${n}.glb`);
+      const to = fileOf(n);
       const { tris, size } = await squeeze(raw, to, a);
       console.log(`fetch    ${n.padEnd(13)} ${tris} triangles, ${size.join(' × ')} m, ${Math.round((await stat(to)).size / 1024)} KB`);
       const lod = a.galaxy ? null : await makeLod(to, join(OUT, `${n}.lod1.glb`));
@@ -346,7 +362,7 @@ const steps = {
       const tile = (buf) => sharp(buf).resize(640, 480, { fit: 'contain', background: '#202020' }).jpeg().toBuffer();
       if (BUILDINGS[n].ref) for (const buf of await pictures(n)) tiles.push(await tile(buf));
       for (const f of [`${n}-lift.png`, `${n}.png`]) if (existsSync(join(REVIEW, f))) tiles.push(await tile(await readFile(join(REVIEW, f))));
-      for (const view of await shoot(join(BUILDINGS[n].galaxy ? GALAXY : OUT, `${n}.glb`), ['three', 'close'])) tiles.push(await tile(view));
+      for (const view of await shoot(fileOf(n), ['three', 'close'])) tiles.push(await tile(view));
       const cols = Math.min(3, tiles.length);
       const out = join(REVIEW, `${n}-gate.jpg`);
       await sharp({ create: { width: 640 * cols, height: 480 * Math.ceil(tiles.length / cols), channels: 3, background: '#111' } })
