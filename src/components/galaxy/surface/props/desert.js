@@ -204,17 +204,24 @@ export const PROPS = {
 
   // Docking Bay 94: a round walled pit open to the sky, its gate on one side
   dockingbay(k, { r = 15, h = 7 } = {}) {
-    const wall = new THREE.CylinderGeometry(r, r, h, 48, 1, true, 0.35, PI * 2 - 0.7).translate(0, h / 2, 0);
-    const parts = [
-      part(wall, { color: ADOBE, to: 'adobe' }),
-      part(ring(r, 0.45, 48), { at: [0, h, 0], color: ADOBE_DARK, to: 'adobe' }),
-      part(cyl(r - 0.2, r - 0.2, 0.15, 48), { color: '#9a8a70', to: 'stone' }),
-    ];
-    // ribs round its wall, and pipework
+    // one thick wall, seen from in the pit as well as outside: out at r+0.5,
+    // a rounded lip over the top, in at r-0.4 (the gap at +z, as the solids)
+    const profile = [
+      [r + 0.5, 0],
+      [r + 0.5, h - 0.4],
+      [r + 0.1, h + 0.3],
+      [r - 0.4, h - 0.2],
+      [r - 0.4, 0],
+    ].map(([x, y]) => new THREE.Vector2(x, y));
+    const wall = new THREE.LatheGeometry(profile, 48, 0.35, PI * 2 - 0.7);
+    const parts = [part(wall, { color: '#cdb592', to: 'adobe' }), part(cyl(r - 0.4, r - 0.4, 0.15, 48), { color: '#8f7f66', to: 'stone' })];
+    // ribs round its wall, outside and in
     for (let i = 0; i < 14; i++) {
       const a = 0.6 + (i / 13) * (PI * 2 - 1.2);
-      parts.push(part(box(0.6, h, 0.6), { at: [sin(a) * (r + 0.2), 0, cos(a) * (r + 0.2)], rot: [0, a, 0], color: ADOBE_DARK, to: 'adobe' }));
+      for (const rr of [r + 0.6, r - 0.6]) parts.push(part(box(0.6, h, 0.6), { at: [sin(a) * rr, 0, cos(a) * rr], rot: [0, a, 0], color: ADOBE_DARK, to: 'adobe' }));
     }
+    // a gate block either side of the opening, capping the wall's cut ends
+    for (const a of [-0.4, 0.4]) parts.push(part(box(2.4, h + 0.6, 1.6), { at: [sin(a) * r, 0, cos(a) * r], rot: [0, a, 0], color: ADOBE_DARK, to: 'adobe' }));
     // the wall, as solid boxes round the ring (leaving the gate, at +z)
     const solids = [];
     for (let i = 0; i < 22; i++) {

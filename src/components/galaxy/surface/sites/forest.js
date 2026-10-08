@@ -153,6 +153,7 @@ export const SITES = {
         },
         things: [
           { kind: 'bunker', at: [0, -6], yaw: 0 },
+          { kind: 'bunkerbank', at: [0, -8.5], yaw: 0 },
           { kind: 'redwood', at: [-7, -24], model: false, opts: { seed: 21, h: 60, r: 2.2 } },
           { kind: 'redwood', at: [9, -27], model: false, opts: { seed: 22, h: 56, r: 2.0 } },
           { kind: 'crates', at: [-10, 4] },

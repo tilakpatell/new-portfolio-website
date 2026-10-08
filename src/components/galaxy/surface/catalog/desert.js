@@ -45,5 +45,5 @@ export const MODELS = {
   mosblock: { uid: 'e5c41d421d284ffea6fa82516a0a35e5', as: 'the blocks of Mos Eisley', metres: 11, along: 'max', yaw: 0, tris: 10500, tex: 1024, detail: 'adobe', recolor: [{ material: '^M_(wall_Bat|pillard_Cracked)$', to: '#c9bfad', amount: 1 }, { material: '^M_container_Cylindrique$', to: '#b9ae99', amount: 1 }], look: { metalness: 0, roughness: 0.95, roughnessMap: null } },
   // a docking bay: the round pit, its walls and ramps (bare as it comes:
   // the plaster scan and sand colour laid over it)
-  dockingbay: { uid: '20863d782fb34a02871cef941ecb0aca', as: 'the docking bays', metres: 31, along: 'max', yaw: 0, tris: 14600, tex: 512, detail: 'adobe', tint: '#bbae9b', solids: 'built' },
+  dockingbay: { uid: '20863d782fb34a02871cef941ecb0aca', as: 'the docking bays', metres: 31, along: 'max', yaw: 0, tris: 14600, tex: 512, detail: 'adobe', tint: '#c4ad8a', solids: 'built' },
 };

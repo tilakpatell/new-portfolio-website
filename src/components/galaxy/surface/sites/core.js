@@ -629,7 +629,7 @@ export const SITES = {
           rv: [['jesse', 'Yo, it’s like the Colosseum. With bugs.'], ['walt', 'Bread and circuses, Jesse. Keep them watching the arena, and they never look up.']],
         },
         things: [
-          { kind: 'arena', at: [0, 0], yaw: 2.23 },
+          { kind: 'arena', at: [0, 0], yaw: 2.23, sink: 3.5 },
           { kind: 'pillars', at: [0, 0], yaw: 2.23 },
           { kind: 'droideka', at: [6, -20], yaw: 2.4, opts: { shield: true } },
           { kind: 'droideka', at: [-14, -16], yaw: 2.0 },

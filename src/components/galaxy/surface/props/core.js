@@ -1333,7 +1333,7 @@ export const PROPS = {
   // seats round a sandy floor, spires along its rim, the gate at +z
   arena(k) {
     const R = 60;
-    const SX = 1.25;
+    const SX = 1.0;
     const ROCK = '#b07650';
     const gap = 0.22;
     const lathe = (pts, color, to = 'stone') => part(new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 64, gap, PI * 2 - gap * 2), { scale: [SX, 1, 1], color, to });
@@ -1359,7 +1359,11 @@ export const PROPS = {
     parts.push(part(new THREE.TorusGeometry(11, 2.4, 8, 16, PI), { at: [0, 18, R + 1], color: '#8e5a3c', to: 'stone' }));
     // the royal box over the floor, opposite the gate
     parts.push(part(box(16, 4, 6), { at: [0, 14, -(R - 18)], color: '#7a4a32', to: 'stone' }), part(box(14, 0.6, 5), { at: [0, 18, -(R - 18)], color: '#c8a070', to: 'cloth' }));
-    // walls you can't go through: the inner ring and the outer, but for the gate
+    // walls you can't go through, fitted to the model (+/-75 x +/-73): the
+    // floor's edge at r 22 (where it ends on its -x side) and the outer wall
+    // at r 74, but for the gate
+    const IN = 22;
+    const OUT = 74;
     const solids = [];
     const oval = (rr, step = 1.5) => {
       const n = Math.ceil((2 * PI * rr * 1.13) / step);
@@ -1369,21 +1373,24 @@ export const PROPS = {
         solids.push({ circle: [sin(a) * rr * SX, cos(a) * rr, 0.85] });
       }
     };
-    oval(R - 24);
-    oval(R + 2.2);
-    for (const s of [-1, 1]) solids.push({ circle: [s * 15, R + 1, 5] }, ...rail([s * (R - 24) * sin(gap) * SX, (R - 24) * cos(gap)], [s * (R + 2) * sin(gap) * SX, (R + 2) * cos(gap)], 1.2));
+    oval(IN);
+    oval(OUT);
+    for (const s of [-1, 1]) solids.push({ circle: [s * (OUT * sin(gap) + 4), OUT + 1, 5] }, ...rail([s * IN * sin(gap) * SX, IN * cos(gap)], [s * OUT * sin(gap) * SX, OUT * cos(gap)], 1.2));
     return { object: k.build(parts, { name: 'arena' }), solids };
   },
 
-  // the three execution pillars in the arena, their chains hanging
+  // the execution posts in the arena: slim tapered stone, a knob on top,
+  // chains hanging from under it on the three in the middle
   pillars(k) {
     const parts = [];
-    for (const x of [-7, 0, 7]) {
-      parts.push(part(cyl(0.9, 0.7, 8, 10), { at: [x, 0, 0], color: '#8a5a3c', to: 'stone' }));
-      parts.push(part(cyl(1.2, 1.2, 0.5, 10), { at: [x, 8, 0], color: '#7a4a32', to: 'stone' }));
-      for (const s of [-1, 1]) parts.push(rod([x + s * 0.7, 7.6, 0.6], [x + s * 0.8, 5.4, 0.7], 0.05, 0.05, { color: '#3a3430', to: 'metal' }), part(ring(0.18, 0.05, 8), { at: [x + s * 0.8, 5.3, 0.7], color: '#3a3430', to: 'metal' }));
+    const xs = [-14, -7, 0, 7, 14];
+    for (const x of xs) {
+      parts.push(part(cyl(0.85, 0.55, 7.5, 10), { at: [x, 0, 0], color: '#a87250', to: 'stone' }));
+      parts.push(part(new THREE.SphereGeometry(0.9, 12, 8), { at: [x, 7.5, 0], scale: [1, 0.7, 1], color: '#a87250', to: 'stone' }));
+      if (abs(x) > 7) continue;
+      for (const s of [-1, 1]) parts.push(rod([x + s * 0.5, 7.1, 0.5], [x + s * 0.7, 5, 0.65], 0.05, 0.05, { color: '#3a3430', to: 'metal' }), part(ring(0.18, 0.05, 8), { at: [x + s * 0.7, 4.9, 0.65], color: '#3a3430', to: 'metal' }));
     }
-    return { object: k.build(parts, { name: 'pillars' }), solids: [{ circle: [-7, 0, 1] }, { circle: [0, 0, 1] }, { circle: [7, 0, 1] }] };
+    return { object: k.build(parts, { name: 'pillars' }), solids: xs.map((x) => ({ circle: [x, 0, 0.9] })) };
   },
 
   // the acklay: a crab-mantis of a beast, its two scythe arms up, its

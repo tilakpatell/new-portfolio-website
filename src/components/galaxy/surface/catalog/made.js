@@ -26,7 +26,7 @@ export const MODELS = {
   // each lifted out of a film still or a production painting): where the
   // built one had decks and doors, they stay under the model (solids: 'built')
   // Yavin 4: the Great Temple, its hangar and tiers still walkable
-  massassi: { made: 'meshy', lod: true, as: 'the Great Temple of Massassi', metres: 96, along: 'x', hero: true, solids: 'built' },
+  massassi: { made: 'meshy', lod: true, as: 'the Great Temple of Massassi', metres: 96, along: 'x', hero: true, solids: 'built', detail: 'stone' },
   // Endor: an Ewok hut (the village's, on their decks, scaled to each)
   ewokhut: { made: 'meshy', as: 'the Ewok huts', metres: 4, along: 'x', tint: '#8a8068' },
   // Naboo: Theed's royal palace on the cliff (its courtyard stays)
