@@ -1584,84 +1584,6 @@
       "trunk": 0,
       "kind": "plant"
     },
-    "Rock_Big_1": {
-      "family": "rock",
-      "file": "rock.glb",
-      "parts": [
-        "main"
-      ],
-      "tris": 1736,
-      "tris1": 434,
-      "radius": 3.42,
-      "height": 4.453,
-      "trunk": 2.88,
-      "kind": "rock"
-    },
-    "Rock_Big_2": {
-      "family": "rock",
-      "file": "rock.glb",
-      "parts": [
-        "main"
-      ],
-      "tris": 1944,
-      "tris1": 486,
-      "radius": 4.095,
-      "height": 3.28,
-      "trunk": 3.286,
-      "kind": "rock"
-    },
-    "Rock_Medium_1": {
-      "family": "rock",
-      "file": "rock.glb",
-      "parts": [
-        "main"
-      ],
-      "tris": 342,
-      "tris1": 84,
-      "radius": 2.199,
-      "height": 1.989,
-      "trunk": 1.752,
-      "kind": "rock"
-    },
-    "Rock_Medium_2": {
-      "family": "rock",
-      "file": "rock.glb",
-      "parts": [
-        "main"
-      ],
-      "tris": 244,
-      "tris1": 60,
-      "radius": 1.965,
-      "height": 1.848,
-      "trunk": 1.592,
-      "kind": "rock"
-    },
-    "Rock_Medium_3": {
-      "family": "rock",
-      "file": "rock.glb",
-      "parts": [
-        "main"
-      ],
-      "tris": 522,
-      "tris1": 130,
-      "radius": 2.438,
-      "height": 2.001,
-      "trunk": 1.748,
-      "kind": "rock"
-    },
-    "Rock_Medium_4": {
-      "family": "rock",
-      "file": "rock.glb",
-      "parts": [
-        "main"
-      ],
-      "tris": 400,
-      "tris1": 100,
-      "radius": 2.613,
-      "height": 1.966,
-      "trunk": 2.291,
-      "kind": "rock"
-    },
     "RockPath_Round_Small_1": {
       "family": "rockpath",
       "file": "rockpath.glb",
@@ -1791,6 +1713,84 @@
       "height": 0.166,
       "trunk": 1.382,
       "kind": "path"
+    },
+    "Rock_Big_1": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1736,
+      "tris1": 434,
+      "radius": 3.42,
+      "height": 4.453,
+      "trunk": 2.88,
+      "kind": "rock"
+    },
+    "Rock_Big_2": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 1944,
+      "tris1": 486,
+      "radius": 4.095,
+      "height": 3.28,
+      "trunk": 3.286,
+      "kind": "rock"
+    },
+    "Rock_Medium_1": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 342,
+      "tris1": 84,
+      "radius": 2.199,
+      "height": 1.989,
+      "trunk": 1.752,
+      "kind": "rock"
+    },
+    "Rock_Medium_2": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 244,
+      "tris1": 60,
+      "radius": 1.965,
+      "height": 1.848,
+      "trunk": 1.592,
+      "kind": "rock"
+    },
+    "Rock_Medium_3": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 522,
+      "tris1": 130,
+      "radius": 2.438,
+      "height": 2.001,
+      "trunk": 1.748,
+      "kind": "rock"
+    },
+    "Rock_Medium_4": {
+      "family": "rock",
+      "file": "rock.glb",
+      "parts": [
+        "main"
+      ],
+      "tris": 400,
+      "tris1": 100,
+      "radius": 2.613,
+      "height": 1.966,
+      "trunk": 2.291,
+      "kind": "rock"
     },
     "TallThick_1": {
       "family": "tallthick",
