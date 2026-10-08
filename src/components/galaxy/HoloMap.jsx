@@ -353,7 +353,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   const go = (s) => {
     setQ('');
     setPick(s.id);
-    if (here) mv.frame([s.pos, here.pos]);
+    mv.frame(here ? [s.pos, here.pos] : [s.pos]);
     setTimeout(() => jumpBtn.current?.focus(), 0);
   };
 
