@@ -13,7 +13,7 @@
 // fitted in the hangar (outfit.js), bolted on by modules.js.
 //
 // buildShip(kind, textures, { build }) → { group, setThrottle(0…1),
-//   paint(paint), rim({ colour, dir }), outfit(loadout) → modules, modules, engines, drive(dt,
+//   paint(paint), rim({ colour, dir, key }), outfit(loadout) → modules, modules, engines, drive(dt,
 //   motion), dress(model, { clone }), mount(model, extra), update(t),
 //   dispose() }
 // With a build (shipyard/build.js), the ship is that garage build, put
