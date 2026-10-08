@@ -4,9 +4,16 @@ import { STAR_RADIUS, createStarField, starBrightness } from './starField';
 
 describe('starBrightness', () => {
   it('falls with magnitude, the faintest the naked eye sees still seen', () => {
-    expect(starBrightness(6)).toBeCloseTo(0.35, 2);
-    expect(starBrightness(10)).toBeGreaterThan(0.03);
+    expect(starBrightness(6)).toBeCloseTo(0.25, 2);
+    expect(starBrightness(10)).toBeGreaterThan(0.01);
     expect(starBrightness(0)).toBeGreaterThan(starBrightness(1));
+  });
+  it('keeps the catalogue faintest well under the naked eye, so they do not crowd the sky', () => {
+    expect(starBrightness(10) / starBrightness(6)).toBeLessThan(0.1);
+  });
+  it('holds the very brightest back, so Sirius is a star and not a lamp', () => {
+    expect(starBrightness(-1.46)).toBeLessThan(15);
+    expect(starBrightness(-1.46)).toBeGreaterThan(starBrightness(0));
   });
   it('puts only the brightest few over the bloom threshold (post.js, 1.7)', () => {
     expect(starBrightness(-1.46)).toBeGreaterThan(1.7); // Sirius
