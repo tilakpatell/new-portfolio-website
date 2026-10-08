@@ -47,7 +47,8 @@ export function validateWorld(world) {
 // page (its onEvent) goes out through rt.events, held until the page that
 // shows it says it's listening (attached(), from useWorld): a world made at
 // a handover, before its page is up, says nothing to the page it's
-// replacing. The scene itself is `world.scene`, for the page's calls.
+// replacing. The scene itself is `world.scene`, for the page's calls; a
+// scene's `tune()` is the world's, for the ?debug panel.
 const HELD = 200; // events kept at most before a page is listening
 export function fromScene(id, create, { shading = 'glsl', mb = 0, label, ratio, sharpness } = {}) {
   return {
@@ -100,6 +101,8 @@ export function fromScene(id, create, { shading = 'glsl', mb = 0, label, ratio, 
       };
       if (scene.ready) world.ready = scene.ready;
       if (scene.prepare) world.prepare = (onProgress, opts) => scene.prepare(onProgress, opts);
+      // (a scene's own groups for the ?debug panel, asked as a world's are)
+      if (scene.tune) world.tune = () => scene.tune();
       return world;
     },
   };

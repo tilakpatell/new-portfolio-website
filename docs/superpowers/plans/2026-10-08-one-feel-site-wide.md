@@ -193,7 +193,7 @@ Owns: `src/lib/debugPanel.js`, `src/lib/debugPanel.test.js`, `src/runtime/debug.
 
 **Files:** Modify `src/lib/debugPanel.js`, `src/lib/debugPanel.test.js`.
 
-**Interfaces (produces):** items gain `type: 'bool'` (a checkbox) and `'select'` (`options: string[]`); `debugPanel({ title, groups, code, id = null })`: with `id`, every `set` also writes the values to `sessionStorage` under `tp-tune-<id>` and the panel applies what is stored when it opens (`restore(id, groups)`, pure, exported: returns how many it set); the panel object gains `open(groups, { title, id })` and `close()` so one panel serves worlds in turn; `toCode` prints a bool as `true | false` and a select as a quoted string.
+**Interfaces (produces):** items gain `type: 'bool'` (a checkbox) and `'select'` (`options: string[]`); `debugPanel({ title, groups, code, id = null })`: with `id`, every `set` also writes the values to `sessionStorage` under `tp-tune-<id>` and the panel applies what is stored when it opens (`restore(id, groups)`, pure, exported: returns how many it set; `keep(id, groups)` writes them); the panel object gains `open(groups, { title, id })` and `close()` so one panel serves worlds in turn; `toCode` prints a bool as `true | false` and a select as a quoted string.
 
 - [ ] **Step 1: Write the failing tests**: `toCode` with a bool and a select; `restore` with a fake storage sets only keys the groups have; `debugOn` unchanged.
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
@@ -201,7 +201,7 @@ Owns: `src/lib/debugPanel.js`, `src/lib/debugPanel.test.js`, `src/runtime/debug.
 
 ### Task 1D.2: `rt.debug`, and `tune()` in the contract
 
-**Files:** Create `src/runtime/debug.js`, `src/runtime/debug.test.js`. Modify `src/runtime/runtime.js` (make `rt.debug = createDebug({ on: debugOn() })` once; after a world is placed and `ready`, `rt.debug.show(mod.id, world.tune?.())`; in `unmount` and `handover`’s letting-go, `rt.debug.hide()`), `src/runtime/module.js` (header: `tune?() → groups (lib/debugPanel), asked once the world is ready when the address has ?debug`), `src/runtime/index.js` (export `createDebug`), `docs/superpowers/HANDOFF-world-runtime.md`.
+**Files:** Create `src/runtime/debug.js`, `src/runtime/debug.test.js`. Modify `src/runtime/runtime.js` (make `rt.debug = createDebug({ on: debugOn() })` once; after a world is placed and `ready`, `rt.debug.show(mod.id, world.tune?.())`; in `unmount` and `handover`’s letting-go, `rt.debug.hide()`; `fromScene` passes a scene’s `tune()` through as the world’s), `src/runtime/module.js` (header: `tune?() → groups (lib/debugPanel), asked once the world is ready when the address has ?debug`), `src/runtime/index.js` (export `createDebug`), `docs/superpowers/HANDOFF-world-runtime.md`.
 
 **Interfaces (produces):** `createDebug({ on = debugOn(), panel = debugPanel }) → { on, show(id, groups), hide(), current }`: `show` with `on` false or `groups` empty or undefined does nothing and logs nothing; with groups, opens (or re-opens) the one panel with `title: id`, `id`; `hide` closes it.
 
@@ -211,12 +211,12 @@ Owns: `src/lib/debugPanel.js`, `src/lib/debugPanel.test.js`, `src/runtime/debug.
 
 ### Task 1D.3: The house’s groups, the stage’s `tune`, and the first two takers
 
-**Files:** Create `src/lib/three/houseTuning.js`, `src/lib/three/houseTuning.test.js`. Modify `src/lib/stage3d.js` (returns `tune(groups)`: when `debugOn()`, opens the panel with `bloomGroups(bloomPass)` first and the scene’s groups after, under the canvas’s nearest `[data-route]` or the document title; closed in `dispose`), `src/components/galaxy/surface/tune.js` (its `look` group from `houseGroups`, its own kept), `src/components/earth/module.js` (`tune()` with the globe’s own values: exposure, the cloud height, whatever it reads live).
+**Files:** Create `src/lib/three/houseTuning.js`, `src/lib/three/houseTuning.test.js`. Modify `src/lib/stage3d.js` (returns `tune(groups)`: when `debugOn()`, opens the panel with its bloom group (`stageBloomGroups(bloomPass)`, `lib/stage3d.js`’s own until 1A’s `bloomGroups` lands) first and the scene’s groups after, under the canvas’s nearest `[data-route]` or the document title; closed in `dispose`), `src/components/galaxy/surface/tune.js` (its `look` group from `houseGroups`, its own kept), `src/components/earth/module.js` (`tune()` with the globe’s own values: exposure, the cloud height, whatever it reads live).
 
 **Interfaces (produces):** `houseGroups(house, { exposure = null } = {}) → groups`: one group `look` with `shadow` (colour), `edgeFrom 0…1`, `edgeTo 0…1.5`, `mix 0…1`, `bounce 0…1`, `fogLow`, `fogHigh` (colours), `fogBelow 0…1.5`, `fogMix 0…1`, and `exposure 0.4…3` when `exposure` is `{ get, set }`.
 
 - [ ] **Step 1: Write the failing tests**: `houseGroups(createHouse())` reads the uniforms back and `set` on `shadow` changes `uLookShadow`; `stage.tune` with `debugOn` false makes nothing (fake `document`).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test`; in dev, `/galaxy/yavin?debug` and `/earth?debug` open the panel; without `?debug`, nothing.
+- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test`; in dev, `/#/galaxy/yavin/surface?debug` and `/#/earth?debug` open the panel; without `?debug`, nothing (the site’s routes are hash routes, and the galaxy’s surface, not its map, is the world on the look).
 - [ ] **Step 5: Commit** `One tuning panel for every world: the house’s groups, the stage’s tune, Earth and the surfaces first`. Open the pull request; fill the handoff row.
 
 ## Lane 1E: the colliders (`claude/one-feel-colliders`)
