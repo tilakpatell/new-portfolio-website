@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { WEAPONS } from '../weaponRules';
+import { PICKABLE, WEAPONS } from '../weaponRules';
 import { FIGURES } from '../figures';
 import { OWNERS } from '../../warEffects';
 import { SIDE_OF_KIND } from './standing';
@@ -21,8 +21,12 @@ describe('troops', () => {
     expect(TROOPS.probe.weapon).toBeNull();
   });
   test('the clone’s DC-15 and the droid’s E-5 are soldiers’ guns, not the hero panel’s', () => {
-    expect(WEAPONS.dc15).toMatchObject({ damage: 1, every: 0.4, burst: 3, spread: 0.012, range: 120, side: 'galaxy', npc: true });
-    expect(WEAPONS.e5).toMatchObject({ damage: 1, every: 0.5, spread: 0.03, range: 70, side: 'galaxy', npc: true });
+    expect(WEAPONS.dc15).toMatchObject({ damage: 1, every: 0.4, burst: 3, spread: 0.012, range: 120, side: 'galaxy' });
+    expect(PICKABLE).not.toContain('dc15');
+    expect(PICKABLE).not.toContain('e5');
+    expect(WEAPONS.e5).toMatchObject({ damage: 1, every: 0.5, spread: 0.03, range: 70, side: 'galaxy' });
+    expect(PICKABLE).not.toContain('dc15');
+    expect(PICKABLE).not.toContain('e5');
   });
   test('each side fields figures the surface can draw, the warEffects owner’s troops first', () => {
     for (const [side, o] of Object.entries(OWNERS)) {
