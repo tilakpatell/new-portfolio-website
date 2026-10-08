@@ -4,7 +4,7 @@ import { WEAPONS } from '../rules/combat';
 import { ROOM_KINDS } from '../rules/layout';
 import { DS1 } from '../rules/stations/ds1';
 import { DS2 } from '../rules/stations/ds2';
-import { BPM, FIGURE, chatterOf, createSounds, doorFor, gunFor, heard, humFor, klaxonFor, musicFor, notes, stepFor, surfaceOf, ticks } from './sounds';
+import { BPM, FIGURE, HUMS, chatterOf, createSounds, doorFor, gunFor, heard, humFor, klaxonFor, musicFor, notes, stepFor, surfaceOf, ticks } from './sounds';
 
 // A Web Audio context that only remembers: every node it makes, what each
 // is joined to, and when each source starts and stops. Enough to tell
@@ -106,6 +106,10 @@ describe('where a sound is heard from', () => {
 describe('the station’s hum', () => {
   it('has a hum for every kind of room a station may have', () => {
     for (const kind of ROOM_KINDS) expect(humFor(kind), kind).toEqual(expect.objectContaining({ drone: expect.any(Number), air: expect.any(Number), size: expect.any(Number) }));
+  });
+
+  it('gives every kind of room a hum of its own, not just the corridor’s', () => {
+    for (const kind of ROOM_KINDS.filter((k) => k !== 'field')) expect(Object.hasOwn(HUMS, kind), kind).toBe(true);
   });
 
   it('makes a hangar vast and airy beside a corridor’s close hum', () => {
