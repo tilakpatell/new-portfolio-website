@@ -729,6 +729,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
       return import.meta.env.DEV ? ground : null;
     },
     render,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     resize: fitTo,
     dispose: () => {
       ground?.dispose();

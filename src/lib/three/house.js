@@ -36,6 +36,7 @@
 
 import * as THREE from 'three';
 import { GROUND_GLSL } from './groundmap';
+import { guardOf } from './frameGuard';
 
 export const LOOK = {
   shadow: 0x9d93c4, // the albedo times this, in full shade (sRGB)
@@ -297,6 +298,11 @@ export function houseOn({ renderer, scene, sun = null, hemi = null, ambient = nu
   // (the shade's colour from the sky light, or from an ambient light where there's no sky)
   const sky = hemi ?? ambient;
   house.adopt(scene);
+  // what comes into the scene late, held back by the renderer's frame guard
+  // (lib/three/frameGuard), takes the look before its shader is compiled,
+  // not on the next follow({ adopt }) after it's been drawn (which compiled
+  // it again, mid-frame)
+  guardOf(renderer)?.adopt(scene, (object) => house.adopt(object));
   const seen = { hex: -1, k: -1 };
   // (an HDR environment: its mean radiance, measured again whenever its
   // picture is swapped for another)

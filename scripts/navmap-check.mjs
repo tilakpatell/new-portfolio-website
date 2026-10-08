@@ -77,7 +77,7 @@ if (only !== 'phone') {
   // a world: the go button says how
   await pickByName(page, 'Avengers HQ');
   await page.waitForTimeout(1500);
-  check((await page.textContent('.navmap-go')).includes('Super speed to Avengers HQ'), 'the go button reads “Super speed to Avengers HQ”');
+  check((await page.textContent('.navmap-go')).includes('Race to Avengers HQ'), 'the go button reads “Race to Avengers HQ”');
   const times = await page.$$eval('.navmap-drive-time', (els) => els.map((e) => e.textContent));
   check(times.every((t) => /s$/.test(t)), `a trip time for every drive (${times.join(', ')})`);
   await shot(page, '2-picked');
@@ -147,7 +147,7 @@ if (only !== 'phone') {
   check(new RegExp(`At ${goal}`).test(status) && /charging/.test(status), `the map says where you are and that the drive's charging (${status.replace(/\s+/g, ' ').trim()})`);
   await pickByName(page, 'Aurelia');
   await page.waitForTimeout(800);
-  check(Boolean(await page.$('.navmap-note')) && (await page.textContent('.navmap-go')).includes('Super speed to Aurelia'), 'with the drive charging, it says so and goes at super speed');
+  check(Boolean(await page.$('.navmap-note')) && (await page.textContent('.navmap-go')).includes('Race to Aurelia'), 'with the drive charging, it says so and goes at super speed');
   await shot(page, '5-charging');
   await click(page, '.navmap-go');
   await page.waitForTimeout(4000);

@@ -1,0 +1,53 @@
+// What the Death Star fetches (models, textures, skies, sound): the install's list (scripts/packs.mjs, src/runtime/install.js); scripts/pack-check.mjs fails when its source names an asset this misses.
+export const PACK = {
+  id: '/deathstar',
+  pages: ['src/pages/DeathStar.jsx'], // page modules: the build adds their JS/CSS chunks
+  src: [
+    'src/pages/DeathStar.jsx',
+    'src/components/deathstar/DeathStar3D.js',
+    'src/components/deathstar/Hero3D.jsx',
+    'src/components/deathstar/Planets.jsx',
+    'src/components/deathstar/Readout.jsx',
+    'src/components/deathstar/Trench3D.js',
+    'src/components/deathstar/TrenchRun.jsx',
+    'src/components/deathstar/battle.js',
+    'src/components/deathstar/parts.js',
+    'src/components/deathstar/planetPaint.js',
+    'src/components/deathstar/plating.js',
+    'src/components/deathstar/ties.js',
+    'src/components/deathstar/trench.js',
+    'src/components/deathstar/voicelines.js',
+  ], // where its source is (files or folders, repo-relative): pack-check scans these
+  urls: [
+    '/audio/clips/i-am-your-father.mp3',
+    '/audio/clips/lack-of-faith.mp3',
+    '/audio/clips/force-is-strong.mp3',
+    '/audio/clips/fire-when-ready.mp3',
+    '/audio/clips/thats-no-moon.mp3',
+    '/audio/clips/short-for-a-stormtrooper.mp3',
+    '/audio/clips/help-me-obi-wan-kenobi.mp3',
+    '/audio/clips/not-the-droids.mp3',
+    '/audio/clips/use-the-force-luke.mp3',
+    '/audio/clips/the-force-will-be-with-you.mp3',
+    '/audio/clips/may-the-force-be-with-you.mp3',
+    '/audio/clips/stay-on-target.mp3',
+    '/audio/clips/almost-there.mp3',
+    '/audio/clips/dont-get-cocky.mp3',
+    '/audio/clips/never-tell-me-the-odds.mp3',
+    '/audio/clips/bad-feeling-luke.mp3',
+    '/audio/clips/bad-feeling-han.mp3',
+    '/audio/clips/its-a-trap.mp3',
+    '/audio/clips/do-or-do-not.mp3',
+    '/audio/clips/chewie-roar.mp3',
+    '/audio/clips/r2-whistle.mp3',
+    '/audio/clips/r2-scream.mp3',
+    '/audio/clips/lightsaber-on.mp3',
+    '/audio/clips/dl-44.mp3',
+    '/audio/clips/tie-fighter.mp3',
+    '/audio/clips/imperial-march.mp3',
+    '/audio/clips/hyperspace-exit.mp3',
+    '/audio/clips/binary-sunset.mp3',
+    '/audio/clips/star-wars-theme.mp3',
+  ], // single files
+  globs: ['/models/gen3d/x-wing*.glb'], // folders: `*` within a folder, `**` any depth
+};

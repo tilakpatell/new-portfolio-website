@@ -189,6 +189,12 @@ export function hostileStep(t, world, dt, r = Math.random) {
   const pace = (h.strafe?.speed ?? s.speed ?? 1.4) * STEP.pace;
   let out = { x: b.x, z: b.z, yaw: b.yaw, moving: 0 };
   const face = (p) => turnToward(b.yaw, Math.atan2(p.x - b.x, p.z - b.z), 3 * dt);
+  // (what it was closing on, backing from or circling has gone from its mind
+  // since the last choice, a mark that died or slipped out of sight: it thinks again)
+  if (!target && (m.mode === 'close' || m.mode === 'back' || m.mode === 'strafe')) {
+    m.mode = 'wander';
+    m.done = true;
+  }
   switch (m.mode) {
     case 'hold':
       out.yaw = target ? face(target) : b.yaw;

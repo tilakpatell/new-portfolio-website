@@ -17,6 +17,8 @@ import AbqHud, { Title } from './AbqHud';
 import { drawMap } from './map';
 import './world.css';
 import '../../../styles/lazy/albuquerque.css';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // Albuquerque, the world: drive Walt's Aztek round town, and go into the
 // places as they open. The rules are in ./rules.js, the drawing in
@@ -142,6 +144,7 @@ export default function AbqWorld() {
 }
 
 function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, setToast, refresh }) {
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.35 });
   const canvas = useRef(null);
@@ -236,7 +239,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     };
     import('./scene')
       .then(({ createAbqWorld }) => createAbqWorld(canvas.current, { onLost: () => !dead && setGl('lost') }))
-      .then((a) => {
+      .then(async (a) => {
         if (dead) return a.dispose();
         api.current = a;
         if (import.meta.env.DEV) window.__ABQ__ = { api: a, sim: sim.current }; // for the QA scripts
@@ -244,6 +247,9 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         a.setBlue(sim.current.blue, sim.current.blue.length === CRYSTALS.length);
         a.setPizzas(Number(local.get(PIZZAS, 0)) || 0);
         fit();
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (dead) return;
         setGl('on');
         announce(progRef.current);
       })
@@ -545,7 +551,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
   return (
     <div ref={box} className="abq-world-stage" data-touch={touch || undefined}>
       <canvas ref={canvas} className="abq-world-canvas" data-on={gl === 'on' || undefined} aria-label="Albuquerque from above Walt’s Aztek: the desert, the Sandias, and the roads into town" role="img" />
-      {gl === 'loading' && <p className="abq-world-loading">Driving into Albuquerque…</p>}
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Driving into Albuquerque" />
       <AbqHud touch={touch} gl={gl} prog={prog} snap={snap} rank={rank} blue={blue} speedo={speedo} map={map} trav={trav} hud={hud} toast={toast} here={here} inside={inside} enter={enter} throwPizza={throwPizza} washCar={washCar} runDelivery={runDelivery} nextTime={nextTime} clock={clock} tuning={tuning} setTuning={setTuning} list={list} setList={setList} onStick={onStick} wake={wake} hand={hand} driving={driving} changeDriving={changeDriving} travel={travel} />
     </div>
   );

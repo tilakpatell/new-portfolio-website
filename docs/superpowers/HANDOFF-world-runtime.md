@@ -26,6 +26,8 @@ rt.saves     // get, set, remove, session, watch, register
 rt.assets    // texture, gltf, audio, prefetch, retain, release (owned by the module, dropped with it)
 rt.audio     // context(), bus() (a gain per module, faded at unmount), output
 rt.events    // emit(type, data) to the page; useWorld forwards to onEvent({ type, ...data })
+rt.workers   // define(name, make, { size }), request(name, msg, transfer) → reply | null, cancel(name, key), close(name): a pool per name, lowest priority first
+rt.origin    // the floating origin: at, check(pos), toLocal, toWorld, on(fn); moved after a world's anchor() before each step, event 'origin' { shift }
 rt.invalidate(), rt.host, rt.current, rt.status
 rt.handover(module, props, host, { fade, held, after }) → true once the new world draws (false: failed, or something newer came; the old world stays)
              // the old world draws on, seen, until the new one is ready and `after` (its own last moment) is done; its last frame then fades out over it

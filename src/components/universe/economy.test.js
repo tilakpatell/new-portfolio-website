@@ -273,6 +273,20 @@ describe('buying', () => {
     expect(econ.owns('fusion')).toBe(false);
   });
 
+  it('spends credits on something that isn’t kept (a bounty paid off), only what you have', () => {
+    const { econ } = fresh();
+    expect(econ.spend(50)).toBe(false);
+    econ.earn('killCapital');
+    const { spend } = econ;
+    expect(spend(-5)).toBe(false);
+    expect(spend(1.5)).toBe(false);
+    expect(spend(EARN.killCapital.credits + 1)).toBe(false);
+    expect(spend(100)).toBe(true);
+    expect(econ.credits).toBe(EARN.killCapital.credits - 100);
+    expect(econ.spent).toBe(100);
+    expect(econ.owned.size).toBe(0);
+  });
+
   it('buy works taken off the wallet, as a callback', () => {
     const { econ } = fresh();
     const { buy } = econ;

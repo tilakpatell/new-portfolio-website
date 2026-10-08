@@ -3,7 +3,8 @@
 // right across the map and soft up close: parked 2.4 radii out, a planet
 // fills 600 pixels with a quarter of its surface, 256 texels of a 1024 map.
 // So the planets the ship comes within six radii of get their near set
-// (planets.js's nearSet: the -hq copies, and on ultra the -xl colour map),
+// (planets.js's nearSet: the -hq copies, and on ultra the -xl colour map,
+// or the 8192 -8k where one has been baked: planetMaps.js's K8),
 // and their finer sphere with it (nearGeometry); at most two at once, the
 // furthest dropped (its textures disposed) when a third comes near. A set
 // that arrives after the ship has gone on is never installed, only freed.
@@ -12,7 +13,9 @@
 //   wanted(shipAt, planets, { near, hold, resident }) → ids within `near`
 //       radii (or `hold` for one already resident), nearest first
 //   evict(resident, wanted, max) → { keep, drop }
-//   createNearMaps({ level, small, load, forget, resident, near })
+//   createNearMaps({ level, small, load, forget, resident, near, upload })
+//   (`upload(textures) → Promise`: a set sent to the graphics chip a slice at a
+//   time before it's put on, rather than all in the frame it's swapped in)
 //       → { update(shipAt, planets), resident(), dispose() }
 //   (each planet: { id, at | group, r | radius, nearSet(level), swapMaps(T2 | null), nearGeometry(on) })
 
@@ -44,7 +47,7 @@ export function evict(resident, want, max) {
 
 const NONE = { update() {}, resident: () => [], dispose() {} };
 
-export function createNearMaps({ level = detailLevel(), small = false, load = loadTexture, forget = forgetTexture, resident: max = 2, near = NEAR } = {}) {
+export function createNearMaps({ level = detailLevel(), small = false, load = loadTexture, forget = forgetTexture, resident: max = 2, near = NEAR, upload = null } = {}) {
   if (level === 'low' || small) return NONE;
   // (DEV: off, to measure what they cost: scripts/universe-check.mjs --near off)
   if (import.meta.env?.DEV && globalThis.localStorage?.getItem('tp-near') === 'off') return NONE;
@@ -88,11 +91,18 @@ export function createNearMaps({ level = detailLevel(), small = false, load = lo
   const start = (p, list) => {
     const s = { planet: p, state: 'loading', T2: {}, urls: {}, asked: new Set() };
     sets.set(p.id, s);
-    Promise.all(list.map(async (m) => [m.name, await fetchOne(s, m)])).then((got) => {
+    Promise.all(list.map(async (m) => [m.name, await fetchOne(s, m)])).then(async (got) => {
       for (const [name, r] of got) {
         if (!r) continue;
         s.T2[name] = r.t;
         s.urls[name] = r.url;
+      }
+      if (upload && !gone && sets.get(p.id) === s) {
+        try {
+          await upload(Object.values(s.T2));
+        } catch {
+          // (they go up as they're drawn instead)
+        }
       }
       // (gone on, dropped for a nearer one, or the scene's gone: never installed)
       if (gone || sets.get(p.id) !== s) return free(s);

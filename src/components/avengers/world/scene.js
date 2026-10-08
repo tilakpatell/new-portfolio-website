@@ -2072,6 +2072,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
+    prepare: engine.prepare, // (everything sent to the graphics chip before it's seen: hq/engine)
     fx,
     screenOf,
     resize: (w, h) => engine.resize(w, h),

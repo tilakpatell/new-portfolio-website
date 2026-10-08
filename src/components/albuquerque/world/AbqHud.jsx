@@ -183,7 +183,7 @@ export default function AbqHud({ touch, gl, prog, snap, rank, blue, speedo, map,
 export function Title() {
   const { before, el, after } = splitWord('Albuquerque');
   return (
-    <h1 id="abq-title" className="abq-world-title" aria-label="Albuquerque">
+    <h1 id="abq-title" className="abq-world-title" data-tour="hud" aria-label="Albuquerque">
       <span aria-hidden="true">
         {before}
         {el && (

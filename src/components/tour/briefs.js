@@ -362,7 +362,7 @@ export const BRIEFS = {
     {
       id: 'ring',
       title: 'The Ring',
-      text: 'Hold it to the fire to read it, put it on (Escape takes it off), or cast it in.',
+      text: 'Hold it to the fire to read it, put it on (Esc takes it off), or cast it in.',
     },
     help('Middle-earth'),
   ],
