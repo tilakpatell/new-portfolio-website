@@ -203,7 +203,10 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
   // (`keys`, a handover's: the old world's bindings, { kept }. The new world
   // binds its keys as it's made; the old one gets its own back from then
   // until the new one's prepare is over, since it draws on, and is flown,
-  // all that while; then the new world's are bound again.)
+  // all that while; then the new world's are bound again. So a world binds
+  // its keys in create: one bound later, in its ready or prepare, would be
+  // put over by what it bound in create once its prepare ends. fromScene's
+  // worlds bind none here, their scenes keep their own keys.)
   const build = async (module, props, host, token, own = false, keys = null) => {
     await backendFor(module);
     if (token !== seq) return null;

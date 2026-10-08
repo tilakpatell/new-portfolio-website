@@ -74,7 +74,7 @@ import { createSkyFog } from './skyfog';
 import { createWater } from './water';
 import { floatPose } from './floats';
 import { createWeather } from './weather';
-import { createKit } from './kit';
+import { createKit, paintKit } from './kit';
 import { createHouse } from '../../../lib/three/house';
 import { adoptLater, exposureOf, groundPieces, lookOf } from './look';
 import { surfaceTuning, siteCode } from './tune';
@@ -321,6 +321,8 @@ export async function create(canvas, ctx) {
   // kit's plants and cloth lean
   const windAngle = site.ground.wind ?? 0;
   const wind = createWind({ strength: site.grass?.wind ?? 0.4, angle: windAngle });
+  // (its pictures painted ahead, a frame between each: kit.js's paintKit)
+  await paintKit(31);
   const kit = createKit({ seed: 31, wind: { angle: windAngle } });
   // (the scatter casts its shadow only near you: near.js)
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
