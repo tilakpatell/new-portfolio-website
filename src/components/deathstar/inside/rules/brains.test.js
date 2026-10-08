@@ -616,7 +616,9 @@ describe('the crew’s minds', () => {
 
   it('sets a squad off together from where they stand: a way one of them worked out is remembered, and costs the rest nothing', () => {
     const w = world(row());
-    const people = [0, 1, 2, 3, 4].map((i) => addPerson(w.crew, { id: `tk${i}`, kind: 'stormtrooper', room: 'west', x: -14.9 + (i % 3) * 0.4, z: 1.1 + Math.floor(i / 3) * 0.5, role: { type: 'march', spots: ['b', 'a'] } }));
+    const people = [0, 1, 2, 3, 4].map((i) =>
+      addPerson(w.crew, { id: `tk${i}`, kind: 'stormtrooper', room: 'west', x: -14.9 + (i % 3) * 0.4, z: 1.1 + Math.floor(i / 3) * 0.5, role: { type: 'march', spots: ['b', 'a'] } }),
+    );
     const started = [];
     simulate(w, 2, { each: () => started.push(people.filter((p) => p.mind.legs.nav.path).length) });
     expect(started).toEqual([5, 5]);

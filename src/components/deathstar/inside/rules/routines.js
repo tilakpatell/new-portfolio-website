@@ -390,7 +390,7 @@ const CELL = 1; // metres: a way is remembered by the cells its ends stand in
 // ARRIVE of a spot, and a spot often stands on a whole metre, where four cells meet
 const EDGE = ARRIVE;
 const KEEP = 32; // ways a room remembers, the least lately used forgotten first
-const KNEE = 0.5; // the height a moved end’s leg is checked at, as a step is
+const KNEE = 0.5; // metres above its floor a moved end’s leg is checked at
 const remembered = new WeakMap(); // nav → room → key → way
 
 const cellOf = (p) => `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`;
@@ -398,9 +398,11 @@ const cellOf = (p) => `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`;
 // The cells an end may be remembered in: its own first, then any within EDGE of it.
 function cellsNear(p) {
   const out = [cellOf(p)];
-  for (const dx of [-EDGE, 0, EDGE]) for (const dz of [-EDGE, 0, EDGE]) {
-    const c = cellOf({ x: p.x + dx, z: p.z + dz });
-    if (!out.includes(c)) out.push(c);
+  for (const dx of [-EDGE, 0, EDGE]) {
+    for (const dz of [-EDGE, 0, EDGE]) {
+      const c = cellOf({ x: p.x + dx, z: p.z + dz });
+      if (!out.includes(c)) out.push(c);
+    }
   }
   return out;
 }
@@ -423,15 +425,39 @@ function waysOut(nav, room) {
   return ways;
 }
 
-// The remembered way with its ends where they are asked from now; its middle legs were clear already.
-const moved = (way, from, to) => [{ ...way[0], x: from.x, z: from.z, room: from.room }, ...way.slice(1, -1).map((p) => ({ ...p })), { ...way.at(-1), x: to.x, z: to.z }];
+const SAME = 1e-6; // metres: ends nearer than this haven’t moved
 
 // A leg is walked in the room of the point it goes to; a ride (from a point marked `lift`) isn’t walked.
-function walkable(layout, solidsOf, a, b) {
+// Each end is read a knee above its own floor, as a step is, so a leg on one floor is checked fairly;
+// one up a stair never reads clear (its steps stand in the way of a straight line).
+function clearLeg(layout, solidsOf, a, b) {
   if (a.lift) return true;
   const room = layout.rooms.get(b.room);
   const knee = (p) => ({ x: p.x, y: (layout.floorAt(b.room, p.x, p.z) ?? room.y) + KNEE, z: p.z });
   return lineClear(layout, () => true, knee(a), knee(b), solidsOf(b.room) ?? []);
+}
+
+// The short step from where a remembered way began or ended to where this one does: clear, on one floor.
+function stepOver(layout, solidsOf, a, b) {
+  const [ya, yb] = [layout.floorAt(b.room, a.x, a.z), layout.floorAt(b.room, b.x, b.z)];
+  return ya !== null && yb !== null && Math.abs(ya - yb) <= BODY.step + SAME && clearLeg(layout, solidsOf, a, b);
+}
+
+// The remembered way between new ends. Its middle legs were clear when it was worked out. An end that
+// has moved is joined straight to the way’s next point when that leg is clear, else by way of the end
+// it moved from (a step over, then the remembered leg, which may climb a stair). → the way, or null
+function fitted(layout, solidsOf, way, from, to) {
+  const [first, last] = [way[0], way.at(-1)];
+  const out = [{ ...first, x: from.x, z: from.z, room: from.room }, ...way.slice(1, -1).map((p) => ({ ...p })), { ...last, x: to.x, z: to.z }];
+  if (flat(out[0], first) > SAME && !clearLeg(layout, solidsOf, out[0], out[1])) {
+    if (!stepOver(layout, solidsOf, out[0], first)) return null;
+    out.splice(1, 0, { ...first });
+  }
+  if (flat(out.at(-1), last) > SAME && !clearLeg(layout, solidsOf, out.at(-2), out.at(-1))) {
+    if (!stepOver(layout, solidsOf, last, out.at(-1))) return null;
+    out.splice(-1, 0, { ...last });
+  }
+  return out;
 }
 
 export function rememberedWay(nav, from, to, { canPass = () => true, solidsOf = () => [] } = {}) {
@@ -444,8 +470,8 @@ export function rememberedWay(nav, from, to, { canPass = () => true, solidsOf = 
       const key = wayKey(a, b, shut);
       const way = ways.get(key);
       if (!way) continue;
-      const now = moved(way, from, to);
-      if (!walkable(nav.layout, solidsOf, now[0], now[1]) || !walkable(nav.layout, solidsOf, now.at(-2), now.at(-1))) continue;
+      const now = fitted(nav.layout, solidsOf, way, from, to);
+      if (!now) continue;
       ways.delete(key);
       ways.set(key, way);
       return now;
@@ -462,8 +488,9 @@ export function wayBetween(nav, from, to, { canPass = () => true, solidsOf = () 
   if (way?.length > 1) {
     const ways = waysOut(nav, from.room);
     const key = wayKey(cellOf(from), `${to.room}:${cellOf(to)}`, shutTo(nav, canPass));
+    const kept = way.map((p) => ({ ...p }));
     ways.delete(key);
-    ways.set(key, way.map((p) => ({ ...p })));
+    ways.set(key, kept);
     if (ways.size > KEEP) ways.delete(ways.keys().next().value);
   }
   return way;

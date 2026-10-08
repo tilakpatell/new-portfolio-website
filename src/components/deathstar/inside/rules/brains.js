@@ -494,7 +494,17 @@ function wary(crew, p, threat, level) {
 function engage(crew, p, threat) {
   setMode(crew, p, 'fight');
   // a beat to bring the rifle up before the first shot
-  p.mind.fight = { target: threat.id, tactic: null, since: crew.clock, think: crew.clock, place: null, burst: 0, next: crew.clock + 0.25 + 0.35 * crew.rand(), knownUntil: -Infinity, toldAt: -Infinity };
+  p.mind.fight = {
+    target: threat.id,
+    tactic: null,
+    since: crew.clock,
+    think: crew.clock,
+    place: null,
+    burst: 0,
+    next: crew.clock + 0.25 + 0.35 * crew.rand(),
+    knownUntil: -Infinity,
+    toldAt: -Infinity,
+  };
   crew.out.push({ type: 'saw', id: p.id, target: threat.id, at: { ...threat.at }, room: p.room });
   call(crew, p, 'seen', threat.at);
   bark(crew, p, 'seen');
