@@ -107,6 +107,12 @@ for (const id of list.split(',')) {
   // has none to wait for: it runs out the clock)
   if (mode === 'surface') await page.waitForFunction(() => Boolean(window.__surfaceScene.api?.ground?.stats?.baked), null, { timeout: Number(process.env.BAKE_WAIT ?? 150000), polling: 1000 }).catch(() => {});
   await page.waitForTimeout(settle);
+  // (the world drawing before it's measured: a world is prepared out of
+  // sight and shown when it's ready, which in software GL can outlast the
+  // settle wait; measured then, it drew nothing, and the gate fails it)
+  await page
+    .waitForFunction((surface) => ((surface ? window.__surfaceScene?.renderer : window.__galaxyDebug?.renderer)?.info.render.calls ?? 0) > 0, mode === 'surface', { timeout: Number(process.env.DRAW_WAIT ?? 180000), polling: 1000 })
+    .catch(() => {});
   // (in space, the ship put in one place, the same for every run: off the
   // planet on its sun side, facing it, stopped. The seeded randomness alone
   // can't hold it there: three.js draws on Math.random for every object's

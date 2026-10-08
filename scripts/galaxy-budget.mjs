@@ -21,9 +21,12 @@ export function limitsFor({ id, quality, row, base, scale = 1, realGpu = false }
   return { calls, tris, mb: row.modelsMB * scale, frame, known };
 }
 
-// What a run went over, as short phrases; none means it passes.
+// What a run went over, as short phrases; none means it passes. A run that
+// drew nothing while it was measured (the world still held back behind its
+// cover) has no numbers to hold to a budget, so it fails too.
 export const overBy = (r, l) =>
   [
+    r.calls === 0 && 'drew nothing (no draw calls in the measured frames)',
     r.calls > l.calls && `calls ${r.calls} > ${Math.round(l.calls)}`,
     r.triangles > l.tris && `tris ${r.triangles} > ${Math.round(l.tris)}`,
     r.glbMB > l.mb && `models ${r.glbMB} MB > ${l.mb}`,
