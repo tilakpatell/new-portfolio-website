@@ -51,7 +51,8 @@ export function createBoltPlay({ blaster, ground = null, rng = Math.random }) {
         if (got < all * CLEAR) return null;
       }
       const who = s.who && typeof s.who === 'object' ? s.who : null;
-      let a = who ? aims.get(who) : null;
+      // (a shot from no one in particular, a battle's: no telegraph, no streak)
+      let a = who ? aims.get(who) : { streak: 0, fresh: false, wide: false, at: now };
       if (!a || now - a.at > FRESH) a = freshAim();
       a.at = now;
       if (who) aims.set(who, a);
@@ -60,7 +61,7 @@ export function createBoltPlay({ blaster, ground = null, rng = Math.random }) {
       const min = a.wide ? missBy(range) : 0;
       a.fresh = false;
       a.wide = false;
-      return blaster.enemy(s.from, to, Math.max(spread, min * 1.5), s.color ?? '#ff4a3d', s.damage ?? 8, { side: s.side ?? 'them', owner: who ?? null, rng, min, tag: { atYou: true, who } });
+      return blaster.enemy(s.from, to, Math.max(spread, min * 1.5), s.color ?? '#ff4a3d', s.damage ?? 8, { side: s.side ?? 'them', owner: who?.ground ? who.id : who, rng, min, tag: { atYou: true, who } });
     },
 
     // your raised blade as the bolts see it: across your front, chest high

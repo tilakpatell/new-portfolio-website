@@ -1502,6 +1502,14 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   });
   // their flight: the one step every blaster on the site flies by (lib/combat/bolt.js)
   const boltStep = createBolts({ pool: boltPool.length });
+  // a mesh no bolt in the air holds; with none free, the oldest in the air gives way
+  const takeMesh = () => {
+    const free = boltPool.find((m) => !S.bolts.some((o) => o.mesh === m));
+    if (free) return free;
+    const old = S.bolts.shift();
+    old.b.alive = false;
+    return old.mesh;
+  };
   const paintBolt = (mesh, color) => {
     const mats = boltMat(color);
     mesh.material = mats.core;
@@ -1951,7 +1959,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const dir = (mark ? mark.clone() : shotAt(p, target)).sub(from).normalize();
     if (jitter) dir.add(new V((rand() - 0.5) * jitter, (rand() - 0.5) * jitter, (rand() - 0.5) * jitter)).normalize();
     const b = boltStep.fire({ from: arr(from), dir: arr(dir), speed: BOLT.speed, range: BOLT.range, owner, side: 'you', damage });
-    const mesh = boltPool.find((m) => !m.visible) ?? boltPool[0];
+    const mesh = takeMesh();
     const color = GUNS[gunOf(p)]?.bolt ?? p.spec.bolt ?? '#ffffff';
     paintBolt(mesh, color);
     mesh.visible = true;
@@ -2860,7 +2868,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         fx.flash(new V(...from), new V(...dir), got.gp.spec.flash);
       }
       const b = boltStep.fire({ from, dir, speed: BOLT.speed, range: BOLT.range, owner: s.by, side: 'troop', damage: s.damage });
-      const mesh = boltPool.find((m) => !m.visible) ?? boltPool[0];
+      const mesh = takeMesh();
       paintBolt(mesh, TROOP_BOLT);
       mesh.visible = true;
       S.bolts = S.bolts.filter((o) => (o.b === b && o.mesh !== mesh ? (o.mesh.visible = false) : o.mesh !== mesh)); // (a slot or a mesh taken back: the old bolt's gone)
