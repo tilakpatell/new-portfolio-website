@@ -51,6 +51,7 @@ const Minecraft = lazy(() => import('./pages/Minecraft'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
 const Changes = lazy(() => import('./pages/Changes'));
+const Worlds = lazy(() => import('./pages/Worlds'));
 const Dickansh = lazy(() => import('./pages/Dickansh'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
@@ -376,6 +377,7 @@ function Shell() {
                 <Route path="/earth" element={<Earth />} />
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="/changes" element={<Changes />} />
+                <Route path="/worlds" element={<Worlds />} />
                 <Route path="/dickansh" element={<Dickansh />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
