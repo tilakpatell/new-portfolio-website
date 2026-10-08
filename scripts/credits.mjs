@@ -76,7 +76,7 @@ const permittedTextures = Object.values(await json('public/games/credits.json'))
 const site = (url) => (/polyhaven/.test(url) ? 'Poly Haven' : /ambientcg/.test(url) ? 'ambientCG' : /kenney/.test(url) ? 'Kenney' : /quaternius/.test(url) ? 'Quaternius' : new URL(url).hostname);
 const cc0Unique = [...new Map(cc0.map((a) => [`${a.source}|${a.name}`, a])).values()];
 const kenney = cc0Unique.filter((a) => site(a.source) === 'Kenney');
-// (Quaternius's kits: the planet landings' trees, rocks and street furniture, scripts/quaternius.mjs)
+// (Quaternius's kits: the planet landings' trees, rocks and street furniture, scripts/quaternius.mjs, and the galaxy's nature, scripts/quaternius-nature.mjs)
 const quaternius = cc0Unique.filter((a) => site(a.source) === 'Quaternius');
 const scans = cc0Unique.filter((a) => !['Kenney', 'Quaternius'].includes(site(a.source))).sort((a, b) => site(a.source).localeCompare(site(b.source)) || a.name.localeCompare(b.name));
 const cc0People = [...new Set(scans.flatMap((a) => a.by.split(/,\s*/)))].filter((p) => p !== 'ambientCG').sort();
@@ -153,7 +153,7 @@ if (shareAlike.length) {
 md.push(
   '## Scans, skies and kits (CC0)',
   '',
-  `Public domain, so no credit is needed, but they deserve it. From [Poly Haven](https://polyhaven.com) (${cc0People.join(', ')}), [ambientCG](https://ambientcg.com), [Kenney](https://kenney.nl), whose kits make up *Portal panic* and more (${kenney.length} pieces), and [Quaternius](https://quaternius.com), whose trees, rocks, flowers and street furniture stand about the planets you land on (${quaternius.length} pieces). The lists by game are in [\`public/games/credits.json\`](public/games/credits.json), [\`public/hq/CREDITS.md\`](public/hq/CREDITS.md) and [\`public/cc0/README.md\`](public/cc0/README.md).`,
+  `Public domain, so no credit is needed, but they deserve it. From [Poly Haven](https://polyhaven.com) (${cc0People.join(', ')}), [ambientCG](https://ambientcg.com), [Kenney](https://kenney.nl), whose kits make up *Portal panic* and more (${kenney.length} pieces), and [Quaternius](https://quaternius.com), whose trees, rocks, flowers and street furniture stand about the planets you land on and grow on the galaxy's green worlds (${quaternius.length} pieces). The lists by game are in [\`public/games/credits.json\`](public/games/credits.json), [\`public/hq/CREDITS.md\`](public/hq/CREDITS.md) and [\`public/cc0/README.md\`](public/cc0/README.md).`,
   '',
   '<details>',
   `<summary>All ${scans.length} scans and skies</summary>`,

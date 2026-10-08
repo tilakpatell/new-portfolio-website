@@ -2131,15 +2131,6 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
-  "quaternius-nature-megakit": {
-    "source": "https://quaternius.com/packs/stylizednaturemegakit.html",
-    "id": "quaternius-nature-megakit",
-    "name": "Stylized Nature MegaKit",
-    "authors": [
-      "Quaternius"
-    ],
-    "license": "CC0 1.0"
-  },
   "meshy/garmentrick": {
     "source": "https://www.meshy.ai",
     "id": "01a11263-8161-70e2-a753-790c0405b416",
@@ -4580,5 +4571,425 @@
     ],
     "license": "CC0 1.0",
     "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius-galaxy/nkbirch1": {
+    "source": "https://quaternius.com",
+    "id": "Birch_1",
+    "name": "Stylized Nature MegaKit: Birch_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkbirch1 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkbirch3": {
+    "source": "https://quaternius.com",
+    "id": "Birch_3",
+    "name": "Stylized Nature MegaKit: Birch_3",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkbirch3 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkbirch5": {
+    "source": "https://quaternius.com",
+    "id": "Birch_5",
+    "name": "Stylized Nature MegaKit: Birch_5",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkbirch5 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkcherry1": {
+    "source": "https://quaternius.com",
+    "id": "CherryBlossom_1",
+    "name": "Stylized Nature MegaKit: CherryBlossom_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkcherry1 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkcherry4": {
+    "source": "https://quaternius.com",
+    "id": "CherryBlossom_4",
+    "name": "Stylized Nature MegaKit: CherryBlossom_4",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkcherry4 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkcommon1": {
+    "source": "https://quaternius.com",
+    "id": "CommonTree_1",
+    "name": "Stylized Nature MegaKit: CommonTree_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkcommon1 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkcommon3": {
+    "source": "https://quaternius.com",
+    "id": "CommonTree_3",
+    "name": "Stylized Nature MegaKit: CommonTree_3",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkcommon3 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkpine2": {
+    "source": "https://quaternius.com",
+    "id": "Pine_2",
+    "name": "Stylized Nature MegaKit: Pine_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkpine2 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkpine5": {
+    "source": "https://quaternius.com",
+    "id": "Pine_5",
+    "name": "Stylized Nature MegaKit: Pine_5",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkpine5 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nktwisted1": {
+    "source": "https://quaternius.com",
+    "id": "TwistedTree_1",
+    "name": "Stylized Nature MegaKit: TwistedTree_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nktwisted1 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nktwisted3": {
+    "source": "https://quaternius.com",
+    "id": "TwistedTree_3",
+    "name": "Stylized Nature MegaKit: TwistedTree_3",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nktwisted3 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkdead1": {
+    "source": "https://quaternius.com",
+    "id": "DeadTree_1",
+    "name": "Stylized Nature MegaKit: DeadTree_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkdead1 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkdead3": {
+    "source": "https://quaternius.com",
+    "id": "DeadTree_3",
+    "name": "Stylized Nature MegaKit: DeadTree_3",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkdead3 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkbush": {
+    "source": "https://quaternius.com",
+    "id": "Bush_Common",
+    "name": "Stylized Nature MegaKit: Bush_Common",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkbush (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkbushflowers": {
+    "source": "https://quaternius.com",
+    "id": "Bush_Common_Flowers",
+    "name": "Stylized Nature MegaKit: Bush_Common_Flowers",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkbushflowers (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkbushlarge": {
+    "source": "https://quaternius.com",
+    "id": "Bush_Large",
+    "name": "Stylized Nature MegaKit: Bush_Large",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkbushlarge (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkbushlong": {
+    "source": "https://quaternius.com",
+    "id": "Bush_Long_1",
+    "name": "Stylized Nature MegaKit: Bush_Long_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkbushlong (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkfern1": {
+    "source": "https://quaternius.com",
+    "id": "Fern_1",
+    "name": "Stylized Nature MegaKit: Fern_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkfern1 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkplant1big": {
+    "source": "https://quaternius.com",
+    "id": "Plant_1_Big",
+    "name": "Stylized Nature MegaKit: Plant_1_Big",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkplant1big (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkplant2": {
+    "source": "https://quaternius.com",
+    "id": "Plant_2",
+    "name": "Stylized Nature MegaKit: Plant_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkplant2 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkplant3": {
+    "source": "https://quaternius.com",
+    "id": "Plant_3",
+    "name": "Stylized Nature MegaKit: Plant_3",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkplant3 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkplant7": {
+    "source": "https://quaternius.com",
+    "id": "Plant_7",
+    "name": "Stylized Nature MegaKit: Plant_7",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkplant7 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkclover1": {
+    "source": "https://quaternius.com",
+    "id": "Clover_1",
+    "name": "Stylized Nature MegaKit: Clover_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkclover1 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkflowers2": {
+    "source": "https://quaternius.com",
+    "id": "Flower_2_Group",
+    "name": "Stylized Nature MegaKit: Flower_2_Group",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkflowers2 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkflowers3": {
+    "source": "https://quaternius.com",
+    "id": "Flower_3_Group",
+    "name": "Stylized Nature MegaKit: Flower_3_Group",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkflowers3 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkflower3": {
+    "source": "https://quaternius.com",
+    "id": "Flower_3_Single",
+    "name": "Stylized Nature MegaKit: Flower_3_Single",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkflower3 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkflower6": {
+    "source": "https://quaternius.com",
+    "id": "Flower_6",
+    "name": "Stylized Nature MegaKit: Flower_6",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkflower6 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkflower7": {
+    "source": "https://quaternius.com",
+    "id": "Flower_7_Single",
+    "name": "Stylized Nature MegaKit: Flower_7_Single",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkflower7 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkgrass": {
+    "source": "https://quaternius.com",
+    "id": "Grass_Common_Tall",
+    "name": "Stylized Nature MegaKit: Grass_Common_Tall",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkgrass (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkgrasswide": {
+    "source": "https://quaternius.com",
+    "id": "Grass_Wide_Short",
+    "name": "Stylized Nature MegaKit: Grass_Wide_Short",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkgrasswide (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkgrasswispy": {
+    "source": "https://quaternius.com",
+    "id": "Grass_Wispy_Tall",
+    "name": "Stylized Nature MegaKit: Grass_Wispy_Tall",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkgrasswispy (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkwheat": {
+    "source": "https://quaternius.com",
+    "id": "Grass_Wheat",
+    "name": "Stylized Nature MegaKit: Grass_Wheat",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkwheat (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkredcap": {
+    "source": "https://quaternius.com",
+    "id": "Mushroom_RedCap",
+    "name": "Stylized Nature MegaKit: Mushroom_RedCap",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkredcap (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkmushroom": {
+    "source": "https://quaternius.com",
+    "id": "Mushroom_Common",
+    "name": "Stylized Nature MegaKit: Mushroom_Common",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkmushroom (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkoyster": {
+    "source": "https://quaternius.com",
+    "id": "Mushroom_Oyster",
+    "name": "Stylized Nature MegaKit: Mushroom_Oyster",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkoyster (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkrock1": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Medium_1",
+    "name": "Stylized Nature MegaKit: Rock_Medium_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkrock1 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkrock3": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Medium_3",
+    "name": "Stylized Nature MegaKit: Rock_Medium_3",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkrock3 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkrockbig": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Big_1",
+    "name": "Stylized Nature MegaKit: Rock_Big_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkrockbig (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkpath1": {
+    "source": "https://quaternius.com",
+    "id": "RockPath_Square_Small_2",
+    "name": "Stylized Nature MegaKit: RockPath_Square_Small_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkpath1 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkpath2": {
+    "source": "https://quaternius.com",
+    "id": "RockPath_Round_Small_3",
+    "name": "Stylized Nature MegaKit: RockPath_Round_Small_3",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkpath2 (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkpebble": {
+    "source": "https://quaternius.com",
+    "id": "Pebble_Round_1",
+    "name": "Stylized Nature MegaKit: Pebble_Round_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkpebble (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
+  },
+  "quaternius-galaxy/nkpebblesq": {
+    "source": "https://quaternius.com",
+    "id": "Pebble_Square_3",
+    "name": "Stylized Nature MegaKit: Pebble_Square_3",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "On the galaxy's green worlds as the surface kind nkpebblesq (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)"
   }
 }

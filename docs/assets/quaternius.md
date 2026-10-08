@@ -19,14 +19,21 @@ QUATERNIUS=/path/to/tilakverse-assets/quaternius npm run quaternius [nature/tree
 
 ## In the site
 
-**The nature megakit** (`naturemega`) is on the galaxy's green worlds (Naboo, Endor, Dagobah, Yavin 4, Sorgan, Lothal, Scarif): 42 of its models, cut down to 5.7 MB in all. The design is `docs/superpowers/specs/2026-10-08-nature-kit-star-wars-design.md`.
+Two imports take models from the packs, each for its own pages:
+
+- **The planet landings** (`scripts/quaternius.mjs`, above): a GLB a family under `public/models/quaternius/`, a node a model, each sized for a landing, with a collider and a body; credited as `quaternius/<model>`.
+- **The galaxy's green worlds** (`scripts/quaternius-nature.mjs`): the nature megakit on Naboo, Endor, Dagobah, Yavin 4, Sorgan, Lothal and Scarif, a kind a file in the surface catalogue, at the pack's own size, a light copy beside each tree; 42 kinds, 5.7 MB in all; credited as `quaternius-galaxy/<kind>`. The design is `docs/superpowers/specs/2026-10-08-nature-kit-star-wars-design.md`.
+
+About ten of the megakit's models are in both. Both scripts find the packs the same way (`QUATERNIUS`, then the asset repo cloned beside this one), and each keeps only its own credits.
+
+For the galaxy's:
 
 - `src/components/galaxy/surface/catalog/nature.js` is the one table: each kind's pack file, how it moves in the wind, whether it throws a shadow, a triangle cut, its pictures' size, and the colours of the leaves and grass.
-- `node scripts/quaternius-nature.mjs [kind …]` writes them to `public/models/galaxy/surface/<kind>.glb` (and the trees' `.lod1.glb`), from a clone of tilakverse-assets in the temp folder or `lab/assets/naturemega`. The pack's vertex colours are masks for its own shader, not colours: the script turns them into a grey that darkens what's low down, gives the leaves the pack's grey cut-outs and a colour, and never blends a cut-out.
-- `src/components/galaxy/surface/nature.js` makes each one over as it loads: materials shared by name across the page (so a world's ten plant kinds send `Leaves` and `Flowers` once), lit as leaves, in one wind, and the low plants, flowers and grass pushed aside as you walk through.
-- A world's `scatter` entries use them like any kind, with four more options (`layout.js`): `tint: [a, b]` (a colour pair, an instance's colour between them, on the leaves and grass only), `around: [x, z]` (the ring round a place), `clumps: [count, spread]` (in patches), and `path: [[x, z], …]` with `spacing` and `jitter` (stepping stones along a path).
+- `QUATERNIUS=/path/to/tilakverse-assets/quaternius node scripts/quaternius-nature.mjs [kind …]` writes them to `public/models/galaxy/surface/<kind>.glb` (and the trees' `.lod1.glb`) and the kinds' credits to `public/games/credits.json` (`--credits` for the credits alone). The pack's vertex colours are masks for its own shader, not colours: the script turns them into a grey that darkens what's low down, gives the leaves the pack's grey cut-outs and a colour, and never blends a cut-out.
+- `src/components/galaxy/surface/nature.js` makes each file over as it loads: its materials shared by name across the page (so a world's ten plant kinds send `Leaves` and `Flowers` once) and its geometry stood in metres. Each world draws its own dressed copies of them: lit as leaves, in one wind, and the low plants, flowers and grass pushed aside as you walk through.
+- A world's `scatter` entries use them like any kind, with four more options (`layout.js`): `tint: [a, b]` (a colour pair, an instance's colour between them, on the leaves, grass and stone), `around: [x, z]` (the ring round a place), `clumps: [count, spread]` (in patches), and `path: [[x, z], …]` with `spacing` and `jitter` (stepping stones along a path).
 
-To bring in another of the pack's models: add its row to `catalog/nature.js`, run the script for that kind, and add its name to the `public/cc0/README.md` line.
+To bring in another of the pack's models for the galaxy: add its row to `catalog/nature.js`, run the script for that kind, and add its name to the `public/cc0/README.md` line.
 
 ## What's in each
 

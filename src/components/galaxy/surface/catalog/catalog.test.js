@@ -9,6 +9,7 @@ const file = (kind) => new URL(`../../../../../public${surfaceUrl(kind)}`, impor
 const ultraFile = (kind) => new URL(`../../../../../public${surfaceUltraUrl(kind)}`, import.meta.url);
 const lodFile = (kind) => new URL(`../../../../../public${surfaceLodUrl(kind)}`, import.meta.url);
 const README = readFileSync(new URL('../../../../../public/cc0/README.md', import.meta.url), 'utf8');
+const GAMES = JSON.parse(readFileSync(new URL('../../../../../public/games/credits.json', import.meta.url), 'utf8'));
 const MB = 1024 * 1024;
 
 describe('the surface models', () => {
@@ -43,6 +44,8 @@ describe('the surface models', () => {
         expect(made.has(kind), `${kind} in public/cc0/README.md`).toBe(true);
         // (its colours are its materials', shared by every kind: never tinted, looked or detailed a kind at a time)
         expect(m.tint ?? m.look ?? m.detail, kind).toBeUndefined();
+        // (credited a kind at a time, as the landings' Quaternius models are: scripts/quaternius-nature.mjs)
+        expect(GAMES[`quaternius-galaxy/${kind}`]?.license, `${kind}'s credit`).toBe('CC0 1.0');
       } else if (m.made === 'battlefront') {
         // (brought in by scripts/battlefront-import.mjs: credited with its permission)
         expect(m.uid, kind).toBeUndefined();
@@ -59,13 +62,8 @@ describe('the surface models', () => {
     }
   });
 
-  it('credits the nature kit once, as CC0', () => {
-    const games = JSON.parse(readFileSync(new URL('../../../../../public/games/credits.json', import.meta.url), 'utf8'));
-    const kit = Object.values(games).filter((a) => a.source === 'https://quaternius.com/packs/stylizednaturemegakit.html');
-    expect(kit).toHaveLength(1);
-    expect(kit[0].license).toBe('CC0 1.0');
-    expect(kit[0].authors).toEqual(['Quaternius']);
-    expect(Object.values(SURFACE_MODELS).some((m) => m.cc0 === 'quaternius')).toBe(true);
+  it('credits only the nature kinds there are', () => {
+    for (const key of Object.keys(GAMES).filter((k) => k.startsWith('quaternius-galaxy/'))) expect(SURFACE_MODELS[key.split('/')[1]]?.cc0, key).toBe('quaternius');
   });
 
   it('makes each cluster of models that are there', () => {

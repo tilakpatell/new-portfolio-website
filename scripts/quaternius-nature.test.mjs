@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MODELS, NATURE_COLOURS } from '../src/components/galaxy/surface/catalog/nature.js';
-import { familyOf, greyOf } from './quaternius-nature.mjs';
+import { CREDIT, familyOf, galaxyCredit, greyOf, packRoots } from './quaternius-nature.mjs';
 
 describe('the nature kit import', () => {
   it('names each kind nk-something, from a file of the pack', () => {
@@ -34,4 +34,22 @@ describe('the nature kit import', () => {
   it('colours only leaves and grass', () => {
     for (const name of Object.keys(NATURE_COLOURS)) expect(['leaves', 'grass'], name).toContain(familyOf(name));
   });
+
+  it('credits each kind as public/games/credits.json has the landings’ models, its file found by its name', () => {
+    const c = galaxyCredit('nkbirch1', MODELS.nkbirch1);
+    expect(c).toEqual({ source: 'https://quaternius.com', id: 'Birch_1', name: 'Stylized Nature MegaKit: Birch_1', authors: ['Quaternius'], license: 'CC0 1.0', use: expect.any(String) });
+    // (never a public/…/ folder in it: the credits' audit would take that for the whole folder)
+    expect(JSON.stringify(c)).not.toMatch(/public\//);
+    expect(c.use).toContain('nkbirch1');
+    expect(CREDIT('nkbirch1')).toBe('quaternius-galaxy/nkbirch1');
+    // (not the landings' prefix: scripts/quaternius.mjs drops the quaternius/ credits it doesn't make)
+    expect(CREDIT('x').startsWith('quaternius/')).toBe(false);
+  });
+
+  it('looks for the packs where scripts/quaternius.mjs does first ($QUATERNIUS, then the asset repo beside this one)', () => {
+    const roots = packRoots({ QUATERNIUS: '/a:/b' }, '/repo', '/tmp');
+    expect(roots.slice(0, 2)).toEqual(['/a/stylized-nature-megakit/glTF', '/b/stylized-nature-megakit/glTF']);
+    expect(packRoots({}, '/x/repo', '/tmp')).toEqual(['/x/tilakverse-assets/quaternius/stylized-nature-megakit/glTF', '/tmp/tilakverse-assets/quaternius/stylized-nature-megakit/glTF', '/x/repo/lab/assets/naturemega/glTF']);
+  });
 });
+

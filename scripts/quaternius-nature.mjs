@@ -6,10 +6,21 @@
 //   node scripts/quaternius-nature.mjs                  every kind in the catalogue
 //   node scripts/quaternius-nature.mjs nkbirch1 nkfern1 just these
 //   node scripts/quaternius-nature.mjs --from <dir>     the pack's glTF folder
+//   node scripts/quaternius-nature.mjs --credits        only the credits
 //
-// Without --from, the pack is looked for in a clone of tilakpatell/tilakverse-assets
-// in the system's temp folder, then in lab/assets/naturemega (where
-// `node scripts/assets-fetch.mjs naturemega` puts it).
+// Without --from, the pack is looked for where scripts/quaternius.mjs (the
+// planet landings' kits) looks first: the folders $QUATERNIUS lists (':'
+// between), then the asset repo cloned beside this one; then a clone in the
+// system's temp folder, then lab/assets/naturemega (where
+// `node scripts/assets-fetch.mjs naturemega` puts it). Every run writes the
+// kinds' credits to public/games/credits.json, one a kind, as the landings'
+// models have theirs (`quaternius-galaxy/<kind>`: the landings' script keeps
+// only its own `quaternius/` ones).
+//
+// The landings' kits (public/models/quaternius/) are files of a family, a
+// model a node, sized for a landing and given colliders; these are the
+// galaxy catalogue's, a kind a file, at the pack's own size, with a light
+// copy for each tree. About ten of the pack's models are in both.
 //
 // What it does to each one:
 //   - stands it on y = 0, its x and z left as the pack has them (the foot of
@@ -24,7 +35,7 @@
 //   - its pictures WebP at the entry's `tex`, welded, cut to `tris` where
 //     the entry has one, meshopt-compressed
 
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -39,8 +50,35 @@ import { makeLod } from './galaxy-surface-lod.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models', 'galaxy', 'surface');
-const PACK = join('quaternius', 'stylized-nature-megakit', 'glTF');
-const FROM = [join(tmpdir(), 'tilakverse-assets', PACK), join(ROOT, 'lab', 'assets', 'naturemega', 'glTF')];
+const MEGAKIT = join('stylized-nature-megakit', 'glTF');
+// where the pack's glTF may be, first found first
+export const packRoots = (env = process.env, root = ROOT, tmp = tmpdir()) => [
+  ...(env.QUATERNIUS ?? join(root, '..', 'tilakverse-assets', 'quaternius')).split(':').filter(Boolean).map((d) => join(d, MEGAKIT)),
+  join(tmp, 'tilakverse-assets', 'quaternius', MEGAKIT),
+  join(root, 'lab', 'assets', 'naturemega', 'glTF'),
+];
+
+// A kind's credit, as public/games/credits.json has the landings' models
+// (scripts/quaternius.mjs's creditOf); the credits' audit finds its file by
+// the key's name (scripts/ai-e2e/assets/credits.mjs), so its text never
+// names a public/ folder, which it would take for the whole folder
+export const CREDIT = (kind) => `quaternius-galaxy/${kind}`;
+export const galaxyCredit = (kind, m) => ({
+  source: 'https://quaternius.com',
+  id: m.from,
+  name: `Stylized Nature MegaKit: ${m.from}`,
+  authors: ['Quaternius'],
+  license: 'CC0 1.0',
+  use: `On the galaxy's green worlds as the surface kind ${kind} (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)`,
+});
+function writeCredits() {
+  const file = join(ROOT, 'public', 'games', 'credits.json');
+  const credits = JSON.parse(readFileSync(file, 'utf8'));
+  // (each kept where it is; a kind no longer in the catalogue dropped)
+  for (const key of Object.keys(credits)) if (key.startsWith(CREDIT('')) && !MODELS[key.slice(CREDIT('').length)]) delete credits[key];
+  for (const [kind, m] of Object.entries(MODELS)) credits[CREDIT(kind)] = galaxyCredit(kind, m);
+  writeFileSync(file, `${JSON.stringify(credits, null, 2)}\n`);
+}
 
 // a material's family, by the pack's names for them (surface/nature.js has the same rule)
 export const familyOf = (name) =>
@@ -117,9 +155,11 @@ export async function importOne(kind, m, dir, node) {
 
 async function main() {
   const args = process.argv.slice(2);
+  writeCredits();
+  if (args.includes('--credits')) return;
   const at = args.indexOf('--from');
-  const dir = at >= 0 ? args.splice(at, 2)[1] : FROM.find((d) => existsSync(d));
-  if (!dir || !existsSync(dir)) throw new Error(`no megakit glTF folder: clone tilakpatell/tilakverse-assets into ${tmpdir()}, or run node scripts/assets-fetch.mjs naturemega`);
+  const dir = at >= 0 ? args.splice(at, 2)[1] : packRoots().find((d) => existsSync(d));
+  if (!dir || !existsSync(dir)) throw new Error(`no megakit glTF folder: set QUATERNIUS to tilakverse-assets/quaternius (docs/assets/quaternius.md), or run node scripts/assets-fetch.mjs naturemega`);
   const node = await io();
   for (const [kind, m] of Object.entries(MODELS)) {
     if (args.length && !args.includes(kind)) continue;
