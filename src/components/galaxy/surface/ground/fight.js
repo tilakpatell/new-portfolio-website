@@ -41,7 +41,7 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 // is this body one the soldier fights? (you and your mate by your oath, or a grudge)
 const enemyTo = (s, b, world) => {
-  if (b.id === s.id || !b.side && !b.you) return false;
+  if (b.id === s.id || (!b.side && !b.you)) return false;
   if (b.you) return standingOf(s.side, { side: b.side, war: world.war }) === 'enemy' || (s.grudge ?? 0) > world.t;
   return relation(s.side, b.side, world.war) === 'enemy';
 };
@@ -62,31 +62,62 @@ export function senseAll(s, world, dt) {
   sense(s.senses, s.me, { targets }, dt, { seesThrough: world.seesThrough ?? null });
 }
 
+// the world's bodies by side and by squad, made once a frame (and kept on the
+// world while its bodies are the same list)
+export function indexBodies(bodies) {
+  const bySide = new Map();
+  const bySquad = new Map();
+  for (const b of bodies) {
+    const k = b.side ?? null;
+    if (!bySide.has(k)) bySide.set(k, []);
+    bySide.get(k).push(b);
+    if (b.squad == null) continue;
+    if (!bySquad.has(b.squad)) bySquad.set(b.squad, []);
+    bySquad.get(b.squad).push(b);
+  }
+  return { bySide, bySquad };
+}
+const indexOf = (world) => {
+  if (world.index && world.indexOf === world.bodies) return world.index;
+  world.indexOf = world.bodies;
+  return (world.index = indexBodies(world.bodies));
+};
+
 export function threatOf(s, world) {
   if (!s.me) return null;
-  const mates = new Set([s.id]);
-  if (world.squads?.membersOf) for (const id of world.squads.membersOf(s.id)) mates.add(id);
-  if (s.squad) for (const b of world.bodies) if (b.squad === s.squad && b.side === s.side) mates.add(b.id);
+  const index = indexOf(world);
+  // (whether one shot at is this one or its squad: worked out only when someone's shooting)
+  let mates = null;
+  const mate = (id) => {
+    if (!mates) {
+      mates = new Set([s.id]);
+      if (world.squads?.membersOf) for (const m of world.squads.membersOf(s.id)) mates.add(m);
+      for (const b of index.bySquad.get(s.squad) ?? []) if (b.side === s.side) mates.add(b.id);
+    }
+    return mates.has(id);
+  };
   let best = null;
   let bestScore = -Infinity;
-  for (const b of world.bodies) {
-    if (!enemyTo(s, b, world)) continue;
-    const bel = belief(s.me, b.id);
-    // (detected: the meter full, or seen and lost only a moment ago)
-    if (!bel || bel.confidence < 1) continue;
-    const d = Math.hypot(bel.at.x - s.b.x, bel.at.z - s.b.z);
-    let score = -d;
-    const shooting = b.firingAt && mates.has(b.firingAt);
-    // (one out of its reach that isn't shooting at it: let be a while)
-    if (!shooting && s.ignore?.id === b.id && s.ignore.until > world.t) continue;
-    if (shooting) score += 1000;
-    if (bel.visible) score += 5;
-    if (b.id === s.target) score += 8;
-    if (score > bestScore) {
-      bestScore = score;
-      best = { id: b.id, x: bel.visible ? b.x : bel.at.x, z: bel.visible ? b.z : bel.at.z, vel: bel.visible ? velOf(b.vel) : bel.vel, side: b.side, visible: bel.visible, seenAt: bel.seenAt, you: Boolean(b.you) };
+  for (const [side, list] of index.bySide)
+    for (const b of list) {
+      if (side === s.side && !b.you) continue;
+      if (!enemyTo(s, b, world)) continue;
+      const bel = belief(s.me, b.id);
+      // (detected: the meter full, or seen and lost only a moment ago)
+      if (!bel || bel.confidence < 1) continue;
+      const d = Math.hypot(bel.at.x - s.b.x, bel.at.z - s.b.z);
+      let score = -d;
+      const shooting = b.firingAt && mate(b.firingAt);
+      // (one out of its reach that isn't shooting at it: let be a while)
+      if (!shooting && s.ignore?.id === b.id && s.ignore.until > world.t) continue;
+      if (shooting) score += 1000;
+      if (bel.visible) score += 5;
+      if (b.id === s.target) score += 8;
+      if (score > bestScore) {
+        bestScore = score;
+        best = { id: b.id, x: bel.visible ? b.x : bel.at.x, z: bel.visible ? b.z : bel.at.z, vel: bel.visible ? velOf(b.vel) : bel.vel, side: b.side, visible: bel.visible, seenAt: bel.seenAt, you: Boolean(b.you) };
+      }
     }
-  }
   return best;
 }
 
@@ -178,7 +209,7 @@ export function fightStep(s, world, dt, rand = Math.random) {
   const tokens = world.tokens ? { held: (kind, who) => world.tokens.held(kind, who, target) } : null;
   const posture = world.squads?.postureOf?.(s.id) ?? 'hold';
   const options = OPTIONS_BY[posture] ?? (posture === 'press' && world.squads?.isFlanker?.(s.id) ? ['flank', 'look', 'search'] : null);
-  const allies = world.bodies.filter((b) => b.side === s.side && b.id !== s.id && Math.abs(b.x - s.b.x) < 30 && Math.abs(b.z - s.b.z) < 30);
+  const allies = (indexOf(world).bySide.get(s.side) ?? []).filter((b) => b.id !== s.id && Math.abs(b.x - s.b.x) < 30 && Math.abs(b.z - s.b.z) < 30);
   const you = { x: threat.x, z: threat.z, vel: threat.vel };
   let out = hostileStep(head, { you, allies, seesThrough: world.seesThrough ?? null, tokens, who: s.id, options }, dt, rand);
   // (known of, not seen by its head: it turns to where it is)
@@ -233,7 +264,8 @@ export function squadsOf(soldiers, { reach = 18, war = 'gcw', near = 80 } = {}) 
   const sq = createSquads({ reach });
   const state = new Map(); // squad id → { level, losses, flank: Set, leader, known: Set }
   const fallen = new Set(); // (down, and gone from the list: died(id))
-  const byId = () => new Map(list().map((s) => [s.id, s]));
+  let known = new Map(); // id → soldier, as at the last update
+  const byId = () => (known = new Map(list().map((s) => [s.id, s])));
   const at = (s) => ({ x: s.b.x, y: 0, z: s.b.z });
   const api = {
     update(dt) {
@@ -261,7 +293,12 @@ export function squadsOf(soldiers, { reach = 18, war = 'gcw', near = 80 } = {}) 
         const mine = squad.members.map((id) => ids.get(id));
         const foes = all.filter((e) => e.alive && relation(squad.side, e.side, war) === 'enemy' && Math.hypot(e.b.x - squad.centre.x, e.b.z - squad.centre.z) < near);
         const value = (s) => (s.b ? s.hp / s.hpMax : 1);
-        const c = confidence(squad, members, foes.map((e) => ({ id: e.id, at: at(e), alive: true, hp: e.hp, hpMax: e.hpMax, b: e.b })), { value, losses: st.losses });
+        const c = confidence(
+          squad,
+          members,
+          foes.map((e) => ({ id: e.id, at: at(e), alive: true, hp: e.hp, hpMax: e.hpMax, b: e.b })),
+          { value, losses: st.losses },
+        );
         let level = c.level;
         if (st.leaderDown) level = morale(level, { type: 'leaderDown' });
         // (a droid never breaks)
@@ -269,8 +306,18 @@ export function squadsOf(soldiers, { reach = 18, war = 'gcw', near = 80 } = {}) 
         st.level = level;
         st.flank = new Set();
         if (posture(level) === 'press' && foes.length) {
-          const front = frontline(squad, members, foes.map((e) => ({ id: e.id, at: at(e), alive: true })));
-          for (const f of flankersOf(squad, members, front, foes.map((e) => ({ id: e.id, at: at(e), alive: true })))) st.flank.add(f.id);
+          const front = frontline(
+            squad,
+            members,
+            foes.map((e) => ({ id: e.id, at: at(e), alive: true })),
+          );
+          for (const f of flankersOf(
+            squad,
+            members,
+            front,
+            foes.map((e) => ({ id: e.id, at: at(e), alive: true })),
+          ))
+            st.flank.add(f.id);
         }
       }
       fallen.clear(); // (each counted, by the squad it was in, this once)
@@ -279,10 +326,7 @@ export function squadsOf(soldiers, { reach = 18, war = 'gcw', near = 80 } = {}) 
     died: (id) => fallen.add(id),
     of: (id) => sq.of(id),
     membersOf: (id) => sq.of(id)?.members ?? [id],
-    soldiersOf: (ids) => {
-      const m = byId();
-      return ids.map((id) => m.get(id)).filter(Boolean);
-    },
+    soldiersOf: (ids) => ids.map((id) => known.get(id)).filter(Boolean),
     confidenceOf: (id) => state.get(sq.of(id)?.id)?.level ?? 'neutral',
     postureOf: (id) => posture(api.confidenceOf(id)),
     isFlanker: (id) => Boolean(state.get(sq.of(id)?.id)?.flank.has(id)),

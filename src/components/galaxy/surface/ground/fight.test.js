@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { createTokens } from '../../../../lib/ai/squad';
 import { WEAPONS } from '../weaponRules';
-import { FACING, GRUDGE, aimError, fightStep, grudge, squadsOf, suppress, threatOf, senseAll } from './fight';
+import { FACING, GRUDGE, aimError, fightStep, grudge, indexBodies, squadsOf, suppress, threatOf, senseAll } from './fight';
 import { TROOPS, newSoldier } from './troops';
 
 let n = 0;
@@ -214,5 +214,14 @@ describe('the squads over a long visit', () => {
       sq.update(0.5);
     }
     expect(sq.sizes()).toEqual({ squads: 0, fallen: 0 });
+  });
+});
+
+describe('the bodies, indexed once a frame', () => {
+  test('by side and by squad', () => {
+    const i = indexBodies([{ id: 'a', side: 'empire', squad: 'q' }, { id: 'b', side: 'empire', squad: 'r' }, { id: 'you', side: null, you: true }]);
+    expect(i.bySide.get('empire').map((b) => b.id)).toEqual(['a', 'b']);
+    expect(i.bySide.get(null).map((b) => b.id)).toEqual(['you']);
+    expect(i.bySquad.get('q').map((b) => b.id)).toEqual(['a']);
   });
 });
