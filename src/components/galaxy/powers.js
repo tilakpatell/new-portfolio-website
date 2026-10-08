@@ -31,8 +31,9 @@
 // Only the game's own ships are touched (the hunters, and the war's battle:
 // its time and its ghost through warfront.js's update, Walt's magnet through
 // its pull, and every hit as a shot through its own hit()); never another
-// pilot. The big one's charge is kept in the session (KEPT_KEY) so a landing
-// doesn't lose it; another crew starts from nothing.
+// pilot. The big one's charge and the power's cooldown are kept in the
+// session (KEPT_KEY) so a landing neither loses the one nor ends the other;
+// another crew starts from nothing.
 //
 // createGalaxyPowers({ parent, reduced, hunters, war, bolts, flashes, crashFx, pops, post, state, emit, strike, scored, teleport, controls })
 //   → { setCrew(kind), press(slot) → { ok, id } or { ok: false, why }, gain(what, key), mods, aim(own),
@@ -44,7 +45,7 @@
 // put there, the camera with it.
 
 import * as THREE from 'three';
-import { KEPT_KEY, POWERS, aimHelp, beamOf, blastPunch, cancel as cancelAll, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain as charge, isObjective, isOn, jinkStep, mods as modsOf, pickTargets, portalExit, press as pressSlot, readKept, shotAt, step, turretPick, view as viewOf, writeKept } from '../universe/shipPowers';
+import { KEPT_KEY, POWERS, aimHelp, beamOf, blastPunch, cancel as cancelAll, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain as charge, isObjective, isOn, jinkStep, mods as modsOf, pickTargets, portalExit, press as pressSlot, readCooling, readKept, shotAt, step, turretPick, view as viewOf, writeKept } from '../universe/shipPowers';
 import { createPowerFx } from '../universe/powerFx';
 import { steer } from '../universe/weapons';
 import { assist, dirTo, intercept, nose } from '../universe/targeting';
@@ -397,7 +398,8 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
     setCrew(kind) {
       if ((st?.crew ?? null) === (kind ?? null)) return;
       clearRun();
-      st = fx && kind ? createPowers(kind, { charge: readKept(session.get(), kind) }) : null;
+      const kept = session.get();
+      st = fx && kind ? createPowers(kind, { charge: readKept(kept, kind), cool: readCooling(kept, kind, Date.now()) }) : null;
       m = modsOf(st);
       this.keep(); // (another crew's charge gone at once: a crew change starts from nothing, and stays so if you change back)
     },
@@ -565,10 +567,10 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
     get busy() {
       return Boolean(fx?.busy || focusK > 0 || run.queue.length || run.torps.length || run.jink || run.hop || run.beam || run.turret || run.magnet || run.crystal);
     },
-    // the big one's charge, into the session
+    // the big one's charge and the power's cooldown, into the session
     keep() {
       keptFor = 0;
-      if (st) session.set(writeKept(st));
+      if (st) session.set(writeKept(st, Date.now()));
     },
     // (DEV: the big one charged, to try it)
     fill() {

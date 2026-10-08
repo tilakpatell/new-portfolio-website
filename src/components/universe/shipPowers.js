@@ -22,7 +22,7 @@
 //   POWERS                 by id: { crew, slot, name, short, about, cool? (s), dur (s), …its own numbers }
 //   CREW_POWERS / powersOf(crew)   { primary, ultimate } ids, or null
 //   CHARGE                 what fills the big one (0…1)
-//   createPowers(crew, { charge }) → state, or null for no crew
+//   createPowers(crew, { charge, cool }) → state, or null for no crew
 //   press(st, slot)        → { ok, id } or { ok: false, why }
 //   step(st, dt, { flying }) → events ({ type: 'end' | 'ready', slot, id })
 //   gain(st, what, n, key) the big one charged (never while it's on); → true the moment it fills
@@ -32,7 +32,7 @@
 //   mods(st)               what the scene changes this frame
 //   aimHelp(m, own, gameShip)  the guns' help onto the lead and the lock's tracking, a power's only onto the game's ships
 //   view(st)               the HUD's
-//   readKept / writeKept   the big one's charge, kept in the session across a landing
+//   readKept / readCooling / writeKept   the big one's charge and the power's cooldown, kept in the session across a landing
 //   pickTargets, portalExit, clearOfSolids, solidAhead, beamOf, blastPunch,
 //   pullStep, jinkStep, turretPick, shotAt, crossesShell, isObjective,
 //   firstAlong: the geometry, pure
@@ -87,11 +87,13 @@ export const powersOf = (crew) => CREW_POWERS[crew] ?? null;
 const SLOTS = ['primary', 'ultimate'];
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
-export function createPowers(crew, { charge = 0 } = {}) {
+// (`cool`: seconds of the power's cooldown still to run, kept from before a landing)
+export function createPowers(crew, { charge = 0, cool = 0 } = {}) {
   const own = powersOf(crew);
   if (!own) return null;
   const c = clamp(Number.isFinite(charge) ? charge : 0, 0, 1);
-  return { crew, primary: { id: own.primary, phase: 'ready', left: 0 }, ultimate: { id: own.ultimate, phase: c >= 1 ? 'ready' : 'charging', charge: c, left: 0 } };
+  const wait = clamp(Number.isFinite(cool) ? cool : 0, 0, POWERS[own.primary].cool);
+  return { crew, primary: { id: own.primary, phase: wait > 0 ? 'cooling' : 'ready', left: wait }, ultimate: { id: own.ultimate, phase: c >= 1 ? 'ready' : 'charging', charge: c, left: 0 } };
 }
 
 // a press of G or X: on, if it's ready (the big one's charge spent)
@@ -224,23 +226,36 @@ export function view(st) {
   return { primary: one('primary'), ultimate: one('ultimate') };
 }
 
-// The big one's charge, kept in the session (KEPT_KEY): the scene is made
-// again after a landing, and a charge you'd earned shouldn't go with it. Read
-// back only for the same crew; anything else (nothing kept, another crew's,
-// something broken) starts from nothing
-export function writeKept(st) {
-  return st ? JSON.stringify({ crew: st.crew, charge: +st.ultimate.charge.toFixed(4) }) : null;
+// The big one's charge and the power's cooldown, kept in the session
+// (KEPT_KEY): the scene is made again after a landing, and a charge you'd
+// earned shouldn't go with it, nor a cooldown be over for the asking. The
+// cooldown's kept as the moment it's over (`now`: the clock's, in ms), so it
+// runs on while you're down. Read back only for the same crew; anything
+// else (nothing kept, another crew's, something broken) starts from nothing
+export function writeKept(st, now = Date.now()) {
+  if (!st) return null;
+  const cooling = st.primary.phase === 'cooling' && st.primary.left > 0;
+  return JSON.stringify({ crew: st.crew, charge: +st.ultimate.charge.toFixed(4), ...(cooling ? { coolUntil: Math.round(now + st.primary.left * 1000) } : {}) });
 }
-export function readKept(raw, crew) {
-  if (!raw || !powersOf(crew)) return 0;
+const keptOf = (raw, crew) => {
+  if (!raw || !powersOf(crew)) return null;
   let kept;
   try {
     kept = JSON.parse(raw);
   } catch {
-    return 0;
+    return null;
   }
-  if (!kept || typeof kept !== 'object' || kept.crew !== crew || !Number.isFinite(kept.charge)) return 0;
-  return clamp(kept.charge, 0, 1);
+  return kept && typeof kept === 'object' && kept.crew === crew ? kept : null;
+};
+export function readKept(raw, crew) {
+  const kept = keptOf(raw, crew);
+  return kept && Number.isFinite(kept.charge) ? clamp(kept.charge, 0, 1) : 0;
+}
+// the seconds of the power's cooldown still to run at `now` (0 for none)
+export function readCooling(raw, crew, now = Date.now()) {
+  const kept = keptOf(raw, crew);
+  if (!kept || !Number.isFinite(kept.coolUntil)) return 0;
+  return clamp((kept.coolUntil - now) / 1000, 0, POWERS[powersOf(crew).primary].cool);
 }
 
 // Up to `count` targets, each its own: in the cone off the nose and in range,

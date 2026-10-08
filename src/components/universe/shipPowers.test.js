@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, aimHelp, beamOf, blastPunch, cancel, chargeFor, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readKept, shotAt, step, turretPick, view, writeKept } from './shipPowers';
+import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, aimHelp, beamOf, blastPunch, cancel, chargeFor, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readCooling, readKept, shotAt, step, turretPick, view, writeKept } from './shipPowers';
 import { CREWS } from './crews';
 import { spawn, step as fly } from './ship';
 import { makeSpace } from '../galaxy/space';
@@ -392,6 +392,33 @@ describe('the crews’ ship powers', () => {
     const over = shotAt(t, { x: 0, y: 0, z: -10 });
     expect(over.from.y).toBeGreaterThan(0);
     expect(over.from.z).toBeCloseTo(-10, 6);
+  });
+
+  // (Only the charge used to be kept, so landing and taking off again gave
+  // G back at once, however long its cooldown had left.)
+  it('keeps the power’s cooldown across a landing too, running on while you’re down', () => {
+    const T0 = 1_700_000_000_000;
+    const st = createPowers('falcon');
+    press(st, 'primary');
+    run(st, POWERS.odds.dur + 2); // (2 s into its 12 s cooldown)
+    expect(st.primary.phase).toBe('cooling');
+    const raw = writeKept(st, T0);
+    expect(readCooling(raw, 'falcon', T0)).toBeCloseTo(st.primary.left, 3);
+    // five seconds on the ground, and it's five seconds nearer
+    const left = readCooling(raw, 'falcon', T0 + 5000);
+    expect(left).toBeCloseTo(st.primary.left - 5, 3);
+    const back = createPowers('falcon', { charge: readKept(raw, 'falcon'), cool: left });
+    expect(back.primary).toEqual({ id: 'odds', phase: 'cooling', left: expect.closeTo(left, 3) });
+    // a long while down: ready again; another crew's, or anything broken: nothing to wait for
+    expect(readCooling(raw, 'falcon', T0 + 60_000)).toBe(0);
+    expect(readCooling(raw, 'rv', T0)).toBe(0);
+    for (const bad of [null, '', '{bad', JSON.stringify({ crew: 'falcon', charge: 0, coolUntil: 'soon' })]) expect(readCooling(bad, 'falcon', T0), String(bad)).toBe(0);
+    // (never more than the card's own cooldown, whatever the clock says)
+    expect(readCooling(JSON.stringify({ crew: 'falcon', charge: 0, coolUntil: T0 + 9e9 }), 'falcon', T0)).toBe(POWERS.odds.cool);
+    expect(createPowers('falcon', { cool: 0 }).primary.phase).toBe('ready');
+    expect(createPowers('falcon', { cool: NaN }).primary.phase).toBe('ready');
+    // ready when it lands: nothing kept to wait for
+    expect(readCooling(writeKept(createPowers('falcon'), T0), 'falcon', T0)).toBe(0);
   });
 
   it('keeps the big one’s charge across a landing for the same crew, and starts again for another', () => {
