@@ -29,13 +29,24 @@ const alongX = (room) => room.w >= room.d;
 
 // ── the drawers ──
 
-// lit digits on a black plate, the number as big as the plate allows
+// Lit digits on a black plate, the number as big as the plate allows.
+// furnish.js hangs it a hand off the wall over the door, which is inside
+// the door frame’s lintel (kit.js FRAME.slide stands 0.14 m out), so the
+// plate stands on the lintel’s face, on a block back to the wall.
+const LINTEL = 0.14;
 function cellNumber(p) {
   const text = String(p.text ?? '');
   const size = Math.min(p.h * 0.62, (p.w * 0.86) / Math.max(digitRects(text, 1).w, 1e-6));
   const lift = (p.h - size) / 2;
-  const parts = [box(p.w, p.h, 0.02, 0, p.h / 2, -p.d / 2 + 0.01, 'black'), box(p.w, 0.012, 0.03, 0, p.h - 0.006, -p.d / 2 + 0.015, 'trim'), box(p.w, 0.012, 0.03, 0, 0.006, -p.d / 2 + 0.015, 'trim')];
-  for (const r of digitRects(text, size).rects) parts.push(box(r.x1 - r.x0, r.y1 - r.y0, 0.006, (r.x0 + r.x1) / 2, lift + (r.y0 + r.y1) / 2, -p.d / 2 + 0.023, 'digits'));
+  const back = -p.d / 2;
+  const face = back - 0.01 + LINTEL;
+  const parts = [
+    box(p.w * 0.92, p.h, face - back, 0, p.h / 2, (back + face) / 2, 'trim'),
+    box(p.w, p.h, 0.02, 0, p.h / 2, face + 0.01, 'black'),
+    box(p.w, 0.012, 0.024, 0, p.h - 0.006, face + 0.012, 'trim'),
+    box(p.w, 0.012, 0.024, 0, 0.006, face + 0.012, 'trim'),
+  ];
+  for (const r of digitRects(text, size).rects) parts.push(box(r.x1 - r.x0, r.y1 - r.y0, 0.006, (r.x0 + r.x1) / 2, lift + (r.y0 + r.y1) / 2, face + 0.023, 'digits'));
   return parts;
 }
 

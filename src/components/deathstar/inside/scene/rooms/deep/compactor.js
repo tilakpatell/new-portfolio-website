@@ -159,11 +159,14 @@ function keypad(p) {
   return parts;
 }
 
-// the number stencilled over the hatch, in worn paint on the wall
+// The number stencilled over the hatch, in worn paint on the wall, in the
+// top of its box: the foot of the box (furnish.js puts it 0.12 m over the
+// hatch) is behind the hatch frame’s lintel (kit.js FRAME.hatch, 0.18 m).
+const UNDER_LINTEL = 0.065;
 function stencil(p) {
   const text = String(p.text ?? '');
-  const size = Math.min(p.h * 0.85, (p.w * 0.94) / Math.max(digitRects(text, 1).w, 1e-6));
-  const lift = (p.h - size) / 2;
+  const size = Math.min(p.h - UNDER_LINTEL - 0.005, (p.w * 0.94) / Math.max(digitRects(text, 1).w, 1e-6));
+  const lift = p.h - 0.005 - size;
   return digitRects(text, size).rects.map((r) => box(r.x1 - r.x0, r.y1 - r.y0, 0.004, (r.x0 + r.x1) / 2, lift + (r.y0 + r.y1) / 2, -p.d / 2 + 0.002, 'paint'));
 }
 
@@ -192,7 +195,7 @@ function waterMaterial(renderer, water) {
   map.needsUpdate = true;
   sharpen(map, { renderer, color: false, repeat: [(water.x1 - water.x0) / 2.6, (water.z1 - water.z0) / 2.6] });
   const uniforms = { uTime: { value: 0 }, uRipple: { value: new THREE.Vector3(0, 0, 0) } };
-  const m = new THREE.MeshStandardMaterial({ name: 'ds-water', color: 0x2b2c17, roughness: 0.16, metalness: 0.1, normalMap: map, normalScale: new THREE.Vector2(0.45, 0.45), transparent: true, opacity: 0.9, envMapIntensity: 1.1 });
+  const m = new THREE.MeshStandardMaterial({ name: 'ds-water', color: 0x3d3f20, roughness: 0.16, metalness: 0.1, emissive: 0x10130a, normalMap: map, normalScale: new THREE.Vector2(0.45, 0.45), transparent: true, opacity: 0.88, envMapIntensity: 1.2 });
   m.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = `varying vec2 vWater;\n${shader.vertexShader}`.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vWater = (modelMatrix * vec4(transformed, 1.0)).xz;');
@@ -214,8 +217,8 @@ export function buildCompactor(kit, room, layout, { renderer = null } = {}) {
   const { props } = furnish(room, layout.station);
   const water = waterOf(room);
   const own = {
-    wall: grimeOf(kit, 0x5d5a45),
-    junk: new THREE.MeshStandardMaterial({ name: 'ds-junk', color: 0x3d3428, roughness: 0.78, metalness: 0.45 }),
+    wall: grimeOf(kit, 0x77735a),
+    junk: new THREE.MeshStandardMaterial({ name: 'ds-junk', color: 0x5a4c39, roughness: 0.72, metalness: 0.4 }),
     paint: new THREE.MeshStandardMaterial({ name: 'ds-paint', color: 0xcfc6a0, roughness: 0.85, metalness: 0 }),
   };
   const parts = kit.shell(room, layout, { floor: false, bay: 1, rib: 0.3, ribDepth: 0.16, tall: 0.7, kick: 0.4, band: 0.5, seed: 3263827 });
@@ -267,8 +270,9 @@ export function buildCompactor(kit, room, layout, { renderer = null } = {}) {
   const dianoga = spot?.room === room.id ? spot : { x: room.x, z: room.z };
   const hatch = props.find((p) => p.kind === 'stencil');
   const lamps = [
-    { x: vent.x, y: top - 0.6, z: vent.z, color: 0xcbd9a6, intensity: 16, distance: 9 },
-    { x: hatch?.x ?? b.x1 - 1.5, y: top - 1.2, z: (hatch?.z ?? b.z0) + 1, color: 0xffc58a, intensity: 4, distance: 5 },
+    { x: vent.x, y: top - 0.6, z: vent.z, color: 0xcbd9a6, intensity: 34, distance: 11 },
+    { x: b.x0 + 1.2, y: top - 1, z: room.z, color: 0x9fb07a, intensity: 10, distance: 8 },
+    { x: hatch?.x ?? b.x1 - 1.5, y: top - 1.2, z: (hatch?.z ?? b.z0) + 1, color: 0xffc58a, intensity: 6, distance: 6 },
   ];
   let k = 0;
   const built = finish(kit, room, parts, {

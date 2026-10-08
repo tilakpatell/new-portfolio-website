@@ -291,6 +291,20 @@ describe('the ways remembered', () => {
     expect(route).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps a way worked out under one state from another: one round a crate since gone isn’t given for the hall without it', () => {
+    const { nav, solidsOf } = hall();
+    const bare = () => [];
+    const round = wayBetween(nav, at(-3.2, -2.2), at(3.3, -2.3), { solidsOf, state: 'crate' });
+    expect(round.length).toBeGreaterThan(2);
+    expect(rememberedWay(nav, at(-3.2, -2.2), at(3.3, -2.3), { solidsOf: bare, state: 'bare' })).toBeNull();
+    expect(wayBetween(nav, at(-3.2, -2.2), at(3.3, -2.3), { solidsOf: bare, state: 'bare' })).toHaveLength(2);
+    expect(route).toHaveBeenCalledTimes(2);
+    // each state still has its own
+    expect(rememberedWay(nav, at(-3.4, -2.4), at(3.4, -2.4), { solidsOf, state: 'crate' }).slice(1, -1)).toEqual(round.slice(1, -1));
+    expect(rememberedWay(nav, at(-3.4, -2.4), at(3.4, -2.4), { solidsOf: bare, state: 'bare' })).toHaveLength(2);
+    expect(route).toHaveBeenCalledTimes(2);
+  });
+
   it('won’t give a remembered way whose moved end would walk through something solid', () => {
     const { nav, solidsOf } = hall();
     // north of the panel, out round its end to the south side of the hall

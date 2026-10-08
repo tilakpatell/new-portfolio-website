@@ -17,9 +17,10 @@
 //     every `every`-th storey’s band lit
 //   hazeOf(rect, layers, { hole }) → Mesh   black layers across rect ({ x0, x1, z0, z1 }) at layers.ys,
 //     each layers.opacity, with a round hole ({ x, z, r }) where something stands through them
-//   glowMaterial({ color, base, fall, strength, rim }) → ShaderMaterial   added light that thins out
-//     `fall` metres a time (e) above `base`; rim: softened where its surface is seen edge-on (a haze),
-//     else as bright face-on as edge-on (a glowing surface); its uniforms.uTime runs bands up it
+//   glowMaterial({ color, base, fall, strength, rim, axis, radius, top, soft }) → ShaderMaterial   added
+//     light that thins out `fall` metres a time (e) above `base` and is gone by `top` (from `soft` under
+//     it); rim: softened where its surface is seen edge-on (a haze), else as bright face-on as edge-on (a
+//     glowing surface); radius: fading out to that far from the axis; uniforms.uTime runs bands up it
 //   glowDiscs(stack, material) → Mesh   flat glowing discs ({ x, z, r, ys }) seen through from above
 //   slab(kit, floor, { thick, top }) → parts   a floor as a slab: its walked face and its body
 //   lips(kit, edges, { thick, light }) → parts   along each open edge (plan.js openEdges) a lit strip
@@ -109,6 +110,8 @@ uniform float uRim;
 uniform float uTime;
 uniform vec3 uAxis;
 uniform float uRadius;
+uniform float uTop;
+uniform float uSoft;
 varying vec3 vWorld;
 varying vec3 vNormal;
 void main() {
@@ -119,13 +122,14 @@ void main() {
   float edge = mix(1.0, pow(face, 1.6), uRim);
   float fade = uRadius > 0.0 ? 1.0 - smoothstep(0.0, uRadius, length(vWorld.xz - uAxis.xz)) : 1.0;
   float bands = 0.82 + 0.18 * sin(vWorld.y * 0.9 - uTime * 2.2);
-  float a = uStrength * density * edge * fade * fade * bands;
-  gl_FragColor = vec4(uColor * a, a);
+  float a = uStrength * density * edge * fade * fade * bands * (1.0 - smoothstep(uTop - uSoft, uTop, vWorld.y));
+  // (alpha 1 under additive blending adds the colour times a, not times a squared)
+  gl_FragColor = vec4(uColor * a, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`;
 
-export function glowMaterial({ color = 0xbfdcff, base = 0, fall = 10, strength = 1, rim = true, axis = { x: 0, z: 0 }, radius = 0 } = {}) {
+export function glowMaterial({ color = 0xbfdcff, base = 0, fall = 10, strength = 1, rim = true, axis = { x: 0, z: 0 }, radius = 0, top = Infinity, soft = 1 } = {}) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uColor: { value: new THREE.Color(color) },
@@ -136,6 +140,8 @@ export function glowMaterial({ color = 0xbfdcff, base = 0, fall = 10, strength =
       uTime: { value: 0 },
       uAxis: { value: new THREE.Vector3(axis.x, 0, axis.z) },
       uRadius: { value: radius },
+      uTop: { value: Number.isFinite(top) ? top : 1e9 },
+      uSoft: { value: soft },
     },
     vertexShader: GLOW_VERT,
     fragmentShader: GLOW_FRAG,

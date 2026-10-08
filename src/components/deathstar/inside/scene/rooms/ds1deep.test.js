@@ -12,6 +12,9 @@ const layout = buildLayout(DS1);
 const rooms = [...layout.rooms.values()].filter((r) => KINDS.includes(r.kind));
 const furnished = rooms.map((room) => ({ room, ...furnish(room, DS1) }));
 const EDGE = 0.005; // metres a drawing may stray past its prop’s box (rounding, a lens’s rim)
+// furnish.js hangs a cell’s number 3 cm off the wall over its door, which is inside the kit’s
+// slide-door lintel (kit.js FRAME.slide, 0.14 deep): the plate is drawn on the lintel’s face instead
+const PROUD = { 'cell-number': 0.14 };
 
 // the box a prop’s footprint covers seen from above, turned to its yaw, from its foot to its top
 function propBox(p) {
@@ -35,7 +38,7 @@ describe('the first Death Star’s detention level, drawn', () => {
     for (const { props } of furnished) {
       for (const p of props) {
         const b = boundsOf(drawProp(p));
-        const want = propBox(p);
+        const want = propBox({ ...p, d: p.d + 2 * (PROUD[p.kind] ?? 0) });
         for (const [lo, hi] of [['x0', 'x1'], ['y0', 'y1'], ['z0', 'z1']]) {
           expect(b[lo], `${p.kind} at ${p.x}, ${p.z}: ${lo}`).toBeGreaterThanOrEqual(want[lo] - EDGE);
           expect(b[hi], `${p.kind} at ${p.x}, ${p.z}: ${hi}`).toBeLessThanOrEqual(want[hi] + EDGE);
@@ -123,6 +126,23 @@ describe('compactor 3263827', () => {
 });
 
 describe('the cell bay’s bend and the cells off it', () => {
+  it('shows each cell’s number in front of its door’s lintel, not behind it', () => {
+    const bay = furnished.find((f) => f.room.id === 'cellbay');
+    for (const p of bay.props.filter((q) => q.kind === 'cell-number')) {
+      const b = boundsOf(drawProp(p));
+      // the east wall at x 62, the plate facing west: its face stands clear of the 0.14 m lintel
+      expect(62 - b.x0).toBeGreaterThan(0.14);
+    }
+  });
+
+  it('stencils the compactor’s number above its hatch’s lintel', () => {
+    const compactor = furnished.find((f) => f.room.id === 'compactor');
+    const hatch = layout.doors.get('compactor-hatch');
+    const p = compactor.props.find((q) => q.kind === 'stencil');
+    const b = boundsOf(drawProp(p));
+    expect(b.y0).toBeGreaterThanOrEqual(hatch.y + hatch.h + 0.18);
+  });
+
   it('lets the light in at cell 2187’s door, into the cell', () => {
     const spill = spillOf(layout.rooms.get('cell2187'), layout);
     expect(spill).toMatchObject({ door: 'cell2187-door', x: 59.5, z: -117, w: 1.2, h: 2.2 });

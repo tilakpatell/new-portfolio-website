@@ -15,8 +15,10 @@
 // up the same way, so nobody is ever restored halfway through a scene.
 //
 //   TYPES                                  every kind of step
-//   SCENES                                 the scenes a story may play (scene/cinematics.js draws them: the first
-//     station’s four, then the second’s, from ST 321 setting down to the shuttle leaving as the reactor goes)
+//   SCENES                                 the scenes a story may play: the first station’s four, then the second’s
+//     seven, from ST 321 setting down to the shuttle leaving as the reactor goes. Each is a camera path the
+//     game must have before a story that plays it can be finished, since a scene step waits for its
+//     `sceneDone`; scene/cinematics.js is to draw them (the plan’s Tasks 3.5 and 4.5)
 //   MOODS                                  the music a story may ask for (scene/sounds.js plays them)
 //   ESCORT                                 metres: how near someone must be to count as with you, by which
 //     the game fills an `at` event’s `with` (a companion keeps within 3 m, so 6 holds one who lags)

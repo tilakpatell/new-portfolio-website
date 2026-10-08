@@ -19,10 +19,11 @@
 //   coverFrom(layout, me, threat, { seesThrough, allies, current, canPass }) → { x, y, z, room } | null
 //     me: { x, y, z, room }; threat: a point at chest height; null when nowhere near is out of its sight
 //   fallbackFrom(layout, me, threat, { seesThrough, canPass }) → { x, y, z, room } | null
-//   flankRoute(nav, me, threat, { canPass, solidsOf }) → route | null   into the threat’s room by
+//   flankRoute(nav, me, threat, { canPass, solidsOf, state }) → route | null   into the threat’s room by
 //     another door than the straight way’s, and not too long a way round; null in the same room.
 //     Both ways are routines.js’s remembered ones: a soldier looks again every second or two, mostly
-//     from where he stood at a target that hasn’t moved, and a way across a bay costs tens of milliseconds
+//     from where he stood at a target that hasn’t moved, and a way across a bay costs tens of milliseconds;
+//     state: the one they are remembered under (brains.js’s: the floors drawn back)
 //   standOff(layout, from, threat, metres) → { x, y, z, room } | null   on the line from the threat
 //     towards `from`, `metres` off, kept inside the room; null when the threat is in another room
 //   sectionSpots(layout, section) → [{ x, y, z, room }]   the station’s spots in the section, then
@@ -30,7 +31,7 @@
 //   searchOf(fights, section) → search        src/lib/ai/search’s, one a section, made on first use
 //   fightStep(fights, me, threat, bb, state, { unseen, lostFor, told }) → tactic   one step of a soldier’s fight
 //     threat: his surest belief; bb: the body brains.js answers with (go, face, lock, pose, aimAt,
-//     fire, gunBusy, seesThrough, canPass, solidsOf, allies, clock); state: his own, kept between steps;
+//     fire, gunBusy, seesThrough, canPass, solidsOf, allies, clock, ways); state: his own, kept between steps;
 //     unseen: seconds since he saw it; lostFor: since anyone in the fight did; told: a friend sees it now
 //   searchStep(fights, me, bb, state) → void   one step of a searcher’s sweep: claim, walk, look about
 
@@ -148,13 +149,13 @@ export function fallbackFrom(layout, me, threat, { seesThrough, canPass = () => 
 
 const lengthOf = (path) => path.reduce((n, p, i) => (i ? n + flat(path[i - 1], p) : 0), 0);
 
-export function flankRoute(nav, me, threat, { canPass = () => true, solidsOf } = {}) {
+export function flankRoute(nav, me, threat, { canPass = () => true, solidsOf, state } = {}) {
   if (!threat.room || me.room === threat.room) return null;
-  const direct = wayBetween(nav, me, threat, { canPass, solidsOf });
+  const direct = wayBetween(nav, me, threat, { canPass, solidsOf, state });
   // the door the straight way comes in by: the last one on it
   const entry = direct?.findLast((p) => p.door)?.door;
   if (!entry) return null;
-  const other = wayBetween(nav, me, threat, { canPass: (id, door) => id !== entry && canPass(id, door), solidsOf });
+  const other = wayBetween(nav, me, threat, { canPass: (id, door) => id !== entry && canPass(id, door), solidsOf, state });
   if (!other || lengthOf(other) > lengthOf(direct) * AROUND + AROUND_PLUS) return null;
   return other;
 }
@@ -234,7 +235,7 @@ function survey(fights, me, at, f, bb) {
   f.knownAt = { ...at };
   f.knownUntil = bb.clock + 1.5 + 0.5 * fights.rand();
   f.cover = coverFrom(fights.layout, me, at, { seesThrough: bb.seesThrough, allies: bb.allies(), current: f.tactic === 'cover' ? f.place : null, canPass: bb.canPass });
-  f.flank = room && room !== me.room ? flankRoute(fights.nav, me, { x: at.x, z: at.z, room }, { canPass: bb.canPass, solidsOf: bb.solidsOf }) : null;
+  f.flank = room && room !== me.room ? flankRoute(fights.nav, me, { x: at.x, z: at.z, room }, { canPass: bb.canPass, solidsOf: bb.solidsOf, state: bb.ways }) : null;
 }
 
 export function fightStep(fights, me, threat, bb, f, { unseen, lostFor, told = false }) {

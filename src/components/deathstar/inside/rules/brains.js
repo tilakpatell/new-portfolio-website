@@ -16,7 +16,8 @@
 // it is given.
 //
 //   createCrew({ rand, layout, nav, solidsOf? }) → crew      { people, byId, fights, clock }
-//     solidsOf(roomId) → the walker’s solids standing in a room (nav reads their footprints)
+//     solidsOf(roomId) → the walker’s solids standing in a room (nav reads their footprints); taken as
+//       fixed for the crew’s life, since the ways the legs remember (routines.js) aren’t kept by it
 //   addPerson(crew, { id, kind, room, x, z, yaw, role, squad?, hostile?, script?, tag?, talk? }) → person
 //     role: { type: 'patrol', spots: [name] } | { type: 'post', spot } | { type: 'work', spot } | { type: 'chat', with }
 //       | { type: 'march', spots } | { type: 'droid' } | { type: 'follow', who } | { type: 'scripted' }
@@ -25,6 +26,7 @@
 //     hostile: the story’s word on whether they fight you, whatever your disguise
 //   stepCrew(crew, dt, { you, alarm, doors, combat, flags, now, open, stims? }) → events
 //     you: your walker body & { id?, side, armour, helmet, doubt?, hp }; doors: doors.js’s state;
+//     flags: the story’s, whose floors drawn back (layout.offTags) the legs’ ways are worked out under;
 //     open(doorId) → bool, as the walker takes it; combat: its fresh bolts are heard as shots
 //     stims: [{ type: 'steps', at, from } | { type: 'roar', at } | force.js’s { type: 'noise', at, heard }
 //       and { type: 'trick', id, s, line }]
@@ -57,6 +59,7 @@ import { CAST, perceptionOf } from './cast';
 import { COMBAT, gunOf, WEAPONS } from './combat';
 import { CHALLENGE, disguised } from './disguise';
 import { createFights, FIGHT, fallbackFrom, fightStep, searchOf, searchStep, standOff } from './fight';
+import { offTags } from './layout';
 import { canPass, faceTo, legsOf, placeOf, resetRoutine, routineFor, runRoutine, stepLegs, walkTo } from './routines';
 import { BODY, createBody, lineClear } from './walker';
 
@@ -253,7 +256,8 @@ export function stepCrew(crew, dt, { you = null, alarm = null, doors = null, com
   crew.clock = now ?? crew.clock + dt;
   crew.out = [];
   crew.routes = 0;
-  crew.world = { you, alarm, doors, combat, flags, open, dt };
+  // a way remembered with the chasm’s bridge in isn’t one once it is drawn back
+  crew.world = { you, alarm, doors, combat, flags, open, dt, ways: [...offTags(crew.layout, flags)].join(',') };
   const heard = gather(crew, stims);
   const watchers = [];
   for (const p of [...crew.people]) vitals(crew, p);
@@ -404,6 +408,7 @@ function think(crew, p, heard, watchers) {
   if (p.mode === 'dead' || p.mode === 'down') return;
   const m = p.mind;
   m.bb.clock = crew.clock;
+  m.bb.ways = crew.world.ways;
   m.legs.want.lock = false;
   if (p.mode === 'scripted') return routine(crew, p);
   const threat = perceive(crew, p, heard, watchers);

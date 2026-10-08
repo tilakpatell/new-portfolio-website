@@ -33,6 +33,11 @@ function counter(len, h) {
     box(len - 0.12, 0.03, 0.008, 0, 0.78, -(ARM - 0.04) / 2 - 0.004, 'strip'),
     box(len - 0.06, 0.03, 0.01, 0, 0.12, -(ARM - 0.04) / 2 - 0.005, 'rail'),
   ];
+  // grey panels down the outside under the band, a metal lip along the top’s outer edge
+  const out = -(ARM - 0.04) / 2;
+  const m = Math.max(1, Math.round(len / 0.6));
+  for (let i = 0; i < m; i++) parts.push(box(len / m - 0.05, 0.56, 0.012, ((i + 0.5) / m - 0.5) * len, 0.44, out - 0.006, 'wall'));
+  parts.push(box(len, 0.025, 0.02, 0, h - 0.0125, -ARM / 2 + 0.01, 'rail'));
   // readouts in the slope, a red light or two on the outside
   const n = Math.max(1, Math.floor(len / 0.7));
   for (let i = 0; i < n; i++) {

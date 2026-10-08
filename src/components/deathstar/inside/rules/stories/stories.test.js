@@ -643,7 +643,8 @@ describe('the duel', () => {
     expect(effects).toContainEqual({ give: 'saber' });
   });
 
-  it('turns on “Sister…” once the hide is over, and goes on against him out on the catwalk', () => {
+  it('turns on “Sister…” once 10 s hidden are over, and no sooner, and goes on against him out on the catwalk', () => {
+    expect(playThrough(story, REBEL2.slice(0, hiding + 299)).progress.step).toBe('duel-wait');
     const { progress, effects } = playThrough(story, REBEL2.slice(0, hiding + 300));
     expect(progress.step).toBe('duel-fury');
     expect(effects.filter((e) => e.say?.who === 'vader').map((e) => e.say.text)).toContain('Sister…');
@@ -688,16 +689,15 @@ describe('carrying Vader', () => {
     expect(storyStep(progress, story, at('dock', 'shuttle-ramp', ['vader'])).progress.step).toBe('mask');
   });
 
-  it('takes you back to the throne room with him if 120 s run out', () => {
-    let r = { progress: carrying(), effects: [] };
-    for (const e of wait(120)) {
-      r = storyStep(r.progress, story, e);
-      if (r.effects.length) break;
-    }
-    expect(r.progress.step).toBe('carry');
-    expect(r.effects).toContainEqual({ checkpoint: { step: 'carry', spot: 'under-stairs', hero: 'luke', armour: false, helmet: false, companions: [], flags: [], gun: null } });
-    expect(r.effects).toContainEqual({ companion: 'vader', follow: true });
-    expect(r.effects).toContainEqual({ flag: 'carrying' });
+  it('allows 119 s and takes you back to the throne room with him at 120 s', () => {
+    const progress = carrying();
+    expect(playThroughFrom(story, progress, wait(119))).toEqual({ step: 'carry', failed: false });
+    expect(playThroughFrom(story, progress, wait(120))).toEqual({ step: 'carry', failed: true });
+    const { progress: after, effects } = run(story, progress, wait(120));
+    expect(after).toMatchObject({ step: 'carry', t: 0 });
+    expect(effects).toContainEqual({ checkpoint: { step: 'carry', spot: 'under-stairs', hero: 'luke', armour: false, helmet: false, companions: [], flags: [], gun: null } });
+    expect(effects).toContainEqual({ companion: 'vader', follow: true });
+    expect(effects).toContainEqual({ flag: 'carrying' });
   });
 
   it('sets him down at the ramp before the mask comes off, a save there finding him still carried', () => {

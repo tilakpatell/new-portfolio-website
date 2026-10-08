@@ -616,6 +616,34 @@ describe('the crew’s minds', () => {
     expect(started).toEqual([2, 4, 5, 5]);
   });
 
+  it('walks no way worked out with a floor that has since been drawn back: everyone works his out again, and a newcomer doesn’t get the old one', () => {
+    // a chasm across the middle of a room, its bridge a floor tagged `bridge`, there only while the flag is set
+    const gap = room('gap', 0, 0, 12, 4, { floors: [{ x: -5, z: 0, w: 2, d: 4, y: 0 }, { x: 0, z: 0, w: 8, d: 1.6, y: 0, tag: 'bridge' }, { x: 5, z: 0, w: 2, d: 4, y: 0 }] });
+    const w = world(station([gap], [], { a: { room: 'gap', x: -5, z: 0, yaw: 0 }, b: { room: 'gap', x: 5, z: 0, yaw: 0 } }));
+    w.flags = new Set(['bridge']);
+    const march = (id, x, z) => addPerson(w.crew, { id, kind: 'stormtrooper', room: 'gap', x, z, role: { type: 'march', spots: ['b', 'a'] } });
+    const tk1 = march('tk1', -5.6, 0.3);
+    simulate(w, 1);
+    expect(w.crew.routes).toBe(1);
+    const tk2 = march('tk2', -5.1, 0.7);
+    simulate(w, 1);
+    // from the same metre cell: tk1’s way, remembered
+    expect(w.crew.routes).toBe(0);
+    const routed = () => [tk1, tk2].map((p) => p.mind.legs.nav.routedAt === w.now);
+    expect(routed()).toEqual([false, true]);
+    // the bridge drawn back
+    w.flags = new Set();
+    simulate(w, 1);
+    expect(w.crew.routes).toBe(1);
+    expect(routed()).toEqual([true, true]);
+    const tk3 = march('tk3', -5.3, 0.5);
+    w.flags = new Set(['bridge']);
+    simulate(w, 1);
+    // the bridge run out again: the first way, remembered while it was, for all three
+    expect(w.crew.routes).toBe(0);
+    expect([...routed(), tk3.mind.legs.nav.routedAt === w.now]).toEqual([true, true, true]);
+  });
+
   it('sets a squad off together from where they stand: a way one of them worked out is remembered, and costs the rest nothing', () => {
     const w = world(row());
     const people = [0, 1, 2, 3, 4].map((i) =>

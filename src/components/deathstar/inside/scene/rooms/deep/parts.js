@@ -200,7 +200,8 @@ void main() {
   float along = smoothstep(0.0, 0.85, vUv.y);
   float motes = 0.7 + 0.3 * noise(vW * 2.5 + vec3(0.0, -uTime * 0.12, uTime * 0.05));
   float a = uStrength * shape * along * along * motes;
-  gl_FragColor = vec4(uColor * a, a);
+  // added as it is (blending multiplies by alpha, so alpha stays 1 or the light would count twice)
+  gl_FragColor = vec4(uColor * a, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`;

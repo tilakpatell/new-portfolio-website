@@ -56,11 +56,11 @@ function finish(kit, room, parts, { renderer, lamps, probeAt, extras = [], owned
   return {
     group,
     lamps,
-    // a late arrival (a shuttle’s model) joins the room, which takes its reflection again
-    adopt(object, keeper) {
+    // late arrivals (the shuttles’ models) join the room, which takes its reflection again
+    adopt(objects, keepers) {
       if (gone) return false;
-      group.add(object);
-      keep.push(keeper);
+      group.add(...objects);
+      keep.push(...keepers);
       reflection.dispose();
       reflection = probeRoom(renderer, group, probeAt, { lamps });
       return true;
@@ -79,15 +79,19 @@ function finish(kit, room, parts, { renderer, lamps, probeAt, extras = [], owned
 }
 
 // The Lambdas a bay’s furnish puts down, loaded and stood on their props;
-// the room takes them as they come, or frees them if it went first.
+// the room takes them in together (one new reflection, not one a ship),
+// or frees them if it went first.
 function berth(room, built, ships, renderer) {
-  for (const prop of ships) {
-    standLambda(prop, renderer)
-      .then((ship) => {
-        if (ship && !built.adopt(ship.holder, ship)) ship.dispose();
-      })
-      .catch((err) => console.error(`${room.name}: a Lambda shuttle could not be stood on the deck; the bay stands without her`, err));
-  }
+  if (!ships.length) return;
+  const stand = (prop) =>
+    standLambda(prop, renderer).catch((err) => {
+      console.error(`${room.name}: a Lambda shuttle could not be stood on the deck; the bay stands without her`, err);
+      return null;
+    });
+  Promise.all(ships.map(stand)).then((stood) => {
+    const got = stood.filter(Boolean);
+    if (got.length && !built.adopt(got.map((s) => s.holder), got)) for (const s of got) s.dispose();
+  });
 }
 
 // What a bay has in common: its deck in plates, the ceiling (holed by the
@@ -271,8 +275,8 @@ function buildCommand(kit, room, layout, { renderer = null } = {}) {
   parts.push(...rack.parts);
   const stars = starsRound(renderer, { x: room.x, y: room.y + 3, z: room.z }, { small: kit.small, seed: 4 });
   const lamps = [
-    { x: room.x, y: top - 0.4, z: room.z - 3, color: COOL, intensity: 30, distance: 14 },
-    { x: room.x, y: top - 0.4, z: room.box.z1 - 4, color: COOL, intensity: 22, distance: 12 },
+    { x: room.x, y: top - 0.4, z: room.z - 3, color: COOL, intensity: 110, distance: 26 },
+    { x: room.x, y: top - 0.4, z: room.box.z1 - 4, color: COOL, intensity: 80, distance: 22 },
   ];
   return finish(kit, room, parts, {
     renderer,
@@ -347,8 +351,8 @@ function buildHolding(kit, room, layout, { renderer = null } = {}) {
   parts.push(kit.box(3.2, 0.3, d - 4, room.x, top - 0.15, room.z, 'trim'), kit.plate(2.6, d - 4.6, room.x, top - 0.305, room.z, 'strip', 'down'));
   for (const s of [-1, 1]) parts.push(kit.plate(1.2, d - 6, room.x + s * w * 0.28, top - 0.01, room.z, 'strip', 'down'));
   const lamps = [
-    { x: room.x, y: top - 0.5, z: room.z - d * 0.25, color: COOL, intensity: 28, distance: 13 },
-    { x: room.x, y: top - 0.5, z: room.z + d * 0.25, color: COOL, intensity: 22, distance: 12 },
+    { x: room.x, y: top - 0.5, z: room.z - d * 0.25, color: COOL, intensity: 90, distance: 22 },
+    { x: room.x, y: top - 0.5, z: room.z + d * 0.25, color: COOL, intensity: 70, distance: 20 },
   ];
   return finish(kit, room, parts, { renderer, lamps, probeAt: { x: room.x, y: room.y + 1.4, z: room.z } });
 }

@@ -96,7 +96,7 @@ function paintFaces(kit, renderer) {
   for (let r = 0; r < 3; r++) {
     f.fillStyle = '#10141a';
     f.fillRect(92, 92 + r * 18, 220, 10);
-    f.fillStyle = r === 1 ? '#d9963a' : '#3fbf6a';
+    f.fillStyle = r === 1 ? '#9c7434' : '#2f8a55';
     f.fillRect(92, 92 + r * 18, 60 + rand() * 150, 10);
   }
   dial(f, 352, 112, 26, 0.3);
@@ -130,7 +130,7 @@ function columnOf(kit, c, bottom, top, blue) {
   }
   for (let y = bottom + 3; y < top - 1; y += 6) {
     parts.push({ geo: new THREE.CylinderGeometry(r + 0.14, r + 0.14, 0.55, 40, 1, true).translate(c.x, y, c.z), mat: 'trim' });
-    parts.push({ geo: new THREE.CylinderGeometry(r + 0.15, r + 0.15, 0.09, 40, 1, true).translate(c.x, y - 0.42, c.z), mat: blue });
+    parts.push({ geo: new THREE.CylinderGeometry(r + 0.15, r + 0.15, 0.16, 40, 1, true).translate(c.x, y - 0.45, c.z), mat: blue });
     parts.push({ geo: new THREE.CylinderGeometry(r + 0.02, r + 0.02, 0.05, 40, 1, true).translate(c.x, y + 3, c.z), mat: blue });
   }
   for (let k = 0; k < 6; k++) {
@@ -206,7 +206,7 @@ export function buildShaft(kit, room, layout, { renderer = null } = {}) {
   const terminal = props.find((p) => p.kind === 'terminal');
   const levers = props.filter((p) => p.kind === 'lever');
 
-  const blue = new THREE.MeshStandardMaterial({ color: 0x080b12, emissive: BLUE, emissiveIntensity: 3, roughness: 0.3, metalness: 0, name: 'ds-tractor-blue' });
+  const blue = new THREE.MeshStandardMaterial({ color: 0x080b12, emissive: BLUE, emissiveIntensity: 4, roughness: 0.3, metalness: 0, name: 'ds-tractor-blue' });
   const { face: faceTex, board: boardTex } = paintFaces(kit, renderer);
   const faceMat = new THREE.MeshStandardMaterial({ color: 0x9aa3ad, map: faceTex, emissive: 0xffffff, emissiveMap: faceTex, emissiveIntensity: GLOW.on, roughness: 0.42, metalness: 0.25, name: 'ds-tractor-face' });
   const boardMat = faceMat.clone();
@@ -285,12 +285,14 @@ export function buildShaft(kit, room, layout, { renderer = null } = {}) {
       m.renderOrder = 2;
       return m;
     };
-    const core = glowMaterial({ color: BLUE, base: bottom, fall: 9, strength: 2.4, rim: false });
-    const inner = glowMaterial({ color: BLUE, base: bottom, fall: 12, strength: 1.1, rim: true });
-    const outer = glowMaterial({ color: 0x8fb6ff, base: bottom, fall: 16, strength: 0.45, rim: true });
-    const discs = glowMaterial({ color: BLUE, base: bottom, fall: 11, strength: 0.32, rim: false, axis, radius: 8.5 });
+    // (a long falloff: blinding where the column meets the reactor, a blue
+    // breath by the time it reaches the ledge)
+    const core = glowMaterial({ color: BLUE, base: bottom, fall: 15, strength: 2.2, rim: false, top: room.y - 4, soft: 30 });
+    const inner = glowMaterial({ color: BLUE, base: bottom, fall: 19, strength: 0.75, rim: true, top: room.y - 3, soft: 26 });
+    const outer = glowMaterial({ color: 0x8fb6ff, base: bottom, fall: 24, strength: 0.3, rim: true, top: room.y - 3, soft: 30 });
+    const discs = glowMaterial({ color: BLUE, base: bottom, fall: 18, strength: 0.2, rim: false, axis, radius: 8.5 });
     glows.push(
-      shell(r + 0.2, bottom, room.y - 8, core),
+      shell(r + 0.2, bottom, room.y - 4, core),
       shell(r + 1.3, bottom, room.y - 3, inner),
       shell(r + 4.2, bottom, room.y - 3, outer),
       glowDiscs({ x: column.x, z: column.z, r: 8.5, ys: Array.from({ length: Math.floor((down - 6) / 4) }, (_, k) => bottom + 2 + k * 4) }, discs),
@@ -302,11 +304,14 @@ export function buildShaft(kit, room, layout, { renderer = null } = {}) {
     { x: terminal?.x ?? room.x, y: room.y + 1.9, z: (terminal?.z ?? room.z) + 1.4, color: COOL, intensity: 5, distance: 7 },
     { x: column?.x ?? room.x, y: room.y - 12, z: (column?.z ?? room.z) + 4.5, color: BLUE, intensity: 320, distance: 34 },
     { x: lx, y: room.y + 2.6, z: wallZ + Math.sign(room.z - wallZ) * 1.2, color: COOL, intensity: 6, distance: 9 },
+    // a cool light on the column’s face over the terminal, from across the shaft
+    { x: column?.x ?? room.x, y: room.y + 6, z: (column?.z ?? room.z) + 6, color: COOL, intensity: 45, distance: 16 },
   ];
   const consoleLamp = lamps[0];
   const at = { x: terminal?.x ?? room.x, y: room.y + 1.5, z: (terminal?.z ?? room.z) + 2.2 };
   const reflection = probeRoom(renderer, group, at, { lamps });
   let off = null; // 0 lit, 1 dark; set from the flag at the first frame, then eased
+  if (typeof window !== 'undefined') window.__tractorDebug = { group, glows, haze, hazeUp };
 
   return {
     group,
