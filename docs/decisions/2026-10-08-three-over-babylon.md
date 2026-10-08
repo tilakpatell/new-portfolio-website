@@ -15,7 +15,7 @@ What the spec counted over `src/` and `scripts/` that day:
 | GLSL sites (`ShaderMaterial`, `onBeforeCompile`, `UnrealBloomPass`, `EffectComposer`, `RenderPass`, `OutputPass`, `ShaderPass`) | 711 in 237 files, tests left out |
 | source files under `src/` | 2,420, 34 MB |
 
-The live numbers are now measured rather than counted: `docs/stack/README.md`’s census (532 files import `three` with tests left out) and the measure’s `glsl-sites` (616 sites once comments and the exempt infrastructure are left out).
+The live numbers are now measured rather than counted: `docs/stack/README.md`’s census (532 files imported `three` on 2026-10-08, tests left out) and the measure’s `glsl-sites` (616 sites that day, once comments and the exempt infrastructure are left out).
 
 What Babylon advertises was already here, on three.js and tested:
 
