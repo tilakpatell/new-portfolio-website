@@ -51,7 +51,7 @@
 //   the shooter’s id, when it knows it): a big hit knocks them down, a small one staggers them,
 //   and none at all left kills them.
 
-import { createSenses, forget, sense, target as surest } from '../../../../lib/ai/perception';
+import { createSenses, forget, sense, share, target as surest } from '../../../../lib/ai/perception';
 import { levelOf } from './alarm';
 import { CAST, perceptionOf } from './cast';
 import { COMBAT, gunOf, WEAPONS } from './combat';
@@ -82,6 +82,7 @@ const SCATTER = 8; // and how much further off they run
 // seconds a fright lasts: a droid’s is soon over; one who ran from a fight stays down while he can see it
 const FLEE_FOR = { roar: 3, fight: 6 };
 const BODY_LOOK = 0.5; // seconds between one person’s looks round for a fallen comrade
+const TOLD = 0.6; // how sure a sighting heard on the squad’s radio leaves the one told, against the friend who saw it
 // the levels at which the garrison is up and looking, not standing easy
 const UP = new Set(['alert', 'lockdown', 'hunt']);
 
@@ -491,7 +492,7 @@ function wary(crew, p, threat, level) {
 function engage(crew, p, threat) {
   setMode(crew, p, 'fight');
   // a beat to bring the rifle up before the first shot
-  p.mind.fight = { target: threat.id, tactic: null, since: crew.clock, think: crew.clock, place: null, burst: 0, next: crew.clock + 0.25 + 0.35 * crew.rand(), knownUntil: -Infinity };
+  p.mind.fight = { target: threat.id, tactic: null, since: crew.clock, think: crew.clock, place: null, burst: 0, next: crew.clock + 0.25 + 0.35 * crew.rand(), knownUntil: -Infinity, toldAt: -Infinity };
   crew.out.push({ type: 'saw', id: p.id, target: threat.id, at: { ...threat.at }, room: p.room });
   call(crew, p, 'seen', threat.at);
   bark(crew, p, 'seen');
@@ -500,16 +501,21 @@ function engage(crew, p, threat) {
 
 function fight(crew, p, threat) {
   const m = p.mind;
+  // one who can’t see the target hears where it is from any friend in the fight who can
+  const told = threat?.visible ? null : radio(crew, p, threat?.id ?? m.fight?.target);
+  threat = told ?? threat;
   if (!threat) return startSearch(crew, p, m.fight?.at ?? p);
   if (m.fight.target !== threat.id) {
     crew.fights.tokens.release('shot', p.id, m.fight.target);
     m.fight.target = threat.id;
   }
+  if (told) m.fight.toldAt = m.eye.now;
   const unseen = m.eye.now - threat.seenAt;
-  const told = !threat.visible && radio(crew, p, threat);
+  // lost from the last time anyone in the fight saw it, himself or a friend on the radio
+  const lostFor = Math.min(unseen, m.eye.now - m.fight.toldAt);
   m.fight.at = { ...threat.at };
   if (threat.visible) call(crew, p, 'seen', threat.at);
-  const tactic = fightStep(crew.fights, p, threat, m.bb, m.fight, { unseen, lostFor: told ? 0 : unseen, told });
+  const tactic = fightStep(crew.fights, p, threat, m.bb, m.fight, { unseen, lostFor, told: Boolean(told) });
   if (tactic !== 'search') return;
   crew.out.push({ type: 'lost', id: p.id, target: threat.id, at: { ...threat.at } });
   if (crew.rand() < 0.5) bark(crew, p, 'lost');
@@ -517,16 +523,23 @@ function fight(crew, p, threat) {
 }
 
 // The squad’s radio: a friend in the fight who sees the target says where
-// it is, so one in cover knows it is still there and doesn’t go looking.
-function radio(crew, p, threat) {
+// it is. The word is a belief handed on (perception’s share), less sure
+// than the friend’s own sight and never counted as seen, so one in cover
+// keeps the target in mind (it doesn’t fade out while friends see it),
+// aims, flanks and searches from where it is now, and counts it lost only
+// once the last friend has lost it too. → the belief told, or null
+function radio(crew, p, id) {
+  if (id == null) return null;
   for (const q of crew.people) {
     if (q === p || q.mode !== 'fight' || q.side !== p.side) continue;
-    const b = q.mind.eye.beliefs[threat.id];
-    if (!b?.visible) continue;
-    threat.at = { ...b.at };
-    return true;
+    const seen = q.mind.eye.beliefs[id];
+    if (!seen?.visible) continue;
+    const b = share(q.mind.eye, p.mind.eye, id, { fade: TOLD });
+    // a belief of his own, surer than the word passed on, still moves to where he is told it is
+    Object.assign(b, { at: { ...seen.at }, vel: { ...seen.vel } });
+    return b;
   }
-  return false;
+  return null;
 }
 
 function startSearch(crew, p, at) {

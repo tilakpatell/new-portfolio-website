@@ -389,6 +389,43 @@ describe('the crew’s minds', () => {
     expect(lineClear(w.layout, open, { x: you.x, y: 1.2, z: you.z }, { x: waiting.x, y: waiting.y + 1.2, z: waiting.z })).toBe(false);
   });
 
+  it('keeps a trooper in cover in the fight on his friends’ word, at the place they see you, long after he last saw you himself', () => {
+    const you = rebel(5, 0);
+    const w = world(annexed(), { you });
+    ['tk1', 'tk2', 'tk3', 'tk4'].forEach((id, i) => addPerson(w.crew, { id, kind: 'stormtrooper', room: 'hall', x: -5, z: -3 + 2 * i, yaw: Math.PI / 2, role: { type: 'post' } }));
+    simulate(w, 5 * 30);
+    const waiting = w.crew.people.find((p) => !w.crew.fights.tokens.held('shot', p.id, 'you'));
+    expect(waiting.room).toBe('annex');
+    // you move across the hall while his friends keep you in sight; he hasn’t seen you for longer than a belief lasts unseen
+    Object.assign(you, { x: 7, z: 3 });
+    const modes = new Set();
+    const rooms = new Set();
+    simulate(w, 12 * 30, { each: () => modes.add(waiting.mode) && rooms.add(waiting.room) });
+    expect(modes).toEqual(new Set(['fight']));
+    expect(rooms).toEqual(new Set(['annex']));
+    const told = waiting.mind.eye.beliefs.you;
+    expect(told.visible).toBe(false);
+    expect(flat(told.at, you)).toBeLessThan(0.5);
+    expect(of(w, 'lost')).toEqual([]);
+  });
+
+  it('counts you lost to a trooper in cover only from when his friends lost you, not from when he last saw you', () => {
+    const you = rebel(-5, 0);
+    const w = world(block(), { you, seed: 4 });
+    ['tk1', 'tk2', 'tk3', 'tk4'].forEach((id, i) => addPerson(w.crew, { id, kind: 'stormtrooper', room: 'hall', x: 5, z: -3 + 2 * i, yaw: -Math.PI / 2, role: { type: 'post' } }));
+    simulate(w, 8 * 30);
+    const waiting = w.crew.people.find((p) => !w.crew.fights.tokens.held('shot', p.id, 'you'));
+    expect(waiting.mode).toBe('fight');
+    expect(waiting.mind.eye.now - waiting.mind.eye.beliefs.you.seenAt).toBeGreaterThan(3);
+    // to ground behind the hatch: nobody sees you from now on
+    Object.assign(you, { x: -15, z: 0, room: 'vault' });
+    const gone = w.now;
+    simulate(w, 10 * 30);
+    const lost = of(w, 'lost');
+    expect(lost.map((e) => e.id).sort()).toEqual(['tk1', 'tk2', 'tk3', 'tk4']);
+    expect(Math.min(...lost.map((e) => e.t)) - gone).toBeGreaterThan(2);
+  });
+
   it('knocks a trooper down with a hard hit; he gets up, turns to where it came from and fights', () => {
     const w = world(hall(), { you: rebel(5, 0) });
     const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'hall', x: -5, z: 0, yaw: -Math.PI / 2, role: { type: 'post' } });
