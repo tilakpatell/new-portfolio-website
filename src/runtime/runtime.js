@@ -1,7 +1,7 @@
 // The runtime: one renderer, one loop and the services, with a world
 // module mounted on it. mount() makes a module's world and draws it in a
 // host box; handover() lets the next module take over without a cut (the
-// old world draws on, keys aside, until the new one is ready; then its last
+// old world draws on until the new one is ready, its keys its own until the new one is prepared; then its last
 // frame is kept over the new one and fades out); adopt() moves a world handed over already into
 // the box of the page that shows it (its canvas and the cover with it);
 // unmount() disposes the world and keeps the canvas. The browser bits (the backend, the loop's rAF, the DOM) are
@@ -200,7 +200,11 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
   // make a module's world; null if something newer came meanwhile (`own`:
   // the status is this build's to set, a mount's; a handover's old world is
   // still the one on)
-  const build = async (module, props, host, token, own = false) => {
+  // (`keys`, a handover's: the old world's bindings, { kept }. The new world
+  // binds its keys as it's made; the old one gets its own back from then
+  // until the new one's prepare is over, since it draws on, and is flown,
+  // all that while; then the new world's are bound again.)
+  const build = async (module, props, host, token, own = false, keys = null) => {
     await backendFor(module);
     if (token !== seq) return null;
     gfx.setRatio?.(ratioFor(module));
@@ -211,6 +215,14 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       world.dispose();
       return null;
     }
+    const fresh = keys ? (input.bindings?.() ?? null) : null;
+    if (keys?.kept) input.bind(keys.kept.actions, { axes: keys.kept.axes });
+    const ours = () => {
+      if (keys && token === seq) {
+        if (fresh) input.bind(fresh.actions, { axes: fresh.axes });
+        else input.unbind();
+      }
+    };
     if (world.ready) {
       await settle(world.ready, READY_WAIT);
       if (token !== seq) {
@@ -256,6 +268,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       }
       world.update?.(props);
     }
+    ours();
     return world;
   };
   const place = (world, host, mod) => {
@@ -381,12 +394,14 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       } catch (err) {
         if (dev) console.warn(`[${old.module.id}] handoff failed`, err);
       }
-      // (the keys are the new world's from here, bound as it's made: the old
-      // one is on its way out, but draws on until the new one is ready)
+      // (the new world's keys are bound as it's made, from a clean slate; the
+      // old one has its own back while the new one is readied, as it draws
+      // on and is flown meanwhile, and the new world's are bound once it's
+      // prepared: build's `keys`)
       const kept = input.bindings?.() ?? null;
       input.unbind();
       try {
-        const world = await build(mod, { ...props, from }, host, token);
+        const world = await build(mod, { ...props, from }, host, token, false, { kept });
         if (!world) return false;
         if (after) {
           await settle(after, AFTER_MAX);
