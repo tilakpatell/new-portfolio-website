@@ -1,16 +1,16 @@
 // What a fight looks like aboard: the blaster bolts (a white-hot capsule
-// about 0.9 m long in a red glow, red for both sides as every hand blaster
-// in the films is; green only for the station’s turbolasers and its
-// superlaser), the sparks off whatever a bolt strikes, the scorch it
-// leaves on the wall (glowing as it cools), the flare at the muzzle, smoke,
-// and explosions. Everything is pooled and made here at the start (four
-// draws at most however hot the fight: the bolts’ cores, every glow and
-// spark and flash as one set of sprites, every puff of fire and smoke as
-// another, the scorches, and nothing for an empty pool), and its shaders
-// can be compiled before the first shot (`warm`), so nothing is allocated
-// or compiled mid-fight. One PointLight, kept in the scene at intensity 0
-// so the room’s shaders never change when it lights, is the muzzle flare
-// and an explosion’s flash; whichever is brighter has it.
+// about 0.9 m long in a red glow: red for every side’s blasters, as every
+// hand blaster in the films is, and green only for the station’s own
+// turbolasers and its superlaser), the sparks off whatever a bolt strikes,
+// the scorch it leaves on the wall (glowing as it cools), the flare at the
+// muzzle, smoke, and explosions. Everything is pooled and made here at the
+// start (four draws at most however hot the fight: the bolts’ cores, every
+// glow and spark and flash as one set of sprites, every puff of fire and
+// smoke as another, the scorches, and nothing for an empty pool), and its
+// shaders can be compiled before the first shot (`warm`), so nothing is
+// allocated or compiled mid-fight. One PointLight, kept in the scene at
+// intensity 0 so the room’s shaders never change when it lights, is the
+// muzzle flare and an explosion’s flash; whichever is brighter has it.
 //
 // Bolts are drawn as the rules have them: call bolt(b) for every bolt in
 // the air each frame (combat.js’s `combat.bolts`), before update(dt); one
@@ -236,7 +236,6 @@ const perInstance = (geo, name, n, size) => {
   geo.setAttribute(name, a);
   return a;
 };
-const near = (a, b) => Math.abs(a - b) < 1e-6;
 const put3 = (arr, i, x, y, z) => {
   arr[i * 3] = x;
   arr[i * 3 + 1] = y;
@@ -313,7 +312,9 @@ export function createFx(scene, { small = false } = {}) {
 
   // ── state, in flat arrays so a fight makes no garbage ──
   const boltSlots = createSlots(N.bolts);
-  const bolts = { id: new Array(N.bolts).fill(null), p: new Float32Array(N.bolts * 3), d: new Float32Array(N.bolts * 3), speed: new Float32Array(N.bolts), lead: new Float32Array(N.bolts), seen: new Uint8Array(N.bolts), fresh: new Uint8Array(N.bolts), green: new Uint8Array(N.bolts) };
+  // (where each bolt was given, in doubles: a float32 copy of a station coordinate, rounded, never
+  // matches the rules’ own again, and would count every bolt far from the origin as moved each frame)
+  const bolts = { id: new Array(N.bolts).fill(null), p: new Float64Array(N.bolts * 3), d: new Float32Array(N.bolts * 3), speed: new Float32Array(N.bolts), lead: new Float32Array(N.bolts), seen: new Uint8Array(N.bolts), fresh: new Uint8Array(N.bolts), green: new Uint8Array(N.bolts) };
   const sparkSlots = createSlots(N.sparks);
   const sparks = { p: new Float32Array(N.sparks * 3), v: new Float32Array(N.sparks * 3), t: new Float32Array(N.sparks), life: new Float32Array(N.sparks) };
   const flashSlots = createSlots(N.flashes);
@@ -385,7 +386,7 @@ export function createFx(scene, { small = false } = {}) {
         i = boltSlots.take();
         bolts.id[i] = b.id;
         bolts.fresh[i] = 1;
-      } else if (!near(bolts.p[i * 3], b.x) || !near(bolts.p[i * 3 + 1], b.y) || !near(bolts.p[i * 3 + 2], b.z)) bolts.fresh[i] = 1;
+      } else if (bolts.p[i * 3] !== b.x || bolts.p[i * 3 + 1] !== b.y || bolts.p[i * 3 + 2] !== b.z) bolts.fresh[i] = 1;
       put3(bolts.p, i, b.x, b.y, b.z);
       const len = Math.hypot(b.dx, b.dy, b.dz) || 1;
       put3(bolts.d, i, b.dx / len, b.dy / len, b.dz / len);

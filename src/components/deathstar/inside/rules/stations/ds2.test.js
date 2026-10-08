@@ -15,9 +15,9 @@ describe('the second Death Star’s rooms', () => {
     expect(validateStation(DS2)).toEqual([]);
   });
 
-  it('is ds2, and stays off the start screen’s list until its rooms are drawn and its stories written', () => {
+  it('is ds2, on the start screen’s list now its rooms are drawn and its stories written', () => {
     expect(DS2.id).toBe('ds2');
-    expect(STATIONS.ds2).toBeUndefined();
+    expect(STATIONS.ds2).toBe(DS2);
   });
 
   it('has every room the stories walk through', () => {

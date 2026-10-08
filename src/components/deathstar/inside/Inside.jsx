@@ -30,8 +30,14 @@ import './inside.css';
 //           saved: { [station]: { rebel, imperial } } }
 //     prompt: what E does here (‘call the lift’), or with `use: false` a notice with no key (a
 //     door won’t open: doors open on their own, so E is for lifts, consoles, people and coded hatches)
-//   'hud' { hp, heat, venting, gun, alert, section, room, at?: { x, z, yaw }, aim? }
+//   'hud' { hp, hpMax, heat, venting, gun, blade, alert, doubt, section, room, roomName,
+//           at?: { x, z, yaw }, aim? }
+//     alert: the security of the section you are in; doubt: 0…1, how far the garrison doubts a
+//     Rebel in armour (null without a disguise)
 //   'say' { who, text, seconds? }   a subtitle (shown while subtitles are on)
+//   'hurt' { amount, angle }   a hit on you; angle: the turn from where you face to where it came from
+//   'hit' { target }   a hit you landed
+//   'story' { id, done }   the story ran to its end
 //   'achievement' { id }
 // What the page asks of the world:
 //   start({ station, side, hero, mode, fresh }), pause(on), set({ view | sound | subtitles }),

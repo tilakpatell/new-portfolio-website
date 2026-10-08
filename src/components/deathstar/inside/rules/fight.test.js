@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { seeded } from '../../../../lib/seeded';
 import { buildLayout } from './layout';
-import { createNav } from './nav';
+import { createNav, route } from './nav';
 import { lineClear } from './walker';
 import { chooseTactic, coverFrom, createFights, fallbackFrom, fightStep, flankRoute, searchOf, sectionSpots, standOff, TACTICS } from './fight';
 
@@ -24,6 +24,12 @@ const loop = () =>
       [door('A', 'west', 'hall', -10, 0, 'z'), door('B', 'west', 'north', -15, -5, 'x'), door('C', 'north', 'hall', -3, -5, 'x')],
     ),
   );
+
+// nav.route as it is, counted, so a test can tell a way remembered from one worked out anew
+vi.mock('./nav', async (real) => {
+  const nav = await real();
+  return { ...nav, route: vi.fn((...args) => nav.route(...args)) };
+});
 
 const open = () => true;
 const sees = (layout) => (a, b) => lineClear(layout, open, a, b);
@@ -123,6 +129,17 @@ describe('places to fight from', () => {
     const nav = createNav(layout);
     expect(flankRoute(nav, { x: 15, z: 0, room: 'annex' }, { x: 0, z: 0, room: 'hall' })).toBeNull();
     expect(flankRoute(createNav(loop()), { x: -5, z: 0, room: 'hall' }, { x: 3, z: 0, room: 'hall' })).toBeNull();
+  });
+
+  it('flanks by the ways it remembers when it looks again from where it stood at a target that hasn’t moved off', () => {
+    const nav = createNav(loop());
+    route.mockClear();
+    const first = flankRoute(nav, { x: -15, z: 0, room: 'west' }, { x: 3, z: 0, room: 'hall' });
+    const asked = route.mock.calls.length;
+    const again = flankRoute(nav, { x: -14.6, z: 0.4, room: 'west' }, { x: 3.2, z: 0.3, room: 'hall' });
+    expect(route.mock.calls.length).toBe(asked);
+    expect(doorsOf(again)).toEqual(doorsOf(first));
+    expect(again[0]).toMatchObject({ x: -14.6, z: 0.4 });
   });
 
   it('flanks only through doors it may pass', () => {
