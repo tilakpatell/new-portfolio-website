@@ -43,14 +43,21 @@ describe('Kashyyyk, as Revenge of the Sith has it', () => {
       expect(h(x, 90), `shallows ${x}`).toBeGreaterThan(-0.8);
     }
   });
+  const bar = site.things_all.filter((t) => t.kind === 'barricade');
+  const line = Math.max(...bar.map((b) => b.at[1]));
   it('faces its barricades to the water, in front of the cover', () => {
-    const bar = site.things_all.filter((t) => t.kind === 'barricade');
     expect(bar.length).toBeGreaterThanOrEqual(4);
     for (const b of bar) expect(b.at[1]).toBeGreaterThan(50);
+    // the cover on the sand lies between the barricades and the water (the
+    // stores, crates too, stay back behind the line)
+    const cover = site.things_all.filter((t) => t.place === 'beach' && (['karst', 'log'].includes(t.kind) || (t.kind === 'crates' && t.at[1] > 60)));
+    expect(cover.length).toBeGreaterThanOrEqual(5);
+    for (const c of cover) expect(c.at[1], `${c.kind} at ${c.at}`).toBeGreaterThan(line);
   });
-  it('puts the spider-droid wreck on the sand, not in the lagoon', () => {
+  it('puts the spider-droid wreck on the sand, between the water and the barricades', () => {
     const w = site.things_all.find((t) => t.kind === 'homingspider');
     expect(standable(site, w.at)).toBe(true);
+    expect(w.at[1]).toBeGreaterThan(line);
   });
   it('has one Gree and one Tarfful, both where you can talk to them', () => {
     const named = site.life.filter((a) => /Gree|Tarfful/.test(a.name ?? ''));
@@ -59,9 +66,9 @@ describe('Kashyyyk, as Revenge of the Sith has it', () => {
     // (outside Kachirho's trunk: 18 m round its middle)
     expect(Math.hypot(tarfful.at[0] + 140, tarfful.at[1] + 30)).toBeGreaterThan(22);
   });
-  it('has no droids wandering the lagoon floor', () => {
-    for (const a of site.life.filter((l) => ['battledroid', 'superdroid', 'dwarfspider'].includes(l.kind))) {
-      for (const p of a.path ?? [a.at]) expect(standable(site, p), `${a.kind} at ${p}`).toBe(true);
+  it('stands everyone on Kashyyyk somewhere they can stand', () => {
+    for (const a of site.life) {
+      for (const p of [a.at, ...(a.path ?? [])].filter(Boolean)) expect(standable(site, p), `${a.name ?? a.kind} at ${p}`).toBe(true);
     }
   });
 });

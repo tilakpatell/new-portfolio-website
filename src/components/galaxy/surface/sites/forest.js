@@ -433,7 +433,7 @@ export const SITES = {
           rv: [['jesse', 'This is like Saving Private Ryan but with Chewbacca.'], ['walt', 'Keep your head down, Jesse.']],
         },
         things: [
-          // the line, on the waterline and facing the lagoon (south), as the
+          // the line, across the beach and facing the lagoon (south), as the
           // film has it: the droids come straight up out of the shallows at it
           { kind: 'barricade', at: [-50, 18], yaw: 0.05, opts: { len: 12 } },
           { kind: 'barricade', at: [-25, 20], yaw: 0, opts: { len: 12 } },
@@ -539,9 +539,10 @@ export const SITES = {
       { kind: 'barrel', at: [-11.8, -45.2], yaw: 1.6 },
       { kind: 'empirecrate', at: [10, -52], yaw: 2.4 },
       // a spider droid left burning on the sand at the beach's east end,
-      // where the first droids got ashore
-      { kind: 'homingspider', at: [96, 50], yaw: 3.6, roll: 0.5, sink: 0.6, solid: { r: 3 } },
-      { kind: 'wrecksmoke', at: [96, 50], solid: false, opts: { h: 14, r: 1.0 } },
+      // between the water and the barricades, where the first droids got
+      // ashore (cover for the next ones)
+      { kind: 'homingspider', at: [96, 68], yaw: 3.6, roll: 0.5, sink: 0.6, solid: { r: 3 } },
+      { kind: 'wrecksmoke', at: [96, 68], solid: false, opts: { h: 14, r: 1.0 } },
       { kind: 'karst', at: [-80, 260], opts: { w: 26, h: 18, seed: 5 } },
       { kind: 'karst', at: [120, 330], opts: { w: 20, h: 14, seed: 6 } },
       { kind: 'karst', at: [320, 250], opts: { w: 28, h: 20, seed: 7 } },
