@@ -15,6 +15,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { budget, pixelRatio } from './device';
 import { precompile as compileFor, precompilePasses, quiet, releaseContext } from './three/renderer';
 import { sharpen } from './three/textures';
+import { guard } from './three/frameGuard';
 
 // The last step, on the display-ready picture: a film-like grade.
 export const GRADE = {
@@ -90,6 +91,10 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
   // less multisampling, a weak device without shadows or bloom
   const fit = budget();
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false, stencil: false }));
+  // lib/three/frameGuard: no frame waits on a shader or a picture; a draw
+  // held back is drawn once it's ready (a 'tp:redraw' on the canvas wakes a
+  // game that draws only when something changes)
+  const held = guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = exposure;
@@ -215,6 +220,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
     composer.dispose?.();
     bloomPass.dispose?.();
     gradePass.dispose?.();
+    held.dispose();
     renderer.dispose();
     // the canvas is the game's own and goes with it: give the context back
     // (lib/three/renderer: once nothing is compiling, so the wait for it lands nowhere)

@@ -79,6 +79,9 @@ export default function OfficeTour3D({ sel, onPick, onState }) {
       if (!raf.current && tour.current) raf.current = requestAnimationFrame(loop);
     };
     kickRef.current = kick;
+    // (the renderer's frame guard readied what it held back: draw it)
+    const el = canvas.current;
+    el?.addEventListener('tp:redraw', kick);
     onState?.('loading');
     const give = (why) => {
       cancelAnimationFrame(raf.current);
@@ -115,6 +118,7 @@ export default function OfficeTour3D({ sel, onPick, onState }) {
     return () => {
       dead = true;
       ro?.disconnect();
+      el?.removeEventListener('tp:redraw', kick);
       cancelAnimationFrame(raf.current);
       raf.current = 0;
       tour.current?.dispose();
