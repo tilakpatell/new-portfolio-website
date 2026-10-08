@@ -14,6 +14,7 @@ import { localSaves, worldStore, winOf } from './local';
 import { createAssets } from './assets';
 import { createAudioBus } from './audio';
 import { createRuntime } from './runtime';
+import { createWorkerPool, poolSize } from './workers';
 import { readOverride } from './backend';
 import './runtime.css';
 
@@ -55,6 +56,7 @@ export function runtime() {
     store: worldStore(),
     assets: createAssets({ loaders, forget }),
     audio: createAudioBus(),
+    workers: createWorkerPool({ size: poolSize(win?.navigator?.hardwareConcurrency) }),
     gpu: Boolean(win?.navigator?.gpu),
     override: readOverride(win?.location.search ?? '', win?.location.hash ?? '', stored),
     visible: () => !(typeof document !== 'undefined' && document.hidden) && !covered(),

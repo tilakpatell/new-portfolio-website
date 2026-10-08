@@ -1,3 +1,4 @@
+import { MODELS as audit } from './audit';
 import { MODELS as battlefront } from './battlefront';
 import { MODELS as common } from './common';
 import { MODELS as clonewars } from './clonewars';
@@ -19,7 +20,7 @@ import { MODELS as three } from './three';
 // its own). A world asks for a kind; one that isn't here (yet) it builds in
 // code, or goes without.
 // (battlefront last: a kind there takes over from the same kind's Sketchfab model)
-export const GROUPS = { common, desert, ice, forest, core, clonewars, edge, people, outer, rebels, three, made, fill, library, battlefront };
+export const GROUPS = { common, desert, ice, forest, core, clonewars, edge, people, outer, rebels, three, made, fill, library, audit, battlefront };
 export const SURFACE_MODELS = Object.fromEntries(Object.entries(GROUPS).flatMap(([group, models]) => Object.entries(models).map(([kind, m]) => [kind, { ...m, group }])));
 export const surfaceUrl = (kind) => `/models/galaxy/surface/${kind}.glb`;
 export const surfaceLodUrl = (kind) => `/models/galaxy/surface/${kind}.lod1.glb`;

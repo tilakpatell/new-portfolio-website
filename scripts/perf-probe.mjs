@@ -348,6 +348,35 @@ const JOURNEYS = {
   invincible: worldPage('/invincible'),
   earth: worldPage('/earth'),
   minecraft: worldPage('/dot-matrix/minecraft'),
+  // Minecraft walked 200 blocks each way along x and z, a block every 100 ms
+  // (a sprint's pace and more), so chunks keep arriving and going
+  async minecraftWalk(page, mark) {
+    mark('load');
+    await page.goto(`${this.base}/${this.q}#/dot-matrix/minecraft`, { waitUntil: 'domcontentloaded' });
+    // (past the game's password, to the tribute)
+    await page.getByRole('button', { name: /Walk the tribute/ }).click({ timeout: 120000 });
+    await page.waitForFunction(() => window.__RUNTIME__?.status === 'on' && window.__RUNTIME__.current?.world?.game, null, { timeout: 180000 });
+    // (the same world every run: seed 1, at its spawn)
+    await page.evaluate(() => window.__RUNTIME__.current.world.newWorld(1));
+    await page.waitForFunction(() => {
+      const g = window.__RUNTIME__.current.world.game;
+      return g.world.loaded(g.player.x, g.player.z);
+    }, null, { timeout: 180000 });
+    mark('settle');
+    await wait(page, 4000);
+    for (const [name, dx, dz] of [['east', 1, 0], ['west', -1, 0], ['south', 0, 1], ['north', 0, -1]]) {
+      mark(name);
+      for (let i = 0; i < 200; i++) {
+        await page.evaluate(([dx, dz]) => {
+          const { world } = window.__RUNTIME__.current;
+          const p = world.game.player;
+          world.debug.teleport(p.x + dx, 120, p.z + dz);
+        }, [dx, dz]);
+        await wait(page, 100);
+      }
+    }
+    mark('end');
+  },
   music: worldPage('/music'),
   scranton: worldPage('/scranton'),
   citadel: worldPage('/c-137/citadel'),

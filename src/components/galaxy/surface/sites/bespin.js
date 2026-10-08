@@ -372,9 +372,10 @@ export const SITE = {
   ],
   scatter: [
     // the skyline: towers stood on the deck (lifted from the fall to it)
-    // Cloud City's towers and domed halls round the deck (the Meshy models;
-    // scripts/meshy-galaxy-three.mjs), sunk into it as the built city's were
-    { kind: 'cloudtower', n: 14, within: [52, 158], scale: [0.35, 0.8], sink: -30, clear: 24 },
+    // Cloud City's towers and domed halls round the deck (the Meshy models:
+    // the towers the audit lane's, the halls scripts/meshy-galaxy-three.mjs's),
+    // sunk into it as the built city's were
+    { kind: 'cloudcity', n: 14, within: [52, 158], scale: [0.35, 0.8], sink: -30, clear: 24 },
     { kind: 'cloudtower2', n: 10, within: [60, 158], scale: [0.4, 0.8], sink: -30, clear: 24 },
     { kind: 'cloudblock', n: 40, within: [36, 150], scale: [0.6, 1.3], sink: -40, clear: 12 },
     { kind: 'lamp', n: 50, within: [24, 160], scale: [1, 1], sink: -40, clear: 6, opts: { h: 4.5, light: '#ffe0b0', color: '#d8d0c4', radius: 0.2 } },

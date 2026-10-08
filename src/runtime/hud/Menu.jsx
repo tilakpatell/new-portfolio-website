@@ -6,13 +6,16 @@ import PlayersChip from './PlayersChip';
 // A world's one Menu, top right: the world's own settings first (as
 // children: <MenuItem>s), then Things to do, Controls (the site's guide, so
 // the keys are written once, in guide/pages.js), the other players and the
-// way out to the universe map. `todo`: { onOpen, done, total, label } (a
-// world's canon name for its list, Passport or Cartridges, as its label;
-// "Things to do" otherwise). Closes on a click anywhere else, on Esc (that
+// way out of the world. All plain values (the kit imports nothing from a
+// world or the shell): `todo`: { onOpen, done, total, label } (a world's
+// canon name for its list, Passport or Cartridges, as its label; "Things to
+// do" otherwise); `players`: PlayersChip's { count, on, onJoin, available };
+// `way`: { label, to }, the way out for the view the visitor is in
+// ("Universe map" or "Classic site": components/worlds wayOut). Closes on a click anywhere else, on Esc (that
 // Esc is the menu's: the world doesn't also back out of something), or on
 // picking something; the focus goes back to its button. A disclosure, not
 // an ARIA menu: its entries are plain buttons and links, Tab between them.
-export default function Menu({ label = 'Menu', todo = null, controls = true, trav = null, noun = 'players', lore = null, mapTo = null, className = '', children = null }) {
+export default function Menu({ label = 'Menu', todo = null, controls = true, players = null, noun = 'players', lore = null, way = null, className = '', children = null }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const button = useRef(null);
@@ -61,12 +64,8 @@ export default function Menu({ label = 'Menu', todo = null, controls = true, tra
               Controls
             </button>
           )}
-          {trav && <PlayersChip trav={trav} noun={noun} lore={lore} item />}
-          {mapTo && (
-            <Link to={mapTo}>
-              Universe map
-            </Link>
-          )}
+          {players && <PlayersChip {...players} noun={noun} lore={lore} item />}
+          {way && <Link to={way.to}>{way.label}</Link>}
         </div>
       )}
     </div>
