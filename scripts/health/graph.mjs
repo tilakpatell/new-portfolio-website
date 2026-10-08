@@ -31,11 +31,11 @@ const TRY = ['', '.js', '.jsx', '.mjs', '/index.js', '/index.jsx'];
 // import … from '…' and export … from '…', the braces over as many lines as they
 // like. A statement starts a line or follows a ; { or }, so the second of two
 // imports on one line is read too
-const FROM = /(?<=^|[;{}])\s*(?:import|export)\b[^'"`]*?\bfrom\s*(['"])([^'"\n]+)\1/gm;
+export const FROM = /(?<=^|[;{}])\s*(?:import|export)\b[^'"`]*?\bfrom\s*(['"])([^'"\n]+)\1/gm;
 // import '…', for its side effects (a stylesheet, a polyfill), at a statement's start too
-const SIDE_EFFECT = /(?<=^|[;{}])\s*import\s*(['"])([^'"\n]+)\1/gm;
+export const SIDE_EFFECT = /(?<=^|[;{}])\s*import\s*(['"])([^'"\n]+)\1/gm;
 // import('…') whose argument is the literal alone, so import('./' + name) isn't './'
-const DYNAMIC = /\bimport\s*\(\s*(['"`])([^'"`$\n]+)\1\s*[,)]/g;
+export const DYNAMIC = /\bimport\s*\(\s*(['"`])([^'"`$\n]+)\1\s*[,)]/g;
 // import.meta.glob's first argument, a pattern or a list of them. A '!' pattern
 // isn't relative and so is left out: a glob that excludes may count an edge too many
 const GLOB = /\bimport\.meta\.glob\s*\(\s*(\[[^\]]*\]|(['"`])[^'"`\n]+\2)/g;

@@ -1,0 +1,73 @@
+# three/webgpu and TSL
+
+**Version** `three@^0.186.1` (`three/webgpu`, `three/tsl`, `three/addons/tsl/display/BloomNode.js`) · **Page owner** `src/runtime/` · **Decision** [three.js over Babylon.js](../decisions/2026-10-08-three-over-babylon.md)
+
+## What it is, and why it is here
+
+`three/webgpu` is three.js’s node renderer, `WebGPURenderer`; `three/tsl` is its shading language, materials and post chains written as JavaScript node graphs that compile to WGSL on WebGPU and to GLSL on WebGL 2. They ship inside the `three` package, so they have no row of their own in the index.
+
+The site wants it for draw submission: on WebGL every draw costs main-thread time for state and uniforms, WebGPU cuts that, and `BundleGroup` can take what never moves in a scene to near nothing. Pixel cost (the ratio, multisampling, bloom) is the same on either backend. The reasoning and the measurements are in `docs/superpowers/specs/2026-10-08-webgpu-acceleration-design.md`, and why this road and not another engine is in the decision.
+
+What it refuses: the node renderer cannot run a `ShaderMaterial`, an `onBeforeCompile` patch or an `EffectComposer` (`src/runtime/backend.js`’s header). Every one of those in a world stands between that world and WebGPU.
+
+## Where it is used
+
+Only in the runtime, and only through dynamic imports, so no visitor downloads it until a world asks for it:
+
+- `src/runtime/webgpu.js`: the WebGPU backend, `createWebGPU` and `buildPostProcessing`.
+- `src/runtime/backend.js`: `pickBackend`, the pure choice of backend, and `readOverride`.
+- `src/runtime/fixtures/nodesWorld.js`: the smallest world that keeps the `'nodes'` promise, a lit cube that turns; the reference to copy and the proof the check runs.
+
+On `main` today no shipped world is `'nodes'`, so no visitor reaches this renderer yet.
+
+## How the site uses it
+
+**On `main` today:**
+
+- **A world says what it draws with.** A world module carries `shading: 'glsl' | 'nodes'` (`src/runtime/module.js`), `'glsl'` when it says nothing.
+- **The runtime picks.** `pickBackend({ gpu, shading, override, lost })` in `src/runtime/backend.js` returns `'webgpu'` only when the browser has WebGPU, no device has been lost and the module is `'nodes'`; otherwise `'webgl'`, the classic renderer. A lost WebGPU device sets the runtime’s `lostWebGPU` (`src/runtime/runtime.js`), so the next mount is on WebGL: one downgrade, never a loop.
+- **The visitor can force either**: `?gpu=webgl` or `?gpu=webgpu` in the address (after the `?` in the hash too, since the site uses hash routes), or `localStorage` `tp-gpu`; `readOverride` takes only those two words.
+- **A module sees one renderer.** `src/runtime/gfx.js` gives a world the same face on both backends: its size and sharpness, `compile` and `upload` before the first frame, and `post(passes)`, a post chain described as data (`render`, `bloom`, `output`; `shader` only on WebGL). `src/runtime/webgl.js` builds it with an `EffectComposer`, `src/runtime/webgpu.js` with `PostProcessing` and TSL’s `bloom`.
+- **The promise is tested.** `src/runtime/shading.test.js` reads the folder of every `'nodes'` module under `src/components/`, and the fixture, and fails on a `ShaderMaterial`, `RawShaderMaterial`, `onBeforeCompile` or `EffectComposer` in it.
+
+**In the design, not yet on `main`** (the WebGPU lane is building it; this page is updated by that lane in the same pull request as the code):
+
+- A third kind, `'nodes-webgl'`: the node renderer on a WebGL 2 context, so a `'nodes'` world runs for the visitors without WebGPU and never meets the classic renderer.
+- The promise checked over a module’s imports, not only its folder: the closure guard, with the same exempt infrastructure as the measure’s `glsl-sites` (`EXEMPT` in `scripts/health/glsl-sites.mjs`).
+- A parity check that shoots a world on `main` and on the branch on both backends and diffs the pictures; a port passes under the thresholds the design states.
+- The port recipe: a world’s GLSL becomes TSL functions in a `nodes.js` beside its scene, each a factory returning a node material and its uniforms under the names the frame code already writes, so the per-frame code changes only where it imports the materials. Then `BundleGroup` round what never moves, measured by the perf probe on each backend.
+- The order: Earth, Minecraft, Mario 64, then the Expanse surface (the TSL twins of `src/lib/three/`’s shared shaders), which opens the galaxy surfaces and Middle-earth.
+
+## What the site does not use, and why
+
+- **WebGPU compute for the land cells and chunk meshing.** Both already run in workers; moving them to WGSL would trade a worker’s latency for a readback’s and risk a block boundary differing between the JavaScript noise and a WGSL one (the design, “What WebGPU buys here”). Revisit when a `'nodes'` world keeps its buffers on the GPU.
+- **`three/addons/` on the classic renderer.** The runtime’s WebGPU backend imports its bloom from `three/addons/tsl/`; classic-renderer code keeps to `three/examples/jsm/` ([three.md](three.md)).
+- **A `'shader'` post pass.** `buildPostProcessing` throws on one: a full-screen GLSL pass has no place on this renderer, and a world that needs one ports it to TSL first.
+
+## Rules
+
+- A world is `'glsl'` until nothing it draws with is GLSL; `src/runtime/shading.test.js` fails a `'nodes'` module whose folder makes any.
+- `readOverride` takes only `webgl` and `webgpu`; anything else forces nothing (`src/runtime/backend.test.js`).
+- A port changes a world’s materials and nothing it does: its rules, controls and saves stay as they were (the design; the parity check will hold the picture once it lands).
+- The GLSL left in the site is counted by the measure’s `glsl-sites` (`scripts/health/glsl-sites.mjs`); a port lowers it, and nothing should raise it without a reason in the commit.
+
+## Upgrading
+
+`three/webgpu` and `three/tsl` move with `three`, so they upgrade with it ([three.md](three.md), Upgrading). The node renderer changes faster than the classic one; after a bump, also re-check:
+
+- `buildPostProcessing`’s imports in `src/runtime/webgpu.js`: `PostProcessing`, `pass`, and `bloom` from `three/addons/tsl/display/BloomNode.js`. They are loaded dynamically, so a rename fails when a world first draws, not at build time.
+- `createWebGPU`’s watch for a lost device, which reads `renderer.backend.device` (inside three’s backend, not its public face).
+- `npx vitest run src/runtime` and, once it exists, the parity check on every ported world.
+
+Last upgrade: not recorded; record the next one here, with what it broke.
+
+## Gotchas
+
+- **An override can put a `'glsl'` world on WebGPU.** `pickBackend` honours `?gpu=webgpu` whatever the module’s shading, as long as the browser has WebGPU, so forcing it on a world that still has GLSL breaks that world’s first frame. Use it on `'nodes'` worlds and the fixture only.
+- **Colour space on a port.** A world that does its arithmetic on sRGB bytes as painted (Minecraft’s atlas is `NoColorSpace`) shifts every colour if the node material lets the renderer linearise the texture or applies the output transform twice; colour is the first thing to compare (the WebGPU plan’s Review Focus 4).
+- **A sun that moves with the clock.** Two shots of Earth a minute apart differ, so a picture diff freezes the page clock first (the WebGPU plan’s Review Focus 5).
+- **Device loss is a downgrade, not a retry.** After a lost WebGPU device the runtime stays on WebGL for as long as it lives (`lostWebGPU`, set by `lost()` in `src/runtime/runtime.js`).
+
+## The number
+
+How much GLSL is left between the site and WebGPU is the measure’s `glsl-sites`: `node scripts/health.mjs --only glsl-sites` prints today’s count and the files with the most. The design’s table of sites per world (counted over each module’s imports on 2026-10-08) is in `docs/superpowers/specs/2026-10-08-webgpu-acceleration-design.md`, “What was found”; it is the order the ports follow.

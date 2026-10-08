@@ -6,6 +6,7 @@ import GuideLink from '../guide/GuideLink';
 import { CARDS } from '../interests/cards';
 import { STATION_CARDS } from './stationCards';
 import { CREWS, crewById } from './crews';
+import { hullLine } from './yardRules';
 import { PARTS_SLOTS, STOCK, partById } from './outfit';
 import { paintById } from './paint';
 import { next, prev } from './layout';
@@ -18,7 +19,7 @@ import { ABOUT, PICK_A_SHIP } from './words';
 
 // Beside the map (a bottom sheet on a phone). With nothing selected: the
 // ships to fly (or how to fly the one you're in, and what it's fitted with
-// in the hangar). With a universe selected:
+// in the shipyard). With a universe selected:
 // its card, the way into its world, previous / next in map order, and back
 // out to the whole universe. Put away (tucked), it's a small bar naming where you
 // are, so the map has the room; the same element either way, so the scene
@@ -71,16 +72,17 @@ const KEYMAP = [
   [['F'], 'Fire'],
   [['M'], 'Nav map'],
   [['V'], 'Cockpit'],
-  [['H'], 'Hangar'],
+  [['H'], 'Shipyard'],
 ];
 // (and the one way down there's no key for, said under the grid)
 const LANDING = 'Fly down into a planet’s air to go straight into its world.';
 
 const and = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
-// What the ship's fitted with (outfit.js), and the ways into the hangar
+// What the ship's fitted with (outfit.js), and the way into the shipyard
 // and to another ship
-function Fitted({ loadout, onHangar, onChange }) {
+function Fitted({ loadout, build = null, craft = '', onHangar, onChange }) {
+  const hull = hullLine(build, craft);
   const paint = paintById(loadout.paint);
   const parts = PARTS_SLOTS.filter((slot) => loadout[slot] !== STOCK).map((slot) => partById(slot, loadout[slot]));
   return (
@@ -92,10 +94,11 @@ function Fitted({ loadout, onHangar, onChange }) {
           {parts.length ? `, with ${and(parts.map((p) => p.name))}` : ', nothing bolted on'}
         </span>
       </p>
+      {hull && <p className="universe-fitted-hull mt-2 text-sm text-muted">{hull}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
         {onHangar && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={onHangar}>
-            Open the hangar
+            Open the shipyard
           </button>
         )}
         <button type="button" className="btn btn-ghost btn-sm" onClick={onChange}>
@@ -138,7 +141,7 @@ function Exits({ onClassic }) {
   );
 }
 
-export default function UniversePanel({ universe, wonder = null, onFly = null, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onClassic, tucked: tuckedAsked = false, onTuck, onNav }) {
+export default function UniversePanel({ universe, wonder = null, onFly = null, onSelect, onEnter, onWhole, leaving, ship, loadout, build = null, onShip, onHangar, onClassic, tucked: tuckedAsked = false, onTuck, onNav }) {
   // (out of hiding while a tour runs: its stops are on it)
   const touring = useTouring();
   const tucked = tuckedAsked && !touring;
@@ -245,7 +248,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
               you.
             </p>
             {loadout ? (
-              <Fitted loadout={loadout} onHangar={onHangar} onChange={() => setChanging(true)} />
+              <Fitted loadout={loadout} build={build} craft={crewById(ship)?.ship ?? ''} onHangar={onHangar} onChange={() => setChanging(true)} />
             ) : (
               <button type="button" className="btn btn-ghost btn-sm mt-4" onClick={() => setChanging(true)}>
                 Change ship
@@ -264,7 +267,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
               ))}
             </dl>
             <p className="universe-keymap-land">{LANDING}</p>
-            <p className="universe-keymap-touch mt-4">Drag anywhere to fly, or tap a place and the ship takes you. Boost, Fire and View are on the screen, and the Hangar button opens the hangar.</p>
+            <p className="universe-keymap-touch mt-4">Drag anywhere to fly, or tap a place and the ship takes you. Boost, Fire and View are on the screen, and the Shipyard button opens the shipyard.</p>
             <button type="button" className="universe-back universe-guide-all" onClick={openGuide}>
               <RiQuestionLine className="h-3.5 w-3.5" aria-hidden="true" /> All the controls and tips
             </button>

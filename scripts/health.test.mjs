@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeContext, metric } from './health/context.mjs';
@@ -10,6 +12,8 @@ import lintDisables from './health/lint-disables.mjs';
 import todoNotes from './health/todo-notes.mjs';
 import hudKit from './health/hud-kit.mjs';
 import kbdStyles, { capRules } from './health/kbd-styles.mjs';
+import stackPages from './health/stack-pages.mjs';
+import glslSites, { EXEMPT, NAMES, sites } from './health/glsl-sites.mjs';
 import { check, describe as words, ratchet } from './health/ratchet.mjs';
 
 const TREE = fileURLToPath(new URL('./health/fixtures/tree/', import.meta.url));
@@ -47,6 +51,35 @@ describe('the measure, on a fixture tree', () => {
     const m = await todoNotes(ctx);
     expect(m.value).toBe(2);
     expect(m.detail).toEqual([{ file: 'src/world/small.js', n: 2 }]);
+  });
+});
+
+describe('the stack pages, on a fixture tree', () => {
+  it('counts the packages of package.json with no row in the stack index, and names each', async () => {
+    const m = await stackPages(ctx);
+    expect(m.value).toBe(2);
+    expect(m.detail).toEqual([
+      { file: 'docs/stack/README.md', n: 1, note: '@gltf-transform/core' },
+      { file: 'docs/stack/README.md', n: 1, note: 'lonely' },
+    ]);
+  });
+  it('counts every package when there is no index', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'stack-pages-'));
+    await writeFile(join(dir, 'package.json'), JSON.stringify({ dependencies: { a: '1' }, devDependencies: { b: '1' } }));
+    expect((await stackPages(await makeContext(dir))).value).toBe(2);
+  });
+});
+
+describe('the GLSL sites, on a fixture tree', () => {
+  it('counts the names a WebGPU port removes, comments, tests and the exempt infrastructure left out', async () => {
+    const m = await glslSites(ctx);
+    expect(m.value).toBe(2);
+    expect(m.detail).toEqual([{ file: 'src/world/glsl.js', n: 2 }]);
+  });
+  it('reads RawShaderMaterial as one site, not two, and agrees with the WebGPU design’s exempt list', () => {
+    expect(NAMES).toContain('RawShaderMaterial');
+    expect(sites('new RawShaderMaterial(); new ShaderMaterial(); myShaderMaterialish; x.RenderPass')).toBe(3);
+    expect(EXEMPT).toEqual(['src/lib/three/frameGuard.js', 'src/lib/three/renderer.js', 'src/lib/three/gpuWork.js', 'src/runtime/']);
   });
 });
 
@@ -205,6 +238,8 @@ describe('the ratchet', () => {
     expect(over[0]).toMatchObject({ id: 'big-files', value: 3, budget: 2, worst: [{ file: 'a.js', n: 2000 }] });
     expect(words(over)).toContain('big-files: 3 files over budget 2');
     expect(words(over)).toContain('a.js  2000');
+    // a row's note names what the file and count can't (the package with no page)
+    expect(words([{ id: 'stack-pages', value: 1, budget: 0, unit: 'packages', worst: [{ file: 'docs/stack/README.md', n: 1, note: 'left-pad' }] }])).toContain('docs/stack/README.md  1  left-pad');
   });
 
   it('ratchet only lowers, adds a budget for a new metric, rounds kB up to the next 5 and sorts the keys', () => {

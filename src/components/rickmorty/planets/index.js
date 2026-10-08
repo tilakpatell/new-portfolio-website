@@ -8,6 +8,7 @@
 import { siteFrom } from '../../galaxy/surface/sites';
 import { byId } from '../../universe/universes';
 import { SITE as gazorpazorp } from './sites/gazorpazorp';
+import { LINES } from './lines';
 
 export const PLANET_SITES = { gazorpazorp };
 
@@ -18,7 +19,10 @@ export const isBigPlanet = (id) => Object.hasOwn(PLANET_SITES, id);
 
 export function planetSite(id) {
   if (!isBigPlanet(id)) return null;
-  return siteFrom(PLANET_SITES[id], id, { name: byId(id)?.label ?? id, accent: ACCENT });
+  const raw = PLANET_SITES[id];
+  // (Rick and Morty climbing out say the planet's landing lines, ./lines.js, unless the site has its own)
+  const out = raw.lines?.out ?? LINES[id]?.landing;
+  return siteFrom(out ? { ...raw, lines: { ...raw.lines, out } } : raw, id, { name: byId(id)?.label ?? id, accent: ACCENT });
 }
 
 // a planet's mission (the galaxy's mission shape: missions/index.js), by id;

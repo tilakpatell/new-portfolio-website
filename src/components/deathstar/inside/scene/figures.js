@@ -26,7 +26,7 @@
 //     multiplied into its materials; dye: dye.js’s { color, gain, keep, roughness }
 //     person: { object, kind, tall, hand, bones, play(name, opts), stop(layer, fade), base(name, opts),
 //       look(target | null), setAim(yaw, pitch, raised), hold(gun), fall(opts) → bool, rise(), fallen,
-//       settled, update(dt, motion?), dispose() }
+//       settled, fade(k), update(dt, motion?), dispose() }
 //     object: feet at its origin, facing −z, so object.rotation.y = −yaw faces yaw
 //     play: a library clip by name (or an ALIAS), on the 'full' body (default) or the 'upper' or
 //       'lower' half; { loop, hold, fade, speed }; null or a walk name stops the full body’s clip
@@ -185,6 +185,9 @@ function personOf({ object, kind, tall, hand, anim = null, bones = {}, owned }) 
   const _q = new THREE.Quaternion();
   let m = motionOf(0);
   let rag = null; // the ragdoll it fell as, once it has
+  let wasSolid = true; // the fade last set
+  let lastFade = 1;
+  const fadedOut = new Set(); // what the fade hid, to show again
 
   function pose(dt) {
     const k = 1 - Math.exp(-dt * AIM.chase);
@@ -271,6 +274,33 @@ function personOf({ object, kind, tall, hand, anim = null, bones = {}, owned }) 
     },
     get fallen() {
       return Boolean(rag);
+    },
+    // see-through, k of the way to solid (1): someone between the camera and you is faded so you
+    // can see past them
+    fade(k) {
+      const solid = k >= 0.99;
+      if (solid === wasSolid && (solid || Math.abs(k - lastFade) < 0.01)) return;
+      wasSolid = solid;
+      lastFade = k;
+      for (const mat of owned) {
+        mat.transparent = !solid;
+        mat.opacity = solid ? 1 : k;
+        mat.depthWrite = solid;
+      }
+      // what it wears or holds on materials it shares (the Death Star troopers' helmet, a gun) can't
+      // be faded for it alone: out of sight while it is mostly faded
+      // (only what the fade hid comes back: people.js hides the figure's own gun for its blaster)
+      if (k > 0.5) {
+        for (const o of fadedOut) o.visible = true;
+        fadedOut.clear();
+        return;
+      }
+      const mine = new Set(owned);
+      object.traverse((o) => {
+        if (!o.isMesh || mine.has(o.material) || !o.visible) return;
+        o.visible = false;
+        fadedOut.add(o);
+      });
     },
     get settled() {
       return Boolean(rag?.settled);

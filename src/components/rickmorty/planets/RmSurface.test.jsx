@@ -50,6 +50,25 @@ describe('a big planet’s page', () => {
     expect(html).not.toMatch(/Loadout|allegiance|Back to orbit/i);
   });
 
+  it('hands the surface the planets’ kit, laid over the galaxy’s books', async () => {
+    const { RM_MODELS } = await import('./catalog');
+    const { RM_RIDES } = await import('./rides');
+    const { PROPS, SCATTER } = await import('./props');
+    const galaxy = await import('../../galaxy/surface/props');
+    const { RIDES } = await import('../../galaxy/surface/rides');
+    at('/c-137/gazorpazorp');
+    expect(seen.props.models).toBe(RM_MODELS);
+    for (const k of Object.keys(RM_RIDES)) expect(seen.props.rides[k], k).toBe(RM_RIDES[k]);
+    expect(seen.props.rides.landspeeder).toBe(RIDES.landspeeder);
+    expect(seen.props.props.rocksled).toBe(PROPS.rocksled);
+    expect(seen.props.props.rock).toBe(galaxy.PROPS.rock);
+    expect(seen.props.scatter.redrock).toBe(SCATTER.redrock);
+    // (the people: the scene's own cast handed to the planets' figure maker)
+    const maker = seen.props.figures({ make: () => null });
+    expect(typeof maker).toBe('function');
+    expect(await maker('rock', {}, 0)).toBeNull();
+  });
+
   it('reads what was found here before, and nothing of another planet’s', () => {
     const ls = store();
     ls.setItem(FOUND_KEY, JSON.stringify({ gazorpazorp: ['gate'], squanch: ['arch'] }));

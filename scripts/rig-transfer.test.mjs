@@ -109,3 +109,46 @@ describe('loosen', () => {
     expect(hem[2]).toBeCloseTo(0.25, 5);
   });
 });
+
+describe('rigFrom on a mesh in several parts', () => {
+  it('puts every part on the donor’s one skinned mesh, and none is left on a mesh of its own', async () => {
+    const { Document, NodeIO } = await import('@gltf-transform/core');
+    const { ALL_EXTENSIONS } = await import('@gltf-transform/extensions');
+    const { MeshoptDecoder } = await import('meshoptimizer');
+    const { mkdtemp, writeFile } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { rigFrom } = await import('./rig-transfer.mjs');
+    // a body and a head, each a box mesh on a node of its own
+    const doc = new Document();
+    const buffer = doc.createBuffer();
+    const top = doc.createNode('top').setScale([0.5, 0.5, 0.5]);
+    doc.createScene().addChild(top);
+    const scene = top;
+    const box = (name, [x0, y0, z0], [x1, y1, z1]) => {
+      const p = [];
+      const c = [];
+      for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) c.push([x, y, z]);
+      for (const [a, b, d, e] of [[0, 1, 3, 2], [4, 5, 7, 6], [0, 1, 5, 4], [2, 3, 7, 6], [0, 2, 6, 4], [1, 3, 7, 5]]) p.push(...c[a], ...c[b], ...c[d], ...c[a], ...c[d], ...c[e]);
+      const prim = doc.createPrimitive().setAttribute('POSITION', doc.createAccessor().setArray(new Float32Array(p)).setType('VEC3').setBuffer(buffer));
+      scene.addChild(doc.createNode(name).setMesh(doc.createMesh(name).addPrimitive(prim)));
+    };
+    box('body', [-0.2, 0, -0.1], [0.2, 1.5, 0.1]);
+    box('head', [-0.1, 1.5, -0.1], [0.1, 1.8, 0.1]);
+    // (compressed, as an imported model comes: each mesh quantized in its own box)
+    const { meshopt } = await import('@gltf-transform/functions');
+    const { MeshoptEncoder } = await import('meshoptimizer');
+    await MeshoptEncoder.ready;
+    await MeshoptDecoder.ready;
+    await doc.transform(meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+    const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder, 'meshopt.encoder': MeshoptEncoder });
+    const dir = await mkdtemp(join(tmpdir(), 'rig-'));
+    await writeFile(join(dir, 'mesh.glb'), await io.writeBinary(doc));
+    const r = await rigFrom('public/models/galaxy/troops/battledroid.glb', join(dir, 'mesh.glb'), join(dir, 'out.glb'), { tex: 64 });
+    expect(r.tris).toBe(24);
+    const out = await new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder }).read(join(dir, 'out.glb'));
+    const meshes = out.getRoot().listMeshes();
+    expect(meshes.length).toBe(1);
+    expect(meshes[0].listPrimitives().length).toBe(2);
+  }, 120000);
+});
