@@ -688,3 +688,19 @@ describe('people lying low', () => {
     expect(t.mode).toBe('routine');
   });
 });
+
+describe('who barks', () => {
+  it('leaves the garrison’s barks to the garrison: a Rebel who sees a trooper or runs from him says none of them', () => {
+    const w = world(hall());
+    addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'hall', x: 8, z: 0, yaw: -Math.PI / 2, role: { type: 'post', spot: { room: 'hall', x: 8, z: 0, yaw: -Math.PI / 2 } } });
+    // Han armed, who fights; Chewbacca with nothing in his hands, who runs
+    addPerson(w.crew, { id: 'han', kind: 'han', room: 'hall', x: -2, z: 0, yaw: Math.PI / 2, role: { type: 'post', spot: { room: 'hall', x: -2, z: 0, yaw: Math.PI / 2 } } });
+    addPerson(w.crew, { id: 'chewie', kind: 'chewie', room: 'hall', x: -2, z: 2, yaw: Math.PI / 2, role: { type: 'post', spot: { room: 'hall', x: -2, z: 2, yaw: Math.PI / 2 } } });
+    simulate(w, 120);
+    const fought = w.log.some((e) => (e.type === 'saw' && e.id === 'han') || (e.type === 'fled' && e.id === 'chewie'));
+    expect(fought).toBe(true);
+    expect(w.log.filter((e) => e.type === 'say' && (e.id === 'han' || e.id === 'chewie'))).toEqual([]);
+    // (and the trooper still calls it)
+    expect(w.log.some((e) => e.type === 'say' && e.id === 'tk')).toBe(true);
+  });
+});

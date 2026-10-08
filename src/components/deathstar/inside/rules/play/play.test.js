@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assign } from '../brains';
+import { BARKS, assign } from '../brains';
 import { furnish } from '../furnish';
 import { STEP, alertOf, drain, newGame, objectiveOf, promptOf, step, teleport } from '../game';
 
@@ -112,6 +112,19 @@ describe('the station with its people aboard', () => {
     g.scene = null;
     play(g, { ...STILL, dir: { x: 0, z: -1 } }, 1);
     expect(Math.hypot(g.you.x - at.x, g.you.z - at.z)).toBeGreaterThan(0.5);
+  });
+
+  it('leaves the garrison’s barks to the garrison: a Rebel who runs from a fight says none of them', () => {
+    const g = newGame({ station: 'ds1', side: 'rebel', mode: 'story', hero: 'luke', seed: 3 });
+    teleport(g, 'bay327', 10, -10);
+    // your crew round you in the open bay, where the garrison sees you all
+    g.crew.people.filter((p) => p.tag?.startsWith('with:')).forEach((p, i) => Object.assign(p, { room: 'bay327', x: 10 + (i % 3) - 1, z: -8.5 - Math.floor(i / 3), y: 0 }));
+    g.you.hp = 1e6;
+    const said = [];
+    play(g, STILL, 8, (gg, ev) => said.push(...of(ev, 'say')));
+    const barks = new Set(Object.values(BARKS).flat());
+    const rebels = new Set(['chewie', 'han', 'leia', 'obiwan', 'threepio', 'artoo', 'luke']);
+    expect(said.filter((e) => rebels.has(e.who) && barks.has(e.text))).toEqual([]);
   });
 
   it('lets far-off people sleep where they stand', () => {
