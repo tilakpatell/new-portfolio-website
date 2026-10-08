@@ -5,6 +5,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
 import { partsUnlockedBy } from './universe/outfit';
 import { paintsFor } from './universe/paint';
+import { useTouring } from './tour/useTouring';
 import Gif from './Gif';
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -14,6 +15,8 @@ export const ACHIEVEMENTS = {
   order66: { name: 'Contingency', desc: 'Executed Order 66' },
   konami: { name: 'Cheat code', desc: 'Entered the Konami code' },
   tour: { name: 'Shown around', desc: 'Took the tour of the site' },
+  tourRecruiter: { name: 'Shown the work', desc: 'Took the hiring tour' },
+  tourPlayer: { name: 'Shown the ropes', desc: 'Took the player’s tour' },
   deathstar: { name: 'Fully operational', desc: 'Found the Death Star plans' },
   'ds-aboard': { name: 'Boarding party', desc: 'Came aboard the Death Star' },
   trench: { name: 'Use the Force', desc: 'Hit the exhaust port in the trench run' },
@@ -325,7 +328,9 @@ export function AchievementProvider({ children }) {
     if (THEME_ORDER.every((t) => seen.has(t))) unlock('cartographer');
   }, [seen, unlock]);
 
-  const toast = queue[0];
+  // (a toast waits while a tour runs: it'd sit over the tour's card)
+  const touring = useTouring();
+  const toast = touring ? null : queue[0];
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setQueue((q) => q.slice(1)), toast.gif ? 7000 : 3800);

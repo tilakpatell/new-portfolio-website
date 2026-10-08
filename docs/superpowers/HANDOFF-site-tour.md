@@ -12,6 +12,13 @@ The design is [specs/2026-10-07-site-tour-design.md](specs/2026-10-07-site-tour-
 
 - **The map's first flight.** Basics a page asks for itself (`ASKED`, `askBrief`): `UniverseMap` asks for `/universe/fly` once a ship's under you with the 3D on, and they show the first time, as a world's do, before the site tour's offer (which waits for them). The stick, getting about, landing and trouble, and the panel's `?`.
 
+- **Audience tours (stream A, the engine).** Design: [specs/2026-10-07-audience-tours-and-ui-audit-design.md](specs/2026-10-07-audience-tours-and-ui-audit-design.md) sections 3–4; plan: [plans/2026-10-07-tours-engine.md](plans/2026-10-07-tours-engine.md), whose "Interface changes made while building" is what stream B writes against.
+  - A tour is chapters, each one light route (`LIGHT_ROUTES` in `lib/tour.js`); `planFor` opens every audience tour with the shell of the view you're in, cut to `SHELL_STOPS`, and `flatten` lays the chapters out as one run of stops. `compose` folds tours together for the whole one.
+  - Crossing pages: a stop on another page has `TourHost` open it, and the card waits in the middle ("One moment…") until the page has drawn (the route's Suspense fallback carries `data-fallback`), nothing covers it and its target is there; eight seconds at most (`WAIT_MS`), then the card shows centred. A shell stop not on this screen (`optional`) is skipped after 1.5 s. Back across a chapter opens the page before. The browser's Back, or any way off the page but the tour's own, ends it; a stop's `cta` ends it with progress kept and goes; `keys: 'release'` lets `?` and ⌘K through (`html[data-touring="release"]`, which the guide honours) and ends it.
+  - Progress: `tp-tour` is JSON (`readProgress`: old `'offered'`/`'done'`/`'skipped'` still read; unset still means offer), written at every stop. Finishing unlocks `tour` and `tourRecruiter`/`tourPlayer` (the whole tour, both).
+  - Ways in: the offer ("Here to hire, here to play, or both?": Hire, Play, Both, Not now), ⌘K (three tours and "Things to do"), the guide's "The site" tab (each tour, its chapters, "Carry on … (chapter n of N)"), the terminal (`tour recruiter|player|all`, `todo`), and a link: `/#/home?tour=recruiter[&chapter=id]` (`all` is the whole tour), marked offered at once and taken off the address. Until stream B's chapters land, an audience tour falls back to the view's tour.
+  - **Things to do**: `src/data/todo.js` (`THINGS_TO_DO`, 64 rows), the guide's third tab (`guide/TodoList.jsx`): Hire, Play or Everything, "n of N done", ticked by achievements or by pages seen (`tp-visited-ever`, `lib/visited.js`, written by the shell; Start over forgets it), "Show me" starting the tour at the stop with that `todo`, or going to the row's page.
+
 ## Left
 
 Nothing open. A new world gets its basics by a key in `BRIEFED` and its cards in `briefs.js` (the tests fail until both are there).
@@ -22,4 +29,6 @@ Nothing open. A new world gets its basics by a key in `BRIEFED` and its cards in
 - Again: `localStorage.removeItem('tp-tour')` and reload, or ⌘K → "tour".
 - `?` doesn't open the guide while the tour runs (`html[data-touring]`); Escape ends it and puts focus back.
 - A world's basics: `localStorage.removeItem('tp-briefs')` and open any world (`/#/scranton`, `/#/c-137`); a phone (the pane's Mobile size) shows the touch controls.
-- `npx vitest run src/lib/tour.test.js src/components/tour/brief.test.js src/components/tour` for the logic and the stops.
+- An audience tour: `/#/home?tour=recruiter` (or `player`, `all`), or `window.dispatchEvent(new CustomEvent('tp:tour', { detail: { audience: 'recruiter', chapter: 'projects' } }))`. Before stream B's chapters, it's the view's tour.
+- Things to do: ⌘K → "Things to do", or the guide's third tab; `localStorage.removeItem('tp-visited-ever')` clears its page ticks.
+- `npx vitest run src/lib/tour.test.js src/lib/visited.test.js src/data/todo.test.js src/components/tour` for the logic, the catalogue and the stops.

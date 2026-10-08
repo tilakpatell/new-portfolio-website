@@ -11,6 +11,7 @@ import { paintById } from './paint';
 import { next, prev } from './layout';
 import { byId } from './universes';
 import Face from './Faces';
+import { useTouring } from '../tour/useTouring';
 import ModelCredits from '../ModelCredits';
 
 // Beside the map (a bottom sheet on a phone). With nothing selected: the
@@ -133,7 +134,10 @@ function Exits({ onClassic }) {
   );
 }
 
-export default function UniversePanel({ universe, wonder = null, onFly = null, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onClassic, tucked = false, onTuck, onNav }) {
+export default function UniversePanel({ universe, wonder = null, onFly = null, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onClassic, tucked: tuckedAsked = false, onTuck, onNav }) {
+  // (out of hiding while a tour runs: its stops are on it)
+  const touring = useTouring();
+  const tucked = tuckedAsked && !touring;
   const [changing, setChanging] = useState(false);
   const crew = crewById(ship);
   // a press on hide or show unmounts the button pressed: the focus goes on
