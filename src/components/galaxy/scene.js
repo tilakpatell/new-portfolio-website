@@ -2082,7 +2082,7 @@ export async function create(canvas, ctx) {
     const onControl = el instanceof HTMLElement && el !== document.body && el.closest('button, a, [role="button"], [tabindex]:not([tabindex="-1"])');
     if (key === 'm') {
       e.preventDefault();
-      emit({ type: 'map' });
+      if (!e.repeat) emit({ type: 'map' }); // (a held M closed the map once; its repeats mustn't open it again)
       return;
     }
     if (key === 'j') {

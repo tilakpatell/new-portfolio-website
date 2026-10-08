@@ -3,16 +3,16 @@
 // that first), / goes to the find field, J jumps to the course, + − 0 zoom;
 // the rest is the page's or the field's. Pure, tested.
 //
-// mapKeyAction({ key, meta, ctrl, alt }, { typing, canJump, filmsOpen }) →
+// mapKeyAction({ key, meta, ctrl, alt, repeat }, { typing, canJump, filmsOpen }) →
 // 'close' | 'closeFilms' | 'find' | 'jump' | 'zoomIn' | 'zoomOut' | 'fit' | null
 // findSystems(q, systems, n = 6) → the systems whose name has `q` in it, the
 // ones that start with it first, at most n.
-export function mapKeyAction({ key, meta, ctrl, alt }, { typing = false, canJump = false, filmsOpen = false } = {}) {
-  if (meta || ctrl || alt) return null;
+export function mapKeyAction({ key, meta, ctrl, alt, repeat }, { typing = false, canJump = false, filmsOpen = false } = {}) {
+  if (typeof key !== 'string' || meta || ctrl || alt) return null; // (an autofill's keydown has no key)
   const k = key.length === 1 ? key.toLowerCase() : key;
   if (k === 'Escape') return filmsOpen ? 'closeFilms' : 'close';
   if (typing) return null;
-  if (k === 'm') return 'close';
+  if (k === 'm') return repeat ? null : 'close'; // (a held M that opened the map mustn't shut it again)
   if (k === '/') return 'find';
   if (k === 'j') return canJump ? 'jump' : null;
   if (k === '+' || k === '=') return 'zoomIn';

@@ -31,6 +31,19 @@ describe('mapKeys', () => {
     expect(mapKeyAction(k('m', { meta: true }), { typing: false })).toBeNull();
     expect(mapKeyAction(k('+'), { typing: true })).toBeNull();
   });
+  it('leaves an event with no key (an autofill\'s) alone', () => {
+    expect(mapKeyAction({ key: undefined, meta: false, ctrl: false, alt: false }, { typing: false })).toBeNull();
+    expect(mapKeyAction({ key: null }, { typing: true })).toBeNull();
+    expect(mapKeyAction({ key: 7 }, {})).toBeNull();
+  });
+  it('closes once for a held M: its repeats are nothing', () => {
+    expect(mapKeyAction(k('m', { repeat: true }), { typing: false })).toBeNull();
+    expect(mapKeyAction(k('M', { repeat: true }), { typing: false })).toBeNull();
+    expect(mapKeyAction(k('m', { repeat: false }), { typing: false })).toBe('close');
+    // (a held Escape or zoom key still acts: only M toggles)
+    expect(mapKeyAction(k('Escape', { repeat: true }), { typing: false })).toBe('close');
+    expect(mapKeyAction(k('+', { repeat: true }), { typing: false })).toBe('zoomIn');
+  });
   it('finds systems by name, the ones that start with it first', () => {
     expect(findSystems('endo', SYSTEMS).map((s) => s.id)).toEqual(['endor']);
     expect(findSystems('  ', SYSTEMS)).toEqual([]);

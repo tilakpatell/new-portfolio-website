@@ -365,7 +365,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
       const el = e.target;
       if (el instanceof Element && el.closest('[aria-modal="true"]:not(.holomap)')) return; // (the guide's or the palette's own)
       const typing = el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
-      const act = mapKeyAction({ key: e.key, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey }, { typing, canJump: Boolean(picked && picked.id !== current), filmsOpen: Boolean(films.current?.open) });
+      const act = mapKeyAction({ key: e.key, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, repeat: e.repeat }, { typing, canJump: Boolean(picked && picked.id !== current), filmsOpen: Boolean(films.current?.open) });
       if (!act) return;
       e.preventDefault();
       e.stopPropagation();
