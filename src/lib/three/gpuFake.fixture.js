@@ -55,6 +55,12 @@ export function fakeRenderer({ gl = fakeGl(), linkAfter = 0 } = {}) {
     info: { programs: [] },
     getContext: () => gl,
     properties: { get },
+    size: { x: 100, y: 100 },
+    getDrawingBufferSize(v) {
+      v.x = r.size.x;
+      v.y = r.size.y;
+      return v;
+    },
     getRenderTarget: () => r.target,
     setRenderTarget(t) {
       r.target = t;

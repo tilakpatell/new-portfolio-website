@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { guard } from './frameGuard';
+import { markLinked } from './gpuWork';
 import { fakeGl, fakeRenderer, now } from './gpuFake.fixture';
 
 const picture = () => {
@@ -43,8 +44,21 @@ describe('frameGuard', () => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(), m);
     scene.add(mesh);
     r.compile(mesh);
+    markLinked(r.properties.get(m).currentProgram);
     r.initTexture(m.map);
     await frames(r, scene);
+    expect(r.draws).toEqual([m]);
+  });
+
+  it("holds back a material whose shader was made but isn't known to have linked", async () => {
+    const { r, scene } = setup({ linkAfter: 1 });
+    const m = new THREE.MeshStandardMaterial();
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), m);
+    scene.add(mesh);
+    r.compile(mesh);
+    await frames(r, scene);
+    expect(r.draws).toEqual([]);
+    await frames(r, scene, 3);
     expect(r.draws).toEqual([m]);
   });
 
@@ -64,12 +78,27 @@ describe('frameGuard', () => {
   it("compiles for where the scene is drawn (a composer's buffer), then puts the target back", async () => {
     const { r, scene } = setup();
     scene.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial()));
-    r.target = 'buffer';
+    const buffer = { width: 100, height: 100 };
+    r.target = buffer;
     r.render(scene, camera);
     r.target = null;
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(r.compiledInto).toEqual(['buffer']);
+    expect(r.compiledInto).toEqual([buffer]);
     expect(r.target).toBe(null);
+  });
+
+  it("leaves a world's own drawings alone: a bake's override material, a buffer of its own size", () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    scene.overrideMaterial = m;
+    r.render(scene, camera);
+    expect(r.draws).toEqual([m]);
+    scene.overrideMaterial = null;
+    r.draws.length = 0;
+    r.target = { width: 1024, height: 1024 };
+    r.render(scene, camera);
+    expect(r.draws).toEqual([m]);
   });
 
   it('never gates the shadow pass', () => {

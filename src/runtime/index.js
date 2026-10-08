@@ -9,6 +9,7 @@
 
 import { createInput } from './input';
 import { createQuality } from './quality';
+import { createPace } from '../lib/three/pace';
 import { createSaves } from './saves';
 import { createAssets } from './assets';
 import { createAudioBus } from './audio';
@@ -54,7 +55,8 @@ export function runtime() {
   instance = createRuntime({
     makeBackend: (kind, opts) => browser().then((m) => m.makeBackend(kind, opts)),
     input: createInput(),
-    quality: createQuality({ dpr: win?.devicePixelRatio || 1 }),
+    // (down only: each step resizes the canvas, lib/three/pace's `climb`)
+    quality: createQuality({ dpr: win?.devicePixelRatio || 1, pace: createPace({ climb: false }) }),
     saves: createSaves({ local: store('localStorage'), session: store('sessionStorage'), win }),
     assets: createAssets({ loaders, forget }),
     audio: createAudioBus(),

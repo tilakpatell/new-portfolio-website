@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { budget, pixelRatio } from '../device';
 import { guard as guardRenderer } from './frameGuard';
-import { compileSlices, fence, revealAll } from './gpuWork';
+import { compileSlices, revealAll } from './gpuWork';
 
 // The sharpest a device starts at: lib/device's tier (phones and small
 // screens start lower), under the scene's own cap.
@@ -48,11 +48,10 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
   const renderer = new THREE.WebGLRenderer({ canvas, alpha, antialias: antialias && budget().antialias, powerPreference: 'high-performance', stencil: false, preserveDrawingBuffer });
   // reading a shader's error log waits on the graphics chip, every new
   // shader: only worth it while developing
-  renderer.debug.checkShaderErrors = Boolean(import.meta.env.DEV);
+  quiet(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = toneMapping;
   renderer.toneMappingExposure = exposure;
-  quiet(renderer);
   if (alpha) renderer.setClearColor(0x000000, 0);
   if (guard) guardRenderer(renderer, guard === true ? {} : guard);
 
@@ -61,9 +60,17 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
   const size = { w: 1, h: 1 };
   const side = maxSide(renderer);
   // the watchdog's ratio, inside what the graphics chip can hold at this size
+  // (one resize of the drawing buffer, and none when nothing changed: each
+  // one reallocates the canvas's buffer, which waits for the graphics chip
+  // to finish what it's doing, a second or more when it's busy)
+  const drawn = { w: 0, h: 0, r: 0 };
   const fit = () => {
-    renderer.setPixelRatio(fitRatio(size.w, size.h, pixelRatio, { side }));
-    renderer.setSize(size.w, size.h, false);
+    const r = fitRatio(size.w, size.h, pixelRatio, { side });
+    if (drawn.w === size.w && drawn.h === size.h && drawn.r === r) return;
+    drawn.w = size.w;
+    drawn.h = size.h;
+    drawn.r = r;
+    renderer.setDrawingBufferSize(size.w, size.h, r);
   };
 
   let lost = false;
@@ -95,6 +102,12 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
     setSize(w, h) {
       size.w = Math.max(1, Math.round(w));
       size.h = Math.max(1, Math.round(h));
+      fit();
+    },
+    // the sharpness to draw at (an owner's own, the runtime's quality),
+    // fitted to the chip like the watchdog's
+    setRatio(r) {
+      pixelRatio = r;
       fit();
     },
     size,
@@ -267,8 +280,10 @@ export const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 // three.js reads it on every program's first draw: that wait is most of a
 // page's freeze when a scene first comes into view. Development keeps the
 // diagnostics; the built site doesn't ask.
+// (scripts/perf-probe.mjs sets window.__tpNoShaderChecks, so development
+// measures what the built site does)
 export function quiet(renderer) {
-  renderer.debug.checkShaderErrors = !!import.meta.env.DEV;
+  renderer.debug.checkShaderErrors = !!import.meta.env.DEV && !(typeof window !== 'undefined' && window.__tpNoShaderChecks);
   return renderer;
 }
 
@@ -294,33 +309,15 @@ const CAP = 4000;
 let compiling = 0; // precompiles in flight, on any renderer (see releaseContext)
 
 export function precompile(renderer, root, camera, scene = null, target) {
-  // to the canvas: a slice at a time, a fence between (lib/three/gpuWork)
-  if (target === undefined) {
-    compiling += 1;
-    return compileSlices(renderer, [root], camera, scene ?? root, { cap: CAP })
-      .catch(() => {})
-      .then(() => {
-        compiling -= 1;
-        if (!compiling) flushLosses();
-      });
-  }
-  let materials;
-  const keep = target !== undefined ? renderer.getRenderTarget() : null;
-  try {
-    if (target !== undefined) renderer.setRenderTarget(target);
-    materials = renderer.compile(root, camera, scene ?? root);
-  } catch (err) {
-    if (import.meta.env.DEV) console.warn('precompile failed', err);
-    return Promise.resolve();
-  } finally {
-    // (a renderer disposed meanwhile can throw here too, and this never throws)
-    try {
-      if (target !== undefined) renderer.setRenderTarget(keep);
-    } catch {
-      // gone with its renderer
-    }
-  }
-  return linked(renderer, materials);
+  // a slice at a time, a fence between (lib/three/gpuWork), for the target
+  // it's drawn into
+  compiling += 1;
+  return compileSlices(renderer, [root], camera, scene ?? root, { cap: CAP, target })
+    .catch(() => {})
+    .then(() => {
+      compiling -= 1;
+      if (!compiling) flushLosses();
+    });
 }
 
 // The materials of a composer's passes (bloom's blurs, the output pass, a
@@ -379,38 +376,6 @@ function primeOutputPass(pass, renderer) {
   if (tone) defines[tone] = '';
   pass.material.defines = defines;
   pass.material.needsUpdate = true;
-}
-
-// Resolves once every material's program has linked (asking doesn't wait),
-// the context has gone, or CAP has passed.
-function linked(renderer, materials) {
-  const pending = [...materials];
-  const t0 = performance.now();
-  compiling += 1;
-  return new Promise((resolve) => {
-    const done = () => {
-      compiling -= 1;
-      resolve();
-      if (!compiling) flushLosses();
-    };
-    const check = () => {
-      try {
-        if (renderer.getContext().isContextLost()) return done();
-        for (let i = pending.length - 1; i >= 0; i--) {
-          // a material whose program has gone (the renderer was disposed) counts as done
-          const program = renderer.properties.get(pending[i]).currentProgram;
-          if (!program || program.isReady()) pending.splice(i, 1);
-        }
-      } catch {
-        return done();
-      }
-      if (!pending.length || performance.now() - t0 > CAP) done();
-      else setTimeout(check, 16);
-    };
-    // (asked only once the chip has caught up with the compiles: asked
-    // sooner, the question waits for them all, the page with it)
-    fence(renderer).then(check);
-  });
 }
 
 // ── contexts given back ──

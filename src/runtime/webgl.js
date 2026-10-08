@@ -62,5 +62,7 @@ export function createWebGL(canvas, { budget, onLost, invalidate, alpha = true, 
     gfx.size.h = Math.max(1, Math.round(h));
     gl.setSize(gfx.size.w, gfx.size.h);
   };
+  gfx.setRatio = (r) => gl.setRatio(r);
+  Object.defineProperty(gfx, 'ratio', { get: () => renderer.getPixelRatio() });
   return gfx;
 }

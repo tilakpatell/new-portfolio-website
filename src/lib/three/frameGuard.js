@@ -19,18 +19,23 @@
 // says the shader has linked, it draws from then on and isn't looked at
 // again.
 //
-// Left alone: the shadow pass (no scene: its depth shaders are small and
+// Only the frame itself is held back: a Scene drawn to the canvas, or to a
+// buffer the canvas's size (a composer's), with no override material. Left
+// alone: the shadow pass (no scene: its depth shaders are small and
 // shared), anything drawn outside a Scene (a post pass's quad: leaving it
-// out would leave its picture undrawn), and a material once it's ready,
-// whatever three does to it after (a transparent, double-sided one is
-// marked changed twice a frame).
+// out would leave its picture undrawn), the drawings a world makes for
+// itself (a floor bake, an environment map, a reflection: into buffers of
+// their own size, or with one material over everything, and what's left out
+// of those is wrong for good, not for a frame), and a material once it's
+// ready, whatever three does to it after (a transparent, double-sided one
+// is marked changed twice a frame).
 //
 // guard(renderer, { uploadMB, compileMs, frame, invalidate }) → { enabled,
 //   invalidate, adopt(scene, fn) → undo, pending(), dispose() }, one per renderer (asked again, the same).
 // In development, a frame in which three still compiled a shader mid-draw
 // says so in the console, so what's still slipping through can be found.
 
-import { fence, nextFrame, textureBytes, uploaded } from './gpuWork';
+import { fence, knownLinked, markLinked, nextFrame, textureBytes, uploaded } from './gpuWork';
 
 const guards = new WeakMap();
 const READY = 1;
@@ -64,6 +69,8 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
   let camera = null;
   let target = null; // where the scene was drawn (a composer's buffer: other shaders than the canvas's)
   let scheduled = false;
+  let gating = false; // the draw in progress is the frame's
+  const drawn = { x: 0, y: 0 }; // the canvas's buffer, for telling a frame's buffer from a world's own
   let waiting = false; // a fence in flight
   const dev = Boolean(import.meta.env?.DEV);
   let told = 0;
@@ -89,11 +96,14 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
   const linked = (m) => {
     const program = props(m).currentProgram;
     if (!program) return false;
+    let ok = true;
     try {
-      return program.isReady();
+      ok = program.isReady();
     } catch {
-      return true;
+      ok = true;
     }
+    if (ok) markLinked(program);
+    return ok;
   };
   const ready = (m) => {
     state.set(m, READY);
@@ -211,12 +221,23 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
     }
   };
 
+  // the canvas, or a buffer its size (where a composer draws the frame)
+  const frameTarget = (t) => {
+    if (!t) return true;
+    const c = renderer.domElement;
+    if (c) {
+      drawn.x = c.width;
+      drawn.y = c.height;
+    } else renderer.getDrawingBufferSize?.(drawn);
+    return t.width === drawn.x && t.height === drawn.y;
+  };
+
   const realDraw = renderer.renderBufferDirect;
   renderer.renderBufferDirect = function (cam, scn, geometry, material, object, group) {
-    if (g.enabled && scn?.isScene && material) {
+    if (gating && scn?.isScene && material) {
       const s = state.get(material);
       if (s !== READY) {
-        if (s === undefined && props(material).currentProgram && picturesUp(material)) state.set(material, READY);
+        if (s === undefined && knownLinked(props(material).currentProgram) && picturesUp(material)) state.set(material, READY);
         else {
           if (s === undefined) {
             state.set(material, QUEUED);
@@ -226,7 +247,16 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
         }
       }
     }
-    return realDraw.call(this, cam, scn, geometry, material, object, group);
+    if (!dev || !gating) return realDraw.call(this, cam, scn, geometry, material, object, group);
+    // (development: a shader three made in the middle of this draw, named,
+    // so what still slips past the guard can be found where it comes from)
+    const had = renderer.info?.programs?.length ?? 0;
+    const out = realDraw.call(this, cam, scn, geometry, material, object, group);
+    if ((renderer.info?.programs?.length ?? 0) > had && told < 40) {
+      told += 1;
+      console.warn(`[frameGuard] shader compiled mid-frame: ${material.type}${material.name ? ` "${material.name}"` : ''} on ${object?.type ?? '?'}${object?.name ? ` "${object.name}"` : ''}${object?.parent?.name ? ` in "${object.parent.name}"` : ''}`);
+    }
+    return out;
   };
 
   const realRender = renderer.render;
@@ -234,17 +264,24 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
     const before = dev ? (renderer.info?.programs?.length ?? 0) : 0;
     const t0 = dev ? clock() : 0;
     const into = scn?.isScene ? (renderer.getRenderTarget?.() ?? null) : null;
-    const out = realRender.call(this, scn, cam);
-    if (scn?.isScene) {
+    const was = gating;
+    gating = g.enabled && Boolean(scn?.isScene) && !scn.overrideMaterial && frameTarget(into);
+    let out;
+    try {
+      out = realRender.call(this, scn, cam);
+    } finally {
+      gating = was;
+    }
+    if (scn?.isScene && !scn.overrideMaterial && frameTarget(into)) {
       scene = scn;
       camera = cam;
       target = into;
       if (queue.size || linking.size) schedule();
       if (dev && g.enabled) {
         const made = (renderer.info?.programs?.length ?? 0) - before;
-        if (made > 0 && told < 20) {
+        if (made > 0 && told < 40) {
           told += 1;
-          console.warn(`[frameGuard] ${made} shader(s) compiled mid-frame (${Math.round(clock() - t0)} ms frame)`);
+          console.warn(`[frameGuard] ${made} shader(s) compiled in a ${Math.round(clock() - t0)} ms frame`);
         }
       }
     }

@@ -74,7 +74,7 @@
 
 /* the open part of the page, for what isn't the scene */
 .universe-flat,
-.universe-loading {
+.loading-veil.universe-loading {
   position: absolute;
   top: var(--nav-h);
   left: 0;
@@ -86,7 +86,6 @@
   padding: 1.5rem;
 }
 .universe-flat .minimap { max-width: 900px; }
-.universe-loading { color: var(--muted); font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.04em; }
 
 /* the planets' names, moved by the scene */
 .universe-labels {
@@ -1459,7 +1458,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
     border-radius: var(--r-card) var(--r-card) 0 0;
   }
   .universe-flat,
-  .universe-loading { right: 0; bottom: var(--sheet-h); }
+  .loading-veil.universe-loading { right: 0; bottom: var(--sheet-h); }
   .universe-boost { right: 16px; bottom: calc(var(--sheet-h) + 16px); }
   .universe-fire { right: 104px; bottom: calc(var(--sheet-h) + 22px); }
   .universe-weapon { right: 110px; bottom: calc(var(--sheet-h) + 96px); }

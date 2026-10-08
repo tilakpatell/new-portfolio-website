@@ -46,6 +46,15 @@ const lostContext = (gl) => {
   }
 };
 
+// ── shaders known to have linked ──
+// (the frame guard draws a material at once only if its shader is one of
+// these: one still linking, drawn, makes the frame wait for the link)
+const linkedPrograms = new WeakSet();
+export const markLinked = (program) => {
+  if (program && typeof program === 'object') linkedPrograms.add(program);
+};
+export const knownLinked = (program) => Boolean(program) && linkedPrograms.has(program);
+
 // ── a fence ──
 
 export function fence(renderer, { frame = nextFrame, cap = 5000 } = {}) {
@@ -206,11 +215,14 @@ function lightsOutside(roots, scene) {
 const ready = (renderer, m) => {
   const program = propsOf(renderer, m).currentProgram;
   if (!program) return true; // (gone with its renderer, or nothing to wait for)
+  let ok = true;
   try {
-    return program.isReady();
+    ok = program.isReady();
   } catch {
-    return true;
+    ok = true;
   }
+  if (ok) markLinked(program);
+  return ok;
 };
 
 // (`target`: where the scene will be drawn when that isn't the canvas, a
