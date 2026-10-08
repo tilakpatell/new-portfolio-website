@@ -472,9 +472,9 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null } = {}
   let last = null;
   let disposed = false;
 
+  // a loaded figure (the built ones are made at once, in follow)
   async function figureFor(kind) {
     const c = CAST[kind];
-    if (c?.built) return BUILT[c.built](c.tall, mats, kit);
     // a model with no rig of the shared kind is one of the surfaces’ droids
     const g = c?.model && !PEOPLE[kind] ? await loadGltf(c.model, { renderer }) : null;
     if (g?.scene && !g.scene.getObjectByName('Hips')) {
@@ -493,7 +493,7 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null } = {}
     scene.add(fig.object);
   }
 
-  function track(p) {
+  function follow(p) {
     const r = { id: p.id, kind: p.kind, fig: null, track: createTrack(), clip: undefined, gun: undefined, blaster: null, deadFor: 0, seen: frame };
     records.set(p.id, r);
     const c = CAST[p.kind];
@@ -567,10 +567,10 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null } = {}
           cleared.add(p.id);
           continue;
         }
-        if (!r) r = track(p);
+        if (!r) r = follow(p);
         else if (r.kind !== p.kind) {
           drop(r);
-          r = track(p);
+          r = follow(p);
         }
         r.seen = frame;
         r.track.push(p, dt);

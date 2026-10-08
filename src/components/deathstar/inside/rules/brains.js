@@ -6,7 +6,8 @@
 // (routines.js) while nothing is wrong; and, for a soldier who is sure of
 // an enemy, a fight (fight.js) that ends in a search of the section when
 // the enemy gets away, and in the routine again once the alarm stands
-// down. They walk nav.route’s waypoints and keep apart with steer.separate.
+// down. They walk on routines.js’s legs: nav.route’s waypoints, kept
+// apart with steer.separate.
 // A Rebel in armour is watched rather than shot, and the watching is handed
 // to the game as a disguise check. Mouse droids run squealing from a roar.
 // Vader, the Emperor and the Royal Guard stand where the story puts them
@@ -51,15 +52,13 @@
 //   and none at all left kills them.
 
 import { createSenses, forget, sense, target as surest } from '../../../../lib/ai/perception';
-import { clear as clearSteer, createContext, interest, resolve, seek, separate } from '../../../../lib/ai/steer';
 import { levelOf } from './alarm';
 import { CAST, perceptionOf } from './cast';
 import { COMBAT, gunOf, WEAPONS } from './combat';
 import { CHALLENGE, disguised } from './disguise';
 import { createFights, FIGHT, fallbackFrom, fightStep, searchOf, searchStep, standOff } from './fight';
-import { route } from './nav';
-import { resetRoutine, routineFor, runRoutine } from './routines';
-import { BODY, createBody, lineClear, stepBody } from './walker';
+import { canPass, faceTo, legsOf, placeOf, resetRoutine, routineFor, runRoutine, stepLegs, walkTo } from './routines';
+import { BODY, createBody, lineClear } from './walker';
 
 export const BARKS = Object.freeze({
   seen: Object.freeze(['Contact. Over there.', 'Intruder on the deck.', 'There he is. Cut him off.']),
@@ -68,14 +67,7 @@ export const BARKS = Object.freeze({
   flee: Object.freeze(['Get security down here.', 'Call it in. Call it in.']),
 });
 
-const TURN = 8; // radians a second anyone turns
-const ARRIVE = 0.3; // metres from a waypoint that count as there
-const PASS = 0.45; // metres from a door’s middle that count as through it: a shut leaf holds a body 0.35 off
-const SPACING = 1.1; // how far people keep from each other
-const RIDE = 3; // seconds a lift ride takes (game.js’s)
-const STUCK = 2; // seconds without headway before a way is worked out again
-const GIVE_UP = 3; // times stuck before the way counts as gone
-const RETRY = 3; // seconds before a way that failed, or a routine that did, is tried again
+const RETRY = 3; // seconds before a routine that failed (its way gone) is tried again
 const MEMORY = 8; // seconds a belief lasts unseen
 const SPOOKED = 0.25; // a belief this sure, unseen, makes someone wary
 const SURE = 0.6; // how sure a searcher must be to open fire: it is looking for you
@@ -91,7 +83,6 @@ const FLEE_FOR = { roar: 3, fight: 6 };
 const BODY_LOOK = 0.5; // seconds between one person’s looks round for a fallen comrade
 const UP = new Set(['alert', 'lockdown', 'hunt']);
 
-const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 // yaw 0 faces −z, turning towards +x is positive
 const dirOf = (yaw) => ({ x: Math.sin(yaw), y: 0, z: -Math.cos(yaw) });
@@ -99,7 +90,6 @@ const yawTo = (p, q) => Math.atan2(q.x - p.x, -(q.z - p.z));
 const eyes = (p) => ({ x: p.x, y: p.y + p.h * 0.9, z: p.z });
 const chest = (b) => ({ x: b.x, y: b.y + Math.min(FIGHT.chest, (b.h ?? BODY.h) * 0.7), z: b.z });
 const youId = (you) => you?.id ?? 'you';
-const idle = () => ({ key: null, path: null, i: 0, touched: -1, failedAt: -Infinity, stuck: 0 });
 
 export function createCrew({ rand, layout, nav, solidsOf = () => [] }) {
   return { rand, layout, nav, solidsOf, people: [], byId: new Map(), fights: createFights({ rand, layout, nav }), clock: 0, heard: 0, out: [], world: null, cleared: new Map() };
@@ -147,11 +137,7 @@ function mindOf(crew, p, home) {
     senses: createSenses({ sight: { range: senses.sight, cone: senses.cone, far: senses.far }, hearing: { range: senses.shots }, memory: MEMORY, intuition: FIGHT.lose }),
     hearing: senses,
     eye: { pos: null, dir: null, beliefs: {}, now: 0 },
-    nav: idle(),
-    ride: null,
-    wander: null,
-    ctx: null,
-    want: { yaw: p.yaw, lock: false },
+    legs: legsOf(p),
     pose: null,
     own: [],
     lastHp: p.hp,
@@ -180,11 +166,11 @@ function blackboard(crew, p, m) {
     rand: crew.rand,
     timers: {},
     rest: p.kind === 'royalguard' ? 'attention' : 'idle',
-    go: (where, opts) => goTo(crew, p, where, opts),
+    go: (where, opts) => walkTo(crew, p, where, opts),
     face: (target) => faceTo(crew, p, target),
     lock: (point) => {
-      m.want.yaw = yawTo(p, point);
-      m.want.lock = true;
+      m.legs.want.yaw = yawTo(p, point);
+      m.legs.want.lock = true;
     },
     pose: (anim) => {
       m.pose = anim;
@@ -300,8 +286,7 @@ function vitals(crew, p) {
 function die(crew, p) {
   release(crew, p);
   Object.assign(p, { mode: 'dead', anim: 'die', aim: null });
-  p.mind.nav = idle();
-  p.mind.ride = null;
+  p.mind.legs = legsOf(p);
   crew.out.push({ type: 'died', id: p.id, kind: p.kind, tag: p.tag, room: p.room, x: p.x, y: p.y, z: p.z });
 }
 
@@ -392,7 +377,7 @@ function think(crew, p, heard, watchers) {
   if (p.mode === 'dead' || p.mode === 'down') return;
   const m = p.mind;
   m.bb.clock = crew.clock;
-  m.want.lock = false;
+  m.legs.want.lock = false;
   if (p.mode === 'scripted') return routine(crew, p);
   const threat = perceive(crew, p, heard, watchers);
   if (scattered(crew, p, heard) || forced(crew, p, heard)) return;
@@ -417,11 +402,12 @@ function calm(crew, p, threat) {
   // a watcher who doubts you enough stops what he is doing to look you over
   const watched = m.eye.beliefs[youId(you)];
   if (watched?.visible && !watched.hostile && (you.doubt ?? 0) >= CHALLENGE && p.side === 'imperial') {
-    m.want.yaw = yawTo(p, you);
+    m.legs.want.yaw = yawTo(p, you);
     m.pose = 'attention';
     return;
   }
-  const level = crew.world.alarm ? levelOf(crew.world.alarm, sectionOf(crew, p)) : null;
+  // a guard under the mind trick has no alarm to answer either, until it wears off
+  const level = crew.world.alarm && crew.clock >= m.trickedUntil ? levelOf(crew.world.alarm, sectionOf(crew, p)) : null;
   if (armed(p) && p.side === 'imperial' && level === 'hunt') return startSearch(crew, p, crew.world.alarm.sections[sectionOf(crew, p)].at ?? p);
   if (m.heardShot && p.side === 'imperial') call(crew, p, 'shots', m.heardShot);
   m.heardShot = null;
@@ -452,28 +438,28 @@ function routine(crew, p) {
 }
 
 function beWary(crew, p, at, run) {
-  if (p.mode !== 'wary') setMode(crew, p, 'wary');
+  setMode(crew, p, 'wary');
   p.mind.wary ??= { since: crew.clock, at: null, run: false, lookUntil: -Infinity, lookYaw: p.yaw };
   Object.assign(p.mind.wary, { since: crew.clock, at, run });
 }
 
 function wary(crew, p, threat, level) {
   const m = p.mind;
-  if (p.mode !== 'wary') beWary(crew, p, null, false);
+  if (p.mode !== 'wary' || !m.wary) beWary(crew, p, null, false);
   const w = m.wary;
   if (threat && threat.confidence >= SPOOKED) {
     w.since = crew.clock;
     // seen but not yet sure: stand and look hard; heard: go and see
     if (threat.visible) {
-      m.want.yaw = yawTo(p, threat.at);
+      m.legs.want.yaw = yawTo(p, threat.at);
       w.at = null;
     } else if (!w.at || flat(w.at, threat.at) > 2) w.at = placeAt(crew, threat.at);
   }
-  if (w.at && goTo(crew, p, w.at, { run: w.run }) !== 'running') {
+  if (w.at && walkTo(crew, p, w.at, { run: w.run }) !== 'running') {
     w.at = null;
     Object.assign(w, { lookUntil: crew.clock + LOOK, lookYaw: p.yaw });
   }
-  if (crew.clock < w.lookUntil) m.want.yaw = w.lookYaw + 0.9 * Math.sin((w.lookUntil - crew.clock) * 1.6);
+  if (crew.clock < w.lookUntil) m.legs.want.yaw = w.lookYaw + 0.9 * Math.sin((w.lookUntil - crew.clock) * 1.6);
   m.pose = armed(p) ? 'aim' : 'idle';
   if (crew.clock - w.since > WARY_FOR && !(armed(p) && UP.has(level))) setMode(crew, p, 'routine');
 }
@@ -495,13 +481,28 @@ function fight(crew, p, threat) {
     crew.fights.tokens.release('shot', p.id, m.fight.target);
     m.fight.target = threat.id;
   }
+  const unseen = m.eye.now - threat.seenAt;
+  const told = !threat.visible && radio(crew, p, threat);
   m.fight.at = { ...threat.at };
   if (threat.visible) call(crew, p, 'seen', threat.at);
-  const tactic = fightStep(crew.fights, p, threat, m.bb, m.fight, m.eye.now - threat.seenAt);
+  const tactic = fightStep(crew.fights, p, threat, m.bb, m.fight, { unseen, lostFor: told ? 0 : unseen, told });
   if (tactic !== 'search') return;
   crew.out.push({ type: 'lost', id: p.id, target: threat.id, at: { ...threat.at } });
   if (crew.rand() < 0.5) bark(crew, p, 'lost');
   startSearch(crew, p, threat.at);
+}
+
+// The squad’s radio: a friend in the fight who sees the target says where
+// it is, so one in cover knows it is still there and doesn’t go looking.
+function radio(crew, p, threat) {
+  for (const q of crew.people) {
+    if (q === p || q.mode !== 'fight' || q.side !== p.side) continue;
+    const b = q.mind.eye.beliefs[threat.id];
+    if (!b?.visible) continue;
+    threat.at = { ...b.at };
+    return true;
+  }
+  return false;
 }
 
 function startSearch(crew, p, at) {
@@ -552,7 +553,7 @@ function frighten(crew, p, from, why) {
 
 function flee(crew, p, threat) {
   const f = p.mind.flee;
-  if (f.to && goTo(crew, p, f.to, { run: true }) !== 'running') f.to = null;
+  if (f.to && walkTo(crew, p, f.to, { run: true }) !== 'running') f.to = null;
   if (!f.to) p.mind.pose = f.from === 'roar' ? 'idle' : 'kneel';
   if (crew.clock >= f.until && !threat?.visible) setMode(crew, p, 'routine');
 }
@@ -631,207 +632,15 @@ function allies(crew, p) {
   return out;
 }
 
-// ── where they go ──
-
-// A door opens for this person: not sealed, and not locked against them.
-function canPass(crew, p, id, door) {
-  const s = crew.world.doors?.[id];
-  if (!s) return true;
-  if (s.sealed) return false;
-  if (!s.locked) return true;
-  return door.kind !== 'hatch' && door.lock === 'side:imperial' && p.side === 'imperial';
-}
-
-function placeOf(crew, p, where) {
-  if (where == null) return null;
-  if (typeof where === 'string') {
-    const s = crew.layout.station.spots?.[where];
-    return s ? { x: s.x, z: s.z, room: s.room, yaw: s.yaw } : null;
-  }
-  if (where.who !== undefined) {
-    const you = crew.world.you;
-    const q = where.who === youId(you) ? you : crew.byId.get(where.who);
-    return q && q.mode !== 'dead' ? { x: q.x, y: q.y, z: q.z, room: q.room } : null;
-  }
-  if (where.wander) return (p.mind.wander ??= wanderFrom(crew, p));
-  if (where.path) return where.path.at(-1);
-  if (where.spot !== undefined) return placeOf(crew, p, where.spot);
-  return where.room ? where : null;
-}
-
-const keyOf = (where, to) => {
-  if (typeof where === 'string') return `spot:${where}`;
-  if (where.who !== undefined) return `who:${where.who}`;
-  return `at:${to.x.toFixed(2)},${to.z.toFixed(2)},${to.room}`;
-};
-
-// Somewhere to scurry: a point in this room or, as often as not, the room through one of its doors.
-function wanderFrom(crew, p) {
-  const { layout, rand } = crew;
-  let id = p.room;
-  const doors = (layout.rooms.get(id)?.doors ?? []).filter((d) => canPass(crew, p, d, layout.doors.get(d)));
-  if (doors.length && rand() < 0.5) {
-    const d = layout.doors.get(doors[Math.floor(rand() * doors.length)]);
-    id = d.a === id ? d.b : d.a;
-  }
-  const r = layout.rooms.get(id);
-  for (let k = 0; k < 6; k++) {
-    const x = r.box.x0 + 0.8 + rand() * Math.max(0, r.box.x1 - r.box.x0 - 1.6);
-    const z = r.box.z0 + 0.8 + rand() * Math.max(0, r.box.z1 - r.box.z0 - 1.6);
-    const y = layout.floorAt(id, x, z);
-    if (y !== null && Math.abs(y - r.y) <= BODY.step && layout.roomAt(x, y + 0.1, z) === id) return { x, z, room: id };
-  }
-  return { x: p.x, z: p.z, room: p.room };
-}
-
-function goTo(crew, p, where, { run = false, near = ARRIVE, keepUp = false } = {}) {
-  const m = p.mind;
-  const clock = crew.clock;
-  const to = placeOf(crew, p, where);
-  if (!to?.room) return 'failed';
-  const key = keyOf(where, to);
-  const nav = m.nav;
-  if (flat(p, to) <= near && (p.room === to.room || near > ARRIVE)) {
-    if (nav.key === key && nav.path && typeof where === 'string') crew.out.push({ type: 'arrive', id: p.id, spot: where, room: p.room });
-    if (where.wander) m.wander = null;
-    m.nav = idle();
-    return 'done';
-  }
-  if (nav.key === key && !nav.path && clock - nav.failedAt < RETRY) return 'failed';
-  // someone walked towards moves on: the way is worked out again now and then
-  const moved = where.who !== undefined && nav.path && flat(nav.path.at(-1), to) > 1.5 && clock - nav.routedAt > 0.5;
-  if (nav.key !== key || !nav.path || moved) {
-    const path = where.path ?? route(crew.nav, p, to, { canPass: (id, door) => canPass(crew, p, id, door), solidsOf: crew.solidsOf });
-    const stuck = nav.key === key ? nav.stuck : 0;
-    if (!path) {
-      m.nav = { ...idle(), key, failedAt: clock, stuck };
-      if (where.wander) m.wander = null;
-      return 'failed';
-    }
-    m.nav = { key, path, i: 1, routedAt: clock, touched: clock, run: false, failedAt: -Infinity, stuck, checkAt: clock + STUCK, best: Infinity, mark: 1 };
-  }
-  m.nav.touched = clock;
-  m.nav.run = run || (keepUp && flat(p, to) > 6);
-  return 'running';
-}
-
-function faceTo(crew, p, target) {
-  const m = p.mind;
-  if (typeof target === 'number') {
-    m.want.yaw = target;
-    return;
-  }
-  if (target?.turn !== undefined) {
-    const s = placeOf(crew, p, target.spot);
-    if (s?.yaw !== undefined) m.want.yaw = s.yaw + target.turn;
-    return;
-  }
-  const q = placeOf(crew, p, target) ?? (target?.x !== undefined ? target : null);
-  if (!q) return;
-  // a spot is faced the way it faces; a person or a point is faced towards
-  if ((typeof target === 'string' || target.who === undefined) && q.yaw !== undefined) m.want.yaw = q.yaw;
-  else if (flat(p, q) > 1e-6) m.want.yaw = yawTo(p, q);
-}
-
 // ── how they walk ──
 
 function move(crew, p, dt) {
   if (p.mode === 'dead') return;
-  const m = p.mind;
-  const clock = crew.clock;
-  // a way nobody asked for this step is dropped, so a stop is a stop
-  if (m.nav.touched !== clock && m.nav.path) m.nav = idle();
-  let dir = null;
-  if (m.ride) {
-    if (clock >= m.ride.until) ride(crew, p);
-  } else if (p.mode !== 'down' && clock >= m.hitUntil && m.nav.path) dir = follow(crew, p);
-  const run = Boolean(dir && m.nav.run);
-  const g = gait((run ? BODY.run : BODY.walk) * (CAST[p.kind].speed ?? 1));
-  const was = { x: p.x, z: p.z };
-  stepBody(p, { dir: dir ? { x: dir.x * g.len, z: dir.z * g.len } : { x: 0, z: 0 }, run: g.run }, dt, { layout: crew.layout, open: crew.world.open, solids: crew.solidsOf(p.room) });
-  const moved = flat(was, p);
-  if (dir && moved > 1e-3 && !m.want.lock) m.want.yaw = Math.atan2(dir.x, -dir.z);
-  const most = TURN * dt;
-  p.yaw = wrap(p.yaw + Math.max(-most, Math.min(most, wrap(m.want.yaw - p.yaw))));
-  p.anim = animOf(crew, p, moved / dt, run);
-  if (m.nav.path && !m.ride) unstick(crew, p);
+  const { speed, run, riding } = stepLegs(crew, p, dt, p.mode === 'down' || crew.clock < p.mind.hitUntil);
+  p.anim = animOf(crew, p, speed, run, riding);
 }
 
-// The walker walks at its walk or its run; a scale on either is a shorter push or the run cut down.
-const gait = (speed) => (speed <= BODY.walk + 1e-9 ? { len: speed / BODY.walk, run: false } : { len: Math.min(1, speed / BODY.run), run: true });
-
-// The way on from here: the next waypoint not yet reached, bent round anyone close.
-function follow(crew, p) {
-  const m = p.mind;
-  const nav = m.nav;
-  const path = nav.path;
-  while (nav.i < path.length) {
-    const q = path[nav.i];
-    if (flat(p, q) > (q.door ? PASS : ARRIVE)) break;
-    if (q.lift && path[nav.i + 1]) {
-      // the car’s doors aren’t held for a ride nobody else is on: it just takes its time
-      m.ride = { until: crew.clock + RIDE, from: q.room, to: path[nav.i + 1].room };
-      nav.i += 2;
-      return null;
-    }
-    nav.i += 1;
-  }
-  if (nav.i >= path.length) return null;
-  const q = path[nav.i];
-  const l = flat(p, q) || 1;
-  return steerAround(crew, p, { x: (q.x - p.x) / l, z: (q.z - p.z) / l }, q);
-}
-
-function ride(crew, p) {
-  const { from, to } = p.mind.ride;
-  const [a, b] = [crew.layout.rooms.get(from), crew.layout.rooms.get(to)];
-  Object.assign(p, { x: p.x + b.x - a.x, y: p.y + b.y - a.y, z: p.z + b.z - a.z, room: to, vy: 0 });
-  Object.assign(p.safe, { x: p.x, y: p.y, z: p.z, room: to });
-  p.mind.ride = null;
-}
-
-// Straight on when nobody is close; else a context map: the way on, a pull to
-// the right so two meeting in a corridor pass each other, and danger towards
-// anyone within SPACING. A squeeze with no way left is walked straight
-// through, as people brush past each other.
-function steerAround(crew, p, d, q) {
-  const m = p.mind;
-  const others = [];
-  const you = crew.world.you;
-  for (const o of you ? [...crew.people, you] : crew.people) {
-    if (o === p || o.mode === 'dead' || Math.abs(o.y - p.y) > 1 || Math.abs(o.x - p.x) > SPACING || Math.abs(o.z - p.z) > SPACING) continue;
-    others.push(o);
-  }
-  if (!others.length) {
-    if (m.ctx) m.ctx.blended = false;
-    return d;
-  }
-  const ctx = (m.ctx ??= createContext(16));
-  clearSteer(ctx);
-  seek(ctx, p, q, 1, 3);
-  interest(ctx, { x: d.x * 0.64 - d.z * 0.77, y: 0, z: d.z * 0.64 + d.x * 0.77 }, 0.6, 2);
-  separate(ctx, p, others, SPACING);
-  const r = resolve(ctx);
-  return r.strength > 0.05 ? { x: r.dir.x, z: r.dir.z } : d;
-}
-
-// No headway for a while: the way is worked out afresh; stuck often enough, it is gone.
-function unstick(crew, p) {
-  const nav = p.mind.nav;
-  if (crew.clock < nav.checkAt) return;
-  const d = flat(p, nav.path[Math.min(nav.i, nav.path.length - 1)]);
-  const headway = nav.i > nav.mark || d < nav.best - 0.3 || nav.i >= nav.path.length;
-  Object.assign(nav, { mark: nav.i, best: d, checkAt: crew.clock + STUCK });
-  if (headway) {
-    nav.stuck = 0;
-    return;
-  }
-  nav.stuck += 1;
-  nav.path = null;
-  if (nav.stuck >= GIVE_UP) nav.failedAt = crew.clock;
-}
-
-function animOf(crew, p, speed, run) {
+function animOf(crew, p, speed, run, riding) {
   const m = p.mind;
   const clock = crew.clock;
   if (p.mode === 'dead') return 'die';
@@ -839,5 +648,5 @@ function animOf(crew, p, speed, run) {
   if (clock < m.hitUntil) return 'hit';
   if (clock < m.shotUntil) return 'shoot';
   if (speed > 0.3) return run ? 'run' : 'walk';
-  return m.ride ? 'idle' : (m.pose ?? 'idle');
+  return riding ? 'idle' : (m.pose ?? 'idle');
 }

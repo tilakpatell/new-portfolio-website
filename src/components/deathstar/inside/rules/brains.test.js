@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { seeded } from '../../../../lib/seeded';
 import { createAlarm, levelOf, lockdowns, raise, stepAlarm } from './alarm';
-import { createCombat } from './combat';
+import { createCombat, fire } from './combat';
 import { clearDoorway, createDoors, passable, stepDoors } from './doors';
 import { buildLayout, validateStation } from './layout';
 import { createNav } from './nav';
@@ -15,9 +15,9 @@ const STEP = 1 / 30;
 
 const room = (id, x, z, w, d, o = {}) => ({ id, kind: 'corridor', name: id, section: 's', x, z, w, d, y: 0, h: 3, ...o });
 const door = (id, a, b, x, z, axis, o = {}) => ({ id, a, b, x, z, axis, w: 2, h: 2.4, kind: 'slide', ...o });
-const station = (rooms, doors = [], spots = {}, sections = { s: 'Block S' }) => {
+const station = (rooms, doors = [], spots = {}, sections = { s: 'Block S' }, lifts = []) => {
   const at = { room: rooms[0].id, x: rooms[0].x, z: rooms[0].z, yaw: 0 };
-  return { id: 't', name: 'Test', era: 'anh', sections, rooms, doors, lifts: [], starts: { rebel: at, imperial: at }, spots };
+  return { id: 't', name: 'Test', era: 'anh', sections, rooms, doors, lifts, starts: { rebel: at, imperial: at }, spots };
 };
 
 // Three rooms in a row, west to east, two doors apart.
@@ -46,6 +46,19 @@ const block = () =>
       crate: { room: 'side', x: 17, z: 3, yaw: 0 },
     },
     { s: 'Block S', v: 'The vault' },
+  );
+
+// The hall with an annex west of it through one door: cover from the hall.
+const annexed = () => station([room('hall', 0, 0, 20, 10), room('annex', -15, 0, 10, 10)], [door('ha', 'hall', 'annex', -10, 0, 'z')]);
+
+// Two corridors a level apart, a lift between their west ends.
+const tower = () =>
+  station(
+    [room('up', 0, 0, 20, 4), room('car-up', -11.5, 0, 3, 3, { kind: 'lift' }), room('down', 0, 10, 20, 4, { y: -12 }), room('car-down', -11.5, 10, 3, 3, { kind: 'lift', y: -12 })],
+    [door('u', 'up', 'car-up', -10, 0, 'z'), door('d', 'down', 'car-down', -10, 10, 'z')],
+    { top: { room: 'up', x: 8, z: 0, yaw: 0 }, bottom: { room: 'down', x: 8, z: 10, yaw: 0 } },
+    { s: 'Block S' },
+    [{ id: 'lift', stops: ['car-up', 'car-down'] }],
   );
 
 const rebel = (x, z, o = {}) => ({ id: 'you', x, y: 0, z, r: 0.35, h: 1.8, side: 'rebel', armour: false, helmet: false, hp: 100, room: 'hall', ...o });
@@ -105,6 +118,8 @@ describe('the crew’s minds', () => {
     expect(validateStation(row())).toEqual([]);
     expect(validateStation(hall())).toEqual([]);
     expect(validateStation(block())).toEqual([]);
+    expect(validateStation(annexed())).toEqual([]);
+    expect(validateStation(tower())).toEqual([]);
   });
 
   it('walks a patrol’s round through two doors and back', () => {
@@ -300,5 +315,151 @@ describe('the crew’s minds', () => {
     expect(w.crew.people).toEqual([]);
     expect(w.crew.fights.tokens.held('shot', 'tk', 'you')).toBe(false);
     expect(removePerson(w.crew, 'tk')).toBe(false);
+  });
+
+  it('sends a trooper with no shot to take into cover through the next door, and keeps him there while his friends keep you in sight', () => {
+    const you = rebel(5, 0);
+    const w = world(annexed(), { you });
+    const ids = ['tk1', 'tk2', 'tk3', 'tk4'];
+    ids.forEach((id, i) => addPerson(w.crew, { id, kind: 'stormtrooper', room: 'hall', x: -5, z: -3 + 2 * i, yaw: Math.PI / 2, role: { type: 'post' } }));
+    simulate(w, 5 * 30);
+    const holders = ids.filter((id) => w.crew.fights.tokens.held('shot', id, 'you'));
+    expect(holders).toHaveLength(3);
+    const waiting = w.crew.byId.get(ids.find((id) => !holders.includes(id)));
+    expect(waiting.mode).toBe('fight');
+    expect(waiting.room).toBe('annex');
+    const open = (id) => passable(w.doors, id);
+    expect(lineClear(w.layout, open, { x: you.x, y: 1.2, z: you.z }, { x: waiting.x, y: waiting.y + 1.2, z: waiting.z })).toBe(false);
+  });
+
+  it('knocks a trooper down with a hard hit; he gets up, turns to where it came from and fights', () => {
+    const w = world(hall(), { you: rebel(5, 0) });
+    const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'hall', x: -5, z: 0, yaw: -Math.PI / 2, role: { type: 'post' } });
+    simulate(w, 5);
+    p.hp -= 30;
+    simulate(w, 6);
+    expect(p.mode).toBe('down');
+    expect(p.anim).toBe('hit');
+    simulate(w, 24);
+    expect(p.anim).toBe('kneel');
+    simulate(w, 4 * 30);
+    expect(p.mode).toBe('fight');
+  });
+
+  it('only staggers a trooper with a lesser hit', () => {
+    const w = world(hall(), { you: rebel(5, 0) });
+    const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'hall', x: -5, z: 0, yaw: -Math.PI / 2, role: { type: 'post' } });
+    simulate(w, 5);
+    p.hp -= 10;
+    simulate(w, 3);
+    expect(p.anim).toBe('hit');
+    expect(p.mode).not.toBe('down');
+  });
+
+  it('calls in a shot it hears and goes to look, out of sight of whoever fired it', () => {
+    // you fire in the office, behind its shut door; the trooper stands in the side room facing away
+    const you = rebel(0, -9, { room: 'office' });
+    const w = world(block(), { you });
+    const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'side', x: 12, z: 3, yaw: Math.PI / 2, role: { type: 'post' } });
+    fire(w.combat, { from: { x: 0.3, y: 1.3, z: -9 }, dir: { x: 1, y: 0, z: 0 }, owner: 'you', side: 'rebel', weapon: 'e11' }, seeded(1));
+    simulate(w, 3 * 30);
+    expect(of(w, 'call')[0]).toMatchObject({ id: 'tk', how: 'shots', section: 's' });
+    expect(p.mode).toBe('wary');
+    expect(flat(p, you)).toBeLessThan(flat({ x: 12, z: 3 }, you) - 2);
+  });
+
+  it('turns round at running steps close behind, and leaves quiet ones be', () => {
+    const run = (steps) => {
+      const you = rebel(0, 0);
+      const w = world(hall(), { you });
+      const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'hall', x: -3, z: 0, yaw: -Math.PI / 2, role: { type: 'post' } });
+      for (let k = 0; k < 60; k++) {
+        if (steps) w.stims.push({ type: 'steps', at: { x: 0, y: 0, z: 0 }, from: 'you' });
+        simulate(w, 1);
+      }
+      return p.mode;
+    };
+    expect(run(true)).toBe('fight');
+    expect(run(false)).toBe('routine');
+  });
+
+  it('calls in a fallen comrade once, and goes to him', () => {
+    const w = world(hall());
+    const dead = addPerson(w.crew, { id: 'tk1', kind: 'stormtrooper', room: 'hall', x: 2, z: 3, role: { type: 'post' } });
+    const p = addPerson(w.crew, { id: 'tk2', kind: 'stormtrooper', room: 'hall', x: -8, z: 3, yaw: Math.PI / 2, role: { type: 'post' } });
+    dead.hp = 0;
+    simulate(w, 8 * 30);
+    expect(of(w, 'call').filter((e) => e.how === 'body')).toEqual([expect.objectContaining({ id: 'tk2', section: 's' })]);
+    expect(p.mode).toBe('wary');
+    expect(flat(p, dead)).toBeLessThan(1);
+  });
+
+  it('stands a guard down under the mind trick: he says its line and lets you be until it wears off', () => {
+    const w = world(hall(), { you: rebel(3, 0) });
+    const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'hall', x: -3, z: 0, yaw: Math.PI / 2, role: { type: 'post' } });
+    simulate(w, 30);
+    expect(p.mode).toBe('fight');
+    w.stims.push({ type: 'trick', id: 'tk', s: 8, line: 'You can go about your business.' });
+    const before = of(w, 'shoot').length;
+    simulate(w, 7 * 30);
+    expect(of(w, 'say').at(-1)).toMatchObject({ id: 'tk', key: 'trick', text: 'You can go about your business.' });
+    expect(p.mode).toBe('routine');
+    expect(of(w, 'shoot').length).toBe(before);
+    simulate(w, 3 * 30);
+    expect(p.mode).toBe('fight');
+  });
+
+  it('draws a guard off his post to a noise, and back to it when he finds nothing', () => {
+    const w = world(block());
+    const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'hall', x: 5, z: 0, yaw: -Math.PI / 2, role: { type: 'post', spot: 'post2' } });
+    w.stims.push({ type: 'noise', at: { x: 15, y: 0, z: 2 }, heard: ['tk'] });
+    simulate(w, 8 * 30);
+    expect(p.mode).toBe('wary');
+    expect(p.room).toBe('side');
+    simulate(w, 25 * 30);
+    expect(p.mode).toBe('routine');
+    expect(flat(p, { x: 5, z: 0 })).toBeLessThan(0.5);
+  });
+
+  it('sends an unarmed technician running from a Rebel, calling it in', () => {
+    const you = rebel(5, 0);
+    const w = world(annexed(), { you });
+    const p = addPerson(w.crew, { id: 'tech', kind: 'technician', room: 'hall', x: -3, z: 0, yaw: Math.PI / 2, role: { type: 'post' } });
+    simulate(w, 3 * 30);
+    expect(of(w, 'fled')).toEqual([expect.objectContaining({ id: 'tech', kind: 'technician', from: 'fight' })]);
+    expect(of(w, 'call')[0]).toMatchObject({ id: 'tech', how: 'seen' });
+    expect(p.mode).toBe('flee');
+    expect(flat(p, you)).toBeGreaterThan(8);
+  });
+
+  it('calls a squad to the trouble on an alert, and out to search the section on the hunt', () => {
+    const w = world(block());
+    const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'office', x: 2, z: -11, role: { type: 'post', spot: 'desk' } });
+    raise(w.alarm, 's', 'seen', { x: -5, y: 1.2, z: 0 }, 0);
+    simulate(w, 3 * 30);
+    expect(p.mode).toBe('wary');
+    expect(p.room).toBe('hall');
+    // ten seconds after the lockdown with nobody seen, the hunt
+    simulate(w, 14 * 30);
+    expect(levelOf(w.alarm, 's')).toBe('hunt');
+    expect(p.mode).toBe('search');
+  });
+
+  it('rides a lift to a spot on another level', () => {
+    const w = world(tower());
+    const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'up', x: 8, z: 0, role: { type: 'patrol', spots: ['top', 'bottom'] } });
+    simulate(w, 40 * 30);
+    expect(of(w, 'arrive').map((e) => e.spot)).toContain('bottom');
+    expect(p.room === 'down' || p.room === 'car-down' || p.room === 'up' || p.room === 'car-up').toBe(true);
+  });
+
+  it('brings two who chat together to talk', () => {
+    const w = world(row());
+    const a = addPerson(w.crew, { id: 'o1', kind: 'officer', room: 'west', x: -12, z: 0, role: { type: 'chat', with: 'o2' } });
+    const b = addPerson(w.crew, { id: 'o2', kind: 'officer', room: 'east', x: 12, z: 0, role: { type: 'chat', with: 'o1' } });
+    const talked = new Set();
+    simulate(w, 20 * 30, { each: () => [a, b].filter((p) => p.anim === 'talk').forEach((p) => talked.add(p.id)) });
+    expect(flat(a, b)).toBeLessThan(2.4);
+    expect(talked).toEqual(new Set(['o1', 'o2']));
   });
 });

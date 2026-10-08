@@ -80,8 +80,12 @@ describe('furnish', () => {
 
   it('keeps every solid inside its room', () => {
     for (const { room, thing: s } of all('solids')) {
+      if (room.round && s.circle) {
+        expect(Math.hypot(s.circle.x - room.x, s.circle.z - room.z) + s.circle.r, room.id).toBeLessThanOrEqual(room.w / 2 + HAIR);
+        continue;
+      }
       const b = boxOfSolid(s);
-      for (const c of [{ x: b.x0, z: b.z0 }, { x: b.x1, z: b.z1 }]) expect(holds({ ...room, round: false }, c), room.id).toBe(true);
+      for (const c of [{ x: b.x0, z: b.z0 }, { x: b.x0, z: b.z1 }, { x: b.x1, z: b.z0 }, { x: b.x1, z: b.z1 }]) expect(holds(room, c), room.id).toBe(true);
     }
   });
 
@@ -242,6 +246,15 @@ describe('what each room is furnished with', () => {
     }
   }
 
+  it('heaps junk in the compactor’s water to wade round, none of it on the walkway', () => {
+    const { layout } = ds1;
+    const made = ds1.made.get('compactor');
+    const bottom = Math.min(...layout.rooms.get('compactor').floors.map((f) => f.y));
+    const heaps = made.solids.filter((s) => s.box && made.props.some((p) => p.kind === 'junk' && Math.abs(p.x - (s.box.x0 + s.box.x1) / 2) < 1e-6 && Math.abs(p.z - (s.box.z0 + s.box.z1) / 2) < 1e-6));
+    expect(heaps.length).toBeGreaterThanOrEqual(5);
+    for (const s of heaps) expect(s.box.y0).toBeCloseTo(bottom, 6);
+  });
+
   it('hovers the IT-O only in the cell someone is held in', () => {
     const itos = ds1.rooms.filter(({ made }) => made.props.some((p) => p.kind === 'ito')).map(({ room }) => room.id);
     expect(itos).toEqual(['cell2187']);
@@ -314,13 +327,18 @@ describe('walking among the furniture', () => {
           const side = [1, -1].map((s) => ({ name: d.id, x: d.x + n.x * s, z: d.z + n.z * s, room: room.id })).find((p) => w.layout.roomAt(p.x, door.y + 0.1, p.z) === room.id);
           return side ? [side] : [];
         });
-        const ends = [...fronts, ...placesIn(w.station, room).map((p) => ({ ...p, room: room.id })), ...made.spots.filter((s) => s.kind !== 'sit').map((s) => ({ ...s, room: room.id }))];
+        // (a spot naming the thing that stands on it, like the Falcon’s, is not walked to)
+        const places = placesIn(w.station, room).filter((p) => !made.solids.some((s) => toSolid(s, p) < R - HAIR));
+        const ends = [...fronts, ...places.map((p) => ({ ...p, room: room.id })), ...made.spots.filter((s) => s.kind !== 'sit').map((s) => ({ ...s, room: room.id }))];
         const inside = { canPass: () => false };
         const furnished = { canPass: () => false, solidsOf: (id) => (id === room.id ? made.solids : []) };
-        for (const a of fronts) {
+        // one door for each part of the bare room the others can’t reach (the chasm’s upper ledge) is enough
+        const sources = [];
+        for (const f of fronts) if (!sources.some((s) => route(nav, s, f, inside))) sources.push(f);
+        for (const a of sources) {
           for (const b of ends) {
-            if (a === b || !route(nav, a, b, inside)) continue;
-            expect(route(nav, a, b, furnished), `${room.id}: from ${a.name} to ${b.name}`).not.toBeNull();
+            if (a === b || route(nav, a, b, furnished)) continue;
+            expect(route(nav, a, b, inside), `${room.id}: the furniture cuts ${a.name} off from ${b.name}`).toBeNull();
           }
         }
       }

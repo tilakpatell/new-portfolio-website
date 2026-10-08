@@ -13,8 +13,9 @@
 //   FIGHT                                     the numbers the choice is made with
 //   createFights({ rand, layout, nav }) → fights   { rand, layout, nav, tokens, searches }
 //   chooseTactic(ctx, { current, rand }) → tactic
-//     ctx: { sees, lostFor: s, dist: m, range: m, hp: 0…1, token, cover, inCover, flank, allies }
-//       cover: a place out of sight is known; flank: another way in is known; allies: friends in the fight
+//     ctx: { sees, lostFor: s, dist: m, range: m, hp: 0…1, token, cover, inCover, flank, allies, told, free }
+//       cover: a place out of sight is known; flank: another way in is known; allies: friends in the fight;
+//       told: a friend sees the target now; free: a shot token against it is to be had
 //   coverFrom(layout, me, threat, { seesThrough, allies, current, canPass }) → { x, y, z, room } | null
 //     me: { x, y, z, room }; threat: a point at chest height; null when nowhere near is out of its sight
 //   fallbackFrom(layout, me, threat, { seesThrough, canPass }) → { x, y, z, room } | null
@@ -25,9 +26,10 @@
 //   sectionSpots(layout, section) → [{ x, y, z, room }]   the station’s spots in the section, then
 //     the middle of each of its rooms (lift cars and the open field left out)
 //   searchOf(fights, section) → search        src/lib/ai/search’s, one a section, made on first use
-//   fightStep(fights, me, threat, bb, state, lostFor) → tactic   one step of a soldier’s fight
+//   fightStep(fights, me, threat, bb, state, { unseen, lostFor, told }) → tactic   one step of a soldier’s fight
 //     threat: his surest belief; bb: the body brains.js answers with (go, face, lock, pose, aimAt,
-//     fire, gunBusy, seesThrough, canPass, solidsOf, allies, clock); state: his own, kept between steps
+//     fire, gunBusy, seesThrough, canPass, solidsOf, allies, clock); state: his own, kept between steps;
+//     unseen: seconds since he saw it; lostFor: since anyone in the fight did; told: a friend sees it now
 //   searchStep(fights, me, bb, state) → void   one step of a searcher’s sweep: claim, walk, look about
 
 import { consider, pick } from '../../../../lib/ai/utility';
@@ -72,8 +74,9 @@ const OPTIONS = [
   { id: 'cover', weight: 0.9, considerations: [(c) => (c.cover ? 1 : 0), (c) => (c.inCover ? 0.25 : 1), (c) => (c.token ? 0.5 : 1), (c) => 0.6 + 0.4 * (1 - c.hp)] },
   // a flank wants friends to keep the target busy meanwhile
   { id: 'flank', weight: 0.8, considerations: [(c) => (c.flank ? 1 : 0), (c) => (c.token ? 0.3 : 1), (c) => (c.allies > 0 ? 1 : 0.4), fit(0.3, 0.6)] },
-  // closer when too far to hit well, or to see again someone just gone round a corner
-  { id: 'advance', weight: 0.85, considerations: [(c) => (c.sees ? consider(c.dist, [ideal(c), ideal(c) * 2.5]) : c.lostFor < FIGHT.lose ? 1 : 0), fit(0.3, 0.6)] },
+  // closer when too far to hit well, or to see again someone just gone round a corner; but one
+  // waiting in cover for a shot while friends keep the target busy stays put until a shot is free
+  { id: 'advance', weight: 0.85, considerations: [(c) => (c.sees ? consider(c.dist, [ideal(c), ideal(c) * 2.5]) : c.lostFor < FIGHT.lose && (!c.told || c.free) ? 1 : 0), fit(0.3, 0.6)] },
   { id: 'fallback', considerations: [fit(0.45, 0.2)] },
 ];
 
@@ -232,7 +235,7 @@ function survey(fights, me, at, f, bb) {
   f.flank = room && room !== me.room ? flankRoute(fights.nav, me, { x: at.x, z: at.z, room }, { canPass: bb.canPass, solidsOf: bb.solidsOf }) : null;
 }
 
-export function fightStep(fights, me, threat, bb, f, lostFor) {
+export function fightStep(fights, me, threat, bb, f, { unseen, lostFor, told = false }) {
   const { tokens, rand } = fights;
   const clock = bb.clock;
   const at = threat.at;
@@ -241,16 +244,20 @@ export function fightStep(fights, me, threat, bb, f, lostFor) {
   // a token is claimed while the target is in sight and given back once it has been out of it a second
   let token = false;
   if (me.gun && sees) token = tokens.claim('shot', me.id, { priority: 1 / (1 + dist), target: threat.id });
-  else if (lostFor > 1) tokens.release('shot', me.id, threat.id);
+  else if (unseen > 1) tokens.release('shot', me.id, threat.id);
   else token = tokens.held('shot', me.id, threat.id);
   f.sees = sees;
   if (clock >= f.think) {
     survey(fights, me, at, f, bb);
-    const inCover = f.tactic === 'cover' && f.place && !f.place.path && flat(me, f.place) < 0.6;
-    const ctx = { sees, lostFor, dist, range: WEAPONS[me.gun]?.range ?? 0, hp: me.hp / (me.max || 100), token, cover: Boolean(f.cover), inCover, flank: Boolean(f.flank), allies: bb.allies().length };
+    const inCover = f.tactic === 'cover' && Boolean(f.covered) && flat(me, f.covered) < 0.6;
+    const free = tokens.count('shot', threat.id) < FIGHT.shots;
+    const ctx = { sees, lostFor, dist, range: WEAPONS[me.gun]?.range ?? 0, hp: me.hp / (me.max || 100), token, cover: Boolean(f.cover), inCover, flank: Boolean(f.flank), allies: bb.allies().length, told, free };
     const tactic = chooseTactic(ctx, { current: f.tactic, rand });
     // an advance follows the target; the rest keep the place they were given until they get there
-    if (tactic !== f.tactic || tactic === 'advance') f.place = placeFor(fights, me, at, tactic, f, bb);
+    if (tactic !== f.tactic || tactic === 'advance') {
+      f.place = placeFor(fights, me, at, tactic, f, bb);
+      f.covered = null;
+    }
     f.tactic = tactic;
     f.think = clock + 0.4 + 0.4 * rand();
   }
@@ -258,6 +265,8 @@ export function fightStep(fights, me, threat, bb, f, lostFor) {
   if (f.place) {
     const status = bb.go(f.place, { run: true });
     if (status !== 'running') {
+      // where he took cover, so he knows he is in it
+      if (status === 'done' && f.tactic === 'cover') f.covered = f.place;
       f.place = null;
       // nowhere to go after all: think again soon
       if (status === 'failed') f.think = Math.min(f.think, clock + 0.3);
@@ -266,7 +275,7 @@ export function fightStep(fights, me, threat, bb, f, lostFor) {
   // he faces the target while he holds or closes in; running for cover or round a flank he faces his way
   if (sees && (f.tactic === 'hold' || f.tactic === 'advance' || !f.place)) bb.lock(at);
   else if (sees) bb.face(at);
-  bb.aimAt(sees || lostFor < 1 ? at : null);
+  bb.aimAt(sees || unseen < 1 ? at : null);
   bb.pose(me.gun ? 'aim' : 'idle');
   if (token && sees) trigger(fights, me, threat, bb, f, dist);
   return f.tactic;

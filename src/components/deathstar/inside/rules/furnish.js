@@ -43,21 +43,16 @@ const fwd = (yaw) => ({ x: Math.sin(yaw), z: -Math.cos(yaw) });
 const ahead = (p, yaw, f, r = 0) => ({ x: p.x + Math.sin(yaw) * f + Math.cos(yaw) * r, z: p.z - Math.cos(yaw) * f + Math.sin(yaw) * r });
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const yawTo = (p, q) => Math.atan2(q.x - p.x, -(q.z - p.z));
-const tidy = (v) => Math.round(v * 1e6) / 1e6 || 0;
+// rounds away float dust (0.30000000000000004) and turns −0 into 0
+const tidy = (v) => Math.round(v * 1e9) / 1e9 || 0;
 
-// the box a w × d footprint at (x, z), turned to yaw, covers seen from above
-function rectOf(x, z, yaw, w, d) {
-  const [s, c] = [Math.abs(Math.sin(yaw)), Math.abs(Math.cos(yaw))];
-  const hx = (c * w + s * d) / 2;
-  const hz = (s * w + c * d) / 2;
-  return { x0: x - hx, x1: x + hx, z0: z - hz, z1: z + hz };
-}
-
-// the box a rectangle in a frame covers: right r0–r1 and ahead f0–f1 of p facing yaw
+// the box a rectangle in a frame covers seen from above: right r0–r1 and ahead f0–f1 of p facing yaw
 function frameRect(p, yaw, r0, r1, f0, f1) {
   const pts = [ahead(p, yaw, f0, r0), ahead(p, yaw, f0, r1), ahead(p, yaw, f1, r0), ahead(p, yaw, f1, r1)];
   return { x0: Math.min(...pts.map((q) => q.x)), x1: Math.max(...pts.map((q) => q.x)), z0: Math.min(...pts.map((q) => q.z)), z1: Math.max(...pts.map((q) => q.z)) };
 }
+// and a w × d footprint at (x, z), turned to yaw
+const rectOf = (x, z, yaw, w, d) => frameRect({ x, z }, yaw, -w / 2, w / 2, -d / 2, d / 2);
 
 const overlap = (a, b) => a.x0 < b.x1 - HAIR && b.x0 < a.x1 - HAIR && a.z0 < b.z1 - HAIR && b.z0 < a.z1 - HAIR;
 const grow = (b, g) => ({ x0: b.x0 - g, x1: b.x1 + g, z0: b.z0 - g, z1: b.z1 + g });
@@ -71,20 +66,10 @@ function toSolid(s, p) {
   return Math.hypot(Math.max(b.x0 - p.x, 0, p.x - b.x1), Math.max(b.z0 - p.z, 0, p.z - b.z1));
 }
 
-// whether the segment a–b passes within r of a box (through the box grown by r)
+// whether the segment a–b passes within r of a box, read every 10 cm along it (lanes are wider than that)
 function laneHits({ a, b, r }, box) {
-  const g = grow(box, r);
-  let [t0, t1] = [0, 1];
-  for (const [p, d, lo, hi] of [[a.x, b.x - a.x, g.x0, g.x1], [a.z, b.z - a.z, g.z0, g.z1]]) {
-    if (Math.abs(d) < HAIR) {
-      if (p <= lo || p >= hi) return false;
-      continue;
-    }
-    const [u, v] = [(lo - p) / d, (hi - p) / d].sort((m, n) => m - n);
-    [t0, t1] = [Math.max(t0, u), Math.min(t1, v)];
-    if (t0 >= t1) return false;
-  }
-  return true;
+  const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.1));
+  return Array.from({ length: n + 1 }, (_, k) => ({ x: a.x + ((b.x - a.x) * k) / n, z: a.z + ((b.z - a.z) * k) / n })).some((p) => toSolid(box, p) < r);
 }
 
 // a box less another, as up to four boxes
@@ -114,9 +99,8 @@ function seedOf(id) {
 function floorUnder(room, x, z) {
   let y = null;
   for (const f of room.floors ?? []) {
-    if (x < f.x0 - HAIR || x > f.x1 + HAIR || z < f.z0 - HAIR || z > f.z1 + HAIR) continue;
-    if (f.circle && Math.hypot(x - f.circle.x, z - f.circle.z) > f.circle.r + HAIR) continue;
-    if (y === null || f.y > y) y = f.y;
+    const off = x < f.x0 - HAIR || x > f.x1 + HAIR || z < f.z0 - HAIR || z > f.z1 + HAIR || (f.circle && Math.hypot(x - f.circle.x, z - f.circle.z) > f.circle.r + HAIR);
+    if (!off && (y === null || f.y > y)) y = f.y;
   }
   return y;
 }
@@ -132,11 +116,9 @@ const holdsBody = (room, p) => (room.round ? Math.hypot(p.x - room.x, p.z - room
 function level(room, b, y) {
   const n = Math.max(1, Math.ceil((b.x1 - b.x0) / 0.9));
   const m = Math.max(1, Math.ceil((b.z1 - b.z0) / 0.9));
-  for (let i = 0; i <= n; i++) {
-    for (let j = 0; j <= m; j++) {
-      const f = floorUnder(room, b.x0 + 0.01 + ((b.x1 - b.x0 - 0.02) * i) / n, b.z0 + 0.01 + ((b.z1 - b.z0 - 0.02) * j) / m);
-      if (f === null || Math.abs(f - y) > HAIR) return false;
-    }
+  for (let i = 0; i <= n; i++) for (let j = 0; j <= m; j++) {
+    const f = floorUnder(room, b.x0 + 0.01 + ((b.x1 - b.x0 - 0.02) * i) / n, b.z0 + 0.01 + ((b.z1 - b.z0 - 0.02) * j) / m);
+    if (f === null || Math.abs(f - y) > HAIR) return false;
   }
   return true;
 }
@@ -156,7 +138,6 @@ function wallsOf(room) {
 // the point t along a wall, `off` out from it into the room
 const onWall = (wall, t, off = 0) => ahead(wall.axis === 'x' ? { x: t, z: wall.at } : { x: wall.at, z: t }, wall.yaw, off);
 const alongOf = (wall, p) => (wall.axis === 'x' ? p.x : p.z);
-const acrossOf = (wall, p) => (wall.axis === 'x' ? p.z : p.x);
 const wallOfDoor = (room, d) => wallsOf(room).find((w) => w.axis === d.axis && Math.abs((d.axis === 'x' ? d.z : d.x) - w.at) < 0.05) ?? null;
 
 // The wall a spot faces, and where its gaze meets it.
@@ -180,10 +161,10 @@ function workshop(room, station) {
   const out = { solids: [], props: [], spots: [] };
   const doors = (station.doors ?? []).filter((d) => d.a === room.id || d.b === room.id);
   const strips = doors.map(stripOf);
-  const named = Object.entries(station.spots ?? {}).filter(([, s]) => s.room === room.id);
+  const named = Object.entries(station.spots ?? {}).filter(([, s]) => s.room === room.id).map(([name, s]) => ({ ...s, name }));
   const jumps = (station.jumps ?? []).filter((j) => j.from === room.id);
   // where people must be able to stand; the work places made here join it
-  const places = [...named.map(([, s]) => s), ...Object.values(station.starts ?? {}).filter((s) => s.room === room.id), ...jumps];
+  const places = [...named, ...Object.values(station.starts ?? {}).filter((s) => s.room === room.id), ...jumps];
   const taken = []; // what stands on the floor so far, solid or flat, which clutter keeps clear of
   const lanes = []; // ways kept clear of clutter: { a, b, r }
   const count = { work: 0, post: 0, sit: 0 };
@@ -194,14 +175,15 @@ function workshop(room, station) {
 
   function spot(kind, p, yaw, tag) {
     count[kind] += 1;
-    const s = { name: `${room.id}/${kind}${count[kind]}`, kind, x: tidy(p.x), y: tidy(p.y ?? floor(p.x, p.z) ?? room.y), z: tidy(p.z), yaw: tidy(wrap(yaw)), ...(tag ? { tag } : {}) };
+    const s = { name: `${room.id}/${kind}${count[kind]}`, kind, x: tidy(p.x), y: tidy(p.y ?? floor(p.x, p.z) ?? room.y), z: tidy(p.z), yaw: wrap(yaw) || 0, ...(tag ? { tag } : {}) };
     out.spots.push(s);
     if (kind !== 'sit') places.push(s);
     return s;
   }
 
   // Puts a prop down. loose: only if it fits; work: with a place in front to work it from, which it
-  // must have; sit: with a seat on it; flat: lies on the floor, so clutter keeps off it.
+  // must have; sit: with a seat on it; flat: lies on the floor, so clutter keeps off it; tall: how high
+  // its solid stands, when that isn’t h (a stack of crates is solid to its top).
   function put(kind, x, z, o) {
     const yaw = wrap(o.yaw ?? 0);
     const { w, d, h } = o;
@@ -209,11 +191,12 @@ function workshop(room, station) {
     const ground = floor(x, z);
     const y = o.y ?? (ground ?? room.y) + (o.lift ?? 0);
     const y0 = o.y ?? ground ?? room.y;
-    const solid = o.solid === false ? null : o.solid === 'round' ? { circle: { x, z, r: Math.max(w, d) / 2, y0, y1: y + h } } : { box: { ...rect, y0, y1: y + h } };
+    const y1 = y + (o.tall ?? h);
+    const solid = o.solid === false ? null : o.solid === 'round' ? { circle: { x, z, r: Math.max(w, d) / 2, y0, y1 } } : { box: { ...rect, y0, y1 } };
     const worker = o.work ? { ...ahead({ x, z }, yaw, d / 2 + GAP + R), yaw: yaw + Math.PI } : null;
     if (o.loose) {
       if (!holdsRect(room, rect)) return null;
-      if (o.floor !== false && (ground === null || !level(room, rect, ground))) return null;
+      if (ground === null || !level(room, rect, ground)) return null;
       if (solid || o.flat) {
         const b = solid ? boxOf(solid) : rect;
         if (strips.some((s) => overlap(b, s)) || lanes.some((l) => laneHits(l, b)) || taken.some((t) => overlap(grow(b, SPACE), t))) return null;
@@ -221,7 +204,7 @@ function workshop(room, station) {
       }
       if (worker && !standable(worker, ground ?? room.y, solid ? [solid] : [])) return null;
     }
-    const prop = { kind, x: tidy(x), y: tidy(y), z: tidy(z), yaw: tidy(yaw), w, d, h, ...(o.tag ? { tag: o.tag } : {}), ...(o.text ? { text: o.text } : {}) };
+    const prop = { kind, x: tidy(x), y: tidy(y), z: tidy(z), yaw: yaw || 0, w, d, h, ...(o.tag ? { tag: o.tag } : {}), ...(o.text ? { text: o.text } : {}) };
     out.props.push(prop);
     for (const s of [...(solid ? [solid] : []), ...(o.solids ?? [])]) {
       const shape = s.box ?? s.circle;
@@ -260,11 +243,9 @@ function workshop(room, station) {
         const [go, w, d, n] = [rand() < chance, sizes[Math.floor(rand() * sizes.length)], sizes[Math.floor(rand() * sizes.length)], 1 + Math.floor(rand() * levels)];
         if (!go) continue;
         const p = onWall(wall, t, d / 2 + 0.1);
-        const base = put('crate', p.x, p.z, { yaw: wall.yaw, w, d, h: 1.2, loose: true });
-        if (!base) continue;
-        // the ones on top lean on the base’s solid, raised to the stack’s full height
-        for (let k = 1; k < n; k++) put('crate', p.x, p.z, { yaw: wall.yaw, w: w * 0.85, d: d * 0.85, h: 1.2, y: base.y + 1.2 * k, solid: false });
-        out.solids.at(-1).box.y1 = tidy(base.y + 1.2 * n);
+        // the base’s solid stands to the top of the stack, so the ones on top need none
+        const base = put('crate', p.x, p.z, { yaw: wall.yaw, w, d, h: 1.2, tall: 1.2 * n, loose: true });
+        for (let k = 1; base && k < n; k++) put('crate', p.x, p.z, { yaw: wall.yaw, w: w * 0.85, d: d * 0.85, h: 1.2, y: base.y + 1.2 * k, solid: false });
       }
     }
   }
@@ -291,43 +272,20 @@ function workshop(room, station) {
     put('window-frame', p.x, p.z, { yaw: wall.yaw, w, d: 0.2, h, y: win.y - h / 2, solid: false });
   }
 
-  return {
-    room,
-    station,
-    rand,
-    out,
-    doors,
-    jumps,
-    lanes,
-    floor,
-    floorAt: (p) => floor(p.x, p.z),
-    put,
-    spot,
-    bank,
-    onFaced,
-    cargo,
-    flank,
-    windowFrame,
-    named: (re) => named.filter(([name]) => re.test(name)),
-    other: (door) => (station.rooms ?? []).find((r) => r.id === (door.a === room.id ? door.b : door.a)),
-    lowest: room.floors?.length ? Math.min(...room.floors.map((f) => f.y)) : room.y,
-  };
+  const other = (door) => (station.rooms ?? []).find((r) => r.id === (door.a === room.id ? door.b : door.a));
+  const lowest = room.floors?.length ? Math.min(...room.floors.map((f) => f.y)) : room.y;
+  // (named: the station’s spots in this room whose names match, each with its name)
+  return { room, station, rand, out, doors, jumps, lanes, lowest, floor, floorAt: (p) => floor(p.x, p.z), put, spot, bank, onFaced, cargo, flank, windowFrame, other, named: (re) => named.filter((s) => re.test(s.name)) };
 }
 
 const sameWall = (a, b) => Boolean(a && b) && a.side === b.side;
 const middle = (room) => ({ x: room.x, z: room.z });
 const doorless = (ws) => wallsOf(ws.room).filter((w) => !ws.doors.some((d) => sameWall(wallOfDoor(ws.room, d), w)));
-const firstOf = (ws, re, fallback) => {
-  const [name, s] = ws.named(re)[0] ?? [null, fallback];
-  return { name, s };
-};
+const firstOf = (ws, re, fallback) => ws.named(re)[0] ?? fallback;
 // the middle of a room, facing away from its first door
 const centreFacing = (ws) => ({ ...middle(ws.room), yaw: ws.doors[0] ? yawTo(ws.doors[0], middle(ws.room)) : 0 });
-// a camera high up, `in` from a corner, watching the room
-function cameraAt(ws, x, z, tag) {
-  const { room } = ws;
-  ws.put('camera', x, z, { yaw: yawTo({ x, z }, middle(room)), w: 0.25, d: 0.4, h: 0.3, y: room.y + room.h - 0.55, solid: false, tag });
-}
+// a camera high up at (x, z), watching the middle of the room
+const cameraAt = (ws, x, z, tag) => ws.put('camera', x, z, { yaw: yawTo({ x, z }, middle(ws.room)), w: 0.25, d: 0.4, h: 0.3, y: ws.room.y + ws.room.h - 0.55, solid: false, tag });
 const corners = (room) => [[room.box.x0, room.box.z0], [room.box.x1, room.box.z0], [room.box.x0, room.box.z1], [room.box.x1, room.box.z1]].map(([x, z]) => ({ x, z }));
 const inset = (room, c, by) => ({ x: c.x + Math.sign(room.x - c.x) * by, z: c.z + Math.sign(room.z - c.z) * by });
 
@@ -336,14 +294,7 @@ const inset = (room, c, by) => ({ x: c.x + Math.sign(room.x - c.x) * by, z: c.z 
 // The Falcon in her own frame (right, forward of her middle): her belly too
 // low to walk under, her legs and the bay’s mooring clamps where hangar.js
 // draws them (its LEGS and clampsOf).
-const FALCON = {
-  w: 25.6,
-  d: 34.75,
-  h: 8,
-  belly: [-7, 7, -10.5, 1.5],
-  legs: [[-4.5, 8], [4.5, 8], [-8.5, -2], [8.5, -2], [0, -9.5]],
-  clamps: [[-15.2, 3], [15.2, 3], [-11, -11.5], [11, -11.5]],
-};
+const FALCON = { w: 25.6, d: 34.75, h: 8, belly: [-7, 7, -10.5, 1.5], legs: [[-4.5, 8], [4.5, 8], [-8.5, -2], [8.5, -2], [0, -9.5]], clamps: [[-15.2, 3], [15.2, 3], [-11, -11.5], [11, -11.5]] };
 // A Lambda shuttle, wings folded up: her hull from tail to where her ramp meets it; the ramp runs on
 // under her nose to its foot, `ramp` ahead of her middle.
 const LAMBDA = { w: 10, d: 20, h: 13, hull: [-2.6, 2.6, -10, 3], ramp: 7 };
@@ -379,7 +330,9 @@ function falcon(ws, c, yaw) {
     const p = ahead(c, yaw, f, r);
     return { circle: { x: p.x, z: p.z, r: radius, y0: deck, y1: deck + top } };
   };
-  const solids = [...belly.map((b) => ({ box: { ...b, y0: deck, y1: deck + FALCON.h } })), ...FALCON.legs.map(([r, f]) => round(r, f, 0.7, 1.6)), ...FALCON.clamps.map(([r, f]) => round(r, f, 1.2, 3.3))];
+  // a leg under the belly is inside its solid already, and would only give nav more corners to go round
+  const legs = FALCON.legs.map(([r, f]) => round(r, f, 0.7, 1.6)).filter((leg) => !belly.some((b) => cut(boxOf(leg), b).length === 0));
+  const solids = [...belly.map((b) => ({ box: { ...b, y0: deck, y1: deck + FALCON.h } })), ...legs, ...FALCON.clamps.map(([r, f]) => round(r, f, 1.2, 3.3))];
   ws.put('falcon', c.x, c.z, { yaw, w: FALCON.w, d: FALCON.d, h: FALCON.h, solid: false, solids });
 }
 
@@ -393,21 +346,21 @@ function lambda(ws, c, yaw) {
 const bare = () => {};
 
 function ship(ws) {
-  for (const [, s] of ws.named(/hide/)) ws.put('compartment', s.x, s.z, { yaw: s.yaw, w: 1, d: 1.4, h: 0.05, solid: false, flat: true });
-  for (const [name, s] of ws.named(/panel/)) ws.onFaced(s, 'wall-panel', { w: 0.5, h: 0.4, at: 1.1, tag: name });
+  for (const s of ws.named(/hide/)) ws.put('compartment', s.x, s.z, { yaw: s.yaw, w: 1, d: 1.4, h: 0.05, solid: false, flat: true });
+  for (const s of ws.named(/panel/)) ws.onFaced(s, 'wall-panel', { w: 0.5, h: 0.4, at: 1.1, tag: s.name });
   ws.cargo(wallsOf(ws.room), { every: 1.6, chance: 0.7, sizes: [0.6, 0.8], levels: 2 });
 }
 
 function hangar(ws) {
-  for (const [name, s] of ws.named(/./)) {
-    const how = SHIPS[name];
+  for (const s of ws.named(/./)) {
+    const how = SHIPS[s.name];
     if (!how) continue;
     const c = how.at ? ahead(s, s.yaw, how.away ? -how.at : how.at) : s;
     (how.kind === 'falcon' ? falcon : lambda)(ws, c, how.away || !how.at ? s.yaw : s.yaw + Math.PI);
   }
   // Obi-Wan’s robe where he fell, and the place on the Falcon’s hull the homing beacon goes
-  for (const [, s] of ws.named(/^duel$/)) ws.put('robe', s.x, s.z, { yaw: s.yaw, w: 1.2, d: 0.8, h: 0.1, solid: false, flat: true, tag: 'robe' });
-  for (const [, s] of ws.named(/^beacon$/)) {
+  for (const s of ws.named(/^duel$/)) ws.put('robe', s.x, s.z, { yaw: s.yaw, w: 1.2, d: 0.8, h: 0.1, solid: false, flat: true, tag: 'robe' });
+  for (const s of ws.named(/^beacon$/)) {
     const p = ahead(s, s.yaw, 0.8);
     ws.put('hull-mark', p.x, p.z, { yaw: s.yaw + Math.PI, w: 0.4, d: 0.1, h: 0.3, y: (ws.floor(s.x, s.z) ?? ws.room.y) + 1.3, solid: false, tag: 'beacon-spot' });
   }
@@ -427,13 +380,10 @@ function control(ws) {
     if (wall === back) continue;
     ws.bank(wall, wall === front ? { kind: 'console', d: 0.4, h: 0.95 } : { kind: 'bank', h: 1.75 });
   }
-  const sockets = new Set();
-  for (const [, s] of ws.named(/^scomp/)) {
-    if (sockets.has(`${s.x},${s.z}`)) continue;
-    sockets.add(`${s.x},${s.z}`);
-    ws.onFaced(s, 'scomp', { w: 0.42, h: 0.42, at: 0.64, tag: 'scomp' });
-  }
-  for (const [, s] of ws.named(/intercom/)) ws.onFaced(s, 'intercom', { w: 0.4, h: 0.5, at: 1.2 });
+  // one socket however many spots name it
+  const sockets = new Map(ws.named(/^scomp/).map((s) => [`${s.x},${s.z}`, s]));
+  for (const s of sockets.values()) ws.onFaced(s, 'scomp', { w: 0.42, h: 0.42, at: 0.64, tag: 'scomp' });
+  for (const s of ws.named(/intercom/)) ws.onFaced(s, 'intercom', { w: 0.4, h: 0.5, at: 1.2 });
   const door = ws.doors[0] ?? middle(room);
   const far = corners(room).sort((p, q) => Math.hypot(q.x - door.x, q.z - door.z) - Math.hypot(p.x - door.x, p.z - door.z) || q.x - p.x)[0];
   const c = inset(room, far, 0.25);
@@ -441,19 +391,19 @@ function control(ws) {
 }
 
 // A detention block’s control room: the horseshoe of consoles round the officer’s desk spot, open
-// behind him; the cameras the story shoots out; the intercom; screens along the bare walls.
+// behind him; the cameras the story shoots out; the intercom; consoles along the bare walls.
 function detention(ws) {
   const { room } = ws;
-  const { name, s } = firstOf(ws, /-desk$/, centreFacing(ws));
+  const s = firstOf(ws, /-desk$/, centreFacing(ws));
   const y = ws.floor(s.x, s.z) ?? room.y;
   const c = ahead(s, s.yaw, 0.125);
   const side = (r0, r1, f0, f1) => ({ box: { ...frameRect(s, s.yaw, r0, r1, f0, f1), y0: y, y1: y + 1.05 } });
-  ws.put('horseshoe', c.x, c.z, { yaw: s.yaw, w: 2.5, d: 2.25, h: 1.05, solid: false, tag: name ?? undefined, solids: [side(-1.25, 1.25, 0.8, 1.25), side(-1.25, -0.8, -1, 0.8), side(0.8, 1.25, -1, 0.8)] });
+  ws.put('horseshoe', c.x, c.z, { yaw: s.yaw, w: 2.5, d: 2.25, h: 1.05, solid: false, tag: s.name, solids: [side(-1.25, 1.25, 0.8, 1.25), side(-1.25, -0.8, -1, 0.8), side(0.8, 1.25, -1, 0.8)] });
   ws.spot('work', s, s.yaw);
   const cams = ws.named(/camera/);
-  for (const [, cam] of cams) ws.put('camera', cam.x, cam.z, { yaw: cam.yaw, w: 0.25, d: 0.4, h: 0.3, y: room.y + room.h - 0.55, solid: false, tag: 'cameras' });
+  for (const cam of cams) ws.put('camera', cam.x, cam.z, { yaw: cam.yaw, w: 0.25, d: 0.4, h: 0.3, y: room.y + room.h - 0.55, solid: false, tag: 'cameras' });
   if (!cams.length && !room.round) for (const k of corners(room).slice(0, 2)) cameraAt(ws, inset(room, k, 0.25).x, inset(room, k, 0.25).z);
-  for (const [, ic] of ws.named(/intercom/)) {
+  for (const ic of ws.named(/intercom/)) {
     const hit = facedWall(room, ic);
     if (!hit) continue;
     const p = ahead(hit, hit.wall.yaw, CONSOLE / 2);
@@ -491,7 +441,7 @@ function cell(ws) {
   const door = ws.doors[0];
   const walls = wallsOf(room);
   const by = door ? wallOfDoor(room, door) : null;
-  const back = (by && walls.find((w) => w.axis === by.axis && w !== by)) ?? walls[0];
+  const back = (by && walls.find((w) => w.axis === by.axis && !sameWall(w, by))) ?? walls[0];
   if (back) {
     const len = back.to - back.from;
     const p = onWall(back, (back.from + back.to) / 2, 0.225);
@@ -523,14 +473,13 @@ function compactor(ws) {
   // the first step up out of the water, and on from it to each door
   const steps = (room.floors ?? []).filter((f) => f.y > lowest + HAIR && f.y <= lowest + 0.4 + HAIR);
   const foot = steps.length ? { x: (steps[0].x0 + steps[0].x1) / 2, z: (steps[0].z0 + steps[0].z1) / 2 } : middle(room);
-  for (const [, s] of ws.named(/./)) ws.lanes.push({ a: s, b: foot, r: 0.8 });
-  for (const door of ws.doors) ws.lanes.push({ a: foot, b: door, r: 0.8 });
+  for (const s of ws.named(/./)) ws.lanes.push({ a: s, b: foot, r: 0.5 });
+  for (const door of ws.doors) ws.lanes.push({ a: foot, b: door, r: 0.5 });
   const b = room.box;
-  for (let k = 0; k < 9; k++) {
-    const [x, z, yaw, w, d, h] = [b.x0 + 0.6 + rand() * (b.x1 - b.x0 - 1.2), b.z0 + 0.5 + rand() * (b.z1 - b.z0 - 1), rand() * Math.PI, 0.5 + rand() * 1.1, 0.4 + rand() * 0.6, rand() < 0.4 ? 0.3 : 0.6 + rand() * 0.4];
-    // in the water, not on the walkway out of it
-    if (ws.floor(x, z) !== lowest) continue;
-    ws.put('junk', x, z, { yaw, w, d, h, loose: true });
+  // heaps in the water, not on the walkway out of it: as many tries as it takes, within reason
+  for (let k = 0, heaps = 0; k < 80 && heaps < 7; k++) {
+    const [x, z, yaw, w, d, h] = [b.x0 + 0.4 + rand() * (b.x1 - b.x0 - 0.8), b.z0 + 0.4 + rand() * (b.z1 - b.z0 - 0.8), (rand() < 0.5 ? 0 : TURN) + (rand() - 0.5) * 0.3, 0.4 + rand() * 0.7, 0.3 + rand() * 0.4, rand() < 0.4 ? 0.3 : 0.6 + rand() * 0.4];
+    if (ws.floor(x, z) === lowest && ws.put('junk', x, z, { yaw, w, d, h, loose: true })) heaps += 1;
   }
   // and bits floating on the water, a metre over the bottom
   for (let k = 0; k < 4; k++) {
@@ -548,16 +497,16 @@ function chute(ws) {
 // edge, its power levers, and the beam’s glowing column rising out of the depths beyond.
 function shaft(ws) {
   const { room } = ws;
-  for (const [name, s] of ws.named(/terminal/)) {
+  for (const s of ws.named(/terminal/)) {
     const y = ws.floor(s.x, s.z) ?? room.y;
     // its face 0.8 m ahead of the spot, so the power controls 0.4 m nearer it stand clear
     const c = ahead(s, s.yaw, 1.2);
-    ws.put('terminal', c.x, c.z, { yaw: s.yaw + Math.PI, w: 3.2, d: 0.8, h: 1.3, y, tag: name });
+    ws.put('terminal', c.x, c.z, { yaw: s.yaw + Math.PI, w: 3.2, d: 0.8, h: 1.3, y, tag: s.name });
     ws.spot('work', s, s.yaw);
     const side = { x: Math.cos(s.yaw), z: Math.sin(s.yaw) };
-    for (const [lever, p] of ws.named(/power/)) {
+    for (const p of ws.named(/power/)) {
       const at = ahead(s, s.yaw, 0.85, (p.x - s.x) * side.x + (p.z - s.z) * side.z);
-      ws.put('lever', at.x, at.z, { yaw: s.yaw + Math.PI, w: 0.15, d: 0.1, h: 0.4, y: y + 0.9, solid: false, tag: lever });
+      ws.put('lever', at.x, at.z, { yaw: s.yaw + Math.PI, w: 0.15, d: 0.1, h: 0.4, y: y + 0.9, solid: false, tag: p.name });
       ws.spot('work', p, p.yaw);
     }
     const col = ahead(s, s.yaw, 4.7);
@@ -569,9 +518,9 @@ function shaft(ws) {
 // the outcrop a grapple line catches on for each swing.
 function chasm(ws) {
   const { room, station } = ws;
-  for (const [name, s] of ws.named(/control/)) {
+  for (const s of ws.named(/control/)) {
     const p = ahead(s, s.yaw, 0.85);
-    ws.put('pedestal', p.x, p.z, { yaw: s.yaw + Math.PI, w: 0.5, d: 0.5, h: 1.1, solid: 'round', tag: name });
+    ws.put('pedestal', p.x, p.z, { yaw: s.yaw + Math.PI, w: 0.5, d: 0.5, h: 1.1, solid: 'round', tag: s.name });
     ws.spot('work', s, s.yaw);
   }
   for (const j of ws.jumps) {
@@ -585,8 +534,8 @@ function chasm(ws) {
 // The conference room: the round black table and twelve chairs round it, the one at Krennic’s place
 // (if the station names it) left for nobody but a visitor.
 function conference(ws) {
-  const { s: at } = firstOf(ws, /table/, centreFacing(ws));
-  const { s: empty } = firstOf(ws, /krennic/, null);
+  const at = firstOf(ws, /table/, centreFacing(ws));
+  const empty = firstOf(ws, /krennic/, null);
   const r = 2.3;
   ws.put('table', at.x, at.z, { w: 2 * r, d: 2 * r, h: 0.75, solid: 'round' });
   const seats = Array.from({ length: 12 }, (_, k) => ahead(at, (k * Math.PI) / 6, r + 0.7));
@@ -598,7 +547,7 @@ function conference(ws) {
 // tulip stations in rows either side of the aisle up to the window, each with its operator behind it.
 function overbridge(ws) {
   const { room } = ws;
-  const { s } = firstOf(ws, /window/, centreFacing(ws));
+  const s = firstOf(ws, /window/, centreFacing(ws));
   const hit = facedWall(room, s);
   if (!hit) return;
   const wall = hit.wall;
@@ -620,7 +569,7 @@ function overbridge(ws) {
 // wall but the one it faces (the beam tunnel shows there).
 function firecontrol(ws) {
   const { room } = ws;
-  const { s } = firstOf(ws, /fire/, centreFacing(ws));
+  const s = firstOf(ws, /fire/, centreFacing(ws));
   const c = ahead(s, s.yaw, 1.025);
   ws.put('fire-console', c.x, c.z, { yaw: s.yaw + Math.PI, w: 2.4, d: 0.45, h: 1.1 });
   ws.spot('work', s, s.yaw);
@@ -661,14 +610,14 @@ function archive(ws) {
   const across = corners(room).map((c) => (c.x - door.x) * Math.cos(into) + (c.z - door.z) * Math.sin(into));
   const depth = Math.max(...corners(room).map((c) => (c.x - door.x) * Math.sin(into) - (c.z - door.z) * Math.cos(into)));
   const [lo, hi] = [Math.min(...across), Math.max(...across)];
-  const { name: who, s: lib } = firstOf(ws, /librarian/, { ...ahead(door, into, depth * 0.75), yaw: into + Math.PI });
+  const lib = firstOf(ws, /librarian/, { ...ahead(door, into, depth * 0.75), yaw: into + Math.PI });
   const desk = ahead(lib, lib.yaw, 1.05);
   ws.put('desk', desk.x, desk.z, { yaw: lib.yaw + Math.PI, w: 1.6, d: 0.5, h: 0.78 });
   ws.spot('work', lib, lib.yaw);
   const feed = onWall(by, alongOf(by, door) + (by.to - alongOf(by, door) >= alongOf(by, door) - by.from ? 1.6 : -1.6), 0.03);
-  ws.put('feed', feed.x, feed.z, { yaw: into, w: 0.8, d: 0.06, h: 0.5, y: (ws.floor(door.x, door.z) ?? room.y) + 2.2, solid: false, tag: who ?? undefined });
-  const back = wallsOf(room).find((w) => w.axis === by.axis && w !== by);
-  const cam = corners(room).filter((c) => Math.abs(acrossOf(back, c) - back.at) < HAIR).sort((p, q) => Math.hypot(p.x - lib.x, p.z - lib.z) - Math.hypot(q.x - lib.x, q.z - lib.z) || q.x - p.x)[0];
+  ws.put('feed', feed.x, feed.z, { yaw: into, w: 0.8, d: 0.06, h: 0.5, y: (ws.floor(door.x, door.z) ?? room.y) + 2.2, solid: false, tag: lib.name });
+  const back = wallsOf(room).find((w) => w.axis === by.axis && !sameWall(w, by));
+  const cam = corners(room).filter((c) => Math.abs((back.axis === 'x' ? c.z : c.x) - back.at) < HAIR).sort((p, q) => Math.hypot(p.x - lib.x, p.z - lib.z) - Math.hypot(q.x - lib.x, q.z - lib.z) || q.x - p.x)[0];
   cameraAt(ws, inset(room, cam, 0.25).x, inset(room, cam, 0.25).z);
   if ((station.rooms ?? []).find((r) => r.kind === 'archive')?.id === room.id) {
     const p = onWall(back, back.from + 1.5, 0.225);
@@ -690,7 +639,7 @@ function archive(ws) {
 }
 
 function meditation(ws) {
-  const { s } = firstOf(ws, /pod/, centreFacing(ws));
+  const s = firstOf(ws, /pod/, centreFacing(ws));
   ws.put('meditation-pod', s.x, s.z, { yaw: s.yaw, w: 2.8, d: 2.8, h: 2.8, solid: 'round', sit: true });
 }
 
@@ -741,9 +690,9 @@ function reactor(ws) {
 // dais, the window’s frame, and the Royal Guards’ posts at the stairs’ foot and by the lift.
 function throne(ws) {
   const { room } = ws;
-  const { s: seat } = firstOf(ws, /seat/, centreFacing(ws));
+  const seat = firstOf(ws, /seat/, centreFacing(ws));
   ws.put('throne', seat.x, seat.z, { yaw: seat.yaw, w: 1.6, d: 1.4, h: 2.2, sit: true });
-  for (const [, s] of ws.named(/armrest/)) ws.put('saber', s.x, s.z, { yaw: seat.yaw, w: 0.06, d: 0.3, h: 0.06, y: (ws.floor(s.x, s.z) ?? room.y) + 0.75, solid: false, tag: 'armrest-saber' });
+  for (const s of ws.named(/armrest/)) ws.put('saber', s.x, s.z, { yaw: seat.yaw, w: 0.06, d: 0.3, h: 0.06, y: (ws.floor(s.x, s.z) ?? room.y) + 0.75, solid: false, tag: 'armrest-saber' });
   const top = Math.max(...room.floors.map((f) => f.y));
   const steps = room.floors.filter((f) => f.y > ws.lowest + HAIR && f.y < top - HAIR);
   if (steps.length) {
@@ -782,19 +731,16 @@ function command(ws) {
   ws.windowFrame();
   const win = wallsOf(room).find((w) => w.side === room.window?.wall) ?? facedWall(room, centreFacing(ws))?.wall;
   if (!win) return;
-  const at = (s) => ahead(s, s.yaw, 1.025);
-  for (const [name, s] of ws.named(/console|switch/)) {
-    const c = at(s);
-    ws.put(/switch/.test(name) ? 'switch' : 'station', c.x, c.z, { yaw: s.yaw + Math.PI, w: 1.6, d: 0.45, h: 1.1, tag: name });
+  for (const s of ws.named(/console|switch/)) {
+    const c = ahead(s, s.yaw, 1.025);
+    ws.put(/switch/.test(s.name) ? 'switch' : 'station', c.x, c.z, { yaw: s.yaw + Math.PI, w: 1.6, d: 0.45, h: 1.1, tag: s.name });
     ws.spot('work', s, s.yaw);
     // the aisle up from the door to the firing switch
-    if (/switch/.test(name)) for (const door of ws.doors) ws.lanes.push({ a: door, b: s, r: 1 });
+    if (/switch/.test(s.name)) for (const door of ws.doors) ws.lanes.push({ a: door, b: s, r: 1 });
   }
-  for (const f of [3.175, 7.175]) {
-    for (let t = win.from + 2; t <= win.to - 2 + HAIR; t += 2) {
-      const p = onWall(win, t, f);
-      ws.put('station', p.x, p.z, { yaw: win.yaw, w: 1.6, d: 0.45, h: 1.1, loose: true, work: true });
-    }
+  for (const f of [3.175, 7.175]) for (let t = win.from + 2; t <= win.to - 2 + HAIR; t += 2) {
+    const p = onWall(win, t, f);
+    ws.put('station', p.x, p.z, { yaw: win.yaw, w: 1.6, d: 0.45, h: 1.1, loose: true, work: true });
   }
   const side = wallsOf(room).filter((w) => w.axis !== win.axis);
   const theirs = side.find((w) => w.side === 'east') ?? side[0];
@@ -821,8 +767,8 @@ function superstructure(ws) {
   for (const f of room.floors.filter(narrow)) {
     const alongX = f.x1 - f.x0 > f.z1 - f.z0;
     const [cx, cz] = [(f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2];
-    const half = (alongX ? f.z1 - f.z0 : f.x1 - f.x0) / 2 + 0.4;
-    ws.lanes.push(alongX ? { a: { x: f.x0 - 2, z: cz }, b: { x: f.x1 + 2, z: cz }, r: half } : { a: { x: cx, z: f.z0 - 2 }, b: { x: cx, z: f.z1 + 2 }, r: half });
+    const r = (alongX ? f.z1 - f.z0 : f.x1 - f.x0) / 2 + 0.4;
+    ws.lanes.push(alongX ? { a: { x: f.x0 - 2, z: cz }, b: { x: f.x1 + 2, z: cz }, r } : { a: { x: cx, z: f.z0 - 2 }, b: { x: cx, z: f.z1 + 2 }, r });
   }
   for (const f of room.floors.filter((g) => !narrow(g))) {
     for (let k = 0; k < 3; k++) {
@@ -836,36 +782,9 @@ function gallery(ws) {
   for (const wall of doorless(ws)) ws.bank(wall, { kind: 'console', w: 1.4 });
 }
 
-const FURNISH = {
-  corridor: bare,
-  lobby: bare,
-  lift: bare,
-  field: bare,
-  ship,
-  hangar,
-  dock: hangar,
-  control,
-  detention,
-  cellbay,
-  cell,
-  compactor,
-  chute,
-  shaft,
-  chasm,
-  conference,
-  overbridge,
-  firecontrol,
-  tiebay,
-  meditation,
-  archive,
-  maintenance,
-  reactor,
-  throne,
-  holding,
-  command,
-  superstructure,
-  gallery,
-};
+// corridors, lobbies and lifts have only their wall fittings, which their builders draw; a field is space
+const FURNISH = { corridor: bare, lobby: bare, lift: bare, field: bare, ship, hangar, dock: hangar, control, detention, cellbay, cell, compactor, chute, shaft, chasm, conference };
+Object.assign(FURNISH, { overbridge, firecontrol, tiebay, meditation, archive, maintenance, reactor, throne, holding, command, superstructure, gallery });
 
 export function furnish(room, station) {
   const ws = workshop(room, station);

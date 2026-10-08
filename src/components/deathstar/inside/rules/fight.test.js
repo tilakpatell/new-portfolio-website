@@ -63,6 +63,14 @@ describe('choosing what to do in a fight', () => {
     expect(chooseTactic(ctx({ hp: 0.15, cover: true, flank: true, allies: 2 }))).toBe('fallback');
   });
 
+  it('stays in cover while friends keep the target in sight and every shot is taken', () => {
+    expect(chooseTactic(ctx({ sees: false, told: true, free: false, token: false, cover: true, inCover: true }), { current: 'cover' })).toBe('cover');
+  });
+
+  it('comes out of cover to see the target again once a shot is free', () => {
+    expect(chooseTactic(ctx({ sees: false, told: true, free: true, token: false, cover: true, inCover: true }), { current: 'cover' })).toBe('advance');
+  });
+
   it('searches once the target has been out of sight a while', () => {
     expect(chooseTactic(ctx({ sees: false, lostFor: 4, cover: true }))).toBe('search');
   });
