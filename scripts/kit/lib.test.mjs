@@ -157,7 +157,7 @@ describe('a crown’s leaf cards, thinned', () => {
     expect(pick(7).length).toBe(6 * 4);
   });
 
-  it('lets a last odd triangle stand as a card of its own', () => {
+  it('lets a lone triangle be a card of its own', () => {
     // a quad (vertices 0 to 3) and a lone triangle (4 to 6)
     const positions = new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 5, 0, 0, 6, 0, 0, 5, 1, 0]);
     const indices = new Uint32Array([0, 1, 2, 0, 2, 3, 4, 5, 6]);
@@ -169,21 +169,71 @@ describe('a crown’s leaf cards, thinned', () => {
     expect([3, 4]).toContain(half.map.length);
   });
 
-  it('pairs triangles that are not quads, and grows the pair about its own centre', () => {
-    // four lone triangles, 1 × 1 each, along x: two cards of two triangles
+  it('keeps triangles that share no vertex apart, each grown about its own centre', () => {
+    // four lone triangles, 1 × 1 each, along x: four cards
     const positions = new Float32Array(Array.from({ length: 4 }, (_, t) => [t * 2, 0, 0, t * 2 + 1, 0, 0, t * 2, 1, 0]).flat());
     const indices = Uint32Array.from({ length: 12 }, (_, i) => i);
     const out = thinCards(positions, indices, 0.5, 4);
     expect(out.map.length).toBe(6);
     expect([...out.indices]).toEqual([0, 1, 2, 3, 4, 5]);
-    // (the pair's six old vertices, in order: the first or the second card)
-    const old = out.map[0] / 6;
-    expect([0, 1]).toContain(old);
-    expect([...out.map]).toEqual(Array.from({ length: 6 }, (_, i) => old * 6 + i));
-    const before = centroidOf(positions, old * 6, 6);
-    const after = centroidOf(out.positions, 0, 6);
-    for (let k = 0; k < 3; k++) expect(Math.abs(after[k] - before[k])).toBeLessThan(1e-6);
-    expect(extentOf(out.positions, 0, 6, 0) / extentOf(positions, old * 6, 6, 0)).toBeCloseTo(1.25, 5);
+    for (let g = 0; g < 2; g++) {
+      const old = out.map[g * 3] / 3;
+      expect([...out.map.slice(g * 3, g * 3 + 3)]).toEqual([0, 1, 2].map((i) => old * 3 + i));
+      const before = centroidOf(positions, old * 3, 3);
+      const after = centroidOf(out.positions, g * 3, 3);
+      for (let k = 0; k < 3; k++) expect(Math.abs(after[k] - before[k])).toBeLessThan(1e-6);
+      expect(extentOf(out.positions, g * 3, 3, 0)).toBeCloseTo(1.25, 5);
+    }
+  });
+
+  // two clumps of three triangles, each a fan round its first vertex (a
+  // pine's needle clump, roughly), their triangles interleaved in the index
+  // list as the nature pack's pines have them
+  function clumps() {
+    const fan = (x) => [x, 0, 0, x + 1, 0, 0, x + 1, 1, 0, x, 1, 0, x - 1, 1, 0];
+    const positions = new Float32Array([...fan(0), ...fan(10)]);
+    const a = [[0, 1, 2], [0, 2, 3], [0, 3, 4]];
+    const b = a.map((t) => t.map((i) => i + 5));
+    const indices = new Uint32Array([a[0], b[0], a[1], b[1], a[2], b[2]].flat());
+    return { positions, indices };
+  }
+
+  it('keeps a clump of triangles whole, wherever its triangles stand in the list', () => {
+    const { positions, indices } = clumps();
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const out = thinCards(positions, indices, 0.5, seed);
+      // one clump of two: its five vertices, its three triangles, nothing of the other
+      expect(out.map.length).toBe(5);
+      expect([...out.indices]).toEqual([0, 1, 2, 0, 2, 3, 0, 3, 4]);
+      const old = out.map[0] / 5;
+      expect([0, 1]).toContain(old);
+      expect([...out.map]).toEqual(Array.from({ length: 5 }, (_, i) => old * 5 + i));
+      const before = centroidOf(positions, old * 5, 5);
+      const after = centroidOf(out.positions, 0, 5);
+      for (let k = 0; k < 3; k++) expect(Math.abs(after[k] - before[k])).toBeLessThan(1e-6);
+      expect(extentOf(out.positions, 0, 5, 0) / extentOf(positions, old * 5, 5, 0)).toBeCloseTo(1.25, 5);
+    }
+    // (both kept: the clumps in the order they first stood, each whole)
+    const all = thinCards(positions, indices, 1, 1);
+    expect([...all.map]).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect([...all.indices]).toEqual([0, 1, 2, 0, 2, 3, 0, 3, 4, 5, 6, 7, 5, 7, 8, 5, 8, 9]);
+  });
+
+  it('counts its fraction in clumps, not triangles', () => {
+    // a clump of three triangles (vertices 0 to 4) and three lone ones (5 to
+    // 13): four cards, so half is two (of six triangles, half would be three)
+    const lone = (x) => [x, 0, 0, x + 1, 0, 0, x, 1, 0];
+    const positions = new Float32Array([...clumps().positions.slice(0, 15), ...lone(20), ...lone(30), ...lone(40)]);
+    const indices = new Uint32Array([0, 1, 2, 0, 2, 3, 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    const seen = new Set();
+    for (let seed = 1; seed <= 12; seed++) {
+      const out = thinCards(positions, indices, 0.5, seed);
+      // the clump and a lone one (eight vertices, four triangles), or two lone ones (six, two)
+      const shape = `${out.map.length}/${out.indices.length / 3}`;
+      expect(['8/4', '6/2']).toContain(shape);
+      seen.add(shape);
+    }
+    expect(seen.size).toBe(2);
   });
 
   it('is nothing for nothing', () => {
@@ -191,14 +241,19 @@ describe('a crown’s leaf cards, thinned', () => {
     expect([out.positions.length, out.indices.length, out.map.length]).toEqual([0, 0, 0]);
   });
 
-  it('copies a vertex two cards share, so each grows about its own centre', () => {
-    // two quads meeting at vertex 2
+  it('takes two quads that share a vertex as one card', () => {
+    // two quads meeting at vertex 2: one clump, its seven vertices each once
     const positions = new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 2, 1, 0, 2, 2, 0, 1, 2, 0]);
     const indices = new Uint32Array([0, 1, 2, 0, 2, 3, 2, 4, 5, 2, 5, 6]);
     const out = thinCards(positions, indices, 1, 1);
-    expect(out.map.length).toBe(8);
-    expect([...out.map].filter((v) => v === 2)).toHaveLength(2);
-    expect(new Set(out.indices).size).toBe(8);
+    expect([...out.map]).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect([...out.indices]).toEqual([...indices]);
+    // (half of one card is still that one card, grown as a whole)
+    const half = thinCards(positions, indices, 0.5, 1);
+    expect(half.map.length).toBe(7);
+    const before = centroidOf(positions, 0, 7);
+    const after = centroidOf(half.positions, 0, 7);
+    for (let k = 0; k < 3; k++) expect(Math.abs(after[k] - before[k])).toBeLessThan(1e-6);
   });
 });
 

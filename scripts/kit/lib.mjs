@@ -66,22 +66,41 @@ export function kindOf(name) {
 
 // A crown's far LOD: a seeded `keep` of its leaf cards, each grown about its
 // own centroid by 1 / sqrt(keep) (at most ×1.25) so the thinner crown still
-// covers about what it did. A card is two consecutive triangles: a quad when
-// they share an edge (four vertices, as every broadleaf card in the nature
-// pack is), else whatever pair they make; a last odd triangle is a card on
-// its own. Exactly round(keep × cards) are kept, never fewer than one, in
-// the order they stood. A vertex is copied into each card that uses it, so
-// each grows about its own centre; `map` is each new vertex's old one, to
-// gather the other attributes (normals, UVs, _WIND) by.
+// covers about what it did. A card is a clump: the triangles joined by the
+// vertices they share, wherever they stand in the index list. A broadleaf
+// card in the nature pack is a quad of two; a pine's needle clump is up to
+// twenty-two, its triangles scattered through the list, and is kept or
+// dropped, and grown, whole. Exactly round(keep × cards) are kept, never
+// fewer than one, in the order they first stood, and each card's triangles
+// in their old order; `map` is each new vertex's old one, to gather the
+// other attributes (normals, UVs, _WIND) by.
 export function thinCards(positions, indices, keep, seed) {
   const tris = Math.floor(indices.length / 3);
-  const cards = Math.ceil(tris / 2);
-  const kept = cards && Math.min(cards, Math.max(1, Math.round(keep * cards)));
+  // the clumps: a union-find over the vertices each triangle joins
+  const root = Uint32Array.from({ length: positions.length / 3 }, (_, i) => i);
+  const find = (v) => {
+    while (root[v] !== v) v = root[v] = root[root[v]];
+    return v;
+  };
+  for (let i = 0; i < tris * 3; i += 3) {
+    const a = find(indices[i]);
+    root[find(indices[i + 1])] = a;
+    root[find(indices[i + 2])] = a;
+  }
+  const cardOf = new Map();
+  const cards = [];
+  for (let t = 0; t < tris; t++) {
+    const r = find(indices[t * 3]);
+    if (!cardOf.has(r)) cardOf.set(r, cards.push([]) - 1);
+    cards[cardOf.get(r)].push(t);
+  }
+
+  const kept = cards.length && Math.min(cards.length, Math.max(1, Math.round(keep * cards.length)));
   // which: the first `kept` of a seeded shuffle, put back in order
-  const order = Uint32Array.from({ length: cards }, (_, i) => i);
+  const order = Uint32Array.from(cards, (_, i) => i);
   const rand = mulberry32(seed);
   for (let i = 0; i < kept; i++) {
-    const j = i + Math.floor(rand() * (cards - i));
+    const j = i + Math.floor(rand() * (cards.length - i));
     [order[i], order[j]] = [order[j], order[i]];
   }
   const chosen = order.subarray(0, kept).sort();
@@ -93,13 +112,15 @@ export function thinCards(positions, indices, keep, seed) {
   for (const card of chosen) {
     const first = map.length;
     const local = new Map();
-    for (let i = card * 6; i < Math.min(card * 6 + 6, tris * 3); i++) {
-      const v = indices[i];
-      if (!local.has(v)) {
-        local.set(v, map.length);
-        map.push(v);
+    for (const t of cards[card]) {
+      for (let i = t * 3; i < t * 3 + 3; i++) {
+        const v = indices[i];
+        if (!local.has(v)) {
+          local.set(v, map.length);
+          map.push(v);
+        }
+        out.push(local.get(v));
       }
-      out.push(local.get(v));
     }
     const centre = [0, 0, 0];
     for (let n = first; n < map.length; n++) {
