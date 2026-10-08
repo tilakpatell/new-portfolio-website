@@ -95,7 +95,7 @@ Branch `claude/stack-docs-p1` from `origin/claude/tender-hopper-y738gr` (it carr
 
 **Files:**
 - Create: `scripts/health/glsl-sites.mjs`
-- Modify: `scripts/health.mjs` (`METRICS` gains `'glsl-sites'`), `scripts/health.test.mjs`, `docs/health/budgets.json` (its measured value), `scripts/health/fixtures/tree/src/world/glsl.js`, `scripts/health/fixtures/tree/src/world/glsl.test.js`, `scripts/health/fixtures/tree/src/runtime/exempt.js`
+- Modify: `scripts/health.mjs` (`METRICS` gains `'glsl-sites'`), `scripts/health.test.mjs`, `scripts/health/fixtures/tree/src/world/glsl.js`, `scripts/health/fixtures/tree/src/world/glsl.test.js`, `scripts/health/fixtures/tree/src/runtime/exempt.js`
 
 **Interfaces:**
 - Produces: `glslSites(ctx) → metric`, `id: 'glsl-sites'`, `unit: 'sites'`, `value` the total count of the eight names (`RawShaderMaterial`, `ShaderMaterial`, `onBeforeCompile`, `EffectComposer`, `ShaderPass`, `UnrealBloomPass`, `RenderPass`, `OutputPass`, as whole words) under `src/`, after `uncomment`, tests left out, the exempt list left out; `detail` per file with its count. Exports `NAMES` and `EXEMPT` (the Global Constraints list) so `webgpu-tsl.md` can cite them.
@@ -103,7 +103,7 @@ Branch `claude/stack-docs-p1` from `origin/claude/tender-hopper-y738gr` (it carr
 - [ ] **Step 1: Fixture.** `glsl.js`: `new ShaderMaterial()`, `m.onBeforeCompile = f`, and a comment `// an EffectComposer here would count`; `glsl.test.js`: `new ShaderMaterial()`; `src/runtime/exempt.js`: `new ShaderMaterial()`.
 - [ ] **Step 2: Write the failing test**: `value` 2, `detail` `[{ file: 'src/world/glsl.js', n: 2 }]`.
 - [ ] **Step 3:** FAIL; implement (the regex `\b(RawShaderMaterial|…)\b` over `uncomment(text)`; `RawShaderMaterial` and `ShaderMaterial` both match `RawShaderMaterial` only once: match the alternation, don’t count twice); PASS.
-- [ ] **Step 4:** `node scripts/health.mjs --only glsl-sites` on the repo: expect fewer than the spec’s 711, which counted before exemptions and uncommenting (616 on 2026-10-08). Write that value as the budget. Check `hud-kit`’s test still passes (the fixture tree gained files under `src/runtime/`, which `hud-kit` ignores, and `big-files`, `todo-notes`, `lint-disables` counts are unchanged: the new fixture files have none of what they count).
+- [ ] **Step 4:** `node scripts/health.mjs --only glsl-sites` on the repo: expect fewer than the spec’s 711, which counted before exemptions and uncommenting (616 on 2026-10-08). Leave it unbudgeted: `scripts/health/ratchet.mjs` says a new metric lands measured first and budgeted a merge later, so the open pull requests that add a world’s shaders aren’t turned red by a number they never saw; the steward’s next `--ratchet` budgets it. Check `hud-kit`’s test still passes (the fixture tree gained files under `src/runtime/`, which `hud-kit` ignores, and `big-files`, `todo-notes`, `lint-disables` counts are unchanged: the new fixture files have none of what they count).
 - [ ] **Step 5:** `node scripts/health.mjs --check --skip build` green. Commit: `git commit -m "glsl-sites: the GLSL a WebGPU port removes, counted and ratcheted"`.
 
 ### Task 5: The pages’ own test
