@@ -63,6 +63,8 @@ if (args.shots === true) console.log('note: --shots takes a name (--shots tours-
 const MAX_STOPS = 120;
 const STOP_WAIT = 9000; // for a stop to show (lit, or a card in the middle that isn't waiting)
 const MOVE_WAIT = 3000; // for Next to move it on
+const STEADY = 500; // a stop counts once its card has held still this long (a page change re-renders it in steps)
+const STEADY_CENTRE = 3000; // longer for a card in the middle: a target far down the page is scrolled to first
 const AUDIENCE_WAIT = 6000; // for an audience link to start a tour, once the page is up
 
 const t0 = Date.now();
@@ -103,6 +105,8 @@ const { chromium } = await import('playwright-core');
 const port = await freePort();
 const vite = join(dirname(createRequire(import.meta.url).resolve('vite/package.json')), 'bin/vite.js');
 const server = spawn(process.execPath, [vite, 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
+// the server goes with the script, however it ends
+process.on('exit', () => server.kill());
 let serverDown = null;
 server.on('error', (e) => (serverDown = e.message));
 server.on('exit', (code) => (serverDown ??= `vite preview exited with ${code}`));
@@ -172,24 +176,48 @@ async function until(page, ok, ms) {
   }
 }
 
-// At a stop that lets keys through: ? opens the guide over the tour, Esc
-// closes the guide and leaves the tour where it was. Esc only if something
-// opened, since at a stop that lets only the palette through it ends the tour.
 // a terminal colour code (built, so the pattern holds no control character)
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
 
-const modals = () => document.querySelectorAll('[aria-modal="true"]:not(.tour-card)').length;
+// At a stop that lets keys through: ? opens the guide over the tour (the
+// guide's panel, #guide-panel, which isn't aria-modal; the tour marks itself
+// `data-over` while anything is over it), Esc closes it and leaves the tour
+// where it was. Esc only if something opened, since at a stop that lets only
+// the palette through it would end the tour. A stop that asks for ? (its
+// card says "press ?" or "try ?") must open the guide.
+const over = () => Boolean(document.getElementById('guide-panel')) || document.querySelector('.tour')?.dataset.over !== undefined;
+const clear = () => !document.getElementById('guide-panel') && document.querySelector('.tour')?.dataset.over === undefined;
+// (polled on an interval: the universe's 3D starves the animation frames
+// Playwright's default polling waits on)
+const POLL = { timeout: 1500, polling: 100 };
 async function tryRelease(page, n, s) {
-  const before = await page.evaluate(modals);
   await page.keyboard.press('?');
-  await page.waitForTimeout(600);
-  if ((await page.evaluate(modals)) <= before) return [];
+  const opened = await page.waitForFunction(over, null, POLL).then(() => true, () => false);
+  if (!opened) return /\b(press|try) \?/i.test(s.text) ? [`stop ${n} “${s.title}”: it asks for ? but ? opened nothing`] : [];
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(600);
+  const closed = await page.waitForFunction(clear, null, POLL).then(() => true, () => false);
   const after = await stopNow(page);
   if (after.gone) return [`stop ${n} “${s.title}”: Esc after ? ended the tour, not the guide`];
-  if ((await page.evaluate(modals)) > before) return [`stop ${n} “${s.title}”: Esc didn't close the guide`];
+  if (!closed) return [`stop ${n} “${s.title}”: Esc didn't close the guide`];
   return [];
+}
+
+// the stop once its card is ready and has held the same for STEADY ms: on
+// a page change the card is redrawn in steps (the count first, then the
+// stop), and a key pressed in between would skip a stop
+async function steady(page, ms) {
+  const end = Date.now() + ms;
+  let last = null;
+  let since = 0;
+  for (;;) {
+    const s = await stopNow(page);
+    if (s.gone) return s;
+    if (!last || s.sig !== last.sig || !ready(s)) since = Date.now();
+    last = s;
+    if (ready(s) && Date.now() - since >= (s.lit ? STEADY : STEADY_CENTRE)) return s;
+    if (Date.now() > end) return s;
+    await page.waitForTimeout(100);
+  }
 }
 
 // the page up and settled enough for its tour's targets to be there
@@ -239,8 +267,14 @@ async function walk(name, mode) {
       await page.evaluate(() => window.dispatchEvent(new Event('tp:tour')));
       if (!(await page.waitForSelector('.tour', { timeout: 15000, state: 'attached' }).then(() => true, () => false))) res.failures.push('the tour never opened on tp:tour');
     } else if (!(await page.waitForSelector('.tour', { timeout: AUDIENCE_WAIT, state: 'attached' }).then(() => true, () => false))) {
-      res.skipped = `not available in this build (engine not merged): no tour from /#${spec.route}`;
-      if (strict) res.failures.push(res.skipped);
+      // an engine that knows audiences takes the ?tour= off the address and
+      // keeps its progress as JSON: then no tour is a failure, not a skip
+      const known = await page.evaluate(() => !/[?&]tour=/.test(window.location.hash) || /^\{/.test(window.localStorage.getItem('tp-tour') ?? ''));
+      if (known) res.failures.push(`the engine took /#${spec.route} but no tour showed`);
+      else {
+        res.skipped = `not available in this build (engine not merged): no tour from /#${spec.route}`;
+        if (strict) res.failures.push(res.skipped);
+      }
     }
 
     if (!res.failures.length && !res.skipped) {
@@ -263,7 +297,7 @@ async function walk(name, mode) {
             break;
           }
         }
-        const s = await until(page, (x) => x.gone || ready(x), STOP_WAIT);
+        const s = await steady(page, STOP_WAIT);
         const waited = Date.now() - from;
         if (s.gone) {
           res.failures.push(`stop ${n}: the tour closed`);
@@ -280,9 +314,10 @@ async function walk(name, mode) {
         prev = s;
         if (s.release) res.failures.push(...(await tryRelease(page, n, s)));
         if (s.done) {
-          // (force: Playwright's "stable" check waits on animation frames, which
-          // the universe's software-rendered 3D starves; the card itself is still)
-          await page.click('.tour-card .tour-buttons .btn-primary', { timeout: 5000, force: true });
+          // (the button's own click: Playwright's click waits on animation
+          // frames to scroll and to see it still, and the universe's
+          // software-rendered 3D starves them; the card itself is still)
+          await page.$eval('.tour-card .tour-buttons .btn-primary', (b) => b.click());
           const closed = await page.waitForSelector('.tour', { state: 'detached', timeout: 5000 }).then(() => true, () => false);
           if (!closed) res.failures.push('Done didn’t close the tour');
           await page.waitForTimeout(300);
@@ -340,13 +375,13 @@ for (const mode of modes) {
   }
 }
 await browser.close();
-server.kill();
 
 head('tours');
 for (const r of results) {
   const label = `${r.name} (${r.mode})`;
   if (r.skipped && !strict) {
-    console.log(`\n### ${label}: skipped\n\n${r.skipped}`);
+    console.log(`\n### ${label}: ${r.failures.length ? 'FAIL' : 'skipped'}\n\n${r.skipped}`);
+    for (const f of r.failures) console.log(`- FAIL ${f}`);
     continue;
   }
   console.log(`\n### ${label}: ${r.failures.length ? 'FAIL' : 'PASS'}\n`);
