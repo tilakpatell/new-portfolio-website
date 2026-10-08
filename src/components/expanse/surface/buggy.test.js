@@ -29,3 +29,29 @@ describe('createBuggy', () => {
     b.dispose();
   });
 });
+
+describe('the buggy’s visible half', () => {
+  it('squashes and leans its body on the wheels, and bends its antenna', () => {
+    const b = createBuggy({});
+    b.group.updateMatrixWorld(true);
+    const under = new THREE.Box3().setFromObject(b.body).min.y;
+    expect(under).toBeCloseTo(-0.35, 3);
+    expect(b.antenna.parent).toBe(b.body);
+    b.update(state(0.8), 0, 1 / 60, { squash: 0.2, pitch: -0.05, roll: 0.1, antenna: [0.5, 0] });
+    expect(b.body.scale.y).toBeCloseTo(0.8, 6);
+    expect(b.body.rotation.z).toBeCloseTo(0.05, 6);
+    expect(b.body.rotation.x).toBeCloseTo(0.1, 6);
+    expect(b.antenna.rotation.z).toBeCloseTo(0.6, 6);
+    // the wheels hang on the springs, not on the body
+    expect(b.wheels.every((w) => w.parent === b.group)).toBe(true);
+    b.dispose();
+  });
+
+  it('stands as before without a feel', () => {
+    const b = createBuggy({});
+    b.update(state(0.8), 0, 1 / 60);
+    expect(b.body.scale.toArray()).toEqual([1, 1, 1]);
+    expect(b.body.rotation.x).toBe(0);
+    b.dispose();
+  });
+});

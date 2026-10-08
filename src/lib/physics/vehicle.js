@@ -34,7 +34,8 @@
 //     measure() → state, state: { speed, forwardSpeed, goingForward,
 //     wheels: [{ contact, point: [x, y, z], suspension }], upsideDown,
 //     stuck, flipped }, suspension(i, 'low' | 'mid' | 'high'), unflip(),
-//     moveTo(x, y, z, yaw), remove() }
+//     moveTo(x, y, z, yaw), remove(), spec (the table it drives by, read
+//     live: lib/physics/carTuning.js tunes it) }
 
 export const CAR = {
   chassis: [
@@ -260,6 +261,7 @@ export function addVehicle(physics, spec = CAR, { onHit = null, hitThreshold } =
   return {
     chassis,
     controller,
+    spec,
     state,
     drive,
     measure,

@@ -6,6 +6,10 @@
 // and their props, lib/physics); the car is Bruno Simon's on Rapier
 // (lib/physics/vehicle.js), driven by ./rules.js's respawn and drowning; the
 // floating origin (rt.origin) keeps the numbers small however far it goes.
+// The buggy is drawn in two halves: the chassis where the physics puts it,
+// and its body squashing, leaning and whipping its antenna on top
+// (lib/vehicleFeel.js), fed the chassis's acceleration, its landings and
+// its hits.
 //
 // Keys: W/↑ throttle, S/↓ brake then reverse, A/D ←/→ steer, Shift boost,
 // Space jump (all four springs high for a tap), R back to where it last
@@ -15,13 +19,14 @@
 //   'hud' { speed (km/h), water: { bearing, distance } | null, moment,
 //           seed, kind, cells } (ten times a second at most)
 //   'respawn' {}
-// Dev hook: window.__EXPANSE__ = { vehicle, physics, stream, scene, at() }.
+// Dev hook: window.__EXPANSE__ = { vehicle, physics, stream, scene, feel, at() }.
 
-import { createPhysics } from '../../../lib/physics/world.js';
+import { STEP, createPhysics } from '../../../lib/physics/world.js';
 import { addHeightfield } from '../../../lib/physics/heightfield.js';
 import { addProps } from '../../../lib/physics/props.js';
 import { addCatch } from '../../../lib/physics/catch.js';
-import { addVehicle } from '../../../lib/physics/vehicle.js';
+import { CAR, addVehicle } from '../../../lib/physics/vehicle.js';
+import { createVehicleFeel } from '../../../lib/vehicleFeel.js';
 import { CELL, N, heightAt, makeCell, waterAt } from '../../../lib/land/cell.js';
 import { landSpec } from '../../../lib/land/spec.js';
 import { WORLD_MB } from '../../worlds/worlds.js';
@@ -46,6 +51,11 @@ export const PHYSICS_RADIUS = 1;
 const JUMP = 0.1; // seconds the springs stay high for a jump
 const HUD_EVERY = 0.1;
 const WATER_EVERY = 1; // seconds between looks for the nearest water
+
+// a hit's gain, his law (research note): nothing at the world's threshold, all at FULL
+const HIT_FROM = 15;
+const HIT_FULL = 120;
+const hitGain = (force) => Math.min(1, Math.max(0, (force - HIT_FROM) / (HIT_FULL - HIT_FROM))) ** 2;
 
 const quatYaw = (q) => Math.atan2(2 * (q[3] * q[1] + q[0] * q[2]), 1 - 2 * (q[1] * q[1] + q[2] * q[2]));
 
@@ -75,7 +85,10 @@ export default {
     const physics = await (props.createPhysics ?? createPhysics)({ gravity: spec.gravity, lost: (p) => p[1] < -500 });
     const scene = createScene({ renderer, spec, tier, radius, small: props.small });
     scene.setOrigin(origin);
-    const vehicle = addVehicle(physics);
+    // (its own copy of his table, so tuning this car tunes no other)
+    let hit = 0;
+    const vehicle = addVehicle(physics, structuredClone(CAR), { onHit: (force) => (hit = Math.max(hit, hitGain(force))) });
+    const feel = createVehicleFeel();
     const slab = addCatch(physics);
 
     // the first cell, made here (a twentieth of a second) so the car stands on a hill at once
@@ -209,6 +222,11 @@ export default {
     const quat = [0, 0, 0, 1];
     const wheelTracks = [0, 1, 2, 3].map(() => scene.tracks.track(0.5, 'r'));
     const bodyTrack = scene.tracks.track(1.5, 'g');
+    // the feel's inputs: the chassis's velocity when the physics last stepped, and in the air
+    const lastVel = [0, 0, 0];
+    const accel = { forwardAccel: 0, lateralAccel: 0, airborne: false, landed: 0, hit: 0 };
+    let fallSpeed = 0;
+    let fresh = true;
 
     const offOrigin = rt.origin?.on?.((shift) => {
       origin = [origin[0] + shift[0], origin[1] + shift[1], origin[2] + shift[2]];
@@ -225,6 +243,7 @@ export default {
       physics,
       stream,
       scene,
+      feel,
       // the car's world position, for the floating origin
       anchor() {
         const [x, y, z] = vehicle.chassis.position(pos);
@@ -262,6 +281,8 @@ export default {
           const to = rule.to ?? home;
           const yaw = quatYaw(vehicle.chassis.quaternion(quat));
           vehicle.moveTo(...toLocal(to[0], to[1] + 1, to[2]), yaw);
+          feel.reset();
+          fresh = true;
           rt.events?.emit?.('respawn', {});
         }
         vehicle.chassis.body.setLinearDamping(rule.drag ? 1 : 0.1);
@@ -276,7 +297,7 @@ export default {
           const g = groundAt(wx, wz);
           slab.follow(lx, lz, (g ?? home[1] - 1.5) - origin[1]);
         }
-        physics.step(dt);
+        const substeps = physics.step(dt);
         const v = vehicle.measure();
 
         // the streaming, ahead of the car
@@ -290,14 +311,35 @@ export default {
           });
         physics.sleepOutside([lx, ly, lz], CELL * 1.5);
 
+        // the visible half's inputs: the acceleration over the time simulated,
+        // along the nose (+x) and to the right (+z); a landing's speed down
+        const vel = vehicle.chassis.body.linvel();
+        const grounded = v.wheels.some((w) => w.contact);
+        accel.landed = grounded && accel.airborne ? fallSpeed : 0;
+        accel.airborne = !grounded;
+        if (substeps > 0) {
+          const h = substeps * STEP;
+          const ax = fresh ? 0 : (vel.x - lastVel[0]) / h;
+          const ay = fresh ? 0 : (vel.y - lastVel[1]) / h;
+          const az = fresh ? 0 : (vel.z - lastVel[2]) / h;
+          const [qx, qy, qz, qw] = quat;
+          // the nose and the right, the quaternion's first and third columns
+          accel.forwardAccel = ax * (1 - 2 * (qy * qy + qz * qz)) + ay * 2 * (qx * qy + qw * qz) + az * 2 * (qx * qz - qw * qy);
+          accel.lateralAccel = ax * 2 * (qx * qz + qw * qy) + ay * 2 * (qy * qz - qw * qx) + az * (1 - 2 * (qx * qx + qy * qy));
+          [lastVel[0], lastVel[1], lastVel[2]] = [vel.x, vel.y, vel.z];
+          fresh = false;
+        }
+        fallSpeed = accel.airborne ? Math.max(0, -vel.y) : 0;
+        accel.hit = hit;
+        hit = 0;
+
         // the look: the buggy on the chassis, its tracks, the camera and the rest
         const [cx, cy, cz] = vehicle.chassis.position(pos);
         scene.buggy.group.position.set(cx, cy, cz);
         scene.buggy.group.quaternion.set(quat[0], quat[1], quat[2], quat[3]);
-        scene.buggy.update(v, steer, dt);
+        scene.buggy.update(v, steer, dt, feel.step(accel, dt));
         v.wheels.forEach((w, i) => wheelTracks[i].push(w.point[0], w.point[2], w.contact, clock));
-        bodyTrack.push(cx, cz, v.wheels.some((w) => w.contact), clock);
-        const vel = vehicle.chassis.body.linvel();
+        bodyTrack.push(cx, cz, grounded, clock);
         scene.follow({ x: cx, y: cy, z: cz }, v.speed, dt, { x: cx, z: cz, vx: vel.x, vz: vel.z });
 
         if (clock - waterAtT >= WATER_EVERY) {
@@ -333,7 +375,7 @@ export default {
       },
     };
     home = [spawn.x, spawn.y, spawn.z];
-    if (globalThis.window) globalThis.window.__EXPANSE__ = { vehicle, physics, stream, scene, at: () => world.anchor() };
+    if (globalThis.window) globalThis.window.__EXPANSE__ = { vehicle, physics, stream, scene, feel, at: () => world.anchor() };
     return world;
   },
 };

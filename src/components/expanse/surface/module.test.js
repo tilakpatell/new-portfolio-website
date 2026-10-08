@@ -5,6 +5,7 @@ import { landJob } from './job';
 import { WORLD_MB } from '../../worlds/worlds';
 import { validateModule, validateWorld } from '../../../runtime/module';
 import { createOrigin } from '../../../runtime/origin';
+import { CAR } from '../../../lib/physics/vehicle';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
@@ -113,6 +114,30 @@ describe('the Expanse surface module', () => {
     await run(world, 1);
     world.step(1 / 60, snap({ pressed: ['KeyR'] }), 0);
     expect(rt.emitted.some((e) => e.type === 'respawn')).toBe(true);
+    world.dispose();
+  }, 30000);
+
+  it('draws the buggy in two halves: it squashes landing, leans back pulling away, and whips its antenna', async () => {
+    const rt = fakeRt({ tier: 'low' });
+    const world = await expanse.create(rt, { seed: 7 });
+    const seen = [];
+    const step = world.feel.step;
+    world.feel.step = (input, dt) => {
+      const out = step(input, dt);
+      seen.push({ ...out, antenna: [...out.antenna], landed: input.landed });
+      return out;
+    };
+    // (it spawns a little above the hill and drops onto it)
+    await run(world, 3);
+    expect(Math.max(...seen.map((o) => o.squash))).toBeGreaterThan(0.02);
+    const settled = seen.at(-1);
+    expect(Math.abs(settled.squash)).toBeLessThan(0.02);
+    seen.length = 0;
+    await run(world, 1, snap({ keys: ['KeyW'] }));
+    expect(Math.min(...seen.map((o) => o.pitch))).toBeLessThan(-0.005);
+    expect(Math.max(...seen.map((o) => Math.abs(o.antenna[0])))).toBeGreaterThan(0.05);
+    // the chassis's numbers stay the car's own
+    expect(world.vehicle.spec).not.toBe(CAR);
     world.dispose();
   }, 30000);
 

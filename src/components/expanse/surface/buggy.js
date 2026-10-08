@@ -7,14 +7,22 @@
 // Wheels 0 and 1 are the front (+x), 0 and 2 the right (+z), as the
 // controller's.
 //
-//   createBuggy({ palette: { body, cab, dark } }) → { group, wheels: Mesh[4],
-//     update(vehicleState, steer −1…1, dt), dispose() }
+// Its body (the boxes, never the wheels) hangs under one pivot at its
+// underside, so the car's visible half (lib/vehicleFeel.js, put on by
+// lib/three/vehicleBody.js) squashes it on the wheels and leans it about
+// them; an antenna stands on its back left corner and whips.
+//
+//   createBuggy({ palette: { body, cab, dark } }) → { group, body, antenna,
+//     wheels: Mesh[4], update(vehicleState, steer −1…1, dt, feel?), dispose() }
 
 import * as THREE from 'three';
+import { attachVehicleBody } from '../../../lib/three/vehicleBody.js';
 
 const RADIUS = 0.4;
 const OFFSET = [0.9, 0.75];
 const STEERING = 0.5;
+const BASE = -0.35; // the body's underside, where it meets the wheels
+const ANTENNA = [-0.9, 0.25, -0.6];
 
 export function createBuggy({ palette = {} } = {}) {
   const body = new THREE.MeshLambertMaterial({ color: palette.body ?? 0xd8572a });
@@ -22,20 +30,33 @@ export function createBuggy({ palette = {} } = {}) {
   const dark = new THREE.MeshLambertMaterial({ color: palette.dark ?? 0x2a2a2a });
   const group = new THREE.Group();
   group.name = 'buggy';
+  const pivot = new THREE.Group();
+  pivot.name = 'buggy-body';
+  pivot.position.y = BASE;
+  group.add(pivot);
   const geometries = [];
   const box = (w, h, d, m, x, y, z) => {
     const g = new THREE.BoxGeometry(w, h, d);
     geometries.push(g);
     const mesh = new THREE.Mesh(g, m);
-    mesh.position.set(x, y, z);
+    mesh.position.set(x, y - BASE, z);
     mesh.castShadow = true;
-    group.add(mesh);
+    pivot.add(mesh);
     return mesh;
   };
   // the body on the mass box (2.6 × 0.8 × 1.7), the cab on the top box
   box(2.6, 0.6, 1.7, body, 0, -0.05, 0);
   box(1.0, 0.45, 1.3, cab, -0.1, 0.45, 0);
   box(0.3, 0.25, 1.75, dark, 1.25, -0.2, 0);
+  // the antenna: its base at its origin, so it bends from there (too thin to cast a shadow worth a draw)
+  const rod = new THREE.CylinderGeometry(0.015, 0.02, 0.7, 6);
+  rod.translate(0, 0.35, 0);
+  geometries.push(rod);
+  const antenna = new THREE.Mesh(rod, dark);
+  antenna.name = 'buggy-antenna';
+  antenna.position.set(ANTENNA[0], ANTENNA[1] - BASE, ANTENNA[2]);
+  pivot.add(antenna);
+  const look = attachVehicleBody({ body: pivot, antenna, base: BASE });
   const tyre = new THREE.CylinderGeometry(RADIUS, RADIUS, 0.3, 14);
   tyre.rotateX(Math.PI / 2);
   geometries.push(tyre);
@@ -57,8 +78,11 @@ export function createBuggy({ palette = {} } = {}) {
   let steering = 0;
   return {
     group,
+    body: pivot,
+    antenna,
     wheels,
-    update(v, steer = 0, dt = 1 / 60) {
+    update(v, steer = 0, dt = 1 / 60, feel = null) {
+      if (feel) look.apply(feel);
       steering += (-steer * STEERING - steering) * Math.min(1, dt * 16);
       for (let i = 0; i < 4; i++) {
         const w = wheels[i];
@@ -70,6 +94,7 @@ export function createBuggy({ palette = {} } = {}) {
       }
     },
     dispose() {
+      look.dispose();
       for (const g of geometries) g.dispose();
       body.dispose();
       cab.dispose();
