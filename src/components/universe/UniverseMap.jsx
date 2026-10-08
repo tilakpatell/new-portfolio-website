@@ -231,7 +231,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
           </ul>
           <div ref={tags} className="universe-tags" aria-hidden="true" />
           {on && onMap && (
-            <button type="button" className="universe-navmap-btn" data-ship={ship ? '' : undefined} onClick={onMap} aria-label="Nav map" title="Nav map (M)">
+            <button type="button" className="universe-navmap-btn" data-ship={ship ? '' : undefined} onClick={onMap} aria-label="Nav map" title="Nav map (M)" aria-keyshortcuts="M">
               <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                 <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
                 <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.6" />
@@ -359,7 +359,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               )}
               {onFoot && (
                 <button type="button" className="universe-out" onPointerDown={(e) => (e.preventDefault(), view.current?.out?.())} onContextMenu={(e) => e.preventDefault()}>
-                  Ship
+                  Board
                 </button>
               )}
               {!onFoot && !landable && phoneNear && (
@@ -406,19 +406,21 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {onFoot && footHint && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to walk, <kbd>Q</kbd> <kbd>E</kbd> to step aside, <kbd>Shift</kbd> to run, <kbd>Space</kbd> to jump, <kbd>F</kbd> or a click to fire, drag to look, <kbd>X</kbd> to switch, <kbd>B</kbd> Rick’s gadgets, <kbd>V</kbd> their eyes, <kbd>G</kbd> back in, <kbd>Enter</kbd> into the world
+                    {/* the four that matter on foot; the guide has the rest */}
+                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> walk, <kbd>F</kbd> fire, <kbd>G</kbd> back in, <kbd>Enter</kbd> into the world
                     <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag to walk, Jump, Run, Fire, Switch to play the other one, Ship to get back in, Enter to go into the world<GuideCue touch /></span>
+                  <span className="universe-hint-touch">Drag to walk, Fire to shoot, Board to get back in, Enter to go into the world<GuideCue touch /></span>
                 </p>
               )}
               {!flown && !onFoot && (
                 <p className="universe-hint universe-hint-fly">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>R</kbd> weapons, <kbd>T</kbd> target, <kbd>P</kbd> portal gun, <kbd>V</kbd> cockpit, fly down into a planet’s air to land, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
+                    {/* the five keys that matter in the first minute; the guide has the rest */}
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, arrows steer, <kbd>Space</kbd> boost, <kbd>F</kbd> fire, fly down into a planet’s air to land
                     <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to pull the nose up and down, hold Boost to go fast and Fire to shoot, View for the cockpit, and fly down into a planet’s air to land on it<GuideCue touch /></span>
+                  <span className="universe-hint-touch">Drag to fly, hold Boost to go fast and Fire to shoot, and fly down into a planet’s air to land<GuideCue touch /></span>
                 </p>
               )}
             </>

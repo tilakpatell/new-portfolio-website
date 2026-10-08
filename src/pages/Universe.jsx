@@ -7,6 +7,7 @@ import { parseId } from '../components/universe/layout';
 import { beyondPlan, crashPlan, enterPlan } from '../components/universe/flight';
 import { beyondOf, parseWonder } from '../components/universe/deep';
 import { DRIVE_KEY, destinationById, distanceTo, parseDrive, tourFrom } from '../components/universe/nav';
+import { FLY_PAST } from '../components/universe/words';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { LOADOUT_KEY, droppedParts, equip, fitInto, loadoutOf, readLoadouts } from '../components/universe/outfit';
 import { GARAGE_KEY, HULL_KEY, readHulls } from '../components/universe/shipyard/build';
@@ -487,7 +488,7 @@ export default function Universe({ ask = false }) {
       {touring && !leaving && (
         <div className="universe-tour" role="status">
           <span>
-            Touring, {touring.i + 1} of {touring.n}: next {touring.next}
+            {FLY_PAST.pill(touring.i + 1, touring.n, touring.next)}
           </span>
           <button type="button" onClick={stopTour}>
             Stop <kbd>Esc</kbd>

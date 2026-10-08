@@ -29,15 +29,7 @@ const FILES = [
 // Files whose wording is still being brought onto the glossary, one pull
 // request at a time; each comes off as its pull request lands, and the test
 // below fails if a file here is already clean, so the list only shrinks.
-const PENDING = new Set([
-  // the universe map (and the guide's entry for it)
-  'components/guide/pages.js',
-  'components/universe/UniversePanel.jsx',
-  'components/universe/NavMap.jsx',
-  'components/universe/FlightSettings.jsx',
-  'components/universe/nav.js',
-  'components/universe/scene.js',
-]);
+const PENDING = new Set([]);
 // Files another stream is rewriting: skipped, without the shrink check, so
 // their cleaning up doesn't turn this test red. The tour's copy (streams A
 // and B): briefs.js says “Escape”; steps.js “plain pages”, “colour scheme”.

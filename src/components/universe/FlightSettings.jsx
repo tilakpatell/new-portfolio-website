@@ -63,6 +63,7 @@ export default function FlightSettings({ controls, onChange, open, onOpen }) {
         aria-controls={id}
         aria-label="Flight settings"
         title="Flight settings (O)"
+        aria-keyshortcuts="O"
         onClick={() => onOpen(!open)}
       >
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -133,7 +134,7 @@ export default function FlightSettings({ controls, onChange, open, onOpen }) {
             <span className="universe-setting-hint">{DRAG_HINT[controls.dragUp]}</span>
           </fieldset>
           <button type="button" className="universe-settings-reset" onClick={() => onChange({ ...DEFAULTS })}>
-            Back to how it came
+            Reset all
           </button>
         </section>
       )}
