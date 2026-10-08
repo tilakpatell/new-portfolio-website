@@ -2177,9 +2177,10 @@ export async function create(canvas, ctx) {
       },
       hurt: (n, from) => hurt(n, from),
       mate: (n, from) => mateHit(n, from),
+      // (theirs into a friend of yours; a battle counts its own)
       other(e) {
         const t = e.body.ref;
-        if (t && !t.down) on(t).hit(t, e.bolt.damage);
+        if (t && !t.down && !assaultOn()) on(t).hit(t, e.bolt.damage);
       },
       deflect(e) {
         fx.sparks(new V(...e.at), UP, '#ffffff', 10);
