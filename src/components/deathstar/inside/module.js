@@ -7,10 +7,15 @@
 // loaded only when a world is made, so Node can read this file) on the
 // frame’s renderer, through bloom on a high tier; keeps the save
 // (rules/save.js) through the runtime’s saves; and tells the page what
-// to show through rt.events: 'ui' (mode, the game’s choices, objective,
-// prompt, talk, map, settings, saved stories), 'hud' (hp, heat, gun,
-// alert, section, room, where you are) and 'achievement'. Inside.jsx’s
-// header has the events’ full shapes.
+// to show through rt.events: 'ui' (mode, the game’s choices, the story’s
+// objective, prompt, talk, map, settings, saved stories), 'hud' (health,
+// heat, gun, blade, the section’s security, the doubt on a disguise, where
+// you are), 'say' (a line said), 'hurt' and 'hit' (a hit taken, from which
+// way, and one landed), 'story' (a story finished) and 'achievement'. It
+// hands the scene every event the game makes (its flashes and clashes),
+// and plays them through the station’s sounds (scene/sounds.js, made once
+// there is an audio context and while sound is on). Inside.jsx’s header
+// has the events’ full shapes.
 //
 //   KEYS                     the world’s controls, by action, as KeyboardEvent codes (the page sends
 //                            the mouse’s buttons as press('fire' | 'aim', down))
@@ -25,9 +30,11 @@
 //     do calls one of the page’s calls by name, or presses an action (use, helmet…) for a step;
 //     info() → { calls, triangles, room, mode } of the last frame drawn
 
-import { STEP, drain, newGame, promptOf, step, teleport, ticksFor } from './rules/game';
+import { STEP, alertOf, drain, newGame, objectiveOf, promptOf, step, teleport, ticksFor } from './rules/game';
 import { SAVE, SAVE_VERSION, blank, clean } from './rules/save';
 import { STATIONS } from './rules/stations';
+import { WHO } from './rules/talk';
+import { heardOf } from './scene/hear';
 
 export const KEYS = {
   forward: ['KeyW', 'ArrowUp'],
@@ -67,15 +74,12 @@ const BLOOM = { strength: 0.6, radius: 0.4, threshold: 2.2 };
 // presses the game takes for the one step after them: kept until a step comes, so a
 // press in a frame too short for a step still counts
 const PRESSES = ['use', 'helmet', 'roar', 'reload', 'jump'];
-// what to do in a story, until the story chains say it step by step
-const AIMS = {
-  ds1: {
-    rebel: 'Get out of the freighter’s hold and up to Docking Control 327.',
-    imperial: 'Report to the lift lobby past the bay’s blast door, then take the lift down to Level 5.',
-  },
-};
+const STRIDE = 0.75; // metres between footfalls heard
+// who a conversation is with, by the talk’s speaker, for the talk box
+const speaker = (who) => (who === 'keypad' ? 'The hatch’s keypad' : (WHO[who] ?? who ?? null));
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const round = (v, k = 100) => Math.round(v * k) / k;
 const freshSeed = () => Math.floor(Math.random() * 2 ** 31);
 
@@ -261,9 +265,9 @@ export default {
         side: chosen?.side ?? null,
         hero: chosen?.hero ?? null,
         play: chosen?.play ?? null,
-        objective: play && g.mode === 'story' ? (AIMS[g.station]?.[g.side] ?? null) : null,
+        objective: play ? objectiveOf(g) : null,
         prompt: mode === 'play' && !mapOpen ? promptOf(g) : null,
-        talk: null,
+        talk: mode === 'play' && g.talk ? { who: speaker(g.talk.who), line: g.talk.say ?? null, choices: [...(g.talk.choices ?? [])] } : null,
         map: { open: mode === 'play' && mapOpen, seen: play ? [...g.seen] : [...save[g.station].seen] },
         settings: { ...save.settings },
         saved: Object.fromEntries(Object.keys(STATIONS).map((id) => [id, { rebel: Boolean(save[id]?.story.rebel), imperial: Boolean(save[id]?.story.imperial) }])),
@@ -277,14 +281,20 @@ export default {
       if (hudAt < HUD_EVERY) return;
       hudAt = 0;
       const you = g.you;
+      const room = g.layout.rooms.get(you.room);
       const hud = {
         hp: Math.round(you.hp),
-        heat: round(you.heat),
-        venting: false,
+        hpMax: you.max ?? 100,
+        heat: round(you.heat ?? 0),
+        venting: Boolean(you.venting),
         gun: you.gun,
-        alert: 'calm',
-        section: g.layout.rooms.get(you.room)?.section ?? null,
+        blade: you.blade ?? null,
+        alert: alertOf(g)?.level ?? 'calm',
+        // how far the garrison doubts a Rebel in armour, 0…1; null when there is no disguise to doubt
+        doubt: g.side === 'rebel' && you.armour ? round(g.doubt ?? 0) : null,
+        section: room?.section ?? null,
         room: you.room,
+        roomName: room?.name ?? null,
         at: { x: round(you.x), z: round(you.z), yaw: round(you.yaw) },
         aim: aiming,
       };
@@ -293,6 +303,67 @@ export default {
         lastHud = h;
         tell('hud', hud);
       }
+    }
+
+    // ── what the game says, told on ──
+
+    // a line said, an achievement earned, a hit taken (as a turn from where you face, for the HUD’s
+    // mark), a hit landed (for the reticle’s); and every event heard
+    function news(e) {
+      if (e.type === 'say') tell('say', { who: e.name ?? speaker(e.who), text: e.text });
+      else if (e.type === 'achievement') tell('achievement', { id: e.id });
+      else if (e.type === 'hurt') {
+        const you = g.you;
+        const angle = e.from ? wrap(Math.atan2(e.from.x - you.x, -(e.from.z - you.z)) - look.yaw) : null;
+        tell('hurt', { amount: e.amount, angle });
+      } else if (e.type === 'hit' && (e.by === 'you' || e.by === 'blade')) tell('hit', { target: e.target });
+      else if (e.type === 'storyEnd') tell('story', { id: e.id, done: true });
+      if (sounds) for (const [name, ...args] of heardOf(e, g)) sounds[name]?.(...args);
+    }
+
+    // ── the sounds: made the first time there is an audio context to make them on, while sound is on ──
+
+    let sounds = null;
+    let soundsComing = null;
+    let blade = null;
+    let walked = 0;
+    const stood = { x: null, z: null }; // where you were at the last frame’s listen
+    function getSounds() {
+      if (sounds || soundsComing || gone || !save.settings.sound) return sounds;
+      const ctx = rt.audio?.context?.();
+      const bus = rt.audio?.bus?.();
+      if (!ctx || !bus) return null;
+      soundsComing = import('./scene/sounds.js').then((m) => {
+        soundsComing = null;
+        if (gone || !save.settings.sound) return;
+        sounds = Object.assign(m.createSounds(bus, ctx), { surfaceOf: m.surfaceOf });
+        sounds.hum(g.layout.rooms.get(g.you.room)?.kind ?? 'corridor');
+        sounds.music('calm');
+        blade = null;
+      });
+      return null;
+    }
+    function silence() {
+      sounds?.dispose();
+      sounds = null;
+    }
+    function listen() {
+      if (!getSounds()) return;
+      const you = g.you;
+      if ((you.blade ?? null) !== blade) {
+        blade = you.blade ?? null;
+        sounds.saber(Boolean(blade), blade === 'red' ? 'sith' : 'jedi');
+      }
+      // (a stride is measured between frames: a ride or a teleport is no walk)
+      const moved = Math.hypot(you.x - (stood.x ?? you.x), you.z - (stood.z ?? you.z));
+      stood.x = you.x;
+      stood.z = you.z;
+      if (moved < 3) walked += moved;
+      if (walked >= STRIDE && you.ground !== false) {
+        walked = 0;
+        sounds.step(sounds.surfaceOf(g.layout.rooms.get(you.room)?.kind));
+      }
+      sounds.update({ x: you.x, y: you.y + 1.6, z: you.z, yaw: look.yaw });
     }
 
     sceneFor(g.station);
@@ -337,9 +408,15 @@ export default {
             choice = null;
             for (let i = 0; i < ticks; i++) step(g, i === 0 ? input : { ...input, use: false, helmet: false, roar: false, reload: false });
           }
+          const events = drain(g);
+          view.hear?.(events);
           let grew = false;
-          for (const e of drain(g)) if (e.type === 'room') grew = true;
+          for (const e of events) {
+            if (e.type === 'room') grew = true;
+            news(e);
+          }
           if (grew && g.seen.size !== save[g.station].seen.length) keep();
+          listen();
         } else acc = 0;
         bind(mode === 'play' ? KEYS : MENU_KEYS);
         report(dt);
@@ -389,6 +466,7 @@ export default {
       set(s = {}) {
         if (s.view !== undefined) setView(s.view);
         if (typeof s.sound === 'boolean') save.settings.sound = s.sound;
+        if (s.sound === false) silence();
         if (typeof s.subtitles === 'boolean') save.settings.subtitles = s.subtitles;
         persist();
       },
@@ -423,6 +501,7 @@ export default {
         if (gone) return;
         gone = true;
         keep();
+        silence();
         rt.input.unbind();
         post?.dispose();
         view.dispose();

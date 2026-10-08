@@ -501,6 +501,7 @@ export const PAGES = {
           ['X / Enter', 'Read a sign, play the Game Boy or the N64, go down a pipe'],
           ['Q E', 'Turn the camera'],
           ['Drag', 'Turn the island'],
+          ['+ − / wheel', 'Zoom'],
           ['M', 'The cartridges, with hints'],
         ],
       },
@@ -509,7 +510,7 @@ export const PAGES = {
     tips: [
       ['The cartridges', 'Eight of them, each one a project of mine, hidden round the island.'],
       ['Mind', 'Jump on the walkers; walking into one hurts. A plant won’t come up while you stand on its pipe. Three hearts, and a “?” block gives one back.'],
-      ['The screen', 'The chip at the top switches between the DMG’s greens, the Pocket’s greys and the Light’s teal.'],
+      ['The screen', 'Screen, in the Menu, switches between the DMG’s greens, the Pocket’s greys and the Light’s teal.'],
     ],
   },
   '/dot-matrix/64': {

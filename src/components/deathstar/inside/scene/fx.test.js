@@ -115,6 +115,23 @@ describe('the effects', () => {
     expect(where().z).toBeCloseTo(first.z - 55 / 30, 3);
   });
 
+  it('carries a bolt on as smoothly far out in the station, where a float can’t hold its position exactly', () => {
+    const fx = createFx(new THREE.Scene());
+    const cores = fx.meshes.find((m) => m.name === 'bolt-cores');
+    const where = () => new THREE.Vector3().setFromMatrixPosition(cores.getMatrixAt(0, new THREE.Matrix4()));
+    const b = bolt({ x: -48.123, y: 1.4, z: -101.77 });
+    fx.bolt(b);
+    fx.update(1 / 60);
+    const first = where();
+    fx.bolt(b);
+    fx.update(1 / 60);
+    expect(first.z - where().z).toBeCloseTo(55 / 60, 3);
+    b.z -= 55 / 30;
+    fx.bolt(b);
+    fx.update(1 / 60);
+    expect(where().z).toBeCloseTo(first.z - 55 / 30, 3);
+  });
+
   it('draws a bolt as a capsule about 0.9 m long, its head where the rules have it', () => {
     const fx = createFx(new THREE.Scene());
     const cores = fx.meshes.find((m) => m.name === 'bolt-cores');

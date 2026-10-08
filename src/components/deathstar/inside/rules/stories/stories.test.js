@@ -152,24 +152,63 @@ const IMPERIAL = [
   done('escape'),
 ];
 
-const SCRIPTS = { 'ds1-rebel': REBEL, 'ds1-imperial': IMPERIAL };
+// Luke’s way up the tower and down again, the duel won the long way: every
+// line of the Emperor’s heard out before the saber is taken.
+const REBEL2 = [
+  done('arrive2'),
+  at('holding', 'holding-lift', ['vader', 'royalguard', 'guards']),
+  talk('vader-lift', 'I know, Father', 'I know there is good'),
+  done('tower'),
+  talk('throne', 'I came for my father', 'Your overconfidence', 'My friends', '(Look out', '(Take the saber'),
+  killed('duel-vader', 'vader'),
+  at('throne', 'under-stairs'),
+  ...wait(10), // under the stairs while he hunts
+  killed('fury-vader', 'vader'),
+  talk('strike-down', '(Strike him down', '(Look at his', '(Throw'),
+  ...wait(10), // the lightning, guard up
+  done('throw'),
+  at('dock', 'shuttle-ramp', ['vader']),
+  done('mask'),
+  talk('unmasking', 'But you’ll die', '(Lift', 'I’ve got to save'),
+  at('dock', 'escape-shuttle'),
+  done('escape2'),
+];
+
+const IMPERIAL2 = [
+  talk('st321', 'ST 321, who', '(Check', '(Lower'),
+  done('arrive2'),
+  talk('jerjerrod-vader'),
+  at('hangar272', 'ranks272'),
+  { type: 'still', seconds: 40 },
+  at('command', 'firing-switch'),
+  ...wait(8),
+  used('firing-switch'),
+  done('cruiser'),
+  at('dock'),
+  done('escape2'),
+];
+
+const SCRIPTS = { 'ds1-rebel': REBEL, 'ds1-imperial': IMPERIAL, 'ds2-rebel': REBEL2, 'ds2-imperial': IMPERIAL2 };
 
 // ── the tests ──
 
 describe('the stories', () => {
-  it('are both of the first station’s, each found by its station and side', () => {
-    expect(Object.keys(STORIES).sort()).toEqual(['ds1-imperial', 'ds1-rebel']);
-    expect(storyFor('ds1', 'rebel')).toBe(STORIES['ds1-rebel']);
-    expect(storyFor('ds1', 'imperial')).toBe(STORIES['ds1-imperial']);
+  it('are one for each station and side, each found by its station and side', () => {
+    expect(Object.keys(STORIES).sort()).toEqual(['ds1-imperial', 'ds1-rebel', 'ds2-imperial', 'ds2-rebel']);
+    for (const story of all) expect(storyFor(story.station, story.side)).toBe(story);
     expect(storyFor('ds9', 'rebel')).toBeNull();
     expect(STORIES['ds1-rebel']).toMatchObject({ station: 'ds1', side: 'rebel', hero: 'luke', title: 'That’s no moon' });
     expect(STORIES['ds1-imperial']).toMatchObject({ station: 'ds1', side: 'imperial', hero: 'stormtrooper', title: 'Intruder alert' });
+    expect(STORIES['ds2-rebel']).toMatchObject({ station: 'ds2', side: 'rebel', hero: 'luke', title: 'The Emperor’s Tower' });
+    expect(STORIES['ds2-imperial']).toMatchObject({ station: 'ds2', side: 'imperial', hero: 'dstrooper', title: 'Fully armed and operational' });
   });
 
   it('tell their beats in order, each one a checkpoint', () => {
     const beats = (id) => [...new Set(STORIES[id].steps.map((s) => s.checkpoint.step))];
     expect(beats('ds1-rebel')).toEqual(['scan', 'ambush', 'control', 'scomp', 'tractor', 'transfer', 'intercom', 'cell', 'cellbay', 'compactor', 'maint', 'chasm', 'bay']);
     expect(beats('ds1-imperial')).toEqual(['muster', 'scan', 'tk421', 'aa23', 'sweep', 'beacon']);
+    expect(beats('ds2-rebel')).toEqual(['escort', 'lift', 'throne', 'duel', 'lightning', 'carry', 'mask', 'escape']);
+    expect(beats('ds2-imperial')).toEqual(['clearance', 'ranks', 'fire', 'breach']);
   });
 
   for (const story of all) {
@@ -240,8 +279,9 @@ describe('what the steps name', () => {
           const known = spawned.has(thing) || thing in st.spots || `${thing}-1` in st.spots || jumps.has(thing) || given.has(thing);
           expect(known, `${where}: ${thing}`).toBe(true);
         }
-        // someone walked must keep up with you, to be with you as you arrive
-        if (step.type === 'escort') expect(step.checkpoint.companions.includes(step.need) || followers.has(step.need), `${where}: ${step.need}`).toBe(true);
+        // someone walked must keep up with you, to be with you as you arrive (one carried is a companion the step takes up)
+        const takenUp = step.start.some((e) => e.companion === step.need && e.follow);
+        if (step.type === 'escort') expect(step.checkpoint.companions.includes(step.need) || followers.has(step.need) || takenUp, `${where}: ${step.need}`).toBe(true);
         for (const e of [...step.start, ...step.end]) if (e.despawn) expect(spawned.has(e.despawn), `${where}: ${e.despawn}`).toBe(true);
         for (const e of step.end) {
           if (e.spawn) spawned.add(e.spawn.tag);
@@ -316,7 +356,16 @@ describe('the effects', () => {
     const given = (story) => story.steps.flatMap((s) => effectsOf(s).filter((e) => e.achievement).map((e) => [s.id, e.achievement]));
     expect(given(STORIES['ds1-rebel'])).toEqual([['bay-escape', 'ds-ds1-rebel']]);
     expect(given(STORIES['ds1-imperial'])).toEqual([['beacon-escape', 'ds-ds1-imperial']]);
+    expect(given(STORIES['ds2-rebel'])).toEqual([['escape-flight', 'ds-ds2-rebel']]);
+    expect(given(STORIES['ds2-imperial'])).toEqual([['breach-escape', 'ds-ds2-imperial']]);
     for (const story of all) expect(story.steps.at(-1).end.at(-1), story.id).toEqual({ end: true });
+  });
+
+  it('mark a line for the eggs only when an egg listens for it', () => {
+    eachEffect((e, story, where) => {
+      const line = e.intercom?.line ?? e.say?.line;
+      if (line != null) expect(eggsOn(new Set(), { type: 'heard', line }), where).toHaveLength(1);
+    });
   });
 
   it('end a story only after its last step', () => {
@@ -530,6 +579,172 @@ describe('the compactor’s hatch', () => {
     const dial = dialled('3263827');
     expect(storyStep(progress, story, dial).progress.step).toBe('maint');
     expect(eggsOn(new Set(), dial)).toEqual(['3263827']);
+  });
+});
+
+// ── the second station ──
+
+const LUKE = { station: 'ds2', side: 'rebel', story: 'ds2-rebel', hero: 'luke', armour: false, helmet: false, flags: new Set() };
+// where a script stands just before its first event that `match` picks
+const before = (script, match) => script.slice(0, script.findIndex(match));
+// the events from a run of them, with the effects they brought
+function run(story, progress, events) {
+  let p = progress;
+  const effects = [];
+  for (const e of events) {
+    const r = storyStep(p, story, e);
+    p = r.progress;
+    effects.push(...r.effects);
+  }
+  return { progress: p, effects };
+}
+
+describe('the throne room', () => {
+  const story = STORIES['ds2-rebel'];
+  const atThrone = () => playThrough(story, REBEL2.slice(0, REBEL2.findIndex((e) => e?.id === 'tower') + 1)).progress;
+  const ctx = { ...LUKE, disguise: false, tk: null };
+
+  it('lets you reach for the saber on the armrest at every line until the Emperor offers it himself', () => {
+    const { nodes } = TALKS.throne;
+    const early = Object.keys(nodes).filter((k) => nodes[k].choices?.some((c) => c.to === 'armrest'));
+    expect(early).toEqual(['welcome', 'father', 'faith', 'trap']);
+    expect(nodes.weapon.choices.map((c) => c.to)).not.toContain('armrest');
+  });
+
+  it('starts the duel at once on pulling it early, and the pull is what finds the armrest egg', () => {
+    const progress = atThrone();
+    expect(progress.step).toBe('throne');
+    const open = openTalk('throne', ctx);
+    const pulled = choose(open, open.choices.findIndex((c) => c.startsWith('(Pull')), ctx);
+    expect(pulled.effects).toContainEqual({ does: 'pull-saber' });
+    const closed = choose(pulled.talk, 0, ctx).effects.map((fx) => fx.event);
+    const { progress: after, effects } = run(story, progress, [...pulled.effects.map((fx) => fx.event).filter(Boolean), ...closed]);
+    expect(after.step).toBe('duel');
+    expect(effects).toContainEqual({ give: 'saber' });
+    expect(eggsOn(new Set(), { type: 'pulled', tag: 'armrest-saber' })).toEqual(['armrest']);
+  });
+});
+
+describe('the duel', () => {
+  const story = STORIES['ds2-rebel'];
+  const hiding = REBEL2.findIndex((e) => e?.type === 'tick');
+
+  it('sends you back to its first blow if Vader finds you under the stairs, with him spawned afresh', () => {
+    const { progress } = playThrough(story, REBEL2.slice(0, hiding + 150));
+    expect(progress).toMatchObject({ step: 'duel-wait', down: { 'duel-vader': 1 } });
+    const { progress: after, effects } = storyStep(progress, story, { type: 'caught' });
+    expect(after.step).toBe('duel');
+    // the count of him put down goes with him, so the fight is won only by downing the Vader it brings
+    expect(after.down).toEqual({});
+    expect(effects[0]).toMatchObject({ say: { who: 'vader' } });
+    expect(effects).toContainEqual({ despawn: 'duel-vader' });
+    expect(effects).toContainEqual({ checkpoint: expect.objectContaining({ step: 'duel', spot: 'under-stairs', gun: null }) });
+    expect(effects.filter((e) => e.spawn?.tag === 'duel-vader')).toHaveLength(1);
+    expect(effects).toContainEqual({ give: 'saber' });
+  });
+
+  it('turns on “Sister…” once 10 s hidden are over, and no sooner, and goes on against him out on the catwalk', () => {
+    expect(playThrough(story, REBEL2.slice(0, hiding + 299)).progress.step).toBe('duel-wait');
+    const { progress, effects } = playThrough(story, REBEL2.slice(0, hiding + 300));
+    expect(progress.step).toBe('duel-fury');
+    expect(effects.filter((e) => e.say?.who === 'vader').map((e) => e.say.text)).toContain('Sister…');
+    expect(effects.at(-1)).toEqual({ spawn: expect.objectContaining({ kind: 'vader', spot: 'shaft-edge', tag: 'fury-vader', hostile: true }) });
+  });
+
+  for (const picks of [['(Strike him down', '(Look at his', '(Throw'], ['(Throw']]) {
+    it(`ends with the saber thrown away however you choose (${picks[0].slice(1)}…)`, () => {
+      const { progress } = playThrough(story, REBEL2.slice(0, REBEL2.findIndex((e) => e?.tag === 'fury-vader') + 1));
+      expect(progress.step).toBe('duel-choice');
+      const { progress: after, effects } = run(story, progress, talk('strike-down', ...picks)(LUKE));
+      expect(after.step).toBe('lightning');
+      expect(effects).toContainEqual({ take: 'saber' });
+    });
+  }
+});
+
+describe('the lightning', () => {
+  const story = STORIES['ds2-rebel'];
+  const thrown = REBEL2.findIndex((e) => e?.id === 'throw');
+
+  it('lasts until Vader throws the Emperor down the shaft, and dying under it starts it again', () => {
+    const { progress } = playThrough(story, REBEL2.slice(0, thrown - 30 * 10));
+    expect(progress.step).toBe('lightning');
+    expect(run(story, progress, wait(9.9)).progress.step).toBe('lightning');
+    const { progress: after, effects } = storyStep(progress, story, { type: 'died' });
+    expect(after.step).toBe('lightning');
+    expect(effects).toContainEqual({ despawn: 'emperor' });
+    expect(effects).toContainEqual({ spawn: expect.objectContaining({ kind: 'emperor', tag: 'emperor', hostile: true }) });
+    expect(playThrough(story, REBEL2.slice(0, thrown)).progress.step).toBe('lightning-throw');
+  });
+});
+
+describe('carrying Vader', () => {
+  const story = STORIES['ds2-rebel'];
+  const carrying = () => playThrough(story, before(REBEL2, (e) => e?.spot === 'shuttle-ramp')).progress;
+
+  it('counts the shuttle’s ramp only with him on your shoulders', () => {
+    const progress = carrying();
+    expect(progress.step).toBe('carry');
+    expect(storyStep(progress, story, at('dock', 'shuttle-ramp', [])).progress.step).toBe('carry');
+    expect(storyStep(progress, story, at('dock', 'shuttle-ramp', ['vader'])).progress.step).toBe('mask');
+  });
+
+  it('allows 119 s and takes you back to the throne room with him at 120 s', () => {
+    const progress = carrying();
+    expect(playThroughFrom(story, progress, wait(119))).toEqual({ step: 'carry', failed: false });
+    expect(playThroughFrom(story, progress, wait(120))).toEqual({ step: 'carry', failed: true });
+    const { progress: after, effects } = run(story, progress, wait(120));
+    expect(after).toMatchObject({ step: 'carry', t: 0 });
+    expect(effects).toContainEqual({ checkpoint: { step: 'carry', spot: 'under-stairs', hero: 'luke', armour: false, helmet: false, companions: [], flags: [], gun: null } });
+    expect(effects).toContainEqual({ companion: 'vader', follow: true });
+    expect(effects).toContainEqual({ flag: 'carrying' });
+  });
+
+  it('sets him down at the ramp before the mask comes off, a save there finding him still carried', () => {
+    const mask = story.steps.find((s) => s.id === 'mask');
+    expect(mask.checkpoint).toMatchObject({ spot: 'shuttle-ramp', companions: ['vader'], flags: ['carrying', 'breach'] });
+    expect(mask.start).toEqual(expect.arrayContaining([{ unflag: 'carrying' }, { companion: 'vader', follow: false }]));
+  });
+});
+
+describe('the Emperor’s arrival', () => {
+  const story = STORIES['ds2-imperial'];
+  const inRanks = () => playThrough(story, IMPERIAL2.slice(0, IMPERIAL2.findIndex((e) => e?.spot === 'ranks272') + 1)).progress;
+
+  it('is stood through in the ranks for 40 s, and no less', () => {
+    const progress = inRanks();
+    expect(progress.step).toBe('ranks');
+    expect(storyStep(progress, story, { type: 'still', seconds: 39 }).progress.step).toBe('ranks');
+    expect(storyStep(progress, story, { type: 'still', seconds: 40 }).progress.step).toBe('fire');
+  });
+
+  it('starts the stand again, in your place, with a reprimand, if you move', () => {
+    const { progress, effects } = storyStep(inRanks(), story, { type: 'caught' });
+    expect(progress.step).toBe('ranks');
+    expect(effects[0]).toMatchObject({ say: { who: 'officer' } });
+    expect(effects).toContainEqual({ checkpoint: expect.objectContaining({ step: 'ranks', spot: 'ranks272', hero: 'dstrooper' }) });
+    expect(effects).toContainEqual({ scene: 'emperor' });
+  });
+});
+
+describe('firing at will', () => {
+  const story = STORIES['ds2-imperial'];
+
+  it('waits for the order, with “It’s a trap!” in the chatter for the egg', () => {
+    const chatter = effectsOf(story.steps.find((s) => s.id === 'fire-wait')).find((e) => e.intercom?.line);
+    expect(chatter.intercom).toMatchObject({ section: 'command', line: 'trap' });
+    expect(chatter.intercom.text).toContain('It’s a trap!');
+    expect(eggsOn(new Set(), { type: 'heard', line: 'trap' })).toEqual(['trap']);
+    const { progress } = playThrough(story, IMPERIAL2.slice(0, IMPERIAL2.findIndex((e) => e?.spot === 'firing-switch') + 1));
+    expect(progress.step).toBe('fire-wait');
+    expect(storyStep(progress, story, used('firing-switch')).progress.step).toBe('fire-wait');
+  });
+
+  it('gives 150 s from the firing station to the dock once the reactor is breached', () => {
+    const { progress } = playThrough(story, before(IMPERIAL2, (e) => e?.room === 'dock'));
+    expect(progress.step).toBe('breach');
+    expect(playThroughFrom(story, progress, wait(149))).toEqual({ step: 'breach', failed: false });
+    expect(playThroughFrom(story, progress, wait(150))).toEqual({ step: 'breach', failed: true });
   });
 });
 

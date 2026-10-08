@@ -25,10 +25,11 @@ function paths(talk, c, so = []) {
 const tree = (nodes, more = {}) => ({ start: 'a', nodes, ...more });
 
 describe('the conversations', () => {
-  it('are the eleven the stories need, and every one validates', () => {
-    expect(Object.keys(TALKS).sort()).toEqual(
-      ['aa23-officer', 'conference', 'ctl-officer', 'droids-trick', 'han-intercom', 'jerjerrod', 'leia-2187', 'librarian', 'technician', 'threepio-comlink', 'trooper-bark'].sort(),
-    );
+  it('are the seventeen the stations and stories need, and every one validates', () => {
+    const ds1 = ['aa23-officer', 'conference', 'ctl-officer', 'droids-trick', 'han-intercom', 'leia-2187', 'librarian', 'technician', 'threepio-comlink', 'trooper-bark'];
+    const ds2 = ['jerjerrod', 'jerjerrod-vader', 'st321', 'strike-down', 'throne', 'unmasking', 'vader-lift'];
+    expect(Object.keys(TALKS).sort()).toEqual([...ds1, ...ds2].sort());
+    for (const id of ds2) expect(TALKS[id].station, id).toBe('ds2');
     for (const [id, t] of Object.entries(TALKS)) expect([id, validateTalk(t)]).toEqual([id, []]);
   });
 

@@ -45,6 +45,14 @@ function walkable(layout, roomId, from, to) {
   return false;
 }
 
+describe('a round room', () => {
+  it('has the square round its circle for its box, its diameter both ways', () => {
+    const layout = buildLayout(DS1);
+    const room = layout.rooms.get('meditation');
+    expect(room.box).toEqual({ x0: room.x - room.w / 2, x1: room.x + room.w / 2, z0: room.z - room.w / 2, z1: room.z + room.w / 2 });
+  });
+});
+
 describe('the room kinds', () => {
   it('include the Falcon’s hold as a ship and the open side of a bay as a field', () => {
     expect(ROOM_KINDS).toEqual(expect.arrayContaining(['hangar', 'control', 'corridor', 'lift', 'lobby', 'ship', 'field']));

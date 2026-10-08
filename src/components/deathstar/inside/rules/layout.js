@@ -79,7 +79,11 @@ const SEGMENTS = 24; // a round room’s wall
 const SLACK = 0.01; // rooms that touch don’t overlap
 const TINY = 1e-6;
 
-const boxOf = (r) => ({ x0: r.x - r.w / 2, x1: r.x + r.w / 2, z0: r.z - r.d / 2, z1: r.z + r.d / 2 });
+// (a round room gives only its diameter, w: its box is the square round its circle)
+const boxOf = (r) => {
+  const d = r.round ? r.w : r.d;
+  return { x0: r.x - r.w / 2, x1: r.x + r.w / 2, z0: r.z - d / 2, z1: r.z + d / 2 };
+};
 
 function floorsOf(r) {
   if (!r.floors) return [{ ...boxOf(r), y: r.y, ...(r.round ? { circle: { x: r.x, z: r.z, r: r.w / 2 } } : {}) }];

@@ -733,8 +733,11 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
    so it reads on any world's colours (src/runtime/hud). Also the kit's
    prompt key and a .hud-cap where a world uses the kit's parts without its
    frame (Cybertron), so a world sets the colour and never draws a cap of its
-   own. Weighs (0,0,1), like the kit's own rules, so a world's class still wins. */
-:where(.hud kbd, kbd.hud-prompt-key, kbd.hud-cap):not(hud-none) { display: inline-block; min-width: 1.4em; padding: 0.05rem 0.35rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.7rem/1.4 var(--font-mono); text-align: center; }
+   own. Weighs (0,0,1), like the kit's own rules, so a world's class still
+   wins. A world skins it through variables, never a cap rule of its own:
+   --hud-key-face, --hud-key-weight, --hud-key-border, --hud-key-radius (its
+   ink is the colour it sits in). */
+:where(.hud kbd, kbd.hud-prompt-key, kbd.hud-cap):not(hud-none) { display: inline-block; min-width: 1.4em; padding: 0.05rem 0.35rem; border: var(--hud-key-border, 1px) solid currentColor; border-radius: var(--hud-key-radius, 4px); font: var(--hud-key-weight, 600) 0.7rem/1.4 var(--hud-key-face, var(--font-mono)); text-align: center; }
 
 /* A pill of two to four choices in a track: the view switch, the guide's
    tabs and its keyboard/touch toggle. The one you're on is lifted out of the
