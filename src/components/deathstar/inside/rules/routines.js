@@ -317,12 +317,15 @@ function follow(crew, p) {
   return steerAround(crew, p, { x: (q.x - p.x) / l, z: (q.z - p.z) / l }, q);
 }
 
+// The car arrives: whoever is still in the car they set off in is moved to the other, keeping where
+// they stood in it. Someone no longer in it (the game’s own lift carried them with you) stays put.
 function ride(crew, p) {
   const { from, to } = p.mind.legs.ride;
+  p.mind.legs.ride = null;
+  if (p.room !== from) return;
   const [a, b] = [crew.layout.rooms.get(from), crew.layout.rooms.get(to)];
   Object.assign(p, { x: p.x + b.x - a.x, y: p.y + b.y - a.y, z: p.z + b.z - a.z, room: to, vy: 0 });
   Object.assign(p.safe, { x: p.x, y: p.y, z: p.z, room: to });
-  p.mind.legs.ride = null;
 }
 
 // Straight on when nobody is close; else a context map: the way on, a pull to

@@ -484,6 +484,24 @@ describe('the crew’s minds', () => {
     expect(below).toEqual({ y: -12, room: 'down' });
   });
 
+  it('ends its own ride without moving again when the game’s lift has already carried it down', () => {
+    const w = world(tower());
+    const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'up', x: 8, z: 0, role: { type: 'patrol', spots: ['top', 'bottom'] } });
+    let carried = false;
+    simulate(w, 40 * 30, {
+      each: () => {
+        // you ride the same car: game.js moves everyone wholly inside it by the offset between the cars
+        if (!carried && p.mind.legs.ride) {
+          carried = true;
+          Object.assign(p, { y: p.y - 12, z: p.z + 10, room: 'car-down' });
+        }
+      },
+    });
+    expect(carried).toBe(true);
+    expect(p.y).toBe(-12);
+    expect(['down', 'car-down']).toContain(p.room);
+  });
+
   it('brings two who chat together to talk', () => {
     const w = world(row());
     const a = addPerson(w.crew, { id: 'o1', kind: 'officer', room: 'west', x: -12, z: 0, role: { type: 'chat', with: 'o2' } });
