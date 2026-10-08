@@ -44,3 +44,6 @@ Follow the spec over the plan, the code over both. Fix the plan's line in your P
 | Phase | Session | Branch | Merged |
 |---|---|---|---|
 | design | the architecting session | `claude/natural-worlds-design` | (carried by Phase 1's PR) |
+| 1 | the Phase 1 session | `claude/natural-worlds-p1` | this PR: `src/lib/land`, `src/lib/physics`, `scripts/land-preview.mjs`; previews in `docs/superpowers/previews/` |
+
+Phase 1's findings the next phases rely on: Rapier's heightfield is our row-major heights transposed (rows along z) and splits each quad `(ix + 1, iz)–(ix, iz + 1)`, so `cellMesh` and `heightAt` split that way too; `@dimforge/rapier3d-compat@0.21.0` loads in Node and bundles in Vite as a dynamic import; the car holds near `5.5` m/s with `overflowGain 25`; rivers fill and spill lakes (`rivers.js`'s header).
