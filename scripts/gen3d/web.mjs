@@ -6,6 +6,7 @@
 //
 //   node scripts/gen3d/web.mjs BAKED.glb NAME --what "an X-wing starfighter" [--match OLD.glb] [--across-seams]
 //   three cuts (budget.mjs TIERS): NAME.hq.glb, NAME.glb, NAME.lo.glb; --tris N --tex N makes one custom cut instead
+//   --ultra: NAME.ultra.glb as well (budget.mjs ULTRA: up to 300k faces, 8192 maps, 24 MB)
 //   webReady(doc, { tris, tex }) → { before, after }   (the transform, on a gltf-transform Document)
 
 import { NodeIO } from '@gltf-transform/core';
@@ -81,10 +82,12 @@ export const permissive = (tris) => async (doc) => {
 // `match` names one (colour.mjs); credited once. Returns the first cut's
 // numbers, and every cut's under `cuts`.
 // `top` ({ faces, tex }) scales the three cuts down for a model asked to be smaller (budget.mjs cutsFor).
-export async function publish(raw, name, { what, engine = 'TRELLIS.2', acrossSeams = false, match, tiers = Object.keys(TIERS), tris, tex, top }) {
+// `ultra` adds the ultra cut (budget.mjs ULTRA), first, at the size the bake was made at.
+export async function publish(raw, name, { what, engine = 'TRELLIS.2', acrossSeams = false, match, ultra = false, tiers, tris, tex, top }) {
   const nio = await io();
   await mkdir(out(), { recursive: true });
-  const scaled = cutsFor(top?.faces, top?.tex);
+  const scaled = cutsFor(top?.faces, top?.tex, { ultra });
+  tiers ??= Object.keys(scaled);
   const cuts = tris ? { custom: { suffix: '', faces: tris, tex: tex ?? 2048, bytes: TIERS.mid.bytes } } : Object.fromEntries(tiers.map((t) => [t, scaled[t]]));
   const results = {};
   let said = false;
@@ -118,7 +121,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     return i >= 0 ? args.splice(i, 2)[1] : d;
   };
   const [tris, tex, match] = [flag('tris'), flag('tex'), flag('match')];
-  const opts = { tris: tris && Number(tris), tex: tex && Number(tex), what: flag('what', ''), engine: flag('engine', 'TRELLIS.2'), match: match && resolve(match), acrossSeams: args.includes('--across-seams') };
+  const opts = { tris: tris && Number(tris), tex: tex && Number(tex), what: flag('what', ''), engine: flag('engine', 'TRELLIS.2'), match: match && resolve(match), acrossSeams: args.includes('--across-seams'), ultra: args.includes('--ultra') };
   const [raw, name] = args;
   if (!raw || !name) throw new Error('usage: node scripts/gen3d/web.mjs BAKED.glb NAME [--what "…"] [--match OLD.glb] [--tris N --tex N for one custom cut]');
   const r = await publish(resolve(raw), name, opts);

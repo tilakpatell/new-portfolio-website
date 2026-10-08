@@ -35,7 +35,7 @@
 // solids: ship.js's ({ id, at, r, reach, band?, goal?, name? }), some
 // moving (their `at` is updated in place); goals: the solids the autopilot
 // can take you to, with their names. setDetail(k): how finely to draw the
-// planets (0…1, bodies.js); setRatio(r): the renderer's pixel ratio, for the
+// planets (0…1, bodies.js); setRatio(r): the pixel ratio it's drawn at, for the
 // ships of the skylanes (the size of a point is in pixels).
 
 import * as THREE from 'three';
@@ -360,7 +360,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       slot.holder.updateMatrixWorld(true);
       const names = STATION_NAMES;
       if (p.kind === 'deathstar2') {
-        mark(addSolid({ id: 'deathstar2', name: names.deathstar2, at: p.at, r: p.size * 0.47, reach: p.size * 0.66, goal: true }));
+        mark(addSolid({ id: 'deathstar2', name: names.deathstar2, at: p.at, r: p.size * 0.47, reach: p.size * 0.66, goal: true, board: p.board }));
         if (p.shield) {
           const R = p.size * 0.66;
           const shell = addSolid({ id: 'ds2-shield', at: p.at, r: R, reach: R, shield: true });

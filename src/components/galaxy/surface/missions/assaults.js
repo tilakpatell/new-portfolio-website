@@ -413,7 +413,7 @@ export const ASSAULTS = {
       { id: 'field', name: 'The landing field', at: [0, -112], r: 26, fixed: 'attack' },
       { id: 'hangar', name: 'The hangar mouth', at: [0, -196], r: 20 },
       { id: 'summit', name: 'The temple steps', at: [0, -240], r: 24 },
-      { id: 'throne', name: 'The throne room', at: [0, -256], r: 10, fixed: 'defend' },
+      { id: 'throne', name: 'The throne room', at: [0, -251], r: 10, fixed: 'defend' },
     ],
     phases: [
       { name: 'The hangar', posts: ['hangar'], tickets: 80 },

@@ -350,7 +350,7 @@ export const SITE = {
     { kind: 'bespinbridge', at: [-174.5, 0], yaw: Math.PI / 2, abs: true, y: 0, opts: { len: 13, w: 6 } },
     { kind: 'bespinplatform', at: [141, -141], abs: true, y: 0, opts: { r: 12, gap: -Math.PI / 4 } },
     { kind: 'bespinbridge', at: [126.6, -126.6], yaw: 2.356, abs: true, y: 0, opts: { len: 26, w: 5 } },
-    { kind: 'weathervane', at: [0, 0], abs: true, y: -250, solid: false },
+    { kind: 'weathervane', at: [0, 0], abs: true, y: -262, solid: false },
     // the platform where you land: a cloud car down for a refit, its
     // crew's cargo, and the lamps round the rim
     { kind: 'cloudcar', at: [-16, -268], yaw: 2.4, abs: true, y: 1.2 },

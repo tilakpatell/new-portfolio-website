@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BODIES, MAP_RADIUS, ORDER, POSITIONS, REACH, SECTORS, SECTOR_OF, SECTOR_RADIUS, inSector, sectorOf, sectorOut } from './layout';
 import { WONDERS, reachOf } from './deep';
-import { SPACE, spawn, step } from './ship';
+import { OPEN_SPACE, SPACE, spawn, step } from './ship';
 
 describe('the sectors', () => {
   it('tells which sector a point is in, by where it is', () => {
@@ -52,4 +52,35 @@ describe('the sectors', () => {
     // (and by now it's heading back in)
     expect(sectorOut(s.x, s.z).out).toBeLessThan(sec.edge);
   });
+
+  it('flies on past the main edge into the Expanse when the space is open, and never turns back there', () => {
+    let s = { ...spawn(null), x: SECTORS.main.edge - 5, y: 0, z: 0, heading: -Math.PI / 2, speed: 300 };
+    for (let t = 0; t < 30; t += 1 / 60) {
+      const r = step(s, { throttle: 1, boost: true }, 1 / 60, [], OPEN_SPACE);
+      expect(r.events.some((e) => e.type === 'edge')).toBe(false);
+      s = r.ship;
+    }
+    expect(s.x).toBeGreaterThan(SECTORS.main.edge + 100);
+    expect(sectorOf(s.x, s.y, s.z)).toMatch(/^E:/);
+    // (the same flight on the authored map alone is turned back, as ever)
+    let t0 = { ...spawn(null), x: SECTORS.main.edge - 5, y: 0, z: 0, heading: -Math.PI / 2, speed: 300 };
+    for (let t = 0; t < 4; t += 1 / 60) t0 = step(t0, { throttle: 1 }, 1 / 60, [], SPACE).ship;
+    expect(Math.hypot(t0.x, t0.z)).toBeLessThanOrEqual(SECTORS.main.edge + 1e-6);
+  });
+
+  it('walls the Rick and Morty pocket off from the Expanse round it', () => {
+    const o = SECTORS.rickmorty.origin;
+    // (from out in the Expanse, flying straight at its middle)
+    let s = { ...spawn(null), x: o[0], y: 0, z: o[2] - SECTORS.rickmorty.edge - 30, heading: Math.PI, speed: 60 };
+    expect(sectorOf(s.x, s.y, s.z)).toMatch(/^E:/);
+    let edge = false;
+    for (let t = 0; t < 6; t += 1 / 60) {
+      const r = step(s, { throttle: 1 }, 1 / 60, [], OPEN_SPACE);
+      if (r.events.some((e) => e.type === 'edge')) edge = true;
+      s = r.ship;
+      expect(sectorOf(s.x, s.y, s.z)).not.toBe('rickmorty');
+    }
+    expect(edge).toBe(true);
+  });
 });
+

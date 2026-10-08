@@ -16,7 +16,8 @@ export const MODELS = {
   // an X-wing parked in Echo Base's hangar
   parkedxwing: { uid: 'e6b85951f85940c1b26505eda7d73ef9', as: 'the parked X-wings', metres: 12.5, along: 'max', yaw: 0, tris: 20000, tex: 1024 },
   // Naboo's N-1s in Theed's hangar (the same model the galaxy flies)
-  n1fighter: { uid: '3cf69f6c85234aac8844e845e74ac75b', as: 'the parked N-1 starfighters', metres: 11, along: 'max', yaw: 0, tris: 12000, tex: 1024 },
+  // (ultra: the whole download, 32,101 triangles; its maps are 1024s)
+  n1fighter: { uid: '3cf69f6c85234aac8844e845e74ac75b', as: 'the parked N-1 starfighters', metres: 11, along: 'max', yaw: 0, tris: 12000, tex: 1024, ultra: { tris: 32101, tex: 1024 } },
   // the Queen's ship on its pad
   royalship: { uid: 'f631077977754b5591298ecfa201380b', as: 'the Naboo royal starship', metres: 76, along: 'max', yaw: 0, tris: 20000, tex: 1024 },
   // the films' faces who stand where the worlds put them (their arms-down
@@ -61,7 +62,7 @@ export const MODELS = {
   nevcantina: { made: 'meshy', as: 'Greef Karga’s cantina', metres: 18.5, along: 'max', solids: 'built', detail: 'concrete', tint: '#9c9a94' },
   varykino: { made: 'meshy', as: 'the lake retreat at Varykino', metres: 28, along: 'y', solids: 'built', hero: true, lod: true, detail: 'adobe', tint: '#f2d3a0' },
   shieldgen: { made: 'meshy', as: 'the shield generator', metres: 70, along: 'y' },
-  lavacollector: { made: 'meshy', as: 'the lava collector', metres: 16, along: 'max' },
+  lavacollector: { made: 'meshy', as: 'the lava collector', metres: 16, along: 'max', solids: 'built' },
   // the vehicles the worlds built in code: Naboo's MTT and Gungan bongo
   // (the AAT is Sketchfab's, above); and for the worlds to come: Jabba's
   // skiff, a swoop, a STAP, the AT-DP, Naboo's flash speeder, the Imperial

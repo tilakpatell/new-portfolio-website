@@ -256,7 +256,8 @@ const AS_SET = [
     moons: [],
     suns: [{ dir: [0.68, 0.36, 0.64], color: '#fff4e2', size: 0.95 }],
     pieces: [
-      { type: 'station', kind: 'deathstar2', at: [150, 46, -190], size: 140, spin: 0.004, shield: true },
+      // (flown into once its shield is down: aboard, at the dock where Vader’s shuttle sets down)
+      { type: 'station', kind: 'deathstar2', at: [150, 46, -190], size: 140, spin: 0.004, shield: true, board: '/deathstar/inside?station=ds2&side=rebel&at=dock' },
       {
         type: 'battle',
         at: [70, 30, -60],

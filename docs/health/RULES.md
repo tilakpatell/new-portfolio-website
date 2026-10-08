@@ -52,7 +52,7 @@ One house UI: the shell, the classic pages, the universe map and every world's H
 7. **Copy**: British spelling, curly quotes, sentence case, one sentence to a toast, the key first in a prompt (“G Go in · Burger Mart”), no Oxford comma.
 8. **Themes and dark mode**: a shared surface reads the theme's tokens (radius, border, ink), so a square theme squares it and dark mode darkens its shadow; type on a photograph (`.on-photo`) is white in every theme.
 
-The measure's `kbd-styles` counts the CSS rules that draw a key cap outside the house `.kbd` (`src/index.css`); lower is better. It walks `src/**/*.css` itself, leaves out `src/runtime/hud/hud.css` until the world kit's own cap is folded into the house one, and has no budget until both have landed (spec section 8, C1).
+The measure's `kbd-styles` counts the CSS rules that draw a key cap outside the house `.kbd` (`src/index.css`); lower is better. It walks `src/**/*.css` itself (the context lists no CSS) and is budgeted at its value once the house `.kbd` and the world kit's cap were one (spec section 8, C1): it may only fall.
 
 ## The worlds' HUDs
 
@@ -65,8 +65,10 @@ A world's HUD is built from the kit in `src/runtime/hud/` (`index.js` lists the 
 - **Numbers through refs.** A frame loop writes the HUD's numbers into the elements it holds, not into React state.
 - **The keys are written once**, in `src/components/guide/pages.js`; a world's Controls opens the guide.
 - **Touch.** The kit's Stick (116/46, radial, a dead zone) and TouchButton (76 for one main action, 64, 52); the right column keeps the guide's corner.
+- **One key cap.** A HUD's key is the house cap in `src/index.css` (`:where(.hud kbd, kbd.hud-prompt-key, kbd.hud-cap)`): a world sets its ink by colour and its face through `--hud-key-face`, `--hud-key-weight`, `--hud-key-border` and `--hud-key-radius`, never a `kbd` rule of its own.
+- **Buttons in the frame take a tap.** The frame is `pointer-events: none`; a world card put inside it turns them back on.
 
-`hud-kit` in the measure counts the worlds whose HUD imports nothing from the kit; it only goes down.
+`hud-kit` in the measure counts the worlds whose HUD imports nothing from the kit (its folder, or its own page); it only goes down. At 1: the Death Star, whose trench run is a game inside a scrolling page.
 
 ## Never
 

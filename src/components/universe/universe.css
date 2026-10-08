@@ -550,6 +550,20 @@ body:has(.universe-panel) .guide-btn { display: none; }
   cursor: pointer;
 }
 .universe-tour kbd { margin-left: 0.25em; }
+.universe-pocket {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 56px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgb(6 10 22 / 0.7);
+  border: 1px solid rgb(159 216 255 / 0.25);
+  font-size: 0.8rem;
+  pointer-events: none;
+}
 @media (max-width: 767px) {
   /* over the sheet, a row above the prompt */
   /* over the sheet, above the thumbs' cluster and the hint (which reach
@@ -1034,9 +1048,11 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-keymap > div { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
 .universe-keymap dt { display: flex; flex: none; gap: 3px; }
 .universe-keymap dd { margin: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.universe-keymap-land { margin: 0.75rem 0 0; color: var(--muted); font-size: 0.8rem; }
 .universe-keymap-touch { display: none; margin-bottom: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
 @media (pointer: coarse) {
-  .universe-keymap { display: none; }
+  .universe-keymap,
+  .universe-keymap-land { display: none; }
   .universe-keymap-touch { display: block; }
 }
 /* the credits, folded away under the panel's own content */

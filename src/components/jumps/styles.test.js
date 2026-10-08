@@ -18,4 +18,11 @@ describe('the jump styles', () => {
     expect(jumpEvent().detail.style).toBe('hyper');
     expect(jumpEvent('nope').detail.style).toBe('hyper');
   });
+
+  it('carries what to do once the jump has the screen dark, when asked', () => {
+    const onPeak = () => {};
+    expect(jumpEvent('hyper', { onPeak }).detail.onPeak).toBe(onPeak);
+    expect(jumpEvent('portal', { onPeak }).detail.style).toBe('portal');
+    expect(jumpEvent('hyper').detail).not.toHaveProperty('onPeak');
+  });
 });

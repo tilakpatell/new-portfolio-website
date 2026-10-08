@@ -15,7 +15,7 @@ import { BATTLE_LINES, PLACES, battleLines } from '../battleLines';
 import { SIDES, WARS } from '../sides';
 
 // the moments warfront.js has the crew speak on (its say(): the test keeps these in step)
-export const SAID = ['ask', 'front', 'join', 'gens', 'bridge', 'reactor', 'won', 'lost', 'ace', 'intercept'];
+export const SAID = ['ask', 'front', 'join', 'gens', 'bridge', 'reactor', 'won', 'lost', 'ace', 'intercept', 'runners', 'blockade'];
 
 // the lines as they're written, blanks and all
 function written(v, out = new Set()) {
