@@ -34,8 +34,8 @@
 //   view(st)               the HUD's
 //   readKept / writeKept   the big one's charge, kept in the session across a landing
 //   pickTargets, portalExit, clearOfSolids, solidAhead, beamOf, blastPunch,
-//   pullStep, jinkStep, turretPick, crossesShell, isObjective, firstAlong:
-//   the geometry, pure
+//   pullStep, jinkStep, turretPick, shotAt, within, crossesShell, isObjective,
+//   firstAlong: the geometry, pure
 
 import { aimAngles, bearing, nose, sweptHit } from './targeting';
 import { inTrench } from './ship';
@@ -414,12 +414,32 @@ export function turretPick(ship, targets, range = POWERS.quad.range, prevId = nu
   return best;
 }
 
+// A power's shot at one target (Chewie's bolt landing, a blast reaching
+// it): a short way in from just off it, on the side it comes from (`from`),
+// to where it is now, so the guns' own hit() meets it, or whatever's in the
+// way (a hull before an objective in it)
+export function shotAt(t, from, reach = (t.size ?? 0.5) + 0.6) {
+  let ux = from.x - t.at.x;
+  let uy = from.y - t.at.y;
+  let uz = from.z - t.at.z;
+  const l = Math.hypot(ux, uy, uz);
+  if (l < 1e-6) [ux, uy, uz] = [0, 1, 0];
+  else [ux, uy, uz] = [ux / l, uy / l, uz / l];
+  return { from: { x: t.at.x + ux * reach, y: t.at.y + uy * reach, z: t.at.z + uz * reach }, to: { x: t.at.x, y: t.at.y, z: t.at.z } };
+}
+
+// The ones of `targets` within `r` of `at` (what a magnet there would hold)
+export const within = (targets, at, r) => targets.filter((t) => Math.hypot(t.at.x - at.x, t.at.y - at.y, t.at.z - at.z) <= r);
+
 // Whether a hop from `a` to `b` crosses a shell of radius `r` round the middle (Scarif's shield)
 export const crossesShell = (a, b, r) => (Math.hypot(a.x, a.y, a.z) - r) * (Math.hypot(b.x, b.y, b.z) - r) < 0;
 
 // A battle's objective (a battery, a subsystem) rather than a fighter: it
 // takes a power's cut damage (`sub`), and Chewie leaves it alone
-export const isObjective = (t) => t.kind === 'turret' || t.kind === 'subsystem' || Boolean(t.sub);
+// (the war's set pieces' targets among them: galaxy/warpieces/'s generator,
+// reactor and ion cannon, whose own target carries no `sub`, only its hit)
+const OBJECTIVES = new Set(['turret', 'subsystem', 'shieldgen', 'reactor', 'cannon']);
+export const isObjective = (t) => OBJECTIVES.has(t.kind) || Boolean(t.sub);
 
 // Which of `targets` ({ at, vel, size }) a shot from `from` to `to` this
 // frame meets first, each having moved at its `vel` over `dt`; or null (the

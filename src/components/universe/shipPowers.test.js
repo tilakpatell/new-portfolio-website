@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, aimHelp, beamOf, blastPunch, cancel, chargeFor, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readKept, step, turretPick, view, writeKept } from './shipPowers';
+import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, aimHelp, beamOf, blastPunch, cancel, chargeFor, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readKept, shotAt, step, turretPick, view, within, writeKept } from './shipPowers';
 import { CREWS } from './crews';
 import { spawn, step as fly } from './ship';
 import { makeSpace } from '../galaxy/space';
@@ -369,6 +369,8 @@ describe('the crews’ ship powers', () => {
     expect(isObjective({ kind: 'turret' })).toBe(true);
     expect(isObjective({ kind: 'subsystem', sub: 'shield' })).toBe(true);
     expect(isObjective({ kind: 'tie' })).toBe(false);
+    // (and the war's set pieces' own: Endor's generator, a run's reactor, Hoth's ion cannon)
+    for (const kind of ['shieldgen', 'reactor', 'cannon']) expect(isObjective({ kind, id: 5e6 }), kind).toBe(true);
     const near = T(1, 0, -10);
     const far = T(2, 0, -20, 0, { kind: 'subsystem' });
     expect(firstAlong({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -30 }, [far, near], 1 / 60)).toBe(near);
@@ -377,6 +379,25 @@ describe('the crews’ ship powers', () => {
     const crossing = T(4, 1.5, -10, 0, { vel: { x: 120, y: 0, z: 0 } });
     expect(firstAlong({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -30 }, [crossing], 1 / 60)).toBe(crossing);
     expect(firstAlong({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -30 }, [{ ...crossing, vel: { x: 0, y: 0, z: 0 } }], 1 / 60)).toBeNull();
+  });
+
+  it('aims a power’s shot at a target: from just off it on the side it comes from, ending where it is now', () => {
+    const t = T(1, 0, -10);
+    const s = shotAt(t, { x: 0, y: 0, z: 0 });
+    expect(s.to).toEqual({ x: 0, y: 0, z: -10 });
+    expect(s.to).not.toBe(t.at); // (a copy: the target moves on)
+    expect(s.from.x).toBeCloseTo(0, 6);
+    expect(s.from.z).toBeCloseTo(-10 + 0.5 + 0.6, 6);
+    // (from right where it is: from above it)
+    const over = shotAt(t, { x: 0, y: 0, z: -10 });
+    expect(over.from.y).toBeGreaterThan(0);
+    expect(over.from.z).toBeCloseTo(-10, 6);
+  });
+
+  it('knows what’s within reach of a point (what a magnet would hold)', () => {
+    const at = { x: 0, y: 0, z: -6 };
+    expect(within([T(1, 0, -20), T(2, 0, -30), T(3, 15, 0)], at, 22).map((t) => t.id)).toEqual([1, 3]);
+    expect(within([], at, 22)).toEqual([]);
   });
 
   it('keeps the big one’s charge across a landing for the same crew, and starts again for another', () => {

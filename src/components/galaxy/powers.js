@@ -3,10 +3,10 @@
 // them out in the scene (scene.js hands it its pieces and calls it at the
 // moments that matter, so the scene itself only grows by the calls).
 //
-// - Force Focus: the hunters' clock (and the war's fighters', once its
-//   battle takes the `slow` it's handed) at a third, the guns' help onto the
-//   lead and the nose's tracking of the lock turned up, the picture's edges
-//   pulled apart a little and the light dimmed.
+// - Force Focus: the hunters' clock and the war's battle's at a third, the
+//   guns' help onto the lead and the nose's tracking of the lock turned up
+//   (onto the game's own ships only), the picture's edges pulled apart a
+//   little and the light dimmed.
 // - The torpedo salvo: four, launched off alternate wingtips a moment apart,
 //   each homing on its own target (the ones coming at you in the cone
 //   first), and through the scene's own hit test as they go (strike), with
@@ -28,8 +28,9 @@
 // - Say my name: a crystal thrown along the nose (onto the lock's lead), going
 //   off at its fuse or when it's near anything, the blast hardest in its
 //   middle.
-// Only the game's own ships are touched (the hunters, and the war's battle
-// through its hooks, once it has them: damage, blast, pull); never another
+// Only the game's own ships are touched (the hunters, and the war's battle:
+// its time and its ghost through warfront.js's update, Walt's magnet through
+// its pull, and every hit as a shot through its own hit()); never another
 // pilot. The big one's charge is kept in the session (KEPT_KEY) so a landing
 // doesn't lose it; another crew starts from nothing.
 //
@@ -43,7 +44,7 @@
 // put there, the camera with it.
 
 import * as THREE from 'three';
-import { KEPT_KEY, POWERS, aimHelp, beamOf, blastPunch, cancel as cancelAll, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain as charge, isObjective, isOn, jinkStep, mods as modsOf, pickTargets, portalExit, press as pressSlot, readKept, step, turretPick, view as viewOf, writeKept } from '../universe/shipPowers';
+import { KEPT_KEY, POWERS, aimHelp, beamOf, blastPunch, cancel as cancelAll, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain as charge, isObjective, isOn, jinkStep, mods as modsOf, pickTargets, portalExit, press as pressSlot, readKept, shotAt, step, turretPick, view as viewOf, writeKept } from '../universe/shipPowers';
 import { createPowerFx } from '../universe/powerFx';
 import { steer } from '../universe/weapons';
 import { assist, dirTo, intercept, nose } from '../universe/targeting';
@@ -97,10 +98,17 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
   const say = (what, slot, id, more = {}) => emit({ type: 'power', what, id, slot, crew: st?.crew ?? null, ...more });
 
   // what the powers may go for: the hunters after you (not prey-chasers' quarry)
-  // and the war's (its fighters only, for Chewie, and only once it takes damage by number)
+  // and the war's (its fighters only, for Chewie)
   const huntersNow = () => (hunters?.targets ?? []).filter((t) => !t.prey);
   const warNow = () => war?.targets ?? [];
-  const warFighters = () => (war?.damage ? warNow().filter((t) => !isObjective(t)) : []);
+  const warFighters = () => warNow().filter((t) => !isObjective(t));
+  // a power's hit on one of the war's: a shot through its own hit(), aimed
+  // at it from `from` (shipPowers.js's shotAt), so it counts as the guns' do
+  const warStrike = (t, from, punch, by) => {
+    const s = shotAt(t, from);
+    const r = war?.hit(s.from, s.to, punch);
+    return r ? scored(kill(r), { src: 'war', by }) : null;
+  };
   const known = (t) => Boolean(t) && (hunters?.targets.includes(t) || warNow().includes(t));
   const srcOf = (t) => (hunters?.targets.includes(t) ? 'hunters' : 'war');
   // a battle's punch for what a shot from `from` to `to` meets first: its
@@ -143,7 +151,7 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
       const P = POWERS.magnets;
       const at = ahead(ship, P.ahead);
       hunters.pull(at, P.radius, P.pull, P.dur, P.daze);
-      war?.pull?.(at, P.radius, P.pull, P.dur);
+      war?.pull(at, P.radius, P.dur, P.daze);
       run.magnet = { at, k: 0, sparks: 0 };
     } else if (id === 'heisenberg') {
       const P = POWERS.heisenberg;
@@ -251,6 +259,8 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
       if (!lands) v2.add(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(P.miss));
       const src = srcOf(t);
       const was = gen;
+      const origin = { x: from.x, y: from.y, z: from.z };
+      const aim = { x: v2.x, y: v2.y, z: v2.z };
       bolts.fire(from, v2, {
         color: LASER.rebel,
         speed: P.speed,
@@ -259,8 +269,14 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
         onHit: lands
           ? () => {
               if (was !== gen) return;
-              const r = src === 'hunters' ? hunters.damage(t.id, P.punch) : war?.damage?.(t.id, P.punch);
-              if (r) scored(kill(r), { src, by: 'quad' });
+              if (src === 'hunters') {
+                const r = hunters.damage(t.id, P.punch);
+                if (r) scored(kill(r), { src, by: 'quad' });
+                return;
+              }
+              // (one of the war's, if it's still there where the bolt was
+              // aimed: a battle's fighter is the same one when it comes back)
+              if (warNow().includes(t) && apart(t.at, aim) < P.miss * 2) warStrike(t, origin, P.punch, 'quad');
             }
           : null,
       });
@@ -335,9 +351,12 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
       const r = hunters.damage(t.id, blastPunch(d, P));
       if (r) scored(kill(r), { src: 'hunters', normal: v2.set(t.at.x - at.x, t.at.y - at.y + 1, t.at.z - at.z).normalize(), by: 'heisenberg' });
     }
-    // (the war's battle: through its own blast, once it has one, the cut on its objectives)
-    const got = war?.blast?.(at, P.radius, (d) => blastPunch(d, P), P.sub);
-    if (Array.isArray(got)) for (const r of got) scored(kill(r), { src: 'war', by: 'heisenberg' });
+    // the war's battle: each of its within reach, a shot at it from the
+    // blast through its own hit() (the cut on its objectives)
+    for (const t of [...warNow()]) {
+      const d = apart(t.at, at);
+      if (d <= P.radius) warStrike(t, at, blastPunch(d, P) * (isObjective(t) ? P.sub : 1), 'heisenberg');
+    }
     run.crystal = null;
     done('ultimate');
   };
@@ -441,9 +460,11 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
       if (run.magnet) run.magnet.at = ahead(live, POWERS.magnets.ahead);
       return { ...live, ghost: m.ghost, magnet: run.magnet?.at ?? null };
     },
-    // what the war's battle is handed (it takes them once it has the hooks)
+    // what the war's battle is handed: its time slowed, a ghost its fire
+    // flies through, the magnet its held fighters are dragged to (warfront.js,
+    // universe/battlePowers.js)
     get warOpts() {
-      return { slow: m.slow, ghost: m.ghost, magnet: run.magnet?.at ?? null };
+      return { slow: m.slow, ghost: m.ghost, magnet: run.magnet?.at ?? null, pull: POWERS.magnets.pull };
     },
     set hold(on) {
       hold = on;

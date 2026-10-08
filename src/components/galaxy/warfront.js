@@ -35,8 +35,13 @@
 // world's), changed when a battle starts or ends (onSolids is told).
 // What you score is paid for too: { type: 'earn', what: 'warPoints' | 'warWin',
 // n, side: 'galaxy' } to emit (universe/economy.js's EARN keys).
+// The crews' ship powers: update takes a fifth, `powers`, a power's hold on
+// the battle ({ slow, ghost, magnet, pull }: universe/battlePowers.js's
+// stepBattle), and pull(at, r, secs, daze) is Walt's magnet on it; a power's
+// damage is a shot's, through hit().
 
 import { createBattle } from '../universe/battle';
+import { holdFighters, stepBattle } from '../universe/battlePowers';
 import { createBattleScene } from '../universe/battleScene';
 import { createCarry } from '../universe/earnRules';
 import { createTally } from '../universe/tally';
@@ -281,7 +286,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       world = w;
     },
 
-    update(dt, t, camera, live) {
+    update(dt, t, camera, live, powers = {}) {
       last.t = t;
       last.camera = camera;
       sendNet(dt);
@@ -301,7 +306,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         battle.setYou(team);
       }
       let hurt = 0;
-      const events = battle.update(dt, live ? { x: live.x, y: live.y, z: live.z, alive: true } : null);
+      // (through a ship power's hold on it, if one's on: battlePowers.js)
+      const events = stepBattle(battle, dt, live ? { x: live.x, y: live.y, z: live.z, alive: true } : null, powers);
       if (live) {
         const d = Math.hypot(live.x - laid.at[0], live.y - laid.at[1], live.z - laid.at[2]);
         if (d < laid.radius * FRONT.near) {
@@ -370,6 +376,11 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         if (h) return h;
       }
       return battle.hit(from, to, damage);
+    },
+    // Walt's magnet: the other side's fighters within `r` of `at` held for
+    // `secs` with their guns quiet, `daze` more (battlePowers.js); how many
+    pull(at, r, secs, daze = 0) {
+      return battle ? holdFighters(battle, at, r, secs, daze) : 0;
     },
     get targets() {
       if (!battle || battle.over) return [];

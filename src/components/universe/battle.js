@@ -624,7 +624,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const p0 = v3();
   const p1 = v3();
   const moveBolts = (dt, out) => {
-    const youOk = youIn() && !b.over;
+    const youOk = youIn() && !b.over && !b.ghost; // (a ghost, a ship power's: battlePowers.js sets it while it steps)
     for (const o of b.bolts) {
       if (!o.on) continue;
       o.life -= dt;
