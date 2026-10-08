@@ -14,8 +14,9 @@
 
 - Four pull requests, in order, each from a branch `claude/squads-<n>-<slug>` off `origin/main`, merged with a merge commit once `npm run lint`, `npm test`, `npm run build` and `node scripts/health.mjs --check --skip build` pass locally and CI is green. Merge, never rebase or force-push. A push to main deploys the site.
 - Commits: one per task step that says “Commit”, the message a plain sentence saying what now holds (the repository's style: “The roster lists saved allies, online first.”). Authored as `Tilak Patel <108555753+tilakpatell@users.noreply.github.com>`. No `Co-Authored-By`, `Claude-Session` or “Generated with” lines in commits or pull requests.
+- Where the workspace can't reach the npm registry (so no local Vitest, Vite or dev server), CI is the test runner: push the branch, open the pull request early, read the failing step's log with `gh api`, fix, push again. A pure module's test may be run locally through a throwaway shim kept outside the repository. Wherever a step below says “run” or “check by hand” and that can't be done, the pull request and the handoff say what was not seen in a browser.
 - TDD for every pure module: write the test, see it fail, write the code, see it pass, commit. A test runs under a second and touches no network.
-- Health rules (`docs/health/RULES.md`): a file stays under 800 lines; `x.js` has `x.test.js` beside it; no `TODO` notes; no new lint disables; worlds import the online code only through `src/components/universe/online/` paths already imported by `useTravellers.js`. `client.js` (619 lines) and `protocol.js` (571) may grow by at most 120 lines each across the whole plan: new wire readers go in `online/wire2.js`.
+- Health rules (`docs/health/RULES.md`): a file stays under 800 lines; `x.js` has `x.test.js` beside it; no `TODO` notes; no new lint disables; worlds import the online code only through `src/components/universe/online/` paths already imported by `useTravellers.js`. `client.js` (619 lines) and `protocol.js` (571) stay under 800: new wire readers go in `online/wire2.js`, and when `client.js` would pass 760 lines its place handlers (Task 3.1's `wirePlace`) move to `online/clientPlace.js` with the same behaviour and tests.
 - Everything a peer sends is untrusted: read through a `read*` function that returns null for junk, rate-limited by `createLimiter`, shown only as text nodes or `textContent`.
 - Bundle: nothing new loads before a visitor goes online, except `invite.js`'s link reader (under 1 kB) in `OnlineProvider`. UI chunks are `lazy`.
 - UI follows the house rules (RULES.md “UI”): tokens from `src/index.css`, `.btn`, `.chip`, `.switch`, `CopyButton`, 44 px targets on a coarse pointer, British spelling, curly quotes, sentence case, one sentence to a toast.
@@ -96,7 +97,15 @@
 - [ ] Give the battle's tally an id kept with the battle's save (`createTally(epoch, { cap: 4000, id })`), as `warState.js:124` does.
 - [ ] Call `forget(peerId)` on the siege's and the battle's tallies when the client's roster drops a pilot (the pages already hear `roster`); test that a forgotten peer's share stays in the floor.
 - [ ] Fix the comment (`./net.js` → `./online.js`).
-- [ ] Run `npm test`, `npm run lint`, `npm run build`, `node scripts/health.mjs --check --skip build`. Commit, push, open the pull request (“Multiplayer foundations: one socket per relay, a key that lasts, saved allies”), wait for CI, merge.
+- [ ] Run `npm test`, `npm run lint`, `npm run build`, `node scripts/health.mjs --check --skip build`. Commit.
+
+### Task 1.6: the browser checks in CI
+
+**Files:** Modify `.github/workflows/ci.yml`.
+
+- [ ] Add a third job, `online` (“Multiplayer”), `continue-on-error: true`, `timeout-minutes: 20`: checkout, Node 22 with the npm cache, `npm ci`, `npx playwright-core install --with-deps chromium`, start `npx vite --port 5173` in the background and wait for it to answer, then `RELAY=fake CHROME="$(node -e "console.log(require('playwright-core').chromium.executablePath())")" node scripts/online-check.mjs --universe`, and from PR 2 on `node scripts/squad-check.mjs` the same way. It is evidence, not a gate: a red run is read and either fixed or explained in the pull request.
+- [ ] If the push is refused because the token may not change workflows, drop this task, leave the file as it was, and say so in the handoff.
+- [ ] Push, open the pull request (“Multiplayer foundations: one socket per relay, a key that lasts, saved allies”), wait for CI, merge.
 
 ---
 
