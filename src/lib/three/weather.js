@@ -24,7 +24,7 @@
 //     at(nowSeconds, out?) → { temperature, humidity, electric, clouds, wind,
 //       rain, snow, dayProgress, lightColour, lightIntensity, shadowColour,
 //       fogA, fogB, fogNear, fogFar, leaves },
-//     override(values, { duration = 5, now }), release({ duration, now }) }
+//     override(values, { duration = 5, now }), release({ duration = 5, now }) }
 //   windOf(weather) → { strength }   for lib/three/wind's createWind set()
 //   leavesOf(weather) → { ratio }    his leaf count over his most: a share of a world's budget
 //   noise(x), remapClamp(v, inLow, inHigh, outLow, outHigh)   his, as he wrote them
@@ -35,7 +35,9 @@
 // given one (its colour arrays too), for a frame that would rather not make
 // a new object. `seed` moves only the weather, never the hour: it shifts
 // the sines' clock by seed × 1000 days, so two worlds on the same hour can
-// have different skies. Colours are linear [r, g, b] (his sRGB hex made
+// have different skies. Keep it a small integer (0, 1, 2 …): a large one
+// pushes t so far out that it steps at a double's precision and the sines
+// stutter. Colours are linear [r, g, b] (his sRGB hex made
 // linear, as THREE.Color does, and mixed there, as lerpColors does): new
 // THREE.Color().fromArray(c) takes one. `electric` is his electricField;
 // `fogNear`/`fogFar` his fog ratios.
@@ -45,9 +47,11 @@
 // and clouds −1 to 1, snow −1 (thawing) to 1. An override is his: values
 // for any outputs, held at full after `duration` seconds and eased out
 // (power1.out) from wherever the hold stood, on the clock at() was last
-// read at unless `now` is given; release() lets go the same way, over the
-// override's duration unless told. A new override replaces the old one's
-// values at once, as his did.
+// read at unless `now` is given (asked for before at() was ever read, on
+// the next one); release() lets go the same way, from wherever the hold has
+// got to, over 5 s unless told, as his end(duration = 5) does, however long
+// the override took. A new override replaces the old one's values at once,
+// as his did.
 //
 // galaxy/surface/weather.js also exports a createWeather (the particles in
 // the air); a file that needs both imports this one as another name.
@@ -154,17 +158,23 @@ const mixInto = (a, b, k, into) => {
 export function createWeather({ day = DAY, seed = 0, year = YEAR } = {}) {
   let last; // the clock at() was last read at
   let held = {}; // the override's values
-  let span = 5; // the override's duration, which release() takes too
   let ramp = { from: 0, to: 0, t0: 0, duration: 0 }; // its strength over time
 
-  // gsap's default ease, power1.out, from wherever it stood
-  const strength = (now) => {
-    if (ramp.t0 == null) ramp.t0 = now; // asked for before the clock was read
-    const p = ramp.duration > 0 ? clamp((now - ramp.t0) / ramp.duration, 0, 1) : 1;
-    return p >= 1 ? ramp.to : ramp.from + (ramp.to - ramp.from) * (1 - (1 - p) * (1 - p));
+  // gsap's default ease, power1.out, from wherever it stood. A ramp asked
+  // for before the clock was read starts on the next at(), from wherever
+  // the one before it has got to by then.
+  const strengthOf = (r, now) => {
+    if (r.t0 == null) {
+      r.t0 = now;
+      if (r.before) r.from = strengthOf(r.before, now);
+      r.before = null;
+    }
+    const p = r.duration > 0 ? clamp((now - r.t0) / r.duration, 0, 1) : 1;
+    return p >= 1 ? r.to : r.from + (r.to - r.from) * (1 - (1 - p) * (1 - p));
   };
+  const strength = (now) => strengthOf(ramp, now);
   const towards = (to, duration, now) => {
-    ramp = { from: now == null ? ramp.from : strength(now), to, t0: now, duration };
+    ramp = now == null ? { before: ramp, from: 0, to, t0: null, duration } : { from: strength(now), to, t0: now, duration };
   };
 
   return {
@@ -207,10 +217,9 @@ export function createWeather({ day = DAY, seed = 0, year = YEAR } = {}) {
     },
     override(values = {}, { duration = 5, now = last } = {}) {
       held = { ...values };
-      span = duration;
       towards(1, duration, now);
     },
-    release({ duration = span, now = last } = {}) {
+    release({ duration = 5, now = last } = {}) {
       towards(0, duration, now);
     },
   };

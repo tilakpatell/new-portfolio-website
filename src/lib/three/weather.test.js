@@ -220,12 +220,40 @@ describe('an override, and letting go', () => {
     expect(held.dayProgress).toBe(0.5);
     close(held.fogA, [1, 0, 0], 12);
     close(held.shadowColour, lin(HIS.night.shadow)); // the forced hour's colours
-    // release takes the override's duration unless told
+    // release takes his 5 s unless told, whatever the override took
     w.release({ now: 60 });
-    expect(w.at(62)).toEqual(free.at(62));
+    expect(w.at(62).dayProgress).not.toBe(free.at(62).dayProgress);
+    expect(w.at(65)).toEqual(free.at(65));
     // duration 0 is at once
     w.override({ clouds: 1 }, { duration: 0, now: 70 });
     expect(w.at(70).clouds).toBe(1);
+  });
+
+  it('lets go over his 5 s after a 10 s override, as his end(duration = 5) does', () => {
+    const w = createWeather();
+    const free = createWeather();
+    w.override({ rain: 1 }, { duration: 10, now: 300 });
+    expect(w.at(310).rain).toBe(1);
+    w.release();
+    expect(w.at(312.5).rain).toBeGreaterThan(free.at(312.5).rain);
+    expect(w.at(315)).toEqual(free.at(315));
+  });
+
+  it('eases from the held value when released before the clock is read', () => {
+    const w = createWeather();
+    const free = createWeather();
+    w.override({ rain: 1 }, { duration: 0, now: 400 });
+    w.release(); // no now, and no at() yet: it lets go from the next at()
+    expect(w.at(400).rain).toBe(1);
+    const mid = w.at(402.5).rain; // power1.out: a quarter of the hold left at half time
+    expect(mid).toBeCloseTo(free.at(402.5).rain * 0.75 + 0.25, 9);
+    expect(w.at(405)).toEqual(free.at(405));
+    // and from wherever a slower hold had got to by then
+    const v = createWeather();
+    v.override({ rain: 1 }, { duration: 10, now: 500 });
+    v.release();
+    expect(v.at(505).rain).toBeCloseTo(free.at(505).rain * 0.25 + 0.75, 9); // 1 − 0.5² of the way in
+    expect(v.at(510)).toEqual(free.at(510));
   });
 });
 
