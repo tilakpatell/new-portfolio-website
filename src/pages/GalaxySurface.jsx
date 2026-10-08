@@ -27,6 +27,7 @@ import AssaultHud from '../components/galaxy/surface/AssaultHud';
 import HeroPanel from '../components/galaxy/surface/HeroPanel';
 import { HERO_KEY, heroById, heroSpec, loadoutLine, readHero, writeHero } from '../components/galaxy/heroes';
 import { missionOf } from '../components/galaxy/surface/missions';
+import { questOpen } from '../components/galaxy/surface/quests';
 import { sideFor, warSideOf } from '../components/galaxy/surface/missions/assault';
 import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../components/galaxy/allegiance';
 import { GCW, campaignAt } from '../components/galaxy/gcw';
@@ -162,6 +163,9 @@ export default function GalaxySurface() {
   const [toast, setToast] = useState(null); // { title, text, n }
   const [leaving, setLeaving] = useState(false);
   const [done, setDone] = useState(() => readDone()[id] ?? []); // the quests done here
+  // the things to do here that are yours to do: not a quest of the other
+  // side's (its giver won't give it to you), unless you did it before
+  const todo = useMemo(() => (site ? site.quests.filter((q) => done.includes(q.id) || questOpen(q, site.life.find((a) => a.id && a.id === q.giver), effects).open) : []), [site, done, effects]);
   // the wallet (economy.js): a place found and a quest done pay, the first
   // time only (what was found or done before this visit is paid for already)
   const { pay, note: earned } = useEarn({ client: online.client });
@@ -529,7 +533,7 @@ export default function GalaxySurface() {
       {mission && mission.kind !== 'assault' && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
       {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={onAssaultSide} sworn={sworn} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
 
-      {phase !== 'landing' && site.quests.length > 0 && !((mission?.kind === 'chase' || mission?.kind === 'assault') && chase && !chase.result) && (
+      {phase !== 'landing' && todo.length > 0 && !((mission?.kind === 'chase' || mission?.kind === 'assault') && chase && !chase.result) && (
         <div className={quest ? 'surface-quest surface-quest-on' : 'surface-quest'}>
           {quest ? (
             <>
@@ -546,7 +550,7 @@ export default function GalaxySurface() {
             </>
           ) : (
             <button type="button" className="surface-quest-open" onClick={() => setList((l) => !l)} aria-expanded={list}>
-              <kbd>Q</kbd> Things to do · {done.length}/{site.quests.length}
+              <kbd>Q</kbd> Things to do · {done.length}/{todo.length}
             </button>
           )}
         </div>
@@ -555,7 +559,7 @@ export default function GalaxySurface() {
         <div className="surface-list" role="dialog" aria-label="Things to do">
           <p className="surface-list-title">Things to do on {sys.name}</p>
           <ul>
-            {site.quests.map((q) => (
+            {todo.map((q) => (
               <li key={q.id} data-done={done.includes(q.id) ? '' : undefined}>
                 <button type="button" onClick={() => track(q.id)} disabled={done.includes(q.id)}>
                   <b>{q.name}</b>
