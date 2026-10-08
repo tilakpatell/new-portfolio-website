@@ -15,7 +15,8 @@
 // up the same way, so nobody is ever restored halfway through a scene.
 //
 //   TYPES                                  every kind of step
-//   SCENES                                 the scenes a story may play (Task 3.5’s scene/cinematics.js draws them)
+//   SCENES                                 the scenes a story may play (scene/cinematics.js draws them: the first
+//     station’s four, then the second’s, from ST 321 setting down to the shuttle leaving as the reactor goes)
 //   MOODS                                  the music a story may ask for (scene/sounds.js plays them)
 //   ESCORT                                 metres: how near someone must be to count as with you, by which
 //     the game fills an `at` event’s `with` (a companion keeps within 3 m, so 6 holds one who lags)
@@ -66,16 +67,17 @@
 //   · { type: 'died' }
 //
 // Effects: { flag } { unflag } { unlock: door } { lock: door } { spawn: { kind, spot, role, squad?,
-//   hostile?, script?, tag } } { despawn: tag } { alarm: { section, how } } { say: { who, text } }
-//   { intercom: { section, text } } { scene: id } { hero: kind } { give: item } { take: item }
+//   hostile?, script?, tag } } { despawn: tag } { alarm: { section, how } } { say: { who, text, line? } }
+//   { intercom: { section, text, line? } } { scene: id } { hero: kind } { give: item } { take: item }
 //   { companion: kind, follow } { to: spot } { achievement: id } { music: mood } { walls: 'close' | 'open' }
 //   { bridge: bool } { end: true }, and from the engine itself { checkpoint }: put the state back to it.
 //   item: 'armour' | 'helmet' | 'gun:<id>' | 'comlink' | 'beacon' | 'saber'
 //   role: a routine type of routines.js, kept at the spawn’s spot; 'follow' follows you; 'scripted' walks
 //   the spawn’s `script` (routines.js’s, which the game hands to brains.addPerson) and then stands
+//   line: a name the game reports as `{ type: 'heard', line }` once the line is said, for eggs.js
 
 export const TYPES = ['reach', 'talk', 'use', 'hide', 'escort', 'fight', 'kill', 'choose', 'timer', 'scene', 'swap', 'still'];
-export const SCENES = ['tractor', 'duel', 'swing', 'escape'];
+export const SCENES = ['tractor', 'duel', 'swing', 'escape', 'arrive2', 'tower', 'throw', 'mask', 'emperor', 'cruiser', 'escape2'];
 export const MOODS = ['quiet', 'calm', 'alert'];
 export const ESCORT = 6;
 
