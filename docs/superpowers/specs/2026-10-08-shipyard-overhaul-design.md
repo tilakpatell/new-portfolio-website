@@ -151,7 +151,7 @@ punch stay `scene.js`'s business (`stats.cadence`, `stats.punch`), as now.
 'Primary'`, `secondary: 'Secondary'`, `ordnance: 'Ordnance'`. New parts
 (`look` names the part each is drawn as, so nothing new is modelled):
 
-- secondary: stock Scatter (`weapon: 'spread'`); Ion scatter (`ion`, mass
+- secondary: stock Scatter (`weapon: 'spread'`); Ion burst (`ion`, mass
   1, power 1, achievement `rebels`, look `twin`); Flak burst (`flak`, mass
   1.5, power 2, level 4 in the catalogue, look `twin`).
 - ordnance: stock Torpedo rack (`weapon: 'heavy'`); Missile rack
