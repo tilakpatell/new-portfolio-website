@@ -111,3 +111,45 @@ describe('population', () => {
     expect(made.map((s) => s.id)).toContain('r1');
   });
 });
+
+describe('population: what it keeps', () => {
+  const wet = ([x]) => !(x > 150 && x < 200); // (a channel of sea from x 150 to 200)
+  test('reinforcements stand on dry ground: one in the water is moved to dry ground within 12 m, or not sent', () => {
+    const p = createPopulation({ site: SITE, turfs, effects: F, tier: 'high', seed: 7, rand: seeded(), standable: wet });
+    const spec = (id, x) => ({ id, kind: 'rebel', side: 'rebel', role: 'raid', at: [x, 0], yaw: 0, home: [0, 0], turf: 'far', squad: 'r' });
+    p.reinforce(p.cellOf(160, 0), [spec('near', 155), spec('deep', 175), spec('dry', 210)]);
+    const made = [];
+    for (let i = 0; i < 80; i++) made.push(...p.update({ x: 170, z: 0, heading: null }).make);
+    const byId = new Map(made.map((s) => [s.id, s]));
+    expect(byId.has('deep')).toBe(false);
+    for (const id of ['near', 'dry']) {
+      const s = byId.get(id);
+      expect(s, id).toBeTruthy();
+      expect(wet([s.b.x, s.b.z]), id).toBe(true);
+    }
+    expect(Math.hypot(byId.get('near').b.x - 155, byId.get('near').b.z)).toBeLessThanOrEqual(12);
+  });
+  test('a wounded soldier walked away from and back to is as hurt as it was, its grudge kept', () => {
+    const p = createPopulation({ site: SITE, turfs, effects: F, tier: 'high', seed: 7, rand: seeded(), standable: ok });
+    let made = [];
+    for (let i = 0; i < 80; i++) made.push(...p.update({ x: 0, z: 0, heading: null }).make);
+    const s = made[0];
+    s.hp = 37;
+    s.grudge = 500;
+    s.suppressed = 400;
+    for (let i = 0; i < 80; i++) p.update({ x: -3000, z: 0, heading: null });
+    expect(p.soldiers.has(s.id)).toBe(false);
+    made = [];
+    for (let i = 0; i < 80; i++) made.push(...p.update({ x: 0, z: 0, heading: null }).make);
+    const back = made.find((m) => m.id === s.id);
+    expect(back).toBeTruthy();
+    expect(back).not.toBe(s);
+    expect(back).toMatchObject({ hp: 37, grudge: 500, suppressed: 400 });
+  });
+  test('walking 200 cells, what it keeps stays bounded', () => {
+    const p = createPopulation({ site: SITE, turfs, effects: F, tier: 'high', seed: 7, rand: seeded(), standable: ok });
+    for (let i = 0; i < 200; i++) for (let k = 0; k < 3; k++) p.update({ x: i * CELL, z: 0, heading: [1, 0] });
+    const n = p.sizes();
+    expect(n.cells).toBeLessThan((2 * (RADIUS + 1) + 1) ** 2 + 40);
+  });
+});

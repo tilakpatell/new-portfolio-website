@@ -25,6 +25,9 @@ export const DENSITY = { high: 3, mid: 2, low: 1 };
 export const POP = { ultra: 32, high: 28, mid: 18, low: 10 };
 // (a waiting soldier this much nearer than the furthest made takes its place)
 export const SWAP = 12;
+const PRUNE = 30; // updates between looks for cells to let go of
+const DRY = 12; // metres a reinforcement is moved to find dry ground, at most
+const KEEP = ['hp', 'grudge', 'suppressed', 'staggerUntil', 'engagedUntil']; // what a soldier let go of keeps till it's made again
 const COVERT = 25; // nobody this near where a covert landing put you
 const SHIP = 14; // nor on the ship's pad
 const low = (tier) => tier === 'low';
@@ -109,6 +112,7 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
   const dead = new Set();
   const soldiers = new Map(); // id → Soldier (made)
   let you = [0, 0];
+  let ticks = 0;
 
   const cell = (key) => {
     let c = cells.get(key);
@@ -124,7 +128,7 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
     const c = cell(key);
     if (c.built) return;
     c.built = true;
-    for (const s of rosterFor(key, turfs, effects, tier, seed, standable, { pad })) if (!specs.has(s.id)) place(s);
+    for (const s of rosterFor(key, turfs, effects, tier, seed, standable, { pad })) if (!specs.has(s.id)) place({ ...s, from: key });
   };
   const move = (id, x, z) => {
     const spec = specs.get(id);
@@ -143,6 +147,46 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
     return Math.max(Math.abs(x - cx), Math.abs(z - cz)) <= RADIUS + HYSTERESIS;
   };
   const far = (spec) => Math.hypot(spec.at[0] - you[0], spec.at[1] - you[1]);
+  // a dry spot within DRY of p (rings out, eight bearings each), or null
+  const dry = (p) => {
+    if (standable(p)) return p;
+    for (let r = 3; r <= DRY; r += 3)
+      for (let i = 0; i < 8; i++) {
+        const q = [r2(p[0] + Math.cos((i / 8) * Math.PI * 2) * r), r2(p[1] + Math.sin((i / 8) * Math.PI * 2) * r)];
+        if (standable(q)) return q;
+      }
+    return null;
+  };
+  // let go of: what it had kept on its spec, for when it's made again
+  const letGo = (id) => {
+    const s = soldiers.get(id);
+    const spec = specs.get(id);
+    if (s && spec && s.alive) spec.kept = Object.fromEntries(KEEP.filter((k) => s[k] != null).map((k) => [k, s[k]]));
+    soldiers.delete(id);
+  };
+  const make = (spec) => {
+    const s = newSoldier(spec, rand);
+    if (spec.kept) Object.assign(s, spec.kept);
+    soldiers.set(spec.id, s);
+    return s;
+  };
+  // the cells out of the band that hold nothing that's changed (they'd be built the same again): let go of
+  const prune = () => {
+    for (const [key, c] of cells) {
+      if (kept(key) || grid.loaded.has(key)) continue;
+      let pristine = true;
+      for (const id of c.ids) {
+        const spec = specs.get(id);
+        if (dead.has(id) || soldiers.has(id) || !spec || spec.kept || spec.from !== key) {
+          pristine = false;
+          break;
+        }
+      }
+      if (!pristine) continue;
+      for (const id of c.ids) specs.delete(id);
+      cells.delete(key);
+    }
+  };
   const waiting = () => {
     const out = [];
     for (const key of grid.loaded) for (const id of cells.get(key)?.ids ?? []) if (!soldiers.has(id) && !dead.has(id)) out.push(specs.get(id));
@@ -159,8 +203,15 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
       soldiers.delete(id);
     },
     isDead: (id) => dead.has(id),
+    // (for the tests: how much it's keeping)
+    sizes: () => ({ cells: cells.size, specs: specs.size, dead: dead.size }),
     reinforce(key, list) {
-      for (const s of list) if (!specs.has(s.id) && !dead.has(s.id)) place({ ...s, at: [...s.at] });
+      for (const s of list) {
+        if (specs.has(s.id) || dead.has(s.id)) continue;
+        // (never sent in in the water: moved to dry ground near, or not at all)
+        const at = dry(s.at);
+        if (at) place({ ...s, at: [...at] });
+      }
       cell(key);
     },
     update({ x, z, heading = null }) {
@@ -176,10 +227,10 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
       const drop = [];
       for (const id of soldiers.keys()) {
         if (kept(specs.get(id).cell)) continue;
-        soldiers.delete(id);
+        letGo(id);
         drop.push(id);
       }
-      const make = [];
+      const made = [];
       const queue = waiting();
       for (const spec of queue) {
         if (soldiers.size >= cap) {
@@ -187,14 +238,13 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
           let worst = null;
           for (const s of soldiers.values()) if (!worst || far(specs.get(s.id)) > far(specs.get(worst.id))) worst = s;
           if (!worst || far(specs.get(worst.id)) - far(spec) <= SWAP) break;
-          soldiers.delete(worst.id);
+          letGo(worst.id);
           drop.push(worst.id);
         }
-        const s = newSoldier(spec, rand);
-        soldiers.set(spec.id, s);
-        make.push(s);
+        made.push(make(spec));
       }
-      return { make, drop };
+      if (++ticks % PRUNE === 0) prune();
+      return { make: made, drop };
     },
   };
 }

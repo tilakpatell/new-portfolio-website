@@ -120,3 +120,26 @@ describe('the director', () => {
     expect(lost[0].text).toMatch(/post/);
   });
 });
+
+describe('the director over water', () => {
+  test('a raid staged across a channel puts nobody in the water', async () => {
+    const { createPopulation } = await import('./population');
+    const wet = ([x]) => !(x > 150 && x < 200);
+    const pad = { id: 'pad', at: [0, 0], r: 90, holder: 'owner', side: 'empire', war: 'gcw', posts: [[26, 0], [-13, 22], [-13, -22]], beats: [] };
+    const far = { id: 'far', at: [300, 0], r: 110, holder: 'other', side: 'rebel', war: 'gcw', posts: [[223, 0]], beats: [] };
+    const effects = { ...F, control: 0.5 };
+    const population = createPopulation({ site: SITE, turfs: [pad, far], effects, tier: 'high', seed: 3, rand: () => 0.5, standable: wet });
+    const d = createDirector({ turfs: [pad, far], effects, tier: 'high', rand: () => 0.5 });
+    const you = { x: 170, z: 0 };
+    const made = [];
+    const events = [];
+    for (let t = 0; t < RAID * 2 + 5; t += 1) {
+      made.push(...population.update({ x: you.x, z: you.z, heading: null }).make);
+      events.push(...d.update(1, { you, population }));
+    }
+    expect(events.find((e) => e.type === 'raid')).toBeTruthy();
+    const raiders = made.filter((s) => s.role === 'raid');
+    expect(raiders.length).toBeGreaterThan(0);
+    for (const s of raiders) expect(wet([s.b.x, s.b.z]), s.id).toBe(true);
+  });
+});
