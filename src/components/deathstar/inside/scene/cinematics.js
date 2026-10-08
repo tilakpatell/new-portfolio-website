@@ -19,7 +19,9 @@
 //       (up the way they face, +y up); gone: out of the scene for good; hide: out of sight, or back
 //     ship: name 'falcon' | 'lambda'; how 'in' (from out past its spot down onto it) | 'out' (off it
 //       and away) | 'down' (from above onto its pad) | 'up' (off its pad and away)
-//     flash: { t, at: place, colour, size }   a flare of light (and, with size, an explosion)
+//     flash: { t, at: place, ahead?, colour, size }   a flare of light (and, with size, an explosion)
+//     beam: { t0, t1, at: place, from, to, colour, width }   a shaft of light from and to [right, up, back]
+//       in the place's frame, lit from t0 to t1 seconds in, flickering (the superlaser)
 //   frameOf(place) → { x, y, z, yaw }   pure, from a place resolved by `where`
 //   offsetIn(frame, [right, up, back]) → { x, y, z }   pure
 //   shotAt(scene, t) → { shot, k } | null   pure: the shot t seconds in, and how far through it (0…1)
@@ -27,6 +29,8 @@
 //   createCinematics({ people, layout, show, fx, scene, you }) → { sync(g, dt) → pose | null, playing, dispose() }
 //     you() → the player's figure, for the acts tagged 'you'
 //     pose: { pos, look } the camera’s this frame while a scene plays, null otherwise
+
+import * as THREE from 'three';
 
 const EYE = 1.5; // metres over a spot or a person a shot looks at, unless it says
 const SHIP_RISE = 14; // metres a ship comes down from or goes up to
@@ -127,9 +131,11 @@ export const SCENES = {
   // the superlaser fires on a cruiser in the window
   cruiser: {
     shots: [{ s: 6, at: { spot: 'firing-switch' }, from: [1.5, 1.8, 2.5], to: [0.8, 1.7, 1.6], lift: 1.6, lookAhead: 40 }],
+    // (out past the window: the beam from under the station's dish to the cruiser, and where it lands)
+    beams: [{ t0: 1.3, t1: 2.9, at: { spot: 'firing-switch' }, from: [-6, -14, -70], to: [30, 26, -420], colour: 0x5dff7a, width: 1.6 }],
     flashes: [
-      { t: 1.5, at: { spot: 'firing-switch' }, ahead: 60, colour: 0x5dff7a },
-      { t: 2.6, at: { spot: 'firing-switch' }, ahead: 60, colour: 0xffc070, size: 4 },
+      { t: 1.4, at: { spot: 'firing-switch' }, ahead: 60, colour: 0x5dff7a },
+      { t: 2.8, at: { spot: 'firing-switch' }, ahead: 380, colour: 0xffc070, size: 40 },
     ],
   },
   // out of the dock as the station goes up
@@ -244,7 +250,7 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
 
   function begin(id) {
     const spec = SCENES[id];
-    playing = spec ? { id, spec, t: 0, done: new Set(), flashes: new Set(), ship: spec.ship ? shipOf(spec.ship.name) : null, lit: null } : null;
+    playing = spec ? { id, spec, t: 0, done: new Set(), flashes: new Set(), beams: new Map(), ship: spec.ship ? shipOf(spec.ship.name) : null, lit: null } : null;
   }
 
   function end(g) {
@@ -258,6 +264,7 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
       ship.object.updateMatrixWorld(true);
     }
     if (playing.lit) show?.lightning?.(playing.lit.from, playing.lit.to, false);
+    dropBeams();
     // the actors back to what the rules have them doing
     for (const a of spec.acts ?? []) {
       for (const it of figuresOf(a.tag, g)) {
@@ -317,6 +324,43 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
     }
   }
 
+  // the beams lit now: one additive shaft each, made as they light and freed as the scene ends
+  function beamsAt(g) {
+    const { spec, t } = playing;
+    (spec.beams ?? []).forEach((b, i) => {
+      const on = t >= b.t0 && t < b.t1;
+      let mesh = playing.beams.get(i);
+      if (on && !mesh) {
+        const f = frameOf(where(b.at, g));
+        if (!f) return;
+        const a = offsetIn(f, b.from);
+        const z = offsetIn(f, b.to);
+        const v = new THREE.Vector3(z.x - a.x, z.y - a.y, z.z - a.z);
+        const geo = new THREE.CylinderGeometry(b.width / 2, b.width / 2, v.length(), 10, 1, true);
+        const mat = new THREE.MeshBasicMaterial({ color: b.colour, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+        mesh = new THREE.Mesh(geo, mat);
+        mesh.name = 'cinematic-beam';
+        mesh.position.set((a.x + z.x) / 2, (a.y + z.y) / 2, (a.z + z.z) / 2);
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v.normalize());
+        mesh.frustumCulled = false;
+        world.add(mesh);
+        playing.beams.set(i, mesh);
+      }
+      if (mesh) {
+        mesh.visible = on;
+        // (it flickers as it burns, and thins as it goes out)
+        if (on) mesh.material.opacity = 0.65 + 0.35 * Math.sin(t * 60) * Math.sin(t * 23) * (t > b.t1 - 0.3 ? (b.t1 - t) / 0.3 : 1);
+      }
+    });
+  }
+  function dropBeams() {
+    for (const mesh of playing?.beams?.values() ?? []) {
+      mesh.removeFromParent();
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+    }
+  }
+
   function flashesAt(g) {
     const { spec, t, flashes } = playing;
     (spec.flashes ?? []).forEach((f, i) => {
@@ -347,6 +391,7 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
       playing.t = g.scene.t ?? playing.t + dt;
       actsAt(g);
       flashesAt(g);
+      beamsAt(g);
       const { spec } = playing;
       if (playing.ship) {
         const total = spec.shots.reduce((s, x) => s + x.s, 0);
@@ -366,6 +411,7 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
       return pose;
     },
     dispose() {
+      dropBeams();
       playing = null;
     },
   };
