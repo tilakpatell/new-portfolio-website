@@ -1,5 +1,6 @@
-import { Fragment, useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { onceVisible } from '../lib/observe';
+import { IconClose, IconCopy, IconDone } from './icons';
 
 // Marks the element with data-<attr>="true" the first time it is seen.
 // Set directly on the DOM so it costs no React re-render.
@@ -71,6 +72,52 @@ export function Chips({ items, className = '' }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+// Points in a list, each behind a short accent dash.
+export function Bullets({ items, className = '' }) {
+  return (
+    <ul className={`grid gap-4 ${className}`}>
+      {items.map((b, i) => (
+        <Reveal as="li" key={i} delay={i * 50} className="grid grid-cols-[1.25rem_1fr] gap-2 leading-relaxed text-body">
+          <span className="mt-[0.7em] h-[2px] w-3 rounded-full" style={{ background: 'var(--accent)' }} aria-hidden="true" />
+          <span>{b}</span>
+        </Reveal>
+      ))}
+    </ul>
+  );
+}
+
+// Copies some words, and says so for two seconds. Without a clipboard (an old
+// browser, a page not served over https) `onFail` gets the words instead; with
+// none, nothing happens and the words are on the page to select.
+export function CopyButton({ text, label = 'Copy', onFail, className = 'btn btn-ghost btn-sm', ...rest }) {
+  const [done, setDone] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setDone(true);
+      setTimeout(() => setDone(false), 2000);
+    } catch {
+      onFail?.(text);
+    }
+  };
+  return (
+    <button type="button" className={className} onClick={copy} {...rest}>
+      {done ? <IconDone className="h-4 w-4 text-accent" aria-hidden="true" /> : <IconCopy className="h-4 w-4" aria-hidden="true" />}
+      <span aria-live="polite">{done ? 'Copied' : label}</span>
+    </button>
+  );
+}
+
+// The X on anything that floats. Its name says what it closes when the
+// panel's own title doesn't ("Close the guide"); otherwise "Close".
+export function CloseButton({ label = 'Close', className = '', ...rest }) {
+  return (
+    <button type="button" className={`close-btn ${className}`} aria-label={label} {...rest}>
+      <IconClose className="h-5 w-5" aria-hidden="true" />
+    </button>
   );
 }
 

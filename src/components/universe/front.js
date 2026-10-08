@@ -11,10 +11,20 @@
 // is fought in the galaxy, galaxy/gcw.js, not here; Rick and Morty's and
 // Breaking Bad's are here.)
 //
-// zoneOf(dist, was) → 'in' | 'near' | 'out' is pure (tested).
-// createFront(map, { side, war, models, small, tier, reduced, storage, emit,
-//   makeBattle, makeScene }) → null (the side has no war, or it isn't ready;
-//   `war` in place of the side's own, for the tests)
+// Since the spread (scale.js's SPREAD) a war's front can sit at a junction
+// of the lanes instead (the design:
+// docs/superpowers/specs/2026-10-07-universe-scale-hyperlanes-design.md,
+// decision 9): the beacon nearest the middle of the war's own places, its
+// first sector and its last (frontAt), so the war is somewhere the lanes go,
+// seen from them as a far fight, not met by accident. Given `beacons`,
+// createFront fights every battle there; the sectors are still what's fought
+// over, by name, and still move on as they're won.
+//
+// zoneOf(dist, was) → 'in' | 'near' | 'out' and frontAt(war, beacons) →
+// beacon | null are pure (tested).
+// createFront(map, { side, war, beacons, models, small, tier, reduced,
+//   storage, emit, makeBattle, makeScene }) → null (the side has no war, or
+//   it isn't ready; `war` in place of the side's own, for the tests)
 //   or { update(dt, t, camera, camLocal, live) → { busy, hurt }, join(team),
 //   hit(from, to, damage), targets, inZone, holdAt(x, y, z, f), near, joined, info, where(),
 //   goal(), win(team), dispose() }
@@ -26,6 +36,7 @@ import { createBattleScene } from './battleScene';
 import { contested, loadWar, newWar, owner, resolve, saveWar } from './war';
 import { warFor } from './wars';
 import { DEEP, easeOpen, gapAlong } from './deep';
+import { NODES } from './hyperlanes';
 import { sharpen } from '../../lib/three/textures';
 
 export const ZONE = {
@@ -38,6 +49,27 @@ export const ZONE = {
 export function zoneOf(dist, was) {
   if (dist < ZONE.in || (was === 'in' && dist < ZONE.out)) return 'in';
   return dist < ZONE.near ? 'near' : 'out';
+}
+
+// the lanes' beacons, where a war's front can be (hyperlanes.js)
+export const BEACONS = NODES.filter((n) => n.kind === 'beacon');
+
+// the beacon nearest the middle of the war's own places: the first side's
+// home end of its line of sectors and the second's
+export function frontAt(war, beacons = BEACONS) {
+  const a = war.sectors[0].at;
+  const b = war.sectors[war.sectors.length - 1].at;
+  const mid = [0, 1, 2].map((i) => (a[i] + b[i]) / 2);
+  let best = null;
+  let near = Infinity;
+  for (const o of beacons) {
+    const d = Math.hypot(o.at[0] - mid[0], o.at[1] - mid[1], o.at[2] - mid[2]);
+    if (d < near) {
+      near = d;
+      best = o;
+    }
+  }
+  return best;
 }
 
 // the front's name card, seen from far off (the wonders' names are in deep
@@ -63,7 +95,7 @@ function nameCard(title, sub) {
   return t;
 }
 
-export function createFront(map, { side, war: given = null, models, small = false, tier = 'high', reduced = false, storage = null, emit = () => {}, makeBattle = createBattle, makeScene = createBattleScene }) {
+export function createFront(map, { side, war: given = null, beacons = null, models, small = false, tier = 'high', reduced = false, storage = null, emit = () => {}, makeBattle = createBattle, makeScene = createBattleScene }) {
   const war = given ?? warFor(side?.id);
   if (!war || !war.ready) return null;
   let state = loadWar(storage, war);
@@ -85,6 +117,10 @@ export function createFront(map, { side, war: given = null, models, small = fals
     return [dx / l, dz / l];
   })();
   const sector = () => war.sectors[Math.max(0, Math.min(war.sectors.length - 1, contested(state)))];
+  // where the battles are: the war's beacon, given the lanes' (it doesn't
+  // move), else the sector fought over
+  const post = beacons ? frontAt(war, beacons) : null;
+  const spot = () => post?.at ?? sector().at;
 
   // the glow and the name, seen from far off
   const beacon = new THREE.Group();
@@ -113,7 +149,7 @@ export function createFront(map, { side, war: given = null, models, small = fals
   let labelFor = '';
   const placeBeacon = () => {
     const s = sector();
-    beacon.position.set(...s.at);
+    beacon.position.set(...spot());
     const name = war.battleName(s);
     if (name !== labelFor) {
       labelFor = name;
@@ -133,7 +169,7 @@ export function createFront(map, { side, war: given = null, models, small = fals
       saveWar(storage, war, state);
       placeBeacon();
     }
-    battleAt = sector().at;
+    battleAt = spot();
     battle = makeBattle({ war, attacker: state.attacker, at: battleAt, axis, perSide: perSide(tier) });
     joined = null;
     shown = false;
@@ -158,7 +194,7 @@ export function createFront(map, { side, war: given = null, models, small = fals
 
   const front = {
     update(dt, t, camera, camLocal, live) {
-      const at = battle ? battleAt : sector().at;
+      const at = battle ? battleAt : spot();
       const p = live ?? camLocal;
       const dist = Math.hypot(p.x - at[0], p.y - at[1], p.z - at[2]);
       const was = zone;
@@ -232,7 +268,7 @@ export function createFront(map, { side, war: given = null, models, small = fals
     // where it's in sight (as the drive eases down coming up on a place, so
     // the fight's edge isn't a wall), but not for a ship going past it or away
     holdAt(x, y, z, f) {
-      const at = battle ? battleAt : sector().at;
+      const at = battle ? battleAt : spot();
       return 1 - easeOpen(gapAlong(x, y, z, f, at, ZONE.in), ZONE.near - ZONE.in);
     },
     // within sight of it
@@ -251,11 +287,11 @@ export function createFront(map, { side, war: given = null, models, small = fals
     // the war, for the nav map and the holotable
     where() {
       const s = sector();
-      return { war: war.name, name: war.battleName(s), sector: s.name, at: s.at, contested: contested(state), sectors: war.sectors.map((sec, i) => ({ id: sec.id, name: sec.name, at: sec.at, owner: owner(state, i) })), colours: war.sides.map((o) => o.colour), sides: war.sides.map((o) => o.short) };
+      return { war: war.name, name: war.battleName(s), sector: s.name, at: spot(), beacon: post?.id ?? null, contested: contested(state), sectors: war.sectors.map((sec, i) => ({ id: sec.id, name: sec.name, at: sec.at, owner: owner(state, i) })), colours: war.sides.map((o) => o.colour), sides: war.sides.map((o) => o.short) };
     },
     // where the autopilot takes you: just short of the fight, on your side of it
     goal() {
-      return { id: 'front', at: sector().at, r: 30, reach: ZONE.in * 0.8 };
+      return { id: 'front', at: spot(), r: 30, reach: ZONE.in * 0.8 };
     },
     // (a dev hook: end the battle now, `team` the winner)
     win(team) {

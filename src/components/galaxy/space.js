@@ -13,13 +13,22 @@
 // wide of it, or away from it, it stays open, so there's no wall round the
 // planet or a battle's capital ships to crawl through.
 //
-// EDGE, CEILING, PULSE; FAR (the camera's far plane, for all of it in view)
-// makeSpace(solids) → { edge, ceilingAt, openness, driveAt, driveAlong, homeAt, boostAt, brakeAt, coastAt, solids, goals }
+// Well out from everything, the drive opens again into super speed: the
+// ship's own overdrive (ship.js's OVERDRIVE, up to three times what the
+// drive allows, its brakes squared so it stops in the same room), by how
+// wide open it is the way it's going (wideAlong: none within WIDE.near of
+// anything big's reach, all of it WIDE.ramp further out), so crossing an
+// open system doesn't drag and nothing changes near the planet, where the
+// moment from the films plays. The scene hands overdriveAt's number to
+// step() as input.overdrive while the pilot boosts, and to the autopilot.
+//
+// EDGE, CEILING, PULSE, WIDE; FAR (the camera's far plane, for all of it in view)
+// makeSpace(solids) → { edge, ceilingAt, openness, driveAt, driveAlong, wideAlong, overdriveAt, homeAt, boostAt, brakeAt, coastAt, solids, goals }
 // solids: [{ id, at: [x, y, z], r, reach, band?, swallow? }]: what the ship
 // bumps into (the planet, its moons, the Death Star, the big rocks…); the
 // ones with `goal` are somewhere the autopilot can take you.
 
-import { SHIP, headingTo } from '../universe/ship';
+import { OVERDRIVE, SHIP, headingTo } from '../universe/ship';
 import { gapAlong } from '../universe/deep';
 import { conj, fromAngles, rotate } from '../universe/orient';
 
@@ -34,6 +43,7 @@ export const FAR = 12000;
 const NEAR = 26; // past a thing's reach: closer than this, the drive's down
 const RAMP = 90; // and over this much further it opens all the way
 const PARK = 6; // how far past a goal's reach the autopilot stops
+export const WIDE = { near: 500, ramp: 500 }; // past anything big's reach: no super speed within `near`, all of it `ramp` further out
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const smooth = (k) => k * k * (3 - 2 * k);
@@ -51,12 +61,21 @@ export function makeSpace(solids, { edge = EDGE, ceiling = CEILING } = {}) {
     return smooth(clamp((gap - NEAR) / RAMP, 0, 1));
   };
   const openness = (x, y, z) => driveAlong(x, y, z);
+  // how wide open it is at (x, y, z) going the way `f` points: super speed's share
+  const wideAlong = (x, y, z, f = null) => {
+    let gap = Infinity;
+    for (const o of big) gap = Math.min(gap, gapAlong(x, y, z, f, o.at, o.reach ?? o.r));
+    return smooth(clamp((gap - WIDE.near) / WIDE.ramp, 0, 1));
+  };
+  const overdriveAt = (x, y, z, f = null) => 1 + (OVERDRIVE - 1) * wideAlong(x, y, z, f);
   return {
     edge,
     ceilingAt: () => ceiling,
     openness,
     driveAt: openness, // (how far the sublight drive's open: all of how open it is)
     driveAlong, // (and the way the ship's going: step() and the autopilot use it)
+    wideAlong,
+    overdriveAt,
     homeAt: () => 0, // (none of the universe map's home-system handling)
     // (`open`, how open the drive is, if ship.js knows it already: less, held down by hunters)
     boostAt: (x, y, z, boost = SHIP.boost, open = openness(x, y, z)) => boost + (PULSE - boost) * open,

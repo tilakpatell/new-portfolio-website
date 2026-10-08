@@ -53,7 +53,8 @@ const PREPARE_WAIT = 30000; // ms at most a scene's prepare holds back its first
 // frame as it's uncovered (the cockpit's flash, for the universe) doesn't
 // stop to send everything to the graphics chip. One made on an uncovered page
 // has its warmUp driven a slice a frame before it's shown (driveWarmUp).
-const covered = () => typeof document !== 'undefined' && 'covered' in document.documentElement.dataset;
+// (and under a tour's card in the middle, html[data-tour-still]: nothing lit to watch)
+const covered = () => typeof document !== 'undefined' && ('covered' in document.documentElement.dataset || 'tourStill' in document.documentElement.dataset);
 // fn(timeLeft) when the page has a moment; timeLeft() is the ms it can spare
 const whenIdle = (fn) => {
   if (typeof requestIdleCallback === 'function') return requestIdleCallback((deadline) => fn(() => deadline.timeRemaining()), { timeout: 500 });
