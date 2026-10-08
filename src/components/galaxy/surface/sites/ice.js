@@ -74,6 +74,8 @@ export const SITES = {
       { kind: 'spray', count: 1100, color: '#ffffff' },
     ],
     land: { at: [0, 0], yaw: -0.75 },
+    // (on the other side's Hoth: in a fold of the snowfield to the east, under the rise)
+    covert: { at: [190, 110], yaw: 2.62 },
     lines: {
       out: {
         xwing: [['luke', 'Hoth. Keep your sensors on the ridges, Artoo. There are wampas out here.'], ['r2', '(A shivering, chattering warble.)']],

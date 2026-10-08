@@ -56,6 +56,8 @@ export const SITE = {
   },
   weather: [{ kind: 'motes', count: 500, color: '#f0f8c0' }],
   land: { at: [0, 0], yaw: 3.0 },
+  // (on the other side's Yavin: in the jungle west of the field, under the canopy)
+  covert: { at: [-150, 80], yaw: 0.49 },
   lines: {
     out: {
       xwing: [['luke', 'Yavin 4. Home, for a while. Artoo, remember the medals?'], ['r2', '(A proud, happy whistle.)']],

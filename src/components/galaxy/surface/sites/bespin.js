@@ -36,6 +36,8 @@ export const SITE = {
   water: { level: -380, color: '#f6c4a6', deep: '#c27c78', kind: 'clouds' },
   weather: [{ kind: 'motes', count: 400, color: '#ffe2c8' }],
   land: { at: [0, -255], yaw: 0 },
+  // (on the other side's Bespin: the top deck's far side, among the domes, not on the platform they watch)
+  covert: { at: [-134, -50], yaw: 0.99 },
   lines: {
     out: {
       xwing: [['luke', 'Cloud City. Han and Leia are here somewhere, Artoo. I can feel it.'], ['r2', '(A nervous warble.)']],

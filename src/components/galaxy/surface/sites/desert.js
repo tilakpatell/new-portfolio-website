@@ -83,6 +83,8 @@ export const SITES = {
     },
     weather: [{ kind: 'sand', count: 1300 }],
     land: { at: [0, 0], yaw: 0.9 },
+    // (on the other side's Tatooine: down among the dunes towards Mos Eisley, where the sand hides a ship)
+    covert: { at: [180, -150], yaw: -2.45 },
     places: [
       {
         id: 'homestead',

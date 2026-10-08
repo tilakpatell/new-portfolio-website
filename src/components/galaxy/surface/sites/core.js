@@ -86,6 +86,8 @@ export const SITES = {
       },
     },
     land: { at: [0, 0], yaw: 2.3 },
+    // (on the other side's Naboo: in the meadows west, behind the hill from the landing)
+    covert: { at: [-190, 70], yaw: 0.35 },
     places: [
       {
         id: 'palace',
@@ -385,6 +387,8 @@ export const SITES = {
       },
     },
     land: { at: [0, 0], yaw: -0.5 },
+    // (on the other side's Kamino: the storm platform at the city's edge, by the mast)
+    covert: { at: [74, -234], yaw: -1.88 },
     places: [
       {
         id: 'facility',
@@ -614,6 +618,8 @@ export const SITES = {
       },
     },
     land: { at: [0, 0], yaw: -0.6 },
+    // (on the other side's Geonosis: behind the rocks to the north)
+    covert: { at: [60, -190], yaw: -1.88 },
     places: [
       {
         id: 'arena',

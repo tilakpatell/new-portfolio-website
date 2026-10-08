@@ -107,6 +107,8 @@ export const SITES = {
     grass: { h: [0.12, 0.36], w: 0.035, root: '#3a4a26', mid: '#52703a', tip: '#8fae62', dry: '#8c8050', cover: 0.62, scale: 45, above: 0, wind: 0.35 },
     weather: [{ kind: 'motes', count: 700 }],
     land: { at: [0, 0], yaw: 0.6 },
+    // (on the other side's Endor: down the ridge to the north, under the trees, below the garrison's eyeline)
+    covert: { at: [5, -215], yaw: -1.59 },
     lines: {
       out: {
         xwing: [['luke', 'Endor. Quiet, Artoo. There could be scout troopers anywhere.'], ['r2', '(A very quiet beep.)']],
@@ -391,6 +393,8 @@ export const SITES = {
     },
     weather: [{ kind: 'motes', count: 400 }],
     land: { at: [0, -40], yaw: -1.1 },
+    // (on the other side's Kashyyyk: up the hill north of the beach, in the forest over the landing)
+    covert: { at: [-10, -270], yaw: -1.53 },
     lines: {
       out: {
         xwing: [['luke', 'Kashyyyk. Chewie’s home. Everything here is enormous, Artoo.'], ['r2', '(An awed, rising whistle.)']],
@@ -634,6 +638,8 @@ export const SITES = {
     },
     weather: [{ kind: 'motes', count: 1000, color: '#fff2d0' }],
     land: { at: [0, 0], yaw: -0.5, h: 0.7 },
+    // (on the other side's Dagobah: a dry hump in the swamp past the bog, behind the cypresses)
+    covert: { at: [85, 165], yaw: 2.05 },
     lines: {
       out: {
         xwing: [['luke', 'This is the place, Artoo. I can feel it. Something’s… strange here.'], ['r2', '(A very worried whistle, and a splash.)']],

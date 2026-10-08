@@ -340,6 +340,8 @@ export const SITES = {
     grass: { h: [0.35, 0.8], w: 0.05, root: '#5f7048', mid: '#6f9452', tip: '#adc47e', dry: '#c8c08a', cover: 0.7, scale: 70, above: 1.4, wind: 0.8 },
     weather: [{ kind: 'spray', count: 500 }],
     land: { at: [0, 0], yaw: -0.3 },
+    // (on the other side's Scarif: out on the sand to the north, past the palms)
+    covert: { at: [-55, -200], yaw: -1.3 },
     lines: {
       out: {
         xwing: [['luke', 'Scarif. This is where they got the plans, Artoo. All of them, so we could have a chance.'], ['r2', '(A soft, respectful whistle.)']],

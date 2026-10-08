@@ -113,6 +113,7 @@ import { createAssaultMission } from './missions/assaultScene';
 import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
 import { garrisonAt, garrisonLife } from './garrison';
+import { landingFor } from './landing';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -251,7 +252,10 @@ export async function create(canvas, ctx) {
   // where the scattered things go (worked out before anything's placed: the
   // ground map is painted with the trees' crowns over it)
   const r = rng(site.ground.seed ?? 1);
-  const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
+  // where your ship sets down (landing.js): the pad, or out of the garrison's
+  // sight on a world the other side holds (and the trees kept off it)
+  const landing = landingFor(site, ctx.effects, grid.heightAt);
+  const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }, ...(landing.covert ? [{ at: landing.at, r: 30 }] : [])];
   const scattered = site.scatter.map((s) => {
     const items = [];
     const [r0, r1] = s.within ?? [20, site.reach];
@@ -494,7 +498,7 @@ export async function create(canvas, ctx) {
   // ── Your ship ──
   const shipKind = SHIPS[ctx.ship] ? ctx.ship : 'xwing';
   const S = SHIPS[shipKind];
-  const landAt = site.land.at;
+  const landAt = landing.at;
   const landY = groundAt(world, landAt[0], landAt[1]);
   const shipHolder = new THREE.Group(); // where it is
   const shipTilt = new THREE.Group(); // how it's tilted, coming down
@@ -557,7 +561,7 @@ export async function create(canvas, ctx) {
   const solidShip = () => {
     if (shipSolid) return;
     shipSolid = true;
-    world.solids.box(landAt[0], landAt[1], shipBox.w * 0.8, shipBox.l * 0.85, site.land.yaw);
+    world.solids.box(landAt[0], landAt[1], shipBox.w * 0.8, shipBox.l * 0.85, landing.yaw);
   };
 
   // ── You, and your crewmate ──
@@ -572,11 +576,11 @@ export async function create(canvas, ctx) {
   // (your mate carries their own two abilities too, where they're on the roster)
   const withAbilities = (s) => (s.abilities || !heroById(s.id)?.abilities ? s : { ...s, abilities: heroById(s.id).abilities });
   const party = partyFor(hero, crewOf).map(withAbilities);
-  const out = new V(Math.cos(site.land.yaw), 0, -Math.sin(site.land.yaw)); // the ship's right
+  const out = new V(Math.cos(landing.yaw), 0, -Math.sin(landing.yaw)); // the ship's right
   // (a mission on foot starts you at its start, facing its way)
   const onFoot = Boolean(mission && !mission.ride);
   const spawnAt = onFoot ? [...mission.start] : [landAt[0] + out.x * (shipBox.w + 2.5), landAt[1] + out.z * (shipBox.w + 2.5)];
-  const you = walker(spawnAt[0], spawnAt[1], groundAt(world, ...spawnAt), onFoot ? mission.yaw : site.land.yaw + 0.5);
+  const you = walker(spawnAt[0], spawnAt[1], groundAt(world, ...spawnAt), onFoot ? mission.yaw : landing.yaw + 0.5);
   const mateAt = [spawnAt[0] + out.x * 1.6, spawnAt[1] + out.z * 1.6];
   const mate = walker(mateAt[0], mateAt[1], groundAt(world, ...mateAt), you.yaw);
   const people = [
@@ -812,10 +816,10 @@ export async function create(canvas, ctx) {
 
   // the ship's way down: in from behind, low over the land, onto its spot
   const shipLanded = new V(landAt[0], landY, landAt[1]);
-  const approach = new V(-Math.sin(site.land.yaw), 0, -Math.cos(site.land.yaw));
+  const approach = new V(-Math.sin(landing.yaw), 0, -Math.cos(landing.yaw));
   const shipFrom = shipLanded.clone().addScaledVector(approach, 700).add(new V(0, 320, 0));
   shipHolder.position.copy(state.phase === 'landing' ? shipFrom : shipLanded);
-  shipHolder.rotation.y = site.land.yaw;
+  shipHolder.rotation.y = landing.yaw;
   ship.park?.(state.phase !== 'landing');
   let engine = null;
   const engineOn = (speed) => {
@@ -2250,6 +2254,7 @@ export async function create(canvas, ctx) {
       engine?.set({ speed: 0, on: false });
       solidShip();
       for (const p of people) p.holder.visible = true;
+      if (landing.line) say([landing.line]); // (where you've come down, before the crew's first word)
       emit({ type: 'phase', phase: 'out' });
     }
   }
@@ -2259,7 +2264,7 @@ export async function create(canvas, ctx) {
     const k = clamp(state.age / LEAVE.lift, 0, 1);
     const lift = ease(k) * 26;
     const away = Math.max(0, state.age - LEAVE.lift);
-    const fwd = new V(Math.sin(site.land.yaw), 0, Math.cos(site.land.yaw));
+    const fwd = new V(Math.sin(landing.yaw), 0, Math.cos(landing.yaw));
     shipHolder.position.copy(shipLanded).add(new V(0, lift + away * away * 22, 0)).addScaledVector(fwd, away * away * 60);
     shipTilt.rotation.x = -Math.min(0.5, away * 0.35);
     ship.setThrottle?.(0.6 + Math.min(1, away));
@@ -2611,7 +2616,7 @@ export async function create(canvas, ctx) {
   }
 
   // watching the ship come in (or go), from beside where it lands
-  const watchFrom = shipLanded.clone().add(new V(Math.cos(site.land.yaw) * 38 + Math.sin(site.land.yaw) * 30, 7, -Math.sin(site.land.yaw) * 38 + Math.cos(site.land.yaw) * 30));
+  const watchFrom = shipLanded.clone().add(new V(Math.cos(landing.yaw) * 38 + Math.sin(landing.yaw) * 30, 7, -Math.sin(landing.yaw) * 38 + Math.cos(landing.yaw) * 30));
   watchFrom.y = Math.max(watchFrom.y, groundAt(world, watchFrom.x, watchFrom.z) + 3);
   function watch(dt, k = 1) {
     camPos.lerp(watchFrom, k);
@@ -3039,6 +3044,8 @@ export async function create(canvas, ctx) {
       renderer,
       // (the world's people, for the QA scripts: actors.js's, with debug, find and hear)
       life,
+      // (and the land, its floors and walls: walker.js's groundAt over it)
+      world,
       // (for the QA scripts: the land's light, once its things are down)
       api: {
         get ground() {
@@ -3060,11 +3067,14 @@ export async function create(canvas, ctx) {
     await Promise.all([placer.ready.catch(() => {}), kit.ready.catch(() => {})]);
     if (!disposed && !site.noGround) {
       const R = 170;
+      // (round the ship, and round the pad too when you've come down out of
+      // its sight: the middle of the two, which R still takes in)
+      const mid = [(landAt[0] + site.land.at[0]) / 2, (landAt[1] + site.land.at[1]) / 2];
       lit = groundWorld({
         renderer,
         scene,
         floor: [ground],
-        area: { x0: landAt[0] - R, z0: landAt[1] - R, w: R * 2, d: R * 2 },
+        area: { x0: mid[0] - R, z0: mid[1] - R, w: R * 2, d: R * 2 },
         sun,
         // (what moves isn't baked: the folk and beasts about, the speeders)
         skip: [sky.mesh, water?.mesh, water?.glow, water?.spray, weather?.group, weather?.mesh, camera, life.group, grass?.mesh, ...rides.map((x) => x.holder)].filter(Boolean),
@@ -3101,6 +3111,8 @@ export async function create(canvas, ctx) {
     }
     if (!disposed) await warm(scene).catch(() => {});
   })();
+  // (set straight down, not flown in: where you are, as the landing says it)
+  if (landing.line && !mission && state.phase === 'walk') say([landing.line]);
   emit({ type: 'phase', phase: state.phase });
 
   return {

@@ -94,6 +94,8 @@ export const SITES = {
     ground: { detail: 'gravel', detailLook: { color: 0.6, normal: 0.7 }, seed: 33, wind: 0.8, layers: [{ type: 'swell', scale: 420, height: 6 }, { type: 'mesas', scale: 500, height: 30, cover: 0.25, cliff: 0.05 }, { type: 'mountains', from: 650, to: 3000, height: 400, scale: 1200 }], palette: palette('#b9ab8e', '#d0c6b2', '#3a4344', '#5f6a66', { deep: '#4a4f4c', mark: '#7a7466' }) },
     weather: [{ kind: 'sand', count: 700 }],
     land: { at: [0, 0], yaw: 2.2 },
+    // (on the other side's Mandalore: in the glassed hollows north, below the rim)
+    covert: { at: [80, -205], yaw: -1.94 },
     places: [
       { id: 'sundari', name: 'The ruins of Sundari', at: [300, 170], r: 95, flat: { r: 80 }, about: 'The dome city, scorched and silent. Glass where the gardens were.', things: [{ kind: 'sundaridome', at: [0, 0], yaw: 2.6, sink: 1.5 }, ...grove(17, 28, 72, 96, ['glassshard'], [1, 3.2])] },
       { id: 'mines', name: 'The mines', at: [-200, -180], r: 40, about: 'Old tunnels under the glass, and at the bottom of them, the Living Waters.', things: [{ kind: 'needle', at: [0, 0], scale: 0.75, sink: 1 }, { kind: 'lamp', at: [6, 6] }, ...grove(29, 10, 12, 30, ['glassshard'], [0.8, 2.4])] },
@@ -124,6 +126,8 @@ export const SITES = {
     // the prairie: waist-high straw, olive in drifts, rolling in the wind
     grass: { h: [0.8, 1.3], w: 0.15, root: '#86704a', mid: '#c6ad72', tip: '#ead9a8', dry: '#b0a26c', cover: 0.93, scale: 150, wind: 1.0, patch: 1.15, flower: { color: '#f2e6bc', share: 0.02 } },
     land: { at: [0, 0], yaw: 1 },
+    // (on the other side's Lothal: out in the long grass north-east, over the swell)
+    covert: { at: [120, -160], yaw: -2.21 },
     places: [
       { id: 'capital', name: 'Capital City', at: [260, -60], r: 60, flat: { r: 56 }, about: 'Lothal’s capital: stone towers, and an Imperial factory where the farms used to be.', things: [{ kind: 'lothdome', at: [0, 4], yaw: 3.4, sink: 0.2 }, { kind: 'lothdome', at: [27, 18], yaw: 4.2, scale: 0.85, sink: 0.2 }, { kind: 'lothdome', at: [-26, 16], yaw: 2.4, scale: 0.9, sink: 0.2 }, { kind: 'lothdome', at: [20, -24], yaw: 5.4, scale: 0.75, sink: 0.2 }, { kind: 'crates', at: [8, -16] }, { kind: 'crates', at: [-10, -12], yaw: 0.7 }] },
       { id: 'factory', name: 'The Imperial factory', at: [-220, -200], r: 50, flat: { r: 46 }, about: 'Where the TIEs are built. The grass doesn’t grow back round it.', things: [{ kind: 'bunker', at: [0, 0], yaw: 1 }, { kind: 'crates', at: [14, 8] }] },
@@ -169,6 +173,8 @@ export const SITES = {
     // (the wet meadow round the krill farm, olive under a grey sky)
     grass: { h: [0.3, 0.6], w: 0.06, root: '#4a482d', mid: '#5f6236', tip: '#7f7c4a', dry: '#887a4c', cover: 0.72, scale: 90, wind: 0.2 },
     land: { at: [0, 0], yaw: 0.3 },
+    // (on the other side's Sorgan: past the rise to the east, short of the village)
+    covert: { at: [220, 0], yaw: -3.14 },
     places: [
       { id: 'village', name: 'The krill farmers’ village', at: [180, 120], r: 50, flat: { r: 46 }, about: 'Huts on stilts over the ponds, and a harvest the raiders keep coming back for.', things: [...ring(5, 21, 0.4).map(([x, z, yaw]) => ({ kind: 'stilthut', at: [x, z], yaw, sink: 0.15 })), { kind: 'fire', at: [2, -4] }, { kind: 'crates', at: [-8, -10] }, { kind: 'crates', at: [9, 6], yaw: 0.8 }, ...ring(7, 34, 0.9).map(([x, z, yaw]) => ({ kind: 'sorganfern', at: [x, z], yaw, scale: 1.3, solid: false })), ...grove(11, 30, 54, 84, ['sorganbirch', 'sorganbirch', 'sorganfir'])] },
       { id: 'raiders', name: 'The raiders’ camp', at: [-240, -160], r: 40, flat: { r: 30 }, about: 'Klatooinian raiders, and something big under a tarp.', things: [{ kind: 'tent', at: [0, 0] }, { kind: 'fire', at: [4, 4] }, { kind: 'crates', at: [-6, 8] }] },
