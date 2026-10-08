@@ -67,6 +67,7 @@ export const RECRUITER = [
       {
         id: 'projects-featured',
         at: 'projects-featured',
+        wait: true, // the card's title fades in as it scrolls into view
         title: 'Four, each with a live demo',
         text: 'A Game Boy emulator in C++ that passes all eleven of Blargg’s CPU tests, a translator, a cloud IDE and a merged Copilot pull request.',
         actions: [{ label: 'Boot the Game Boy emulator', to: '/projects/gameboy-emulator' }],

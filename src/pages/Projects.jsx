@@ -46,7 +46,7 @@ function Feature({ project, wide, flip, className = '', dim = false, waypoint = 
               <span className="text-sm font-medium text-muted">{project.kind}</span>
               {project.award && <span className="chip chip-accent !min-h-0 !py-0.5">{project.award}</span>}
             </div>
-            <h2 ref={fitTitle} id={`${project.id}-row`} className={`display mt-3 ${wide ? 'text-[clamp(2.1rem,1.3rem+2.6vw,3.6rem)]' : 'text-[clamp(1.8rem,1.3rem+1.6vw,2.6rem)]'}`}>
+            <h2 ref={fitTitle} id={`${project.id}-row`} data-tour="projects-featured" className={`display mt-3 ${wide ? 'text-[clamp(2.1rem,1.3rem+2.6vw,3.6rem)]' : 'text-[clamp(1.8rem,1.3rem+1.6vw,2.6rem)]'}`}>
               <Breakable text={project.title} />
             </h2>
             <p className="mt-4 max-w-[52ch] text-[1.05rem] leading-relaxed text-body">{project.summary}</p>
@@ -124,7 +124,7 @@ export default function Projects() {
 
       <PeriodicStack active={tech} onPick={setTech} />
 
-      <section className="shell relative z-10 grid grid-cols-[minmax(0,1fr)] gap-5 py-8 md:grid-cols-2 md:gap-6" data-tour="projects-featured" aria-label="Featured projects">
+      <section className="shell relative z-10 grid grid-cols-[minmax(0,1fr)] gap-5 py-8 md:grid-cols-2 md:gap-6" aria-label="Featured projects">
         <Feature project={gameboy} wide className="md:col-span-2" dim={dim(gameboy)} />
         <Feature project={translator} dim={dim(translator)} />
         <Feature project={devspace} dim={dim(devspace)} waypoint={false} />
