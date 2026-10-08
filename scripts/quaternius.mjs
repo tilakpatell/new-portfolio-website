@@ -23,7 +23,7 @@
 // has it. Without it, the asset repo cloned beside this one. The output is
 // committed, so the site never needs the packs.
 
-import { Document, Logger, NodeIO } from '@gltf-transform/core';
+import { Document, Logger, Node, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, EXTTextureWebP } from '@gltf-transform/extensions';
 import { dedup, flatten, join, meshopt, mergeDocuments, prune, simplify, transformMesh, unpartition, weld } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
@@ -450,12 +450,7 @@ async function prepareModel(io, roots, pack, name, model, colours) {
   }
   // baked: each node's place into its mesh, then scaled to its metres, its
   // lowest point on y = 0 and its middle over the origin
-  await doc.transform(flatten());
-  for (const node of root.listNodes()) {
-    const mesh = node.getMesh();
-    if (mesh) transformMesh(mesh, node.getWorldMatrix());
-  }
-  for (const node of root.listNodes()) node.setMatrix(IDENTITY);
+  await bake(doc);
   // (turned about the upright, so its front is +z: the way a landing faces things to you)
   if (model.turn) for (const mesh of root.listMeshes()) transformMesh(mesh, [Math.cos(model.turn), 0, -Math.sin(model.turn), 0, 0, 1, 0, 0, Math.sin(model.turn), 0, Math.cos(model.turn), 0, 0, 0, 0, 1]);
   const pts = worldPoints(doc);
@@ -517,6 +512,23 @@ async function paletteToColours(doc) {
   await doc.transform(prune());
 }
 
+// Each node's place baked into its mesh, every node then where its parent
+// is: a mesh two nodes share (a linked duplicate's) copied for each first,
+// or it'd be moved by both and drawn twice in one place
+export async function bake(doc) {
+  const root = doc.getRoot();
+  await doc.transform(flatten());
+  for (const node of root.listNodes()) {
+    const mesh = node.getMesh();
+    if (mesh && mesh.listParents().filter((p) => p instanceof Node).length > 1) node.setMesh(mesh.clone());
+  }
+  for (const node of root.listNodes()) {
+    const mesh = node.getMesh();
+    if (mesh) transformMesh(mesh, node.getWorldMatrix());
+  }
+  for (const node of root.listNodes()) node.setMatrix(IDENTITY);
+}
+
 // Every colour map as WebP: a cut-out one (a card's) at most 512 pixels a
 // side, its colour pushed out under the cut, its alpha kept; an opaque one
 // at most `opaque`, no alpha
@@ -533,7 +545,9 @@ async function compressTextures(doc, { opaque = 256 } = {}) {
     if (alpha) {
       const { data, info } = await img.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
       dilate(data, info.width, info.height);
-      out = await sharp(data, { raw: info }).webp({ quality: 85, alphaQuality: 90, exact: true }).toBuffer();
+      // (as it is, not premultiplied: the resize's `info` says it was, and
+      // read so it'd be divided by its alpha, blacking the colour under the cut)
+      out = await sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } }).webp({ quality: 85, alphaQuality: 90, exact: true }).toBuffer();
     } else out = await img.removeAlpha().webp({ quality: 82 }).toBuffer();
     const name = (tex.getName() || tex.getURI().split('/').pop()).replace(/\.\w+$/, '');
     tex.setImage(out).setMimeType('image/webp').setURI(`${name}.webp`).setName(name);

@@ -58,6 +58,9 @@ const range = (k) => [k * (1 - sz / 2), k * (1 + sz / 2)];
 // kit at the size asked, and anything more its spec says
 const kit = (file) => (node, size, more = {}) => ({ url: `/models/quaternius/${file}.glb`, node, ...size, ...more });
 const trees = kit('nature/trees');
+// (a tree's solid is its trunk, not its crown: half a metre round, at its
+// scatter's scale)
+const tree = (node, size, more = {}) => trees(node, size, { reach: 0.5, ...more });
 const flowers = kit('nature/flowers');
 const grass = kit('nature/grass');
 const rocks = kit('nature/rocks');
@@ -134,9 +137,9 @@ const ME_FOREST = {
   // (pines and the Shire's oaks, darker under the eaves; ferns and the
   // Shire's mushrooms and grass beneath)
   models: {
-    pine: trees('Pine_5', { tall: 10 }),
-    pineTall: trees('Pine_4', { tall: 12 }),
-    oakOld: trees('CommonTree_3', { tall: 10, tint: '#a8b890' }),
+    pine: tree('Pine_5', { tall: 10 }),
+    pineTall: tree('Pine_4', { tall: 12 }),
+    oakOld: tree('CommonTree_3', { tall: 10, tint: '#a8b890' }),
     fern: flowers('Fern_2', { wide: 1.3 }),
     bush: trees('Bush_Long_1', { tall: 1.4, tint: '#b0c098' }),
   },
@@ -161,9 +164,9 @@ export const LANDINGS = {
     // the Shire's oaks, hedges, flowers, mushrooms and grass (Bag End, the
     // holes, the Party Tree, the Green Dragon and the rest are its own kit's)
     models: {
-      oak: trees('CommonTree_4', { tall: 7.5 }),
-      oakTall: trees('CommonTree_3', { tall: 9 }),
-      oakLow: trees('CommonTree_5', { tall: 6 }),
+      oak: tree('CommonTree_4', { tall: 7.5 }),
+      oakTall: tree('CommonTree_3', { tall: 9 }),
+      oakLow: tree('CommonTree_5', { tall: 6 }),
       hedge: trees('Bush_Common_Flowers', { tall: 1.1 }),
       flowers: flowers('Flower_3_Single', { tall: 0.42 }),
       daisies: flowers('Flower_1_Single', { tall: 0.38 }),
@@ -260,7 +263,7 @@ export const LANDINGS = {
         models: {
           crag: rocks('Rock_Medium_4', { long: 1.3 }),
           stones: rocks('Pebble_Square_3', { long: 0.7 }),
-          pine: trees('Pine_5', { tall: 8 }),
+          pine: tree('Pine_5', { tall: 8 }),
         },
         things: [],
         scatter: [
@@ -436,7 +439,7 @@ export const LANDINGS = {
         // (granite, and the junipers: short pines, blue-green)
         models: {
           crag: rocks('Rock_Medium_4', { long: 1.3, tint: '#d8c8b4' }),
-          juniper: trees('Pine_5', { tall: 5.5, tint: '#9ab4a4' }),
+          juniper: tree('Pine_5', { tall: 5.5, tint: '#9ab4a4' }),
         },
         things: [
           { kind: 'car', at: [-26, 22], r: 2.6, face: false, yaw: 0.9, door: { label: 'the Aztek, back down to the city', reach: 4 } },
@@ -532,7 +535,7 @@ export const LANDINGS = {
       lamp: { url: '/models/music/lamp.glb', tall: 1.25 },
       // (a broad shade tree in each corner; the marigolds and petals keep
       // their own festival colours, one an instance)
-      tree: trees('CommonTree_4', { tall: 8 }),
+      tree: tree('CommonTree_4', { tall: 8 }),
     },
     things: [
       { kind: 'pavilion', at: [0, 40], r: 6, door: { label: 'the music room', reach: 8 } },
@@ -590,8 +593,8 @@ export const LANDINGS = {
     models: {
       gauntlet: { url: '/models/universe/marvel.glb', tall: 5 },
       // the lawn's trees, and the compound's furniture
-      tree: trees('CommonTree_3', { tall: 9 }),
-      conifer: trees('Pine_4', { tall: 11 }),
+      tree: tree('CommonTree_3', { tall: 9 }),
+      conifer: tree('Pine_4', { tall: 11 }),
       ...PROP,
     },
     things: [
@@ -687,8 +690,8 @@ export const LANDINGS = {
     models: {
       plane: { url: '/models/sketchfab/earth-plane.glb', long: 36 },
       // (broadleaves and pines round the field, wildflowers in its grass)
-      tree: trees('CommonTree_4', { tall: 8 }),
-      pine: trees('Pine_5', { tall: 9 }),
+      tree: tree('CommonTree_4', { tall: 8 }),
+      pine: tree('Pine_5', { tall: 9 }),
       flowers: flowers('Flower_3_Single', { tall: 0.42 }),
       daisies: flowers('Flower_1_Single', { tall: 0.38 }),
       poppies: flowers('Flower_6', { wide: 0.5 }),

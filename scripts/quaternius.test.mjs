@@ -2,7 +2,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { BUDGETS, KITS, OUT, PACKS, baseName, colliderOf, creditOf, dilate, kitBudget, makeIo, materialFix, parseObj, problems, summary } from './quaternius.mjs';
+import { Document } from '@gltf-transform/core';
+import { BUDGETS, KITS, OUT, PACKS, bake, baseName, colliderOf, creditOf, dilate, kitBudget, makeIo, materialFix, parseObj, problems, summary, worldPoints } from './quaternius.mjs';
 
 const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 
@@ -143,6 +144,20 @@ describe('an OBJ, read', () => {
   });
 });
 
+describe('a Quaternius model, baked', () => {
+  it('moves a mesh two nodes share once for each, not by both', async () => {
+    const doc = new Document();
+    const buffer = doc.createBuffer();
+    const position = doc.createAccessor().setType('VEC3').setArray(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0])).setBuffer(buffer);
+    const mesh = doc.createMesh().addPrimitive(doc.createPrimitive().setAttribute('POSITION', position));
+    const scene = doc.createScene();
+    for (const x of [2, 10]) scene.addChild(doc.createNode().setMesh(mesh).setTranslation([x, 0, 0]));
+    await bake(doc);
+    const xs = [...worldPoints(doc)].filter((_, i) => i % 3 === 0).sort((a, b) => a - b);
+    expect(xs).toEqual([2, 2, 3, 10, 10, 11]);
+  });
+});
+
 describe('a Quaternius credit', () => {
   it('names the pack, the file and Quaternius, CC0', () => {
     expect(creditOf('naturemega', 'CommonTree_3.gltf', '/models/quaternius/nature/trees.glb')).toEqual({ source: 'https://quaternius.com', id: 'CommonTree_3', name: 'Stylized Nature MegaKit: CommonTree_3', authors: ['Quaternius'], license: 'CC0 1.0', use: 'In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)' });
@@ -181,6 +196,27 @@ describe('the imported Quaternius models', async () => {
       expect(credits[`quaternius/${name}`]?.use).toContain(`public${entry.url}`);
     });
   }
+
+  // (a cut-out map's colour under its cut is its edge's, pushed out: not
+  // black, which a far-off mip would blend into the leaf)
+  it('keeps each cut-out map’s colour under its cut', async () => {
+    const sharp = (await import('sharp')).default;
+    for (const url of new Set(Object.values(manifest).map((e) => e.url))) {
+      const doc = await io.read(join(PUBLIC, url));
+      for (const m of doc.getRoot().listMaterials()) {
+        if (m.getAlphaMode() === 'OPAQUE' || !m.getBaseColorTexture()) continue;
+        const data = await sharp(Buffer.from(m.getBaseColorTexture().getImage())).ensureAlpha().raw().toBuffer();
+        let clear = 0;
+        let black = 0;
+        for (let i = 0; i < data.length; i += 4)
+          if (data[i + 3] < 10) {
+            clear++;
+            if (data[i] + data[i + 1] + data[i + 2] < 30) black++;
+          }
+        expect(black / (clear || 1), `${url} ${m.getName()}`).toBeLessThan(0.05);
+      }
+    }
+  });
 
   it('keeps each kit within its budget', async () => {
     for (const [kit, k] of Object.entries(KITS)) {
