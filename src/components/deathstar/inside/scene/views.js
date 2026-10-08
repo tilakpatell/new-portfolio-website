@@ -1,39 +1,35 @@
-// What the station’s windows show: the stars (with the faint band of the
-// galaxy across them), a planet sunlit at its true apparent size (Alderaan
-// from the overbridge, Yavin with Yavin 4 beside it, Endor’s forest moon
-// with its gas giant), the battle of Endor out of the Emperor’s window, and
-// the station’s own exterior for the arrival and the escape. A room puts a
-// view’s `object` at its window, its −z looking out; the room builders
-// (rooms/) and the cutscenes are its callers.
+// What the station’s windows show: the stars and the faint band of the
+// galaxy, a planet sunlit at its true apparent size (Alderaan from the
+// overbridge, Yavin with Yavin 4 beside it, Endor’s forest moon with its gas
+// giant), the battle of Endor out of the Emperor’s window, and the station’s
+// own exterior for the arrival and the escape. A room puts a view’s `object`
+// at its window, −z looking out.
 //
 // The sky (stars, band, sun, planets) is pinned round the eye and drawn on
-// the far plane after the room, so it never shifts as you walk past the
-// window, every wall in front of it hides it before it is shaded, and ships
-// and stations always pass in front of it. Its bodies are drawn 1 km out,
-// each as big as its true size and distance make it look. Planets are
-// painted by ../../planetPaint.js at the device’s size, once a page each.
-// Ships and stations are real things in front of the window, by URL through
-// lib/three/gltf.js: the fleet from the galaxy’s far-off cuts of the same
-// models (scripts/galaxy-lod.mjs: each ship one piece, its look baked into
-// vertex colours), so every kind is one instanced draw however many fly; the
-// stations whole, the 4096-texel cut on the strongest graphics. Everything
-// is lit by the view’s own sun, in its shaders, not by a light in the scene
-// (a light added to the room would recompile every material in it and light
-// the room through its walls), and kept out of the house look, which is for
-// the room. A view keeps to about 30 draws. The battle is stateless: where
-// every fighter, bolt and flash is comes from the time alone, round a loop.
+// the far plane after the room: it never shifts as you walk past a window,
+// the walls hide it before it is shaded, and ships always pass in front of
+// it. Its bodies are drawn 1 km out, each as big as its true size and
+// distance make it look, painted by ../../planetPaint.js at the device’s
+// size, once a page. Ships and stations are things out beyond the window,
+// loaded by URL (lib/three/gltf.js): the fleet from the galaxy’s far-off cuts
+// of its models (scripts/galaxy-lod.mjs: one piece each, the look baked into
+// vertex colours), so a kind is one instanced draw however many fly; the
+// stations whole, the 4096-texel cut on the strongest graphics. All of it is
+// lit by the view’s own sun in its shaders (a light in the scene would light
+// the room through its walls, and recompile all of it) and kept out of the
+// room’s house look. A view keeps to about 30 draws. The battle is stateless:
+// where every fighter, bolt and flash is comes from the time, round a loop.
 //
 //   VIEW_KINDS: 'space' 'alderaan' 'yavin' 'endor' 'endor-battle' 'ds1-exterior' 'ds2-exterior'
 //   angleOf(radius, distance) → degrees a sphere spans;  apparent(size, distance, at) → its size drawn at `at`
 //   skyPlan(kind) → { sun, bodies: [{ id, paint, look, radius, distance, position, r, order, … }], station }
-//   exteriorUrl(station, level) → the station’s model for a detail level (lib/detail)
-//   paintSize(level) → { w, h }   a planet’s maps
+//   exteriorUrl(station, level) → the station’s model at a detail level (lib/detail);  paintSize(level) → { w, h }
 //   BATTLE: { loop, gone, grow, … };  battlePlan(level) → { loop, capitals, fighters, shots, blasts, far }
 //   fighterPose(fighter, t) → { x, y, z, dx, dy, dz, show }   show 0…1: gone after it is shot down, then back
 //   boltAt(plan, shot, t) → null | { x, y, z, dx, dy, dz, length, width, life, hue }
 //   crossed(at, t0, t1, loop) → whether a moment `at` into the loop fell in (t0, t1]
-//   createView(kind, { renderer, tier, load }) → { object, ready, update(t, dt), dispose() }
-//     ready settles once its models are in (or failed); `load` is loadGltf, a test hands in its own
+//   createView(kind, { renderer, tier, load, paint }) → { object, ready, update(t, dt), dispose() }
+//     ready settles once its models are in (or failed); `load` (loadGltf) and `paint` (planetPaint’s) a test hands in
 
 import * as THREE from 'three';
 import { detailLevel, seg } from '../../../../lib/detail';
@@ -51,11 +47,8 @@ const LEVELS = ['low', 'mid', 'high', 'ultra'];
 const deg = (r) => (r * 180) / Math.PI;
 const rad = (d) => (d * Math.PI) / 180;
 const mod = (x, m) => ((x % m) + m) % m;
-const unit = (v) => {
-  const l = Math.hypot(v[0], v[1], v[2]) || 1;
-  return [v[0] / l, v[1] / l, v[2] / l];
-};
 const scale = (v, k) => [v[0] * k, v[1] * k, v[2] * k];
+const unit = (v) => scale(v, 1 / (Math.hypot(v[0], v[1], v[2]) || 1));
 const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -90,8 +83,8 @@ const SIGHTS = {
     bodies: [{ id: 'endor', paint: 'giant', look: 'endor', radius: 70000, distance: 800000, dir: [0.5, 0.3, -1], tilt: -0.2, spin: 0.002, air: [0.72, 0.82, 0.85] }, { ...FOREST, distance: 7450, dir: [-0.22, -0.3, -1] }],
   },
   'endor-battle': { sun: [0.82, 0.3, 0.48], bodies: [{ ...FOREST, distance: 7450, dir: [-0.66, -0.52, -1] }] },
-  'ds1-exterior': { sun: [-0.52, 0.46, 0.72], bodies: [], station: { id: 'ds1', radius: 60, distance: 250, dir: [0.08, 0.04, -1], at: 1200, turn: [0.12, -0.6, 0] } },
-  'ds2-exterior': { sun: [0.6, 0.42, 0.68], bodies: [{ ...FOREST, distance: 5300, dir: [-0.62, -0.42, -1] }], station: { id: 'ds2', radius: 80, distance: 300, dir: [0.06, 0.08, -1], at: 1250, turn: [0.1, 0.5, 0] } },
+  'ds1-exterior': { sun: [-0.75, 0.4, 0.55], bodies: [], station: { id: 'ds1', radius: 60, distance: 250, dir: [0.08, 0.04, -1], at: 1200, turn: [0.12, -0.6, 0] } },
+  'ds2-exterior': { sun: [0.8, 0.38, 0.45], bodies: [{ ...FOREST, distance: 5300, dir: [-0.62, -0.42, -1] }], station: { id: 'ds2', radius: 80, distance: 300, dir: [0.06, 0.08, -1], at: 1250, turn: [0.1, 0.5, 0] } },
 };
 
 export function skyPlan(kind) {
@@ -124,32 +117,29 @@ export const BATTLE = {
   loop: 40, // seconds before it all comes round again
   gone: 6, // a fighter shot down is missing this long,
   grow: 0.6, // then another comes in over this
-  fighterBolt: { speed: 300, life: 0.9, length: 6, width: 0.35 },
-  capitalBolt: { speed: 620, length: 0.022, width: 0.002 }, // length and width per metre out, so they look alike near and far
+  fighterBolt: { speed: 300, life: 0.9, length: 6, width: 0.25 },
+  capitalBolt: { speed: 620, length: 0.028, width: 0.0012 }, // length and width per metre out, so they look alike near and far
   pairs: { low: 3, mid: 5, high: 8, ultra: 10 }, // dogfights: a fighter and the one on its tail
 };
 const W = (2 * Math.PI) / BATTLE.loop;
 const LENGTH = { moncal: 1.2, destroyer: 1.6, executor: 19, xwing: 0.0125, tie: 0.0063 }; // km
-// The fleets: the Rebels’ cruisers nearer, broadside on and making for the
-// Empire’s line beyond them; the Executor over all. `d`: km away, `at`: metres out drawn.
+// The fleets close in, as the films show them from the throne room: the
+// Rebels’ cruisers broadside on, making for the Empire’s line; the Executor
+// over all. `d`: km away (a nearer one drawn nearer), `at`: metres out drawn.
 const FLEET = [
-  { model: 'moncal', side: 'rebel', az: -10, el: -3, d: 18, at: 760, yaw: 64, pitch: 3 },
-  { model: 'moncal', side: 'rebel', az: 17, el: 3, d: 26, at: 860, yaw: 78, pitch: -2 },
-  { model: 'moncal', side: 'rebel', az: -27, el: 9, d: 34, at: 940, yaw: 56, pitch: 4 },
-  { model: 'moncal', side: 'rebel', az: 5, el: -13, d: 40, at: 1000, yaw: 70, pitch: 0 },
-  { model: 'destroyer', side: 'empire', az: 26, el: 10, d: 48, at: 1080, yaw: -118, pitch: -3 },
-  { model: 'destroyer', side: 'empire', az: -5, el: 15, d: 56, at: 1140, yaw: -104, pitch: 2 },
-  { model: 'destroyer', side: 'empire', az: 34, el: -5, d: 62, at: 1190, yaw: -126, pitch: 0 },
-  { model: 'destroyer', side: 'empire', az: -19, el: 19, d: 70, at: 1240, yaw: -112, pitch: -4 },
-  { model: 'executor', side: 'empire', az: 11, el: 21, d: 110, at: 1400, yaw: -98, pitch: -2 },
+  { model: 'moncal', side: 'rebel', az: -12, el: -4, d: 7, at: 620, yaw: 64, pitch: 3 },
+  { model: 'moncal', side: 'rebel', az: 19, el: 4, d: 10, at: 700, yaw: 78, pitch: -2 },
+  { model: 'moncal', side: 'rebel', az: -28, el: 10, d: 13, at: 770, yaw: 56, pitch: 4 },
+  { model: 'destroyer', side: 'empire', az: 27, el: 11, d: 14, at: 800, yaw: -118, pitch: -3 },
+  { model: 'moncal', side: 'rebel', az: 6, el: -14, d: 16, at: 850, yaw: 70, pitch: 0 },
+  { model: 'destroyer', side: 'empire', az: -4, el: 16, d: 18, at: 900, yaw: -104, pitch: 2 },
+  { model: 'destroyer', side: 'empire', az: 35, el: -4, d: 22, at: 980, yaw: -126, pitch: 0 },
+  { model: 'destroyer', side: 'empire', az: -20, el: 20, d: 26, at: 1060, yaw: -112, pitch: -4 },
+  { model: 'executor', side: 'empire', az: 10, el: 23, d: 70, at: 1300, yaw: -98, pitch: -2 },
 ];
 
-const showAt = (f, t) => {
-  if (f.down == null) return 1;
-  const age = mod(t - f.down, BATTLE.loop);
-  if (age < BATTLE.gone) return 0;
-  return Math.min(1, (age - BATTLE.gone) / BATTLE.grow);
-};
+// a fighter shot down is gone a while, then another grows in out of the dark
+const showAt = (f, t) => (f.down == null ? 1 : Math.min(1, Math.max(0, (mod(t - f.down, BATTLE.loop) - BATTLE.gone) / BATTLE.grow)));
 
 export function fighterPose(f, t) {
   const u = t - f.lag;
@@ -207,7 +197,7 @@ export function battlePlan(level) {
     // a circle in a tilted plane, out beyond the window, swaying across it
     const n = unit([r(-0.6, 0.6), 1, r(-0.6, 0.6)]);
     const e1 = unit(cross(n, [0.3, 0, 1]));
-    const path = { c: scale(toward(r(-26, 26), r(-14, 14)), r(360, 520)), n, e1, e2: cross(n, e1), a: r(70, 140), b: r(10, 35), k: 3 + Math.floor(rand() * 4), k2: 1 + Math.floor(rand() * 3), ph: r(0, 6.28), ph2: r(0, 6.28) };
+    const path = { c: scale(toward(r(-26, 26), r(-14, 14)), r(240, 380)), n, e1, e2: cross(n, e1), a: r(60, 110), b: r(10, 30), k: 3 + Math.floor(rand() * 4), k2: 1 + Math.floor(rand() * 3), ph: r(0, 6.28), ph2: r(0, 6.28) };
     const [lead, chase] = i % 2 ? ['tie', 'xwing'] : ['xwing', 'tie'];
     const side = (m) => (m === 'xwing' ? 'rebel' : 'empire');
     // (two dogfights in three end with the quarry shot down)
@@ -260,16 +250,11 @@ const POLE = unit([0.35, 0.8, 0.45]); // the galaxy’s pole, so its band runs a
 // (after the room’s own opaque things, so its walls hide the sky before it is shaded)
 const ORDER = { stars: 900, band: 901, sun: 902, body: 910 };
 const PAINTERS = { planet: paintPlanet, giant: paintGiant };
-const FLEET_URLS = {
-  moncal: '/models/galaxy/lod/moncal.glb',
-  destroyer: '/models/galaxy/lod/destroyer.glb',
-  executor: '/models/galaxy/lod/executor.glb',
-  xwing: '/models/galaxy/lod/xwing.glb',
-  tie: '/models/galaxy/lod/tie.glb',
-};
+const FLEET_URLS = { moncal: '/models/galaxy/lod/moncal.glb', destroyer: '/models/galaxy/lod/destroyer.glb', executor: '/models/galaxy/lod/executor.glb', xwing: '/models/galaxy/lod/xwing.glb', tie: '/models/galaxy/lod/tie.glb' };
 const NOSE = { destroyer: Math.PI }; // the turn that brings a model’s nose to +z (the rest come that way)
-const ENGINE = { moncal: [0.4, 0.9, 2.6], destroyer: [0.7, 1, 2.4], executor: [0.7, 0.95, 2.4], xwing: [2.6, 0.75, 0.5], tie: [1, 0.35, 0.3] };
-const HUE = { rebel: { core: [5, 0.9, 0.7], flash: [3, 0.7, 0.4] }, empire: { core: [1, 5, 1.1], flash: [0.8, 3, 0.8] } };
+const ENGINE = { moncal: [0.3, 0.7, 2], destroyer: [0.55, 0.8, 1.8], executor: [0.55, 0.75, 1.8], xwing: [2.6, 0.75, 0.5], tie: [1, 0.35, 0.3] };
+const HUE = { rebel: { core: [4, 0.35, 0.25], flash: [3, 0.7, 0.4] }, empire: { core: [0.35, 4, 0.45], flash: [0.8, 3, 0.8] } };
+const HIT = [3, 2.1, 1.2]; // a bolt striking a hull, whoever fired it
 const POOL = { bolts: 64, flashes: 96 };
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -299,8 +284,7 @@ void main() {
 const STAR_FRAG = /* glsl */ `
 varying vec3 vC;
 void main() {
-  vec2 p = gl_PointCoord * 2.0 - 1.0;
-  float a = max(0.0, 1.0 - dot(p, p));
+  float a = max(0.0, 1.0 - dot(gl_PointCoord * 2.0 - 1.0, gl_PointCoord * 2.0 - 1.0));
   gl_FragColor = vec4(vC * a * a, 1.0);
 }`;
 
@@ -322,7 +306,7 @@ void main() {
   float band = exp(-lat * lat / 0.02);
   float lane = 1.0 - 0.6 * exp(-pow((lat - 0.012) / 0.03, 2.0)) * smoothstep(0.35, 0.75, n);
   vec3 c = mix(vec3(0.5, 0.56, 0.8), vec3(0.95, 0.84, 0.68), smoothstep(0.3, 0.8, n));
-  gl_FragColor = vec4(c * band * lane * (0.4 + 0.8 * n) * 0.045, 1.0);
+  gl_FragColor = vec4(c * band * lane * (0.4 + 0.8 * n) * 0.07, 1.0);
 }`;
 
 const SUN_VERT = /* glsl */ `
@@ -350,13 +334,11 @@ void main() {
 }`;
 
 const BODY_VERT = /* glsl */ `${FAR_GLSL}
-varying vec3 vN;
-varying vec3 vT;
-varying vec3 vB;
-varying vec3 vW;
+varying vec3 vN, vT, vB, vW, vC;
 varying vec2 vUv;
 void main() {
   vUv = uv;
+  vC = modelMatrix[3].xyz + cameraPosition - uOrigin;
   mat3 m = mat3(modelMatrix);
   vec3 on = normalize(normal);
   // east and north on the sphere, the way its painted map runs (u east, v north)
@@ -371,21 +353,15 @@ void main() {
 }`;
 const BODY_FRAG = /* glsl */ `
 uniform sampler2D uMap;
-uniform vec3 uSun;
-uniform vec3 uSunColour;
-uniform vec3 uAir;
+uniform vec3 uSun, uSunColour, uAir;
 uniform float uDrift;
 #ifdef RELIEF
-uniform sampler2D uNormal;
-uniform sampler2D uRough;
+uniform sampler2D uNormal, uRough;
 #endif
 #ifdef CLOUDS
 uniform sampler2D uClouds;
 #endif
-varying vec3 vN;
-varying vec3 vT;
-varying vec3 vB;
-varying vec3 vW;
+varying vec3 vN, vT, vB, vW;
 varying vec2 vUv;
 void main() {
   vec3 v = normalize(cameraPosition - vW);
@@ -415,17 +391,19 @@ void main() {
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`;
-// the air round a body: a thin shell lit at its rim, on the sunny side
+// the air round a body, seen edge on: brightest at the limb, fading out
+// above it within a few hundredths of its radius, lit where the sun is up
 const HALO_FRAG = /* glsl */ `
-uniform vec3 uSun;
-uniform vec3 uAir;
-varying vec3 vN;
-varying vec3 vW;
+uniform vec3 uSun, uAir;
+uniform float uR;
+varying vec3 vW, vC;
 void main() {
-  vec3 g = normalize(vN);
-  float rim = 1.0 - abs(dot(g, normalize(cameraPosition - vW)));
-  float a = (pow(rim, 4.0) * 0.9 + pow(rim, 12.0) * 1.4) * smoothstep(-0.35, 0.5, dot(g, uSun));
-  gl_FragColor = vec4(uAir * a, 1.0);
+  vec3 rd = normalize(vW - cameraPosition);
+  vec3 oc = vC - cameraPosition;
+  vec3 foot = rd * dot(oc, rd) - oc; // from the middle to where the ray passes nearest it
+  float h = length(foot) / uR;
+  float a = h > 1.0 ? exp((1.0 - h) / 0.014) : pow(h, 12.0);
+  gl_FragColor = vec4(uAir * a * 0.9 * smoothstep(-0.3, 0.45, dot(normalize(foot), uSun)), 1.0);
 }`;
 
 const FLASH_VERT = /* glsl */ `
@@ -469,14 +447,8 @@ function sunlit(material, u) {
 }
 
 const farMaterial = (u, more) => new THREE.ShaderMaterial({ depthWrite: false, ...more, uniforms: { uOrigin: u.uOrigin, ...more.uniforms } });
-const farMesh = (geo, mat, order, name, Kind = THREE.Mesh) => {
-  const mesh = new Kind(geo, mat);
-  mesh.renderOrder = order;
-  // (it is drawn round the eye, not where it stands, so its bounds would cull it wrongly)
-  mesh.frustumCulled = false;
-  mesh.name = name;
-  return mesh;
-};
+// (drawn round the eye, not where it stands, so its bounds would cull it wrongly)
+const farMesh = (geo, mat, order, name, Kind = THREE.Mesh) => Object.assign(new Kind(geo, mat), { renderOrder: order, frustumCulled: false, name });
 
 // The stars: most faint, a few bright, a third crowding the galaxy’s band.
 function makeStars(level, u, owned, renderer) {
@@ -534,22 +506,17 @@ function makeSun(dir, u, owned) {
 const painted = new WeakMap();
 function mapsOf(body, size, paint) {
   const painter = paint[body.paint];
-  if (!painted.has(painter)) painted.set(painter, new Map());
-  const done = painted.get(painter);
+  const done = painted.get(painter) ?? painted.set(painter, new Map()).get(painter);
   const key = `${body.look}:${size.w}`;
-  if (!done.has(key)) {
-    const got = painter(body.look, size);
-    done.set(key, body.paint === 'giant' ? { color: got } : got);
-  }
+  if (!done.has(key)) done.set(key, body.paint === 'giant' ? { color: painter(body.look, size) } : painter(body.look, size));
   return done.get(key);
 }
 
 function makeBody(body, level, u, { renderer, paint, owned }) {
   const maps = mapsOf(body, paintSize(level), paint);
   const tex = (canvas, color) => {
-    const t = sharpen(new THREE.CanvasTexture(canvas), { renderer, color });
-    owned.push(t);
-    return { value: t };
+    owned.push(sharpen(new THREE.CanvasTexture(canvas), { renderer, color }));
+    return { value: owned.at(-1) };
   };
   const giant = body.paint === 'giant';
   const defines = giant ? { GIANT: 1 } : { RELIEF: 1, ...(maps.clouds ? { CLOUDS: 1 } : {}) };
@@ -557,12 +524,13 @@ function makeBody(body, level, u, { renderer, paint, owned }) {
   const uniforms = { uSun: u.uSun, uSunColour: u.uSunColour, uAir: air, uDrift: { value: 0 }, uMap: tex(maps.color, true) };
   if (!giant) Object.assign(uniforms, { uNormal: tex(maps.normal, false), uRough: tex(maps.rough, false) });
   if (defines.CLOUDS) uniforms.uClouds = tex(maps.clouds, true);
-  const segs = seg(96, { level });
+  // (64 round at high: a 40° disc’s edge is then within half a pixel of round)
+  const segs = seg(64, { level });
   const geo = new THREE.SphereGeometry(body.r, segs, Math.round(segs / 2));
   const mat = farMaterial(u, { uniforms, defines, vertexShader: BODY_VERT, fragmentShader: BODY_FRAG });
   const mesh = farMesh(geo, mat, ORDER.body + body.order * 2, body.id);
-  const haloGeo = new THREE.SphereGeometry(body.r * 1.03, segs, Math.round(segs / 2));
-  const haloMat = farMaterial(u, { uniforms: { uSun: u.uSun, uAir: air }, vertexShader: BODY_VERT, fragmentShader: HALO_FRAG, blending: THREE.AdditiveBlending, toneMapped: false });
+  const haloGeo = new THREE.SphereGeometry(body.r * 1.06, segs, Math.round(segs / 3));
+  const haloMat = farMaterial(u, { uniforms: { uSun: u.uSun, uAir: air, uR: { value: body.r } }, vertexShader: BODY_VERT, fragmentShader: HALO_FRAG, blending: THREE.AdditiveBlending, toneMapped: false });
   const halo = farMesh(haloGeo, haloMat, ORDER.body + body.order * 2 + 1, `${body.id}:air`);
   owned.push(geo, mat, haloGeo, haloMat);
   // (turned on its tilted axis: the tilt applied last)
@@ -596,11 +564,10 @@ function orient(out, pos, dir, up, size) {
 // A loaded ship’s one mesh, and the matrix that sits it centred, nose along
 // +z and one metre long; each instance is then placed and scaled by its length.
 function shipOf(root, kind) {
-  let mesh = null;
+  const meshes = [];
   root.updateMatrixWorld(true);
-  root.traverse((o) => {
-    if (!mesh && o.isMesh) mesh = o;
-  });
+  root.traverse((o) => o.isMesh && meshes.push(o));
+  const mesh = meshes[0];
   if (!mesh) return null;
   const geo = mesh.geometry;
   // (the far-off cuts come without normals: scripts/galaxy-lod.mjs)
@@ -618,7 +585,7 @@ function shipOf(root, kind) {
 // glow and flash (one) and the fireballs (lib/three/explosions: none on a
 // weak device, where the flashes stand in for them), all from the time.
 function makeBattle(group, plan, { level, load, renderer, u, owned, alive }) {
-  const fleetMat = sunlit(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.35 }), u);
+  const fleetMat = sunlit(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.1 }), u);
   const boltGeo = new THREE.BoxGeometry(1, 1, 1);
   const boltMat = new THREE.MeshBasicMaterial({ toneMapped: false, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
   const bolts = new THREE.InstancedMesh(boltGeo, boltMat, POOL.bolts);
@@ -626,14 +593,12 @@ function makeBattle(group, plan, { level, load, renderer, u, owned, alive }) {
   const flashMat = new THREE.ShaderMaterial({ vertexShader: FLASH_VERT, fragmentShader: FLASH_FRAG, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
   const flashes = new THREE.InstancedMesh(flashGeo, flashMat, POOL.flashes);
   const c = new THREE.Color();
-  for (const [mesh, name] of [
-    [bolts, 'bolts'],
-    [flashes, 'flashes'],
-  ]) {
+  bolts.name = 'bolts';
+  flashes.name = 'flashes';
+  for (const mesh of [bolts, flashes]) {
     mesh.setColorAt(0, c.setRGB(0, 0, 0)); // (made now, so the shader has its colours from the first frame)
     mesh.count = 0;
     mesh.frustumCulled = false;
-    mesh.name = name;
     group.add(mesh);
   }
   const blasts = level === 'low' ? null : createExplosions({ parent: group, small: level === 'mid', pool: 4 });
@@ -672,25 +637,22 @@ function makeBattle(group, plan, { level, load, renderer, u, owned, alive }) {
     flashes.setColorAt(nf, c.setRGB(colour[0], colour[1], colour[2]));
     nf++;
   };
-  const blastAt = (b) => {
-    if (b.shot != null) return shotPath(plan, plan.shots[b.shot]).to;
-    const p = fighterPose(plan.fighters[b.fighter], b.at);
-    return [p.x, p.y, p.z];
-  };
+  const pointOf = (p) => [p.x, p.y, p.z];
+  const blastAt = (b) => (b.shot != null ? shotPath(plan, plan.shots[b.shot]).to : pointOf(fighterPose(plan.fighters[b.fighter], b.at)));
 
   return {
     ready,
     update(t, dt) {
       nf = 0;
       // the capital ships’ engines
-      for (const s of plan.capitals) flash(capitalAt(s, -0.5), s.length * 0.12, ENGINE[s.model]);
+      for (const s of plan.capitals) flash(capitalAt(s, -0.5), s.length * 0.05, ENGINE[s.model]);
       // the fighters, round their loops, banked into their turns, and their engines
       for (const kind of ['xwing', 'tie']) {
         const f = fleet[kind];
         f?.figs.forEach((i, k) => {
           const fighter = plan.fighters[i];
           const p = fighterPose(fighter, t);
-          const pos = [p.x, p.y, p.z];
+          const pos = pointOf(p);
           const nose = [p.dx, p.dy, p.dz];
           up.set(...unit(add(fighter.n, scale(unit(sub(fighter.c, pos)), 0.9))));
           const size = fighter.length * p.show;
@@ -712,10 +674,10 @@ function makeBattle(group, plan, { level, load, renderer, u, owned, alive }) {
           bolts.setMatrixAt(nb, orient(m, add(path.from, scale(d, path.speed * age)), d, UP, [path.width, path.width, path.length]));
           bolts.setColorAt(nb, c.setRGB(...hue.core));
           nb++;
-          if (age < 0.08) flash(path.from, path.width * 7, hue.flash);
+          if (age < 0.08) flash(path.from, path.width * 5, hue.flash);
         } else if (s.kind === 'capital' && age < path.life + 0.3) {
           const k = 1 - (age - path.life) / 0.3;
-          flash(path.to, path.width * 10 * (0.6 + k), scale(hue.flash, k));
+          flash(path.to, path.width * 8 * (0.6 + k), scale(HIT, k));
         }
       }
       // what blows up: a white flash (all a weak device shows), and the fireball, as its moment passes

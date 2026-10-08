@@ -160,9 +160,9 @@ describe('the battle out of the throne room’s window', () => {
     for (const f of plan.fighters) {
       for (const t of times(plan.loop)) {
         const p = at(fighterPose(f, t));
-        expect(len(p)).toBeGreaterThan(100);
-        expect(len(p)).toBeLessThan(900);
-        expect(p[2]).toBeLessThan(-100);
+        expect(len(p)).toBeGreaterThan(80);
+        expect(len(p)).toBeLessThan(600);
+        expect(p[2]).toBeLessThan(-50);
       }
     }
   });
