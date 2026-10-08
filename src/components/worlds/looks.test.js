@@ -49,7 +49,6 @@ const EXPECTED_MISSING = [
   'minecraft',
   'earth',
   'music/world',
-  'dickansh',
   'projects/cartridges',
   'contact/plane',
   'ambience',

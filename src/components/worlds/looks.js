@@ -32,7 +32,9 @@ export const MIN_APART = 0.08;
 // so where one folder draws more than one world (Middle-earth’s bridge, ring,
 // Gorgoroth and map backdrop; the Death Star and its trench) the look is
 // the folder’s and its why says what differs. A folder inside another is
-// its own entry, and the outer one’s sweep stops at it.
+// its own entry, and the outer one’s sweep stops at it. (The phone out past
+// the home system is a secret, kept out of every file but its own: its look
+// is its own business, and the roster doesn’t name it.)
 export const LOOK_FOLDERS = [
   { folder: 'expanse/surface', routes: ['/universe/expanse/7'] },
   { folder: 'universe', routes: ['/universe'] },
@@ -73,7 +75,6 @@ export const LOOK_FOLDERS = [
   { folder: 'minecraft', routes: ['/dot-matrix/minecraft'] },
   { folder: 'earth', routes: ['/earth'] },
   { folder: 'music/world', routes: ['/music'] },
-  { folder: 'dickansh', routes: ['/dickansh'] },
   { folder: 'projects/cartridges', routes: ['/projects'] },
   { folder: 'contact/plane', routes: ['/contact'] },
   { folder: 'ambience', routes: ['/home'] },
