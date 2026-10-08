@@ -3344,6 +3344,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         pushers: lp ? lp.pushers : 0,
         kinds: list.map((b) => b.object?.name || b.meshes?.[0]?.parent?.name || '?'),
         drawn: (i) => (list[i] ? drawn(list[i]) : null),
+        bodyAt: (i) => list[i] && { position: list[i].position, quaternion: list[i].quaternion, scale: list[i].scale, box: list[i].box, body: list[i].body },
         knock(i) {
           const b = list[i];
           if (!b || !lp) return null;

@@ -26,7 +26,7 @@ await ctx.addInitScript(() => {
 });
 const page = await ctx.newPage();
 page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errors.push(`error: ${m.text()}`));
+page.on('console', (m) => (m.type() === 'error' || /landing physics/.test(m.text())) && errors.push(`${m.type()}: ${m.text()}`));
 await page.goto(URL, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship, null, { timeout: 180000 });
 await page.waitForTimeout(3000);
@@ -78,6 +78,7 @@ for (const id of planets) {
     console.log('FAIL', id, `nothing loose where it came down (${before.biome ?? 'the planet’s own landing'})`);
     bad++;
   }
+  if (before.bodies && !before.simulated) console.log('    ', id, 'first body:', JSON.stringify(await page.evaluate(() => window.__universeDebug.foot.physics().bodyAt(0))));
   const n = Math.min(4, before.bodies);
   for (let i = 0; i < n; i++) {
     const was = await page.evaluate((i) => window.__universeDebug.foot.physics().drawn(i), i);

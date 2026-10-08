@@ -63,7 +63,10 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, onHit =
   function add({ position, quaternion, scale = 1, box, body, awake = false, user = null }) {
     if (gone) return null;
     const shape = shapeFor(body, box, scale);
-    if (!shape || !position?.every?.(Number.isFinite)) return null;
+    if (!shape || !position?.every?.(Number.isFinite)) {
+      if (import.meta.env?.DEV) console.warn('landing physics: no body for', { body, box, scale, position });
+      return null;
+    }
     const entry = { user, handle: null, scale, told: -Infinity };
     try {
       entry.handle = physics.add({
@@ -87,7 +90,8 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, onHit =
             }
           : null,
       });
-    } catch {
+    } catch (err) {
+      if (import.meta.env?.DEV) console.warn('landing physics: no body,', err?.message ?? err);
       return null;
     }
     entries.set(entry.handle, entry);
