@@ -23,13 +23,22 @@
 //   batteries (an AI's bolt takes one of a battery's hp, so a run down a
 //   hull can silence it), the objectives of the stage, or the hull itself.
 //
-// createTactics(k) → { think(f, dt), drop(f) }: think chooses what a fighter
-// goes after (when it's time to), drop lets go of a fighter's tokens when
-// it's down. `k` is the battle's inner context (battle.js's createBattle).
+// And they fly in flights (battleFlights.js): the leader chooses, the
+// wingmen take its target; an escort flight goes after only what comes for
+// its bombers, the defender's cover only what comes near the objective
+// ship, and the defender weighs the enemy round the most threatened
+// objective twice.
+//
+// createTactics(k) → { kinds(team, n), think(f, dt), drop(f), form(),
+// adopt(fighters), step(dt, out), steer(f, dist), sense(), nerve(flight),
+// struck(), flights }: think chooses what a fighter goes after (when it's
+// time to), drop lets go of a fighter's tokens when it's down; the rest are
+// the flights'. `k` is the battle's inner context (battle.js's createBattle).
 
 import { pick } from '../../lib/ai/utility';
 import { createTokens } from '../../lib/ai/squad';
 import { BATTLE, dist2 } from './battleKit';
+import { FLIGHTS, createFlights } from './battleFlights';
 
 export const TACTICS = {
   think: 0.5, // seconds between a fighter weighing up what to go after
@@ -52,6 +61,7 @@ const idOf = (t, you) => (t === you ? 'you' : (t?.id ?? t?.num ?? t?.key ?? null
 export function createTactics(k) {
   const { b, rand } = k;
   const tokens = createTokens({ pools: { intercept: TACTICS.intercepts }, timeout: Infinity });
+  const flights = createFlights(k);
   const alive = (t) => Boolean(t) && (t === b.you ? k.youIn() : t.alive !== false);
 
   // a point on one of the other side's capital ships, there while the ship is
@@ -77,11 +87,13 @@ export function createTactics(k) {
   };
 
   // a run down the other side's hulls: its nearest batteries, the objectives of the stage, or the hull itself
-  const strafeOptions = (f, opts) => {
+  // (`keep`: [a point, a reach], an escort's bombers: only what's near them)
+  const strafeOptions = (f, opts, keep = null) => {
     const best = [];
+    const near2 = (p) => !keep || dist2(p, keep[0]) < keep[1] * keep[1];
     for (const cap of foes(f.team))
       for (const tu of cap.turrets) {
-        if (!tu.alive) continue;
+        if (!tu.alive || !near2(tu.at)) continue;
         const d = dist2(tu.at, f.pos);
         if (best.length < TACTICS.batteries || d < best[best.length - 1][0]) {
           best.push([d, tu]);
@@ -90,8 +102,8 @@ export function createTactics(k) {
         }
       }
     for (const [d, tu] of best) opts.push({ id: tu.num, weight: near(d) * 0.6, t: tu });
-    for (const o of objectivesFor(f.team)) opts.push({ id: o.num, weight: near(dist2(o.pos, f.pos)) * 0.8, t: o });
-    if (!opts.length) {
+    for (const o of objectivesFor(f.team)) if (near2(o.pos)) opts.push({ id: o.num, weight: near(dist2(o.pos, f.pos)) * 0.8, t: o });
+    if (!opts.length && !keep) {
       let ship = null;
       let sd = Infinity;
       for (const cap of foes(f.team)) {
@@ -102,25 +114,37 @@ export function createTactics(k) {
     }
   };
 
-  // what a dogfighter (or an interceptor) goes after
+  // what a dogfighter (or an interceptor) goes after: for an escort only
+  // what's near its bombers (what's after them first), for the defender's
+  // cover only what's near the objective ship
   const chooseFighter = (f) => {
     const opts = [];
     let closest = Infinity;
+    const bombers = flights.escortOf(f);
+    const ship = flights.cover(f);
+    const keep = bombers ? [bombers.pos, FLIGHTS.escortReach] : ship ? [ship.pos, FLIGHTS.coverReach] : null;
+    const threat = f.team === k.defender ? flights.threat : null;
     for (const o of b.fighters) {
       if (!o.alive || o.team === f.team) continue;
       let d = dist2(o.pos, f.pos);
       if (d < closest) closest = d;
+      if (keep && dist2(o.pos, keep[0]) > keep[1] * keep[1]) continue;
+      if (bombers && o.target?.flight === f.flight.escorting) d *= TACTICS.runners;
+      else if (ship && dist2(o.pos, ship.pos) < FLIGHTS.cover * FLIGHTS.cover) d *= TACTICS.friend;
       if (o.role === 'bomber') {
         // (three after one bomber's enough, whatever they fly: a fourth looks elsewhere)
         if (!tokens.held('intercept', f.id, o.id) && tokens.count('intercept', o.id) >= TACTICS.intercepts) continue;
         if (f.role === 'interceptor') d *= TACTICS.bombers;
       } else if (o.target && o.target !== b.you && o.target.team === f.team) d *= TACTICS.friend;
-      opts.push({ id: o.id, weight: near(d), t: o });
+      // (the enemy round the objective most under threat, weighed twice by its defenders)
+      const w = threat && dist2(o.pos, threat.pos) < FLIGHTS.threat * FLIGHTS.threat ? FLIGHTS.weigh : 1;
+      opts.push({ id: o.id, weight: near(d) * w, t: o });
     }
-    for (const r of b.runners) if (r.alive && r.team !== f.team) opts.push({ id: r.id, weight: near(dist2(r.pos, f.pos) * TACTICS.runners), t: r });
-    if (closest > TACTICS.strafe * TACTICS.strafe) strafeOptions(f, opts);
+    for (const r of b.runners) if (r.alive && r.team !== f.team && (!keep || dist2(r.pos, keep[0]) < keep[1] * keep[1])) opts.push({ id: r.id, weight: near(dist2(r.pos, f.pos) * TACTICS.runners), t: r });
+    // (nothing to dogfight near: a strafing run, an escort's at what's near its bombers)
+    if (closest > TACTICS.strafe * TACTICS.strafe || (bombers && !opts.length)) strafeOptions(f, opts, bombers ? keep : ship ? [ship.pos, 0] : null);
     // you: a couple always on you while you're near (Battlefront's fights come to the player), more if you're the nearest
-    if (k.youIn() && b.you.team !== f.team) {
+    if (k.youIn() && b.you.team !== f.team && (!keep || dist2(b.you.pos, keep[0]) < keep[1] * keep[1])) {
       const d = dist2(b.you.pos, f.pos);
       const on = f.target === b.you;
       if (!on && b.you.on < 2 && d < 70 * 70) return b.you;
@@ -160,7 +184,38 @@ export function createTactics(k) {
     if (t && t.role === 'bomber' && t !== b.you && tokens.claim('intercept', f.id, { target: t.id })) f.token = t.id;
   };
 
+  const setTarget = (f, t) => {
+    if (t === f.target) return;
+    const was = f.target;
+    claim(f, t);
+    f.target = t;
+    f.chose = b.clock;
+    if (was === b.you) b.you.on = Math.max(0, b.you.on - 1);
+    if (t === b.you) b.you.on += 1;
+  };
+  // a wingman's: whoever's on its leader's tail, or its leader's target
+  const wingTarget = (f, lead) => {
+    let t = null;
+    // (a bomber keeps to its own run till its torpedo's away, and goes after no fighter)
+    if (f.role === 'bomber') return alive(f.target) && !f.rethink ? f.target : alive(lead.target) ? ((f.rethink = false), lead.target) : null;
+    if (b.clock - lead.chased < 0.6 && lead.chaser?.alive && lead.chaser.team !== f.team) t = lead.chaser;
+    else if (alive(lead.target)) t = lead.target;
+    if (t === b.you && f.target !== b.you && b.you.on >= BATTLE.onYou) t = null;
+    if (t?.role === 'bomber' && t !== f.target && !tokens.held('intercept', f.id, t.id) && tokens.count('intercept', t.id) >= TACTICS.intercepts) t = null;
+    return t;
+  };
+
   return {
+    get flights() {
+      return flights.flights;
+    },
+    form: flights.form,
+    adopt: flights.adopt,
+    step: flights.step,
+    steer: flights.steer,
+    sense: flights.sense,
+    nerve: flights.nerve,
+    struck: flights.struck,
     // the kind of each of a side's `n` fighters: its kinds shared out among
     // flights of three by their weights (the largest remainders), a flight of
     // bombers at least where there are two flights or more, in a seeded
@@ -188,6 +243,14 @@ export function createTactics(k) {
     },
     // what `f` goes after: weighed again when it's time, kept a while once chosen
     think(f, dt) {
+      if (f.mode === 'rtb') return; // (going home: battleFlights.js has it)
+      // a wingman takes its leader's
+      const lead = flights.lead(f);
+      const wing = lead && wingTarget(f, lead);
+      if (wing) {
+        setTarget(f, wing);
+        return;
+      }
       f.retarget -= dt;
       const there = alive(f.target);
       if (there && f.retarget > 0) return;
@@ -202,13 +265,7 @@ export function createTactics(k) {
         if (there && b.clock - (f.chose ?? -Infinity) < TACTICS.commit) return;
         t = chooseFighter(f);
       }
-      if (t === f.target) return;
-      const was = f.target;
-      claim(f, t);
-      f.target = t;
-      f.chose = b.clock;
-      if (was === b.you) b.you.on = Math.max(0, b.you.on - 1);
-      if (t === b.you) b.you.on += 1;
+      setTarget(f, t);
     },
     // a fighter down: its token let go
     drop(f) {

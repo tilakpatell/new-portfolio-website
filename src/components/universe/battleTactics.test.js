@@ -133,7 +133,9 @@ describe('a fighter’s commitment (tactics)', () => {
     watch(b, 40, () => {
       for (const f of b.fighters) {
         if (!f.alive || f.team !== 0) continue;
-        const has = f.target && f.target.alive !== false;
+        // (since the flights, battleFlights.js, a fighter going home hurt
+        // has somewhere to be: that's not idling round the middle)
+        const has = (f.target && f.target.alive !== false) || f.mode === 'rtb';
         idle.set(f, has ? 0 : (idle.get(f) ?? 0) + step);
         worst = Math.max(worst, idle.get(f));
       }

@@ -35,7 +35,8 @@
 //   → { id, kind, length, attacker, defender, ai: { tAi }, stages: [{ id,
 //   type, need?, opensAt, shields?, why?, breaks?, crew?, interdicts?,
 //   objectives: [{ id, type, kind, name, hp, on, … }] }], runners, side,
-//   losses: [{ team, index, at, by? }], pinned }
+//   losses: [{ team, index, at, by? }], pinned, escalations: [{ type, at, id?,
+//   team?, n?, name? }] }
 // (`shields`: the objective ship's shield stands while the stage does;
 // `why`: the battle's end, said, when the last stage goes; `breaks`: the
 // objective ship breaks up when it does; `on`: where the objective is, a
@@ -58,6 +59,8 @@ export const PLAN = {
   tAi: [540, 800], // the AI's pace (battleDirector.js), alone
   tAiRunners: [620, 900], // and slower where runners decide it too
   decideFrom: 450, // the soonest the runners decide it
+  push: 480, // the final push (battleDirector.js's DIRECTOR.push): the AI's pressure steeper, its capital ships forward
+  reserve: 6, // and the defender's reserve squadron put up
   // the share of a runner's hp the AI's fire would take, by seed (more than
   // all of it, often: it's down), by whose runners they are
   luck: { defender: [0.5, 2.4], attacker: [0.5, 3] },
@@ -121,8 +124,11 @@ function runnersOf(r, attacker, length) {
 export function planFor(input, menus = null) {
   const { id, kind = 'assault', attacker = 0, objectivesOn = 'flagship', runners = null, length = PLAN.length } = input;
   const run = runnersOf(runners, attacker, length);
-  const plan = { id, kind, length, attacker, defender: 1 - attacker, ai: { tAi: run ? PLAN.tAiRunners : PLAN.tAi }, stages: chainOf(objectivesOn), runners: run, side: [], losses: [], pinned: null };
-  if (!menus) return plan;
+  const plan = { id, kind, length, attacker, defender: 1 - attacker, ai: { tAi: run ? PLAN.tAiRunners : PLAN.tAi }, stages: chainOf(objectivesOn), runners: run, side: [], losses: [], pinned: null, escalations: [] };
+  if (!menus) {
+    plan.escalations = escalationsOf(plan);
+    return plan;
+  }
   // drawn from the menu: a stage at a time, each from the options that fit
   const rand = seededRand(`plan-${id}`);
   const c = { ...input, attacker, defender: 1 - attacker, objectivesOn, length, rand };
@@ -138,5 +144,17 @@ export function planFor(input, menus = null) {
   const pieces = c.capitals ? (menus.losses?.(c, plan.stages) ?? []) : [];
   plan.losses = menu.losses === false || !c.capitals ? pieces : [...pieces, ...lossesOf(c, plan.stages, rand, length, pieces)].sort((a, b) => a.at - b.at);
   plan.pinned = menu.id ?? null;
+  plan.escalations = escalationsOf(plan);
   return plan;
+}
+
+// what the battle has in store, on its clock: the plan's bomber waves and
+// aces, then the final push and the defender's reserve squadron with it
+function escalationsOf(plan) {
+  const side = plan.side.map((o) => ({ type: o.type, at: o.at, id: o.id, team: o.team, ...(o.name ? { name: o.name } : {}) }));
+  const push = [
+    { type: 'push', at: PLAN.push, name: 'the final push' },
+    { type: 'reserve', at: PLAN.push, team: plan.defender, n: PLAN.reserve, name: 'their reserve squadron' },
+  ];
+  return [...side, ...push].filter((e) => e.at <= plan.length).sort((p, q) => p.at - q.at);
 }

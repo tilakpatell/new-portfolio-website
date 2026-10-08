@@ -26,7 +26,8 @@
 // And the plan's side objectives: an ace in the fight from its time, its
 // hull the director's (the AI can't bring it down; the pilots' shots are
 // told, `ace:<team>`); a bomber wave put up at its time, one life each,
-// what's left of it gone home once it's struck. When the droid control
+// what's left of it gone home once it's struck; the defender's reserve
+// squadron put up at the final push (the plan's escalations). When the droid control
 // relay falls (an objective's `effect.freeze`), the defender's droid
 // fighters drift dead in space for that many seconds; while a stage that
 // interdicts stands (an Interdictor's gravity wells), the battle's
@@ -42,7 +43,7 @@
 
 import { sweptHit } from './targeting';
 import { BATTLE, copy, len, set, v3 } from './battleKit';
-import { addWave, spawn } from './battleAi';
+import { addReserve, addWave, spawn } from './battleAi';
 import { place } from './battleCapitals';
 
 // how big each kind of objective laid out in the open is, unless the plan says
@@ -111,6 +112,8 @@ export function createStages(k, plan, director) {
       f.respawn = Infinity;
     }
   const waves = (plan.side ?? []).filter((o) => o.type === 'wave').map((w) => ({ w, up: false, home: false, fighters: [] }));
+  // (and the defender's reserve squadron, at the final push)
+  const reserves = (plan.escalations ?? []).filter((e) => e.type === 'reserve').map((e) => ({ e, up: false }));
   let first = true;
 
   const objective = (st, o) => st.objectives.find((x) => x.id === o.key);
@@ -184,6 +187,11 @@ export function createStages(k, plan, director) {
             }
         }
       });
+      for (const x of reserves) {
+        if (x.up || st.t < x.e.at) continue;
+        x.up = true;
+        for (const f of addReserve(k, x.e.team, x.e.n)) out.push({ type: 'arrive', team: f.team, kind: f.kind, at: copy(v3(), f.pos) });
+      }
       first = false;
     },
     // a shot on one of them: yours counted, if it's open to be taken (and

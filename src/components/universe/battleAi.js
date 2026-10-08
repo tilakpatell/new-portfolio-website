@@ -84,6 +84,24 @@ export function addWave(k, team, n, id) {
     k.b.fighters.push(f);
     out.push(f);
   }
+  k.tactics?.adopt(out); // (in flights of their own)
+  return out;
+}
+
+// a reserve squadron of `n` (the plan's escalation at the final push,
+// battleStages.js): the side's dogfighters, put up in front of its line,
+// back in again with its waves when they're shot down
+export function addReserve(k, team, n) {
+  const kinds = k.b.teams[team].side.fighters.filter((o) => o.role !== 'bomber');
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const f = makeFighter(k, team, kinds.length ? pick(kinds, k.rand) : null);
+    spawn(k, f, false);
+    f.reserve = true;
+    k.b.fighters.push(f);
+    out.push(f);
+  }
+  k.tactics?.adopt(out);
   return out;
 }
 
@@ -201,12 +219,18 @@ export function flyFighter(k, f, dt) {
     dist = Math.sqrt(dist2(tp, f.pos));
     const lead = f.role === 'bomber' ? dist / BATTLE.bolts.torpedo.speed : dist / BATTLE.bolts.laser.speed;
     set(f.aim, tp.x + tv.x * lead, tp.y + tv.y * lead, tp.z + tv.z * lead);
-    if (t !== b.you && t.team !== undefined && dist < 10) t.chased = b.clock; // (someone on its tail)
+    if (t !== b.you && t.team !== undefined && dist < 10) {
+      t.chased = b.clock; // (someone on its tail)
+      t.chaser = f;
+    }
   }
   f.modeT -= dt;
-  if (f.modeT <= 0 && f.mode !== 'engage' && f.mode !== 'run') f.mode = f.role === 'bomber' ? 'run' : 'engage';
+  if (f.modeT <= 0 && f.mode !== 'engage' && f.mode !== 'run' && f.mode !== 'rtb') f.mode = f.role === 'bomber' ? 'run' : 'engage';
+  // (with tactics, somewhere else to be: home, its slot off its leader's wing, by its bombers, circling its cover)
+  const st = k.tactics ? k.tactics.steer(f, dist) : null;
   // what it wants: at its target, or away from it for a while
   if (f.mode === 'break' || f.mode === 'jink' || f.mode === 'extend') copy(want, f.away);
+  else if (st?.at) set(want, st.at.x - f.pos.x, st.at.y - f.pos.y, st.at.z - f.pos.z);
   else if (tp) set(want, f.aim.x - f.pos.x, f.aim.y - f.pos.y, f.aim.z - f.pos.z);
   else set(want, C.x - f.pos.x, C.y - f.pos.y, C.z - f.pos.z);
   norm(want);
@@ -273,7 +297,7 @@ export function flyFighter(k, f, dt) {
   // leaning into the turn (for the drawing)
   const side = dot(cross(oldFwd, f.fwd, tmp), UP) / Math.max(dt, 1e-4);
   f.bank += (Math.max(-1.2, Math.min(1.2, side * 0.45)) - f.bank) * Math.min(1, dt * 4);
-  const top = f.type.speed * (f.mode === 'break' ? 1.1 : 1);
+  const top = st?.speed ?? f.type.speed * (f.mode === 'break' ? 1.1 : 1);
   f.speed += Math.max(-f.type.accel * dt, Math.min(f.type.accel * dt, top - f.speed));
   set(f.vel, f.fwd.x * f.speed, f.fwd.y * f.speed, f.fwd.z * f.speed);
   copy(f.prev, f.pos);
@@ -282,7 +306,7 @@ export function flyFighter(k, f, dt) {
   f.pos.z += f.vel.z * dt;
   // its guns, or its torpedoes
   f.cool -= dt;
-  if (!tp || f.cool > 0 || b.over) return;
+  if (!tp || f.cool > 0 || b.over || f.mode === 'rtb') return;
   set(tmp, f.aim.x - f.pos.x, f.aim.y - f.pos.y, f.aim.z - f.pos.z);
   if (f.role === 'bomber') {
     // (with tactics a run at a ship is judged to its hull's side, not its

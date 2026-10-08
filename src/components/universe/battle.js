@@ -143,12 +143,15 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // the battle never ends itself, and the AI's fire sinks no capital ship)
   const decides = !(plan && director);
   const k = { b, rand, between, C, A, S, lines, radius, avoid, planet, attacker, defender, pending, newId: () => nextId++, flagOf, objOf, youIn, finish, decides, onMine, subDown };
-  // (the galaxy's fighters flown with tactics: battleTactics.js)
+  // (the galaxy's fighters flown with tactics, in flights: battleTactics.js, battleFlights.js)
+  k.spawn = (f, first) => spawn(k, f, first);
   k.tactics = tactics ? createTactics(k) : null;
+  b.tactics = k.tactics;
 
   // the capital ships in their lines, the fighters up, the runners ready
   layCapitals(k, objectivesOn);
   muster(k, n, ace);
+  k.tactics?.form();
   holdCapitals(k);
   const stages = decides ? null : createStages(k, plan, director);
   if (stages) b.isOpen = stages.open; // (whether a plan's objective is open to be taken now: warfront.js's zones)
@@ -189,7 +192,11 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     else if (t.tickets > 0 || !tickets) {
       // (without tickets the count's only a count: it stops at nothing, and the fighters keep coming)
       t.tickets = Math.max(0, t.tickets - 1);
-      f.respawn = between(BATTLE.respawn);
+      // (with tactics it waits for its side's next wave: battleFlights.js)
+      if (k.tactics) {
+        f.respawn = Infinity;
+        f.waiting = true;
+      } else f.respawn = between(BATTLE.respawn);
     } else f.respawn = Infinity;
     if (b.you.on && f.target === b.you) b.you.on -= 1;
     k.tactics?.drop(f);
@@ -350,6 +357,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         const h = capitalHit(p0, p1, o.team);
         if (h) {
           done = true;
+          if (h.cap.objective) k.tactics?.struck(); // (its threat, for its defenders)
           if (h.sub && subHit(h.sub, o.damage * BATTLE.aiShare, false, out)) {
             // (counted on the objective)
           } else if (shielded(h.cap)) out.push({ type: 'impact', at: h.at, size: o.kind === 'turbo' ? 1.6 : 0.6, shield: true });
@@ -431,7 +439,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     if (!b.over) b.clock += dt;
     for (const f of b.fighters) {
       if (f.alive) flyFighter(k, f, dt);
-      else if (Number.isFinite(f.respawn) && !b.over) {
+      else if (!k.tactics && Number.isFinite(f.respawn) && !b.over) {
         f.respawn -= dt;
         if (f.respawn <= 0) {
           spawn(k, f, false);
@@ -439,6 +447,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         }
       }
     }
+    // (the flights: the threat, their nerve, home and back, the waves)
+    k.tactics?.step(dt, out);
     for (const cap of b.capitals) if (cap.disabled > 0) cap.disabled = Math.max(0, cap.disabled - dt);
     runs.launch(dt);
     const before = out.length;
