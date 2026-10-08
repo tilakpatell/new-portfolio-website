@@ -51,6 +51,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const [footHint, setFootHint] = useState(false);
   // the place's name as you come down on a planet (landings.js)
   const [arrive, setArrive] = useState(null);
+  const [ride, setRide] = useState(null); // (on a hyperlane: the scene's word, lanePilot.js's rideLine)
   const [controls, setControlsState] = useState(() => readControls(local.get(CONTROLS_KEY)));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const setControls = (c) => {
@@ -105,6 +106,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       onCrash,
       onEvent: (e) => {
         if (e.type === 'launch') setFlown(true);
+        if (e.type === 'ride') setRide(e.on ? e.line : null);
         if (e.type === 'landable') setLandable(e.id);
         if (e.type === 'phone' && e.what !== 'open') setPhoneNear(e.what === 'near');
         if (e.type === 'foot' && e.id === 'arrive') setArrive({ title: e.title, sub: e.sub, at: Date.now() });
@@ -266,6 +268,18 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-threat" />
                 <span className="universe-threat" />
                 <span className="universe-threat" />
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
                 <span className="universe-lead" />
                 <span className="universe-nav">
                   <i />
@@ -290,6 +304,12 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-siege-state" />
               </div>
               <p ref={prompt} className="universe-prompt" aria-live="polite" />
+              {/* on a hyperlane: which, where to, how soon, and the way off (plain for now: the lanes' look is still to come) */}
+              {ride && (
+                <p className="universe-lane" role="status">
+                  <b>{ride.name}</b> <span className="universe-lane-tier">{ride.tier}</span> · {ride.next} in {Math.max(0, Math.round(ride.eta))} s · <kbd>S</kbd> to drop out
+                </p>
+              )}
               {/* Rick's portal gun, in any ship: a portal ahead, to his dimension or home (gunPortal.js) */}
               {!onFoot && ship && (
                 <button type="button" className="universe-portalgun" onPointerDown={(e) => (e.preventDefault(), view.current?.portalGun?.())} onContextMenu={(e) => e.preventDefault()} title="Rick’s portal gun: a portal ahead, to his dimension (or home)">

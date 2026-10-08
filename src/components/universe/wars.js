@@ -23,6 +23,8 @@
 // the galaxy's set pieces fly round the same ones).
 
 import { paced } from './ship';
+import { POSITIONS } from './layout';
+import { SPREAD } from './scale';
 
 const rebels = {
   id: 'rebels',
@@ -140,13 +142,23 @@ const cartel = {
   ],
 };
 
-// seven sectors in a line from `from` to `to`, named in order from the
-// first side's home to the second's
-const line = (from, to, names) =>
-  names.map(([id, name], i) => {
+// seven sectors in a line from `a` to `b`, named in order from the first
+// side's home to the second's. The numbers are where the lines were before
+// the spread (scale.js's SPREAD), beside their planets; the line moves as far
+// as its planet, `by`, moved (the planet's place now, less where it
+// was: x and z by SPREAD, its height by half), so a war is still fought
+// round its own world and keeps its length
+const moved = (id, p) => {
+  const [x, y, z] = POSITIONS[id];
+  return [p[0] + x - x / SPREAD, p[1] + y - y / (SPREAD / 2), p[2] + z - z / SPREAD];
+};
+const line = (a, b, names, by) => {
+  const [from, to] = [moved(by, a), moved(by, b)];
+  return names.map(([id, name], i) => {
     const k = i / (names.length - 1);
     return { id, name, at: from.map((v, j) => Math.round(v + (to[j] - v) * k)) };
   });
+};
 
 export const WARS = {
   starwars: {
@@ -167,6 +179,7 @@ export const WARS = {
         ['mustafar', 'Mustafar'],
         ['coruscant', 'Coruscant'],
       ],
+      'starwars',
     ),
     battleName: (s) => `Battle of ${s.name}`,
   },
@@ -191,6 +204,7 @@ export const WARS = {
         ['gromflom', 'Gromflom Prime'],
         ['c137', 'Earth C-137'],
       ],
+      'rickmorty',
     ),
     battleName: (s) => `The fight over ${s.name}`,
   },
@@ -214,6 +228,7 @@ export const WARS = {
         ['juarez', 'Ciudad Juárez'],
         ['hacienda', 'Don Eladio’s hacienda'],
       ],
+      'breakingbad',
     ),
     battleName: (s) => `The showdown at ${s.name}`,
   },

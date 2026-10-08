@@ -1,11 +1,14 @@
 // The street's visitors, for ./street.js: the President's motorcade at the
-// Smiths' kerb (the black limo, the President, his Secret Service agent),
-// which drives off east once Morty has met him (`done` has 'president'); the
-// Galactic Federation's agents at their posts on the sidewalks, turning to
-// watch Morty go by; and the Federation's patrol ship over the street,
-// wherever ./RmWorld.jsx's sim (./ship.js) has it (`state.fed`), its jets
-// glowing and its searchlight on the road below. Meshy models, each with a
-// code-drawn stand-in, so a model that won't load never leaves a hole.
+// Smiths' kerb (the black limo, the President, his Secret Service agent):
+// once Morty has met him (`done` has 'president') the two walk to the limo's
+// kerbside doors and get in, and it drives off east; the Galactic
+// Federation's agents at their posts on the sidewalks, their heads following
+// Morty as he goes by and their bodies turning after; and the Federation's
+// patrol ship over the street, wherever ./RmWorld.jsx's sim (./ship.js) has
+// it (`state.fed`), its jets glowing and its searchlight on the road below.
+// Whoever Morty talks to turns their head to him and talks with their hands
+// while the line plays (state.talk). Meshy models, each with a code-drawn
+// stand-in, so a model that won't load never leaves a hole.
 
 import * as THREE from 'three';
 import { hot } from '../../../lib/stage3d';
@@ -16,10 +19,18 @@ import { makeRoom } from './interiors/shell';
 import { toonPerson } from './interiors/people';
 import { fadeUp } from './interiors/lab';
 import { createNpcs } from './npc';
+import { attend, stepMotion } from './living';
 import { MESHY } from '../portal/meshyCast';
 import { AREAS } from './rules';
 
 const TALL = { president: 1.88, secretservice: 1.84, fedagent: 1.9 };
+// the limo's kerbside doors, where the President and his agent get in: the
+// back one, and the front passenger's (its nose is east)
+const KERB = LIMO.z - LIMO.w / 2 - 0.35;
+const DOORS = { president: { x: LIMO.x - 0.9, z: KERB }, secretservice: { x: LIMO.x + 1.5, z: KERB } };
+const BOARD = { speed: 1.2, settle: 0.45, wait: 0.6 }; // m/s to the door, s there before in, s after before it pulls away
+// the limo to a walker stepping round it: posts its width across, along its length (its nose east)
+const LIMO_POSTS = Array.from({ length: 4 }, (_, i) => ({ x: LIMO.x - LIMO.d / 2 + LIMO.w / 2 + (i * (LIMO.d - LIMO.w)) / 3, z: LIMO.z, r: LIMO.w / 2 }));
 // in shapes, if their models won't load
 const LOOK = {
   president: { skin: 0x5a3a2a, shirt: 0xf4f4f0, coat: 0x1f2a44, pants: 0x1f2a44, shoes: 0x111111, hair: 0x2a2420, tie: 0xa83232 },
@@ -43,7 +54,7 @@ export async function buildVisitors(kit, { roadY = 0 } = {}) {
   // the people's models, waited on a while at most
   try {
     const walkers = PEOPLE.filter((p) => p.area === 'street' && p.ai).map((p) => p.who ?? p.id);
-    const need = kit.need ? Promise.all([kit.need(['president', 'secretservice', 'fedagent'], { clips: ['idle', 'walk', 'sit'] }), kit.need([...new Set(walkers)], { clips: ['idle', 'walk'] })]) : null;
+    const need = kit.need ? Promise.all([kit.need(['president', 'secretservice', 'fedagent'], { clips: ['idle', 'walk', 'sit'] }), kit.need([...new Set(walkers)], { clips: ['idle', 'walk', 'run'] })]) : null;
     await Promise.race([need, new Promise((done) => setTimeout(done, 9000))]);
   } catch {
     /* stand-ins */
@@ -51,8 +62,10 @@ export async function buildVisitors(kit, { roadY = 0 } = {}) {
 
   // ── the people ──
   // (the walkers' brains: ./npc.js, the same layer as the dial's places; the
-  // street's box, nothing in the way but each other, since they keep to the sidewalks)
-  const N = createNpcs({ id: 'street', area: AREAS.street, solids: [], words: {} });
+  // street's box, and in the way only each other, Morty and whoever's
+  // standing on the sidewalks: the motorcade, the agents at their posts)
+  const standing = []; // ({ x, z, r }: who's stood on the sidewalks this frame)
+  const N = createNpcs({ id: 'street', area: AREAS.street, solids: [], words: {}, others: () => standing });
   const people = PEOPLE.filter((p) => p.area === 'street').map((p) => {
     const kind = p.who ?? p.id;
     const h = TALL[kind] ?? MESHY[kind]?.h ?? 1.8;
@@ -61,13 +74,14 @@ export async function buildVisitors(kit, { roadY = 0 } = {}) {
     let n = null;
     if (c) {
       c.group.scale.setScalar(h / c.height);
-      fig = { group: c.group, tick: (t) => c.update(t, 0, 0) };
+      fig = { group: c.group, cast: c };
       if (p.ai) n = N.add(c, { x: p.x, z: p.z, face: p.face, ai: p.ai, id: p.id, who: p.say ?? null });
     } else fig = toonPerson(R, LOOK[kind] ?? LOOK.fedagent, h);
     fig.group.position.set(p.x, 0, p.z);
     fig.group.rotation.y = p.face + Math.PI / 2;
     group.add(fig.group);
-    return { p, fig, n, face: p.face, watches: kind === 'fedagent' };
+    // (its feet's last step, its word from Morty, whether its head's on him, its way into the limo)
+    return { p, fig, c, n, face: p.face, watches: kind === 'fedagent', door: c ? (DOORS[p.id] ?? null) : null, prev: null, talkN: null, until: 0, looking: false, boarding: null, frame: { forward: new THREE.Vector3(0, 0, 1), up: new THREE.Vector3(0, 1, 0) } };
   });
 
   // ── the limo ──
@@ -122,36 +136,94 @@ export async function buildVisitors(kit, { roadY = 0 } = {}) {
   let lastYaw = null;
   const fallback = newFedShip();
 
+  // One who stands (not a walker): its feet by the ground it covers, its head
+  // on Morty when `near` (and while he talks to it), its hands going while
+  // his word to it plays. `move`: 0 standing, more walking.
+  const stand = (v, t, dt, state, { move = 0, near = 0 } = {}) => {
+    const g = v.fig.group;
+    const next = { x: g.position.x, z: g.position.z, yaw: g.rotation.y };
+    const motion = stepMotion(v.prev, next, dt, { scale: g.scale.x || 1 });
+    v.prev = next;
+    v.frame.forward.set(Math.sin(next.yaw), 0, Math.cos(next.yaw));
+    v.c.update(t, move, 0, { dt, motion, frame: v.frame });
+    attend(v.c, v, v.p.id, t, state, { near });
+  };
+  // The President or his agent, on his way into the limo once he's been met:
+  // to his door, turned to the car, and in. True while he's still out.
+  const board = (v, t, dt, state) => {
+    const b = v.boarding;
+    const g = v.fig.group;
+    const dx = v.door.x - g.position.x;
+    const dz = v.door.z - g.position.z;
+    const d = Math.hypot(dx, dz);
+    let move = 0;
+    if (d > 0.08) {
+      const step = Math.min(d, BOARD.speed * dt);
+      g.position.x += (dx / d) * step;
+      g.position.z += (dz / d) * step;
+      v.face += wrap(Math.atan2(-dz, dx) - v.face) * Math.min(1, dt * 8);
+      move = 0.35;
+    } else {
+      // at the door: turned to the car (+z, the road's side), and a moment later in
+      b.there ??= t;
+      v.face += wrap(-Math.PI / 2 - v.face) * Math.min(1, dt * 8);
+      if (t - b.there > BOARD.settle) return false;
+    }
+    g.rotation.y = v.face + Math.PI / 2;
+    stand(v, t, dt, state, { move });
+    return true;
+  };
+
   return {
     group,
     noInk,
     update(t, dt, state) {
       const done = state?.done ?? [];
       const met = !present({ until: 'president' }, done);
-      // met already when the world first drew: no motorcade at all
-      if (met && gone == null) gone = first ? -Infinity : t;
+      // met already when the world first drew: no motorcade at all; met
+      // now, his agent and he walk to their doors and get in, and the car
+      // pulls away once they're in
+      if (met && gone == null) {
+        if (first) gone = -Infinity;
+        else {
+          let longest = 0;
+          for (const v of people)
+            if (v.door && v.fig.group.visible) {
+              v.boarding = { at: t, there: null };
+              longest = Math.max(longest, Math.hypot(v.door.x - v.fig.group.position.x, v.door.z - v.fig.group.position.z) / BOARD.speed + BOARD.settle);
+            }
+          gone = t + longest + (longest > 0 ? BOARD.wait : 0);
+        }
+      }
       first = false;
+      const street = state?.area === 'street';
+      // (in a walker's way: the parked limo, as a row of posts along its length, and whoever stands about)
+      standing.length = 0;
+      if (gone == null || t < gone) standing.push(...LIMO_POSTS);
+      for (const v of people) if (!v.n && (present(v.p, done) || v.boarding)) standing.push({ x: v.fig.group.position.x, z: v.fig.group.position.z, r: 0.3 });
       for (const v of people) {
         const here = present(v.p, done);
-        v.fig.group.visible = here;
+        if (v.boarding && !board(v, t, dt, state)) v.boarding = null;
+        v.fig.group.visible = here || Boolean(v.boarding);
         if (!here) continue;
         // a walker goes about their round (./npc.js steps the clips too)
         if (v.n) {
           N.step(v.n, t, dt, state);
           continue;
         }
-        v.fig.tick?.(t);
-        // an agent turns to watch Morty while he's near, and back to the road after
-        if (v.watches && state?.morty && state.area === 'street') {
+        // an agent's head follows Morty while he's near, and the agent turns after it; back to the road after
+        if (v.watches && state?.morty && street) {
           const dx = state.morty.x - v.p.x;
           const dz = state.morty.z - v.p.z;
           const want = Math.hypot(dx, dz) < WATCH ? Math.atan2(-dz, dx) : v.p.face;
           v.face += wrap(want - v.face) * Math.min(1, dt * 3);
           v.fig.group.rotation.y = v.face + Math.PI / 2;
         }
+        if (v.c) stand(v, t, dt, state, { near: v.watches ? WATCH : 4 });
+        else v.fig.tick?.(t);
       }
-      // the limo: parked, driving off east, or gone
-      if (gone == null) limo.position.x = 0;
+      // the limo: parked (its passengers still getting in), driving off east, or gone
+      if (gone == null || t < gone) limo.position.x = 0;
       else {
         const s = t - gone;
         const run = s < LEAVE.top / LEAVE.accel ? 0.5 * LEAVE.accel * s * s : (LEAVE.top * LEAVE.top) / (2 * LEAVE.accel) + LEAVE.top * (s - LEAVE.top / LEAVE.accel);

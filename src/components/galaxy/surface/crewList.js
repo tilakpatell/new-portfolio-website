@@ -51,8 +51,15 @@ export const CREW = {
   aqualish: { url: '/models/galaxy/crew/aqualish.glb', tall: 1.8 },
   wuher: { url: '/models/galaxy/crew/wuher.glb', tall: 1.78 },
   mustafarian: { url: '/models/galaxy/crew/mustafarian.glb', tall: 2.0 },
-  // (the temple's knights alternate two faces)
-  jedi: { url: '/models/galaxy/crew/jedi.glb', tall: 1.75, faces: [{ url: '/models/galaxy/crew/jedi2.glb', tall: 1.8 }] },
+  // (the temple's knights take three faces in turn)
+  jedi: {
+    url: '/models/galaxy/crew/jedi.glb',
+    tall: 1.75,
+    faces: [
+      { url: '/models/galaxy/crew/jedi2.glb', tall: 1.8 },
+      { url: '/models/galaxy/crew/jedi3.glb', tall: 1.78 },
+    ],
+  },
   // and the galaxy's who's who, for the worlds and heroes to come
   maul: { url: '/models/galaxy/crew/maul.glb', tall: 1.75 },
   palpatine: { url: '/models/galaxy/crew/palpatine.glb', tall: 1.73 },
@@ -70,4 +77,19 @@ export const CREW = {
   officer: { url: '/models/galaxy/crew/officer.glb', tall: 1.8 },
   dooku: { url: '/models/galaxy/crew/dooku.glb', tall: 1.93 },
   quigon: { url: '/models/galaxy/crew/quigon.glb', tall: 1.93 },
+  // the Battlefront's soldiers (the remaster's models, catalog/battlefront.js),
+  // rigged with Meshy onto the same skeleton (scripts/meshy-troopers.mjs), so
+  // they walk, aim, fire and fall on clips wherever a world, a quest or a
+  // battle has them; the statues they were made from stand in when one of
+  // these won't load. Heights as the catalogue has them.
+  clone: { url: '/models/galaxy/troops/clone.glb', tall: 1.83 },
+  battledroid: { url: '/models/galaxy/troops/battledroid.glb', tall: 1.91 },
+  superdroid: { url: '/models/galaxy/troops/superdroid.glb', tall: 1.93 },
+  stormtrooper: { url: '/models/galaxy/troops/stormtrooper.glb', tall: 1.83 },
+  snowtrooper: { url: '/models/galaxy/troops/snowtrooper.glb', tall: 1.83 },
+  hothtrooper: { url: '/models/galaxy/troops/hothtrooper.glb', tall: 1.78 },
+  sandtrooper: { url: '/models/galaxy/troops/sandtrooper.glb', tall: 1.83 },
+  scouttrooper: { url: '/models/galaxy/troops/scouttrooper.glb', tall: 1.83 },
+  shoretrooper: { url: '/models/galaxy/troops/shoretrooper.glb', tall: 1.83 },
+  deathtrooper: { url: '/models/galaxy/troops/deathtrooper.glb', tall: 1.83 },
 };
