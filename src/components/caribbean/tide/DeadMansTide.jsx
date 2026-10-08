@@ -9,6 +9,7 @@ import { CHAPTERS, STEP_BOUND, TIDE, UPS, bearing, choose, fitted, newGame, prog
 import { autopilot } from './pilot';
 import { drawChart } from './chart';
 import TideHud from './TideHud';
+import GuideCue from '../../guide/GuideCue';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import '../fonts.css';
 import './tide.css';
@@ -420,6 +421,18 @@ function Game({ soft, fail }) {
      
   }, [phase, calm, touch, fail, pause, pick, drain, finish, travRef]);
 
+  // while the voyage is under way the page knows (html[data-playing]), so the
+  // guide's ? steps out from under the fire buttons; paused, on the title or
+  // over, it's back, and the guide with it
+  useEffect(() => {
+    if (phase !== 'running') return undefined;
+    const root = document.documentElement;
+    root.dataset.playing = 'tide';
+    return () => {
+      if (root.dataset.playing === 'tide') delete root.dataset.playing;
+    };
+  }, [phase]);
+
   // the sea goes quiet while paused or over
   useEffect(() => {
     if (phase !== 'running') scape.current?.set({ on: false });
@@ -670,7 +683,10 @@ function Game({ soft, fail }) {
       <div className="g3-below">
         <p className="g3-keys">
           {touch ? (
-            <span>Drag on the left to steer · ▲ ▼ set the sails · the two buttons fire each side</span>
+            <span>
+              Drag on the left to steer · ▲ ▼ set the sails · the two buttons fire each side
+              <GuideCue touch />
+            </span>
           ) : (
             <>
               <span>
@@ -690,6 +706,7 @@ function Game({ soft, fail }) {
               <span>mouse looks · click or <kbd>Space</kbd> fires that side</span>
               <span>
                 <kbd>P</kbd> pause
+                <GuideCue />
               </span>
             </>
           )}

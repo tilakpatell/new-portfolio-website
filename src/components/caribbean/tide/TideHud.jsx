@@ -1,7 +1,13 @@
 import { RiFullscreenExitLine, RiFullscreenLine, RiPauseLine } from 'react-icons/ri';
+import { PlayersChip } from '../../../runtime/hud';
 import { CHAPTERS } from './rules';
 
 const SAILS = ['Furled', 'Half sail', 'Full sail'];
+// how the others show on this sea, as the players chip's tooltips
+const LORE = {
+  off: 'Go online, and see everyone else sailing this sea as a ghost ship from another world',
+  on: 'Everyone else online sailing this sea shows as a ghost ship from another world: nothing passes between you but where each of you is',
+};
 
 // Dead man's tide's HUD over the sea: the purse, the chapter or the boss, the
 // callout, the chart, the deck (guns and hull), the thumbs on touch and the
@@ -112,16 +118,7 @@ export default function TideHud({ hud, chart, ui, callout, phase, touch, picking
       )}
 
       <div className="g3-tools">
-        {trav.available &&
-          (trav.on ? (
-            <span className="dt-players" data-on="" title="Everyone else online sailing this sea shows as a ghost ship from another world: nothing passes between you but where each of you is">
-              <b>{trav.count}</b> {trav.count === 1 ? 'player' : 'players'} here
-            </span>
-          ) : (
-            <button type="button" className="dt-players" onClick={trav.join} title="Go online, and see everyone else sailing this sea as a ghost ship from another world">
-              See other players
-            </button>
-          ))}
+        <PlayersChip className="dt-players" count={trav.count} on={trav.on} onJoin={trav.join} available={trav.available} lore={LORE} />
         {running && (
           <button type="button" className="g3-tool" onClick={onPause} aria-label="Pause">
             <RiPauseLine aria-hidden="true" />
