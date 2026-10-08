@@ -19,7 +19,7 @@ export const MODELS = {
   tipoca: { uid: '9c569d83df584c06b1c6ea1b496a4704', as: 'Tipoca City', metres: 40, along: 'max', yaw: 0, up: 'y', tris: 35000, tex: 1024 },
   // a Coruscant airspeeder, nose to +z
   airspeeder: { uid: '7766ca8e7bd047f5ad4bdb86d11ec6d4', as: 'the airspeeders', metres: 6, along: 'z', yaw: 0, up: 'y', tris: 16000, tex: 1024 },
-  droideka: { uid: 'f3688d384b2042b6a8fc3360f64b9a48', as: 'the droidekas', metres: 1.8, yaw: Math.PI, up: 'y', tris: 8000, tex: 512 },
+  droideka: { uid: 'f3688d384b2042b6a8fc3360f64b9a48', machine: true, as: 'the droidekas', metres: 1.8, yaw: Math.PI, up: 'y', tris: 8000, tex: 512 },
   kaminoan: { uid: '5d758c4455b24ac383b94d7a4e30bbce', as: 'the Kaminoans', metres: 2.6, yaw: 0, up: 'y', tris: 8000, tex: 512 },
   geonosian: { uid: '021a5902e34c4742a828335c86bfe4cd', as: 'the Geonosians', metres: 1.7, yaw: Math.PI, up: 'y', tris: 8000, tex: 512 },
 };

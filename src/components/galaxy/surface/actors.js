@@ -64,6 +64,7 @@ import { talkFor } from './talk';
 import { zoneVisibility } from './near';
 import { diveAt } from './floats';
 import { heldBlade } from './heldBlade';
+import { WALKERS, walkerFigure } from './walkers';
 import { createAnimator } from '../../../lib/three/animator';
 import { budgetClock } from '../../../lib/three/animBudget';
 import { breathe, createGait, sway } from '../../../lib/three/gait';
@@ -264,7 +265,7 @@ export async function modelFigure(kind) {
   const gltf = await loadGlb(surfaceUrl(kind));
   if (!gltf) return null;
   const row = SURFACE_MODELS[kind];
-  return modelFigureOf(cloneModel(gltf), { animations: gltf.animations, anim: row.anim, seed: seedOf(kind, n), clipSpeed: row.clipSpeed ?? null });
+  return modelFigureOf(cloneModel(gltf), { animations: gltf.animations, anim: row.anim, seed: seedOf(kind, n), clipSpeed: row.clipSpeed ?? null, machine: Boolean(row.machine) });
 }
 
 // what a move of 1 is, in metres a second (the people's update gives
@@ -314,7 +315,7 @@ export function feetOf(root) {
 //   it covers, never on the clock), and with no clips at all it breathes as
 //   it stands, each in its own time: none frozen, none gliding at one
 //   height. Its calls do nothing.
-export function modelFigureOf(scene, { animations = [], anim: names = null, seed = 0, clipSpeed = null } = {}) {
+export function modelFigureOf(scene, { animations = [], anim: names = null, seed = 0, clipSpeed = null, machine = false } = {}) {
   const model = new THREE.Group();
   model.add(scene);
   const box = new THREE.Box3().setFromObject(scene);
@@ -390,6 +391,12 @@ export function modelFigureOf(scene, { animations = [], anim: names = null, seed
         anim.after(dt, m, { forward, up: UP });
         if (walks) return;
       }
+      // (a droid on wheels, repulsors or legs it came without: no person's
+      // sway or breath, only a machine's hum, steady as it goes)
+      if (machine) {
+        scene.position.y = rest.y + Math.sin(clock * 9 + seed) * 0.004 * tall;
+        return;
+      }
       gait ??= createGait({ stride: 0.75 * tall * (model.scale.y || 1), cadence: [1.2, 2.2], seed });
       const g = gait.step(dt, speed);
       // (a shuffle sways less than a stride)
@@ -440,7 +447,9 @@ function propFigure(kind, spec, kit, i = 0) {
 // there's a model; i is which of the entry's figures (a crew kind's face).
 export async function anyFigure(kind, spec = {}, kit = null, i = 0) {
   if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec, kit, i);
-  return (await crewFigure(kind, i)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit, i);
+  // (a machine on legs its model came without: cut at its joints and walked, its rider up top; walkers.js)
+  const walker = WALKERS[kind] ? await walkerFigure(kind, i).catch(() => null) : null;
+  return walker ?? (await crewFigure(kind, i)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit, i);
 }
 
 // How far off the fog has someone all but gone (97% fog, FogExp2's
