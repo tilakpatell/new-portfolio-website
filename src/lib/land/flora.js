@@ -74,12 +74,12 @@ const TYPES = {
   temperate: {
     count: [36, 60],
     species: [
-      row('tree', COMMON, 0.34),
-      row('tree', PINE, 0.22),
+      row('tree', COMMON, 0.3),
+      row('tree', PINE, 0.2),
       row('tree', GIANT, 0.06),
       row('tree', BIRCH, 0.06),
-      row('bush', BUSHES, 0.2),
-      row('rock', ROCKS, 0.08, { on: 'any', slope: STEEP, clump: 0 }),
+      row('bush', BUSHES, 0.18),
+      row('rock', ROCKS, 0.16, { on: 'any', slope: ANY, clump: 0 }),
       row('rock', BIG_ROCKS, 0.04, { on: 'bank', slope: ANY, clump: 0 }),
     ],
     cover: [
@@ -109,7 +109,7 @@ const TYPES = {
     species: [
       row('tree', PINE, 0.35),
       row('tree', GIANT, 0.15),
-      row('rock', ROCKS, 0.3, { on: 'any', slope: STEEP, clump: 0 }),
+      row('rock', ROCKS, 0.3, { on: 'any', slope: ANY, clump: 0 }),
       row('rock', BIG_ROCKS, 0.2, { on: 'any', slope: ANY, clump: 0 }),
     ],
     cover: [
@@ -120,9 +120,10 @@ const TYPES = {
   ocean: {
     count: [20, 30],
     species: [
-      row('tree', COMMON, 0.45),
+      row('tree', COMMON, 0.4),
       row('bush', BUSHES, 0.3),
-      row('rock', ROCKS, 0.25, { on: 'bank', slope: ANY, clump: 0 }),
+      row('rock', ROCKS, 0.2, { on: 'any', slope: ANY, clump: 0 }),
+      row('rock', BIG_ROCKS, 0.1, { on: 'bank', slope: ANY, clump: 0 }),
     ],
     cover: [
       row('pebble', [...ROUND_PEBBLES, ...SQUARE_PEBBLES], 0.5, { on: 'bank', slope: ANY, clump: 0 }),

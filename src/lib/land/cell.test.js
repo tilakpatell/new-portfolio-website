@@ -52,13 +52,15 @@ describe('the cell', () => {
         });
         if (!crosses) continue;
         done = true;
-        // (16 first: 15 is then made from the regions 16's list left cached)
+        // (16 first, then 15: 15 reads the regions 16 and the scan above left cached)
         const b = makeCell(s, 16, cz);
         const a = makeCell(s, 15, cz);
+        expect(a.props.length).toBeGreaterThan(0);
         expect(bytes(new Float32Array(col(a.heights, 64)))).toEqual(bytes(new Float32Array(col(b.heights, 0))));
         expect(bytes(new Float32Array(col(a.water, 64)))).toEqual(bytes(new Float32Array(col(b.water, 0))));
         expect(col(a.water, 64).some((w) => !Number.isNaN(w))).toBe(true);
-        // and 15 from its own list, the cache emptied of both (four far 3 × 3s: 36 regions past its 32)
+        // and 15 again, cold: four far 3 × 3 lookups put 33 new regions into the
+        // cache of 32 after every one 15 reads, so its own are traced afresh
         for (let k = 1; k <= 4; k++) riversNear(s, 15 + k * 48, cz);
         const fresh = makeCell(s, 15, cz);
         expect(bytes(fresh.heights)).toEqual(bytes(a.heights));

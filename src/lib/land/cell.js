@@ -201,16 +201,19 @@ export function makeCell(spec, cx, cz, { shade = true } = {}) {
   return cell;
 }
 
-// the props: each row of the land's flora by its own seeded Poisson disc (a
-// sub-stream a row, every draw made before any test, so an edited row
-// reshuffles no other), moved by his clumping and thinned to woods and
-// glades (pure functions of the world point, so neighbours clump alike),
-// kept where the mask, the slope and the water allow; then the crowns'
-// shade painted into the grass
+// the props: each row of the land's flora by its own seeded Poisson disc,
+// moved by his clumping and thinned to woods and glades (pure functions of
+// the world point, so neighbours clump alike), kept where the mask, the
+// slope and the water allow; then the crowns' shade painted into the grass.
+// A row draws from its own sub-stream, every draw made before any test, so
+// an edited row changes no other row's draws; but which of them stand still
+// hangs on the rows placed before it (ROOM keeps each off theirs)
 function scatter(spec, cell, rivers, x0, z0, shade) {
   const out = [];
   const crowns = [];
   const base = mix(spec.seed, cell.cx, cell.cz);
+  // (the noise's three channels, seeded well apart: the push across, the push down, the thinning)
+  const [pushX, pushZ, thin] = [7001, 7002, 7003].map((k) => mix(spec.seed, k, 0));
   const s = { level: NaN, flow: null, near: Infinity };
   const slopeAt = (lx, lz) =>
     Math.hypot(heightAt(cell, lx + TEXEL, lz) - heightAt(cell, lx - TEXEL, lz), heightAt(cell, lx, lz + TEXEL) - heightAt(cell, lx, lz - TEXEL)) / (2 * TEXEL);
@@ -237,13 +240,13 @@ function scatter(spec, cell, rivers, x0, z0, shade) {
         if (f.clump) {
           const wx = (x0 + lx) * SPREAD;
           const wz = (z0 + lz) * SPREAD;
-          lx += noise2(wx, wz, spec.seed + 7001) * f.clump;
-          lz += noise2(wx, wz, spec.seed + 7002) * f.clump;
+          lx += noise2(wx, wz, pushX) * f.clump;
+          lz += noise2(wx, wz, pushZ) * f.clump;
         }
         if (!(lx >= 0 && lx < CELL && lz >= 0 && lz < CELL)) continue;
         const x = x0 + lx;
         const z = z0 + lz;
-        if (f.clump && keep > smoothstep(THIN[0], THIN[1], (MEADOW.has(f.kind) ? -1 : 1) * noise2(x * SPREAD, z * SPREAD, spec.seed + 7003))) continue;
+        if (f.clump && keep > smoothstep(THIN[0], THIN[1], (MEADOW.has(f.kind) ? -1 : 1) * noise2(x * SPREAD, z * SPREAD, thin))) continue;
         if (mine.some((p) => Math.hypot(p.x - x, p.z - z) < spacing)) continue;
         if (out.some((p) => Math.hypot(p.x - x, p.z - z) < room + (ROOM[p.kind] ?? 0))) continue;
         const k = (Math.min(MASK - 1, Math.floor(lz / TEXEL)) * MASK + Math.min(MASK - 1, Math.floor(lx / TEXEL))) * 4;

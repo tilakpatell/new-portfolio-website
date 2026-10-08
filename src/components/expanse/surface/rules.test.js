@@ -25,6 +25,27 @@ describe('spawnIn', () => {
     expect(s.slope).toBeLessThan(0.15 + 1e-9);
   });
 
+  it('stands clear of every prop with a body, and of the edges a neighbour’s could stand by', () => {
+    // a rising cell, a rock where it would stand (the highest point 6 m in), a tuft beside
+    const c = flatCell();
+    for (let iz = 0; iz < N; iz++) for (let ix = 0; ix < N; ix++) c.heights[iz * N + ix] = 3 + ix * 0.01;
+    c.props = [{ kind: 'rock', x: 2 * CELL + 58, y: 3.6, z: -CELL + 6, scale: 1 }, { kind: 'grass', x: 2 * CELL + 58, y: 3.6, z: -CELL + 13, scale: 1 }];
+    const s = spawnIn(c);
+    expect(Math.hypot(s.x - c.props[0].x, s.z - c.props[0].z)).toBeGreaterThanOrEqual(6);
+    // (the tuft has no body: it may stand by it)
+    expect([s.x, s.z]).toEqual([2 * CELL + 58, -CELL + 12]);
+    // and on a planet's cell, clear of all its trees, rocks and crates, and of its edges
+    for (const [seed, cx, cz] of [[7, 0, 0], ['seven', 0, 0], [3, 0, 0]]) {
+      const cell = makeCell(landSpec(seed), cx, cz);
+      const at = spawnIn(cell);
+      for (const p of cell.props) if (['tree', 'rock', 'crate'].includes(p.kind)) expect(Math.hypot(at.x - p.x, at.z - p.z)).toBeGreaterThanOrEqual(6);
+      for (const v of [at.x - cx * CELL, at.z - cz * CELL]) {
+        expect(v).toBeGreaterThanOrEqual(6);
+        expect(v).toBeLessThanOrEqual(CELL - 6);
+      }
+    }
+  });
+
   it('settles for the highest dry point on a cell all steep', () => {
     const c = flatCell();
     for (let iz = 0; iz < N; iz++) for (let ix = 0; ix < N; ix++) c.heights[iz * N + ix] = ix * 0.5;

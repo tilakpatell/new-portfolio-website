@@ -8,8 +8,10 @@
 // surface the car is damped as his bodies are in water (1).
 //
 //   spawnIn(cell) → { x, y, z, yaw, slope } (world metres: the highest dry
-//     vertex with a slope under 0.15, else the highest dry one, a metre and
-//     a half above it)
+//     vertex with a slope under 0.15 standing CLEAR of every prop with a
+//     body and of the cell's edges (a neighbour's props stand past them,
+//     unseen), else the highest such vertex however near, else the highest
+//     dry one; a metre and a half above it)
 //   createDriver() → state
 //   stepDriver(state, vehicleState, input: { respawn }, dt, { position:
 //     [x, y, z], waterAt(x, z) → { level, kind: 'sea' | 'lake' | 'river' } |
@@ -19,9 +21,12 @@
 //     a world bearing (radians from +x toward +z), for the chase view's
 //     fixed look along −x −z (the HUD's compass)
 
+import { KINDS } from '../../../lib/physics/props.js';
+
 const CELL = 64;
 const N = 65;
 const GENTLE = 0.15;
+const CLEAR = 6; // metres from a rock, a tree or a crate, so the car starts free to drive
 const LIFT = 1.5;
 export const DROWN = 4; // seconds under before it's brought back
 export const RESPAWN_BACK = 3; // seconds back the place it comes back to
@@ -32,6 +37,10 @@ const WET = 0.6; // the water this far below the chassis's middle: its wheels ar
 export function spawnIn(cell) {
   const h = cell.heights;
   const at = (ix, iz) => h[Math.min(N - 1, Math.max(0, iz)) * N + Math.min(N - 1, Math.max(0, ix))];
+  const solid = (cell.props ?? []).filter((p) => KINDS[p.kind]).map((p) => [p.x - cell.cx * CELL, p.z - cell.cz * CELL]);
+  const clear = (ix, iz) =>
+    ix >= CLEAR && ix <= CELL - CLEAR && iz >= CLEAR && iz <= CELL - CLEAR && solid.every(([x, z]) => Math.hypot(x - ix, z - iz) >= CLEAR);
+  let free = null;
   let gentle = null;
   let any = null;
   for (let iz = 0; iz < N; iz++)
@@ -41,9 +50,11 @@ export function spawnIn(cell) {
       const y = h[k];
       const slope = Math.hypot(at(ix + 1, iz) - at(ix - 1, iz), at(ix, iz + 1) - at(ix, iz - 1)) / 2;
       if (!any || y > any.y) any = { ix, iz, y, slope };
-      if (slope < GENTLE && (!gentle || y > gentle.y)) gentle = { ix, iz, y, slope };
+      if (slope >= GENTLE) continue;
+      if (!gentle || y > gentle.y) gentle = { ix, iz, y, slope };
+      if ((!free || y > free.y) && clear(ix, iz)) free = { ix, iz, y, slope };
     }
-  const best = gentle ?? any ?? { ix: 32, iz: 32, y: at(32, 32), slope: 0 };
+  const best = free ?? gentle ?? any ?? { ix: 32, iz: 32, y: at(32, 32), slope: 0 };
   return { x: cell.cx * CELL + best.ix, y: best.y + LIFT, z: cell.cz * CELL + best.iz, yaw: 0, slope: best.slope };
 }
 

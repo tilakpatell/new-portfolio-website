@@ -72,6 +72,30 @@ describe('floraFor', () => {
     }
   });
 
+  it('gives temperate the counts it was tuned to (rocks near the old scatter’s five a cell)', () => {
+    const golden = (list) => list.map((r) => [r.kind, r.names[0] ?? null, r.on, r.perCell]);
+    const f = floraFor('temperate');
+    expect(golden(f.species)).toEqual([
+      ['tree', 'CommonTree_1', 'grass', 11],
+      ['tree', 'Pine_1', 'grass', 7],
+      ['tree', 'GiantPine_1', 'grass', 2],
+      ['tree', 'Birch_1', 'grass', 2],
+      ['bush', 'Bush_Large', 'grass', 6],
+      ['rock', 'Rock_Medium_1', 'any', 6],
+      ['rock', 'Rock_Big_1', 'bank', 1],
+      ['crate', null, 'grass', 3],
+    ]);
+    expect(golden(f.cover)).toEqual([
+      ['grass', 'Grass_Common_Short', 'grass', 22],
+      ['plant', 'Fern_1', 'grass', 7],
+      ['plant', 'Clover_1', 'grass', 5],
+      ['flower', 'Flower_1_Group', 'grass', 8],
+      ['mushroom', 'Mushroom_Common', 'grass', 4],
+      ['pebble', 'Pebble_Round_1', 'any', 8],
+      ['path', 'RockPath_Round_Small_1', 'bank', 6],
+    ]);
+  });
+
   it('is a fresh table each time, and temperate for a type it doesn’t know', () => {
     const a = floraFor('temperate');
     a.species[0].names.push('Nothing');
