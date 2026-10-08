@@ -301,6 +301,8 @@ export default {
         roomName: room?.name ?? null,
         at: { x: round(you.x), z: round(you.z), yaw: round(you.yaw) },
         aim: aiming,
+        // the way to the story's target, for the map (to the half metre, so it changes only as it moves)
+        route: save.settings.guide !== false && way ? way.points.map((p) => [round(p.x, 2), round(p.z, 2)]) : null,
       };
       const h = JSON.stringify(hud);
       if (h !== lastHud) {

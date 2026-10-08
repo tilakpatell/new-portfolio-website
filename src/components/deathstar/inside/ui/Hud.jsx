@@ -140,7 +140,7 @@ export default function Hud({ ui, hud, say, hurt = null, hit = 0, touch, playing
   );
   return (
     <div className="ds-hud" data-touch={touch || undefined} data-start={ui.mode === 'start' || ui.mode === 'loading' || undefined}>
-      {wantTips && tipsUp && !ui.talk && <Tips touch={touch} story={ui.play === 'story'} onDone={() => onSet?.({ tips: false })} />}
+      {wantTips && tipsUp && !ui.talk && !ui.map?.open && <Tips touch={touch} story={ui.play === 'story'} onDone={() => onSet?.({ tips: false })} />}
       <div className="ds-top">
         <div className="ds-top-left">
           <section className="ds-panel ds-objective" data-tour="ds-objective" aria-label="Objective">
@@ -169,7 +169,7 @@ export default function Hud({ ui, hud, say, hurt = null, hit = 0, touch, playing
               {doubt && <Bar label="Disguise" value={doubt.k} red={doubt.red} readout={doubt.label} />}
             </section>
           )}
-          <MiniMap station={station} seen={ui.map?.seen ?? []} here={aboard ? hud?.room : null} at={aboard ? hud?.at : null} onOpen={onMap} />
+          <MiniMap station={station} seen={ui.map?.seen ?? []} here={aboard ? hud?.room : null} at={aboard ? hud?.at : null} route={aboard ? hud?.route : null} onOpen={onMap} />
         </div>
         {playing && (
           <button type="button" className="ds-pause-btn" aria-label="Pause" onClick={onPause}>
