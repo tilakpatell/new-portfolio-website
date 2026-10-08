@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { beltRocks } from './belt';
+import { BELT_TONES, beltRocks } from './belt';
+import { tint } from './palette';
 import { DEBRIS_DRIFT, debrisRocks } from './deepspace';
 import { BELT, RIM } from './layout';
 
@@ -63,5 +64,12 @@ describe('debrisRocks', () => {
     expect(d.x).toBeCloseTo(0, 9);
     expect(d.y).toBeCloseTo(Math.sin(1) * 1.5, 9);
     expect(d.z).toBeCloseTo(5, 9);
+  });
+});
+
+describe('the belt\'s tones', () => {
+  it('are the palette\'s grey in three steps toward white', () => {
+    expect(BELT_TONES).toHaveLength(3);
+    BELT_TONES.forEach((t, i) => expect(t).toEqual(tint('grey', [0.05, 0.12, 0.2][i])));
   });
 });

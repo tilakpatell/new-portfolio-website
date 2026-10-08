@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { FAR_STARS, brightness, createFarStars, realAt, starK, starPx } from './farStars';
+import { FAR_STARS, brightness, createFarStars, realAt, spikeWeight, starK, starPx } from './farStars';
 import { MOONS, UNIVERSES } from './universes';
 import { SUN } from './layout';
 
@@ -120,5 +120,14 @@ describe('on foot', () => {
     const stars = createFarStars(new THREE.Group(), { places: [], skyFar: 24000 });
     expect(stars.points.material.vertexShader).toMatch(/gl_Position\.z = min\(gl_Position\.z, gl_Position\.w \* 0\.999999\)/);
     stars.dispose();
+  });
+});
+
+describe('the far stars\' spikes', () => {
+  it('are drawn only on a star over 14 px', () => {
+    for (const px of [7, 10, 13, 14]) expect(spikeWeight(px)).toBe(0);
+    expect(spikeWeight(16)).toBe(1);
+    expect(spikeWeight(20)).toBe(1);
+    expect(spikeWeight(15)).toBeGreaterThan(0);
   });
 });

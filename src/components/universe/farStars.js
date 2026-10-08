@@ -50,6 +50,13 @@ export function starK(dist, real) {
 // how bright and big a star is, by how far off it is against where it's real
 export const brightness = (dist, real) => Math.min(1, Math.max(DIM_LEAST, (real * BRIGHT_AT) / Math.max(dist, 1e-6)));
 export const starPx = (k) => 7 + 13 * k;
+// a cross of spikes is finer than a pixel on a small star and reads as
+// noise there, so only one over 14 px has them (the one in focus always:
+// they're how you see it's picked); the shader's smoothstep(14.0, 16.0, px)
+export const spikeWeight = (px) => {
+  const t = Math.min(1, Math.max(0, (px - 14) / 2));
+  return t * t * (3 - 2 * t);
+};
 
 // every place that can be a star far off: the fandoms' worlds (their
 // swatch), the Rick and Morty sector's, the home system's stations (folded
@@ -74,6 +81,7 @@ const VERT = /* glsl */ `
   varying float vK;
   varying float vBright;
   varying float vFocus;
+  varying float vPx;
   void main() {
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     // (never cut by the far plane: on foot it's at the landing's sky,
@@ -85,6 +93,7 @@ const VERT = /* glsl */ `
     vK = aK;
     vBright = aBright;
     vFocus = aFocus;
+    vPx = aSize * pulse;
   }
 `;
 // (galaxy/sky.js's beacon: a hot core, a glow in its colour, a cross of
@@ -94,6 +103,7 @@ const FRAG = /* glsl */ `
   varying float vK;
   varying float vBright;
   varying float vFocus;
+  varying float vPx;
   void main() {
     if (vK <= 0.0) discard;
     vec2 q = gl_PointCoord * 2.0 - 1.0;
@@ -101,7 +111,7 @@ const FRAG = /* glsl */ `
     if (r > 1.0) discard;
     float core = smoothstep(0.2, 0.05, r);
     float glow = exp(-r * 5.5) * 0.9;
-    float spikes = (exp(-abs(q.x) * 30.0) + exp(-abs(q.y) * 30.0)) * (1.0 - r) * (smoothstep(0.3, 0.8, vBright) * 0.5 + vFocus * 0.8);
+    float spikes = (exp(-abs(q.x) * 30.0) + exp(-abs(q.y) * 30.0)) * (1.0 - r) * (smoothstep(0.3, 0.8, vBright) * smoothstep(14.0, 16.0, vPx) * 0.5 + vFocus * 0.8);
     vec3 c = vColor * (glow + spikes) + vec3(1.6 + vFocus * 1.4) * core;
     gl_FragColor = vec4(c * smoothstep(1.0, 0.75, r) * vK, 1.0);
   }

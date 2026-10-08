@@ -3,8 +3,8 @@
 // The asteroid belt, in the gap between the stations' ring and the planets:
 // rocks of three lumpy shapes (each a ball pushed about by noise, so no two
 // faces match) and, one in forty, a bigger cratered boulder, in a band
-// that's thicker in the middle and thins at its edges, greys and browns
-// with a few darker and a few rustier, pitted stone up close (lib/three/rock),
+// that's thicker in the middle and thins at its edges, the palette's grey
+// in three steps, pitted stone up close (lib/three/rock, flat when it's small),
 // turning slowly round the sun. Each shape is one instanced draw.
 //
 // The dust: specks drifting in a box that rides with the camera, so they
@@ -20,13 +20,16 @@
 import * as THREE from 'three';
 import { BELT } from './layout';
 import { rng, rock, rockMaterial } from '../../lib/three/rock';
+import { tint } from './palette';
 
 export { rock };
 
 // one rock in this many is a boulder: twice the size, cratered
 const BOULDER = 40;
 
-const TONES = ['#8b857c', '#6f6a63', '#9a8f80', '#7a6a58', '#5b5550', '#a08466'];
+// three steps of one grey (linear), each rock's own tint on top: one rock
+// colour on the map, not six browns (palette.js)
+export const BELT_TONES = [0.05, 0.12, 0.2].map((k) => tint('grey', k));
 
 // Where each rock of a ring is, as plain numbers, so the belt's mesh and the
 // ship's collider (rockHits.js) read the same rocks. `band`: where it goes
@@ -38,7 +41,7 @@ const TONES = ['#8b857c', '#6f6a63', '#9a8f80', '#7a6a58', '#5b5550', '#a08466']
 // → [{ x, y, z, sx, sy, sz, rx, ry, rz, shape, tone, tint, r }]: r, how near
 // the ship's way must come to it (a little inside its biggest side: the
 // rocks are lumpy)
-export function beltRocks({ small = false, band = BELT, seed = 1977, scale = 1, count = 3200, tones = TONES.length } = {}) {
+export function beltRocks({ small = false, band = BELT, seed = 1977, scale = 1, count = 3200, tones = BELT_TONES.length } = {}) {
   const rand = rng(seed);
   const N = small ? Math.round(count * 0.375) : count;
   const counts = [Math.ceil(N * 0.4), Math.ceil(N * 0.35), Math.floor(N * 0.25)];
@@ -77,10 +80,10 @@ export function beltRocks({ small = false, band = BELT, seed = 1977, scale = 1, 
   return rocks;
 }
 
-// `tones`: its rocks' colours; `spin`: radians a second round the sun.
+// `tones`: its rocks' colours (linear [r, g, b], or hex); `spin`: radians a second round the sun.
 // hide(i) and show(i) take one of `rocks` out of the ring and put it back
 // (one the ship has smashed)
-export function createBelt({ small = false, band = BELT, seed = 1977, tones = TONES, scale = 1, spin = 0.006, count = 3200, tier = 'high' } = {}) {
+export function createBelt({ small = false, band = BELT, seed = 1977, tones = BELT_TONES, scale = 1, spin = 0.006, count = 3200, tier = 'high' } = {}) {
   const rocks = beltRocks({ small, band, seed, scale, count, tones: tones.length });
   const group = new THREE.Group();
   const mat = rockMaterial({ tier });
@@ -110,7 +113,8 @@ export function createBelt({ small = false, band = BELT, seed = 1977, tones = TO
     const k = filled[o.shape]++;
     slot[i] = [mesh, k];
     place(i);
-    mesh.setColorAt(k, c.set(tones[o.tone]).multiplyScalar(o.tint));
+    const tone = tones[o.tone];
+    mesh.setColorAt(k, (Array.isArray(tone) ? c.setRGB(...tone) : c.set(tone)).multiplyScalar(o.tint));
   });
   for (const mesh of meshes) {
     mesh.instanceColor.needsUpdate = true;

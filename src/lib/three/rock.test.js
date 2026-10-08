@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { ROCK_RELIEF, rock, rockHook, rockMaterial } from './rock';
+import { ROCK_RELIEF, detailWeight, rock, rockHook, rockMaterial, rockPx } from './rock';
 
 describe('rock', () => {
   it('the rock material has relief on high and none on low', () => {
@@ -51,5 +51,35 @@ describe('rock', () => {
     let inside = 0;
     for (let i = 0; i < p.count; i++) if (Math.hypot(p.getX(i), p.getY(i), p.getZ(i)) < 0.8) inside++;
     expect(inside).toBeGreaterThan(3);
+  });
+});
+
+describe('rock detail by its size on screen', () => {
+  it('fades the pits out by how many pixels the rock is, not how far it is', () => {
+    expect(detailWeight(8)).toBe(0);
+    expect(detailWeight(10)).toBe(0);
+    expect(detailWeight(40)).toBe(1);
+    expect(detailWeight(200)).toBe(1); // (a rock flown through still shows its pits)
+    let last = -1;
+    for (let px = 0; px <= 60; px += 2) {
+      expect(detailWeight(px)).toBeGreaterThanOrEqual(last);
+      last = detailWeight(px);
+    }
+  });
+
+  it('reads the size from how fast the rock\'s own space changes across a pixel', () => {
+    // a unit-radius rock 2 units across its own space: at 0.01 a pixel it's 200 px
+    expect(rockPx(0.01)).toBeCloseTo(200, 6);
+    expect(rockPx(0.2)).toBeCloseTo(10, 6);
+    // the same rock far off or a small one near: the same pixels, the same detail
+    expect(detailWeight(rockPx(0.05))).toBe(detailWeight(rockPx(0.05)));
+  });
+
+  it('puts the fade in the shader, on the whole pit term', () => {
+    const mat = rockMaterial({ tier: 'high' });
+    const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+    mat.onBeforeCompile(shader);
+    expect(shader.fragmentShader).toContain('smoothstep(10.0, 40.0, rockPxOf)');
+    expect(shader.fragmentShader).toContain('* rockDetail');
   });
 });

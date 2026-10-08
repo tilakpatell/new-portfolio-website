@@ -5,7 +5,13 @@
 // stretch of it): the pits darker than the instance's colour and a little
 // rougher, and the light catching their edges (a bump from the noise's
 // slope on the screen, faded out where a pit is under a pixel, so a far
-// rock doesn't sparkle). `low` keeps the flat-shaded material it always had.
+// rock doesn't sparkle). And the whole of it fades by the rock's size on
+// the screen (detailWeight: none under 10 pixels, all of it from 40): a
+// rock a few pixels across is drawn in its own two tones, lit and shadowed,
+// not as noise; one flown through at 200 still shows every pit. The size is
+// read in the shader from how fast the rock's own space changes across a
+// pixel (rockPx), so it's each rock's own, near or far, big or small, with
+// nothing set from outside. `low` keeps the flat-shaded material it always had.
 //
 // rockMaterial({ tier, scale }) → a MeshStandardMaterial in two tones (the
 //   instance's colour and its pits')
@@ -15,6 +21,9 @@
 // rockHook(material, { tier, scale }) → the material: the same pits
 //   on a rock material of your own, after any hook already on it (deep
 //   space's tumbling streams)
+// detailWeight(px) → 0…1, how much of the pits a rock px across shows
+// rockPx(perPixel) → how many pixels across a rock is, from how many units
+//   of its own space a pixel spans (its radius is about one)
 // rock(seed, { craters }) → a lumpy rock's geometry, about a unit across;
 //   with `craters`, a boulder: rounder, smooth, eight craters pressed in
 
@@ -117,6 +126,14 @@ float rockPits(vec3 p) {
 
 export const ROCK_RELIEF = { value: 1 };
 
+// (the shader's own, to the letter: smoothstep(10.0, 40.0, px) and 2.0 / perPixel)
+const smoothstep = (a, b, x) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+export const detailWeight = (px) => smoothstep(10, 40, px);
+export const rockPx = (perPixel) => 2 / Math.max(perPixel, 1e-4);
+
 export function rockMaterial({ tier = 'high', scale = 1 } = {}) {
   return rockHook(new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0.05, flatShading: true, envMapIntensity: 0.4 }), { tier, scale });
 }
@@ -143,10 +160,13 @@ export function rockHook(mat, { tier = 'high', scale = 1 } = {}) {
         `#include <color_fragment>
         float rockH = rockPits(vRockObj);
         float rockPit = smoothstep(0.05, -0.45, rockH);
-        float rockShow = smoothstep(0.6, 0.2, length(fwidth(vRockObj)) * uRockScale) * uRockRelief;
-        diffuseColor.rgb *= 1.0 - 0.45 * rockPit * (0.4 + 0.6 * rockShow);`,
+        float rockPerPx = length(fwidth(vRockObj));
+        float rockPxOf = 2.0 / max(rockPerPx, 1e-4);
+        float rockDetail = smoothstep(10.0, 40.0, rockPxOf); // (none of it on a rock a few pixels across)
+        float rockShow = smoothstep(0.6, 0.2, rockPerPx * uRockScale) * uRockRelief * rockDetail;
+        diffuseColor.rgb *= 1.0 - 0.45 * rockPit * (0.4 + 0.6 * rockShow) * rockDetail;`,
       )
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = min(1.0, roughnessFactor + 0.05 * rockPit);')
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = min(1.0, roughnessFactor + 0.05 * rockPit * rockDetail);')
       // the light catching the pits' edges: a bump from the noise's slope
       .replace(
         '#include <normal_fragment_maps>',
