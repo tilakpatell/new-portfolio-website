@@ -104,7 +104,7 @@ export default function CompoundHud({ touch, gl, prog, hud, sim, enter, portal, 
               onRelease={() => (sim.current.touchWeb = false)}
             >
               {hud.suit ? 'Up' : 'Jump'}
-              {!hud.suit && <small>hold</small>}
+              {!hud.suit && <small>hold: swing</small>}
             </TouchButton>
             <div className="cw-acts">
               <TouchButton

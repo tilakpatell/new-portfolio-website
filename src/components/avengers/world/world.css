@@ -99,7 +99,8 @@
 .cw-jump { width: 76px; height: 76px; border: 2px solid rgba(160, 210, 255, 0.55); border-radius: 50%; background: rgba(10, 16, 26, 0.55); color: var(--cw-ink); font: 700 0.78rem/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; touch-action: none; }
 .cw-jump:active { background: rgba(143, 233, 255, 0.35); }
 .cw-jump { display: grid; place-content: center; gap: 0.2rem; }
-.cw-jump small { font: 600 0.7rem/1 var(--font-sans); letter-spacing: 0.06em; opacity: 0.75; }
+/* ("hold: swing" at the 0.7rem floor is wider than the button: it wraps to two lines) */
+.cw-jump small { max-width: 3.6rem; font: 600 0.7rem/1.05 var(--font-sans); letter-spacing: 0.06em; text-align: center; opacity: 0.75; }
 .cw-zip { width: 52px; height: 52px; font-size: 0.7rem; letter-spacing: 0.04em; }
 .cw-hud .hud-thumbs > .cw-jump { margin-left: auto; }
 .cw-acts { display: grid; gap: 0.45rem; margin-left: 0.5rem; }
