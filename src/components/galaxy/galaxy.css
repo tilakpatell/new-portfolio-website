@@ -475,6 +475,7 @@
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain; /* (a wheel at its end isn't the page's) */
   padding: 0.9rem;
   border: 1px solid rgb(127 214 255 / 0.2);
   border-radius: 12px;
