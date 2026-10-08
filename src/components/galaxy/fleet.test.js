@@ -32,7 +32,7 @@ describe('the galaxy’s fleet', () => {
   it('has every hunter, built in code', () => {
     for (const [side, f] of Object.entries(FACTIONS)) {
       for (const [kind] of f.kinds) {
-        expect(KNOWN.has(kind), `${side}: ${kind}`).toBe(true);
+        expect(KNOWN.has(KINDS[kind]?.model ?? kind), `${side}: ${kind}`).toBe(true);
         expect(KINDS[kind], `${side}: ${kind}`).toBeTruthy();
       }
     }

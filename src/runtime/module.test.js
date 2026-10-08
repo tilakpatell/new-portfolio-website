@@ -91,10 +91,10 @@ describe('fromScene', () => {
   });
 
   it("says when its scene softens through its own post chain, and that reaches the runtime as the module's", () => {
-    const mod = fromScene('galaxy', () => scene(), { ratio: 1.5, soften: 'post' });
-    expect(mod).toMatchObject({ ratio: 1.5, soften: 'post' });
-    expect(validateModule(mod).soften).toBe('post');
-    expect(fromScene('x', () => scene())).not.toHaveProperty('soften');
+    const mod = fromScene('galaxy', () => scene(), { ratio: 1.5, sharpness: 'own' });
+    expect(mod).toMatchObject({ ratio: 1.5, sharpness: 'own' });
+    expect(validateModule(mod).sharpness).toBe('own');
+    expect(fromScene('x', () => scene())).not.toHaveProperty('sharpness');
   });
 
   it('a scene without the optional methods still makes a whole world', async () => {

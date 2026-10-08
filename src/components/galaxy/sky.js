@@ -25,11 +25,12 @@
 // one (on some drivers its first link takes seconds), so prepare() starts the
 // link at startup, in the background, and the first bake waits for nothing.
 //
-// createSky({ small, renderer }) → { group, setSystem(system), bake(renderer),
+// createSky({ small, renderer, beacons }) → { group, setSystem(system), bake(renderer),
 //   prepare(renderer) → Promise, update(camera, t), focus(id), beacons, sunDirs,
 //   setRatio(r), dispose() };
 //   setSystem then bake (with the renderer it was made with, unless given
 //   another); beacons: [{ id, dir }] (unit vectors), the other systems' stars
+//   (drawn unless `beacons: false`, for a sky borrowed where there's no jumping)
 
 import * as THREE from 'three';
 import { precompile } from '../../lib/three/renderer';
@@ -302,7 +303,7 @@ export function nebulaeOf(sys) {
 // the size of a face of the baked sky, in pixels
 export const bakeSize = ({ small = false } = {}) => (small ? 512 : 1024);
 
-export function createSky({ small = false, renderer = null } = {}) {
+export function createSky({ small = false, renderer = null, beacons: showBeacons = true } = {}) {
   const group = new THREE.Group();
   group.renderOrder = -20;
   const made = [];
@@ -383,6 +384,7 @@ export function createSky({ small = false, renderer = null } = {}) {
   const beaconPoints = new THREE.Points(beaconGeo, beaconMat);
   beaconPoints.frustumCulled = false;
   beaconPoints.renderOrder = -17;
+  beaconPoints.visible = showBeacons;
   group.add(beaconPoints);
   made.push(beaconGeo, beaconMat);
   const beacons = [];

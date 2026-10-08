@@ -68,6 +68,8 @@ import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
 import { clamp01, disposeTree, precompile, precompilePasses, singlePass } from '../../lib/three/renderer';
+import { prepareScene } from '../../lib/three/gpuWork';
+import { settle as settleWithin } from '../../lib/settle';
 import { device } from '../../lib/device';
 import { dropTransmission } from '../../lib/three/glass';
 import { gltfStats } from '../../lib/three/gltfCache';
@@ -2328,6 +2330,16 @@ export async function create(canvas, ctx) {
 
   return {
     ready,
+    // everything sent to the graphics chip before the galaxy's shown (the
+    // runtime runs it behind the climb, or the page's loading screen): every
+    // picture, shader and one draw of it all, a slice at a time
+    // (lib/three/gpuWork)
+    async prepare(onProgress, { alive = () => true } = {}) {
+      onProgress?.(0, 'load');
+      await settleWithin(ready, 20000);
+      if (!alive() || disposed) return;
+      await prepareScene({ renderer, roots: [scene], scene, camera, target: post.target, render: () => post.render(64, 64), onProgress, alive: () => alive() && !disposed });
+    },
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
@@ -2363,10 +2375,11 @@ export async function create(canvas, ctx) {
       if (!on) engine?.set({ speed: 0, on: false });
     },
     // the runtime's quality: drawn softer through the post chain, a step at
-    // a time, over a canvas that keeps its size (module.js's soften: no
+    // a time, over a canvas that keeps its size (module.js's sharpness 'own': no
     // resize, so no cleared frame and the HUD stays crisp); at the floor
     // (past its last step), the glow and the grade go
     lowerQuality(level = STEPS.length) {
+      // (each step the passes less sharp; the canvas keeps its size: module.js's `sharpness`)
       post.sharpness = STEPS[Math.min(level, STEPS.length - 1)];
       followDrawn();
       if (level < STEPS.length) return;

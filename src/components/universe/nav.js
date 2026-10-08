@@ -40,15 +40,15 @@ export const DRIVES = [
   },
   {
     id: 'hyper',
-    name: 'Hyperspeed',
+    name: 'Jump',
     verb: 'Jump',
     od: 1,
-    about: 'A jump to lightspeed. You come out parked at it, however far it is. Nothing to see on the way, and the hyperdrive needs half a minute to charge again after.',
+    about: 'A jump to lightspeed. You come out parked at it, however far it is. Nothing to see on the way, and the drive needs half a minute to charge again after.',
   },
   {
     id: 'super',
     name: 'Super speed',
-    verb: 'Super speed',
+    verb: 'Race', // (a verb: “Race to Marvel”; the drive keeps its name)
     od: OVERDRIVE,
     about: `The pulse drive pushed to ${OVERDRIVE}× its speed, about half the trip. You fly the whole way and can take the stick back any time.`,
   },
@@ -87,7 +87,7 @@ const WONDER_ABOUT = {
   glacia: 'An ice giant: cold, blue and very quiet.',
   ember: 'An orange sun with two planets of its own, a rock and an ocean world.',
   halcyon: 'A blue sun, hot and young, with a rock and a gas giant round it.',
-  maw: 'A black hole. The nav computer stops you at the edge of its pull: past that it has you, and on its far side is a friend’s universe.',
+  maw: 'A black hole. The autopilot stops you at the edge of its pull: past that it has you, and on its far side is a friend’s universe.',
   veil: 'A nebula, purple and rose. Not solid: fly right through it on the pulse drive.',
   cradle: 'A green and gold nebula. Not solid: fly right through it on the pulse drive.',
   citadel: 'The Citadel of Ricks, at the middle of its own sector of space. Fly into it too fast and you’re inside its world.',
@@ -387,6 +387,15 @@ export function formatTime(t) {
   const s = Math.round(t - m * 60);
   return s ? `${m} min ${s} s` : `${m} min`;
 }
+// the same measure, short, for the HUD beside a target: ship-lengths with
+// no unit word, thousands as "4.6k"
+export function shortDistance(units) {
+  const n = Math.max(0, units / LENGTH);
+  if (n < 1000) return String(Math.round(n));
+  const k = n / 1000;
+  return `${k < 10 ? k.toFixed(1).replace(/\.0$/, '') : Math.round(k)}k`;
+}
+
 // map units in the map's own measure: ship-lengths (scale.js's LENGTH)
 export function formatDistance(units) {
   if (units === null || units === undefined) return '—';

@@ -22,7 +22,7 @@
 
 import * as THREE from 'three';
 import { SHIELD_FRAG, SHIELD_VERT, SURFACE_VERT, surfaceFrag } from './bodyShaders';
-import { createAtmosphere } from '../../lib/three/atmosphere';
+import { createAtmosphere, stepsFor } from '../../lib/three/atmosphere';
 import { detailLevel } from '../../lib/detail';
 import { loadScan, scanOf } from './surface/kit';
 
@@ -204,7 +204,8 @@ export const LOOKS = {
 };
 
 const MIN_OCT = 4; // the fewest octaves of noise a ground is worked to, however little detail is asked for
-// the ground scans a world wears up close (bodyShaders.js's DETAIL;
+// the ground scans a world wears up close (bodyShaders.js's DETAIL; at
+// ultra their 8192 set where it's made, lib/three/core's coreFiles;
 // public/cc0/galaxy/), [flat, steep]: by the look's own `detail`, else its
 // family's (a swamp's is mud); a gas giant has no ground
 const DETAIL_SCANS = { desert: ['sand', 'rock'], ice: ['snow', 'rock'], lush: ['grass', 'rock'], city: ['concrete', 'metal'], lava: ['ash', 'rock'], moon: ['gravel', 'rock'] };
@@ -223,6 +224,11 @@ const blanks = () => {
   return blank;
 };
 const SEG = { big: [128, 96], small: [64, 48], moon: [64, 48] };
+// at ultra (lib/budgets' terrain row, 2), the sphere twice as fine each
+// way, its ground worked to more octaves (MAX_OCT, and twice NEAR_OCT from
+// orbit), its air marched in twice the steps (lib/three/atmosphere's stepsFor)
+export const segmentsFor = (kind, level) => SEG[kind].map((n) => (level === 'ultra' ? n * 2 : n));
+const MAX_OCT = { small: 5, big: 9, ultra: 11 };
 
 // From orbit (the world over NEAR_PX pixels tall), on a strong enough
 // device, the ground is worked NEAR_OCT octaves finer than its pixels'
@@ -232,7 +238,7 @@ const SEG = { big: [128, 96], small: [64, 48], moon: [64, 48] };
 const NEAR_PX = 300;
 const NEAR_OCT = 2;
 const NEAR_EASE = 0.1; // octaves a frame drawn it eases in and out at (no pop as a world crosses NEAR_PX)
-export const nearOctaves = ({ tier, pxTall: px }) => ((tier === 'high' || tier === 'ultra') && px > NEAR_PX ? NEAR_OCT : 0);
+export const nearOctaves = ({ tier, pxTall: px }) => ((tier === 'high' || tier === 'ultra') && px > NEAR_PX ? (tier === 'ultra' ? NEAR_OCT * 2 : NEAR_OCT) : 0);
 // how many of a `height`-pixel view's pixels a ball of radius r fills, top
 // to bottom, from `dist` away with a vertical field of view of `fov` degrees
 // (Infinity from inside it)
@@ -264,7 +270,7 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
   const group = new THREE.Group();
   const made = [];
   const moon = L.family === 'moon' || r < 6;
-  const [ws, hs] = moon ? SEG.moon : small ? SEG.small : SEG.big;
+  const [ws, hs] = segmentsFor(moon ? 'moon' : small ? 'small' : 'big', tier);
   const [p0, p1] = params(L);
   const atmo = L.atmo ?? null;
   const clouds = L.clouds ?? null;
@@ -281,7 +287,7 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
     uAtmoP: { value: new THREE.Vector4(atmo?.top ?? 1.05, atmo?.falloff ?? 3.5, atmo?.density ?? 0, atmo?.glow ?? 0.8) },
     uSunset: { value: new THREE.Color(atmo ? atmo.sunset : '#ffffff') },
   };
-  const maxOct = small ? 5 : 9;
+  const maxOct = small ? MAX_OCT.small : tier === 'ultra' ? MAX_OCT.ultra : MAX_OCT.big;
   const uniforms = {
     ...shared,
     uMaxOct: { value: maxOct },
@@ -299,6 +305,7 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
   for (const f of L.flags ?? []) defines[f] = '';
   if (clouds) defines.CLOUDS = '';
   if (atmo) defines.ATMO = '';
+  if (tier === 'ultra' && !small) defines.FBM_OCT = MAX_OCT.ultra + NEAR_OCT * 2;
   // the scans up close: in once both are loaded (on: uDetK.w)
   const scans = !small && typeof document !== 'undefined' && detailLevel() !== 'low' ? detailScans(L) : null;
   if (scans?.every(scanOf)) {
@@ -312,7 +319,7 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
       uDetMean: { value: new THREE.Vector2(...scans.map((id) => Math.pow(scanOf(id).mean ?? 0.8, 2.2))) },
       uDetK: { value: new THREE.Vector4(r / TILE, 0.55, 0.22, 0) },
     });
-    Promise.all(scans.map(loadScan)).then(([a, bb]) => {
+    Promise.all(scans.map((id) => loadScan(id, { xl: tier === 'ultra' }))).then(([a, bb]) => {
       if (!a || !bb) return;
       uniforms.uDetA.value = a.map;
       uniforms.uDetAN.value = a.normalMap;
@@ -344,7 +351,7 @@ export function buildBody(look, { r = 40, small = false, tier = typeof document 
   if (atmo) {
     // (lib/three's shell, the universe map's planets' too, reading this
     // body's own sun and air: its uniforms are the surface's)
-    const shell = createAtmosphere({ radius: r, top: atmo.top, segments: moon || small ? [48, 32] : [96, 64], inner: Math.cos(Math.PI / hs), uniforms: shared });
+    const shell = createAtmosphere({ radius: r, top: atmo.top, segments: moon || small ? [48, 32] : [96, 64], steps: tier === 'ultra' ? stepsFor('ultra', 7) : 7, inner: Math.cos(Math.PI / hs), uniforms: shared });
     group.add(shell.mesh);
     made.push(shell);
     reach = r * atmo.top;

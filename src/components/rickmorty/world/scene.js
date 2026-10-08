@@ -753,6 +753,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     ground: import.meta.env.DEV ? floorLight : null, // for the QA scripts
     house: import.meta.env.DEV ? house : null, // for the QA scripts
     render,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     resize,
     fx: fxEvent,
     setLooks,

@@ -29,8 +29,11 @@ export function makeGfx({ backend, renderer, canvas, compile, upload, post, isLo
     const bh = Math.floor(size.h * r);
     if (set && set.w === size.w && set.h === size.h && set.bw === bw && set.bh === bh) return;
     set = { w: size.w, h: size.h, bw, bh };
-    renderer.setPixelRatio(r);
-    renderer.setSize(size.w, size.h, false);
+    if (renderer.setDrawingBufferSize) renderer.setDrawingBufferSize(size.w, size.h, r);
+    else {
+      renderer.setPixelRatio(r);
+      renderer.setSize(size.w, size.h, false);
+    }
   };
   return {
     backend,
@@ -48,7 +51,9 @@ export function makeGfx({ backend, renderer, canvas, compile, upload, post, isLo
       size.h = Math.max(1, Math.round(h));
       apply();
     },
+    // (one resize, and none for the same ratio: a resize waits on the chip)
     setRatio(r) {
+      if (r === ratio && renderer.getPixelRatio?.() === r) return;
       ratio = r;
       apply();
     },

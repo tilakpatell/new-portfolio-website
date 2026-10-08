@@ -54,12 +54,16 @@ float noise(vec3 x) {
 const mat3 M3 = mat3(0.00, 0.80, 0.60, -0.80, 0.36, -0.48, -0.60, -0.48, 0.64);
 const mat3 M3T = mat3(0.00, -0.80, -0.60, 0.80, 0.36, -0.48, 0.60, -0.48, 0.64);
 // fbm with its gradient; n octaves, the last one faded in by its fraction
+// (at most FBM_OCT: ten, unless a shader asks for more, the galaxy's worlds at ultra)
+#ifndef FBM_OCT
+#define FBM_OCT 10
+#endif
 vec4 fbmd(vec3 p, float n, float gain) {
   float a = 0.5;
   float v = 0.0;
   vec3 g = vec3(0.0);
   mat3 J = mat3(1.0);
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < FBM_OCT; i++) {
     float fi = float(i);
     if (fi >= n) break;
     float w = a * clamp(n - fi, 0.0, 1.0);

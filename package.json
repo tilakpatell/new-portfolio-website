@@ -32,6 +32,7 @@
     "voices:tidy": "node scripts/voices/tidy.mjs"
   },
   "dependencies": {
+    "@dimforge/rapier3d-compat": "0.21.0",
     "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource/bebas-neue": "^5.3.0",
     "@fontsource/cinzel": "^5.3.0",

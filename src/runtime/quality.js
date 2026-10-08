@@ -14,18 +14,38 @@
 // strong card, as lib/device's pixelRatio has it for every renderer),
 // never past the budget's most, under a module's cap where it has one
 // (`ratioUnder`), × scale; the runtime sets it on the renderer, and
-// nothing else does.
+// nothing else does. The visitor's sharpness (the settings panel,
+// lib/device's `sharpness()`) scales the screen's ratio instead, still
+// under the budget's: a sharpness they picked is taken as given, so the
+// least applies only to the one picked for them; a quality level picked
+// while a world is up swaps the budget (`retune`).
 //
-// createQuality({ tier, pace, floorAfter, dpr, minRatio }) → { tier,
-//   budget, level, scale, ratio, ratioUnder(cap), on(fn) → undo,
-//   frame(now) → the new level or null, reset(), hold(ms) }
+// The budget row is the level's (lib/device's detail: an ultra desktop
+// starts on the ultra row, more samples and a bigger shadow map), the tier
+// still the tier.
+//
+// createQuality({ tier, detail, pace, floorAfter, dpr, minRatio, sharp }) → { tier,
+//   budget, level, scale, ratio, ratioUnder(cap, { unscaled }), on(fn) → undo,
+//   frame(now) → the new level or null, reset(), hold(ms), retune(level),
+//   setSharpness(k), setLevel(step) }
+// (`setLevel`: a calibrated step of the pace, held as its ceiling:
+// lib/three/calibrate)
 
-import { BUDGETS, device } from '../lib/device';
+import { BUDGETS, device, sharpness } from '../lib/device';
 import { STEPS, createPace } from '../lib/three/pace';
 
-export function createQuality({ tier = device().tier, pace = createPace(), floorAfter = 2500, dpr = Infinity, minRatio = BUDGETS[tier]?.minRatio ?? 0 } = {}) {
-  const budget = BUDGETS[tier] ?? BUDGETS.high;
-  const sharpest = (cap) => Math.min(cap ?? Infinity, budget.ratio, Math.max(dpr, minRatio));
+export function createQuality({ tier, detail, pace = createPace(), floorAfter = 2500, dpr = Infinity, minRatio = null, sharp = sharpness() } = {}) {
+  // (a tier given alone is its own level: the tests, a forced tier)
+  detail ??= tier ?? device().detail;
+  tier ??= device().tier;
+  let budget = BUDGETS[detail] ?? BUDGETS[tier] ?? BUDGETS.high;
+  let k = sharp;
+  // the screen's ratio, or the budget row's least where that's more (its
+  // own row's unless given); a sharpness the visitor set scales the
+  // screen's alone
+  const least = () => minRatio ?? budget.minRatio ?? 0;
+  const screen = () => (k === 1 ? Math.max(dpr, least()) : dpr * k);
+  const sharpest = (cap) => Math.min(cap ?? Infinity, budget.ratio, screen());
   const last = STEPS.length - 1;
   const listeners = new Set();
   let level = 0;
@@ -39,7 +59,9 @@ export function createQuality({ tier = device().tier, pace = createPace(), floor
   };
   return {
     tier,
-    budget,
+    get budget() {
+      return budget;
+    },
     get level() {
       return level;
     },
@@ -53,6 +75,12 @@ export function createQuality({ tier = device().tier, pace = createPace(), floor
     // that softens through its own post chain and keeps its canvas as it is)
     ratioUnder(cap = Infinity, { unscaled = false } = {}) {
       return sharpest(cap) * (unscaled ? 1 : scale);
+    },
+    retune(level) {
+      budget = BUDGETS[level] ?? BUDGETS.high;
+    },
+    setSharpness(next) {
+      k = Number.isFinite(next) ? Math.min(2, Math.max(0.5, next)) : 1;
     },
     on(fn) {
       listeners.add(fn);
@@ -90,6 +118,13 @@ export function createQuality({ tier = device().tier, pace = createPace(), floor
         }
       }
       return null;
+    },
+    setLevel(l) {
+      pace.set?.(l);
+      level = pace.level ?? l;
+      scale = pace.scale ?? STEPS[level];
+      atLastSince = null;
+      tell(level);
     },
     reset() {
       pace.reset();

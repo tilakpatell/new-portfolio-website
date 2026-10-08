@@ -21,6 +21,9 @@ export default function WorldSwitcher({ className = '' }) {
       <Link to={after.to} className="world-link">
         Next: {after.world} <RiArrowRightLine className="inline h-3.5 w-3.5" aria-hidden="true" />
       </Link>
+      <Link to="/worlds" className="world-link">
+        Installed
+      </Link>
       <span className="world-switcher-label">Worlds</span>
       {WORLDS.map((w) => (
         <NavLink key={w.to} to={w.to} end={onMoon} className={({ isActive }) => `world-link${isActive ? ' is-active' : ''}`} title={w.from}>

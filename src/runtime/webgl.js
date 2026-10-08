@@ -41,8 +41,10 @@ export function buildComposer(renderer, passes, size) {
   };
 }
 
-export function createWebGL(canvas, { budget, onLost, alpha = true, toneMapping = THREE.NoToneMapping, exposure = 1 } = {}) {
-  const gl = createRenderer(canvas, { alpha, antialias: budget?.antialias ?? true, ratio: budget?.ratio ?? 2, toneMapping, exposure, onLost });
+// (`invalidate`: the runtime's, asked for a frame when something the frame
+// guard held back is ready)
+export function createWebGL(canvas, { budget, onLost, invalidate, alpha = true, toneMapping = THREE.NoToneMapping, exposure = 1 } = {}) {
+  const gl = createRenderer(canvas, { alpha, antialias: budget?.antialias ?? true, ratio: budget?.ratio ?? 2, toneMapping, exposure, onLost, guard: { invalidate } });
   const { renderer } = gl;
   // The gfx sizes the renderer itself, at the runtime's ratio, never through
   // gl.setSize: that put back lib/three/renderer's own ratio (the budget's,

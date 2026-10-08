@@ -46,6 +46,7 @@
 // Everything is in `parent`'s space (the map's).
 
 import * as THREE from 'three';
+import { packSkill } from './difficulty';
 import { createFleet } from './glbFleet';
 import { FACTIONS, HUNTER_KINDS, LASER, NAMES, createHunt } from './hunterRules';
 
@@ -56,12 +57,16 @@ export { FACTIONS, HUNTER_KINDS, NAMES };
 export function createHunters(parent, { small = false, fleet = createFleet(), factions = FACTIONS, kinds = HUNTER_KINDS, solids = [], engines = null } = {}) {
   const hunt = createHunt({ factions, kinds, solids, lasers: small ? 16 : 28 });
   const pool = {}; // kind → models not in use
+  let difficulty = null; // (set: the `difficulty` below)
   const shown = new Set(); // the hunters with a model out
   const laserGeo = new THREE.CylinderGeometry(0.009, 0.009, LASER.length, 5).rotateX(Math.PI / 2);
   const laserMats = Object.fromEntries(
     Object.entries(factions).map(([id, f]) => [id, new THREE.MeshBasicMaterial({ color: new THREE.Color(...f.laser), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })]),
   );
   const firstMat = laserMats.empire ?? Object.values(laserMats)[0];
+  // an ion bolt is the ion cannons' pale blue, a missile's a hot white-orange, whoever fired it
+  const ionMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 3.2, 6.5), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const missileMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(6.5, 3.4, 1.2), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
   const beams = hunt.lasers.map(() => {
     const m = new THREE.Mesh(laserGeo, firstMat);
     m.visible = false;
@@ -71,12 +76,13 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
   });
 
   const take = (kind) => {
+    const drawn = kinds[kind]?.model ?? kind; // (a kind with no model of its own is drawn as another's)
     // a built stand-in waiting in the pool gives way once the model is here
-    if (fleet.loaded(kind) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) drop(m);
-    const model = pool[kind]?.pop() ?? fleet.make(kind);
+    if (fleet.loaded(drawn) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) drop(m);
+    const model = pool[kind]?.pop() ?? fleet.make(drawn);
     model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1);
     // (its engines (engines.js), once: lit while it's out)
-    if (engines && !model.engine) model.engine = engines.add(kind, model.group, { size: model.size });
+    if (engines && !model.engine) model.engine = engines.add(drawn, model.group, { size: model.size });
     parent.add(model.group);
     return model;
   };
@@ -116,8 +122,22 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     // a pack of hunters after you (or after `prey`: an Object3D, something
     // else, e.g. a freighter in distress). Returns the points they came in
     // at (the scene opens a portal or flashes a jump at each)
+    // how hard the fight is, set: a function giving difficulty.js's numbers
+    // now (the setting can change mid-flight): every pack sent flies at its
+    // skill (a tier better now and then, the hotter it is) and comes its
+    // size more, unless the pack's own `skill` or `more` says otherwise
+    get difficulty() {
+      return difficulty;
+    },
+    set difficulty(fn) {
+      difficulty = fn ?? null;
+    },
+
     pack(faction, ship, opts = {}) {
-      const members = hunt.pack(faction, ship, { ...opts, prey: preyOf(opts.prey ?? null) });
+      const d = difficulty?.() ?? null;
+      const skill = opts.skill !== undefined ? opts.skill : d ? packSkill(d.skill, { heat: opts.heat ?? 0, promote: d.promote }) : null;
+      const more = opts.more ?? (d ? d.size : 0);
+      const members = hunt.pack(faction, ship, { ...opts, skill, more, prey: preyOf(opts.prey ?? null) });
       for (const h of members) {
         h.view = take(h.kind);
         shown.add(h);
@@ -155,9 +175,11 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
         m.visible = l.on;
         if (!l.on) return;
         m.position.set(l.x, l.y, l.z);
-        m.material = laserMats[l.faction] ?? firstMat;
-        // (a bomb is a fat slow ball of light, not a bolt)
-        m.scale.set(l.bomb ? 9 : 1, l.bomb ? 9 : 1, l.bomb ? 0.5 : 1);
+        m.material = l.ion ? ionMat : l.missile ? missileMat : (laserMats[l.faction] ?? firstMat);
+        // (a bomb is a fat slow ball of light, not a bolt; a missile a short thick streak)
+        if (l.bomb) m.scale.set(9, 9, 0.5);
+        else if (l.missile) m.scale.set(4, 4, 0.7);
+        else m.scale.set(1, 1, 1);
         m.lookAt(parent.localToWorld(look.set(l.x + l.vx, l.y + l.vy, l.z + l.vz)));
       });
       return events;
@@ -187,6 +209,10 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     get active() {
       return hunt.active;
     },
+    // the law's eyes and numbers (wanted.js), and one faction sent off
+    sees: (factions, range) => hunt.sees(factions, range),
+    strength: (faction) => hunt.strength(faction),
+    leave: (faction) => hunt.leave(faction),
     // for checking from a browser
     get packs() {
       return hunt.packs;
@@ -198,6 +224,8 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
       for (const list of Object.values(pool)) for (const m of list) drop(m);
       laserGeo.dispose();
       for (const m of Object.values(laserMats)) m.dispose();
+      ionMat.dispose();
+      missileMat.dispose();
       for (const m of beams) m.removeFromParent();
     },
   };

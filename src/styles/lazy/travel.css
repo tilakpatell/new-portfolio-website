@@ -112,7 +112,7 @@
   right: max(var(--gutter-r), calc((100% - 1280px) / 2 + var(--gutter-r)));
   bottom: 14%;
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.82);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
@@ -254,9 +254,9 @@ html[data-mode='dark'] .jali-pattern { opacity: 0.12; }
 .heritage-zoom-icon { position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 999px; background: rgba(8, 9, 12, 0.6); color: #ffffff; opacity: 0; transition: opacity 0.2s ease; }
 .heritage-zoom:hover .heritage-zoom-icon,
 .heritage-zoom:focus-visible .heritage-zoom-icon { opacity: 1; }
-.heritage-zoom:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
 .temple-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid var(--border); }
 .akd-stage { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: var(--r-photo); background: #10131a; box-shadow: var(--shadow-card); outline: none; touch-action: pan-y; }
+/* (its own outline is off for the pointer: the ring comes back for the keyboard) */
 .akd-stage:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
 @media (max-width: 639px) { .akd-stage { aspect-ratio: 4 / 5; } }
 .akd-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 1.1s ease; }

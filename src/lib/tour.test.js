@@ -371,6 +371,16 @@ describe('when a chapter’s page is ready', () => {
     expect(ticks).toBe(10);
   });
 
+  it('holds, the clock started again, while a world asks whether to download', async () => {
+    let t = 0;
+    let ticks = 0;
+    const timers = { now: () => t, tick: (fn) => ((t += 100), ticks++, Promise.resolve().then(fn)) };
+    // asking until just before 2 s, then nothing: the second counts from the last hold (1.9 s)
+    await expect(waitUntil(() => (t < 2000 ? 'hold' : null), { ...timers, timeout: 1000 })).resolves.toBe('timeout');
+    expect(t).toBe(2900);
+    expect(ticks).toBe(29);
+  });
+
   it('stops waiting when told to', async () => {
     let t = 0;
     const ctl = { cancelled: false };

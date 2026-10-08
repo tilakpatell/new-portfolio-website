@@ -14,6 +14,13 @@ export const TIERS = {
 };
 export const MAX_BYTES = TIERS.mid.bytes;
 
+// The ultra cut: the raw TRELLIS/Hunyuan mesh, baked, not simplified, with
+// 8192 maps, for the ultra quality level (lib/budgets). Made only for the
+// models asked for it (--ultra), so it stays out of TIERS: every model has
+// the three cuts above, a few have this one too. lib/three/gen3d.js loads it
+// at ultra where it's there, .hq where it isn't.
+export const ULTRA = { suffix: '.ultra', faces: 300000, tex: 8192, bytes: 24 * 1024 * 1024, detail: ['ultra'] };
+
 // The three cuts for a model asked to be smaller than the default top cut
 // (a rock at 4000 faces, a character at 30000): each tier scaled by the same
 // share, its texture no bigger than asked. The default asks give TIERS.
@@ -40,6 +47,8 @@ export function check({ tris, after, bytes, max = MAX_BYTES }) {
   return problems;
 }
 
-// The file a detail level loads: hq for a desktop's, the plain one for a
-// laptop's, lo for a phone's (the same table as src/lib/three/gen3d.js).
-export const fileFor = (name, detail) => `${name}${(Object.values(TIERS).find((t) => t.detail.includes(detail)) ?? TIERS.mid).suffix}.glb`;
+// The file a detail level loads: hq for high (and ultra, for a model with no
+// ultra cut), the plain one for mid, lo for low, and the ultra cut at ultra
+// for a model that has one (the same table as src/lib/three/gen3d.js).
+export const fileFor = (name, detail, { ultra = false } = {}) =>
+  ultra && detail === 'ultra' ? `${name}${ULTRA.suffix}.glb` : `${name}${(Object.values(TIERS).find((t) => t.detail.includes(detail)) ?? TIERS.mid).suffix}.glb`;

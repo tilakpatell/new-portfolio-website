@@ -4,9 +4,24 @@
 // `await`: on iOS a context resumed later than that stays silent.
 
 const KEY = 'tp-sound';
+const VOLUME_KEY = 'tp-volume';
 let ctx = null;
 let master = null;
+let music = null;
 const listeners = new Set();
+
+// The volumes, 0 to 1 (the settings panel's Sound): everything, the music
+// room's instruments, and speech. Kept as 'tp-volume' { master, music, voices }.
+const unit = (x) => (Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 1);
+export function volumes() {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(VOLUME_KEY) ?? 'null') ?? {};
+    return { master: unit(v.master), music: unit(v.music), voices: unit(v.voices) };
+  } catch {
+    return { master: 1, music: 1, voices: 1 };
+  }
+}
+const masterLevel = (on = soundOn()) => (on ? volumes().master : 0);
 
 export function soundOn() {
   try {
@@ -22,8 +37,23 @@ export function setSound(on) {
   } catch {
     /* storage unavailable */
   }
-  if (master) master.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, 0.05);
+  if (master) master.gain.setTargetAtTime(masterLevel(on), ctx.currentTime, 0.05);
   listeners.forEach((fn) => fn(on));
+}
+
+// Set some of the volumes ({ master, music, voices }), kept and heard at once.
+export function setVolumes(patch) {
+  const next = { ...volumes(), ...patch };
+  try {
+    window.localStorage.setItem(VOLUME_KEY, JSON.stringify({ master: unit(next.master), music: unit(next.music), voices: unit(next.voices) }));
+  } catch {
+    /* storage unavailable */
+  }
+  if (!ctx) return;
+  const v = volumes();
+  master?.gain.setTargetAtTime(masterLevel(), ctx.currentTime, 0.05);
+  music?.gain.setTargetAtTime(v.music, ctx.currentTime, 0.05);
+  voiceBus?.gain.setTargetAtTime(v.voices, ctx.currentTime, 0.05);
 }
 
 export function onSoundChange(fn) {
@@ -92,7 +122,7 @@ export function audioContext() {
     if (!AC) return null;
     ctx = new AC({ latencyHint: 'interactive' });
     master = ctx.createGain();
-    master.gain.value = soundOn() ? 1 : 0;
+    master.gain.value = masterLevel();
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -6;
     limiter.knee.value = 6;
@@ -121,6 +151,19 @@ if (typeof window !== 'undefined') {
 // Where every sound should connect: the master volume, which mutes with the setting.
 export const output = () => (audioContext() ? master : null);
 
+// Where the music room's instruments connect: the master volume, by way of
+// the music volume.
+export function musicOutput() {
+  const ac = audioContext();
+  if (!ac) return null;
+  if (!music) {
+    music = ac.createGain();
+    music.gain.value = volumes().music;
+    music.connect(master);
+  }
+  return music;
+}
+
 // Where speech should connect instead: the master volume by way of a tap that
 // measures how loud the voice is, so a face on screen can move its mouth with
 // it. The tap sits before the master volume, so mouths still move with the
@@ -133,6 +176,7 @@ export function voiceOutput() {
   if (!ac) return null;
   if (!voiceBus) {
     voiceBus = ac.createGain();
+    voiceBus.gain.value = volumes().voices;
     voiceTap = ac.createAnalyser();
     voiceTap.fftSize = 512;
     voiceTap.smoothingTimeConstant = 0;

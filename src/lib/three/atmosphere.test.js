@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { ATMO, SHELL_FRAG, atmosphereParams, createAtmosphere, skyColoursFor } from './atmosphere';
+import { ATMO, SHELL_FRAG, atmosphereParams, createAtmosphere, skyColoursFor, stepsFor } from './atmosphere';
 import { NOISE } from './noiseGlsl';
 import * as body from '../../components/galaxy/bodyShaders';
 
@@ -73,5 +73,14 @@ describe('the sky from the ground', () => {
     // and with the sun down, the sky goes dark
     const night = skyColoursFor(middleEarth, -0.3);
     expect(lum(night.zenith)).toBeLessThan(lum(skyColoursFor(middleEarth, 1).zenith) * 0.05);
+  });
+});
+
+describe('the steps an air is marched in', () => {
+  it('are what high marches at high, twice at ultra and fewer at mid', () => {
+    expect(stepsFor('high', 8)).toBe(8);
+    expect(stepsFor('ultra', 8)).toBe(16);
+    expect(stepsFor('mid', 8)).toBe(5);
+    expect(stepsFor('low', 4)).toBe(3);
   });
 });

@@ -11,6 +11,7 @@ import GuideCue from '../guide/GuideCue';
 import { letHandedGo } from '../hyperspace3d/timeline';
 import { letsJumpGo } from './jumpIn';
 import WarHud from './WarHud';
+import LoadingVeil from '../worlds/LoadingVeil';
 
 // The galaxy's 3D view (scene.js, a world module on the world runtime:
 // ./module.js) and everything over it:
@@ -44,7 +45,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   const events = useRef(onEvent);
   events.current = onEvent;
   const reduced = useReducedMotion();
-  const { host, on, meant, rt } = useWorld(galaxyModule, {
+  const { host, on, meant, rt, progress } = useWorld(galaxyModule, {
     props: {
       system,
       reduced,
@@ -137,11 +138,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
     <WorldHost world={{ host }} className="universe-map galaxy-map" data-ship={ship || undefined}>
       {meant ? (
         <>
-          {!on && (
-            <p className="universe-loading" role="status">
-              Plotting a course to a galaxy far, far away…
-            </p>
-          )}
+          <LoadingVeil className="universe-loading" shown={!on} progress={progress.value} step={progress.step} title="Plotting a course to a galaxy far, far away" />
           {on && oath && <WarHud sys={here} oath={oath} />}
           <ul className="universe-labels galaxy-labels" aria-label="In this system">
             {goals.map((g) => (

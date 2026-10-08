@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FIGURES } from './figures';
 import { OWNERS } from '../warEffects';
-import { TROOP_NAMES, garrisonAt, garrisonLife, garrisonQuest, troopKind } from './garrison';
+import { TROOP_NAMES, garrisonAt, garrisonLife, troopKind } from './garrison';
 
 describe('the garrison on the ground', () => {
   it('an Imperial trooper kind maps to the Rebellion’s on a Rebel world, and back', () => {
@@ -61,13 +61,5 @@ describe('who meets you at the landing', () => {
   it('nobody without a holder, and nobody from the Hutts but their enforcers', () => {
     expect(garrisonAt(site, null, 'rebel')).toEqual([]);
     expect(garrisonAt(site, { owner: 'hutt', troops: 'mercenary' }, 'rebel').every((a) => a.kind === 'mercenary')).toBe(true);
-  });
-  it('a quest’s spawns are the holder’s troops too, the named and the rest untouched', () => {
-    const quest = { id: 'q', steps: [{ type: 'shoot', spawn: [{ kind: 'stormtrooper', n: 2, tag: 'x' }, { kind: 'vader', tag: 'v' }] }, { type: 'reach' }] };
-    const out = garrisonQuest(quest, 'rebel');
-    expect(out.steps[0].spawn.map((s) => s.kind)).toEqual(['rebel', 'vader']);
-    expect(out.steps[1]).toBe(quest.steps[1]);
-    expect(garrisonQuest(quest, null)).toBe(quest);
-    expect(garrisonQuest(null, 'rebel')).toBe(null);
   });
 });

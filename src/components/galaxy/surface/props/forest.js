@@ -1397,7 +1397,9 @@ const KASHYYYK = {
     return { object: k.build(parts, { name: 'yodapod' }), solids: [{ circle: [0, 0, 1.6] }] };
   },
 
-  // a Wookiee barricade: crossed, sharpened logs along the beach, `len` long
+  // a Wookiee barricade: crossed, sharpened logs along the beach, `len` long;
+  // chest-high to shoot over (its top: a soldier standing sees over it, one
+  // kneeling is hidden behind it)
   barricade(k, { len = 10 } = {}) {
     const parts = [];
     const B = { color: '#6a4e34', to: 'bark' };
@@ -1407,7 +1409,7 @@ const KASHYYYK = {
       for (const s of [-1, 1]) parts.push(rod([x - s * 1.0, -0.2, -0.6], [x + s * 1.0, 2.4, 0.9], 0.18, 0.06, B, 6));
     }
     parts.push(rod([-len / 2, 1.1, 0.1], [len / 2, 1.1, 0.1], 0.2, 0.2, B, 6));
-    return { object: k.build(parts, { name: 'barricade' }), solids: [{ box: [0, 0, len / 2, 0.8, 0] }] };
+    return { object: k.build(parts, { name: 'barricade' }), solids: [{ box: [0, 0, len / 2, 0.8, 0], top: 1.25 }] };
   },
 
   // an AT-RT: a clone trooper in an open cockpit on two legs, a repeating
@@ -1999,3 +2001,6 @@ for (const [kind, crown] of [
   SCATTER[kind].canopy = crown;
 
 export const PROPS = { ...TREES, ...ENDOR, ...KASHYYYK, ...DAGOBAH, ...YAVIN };
+// Lothal's old Imperial tower: the audit lane's model where it loads, this
+// lattice where it won't
+PROPS.lothtower = PROPS.lookout;

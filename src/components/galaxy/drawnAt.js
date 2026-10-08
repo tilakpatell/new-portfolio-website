@@ -3,7 +3,7 @@
 // whatever they're drawn into) follows the pixel ratio the scene is drawn
 // at: the post chain's (universe/post.js's `ratio`). The runtime's quality
 // softens that a step at a time over a canvas that keeps its size
-// (module.js's soften), so the canvas's own ratio no longer changes. Sized
+// (module.js's `sharpness: 'own'`), so the canvas's own ratio no longer changes. Sized
 // by it, the points came out bigger on screen at each step: 1.39x at
 // level 2, 2x at the floor.
 //
