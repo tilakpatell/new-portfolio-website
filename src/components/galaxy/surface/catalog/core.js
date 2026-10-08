@@ -5,7 +5,7 @@
 // `anim`, for a model kept rigged, names its clips: { idle, walk, run }.)
 export const MODELS = {
   // Jar Jar Binks
-  gungan: { uid: '85aef3e496d44e9b95c7386035c0ef10', as: 'the Gungans', metres: 1.96, yaw: 0, tris: 8000, tex: 384 },
+  gungan: { uid: '85aef3e496d44e9b95c7386035c0ef10', legs: { crotch: 0.46 }, as: 'the Gungans', metres: 1.96, yaw: 0, tris: 8000, tex: 384 },
   // the Jedi Temple on Coruscant
   jeditemple: { uid: '317dedec15a845cbb1abc8c90804b840', lod: true, as: 'the Jedi Temple', metres: 300, along: 'max', yaw: -Math.PI / 2, up: 'y', tris: 35000, tex: 1024, drop: /Plane001/ },
   // the Republic gunship
@@ -20,6 +20,6 @@ export const MODELS = {
   // a Coruscant airspeeder, nose to +z
   airspeeder: { uid: '7766ca8e7bd047f5ad4bdb86d11ec6d4', as: 'the airspeeders', metres: 6, along: 'z', yaw: 0, up: 'y', tris: 16000, tex: 1024 },
   droideka: { uid: 'f3688d384b2042b6a8fc3360f64b9a48', machine: true, as: 'the droidekas', metres: 1.8, yaw: Math.PI, up: 'y', tris: 8000, tex: 512 },
-  kaminoan: { uid: '5d758c4455b24ac383b94d7a4e30bbce', as: 'the Kaminoans', metres: 2.6, yaw: 0, up: 'y', tris: 8000, tex: 512 },
-  geonosian: { uid: '021a5902e34c4742a828335c86bfe4cd', as: 'the Geonosians', metres: 1.7, yaw: Math.PI, up: 'y', tris: 8000, tex: 512 },
+  kaminoan: { uid: '5d758c4455b24ac383b94d7a4e30bbce', legs: { crotch: 0.44 }, as: 'the Kaminoans', metres: 2.6, yaw: 0, up: 'y', tris: 8000, tex: 512 },
+  geonosian: { uid: '021a5902e34c4742a828335c86bfe4cd', legs: { crotch: 0.48 }, as: 'the Geonosians', metres: 1.7, yaw: Math.PI, up: 'y', tris: 8000, tex: 512 },
 };

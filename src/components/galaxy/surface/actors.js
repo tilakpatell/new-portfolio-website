@@ -65,6 +65,7 @@ import { zoneVisibility } from './near';
 import { diveAt } from './floats';
 import { heldBlade } from './heldBlade';
 import { WALKERS, walkerFigure } from './walkers';
+import { leggedFigure } from './legRig';
 import { createAnimator } from '../../../lib/three/animator';
 import { budgetClock } from '../../../lib/three/animBudget';
 import { breathe, createGait, sway } from '../../../lib/three/gait';
@@ -265,6 +266,11 @@ export async function modelFigure(kind) {
   const gltf = squared(await loadGlb(surfaceUrl(kind)), kind);
   if (!gltf) return null;
   const row = SURFACE_MODELS[kind];
+  // (a person who came as a statue: legs found in it, skinned and walked; legRig.js)
+  if (row.legs && !row.anim) {
+    const legged = leggedFigure(gltf.scene, { seed: seedOf(kind, n), legs: row.legs === true ? {} : row.legs });
+    if (legged) return legged;
+  }
   return modelFigureOf(cloneModel(gltf), { animations: gltf.animations, anim: row.anim, seed: seedOf(kind, n), clipSpeed: row.clipSpeed ?? null, machine: Boolean(row.machine) });
 }
 
