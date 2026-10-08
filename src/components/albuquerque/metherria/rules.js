@@ -121,6 +121,14 @@ export const CUSTOMERS = {
   },
 };
 
+// Hank at the laundry, once a shift from day three: what he says as he
+// comes in, and as he goes if the batch is hidden. The quotes are his, in
+// his own voice where it's been made (lib/voiced.js; ../voicelines.js).
+export const HANK = {
+  raid: '“Mind if I take a look around?” Hide the batch.',
+  hidden: '“Huh. Smells like… soap.” He heads out.',
+};
+
 export const UPGRADES = [
   { id: 'burner', name: 'A better burner', cost: 40, text: 'The green on the gauge is a third wider.' },
   { id: 'notes', name: 'Gale’s lab notes', cost: 60, text: 'Pours and the scale forgive a little more, the fill line lights up when you’re on it, and the hammer’s window is wider.' },

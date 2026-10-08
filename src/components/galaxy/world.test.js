@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { SYSTEMS, goalsOf, kindsIn, systemById } from './systems';
+import { placesOf } from './places';
 import { makeSpace } from './space';
 import { buildSystem } from './world';
 import { LASER } from './fx';
@@ -31,7 +32,7 @@ describe('buildSystem', () => {
   it('builds every system with its planet and its goals, the ones the map names', () => {
     for (const sys of SYSTEMS) {
       const w = buildSystem(sys, { ...kit(), small: false });
-      expect(w.goals.map((g) => g.id).sort(), sys.id).toEqual(goalsOf(sys).map((g) => g.id).sort());
+      expect(w.goals.map((g) => g.id).sort(), sys.id).toEqual([...goalsOf(sys), ...placesOf(sys)].map((g) => g.id).sort());
       const planet = w.solids.find((o) => o.id === 'planet');
       expect(planet, sys.id).toBeTruthy();
       if (sys.body) expect(planet.r).toBe(sys.body.r);
@@ -92,7 +93,9 @@ describe('buildSystem', () => {
     for (const sys of SYSTEMS) {
       const w = buildSystem(sys, { ...kit(), small: false });
       const space = makeSpace(w.solids);
-      expect(Object.keys(space.goals).length).toBe(goalsOf(sys).length);
+      expect(Object.keys(space.goals).length).toBe(goalsOf(sys).length + placesOf(sys).length);
+      // (and super speed opens out there, past the places' band)
+      expect(Math.max(...[0, 1, 2, 3, 4, 5].map((i) => space.overdriveAt(Math.cos(i) * 2300, 0, Math.sin(i) * 2300)))).toBeGreaterThan(1.5);
       w.dispose();
     }
   });

@@ -181,11 +181,25 @@ export async function buildAtlas(read, { blocks = [], items = [], skins = {}, sp
   }
   const itemStack = await stack('item', items);
   // pictures kept whole: the first file found for each
+  // a picture kept in pieces, laid out as one sheet: { grid: [cols, rows], from: [paths, by row] }
+  async function sheet({ grid: [cols, rows], from }) {
+    const parts = await Promise.all(from.map((p) => load(p)));
+    if (parts.some((x) => !x)) return null;
+    const { width: w, height: h } = parts[0];
+    const data = new Uint8ClampedArray(w * cols * h * rows * 4);
+    parts.forEach((img, i) => {
+      const ox = (i % cols) * w;
+      const oy = Math.floor(i / cols) * h;
+      for (let y = 0; y < h; y++) data.set(img.data.subarray(y * img.width * 4, (y * img.width + w) * 4), ((oy + y) * w * cols + ox) * 4);
+    });
+    return { width: w * cols, height: h * rows, data };
+  }
+
   async function whole(kind, list) {
     const out = {};
     for (const [name, paths] of Object.entries(list)) {
       let img = null;
-      for (const p of paths) if ((img = await load(p))) break;
+      for (const p of paths) if ((img = typeof p === 'string' ? await load(p) : await sheet(p))) break;
       if (img) out[name] = { width: img.width, height: img.height, data: img.data };
       else missing.push(`${kind}/${name}`);
     }

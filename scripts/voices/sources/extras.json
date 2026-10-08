@@ -1,0 +1,153 @@
+{
+  "tony": {
+    "show": "mcu",
+    "clips": [
+      "public/audio/clips/i-am-iron-man.mp3"
+    ],
+    "quotes": [
+      "I am Iron Man.",
+      "Genius, billionaire, playboy, philanthropist.",
+      "We have a Hulk."
+    ],
+    "search": [
+      "Iron Man 2008 Tony Stark press conference I am Iron Man scene",
+      "The Avengers 2012 Tony Stark and Loki Stark Tower drink scene",
+      "The Avengers 2012 Tony Stark and Steve Rogers helicarrier argument scene",
+      "Iron Man 2008 Tony Stark and Yinsen in the cave scene",
+      "Iron Man 3 Tony Stark and Harley in the garage scene"
+    ],
+    "avoid": [
+      "interview",
+      "reaction",
+      "lego",
+      "fan dub",
+      "what if",
+      "animated",
+      "mick wingert",
+      "marvel's avengers",
+      "video game",
+      "press tour",
+      "oppenheimer",
+      "sherlock",
+      "dolittle",
+      "doom"
+    ]
+  },
+  "thanos": {
+    "show": "mcu",
+    "clips": [
+      "public/audio/clips/i-am-inevitable.mp3",
+      "public/audio/clips/small-price-to-pay-for-salvation.mp3",
+      "public/audio/clips/fine-ill-do-it-myself.mp3"
+    ],
+    "quotes": [
+      "I am inevitable.",
+      "Dread it. Run from it.",
+      "Perfectly balanced."
+    ],
+    "search": [
+      "Avengers Infinity War Thanos and young Gamora perfectly balanced scene",
+      "Avengers Infinity War Thanos and Gamora on Vormir Soul Stone scene",
+      "Avengers Infinity War Thanos and Doctor Strange on Titan scene",
+      "Avengers Infinity War opening scene Thanos and Loki on the Asgardian ship",
+      "Avengers Endgame Thanos at the farm I am inevitable scene"
+    ],
+    "avoid": [
+      "interview",
+      "reaction",
+      "lego",
+      "fan dub",
+      "what if",
+      "animated",
+      "fortnite",
+      "deadpool",
+      "cable",
+      "dune",
+      "song",
+      "parody",
+      "damion poitier"
+    ]
+  },
+  "bobvance": {
+    "show": "office",
+    "quotes": [
+      "Bob Vance, Vance Refrigeration.",
+      "Vance Refrigeration."
+    ],
+    "search": [
+      "The Office Bob Vance Vance Refrigeration compilation",
+      "The Office Bob Vance and Phyllis wedding scene",
+      "The Office Bob Vance meets Michael Scott scene",
+      "The Office Bob Vance Vance Refrigeration best moments"
+    ],
+    "avoid": [
+      "interview",
+      "reaction",
+      "lego",
+      "fan dub",
+      "podcast",
+      "cast reunion",
+      "bobby ray shafer interview"
+    ]
+  },
+  "peach": {
+    "show": "super-mario",
+    "quotes": [
+      "Dear Mario",
+      "Please come to the castle.",
+      "I've baked a cake for you."
+    ],
+    "search": [
+      "Super Mario 64 intro Princess Peach letter Dear Mario please come to the castle",
+      "Super Mario 64 ending cutscene Princess Peach thank you Mario",
+      "Super Mario 64 all Princess Peach voice clips Leslie Swan",
+      "Super Mario 64 opening Peach reads her letter"
+    ],
+    "avoid": [
+      "interview",
+      "reaction",
+      "lego",
+      "fan dub",
+      "movie",
+      "anya taylor-joy",
+      "samantha kelly",
+      "jen taylor",
+      "showtime",
+      "mario kart",
+      "smash",
+      "odyssey",
+      "wonder",
+      "princess peach showtime",
+      "remake",
+      "ytp",
+      "smg4"
+    ]
+  },
+  "gibbs": {
+    "show": "pirates-of-the-caribbean",
+    "quotes": [
+      "Mother's love, Jack!",
+      "It's bad luck.",
+      "Curse you for breathing"
+    ],
+    "search": [
+      "Pirates of the Caribbean Curse of the Black Pearl Jack Sparrow wakes Gibbs among the pigs in Tortuga scene",
+      "Pirates of the Caribbean Curse of the Black Pearl Gibbs bad luck to have a woman aboard opening scene",
+      "Pirates of the Caribbean Curse of the Black Pearl Gibbs tells Will how Jack escaped the island scene",
+      "Pirates of the Caribbean Dead Man's Chest Gibbs and Jack Sparrow Kraken scene",
+      "Pirates of the Caribbean At World's End Gibbs Kevin McNally scene"
+    ],
+    "avoid": [
+      "interview",
+      "reaction",
+      "lego",
+      "fan dub",
+      "kingdom hearts",
+      "disneyland",
+      "sea of thieves",
+      "cosplay",
+      "behind the scenes",
+      "doctor who"
+    ]
+  }
+}

@@ -3,8 +3,7 @@
 The plan was [PLAN-rm-sector.md](PLAN-rm-sector.md). The Rick and Morty
 worlds used to sit in a cluster round the Citadel in the main map. They now
 have a sector of their own, reached through a green portal. The work went in
-as one PR per step of the plan's section 5, from the branch
-`claude/rm-sector-opus`.
+as one PR per step of the plan's section 5, from one branch.
 
 ## What's done
 
@@ -73,12 +72,33 @@ Citadel. Both are the fleet war's Meshy flagships (`fedbattleship`,
 `councildread`), loaded the first time the ship's in the sector. From inside
 the sector, the main map's planet names and beacons are hidden.
 
+Fixes after flying it (#542): out at the sector, 40000 off, the GPU's
+32-bit floats tore the cruiser's crew and other skinned figures, so
+`scene.js` draws round the camera past 3000 out (`drawn`: the map and the
+camera shifted for `post.render` only, and put back). The Curve is drawn
+only from inside the sector, as a band rather than streaks. The Citadel's
+haze fades out before its quad's edge.
+
+A sector world's ground portal (and "Land on") opens that planet's own
+world at `/c-137/<id>` (`pages/RmPlanet.jsx`, `rickmorty/world/planetMode.js`):
+the walkable game, started at the planet's way in, with its portal back out
+to `/universe/<id>`. C-137's portal gun no longer dials the planets, and
+`dialFor` is gone.
+
+Worlds 9 and 10: Cronenberg World and the Purge Planet, with set pieces
+modelled on Meshy (`scripts/meshy-rm-local.mjs` phase 13: `cronhouse`,
+`croncar`, `purgecottage`, `purgebarn`, `purgesiren`, `purgewell`) and
+grounds of their own in `rmWorldsGlsl.js`. The four older worlds' set pieces
+are models now too (`gazorpgate`, `suckulent`, `birdperch`, `gearbig`,
+`gearcog`), replacing the code-built gate, suckulents, perches and cogs.
+
 ## Not done, or left as is
 
-- The plan's other candidate worlds are still out: Cronenberg World and
-  the Purge Planet. They need models the repo doesn't have yet (Meshy).
-- The four older worlds' landings still use code-built rocks, gates, cogs
-  and perches (`landings/rmmoons.js`). The new worlds use models for their
-  set pieces and keep only the rock scatter.
+- The worlds' ground cover is still code-built: rocks, bones, Squanch's
+  cat trees, Bird World's feathers and Gear World's bolts
+  (`landings/rmmoons.js`). The Meshy set pieces are about 30k triangles
+  each, so the scattered suckulents and cogs are small copies
+  (`scripts/rm-scatter.mjs`: `sm/suckulent.glb`, `sm/gearcog.glb`,
+  6k to 9k triangles), 14 and 20 of them.
 - No crew lines were added for arriving at the new worlds. Crews have no
   per-moon `arrive` lines, the same as before.

@@ -26,6 +26,10 @@ import Wardrobe from '../components/rickmorty/wardrobe/Wardrobe';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { CASTS, castOfCrew } from '../components/rickmorty/wardrobe/looks';
 import { useOnline } from '../components/universe/online/useOnline';
+import EarnNote from '../components/universe/EarnNote';
+import { useEarn } from '../components/universe/useEarn';
+import { goodStanding } from '../components/universe/economy';
+import { createPayLedger } from '../components/universe/earnRules';
 
 const PORTAL = '#97ce4c';
 // the phone out past the belt (universe/phone.js): its lock screen, fetched
@@ -34,6 +38,9 @@ const PhoneOverlay = lazy(() => import('../components/dickansh/PhoneOverlay'));
 const SAFFRON = '#ff9a2a';
 const PHONE_MS = 700;
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
+// (the page you go into knows you came from the map, so its way out can be
+// back to space: the Citadel's)
+const FROM_MAP = { state: { from: 'universe' } };
 
 // The universe map: every fandom on the site is a planet, and you travel
 // between them, flying a ship of your choice (remembered between visits,
@@ -69,6 +76,12 @@ export default function Universe({ ask = false }) {
   const online = useOnline(); // (OnlineProvider, above the pages: the link stays up off the map)
   const { setKind, setLoadout, setBuild: tellBuild } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
+  // the wallet (economy.js): what the scene pays for, a good standing
+  // reached and an alliance made earn into it, with a note over the HUD
+  const { pay, note: earned } = useEarn({ client: online.client });
+  // (a level is paid for once a visit: lost and won back with a shot at the
+  // law and a hunter down, it's no living)
+  const [stood] = useState(createPayLedger);
   // what each ship's fitted with in the hangar (kept between visits): the
   // paint job and parts it flies with, while they're still earned
   const { unlocked, unlock } = useAchievements();
@@ -146,6 +159,33 @@ export default function Universe({ ask = false }) {
   }, []);
   useEffect(() => () => clearTimeout(tour.current?.timer), []);
 
+  // flying to another pilot (the roster's “Fly to”, or its “Go” from
+  // another page: useOnline's follow): once the ship's in and they're
+  // flying here in sight, the autopilot takes it to them (scene.js's
+  // `pilot:<id>`, by the drive picked). Tried till it goes; the trip's end
+  // (there, gone, or the stick taken back) or the follow's own minute
+  // forgets it
+  const { followId, follow } = online;
+  const followRef = useRef(null); // the pilot whose trip is under way
+  useEffect(() => {
+    if (!followId || !ship) return undefined;
+    const go = () => {
+      if (followRef.current === followId) return true;
+      if (!map.current.live || !map.current.travel(`pilot:${followId}`, driveRef.current)) return false;
+      followRef.current = followId;
+      stopTour();
+      onward.current = null;
+      setCharting(false);
+      return true;
+    };
+    if (go()) return undefined;
+    const t = setInterval(() => go() && clearInterval(t), 500);
+    return () => clearInterval(t);
+  }, [followId, ship, stopTour]);
+  useEffect(() => {
+    if (!followId) followRef.current = null;
+  }, [followId]);
+
   // out of the cockpit's launch (App's intro, or ⌘K's replay): flying the
   // ship it was, with no question first. Sat down in the cockpit with no
   // ship yet (a first visit), that one's made under it as you sit there
@@ -192,7 +232,7 @@ export default function Universe({ ask = false }) {
     stopTour();
     const plan = enterPlan(u, { reduced, three: map.current.live, ship });
     if (plan.mode === 'now') {
-      navigate(to);
+      navigate(to, FROM_MAP);
       return;
     }
     audioContext(); // inside the press, so the way out can sound
@@ -202,7 +242,7 @@ export default function Universe({ ask = false }) {
       map.current.dive(u.id);
     }
     setLeaving({ id: u.id, mode: plan.mode });
-    timer.current = setTimeout(() => navigate(to), plan.delay);
+    timer.current = setTimeout(() => navigate(to, FROM_MAP), plan.delay);
   };
   const enter = () => go(universe);
   // the phone unlocked: the Dickansh and Deekbeggers Universe (its page keeps
@@ -248,7 +288,7 @@ export default function Universe({ ask = false }) {
     if (!plan) return false;
     setLeaving({ id: u.id, mode: plan.mode });
     // (a wonder with a page of its own, the Citadel, goes there)
-    timer.current = setTimeout(() => navigate(page ?? u.crashTo ?? u.to), plan.delay);
+    timer.current = setTimeout(() => navigate(page ?? u.crashTo ?? u.to, FROM_MAP), plan.delay);
     return true;
   };
 
@@ -269,6 +309,15 @@ export default function Universe({ ask = false }) {
   // portal or the RV's Blue Sky: the scene has the ship out at the place
   // under its flash either way), through a gate, or something for the crew to say
   const onEvent = (e) => {
+    if (e.type === 'earn') {
+      pay(e.what, e.n, e.side);
+      return;
+    }
+    // (the hello says what you are to the others: useOnline.js reads it again)
+    if (e.type === 'event' && e.id === 'standing') window.dispatchEvent(new Event('tp:standing'));
+    if (e.type === 'event' && e.id === 'standing' && goodStanding(e.sub) && stood.once(`${e.side}:${e.sub}`)) pay('standingUp', 1, e.side);
+    // a trip to a pilot over (with them, gone, or the stick taken back): the follow's done
+    if ((e.type === 'arrived' || e.type === 'jumped' || e.type === 'lost') && followRef.current && e.id === `pilot:${followRef.current}`) follow(null);
     // a trip ended: on through the gate, or the tour's next leg
     if (e.type === 'arrived' || e.type === 'jumped') {
       const done = e.type === 'jumped' || e.done;
@@ -446,6 +495,7 @@ export default function Universe({ ask = false }) {
         </div>
       )}
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
+      {!leaving && <EarnNote note={earned} />}
       <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} cast={dressing} who={CASTS[dressing][0]} returnTo=".universe-hangar-btn" />
       {!asking && !leaving && <Online online={online} ship={ship} />}
       <UniversePanel

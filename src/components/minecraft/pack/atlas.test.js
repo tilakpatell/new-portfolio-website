@@ -110,6 +110,18 @@ describe('the atlas builder', () => {
     expect(px(15, 15)).toEqual([23, 23]);
   });
 
+  it('a sprite the pack keeps in pieces (the moon’s phases since 1.21.9) is laid out as one sheet', async () => {
+    const tex = (n) => `assets/minecraft/textures/${n}.png`;
+    const files = {};
+    ['a', 'b', 'c', 'd'].forEach((n, i) => (files[tex(`moon/${n}`)] = { width: 4, height: 4, colour: [i * 10, 0, 0, 255] }));
+    const { read, decode } = fakePack(files);
+    const atlas = await buildAtlas(read, { blocks: [], items: [], skins: {}, sprites: { moon_phases: ['moon_sheet', { grid: [2, 2], from: ['moon/a', 'moon/b', 'moon/c', 'moon/d'] }] }, decode });
+    const m = atlas.sprites.moon_phases;
+    expect([m.width, m.height]).toEqual([8, 8]);
+    const red = (x, y) => m.data[(y * 8 + x) * 4];
+    expect([red(0, 0), red(4, 0), red(0, 4), red(7, 7)]).toEqual([0, 10, 20, 30]);
+  });
+
   it('a tile drawn larger than 16 is brought down to 16', async () => {
     const { read, decode } = fakePack({ [block('stone')]: { width: 32, height: 32, colour: [50, 60, 70, 255] } });
     const atlas = await buildAtlas(read, { blocks: ['stone'], items: [], skins: {}, decode });

@@ -11,6 +11,7 @@
 
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { seeded } from './rules';
+import { CARAS } from './story';
 import { pushOut } from '../walker';
 
 // the wood you can walk in
@@ -76,7 +77,7 @@ export const CAST = [
   { id: 'sam-wood', name: 'Samwise Gamgee', look: 'sam', x: -66, z: -2.5, face: 0.3, while: ['haldir'], lines: ['“Mr. Frodo? Are you all right?”', 'He looks up at the golden trees. “I’ve never seen anything like it.”'] },
   { id: 'aragorn-wood', name: 'Aragorn', look: 'aragorn', x: -58, z: -6.5, face: 0, while: ['haldir'], lines: ['“Gandalf’s death was not in vain. Nor would he have you give up hope.”'] },
   { id: 'legolas-wood', name: 'Legolas', look: 'legolas', x: -55, z: 4, face: 0, while: ['haldir'], lines: ['He stops, and listens to the trees. “We are watched.”'] },
-  { id: 'haldir-city', name: 'Haldir', look: 'haldir', x: TREE.x - STAIR.r - 2.6, z: TREE.z + 2.6, face: 0, while: ['caras'], lines: ['“Caras Galadhon. The heart of Elvendom on earth. Realm of the Lord Celeborn and of Galadriel, Lady of Light.”', '“Up the stair. The Lady is expecting you.”'] },
+  { id: 'haldir-city', name: 'Haldir', look: 'haldir', x: TREE.x - STAIR.r - 2.6, z: TREE.z + 2.6, face: 0, while: ['caras'], lines: [CARAS, '“Up the stair. The Lady is expecting you.”'] },
   { id: 'legolas-city', name: 'Legolas', look: 'legolas', x: 3, z: 4, face: 0.2, while: ['caras'], lines: ['“The Galadhrim have not walked with dwarves for a long time.”'] },
   { id: 'gimli-city', name: 'Gimli', look: 'gimli', x: 7.5, z: -7, face: 0.2, while: ['caras'], lines: ['He keeps a hand on his axe, and his eyes on the lanterns.', '“A sorceress, I tell you.” Quieter now.'] },
   { id: 'sam-night', name: 'Samwise Gamgee', look: 'sam', x: TREE.x + 4.6, z: TREE.z + 8, face: Math.PI / 2, while: ['mirror'], lines: ['“I don’t think he would have wanted fireworks… The finest rockets ever seen, they burst in stars of blue and green, or after thunder silver showers came falling like a rain of flowers.” He stops. “Oh, that doesn’t do them justice by a long road.”'] },

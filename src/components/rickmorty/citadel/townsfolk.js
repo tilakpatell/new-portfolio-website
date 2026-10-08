@@ -1,21 +1,32 @@
 // Mortytown's people, every one a Meshy figure (../portal/meshyCast.js) in
-// the show's toon look: the cast where ./mortytown.js stands them (Big Morty
-// on a stool by The Creepy Morty's door, Slick Morty on his corner, the
-// campaign manager, Rick D. Sanchez III and Simple Rick at the factory's back
-// door, Cop Morty and his partner outside Morty Mart), Evil Rick walking the
-// middle of the road, the street's Mortys round their loops, and the three
-// Locos where ./locos.js has them. They're loaded the first time the lift
-// comes down, not with the Citadel; a figure whose model doesn't load is
-// left out, nothing stands in for it.
+// the show's toon look, each on its animator: the cast where ./mortytown.js
+// stands them (Big Morty sat on a stool by The Creepy Morty's door, Slick
+// Morty on his corner, the campaign manager, Rick D. Sanchez III and Simple
+// Rick at the factory's back door, Cop Morty and his partner outside Morty
+// Mart), Evil Rick walking the middle of the road, the street's Mortys round
+// their loops, and the three Locos where ./locos.js has them. They're
+// loaded the first time the lift comes down, not with the Citadel; a figure
+// whose model doesn't load is left out, nothing stands in for it.
 //
-// createTownsfolk({ parent, tier }) → Promise<{ update(state, t, cam),
-//   headOf(id), movers, dispose }>
+// The cast look at Rick with their heads as he comes by, turning to him
+// only when he's well round (./bodies.js's regard), and talk with their
+// hands while their line's up; Evil Rick stares through him as he passes;
+// the street's Mortys step aside for him, their corners eased, their feet
+// paced to the street; a Loco crouches in his alley (base 'crouch'), gives
+// himself up with a fright, and, lost, slinks home on foot down the alley
+// he came from rather than appearing there (the hunt's rules put him home
+// at once; only the drawing walks); Cop Morty cuffs each one handed over.
+//
+// createTownsfolk({ parent, tier }) → Promise<{ update(state, t, cam, opts),
+//   headOf(id), at(id), movers, dispose }>
 
 import * as THREE from 'three';
 import { createMeshyCast } from '../portal/meshyCast';
-import { CAST, LOOPS, WALKS } from './mortytown';
-import { RICK } from './layout';
-import { along, turnTo, yawOf } from './people';
+import { pushOut } from '../../middleearth/towns/walker';
+import { turn } from '../../../lib/three/gait';
+import { CAST, COLLIDERS, LOOPS, WALKS, WALLS } from './mortytown';
+import { along, lookAt, yawOf } from './people';
+import { catchUp, easeTurn, moveFor, regard, sayFor, stepBody } from './bodies';
 
 // kind → the model and how tall it stands, hat and all, in metres
 const SHIRTS = [0xf3d84b, 0x7fc77a, 0xe0795a, 0xa98ad8, 0x63b5d9, 0xf0a0c0];
@@ -37,11 +48,15 @@ const RIGGED = new Set(Object.values(KINDS).map((k) => k.a));
 // the street's Mortys, by the device
 const STREET = { high: 8, mid: 4, low: 2 };
 const PACE = 1.25;
-// past this far from the camera, a figure's animation steps every third frame
-const FAR = 30;
+const EYES = 1.72; // Rick's eyes (m)
+const NOTICE = 5.5; // the cast look round at Rick this near
+const WAY = { ahead: 3.2, wide: 0.9, off: 1.15, rate: 2.2 }; // a street Morty stepping out of Rick's way
+const SLINK = 1.5; // a lost Loco's pace home (m/s)
+const KEEP = 4.6; // and a found one's, catching up with his rules' place
+const push = (x, z) => pushOut(x, z, 0.3, COLLIDERS, WALLS);
 
-export async function createTownsfolk({ parent, tier = 'high' }) {
-  const meshy = createMeshyCast({ kinds: KINDS, rigged: RIGGED, cull: true });
+export async function createTownsfolk({ parent, tier = 'high', loader = null }) {
+  const meshy = createMeshyCast({ kinds: KINDS, rigged: RIGGED, cull: true, ...(loader ? { loader } : {}) });
   const assets = [...RIGGED];
   await Promise.all([meshy.load(null, assets.filter((a) => a !== 'bigmorty'), { clips: ['idle', 'walk', 'run'] }), meshy.load(null, ['bigmorty'], { clips: ['idle', 'walk', 'run', 'sit'] })]);
 
@@ -53,13 +68,13 @@ export async function createTownsfolk({ parent, tier = 'high' }) {
       if (o.isMesh) o.castShadow = false;
     });
     parent.add(f.group);
-    f.tick = Math.floor(Math.random() * 3);
+    f.rg = {};
     all.push(f);
     return f;
   };
   const seat = (f) => {
-    if (!f?.act?.sit) return;
-    for (const [name, a] of Object.entries(f.act)) a.setEffectiveWeight(name === 'sit' ? 1 : 0);
+    if (!f?.base) return;
+    f.base('sit', { fade: 0 });
     f.sitting = true;
   };
 
@@ -84,7 +99,7 @@ export async function createTownsfolk({ parent, tier = 'high' }) {
   for (const w of WALKS) {
     const f = make(w.kind);
     if (!f) continue;
-    Object.assign(f, { id: w.id, home: w, loop: loops[w.loop], s0: 0, dir: 1, pace: PACE * 0.85 });
+    Object.assign(f, { id: w.id, home: w, loop: loops[w.loop], s0: 0, dir: 1, pace: PACE * 0.85, aside: 0 });
     walkers.push(f);
   }
   const n = STREET[tier] ?? STREET.high;
@@ -92,55 +107,113 @@ export async function createTownsfolk({ parent, tier = 'high' }) {
     const f = make('morty', i);
     if (!f) continue;
     const L = loops[1 + (i % (loops.length - 1))];
-    Object.assign(f, { loop: L, s0: (L.total * (i * 0.29 + 0.07)) % L.total, dir: i % 2 ? -1 : 1, pace: PACE * (0.92 + ((i * 7) % 5) * 0.05) });
+    Object.assign(f, { loop: L, s0: (L.total * (i * 0.29 + 0.07)) % L.total, dir: i % 2 ? -1 : 1, pace: PACE * (0.92 + ((i * 7) % 5) * 0.05), aside: 0 });
     walkers.push(f);
   }
   // the Locos, wherever the hunt has them
   const locos = new Map(['loco-a', 'loco-b', 'loco-c'].map((id) => [id, make(id)]).filter(([, f]) => f));
 
   const tmp = new THREE.Vector3();
-  const animate = (f, t, move, cam) => {
-    f.group.getWorldPosition(tmp);
-    const far = cam && tmp.distanceTo(cam) > FAR;
-    f.tick = (f.tick + 1) % 3;
-    if (far && f.tick) return;
-    if (f.sitting) {
-      const dt = f.last == null ? 0 : Math.min(0.1, Math.max(0, t - f.last));
-      f.last = t;
-      f.mixer.update(dt);
-    } else f.update(t, move, 0);
+  const rickHead = new THREE.Vector3();
+  let lastT = null;
+  let camera = null;
+  let budget = null;
+  let view = null;
+  const animate = (f, t, { move = null, motion = null } = {}) => {
+    let lodRate = 1;
+    if (budget) {
+      f.group.getWorldPosition(tmp);
+      lodRate = budget.rate(tmp, camera, view ? view(tmp) : true);
+    }
+    f.update(t, move ?? (motion ? moveFor(Math.hypot(motion.speed, motion.side)) : 0), 0, { motion, lodRate });
   };
+  const stepTo = (f, x, z, yaw, dt, ease = 10) => {
+    const step = { x, z, yaw };
+    const jumped = !f.prev || Math.hypot(x - f.prev.x, z - f.prev.z) > 2.5;
+    const body = stepBody(f.prev, step, dt);
+    f.prev = step;
+    f.group.position.set(x, 0, z);
+    f.yaw = f.yaw == null || jumped ? yaw : turn(f.yaw, yaw, dt, ease);
+    f.group.rotation.y = f.yaw;
+    return body;
+  };
+  let sayingAt = null;
 
   // state: the world's (./scene.js), with Rick's spot in the district's frame
-  // and the hunt's Locos; t: seconds; cam: the camera, in the world
-  const update = (state, t, cam) => {
+  // and the hunt's Locos; t: seconds; cam: the camera, in the world;
+  // opts: { camera, budget, view } (./people.js's)
+  const update = (state, t, cam, opts = {}) => {
+    const dt = lastT == null ? 0 : Math.min(0.1, Math.max(0, t - lastT));
+    lastT = t;
+    camera = opts.camera ?? (cam ? { position: cam } : null);
+    budget = opts.budget ?? null;
+    view = opts.view ?? null;
     const h = state.rick;
+    // (his head, in the world: the district's frame moved to where it's drawn)
+    parent.updateWorldMatrix(true, false);
+    rickHead.set(h.x, EYES, h.z).applyMatrix4(parent.matrixWorld);
+    const saying = state.saying ?? null;
+    const sayNew = saying && saying !== sayingAt;
+    sayingAt = saying;
     for (const f of cast.values()) {
-      // a look round at Rick when he comes close
-      const near = Math.hypot(h.x - f.home.x, h.z - f.home.z) < 4.5 && !f.sitting;
-      const want = near ? Math.atan2(h.x - f.home.x, h.z - f.home.z) : yawOf(f.home.face);
-      f.yaw = turnTo(f.yaw, want, 0.08);
+      const d = Math.hypot(h.x - f.home.x, h.z - f.home.z);
+      if (d < NOTICE) {
+        if (!f.sitting) f.yaw = regard(f.yaw, Math.atan2(h.x - f.home.x, h.z - f.home.z), dt, f.rg);
+        lookAt(f, rickHead);
+      } else {
+        f.rg.turning = false;
+        f.yaw = easeTurn(f.yaw, yawOf(f.home.face), dt, 2);
+        lookAt(f, null);
+      }
       f.group.rotation.y = f.yaw;
-      animate(f, t, 0, cam);
+      if (sayNew && saying.id === `town:${f.home.id}`) f.react('say', { t, target: rickHead, hold: sayFor(saying.line) });
+      animate(f, t);
     }
     for (const f of walkers) {
-      const [x, z, heading] = along(f.loop.loop, f.loop.lengths, f.loop.total, f.s0 + f.dir * f.pace * t);
-      f.group.position.set(x, 0, z);
-      f.group.rotation.y = yawOf(f.dir > 0 ? heading : heading + Math.PI);
-      animate(f, t, f.pace / RICK.run, cam);
+      const [x0, z0, heading] = along(f.loop.loop, f.loop.lengths, f.loop.total, f.s0 + f.dir * f.pace * t);
+      const face = f.dir > 0 ? heading : heading + Math.PI;
+      // out of Rick's way: a step to the side while he's ahead and coming on
+      const fx = Math.cos(face);
+      const fz = -Math.sin(face);
+      const along2 = (h.x - x0) * fx + (h.z - z0) * fz;
+      const lat = (h.x - x0) * -fz + (h.z - z0) * fx; // (+: Rick off to its right)
+      const want = along2 > -0.5 && along2 < WAY.ahead && Math.abs(lat) < WAY.wide && f.home?.id !== 'evilrick' ? -Math.sign(lat || 1) * WAY.off : 0;
+      f.aside += Math.max(-WAY.rate * dt, Math.min(WAY.rate * dt, want - f.aside));
+      let [x, z] = [x0 - fz * f.aside, z0 + fx * f.aside];
+      if (f.aside) [x, z] = push(x, z);
+      const body = stepTo(f, x, z, yawOf(face), dt, 6);
+      // Evil Rick stares through you as he passes
+      lookAt(f, f.home?.id === 'evilrick' && Math.hypot(h.x - x, h.z - z) < 6 ? rickHead : null);
+      animate(f, t, { motion: body.motion });
     }
     // (only the hunt's Locos are out: none before it's open, none once they're handed over)
     const out = new Set((state.locos ?? []).map((l) => l.id));
-    for (const [id, f] of locos) f.group.visible = out.has(id);
+    for (const [id, f] of locos) {
+      f.group.visible = out.has(id);
+      if (!f.group.visible) f.vis = null;
+    }
     for (const l of state.locos ?? []) {
       const f = locos.get(l.id);
       if (!f) continue;
-      const dt = f.lastT == null ? 0 : t - f.lastT;
-      f.lastT = t;
-      f.group.position.set(l.x, 0, l.z);
-      f.group.rotation.y = turnTo(f.group.rotation.y, yawOf(l.face), Math.min(1, dt * 10));
-      // (a Loco in hiding crouches out of sight: he stands still, facing the alley's mouth)
-      animate(f, t, Math.min(1, (l.speed ?? 0) / RICK.run), cam);
+      // drawn: on foot to wherever his rules have him (home at once, when he's lost: walked there)
+      const v = (f.vis ??= { x: l.x, z: l.z, face: l.face, speed: 0 });
+      const hiding = l.state === 'hiding';
+      catchUp(v, l, dt, { speed: hiding ? SLINK : KEEP, snap: 90, push });
+      const home = hiding && v.speed === 0;
+      // hiding: crouched in his alley, facing its mouth; found: up, with a fright
+      const crouch = home ? 'crouch' : null;
+      if (crouch !== (f.atBase ?? null)) {
+        if (f.atBase === 'crouch' && l.state === 'following') f.react('gunfire', { t, moving: true, target: rickHead });
+        f.atBase = crouch;
+        f.base(crouch);
+      }
+      const yaw = yawOf(v.speed > 0.05 ? v.face : l.face);
+      const body = stepTo(f, v.x, v.z, yaw, dt, 8);
+      lookAt(f, l.state === 'following' ? rickHead : null);
+      // handed over: Cop Morty cuffs him
+      if (l.state === 'delivered' && f.state !== 'delivered') cast.get('copmorty')?.play('interact');
+      f.state = l.state;
+      animate(f, t, { motion: body.motion });
     }
   };
 
@@ -161,6 +234,7 @@ export async function createTownsfolk({ parent, tier = 'high' }) {
 
   const dispose = () => {
     for (const f of all) {
+      f.anim?.dispose();
       f.mixer?.stopAllAction();
       f.group.removeFromParent();
     }

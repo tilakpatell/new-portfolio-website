@@ -3301,16 +3301,15 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
-  "mc/pixel-perfection": {
-    "source": "https://modrinth.com/resourcepack/pixel-perfection-legacy",
-    "id": "pixel-perfection-legacy 25.4-75.1",
-    "name": "Pixel Perfection Legacy (resource pack)",
+  "mc/minecraft": {
+    "source": "https://www.minecraft.net",
+    "id": "minecraft-java 1.21.11",
+    "name": "Minecraft (the game's own textures)",
     "authors": [
-      "XSSheep",
-      "Nova_Wostra"
+      "Mojang Studios"
     ],
-    "license": "CC BY-SA 4.0",
-    "use": "The Minecraft tribute’s block tiles and mob skins, rebuilt into public/mc/ by scripts/mc-atlas.mjs; the built files are under the same licence"
+    "license": "Used with Mojang Studios' permission",
+    "use": "The Minecraft tribute's block tiles, item tiles, mob skins and HUD pictures, cut and stacked into public/mc/ by scripts/mc-atlas.mjs from the owner's copy of the game (Java Edition 1.21.11)"
   },
   "meshy/ackbar": {
     "source": "https://www.meshy.ai",
@@ -3856,6 +3855,204 @@
     "source": "https://www.meshy.ai",
     "id": "01a114d2-df68-73e7-a6ca-ed70895ae253",
     "name": "the womp rats, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/cloudtower": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a5-3543-74ca-bf8e-d913c89adea9",
+    "name": "a tower of Cloud City, generated for this site with Meshy AI (scripts/meshy-galaxy-three.mjs, lifted out of a game render of its streets)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/cloudtower2": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a5-39b1-730e-a0e5-0dc3c790d657",
+    "name": "a domed hall of Cloud City, generated for this site with Meshy AI (scripts/meshy-galaxy-three.mjs, lifted out of a game render of its streets)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/cloudplaza": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a5-3cdf-710d-93be-c9e81aa64ab3",
+    "name": "Cloud City's plaza terraces, generated for this site with Meshy AI (scripts/meshy-galaxy-three.mjs, lifted out of a game render of its streets)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/dexdiner": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a5-3fd5-768e-b972-6f68b1f51c65",
+    "name": "Dex's Diner, generated for this site with Meshy AI (scripts/meshy-galaxy-three.mjs, lifted out of a film still)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/club": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a5-4366-72ae-9b1e-ba716f09a5f5",
+    "name": "the Outlander Club, generated for this site with Meshy AI (scripts/meshy-galaxy-three.mjs, lifted out of a film still)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/republica": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a5-468d-764d-a19c-5f59797bd7e4",
+    "name": "500 Republica, generated for this site with Meshy AI (scripts/meshy-galaxy-three.mjs, lifted out of a film still)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/wingguard": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a0-3967-7310-9a60-cd46e71d4fd5",
+    "name": "a Cloud City Wing Guard, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/dex": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116a0-3c15-7510-9c68-545c9c09927c",
+    "name": "Dexter Jettster at his counter, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/jedi3": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116cd-57ef-7515-9ca6-c1cac31fe20b",
+    "name": "the third Jedi, generated for this site with Meshy AI (scripts/meshy-galaxy.mjs, described by look, rigged by Meshy)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/tiestriker": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116d3-18e1-704c-af5c-58f1425187ca",
+    "name": "the TIE Striker, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/dragonsnake": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116d3-1410-7648-a9fc-78068bb09a43",
+    "name": "the dragonsnake’s head and neck, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/cronhouse": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1170f-65dc-716d-92ed-b037c46bed77",
+    "name": "cronhouse, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/croncar": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11719-05dd-74b3-a406-4212eaff6d75",
+    "name": "croncar, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/purgecottage": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1170f-6629-71bc-911f-0de6203a5ae5",
+    "name": "purgecottage, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/purgebarn": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116f2-8a86-724e-931f-ba57da716f4a",
+    "name": "purgebarn, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/purgesiren": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11711-da39-7117-b993-88e39b571e72",
+    "name": "purgesiren, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/purgewell": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1170f-6651-719c-ae39-0b62c3865c63",
+    "name": "purgewell, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/gazorpgate": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116f2-8a8c-701c-b35a-e6e1566fcd7f",
+    "name": "gazorpgate, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/suckulent": {
+    "source": "https://www.meshy.ai",
+    "id": "01a1170f-661c-77b0-831b-aa4ed1842e51",
+    "name": "suckulent, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/birdperch": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11711-77dd-7637-b1f7-aff4639b7213",
+    "name": "birdperch, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/gearbig": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11719-05dc-7345-8b34-08869722c451",
+    "name": "gearbig, generated for this site with Meshy AI",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/rm/gearcog": {
+    "source": "https://www.meshy.ai",
+    "id": "01a116f2-8a97-7488-805b-a4c5c42ad027",
+    "name": "gearcog, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],

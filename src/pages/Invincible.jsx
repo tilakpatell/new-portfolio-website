@@ -5,8 +5,10 @@ import InvWorld from '../components/invincible/world/InvWorld';
 import Viewer from '../components/invincible/viewer/Viewer';
 import ModelCredits from '../components/ModelCredits';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
+import { LINES, THINK_REPLY } from '../components/invincible/father';
 import { audioContext } from '../lib/audio';
 import { jumpTo } from '../lib/anchors';
+import { sayVoiced, stopVoiced } from '../lib/voiced';
 import { prefersReducedMotion, useDocumentTitle } from '../lib/hooks';
 import '@fontsource/bebas-neue/400.css';
 import '../components/invincible/invincible.css';
@@ -33,13 +35,8 @@ const EPISODES = [
 // What a Viltrumite would say about each of the things people built to fly, lift and think.
 const MIMIC = ['a jumbo jet', 'a Saturn V', 'a forklift', 'a supercomputer', 'the Game Boy emulator on this site', 'a hydraulic press', 'the Hubble Space Telescope', 'a bullet train'];
 
-// Things your father said. Each card does something.
-const LINES = [
-  { id: 'think', said: 'Think, Mark!', who: 'Omni-Man, to his son, over the city' },
-  { id: 'mimic', said: 'Look what they need to mimic a fraction of our power.', who: 'Omni-Man, at a passing plane' },
-  { id: 'sure', said: 'Are you sure?', who: 'Omni-Man' },
-  { id: 'still', said: 'I’d still have you, Dad.', who: 'Mark, when asked what he’d have left in five hundred years' },
-];
+// Things your father said (components/invincible/father.js). Each card does something.
+const CARD = Object.fromEntries(LINES.map((l) => [l.id, l]));
 
 // Invincible: the Grayson family's city. Fly Think, Mark! over it, meet the
 // cast in HD on the GDA's turntable, and hear what your father had to say.
@@ -51,7 +48,28 @@ export default function Invincible() {
   const [still, setStill] = useState(false);
   const [shake, setShake] = useState(false);
   const shook = useRef(0);
+  // the world (InvWorld) puts a function here; Think, Mark! calls it with its result (the last episode ends on it)
+  const thinkMark = useRef(null);
   useEffect(() => () => clearTimeout(shook.current), []);
+  // a card's lines in their speakers' own voices, where they've been made
+  // (lib/voiced.js), one after the other; another press starts over, and
+  // leaving the page stops them
+  const speaking = useRef(0);
+  useEffect(
+    () => () => {
+      speaking.current += 1;
+      stopVoiced();
+    },
+    [],
+  );
+  const speak = async (...lines) => {
+    const mine = ++speaking.current;
+    for (const l of lines) {
+      if (mine !== speaking.current) return;
+      const h = await sayVoiced(l.voice, l.said);
+      await h?.ended;
+    }
+  };
   // the page's own look (invincible.css)
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -65,6 +83,7 @@ export default function Invincible() {
       'Think',
       () => {
         sound('thunk');
+        speak(CARD.think, THINK_REPLY);
         if (prefersReducedMotion()) return;
         setShake(true);
         clearTimeout(shook.current);
@@ -75,6 +94,7 @@ export default function Invincible() {
       mimic < 0 ? 'Look' : 'Look at something else',
       () => {
         sound('flyby');
+        speak(CARD.mimic);
         setMimic((i) => (i + 1) % MIMIC.length);
       },
     ],
@@ -82,6 +102,7 @@ export default function Invincible() {
       sure ? 'Yes' : 'I’m sure',
       () => {
         sound('knock');
+        speak(CARD.sure); // (once a press: the reply says it as often as you've pressed)
         setSure((n) => n + 1);
       },
     ],
@@ -89,12 +110,13 @@ export default function Invincible() {
       still ? 'Say it again' : 'Answer him',
       () => {
         sound('ding');
+        speak(CARD.still);
         setStill(true);
       },
     ],
   };
   const reply = {
-    think: 'Five hundred years from now, you’ll still be here. Think about it.',
+    think: THINK_REPLY.said,
     mimic: mimic < 0 ? null : `Look what they need to mimic a fraction of our power: ${MIMIC[mimic]}.`,
     sure: sure ? `${'Are you sure? '.repeat(Math.min(sure, 4)).trim()}` : null,
     still: still ? 'He stops. Then he leaves, for a long time.' : null,
@@ -104,7 +126,7 @@ export default function Invincible() {
     <div className="inv-page relative" data-shake={shake || undefined}>
       <div className="inv-dots" aria-hidden="true" />
 
-      <InvWorld />
+      <InvWorld thinkMark={thinkMark} />
 
       <section className="shell relative z-10 pb-10 pt-10 md:pb-14 md:pt-14" aria-labelledby="inv-title">
         <div className="inv-hero">
@@ -148,6 +170,7 @@ export default function Invincible() {
         <p className="lead mt-4 max-w-[60ch]">Four chapters over the city: a flight lesson with your father, a portal full of Flaxans, your father, and then the Grand Regent of the Viltrum Empire. Dodge as the ring closes on them; hit them while they recover.</p>
         <div className="mt-8">
           <ThinkMark
+            onResult={(won) => thinkMark.current?.(won)}
             fallback={
               <div className="inv-fallback">
                 <p className="inv-fallback-word">INVINCIBLE</p>

@@ -78,7 +78,7 @@ describe('createClient', () => {
   it('each sees the other, by name and ship', async () => {
     const { a, b } = await pair();
     expect(a.snapshot().status).toBe('online');
-    expect(a.snapshot().peers).toEqual([{ id: 'B', name: 'Rick', kind: 'cruiser', loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: '/universe', ally: 'none', blocked: false }]);
+    expect(a.snapshot().peers).toEqual([{ id: 'B', name: 'Rick', kind: 'cruiser', loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: '/universe', level: 1, factions: { side: 'rickmorty', standing: null, war: null, oath: null, rank: null }, ally: 'none', blocked: false }]);
     expect(b.snapshot().peers[0].name).toBe('Han');
   });
 
@@ -97,6 +97,28 @@ describe('createClient', () => {
     a.pose(ship(3));
     a.shot({ x: 3, y: 0, z: 0 }, [-20, 0, 0]);
     expect(b.takeShots()[0]).toMatchObject({ paint: 'aws', guns: 'twin' });
+  });
+
+  it('carries each one\'s level and factions, and a change of them', async () => {
+    const { a, b, seen } = await pair();
+    // (the wallet's marks: Han flies the Falcon, so his side is the Star Wars one)
+    const calm = { law: null, civil: null, outlaw: null };
+    const marks = { standing: { starwars: { ...calm, law: 'wanted' }, rickmorty: calm, breakingbad: calm }, oath: { war: 'gcw', side: 'rebel', rank: 'pilot' } };
+    const factions = { side: 'starwars', standing: { ...calm, law: 'wanted' }, war: 'gcw', oath: 'rebel', rank: 'pilot' };
+    a.setProfile({ level: 4, marks });
+    expect(b.peers.get('A')).toMatchObject({ level: 4, factions });
+    expect(b.snapshot().peers[0]).toMatchObject({ level: 4, factions });
+    expect(a.snapshot().self).toMatchObject({ level: 4, factions });
+    // the same again is no news
+    const before = seen.b.length;
+    a.setProfile({ level: 4, marks: JSON.parse(JSON.stringify(marks)) });
+    expect(seen.b.length).toBe(before);
+    a.setProfile({ marks: { ...marks, oath: { ...marks.oath, rank: 'captain' } } });
+    expect(b.peers.get('A').factions.rank).toBe('captain');
+    expect(b.peers.get('A').level).toBe(4);
+    // another ship, another universe's standing
+    a.setProfile({ kind: 'rv' });
+    expect(b.peers.get('A').factions).toMatchObject({ side: 'breakingbad', standing: null }); // (nothing to say of it: none sent)
   });
 
   it('shows each the garage build the other flies, and a change of it', async () => {
@@ -175,6 +197,18 @@ describe('createClient', () => {
     tick(120);
     a.pose(ship(4));
     expect(b.peers.get('A').pose.safe).toBe(false);
+  });
+
+  it('says when you are riding a lane, and keeps where each pilot was last seen for the roster', async () => {
+    const { a, b, tick } = await pair();
+    expect(b.poseOf('A')).toBeNull(); // (not seen yet)
+    a.pose({ ...ship(4), z: -48000 }, { lane: true });
+    expect(b.peers.get('A').pose.lane).toBe(true);
+    expect(b.poseOf('A')).toEqual({ x: 4, y: 0, z: -48000 });
+    tick(120);
+    a.pose(ship(4));
+    expect(b.peers.get('A').pose.lane).toBe(false);
+    expect(b.poseOf('nobody')).toBeNull();
   });
 
   it('shows the others the hunters after you, a few times a second, and says when they are gone', async () => {
@@ -264,8 +298,12 @@ describe('createClient', () => {
     b.ally('A', 'accept');
     expect(a.peers.get('B').ally).toBe('ally');
     expect(b.peers.get('A').ally).toBe('ally');
+    // each side is told it's made, with who it's with (the wallet pays for it)
+    expect(seen.a.filter((e) => e.type === 'allied')).toEqual([{ type: 'allied', id: 'B' }]);
+    expect(seen.b.filter((e) => e.type === 'allied')).toEqual([{ type: 'allied', id: 'A' }]);
     b.ally('A', 'end');
     expect(a.peers.get('B').ally).toBe('none');
+    expect(seen.a.filter((e) => e.type === 'allied')).toHaveLength(1);
   });
 
   it('a hit counts after a shot, and not between allies', async () => {

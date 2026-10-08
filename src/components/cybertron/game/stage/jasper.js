@@ -3,13 +3,16 @@
 // eroded; the road running east to west through it with its lines; the edge
 // of town to the east; the Decepticons' energon mine dug into a canyon, its
 // crystals glowing blue out of the rock; the ground bridge's green vortex by
-// the road; and Predaking and Dreadwing going over now and then.
+// the road; Soundwave on the rocks over the mine, his head following you;
+// and Predaking (his wings beating, then gliding) and Dreadwing going over
+// now and then.
 //
-// buildStage(area, { renderer, tier }) → Promise<{ group, update(t), dispose }>
+// buildStage(area, { renderer, tier }) → Promise<{ group, update(t, dt, camera, sim), dispose }>
 
 import * as THREE from 'three';
 import { createLibrary } from '../../../../lib/cc0';
 import { makeFigure, makeThing } from '../bots';
+import { flyer, watcher } from './living';
 import { makeSky, makeStrips, merged, platedMaterial, slab } from './common';
 
 const VORTEX = /* glsl */ `
@@ -144,37 +147,41 @@ export async function buildStage(area, { renderer, tier = 'high' } = {}) {
 
   // Soundwave, on top of the rocks over the mine, watching whoever comes
   let soundwave = null;
+  let watch = null;
   const perch = S.watcher && area.solids.filter((s) => s.tag === 'rock').sort((a, b) => Math.hypot(a.x - S.watcher.near.x, a.z - S.watcher.near.z) - Math.hypot(b.x - S.watcher.near.x, b.z - S.watcher.near.z))[0];
   if (perch)
-    makeFigure(S.watcher.kind).then((f) => {
+    makeFigure(S.watcher.kind, { seed: 11 }).then((f) => {
       soundwave = f;
       f.group.position.set(perch.x, perch.top, perch.z);
       f.group.rotation.y = Math.atan2(0 - perch.x, 0 - perch.z);
       f.play('idle');
       group.add(f.group);
+      watch = watcher(f, { seed: 2 });
     });
 
   // what flies over: Predaking, and Dreadwing
   const flyers = [];
   for (const [i, kind] of S.flyovers.entries())
     makeThing(kind).then((m) => {
-      flyers.push({ m, i });
+      // (a rigged one, Predaking, flies on its bones; a jet as it is)
+      flyers.push({ m, i, fly: flyer(m, { seed: i + 1 }) });
       group.add(m);
     });
 
   return {
     group,
     floor: [ground, road], // what the area's light is baked on (lib/three/groundwork)
-    update(t) {
+    update(t, dt = 1 / 60, camera, sim = null) {
       sky.userData.uniforms.uTime.value = t;
       vu.uTime.value = t;
-      for (const { m, i } of flyers) {
+      for (const { m, i, fly } of flyers) {
         const a = t * (0.05 + i * 0.03) + i * 2;
         m.position.set(Math.cos(a) * (500 - i * 120), 160 + i * 60, Math.sin(a) * (500 - i * 120));
         m.rotation.set(0, -a, -0.3);
+        m.position.y += fly(t).lift;
       }
       mineGlow.intensity = 2600 + 500 * Math.sin(t * 2.3);
-      soundwave?.update(1 / 60);
+      watch?.(t, dt, sim);
     },
     dispose() {
       for (const x of own) x.dispose?.();

@@ -7,6 +7,8 @@
 
 import { ambience, backdrop, bursts, field, label, rand, rgb } from '../kit';
 import { mix } from '../../../lib/three/theme';
+import { sayVoiced } from '../../../lib/voiced';
+import { LINES, VOICE } from './dunderLines';
 
 const PAD = /* glsl */ `
 varying vec2 vUv;
@@ -28,17 +30,6 @@ void main() {
   gl_FragColor = vec4(col, a * uAlpha);
 }
 `;
-
-const LINES = [
-  'That’s what she said',
-  'Bears. Beets. Battlestar Galactica.',
-  'Identity theft is not a joke',
-  'I declare bankruptcy!',
-  'Limitless paper in a paperless world',
-  'Fact: bears eat beets',
-  'Assistant to the regional manager',
-  'It is your birthday.',
-];
 
 // A paper dart, side on, nose to the right: the near wing and the far one.
 const NEAR = [[42, 0], [-30, 14], [-18, 1]];
@@ -155,7 +146,8 @@ export function create(canvas, ctx) {
       burst(x, y) {
         confetti.emit(x, y, { count: 18, colors: [[255, 255, 255], [250, 224, 110], [143, 182, 255], this.accent], speed: [80, 260], gravity: -180, size: 11 });
         const line = LINES[(Math.random() * LINES.length) | 0];
-        const tag = label(line, { font: '700 18px "Courier Prime", ui-monospace, monospace', color: this.dark ? '#e8edf5' : '#1f4e8c' });
+        if (VOICE[line]) sayVoiced(VOICE[line], line); // in their own voice, where it's been made (lib/voiced.js)
+        const tag =label(line, { font: '700 18px "Courier Prime", ui-monospace, monospace', color: this.dark ? '#e8edf5' : '#1f4e8c' });
         // kept inside the screen
         const half = tag.geometry.parameters.width / 2;
         tag.position.set(Math.max(-k.size.w / 2 + half + 8, Math.min(k.size.w / 2 - half - 8, x)), y + 30, 0);

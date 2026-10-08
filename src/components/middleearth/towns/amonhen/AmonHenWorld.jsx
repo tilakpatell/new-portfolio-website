@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { Bubble, Convo, QuestList, Stick, Travellers } from '../TownHud';
 import { SideList } from '../SideList';
@@ -14,7 +15,7 @@ import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { newWatchers, stepWatchers } from '../watchers';
 import { COLLIDERS, DECOY, GLADE, RUN_START, SEAT, SHORE_SPOT, SKIPPING, SPOTS, STAIR, START, STICKS, URUK_ROUNDS, WALLS, castFor, inLake, validAt } from './layout';
-import { CONVOS, QUESTS, SEAL, SIDE, SKIPPING_SAYS, SPEAKERS, amonHenProgress, stoneWord } from './story';
+import { CONVOS, QUESTS, SAYS, SEAL, SIDE, SKIPPING_SAYS, SPEAKERS, amonHenProgress, stoneWord } from './story';
 import { BOROMIR, RESCUE, SEAT_GAZE, SKIP, URUKS, gazeIn, gazeOn, newRescue, newSeat, newSkipping, newStone, newUnseen, newWood, pickStick, pressSkip, reach, samUp, stepRescue, stepSeat, stepSkipping, stepUnseen, stoneAt, strengthAt, tiltAt } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
@@ -121,7 +122,13 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   const [list, setList] = useState(false);
   const lines = useRef({});
   const bubbleRef = useRef(null);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js), or
+  // says `line`, where only that much of it is theirs
+  const say = useCallback((text, bad = false, who = null, line = text) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, line);
+  }, []);
+  useEffect(() => stopVoiced, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -255,11 +262,13 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     say('Behind you, Sam comes crashing down to the water and wades in after you. He can’t swim! Paddle back (hold W, or the button), and reach for his hand when he comes up (Space).', true);
   }, [say]);
 
-  // ducks and drakes, with Merry and Pippin on the shore
+  // ducks and drakes, with Merry and Pippin on the shore (and what they say
+  // there, in their voices: ./voicelines.js)
   const skipSay = useCallback((line) => {
     const s = sim.current;
     s.said = line;
     s.saidAt = s.t;
+    sayVoiced(line.who, line.say);
   }, []);
   const startSkipping = useCallback(() => {
     const s = sim.current;
@@ -482,7 +491,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         sounds().then((x2) => x2.snap());
         if (r === 'all') {
           complete('camp');
-          say('“Where’s Frodo?” Sam looks round, but you have gone off up into the woods to think, alone.', false);
+          say(SAYS.alone.text, false, SAYS.alone.who);
         } else say(`Firewood: ${s.wood.got.length} of ${STICKS.length}.`);
       });
     }
@@ -508,7 +517,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
       for (const e of stepWatchers(s.boro, s.h, dt, BOROMIR, { colliders: COLLIDERS, walls: WALLS, ring: false, active: s.mode === 'walk' && !s.busy, push: (x, z) => walker.push(x, z, 0.5) })) {
         if (e.type === 'seen') {
           sounds().then((x) => x.boromir());
-          say('He hears you! “Frodo!” He’s coming. Go softly, round the trees.', true);
+          say(SAYS.heard.text, true, SAYS.heard.who);
         } else if (e.type === 'caught') {
           s.busy = true;
           a.fx('grab');
@@ -534,7 +543,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         } else if (e.type === 'seen') {
           s.busy = true;
           a.fx('eye');
-          say('“I see you.” The Eye has you, and Gandalf’s voice in your head: “Take it off! Take it off!” You fall from the Seat… Again: pull at the Ring just after its gaze has passed.', true);
+          say(SAYS.seen.text, true, SAYS.seen.who, SAYS.seen.line);
           later(() => sim.current?.mode === 'seat' && startSeat(), 2400);
         }
       }
@@ -551,7 +560,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           s.busy = true;
           a.fx('grab');
           sounds().then((x) => x.clash());
-          say('A great black hand reaches for you, and Aragorn’s sword is there first. “Run, Frodo!” Again: down to the shore unseen.', true);
+          say(SAYS.run.text, true, SAYS.run.who);
           later(() => sim.current?.uruks && startRun(), 2000);
         }
       }
@@ -562,7 +571,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         s.drawn = near.map((w) => ({ x: w.x, z: w.z, face: w.face, t: 0 }));
         s.uruks.list = s.uruks.list.filter((w) => !near.includes(w));
         sounds().then((x) => x.shout());
-        say('Merry and Pippin leap out from behind a tree, waving: “Hey! Over here! This way!” Two of the Uruk-hai go after them. Run, Frodo!', true);
+        say(SAYS.decoy.text, true, SAYS.decoy.who);
         later(() => sounds().then((x) => x.horn()), 3500);
       }
       if (s.h.x > SHORE_SPOT.x - 6) {

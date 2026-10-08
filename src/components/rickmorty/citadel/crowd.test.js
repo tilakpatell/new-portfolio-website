@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { standing } from './crowd';
+import { BREATH, breathing, standing } from './crowd';
 
 // a figure as scripts/crowd.mjs writes it: positions quantized to
 // normalized Int16 in [-1, 1], with the node's matrix carrying the real
@@ -35,5 +35,25 @@ describe('a crowd figure’s geometry', () => {
     expect(y.getY(0)).toBeCloseTo(0, 3);
     expect(y.getY(3)).toBeGreaterThan(y.getY(0));
     expect(y.getY(3)).toBeLessThan(y.getY(2));
+  });
+});
+
+describe('a crowd figure’s breath', () => {
+  it('rises and falls in its vertex shader, on a clock shared by all and a phase of its own', () => {
+    const clock = { value: 0 };
+    const mat = breathing(new THREE.MeshToonMaterial(), clock, 1.85);
+    const shader = { uniforms: {}, vertexShader: ['void main() {', '#include <begin_vertex>', '#include <project_vertex>', '}'].join('\n') };
+    mat.onBeforeCompile(shader);
+    expect(shader.uniforms.crowdTime).toBe(clock);
+    expect(shader.uniforms.crowdTall.value).toBe(1.85);
+    expect(shader.vertexShader).toContain('uniform float crowdTime;');
+    // (after the vertex is begun, before it's placed: so the instance's matrix takes it where it stands)
+    const at = shader.vertexShader.indexOf('crowdBreath');
+    expect(at).toBeGreaterThan(shader.vertexShader.indexOf('#include <begin_vertex>'));
+    expect(at).toBeLessThan(shader.vertexShader.indexOf('#include <project_vertex>'));
+    // (its phase from where it stands, each copy its own)
+    expect(BREATH).toContain('instanceMatrix[3]');
+    // one program for every kind
+    expect(mat.customProgramCacheKey()).toBe(breathing(new THREE.MeshToonMaterial(), clock, 1.5).customProgramCacheKey());
   });
 });

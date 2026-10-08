@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEEP, DEEP_SOLIDS, STARS, WONDERS, beyondOf, binaryAt, moveBinaries, nearestStar, openness, parseWonder, planetAt, reachOf, wonderById } from './deep';
+import { DEEP, DEEP_SOLIDS, PLACES, STARS, WONDERS, beyondOf, binaryAt, moveBinaries, nearestStar, openness, parseWonder, planetAt, reachOf, wonderById } from './deep';
 import { GOALS } from './ship';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH, SECTORS, SECTOR_OF, inSector, sectorOf } from './layout';
 import { MOONS, byId } from './universes';
@@ -198,7 +198,7 @@ describe('deep space', () => {
     expect(citadel.at).toEqual(inSector('rickmorty', [0, 0, 0]));
     const parts = DEEP_SOLIDS.filter((s) => s.id.startsWith('citadel'));
     for (const p of parts) expect(sectorOf(...p.at), p.id).toBe('rickmorty');
-    expect(MOONS.length).toBe(8);
+    expect(MOONS.length).toBe(10);
     for (const m of MOONS) {
       const at = POSITIONS[m.id];
       expect(SECTOR_OF[m.id], m.id).toBe('rickmorty');
@@ -223,5 +223,27 @@ describe('deep space', () => {
     const o = SECTORS.rickmorty.origin;
     expect(nearestStar(o[0], o[1], o[2]).star.id).toBe('curvesun');
     expect(nearestStar(o[0], o[1], o[2]).dist).toBeLessThan(SECTORS.rickmorty.edge);
+  });
+});
+
+describe('deep space, spread (scale.js’s SPREAD)', () => {
+  const main = WONDERS.filter((w) => !w.sector);
+  it('puts every main-sector wonder between 8,000 and 30,000 out', () => {
+    for (const w of main) {
+      const r = Math.hypot(w.at[0], w.at[2]);
+      expect(r, w.id).toBeGreaterThan(8000);
+      expect(r, w.id).toBeLessThan(30000);
+    }
+  });
+
+  it('keeps every wonder further than 1.5 of its reach from any other place', () => {
+    // (a portal sits beside its own planet: its door, not a neighbour)
+    for (const w of main.filter((x) => x.kind !== 'portal')) {
+      for (const p of PLACES) {
+        if (p.id === w.id || p.kind === 'station' || p.kind === 'portal' || SECTOR_OF[p.id] === 'rickmorty' || p.at[2] < -40000) continue;
+        const d = Math.hypot(...w.at.map((v, i) => v - p.at[i]));
+        expect(d, `${w.id} and ${p.id}`).toBeGreaterThan(1.5 * reachOf(w));
+      }
+    }
   });
 });
