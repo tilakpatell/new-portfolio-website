@@ -1,4 +1,4 @@
-// The way shown: the marker's element (ui/marker.js places it each frame).
+// The way shown: the marker's element (ui/waymark.js places it each frame).
 //
 //   <Marker markerRef />
 

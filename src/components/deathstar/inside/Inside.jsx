@@ -7,7 +7,7 @@ import module from './module';
 import Hud, { Pause } from './ui/Hud';
 import MapPanel from './ui/Map';
 import Marker from './ui/Marker';
-import { placeMarker } from './ui/marker';
+import { placeMarker } from './ui/waymark';
 import Start from './ui/Start';
 import Touch from './ui/Touch';
 import { fromSearch, layers } from './ui/state';

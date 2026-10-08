@@ -1,4 +1,4 @@
-// The way shown on the screen, worked out for ui/Marker.jsx: a diamond over
+// The way shown on the screen, worked out for ui/Marker.jsx (waymark.js, apart from Marker.jsx: a disk that ignores case can't tell marker.js from Marker.jsx's import): a diamond over
 // the next door, lift or the story's target, with how far the whole way
 // is; past the screen's edge, or behind you, on the edge with an arrow
 // round to it. Placed every frame from the world's 'marker' event straight
