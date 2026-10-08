@@ -5,7 +5,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES } from '../theme/themes';
 import { useFun } from '../fun/FunProvider';
 import { SCRIPTS } from '../fun/scripts';
-import { openPalette } from '../lib/palette';
+import { openGuide, openPalette } from '../lib/palette';
 import { audioContext, setSound, soundOn } from '../lib/audio';
 import { sayVoiced } from '../lib/voiced';
 import { LIGHTSABER, QUOTES } from '../components/terminal/quotes';
@@ -529,11 +529,13 @@ export default function Terminal() {
       checklist: () => {
         const visited = local.get(VISITED_KEY, []);
         const ticked = THINGS_TO_DO.filter((t) => isDone(t, { unlocked, visited, stored: storedKey })).length;
+        // (the input keeps the focus here, so ? would type: the guide opens itself)
+        setTimeout(() => openGuide({ tab: 'checklist' }), 600);
         return [
           L(`  THE CHECKLIST: ${ticked}/${THINGS_TO_DO.length} done`, 'head'),
           ...THINGS_TO_DO.map((t) => (isDone(t, { unlocked, visited, stored: storedKey }) ? L(`  ■ ${t.title}`) : L(`  □ ${t.title}`, 'dim'))),
           BLANK,
-          L('  The guide’s checklist (press ?) shows you any of them.', 'dim'),
+          L('  Opening the guide’s checklist, where Show me takes you to any of them…', 'dim'),
         ];
       },
       restart: () => {

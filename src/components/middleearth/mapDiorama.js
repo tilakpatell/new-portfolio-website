@@ -33,6 +33,8 @@ import { EMBER, FIRE, SMOKE, createParticles } from './kit';
 import { makeGollum, makeToyFigure, makeTreebeard, pose } from './mapFigures';
 import { CAST, HOBBIT_LINES } from './mapCast';
 import { createGhosts } from './towns/ghosts';
+import { attend, castFigure, releaseCast, tickCast, upgrade } from './cast3d';
+import { turn } from '../../lib/three/gait';
 
 const SCALE = 10;
 const P = (sx, sy) => [(sx - SHEET.w / 2) / SCALE, (sy - SHEET.h / 2) / SCALE];
@@ -488,10 +490,13 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
   const sam = makeToyFigure({ hair: 0x8a5a2b, coat: 0xb8873a, cloak: 0x6a6448, pack: true, seed: 2 });
   frodo.group.scale.setScalar(1.9);
   sam.group.scale.setScalar(1.8);
+  // each on the cast once its model's here (./cast3d.js), the toy till then
+  castFigure(frodo, 'frodo', null, { role: 'lead' });
+  castFigure(sam, 'sam');
   scene.add(tag(frodo.group, 'frodo'), tag(sam.group, 'sam'));
   const top = (g) => new THREE.Box3().setFromObject(g).max.y;
   const people = CAST.map((c) => {
-    const f = c.kind === 'ent' ? makeTreebeard() : c.kind === 'gollum' ? makeGollum() : makeToyFigure(c.look);
+    const f = c.kind === 'ent' ? makeTreebeard() : c.kind === 'gollum' ? makeGollum() : castFigure(makeToyFigure(c.look), c.id, c.look);
     const [x, z] = P(...c.at);
     f.group.scale.setScalar(c.kind === 'ent' ? 1.45 : 1.8);
     f.group.position.set(x, 0, z);
@@ -506,6 +511,7 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
     make: () => {
       const f = makeToyFigure({ hair: 0x3a2214, coat: 0x8a3a2a, cloak: 0x5f6b48, seed: 1 });
       f.group.scale.setScalar(1.9);
+      upgrade(f, 'frodo', { role: 'ghost' });
       return { ...f, top: top(f.group) };
     },
     tag: 0.62,
@@ -642,7 +648,8 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
     if (vx || vz) H.face = Math.atan2(-vz, vx);
     if (wasMoving && !H.moving) keep();
     frodo.group.position.set(H.x, 0, H.z);
-    frodo.group.rotation.y = H.face;
+    // (turned over a moment, not snapped)
+    frodo.group.rotation.y = turn(frodo.group.rotation.y, H.face, dt, 12);
     // Sam keeps up, a little behind
     {
       const dx = H.x - Sam.x;
@@ -657,7 +664,7 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
         Sam.face = Math.atan2(-dz, dx);
       }
       sam.group.position.set(Sam.x, 0, Sam.z);
-      sam.group.rotation.y = Sam.face;
+      sam.group.rotation.y = turn(sam.group.rotation.y, Sam.face, dt, 10);
     }
     frodoTalk.v = Math.max(0, frodoTalk.v - dt * 0.4);
     samTalk.v = Math.max(0, samTalk.v - dt * 0.4);
@@ -672,10 +679,8 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
         p.greeted = true;
         say(p.c.id);
       } else if (d > 4.5) p.greeted = false;
-      const want = d < 5 ? Math.atan2(-(H.z - g.position.z), H.x - g.position.x) : p.home;
-      let diff = want - g.rotation.y;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      g.rotation.y += diff * Math.min(1, dt * 3);
+      // the head to Frodo, the body round only past what a neck can turn (a toy turns itself)
+      attend(p.f, H, p.home, dt, { who: frodo, rate: 3, greet: false });
       p.wave = Math.max(0, p.wave - dt * 0.35);
       p.talk = Math.max(0, p.talk - dt * 0.3);
       pose(p.f, t + p.face * 3, { wave: Math.min(1, p.wave * 2), talk: p.talk });
@@ -741,6 +746,8 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
     smoke.step(dt);
     wisps.step(dt);
     motes.step(dt);
+    // the people on the cast, drawn for this frame
+    tickCast(scene, null, dt);
   };
 
   return {
@@ -749,6 +756,7 @@ export function buildDiorama(scene, { soft = false, reduced = false, models = tr
     dispose() {
       gone = true;
       ghosts.dispose();
+      releaseCast(scene);
     },
     // the other travellers on the map now (towns/travellers.js's list())
     travellers(list) {

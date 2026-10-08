@@ -133,7 +133,7 @@ export function planFor(tours, audience, view, here, { coarse = false, shell, he
   const first = hello?.[audience] ?? hello?.recruiter;
   let at = path;
   return [{ id: 'shell', title: 'Getting about', path, stops: first ? [first, ...stops] : stops }, ...own]
-    .flatMap((c) => (c.heavy && coarse && Array.isArray(c.phone) ? c.phone : [c]))
+    .flatMap((c) => (c.heavy && coarse && Array.isArray(c.phone) ? c.phone.map((p) => ({ ...p, from: c.id })) : [c]))
     .map((c) => {
       at = c.path ?? at;
       return c.path === at ? c : { ...c, path: at };
@@ -166,7 +166,8 @@ export function startAt(chapters, { chapter, stop, todo } = {}) {
     return c < 0 ? null : { c, stop: chapters[c].stops.find((s) => s.todo === todo).id };
   }
   if (!chapter) return { c: 0 };
-  const c = chapters.findIndex((ch) => ch.id === chapter);
+  // (a heavy chapter's id finds the first of its phone versions)
+  const c = chapters.findIndex((ch) => ch.id === chapter || ch.from === chapter);
   return c < 0 ? null : { c, stop };
 }
 

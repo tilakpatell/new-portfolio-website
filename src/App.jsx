@@ -87,7 +87,8 @@ function ScrollToTop() {
   // page, and its guide's key when that's another (a place in a world ticks
   // the world's things; a project still ticks its own)
   useEffect(() => {
-    const key = guideKeyFor(pathname);
+    // ('/' is the front door, which may be the map or send you to /home: not a visit to the map)
+    const key = pathname === '/' ? null : guideKeyFor(pathname);
     let list = addVisited(local.get(VISITED_KEY, []), pathname);
     if (key && key !== pathname) list = addVisited(list, key);
     local.set(VISITED_KEY, list);

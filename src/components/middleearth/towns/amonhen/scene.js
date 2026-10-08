@@ -29,6 +29,7 @@ import { makeFolk } from '../bree/props';
 import { createAmonHenKit } from './props';
 import { stoneAt } from './rules';
 import { BOATS, CAMP, CAST, COLLIDERS, DECOY_RUN, KINGS, LAKE_Y, PILLARS, SEAT, SHORE_SPOT, SKIPPERS, SKIPPING, STAIR, STICKS, TREES, height, shoreX, toPath } from './layout';
+import { attend, castDo, castPlay, drawWatcher, releaseCast, tickCast, upgrade } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -352,6 +353,10 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
     const u = kit.uruk(i + 1, { lurtz: i === 0 });
     u.group.visible = false;
     land.add(u.group);
+    // on the cast once its model's here (../../cast3d.js): the Uruk-hai, as
+    // tall as this one, its own body hidden (and kept, should it not come)
+    const tall = new THREE.Box3().setFromObject(u.group).getSize(V()).y * 0.95;
+    upgrade(u, 'uruk', { role: 'folk', hide: [...u.group.children], top: tall, seed: i + 1 });
     return u;
   });
 
@@ -421,6 +426,7 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
     // ── Frodo ──
     let fy = height(h.x, h.z);
     sit(frodo, false);
+    castDo(frodo, { upper: null, look: null }); // (on the cast: set below, frame by frame)
     frodo.group.visible = A.ring < 0.5 || seeing;
     if (s.onSeat) {
       frodo.group.position.copy(sitAt);
@@ -446,6 +452,8 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
       frodo.group.rotation.set(0, Math.PI, 0);
       sit(frodo, true);
       pose(frodo, t, { moving: false, wave: s.mode === 'rescue' ? 0.5 + Math.sin(t * 3) * 0.3 : 0 });
+      // (on the cast: reaching out over the side for Sam the whole while)
+      castDo(frodo, { upper: s.mode === 'rescue' ? 'wave.help' : null, look: s.mode === 'rescue' ? sam : null });
       fy = frodo.group.position.y;
     } else {
       frodo.group.position.set(h.x, fy, h.z);
@@ -462,6 +470,11 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
           arm.rotation.x = sk.phase === 'flying' || sk.phase === 'done' ? -1.2 + k * 2.4 : -1.4 - Math.sin(t * 2) * 0.1;
         }
       } else frodo.body.rotation.z = 0;
+      // (on the cast: the throw, once, as the stone goes)
+      if (sk?.phase === 'flying' && A.threw !== sk.throws) {
+        A.threw = sk.throws;
+        castPlay(frodo, 'cast', { layer: 'upper', fade: 0.08 });
+      }
     }
     if (!(s.mode === 'rescue' || s.promise || s.mode === 'end')) myBoat.group.visible = false;
     ghosts.update(s.travellers ?? [], t, dt, { ringOn: Boolean(s.ring) });
@@ -473,8 +486,8 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
       p.group.visible = Boolean(on);
       if (!on) continue;
       p.group.position.set(c.x, height(c.x, c.z), c.z);
-      const near = Math.hypot(h.x - c.x, h.z - c.z) < 5;
-      turnTo(p, near ? Math.atan2(-(h.z - c.z), h.x - c.x) : c.face, dt);
+      // they turn to Frodo as he comes by: on the cast the head first, a greeting the first time
+      attend(p, h, c.face, dt, { who: frodo });
       pose(p, t + c.x, { moving: false, talk: s.talk === c.id ? 1 : 0 });
     }
     // Merry and Pippin, running off with the Uruk-hai after them
@@ -492,7 +505,9 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
         const z = DECOY_RUN.z * k + (CAST.find((c) => c.id === id).z) * (1 - k);
         p.group.position.set(x, height(x, z), z);
         p.group.rotation.y = Math.atan2(-(DECOY_RUN.z - z), DECOY_RUN.x - x);
-        pose(p, t + off, { moving: true, speed: 1.6, wave: Math.sin(t * 8) > 0 ? 1 : 0 });
+        // (on the cast: running, arms up and calling the Uruks after them)
+        castDo(p, { upper: 'wave.help' });
+        pose(p, t + off, { moving: true, speed: 1.6, wave: p.cast?.ready ? 0 : Math.sin(t * 8) > 0 ? 1 : 0 });
       }
     }
     // Boromir, in the glade
@@ -500,10 +515,19 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
     boromir.group.visible = Boolean(b);
     if (b) {
       boromir.group.position.set(b.x, height(b.x, b.z), b.z);
-      if (b.mode === 'talk') boromir.group.rotation.y = Math.atan2(-(h.z - b.z), h.x - b.x);
-      else turnTo(boromir, b.face, dt, 8);
+      // on the cast: talking, his eyes on you and his body turned over a
+      // moment; hunting, his head on you and no hand raised (the toy's arm
+      // was all it had); a lunge for the Ring when he has you
+      if (b.mode === 'talk') {
+        if (boromir.cast?.ready) attend(boromir, h, Math.atan2(-(h.z - b.z), h.x - b.x), dt, { who: frodo, near: 30, greet: false });
+        else boromir.group.rotation.y = Math.atan2(-(h.z - b.z), h.x - b.x);
+        castDo(boromir, { upper: null, look: frodo });
+      } else {
+        turnTo(boromir, b.face, dt, 8);
+        drawWatcher(boromir, b, dt, { you: frodo, blow: 'collect' });
+      }
       const hunting = b.mode === 'alert' || b.mode === 'chase';
-      pose(boromir, t, { moving: b.mode === 'chase' || (b.mode === 'patrol' && b.wait <= 0) || b.mode === 'back', speed: hunting ? 1.5 : 1, talk: s.speaker === 'boromir' ? 1 : 0, wave: hunting ? 0.8 : 0 });
+      pose(boromir, t, { moving: b.mode === 'chase' || (b.mode === 'patrol' && b.wait <= 0) || b.mode === 'back', speed: hunting ? 1.5 : 1, talk: s.speaker === 'boromir' ? 1 : 0, wave: hunting && !boromir.cast?.ready ? 0.8 : 0 });
     }
     // Aragorn, coming up to the Seat
     aragorn.group.visible = Boolean(s.aragorn);
@@ -523,10 +547,13 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
       const bob = s.rescue.up ? -0.55 + Math.sin(t * 6) * 0.06 : -1.6;
       sam.group.position.set(sx, LAKE_Y + bob, SHORE_SPOT.z + 0.3);
       sam.group.rotation.y = 0;
-      pose(sam, t, { moving: false, wave: s.rescue.up ? 1 : 0 });
+      // (on the cast: treading water, his arm up for Frodo's hand)
+      castDo(sam, { base: 'swim.idle', upper: s.rescue.up ? 'wave.help' : null, look: frodo });
+      pose(sam, t, { moving: false, wave: s.rescue.up && !sam.cast?.ready ? 1 : 0 });
     } else if (sam.group.visible) {
       sam.group.position.copy(myBoat.seats?.[0] ?? V(0.9, 0.3, 0)).applyMatrix4(myBoat.group.matrixWorld);
       sam.group.rotation.y = Math.PI;
+      castDo(sam, { base: null, upper: null, look: s.speaker === 'sam' || s.promise ? frodo : null });
       sit(sam, true);
       pose(sam, t, { moving: false, talk: s.speaker === 'sam' ? 1 : 0 });
     }
@@ -538,15 +565,17 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
       u.group.visible = Boolean(w || (d && d.t < 8));
       if (w) {
         u.group.position.set(w.x, height(w.x, w.z), w.z);
-        turnTo(u, w.face + (w.look ?? 0), dt, 8);
+        // (on the cast its head does the looking about; the toy turned its whole self)
+        turnTo(u, w.face + (u.cast?.ready ? 0 : (w.look ?? 0)), dt, 8);
         const hunting = w.mode === 'alert' || w.mode === 'chase';
-        u.animate?.(t + i, { running: w.mode === 'chase' || w.mode === 'back' || (w.mode === 'patrol' && w.wait <= 0), swing: w.mode === 'chase' ? Math.max(0, Math.sin(t * 4)) : 0, look: hunting ? 0 : (w.look ?? 0) });
+        if (!drawWatcher(u, w, dt, { you: frodo })) u.animate?.(t + i, { running: w.mode === 'chase' || w.mode === 'back' || (w.mode === 'patrol' && w.wait <= 0), swing: w.mode === 'chase' ? Math.max(0, Math.sin(t * 4)) : 0, look: hunting ? 0 : (w.look ?? 0) });
       } else if (d) {
         const k = Math.min(1, d.t / 8);
         const x = d.x + (DECOY_RUN.x - d.x) * k;
         const z = d.z + (DECOY_RUN.z - d.z) * k;
         u.group.position.set(x, height(x, z), z);
         u.group.rotation.y = Math.atan2(-(DECOY_RUN.z - z), DECOY_RUN.x - x);
+        castDo(u, { upper: null, look: null });
         u.animate?.(t + i, { running: true });
       }
     });
@@ -559,7 +588,12 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
       c.p.group.position.set(c.x, height(c.x, c.z), c.z);
       turnTo(c.p, sk.phase === 'flying' ? 0 : c.face, dt, 3);
       const cheering = sk.cheer && sk.phase === 'done';
-      pose(c.p, t + c.x, { moving: false, talk: s.speaker === c.look ? 1 : 0, wave: cheering && (c.look === 'pippin' || sk.cheer > 1) ? 0.6 + Math.sin(t * 9) * 0.3 : 0 });
+      // on the cast: eyes on the stone as it skips, a cheer (each his own) when it's a good one
+      const going = cheering && (c.look === 'pippin' || sk.cheer > 1);
+      if (going && !c.cheered) castPlay(c.p, c.look === 'pippin' ? 'cheer.up' : 'fist.pump');
+      c.cheered = going;
+      castDo(c.p, { look: stone.visible ? stone : null });
+      pose(c.p, t + c.x, { moving: false, talk: s.speaker === c.look ? 1 : 0, wave: going && !c.p.cast?.ready ? 0.6 + Math.sin(t * 9) * 0.3 : 0 });
     }
     // the stone, out of your hand (about a metre over the shore) and along the water
     const at = sk?.touches && sk.phase === 'flying' ? stoneAt(sk.touches, sk.thrown, 0.95 + height(SKIPPING.x, SKIPPING.z) - LAKE_Y) : null;
@@ -665,6 +699,8 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
     sun.target.position.copy(camera.position);
     ground.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -720,6 +756,7 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
       ground.dispose();
       ghosts.dispose();
       disposeTree(scene);
+      releaseCast(scene);
       stage.dispose();
     },
   };

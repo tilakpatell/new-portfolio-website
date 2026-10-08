@@ -3,7 +3,8 @@ import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { RiCompass3Line } from 'react-icons/ri';
 import { useAchievements } from '../Achievements';
 import { local, storage } from '../../lib/hooks';
-import { TOUR_EVENT, TOUR_KEY, TOUR_NAMES, isLightRoute, offerHere, openTour, parseTourLink, planFor, readProgress, samePage, startAt, tourFor, unfinished, writeProgress } from '../../lib/tour';
+import { TOUR_EVENT, TOUR_KEY, TOUR_NAMES, isLightRoute, offerHere, openTour, parseTourLink, readProgress, samePage, startAt, tourFor, unfinished, writeProgress } from '../../lib/tour';
+import { planOf } from './plan';
 import { BRIEF_EVENT, BRIEF_KEY, briefHere, briefKeyFor, sawBrief } from './brief';
 import { guideKeyFor } from '../guide/routes';
 import './offer.css';
@@ -24,15 +25,12 @@ import './offer.css';
 const loadTour = () => import('./Tour');
 const Tour = lazy(loadTour);
 
-const coarse = () => window.matchMedia?.('(pointer: coarse)').matches ?? false;
-
 // An audience's chapters for the view and page you're in, a chapter that's a
 // world's basics given its cards. Empty when they aren't written yet. The
 // shell's stops and each audience's hello come from steps.js too, when it
 // gives them (chapters/shared.js).
 async function chaptersFor(audience, view, here) {
-  const { TOURS, SHELL_STOPS, HELLO } = await import('./steps');
-  const plan = planFor(TOURS, audience, view, here, { coarse: coarse(), shell: SHELL_STOPS, hello: HELLO });
+  const plan = planOf(await import('./steps'), audience, view, here);
   if (!plan.some((c) => c.brief)) return plan;
   const { BRIEFS } = await import('./briefs');
   return plan.map((c) => (c.brief ? { ...c, stops: BRIEFS[c.brief] ?? [] } : c));
@@ -247,6 +245,10 @@ export default function TourHost() {
   const carry = useRef(carryOn);
   carry.current = carryOn;
   const light = isLightRoute(pathname) && !run && !offer;
+  // (the note is for the light pages: off one, into a world, it goes)
+  useEffect(() => {
+    if (!isLightRoute(pathname)) setNudge(null);
+  }, [pathname]);
   useEffect(() => {
     if (!light || storage.get(NUDGED, false)) return undefined;
     const p = readProgress(local.get(TOUR_KEY, null));
@@ -272,15 +274,12 @@ export default function TourHost() {
     setRun(null);
     if (was?.kind !== 'tour' || how !== 'done') {
       if (was?.kind === 'tour') remember({});
+      // (just stopped, it's not a moment to be asked to carry on)
+      if (was?.audience) storage.set(NUDGED, true);
       return;
     }
     // (one chapter alone is a chapter seen, not the tour taken)
-    if (was.only)
-      return remember({
-        audience: undefined,
-        chapter: undefined,
-        stop: undefined,
-      });
+    if (was.only) return remember({});
     unlock('tour');
     if (!was.audience) return remember({ done: ['view'] });
     const done = BOTH[was.audience] ?? [was.audience];
@@ -302,6 +301,8 @@ export default function TourHost() {
   // or the note can carry on
   const onProgress = (chapter, stop) => {
     expected.current = chapter.path;
+    // (one chapter alone isn't the tour: where the tour itself got to stays)
+    if (run.only) return;
     remember({ audience: run.audience, chapter: chapter.id, stop: stop?.id });
   };
   const onNavigate = (path) => {
@@ -325,7 +326,7 @@ export default function TourHost() {
     const p = readProgress(local.get(TOUR_KEY, null));
     end(isLightRoute(a.to) ? 'excursion' : 'left');
     navigate(a.to);
-    if (isLightRoute(a.to) && was?.audience && p?.chapter) {
+    if (isLightRoute(a.to) && was?.audience && !was.only && p?.chapter) {
       storage.set(NUDGED, true); // (this note is the visit's: the arrival one doesn't follow it)
       carryOn({ audience: was.audience, chapter: p.chapter, stop: p.stop }, 'excursion');
     }

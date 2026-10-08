@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CAST } from '../cast';
 import { KINDS, PORTAL } from './foes';
 import { CITY, buildWorld, near } from './map';
-import { MISSIONS, PHOTO_SPOTS, STORY, feedMission, keepStory, loadStory, markerOf, missionOf, nextStory, placeOf, startMission, stepOf } from './missions';
+import { MISSIONS, PHOTO_SPOTS, RADIO, STORY, feedMission, keepStory, loadStory, markerOf, missionOf, newRadio, nextRadioCall, nextStory, placeOf, startMission, stepOf } from './missions';
 import { RINGS } from './quests';
 
 const W = buildWorld();
@@ -206,6 +206,39 @@ describe('each episode, end to end', () => {
 });
 
 describe('the radio', () => {
+  // the radio run for `seconds` in the given state, collecting its calls
+  function run(radio, seconds, state) {
+    const calls = [];
+    for (let t = 0; t < seconds; t += 0.05) {
+      const r = nextRadioCall(radio, 0.05, state);
+      radio = r.radio;
+      if (r.call) calls.push({ call: r.call, t });
+    }
+    return { radio, calls };
+  }
+  it('calls every 60–120 s in the city with nothing on, never the same call twice running', () => {
+    const { calls } = run(newRadio(), 600, { mission: null, zone: 'city', done: [] });
+    expect(calls.length).toBeGreaterThanOrEqual(5);
+    expect(calls.length).toBeLessThanOrEqual(10);
+    for (let i = 1; i < calls.length; i++) {
+      expect(calls[i].t - calls[i - 1].t).toBeGreaterThanOrEqual(RADIO.every[0] - 0.1);
+      expect(calls[i].t - calls[i - 1].t).toBeLessThanOrEqual(RADIO.every[1] + 0.1);
+      expect(calls[i].call).not.toBe(calls[i - 1].call);
+    }
+    for (const c of calls) expect(missionOf(c.call)?.side).toBe(true);
+  });
+  it('says nothing while a story mission is on, or out in space, and offers Eve’s race only beside her', () => {
+    expect(run(newRadio(), 300, { mission: 'ep2', zone: 'city' }).calls).toEqual([]);
+    expect(run(newRadio(), 300, { mission: null, zone: 'space' }).calls).toEqual([]);
+    expect(run(newRadio(), 600, { mission: null, zone: 'city' }).calls.some((c) => c.call === 'everace')).toBe(false);
+    expect(run(newRadio(), 1200, { mission: null, zone: 'city', eve: true }).calls.some((c) => c.call === 'everace')).toBe(true);
+  });
+  it('offers the photos not yet taken first', () => {
+    const { calls } = run(newRadio(), 1200, { mission: null, zone: 'city', done: ['photo1', 'photo2', 'photo3', 'photo4'] });
+    const photos = calls.filter((c) => c.call.startsWith('photo'));
+    expect(photos.length).toBeGreaterThan(0);
+    for (const c of photos) expect(c.call).toBe('photo5');
+  });
   it('a chase ends with a landing within 12 m of the car, and fails after 45 s', () => {
     let r = feed(startMission('chase'), [at([0, 20, 0], { car: [100, 0, 0] }), { type: 'land', speed: 3, p: [120, 0, 0] }]);
     expect(r.p.done).toBe(false);

@@ -5,7 +5,7 @@ import { CRAWLS } from './crawls';
 import { GALAXY_LINES, galaxyCrew } from './lines';
 import { FILMS, SYSTEMS } from './systems';
 
-const EVENTS = ['jump', 'course', 'tractor', 'boarded', 'ion', 'superlaser', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer', 'wellclear', 'gcw-shieldgen', 'gcw-superlaser', 'gcw-run', 'gcw-reactor', 'gcw-ds2', 'gcw-executor', 'gcw-hangar', 'gcw-isd', 'gcw-ram', 'gcw-gate', 'gcw-evacuated'];
+const EVENTS = ['jump', 'course', 'tractor', 'boarded', 'ion', 'superlaser', 'shield-down', 'shield-up', 'scarif-shield', 'escaped', 'destroyer', 'wellclear', 'gcw-shieldgen', 'gcw-superlaser', 'gcw-run', 'gcw-reactor', 'gcw-ds2', 'gcw-executor', 'gcw-hangar', 'gcw-isd', 'gcw-ram', 'gcw-gate', 'gcw-evacuated', 'find'];
 const HUNTED = ['separatists', 'remnant', 'weequay', 'rebellion', 'rebelnavy', 'newrepublic', 'republic', 'republicnavy', 'escort']; // (what every crew has a galaxy line for)
 const OUTLAWS = ['navy', 'fett', 'ig88', 'bossk', 'dengar', 'weequay']; // roamRules.js's: a line each, the crew's own or the galaxy's
 const KILLS = ['vulture', 'trifighter'];
