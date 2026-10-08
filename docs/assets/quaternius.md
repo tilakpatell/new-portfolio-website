@@ -1,6 +1,6 @@
 # Quaternius packs (CC0)
 
-The owner's Quaternius packs, bought or downloaded on 2026-10-08, kept as the GitHub release [`assets-quaternius`](https://github.com/tilakpatell/tilakpatell.com/releases/tag/assets-quaternius) instead of in the repo. Together the archives come to about 1.5 GB, and most of each pack is source files (`.blend`, FBX, OBJ, engine projects) the site never serves. Every pack is CC0 1.0 (public domain): the GLBs can be served on the site, and credit is optional. When a pack's models go into a world, their credits go into `public/games/credits.json` (as `quaternius/<model>`), which `scripts/credits.mjs` lists under Quaternius in CREDITS.md.
+The owner's Quaternius packs, bought or downloaded on 2026-10-08, kept as the GitHub release [`assets-quaternius`](https://github.com/tilakpatell/tilakpatell.com/releases/tag/assets-quaternius) instead of in the repo. Together the archives come to about 1.5 GB, and most of each pack is source files (`.blend`, FBX, OBJ, engine projects) the site never serves. Every pack is CC0 1.0 (public domain): the GLBs can be served on the site, and credit is optional. A pack imported as the worlds' kit carries its licence and source in its manifest (`public/kit/<pack>/index.json`), and `npm run credits` (`scripts/credits.mjs`) reads every manifest to name Quaternius, each pack and its model count in CREDITS.md's CC0 section. Models brought into a world's landing by `scripts/quaternius.mjs` have their credits in `public/games/credits.json` (as `quaternius/<model>`), which `scripts/credits.mjs` lists under Quaternius in CREDITS.md too.
 
 Unpacked, exactly as downloaded (Blender sources, FBX, glTF, textures, engine exports), the same packs are in their own repo, [tilakpatell/tilakverse-assets](https://github.com/tilakpatell/tilakverse-assets): clone it whole (about 2.2 GB), or one pack with a sparse checkout (its README shows how). It's public, so a session on any machine or account can get it.
 
@@ -11,7 +11,9 @@ node scripts/assets-fetch.mjs list
 node scripts/assets-fetch.mjs ual2 city
 ```
 
-Then import only what a world uses into `public/models/…`, compressed (meshopt, WebP), as the other import scripts do (`scripts/sketchfab-import.mjs`, `scripts/kenney.mjs`). The planet landings' trees, rocks, flowers and street furniture come in through `scripts/quaternius.mjs`: a GLB a family of models under `public/models/quaternius/`, a node a model, with a manifest of each one's size, triangles, collider and body, and its credit:
+Then a model pack goes in as the worlds' kit with `node scripts/kit/import.mjs <pack>`: one GLB a family, each model with its LOD1, compressed (meshopt, WebP), and a manifest, into `public/kit/<pack>/`. A pack that comes as FBX only (`farm`, `street`, `furniture`) is turned into GLBs first by `node scripts/kit/fbx.mjs <pack>`. `node scripts/kit-check.mjs` then holds every pack to its budgets. The manual is [`scripts/kit/README.md`](../../scripts/kit/README.md). The two animation libraries (`ual1`, `ual2`) go through `scripts/ual-bake.mjs` instead.
+
+Anything else a world uses goes into `public/models/…`, compressed (meshopt, WebP), as the other import scripts do (`scripts/sketchfab-import.mjs`, `scripts/kenney.mjs`). The planet landings' trees, rocks, flowers and street furniture come in through `scripts/quaternius.mjs`: a GLB a family of models under `public/models/quaternius/`, a node a model, with a manifest of each one's size, triangles, collider and body, and its credit:
 
 ```
 QUATERNIUS=/path/to/tilakverse-assets/quaternius npm run quaternius [nature/trees …]

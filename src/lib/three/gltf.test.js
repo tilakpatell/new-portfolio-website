@@ -71,12 +71,16 @@ describe('the hero ships’ finish', () => {
     const root = new THREE.Group();
     root.add(new THREE.Mesh(new THREE.BoxGeometry(), hull), new THREE.Mesh(new THREE.BoxGeometry(), [trim, hull]));
     tuneTree(root, SHIP_PROFILE);
-    expect(hull.roughness).toBe(0.72);
+    expect(hull.roughness).toBe(0.6);
     expect(hull.metalness).toBe(0.1);
     expect(trim.roughness).toBe(0.42);
     expect(trim.metalness).toBe(0.65);
     expect(hull.envMapIntensity).toBe(1.3);
     expect(trim.envMapIntensity).toBe(1.3);
+  });
+
+  it('the ship profile’s light is graphic: key 1, fill a quarter, rim a half', () => {
+    expect(SHIP_PROFILE.light).toEqual({ key: 1, fill: 0.25, rim: 0.5 });
   });
 
   it('keeps a single metalness for things not named metal, as before', () => {
