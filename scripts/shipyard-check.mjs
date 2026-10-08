@@ -125,7 +125,7 @@ async function open(viewport, { mobile = false } = {}) {
   await page.keyboard.press('h');
   const yard = page.getByRole('dialog', { name: 'Shipyard' });
   await yard.waitFor({ timeout: 60000 });
-  await page.waitForTimeout(2500); // (the showroom's first frames, in software)
+  await page.waitForTimeout(8000); // (the showroom's first frames, in software, and the real ship's model over its stand-in)
   return { ctx, page, yard, errors };
 }
 

@@ -1,8 +1,9 @@
 // The Shipyard's showroom: the draft's ship on a turntable on a canvas of
 // its own, under a dock's light (a warm key, a blue fill, a rim from
 // behind) on a gridded disc, turning slowly on its own and by a drag. It's
-// built by the same buildShip the map flies (plain hulls, as the galaxy
-// draws them: no models to load), so what you see is what you fly. A new
+// built by the same buildShip the map flies, with the iconic ships' own
+// models put over the stand-in as the map and the galaxy do (the X-wing,
+// the Falcon, the RV, the cruiser), so what you see is what you fly. A new
 // paint or part is a new outfit on the same ship; a new hull or module is a
 // new ship. Pointing at a slot pulses what's bolted there. It draws at
 // most FPS frames a second, only while the tab is visible, and stops on
@@ -13,12 +14,14 @@
 
 import * as THREE from 'three';
 import { pixelRatio } from '../../../lib/device';
-import { quiet, releaseContext } from '../../../lib/three/renderer';
-import { LENGTH, buildShip } from '../shipModels';
+import { disposeTree, quiet, releaseContext } from '../../../lib/three/renderer';
+import { cloneScene, loadGLTF } from '../../../lib/three/gltfCache';
+import { dropTransmission } from '../../../lib/three/glass';
+import { BUILT, LENGTH, SHIP_MODELS, buildShip } from '../shipModels';
 import { paintById } from '../paint';
 import { writeBuild } from './build';
 import { BUILD_SLOTS } from './parts';
-import { FPS, fitDistance, glowCopy, pulseAt, yawFromDrag } from './showroomRules';
+import { FPS, fitDistance, glowCopy, heroOf, pulseAt, yawFromDrag } from './showroomRules';
 
 const FOV = 30;
 const PULSE_COLOR = new THREE.Color('#7cc8ff');
@@ -103,6 +106,39 @@ export function createShowroom(canvas, { reduced = false } = {}) {
     focused = { slot, swaps };
   };
   let wantFocus = null;
+
+  // the real ship over the stand-in, once it's loaded (only if this is
+  // still the ship shown); the stand-in until then, or if it never comes
+  const mountHero = (shown, kind, build) => {
+    const hero = heroOf(kind, build, SHIP_MODELS);
+    if (!hero) return;
+    const still = () => !gone && model === shown;
+    if (hero.glb)
+      loadGLTF(hero.glb)
+        .then((g) => {
+          const m = g && cloneScene(g);
+          if (!m) return;
+          dropTransmission(m); // (the Falcon's glass, without its extra pass)
+          if (!still() || !shown.mount(shown.dress ? shown.dress(m) : m)) return disposeTree(m);
+          dirty = true;
+          return undefined;
+        })
+        .catch(() => {});
+    else
+      import('../../rickmorty/cruiser3d')
+        .then((mod) => mod.buildCruiser({ ink: BUILT / 2.7 }))
+        .then((c) => {
+          if (!c) return;
+          if (!still() || !shown.mount(c.group, { update: c.update, dispose: c.dispose, ownGlow: true, tint: c.tint, setLooks: c.setLooks })) {
+            c.dispose();
+            disposeTree(c.group);
+            return;
+          }
+          dirty = true;
+        })
+        .catch(() => {});
+  };
+  let gone = false;
 
   // turning: slowly on its own (unless motion's reduced), by a drag, by
   // the arrow keys; a wheel or a pinch brings it a little nearer
@@ -196,6 +232,7 @@ export function createShowroom(canvas, { reduced = false } = {}) {
         model.setThrottle?.(0.2);
         turn.add(model.group);
         shownKey = k;
+        mountHero(model, kind, build);
       }
       model.paint(paintById(loadout.paint));
       unfocus();
@@ -209,6 +246,7 @@ export function createShowroom(canvas, { reduced = false } = {}) {
       dirty = true;
     },
     dispose() {
+      gone = true;
       cancelAnimationFrame(raf);
       sizing.disconnect();
       canvas.removeEventListener('pointerdown', down);

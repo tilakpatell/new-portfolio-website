@@ -6,6 +6,7 @@ import GuideLink from '../guide/GuideLink';
 import { CARDS } from '../interests/cards';
 import { STATION_CARDS } from './stationCards';
 import { CREWS, crewById } from './crews';
+import { hullLine } from './yardRules';
 import { PARTS_SLOTS, STOCK, partById } from './outfit';
 import { paintById } from './paint';
 import { next, prev } from './layout';
@@ -80,7 +81,8 @@ const and = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join
 
 // What the ship's fitted with (outfit.js), and the way into the shipyard
 // and to another ship
-function Fitted({ loadout, onHangar, onChange }) {
+function Fitted({ loadout, build = null, craft = '', onHangar, onChange }) {
+  const hull = hullLine(build, craft);
   const paint = paintById(loadout.paint);
   const parts = PARTS_SLOTS.filter((slot) => loadout[slot] !== STOCK).map((slot) => partById(slot, loadout[slot]));
   return (
@@ -92,6 +94,7 @@ function Fitted({ loadout, onHangar, onChange }) {
           {parts.length ? `, with ${and(parts.map((p) => p.name))}` : ', nothing bolted on'}
         </span>
       </p>
+      {hull && <p className="universe-fitted-hull mt-2 text-sm text-muted">{hull}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
         {onHangar && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={onHangar}>
@@ -138,7 +141,7 @@ function Exits({ onClassic }) {
   );
 }
 
-export default function UniversePanel({ universe, wonder = null, onFly = null, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onClassic, tucked: tuckedAsked = false, onTuck, onNav }) {
+export default function UniversePanel({ universe, wonder = null, onFly = null, onSelect, onEnter, onWhole, leaving, ship, loadout, build = null, onShip, onHangar, onClassic, tucked: tuckedAsked = false, onTuck, onNav }) {
   // (out of hiding while a tour runs: its stops are on it)
   const touring = useTouring();
   const tucked = tuckedAsked && !touring;
@@ -245,7 +248,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
               you.
             </p>
             {loadout ? (
-              <Fitted loadout={loadout} onHangar={onHangar} onChange={() => setChanging(true)} />
+              <Fitted loadout={loadout} build={build} craft={crewById(ship)?.ship ?? ''} onHangar={onHangar} onChange={() => setChanging(true)} />
             ) : (
               <button type="button" className="btn btn-ghost btn-sm mt-4" onClick={() => setChanging(true)}>
                 Change ship

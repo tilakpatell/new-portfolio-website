@@ -29,3 +29,12 @@ export function glowCopy(material) {
   c.customProgramCacheKey = material.customProgramCacheKey;
   return c;
 }
+
+// The real ship to put over the stand-in, as the map and the galaxy do: an
+// iconic ship's own model (shipModels.js's SHIP_MODELS, given as `models`),
+// the cruiser's own build, or nothing for a garage build (whole as it is).
+export function heroOf(kind, build, models) {
+  if (build) return null;
+  if (models[kind]) return { glb: models[kind] };
+  return kind === 'cruiser' ? { cruiser: true } : null;
+}

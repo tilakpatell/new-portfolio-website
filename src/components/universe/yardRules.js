@@ -16,7 +16,7 @@
 import { CATALOG, itemFor, needText } from './catalog';
 import { migrateOwned, refundOf } from './economy';
 import { SLOTS, STOCK, equip, isOpen, parsePart, partById, statsOf } from './outfit';
-import { STOCK_BUILD, parseBuildCode, rollBuild } from './shipyard/build';
+import { STOCK_BUILD, buildCode, parseBuildCode, rollBuild } from './shipyard/build';
 import { BUILD_SLOTS, isModuleOpen, moduleById } from './shipyard/parts';
 
 // The catalogue's item for a part or paint, and for a module (so the view
@@ -183,4 +183,15 @@ export function draftKeys(draft) {
       if (item && !item.stock) out.push(item.key);
     }
   return out;
+}
+
+// What the panel says when a garage build flies in place of the crew's own
+// ship (`craft`: crews.js's ship, 'An X-wing'), so the iconic ship is never
+// gone without a word; null on the stock hull.
+export function hullLine(build, craft = '') {
+  if (!build) return null;
+  const code = buildCode(build);
+  return craft
+    ? `Flying garage build ${code} in place of ${craft[0].toLowerCase()}${craft.slice(1)}. Pick Stock in the shipyard’s Hull to fly it again.`
+    : `Flying garage build ${code}. Pick Stock in the shipyard’s Hull to fly the crew’s own ship again.`;
 }

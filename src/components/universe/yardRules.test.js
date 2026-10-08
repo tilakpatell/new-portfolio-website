@@ -4,7 +4,7 @@ import { itemFor } from './catalog';
 import { STOCK, STOCK_LOADOUT, partById } from './outfit';
 import { STOCK_BUILD, buildCode } from './shipyard/build';
 import { modulesFor } from './shipyard/parts';
-import { check, diff, draftKeys, fitDraft, itemOfModule, itemOfPart, openDraft, pasteDraft, rollDraft, setHull, setModule, setPart, sellable } from './yardRules';
+import { check, diff, draftKeys, fitDraft, hullLine, itemOfModule, itemOfPart, openDraft, pasteDraft, rollDraft, setHull, setModule, setPart, sellable } from './yardRules';
 
 const wallet = ({ credits = 0, owned = [], unlocked = [] } = {}) => {
   const e = createEconomy({ achievements: () => unlocked });
@@ -195,5 +195,14 @@ describe('draftKeys', () => {
     const e = wallet({ owned: [srb.key, rcs.key] });
     const d = setPart(openDraft(live), 'booster', 'srb');
     expect(sellable({ loadouts: {}, hulls: {}, garage: {}, keep: draftKeys(d) }, e).map((s) => s.item.key)).toEqual([rcs.key]);
+  });
+});
+
+describe('hullLine', () => {
+  it('says when a garage build flies in place of the crew’s own ship, and nothing otherwise', () => {
+    expect(hullLine(null, 'An X-wing')).toBeNull();
+    const b = { ...STOCK_BUILD, seed: 5 };
+    expect(hullLine(b, 'An X-wing')).toBe(`Flying garage build ${buildCode(b)} in place of an X-wing. Pick Stock in the shipyard’s Hull to fly it again.`);
+    expect(hullLine(b, '')).toBe(`Flying garage build ${buildCode(b)}. Pick Stock in the shipyard’s Hull to fly the crew’s own ship again.`);
   });
 });

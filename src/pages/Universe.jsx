@@ -610,6 +610,7 @@ export default function Universe({ ask = false }) {
         leaving={Boolean(leaving)}
         ship={ship}
         loadout={loadout}
+        build={build}
         onShip={pickShip}
         onHangar={() => setYard(true)}
         onClassic={() => switchTo('classic')}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FPS, fitDistance, pulseAt, yawFromDrag } from './showroomRules';
+import { FPS, fitDistance, heroOf, pulseAt, yawFromDrag } from './showroomRules';
 
 describe('the showroom’s sums', () => {
   it('the camera backs off on a tall canvas', () => {
@@ -19,5 +19,17 @@ describe('the showroom’s sums', () => {
     expect(yawFromDrag(100)).toBeCloseTo(1.2);
     expect(yawFromDrag(-50)).toBeCloseTo(-0.6);
     expect(FPS).toBe(30);
+  });
+});
+
+describe('the ship the showroom shows', () => {
+  const MODELS = { xwing: '/x.glb', falcon: '/f.glb', rv: '/rv.glb' };
+  it('is the real model of an iconic ship, the cruiser’s own, or none on a garage build', () => {
+    expect(heroOf('xwing', null, MODELS)).toEqual({ glb: '/x.glb' });
+    expect(heroOf('falcon', null, MODELS)).toEqual({ glb: '/f.glb' });
+    expect(heroOf('rv', null, MODELS)).toEqual({ glb: '/rv.glb' });
+    expect(heroOf('cruiser', null, MODELS)).toEqual({ cruiser: true });
+    expect(heroOf('xwing', { hull: 'dart' }, MODELS)).toBeNull(); // (a build is whole as it is)
+    expect(heroOf('nonsense', null, MODELS)).toBeNull();
   });
 });

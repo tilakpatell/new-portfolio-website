@@ -14,6 +14,8 @@ Plan: `docs/superpowers/plans/2026-10-08-shipyard-overhaul.md` (three pull reque
 - A build module can't be lit alone in the showroom (`modules3d.js` merges a build by material): pointing at one lights the whole hull.
 
 ## Rulings worth knowing
+- The showroom shows the iconic ships' own models (the X-wing, the Falcon, the RV, the cruiser with its crew), not the plain hulls the spec named: the owner asked for the real ships, and the galaxy, which the spec cited, loads them too. A garage build is still drawn as its modules.
+- When a garage build flies in place of the crew's own ship, the panel says so (`yardRules.hullLine`): a build saved from the old hangar had quietly replaced the X-wing everywhere.
 - The ion burst and the Mk II torpedoes are priced by hand (700 and 900): by the spec's formula they come out at 100, their worth being the harder hit, not more a second.
 - The read-out's Ordnance row is rounds a second against the stock rack's, as the spec says: it rises with the missile rack and falls with the Mk II.
 - On the RV's 5 MW plant, a starter weapon fits on a stock ship but not on top of every other starter part.
