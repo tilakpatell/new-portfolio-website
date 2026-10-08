@@ -309,10 +309,13 @@ const steps = {
         const multi = from && from.length > 1;
         const { result } = await api('POST', multi ? '/v1/multi-image-to-3d' : '/v1/image-to-3d', {
           ...(from ? (multi ? { image_urls: from } : { image_url: from[0] }) : { input_task_id: s[n].image }),
-          ai_model: 'latest',
+          ai_model: BUILDINGS[n].ai ?? 'latest', // (or an older model, `ai`, for one the latest turns down)
           should_texture: true,
           enable_pbr: true,
-          should_remesh: true,
+          // (`remesh: false` for one whose fine open framework is too dense
+          // for Meshy's remesher, which turned the half-built station down
+          // twice: its raw mesh comes back, and the squeeze simplifies it)
+          should_remesh: BUILDINGS[n].remesh ?? true,
           topology: 'triangle',
           target_polycount: BUILDINGS[n].tris,
           texture_resolution: BUILDINGS[n].texture ?? '2k',

@@ -3618,6 +3618,15 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
+  "meshy/corvette": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-9697-75f7-9012-e308f6ed4607",
+    "name": "the CR90 corvette the galaxy flies (the universe map keeps cr90.glb, credited apart), generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
   "meshy/acklay": {
     "source": "https://www.meshy.ai",
     "id": "01a114d2-d8f7-763b-a485-32e0c6a3daaf",

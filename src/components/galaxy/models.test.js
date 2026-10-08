@@ -245,15 +245,18 @@ describe('the galaxy’s models', () => {
   // each over its old file or beside the universe map's, and each squeezed to
   // its kind's budget: a fighter 450 KB, a capital 900 KB)
   describe('the worst ones made again with Meshy', () => {
+    // (`flown`: the hunters, wingmen and set pieces fly it too, galaxy/scene.js's fleet)
     const REMADE = {
       interdictor: { url: '/models/galaxy/interdictor.glb', kb: 900 },
+      corvette: { url: '/models/galaxy/corvette.glb', kb: 500, flown: true }, // (the galaxy's own: the universe map keeps cr90.glb)
     };
     const games = JSON.parse(readFileSync(at('/games/credits.json'), 'utf8'));
     const sketchfab = JSON.parse(readFileSync(new URL('../../data/modelCredits.json', import.meta.url), 'utf8'));
 
     it('are what the galaxy loads for each kind, inside its budget', () => {
-      for (const [kind, { url, kb }] of Object.entries(REMADE)) {
+      for (const [kind, { url, kb, flown }] of Object.entries(REMADE)) {
         expect(MODELS[kind]?.url, kind).toBe(url);
+        if (flown) expect(HUNTER_GLB[kind], kind).toEqual({ ...MODELS[kind], built: true });
         expect(statSync(at(url)).size / 1024, kind).toBeLessThan(kb);
       }
     });

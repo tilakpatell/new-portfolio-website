@@ -94,6 +94,10 @@ export const MODELS = {
   zeta: { url: '/models/galaxy/zeta.glb', nose: Math.PI / 2 },
   fang: { url: '/models/galaxy/fang.glb', nose: Math.PI / 2 },
   naboocruiser: { url: '/models/galaxy/naboocruiser.glb', nose: Math.PI / 2 },
+  // the universe map's corvette made again for the galaxy, where one flies
+  // close by in every Rebel line (its own file: the universe map keeps the
+  // lighter cr90.glb for its traffic), turned nose to +z in the making
+  corvette: { url: '/models/galaxy/corvette.glb', nose: 0 },
   // the universe map's wars' flagships (scripts/meshy-war.mjs: Rick and
   // Morty's from the show's own pictures, Breaking Bad's from words)
   councildread: { url: '/models/universe/war/councildread.glb', nose: Math.PI / 2 },
@@ -195,13 +199,14 @@ export const lodLevels = (size) => [
 // the universe map, where a fighter is a few pixels long, and they have no
 // normals, so a wingman flying beside you came out in facets. The bounty
 // hunters' ships and the navy's gunboats are their models too, where they
-// were only ever the built ones. And the Star Destroyer that jumps in on you
-// (universe/setpieces.js) is the battles' one, which every arrival has
-// loaded already: on a desktop that's the close-up cut, where the universe
-// map's would have been another 470 KB of a lesser ship.
+// were only ever the built ones. And the Star Destroyer and the corvette
+// that jump in on you (universe/setpieces.js) are the battles' ones, which
+// every arrival has loaded already: on a desktop the destroyer's is the
+// close-up cut, where the universe map's would have been another 470 KB of a
+// lesser ship, and the corvette is the galaxy's own.
 export const HUNTER_GLB = {
   ...GLB,
-  ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced', 'xwing', 'interceptor', 'ywing', 'awing', 'tiebomber', 'gunboat', 'ig2000', 'houndstooth', 'punishingone', 'destroyer'].map((k) => [k, { ...MODELS[k], built: true }])),
+  ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced', 'xwing', 'interceptor', 'ywing', 'awing', 'tiebomber', 'gunboat', 'ig2000', 'houndstooth', 'punishingone', 'destroyer', 'corvette'].map((k) => [k, { ...MODELS[k], built: true }])),
   // (the war's other hunters and what their capital ships drop in: the
   // Republic's fighters, Wedge in an X-wing, a Mon Calamari cruiser, a Venator)
   ...Object.fromEntries(['arc170', 'delta7', 'moncal', 'venator'].map((k) => [k, { ...MODELS[k], built: false }])),

@@ -121,6 +121,8 @@ export const BUILDINGS = {
   deathstar2: remake('File:DeathStar2.jpg', 'the half-built spherical battle station, the open side showing its exposed skeletal superstructure of girders and decks, its round dish in the upper half', {
     shot: 'The whole space station in frame, seen from the same angle as in the picture, isolated on a plain light grey background, no stars, no planet, no ships, no text.',
     lifter: 'nano-banana-pro',
+    ai: 'meshy-5',
+    texture: '2k', // (the older model makes no 4K maps)
     tris: 40000,
     tex: 2048,
   }),
