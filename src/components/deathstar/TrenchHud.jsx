@@ -1,4 +1,5 @@
-import { local } from '../../lib/hooks';
+import { local, useMediaQuery } from '../../lib/hooks';
+import GuideCue from '../guide/GuideCue';
 import { fmtClock } from './battle';
 import { TRENCH } from './trench';
 
@@ -33,6 +34,7 @@ export function TrenchTouch({ computer, torpedoes, onComputer, onFire, holdLaser
 export function TrenchCard({ ui, best, level, setLevel, onStart }) {
   const ended = ui.phase === 'won' || ui.phase === 'lost';
   const bestHere = best[level] ?? 0;
+  const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   return (
     <div className="trench-overlay">
       <p className="stretch-semi text-2xl font-semibold text-white">{ui.phase === 'won' ? 'Direct hit. The Death Star is gone.' : ui.phase === 'lost' ? 'Pull up.' : 'Trench run'}</p>
@@ -40,6 +42,7 @@ export function TrenchCard({ ui, best, level, setLevel, onStart }) {
         {ui.phase === 'ready'
           ? 'Over the surface first: shoot down the TIE fighters and dodge the towers. Then dive into the trench, thread the catwalks and walls, lose Vader, and put a torpedo in the exhaust port. A torpedo spent in the trench blasts a catwalk, a wall or a turret out of your way, but you only have two. Arrows or W A S D steer (drag on a touch screen), Space or a held click fires the lasers, F or Enter fires a torpedo, T switches off the targeting computer.'
           : ui.message}
+        {ui.phase === 'ready' && <GuideCue touch={touch} />}
       </p>
       {ended && (
         <p className="mono mt-3 text-sm text-white">

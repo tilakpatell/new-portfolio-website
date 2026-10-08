@@ -1072,6 +1072,17 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
     };
   }, [running, fire, switchComputer]);
 
+  // While a run is on, the page knows, so the guide's ? steps out from under
+  // the fire buttons (extras.css); it is back on the title and end cards.
+  useEffect(() => {
+    if (!running) return undefined;
+    const root = document.documentElement;
+    root.dataset.playing = 'trench';
+    return () => {
+      if (root.dataset.playing === 'trench') delete root.dataset.playing;
+    };
+  }, [running]);
+
   // Before a run, Space or Enter on the screen starts one.
   const onKeyDown = (e) => {
     if (running || e.target !== e.currentTarget) return;
