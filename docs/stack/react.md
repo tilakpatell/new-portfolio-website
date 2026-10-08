@@ -1,10 +1,10 @@
 # React
 
-**Version** `react@^19.3.0`, `react-dom@^19.3.0`, `react-router-dom@^7.18.4`, `react-icons@^5.7.0` · **Page owner** `src/pages/` and `src/components/` · **Decision** none recorded
+**Version** `react@^19.3.0`, `react-dom@^19.3.0`, `react-router-dom@^7.18.4`, `react-icons@^5.7.0`, `@types/react@^19.3.0`, `@types/react-dom@^19.3.0` · **Page owner** `src/pages/` and `src/components/` · **Decision** none recorded
 
 ## What it is, and why it is here
 
-React draws every page, the shell and every HUD over the 3D; React Router maps the address to a page; `react-icons` supplies the icons. The 3D itself is not React: a scene is a plain module that `useScene` or the world runtime mounts on a canvas.
+React draws every page, the shell and every HUD over the 3D; React Router maps the address to a page; `react-icons` supplies the icons. `@types/react` and `@types/react-dom` are type declarations only: the site is JavaScript with no TypeScript config, so they serve an editor’s hints and nothing in the build reads them. The 3D itself is not React: a scene is a plain module that `useScene` or the world runtime mounts on a canvas.
 
 ## Where it is used
 
@@ -21,7 +21,7 @@ The census rows are in [README.md](README.md): `react` is the second most import
 - **Pages load lazily.** Every page in `src/App.jsx` is `lazy(() => import(…))`, so a visitor downloads only the page they open; only `App.jsx` mounts a page (`docs/health/RULES.md`; the measure’s `boundary-breaks` counts the imports that break it).
 - **3D stays out of React’s render.** A page’s scene is made by `src/lib/three/useScene.js`, a world by the runtime (`src/runtime/useWorld.js`); a frame loop writes a HUD’s numbers into the elements it holds, not into React state (`docs/health/RULES.md`, “The worlds’ HUDs”).
 - **`react-dom`** is used for `createPortal` (overlays above the page) and `react-dom/server`’s `renderToStaticMarkup` in tests, and in one scene that draws markup to a string (`src/components/albuquerque/metherria/scene.js`).
-- **Icons** come from `react-icons`’ Remix line set (`react-icons/ri`) and nothing else; the shell’s come through `src/components/icons.js`.
+- **Icons** come from `react-icons`’ Remix line set (`react-icons/ri`) and nothing else; the shell’s come through `src/components/icons.js`. At build time `scripts/icons-apart.mjs` (a Vite plugin) gives each icon a module of its own, so an icon goes only into the chunk that draws it rather than the whole set into the entry chunk.
 
 ## What the site does not use, and why
 
