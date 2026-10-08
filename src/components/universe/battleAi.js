@@ -24,6 +24,7 @@
 
 import { FIGHTERS, NAMES } from './wars';
 import { BATTLE, UP, ZERO, copy, cross, dist2, dot, inSights, len, norm, pick, set, turnToward, v3 } from './battleKit';
+import { TACTICS } from './battleTactics';
 
 export function spawn(k, f, first) {
   const { A, S, C, lines, avoid, rand } = k;
@@ -57,8 +58,8 @@ export function spawn(k, f, first) {
   f.bank = 0;
 }
 
-function makeFighter(k, team) {
-  const kind = pick(k.b.teams[team].side.fighters, k.rand);
+function makeFighter(k, team, chosen = null) {
+  const kind = chosen ?? pick(k.b.teams[team].side.fighters, k.rand);
   const type = FIGHTERS[kind.kind];
   const f = { id: k.newId(), team, kind: kind.kind, role: kind.role, type, size: type.size, pos: v3(), prev: v3(), seen: v3(), vel: v3(), fwd: v3(0, 0, 1), speed: 0, hp: 0, alive: false, mode: 'engage', modeT: 0, target: null, retarget: 0, cool: 0, shots: 0, bank: 0, respawn: 0, chased: -1, away: v3(), aim: v3() };
   // (locked on to where it's drawn: `seen`, on from its last step by the time owed)
@@ -88,7 +89,11 @@ export function addWave(k, team, n, id) {
 
 export function muster(k, n, ace) {
   const { b } = k;
-  for (const team of [0, 1]) for (let i = 0; i < n; i++) b.fighters.push(makeFighter(k, team));
+  // (with tactics each side flies its share of each kind, in flights of a kind: battleTactics.js)
+  for (const team of [0, 1]) {
+    const kinds = k.tactics?.kinds(team, n) ?? null;
+    for (let i = 0; i < n; i++) b.fighters.push(makeFighter(k, team, kinds?.[i]));
+  }
   // an ace: one of its side's, flown as its own kind, named, with its own hull
   for (const team of [0, 1]) {
     const a = ace?.[team];
@@ -176,9 +181,11 @@ export function flyFighter(k, f, dt) {
     f.pos.z += f.vel.z * dt;
     return;
   }
-  // a new target now and then, or when the last one's gone
-  f.retarget -= dt;
-  if (!targetAlive(k, f.target) || f.retarget <= 0) {
+  // a new target now and then, or when the last one's gone (or with
+  // tactics, battleTactics.js: kept a while once chosen)
+  if (k.tactics) k.tactics.think(f, dt);
+  else f.retarget -= dt;
+  if (!k.tactics && (!targetAlive(k, f.target) || f.retarget <= 0)) {
     const was = f.target;
     f.target = f.role === 'bomber' ? bomberTarget(k, f) : fighterTarget(k, f);
     if (was === b.you && f.target !== b.you) b.you.on = Math.max(0, b.you.on - 1);
@@ -278,9 +285,16 @@ export function flyFighter(k, f, dt) {
   if (!tp || f.cool > 0 || b.over) return;
   set(tmp, f.aim.x - f.pos.x, f.aim.y - f.pos.y, f.aim.z - f.pos.z);
   if (f.role === 'bomber') {
-    if (f.mode === 'run' && dist < 12 && dot(f.fwd, tmp) / (len(tmp) || 1) > 0.95) {
+    // (with tactics a run at a ship is judged to its hull's side, not its
+    // middle, which a big ship's hull kept the bomber further off than a
+    // torpedo's range; and loosed from outside its batteries' point-defence,
+    // where a bomber flying in to a dozen units off was shot down before it fired)
+    const ship = k.tactics && t !== b.you && t.team === undefined;
+    const gap = ship && t.cap && t.r ? dist - t.r : dist;
+    if (f.mode === 'run' && gap < (ship ? TACTICS.release : 12) && dot(f.fwd, tmp) / (len(tmp) || 1) > 0.95) {
       b.fire(f.team, f.pos, tmp, 'torpedo', t);
       f.cool = f.type.reload ?? 1.2;
+      f.rethink = true; // (its run done: the next one's target chosen afresh)
       // pull out and away, then round for another run
       f.mode = 'extend';
       f.modeT = 2.5 + rand();
@@ -291,7 +305,8 @@ export function flyFighter(k, f, dt) {
   if (!inSights(f.fwd, tmp, f.type)) return;
   const spread = 0.02;
   set(tmp, tmp.x / len(tmp) + (rand() - 0.5) * spread * 2, tmp.y / len(tmp) + (rand() - 0.5) * spread * 2, tmp.z / len(tmp) + (rand() - 0.5) * spread * 2);
-  b.fire(f.team, { x: f.pos.x + f.fwd.x * f.size * 0.6, y: f.pos.y + f.fwd.y * f.size * 0.6, z: f.pos.z + f.fwd.z * f.size * 0.6 }, tmp, 'laser');
+  // (a battery strafed: the bolt knows what it's at, so it can take the battery's hp)
+  b.fire(f.team, { x: f.pos.x + f.fwd.x * f.size * 0.6, y: f.pos.y + f.fwd.y * f.size * 0.6, z: f.pos.z + f.fwd.z * f.size * 0.6 }, tmp, 'laser', t?.battery ? t : null);
   f.shots += 1;
   if (f.shots >= 3) {
     f.shots = 0;

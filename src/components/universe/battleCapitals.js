@@ -69,7 +69,11 @@ export function layCapitals(k, objectivesOn) {
       };
       cap.spheres = (HULLS[c.kind] ?? [[0, 0.1]]).map(([z, r]) => ({ c: place(cap, [0, 0, z]), r: r * c.size }));
       cap.reach = c.size * 0.55;
-      cap.turrets = (TURRETS[c.kind] ?? []).map((l) => ({ num: k.newId(), at: place(cap, l), r: Math.max(0.35, 0.012 * c.size), turbo: between([0.5, 3.5]), flak: between([0, 0.6]), hp: BATTLE.turretHp, alive: true, cap }));
+      // (`pos`, the same point as `at`: a battery's a target a fighter can strafe, battleTactics.js)
+      cap.turrets = (TURRETS[c.kind] ?? []).map((l) => {
+        const at = place(cap, l);
+        return { num: k.newId(), at, pos: at, r: Math.max(0.35, 0.012 * c.size), turbo: between([0.5, 3.5]), flak: between([0, 0.6]), hp: BATTLE.turretHp, alive: true, cap, battery: true };
+      });
       if (i === objective) cap.subs = (SUBSYSTEMS[c.kind] ?? []).map((s, n) => ({ id: s.id, num: 3e6 + n, kind: s.kind, phase: s.phase, pos: place(cap, s.at), r: Math.max(0.6, s.r * c.size), hp: s.hp, hpMax: s.hp, dealt: 0, alive: true, cap }));
       b.capitals.push(cap);
     });

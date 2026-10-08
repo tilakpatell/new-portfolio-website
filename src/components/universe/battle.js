@@ -93,10 +93,11 @@ import { flyFighter, muster, spawn } from './battleAi';
 import { ageCapitals, fireBatteries, holdCapitals, hullHit, layCapitals } from './battleCapitals';
 import { createRunners } from './battleRunners';
 import { createStages } from './battleStages';
+import { createTactics } from './battleTactics';
 
 export { BATTLE, WIDTH, inSights, perSide, turnToward } from './battleKit';
 
-export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0], perSide: n = 20, rand = Math.random, lines = BATTLE.lines, radius = BATTLE.radius, avoid = [], clock = BATTLE.clock, elapsed = 0, shared = null, onMine = null, tickets = true, objectivesOn = 'flagship', ace = {}, runners = null, plan = null, director = null, planet = null }) {
+export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0], perSide: n = 20, rand = Math.random, lines = BATTLE.lines, radius = BATTLE.radius, avoid = [], clock = BATTLE.clock, elapsed = 0, shared = null, onMine = null, tickets = true, objectivesOn = 'flagship', ace = {}, runners = null, plan = null, director = null, planet = null, tactics = false }) {
   const defender = 1 - attacker;
   const C = v3(...at);
   const A = norm(v3(axis[0], 0, axis[1])); // from the first side's line to the second's
@@ -142,6 +143,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // the battle never ends itself, and the AI's fire sinks no capital ship)
   const decides = !(plan && director);
   const k = { b, rand, between, C, A, S, lines, radius, avoid, planet, attacker, defender, pending, newId: () => nextId++, flagOf, objOf, youIn, finish, decides, onMine, subDown };
+  // (the galaxy's fighters flown with tactics: battleTactics.js)
+  k.tactics = tactics ? createTactics(k) : null;
 
   // the capital ships in their lines, the fighters up, the runners ready
   layCapitals(k, objectivesOn);
@@ -189,6 +192,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       f.respawn = between(BATTLE.respawn);
     } else f.respawn = Infinity;
     if (b.you.on && f.target === b.you) b.you.on -= 1;
+    k.tactics?.drop(f);
     return { type: 'down', team: f.team, kind: f.kind, role: f.role, at: copy(v3(), f.pos), mine, ...(f.ace ? { ace: true } : {}), ...(f.wave ? { wave: f.wave } : {}) };
   };
   const shielded = (cap) => cap.objective && (stages ? b.shieldUp : b.phase === 1);
@@ -319,6 +323,19 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
       if (!done && youOk && o.team !== b.you.team && sweptHit(p0, p1, b.you.prev, b.you.pos, 0.3) !== null) {
         out.push({ type: 'hurt', damage: BATTLE.youHurt[o.kind], kind: o.kind });
         done = true;
+      }
+      // a battery a fighter's strafing (one of the plan's only lights up: its hp's the director's)
+      if (!done && o.target?.battery && o.target.alive && sweptHit(p0, p1, o.target.at, o.target.at, o.target.r + 0.4) !== null) {
+        const tu = o.target;
+        done = true;
+        if (tu.planned) out.push({ type: 'impact', at: copy(v3(), tu.at), size: 0.5, shield: false });
+        else {
+          tu.hp -= o.damage;
+          if (tu.hp <= 0) {
+            tu.alive = false;
+            out.push({ type: 'turret', id: tu.num, cap: tu.cap.id, at: copy(v3(), tu.at), mine: false });
+          }
+        }
       }
       // an objective the plan's laid out in the open (the AI's fire on it only lands)
       if (!done && stages && o.kind !== 'turbo') {
