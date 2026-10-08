@@ -9,7 +9,8 @@
 //   --ultra: NAME.ultra.glb as well (budget.mjs ULTRA: up to 300k faces, 8192 maps, 24 MB)
 //   webReady(doc, { tris, tex }) → { before, after }   (the transform, on a gltf-transform Document)
 //   node scripts/gen3d/web.mjs --check-colliders NAME.glb: the bodies a written model's physical nodes make
-//   collidersIn(doc) → [{ name, desc }]   (lib/physics/fromModel.js's, from a Document's node tree)
+//   collidersIn(doc) → Promise<[{ name, desc }]>   (lib/physics/fromModel.js's, from a Document's node tree;
+//     loaded only when asked, so the cut runs where only scripts/gen3d is, as the runner's sandbox has it)
 //
 // A prop's physics is modelled (docs/assets/colliders.md): nodes named
 // `physical` with collider children. The cut keeps them, names and all: a
@@ -26,7 +27,6 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { TIERS, check, cutsFor, triangles } from './budget.mjs';
-import { bodiesFromNodes } from '../../src/lib/physics/fromModel.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 // GEN3D_OUT: another root for public/models/gen3d and public/games/credits.json,
@@ -84,8 +84,8 @@ function nodeOf(node, inBody) {
   return out;
 }
 
-export const collidersIn = (doc) =>
-  bodiesFromNodes((doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0])?.listChildren().map((n) => nodeOf(n, false)) ?? []).map(({ name, desc }) => ({ name, desc }));
+export const collidersIn = async (doc) =>
+  (await import('../../src/lib/physics/fromModel.js')).bodiesFromNodes((doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0])?.listChildren().map((n) => nodeOf(n, false)) ?? []).map(({ name, desc }) => ({ name, desc }));
 
 export async function webReady(doc, { tris, tex, acrossSeams = false }) {
   const { default: sharp } = await import('sharp'); // only when a model is made: the budget check needs no native module
@@ -174,7 +174,7 @@ export async function publish(raw, name, { what, engine = 'TRELLIS.2', acrossSea
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   if (args[0] === '--check-colliders') {
-    const bodies = collidersIn(await (await io()).read(resolve(args[1])));
+    const bodies = await collidersIn(await (await io()).read(resolve(args[1])));
     for (const { name, desc } of bodies) console.log(`${name}: ${desc.type}, ${desc.colliders.map((c) => c.shape).join(' + ')}${desc.mass !== undefined ? `, ${desc.mass} kg` : ''}`);
     if (!bodies.length) console.log('no physical nodes');
     process.exit(0);

@@ -401,7 +401,7 @@ describe('a prop’s physics, kept through the web cut', () => {
     doc.createScene('scene').addChild(look).addChild(crate);
     await webReady(doc, { tris: 1000, tex: 256 });
     const back = await (await io()).readBinary(await (await io()).writeBinary(doc));
-    const bodies = collidersIn(back);
+    const bodies = await collidersIn(back);
     expect(bodies.map((b) => b.name)).toEqual(['crate_physical_dynamic', 'lid_physical_dynamic']);
     const [c] = bodies[0].desc.colliders;
     expect(c.shape).toBe('cuboid');
