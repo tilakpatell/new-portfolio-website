@@ -186,7 +186,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       gfx = null;
     }
     kind = want;
-    gfx = await makeBackend(want, { budget: quality.budget, onLost: () => rt.lost(), invalidate: () => rt.invalidate() });
+    gfx = await makeBackend(want, { budget: quality.budget, onLost: () => rt.lost() });
     return gfx;
   };
 

@@ -46,7 +46,8 @@ export function runtime() {
     gltf: (url) => browser().then((m) => m.forget.gltf(url)),
   };
   instance = createRuntime({
-    makeBackend: (kind, opts) => browser().then((m) => m.makeBackend(kind, opts)),
+    // (`invalidate`: the frame guard asks for a frame when what it held back is ready)
+    makeBackend: (kind, opts) => browser().then((m) => m.makeBackend(kind, { ...opts, invalidate: () => instance?.invalidate() })),
     input: createInput(),
     // (down only: each step resizes the canvas, lib/three/pace's `climb`)
     quality: createQuality({ dpr: win?.devicePixelRatio || 1, pace: createPace({ climb: false }) }),
