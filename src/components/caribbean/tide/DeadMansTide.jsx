@@ -4,6 +4,8 @@ import GpuGate from '../../games/GpuGate';
 import { edges, readPad, typing } from '../../games/pad';
 import { audioContext } from '../../../lib/audio';
 import { local, prefersReducedMotion, useMediaQuery } from '../../../lib/hooks';
+import { settle } from '../../../lib/settle';
+import LoadingVeil from '../../worlds/LoadingVeil';
 import { sayVoiced } from '../../../lib/voiced';
 import { SUNK_BOSS, SUNK_LINE } from '../lines';
 import { CHAPTERS, ISLES, STEP_BOUND, TIDE, UPS, bearing, choose, fitted, newGame, progress, shipStep, step } from './rules';
@@ -57,6 +59,8 @@ const is = (k, key) => KEYS[k].includes(key);
 const ROOM = { bound: STEP_BOUND };
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
+const PREPARE_WAIT = 30000; // ms at most the veil waits on the sea's prepare
+
 export default function DeadMansTide() {
   return <GpuGate className="dt-gate">{({ soft, fail }) => <Game soft={soft} fail={fail} />}</GpuGate>;
 }
@@ -86,6 +90,7 @@ function Game({ soft, fail }) {
   });
   const [phase, setPhase] = useState('loading'); // loading | ready | running | paused | won | lost
   const [load, setLoad] = useState({ k: 0, label: 'Starting the renderer' });
+  const [prep, setPrep] = useState(null); // its prepare, once loaded, for the veil: { value, step, done }
   const [ui, setUi] = useState({ chapter: 0, done: null, boss: null, offer: [], sail: 2, result: null, low: false });
   const [callout, setCallout] = useState(null);
   const [full, setFull] = useState(false);
@@ -117,7 +122,7 @@ function Game({ soft, fail }) {
           onProgress: (k, label) => !dead && setLoad({ k, label }),
         }),
       )
-      .then((r) => {
+      .then(async (r) => {
         made = r;
         if (!r) return;
         if (dead) {
@@ -127,6 +132,15 @@ function Game({ soft, fail }) {
         gl.current = r;
         if (import.meta.env.DEV) window.__TIDE3D__ = r; // for the browser tests
         r.resize(el.clientWidth, el.clientHeight);
+        // everything onto the graphics chip behind the veil before the first
+        // frame (Tide3D's prepare: bounded, so it never holds the sea up for good)
+        setPrep({ value: 0, step: null });
+        await settle(
+          r.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
+          PREPARE_WAIT,
+        );
+        if (dead) return;
+        setPrep((p) => p && { ...p, done: true }); // (the veil fades on what it last said)
         setPhase('ready');
       })
       .catch((err) => {
@@ -563,7 +577,7 @@ function Game({ soft, fail }) {
         data-phase={phase}
         data-low={ui.low && running ? '' : undefined}
       >
-        {phase === 'loading' && (
+        {phase === 'loading' && !prep && (
           <div className="g3-loading">
             <div className="grid justify-items-center">
               <span>{load.label}…</span>
@@ -571,6 +585,7 @@ function Game({ soft, fail }) {
             </div>
           </div>
         )}
+        <LoadingVeil shown={phase === 'loading' && Boolean(prep) && !prep.done} progress={prep?.value ?? 0} step={prep?.step} title="Dead man’s tide" line="Rigging the ships…" />
 
         <div className="g3-flash" ref={(n) => (hud.current.flash = n)} aria-hidden="true" />
         <div className="dt-low" aria-hidden="true" />

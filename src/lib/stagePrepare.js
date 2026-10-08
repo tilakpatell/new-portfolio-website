@@ -10,7 +10,7 @@
 // frame isn't drawn. A world's page passes its loop no time meanwhile, so
 // nothing moves behind the veil.
 //
-// stagePrepare(stage, { soft, roots, grounds, busy, late, wait, bakeWait })
+// stagePrepare(stage, { soft, roots, grounds, busy, late, wait, bakeWait, layout })
 //   → { held(), preparing, prepare(onProgress, alive) }
 //
 // `soft` as the stage was made (it then draws straight to the canvas, so its
@@ -22,13 +22,15 @@
 // `late()` promises for loads that come after the world's made. Every wait
 // is bounded (`wait` ms, `bakeWait` for the bake), so it never hangs, and it
 // never throws: what isn't ready by then the first frames do as before.
+// `layout: false` for a world whose page runs no frames while it prepares
+// (nothing of it waits on where the first frame puts things).
 
 import { nextFrame, prepareScene } from './three/gpuWork';
 import { settle } from './settle';
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-export function stagePrepare(stage, { soft = false, roots = null, grounds = () => [], busy = () => false, late = () => [], wait = 5000, bakeWait = 10000, frame = nextFrame } = {}) {
+export function stagePrepare(stage, { soft = false, roots = null, grounds = () => [], busy = () => false, late = () => [], wait = 5000, bakeWait = 10000, layout = true, frame = nextFrame } = {}) {
   let holding = false;
   let placed = false;
   let living = () => true;
@@ -49,7 +51,7 @@ export function stagePrepare(stage, { soft = false, roots = null, grounds = () =
       }
     };
     holding = true;
-    placed = false;
+    placed = !layout;
     living = going;
     try {
       say(0, null);

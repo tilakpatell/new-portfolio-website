@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { createStage } from '../../../lib/stage3d';
+import { stagePrepare } from '../../../lib/stagePrepare';
 import { houseOn } from '../../../lib/three/house';
 import { SUN, createSea, loadSky } from './sea';
 import { DECAL, createBalls, createDecals, createFoam, createParticles } from './fx';
@@ -162,8 +163,9 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
     });
   };
   let disposed = false;
-  // the rest, one after another, behind the game
-  (async () => {
+  // the rest, one after another, behind the game (or, the first time, behind
+  // the loading veil: prepare, below)
+  const laterJob = (async () => {
     for (const n of LATER) {
       if (disposed) return;
       try {
@@ -849,7 +851,7 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
     const t1 = performance.now();
     // (the ships and the crews that came since, taken on now and then)
     if (houseFrames++ % 60 === 0) house.follow({ adopt: true });
-    stage.render(ms);
+    if (!prep.held()) stage.render(ms);
     cost.sim += (t1 - t0 - cost.sim) * 0.05;
     cost.draw += (performance.now() - t1 - cost.draw) * 0.05;
   };
@@ -876,7 +878,42 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
 
   placeIsles();
   onProgress?.(1, 'Ready');
+
+  // Everything onto the graphics chip behind the page's loading veil before
+  // the first frame (lib/stagePrepare): the rest of the models in (a few
+  // seconds at most), the islands placed, and the models' pictures and
+  // shaders sent and compiled. A ship's copy starts in its model's own
+  // shader and takes on the house look a moment later (house.follow), so
+  // both are made: the models as they are, and a twin of each in the look,
+  // kept so its shader is too.
+  const twins = [];
+  const prep = stagePrepare(stage, {
+    soft,
+    layout: false, // (the page runs no frames until it's ready)
+    wait: 8000,
+    late: () => [laterJob],
+    roots: () => {
+      placeIsles();
+      const sources = [...models.values()].map((m) => m.root);
+      if (!twins.length)
+        for (const root of sources) {
+          const twin = cloneSkinned(root);
+          twin.traverse((o) => {
+            if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map((m) => m.clone()) : o.material.clone();
+          });
+          house.adopt(twin);
+          twins.push(twin);
+        }
+      return [scene, ...sources, ...twins];
+    },
+  });
+
   return {
+    // everything onto the graphics chip behind the page's veil
+    prepare: prep.prepare,
+    get preparing() {
+      return prep.preparing;
+    },
     render,
     project,
     dispose,

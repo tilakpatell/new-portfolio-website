@@ -96,6 +96,22 @@ describe('stagePrepare', () => {
     expect(q.preparing).toBe(false);
   });
 
+  it('waits for no frame when the world runs none while it prepares', async () => {
+    const stage = fakeStage();
+    let frames = 0;
+    const p = stagePrepare(stage, {
+      layout: false,
+      frame: () => {
+        frames += 1;
+        return Promise.resolve();
+      },
+    });
+    const before = prepareScene.mock.calls.length;
+    await p.prepare();
+    expect(frames).toBe(0);
+    expect(prepareScene.mock.calls.length).toBe(before + 1);
+  });
+
   it('stops when the world is left, and never throws', async () => {
     const stage = fakeStage();
     const before = prepareScene.mock.calls.length;
