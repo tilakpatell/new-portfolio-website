@@ -1,11 +1,12 @@
 // Down on the Rick and Morty sector's worlds (universes.js's MOONS): the
 // things landings.js names for them that aren't models, one file between
 // them. The portal is the C-137 landing's (./rickmorty.js), open on the
-// ground as the show draws it; the rest is ground cover: rocks, the men's
-// bones on Gazorpazorp, Squanch's cat trees, Bird World's feathers and Gear
-// World's bolts. The places' own set pieces (the women's gate, the
-// suckulents, the perches, the cogs and the gear monument, the houses) and
-// the people are models (landings.js).
+// ground as the show draws it, and G there takes you into the place itself,
+// on foot as Morty (the moon's own world, /c-137/<id>, not C-137); the rest
+// is ground cover: rocks, the men's bones on Gazorpazorp, Squanch's cat
+// trees, Bird World's feathers and Gear World's bolts. The places' own set
+// pieces (the women's gate, the suckulents, the perches, the cogs and the
+// gear monument, the houses) and the people are models (landings.js).
 
 import * as THREE from 'three';
 import { ball, box, cyl, part, rockGeometry } from '../../galaxy/surface/kit';

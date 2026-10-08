@@ -35,6 +35,7 @@ import { createMoriaKit } from './props';
 import { CAST, CHAMBER, COMPANY, FLIGHT, FORK, GATE, GATE_ROCKS, HALL, HALL_COLLIDERS, HALL_WALLS, LAKE_Y, PASSAGE, SHAFT, TOMB, WELL, gateHeight, hallHeight } from './layout';
 import { PLANK, TUMBLE } from './rules';
 import { sharpen } from '../../../../lib/three/textures';
+import { attend, castDo, fight, followDrawn, releaseCast, tickCast, upgrade } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -475,6 +476,10 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     const g = kit.goblin(i + 1);
     g.group.visible = false;
     zones.halls.add(g.group);
+    // on the cast once its model's here (../../cast3d.js): the Moria goblin,
+    // as tall as this one, its own body hidden (and kept, should it not come)
+    const tall = new THREE.Box3().setFromObject(g.group).getSize(V()).y * 0.92;
+    upgrade(g, 'goblin', { role: 'folk', hide: [...g.group.children], top: tall, seed: i + 1 });
     return g;
   });
 
@@ -561,6 +566,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       wpos('flight', sAt, flightY(sAt) + air, f ? f.lat : 0, frodo.group.position);
       frodo.group.rotation.set(0, 0, 0);
       pose(frodo, t, { moving: true, speed: 1.5 });
+      // (on the cast: knees up over the gaps)
+      castDo(frodo, { air, upper: null });
       frodo.group.visible = s.mode === 'flight' || s.mode === 'bridge';
       if (s.mode === 'bridge') {
         wpos('flight', FLIGHT.end - 2, 0, -0.5, frodo.group.position);
@@ -573,6 +580,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
       if (s.held) frodo.body.rotation.z = -0.5;
       else frodo.body.rotation.z = 0;
+      // (on the cast: struggling in the troll's grip)
+      castDo(frodo, { air: 0, upper: s.held ? 'scared' : null });
       // out on the plank: tipping as the balance goes, arms out to keep it
       if (s.mode === 'plank' && s.plank) {
         const lean = s.plank.lean;
@@ -598,8 +607,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       if (!on) continue;
       const y = c.zone === 'gate' ? gateHeight(c.x, c.z) : hallHeight(c.x);
       p.group.position.set(c.x, y, c.z);
-      const near = Math.hypot(h.x - c.x, h.z - c.z) < 5;
-      turnTo(p, near ? Math.atan2(-(h.z - c.z), h.x - c.x) : c.face, dt);
+      // they turn to Frodo as he comes by: on the cast the head first, a greeting the first time
+      attend(p, h, c.face, dt, { who: frodo });
       pose(p, t + c.x, { moving: false, talk: s.talk === c.id ? 1 : 0 });
     }
     // the Fellowship behind you, in the halls and on the flight
@@ -609,13 +618,28 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       p.group.visible = Boolean(at);
       if (!at) return;
       if (at.zone === 'flight') {
+        p.drawn = null;
         wpos('flight', at.s, flightY(at.s), at.lat ?? 0, p.group.position);
         p.group.rotation.y = at.face ?? 0;
-      } else {
+      } else if (at.fight) {
+        p.drawn = null;
         wpos(at.zone, at.x, at.zone === 'halls' ? hallHeight(at.x) : gateHeight(at.x, at.z), at.z, p.group.position);
-        turnTo(p, at.face, dt, 6);
+        // on the cast: in the fight, at the goblin come for them (a toy turns and raises an arm)
+        const near = goblins.filter((g) => g.group.visible);
+        const foe = near.length ? near[i % near.length] : null;
+        if (p.cast?.ready && foe) fight(p, foe, dt, { at: wpos('halls', foe.group.position.x, 0, foe.group.position.z, tmp2) });
+        else turnTo(p, at.face, dt, 6);
+      } else {
+        // off the conga line: each to its place at its own pace, apart from the rest
+        if (p.drawnIn !== at.zone) p.drawn = null; // (a new zone is a new place: there at once)
+        p.drawnIn = at.zone;
+        const d = followDrawn(p, at, dt, { others: [...COMPANY.map((o) => company[o]).filter((o) => o !== p && o.group.visible), { x: h.x, z: h.z }] });
+        wpos(at.zone, d.x, at.zone === 'halls' ? hallHeight(d.x) : gateHeight(d.x, d.z), d.z, p.group.position);
+        p.group.rotation.y = d.face;
       }
-      pose(p, t + i, { moving: Boolean(at.moving), speed: at.zone === 'flight' ? 1.5 : 1, wave: at.fight ? 0.6 : 0 });
+      // on the bridge: Gandalf stands against it, staff up; the rest look back at him
+      castDo(p, { full: id === 'gandalf' && s.mode === 'bridge' ? 'cast.idle' : null, ...(at.fight ? {} : { look: s.mode === 'bridge' ? (id === 'gandalf' ? balrog.group : company.gandalf.group) : null }) });
+      pose(p, t + i, { moving: Boolean(at.moving), speed: at.zone === 'flight' ? 1.5 : 1, wave: at.fight && !p.cast?.ready ? 0.6 : 0 });
     });
     // Gandalf's staff: the only light in the dark, till he risks more
     if (zone !== 'gate' && company.gandalf.group.visible) {
@@ -668,12 +692,27 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       troll.group.position.set(tw.x, 0, tw.z);
       turnTo(troll, tw.face, dt, 8);
       const hunting = tw.mode === 'alert' || tw.mode === 'chase';
-      troll.animate?.(t, { walking: tw.mode !== 'patrol' || tw.wait <= 0, swing: s.swing ?? 0, roar: hunting ? 1 : 0 });
+      // its walk from where it's put; it roars once taking up the hunt, and
+      // chasing, its club comes down as it gets to you (props.js)
+      troll.animate?.(t, { swing: s.swing ?? 0, roar: hunting ? 1 : 0, reach: tw.mode === 'chase' ? Math.hypot(h.x - tw.x, h.z - tw.z) : Infinity });
     }
     goblins.forEach((g, i) => {
       const on = zone === 'halls' && Boolean(s.troll);
       g.group.visible = on;
       if (!on) return;
+      // on the cast: each goblin at one of the company, circling, striking (../../cast3d.js)
+      const fighters = COMPANY.filter((id) => company[id].group.visible && s.company?.[id]?.fight).map((id) => company[id]);
+      if (g.cast?.ready && fighters.length) {
+        const foe = fighters[i % fighters.length];
+        const fx = foe.group.position.x - AT.halls.x;
+        const fz = foe.group.position.z - AT.halls.z;
+        const a = i * 2.4 + Math.sin(t * 0.35 + i * 1.7) * 0.7;
+        const d = followDrawn(g, { x: fx + Math.cos(a) * 1.25, z: fz - Math.sin(a) * 1.25 }, dt, { others: goblins.filter((o) => o !== g && o.drawn), spacing: 0.7, snap: 40 });
+        g.group.position.set(d.x, 0, d.z);
+        fight(g, foe, dt, { at: { x: fx, z: fz }, every: [1.4, 2.8] });
+        return;
+      }
+      g.drawn = null;
       // fighting along the chamber's walls
       const a = (i / goblins.length) * TAU + t * 0.08;
       g.group.position.set(CHAMBER.x + Math.cos(a) * 6.4, 0, CHAMBER.z + Math.sin(a) * 5);
@@ -791,6 +830,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
     sun.target.position.copy(camera.position);
     for (const g of grounds) g.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -843,6 +884,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       for (const g of grounds) g.dispose();
       ghosts.dispose();
       disposeTree(scene);
+      releaseCast(scene);
       stage.dispose();
     },
   };

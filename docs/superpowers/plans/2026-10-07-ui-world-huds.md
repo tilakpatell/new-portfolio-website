@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Revision 2 (read first):** the spec's section 8 lists amendments D1–D4: kit components take resolved props only and the Menu opens the guide through `openGuide` from `src/lib/palette.js`, never `GuideLink` (D1); `hud.js` keeps Invincible's signatures so its tests move verbatim (D2); the Shire's stylesheet is `src/components/middleearth/shire/shire.css` (D3); the Menu's way out reads the view: "Universe map" or "Classic site" (D4). Strike "or the `GuideLink`" from the Global Constraints.
+
 **Goal:** One HUD kit in the world runtime, laid out by tested rules, that every world's HUD is moved onto one pull request at a time, each keeping its own face and colours, so spacing, words and components agree across the worlds.
 
 **Architecture:** `src/runtime/hud/` holds pure rules (`hud.js`), the frame (`Hud.jsx`), one component per concept and `hud.css` with the spacing tokens. Invincible's `hud.js`/`InvHud.jsx` is the model and moves in first; `TownHud.jsx` second (fourteen worlds share it); then one world per pull request. Skins are CSS variables, as the Shire family already does.

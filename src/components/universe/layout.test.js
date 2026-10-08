@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { HOME_RADIUS, MAP_RADIUS, ORDER, POSITIONS, REACH, RIM, SUN, keyStep, next, nextWorld, parseId, prev } from './layout';
+import { HOME_RADIUS, MAP_RADIUS, ORDER, POSITIONS, REACH, RIM, SECTORS, SUN, keyStep, next, nextWorld, parseId, prev, sectorOf } from './layout';
 import { byId } from './universes';
-import { DEEP } from './deep';
+import { DEEP, WONDERS } from './deep';
 
 describe('the map layout', () => {
   it('keeps every universe clear of the others, moons and all', () => {
@@ -92,5 +92,35 @@ describe('the asteroid belt', () => {
       expect(r + REACH[id] < BELT.inner || r - REACH[id] > BELT.outer, id).toBe(true);
     }
     expect(BELT.inner).toBeGreaterThan(SUN.r);
+  });
+});
+
+// (scale.js's SPREAD: the places four times as far apart as they were on 2026-10-07)
+describe('the spread', () => {
+  const fandoms = ORDER.filter((id) => byId(id).kind !== 'core');
+  const far = (id) => Math.hypot(POSITIONS[id][0], POSITIONS[id][2]);
+  it('puts the nearest fandom 8,000 out and the main edge at 36,000', () => {
+    expect(Math.min(...fandoms.map(far))).toBeCloseTo(8000, 0);
+    expect(SECTORS.main.edge).toBe(36000);
+    expect(RIM.inner).toBe(32000);
+    expect(RIM.outer).toBe(34400);
+  });
+
+  it('keeps every fandom at least 2,600 from every other place, planets and wonders', () => {
+    // (a portal is its planet's own door, beside it: not a place of its own)
+    const others = [...ORDER.filter((id) => byId(id).kind !== 'core').map((id) => ({ id, at: POSITIONS[id] })), ...WONDERS.filter((w) => !w.sector && w.kind !== 'portal')];
+    for (const id of fandoms) {
+      for (const o of others) {
+        if (o.id === id) continue;
+        const d = Math.hypot(...POSITIONS[id].map((v, i) => v - o.at[i]));
+        expect(d, `${id} and ${o.id}`).toBeGreaterThanOrEqual(2600);
+      }
+    }
+  });
+
+  it('moves the Rick and Morty sector out past the main edge, and the split with it', () => {
+    expect(SECTORS.rickmorty.origin).toEqual([0, 0, -48000]);
+    expect(sectorOf(0, 0, -48000)).toBe('rickmorty');
+    expect(sectorOf(0, 0, -36000)).toBe('main');
   });
 });

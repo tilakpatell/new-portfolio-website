@@ -81,28 +81,32 @@ describe('the compass layout', () => {
   });
 });
 
+// (these two, and the compass and marker tests above and below, are
+// Invincible's, moved here verbatim with its rules)
 describe('the title', () => {
-  it('is full until they move, then a chip 2.5 s after', () => {
-    expect(titleMode({ t: 10 })).toBe('full');
-    expect(titleMode({ t: 1, movedAt: 0 })).toBe('full');
-    expect(titleMode({ t: 3, movedAt: 0 })).toBe('chip');
+  it('is full until he moves, then a chip 2.5 s after', () => {
+    expect(titleMode(10, null, false)).toBe('full');
+    expect(titleMode(1, 0, false)).toBe('full');
+    expect(titleMode(3, 0, false)).toBe('chip');
   });
-  it('is a chip at once when there’s an objective', () => {
-    expect(titleMode({ t: 0, objective: true })).toBe('chip');
+  it('is a chip at once when a mission starts', () => {
+    expect(titleMode(0, null, true)).toBe('chip');
   });
 });
 
 describe('the objective line', () => {
   it('reads metres under a kilometre, and kilometres to a decimal over it', () => {
+    expect(objectiveText({}, 1234)).toBe('1.2 km');
+    expect(objectiveText({}, 640.4)).toBe('640 m');
+    expect(objectiveText({ text: 'Get to the bank' }, 250)).toBe('Get to the bank · 250 m');
+  });
+  it('is the step alone without a distance, and nothing without a step', () => {
+    expect(objectiveText({ text: 'Talk to Allen' }, null)).toBe('Talk to Allen');
+    expect(objectiveText(null, 100)).toBe('');
+  });
+  it('rounds metres and gives kilometres to a decimal', () => {
     expect(far(640.4)).toBe('640 m');
     expect(far(1234)).toBe('1.2 km');
-    expect(objectiveText({ metres: 1234 })).toBe('1.2 km');
-    expect(objectiveText({ label: 'Get to the bank', metres: 250 })).toBe('Get to the bank · 250 m');
-  });
-  it('is the words alone without a distance, and nothing without either', () => {
-    expect(objectiveText({ label: 'Talk to Allen', metres: null })).toBe('Talk to Allen');
-    expect(objectiveText({ label: 'Talk to Allen', metres: Infinity })).toBe('Talk to Allen');
-    expect(objectiveText()).toBe('');
   });
 });
 
