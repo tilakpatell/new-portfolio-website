@@ -74,6 +74,47 @@ describe('createRuntime', () => {
     expect(rt.current.module).toBe(mod); // the very object the page mounted, so useWorld can tell its own
   });
 
+  it("waits for a world's prepare before showing it, and tells its progress", async () => {
+    const { rt } = make();
+    let finish;
+    const seen = [];
+    rt.events.on('prepare', (e) => seen.push([e.module, e.value, e.step]));
+    const world = fakeWorld({
+      prepare: vi.fn((report) => {
+        report(0.5, 'shaders');
+        return new Promise((r) => (finish = r));
+      }),
+    });
+    const p = rt.mount({ id: 'p', create: () => world }, {}, fakeHost());
+    await settled();
+    expect(world.prepare).toHaveBeenCalled();
+    expect(rt.status).toBe('loading');
+    finish();
+    await p;
+    expect(rt.status).toBe('ready');
+    expect(seen).toEqual([
+      ['p', 0.5, 'shaders'],
+      ['p', 1, 'first draw'],
+    ]);
+  });
+
+  it('drops a world still preparing when something newer is mounted', async () => {
+    const { rt } = make();
+    let alive = null;
+    const first = fakeWorld({
+      prepare: vi.fn((report, opts) => {
+        alive = opts.alive;
+        return new Promise(() => {});
+      }),
+    });
+    rt.mount({ id: 'old', create: () => first }, {}, fakeHost());
+    await settled();
+    const second = fakeWorld();
+    await rt.mount({ id: 'new', create: () => second }, {}, fakeHost());
+    expect(alive()).toBe(false);
+    expect(rt.current.world).toBe(second);
+  });
+
   it('a module with a label makes the canvas a picture', async () => {
     const { rt } = make();
     const canvas = { remove: vi.fn(), parentNode: null, attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; } };
@@ -467,5 +508,71 @@ describe('createRuntime', () => {
   it('carries the worker pool it is given', () => {
     const workers = { request: vi.fn() };
     expect(make({ workers }).rt.workers).toBe(workers);
+  });
+});
+
+describe('the quality level changed while a world is up', () => {
+  it('lets a world that can retune itself do so, with the ratio set again', async () => {
+    const { rt, quality } = make();
+    quality.retune = vi.fn();
+    const world = fakeWorld({ onQuality: vi.fn() });
+    await rt.mount({ id: 'a', create: () => world }, {}, fakeHost());
+    rt.gfx.setRatio.mockClear();
+    expect(rt.requality('ultra')).toBe('tuned');
+    expect(quality.retune).toHaveBeenCalledWith('ultra');
+    expect(world.onQuality).toHaveBeenCalledWith('ultra');
+    expect(rt.gfx.setRatio).toHaveBeenCalled();
+  });
+
+  it('hands the level to a module’s own onQuality with the world', async () => {
+    const { rt } = make();
+    const world = fakeWorld();
+    const mod = { id: 'a', create: () => world, onQuality: vi.fn() };
+    await rt.mount(mod, {}, fakeHost());
+    expect(rt.requality('low')).toBe('tuned');
+    expect(mod.onQuality).toHaveBeenCalledWith('low', world, rt);
+  });
+
+  it('says a world that can’t retune needs a reload, and reloads it with what it had', async () => {
+    const { rt } = make();
+    const create = vi.fn(() => fakeWorld());
+    const mod = { id: 'a', create };
+    const host = fakeHost();
+    await rt.mount(mod, { x: 1 }, host);
+    expect(rt.requality('high')).toBe('reload');
+    expect(await rt.reload()).toBe(true);
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls[1][1]).toEqual({ x: 1 });
+    expect(rt.current.module).toBe(mod);
+  });
+
+  it('does nothing with no world up, or one still on its way, but the next world is built at the new level', async () => {
+    const { rt, quality } = make();
+    quality.retune = vi.fn();
+    expect(rt.requality('high')).toBe('idle');
+    expect(quality.retune).toHaveBeenCalledWith('high');
+    expect(await rt.reload()).toBe(false);
+    let finish;
+    const p = rt.mount({ id: 'a', create: () => new Promise((r) => (finish = r)) }, {}, fakeHost());
+    await flush();
+    expect(rt.requality('high')).toBe('idle');
+    finish(fakeWorld());
+    await p;
+  });
+
+  it('a world whose retune throws is offered a reload instead', async () => {
+    const { rt } = make();
+    await rt.mount({ id: 'a', create: () => fakeWorld({ onQuality: () => { throw new Error('no'); } }) }, {}, fakeHost());
+    expect(rt.requality('high')).toBe('reload');
+  });
+
+  it('sets the sharpness and draws again', async () => {
+    const { rt, quality } = make();
+    quality.setSharpness = vi.fn();
+    await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost());
+    rt.gfx.setRatio.mockClear();
+    rt.sharpen(1.5);
+    expect(quality.setSharpness).toHaveBeenCalledWith(1.5);
+    expect(rt.gfx.setRatio).toHaveBeenCalled();
   });
 });

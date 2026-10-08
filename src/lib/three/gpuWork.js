@@ -16,7 +16,7 @@
 // fence(renderer, { frame, cap }) → once the chip has caught up
 // uploaded(renderer, texture) → whether it's been sent (or never waits on it)
 // textureBytes(texture) → about how big it is on the chip
-// uploadSlices(renderer, textures, { sliceMB, onStep, frame, alive }) → how many were sent
+// uploadSlices(renderer, textures, { sliceMB, sliceMs, onStep, frame, alive }) → how many were sent
 // drawables(roots) → one object per material and kind of mesh, hidden ones too
 // compileSlices(renderer, roots, camera, scene, { sliceMs, batch, onStep, frame, alive, cap, target }) → the materials
 // warmDraw(renderer, render, roots, { frame }) → everything drawn once, out of sight
@@ -138,20 +138,24 @@ const send = (renderer, t) => {
   }
 };
 
-export async function uploadSlices(renderer, textures, { sliceMB = 24, onStep = null, frame = nextFrame, alive = yes } = {}) {
+// (a slice ends at `sliceMB` of pictures or `sliceMs` of the page's time,
+// whichever comes first: many small pictures cost more than their size says)
+export async function uploadSlices(renderer, textures, { sliceMB = 24, sliceMs = 8, onStep = null, frame = nextFrame, alive = yes } = {}) {
   const todo = [...new Set(textures)].filter((t) => !uploaded(renderer, t)).sort((a, b) => textureBytes(a) - textureBytes(b));
   const budget = sliceMB * 1048576;
   let inSlice = 0;
   let sent = 0;
+  let t0 = clock();
   for (const t of todo) {
     if (!alive() || lostContext(contextOf(renderer))) break;
     send(renderer, t);
     sent += 1;
     inSlice += textureBytes(t);
     onStep?.(sent / todo.length);
-    if (inSlice >= budget) {
+    if (inSlice >= budget || clock() - t0 >= sliceMs) {
       inSlice = 0;
       await fence(renderer, { frame });
+      t0 = clock();
     }
   }
   if (inSlice > 0) await fence(renderer, { frame });

@@ -34,7 +34,8 @@ const [vw, vh, vdpr] = (process.env.VIEW ?? '1470x956@2').match(/(\d+)x(\d+)(?:@
 function recorder() {
   const zero = () => ({ links: 0, compiles: 0, glMs: 0, drawMs: 0, tex: 0, texBytes: 0, buf: 0, bufBytes: 0, draws: 0, tris: 0, slow: '' });
   let cur = zero();
-  const frames = []; // [t, links, texUploads, texMB, bufMB, draws, tris, glMs, drawMs]
+  const frames = []; // [t, links, texUploads, texMB, bufMB, draws, tris, glMs, drawMs, slow]
+  const stacks = new Map(); // a slow GL call's callers → ms
   const loaf = [];
   const tick = () => {
     const c = cur;
@@ -55,6 +56,18 @@ function recorder() {
         cur.glMs += ms;
         // (the slowest call of the frame, named: what a stall waited in)
         if (ms > 20 && !cur.slow.includes(name)) cur.slow += `${name} ${Math.round(ms)}ms `;
+        // (who asked, for the slow ones: the stack's first frames outside three)
+        if (ms > 20) {
+          const at = (new Error().stack ?? '')
+            .split('\n')
+            .slice(2)
+            .map((l) => l.trim().replace(/^at /, '').replace(/\(?https?:\/\/[^/]+\//, '(').replace(/\?[^:)]*/, ''))
+            .filter((l) => !l.includes('recorder') && !l.includes('three.core') && !l.includes('deps/three.js'))
+            .slice(0, 3)
+            .join(' < ');
+          const key = `${name}: ${at}`;
+          stacks.set(key, (stacks.get(key) ?? 0) + ms);
+        }
         add?.(a);
       }
     };
@@ -165,7 +178,7 @@ function recorder() {
   }
   window.__probe = {
     take() {
-      return { frames, loaf, origin: performance.timeOrigin, heap: performance.memory?.usedJSHeapSize ?? null };
+      return { frames, loaf, origin: performance.timeOrigin, heap: performance.memory?.usedJSHeapSize ?? null, stacks: [...stacks.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8) };
     },
   };
 }
@@ -469,6 +482,10 @@ try {
       const bad = r.worst.filter((w) => w.ms > 50);
       if (!bad.length) continue;
       console.log(`  worst in ${r.phase}: ${bad.map((w) => `${w.ms}ms[links ${w.links}, tex ${w.tex}/${w.texMB}MB, buf ${w.bufMB}MB, gl ${w.glMs}ms${w.slow ? ` (${w.slow.trim()})` : ''}${trace ? `, draws ${w.drawMs}ms` : ''}${w.scripts.length ? `; ${w.scripts.map((s) => `${s.fn || '?'}@${s.url.split('/').slice(-2).join('/')} ${s.ms}ms`).join(', ')}` : ''}]`).join('  ')}`);
+    }
+    if (process.env.STACKS && data?.stacks?.length) {
+      console.log('  slow GL calls, by caller:');
+      for (const [k, ms] of data.stacks) console.log(`    ${Math.round(ms)}ms ${k}`);
     }
     if (slips.size) {
       console.log('  mid-frame compiles:');
