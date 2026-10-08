@@ -167,4 +167,13 @@ describe('the hyperlanes (hyperlanes.js)', () => {
     expect(rampOf('middleearth').place).toBe('middleearth');
     expect(rampOf('home')).toBeNull();
   });
+
+  // (a guard on the web as built: every lane and node, to 1e-6, against the
+  // committed fixture; a change to how the lanes are built shows up here)
+  it('builds the same web as the fixture', async () => {
+    const r6 = (x) => Math.round(x * 1e6) / 1e6;
+    const lanes = LANES.map((l) => ({ id: l.id, tier: l.tier, from: l.from, to: l.to, pts: l.pts.map((p) => p.map(r6)), length: r6(l.length), name: l.name }));
+    const nodes = NODES.map((n) => ({ ...n, at: n.at.map(r6) }));
+    await expect(JSON.stringify({ lanes, nodes }, null, 1) + '\n').toMatchFileSnapshot('./__fixtures__/lanes.json');
+  });
 });
