@@ -8,7 +8,7 @@
 // passed in, so this runs in Node: index.js wires the real ones.
 //
 // createRuntime({ makeBackend, loop, input, quality, saves, assets, audio,
-//   workers, origin, events, now, gpu, override, visible }) → rt
+//   workers, origin, events, now, gpu, override, visible, calibrate }) → rt
 // rt: { gfx, input, quality, saves, assets, audio, workers, origin, events, host, status,
 //   current, loading, on(fn), invalidate(), resize(w, h), setVisible(on), lost(),
 //   mount(module, props, host) → shown, handover(module, props, host, { fade, held, after }) → shown,
@@ -60,7 +60,7 @@ export function createEvents() {
   };
 }
 
-export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input, quality, saves = null, store = null, assets, audio, workers = null, origin = createOrigin(), events = createEvents(), gpu = false, override = null, visible = () => true }) {
+export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input, quality, saves = null, store = null, assets, audio, workers = null, origin = createOrigin(), events = createEvents(), gpu = false, override = null, visible = () => true, calibrate: calibrating = true }) {
   let gfx = null;
   let kind = null; // the backend asked for
   let coming = null; // { kind, promise }: a backend still being made, for every mount that asks meanwhile
@@ -337,7 +337,9 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
   // ceiling so it never see-saws. Only on a mount: in a handover the old
   // world is on the canvas, and the new one starts at what was kept.
   const tune = async (mod, world, token, { measure = true } = {}) => {
-    if (!gfx?.renderer || mod.calibrate === false || !quality.setLevel) return;
+    // (`calibrate: false`, the QA scripts' ?calibrate=off: no walk, the world
+    // drawn at its sharpest step, so a measured run is the same on any chip)
+    if (!gfx?.renderer || !calibrating || mod.calibrate === false || !quality.setLevel) return;
     const key = calibrationKey(gfx.renderer, mod.id, gfx.size.w, gfx.size.h);
     const kept = recall(key);
     const setLevel = (l) => {

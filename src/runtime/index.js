@@ -71,6 +71,8 @@ export function runtime() {
     gpu: Boolean(win?.navigator?.gpu),
     override: readOverride(win?.location.search ?? '', win?.location.hash ?? '', stored),
     visible: () => !(typeof document !== 'undefined' && document.hidden) && !covered(),
+    // (?calibrate=off: the QA scripts measure at the sharpest step, not a chip's own)
+    calibrate: !/[?&]calibrate=off\b/.test(`${win?.location.search ?? ''}&${win?.location.hash ?? ''}`),
   });
   // a world's install (install.js): the same one the gate and /worlds use
   instance.install = installer();

@@ -864,3 +864,30 @@ describe('the quality level changed while a world is up', () => {
     expect(rt.gfx.setRatio).toHaveBeenCalled();
   });
 });
+
+describe('calibration switched off (the QA scripts: ?calibrate=off)', () => {
+  const tuneSteps = (rt) => {
+    const steps = [];
+    rt.events.on('prepare', (e) => e.step === 'tune' && steps.push(e));
+    return steps;
+  };
+
+  it('calibrates a world on mount by default', async () => {
+    const { rt, quality } = make();
+    quality.setLevel = vi.fn();
+    const steps = tuneSteps(rt);
+    await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost());
+    await settled();
+    expect(steps).toHaveLength(1);
+  });
+
+  it('skips the walk and leaves the world at its sharpest step', async () => {
+    const { rt, quality } = make({ calibrate: false });
+    quality.setLevel = vi.fn();
+    const steps = tuneSteps(rt);
+    await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost());
+    await settled();
+    expect(steps).toHaveLength(0);
+    expect(quality.setLevel).not.toHaveBeenCalled();
+  });
+});

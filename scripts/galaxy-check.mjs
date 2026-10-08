@@ -35,7 +35,9 @@
 // counts mean the same anywhere. So that two runs see the same thing, the
 // page's clock is held at one moment (the set pieces move by the wall
 // clock) and its random numbers are seeded (where the ship starts), unless
-// LIVE=1.
+// LIVE=1. The runtime's calibration is switched off (?calibrate=off), so every
+// run draws at the sharpest step, as the baselines were made, instead of a
+// software GL's walk down to the softest.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { budget } from '../src/lib/budgets.js';
@@ -92,7 +94,7 @@ for (const id of list.split(',')) {
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   const t0 = Date.now();
   const path = mode === 'surface' ? `/galaxy/${id}/surface` : `/galaxy/${id}`;
-  await page.goto(`${base}/?quality=${quality}#${path}`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${base}/?quality=${quality}&calibrate=off#${path}`, { waitUntil: 'domcontentloaded' });
   const ready = mode === 'surface' ? () => Boolean(window.__surfaceScene?.renderer) : () => typeof window.__galaxy === 'function' && Boolean(window.__galaxy().system);
   try {
     await page.waitForFunction(ready, null, { timeout: 180000 });
