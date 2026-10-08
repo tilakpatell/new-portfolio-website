@@ -45,7 +45,7 @@ into `lab/assets/<pack>-glb/<Name>.glb` through `scripts/fbx-to-glb.mjs`
 and clips kept, each FBX material's colour kept as it is). That needs the
 dev server: the one on 5188 when it answers, else vite started on a free
 port and stopped when the run ends, error or not. Each GLB is then
-rewritten twice over:
+rewritten three ways:
 
 - **In metres.** Blender's FBX is in centimetres (`UnitScaleFactor` 1, every
   object scaled ×100), which FBXLoader keeps, so a horse came out 692 tall.
@@ -56,6 +56,10 @@ rewritten twice over:
 - **Clips by their action's name.** Blender names a take for its armature
   too, `Armature|Walk`; the GLB's clips are renamed `Walk` (`clipName`,
   `renameClips`), so the manifest and the runtime's mixer know them so.
+- **Without the loader's notes.** FBXLoader keeps `originalName` and
+  `transformData` on every node, which GLTFExporter writes as extras and
+  nothing reads after; they were 130 KB of the farm's 1.05 MB, and go
+  (`dropLoaderNotes`; any other extra stays).
 
 The import then files each animal as a rigged model, `<name>.glb`. The
 animals' materials are flat colours under names that repeat across the
@@ -76,14 +80,17 @@ maps: one colour per name, `Brown`, `Brown_2` … by how many models wear it.
   mesh `<Model>.lod1`. Bark and solid parts are simplified toward a quarter
   (meshopt, error 0.05, borders free, allowed across UV seams: the packs'
   bark is hundreds of UV islands, and without that it stops at 80-96 %); a
-  tree's or a bush's leaf cards are thinned to 40 % and grown ×1.25
-  (`thinCards`, seeded by the model's name).
+  tree's or a bush's leaf cards are thinned to 40 % and each grown by
+  1 / √(the share kept), at most ×1.25 (`thinCards`, seeded by the model's
+  name): ×1.25 for every crown in these packs, and not at all for a crown
+  of one card, which keeps it.
 - A rigged model (the space kit's astronauts, mechs and enemies, the farm
   animals) is a file of its own, `<model, lower-cased>.glb`, with its skin
   and clips and no LOD1.
-- The nature megakit paints a wind weight into `COLOR_0` (0.14 at a trunk's
-  foot to 1 in the crown); it becomes `_WIND`, one normalised byte a vertex
-  (three's GLTFLoader names it `_wind`). Every other `COLOR_0` is dropped.
+- The nature megakit paints a wind weight into `COLOR_0` (0.03 to 0.14 at a
+  trunk's foot, tree by tree, to 1 in the crown); it becomes `_WIND`, one
+  normalised byte a vertex (three's GLTFLoader names it `_wind`). Every
+  other `COLOR_0` is dropped.
 - A leaf material is `MASK` at 0.3 and two-sided, whatever the source had
   (some crowns are `BLEND`, some bark `MASK`); everything else is opaque.
 - Textures are WebP q82 by role: bark colour 1024 (512 only for a model too
@@ -216,19 +223,19 @@ Some small models' LOD1s save little (five petals of 13-30 triangles keep
 nearly all of them; three flowers, two plants and a pebble of 48-293, and
 one space grass, 42-79 %): none is a tree, and none is heavier than its model.
 
-The farm animals: 7 models in 7 files, **1.00 MB** (the manifest 4 KB),
+The farm animals: 7 models in 7 files, **0.88 MB** (the manifest 4 KB),
 each a rig with its clips (seconds) and no LOD1; 12 flat-colour materials,
 no textures.
 
 | File | Bones | Triangles | Clips | KB |
 | --- | ---: | ---: | --- | ---: |
-| cow.glb | 28 | 796 | WalkSlow 2.083, Death 1.25, Jump 1.708, Idle 6.25, Walk 3.333, Run 1.417 | 232 |
-| horse.glb | 28 | 690 | WalkSlow 2, Death 1.083, Jump 1.5, Idle 6.25, Walk 2.667, Run 0.833 | 214 |
-| llama.glb | 24 | 662 | Jump 1.125, Idle 6.25 | 88 |
-| pig.glb | 24 | 562 | Jump 1.5, Idle 6.25 | 87 |
-| pug.glb | 24 | 644 | Jump 1.5, Idle 6.25 | 89 |
-| sheep.glb | 24 | 612 | Jump 1.125, Idle 6.25 | 87 |
-| zebra.glb | 28 | 1,354 | WalkSlow 2, Death 1.083, Jump 1.5, Idle 6.25, Walk 2.667, Run 0.833 | 230 |
+| cow.glb | 28 | 796 | WalkSlow 2.083, Death 1.25, Jump 1.708, Idle 6.25, Walk 3.333, Run 1.417 | 211 |
+| horse.glb | 28 | 690 | WalkSlow 2, Death 1.083, Jump 1.5, Idle 6.25, Walk 2.667, Run 0.833 | 193 |
+| llama.glb | 24 | 662 | Jump 1.125, Idle 6.25 | 71 |
+| pig.glb | 24 | 562 | Jump 1.5, Idle 6.25 | 70 |
+| pug.glb | 24 | 644 | Jump 1.5, Idle 6.25 | 72 |
+| sheep.glb | 24 | 612 | Jump 1.125, Idle 6.25 | 69 |
+| zebra.glb | 28 | 1,354 | WalkSlow 2, Death 1.083, Jump 1.5, Idle 6.25, Walk 2.667, Run 0.833 | 209 |
 
 ## Later
 

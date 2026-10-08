@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Document } from '@gltf-transform/core';
-import { clipName, renameClips, toMetres } from './fbx.mjs';
+import { clipName, dropLoaderNotes, renameClips, toMetres } from './fbx.mjs';
 
 describe('an FBX pack’s clips', () => {
   it('are named for the action alone, without the armature', () => {
@@ -43,5 +43,22 @@ describe('an FBX pack’s units', () => {
     doc.createScene().addChild(root);
     expect(toMetres(doc)).toBe(1);
     expect(root.getScale()).toEqual([1, 1, 1]);
+  });
+});
+
+describe('an FBX pack’s nodes', () => {
+  it('lose the notes FBXLoader keeps on each, and keep any other extra', () => {
+    const doc = new Document();
+    const notes = { originalName: 'Horse', transformData: { eulerOrder: 'ZYX', scale: [100, 100, 100] } };
+    const root = doc.createNode('Horse').setExtras({ ...notes, kept: 1 });
+    const bone = doc.createNode('Bone').setExtras({ originalName: 'Bone' });
+    const plain = doc.createNode('Plain').setExtras({ part: 'main' });
+    doc.createScene().addChild(root.addChild(bone).addChild(plain));
+    expect(dropLoaderNotes(doc)).toBe(2);
+    expect(root.getExtras()).toEqual({ kept: 1 });
+    expect(bone.getExtras()).toEqual({});
+    expect(plain.getExtras()).toEqual({ part: 'main' });
+    // (nothing left to take, the second time)
+    expect(dropLoaderNotes(doc)).toBe(0);
   });
 });

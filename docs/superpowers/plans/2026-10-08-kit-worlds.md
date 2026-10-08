@@ -88,7 +88,7 @@ One session may do them in order, merging each before the next; or one session p
 - [ ] Step 1: `manifest.test.mjs`: `buildManifest` on the tiny fixture's shape yields `models.Tiny_1.kind === 'tree'`, `parts` `['bark','leaves']`, `materials.Leaves_Tiny.alpha === 'mask'`, `tones` two linear colours; `checkManifest` flags a file of 1.6 MB, a tree of 16k tris, a lod1 at 50 %.
 - [ ] Step 2: Run (fail), implement `manifest.mjs`, run (pass).
 - [ ] Step 3: Implement `import.mjs` (gltf-transform `NodeIO` with `ALL_EXTENSIONS`, `MeshoptEncoder`, `sharp` for textureCompress), run it on the fixture: `node scripts/kit/import.mjs tiny --from scripts/fixtures/kit/tiny --out /tmp/kit-tiny` → `tiny.glb` + `index.json`; assert in `manifest.test.mjs` (an `it` that runs the CLI with `execFileSync` and reads the output) that the GLB opens in gltf-transform with 2 meshes + 2 lod1 meshes, 2 materials, `_WIND` present, leaf `alphaMode MASK 0.3`.
-- [ ] Step 4: Run the real packs: `node scripts/assets-fetch.mjs naturemega space farm` (or `--from /path/to/tilakverse-assets/quaternius/<pack>`), then `node scripts/kit/import.mjs naturemega` (all families), `node scripts/kit/import.mjs space`. Record sizes in the README: the megakit must come to under 12 MB for 116 models; if a family is over 1.5 MB, halve its bark colour to 512 and say so in the manifest's `materials[name].maps`.
+- [ ] Step 4: Run the real packs: `node scripts/assets-fetch.mjs naturemega space farm` (or `--from /path/to/tilakverse-assets/quaternius/<pack>`), then `node scripts/kit/import.mjs naturemega` (all families), `node scripts/kit/import.mjs space`. Record sizes in the README: the megakit must come to under 12 MB for 116 models; if a family is over 1.5 MB, split it into numbered files (`<family>.glb`, `<family>-2.glb` …, in model order); only a model over 1.5 MB on its own has its bark colour halved to 512, said in the manifest's `materials[name].maps`.
 - [ ] Step 5: Write `scripts/kit/README.md` (the manual: fetch, import, check, credit; the manifest's fields; the budgets) and add `scripts/kit/import.mjs` to `README.md`'s scripts list.
 - [ ] Step 6: Commit `feat(kit): a pack as family GLBs and a manifest` (the `public/kit/` GLBs in a second commit `assets(kit): nature megakit, space kit`).
 
@@ -122,7 +122,7 @@ One session may do them in order, merging each before the next; or one session p
 
 **Files:** Modify `src/lib/three/foliage.js:175-224`, `src/lib/three/foliage.test.js`.
 
-**Interfaces (produces):** `windShader(shader, { weight = null })`: when `weight` is a name, the vertex shader declares `attribute float <weight>;` and multiplies `wBend` by it (so a trunk's base at 0.137 barely moves and a crown at 1 moves fully); `wind(material, { weight })` passes it through and adds `|w:<name>` to the cache key.
+**Interfaces (produces):** `windShader(shader, { weight = null })`: when `weight` is a name, the vertex shader declares `attribute float <weight>;` and multiplies the bend and the leaf flutter by it (so a trunk's foot, at 0.03–0.14, barely moves and a crown at 1 moves fully); `wind(material, { weight })` passes it through and adds `|w:<name>` to the cache key.
 
 - [ ] Step 1: Test: with `weight: '_wind'` (GLTFLoader lower-cases custom attributes: the GLB's `_WIND` loads as `_wind`) the rewritten vertex shader contains `attribute float _wind;` and `* _wind`; without, neither; `swapped.wind === true` both ways.
 - [ ] Step 2: Run (fail), implement, run (pass). `npx vitest run src/lib/three/foliage.test.js src/components/galaxy` green.

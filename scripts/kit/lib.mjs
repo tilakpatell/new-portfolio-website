@@ -65,8 +65,9 @@ export function kindOf(name) {
 }
 
 // A crown's far LOD: a seeded `keep` of its leaf cards, each grown about its
-// own centroid by 1 / sqrt(keep) (at most ×1.25) so the thinner crown still
-// covers about what it did. A card is a clump: the triangles joined by the
+// own centroid by 1 / sqrt(the share actually kept) (at most ×1.25) so the
+// thinner crown still covers about what it did; a crown of one card keeps it
+// and does not grow. A card is a clump: the triangles joined by the
 // vertices they share, wherever they stand in the index list. A broadleaf
 // card in the nature pack is a quad of two; a pine's needle clump is up to
 // twenty-two, its triangles scattered through the list, and is kept or
@@ -104,7 +105,8 @@ export function thinCards(positions, indices, keep, seed) {
     [order[i], order[j]] = [order[j], order[i]];
   }
   const chosen = order.subarray(0, kept).sort();
-  const grow = Math.min(1 / Math.sqrt(keep), 1.25);
+  // (by the share kept, not the share asked: one card of one keeps its size)
+  const grow = kept ? Math.min(1 / Math.sqrt(kept / cards.length), 1.25) : 1;
 
   const map = [];
   const out = [];
@@ -133,9 +135,9 @@ export function thinCards(positions, indices, keep, seed) {
   return { positions: new Float32Array(pos), indices: new Uint32Array(out), map: new Uint32Array(map) };
 }
 
-// The nature pack paints a wind weight into COLOR_0 (0.14 at a trunk's base
-// to 1 at the crown, the same in every channel): its red channel as a byte,
-// a vertex at a time, held to 0..255.
+// The nature pack paints a wind weight into COLOR_0 (0.03 to 0.14 at a
+// trunk's foot, tree by tree, to 1 at the crown, the same in every channel):
+// its red channel as a byte, a vertex at a time, held to 0..255.
 export function windFromColor(color0, stride) {
   const wind = new Uint8Array(Math.floor(color0.length / stride));
   for (let i = 0; i < wind.length; i++) wind[i] = Math.round(Math.min(1, Math.max(0, color0[i * stride])) * 255);

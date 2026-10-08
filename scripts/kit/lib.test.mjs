@@ -124,13 +124,21 @@ describe('a crown’s leaf cards, thinned', () => {
     expect(a).toBeLessThan(b);
   });
 
-  it('grows a card by 1 / sqrt(keep) while that is under the cap', () => {
+  it('grows a card by 1 / sqrt(the share kept) while that is under the cap', () => {
     const { positions, indices } = cards();
-    // 0.8 of four is three cards, each ×1.118
+    // 0.8 of four is three cards, three quarters: each ×1.155, not 0.8's ×1.118
     const out = thinCards(positions, indices, 0.8, 5);
     expect(out.map.length).toBe(12);
     const old = Math.floor(out.map[0] / 4);
-    expect(extentOf(out.positions, 0, 4, 0) / extentOf(positions, old * 4, 4, 0)).toBeCloseTo(1 / Math.sqrt(0.8), 5);
+    expect(extentOf(out.positions, 0, 4, 0) / extentOf(positions, old * 4, 4, 0)).toBeCloseTo(1 / Math.sqrt(0.75), 5);
+  });
+
+  it('does not grow the one card of a crown that has one', () => {
+    // 0.4 of one card is that card, all of it kept: it stays as it stood
+    const { positions, indices } = cards(1);
+    const out = thinCards(positions, indices, 0.4, 2);
+    expect(Array.from(out.positions)).toEqual(Array.from(positions));
+    expect(Array.from(out.indices)).toEqual(Array.from(indices));
   });
 
   it('keeps every card as it stood when asked to keep them all', () => {
@@ -248,12 +256,13 @@ describe('a crown’s leaf cards, thinned', () => {
     const out = thinCards(positions, indices, 1, 1);
     expect([...out.map]).toEqual([0, 1, 2, 3, 4, 5, 6]);
     expect([...out.indices]).toEqual([...indices]);
-    // (half of one card is still that one card, grown as a whole)
+    // (half of one card is still that one card, whole and not grown)
     const half = thinCards(positions, indices, 0.5, 1);
     expect(half.map.length).toBe(7);
     const before = centroidOf(positions, 0, 7);
     const after = centroidOf(half.positions, 0, 7);
     for (let k = 0; k < 3; k++) expect(Math.abs(after[k] - before[k])).toBeLessThan(1e-6);
+    expect(extentOf(half.positions, 0, 7, 0)).toBeCloseTo(extentOf(positions, 0, 7, 0), 6);
   });
 });
 

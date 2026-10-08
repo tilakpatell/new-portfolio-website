@@ -12,7 +12,8 @@
 //       models: [{ name, positions, parts: [{ part, material, tris, tris1? }], rig? }]
 //       materials: { [name]: { leaf, wind, worn?, maps: { colour: [w, h], normal?: [w, h] }, pixels?: { rgba, w, h } } }
 //   checkManifest(manifest, files: { [file]: bytes }) → string[]   (empty when clean)
-//   sortByName(object) → object   (its keys in name order)
+//   byName(a, b) → -1 | 0 | 1      (code-unit order, every sort's)
+//   sortByName(object) → object   (its keys in that order)
 //   BUDGET = { file, tree, lod1 }
 
 import { boundsOf, kindOf, tonesOf } from './lib.mjs';
@@ -29,8 +30,11 @@ const SHRUBS = new Set(['bush', 'grass', 'plant', 'flower']);
 
 const round = (x, places) => Number(x.toFixed(places));
 const size = ([w, h]) => `${w}x${h}`;
+// Names in code-unit order, the one order every sort of the kit's uses (not
+// localeCompare's, which moves with the machine's locale)
+export const byName = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 // (models and materials by name, so a partial import's merge reads the same)
-export const sortByName = (o) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => a.localeCompare(b)));
+export const sortByName = (o) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => byName(a, b)));
 
 // The manifest of the families just imported. A model's kind is its family's
 // (kindOf), or a character when it carries a rig; its footprint and trunk
@@ -73,7 +77,7 @@ export function buildManifest(pack, families, { title = pack } = {}) {
   }
 
   const materials = {};
-  for (const name of Object.keys(defs).sort()) {
+  for (const name of Object.keys(defs).sort(byName)) {
     if (!kinds[name]) continue;
     const { leaf, wind, maps } = defs[name];
     const worn = new Set([...kinds[name], ...(defs[name].worn ?? [])]);
@@ -104,7 +108,7 @@ export function checkManifest(manifest, files) {
     }
     if (m.tris1 != null && m.tris1 > m.tris) errors.push(`${name}: LOD1 ${m.tris1} of ${m.tris} tris, more than the model`);
   }
-  for (const file of [...used].sort()) {
+  for (const file of [...used].sort(byName)) {
     const mb = files[file] / 1048576;
     if (files[file] > BUDGET.file) errors.push(`${file}: ${mb.toFixed(1)} MB, over ${BUDGET.file / 1048576} MB`);
   }

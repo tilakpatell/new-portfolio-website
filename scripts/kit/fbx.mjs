@@ -4,10 +4,11 @@
 // FBXLoader and GLTFExporter in headless Chromium, through the dev server;
 // skeleton, skin and clips kept, the FBX's material colours as they are) into
 // lab/assets/<pack>-glb/<Name>.glb, which scripts/kit/import.mjs's SOURCES
-// reads. Each GLB is then rewritten in two ways: in metres (the FBX is in
-// centimetres, which FBXLoader keeps), and with each clip named for its
-// action alone (Blender's exporter names it for its armature too,
-// `Armature|Walk`), so the manifest and the runtime's mixer know `Walk`.
+// reads. Each GLB is then rewritten in three ways: in metres (the FBX is in
+// centimetres, which FBXLoader keeps), with each clip named for its action
+// alone (Blender's exporter names it for its armature too, `Armature|Walk`),
+// so the manifest and the runtime's mixer know `Walk`, and without the notes
+// FBXLoader leaves on every node (an eighth of the farm's bytes).
 // The dev server is the one on 5188 when it is up, else one started here on
 // a free port and stopped at the end, error or not. The manual is
 // scripts/kit/README.md.
@@ -16,6 +17,7 @@
 //   clipName(name) → string        ('Armature|Walk' → 'Walk')
 //   renameClips(doc) → string[]    (a gltf-transform Document's clips renamed so; their names)
 //   toMetres(doc) → number         (its root scaled by extras.unitScaleFactor / 100; that scale)
+//   dropLoaderNotes(doc) → number  (FBXLoader's node extras taken off; how many nodes had them)
 //   convertPack(pack, { log }) → [{ name, file, clips }]
 
 import { NodeIO } from '@gltf-transform/core';
@@ -64,6 +66,22 @@ export function renameClips(doc) {
     names.push(name);
   }
   return names;
+}
+
+// What FBXLoader keeps on each node for its own use, `originalName` and
+// `transformData` (its rotation order, pivots and parents' matrices), which
+// GLTFExporter writes out as extras: nothing reads them after the load, and
+// they were 130 KB of the farm's 1.05 MB. Any other extra stays.
+const LOADER_NOTES = ['originalName', 'transformData'];
+export function dropLoaderNotes(doc) {
+  let n = 0;
+  for (const node of doc.getRoot().listNodes()) {
+    const extras = node.getExtras();
+    if (!LOADER_NOTES.some((k) => k in extras)) continue;
+    node.setExtras(Object.fromEntries(Object.entries(extras).filter(([k]) => !LOADER_NOTES.includes(k))));
+    n++;
+  }
+  return n;
 }
 
 const answers = async (url) => {
@@ -124,6 +142,7 @@ export async function convertPack(pack, { log = console.log } = {}) {
       await fbxToGlb(join(src, f), file, { base: server.base });
       const doc = await io.read(file);
       toMetres(doc);
+      dropLoaderNotes(doc);
       const clips = renameClips(doc);
       await io.write(file, doc);
       log(`${`${name}.glb`.padEnd(24)} ${String(Math.round((await stat(file)).size / 1024)).padStart(5)} KB  ${clips.length ? clips.join(', ') : 'no clips'}`);

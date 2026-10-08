@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildManifest, checkManifest } from './manifest.mjs';
+import { buildManifest, byName, checkManifest, sortByName } from './manifest.mjs';
 import { importPack } from './import.mjs';
 
 // The tiny fixture's shape (scripts/fixtures/kit/tiny/): two birches of one
@@ -118,6 +118,14 @@ describe('a pack’s manifest', () => {
     ]);
     expect(m.models.Astronaut_FinnTheFrog).toMatchObject({ kind: 'character', rig, tris: 8000, tris1: null, file: 'astronaut_finnthefrog.glb' });
     expect(m.materials.Atlas).toEqual({ alpha: 'opaque', leaf: false, wind: null, maps: { colour: '512x512' } });
+  });
+});
+
+describe('the kit’s one order of names', () => {
+  it('is code-unit order, the same on every machine (capitals, then `_`, then small letters)', () => {
+    expect(['Rock_Big_1', 'RockPath_Round', 'birch', 'Birch_2', 'Birch_10'].sort(byName)).toEqual(['Birch_10', 'Birch_2', 'RockPath_Round', 'Rock_Big_1', 'birch']);
+    expect(Object.keys(sortByName({ Rock_Big_1: 1, RockPath_Round: 2 }))).toEqual(['RockPath_Round', 'Rock_Big_1']);
+    expect(byName('a', 'a')).toBe(0);
   });
 });
 

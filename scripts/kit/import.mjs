@@ -13,10 +13,10 @@
 // simplified to a quarter, a tree's or a bush's leaf cards thinned to 40 %
 // and grown to cover). A rigged model is a file of its own with its skin and
 // clips, and no LOD1. The nature megakit's COLOR_0 is the wind weight it
-// paints (0.14 at a trunk's foot to 1 in the crown) and becomes `_WIND`, one
-// normalised byte; every other COLOR_0 goes. A leaf (a material named for
-// leaves or flowers, or one cut out by its map's alpha) is MASK at 0.3 and
-// two-sided; everything else is opaque. Textures go to WebP q82 by role
+// paints (0.03 to 0.14 at a trunk's foot, to 1 in the crown) and becomes
+// `_WIND`, one normalised byte; every other COLOR_0 goes. A leaf (a material
+// named for leaves or flowers, or one cut out by its map's alpha) is MASK at
+// 0.3 and two-sided; everything else is opaque. Textures go to WebP q82 by role
 // (bark and solid colour 1024, normals 1024, leaves 512 with their alpha, a
 // palette atlas lossless at its own size). Then dedup, prune, meshopt. A
 // family over 1.5 MB goes into `<family>.glb`, `<family>-2.glb` … in model
@@ -37,7 +37,7 @@ import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { familyOf, kindOf, thinCards, windFromColor } from './lib.mjs';
-import { BUDGET, buildManifest, checkManifest, sortByName } from './manifest.mjs';
+import { BUDGET, buildManifest, byName, checkManifest, sortByName } from './manifest.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -76,6 +76,8 @@ const MESHOPT = { level: 'medium', quantizeNormal: 8 };
 const hash = (bytes) => (bytes ? createHash('sha1').update(bytes).digest('hex') : '');
 // a seed from a name (FNV-1a), so a crown thins the same way every import
 const seedOf = (s) => [...s].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
+// a name as a RegExp matches it, every character as itself
+const literally = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const trisOf = (prim) => (prim.getIndices()?.getCount() ?? prim.getAttribute('POSITION').getCount()) / 3;
 
 // (bark UVs tile past 0..1, which quantize keeps as floats, saying so for
@@ -101,7 +103,7 @@ function listModels(base, source) {
   for (const d of source.dirs) {
     const dir = join(base, d);
     if (!existsSync(dir)) throw new Error(`no ${dir}: fetch the pack first (node scripts/assets-fetch.mjs <pack>) or pass --from`);
-    for (const f of readdirSync(dir).sort()) {
+    for (const f of readdirSync(dir).sort(byName)) {
       if (ext.includes(extname(f).toLowerCase())) found.push({ name: f.slice(0, -extname(f).length), path: join(dir, f) });
     }
   }
@@ -207,7 +209,7 @@ async function settleMaterials(models, source) {
       prim.setExtras({ ...prim.getExtras(), part });
       if (!def) continue;
       if (prim.getAttribute('_WIND')) def.wind = true;
-      def.worn = [...new Set([...def.worn, m.rigged ? 'character' : m.kind])].sort();
+      def.worn = [...new Set([...def.worn, m.rigged ? 'character' : m.kind])].sort(byName);
     }
   }
   return defs;
@@ -328,10 +330,10 @@ async function buildFile(io, group, defs, source, halve) {
     }
     model.node = map.get(model.root);
   }
-  const byName = new Map();
+  const named = new Map();
   for (const mat of doc.getRoot().listMaterials()) {
-    const first = byName.get(mat.getName());
-    if (!first) byName.set(mat.getName(), mat);
+    const first = named.get(mat.getName());
+    if (!first) named.set(mat.getName(), mat);
     else {
       for (const parent of mat.listParents()) if (parent.propertyType === PropertyType.PRIMITIVE) parent.swap(mat, first);
       mat.dispose();
@@ -356,7 +358,7 @@ async function buildFile(io, group, defs, source, halve) {
   // textures by role
   const roles = new Map();
   const prims = doc.getRoot().listMeshes().flatMap((m) => m.listPrimitives());
-  for (const mat of byName.values()) {
+  for (const mat of named.values()) {
     const def = defs[mat.getName()];
     const barky = prims.some((p) => p.getMaterial() === mat && p.getExtras().part === 'bark');
     const colour = source.atlas ? 'atlas' : def.leaf ? 'leaf' : !barky ? 'main' : halve.has(mat.getName()) ? 'halved' : 'bark';
@@ -368,9 +370,9 @@ async function buildFile(io, group, defs, source, halve) {
     if (role === 'atlas') await compressTexture(tex, { encoder: sharp, targetFormat: 'webp', lossless: true });
     else await compressTexture(tex, { encoder: sharp, targetFormat: 'webp', resize: [SIZE[role], SIZE[role]], quality: QUALITY });
   }
-  const bark = [...byName.values()].filter((mat) => ['bark', 'halved'].includes(roles.get(mat.getBaseColorTexture()))).map((mat) => mat.getName());
+  const bark = [...named.values()].filter((mat) => ['bark', 'halved'].includes(roles.get(mat.getBaseColorTexture()))).map((mat) => mat.getName());
   const maps = {};
-  for (const mat of byName.values()) {
+  for (const mat of named.values()) {
     maps[mat.getName()] = Object.fromEntries(
       Object.entries({ colour: mat.getBaseColorTexture(), normal: mat.getNormalTexture() })
         .filter(([, t]) => t)
@@ -423,7 +425,7 @@ function groupsOf(models, families) {
     const g = groups.get(file) ?? groups.set(file, { family, file, models: [] }).get(file);
     g.models.push(m);
   }
-  return [...groups.values()].sort((a, b) => a.file.localeCompare(b.file));
+  return [...groups.values()].sort((a, b) => byName(a.file, b.file));
 }
 
 export async function importPack({ pack, from, out, families = [], log = console.log, dry = false, cap = BUDGET.file }) {
@@ -468,7 +470,7 @@ export async function importPack({ pack, from, out, families = [], log = console
     log(`${b.file.padEnd(34)} ${String(b.models.length).padStart(3)} models  ${String(tris).padStart(7)} → ${lod.padStart(6)} tris  ${(b.bytes.byteLength / 1048576).toFixed(2)} MB`);
     return { family: b.group.family, file: b.file, models: b.models, materials };
   });
-  const halved = [...halve].filter((n) => written.some((b) => b.bark.includes(n))).sort();
+  const halved = [...halve].filter((n) => written.some((b) => b.bark.includes(n))).sort(byName);
   if (halved.length) log(`bark colour halved to ${SIZE.halved}: ${halved.join(', ')}`);
   let manifest = buildManifest(pack, entries, { title: source.title });
 
@@ -484,7 +486,7 @@ export async function importPack({ pack, from, out, families = [], log = console
   // (a family split before and not now, or into fewer, leaves no stale part)
   const parts = new Set(written.map((b) => b.file));
   for (const f of readdirSync(out)) {
-    if (groups.some((g) => new RegExp(`^${g.family}-\\d+\\.glb$`).test(f)) && !parts.has(f)) await rm(join(out, f));
+    if (groups.some((g) => new RegExp(`^${literally(g.family)}-\\d+\\.glb$`).test(f)) && !parts.has(f)) await rm(join(out, f));
   }
   // a partial import keeps the other families' entries
   if (old) {
