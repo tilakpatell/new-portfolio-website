@@ -268,7 +268,9 @@ function play(run, s, k, f) {
     if (!due && !counter) continue;
     const raid = by === 'hutt';
     const targets = raid ? players : [liberator, 'hutt'];
-    const border = WAR_SYSTEMS.filter((id) => targets.includes(owner[id]) && !s.attacks.some((a) => a.sys === id) && NEIGHBOURS[id].some((o) => owner[o] === by));
+    // (not a last stand: it can't fall before the Climax, and an attack thrown at it, even the only one
+    // there is, held the liberator's own front off it for an hour and a half at a time)
+    const border = WAR_SYSTEMS.filter((id) => targets.includes(owner[id]) && !holdsOut.has(id) && !s.attacks.some((a) => a.sys === id) && NEIGHBOURS[id].some((o) => owner[o] === by));
     const forced = counter && border.includes(counter) ? counter : null;
     if (!forced && !due) continue;
     if (!border.length) {

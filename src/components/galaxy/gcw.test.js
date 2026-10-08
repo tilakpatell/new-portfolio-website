@@ -344,6 +344,33 @@ describe('history', () => {
     expect(b.value(pointsKey('rebel', f, last))).toBe(CAP);
     expect(forA.owner[f] !== s0.owner[f] || forA.control[f] < s0.control[f]).toBe(true);
   });
+  it('throws no attack or raid at a side’s last stand before the Climax: it can’t fall', () => {
+    // (one side's pilots everywhere, so the others are soon down to their last
+    // stands; each side's count is followed from the news, a step at a time)
+    let stands = 0;
+    for (const [war, code] of [
+      ['clone', 'rep:'],
+      ['gcw', 'imp:'],
+      ['remnant', 'nr:'],
+    ]) {
+      const run = campaignRun(war, 0, (key) => (key.startsWith(code) ? 100 : 0));
+      const count = countOf(opening(war).owner);
+      for (let k = 0; k < GCW.phases.at(-1).from; k++) {
+        const s = runAt(run, atStep(0, k, 60e3));
+        // (an operation's launched as its step begins, on the count the steps before left)
+        for (const e of s.events.filter((x) => x.k === k && (x.type === 'attack' || x.type === 'raid'))) {
+          expect(count[e.holder], `${war} ${k} ${e.by} at ${e.sys}`).toBeGreaterThan(GCW.lastStand);
+          stands += Object.values(count).filter((c) => c === GCW.lastStand).length;
+        }
+        // (and what fell in this step is known for sure once it's whole: at the next)
+        for (const e of runAt(run, atStep(0, k + 1, 60e3)).events.filter((x) => x.k === k && x.type === 'captured')) {
+          count[e.from] -= 1;
+          count[e.by] = (count[e.by] ?? 0) + 1;
+        }
+      }
+    }
+    expect(stands).toBeGreaterThan(0);
+  });
   it('ends a war when one side holds every system, but not before the Climax: each side’s last stand holds till then', () => {
     // (it ended at 30 h with the Republic's pilots everywhere; now a side's
     // last system holds out till the Climax, so it ends then, at 70 h)
