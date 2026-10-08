@@ -175,3 +175,6 @@
   .rm-pf-part, .rm-pf-shine, .rm-butter-bot-art { animation: none !important; }
   .rm-butter-bot, .rm-butter-head, .rm-butter-arm, .rm-butter-lid, .rm-butter-eye { transition: none; }
 }
+
+/* the galaxy behind the page (GalaxyBackdrop.jsx), fixed, under everything */
+.rm-galaxy { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
