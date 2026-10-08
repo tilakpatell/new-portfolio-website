@@ -56,7 +56,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | lane | session | branch | pull request | merged |
 |---|---|---|---|---|
 | design | the architecting session | `claude/lucid-hawking-78yzz5` | | |
-| 1A | | | | |
+| 1A | `session_018TPUBuBVbG9Xbm68QY6rAd` | `claude/one-feel-art` | (opening) | |
 | 1B | | | | |
 | 1C | | | | |
 | 1D | | | | |
@@ -71,6 +71,12 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 ## Findings (for the owner and the next lane)
 
 - (a lane writes here what it found and could not do in its files: a shared change it needs, a spec decision it questions, a world that will not take a piece and why)
+- **1A, for every stage world (2A–2F):** `createStage` now starts at the house’s exposure (`LOOK.exposure`, 1.4) under Neutral, so a stage world that calls `houseOn` passes `keepExposure: true` or is lifted twice (the rush, the Citadel and the casa were given it here; Roll out sets its exposure outright and needed nothing). A stage world that passes its own `exposure` was tuned under ACES and is darker under Neutral until its lane lifts it; one that passed no `bloom` now glows only over white: lift its emissives with `hot()`, never lower the threshold.
+- **1A, for 2B:** `galaxy/surface/look.js` already exists (`lookOf(site)`, the house’s look from a site’s sky) and has no `LOOK` export, so `looks.test.js` counts the folder missing; add the `LOOK` beside what is there.
+- **1A, for 2A and 2B:** a folder holds one look, and `LOOK_FOLDERS` is a folder a row: `middleearth/` draws the bridge, the ring (own), Gorgoroth and the map backdrop (tone none); `deathstar/` the Death Star and the trench. Either the look’s `why` says what differs, or the lane moves a scene into its own folder and gives `LOOK_FOLDERS` a row for it.
+- **1A, for 2F:** the phone past the home system is a secret no file but its own may name (`universe/phone.test.js`), so it has no row in `LOOK_FOLDERS`; its look.js is welcome but the sweep cannot see it.
+- **1A, for 2B, 2C and 2F:** `art-mix` is 7, budgeted at 7. Most come through the import closure across worlds: `rickmorty/portal/meshyCast.js`’s toon ramp reaches the galaxy surface, the landings, Albuquerque and Metherria; `cockpit/vehicles/cruiser.js`’s reaches the universe map and the galaxy; `galaxy/surface/kit.js` and `detail.js` bring the core kit to the universe and C-137. Each lane that settles one lowers the budget with `node scripts/health.mjs --ratchet`.
+- **1A, for anyone shooting the Shire:** headless SwiftShader never gets the Shire past “Compiling shaders” in five minutes on `high`, so `autopilot-check` can’t photograph it; its before and after need a real GPU (`scripts/perf-probe.mjs` with `CHROME` set, or a desktop).
 - **1E, for 2A–2F:** `collidersOf(model).bodies` gives descs relative to the model’s root; a world that stands the model somewhere adds that place to each body’s `position` and `rotation` (`fromModel.js`’s `colliderIn` composes a collider into its body’s frame). A `physical` node is hidden, so a body that is also the visible mesh vanishes: model the shapes beside the look. three.js’s loader strips `.` from node names (`cuboid.001` loads as `cuboid001`), which the prefix rules allow for.
 - **1E, for the landings’ owner:** a model’s physical nodes become one landing body (the first’s type, every collider, the masses summed): `landings/physics.js` sets its own friction, restitution and damping, so a node’s `userData.friction` and `restitution` are not used there yet, and a `kinematic` node stands fixed. `landings/models.js` sizes a model by `Box3.setFromObject`, which counts hidden objects: a physical mesh larger than the look would shrink the look a little (the web cut strips the meshes of the shapes sized by scale, so only a body’s own mesh, a hull or a trimesh can).
 - **1E, for the owner:** `scripts/gen3d/README.md` and `docs/README.md`’s `assets/` row don’t yet mention `--check-colliders` and `docs/assets/colliders.md` (outside the lane’s files).
