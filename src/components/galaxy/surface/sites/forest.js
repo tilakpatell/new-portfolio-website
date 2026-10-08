@@ -399,7 +399,12 @@ export const SITES = {
           // (the tree is the Meshy model, re-centred on its foot, its root mass
           // about 75 m across with the houses built over it, leaning away from
           // the landing; the fire and the crates stand at the roots' edge)
-          { kind: 'kachirho', at: [0, 0], yaw: Math.PI, opts: { style: 'tree' }, sink: 2, solid: { r: 34 } },
+          // (sunk 14 m: the model stands on a root mound some 200 m across
+          // whose underside floats 4 m up, so the player would otherwise walk
+          // beneath it; sunk this far its skirt is underground. The mound is a
+          // hollow of arching roots inside 80 m, so that much is solid and the
+          // village keeps to its rim, under the overhang of the houses)
+          { kind: 'kachirho', at: [0, 0], yaw: Math.PI, opts: { style: 'tree' }, sink: 14, solid: { r: 80 } },
           { kind: 'fire', at: [14, 84] },
           { kind: 'crates', at: [-16, 86] },
         ],
