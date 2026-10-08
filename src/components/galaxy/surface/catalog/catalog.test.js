@@ -42,13 +42,22 @@ describe('the surface models', () => {
         expect(CREDITS[`surface-${kind}`]?.license, `${kind}'s credit`).toBe('permission');
         expect(CREDITS[`surface-${kind}`]?.permission, `${kind}'s permission`).toBeTruthy();
       } else if (m.made) {
-        expect(m.made, kind).toBe('meshy');
+        expect(['meshy', 'quaternius', 'gen3d'], kind).toContain(m.made);
         expect(m.uid, kind).toBeUndefined();
         expect(made.has(kind), `${kind} in public/cc0/README.md`).toBe(true);
       } else {
         expect(m.uid, kind).toMatch(/^[0-9a-f]{32}$/);
         expect(CREDITS[`surface-${kind}`]?.file, `${kind}'s credit`).toBe(surfaceUrl(kind));
       }
+    }
+  });
+
+  it('has every clip a row names in its file (else the figure sways where it should walk)', () => {
+    const glbJson = (buf) => JSON.parse(buf.subarray(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
+    for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
+      if (!m.anim || m.cluster) continue;
+      const names = (glbJson(readFileSync(file(kind))).animations ?? []).map((a) => a.name);
+      for (const [use, clip] of Object.entries(m.anim)) expect(names, `${kind}'s ${use}: ${clip}`).toContain(clip);
     }
   });
 

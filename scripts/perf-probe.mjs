@@ -390,6 +390,29 @@ const JOURNEYS = {
     mark('end');
   },
   surface: worldPage('/galaxy/tatooine/surface', { ready: (p) => p.waitForFunction(() => document.querySelector('.surface-page')?.dataset.phase === 'walk' || document.querySelector('.surface-page')?.dataset.phase === 'landing', null, { timeout: 240000 }) }),
+  // a big planet of the Rick and Morty sector on the surface engine
+  // (rickmorty/planets/): the landing, then a walk toward the first place.
+  // RM_PLANET names another (the Purge Planet's night mission is the most
+  // on screen, `purge?mission=night`, once that planet has it).
+  async rmPlanet(page, mark) {
+    const route = process.env.RM_PLANET ?? 'gazorpazorp';
+    const phase = () => page.evaluate(() => document.querySelector('.surface-page')?.dataset.phase ?? null);
+    mark('load');
+    await page.goto(`${this.base}/${this.q}#/c-137/${route}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => ['landing', 'walk'].includes(document.querySelector('.surface-page')?.dataset.phase), null, { timeout: 240000 });
+    mark('settle');
+    await wait(page, 4000);
+    // (the landing skipped, as a player who's seen it would)
+    for (let i = 0; i < 40 && (await phase()) === 'landing'; i++) {
+      await page.keyboard.press('Space');
+      await wait(page, 1000);
+    }
+    await page.waitForFunction(() => document.querySelector('.surface-page')?.dataset.phase === 'walk', null, { timeout: 300000 });
+    mark('walk');
+    await page.mouse.click(vw / 2, vh / 2).catch(() => {});
+    await hold(page, 'KeyW', 10000);
+    mark('end');
+  },
   avengers: worldPage('/avengers'),
   shire: worldPage('/middle-earth/shire'),
   abq: worldPage('/albuquerque'),

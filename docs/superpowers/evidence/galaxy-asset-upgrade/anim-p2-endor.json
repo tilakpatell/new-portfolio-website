@@ -1,0 +1,1070 @@
+{
+ "route": "#/galaxy/endor/surface",
+ "rows": [
+  {
+   "id": 0,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 1,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 2,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 5.551115123125783e-17,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 3,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 4,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 5,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 5.551115123125783e-17,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 6,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 7,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 8,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 9,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 10,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.1102230246251565e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 11,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.7755575615628914e-17,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 12,
+   "name": "bdfff6fcbd8c45dab5804c69a6798824fbx",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 201.1914025812638,
+   "bind": false,
+   "act": {
+    "clip": "mixamo.com",
+    "phase": 0.5739318116102368,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 13,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494266,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 14,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 15,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.9462789043298,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.18159893248230208,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 16,
+   "name": "GLTF_created_0",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0.7478664726731918,
+   "bind": false,
+   "act": {
+    "clip": "idle",
+    "phase": 0.7556728785857558,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 17,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 18,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 19,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 20,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 21,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 22,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 23,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 24,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494266,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 25,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 26,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 27,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 28,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 29,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 30,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.9462789043298,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.18159893248230208,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 31,
+   "name": "GLTF_created_0",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.0182306089285746,
+   "bind": false,
+   "act": {
+    "clip": "idle",
+    "phase": 0.6918748712632805,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 32,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 33,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 34,
+   "name": "life",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 35,
+   "name": "life",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 36,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494263,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 37,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494262,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 38,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 39,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193172,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 40,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 41,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494266,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 42,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.96445763494265,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.08193827979266644,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 43,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.99616922193171,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9312985467258841,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 44,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 87.9462789043298,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.18159893248230208,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 45,
+   "name": "figure",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 84.99898630079078,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9155734234955162,
+    "loop": true,
+    "weight": 1
+   }
+  }
+ ],
+ "over": [],
+ "bind": [
+  {
+   "id": 0,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 1,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 2,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 5.551115123125783e-17,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 3,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 4,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 5,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 5.551115123125783e-17,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 6,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 7,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 8,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 9,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 10,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.1102230246251565e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 11,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.7755575615628914e-17,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 17,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 18,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 19,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 20,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 21,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 22,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 23,
+   "name": "Ewok_Low003_Material003_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  }
+ ],
+ "locked": {
+  "count": 23,
+  "groups": [
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     13,
+     24,
+     26,
+     27,
+     28,
+     32,
+     34,
+     36,
+     37,
+     38,
+     40,
+     41,
+     42
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     15,
+     30,
+     44
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     14,
+     25,
+     29,
+     33,
+     35,
+     39,
+     43
+    ]
+   }
+  ]
+ },
+ "spread": [
+  {
+   "clip": "Armature|Idle|baselayer",
+   "n": 24,
+   "r": 0.8578448693260281
+  },
+  {
+   "clip": "idle",
+   "n": 2,
+   "r": 0.9799815867889294
+  }
+ ],
+ "time": {
+  "dt": [
+   0,
+   0.1,
+   0.019899999999906867,
+   0.013800000000279396,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.01789999999990687,
+   0.016200000000186263,
+   0.1,
+   0.1
+  ],
+  "from": "wall",
+  "total": 1.5678000000002796
+ },
+ "fail": false
+}

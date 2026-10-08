@@ -83,7 +83,10 @@ export const SITES = {
       { id: 'factory', name: 'Shut down the factory', giver: 'ryder', steps: [{ type: 'shoot', tag: 'factory', at: [-220, -200], n: 8, text: 'Clear the Remnant from the factory', spawn: troops('factory', 8, [-220, -200]) }, { type: 'use', id: 'power', at: [-220, -200], r: 6, prompt: 'Shut down the power', text: 'Shut the factory down', end: [{ sound: 'crash' }, { shake: 0.8 }] }], done: [['Governor Azadi', 'No more TIEs from Lothal.']] },
     ],
     // (the plains' tall grass is the grass field round you: `grass`)
-    scatter: [],
+    scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qgrass', n: 200, within: [4, 120], scale: [0.9, 1.6], solid: false },
+    ],
     rides: [{ kind: 'speederbike', at: [12, -10], yaw: -1.2 }],
     // a haulier's truck at the landing, its load beside it
     things: [
@@ -122,6 +125,9 @@ export const SITES = {
       { kind: 'log', at: [12, -14], yaw: 0.8 },
     ],
     scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qgrass', n: 200, within: [4, 120], scale: [0.8, 1.5], solid: false },
+      { kind: 'qclover', n: 120, within: [4, 90], scale: [0.8, 1.6], solid: false },
       { kind: 'rock', n: 60, within: [40, 500], scale: [0.6, 2.4], opts: { color: '#6a6a5a' } },
       // (the woods as the episode has them: a wall of dark conifers round
       // the clearings)

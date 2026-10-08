@@ -144,3 +144,17 @@
     height: 72px;
   }
 }
+
+/* the way to the story's target: dashed in the guide's gold, to a diamond at its end */
+.ds-route {
+  fill: none;
+  stroke: #f2d36b;
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 3;
+  opacity: 0.9;
+}
+.ds-route-end {
+  fill: none;
+  stroke: #f2d36b;
+  stroke-width: 0.25;
+}

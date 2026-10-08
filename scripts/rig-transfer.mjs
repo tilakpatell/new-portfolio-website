@@ -513,6 +513,11 @@ export async function rigFrom(donorFile, meshFile, outFile, { tex = 2048 } = {})
     mesh.addPrimitive(prim);
   }
   // the new mesh's own scene and nodes came along in the merge: let them go
+  // (its nodes and meshes by name, not left to prune: a tree of them off
+  // every scene survives it, and its meshes, sharing the parts now on the
+  // donor's, would be quantized each in a box of its own)
+  for (const node of src.getRoot().listNodes()) map.get(node)?.dispose();
+  for (const m of src.getRoot().listMeshes()) map.get(m)?.dispose();
   for (const scene of root.listScenes()) if (scene !== keepScene) scene.dispose();
   root.setDefaultScene(keepScene);
   for (const anim of root.listAnimations()) anim.dispose();
