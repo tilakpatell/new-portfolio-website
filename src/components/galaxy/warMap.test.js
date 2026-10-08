@@ -196,11 +196,6 @@ describe('the operations on the map', () => {
     // (out in the Unknown Regions, nothing for grid squares about)
     expect(roomOf([1, 10])).toBeGreaterThan(2);
   });
-
-  it('puts the names of the systems by the map’s eastern edge on the inside of their dots', () => {
-    // (on a phone Kamino's name ran off the map)
-    for (const id of ['lothal', 'kamino']) expect(NAME_LEFT.has(id)).toBe(true);
-  });
 });
 
 describe('the badge on a fought-over system’s ring (its + or −)', () => {

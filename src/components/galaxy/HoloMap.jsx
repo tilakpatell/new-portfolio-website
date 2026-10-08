@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { RiCloseLine, RiFullscreenExitLine, RiRocket2Fill, RiArrowGoBackLine } from 'react-icons/ri';
@@ -8,10 +8,11 @@ import WarLegend from './WarLegend';
 import WarStrip from './WarStrip';
 import { Fleets, Territory, WarLines } from './WarLayers';
 import { SIDES, WARS } from './sides';
-import { NAME_LEFT, badgeOf, opsOf } from './warMap';
+import { badgeOf, opsOf } from './warMap';
 import { mine, onWar, warNow } from './warState';
 import { jumpTime, routeBetween, viaLanes } from './routes';
 import { onView } from './mapView';
+import { estimateWidth, placeLabels } from './labelPlace';
 import { useMapView } from './useMapView';
 import './warmap.css';
 import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKNOWN, edgeAt, eraById, eraOf, erasOf, filmLabel, filmShort, gridAt, jumpSeconds, lightYears, systemById, yearLabel } from './systems';
@@ -52,7 +53,12 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // the middle, and picking a system with an end of its course off the view
 // zooms to show the course. The canvas, SVG, fleets, grid letters and systems
 // are one stage that's scaled and moved (their names, dots and crests keep
-// their size); the war's strip and key stay put.
+// their size); the war's strip and key stay put. Each system's name goes in
+// the place round its dot where it covers least (labelPlace.js, in screen
+// pixels, from the names' measured widths), so at any zoom they keep clear of
+// one another and the dots as far as there's room; the map's own text is no
+// smaller than 0.7 rem, and the regions' names (11.5 px on screen at any
+// zoom) are spread round their rings.
 //
 // What's new in the war since you last looked is marked on its card: the
 // newest event's time each war, kept in this browser (SEEN_KEY) for you
@@ -60,6 +66,7 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 
 const SIZE = 21; // the map is GRID squares across, in its own units
 const TAU = Math.PI * 2;
+const REGION_ANGLE = [-90, -112, -68, -132, -48, -150]; // (degrees round the core, north is −90: the regions' names apart)
 const SEEN_KEY = 'tp-gcw-seen';
 const readSeen = () => {
   try {
@@ -232,6 +239,45 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
     return out;
   }, [online?.room]);
 
+  // where each system's name goes (labelPlace.js), in screen pixels: from the
+  // map's width, the view, and the names' own widths (measured once drawn,
+  // guessed till then). The stage is scaled by k and each system by 1/k, so a
+  // name is its own size on screen; its offsetWidth is that, and unlike its
+  // bounding box isn't bent by the stage's zoom easing in
+  const [boxPx, setBoxPx] = useState(600);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(([e]) => setBoxPx(e.contentRect.width || 600));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const widths = useRef({}); // id → measured px, from the DOM
+  const [measured, setMeasured] = useState(0);
+  useLayoutEffect(() => {
+    let changed = false;
+    for (const el of box.current?.querySelectorAll('.holomap-name[data-id]') ?? []) {
+      const w = el.offsetWidth + 1; // (it rounds; a pixel to spare)
+      if (w > 1 && widths.current[el.dataset.id] !== w) (widths.current[el.dataset.id] = w), (changed = true);
+    }
+    if (changed) setMeasured((n) => n + 1);
+  }, [war, boxPx, pilots]);
+  const places = useMemo(() => {
+    const { k, x, y } = mv.view;
+    const items = SYSTEMS.map((s) => {
+      const row = war.byId[s.id];
+      const prio = s.id === current ? 100 : s.id === pick ? 90 : row?.battle?.fighting ? 50 : row?.major ? 40 : 0;
+      const extras = (row?.major ? 14 : 0) + (row?.battle?.fighting ? 14 : 0) + (pilots[s.id] ? 20 : 0);
+      const w = widths.current[s.id];
+      return { id: s.id, x: (x + (k * s.pos[0]) / SIZE) * boxPx, y: (y + (k * s.pos[1]) / SIZE) * boxPx, w: Number.isFinite(w) && w > 0 ? w : estimateWidth(s.name, 12.5, extras), h: 20, prio };
+    });
+    // (a view gone wrong must not take the map down with it: every name on the right, as it was)
+    if (items.some((i) => !Number.isFinite(i.x) || !Number.isFinite(i.y))) return {};
+    return placeLabels(items, { bounds: { x0: 0, y0: 0, x1: boxPx, y1: boxPx } });
+    // (`measured` is what says widths.current has changed)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mv.view, boxPx, war, current, pick, pilots, measured]);
+
   const lit = (s) => (film ? s.films.includes(film) : era === 'all' || erasOf(s).includes(era));
   // plot a course to a system (the war card's picks too); with an end of it
   // off the view, zoom to show all of it
@@ -253,6 +299,8 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   };
   const away = picked && picked.id !== current;
   const pct = (v) => `${(v / SIZE) * 100}%`;
+  const unitPx = (boxPx * mv.view.k) / SIZE; // (screen px per map unit)
+  const regionFont = 11.5 / unitPx; // (11.5 px on screen at any zoom)
 
   return createPortal(
     <div className="holomap dark-scope" role="dialog" aria-modal="true" aria-labelledby="holomap-title" style={{ '--btn-bg': picked?.accent ?? '#7fd6ff', '--btn-ink': '#03040a', '--accent': picked?.accent ?? '#7fd6ff', '--accent-text': picked?.accent ?? '#7fd6ff' }}>
@@ -310,12 +358,19 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                 {REGIONS.map((r) => (
                   <path key={r.id} d={ring(r.r)} className="holomap-region" data-id={r.id} />
                 ))}
-                {REGIONS.slice(1).map((r) => (
-                  <text key={r.id} x={CORE[0]} y={CORE[1] - edgeAt(r.r, -Math.PI / 2) + 0.28} className="holomap-region-name">
-                    {r.name}
-                  </text>
-                ))}
-                <text x={CORE[0] - 9.3} y={CORE[1] + 0.1} className="holomap-region-name holomap-unknown-name">
+                {REGIONS.slice(1).map((r, i) => {
+                  const a = (REGION_ANGLE[i % REGION_ANGLE.length] * Math.PI) / 180;
+                  const d = edgeAt(r.r, a) - regionFont * 0.9;
+                  const x = CORE[0] + Math.cos(a) * d;
+                  const y = CORE[1] + Math.sin(a) * d;
+                  const deg = (a * 180) / Math.PI + 90; // (along the ring)
+                  return (
+                    <text key={r.id} x={x} y={y} transform={`rotate(${deg.toFixed(1)} ${x.toFixed(3)} ${y.toFixed(3)})`} className="holomap-region-name" style={{ fontSize: regionFont, letterSpacing: regionFont * 0.18 }}>
+                      {r.name}
+                    </text>
+                  );
+                })}
+                <text x={CORE[0] - 9.3} y={CORE[1] + 0.1} className="holomap-region-name holomap-unknown-name" style={{ fontSize: regionFont }}>
                   Unknown Regions
                 </text>
                 {/* the routes */}
@@ -354,21 +409,21 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                   const ring = row ? { '--held': SIDES[row.owner].colour, ...(by && { '--by': SIDES[by].colour, '--take': 1 - row.control }) } : {};
                   const you = row && fought.has(s.id);
                   return (
-                  <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, ...ring }} data-dim={!lit(s) || undefined} data-side={NAME_LEFT.has(s.id) ? 'left' : undefined} data-badge={row ? badges[s.id] : undefined} data-held={row?.owner} data-front={(by && !row.attack) || undefined} data-attack={row?.attack ? '' : undefined} data-major={row?.major || undefined} data-decisive={row?.decisive || undefined} data-cut={row?.cut || undefined} data-fought={you || undefined}>
+                  <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, ...ring }} data-dim={!lit(s) || undefined} data-place={places[s.id]} data-badge={row ? badges[s.id] : undefined} data-held={row?.owner} data-front={(by && !row.attack) || undefined} data-attack={row?.attack ? '' : undefined} data-major={row?.major || undefined} data-decisive={row?.decisive || undefined} data-cut={row?.cut || undefined} data-fought={you || undefined}>
                     <button type="button" className="holomap-system" aria-pressed={pick === s.id} aria-current={s.id === current ? 'location' : undefined} onFocus={(e) => reveal(s, e)} onClick={() => choose(s.id)} onDoubleClick={() => s.id !== current && onJump(s.id)} aria-label={row ? systemLabel(row, now, you) : undefined}>
                       <span className="holomap-dot" aria-hidden="true">
                         {you && <i className="holomap-you" />}
                       </span>
-                      <span className="holomap-name">
+                      <span className="holomap-name" data-id={s.id}>
                         {s.name}
                         {row?.major && <b className="holomap-star" aria-hidden="true">★</b>}
                         {row?.battle?.fighting && <b className="holomap-fight" aria-hidden="true">⚔</b>}
+                        {pilots[s.id] > 0 && (
+                          <span className="holomap-pilots" title={`${pilots[s.id]} online`}>
+                            {pilots[s.id]}
+                          </span>
+                        )}
                       </span>
-                      {pilots[s.id] > 0 && (
-                        <span className="holomap-pilots" title={`${pilots[s.id]} online`}>
-                          {pilots[s.id]}
-                        </span>
-                      )}
                     </button>
                   </li>
                   );

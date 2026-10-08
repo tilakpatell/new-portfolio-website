@@ -365,13 +365,14 @@
 .holomap-region[data-id='deep'] { stroke: rgb(255 214 150 / 0.45); stroke-dasharray: none; }
 .holomap-region[data-id='outer'] { stroke: rgb(127 214 255 / 0.4); stroke-dasharray: none; }
 .holomap-unknown { fill: rgb(0 0 0 / 0.45); stroke: rgb(127 214 255 / 0.15); stroke-width: 0.03; }
-.holomap-region-name { fill: rgb(191 234 255 / 0.5); font-family: var(--font-mono); font-size: 0.26px; letter-spacing: 0.06px; text-anchor: middle; text-transform: uppercase; }
-.holomap-unknown-name { fill: rgb(191 234 255 / 0.35); }
+/* (the size and spacing are set in HoloMap.jsx, from the box's: 11.5 px on screen at any zoom) */
+.holomap-region-name { fill: rgb(191 234 255 / 0.62); font-family: var(--font-mono); text-anchor: middle; text-transform: uppercase; }
+.holomap-unknown-name { fill: rgb(191 234 255 / 0.45); }
 /* (dim: the war's own lanes, warmap.css, go over them) */
 .holomap-lane { fill: none; stroke: rgb(255 210 120 / 0.18); stroke-width: 0.045; stroke-linejoin: round; }
 .holomap-course { fill: none; stroke: #fff; stroke-linejoin: round; stroke-width: 0.06; stroke-dasharray: 0.18 0.12; animation: holomap-dash 1s linear infinite; }
 @keyframes holomap-dash { to { stroke-dashoffset: -0.6; } }
-.holomap-axis { position: absolute; pointer-events: none; color: rgb(127 214 255 / 0.45); font-family: var(--font-mono); font-size: 9px; }
+.holomap-axis { position: absolute; pointer-events: none; color: rgb(127 214 255 / 0.45); font-family: var(--font-mono); font-size: 0.7rem; }
 .holomap-axis span { position: absolute; translate: -50% -50%; }
 .holomap-axis-x { left: 0; right: 0; top: 7px; }
 .holomap-axis-y { top: 0; bottom: 0; left: 8px; }
@@ -382,24 +383,43 @@
   position: absolute;
   left: 0;
   top: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  translate: -7px -50%;
-  padding: 0.1rem 0.3rem 0.1rem 0;
-  border-radius: 6px;
-  color: #e6f6ff;
-  font-size: 0.7rem;
-  white-space: nowrap;
-}
-.holomap-dot {
-  flex: none;
+  display: block;
   width: 14px;
   height: 14px;
+  translate: -50% -50%;
+  padding: 0;
+  border-radius: 50%;
+  color: #e6f6ff;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.holomap-system::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; } /* (a bigger target than the dot) */
+.holomap-dot {
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
   background: radial-gradient(circle, var(--c) 0 3px, color-mix(in srgb, var(--c) 30%, transparent) 4px, transparent 7px);
 }
-.holomap-systems > li[data-side='left'] .holomap-system { flex-direction: row-reverse; translate: calc(-100% + 7px) -50%; padding: 0.1rem 0 0.1rem 0.3rem; }
+/* a name sits in the place round its dot that HoloMap.jsx gave it (labelPlace.js's boxAt: right by default; the
+   corners start 80% of the way across the dot, near enough boxAt's 5 px off the middle) */
+.holomap-name {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 6px;
+  line-height: 1.25;
+  text-shadow: 0 0 6px #000, 0 0 2px #000;
+}
+.holomap-systems > li .holomap-name { left: calc(100% + 2px); top: 50%; translate: 0 -50%; }
+.holomap-systems > li[data-place='l'] .holomap-name { left: auto; right: calc(100% + 2px); }
+.holomap-systems > li[data-place='t'] .holomap-name { left: 50%; top: auto; bottom: calc(100% + 2px); translate: -50% 0; }
+.holomap-systems > li[data-place='b'] .holomap-name { left: 50%; top: calc(100% + 2px); translate: -50% 0; }
+.holomap-systems > li[data-place='tr'] .holomap-name { left: 80%; top: auto; bottom: 80%; translate: 0 0; }
+.holomap-systems > li[data-place='br'] .holomap-name { left: 80%; top: 80%; translate: 0 0; }
+.holomap-systems > li[data-place='tl'] .holomap-name { left: auto; right: 80%; top: auto; bottom: 80%; translate: 0 0; }
+.holomap-systems > li[data-place='bl'] .holomap-name { left: auto; right: 80%; top: 80%; translate: 0 0; }
 .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 2px #fff; animation: holomap-here 1.6s ease-in-out infinite; }
 @keyframes holomap-here { 50% { box-shadow: 0 0 0 5px rgb(255 255 255 / 0.25); } }
 /* (still, for prefers-reduced-motion: the war's marks stop in warmap.css, but this file comes after it, so here) */
@@ -407,20 +427,19 @@
   .holomap-system[aria-current='location'] .holomap-dot,
   .holomap-course { animation: none; }
 }
-.holomap-system[aria-pressed='true'] { background: rgb(2 6 16 / 0.85); box-shadow: 0 0 0 1px var(--c); color: #fff; }
-.holomap-system:hover .holomap-name { color: var(--c); }
-.holomap-name { text-shadow: 0 0 6px #000, 0 0 2px #000; }
+.holomap-system[aria-pressed='true'] .holomap-name { background: rgb(2 6 16 / 0.85); box-shadow: 0 0 0 1px var(--c); color: #fff; }
+.holomap-system:is(:hover, :focus-visible) .holomap-name { color: var(--c); }
 .holomap-pilots {
   display: grid;
   place-items: center;
-  min-width: 16px;
-  height: 16px;
+  min-width: 18px;
+  height: 18px;
   padding: 0 4px;
   border-radius: 999px;
   background: #7dff9a;
   color: #04120a;
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   font-weight: 700;
 }
 .holomap-side {
@@ -445,7 +464,7 @@
   .holomap-body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; container-type: normal; }
   .holomap-map { width: 100%; max-height: none; }
   .holomap-side { max-height: 40svh; }
-  .holomap-system { font-size: 0.62rem; }
+  .holomap-system { font-size: 0.7rem; }
   .holomap-films { display: none; }
 }
 

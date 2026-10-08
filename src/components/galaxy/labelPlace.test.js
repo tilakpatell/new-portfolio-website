@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SYSTEMS } from './systems';
-import { boxAt, estimateWidth, overlapArea, placeLabels } from './labelPlace';
+import { DOT, boxAt, estimateWidth, overlapArea, placeLabels } from './labelPlace';
 
 const at = (box) => SYSTEMS.map((s) => ({ id: s.id, x: (s.pos[0] / 21) * box, y: (s.pos[1] / 21) * box, w: estimateWidth(s.name), h: 18, prio: 0 }));
 const boxesOf = (items, places) => items.map((it) => ({ id: it.id, ...boxAt(places[it.id], it.x, it.y, it.w, it.h) }));
@@ -28,6 +28,15 @@ describe('labelPlace', () => {
     const items = at(600);
     const p = placeLabels(items, { bounds: { x0: 0, y0: 0, x1: 600, y1: 600 } });
     expect(overlapArea(boxesOf(items, p))).toBe(0);
+  });
+  it('places every system on a 600 px map with no name over another system’s dot', () => {
+    const items = at(600);
+    const p = placeLabels(items, { bounds: { x0: 0, y0: 0, x1: 600, y1: 600 } });
+    const boxes = boxesOf(items, p);
+    const dotOf = (i) => ({ x0: i.x - DOT, y0: i.y - DOT, x1: i.x + DOT, y1: i.y + DOT });
+    const covered = [];
+    for (const box of boxes) for (const other of items) if (other.id !== box.id && overlapArea([box, dotOf(other)]) > 0) covered.push(`${box.id} over ${other.id}`);
+    expect(covered).toEqual([]);
   });
   it('does better than all-right on a phone-sized map', () => {
     const items = at(380);

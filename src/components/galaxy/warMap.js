@@ -23,7 +23,9 @@
 // nearestBattle(table, current, side) → { id, seconds } | null;
 // roomOf([x, z], except) → grid squares from the nearest system's dot or
 // name (but the dots of the systems in `except`; below 0 inside a dot);
-// NAME_LEFT, the systems whose names go on the left of their dots;
+// NAME_LEFT, the systems whose names these rules take to be on the left of
+// their dots (the map's own names are placed by labelPlace.js, wherever
+// there's room, so this is the rules' estimate: roomOf's, and badgeOf's side);
 // badgeOf(id, ops) → where a fought-over system's + or − goes on its ring:
 // 'below' it where there's room for it (from the systems, and the ends of
 // the arrows in ops), or else wherever has the most of 'above' and the
@@ -36,8 +38,9 @@ import { SYSTEMS, jumpSeconds, systemById } from './systems';
 const CLEAR = 0.42; // grid squares off each end of an arrow: clear of the system's dot and ring
 const WIDTH = [0.05, 0.13]; // an arrow's, by how fast its side's pushing (grid squares)
 
-// the names that go on the left of their dot (HoloMap.jsx draws them so): a
-// neighbour's on the right, or the map's edge
+// the names these rules take to be on the left of their dot, for a neighbour's
+// on the right or the map's edge (the map's own names are placed by
+// labelPlace.js, wherever there's room: this is only these rules' estimate)
 export const NAME_LEFT = new Set(['mustafar', 'hoth', 'geonosis', 'nevarro', 'mandalore', 'lothal', 'kamino']);
 // what a system takes up on the map, roughly, in grid squares (a desktop's;
 // on a phone a name's a little longer for the squares, so this errs short):
