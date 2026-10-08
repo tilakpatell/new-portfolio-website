@@ -387,7 +387,6 @@ export function formatTime(t) {
   const s = Math.round(t - m * 60);
   return s ? `${m} min ${s} s` : `${m} min`;
 }
-// map units in the map's own measure: ship-lengths (scale.js's LENGTH)
 // the same measure, short, for the HUD beside a target: ship-lengths with
 // no unit word, thousands as "4.6k"
 export function shortDistance(units) {
@@ -397,6 +396,7 @@ export function shortDistance(units) {
   return `${k < 10 ? k.toFixed(1).replace(/\.0$/, '') : Math.round(k)}k`;
 }
 
+// map units in the map's own measure: ship-lengths (scale.js's LENGTH)
 export function formatDistance(units) {
   if (units === null || units === undefined) return '—';
   const n = units / LENGTH;

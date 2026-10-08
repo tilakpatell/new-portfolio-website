@@ -29,7 +29,7 @@ The two audits' 134 findings were unverified when this started. Each was checked
 
 ## What is left
 
-Done since the five slices, in the follow-ups pull request: L17 and F26 (the cockpit's Welcome: TPM first, "Skip the intro"), L18 ("Home" on the 404 and the error page), F19 (the HUD's distances in the nav map's measure), F35 (the landing line under the desktop keymap), F61 (a station sign's second line read with its label), Travel's two duplicate focus rings, and `kbd-styles` budgeted at 68 now that the world kit's cap is the house one. The tour's copy is now under the words test too (stream B, #621).
+Done since the five slices, in the follow-ups pull request: L17 and F26 (the cockpit's Welcome: TPM first, "Skip the intro"), L18 ("Home" on the 404 and the error page), F19 (the HUD's distances in the nav map's measure), F35 (the landing line under the desktop keymap), F61 (a station sign's second line read with its label), the heritage zoom's duplicate focus ring, and `kbd-styles` budgeted at 68 now that the world kit's cap is the house one. The tour's copy is now under the words test too (stream B, #621).
 
 - **Handed to other streams** (verified list, section 2):
   - S5 and M1: the tour card's padding and entrance, streams A/B.
