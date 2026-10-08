@@ -13,10 +13,11 @@
 // Jerjerrod, Motti and Tagge get their voices along with the world’s lines,
 // through the voices pipeline, so they have none here. Pure.
 //
-//   CAST[kind] → { name, model, tall, tint?, side, gun?, blade?, hp, voice?, role, speed?, armour?,
+//   CAST[kind] → { name, model, tall, tint?, dye?, side, gun?, blade?, hp, voice?, role, speed?, armour?,
 //                  helmet?, built?, scripted?, perception? }
 //     model: a path under public/, or null for a kind built in code, with `built` naming its builder
-//       ('ito' | 'dianoga'); tall: metres; tint: a colour (0xrrggbb) multiplied into its materials
+//       ('ito' | 'dianoga'); tall: metres; tint: a colour (0xrrggbb) multiplied into its materials;
+//       dye: scene/dye.js’s { color, gain, keep, roughness }, its materials’ light and shade in that colour
 //     side: 'imperial' | 'rebel' | 'neutral' (the station’s own words: doors, bolts and talks use them)
 //     gun: a combat.js WEAPONS key; blade: { type: 'saber', colour } | { type: 'pike' }
 //     voice: a speaker of scripts/voices, whose folder under public/audio/voiced/ its lines come from
@@ -37,13 +38,16 @@ export const PERCEPTION = Object.freeze({ sight: 22, cone: 0.57, far: 1.2, shots
 
 const OFFICER = '/models/galaxy/crew/officer.glb';
 const SHARP = { sight: 26 }; // an officer’s or a Royal Guard’s trained eye
-const BLACK = 0x2e2f33; // the Death Star’s own troops, gunners and crew wear black, not the officers’ grey
+// The Death Star’s own troops, gunners and crew wear black, not the officers’ grey: the officer’s
+// uniform dyed charcoal (scene/dye.js), its folds and seams kept, with a little of a pressed
+// cloth’s sheen. (A tint, a multiply, took the olive down to a silhouette.)
+const BLACK = Object.freeze({ color: 0x34363c, gain: 2.2, keep: 0.05, roughness: 0.62 });
 
 // The Death Star trooper and the gunner are the same man in the same black
 // uniform and helmet; only the trooper carries a rifle. The station’s crew
 // say their barks in the Imperial officer’s voice, the nearest the voices
 // pipeline has to a naval rating’s.
-const NAVY = { model: OFFICER, tall: 1.8, tint: BLACK, helmet: 'dstrooper', side: 'imperial', hp: 60, voice: 'imperialofficer' };
+const NAVY = { model: OFFICER, tall: 1.8, dye: BLACK, helmet: 'dstrooper', side: 'imperial', hp: 60, voice: 'imperialofficer' };
 
 export const CAST = freeze({
   stormtrooper: { name: 'Stormtrooper', model: '/models/galaxy/troops/stormtrooper.glb', tall: 1.83, side: 'imperial', gun: 'e11', hp: 60, voice: 'stormtrooper', role: 'soldier', armour: true },
@@ -51,7 +55,7 @@ export const CAST = freeze({
   gunner: { name: 'Death Star gunner', ...NAVY, role: 'worker' },
   officer: { name: 'Imperial officer', model: OFFICER, tall: 1.78, side: 'imperial', gun: 'dh17', hp: 40, voice: 'imperialofficer', role: 'officer', perception: SHARP },
   tiepilot: { name: 'TIE pilot', model: '/models/galaxy/crew/tiepilot.glb', tall: 1.8, side: 'imperial', hp: 50, voice: 'imperialofficer', role: 'worker' },
-  technician: { name: 'Imperial technician', model: OFFICER, tall: 1.75, tint: BLACK, side: 'imperial', hp: 30, voice: 'imperialofficer', role: 'worker' },
+  technician: { name: 'Imperial technician', model: OFFICER, tall: 1.75, dye: BLACK, side: 'imperial', hp: 30, voice: 'imperialofficer', role: 'worker' },
   // the archive’s keeper, whom talk.js already gives a talk of his own by kind
   librarian: { name: 'Archive keeper', model: OFFICER, tall: 1.74, side: 'imperial', hp: 30, voice: 'imperialofficer', role: 'worker' },
   vader: { name: 'Darth Vader', model: '/models/galaxy/crew/vader.glb', tall: 2.03, side: 'imperial', blade: { type: 'saber', colour: 0xff2a1f }, hp: 300, voice: 'vader', role: 'boss', speed: 0.8, scripted: true },
@@ -63,7 +67,8 @@ export const CAST = freeze({
   // “Commander” on screen; his nameplate (an egg) says Moff
   jerjerrod: { name: 'Commander Jerjerrod', model: OFFICER, tall: 1.78, side: 'imperial', hp: 40, role: 'officer', perception: SHARP },
   emperor: { name: 'The Emperor', model: '/models/galaxy/crew/palpatine.glb', tall: 1.73, side: 'imperial', hp: 200, role: 'boss', speed: 0.5, scripted: true },
-  royalguard: { name: 'Royal Guard', model: '/models/galaxy/crew/senateguard.glb', tall: 1.9, tint: 0xd0202a, side: 'imperial', blade: { type: 'pike' }, hp: 90, role: 'soldier', perception: SHARP },
+  // the senate guard’s blue robes dyed the Emperor’s crimson
+  royalguard: { name: 'Royal Guard', model: '/models/galaxy/crew/senateguard.glb', tall: 1.9, dye: { color: 0xb0121c, gain: 3.2, keep: 0, roughness: 0.5 }, side: 'imperial', blade: { type: 'pike' }, hp: 90, role: 'soldier', perception: SHARP },
   leia: { name: 'Princess Leia', model: '/models/galaxy/crew/leia.glb', tall: 1.5, side: 'rebel', gun: 'e11', hp: 100, voice: 'leia', role: 'hero' },
   // the story hands Luke his saber where he draws it (the second station)
   luke: { name: 'Luke Skywalker', model: '/models/galaxy/crew/luke.glb', tall: 1.72, side: 'rebel', gun: 'e11', hp: 100, voice: 'luke', role: 'hero' },

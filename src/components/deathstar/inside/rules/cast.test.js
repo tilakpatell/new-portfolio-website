@@ -68,8 +68,8 @@ describe('the cast', () => {
   });
 
   it('dresses the Death Star trooper in black, and the gunner as him without a gun', () => {
-    const { tint } = CAST.dstrooper;
-    expect(Math.max((tint >> 16) & 255, (tint >> 8) & 255, tint & 255)).toBeLessThan(80);
+    const { color } = CAST.dstrooper.dye;
+    expect(Math.max((color >> 16) & 255, (color >> 8) & 255, color & 255)).toBeLessThan(80);
     const dress = (c) => Object.fromEntries(Object.entries(c).filter(([k]) => !['name', 'role', 'gun'].includes(k)));
     expect(CAST.gunner.gun).toBeUndefined();
     expect(dress(CAST.gunner)).toEqual(dress(CAST.dstrooper));
@@ -80,8 +80,8 @@ describe('the cast', () => {
     expect(CAST.vader.gun).toBeUndefined();
     expect(CAST.emperor).toMatchObject({ model: '/models/galaxy/crew/palpatine.glb', tall: 1.73, role: 'boss', side: 'imperial' });
     expect(CAST.royalguard).toMatchObject({ model: '/models/galaxy/crew/senateguard.glb', tall: 1.9, blade: { type: 'pike' }, side: 'imperial' });
-    const { tint } = CAST.royalguard;
-    expect((tint >> 16) & 255).toBeGreaterThan(2 * Math.max((tint >> 8) & 255, tint & 255));
+    const { color } = CAST.royalguard.dye;
+    expect((color >> 16) & 255).toBeGreaterThan(2 * Math.max((color >> 8) & 255, color & 255));
   });
 
   it('wears the officer’s uniform in a tint of his own for each of the conference room’s ranks', () => {
@@ -113,6 +113,16 @@ describe('the cast', () => {
     // the crew’s own skeleton, so the shared walk, run and fight clips (his chest-pound too) play on him
     expect(joints(CAST.chewie.model)).toHaveLength(24);
     expect(joints(CAST.chewie.model)).toEqual(joints(CAST.officer.model));
+  });
+
+  it('dyes the Death Star’s own black-clad crew charcoal and the Royal Guard crimson, rather than tinting them to black', () => {
+    for (const k of ['dstrooper', 'gunner', 'technician', 'royalguard']) {
+      expect(CAST[k].dye, k).toMatchObject({ color: expect.any(Number) });
+      expect(CAST[k].tint, k).toBeUndefined();
+    }
+    // (crimson: red well over green and blue)
+    const red = CAST.royalguard.dye.color;
+    expect(red >> 16).toBeGreaterThan(((red >> 8) & 0xff) * 3);
   });
 
   it('draws Obi-Wan as the first film’s old Ben, rigged on the crew’s own skeleton', () => {

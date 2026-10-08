@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FAR, LIVE, aimAngles, clipFor, createPeople, createTrack, liveCount, lodPick } from './people';
+import { CLIPS } from '../../../../lib/three/clipLibrary';
+import { FAR, LIVE, actOf, aimAngles, createPeople, createTrack, fallClip, hitClip, liveCount, lodPick, motionFrom } from './people';
 
 const STEP = 1 / 30;
 const person = (id, kind, x, z, more = {}) => ({ id, kind, x, y: 0, z, yaw: 0, room: 'corr327', hp: 60, mode: 'routine', anim: 'idle', aim: null, ...more });
@@ -56,29 +57,88 @@ describe('who moves, who stands still and who is hidden', () => {
 });
 
 describe('what a person is seen doing', () => {
+  const tk = (more) => person('a', 'stormtrooper', 0, 0, more);
   it('walks on its gait with its gun carried low while about its work', () => {
-    expect(clipFor(person('a', 'stormtrooper', 0, 0, { anim: 'walk' }))).toEqual({ clip: null, loop: false, raised: false });
+    expect(actOf(tk({ anim: 'walk' }))).toEqual({ base: null, full: null, upper: null, raised: false, dead: false });
   });
 
-  it('raises its gun in a fight, and fires on the shooting clip over and over while shooting', () => {
-    expect(clipFor(person('a', 'stormtrooper', 0, 0, { mode: 'fight', anim: 'run' })).raised).toBe(true);
-    expect(clipFor(person('a', 'stormtrooper', 0, 0, { mode: 'fight', anim: 'aim' }))).toEqual({ clip: null, loop: false, raised: true });
-    expect(clipFor(person('a', 'stormtrooper', 0, 0, { mode: 'fight', anim: 'shoot' }))).toEqual({ clip: 'shoot', loop: true, raised: true });
+  it('holds its gun out at the aim in a fight, walking or not, and fires it over and over while shooting', () => {
+    expect(actOf(tk({ mode: 'fight', anim: 'run' }))).toMatchObject({ base: null, upper: 'aim.pistol', raised: true });
+    expect(actOf(tk({ mode: 'fight', anim: 'aim' }))).toMatchObject({ upper: 'aim.pistol', raised: true });
+    expect(actOf(tk({ mode: 'fight', anim: 'shoot' }))).toMatchObject({ upper: 'shoot.pistol', raised: true });
+    // (nothing in the hands: nothing held out)
+    expect(actOf(tk({ mode: 'fight', anim: 'aim' }), { armed: false }).upper).toBeNull();
   });
 
-  it('flinches once when hit and kneels for as long as it kneels', () => {
-    expect(clipFor(person('a', 'stormtrooper', 0, 0, { anim: 'hit' }))).toMatchObject({ clip: 'hit', loop: false });
-    expect(clipFor(person('a', 'stormtrooper', 0, 0, { anim: 'kneel' }))).toMatchObject({ clip: 'kneel', loop: true });
+  it('stands at attention at a post, works a console, talks with its hands, sits in a seat', () => {
+    expect(actOf(tk({ anim: 'attention' })).base).toBe('idle.calm');
+    expect(actOf(tk({ anim: 'work' })).base).toBe('counter.idle');
+    expect(actOf(tk({ anim: 'talk' })).base).toBe('talk');
+    expect(actOf(tk({ anim: 'sit' })).base).toBe('sit.idle');
+    // (on the move, the walk takes over from any pose)
+    expect(actOf(tk({ anim: 'walk' })).base).toBeNull();
   });
 
-  it('falls when dead, the same fall for the same person every time, and is blown down when knocked over', () => {
-    const fall = clipFor(person('tk-7', 'stormtrooper', 0, 0, { mode: 'dead', anim: 'die' }));
-    expect(['die', 'dieFwd']).toContain(fall.clip);
-    expect(fall.loop).toBe(false);
-    expect(clipFor(person('tk-7', 'stormtrooper', 0, 0, { mode: 'dead', anim: 'die' }))).toEqual(fall);
-    const falls = new Set(Array.from({ length: 20 }, (_, i) => clipFor(person(`tk-${i}`, 'stormtrooper', 0, 0, { mode: 'dead' })).clip));
-    expect(falls.size).toBe(2);
-    expect(clipFor(person('a', 'stormtrooper', 0, 0, { mode: 'down', anim: 'hit' })).clip).toBe('dieBlown');
+  it('takes a sabre fighter’s stance in a fight, and holds out no gun', () => {
+    expect(actOf(person('v', 'vader', 0, 0, { mode: 'fight', anim: 'idle' }), { blade: true, armed: false })).toMatchObject({ base: 'stance', upper: null });
+  });
+
+  it('flinches once when hit, and is thrown down and kneels when knocked over', () => {
+    expect(actOf(tk({ anim: 'hit' })).full).toBe('hit');
+    expect(actOf(tk({ mode: 'down', anim: 'hit' }))).toMatchObject({ full: 'hit.knock', base: 'kneel' });
+    expect(actOf(tk({ mode: 'down', anim: 'kneel' }))).toMatchObject({ full: null, base: 'kneel' });
+  });
+
+  it('is dead, and nothing else, once dead', () => {
+    expect(actOf(tk({ mode: 'dead', anim: 'die' }))).toEqual({ base: null, full: null, upper: null, raised: false, dead: true });
+  });
+
+  it('plays only clips the library has', () => {
+    const named = new Set();
+    for (const anim of ['walk', 'idle', 'attention', 'work', 'talk', 'sit', 'kneel', 'hit', 'shoot', 'aim'])
+      for (const mode of ['routine', 'fight', 'down']) {
+        const a = actOf(tk({ mode, anim }));
+        for (const n of [a.base, a.full === 'hit' ? null : a.full, a.upper]) if (n) named.add(n);
+      }
+    named.add('stance');
+    for (const n of named) expect(CLIPS[n], n).toBeDefined();
+  });
+});
+
+describe('how a hit is taken', () => {
+  // facing yaw 0 is facing −z
+  it('reels from the chest (or the head, hit high) when hit from in front, a shoulder from the side, doubled up from behind', () => {
+    expect(hitClip({ x: 0, y: 0, z: 1 }, 0)).toBe('hit.chest');
+    expect(hitClip({ x: 0, y: 0, z: 1 }, 0, true)).toBe('hit.head');
+    expect(hitClip({ x: 0, y: 0, z: -1 }, 0)).toBe('hit.stomach');
+    // a bolt going to their right came in on their left
+    expect(hitClip({ x: 1, y: 0, z: 0 }, 0)).toBe('hit.shoulder.l');
+    expect(hitClip({ x: -1, y: 0, z: 0 }, 0)).toBe('hit.shoulder.r');
+    expect(hitClip(null, 0)).toBe('hit.trooper');
+    for (const n of ['hit.chest', 'hit.head', 'hit.stomach', 'hit.shoulder.l', 'hit.shoulder.r', 'hit.trooper']) expect(CLIPS[n], n).toBeDefined();
+  });
+
+  it('falls back from a shot in front and forward from one behind, and the same way every time with no shot known', () => {
+    expect(fallClip({ x: 0, y: 0, z: 1 }, 0)).toBe('die.back');
+    expect(fallClip({ x: 0, y: 0, z: -1 }, 0)).toBe('die.fwd');
+    expect(fallClip(null, 0, 'tk-7')).toBe(fallClip(null, 0, 'tk-7'));
+    expect(new Set(Array.from({ length: 20 }, (_, i) => fallClip(null, 0, `tk-${i}`))).size).toBe(2);
+  });
+});
+
+describe('how a person moves under its clips', () => {
+  it('goes ahead, aside and round as the track has it, from where it faces', () => {
+    const t = createTrack();
+    t.push({ x: 0, y: 0, z: 0, yaw: 0 }, STEP);
+    t.push({ x: 0, y: 0, z: -0.05, yaw: 0 }, STEP);
+    // 0.05 m a step towards −z, which it faces: 1.5 m/s ahead
+    expect(motionFrom(t, 0).speed).toBeCloseTo(1.5);
+    expect(motionFrom(t, 0).side).toBeCloseTo(0);
+    // facing +x, the same way is to its left
+    expect(motionFrom(t, Math.PI / 2).side).toBeCloseTo(-1.5);
+    t.push({ x: 0, y: 0, z: -0.1, yaw: 0.1 }, STEP);
+    // turning towards +x is turning right: a negative turn to locomotion
+    expect(motionFrom(t, 0.1).turn).toBeLessThan(0);
   });
 });
 

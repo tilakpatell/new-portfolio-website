@@ -29,7 +29,7 @@
 //   rigFrom(donorFile, meshFile, outFile, { tex }) → { tris, joints, spread }   the whole job;
 //     spread: how far apart the donor's bind matrices put a vertex (0 when they agree, as they must)
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

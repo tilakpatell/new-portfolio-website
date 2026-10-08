@@ -17,8 +17,11 @@
 //   leafPlaces(door, open) → [{ x0, x1, y0, y1, lead, swing? }]   pure: the leaves’ rects still in the
 //     doorway (x along the door from its middle, y up from its floor), `lead` the edge that moves;
 //     a hatch’s one leaf is always whole, turned `swing` radians on its x0 edge
-//   createTrack() → { push(time, body), at(alpha) → { x, y, z, yaw }, speed() }   pure: a body between
-//     its last two steps; a jump of more than 3 m (a lift ride, a teleport) is drawn where it lands
+//   createTrack() → { push(time, body), at(alpha) → { x, y, z, yaw }, speed(), velocity(out?), turn() }   pure:
+//     a body between its last two steps; a jump of more than 3 m (a lift ride, a teleport) is drawn where it lands
+//   playerAct({ crouch, moving, aim, gun, blade, shotAgo, swungAgo }) → { base, upper }   pure: what the
+//     player’s figure plays: crouched still or crouch-walking, the gun held out while aiming and fired
+//     for a moment after each shot, a blade’s stroke for a moment after each swing
 //   roomsOf(stream) → { shown(roomId), built(roomId), dt }   what people.js is told of the rooms: drawn
 //     while the stream shows them, standing from when they are built until the stream frees them (a
 //     body is let go only then, so the two mustn’t be swapped: a door shut on the dead would take them)
@@ -41,7 +44,7 @@ import { passable } from '../rules/doors';
 import { buildLayout } from '../rules/layout';
 import { STATIONS } from '../rules/stations';
 import { CAMERA, cameraPose, wallHits } from './camera';
-import { loadPerson, playerKind } from './figures';
+import { loadPerson, motionOf, playerKind } from './figures';
 import { createFx } from './fx';
 import { createKit } from './kit';
 import { createPeople } from './people';
@@ -98,7 +101,28 @@ export function createTrack() {
       if (!cur || cur.time <= prev.time) return 0;
       return Math.hypot(cur.x - prev.x, cur.z - prev.z) / (cur.time - prev.time);
     },
+    // the way it is going (m/s, in the world) and how fast it turns (rad/s, + towards +x)
+    velocity(o = { x: 0, z: 0 }) {
+      const dt = cur && cur.time > prev.time ? cur.time - prev.time : 0;
+      return Object.assign(o, dt ? { x: (cur.x - prev.x) / dt, z: (cur.z - prev.z) / dt } : { x: 0, z: 0 });
+    },
+    turn() {
+      return cur && cur.time > prev.time ? wrap(cur.yaw - prev.yaw) / (cur.time - prev.time) : 0;
+    },
   };
+}
+
+const SHOT = 0.35; // seconds the player’s figure fires for after a shot
+const STROKE = 0.55; // seconds a blade’s stroke plays for after a swing
+const STROKES = ['sword.a', 'sword.b', 'sword.c']; // the strokes, in turn
+const CROUCH_PACE = 1.0; // metres a second the crouch walk covers at its own speed
+
+export function playerAct({ crouch = false, moving = false, aim = false, gun = null, blade = null, shotAgo = Infinity, swungAgo = Infinity } = {}) {
+  const base = crouch ? (moving ? 'crouch.walk' : 'crouch') : null;
+  let upper = null;
+  if (blade && !gun) upper = swungAgo < STROKE ? 'stroke' : null;
+  else if (gun) upper = shotAgo < SHOT ? 'shoot.pistol' : aim ? 'aim.pistol' : null;
+  return { base, upper };
 }
 
 export function roomsOf(stream) {
@@ -137,6 +161,11 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   let wanted = null; // the kind the player should be drawn as
   let downed = false;
   let held = CAMERA.back; // how far behind the shoulder the camera stood last frame
+  // what the player’s figure plays (playerAct’s), and when it last fired or swung, by the game’s clock
+  const played = { base: undefined, upper: undefined, stroke: 0 };
+  let shotAt = -Infinity;
+  let swungAt = -Infinity;
+  const vel = { x: 0, z: 0 };
   let shown = -1; // the last displayed time
   let frames = 0;
   let seenRooms = -1;
@@ -153,6 +182,8 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
         person?.dispose();
         person = p;
         downed = false;
+        // (a new figure has played nothing yet)
+        played.base = played.upper = undefined;
         scene.add(p.object);
         house.adopt(p.object);
       })
@@ -261,11 +292,28 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
       // (in first person the eye is inside the head)
       o.visible = view !== 'first';
       person.hold(you.gun ?? null);
-      person.setAim(wrap(yaw - at.yaw), pitch, aim);
+      person.setAim(wrap(yaw - at.yaw), pitch, aim || now - shotAt < SHOT);
       if ((you.hp ?? 1) <= 0 && !downed) person.play('die');
       if ((you.hp ?? 1) > 0 && downed) person.play(null);
       downed = (you.hp ?? 1) <= 0;
-      person.update(dt, track.speed());
+      const speed = track.speed();
+      const want = playerAct({ crouch: you.crouch, moving: speed > 0.3, aim, gun: you.gun ?? null, blade: you.blade ?? null, shotAgo: now - shotAt, swungAgo: now - swungAt });
+      if (want.base !== played.base) person.base(want.base);
+      if (want.base === 'crouch.walk' && person.anim?.actions['crouch.walk']) person.anim.actions['crouch.walk'].timeScale = speed / CROUCH_PACE;
+      if (want.upper !== played.upper || (want.upper === 'stroke' && played.stroke !== swungAt)) {
+        if (want.upper === 'stroke') {
+          // each swing the next of the strokes, from its start
+          played.stroke = swungAt;
+          played.n = ((played.n ?? -1) + 1) % STROKES.length;
+          person.play(STROKES[played.n], { layer: 'upper' });
+        } else if (want.upper) person.play(want.upper, { layer: 'upper', loop: true });
+        else person.stop('upper');
+      }
+      Object.assign(played, { base: want.base, upper: want.upper });
+      // the walk paced to where the body goes, ahead and aside of where it faces
+      const v = track.velocity(vel);
+      const [fx, fz] = [Math.sin(at.yaw), -Math.cos(at.yaw)];
+      person.update(dt, downed ? 0 : motionOf(v.x * fx + v.z * fz, v.x * -fz + v.z * fx, -track.turn()));
     }
 
     stream.update(you.room, (id) => (g.doors?.[id]?.open ?? 0) > 0, now, dt, { eye: camera.position, g });
@@ -315,7 +363,14 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   const warm = (target = null) => Promise.all([fx.warm(renderer, camera, target), show.warm(renderer, camera, target)]);
   // the game’s events since the last frame, for the flashes, sparks and clashes they make
   const hear = (events) => {
-    if (!disposed) show.hear(events);
+    if (disposed) return;
+    show.hear(events);
+    people.hear(events);
+    for (const e of events ?? []) {
+      if (e.by !== 'you') continue;
+      if (e.type === 'shot') shotAt = shown;
+      else if (e.type === 'swing') swungAt = shown;
+    }
   };
 
   return { scene, camera, layout, ready: stream.ready, sync, hear, warm, resize, render: () => renderer.render(scene, camera), dispose };
