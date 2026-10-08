@@ -40,7 +40,10 @@ import { useEconomy } from '../EconomyProvider';
 // remember and setRemember(yes) are the roster's “Remember me on this
 // browser”, newIdentity() its “New identity” (a fresh key, and in again on
 // it), and guestTab says this tab flies as a guest, another being online
-// on the kept key.
+// on the kept key. Your allies and blocks are kept in this browser too
+// (allies.js, made once you're online, handed to the link, which lists the
+// saved allies who aren't here as room.away); removeAlly(id) is the roster's
+// Remove on one of those.
 
 const ONLINE_KEY = 'tp-universe-online'; // 'on' once you've gone online
 const NAME_KEY = 'tp-universe-callsign';
@@ -50,7 +53,7 @@ const AWAY_MS = 120000; // a tab hidden this long leaves the room till you're ba
 const FEED_MS = 6000;
 const FEED_MAX = 4;
 const FOLLOW_MS = 60000; // a pilot to fly to, once the ship's in (follow): forgotten after this
-const OFF = { status: 'off', self: null, peers: [] };
+const OFF = { status: 'off', self: null, peers: [], away: [] };
 
 export const OnlineContext = createContext(null);
 export const useOnline = () => useContext(OnlineContext);
@@ -83,6 +86,7 @@ export function useOnlineState(where) {
     };
   }, []);
   const [client, setClient] = useState(null);
+  const allies = useRef(null); // (allies.js's store: one for the page, made the first time you're online)
   const [room, setRoom] = useState(OFF);
   const [feed, setFeed] = useState([]);
   const [attempt, setAttempt] = useState(0); // a retry makes a fresh link
@@ -151,10 +155,11 @@ export function useOnlineState(where) {
     const timers = new Set();
     let n = 0;
     setRoom({ ...OFF, status: 'connecting' });
-    import('./client')
-      .then(({ createClient }) => {
+    Promise.all([import('./client'), import('./allies'), import('../../../runtime/local')])
+      .then(([{ createClient }, { createAllies }, { localSaves }]) => {
         if (gone) return;
-        c = createClient(latest.current);
+        allies.current ??= createAllies({ saves: localSaves() });
+        c = createClient({ ...latest.current, allies: allies.current });
         setClient(c);
         setRoom(c.snapshot());
         off = c.on((e) => {
@@ -248,5 +253,6 @@ export function useOnlineState(where) {
     followId: following?.id ?? null,
     ally: (id, what) => client?.ally(id, what),
     block: (id, yes) => client?.block(id, yes),
+    removeAlly: (id) => allies.current?.dropAlly(id), // (a saved ally who isn't here: forgotten)
   };
 }

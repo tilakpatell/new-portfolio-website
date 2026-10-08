@@ -34,10 +34,34 @@ import './online.css';
 // the autopilot takes you to them (online.follow, which the page acts on).
 // “Go” to another place you fly in follows them there, and the ship sets
 // off after them once it's in.
+//
+// Your allies come first, in a section of their own (allies.js keeps them
+// in this browser): those online, with everything a row has, then those
+// saved and away (room.away), each with when they were last seen and
+// Remove.
 
 const TONE = { join: 'join', ally: 'ally', kill: 'kill', info: 'info' };
 const WHERE_MS = 2000; // how often the roster looks again at where everyone on the map is
 const Record = lazy(() => import('../Record'));
+
+// how long ago, in words (“3 days ago”, “yesterday”), for an ally's last seen
+const RELATIVE = typeof Intl !== 'undefined' && Intl.RelativeTimeFormat ? new Intl.RelativeTimeFormat('en-GB', { numeric: 'auto' }) : null;
+const UNITS = [
+  ['year', 365 * 864e5],
+  ['month', 30 * 864e5],
+  ['week', 7 * 864e5],
+  ['day', 864e5],
+  ['hour', 36e5],
+  ['minute', 6e4],
+];
+function ago(at, now = Date.now()) {
+  const gap = Math.max(0, now - at);
+  for (const [unit, ms] of UNITS) {
+    const n = Math.floor(gap / ms);
+    if (n >= 1) return RELATIVE ? RELATIVE.format(-n, unit) : `${n} ${unit}${n === 1 ? '' : 's'} ago`;
+  }
+  return 'just now';
+}
 
 export default function Online({ online, ship = null, floating = false }) {
   const [open, setOpen] = useState(false);
@@ -146,6 +170,11 @@ function Roster({ online, ship, floating, focus, onClose }) {
   const [name, setName] = useState(online.name ?? '');
   const id = useId();
   const others = room.peers;
+  // your allies first: those here, then those saved and away
+  const isAlly = (p) => p.ally === 'ally' && !p.blocked;
+  const allies = others.filter(isAlly);
+  const rest = others.filter((p) => !isAlly(p));
+  const away = room.away ?? [];
   // (poses come in ten times a second, not as roster news: while anyone's
   // out on the map, the regions they're in are read again now and then)
   const [, tick] = useState(0);
@@ -206,14 +235,33 @@ function Roster({ online, ship, floating, focus, onClose }) {
         </p>
       ) : room.status === 'connecting' ? (
         <p className="universe-online-text">Looking for other pilots…</p>
-      ) : !others.length ? (
-        <p className="universe-online-text">No one else is online right now. Anyone who opens the site and goes online shows up here, and on the map.</p>
       ) : (
-        <ul className="universe-online-list">
-          {others.map((p) => (
-            <Pilot key={p.id} p={p} online={online} ship={ship} mine={room.self?.factions ?? null} focus={focus === p.id} />
-          ))}
-        </ul>
+        <>
+          {(allies.length > 0 || away.length > 0) && (
+            <section className="universe-online-allies" aria-label="Allies">
+              <p className="universe-online-label">Allies</p>
+              <ul className="universe-online-list">
+                {allies.map((p) => (
+                  <Pilot key={p.id} p={p} online={online} ship={ship} mine={room.self?.factions ?? null} focus={focus === p.id} />
+                ))}
+                {away.map((a) => (
+                  <Away key={a.id} a={a} online={online} />
+                ))}
+              </ul>
+            </section>
+          )}
+          {!others.length ? (
+            <p className="universe-online-text">No one else is online right now. Anyone who opens the site and goes online shows up here, and on the map.</p>
+          ) : (
+            rest.length > 0 && (
+              <ul className="universe-online-list">
+                {rest.map((p) => (
+                  <Pilot key={p.id} p={p} online={online} ship={ship} mine={room.self?.factions ?? null} focus={focus === p.id} />
+                ))}
+              </ul>
+            )
+          )}
+        </>
       )}
       {!floating && !ship && room.status === 'online' && <p className="universe-online-fine">Pick a ship in the panel to fly with them; till then you’re watching.</p>}
       <label className="universe-online-check">
@@ -226,6 +274,26 @@ function Roster({ online, ship, floating, focus, onClose }) {
         Go offline
       </button>
     </Card>
+  );
+}
+
+// A saved ally who isn't here: when they were last seen, and Remove
+function Away({ a, online }) {
+  return (
+    <li className="universe-online-pilot" data-away="">
+      <span className="universe-online-face" aria-hidden="true" />
+      <span className="universe-online-who">
+        <span className="universe-online-name">
+          <b>{a.name}</b>
+        </span>
+        <span>{`last seen ${ago(a.seen)}`}</span>
+      </span>
+      <span className="universe-online-acts">
+        <button type="button" className="universe-online-link" onClick={() => online.removeAlly(a.id)} aria-label={`Remove ${a.name} from your allies`}>
+          Remove
+        </button>
+      </span>
+    </li>
   );
 }
 

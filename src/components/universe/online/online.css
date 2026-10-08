@@ -213,6 +213,9 @@
 .universe-online-pilot[data-relation='friend'] { border-color: rgb(143 198 255 / 0.45); }
 .universe-online-pilot[data-relation='foe'] { border-color: rgb(255 106 92 / 0.5); }
 .universe-online-pilot[data-blocked] { opacity: 0.6; }
+/* your allies, first: those saved and away dimmed by colour, their words at --muted */
+.universe-online-allies .universe-online-list { margin-top: 0.4rem; }
+.universe-online-pilot[data-away] .universe-online-who b { color: var(--muted); font-weight: 500; }
 .universe-online-pilot[data-focus] { background: rgb(255 255 255 / 0.05); }
 .universe-online-face { flex: none; width: 32px; height: 32px; border-radius: 50%; background: rgb(255 255 255 / 0.06); }
 .universe-online-who { display: grid; flex: 1; min-width: 0; }
@@ -248,7 +251,8 @@
 @media (pointer: coarse) {
   .universe-online-act { min-height: 40px; }
   .universe-online-pill { min-height: 44px; }
-  .universe-online-identity .universe-online-link { min-height: 44px; }
+  .universe-online-identity .universe-online-link,
+  .universe-online-pilot[data-away] .universe-online-link { min-height: 44px; }
 }
 
 @media (max-width: 767px) {

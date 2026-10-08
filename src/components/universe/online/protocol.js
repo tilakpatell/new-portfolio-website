@@ -37,7 +37,9 @@
 //   pack  [[id, kind, x, y, z, vx, vy, vz, hits left], …] five times a second while hunters are
 //                                                       after you and someone's there to see ([]: gone)
 //   hhit  { i: hunter id, d: damage }                    to the pilot a hunter's after, when a bolt of yours hit it
-//   ally  { t: 'ask' | 'yes' | 'no' | 'end' }            to one pilot
+//   ally  { t: 'ask' | 'yes' | 'no' | 'end', k?: 1 }     to one pilot (k: an ask from a pilot who has
+//                                                       you saved as an ally, allies.js: one who has
+//                                                       them saved too says yes without asking)
 //   foot  { p: planet, k: ship kind, s: [n, f] where it's parked, a: walker, b: walker or null }
 //         ten times a second while your crew are down on a planet ({ p: null }: back in);
 //         a walker is [who, n (3), f (3), h, speed, side, aim] (footScene.js, foot.js)
@@ -491,6 +493,14 @@ export function createLimiter(rates = RATES) {
       return denied.length > FLOOD.denied;
     },
   };
+}
+
+// an alliance's word as it came in: { t: 'ask' | 'yes' | 'no' | 'end', k:
+// 1 (an ask from a pilot who has you saved) or 0 }, or null if it isn't one
+const ALLY_WORDS = ['ask', 'yes', 'no', 'end'];
+export function readAlly(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data) || !ALLY_WORDS.includes(data.t)) return null;
+  return { t: data.t, k: data.k === 1 ? 1 : 0 };
 }
 
 // An alliance between you and one pilot, one step on. States: 'none',
