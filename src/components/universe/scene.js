@@ -1741,7 +1741,8 @@ export async function create(canvas, ctx) {
   // (the build under way, for the map's prepare to wait on)
   let cabJob = null;
   const buildCab = (kind) => {
-    if (!kind || !CABS[kind] || cabWanted === kind || cab?.kind === kind) return cabJob;
+    if (!kind) return null;
+    if (!CABS[kind] || cabWanted === kind || cab?.kind === kind) return cabJob;
     cabJob = makeCab(kind);
     return cabJob;
   };
@@ -5479,9 +5480,10 @@ export async function create(canvas, ctx) {
     if (tier !== 'low') await within(fleet.want([...new Set(sides.flatMap(meets))]), POOL_WAIT);
     if (!going()) return;
     // (a few frames' work: one made a frame)
+    // (marked stocked only once it is: one cut short is left to stockUp)
     for (const side of sides) {
-      stockedFor.add(side.id);
       while (going() && stockOne(side)) await nextFrame();
+      if (going()) stockedFor.add(side.id);
     }
     if (!going()) return;
     const ships = fleet.roots();

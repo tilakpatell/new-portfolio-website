@@ -88,7 +88,11 @@
 .universe-flat .minimap { max-width: 900px; }
 .universe-loading { color: var(--muted); font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.04em; }
 /* the loading veil while the scene prepares (LoadingVeil.jsx): over the map,
-   but under the panel, the leaving fades and the front door's choice */
+   but under the panel, the leaving fades and the front door's choice. (1 is
+   enough: while it's up the map holds only its names and tags, which have no
+   z-index; the HUD comes once the scene is on, after the veil has gone. The
+   panel's 2 couldn't be shared: the panel comes later in the page and would
+   tie.) */
 .universe-map > .loading-veil { z-index: 1; }
 
 /* the planets' names, moved by the scene */
