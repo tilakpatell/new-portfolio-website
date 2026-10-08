@@ -603,7 +603,7 @@ function Missions({ sim, touch, onClose }) {
         <p className="cyw-list-title">Missions</p>
         {/* (M shuts it as it opened it: the key beside the ×, not in the word) */}
         <button type="button" className="cyw-list-close" onClick={onClose} aria-label="Close the missions" aria-keyshortcuts="M Escape">
-          {!touch && <kbd>M</kbd>}
+          {!touch && <kbd className="hud-cap">M</kbd>}
           <span aria-hidden="true">×</span>
         </button>
       </div>

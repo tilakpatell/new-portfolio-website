@@ -730,9 +730,11 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
 /* a quiet one: a hint beside a control (the bar's ⌘K), not a key to learn */
 .kbd[data-size='sm'] { min-width: 1.5rem; height: 1.4rem; padding: 0 0.35rem; border-color: var(--border); border-bottom-width: 1px; border-radius: min(5px, var(--r-chip)); color: var(--muted); font-size: 0.7rem; font-weight: 400; }
 /* in a world's HUD: the same cap drawn in the HUD's own ink, over glass,
-   so it reads on any world's colours (src/runtime/hud). Weighs (0,0,1), like
-   the kit's own rules, so a world's class still wins. */
-:where(.hud kbd):not(hud-none) { display: inline-block; min-width: 1.4em; padding: 0.05rem 0.35rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.7rem/1.4 var(--font-mono); text-align: center; }
+   so it reads on any world's colours (src/runtime/hud). Also the kit's
+   prompt key and a .hud-cap where a world uses the kit's parts without its
+   frame (Cybertron), so a world sets the colour and never draws a cap of its
+   own. Weighs (0,0,1), like the kit's own rules, so a world's class still wins. */
+:where(.hud kbd, kbd.hud-prompt-key, kbd.hud-cap):not(hud-none) { display: inline-block; min-width: 1.4em; padding: 0.05rem 0.35rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.7rem/1.4 var(--font-mono); text-align: center; }
 
 /* A pill of two to four choices in a track: the view switch, the guide's
    tabs and its keyboard/touch toggle. The one you're on is lifted out of the
