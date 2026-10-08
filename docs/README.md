@@ -15,6 +15,7 @@ What each folder under `docs/` holds, and where to start for a question. Every s
 | `autopilot/` | the self-improvement loop’s readme, backlog and budget | you run or review the autopilot |
 | `assets/` | where third-party asset kits come from, and their licence | you add a model or texture someone else made |
 | `gen3d/` | reference pictures for models generated on the owner’s desktop | you request or check on a generated model |
+| `motion/` | the sheets and BVHs of clips made from words on the owner’s desktop (`scripts/motion`) | you request or judge a generated clip |
 | `readme/` | pictures for the README, nothing to read | never, unless you change the README’s pictures |
 | `PICKUP-PROMPT.md` | the prompt that starts a session on a lane | you start a new lane |
 
