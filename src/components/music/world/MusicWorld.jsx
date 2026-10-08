@@ -11,6 +11,7 @@ import '../../../styles/lazy/music.css';
 import GuideCue from '../../guide/GuideCue';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import LoadingVeil from '../../worlds/LoadingVeil';
+import { Stick } from '../../../runtime/hud';
 import { throttled } from '../../worlds/loadingSteps';
 
 // others online in the courtyard (middleearth/towns/useTravellers), as lamps
@@ -217,33 +218,9 @@ export default function MusicWorld({ panel }) {
     if (sim.current.drag?.id === e.pointerId) sim.current.drag = null;
   };
 
-  // ── the thumb stick, on a touch screen ──
-  const stickEl = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      capturePointer(e);
-      const r = e.currentTarget.getBoundingClientRect();
-      s.stickAt = { id: e.pointerId, cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2 };
-    }
-    const at = s.stickAt;
-    if (!at || at.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      s.stick = null;
-      s.stickAt = null;
-      if (stickEl.current) stickEl.current.style.transform = '';
-      return;
-    }
-    let x = (e.clientX - at.cx) / at.r;
-    let y = (e.clientY - at.cy) / at.r;
-    const len = Math.hypot(x, y);
-    if (len > 1) {
-      x /= len;
-      y /= len;
-    }
-    s.stick = { x, y };
-    if (stickEl.current) stickEl.current.style.transform = `translate(${x * 34}px, ${y * 34}px)`;
-  };
+  // ── the thumb stick, on a touch screen: the HUD kit's, in the
+  // courtyard's own ring (full tilt at the ring's edge, as before) ──
+  const onStick = (x, y) => (sim.current.stick = x || y ? { x, y } : null);
 
   const toRoom = () => document.getElementById('music-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -313,9 +290,7 @@ export default function MusicWorld({ panel }) {
         )}
 
         {touch && !open && gl === 'on' && (
-          <div className="mw-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} onLostPointerCapture={onStick} aria-hidden="true">
-            <span ref={stickEl} />
-          </div>
+          <Stick className="mw-stick" onMove={onStick} reach={56} label="Walk" />
         )}
 
         {opened.map((id) => (
