@@ -24,9 +24,9 @@
 //     tree a seventh of its size; a rig's are as its file has them, a
 //     skinned mesh placed by its bones, for its own mixer, never a pool)
 //   kitMaterial(def, { house, wind }) → a new material for a manifest entry
-//   createPool(kit, name, { bands, cap, shadows, puff, lod1 }) → {
+//   createPool(kit, name, { bands, cap, shadows, puff, lod1, wait }) → {
 //     set(key, items), free(key), shift(dx, dz), update(camera, dt),
-//     stats: { total, levels: [full, lod1, puff] }, group, ready, dispose() }
+//     stats: { total, levels: [full, lod1, puff], sorts }, group, ready, dispose() }
 //     items: [{ x, y, z, yaw, scale = 1 }]
 //
 // A material is the house's Lambert (lib/three/house) when a house is
@@ -44,9 +44,9 @@ import * as THREE from 'three';
 import { budget } from '../budgets';
 import { detailLevel, modelTexCap } from '../detail';
 import { faceless, wind as windOn } from './foliage';
-import { forgetGltf, loadGltf } from './gltf';
+import { loadGltf } from './gltf';
 import { lodBand } from './lod';
-import { MAP_SLOTS, coverageTexture, fitTexture } from './textures';
+import { coverageTexture, fitTexture } from './textures';
 
 const CUT = 0.3; // a leaf map's alpha cut
 const WEIGHT = '_wind'; // the wind weight's attribute, as three's loader names it
@@ -84,8 +84,12 @@ function dress(m, def, src) {
   m.needsUpdate = true;
 }
 
-// A weight of ones for a geometry the file gave none.
+// A weight of ones for a geometry the file gave none. The files' geometry
+// is the page's model cache's (lib/three/gltf), shared by every kit of a
+// pack, so a weight filled in is counted by the kits holding it and taken
+// off when the last of them is disposed of.
 const ones = (geometry) => new THREE.BufferAttribute(new Uint8Array(geometry.attributes.position.count).fill(255), 1, true);
+const FILLED = new WeakMap(); // a weight of ones → how many kits hold it
 
 function fetchManifest(url) {
   return fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`kit: couldn't load ${url} (${r.status})`))));
@@ -97,7 +101,7 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
   let gone = false;
   let warned = false;
   const files = new Map(); // url → Promise<{ scene, roots }>
-  const scenes = new Set();
+  const held = new Map(); // a filled weight this kit holds → its geometry
   const mats = new Map(); // name → the kit's material
   const dressed = new Set();
   const models = new Map(); // name → Promise<model>
@@ -126,12 +130,17 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
 
   // A leaf map under the device's ceiling first (the coverage levels are
   // made from it: made from the full map, they'd bring its size back), then
-  // its coverage levels. In a browser, a map a canvas wouldn't read (a
-  // tainted one, a decoder's bitmap it couldn't draw) is left to the graphics
-  // chip's levels: said once, as the crowns will thin with distance.
+  // its coverage levels; once a map, whichever kit gets to it first (two kits
+  // of a pack share the cached file's maps). In a browser, a map a canvas
+  // wouldn't read (a tainted one, a decoder's bitmap it couldn't draw) is
+  // left to the graphics chip's levels: said once, as the crowns will thin
+  // with distance.
   function cover(m) {
-    fitTexture(m.map, modelTexCap());
-    coverageTexture(m.map, { cut: CUT });
+    if (!m.map.userData.covered) {
+      fitTexture(m.map, modelTexCap());
+      coverageTexture(m.map, { cut: CUT });
+      m.map.userData.covered = true;
+    }
     if (typeof document !== 'undefined' && m.map.generateMipmaps && !warned) {
       warned = true;
       console.warn(`kit ${pack}: ${m.name}'s map keeps the graphics chip's mips (its pixels couldn't be read), so far crowns will thin`);
@@ -142,7 +151,6 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
   // first file to carry it), its bending meshes given a weight where they
   // lack one, its models found by the names the file gave them.
   function adopt(scene) {
-    scenes.add(scene);
     scene.traverse((o) => {
       if (!o.isMesh) return;
       const name = o.material?.name;
@@ -153,7 +161,17 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
         dress(m, def, o.material);
         if (def.leaf && m.map) cover(m);
       }
-      if (def.wind && !o.geometry.attributes[WEIGHT]) o.geometry.setAttribute(WEIGHT, ones(o.geometry));
+      const g = o.geometry;
+      let w = g.attributes[WEIGHT];
+      if (def.wind && !w) {
+        w = ones(g);
+        g.setAttribute(WEIGHT, w);
+        FILLED.set(w, 0);
+      }
+      if (w && FILLED.has(w) && !held.has(w)) {
+        FILLED.set(w, FILLED.get(w) + 1);
+        held.set(w, g);
+      }
     });
     const roots = new Map();
     for (const o of scene.children) roots.set(o.userData?.name ?? o.name, o);
@@ -165,10 +183,7 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
     if (!files.has(url)) {
       const p = Promise.resolve(load(url)).then((got) => {
         if (!got?.scene) throw new Error(`kit ${pack}: couldn't load ${url}`);
-        if (gone) {
-          release([got.scene]);
-          throw new Error(`kit ${pack}: disposed of while ${url} loaded`);
-        }
+        if (gone) throw new Error(`kit ${pack}: disposed of while ${url} loaded`);
         return adopt(got.scene);
       });
       p.catch(() => files.delete(url));
@@ -207,20 +222,6 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
     return cache.get(name);
   }
 
-  // Everything loaded, freed: geometry, materials (the kit's and the files'),
-  // their maps.
-  function release(list) {
-    const things = new Set(mats.values());
-    for (const scene of list)
-      scene.traverse((o) => {
-        if (!o.isMesh) return;
-        things.add(o.geometry);
-        for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m) things.add(m);
-      });
-    for (const m of [...things]) if (m.isMaterial) for (const slot of MAP_SLOTS) if (m[slot]?.isTexture) things.add(m[slot]);
-    for (const t of things) t.dispose();
-  }
-
   return {
     pack,
     manifest: ready,
@@ -228,11 +229,21 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
     material,
     model: (name) => find(models, name, '', (parts, row) => ({ parts, radius: row.radius, height: row.height, kind: row.kind, tones: row.tones ?? null })),
     lod1: (name) => find(lods, name, '.lod1', (parts) => parts),
+    // What the kit made, freed: its materials, and the weights it filled in
+    // that no other kit still holds. The files' geometry and maps are the
+    // loader's (the page's model cache), left as they are.
     dispose() {
       gone = true;
-      release(scenes);
-      if (load === loadGltf) for (const url of files.keys()) forgetGltf(url);
-      for (const c of [files, scenes, mats, dressed, models, lods]) c.clear();
+      for (const m of mats.values()) m.dispose();
+      for (const [w, g] of held) {
+        const n = FILLED.get(w) - 1;
+        if (n > 0) FILLED.set(w, n);
+        else {
+          FILLED.delete(w);
+          if (g.attributes[WEIGHT] === w) g.deleteAttribute(WEIGHT);
+        }
+      }
+      for (const c of [files, held, mats, dressed, models, lods]) c.clear();
     },
   };
 }
@@ -264,16 +275,20 @@ const itemOf = ({ x = 0, y = 0, z = 0, yaw = 0, scale = 1 }) => ({ x, y, z, c: M
 // [near, mid] in metres, across the ground: full within near, LOD1 to mid,
 // the puff to twice mid, nothing beyond (lib/budgets' row for the device's
 // level unless given, as is `lod1`: false keeps the full parts where the
-// LOD1's would be, as ultra does). Items are re-sorted into levels every
-// half second or 20 m of the camera's travel, or at the next update after
-// a set, a free or a shift; a free takes its items out of every level at
-// once, and a shift moves every instance there and then. `cap` instances a
+// LOD1's would be, as ultra does, and so does a model whose LOD1 won't
+// load, said once). Items are re-sorted into levels every half second (from
+// a point in it picked at random, `wait` to pick it: pools made together
+// don't all sort on one frame) or 20 m of the camera's travel, or at the
+// next update after a set or a free. A free (or a set to nothing) takes its
+// items out of every level at once; a shift moves every instance there and
+// then, and the camera position the last sort was from with them, so it
+// re-bands nothing (`stats.sorts` counts the sorts). `cap` instances a
 // level to start, grown by half again whenever the items outnumber it
 // (geometry and materials shared; never shrunk). Only the full level casts
 // shadows, and only with `shadows`. The parts load in the background
 // (`ready`); items set before then are drawn once they're in. Wants the
 // kit's manifest in, and refuses a rigged model: a pool draws still props.
-export function createPool(kit, name, { bands = null, cap = 256, shadows = true, puff = null, lod1 = null } = {}) {
+export function createPool(kit, name, { bands = null, cap = 256, shadows = true, puff = null, lod1 = null, wait: start = Math.random() * EVERY } = {}) {
   const row = kit.info(name);
   if (!row) throw new Error(`createPool: kit ${kit.pack} has no model ${name}`);
   if (row.rig) throw new Error(`createPool: ${name} is rigged, and a pool draws still props`);
@@ -285,12 +300,12 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
   const group = new THREE.Group();
   group.name = `kit:${name}`;
   const keys = new Map(); // key → its items
-  const stats = { total: 0, levels: [0, 0, 0] };
+  const stats = { total: 0, levels: [0, 0, 0], sorts: 0 };
   const parts = [null, null, null]; // each level's, once in
   let meshes = [[], [], []];
   let capacity = Math.max(1, Math.ceil(cap));
   const last = { x: Infinity, z: Infinity }; // where the camera was at the last sort
-  let wait = 0;
+  let wait = start; // till the half second comes round
   let dirty = true;
   let gone = false;
 
@@ -337,8 +352,8 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
     for (const list of keys.values()) for (const it of list) it.band = lodBand(Math.hypot(it.x - cx, it.z - cz), edges, it.band, HYSTERESIS);
     last.x = cx;
     last.z = cz;
-    wait = EVERY;
     dirty = false;
+    stats.sorts += 1;
     write();
   }
 
@@ -366,9 +381,9 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
     ready: null,
     set(key, items = []) {
       const list = Array.from(items, itemOf);
+      if (!list.length) return pool.free(key);
       stats.total += list.length - (keys.get(key)?.length ?? 0);
-      if (list.length) keys.set(key, list);
-      else keys.delete(key);
+      keys.set(key, list);
       grow();
       dirty = true;
     },
@@ -389,13 +404,15 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
       last.x += dx;
       last.z += dz;
       write();
-      dirty = true;
     },
     update(camera, dt = 0) {
       if (gone) return;
+      // (the half second keeps its own beat, whatever else sorts in between)
       wait -= dt;
+      const due = wait <= 0;
+      if (due) wait = EVERY + (wait % EVERY);
       const { x, z } = camera.position;
-      if (dirty || wait <= 0 || !(Math.hypot(x - last.x, z - last.z) < MOVE)) sort(x, z);
+      if (dirty || due || !(Math.hypot(x - last.x, z - last.z) < MOVE)) sort(x, z);
     },
     dispose() {
       gone = true;
@@ -412,7 +429,14 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
     },
   };
 
-  pool.ready = Promise.all([kit.model(name), withLod1 ? kit.lod1(name) : null]).then(([full, lod]) => {
+  // (a LOD1 that won't load: the full parts stand in, rather than nothing drawn)
+  const lodParts = withLod1
+    ? kit.lod1(name).catch((e) => {
+        console.warn(`createPool: ${name}'s LOD1 won't load (${e.message}); its full parts stand in`);
+        return null;
+      })
+    : null;
+  pool.ready = Promise.all([kit.model(name), lodParts]).then(([full, lod]) => {
     if (gone) return pool;
     const far = lod ?? full.parts;
     parts[0] = full.parts;

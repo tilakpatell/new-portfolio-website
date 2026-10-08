@@ -232,15 +232,49 @@ describe('loadKit: models and materials', () => {
     expect(parts).toHaveLength(1);
   });
 
-  it('frees what it loaded when disposed of', async () => {
+  it('frees only what it built when disposed of: its materials and the weights it filled in', async () => {
     const { kit } = await kitOf();
-    const { parts } = await kit.model('Birch_1');
-    const gone = vi.fn();
-    parts[0].geometry.addEventListener('dispose', gone);
-    parts[1].material.addEventListener('dispose', gone);
-    parts[1].material.map.addEventListener('dispose', gone);
+    const b1 = await kit.model('Birch_1');
+    const b2 = await kit.model('Birch_2');
+    const mine = vi.fn();
+    const files = vi.fn();
+    for (const p of [...b1.parts, ...b2.parts]) {
+      p.material.addEventListener('dispose', mine);
+      p.geometry.addEventListener('dispose', files);
+    }
+    b1.parts[1].material.map.addEventListener('dispose', files);
+    b1.parts[0].material.normalMap.addEventListener('dispose', files);
+    const own = b1.parts[1].geometry.attributes._wind;
     kit.dispose();
-    expect(gone).toHaveBeenCalledTimes(3);
+    expect(mine).toHaveBeenCalledTimes(2); // (the kit's bark and leaves)
+    expect(files).not.toHaveBeenCalled(); // (the page's model cache owns those)
+    expect(b2.parts[1].geometry.attributes._wind).toBeUndefined();
+    expect(b1.parts[1].geometry.attributes._wind).toBe(own);
+  });
+
+  it('shares a cached file with another kit of the pack: its maps covered once, its filled weights kept till the last kit goes', async () => {
+    const plain = fakeLoad();
+    const cache = new Map();
+    const load = (url) => {
+      if (!cache.has(url)) cache.set(url, plain(url));
+      return cache.get(url);
+    };
+    coverageTexture.mockClear();
+    const a = (await kitOf({ load })).kit;
+    const b = (await kitOf({ load })).kit;
+    const pa = (await a.model('Birch_2')).parts;
+    const pb = (await b.model('Birch_2')).parts;
+    expect(pb[1].geometry).toBe(pa[1].geometry);
+    const leaf = a.material('Leaves_Birch').map;
+    expect(b.material('Leaves_Birch').map).toBe(leaf);
+    expect(b.material('Leaves_Birch')).not.toBe(a.material('Leaves_Birch'));
+    expect(coverageTexture.mock.calls.filter(([t]) => t === leaf)).toHaveLength(1);
+    expect(leaf.userData.covered).toBe(true);
+    const filled = pa[1].geometry.attributes._wind;
+    a.dispose();
+    expect(pb[1].geometry.attributes._wind).toBe(filled);
+    b.dispose();
+    expect(pb[1].geometry.attributes._wind).toBeUndefined();
   });
 });
 
@@ -317,7 +351,7 @@ describe('createPool', () => {
   });
 
   async function poolOf(name = 'Birch_1', opts = {}) {
-    const pool = createPool(kit, name, { bands: HIGH, lod1: true, ...opts });
+    const pool = createPool(kit, name, { bands: HIGH, lod1: true, wait: 0.5, ...opts });
     await pool.ready;
     return pool;
   }
@@ -403,6 +437,11 @@ describe('createPool', () => {
       expect(m.count).toBe(0);
       expect(m.visible).toBe(false); // (no empty draw)
     }
+    // (what's left at the puff level is still the 300 m ring, packed from the front)
+    for (const m of meshesAt(pool, 2)) {
+      expect(m.count).toBe(10);
+      for (let i = 0; i < 10; i++) expect(Math.abs(Math.hypot(where(m, i).x, where(m, i).z) - 300)).toBeLessThan(1);
+    }
     // (and a key at the puff level: nothing left drawn there either)
     pool.free('c');
     expect(pool.stats.levels).toEqual([10, 0, 0]);
@@ -413,12 +452,20 @@ describe('createPool', () => {
     }
   });
 
+  it('takes a key set to nothing out at once, as a free does', async () => {
+    const pool = await poolOf();
+    threeRings(pool);
+    pool.set('b', []);
+    expect(pool.stats).toMatchObject({ total: 20, levels: [10, 0, 10] });
+    for (const m of meshesAt(pool, 1)) expect(m.count).toBe(0);
+  });
+
   it('replaces a key’s items on set', async () => {
     const pool = await poolOf();
     pool.set('a', ring(10, 10));
     pool.set('a', ring(4, 100));
     pool.update(camAt(0, 0), 0);
-    expect(pool.stats).toEqual({ total: 4, levels: [0, 4, 0] });
+    expect(pool.stats).toMatchObject({ total: 4, levels: [0, 4, 0] });
   });
 
   it('shifts every instance and the camera it sorted from by the same, so no item changes band', async () => {
@@ -463,6 +510,62 @@ describe('createPool', () => {
     expect(pool.stats.levels).toEqual([0, 1, 0]);
   });
 
+  it('re-bands nothing on a shift: the camera it sorted from moved with the items', async () => {
+    const pool = await poolOf();
+    pool.set('a', [{ x: 75, y: 0, z: 0, yaw: 0 }]);
+    pool.update(camAt(0, 0), 0);
+    pool.update(camAt(10, 0), 0.1); // (65 m now, but not looked at yet)
+    expect(pool.stats.levels).toEqual([0, 1, 0]);
+    const sorts = pool.stats.sorts;
+    pool.shift(-1000, 0);
+    pool.update(camAt(-990, 0), 0.1);
+    expect(pool.stats.sorts).toBe(sorts);
+    expect(pool.stats.levels).toEqual([0, 1, 0]);
+    expect(where(meshesAt(pool, 1)[0], 0).x).toBeCloseTo(-925 + 0.244, 2);
+    // (and the half second comes round as it would have)
+    pool.update(camAt(-990, 0), 0.31);
+    expect(pool.stats.sorts).toBe(sorts + 1);
+    expect(pool.stats.levels).toEqual([1, 0, 0]);
+  });
+
+  it('starts each pool’s half second at a random point, so pools made together re-sort on different frames', async () => {
+    // (three's ids draw on Math.random too: each pool made under its own value)
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const a = createPool(kit, 'Birch_1', { bands: HIGH });
+    random.mockReturnValue(0.7);
+    const b = createPool(kit, 'Birch_2', { bands: HIGH });
+    const frames = { a: [], b: [] };
+    for (let f = 0; f < 12; f++) {
+      for (const [k, p] of Object.entries({ a, b })) {
+        const before = p.stats.sorts;
+        p.update(camAt(0, 0), 0.1);
+        if (p.stats.sorts > before) frames[k].push(f);
+      }
+    }
+    // (both at once on the first, as both are new; then a at 0.05 s in, b at 0.35 s, each every half second)
+    expect(frames.a).toEqual([0, 5, 10]);
+    expect(frames.b).toEqual([0, 3, 8]);
+  });
+
+  it('draws the full parts in the LOD1 and puff levels, and says so, when the LOD1 won’t load', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const plain = fakeLoad();
+    const load = async (url) => {
+      const got = await plain(url);
+      got.scene.remove(got.scene.getObjectByName('Birch_1lod1'));
+      return got;
+    };
+    ({ kit } = await kitOf({ load }));
+    const pool = await poolOf();
+    const full = (await kit.model('Birch_1')).parts;
+    for (const l of [1, 2]) expect(meshesAt(pool, l).map((m) => m.geometry)).toEqual(full.map((p) => p.geometry));
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toMatch(/Birch_1/);
+    threeRings(pool);
+    expect(pool.stats.levels).toEqual([10, 10, 10]);
+    for (const m of pool.group.children) expect(m.count).toBe(10);
+  });
+
   it('holds a band past its edge a little (hysteresis 0.1)', async () => {
     const pool = await poolOf();
     pool.set('a', [{ x: 69, y: 0, z: 0, yaw: 0 }]);
@@ -478,7 +581,7 @@ describe('createPool', () => {
     const pool = await poolOf();
     pool.set('far', ring(5, 2 * HIGH[1] * 1.1));
     pool.update(camAt(0, 0), 0);
-    expect(pool.stats).toEqual({ total: 5, levels: [0, 0, 0] });
+    expect(pool.stats).toMatchObject({ total: 5, levels: [0, 0, 0] });
     for (const m of pool.group.children) expect(m.count).toBe(0);
   });
 
