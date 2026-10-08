@@ -195,6 +195,7 @@ While Phase 1 ran, the owner told the car lane: the Expanse car game is not want
 - Every mention of the Expanse in the roster, the goals and Phase 2’s lane 2C is void; lane 2C keeps the map, the landings and the foot scene.
 - **Phase 2 is game feel first.** Each lane works its games in this order and stops at the look only when the feel is done: every action answered (a hit gives a sound sized by its force, a puff, a small shake and, for a heavy one, a few frames of hitstop: pieces 3 and `lib/three/feel.js`’s `hitstop`); things react physically (props scatter when struck, asleep until then; secondary motion from springs, never a fixed sine); input forgiving (controls ease in and out; a jump has coyote time and a buffered press; nothing sticky or dropped); the camera calm (eased, leading the player, never snapping; a shake decays); nothing dead-ends (a respawn is quick, every action works the first time). Then piece 1 and 2 (art, tone, bloom), then 5 (the panel), then 6 where a GLB meets Rapier.
 - The six pieces, the interfaces and the tests stand as written; only their order and the Expanse change.
+- The second round’s design, `2026-10-08-game-feel-design.md`, rests on an audit of every game (`docs/research/2026-10-08-game-feel-audit.md`) and replaces this design’s Phase 2: the game-feel tiers first, then this design’s per-world look checklist.
 
 ## Decisions
 
