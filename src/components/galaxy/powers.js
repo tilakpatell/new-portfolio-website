@@ -260,7 +260,6 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
       const src = srcOf(t);
       const was = gen;
       const origin = { x: from.x, y: from.y, z: from.z };
-      const aim = { x: v2.x, y: v2.y, z: v2.z };
       bolts.fire(from, v2, {
         color: LASER.rebel,
         speed: P.speed,
@@ -274,9 +273,9 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
                 if (r) scored(kill(r), { src, by: 'quad' });
                 return;
               }
-              // (one of the war's, if it's still there where the bolt was
-              // aimed: a battle's fighter is the same one when it comes back)
-              if (warNow().includes(t) && apart(t.at, aim) < P.miss * 2) warStrike(t, origin, P.punch, 'quad');
+              // (one of the war's, if it's still up: one shot down comes back
+              // as the same one, but seconds later, long after a bolt's landed)
+              if (warNow().includes(t)) warStrike(t, origin, P.punch, 'quad');
             }
           : null,
       });
