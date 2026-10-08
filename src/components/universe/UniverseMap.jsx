@@ -24,8 +24,8 @@ import LoadingVeil from '../worlds/LoadingVeil';
 // going; the scene places them), Boost, Fire (held, it keeps firing), View
 // (the cockpit or behind the ship) and nose-up and nose-down buttons on touch
 // screens, the flight settings (FlightSettings.jsx, kept between visits),
-// the hangar (Hangar.jsx: the ship's paint job and parts, which the page
-// keeps) and a line on how to fly until you do. While the
+// the way into the Shipyard (Hangar.jsx, the button; the yard is the
+// page's) and a line on how to fly until you do. While the
 // 3D loads the box says so (3D first: never the flat map in the meantime);
 // if 3D is off, fails or is lost, the flat MiniMap takes the box. Online,
 // the other pilots' callsigns ride over their ships (the scene moves them).
@@ -34,7 +34,7 @@ import LoadingVeil from '../worlds/LoadingVeil';
 // `charting` says the nav map's open (the director holds off meanwhile).
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, build = null, lastBuild = null, dropped = null, onBuild, onCrew = null, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap, startAt = null, universe = null }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, loadout, build = null, canFit = false, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap, startAt = null, universe = null }) {
   const labels = useRef({});
   const tags = useRef(null);
   const stick = useRef(null);
@@ -55,9 +55,9 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const [footHint, setFootHint] = useState(false);
   // the place's name as you come down on a planet (landings.js)
   const [arrive, setArrive] = useState(null);
-  const [ride, setRide] = useState(null); // (on a hyperlane: the scene's word, lanePilot.js's rideLine)
   const [controls, setControlsState] = useState(() => readControls(local.get(CONTROLS_KEY)));
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aim, setAim] = useState(null); // (the star the nose is on: the scene's word, aim.js; { id, name })
   const setControls = (c) => {
     const next = readControls(c);
     setControlsState(next);
@@ -103,7 +103,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       tags,
       prompt,
       enter: enterBtn,
-      frozen,
+      frozen: frozen || hangar, // (the Shipyard over it: nothing moves, nothing's drawn)
       drive,
       charting,
       startAt,
@@ -113,7 +113,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       onCrash,
       onEvent: (e) => {
         if (e.type === 'launch') setFlown(true);
-        if (e.type === 'ride') setRide(e.on ? e.line : null);
+        if (e.type === 'aim') setAim(e.id ? { id: e.id, name: e.name } : null);
         if (e.type === 'landable') setLandable(e.id);
         if (e.type === 'phone' && e.what !== 'open') setPhoneNear(e.what === 'near');
         if (e.type === 'foot' && e.id === 'arrive') setArrive({ title: e.title, sub: e.sub, at: Date.now() });
@@ -304,9 +304,11 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   <b className="universe-nav-dist" />
                 </span>
               </div>
-              <div ref={arms} className="universe-arms" aria-hidden="true" data-ride={ride ? '' : undefined}>
+              <div ref={arms} className="universe-arms" aria-hidden="true">
                 <span className="universe-arms-name" />
                 <span className="universe-arms-rack">
+                  <i className="universe-arms-pip" />
+                  <i className="universe-arms-pip" />
                   <i className="universe-arms-pip" />
                   <i className="universe-arms-pip" />
                   <i className="universe-arms-pip" />
@@ -321,30 +323,12 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-siege-state" />
               </div>
               <p ref={prompt} className="universe-prompt" aria-live="polite" />
-              {/* on a hyperlane, in place of the gun line: the tier and the lane, the
-                  node it's coming to and how soon, and the way off (or, at a junction,
-                  the way on); the keys are a keyboard's, so a touch screen doesn't show them,
-                  and the seconds (new twice a second) aren't read out, so a screen reader
-                  hears the line as it changes lane, not every tick of the count */}
-              {ride && (
-                <p className="universe-lane" role="status" data-tier={ride.tier}>
-                  <span className="universe-lane-head">
-                    <span className="universe-lane-tier">{ride.tier}</span>
-                    <b className="universe-lane-name">{ride.name}</b>
-                  </span>
-                  <span className="universe-lane-next">
-                    {ride.next} · <span className="universe-lane-eta" aria-hidden="true">{Math.max(0, Math.round(ride.eta))} s</span>
-                    <span className="universe-lane-keys">
-                      {' '}
-                      · Hold <kbd>S</kbd> to drop out
-                      {ride.junction && (
-                        <>
-                          , hold <kbd>W</kbd> to carry on
-                        </>
-                      )}
-                    </span>
-                  </span>
-                </p>
+              {/* the star the nose is on, to jump to: J, or this (a touch screen's way) */}
+              {!onFoot && ship && aim && (
+                <button type="button" className="universe-jump" onClick={() => view.current?.travel?.(aim.id, 'hyper')}>
+                  <span className="universe-jump-label">Jump to {aim.name ?? 'it'}</span>
+                  <kbd aria-hidden="true">J</kbd>
+                </button>
               )}
               {/* Rick's portal gun, in any ship: a portal ahead, to his dimension or home (gunPortal.js) */}
               {!onFoot && ship && (
@@ -413,7 +397,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 {onFoot ? 'Run' : 'Boost'}
               </button>
               {!onFoot && <FlightSettings controls={controls} onChange={setControls} open={settingsOpen} onOpen={openSettings} />}
-              {!onFoot && onFit && <Hangar ship={ship} shipName={shipName} loadout={loadout} build={build} lastBuild={lastBuild} dropped={dropped} onBuild={onBuild} onCrew={onCrew} onFit={onFit} open={hangar} onOpen={openHangar} />}
+              {!onFoot && canFit && <Hangar open={hangar} onOpen={openHangar} />}
               {arrive && (
                 <div className="universe-arrive" key={arrive.at} role="status">
                   <p className="universe-arrive-title">{arrive.title}</p>
@@ -434,10 +418,10 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <p className="universe-hint universe-hint-fly">
                   <span className="universe-hint-keys">
                     {/* the five keys that matter in the first minute; the guide has the rest */}
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, arrows steer, <kbd>Space</kbd> boost, <kbd>F</kbd> fire, fly down into a planet’s air to land
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, arrows steer, <kbd>Space</kbd> boost, <kbd>F</kbd> fire, fly down into a planet’s air to go into its world
                     <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag to fly, hold Boost to go fast and Fire to shoot, and fly down into a planet’s air to land<GuideCue touch /></span>
+                  <span className="universe-hint-touch">Drag to fly, hold Boost to go fast and Fire to shoot, and fly down into a planet’s air to go into its world<GuideCue touch /></span>
                 </p>
               )}
             </>

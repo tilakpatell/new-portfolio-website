@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { pixelRatio } from '../../lib/device';
+import { device, pixelRatio } from '../../lib/device';
 import { use3D } from '../../lib/gpu';
 import { quiet, releaseContext } from '../../lib/three/renderer';
 import { createSky } from '../galaxy/sky';
@@ -32,7 +32,7 @@ export default function GalaxyBackdrop() {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(55, 1, 1, 10000);
-    const sky = createSky({ small: Math.min(window.innerWidth, window.innerHeight) < 600, renderer, beacons: false });
+    const sky = createSky({ small: Math.min(window.innerWidth, window.innerHeight) < 600, level: device().detail, renderer, beacons: false });
     sky.setSystem({ ...SYSTEMS.find((s) => s.id === 'kashyyyk'), suns: [] });
     scene.add(sky.group);
     const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;

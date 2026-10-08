@@ -1,5 +1,7 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { fitRatio, watchdog } from './renderer';
+import { fitRatio, precompilePasses, watchdog } from './renderer';
+import { fakeGl, fakeRenderer } from './gpuFake.fixture';
 
 // Runs `seconds` of frames through a watchdog, each frame taking
 // frameMs(ratio) at the ratio it's at then; the screen shows a frame on its
@@ -90,5 +92,24 @@ describe('fitRatio', () => {
   it('goes under one pixel per screen pixel only when it must', () => {
     expect(fitRatio(10000, 900, 1, { side: 8192 })).toBeCloseTo(0.8192, 4);
     expect(fitRatio(0, 0, 1.5, { side: 8192 })).toBe(1.5);
+  });
+});
+
+describe('precompilePasses', () => {
+  it("makes each pass's shader on a quad like the one the pass draws on (no normals: three's full-screen quad has none, and a shader made with them is another)", async () => {
+    const r = fakeRenderer({ gl: fakeGl({ signalAfter: 1 }) });
+    const seen = [];
+    const compile = r.compile;
+    r.compile = (root, ...rest) => {
+      root.traverse((o) => o.geometry && seen.push(Object.keys(o.geometry.attributes).sort()));
+      return compile(root, ...rest);
+    };
+    const blur = new THREE.ShaderMaterial();
+    const grade = new THREE.ShaderMaterial();
+    const composer = { passes: [{ enabled: true, blurs: [blur] }, { enabled: true, material: grade }], renderToScreen: true, isLastEnabledPass: (i) => i === 1, readBuffer: null };
+    await precompilePasses(r, composer, new THREE.PerspectiveCamera());
+    expect(r.compiled).toEqual(expect.arrayContaining([blur, grade]));
+    expect(seen.length).toBeGreaterThan(0);
+    for (const attrs of seen) expect(attrs).toEqual(['position', 'uv']);
   });
 });

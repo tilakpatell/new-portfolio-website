@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MISSIONS, endRun, missionOf, newRun, outcomeOf, tickRun } from './index';
+import { MISSIONS, endRun, missionOf, missionSite, newRun, outcomeOf, tickRun, worldOf } from './index';
 import { ASSAULTS } from './assaults';
 import { chooseSide, newBattle, stepBattle } from './assault';
 import { STEP_TYPES } from '../quests';
@@ -254,4 +254,44 @@ describe('the galactic assaults', () => {
       });
     });
   }
+});
+
+// A mission may lay its own sky over the site's (the Purge Planet's night):
+// only while it runs, so the next landing has the site's own again.
+describe('a mission’s own sky, light, fog and weather', () => {
+  const NIGHT = { top: '#02030a', horizon: '#0a0d1c', suns: [] };
+  const base = siteOf('tatooine');
+
+  it('lays the mission’s over the site’s, and leaves the rest as the site has it', () => {
+    const site = missionSite(base, { id: 'night', site: { sky: NIGHT, weather: [{ kind: 'ash' }], ground: 'not this' } });
+    expect(site.sky).toBe(NIGHT);
+    expect(site.weather).toEqual([{ kind: 'ash' }]);
+    expect(site.light).toBe(base.light);
+    expect(site.fog).toBe(base.fog);
+    expect(site.ground).toBe(base.ground);
+  });
+
+  it('gives the site itself back for a mission with nothing to lay over it, or none', () => {
+    expect(missionSite(base, MISSIONS.endor.chase)).toBe(base);
+    expect(missionSite(base, null)).toBe(base);
+  });
+
+  it('builds the world again with the site’s own sky once the mission is left', () => {
+    const spec = { id: 'night', kind: 'quest', site: { sky: NIGHT } };
+    const first = worldOf({ site: base, missionSpec: spec });
+    expect(first.mission).toBe(spec);
+    expect(first.site.sky).toBe(NIGHT);
+    const second = worldOf({ site: base });
+    expect(second.mission).toBeNull();
+    expect(second.site.sky).toBe(base.sky);
+    expect(base.sky).not.toBe(NIGHT);
+  });
+
+  it('looks the site and the mission up by system when neither is handed in', () => {
+    const w = worldOf({ system: 'endor', mission: 'chase' });
+    expect(w.site).toEqual(siteOf('endor'));
+    expect(w.mission).toBe(MISSIONS.endor.chase);
+    expect(worldOf({ system: 'endor' }).mission).toBeNull();
+    expect(worldOf({ system: 'nowhere' }).site).toBeNull();
+  });
 });

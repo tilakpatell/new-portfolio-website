@@ -530,3 +530,36 @@ describe('a Meshy figure without a skeleton', () => {
     cast.dispose();
   });
 });
+
+describe('a figure done with, the cast kept', () => {
+  it("frees what was made for that one figure alone (a clone's shirt), and nothing the others share", async () => {
+    const loader = {
+      async loadAsync() {
+        const scene = meshyRig();
+        scene.traverse((o) => {
+          if (o.isMesh) o.material.map = new THREE.Texture();
+        });
+        return { scene, animations: [] };
+      },
+    };
+    const cast = createMeshyCast({ kinds: { clone: { a: 'morty', h: 1.95, shirts: [0xf3d84b, 0x7fc77a] } }, rigged: new Set(), loader });
+    await cast.load(null, ['morty']);
+    const a = cast.make('clone', 0);
+    const b = cast.make('clone', 1);
+    const shirtOf = (c) => {
+      let m = null;
+      c.group.traverse((o) => {
+        if (o.isMesh) m = o.material;
+      });
+      return m;
+    };
+    let freed = [];
+    for (const c of [a, b]) shirtOf(c).addEventListener('dispose', (e) => freed.push(e.target));
+    a.release();
+    expect(freed).toEqual([shirtOf(a)]);
+    // (and the cast's own clean-up doesn't free it again)
+    freed = [];
+    cast.dispose();
+    expect(freed).toEqual([shirtOf(b)]);
+  });
+});

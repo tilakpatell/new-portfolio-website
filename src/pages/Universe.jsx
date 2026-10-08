@@ -9,7 +9,7 @@ import { beyondOf, parseWonder } from '../components/universe/deep';
 import { DRIVE_KEY, destinationById, distanceTo, parseDrive, tourFrom } from '../components/universe/nav';
 import { FLY_PAST } from '../components/universe/words';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
-import { LOADOUT_KEY, droppedParts, equip, fitInto, loadoutOf, readLoadouts } from '../components/universe/outfit';
+import { LOADOUT_KEY, droppedParts, loadoutOf, readLoadout, readLoadouts } from '../components/universe/outfit';
 import { GARAGE_KEY, HULL_KEY, readHulls } from '../components/universe/shipyard/build';
 import { useAchievements } from '../components/Achievements';
 import { saveStart } from '../lib/view';
@@ -25,12 +25,15 @@ import Rain from '../components/universe/Rain';
 import NavMap from '../components/universe/NavMap';
 import Online from '../components/universe/online/Online';
 import Wardrobe from '../components/rickmorty/wardrobe/Wardrobe';
+const Shipyard = lazy(() => import('../components/universe/shipyard/Shipyard'));
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { CASTS, castOfCrew } from '../components/rickmorty/wardrobe/looks';
 import { useOnline } from '../components/universe/online/useOnline';
 import EarnNote from '../components/universe/EarnNote';
 import { useEarn } from '../components/universe/useEarn';
 import { goodStanding } from '../components/universe/economy';
+import { useEconomy } from '../components/universe/EconomyProvider';
+import { fitDraft } from '../components/universe/yardRules';
 import { createPayLedger } from '../components/universe/earnRules';
 import { pocketOf, registerPocket } from '../components/expanse/pocket';
 import { createRegistry } from '../components/worlds/registry';
@@ -127,8 +130,9 @@ export default function Universe({ ask = false }) {
   const dropped = useMemo(() => (ship ? droppedParts(loadouts[ship], loadout) : []), [loadouts, ship, loadout]); // (what the plant can't run)
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
-  const [hangar, setHangar] = useState(false);
-  // the wardrobe, from the hangar: how the cruiser’s Rick and Morty look,
+  // the Shipyard (shipyard/Shipyard.jsx), over the map while it's open
+  const [yard, setYard] = useState(false);
+  // the wardrobe, from the shipyard: how the cruiser’s Rick and Morty look,
   // or the RV’s Walt and Jesse (whichever crew’s flying)
   const [looks, setLook] = useLooks();
   const dressing = castOfCrew(ship) ?? 'rickmorty';
@@ -146,15 +150,38 @@ export default function Universe({ ask = false }) {
     local.set(DRIVE_KEY, next);
   };
   const jumped = useRef(false); // the crew's had their say about a jump this visit
-  const fit = (slot, id) => {
-    const r = equip(ship, loadout, slot, id, unlocked, build);
-    if (r.ok) {
-      const next = { ...loadouts, [ship]: fitInto(loadouts[ship], slot, r.loadout[slot]) }; // (what the plant took off is kept, for a bigger one)
-      setLoadouts(next);
-      local.set(LOADOUT_KEY, next);
-    }
-    return r;
+  // A draft from the Shipyard, applied: every fit tried first on a copy
+  // (fitDraft), then everything unowned paid for in one checkout, then the
+  // build and the loadout kept. A refusal at any step changes nothing.
+  const { economy } = useEconomy();
+  const [yardNote, setYardNote] = useState(null);
+  const sayYard = (text) => setYardNote({ text, n: Date.now() });
+  useEffect(() => {
+    if (!yardNote) return undefined;
+    const t = setTimeout(() => setYardNote(null), 3200);
+    return () => clearTimeout(t);
+  }, [yardNote]);
+  const applyDraft = ({ diff, toBuy, draft }) => {
+    if (!ship || !economy) return { ok: false, why: 'shop', text: 'The shop’s still opening.' };
+    const fitted = fitDraft(ship, draft, diff, { saved: readLoadout(loadouts[ship]), unlocked });
+    if (!fitted.ok) return { ok: false, why: fitted.why, text: fitted.why === 'power' ? 'Not enough power for that any more: the yard has opened again on what’s flown.' : 'Something there isn’t yours any more: the yard has opened again on what’s flown.' };
+    const paid = economy.checkout(toBuy);
+    if (!paid.ok) return { ok: false, why: paid.why, text: paid.why === 'credits' ? `Short ${(paid.total - economy.credits).toLocaleString('en-GB')} ¢.` : `The ${paid.item?.name ?? 'part'} can’t be bought.` };
+    if (diff.some((c) => c.module)) setBuild(draft.build);
+    const next = { ...loadouts, [ship]: fitted.saved };
+    setLoadouts(next);
+    local.set(LOADOUT_KEY, next);
+    const text = toBuy.length ? `Bought ${toBuy.length} part${toBuy.length === 1 ? '' : 's'} for ${paid.total.toLocaleString('en-GB')} ¢. Fitted.` : 'Fitted.';
+    sayYard(text);
+    return { ok: true, text, live: { build: draft.build, loadout: fitted.loadout } };
   };
+  const sellPart = (item) => {
+    const back = economy?.sell(item);
+    if (back) sayYard(`Sold the ${item.name} for ${back.toLocaleString('en-GB')} ¢.`);
+    return back;
+  };
+  const live = useMemo(() => ({ build, loadout }), [build, loadout]);
+  const yardSaves = useMemo(() => ({ loadouts, hulls, garage }), [loadouts, hulls, garage]);
   const [leaving, setLeaving] = useState(null); // { id, mode } once Enter is pressed
   const [asking, setAsking] = useState(ask); // the front door's choice, on a first arrival
   // the panel, put away to give the map the room (remembered between visits)
@@ -519,19 +546,11 @@ export default function Universe({ ask = false }) {
         handle={map}
         frozen={Boolean(leaving)}
         ship={ship}
-        shipName={crew?.ship ?? ''}
         loadout={loadout}
         build={build}
-        lastBuild={(ship && garage[ship]) || null}
-        dropped={dropped}
-        onBuild={ship ? setBuild : null}
-        onCrew={() => {
-          setHangar(false);
-          setWardrobe(true);
-        }}
-        onFit={ship ? fit : null}
-        hangar={hangar}
-        onHangar={setHangar}
+        canFit={Boolean(ship)}
+        hangar={yard}
+        onHangar={setYard}
         net={online.client}
         onEvent={onEvent}
         drive={drive}
@@ -557,7 +576,28 @@ export default function Universe({ ask = false }) {
         </div>
       )}
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
-      {!leaving && <EarnNote note={earned} />}
+      {!leaving && <EarnNote note={yardNote ?? earned} />}
+      {ship && !leaving && (
+        <Suspense fallback={null}>
+          <Shipyard
+            open={yard}
+            onOpen={setYard}
+            enabled={!charting && !wardrobe}
+            ship={ship}
+            shipName={crew?.ship ?? ''}
+            live={live}
+            lastBuild={garage[ship] || null}
+            saves={yardSaves}
+            dropped={dropped}
+            onApply={applyDraft}
+            onSell={sellPart}
+            onCrew={() => {
+              setYard(false);
+              setWardrobe(true);
+            }}
+          />
+        </Suspense>
+      )}
       <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} cast={dressing} who={CASTS[dressing][0]} returnTo=".universe-hangar-btn" />
       {!asking && !leaving && <Online online={online} ship={ship} />}
       <UniversePanel
@@ -570,8 +610,9 @@ export default function Universe({ ask = false }) {
         leaving={Boolean(leaving)}
         ship={ship}
         loadout={loadout}
+        build={build}
         onShip={pickShip}
-        onHangar={() => setHangar(true)}
+        onHangar={() => setYard(true)}
         onClassic={() => switchTo('classic')}
         tucked={tucked}
         onTuck={tuck}

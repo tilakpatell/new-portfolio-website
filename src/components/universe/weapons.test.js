@@ -1,11 +1,81 @@
 import { describe, expect, it } from 'vitest';
-import { ARSENAL, ORDER, WEAPONS, byCode, createArmory, fan, steer } from './weapons';
+import { DAMAGE_MAX } from './online/protocol';
+import { STOCK_LOADOUT } from './outfit';
+import { ARSENAL, LINES, WEAPONS, byCode, createArmory, fan, steer } from './weapons';
 
 describe('weapons', () => {
-  it('every ship names all three', () => {
-    for (const a of Object.values(ARSENAL)) expect(a.names).toHaveLength(ORDER.length);
-    for (const id of ORDER) expect(byCode(WEAPONS[id].code)).toBe(id);
-    expect(byCode(99)).toBe('blaster');
+  it('every ship names all three lines', () => {
+    for (const a of Object.values(ARSENAL)) expect(a.names).toHaveLength(LINES.length);
+  });
+
+  it('every weapon has its own code under 16 and damage at most 30', () => {
+    const codes = Object.values(WEAPONS).map((w) => w.code);
+    expect(new Set(codes).size).toBe(codes.length);
+    for (const [id, w] of Object.entries(WEAPONS)) {
+      expect(Number.isInteger(w.code) && w.code >= 0 && w.code < 16, id).toBe(true);
+      expect(w.damage, id).toBeLessThanOrEqual(DAMAGE_MAX);
+      expect(LINES, id).toContain(w.line);
+      expect(byCode(w.code)).toBe(id);
+    }
+  });
+
+  it('every ordnance weapon is heavy, and nothing else is (the launch, the rack and its sound key on it)', () => {
+    for (const [id, w] of Object.entries(WEAPONS)) expect(Boolean(w.heavy), id).toBe(w.line === 'ordnance');
+  });
+
+  it('an unknown code is the blaster', () => {
+    expect(byCode(40)).toBe('blaster');
+    expect(byCode(-1)).toBe('blaster');
+    expect(byCode('2')).toBe('blaster');
+    expect(byCode(undefined)).toBe('blaster');
+  });
+
+  it('the stock armoury is the blaster, the spread and the heavy rack', () => {
+    const a = createArmory('xwing');
+    const seen = [];
+    for (let i = 0; i < 3; i++) {
+      seen.push([a.id, a.line, a.name]);
+      a.cycle();
+    }
+    expect(seen).toEqual([
+      ['blaster', 'primary', 'Laser cannons'],
+      ['spread', 'secondary', 'Ion scatter'],
+      ['heavy', 'ordnance', 'Proton torpedoes'],
+    ]);
+    expect(a.ammoMax).toBe(4);
+  });
+
+  it('an armoury takes its secondary and ordnance from the loadout', () => {
+    const a = createArmory('xwing', { ...STOCK_LOADOUT, secondary: 'ion', ordnance: 'missiles' });
+    a.select(1);
+    expect(a.id).toBe('ion');
+    expect(a.name).toBe('Ion burst');
+    expect(a.weapon).toBe(WEAPONS.ion);
+    a.select(2);
+    expect(a.id).toBe('missiles');
+    expect(a.name).toBe('Missile rack');
+    expect(a.ammoMax).toBe(6);
+    expect(a.ammo).toBe(6);
+  });
+
+  it('refit keeps the line and clamps the rounds', () => {
+    const a = createArmory('falcon');
+    a.select(2);
+    a.fired(0);
+    a.fired(10000);
+    expect(a.ammo).toBe(2);
+    a.refit({ ...STOCK_LOADOUT, ordnance: 'mk2' });
+    expect(a.index).toBe(2);
+    expect(a.id).toBe('mk2');
+    expect(a.ammoMax).toBe(3);
+    expect(a.ammo).toBe(2);
+    a.fired(20000);
+    a.refit({ ...STOCK_LOADOUT, ordnance: 'mk2' }); // (the same rack: nothing back)
+    expect(a.ammo).toBe(1);
+    a.refit(STOCK_LOADOUT);
+    expect(a.ammo).toBe(1);
+    expect(a.ammoMax).toBe(4);
+    expect(a.name).toBe('Concussion missiles');
   });
 
   it('cycles and selects, and fires each at its own pace', () => {

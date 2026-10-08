@@ -19,7 +19,7 @@
 // Nothing generated is kept: a sector is made from its seed each time it's
 // needed (and a few are remembered while the ship's near them).
 //
-// createExpanse(parent, { universe, origin, make, makeStarfield, lanesOf,
+// createExpanse(parent, { universe, origin, make, makeStarfield,
 //   tier, reduced, onSector, onShift }) → { root, update({ ship, camera, t,
 //   dt }), loaded(), sector(), active(), dispose() }
 // activeAt(ship, was) → whether it's awake for a ship at (x, z), given whether it was
@@ -30,7 +30,6 @@ import { RIM, inExpanse, sectorOf } from '../../universe/layout';
 import { SECTOR, makeSector } from '../gen/sector';
 import { UNIVERSE } from '../gen/seed';
 import { sectorAt, sectorId } from '../gen/grid';
-import { sectorLanes, trunkBetween } from '../gen/lanes';
 import { createSector } from './sectors';
 import { createStarfield } from './starfield';
 
@@ -47,7 +46,7 @@ export function activeAt(ship, was) {
 
 const parseKey = (key) => key.split(',').map(Number);
 
-export function createExpanse(parent, { universe = UNIVERSE, origin, make = createSector, makeStarfield = createStarfield, lanesOf = null, tier = 'mid', reduced = false, onSector = null, onShift = null } = {}) {
+export function createExpanse(parent, { universe = UNIVERSE, origin, make = createSector, makeStarfield = createStarfield, tier = 'mid', reduced = false, onSector = null, onShift = null } = {}) {
   const root = new THREE.Group();
   root.name = 'expanse';
   parent.add(root);
@@ -65,26 +64,6 @@ export function createExpanse(parent, { universe = UNIVERSE, origin, make = crea
     }
     return s;
   };
-  // a sector's lanes: its own, and the trunk to each neighbour drawn by the
-  // one of the two with the lower seed (never into the authored map)
-  const lanesFor =
-    lanesOf ??
-    ((s) => {
-      const out = [...sectorLanes(s).lanes];
-      for (const [dx, dz] of [
-        [0, -1],
-        [1, 0],
-        [0, 1],
-        [-1, 0],
-      ]) {
-        const nx = s.sx + dx;
-        const nz = s.sz + dz;
-        if (nx === 0 && nz === 0) continue;
-        const n = sectorFor(nx, nz);
-        if (s.seed < n.seed) out.push(trunkBetween(s, n));
-      }
-      return out;
-    });
   const drawn = new Map(); // key 'sx,sz' → drawn sector (or null: the authored one)
   let field = null;
   let awake = false;
@@ -156,7 +135,7 @@ export function createExpanse(parent, { universe = UNIVERSE, origin, make = crea
         let d = null;
         if (cx !== 0 || cz !== 0) {
           const s = sectorFor(cx, cz);
-          d = make(s, { lanes: lanesFor(s), tier, reduced });
+          d = make(s, { tier, reduced });
           root.add(d.group);
           d.reanchor(at);
         }
