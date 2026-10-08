@@ -4,6 +4,7 @@ import { readAllegiance, swear } from './allegiance';
 import { systemById } from './systems';
 import { createWarFront } from './warfront';
 import { resetWar, warTally } from './warState';
+import { shotAt } from '../universe/shipPowers';
 
 // a moment in the first campaign with a battle on at its first front, a minute in
 const MS = GCW.start + 24 * 60e3 + 60e3;
@@ -276,6 +277,46 @@ describe('the side you swore to', () => {
     g.front.update(1 / 30, 0, camera, null);
     g.front.force('empire');
     expect(g.front.pieces.length).toBeGreaterThan(0);
+  });
+  // the crews' ship powers (universe/battlePowers.js, shipPowers.js) on the battle
+  it('hands a ship power’s slowed time and its ghost to the battle, its clock still on real time', () => {
+    const k = kit();
+    const here = into(k);
+    const spy = vi.spyOn(k.front.battle, 'update');
+    const clock = k.front.battle.clock;
+    for (let i = 0; i < 30; i++) expect(k.front.update(1 / 30, 0, camera, here, { slow: 0.35, ghost: true }).hurt).toBe(0);
+    expect(spy.mock.calls[0][0]).toBeCloseTo(0.35 / 30, 6);
+    expect(k.front.battle.clock - clock).toBeCloseTo(1, 1);
+    expect(k.front.battle.ghost).toBe(false);
+    spy.mockRestore();
+  });
+  it('holds the other side’s fighters with Walt’s magnet, and nobody’s while you’re nobody’s', () => {
+    const k = kit();
+    into(k);
+    const f = k.front.battle.fighters.find((x) => x.alive && x.team !== k.front.battle.you.team);
+    expect(k.front.pull(f.pos, 22, 4, 1)).toBeGreaterThan(0);
+    expect(f.held).toBeGreaterThan(0);
+    const u = kit(null);
+    into(u);
+    const g = u.front.battle.fighters.find((x) => x.alive);
+    expect(u.front.pull(g.pos, 22, 4, 1)).toBe(0);
+    const none = kit();
+    none.front.enter(systemById(QUIET_ID), none.world);
+    expect(none.front.pull({ x: 0, y: 0, z: 0 }, 22, 4, 1)).toBe(0);
+  });
+  it('scores a fighter a power brings down (its shot through hit(), aimed at it) as yours', () => {
+    const k = kit();
+    const here = into(k);
+    k.front.update(1 / 30, 0, camera, here);
+    const t = k.front.targets.find((x) => x.kind !== 'turret' && x.kind !== 'subsystem');
+    let r = null;
+    for (let i = 0; i < 40 && !r?.down; i++) {
+      const s = shotAt(t, here);
+      r = k.front.hit(s.from, s.to, 5);
+    }
+    expect(r).toMatchObject({ id: t.id, down: true });
+    k.front.update(1 / 30, 0, camera, null);
+    expect(warTally(k.ms).mine(pointsKey('rebel', FRONT_ID, k.front.on.step))).toBeCloseTo(GCW.points.kill, 5);
   });
 });
 
