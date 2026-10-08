@@ -9,7 +9,8 @@
 // createPlacer({ parent, kit, world, warm }) → { put(spec), scatter(kind,
 // items, opts), update(t, dt, you), signal(name, on) (to the built things that
 // move when something happens: a trapdoor, a gate), setZone(inZone), ready (a
-// promise: everything asked for so far is in), dispose() }
+// promise: everything asked for so far is in), chunked (the things put
+// with `chunk`, for thingCells.js), dispose() }
 //   Given `shadowOnly` (near.js's createShadowPhase(…).only), scattered
 //   things don't cast shadows themselves: a stand-in for each part, drawn
 //   only into the sun's shadow, holds just the instances near `you`
@@ -24,7 +25,9 @@
 //   url (a model from elsewhere on the site, in place of the kind's: the
 //   universe's Death Star over Scarif's sea; scaled to `metres` along its
 //   longest side), fog (false: drawn clear of the fog, for something hung
-//   in the sky far past where the fog would hide it) }
+//   in the sky far past where the fog would hide it), chunk (true: it stays
+//   where it's put, out in the world, and goes on the grid of cells,
+//   `chunked`: thingCells.js) }
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -166,6 +169,9 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   const updates = [];
   const signals = [];
   const pending = [];
+  // (the things put with `chunk`: { x, z, done (a promise: it's in),
+  // object, low (once it's in, a promise of its light copy, or null) })
+  const chunked = [];
   let dead = false;
 
   const groundY = (x, z) => world.heightAt(x, z);
@@ -242,6 +248,14 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       const cluster = !spec.zone && spec.model !== false && SURFACE_MODELS[spec.kind]?.cluster;
       if (cluster) return Promise.all(clusterSpecs(spec, cluster).map((m) => this.put(m))).then(() => null);
       const at = spot(spec);
+      const entry = spec.chunk && !spec.zone && spec.fog !== false ? { x: at[0], z: at[2], object: null, low: null, done: null } : null;
+      const noted = (p) => {
+        if (entry) {
+          entry.done = p.then((o) => (entry.object = o));
+          chunked.push(entry);
+        }
+        return p;
+      };
       // (a model from elsewhere on the site, by its url: stood at `at`, its
       // longest side `metres`; its build if it won't load)
       if (spec.url) {
@@ -267,7 +281,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           })
           .catch(() => null);
         pending.push(p);
-        return p;
+        return noted(p);
       }
       if (usesModel(spec)) {
         const p = loadModel(spec.kind)
@@ -293,19 +307,20 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             // first view doesn't wait for it)
             const lod = withLod(o, null, radiusOf(gltf) * (spec.scale ?? 1));
             holder.add(lod);
-            loadModel(spec.kind, surfaceLodUrl(spec.kind)).then((low) => {
+            const low = loadModel(spec.kind, surfaceLodUrl(spec.kind)).then((low) => {
               if (dead || !low) return;
               const l = cloneModel(low);
               addLowLevel(lod, l, radiusOf(gltf) * (spec.scale ?? 1));
               warm(l);
             });
+            if (entry) entry.low = low.catch(() => {});
             return worn.then(() => warm(o)).then(() => lod);
           })
           .catch(() => null);
         pending.push(p);
-        return p;
+        return noted(p);
       }
-      return Promise.resolve(build(spec, at));
+      return noted(Promise.resolve(build(spec, at)));
     },
     // many of one kind: items [{ at: [x, z], yaw, scale, y }]; drawn instanced
     scatter(kind, items, { opts = {}, solid = true, model = true } = {}) {
@@ -382,6 +397,9 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     },
     get ready() {
       return Promise.all(pending);
+    },
+    get chunked() {
+      return chunked;
     },
     update(t, dt, you = null) {
       for (const u of updates) u(t, dt);
