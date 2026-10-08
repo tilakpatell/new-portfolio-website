@@ -14,7 +14,7 @@
 // exactly as it's drawn.
 
 import { LAYERS } from '../../../lib/land/layers.js';
-import { smoothstep } from './noise';
+import { fbm, noise2, smoothstep } from './noise';
 
 // the walkable square: HALF metres each way from the middle; you're turned
 // back at REACH
@@ -27,29 +27,45 @@ export const FAR = 9000;
 
 export const LAYER_TYPES = Object.keys(LAYERS);
 
-// The land's height, layers only (no flats)
-export function makeRaw(ground) {
+// The fine relief ultra lays over the land (amounts.js's `relief`, 0…1):
+// two more octaves than any layer goes to, small hollows and rises 6 to 12
+// metres across and a hand's height (the grid at ultra is fine enough to
+// draw them, a vertex every 2.5 m). A site may scale it (`ground.relief`:
+// 0.5 for packed snow, 1.4 for broken lava). Under the flats it's levelled
+// away with the rest, so pads and built ground stay flat.
+const RELIEF = { metres: [12, 6], height: [0.26, 0.1] }; // (every wavelength ≥ 5 m: two cells or more of ultra's 2.5 m grid, so none shimmers)
+const fineRelief = (x, z, seed) =>
+  fbm(x / RELIEF.metres[0], z / RELIEF.metres[0], { octaves: 2, seed: seed + 977 }) * RELIEF.height[0] + noise2(x / RELIEF.metres[1], z / RELIEF.metres[1], seed + 991) * RELIEF.height[1];
+
+// The land's height, layers only (no flats); with `relief`, the fine relief over it
+export function makeRaw(ground, { relief = 0 } = {}) {
   const seed = ground.seed ?? 1;
   const layers = ground.layers ?? [];
   const base = ground.base ?? 0;
+  const fine = relief * (ground.relief ?? 1);
   return (x, z) => {
     let h = base;
     for (let i = 0; i < layers.length; i++) {
       const l = layers[i];
       h += LAYERS[l.type](x, z, l, seed + i * 101);
     }
-    return h;
+    return fine ? h + fineRelief(x, z, seed) * fine : h;
   };
 }
 
 // A world's flats: each { at: [x, z], r, edge, h } (h: the height it's
 // levelled to; left out, the land's own height at its middle)
 export function levelled(raw, flats = []) {
-  const pads = flats.map((f) => ({ x: f.at[0], z: f.at[1], r: f.r, edge: f.edge ?? Math.max(8, f.r * 0.6), h: f.h ?? raw(f.at[0], f.at[1]) }));
+  const pads = flats.map((f) => {
+    const edge = f.edge ?? Math.max(8, f.r * 0.6);
+    return { x: f.at[0], z: f.at[1], r: f.r, edge, reach: f.r + edge, h: f.h ?? raw(f.at[0], f.at[1]) };
+  });
   if (!pads.length) return raw;
   return (x, z) => {
     let h = raw(x, z);
     for (const p of pads) {
+      // (far off on either axis: out of its reach, without the square root)
+      if (Math.abs(x - p.x) >= p.reach || Math.abs(z - p.z) >= p.reach) continue;
       const d = Math.hypot(x - p.x, z - p.z);
       if (d >= p.r + p.edge) continue;
       const w = 1 - smoothstep(p.r, p.r + p.edge, d);
@@ -69,6 +85,7 @@ export function dug(height, pits = []) {
   return (x, z) => {
     let h = height(x, z);
     for (const p of holes) {
+      if (Math.abs(x - p.x) >= p.r || Math.abs(z - p.z) >= p.r) continue;
       const d = Math.hypot(x - p.x, z - p.z);
       if (d >= p.r) continue;
       const w = p.cone ? (1 - d / p.r) ** 0.85 : 1 - smoothstep(p.r * 0.7, p.r, d);
@@ -78,7 +95,7 @@ export function dug(height, pits = []) {
   };
 }
 
-export const makeHeight = (ground) => dug(levelled(makeRaw(ground), ground.flats), ground.pits);
+export const makeHeight = (ground, { relief = 0 } = {}) => dug(levelled(makeRaw(ground, { relief }), ground.flats), ground.pits);
 
 // ── The grid ──
 

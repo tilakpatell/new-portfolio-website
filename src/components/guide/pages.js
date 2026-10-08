@@ -295,6 +295,9 @@ export const PAGES = {
           ['J / F / Click', 'Punch (a little way off, he lunges)'],
           ['E', 'Go in at a place (Cecil, at the GDA, has a job)'],
           ['T', 'The time of day'],
+          ['R', 'Take the radio’s call (a chase, a photo, Eve’s race)'],
+          ['Q', 'Call a mission off'],
+          ['H / ?', 'This guide'],
         ],
       },
       {
@@ -316,6 +319,7 @@ export const PAGES = {
       { label: 'Think, Mark!', rows: [['Stick', 'Left of the screen steers'], ['Drag', 'Right of the screen looks'], ['Tap', 'Punch'], ['Dodge', 'Dodge']] },
     ],
     tips: [
+      ['A pad', 'In the city: the left stick flies, the right stick looks, A goes up, B down, RT is flat out, X punches and Y goes in.'],
       ['The city', 'Six kilometres of downtown, river, suburbs, coast and hills. Come down fast and the street cracks; hit a tower too fast and you bounce off it. The places: the Graysons’, the high school, Burger Mart, the Guardians’ hall, the GDA.'],
       ['Things to do', 'Dad’s rings start over the street outside the house: ten of them to the Guardians’ hall, against the clock. The first season’s eight title cards are hidden round the city (one high up). Every minute or so someone needs catching: follow the red beacon, catch them, land to set them down. Fly alongside the airliner and your father has something to say.'],
       ['The Flaxans', 'They come through a portal over the river, when Cecil sends you or a few minutes in on their own. Punch them out of the sky, or fly into them fast; their purple bolts knock you about. All twelve down and the portal closes.'],
@@ -620,6 +624,7 @@ export const SITE = [
   ['Two ways round', 'The Universe and Classic switch at the top: fly through the universe, or read the classic site. Either takes you to the same place in the other, and the site remembers which you picked.'],
   ['Getting around', 'The menu at the top, or the command palette, which goes anywhere and does most things. The Terminal page takes commands too.'],
   ['Colours', 'The dot in the menu picks the site’s colours: each company I’ve worked at, any fan world’s you’ve unlocked, or your own. Each brings a background: quiet for the companies, lively for the fan worlds (click an empty part of the page). Switch them off at the bottom of the same menu.'],
+  ['Settings', 'The gear beside the colours (or ⌘K, Settings) sets the quality: Auto picks what this machine can draw, or choose Low, Medium, High or Ultra yourself. Sound, motion, sharpness and what your device is doing are there too.'],
   ['Languages', 'Read the whole site in Aurebesh, Cybertronian or Dwarf runes, from the Off the clock row, ⌘K, or the Death Star, Middle-earth and Cybertron pages. Back to English is always at the bottom of the screen, or type english.'],
   ['Easter eggs', 'One on each main page, and one more on the page that isn’t there. Some words work typed anywhere: try aurebesh, rollout, mellon, snap, twss, parkour, precious, wubbalubbadubdub or say my name.'],
   ['Achievements', 'Each egg you find is counted; the Dundies in Scranton show you where you stand.'],

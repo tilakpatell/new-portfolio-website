@@ -74,7 +74,7 @@
 
 /* the open part of the page, for what isn't the scene */
 .universe-flat,
-.universe-loading {
+.loading-veil.universe-loading {
   position: absolute;
   top: var(--nav-h);
   left: 0;
@@ -86,7 +86,6 @@
   padding: 1.5rem;
 }
 .universe-flat .minimap { max-width: 900px; }
-.universe-loading { color: var(--muted); font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.04em; }
 
 /* the planets' names, moved by the scene */
 .universe-labels {
@@ -471,6 +470,42 @@ body:has(.universe-panel) .guide-btn { display: none; }
 }
 .universe-shield[data-low] .universe-shield-bar > span { background: linear-gradient(90deg, #ff4a3d, #ff9a5c); box-shadow: 0 0 8px rgb(255 90 60 / 0.7); animation: universe-shield-blink 0.6s steps(2) infinite; }
 @keyframes universe-shield-blink { 50% { opacity: 0.45; } }
+/* the law (wanted.js): its stars, what it's doing, and the bounty on you;
+   up under the comms, where a glance finds it */
+.universe-wanted {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--nav-h, 68px) + 100px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 999px;
+  background: rgb(3 4 10 / 0.55);
+  color: rgb(255 255 255 / 0.85);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  translate: -50% 0;
+  transition: opacity 0.3s;
+}
+.universe-wanted[data-on] { opacity: 1; }
+.universe-wanted-stars { display: flex; gap: 3px; }
+.universe-wanted-stars i {
+  width: 11px;
+  height: 11px;
+  background: rgb(255 255 255 / 0.22);
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.universe-wanted-stars i[data-lit] { background: #ffc94a; filter: drop-shadow(0 0 4px rgb(255 190 60 / 0.8)); }
+.universe-wanted[data-search] .universe-wanted-stars i[data-lit] { animation: universe-shield-blink 0.9s steps(2) infinite; }
+.universe-wanted-bounty { color: #ffc94a; font-weight: 600; }
+.universe-wanted-bounty:empty { display: none; }
 /* the targeting HUD: the gun line out along the nose, the lock's brackets
    round a hunter (with its name and range under), the pip where a shot
    would meet it, and the nav bracket round wherever you're going; the scene
@@ -1225,6 +1260,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-setting-row input[type='checkbox']:checked::after { translate: 16px 0; background: var(--engine, #e8eefc); }
 .universe-setting-row input[type='checkbox']:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 2px; }
 .universe-seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
+.universe-seg-4 { grid-template-columns: repeat(4, 1fr); }
 .universe-seg button { min-height: 34px; color: var(--muted); font-size: 0.78rem; transition: background-color 0.15s, color 0.15s; }
 .universe-seg button + button { border-left: 1px solid rgb(255 255 255 / 0.2); }
 .universe-seg button:hover { color: var(--text); }
@@ -1444,7 +1480,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
     border-radius: var(--r-card) var(--r-card) 0 0;
   }
   .universe-flat,
-  .universe-loading { right: 0; bottom: var(--sheet-h); }
+  .loading-veil.universe-loading { right: 0; bottom: var(--sheet-h); }
   .universe-boost { right: 16px; bottom: calc(var(--sheet-h) + 16px); }
   .universe-fire { right: 104px; bottom: calc(var(--sheet-h) + 22px); }
   .universe-weapon { right: 110px; bottom: calc(var(--sheet-h) + 96px); }

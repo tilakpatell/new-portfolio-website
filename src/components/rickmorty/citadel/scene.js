@@ -515,6 +515,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     people: import.meta.env.DEV ? people : null, // (and their figures: people.cast.get(id).react('greet'), …)
     render,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     fx: fxEvent,
     // Mortytown: built (once) before the lift takes Rick down; resolves true
     // when it's ready, false if it couldn't be

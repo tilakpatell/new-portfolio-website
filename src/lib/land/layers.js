@@ -55,7 +55,11 @@ export const LAYERS = {
   // `at`, falling away to nothing by `r`, its edge broken up
   island: (x, z, l, seed) => {
     const [cx, cz] = l.at ?? [0, 0];
-    const d = Math.hypot(x - cx, z - cz) * (1 + fbm(x / (l.r * 0.5), z / (l.r * 0.5), { octaves: 3, seed }) * (l.ragged ?? 0.35));
+    const far = Math.hypot(x - cx, z - cz);
+    const ragged = l.ragged ?? 0.35;
+    // (out of its reach however the edge is broken, fbm being -1…1: no noise needed)
+    if (far * (1 - ragged) >= l.r && (l.core ?? 0.25) < 1) return 0;
+    const d = far * (1 + fbm(x / (l.r * 0.5), z / (l.r * 0.5), { octaves: 3, seed }) * ragged);
     return smoothstep(l.r, l.r * (l.core ?? 0.25), d) * l.height;
   },
   // a constant

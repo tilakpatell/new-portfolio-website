@@ -95,7 +95,10 @@ import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
 import { takeArrival } from '../../lib/arrival';
-import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, revealAll, singlePass, texturesUnder, uploadTexture, uploadTextures } from '../../lib/three/renderer';
+import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, singlePass, uploadTextures } from '../../lib/three/renderer';
+import { prepareScene, uploadSlices } from '../../lib/three/gpuWork';
+import { calibrate, calibrationKey, recall, remember } from '../../lib/three/calibrate';
+import { settle as settleWithin } from '../../lib/settle';
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
@@ -114,6 +117,8 @@ import { REAIM_MS, parkBehind, pilotId, pilotSpace, reached } from './pilotGoal'
 import { laneAim, laneFrame, lanePlan, rideLine } from './lanePilot';
 import { createLaneLook } from './laneLook';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
+import { ION } from './hunterRules';
+import { difficultyOf } from './difficulty';
 import { AHEAD_OF, crewAt, factionsOf, kindsOf, pick as pickFaction, sideAt, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
 import { GLB, createFleet } from './glbFleet';
@@ -163,6 +168,8 @@ import { createNpcs } from './npcs';
 import { NPCS, visitorsOf } from './npcs/index';
 import { tells } from './npcRules';
 import { createStanding } from './standing';
+import { createWanted } from './wanted';
+import { createLaw } from './law';
 import { readBuildWire, writeBuild } from './shipyard/build';
 import { readLooks } from '../rickmorty/wardrobe/looks';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
@@ -185,11 +192,11 @@ import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
 import { NX5_LEN, createRemoverView } from './removerView';
 import { createSky } from './skyShader';
+import { createStarField, loadStarCatalog } from './starField';
 import { deedToEarn } from './economy';
 import { createPayLedger, hunterEarn } from './earnRules';
 
-const STARS = 1800; // the near ones, over the Milky Way's own
-const STARS_LOW = 700;
+const STARS_LOW = 9000; // of the real sky's (starField.js), on a weak device: about the naked eye's
 const STREAKS = 220;
 const BOLTS = 40; // shots in flight at once (a spread throws five)
 const MISSILES = 8; // heavy rounds in flight at once (weapons.js)
@@ -253,71 +260,6 @@ const TRACK_AFTER_SHOT = 1500; // ms: a lock the guns picked is followed this lo
 // of its arguments, and these run every frame)
 const apart = (ax, ay, az, bx, by, bz) => Math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by) + (az - bz) * (az - bz));
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-
-const STAR_VERT = `
-attribute float aSize;
-attribute vec3 aColor;
-attribute float aPhase;
-uniform float uDpr;
-uniform float uTime;
-varying vec3 vColor;
-void main() {
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  gl_PointSize = clamp(aSize * uDpr * (46000.0 / -mv.z), 1.0, 6.0 * uDpr);
-  // a slow twinkle, each star on its own beat
-  float tw = 0.72 + 0.28 * sin(uTime * (0.6 + fract(aPhase * 7.3) * 1.8) + aPhase * 6.2832);
-  vColor = aColor * tw;
-  gl_Position = projectionMatrix * mv;
-}`;
-const STAR_FRAG = `
-varying vec3 vColor;
-void main() {
-  float d = length(gl_PointCoord - 0.5);
-  float a = smoothstep(0.5, 0.1, d);
-  gl_FragColor = vec4(vColor * a, 1.0);
-  #include <colorspace_fragment>
-}`;
-
-function starfield(rand) {
-  const pos = new Float32Array(STARS * 3);
-  const size = new Float32Array(STARS);
-  const col = new Float32Array(STARS * 3);
-  const phase = new Float32Array(STARS);
-  const tints = [
-    [1, 1, 1],
-    [0.78, 0.86, 1],
-    [1, 0.9, 0.78],
-  ];
-  for (let i = 0; i < STARS; i++) {
-    // a shell round the map, flatter than a sphere
-    const u = rand() * 2 - 1;
-    const a = rand() * Math.PI * 2;
-    const r = 21000 + rand() * 4600; // behind everything, however far out the camera is
-    const s = Math.sqrt(1 - u * u);
-    pos.set([Math.cos(a) * s * r, u * r * 0.8, Math.sin(a) * s * r], i * 3);
-    const b = 0.25 + rand() ** 3 * 0.75;
-    const t = tints[rand() < 0.75 ? 0 : rand() < 0.5 ? 1 : 2];
-    col.set([t[0] * b, t[1] * b, t[2] * b], i * 3);
-    size[i] = 0.7 + rand() ** 4 * 2.2;
-    phase[i] = rand();
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
-  g.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
-  g.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
-  const mat = new THREE.ShaderMaterial({
-    vertexShader: STAR_VERT,
-    fragmentShader: STAR_FRAG,
-    uniforms: { uDpr: { value: 1 }, uTime: { value: 0 } },
-    blending: THREE.AdditiveBlending,
-    transparent: true,
-    depthWrite: false,
-  });
-  const points = new THREE.Points(g, mat);
-  points.frustumCulled = false;
-  return points;
-}
 
 // one faint circle per station round the sun, all in one draw (the far
 // planets don't orbit it: they're worlds of their own out in deep space)
@@ -520,7 +462,7 @@ export async function create(canvas, ctx) {
   // filling a retina screen at 2 is more than most graphics chips draw
   // smoothly while flying, and the names and the HUD are crisp DOM anyway;
   // and no antialiasing on the canvas: the post's target has its own, post.js)
-  const gl = createRenderer(canvas, { ratio: 1.5, antialias: false, onLost: ctx.onLost, onSlow: ctx.onSlow });
+  const gl = createRenderer(canvas, { ratio: 1.5, antialias: false, onLost: ctx.onLost, onSlow: ctx.onSlow, guard: { invalidate: ctx.invalidate } });
   const { renderer } = gl;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
@@ -558,8 +500,8 @@ export async function create(canvas, ctx) {
     seed = (seed * 16807) % 2147483647;
     return seed / 2147483647;
   };
-  const stars = starfield(rand);
-  map.add(stars);
+  // the real sky's stars, fetched while the rest is built (starField.js)
+  const catalogue = loadStarCatalog();
   const rings = orbits();
   map.add(rings);
   // the asteroid belt, and dust round the camera to feel the speed by (belt.js)
@@ -667,8 +609,11 @@ export async function create(canvas, ctx) {
   // nearer stars thinned out
   const tier = device().tier;
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
-  if (tier === 'low') stars.geometry.setDrawRange(0, STARS_LOW);
   const T = await loadTextures({ small });
+  // the stars, brightest first, so a weak device draws the naked eye's
+  const stars = createStarField(await catalogue);
+  map.add(stars);
+  if (tier === 'low') stars.geometry.setDrawRange(0, STARS_LOW);
 
   // what metal reflects, and the passes after the scene (post.js)
   let env = spaceEnvironment(renderer, T['sky-glow']);
@@ -678,11 +623,12 @@ export async function create(canvas, ctx) {
   // the sky: the Milky Way, all the way round, turning with the map and
   // riding with the camera (so it's always as far off), drawn sharp at the
   // screen's own resolution (skyShader.js: the photo for its light, the
-  // stars and the fine detail drawn there); fewer layers of stars on a
-  // weaker device
+  // fine detail and the faintest stars drawn there; its brighter stars too
+  // if the catalogue's couldn't be had, fewer layers on a weaker device)
   let sky = null;
   if (T['sky-glow']) {
-    sky = createSky(T['sky-glow'], { layers: tier === 'low' ? 1 : tier === 'high' ? 3 : 2 });
+    const layers = stars.geometry.getAttribute('position').count ? 1 : tier === 'low' ? 1 : tier === 'high' ? 3 : 2;
+    sky = createSky(T['sky-glow'], { layers });
     map.add(sky);
   }
 
@@ -751,7 +697,7 @@ export async function create(canvas, ctx) {
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
   // and every place past FAR_REAL drawn as a point of light instead (farPlaces.js)
   const farPlaces = createFarPlaces(map, { places: FAR_PLACES.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })), skyFar: SKY_FAR });
-  const near = createNearMaps({ small }); // (the finer maps for the two planets nearest, nearMaps.js)
+  const near = createNearMaps({ small, upload: (ts) => uploadSlices(renderer, ts, { sliceMB: 8 }) }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
   const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, warm: (o) => warm(o) });
@@ -865,7 +811,10 @@ export async function create(canvas, ctx) {
   // flying; anywhere else the crew's own
   const sideHere = () => sideAt(state.kind, state.ship ? sectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main');
   const FACTIONS_ALL = factionsOf(null);
+  // how hard the fight is (the flight setting: difficulty.js), now
+  const diff = () => difficultyOf(controls().difficulty);
   const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines }); // (every side's: another pilot's hunters, whoever they are)
+  if (hunters) hunters.difficulty = diff;
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
   const farFights = createFarFights(map); // (and seen from afar, as flickering light: farFights.js)
@@ -896,6 +845,48 @@ export async function create(canvas, ctx) {
   const deed = (what, n = 1, as = deedToEarn(what)) => {
     for (const e of standing.note(what, n)) stood(e);
     pay(as, n);
+    law?.crime(what, state.ship); // (and a crime, if it's one: wanted.js)
+  };
+  // the law's chase (wanted.js, law.js): stars and a price on your head,
+  // the side's police sent by stars, bounty hunters by the bounty, paid off
+  // out of the wallet where you land
+  const wanted = createWanted({ storage: remembered });
+  const lawSaid = (e) => wantedNote(e);
+  const law = hunters
+    ? createLaw({
+        wanted,
+        hunters,
+        traffic,
+        side: () => sideFor(state.kind),
+        difficulty: diff,
+        bounty: (tier, ship) => {
+          happen('bounty', ship);
+          if (tier >= 2) hunters.pack(pickFaction(sideFor(state.kind), 'bounty'), ship, { size: 1, ace: false });
+        },
+        say: lawSaid,
+      })
+    : null;
+  // what the law's doing, on the HUD's note and from the crew (Comms: an
+  // event, by what happened)
+  const STAR = '★';
+  const wantedNote = (e) => {
+    const note = (text, s = 4) => (state.note = { text, until: wall() + s });
+    if (e.type === 'wanted' && e.stars > e.was) {
+      note(`Wanted ${STAR.repeat(e.stars)}: ${wanted.bounty} ¢ on your head`);
+      emit({ type: 'event', id: 'wanted', sub: e.stars });
+    } else if (e.type === 'witness') note('A witness is running to the law: stop them, or get clear');
+    else if (e.type === 'silenced') note('No witnesses left', 2.5);
+    else if (e.type === 'search') {
+      note('Out of sight: they’re searching for you');
+      emit({ type: 'event', id: 'wanted', sub: 'search' });
+    } else if (e.type === 'resighted') note('Spotted again', 2.5);
+    else if (e.type === 'lost') {
+      note(wanted.bounty ? `You lost them. The bounty stands: ${wanted.bounty} ¢` : 'You lost them');
+      emit({ type: 'event', id: 'wanted', sub: 'lost' });
+    } else if (e.type === 'cops' && e.stars >= 3) note(`Police inbound ${STAR.repeat(e.stars)}: they’ll hold your drive down`, 3);
+    else if (e.type === 'hunter') note(e.tier >= 3 ? 'The price on your head has every hunter out' : 'A bounty hunter has come for your bounty', 3.5);
+    else if (e.type === 'paid') note(`Bounty paid off: −${e.amount} ¢`);
+    else if (e.type === 'owed') note(`A ${e.bounty} ¢ bounty on you: ${e.need} ¢ more to pay it off`, 4);
   };
   const npcs = hunters ? createNpcs(map, { fleet, memory: npcMemory }) : null; // (the named characters: npcRules.js's brains)
   // the crew's war (front.js): its front out in deep space, a battle there
@@ -978,12 +969,13 @@ export async function create(canvas, ctx) {
 
   // the models arrive after the map is up (their shaders made first, off
   // the main thread, so one coming into view doesn't stall a frame)
-  loadModels((id, model, spot) => {
+  // (`modelsIn`: all of them mounted, for prepare() to wait on)
+  const modelsIn = loadModels((id, model, spot) => {
     if (disposed) {
       disposeTree(model);
-      return;
+      return null;
     }
-    warm(model).then(() => {
+    return warm(model).then(() => {
       if (disposed || !planetOf[id]?.mount(model, spot)) disposeTree(model);
       ctx.invalidate();
     });
@@ -2370,6 +2362,11 @@ export async function create(canvas, ctx) {
   // a pirate on someone else, or a character who turned on you)
   const killed = (hh) => {
     if (!hh.faction) return;
+    // (one of the law's: a crime, and it pays nothing)
+    if (law?.killed(hh.faction, state.ship)) {
+      for (const e of standing.note('killHunter')) stood(e);
+      return;
+    }
     const pays = hunterEarn(FACTIONS_ALL, hh); // (its faction's ace pays more)
     if (FACTIONS_ALL[hh.faction]?.role === 'pirates' || hh.prey) deed('killPirate', 1, pays);
     else deed('killHunter', 1, pays);
@@ -2864,6 +2861,7 @@ export async function create(canvas, ctx) {
     npcs?.clear();
     engine?.set({ speed: 0, boost: false, on: false });
     if (by) net?.down(by); // everyone hears who got you
+    law?.down(); // (the chase is over; the bounty isn't)
     emit({ type: 'destroyed' });
     retarget(650);
   };
@@ -3026,11 +3024,24 @@ export async function create(canvas, ctx) {
         emit({ type: 'interdicted', faction: e.faction });
       }
     } else if (e.type === 'laser') {
-      hurt(e.damage);
+      hurt(e.damage * diff().damage);
       state.hitBy = e.by ?? null; // (the wing goes for the one that hit you last)
-      // (a bomb's burst shakes the ship as a laser doesn't)
-      if (e.bomb && !reduced) state.shake = Math.max(state.shake, 0.5);
+      // (a bomb's burst shakes the ship as a laser doesn't, nor a missile's, nor a rammer's)
+      if ((e.bomb || e.missile || e.ram) && !reduced) state.shake = Math.max(state.shake, e.ram ? 0.8 : 0.5);
+      // an ion bolt holds the boost and the pulse drive down a moment
+      if (e.ion) {
+        state.ionUntil = state.clock + ION.slow;
+        if (!reduced) state.static = Math.max(state.static, 0.6);
+        state.note = { text: 'Ion hit: drives down', until: wall() + 2 };
+      }
     } else if (e.type === 'shot') emit(e);
+    else if (e.type === 'missile') {
+      // a missile after you: the HUD says so (once a few seconds)
+      if (state.clock - (state.missileSaid ?? -1e9) > 4) {
+        state.missileSaid = state.clock;
+        state.note = { text: 'Missile inbound: break hard, or outrun it', until: wall() + 2.5 };
+      }
+    } else if (e.type === 'rammed') burn(new THREE.Vector3(e.at.x, e.at.y, e.at.z), e.size * 2.2);
     else if (e.type === 'spotlit') {
       // pinned in a spotlight: the HUD whites out a moment, and the lock with it
       state.static = Math.max(state.static, 1.5);
@@ -3254,6 +3265,26 @@ export async function create(canvas, ctx) {
 
   // the shields bar: shown while there's trouble about or they're down at all
   let shieldOn = false;
+  // the law's strip (UniverseMap's): its stars, what it's doing (wanted, a
+  // witness's report on its way, searching, or just the bounty), the bounty
+  let wantedKey = '';
+  const placeWanted = () => {
+    const el = props.wanted?.current;
+    if (!el) return;
+    const r = wanted.report;
+    const on = flying() && !onFoot() && state.view !== 'map' && !state.crash && !props.frozen && (wanted.stars > 0 || wanted.bounty > 0 || Boolean(r));
+    const word = wanted.stars ? (wanted.phase === 'search' ? `Searching ${Math.ceil(wanted.searchLeft)}s` : 'Wanted') : r ? `Witness ${Math.ceil(r.left)}s` : 'Bounty';
+    const key = `${on}|${wanted.stars}|${word}|${wanted.bounty}`;
+    if (key === wantedKey) return;
+    wantedKey = key;
+    el.toggleAttribute('data-on', on);
+    el.toggleAttribute('data-search', wanted.phase === 'search');
+    el.querySelectorAll('.universe-wanted-stars i').forEach((star, i) => star.toggleAttribute('data-lit', i < wanted.stars));
+    const w = el.querySelector('.universe-wanted-word');
+    const b = el.querySelector('.universe-wanted-bounty');
+    if (w) w.textContent = word;
+    if (b) b.textContent = wanted.bounty ? `${wanted.bounty} ¢` : '';
+  };
   const placeShield = () => {
     const el = props.shield?.current;
     if (!el) return;
@@ -3498,6 +3529,8 @@ export async function create(canvas, ctx) {
     for (const e of standing.tick(dt)) stood(e);
     const live = flying() && !onFoot() && !state.crash && !state.dive && !props.frozen ? state.ship : null;
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
+    if (law) law.step(dt, live, { heat: state.heat });
+    else wanted.side(sideOf(state.kind));
     if (wingmen) helpFrom(dt, t, live);
     if (skirmishes) farFight(dt, t, live);
     if (!state.fights || state.clock - state.fightsAt > 0.25) [state.fights, state.fightsAt] = [fightsNow(), state.clock]; // (four times a second is plenty for a far flicker's place)
@@ -3604,7 +3637,7 @@ export async function create(canvas, ctx) {
     }
     if (live) {
       // shields come back once you've been out of trouble a while
-      if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
+      if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen * diff().regen);
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
@@ -3612,7 +3645,7 @@ export async function create(canvas, ctx) {
         const sunNow = litBy.key && litBy.key.strength > 1.2 ? LIT_STARS.find((st) => st.id === litBy.key.id) : null;
         const where = { sun: Boolean(sunNow && canEclipse({ eye: [live.x, live.y, live.z], sun: sunNow })), station: Boolean(state.at && byId(state.at)?.kind === 'core'), gate: state.at === 'starwars' };
         const zone = state.ride ? 'lane' : zoneOf(live, { regionAt, laneAt: noLane }); // (in a carriageway but not riding it, nothing of the lane's can happen: it needs the ride)
-        const id = director.update(dt, { zone, hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: Boolean(state.ambush) || hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
+        const id = director.update(dt, { zone, hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: Boolean(state.ambush) || Boolean(law?.busy) || hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted, pace: diff().pace });
         state.hurtNow = 0;
         if (id) happen(playAs(id, zone), live, id);
         // the ambush at your off-ramp: sprung as you come off there (laneEvents.js)
@@ -3679,6 +3712,7 @@ export async function create(canvas, ctx) {
       props.hud?.current?.toggleAttribute('data-static', staticOn);
     }
     placeShield();
+    placeWanted();
     return busy || Boolean(hunters?.count) || later.length > 0;
   };
 
@@ -4019,6 +4053,11 @@ export async function create(canvas, ctx) {
     const pack = state.interdicted ? clamp((state.clock - state.interdictAt) / INTERDICT_IN, 0, 1) : 0;
     const fight = front ? front.holdAt(state.ship.x, state.ship.y, state.ship.z, noseOf(state.ship)) : 0;
     input.interdicted = Math.max(pack * pack * (3 - 2 * pack), fight);
+    // an ion hit: no boost and no pulse drive till it wears off
+    if (state.clock < (state.ionUntil ?? -1)) {
+      input.boost = false;
+      input.interdicted = 1;
+    }
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     const before = state.ship;
     // on a hyperlane, or getting on or off one (lanePilot.js): the ride poses the ship in place of ship.js's step
@@ -4112,6 +4151,7 @@ export async function create(canvas, ctx) {
           props.onPick?.(now);
         }
         emit({ type: 'arrive', id: now });
+        law?.arrive(props.wallet ?? null); // (a bounty on your head paid off here, out of the wallet)
         state.saw.add(now); // (been here: a rift takes you somewhere else)
         pulseAt = { id: now, age: 0 };
         cabLook.glanceAt = state.clock; // the crew have their say: a look over at them
@@ -4603,19 +4643,20 @@ export async function create(canvas, ctx) {
     state.model?.rim({ colour: fill.color, dir: lightNow.fill });
   };
 
+  // the pace's step on everything that follows it
+  const paceTo = () => {
+    post.sharpness = pace.scale;
+    post.setLevel(pace.level);
+    blasts.setMode(pace.level >= 2 || tier === 'low' || state.low ? 'pop' : 'full');
+    // (the rocks' relief flat from the pace's step 3, and back: lib/three/rock)
+    ROCK_RELIEF.value = pace.level >= 3 ? 0 : 1;
+    // (the planets' ground detail goes at the pace's step 2, their real air for
+    // the old halo and their clouds' shadows at 3, and they come back)
+    for (const p of planets) p.setLevel(pace.level);
+  };
   function render(ms, now) {
     gl.watch(now);
-    const sharp = pace.frame(now);
-    if (sharp !== null) {
-      post.sharpness = sharp;
-      post.setLevel(pace.level);
-      blasts.setMode(pace.level >= 2 || tier === 'low' || state.low ? 'pop' : 'full');
-      // (the rocks' relief flat from the pace's step 3, and back: lib/three/rock)
-      ROCK_RELIEF.value = pace.level >= 3 ? 0 : 1;
-      // (the planets' ground detail goes at the pace's step 2, their real air for
-      // the old halo and their clouds' shadows at 3, and they come back)
-      for (const p of planets) p.setLevel(pace.level);
-    }
+    if (pace.frame(now) !== null) paceTo();
     const dt = ms / 1000;
     const t = reduced ? 0 : state.low ? state.tLow : (now - t0) / 1000;
     // (the Twins' suns going round each other: their solids where they're drawn, deep.js)
@@ -4773,13 +4814,16 @@ export async function create(canvas, ctx) {
     const gunBusy = gunPortal.update(dt);
     const fxBusy = crashBusy || popBusy || gunBusy || Boolean(state.crash?.swallow);
     if (traffic) {
-      for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null, { fight: Boolean(hunters?.active), feared: standing.feared, wanted: standing.wanted })) {
+      for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null, { fight: Boolean(hunters?.active), feared: standing.feared, wanted: standing.wanted || wanted.stars > 0 })) {
         if (e.type === 'spotted') {
+          law?.spotted(); // (the law's eyes on you: wanted.js)
           // a patrol of the law going past has seen a wanted pilot: they come
-          // (once in a while), and the crew say so
-          if (hunters && state.ship && !state.crash && !hunters.active && state.clock - spottedAt > SPOTTED_EVERY) {
+          // (once in a while), and the crew say so; with the law (law.js),
+          // it's the stars that bring them
+          if (hunters && state.ship && !state.crash && !hunters.active && state.clock - spottedAt > SPOTTED_EVERY && !wanted.stars) {
             spottedAt = state.clock;
-            hunters.pack(e.faction, state.ship, { size: 2, ace: false, heat: state.heat });
+            if (law) law.crime('busted', state.ship);
+            else hunters.pack(e.faction, state.ship, { size: 2, ace: false, heat: state.heat });
             hunts += 1;
             emit({ type: 'event', id: 'spotted' });
           }
@@ -4812,7 +4856,6 @@ export async function create(canvas, ctx) {
     const launching = moveMissiles(dt);
     if (armory) armory.update(dt);
     sun.update(t, camera);
-    stars.material.uniforms.uTime.value = t;
     stars.material.uniforms.uDpr.value = gl.ratio; // (the watchdog may have changed it)
     // each place's own motion (a station's lights, particles, its screen)
     // only while it's in view and more than a speck
@@ -5274,6 +5317,10 @@ export async function create(canvas, ctx) {
     spares.add(burst.mesh);
   }
   map.add(spares);
+  // the house look on everything built so far before its shaders are made:
+  // put on at the first frame instead, it changed every lit shader after
+  // they were compiled, and they were all compiled again in that frame
+  house.follow({ adopt: true });
   const ready = Promise.all([warm(scene), post.composer ? precompilePasses(renderer, post.composer, camera) : null]).then(() => {
     // made: out of the scene (so nothing walks them each frame), and the
     // ships on to the fleet, ready to fly (the first of each kind isn't
@@ -5356,7 +5403,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView, laneLook };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wanted, law, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView, laneLook };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -5406,38 +5453,42 @@ export async function create(canvas, ctx) {
     });
   }
 
-  // Everything drawn once while the intro covers the page (lib/three/
-  // useScene asks, while the page is idle), hidden things too, so the first
-  // frame at the launch's flash doesn't stop for it: the pictures first, a
-  // few at a time (`timeLeft()`, the ms the page can spare now: a click on
-  // the welcome never waits on them), then one draw for the meshes and the
-  // rest. False until it's done.
-  let warming = null; // the pictures still to send ahead
-  const warmUp = (timeLeft = () => Infinity) => {
-    warming ??= texturesUnder(scene);
-    while (warming.length) {
-      uploadTexture(renderer, warming.pop());
-      if (timeLeft() <= 4) break;
-    }
-    if (warming.length) return false;
-    warming = null;
-    // (the frames' own way, passes and all, so it's their shaders that are
-    // made, but small: the passes' buffers 64 across, and one pixel of the
-    // canvas. It's what's sent that counts, not the picture; the first real
-    // frame sizes the buffers back up.)
-    const undo = revealAll(scene);
-    try {
-      renderer.setScissor(0, 0, 1, 1);
-      renderer.setScissorTest(true);
-      post.render(64, 64);
-    } catch (err) {
-      if (import.meta.env.DEV) console.warn('[universe] warm-up failed', err);
-    } finally {
-      undo();
-      renderer.setScissorTest(false);
-      renderer.setRenderTarget(null);
-    }
-    return true;
+  // Everything sent to the graphics chip before the map is first seen
+  // (lib/useScene runs it, behind the intro or behind the map's loading
+  // screen): the planets' models waited for, then every picture, every
+  // shader (hidden things too) and one draw of it all, passes and all, a
+  // slice at a time (lib/three/gpuWork). The draw is small: the passes'
+  // buffers 64 across and one pixel of the canvas; it's what's sent that
+  // counts, not the picture, and the first real frame sizes them back up.
+  const prepare = async (onProgress, { alive = () => true, frame } = {}) => {
+    onProgress?.(0, 'load');
+    await settleWithin(Promise.all([ready, modelsIn]), 20000);
+    if (!alive() || disposed) return;
+    await prepareScene({
+      renderer,
+      roots: [scene],
+      scene,
+      camera,
+      target: post.target,
+      render: () => post.render(64, 64),
+      onProgress,
+      frame,
+      alive: () => alive() && !disposed,
+    });
+    if (!alive() || disposed) return;
+    // how sharp this machine can afford it, found now rather than see-sawed
+    // into while flying (lib/three/calibrate): the pace's ceiling from here
+    onProgress?.(0.97, 'tune');
+    const key = calibrationKey(renderer, 'universe', size.w, size.h);
+    const kept = recall(key);
+    const setLevel = (l) => {
+      pace.set(l);
+      paceTo();
+    };
+    const level = await calibrate({ renderer, draw: () => post.render(size.w, size.h), setLevel, start: kept ?? 0, frames: kept != null ? 4 : 12, frame, alive: () => alive() && !disposed });
+    if (!alive() || disposed) return;
+    setLevel(level);
+    remember(key, level);
   };
 
   return {
@@ -5452,11 +5503,10 @@ export async function create(canvas, ctx) {
       watchPanel();
     },
     render,
-    // drawn once behind the intro (above); not on a low tier (software
-    // WebGL, a budget phone), where the graphics chip's work is the
-    // processor's and its memory is short: things go up as they're first
-    // seen there, as before
-    warmUp: tier === 'low' ? undefined : warmUp,
+    // sent before it's seen (above); not on a low tier (software WebGL, a
+    // budget phone), where the graphics chip's work is the processor's and
+    // its memory is short: things go up as they're first seen there, as before
+    prepare: tier === 'low' ? undefined : prepare,
     update(next) {
       const picked = props.selected ?? null; // (the page's pick, as it last said)
       props = next;

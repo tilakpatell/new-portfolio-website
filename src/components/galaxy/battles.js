@@ -199,7 +199,7 @@ const GCW_TEMPLATES = {
 const KIT = { ship, FIGHTERS };
 export const TEMPLATES = { gcw: GCW_TEMPLATES, clone: cloneTemplates(KIT), remnant: remnantTemplates(KIT) };
 const WAR_NAMES = { gcw: 'The Battle of', clone: 'The Battle of', remnant: 'The Battle of' };
-const NAMES = { gcw: { kashyyyk: 'The liberation of Kashyyyk', mandalore: 'The Battle of Mandalore' } };
+const NAMES = { gcw: { kashyyyk: 'The Battle of Kashyyyk', mandalore: 'The Battle of Mandalore' } };
 export function templateFor(id, war = 'gcw') {
   const own = TEMPLATES[war]?.[id];
   if (own) return own;

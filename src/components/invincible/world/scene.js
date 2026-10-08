@@ -30,7 +30,7 @@ import { LINES } from './lines';
 import { createNpcs } from './npcs';
 import { buildClouds, buildHaze, skyBands } from './sky';
 import { carAt, createTraffic, stepTraffic, takeCar } from './traffic';
-import { markerSize } from './hud';
+import { markerSize } from '../../../runtime/hud/hud';
 import { CITY, WATER_Y, WORLD, buildWorld, groundAt, near } from './map';
 import { BODIES, altitudeOf } from './orbit';
 import { castMaterial, loadCast, personFor, setCastRim } from './people';

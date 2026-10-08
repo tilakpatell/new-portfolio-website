@@ -4,6 +4,7 @@ import { WorldHost, useWorld } from '../../../runtime';
 import surfaceModule from './module';
 import { heroById, heroSpec } from '../heroes';
 import { ABILITIES, abilitiesOf } from './abilityRules';
+import LoadingVeil from '../../worlds/LoadingVeil';
 
 // (shorter names for the thumbs)
 const TOUCH = { detonator: 'Bomb', overcharge: 'Charge', fulminate: 'Bomb', rocket: 'Rocket', jetpack: 'Jet', medpack: 'Heal', hop: 'Hop' };
@@ -25,7 +26,7 @@ export default function SurfaceView({ system, mission = null, ship, hero = null,
   const reduced = useReducedMotion();
   // (a hero picked goes on in the world as it is: scene.js's setHero; another
   // mission is another world, made again)
-  const { host, on, meant, rt } = useWorld(surfaceModule, {
+  const { host, on, meant, rt, progress } = useWorld(surfaceModule, {
     props: { system, mission, ship, hero, loadout, build, found, done, compass, net, reduced, effects },
     rebuild: mission ?? 'explore',
     onEvent: (e) => events.current?.(e),
@@ -101,11 +102,8 @@ export default function SurfaceView({ system, mission = null, ship, hero = null,
   return (
     <WorldHost world={{ host }} className="surface-map">
       {meant ? (
-        !on && (
-          <p className="surface-loading" role="status">
-            Coming down through the atmosphere…
-          </p>
-        )
+        // (until it's drawing: on a flown landing it's up before the page is, so this is a direct visit's)
+        <LoadingVeil shown={!on} progress={progress.value} step={progress.step} title="Coming down through the atmosphere" />
       ) : (
         <p className="surface-loading" role="status">
           Landing needs 3D, and this browser has it turned off.

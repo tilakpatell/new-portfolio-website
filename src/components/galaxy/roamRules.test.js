@@ -66,7 +66,8 @@ describe('galaxySide', () => {
           expect(KINDS[kind], `${id} ${kind}`).toBeTruthy();
           expect(NAMES[kind], `${id} ${kind}`).toBeTruthy();
           // (drawn: a model the fleet loads, or built in code till then; Slave I waits for its model)
-          expect(Boolean(HUNTER_GLB[kind]) || BUILT.has(kind), `${id} ${kind}`).toBe(true);
+          const model = KINDS[kind].model ?? kind;
+          expect(Boolean(HUNTER_GLB[model]) || BUILT.has(model), `${id} ${kind}`).toBe(true);
         }
         if (f.ace) expect(KINDS[f.ace], `${id} ace`).toBeTruthy();
       }
@@ -128,7 +129,7 @@ describe('galaxySide, by who holds the system in the war', () => {
       for (const side of [owner === 'hutt' ? 'rebel' : owner, null]) {
         const s = galaxySide(systemById('hoth'), fx(owner === 'republic' || owner === 'separatists' ? 'clone' : owner === 'newrepublic' || owner === 'remnant' ? 'remnant' : 'gcw', 'hoth', owner, side));
         if (s.capitalShip) expect(Boolean(HUNTER_GLB[s.capitalShip]) || BUILT.has(s.capitalShip), `${owner} ${s.capitalShip}`).toBe(true);
-        for (const [id, f] of Object.entries(s.factions)) for (const [kind] of f.kinds) expect(Boolean(HUNTER_GLB[kind]) || BUILT.has(kind), `${owner} ${id} ${kind}`).toBe(true);
+        for (const [id, f] of Object.entries(s.factions)) for (const [kind] of f.kinds) expect(Boolean(HUNTER_GLB[KINDS[kind]?.model ?? kind]) || BUILT.has(KINDS[kind]?.model ?? kind), `${owner} ${id} ${kind}`).toBe(true);
       }
   });
 });

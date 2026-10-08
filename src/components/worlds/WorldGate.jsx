@@ -6,6 +6,8 @@ import { device, storageFree, worldCheck } from '../../lib/device';
 import { local, storage } from '../../lib/hooks';
 import { byPath } from '../universe/universes';
 import { WORLD_MB, worldAt } from './worlds';
+import { cardState, sizeText, usePack } from './usePack';
+import { InstallCard, InstallPill } from './InstallCard';
 import './worldgate.css';
 
 // Before a world downloads its 3D on a device that would feel it (a phone
@@ -14,11 +16,19 @@ import './worldgate.css';
 // shows its 2D versions and fetches no models or textures, and a card at the
 // bottom says what loading would cost. "Load" lets the 3D in; "Keep it
 // light" keeps the 2D for this visit, with a small button to change your
-// mind; "Always load" remembers it on this device. A desktop never sees any
-// of this. Each world's weight is in worlds.js.
+// mind; "Always load" remembers it on this device. Each world's weight is
+// in worlds.js.
+//
+// Where the build made the world a pack (scripts/packs.mjs), the card is the
+// install's front door (src/runtime/install.js): the pack's true size and
+// time, Install with its bar, then Open, and Open at once when it's on this
+// device already. A desktop isn't held: for a heavy world it's offered the
+// install in a pill, for next time. Without packs (in development, or no
+// Cache API) the card is the old one.
 
 const ALWAYS = 'tp-worlds'; // 'load': never ask on this device
 const choiceKey = (to) => `tp-world:${to}`; // 'load' | 'light', this visit
+const offerKey = (to) => `tp-world-offer:${to}`; // 'no': the install pill closed, this visit
 
 // the device with its graphics chip looked at, so a weak chip or software
 // WebGL counts before anything starts downloading
@@ -78,37 +88,54 @@ export default function WorldGate({ pathname, children }) {
   };
 
   const held = Boolean(to) && choice !== 'load' && check.ask;
+  const p = usePack(to);
+  const state = cardState({ held, pack: p.pack, installed: p.installed, busy: p.busy, error: p.error });
+  const [offer, setOffer] = useState(true);
+  useEffect(() => setOffer(storage.get(offerKey(to)) !== 'no'), [to]);
+  const noOffer = () => {
+    storage.set(offerKey(to), 'no');
+    setOffer(false);
+  };
   const hold = useMemo(() => (held ? { held: true, load: () => load(), mb, name } : null), [held, load, mb, name]);
 
   // outside <main>, so it sits over the page's own fixed buttons
-  const prompt = !held ? null : choice === 'light' ? (
-    <button type="button" className="world-gate-pill" onClick={() => load()}>
-      <RiDownloadCloud2Line aria-hidden="true" /> Load 3D · {mb} MB
-    </button>
-  ) : (
-    <aside className="world-gate" role="dialog" aria-modal="false" aria-labelledby="world-gate-title">
-      <button type="button" className="world-gate-x" aria-label="Keep it light" onClick={light}>
-        <RiCloseLine aria-hidden="true" />
+  let prompt = null;
+  if (held && choice === 'light') {
+    prompt = (
+      <button type="button" className="world-gate-pill" onClick={() => load()}>
+        <RiDownloadCloud2Line aria-hidden="true" /> Load 3D · {p.pack ? sizeText(p.pack.bytes) : `${mb} MB`}
       </button>
-      <p id="world-gate-title" className="world-gate-title">
-        <RiDownloadCloud2Line aria-hidden="true" /> {name} is built in 3D
-      </p>
-      <p className="world-gate-text">
-        About {mb} MB of models and textures. {WHY[check.why] ?? WHY.phone} Until then you’re seeing the light version.
-      </p>
-      <div className="world-gate-actions">
-        <button type="button" className="btn btn-primary btn-sm" onClick={() => load()}>
-          Load the 3D
+    );
+  } else if (held && p.pack) {
+    prompt = <InstallCard name={name} why={WHY[check.why] ?? WHY.phone} state={state} pack={p.pack} progress={p.progress} error={p.error} onInstall={p.install} onOpen={() => load()} onLight={light} onAlways={() => load(true)} />;
+  } else if (held) {
+    prompt = (
+      <aside className="world-gate" role="dialog" aria-modal="false" aria-labelledby="world-gate-title">
+        <button type="button" className="world-gate-x" aria-label="Keep it light" onClick={light}>
+          <RiCloseLine aria-hidden="true" />
         </button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={light}>
-          Keep it light
-        </button>
-        <button type="button" className="world-gate-always" onClick={() => load(true)}>
-          Always load on this device
-        </button>
-      </div>
-    </aside>
-  );
+        <p id="world-gate-title" className="world-gate-title">
+          <RiDownloadCloud2Line aria-hidden="true" /> {name} is built in 3D
+        </p>
+        <p className="world-gate-text">
+          About {mb} MB of models and textures. {WHY[check.why] ?? WHY.phone} Until then you’re seeing the light version.
+        </p>
+        <div className="world-gate-actions">
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => load()}>
+            Load the 3D
+          </button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={light}>
+            Keep it light
+          </button>
+          <button type="button" className="world-gate-always" onClick={() => load(true)}>
+            Always load on this device
+          </button>
+        </div>
+      </aside>
+    );
+  } else if (p.pack && offer && state !== 'open' && local.get(ALWAYS) !== 'load') {
+    prompt = <InstallPill state={state} pack={p.pack} progress={p.progress} onInstall={p.install} onClose={noOffer} />;
+  }
 
   return (
     <Hold3D.Provider value={hold}>

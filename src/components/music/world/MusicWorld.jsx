@@ -10,6 +10,8 @@ import './world.css';
 import '../../../styles/lazy/music.css';
 import GuideCue from '../../guide/GuideCue';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // others online in the courtyard (middleearth/towns/useTravellers), as lamps
 const ROOM = { bound: 80, motion: true };
@@ -32,6 +34,7 @@ export default function MusicWorld({ panel }) {
   const three = use3D();
   const touch = useMediaQuery('(pointer: coarse)');
   const [gl, setGl] = useState('loading'); // loading | on | failed | lost
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const trav = useTravellers('music', gl === 'on', ROOM);
   const [models, setModels] = useState(false);
   const [near, setNear] = useState(null);
@@ -57,7 +60,7 @@ export default function MusicWorld({ panel }) {
     };
     import('./scene')
       .then(({ createMusicWorld }) => (dead || !canvas.current ? null : createMusicWorld(canvas.current, { onLost: () => !dead && setGl('lost') })))
-      .then((a) => {
+      .then(async (a) => {
         if (!a) return;
         if (dead) {
           a.dispose();
@@ -66,6 +69,9 @@ export default function MusicWorld({ panel }) {
         api.current = a;
         if (import.meta.env.DEV) window.__MUSIC_WORLD__ = { api: a, sim: sim.current }; // for the QA scripts
         fit();
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (dead) return;
         setGl('on');
         a.loaded.then(() => !dead && setModels(true));
       })
@@ -277,7 +283,7 @@ export default function MusicWorld({ panel }) {
         }}
       >
         <canvas ref={canvas} className="mw-canvas" data-on={gl === 'on' || undefined} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
-        {gl !== 'on' && <p className="mw-loading">Landing on the music planet…</p>}
+        <LoadingVeil shown={gl !== 'on'} progress={prep.value} step={prep.step} title="Landing on the music planet" />
 
         <div className="mw-hud mw-hud-top">
           <div>

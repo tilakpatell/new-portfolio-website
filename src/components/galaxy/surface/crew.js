@@ -78,6 +78,8 @@ export async function crewFigure(kind, i = 0) {
     model,
     tall: c.tall,
     anim: fig.anim ?? null,
+    // (its bones by name: a rider's limbs are put on what it rides, riders.js)
+    bones: fig.bones ?? null,
     update(dt, move, motion = null) {
       // (the figure reads its motion in the units it stands in, under this
       // group: metres over the group's scale, which is the map's units over

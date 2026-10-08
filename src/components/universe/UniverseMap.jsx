@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useScene } from '../../lib/three/useScene';
 import { local } from '../../lib/hooks';
 import { CONTROLS_KEY, readControls } from './controls';
+import { useEconomy } from './EconomyProvider';
 import FlightSettings from './FlightSettings';
 import Hangar from './Hangar';
 import { UNIVERSES } from './universes';
@@ -9,6 +10,7 @@ import { ORDER, keyStep } from './layout';
 import MiniMap from './MiniMap';
 import GuideCue from '../guide/GuideCue';
 import { askBrief } from '../tour/brief';
+import LoadingVeil from '../worlds/LoadingVeil';
 
 // The map: the 3D scene (scene.js and planets.js, through useScene) with the
 // planets' names as buttons over it. React renders the names once; the
@@ -38,6 +40,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const stick = useRef(null);
   const alt = useRef(null);
   const shield = useRef(null);
+  const wantedEl = useRef(null); // (the law's stars and the bounty on you: wanted.js)
+  const { economy } = useEconomy({ ask: false }); // (the wallet a bounty's paid off from)
   const hud = useRef(null);
   const arms = useRef(null); // the weapon readout (weapons.js)
   const siegeEl = useRef(null); // the Citadel's siege (siege.js)
@@ -76,7 +80,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   );
   const events = useRef(onEvent);
   events.current = onEvent;
-  const { wrap, on, meant, view } = useScene(load, {
+  const { wrap, on, meant, view, status, progress } = useScene(load, {
     id: 'universe',
     near: '0px',
     props: {
@@ -89,6 +93,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       stick,
       alt,
       shield,
+      wanted: wantedEl,
+      wallet: economy,
       hud,
       arms,
       siege: siegeEl,
@@ -200,11 +206,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     <div ref={wrap} className="universe-map" data-ship={ship || undefined} data-foot={onFoot || undefined}>
       {meant ? (
         <>
-          {!on && (
-            <p className="universe-loading" role="status">
-              Charting the universe…
-            </p>
-          )}
+          {/* (until the map is drawing: everything sent to the graphics chip first, so it flies smoothly from its first frame) */}
+          <LoadingVeil className="universe-loading" shown={!on} progress={status === 'preparing' ? progress.value : 0} step={status === 'preparing' ? progress.step : 'load'} title="Charting the universe" />
           <ul className="universe-labels" aria-label="Universes" onKeyDown={onKeyDown}>
             {UNIVERSES.map((u) => (
               <li key={u.id}>
@@ -253,6 +256,17 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-shield-bar">
                   <span />
                 </span>
+              </div>
+              <div ref={wantedEl} className="universe-wanted" aria-hidden="true">
+                <span className="universe-wanted-stars">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                <b className="universe-wanted-word" />
+                <b className="universe-wanted-bounty" />
               </div>
               <div ref={hud} className="universe-hud" aria-hidden="true">
                 <span className="universe-reticle" />
