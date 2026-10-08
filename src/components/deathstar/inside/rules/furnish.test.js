@@ -130,9 +130,11 @@ describe('furnish', () => {
   it('makes work and post spots clear to stand on, and seats inside the chair or bench they are on', () => {
     for (const { layout, room, made, thing: spot } of all('spots')) {
       expect(['work', 'post', 'sit'], room.id).toContain(spot.kind);
+      // its room, so brains.js can take it as a role’s place as it is
+      expect(spot.room, spot.name).toBe(room.id);
       expect(holds(room, spot), `${spot.name} stands outside ${room.id}`).toBe(true);
       if (spot.kind === 'sit') {
-        expect(made.props.some((p) => ['chair', 'bench', 'throne', 'meditation-pod', 'desk'].includes(p.kind) && Math.hypot(p.x - spot.x, p.z - spot.z) < Math.max(p.w, p.d) / 2 + HAIR), spot.name).toBe(true);
+        expect(made.props.some((p) => ['chair', 'bench', 'throne', 'meditation-pod'].includes(p.kind) && Math.hypot(p.x - spot.x, p.z - spot.z) < Math.max(p.w, p.d) / 2 + HAIR), spot.name).toBe(true);
         continue;
       }
       expect(layout.floorAt(room.id, spot.x, spot.z), `${spot.name} has no floor`).not.toBeNull();
@@ -140,7 +142,7 @@ describe('furnish', () => {
     }
   });
 
-  it('writes its signs in plain British English with curly quotes', () => {
+  it('writes its signs without straight quotes, shouting or American spellings', () => {
     const texts = all('props').filter((e) => e.thing.text !== undefined);
     expect(texts.length).toBeGreaterThan(10);
     for (const { thing: p } of texts) {

@@ -20,8 +20,9 @@
 //     props: [{ kind, x, y, z, yaw, w, d, h, tag?, text? }]   what the room’s builder draws: (x, z) the middle
 //       of its footprint and y its foot; it faces along yaw (0 faces −z), w across that, d along it, h tall.
 //       tag: what a story or an egg finds it by; text: what is written on it.
-//     spots: [{ name, kind: 'work' | 'post' | 'sit', x, y, z, yaw, tag? }]   where someone stands to work a
-//       console or keep a post, or sits, facing yaw; name is `<room>/<kind><n>`
+//     spots: [{ name, kind: 'work' | 'post' | 'sit', room, x, y, z, yaw, tag? }]   where someone stands to work
+//       a console or keep a post, or sits, facing yaw; name is `<room>/<kind><n>`. Each is a place brains.js
+//       takes as a role’s spot as it is.
 //
 // A few of the station’s spots name the thing standing on them rather
 // than a place to stand (the Falcon, the conference table, the throne, the
@@ -175,7 +176,7 @@ function workshop(room, station) {
 
   function spot(kind, p, yaw, tag) {
     count[kind] += 1;
-    const s = { name: `${room.id}/${kind}${count[kind]}`, kind, x: tidy(p.x), y: tidy(p.y ?? floor(p.x, p.z) ?? room.y), z: tidy(p.z), yaw: wrap(yaw) || 0, ...(tag ? { tag } : {}) };
+    const s = { name: `${room.id}/${kind}${count[kind]}`, kind, room: room.id, x: tidy(p.x), y: tidy(p.y ?? floor(p.x, p.z) ?? room.y), z: tidy(p.z), yaw: wrap(yaw) || 0, ...(tag ? { tag } : {}) };
     out.spots.push(s);
     if (kind !== 'sit') places.push(s);
     return s;
