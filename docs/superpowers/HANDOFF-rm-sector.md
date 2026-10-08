@@ -3,8 +3,7 @@
 The plan was [PLAN-rm-sector.md](PLAN-rm-sector.md). The Rick and Morty
 worlds used to sit in a cluster round the Citadel in the main map. They now
 have a sector of their own, reached through a green portal. The work went in
-as one PR per step of the plan's section 5, from the branch
-`claude/rm-sector-opus`.
+as one PR per step of the plan's section 5, from one branch.
 
 ## What's done
 
@@ -78,9 +77,13 @@ Fixes after flying it (#542): out at the sector, 40000 off, the GPU's
 `scene.js` draws round the camera past 3000 out (`drawn`: the map and the
 camera shifted for `post.render` only, and put back). The Curve is drawn
 only from inside the sector, as a band rather than streaks. The Citadel's
-haze fades out before its quad's edge. A sector world's ground portal (and
-"Land on") still goes to C-137, the walkable game, but sets the garage's
-portal gun to that world first (`universes.js` `dialFor`, `tp-rm-dial`).
+haze fades out before its quad's edge.
+
+A sector world's ground portal (and "Land on") opens that planet's own
+world at `/c-137/<id>` (`pages/RmPlanet.jsx`, `rickmorty/world/planetMode.js`):
+the walkable game, started at the planet's way in, with its portal back out
+to `/universe/<id>`. C-137's portal gun no longer dials the planets, and
+`dialFor` is gone.
 
 Worlds 9 and 10: Cronenberg World and the Purge Planet, with set pieces
 modelled on Meshy (`scripts/meshy-rm-local.mjs` phase 13: `cronhouse`,

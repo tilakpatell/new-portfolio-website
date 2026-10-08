@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { createGhosts } from './ghosts';
+import { releaseCast, setCastSource, tickCast } from '../cast3d';
+import { makePerson } from '../shire/people';
+import { meshyRig } from '../../../lib/three/meshyRig.fixture';
 
 // The name cards are drawn on a canvas; Node has none, so a card that measures
 // and draws nothing stands in for it.
@@ -81,5 +84,41 @@ describe('the ghosts', () => {
     expect(got[0]).toBe(p);
     expect(got[0]).not.toHaveProperty('emote');
     ghosts.dispose();
+  });
+
+  it('a traveller on the cast is pale, drawn here not by the town, and walks by the ground it covers (motion or none)', async () => {
+    const rig = meshyRig();
+    rig.model.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.3), new THREE.MeshStandardMaterial()));
+    const clip = /-(idle|walk|run)\.glb$/;
+    setCastSource({ on: true, load: async (url) => (clip.test(url) ? { animations: [rig.clips[clip.exec(url)[1]]] } : { scene: rig.model, animations: [] }) });
+    try {
+      const scene = new THREE.Scene();
+      let made = null;
+      const ghosts = createGhosts({ make: () => (made = makePerson('frodo')) });
+      scene.add(ghosts.group);
+      const p = { id: 'old', name: 'Pip', x: 0, z: 0, face: 0, moving: false };
+      ghosts.update([p], 0, 0.05);
+      await new Promise((r) => made.cast.onReady(r));
+      expect(made.cast.manual).toBe(true);
+      const meshes = [];
+      made.cast.body.holder.traverse((o) => o.isMesh && meshes.push(o));
+      expect(meshes.length).toBeGreaterThan(0);
+      expect(meshes.every((m) => m.material.transparent && m.material.depthWrite === false)).toBe(true);
+      // an old client's ghost, no motion sent, walking east: its walk goes by the ground
+      const walk = made.cast.body.anim.actions.walk;
+      for (let i = 1; i <= 90; i++) {
+        p.x += 1.2 * 0.02;
+        p.moving = true;
+        ghosts.update([p], i * 0.02, 0.02);
+        tickCast(scene, null, 0.02); // (the town's tick leaves it to the ghosts)
+      }
+      expect(made.cast.body.m.speed).toBeGreaterThan(0.5);
+      expect(walk.getEffectiveWeight() + made.cast.body.anim.actions.run.getEffectiveWeight()).toBeGreaterThan(0.5);
+      ghosts.dispose();
+      expect(made.cast.disposed).toBe(true);
+    } finally {
+      releaseCast(null);
+      setCastSource({ on: false });
+    }
   });
 });

@@ -39,6 +39,12 @@ const ICONS = { lanes: RiRoadMapFill, hyper: RiFlashlightFill, super: RiSpeedUpF
 // names that'd sit on a neighbour's (on the universe chart): under their dot instead
 const UNDER = new Set(['maw', 'glacia']);
 const WHY = { interdicted: 'Interdicted: hunters are holding the drive down', charging: 'Charging' };
+// the far fights (farFights.js) the scene says are on, on this chart: [{ id, x, z, label, xy }]
+const fightsOn = (now, sector, P) =>
+  (Array.isArray(now?.farFights) ? now.farFights : [])
+    .filter((f) => Number.isFinite(f?.x) && Number.isFinite(f?.z) && sectorOf(f.x, 0, f.z) === sector)
+    .map((f) => ({ ...f, xy: P([f.x, 0, f.z]) }))
+    .filter((f) => onChart([f.xy[0] / V, f.xy[1] / V]));
 
 function paintStars(canvas) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -367,6 +373,13 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                 const [x, y] = P([p.x, 0, p.z]);
                 return onChart([x / V, y / V]) ? <rect key={p.id} x={x - 4} y={y - 4} width="8" height="8" className="navmap-pilot" transform={`rotate(45 ${x} ${y})`} /> : null;
               })}
+              {/* someone's fight out on the lanes (farFights.js), seen from afar: a burst, named in the list over the chart */}
+              {fightsOn(now, sector, P).map((f) => (
+                <g key={f.id} transform={`translate(${f.xy[0]} ${f.xy[1]})`} className="navmap-fight">
+                  <circle r="9" className="navmap-fight-ring" />
+                  <path d="M-4 -4 L4 4 M4 -4 L-4 4" />
+                </g>
+              ))}
               {/* you */}
               {shipAt && onChart([shipAt[0] / V, shipAt[1] / V]) && (
                 <g transform={`translate(${shipAt[0]} ${shipAt[1]}) rotate(${chartHeading(now.ship.heading)})`} className="navmap-ship">
@@ -415,6 +428,14 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   </button>
                 </li>
               )}
+              {/* the far fights' names: under their bursts (a fight at a ramp sits by its place, whose name is to the right) */}
+              {fightsOn(now, sector, P).map((f) => (
+                <li key={f.id} style={{ ...pct(f.xy), '--c': '#ff8a5c' }} data-kind="fight">
+                  <span className="navmap-place navmap-fightname">
+                    <span className="navmap-name">{f.label}</span>
+                  </span>
+                </li>
+              ))}
             </ul>
             {view === 'home' && (
               <button type="button" className="navmap-out" onClick={() => setView('all')}>

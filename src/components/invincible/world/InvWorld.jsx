@@ -10,13 +10,16 @@ import { useAchievements } from '../../Achievements';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { PORTAL, newFoes, portalOpen, spawnFoes, standing, startInvasion, stepFoes } from './foes';
 import { FLY, newHero, stepHero } from './flight';
+import { getawayAt, newGetaway, stepGetaway, stopGetaway } from './getaway';
 import { CALLS, RINGS_DONE } from './lines';
+import { RADIO, feedMission, keepStory, loadStory, markerOf, missionOf, newRadio, nextRadioCall, nextStory, placeOf as missionPlace, startMission as beginMission, stepOf } from './missions';
 import { BODIES, SPACE, intoSpace, outOfSpace, stepSpace } from './orbit';
 import { CARDS, RINGS, keepQuests, newQuests, stepQuests } from './quests';
 import { CITY, COAST, BEACH, HILLS, PLACES, RIVER, SPAWN, SUBURB, WATER_Y, WORLD, groundAt, isSafeStart } from './map';
 import { VOICE } from './voicelines';
 import InvHud from './InvHud';
-import { COMPASS, layoutCompass, titleMode } from './hud';
+import MissionCard from './MissionCard';
+import { COMPASS, layoutCompass, objectiveText, titleMode } from './hud';
 import './world.css';
 
 // The Graysons' city, the world: fly about it as Invincible. The rules are
@@ -30,6 +33,10 @@ const sound = (name, ...args) => import('./sounds').then((m) => m[name]?.(...arg
 const AT = 'tp-inv-world-at';
 const TIME = 'tp-inv-world-time';
 const QUESTS = 'tp-inv-world-quests';
+const STORY = 'tp-inv-world-story';
+const HANGAR = missionPlace('hangar').p;
+const ROOF = missionPlace('roof').p;
+const CARD_MS = 2600; // the episode's title card (2.5 s, and the fade's end)
 // the objective line's words for who's about (./foes.js)
 function foesText(f, up) {
   const flax = f.foes.filter((e) => (e.kind ?? 'flaxan').startsWith('flaxan') && e.state !== 'ko' && e.state !== 'down').length;
@@ -101,6 +108,7 @@ function keptQuests() {
     return newQuests();
   }
 }
+const keptStory = () => loadStory(local.get(STORY, null));
 
 // Where he starts, once there's a world to check it against: where he was
 // left standing, if that's still open ground (map.js's isSafeStart: not in
@@ -117,18 +125,21 @@ function placeHero(s, world) {
   s.yaw = face;
 }
 
-export default function InvWorld() {
+// `thinkMark`: a ref the page shares with Think, Mark! (down the page); the
+// world puts a function in it, and the game calls it with its result, which
+// is the last episode's last step.
+export default function InvWorld({ thinkMark = null }) {
   const three = use3D();
   const [gl, setGl] = useState('loading'); // loading | on | failed | lost
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section id="inv-world" className="iw-world" aria-labelledby="iw-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World gl={gl} setGl={setGl} /> : <Cards three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World gl={gl} setGl={setGl} thinkMark={thinkMark} /> : <Cards three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
 
-function World({ gl, setGl }) {
+function World({ gl, setGl, thinkMark }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   // other players online here, as holograms (middleearth/towns/useTravellers)
   const trav = useTravellers('invincible', gl === 'on', ROOM);
@@ -154,12 +165,23 @@ function World({ gl, setGl }) {
   const [card, setCard] = useState(() => !prefersReducedMotion());
   const { unlock } = useAchievements();
   const [found, setFound] = useState(() => keptQuests().cards.length);
+  // a mission's card over the city (./MissionCard.jsx), and the same for the key handler
+  const [mcard, setMcard] = useState(null);
+  // the radio's call, on the HUD's line until it's taken or dropped; the shutter, for a photo
+  const [radio, setRadio] = useState(null);
+  const [shutter, setShutter] = useState(null);
+  const cardRef = useRef(null);
+  cardRef.current = mcard;
+  const cardT = useRef(null);
+  const linesT = useRef([]);
+  // (the dev hook's way in: the latest of the mission callbacks below)
+  const missionApi = useRef({});
   const bubbleRef = useRef(null);
   const hud = useRef({});
   if (!sim.current) {
     // (he's put on the lawn for now: where he really starts waits on the
     // world, which the scene makes, and nothing moves before it's there)
-    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), foes: newFoes(), cars: null, punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], companion: [], eveHit: null, frame: 0, padBefore: null, moved: false, world: null };
+    sim.current = { intro: false, kept: local.get(AT, null), quests: keptQuests(), foes: newFoes(), cars: null, mission: null, story: keptStory(), getaway: null, wave: null, swing: null, marker: null, gates: null, photo: null, hangarHp: 100, radio: newRadio(), call: null, punch: false, punchT: 0, invadeAt: 240, h: newHero(SPAWN), keys: new Set(), stick: { x: 0, y: 0 }, touchUp: false, touchDown: false, touchBoost: false, yaw: SPAWN.face, pitch: -0.05, dragAt: -1e9, t: 0, jump: false, events: [], companion: [], eveHit: null, frame: 0, padBefore: null, moved: false, world: null };
   }
 
   // (`who`, for a line someone says: in their own voice where it's been made;
@@ -241,6 +263,10 @@ function World({ gl, setGl }) {
           hook.spawn = (kind, n = 1, at) => {
             sim.current.foes = spawnFoes(sim.current.foes, kind, n, at);
           };
+          // (and the missions: start one, feed one an event, read the season's progress)
+          hook.mission = (id) => missionApi.current.start?.(id);
+          hook.feed = (ev) => missionApi.current.feed?.(ev);
+          hook.story = () => sim.current.story;
           window.__INVWORLD__ = { api: hook, sim: sim.current };
         }
         setGl('on');
@@ -301,28 +327,207 @@ function World({ gl, setGl }) {
     [say],
   );
 
+  // ── the missions (./missions.js): what happened goes in, what they want comes out ──
+  const openCard = useCallback((c) => {
+    clearTimeout(cardT.current);
+    setMcard(c);
+    // (the title card goes by itself; the others wait for a key or a button)
+    if (c?.kind === 'start') cardT.current = setTimeout(() => setMcard((v) => (v?.kind === 'start' ? null : v)), CARD_MS);
+  }, []);
+  const closeCard = useCallback(() => openCard(null), [openCard]);
+  // a few lines said, one after another
+  const speak = useCallback(
+    (lines) => {
+      for (const t of linesT.current) clearTimeout(t);
+      linesT.current = lines.map(([who, text], i) => setTimeout(() => say(text, 3600, who), i * 3800));
+    },
+    [say],
+  );
+  // what a mission left about, taken away: the foes it called, its car, its
+  // wave, its student on the roof, Dad's rings
+  const clear = useCallback(() => {
+    const s = sim.current;
+    if (s.missionFoes) s.foes = newFoes();
+    s.missionFoes = false;
+    s.getaway = null;
+    s.wave = null;
+    s.swing = null;
+    if (s.missionFaller && s.quests.rescue) s.quests = { ...s.quests, rescue: null };
+    s.missionFaller = false;
+    if (s.mission?.id === 'ep1' && s.quests.lesson.on) s.quests = { ...s.quests, lesson: { ...s.quests.lesson, on: false, next: 0, t: 0 } };
+    for (const t of linesT.current) clearTimeout(t);
+    linesT.current = [];
+  }, []);
+  // what a step (or its end) asks for
+  const setup = useCallback(
+    (outs) => {
+      const s = sim.current;
+      for (const o of outs) {
+        if (o.type === 'step') {
+          // a step with a car: the getaway pulls out; the step after one: it's stopped where it is
+          if (o.car) s.getaway = newGetaway({ from: o.car.from ?? [s.h.p[0], 0, s.h.p[2]], speed: o.car.speed, seed: 3 + o.i, away: s.h.p });
+          else if (s.getaway && !s.getaway.stopped) s.getaway = stopGetaway(s.getaway);
+          if (o.spawn) {
+            for (const [kind, n, at] of o.spawn) s.foes = spawnFoes(s.foes, kind, n, at?.car ? (getawayAt(s.getaway) ?? [s.h.p[0], 0, s.h.p[2]]) : at);
+            s.missionFoes = true;
+            s.invaded = true; // (the clock's own invasion stays out of it)
+            sfx('alarm');
+          }
+          s.wave = o.wave ? { ...o.wave, at: o.spawn?.[0]?.[2] ?? PORTAL.p, spawned: o.spawn?.reduce((a, q) => a + q[1], 0) ?? 0, t: 0 } : null;
+          s.hangarHp = 100;
+          if (o.i > 0) {
+            sfx('ding');
+            say(o.text, 2600);
+          }
+        } else if (o.type === 'count') sfx('coin');
+        else if (o.type === 'hp') sfx('warn');
+        else if (o.type === 'done') {
+          const id = s.mission.id;
+          const m = missionOf(id);
+          sfx('fanfare');
+          if (o.achievement) unlock(o.achievement);
+          const best = s.story.best[id] ?? null;
+          s.story = keepStory(s.story, id, o.time);
+          local.set(STORY, s.story);
+          speak(m.done);
+          if (s.getaway) s.getaway = stopGetaway(s.getaway);
+          s.wave = null;
+          s.missionFoes = false;
+          s.mission = null;
+          openCard({ kind: 'done', id, time: o.time, best, next: m.side ? null : nextStory(s.story.done) });
+        } else if (o.type === 'fail') {
+          const id = s.mission.id;
+          clear();
+          s.mission = null;
+          if (o.why === 'abandoned') {
+            closeCard();
+            say('Called off.');
+          } else {
+            sfx('crumble');
+            openCard({ kind: 'fail', id, why: o.why });
+          }
+        }
+      }
+    },
+    [say, speak, unlock, clear, openCard, closeCard],
+  );
+  const feed = useCallback(
+    (ev) => {
+      const s = sim.current;
+      if (!s.mission) return;
+      const r = feedMission(s.mission, ev);
+      s.mission = r.progress;
+      if (r.out.length) setup(r.out);
+    },
+    [setup],
+  );
+  const startMission = useCallback(
+    (id) => {
+      const s = sim.current;
+      const m = missionOf(id);
+      if (!m) return;
+      if (s.mission) {
+        clear();
+        s.mission = null;
+      }
+      s.mission = beginMission(id, s.t);
+      // (the last episode: Dad's points, for ./companions.js to lead him through)
+      if (id === 'ep7') s.mission.spar = m.steps.filter((q) => q.type === 'escort').map((q) => q.to);
+      s.missionFoes = false;
+      sfx('stinger');
+      speak(m.intro);
+      setup([stepOf(s.mission)].filter(Boolean));
+      openCard({ kind: 'start', id });
+      // the camera's one swing round him, with the card (none under reduced motion)
+      s.swing = prefersReducedMotion() ? null : { t0: s.t, yaw0: s.yaw };
+    },
+    [clear, speak, setup, openCard],
+  );
+  const abandon = useCallback(() => feed({ type: 'abandon' }), [feed]);
+  // the radio's call taken (R, or the line itself)
+  const take = useCallback(() => {
+    const s = sim.current;
+    if (!s.call || s.mission) return;
+    const id = s.call.id;
+    s.call = null;
+    setRadio(null);
+    startMission(id);
+  }, [startMission]);
+  // a photo: E in its spot, facing the right way (./missions.js says); the
+  // shutter, the HUD gone for the frame
+  const snap = useCallback(() => {
+    const s = sim.current;
+    const step = s.mission ? missionOf(s.mission.id)?.steps[s.mission.step] : null;
+    if (!step || step.type !== 'use' || step.id !== 'photo') return false;
+    const before = s.mission;
+    feed({ type: 'use', id: 'photo', face: s.h.face });
+    if (s.mission === before) return false;
+    sfx('shutter');
+    setShutter(Math.random());
+    return true;
+  }, [feed]);
+  missionApi.current = { start: startMission, feed };
+  // Think, Mark!'s result (the page's ref): the last episode's last step
+  useEffect(() => {
+    if (!thinkMark) return undefined;
+    thinkMark.current = (won) => feed({ type: 'use', id: 'thinkmark', won });
+    return () => {
+      thinkMark.current = null;
+    };
+  }, [thinkMark, feed]);
+  useEffect(
+    () => () => {
+      clearTimeout(cardT.current);
+      for (const t of linesT.current) clearTimeout(t);
+    },
+    [],
+  );
+
   const act = useCallback(() => {
-    // next to Dad over downtown: spar with him (Think, Mark!, down the page)
-    if (sim.current.talking?.id === 'omni') {
+    const s = sim.current;
+    // in a photo's spot: the picture
+    if (snap()) return;
+    // next to Dad: his episodes (the first; the last, from the porch at dusk
+    // or night once the rest are done), or spar with him (Think, Mark!, down the page)
+    if (s.talking?.id === 'omni') {
+      const next = nextStory(s.story.done);
+      if (!s.mission && next === 'ep1') {
+        startMission('ep1');
+        return;
+      }
+      if (!s.mission && next === 'ep7' && timeRef.current !== 'noon') {
+        startMission('ep7');
+        return;
+      }
+      feed({ type: 'talk', npc: 'omni' });
       sfx('drum');
       say(CALLS.spar.text, 2400, CALLS.spar.who);
       document.getElementById('inv-game')?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
       return;
     }
-    // beside Eve: she stops to talk (./companions.js), and says her line
-    if (sim.current.talking?.role === 'eve') {
-      sim.current.talkEve = true;
+    // out by the Moon: Allen
+    if (s.talking?.id === 'allen') {
+      feed({ type: 'talk', npc: 'allen' });
+      sfx('ding');
       return;
     }
-    const p = sim.current.near;
+    // beside Eve: she stops to talk (./companions.js), and says her line
+    if (s.talking?.role === 'eve') {
+      s.talkEve = true;
+      feed({ type: 'talk', npc: 'eve' });
+      return;
+    }
+    const p = s.near;
     if (!p) return;
-    if (p.id === 'gda' && !sim.current.foes.on) {
-      invade('cecil');
+    // at the GDA: Cecil's board, the season on it
+    if (p.id === 'gda') {
+      sfx('ding');
+      openCard({ kind: 'board' });
       return;
     }
     sfx('ding');
     say(`${p.name}: ${p.line}`, 3200);
-  }, [say, invade]);
+  }, [say, feed, startMission, openCard, snap]);
 
   // Everything held, let go: the keys, the stick, the touch buttons and a
   // drag. A blur or a hidden tab (another app, a call) can swallow the
@@ -362,7 +567,15 @@ function World({ gl, setGl }) {
         if (!(e.target instanceof HTMLButtonElement)) act();
       } else if (e.code === 'KeyT') cycleTime();
       else if (e.code === 'KeyH' || e.key === '?') setHelp((v) => !v);
-      else if (e.key === 'Escape') setHelp(false);
+      else if (e.code === 'KeyR' && !e.repeat) take();
+      else if (e.code === 'KeyQ' && !e.repeat) {
+        // a mission called off: asked first, on its card
+        if (cardRef.current?.kind === 'abandon') abandon();
+        else if (s.mission && !cardRef.current) openCard({ kind: 'abandon', id: s.mission.id });
+      } else if (e.key === 'Escape') {
+        if (cardRef.current) closeCard();
+        else setHelp(false);
+      }
     };
     const up = (e) => {
       const k = CODES[e.code];
@@ -381,7 +594,7 @@ function World({ gl, setGl }) {
       document.removeEventListener('visibilitychange', hidden);
       release();
     };
-  }, [live, act, cycleTime, startSound, release]);
+  }, [live, act, cycleTime, startSound, release, abandon, openCard, closeCard, take]);
 
   // The wind falls quiet while nobody's flying: the frame loop that keeps
   // it in step with him stops when the tab's hidden or the world's
@@ -441,6 +654,15 @@ function World({ gl, setGl }) {
       s.pitch = clamp(s.pitch + lookY * 1.6 * dt, -1.35, 1.25);
       s.dragAt = s.t;
     }
+    // a mission's title card: the camera's one swing round him meanwhile
+    if (s.swing) {
+      const k = (s.t - s.swing.t0) / (CARD_MS / 1000);
+      if (k >= 1) s.swing = null;
+      else {
+        s.yaw = s.swing.yaw0 + k * Math.PI * 2;
+        s.dragAt = s.t;
+      }
+    }
     let fwd = (k.has('fwd') ? 1 : 0) - (k.has('back') ? 1 : 0) - s.stick.y - (pad?.ly ?? 0);
     let side = (k.has('right') ? 1 : 0) - (k.has('left') ? 1 : 0) + s.stick.x + (pad?.lx ?? 0);
     fwd = clamp(fwd, -1, 1);
@@ -499,8 +721,10 @@ function World({ gl, setGl }) {
       if (e.type === 'lesson-start') {
         sfx('ding');
         say('Dad’s rings: in order, to the Guardians’ hall. Go.');
-      } else if (e.type === 'ring') sfx('coin');
-      else if (e.type === 'lesson-done') {
+      } else if (e.type === 'ring') {
+        sfx('coin');
+        feed({ type: 'ring', i: e.n });
+      } else if (e.type === 'lesson-done') {
         sfx('fanfare');
         unlock('dadsrings');
         say(`${e.best ? 'A best: ' : 'Round in '}${clock(e.time)}. “${RINGS_DONE.text}”`, 4200, RINGS_DONE.who, RINGS_DONE.text);
@@ -517,6 +741,7 @@ function World({ gl, setGl }) {
       else if (e.type === 'caught') {
         sfx('ding');
         say(e.kind === 'heli' ? 'Got it. Now set it down somewhere.' : 'Got them. Now put them down gently.');
+        feed({ type: 'caught' });
       } else if (e.type === 'saved') {
         sfx('victory');
         unlock('rescue');
@@ -551,8 +776,21 @@ function World({ gl, setGl }) {
         if (e.type === 'punch') {
           s.punchT = 0.25;
           sfx('zip');
-        } else if (e.type === 'ko') sfx('blast');
-        else if (e.type === 'hit') sfx('thunk');
+        } else if (e.type === 'ko') {
+          sfx('blast');
+          feed({ type: 'ko', kind: e.kind ?? 'flaxan' });
+        } else if (e.type === 'swing' && s.mission && Math.hypot(e.at[0] - HANGAR[0], e.at[2] - HANGAR[2]) < 32) {
+          // a Mauler's swing by the hangar: the hangar takes it (the last-but-one episode)
+          s.hangarHp = Math.max(0, s.hangarHp - 10);
+          sfx('crumble');
+          feed({ type: 'hurt', what: 'hangar', hp: s.hangarHp });
+        } else if (e.type === 'quake' && s.mission?.id === 'ep3' && s.mission.step === 1 && !s.quests.rescue) {
+          // Doc Seismic's quake: a student shaken to the roof's edge, to be caught (./quests.js's rescue)
+          s.quests = { ...s.quests, rescue: { kind: 'fall', p: [ROOF[0] - 30 + s.mission.count * 20, ROOF[1], ROOF[2] + 19.6], v: [0, 0, 0], out: [0, 0, 1], t: 0, phase: 'warn', carried: false, spin: 0 } };
+          s.missionFaller = true;
+          sfx('warn');
+          say('A student, on the roof’s edge. Get under them.', 3200);
+        } else if (e.type === 'hit') sfx('thunk');
         else if (e.type === 'bolt' || e.type === 'blast') sfx('laser');
         else if (e.type === 'hurt') sfx('hit');
         else if (e.type === 'spawn') sfx('pop');
@@ -577,8 +815,22 @@ function World({ gl, setGl }) {
       }
     }
     s.punch = false;
+    // a mission's wave (more of them every so often) and its car on the grid (./getaway.js)
+    if (s.wave && s.wave.spawned < s.wave.of) {
+      s.wave.t += dt;
+      if (s.wave.t >= s.wave.every) {
+        s.wave.t = 0;
+        const n = Math.min(s.wave.n, s.wave.of - s.wave.spawned);
+        s.foes = spawnFoes(s.foes, s.wave.kind, n, s.wave.at);
+        s.wave.spawned += n;
+        sfx('alarm');
+        say('More of them, up the river bank.', 2600);
+      }
+    }
+    if (s.getaway && !s.getaway.stopped) for (let left = dt; left > 1e-6; left -= 0.05) s.getaway = stepGetaway(s.getaway, Math.min(0.05, left));
     for (const e of h.ev) {
       s.events.push(e);
+      if (e.type === 'land' || e.type === 'slam') feed({ type: 'land', speed: e.speed, p: e.at, body: e.body ?? null });
       if (e.type === 'boom') {
         sfx('boom');
         unlock('soundbarrier');
@@ -616,6 +868,27 @@ function World({ gl, setGl }) {
       tv.pose(me, { area });
     }
     s.travellers = tv ? tv.list().map(placeOf) : null;
+    // the radio (./missions.js nextRadioCall): a side call now and then, on the HUD's line for a while
+    if (!s.call) {
+      const eve = a.debug.npcs?.eve?.rules?.state === 'escort';
+      const r = nextRadioCall(s.radio, dt, { mission: s.mission?.id ?? null, zone: inSpace ? 'space' : 'city', eve, done: s.story.done });
+      s.radio = r.radio;
+      if (r.call) {
+        const m = missionOf(r.call);
+        s.call = { id: r.call, until: s.t + RADIO.offer };
+        sfx('crackle');
+        setRadio({ id: r.call, who: m.intro[0][0], text: m.intro[0][1] });
+      }
+    } else if (s.t > s.call.until || s.mission) {
+      s.call = null;
+      setRadio(null);
+    }
+    // the mission under way: where he is, and where what its step cares about is; then the clock
+    if (s.mission) {
+      const dadP = a.debug.dad().p;
+      feed({ type: 'at', p: h.p, mode: h.mode, speed, face: h.face, npcs: { omni: dadP, allen: a.debug.allen }, car: getawayAt(s.getaway) });
+      for (let left = dt; left > 1e-6 && s.mission; left -= 0.05) feed({ type: 'tick', dt: Math.min(0.05, left) });
+    }
     a.frame(s, dt);
     s.frame++;
     // what Eve and Dad said and did (./companions.js): her blow lands in the next fight step
@@ -655,6 +928,31 @@ function World({ gl, setGl }) {
       for (const e of up) if (e.kind === 'mauler' || e.kind === 'seismic') marks.push({ x: e.p[0], z: e.p[2], color: '#d04dff', name: e.kind === 'mauler' ? 'Mauler' : 'Doc Seismic' });
       if (q.rescue && !q.rescue.carried) marks.push({ x: q.rescue.p[0], z: q.rescue.p[2], color: '#ff3b30', name: 'Help' });
       if (q.lesson.on) marks.push({ x: RINGS[q.lesson.next].p[0], z: RINGS[q.lesson.next].p[2], color: '#ffd23a', name: `Ring ${q.lesson.next + 1}` });
+      // the mission's marker (./missions.js markerOf): a point, or whatever's there now
+      const m = s.mission ? missionOf(s.mission.id) : null;
+      const stepDef = m?.steps[s.mission.step] ?? null;
+      let mdist = null;
+      if (stepDef) {
+        const wanted = (e) => (Array.isArray(stepDef.kind) ? stepDef.kind.includes(e.kind ?? 'flaxan') : (e.kind ?? 'flaxan') === stepDef.kind);
+        const foes = up
+          .filter(wanted)
+          .sort((e1, e2) => Math.hypot(e1.p[0] - h.p[0], e1.p[2] - h.p[2]) - Math.hypot(e2.p[0] - h.p[0], e2.p[2] - h.p[2]))
+          .map((e) => e.p);
+        const moon = a.debug.bodies.find((b) => b.id === 'moon');
+        const mk = markerOf(s.mission, { npcs: { omni: a.debug.dad().p, allen: a.debug.allen }, car: getawayAt(s.getaway), foes, faller: q.rescue && !q.rescue.carried ? q.rescue.p : null, bodies: { moon: moon?.c } });
+        s.marker = mk ? { p: mk, color: m.colour } : null;
+        if (mk) {
+          mdist = Math.hypot(mk[0] - h.p[0], mk[1] - h.p[1], mk[2] - h.p[2]);
+          if (!inSpace) marks.push({ x: mk[0], z: mk[2], color: m.colour, name: 'Mission' });
+        }
+        // the race's gates, and a photo's frame, for the scene to draw
+        s.gates = stepDef.type === 'race' && !stepDef.ring ? { list: stepDef.gates, next: s.mission.count, r: stepDef.r } : null;
+        s.photo = stepDef.type === 'use' && stepDef.id === 'photo' ? { p: stepDef.at, face: stepDef.face, r: stepDef.r } : null;
+      } else {
+        s.marker = null;
+        s.gates = null;
+        s.photo = null;
+      }
       s.marks = marks;
       if (H.compass && H.compassBox && !inSpace) drawCompass(H.compass, H.compassBox, s.yaw, h, s.world.places, marks);
       if (H.goal) {
@@ -662,11 +960,25 @@ function World({ gl, setGl }) {
         const d = q.rescue ? Math.round(Math.hypot(q.rescue.p[0] - h.p[0], q.rescue.p[1] - h.p[1], q.rescue.p[2] - h.p[2])) : 0;
         const fightText = s.foes.on ? `${foesText(s.foes, up)} · you ${Math.max(0, Math.round(s.foes.hp))}%` : '';
         const rescueText = q.rescue && (q.rescue.carried ? (inSpace ? 'Set them down: back in the city' : 'Set them down: land anywhere') : `${WHAT[q.rescue.kind]} · ${inSpace ? 'down in the city' : `${d} m`}`);
-        const text = fightText || rescueText || (q.lesson.on ? `Dad’s rings · ${q.lesson.next + 1} of ${RINGS.length} · ${clock(q.lesson.t)}` : '');
+        // (a mission's step first: its words, how far, the count, the hangar, the clock)
+        let missionText = '';
+        if (stepDef) {
+          const p = s.mission;
+          const parts = [objectiveText(stepDef, inSpace ? null : mdist)];
+          const of = stepDef.n ?? stepDef.gates?.length ?? null;
+          if (of) parts.push(`${p.count} of ${of}`);
+          if (stepDef.type === 'protect') parts.push(`hangar ${Math.max(0, Math.round(p.hp ?? 100))}% · ${Math.max(0, Math.ceil(stepDef.time - p.stepT))} s`);
+          else if (stepDef.time != null) parts.push(`${Math.max(0, Math.ceil(stepDef.time - p.stepT))} s`);
+          if (s.foes.on && stepDef.type === 'defeat') parts.push(`you ${Math.max(0, Math.round(s.foes.hp))}%`);
+          missionText = parts.join(' · ');
+        }
+        const text = missionText || fightText || rescueText || (q.lesson.on ? `Dad’s rings · ${q.lesson.next + 1} of ${RINGS.length} · ${clock(q.lesson.t)}` : '');
         if (H.goal.textContent !== text) H.goal.textContent = text;
         H.goal.dataset.on = text ? '1' : '';
-        H.goal.dataset.red = q.rescue && !s.foes.on ? '1' : '';
-        H.goal.dataset.purple = s.foes.on ? '1' : '';
+        H.goal.dataset.mission = missionText ? '1' : '';
+        if (missionText) H.goal.style.setProperty('--mc', m.colour);
+        H.goal.dataset.red = q.rescue && !s.foes.on && !missionText ? '1' : '';
+        H.goal.dataset.purple = s.foes.on && !missionText ? '1' : '';
       }
       // the title goes to a chip 2.5 s after he first moves, or at once when there's something to do (./hud.js)
       if (!s.movedAt && (s.moved || speed > 2)) s.movedAt = s.t;
@@ -744,7 +1056,7 @@ function World({ gl, setGl }) {
   });
 
   return (
-    <div className="iw-stage" ref={box} data-zone={zone}>
+    <div className="iw-stage" ref={box} data-zone={zone} data-shutter={shutter ? '1' : undefined}>
       <canvas ref={canvas} className="iw-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onContextMenu={(e) => e.preventDefault()} aria-label="The city, from the air. Fly with W, A, S and D; Space to go up, C to go down, Shift to go flat out." />
       <div className="iw-lines" ref={(el) => (hud.current.lines = el)} aria-hidden="true" />
       {flash && <div className="iw-flash" data-kind={flash.kind} key={flash.key} aria-hidden="true" onAnimationEnd={() => setFlash(null)} />}
@@ -762,8 +1074,10 @@ function World({ gl, setGl }) {
         </div>
       )}
       {gl === 'loading' && <p className="iw-loading">Over the city…</p>}
+      <MissionCard card={mcard} story={sim.current.story} onClose={closeCard} onAgain={() => startMission(mcard?.id)} onStart={startMission} onAbandon={abandon} />
 
-      <InvHud hud={hud} mapRef={mapRef} time={time} cycleTime={cycleTime} help={help} setHelp={setHelp} chip={chip} trav={trav} found={found} cards={CARDS.length} near={near} act={act} toast={toast} />
+      <InvHud hud={hud} mapRef={mapRef} time={time} cycleTime={cycleTime} help={help} setHelp={setHelp} chip={chip} trav={trav} found={found} cards={CARDS.length} near={near} act={act} toast={toast} radio={radio} take={take} />
+      {shutter && <div className="iw-shutter" key={shutter} aria-hidden="true" onAnimationEnd={() => setShutter(null)} />}
 
       {touch && (
         <div className="iw-touch">

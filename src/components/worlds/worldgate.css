@@ -2,7 +2,7 @@
 
 .world-gate {
   position: fixed;
-  z-index: 60;
+  z-index: var(--z-sheet);
   left: max(12px, env(safe-area-inset-left));
   right: max(12px, env(safe-area-inset-right));
   bottom: max(12px, env(safe-area-inset-bottom));
@@ -28,7 +28,7 @@
 .world-gate-x:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
 .world-gate-pill {
   position: fixed;
-  z-index: 60;
+  z-index: var(--z-sheet);
   /* beside the guide's ? button, not on it */
   right: calc(68px + env(safe-area-inset-right));
   bottom: calc(23px + env(safe-area-inset-bottom));

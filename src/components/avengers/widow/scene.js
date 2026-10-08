@@ -11,6 +11,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { createEngine, hot } from '../hq/engine';
 import { instanceModel, preload } from '../hq/assets';
 import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
+import { mixPose, snapPose } from '../hq/kit/blend';
 import { canvasTexture } from '../hq/kit/shapes';
 import { createVfx } from '../hq/vfx';
 import { createFeel } from '../hq/feel';
@@ -24,6 +25,15 @@ const RAYS = 44;
 const FOV = 30;
 
 const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+// how much of a step's stride to show at k of the way across a tile: in
+// over its first fifth, out over its last (the figure's at rest at both ends)
+const stepIn = (k) => {
+  const w = Math.max(0, Math.min(1, k / 0.2, (1 - k) / 0.2));
+  return w * w * (3 - 2 * w);
+};
+// the stride's legs go round once a tile (1.6 m), in step with the eased
+// slide across it, so the feet stay where they're put
+const GUARD_STRIDE = (Math.PI * 2) / (1.1 * 5); // poseHumanoid's walk at speed 1.1: a stride in this much of its t
 const lerpAngle = (a, b, k) => {
   let d = ((b - a + 540) % 360) - 180;
   return a + d * k;
@@ -842,13 +852,13 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
   }
 
   // ── poses ──
-  function poseWidow(h, { t, moving, k, crouch = 1, strikeK = 0, biteK = 0, won = 0 }) {
+  function poseWidow(h, { t, moving, k, crouch = 1, strikeK = 0, biteK = 0, won = 0, caught = 0 }) {
     const b = h.bones;
     const s = h.scale;
     const breathe = Math.sin(t * 2.2) * 0.015;
     if (moving) {
-      // a quick, low stride: one step per tile
-      const ph = k * Math.PI;
+      // a quick, low stride: one step per tile, in time with how far across it she is
+      const ph = ease(k) * Math.PI;
       const sw = Math.sin(ph * 2);
       b.hips.position.y = h.rest.hips.y - (0.13 - Math.abs(Math.sin(ph * 2)) * 0.04) * s * crouch;
       b.hips.rotation.set(0.32 * crouch, sw * 0.12, 0);
@@ -900,6 +910,14 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
       b.elbowR.rotation.set(-1.35 * (1 - e), 0, 0);
       b.handR.rotation.set(0.2 * e, 0, 0);
     }
+    if (caught > 0 && won <= 0) {
+      // caught: jolted upright, head up, the guard thrown higher
+      b.chest.rotation.x -= 0.3 * caught;
+      b.spine.rotation.x -= 0.1 * caught;
+      b.head.rotation.x -= 0.2 * caught;
+      b.shoulderL.rotation.x -= 0.3 * caught;
+      b.shoulderR.rotation.x -= 0.3 * caught;
+    }
     if (won > 0) {
       b.hips.position.y = h.rest.hips.y;
       b.hips.rotation.set(0, 0, 0);
@@ -921,7 +939,7 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
   function poseGuard(h, { t, moving, k, phase, aim = 0, stun = 0, fall = 0 }) {
     const b = h.bones;
     const s = h.scale;
-    poseHumanoid(h, { t: moving ? k * 0.9 + phase : t * 0.4 + phase, mode: moving ? 'walk' : 'idle', speed: moving ? 1.1 : 1, phase: 0 });
+    poseHumanoid(h, { t: moving ? ease(k) * GUARD_STRIDE + phase : t * 0.4 + phase, mode: moving ? 'walk' : 'idle', speed: moving ? 1.1 : 1, phase: 0 });
     // the rifle at the low ready: both hands on it
     b.shoulderR.rotation.set(-0.55 - aim * 0.9, -0.2, -0.25);
     b.elbowR.rotation.set(-1.25 + aim * 0.9, 0, 0);
@@ -980,6 +998,8 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
   let bump = null;
   let holo = 0;
   let holoWant = 0;
+  // the poses crossed between as a step starts and ends (../hq/kit/blend.js), kept to fill again
+  const snaps = { her: { a: null, b: null }, guards: [] };
 
   function render(s, dt, ui = {}) {
     const rdt = Math.min(0.05, dt);
@@ -1057,7 +1077,17 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
     widow.root.rotation.y = yawOf(her.a);
     if (s.phase === 'won') wonK = Math.min(1, wonK + rdt * 1.5);
     else wonK = 0;
-    poseWidow(widow, { t: clock, moving: her.moving, k: her.k, strikeK: strike ? strike.k : 0, biteK: biteArc ? biteArc.k : 0, won: wonK });
+    // her crouch, crossed into her stride as a step starts and back as it
+    // ends (it was one or the other, snapping at each end of every tile)
+    const herOpts = { t: clock, k: her.k, strikeK: strike ? strike.k : 0, biteK: biteArc ? biteArc.k : 0, won: wonK, caught: Math.min(1, alarm) };
+    poseWidow(widow, { ...herOpts, moving: false });
+    const herW = her.moving ? stepIn(her.k) : 0;
+    if (herW > 0) {
+      snaps.her.a = snapPose(widow, snaps.her.a);
+      poseWidow(widow, { ...herOpts, moving: true });
+      snaps.her.b = snapPose(widow, snaps.her.b);
+      mixPose(widow, snaps.her.a, snaps.her.b, herW);
+    }
     widow.root.visible = !(s.phase === 'won' && wonK >= 1 && Math.floor(clock * 12) % 2 === 0 && !calm) || calm;
     ring.position.set(hx, 0.04, hz);
     ring.material.opacity = 0.55 + Math.sin(clock * 3) * 0.15;
@@ -1073,7 +1103,37 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
       h.root.position.set(gx, 0, gz);
       h.root.rotation.y = yawOf(sh.tw.a);
       const aim = alarm > 0 && alarmBy?.by === 'guard' && alarmBy.id === i ? 1 : 0;
-      poseGuard(h, { t: clock, moving: sh.tw.moving, k: sh.tw.k, phase: i * 1.7, aim, stun: g.stun > 0 && !g.down ? 1 : 0, fall: sh.down ? sh.fall : 0 });
+      const stun = g.stun > 0 && !g.down ? 1 : 0;
+      // standing crossed into walking as a step starts and back as it ends
+      const gOpts = { t: clock, k: sh.tw.k, phase: i * 1.7, aim, stun, fall: sh.down ? sh.fall : 0 };
+      poseGuard(h, { ...gOpts, moving: false });
+      const walkW = sh.tw.moving ? stepIn(sh.tw.k) : 0;
+      if (walkW > 0) {
+        const sn = (snaps.guards[i] ??= { a: null, b: null });
+        sn.a = snapPose(h, sn.a);
+        poseGuard(h, { ...gOpts, moving: true });
+        sn.b = snapPose(h, sn.b);
+        mixPose(h, sn.a, sn.b, walkW);
+      }
+      // The one that caught her: its head snaps round to her, its shoulders
+      // after, with a jolt as it does (drawn only: who saw what is the rules').
+      if (sh.alert > 0 && !sh.alerted) sh.jolt = 1;
+      sh.alerted = sh.alert > 0;
+      sh.jolt = Math.max(0, (sh.jolt ?? 0) - rdt * 3);
+      let want = 0;
+      if (sh.alert > 0 && !stun && !sh.down) {
+        const d = Math.atan2(hx - gx, hz - gz) - yawOf(sh.tw.a);
+        want = Math.max(-1.3, Math.min(1.3, Math.atan2(Math.sin(d), Math.cos(d))));
+      }
+      sh.look = (sh.look ?? 0) + (want - (sh.look ?? 0)) * (1 - Math.exp(-rdt * (want ? 22 : 4)));
+      if (Math.abs(sh.look) > 1e-3 || sh.jolt > 0) {
+        const b = h.bones;
+        b.head.rotation.y += sh.look * 0.6;
+        b.neck.rotation.y += sh.look * 0.25;
+        b.chest.rotation.y += sh.look * 0.3;
+        b.chest.rotation.x -= sh.jolt * 0.22;
+        b.head.rotation.x -= sh.jolt * 0.15;
+      }
       if (g.stun > 0 && !g.down && !calm && Math.random() < rdt * 6) vfx.sparks(v3.set(gx + (Math.random() - 0.5) * 0.4, 0.9 + Math.random() * 0.5, gz + (Math.random() - 0.5) * 0.4), { count: 5, speed: 2.4, color: 0xd8f4ff, to: BLUE, life: 0.3, size: 0.05, gravity: 2 });
     });
 
