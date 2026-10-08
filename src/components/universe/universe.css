@@ -508,6 +508,20 @@ body:has(.universe-panel) .guide-btn { display: none; }
   cursor: pointer;
 }
 .universe-tour kbd { font: inherit; opacity: 0.7; }
+.universe-pocket {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 56px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgb(6 10 22 / 0.7);
+  border: 1px solid rgb(159 216 255 / 0.25);
+  font-size: 0.8rem;
+  pointer-events: none;
+}
 @media (max-width: 767px) {
   .universe-tour { top: auto; bottom: 120px; max-width: calc(100% - 32px); }
 }
