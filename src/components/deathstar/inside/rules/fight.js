@@ -1,0 +1,201 @@
+// How the garrison fights: what a soldier chooses to do from moment to
+// moment, where he goes to do it, and how a squad shares the shooting and
+// the search. The choice is a weighing on src/lib/ai/utility among six
+// tactics: hold and fire, take cover (spatial.cover over places in his room
+// and the rooms next door), flank (by another door into the target’s room,
+// when the paths have one), advance, fall back, and search (src/lib/ai/search
+// over the section’s spots, once the target has been out of sight a while).
+// At most three hold a shot token against one target at a time
+// (squad.createTokens), so a fourth takes cover or flanks instead of
+// joining a firing line nobody could survive. Pure.
+//
+//   TACTICS                                   the six, by name
+//   FIGHT                                     the numbers the choice is made with
+//   createFights({ rand, layout, nav }) → fights   { rand, layout, nav, tokens, searches }
+//   chooseTactic(ctx, { current, rand }) → tactic
+//     ctx: { sees, lostFor: s, dist: m, range: m, hp: 0…1, token, cover, inCover, flank, allies }
+//       cover: a place out of sight is known; flank: another way in is known; allies: friends in the fight
+//   coverFrom(layout, me, threat, { seesThrough, allies, current, canPass }) → { x, y, z, room } | null
+//     me: { x, y, z, room }; threat: a point at chest height; null when nowhere near is out of its sight
+//   fallbackFrom(layout, me, threat, { seesThrough, canPass }) → { x, y, z, room } | null
+//   flankRoute(nav, me, threat, { canPass, solidsOf }) → route | null   into the threat’s room by
+//     another door than the straight way’s, and not too long a way round; null in the same room
+//   standOff(layout, from, threat, metres) → { x, y, z, room } | null   on the line from the threat
+//     towards `from`, `metres` off, kept inside the room; null when the threat is in another room
+//   sectionSpots(layout, section) → [{ x, y, z, room }]   the station’s spots in the section, then
+//     the middle of each of its rooms (lift cars and the open field left out)
+//   searchOf(fights, section) → search        src/lib/ai/search’s, one a section, made on first use
+
+import { consider, pick } from '../../../../lib/ai/utility';
+import { apart, awayFrom, cover, nearTo, pickPlace } from '../../../../lib/ai/spatial';
+import { createSearch } from '../../../../lib/ai/search';
+import { createTokens } from '../../../../lib/ai/squad';
+import { route } from './nav';
+
+export const TACTICS = Object.freeze(['hold', 'cover', 'flank', 'advance', 'fallback', 'search']);
+
+export const FIGHT = Object.freeze({
+  ideal: 10, // metres a rifleman likes between himself and his target
+  lose: 2.5, // seconds out of sight before a target is lost (the senses’ intuition holds it that long)
+  shots: 3, // shot tokens against one target
+  chest: 1.2, // where a body is aimed at and hidden by, above its feet
+});
+
+const MARGIN = 0.8; // how far from a wall a place to stand is kept
+const PLACES = 40; // about how many places a room offers, however big
+const STEP = 0.4; // the walker’s step: a place on a floor further off the room’s own is a stair or a ledge
+const NO_PLACE = new Set(['lift', 'field']);
+const AROUND = 2.5; // a way round may be this many times the straight way…
+const AROUND_PLUS = 15; // …and this many metres more
+
+const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+const up = (p) => ({ x: p.x, y: p.y + FIGHT.chest, z: p.z });
+
+export function createFights({ rand, layout, nav }) {
+  return { rand, layout, nav, tokens: createTokens({ pools: { shot: FIGHT.shots } }), searches: new Map() };
+}
+
+// ── the choice ──
+
+const ideal = (c) => Math.min(FIGHT.ideal, c.range * 0.5);
+const fit = (lo, hi) => (c) => consider(c.hp, [lo, hi]);
+
+const OPTIONS = [
+  { id: 'search', considerations: [(c) => (c.lostFor >= FIGHT.lose ? 1 : 0)] },
+  { id: 'hold', considerations: [(c) => (c.sees ? 1 : 0), (c) => consider(c.dist, [c.range * 0.7, ideal(c) * 1.2]), (c) => (c.token ? 1 : 0.35), fit(0.25, 0.55)] },
+  // the hurt and those with no shot to take want cover most
+  { id: 'cover', weight: 0.9, considerations: [(c) => (c.cover ? 1 : 0), (c) => (c.inCover ? 0.25 : 1), (c) => (c.token ? 0.5 : 1), (c) => 0.6 + 0.4 * (1 - c.hp)] },
+  // a flank wants friends to keep the target busy meanwhile
+  { id: 'flank', weight: 0.8, considerations: [(c) => (c.flank ? 1 : 0), (c) => (c.token ? 0.3 : 1), (c) => (c.allies > 0 ? 1 : 0.4), fit(0.3, 0.6)] },
+  // closer when too far to hit well, or to see again someone just gone round a corner
+  { id: 'advance', weight: 0.85, considerations: [(c) => (c.sees ? consider(c.dist, [ideal(c), ideal(c) * 2.5]) : c.lostFor < FIGHT.lose ? 1 : 0), fit(0.3, 0.6)] },
+  { id: 'fallback', considerations: [fit(0.45, 0.2)] },
+];
+
+// a lost target is searched for, whatever else scores
+const rank = (o) => (o.id === 'search' ? 1 : 0);
+
+export function chooseTactic(ctx, { current = null, rand = null } = {}) {
+  return pick(OPTIONS, ctx, { current, momentum: 0.15, rank, rand, spread: rand ? 0.08 : 0 })?.id ?? 'hold';
+}
+
+// ── places ──
+
+const placeCache = new WeakMap();
+
+// The places to stand in a room, on a grid kept off its walls: on its own
+// floor (not up a stair or out on a ledge) and not inside a room nested in it.
+function placesIn(layout, id) {
+  let byRoom = placeCache.get(layout);
+  if (!byRoom) placeCache.set(layout, (byRoom = new Map()));
+  if (byRoom.has(id)) return byRoom.get(id);
+  const r = layout.rooms.get(id);
+  const out = [];
+  const w = r ? r.box.x1 - r.box.x0 - 2 * MARGIN : 0;
+  const d = r ? r.box.z1 - r.box.z0 - 2 * MARGIN : 0;
+  if (r && !NO_PLACE.has(r.kind) && w > 0 && d > 0) {
+    const step = Math.max(1.5, Math.sqrt((w * d) / PLACES));
+    const [nx, nz] = [Math.floor(w / step) + 1, Math.floor(d / step) + 1];
+    const [ox, oz] = [r.box.x0 + MARGIN + (w - (nx - 1) * step) / 2, r.box.z0 + MARGIN + (d - (nz - 1) * step) / 2];
+    for (let i = 0; i < nx; i++) {
+      for (let j = 0; j < nz; j++) {
+        const [x, z] = [ox + i * step, oz + j * step];
+        if (r.round && Math.hypot(x - r.x, z - r.z) > r.w / 2 - MARGIN) continue;
+        const y = layout.floorAt(id, x, z);
+        if (y === null || Math.abs(y - r.y) > STEP || layout.roomAt(x, y + 0.1, z) !== id) continue;
+        out.push({ x, y, z, room: id });
+      }
+    }
+  }
+  byRoom.set(id, out);
+  return out;
+}
+
+// The places in a room and in the rooms its doors lead to (those it may pass).
+function placesAround(layout, id, canPass) {
+  const rooms = [id];
+  for (const doorId of layout.rooms.get(id)?.doors ?? []) {
+    const door = layout.doors.get(doorId);
+    const other = door?.a === id ? door.b : door?.a;
+    if (other && !rooms.includes(other) && canPass(doorId, door)) rooms.push(other);
+  }
+  return rooms.flatMap((r) => placesIn(layout, r));
+}
+
+export function coverFrom(layout, me, threat, { seesThrough, allies = [], current = null, canPass = () => true } = {}) {
+  const points = placesAround(layout, me.room, canPass);
+  const sight = (t, p) => seesThrough(t, up(p));
+  const tests = [cover([threat], sight, 3), nearTo(me, 16, 1), awayFrom(threat, 8, 0.5), apart(allies, 1.5, 1)];
+  const best = pickPlace(points, tests, { current });
+  return best && !sight(threat, best.at) ? best.at : null;
+}
+
+export function fallbackFrom(layout, me, threat, { seesThrough, canPass = () => true } = {}) {
+  const points = placesAround(layout, me.room, canPass);
+  const tests = [awayFrom(threat, 20, 2), cover([threat], (t, p) => seesThrough(t, up(p)), 1), nearTo(me, 20, 0.5)];
+  return pickPlace(points, tests)?.at ?? null;
+}
+
+const lengthOf = (path) => path.reduce((n, p, i) => (i ? n + flat(path[i - 1], p) : 0), 0);
+
+export function flankRoute(nav, me, threat, { canPass = () => true, solidsOf } = {}) {
+  if (!threat.room || me.room === threat.room) return null;
+  const direct = route(nav, me, threat, { canPass, solidsOf });
+  // the door the straight way comes in by: the last one on it
+  const entry = direct?.findLast((p) => p.door)?.door;
+  if (!entry) return null;
+  const other = route(nav, me, threat, { canPass: (id, door) => id !== entry && canPass(id, door), solidsOf });
+  if (!other || lengthOf(other) > lengthOf(direct) * AROUND + AROUND_PLUS) return null;
+  return other;
+}
+
+export function standOff(layout, from, threat, metres) {
+  const room = layout.rooms.get(from.room);
+  if (!room || layout.roomAt(threat.x, threat.y, threat.z) !== room.id) return null;
+  let [dx, dz] = [from.x - threat.x, from.z - threat.z];
+  const l = Math.hypot(dx, dz);
+  [dx, dz] = l > 1e-6 ? [dx / l, dz / l] : [1, 0];
+  let [x, z] = [threat.x + dx * metres, threat.z + dz * metres];
+  if (room.round) {
+    const r = room.w / 2 - MARGIN;
+    const k = Math.hypot(x - room.x, z - room.z);
+    if (k > r) [x, z] = [room.x + ((x - room.x) * r) / k, room.z + ((z - room.z) * r) / k];
+  } else {
+    x = Math.min(room.box.x1 - MARGIN, Math.max(room.box.x0 + MARGIN, x));
+    z = Math.min(room.box.z1 - MARGIN, Math.max(room.box.z0 + MARGIN, z));
+  }
+  return { x, y: layout.floorAt(room.id, x, z) ?? room.y, z, room: room.id };
+}
+
+// ── the search ──
+
+const spotCache = new WeakMap();
+
+export function sectionSpots(layout, section) {
+  let bySection = spotCache.get(layout);
+  if (!bySection) spotCache.set(layout, (bySection = new Map()));
+  if (bySection.has(section)) return bySection.get(section);
+  const out = [];
+  const take = (r, x, z) => {
+    if (!r || r.section !== section || NO_PLACE.has(r.kind)) return;
+    const y = layout.floorAt(r.id, x, z);
+    if (y !== null) out.push({ x, y, z, room: r.id });
+  };
+  for (const s of Object.values(layout.station.spots ?? {})) take(layout.rooms.get(s.room), s.x, s.z);
+  for (const r of layout.rooms.values()) take(r, r.x, r.z);
+  bySection.set(section, out);
+  return out;
+}
+
+// A search left to itself gives up after this long; one the alarm runs
+// lasts as long as the hunt does.
+const SEARCH_TIME = 45;
+
+export function searchOf(fights, section) {
+  let s = fights.searches.get(section);
+  if (!s) {
+    s = createSearch({ rand: fights.rand, spots: () => sectionSpots(fights.layout, section), time: SEARCH_TIME, stagger: 1.5 });
+    fights.searches.set(section, s);
+  }
+  return s;
+}
