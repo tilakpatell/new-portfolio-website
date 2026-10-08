@@ -8,10 +8,12 @@
 // createBolts({ pool = 48 }) → { fire(spec) → bolt, step(dt, world) →
 // events[], live() → bolt[] }.
 // spec: { from, dir, speed = 90, range = 120, owner, side ('you' | 'them' |
-// 'none'), damage, colour, deflect = false, tag } (plain [x, y, z] arrays;
-// `tag` is the caller's, carried untouched).
+// 'none', or a faction), damage, colour, deflect = false, ghost = false, tag }
+// (plain [x, y, z] arrays; `tag` is the caller's, carried untouched; a
+// `ghost` is a battle's tracer, stopped by solids and hurting nobody).
 // world: { solids(a, b) → { at, normal } | null, bodies: [{ id, a, b, r,
-// side, ref }], blades: [{ id, base, tip, r, side, ref }] }.
+// side, allies?, ref }], blades: [{ id, base, tip, r, side, ref }] }
+// (`allies`: the sides whose bolts pass a body by, as a rebel's pass you).
 // events: { type: 'hit', bolt, body, at } | { type: 'solid', bolt, at,
 // normal } | { type: 'deflect', bolt, blade, at } | { type: 'gone', bolt }.
 //
@@ -100,7 +102,8 @@ export function segCapsule(a, b, ca, cb, r) {
   return { t: hi, at: lerp(a, b, hi) };
 }
 
-const SPEED = 90; // m/s
+export const BOLT_SPEED = 90; // m/s, every blaster's (an enemy's lead is worked out at it)
+const SPEED = BOLT_SPEED;
 const RANGE = 120; // m
 const TURNS = 3; // most a bolt is turned in one frame (two blades crossed)
 
@@ -118,7 +121,7 @@ export function createBolts({ pool = 48 } = {}) {
   };
 
   return {
-    fire({ from, dir, speed = SPEED, range = RANGE, owner = null, side = 'none', damage = 0, colour = '#ff3b30', deflect = false, tag = null }) {
+    fire({ from, dir, speed = SPEED, range = RANGE, owner = null, side = 'none', damage = 0, colour = '#ff3b30', deflect = false, ghost = false, tag = null }) {
       const b = take();
       const len = Math.hypot(dir[0], dir[1], dir[2]) || 1;
       b.alive = true;
@@ -135,6 +138,7 @@ export function createBolts({ pool = 48 } = {}) {
       b.colour = colour;
       b.deflect = deflect;
       b.deflected = false;
+      b.ghost = ghost;
       b.tag = tag;
       return b;
     },
@@ -168,8 +172,8 @@ export function createBolts({ pool = 48 } = {}) {
               }
             }
           }
-          for (const body of bodies) {
-            if (body.id === b.owner || (b.side !== 'none' && body.side === b.side)) continue;
+          for (const body of b.ghost ? [] : bodies) {
+            if (body.id === b.owner || (b.side !== 'none' && (body.side === b.side || body.allies?.includes(b.side)))) continue;
             const k = segCapsule(a, e, body.a, body.b, body.r);
             if (k && k.t < t) {
               t = k.t;

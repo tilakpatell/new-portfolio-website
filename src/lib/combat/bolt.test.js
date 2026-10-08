@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createBolts, segCapsule, segSeg } from './bolt';
+import { BOLT_SPEED, createBolts, segCapsule, segSeg } from './bolt';
 
 // a world with nothing in it but what a test gives it
 const open = (more = {}) => ({ solids: () => null, bodies: [], blades: [], ...more });
@@ -112,6 +112,22 @@ describe('a bolt in flight', () => {
     expect(b.deflected).toBe(true);
   });
 
+  it('spares a body that counts the bolt’s side its ally', () => {
+    const bolts = createBolts();
+    const you = { ...person('you', 5, 0, 'you'), allies: ['rebel'] };
+    bolts.fire({ from: [0, 1, 0], dir: [1, 0, 0], side: 'rebel', owner: 'r1', range: 10 });
+    expect(run(bolts, open({ bodies: [you] })).map((e) => e.type)).toEqual(['gone']);
+    bolts.fire({ from: [0, 1, 0], dir: [1, 0, 0], side: 'empire', owner: 'e1', range: 10 });
+    expect(run(bolts, open({ bodies: [you] })).map((e) => e.type)).toEqual(['hit']);
+  });
+
+  it('a ghost bolt (a battle’s tracer) stops at solids and passes through bodies', () => {
+    const bolts = createBolts();
+    bolts.fire({ from: [0, 1, 0], dir: [1, 0, 0], ghost: true, range: 30 });
+    const ev = run(bolts, open({ solids: wallAt(20), bodies: [person('t', 10, 0, 'them')] }));
+    expect(ev.map((e) => e.type)).toEqual(['solid']);
+  });
+
   it('is not turned by a blade unless it is marked deflect', () => {
     const bolts = createBolts();
     const blades = [{ id: 'you', base: [10, 0.6, 0], tip: [10, 1.6, 0], r: 0.12, side: 'you' }];
@@ -161,7 +177,8 @@ describe('the pool', () => {
     const bolts = createBolts();
     const b = bolts.fire({ from: [0, 1, 0], dir: [1, 0, 0], tag: { weapon: 'dl44' } });
     expect(b.tag).toEqual({ weapon: 'dl44' });
-    expect(b.speed).toBe(90);
+    expect(b.speed).toBe(BOLT_SPEED);
+    expect(BOLT_SPEED).toBe(90);
     expect(b.range).toBe(120);
   });
 });
