@@ -4,7 +4,7 @@
 // a paid step (so a short account is turned away before Meshy is asked for
 // anything).
 import { describe, expect, it } from 'vitest';
-import { ASSETS, costOf } from './meshy-deathstar.mjs';
+import { ASSETS, costOf, covers } from './meshy-deathstar.mjs';
 
 describe('the Death Star’s Meshy assets', () => {
   it('has the trooper, the IT-O and the dianoga, each with a height, a polygon budget and a texture size', () => {
@@ -60,5 +60,19 @@ describe('costOf', () => {
   it('throws for a name it doesn’t know', () => {
     expect(() => costOf(['chewie'], {})).toThrow(/chewie/);
     expect(() => costOf(['ito', 'nobody'], {})).toThrow(/unknown/);
+    // (nor for a name every object has: it would be paid for and never recorded)
+    for (const name of ['constructor', 'toString', 'hasOwnProperty', '__proto__']) expect(() => costOf([name], {}), name).toThrow(/unknown/);
+  });
+});
+
+describe('covers', () => {
+  it('lets spending through only when the balance is a number at least as big as what is owed', () => {
+    expect(covers(122, 122)).toBe(true);
+    expect(covers(500, 122)).toBe(true);
+    expect(covers(1, 122)).toBe(false);
+  });
+
+  it('fails closed when the balance didn’t come back as a number', () => {
+    for (const have of [undefined, null, NaN, '500', Infinity]) expect(covers(have, 5), String(have)).toBe(false);
   });
 });

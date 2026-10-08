@@ -28,7 +28,10 @@
 // (made on the first paid run), so a step run again never pays twice; delete
 // a name’s entry there to make it again. MESHY_API_KEY comes from the
 // environment (.env.local, which git ignores, through --env-file) and is
-// never printed. Concept images and thumbnails go to lab/meshy/deathstar (or
+// never printed. Meshy’s model step has turned down a concept too like the
+// films’ own before (scripts/meshy-cockpit.mjs’s Chewbacca), so a run may
+// need a fresh concept: another 9 credits, beyond what `cost` sums. Concept
+// images and thumbnails go to lab/meshy/deathstar (or
 // MESHY_REVIEW), for looking at, not shipped.
 //
 //   ASSETS[name] → { url, height, poly, tex, rigged, prompt }
@@ -37,7 +40,8 @@
 //   PRICE → { images, models, rig }   credits each step costs an asset
 //   costOf(names, tasks = {}, steps = every paid step) → credits   pure: what those steps still cost
 //     those names, given the tasks file’s ids (a step with a recorded id costs nothing); throws for an
-//     unknown name
+//     unknown name (an own key of ASSETS only)
+//   covers(have, need) → bool   whether a balance pays for `need`; fails closed when it isn’t a number
 //   squeeze(from, to, asset) → { tris, hips }   a Meshy GLB made ready for the web
 //
 // Once fetch has run, in the interior:
@@ -114,10 +118,14 @@ export const ASSETS = {
   },
 };
 
+// (an own key only: 'constructor' or '__proto__' would otherwise pass for an asset, be paid for and
+// never be recorded, so paid for again on every run)
+const known = (name) => Object.hasOwn(ASSETS, name);
+
 // the paid steps a name still needs, of `steps`
 function owing(name, tasks, steps) {
+  if (!known(name)) throw new Error(`unknown asset ${name} (${Object.keys(ASSETS).join(', ')})`);
   const a = ASSETS[name];
-  if (!a) throw new Error(`unknown asset ${name} (${Object.keys(ASSETS).join(', ')})`);
   return steps.filter((step) => (step !== 'rig' || a.rigged) && !tasks?.[name]?.[FIELD[step]]);
 }
 
@@ -165,6 +173,10 @@ async function download(url, file) {
 
 const balance = async () => (await api('GET', '/v1/balance')).balance;
 
+// Whether a balance pays for `need`. It fails closed: a balance that isn’t a
+// finite number (an error body sent with a 200, a changed reply) pays for nothing.
+export const covers = (have, need) => typeof have === 'number' && Number.isFinite(have) && have >= need;
+
 // The balance must cover all that `steps` will spend before any of it is
 // asked for, so a short account stops a run before it has paid for half of
 // it (three concepts and no models)
@@ -172,7 +184,7 @@ async function afford(label, steps, names, s) {
   const need = costOf(names, s, steps);
   if (!need) return;
   const have = await balance();
-  if (have < need) throw new Error(`${label}: needs ${need} credits, the account has ${have}. Nothing was started; top the account up at meshy.ai and run it again.`);
+  if (!covers(have, need)) throw new Error(`${label}: needs ${need} credits, the account has ${have}. Nothing was started; top the account up at meshy.ai and run it again.`);
   cleared = true;
 }
 
@@ -345,7 +357,7 @@ async function main() {
   const [step, ...only] = process.argv.slice(2);
   if (!PLANS[step] && step !== 'cost' && step !== 'balance') throw new Error(`usage: ${USAGE}`);
   const names = only.length ? [...new Set(only)] : Object.keys(ASSETS);
-  for (const n of names) if (!ASSETS[n]) throw new Error(`unknown asset ${n} (${Object.keys(ASSETS).join(', ')})`);
+  for (const n of names) if (!known(n)) throw new Error(`unknown asset ${n} (${Object.keys(ASSETS).join(', ')})`);
   if (!process.env.MESHY_API_KEY) throw new Error('MESHY_API_KEY is not set: put it in .env.local and run with node --env-file=.env.local.');
   const s = await load();
   if (step === 'cost') return cost(names, s);
