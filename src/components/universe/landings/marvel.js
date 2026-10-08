@@ -1,14 +1,15 @@
 // Down on Marvel's planet: Avengers HQ, upstate, on the compound's lawn.
-// The Quinjet and the trees are the compound world's own (avengers/compound/
-// models.js); Thor, the Hulk, Natasha and the Iron Man armour are its
+// The Quinjet is the compound world's own (avengers/compound/models.js);
+// Thor, the Hulk, Natasha and the Iron Man armour are its
 // Sketchfab people (CC BY, avengers/world/people.js), playing their idles;
 // the Infinity Gauntlet is the planet's own model (universe/marvel.glb:
-// landings.js names it). Here are the rest: the compound's main building
-// and its tower with the A on it, the pad, and the flags.
+// landings.js names it), and the lawn's trees and the street furniture
+// are Quaternius's. Here are the rest: the compound's main building and its
+// tower with the A on it, the pad, and the flags.
 
 import * as THREE from 'three';
 import { box, part } from '../../galaxy/surface/kit';
-import { buildQuinjet, canopyGeometry, coniferGeometry } from '../../avengers/compound/models';
+import { buildQuinjet } from '../../avengers/compound/models';
 import { loadPerson, person } from '../../avengers/world/people';
 import { centredClips, rigOf } from '../../avengers/world/borrow';
 import { createLook } from '../../avengers/world/castBody';
@@ -180,22 +181,5 @@ export const PROPS = {
         look.update(dt, Math.atan2(ahead.x, ahead.z), seen ? ctx.me : null, object);
       },
     };
-  },
-};
-
-export const SCATTER = {
-  // a broadleaf: a trunk, its crown in lumps (the compound's own)
-  tree(k, { seed = 3, color = '#6a9a44' } = {}) {
-    const crown = canopyGeometry(seed, 1).scale(6, 5, 6).translate(0, 2.6, 0);
-    return {
-      parts: [
-        { geometry: k.geometry([part(new THREE.CylinderGeometry(0.22, 0.32, 3.4, 8).translate(0, 1.7, 0), { color: '#5a4632', to: 'bark' })]), material: k.mats.bark },
-        { geometry: k.own(crown), material: k.own(new THREE.MeshStandardMaterial({ vertexColors: true, color, roughness: 0.9 })) },
-      ],
-      radius: 0.5,
-    };
-  },
-  conifer(k, { color = '#3f6a3a' } = {}) {
-    return { parts: [{ geometry: k.own(coniferGeometry().scale(4, 9, 4)), material: k.own(new THREE.MeshStandardMaterial({ vertexColors: true, color, roughness: 0.95, side: THREE.DoubleSide })) }], radius: 0.6 };
   },
 };
