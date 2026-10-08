@@ -13,6 +13,11 @@
 // its tag; one whose shots have been landing on you counts as a threat, for
 // the lock and the arrows at the edge of the screen.
 //
+// Out on the universe map, spread wide, only those within DRAW of you are
+// ships (pilotsRules.js): further off, one riding a hyperlane is a streak of
+// light along it in their own colour, and anyone else is left to the chart
+// (NavMap.jsx's blips, from `chart`).
+//
 // The hunters after each of them are here too (given a `fleet` to make them
 // from and the `kinds` they are): drawn where their pilot says they are,
 // flown on between tellings, there for your guns to lock on to and to hit.
@@ -22,12 +27,24 @@
 //
 // createPilots(parent, { T, colors, here, fleet, kinds }) → { update(dt, now, client, view),
 //   hit(from, to, damage) → { id, at, size } (a pilot) or { id, hunter, kind,
-//   at, size, down } (one of the hunters after pilot `id`), targets, count,
-//   at(id), dispose() }
+//   at, size, down } (one of the hunters after pilot `id`), targets, mates
+//   (your allies in view: { id, name, at }, for the HUD's markers at the
+//   edge), count, chart, at(id), pose(id), dispose() }
 // view: { project(x, y, z, out) (to the canvas: out.x, out.y in px and
 // out.z, the depth), tags (the element the tags go in), locked (the pilot
 // the guns are locked on, whose name the lock shows instead; footOn, the
-// planet you're down on, if you are: the crews there have tags of their own) }
+// planet you're down on, if you are: the crews there have tags of their own),
+// me (your ship, for how far off they are; the camera's depth without it),
+// factions (yours: client.js's, for whose side each of them is on),
+// from (where your ship is, { x, y, z }, or null: on the universe map,
+// given at all, it's what DRAW is measured from; left out, as the galaxy
+// does, everyone's a ship as before) }
+//
+// A tag (tagRules.js says what it shows at each distance) is the callsign
+// (set as text only: it's theirs), the distance, their level and their
+// rank, coloured by how they stand to you (relations.js: data-relation),
+// kept inside the tags box; a click on one is a `tp:pilot` window event
+// with their id, for the roster (Online.jsx) to open on them.
 
 import { writeBuild } from '../shipyard/build';
 import * as THREE from 'three';
@@ -44,6 +61,12 @@ import { POSITIONS } from '../layout';
 import { byId } from '../universes';
 import { STALE_MS, sample } from './protocol';
 import { UNIVERSE } from './where';
+import { howToDraw } from './pilotsRules';
+import { carriageway, laneAt } from '../hyperlanes';
+import { bezier, tangent } from '../lanes';
+import { distText, fontPx, keepIn, tagMode } from './tagRules';
+import { relation } from './relations';
+import { RANKS } from '../../galaxy/ranks';
 import { gltfLoader } from '../../../lib/three/gltf';
 
 const MODELS = { ...SHIP_MODELS, cruiser: '/games/meshy/saucer.glb' }; // (the cruiser the C-137 planet flies; your own is the page's, crew aboard)
@@ -51,11 +74,12 @@ const SIZE = 0.3; // across, for the guns and for hits
 const HIT_R = 0.22; // how close a bolt must pass to hit
 const BOLTS = 24;
 const BOLT_LIFE = 1.1;
-const TAG_FAR = 140; // map units: no tag past this
 const THREAT_MS = 8000; // a pilot whose shot hit you this lately is a threat
 const PACK_STALE = 1500; // ms: hunters not heard of for this long are gone
 const PACK_AHEAD = 0.4; // seconds, at most, a hunter's flown on from where it was last said to be
 const GONE_MS = 2500; // a hunter your shot should have finished stays off the sky this long, unless its pilot says it's down
+const STREAK = 400; // map units: how long a far pilot's streak along their lane is
+const STREAK_AHEAD = 1; // seconds, at most, a streak runs on along its lane from where its pilot last said
 
 const loader = gltfLoader();
 
@@ -106,9 +130,10 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
   let clock = 0; // `now`, as of the last update
   const aim = new THREE.Vector3();
   const takeModel = (kind) => {
+    const drawn = kinds[kind]?.model ?? kind; // (drawn as another kind, as hunters.js's are)
     // a built stand-in waiting here gives way once the model is in (as hunters.js's do)
-    if (fleet.loaded(kind) && spare[kind]?.length && !spare[kind][spare[kind].length - 1].model) for (const m of spare[kind].splice(0)) m.dispose();
-    const model = spare[kind]?.pop() ?? fleet.make(kind);
+    if (fleet.loaded(drawn) && spare[kind]?.length && !spare[kind][spare[kind].length - 1].model) for (const m of spare[kind].splice(0)) m.dispose();
+    const model = spare[kind]?.pop() ?? fleet.make(drawn);
     model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1);
     parent.add(model.group);
     return model;
@@ -135,6 +160,11 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
     for (const o of shared) o.removeFromParent();
     disposeTree(sh.model.group);
     sh.tag?.remove();
+    if (sh.streak) {
+      sh.streak.removeFromParent();
+      sh.streak.geometry.dispose();
+      sh.streak.material.dispose();
+    }
   };
 
   // (hull: their garage build, or null for their stock ship)
@@ -156,15 +186,64 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
       });
     }
     let tag = null;
+    let bits = null;
     if (tags) {
       tag = document.createElement('span');
       tag.className = 'universe-tag';
-      const name = document.createElement('b');
-      const bar = document.createElement('i');
-      tag.append(name, bar);
+      const line = document.createElement('span');
+      line.className = 'universe-tag-line';
+      bits = { name: document.createElement('b'), dist: document.createElement('small'), level: document.createElement('em'), rank: document.createElement('span') };
+      bits.rank.className = 'universe-tag-rank';
+      line.append(bits.name, bits.dist, bits.level);
+      tag.append(line, bits.rank, document.createElement('i'));
+      tag.title = 'Show in the roster';
+      tag.addEventListener('click', () => window.dispatchEvent(new CustomEvent('tp:pilot', { detail: { id } })));
       tags.append(tag);
     }
-    return { kind, hull: hullKey(hull), loadout: STOCK_LOADOUT, model, tag, name: '', at: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), shown: false, parked: false, under: null, ally: false, safe: false, threat: 0, tagOn: null, tagName: null };
+    // (what the tag last showed, so it's written only on a change; its size
+    // measured at the start of the next update, before anything's written)
+    return { kind, hull: hullKey(hull), loadout: STOCK_LOADOUT, model, tag, bits, name: '', at: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), shown: false, pose: null, mode: null, seen: { x: 0, z: 0 }, streak: null, parked: false, under: null, ally: false, safe: false, threat: 0, tagOn: null, tagName: null, tagShown: {}, tagW: 90, tagH: 22, measure: true };
+  };
+
+  // a far pilot riding a lane: a short line along it, bright at their end and
+  // fading out behind (additive, so the dark end is nothing), in their bolts'
+  // colour; one per pilot, made the first time it's wanted
+  const head = [0, 0, 0];
+  const dir = [0, 0, 0];
+  const streakOf = (sh, color) => {
+    if (!sh.streak) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array([1, 1, 1, 0, 0, 0]), 3));
+      const mat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+      sh.streak = new THREE.Line(geo, mat);
+      sh.streak.frustumCulled = false; // (its bounds move every frame)
+      sh.streak.userData.color = null;
+      parent.add(sh.streak);
+    }
+    if (sh.streak.userData.color !== color) {
+      sh.streak.userData.color = color;
+      sh.streak.material.color.set(color).multiplyScalar(3);
+    }
+    return sh.streak;
+  };
+  // where along its carriageway (`on`, laneAt's) a pilot last said they
+  // were (`pose`), run on at their speed since, so it moves between poses
+  const drawStreak = (sh, on, pose, now, color) => {
+    const line = streakOf(sh, color);
+    const pts = carriageway(on.lane, on.way);
+    const ahead = Math.min(STREAK_AHEAD, Math.max(0, (now - (pose.at ?? now)) / 1000));
+    const s = Math.min(1, on.s + (ahead * Math.abs(pose.speed)) / on.lane.length);
+    bezier(pts, s, head);
+    tangent(pts, s, dir);
+    const l = Math.hypot(...dir) || 1;
+    const pos = line.geometry.attributes.position;
+    pos.setXYZ(0, ...head);
+    pos.setXYZ(1, head[0] - (dir[0] / l) * STREAK, head[1] - (dir[1] / l) * STREAK, head[2] - (dir[2] / l) * STREAK);
+    pos.needsUpdate = true;
+    line.visible = true;
+    sh.seen.x = head[0];
+    sh.seen.z = head[2];
   };
 
   // bolts from the others' guns: only drawn (a hit is the shooter's to call)
@@ -223,7 +302,18 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
       clock = now;
       const peers = client?.peers ?? new Map();
       const at = place();
+      // (every read before any write: a read after one makes the browser lay the page out again)
+      const boxW = view?.tags?.clientWidth ?? 0;
+      const boxH = view?.tags?.clientHeight ?? 0;
+      for (const sh of ships.values()) {
+        if (!sh.measure || !sh.tagOn) continue;
+        sh.measure = false;
+        sh.tagW = sh.tag.offsetWidth;
+        sh.tagH = sh.tag.offsetHeight;
+      }
       const away = (p) => (p.where ?? UNIVERSE) !== at; // (somewhere else: gone off into a world, or another system)
+      // (spread out, on the universe map, once the scene says where you are)
+      const spread = at === UNIVERSE && Boolean(view) && 'from' in view;
       for (const [id, sh] of ships) {
         const p = peers.get(id);
         if (!p || p.blocked || !p.kind || away(p)) {
@@ -252,9 +342,25 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
         const s = sample(p.snaps, now);
         // down on a planet, their crew out: parked where they came down
         const down = p.foot && now - p.foot.at < STALE_MS && POSITIONS[p.foot.planet] ? p.foot : null;
-        const on = Boolean(s && !s.hidden) && !down;
+        const flying = Boolean(s && !s.hidden) && !down;
+        // a ship near you; far off, a streak or a blip (by where they last
+        // said they were, not the guess ahead: the lane's checked on that)
+        const last = p.pose ?? s;
+        sh.mode = !flying ? null : spread ? howToDraw(last, view.from, { laneAt }) : 'ship';
+        const on = sh.mode === 'ship';
         const was = sh.shown;
         sh.shown = on;
+        // (for flying to them: where they are now, while they're flying here, near or far)
+        sh.pose = flying ? { x: s.x, y: s.y, z: s.z, heading: s.heading, name: p.name } : null;
+        if (flying) {
+          sh.seen.x = s.x;
+          sh.seen.z = s.z;
+        }
+        const riding = sh.mode === 'streak' ? laneAt(last.x, last.y, last.z) : null;
+        if (riding) {
+          busy = true;
+          drawStreak(sh, riding, last, now, boltColor(p.kind, p.loadout?.paint));
+        } else if (sh.streak) sh.streak.visible = false;
         sh.name = p.name; // (for the lock's bracket, whether or not their tag's showing)
         sh.ally = p.ally === 'ally';
         sh.safe = on && Boolean(s.safe);
@@ -299,25 +405,65 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
         if (!tag) continue;
         // (parked, over the ship, unless you're down there with them: their crew have tags then)
         let show = (on && view.locked !== p.id) || (down && view.footOn !== down.planet);
+        let mode = null;
+        let pos = null;
+        let dist = 0;
         if (show) {
-          if (down) view.project(g.position.x, g.position.y, g.position.z, spot);
-          else view.project(s.x, s.y + 0.16, s.z, spot);
-          show = spot.z > 0.3 && spot.z < TAG_FAR;
+          const x = down ? g.position.x : s.x;
+          const y = down ? g.position.y : s.y + 0.16;
+          const z = down ? g.position.z : s.z;
+          view.project(x, y, z, spot);
+          const me = view.me;
+          dist = me ? Math.hypot(x - me.x, y - me.y, z - me.z) : spot.z;
+          mode = tagMode(dist, { ally: sh.ally });
+          pos = spot.z > 0.3 && mode.mode ? keepIn(spot.x, spot.y, sh.tagW, sh.tagH, boxW, boxH) : null;
+          show = Boolean(pos);
         }
         if (show !== sh.tagOn) {
           sh.tagOn = show;
           tag.toggleAttribute('data-on', show);
+          sh.measure ||= show;
         }
         if (!show) continue;
+        const told = sh.tagShown;
+        const d = mode.showDist ? distText(dist) : '';
+        const rank = RANKS[p.factions?.oath]?.find((r) => r.id === p.factions?.rank)?.name ?? '';
+        const rel = relation({ ally: sh.ally, factions: view.factions ?? null }, p);
         if (sh.tagName !== p.name) {
           sh.tagName = p.name;
-          tag.firstChild.textContent = p.name;
+          sh.bits.name.textContent = p.name;
+          sh.measure = true;
         }
+        if (told.dist !== d) {
+          if (told.dist?.length !== d.length) sh.measure = true;
+          sh.bits.dist.textContent = d;
+        }
+        if (told.level !== p.level) {
+          sh.bits.level.textContent = `Lv ${p.level ?? 1}`;
+          tag.dataset.level = String(p.level ?? 1);
+          sh.measure = true;
+        }
+        if (told.rank !== rank) {
+          sh.bits.rank.textContent = rank;
+          sh.measure = true;
+        }
+        if (told.mode !== mode.mode) {
+          tag.dataset.mode = mode.mode;
+          sh.measure = true;
+        }
+        if (told.rel !== rel) tag.dataset.relation = rel;
+        told.dist = d;
+        told.level = p.level;
+        told.rank = rank;
+        told.mode = mode.mode;
+        told.rel = rel;
         tag.toggleAttribute('data-ally', sh.ally);
         tag.toggleAttribute('data-safe', sh.safe);
         tag.toggleAttribute('data-hurt', !down && s.shield < 99.5);
         tag.style.setProperty('--shield', ((down ? 100 : s.shield) / 100).toFixed(2));
-        tag.style.transform = `translate3d(${spot.x.toFixed(1)}px, ${spot.y.toFixed(1)}px, 0)`;
+        tag.style.setProperty('--fade', mode.fade.toFixed(2));
+        tag.style.setProperty('--font', `${fontPx(mode.scale)}px`);
+        tag.style.transform = `translate3d(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px, 0) scale(${Math.ceil(mode.scale * 1000) / 1000})`;
       }
       // the hunters after them: where each pilot last said, flown on from there
       if (fleet) {
@@ -425,14 +571,37 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
       for (const g of ghosts.values()) if (clock >= g.goneUntil) out.push(g.target);
       return out;
     },
-    // how many there are about: the pilots flying, and the hunters after them
+    // your allies flying here (wherever they are on screen: the HUD puts
+    // the ones off it at the edge)
+    get mates() {
+      const out = [];
+      for (const [id, sh] of ships) if (sh.shown && sh.ally) out.push({ id, name: sh.name, at: sh.at });
+      return out;
+    },
+    // how many there are about: the pilots flying near (as ships), and the
+    // hunters after them
     get count() {
       return live + ghosts.size;
+    },
+    // everyone flying here, near or far, for the chart: [{ id, name, x, z,
+    // mode ('ship' | 'streak' | 'blip'), ally }], allies too
+    get chart() {
+      const out = [];
+      for (const [id, sh] of ships) if (sh.mode) out.push({ id, name: sh.name, x: sh.seen.x, z: sh.seen.z, mode: sh.mode, ally: sh.ally });
+      return out;
     },
     // where a pilot was last drawn (for the pop as they go down)
     at(id) {
       const sh = ships.get(id);
       return sh?.shown ? sh.at.clone() : null;
+    },
+    // where a pilot is as of the last update, { x, y, z, heading, name }, or
+    // null for one who isn't flying here in sight (gone, hidden, stale, down
+    // on a planet, blocked): the autopilot's goal when you fly to them
+    // (pilotGoal.js). Only ever a pilot already in the room
+    pose(id) {
+      const sh = ships.get(id);
+      return sh?.pose ?? null;
     },
 
     dispose() {

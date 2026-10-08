@@ -1,7 +1,7 @@
 /* The tour (Tour.jsx): over everything but the intro's cover. The dim is the
    lit box's shadow, so the box shows the thing it's on; a card in the middle,
    with nothing lit, dims the veil instead. */
-.tour { position: fixed; inset: 0; z-index: 88; }
+.tour { position: fixed; inset: 0; z-index: calc(var(--z-dialog) + 8); } /* over any dialog it points at, under the covers */
 .tour-veil { position: absolute; inset: 0; background: rgb(2 6 14 / 0.62); }
 .tour[data-lit] .tour-veil { background: transparent; }
 .tour-spot {
@@ -40,6 +40,24 @@
 .tour-keys { margin-top: 0.7rem; font-size: 0.8125rem; }
 .tour-keys th { width: 46%; padding: 0.35rem 0.6rem 0.35rem 0; }
 .tour-keys td { padding: 0.4rem 0; }
+/* a stop's actions: a row of their own above the buttons, wrapping; on a
+   phone each as wide as the card */
+.tour-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
+@media (max-width: 479px) { .tour-actions > * { flex: 1 1 100%; justify-content: center; } }
+/* a stop that asks you to try ? or the palette: the veil down so what they
+   open shows; while it's open the card steps under it (the guide's panel
+   and the palette sit at 80) */
+.tour[data-release] { pointer-events: none; }
+.tour[data-release] .tour-card { pointer-events: auto; }
+.tour[data-release] .tour-veil { display: none; }
+.tour[data-release] .tour-spot { box-shadow: 0 0 0 2px var(--accent); }
+.tour[data-over] { z-index: calc(var(--z-dialog) - 1); } /* under the guide or the palette while a release stop lets them open */
+/* on the way to a stop's page: the card in the middle, the page under it dimmed */
+.tour[data-waiting] .tour-text { color: var(--muted); }
+/* a world asking before it downloads: the gate takes the clicks, the card waits in a corner */
+.tour[data-asking] { z-index: calc(var(--z-sheet) - 1); }
+.tour[data-asking] .tour-veil { pointer-events: none; background: rgb(2 6 14 / 0.25); }
+.tour-notice { margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--muted); }
 @keyframes tour-in { from { opacity: 0; transform: translateY(6px); } }
 
 /* while it runs: the nav and the guide's button stay in view (they hide on scroll, and a phone tucks the button away) */
@@ -51,3 +69,5 @@ html[data-touring] .guide-btn[data-tucked] { transform: none; opacity: 1; }
   .tour-card { animation: none; }
 }
 @media print { .tour { display: none !important; } }
+/* a stop showing a thing to do that's done (data/todo.js) */
+.tour-ticked { color: var(--accent-text, var(--accent)); }

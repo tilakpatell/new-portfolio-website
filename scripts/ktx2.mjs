@@ -21,7 +21,8 @@
 //   node scripts/ktx2.mjs report <file …>          what each texture would
 //                                                  cost and save (changes nothing)
 //   node scripts/ktx2.mjs convert <file …> [--out dir] [--etc1s] [--slots normal,arm]
-//                                                  [--level 2] [--rdo 1] [--quality 200]
+//                                                  [--level 2] [--rdo 1] [--quality 200] [--flip]
+//                                                  (--flip: an image turned for three's UVs, as a sphere's map wants)
 //
 // A file is a .glb (its textures are rewritten in place as KTX2, the rest of
 // the file untouched: meshopt, quantization, materials), or an image
@@ -190,6 +191,7 @@ function parseArgs(argv) {
     else if (a === '--level') opts.level = Number(argv[++i]);
     else if (a === '--rdo') opts.rdo = Number(argv[++i]);
     else if (a === '--quality') opts.quality = Number(argv[++i]);
+    else if (a === '--flip') opts.flipY = true;
     else opts.files.push(a);
   }
   return opts;

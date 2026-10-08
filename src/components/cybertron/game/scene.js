@@ -1,9 +1,14 @@
 // Cybertron's world, drawn: whichever area you're in (its stage), Optimus
 // as a robot or a truck and the change between them piece by piece
-// (chunks.js), the Autobots standing about and turning to look at him, the
-// Decepticons closing in, the bolts, flashes and fireballs, energon lying
+// (chunks.js), the Autobots standing about (looking round at him as he
+// comes, turning on their feet when he's well round, greeting him each in
+// their own way and talking with their hands while their lines play), the
+// Decepticons closing in (walking where their brains move them, strafing
+// with their legs to it and their guns on him, kicking with each shot,
+// flinching, a boss's taunt and the brace before its heavy shot, going over
+// the way they were shot), the bolts, flashes and fireballs, energon lying
 // about, the mission's beacon, and the chase camera. sim.js says where
-// everything is; this only shows it.
+// everything is; this only shows it (bodies.js says how it looks).
 //
 // createGame(canvas, { tier, onLost }) → Promise<{ setArea(id), render(sim, view, dt, now),
 //   events(list, sim), resize(w, h), precompile(), info(), dispose() }>
@@ -13,12 +18,14 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { budget } from '../../../lib/device';
 import { createPace } from '../../../lib/three/pace';
+import { guard } from '../../../lib/three/frameGuard';
 import { precompile, quiet, releaseContext } from '../../../lib/three/renderer';
 import { createPost } from '../../universe/post';
 import { makeFigure, makeThing } from './bots';
 import { bake, centresOf, cluster, makeTransformer } from './chunks';
 import { createEffects } from './effects';
-import { FORMS, TRANSFORM } from './rules';
+import { ENEMY_KINDS, FORMS, ROBOT, TRANSFORM } from './rules';
+import { createFoeBody, createPersonBody, hashSeed, localMotion } from './bodies';
 import { groundWorld } from '../../../lib/three/groundwork';
 import { houseOn } from '../../../lib/three/house';
 
@@ -38,6 +45,8 @@ const CAM = {
 export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   const B = budget(tier);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   quiet(renderer);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, B.ratio));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -81,7 +90,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   // what's in the scene for the area you're in
   let stage = null;
   let areaId = null;
-  let people = new Map(); // id → figure
+  let people = new Map(); // id → figure (and its mind: bodies.js's createPersonBody)
   const foes = new Map(); // id → { figure, boomed }
   const matrixModel = { object: null, loading: null }; // (the Matrix, once a mission puts it down)
   let shake = 0;
@@ -90,6 +99,12 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   const heroLight = tier === 'low' ? null : new THREE.PointLight('#e6eeff', 0, 46, 1.4);
   if (heroLight) scene.add(heroLight);
   const muzzleAt = new THREE.Vector3();
+  const foeMuzzle = new THREE.Vector3();
+  // what's happened since the last frame, for the bodies: hits on Optimus
+  // (where the shot was), his own shots, a mission done
+  const happened = { hitMe: null, fired: false, won: false };
+  let lastFlinch = -1;
+  let playerFall = null;
   const player = { root: new THREE.Group(), robot: null, vehicle: null, forms: { robot: null, vehicle: null }, change: null, kinds: null };
   scene.add(player.root);
   // the mission's beacon: a column of light where you're meant to go
@@ -228,10 +243,11 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       // the people of the place, standing where they stand
       const made = await Promise.all(
         area.people.map((p) =>
-          makeFigure(p.kind, { shadows: renderer.shadowMap.enabled }).then((f) => {
+          makeFigure(p.kind, { shadows: renderer.shadowMap.enabled, seed: hashSeed(p.id) }).then((f) => {
             f.group.position.set(p.x, p.y ?? 0, p.z);
             f.group.rotation.y = p.yaw ?? 0;
             f.home = p.yaw ?? 0;
+            f.mind = createPersonBody({ kind: p.kind, home: p.yaw ?? 0, seed: hashSeed(p.id) });
             return [p.id, f];
           }),
         ),
@@ -249,9 +265,9 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   // a Decepticon's figure, made the first time it's seen
   const foeFor = (e) => {
     if (foes.has(e.id)) return foes.get(e.id);
-    const entry = { figure: null, boomed: false, pending: true };
+    const entry = { figure: null, boomed: false, pending: true, mind: createFoeBody({ kind: e.model ?? e.kind, boss: e.boss, seed: hashSeed(e.id), cooldown: ENEMY_KINDS[e.kind]?.cooldown ?? 1 }), hit: null, fired: false };
     foes.set(e.id, entry);
-    makeFigure(e.model ?? e.kind, { shadows: false }).then((f) => {
+    makeFigure(e.model ?? e.kind, { shadows: false, seed: hashSeed(e.id) }).then((f) => {
       if (foes.get(e.id) !== entry) return f.dispose();
       entry.figure = f;
       entry.pending = false;
@@ -418,12 +434,25 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       if (player.vehicle) player.vehicle.visible = p.mode === 'vehicle';
     }
     if (player.robot && p.mode === 'robot' && !player.change) {
-      const speed = Math.hypot(p.vx, p.vz);
-      const state = p.dead ? 'dead' : !p.grounded ? (p.vy > 0 ? 'jump' : 'fall') : p.hurt > 0.25 ? 'hurt' : speed > 9 ? 'run' : speed > 0.8 ? 'walk' : 'idle';
+      // his feet on the ground he covers: along his facing, and across it
+      // as he strafes with his gun on something
+      const { speed, side } = localMotion(p.vx, p.vz, p.yaw);
+      const state = p.dead ? 'dead' : !p.grounded ? (p.vy > 0 ? 'jump' : 'fall') : Math.hypot(speed, side) > 0.8 ? 'walk' : 'idle';
       const aiming = view.firing && !p.dead;
       // the gun arm along the aim, in his own frame
       const rel = view.yaw - p.yaw;
-      player.robot.play(state, { speed, aim: aiming ? [Math.sin(rel), Math.sin(view.pitch) + 0.05, Math.cos(rel)] : null });
+      // hit: thrown back from where it came (not every hit of a burst)
+      if (happened.hitMe && !p.dead && clock - lastFlinch > 0.6) {
+        lastFlinch = clock;
+        const away = [p.x - happened.hitMe.x, p.z - happened.hitMe.z];
+        const n = Math.hypot(away[0], away[1]) || 1;
+        playerFall = [away[0] / n, away[1] / n];
+        const c = Math.cos(p.yaw);
+        const sn = Math.sin(p.yaw);
+        player.robot.gesture?.('stagger', { dir: [playerFall[0] * c - playerFall[1] * sn, 0, playerFall[0] * sn + playerFall[1] * c] });
+      }
+      if (happened.fired && aiming) player.robot.recoil?.();
+      player.robot.play(state, { speed, side, aim: aiming ? [Math.sin(rel), Math.sin(view.pitch) + 0.05, Math.cos(rel)] : null, fall: p.dead ? playerFall : null });
       player.robot.update(dt);
     }
     const ride = clips ? player.robot?.group : player.vehicle;
@@ -432,17 +461,21 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       ride.rotation.z = Math.max(-0.08, Math.min(0.08, -p.slide * 0.01 - p.steer * Math.min(1, Math.abs(p.speed) / 30) * 0.05));
       ride.rotation.x = Math.max(-0.04, Math.min(0.04, -(view.throttle ?? 0) * 0.02));
     } else if (clips && player.robot) player.robot.group.rotation.set(0, 0, 0);
-    // the Autobots, turning to look at him when he's near
+    // the people of the place: looking round at him as he comes, turning
+    // on their feet once he's well round, greeting him, talking with their
+    // hands while their lines play, a fist up when a mission's done
     if (stage) {
+      const you = p.dead ? null : { x: p.x, z: p.z };
+      const eyes = { x: p.x, y: p.y + (p.mode === 'vehicle' ? 2.6 : ROBOT.height * 0.88), z: p.z };
       for (const [id, f] of people) {
         const who = sim.area.people.find((q) => q.id === id);
         if (!who) continue;
-        const d = Math.hypot(p.x - who.x, p.z - who.z);
-        const face = d < 40 ? Math.atan2(p.x - who.x, p.z - who.z) : f.home;
-        let r = f.group.rotation.y;
-        r += Math.atan2(Math.sin(face - r), Math.cos(face - r)) * Math.min(1, dt * 2.5);
-        f.group.rotation.y = r;
-        f.play('idle');
+        const out = f.mind.step(dt, { me: who, you, say: sim.talk?.id === id ? { token: sim.talk, line: sim.talk.line } : null, win: happened.won && Math.hypot(p.x - who.x, p.z - who.z) < 90 });
+        f.group.rotation.y = out.yaw;
+        f.look?.(out.look ? eyes : null);
+        f.gesture?.(out.gesture?.name ?? null, out.gesture ?? {});
+        // (a few heavy steps as it turns on the spot)
+        f.play(out.stepSpeed > 0.05 ? 'walk' : 'idle', { speed: out.stepSpeed * f.height * 0.2 });
         f.update(dt);
       }
     }
@@ -471,19 +504,35 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
           effects.boom(e.x, e.y + e.h * 0.4, e.z, e.boss ? 16 : 9);
         }
         f.group.visible = !e.dead || (e.gone ?? 0) < 3;
+        entry.hit = null; // (a car or a tank takes its hits without a flinch)
+        entry.fired = false;
         continue;
       }
       f.release?.();
+      // its body from its brain: where it went this frame, at whom, what hit it
+      const hit = entry.hit ? [entry.hit.x - p.x, entry.hit.z - p.z] : null;
+      const out = entry.mind.step(dt, { e, you: p.dead ? null : { x: p.x, y: p.y + (p.mode === 'vehicle' ? 1.5 : ROBOT.height * 0.6), z: p.z }, hit, fired: entry.fired });
+      entry.hit = null;
+      entry.fired = false;
       if (e.dead) {
         if (!entry.boomed) {
           entry.boomed = true;
           effects.boom(e.x, e.y + e.h * 0.4, e.z, e.boss ? 16 : 9);
         }
-        f.play('dead');
+        f.gesture?.(null);
+        f.look?.(null);
+        f.play('dead', { fall: out.fall });
         f.group.visible = (e.gone ?? 0) < 3;
-      } else if ((entry.flinch = Math.max(0, (entry.flinch ?? 0) - dt)) > 0) f.play('hurt');
-      else f.play('walk', { speed: e.state === 'advance' ? 6 : 3.6, aim: [0, 0.05, 1] });
+      } else {
+        f.play(out.state, { speed: out.speed, side: out.side, aim: out.aim });
+        f.look?.(out.look ? { x: out.look.x, y: out.look.y + 2, z: out.look.z } : null);
+        f.gesture?.(out.gesture?.name ?? null, out.gesture ?? {});
+        f.brace?.(out.brace);
+        if (out.recoil) f.recoil?.();
+      }
       f.update(dt);
+      // the flash at its gun, as it holds it now
+      if (out.recoil && !e.dead && f.muzzle?.(foeMuzzle)) effects.spark(foeMuzzle.x, foeMuzzle.y, foeMuzzle.z);
     }
     for (const [id, entry] of foes) {
       if (seen.has(id)) continue;
@@ -549,6 +598,9 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       gates.instanceMatrix.needsUpdate = true;
     }
     stage?.update(clock, dt, camera, sim);
+    happened.hitMe = null;
+    happened.fired = false;
+    happened.won = false;
     placeCamera(sim, view, dt);
     const sharp = pace.frame(now);
     if (sharp !== null) post.sharpness = sharp;
@@ -576,16 +628,23 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       for (const e of list) {
         if (e.type === 'hit') {
           effects.hit(e.x, e.y, e.z, true);
-          // (the one hit flinches)
+          // (the one hit flinches, and goes over that way if it's beaten)
           const foe = foes.get(e.id);
-          if (foe) foe.flinch = 0.22;
-        }
-        else if (e.type === 'hitMe') {
+          if (foe) foe.hit = { x: e.x, z: e.z };
+        } else if (e.type === 'hitMe') {
           effects.hit(e.x, e.y, e.z, false);
           shake = Math.max(shake, 0.6);
-        } else if (e.type === 'ram') shake = Math.max(shake, 1.6);
+          happened.hitMe = { x: e.x, z: e.z };
+        } else if (e.type === 'enemyFire') {
+          const foe = foes.get(e.id);
+          if (foe) foe.fired = true;
+        } else if (e.type === 'complete') happened.won = true;
+        else if (e.type === 'ram') shake = Math.max(shake, 1.6);
         else if (e.type === 'kill') shake = Math.max(shake, e.boss ? 2.4 : 0.5);
-        else if (e.type === 'fire' && e.mode === 'robot') for (const sh of e.shots) effects.spark(sh.x, sh.y, sh.z); // the muzzle's flash
+        else if (e.type === 'fire' && e.mode === 'robot') {
+          for (const sh of e.shots) effects.spark(sh.x, sh.y, sh.z); // the muzzle's flash
+          happened.fired = true;
+        }
         else if (e.type === 'pickup') effects.boom(e.x, (e.y ?? 0) + 1, e.z, 2.5);
       }
     },

@@ -332,7 +332,7 @@ export const ROWS = [
       { id: 'rock-c', dx: -6, dz: -16, r: 2.2 },
       { id: 'sign', dx: -6, dz: 15.6, w: 1.8, d: 0.4 },
     ],
-    tasks: [{ id: 'snakeplanet', name: 'Reach the snake rocket', hint: 'Dial Snake Planet on the portal gun, and get to the rocket on the far side without being bitten. The snakes strike when you come close.' }],
+    tasks: [{ id: 'snakeplanet', name: 'Reach the snake rocket', hint: 'Land on Snake Planet in the Rick and Morty sector, and get to the rocket on the far side without being bitten. The snakes strike when you come close.' }],
     say: {
       snakerocket: { who: null, text: 'The snakes’ rocket, cold to the touch, no bigger than a van. A snake is going to the moon in it, and Morty is the reason there will be a snake war. Not yet.' },
       snakeastronaut: { who: 'A snake astronaut', text: 'Hssss. (It bows its helmet. You have been accepted, provisionally, into the snake space programme.)' },
@@ -376,7 +376,7 @@ export const ROWS = [
       { id: 'pillar-c', dx: -24, dz: 10, r: 0.8 },
       { id: 'pillar-d', dx: 24, dz: 10, r: 0.8 },
     ],
-    tasks: [{ id: 'nuptia', name: 'Take the test on Nuptia 4', hint: 'Dial Nuptia 4 on the portal gun, talk to Glexo Slim Slom, and sit in the machine. Keep away from the mythologs: they’re other couples’ problems.' }],
+    tasks: [{ id: 'nuptia', name: 'Take the test on Nuptia 4', hint: 'Land on Nuptia 4 in the Rick and Morty sector, talk to Glexo Slim Slom, and sit in the machine. Keep away from the mythologs: they’re other couples’ problems.' }],
     say: {
       glexo: { who: 'Glexo Slim Slom', text: '“A child. The machine will scan you alone, then. Sit, and think of whoever you think of.” He gestures at the pod. The mythologs on the lawn turn their heads.' },
       nuptiamachine: { who: null, text: 'You sit, and the helmet comes down. You think of Rick. The readout says: TALL. UNRELIABLE. YOURS. Glexo nods like that’s normal.' },
@@ -465,7 +465,7 @@ export const ROWS = [
       { id: 'palm-a', dx: 22, dz: 8, r: 0.5 },
       { id: 'palm-b', dx: -26, dz: 2, r: 0.5 },
     ],
-    tasks: [{ id: 'resort', name: 'Ride the Whirly Dirly', hint: 'Dial the Immortality Field Resort on the portal gun, talk to Risotto Groupon, and ride the Whirly Dirly. Part of it leaves the field.' }],
+    tasks: [{ id: 'resort', name: 'Ride the Whirly Dirly', hint: 'Land at the Immortality Field Resort in the Rick and Morty sector, talk to Risotto Groupon, and ride the Whirly Dirly. Part of it leaves the field.' }],
     say: {
       risotto: { who: 'Risotto Groupon', text: '“The grandson. Welcome. Enjoy the resort. The Whirly Dirly is our pride, and for a few seconds at the top it leaves the field. Do tell your grandfather to ride it.”' },
       dirly: { who: null, text: 'The car climbs, the field’s shimmer falls behind, and for three seconds at the top anything could kill you. Nothing does. You come down screaming anyway.' },

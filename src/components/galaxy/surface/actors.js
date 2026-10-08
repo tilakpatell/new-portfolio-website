@@ -56,14 +56,16 @@ import { SURFACE_MODELS, surfaceUrl } from './catalog';
 import { buildFigure } from './figures';
 import { crewFigure } from './crew';
 import { PROPS } from './props';
-import { cloneModel, loadGlb } from './placer';
+import { cloneModel, loadGlb, squared } from './placer';
 import { rng } from './noise';
-import { groundAt, lineClear, turnToward } from './walker';
+import { groundAt, lineClear, tooDeep, turnToward } from './walker';
 import { hear, mannerOf, pickWant, placesOf, relate } from './needs';
 import { talkFor } from './talk';
 import { zoneVisibility } from './near';
 import { diveAt } from './floats';
 import { heldBlade } from './heldBlade';
+import { WALKERS, walkerFigure } from './walkers';
+import { leggedFigure } from './legRig';
 import { createAnimator } from '../../../lib/three/animator';
 import { budgetClock } from '../../../lib/three/animBudget';
 import { breathe, createGait, sway } from '../../../lib/three/gait';
@@ -261,10 +263,15 @@ export async function modelFigure(kind) {
   if (!SURFACE_MODELS[kind]) return null;
   const n = made.get(kind) ?? 0;
   made.set(kind, n + 1);
-  const gltf = await loadGlb(surfaceUrl(kind));
+  const gltf = squared(await loadGlb(surfaceUrl(kind)), kind);
   if (!gltf) return null;
   const row = SURFACE_MODELS[kind];
-  return modelFigureOf(cloneModel(gltf), { animations: gltf.animations, anim: row.anim, seed: seedOf(kind, n), clipSpeed: row.clipSpeed ?? null });
+  // (a person who came as a statue: legs found in it, skinned and walked; legRig.js)
+  if (row.legs && !row.anim) {
+    const legged = leggedFigure(gltf.scene, { seed: seedOf(kind, n), legs: row.legs === true ? {} : row.legs });
+    if (legged) return legged;
+  }
+  return modelFigureOf(cloneModel(gltf), { animations: gltf.animations, anim: row.anim, seed: seedOf(kind, n), clipSpeed: row.clipSpeed ?? null, machine: Boolean(row.machine) });
 }
 
 // what a move of 1 is, in metres a second (the people's update gives
@@ -314,7 +321,7 @@ export function feetOf(root) {
 //   it covers, never on the clock), and with no clips at all it breathes as
 //   it stands, each in its own time: none frozen, none gliding at one
 //   height. Its calls do nothing.
-export function modelFigureOf(scene, { animations = [], anim: names = null, seed = 0, clipSpeed = null } = {}) {
+export function modelFigureOf(scene, { animations = [], anim: names = null, seed = 0, clipSpeed = null, machine = false } = {}) {
   const model = new THREE.Group();
   model.add(scene);
   const box = new THREE.Box3().setFromObject(scene);
@@ -390,6 +397,12 @@ export function modelFigureOf(scene, { animations = [], anim: names = null, seed
         anim.after(dt, m, { forward, up: UP });
         if (walks) return;
       }
+      // (a droid on wheels, repulsors or legs it came without: no person's
+      // sway or breath, only a machine's hum, steady as it goes)
+      if (machine) {
+        scene.position.y = rest.y + Math.sin(clock * 9 + seed) * 0.004 * tall;
+        return;
+      }
       gait ??= createGait({ stride: 0.75 * tall * (model.scale.y || 1), cadence: [1.2, 2.2], seed });
       const g = gait.step(dt, speed);
       // (a shuffle sways less than a stride)
@@ -405,6 +418,9 @@ export function modelFigureOf(scene, { animations = [], anim: names = null, seed
     base: calls.base,
     look: calls.look,
     react: calls.react,
+    // how far its step has it off where it stands (the sway's rise and roll,
+    // in its own frame): for a rider on its back to go with it (riders.js)
+    sway: () => ({ y: (scene.position.y - rest.y) * (model.scale.y || 1), roll: scene.rotation.z - rest.z }),
     dispose() {
       anim?.dispose();
     },
@@ -437,7 +453,9 @@ function propFigure(kind, spec, kit, i = 0) {
 // there's a model; i is which of the entry's figures (a crew kind's face).
 export async function anyFigure(kind, spec = {}, kit = null, i = 0) {
   if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec, kit, i);
-  return (await crewFigure(kind, i)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit, i);
+  // (a machine on legs its model came without: cut at its joints and walked, its rider up top; walkers.js)
+  const walker = WALKERS[kind] ? await walkerFigure(kind, i).catch(() => null) : null;
+  return walker ?? (await crewFigure(kind, i)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit, i);
 }
 
 // How far off the fog has someone all but gone (97% fog, FogExp2's
@@ -533,6 +551,8 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   const avoider = (self) => (x, z) => {
     if (world.solids) for (const s of world.solids.near(x, z, 0.6)) if (!s.off && s.type === 'circle' ? Math.hypot(x - s.x, z - s.z) < s.r + 0.4 : false) return true;
     for (const o of actors) if (o !== self && Math.hypot(x - o.b.x, z - o.b.z) < 0.9 * (o.spec.scale ?? 1) && Math.hypot(self.b.x - o.b.x, self.b.z - o.b.z) > Math.hypot(x - o.b.x, z - o.b.z)) return true;
+    // (and not out of the shallows into deep water, unless it's a swimmer)
+    if (!self.spec.dive && tooDeep(world, x, z) && !tooDeep(world, self.b.x, self.b.z)) return true;
     // (inside somewhere, the floor's flat and the world's edge is far off)
     if (self.spec.zone) return false;
     return world.normalAt?.(x, z)[1] < 0.75 || Math.hypot(x, z) > (world.reach ?? 600);

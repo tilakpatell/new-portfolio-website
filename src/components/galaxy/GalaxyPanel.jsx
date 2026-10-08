@@ -9,6 +9,7 @@ import Face from '../universe/Faces';
 import ModelCredits from '../ModelCredits';
 import GuideLink from '../guide/GuideLink';
 import { FILMS, eraById, eraOf, filmLabel, filmsOf, goalsOf, systemById, yearLabel } from './systems';
+import { placesOf } from './places';
 import { Oath, SystemWar } from './WarCard';
 import { useWar } from './useWar';
 
@@ -141,7 +142,7 @@ function Quote({ quote }) {
   );
 }
 
-export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping, held = null, balked = false, oath = null, suggested = null, onSwear }) {
+export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping, held = null, balked = false, oath = null, suggested = null, onSwear, found = [] }) {
   const crew = crewById(ship);
   const panel = useRef(null);
   const refocus = useRef(false);
@@ -156,12 +157,13 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
   }, [tucked]);
   const era = eraById(eraOf(system));
   const goals = goalsOf(system);
+  const places = placesOf(system);
   const toward = jumping ? systemById(jumping.to) : null;
   const short = held ? (systemById(held.to) ?? system) : null; // (where the Interdictor pulled you out short of)
 
   if (tucked) {
     return (
-      <aside ref={panel} className="universe-panel galaxy-panel" aria-label={system.name} data-tucked="">
+      <aside ref={panel} className="universe-panel galaxy-panel" data-tour="galaxy-panel" aria-label={system.name} data-tucked="">
         <button type="button" className="universe-untuck" onClick={() => toggle(false)} aria-expanded="false">
           <span className="eyebrow truncate" style={{ color: short && !toward ? '#ff8a80' : system.accent }}>
             {toward ? `Jumping to ${toward.name}…` : short ? 'Interdicted!' : system.name}
@@ -177,7 +179,7 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
 
   const quote = system.quote;
   return (
-    <aside ref={panel} className="universe-panel galaxy-panel" aria-label={system.name}>
+    <aside ref={panel} className="universe-panel galaxy-panel" data-tour="galaxy-panel" aria-label={system.name}>
       <button type="button" className="universe-tuck" onClick={() => toggle(true)} aria-expanded="true" aria-label="Hide the panel" title="Hide the panel">
         <RiSideBarFill className="h-4 w-4" aria-hidden="true" />
       </button>
@@ -273,6 +275,26 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
                 </button>
               </li>
             ))}
+          </ul>
+        </section>
+      )}
+
+      {crew && places.length > 0 && (
+        <section className="galaxy-here galaxy-out" aria-label="Out there">
+          <p className="label">
+            Out there <span className="text-muted">· {found.filter((id) => places.some((p) => p.id === id)).length} of {places.length} found</span>
+          </p>
+          <ul>
+            {places.map((p) => {
+              const got = found.includes(p.id);
+              return (
+                <li key={p.id} data-found={got ? '' : undefined}>
+                  <button type="button" onClick={() => onGo(p.id)} disabled={at === p.id}>
+                    <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> {at === p.id ? `At ${(got ? p.name : p.hint).replace(/^(A|An|The) /, (m) => m.toLowerCase())}` : got ? p.name : `${p.hint}, somewhere out there`}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

@@ -1,0 +1,156 @@
+/* The worlds' HUD kit (./Hud.jsx and the parts beside it): the spacing
+   tokens every world's HUD is laid out by, and the parts' look, drawn from
+   variables a world sets on its own class (its skin): its colours, its title
+   face and its big-number face stay its own. Defaults are the towns' look,
+   the HUD fourteen worlds already shared. Text over the 3D sits on glass,
+   never blurred (a blur over a canvas redrawn every frame costs a frame).
+   Every rule weighs what one element does (:where() for nothing, and
+   :not(hud-none), an element no page has, for (0,0,1)): enough to beat
+   Tailwind's preflight (`button { padding: 0 }`, which loads first, in
+   index.css), never a world's own class, whichever loads first. */
+
+:where(.hud) {
+  /* the skin: a world sets these on its own class */
+  --hud-ink: #f6f3ea;
+  --hud-muted: #cfc8b4;
+  --hud-glass: rgba(8, 12, 20, 0.78);
+  --hud-glass-hi: rgba(10, 14, 22, 0.92);
+  --hud-line: rgba(255, 255, 255, 0.22);
+  --hud-accent: #f0c040;
+  --hud-accent-ink: #1d160a;
+  --hud-bad: #ff7a5a;
+  --hud-radius: 8px;
+  --hud-border: 1px solid var(--hud-line);
+  --hud-shadow: 0 6px 22px rgba(0, 0, 0, 0.32);
+  --hud-face: var(--font-sans);
+  --hud-title-face: var(--font-sans);
+  --hud-num-face: var(--font-mono);
+  /* set by ./Hud.jsx from the measured rows (./hud.js layoutRows) */
+  --hud-under: calc(var(--hud-pad) + 2.45rem);
+  --hud-foot: var(--hud-pad-b);
+  --hud-thumbs: var(--hud-pad-b);
+
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  color: var(--hud-ink);
+  font-family: var(--hud-face);
+}
+
+/* the rows; only their controls take the pointer */
+:where(.hud-row):not(hud-none) { position: absolute; left: 0; right: 0; display: flex; justify-content: space-between; gap: 1rem; padding: var(--hud-pad) var(--hud-pad-r) var(--hud-pad) var(--hud-pad-l); pointer-events: none; }
+:where(.hud-row > *):not(hud-none) { pointer-events: auto; }
+:where(.hud-top):not(hud-none) { top: 0; z-index: 5; align-items: flex-start; } /* (its Menu opens over everything) */
+:where(.hud-brand):not(hud-none) { display: grid; gap: 0.5rem; max-width: min(32rem, 60%); pointer-events: none; }
+:where(.hud-tools):not(hud-none) { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-start; gap: 0.4rem; }
+:where(.hud-foot):not(hud-none) { bottom: 0; align-items: flex-end; padding-bottom: var(--hud-foot); padding-right: var(--guide-reserve); }
+:where(.hud-foot:empty):not(hud-none) { display: none; }
+:where(.hud-thumbs):not(hud-none) { bottom: 0; z-index: 3; align-items: flex-end; padding-bottom: var(--hud-thumbs); padding-right: var(--guide-reserve); }
+/* (thumbs over the foot sit above the guide's "?": no corner to keep there) */
+:where(.hud[data-order='thumbs-over'] .hud-thumbs):not(hud-none) { padding-right: var(--hud-pad-r); }
+
+/* the title, and the chip it shrinks to */
+:where(.hud-title):not(hud-none) { margin: 0; font: 600 clamp(1.8rem, 1.1rem + 2.4vw, 3rem)/1 var(--hud-title-face); color: var(--hud-ink); text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6); }
+:where(.hud-brand[data-chip] .hud-title):not(hud-none) { display: none; }
+
+/* buttons and chips (the Menu's button, the counters) */
+:where(.hud-btn):not(hud-none), :where(.hud-chip):not(hud-none) { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0; padding: 0.42rem 0.75rem; border: var(--hud-border); border-radius: var(--hud-radius); background: var(--hud-glass); color: var(--hud-ink); font: 600 0.82rem/1.2 var(--hud-face); white-space: nowrap; }
+:where(.hud-btn):not(hud-none) { cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+:where(.hud-btn:hover):not(hud-none), :where(.hud-btn:focus-visible):not(hud-none) { background: var(--hud-glass-hi); border-color: var(--hud-accent); }
+:where(.hud-chip b):not(hud-none) { color: var(--hud-accent); font-family: var(--hud-num-face); font-variant-numeric: tabular-nums; }
+
+/* the one Menu */
+:where(.hud-menu):not(hud-none) { position: relative; }
+:where(.hud-menu-list):not(hud-none) { position: absolute; right: 0; top: calc(100% + 0.4rem); z-index: 6; display: grid; min-width: 13rem; padding: 0.3rem; border: var(--hud-border); border-radius: var(--hud-radius); background: var(--hud-glass-hi); box-shadow: var(--hud-shadow); }
+:where(.hud-menu-list > *):not(hud-none) { display: block; padding: 0.55rem 0.7rem; border: 0; border-radius: 5px; background: none; color: var(--hud-ink); font: 600 0.82rem/1.2 var(--hud-face); text-align: left; text-decoration: none; cursor: pointer; }
+:where(.hud-menu-list > :is(button, a):hover, .hud-menu-list > :is(button, a):focus-visible):not(hud-none) { background: color-mix(in srgb, var(--hud-accent) 18%, transparent); outline: none; }
+:where(.hud-menu-list b):not(hud-none) { color: var(--hud-accent); }
+:where(.hud-menu-list [data-on]):not(hud-none) { cursor: default; }
+
+/* the objective line: under the title, on glass */
+:where(.hud-objective):not(hud-none) { justify-self: start; margin: 0; padding: 0.5rem 0.8rem; border: var(--hud-border); border-radius: var(--hud-radius); background: var(--hud-glass); color: var(--hud-ink); font: 500 clamp(0.8rem, 0.75rem + 0.25vw, 0.95rem)/1.4 var(--hud-face); }
+:where(.hud-objective:empty):not(hud-none), :where(.hud-objective:has(.hud-objective-text:empty)):not(hud-none) { display: none; }
+:where(.hud-objective-glyph):not(hud-none) { color: var(--hud-accent); }
+
+/* the prompt: a pill, the key first (a world's own shape on its own class) */
+:where(.hud-prompt):not(hud-none) { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.55rem 1rem; border: var(--hud-border); border-radius: 999px; background: var(--hud-glass-hi); color: var(--hud-ink); font: 600 0.95rem/1.1 var(--hud-face); box-shadow: var(--hud-shadow); cursor: pointer; touch-action: manipulation; }
+:where(.hud-prompt:disabled):not(hud-none) { cursor: default; color: var(--hud-muted); }
+:where(.hud-prompt-dot):not(hud-none) { color: var(--hud-muted); }
+:where(.hud-prompt-card):not(hud-none) { display: grid; justify-items: center; gap: 0.45rem; }
+:where(.hud-prompt-sub):not(hud-none) { margin: 0; color: var(--hud-muted); font: 500 0.84rem/1.35 var(--hud-face); text-align: center; }
+:where(.hud-prompt-acts):not(hud-none) { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
+
+/* one line that comes and goes: top centre, under the top row */
+:where(.hud-toast):not(hud-none) { position: absolute; left: 50%; top: var(--hud-under); z-index: 3; max-width: min(32rem, calc(100% - 2rem)); margin: 0; padding: 0.7rem 1rem; border-left: 4px solid var(--hud-accent); border-radius: var(--hud-radius); background: var(--hud-glass-hi); color: var(--hud-ink); font: 500 0.95rem/1.4 var(--hud-face); text-align: center; transform: translateX(-50%); animation: hud-toast 4.2s ease both; pointer-events: none; }
+:where(.hud-toast[data-bad]):not(hud-none) { border-left-color: var(--hud-bad); }
+@keyframes hud-toast { 0% { opacity: 0; transform: translate(-50%, -8px); } 8%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+
+/* who's talking: a bubble over their head (moved by the frame loop) */
+:where(.hud-bubble):not(hud-none) { position: absolute; left: 0; top: 0; z-index: 2; width: 0; height: 0; opacity: 0; transition: opacity 0.2s ease; pointer-events: none; }
+:where(.hud-bubble > div):not(hud-none) { position: absolute; left: 0; bottom: 10px; display: grid; gap: 0.2rem; width: max-content; max-width: min(17rem, 70vw); padding: 0.55rem 0.75rem; border-radius: 12px; background: var(--hud-bubble, #fbf4e2); color: var(--hud-bubble-ink, #2a1d10); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); transform: translateX(-50%); font: 500 0.88rem/1.35 var(--hud-face); }
+:where(.hud-bubble > div):not(hud-none)::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 14px; height: 14px; background: var(--hud-bubble, #fbf4e2); transform: translateX(-50%) rotate(45deg); }
+:where(.hud-bubble b):not(hud-none) { color: var(--hud-bubble-name, var(--hud-accent-ink)); font: 600 0.74rem/1.1 var(--hud-title-face); letter-spacing: 0.05em; }
+
+/* the list of things to do: on the right, under the top row */
+:where(.hud-list):not(hud-none) { position: absolute; right: var(--hud-pad-r); top: var(--hud-under); z-index: 4; width: min(25rem, calc(100% - 2 * var(--hud-pad))); max-height: calc(100% - var(--hud-under) - var(--guide-clear)); overflow-y: auto; pointer-events: auto; padding: 0.75rem; border: var(--hud-border); border-radius: 12px; background: var(--hud-glass-hi); color: var(--hud-ink); box-shadow: var(--hud-shadow); }
+:where(.hud-list-head):not(hud-none) { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; font: 600 1.05rem/1 var(--hud-title-face); }
+:where(.hud-list-head p):not(hud-none), :where(.hud-list-flavour):not(hud-none) { margin: 0; }
+:where(.hud-list-flavour):not(hud-none) { margin: -0.2rem 0 0.6rem; color: var(--hud-muted); font-size: 0.82rem; }
+:where(.hud-list ul):not(hud-none) { display: grid; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+:where(.hud-list li):not(hud-none) { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.7rem; border-radius: 9px; background: rgba(255, 255, 255, 0.05); }
+:where(.hud-list li[data-next]):not(hud-none) { box-shadow: inset 0 0 0 1px var(--hud-accent); }
+:where(.hud-list li:not([data-open])):not(hud-none) { color: var(--hud-muted); }
+:where(.hud-list li > div):not(hud-none) { flex: 1; min-width: 0; }
+:where(.hud-seal):not(hud-none) { flex: none; display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border: 2px dashed var(--hud-line); border-radius: 50%; font: 700 0.85rem/1 var(--hud-face); }
+:where(.hud-list li[data-done] .hud-seal):not(hud-none) { border: 0; background: var(--hud-accent); color: var(--hud-accent-ink); }
+:where(.hud-list li[data-side]:not([data-done]) .hud-seal):not(hud-none) { border-style: dotted; }
+:where(.hud-list-name):not(hud-none) { margin: 0; font-weight: 700; }
+:where(.hud-list-sub):not(hud-none) { margin: 0.15rem 0 0; color: var(--hud-muted); font-size: 0.82rem; line-height: 1.35; }
+:where(.hud-list-side):not(hud-none) { margin: 0.85rem 0 0.4rem; color: var(--hud-accent); font: 700 0.7rem/1 var(--hud-face); letter-spacing: 0.12em; text-transform: uppercase; }
+
+/* the thumbs: one stick, round buttons in two sizes */
+:where(.hud-stick):not(hud-none) { position: relative; flex: none; width: 116px; height: 116px; border: 2px solid var(--hud-line); border-radius: 50%; background: color-mix(in srgb, var(--hud-glass) 45%, transparent); touch-action: none; }
+:where(.hud-stick span):not(hud-none) { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: var(--hud-accent); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); transform: translate(var(--sx, 0px), var(--sy, 0px)); }
+:where(.hud-buttons):not(hud-none) { display: grid; gap: 0.5rem; justify-items: end; }
+:where(.hud-touch-btn):not(hud-none) { display: grid; place-items: center; width: var(--touch-action); height: var(--touch-action); padding: 0; border: var(--hud-border); border-radius: 50%; background: var(--hud-glass); color: var(--hud-ink); font: 700 0.72rem/1 var(--hud-face); letter-spacing: 0.06em; text-transform: uppercase; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+:where(.hud-touch-btn[data-size='small']):not(hud-none) { width: var(--touch-secondary); height: var(--touch-secondary); }
+:where(.hud-touch-btn[data-size='primary']):not(hud-none) { width: var(--touch-primary); height: var(--touch-primary); }
+:where(.hud-touch-btn:active):not(hud-none) { background: var(--hud-accent); color: var(--hud-accent-ink); }
+
+/* (a HUD's key cap is the house one's, in src/index.css beside .kbd) */
+
+@media (max-width: 639px) {
+  :where(.hud-bubble > div):not(hud-none) { max-width: 13rem; font-size: 0.8rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.hud-toast) { animation: none; }
+}
+
+/* the spacing, on the root: a world's HUD that isn't in the frame yet
+   (its own rows, as the towns' still are) is spaced by the same numbers */
+:root {
+  /* spacing: the edge pad, the pad at the foot (the phone's home bar if
+     that's more), the corner the site's "?" keeps (extras.css .guide-btn:
+     right 16, 42 wide), the gap between stacked things */
+  --hud-pad: clamp(0.75rem, 2vw, 1.25rem);
+  --hud-safe-b: env(safe-area-inset-bottom, 0px);
+  --hud-pad-b: max(var(--hud-pad), var(--hud-safe-b));
+  --hud-pad-l: max(var(--hud-pad), env(safe-area-inset-left, 0px));
+  --hud-pad-r: max(var(--hud-pad), env(safe-area-inset-right, 0px));
+  --guide-reserve: calc(16px + 42px + 0.9rem);
+  /* …and its height from the foot (bottom 22 px + the home bar, 42 tall, a gap) */
+  --guide-clear: calc(22px + 42px + 0.5rem + var(--hud-safe-b));
+  --hud-gap: 0.5rem;
+  /* touch buttons: one main action at most, actions, the rest */
+  --touch-primary: 76px;
+  --touch-action: 64px;
+  --touch-secondary: 52px;
+  /* the smallest text a player reads while playing */
+  --hud-min: 0.7rem;
+}
+
+/* a world's inner place (a shop, a game over the page): one height for all,
+   over the nav (40) and the guide's "?" (46), as most already were */
+:root { --z-place: 70; }

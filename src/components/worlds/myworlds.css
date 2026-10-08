@@ -1,0 +1,39 @@
+/* ─── My worlds on /worlds (MyWorlds.jsx): the tools, then a row a world ─── */
+
+.myworlds-tools { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem 1.5rem; margin-top: 1.25rem; }
+.myworlds-new { display: grid; gap: 0.5rem; flex: 1 1 18rem; max-width: 28rem; }
+.myworlds-new-row { display: flex; gap: 0.5rem; }
+.myworlds-seed,
+.myworlds-name-input {
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-chip);
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+}
+.myworlds-seed { flex: 1; }
+.myworlds-seed:focus-visible,
+.myworlds-name-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.myworlds-status { min-height: 1.5em; margin-top: 0.75rem; font-size: 0.875rem; }
+
+.myworlds-list { display: grid; gap: 0.75rem; margin-top: 0.5rem; padding: 0; list-style: none; }
+.myworlds-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  background: var(--surface);
+}
+.myworlds-info { flex: 1 1 14rem; min-width: 0; }
+.myworlds-name { overflow: hidden; font-weight: 650; color: var(--text); text-overflow: ellipsis; white-space: nowrap; }
+.myworlds-name-input { width: 100%; max-width: 22rem; font-weight: 650; }
+.myworlds-meta { display: flex; flex-wrap: wrap; gap: 0.15rem 0.9rem; margin-top: 0.2rem; font-size: 0.85rem; }
+.myworlds-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.myworlds-empty { margin-top: 0.5rem; }

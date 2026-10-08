@@ -110,7 +110,107 @@ const SETS = [
       Idle_Loop: 'idle.calm',
     },
   },
+  // the paid packs' (the source zips, `node scripts/assets-fetch.mjs ual1
+  // ual2`: the newer Unreal-style rig, which the retarget knows under the
+  // older names), what the free one and Meshy's library don't have
+  {
+    name: 'pro',
+    pack: 'ual1',
+    short: true,
+    clips: {
+      Jog_Fwd_Loop: 'jog',
+      Jog_Bwd_Loop: 'jog.back',
+      Jog_Left_Loop: 'jog.left',
+      Jog_Right_Loop: 'jog.right',
+      Jog_Fwd_L_Loop: 'jog.fwd.left',
+      Jog_Fwd_R_Loop: 'jog.fwd.right',
+      Jog_Bwd_L_Loop: 'jog.back.left',
+      Jog_Bwd_R_Loop: 'jog.back.right',
+      Crouch_Fwd_L_Loop: 'crouch.fwd.left',
+      Crouch_Fwd_R_Loop: 'crouch.fwd.right',
+      Hit_Shoulder_L: 'hit.shoulder.l',
+      Hit_Shoulder_R: 'hit.shoulder.r',
+      Hit_Stomach: 'hit.stomach',
+      Death02: 'die.2',
+      Idle_Tired_Loop: 'tired',
+      Sitting_Idle02_Loop: 'sit.idle2',
+      Sitting_Idle03_Loop: 'sit.idle3',
+      Sitting_Nodding_Loop: 'sit.nod',
+      GroundSit_Enter: 'sit.ground.enter',
+      GroundSit_Idle_Loop: 'sit.ground',
+      GroundSit_Exit: 'sit.ground.exit',
+      Crawl_Fwd_Loop: 'crawl',
+      Crawl_Idle_Loop: 'crawl.idle',
+      Counter_Idle_Loop: 'counter.idle',
+      Counter_Give: 'counter.give',
+      Counter_Show: 'counter.show',
+      Counter_Angry: 'counter.angry',
+      Celebration: 'celebrate',
+      Crying: 'cry',
+      PickUp_Kneeling: 'pickup.kneel',
+      BackFlip: 'backflip',
+      Spell_Double_Enter: 'cast.double.enter',
+      Spell_Double_Shoot_Loop: 'cast.double',
+    },
+  },
+  {
+    name: 'ual2',
+    pack: 'ual2',
+    short: true,
+    clips: {
+      Walk_L_Loop: 'walk.left',
+      Walk_R_Loop: 'walk.right',
+      Walk_Fwd_L_Loop: 'walk.fwd.left',
+      Walk_Fwd_R_Loop: 'walk.fwd.right',
+      Walk_Bwd_L_Loop: 'walk.back.left',
+      Walk_Bwd_R_Loop: 'walk.back.right',
+      Idle_FoldArms_Loop: 'arms.folded',
+      Yes: 'nod',
+      Idle_No_Loop: 'shake',
+      Surprise: 'surprise',
+      Consume: 'eat',
+      Bandage_Loop: 'bandage',
+      Hit_Knockback: 'hit.knock',
+      KipUp: 'kipup',
+      IdleToLay: 'lie.down',
+      LayToIdle: 'lie.up',
+      Melee_Combo: 'melee.combo',
+      Melee_Hook: 'melee.hook',
+      Melee_Knee: 'melee.knee',
+      OverhandThrow: 'throw',
+      Mining_Loop: 'mine',
+      TreeChopping_Loop: 'chop',
+      Idle_Lantern_Loop: 'lantern',
+      Idle_Rail_Loop: 'lean.rail',
+      Chest_Open: 'open.chest',
+      Sword_Regular_A: 'sword.a',
+      Sword_Regular_B: 'sword.b',
+      Sword_Regular_C: 'sword.c',
+      Sword_Light_A: 'sword.light.a',
+      Sword_Light_B: 'sword.light.b',
+      Sword_Light_C: 'sword.light.c',
+      Sword_Heavy_A: 'sword.heavy',
+      Sword_Block: 'sword.block',
+      Sword_Dash: 'sword.dash',
+      LiftAir_Idle_Loop: 'lifted',
+      LiftAir_Fall: 'lifted.fall',
+      LiftAir_Fall_Impact: 'lifted.land',
+      Zombie_Idle_Loop: 'zombie.idle',
+      Zombie_Walk_Fwd_Loop: 'zombie.walk',
+      Zombie_Bite: 'zombie.bite',
+      Zombie_Scratch: 'zombie.scratch',
+      Farm_Harvest: 'farm.harvest',
+      Farm_Watering: 'farm.water',
+      Farm_PlantSeed: 'farm.plant',
+      Fish_Cast: 'fish.cast',
+      Fish_Cast_Idle_Loop: 'fish.idle',
+      Fish_Reel: 'fish.reel',
+      Turn180_L: 'turn.around',
+    },
+  },
 ];
+// where a set's pack's GLB is, fetched (scripts/assets-fetch.mjs)
+const PACK_GLB = { ual1: join(ROOT, 'lab', 'assets', 'ual1', 'Unreal-Godot', 'UAL1.glb'), ual2: join(ROOT, 'lab', 'assets', 'ual2', 'Unreal-Godot', 'UAL2.glb') };
 
 // a GLB's JSON chunk
 const glbJson = (buf) => JSON.parse(buf.subarray(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
@@ -280,14 +380,25 @@ async function bake(file, takes, { bones = null, short = false }) {
 }
 
 const rig = restRig(glbJson(await readFile(RIG)));
-const src = keepRest(ualRig(await loadUal(SRC)));
+// (each pack's mannequin, loaded once: the free pack's unless a set names another)
+const sources = new Map();
+const sourceOf = async (set) => {
+  const file = set.pack ? PACK_GLB[set.pack] : SRC;
+  if (!sources.has(file)) sources.set(file, keepRest(ualRig(await loadUal(file))));
+  return sources.get(file);
+};
+let src = null;
 const sets = ONLY ? SETS.filter((s) => s.name === ONLY) : SETS;
 if (!sets.length) throw new Error(`no set ${ONLY} (${SETS.map((s) => s.name).join(', ')})`);
-const missing = sets.flatMap((s) => Object.keys(s.clips)).filter((n) => !src.clips[n]);
-if (missing.length) throw new Error(`${SRC}: no ${missing.join(', ')}`);
+for (const set of sets) {
+  const from = await sourceOf(set);
+  const missing = Object.keys(set.clips).filter((n) => !from.clips[n]);
+  if (missing.length) throw new Error(`${set.name}: no ${missing.join(', ')}`);
+}
 
 const made = [];
 for (const set of sets) {
+  src = await sourceOf(set);
   toRest(src);
   const takes = Object.entries(set.clips);
   if (set.file) made.push(await bake(set.file, takes, set));

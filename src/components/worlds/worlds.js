@@ -1,4 +1,5 @@
 import { UNIVERSES } from '../universe/universes';
+import { classicPathFor, readStart, universePathFor, viewOf } from '../../lib/view';
 
 // The hidden worlds, one per fandom, each a page of its own (the universes
 // on the map that have one, and the pages inside them: Star Wars has the
@@ -11,6 +12,7 @@ export const WORLDS = UNIVERSES.filter((u) => u.world).flatMap((u) => [{ to: u.t
 // A world on the world runtime (src/runtime) says the same in its module's
 // `mb` (its test checks they agree).
 export const WORLD_MB = {
+  '/universe': 6, // not a world (nothing gates it), but the map's own download, for the tour's "Open the universe map · N MB" on a phone: the planets' textures, the stations and ships, from /home at a phone's size (5.8 measured)
   '/caribbean': 16, // Dead Man's Tide's ships and sea creatures
   '/invincible': 4, // the three HD figures and the city's three skies
   '/cybertron': 36, // Iacon at war's robots, Metroplex and the city's kit (the world at the top), and below it Roll out's cast, scanned ground, rocks and sky, the statues, and Optimus's transformation
@@ -35,3 +37,10 @@ export const WORLD_MB = {
 // and its own phone gate, not its parent's.
 export const worldAt = (pathname) =>
   WORLDS.filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
+
+// The way out of a world, for the view the visitor is in (the glossary's
+// last row): "Universe map", back to this world's place on the map, or
+// "Classic site", to the pages, for one who reads the site as pages. For a
+// world's HUD Menu (runtime/hud's Menu takes it as it is).
+export const wayOut = (pathname, start = readStart()) =>
+  viewOf(pathname, start) === 'classic' ? { label: 'Classic site', to: classicPathFor(pathname) } : { label: 'Universe map', to: universePathFor(pathname) };

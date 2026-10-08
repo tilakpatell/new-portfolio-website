@@ -48,6 +48,8 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { loadPeople } from '../../office/people';
+import { budgetClock } from '../../../lib/three/animBudget';
+import { CAST_AT, CIVILIANS, castFor, createErrand, createStreet, ringOf } from './street';
 import { createStage } from '../../office/stage3d';
 import { budget, device } from '../../../lib/device';
 import { loadTexture } from '../../../lib/hdri';
@@ -312,6 +314,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       grade.uniforms.uTime.value += ms / 1000;
       composer.render();
     };
+    stage.target = target; // (where the scene's drawn, for its shaders made ahead: office/stage3d's prepare)
     stage.onResize = (w, h, ratio) => {
       composer.setPixelRatio(ratio);
       composer.setSize(w, h);
@@ -793,42 +796,88 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
 
   // ── the cast, out where they belong: Jesse by the RV, Saul at his door, Gus
   // outside Los Pollos, Mike at the laundry, Badger and Skinny Pete at the Dog
-  // House, Tuco at Tampico. They come once the town’s up, and not on a phone.
-  // Jesse is as the universe’s wardrobe has him: in his hoodie or the lab’s
-  // suit, its colours and his gear on. ──
-  const cast = [];
+  // House, Tuco at Tampico (./street.js); on a phone, or without the bloom,
+  // the three you go to see first. Each stands on clips (office/people.js:
+  // a calm idle, the clip library's for the rest), their heads on Walt's car
+  // when it's near, and each with their own way of taking it (Saul waves you
+  // in, Tuco pounds his chest). With the bloom, a few more with errands on
+  // the sidewalks. Jesse is as the universe’s wardrobe has him: in his
+  // hoodie or the lab’s suit, its colours and his gear on. ──
+  const cast = []; // { id, p, clock (how often it's stepped), errand?, doing, talk }
   let people = null;
   let gone = false;
   const undress = [];
-  if (!mobile && fit.bloom > 0) {
-    const P = Math.PI;
+  const street = createStreet();
+  {
     const jesse = dressedAs('jesse', readLooks(local.get(LOOK_KEY)).jesse);
     const specOf = (id) => (id === 'jesse' ? jesse.spec : ABQ[id]);
-    const WHERE = [
-      ['jesse', -336, 124.6, P],
-      ['saul', -84.5, 12.4, P],
-      ['gus', 84, -13.2, 0],
-      ['mike', 146, -15.6, 0.3],
-      ['badger', -83.5, -13.6, 0.3],
-      ['pete', -82.2, -14.4, -0.5],
-      ['tuco', 11.4, 150, -P / 2],
-    ];
-    loadPeople(WHERE.map(([id]) => specOf(id)))
+    const ids = castFor({ phone: mobile, bloom: fit.bloom });
+    const walkers = mobile || !(fit.bloom > 0) ? [] : CIVILIANS;
+    loadPeople([...ids.map(specOf), ...walkers.map((c) => ABQ[c.id])].filter(Boolean), null, { clips: true })
       .then((got) => {
         if (gone) return got.dispose();
         people = got;
-        for (const [id, x, z, yaw] of WHERE) {
-          const p = got.person(specOf(id), { pose: 'stand', idle: true });
+        for (const id of ids) {
+          const [, x, z, yaw] = CAST_AT.find(([k]) => k === id);
+          const p = got.person(specOf(id), { pose: 'stand', idle: true, anim: true });
           if (!p) continue;
           if (id === 'jesse') undress.push(dress(p, jesse.look));
           p.group.position.set(x, surfaceHeight(x, z), z);
           p.group.rotation.y = yaw;
           scene.add(p.group);
-          cast.push(p);
+          cast.push({ id, p, clock: budgetClock(cast.length + 1), doing: null, talk: false });
         }
+        walkers.forEach((c, i) => {
+          const b = CITY.blocks.find((k) => c.near.x > k.kerb.x0 && c.near.x < k.kerb.x1 && c.near.z > k.kerb.z0 && c.near.z < k.kerb.z1);
+          const p = b && got.person(ABQ[c.id], { pose: 'stand', idle: true, anim: true });
+          if (!p) return;
+          scene.add(p.group);
+          const errand = createErrand({ ring: ringOf(b.kerb), stops: c.stops, seed: 31 + i, pace: c.pace });
+          cast.push({ id: c.id, p, clock: budgetClock(cast.length + 1), errand, phone: Boolean(c.phone), doing: null, talk: false });
+        });
       })
       .catch(() => {});
   }
+  const lookAt = new THREE.Vector3();
+  // what the street makes of the car (./street.js), on each of them; and
+  // the walkers along their errands. Each stepped as often as it's near the
+  // camera (every frame up close, every second or fourth further off)
+  const stepCast = (state, dt) => {
+    const c = state.car;
+    const car = { x: c.x, z: c.z, yaw: c.yaw, speed: c.speed };
+    const acts = street.step(dt, { car, near: state.near });
+    for (const f of cast) {
+      const p = f.p;
+      if (f.errand) {
+        const e = f.errand.step(dt, car);
+        p.group.position.set(e.x, surfaceHeight(e.x, e.z), e.z);
+        p.group.rotation.y = e.yaw;
+        // (Lydia's always on the phone; the rest do their thing at their stops)
+        const doing = e.doing ?? (f.phone ? 'phone' : null);
+        if (doing !== f.doing) {
+          if (f.doing) p.stop('upper');
+          if (doing) p.play(doing, { layer: 'upper', loop: doing !== 'scared' });
+          f.doing = doing;
+        }
+        p.look(Math.hypot(c.x - e.x, c.z - e.z) < 12 ? lookAt.set(c.x, surfaceHeight(c.x, c.z) + 1.1, c.z) : null);
+      } else {
+        const a = acts[f.id];
+        if (a) {
+          p.look(a.look ? lookAt.set(a.look.x, surfaceHeight(a.look.x, a.look.z) + (a.look.y ?? 1.1), a.look.z) : null);
+          if (a.clip) p.play(a.clip, { layer: a.layer });
+          if (a.gesture) p.gesture(a.gesture);
+          if (a.talk !== f.talk) {
+            if (a.talk) p.play('talk', { layer: 'upper', loop: true });
+            else if (p.anim?.playing('upper') === 'talk') p.stop('upper');
+            f.talk = a.talk;
+          }
+        }
+      }
+      const d = camera.position.distanceTo(p.group.position);
+      const step = f.clock(d < 40 ? 1 : d < 120 ? 0.5 : 0.25, dt);
+      if (step > 0) p.update(clock, step);
+    }
+  };
 
   // ── what moves and glows ──
   const balloons = own(createBalloons({ count: mobile ? 16 : 34 }));
@@ -1058,7 +1107,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       moving.push({ x: t.x, y: groundHeight(t.x, t.z), z: t.z, yaw: t.yaw, type: t.type, paint: t.paint });
     }
     fleet.set(moving);
-    if (!still) for (const p of cast) p.update(clock, dt);
+    if (!still && cast.length) stepCast(state, dt);
     smoke?.update(still ? 0 : dt, 0.3 + 0.7 * L.day);
     tailMat.opacity = 0.16 + L.night * 0.34 + ((state.throttle ?? 0) < -0.1 || state.handbrake ? 0.5 : 0);
     // the car: where it is (a kerb up, on a block), its weight thrown out of the turn and back on the throttle
@@ -1255,7 +1304,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     blobs.set(nb++, c, 0, 0, AZTEK_BLOB, c.yaw);
     blobs.set(nb++, state.hank, 0, 0, HANK_BLOB, state.hank.yaw);
     for (const t of moving) blobs.set(nb++, t, 0, 0, blobOf(t.type), t.yaw);
-    for (const p of cast) blobs.set(nb++, p.group.position, 0, 0, PERSON_BLOB, 0);
+    for (const f of cast) blobs.set(nb++, f.p.group.position, 0, 0, PERSON_BLOB, 0);
     for (const w of weeds.weeds) blobs.set(nb++, w.w.position, w.w.position.y - groundHeight(w.x, w.z) - 0.62 * w.s, 0, [1.4 * w.s, 1.4 * w.s], 0);
     for (const t of town.train) if (t.visible) blobs.set(nb++, t.position, 0, 0, FREIGHT_BLOB, Math.PI / 2);
     sky.mesh.position.copy(camera.position);
@@ -1278,6 +1327,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
 
   return {
     render,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: office/stage3d)
     setPlaces,
     // a beam of light over a place that's just opened
     beam(id) {
@@ -1340,7 +1390,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     bake: import.meta.env.DEV
       ? async ({ area, size = 1024, times, sunSamples, skySamples }) => {
           const { bakeFloorMask, bytesToDataUrl } = await import('../../../lib/three/grounding-bake');
-          const away = [car, hank, ghosts.group, blobs.mesh, marks, balloons.object, weeds.object, crystals.object, night.object, drop, water, beamMesh, sky.mesh, mountains.group, ...Object.values(markers).flatMap((m) => [m.ring, m.icon]), ...town.train, ...cast.map((p) => p.group)];
+          const away = [car, hank, ghosts.group, blobs.mesh, marks, balloons.object, weeds.object, crystals.object, night.object, drop, water, beamMesh, sky.mesh, mountains.group, ...Object.values(markers).flatMap((m) => [m.ring, m.icon]), ...town.train, ...cast.map((f) => f.p.group)];
           const shown = away.map((o) => o.visible);
           baking = true;
           away.forEach((o) => (o.visible = false));

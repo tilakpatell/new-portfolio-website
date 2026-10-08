@@ -23,7 +23,16 @@
 // opts: sight (m), cone (half-angle, radians), smell, hear, ringSight (m),
 // alert (s before the chase), chase and patrol (m/s), giveUp (s), leash (m),
 // catch (m), look (s spent looking about at a corner); and, to opt in: far
-// (s), suspicious (0…1), search (s), spots ([[x, z]…] worth a look), memory (s).
+// (s), suspicious (0…1), search (s), spots ([[x, z]…] worth a look), memory (s),
+// rand (a seeded random for the search, so a seeded town searches the same way).
+
+// watchPose(w, prev) → how a watcher's mode looks on a body, for the towns
+// that draw their watchers on the cast (../cast3d.js drawWatcher): where
+// its head goes ('about': swept by its own `look`; 'you'; 'ahead'), what its
+// upper body does (walking over to look or searching: walk.search; stood
+// looking: look.around), and what it does on coming into a mode ('alert': a
+// shout; 'caught': a blow). Drawn only: nothing here feeds back into the
+// watch, whose every outcome is as it was.
 
 import { belief, createSenses, sense } from '../../../lib/ai/perception';
 import { createSearch } from '../../../lib/ai/search';
@@ -104,7 +113,7 @@ const forget = (w) => {
 // the watchers' shared search, made for this town's rounds and spots
 const searchOf = (ws, opts) =>
   (ws.search ??= createSearch({
-    rand: Math.random,
+    rand: opts.rand ?? Math.random,
     time: opts.search ?? 10,
     stagger: 1.5,
     spots: (b) => {
@@ -259,4 +268,14 @@ export function stepWatchers(ws, h, dt, opts, world = {}) {
     }
   }
   return ev;
+}
+
+export function watchPose(w, prev = null) {
+  const mode = w?.mode ?? 'patrol';
+  const enter = mode !== prev && (mode === 'alert' || mode === 'caught') ? mode : null;
+  if (mode === 'patrol') return { head: (w.wait ?? 0) > 0 ? 'about' : 'ahead', upper: null, enter };
+  if (mode === 'suspicious') return (w.looked ?? 0) > 0 ? { head: 'ahead', upper: 'look.around', enter } : { head: 'ahead', upper: 'walk.search', enter };
+  if (mode === 'alert' || mode === 'chase' || mode === 'caught') return { head: 'you', upper: null, enter };
+  if (mode === 'search') return w.goal ? { head: 'ahead', upper: 'walk.search', enter } : { head: 'ahead', upper: 'look.around', enter };
+  return { head: 'ahead', upper: null, enter };
 }

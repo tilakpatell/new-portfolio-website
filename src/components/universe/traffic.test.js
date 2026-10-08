@@ -388,4 +388,27 @@ describe('your standing', () => {
       for (const e of clean.traffic.update(DT, t, ship, { wanted: false })) expect(e.type).not.toBe('spotted');
     }
   });
+
+  it('says who is near enough to witness something, the law among them, the same ship frame to frame', () => {
+    const { traffic } = setup();
+    const ship = { ...parked };
+    let seen = null;
+    let law = false;
+    let civil = false;
+    for (let t = 0; t < 120 && !(law && civil); t += DT) {
+      if (t % 10 < DT / 2) traffic.soon(t % 20 < 10 ? 'tie' : 'freighter');
+      traffic.update(DT, t, ship, {});
+      const near = traffic.near(ship, 40);
+      for (const n of near) {
+        if (n.law) law = true;
+        if (n.civil) civil = true;
+        if (n.law) expect(SIDES.starwars.factions.empire.kinds.map(([k]) => k)).toContain(n.kind);
+      }
+      if (near.length && !seen) seen = near[0].ref;
+      if (seen && near.length && near.some((n) => n.ref === seen)) expect(near.find((n) => n.ref === seen).kind).toBe(seen.kind);
+    }
+    expect(law).toBe(true);
+    expect(civil).toBe(true);
+    expect(traffic.near(ship, 0)).toEqual([]);
+  });
 });

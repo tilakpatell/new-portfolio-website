@@ -42,7 +42,7 @@ describe('missions played as quests', () => {
     expect(m?.kind).toBe('quest');
     const site = siteOf('lothal');
     const tower = site.places.find((p) => p.id === 'tower');
-    expect(tower?.things.some((t) => t.kind === 'lookout')).toBe(true);
+    expect(tower?.things.some((t) => t.kind === 'lothtower')).toBe(true);
     const race = m.quest.steps.find((s) => s.type === 'race');
     expect(race.ride).toBe('speederbike');
     expect(race.gates.length).toBeGreaterThanOrEqual(5);
@@ -195,7 +195,9 @@ describe('the galactic assaults', () => {
       it('stands its posts on dry, level ground within reach', () => {
         for (const p of m.posts) {
           expect(Math.hypot(...p.at) + p.r, p.id).toBeLessThan(REACH);
-          expect(h(...p.at), p.id).toBeGreaterThan((site.water?.level ?? -Infinity) + 0.2);
+          // (a post that says `wade` is in the shallows: knee-deep at most)
+          if (p.wade) expect(h(...p.at), p.id).toBeGreaterThan((site.water?.level ?? -Infinity) - 0.8);
+          else expect(h(...p.at), p.id).toBeGreaterThan((site.water?.level ?? -Infinity) + 0.2);
           // (level enough to walk: the slope across its middle and at its edge)
           for (const [x, z] of [p.at, [p.at[0] + p.r * 0.7, p.at[1]], [p.at[0], p.at[1] + p.r * 0.7]]) {
             const slope = Math.hypot(h(x + 2, z) - h(x - 2, z), h(x, z + 2) - h(x, z - 2)) / 4;

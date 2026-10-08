@@ -180,10 +180,14 @@ export const SITE = {
     span([0, 0], [-150, -270], 30, 24, 6),
     span([0, 0], [200, -290], 30, 24, 6),
     span([-150, -270], [-430, -250], 24, 36, 6),
-    // the statues along the Processional Way
+    // the statues along the Processional Way (the Jedi of old, the audit
+    // lane's model, its pedestal's top a little over the deck; a column
+    // under each down to the city, which the model hasn't)
     ...[60, 100, 140, 180, 220].flatMap((z) => [
-      { kind: 'statue', at: [-14, z], yaw: Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200 } },
-      { kind: 'statue', at: [14, z], yaw: -Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200 } },
+      { kind: 'statue', at: [-17, z], yaw: Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200, style: 'jedi' } },
+      { kind: 'statue', at: [17, z], yaw: -Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200, style: 'jedi' } },
+      { kind: 'plinth', at: [-17, z], abs: true, y: -6, solid: false, opts: { w: 11, round: true, depth: 200 } },
+      { kind: 'plinth', at: [17, z], abs: true, y: -6, solid: false, opts: { w: 11, round: true, depth: 200 } },
     ]),
     // Anakin's airspeeder, by your ship, and the platform's clutter: cargo
     // waiting for a lift, a lamp over it
@@ -368,8 +372,8 @@ export const SITE = {
           text: 'Hold the steps against the 501st',
           lines: [['Clone commander', 'Execute Order Sixty-Six.']],
           spawn: [
-            { kind: 'clone', n: 8, at: [0, 150], spread: 10, roam: 4, hp: 2, tag: 'clones66', hostile: { range: 40, every: 2, damage: 8, chase: 1.6, burst: { n: 3, gap: 0.1 } } },
-            { kind: 'clone', at: [0, 140], hp: 5, roam: 3, tag: 'clones66', hostile: { range: 16, chase: 2, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.5, guard: 3, blade: { color: '#4aa8ff' } } },
+            { kind: 'clone', n: 8, at: [0, 150], spread: 10, roam: 4, leash: 96, hp: 2, tag: 'clones66', hostile: { range: 40, every: 2, damage: 8, chase: 1.6, burst: { n: 3, gap: 0.1 } } },
+            { kind: 'clone', at: [0, 140], hp: 5, roam: 3, leash: 106, tag: 'clones66', hostile: { range: 16, chase: 2, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.5, guard: 3, blade: { color: '#4aa8ff' } } },
           ],
         },
       ],

@@ -32,20 +32,34 @@ Several spec numbers changed when they met the data, and the spec says so in eac
 - Free legs are costed as they are flown: a quarter of the pulse drive inside the home system, and the boost for the last leg in.
 - `tripTime` on `lanes` is flown in Node, like the other drives.
 
+Lane B, the traffic and the look, in the PR from `claude/universe-lane-traffic`:
+
+- **The flow.** `laneFlow.js` is the traffic in every lane, worked out from the wall clock, so every pilot sees the same ships. It gives `countFor`, `slotOf`, `shipsOf`, `flowAt`, `lapAt`, `wrapsOf`, `kill`, `isDead`, `positionOf`, `flowNear` and `nearest`. A ship shot down stays down until a lap that starts half a lap after the shot. The dead map’s keys are `${lane.id}|${way}|${i}|${m}`.
+- **The streaks and ribbons.**
+  - `laneStreaks.js` is one instanced draw of every flow ship, worked out on the GPU.
+  - `laneRibbons.js` is one draw of every carriageway, on the tube’s floor.
+- **The near traffic.** `laneTraffic.js` gives models to the 12 flow ships nearest you within 400. Only one model over 20,000 triangles is drawn at a time; the rest get the kit’s built stand-ins.
+- **The scene’s side.** `laneLook.js` puts all of it together with the ride’s look: the speed lines (now `lib/three/speedLines.js`) and the lens. `scene.js` makes it beside `rode()`, updates it beside `farPlaces.update`, and asks `laneLook.hit` after `traffic.hit` at both gun sites. `__universeDebug.laneLook` has `traffic.list`, `streaks.count`, `dead` and `rideK` for the checks.
+- **The HUD.** The lane line is styled. `rideLine` now also says `junction`: whether holding W carries straight on.
+
+Lane C, spread out (Tasks 1 to 5), in the PR from `claude/universe-spread`:
+
+- **The director’s zones.** `director.js`’s events each say where they can happen (`zones`), `zoneOf` reads it off `regionAt` and `laneAt`, and `playAs` turns a capital ship on a lane into an interdiction and a hunt into an ambush. The scene counts you on a lane only while riding one.
+- **The lane events.** `laneEvents.js` places them: the interdiction’s capital ship 600 on along the ride, its well ending the ride and holding the drive (and the hyperdrive) for six seconds; the lane jam’s mines 900 on (`minefield.js`’s `bandAcross`); the ambush’s pack at the ride’s off-ramp, sprung as you come off there (`hunterRules.js`’s `entryPoint` with `at`).
+- **Far fights.** `farFights.js` draws a skirmish or the front further than 2,000 out as flickering points, picks each skirmish’s node (`pickFightNode`, `skirmish.js`’s `placeAt`) and names it on the chart (“Fighting near The Veil”). The fronts are fought at `front.js`’s `frontAt` beacon.
+- **The other pilots.** The pose carries `FLAG.lane`; `online/pilotsRules.js`’s `howToDraw` makes a pilot a ship within 3,000, a streak along their lane beyond it while riding, or the chart’s blip. The roster names the region (`online/rosterWhere.js`). Poses now read to ±60,000 and 5,000 a second.
+
 ## Left
 
-1. **Lane B, the traffic and the look** (start from `origin/main`).
-   - `laneFlow.js` reads `LANES`, `TIERS`, `R` and `carriageway`.
-   - `laneStreaks.js` and `laneRibbons.js` sample `carriageway(lane, way)` with `lanes.js`’s `bezier` and `tangent`.
-   - The ride’s look reads `state.ride`, which is `ride.js`’s ride: `{ lane, way, s, off, speed }`.
-   - The lane line in `UniverseMap.jsx` is deliberately plain. Its data is `rideLine`’s `{ name, tier, next, eta }`, sent as the scene event `{ type: 'ride', on, line }`.
-   - In `scene.js`, add your lines beside `rode()` and the `laneFrame` call in `fly`. Don’t move them.
-2. **Lane C, spread out.**
-   - The director’s `zoneOf` needs `regionAt` (from `regions.js`) and `laneAt` (from `hyperlanes.js`).
-   - The ambush’s end node is `nodeById(ride.way === 'out' ? ride.lane.to : ride.lane.from)`.
-   - An interdiction ends a ride by setting `state.ride = null`. The ship keeps the ride’s speed and `ship.js`’s drop brings it down.
-   - The pose’s lane bit is `Boolean(state.ride)`.
-   - Getting on a lane already clears the hunters and emits `{ type: 'escaped', why: 'lane' }`.
+1. **Lane B** is done (above). Two things it leaves:
+   - Ship kinds on a lane that no side holds follow the crew you fly, so two pilots flying different crews see different kinds in the same places.
+   - In headless Chromium a frame takes about two real seconds, and the flow runs on the wall clock, so the near ships churn every frame there. To check them, freeze `Date.now` and hold the ship at the `lane-ride` pose.
+2. **Lane C’s loose ends.**
+   - A convoy picked on a lane spawns nothing: the crew mention it, and the convoy is Lane B’s flow’s own (one slot in three on a trunk is a column of four to seven). On a local lane there is none to see; the event could be kept to the trunks if that jars.
+   - The Rick and Morty front now sits at `beacon:wanderer`, about 5,400 from its line of sectors, so the chart draws the sectors in one place and the front’s ring in another. Done looks like the chart drawing the war at its beacon (or the sectors moved to it).
+   - `readShot` still turns down a bolt faster than 800, or one starting further than `6 + speed × 0.3` from the shooter’s last pose, so shots fired mid-ride may be dropped. Fights aren’t in lanes, so this matters little; widen it if pilots start fighting on the ramps at speed.
+   - `pilots.js` imports `hyperlanes.js`, so the galaxy builds the lane graph when it loads. Pass `laneAt` in from the universe scene instead if the galaxy’s start-up gets slower.
+   - `scripts/events-check.mjs` fails three checks on `main` as well: the meteor stream and the shot through a rock, which time out in headless swiftshader, and the bounty hunter, which expects only Slave I, Phoenixperson or the TIE Advanced and now meets the Hound’s Tooth too. The list wants IG-88’s, Bossk’s and Dengar’s ships adding.
 3. **`scripts/navmap-check.mjs`** jumps to “The Citadel” at (1755, −4660). That is where the Citadel was before it moved into the Rick and Morty sector, so the jump and charging steps fail on `main` as well. Fixing it means picking a main-sector wonder, such as Aurelia, by name and reading its position from `__universeDebug.wonders`.
 4. **Trip times.** Lane trips come out about the same as super speed:
 
@@ -70,3 +84,4 @@ Several spec numbers changed when they met the data, and the spec says so in eac
   - `__universe().ride()` shows the ride.
 - **Software rendering is slow.** Headless swiftshader runs about 50 times slower than real time, so a whole trip won’t fit in a check. Move the ship near a beacon first, through `__universeDebug.state.ship`.
 - **Measuring.** `node scripts/universe-check.mjs --poses overview,far-rim,lane-ride --url http://127.0.0.1:5188`.
+- **Lane C in a browser.** With a ride going (set `__universeDebug.state.ride` and pose the ship with `ride.js`’s `poseOf`, imported in the page from `/src/components/universe/ride.js`), `__universe().soon('interdiction')` drops you out before the side’s capital ship and `soon('ambush')` leaves a pack at the ride’s end node. `__universeDebug.state.fights` is the far fights; the chart labels them. `BASE=http://127.0.0.1:5188/?quality=low# BRIDGE=1 NODE_USE_ENV_PROXY=1 node scripts/online-check.mjs --ride` checks the streak, the ship and the roster on the real relays.

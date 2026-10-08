@@ -1,3 +1,4 @@
+import { ABOUT } from './abouts';
 import { GUIDES, guideKeyFor } from './routes';
 
 // What the guide says about each page: a line on what it is, its controls
@@ -7,7 +8,7 @@ import { GUIDES, guideKeyFor } from './routes';
 // are in routes.js. Loaded with the guide's panel, not before.
 
 // the portfolio pages run into one another (components/feed)
-const FEED_TIP = ['Keep scrolling', 'The six portfolio pages run into one another: reach the end of one and the next begins. After the sixth, the end.'];
+const FEED_TIP = ['Keep scrolling', 'The classic site’s six pages run into one another: reach the end of one and the next begins. After the sixth, the end.'];
 
 const FLY = [
   ['W S', 'Throttle'],
@@ -58,7 +59,7 @@ export const PAGES = {
   },
   '/experience': {
     tips: [
-      ['Company colors', 'Each role re-themes the site as you scroll past it.'],
+      ['Company colours', 'Each role re-themes the site as you scroll past it.'],
       ['The crawl', 'Play the opening crawl for the whole story so far.'],
       ['Share a role', 'Each role has its own address (/experience/aws): a link opens right on it.'],
       FEED_TIP,
@@ -84,14 +85,14 @@ export const PAGES = {
   '/contact': {
     tips: [
       ['The memo', 'The form opens your email app with the memo filled in. Nothing is sent from this page.'],
-      ['Email', 'Copy address copies it with one press; ⌘K (Ctrl+K) can copy it from anywhere on the site, too.'],
+      ['Email', 'Copy email address copies it with one press; ⌘K (Ctrl K) can copy it from anywhere on the site, too.'],
       FEED_TIP,
     ],
   },
   '/universe': {
-    about: 'The whole site as places in space: the stations round the sun are its pages, the planets in deep space its worlds. Fly a ship to any of them, or pick one.',
+    about: ABOUT['/universe'],
     keys: [
-      { label: 'Flying', rows: [...FLY, ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole map']] },
+      { label: 'Flying', rows: [...FLY, ['hold S', 'Drop out of a lane'], ['hold W', 'Carry on through a junction'], ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole universe']] },
       { label: 'On foot', rows: [['W A S D', 'Walk'], ['Q E', 'Step sideways'], ['Shift', 'Run'], ['Space', 'Jump'], ['F / Click', 'Fire'], ['X', 'Play the other one of your crew'], ['B', 'Rick’s next gadget: the portal gun, the freeze ray, the shrink ray'], ['V', 'Out of their eyes'], ['G', 'Through a door, or back into the ship'], ['Enter', 'Into the planet’s page']] },
     ],
     touch: [
@@ -102,11 +103,11 @@ export const PAGES = {
           ['Tap', 'A planet, station or wonder to fly there; a hunter to lock on'],
         ],
       },
-      { label: 'The buttons', rows: [['Boost', 'Hold to go fast'], ['Fire', 'Shoot'], ['View', 'The cockpit'], ['Wrench', 'The hangar'], ['Sliders', 'How it all feels']] },
+      { label: 'The buttons', rows: [['Boost', 'Hold to go fast'], ['Fire', 'Shoot'], ['View', 'The cockpit'], ['Hangar', 'Paint and parts (the wrench)'], ['Flight settings', 'How it all feels (the sliders)']] },
     ],
     tips: [
       ['Pick a ship', 'Rick and Morty’s cruiser, Luke and Artoo’s X-wing, Han and Chewie’s Falcon or Walt and Jesse’s RV. Each crew has a word about every place. No ship? Pick a place and the camera flies there.'],
-      ['Getting about', 'The worlds are far apart. Boost in the open and the pulse drive takes over; it drops back near a place. Or open the nav map (M) and let the ship take you: by the hyperlanes (riding with the traffic; hold S to drop out), hyperspeed (a jump), super speed or cruise. Star systems are on it too: pick one and the ship flies through the gate. Tour visits every place, nearest first; Escape stops it.'],
+      ['Getting about', 'The worlds are far apart. Boost in the open and the pulse drive takes over; it drops back near a place. Or open the nav map (M) and let the ship take you: by the hyperlanes (riding with the traffic; hold S to drop out), a jump, super speed or cruise. Star systems are on it too: pick one and the ship flies through the gate. Fly past everything visits every place, nearest first; Esc stops it.'],
       ['Links', 'Every place has a link that opens the map there (/universe/aurelia, say): Copy a link here on the nav map. The terminal’s fly <place> and ⌘K’s Fly to do the same.'],
       ['Deep space', 'Between the worlds are the wonders: a ringed gas giant, an ice giant, two other suns with their own worlds, a black hole, two nebulae, the Citadel of Ricks, a pulsar, a binary star, a rogue planet and a wreck field round a white dwarf, with a rim of ice round the edge of the map. The crew have a word about each.'],
       ['Mind the planets', 'Fly down into a planet’s air and you land on it; come in boosting and you crash into its page. Brush a station and you bounce off.'],
@@ -118,18 +119,19 @@ export const PAGES = {
     ],
   },
   '/galaxy': {
-    about: 'Eighteen star systems from the films and the shows, each a moment from them playing out round you.',
+    about: ABOUT['/galaxy'],
     keys: [{ label: 'Flying', rows: [...FLY, ['M', 'The galaxy map: plot a course'], ['J', 'Jump to lightspeed, to the star on your nose'], ['E / Enter', 'Land on the planet (or board the Death Star)']] }],
     touch: [{ rows: [['Drag', 'Fly'], ['Tap', 'A star’s name to plot a course'], ['Jump', 'Lightspeed, to the star on your nose']] }],
     tips: [
       ['Jumping', 'Turn the nose toward a star and its name comes up; press J, or fly out of the system toward it. The galaxy map (M) filters by era or film.'],
       ['Missions', 'Each system has one. The trench run and boarding the Death Star are playable now; the rest are briefings for games still being built. Watch for the tractor beam at Alderaan.'],
+      ['Out there', 'Each system is open 2,400 out from its planet, with three to six places to find in it: a derelict, a comet, a beacon, an outpost. Well out from everything, holding Boost opens the drive into super speed; it eases off again coming up on anything.'],
       ['Online', 'The other pilots in the same system are there with you, in their own ships. The galaxy map shows how many are where.'],
       ['The wars', 'Three wars at once, one for each era: the Clone Wars, the Galactic Civil War and the Remnant War, with the Hutts against everyone. Pick yours on the galaxy map and swear to a side; battles near you count for it, you rise in its ranks, and who holds a system decides who hunts you there and who flies with you.'],
     ],
   },
   '/galaxy/surface': {
-    about: 'A world from the films, on foot: its places to find, its people to talk to, things to ride.',
+    about: ABOUT['/galaxy/surface'],
     keys: [
       {
         rows: [
@@ -179,6 +181,7 @@ export const PAGES = {
     tips: [['The briefing', 'Each system’s mission opens with its own crawl. The trench run, boarding the Death Star, Endor’s chase, Lothal’s star map, Dagobah’s swamp and the battles of Hoth, Geonosis, Scarif and Endor play now; the rest are games still being built.']],
   },
   '/deathstar': {
+    about: ABOUT['/deathstar'],
     keys: [
       {
         label: 'The trench run',
@@ -199,6 +202,7 @@ export const PAGES = {
     ],
   },
   '/deathstar/inside': {
+    about: ABOUT['/deathstar/inside'],
     keys: [
       {
         label: 'Moving',
@@ -254,6 +258,7 @@ export const PAGES = {
     ],
   },
   '/caribbean': {
+    about: ABOUT['/caribbean'],
     keys: [
       {
         label: 'Dead man’s tide',
@@ -277,7 +282,7 @@ export const PAGES = {
     ],
   },
   '/invincible': {
-    about: 'The Graysons’ city to fly about as Mark, and Think, Mark!, the game.',
+    about: ABOUT['/invincible'],
     keys: [
       {
         label: 'The city',
@@ -290,6 +295,9 @@ export const PAGES = {
           ['J / F / Click', 'Punch (a little way off, he lunges)'],
           ['E', 'Go in at a place (Cecil, at the GDA, has a job)'],
           ['T', 'The time of day'],
+          ['R', 'Take the radio’s call (a chase, a photo, Eve’s race)'],
+          ['Q', 'Call a mission off'],
+          ['H / ?', 'The guide'],
         ],
       },
       {
@@ -311,6 +319,7 @@ export const PAGES = {
       { label: 'Think, Mark!', rows: [['Stick', 'Left of the screen steers'], ['Drag', 'Right of the screen looks'], ['Tap', 'Punch'], ['Dodge', 'Dodge']] },
     ],
     tips: [
+      ['A pad', 'In the city: the left stick flies, the right stick looks, A goes up, B down, RT is flat out, X punches and Y goes in.'],
       ['The city', 'Six kilometres of downtown, river, suburbs, coast and hills. Come down fast and the street cracks; hit a tower too fast and you bounce off it. The places: the Graysons’, the high school, Burger Mart, the Guardians’ hall, the GDA.'],
       ['Things to do', 'Dad’s rings start over the street outside the house: ten of them to the Guardians’ hall, against the clock. The first season’s eight title cards are hidden round the city (one high up). Every minute or so someone needs catching: follow the red beacon, catch them, land to set them down. Fly alongside the airliner and your father has something to say.'],
       ['The Flaxans', 'They come through a portal over the river, when Cecil sends you or a few minutes in on their own. Punch them out of the sky, or fly into them fast; their purple bolts knock you about. All twelve down and the portal closes.'],
@@ -322,17 +331,17 @@ export const PAGES = {
     ],
   },
   '/middle-earth': {
-    about: 'A map of the road from Hobbiton to Mount Doom. Every stop is a chapter: a place to walk as Frodo, a kitchen to cook in, and its own game.',
+    about: ABOUT['/middle-earth'],
     tips: [
       ['The map', 'Pick a place and the camera flies down to it. The map button takes you back up. A wax seal marks each place you’ve won.'],
       ['The Doors of Durin', 'Move your pointer over the cliff to light the lines, or call the moon. Then say the word: read the arch.'],
       ['The bridge', 'Face the Balrog. Raise the staff (Space) as the whip falls; strike the bridge (Enter) with it right over the deep for a perfect.'],
       ['Gorgoroth', 'Hold to walk (Space or →). Let go when the Eye’s light comes close: standing still, the elven cloaks hide you. Rest before the Ring gets too heavy.'],
-      ['The Ring', 'Hold it to the fire to read it, put it on (Escape takes it off), or cast it in.'],
+      ['The Ring', 'Hold it to the fire to read it, put it on (Esc takes it off), or cast it in.'],
     ],
   },
   '/middle-earth/place': {
-    about: 'Walk the place as Frodo, then cook in its kitchen, Overcooked-style, alone or with friends.',
+    about: ABOUT['/middle-earth/place'],
     keys: [
       { label: 'Walking', rows: [...WALK, ['R', 'The Ring, on or off (in the Shire)'], ['Esc', 'Leave what you’re doing']] },
       { label: 'In the kitchen', rows: [['W A S D', 'Walk'], ['E / Space', 'Pick up, put down, serve'], ['hold F', 'Work: chop, wash, scrape'], ['Shift', 'Dash']] },
@@ -347,15 +356,15 @@ export const PAGES = {
     ],
   },
   '/avengers': {
-    about: 'The compound in 3D, as Spider-Man. Each building opens its game, and each game wins an Infinity Stone.',
+    about: ABOUT['/avengers'],
     keys: [
-      { label: 'On the ground', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump (at a wall: run up it)'], ['Drag', 'Look round'], ['E / Enter', 'Go in at a door'], ['M', 'The buildings, with Go there'], ['Esc', 'Out of a game']] },
+      { label: 'On the ground', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump (at a wall: run up it)'], ['Drag', 'Look round'], ['E / Enter', 'Go in at a door'], ['M', 'Things to do: the buildings, with Go there'], ['Esc', 'Out of a game']] },
       { label: 'Swinging', rows: [['hold Space', 'In the air: web a roof edge, tree or mast and swing'], ['Right-click', 'Hold to swing, too'], ['Shift', 'In the air: zip'], ['Q', 'Launch to a perch'], ['T', 'A flip (or a twist, with a direction held)']] },
       { label: 'In the armour', rows: [['W A S D', 'Fly (it leans into its speed)'], ['Space', 'Climb'], ['Shift', 'Come down'], ['E', 'Step out, wherever you are']] },
-      { label: 'Anywhere', rows: [['O', 'Settings']] },
+      { label: 'Anywhere', rows: [['O', 'Settings'], ['P', 'Photo mode: drag the camera round him, [ and ] for the lens']] },
     ],
     touch: [
-      { rows: [['Stick', 'Walk (all the way to run)'], ['Jump', 'Hold in the air to swing'], ['Zip', 'Zip'], ['Perch', 'Launch to a perch'], ['Trick', 'A flip in the air']] },
+      { rows: [['Stick', 'Walk (all the way to run)'], ['Jump', 'Hold in the air to swing (at a wall: run up it)'], ['Zip', 'Zip'], ['Perch', 'Launch to a perch'], ['Trick', 'A flip in the air']] },
       { label: 'In the armour', rows: [['Stick', 'Fly'], ['Up', 'Hold to climb'], ['Down', 'Hold to come down'], ['Step out', 'Out of the armour']] },
     ],
     tips: [
@@ -367,7 +376,7 @@ export const PAGES = {
     ],
   },
   '/scranton': {
-    about: 'Dunder Mifflin in 3D, as Jim. A week of seven jobs: reception, the stapler in Jell-O, Kevin’s chili, paper toss, the fact check, Dwight’s fire drill and the Dundies.',
+    about: ABOUT['/scranton'],
     keys: [{ rows: [...WALK, ['1 2 3 4', 'Pick what to say'], ['Space / Enter', 'Go on (a talk), throw (paper toss)'], ['Esc', 'Leave a job']] }],
     touch: [{ rows: [...WALK_TOUCH, ['Tap', 'The prompt, and what to say']] }],
     tips: [
@@ -378,6 +387,7 @@ export const PAGES = {
     ],
   },
   '/cybertron': {
+    about: ABOUT['/cybertron'],
     keys: [
       {
         label: 'Roll out',
@@ -391,15 +401,15 @@ export const PAGES = {
     ],
     touch: [{ label: 'Roll out', rows: [['Drag', 'Steer'], ['Tap', 'The buttons to boost, jump and transform']] }],
     tips: [
-      ['Sides', 'Join the Autobots or the Decepticons: the site changes color with you, and so does who you can transform.'],
+      ['Sides', 'Join the Autobots or the Decepticons: the site changes colour with you, and so does who you can transform.'],
       ['Roll out', 'As a vehicle you’re fast and smash debris; as a robot you fight and jump the barricades, but standing up burns energon. Transforming takes half a second: read the road. Clearing an obstacle pays double if you changed at the last moment.'],
       ['Ground bridge', 'Hold the button, Space, or the scene to open the bridge as an Autobot reaches it. Let go before a Vehicon does.'],
       ['The Iacon database', 'Pick what each Cybertronian entry says before the decryption bar fills. Show the key to read it letter by letter.'],
-      ['The roster', 'Roll out as any of them to wear their colors. The soundboard plays through Soundwave’s visor.'],
+      ['The roster', 'Roll out as any of them to wear their colours. The soundboard plays through Soundwave’s visor.'],
     ],
   },
   '/albuquerque': {
-    about: 'Drive round town in Walt’s Aztek. Places open up as Walt’s career grows, each with its own game.',
+    about: ABOUT['/albuquerque'],
     keys: [
       {
         label: 'Driving',
@@ -407,7 +417,7 @@ export const PAGES = {
           ['W A S D / ← ↑ ↓ →', 'Drive'],
           ['hold Space', 'Handbrake: hold it into a turn and the tail swings round'],
           ['E / Enter', 'Go in (or wash the Aztek at A1A)'],
-          ['M', 'Places'],
+          ['M', 'Things to do: the places, as each one opens'],
           ['R', 'Run a delivery'],
           ['T', 'The time of day'],
           ['P', 'Throw a pizza on the roof (at Walt’s house)'],
@@ -426,30 +436,44 @@ export const PAGES = {
     ],
   },
   '/c-137': {
-    about: 'The Smiths’ street in 3D, as Morty, with Rick’s cruiser in the garage and a portal to everywhere.',
+    about: ABOUT['/c-137'],
     keys: [
-      { label: 'Walking', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Drag', 'Look round'], ['E', 'Doors, the cruiser, the games'], ['M', 'Things to do']] },
+      { label: 'Walking', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Drag', 'Look round'], ['E', 'Doors, the cruiser, the games, the portal gun on Rick’s bench'], ['P', 'The portal gun, from anywhere'], ['M', 'Things to do']] },
       { label: 'In the cruiser', rows: [['W A S D', 'Fly'], ['Space', 'Climb'], ['Shift', 'Drop'], ['E', 'Land (slow, over open ground)']] },
       { label: 'Portal panic', rows: [['W A S D', 'Move'], ['Mouse', 'Aim: the gun fires on its own'], ['F', 'Auto-fire off (then hold the mouse to fire)'], ['Space / Shift', 'Portal-dash'], ['1 2 3', 'Take a gadget'], ['P', 'Pause']] },
       { label: 'Total Rickall', rows: [['Drag', 'Aim'], ['E', 'Remember the one in the crosshair'], ['F / Click', 'Shoot them'], ['Esc', 'Stop the game']] },
       { label: 'Through the portal', rows: [['E', 'Talk, take, look, free: whatever the prompt says'], ['F', 'Fire, in a fight (Evil Rick’s lair, the Blood Dome)'], ['Run', 'From whoever’s after you: the map shows them red']] },
     ],
     touch: [
-      { rows: [['Stick', 'Walk, or fly'], ['Swipe', 'Look round'], ['Tap', 'Jump, climb, drop and act, on their buttons']] },
+      { rows: [['Stick', 'Walk, or fly'], ['Swipe', 'Look round'], ['Tap', 'Jump, climb, drop and act, on their buttons'], ['Portal gun', 'Its button at the top: pick where the garage portal goes']] },
       { label: 'Total Rickall', rows: [['Swipe', 'Aim'], ['Tap', 'Shoot the one in the crosshair (or Remember and Shoot, on their buttons)']] },
       { label: 'Through the portal', rows: [['Tap', 'The star fires, in a fight']] },
     ],
     tips: [
-      ['The portal gun', 'Fire it to look through into another dimension.'],
+      ['The portal gun', 'It’s on Rick’s bench in the garage: E there, or P (its button on a phone) anywhere, and pick a place. Then step through the portal on the garage’s west wall: twenty-six places from the show, and Blips and Chitz. Everyone in them does something; some of them come for you, and caught, you’re back at the door. Three slips to spot, a ticket to find, a cell to open, a ring to step into.'],
+      ['The planets', 'Gazorpazorp, Planet Squanch, Bird World and the rest of the show’s planets are on the universe map, in the Rick and Morty sector (through the green portal beside the Rick and Morty planet): land on one and you’re in it. What you do there counts on this list (M) too.'],
       ['Portal panic', 'Three waves in each of four dimensions; a gadget from Rick’s bench after each, and a boss to portal on. Rick, Morty or Pickle Rick. A controller works too.'],
       ['Total Rickall', 'Pick up the egg on the living-room bookcase. A parasite only ever leaves good memories of itself, so shoot the ones nobody remembers a bad day with, and nobody else.'],
       ['The Meeseeks box', 'Press the button and give him a task. Give him one he can’t do and he gets help.'],
       ['Interdimensional cable', 'Turn the dial.'],
-      ['The portal gun’s dial', 'Set it on Rick’s bench and the garage portal goes there: thirty-six places from the show. Everyone in them does something; some of them come for you, and caught, you’re back at the door. Three slips to spot, a ticket to find, a cell to open, a ring to step into.'],
-      ['The Smiths', 'Four of them are a color scheme for the site. Jerry can ask.'],
+      ['A look through', 'Past the street, the page’s Fire the portal gun button shows you another dimension. It’s only a look: the gun that takes you is Rick’s, on his bench (P).'],
+      ['The Smiths', 'Four of them are site colours. Jerry can ask.'],
+    ],
+  },
+  // a Rick and Morty planet, landed on from the universe map (/c-137/<id>)
+  '/c-137/planet': {
+    about: 'A planet from the show, landed on from the universe map: you’re in it on foot, as Morty, with something to do.',
+    keys: [{ rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Drag', 'Look round'], ['E', 'Talk, take, look: whatever the prompt says'], ['M', 'Things to do']] }],
+    touch: [{ rows: [...WALK_TOUCH, ['Tap', 'Jump and act, on their buttons']] }],
+    tips: [
+      ['The way out', 'The portal you came in by, just behind you, takes you back out to space, by the planet.'],
+      ['Run', 'Some of the people here come for you: the map shows them red. Caught, you’re back where you came in.'],
+      ['A minute', 'On Planet Squanch and the Purge Planet, once it goes wrong, get back through the portal inside a minute.'],
+      ['The list', 'What you do here counts on Dimension C-137’s list of things to do too.'],
     ],
   },
   '/c-137/citadel': {
+    about: ABOUT['/c-137/citadel'],
     keys: [{ rows: [...WALK, ['1 2 3 4', 'Answer'], ['Space', 'Drop a wafer (Simple Rick’s)'], ['Esc', 'Leave a scene']] }],
     touch: [{ rows: [...WALK_TOUCH, ['Tap', 'The prompt, and the answers']] }],
     tips: [
@@ -461,6 +485,7 @@ export const PAGES = {
     ],
   },
   '/dot-matrix': {
+    about: ABOUT['/dot-matrix'],
     keys: [
       {
         rows: [
@@ -476,11 +501,12 @@ export const PAGES = {
     touch: [{ rows: [['Pad', 'Walk'], ['A', 'Jump'], ['B', 'Read, play, go down'], ['Drag', 'Turn the island']] }],
     tips: [
       ['The cartridges', 'Eight of them, each one a project of mine, hidden round the island.'],
-      ['Mind', 'Jump on the walkers; walking into one hurts. A plant won’t come up while you stand on its pipe. Three hearts, and a "?" block gives one back.'],
+      ['Mind', 'Jump on the walkers; walking into one hurts. A plant won’t come up while you stand on its pipe. Three hearts, and a “?” block gives one back.'],
       ['The screen', 'The chip at the top switches between the DMG’s greens, the Pocket’s greys and the Light’s teal.'],
     ],
   },
   '/dot-matrix/64': {
+    about: ABOUT['/dot-matrix/64'],
     keys: [
       {
         label: 'The N64 (your own ROM)',
@@ -522,6 +548,7 @@ export const PAGES = {
     ],
   },
   '/dot-matrix/minecraft': {
+    about: ABOUT['/dot-matrix/minecraft'],
     keys: [
       {
         rows: [
@@ -552,6 +579,7 @@ export const PAGES = {
     ],
   },
   '/earth': {
+    about: ABOUT['/earth'],
     keys: [
       { label: 'From orbit', rows: [['Drag', 'Turn the globe'], ['Click', 'A place, to fly there'], ['M', 'Down to the globe, or back up']] },
       { label: 'Flying', rows: [['W A S D / ← ↑ ↓ →', 'Turn, climb and descend'], ['Shift / Space', 'Faster'], ['R', 'A barrel roll'], ['Drag', 'Look round'], ['V', 'Cockpit or chase camera'], ['P', 'The passport'], ['N', 'Always day'], ['Esc', 'Take the controls back from the autopilot']] },
@@ -564,6 +592,7 @@ export const PAGES = {
     ],
   },
   '/music': {
+    about: ABOUT['/music'],
     keys: [{ label: 'The courtyard', rows: [['W A S D', 'Walk'], ['← →', 'Turn'], ['Drag', 'Look round'], ['E', 'Play the instrument you’re by']] }, { label: 'The sitar', rows: [['hold Space', 'A chikari roll']] }],
     touch: [{ label: 'The courtyard', rows: [...WALK_TOUCH, ['Tap', 'An instrument’s button to play it']] }],
     tips: [
@@ -586,15 +615,16 @@ export const PAGES = {
 
 // The site's own keys, after ⌘K (the guide adds that one, in this device's way)
 export const SHORTCUTS = [
-  ['?', 'This guide'],
+  ['?', 'The guide'],
   ['Esc', 'Close whatever’s open'],
   ['↑ ↑ ↓ ↓ ← → ← → B A', 'Lightspeed'],
 ];
 
 export const SITE = [
-  ['Two ways round', 'The Universe and Classic switch at the top: fly the site as a universe, or read it as plain pages. Either takes you to the same place in the other, and the site remembers which you picked.'],
+  ['Two ways round', 'The Universe and Classic switch at the top: fly through the universe, or read the classic site. Either takes you to the same place in the other, and the site remembers which you picked.'],
   ['Getting around', 'The menu at the top, or the command palette, which goes anywhere and does most things. The Terminal page takes commands too.'],
-  ['Colors', 'The dot in the menu picks a color scheme: each company I’ve worked at, any fan theme you’ve unlocked, or your own color. Each scheme brings a background: quiet for the companies, lively for the fan themes (click on empty page). Switch them off at the bottom of the same menu.'],
+  ['Colours', 'The dot in the menu picks the site’s colours: each company I’ve worked at, any fan world’s you’ve unlocked, or your own. Each brings a background: quiet for the companies, lively for the fan worlds (click an empty part of the page). Switch them off at the bottom of the same menu.'],
+  ['Settings', 'The gear beside the colours (or ⌘K, Settings) sets the quality: Auto picks what this machine can draw, or choose Low, Medium, High or Ultra yourself. Sound, motion, sharpness and what your device is doing are there too.'],
   ['Languages', 'Read the whole site in Aurebesh, Cybertronian or Dwarf runes, from the Off the clock row, ⌘K, or the Death Star, Middle-earth and Cybertron pages. Back to English is always at the bottom of the screen, or type english.'],
   ['Easter eggs', 'One on each main page, and one more on the page that isn’t there. Some words work typed anywhere: try aurebesh, rollout, mellon, snap, twss, parkour, precious, wubbalubbadubdub or say my name.'],
   ['Achievements', 'Each egg you find is counted; the Dundies in Scranton show you where you stand.'],
