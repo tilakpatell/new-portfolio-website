@@ -1342,8 +1342,8 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     if (!going()) return;
     if (post) await settle(precompilePasses(renderer, post.composer, camera), 4000);
     if (!going()) return;
-    renderer.setRenderTarget(post ? post.composer.readBuffer : null);
     try {
+      renderer.setRenderTarget(post ? post.composer.readBuffer : null);
       await prepareScene({
         renderer,
         roots: [scene],
