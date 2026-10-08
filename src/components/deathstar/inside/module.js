@@ -318,7 +318,7 @@ export default {
         tell('hurt', { amount: e.amount, angle });
       } else if (e.type === 'hit' && (e.by === 'you' || e.by === 'blade')) tell('hit', { target: e.target });
       else if (e.type === 'storyEnd') tell('story', { id: e.id, done: true });
-      if (sounds) for (const [name, ...args] of heardOf(e, g)) sounds[name]?.(...args);
+      if (sounds) for (const [name, ...args] of heardOf(e, g)) play(name, args);
     }
 
     // ── the sounds: made the first time there is an audio context to make them on, while sound is on ──
@@ -342,6 +342,16 @@ export default {
         blade = null;
       });
       return null;
+    }
+    // a sound that fails is a sound missed, never a frame lost (said once, in development)
+    let soundFailed = false;
+    function play(name, args) {
+      try {
+        sounds[name]?.(...args);
+      } catch (err) {
+        if (!soundFailed && import.meta.env?.DEV) console.warn(`Aboard the Death Star: the sound ${name} failed`, err);
+        soundFailed = true;
+      }
     }
     function silence() {
       sounds?.dispose();

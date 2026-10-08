@@ -1,4 +1,4 @@
-/* global window */
+/* global window, document */
 // Aboard the Death Star (#/deathstar/inside), checked in a browser: each
 // station started from its address, you put in each named room through the
 // dev hook (window.__deathstar: teleport, info), a few frames drawn there,
@@ -61,8 +61,8 @@ for (const [s, room] of list) {
     // (a new address in the same document keeps the world that is up: start the page afresh)
     await page.goto('about:blank');
     await page.goto(`${BASE}/#/deathstar/inside?station=${s}&side=${SIDE}&mode=roam`, { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => window.__deathstar?.g, null, { timeout: 600000, polling: 500 });
-    await page.waitForTimeout(WAIT);
+    // (the world is made before its first rooms are in: the docking cover stays up until they are)
+    await page.waitForFunction(() => window.__deathstar?.g && !document.querySelector('.ds-cover'), null, { timeout: 600000, polling: 500 });
     if (!process.env.HUD) await page.addStyleTag({ content: '.ds-hud, .ds-touch, .guide-btn, .guide-nudge { visibility: hidden !important; }' });
   }
   const ok = await page.evaluate((r) => window.__deathstar.teleport(r), room);
