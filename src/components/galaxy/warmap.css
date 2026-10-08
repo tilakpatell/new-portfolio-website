@@ -165,6 +165,15 @@
   .holomap-strip-n { font-size: 0.7rem; }
   .holomap-legend { left: 8px; bottom: 8px; }
   .holomap-legend-panel { max-height: calc(100cqw - 56px); }
+  /* (the rings tighter: at 390 px Mustafar's star and swords ran into Nevarro's ring, and the south's rings together) */
+  .holomap-systems li[data-held] .holomap-dot { box-shadow: 0 0 0 1.5px #020611, 0 0 0 3px var(--held); }
+  .holomap-systems li:is([data-front], [data-attack]) .holomap-dot,
+  .holomap-systems li[data-cut]:not([data-front], [data-attack]) .holomap-dot { box-shadow: none; }
+  .holomap-systems li:is([data-front], [data-attack]) .holomap-dot::before { inset: -4.5px; }
+  .holomap-systems li[data-cut]:not([data-front], [data-attack]) .holomap-dot::before { inset: -3px; border-width: 1.5px; }
+  .holomap-systems li[data-decisive] .holomap-dot { outline-offset: 7px; }
+  .holomap-systems li[data-held] .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 1.5px #020611, 0 0 0 3px var(--held), 0 0 0 4.5px #020611, 0 0 0 5.5px #fff; }
+  .holomap-systems li:is([data-front], [data-attack], [data-cut]) .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 5px #020611, 0 0 0 6px #fff; }
   .holomap-fleets > li { width: 13px; height: 13px; }
   .holomap-fleets .holomap-emblem { width: 8px; height: 8px; }
   .holomap-fleets > li[data-kind='decisive'] { width: 16px; height: 16px; }

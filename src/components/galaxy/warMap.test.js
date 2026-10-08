@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GCW, NEIGHBOURS, WAR_SYSTEMS, warTable } from './gcw';
 import { SIDES, WARS, WAR_IDS } from './sides';
 import { systemById } from './systems';
-import { NAME_LEFT, badgeOf, nearestBattle, opsOf, roomOf } from './warMap';
+import { CREST, NAME_LEFT, badgeOf, nearestBattle, opsOf, roomOf } from './warMap';
 
 const H = 3600e3;
 const posOf = (id) => systemById(id).pos;
@@ -145,6 +145,48 @@ describe('the operations on the map', () => {
     }
   });
 
+  it('slides each fleet’s crest along its arrow to where there’s room, off other systems’ dots and names and other crests', () => {
+    // (it sat where its progress put it: on 42% of the arrows in real wars it
+    // was within a crest's width of another system's dot or name, the Clone
+    // Wars' over the r of Endor, and 125 pairs of crests overlapped)
+    let crests = 0;
+    let crowded = 0;
+    for (const war of WAR_IDS)
+      for (const n of [0, 1, 2])
+        for (let h = 0.5; h < 72; h += 7) {
+          const ops = opsOf(warTable(war, GCW.start + n * GCW.campaign + h * H));
+          for (const [i, op] of ops.entries()) {
+            crests += 1;
+            if (roomOf(op.token, [op.from, op.to]) < CREST) crowded += 1;
+            // (two arrows side by side, as Kamino's to Tatooine and Geonosis, can leave two crests
+            // touching, but never more than a third over one another)
+            for (const other of ops.slice(i + 1)) expect(dist(op.token, other.token), `${war} c${n} ${h}h: ${op.id} and ${other.id}`).toBeGreaterThanOrEqual(1.4 * CREST);
+          }
+        }
+    // (the arrows in the crowded south leave some nowhere better: 28% had nowhere along them with a
+    // crest's room, and 20% are left short of it, down from 42%)
+    expect(crests).toBeGreaterThan(100);
+    expect(crowded / crests).toBeLessThan(0.25);
+  });
+
+  it('still closes a crest in as its side gains, never back', () => {
+    for (const [id, o] of [
+      ['sorgan', { owner: 'empire' }],
+      ['bespin', {}],
+      ['endor', { owner: 'empire' }],
+      ['mustafar', {}],
+    ]) {
+      let was = 0;
+      for (let control = 1; control >= 0; control -= 0.05) {
+        const op = opsOf(tableOf({ [id]: { ...o, front: true, control } }))[0];
+        expect(op.along, `${id} at ${control.toFixed(2)}`).toBeGreaterThanOrEqual(was);
+        expect(op.along).toBeGreaterThanOrEqual(0.25);
+        expect(op.along).toBeLessThanOrEqual(0.9);
+        was = op.along;
+      }
+    }
+  });
+
   it('knows how much room a point has from the systems’ dots and names', () => {
     const hoth = posOf('hoth');
     expect(roomOf(hoth)).toBeLessThan(0);
@@ -170,6 +212,36 @@ describe('the badge on a fought-over system’s ring (its + or −)', () => {
     expect(badgeOf('kamino')).toBe('side');
     expect(badgeOf('coruscant')).toBe('below');
     expect(WAR_SYSTEMS.filter((id) => badgeOf(id) === 'below').length).toBeGreaterThan(WAR_SYSTEMS.length / 2);
+  });
+  it('goes clear of the ends of the arrows by it', () => {
+    // (an arrowhead came in on the + under Coruscant: Coruscant's front, from Kashyyyk, and
+    // an attack on Kashyyyk back from Coruscant end and start by it)
+    const at = (id, b) => {
+      const [x, z] = posOf(id);
+      return { below: [x, z + 0.5], above: [x, z - 0.5], side: [NAME_LEFT.has(id) ? x + 0.5 : x - 0.5, z] }[b];
+    };
+    // (clear: its own width from the systems but its own, and from the arrows' ends)
+    const clearAt = (id, p, ops) => Math.min(roomOf(p, [id]), ...ops.flatMap((o) => [o.start, o.tip, ...o.head.split(' ').map((q) => q.split(',').map(Number))]).map((e) => dist(e, p) - 0.1)) >= 0.3;
+    let checked = 0;
+    let clear = 0;
+    for (const war of WAR_IDS)
+      for (const n of [0, 1, 2])
+        for (let h = 0.5; h < 72; h += 7) {
+          const table = warTable(war, GCW.start + n * GCW.campaign + h * H);
+          const ops = opsOf(table);
+          for (const r of table.systems.filter((x) => x.front || x.attack)) {
+            const places = ['below', 'above', 'side'].filter((b) => clearAt(r.id, at(r.id, b), ops));
+            checked += 1;
+            if (!places.length) continue;
+            clear += 1;
+            expect(places, `${war} c${n} ${h}h ${r.id}`).toContain(badgeOf(r.id, ops));
+          }
+        }
+    // (where every place is crowded, as at Hoth, between Bespin's dot and the arrows from the north,
+    // it takes the least crowded; 84% of the time one's clear. Over ten campaigns of each war an
+    // arrow's end came within 0.3 of 634 of 2,931 badges, and now of 194, nearly all Hoth's)
+    expect(clear / checked).toBeGreaterThan(0.8);
+    expect(badgeOf('coruscant', [])).toBe(badgeOf('coruscant'));
   });
 });
 
