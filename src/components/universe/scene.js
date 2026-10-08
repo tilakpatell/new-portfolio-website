@@ -99,7 +99,7 @@ import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePa
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SECTOR_OF, SUN, mapSectorOf, sectorOf } from './layout';
+import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SECTOR_OF, SUN, inExpanse, mapSectorOf, sectorOf } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
@@ -185,6 +185,9 @@ import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
 import { NX5_LEN, createRemoverView } from './removerView';
 import { createSky } from './skyShader';
+import { createExpanse } from '../expanse/scene/expanse';
+import { UNIVERSE } from '../expanse/gen/seed';
+import { runtime } from '../../runtime';
 import { deedToEarn } from './economy';
 import { createPayLedger, hunterEarn } from './earnRules';
 
@@ -750,6 +753,19 @@ export async function create(canvas, ctx) {
   });
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
   // and every place past FAR_REAL drawn as a point of light instead (farPlaces.js)
+  // the Expanse past the rim (expanse/scene/expanse.js): asleep inside it;
+  // its floating origin is the runtime's (re-anchored here as it moves)
+  const origin = runtime().origin;
+  origin.reset();
+  const expanse = createExpanse(map, {
+    universe: typeof ctx.universe === 'bigint' ? ctx.universe : UNIVERSE,
+    origin,
+    tier,
+    reduced,
+    onSector: (id) => {
+      if (inExpanse(id)) state.note = { text: `The Expanse · ${id}`, until: wall() + 3 };
+    },
+  });
   const farPlaces = createFarPlaces(map, { places: FAR_PLACES.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })), skyFar: SKY_FAR });
   const near = createNearMaps({ small }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
@@ -4854,6 +4870,7 @@ export async function create(canvas, ctx) {
     house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     farPlaces.update(camera, dt, state.auto?.id ?? state.jump?.id ?? null);
+    expanse.update({ ship: flying() && !state.dive ? state.ship : null, camera, t, dt });
     const lanesBusy = laneLook.update(dt, { ship: flying() && !state.crash && !state.dive ? state.ship : null, ride: state.ride, view: state.view, side: sideFor(state.kind)?.id ?? null });
     sectorPortals.update(t, camera);
     curve.update(t, sectorOf(camLocal.x, camLocal.y, camLocal.z) === 'rickmorty');
@@ -5356,7 +5373,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView, laneLook };
+    window.__universeDebug = { THREE, post, scene, expanse, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView, laneLook };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -5663,6 +5680,7 @@ export async function create(canvas, ctx) {
       fleet.dispose();
       deep.dispose();
       farPlaces.dispose();
+      expanse.dispose();
       laneLook.dispose();
       sectorPortals.dispose();
       gunPortal.dispose();
