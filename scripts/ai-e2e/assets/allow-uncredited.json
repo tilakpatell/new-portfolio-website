@@ -41,13 +41,10 @@
   "public/models/galaxy/crew/greedo.glb",
   "public/models/galaxy/crew/han.glb",
   "public/models/galaxy/crew/jabba.glb",
-  "public/models/galaxy/lod/corvette.glb",
   "public/models/galaxy/lod/destroyer.glb",
   "public/models/galaxy/lod/falcon.glb",
   "public/models/galaxy/lod/hq/destroyer.glb",
-  "public/models/galaxy/lod/interceptor.glb",
   "public/models/galaxy/lod/razorcrest.glb",
-  "public/models/galaxy/lod/slave1.glb",
   "public/models/galaxy/lod/venator.glb",
   "public/models/galaxy/lod/xwing.glb",
   "public/models/galaxy/surface/benhut.glb",
@@ -140,7 +137,6 @@
   "public/models/universe/gaming.glb",
   "public/models/universe/marvel.glb",
   "public/models/universe/piranha.glb",
-  "public/models/universe/slave1.glb",
   "public/models/universe/venator.glb",
   "public/models/universe/xwing-traffic.glb"
  ]

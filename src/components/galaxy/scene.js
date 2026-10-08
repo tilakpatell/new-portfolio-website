@@ -99,7 +99,7 @@ import { paintById } from '../universe/paint';
 import { FASTEST, STOCK_LOADOUT, readLoadout, statsOf } from '../universe/outfit';
 import { readBuildWire, writeBuild } from '../universe/shipyard/build';
 import { SHIP_INFO, buildGalaxyShip } from './fleet';
-import { HUNTER_GLB, createModels } from './models';
+import { ARRIVAL, HUNTER_GLB, createModels } from './models';
 import { createSky } from './sky';
 import { createSpeedLines } from './speedLines';
 import { T as JUMP_T } from '../hyperspace3d/timeline';
@@ -439,7 +439,7 @@ export async function create(canvas, ctx) {
     state.pullSaid = false;
     state.held = null;
     interdictor?.hide();
-    models.want(['destroyer', 'corvette', 'xwing', 'interceptor', ...(wantsDeathStar(sys) ? ['deathstar'] : [])]);
+    models.want([...ARRIVAL, ...(wantsDeathStar(sys) ? ['deathstar'] : [])]);
     return warm(world.group);
   };
   // what the ship flies through: the system's solids, and the war's capital ships' hulls while its battle's on
