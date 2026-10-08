@@ -6,6 +6,8 @@ import '@fontsource/luckiest-guy/400.css';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
+import { settle } from '../../../lib/settle';
+import LoadingVeil from '../../worlds/LoadingVeil';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import GpuGate from '../../games/GpuGate';
 import { readPad, typing } from '../../games/pad';
@@ -291,6 +293,8 @@ const newSim = (at = START, portal = false) => ({
 
 // `start`: a planet of the universe map's Rick and Morty sector, played on its
 // own (./planetMode.js), its portal home calling `onLeave`; else C-137
+const PREPARE_WAIT = 30000; // ms at most the veil waits on the world's prepare
+
 export default function RmWorld({ start = null, onLeave = null }) {
   const planet = useMemo(() => planetOf(start), [start]);
   const three = use3D();
@@ -299,7 +303,7 @@ export default function RmWorld({ start = null, onLeave = null }) {
   const doneRef = useRef(done);
   const [open, setOpen] = useState(null);
   const openRef = useRef(null);
-  const [gl, setGl] = useState('loading'); // loading | on | failed | lost
+  const [gl, setGl] = useState('loading'); // loading | preparing | on | failed | lost
   const [toast, setToast] = useState(null);
   const pending = useRef([]); // tasks done while something's open over the page, told on the way out
   const api = useRef(null);
@@ -414,6 +418,7 @@ export default function RmWorld({ start = null, onLeave = null }) {
 const ROOM = { bound: boundOf(AREAS), motion: true };
 
 function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast, say, planet, onLeave }) {
+  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const trav = useTravellers('c137', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.35 });
@@ -1106,11 +1111,21 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         if (planet) {
           if (!a.hasArea(planet.area)) await a.ensureArea(planet.area).catch(() => {});
           if (dead || api.current !== a || a.lost) return; // (gone, or the context lost meanwhile: it's said so)
+        }
+        fit();
+        // everything onto the graphics chip behind the veil, then shown
+        // (lib/stagePrepare: bounded, so it never holds the world up for good)
+        setGl('preparing');
+        await settle(
+          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead && api.current === a),
+          PREPARE_WAIT,
+        );
+        if (dead || api.current !== a || a.lost) return;
+        if (planet) {
           a.fx('portal', { at: planet.back });
           sound('portalHop');
         }
-        fit();
-        setGl('on');
+        setGl((g) => (g === 'preparing' ? 'on' : g));
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -1123,7 +1138,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       ro?.disconnect();
       api.current?.dispose();
       api.current = null;
-      setGl((g) => (g === 'on' ? 'loading' : g));
+      setGl((g) => (g === 'on' || g === 'preparing' ? 'loading' : g));
     };
   }, [api, setGl, complete, planet]);
 
@@ -1240,6 +1255,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
+    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     const dt = Math.min(0.05, ms / 1000);
     s.t += dt;
@@ -1493,7 +1509,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       s.npcs = api.current?.act(s.area, 'npcs') ?? null;
       drawMap(map.current, s, goalOf(progRef.current.next, s, planet), s.t);
     }
-  }, live);
+  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
 
   // something open over the world: let go of the stick and the up and down buttons
   const stickEl = useRef(null);
@@ -1606,6 +1622,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           <p>Opening a portal{planet && ` to ${inLine(planet.name)}`}…</p>
         </div>
       )}
+      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title={planet?.name ?? 'Dimension C-137'} line="Opening a portal…" />
 
       <div className="rm-hud rm-hud-top">
         <div ref={brand} className="rm-brand">

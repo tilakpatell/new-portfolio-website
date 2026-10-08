@@ -34,6 +34,7 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../lib/stage3d';
+import { stagePrepare } from '../../../lib/stagePrepare';
 import { createHouse, shadowFor } from '../../../lib/three/house';
 import { budget, device } from '../../../lib/device';
 import { createPace } from '../../../lib/three/pace';
@@ -154,6 +155,10 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const tier = dev.tier;
   const fit = budget();
   const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.3, far: 1000, exposure: 1.05, bloom: { strength: 0.55, radius: 0.45, threshold: 1.15 }, onLost });
+  // made ready behind its loading veil before its first frame (lib/stagePrepare):
+  // the place Morty's in built (a lazy one fetched) and its people in, the
+  // street's floor light baked, what's shown sent and compiled
+  const prep = stagePrepare(stage, { grounds: () => [floorLight], busy: () => loads > 0 });
   const { renderer, scene, camera } = stage;
   // a tone map that keeps the show's flat bright colours bright (the house
   // tone mapper: the exposure was tuned under it, so the house's own
@@ -461,6 +466,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
         tier,
         auto: true,
         clip: true,
+        cache: { world: 'c-137', place: 'street' },
       })
     : null;
 
@@ -507,7 +513,10 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const render = (state, ms = 16) => {
     if (stage.lost || stage.disposed) return;
     const now = performance.now();
-    const s = pace.frame(now);
+    // (frames laid out behind the veil come as slowly as the work allows: not
+    // a reason to draw less sharp)
+    if (prep.preparing) pace.reset();
+    const s = prep.preparing ? null : pace.frame(now);
     if (s !== null) {
       sharp = s;
       resize(stage.size.w, stage.size.h);
@@ -683,7 +692,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     fx.update(dt, t);
     floorLight?.update();
     renderer.info.reset();
-    stage.render(ms);
+    if (!prep.held()) stage.render(ms);
   };
 
   // drawn a step less sharp than the stage's own ratio while pace says so
@@ -750,6 +759,11 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   };
 
   const api = {
+    // everything onto the graphics chip behind the page's veil, and true meanwhile
+    prepare: prep.prepare,
+    get preparing() {
+      return prep.preparing;
+    },
     ground: import.meta.env.DEV ? floorLight : null, // for the QA scripts
     house: import.meta.env.DEV ? house : null, // for the QA scripts
     render,
