@@ -123,7 +123,7 @@ export const SITES = {
         },
         things: [
           { kind: 'moscantina', at: [0, 0], yaw: 0.3 },
-          { kind: 'dockingbay', at: [-34, 22], yaw: 2.2 },
+          { kind: 'dockingbay', at: [-34, 22], yaw: 2.2, model: false },
           { kind: 'adobe', at: [26, 16], opts: { r: 4.5 } },
           { kind: 'adobe', at: [34, -10], opts: { r: 3.6 } },
           { kind: 'adobe', at: [18, -28], opts: { r: 5 } },
@@ -272,7 +272,7 @@ export const SITES = {
         things: [
           { kind: 'adobe', at: [-10, 4] },
           { kind: 'adobe', at: [12, -6] },
-          { kind: 'dockingbay', at: [2, 18], yaw: PI, opts: { r: 8, h: 4 } },
+          { kind: 'dockingbay', at: [2, 18], yaw: PI, scale: 0.55, wear: 'adobe' },
           { kind: 'vaporator', at: [-18, -10] },
           { kind: 'crates', at: [6, 6] },
           { kind: 'crates', at: [-4, -12] },

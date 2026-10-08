@@ -351,7 +351,7 @@ export const nevarro = {
       things: [
         // (half in the cliff, half out over the canyon, its roof nine metres over the plateau)
         { kind: 'nevarrobase', at: bt(44, 4), yaw: OUT, scale: 1.6, abs: true, y: BASE.top - 6 },
-        { kind: 'bunker', at: bt(-8, 26), yaw: OUT + PI / 2 },
+        { kind: 'bunkerash', at: bt(-8, 26), yaw: OUT + PI / 2 },
         { kind: 'bunker', at: bt(-30, 8), yaw: OUT, model: false, opts: { w: 16, d: 10 } },
         { kind: 'bunker', at: bt(-30, -14), yaw: OUT, model: false, opts: { w: 12, d: 9 } },
         { kind: 'lookout', at: bt(-26, -36), yaw: OUT, opts: { h: 24 } },

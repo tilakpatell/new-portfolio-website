@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { box, cyl, dome, part, ring, rod } from '../kit';
 import { upright } from '../../../universe/trafficKit';
+import { litWindows } from './windows';
 
 const { PI, cos, sin, abs } = Math;
 const hot = (c, k = 2) => new THREE.Color(c).multiplyScalar(k);
@@ -41,9 +42,11 @@ export const PROPS = {
       part(new THREE.RingGeometry(r * 0.62, r * 0.65, 96).rotateX(-PI / 2), { at: [0, 0.02, 0], color: '#bfb4a6', to: 'paint' }),
       part(new THREE.RingGeometry(r * 0.88, r * 0.9, 96).rotateX(-PI / 2), { at: [0, 0.02, 0], color: '#c9a888', to: 'paint' }),
       // the underside: a bowl down to the stalk
-      part(upright([[6, -250], [10, -215], [16, -120], [r * 0.22, -78], [r * 0.45, -48], [r * 0.72, -22], [r * 0.93, -8], [r, -3]], 64), { color: '#b9b0a4', to: 'paint' }),
-      // the rim's windows, lit
-      part(new THREE.CylinderGeometry(r + 0.05, r + 0.05, 1.0, 96, 1, true), { at: [0, -1.7, 0], color: hot('#ffd2a0', 1.6), to: 'glow' }),
+      part(upright([[6, -250], [10, -215], [16, -120], [r * 0.22, -78], [r * 0.45, -48], [r * 0.72, -22], [r * 0.93, -16], [r, -12], [r, -3]], 64), { color: '#8c9098', to: 'paint' }),
+      // the stalk's bulb, under it all
+      part(new THREE.SphereGeometry(14, 24, 12), { at: [0, -252, 0], scale: [1, 0.6, 1], color: '#7e7a74', to: 'metal' }),
+      // the rim's windows, lit, in three tiers
+      ...[-1.7, -6, -10].map((y) => part(new THREE.CylinderGeometry(r + 0.05, r + 0.05, 1.0, 96, 1, true), { at: [0, y, 0], color: hot('#ffd2a0', 1.6), to: 'glow' })),
     ];
     // ribs down the bowl
     for (let i = 0; i < 24; i++) {
@@ -74,12 +77,12 @@ export const PROPS = {
 
   // a landing platform off the city's edge: a round deck, its rim lit,
   // the landing circle, a cone of supports under it
-  bespinplatform(k, { r = 26, color = '#e6ddd0', gap = null } = {}) {
+  bespinplatform(k, { r = 26, color = '#cfc8c0', gap = null } = {}) {
     const P = [
       part(cyl(r, r * 0.98, 1.6, 64), { at: [0, -1.6, 0], color, to: 'deck' }),
-      part(new THREE.RingGeometry(r * 0.2, r * 0.22, 48).rotateX(-PI / 2), { at: [0, 0.02, 0], color: '#a89e90', to: 'adobe' }),
-      part(new THREE.RingGeometry(r * 0.55, r * 0.58, 64).rotateX(-PI / 2), { at: [0, 0.02, 0], color: '#d8783a', to: 'paint' }),
       part(new THREE.RingGeometry(r * 0.9, r * 0.92, 64).rotateX(-PI / 2), { at: [0, 0.02, 0], color: '#a89e90', to: 'paint' }),
+      // its raised rim
+      part(new THREE.TorusGeometry(r * 0.97, 0.35, 6, 64).rotateX(PI / 2), { at: [0, 0.15, 0], color: '#bfb8b0', to: 'metal' }),
       part(new THREE.ConeGeometry(r * 0.7, 16, 32, 1, true), { at: [0, -9.6, 0], rot: [PI, 0, 0], color: '#b4aca0', to: 'cloth' }),
       part(cyl(2.5, 3.5, 30, 12), { at: [0, -40, 0], color: '#a8a094', to: 'metal' }),
     ];
@@ -130,14 +133,21 @@ export const PROPS = {
       // the curved back wall, its pipes and its lights
       part(new THREE.CylinderGeometry(17, 17, 11, 48, 1, true, PI * 0.12, PI * 1.76), { at: [0, 5.5, 0], color: '#2c2828', to: 'cloth' }),
       part(new THREE.CylinderGeometry(17.4, 17.6, 11.4, 48, 1, true, PI * 0.12, PI * 1.76), { at: [0, 5.7, 0], color: '#e4dacd', to: 'adobe' }),
-      part(new THREE.CylinderGeometry(17.7, 17.7, 0.8, 48, 1, true, PI * 0.12, PI * 1.76), { at: [0, 8.6, 0], color: hot('#ff8a5a', 1.4), to: 'glow' }),
+      part(new THREE.CylinderGeometry(17.7, 17.7, 0.15, 48, 1, true, PI * 0.12, PI * 1.76), { at: [0, 8.6, 0], color: hot('#ff8a5a', 1.4), to: 'glow' }),
       part(new THREE.TorusGeometry(16.6, 0.25, 6, 48, PI * 1.76).rotateX(PI / 2), { at: [0, 10.8, 0], rot: [0, PI * 1.38, 0], color: '#3a3434', to: 'metal' }),
       // the platform, ringed, and the hole in it
+      part(cyl(6.4, 6.4, 0.3, 40), { color: '#322c2c', to: 'metal' }),
       part(cyl(5.2, 5.2, 0.5, 32), { color: '#3a3434', to: 'metal' }),
       part(new THREE.CircleGeometry(2.2, 24).rotateX(-PI / 2), { at: [0, 0.52, 0], color: '#050404', to: 'dark' }),
       part(new THREE.TorusGeometry(2.25, 0.12, 6, 32).rotateX(PI / 2), { at: [0, 0.55, 0], color: hot('#ff6a2a', 2.6), to: 'glow' }),
       part(new THREE.TorusGeometry(5.1, 0.1, 6, 40).rotateX(PI / 2), { at: [0, 0.55, 0], color: hot('#ff3a1a', 2), to: 'glow' }),
     ];
+    // oblong glow slots round the dais's lower step
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * PI * 2;
+      const rr = i % 2 ? 6.1 : 5.6;
+      P.push(part(new THREE.BoxGeometry(0.9, 0.08, 0.3), { at: [sin(a) * rr, 0.32, cos(a) * rr], rot: [0, a + PI / 2, 0], color: hot('#ff7a2a', 2.4), to: 'glow' }));
+    }
     // the claws, arching over the hole
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * PI * 2 + PI / 4;
@@ -222,7 +232,6 @@ export const PROPS = {
   reactorshaft(k, { r = 15, gantry = 13 } = {}) {
     const P = [
       // the shaft, open where the corridor comes in (at −z), seen from in and out
-      part(new THREE.CylinderGeometry(r, r, 100, 40, 1, true, PI * 0.07 + PI, PI * 1.86), { at: [0, -38, 0], color: '#3a3e48', to: 'cloth' }),
       part(new THREE.CylinderGeometry(r + 0.6, r + 0.6, 100, 40, 1, true, PI * 0.07 + PI, PI * 1.86), { at: [0, -38, 0], color: '#cfc6ba', to: 'adobe' }),
       part(new THREE.ConeGeometry(r + 0.6, 26, 40, 1, true), { at: [0, -101, 0], rot: [PI, 0, 0], color: '#b9b0a4', to: 'adobe' }),
       part(new THREE.CircleGeometry(r - 0.5, 32).rotateX(-PI / 2), { at: [0, -86, 0], color: hot('#ffb070', 1.6), to: 'glow' }),
@@ -236,11 +245,17 @@ export const PROPS = {
     for (let y = 6; y > -84; y -= 14) P.push(part(new THREE.TorusGeometry(r - 0.4, 0.22, 4, 40).rotateX(PI / 2), { at: [0, y, 0], color: hot(y > -40 ? '#a8c8ff' : '#ffb27a', 1.8), to: 'glow' }));
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * PI * 2 + PI / 6;
-      P.push(part(new THREE.BoxGeometry(1.2, 96, 1.2), { at: [sin(a) * (r - 0.8), -38, cos(a) * (r - 0.8)], color: '#2a2e36', to: 'metal' }));
+      P.push(part(new THREE.BoxGeometry(1.2, 96, 1.2), { at: [sin(a) * (r - 0.8), -38, cos(a) * (r - 0.8)], color: '#1a1e26', to: 'metal' }));
     }
     for (let i = 0; i < 4; i++) P.push(rod([0.9, 0.0, -r + 2 + i * 3], [0.9, 1.0, -r + 2 + i * 3], 0.04, 0.04, { color: '#7a7e88', to: 'metal' }));
+    const object = k.build(P, { name: 'reactorshaft' });
+    // the inner wall, its own mesh: dark, with the film's walls of tiny lights
+    const wallMat = litWindows(k.own(new THREE.MeshStandardMaterial({ color: '#121a26', roughness: 0.8, side: THREE.DoubleSide })), { seed: 19, density: 0.6, cell: [0.9, 1.2], warm: '#dbe8ff', cool: '#9ad4ff' });
+    const wall = new THREE.Mesh(k.own(new THREE.CylinderGeometry(r, r, 100, 40, 1, true, PI * 0.07 + PI, PI * 1.86)), wallMat);
+    wall.position.y = -38;
+    object.add(wall);
     return {
-      object: k.build(P, { name: 'reactorshaft' }),
+      object,
       floors: [{ x: 0, z: -r + gantry / 2, hw: 0.95, hd: gantry / 2, y: 0 }],
       solids: [{ box: [0.95, -r + gantry / 2, 0.08, gantry / 2, 0] }],
     };
@@ -260,12 +275,15 @@ export const PROPS = {
     ];
     for (let z = -4.5; z <= 2.5; z += 1.75)
       for (const s of [-1, 1]) {
-        P.push(part(box(0.55, 0.5, 0.55), { at: [s * 1.35, 0, z], color: '#3a3438', to: 'cloth' }));
-        P.push(part(box(0.55, 0.7, 0.1), { at: [s * 1.62, 0.5, z], color: '#3a3438', to: 'cloth' }));
+        P.push(part(box(0.55, 0.5, 0.55), { at: [s * 1.35, 0, z], color: '#ece6dc', to: 'cloth' }));
+        P.push(part(box(0.08, 1.6, 0.5), { at: [s * 1.62, 0.5, z], color: '#ece6dc', to: 'cloth' }));
       }
     // the tall windows, glowing with the sunset outside
+    // (and a round one in the back wall, facing the open front)
+    P.push(part(new THREE.CircleGeometry(2.4, 32), { at: [0, 4.6, -12.8], color: hot('#ffc89a', 1.3), to: 'glow' }));
     for (let i = 0; i < 9; i++) {
       const a = PI * 0.32 + (i / 8) * PI * 1.36;
+      if (i % 2 || Math.abs(a - PI) < 0.5) continue;
       P.push(part(new THREE.BoxGeometry(1.4, 6, 0.1), { at: [sin(a) * 12.9, 4.4, cos(a) * 12.9], rot: [0, a, 0], color: hot('#ffc89a', 1.3), to: 'glow' }));
     }
     const solids = [{ box: [0, -1, 1.0, 4.6, 0], top: 0.9 }];
@@ -279,12 +297,17 @@ export const PROPS = {
   // the weather vane, hanging under the city: a long mast down from the
   // stalk, its crossbars and its antenna fins (where Luke hung)
   weathervane(k, { h = 70 } = {}) {
-    const P = [part(cyl(1.4, 2.2, h, 10), { at: [0, -h, 0], color: '#9a948a', to: 'metal' })];
+    const M = { color: '#5c5c62', to: 'metal' };
+    const P = [part(cyl(0.8, 1.2, h, 10), { at: [0, -h, 0], ...M })];
     for (let i = 0; i < 6; i++) {
       const y = -h * (0.25 + i * 0.12);
       const w = 6 + i * 2.2;
-      P.push(part(new THREE.BoxGeometry(w * 2, 0.8, 0.8), { at: [0, y, 0], rot: [0, i * 0.6, 0], color: '#a8a296', to: 'metal' }));
-      for (const s of [-1, 1]) P.push(part(new THREE.BoxGeometry(0.3, 6, 3), { at: [s * w * cos(i * 0.6), y - 3, -s * w * sin(i * 0.6)], rot: [0, i * 0.6, 0], color: '#b8b2a6', to: 'paint' }));
+      const t = (i % 2) * (PI / 2);
+      P.push(part(new THREE.BoxGeometry(w * 2, 0.8, 0.8), { at: [0, y, 0], rot: [0, t, 0], ...M }));
+      for (const s of [-1, 1]) {
+        const [x, z] = [s * w * cos(t), -s * w * sin(t)];
+        P.push(part(new THREE.BoxGeometry(0.25, 2.5, 0.25), { at: [x, y - 1.65, z], ...M }), part(box(0.6, 0.6, 0.6), { at: [x, y - 3.2, z], ...M }));
+      }
     }
     P.push(part(new THREE.SphereGeometry(1.2, 8, 6), { at: [0, -h - 0.8, 0], color: hot('#ff5a3a', 3), to: 'glow' }));
     return { object: k.build(P, { name: 'weathervane', shadows: false }) };
