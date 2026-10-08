@@ -327,7 +327,7 @@ function FindMeOnline() {
     <section data-theme-section="github" className="shell relative z-10 py-14 md:py-20" aria-labelledby="online-title">
       <div className="relative">
         <Waypoint top="0.9rem" />
-        <h2 id="online-title" className="title">
+        <h2 id="online-title" className="title" data-tour="home-github">
           Find me online
         </h2>
         <p className="lead mt-4 max-w-[52ch]">The code on GitHub, the career on LinkedIn, and the one-page version of both.</p>

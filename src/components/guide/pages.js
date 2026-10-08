@@ -1,3 +1,4 @@
+import { ABOUT } from './abouts';
 import { GUIDES, guideKeyFor } from './routes';
 
 // What the guide says about each page: a line on what it is, its controls
@@ -89,7 +90,7 @@ export const PAGES = {
     ],
   },
   '/universe': {
-    about: 'The whole site as places in space: the stations round the sun are its pages, the planets in deep space its worlds. Fly a ship to any of them, or pick one.',
+    about: ABOUT['/universe'],
     keys: [
       { label: 'Flying', rows: [...FLY, ['hold S', 'Drop out of a lane'], ['hold W', 'Carry on through a junction'], ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole map']] },
       { label: 'On foot', rows: [['W A S D', 'Walk'], ['Q E', 'Step sideways'], ['Shift', 'Run'], ['Space', 'Jump'], ['F / Click', 'Fire'], ['X', 'Play the other one of your crew'], ['B', 'Rick’s next gadget: the portal gun, the freeze ray, the shrink ray'], ['V', 'Out of their eyes'], ['G', 'Through a door, or back into the ship'], ['Enter', 'Into the planet’s page']] },
@@ -118,7 +119,7 @@ export const PAGES = {
     ],
   },
   '/galaxy': {
-    about: 'Eighteen star systems from the films and the shows, each a moment from them playing out round you.',
+    about: ABOUT['/galaxy'],
     keys: [{ label: 'Flying', rows: [...FLY, ['M', 'The galaxy map: plot a course'], ['J', 'Jump to lightspeed, to the star on your nose'], ['E / Enter', 'Land on the planet (or board the Death Star)']] }],
     touch: [{ rows: [['Drag', 'Fly'], ['Tap', 'A star’s name to plot a course'], ['Jump', 'Lightspeed, to the star on your nose']] }],
     tips: [
@@ -130,7 +131,7 @@ export const PAGES = {
     ],
   },
   '/galaxy/surface': {
-    about: 'A world from the films, on foot: its places to find, its people to talk to, things to ride.',
+    about: ABOUT['/galaxy/surface'],
     keys: [
       {
         rows: [
@@ -180,6 +181,7 @@ export const PAGES = {
     tips: [['The briefing', 'Each system’s mission opens with its own crawl. The trench run, boarding the Death Star, Endor’s chase, Lothal’s star map, Dagobah’s swamp and the battles of Hoth, Geonosis, Scarif and Endor play now; the rest are games still being built.']],
   },
   '/deathstar': {
+    about: ABOUT['/deathstar'],
     keys: [
       {
         label: 'The trench run',
@@ -200,6 +202,7 @@ export const PAGES = {
     ],
   },
   '/deathstar/inside': {
+    about: ABOUT['/deathstar/inside'],
     keys: [
       {
         label: 'Moving',
@@ -255,6 +258,7 @@ export const PAGES = {
     ],
   },
   '/caribbean': {
+    about: ABOUT['/caribbean'],
     keys: [
       {
         label: 'Dead man’s tide',
@@ -278,7 +282,7 @@ export const PAGES = {
     ],
   },
   '/invincible': {
-    about: 'The Graysons’ city to fly about as Mark, and Think, Mark!, the game.',
+    about: ABOUT['/invincible'],
     keys: [
       {
         label: 'The city',
@@ -323,7 +327,7 @@ export const PAGES = {
     ],
   },
   '/middle-earth': {
-    about: 'A map of the road from Hobbiton to Mount Doom. Every stop is a chapter: a place to walk as Frodo, a kitchen to cook in, and its own game.',
+    about: ABOUT['/middle-earth'],
     tips: [
       ['The map', 'Pick a place and the camera flies down to it. The map button takes you back up. A wax seal marks each place you’ve won.'],
       ['The Doors of Durin', 'Move your pointer over the cliff to light the lines, or call the moon. Then say the word: read the arch.'],
@@ -333,7 +337,7 @@ export const PAGES = {
     ],
   },
   '/middle-earth/place': {
-    about: 'Walk the place as Frodo, then cook in its kitchen, Overcooked-style, alone or with friends.',
+    about: ABOUT['/middle-earth/place'],
     keys: [
       { label: 'Walking', rows: [...WALK, ['R', 'The Ring, on or off (in the Shire)'], ['Esc', 'Leave what you’re doing']] },
       { label: 'In the kitchen', rows: [['W A S D', 'Walk'], ['E / Space', 'Pick up, put down, serve'], ['hold F', 'Work: chop, wash, scrape'], ['Shift', 'Dash']] },
@@ -348,7 +352,7 @@ export const PAGES = {
     ],
   },
   '/avengers': {
-    about: 'The compound in 3D, as Spider-Man. Each building opens its game, and each game wins an Infinity Stone.',
+    about: ABOUT['/avengers'],
     keys: [
       { label: 'On the ground', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump (at a wall: run up it)'], ['Drag', 'Look round'], ['E / Enter', 'Go in at a door'], ['M', 'The buildings, with Go there'], ['Esc', 'Out of a game']] },
       { label: 'Swinging', rows: [['hold Space', 'In the air: web a roof edge, tree or mast and swing'], ['Right-click', 'Hold to swing, too'], ['Shift', 'In the air: zip'], ['Q', 'Launch to a perch'], ['T', 'A flip (or a twist, with a direction held)']] },
@@ -368,7 +372,7 @@ export const PAGES = {
     ],
   },
   '/scranton': {
-    about: 'Dunder Mifflin in 3D, as Jim. A week of seven jobs: reception, the stapler in Jell-O, Kevin’s chili, paper toss, the fact check, Dwight’s fire drill and the Dundies.',
+    about: ABOUT['/scranton'],
     keys: [{ rows: [...WALK, ['1 2 3 4', 'Pick what to say'], ['Space / Enter', 'Go on (a talk), throw (paper toss)'], ['Esc', 'Leave a job']] }],
     touch: [{ rows: [...WALK_TOUCH, ['Tap', 'The prompt, and what to say']] }],
     tips: [
@@ -379,6 +383,7 @@ export const PAGES = {
     ],
   },
   '/cybertron': {
+    about: ABOUT['/cybertron'],
     keys: [
       {
         label: 'Roll out',
@@ -400,7 +405,7 @@ export const PAGES = {
     ],
   },
   '/albuquerque': {
-    about: 'Drive round town in Walt’s Aztek. Places open up as Walt’s career grows, each with its own game.',
+    about: ABOUT['/albuquerque'],
     keys: [
       {
         label: 'Driving',
@@ -427,7 +432,7 @@ export const PAGES = {
     ],
   },
   '/c-137': {
-    about: 'The Smiths’ street in 3D, as Morty, with Rick’s cruiser in the driveway and his portal gun on the garage bench.',
+    about: ABOUT['/c-137'],
     keys: [
       { label: 'Walking', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Drag', 'Look round'], ['E', 'Doors, the cruiser, the games, the portal gun on Rick’s bench'], ['P', 'The portal gun, from anywhere'], ['M', 'Things to do']] },
       { label: 'In the cruiser', rows: [['W A S D', 'Fly'], ['Space', 'Climb'], ['Shift', 'Drop'], ['E', 'Land (slow, over open ground)']] },
@@ -464,6 +469,7 @@ export const PAGES = {
     ],
   },
   '/c-137/citadel': {
+    about: ABOUT['/c-137/citadel'],
     keys: [{ rows: [...WALK, ['1 2 3 4', 'Answer'], ['Space', 'Drop a wafer (Simple Rick’s)'], ['Esc', 'Leave a scene']] }],
     touch: [{ rows: [...WALK_TOUCH, ['Tap', 'The prompt, and the answers']] }],
     tips: [
@@ -475,6 +481,7 @@ export const PAGES = {
     ],
   },
   '/dot-matrix': {
+    about: ABOUT['/dot-matrix'],
     keys: [
       {
         rows: [
@@ -495,6 +502,7 @@ export const PAGES = {
     ],
   },
   '/dot-matrix/64': {
+    about: ABOUT['/dot-matrix/64'],
     keys: [
       {
         label: 'The N64 (your own ROM)',
@@ -536,6 +544,7 @@ export const PAGES = {
     ],
   },
   '/dot-matrix/minecraft': {
+    about: ABOUT['/dot-matrix/minecraft'],
     keys: [
       {
         rows: [
@@ -566,6 +575,7 @@ export const PAGES = {
     ],
   },
   '/earth': {
+    about: ABOUT['/earth'],
     keys: [
       { label: 'From orbit', rows: [['Drag', 'Turn the globe'], ['Click', 'A place, to fly there'], ['M', 'Down to the globe, or back up']] },
       { label: 'Flying', rows: [['W A S D / ← ↑ ↓ →', 'Turn, climb and descend'], ['Shift / Space', 'Faster'], ['R', 'A barrel roll'], ['Drag', 'Look round'], ['V', 'Cockpit or chase camera'], ['P', 'The passport'], ['N', 'Always day'], ['Esc', 'Take the controls back from the autopilot']] },
@@ -578,6 +588,7 @@ export const PAGES = {
     ],
   },
   '/music': {
+    about: ABOUT['/music'],
     keys: [{ label: 'The courtyard', rows: [['W A S D', 'Walk'], ['← →', 'Turn'], ['Drag', 'Look round'], ['E', 'Play the instrument you’re by']] }, { label: 'The sitar', rows: [['hold Space', 'A chikari roll']] }],
     touch: [{ label: 'The courtyard', rows: [...WALK_TOUCH, ['Tap', 'An instrument’s button to play it']] }],
     tips: [
