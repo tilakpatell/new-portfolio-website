@@ -74,7 +74,7 @@ const KEYMAP = [
   [['H'], 'Hangar'],
 ];
 // (and the one way down there's no key for, said under the grid)
-const LANDING = 'Fly down into a planet’s air to land.';
+const LANDING = 'Fly down into a planet’s air to go straight into its world.';
 
 const and = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 

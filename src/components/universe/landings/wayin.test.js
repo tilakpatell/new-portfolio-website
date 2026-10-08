@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { LANDABLE } from '../entry';
+import { byId } from '../universes';
 import { LANDINGS } from './landings';
-import { ENTER_KEY, beaconOf, enterLabel, wayIn } from './wayin';
+import { ENTER_KEY, beaconOf, enterLabel, flownInto, wayIn, worldName } from './wayin';
 
 describe('the way in from a landing', () => {
   it('names the world the planet is the way into', () => {
@@ -53,5 +55,23 @@ describe('the way in from a landing', () => {
   it('marks nothing where there is no world to go into', () => {
     expect(beaconOf('home', { things: [] })).toBeNull();
     expect(beaconOf('breakingbad', null)).toBeNull();
+  });
+
+  it('flown down into the air, goes straight into the world, never a landing first', () => {
+    for (const p of LANDABLE) {
+      expect(flownInto(p.id), p.id).toBe(p.id);
+      expect(byId(p.id).to, p.id).toMatch(/^\//);
+      expect(worldName(p.id), p.id).toBeTruthy();
+    }
+    // (Bird World: straight to Birdperson, not a landing beside the ship)
+    expect(flownInto('birdworld')).toBe('birdworld');
+    expect(byId('birdworld').to).toBe('/c-137/birdworld');
+    expect(worldName('breakingbad')).toBe('Albuquerque');
+  });
+
+  it('flies into nothing where there is no world', () => {
+    expect(flownInto('home')).toBeNull();
+    expect(flownInto('nowhere')).toBeNull();
+    expect(flownInto(null)).toBeNull();
   });
 });

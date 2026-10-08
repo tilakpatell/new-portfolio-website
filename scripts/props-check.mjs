@@ -70,20 +70,21 @@ for (const id of planets) {
   const before = await page.evaluate(() => {
     const f = window.__universeDebug.foot;
     const p = f.physics();
-    return { biome: f.biome?.title ?? null, engine: p.engine, bodies: p.bodies, simulated: p.simulated, pushers: p.pushers, kinds: p.kinds };
+    return { biome: f.biome?.title ?? null, engine: p.engine, bodies: p.bodies, simulated: p.simulated, pushers: p.pushers, kinds: p.kinds, loose: p.loose };
   });
-  console.log(`     ${id}:`, JSON.stringify({ ...before, kinds: [...new Set(before.kinds)] }));
+  console.log(`     ${id}:`, JSON.stringify({ ...before, kinds: [...new Set(before.kinds)], loose: before.loose.length }));
   if (before.engine !== 'ready') {
     console.log('FAIL', id, `engine ${before.engine}`);
     bad++;
   }
-  if (!before.bodies && !allowEmpty) {
+  if (!before.loose.length && !allowEmpty) {
     console.log('FAIL', id, `nothing loose where it came down (${before.biome ?? 'the planet’s own landing'})`);
     bad++;
   }
   if (before.bodies && !before.simulated) console.log('    ', id, 'first body:', JSON.stringify(await page.evaluate(() => window.__universeDebug.foot.physics().bodyAt(0))));
-  const n = Math.min(4, before.bodies);
-  for (let i = 0; i < n; i++) {
+  // (the lightest loose ones: a fixed lamp post doesn't move when it's
+  // shot, and a bolt barely slides a crate)
+  for (const i of before.loose.slice(0, 4)) {
     const was = await page.evaluate((i) => window.__universeDebug.foot.physics().drawn(i), i);
     const hit = await page.evaluate((i) => Boolean(window.__universeDebug.foot.physics().knock(i)), i);
     await page.waitForTimeout(2500);

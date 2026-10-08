@@ -23,6 +23,7 @@
     "mc:atlas": "node scripts/mc-atlas.mjs",
     "cc0": "node scripts/cc0.mjs",
     "kenney": "node scripts/kenney.mjs",
+    "quaternius": "node scripts/quaternius.mjs",
     "hq-assets": "NODE_USE_ENV_PROXY=1 node --max-old-space-size=8192 scripts/hq-assets.mjs",
     "bake:abq": "node scripts/bake-floor-shadows.mjs",
     "voices:lines": "node scripts/voices/export-lines.mjs",

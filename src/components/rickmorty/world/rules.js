@@ -17,7 +17,7 @@
 
 import { seeded } from '../../../lib/seeded';
 import { makeWalker, pushOut } from '../../middleearth/towns/walker';
-import { DESTINATIONS, GARAGE_BACK, isPlanet } from './dimensions/destinations';
+import { DESTINATIONS, GARAGE_BACK, isBigPlanet, isPlanet } from './dimensions/destinations';
 
 export { behindYaw, cameraMove } from '../../middleearth/towns/walker';
 
@@ -1021,7 +1021,9 @@ export const TASKS = [
   { id: 'roy55', name: 'Outlive Morty’s 55', hint: 'Play Roy again and live past Morty’s 55.' },
   { id: 'rickall', name: 'Survive Total Rickall', hint: 'There’s an egg on the Smiths’ living-room bookcase that nobody remembers buying.' },
   { id: 'wong', name: 'Go to family therapy', hint: 'Dr. Wong’s office is in the house next to Shoney’s, up the street. Rick says it’s for Jerry.' },
-  ...DESTINATIONS.flatMap((d) => d.tasks),
+  // (a big planet's box tasks are retired: it's a world of its own now, its
+  // quests kept apart from these, so C-137 neither counts nor points to them)
+  ...DESTINATIONS.filter((d) => !isBigPlanet(d.id)).flatMap((d) => d.tasks),
 ];
 
 // ── Morty's Mind Blowers ──
@@ -1041,8 +1043,9 @@ export const MEMORIES = [
 ];
 export const MEMORY_COLORS = { blue: '#52d6ff', purple: '#b47cff', red: '#ff4d5e', pink: '#ff8fd0' };
 
-// the planets' things to do, done on the planets themselves (landed on from the universe map)
-export const PLANET_TASKS = new Set(DESTINATIONS.filter((d) => isPlanet(d.id)).flatMap((d) => d.tasks.map((t) => t.id)));
+// the planets' things to do, done on the planets themselves (landed on from
+// the universe map): the small ones'; a big planet's are retired with TASKS'
+export const PLANET_TASKS = new Set(DESTINATIONS.filter((d) => isPlanet(d.id) && !isBigPlanet(d.id)).flatMap((d) => d.tasks.map((t) => t.id)));
 
 // What's done and what's next. `done` is the ids finished, in any order.
 // `skip` (ids, or a Set) is passed over when picking what's next, but still

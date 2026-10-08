@@ -55,9 +55,9 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const [footHint, setFootHint] = useState(false);
   // the place's name as you come down on a planet (landings.js)
   const [arrive, setArrive] = useState(null);
-  const [ride, setRide] = useState(null); // (on a hyperlane: the scene's word, lanePilot.js's rideLine)
   const [controls, setControlsState] = useState(() => readControls(local.get(CONTROLS_KEY)));
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aim, setAim] = useState(null); // (the star the nose is on: the scene's word, aim.js; { id, name })
   const setControls = (c) => {
     const next = readControls(c);
     setControlsState(next);
@@ -113,7 +113,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       onCrash,
       onEvent: (e) => {
         if (e.type === 'launch') setFlown(true);
-        if (e.type === 'ride') setRide(e.on ? e.line : null);
+        if (e.type === 'aim') setAim(e.id ? { id: e.id, name: e.name } : null);
         if (e.type === 'landable') setLandable(e.id);
         if (e.type === 'phone' && e.what !== 'open') setPhoneNear(e.what === 'near');
         if (e.type === 'foot' && e.id === 'arrive') setArrive({ title: e.title, sub: e.sub, at: Date.now() });
@@ -304,9 +304,11 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   <b className="universe-nav-dist" />
                 </span>
               </div>
-              <div ref={arms} className="universe-arms" aria-hidden="true" data-ride={ride ? '' : undefined}>
+              <div ref={arms} className="universe-arms" aria-hidden="true">
                 <span className="universe-arms-name" />
                 <span className="universe-arms-rack">
+                  <i className="universe-arms-pip" />
+                  <i className="universe-arms-pip" />
                   <i className="universe-arms-pip" />
                   <i className="universe-arms-pip" />
                   <i className="universe-arms-pip" />
@@ -321,30 +323,12 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-siege-state" />
               </div>
               <p ref={prompt} className="universe-prompt" aria-live="polite" />
-              {/* on a hyperlane, in place of the gun line: the tier and the lane, the
-                  node it's coming to and how soon, and the way off (or, at a junction,
-                  the way on); the keys are a keyboard's, so a touch screen doesn't show them,
-                  and the seconds (new twice a second) aren't read out, so a screen reader
-                  hears the line as it changes lane, not every tick of the count */}
-              {ride && (
-                <p className="universe-lane" role="status" data-tier={ride.tier}>
-                  <span className="universe-lane-head">
-                    <span className="universe-lane-tier">{ride.tier}</span>
-                    <b className="universe-lane-name">{ride.name}</b>
-                  </span>
-                  <span className="universe-lane-next">
-                    {ride.next} · <span className="universe-lane-eta" aria-hidden="true">{Math.max(0, Math.round(ride.eta))} s</span>
-                    <span className="universe-lane-keys">
-                      {' '}
-                      · Hold <kbd>S</kbd> to drop out
-                      {ride.junction && (
-                        <>
-                          , hold <kbd>W</kbd> to carry on
-                        </>
-                      )}
-                    </span>
-                  </span>
-                </p>
+              {/* the star the nose is on, to jump to: J, or this (a touch screen's way) */}
+              {!onFoot && ship && aim && (
+                <button type="button" className="universe-jump" onClick={() => view.current?.travel?.(aim.id, 'hyper')}>
+                  <span className="universe-jump-label">Jump to {aim.name ?? 'it'}</span>
+                  <kbd aria-hidden="true">J</kbd>
+                </button>
               )}
               {/* Rick's portal gun, in any ship: a portal ahead, to his dimension or home (gunPortal.js) */}
               {!onFoot && ship && (
@@ -434,10 +418,10 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <p className="universe-hint universe-hint-fly">
                   <span className="universe-hint-keys">
                     {/* the five keys that matter in the first minute; the guide has the rest */}
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, arrows steer, <kbd>Space</kbd> boost, <kbd>F</kbd> fire, fly down into a planet’s air to land
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, arrows steer, <kbd>Space</kbd> boost, <kbd>F</kbd> fire, fly down into a planet’s air to go into its world
                     <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag to fly, hold Boost to go fast and Fire to shoot, and fly down into a planet’s air to land<GuideCue touch /></span>
+                  <span className="universe-hint-touch">Drag to fly, hold Boost to go fast and Fire to shoot, and fly down into a planet’s air to go into its world<GuideCue touch /></span>
                 </p>
               )}
             </>
