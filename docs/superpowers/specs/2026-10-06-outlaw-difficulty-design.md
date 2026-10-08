@@ -49,8 +49,8 @@ Made for the user, who asked for this without checking in.
 - **Wanted is its own pure module** (`wanted.js`), next to `standing.js`.
   Standing stays what the universe thinks of you over time; wanted is the
   chase happening now, plus the bounty that outlives it. Stars and the
-  search are kept for the visit; the bounty and your credits are kept
-  per side at `tp:universe-wanted`.
+  search are kept for the visit; the bounty is kept per side at
+  `tp:universe-wanted`.
 - **Witnesses.** A crime the law sees counts at once. One only civilians
   see starts a report: a few seconds while any of those ships is still
   near; shoot it or leave it behind and the report dies with it.
@@ -59,10 +59,12 @@ Made for the user, who asked for this without checking in.
   downloads): the Empire's ISB patrol, enforcers and a missile gunboat;
   the Federation's police cruisers, enforcers and wardens; Albuquerque PD,
   DEA enforcers and a SWAT truck.
-- **Credits.** Kills of anyone who isn't the law (pirates, bounty
-  hunters, rival gangs, aces) pay; the law pays nothing. Landing with no
-  stars on you pays the bounty off if you can cover it. The loop: be an
-  outlaw, then go hunting to clear your name.
+- **Credits come from the site's wallet** (`economy.js`, which landed on
+  main meanwhile): kills of the law pay nothing; landing with no stars on
+  you pays the bounty off out of the wallet (`spend`) if it covers it. The
+  loop: be an outlaw, then go hunting to clear your name. `law.js` is the
+  scene's glue (crimes from the deeds already noted, witnesses from
+  `traffic.near`, police by stars, bounty hunters by the bounty).
 - **Bosses use the ace `stages` that exist**, plus a `guarded` trait (no
   damage while its escort lives), a `salvo` trait (a spread of missiles),
   and a HUD bar for the boss in the fight.
@@ -78,10 +80,10 @@ Made for the user, who asked for this without checking in.
    Per-kind `damage`. `difficulty.js`; difficulty in the flight settings;
    scene passes it in and plays the new laser kinds (ion, missile, ram).
 2. **Wanted and bounty, universe.** `wanted.js` (stars, pursuit/search,
-   witnesses, bounty, credits, pay off, law response by stars);
+   witnesses, bounty, pay off from the wallet, law response by stars);
    `police` factions and their kinds in `sides.js`; scene wiring (crimes
    from the deeds already noted, cops dispatched by stars, the search,
-   pay off on landing); a HUD strip (stars, bounty, credits, search);
+   pay off on landing); a HUD strip (stars, bounty, search);
    crew lines for being wanted, searched for, losing them.
 3. **Bosses, universe.** A Most Wanted boss per side at five stars and as
    the top bounty: guarded phase, then the ace's own stages, salvos and

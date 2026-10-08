@@ -1191,11 +1191,29 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
       return wound(h, n);
     },
 
+    // whether one of a faction's (any of `factions`) still in the fight
+    // sees you now (its senses: a planet between you hides you), within
+    // `range` (the law's eyes, wanted.js)
+    sees(factions, range = Infinity) {
+      for (const h of live) {
+        if (!h.alive || h.pack.gone || !h.seesYou || !factions.includes(h.pack.faction)) continue;
+        if ((h.pos.x - you.x) ** 2 + (h.pos.y - you.y) ** 2 + (h.pos.z - you.z) ** 2 <= range * range) return true;
+      }
+      return false;
+    },
+    // how many of a faction's are still after you
+    strength(faction) {
+      let n = 0;
+      for (const h of live) if (h.alive && !h.pack.gone && h.pack.faction === faction) n += 1;
+      return n;
+    },
+
     // every pack gives up and flies off (what they were after is gone), each
     // one removed once it's well away from `ship` as update is given it
-    leave() {
+    // (`faction`, given: only its packs: the law giving up on you, wanted.js)
+    leave(faction = null) {
       for (const p of packs) {
-        if (p.gone) continue;
+        if (p.gone || (faction && p.faction !== faction)) continue;
         p.gone = true;
         p.fade = 0;
         for (const h of p.members) release(h);

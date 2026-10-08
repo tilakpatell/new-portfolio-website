@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useScene } from '../../lib/three/useScene';
 import { local } from '../../lib/hooks';
 import { CONTROLS_KEY, readControls } from './controls';
+import { useEconomy } from './EconomyProvider';
 import FlightSettings from './FlightSettings';
 import Hangar from './Hangar';
 import { UNIVERSES } from './universes';
@@ -39,6 +40,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const stick = useRef(null);
   const alt = useRef(null);
   const shield = useRef(null);
+  const wantedEl = useRef(null); // (the law's stars and the bounty on you: wanted.js)
+  const { economy } = useEconomy({ ask: false }); // (the wallet a bounty's paid off from)
   const hud = useRef(null);
   const arms = useRef(null); // the weapon readout (weapons.js)
   const siegeEl = useRef(null); // the Citadel's siege (siege.js)
@@ -90,6 +93,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       stick,
       alt,
       shield,
+      wanted: wantedEl,
+      wallet: economy,
       hud,
       arms,
       siege: siegeEl,
@@ -251,6 +256,17 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-shield-bar">
                   <span />
                 </span>
+              </div>
+              <div ref={wantedEl} className="universe-wanted" aria-hidden="true">
+                <span className="universe-wanted-stars">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                <b className="universe-wanted-word" />
+                <b className="universe-wanted-bounty" />
               </div>
               <div ref={hud} className="universe-hud" aria-hidden="true">
                 <span className="universe-reticle" />

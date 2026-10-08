@@ -168,6 +168,8 @@ import { createNpcs } from './npcs';
 import { NPCS, visitorsOf } from './npcs/index';
 import { tells } from './npcRules';
 import { createStanding } from './standing';
+import { createWanted } from './wanted';
+import { createLaw } from './law';
 import { readBuildWire, writeBuild } from './shipyard/build';
 import { readLooks } from '../rickmorty/wardrobe/looks';
 import { BUILT_KINDS, buildTraffic } from './trafficModels';
@@ -843,6 +845,48 @@ export async function create(canvas, ctx) {
   const deed = (what, n = 1, as = deedToEarn(what)) => {
     for (const e of standing.note(what, n)) stood(e);
     pay(as, n);
+    law?.crime(what, state.ship); // (and a crime, if it's one: wanted.js)
+  };
+  // the law's chase (wanted.js, law.js): stars and a price on your head,
+  // the side's police sent by stars, bounty hunters by the bounty, paid off
+  // out of the wallet where you land
+  const wanted = createWanted({ storage: remembered });
+  const lawSaid = (e) => wantedNote(e);
+  const law = hunters
+    ? createLaw({
+        wanted,
+        hunters,
+        traffic,
+        side: () => sideFor(state.kind),
+        difficulty: diff,
+        bounty: (tier, ship) => {
+          happen('bounty', ship);
+          if (tier >= 2) hunters.pack(pickFaction(sideFor(state.kind), 'bounty'), ship, { size: 1, ace: false });
+        },
+        say: lawSaid,
+      })
+    : null;
+  // what the law's doing, on the HUD's note and from the crew (Comms: an
+  // event, by what happened)
+  const STAR = '★';
+  const wantedNote = (e) => {
+    const note = (text, s = 4) => (state.note = { text, until: wall() + s });
+    if (e.type === 'wanted' && e.stars > e.was) {
+      note(`Wanted ${STAR.repeat(e.stars)}: ${wanted.bounty} ¢ on your head`);
+      emit({ type: 'event', id: 'wanted', sub: e.stars });
+    } else if (e.type === 'witness') note('A witness is running to the law: stop them, or get clear');
+    else if (e.type === 'silenced') note('No witnesses left', 2.5);
+    else if (e.type === 'search') {
+      note('Out of sight: they’re searching for you');
+      emit({ type: 'event', id: 'wanted', sub: 'search' });
+    } else if (e.type === 'resighted') note('Spotted again', 2.5);
+    else if (e.type === 'lost') {
+      note(wanted.bounty ? `You lost them. The bounty stands: ${wanted.bounty} ¢` : 'You lost them');
+      emit({ type: 'event', id: 'wanted', sub: 'lost' });
+    } else if (e.type === 'cops' && e.stars >= 3) note(`Police inbound ${STAR.repeat(e.stars)}: they’ll hold your drive down`, 3);
+    else if (e.type === 'hunter') note(e.tier >= 3 ? 'The price on your head has every hunter out' : 'A bounty hunter has come for your bounty', 3.5);
+    else if (e.type === 'paid') note(`Bounty paid off: −${e.amount} ¢`);
+    else if (e.type === 'owed') note(`A ${e.bounty} ¢ bounty on you: ${e.need} ¢ more to pay it off`, 4);
   };
   const npcs = hunters ? createNpcs(map, { fleet, memory: npcMemory }) : null; // (the named characters: npcRules.js's brains)
   // the crew's war (front.js): its front out in deep space, a battle there
@@ -2318,6 +2362,11 @@ export async function create(canvas, ctx) {
   // a pirate on someone else, or a character who turned on you)
   const killed = (hh) => {
     if (!hh.faction) return;
+    // (one of the law's: a crime, and it pays nothing)
+    if (law?.killed(hh.faction, state.ship)) {
+      for (const e of standing.note('killHunter')) stood(e);
+      return;
+    }
     const pays = hunterEarn(FACTIONS_ALL, hh); // (its faction's ace pays more)
     if (FACTIONS_ALL[hh.faction]?.role === 'pirates' || hh.prey) deed('killPirate', 1, pays);
     else deed('killHunter', 1, pays);
@@ -2812,6 +2861,7 @@ export async function create(canvas, ctx) {
     npcs?.clear();
     engine?.set({ speed: 0, boost: false, on: false });
     if (by) net?.down(by); // everyone hears who got you
+    law?.down(); // (the chase is over; the bounty isn't)
     emit({ type: 'destroyed' });
     retarget(650);
   };
@@ -3215,6 +3265,26 @@ export async function create(canvas, ctx) {
 
   // the shields bar: shown while there's trouble about or they're down at all
   let shieldOn = false;
+  // the law's strip (UniverseMap's): its stars, what it's doing (wanted, a
+  // witness's report on its way, searching, or just the bounty), the bounty
+  let wantedKey = '';
+  const placeWanted = () => {
+    const el = props.wanted?.current;
+    if (!el) return;
+    const r = wanted.report;
+    const on = flying() && !onFoot() && state.view !== 'map' && !state.crash && !props.frozen && (wanted.stars > 0 || wanted.bounty > 0 || Boolean(r));
+    const word = wanted.stars ? (wanted.phase === 'search' ? `Searching ${Math.ceil(wanted.searchLeft)}s` : 'Wanted') : r ? `Witness ${Math.ceil(r.left)}s` : 'Bounty';
+    const key = `${on}|${wanted.stars}|${word}|${wanted.bounty}`;
+    if (key === wantedKey) return;
+    wantedKey = key;
+    el.toggleAttribute('data-on', on);
+    el.toggleAttribute('data-search', wanted.phase === 'search');
+    el.querySelectorAll('.universe-wanted-stars i').forEach((star, i) => star.toggleAttribute('data-lit', i < wanted.stars));
+    const w = el.querySelector('.universe-wanted-word');
+    const b = el.querySelector('.universe-wanted-bounty');
+    if (w) w.textContent = word;
+    if (b) b.textContent = wanted.bounty ? `${wanted.bounty} ¢` : '';
+  };
   const placeShield = () => {
     const el = props.shield?.current;
     if (!el) return;
@@ -3459,6 +3529,8 @@ export async function create(canvas, ctx) {
     for (const e of standing.tick(dt)) stood(e);
     const live = flying() && !onFoot() && !state.crash && !state.dive && !props.frozen ? state.ship : null;
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
+    if (law) law.step(dt, live, { heat: state.heat });
+    else wanted.side(sideOf(state.kind));
     if (wingmen) helpFrom(dt, t, live);
     if (skirmishes) farFight(dt, t, live);
     if (!state.fights || state.clock - state.fightsAt > 0.25) [state.fights, state.fightsAt] = [fightsNow(), state.clock]; // (four times a second is plenty for a far flicker's place)
@@ -3573,7 +3645,7 @@ export async function create(canvas, ctx) {
         const sunNow = litBy.key && litBy.key.strength > 1.2 ? LIT_STARS.find((st) => st.id === litBy.key.id) : null;
         const where = { sun: Boolean(sunNow && canEclipse({ eye: [live.x, live.y, live.z], sun: sunNow })), station: Boolean(state.at && byId(state.at)?.kind === 'core'), gate: state.at === 'starwars' };
         const zone = state.ride ? 'lane' : zoneOf(live, { regionAt, laneAt: noLane }); // (in a carriageway but not riding it, nothing of the lane's can happen: it needs the ride)
-        const id = director.update(dt, { zone, hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: Boolean(state.ambush) || hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted, pace: diff().pace });
+        const id = director.update(dt, { zone, hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: Boolean(state.ambush) || Boolean(law?.busy) || hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted, pace: diff().pace });
         state.hurtNow = 0;
         if (id) happen(playAs(id, zone), live, id);
         // the ambush at your off-ramp: sprung as you come off there (laneEvents.js)
@@ -3640,6 +3712,7 @@ export async function create(canvas, ctx) {
       props.hud?.current?.toggleAttribute('data-static', staticOn);
     }
     placeShield();
+    placeWanted();
     return busy || Boolean(hunters?.count) || later.length > 0;
   };
 
@@ -4078,6 +4151,7 @@ export async function create(canvas, ctx) {
           props.onPick?.(now);
         }
         emit({ type: 'arrive', id: now });
+        law?.arrive(props.wallet ?? null); // (a bounty on your head paid off here, out of the wallet)
         state.saw.add(now); // (been here: a rift takes you somewhere else)
         pulseAt = { id: now, age: 0 };
         cabLook.glanceAt = state.clock; // the crew have their say: a look over at them
@@ -4740,13 +4814,16 @@ export async function create(canvas, ctx) {
     const gunBusy = gunPortal.update(dt);
     const fxBusy = crashBusy || popBusy || gunBusy || Boolean(state.crash?.swallow);
     if (traffic) {
-      for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null, { fight: Boolean(hunters?.active), feared: standing.feared, wanted: standing.wanted })) {
+      for (const e of traffic.update(dt, t, flying() && !state.crash && !state.dive ? state.ship : null, { fight: Boolean(hunters?.active), feared: standing.feared, wanted: standing.wanted || wanted.stars > 0 })) {
         if (e.type === 'spotted') {
+          law?.spotted(); // (the law's eyes on you: wanted.js)
           // a patrol of the law going past has seen a wanted pilot: they come
-          // (once in a while), and the crew say so
-          if (hunters && state.ship && !state.crash && !hunters.active && state.clock - spottedAt > SPOTTED_EVERY) {
+          // (once in a while), and the crew say so; with the law (law.js),
+          // it's the stars that bring them
+          if (hunters && state.ship && !state.crash && !hunters.active && state.clock - spottedAt > SPOTTED_EVERY && !wanted.stars) {
             spottedAt = state.clock;
-            hunters.pack(e.faction, state.ship, { size: 2, ace: false, heat: state.heat });
+            if (law) law.crime('busted', state.ship);
+            else hunters.pack(e.faction, state.ship, { size: 2, ace: false, heat: state.heat });
             hunts += 1;
             emit({ type: 'event', id: 'spotted' });
           }
@@ -5326,7 +5403,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView, laneLook };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wanted, law, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView, laneLook };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,

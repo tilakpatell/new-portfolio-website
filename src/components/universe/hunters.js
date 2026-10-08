@@ -209,6 +209,10 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     get active() {
       return hunt.active;
     },
+    // the law's eyes and numbers (wanted.js), and one faction sent off
+    sees: (factions, range) => hunt.sees(factions, range),
+    strength: (faction) => hunt.strength(faction),
+    leave: (faction) => hunt.leave(faction),
     // for checking from a browser
     get packs() {
       return hunt.packs;
