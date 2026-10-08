@@ -39,6 +39,7 @@
 
 **Files:**
 - Modify: `src/components/universe/weapons.js`
+- Create: `src/components/universe/weaponTable.js` (the table alone, a leaf: `outfit.js` reads it as it loads and `weapons.js` reads `outfit.js`, so the table can't live in `weapons.js` without an import cycle)
 - Test: `src/components/universe/weapons.test.js`
 
 **Interfaces:**
@@ -58,10 +59,11 @@
 - Test: `src/components/universe/outfit.test.js`
 
 **Interfaces:**
-- Consumes: `weapons.js`'s `WEAPONS` (for the readout's ordnance row).
+- Consumes: `weaponTable.js`'s `WEAPONS` (for the readout's ordnance row).
+- Also: the weapon parts' `look` names a gun (`twin`, `fusion`), and `modules.js` draws a fitted secondary or ordnance as that gun in its own holder, set out from the primary's. The starter-parts test holds for the five flying slots; on the RV's 5 MW plant a starter weapon fits on a stock ship, not on top of every starter.
 - Produces: `SLOTS` with `secondary` and `ordnance` appended; `SLOT_LABEL.guns = 'Primary'`, `secondary: 'Secondary'`, `ordnance: 'Ordnance'`; parts `secondary: STOCK ('Scatter', weapon 'spread'), ion ('Ion burst', mass 1, power 1, achievement 'rebels', hint as the incom part's, look 'twin', weapon 'ion'), flak ('Flak burst', mass 1.5, power 2, look 'twin', weapon 'flak')`; `ordnance: STOCK ('Torpedo rack', weapon 'heavy'), missiles ('Missile rack', mass 1, power 1, look 'fusion', weapon 'missiles'), mk2 ('Mk II torpedoes', mass 2, power 2, achievement 'trench', hint as the afterburner's, look 'fusion', weapon 'mk2')`; `readout` gains `{ id: 'ordnance' }` after `firepower` with `READOUT_LABEL.ordnance = 'Ordnance'`; `partEffects` says `'3 shots a burst'`, `'Rounds: 6, one back every 4.5 s'`.
 
-- [ ] **Step 1: Write the failing tests**: `an old loadout reads with stock secondary and ordnance` (`readLoadout({ booster: 'srb' })` has `secondary` and `ordnance` equal to `STOCK`; `readOutfit(['srb','stock','stock','stock','stock'])` likewise); `the wire carries the seven parts in order` (`writeOutfit` length 7, `readOutfit(writeOutfit(l))` equals `l` for a loadout with `ion` and `mk2`); `the readout has an ordnance row that rises with the mk2 rack` (`readout('xwing', { ...STOCK_LOADOUT, ordnance: 'mk2' })` row `ordnance` has `change > 0`); `partEffects says a secondary's shots and an ordnance's rounds`.
+- [ ] **Step 1: Write the failing tests**: `an old loadout reads with stock secondary and ordnance` (`readLoadout({ booster: 'srb' })` has `secondary` and `ordnance` equal to `STOCK`; `readOutfit(['srb','stock','stock','stock','stock'])` likewise); `the wire carries the seven parts in order` (`writeOutfit` length 7, `readOutfit(writeOutfit(l))` equals `l` for a loadout with `ion` and `mk2`); `the readout has an ordnance row` (up with `missiles`; down with `mk2`, which by the spec's `punch × ammo / reload` sustains less than the stock rack); `partEffects says a secondary's shots and an ordnance's rounds`.
 - [ ] **Step 2: Run**: `npx vitest run src/components/universe/outfit.test.js`. Expected: FAIL.
 - [ ] **Step 3: Implement.** The ordnance measure in `measures(s)` is `s.ordnance` where `statsOf` adds `ordnance: (w.punch * w.ammo) / w.reload` of the fitted ordnance weapon divided by the stock rack's (`heavy`: 8 × 4 / 6.5). `BEST` already walks every fit.
 - [ ] **Step 4: Run the universe tests**: `npx vitest run src/components/universe`. Expected: PASS (catalog's snapshot or count tests may need the new items: fix in A3, not here, unless they fail on shape).
