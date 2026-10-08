@@ -142,6 +142,9 @@
 .dm-prompt { display: inline-flex; align-items: center; gap: 0.35rem; }
 .dm-prompt:hover, .dm-prompt:focus-visible { background: var(--dm-2); outline: none; }
 .dm-prompt:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--dm-1); }
+/* (on a phone B under the thumb is the button: the prompt only says what it
+   does, one tappable action, never two) */
+.dm-hud[data-touch] .dm-prompt { pointer-events: none; }
 .dm-prompt .hud-prompt-key { display: inline-grid; place-items: center; flex: none; width: 1.5rem; min-width: 0; height: 1.5rem; padding: 0; border: 0; border-radius: 50%; background: var(--dm-0); color: var(--dm-3); font: 400 var(--dm-text)/1 var(--dm-font); }
 .dm-dialog { position: absolute; left: 50%; bottom: clamp(0.8rem, 3%, 1.4rem); z-index: 4; width: min(40rem, calc(100% - 1.6rem)); padding: 0.9rem 1.1rem 0.7rem; transform: translateX(-50%); background: var(--dm-3); color: var(--dm-0); border: 4px double var(--dm-0); outline: 3px solid var(--dm-3); box-shadow: 0 0 0 6px var(--dm-0); }
 .dm-dialog-kicker { margin: 0 0 0.45rem; color: var(--dm-1); font: 400 var(--dm-text)/1.2 var(--dm-font); text-transform: uppercase; }
@@ -155,7 +158,10 @@
 
 /* touch: a D-pad on the left, B and A on the right, in the kit's thumbs
    row (its pads, the phone's home bar, and the "?" corner kept on the right) */
-.dm-pad { position: relative; width: 132px; height: 132px; pointer-events: auto; touch-action: none; }
+/* (no gap between the pad and the buttons, as before the kit: at 360 px the
+   row is full, and the pad keeps its size rather than squeezing) */
+.dm-hud .hud-thumbs { gap: 0; }
+.dm-pad { position: relative; flex: none; width: 132px; height: 132px; pointer-events: auto; touch-action: none; }
 .dm-pad span { position: absolute; left: 50%; top: 50%; background: #2b2b33; border-radius: 6px; transform: translate(-50%, -50%); box-shadow: 0 4px 0 #15151a; opacity: 0.88; }
 .dm-pad span:first-child { width: 44px; height: 124px; }
 .dm-pad span:last-child { width: 124px; height: 44px; }
