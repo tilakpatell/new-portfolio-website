@@ -15,7 +15,7 @@
 // world that isn't the Empire's own), as life entries marked `garrison`.
 
 // the troopers of each side's look, as the sites name them
-const FAMILIES = {
+export const FAMILIES = {
   stormtrooper: ['stormtrooper', 'sandtrooper', 'snowtrooper', 'scouttrooper'],
   rebel: ['rebel', 'hothtrooper'],
   clone: ['clone'],
