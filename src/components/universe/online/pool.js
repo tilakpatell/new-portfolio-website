@@ -14,7 +14,9 @@
 //
 // A relay that drops is tried again (a second on, then two, and so on to
 // thirty), and every room still listening is asked for again when it's
-// back. When the last room leaves, the sockets stay for LINGER_MS before
+// back; a room joining tries every relay that's down at once, from a
+// second's wait again (“Try again” mustn't wait out half a minute of
+// back-off). When the last room leaves, the sockets stay for LINGER_MS before
 // they close, so going from one page to another (the site's room left, a
 // world's joined) doesn't reconnect.
 //
@@ -37,6 +39,7 @@ const WAIT_MAX = 30000;
 function relaySocket(url, { WebSocket, subs, onChange, now }) {
   let ws = null;
   let up = false;
+  let opening = false; // a socket on its way, not yet open or closed
   let closed = false;
   let retry = 0;
   let wait = WAIT_MS;
@@ -48,7 +51,9 @@ function relaySocket(url, { WebSocket, subs, onChange, now }) {
     } catch {
       return later();
     }
+    opening = true;
     ws.onopen = () => {
+      opening = false;
       wait = WAIT_MS;
       up = true;
       for (const sub of subs.values()) ask(sub);
@@ -68,6 +73,7 @@ function relaySocket(url, { WebSocket, subs, onChange, now }) {
     ws.onclose = () => {
       const was = up;
       up = false;
+      opening = false;
       if (was) onChange();
       later();
     };
@@ -91,6 +97,13 @@ function relaySocket(url, { WebSocket, subs, onChange, now }) {
     },
     stop(id) {
       if (live()) ws.send(JSON.stringify(['CLOSE', id]));
+    },
+    // down and waiting to try again: try now, from a second's wait again
+    wake() {
+      if (closed || up || opening) return;
+      clearTimeout(retry);
+      wait = WAIT_MS;
+      open();
     },
     send(s) {
       if (live() && now() >= quietUntil) ws.send(s);
@@ -127,7 +140,11 @@ export function relayPool({ relays, WebSocket, lingerMs = LINGER_MS, now = () =>
       linger = 0;
       const sub = { id: `tp${++made}`, filter, onEvent, onChange };
       subs.set(sub.id, sub);
-      if (sockets) for (const s of sockets) s.ask(sub);
+      if (sockets)
+        for (const s of sockets) {
+          s.ask(sub);
+          s.wake();
+        }
       else sockets = relays.map((url) => relaySocket(url, { WebSocket, subs, onChange: changed, now }));
       let open = true;
       return {

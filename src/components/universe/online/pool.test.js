@@ -181,6 +181,36 @@ describe('relayPool', () => {
     expect(b.got).toEqual(['back too']);
   });
 
+  it('a room joined while the relays are being tried again tries them at once (“Try again”)', () => {
+    vi.useFakeTimers();
+    const net = createNet(URLS);
+    for (const u of URLS) net.down(u);
+    const pool = relayPool({ relays: URLS, WebSocket: net.WebSocket });
+    const a = room(pool, 'one');
+    vi.advanceTimersByTime(40000); // (tried and tried again: the next try is 20 s off)
+    for (const u of URLS) net.back(u);
+    a.close();
+    const b = room(pool, 'one');
+    vi.advanceTimersByTime(10);
+    expect(b.up()).toBe(4);
+    expect(net.socketTo(URLS[0]).subs.has('tp2')).toBe(true);
+    // and a dropped one tried again starts from a second's wait, not where it left off
+    net.down(URLS[1]);
+    net.back(URLS[1]);
+    vi.advanceTimersByTime(1010);
+    expect(b.up()).toBe(4);
+  });
+
+  it('a room joined while a relay is still answering doesn’t open a second socket to it', () => {
+    vi.useFakeTimers();
+    const net = createNet(URLS);
+    const pool = relayPool({ relays: URLS, WebSocket: net.WebSocket });
+    room(pool, 'one');
+    room(pool, 'two'); // (before the first sockets have opened)
+    vi.advanceTimersByTime(10);
+    expect(net.made).toHaveLength(4);
+  });
+
   it('a relay that says slow down holds every room on its socket for ten seconds', () => {
     const { net, a, b } = setUp();
     const slow = net.socketTo(URLS[0]);
