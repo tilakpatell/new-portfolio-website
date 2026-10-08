@@ -3,7 +3,7 @@ import { WORLD_MB } from '../worlds/worlds';
 import { IDBFactory } from 'fake-indexeddb';
 import { createStore } from '../../runtime/store';
 import { createRegistry } from '../worlds/registry';
-import mc, { KEYS, distanceFor, ticksFor } from './module';
+import mc, { KEYS, VIEWS, distanceFor, settledOf, ticksFor } from './module';
 import { newGame, wantedChunks } from './rules/game.js';
 import { createStream } from './stream.js';
 import { hashSeed } from './rules/noise.js';
@@ -34,6 +34,27 @@ describe('Minecraft, the world module', () => {
     const r = ticksFor(0.12);
     expect(r.ticks).toBe(2);
     expect(r.left).toBeCloseTo(0.02, 10);
+  });
+
+  it('the parity check’s views: seed 1 at noon, the title held still and a day in the world', () => {
+    expect(Object.keys(VIEWS)).toEqual(['title', 'day']);
+    for (const v of Object.values(VIEWS)) {
+      expect(v.seed).toBe(1);
+      expect(v.time).toBe(6000); // noon
+      expect(Number.isFinite(v.ticks) && Number.isFinite(v.yaw) && Number.isFinite(v.pitch)).toBe(true);
+    }
+    expect(VIEWS.title.play).toBe(false);
+    expect(VIEWS.day.play).toBe(true);
+  });
+
+  it('settled: every chunk wanted is in, none in flight or being meshed again', () => {
+    const loaded = new Set(['0,0', '1,0']);
+    const at = (o) => settledOf({ wanted: ['0,0', '1,0'], has: (k) => loaded.has(k), flying: 0, remeshing: 0, ...o });
+    expect(at()).toBe(true);
+    expect(at({ flying: 1 })).toBe(false);
+    expect(at({ remeshing: 2 })).toBe(false);
+    expect(at({ wanted: ['0,0', '1,0', '2,0'] })).toBe(false);
+    expect(at({ wanted: [] })).toBe(true);
   });
 
   it('the render distance follows the tier and steps down with the quality', () => {
