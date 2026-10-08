@@ -3,7 +3,7 @@
 The panorama (eso0932a, scripts/bake-universe-sky.mjs) is a mosaic: laid
 out as galactic longitude and latitude, but turned a few degrees off the
 true galactic frame, and bent here and there where its frames were stitched.
-The sky's stars (starCatalog.js) are put where they truly are, so the photo
+The bake puts the light where the true stars are, so the photo
 has to be brought to them. This draws the Hipparcos stars (to magnitude 8)
 as the photo would show them, and measures, patch by patch of sky, how far
 the photo's own stars sit off them (where the two patterns correlate best),
@@ -32,7 +32,10 @@ from PIL import Image, ImageFilter
 
 Image.MAX_IMAGE_PIXELS = None
 SOURCE = sys.argv[1] if len(sys.argv) > 1 else 'scripts/.cache/eso0932a.tif'
-CATALOGUE = 'scripts/.cache/hip_main.tsv'  # (scripts/bake-universe-stars.mjs downloads it)
+# Hipparcos as tab-separated values, fetched by hand once (the script that
+# fetched it went with the map's old star field):
+# https://vizier.cds.unistra.fr/viz-bin/asu-tsv?-source=I/239/hip_main&-out=HIP,_RA.icrs,_DE.icrs,Vmag,B-V&-out.max=unlimited
+CATALOGUE = 'scripts/.cache/hip_main.tsv'
 OUT = 'scripts/data/universe-sky-fit.json'
 FAINTEST = 8
 GRID = 15  # degrees between the bend's nodes
@@ -40,7 +43,7 @@ TILE = 12  # degrees: the patches of sky measured
 SPREAD = 10  # degrees: the gaussian each node weighs its stars by
 D = np.pi / 180
 
-# ICRS to galactic (the IAU's rotation, J2000; starCatalog.js has the same)
+# ICRS to galactic (the IAU's rotation, J2000)
 TO_GALACTIC = np.array([
     [-0.0548755604162154, -0.873437090234885, -0.4838350155487132],
     [0.4941094278755837, -0.4448296299600112, 0.7469822444972189],
