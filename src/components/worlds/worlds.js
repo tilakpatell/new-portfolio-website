@@ -36,8 +36,12 @@ export const WORLD_MB = {
 // worlds sit inside another's address ('/dot-matrix/64' inside
 // '/dot-matrix'), so the longest match wins: each gets its own download size
 // and its own phone gate, not its parent's.
+// The worlds made from a seed (a planet of the Expanse), not on the map's
+// list but gated as the others: a phone asks before it downloads one.
+export const SEEDED = [{ to: '/universe/expanse', label: 'A planet of the Expanse', from: 'The Expanse' }];
+
 export const worldAt = (pathname) =>
-  WORLDS.filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
+  [...WORLDS, ...SEEDED].filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
 
 // The way out of a world, for the view the visitor is in (the glossary's
 // last row): "Universe map", back to this world's place on the map, or

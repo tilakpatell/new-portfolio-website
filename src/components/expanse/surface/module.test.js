@@ -65,6 +65,9 @@ describe('the Expanse surface module', () => {
     await world.ready;
     expect(rt.defined.map((d) => d[0])).toEqual(['land']);
     expect(rt.input.bind).toHaveBeenCalledWith(KEYS);
+    // (in the visitor's worlds, as a planet)
+    const row = await world.registered;
+    expect(row).toMatchObject({ id: 'planet:7', kind: 'planet', seed: '7' });
     world.resize(640, 360);
     await run(world, 3);
     const stats = world.stream.stats();

@@ -1,0 +1,61 @@
+import { Hud, Menu, Prompt, Stick, TouchButton } from '../../../runtime/hud';
+
+// The Expanse surface's HUD (the runtime's kit): the planet's name, top
+// left; the speed and a compass to the nearest water, top right by the
+// Menu; R to come back, at the foot; on touch the stick and two buttons.
+// The numbers are written into the elements by the world's events
+// (ExpanseWorld.jsx holds the refs), not through React state.
+//
+//   <ExpanseHud name refs={{ speed, water, arrow, moment }} touch way
+//     onStick(x, y) onRespawn onJump onBoost(down) />
+//   screenAngle(bearing) → degrees clockwise from the top of the screen to
+//     a world bearing (radians from +x toward +z), for the chase view's
+//     fixed look along −x −z
+
+export function screenAngle(bearing) {
+  const bx = Math.cos(bearing);
+  const bz = Math.sin(bearing);
+  // the view's right on the ground is (1, −1)/√2, its up (−1, −1)/√2
+  const sx = (bx - bz) / Math.SQRT2;
+  const sy = -(bx + bz) / Math.SQRT2;
+  return ((Math.atan2(sx, sy) * 180) / Math.PI + 360) % 360;
+}
+
+export default function ExpanseHud({ name, refs, touch = false, way = null, onStick, onRespawn, onJump, onBoost }) {
+  const tools = (
+    <div className="expanse-tools">
+      <span className="expanse-chip" aria-label="Speed">
+        <b ref={refs.speed}>0</b> km/h
+      </span>
+      <span className="expanse-chip" aria-label="The nearest water">
+        <i ref={refs.arrow} className="expanse-arrow" aria-hidden="true">
+          ↑
+        </i>{' '}
+        <span ref={refs.water}>Looking for water</span>
+      </span>
+      <Menu way={way} />
+    </div>
+  );
+  const foot = (
+    <div className="expanse-foot">
+      <span ref={refs.moment} className="expanse-moment" aria-live="polite" />
+      <Prompt k="R" verb="Back" thing="to dry land" touch={touch} onClick={onRespawn} />
+    </div>
+  );
+  const thumbs = touch ? (
+    <div className="expanse-thumbs">
+      <Stick onMove={onStick} label="Drive" />
+      <div className="expanse-buttons">
+        <TouchButton size={64} onPress={onJump} aria-label="Jump">
+          Jump
+        </TouchButton>
+        <TouchButton size={52} onPress={() => onBoost(true)} onRelease={() => onBoost(false)} aria-label="Boost">
+          Boost
+        </TouchButton>
+      </div>
+    </div>
+  ) : null;
+  return (
+    <Hud className="expanse-hud" brand={<h1 className="expanse-name">{name}</h1>} tools={tools} foot={foot} touch={touch} thumbs={thumbs} />
+  );
+}

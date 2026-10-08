@@ -28,6 +28,8 @@ import { WORLD_MB } from '../../worlds/worlds.js';
 import { WORKER, createStream } from './stream.js';
 import { createDriver, spawnIn, stepDriver } from './rules.js';
 import { createScene } from './scene.js';
+import { createStore } from '../../../runtime/store.js';
+import { createRegistry } from '../../worlds/registry.js';
 
 export const KEYS = {
   forward: ['KeyW', 'ArrowUp'],
@@ -60,6 +62,10 @@ export default {
     const radius = RADIUS[tier] ?? 4;
     const renderer = rt.gfx.renderer;
     rt.input?.bind?.(KEYS);
+    // the planet in the visitor's worlds (/worlds lists it, worldUrl opens it again)
+    const registered = createRegistry(rt.store ?? createStore())
+      .add({ kind: 'planet', seed: String(seed), name: props.name ?? `Planet ${seed}` })
+      .catch(() => null);
     rt.workers.define(WORKER, () => new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }));
 
     // the floating origin: world metres minus this is the scene's (and physics') frame
@@ -214,6 +220,7 @@ export default {
 
     const world = {
       ready: Promise.resolve(),
+      registered,
       vehicle,
       physics,
       stream,
