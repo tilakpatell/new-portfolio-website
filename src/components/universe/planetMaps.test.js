@@ -13,7 +13,8 @@
 // FILES[name]: the file at low, mid, high, ultra (the -xl where there is one)
 // and ultra without its -xl (what loadTextures asked for there before the
 // maps by need; the -xl's fallback near now), and '(data)' for a map loaded
-// as data rather than colour. LATER: the maps not fetched up front at all.
+// as data rather than colour. LATER: the maps not fetched before the first
+// frame (their smallest files come right after it: nearSet's `later`).
 // STEP1[id]: a planet's standard set, the same on every level; NEAR[id]: its
 // near set at high and ultra (`name: file | fallback`, sorted; none on low or
 // mid). OF[id]: its maps, sorted. NONE: the places with no maps at all.
@@ -250,6 +251,14 @@ describe('a planet’s maps, and what it wears near', () => {
       expect(nearSet(id, 'mid').near, id).toEqual([]);
       for (const [level, set] of Object.entries(by)) expect(nearSet(id, level).near.map(show).sort(), `${id} ${level}`).toEqual(set);
     }
-    for (const id of NONE) for (const level of LEVELS) expect(nearSet(id, level), id).toEqual({ std: [], near: [] });
+    for (const id of NONE) for (const level of LEVELS) expect(nearSet(id, level), id).toEqual({ later: [], std: [], near: [] });
+  });
+  it('fetches its later maps’ smallest files right after the first frame, on every level', () => {
+    const show = (e) => `${e.name}: ${e.file}${e.colour ? '' : ' (data)'}`;
+    for (const id of Object.keys(NEAR)) {
+      const want = mapsOf(id).filter((n) => LATER.has(n)).map((n) => `${n}: ${row(n)[0]}${FILES[n].endsWith('(data)') ? ' (data)' : ''}`).sort();
+      for (const level of LEVELS) expect(nearSet(id, level).later.map(show).sort(), `${id} ${level}`).toEqual(want);
+    }
+    expect(nearSet('transformers', 'high').later.map(show).sort()).toEqual(['transformers-glow: transformers-glow-sm.webp (data)', 'transformers-normal: transformers-normal-sm.webp (data)']);
   });
 });

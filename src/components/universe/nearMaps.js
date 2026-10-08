@@ -1,8 +1,12 @@
-// A planet's maps by how near it is, in three steps (planetMaps.js says
-// which files). Up front every planet wears its small set (planets.js's
+// A planet's maps by how near it is, in steps (planetMaps.js says which
+// files). Up front every planet wears its small set (planets.js's
 // loadTextures: each map's smallest file, and stand-ins for its relief,
-// roughness and glow), which is right across the map: twelve radii out a
-// planet is under 200 pixels tall. Within twelve radii it gets its standard
+// roughness and glow). Right after the first frame (step 0) the smallest
+// files of those it stood in for come in the background, one planet at a
+// time, nearest first, each at an idle moment and sent to the graphics chip
+// a slice at a time, and stay: so from afar every planet looks as it always
+// did, which is right across the map: twelve radii out a planet is under 200
+// pixels tall. Within twelve radii it gets its standard
 // set (step 1: 1024 on a desktop's ladder, and its own relief, roughness and
 // glow); within six, its near set over that and its finer sphere (step 2,
 // nearGeometry): parked 2.4 radii out, a planet fills 600 pixels with a
@@ -16,19 +20,20 @@
 // hold one planet at a time, two at a hand-off, and the sun; four is room
 // to spare, and a bound on the memory a crowd could take. A set dropped has
 // its textures disposed; one that arrives after the ship has gone on is
-// never installed, only freed. On low and on a phone, step 1 only.
+// never installed, only freed. On low and on a phone, steps 0 and 1 only.
 //
 //   wanted(shipAt, planets, { near, far, hold, holdFar, resident, residentFar })
 //       → [{ id, step }]: each planet within `far` radii (`holdFar` for one
 //       holding its standard set) at step 1, within `near` (`hold` for one
 //       holding its near set) at step 2, nearest first
 //   evict(resident, wanted, max) → { keep, drop }
-//   createNearMaps({ level, small, load, forget, resident, standard, near, far, upload })
+//   createNearMaps({ level, small, load, forget, resident, standard, near, far, upload, idle })
 //   (`resident`, `standard`: how many near and standard sets at most;
 //   `upload(textures) → Promise`: a set sent to the graphics chip a slice at a
-//   time before it's put on, rather than all in the frame it's swapped in)
+//   time before it's put on, rather than all in the frame it's swapped in;
+//   `idle(fn)`: fn at the page's next idle moment, for step 0)
 //       → { update(shipAt, planets), resident(step = 2), dispose() }
-//   (each planet: { id, at | group, r | radius, nearSet(level) → { std, near }, swapMaps(T2 | null), nearGeometry(on) })
+//   (each planet: { id, at | group, r | radius, nearSet(level) → { later, std, near }, swapMaps(T2 | null), nearGeometry(on) })
 
 import * as THREE from 'three';
 import { forgetTexture, loadTexture } from '../../lib/three/textures';
@@ -62,16 +67,18 @@ export function evict(resident, want, max) {
   return { keep, drop: resident.filter((id) => !keep.includes(id)) };
 }
 
-const NONE = { update() {}, resident: () => [], dispose() {} };
+const whenIdle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1000 }) : setTimeout(fn, 50));
 
-export function createNearMaps({ level = detailLevel(), small = false, load = loadTexture, forget = forgetTexture, resident: max = 2, standard: maxStd = 4, near = NEAR, far = FAR, upload = null } = {}) {
-  // (DEV: off, to measure what they cost: scripts/universe-check.mjs --near off)
-  if (import.meta.env?.DEV && globalThis.localStorage?.getItem('tp-near') === 'off') return NONE;
+export function createNearMaps({ level = detailLevel(), small = false, load = loadTexture, forget = forgetTexture, resident: max = 2, standard: maxStd = 4, near = NEAR, far = FAR, upload = null, idle = whenIdle } = {}) {
+  // (DEV: steps 1 and 2 off, every planet in its small set, to measure what
+  // they cost: scripts/universe-check.mjs --near off)
+  const off = Boolean(import.meta.env?.DEV && globalThis.localStorage?.getItem('tp-near') === 'off');
   // step 2, the near set and the finer sphere, not on low or a phone
-  const fine = level !== 'low' && !small;
+  const fine = level !== 'low' && !small && !off;
   // by step, id → { planet, state: 'loading' | 'on', T2, urls, asked }
-  const sets = { 1: new Map(), 2: new Map() };
-  const all = () => [...sets[1].values(), ...sets[2].values()];
+  const sets = { 0: new Map(), 1: new Map(), 2: new Map() };
+  const all = () => [...sets[0].values(), ...sets[1].values(), ...sets[2].values()];
+  let queue = null; // step 0's planets still to come, nearest first (made at the first update)
   let gone = false;
   const v = new THREE.Vector3();
   const lists = new Map(); // planet → its sets (worked out once)
@@ -88,11 +95,11 @@ export function createNearMaps({ level = detailLevel(), small = false, load = lo
     }
     s.T2 = null;
   };
-  // a planet's maps as its steps have them: the standard set's, the near
-  // set's over it (none: its own back)
+  // a planet's maps as its steps have them: step 0's, the standard set's
+  // over them, the near set's over that (none: its own back)
   const wear = (p) => {
     const on = (s) => (s?.state === 'on' ? s.T2 : {});
-    const T2 = { ...on(sets[1].get(p.id)), ...on(sets[2].get(p.id)) };
+    const T2 = { ...on(sets[0].get(p.id)), ...on(sets[1].get(p.id)), ...on(sets[2].get(p.id)) };
     const now = Object.keys(T2).length ? T2 : null;
     const was = worn.get(p.id) ?? null;
     const same = was === now || (was && now && Object.keys(was).length === Object.keys(now).length && Object.keys(now).every((k) => was[k] === now[k]));
@@ -123,7 +130,7 @@ export function createNearMaps({ level = detailLevel(), small = false, load = lo
   const start = (step, p, list) => {
     const s = { planet: p, state: 'loading', T2: {}, urls: {}, asked: new Set() };
     sets[step].set(p.id, s);
-    Promise.all(list.map(async (m) => [m.name, await fetchOne(s, m)])).then(async (got) => {
+    return Promise.all(list.map(async (m) => [m.name, await fetchOne(s, m)])).then(async (got) => {
       for (const [name, r] of got) {
         if (!r) continue;
         s.T2[name] = r.t;
@@ -144,19 +151,31 @@ export function createNearMaps({ level = detailLevel(), small = false, load = lo
     });
   };
 
+  // step 0: the next planet's later maps, at an idle moment, then the next's
+  const later = () => {
+    const q = queue.shift();
+    if (!q || gone) return;
+    start(0, q.p, q.later).then(() => queue.length && !gone && idle(later));
+  };
+
   return {
     update(shipAt, planets) {
       if (gone) return;
       const ps = new Map();
       for (const p of planets) {
         if (!lists.has(p)) lists.set(p, p.nearSet?.(level) ?? {});
-        const { std = [], near: list = [] } = lists.get(p);
-        if (!std.length && !list.length && !p.nearGeometry) continue;
+        const { later: list0 = [], std = [], near: list = [] } = lists.get(p);
+        if (!list0.length && !std.length && !list.length && !p.nearGeometry) continue;
         // (where it is in the world: a built planet's group, wherever the map's turned it)
         const c = p.at ?? p.group.getWorldPosition(v).toArray();
-        ps.set(p.id, { id: p.id, at: c, r: p.r ?? p.radius, p, std, list });
+        ps.set(p.id, { id: p.id, at: c, r: p.r ?? p.radius, p, later: list0, std: off ? [] : std, list });
       }
       const ship = Array.isArray(shipAt) ? shipAt : [shipAt.x, shipAt.y, shipAt.z];
+      // (the first frame: step 0 queued, nearest first, from the next idle moment)
+      if (!queue) {
+        queue = [...ps.values()].filter((q) => q.later.length).sort((a, b) => dist(ship, a.at) / a.r - dist(ship, b.at) / b.r);
+        if (queue.length) idle(later);
+      }
       const want = wanted(ship, [...ps.values()], { near, far, hold: near * HOLD, holdFar: far * HOLD, resident: [...sets[2].keys()], residentFar: [...sets[1].keys()] });
       // step 2: the nearest two with a near set or a finer sphere
       const want2 = fine ? want.filter((w) => w.step === 2 && (ps.get(w.id).list.length || ps.get(w.id).p.nearGeometry)).map((w) => w.id) : [];
@@ -172,7 +191,7 @@ export function createNearMaps({ level = detailLevel(), small = false, load = lo
     resident: (step = 2) => [...sets[step].entries()].filter(([, s]) => s.state === 'on').map(([id]) => id),
     dispose() {
       gone = true;
-      for (const step of [2, 1]) for (const id of [...sets[step].keys()]) drop(step, id);
+      for (const step of [2, 1, 0]) for (const id of [...sets[step].keys()]) drop(step, id);
     },
   };
 }

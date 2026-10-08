@@ -607,9 +607,10 @@ export async function create(canvas, ctx) {
   });
 
   // the planets' small maps first (planetMaps.js: each map's smallest file,
-  // a planet's relief, roughness and glow stood in for), so every planet is
-  // dressed from the first frame; their own as they're neared (nearMaps.js,
-  // below); a weak device starts with the nearer stars thinned out
+  // a planet's relief, roughness and glow stood in for, their own right after
+  // the first frame), so every planet is dressed from the first frame; the
+  // finer ones as they're neared (nearMaps.js, below); a weak device starts
+  // with the nearer stars thinned out
   const tier = device().tier;
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
   const T = await loadTextures({ small });
@@ -719,10 +720,12 @@ export async function create(canvas, ctx) {
     },
   });
   const farPlaces = createFarPlaces(map, { places: FAR_PLACES.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })), skyFar: SKY_FAR });
-  // each planet's maps by how near it is (nearMaps.js), on every device: its
-  // standard set within twelve radii, its near set and finer sphere within
-  // six (not on low or a phone). The sun's on the ladder too, never finer
-  // than it always was: its -hq only at ultra, which wore it from the start
+  // each planet's maps by how near it is (nearMaps.js), on every device:
+  // what it was stood in for, in the background once the first frame's
+  // drawn; its standard set within twelve radii; its near set and finer
+  // sphere within six (not on low or a phone). The sun's on the ladder too,
+  // never finer than it always was: its -hq only at ultra, which wore it
+  // from the start
   const near = createNearMaps({ small, upload: (ts) => uploadSlices(renderer, ts, { sliceMB: 8 }) });
   const sunNear = {
     id: 'sun',
@@ -5490,6 +5493,7 @@ export async function create(canvas, ctx) {
       lock: state.lock?.id ?? null,
       near: near.resident(),
       nearStd: near.resident(1), // (the planets wearing their standard set)
+      nearFar: near.resident(0), // (and their own relief, roughness and glow, in place of the stand-ins)
       firstFrame, // (performance.now() as the first frame began)
       manual: Boolean(state.lock?.manual),
       controls: controls(),

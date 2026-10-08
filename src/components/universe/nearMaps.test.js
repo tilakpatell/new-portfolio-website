@@ -303,6 +303,101 @@ describe('the three steps: up front, standard within twelve radii, near within s
   });
 });
 
+describe('step 0: what a far planet shows, right after the first frame', () => {
+  // a planet whose relief and glow were stood in for up front: their small files come in the background
+  const far = (id, x, { std = [], near = [] } = {}) => ({
+    ...planet(id, x, near, std),
+    nearSet: () => ({ later: [{ name: `${id}-glow`, file: `${id}-glow.webp`, colour: true }, { name: `${id}-normal`, file: `${id}-normal-sm.webp`, colour: false }], std, near }),
+  });
+  // idle moments the test hands out
+  const idler = () => {
+    const q = [];
+    return { idle: (fn) => q.push(fn), run: () => q.shift()?.(), get size() { return q.length; } };
+  };
+
+  it('loads nothing up front, then each planet’s later maps one idle moment at a time, nearest first, and puts them on', async () => {
+    const { load, calls } = loader();
+    const { idle, run } = idler();
+    const near = createNearMaps({ level: 'high', load, idle });
+    const ps = [far('b', 300), far('a', 100)];
+    near.update([0, 0, 0], ps);
+    expect(load).not.toHaveBeenCalled(); // (the first frame asks for none of them)
+    run();
+    expect(calls.map((c) => c.url)).toEqual(['/textures/universe/a-glow.webp', '/textures/universe/a-normal-sm.webp']);
+    for (const c of calls) c.resolve();
+    await flush();
+    expect(ps[1].swapMaps.mock.lastCall[0]).toEqual({ 'a-glow': expect.objectContaining({ url: '/textures/universe/a-glow.webp' }), 'a-normal': expect.objectContaining({ url: '/textures/universe/a-normal-sm.webp' }) });
+    expect(near.resident(0)).toEqual(['a']);
+    expect(ps[1].nearGeometry).not.toHaveBeenCalled();
+    run(); // (the next planet's at the next idle moment)
+    expect(calls.map((c) => c.url).slice(2)).toEqual(['/textures/universe/b-glow.webp', '/textures/universe/b-normal-sm.webp']);
+    for (const c of calls.slice(2)) c.resolve();
+    await flush();
+    expect(near.resident(0).sort()).toEqual(['a', 'b']);
+  });
+
+  it('sends each set to the graphics chip a slice at a time before it goes on', async () => {
+    const { load, calls } = loader();
+    const { idle, run } = idler();
+    const sent = [];
+    const near = createNearMaps({ level: 'high', load, idle, upload: async (ts) => sent.push(ts.map((t) => t.url)) });
+    const a = far('a', 100);
+    near.update([0, 0, 0], [a]);
+    run();
+    for (const c of calls) c.resolve();
+    await flush();
+    expect(sent).toEqual([['/textures/universe/a-glow.webp', '/textures/universe/a-normal-sm.webp']]);
+    expect(a.swapMaps).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps them for good: the standard set over them near, back to them (not the stand-ins) past fifteen radii', async () => {
+    const { load, calls } = loader();
+    const { idle, run } = idler();
+    const near = createNearMaps({ level: 'high', load, idle });
+    const a = far('a', 0, { std: [{ name: 'a-glow', file: 'a-glow-std.webp', colour: true }] });
+    near.update([100, 0, 0], [a]);
+    run();
+    for (const c of calls) c.resolve();
+    await flush();
+    near.update([10, 0, 0], [a]); // step 1: its standard glow over the small one
+    calls[2].resolve();
+    await flush();
+    expect(a.swapMaps.mock.lastCall[0]['a-glow'].url).toBe('/textures/universe/a-glow-std.webp');
+    expect(a.swapMaps.mock.lastCall[0]['a-normal'].url).toBe('/textures/universe/a-normal-sm.webp');
+    near.update([100, 0, 0], [a]); // gone on: the small set again
+    expect(a.swapMaps.mock.lastCall[0]['a-glow'].url).toBe('/textures/universe/a-glow.webp');
+    expect((await load.mock.results[2].value).disposed).toBe(true);
+    expect((await load.mock.results[0].value).disposed).toBe(false);
+    near.dispose(); // (and freed with the scene)
+    expect(a.swapMaps).toHaveBeenLastCalledWith(null);
+    expect((await load.mock.results[0].value).disposed).toBe(true);
+  });
+
+  it('a file both the small and the standard set ask for (a map with no -sm) stays while either holds it', async () => {
+    const { load, calls } = loader();
+    const { idle, run } = idler();
+    const near = createNearMaps({ level: 'high', load, idle });
+    const a = { ...planet('a', 0), nearSet: () => ({ later: [{ name: 'a-rough', file: 'a-rough.webp', colour: false }], std: [{ name: 'a-rough', file: 'a-rough.webp', colour: false }], near: [] }) };
+    near.update([10, 0, 0], [a]); // step 1 first (it starts beside it), step 0 at the next idle moment
+    run();
+    for (const c of calls) c.resolve();
+    await flush();
+    near.update([100, 0, 0], [a]); // step 1 goes; step 0 still wears the file
+    expect((await load.mock.results[0].value).disposed).toBe(false);
+  });
+
+  it('runs on every level, low and a phone too (it’s what they wore from the start before)', async () => {
+    for (const opts of [{ level: 'low' }, { level: 'high', small: true }, { level: 'ultra' }]) {
+      const { load, calls } = loader();
+      const { idle, run } = idler();
+      const near = createNearMaps({ ...opts, load, idle });
+      near.update([0, 0, 0], [far('a', 100)]);
+      run();
+      expect(calls.length, JSON.stringify(opts)).toBe(2);
+    }
+  });
+});
+
 describe('a planet that comes back before its old set arrived', () => {
   it('keeps the texture the loader’s cache gave both sets', async () => {
     const shared = tex('/textures/universe/a-hq.webp');

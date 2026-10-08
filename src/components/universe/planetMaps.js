@@ -7,21 +7,23 @@
 // -sm where it has one), on every device: about two thirds of a megabyte
 // before the first frame, where the standard set was five. A planet within
 // twelve of its radii wears its standard set (step 1); within six, its finer
-// set over that (step 2: the -hq, the -xl at ultra). The maps a far planet
-// doesn't show, its relief, roughness and glow (LATER), aren't fetched up
-// front at all: each is stood in for (flat, matte, dark: standIn) so the
-// planet is built with the same materials and shaders it always was, and its
-// own come at step 1. The sky's glow (what metal reflects) comes after the
-// first frame (scene.js), and the Office's paper is only its normal map's
-// fallback, which a stand-in now fills. The stations' and the ships' tiling
-// plates come up front whatever their kind: each repeat of one is its own
-// clone (kit.js's tiled()), which a swap can't find.
+// set over that (step 2: the -hq, the -xl at ultra). A planet's relief,
+// roughness and glow (LATER) aren't fetched before the first frame: each is
+// stood in for (flat, matte, dark: standIn) so the planet is built with the
+// same materials and shaders it always was, and their smallest files come in
+// the background right after it (step 0, nearMaps.js), so a planet looks
+// from afar as it always did a moment later. The sky's glow (what metal
+// reflects) comes after the first frame too (scene.js); the Office's paper is
+// only its normal map's fallback, which a stand-in now always fills, so it
+// isn't fetched. The stations' and the ships' tiling plates come up front
+// whatever their kind: each repeat of one is its own clone (kit.js's
+// tiled()), which a swap can't find.
 //
 //   mapFile(name, level) → the file for a planet map at lib/detail's level
 //   LATER → the maps not fetched up front
 //   loadTextures({ small }) → the textures (any that fail are just missing; a LATER one a stand-in)
 //   loadMap(name) → a LATER map at its smallest file (the sky's glow, after the first frame)
-//   mapsOf(id), nearSet(id, level) → a planet's maps, and { std, near }: what it wears at steps 1 and 2
+//   mapsOf(id), nearSet(id, level) → a planet's maps, and { later, std, near }: what it wears at steps 0, 1 and 2
 //   mapSwapper(group, T, names) → swap(T2 | null)
 
 import * as THREE from 'three';
@@ -90,8 +92,10 @@ export const LATER = new Set(MAP_NAMES.filter((name) => ['normal', 'rough', 'glo
 const first = (name) => mapFile(name, 'low');
 const standard = (name) => mapFile(name, 'high');
 
-// What a planet wears as it comes near (nearMaps.js), at a detail level:
-// `std` within twelve radii, on every level: the standard file of each of
+// What a planet wears after the first frame and as it comes near
+// (nearMaps.js), at a detail level: `later` wherever it is, once the first
+// frame is drawn, on every level: its LATER maps' smallest files; `std`
+// within twelve radii, on every level: the standard file of each of
 // its maps that it doesn't wear already (the loader's cache would hand back
 // that very texture), and of each LATER one; `near` within six, over it: the
 // finer copy of each map that has one, the -hq on a desktop, the -xl on a
@@ -99,15 +103,18 @@ const standard = (name) => mapFile(name, 'high');
 // or mid (mid's finer set is its standard one, worn at step 1). At ultra a
 // map baked at 8192 (`k8`) is asked for first, its -xl the fallback.
 export function nearSet(id, level, { k8 = K8 } = {}) {
+  const later = mapsOf(id)
+    .filter((name) => LATER.has(name))
+    .map((name) => ({ name, file: first(name), colour: MAPS[name].srgb }));
   const std = mapsOf(id)
     .filter((name) => LATER.has(name) || standard(name) !== first(name))
     .map((name) => ({ name, file: standard(name), colour: MAPS[name].srgb }));
   const near = finerSet(id, level);
-  if (level !== 'ultra') return { std, near };
+  if (level !== 'ultra') return { later, std, near };
   const big = (name) => `${name}-8k.ktx2`;
   // (a map with nothing finer than its standard file, Cybertron's, has its -8k alone)
   const more = mapsOf(id).filter((name) => k8.has(name) && !near.some((m) => m.name === name)).map((name) => ({ name, file: big(name), colour: MAPS[name].srgb }));
-  return { std, near: [...near.map((m) => (k8.has(m.name) ? { name: m.name, file: big(m.name), fallback: m.file, colour: m.colour } : m)), ...more] };
+  return { later, std, near: [...near.map((m) => (k8.has(m.name) ? { name: m.name, file: big(m.name), fallback: m.file, colour: m.colour } : m)), ...more] };
 }
 function finerSet(id, level) {
   if (level !== 'high' && level !== 'ultra') return [];

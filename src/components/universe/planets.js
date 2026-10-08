@@ -20,9 +20,10 @@
 // data, planetSpecs.js's SPECS; what's each one's own is EXTRAS, below.
 //
 // loadTextures({ small }) → the textures up front (any that fail are just
-//   missing; a relief, roughness or glow map a stand-in until it's near)
+//   missing; a relief, roughness or glow map a stand-in until its own comes,
+//   right after the first frame)
 // mapFile(name, level) → the file for a planet map at lib/detail's level
-// mapsOf(id), nearSet(id, level) → a planet's maps, and { std, near }: the sets it wears near (nearMaps.js)
+// mapsOf(id), nearSet(id, level) → a planet's maps, and { later, std, near }: the sets it wears after the first frame and near (nearMaps.js)
 // buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount, swapMaps(T2 | null), nearSet(level), nearGeometry(on, level) }
 // (a builder that reads a map's pixels, not just wears it, sets `p.onMaps(T2)`
 // to read them again from the maps a swap puts on: Cybertron's war fronts)
@@ -1157,7 +1158,7 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     surface: core ? null : body,
     body,
     swapMaps,
-    nearSet: (level) => (core ? { std: [], near: [] } : nearSet(u.id, level)),
+    nearSet: (level) => (core ? { later: [], std: [], near: [] } : nearSet(u.id, level)),
     nearGeometry,
     get air() {
       return air;
