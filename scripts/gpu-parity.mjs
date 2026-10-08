@@ -288,9 +288,12 @@ try {
   }
   say(`\npictures and report.json: ${OUT}`);
   if (rows.some((r) => r.note === 'no before picture (run with --before first)')) stop(2);
+  // (the webgl leg gates, as the spec says; a webgpu leg that failed is said
+  // loudly, for the desktop with a real chip to run, but SwiftShader's
+  // WebGPU in a container drops its device even under a bare cube)
   const gate = rows.filter((r) => r.leg === 'webgl');
-  if (rows.some((r) => r.note?.startsWith('failed'))) say('FAIL: a leg never came on');
-  if (!gate.length || gate.some((r) => !r.pass || r.errors) || rows.some((r) => r.note?.startsWith('failed'))) stop(1, 'FAIL: the webgl leg is not the same picture');
+  if (rows.some((r) => r.leg === 'webgpu' && (r.note?.startsWith('failed') || r.pass === false))) say('FAIL: the webgpu leg (run it where there is a real chip before trusting WebGPU)');
+  if (!gate.length || gate.some((r) => r.note || !r.pass || r.errors)) stop(1, 'FAIL: the webgl leg is not the same picture');
   stop(0, 'ok   the webgl leg passes');
 } finally {
   await browser.close();
