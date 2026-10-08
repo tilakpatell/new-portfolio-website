@@ -77,7 +77,7 @@ export const parries = (hostile, roll) => Boolean(hostile?.parry) && roll < host
 //   sensesFor(hostile) → lib/ai/perception's senses
 //   hostileStep(t, world, dt, r) → { x, z, yaw, mode, moving, aim: { x, z } | null }
 //     t: { b: { x, z, yaw, to, wait }, hostile, spec, home: [x, z], hp, hpMax, flinch, me?, mind?, belief?, sees? }
-//     world: { you: { x, z } | null, allies: [{ x, z }], seesThrough(a, b) | null, tokens?, who?, search?, stims? }
+//     world: { you: { x, z } | null, allies: [{ x, z }], seesThrough(a, b) | null, tokens?, who?, search?, stims?, options? }
 //     (who: this one's id for the tokens and the search)
 
 import { belief, createSenses, sense } from '../../../lib/ai/perception';
@@ -111,7 +111,7 @@ const leashed = (t, x, z) => {
   const leash = t.spec?.leash ?? (t.spec?.roam ?? 8) + (t.hostile?.strafe ? 10 : 0);
   return Math.hypot(x - t.home[0], z - t.home[1]) <= leash;
 };
-const walkTo = (b, goal, pace, dt, turn = 4) => {
+export const walkTo = (b, goal, pace, dt, turn = 4) => {
   const dx = goal.x - b.x;
   const dz = goal.z - b.z;
   const d = Math.hypot(dx, dz);
@@ -120,7 +120,7 @@ const walkTo = (b, goal, pace, dt, turn = 4) => {
   const step = Math.min(d, pace * dt);
   return { x: b.x + (dx / d) * step, z: b.z + (dz / d) * step, yaw, moving: 1, there: false };
 };
-const turnToward = (from, to, max) => {
+export const turnToward = (from, to, max) => {
   let d = to - from;
   d = Math.atan2(Math.sin(d), Math.cos(d));
   return from + Math.max(-max, Math.min(max, d));
@@ -161,7 +161,8 @@ export function hostileStep(t, world, dt, r = Math.random) {
   if (m.clock >= m.thinkAt || m.done) {
     m.thinkAt = m.clock + STEP.rethink;
     m.done = false;
-    const choice = pick(OPTIONS, ctx, { current: m.mode, momentum: 0.2, rand: r, spread: 0.1 });
+    // (world.options: only these, a squad's posture's gate: ground/fight.js)
+    const choice = pick(world.options ? OPTIONS.filter((o) => world.options.includes(o.id)) : OPTIONS, ctx, { current: m.mode, momentum: 0.2, rand: r, spread: 0.1 });
     const mode = choice?.id ?? 'wander';
     if (mode !== m.mode) m.since = m.clock;
     m.mode = mode;
