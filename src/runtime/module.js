@@ -4,10 +4,13 @@
 //
 // A world module: { id, shading: 'glsl' | 'nodes', mb, label?, ratio?, create(rt, props) }
 // (`label` says what the canvas shows, for a screen reader; `ratio` caps its pixel ratio).
-// A world: { ready?, resize(w, h), step?(dt, input, now), draw(frame),
+// A world: { ready?, prepare?(report, alive), resize(w, h), step?(dt, input, now), draw(frame),
 //   wants?(), update?(props), setVisible?(on), setColors?(colors),
 //   lowerQuality?(level), warmUp?(timeLeft), handoff?(), attached?(),
-//   dispose() } (`attached`: the page showing it is listening to its events).
+//   dispose() } (`attached`: the page showing it is listening to its events;
+//   `prepare`: run after `ready` and before the first frame, as useScene's,
+//   report(fraction, step) telling the page how far it's got, alive() false
+//   once it should stop at its next slice).
 
 import { STEPS } from '../lib/three/pace';
 
@@ -89,6 +92,7 @@ export function fromScene(id, create, { shading = 'glsl', mb = 0, label, ratio }
         dispose: () => scene.dispose(),
       };
       if (scene.ready) world.ready = scene.ready;
+      if (scene.prepare) world.prepare = (report, alive) => scene.prepare(report, alive);
       return world;
     },
   };

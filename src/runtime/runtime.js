@@ -27,6 +27,7 @@ const MAX_DT = 0.05; // s: a tab coming back doesn't leap
 const HOLD_MAX = 3000; // ms at most a held cover waits for the next page to adopt its world
 const SNAP_WAIT = 250; // ms at most a handover waits for the old world's last frame (none comes off screen)
 const AFTER_MAX = 15000; // ms at most a handover waits on `after` once the new world is made
+const PREPARE_WAIT = 30000; // ms at most a world's prepare holds back its first frame (useScene's)
 
 export function createEvents() {
   const by = new Map();
@@ -196,8 +197,10 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     return gfx;
   };
 
-  // make a module's world; null if something newer came meanwhile
-  const build = async (module, props, host, token) => {
+  // make a module's world; null if something newer came meanwhile (`own`:
+  // the status is this build's to set, a mount's; a handover's old world is
+  // still the one on)
+  const build = async (module, props, host, token, own = false) => {
     await backendFor(module);
     if (token !== seq) return null;
     gfx.setRatio?.(ratioFor(module));
@@ -211,6 +214,43 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     if (world.ready) {
       await settle(world.ready, READY_WAIT);
       if (token !== seq) {
+        world.dispose();
+        return null;
+      }
+      world.update?.(props);
+    }
+    // get it onto the graphics chip before its first frame: its prepare,
+    // a slice at a time, telling the page how far it's got (rt.events
+    // 'prepare'). It stops at its next slice once this build is no longer the
+    // newest (a newer mount or handover, an unmount) or the context is gone.
+    // In a handover the old world draws on meanwhile, so the flight is the
+    // loading screen; a mount says 'preparing' while it runs. One that throws,
+    // or is still going after PREPARE_WAIT, is passed over: the world begins.
+    if (world.prepare) {
+      const g = gfx;
+      let gaveUp = false;
+      const alive = () => !gaveUp && token === seq && gfx === g && !g.lost;
+      let step = null;
+      const report = (value, s) => {
+        if (!alive()) return;
+        step = s ?? null;
+        events.emit('prepare', { value: Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0, step });
+      };
+      // sized as its box is now, so what it prepares is what it will draw
+      // (its cameras only: the canvas may still be the old world's)
+      const r = host?.getBoundingClientRect?.();
+      if (r) world.resize(Math.max(1, Math.round(r.width)), Math.max(1, Math.round(r.height)));
+      if (own) setStatus('preparing');
+      report(0, null);
+      const work = Promise.resolve()
+        .then(() => world.prepare(report, alive))
+        .catch((err) => {
+          if (dev) console.warn(`[${module.id}] prepare failed`, err);
+        });
+      await settle(work, PREPARE_WAIT);
+      if (token === seq && gfx === g) report(1, step);
+      gaveUp = true; // (one still going after PREPARE_WAIT stops at its next slice)
+      if (token !== seq || gfx !== g) {
         world.dispose();
         return null;
       }
@@ -308,7 +348,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       letGo(was);
       setStatus('loading');
       try {
-        const world = await build(mod, props, host, token);
+        const world = await build(mod, props, host, token, true);
         if (!world) return false;
         making = null;
         place(world, host, mod);

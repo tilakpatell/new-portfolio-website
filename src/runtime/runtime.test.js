@@ -449,3 +449,189 @@ describe('createRuntime', () => {
     expect(fn).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('a world that prepares', () => {
+  it('is prepared after ready and before it begins, the page told how far it got', async () => {
+    const { rt, loop, input } = make();
+    const order = [];
+    let finish;
+    const world = fakeWorld({
+      ready: Promise.resolve().then(() => order.push('ready')),
+      update: vi.fn(),
+      prepare: vi.fn((report, alive) => {
+        order.push('prepare');
+        expect(alive()).toBe(true);
+        report(0.5, 'shaders');
+        return new Promise((r) => (finish = r));
+      }),
+    });
+    const seen = [];
+    rt.events.on('prepare', (e) => seen.push(e));
+    const statuses = [];
+    rt.on((s) => statuses.push(s));
+    const host = fakeHost();
+    const p = rt.mount({ id: 'a', create: () => world }, { n: 1 }, host);
+    await settled();
+    expect(order).toEqual(['ready', 'prepare']);
+    expect(rt.status).toBe('preparing');
+    expect(world.resize).toHaveBeenCalledWith(640, 360); // (sized as it will be drawn)
+    expect(input.attach).not.toHaveBeenCalled(); // not begun
+    expect(loop.tick(16)).toBe(false); // nothing drawn yet
+    expect(world.draw).not.toHaveBeenCalled();
+    finish();
+    expect(await p).toBe(true);
+    expect(statuses).toEqual(['loading', 'preparing', 'ready']);
+    expect(seen).toEqual([
+      { value: 0, step: null },
+      { value: 0.5, step: 'shaders' },
+      { value: 1, step: 'shaders' },
+    ]);
+    expect(world.update).toHaveBeenLastCalledWith({ n: 1 });
+    loop.tick(32);
+    expect(world.draw).toHaveBeenCalledTimes(1);
+  });
+
+  it('progress is clamped to 0..1', async () => {
+    const { rt } = make();
+    const seen = [];
+    rt.events.on('prepare', (e) => seen.push(e.value));
+    const world = fakeWorld({
+      prepare: (report) => {
+        report(7, 'x');
+        report(-1, 'x');
+        report(NaN, 'x');
+      },
+    });
+    await rt.mount({ id: 'a', create: () => world }, {}, fakeHost());
+    expect(seen).toEqual([0, 1, 0, 0, 1]);
+  });
+
+  it('a newer mount stops it: alive() goes false, its reports go nowhere, it never begins', async () => {
+    const { rt } = make();
+    let alive;
+    let report;
+    let finish;
+    const first = fakeWorld({
+      prepare: (r, a) => {
+        report = r;
+        alive = a;
+        return new Promise((res) => (finish = res));
+      },
+    });
+    const p1 = rt.mount({ id: 'a', create: () => first }, {}, fakeHost());
+    await settled();
+    expect(alive()).toBe(true);
+    const second = fakeWorld();
+    const p2 = rt.mount({ id: 'b', create: () => second }, {}, fakeHost());
+    expect(alive()).toBe(false);
+    const seen = [];
+    rt.events.on('prepare', (e) => seen.push(e));
+    report(0.9, 'shaders');
+    expect(seen).toEqual([]);
+    expect(await p2).toBe(true);
+    finish();
+    expect(await p1).toBe(false);
+    expect(first.dispose).toHaveBeenCalled();
+    expect(rt.current.world).toBe(second);
+  });
+
+  it('an unmount stops it too', async () => {
+    const { rt } = make();
+    let alive;
+    const world = fakeWorld({
+      prepare: (r, a) => {
+        alive = a;
+        return new Promise(() => {});
+      },
+    });
+    rt.mount({ id: 'a', create: () => world }, {}, fakeHost());
+    await settled();
+    rt.unmount();
+    expect(alive()).toBe(false);
+  });
+
+  it('a lost context stops it, and the world never begins', async () => {
+    const { rt } = make();
+    let alive;
+    let finish;
+    const world = fakeWorld({
+      prepare: (r, a) => {
+        alive = a;
+        return new Promise((res) => (finish = res));
+      },
+    });
+    const p = rt.mount({ id: 'a', create: () => world }, {}, fakeHost());
+    await settled();
+    rt.lost();
+    expect(alive()).toBe(false);
+    finish();
+    expect(await p).toBe(false);
+    expect(world.dispose).toHaveBeenCalled();
+    expect(rt.status).toBe('lost');
+  });
+
+  it('one that throws (or rejects) is passed over: the world still begins', async () => {
+    for (const prepare of [
+      () => {
+        throw new Error('no');
+      },
+      () => Promise.reject(new Error('no')),
+    ]) {
+      const { rt, loop } = make();
+      const world = fakeWorld({ prepare });
+      expect(await rt.mount({ id: 'a', create: () => world }, {}, fakeHost())).toBe(true);
+      expect(rt.status).toBe('ready');
+      loop.tick(16);
+      expect(world.draw).toHaveBeenCalled();
+    }
+  });
+
+  it('one still going after a long while is given up on: the world begins and it stops', async () => {
+    vi.useFakeTimers();
+    try {
+      const { rt } = make();
+      let alive;
+      const world = fakeWorld({
+        prepare: (r, a) => {
+          alive = a;
+          return new Promise(() => {});
+        },
+      });
+      const p = rt.mount({ id: 'a', create: () => world }, {}, fakeHost());
+      await vi.advanceTimersByTimeAsync(30001);
+      expect(await p).toBe(true);
+      expect(alive()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('in a handover the old world draws on, and stays the one on, while the new one prepares', async () => {
+    const { rt, loop } = make();
+    const old = fakeWorld({ wants: () => true });
+    await rt.mount({ id: 'old', create: () => old }, {}, fakeHost());
+    loop.tick(0);
+    let finish;
+    const next = fakeWorld({ wants: () => true, prepare: () => new Promise((r) => (finish = r)) });
+    const nextMod = { id: 'next', create: () => next };
+    const statuses = [];
+    rt.on((s) => statuses.push(s));
+    const p = rt.handover(nextMod, {}, fakeHost(), { fade: 600 });
+    await settled();
+    expect(rt.loading).toBe(nextMod);
+    loop.tick(100);
+    loop.tick(200);
+    expect(old.draw).toHaveBeenCalledTimes(3);
+    expect(old.dispose).not.toHaveBeenCalled();
+    expect(next.draw).not.toHaveBeenCalled();
+    expect(rt.gfx.snapshot).not.toHaveBeenCalled(); // (no cover yet: the old world is seen)
+    expect(rt.status).toBe('on');
+    finish();
+    await settled();
+    loop.tick(300); // the cover
+    expect(await p).toBe(true);
+    expect(old.dispose).toHaveBeenCalled();
+    expect(rt.current.world).toBe(next);
+    expect(statuses).not.toContain('preparing');
+  });
+});
