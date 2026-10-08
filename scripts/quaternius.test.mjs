@@ -1,5 +1,10 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { BUDGETS, KITS, PACKS, baseName, colliderOf, creditOf, dilate, kitBudget, materialFix, parseObj, problems } from './quaternius.mjs';
+import { BUDGETS, KITS, OUT, PACKS, baseName, colliderOf, creditOf, dilate, kitBudget, makeIo, materialFix, parseObj, problems, summary } from './quaternius.mjs';
+
+const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 
 describe('a Quaternius material, fixed for the landings', () => {
   it('knows a material by its name, whatever Blender numbered it', () => {
@@ -142,5 +147,45 @@ describe('a Quaternius credit', () => {
   it('names the pack, the file and Quaternius, CC0', () => {
     expect(creditOf('naturemega', 'CommonTree_3.gltf')).toEqual({ source: 'https://quaternius.com', id: 'CommonTree_3', name: 'Stylized Nature MegaKit: CommonTree_3', authors: ['Quaternius'], license: 'CC0 1.0' });
     expect(creditOf('space', 'Items/GLTF/Pickup_Crate.gltf').id).toBe('Pickup_Crate');
+  });
+});
+
+// the models as committed: each as the manifest says, within its budget
+describe('the imported Quaternius models', async () => {
+  const manifestFile = join(PUBLIC, OUT, 'manifest.json');
+  const manifest = existsSync(manifestFile) ? JSON.parse(readFileSync(manifestFile, 'utf8')) : {};
+  const credits = JSON.parse(readFileSync(join(PUBLIC, 'games', 'credits.json'), 'utf8'));
+  const io = await makeIo();
+  const read = new Map();
+  const of = (url) => {
+    if (!read.has(url)) read.set(url, summary(io, join(PUBLIC, url)));
+    return read.get(url);
+  };
+  const byNode = Object.fromEntries(Object.values(KITS).flatMap((k) => Object.entries(k.models)));
+
+  it('has every kit’s every model', () => {
+    expect(Object.keys(manifest).sort()).toEqual(Object.keys(byNode).sort());
+  });
+
+  for (const [name, entry] of Object.entries(manifest)) {
+    it(`${name}: there, within budget, cut-outs both sides, on the ground, credited`, async () => {
+      expect(existsSync(join(PUBLIC, entry.url)), entry.url).toBe(true);
+      const sum = await of(entry.url);
+      const own = sum.models[entry.node];
+      expect(own, `${entry.url} has ${entry.node}`).toBeTruthy();
+      expect(own.tris).toBe(entry.tris);
+      expect(problems(byNode[name], own)).toEqual([]);
+      expect(entry.collider.hull.length).toBeLessThanOrEqual(64);
+      expect(Math.abs(entry.metres[1] - entry.collider.half[1] * 2)).toBeLessThan(0.01);
+      expect(credits[`quaternius/${name}`]?.license).toBe('CC0 1.0');
+    });
+  }
+
+  it('keeps each kit within its budget', async () => {
+    for (const [kit, k] of Object.entries(KITS)) {
+      const url = `/${OUT}/${kit}.glb`;
+      if (!existsSync(join(PUBLIC, url))) continue;
+      expect((await of(url)).bytes, kit).toBeLessThanOrEqual(kitBudget(k).bytes);
+    }
   });
 });
