@@ -100,6 +100,11 @@ describe('the galaxy’s models', () => {
     }
   });
 
+  it('flies the Star Destroyer that jumps in on you as the battles’ one, so it is the file every arrival has loaded already', () => {
+    expect(HUNTER_GLB.destroyer).toEqual({ ...MODELS.destroyer, built: true });
+    expect(ARRIVAL).toContain('destroyer');
+  });
+
   it('stands a built ship in for each of the new ones that has none, and none for one that has', () => {
     expect(STAND_IN).toMatchObject({ tiebomber: 'tie', lightcruiser: 'destroyer', gozanti: 'freighter', providence: 'munificent', ghost: 'freighter' });
     const built = [...BUILT_KINDS, ...GALAXY_KINDS];

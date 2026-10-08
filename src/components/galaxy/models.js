@@ -193,10 +193,13 @@ export const lodLevels = (size) => [
 // the universe map, where a fighter is a few pixels long, and they have no
 // normals, so a wingman flying beside you came out in facets. The bounty
 // hunters' ships and the navy's gunboats are their models too, where they
-// were only ever the built ones.
+// were only ever the built ones. And the Star Destroyer that jumps in on you
+// (universe/setpieces.js) is the battles' one, which every arrival has
+// loaded already: on a desktop that's the close-up cut, where the universe
+// map's would have been another 470 KB of a lesser ship.
 export const HUNTER_GLB = {
   ...GLB,
-  ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced', 'xwing', 'interceptor', 'ywing', 'awing', 'tiebomber', 'gunboat', 'ig2000', 'houndstooth', 'punishingone'].map((k) => [k, { ...MODELS[k], built: true }])),
+  ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced', 'xwing', 'interceptor', 'ywing', 'awing', 'tiebomber', 'gunboat', 'ig2000', 'houndstooth', 'punishingone', 'destroyer'].map((k) => [k, { ...MODELS[k], built: true }])),
   // (the war's other hunters and what their capital ships drop in: the
   // Republic's fighters, Wedge in an X-wing, a Mon Calamari cruiser, a Venator)
   ...Object.fromEntries(['arc170', 'delta7', 'moncal', 'venator'].map((k) => [k, { ...MODELS[k], built: false }])),
