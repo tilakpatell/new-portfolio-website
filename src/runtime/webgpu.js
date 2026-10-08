@@ -68,8 +68,9 @@ export async function createWebGPU(canvas, { budget, onLost, alpha = true, toneM
   // was asked, and the canvas is what says it's lost)
   const onWebGL = forceWebGL || Boolean(renderer.backend?.isWebGLBackend);
   let lost = false;
+  let released = false; // (disposing destroys the device, and a destroyed device says it's lost: not a loss)
   const gone = () => {
-    if (lost) return;
+    if (lost || released) return;
     lost = true;
     onLost?.();
   };
@@ -103,6 +104,7 @@ export async function createWebGPU(canvas, { budget, onLost, alpha = true, toneM
     post: (passes) => buildPostProcessing(renderer, passes),
     isLost: () => lost,
     release: () => {
+      released = true;
       if (onWebGL) canvas.removeEventListener('webglcontextlost', onContextLost);
     },
   });

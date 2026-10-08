@@ -7,11 +7,15 @@ vi.mock('three/webgpu', () => ({
   WebGPURenderer: class {
     constructor(options) {
       this.options = options;
-      this.backend = fallBack ? { isWebGLBackend: true } : { isWebGPUBackend: true, device: { lost: new Promise(() => {}) } };
+      let destroyed;
+      const lost = new Promise((resolve) => (destroyed = resolve));
+      this.backend = fallBack ? { isWebGLBackend: true } : { isWebGPUBackend: true, device: { lost } };
+      // (a device destroyed on dispose says it's lost, as a real one does)
+      this.destroy = () => destroyed({ reason: 'destroyed' });
       this.init = vi.fn(async () => {});
       this.setPixelRatio = vi.fn();
       this.setSize = vi.fn();
-      this.dispose = vi.fn();
+      this.dispose = vi.fn(() => this.destroy());
       this.getPixelRatio = vi.fn(() => 1);
       this.setClearColor = vi.fn();
       made.push(this);
@@ -42,6 +46,20 @@ describe('createWebGPU', () => {
     expect(gfx.backend).toBe('webgpu');
     expect(made[0].options.forceWebGL).toBe(false);
     expect(canvas.addEventListener).not.toHaveBeenCalled(); // (the device says when it's lost)
+  });
+
+  it('a device lost while drawing is reported, and one destroyed by its own dispose is not', async () => {
+    const onLost = vi.fn();
+    const gfx = await createWebGPU(fakeCanvas(), { onLost });
+    made[0].destroy();
+    await Promise.resolve();
+    expect(onLost).toHaveBeenCalledTimes(1);
+    const onLost2 = vi.fn();
+    const gfx2 = await createWebGPU(fakeCanvas(), { onLost: onLost2 });
+    gfx2.dispose();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(onLost2).not.toHaveBeenCalled();
+    gfx.dispose();
   });
 
   it('asked for WebGPU but fallen back to WebGL 2 (no adapter), it says so, and listens to the canvas', async () => {
