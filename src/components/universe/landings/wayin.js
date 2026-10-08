@@ -23,11 +23,22 @@ const worldOf = (id) => {
   return u && u.kind !== 'core' && u.to ? u : null;
 };
 
-// what the button says: the world's name (the universe's own if it has none)
-export const enterLabel = (id) => {
+// the world's name (the universe's own if it has none)
+export const worldName = (id) => {
   const u = worldOf(id);
-  return u ? `Enter ${u.world ?? u.label}` : null;
+  return u ? (u.world ?? u.label) : null;
 };
+
+// what the button says
+export const enterLabel = (id) => {
+  const name = worldName(id);
+  return name ? `Enter ${name}` : null;
+};
+
+// Flown down into a planet's air at a speed it could land at: straight on
+// into its world (what onOpen takes: where the button and the door go),
+// not a landing beside the ship first. Null with no world to go into.
+export const flownInto = (id) => (worldOf(id) ? id : null);
 
 // The button, for the HUD: { id (what onOpen takes), label, key } while the
 // crew are down on a planet that has a world, else null.
