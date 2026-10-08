@@ -57,9 +57,10 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // It has its own keys (mapKeys.js, taken at the window's capture): M or
 // Escape close it (Escape shuts the films' panel first, when that's open), /
 // goes to the find field in its header (a system by name: it picks it and
-// frames the course), J jumps to the course, + − 0 zoom. The mouse over a
-// system shows a card for it; onCourse tells the page which system is the
-// course.
+// frames the course), J jumps to the course, + − 0 zoom (a held M acts once:
+// its repeats neither close the map nor open it again). The mouse over a
+// system shows a card for it, to the dot's left where the right would run out
+// of the map; onCourse tells the page which system is the course.
 //
 // It zooms and pans (useMapView.js, on mapView.js's view): the wheel zooms
 // about the pointer, a drag pans, two fingers pinch, the buttons zoom about
@@ -82,6 +83,7 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 
 const SIZE = 21; // the map is GRID squares across, in its own units
 const TAU = Math.PI * 2;
+const HOVER_GAP = 14; // (the hover card's distance from its dot, screen px: galaxy.css's)
 const SEEN_KEY = 'tp-gcw-seen';
 const readSeen = () => {
   try {
@@ -391,6 +393,16 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   const mid = route ? routeMid(route) : null; // (where the course's tag goes)
   const hovered = hover ? systemById(hover) : null;
   const hoveredRow = hovered ? war.byId[hovered.id] : null;
+  // the hover card sits to the right of the dot, and to its left where it'd run out of the map
+  const card = useRef(null);
+  const [flip, setFlip] = useState(false);
+  useLayoutEffect(() => {
+    const el = card.current;
+    if (!el || !hovered) return;
+    const x = (mv.view.x + (mv.view.k * hovered.pos[0]) / SIZE) * boxPx; // (the dot's, in screen px from the map's left)
+    const room = (side) => (side > 0 ? boxPx - 4 - (x + HOVER_GAP) : x - HOVER_GAP - 4) >= el.offsetWidth;
+    setFlip(!room(1) && (room(-1) || x > boxPx / 2));
+  }, [hovered, mv.view, boxPx]);
 
   return createPortal(
     <div className="holomap dark-scope" role="dialog" aria-modal="true" aria-labelledby="holomap-title" style={{ '--btn-bg': picked?.accent ?? '#7fd6ff', '--btn-ink': '#03040a', '--accent': picked?.accent ?? '#7fd6ff', '--accent-text': picked?.accent ?? '#7fd6ff' }}>
@@ -603,7 +615,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                 </span>
               )}
               {hovered && hovered.id !== pick && (
-                <span className="holomap-hover" style={{ left: pct(hovered.pos[0]), top: pct(hovered.pos[1]), '--c': hovered.accent }}>
+                <span ref={card} className="holomap-hover" data-flip={flip || undefined} style={{ left: pct(hovered.pos[0]), top: pct(hovered.pos[1]), '--c': hovered.accent }}>
                   <b>{hovered.name}</b>
                   <span>{[hoveredRow && SIDES[hoveredRow.owner].short, hoveredRow?.battle?.fighting && 'Battle on'].filter(Boolean).join(' · ')}</span>
                   <span>{hovered.id === current ? 'You are here' : `${lightYears(here, hovered).toLocaleString('en-US')} ly`}</span>

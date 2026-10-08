@@ -393,6 +393,7 @@
    worked out so it stays the same on screen (a translate is in the element's own px, which the stage then scales by k, hence the divisions) */
 .holomap-course-tag { position: absolute; z-index: 2; translate: -50% calc(-50% - 90% / var(--k, 1)); scale: calc(1 / var(--k, 1)); padding: 0.15rem 0.45rem; border: 1px solid var(--accent); border-radius: 999px; background: rgb(2 6 16 / 0.9); color: #fff; font-family: var(--font-mono); font-size: 0.72rem; white-space: nowrap; pointer-events: none; }
 .holomap-hover { position: absolute; z-index: 4; translate: calc(14px / var(--k, 1)) -50%; scale: calc(1 / var(--k, 1)); transform-origin: 0 50%; display: grid; gap: 0.1rem; padding: 0.4rem 0.6rem; border: 1px solid var(--c); border-radius: 10px; background: rgb(2 6 16 / 0.94); font-size: 0.74rem; white-space: nowrap; pointer-events: none; }
+.holomap-hover[data-flip] { translate: calc(-100% - 14px / var(--k, 1)) -50%; transform-origin: 100% 50%; } /* (to the dot's left: HoloMap.jsx, where the right runs out of the map) */
 .holomap-hover b { color: var(--c); font-size: 0.82rem; }
 .holomap-hover span { color: rgb(217 243 255 / 0.8); }
 .holomap-hover span:empty { display: none; }
