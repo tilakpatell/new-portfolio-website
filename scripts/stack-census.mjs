@@ -19,13 +19,14 @@ const START = '<!-- census:start -->';
 const END = '<!-- census:end -->';
 
 // the page each package belongs to, grouped where a package is only ever used
-// with another (the spec's table); stack-census.test.mjs fails on a package
+// with another (the spec's table, with yaml on testing's page and React's
+// types on React's, where the code that uses them is); stack-census.test.mjs fails on a package
 // of package.json missing here
 const group = (page, names) => Object.fromEntries(names.map((n) => [n, page]));
 export const PAGES = {
   ...group('three.md', ['three']),
   ...group('physics-rapier.md', ['@dimforge/rapier3d-compat']),
-  ...group('react.md', ['react', 'react-dom', 'react-router-dom', 'react-icons']),
+  ...group('react.md', ['react', 'react-dom', 'react-router-dom', 'react-icons', '@types/react', '@types/react-dom']),
   ...group('multiplayer-nostr.md', ['@noble/secp256k1']),
   ...group('fonts.md', [
     '@fontsource-variable/archivo', '@fontsource/bebas-neue', '@fontsource/cinzel', '@fontsource/cinzel-decorative',
@@ -36,10 +37,10 @@ export const PAGES = {
     'vite', '@vitejs/plugin-react', 'tailwindcss', 'postcss', 'autoprefixer', 'eslint', '@eslint/js',
     'eslint-plugin-react', 'eslint-plugin-react-hooks', 'eslint-plugin-react-refresh', 'globals', 'gh-pages',
   ]),
-  ...group('testing.md', ['vitest', 'playwright-core', 'fake-indexeddb']),
+  ...group('testing.md', ['vitest', 'playwright-core', 'fake-indexeddb', 'yaml']),
   ...group('assets-pipeline.md', [
     '@gltf-transform/core', '@gltf-transform/extensions', '@gltf-transform/functions', 'meshoptimizer', 'basisu',
-    'sharp', 'fflate', 'yaml', 'watlas', 'd3-geo', 'topojson-client', 'world-atlas', '@types/react', '@types/react-dom',
+    'sharp', 'fflate', 'watlas', 'd3-geo', 'topojson-client', 'world-atlas',
   ]),
 };
 
