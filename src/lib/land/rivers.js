@@ -41,7 +41,8 @@ const MOMENTUM = 0.6;
 const MAX_LENGTH = 4000;
 const STALL = 0.2; // metres a river must fall over STALL_STEPS, or it's a lake
 const STALL_STEPS = 6;
-const MAX_LAKES = 8; // a river fills at most this many on its way
+const MAX_LAKES = 8;
+const BREACH = 128; // how far ahead a stalled river looks for lower ground // a river fills at most this many on its way
 const SPACING = 200; // between sources
 const INSET = 64; // sources this far inside their region
 // how far past its region a river may run: a cell two regions away is
@@ -89,6 +90,7 @@ function reach(spec, x, z, h, level, dx, dz, run, bounds, seed, rand) {
   const pts = [];
   const heights = [];
   let length = 0;
+  let since = 0; // the stall is judged from here (moved on by a breach)
   const push = () => {
     const k = 0.6 + 0.4 * Math.min(1, (run + length) / 1500);
     pts.push(x, z, level, width * k, depth * k);
@@ -162,7 +164,23 @@ function reach(spec, x, z, h, level, dx, dz, run, bounds, seed, rand) {
     }
     push();
     const n = heights.length;
-    const stalled = n > STALL_STEPS && heights[n - 1 - STALL_STEPS] - h < STALL;
+    let stalled = n - 1 - STALL_STEPS >= since && heights[n - 1 - STALL_STEPS] - h < STALL;
+    if (stalled) {
+      // before it fills a lake, a river cuts through to lower ground it can
+      // see within BREACH metres (a gorge through a low rise, not a pond)
+      let best = null;
+      for (let r = 16; r <= BREACH && !best; r += 16)
+        for (const d of RIM) {
+          const v = fieldAt(spec, x + d[0] * r, z + d[1] * r);
+          if (v < level - STALL && (!best || v < best[2])) best = [d[0], d[1], v];
+        }
+      if (best) {
+        dx = best[0];
+        dz = best[1];
+        since = n - 1;
+        stalled = false;
+      }
+    }
     if (stalled || run + length >= MAX_LENGTH) return { points: new Float32Array(pts), lake: lake(), length: run + length };
   }
 }
@@ -179,7 +197,12 @@ export function regionRivers(spec, rx, rz) {
     // a river and the lakes it fills on the way: each lake spills over the
     // lowest point of its rim, and the river runs on from there
     let r = reach(spec, x, z, h, h, 0, 0, 0, bounds, seed, rand);
+    const filled = [];
     for (let lakes = 0; ; lakes++) {
+      // (a reach that stalls again beside a lake it left is that lake's
+      // shore, not a river: the chain ends in the lake before it)
+      if (r.lake && filled.some((k) => Math.hypot(k.x - r.lake.x, k.z - r.lake.z) < k.r + r.lake.r)) break;
+      if (r.lake) filled.push(r.lake);
       if (r.points.length >= 10) rivers.push({ points: r.points, lake: r.lake && { x: r.lake.x, z: r.lake.z, r: r.lake.r, level: r.lake.level, depth: r.lake.depth }, length: r.length, source: lakes === 0 });
       if (r.sea || r.out || !r.lake || r.lake.bay || r.length >= MAX_LENGTH || lakes >= MAX_LAKES) break;
       const k = r.lake;
