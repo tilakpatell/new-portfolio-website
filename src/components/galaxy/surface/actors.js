@@ -58,7 +58,7 @@ import { crewFigure } from './crew';
 import { PROPS } from './props';
 import { cloneModel, loadGlb, squared } from './placer';
 import { rng } from './noise';
-import { groundAt, lineClear, turnToward } from './walker';
+import { groundAt, lineClear, tooDeep, turnToward } from './walker';
 import { hear, mannerOf, pickWant, placesOf, relate } from './needs';
 import { talkFor } from './talk';
 import { zoneVisibility } from './near';
@@ -545,6 +545,8 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   const avoider = (self) => (x, z) => {
     if (world.solids) for (const s of world.solids.near(x, z, 0.6)) if (!s.off && s.type === 'circle' ? Math.hypot(x - s.x, z - s.z) < s.r + 0.4 : false) return true;
     for (const o of actors) if (o !== self && Math.hypot(x - o.b.x, z - o.b.z) < 0.9 * (o.spec.scale ?? 1) && Math.hypot(self.b.x - o.b.x, self.b.z - o.b.z) > Math.hypot(x - o.b.x, z - o.b.z)) return true;
+    // (and not out of the shallows into deep water, unless it's a swimmer)
+    if (!self.spec.dive && tooDeep(world, x, z) && !tooDeep(world, self.b.x, self.b.z)) return true;
     // (inside somewhere, the floor's flat and the world's edge is far off)
     if (self.spec.zone) return false;
     return world.normalAt?.(x, z)[1] < 0.75 || Math.hypot(x, z) > (world.reach ?? 600);

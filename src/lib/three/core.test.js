@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { CORE, coreOf, dress, meanColour, rolesFor, wear, wearShader } from './core';
+import { CORE, coreFiles, coreOf, dress, meanColour, rolesFor, wear, wearShader } from './core';
 
 const scan = { map: new THREE.Texture(), normalMap: new THREE.Texture() };
 const STUB = {
@@ -138,5 +138,24 @@ describe('what keeps its own picture', () => {
     const path = new THREE.MeshStandardMaterial({ alphaMap: new THREE.Texture() });
     const gravel = new THREE.MeshStandardMaterial({ map: new THREE.Texture() });
     expect(rolesFor({ road, path, gravel })).toEqual({ gravel: 'gravel' });
+  });
+});
+
+describe("a scan's files", () => {
+  const index = { sand: { metres: 2, arm: true }, snow: { metres: 2, xl: 'ktx2' }, mud: { metres: 2, xl: 'webp' } };
+
+  it('are the 1K WebPs, unless the 8192 set is asked for', () => {
+    expect(coreFiles('snow', { index })).toEqual({ color: '/cc0/galaxy/snow/color.webp', normal: '/cc0/galaxy/snow/normal.webp', arm: null });
+    expect(coreFiles('sand', { index }).arm).toBe('/cc0/galaxy/sand/arm.webp');
+  });
+
+  it("are the 8192 set's at ultra, in the kind it was made in", () => {
+    expect(coreFiles('snow', { xl: true, index })).toMatchObject({ color: '/cc0/galaxy/snow/color-xl.ktx2', normal: '/cc0/galaxy/snow/normal-xl.ktx2' });
+    expect(coreFiles('mud', { xl: true, index })).toMatchObject({ color: '/cc0/galaxy/mud/color-xl.webp' });
+  });
+
+  it("stay the 1K set where there's no 8192 set made yet", () => {
+    expect(coreFiles('sand', { xl: true, index }).color).toBe('/cc0/galaxy/sand/color.webp');
+    expect(coreFiles('nonsense', { xl: true, index }).color).toBe('/cc0/galaxy/nonsense/color.webp');
   });
 });

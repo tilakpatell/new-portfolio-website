@@ -97,6 +97,7 @@ import { audioContext } from '../../lib/audio';
 import { takeArrival } from '../../lib/arrival';
 import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, singlePass, uploadTextures } from '../../lib/three/renderer';
 import { prepareScene, uploadSlices } from '../../lib/three/gpuWork';
+import { calibrate, calibrationKey, recall, remember } from '../../lib/three/calibrate';
 import { settle as settleWithin } from '../../lib/settle';
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
@@ -116,6 +117,8 @@ import { REAIM_MS, parkBehind, pilotId, pilotSpace, reached } from './pilotGoal'
 import { laneAim, laneFrame, lanePlan, rideLine } from './lanePilot';
 import { createLaneLook } from './laneLook';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
+import { ION } from './hunterRules';
+import { difficultyOf } from './difficulty';
 import { AHEAD_OF, crewAt, factionsOf, kindsOf, pick as pickFaction, sideAt, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
 import { GLB, createFleet } from './glbFleet';
@@ -188,11 +191,11 @@ import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
 import { NX5_LEN, createRemoverView } from './removerView';
 import { createSky } from './skyShader';
+import { createStarField, loadStarCatalog } from './starField';
 import { deedToEarn } from './economy';
 import { createPayLedger, hunterEarn } from './earnRules';
 
-const STARS = 1800; // the near ones, over the Milky Way's own
-const STARS_LOW = 700;
+const STARS_LOW = 9000; // of the real sky's (starField.js), on a weak device: about the naked eye's
 const STREAKS = 220;
 const BOLTS = 40; // shots in flight at once (a spread throws five)
 const MISSILES = 8; // heavy rounds in flight at once (weapons.js)
@@ -256,71 +259,6 @@ const TRACK_AFTER_SHOT = 1500; // ms: a lock the guns picked is followed this lo
 // of its arguments, and these run every frame)
 const apart = (ax, ay, az, bx, by, bz) => Math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by) + (az - bz) * (az - bz));
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-
-const STAR_VERT = `
-attribute float aSize;
-attribute vec3 aColor;
-attribute float aPhase;
-uniform float uDpr;
-uniform float uTime;
-varying vec3 vColor;
-void main() {
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  gl_PointSize = clamp(aSize * uDpr * (46000.0 / -mv.z), 1.0, 6.0 * uDpr);
-  // a slow twinkle, each star on its own beat
-  float tw = 0.72 + 0.28 * sin(uTime * (0.6 + fract(aPhase * 7.3) * 1.8) + aPhase * 6.2832);
-  vColor = aColor * tw;
-  gl_Position = projectionMatrix * mv;
-}`;
-const STAR_FRAG = `
-varying vec3 vColor;
-void main() {
-  float d = length(gl_PointCoord - 0.5);
-  float a = smoothstep(0.5, 0.1, d);
-  gl_FragColor = vec4(vColor * a, 1.0);
-  #include <colorspace_fragment>
-}`;
-
-function starfield(rand) {
-  const pos = new Float32Array(STARS * 3);
-  const size = new Float32Array(STARS);
-  const col = new Float32Array(STARS * 3);
-  const phase = new Float32Array(STARS);
-  const tints = [
-    [1, 1, 1],
-    [0.78, 0.86, 1],
-    [1, 0.9, 0.78],
-  ];
-  for (let i = 0; i < STARS; i++) {
-    // a shell round the map, flatter than a sphere
-    const u = rand() * 2 - 1;
-    const a = rand() * Math.PI * 2;
-    const r = 21000 + rand() * 4600; // behind everything, however far out the camera is
-    const s = Math.sqrt(1 - u * u);
-    pos.set([Math.cos(a) * s * r, u * r * 0.8, Math.sin(a) * s * r], i * 3);
-    const b = 0.25 + rand() ** 3 * 0.75;
-    const t = tints[rand() < 0.75 ? 0 : rand() < 0.5 ? 1 : 2];
-    col.set([t[0] * b, t[1] * b, t[2] * b], i * 3);
-    size[i] = 0.7 + rand() ** 4 * 2.2;
-    phase[i] = rand();
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
-  g.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
-  g.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
-  const mat = new THREE.ShaderMaterial({
-    vertexShader: STAR_VERT,
-    fragmentShader: STAR_FRAG,
-    uniforms: { uDpr: { value: 1 }, uTime: { value: 0 } },
-    blending: THREE.AdditiveBlending,
-    transparent: true,
-    depthWrite: false,
-  });
-  const points = new THREE.Points(g, mat);
-  points.frustumCulled = false;
-  return points;
-}
 
 // one faint circle per station round the sun, all in one draw (the far
 // planets don't orbit it: they're worlds of their own out in deep space)
@@ -561,8 +499,8 @@ export async function create(canvas, ctx) {
     seed = (seed * 16807) % 2147483647;
     return seed / 2147483647;
   };
-  const stars = starfield(rand);
-  map.add(stars);
+  // the real sky's stars, fetched while the rest is built (starField.js)
+  const catalogue = loadStarCatalog();
   const rings = orbits();
   map.add(rings);
   // the asteroid belt, and dust round the camera to feel the speed by (belt.js)
@@ -670,8 +608,11 @@ export async function create(canvas, ctx) {
   // nearer stars thinned out
   const tier = device().tier;
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
-  if (tier === 'low') stars.geometry.setDrawRange(0, STARS_LOW);
   const T = await loadTextures({ small });
+  // the stars, brightest first, so a weak device draws the naked eye's
+  const stars = createStarField(await catalogue);
+  map.add(stars);
+  if (tier === 'low') stars.geometry.setDrawRange(0, STARS_LOW);
 
   // what metal reflects, and the passes after the scene (post.js)
   let env = spaceEnvironment(renderer, T['sky-glow']);
@@ -681,11 +622,12 @@ export async function create(canvas, ctx) {
   // the sky: the Milky Way, all the way round, turning with the map and
   // riding with the camera (so it's always as far off), drawn sharp at the
   // screen's own resolution (skyShader.js: the photo for its light, the
-  // stars and the fine detail drawn there); fewer layers of stars on a
-  // weaker device
+  // fine detail and the faintest stars drawn there; its brighter stars too
+  // if the catalogue's couldn't be had, fewer layers on a weaker device)
   let sky = null;
   if (T['sky-glow']) {
-    sky = createSky(T['sky-glow'], { layers: tier === 'low' ? 1 : tier === 'high' ? 3 : 2 });
+    const layers = stars.geometry.getAttribute('position').count ? 1 : tier === 'low' ? 1 : tier === 'high' ? 3 : 2;
+    sky = createSky(T['sky-glow'], { layers });
     map.add(sky);
   }
 
@@ -868,7 +810,10 @@ export async function create(canvas, ctx) {
   // flying; anywhere else the crew's own
   const sideHere = () => sideAt(state.kind, state.ship ? sectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main');
   const FACTIONS_ALL = factionsOf(null);
+  // how hard the fight is (the flight setting: difficulty.js), now
+  const diff = () => difficultyOf(controls().difficulty);
   const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines }); // (every side's: another pilot's hunters, whoever they are)
+  if (hunters) hunters.difficulty = diff;
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
   const farFights = createFarFights(map); // (and seen from afar, as flickering light: farFights.js)
@@ -3034,11 +2979,24 @@ export async function create(canvas, ctx) {
         emit({ type: 'interdicted', faction: e.faction });
       }
     } else if (e.type === 'laser') {
-      hurt(e.damage);
+      hurt(e.damage * diff().damage);
       state.hitBy = e.by ?? null; // (the wing goes for the one that hit you last)
-      // (a bomb's burst shakes the ship as a laser doesn't)
-      if (e.bomb && !reduced) state.shake = Math.max(state.shake, 0.5);
+      // (a bomb's burst shakes the ship as a laser doesn't, nor a missile's, nor a rammer's)
+      if ((e.bomb || e.missile || e.ram) && !reduced) state.shake = Math.max(state.shake, e.ram ? 0.8 : 0.5);
+      // an ion bolt holds the boost and the pulse drive down a moment
+      if (e.ion) {
+        state.ionUntil = state.clock + ION.slow;
+        if (!reduced) state.static = Math.max(state.static, 0.6);
+        state.note = { text: 'Ion hit: drives down', until: wall() + 2 };
+      }
     } else if (e.type === 'shot') emit(e);
+    else if (e.type === 'missile') {
+      // a missile after you: the HUD says so (once a few seconds)
+      if (state.clock - (state.missileSaid ?? -1e9) > 4) {
+        state.missileSaid = state.clock;
+        state.note = { text: 'Missile inbound: break hard, or outrun it', until: wall() + 2.5 };
+      }
+    } else if (e.type === 'rammed') burn(new THREE.Vector3(e.at.x, e.at.y, e.at.z), e.size * 2.2);
     else if (e.type === 'spotlit') {
       // pinned in a spotlight: the HUD whites out a moment, and the lock with it
       state.static = Math.max(state.static, 1.5);
@@ -3612,7 +3570,7 @@ export async function create(canvas, ctx) {
     }
     if (live) {
       // shields come back once you've been out of trouble a while
-      if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
+      if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen * diff().regen);
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
@@ -3620,7 +3578,7 @@ export async function create(canvas, ctx) {
         const sunNow = litBy.key && litBy.key.strength > 1.2 ? LIT_STARS.find((st) => st.id === litBy.key.id) : null;
         const where = { sun: Boolean(sunNow && canEclipse({ eye: [live.x, live.y, live.z], sun: sunNow })), station: Boolean(state.at && byId(state.at)?.kind === 'core'), gate: state.at === 'starwars' };
         const zone = state.ride ? 'lane' : zoneOf(live, { regionAt, laneAt: noLane }); // (in a carriageway but not riding it, nothing of the lane's can happen: it needs the ride)
-        const id = director.update(dt, { zone, hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: Boolean(state.ambush) || hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
+        const id = director.update(dt, { zone, hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: Boolean(state.ambush) || hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted, pace: diff().pace });
         state.hurtNow = 0;
         if (id) happen(playAs(id, zone), live, id);
         // the ambush at your off-ramp: sprung as you come off there (laneEvents.js)
@@ -4027,6 +3985,11 @@ export async function create(canvas, ctx) {
     const pack = state.interdicted ? clamp((state.clock - state.interdictAt) / INTERDICT_IN, 0, 1) : 0;
     const fight = front ? front.holdAt(state.ship.x, state.ship.y, state.ship.z, noseOf(state.ship)) : 0;
     input.interdicted = Math.max(pack * pack * (3 - 2 * pack), fight);
+    // an ion hit: no boost and no pulse drive till it wears off
+    if (state.clock < (state.ionUntil ?? -1)) {
+      input.boost = false;
+      input.interdicted = 1;
+    }
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     const before = state.ship;
     // on a hyperlane, or getting on or off one (lanePilot.js): the ride poses the ship in place of ship.js's step
@@ -4618,19 +4581,20 @@ export async function create(canvas, ctx) {
     state.model?.rim({ colour: fill.color, dir: lightNow.fill });
   };
 
+  // the pace's step on everything that follows it
+  const paceTo = () => {
+    post.sharpness = pace.scale;
+    post.setLevel(pace.level);
+    blasts.setMode(pace.level >= 2 || tier === 'low' || state.low ? 'pop' : 'full');
+    // (the rocks' relief flat from the pace's step 3, and back: lib/three/rock)
+    ROCK_RELIEF.value = pace.level >= 3 ? 0 : 1;
+    // (the planets' ground detail goes at the pace's step 2, their real air for
+    // the old halo and their clouds' shadows at 3, and they come back)
+    for (const p of planets) p.setLevel(pace.level);
+  };
   function render(ms, now) {
     gl.watch(now);
-    const sharp = pace.frame(now);
-    if (sharp !== null) {
-      post.sharpness = sharp;
-      post.setLevel(pace.level);
-      blasts.setMode(pace.level >= 2 || tier === 'low' || state.low ? 'pop' : 'full');
-      // (the rocks' relief flat from the pace's step 3, and back: lib/three/rock)
-      ROCK_RELIEF.value = pace.level >= 3 ? 0 : 1;
-      // (the planets' ground detail goes at the pace's step 2, their real air for
-      // the old halo and their clouds' shadows at 3, and they come back)
-      for (const p of planets) p.setLevel(pace.level);
-    }
+    if (pace.frame(now) !== null) paceTo();
     const dt = ms / 1000;
     const t = reduced ? 0 : state.low ? state.tLow : (now - t0) / 1000;
     // (the Twins' suns going round each other: their solids where they're drawn, deep.js)
@@ -4827,7 +4791,6 @@ export async function create(canvas, ctx) {
     const launching = moveMissiles(dt);
     if (armory) armory.update(dt);
     sun.update(t, camera);
-    stars.material.uniforms.uTime.value = t;
     stars.material.uniforms.uDpr.value = gl.ratio; // (the watchdog may have changed it)
     // each place's own motion (a station's lights, particles, its screen)
     // only while it's in view and more than a speck
@@ -5447,6 +5410,20 @@ export async function create(canvas, ctx) {
       frame,
       alive: () => alive() && !disposed,
     });
+    if (!alive() || disposed) return;
+    // how sharp this machine can afford it, found now rather than see-sawed
+    // into while flying (lib/three/calibrate): the pace's ceiling from here
+    onProgress?.(0.97, 'tune');
+    const key = calibrationKey(renderer, 'universe', size.w, size.h);
+    const kept = recall(key);
+    const setLevel = (l) => {
+      pace.set(l);
+      paceTo();
+    };
+    const level = await calibrate({ renderer, draw: () => post.render(size.w, size.h), setLevel, start: kept ?? 0, frames: kept != null ? 4 : 12, frame, alive: () => alive() && !disposed });
+    if (!alive() || disposed) return;
+    setLevel(level);
+    remember(key, level);
   };
 
   return {

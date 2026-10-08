@@ -270,11 +270,15 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
         <details className="universe-credits">
           <summary>Credits</summary>
           <p className="universe-credit">
-            Planet maps and the Milky Way by{' '}
+            Planet maps by{' '}
             <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener noreferrer">
               Solar System Scope
             </a>{' '}
-            (CC BY 4.0), recoloured; metal and paper from{' '}
+            (CC BY 4.0), recoloured; the Milky Way from{' '}
+            <a href="https://www.eso.org/public/images/eso0932a/" target="_blank" rel="noopener noreferrer">
+              ESO/S. Brunier
+            </a>
+            &rsquo;s photograph (CC BY 4.0); metal and paper from{' '}
             <a href="https://ambientcg.com" target="_blank" rel="noopener noreferrer">
               ambientCG
             </a>{' '}

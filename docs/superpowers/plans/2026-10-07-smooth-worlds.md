@@ -123,8 +123,6 @@ For each of Avengers, Middle-earth (Shire and towns), Albuquerque, C-137, Cybert
 
 `gpuTimer(gl) → { begin(), end(), poll() → ms | null }` on `EXT_disjoint_timer_query_webgl2`; `pickRatio(samples: [{ ratio, ms }], budget) → ratio` (pure: the largest ratio whose median ≤ budget, else the smallest); `calibrate({ renderer, draw, ratios, budget = 12, frames = 24 }) → Promise<ratio>`; `remember(key, ratio)`/`recall(key)` in localStorage `tp-calibration`. `pace.js` gains a `ceiling` level (start there, never step above). Tests for `pickRatio`, the store, and pace's ceiling.
 
-## Part 7 — chunks (PR 7)
+## Part 7 — chunks
 
-### Task 13: `src/lib/three/chunks.js`
-
-`createChunks({ size, near, far, cells, build, prepare })` → `{ update(position, heading), prepareAll(onProgress), visible(cellKey), dispose() }`; cell keys `"ix,iz"`; hysteresis so a cell on the edge doesn't flicker; tests for cell math, near/far, ahead bias, hysteresis. Apply to the universe's near maps and wonders and to the surfaces' props.
+Dropped here: the infinite-worlds design (another session; `docs/superpowers/specs/2026-10-07-infinite-worlds-design.md`) owns spatial chunking (`runtime/chunkGrid.js`, `workers.js`, `origin.js`, merged in PR #600) and counts this plan as its Phase 0. Its chunk meshes reach the GPU through this plan's frame guard on the runtime's renderer.

@@ -1176,6 +1176,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-setting-row input[type='checkbox']:checked::after { translate: 16px 0; background: var(--engine, #e8eefc); }
 .universe-setting-row input[type='checkbox']:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 2px; }
 .universe-seg { grid-template-columns: repeat(3, 1fr); }
+.universe-seg-4 { grid-template-columns: repeat(4, 1fr); }
 .universe-seg button + button { border-left: 1px solid rgb(255 255 255 / 0.2); }
 .universe-settings-reset { justify-self: start; padding: 0.2rem 0; text-decoration: underline; }
 .universe-settings-reset:hover { color: var(--text); }

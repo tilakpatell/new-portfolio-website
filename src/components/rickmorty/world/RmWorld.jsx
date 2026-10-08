@@ -78,6 +78,8 @@ import GuideCue from '../../guide/GuideCue';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { EMOTES, createEmoteWheel, emotePacket, keepEmote, readEmote, wheelAngle } from '../../../lib/emote';
 import { lineHold } from './living';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // Dimension C-137, the world: walk about the Smiths' street as Morty, go into
 // the house, Rick's garage and Harry Herpson High, fly Rick's space cruiser
@@ -414,6 +416,7 @@ export default function RmWorld({ start = null, onLeave = null }) {
 const ROOM = { bound: boundOf(AREAS), motion: true };
 
 function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast, say, planet, onLeave }) {
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const trav = useTravellers('c137', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.35 });
@@ -1110,6 +1113,9 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           sound('portalHop');
         }
         fit();
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead && api.current === a });
+        if (dead || api.current !== a) return;
         setGl('on');
       })
       .catch((e) => {
@@ -1600,12 +1606,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           <p>Opening a portal to {inLine(opening)}…</p>
         </div>
       )}
-      {gl === 'loading' && (
-        <div className="rm-loading" role="status">
-          <span className="rm-swirl" aria-hidden="true" />
-          <p>Opening a portal{planet && ` to ${inLine(planet.name)}`}…</p>
-        </div>
-      )}
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title={`Opening a portal${planet ? ` to ${planet.name}` : ''}`} />
 
       <div className="rm-hud rm-hud-top">
         <div ref={brand} className="rm-brand">

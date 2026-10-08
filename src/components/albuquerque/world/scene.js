@@ -314,6 +314,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       grade.uniforms.uTime.value += ms / 1000;
       composer.render();
     };
+    stage.target = target; // (where the scene's drawn, for its shaders made ahead: office/stage3d's prepare)
     stage.onResize = (w, h, ratio) => {
       composer.setPixelRatio(ratio);
       composer.setSize(w, h);
@@ -1326,6 +1327,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
 
   return {
     render,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: office/stage3d)
     setPlaces,
     // a beam of light over a place that's just opened
     beam(id) {
