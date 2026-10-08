@@ -239,10 +239,12 @@ export const SHIP_PROFILE = {
   metalness: { metal: 0.65, paint: 0.1 },
   metalNames: /metal|steel|iron|chrome|gold|silver|brass|copper|alumin|titan|trim|engine|exhaust|thruster|nozzle|gun|cannon|barrel|pipe/i,
   envMapIntensity: 1.3,
-  // The hull's light as a graphic ratio, not a photographic one: the key at
-  // full, the fill at a quarter, the rim at a half (livery.js reads it). A
-  // soft 2.35 : fill made the ship the flattest thing in the frame.
-  light: { key: 1, fill: 0.25, rim: 0.5 },
+  // The hull's light (livery.js reads it): the key at full, the rim at a
+  // half, the fill at 0.6. A quarter made every ship you fly (the RV, the
+  // cruiser) black on the side away from its star, which the chase camera
+  // often sees; 0.6 still keeps the lit side the brighter by more than the
+  // soft 2.35 : fill that made the ship flat.
+  light: { key: 1, fill: 0.6, rim: 0.5 },
 };
 
 // `tune` over every material under a root, each once.
