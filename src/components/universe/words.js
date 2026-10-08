@@ -3,8 +3,9 @@
 // panel, the nav map, the scene's prompts and the guide say the same thing.
 // System text is plain; the crews keep their own words (crews.js).
 
-// What the map is, in one sentence: the panel's, the start choice's and the
-// guide's orientation all say this, each with its own lead-in.
+// What the map is, in one sentence, as the panel says it. The start choice,
+// the guide's entry (guide/abouts.js) and the tour's briefs say the same in
+// their own words; when one is next rewritten, it should read this.
 export const ABOUT = 'the stations round the sun are my pages, and the planets out in deep space are worlds I love';
 
 // The nav map, its views, and the way back from it to the 3D scene.

@@ -126,6 +126,8 @@
   font-weight: 700;
 }
 
+.universe-online-link { color: var(--muted); font-family: var(--font-mono); font-size: 0.72rem; text-decoration: underline; text-underline-offset: 3px; }
+.universe-online-link:hover { color: var(--text); }
 .universe-online-feed { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; }
 /* on the map, the notes rise from above the corner's buttons (the nav map,
    settings and hangar, 68 to 112px up), never over them */
@@ -135,6 +137,10 @@
   margin: 0;
   padding: 0.35rem 0.75rem;
   border-left: 2px solid var(--muted);
+  /* (the glass is hud.css's too; written here as well, because off the map
+     the floating card loads this sheet alone) */
+  border-radius: 14px;
+  background: rgb(3 4 10 / 0.85);
   color: var(--text);
   font-size: 0.8rem;
   animation: universe-online-in 0.25s ease-out;
@@ -242,6 +248,8 @@
 
 @media (max-width: 767px) {
   .universe-online:not([data-floating]) { left: var(--hud-edge, 12px); bottom: calc(var(--sheet-h) + 12px); max-width: calc(100% - 24px); }
+  /* above the thumbs, the hint and the fly-past pill, which reach s+250 */
+  .universe-online:not([data-floating]) .universe-online-feed { bottom: 250px; }
   /* just the count, clear of the View button */
   .universe-online-full { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .universe-online-short { display: inline; }

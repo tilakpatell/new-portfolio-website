@@ -406,7 +406,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
   opacity: 0;
   transition: opacity 0.3s;
 }
-.universe-page:has(> .universe-tour) .universe-siege { margin-top: 48px; }
+@media (min-width: 768px) { .universe-page:has(> .universe-tour) .universe-siege { margin-top: 48px; } }
 .universe-siege[data-on] { opacity: 1; }
 .universe-siege b { color: #5dffb0; font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; }
 .universe-siege[data-phase='core'] { border-color: rgb(255 140 70 / 0.5); }
@@ -484,9 +484,12 @@ body:has(.universe-panel) .guide-btn { display: none; }
   z-index: 3;
   /* under the crew's line (Comms.jsx writes its height), centred on the map's
      open part as the line is */
-  left: calc(50% - (var(--panel-w) + 24px) / 2);
+  left: 16px;
+  right: calc(var(--panel-w) + 40px);
   top: calc(var(--nav-h) + 20px + var(--comms-h, 0px));
-  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - var(--panel-w) - 56px);
+  margin-inline: auto;
   display: inline-flex;
   align-items: center;
   gap: 12px;
@@ -513,7 +516,9 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-tour kbd { margin-left: 0.25em; }
 @media (max-width: 767px) {
   /* over the sheet, a row above the prompt */
-  .universe-tour { left: 50%; top: auto; bottom: calc(var(--sheet-h) + 104px); max-width: calc(100% - 32px); }
+  /* over the sheet, above the thumbs' cluster and the hint (which reach
+     s+204), with both edges set so it can be as wide as the screen allows */
+  .universe-tour { left: 16px; right: 16px; top: auto; bottom: calc(var(--sheet-h) + 212px); max-width: calc(100% - 32px); }
 }
 
 .universe-hud {
@@ -1172,7 +1177,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-setting-row input[type='checkbox']:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 2px; }
 .universe-seg { grid-template-columns: repeat(3, 1fr); }
 .universe-seg button + button { border-left: 1px solid rgb(255 255 255 / 0.2); }
-.universe-settings-reset { justify-self: start; padding: 0.2rem 0; }
+.universe-settings-reset { justify-self: start; padding: 0.2rem 0; text-decoration: underline; }
 .universe-settings-reset:hover { color: var(--text); }
 
 /* what's fitted, in the panel */
@@ -1291,7 +1296,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-hangar-part[data-short] .universe-hangar-part-cost { color: var(--hud-warn); }
 .universe-hangar-part-does { color: var(--muted); font-size: 0.72rem; line-height: 1.35; }
 .universe-hangar-paint:focus-visible,
-.universe-hangar-part:focus-visible,
+.universe-hangar-part:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
 /* the cruiser's crew: to the wardrobe */
 .universe-hangar-crew { justify-self: start; min-height: 32px; padding: 0 0.8rem; border: 1px solid rgb(255 255 255 / 0.24); border-radius: 999px; color: var(--text); font-size: 0.76rem; font-weight: 600; transition: border-color 0.15s, background-color 0.15s; }
 .universe-hangar-crew:hover { border-color: #97ce4c; background: rgb(151 206 76 / 0.14); }
@@ -1397,9 +1402,9 @@ body:has(.universe-panel) .guide-btn { display: none; }
   .universe-climbs { right: 26px; bottom: calc(var(--sheet-h) + 104px); }
   .universe-alt { left: 12px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2); height: 120px; margin-top: -60px; }
   .universe-alt-mark { translate: 0 calc(var(--alt, 0) * -60px); }
-  /* (beside the weapon readout, in the left column: on the hint's own bottom
-     edge it sat under it) */
-  .universe-shield { left: calc(var(--hud-edge) + 118px); top: auto; bottom: calc(var(--sheet-h) + 124px); width: 76px; }
+  /* (over the weapon readout, in the left column: on the hint's bottom edge
+     it sat under it, and beside the readout it met the Weapon button) */
+  .universe-shield { left: var(--hud-edge); top: auto; bottom: calc(var(--sheet-h) + 156px); width: 76px; }
   /* (wrapped, above the buttons, clear of the settings button on the left and
      the climb and dive ones on the right) */
   .universe-arrive { left: 16px; right: 16px; top: calc(var(--nav-h, 68px) + 24px); translate: none; max-width: none; }
