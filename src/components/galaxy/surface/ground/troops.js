@@ -131,3 +131,13 @@ export function hurt(s, damage) {
   s.alive = false;
   return 'down';
 }
+
+// a soldier's trigger: bursts of the gun's own (three where it says none),
+// `gap` apart, a pause between; cadenceOf(weapon) → the seconds a shot, on
+// average (bolts.js's farExchange fires by it)
+export const BURST = { gap: 0.15, pause: [1.1, 2] };
+export const burstOf = (weapon) => weaponOf(weapon).burst ?? 3;
+export function cadenceOf(weapon) {
+  const n = burstOf(weapon);
+  return ((n - 1) * Math.max(BURST.gap, weaponOf(weapon).every) + (BURST.pause[0] + BURST.pause[1]) / 2) / n;
+}
