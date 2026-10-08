@@ -167,6 +167,9 @@ export const SITE = {
       things: [
         { kind: 'cplatform', at: [0, 0], abs: true, y: 0, opts: { r: 36, light: '#ff8a4a', color: '#7a6a5c' } },
         { kind: 'works', at: [0, 0], yaw: 0.4, abs: true, y: 0.3 },
+        // (smoke off its two stacks)
+        { kind: 'smoke', at: [18.6, 3.0], abs: true, y: 34.6, solid: false, opts: { h: 80, n: 9, color: '#2e2624' } },
+        { kind: 'smoke', at: [19.2, -6.0], abs: true, y: 26.6, solid: false, opts: { h: 70, n: 8, color: '#2e2624' } },
       ],
     },
   ],
@@ -288,8 +291,8 @@ export const SITE = {
       id: 'club',
       name: 'the Outlander Club',
       music: 'cantina',
-      door: { at: [200, -283], r: 2.8, prompt: 'Go into the Outlander Club' },
-      back: [200, -279],
+      door: { at: [196.5, -290.7], r: 2.8, prompt: 'Go into the Outlander Club' },
+      back: [194.6, -293.4],
       inside: {
         build: 'clubinside',
         spawn: [0, 5.2],

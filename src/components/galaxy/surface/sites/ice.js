@@ -291,6 +291,8 @@ export const SITES = {
         },
         things: [
           { kind: 'hanshelter', at: [0, 0], yaw: 2.6 },
+          // (his tauntaun, on its side beside the shelter)
+          { kind: 'tauntaun', at: [-4.5, -1.4], yaw: 3.0, roll: 1.5, y: 0.4, solid: { r: 1.3 } },
           // the snowspeeder that found them at dawn
           { kind: 'snowspeeder', at: [10, -8], yaw: 1.9 },
         ],

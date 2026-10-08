@@ -266,4 +266,15 @@ The landmark models' 'tweak' rows, done as each row says (no Meshy calls):
 - Mandalore: Sundari's tint and concrete detail.
 - Lothal: the domed farmhouses' and the Jedi temple's tints and details.
 
-Not done yet: the docking bay's walkable built bay, the Massassi hangar's walls and plugs, the Geonosis arena's built solids and Mace's spot, and the moss-free bunker variant (it needs a new Sketchfab download); and the code-built props' tweaks.
+## The rest, applied (2026-10-08)
+
+Every row above that was left, done as it says, with these departures (all walked or shot in game; the shots are in `docs/superpowers/shots/audit-leftovers/`):
+
+- **Docking Bay 94** (Mos Eisley): the walkable built bay, one thick lathed wall with ribs inside and out and a gate block either side; Tosche's bay the model at 0.55, worn adobe. Walked in through the gate, stopped by the wall at 14.2 m.
+- **The Great Temple** (Yavin): its walk layer rebuilt from a height map of `massassi.glb`, not the audit's numbers alone: terraces at 1.6 / 11.3 / 19.9 / 28.9 / 36 / 49.4 m (half-widths 46 / 40 / 32.5 / 27.9 / 19.5 / 12.5), a core to 52.4 and the tower to 77; the hangar a tunnel x ±10.4 under a roof at 10.8, closed at z 11.5. Walls with a top block the walker (there is no step-up onto a solid), so the east face's stair is floors only, a strip every 20 cm along its measured profile, with rails down its sides. A new built kind, `massassiplugs`, draws the dark plugs in the back and side mouths and a stone stair from the ground up the east side to the stair's foot. The war room's and the inner stair's doors were at temple z 7, behind the new back wall: both moved onto it (`hangarfloor` draws them, lit). The ships re-laid with a lane up the middle; Red Leader and C-3PO moved out of the walls. The summit, the remotes quest's reach and the assault's throne post moved to [0, -251]. Walked: hangar mouth to back wall; ground to the summit terrace.
+- **The lesser temple**: the Great Temple's model at 34 m, its crossed tunnels plugged dark (`ruin` with `core`), two jungle trees against it.
+- **The arena** (Geonosis): solids round its floor at r 22 and its wall at r 74, the gate's towers outside it; the model sunk 3.5; Mace at [-197, 151]. Walked from Mace to the centre unstopped. The posts slimmed, knobbed, five in the row.
+- **The moss-free bunker** (`bunkerash`, Nevarro's base and Lothal's factory): the audit's recolor rule didn't work as written (`where.sat` is a floor, not a range, and channel scaling turns moss lime): `scripts/recolor.mjs` gained `grey: true`, which greys a rule's texels before aiming them at its colour. Re-imported with `node scripts/sketchfab-surface.mjs forest bunkerash`, its LOD made.
+- **Endor's bunker** sits in its earth bank (`bunkerbank`).
+- **The code-built props**: all of them, as their rows say. Small departures: the kpad's dark band is a flat ring (a flush disc would have covered the deck); the dining room's chair backs face the table; the ruins' stair is solid steps; a square pad's grass clearing reaches its corners.
+
