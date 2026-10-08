@@ -42,7 +42,7 @@ const Titan = forwardRef(function Titan({ have, onSet, fallback }, ref) {
             v.dispose();
             return;
           }
-          await warmed(v); // its shaders linked before the first frame
+          await warmed(v, () => !dead); // everything on the graphics chip before the first frame
           if (dead || v.engine?.lost) {
             v.dispose();
             return;

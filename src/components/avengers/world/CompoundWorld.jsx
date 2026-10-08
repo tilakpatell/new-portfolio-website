@@ -13,6 +13,7 @@ import { useAchievements } from '../../Achievements';
 import './world.css';
 import '../../../styles/lazy/avengers.css';
 import GuideCue from '../../guide/GuideCue';
+import LoadingVeil from '../../worlds/LoadingVeil';
 import { useVoiced } from '../../../lib/useVoiced';
 import { sayVoiced } from '../../../lib/voiced';
 
@@ -37,6 +38,7 @@ const STYLE_BEST = 'tp-hq-style-best';
 const SHOWBOAT = 2000; // style banked in one flight for the achievement
 const TRICK_NAME = { flip: 'Front flip', back: 'Backflip', twist: 'Twist' };
 const SUIT_HIGH = 40; // over the roofs in the armour: the achievement
+const PREPARE_WAIT = 30000; // ms at most the world's prepare holds back its first frame
 // the backpacks found so far (ids), as kept between visits
 const readFound = () => {
   const v = local.get(FOUND, []);
@@ -119,6 +121,8 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   const canvas = useRef(null);
   const map = useRef(null);
   const sim = useRef(null);
+  // how far the world's prepare has got, while it runs (the loading veil)
+  const [prep, setPrep] = useState(null);
   if (!sim.current) {
     const kept = local.get(AT, null);
     // (where he was last time: on the lawn, or up on a roof)
@@ -217,8 +221,19 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         }
         api.current = a;
         fit();
-        // its shaders linked in the background before the first frame
-        await settle(a.engine.precompile(), 4000);
+        // everything onto the graphics chip before the first frame, behind
+        // the loading veil (the scene's prepare; half a minute at most)
+        setPrep({ value: 0, step: null });
+        // (cut short at the cap: a prepare still going stops, and says no more)
+        let capped = false;
+        const preparing = () => !dead && !capped;
+        await settle(
+          a.prepare((value, step) => preparing() && setPrep({ value, step }), preparing),
+          PREPARE_WAIT,
+        );
+        capped = true;
+        // (the veil fades on what it last said)
+        if (!dead) setPrep((p) => p && { ...p, done: true });
         if (dead || a.lost) return;
         if (import.meta.env.DEV) window.__HQWORLD__ = { api: a, sim: sim.current, enter }; // for the QA scripts
         setGl('on');
@@ -634,7 +649,8 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     <div ref={box} className="cw-stage" data-touch={touch || undefined} data-photo={photo ? '' : undefined}>
       <canvas ref={canvas} className="cw-canvas" data-on={gl === 'on' || undefined} aria-label="The Avengers compound in 3D: the hangar, the main building and its glass wing, the training center, the lab and the range, and Spider-Man on the lawn" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} onWheel={(e) => sim.current.photo && changePhoto({ dist: sim.current.photo.dist * (e.deltaY > 0 ? 1.1 : 1 / 1.1) })} />
       <div ref={speedRef} className="cw-speed" aria-hidden="true" />
-      {gl === 'loading' && <p className="cw-loading">Flying in to the compound…</p>}
+      {gl === 'loading' && !prep && <p className="cw-loading">Flying in to the compound…</p>}
+      <LoadingVeil shown={Boolean(prep) && !prep.done && gl === 'loading'} progress={prep?.value} step={prep?.step} title="The Avengers compound" line="Flying in to the compound…" />
       {tourMsg && (
         <p className="cw-tour-msg" aria-live="polite">
           {tourMsg}
