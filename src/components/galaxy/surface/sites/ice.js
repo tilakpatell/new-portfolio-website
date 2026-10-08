@@ -339,7 +339,7 @@ export const SITES = {
     life: [
       // the perimeter post at the landing
       { kind: 'hothtrooper', n: 3, at: [6, 4], spread: 8, roam: 8, speed: 1.1, name: 'Rebel trooper', says: ['Perimeter post three. Nothing but wind out here. So far.', 'Keep your eyes on the north ridge.', 'Echo Base is that way. Follow the markers.'] },
-      { kind: 'pilot', n: 1, at: [18, -6], still: true, face: 2.2, name: 'Rogue Group pilot', says: ['Harpoon’s armed. Tow cable’s good. Now we wait.', 'Can’t see a thing in this.'] },
+      { kind: 'rebelpilot', n: 1, at: [18, -6], still: true, face: 2.2, name: 'Rogue Group pilot', says: ['Harpoon’s armed. Tow cable’s good. Now we wait.', 'Can’t see a thing in this.'] },
       { kind: 'tauntaun', n: 2, at: [-22, 14], spread: 4, roam: 5, speed: 0.8, r: 0.8 },
       { kind: 'droid', n: 1, at: [12, 14], roam: 6, speed: 0.6, name: 'Astromech', says: ['(A shivering beep. It would like to go inside now.)'] },
       // the walkers, on their way in
@@ -357,7 +357,7 @@ export const SITES = {
       { kind: 'hothtrooper', id: 'officer', quest: 'luke', at: echo([5, 24]), still: true, face: ECHO.yaw + 0.4, name: 'Deck officer', says: ['Sir, all the patrols are in. Except one.', 'The shield doors close at nightfall. I’m sorry.'] },
       { kind: 'hothtrooper', id: 'loadmaster', quest: 'transport', at: [-258, 44], still: true, face: 2.4, name: 'Loadmaster', says: ['First transport’s loaded and away. The rest go when the cannon’s ready.', 'Everything else stays. Leave it for the Empire.'] },
       { kind: 'hothtrooper', n: 4, at: echo([0, 6]), spread: 8, roam: 9, speed: 1.2, name: 'Echo Base crew', says: ['The first transport is away!', 'Your tauntaun will freeze before you reach the first marker.', 'We’ve got to get the speeders adapted to the cold.', 'Sir, all patrols are in. Except one.', 'All troops to the north slope!'] },
-      { kind: 'pilot', n: 2, at: echo([0, 38]), spread: 8, roam: 8, speed: 1.1, name: 'Rogue Group pilot', says: ['Rogue Group, use your harpoons and tow cables!', 'That armour’s too strong for blasters. Go for the legs.', 'Echo Base, this is Rogue Two. Ready for takeoff.'] },
+      { kind: 'rebelpilot', n: 2, at: echo([0, 38]), spread: 8, roam: 8, speed: 1.1, name: 'Rogue Group pilot', says: ['Rogue Group, use your harpoons and tow cables!', 'That armour’s too strong for blasters. Go for the legs.', 'Echo Base, this is Rogue Two. Ready for takeoff.'] },
       { kind: 'droid', n: 2, at: echo([2, 0]), spread: 6, roam: 8, speed: 0.6, name: 'Astromech', says: ['(A worried beep: the shield’s on its last legs.)', '(A busy whistle. It has a speeder to fix.)'] },
       { kind: 'tauntaun', n: 3, at: echo([-44, 55]), spread: 3, roam: 4, speed: 0.9, r: 0.8 },
       // the wampa, at home

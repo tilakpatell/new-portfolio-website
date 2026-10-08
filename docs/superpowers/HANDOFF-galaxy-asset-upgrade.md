@@ -53,7 +53,7 @@ Follow the spec over the plan, the code over both. Fix the plan's line in your P
 | 2 | the implementation session | `claude/galaxy-asset-upgrade-p2` | no (pushed, no PR) |
 | 3 | the implementation session | `claude/galaxy-asset-upgrade-p3` | no (pushed, no PR); the B1 rigs and walks but is not swapped in (below) |
 | 4 | the implementation session | `claude/galaxy-asset-upgrade-p4` | no (pushed, no PR). **Blocked in part:** Endor stays over 3M and on `KNOWN_OVER` (below) |
-| 5 | | | |
+| 5 | the implementation session | `claude/galaxy-asset-upgrade-p5` | no (pushed, no PR). The nine asks are **not filed**: `gh issue create` is refused in the cloud session (HTTP 403); the owner files them from `evidence/galaxy-asset-upgrade/gen3d-asks.md` |
 
 Findings for the next phase go here, as the natural-worlds hand-off does: what the retarget needed on the Mixamo rigs, the B1's outcome, Endor's numbers before and after, which gen3d asks were filed.
 
@@ -89,4 +89,23 @@ Findings for the next phase go here, as the natural-worlds hand-off does: what t
 - Scattered (all `solid: false`): Endor `qfern` 120 and `qmushroom` 30 within 60 m; Dagobah `qfern` 100 and `qmushroom` 30 within 80 m; Kashyyyk `qfern` 100; Yavin `qfern` 80, `qclover` 120; Naboo `qclover` 150, `qgrass` 200; Sorgan `qgrass` 200, `qclover` 120; Lothal `qgrass` 200.
 - Endor at high, `galaxy-check` on this tree: **4.21M triangles before** (not the spec's 3.35M: the world has grown since it was listed), **4.32M after** (the ferns and mushrooms, +0.11M with their shadow pass). Measured by object (a frame's every pass): the near full redwoods 60–280 m 1.1M, the skinned crew figures 0.73M, the ground 0.58M, the built ferns 0.52M, the Ewoks 0.28M; the far `lo` redwood ring past 600 m is only 0.1M. So the spec's premise (Endor's triangles are in the far ring, and Quaternius pines there bring it under) does not hold: `qpine` in that ring (120 of them, light copies past 60 m) measured 0.25M, more than the redwoods it replaced, so the far ring keeps its built redwoods and `qpine` and `qdeadtree` are catalogued but placed nowhere. The plan's fallback (the 280–640 m ring cut by tenths) can save at most 0.21M. Getting under 3M means trimming the near redwoods, the crew's triangles or the ground's tessellation, which this design does not cover. `KNOWN_OVER.endor` stays, its note updated with these numbers.
 - The other forest and plains worlds at high, after: Dagobah 1.33M, Kashyyyk 1.41M, Yavin 1.81M, Naboo 1.38M, Sorgan 1.21M, Lothal 1.00M, all under 3M (`evidence/galaxy-asset-upgrade/galaxy-check-p4-high.json`, `surface-p4-*.png`).
+
+### Phase 5 findings: the built people, asked for
+
+- `pilot` needed no model: its life entries on Hoth, Naboo, Nevarro, Tatooine and Yavin now name `rebelpilot` (the Sketchfab Rebel pilot, which walks on the core set since Phase 2), so nine asks, not ten.
+- The nine (`villager`, `farmer`, `kenobi`, `jocasta`, `zam`, `caretaker`, `ghostben`, and the props `wa7`, `shaak`) are written in `evidence/galaxy-asset-upgrade/gen3d-asks.md` with the A-pose wording for the people and a script that files them. Not filed here: `gh issue create` is refused (HTTP 403). Wookieepedia is refused too (proxy 403), so each carries a prompt and the page to take a picture from instead of an image URL. Before filing, attaching the picture is better (the desktop's README: a prompt alone only works for designs the image model knows).
+- When a person lands, rig it by transfer and add its `CREW` row. `actors.js` then takes the crew figure over the built one, with no other change. Check each on `scripts/clip-shot.mjs` after `ual-bake.mjs --rig` on a scratch copy, as the B1 was (`b1-import.mjs` shows the facing and lighting fixes a download may need):
+
+| kind | donor | when `public/models/gen3d/<kind>.glb` lands | `crewList.js` `CREW` row |
+|---|---|---|---|
+| `villager` | `officer` | `node scripts/rig-transfer.mjs public/models/galaxy/crew/officer.glb public/models/gen3d/villager.glb public/models/galaxy/crew/villager.glb --tex 1024` | `villager: { url: '/models/galaxy/crew/villager.glb', tall: 1.75 },` |
+| `farmer` | `officer` | `node scripts/rig-transfer.mjs public/models/galaxy/crew/officer.glb public/models/gen3d/farmer.glb public/models/galaxy/crew/farmer.glb --tex 1024` | `farmer: { url: '/models/galaxy/crew/farmer.glb', tall: 1.75 },` |
+| `kenobi` | `officer` | `node scripts/rig-transfer.mjs public/models/galaxy/crew/officer.glb public/models/gen3d/kenobi.glb public/models/galaxy/crew/kenobi.glb --tex 1024` | `kenobi: { url: '/models/galaxy/crew/kenobi.glb', tall: 1.82 },` |
+| `caretaker` | `officer` | `node scripts/rig-transfer.mjs public/models/galaxy/crew/officer.glb public/models/gen3d/caretaker.glb public/models/galaxy/crew/caretaker.glb --tex 1024` | `caretaker: { url: '/models/galaxy/crew/caretaker.glb', tall: 1.75 },` |
+| `zam` | `twilek` | `node scripts/rig-transfer.mjs public/models/galaxy/crew/twilek.glb public/models/gen3d/zam.glb public/models/galaxy/crew/zam.glb --tex 1024` | `zam: { url: '/models/galaxy/crew/zam.glb', tall: 1.68 },` |
+| `jocasta` | `jedi3` | `node scripts/rig-transfer.mjs public/models/galaxy/crew/jedi3.glb public/models/gen3d/jocasta.glb public/models/galaxy/crew/jocasta.glb --tex 1024` | `jocasta: { url: '/models/galaxy/crew/jocasta.glb', tall: 1.7 },` |
+| `ghostben` | `jedi3` | `node scripts/rig-transfer.mjs public/models/galaxy/crew/jedi3.glb public/models/gen3d/ghostben.glb public/models/galaxy/crew/ghostben.glb --tex 1024` | `ghostben: { url: '/models/galaxy/crew/ghostben.glb', tall: 1.78 },` |
+
+- The props: copy the GLB to `public/models/galaxy/surface/<kind>.glb` and add a row to `catalog/made.js`: `wa7: { made: 'gen3d', as: 'the WA-7 waitress droid', metres: 1.6 }`, `shaak: { made: 'gen3d', as: 'the shaaks', metres: 1.4 }`, each listed in `public/cc0/README.md`'s made line (`madeKinds`). `catalog.test.js` already allows `made: 'gen3d'`.
+- Audit after (`evidence/galaxy-asset-upgrade/audit-after.md`), against before: crew 37 (37), crew-still 2 (2), own-clips 10 (7), legs 15 (4), rig-noanim 0 (3), still 27 (38), built 7 (8), none 3 (3), walker 1 (1).
 
