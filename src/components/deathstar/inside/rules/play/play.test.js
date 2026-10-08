@@ -127,6 +127,17 @@ describe('the station with its people aboard', () => {
     expect(said.filter((e) => rebels.has(e.who) && barks.has(e.text))).toEqual([]);
   });
 
+  it('turns you to face where you look when you stand and look well round, and not for a glance', () => {
+    const g = newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 3 });
+    teleport(g, 'corr327');
+    const was = g.you.yaw;
+    const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+    play(g, { ...STILL, yaw: was + 0.5 }, 1);
+    expect(g.you.yaw).toBeCloseTo(was, 5);
+    play(g, { ...STILL, yaw: was + 2.4 }, 1.5);
+    expect(Math.abs(wrap(g.you.yaw - (was + 2.4)))).toBeLessThan(0.3);
+  });
+
   it('lets far-off people sleep where they stand', () => {
     const g = newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 3 });
     const far = g.crew.people.find((p) => p.room === 'firecontrol');
