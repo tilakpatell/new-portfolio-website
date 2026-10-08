@@ -511,6 +511,7 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
   const wanted = []; // [distance, person, in view] for people near who have no figure yet
   const picks = new Map();
   const pendingHits = new Map(); // id → a hit heard before the figure was made
+  const staging = new Map(); // id → a scene's say over how they're drawn, before their figure is made
   let frame = 0;
   let last = null;
   let disposed = false;
@@ -542,8 +543,9 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
   function follow(p) {
     // base, full, upper: what the figure was last asked to play (actOf’s); dead: its fall begun;
     // hit: the last hit it took ({ dir, high }), for the flinch and the fall
-    const r = { id: p.id, kind: p.kind, fig: null, track: createTrack(), base: undefined, full: undefined, upper: undefined, dead: false, hit: pendingHits.get(p.id) ?? null, gun: undefined, blaster: null, fallFor: 0, posed: false, seen: frame };
+    const r = { id: p.id, kind: p.kind, fig: null, track: createTrack(), base: undefined, full: undefined, upper: undefined, dead: false, hit: pendingHits.get(p.id) ?? null, staged: staging.get(p.id) ?? null, gun: undefined, blaster: null, fallFor: 0, posed: false, seen: frame };
     records.set(p.id, r);
+    staging.delete(p.id);
     const c = CAST[p.kind];
     if (c?.built) place(r, BUILT[c.built](c.tall, mats, kit));
     else figureFor(p.kind).then((fig) => place(r, fig), (err) => console.error(`Aboard the Death Star: ${p.kind} didn’t load`, err));
@@ -785,7 +787,14 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     // a scene’s say over how someone is drawn, kept until it lets them go: { yaw, hidden }
     stage(id, how) {
       const r = records.get(id);
-      if (r) r.staged = how ? { ...r.staged, ...how } : null;
+      // (someone not drawn yet is staged once they are: a scene's first act comes before their figure)
+      const was = r ? r.staged : staging.get(id);
+      const now = how ? { ...was, ...how } : null;
+      if (r) {
+        r.staged = now;
+        staging.delete(id);
+      } else if (now) staging.set(id, now);
+      else staging.delete(id);
     },
 
     // the bone of someone’s right hand, for what they hold in it (a sabre), while they are drawn

@@ -14,8 +14,9 @@
 //       (its yaw: back is behind where it faces); look: the place looked at (at, else); lift: how
 //       high over it
 //     place: { spot } | { tag } (someone the story spawned, by tag) | { you: true }
-//     act: { tag, t, play?, base?, loop?, face?, fall?, gone? }: t seconds in; face: a tag to turn
-//       to; fall: let go as a ragdoll pushed { x, y, z } (up the way they face, +y up); gone: hidden
+//     act: { tag, t, play?, base?, loop?, face?, fall?, gone?, hide? }: on everyone the story tags so
+//       (or 'you'), t seconds in; face: a tag to turn to; fall: let go as a ragdoll pushed { x, y, z }
+//       (up the way they face, +y up); gone: out of the scene for good; hide: out of sight, or back
 //     ship: name 'falcon' | 'lambda'; how 'in' (from out past its spot down onto it) | 'out' (off it
 //       and away) | 'down' (from above onto its pad) | 'up' (off its pad and away)
 //     flash: { t, at: place, colour, size }   a flare of light (and, with size, an explosion)
@@ -80,6 +81,15 @@ export const SCENES = {
       { s: 4, at: { spot: 'dock-ramp' }, from: [3, 1.6, 4], to: [2, 1.6, 3] },
     ],
     ship: { name: 'lambda', how: 'down' },
+    // (aboard while it comes down: out on the ramp once it is down)
+    acts: [
+      { tag: 'you', t: 0, hide: true },
+      { tag: 'vader', t: 0, hide: true },
+      { tag: 'guards', t: 0, hide: true },
+      { tag: 'you', t: 4, hide: false },
+      { tag: 'vader', t: 4, hide: false },
+      { tag: 'guards', t: 4, hide: false },
+    ],
   },
   // up the Emperor's tower, in the car with your father
   tower: { shots: [{ s: 6, at: { you: true }, from: [1.2, 1.8, 1.6], to: [0.8, 1.7, 1.2], lift: 1.6 }] },
@@ -162,6 +172,7 @@ const lerp = (a, b, k) => a + (b - a) * k;
 
 export function createCinematics({ people, layout, show = null, fx = null, scene: world, you = null }) {
   let playing = null; // { id, spec, t, done: Set(act index), ship, flashes }
+  let hidingYou = false; // a scene's say that your own figure is out of it (aboard the shuttle)
   const pose = { pos: { x: 0, y: 0, z: 0 }, look: { x: 0, y: 0, z: 0 } };
 
   // a place, in the station: a spot (on its floor), someone by tag (where they are drawn), or you
@@ -180,11 +191,10 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
     return null;
   }
 
-  // an actor by the story's tag, or you
-  const figureOf = (tag, g) => {
-    if (tag === 'you') return { p: { ...g.you, id: 'you' }, fig: you?.() ?? null };
-    const p = g.crew?.people.find((q) => q.tag === tag);
-    return p ? { p, fig: people.figure?.(p.id) ?? null } : null;
+  // the actors by the story's tag (everyone it tags so: the Royal Guards are two), or you
+  const figuresOf = (tag, g) => {
+    if (tag === 'you') return [{ p: { ...g.you, id: 'you' }, fig: you?.() ?? null, you: true }];
+    return (g.crew?.people ?? []).filter((q) => q.tag === tag).map((p) => ({ p, fig: people.figure?.(p.id) ?? null }));
   };
 
   // the ship's holder in the scene, and where it stood, to fly it from or to and put back
@@ -250,12 +260,17 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
     if (playing.lit) show?.lightning?.(playing.lit.from, playing.lit.to, false);
     // the actors back to what the rules have them doing
     for (const a of spec.acts ?? []) {
-      const it = figureOf(a.tag, g);
-      if (!it?.fig) continue;
-      it.fig.base?.(null);
-      it.fig.stop?.('full');
-      // (one the scene took out stays out: Ben is gone; the rest are the rules' again)
-      if (!spec.acts.some((b) => b.tag === a.tag && b.gone)) people.stage?.(it.p.id, null);
+      for (const it of figuresOf(a.tag, g)) {
+        if (it.you) {
+          hidingYou = false;
+          continue;
+        }
+        if (!it.fig) continue;
+        it.fig.base?.(null);
+        it.fig.stop?.('full');
+        // (one the scene took out stays out: Ben is gone; the rest are the rules' again)
+        if (!spec.acts.some((b) => b.tag === a.tag && b.gone)) people.stage?.(it.p.id, null);
+      }
     }
     playing = null;
   }
@@ -265,33 +280,41 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
     (spec.acts ?? []).forEach((a, i) => {
       if (done.has(i) || t < a.t) return;
       done.add(i);
-      const it = figureOf(a.tag, g);
-      const fig = it?.fig;
-      if (!fig) return;
-      if (a.face) {
-        const other = where({ tag: a.face }, g);
-        if (other) people.stage?.(it.p.id, { yaw: Math.atan2(other.x - it.p.x, -(other.z - it.p.z)) });
-      }
-      if (a.base !== undefined) fig.base?.(a.base);
-      if (a.play) fig.play?.(a.play, { loop: Boolean(a.loop) });
-      if (a.gone) people.stage?.(it.p.id, { hidden: true });
-      if (a.fall) {
-        const yaw = it.p.yaw ?? 0;
-        const [s, c] = [Math.sin(yaw), Math.cos(yaw)];
-        fig.fall?.({ collide: null, push: { x: s * a.fall.z + c * a.fall.x, y: a.fall.y, z: -c * a.fall.z + s * a.fall.x }, speed: Math.hypot(a.fall.x, a.fall.y, a.fall.z) });
-      }
-      if (a.lightning !== undefined) {
-        if (a.lightning) {
-          const to = where(a.lightning === 'you' ? { you: true } : { tag: a.lightning }, g);
-          const from = { x: it.p.x, y: (it.p.y ?? 0) + 1.3, z: it.p.z };
-          playing.lit = to ? { from, to: { x: to.x, y: to.y + 1.2, z: to.z } } : null;
-        } else if (playing.lit) {
-          show?.lightning?.(playing.lit.from, playing.lit.to, false);
-          playing.lit = null;
-        }
-      }
+      for (const it of figuresOf(a.tag, g)) act(a, it, g);
     });
     if (playing.lit) show?.lightning?.(playing.lit.from, playing.lit.to, true);
+  }
+
+  // one act on one actor
+  function act(a, it, g) {
+    if (a.hide !== undefined) {
+      if (it.you) hidingYou = a.hide;
+      else people.stage?.(it.p.id, { hidden: a.hide });
+    }
+    const fig = it.fig;
+    if (!fig) return;
+    if (a.face) {
+      const other = where({ tag: a.face }, g);
+      if (other) people.stage?.(it.p.id, { yaw: Math.atan2(other.x - it.p.x, -(other.z - it.p.z)) });
+    }
+    if (a.base !== undefined) fig.base?.(a.base);
+    if (a.play) fig.play?.(a.play, { loop: Boolean(a.loop) });
+    if (a.gone) people.stage?.(it.p.id, { hidden: true });
+    if (a.fall) {
+      const yaw = it.p.yaw ?? 0;
+      const [s, c] = [Math.sin(yaw), Math.cos(yaw)];
+      fig.fall?.({ collide: null, push: { x: s * a.fall.z + c * a.fall.x, y: a.fall.y, z: -c * a.fall.z + s * a.fall.x }, speed: Math.hypot(a.fall.x, a.fall.y, a.fall.z) });
+    }
+    if (a.lightning !== undefined) {
+      if (a.lightning) {
+        const to = where(a.lightning === 'you' ? { you: true } : { tag: a.lightning }, g);
+        const from = { x: it.p.x, y: (it.p.y ?? 0) + 1.3, z: it.p.z };
+        playing.lit = to ? { from, to: { x: to.x, y: to.y + 1.2, z: to.z } } : null;
+      } else if (playing.lit) {
+        show?.lightning?.(playing.lit.from, playing.lit.to, false);
+        playing.lit = null;
+      }
+    }
   }
 
   function flashesAt(g) {
@@ -310,6 +333,10 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
   return {
     get playing() {
       return playing?.id ?? null;
+    },
+    // whether a scene has your figure out of sight (you're aboard the shuttle as it lands)
+    get hidesYou() {
+      return Boolean(playing) && hidingYou;
     },
     sync(g, dt) {
       const id = g?.scene?.id ?? null;
