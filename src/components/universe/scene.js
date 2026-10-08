@@ -623,7 +623,7 @@ export async function create(canvas, ctx) {
   // in: bright, not blinding), without its suns (the map has its own) or
   // the other systems' stars to jump to; turning with the map and riding
   // with the camera, baked once into a cube
-  const sky = createSky({ small, level: device().detail, renderer, beacons: false });
+  const sky = createSky({ small, level: device().detail, renderer, beacons: false, dim: 0.4, starsPast: 0.25 });
   sky.setSystem({ ...SYSTEMS.find((s) => s.id === 'kashyyyk'), suns: [] });
   sky.setRatio(gl.ratio);
   map.add(sky.group);

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { bakeSize, createSky, nebulaeOf, starCount } from './sky';
+import { STEEP, bakeSize, createSky, nebulaeOf, starCount, starLaw } from './sky';
 import FIXTURE from './__fixtures__/sky.json';
 import { SYSTEMS, systemById } from './systems';
 
@@ -183,5 +183,97 @@ describe('its fidelity', () => {
     };
     expect(mean(4200, 12000)).toBeLessThan(mean(0, 4200) * 0.8);
     sky.dispose();
+  });
+});
+
+// the universe map borrows this sky dimmed (scene.js: dim 0.4, starsPast
+// 0.25); the galaxy's own stays exactly as it is
+const fullHash = (sky) => {
+  const g = starsOf(sky);
+  return fnv(JSON.stringify([...g.position.array, ...g.aSize.array, ...g.aColor.array].map(r4)));
+};
+const bakeUniforms = (sky) => {
+  const r = fakeRenderer();
+  let scene = null;
+  r.render = vi.fn((s) => (scene = s));
+  sky.bake(r);
+  return scene.children[0].material.uniforms;
+};
+const topFifthShare = (b) => {
+  const s = [...b].sort((x, y) => y - x);
+  const sum = (a) => a.reduce((t, v) => t + v, 0);
+  return sum(s.slice(0, Math.round(s.length / 5))) / sum(s);
+};
+
+describe('its dim, for the map', () => {
+  it("keeps the galaxy's law: today's values, the stars past 4,200 at 0.7", () => {
+    expect(starLaw(0, 0)).toBeCloseTo(0.18, 6);
+    expect(starLaw(0.5, 1000)).toBeCloseTo(0.18 + 0.125 * 0.9, 6);
+    expect(starLaw(1, 4199)).toBeCloseTo(1.08, 6);
+    expect(starLaw(1, 4200)).toBeCloseTo(1.08 * 0.7, 6);
+    expect(starLaw(0.3, 11999)).toBeCloseTo((0.18 + 0.027 * 0.9) * 0.7, 6);
+  });
+
+  it("draws the galaxy's sky as it was, every one of its 12,000 stars, and the bake at full strength", () => {
+    for (const [id, hash] of [['hoth', '1c39423c'], ['kashyyyk', '9c11b810']]) {
+      const sky = createSky({ level: 'high' });
+      sky.setSystem(systemById(id));
+      expect(fullHash(sky), id).toBe(hash);
+      const u = bakeUniforms(sky);
+      expect(u.uDim.value).toBe(1);
+      expect(u.uGrain.value).toBe(1);
+      sky.dispose();
+    }
+  });
+
+  it('dims the bake and leaves its grain out when asked', () => {
+    const sky = createSky({ level: 'ultra', dim: 0.4 });
+    sky.setSystem(systemById('kashyyyk'));
+    const u = bakeUniforms(sky);
+    expect(u.uDim.value).toBe(0.4);
+    expect(u.uGrain.value).toBe(0);
+    sky.dispose();
+  });
+
+  it('steepens the law so the brightest fifth carry 70 % of the light', () => {
+    const b = Array.from({ length: 4200 }, (_, i) => starLaw((i + 0.5) / 4200, i, { steep: true }));
+    expect(topFifthShare(b)).toBeGreaterThan(0.68);
+    expect(topFifthShare(b)).toBeLessThan(0.72);
+    expect(starLaw(1, 0, { steep: true })).toBeCloseTo(1.08, 6); // (the brightest as bright as ever)
+    expect(starLaw(0, 0, { steep: true })).toBeCloseTo(STEEP.floor, 6);
+  });
+
+  it('puts the dimmed sky\'s stars where they were, steeper, and those past 4,200 at starsPast', () => {
+    const was = createSky({ level: 'high' });
+    const now = createSky({ level: 'high', dim: 0.4, starsPast: 0.25 });
+    was.setSystem(systemById('kashyyyk'));
+    now.setSystem(systemById('kashyyyk'));
+    const a = starsOf(was);
+    const b = starsOf(now);
+    expect([...b.position.array]).toEqual([...a.position.array]);
+    expect([...b.aSize.array]).toEqual([...a.aSize.array]);
+    const lum = (g, i) => g.aColor.getX(i) + g.aColor.getY(i) + g.aColor.getZ(i);
+    const first = Array.from({ length: 4200 }, (_, i) => lum(b, i));
+    expect(topFifthShare(first)).toBeGreaterThan(0.66);
+    // past 4,200, the same law at 0.25 rather than 1: the brightest of them under 0.3 of the first's
+    let most = 0;
+    for (let i = 4200; i < 12000; i++) most = Math.max(most, b.aColor.getX(i), b.aColor.getY(i), b.aColor.getZ(i));
+    expect(most).toBeLessThanOrEqual(1.08 * 0.25 + 1e-6);
+    was.dispose();
+    now.dispose();
+  });
+
+  it('can thin the stars past 4,200 without dimming the bake', () => {
+    const sky = createSky({ level: 'high', starsPast: 0.25 });
+    sky.setSystem(systemById('hoth'));
+    const ref = createSky({ level: 'high' });
+    ref.setSystem(systemById('hoth'));
+    const a = starsOf(ref);
+    const b = starsOf(sky);
+    expect(b.aColor.getX(0)).toBe(a.aColor.getX(0));
+    expect(b.aColor.getX(5000)).toBeCloseTo((a.aColor.getX(5000) / 0.7) * 0.25, 5);
+    expect(bakeUniforms(sky).uDim.value).toBe(1);
+    sky.dispose();
+    ref.dispose();
   });
 });

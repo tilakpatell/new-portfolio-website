@@ -25,12 +25,17 @@
 // one (on some drivers its first link takes seconds), so prepare() starts the
 // link at startup, in the background, and the first bake waits for nothing.
 //
-// createSky({ small, renderer, beacons }) → { group, setSystem(system), bake(renderer),
+// createSky({ small, renderer, beacons, dim, starsPast }) → { group, setSystem(system), bake(renderer),
 //   prepare(renderer) → Promise, update(camera, t), focus(id), beacons, sunDirs,
 //   setRatio(r), dispose() };
 //   setSystem then bake (with the renderer it was made with, unless given
 //   another); beacons: [{ id, dir }] (unit vectors), the other systems' stars
-//   (drawn unless `beacons: false`, for a sky borrowed where there's no jumping)
+//   (drawn unless `beacons: false`, for a sky borrowed where there's no jumping);
+//   dim (1: the galaxy's own) scales the band, the core and the nebulae in
+//   the bake, and under 1 leaves the band's cubed grain out and steepens the
+//   stars' brightness (STEEP), for the universe map, whose sky has to be
+//   black between its stars; starsPast is how bright the stars past the first
+//   4,200 are (STARS_PAST, the galaxy's, by default)
 
 import * as THREE from 'three';
 import { precompile } from '../../lib/three/renderer';
@@ -42,6 +47,17 @@ const SUN_R = 4800;
 const TODAY = 4200; // the stars the sky always had (the ones past them are fainter: STARS_PAST)
 const STARS_PAST = 0.7; // how bright the stars past those are, of what they'd be
 const GRAIN_SIZE = 256;
+// the dimmed sky's brightness law: a lower floor and a steeper rise, so the
+// brightest fifth of the stars carry 70 % of the light (sky.test.js finds it)
+// and the rest fall under what reads as a point; the brightest as bright as ever
+export const STEEP = { floor: 0.02, exponent: 5.5 };
+
+// how bright a star is, of its colour: r its draw (0..1), i its place (the
+// first 4,200 at full, the rest at `past`)
+export function starLaw(r, i, { past = STARS_PAST, steep = false } = {}) {
+  const b = steep ? STEEP.floor + r ** STEEP.exponent * (1.08 - STEEP.floor) : 0.18 + r ** 3 * 0.9;
+  return b * (i < TODAY ? 1 : past);
+}
 
 const NOISE = /* glsl */ `
 float hash3(vec3 p) {
@@ -157,6 +173,8 @@ uniform float uSeed;
 uniform vec3 uNebDir[3];
 uniform vec3 uNebCol[3];
 uniform vec2 uNebShape[3]; // (its size, in radians, and how twisted it is)
+uniform float uDim; // (the galaxy 1; the universe map less, so its sky has a floor)
+uniform float uGrain; // (the band's fine grain: 1, or 0 where it's dimmed)
 varying vec3 vDir;
 ${NOISE}
 void main() {
@@ -182,10 +200,10 @@ void main() {
   float dust = smoothstep(0.52, 0.76, fbm7(dw * vec3(7.0, 10.0, 7.0) + vec3(11.0, 4.0, 7.0) + uSeed));
   float dustBand = dust * exp(-lat * lat / (width * width * 2.5)); // (in the disc, over the band and the core)
   vec3 bandCol = mix(vec3(0.5, 0.58, 0.85), vec3(1.0, 0.86, 0.68), toward);
-  vec3 col = bandCol * band * side * (0.18 + 0.62 * clouds + 0.35 * fine * fine) * 0.32;
+  vec3 col = bandCol * band * side * (0.18 + 0.62 * clouds + 0.35 * fine * fine) * 0.32 * uDim;
   // its star clouds: a fine grain of light down its middle, stars too many to tell apart
   float grain = fbm4(d * 70.0 + uSeed * 2.3);
-  col += bandCol * exp(-wl * wl / (width * width * 0.45)) * side * grain * grain * grain * 0.09;
+  col += bandCol * exp(-wl * wl / (width * width * 0.45)) * side * grain * grain * grain * 0.09 * uGrain * uDim;
   col *= 1.0 - max(vec3(lanes * 0.82), dustBand * vec3(0.5, 0.55, 0.62)); // (the dust takes more blue than red: it reddens what's behind)
   // the core's bulge: bigger and brighter the nearer the middle
   float ang = acos(clamp(dot(d, uCore), -1.0, 1.0));
@@ -194,7 +212,7 @@ void main() {
   float bulge = exp(-(ang * ang) / (size * size)) * mix(1.0, squash, 0.6);
   float core = exp(-(ang * ang) / (size * size * 0.06));
   vec3 coreCol = mix(vec3(1.0, 0.78, 0.5), vec3(1.0, 0.95, 0.85), core);
-  col += coreCol * (bulge * mix(0.22, 0.9, uNear) + core * mix(0.18, 0.7, uNear)) * (1.0 - max(lanes * 0.55, dustBand * 0.3)) * (0.75 + 0.25 * clouds);
+  col += coreCol * (bulge * mix(0.22, 0.9, uNear) + core * mix(0.18, 0.7, uNear)) * uDim * (1.0 - max(lanes * 0.55, dustBand * 0.3)) * (0.75 + 0.25 * clouds);
   // the nebulae: gas glowing in its own colour, twisted its own amount,
   // whiter where it's thickest, with rifts of its own and the dust across it
   for (int i = 0; i < 3; i++) {
@@ -207,7 +225,7 @@ void main() {
     float rift = smoothstep(0.56, 0.8, fbm4(p * 1.9 + q * 2.0 + 17.0));
     float body = smoothstep(0.25, 0.9, gas * (0.55 + 0.9 * m)) * sqrt(m) * (1.0 - rift * 0.75);
     vec3 tint = mix(uNebCol[i], vec3(dot(uNebCol[i], vec3(0.45))), body * body * 0.4);
-    col += (tint * body * 0.15 + uNebCol[i] * m * 0.01) * (1.0 - dust * 0.85);
+    col += (tint * body * 0.15 + uNebCol[i] * m * 0.01) * uDim * (1.0 - dust * 0.85);
   }
   // and the dark between
   col += vec3(0.0035, 0.005, 0.011);
@@ -351,7 +369,8 @@ export const bakeSize = ({ small = false, level = null } = {}) => (small ? 512 :
 const STAR_COUNT = { ultra: 12000, high: 12000, mid: 7000, low: 3000 };
 export const starCount = ({ small = false, level = null } = {}) => (small ? 3000 : (STAR_COUNT[level] ?? TODAY));
 
-export function createSky({ small = false, level = null, renderer = null, beacons: showBeacons = true } = {}) {
+export function createSky({ small = false, level = null, renderer = null, beacons: showBeacons = true, dim = 1, starsPast = STARS_PAST } = {}) {
+  const law = { past: starsPast, steep: dim < 1 };
   const group = new THREE.Group();
   group.renderOrder = -20;
   const made = [];
@@ -380,6 +399,9 @@ export function createSky({ small = false, level = null, renderer = null, beacon
       uNebDir: { value: [0, 1, 2].map(() => new THREE.Vector3(0, 0, 1)) },
       uNebCol: { value: [0, 1, 2].map(() => new THREE.Color()) },
       uNebShape: { value: [0, 1, 2].map(() => new THREE.Vector2(0.3, 1)) },
+      uDim: { value: dim },
+      // (sub-pixel under a dimmed sky's floor: it reads as noise, not as stars)
+      uGrain: { value: dim < 1 ? 0 : 1 },
     },
     side: THREE.BackSide,
     depthTest: false,
@@ -488,7 +510,7 @@ export function createSky({ small = false, level = null, renderer = null, beacon
         pos[i * 3] = v.x * SKY_R * 0.98;
         pos[i * 3 + 1] = v.y * SKY_R * 0.98;
         pos[i * 3 + 2] = v.z * SKY_R * 0.98;
-        const b = (0.18 + rand() ** 3 * 0.9) * (i < TODAY ? 1 : STARS_PAST);
+        const b = starLaw(rand(), i, law);
         const t = tints[rand() < 0.66 ? 0 : Math.floor(rand() * tints.length)];
         col[i * 3] = t[0] * b;
         col[i * 3 + 1] = t[1] * b;

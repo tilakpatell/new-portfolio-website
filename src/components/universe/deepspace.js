@@ -55,6 +55,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { DEEP, WONDERS, binaryAt, planetAt, reachOf } from './deep';
 import { TILT } from './maw';
 import { rng } from './kit';
+import { NEBULA_BRIGHT, nebulaHue } from './palette';
 import { NOISE_GLSL } from './sun';
 import { PULSAR_FRAG } from './supernova';
 import { parts } from './kit';
@@ -724,10 +725,11 @@ export function buildDeepSpace({ small = false, tier = 'high' } = {}) {
     const g = place(w);
     const rand = rng(w.id);
     const R = w.r;
-    // its colours at full strength (the hue is the palette's; how bright is the puff's)
+    // its colours (the hue mostly palette.js's nebula; how bright is the
+    // puff's, and all of it at NEBULA_BRIGHT so the frame keeps a floor)
     const pal = w.colors.map((c) => {
-      const k = new THREE.Color(c);
-      return k.multiplyScalar(1 / Math.max(k.r, k.g, k.b, 1e-3));
+      const k = new THREE.Color(...nebulaHue(c));
+      return k.multiplyScalar(NEBULA_BRIGHT / Math.max(k.r, k.g, k.b, 1e-3));
     });
     const puffs = [];
     const n = small ? 0.55 : 1;

@@ -60,3 +60,15 @@ export function distinct(a, b) {
   const q = oklab(b);
   return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
 }
+
+// The nebulae (deep.js's Veil and Cradle, painted by landmarks.js and
+// deepspace.js) keep a little of their own colours, so they still differ,
+// but most of each is the palette's nebula, so a frame holds one gas colour
+// rather than six; and they're drawn at 0.7 of their old brightness, so a
+// frame with one in it keeps its black between the stars.
+const NEBULA_PULL = 0.7;
+export const NEBULA_BRIGHT = 0.7;
+export function nebulaHue(hex) {
+  const own = linearOf(hex);
+  return own.map((c, i) => c + (PALETTE.nebula.linear[i] - c) * NEBULA_PULL);
+}

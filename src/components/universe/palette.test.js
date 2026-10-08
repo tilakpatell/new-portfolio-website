@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PALETTE, distinct, tint } from './palette';
+import { NEBULA_BRIGHT, PALETTE, distinct, nebulaHue, tint } from './palette';
 
 const NAMES = ['sky', 'nebula', 'star', 'sun', 'bone', 'grey', 'engine', 'shot', 'ink'];
 const toLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -39,5 +39,20 @@ describe('the palette', () => {
 
   it('measures no distance from a colour to itself', () => {
     expect(distinct(PALETTE.sun.linear, PALETTE.sun.linear)).toBe(0);
+  });
+});
+
+describe("the nebulae's colour", () => {
+  it('pulls each of their colours most of the way onto the palette', () => {
+    for (const hex of ['#5b3fd1', '#d14f9a', '#3fb7d1', '#2f9e6b', '#c9d14f', '#2f6e9e']) {
+      const was = [1, 3, 5].map((i) => toLinear(parseInt(hex.slice(i, i + 2), 16) / 255));
+      const now = nebulaHue(hex);
+      expect(distinct(now, PALETTE.nebula.linear)).toBeLessThan(distinct(was, PALETTE.nebula.linear) * 0.5 + 1e-9);
+    }
+  });
+
+  it("leaves the palette's own nebula as it is, and draws them at 0.7", () => {
+    nebulaHue(PALETTE.nebula.hex).forEach((c, i) => expect(c).toBeCloseTo(PALETTE.nebula.linear[i], 6));
+    expect(NEBULA_BRIGHT).toBe(0.7);
   });
 });

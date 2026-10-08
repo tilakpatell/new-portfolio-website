@@ -34,6 +34,7 @@ import * as THREE from 'three';
 import { WONDERS, binaryAt, reachOf } from './deep';
 import { SUN } from './layout';
 import { TILT } from './maw';
+import { NEBULA_BRIGHT, nebulaHue } from './palette';
 
 const deg = (d) => (d * Math.PI) / 180;
 const LEAST = { hole: deg(4), nebula: deg(14), star: deg(4), pulsar: deg(2.5) };
@@ -266,7 +267,8 @@ export function createLandmarks(parent, { renderer = null, small = false, level 
     const size = cellSize({ small, level });
     atlas = new THREE.WebGLRenderTarget(size * 2, size, { type: THREE.UnsignedByteType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter });
     const neb = LANDMARKS.filter((l) => l.kind === 'nebula');
-    const cols = neb.flatMap((l) => [0, 1, 2].map((k) => new THREE.Color(l.colors[k] ?? l.colors[0]).convertSRGBToLinear()));
+    // (on the palette, and dimmer: palette.js's nebulaHue)
+    const cols = neb.flatMap((l) => [0, 1, 2].map((k) => new THREE.Color(...nebulaHue(l.colors[k] ?? l.colors[0])).multiplyScalar(NEBULA_BRIGHT)));
     const paint = new THREE.ShaderMaterial({ vertexShader: PAINT_VERT, fragmentShader: PAINT_FRAG, uniforms: { uCol: { value: cols } }, depthTest: false, depthWrite: false });
     const scene = new THREE.Scene();
     scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), paint));
