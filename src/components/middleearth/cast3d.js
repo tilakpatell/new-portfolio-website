@@ -39,6 +39,7 @@
 // tickCast(root, camera, dt): every ready figure under `root`, once a frame
 //   before the frame's drawn (animBudget.js sets how often each is stepped)
 // releaseCast(root): every figure under `root` let go (a scene's dispose)
+// castComing(root): promises for the figures under `root` still on their way
 // attend(p, h, home, dt, { who, near, rate }) → the distance: one of a
 //   town's people as the walker comes by: the head looks and the body turns
 //   only past what a neck can do, a greeting the first time they're near
@@ -169,6 +170,7 @@ function toyTop(f) {
 
 // ── the figures on the cast, and the frame's budget ──
 const live = new Set();
+const coming = new Map(); // figure → its model's arrival, while it's on its way
 let budget = null;
 let upgrades = 0; // figures put on the cast, for their seeds
 const MAX = { high: 48, mid: 20, low: 8 };
@@ -299,7 +301,7 @@ export function upgrade(f, name, { look = null, role = 'cast', seed = null, tint
   Object.defineProperty(c, 'body', { get: () => st });
   f.cast = c;
 
-  template(name).then((tpl) => {
+  const arrival = template(name).then((tpl) => {
     if (!tpl || c.disposed || f.cast !== c) return;
     const { model, materials } = copyOf(tpl, tintHex);
     const k = height / Math.max(tpl.top, 1e-3);
@@ -366,6 +368,9 @@ export function upgrade(f, name, { look = null, role = 'cast', seed = null, tint
     live.add(c);
     for (const fn of c.waits.splice(0)) fn(c);
   });
+  // (on its way, for a world preparing behind its veil: castComing)
+  coming.set(c, arrival);
+  arrival.catch(() => {}).finally(() => coming.delete(c));
 
   // ── a frame ──
   function lookPoint(target, out) {
@@ -513,6 +518,15 @@ export function tickCast(root, camera, dt) {
     if (c.manual || (root && !under(c.f.group, root))) continue;
     c.tick(dt, camera);
   }
+}
+
+// The figures under `root` still on their way to the cast: a promise for
+// each, settled once its model's here and on (or isn't coming). A world
+// waits on these behind its loading veil, so its first frame has its people.
+export function castComing(root) {
+  const out = [];
+  for (const [c, p] of coming) if (!root || under(c.f.group, root)) out.push(p);
+  return out;
 }
 
 export function releaseCast(root) {

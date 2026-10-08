@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import LoadingVeil from '../../../worlds/LoadingVeil';
+import { settle } from '../../../../lib/settle';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -48,6 +50,8 @@ const walker = makeWalker({ radius: WORLD.radius, colliders: COLLIDERS, walls: W
 const MAP_SCALE = 150 / (WORLD.radius * 2 + 6);
 const CONVO_TITLE = { amonsul: 'On the summit', supper: 'In the dell', athelas: 'At the foot of the hill', arwen: 'At the foot of the hill', ford: 'The Ford of Bruinen' };
 
+const PREPARE_WAIT = 30000; // ms at most the veil waits on the town's prepare
+
 export default function WeathertopWorld({ onLeave }) {
   const three = use3D();
   const [done, setDone] = useState(() => {
@@ -59,7 +63,7 @@ export default function WeathertopWorld({ onLeave }) {
     const d = local.get(SIDE_DONE, []);
     return Array.isArray(d) && d.includes(SIDE.id);
   });
-  const [gl, setGl] = useState('loading'); // loading | on | failed | lost
+  const [gl, setGl] = useState('loading'); // loading | preparing | on | failed | lost
   const { unlock } = useAchievements();
   // the mark, read: on the side, with its own seal but none on the map
   const winSide = useCallback(() => {
@@ -88,6 +92,7 @@ export default function WeathertopWorld({ onLeave }) {
 }
 
 function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
+  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   // other travellers online on Weathertop, as ghosts (../useTravellers)
   const trav = useTravellers('weathertop', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
@@ -201,7 +206,13 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         api.current = a;
         if (import.meta.env.DEV) window.__WEATHERTOP__ = { api: a, sim: sim.current, complete }; // for the QA scripts
         fit();
-        setGl('on');
+        // everything onto the graphics chip behind the veil, then shown
+        // (lib/stagePrepare: bounded, so it never holds the town up for good)
+        setGl('preparing');
+        settle(
+          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
+          PREPARE_WAIT,
+        ).then(() => !dead && setGl((g) => (g === 'preparing' ? 'on' : g)));
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -565,6 +576,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
+    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
@@ -875,7 +887,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     }
     if (++s.frame % 4 === 0 && (s.mode === 'walk' || s.mode === 'sleep')) drawMap(map.current, { scale: MAP_SCALE, h: s.h, markers, night: p.sky === 'night', base: drawHill(p) });
     if (s.frame % 120 === 0 && s.mode === 'walk') local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
-  }, live);
+  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
 
   // the world's own pointer: drag to look round; on the summit, the brand
   // follows it and a click thrusts
@@ -1019,6 +1031,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     <div ref={box} className="shire-stage wt-stage" data-touch={touch || undefined} data-mode={mode} data-game={(walking && (F || hud.hunt)) || undefined} data-wearing={hud.wearing || undefined} data-sky={prog.sky}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Weathertop in 3D: the hill of Amon Sûl with the ruined watchtower on its summit, the old stair through the crags, and the dell where the hobbits camp" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Climbing Weathertop…</p>}
+      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="Weathertop" line="Climbing Weathertop…" />
 
       {(walking || mode === 'sleep') && (
         <div className="shire-hud shire-hud-top">

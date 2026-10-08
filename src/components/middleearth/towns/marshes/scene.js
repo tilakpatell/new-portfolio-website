@@ -13,6 +13,7 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { stagePrepare } from '../../../../lib/stagePrepare';
 import { createHouse } from '../../../../lib/three/house';
 import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
@@ -30,7 +31,7 @@ import { makeFolk } from '../bree/props';
 import { createMarshesKit } from './props';
 import { BED, BOULDERS, EMYN, GATE_AT, ISLAND, LIGHTS, LOOKOUT, MARSH_PATH, MARSH_Y, POOL as SAFE, POOL_BANK, ROAD, SNAGS, SPIKES, emynHeight, marshHeight, slopeHeight, toPath, tussockAt } from './layout';
 import { CREEP, FELL, ROPE, WAY } from './rules';
-import { castDo, castPlay, drawWatcher, releaseCast, tickCast, upgrade } from '../../cast3d';
+import { castComing, castDo, castPlay, drawWatcher, releaseCast, tickCast, upgrade } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -80,6 +81,8 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
   const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 1400, bloom: { strength: 0.7, radius: 0.6, threshold: 0.8 }, onLost });
+  // made ready behind its loading veil before its first frame (lib/stagePrepare)
+  const prep = stagePrepare(stage, { grounds: () => grounds, late: () => castComing(stage.scene) });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
   // on everything, under the house tone mapper; the moods move it
@@ -846,7 +849,7 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
     // the people on the cast (../../cast3d.js), drawn for this frame
     tickCast(scene, camera, dt);
     renderer.info.reset();
-    stage.render(ms / fast);
+    if (!prep.held()) stage.render(ms / fast);
   };
 
   const fxEvent = (type) => {
@@ -867,14 +870,19 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked in each zone outdoors when it's first shown ──
   const grounds = [
-    groundTown({ renderer, scene, terrain: emynLand, outdoors: zones.emyn, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x22261e, clip: true }),
-    groundTown({ renderer, scene, terrain: marshLand, outdoors: zones.marsh, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x22261e, clip: true }),
-    groundTown({ renderer, scene, terrain: gateLand, outdoors: zones.gate, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x22261e, clip: true }),
+    groundTown({ place: 'marshes-emyn', renderer, scene, terrain: emynLand, outdoors: zones.emyn, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x22261e, clip: true }),
+    groundTown({ place: 'marshes-marsh', renderer, scene, terrain: marshLand, outdoors: zones.marsh, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x22261e, clip: true }),
+    groundTown({ place: 'marshes-gate', renderer, scene, terrain: gateLand, outdoors: zones.gate, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x22261e, clip: true }),
   ];
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);
 
   return {
+    // everything onto the graphics chip behind the page's veil, and true meanwhile
+    prepare: prep.prepare,
+    get preparing() {
+      return prep.preparing;
+    },
     ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,

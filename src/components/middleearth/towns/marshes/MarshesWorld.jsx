@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import LoadingVeil from '../../../worlds/LoadingVeil';
+import { settle } from '../../../../lib/settle';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -57,6 +59,8 @@ const PROMPT = {
   pool: { name: 'Sméagol’s safe way', act: 'Follow Sméagol' },
 };
 
+const PREPARE_WAIT = 30000; // ms at most the veil waits on the town's prepare
+
 export default function MarshesWorld({ onLeave }) {
   const three = use3D();
   const [done, setDone] = useState(() => {
@@ -100,6 +104,7 @@ export default function MarshesWorld({ onLeave }) {
 }
 
 function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
+  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   const trav = useTravellers('dead-marshes', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -167,7 +172,13 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         api.current = a;
         if (import.meta.env.DEV) window.__MARSHES__ = { api: a, sim: sim.current, complete };
         fit();
-        setGl('on');
+        // everything onto the graphics chip behind the veil, then shown
+        // (lib/stagePrepare: bounded, so it never holds the town up for good)
+        setGl('preparing');
+        settle(
+          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
+          PREPARE_WAIT,
+        ).then(() => !dead && setGl((g) => (g === 'preparing' ? 'on' : g)));
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -460,6 +471,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
+    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
@@ -703,7 +715,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
       setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, hiding, rope: d ? { y: d.y, knocks: d.knocks } : null, creep: c ? { d: c.d, phase: c.phase } : null, lure: s.lure?.k ?? 0, fell: s.fell?.phase ?? null, leading: Boolean(s.lead), hunted: Boolean(s.scouts?.list.some((x) => x.mode === 'alert' || x.mode === 'chase')), way: w ? { phase: w.phase, row: w.row, slips: w.slips, state: w.state, say: s.said } : null });
     }
     if (++s.frame % 120 === 0 && s.mode === 'walk' && !s.lead) local.set(AT, { zone: s.zone, x: s.h.x, z: s.h.z, face: s.h.face });
-  }, live);
+  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
 
   // look round by dragging; the stick on touch
   const drag = useRef(null);
@@ -785,6 +797,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     <div ref={box} className="shire-stage marshes-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['rope', 'creep', 'way'].includes(mode) || hud.leading || undefined} data-hiding={hud.hiding || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="The Emyn Muil, the Dead Marshes and the Black Gate in 3D: razor rock in a storm, black pools with lights in them, and the Gate of Mordor" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Into the Emyn Muil…</p>}
+      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="The Dead Marshes" line="Into the Emyn Muil…" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">

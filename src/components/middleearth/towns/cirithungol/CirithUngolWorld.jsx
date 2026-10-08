@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import LoadingVeil from '../../../worlds/LoadingVeil';
+import { settle } from '../../../../lib/settle';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -40,6 +42,8 @@ const PROMPT = {
   morgul: { name: 'Minas Morgul', act: 'Watch the road' },
   stairs: { name: 'The stairs', act: 'Climb' },
 };
+
+const PREPARE_WAIT = 30000; // ms at most the veil waits on the town's prepare
 
 export default function CirithUngolWorld({ onLeave }) {
   const three = use3D();
@@ -84,6 +88,7 @@ export default function CirithUngolWorld({ onLeave }) {
 }
 
 function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
+  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   // other travellers online, as ghosts (../useTravellers): in the Tower's
   // courtyard, or in Shelob's tunnels, whichever you're walking
   const trav = useTravellers('cirith-ungol', gl === 'on');
@@ -153,7 +158,13 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         api.current = a;
         if (import.meta.env.DEV) window.__CIRITHUNGOL__ = { api: a, sim: sim.current, complete };
         fit();
-        setGl('on');
+        // everything onto the graphics chip behind the veil, then shown
+        // (lib/stagePrepare: bounded, so it never holds the town up for good)
+        setGl('preparing');
+        settle(
+          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
+          PREPARE_WAIT,
+        ).then(() => !dead && setGl((g) => (g === 'preparing' ? 'on' : g)));
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -448,6 +459,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
+    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
@@ -691,7 +703,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
       setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, morgul: m ? { pull: m.pull, pausing: m.pausing, gaze: m.gaze } : null, climb: c ? { s: c.s, stamina: c.stamina, spent: c.spent, ledge: onLedge(c.s), crumbling: crumbling(c.s) } : null, phial: ph ? { charge: ph.charge, on: ph.on } : null, hunted: ['alert', 'chase'].includes(s.shelob?.list?.[0]?.mode), duel: du ? { phase: du.phase, wounds: du.wounds, hearts: du.hearts } : null, spotted: Boolean(s.orcs?.list.some((w) => w.mode === 'alert' || w.mode === 'chase')), crumbs: cr ? { state: cr.state, left: cr.left, time: crumbsLeft(cr), stirred: cr.stirred, say: s.said } : null });
     }
     if (++s.frame % 120 === 0 && s.mode === 'walk' && (s.zone === 'lair' || s.zone === 'tower')) local.set(AT, { zone: s.zone, x: s.h.x, z: s.h.z, face: s.h.face });
-  }, live);
+  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
 
   // look round by dragging; the stick on touch
   const drag = useRef(null);
@@ -772,6 +784,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     <div ref={box} className="shire-stage cirith-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['morgul', 'climb', 'duel', 'crumbs'].includes(mode) || (walking && hud.zone === 'lair') || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Cirith Ungol in 3D: Minas Morgul's green light, the endless stairs, Shelob's lair, and the Tower" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">To the Morgul vale…</p>}
+      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="Cirith Ungol" line="To the Morgul vale…" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">

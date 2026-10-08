@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import LoadingVeil from '../../../worlds/LoadingVeil';
+import { settle } from '../../../../lib/settle';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -48,6 +50,8 @@ const PROMPT = {
   flower: { name: 'Simbelmynë', act: 'Gather' },
   grave: { name: 'Théodred’s barrow', act: 'Lay the flowers' },
 };
+
+const PREPARE_WAIT = 30000; // ms at most the veil waits on the town's prepare
 
 export default function EdorasWorld({ onLeave }) {
   const three = use3D();
@@ -106,6 +110,7 @@ const seed = () => Math.floor(Math.random() * 100000) + 1;
 const near = (h, o, r) => Math.hypot(h.x - o.x, h.z - o.z) < r;
 
 function World({ prog, complete, side, recordGo, gl, setGl, onLeave, again }) {
+  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -174,7 +179,13 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave, again }) {
         api.current = a;
         if (import.meta.env.DEV) window.__EDORAS__ = { api: a, sim: sim.current, complete };
         fit();
-        setGl('on');
+        // everything onto the graphics chip behind the veil, then shown
+        // (lib/stagePrepare: bounded, so it never holds the town up for good)
+        setGl('preparing');
+        settle(
+          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
+          PREPARE_WAIT,
+        ).then(() => !dead && setGl((g) => (g === 'preparing' ? 'on' : g)));
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -531,6 +542,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave, again }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
+    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     // (the QA scripts hold the world still, and step it a frame at a time)
     if (import.meta.env.DEV && s.paused) {
@@ -718,7 +730,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave, again }) {
       setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, picked: s.picked.length, carrying: s.carrying, brawl: b ? { felled: b.felled, reached: b.reached } : null, drink: d ? { drinks: d.drinks, spills: d.spills, legolas: d.legolas, state: d.state } : null });
     }
     if (++s.frame % 120 === 0 && s.mode === 'walk' && (s.zone === 'hill' || s.zone === 'hall')) local.set(AT, { zone: s.zone, x: s.h.x, z: s.h.z, face: s.h.face });
-  }, live);
+  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
 
   // look round by dragging; the stick on touch
   const drag = useRef(null);
@@ -794,6 +806,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave, again }) {
     <div ref={box} className="shire-stage minas-stage edoras-stage" data-touch={touch || undefined} data-mode={mode} data-zone={zone} data-time={prog.time} data-game={['brawl', 'drink', 'watch', 'muster'].includes(mode) || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Edoras in 3D: the hill in the plain of Rohan, its stockade and thatched halls, Meduseld the Golden Hall and the hall inside, the barrows of the kings, and the White Mountains" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">To Edoras…</p>}
+      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="Edoras" line="To Edoras…" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">

@@ -15,6 +15,7 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { stagePrepare } from '../../../../lib/stagePrepare';
 import { createHouse } from '../../../../lib/three/house';
 import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
@@ -31,7 +32,7 @@ import { createGhosts } from '../ghosts';
 import { makeRain } from '../rain';
 import { createOrthancKit, insideTop } from './props';
 import { DUEL_AT, HOST, LEAF, LECTERN, MOTH_AT, PALANTIR, PITS, PIN, PIN_IN, RING, SARUMAN_AT, STAIR, STAIR_LEN, TOWER_H, clearView, indoors, stairAngle, stairAt, stairFace } from './layout';
-import { attend, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
+import { attend, castComing, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -97,6 +98,8 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
   const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.05, far: 3200, bloom: { strength: 0.85, radius: 0.55, threshold: 0.82 }, onLost });
+  // made ready behind its loading veil before its first frame (lib/stagePrepare)
+  const prep = stagePrepare(stage, { grounds: () => grounds, late: () => castComing(stage.scene) });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
   // on everything, under the house tone mapper; it follows the moods below
@@ -997,7 +1000,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
     // the people on the cast (../../cast3d.js), drawn for this frame
     tickCast(scene, camera, dt);
     renderer.info.reset();
-    stage.render(ms / fast);
+    if (!prep.held()) stage.render(ms / fast);
   };
 
   const fxEvent = (type) => {
@@ -1036,12 +1039,17 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked in each zone outdoors when it's first shown ──
   const grounds = [
-    groundTown({ renderer, scene, terrain: isenLand, outdoors: zones.tower, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x2a2a26, clip: true }),
+    groundTown({ place: 'orthanc-tower', renderer, scene, terrain: isenLand, outdoors: zones.tower, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x2a2a26, clip: true }),
   ];
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);
 
   return {
+    // everything onto the graphics chip behind the page's veil, and true meanwhile
+    prepare: prep.prepare,
+    get preparing() {
+      return prep.preparing;
+    },
     ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,

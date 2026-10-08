@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import LoadingVeil from '../../../worlds/LoadingVeil';
+import { settle } from '../../../../lib/settle';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -45,6 +47,8 @@ const PROMPT = {
 // how many things of the Shire Frodo has said back so far, all together
 const remembered = (r) => (r.state === 'remembered' ? RECALL.length : r.round > RECALL.first ? r.round - 1 : 0);
 
+const PREPARE_WAIT = 30000; // ms at most the veil waits on the town's prepare
+
 export default function DoomWorld({ onLeave }) {
   const three = use3D();
   const [done, setDone] = useState(() => {
@@ -88,6 +92,7 @@ export default function DoomWorld({ onLeave }) {
 }
 
 function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
+  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   // other travellers online crossing Gorgoroth, as ghosts (../useTravellers);
   // the crossing is some 760 m west of the mountain, the world's middle
   const trav = useTravellers('doom', gl === 'on', { bound: 800 });
@@ -157,7 +162,13 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         api.current = a;
         if (import.meta.env.DEV) window.__DOOM__ = { api: a, sim: sim.current, complete };
         fit();
-        setGl('on');
+        // everything onto the graphics chip behind the veil, then shown
+        // (lib/stagePrepare: bounded, so it never holds the town up for good)
+        setGl('preparing');
+        settle(
+          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
+          PREPARE_WAIT,
+        ).then(() => !dead && setGl((g) => (g === 'preparing' ? 'on' : g)));
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -460,6 +471,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
+    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
@@ -671,7 +683,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
       setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, hidden: Boolean(s.hidden), march: m ? { off: m.off, pace: m.pace, lashes: m.lashes, t: m.t } : null, search: se ? { seen: se.seen } : null, carry: c ? { s: c.s, tremor: c.tremorT > 0, last: c.last } : null, hang: g ? { grip: g.grip, arm: g.arm, phase: g.phase } : null, flight: f ? { s: f.s, hits: f.hits } : null, recall: rc ? { phase: rc.phase, round: rc.round, said: rc.said, slips: rc.slips, state: rc.state, telling: telling(rc), say: s.said } : null });
     }
     if (++s.frame % 120 === 0 && s.mode === 'walk' && s.search) local.set(AT, { zone: 'plain', x: s.h.x, z: s.h.z, face: s.h.face });
-  }, live);
+  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
 
   // look round by dragging; the stick on touch
   const drag = useRef(null);
@@ -756,6 +768,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     <div ref={box} className="shire-stage doom-stage" data-touch={touch || undefined} data-mode={mode} data-zone={zone} data-game={['march', 'carry', 'hang', 'flight', 'remember'].includes(mode) || crossing || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Mordor in 3D: the plain of Gorgoroth under the Eye, Mount Doom, and the fire inside it" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Into Mordor…</p>}
+      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="Mount Doom" line="Into Mordor…" />
 
       {(walking || mode === 'end') && (
         <div className="shire-hud shire-hud-top">

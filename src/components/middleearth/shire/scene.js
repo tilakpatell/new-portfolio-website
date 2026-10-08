@@ -13,6 +13,7 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../lib/stage3d';
+import { stagePrepare } from '../../../lib/stagePrepare';
 import { bake, dotTexture, farTree } from '../towns/bake';
 import { createGhosts } from '../towns/ghosts';
 import { budget, device } from '../../../lib/device';
@@ -72,7 +73,7 @@ import {
   spoonLeft,
   stepFlock,
 } from './rules';
-import { attend, castDo, releaseCast, tickCast } from '../cast3d';
+import { attend, castComing, castDo, releaseCast, tickCast } from '../cast3d';
 
 const val = (x, ...args) => (typeof x === 'function' ? x(...args) : x);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -86,6 +87,10 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const tier = dev.tier;
   const fit = budget();
   const stage = createStage(canvas, { shadows: true, fov: 50, near: 0.1, far: 520, bloom: { strength: 0.5, radius: 0.55, threshold: 0.9 }, onLost });
+  // made ready behind its loading veil before its first frame (lib/stagePrepare):
+  // Bag End's door and the people's models in, the floor's light baked
+  let doorLoad = null;
+  const prep = stagePrepare(stage, { grounds: () => [ground], late: () => [doorLoad, ...castComing(stage.scene)] });
   stage.grade({ contrast: 0.1, saturation: 1.1, vignette: 0.22, grain: 0.012, shadow: [0.0, 0.01, 0.03], high: [0.03, 0.015, 0] });
   const { scene, camera, renderer } = stage;
   renderer.info.autoReset = false; // counted over the whole frame, every pass
@@ -161,7 +166,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const doorModel = tier !== 'low' && !dev.saveData && bagEnd.door?.userData.leaf ? bagEnd.door : null;
   let gone = false;
   if (doorModel)
-    loadDoorLeaf(doorModel.userData.leaf.r, { anisotropy: fit.aniso }).then((leaf) => {
+    doorLoad = loadDoorLeaf(doorModel.userData.leaf.r, { anisotropy: fit.aniso }).then((leaf) => {
       if (!leaf) return;
       if (gone) return disposeTree(leaf);
       for (const built of [...doorModel.children]) {
@@ -790,7 +795,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     // the people on the cast (../cast3d.js), drawn for this frame
     tickCast(scene, camera, dt);
     renderer.info.reset();
-    stage.render(ms);
+    if (!prep.held()) stage.render(ms);
   };
 
   // ── events: bursts, puffs and barks ──
@@ -866,7 +871,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   // (its bounce off: the house look's, from the ground map, is the bounce)
   // (the grass out of the bake: drawn from above it would wrap round the
   // bake's own camera; it reads the baked shade instead, as the floor does)
-  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group, grass.mesh], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees], bounce: false });
+  const ground = groundTown({ place: 'shire', renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group, grass.mesh], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees], bounce: false });
   floorShadow(grass.material, ground.mask);
   // (last, over the floor light's own tints: one shadow colour everywhere)
   house.adopt(scene);
@@ -875,6 +880,11 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const panel = debugOn() ? debugPanel({ title: 'The Shire', groups: shireTuning({ house, grass, wind, lens, moods: MOODS }) }) : null;
 
   return {
+    // everything onto the graphics chip behind the page's veil, and true meanwhile
+    prepare: prep.prepare,
+    get preparing() {
+      return prep.preparing;
+    },
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     house: import.meta.env.DEV ? house : null, // for the QA scripts

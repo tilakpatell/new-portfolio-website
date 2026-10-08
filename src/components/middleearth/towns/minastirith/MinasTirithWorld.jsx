@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import LoadingVeil from '../../../worlds/LoadingVeil';
+import { settle } from '../../../../lib/settle';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -47,6 +49,8 @@ const PROMPT = {
 };
 const ZONE_AIR = { ride: 'ride', court: 'court', hall: 'hall', beacon: 'beacon', walls: 'walls' };
 
+const PREPARE_WAIT = 30000; // ms at most the veil waits on the town's prepare
+
 export default function MinasTirithWorld({ onLeave }) {
   const three = use3D();
   const [done, setDone] = useState(() => {
@@ -90,6 +94,7 @@ const seed = () => Math.floor(Math.random() * 100000) + 1;
 const freshRide = () => newRide(seed(), { slots: SLOTS, gates: GATES.map((g) => g.s), len: ROAD_LEN });
 
 function World({ prog, complete, gl, setGl, onLeave, again }) {
+  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -159,7 +164,13 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
         // (a beacon already lit stays lit)
         if (progRef.current.done.includes('beacon')) a.fx('lit');
         fit();
-        setGl('on');
+        // everything onto the graphics chip behind the veil, then shown
+        // (lib/stagePrepare: bounded, so it never holds the town up for good)
+        setGl('preparing');
+        settle(
+          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
+          PREPARE_WAIT,
+        ).then(() => !dead && setGl((g) => (g === 'preparing' ? 'on' : g)));
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -455,6 +466,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
+    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     // (the QA scripts hold the world still, and step it a frame at a time)
     if (import.meta.env.DEV && s.paused) {
@@ -653,7 +665,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
       setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, ride: r ? { gate: r.gate, knocks: r.knocks, s: r.s } : null, sneak: n ? { s: n.s, climb: n.climb, phase: n.phase, covered: n.covered, state: n.state } : null, siege: g ? { aim: g.aim, loaded: g.loaded, felled: g.felled, dread: g.dread > 0, towers: g.towers.filter((w) => w.state === 'on').map((w) => ({ i: w.i, d: w.d })) } : null });
     }
     if (++s.frame % 120 === 0 && s.mode === 'walk' && (s.zone === 'court' || s.zone === 'hall')) local.set(AT, { zone: s.zone, x: s.h.x, z: s.h.z, face: s.h.face });
-  }, live);
+  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
 
   // look round by dragging; the stick on touch
   const drag = useRef(null);
@@ -730,6 +742,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
     <div ref={box} className="shire-stage minas-stage" data-touch={touch || undefined} data-mode={mode} data-zone={zone} data-day={prog.day || undefined} data-game={['ride', 'sneak', 'siege', 'chain'].includes(mode) || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Minas Tirith in 3D: the white city of seven levels, its Citadel and White Tree, the hall of the kings, the beacon on the mountain, and the siege by night" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">To Minas Tirith…</p>}
+      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="Minas Tirith" line="To Minas Tirith…" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">

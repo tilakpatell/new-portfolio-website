@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import LoadingVeil from '../../../worlds/LoadingVeil';
+import { settle } from '../../../../lib/settle';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -57,6 +59,8 @@ const SHOTS = {
   horn: { at: [SHORE_SPOT.x - 2, 2, SHORE_SPOT.z + 4], look: [10, 6, 0] },
 };
 
+const PREPARE_WAIT = 30000; // ms at most the veil waits on the town's prepare
+
 export default function AmonHenWorld({ onLeave }) {
   const three = use3D();
   const [done, setDone] = useState(() => {
@@ -100,6 +104,7 @@ export default function AmonHenWorld({ onLeave }) {
 }
 
 function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
+  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   const trav = useTravellers('amon-hen', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -172,7 +177,13 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         api.current = a;
         if (import.meta.env.DEV) window.__AMONHEN__ = { api: a, sim: sim.current, complete };
         fit();
-        setGl('on');
+        // everything onto the graphics chip behind the veil, then shown
+        // (lib/stagePrepare: bounded, so it never holds the town up for good)
+        setGl('preparing');
+        settle(
+          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
+          PREPARE_WAIT,
+        ).then(() => !dead && setGl((g) => (g === 'preparing' ? 'on' : g)));
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -445,6 +456,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
+    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
@@ -706,7 +718,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
       } else bubbleRef.current.style.opacity = '0';
     }
     if (++s.frame % 120 === 0 && s.mode === 'walk' && !s.ring && !s.uruks) local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
-  }, live);
+  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
 
   // look round by dragging; the stick on touch
   const drag = useRef(null);
@@ -799,6 +811,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     <div ref={box} className="shire-stage amonhen-stage" data-touch={touch || undefined} data-mode={mode} data-ring={hud.ring || undefined} data-game={['seat', 'rescue', 'skipping'].includes(mode) || hud.ring || hud.running || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Amon Hen in 3D: the lawn of Parth Galen by the lake, the woods and the old kings' statues, and the Seat of Seeing on the summit" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Down the river to Parth Galen…</p>}
+      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="Amon Hen" line="Down the river to Parth Galen…" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">
