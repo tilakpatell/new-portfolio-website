@@ -1,8 +1,9 @@
-# Handoff: one feel, every world (eleven lanes)
+# Handoff: one feel, every world (twelve lanes)
 
 Bruno Simon’s folio-2025 feel, site-wide: one art a world, the house tone mapper and emissive-only bloom, every hit a thud, a puff and a shake, a car in two halves, one tuning panel behind `?debug`, and colliders from a model’s node names. Read these first, in this order:
 
-1. `docs/superpowers/specs/2026-10-08-one-feel-site-wide-design.md` (what exists already, the gap, the six pieces, the roster of every world, the decisions)
+1. `docs/superpowers/specs/2026-10-08-game-feel-design.md` (the second round: game feel first, every game; its roster is Phase 2’s) and `docs/superpowers/plans/2026-10-08-game-feel.md` (lane 1F and the per-game tiers), resting on `docs/research/2026-10-08-game-feel-audit.md` (every game read, with the lines)
+1b. `docs/superpowers/specs/2026-10-08-one-feel-site-wide-design.md` (the first round: what exists already, the six pieces; its Phase 1 is merged or merging, its Phase 2 is superseded by the game-feel design)
 2. `docs/superpowers/plans/2026-10-08-one-feel-site-wide.md` (your lane’s tasks: files, interfaces, tests)
 3. `docs/research/2026-10-06-bruno-simon-folio.md` and `docs/research/2026-10-08-folio-2025-physics-terrain-streaming.md` (his code, with the numbers the plan quotes)
 4. `docs/superpowers/specs/2026-10-07-house-look-design.md` and `src/lib/three/house.js`’s header (the look you build on), `src/lib/physics/world.js`’s and `vehicle.js`’s headers (the physics you wire), `src/lib/debugPanel.js` (the panel you grow)
@@ -17,14 +18,15 @@ Bruno Simon’s folio-2025 feel, site-wide: one art a world, the house tone mapp
 | 1C the car | `claude/one-feel-car` | `main` | nothing |
 | 1D the panel | `claude/one-feel-panel` | `main` | nothing |
 | 1E the colliders | `claude/one-feel-colliders` | `main` | nothing |
-| 2A Middle-earth | `claude/one-feel-middleearth` | `main` after Phase 1 | 1A–1E |
-| 2B Star Wars | `claude/one-feel-starwars` | `main` after Phase 1 | 1A–1E |
-| 2C the universe | `claude/one-feel-universe` | `main` after Phase 1 | 1A–1E |
-| 2D the cities | `claude/one-feel-cities` | `main` after Phase 1 | 1A–1E |
-| 2E the games | `claude/one-feel-games` | `main` after Phase 1 | 1A–1E |
-| 2F the rest | `claude/one-feel-rest` | `main` after Phase 1 | 1A–1E |
+| 1F the feel kit | `claude/feel-kit` | `main` | nothing (its files are new or its own) |
+| 2A Middle-earth | `claude/feel-middleearth` | `main` after Phase 1 and 1F | 1A–1F |
+| 2B Star Wars | `claude/feel-starwars` | `main` after Phase 1 and 1F | 1A–1F |
+| 2C the universe | `claude/feel-universe` | `main` after Phase 1 and 1F | 1A–1F |
+| 2D the cities | `claude/feel-cities` | `main` after Phase 1 and 1F | 1A–1F |
+| 2E the games | `claude/feel-games` | `main` after Phase 1 and 1F | 1A–1F |
+| 2F the rest | `claude/feel-rest` | `main` after Phase 1 and 1F | 1A–1F |
 
-Phase 1’s five lanes run at once; each owns the files its row in the spec’s rollout names and no others. Two pairs meet in one file (1A and 1D in `lib/stage3d.js`; 1B and 1E in the landings): whichever merges second merges `main` in first and keeps both. Phase 2’s six lanes run at once from `main` once all five are merged; each owns its worlds’ folders and edits nothing shared (a need for a shared change is a line under “Findings” below, for the owner).
+Phase 1’s five lanes run at once; each owns the files its row in the spec’s rollout names and no others. Two pairs meet in one file (1A and 1D in `lib/stage3d.js`; 1B and 1E in the landings): whichever merges second merges `main` in first and keeps both. Phase 2’s six lanes run at once from `main` once Phase 1 and 1F are merged; each owns its games’ folders and edits nothing shared (a need for a shared change is a line under “Findings” below, for the owner). Phase 2 works the game-feel plan’s tiers (feel first, a pull request a tier), then the first plan’s look checklist; the game-feel design’s pull-request table says which open pull requests touch each lane’s files and how to stay clear of them (additive lines, merge `main` daily, never rebase).
 
 ## The rules (don’t break)
 
@@ -45,7 +47,8 @@ Phase 1’s five lanes run at once; each owns the files its row in the spec’s 
 - **1C**: the Expanse buggy leans into a turn, squashes on landing, whips its antenna; every number of the car and its feel is on the panel’s groups (`carGroups`, `feelGroups`).
 - **1D**: `/earth?debug` and `/galaxy/yavin?debug` open one panel built from the module’s `tune()` or the stage’s `tune`; without `?debug` nothing is made; `houseGroups` serves any world on the look.
 - **1E**: a GLB node named `crate_physical_dynamic` with a `cuboid` child becomes a sleeping dynamic body through `collidersOf`; `scripts/gen3d/web.mjs` keeps such nodes; `docs/assets/colliders.md` says how to model one.
-- **2A–2F**: every world in the lane’s row of the spec’s roster has a `look.js` that validates, no ACES line, no bloom literal, its hits wired, its vehicles on the feel, `tune()` or `stage.tune`, and `collidersOf` where it loads a GLB into Rapier; `EXPECTED_MISSING` in `looks.test.js` has none of the lane’s folders; before and after shots in the pull request.
+- **1F**: `press.js`, `spring.js`, `ease.js` tested; `feel.js`’s `calm` defaults to reduced motion and `feel.step(dt)` exists; `play(name, { gain, pitch })` and `hit(name, force)`; `vehicleFeel` and `vehicleBody` carried over onto the springs; `src/components/worlds/feel.test.js` passes on `main` with its five lists filled from the audit.
+- **2A–2F**: Tier 1 on every game in the lane’s roster row (the game-feel design): the feel ratchet lists have none of the lane’s files, hitstop real, one shake gated, every event answered, sound by force, a press that lands, eases by dt, a way out, the feel numbers on the panel; then Tier 2 springs; then Tier 3 props where named; then every world in the lane’s row of the first spec’s roster has a `look.js` that validates, no ACES line, no bloom literal, its hits wired, its vehicles on the feel, `tune()` or `stage.tune`, and `collidersOf` where it loads a GLB into Rapier; `EXPECTED_MISSING` in `looks.test.js` has none of the lane’s folders; before and after shots in the pull request.
 
 ## When something in the plan is wrong
 
@@ -56,10 +59,10 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | lane | session | branch | pull request | merged |
 |---|---|---|---|---|
 | design | the architecting session | `claude/lucid-hawking-78yzz5` | | |
-| 1A | | | | |
+| 1A | session_018TPUBuBVbG9Xbm68QY6rAd | `claude/one-feel-art` | #701 | |
 | 1B | session_0125kUpviRHiF3dVxbGM3odg | `claude/one-feel-hits` | #699 | |
-| 1C | | | | |
-| 1D | | | | |
+| 1C | session_01ALnkhhCHveAZqkCSpnBLq2 | `claude/one-feel-car` | #700, closed at the owner’s word: the Expanse car game is removed (`claude/remove-expanse`); the pure pieces stay on the branch for Phase 2 | no |
+| 1D | session_01Y9gSEa16P9tye2wPhYum7h | `claude/one-feel-panel` | #702 | |
 | 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 2A | | | | |
 | 2B | | | | |
@@ -69,6 +72,8 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2F | | | | |
 
 ## Findings (for the owner and the next lane)
+
+- **Change of course** (the spec’s section of that name): the Expanse is removed; Phase 2 is game feel first, every game, then the look.
 
 - (a lane writes here what it found and could not do in its files: a shared change it needs, a spec decision it questions, a world that will not take a piece and why)
 - 1B: `wireImpacts` takes an extra `up(at)` (the dust’s rise; a planet’s up is not +y), and works in whatever units `toWorld` gives: the landings pass metres and scale the dust’s mesh by `METRE`. A world in metres passes neither.
