@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { WIND_GLSL, createWind, swayShader, windNoise } from './wind';
+import { WIND_GLSL, WIND_SCALE, createWind, sampleNoise, swayShader, windNoise, windOffsetAt } from './wind';
 
 describe('one wind for a world', () => {
   it('reads two scrolling lookups of one noise, a fast one and a slow broad gust', () => {
@@ -72,6 +72,44 @@ describe('swaying in the wind', () => {
     expect(sh.uniforms.uWindTime).toBe(wind.uniforms.uWindTime);
     expect(sh.vertexShader).toContain('windOffset(');
     expect(m.customProgramCacheKey()).toMatch(/\|sway:0\.2:1$/);
+    wind.dispose();
+  });
+});
+
+describe('the wind, read on the CPU', () => {
+  const data = Uint8Array.from({ length: 16 }, (_, k) => (k * 37) % 256);
+  const img = { data, width: 4, height: 4 };
+
+  it('reads the noise picture as the graphics chip does: bilinear, repeating, at texel centres', () => {
+    for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) expect(sampleNoise(img, (i + 0.5) / 4, (j + 0.5) / 4)).toBeCloseTo(data[j * 4 + i] / 255, 9);
+    // (halfway between two texels, their mean)
+    expect(sampleNoise(img, 0.25, 0.125)).toBeCloseTo((data[0] + data[1]) / 510, 9);
+    expect(sampleNoise(img, 0.125, 0.25)).toBeCloseTo((data[0] + data[4]) / 510, 9);
+    // (and round again past either edge)
+    expect(sampleNoise(img, 1.125, 0.375)).toBeCloseTo(sampleNoise(img, 0.125, 0.375), 9);
+    expect(sampleNoise(img, -0.875, 0.375)).toBeCloseTo(sampleNoise(img, 0.125, 0.375), 9);
+  });
+
+  it('reads at the scales the shader does', () => {
+    expect(WIND_GLSL).toContain(`xz * ${WIND_SCALE.quick}`);
+    expect(WIND_GLSL).toContain(`xz * ${WIND_SCALE.slow}`);
+    expect(WIND_GLSL).toContain(`uWindTime * ${WIND_SCALE.slowTime}`);
+  });
+
+  it('pushes along the wind, never harder than it blows, and moves on with it', () => {
+    const wind = createWind({ strength: 0.5, angle: 0.6 * Math.PI });
+    const d = wind.uniforms.uWindDir.value;
+    const o = { x: 0, z: 0, k: 0 };
+    for (let i = 0; i < 1000; i++) {
+      windOffsetAt(wind.uniforms, (i * 7.31) % 200 - 100, (i * 13.7) % 200 - 100, o);
+      expect(Math.abs(o.k)).toBeLessThanOrEqual(0.5 + 1e-9);
+      // (along the wind's way: parallel to it)
+      expect(o.x * d.y - o.z * d.x).toBeCloseTo(0, 9);
+      expect(o.x).toBeCloseTo(d.x * o.k, 9);
+    }
+    const was = windOffsetAt(wind.uniforms, 3, 4).k;
+    wind.update(1);
+    expect(windOffsetAt(wind.uniforms, 3, 4).k).not.toBeCloseTo(was, 6);
     wind.dispose();
   });
 });

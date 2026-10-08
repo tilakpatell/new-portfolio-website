@@ -10,6 +10,7 @@
 //   WIND_GLSL           the uniforms and `vec2 windOffset(vec2 xz)`, for a shader
 //   swayShader(shader, { strength, height }) → { vertexShader, fragmentShader, swapped } (pure)
 //   windNoise(size)     the tiling noise picture it reads
+//   sampleNoise(image, u, v), windOffsetAt(uniforms, x, z)   the same, on the CPU (pure)
 //
 // `strength` 0 to 1 (a breath to a gale); `angle` the way it blows, radians
 // round from +x toward +z. A stronger wind also moves faster.
@@ -28,6 +29,39 @@ vec2 windOffset(vec2 xz) {
   return uWindDir * (a + b - 1.0) * uWindStrength;
 }
 `;
+// the scales WIND_GLSL reads at (kept equal to it: wind.test.js checks the text)
+export const WIND_SCALE = { quick: 0.1, slow: 0.05, slowTime: 0.2 };
+
+// The noise picture as texture2D reads it at its full size: bilinear,
+// repeating, texel centres at (i + 0.5) / N; 0…1
+export function sampleNoise(image, u, v) {
+  const { data, width: W, height: H } = image;
+  const x = u * W - 0.5;
+  const y = v * H - 0.5;
+  const i0 = Math.floor(x);
+  const j0 = Math.floor(y);
+  const fx = x - i0;
+  const fy = y - j0;
+  const m = (a, n) => ((a % n) + n) % n;
+  const at = (i, j) => data[m(j, H) * W + m(i, W)] / 255;
+  const a = at(i0, j0) + (at(i0 + 1, j0) - at(i0, j0)) * fx;
+  const b = at(i0, j0 + 1) + (at(i0 + 1, j0 + 1) - at(i0, j0 + 1)) * fx;
+  return a + (b - a) * fy;
+}
+
+// windOffset on the CPU, from a wind's live uniforms: { x, z, k } (k: how
+// far along the wind's way)
+export function windOffsetAt(u, x, z, out = { x: 0, z: 0, k: 0 }) {
+  const img = u.uWindNoise.value.image;
+  const d = u.uWindDir.value;
+  const t = u.uWindTime.value;
+  const a = sampleNoise(img, x * WIND_SCALE.quick + d.x * t, z * WIND_SCALE.quick + d.y * t);
+  const b = sampleNoise(img, x * WIND_SCALE.slow + d.x * t * WIND_SCALE.slowTime, z * WIND_SCALE.slow + d.y * t * WIND_SCALE.slowTime);
+  out.k = (a + b - 1) * u.uWindStrength.value;
+  out.x = d.x * out.k;
+  out.z = d.y * out.k;
+  return out;
+}
 
 // A tiling picture of soft noise, stretched to its full range.
 export function windNoise(size = 128, seed = 11) {
