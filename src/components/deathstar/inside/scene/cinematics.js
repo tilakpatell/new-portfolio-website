@@ -36,7 +36,7 @@ export const SCENES = {
   tractor: {
     shots: [
       { s: 4, at: { spot: 'ranks' }, from: [2, 1.6, 4], to: [1, 2.2, 2], look: { spot: 'falcon' }, lift: 3 },
-      { s: 4, at: { spot: 'falcon' }, from: [-14, 4, 22], to: [-10, 3, 16], lift: 2 },
+      { s: 4, at: { spot: 'ranks' }, from: [-3, 3.2, 9], to: [-1, 2.4, 6], look: { spot: 'falcon' }, lift: 2 },
     ],
     ship: { name: 'falcon', how: 'in' },
   },
@@ -203,11 +203,17 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
     let out = mouth ? { x: mouth.x - w.x, z: mouth.z - w.z } : { x: -Math.sin(found.rotation.y), z: -Math.cos(found.rotation.y) };
     const l = Math.hypot(out.x, out.z) || 1;
     out = { x: out.x / l, z: out.z / l };
-    return { object: found, home, out, wasVisible: found.visible };
+    let gear = null;
+    world.traverse((o) => {
+      if (!gear && o.name === `${name}-gear`) gear = o;
+    });
+    return { object: found, gear, home, out, wasVisible: found.visible };
   }
 
   function flyShip(ship, how, k) {
     const o = ship.object;
+    // its landing gear (rooms/hangar.js's, beside the ship, not under it) only while it stands
+    if (ship.gear) ship.gear.visible = how === 'in' || how === 'down' ? k > 0.92 : k < 0.12;
     const h = ship.home;
     const { x: fx, z: fz } = ship.out;
     const e = ease(k);
@@ -238,6 +244,7 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
       // in: parked where it was; out: gone with the scene, as the story has it
       if (spec.ship.how === 'in' || spec.ship.how === 'down') ship.object.position.copy(ship.home);
       else ship.object.visible = false;
+      if (ship.gear) ship.gear.visible = spec.ship.how === 'in' || spec.ship.how === 'down';
       ship.object.updateMatrixWorld(true);
     }
     if (playing.lit) show?.lightning?.(playing.lit.from, playing.lit.to, false);
