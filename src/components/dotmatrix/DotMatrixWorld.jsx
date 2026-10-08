@@ -5,6 +5,8 @@ import '@fontsource/press-start-2p/400.css';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 import { use3D } from '../../lib/gpu';
+import { settle } from '../../lib/settle';
+import LoadingVeil from '../worlds/LoadingVeil';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
 import { useVoiced } from '../../lib/useVoiced';
@@ -72,9 +74,11 @@ function Heart({ full }) {
   );
 }
 
+const PREPARE_WAIT = 30000; // ms at most the veil waits on the island's prepare
+
 export default function DotMatrixWorld() {
   const three = use3D();
-  const [gl, setGl] = useState('loading'); // loading | on | failed | lost
+  const [gl, setGl] = useState('loading'); // loading | preparing | on | failed | lost
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="dm-world" aria-labelledby="dm-title">
@@ -84,6 +88,7 @@ export default function DotMatrixWorld() {
 }
 
 function World({ gl, setGl }) {
+  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -164,10 +169,16 @@ function World({ gl, setGl }) {
         api.current = a;
         a.setPalette(palette);
         fit();
-        await a.warm(view());
+        // everything onto the graphics chip behind the veil before the first
+        // frame (the scene's prepare: bounded, so it never holds the island up for good)
+        setGl('preparing');
+        await settle(
+          a.prepare(view(), (value, step) => !dead && setPrep({ value, step }), () => !dead),
+          PREPARE_WAIT,
+        );
         if (dead) return undefined;
         if (import.meta.env.DEV) window.__DMG__ = { api: a, sim: sim.current }; // for the QA scripts
-        setGl('on');
+        setGl((g) => (g === 'preparing' ? 'on' : g));
         return undefined;
       })
       .catch((e) => {
@@ -587,7 +598,8 @@ function World({ gl, setGl }) {
             </span>
           ))}
         </div>
-        {gl !== 'on' && <p className="dm-loading">Loading the island…</p>}
+        {gl !== 'on' && gl !== 'preparing' && <p className="dm-loading">Loading the island…</p>}
+        <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="Dot Matrix island" line="Loading the island…" />
 
         <div className="dm-hud dm-hud-top">
           <div className="dm-stats">
