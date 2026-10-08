@@ -210,7 +210,9 @@ const WEARS = new Set(EVERYONE);
 const lookFor = (who, looks) => (WEARS.has(who) ? readLooks(looks ?? local.get(LOOK_KEY))[who] : null);
 const HAND_GUNS = { portalgun: 'portal', laserpistol: 'laser' }; // the wardrobe's hand gear that's a gun on foot
 const SCARED = new Set(['morty', 'jesse']); // the ones who jump at a squad, or at a double of themselves
-async function loadModel(spec, cast, looks = null) {
+// (`shared`: a model of the site's as a copy of the page's one figure of it,
+// loadSharedFigure's, rather than fetched and made afresh: footScene's own)
+async function loadModel(spec, cast, looks = null, { shared = false } = {}) {
   if (spec.src.meshy) {
     const look = lookFor(spec.src.meshy, looks);
     // (the cast's figure reads its motion in metres: it's told how tall it stands)
@@ -263,9 +265,15 @@ async function loadModel(spec, cast, looks = null) {
       look: c.look,
       react: c.react,
       gun,
-      dispose: undress,
+      // (its look off, and what the cast made for this one figure alone: the
+      // cast itself lasts the page)
+      dispose: () => {
+        undress();
+        c.release?.();
+      },
     };
   }
+  if (spec.src.url && shared) return loadSharedFigure(spec.src.url, spec.tall, { seed: seedFor(spec.id ?? spec.src.url) });
   if (spec.src.url) {
     const [gltf, clips] = await Promise.all([getLoader().loadAsync(spec.src.url), borrowClips()]);
     return rigScene(gltf.scene, clips, spec.tall, { seed: seedFor(spec.id ?? spec.src.url), key: spec.src.url });
@@ -313,7 +321,8 @@ function rigScene(model, clips, tall, { shared = false, seed, key = null } = {})
 // keep the materials and smooth the normals; it's never drawn, and stays
 // for the next world that wants one. (galaxy/surface/crew.js)
 const sharedModels = new Map(); // url → Promise<{ scene, clips } | null>
-export async function loadSharedFigure(url, tall, { seed } = {}) {
+// (the original, fetched and rigged the first time it's asked for)
+const sharedTemplate = (url) => {
   if (!sharedModels.has(url))
     sharedModels.set(
       url,
@@ -328,7 +337,10 @@ export async function loadSharedFigure(url, tall, { seed } = {}) {
         },
       ),
     );
-  const tpl = await sharedModels.get(url);
+  return sharedModels.get(url);
+};
+export async function loadSharedFigure(url, tall, { seed } = {}) {
+  const tpl = await sharedTemplate(url);
   return tpl ? rigScene(cloneSkinned(tpl.scene), tpl.clips, tall, { shared: true, seed, key: url }) : null;
 }
 
@@ -337,10 +349,10 @@ export async function loadSharedFigure(url, tall, { seed } = {}) {
 // figure, Jesse in the lab’s suit his own) and dressed in it. They keep
 // their own guns, as the cruiser’s two do: a bag of blue in the hand stays
 // in the wardrobe. Anyone else is loaded as they were.
-async function loadParty(spec, cast, looks = null) {
+async function loadParty(spec, cast, looks = null, { shared = false } = {}) {
   const look = spec.src.url ? lookFor(spec.id, looks) : null;
-  if (!look) return loadModel(spec, cast, looks);
-  const fig = await loadModel({ ...spec, src: { url: bodyAsset(look) } }, cast, looks);
+  if (!look) return loadModel(spec, cast, looks, { shared });
+  const fig = await loadModel({ ...spec, src: { url: bodyAsset(look) } }, cast, looks, { shared });
   // (as the show has them, there’s nothing to put on)
   if (!fig?.model || JSON.stringify(writeLook(look)) === JSON.stringify(writeLook(defaultLook(spec.id)))) return fig;
   const undress = dress({ group: fig.model }, spec.gun ? { ...look, gear: { ...look.gear, hand: 'none' } } : look);
@@ -352,6 +364,14 @@ async function loadParty(spec, cast, looks = null) {
   };
   return fig;
 }
+
+// the model a party member's figure is, where it's one of the site's (their
+// look's body: Heisenberg's is Walt's own figure, the lab suit Jesse's)
+const partyUrl = (spec, looks = null) => {
+  if (!spec.src.url) return null;
+  const look = lookFor(spec.id, looks);
+  return look ? bodyAsset(look) : spec.src.url;
+};
 
 // ── People built from shapes (no figure of their own) ──
 
@@ -1658,15 +1678,28 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   };
 
   // ── loading ──
-  let loading = null;
-  const load = (kind) => {
+  // Everyone's figures are made once for the page and copied for each
+  // landing: the cast's (one cast, kept from the first landing on: its
+  // models fetched, parsed and sent to the graphics chip once), the site's
+  // own models (loadSharedFigure's: rigged and their normals smoothed once),
+  // the troops' that are models of their own. A landing's end frees only
+  // its copies. (Each landing made all of them afresh, and Rick and Morty's
+  // 2048 maps went up to the chip again every time.)
+  // warmParty(kind): the figures a ship's party and its side's troops are
+  // copies of, loaded (as soon as there's somewhere to land: prefetch)
+  const warmParty = (kind) => {
     const specs = PARTY[kind] ?? PARTY.rv;
-    cast = createMeshyCast(withWardrobe()); // (the wardrobe's bodies too, for the cruiser's two)
+    cast ??= createMeshyCast(withWardrobe()); // (the wardrobe's bodies too, for the cruiser's two)
     // (and the side's troops, where the cast has them: the rest are built stand-ins)
     const sideTroops = Object.keys(sideFor(kind)?.troops ?? SIDES.rickmorty.troops);
     const needCast = [...new Set([...specs.filter((s) => s.src.meshy).map((s) => s.src.meshy), ...sideTroops.map((k) => troopLook(k).meshy).filter(Boolean).map((k) => MESHY[k]?.a ?? k)])]; // (the cast loads by asset: a Morty clone is Morty's)
     const castReady = cast.load(null, needCast).catch(() => {});
     preload(TROOP_CLIPS).catch(() => {});
+    // (the party's own, where they're the site's models)
+    for (const spec of specs) {
+      const url = partyUrl(spec);
+      if (url) sharedTemplate(url);
+    }
     // (and the ones that are models of their own, Albuquerque's: loaded once, copied for each)
     for (const k of sideTroops) {
       const url = troopLook(k).url;
@@ -1675,17 +1708,26 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       troopModels.set(url, entry);
       Promise.all([getLoader().loadAsync(url), borrowClips()])
         .then(([gltf, clips]) => {
-          // (the walk's over, or another's begun, while it loaded)
+          // (gone with the foot scene while it loaded)
           if (troopModels.get(url) !== entry) return freeScene(gltf.scene);
           // (the first one rigged keeps the materials and smooths the normals, shared by the copies)
           rigScene(gltf.scene, clips, 1);
           entry.ready = { scene: gltf.scene, clips };
         })
-        .catch(() => {});
+        .catch(() => {
+          // (tried again next time)
+          if (troopModels.get(url) === entry) troopModels.delete(url);
+        });
     }
+    return castReady;
+  };
+  let loading = null;
+  const load = (kind) => {
+    const specs = PARTY[kind] ?? PARTY.rv;
+    const castReady = warmParty(kind);
     loading = (async () => {
       await castReady;
-      const figs = await Promise.all(specs.map((s) => loadParty(s, cast).catch(() => null)));
+      const figs = await Promise.all(specs.map((s) => loadParty(s, cast, null, { shared: true }).catch(() => null)));
       return figs.map((fig, i) => {
         const spec = specs[i];
         const f = fig ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } });
@@ -1762,6 +1804,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     got.b?.dispose();
     got.own?.dispose(); // (a copy's: its animator; what it's made of is the original's)
     got.c?.anim?.dispose();
+    got.c?.release?.(); // (and a cast copy's own: a clone's shirt)
     troopFigs.delete(id);
   };
 
@@ -2318,7 +2361,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.add(wk.group);
     (async () => {
       if (spec.src.meshy) await cast?.load(null, [spec.src.meshy]).catch(() => {});
-      const fig = (cast && (await loadParty(spec, cast, g.looks ?? readLooks(null)).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } }); // (in their own looks: the show’s, if they’ve sent none)
+      const fig = (cast && (await loadParty(spec, cast, g.looks ?? readLooks(null), { shared: true }).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } }); // (in their own looks: the show’s, if they’ve sent none)
       if (!guests.has(g.id) || !g.walkers.includes(wk)) return fig.dispose?.();
       wk.fig = fig;
       wk.group.add(fig.model);
@@ -3302,8 +3345,6 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       party = null;
       for (const g of [...guests.values()]) dropGuest(g);
       for (const id of [...troopFigs.keys()]) dropTroop(id);
-      for (const e of troopModels.values()) if (e.ready) freeScene(e.ready.scene);
-      troopModels.clear();
       for (const key of [...blobs.keys()]) dropShadow(key);
       for (const o of S.bolts) o.mesh.visible = false;
       S.bolts = [];
@@ -3316,8 +3357,6 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       }
       ground = rocks = haze = sides = null;
       lamps.clear();
-      cast?.dispose();
-      cast = null;
       for (const o of owned) o?.dispose?.();
       owned.length = 0;
       if (S.model) S.model.group.scale.setScalar(1);
@@ -3330,6 +3369,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     },
     dispose() {
       this.end();
+      // (the figures the landings' copies were made of: the cast's, the troops' own)
+      cast?.dispose();
+      cast = null;
+      for (const e of troopModels.values()) if (e.ready) freeScene(e.ready.scene);
+      troopModels.clear();
       boltGeo.dispose();
       sleeveGeo.dispose();
       fx.dispose();
