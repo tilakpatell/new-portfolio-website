@@ -124,7 +124,7 @@ export default {
       if (!bloom || !rt.gfx.post || !view) return;
       post = rt.gfx.post([
         { kind: 'render', scene: view.scene, camera: view.camera },
-        { kind: 'bloom', strength: 0.6, radius: 0.4, threshold: 0.85 },
+        { kind: 'bloom', strength: 0.6, radius: 0.4, threshold: 3 },
         { kind: 'output' },
       ]);
       post.composer?.setPixelRatio?.(renderer.getPixelRatio?.() ?? 1);
