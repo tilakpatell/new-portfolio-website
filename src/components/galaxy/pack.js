@@ -77,6 +77,7 @@ export const PACK = {
     '/games/meshy/morty-walk.glb',
     '/games/meshy/morty-run.glb',
     '/games/meshy/morty-sit.glb',
+    '/kit/naturemega/index.json',
   ], // single files
   globs: [
     '/models/galaxy/**',
@@ -87,5 +88,6 @@ export const PACK = {
     '/games/meshy/act-*.glb',
     '/games/meshy/ual-*.glb',
     '/games/meshy/clips-*.glb',
+    '/kit/naturemega/*.glb',
   ], // folders: `*` within a folder, `**` any depth
 };

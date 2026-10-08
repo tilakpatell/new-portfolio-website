@@ -9,6 +9,11 @@ describe('the pack check', () => {
     expect(assetRefs("a('/models/x.glb'); b(`/textures/s-${n}.jpg?v=2`); c('/about')").sort()).toEqual(['/models/x.glb', '/textures/s-*.jpg']);
   });
 
+  it('takes a kit file for an asset (public/kit/<pack>/)', () => {
+    expect(assetRefs("k('/kit/naturemega/index.json'); f(`/kit/naturemega/${file}`)").sort()).toEqual(['/kit/naturemega/*', '/kit/naturemega/index.json']);
+    expect(covered('/kit/naturemega/fern.glb', { globs: ['/kit/naturemega/*.glb'] })).toBe(true);
+  });
+
   it('matches globs by folder', () => {
     expect(globRe('/models/w/*').test('/models/w/a.glb')).toBe(true);
     expect(globRe('/models/w/*').test('/models/w/deep/a.glb')).toBe(false);
