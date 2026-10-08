@@ -310,6 +310,43 @@
 @supports not (width: 1cqh) {
   .holomap-map { width: min(100%, 64vh); }
 }
+/* ── Zoom and pan (useMapView.js): the stage holds everything that moves with
+   the map and is drawn at the view's k, x and y (mapView.js), from its top-left;
+   the war's strip and key, and the zoom buttons, sit over it and stay put ── */
+.holomap-map { touch-action: none; cursor: grab; }
+.holomap-map[data-zoomed]:active { cursor: grabbing; }
+.holomap-stage {
+  position: absolute;
+  inset: 0;
+  transform: translate(calc(var(--vx, 0) * 100%), calc(var(--vy, 0) * 100%)) scale(var(--k, 1));
+  transform-origin: 0 0;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .holomap-stage { transition: transform 0.18s ease-out; }
+}
+.holomap-map:active .holomap-stage { transition: none; }
+/* names, badges and crests keep their size while the map scales, each about its
+   own point (a system's <li> has no size: its dot and name scale about the dot) */
+.holomap-systems > li,
+.holomap-axis span,
+.holomap-fleets > li { scale: calc(1 / var(--k, 1)); }
+.holomap-zoom { position: absolute; z-index: 3; right: 10px; bottom: 10px; display: grid; gap: 6px; }
+.holomap-zoom button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgb(127 214 255 / 0.35);
+  border-radius: 10px;
+  background: rgb(2 8 20 / 0.86);
+  color: #d9f3ff;
+  font-size: 1.1rem;
+}
+.holomap-zoom button:disabled { opacity: 0.4; }
+@media (pointer: coarse) {
+  .holomap-zoom button { width: 44px; height: 44px; }
+}
 .holomap-body { container-type: size; }
 .holomap-canvas,
 .holomap-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
