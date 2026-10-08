@@ -37,7 +37,9 @@
 // beam(id), setTime(tod), setBlue(ids), took(id), resize, info, dispose, lost }.
 // `state` is the component's: the car, Hank, the heat, the place you're at
 // (rules.js does the moving) and the other drivers (`travellers`, the
-// towns' travellers.js list()).
+// towns' travellers.js list()). loadModel(loader, name) resolves to one of the
+// town's models as loaded (its scene, or null); SKETCHFAB names the ones that
+// come from Sketchfab, and their files.
 
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -70,6 +72,7 @@ import { createSky, lightAt, sunAt } from './sky';
 import { createMountains, groundMaterial } from './terrain';
 import { createFleet, footprint, paintFor } from './vehicles';
 import { gltfLoader } from '../../../lib/three/gltf';
+import { dropTransmission } from '../../../lib/three/glass';
 import { bounce, createBlobShadows, floorShadow, loadFloorShadow, setFloorTime } from '../../../lib/three/grounding';
 import { createHouse, shadowFor } from '../../../lib/three/house';
 import { coreOf, loadCore, wear } from '../../../lib/three/core';
@@ -78,8 +81,20 @@ import { sharpen } from '../../../lib/three/textures';
 // Models from Sketchfab (CC Attribution, credited in public/cc0/README.md; scripts/sketchfab-import.mjs
 // brings them to web size): the RV, Saul's car, the water tank, the train's tank cars, cacti, a
 // tumbleweed and the Pollos bucket. Everything else is the site's own, made with Meshy.
-const SKETCHFAB = { rv: 'rv', esteem: 'esteem', watertank: 'watertower', tank: 'tank', cactus: 'cactus', tumbleweed: 'tumbleweed', bucket: 'bucket' };
+export const SKETCHFAB = { rv: 'rv', esteem: 'esteem', watertank: 'watertower', tank: 'tank', cactus: 'cactus', tumbleweed: 'tumbleweed', bucket: 'bucket' };
 const MODEL = (name) => (SKETCHFAB[name] ? `/models/sketchfab/${SKETCHFAB[name]}.glb` : `/models/albuquerque/world/${name}.glb`);
+// One of the town's models by name: its scene, or null if it didn't load. A
+// Sketchfab one keeps the materials it came with, all but transmission (Saul's
+// Esteem has it on its windows), which has three draw the whole town a second
+// time, every frame the car's in view: its glass is plain see-through glass.
+export const loadModel = (loader, name) =>
+  loader.loadAsync(MODEL(name)).then(
+    (g) => {
+      if (SKETCHFAB[name]) dropTransmission(g.scene);
+      return g.scene;
+    },
+    () => null,
+  );
 // which way each model's front faces as it was made, turned to face +z
 export const FACING = { aztek: Math.PI / 2, rv: 0, suv: Math.PI / 2, house: -Math.PI / 2, pollos: -Math.PI / 2, laundry: 0, casa: 0, office: 0, carwash: 0 };
 const DAY = 480; // seconds for the sun to go all the way round
@@ -637,7 +652,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   // tier goes without them, and its floor without their shadows)
   const lean = device().saveData && device().tier === 'low';
   const [loaded, cloudTex, floorBake] = await Promise.all([
-    Promise.all(names.map((n) => loader.loadAsync(MODEL(n)).then((g) => [n, g.scene], () => [n, null]))).then(Object.fromEntries),
+    Promise.all(names.map((n) => loadModel(loader, n).then((o) => [n, o]))).then(Object.fromEntries),
     loadTexture('cloud.webp').catch(() => null),
     lean ? null : loadFloorShadow(SHADOW_DIR, { renderer, shade: SHADE }),
   ]);
