@@ -103,9 +103,9 @@ describe('what the people are told of the rooms', () => {
     const people = createPeople(scene, { mat: () => new THREE.MeshStandardMaterial() }, { tier: 'low' });
     const stream = streamOf('corr327');
     const rooms = Object.assign(roomsOf(stream), { dt: STEP });
-    const crew = { people: new Map([['chewie', { id: 'chewie', kind: 'chewie', x: 4, y: 0, z: 0, yaw: 0, room: 'corr327', hp: 0, mode: 'dead', anim: 'die', aim: null }]]) };
+    const crew = { people: new Map([['ito', { id: 'ito', kind: 'ito', x: 4, y: 0, z: 0, yaw: 0, room: 'corr327', hp: 0, mode: 'dead', anim: 'die', aim: null }]]) };
     const eye = { x: 0, y: 1.6, z: 0 };
-    const bodies = () => scene.children.filter((o) => o.name === 'person-chewie');
+    const bodies = () => scene.children.filter((o) => o.name === 'person-ito');
     people.sync(crew, 1, eye, rooms);
     const [body] = bodies();
     expect(body.visible).toBe(true);
