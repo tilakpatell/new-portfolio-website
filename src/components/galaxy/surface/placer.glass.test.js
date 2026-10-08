@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { gltfLoader } from '../../../lib/three/gltf';
