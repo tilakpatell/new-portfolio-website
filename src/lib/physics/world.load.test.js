@@ -19,4 +19,20 @@ describe('createPhysics, when the engine will not load', () => {
     expect(p.step(1 / 60)).toBe(1);
     p.dispose();
   });
+
+  it('R18 a failed engine load is retried', async () => {
+    vi.resetModules();
+    let calls = 0;
+    vi.doMock('@dimforge/rapier3d-compat', async (orig) => {
+      const real = await orig();
+      const R = real.default ?? real;
+      return { default: { ...R, init: async () => { if (calls++ === 0) throw new Error('offline'); return R.init(); } } };
+    });
+    const { createPhysics: fresh } = await import('./world');
+    await expect(fresh()).rejects.toThrow('offline');
+    const p = await fresh();
+    expect(p.world).toBeTruthy();
+    p.dispose();
+    vi.doUnmock('@dimforge/rapier3d-compat');
+  });
 });

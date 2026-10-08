@@ -190,3 +190,19 @@ describe('addVehicle, when things go wrong', () => {
     physics.dispose();
   });
 });
+
+describe('addVehicle in the air', () => {
+  it('says it flipped when it lands from a whole turn in the air', async () => {
+    const { physics, car } = await settle();
+    car.chassis.body.setLinvel({ x: 0, y: 12, z: 0 }, true);
+    car.chassis.body.setAngvel({ x: 0, y: 0, z: 7 }, true);
+    let flipped = false;
+    for (let i = 0; i < 240 && !flipped; i++) {
+      car.drive({}, 1 / 60);
+      physics.step(1 / 60);
+      flipped = car.measure().flipped;
+    }
+    expect(flipped).toBe(true);
+    physics.dispose();
+  });
+});
