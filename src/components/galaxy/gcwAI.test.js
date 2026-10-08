@@ -178,6 +178,8 @@ describe('the liberator’s fronts and orders', () => {
     expect(orderOver({ sys: 'coruscant', verb: 'liberate' }, { ...s, owner: { ...owner, coruscant: 'rebel' } })).toBe(true);
     // (nowhere near the liberator any more)
     expect(orderOver({ sys: 'geonosis', verb: 'liberate' }, s)).toBe(true);
+    // (someone else is attacking it: it's no front of the liberator's while that's on)
+    expect(orderOver({ sys: 'coruscant', verb: 'liberate' }, { ...s, attacks: [{ sys: 'coruscant', by: 'hutt' }] })).toBe(true);
     expect(orderOver({ sys: 'hoth', verb: 'take' }, s)).toBe(false);
     expect(orderOver({ sys: 'hoth', verb: 'take' }, { ...s, attacks: [] })).toBe(true);
     expect(orderOver({ sys: 'coruscant', verb: 'hold' }, s)).toBe(false);

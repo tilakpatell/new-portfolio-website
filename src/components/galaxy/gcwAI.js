@@ -104,10 +104,10 @@ export function originOf(owner, control, sys, by) {
   return from;
 }
 
-// the liberator's fronts: what it's after first (`lead`: a system to retake,
-// its order), then the campaign's order of the rest, any let be a while
-// (`rest`) or holding out (`later`: a last stand) last; none under someone
-// else's attack (`busy`)
+// the liberator's fronts: what it's after first (`lead`: its order, the major
+// order, then a system to retake), then the campaign's order of the rest, any
+// let be a while (`rest`) or holding out (`later`: a last stand) last; none
+// under someone else's attack (`busy`)
 export function frontsFor({ owner, order, liberator, busy, rest, k, lead, later }) {
   const border = order.filter((id) => owner[id] !== liberator && !busy.has(id) && NEIGHBOURS[id].some((o) => owner[o] === liberator));
   const first = [];
@@ -167,12 +167,13 @@ export function raiderOrder({ raider, owner, control, attacks, fronts, eff }) {
 
 // an order's over: taken, held, out of reach, or (with eff, the last
 // battles' %/hour) the push there has stalled: the liberator's going nowhere,
-// the threat the raider's holding against is spent
-// (s: { owner, attacks, fronts, liberator, raider, eff? })
+// the threat the raider's holding against is spent. And a system someone
+// else is attacking is no front of the liberator's while that's on, so no
+// order of its either (s: { owner, attacks, fronts, liberator, raider, eff? })
 export function orderOver(order, { owner, attacks, fronts, liberator, raider, eff }) {
   const { sys, verb } = order;
   const stalled = eff?.[sys] !== undefined && eff[sys] <= GCW.stuck;
-  if (verb === 'liberate') return owner[sys] === liberator || !NEIGHBOURS[sys].some((o) => owner[o] === liberator) || stalled;
+  if (verb === 'liberate') return owner[sys] === liberator || !NEIGHBOURS[sys].some((o) => owner[o] === liberator) || attacks.some((a) => a.sys === sys) || stalled;
   if (verb === 'take') return !attacks.some((a) => a.sys === sys && a.by === raider);
   return owner[sys] !== raider || !(fronts.includes(sys) || attacks.some((a) => a.sys === sys)) || stalled;
 }

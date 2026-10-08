@@ -26,9 +26,9 @@
 // the last, and a result at its end by victory points (each system's worth,
 // to whoever holds it).
 // - Fronts: a system of anyone but the liberator's, next to one of the
-//   liberator's, is a front: GCW.fronts of them, a system it's just lost
-//   first, then its order (below), then the campaign's own order, worthiest
-//   first; the first front is the major order. Its hold falls at the
+//   liberator's, is a front: GCW.fronts of them, its order (below) first, the
+//   major order, then a system it's just lost (pushed harder), then the
+//   campaign's own order, worthiest first. Its hold falls at the
 //   liberator's fleets' rate (seeded, drawn again every GCW.window), faster
 //   with more of the liberator's systems round it (supply) and an area of the
 //   liberator's whole next to it, slower for its holder's defence; at 0 it's
@@ -41,15 +41,16 @@
 //   falls at the attack's rate; at 0 it's the attacker's, held to the end it
 //   gets GCW.repelled back. None runs on past the campaign's end.
 // - Reactions: a side that's lost a system goes back for it (the raider
-//   attacks it at once, the liberator makes it its first front); one that's
-//   lost its capital is shaken a while; a side with few systems fights
-//   harder (and the raider more often), one with most eases off; and before
-//   the Climax nobody loses their last system (a last stand), so a war's
-//   only ever won in it.
+//   attacks it at once, the liberator makes it the front after its order's);
+//   one that's lost its capital is shaken a while; a side with few systems
+//   fights harder (and the raider more often), one with most eases off; and
+//   before the Climax nobody loses their last system (a last stand), so a
+//   war's only ever won in it, and nobody attacks one.
 // - Orders: each window each main side gives its pilots an order with a
 //   deadline (the liberator's a front to liberate, the raider's what it's
 //   attacking to take, or a system of its under threat to hold), kept till
-//   it's done or can't be.
+//   it's done or can't be. The liberator's is the major order, so the ★ on
+//   the map is what its pilots are told, and moves only when that does.
 // - What players did: points (a hundredth of a system's control each) for
 //   each side, system and step (pointsKey), and the battles won there
 //   (winKey), counted once however many pilots tell of them. A side's points
@@ -293,8 +294,9 @@ function play(run, s, k, f) {
     else s.nextAt[by] = k < ATTACK_STEPS ? ATTACK_STEPS : k + Math.round((phase.every * every) / lean(s.count, by));
   }
 
-  // the liberator's order (given up if the push there stalled last step), then its fronts (a system to
-  // retake first, then the order), then every battle's %/hour, then the raider's order
+  // the liberator's order (a new one when the last's done, out of time, under someone else's attack, or
+  // its push stalled last step), then its fronts (the order first, so the major order is the order its
+  // pilots are given, then a system to retake), then every battle's %/hour, then the raider's order
   const busy = new Set(s.attacks.map((a) => a.sys));
   const state = () => ({ owner, attacks: s.attacks, fronts: s.fronts, liberator, raider, eff: s.eff });
   const lo = s.orders[liberator];
@@ -304,7 +306,7 @@ function play(run, s, k, f) {
     s.orders[liberator] = sys ? { sys, verb: 'liberate', k, until: windowEnd } : null;
   }
   const retake = s.counter[liberator]?.until >= k ? s.counter[liberator].sys : null;
-  s.fronts = frontsFor({ owner, order: plan.order, liberator, busy, rest: s.rest, k, lead: [retake, s.orders[liberator]?.sys], later: holdsOut });
+  s.fronts = frontsFor({ owner, order: plan.order, liberator, busy, rest: s.rest, k, lead: [s.orders[liberator]?.sys, retake], later: holdsOut });
   const attackOf = Object.fromEntries(s.attacks.map((a) => [a.sys, a]));
   s.eff = {};
   for (const a of s.attacks) s.eff[a.sys] = pressureOn(owner[a.sys], a.rate + supplyOf(a.sys, owner, a.by) + areaBonusOf(a.sys, owner, a.by, s.holders));
