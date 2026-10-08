@@ -6,7 +6,8 @@
 // blast door drops from above, a hatch swings on its hinge); the player
 // is a rigged figure (figures.js), a stormtrooper whenever in armour; the
 // people aboard are drawn from the game’s crew (people.js) and the bolts
-// in the air from its combat (fx.js); and the camera stands over the
+// in the air from its combat (fx.js), the blades, the windows’ views and
+// what the game’s events look like (show.js); and the camera stands over the
 // shoulder or at the eyes, kept out of the walls (camera.js). The game
 // steps at 30 Hz and a frame falls between two steps, so the player is
 // drawn between where the last two steps put them. Everything is in the
@@ -21,13 +22,14 @@
 //   roomsOf(stream) → { shown(roomId), built(roomId), dt }   what people.js is told of the rooms: drawn
 //     while the stream shows them, standing from when they are built until the stream frees them (a
 //     body is let go only then, so the two mustn’t be swapped: a door shut on the dead would take them)
-//   createScene(renderer, { tier, small, station }) → { scene, camera, layout, ready, sync, warm, resize, render, dispose }
+//   createScene(renderer, { tier, small, station }) → { scene, camera, layout, ready, sync, hear, warm, resize, render, dispose }
 //     sync(g, alpha, look?)   once a frame, after the game’s steps: g as rules/game.js keeps it
 //       ({ side, you: body & { room, crouch, hp, gun, armour, hero, pitch? }, doors, time, crew?, combat? }),
 //       alpha how far the frame is from the last step to the next; look: { yaw, pitch, view, aim } as
 //       the module holds them (the mouse turns the eye every frame, not every step); without it, the
 //       body’s yaw, level, third person. crew: rules/brains.js’s ({ people }), each person drawn;
 //       combat: rules/combat.js’s ({ bolts }), every bolt in the air given to the effects, then they step
+//     hear(events)   the game’s events drained since the last frame: the flashes, sparks and clashes they make
 //     ready: settles once the rooms’ builders are in hand
 //     warm(target?) → Promise   compiles the fight’s effects for where the scene is drawn (the bloom
 //       chain’s buffer, or the screen without one), so the first shot doesn’t stall a frame
@@ -43,6 +45,7 @@ import { loadPerson, playerKind } from './figures';
 import { createFx } from './fx';
 import { createKit } from './kit';
 import { createPeople } from './people';
+import { createShow } from './show';
 import { createStream } from './stream';
 
 const STEP = 1 / 30; // the game’s step (rules/game.js)
@@ -124,6 +127,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   // (each figure and gun takes the house look as it comes into the scene, before it is first drawn)
   const people = createPeople(scene, kit, { tier, renderer, adopt: house.adopt });
   const fx = createFx(scene, { small });
+  const show = createShow(scene, { renderer, tier, layout, people, fx });
   const leafMat = new THREE.MeshStandardMaterial(LEAF);
   // every leaf’s body and edge, a unit cube scaled to its part
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
@@ -271,6 +275,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     if (g.crew) people.sync(g.crew, alpha, camera.position, rooms);
     for (const b of g.combat?.bolts ?? []) fx.bolt(b);
     fx.update(dt);
+    show.sync({ g, at, yaw, crouch: you.crouch, rooms, dt, t: now });
     // a room just built, the Falcon berthed late, a reflection made again:
     // each brings materials the house look hasn’t met (adopting is once a material)
     if (frames++ % 30 === 0 || stream.built.size !== seenRooms) {
@@ -295,6 +300,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     person?.dispose();
     person = null;
     people.dispose();
+    show.dispose();
     fx.dispose();
     for (const id of [...leaves.keys()]) dropLeaves(id);
     stream.dispose();
@@ -306,7 +312,11 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     renderer.toneMappingExposure = was.exposure;
   }
 
-  const warm = (target = null) => fx.warm(renderer, camera, target);
+  const warm = (target = null) => Promise.all([fx.warm(renderer, camera, target), show.warm(renderer, camera, target)]);
+  // the game’s events since the last frame, for the flashes, sparks and clashes they make
+  const hear = (events) => {
+    if (!disposed) show.hear(events);
+  };
 
-  return { scene, camera, layout, ready: stream.ready, sync, warm, resize, render: () => renderer.render(scene, camera), dispose };
+  return { scene, camera, layout, ready: stream.ready, sync, hear, warm, resize, render: () => renderer.render(scene, camera), dispose };
 }
