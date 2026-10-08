@@ -20,7 +20,9 @@
 // it's the classic chain. A drawn plan has side objectives too (bomber
 // waves, aces) and a few of each side's escorts lost along the way, at
 // seeded times (never the ships the objectives are on, nor the films' named
-// ones: their set pieces have parts for them).
+// ones: their set pieces have parts for them), and those a set piece loses
+// at times of its own (the menus' `losses`: each with `by`, the piece's
+// name, so the piece knows its own and plays them out when they fall).
 //
 // The runners launch at fixed seconds of the battle (not when you arrive):
 // the last of them out by the clock, and the one that would decide it, if
@@ -33,7 +35,7 @@
 //   → { id, kind, length, attacker, defender, ai: { tAi }, stages: [{ id,
 //   type, need?, opensAt, shields?, why?, breaks?, crew?, interdicts?,
 //   objectives: [{ id, type, kind, name, hp, on, … }] }], runners, side,
-//   losses: [{ team, index, at }], pinned }
+//   losses: [{ team, index, at, by? }], pinned }
 // (`shields`: the objective ship's shield stands while the stage does;
 // `why`: the battle's end, said, when the last stage goes; `breaks`: the
 // objective ship breaks up when it does; `on`: where the objective is, a
@@ -84,14 +86,16 @@ function chainOf(objectivesOn) {
 
 // a few of each side's escorts lost along the way, at seeded times: not the
 // ships the objectives are on, nor the ones with names (the films' ships:
-// their set pieces have parts for them)
-function lossesOf(c, stages, rand, length) {
+// their set pieces have parts for them), nor the ones a set piece already
+// loses (`taken`)
+function lossesOf(c, stages, rand, length, taken = []) {
   const used = new Set();
   for (const s of stages) for (const o of s.objectives) if (typeof o.on?.ship === 'number') used.add(o.on.ship);
   const objective = c.objectivesOn === 'interdictor' ? c.capitals[c.defender].findIndex((x) => x.kind === 'interdictor') : 0;
+  const gone = new Set(taken.map((l) => `${l.team}:${l.index}`));
   const out = [];
   for (const team of [0, 1]) {
-    const free = (c.capitals[team] ?? []).map((cap, i) => ({ cap, i })).filter(({ cap, i }) => cap.role === 'escort' && !cap.name && !(team === c.defender && (used.has(i) || i === objective)));
+    const free = (c.capitals[team] ?? []).map((cap, i) => ({ cap, i })).filter(({ cap, i }) => cap.role === 'escort' && !cap.name && !gone.has(`${team}:${i}`) && !(team === c.defender && (used.has(i) || i === objective)));
     const n = Math.min(Math.max(0, free.length - 1), Math.floor(rand() * 3));
     for (let k = 0; k < n; k++) {
       const [{ i }] = free.splice(Math.floor(rand() * free.length), 1);
@@ -129,7 +133,10 @@ export function planFor(input, menus = null) {
     return { ...fits[Math.floor(rand() * fits.length)], opensAt: PLAN.gates[index] };
   });
   plan.side = menus.side?.(c) ?? [];
-  plan.losses = menu.losses === false || !c.capitals ? [] : lossesOf(c, plan.stages, rand, length);
+  // the ships a set piece loses at its own times (the superlaser's, at
+  // Endor), then a few more along the way, unless the menu's pinned its own
+  const pieces = c.capitals ? (menus.losses?.(c, plan.stages) ?? []) : [];
+  plan.losses = menu.losses === false || !c.capitals ? pieces : [...pieces, ...lossesOf(c, plan.stages, rand, length, pieces)].sort((a, b) => a.at - b.at);
   plan.pinned = menu.id ?? null;
   return plan;
 }

@@ -168,11 +168,36 @@ describe('planOf', () => {
         expect(on.some((o) => o.ship === l.index && l.team === plan.defender)).toBe(false);
         const objective = laid.objectivesOn === 'interdictor' ? laid.war.sides[plan.defender].capitals.findIndex((c) => c.kind === 'interdictor') : 0;
         expect(l.team === plan.defender && l.index === objective).toBe(false);
-        expect(cap.name ?? null).toBeNull();
+        // (a set piece's own losses may take a named ship, as the films did: the superlaser the Liberty)
+        if (!l.by) expect(cap.name ?? null).toBeNull();
         lost += 1;
       }
     }
     expect(lost).toBeGreaterThan(10);
+  });
+
+  it('has the Death Star’s superlaser take the Rebel cruisers at Endor, on the shared clock, whoever’s attacking, and nowhere else', () => {
+    for (const [att, def] of [
+      ['rebel', 'empire'],
+      ['empire', 'rebel'],
+    ]) {
+      const { plan, laid } = planAt('endor', att, def);
+      const shots = plan.losses.filter((l) => l.by === 'superlaser');
+      expect(shots.length, att).toBeGreaterThanOrEqual(3);
+      expect(shots[0].at).toBeGreaterThanOrEqual(50);
+      shots.forEach((l, i) => {
+        const cap = laid.war.sides[0].capitals[l.index];
+        expect(l.team).toBe(0);
+        expect(cap.role).toBe('escort');
+        expect(cap.size).toBeGreaterThan(4);
+        expect(l.at).toBeLessThan(plan.length);
+        if (i) expect(l.at - shots[i - 1].at).toBeGreaterThanOrEqual(70);
+      });
+      // (and no ship's lost twice, to the superlaser and along the way)
+      expect(new Set(plan.losses.map((l) => `${l.team}:${l.index}`)).size).toBe(plan.losses.length);
+    }
+    expect(planAt('endor', 'republic', 'separatists', 'clone').plan.losses.some((l) => l.by)).toBe(false);
+    expect(planAt('yavin', 'rebel', 'empire').plan.losses.some((l) => l.by)).toBe(false);
   });
 });
 

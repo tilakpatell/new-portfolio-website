@@ -177,6 +177,11 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       const o = st?.objectives.find((x) => x.id === id);
       return o ? { ...o, open: Boolean(st.stages[o.stage]?.open), active: st.stage === o.stage } : null;
     },
+    // the shared clock, and the capital ships the director loses on it (a
+    // set piece plays out its own, `by` it: Endor's superlaser), so a set
+    // piece's moments are the same for every pilot, not timed from when you came
+    clock: () => sharedT(),
+    losses: () => shared()?.losses ?? null,
     event: (id) => sayEvent(id),
     points: (n) => score(n),
     tookPart: () => tookPart,
