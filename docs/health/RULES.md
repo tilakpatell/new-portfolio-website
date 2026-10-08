@@ -54,6 +54,20 @@ One house UI: the shell, the classic pages, the universe map and every world's H
 
 The measure's `kbd-styles` counts the CSS rules that draw a key cap outside the house `.kbd` (`src/index.css`); lower is better. It walks `src/**/*.css` itself, leaves out `src/runtime/hud/hud.css` until the world kit's own cap is folded into the house one, and has no budget until both have landed (spec section 8, C1).
 
+## The worlds' HUDs
+
+A world's HUD is built from the kit in `src/runtime/hud/` (`index.js` lists the parts) and imports it from there only. The kit holds the rules (`hud.js`, tested), the frame (`Hud.jsx`), one part per idea (Menu, Prompt, Exit, Objective, Toast, Bubble, QuestList, PlayersChip, Stick, TouchButton, `fitCanvas`) and the tokens (`hud.css`). A world keeps its face: it skins the parts with its own classes, and the kit's rules weigh (0,0,1), so any world class wins.
+
+- **Rows, not sums.** The top row, the foot and the thumbs are laid out by `layoutRows` and measured. A position is a kit token (`--hud-pad`, `--hud-pad-b`, `--hud-pad-l/-r`, `--guide-reserve`, `--guide-clear`, `--hud-under`, `--hud-foot`) or a measurement, never a hand sum of other things' sizes.
+- **One of each.** One Menu (the world's settings, Things to do, Controls opening the site's guide, the players chip, the way out read from the view: "Universe map" or "Classic site"); one prompt, key first ("E Go in · Burger Mart"), the button itself on touch; one way out of an inner place (the world's verb, or "Leave", with Esc); one toast, top centre under the top row.
+- **Plain values in.** Kit parts take resolved values (a count, a callback, `{ label, to }`); `src/runtime` imports nothing from `src/components`.
+- **Readable.** Nothing a player reads while playing is under 0.7 rem. Text over the 3D sits on glass at alpha 0.78 or more, never blurred (a blur over a canvas redrawn every frame costs a frame).
+- **Numbers through refs.** A frame loop writes the HUD's numbers into the elements it holds, not into React state.
+- **The keys are written once**, in `src/components/guide/pages.js`; a world's Controls opens the guide.
+- **Touch.** The kit's Stick (116/46, radial, a dead zone) and TouchButton (76 for one main action, 64, 52); the right column keeps the guide's corner.
+
+`hud-kit` in the measure counts the worlds whose HUD imports nothing from the kit; it only goes down.
+
 ## Never
 
 - Reformat lines you aren't moving.

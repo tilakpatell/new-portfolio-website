@@ -192,12 +192,11 @@ import { createNearMaps } from './nearMaps';
 import { poseFor } from './poses';
 import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } from './remover';
 import { NX5_LEN, createRemoverView } from './removerView';
-import { createSky } from './skyShader';
-import { createStarField, loadStarCatalog } from './starField';
+import { createSky } from '../galaxy/sky';
+import { SYSTEMS } from '../galaxy/systems';
 import { deedToEarn } from './economy';
 import { createPayLedger, hunterEarn } from './earnRules';
 
-const STARS_LOW = 9000; // of the real sky's (starField.js), on a weak device: about the naked eye's
 const STREAKS = 220;
 const BOLTS = 40; // shots in flight at once (a spread throws five)
 const MISSILES = 8; // heavy rounds in flight at once (weapons.js)
@@ -501,8 +500,6 @@ export async function create(canvas, ctx) {
     seed = (seed * 16807) % 2147483647;
     return seed / 2147483647;
   };
-  // the real sky's stars, fetched while the rest is built (starField.js)
-  const catalogue = loadStarCatalog();
   const rings = orbits();
   map.add(rings);
   // the asteroid belt, and dust round the camera to feel the speed by (belt.js)
@@ -611,27 +608,22 @@ export async function create(canvas, ctx) {
   const tier = device().tier;
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
   const T = await loadTextures({ small });
-  // the stars, brightest first, so a weak device draws the naked eye's
-  const stars = createStarField(await catalogue);
-  map.add(stars);
-  if (tier === 'low') stars.geometry.setDrawRange(0, STARS_LOW);
 
   // what metal reflects, and the passes after the scene (post.js)
   let env = spaceEnvironment(renderer, T['sky-glow']);
   scene.environment = env.texture;
   const post = createPost(renderer, scene, camera, { small });
 
-  // the sky: the Milky Way, all the way round, turning with the map and
-  // riding with the camera (so it's always as far off), drawn sharp at the
-  // screen's own resolution (skyShader.js: the photo for its light, the
-  // fine detail and the faintest stars drawn there; its brighter stars too
-  // if the catalogue's couldn't be had, fewer layers on a weaker device)
-  let sky = null;
-  if (T['sky-glow']) {
-    const layers = stars.geometry.getAttribute('position').count ? 1 : tier === 'low' ? 1 : tier === 'high' ? 3 : 2;
-    sky = createSky(T['sky-glow'], { layers });
-    map.add(sky);
-  }
+  // the sky: the Star Wars galaxy's (galaxy/sky.js), its disc and dust,
+  // its core and nebulae, as Kashyyyk sees it (the core a third of the way
+  // in: bright, not blinding), without its suns (the map has its own) or
+  // the other systems' stars to jump to; turning with the map and riding
+  // with the camera, baked once into a cube
+  const sky = createSky({ small, renderer, beacons: false });
+  sky.setSystem({ ...SYSTEMS.find((s) => s.id === 'kashyyyk'), suns: [] });
+  sky.setRatio(gl.ratio);
+  map.add(sky.group);
+  sky.prepare(renderer).then(() => sky.bake(renderer));
 
   // deep space, out past the home system: its wonders, and the trench run
   // round the Death Star's middle
@@ -4868,7 +4860,7 @@ export async function create(canvas, ctx) {
     const launching = moveMissiles(dt);
     if (armory) armory.update(dt);
     sun.update(t, camera);
-    stars.material.uniforms.uDpr.value = gl.ratio; // (the watchdog may have changed it)
+    sky.setRatio(gl.ratio); // (the watchdog may have changed it)
     // each place's own motion (a station's lights, particles, its screen)
     // only while it's in view and more than a speck
     viewFrustum.setFromProjectionMatrix(viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
@@ -4944,8 +4936,7 @@ export async function create(canvas, ctx) {
       tr.near(camLocal);
     }
     bend();
-    if (sky) sky.position.copy(camLocal);
-    stars.position.copy(camLocal);
+    sky.group.position.copy(camLocal);
     const dustWant = !reduced && flying() && !onFoot() && state.view !== 'map' ? 0.35 + 0.65 * clamp01(Math.abs(state.ship.speed) / SHIP.cruise) : 0;
     dustAmount += (dustWant - dustAmount) * clamp01(dt * 3);
     dust.update(camLocal, dustAmount, gl.ratio);
@@ -5510,7 +5501,7 @@ export async function create(canvas, ctx) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
       gl.setSize(size.w, size.h);
-      stars.material.uniforms.uDpr.value = gl.ratio;
+      sky.setRatio(gl.ratio);
       measure();
       watchPanel();
     },
@@ -5550,7 +5541,6 @@ export async function create(canvas, ctx) {
     lowerQuality() {
       state.tLow = (performance.now() - t0) / 1000;
       state.low = true;
-      stars.geometry.setDrawRange(0, STARS_LOW);
       post.off();
       blasts.setMode('pop');
       ctx.invalidate();
