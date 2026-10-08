@@ -302,6 +302,21 @@ def main():
             if s.get("of") == w or q:
                 seeded[w].append((s, g, q))
         seeds[w] = [np.array(g["vp"]) for _, g, _ in seeded[w]]
+    # a voice nothing seeds (an ensemble's: their quotes rarely come out word for word) starts from
+    # whoever is heard most in their own scenes, so long as it isn't a voice already known
+    known = {w: pick.centre(s) for w, s in seeds.items() if len(s)}
+    known.update({w: np.asarray(c, dtype=np.float32) for w, c in json.loads((GRAB / "centroids.json").read_text(encoding="utf-8")).items() if w not in known} if (GRAB / "centroids.json").exists() else {})
+    for w in voices:
+        if seeds[w] or w not in wanted:
+            continue
+        mine = {s["id"] for s in srcs[w] if not s.get("of")}
+        own = [(s, g) for s, g in pool[w] if s["id"] in mine and g.get("vp") and g["end"] - g["start"] >= 1.5]
+        found = pick.dominant([(np.array(g["vp"]), g["end"] - g["start"]) for _, g in own], {v: c for v, c in known.items() if v != w})
+        seeds[w] = found
+        seeded[w] = [(s, g, None) for s, g in own if any(np.allclose(np.array(g["vp"]), f) for f in found)]
+        if found:
+            known[w] = pick.centre(found)
+            print(f"  ({w}: no clip or quote to start from; starting from the voice heard most in their own scenes, {len(found)} utterances)")
     import judge
 
     cents = pick.refine(seeds, {w: [(np.array(g["vp"]), g["end"] - g["start"]) for _, g in pool[w]] for w in voices})

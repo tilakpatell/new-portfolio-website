@@ -34,7 +34,7 @@ export const MODELS = {
   nevarroarch: { made: 'meshy', as: 'the gate of Nevarro City', metres: 11, tint: '#b6b2aa', detail: 'concrete' },
   lothtemple: { made: 'meshy', as: 'the Jedi temple of Lothal', metres: 70, hero: true, tint: '#a4a99c', detail: 'rock' },
   lothdome: { made: 'meshy', as: 'the domed farmhouses of Lothal', metres: 11, tint: '#e2d3b2', detail: 'concrete' },
-  sundaridome: { made: 'meshy', as: 'Sundari', metres: 51, hero: true, lod: true, tint: '#9d9890', detail: 'concrete' },
+  sundaridome: { made: 'meshy', as: 'Sundari', metres: 51, hero: true, lod: true, tint: '#9d9890', detail: 'concrete', ultra: { tris: 159995, tex: 8192 } },
   // Nevarro rebuilt (scripts/meshy-galaxy-buildings-nevarro.mjs: lifted out
   // of the show's stills, or from words where none shows it whole): the
   // city's grey plaster houses, dome houses and street fronts, its round-

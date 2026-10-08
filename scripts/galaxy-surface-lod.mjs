@@ -102,7 +102,7 @@ function rigged() {
 async function main() {
   const only = process.argv.slice(2);
   const skip = rigged();
-  const files = readdirSync(DIR).filter((f) => f.endsWith('.glb') && !f.endsWith('.lod1.glb') && !skip.has(f.slice(0, -4)));
+  const files = readdirSync(DIR).filter((f) => f.endsWith('.glb') && !f.endsWith('.lod1.glb') && !f.endsWith('.ultra.glb') && !skip.has(f.slice(0, -4)));
   for (const f of files) {
     const kind = f.slice(0, -4);
     if (only.length && !only.includes(kind)) continue;

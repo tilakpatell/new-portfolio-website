@@ -3,7 +3,8 @@
     "lift": [
       "01a111a9-4060-743b-bb52-8eef223097cb"
     ],
-    "model": "01a111b3-e80b-71c8-86e2-f9d08e6b07ec"
+    "model": "01a111b3-e80b-71c8-86e2-f9d08e6b07ec",
+    "ultra": "01a118a4-965a-7238-9bff-9e4217d8a30a"
   },
   "palace": {
     "lift": [
@@ -39,13 +40,15 @@
     "lift": [
       "01a111ad-53a0-774a-a776-6e6d003fecd7"
     ],
-    "model": "01a111b4-0323-749f-9bf2-6a512acf96b6"
+    "model": "01a111b4-0323-749f-9bf2-6a512acf96b6",
+    "ultra": "01a118a4-99d8-7267-afe8-e90ad1b4ffd3"
   },
   "citadel": {
     "lift": [
       "01a111ad-b28e-701d-b576-74335ecadbac"
     ],
-    "model": "01a111b4-0748-7142-9013-383b2b2eea55"
+    "model": "01a111b4-0748-7142-9013-383b2b2eea55",
+    "ultra": "01a118a4-9251-7275-a819-a84fee52929c"
   },
   "kachirho": {
     "lift": [
@@ -70,7 +73,8 @@
     "lift": [
       "01a111e3-d1b6-77a6-b61a-59909d1aee6a"
     ],
-    "model": "01a111e9-c929-72e9-8e22-144278c002c6"
+    "model": "01a111e9-c929-72e9-8e22-144278c002c6",
+    "ultra": "01a118a4-9d67-732b-b931-4e446843a744"
   },
   "yodahut": {
     "lift": [
