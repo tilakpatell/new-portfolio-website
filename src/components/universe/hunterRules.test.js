@@ -3,6 +3,7 @@ import { BOMB, FACTIONS, FIGHT, HOLDOFF, HUNTER_KINDS, HUNTER_SENSES, LOSE, NAME
 import { KINDS as GALAXY_KINDS, FACTIONS as GALAXY_FACTIONS } from '../galaxy/hunted';
 import { PACE, SHIP } from './ship';
 import { nose, sweptHit } from './targeting';
+import { POWERS } from './shipPowers';
 
 // a seeded random, so a fight is the same every time
 const seeded = (seed = 7) => () => {
@@ -990,6 +991,28 @@ describe('what the crews’ ship powers do to them', () => {
     const [nx, ny, nz] = nose(s);
     return { x: s.x + nx * d, y: s.y + ny * d, z: s.z + nz * d };
   };
+
+  // (as the galaxy steps them while Force Focus is on: their clock at its
+  // `slow`, the ship as it is; it reads your speed, not how far you moved,
+  // so their leads on you stay true)
+  it('lands at most half the hits on you while Force Focus slows their clock, over twenty fights', () => {
+    const hits = (slow) => {
+      let n = 0;
+      for (let seed = 1; seed <= 20; seed++) {
+        const hunt = createHunt({ rand: seeded(seed) });
+        let s = start({ speed: 6 });
+        hunt.pack('empire', s, { size: 4, ace: false });
+        for (let t = 0; t < 20; t += DT) {
+          s = move({ ...s, heading: s.heading + 0.3 * DT });
+          for (const e of hunt.update(DT * (t >= 15 ? slow : 1), s)) if (t >= 15 && e.type === 'laser') n++;
+        }
+      }
+      return n;
+    };
+    const normal = hits(1);
+    expect(normal).toBeGreaterThan(5);
+    expect(hits(POWERS.focus.slow)).toBeLessThanOrEqual(normal / 2);
+  });
 
   it('lets a ghost’s lasers fly on past: no hits while it jinks, and a laser that crossed it is still going', () => {
     let normal = 0;
