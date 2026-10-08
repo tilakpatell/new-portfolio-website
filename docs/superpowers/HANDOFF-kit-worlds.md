@@ -59,6 +59,7 @@ Follow the spec over the plan, the code over both. Fix the plan's line in your P
 |---|---|---|---|
 | design | the architecting session | `claude/pensive-curie-kjivhw` | (carried by Phase 1's PR) |
 | 1 | the implementation session | `claude/kit-worlds-p1` | #696: `scripts/kit/` (import, manifest, fbx), `public/kit/{naturemega,space,farm}`, `src/lib/three/kit.js` (loader, pools), `wind({ weight })`, `coverageMips`, budgets' `near/mid/leaves`, galaxy `kit:` rows, `kit-check`, `kit-shot`, credits |
+| 2 | the implementation session | `claude/natural-worlds-p2` | #706: `puffFor` (the kit's far band), pools draw and face it, `createLeaves` by budget, `weather.js` (his weather and day, pure) |
 | 4 | a second session | `claude/planets-data` | (in progress) |
 
 Phase 1's findings the next phases rely on: three's GLTFLoader names the weight `_wind` (lower case) and a node `Birch_1.lod1` as `Birch_1lod1` (`userData.name` keeps the original); kit geometry is meshopt-quantised, so `loadKit` bakes bending parts into Float32 metres with an identity `local` (the wind reads heights in metres); bark bends with its crown; `trunk` is bark-only; a family over 1.5 MiB is split into numbered files; `createPool` refuses rigged models, warns when a model fails, falls back to full parts when LOD1 fails, and `shift` re-bands nothing. Natural worlds Phases 2 and 3 were already on `main` (#638, #648), so this plan's Phases 2 and 3 are their deltas only.
