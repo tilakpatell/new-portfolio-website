@@ -49,7 +49,13 @@ Follow the spec over the plan, the code over both. Fix the plan's line in your P
 | Phase | Branch | Merged |
 |---|---|---|
 | design | `claude/rm-worlds-design` | this PR |
+| 0: the engine's seams, Gazorpazorp bare | `claude/rm-worlds-p0` | PR #PR0 |
 
 ## Left
 
 (Filled by each phase: what the engine lacked, one line and a proposal each.)
+
+- **A talk bubble over the speaker** (0): the scene says who talks but not where they are on screen, so `RmSurface` pins the kit's `Bubble` above the foot. Proposal: the scene writes the speaker's screen spot to a `talkAt` ref the page hands in, as it does the compass.
+- **The touch buttons are the galaxy's** (0): `SurfaceView` draws Vent, Aim and the hero's two powers whatever the page; a planet has no heroes. Proposal: `SurfaceView` takes a `buttons` list, the galaxy's by default.
+- **`BIG` grows by phase** (0): `destinations.js`'s `BIG` holds only the planets with a site (Gazorpazorp so far). Each planet's phase adds its id there and its site to `PLANET_SITES` together (the test holds them equal); its old box task leaves C-137's `TASKS` with it.
+- **Headless landings are slow** (0): software GL draws about a frame a second, so the flight check moves the scene's clock on with `window.__surfaceDo('advance', s)` (12 s for the landing; W and Shift held through another `advance` to walk) and sets `tp-quality` to `low`; screenshots need a 180 s timeout.
