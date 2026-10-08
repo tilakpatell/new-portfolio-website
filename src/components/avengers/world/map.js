@@ -6,9 +6,12 @@ import { stoneFor } from './labels';
 // backpacks still to find near you, the swing tour's next ring, and you.
 const MAP = { x0: -60, z0: -20, size: 300 };
 const PACK_SHOWN = 42; // a backpack shows on the map this near (m)
-export function drawMap(c, h, prog, others, found = [], tour = null) {
+export function drawMap(c, box, h, prog, others, found = [], tour = null) {
   const g = c?.getContext('2d');
   if (!g) return;
+  // (`box`: runtime/hud's fitCanvas, at 150 units; none yet, the canvas's own 150 px)
+  const sc = box?.s ?? 1;
+  g.setTransform(sc, 0, 0, sc, 0, 0);
   const k = 150 / MAP.size;
   const at = (x, z) => [(x - MAP.x0) * k, (z - MAP.z0) * k];
   const poly = (pts) => {

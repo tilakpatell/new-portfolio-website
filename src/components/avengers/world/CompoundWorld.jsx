@@ -13,6 +13,7 @@ import './world.css';
 import '../../../styles/lazy/avengers.css';
 import CompoundHud from './CompoundHud';
 import { drawMap } from './map';
+import { fitCanvas } from '../../../runtime/hud';
 import { clock, stoneFor, stoneLine } from './labels';
 import { useVoiced } from '../../../lib/useVoiced';
 import { sayVoiced } from '../../../lib/voiced';
@@ -109,6 +110,23 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.25 });
   const canvas = useRef(null);
   const map = useRef(null);
+  // the map's canvas, as many pixels as the screen has under it (sharp on a
+  // 2× screen, and at a phone's 96 px): fitted when its box changes, not
+  // every frame; drawn in 150ths of its width, whatever its size
+  const mapBox = useRef(null);
+  useEffect(() => {
+    const c = map.current;
+    if (!c) return undefined;
+    const fit = () => {
+      // (hidden, as in photo mode, it keeps the last fit)
+      const b = fitCanvas(c, 150);
+      if (b) mapBox.current = b;
+    };
+    fit();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
+    ro?.observe(c);
+    return () => ro?.disconnect();
+  }, []);
   const sim = useRef(null);
   if (!sim.current) {
     const kept = local.get(AT, null);
@@ -528,7 +546,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         bubbleRef.current.style.opacity = '1';
       } else bubbleRef.current.style.opacity = '0';
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, s.h, p, others, s.found, s.tour);
+    if (++s.frame % 4 === 0) drawMap(map.current, mapBox.current, s.h, p, others, s.found, s.tour);
     if (s.frame % 120 === 0 && s.h.mode === 'ground') local.set(AT, keep(s.h));
   }, live);
 
@@ -572,29 +590,8 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     drag.current = null;
   };
 
-  // the touch stick: drag from where you put your thumb
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  // the touch stick (the HUD kit's: one thumb at a time, from where it went down)
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   // to the swing tour's start: on the drive behind the first ring, facing it
   const toTour = () => {
