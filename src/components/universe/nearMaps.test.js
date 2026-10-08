@@ -312,7 +312,9 @@ describe('step 0: what a far planet shows, right after the first frame', () => {
   // idle moments the test hands out
   const idler = () => {
     const q = [];
-    return { idle: (fn) => q.push(fn), run: () => q.shift()?.(), get size() { return q.length; } };
+    const o = { idle: (fn) => q.push(fn), run: () => q.shift()?.() };
+    Object.defineProperty(o, 'size', { get: () => q.length });
+    return o;
   };
 
   it('fetches nothing for the first frame, every planet’s later maps at the first idle moment, and puts them on one planet per idle moment, nearest first', async () => {
@@ -415,6 +417,50 @@ describe('step 0: what a far planet shows, right after the first frame', () => {
     await flush();
     near.update([100, 0, 0], [a]); // step 1 goes; step 0 still wears the file
     expect((await load.mock.results[0].value).disposed).toBe(false);
+  });
+
+  it('a scene that goes mid-way frees every planet’s set, landed or still in flight, and puts none on', async () => {
+    const { load, calls } = loader();
+    const idler0 = idler();
+    const { idle, run } = idler0;
+    const forget = vi.fn();
+    const near = createNearMaps({ level: 'high', load, forget, idle });
+    const ps = [far('a', 100), far('b', 200), far('c', 300)];
+    near.update([0, 0, 0], ps);
+    run(); // every fetch at once
+    expect(calls).toHaveLength(6);
+    for (const c of calls.slice(0, 4)) c.resolve(); // a's and b's land; c's are still on the way
+    await flush();
+    near.dispose(); // (a's turn queued, not yet taken)
+    for (const c of calls.slice(4)) c.resolve();
+    await flush();
+    while (idler0.size) run(); // (an idle moment that comes after: nothing to do)
+    await flush();
+    for (const [i, r] of load.mock.results.entries()) expect((await r.value).disposed, calls[i].url).toBe(true);
+    expect(forget.mock.calls.map(([u]) => u).sort()).toEqual(calls.map((c) => c.url).sort());
+    for (const p of ps) expect(p.swapMaps).not.toHaveBeenCalled();
+    expect(near.resident(0)).toEqual([]);
+  });
+
+  it('a scene that goes while a set is being sent up frees it once it’s up, the rest as they land', async () => {
+    const { load, calls } = loader();
+    const { idle, run } = idler();
+    const forget = vi.fn();
+    let sent = null;
+    const near = createNearMaps({ level: 'high', load, forget, idle, upload: () => new Promise((r) => (sent = r)) });
+    const ps = [far('a', 100), far('b', 200)];
+    near.update([0, 0, 0], ps);
+    run();
+    for (const c of calls) c.resolve();
+    await flush();
+    run(); // a's turn: sent up, slowly
+    await flush();
+    near.dispose();
+    sent();
+    await flush();
+    for (const r of load.mock.results) expect((await r.value).disposed).toBe(true);
+    expect(forget).toHaveBeenCalledTimes(4);
+    expect(ps[0].swapMaps).not.toHaveBeenCalled();
   });
 
   it('runs on every level, low and a phone too (it’s what they wore from the start before)', async () => {

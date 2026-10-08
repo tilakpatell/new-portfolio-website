@@ -234,6 +234,22 @@ describe('every map’s file at every level', () => {
       failing.clear();
     }
   });
+  it('on a phone, retries no wider than 1024: a 2048 standard map whose smallest fails goes without', async () => {
+    failing.add('/textures/universe/earth-sm.webp');
+    failing.add('/textures/universe/caribbean-sm.webp');
+    try {
+      asked.length = 0;
+      const phone = await loadTextures({ small: true });
+      expect(phone.earth).toBeUndefined();
+      expect(asked.map(([u]) => u)).not.toContain('/textures/universe/earth.webp');
+      expect(phone.caribbean.url).toBe('/textures/universe/caribbean.webp'); // (a 1024: still tried)
+      asked.length = 0;
+      const desk = await loadTextures({ small: false });
+      expect(desk.earth.url).toBe('/textures/universe/earth.webp');
+    } finally {
+      failing.clear();
+    }
+  });
   it('keeps what it fetches before the first frame on high within the budget (lib/budgets)', async () => {
     asked.length = 0;
     await loadTextures({ small: false });

@@ -150,8 +150,9 @@ function standIn(name) {
 export const isStandIn = (t) => t?.userData?.standIn === true;
 
 // Up front: every map but the LATER ones at its smallest file, the same on
-// every device; `small` (a phone, or anything below a desktop) only tells
-// the builders, which make their spheres coarser.
+// every device; `small` (a phone, or anything below a desktop, low among
+// them) tells the builders, which make their spheres coarser, and caps the
+// retry of a failed file at 1024 as step 1 is capped there.
 export async function loadTextures({ small = false } = {}) {
   const T = { small };
   await Promise.all(
@@ -163,8 +164,10 @@ export async function loadTextures({ small = false } = {}) {
       // (decoded off the main thread, as sharp as the device's tier allows,
       // and shared with any other scene that wants the same map; the
       // standard file where the smallest won't come, so one bad fetch doesn't
-      // lose a map for the visit; else whoever wanted it does without)
-      for (const file of [...new Set([first(name), standard(name)])]) {
+      // lose a map for the visit, but on a phone none wider than step 1 would
+      // take there, 1024; else whoever wanted it does without)
+      const retry = small && wide(name) ? [] : [standard(name)];
+      for (const file of [...new Set([first(name), ...retry])]) {
         try {
           T[name] = await loadTexture(BASE + file, { color: MAPS[name].srgb });
           return;

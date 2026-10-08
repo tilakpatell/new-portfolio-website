@@ -80,6 +80,7 @@ export function createNearMaps({ level = detailLevel(), small = false, load = lo
   const sets = { 0: new Map(), 1: new Map(), 2: new Map() };
   const all = () => [...sets[0].values(), ...sets[1].values(), ...sets[2].values()];
   let queue = null; // step 0's planets, nearest first (made at the first update)
+  let pending0 = []; // their sets asked for and not yet taken to be put on
   let gone = false;
   const v = new THREE.Vector3();
   const lists = new Map(); // planet → its sets (worked out once)
@@ -164,14 +165,22 @@ export function createNearMaps({ level = detailLevel(), small = false, load = lo
 
   // step 0: at the first idle moment every planet's later maps asked for at
   // once (about 0.78 MB in all), then each planet's sent up and put on at an
-  // idle moment of its own, nearest first, once they've landed
+  // idle moment of its own, nearest first, once they've landed. A set stays
+  // pending till its moment takes it: the scene gone before then, it's
+  // freed as it lands (dispose), never put on
   const later = () => {
     if (gone) return;
-    const sets0 = queue.map((q) => fetchSet(0, q.p, q.later));
+    pending0 = queue.map((q) => fetchSet(0, q.p, q.later));
     const next = () => {
-      const f = sets0.shift();
+      const f = pending0[0];
       if (!f || gone) return;
-      f.got.then(() => idle(() => putOn(0, f.s).then(next)));
+      f.got.then(() =>
+        idle(() => {
+          if (gone || pending0[0] !== f) return; // (dispose has it)
+          pending0.shift();
+          putOn(0, f.s).then(next);
+        }),
+      );
     };
     next();
   };
@@ -210,6 +219,9 @@ export function createNearMaps({ level = detailLevel(), small = false, load = lo
     dispose() {
       gone = true;
       for (const step of [2, 1, 0]) for (const id of [...sets[step].keys()]) drop(step, id);
+      // (step 0's sets not yet taken: each freed as it lands; one being sent
+      // up is freed by its own putOn)
+      for (const f of pending0.splice(0)) f.got.then(() => free(f.s));
     },
   };
 }
