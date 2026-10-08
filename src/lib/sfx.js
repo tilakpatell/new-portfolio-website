@@ -6,6 +6,7 @@
 // All of these are original sounds, built from noise, oscillators and filters.
 
 import { audioContext, output } from './audio';
+import { createImpacts } from './impact';
 
 const env = (param, t, points) => {
   param.cancelScheduledValues(t);
@@ -20,8 +21,9 @@ const env = (param, t, points) => {
 const noiseCache = new WeakMap();
 function noise(ac, seconds = 4, color = 'white') {
   const key = `${color}-${seconds}`;
-  let per = noiseCache.get(ac);
-  if (!per) noiseCache.set(ac, (per = new Map()));
+  // (a pitched sound’s context is a stand-in: cache on the real one)
+  let per = noiseCache.get(bare(ac));
+  if (!per) noiseCache.set(bare(ac), (per = new Map()));
   if (per.has(key)) return per.get(key);
   const n = Math.floor(ac.sampleRate * seconds);
   const buf = ac.createBuffer(2, n, ac.sampleRate);
@@ -47,7 +49,8 @@ function noiseSource(ac, color, seconds) {
 }
 
 const irCache = new WeakMap();
-function hall(ac, seconds = 3) {
+function hall(acIn, seconds = 3) {
+  const ac = bare(acIn);
   if (irCache.has(ac)) return irCache.get(ac);
   const n = Math.floor(ac.sampleRate * seconds);
   const ir = ac.createBuffer(2, n, ac.sampleRate);
@@ -82,17 +85,95 @@ const ready = (ac, dest) => {
   return a && d ? [a, d] : [null, null];
 };
 
+// A sound by force (docs/superpowers/specs/2026-10-08-game-feel-design.md
+// §1): every sound below takes `{ gain = 1, pitch = 1 }` as its last
+// argument. The gain trims the whole sound through one gain node in front of
+// where it goes (clamped to 0…1, so no sound gets louder than it was made;
+// at 0 nothing is made at all); the pitch scales every oscillator’s
+// frequency and every buffer’s playback rate. Without it, or at 1 and 1, a
+// sound is made exactly as it always was.
+const bares = new WeakMap(); // a pitched stand-in → the real context
+const bare = (ac) => bares.get(ac) ?? ac;
+// (only those two keys: a node is never taken for them, though a test’s fake
+// gain node is a plain object with a `gain`)
+const isVoice = (a) => a != null && typeof a === 'object' && Object.getPrototypeOf(a) === Object.prototype && Object.keys(a).every((k) => k === 'gain' || k === 'pitch');
+// the options off the end of a call’s arguments, if they are there
+const voiceOf = (args) => (isVoice(args[args.length - 1]) ? args.pop() : null);
+const gainOf = (v) => Math.min(1, Math.max(0, Number.isFinite(v?.gain) ? v.gain : 1));
+
+// A param whose every value is scaled by `by`: the instance keeps its own
+// class (so an LFO can still be joined to it), with its setters wrapped.
+function scaled(p, by) {
+  let d = null;
+  for (let o = p; o && !d; o = Object.getPrototypeOf(o)) d = Object.getOwnPropertyDescriptor(o, 'value');
+  let held = d && 'value' in d ? d.value : undefined;
+  const read = d?.get ? () => d.get.call(p) : () => held;
+  const write = d?.set ? (v) => d.set.call(p, v) : (v) => (held = v);
+  Object.defineProperty(p, 'value', { configurable: true, get: read, set: (v) => write(v * by) });
+  for (const m of ['setValueAtTime', 'linearRampToValueAtTime', 'exponentialRampToValueAtTime', 'setTargetAtTime']) {
+    const f = p[m];
+    if (typeof f === 'function') p[m] = (v, ...rest) => f.call(p, v * by, ...rest);
+  }
+  const curve = p.setValueCurveAtTime;
+  if (typeof curve === 'function') p.setValueCurveAtTime = (vs, ...rest) => curve.call(p, Float32Array.from(vs, (v) => v * by), ...rest);
+  // what it already holds (an oscillator’s 440, a buffer’s rate of 1)
+  write(read() * by);
+  return p;
+}
+
+// The context a pitched sound is made in: the same context, whose
+// oscillators and buffer sources come out with their pitch params scaled.
+function pitched(ac, by) {
+  const made = { createOscillator: 'frequency', createBufferSource: 'playbackRate' };
+  const stand = new Proxy(ac, {
+    get(t, k) {
+      const v = t[k];
+      if (typeof v !== 'function') return v;
+      if (made[k]) {
+        return (...args) => {
+          const node = v.apply(t, args);
+          if (node?.[made[k]]) scaled(node[made[k]], by);
+          return node;
+        };
+      }
+      return v.bind(t);
+    },
+  });
+  bares.set(stand, ac);
+  return stand;
+}
+
+// Makes `fn` with its voice: straight through when there’s nothing to change.
+function voiced(fn, args, voice) {
+  if (!voice) return fn(...args);
+  const gain = gainOf(voice);
+  const pitch = Number.isFinite(voice.pitch) && voice.pitch > 0 ? voice.pitch : 1;
+  if (gain === 1 && pitch === 1) return fn(...args);
+  const [ac, dest] = ready(args[0], args[1]);
+  if (!ac) return 0;
+  let out = dest;
+  if (gain < 1) {
+    out = ac.createGain();
+    out.gain.value = gain;
+    out.connect(dest);
+  }
+  return fn(pitch === 1 ? ac : pitched(ac, pitch), out, ...args.slice(2));
+}
+
 // The same sound asked for twice within a quarter second plays once (React's
 // development mode runs effects twice; a double-click shouldn't double a boom).
 const lastPlayed = new Map();
 const once = (name, fn) =>
-  function play(ac, ...rest) {
-    if (!ac) {
+  function play(...args) {
+    const voice = voiceOf(args);
+    // (silent: nothing to make, and no turn of the throttle used up)
+    if (voice && gainOf(voice) <= 0) return 0;
+    if (!args[0]) {
       const now = performance.now();
       if (now - (lastPlayed.get(name) ?? -1e9) < 250) return 0;
       lastPlayed.set(name, now);
     }
-    return fn(ac, ...rest);
+    return voiced(fn, args, voice);
   };
 
 // ── The Death Star (or a planet) exploding ─────────────────────────────────
@@ -1630,7 +1711,7 @@ export const superlaser = once('superlaser', superlaserRaw);
 export const hyperspace = once('hyperspace', hyperspaceRaw);
 export const fanfare = once('fanfare', fanfareRaw);
 export const torpedo = once('torpedo', torpedoRaw);
-export const hit = once('hit', hitRaw);
+const hitSound = once('hit', hitRaw);
 export const flyby = once('flyby', flybyRaw);
 export const imperial = once('imperial', imperialRaw);
 export const victory = once('victory', victoryRaw);
@@ -1816,11 +1897,13 @@ export function thud({ gain, pitch = 1, at = null, listener = null, context = au
 
 const every = (ms, fn) => {
   let last = -1e9;
-  return (ac, ...rest) => {
+  return (...args) => {
+    const voice = voiceOf(args);
+    if (voice && gainOf(voice) <= 0) return 0;
     const now = performance.now();
-    if (!ac && now - last < ms) return 0;
+    if (!args[0] && now - last < ms) return 0;
     last = now;
-    return fn(ac, ...rest);
+    return voiced(fn, args, voice);
   };
 };
 export const laser = every(70, laserRaw);
@@ -1835,3 +1918,72 @@ export const warn = every(300, warnRaw);
 export const shatter = once('shatter', shatterRaw);
 export const creak = once('creak', creakRaw);
 export const thunk = every(60, thunkRaw);
+
+// ── a sound by name, and a sound by force ──
+// play(name, { gain, pitch }) → what the sound returns (its length), 0 for
+// none. hit(name, force, rules) plays it at the hit law’s gain and pitch
+// (lib/impact.js) and says whether it did; under the law’s threshold, or
+// within its gap, nothing. `hit` with anything but a name first is still the
+// heavy hit it always was (the Death Star inside, Cybertron).
+const SOUNDS = {
+  boom,
+  superlaser,
+  hyperspace,
+  fanfare,
+  torpedo,
+  hit: hitSound,
+  flyby,
+  imperial,
+  victory,
+  saber,
+  coin,
+  repulsor,
+  ding,
+  knock,
+  transform,
+  thunder,
+  beeps,
+  oneUp,
+  stone,
+  drum,
+  roar,
+  crumble,
+  sizzle,
+  applause,
+  ring,
+  clang,
+  twang,
+  fusion,
+  bridge,
+  zip,
+  alarm,
+  buzz,
+  decode,
+  ghanta,
+  laser,
+  stinger,
+  crackle,
+  shutter,
+  pop,
+  repulse,
+  blast,
+  unibeam,
+  warn,
+  shatter,
+  creak,
+  thunk,
+};
+
+export function play(name, voice) {
+  const sound = Object.hasOwn(SOUNDS, name) ? SOUNDS[name] : null;
+  if (!sound) return 0;
+  return voice ? sound(voice) : sound();
+}
+
+export function hit(...args) {
+  if (typeof args[0] !== 'string') return hitSound(...args);
+  const [name, force, rules = createImpacts()] = args;
+  const r = rules.hit(force, name);
+  if (!r) return false;
+  return play(name, { gain: r.gain, pitch: r.pitch }) > 0;
+}
