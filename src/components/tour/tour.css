@@ -51,7 +51,7 @@
 .tour[data-release] .tour-card { pointer-events: auto; }
 .tour[data-release] .tour-veil { display: none; }
 .tour[data-release] .tour-spot { box-shadow: 0 0 0 2px var(--accent); }
-.tour[data-over] { z-index: 79; }
+.tour[data-over] { z-index: calc(var(--z-dialog) - 1); } /* under the guide or the palette while a release stop lets them open */
 /* on the way to a stop's page: the card in the middle, the page under it dimmed */
 .tour[data-waiting] .tour-text { color: var(--muted); }
 @keyframes tour-in { from { opacity: 0; transform: translateY(6px); } }
