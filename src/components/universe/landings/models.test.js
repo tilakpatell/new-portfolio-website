@@ -106,6 +106,14 @@ describe('a landing’s models', () => {
     const again = { fragmentShader: '#include <normal_fragment_begin>', vertexShader: '' };
     gold.onBeforeCompile(again);
     expect(again.fragmentShader).toContain('float faceDirection = 1.0;');
+    // (and its cut kept as full far off as near: the alpha a mip level
+    // averages away given back, between the map's read and the cut)
+    const far = { fragmentShader: '#include <map_fragment>\n#include <alphatest_fragment>\n#include <normal_fragment_begin>', vertexShader: '' };
+    foliage(Object.assign(new THREE.MeshStandardMaterial(), { userData: { foliage: true } })).onBeforeCompile(far);
+    const at = (s) => far.fragmentShader.indexOf(s);
+    expect(at('textureSize( map, 0 )')).toBeGreaterThan(at('#include <map_fragment>'));
+    expect(at('textureSize( map, 0 )')).toBeLessThan(at('#include <alphatest_fragment>'));
+    expect(far.fragmentShader).toContain('diffuseColor.a *=');
     // (anything else as it was)
     const bark = new THREE.MeshStandardMaterial();
     const before = bark.onBeforeCompile;

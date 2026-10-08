@@ -56,13 +56,28 @@ export function tinted(material, tint) {
 // grass's), and three.js turns a back face's round, which lit half the
 // leaves of a tree from inside it, dark. Done once a material; anything
 // not marked `foliage` (by scripts/quaternius.mjs) is left as it is
+//
+// And its cut stays as full far off as near: a mipmap averages a leaf's
+// edge into the clear round it, so a far crown, alpha-tested, thinned to
+// twigs; its alpha is raised by a quarter a mip level it's read at (Ben
+// Golus's fix for alpha-tested foliage), which keeps about the coverage
+// the full-size map has
 const LIT = THREE.ShaderChunk.normal_fragment_begin.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;');
+const KEPT = `#include <map_fragment>
+#ifdef USE_MAP
+{
+  vec2 texel = vMapUv * vec2( textureSize( map, 0 ) );
+  vec2 dx = dFdx( texel );
+  vec2 dy = dFdy( texel );
+  diffuseColor.a *= 1.0 + max( 0.0, 0.5 * log2( max( dot( dx, dx ), dot( dy, dy ) ) ) ) * 0.25;
+}
+#endif`;
 const lit = new WeakSet();
 export function foliage(material) {
   if (!material?.userData?.foliage || lit.has(material)) return material;
   lit.add(material);
   material.onBeforeCompile = (shader) => {
-    shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_begin>', LIT);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', KEPT).replace('#include <normal_fragment_begin>', LIT);
   };
   material.customProgramCacheKey = () => 'foliage';
   return material;
