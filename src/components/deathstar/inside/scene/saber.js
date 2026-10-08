@@ -65,7 +65,7 @@ const GLOW = 2.6; // the glow’s brightest channel, as light
 const CORE = 4.2; // the core’s, every channel near it: white-hot
 // life: s a trail lasts; slow…fast: m/s of the tip between no trail and a full one; jump: metres between
 // two frames that are a blade put somewhere new, not swung
-const TRAIL = { life: 0.14, slow: 3, fast: 12, jump: 2, bright: 0.9 };
+const TRAIL = { life: 0.14, slow: 3, fast: 12, jump: 2, bright: 0.25 }; // bright: a smear, not a sheet
 // rate: times a second it is drawn anew; reach: metres its end wanders over the body it burns
 const ARC = { rate: 8, jag: 0.22, reach: 0.25, fade: 0.15, core: [2.2, 2.7, 4.2], glow: [0.32, 0.45, 1.5], r: 0.012, halo: 0.07, light: 0xa4bcff };
 const HOT = [4, 3.2, 2.2]; // a spark as it leaves the blades
@@ -73,17 +73,11 @@ const COOL = [1.4, 0.35, 0.06]; // and as it dies
 const FLASH = [4, 3.7, 3.3]; // two blades meeting: white-hot
 const BOLT_FLASH = [3.2, 0.9, 0.5]; // a bolt turned: its own red
 const BLINK = 0.14; // s a flash lasts
-// sparks thrown, the flash’s size in metres and its colour: a parry rings brighter than a block (timing
-// beats strength), a broken guard brightest; a turned bolt flashes its own red
-const CLASHES = {
-  block: { sparks: 14, flash: 0.3, colour: FLASH },
-  parry: { sparks: 26, flash: 0.45, colour: FLASH },
-  break: { sparks: 32, flash: 0.5, colour: FLASH },
-  hit: { sparks: 6, flash: 0.16, colour: FLASH },
-  deflect: { sparks: 8, flash: 0.18, colour: BOLT_FLASH },
-};
+// sparks thrown, the flash’s size in metres and its colour (FLASH unless given): a parry rings brighter
+// than a block (timing beats strength), a broken guard brightest; a turned bolt flashes its own red
+const CLASHES = { block: { sparks: 14, flash: 0.18 }, parry: { sparks: 26, flash: 0.28 }, break: { sparks: 32, flash: 0.32 }, hit: { sparks: 6, flash: 0.1 }, deflect: { sparks: 8, flash: 0.12, colour: BOLT_FLASH } };
 // a push: rings sent along it; a choke: one at the throat every `every` s, tightening
-const RIPPLE = { colour: [0.2, 0.24, 0.32], push: { rings: 3, gap: 0.07, life: 0.5, speed: 6, from: 0.25, to: 1.4, band: 0.22 }, choke: { every: 0.35, life: 0.6, from: 0.17, to: 0.07, band: 0.35 } };
+const RIPPLE = { colour: [0.05, 0.06, 0.08], push: { rings: 3, gap: 0.07, life: 0.5, speed: 6, from: 0.25, to: 1.1, band: 0.12 }, choke: { every: 0.35, life: 0.6, from: 0.17, to: 0.07, band: 0.3 } };
 const [SPARK, FLASHED, PUSHED, GRIPPED] = [0, 1, 2, 3]; // the bits’ kinds
 const LAMP = { blade: 7, bladeReach: 4.5, arc: 40, arcReach: 10 };
 
@@ -127,8 +121,23 @@ const SWINGS = {
 };
 const WIND = 0.75;
 const FOLLOW = 0.45;
+// how each piece eases: off rest and into the top of the wind-up slowly, faster and faster into the
+// blow and slowing out of it (a cut is fastest as it lands), and slowly back to rest
+const EASES = [(x) => x * x * (3 - 2 * x), (x) => x * x, (x) => 1 - (1 - x) * (1 - x), (x) => x * x * (3 - 2 * x)];
 const _way = [0, 0, 0];
 const _keys = [0, 0, 0, 0, 0];
+
+// the way e of the way round from a to b (neither need be of length 1), turning evenly
+function turn(a, b, e, out) {
+  const la = Math.hypot(a[0], a[1], a[2]);
+  const lb = Math.hypot(b[0], b[1], b[2]);
+  const th = Math.acos(clamp((a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (la * lb), -1, 1));
+  const s = Math.sin(th);
+  const p = s < 1e-4 ? 1 - e : Math.sin((1 - e) * th) / s;
+  const q = s < 1e-4 ? e : Math.sin(e * th) / s;
+  for (let i = 0; i < 3; i++) out[i] = (a[i] / la) * p + (b[i] / lb) * q;
+  return out;
+}
 
 export function swing(f, ahead = 0, out = { x: 0, y: 0, z: 0 }) {
   let way = f.guard ? GUARDED : f.stagger > 0 ? REELING : REST;
@@ -142,9 +151,7 @@ export function swing(f, ahead = 0, out = { x: 0, y: 0, z: 0 }) {
     _keys[4] = k.s;
     let i = 0;
     while (i < 3 && t >= _keys[i + 1]) i++;
-    const e = smooth(_keys[i], _keys[i + 1], t);
-    for (let a = 0; a < 3; a++) _way[a] = ways[i][a] + (ways[i + 1][a] - ways[i][a]) * e;
-    way = _way;
+    way = turn(ways[i], ways[i + 1], EASES[i](clamp((t - _keys[i]) / (_keys[i + 1] - _keys[i]), 0, 1)), _way);
   }
   const [r, u, fw] = way;
   const yaw = f.yaw || 0;
@@ -291,7 +298,7 @@ const TRAIL_FRAG = /* glsl */ `
 varying vec3 vColour;
 varying float vEdge;
 void main() {
-  gl_FragColor = vec4(vColour * vEdge * vEdge, 1.0);
+  gl_FragColor = vec4(vColour * vEdge * vEdge * vEdge, 1.0);
   #include <colorspace_fragment>
 }`;
 
@@ -705,7 +712,7 @@ export function createSabers(scene, { tier = 'high' } = {}) {
     clash(at, kind = 'block', dir = null) {
       const c = CLASHES[kind] ?? CLASHES.block;
       throwSparks(at, c.sparks, dir);
-      addBit(FLASHED, at, NONE, c.flash, c.flash * 0.6, 0, BLINK, 0, c.colour);
+      addBit(FLASHED, at, NONE, c.flash, c.flash * 0.6, 0, BLINK, 0, c.colour ?? FLASH);
     },
 
     lightning(from, to, on = true) {

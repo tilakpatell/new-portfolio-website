@@ -271,6 +271,26 @@ describe('the people aboard, drawn', () => {
     people.dispose();
   });
 
+  it('lays down a body whose fall ran its course out of sight, however it was going when the room went out of view', () => {
+    const scene = new THREE.Scene();
+    const people = createPeople(scene, kit, { tier: 'low' });
+    const inView = { shown: () => true, built: () => true, dt: STEP };
+    const outOfView = { shown: () => false, built: () => true, dt: STEP };
+    const alive = [person('seen', 'chewie', 4, 0), person('unseen', 'chewie', -4, 0)];
+    const dead = alive.map((p) => ({ ...p, mode: 'dead', anim: 'die', hp: 0 }));
+    syncs(people, crewOf(...alive), 3, eye, inView);
+    // one killed in view and a third of a second into his fall when a door shuts on him, the other killed behind it
+    syncs(people, crewOf(dead[0], alive[1]), 9, eye, inView);
+    syncs(people, crewOf(...dead), 90, eye, outOfView);
+    syncs(people, crewOf(...dead), 1, eye, inView);
+    const bodies = shown(scene, 'person-chewie');
+    expect(bodies).toHaveLength(2);
+    for (const body of bodies) expect(box(body).max.y).toBeLessThan(1);
+    syncs(people, crewOf(...dead), 30, eye, inView);
+    for (const body of bodies) expect(box(body).max.y).toBeLessThan(1);
+    people.dispose();
+  });
+
   it('lets a body go once its room is freed, and doesn’t draw it again when the room is built anew', () => {
     const scene = new THREE.Scene();
     const people = createPeople(scene, kit, { tier: 'low' });

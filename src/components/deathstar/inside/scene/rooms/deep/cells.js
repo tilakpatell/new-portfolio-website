@@ -63,7 +63,7 @@ function grate(p) {
 // a slab on a solid black base, its lip catching the light
 function bench(p) {
   const { w, d, h } = p;
-  return [box(w, 0.06, d, 0, h - 0.03, 0, 'trim'), box(w - 0.04, h - 0.06, d - 0.04, 0, (h - 0.06) / 2, -0.02, 'black'), box(w, 0.035, 0.025, 0, h - 0.08, d / 2 - 0.0125, 'rail')];
+  return [box(w, 0.06, d, 0, h - 0.03, 0, 'trim'), box(w - 0.04, h - 0.06, d - 0.02, 0, (h - 0.06) / 2, -0.01, 'black'), box(w, 0.035, 0.025, 0, h - 0.08, d / 2 - 0.0125, 'rail')];
 }
 
 // The IT-O: a glossy black ball, its red eye forward, a ring round its

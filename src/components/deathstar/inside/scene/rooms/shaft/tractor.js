@@ -26,7 +26,7 @@ const UP = 12; // and over the room’s ceiling
 const BLUE = 0xa9cbff; // the beam’s light: blue-white
 const COOL = 0xc4d6f2;
 const LEVER = { on: 0.45, off: Math.PI - 0.45 }; // a lever’s tilt towards whoever works it, up and down
-const GLOW = { on: 1.5, off: 0.05 }; // the terminal’s face, lit and dark
+const GLOW = { on: 1.1, off: 0.04 }; // the terminal’s face, lit and dark
 
 // facing yaw (0 faces −z), as a turn of the local +z for kit.at
 const turnOf = (yaw) => Math.PI - yaw;
@@ -46,7 +46,7 @@ function dial(ctx, x, y, r, at) {
   ctx.beginPath();
   ctx.arc(x, y, r + 5, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#9fb6cf';
+  ctx.fillStyle = '#56687c';
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
@@ -77,7 +77,8 @@ function paintFaces(kit, renderer) {
   const max = kit.small ? 256 : 512;
   const face = detailCanvas(512, 160, { level: kit.level, max });
   const board = detailCanvas(512, 240, { level: kit.level, max });
-  const lit = ['#59ff8f', '#ffb347', '#ff4a32', '#e9f2ff', '#69b8ff'];
+  // (mostly dark windows, a few lit: a working board, not a festival)
+  const lit = ['#3fbf6a', '#d9963a', '#c8402c', '#b9c6d8', '#1a1e25', '#1a1e25', '#1a1e25'];
   for (const { ctx, h } of [{ ctx: face.ctx, h: 160 }, { ctx: board.ctx, h: 240 }]) {
     ctx.fillStyle = '#05060a';
     ctx.fillRect(0, 0, 512, h);
@@ -95,7 +96,7 @@ function paintFaces(kit, renderer) {
   for (let r = 0; r < 3; r++) {
     f.fillStyle = '#10141a';
     f.fillRect(92, 92 + r * 18, 220, 10);
-    f.fillStyle = r === 1 ? '#ffb347' : '#59ff8f';
+    f.fillStyle = r === 1 ? '#d9963a' : '#3fbf6a';
     f.fillRect(92, 92 + r * 18, 60 + rand() * 150, 10);
   }
   dial(f, 352, 112, 26, 0.3);
@@ -104,9 +105,9 @@ function paintFaces(kit, renderer) {
   dial(b, 110, 110, 62, 0.62);
   dial(b, 402, 110, 62, 0.35);
   for (let r = 0; r < 7; r++) lightsRow(b, 196, 40 + r * 18, 7, 18, [12, 9], lit, rand);
-  lightsRow(b, 60, 196, 13, 32, [24, 14], ['#e9f2ff', '#69b8ff', '#59ff8f', '#ffb347'], rand);
-  b.fillStyle = '#69b8ff';
-  b.fillRect(40, 14, 432, 6);
+  lightsRow(b, 60, 196, 13, 32, [24, 14], ['#b9c6d8', '#4d86c4', '#3fbf6a', '#d9963a', '#1a1e25'], rand);
+  b.fillStyle = '#4d86c4';
+  b.fillRect(40, 14, 432, 4);
   const tex = (c) => sharpen(new THREE.CanvasTexture(c.canvas), { renderer, color: true });
   return { face: tex(face), board: tex(board) };
 }
@@ -114,7 +115,10 @@ function paintFaces(kit, renderer) {
 // ── the column ──
 
 // The column from far under the ledge to far over it: a dark trunk, plated
-// ribs all round, collars every 6 m each with a ring of the beam’s light.
+// ribs all round, collars every 6 m each with a ring of the beam’s light
+// and a fainter ring between, and six runs of light up it between the
+// ribs, so that it reads in the dark and its rings and runs, going down
+// into the haze, show how far down it goes.
 function columnOf(kit, c, bottom, top, blue) {
   const r = c.w / 2;
   const H = top - bottom;
@@ -127,6 +131,11 @@ function columnOf(kit, c, bottom, top, blue) {
   for (let y = bottom + 3; y < top - 1; y += 6) {
     parts.push({ geo: new THREE.CylinderGeometry(r + 0.14, r + 0.14, 0.55, 40, 1, true).translate(c.x, y, c.z), mat: 'trim' });
     parts.push({ geo: new THREE.CylinderGeometry(r + 0.15, r + 0.15, 0.09, 40, 1, true).translate(c.x, y - 0.42, c.z), mat: blue });
+    parts.push({ geo: new THREE.CylinderGeometry(r + 0.02, r + 0.02, 0.05, 40, 1, true).translate(c.x, y + 3, c.z), mat: blue });
+  }
+  for (let k = 0; k < 6; k++) {
+    const a = ((k + 0.5) / 6) * Math.PI * 2 + Math.PI / 20;
+    parts.push({ geo: new THREE.BoxGeometry(0.03, H, 0.07).translate(r - 0.1, 0, 0).rotateY(a).translate(c.x, mid, c.z), mat: blue });
   }
   return parts;
 }

@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { BATTLE, VIEW_KINDS, angleOf, apparent, battlePlan, boltAt, crossed, exteriorUrl, fighterPose, paintSize, skyPlan } from './views';
+import * as THREE from 'three';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PACK } from '../pack';
+import { BATTLE, VIEW_KINDS, angleOf, apparent, battlePlan, boltAt, createView, crossed, exteriorUrl, fighterPose, paintSize, skyPlan } from './views';
 
 const len = (v) => Math.hypot(v[0], v[1], v[2]);
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -285,5 +287,224 @@ describe('what happens between two frames', () => {
       t += dt;
     }
     expect(seen).toBe(Math.floor((t - 12.34) / 40) + 1);
+  });
+});
+
+// ── the views as drawn ──
+
+// what the renderer would draw: one call a visible mesh, points or line (an
+// instanced mesh with nothing in it draws nothing)
+function draws(object) {
+  let n = 0;
+  object.traverseVisible((o) => {
+    if (!(o.isMesh || o.isPoints || o.isLine || o.isSprite)) return;
+    if (o.isInstancedMesh && o.count === 0) return;
+    n += 1;
+  });
+  return n;
+}
+
+// everything a view made that has to be freed, and whether it was
+function freed(object) {
+  const things = new Set();
+  object.traverse((o) => {
+    if (o.geometry) things.add(o.geometry);
+    for (const m of [o.material].flat()) {
+      if (!m) continue;
+      things.add(m);
+      for (const v of Object.values(m.uniforms ?? {})) if (v?.value?.isTexture) things.add(v.value);
+      for (const k of ['map', 'normalMap', 'roughnessMap']) if (m[k]) things.add(m[k]);
+    }
+  });
+  const gone = new Set();
+  for (const t of things) t.addEventListener('dispose', () => gone.add(t));
+  return { things, gone };
+}
+
+// a canvas that paints into nothing, so planets can be painted in Node
+const fakeCanvas = () => ({ width: 0, height: 0, getContext: () => ({ createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }), putImageData() {} }) });
+
+// a stand-in for planetPaint.js: blank maps, painted at once
+const fakePaint = { planet: () => ({ color: fakeCanvas(), normal: fakeCanvas(), rough: fakeCanvas(), clouds: fakeCanvas() }), giant: () => fakeCanvas() };
+
+// a stand-in for loadGltf: a little coloured box for every model asked for
+function fakeLoad() {
+  const asked = [];
+  const load = (url) => {
+    asked.push(url);
+    const geo = new THREE.BoxGeometry(1, 0.5, 2);
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(new Array(geo.attributes.position.count * 3).fill(0.6), 3));
+    const scene = new THREE.Group();
+    scene.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true })));
+    return Promise.resolve({ scene, animations: [], gltf: {} });
+  };
+  return { load, asked };
+}
+
+describe('a window onto space', () => {
+  it('draws its stars, their band and the sun in a few draws, and frees them all when it goes', () => {
+    const view = createView('space', { tier: 'mid' });
+    const room = new THREE.Group();
+    room.add(view.object);
+    view.update(1, 1 / 60);
+    expect(draws(view.object)).toBeGreaterThan(0);
+    expect(draws(view.object)).toBeLessThanOrEqual(4);
+    const { things, gone } = freed(view.object);
+    view.dispose();
+    expect(gone.size).toBe(things.size);
+    expect(view.object.parent).toBeNull();
+  });
+
+  it('keeps its sky out of the room’s look and off the room’s depth, drawn after the room', () => {
+    const view = createView('space', { tier: 'low' });
+    view.object.traverse((o) => {
+      if (!o.material) return;
+      expect(o.renderOrder).toBeGreaterThan(0);
+      expect(o.material.depthWrite).toBe(false);
+    });
+    view.dispose();
+  });
+});
+
+describe('a window onto a planet', () => {
+  beforeEach(() => vi.stubGlobal('document', { createElement: fakeCanvas }));
+  afterEach(() => vi.unstubAllGlobals());
+
+  for (const kind of ['alderaan', 'yavin', 'endor']) {
+    it(`draws ${kind} under thirty draws and frees its painted maps when it goes`, () => {
+      const view = createView(kind, { tier: 'low' });
+      view.update(2, 1 / 60);
+      expect(draws(view.object)).toBeLessThanOrEqual(30);
+      const { things, gone } = freed(view.object);
+      expect([...things].some((t) => t.isTexture)).toBe(true);
+      view.dispose();
+      expect(gone.size).toBe(things.size);
+    });
+  }
+
+  it('turns its sun with the window, so the light comes from the same side of the planet however the room faces', () => {
+    const view = createView('alderaan', { tier: 'low' });
+    const planet = view.object.getObjectByName('alderaan');
+    const before = planet.material.uniforms.uSun.value.clone();
+    view.object.rotation.y = Math.PI / 2;
+    view.object.updateMatrixWorld(true);
+    view.update(2, 1 / 60);
+    const after = planet.material.uniforms.uSun.value;
+    expect(after.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2).distanceTo(before)).toBeLessThan(1e-6);
+    view.dispose();
+  });
+});
+
+describe('the battle out of the Emperor’s window', () => {
+  it('loads every kind of ship once, each as one instanced draw', async () => {
+    const { load, asked } = fakeLoad();
+    const view = createView('endor-battle', { tier: 'low', load, paint: fakePaint });
+    await view.ready;
+    expect(asked.length).toBe(5);
+    expect(new Set(asked).size).toBe(5);
+    let instanced = 0;
+    view.object.traverse((o) => o.isInstancedMesh && o.name.startsWith('fleet') && instanced++);
+    expect(instanced).toBe(5);
+    view.dispose();
+  });
+
+  it('never takes more than thirty draws, all the way round its loop', async () => {
+    for (const tier of ['low', 'mid', 'ultra']) {
+      const { load } = fakeLoad();
+      const view = createView('endor-battle', { tier, load, paint: fakePaint });
+      await view.ready;
+      let most = 0;
+      for (let t = 0; t < BATTLE.loop; t += 1 / 15) {
+        view.update(t, 1 / 15);
+        most = Math.max(most, draws(view.object));
+      }
+      expect(most).toBeLessThanOrEqual(30);
+      view.dispose();
+    }
+  });
+
+  it('flies the fighters about between frames', async () => {
+    const { load } = fakeLoad();
+    const view = createView('endor-battle', { tier: 'low', load, paint: fakePaint });
+    await view.ready;
+    const fighters = view.object.getObjectByName('fleet:xwing');
+    const m = new THREE.Matrix4();
+    view.update(1, 1 / 30);
+    fighters.getMatrixAt(0, m);
+    const a = new THREE.Vector3().setFromMatrixPosition(m);
+    view.update(1.5, 0.5);
+    fighters.getMatrixAt(0, m);
+    expect(new THREE.Vector3().setFromMatrixPosition(m).distanceTo(a)).toBeGreaterThan(5);
+    view.dispose();
+  });
+
+  it('draws on without the ships when they cannot be had', async () => {
+    const view = createView('endor-battle', { tier: 'low', load: () => Promise.resolve(null), paint: fakePaint });
+    await view.ready;
+    expect(() => view.update(3, 1 / 30)).not.toThrow();
+    expect(draws(view.object)).toBeGreaterThan(0);
+    view.dispose();
+  });
+
+  it('adds nothing once it has been put away, however late the ships come', async () => {
+    let arrive;
+    const late = new Promise((resolve) => (arrive = resolve));
+    const { load } = fakeLoad();
+    const view = createView('endor-battle', { tier: 'low', load: (url) => late.then(() => load(url)), paint: fakePaint });
+    view.dispose();
+    arrive();
+    await view.ready;
+    let ships = 0;
+    view.object.traverse((o) => o.name.startsWith('fleet') && ships++);
+    expect(ships).toBe(0);
+  });
+});
+
+describe('the station from outside', () => {
+  it('asks for the 4096-texel station only on the strongest graphics', async () => {
+    for (const [kind, tier, url] of [
+      ['ds1-exterior', 'ultra', '/models/universe/death-star.hq.glb'],
+      ['ds1-exterior', 'mid', '/models/universe/death-star.glb'],
+      ['ds2-exterior', 'ultra', '/models/galaxy/deathstar2.hq.glb'],
+      ['ds2-exterior', 'low', '/models/galaxy/deathstar2.glb'],
+    ]) {
+      const { load, asked } = fakeLoad();
+      const view = createView(kind, { tier, load, paint: fakePaint });
+      await view.ready;
+      expect(asked).toEqual([url]);
+      expect(draws(view.object)).toBeLessThanOrEqual(30);
+      view.dispose();
+    }
+  });
+
+  it('lights the station by the view’s own sun, kept out of the room’s look', async () => {
+    const { load } = fakeLoad();
+    const view = createView('ds1-exterior', { tier: 'mid', load, paint: fakePaint });
+    await view.ready;
+    const hull = view.object.getObjectByName('station');
+    let lit = 0;
+    hull.traverse((o) => {
+      if (!o.isMesh) return;
+      expect(o.material.userData.noHouse).toBe(true);
+      expect(o.material.customProgramCacheKey()).toContain('view-sun');
+      lit++;
+    });
+    expect(lit).toBeGreaterThan(0);
+    view.dispose();
+  });
+});
+
+describe('what the install fetches', () => {
+  it('lists every model a view can load', () => {
+    const urls = new Set();
+    for (const kind of VIEW_KINDS) {
+      for (const tier of ['low', 'ultra']) {
+        const { load, asked } = fakeLoad();
+        createView(kind, { tier, load, paint: fakePaint }).dispose();
+        for (const u of asked) urls.add(u);
+      }
+    }
+    expect(urls.size).toBeGreaterThan(5);
+    for (const u of urls) expect(PACK.urls).toContain(u);
   });
 });

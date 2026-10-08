@@ -104,6 +104,15 @@ describe('where a fighter’s blade points', () => {
     expect(degrees(d, { x: 0, y: 0, z: -1 })).toBeLessThan(15);
   });
 
+  it('cuts through its blow at speed, never slowing to a stop on it', () => {
+    const at = (kind, t) => swing(fighter({ stroke: { kind, t, hit: false } }));
+    for (const kind of ['light', 'heavy']) {
+      const blow = STROKES[kind].at;
+      expect(degrees(at(kind, blow - 0.005), at(kind, blow))).toBeGreaterThan(6);
+      expect(degrees(at(kind, blow), at(kind, blow + 0.005))).toBeGreaterThan(2);
+    }
+  });
+
   it('is raised over the head as a heavy stroke winds up, and comes down through the blow', () => {
     const up = swing(fighter({ stroke: { kind: 'heavy', t: STROKES.heavy.at * 0.75, hit: false } }));
     expect(up.y).toBeGreaterThan(0.6);
@@ -184,6 +193,19 @@ describe('a Force lightning arc', () => {
     }
     const straight = run(11, { depth: 4, branches: 0, jag: 0 });
     for (const s of straight) expect(offLine(s.b, from, to)).toBeLessThan(1e-5);
+  });
+
+  it('bends finer as its pieces get shorter: a smallest piece’s bend is within its jag of the piece it split', () => {
+    const length = len({ x: to.x - from.x, y: to.y - from.y, z: to.z - from.z });
+    for (let seed = 1; seed <= 30; seed++) {
+      const main = run(seed).filter((s) => s.w === 1);
+      // the odd bends are the last made, each splitting a piece two-sixteenths of the whole
+      for (let i = 1; i < main.length; i += 2) {
+        const [a, p, b] = [main[i - 1].a, main[i].a, main[i].b];
+        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 };
+        expect(len({ x: p.x - mid.x, y: p.y - mid.y, z: p.z - mid.z })).toBeLessThanOrEqual((0.2 * length * 2) / 16 + 1e-5);
+      }
+    }
   });
 
   it('forks into fainter branches, each leaving from a bend in the main arc (never the hand or the target)', () => {
@@ -342,14 +364,15 @@ describe('the sabers', () => {
     const sprites = sabers.meshes.find((m) => m.name === 'saber-sprites').geometry;
     const furthest = () => Math.max(...Array.from({ length: sprites.instanceCount }, (_, i) => sprites.attributes.aAt.getX(i)));
     const hand = [at(0, 1.4, 0)];
+    // (an arc 6 m long strays up to 2 × its jag of that to either side: under 3 m)
     sabers.lightning(hand, at(0, 1.2, -6), true);
     sabers.update(1 / 60);
-    expect(furthest()).toBeLessThan(1);
+    expect(furthest()).toBeLessThan(4);
     sabers.lightning(hand, at(0, 1.2, -6), false);
     sabers.update(1 / 60);
-    sabers.lightning(hand, at(6, 1.2, -6), true);
+    sabers.lightning(hand, at(12, 1.2, -6), true);
     sabers.update(1 / 60);
-    expect(furthest()).toBeGreaterThan(5);
+    expect(furthest()).toBeGreaterThan(10);
   });
 
   it('send a ripple along a push that fades, and keep one at a gripped throat until let go', () => {

@@ -16,11 +16,12 @@
 // where what it is doing comes to rest (a body found dead lies there, not
 // falling as you look), and a still one is played on again whenever the
 // rules have it do something new (so a body killed with no turn at moving
-// lies on the deck, and one that loses its turn mid-fall lands). Figures
-// are made only for people within 60 m in a room that stands, nearest
-// first and two a frame, so a crowd coming into view never stalls a
-// frame; anyone past 60 m or in a room that isn’t drawn is hidden, and
-// anyone whose room is freed is let go. A person is drawn between the
+// lies on the deck, one that loses its turn mid-fall lands, and one whose
+// fall ran its course out of sight is seen lying when it comes back into
+// view). Figures are made only for people within 60 m in a room that
+// stands, nearest first and two a frame, so a crowd coming into view never
+// stalls a frame; anyone past 60 m or in a room that isn’t drawn is
+// hidden, and anyone whose room is freed is let go. A person is drawn between the
 // game’s last two steps, so they move smoothly at any frame rate. A body
 // stays where it fell for as long as the crew keeps it, until its room is
 // freed: hidden while the room stands undrawn (a door shut on it), let go
@@ -687,8 +688,9 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     if (!fall) r.fallFor = 0;
     o.visible = pick !== 'hidden';
     if (!o.visible) {
-      // out of sight a fall goes on all the same: one over by the time it is seen is seen lying
-      if (fall) r.fallFor += dt;
+      // out of sight a fall goes on all the same, and one that runs its course there is
+      // to be landed when next seen (a still figure’s clip unchanged would never be played on)
+      if (fall && r.fallFor < FALL && (r.fallFor += dt) >= FALL) r.posed = false;
       return;
     }
     const at = r.track.at(alpha);
