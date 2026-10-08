@@ -3,7 +3,7 @@
 .resume-toolbar {
   position: sticky;
   top: calc(var(--nav-h) + 6px);
-  z-index: 20;
+  z-index: calc(var(--z-page) + 10); /* sticks over the page's sections, under the bar */
   display: flex;
   flex-wrap: wrap;
   align-items: center;

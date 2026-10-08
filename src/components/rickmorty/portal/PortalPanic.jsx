@@ -70,6 +70,7 @@ function Game({ soft, fail }) {
   const mouse = useRef({ x: 0, y: 0, inside: false, down: false, moved: 0 });
   const sticks = useRef({ move: null, aim: null });
   const padPrev = useRef(null);
+  const onScreen = useRef(true); // (the game on the page's screen: off it, the loop rests and the keys are the page's)
   const hud = useRef({});
   const said = useRef({});
   const prefs0 = local.get(PREFS, {}) ?? {};
@@ -324,11 +325,10 @@ function Game({ soft, fail }) {
     if (phase === 'loading') return undefined;
     let raf = 0;
     let last = 0;
-    let visible = true;
     const io = typeof IntersectionObserver !== 'undefined'
       ? new IntersectionObserver(([e]) => {
-          visible = e.isIntersecting;
-          if (!visible) pause(true);
+          onScreen.current = e.isIntersecting;
+          if (!e.isIntersecting) pause(true);
         })
       : null;
     io?.observe(wrap.current);
@@ -336,7 +336,7 @@ function Game({ soft, fail }) {
       raf = requestAnimationFrame(loop);
       const ms = last ? Math.min(100, now - last) : 16;
       last = now;
-      if (!visible || document.hidden || !gl.current) return;
+      if (!onScreen.current || document.hidden || !gl.current) return;
       const running = phaseRef.current === 'running';
       let g = game.current;
       if (running && g) {
@@ -456,11 +456,12 @@ function Game({ soft, fail }) {
     };
   }, [phase, hero, calm, fail, pause, pick]);
 
-  // ── keys, anywhere on the page while a game is on ──
+  // ── keys, anywhere on the page while a game is on and on screen (P scrolled
+  // off it is the page's: C-137's portal gun, say, not the game unpaused) ──
   useEffect(() => {
     if (phase !== 'running' && phase !== 'paused') return undefined;
     const down = (e) => {
-      if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!onScreen.current || typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
       const g = game.current;
       if (!g) return;
       if (is('pause', e.key)) {

@@ -12,6 +12,7 @@ import {
   LOBELIA_LEN,
   MAGGOT_GATE,
   MUSHROOMS,
+  PASTURE,
   QUESTS,
   RIDER,
   RIDER_RETRY,
@@ -35,6 +36,7 @@ import {
   lobeliaAt,
   nearSpot,
   newHobbit,
+  newFlock,
   newHunt,
   newRider,
   newRings,
@@ -44,6 +46,7 @@ import {
   progress,
   puff,
   riderTrigger,
+  stepFlock,
   stepGaze,
   stepHobbit,
   stepHunt,
@@ -224,6 +227,128 @@ describe('Hobbiton: shortcut to mushrooms', () => {
   it('can be outrun by a running hobbit', () => {
     expect(HUNT.chase).toBeGreaterThan(HOBBIT.walk);
     expect(HUNT.chase).toBeLessThan(HOBBIT.run);
+  });
+
+  it('is slow to be sure of you at the edge of its sight (HUNT.far), the way the docs say', () => {
+    const hunt = newHunt();
+    const dog = hunt.dogs[0];
+    dog.wait = 0;
+    const h = { x: dog.x + 5.9, z: dog.z, running: false };
+    let types = [];
+    for (let t = 0; t < 0.3; t += DT) types = types.concat(stepHunt(hunt, h, DT).map((e) => e.type));
+    expect(types).not.toContain('seen');
+    for (let t = 0; t < 3; t += DT) types = types.concat(stepHunt(hunt, h, DT).map((e) => e.type));
+    expect(types).toContain('seen');
+  });
+
+  it('says which dog barked', () => {
+    const hunt = newHunt();
+    const dog = hunt.dogs[0];
+    dog.wait = 0;
+    const h = { x: dog.x + 1.5, z: dog.z, running: false };
+    let seen = null;
+    for (let t = 0; t < 2 && !seen; t += DT) seen = stepHunt(hunt, h, DT).find((e) => e.type === 'seen');
+    expect(seen.dog).toBe(0);
+  });
+
+  it('sniffs about where it lost you (HUNT.search), then goes back to its round', () => {
+    const hunt = newHunt();
+    const dog = hunt.dogs[0];
+    dog.wait = 0;
+    const h = { x: dog.x + 1.5, z: dog.z, running: false };
+    for (let t = 0; t < 2 && dog.mode !== 'chase'; t += DT) stepHunt(hunt, h, DT);
+    expect(dog.mode).toBe('chase');
+    // gone, far off across the field
+    const far = { x: FIELD.x1 - 1, z: FIELD.z1 - 1, running: false };
+    let types = [];
+    for (let t = 0; t < 0.5; t += DT) types = types.concat(stepHunt(hunt, far, DT).map((e) => e.type));
+    expect(types).toContain('lost');
+    expect(dog.mode).toBe('search');
+    for (let t = 0; t < HUNT.search + 12 && dog.mode !== 'patrol'; t += DT) stepHunt(hunt, { x: 0, z: -40, running: false }, DT);
+    expect(dog.mode).toBe('patrol');
+  });
+
+  it('casts about for you on a seeded random, the same every visit', () => {
+    const a = newHunt().opts.rand;
+    const b = newHunt().opts.rand;
+    expect([a(), a(), a()]).toEqual([b(), b(), b()]);
+  });
+
+  it('keeps the dogs in the field, chasing', () => {
+    const hunt = newHunt();
+    const dog = hunt.dogs[0];
+    dog.wait = 0;
+    const h = { x: FIELD.x0 + 0.4, z: dog.z, running: false };
+    dog.x = FIELD.x0 + 3;
+    dog.face = Math.PI;
+    dog.mode = 'chase';
+    dog.t = 0;
+    for (let t = 0; t < 3; t += DT) {
+      stepHunt(hunt, h, DT);
+      expect(dog.x).toBeGreaterThanOrEqual(FIELD.x0 + 0.5 - 1e-9);
+    }
+  });
+});
+
+describe('Hobbiton: the sheep', () => {
+  const run = (f, seconds, near = []) => {
+    for (let t = 0; t < seconds; t += DT) stepFlock(f, DT, { near });
+    return f;
+  };
+
+  it('wander the same way every visit', () => {
+    const a = run(newFlock(6, 7), 20);
+    const b = run(newFlock(6, 7), 20);
+    expect(a.sheep.map((s) => [s.x, s.z, s.face])).toEqual(b.sheep.map((s) => [s.x, s.z, s.face]));
+    const c = run(newFlock(6, 8), 20);
+    expect(c.sheep.map((s) => s.x)).not.toEqual(a.sheep.map((s) => s.x));
+  });
+
+  it('stay in the pasture', () => {
+    const f = newFlock(8, 3);
+    for (let t = 0; t < 120; t += DT) {
+      stepFlock(f, DT);
+      for (const s of f.sheep) expect(Math.hypot(s.x - PASTURE.x, s.z - PASTURE.z)).toBeLessThanOrEqual(PASTURE.r + 1e-6);
+    }
+  });
+
+  it('graze standing between walks, and walk at a sheep’s pace', () => {
+    const f = newFlock(6, 5);
+    let grazed = 0;
+    let walked = 0;
+    for (let t = 0; t < 60; t += DT) {
+      stepFlock(f, DT);
+      for (const s of f.sheep) {
+        if (s.speed < 0.01) grazed++;
+        if (s.speed > 0.5) walked++;
+        expect(s.speed).toBeLessThan(0.8);
+      }
+    }
+    expect(grazed).toBeGreaterThan(0);
+    expect(walked).toBeGreaterThan(0);
+  });
+
+  it('turn by easing round, not snapping', () => {
+    const f = newFlock(6, 9);
+    let last = f.sheep.map((s) => s.face);
+    for (let t = 0; t < 60; t += DT) {
+      stepFlock(f, DT);
+      f.sheep.forEach((s, i) => {
+        const d = Math.abs(Math.atan2(Math.sin(s.face - last[i]), Math.cos(s.face - last[i])));
+        expect(d).toBeLessThan(0.2);
+      });
+      last = f.sheep.map((s) => s.face);
+    }
+  });
+
+  it('trot off from a hobbit who comes up close', () => {
+    const f = newFlock(1, 2);
+    const s = f.sheep[0];
+    s.x = PASTURE.x;
+    s.z = PASTURE.z;
+    const you = { x: PASTURE.x - 1, z: PASTURE.z };
+    run(f, 2, [you]);
+    expect(Math.hypot(s.x - you.x, s.z - you.z)).toBeGreaterThan(2.2);
   });
 });
 

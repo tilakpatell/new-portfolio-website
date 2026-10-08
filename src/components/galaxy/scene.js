@@ -47,7 +47,7 @@
 // (src/runtime's fromScene): create(canvas, ctx) draws with the runtime's
 // renderer (ctx.rt.gfx: the runtime sizes it and sets its sharpness) and
 // returns { ready, resize, render, update, setVisible, lowerQuality, fire,
-// boost, climb, seat, escape, jump, goTo, dispose }.
+// boost, climb, seat, escape, jump, goTo, flyTo, dispose }.
 // Props: system (an id), ship (a crew id), loadout (what's fitted to it in
 // the universe map's hangar: outfit.js; its paint and parts, and how they
 // make it fly), controls, net, stick,
@@ -76,6 +76,7 @@ import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
 import { houseOn } from '../../lib/three/house';
 import { SHIP, autopilot, forward, spawn, step } from '../universe/ship';
+import { REAIM_MS, parkBehind, pilotSpace, reached } from '../universe/pilotGoal';
 import { createHunters } from '../universe/hunters';
 import { createFleet } from '../universe/glbFleet';
 import { createSetPieces } from '../universe/setpieces';
@@ -111,7 +112,8 @@ import { createRoam } from './roam';
 import { pick as pickFaction } from '../universe/sides';
 import { createSkyStreaks } from './skyStreaks';
 import { laneLinks } from './skyTraffic';
-import { FAR, aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
+import { FAR, PULSE, aligned, atGoal, makeSpace, parkBy, steerToward } from './space';
+import { createFinds } from './places';
 import { asking } from './asking';
 import { jumpTime, routeBetween } from './routes';
 import { arrival, courseTo, jumpSeconds, kindsIn, lightYears, starAhead, systemById, wantsDeathStar } from './systems';
@@ -133,6 +135,7 @@ const CABS = {
 };
 const SEAT_KEY = 'tp:universe-seat'; // (the universe map's: one seat, wherever you fly)
 const JUMPS_KEY = 'tp:galaxy-jumps'; // (session) the Empire's count of your jumps
+const FOUND_KEY = 'tp-galaxy-found'; // the places found out in the open, per system (places.js)
 const EYE = { ahead: 0.035, up: 0.045 };
 const CAB_HFOV = 88;
 const CAB_VFOV = [52, 94];
@@ -272,6 +275,8 @@ export async function create(canvas, ctx) {
   };
   const pieces = reduced ? null : createSetPieces(scene, { small, fleet, solids: () => state.space?.solids ?? [] }); // (clear of this system's planet, not the universe map's)
   // the Empire's count of your jumps, and the Interdictor waiting on the one that's due
+  // the places found out in the open (places.js), kept across visits
+  const finds = createFinds({ store: { get: () => window.localStorage.getItem(FOUND_KEY), set: (v) => window.localStorage.setItem(FOUND_KEY, v) } });
   const interdiction = createInterdiction({
     store: { get: () => window.sessionStorage.getItem(JUMPS_KEY), set: (v) => (v === null ? window.sessionStorage.removeItem(JUMPS_KEY) : window.sessionStorage.setItem(JUMPS_KEY, v)) },
   });
@@ -310,7 +315,7 @@ export async function create(canvas, ctx) {
     view: 'chase',
     cabK: 0,
     fovBase: FOV,
-    auto: null, // { id, park } while it flies itself to something in the system
+    auto: null, // { id, park } while it flies itself to something in the system; to another pilot here (flyTo), also { pilot (their id), name, space, reaimAt } (universe/pilotGoal.js)
     at: null, // the goal it's at
     keys: {},
     stick: null,
@@ -320,6 +325,7 @@ export async function create(canvas, ctx) {
     fireBtn: false,
     boosting: false,
     boosts: 0,
+    odSaid: false, // the crew's said their piece about super speed
     streak: 0,
     flown: false,
     shown: true,
@@ -815,7 +821,7 @@ export async function create(canvas, ctx) {
       state.flown = true;
       emit({ type: 'launch' });
     }
-    if (state.auto) state.auto = null;
+    dropAuto();
     if (state.jump?.phase === 'align') cancelJump('pilot');
   };
   const steering = () => {
@@ -1272,8 +1278,11 @@ export async function create(canvas, ctx) {
       return true;
     }
     let input;
+    chasePilot();
     if (state.auto) {
-      const a = autopilot(state.ship, state.auto.id, state.auto.park, state.space);
+      // (on super speed where it's wide open: space.js)
+      const sp = state.auto.space ?? state.space;
+      const a = autopilot(state.ship, state.auto.id, state.auto.park, sp, sp.overdriveAt ? sp.overdriveAt(state.ship.x, state.ship.y, state.ship.z) : 1);
       input = a.input;
       if (a.done) {
         state.auto = null;
@@ -1290,6 +1299,11 @@ export async function create(canvas, ctx) {
       }
     }
     if (state.keys.fire || state.fireBtn) fire();
+    // super speed: boosting well out from everything, the drive opens into the overdrive (space.js wideAlong)
+    if (input.boost && input.throttle > 0 && !state.auto) {
+      const f = forward(state.ship.heading);
+      input.overdrive = state.space.overdriveAt(state.ship.x, state.ship.y, state.ship.z, [f[0], 0, f[1]]);
+    }
     // (under the Interdictor's hold the sublight drive stays shut: the boost is the boost)
     const { ship: stepped, events } = step(state.ship, state.held ? { ...input, interdicted: true } : input, dt, state.space.solids, state.space);
     let ship = stepped;
@@ -1375,6 +1389,21 @@ export async function create(canvas, ctx) {
       state.at = now;
       props.onAt?.(now);
       if (now) emit({ type: 'at', id: now });
+      // a place found, the first time (places.js): the crew say so, and it pays
+      const g = now && state.space.goals[now];
+      if (g?.place && state.sys) {
+        const first = finds.mark(state.sys.id, g.id);
+        emit({ type: 'find', id: g.id, name: g.name, kind: g.kind, first, ...finds.count(state.sys.id) });
+        if (first) {
+          emit({ type: 'event', id: 'find' });
+          emit({ type: 'earn', what: 'found', n: 1, side: 'galaxy' });
+        }
+      }
+    }
+    // the crew's word on super speed, the first time it's well past the sublight drive's
+    if (!state.odSaid && ship.speed > PULSE * 1.25) {
+      state.odSaid = true;
+      emit({ type: 'event', id: 'overdrive' });
     }
 
     // the guns: the lock, the lead, whether a shot would bend onto it
@@ -1689,6 +1718,12 @@ export async function create(canvas, ctx) {
     if (on && h.mates.length && pilots.count) {
       mateList.length = 0;
       for (const c of pilots.mates) mateList.push(c);
+      // (and the pilot you're flying to, ally or not, so you can see where the trip's taking you)
+      const to = state.auto?.pilot;
+      if (to && !mateList.some((c) => c.id === to)) {
+        const at = pilots.at(to);
+        if (at) mateList.push({ id: to, name: state.auto.name ?? '', at });
+      }
       mateList.sort((a, b) => apart(a.at.x, a.at.y, a.at.z, s.x, s.y, s.z) - apart(b.at.x, b.at.y, b.at.z, s.x, s.y, s.z));
       for (const c of mateList) {
         if (m >= h.mates.length) break;
@@ -1717,8 +1752,8 @@ export async function create(canvas, ctx) {
     let goal = null;
     if (on && state.jump) goal = { at: [s.x + state.jump.dir[0] * 2000, s.y + state.jump.dir[1] * 2000, s.z + state.jump.dir[2] * 2000], name: `Jump: ${state.jump.to.name}`, dist: `${lightYears(state.jump.from, state.jump.to).toLocaleString('en-US')} ly`, reach: 0, way: true };
     else if (on && state.auto) {
-      const g = state.space.goals[state.auto.id];
-      if (g) goal = { at: g.at, name: g.name, dist: range(apart(g.at[0], g.at[1], g.at[2], s.x, s.y, s.z)), reach: g.reach ?? g.r, way: false };
+      const g = (state.auto.space ?? state.space).goals[state.auto.id];
+      if (g) goal = { at: g.at, name: g.name ?? state.auto.name ?? '', dist: range(apart(g.at[0], g.at[1], g.at[2], s.x, s.y, s.z)), reach: g.reach ?? g.r, way: false };
     }
     setOn(h, h.nav, Boolean(goal));
     if (goal) {
@@ -2116,6 +2151,59 @@ export async function create(canvas, ctx) {
     ctx.invalidate();
     return true;
   };
+  // Flying to another pilot in this system (the roster's “Fly to”, through
+  // the page): their goal, `pilot:<id>`, is a park behind them while
+  // they're flying here in sight (pilots.js's pose), worked out again every
+  // REAIM_MS as they move (chasePilot, each frame). False if they aren't
+  const flyTo = (id) => {
+    const s = state.ship;
+    const pose = typeof id === 'string' ? pilots.pose(id) : null;
+    const park = parkBehind(pose);
+    if (!s || !park || !state.space || state.crash || state.jump || state.dive || props.frozen) return false;
+    heard();
+    state.auto = { id: `pilot:${id}`, park, pilot: id, name: pose.name, space: pilotSpace(state.space, id, pose), reaimAt: performance.now() + REAIM_MS };
+    state.view = state.seat;
+    state.lastInput = performance.now();
+    if (!state.flown) {
+      state.flown = true;
+      emit({ type: 'launch' });
+    }
+    retarget(700);
+    ctx.invalidate();
+    return true;
+  };
+  // the trip given up before it's there (the stick taken back, Escape): the
+  // page hears, for a trip to a pilot, so its follow is done
+  const dropAuto = () => {
+    const a = state.auto;
+    state.auto = null;
+    if (a?.pilot) emit({ type: 'arrived', id: a.id, done: false });
+  };
+  // each frame of a trip to a pilot, before the autopilot flies it: there
+  // once within reach of them, or over if they're gone (offline, hidden,
+  // off to another system), the autopilot off and their goal with it; else
+  // re-aimed at where they are now, every REAIM_MS. The page notes it
+  const chasePilot = () => {
+    const a = state.auto;
+    if (!a?.pilot) return;
+    const pose = pilots.pose(a.pilot);
+    const park = parkBehind(pose);
+    if (!park) {
+      state.auto = null;
+      emit({ type: 'lost', id: a.id, name: a.name ?? null });
+      return;
+    }
+    if (reached(state.ship, pose)) {
+      state.auto = null;
+      emit({ type: 'arrived', id: a.id, done: true, name: a.name ?? null });
+      return;
+    }
+    const now = performance.now();
+    if (now < a.reaimAt) return;
+    a.reaimAt = now + REAIM_MS;
+    a.park = park;
+    a.space = pilotSpace(state.space, a.pilot, pose);
+  };
   // (on a laptop a drag doesn't steer: dragSteers in universe/controls.js)
   const steersByDrag = dragSteers();
   const onDown = (e) => {
@@ -2218,6 +2306,8 @@ export async function create(canvas, ctx) {
       hunters: hunters?.packs ?? [],
       lock: state.lock?.id ?? null,
       goals: state.world?.goals.map((g) => g.id),
+      found: state.sys ? finds.count(state.sys.id) : null,
+      wide: state.ship && state.space ? +state.space.wideAlong(state.ship.x, state.ship.y, state.ship.z).toFixed(2) : null,
       solids: state.space?.solids.length,
       war: war?.info ?? null,
       effects: state.effects ?? null,
@@ -2235,7 +2325,7 @@ export async function create(canvas, ctx) {
       state.shake = 0;
       ctx.invalidate();
     };
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, pin, interdiction, interdictor, war, wingmen, effects: () => state.effects, skyStreaks: () => skyStreaks, happen: (id) => state.ship && happen(id, state.ship) };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, flyTo, net: () => net, pin, interdiction, finds, interdictor, war, wingmen, effects: () => state.effects, skyStreaks: () => skyStreaks, happen: (id) => state.ship && happen(id, state.ship) };
     window.__gltfStats = gltfStats; // { requests, parses }: the models asked for, and the files fetched and parsed for them
   }
 
@@ -2327,7 +2417,7 @@ export async function create(canvas, ctx) {
         return true;
       }
       if (state.auto) {
-        state.auto = null;
+        dropAuto();
         return true;
       }
       return false;
@@ -2336,8 +2426,9 @@ export async function create(canvas, ctx) {
     jump(id) {
       return startJump(id, 'course');
     },
-    // fly itself to something in this system
+    // fly itself to something in this system, or to another pilot in it
     goTo,
+    flyTo,
     dispose() {
       disposed = true;
       engine?.stop();

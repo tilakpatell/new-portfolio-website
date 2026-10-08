@@ -26,6 +26,8 @@ import * as THREE from 'three';
 import { canvasTexture } from '../../../lib/stage3d';
 import { clamp01, fbm, makeCanvas, makeNoise, mix, normalFromField, paintPixels, smooth } from '../../../lib/paint';
 import { ball, cyl, lathe, parts, rng, roundBox, sector } from '../shire/props';
+import { breathe, sway } from '../../../lib/three/gait';
+import { createShot, createStride, createTracker, ease } from '../creatures';
 
 const TAU = Math.PI * 2;
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -1022,29 +1024,77 @@ function nazgul(K, { seed = 1, sword: armed = true } = {}) {
 
 // ── posing ──
 
-// Poses one Nazgûl for this frame, with transforms only. Moving, it glides
-// and sways (there are no legs to walk on); `sniff` (0..1) puts the head
-// low, casting about, and brings the left claw up and out; `hunt` (0..1)
-// leans it in, fixes the head and raises the sword. `look` turns the hood.
-function animate(n, t, { moving = false, hunt = 0, sniff = 0, look = 0 } = {}) {
-  const ph = n.phase ?? 0;
-  const h = clamp01(hunt);
-  const s = clamp01(sniff);
-  const go = moving ? 1 : 0;
-  const [L, R] = n.arms;
-  n.body.position.y = (n.hip ?? HIP) + Math.sin(t * (moving ? 3.1 : 1.2) + ph) * (moving ? 0.018 : 0.008);
-  n.body.rotation.z = -0.05 - 0.07 * go - 0.2 * s - 0.15 * h + Math.sin(t * 0.8 + ph) * 0.015;
-  n.body.rotation.x = Math.sin(t * (moving ? 1.55 : 0.5) + ph) * (moving ? 0.035 : 0.012);
-  n.body.rotation.y = go * Math.sin(t * 1.55 + ph + 1) * 0.04;
-  const cast = Math.sin(t * 1.4 + ph) * 0.55 + Math.sin(t * 3.7 + ph * 2) * 0.12;
-  n.head.rotation.y = look + s * cast + (1 - s) * (1 - h) * Math.sin(t * 0.45 + ph) * 0.25;
-  n.head.rotation.z = -0.06 - 0.32 * s - 0.1 * h + s * Math.sin(t * 5.3 + ph) * 0.04;
-  n.head.rotation.x = s * Math.sin(t * 0.9 + ph) * 0.1;
-  const tremble = Math.sin(t * 17 + ph) * 0.015 * Math.max(s, h);
-  const swing = go * Math.sin(t * 1.55 + ph);
-  L.rotation.z = 0.22 + 1.05 * s + 0.3 * h * (1 - s) + swing * 0.08 + tremble;
-  L.rotation.x = 0.14 * s + 0.05;
-  R.rotation.z = -0.12 + 1.35 * h - swing * 0.06 + tremble * 0.5;
-  R.rotation.x = -0.06 - 0.08 * h;
+// Each Nazgûl's own motion (../creatures.js): how fast it's really gliding,
+// read from where the scene puts it; a glide's "step" under the robe from
+// the ground it covers; its hunt, sniff and look eased; a shriek.
+function motionOf(n) {
+  const seed = Math.round((n.phase ?? 0) * 1000);
+  return (n.motion ??= {
+    track: createTracker({ fastest: 20 }),
+    stride: createStride({ stride: 1.5, hz: 0.75, longest: 1.9, cadence: [0.85, 1.4], seed }),
+    shriek: createShot(1.4),
+    hunt: 0,
+    sniff: 0,
+    look: 0,
+    recoil: 0,
+    was: { hunt: 0, recoil: 0, shriek: 0 },
+    seed,
+  });
 }
 
+// Poses one Nazgûl for this frame, with transforms only. It glides (there
+// are no legs to walk on) as fast as the scene moves it: a rise and a lean
+// from foot to foot under the robe in step with the ground it covers, more
+// at a run, none standing; `moving` is no longer needed (it's read from
+// where it's put). `sniff` (0..1) puts the head low, casting about, and
+// brings the left claw up and out; `hunt` (0..1) leans it in, fixes the
+// head and raises the sword. `look` turns the hood. Driven back (`recoil`
+// 0..1, or seen backing off as it's put further away facing in: a brand
+// thrust at Weathertop), it rears back from it with its claw up before its
+// hood. It shrieks (head thrown back, arms flung out) as it takes up a hunt,
+// as it's driven back, or on `shriek`. Each is eased, so nothing pops.
+function animate(n, t, { hunt = 0, sniff = 0, look = 0, recoil = 0, shriek = 0 } = {}) {
+  const M = motionOf(n);
+  const g = n.group;
+  const m = M.track(t, g.position.x, g.position.z, g.rotation.y, g.scale.x);
+  const dt = m.dt;
+  const st = M.stride.step(dt, m.fwd < -0.05 ? -m.speed : m.speed);
+  const ph = n.phase ?? 0;
+  // driven back: backing off faster than it would ever choose to
+  const backing = smooth(0.4, 2.5, -m.fwd);
+  const rWant = Math.max(clamp01(recoil), backing);
+  M.recoil = ease(M.recoil, rWant, dt, rWant > M.recoil ? 14 : 2.5);
+  // the shriek, once, as it takes up the hunt, is driven back, or is told
+  const h0 = clamp01(hunt);
+  if ((h0 > 0.5 && M.was.hunt <= 0.5) || (rWant > 0.5 && M.was.recoil <= 0.5) || (shriek > 0.5 && M.was.shriek <= 0.5)) M.shriek.fire();
+  M.was.hunt = h0;
+  M.was.recoil = rWant;
+  M.was.shriek = shriek;
+  const sk = M.shriek.step(dt);
+  const sh = sk < 0 ? 0 : smooth(0, 0.12, sk) * (1 - smooth(0.55, 1, sk));
+  M.hunt = ease(M.hunt, h0, dt, 4);
+  M.sniff = ease(M.sniff, clamp01(sniff), dt, 3);
+  M.look = ease(M.look, look, dt, 6);
+  const h = M.hunt;
+  const s = M.sniff * (1 - sh);
+  const rc = M.recoil;
+  const go = st.amount;
+  const [L, R] = n.arms;
+  const sw = sway(st.phase, go);
+  const air = breathe(t, M.seed);
+  const swing = go * Math.sin(st.phase);
+  n.body.position.y = (n.hip ?? HIP) + sw.bob * (0.022 + 0.014 * st.run) - 0.01 * go + air * 0.008 * (1 - go) - rc * 0.07 + sh * 0.05;
+  n.body.rotation.z = -0.05 - 0.07 * go - 0.07 * st.run - 0.2 * s - 0.15 * h * (1 - rc) + rc * 0.38 + sh * 0.32 + Math.sin(t * 0.8 + ph) * 0.015 * (1 - go);
+  n.body.rotation.x = sw.roll * 0.035 + air * 0.01 * (1 - go);
+  n.body.rotation.y = swing * 0.04 + rc * Math.sin(t * 9 + ph) * 0.03;
+  const cast = Math.sin(t * 1.4 + ph) * 0.55 + Math.sin(t * 3.7 + ph * 2) * 0.12;
+  const away = rc * 0.35 * (Math.sin(ph * 3) > 0 ? 1 : -1);
+  n.head.rotation.y = M.look + s * cast + (1 - s) * (1 - h) * (1 - sh) * Math.sin(t * 0.45 + ph) * 0.25 + away;
+  n.head.rotation.z = -0.06 - 0.32 * s - 0.1 * h * (1 - rc) + rc * 0.22 + sh * 0.62 + s * Math.sin(t * 5.3 + ph) * 0.04;
+  n.head.rotation.x = s * Math.sin(t * 0.9 + ph) * 0.1 + sh * Math.sin(t * 23 + ph) * 0.04;
+  const tremble = Math.sin(t * 17 + ph) * 0.015 * Math.max(s, h, rc, sh);
+  L.rotation.z = 0.22 + 1.05 * s + 0.3 * h * (1 - s) + swing * 0.08 + tremble + rc * 1.15 * (1 - sh) + sh * 0.55;
+  L.rotation.x = 0.14 * s + 0.05 + sh * 0.95 + rc * 0.2;
+  R.rotation.z = -0.12 + 1.35 * h * (1 - rc) - swing * 0.06 + tremble * 0.5 + rc * 0.45 + sh * 0.5;
+  R.rotation.x = -0.06 - 0.08 * h - sh * 0.95;
+}

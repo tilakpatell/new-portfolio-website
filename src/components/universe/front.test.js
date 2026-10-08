@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { ZONE, createFront, zoneOf } from './front';
+import { BEACONS, ZONE, createFront, frontAt, zoneOf } from './front';
+import { NODES } from './hyperlanes';
 import { SIDES } from './sides';
 import { WARS } from './wars';
 import { contested } from './war';
@@ -107,5 +108,61 @@ describe('createFront', () => {
     expect(card.over.winner).toBe(0);
     expect(card.over.sectors).toHaveLength(7);
     expect(emitted.some((e) => e.type === 'event' && e.sub === 'won')).toBe(true);
+  });
+});
+
+describe('frontAt', () => {
+  const mid = (a, b) => a.map((v, i) => (v + b[i]) / 2);
+  const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+  it('is the lanes’ beacons by default', () => {
+    expect(BEACONS.length).toBeGreaterThan(4);
+    expect(BEACONS.every((b) => b.kind === 'beacon' && NODES.includes(b))).toBe(true);
+  });
+
+  it('puts the Rick and Morty war at the beacon nearest the middle of the Council’s picket and Earth C-137', () => {
+    const war = WARS.rickmorty;
+    const picket = war.sectors.find((s) => s.id === 'picket').at;
+    const c137 = war.sectors.find((s) => s.id === 'c137').at;
+    const m = mid(picket, c137);
+    const b = frontAt(war);
+    expect(b.kind).toBe('beacon');
+    for (const o of BEACONS) expect(d(b.at, m)).toBeLessThanOrEqual(d(o.at, m));
+    expect(b.id).toBe('beacon:wanderer'); // (the sectors run past Rick and Morty’s world, in the Wanderer’s region)
+  });
+
+  it('takes the beacons it’s given', () => {
+    const war = WARS.breakingbad;
+    const m = mid(war.sectors[0].at, war.sectors[war.sectors.length - 1].at);
+    const near = { id: 'b:near', kind: 'beacon', at: [m[0] + 10, m[1], m[2]] };
+    const far = { id: 'b:far', kind: 'beacon', at: [m[0] + 9000, m[1], m[2]] };
+    expect(frontAt(war, [far, near])).toBe(near);
+    expect(frontAt(war, [])).toBeNull();
+  });
+});
+
+describe('createFront at a beacon', () => {
+  it('fights its battles at the war’s beacon, and says so to the nav map', () => {
+    const made = [];
+    const makeBattle = (opts) => {
+      const b = { opts, over: null, setYou() {}, update: () => [], hit: () => null, targets: [], info: {} };
+      made.push(b);
+      return b;
+    };
+    const makeScene = () => ({ show() {}, hide() {}, update: () => true, dispose() {} });
+    const front = createFront(new THREE.Group(), { side: SIDES.rickmorty, beacons: BEACONS, models: { want() {} }, storage: memory(), emit() {}, makeBattle, makeScene });
+    const b = frontAt(WARS.rickmorty);
+    expect(front.where().at).toEqual(b.at);
+    expect(front.where().beacon).toBe(b.id);
+    expect(front.goal().at).toEqual(b.at);
+    // (and the sectors still go from the picket to Earth C-137, the one fought over named)
+    expect(front.where().sectors).toHaveLength(7);
+    expect(front.where().name).toBe(WARS.rickmorty.battleName(WARS.rickmorty.sectors[contested({ front: 3, attacker: 0 })]));
+    const [x, y, z] = b.at;
+    front.update(0.1, 0, null, new THREE.Vector3(), { x: x + 50, y, z });
+    expect(made).toHaveLength(1);
+    expect(made[0].opts.at).toEqual(b.at);
+    expect(front.inZone).toBe(true);
+    front.dispose();
   });
 });

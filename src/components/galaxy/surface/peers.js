@@ -18,6 +18,7 @@ import { HEROES, heroSpec } from '../heroes';
 import { readLooks } from '../../rickmorty/wardrobe/looks';
 import { METRE } from '../../universe/foot';
 import { RIDES } from './rides';
+import { SEATS, poseRider } from './riders';
 import { buildFigure } from './figures';
 import { modelFigure } from './actors';
 import { createGunplay } from '../../universe/gunplay';
@@ -115,6 +116,16 @@ export function createPeers({ parent, placer, getCast }) {
     if (spec?.figure) {
       r.fig = buildFigure(spec.figure);
       if (r.fig) holder.add(r.fig.model);
+      // (its catalogue model once it's here, as yours is: the seat's measured on it)
+      modelFigure(spec.figure)
+        .then((m) => {
+          if (!m || dead || !holder.parent) return;
+          if (r.fig) holder.remove(r.fig.model);
+          r.fig?.dispose?.();
+          holder.add(m.model);
+          r.fig = m;
+        })
+        .catch(() => {});
     } else
       placer.put({ kind, at: [0, 0], abs: true, solid: false }).then((o) => {
         if (!o || dead || !holder.parent) return;
@@ -227,6 +238,19 @@ export function createPeers({ parent, placer, getCast }) {
           e.ride.fig?.update(dt, Math.min(1, Math.abs(lead.st.speed) / 6));
           const [sx, sy, sz] = spec.seat;
           lead.holder.position.set(x + sx * Math.cos(yaw) + sz * Math.sin(yaw), y + sy - 0.55, z - sx * Math.sin(yaw) + sz * Math.cos(yaw));
+          // sat in it as you are (riders.js): its sat clip, then the hips on
+          // its seat and the hands and feet on its controls
+          if (lead.fig && lead.seat !== e.ride.kind) {
+            lead.seat = e.ride.kind;
+            lead.fig.base?.(spec.hover > 0 || spec.fly ? 'drive' : 'sit')?.catch?.(() => {});
+          }
+          if (SEATS[e.ride.kind] && lead.fig) {
+            e.ride.holder.updateMatrixWorld(true);
+            poseRider(lead.fig, lead.holder, e.ride.holder.matrixWorld, SEATS[e.ride.kind]);
+          }
+        } else if (lead?.seat) {
+          lead.seat = null;
+          lead.fig?.base?.(null)?.catch?.(() => {});
         }
         if (lead) e.tag.position.set(lead.st.x, lead.st.y + 2.45, lead.st.z);
       }
