@@ -24,7 +24,7 @@ import { liveCount, lodPick } from '../../../../lib/three/lodPick';
 import { pushOut } from '../walker';
 import { NEAR, createBolts, farExchange } from './bolts';
 import { createDirector } from './director';
-import { aimError, fightStep, grudge, squadsOf, suppress } from './fight';
+import { aimError, fightStep, grudge, indexBodies, squadsOf, suppress } from './fight';
 import { createFigures } from './groundFigures';
 import { createPopulation } from './population';
 import { standingOf } from './standing';
@@ -60,8 +60,23 @@ export function createGround({ parent, world, site, effects, tier = 'high', kit 
   let squadAt = 0;
   let lastYou = null;
   let news = [];
+  // (the frame's buffers, kept from frame to frame)
   const lod = new Map();
   const items = [];
+  const bodies = [];
+  const struckBy = [];
+  const roll = [];
+  const settle = new Map(); // squad → the squad it's at, for the fights past BOLTS
+  const kept = new Map(); // id → its body object, reused
+  const fw = { t: 0, war: effects.war, bodies, seesThrough, tokens, squads: null, index: null, indexOf: null };
+  let frame = 0;
+  let targetsAt = -1;
+  const targets = [];
+  const bodyOf = (id) => {
+    let b = kept.get(id);
+    if (!b) kept.set(id, (b = { id }));
+    return b;
+  };
 
   const population = () => {
     if (pop) return pop;
@@ -122,10 +137,13 @@ export function createGround({ parent, world, site, effects, tier = 'high', kit 
     landed(at) {
       if (!pop) covertAt = at;
     },
+    // (worked out once a frame: scene.js asks several times)
     get targets() {
-      const out = [];
-      for (const t of figures.all()) if (!t.down && t.fig && t.soldier.alive) out.push(t);
-      return out;
+      if (targetsAt === frame) return targets;
+      targetsAt = frame;
+      targets.length = 0;
+      for (const t of figures.all()) if (!t.down && t.fig && t.soldier.alive) targets.push(t);
+      return targets;
     },
     // your shot: on the troops' scale, and a grudge from its squad
     hit(t, damage = 1, { push = null, at = null } = {}) {
@@ -186,6 +204,7 @@ export function createGround({ parent, world, site, effects, tier = 'high', kit 
 
   function step(dt, you, time, { mate = null, camera = null } = {}) {
     clock = time;
+    frame++;
     figures.frame();
     const shots = [];
     if (!you) return shots;
@@ -197,19 +216,25 @@ export function createGround({ parent, world, site, effects, tier = 'high', kit 
     for (const s of make) figures.add(s).ground = api;
     const far = time - squadAt >= SQUADS;
     if (far) squads.update(time - squadAt);
-    const bodies = [];
-    for (const s of p.soldiers.values()) if (s.alive) bodies.push({ id: s.id, x: s.b.x, z: s.b.z, vel: s.vel ?? null, side: s.side, kind: s.kind, squad: s.squad, firingAt: time - (s.firedAt ?? -9) < 1 ? s.firingAt : null });
-    bodies.push({ id: 'you', x: you.x, z: you.z, vel: [you.vx ?? 0, you.vz ?? 0], side: effects.side ?? null, kind: 'you', you: true });
-    if (mate) bodies.push({ id: 'mate', x: mate.x, z: mate.z, vel: [mate.vx ?? 0, mate.vz ?? 0], side: effects.side ?? null, kind: 'mate', you: true });
-    const fw = { t: time, war: effects.war, bodies, seesThrough, tokens, squads };
+    bodies.length = 0;
+    for (const s of p.soldiers.values()) if (s.alive) bodies.push(Object.assign(bodyOf(s.id), { x: s.b.x, z: s.b.z, vel: s.vel ?? null, side: s.side, kind: s.kind, squad: s.squad, firingAt: time - (s.firedAt ?? -9) < 1 ? s.firingAt : null }));
+    bodies.push(Object.assign(bodyOf('you'), { x: you.x, z: you.z, vel: [you.vx ?? 0, you.vz ?? 0], side: effects.side ?? null, kind: 'you', you: true }));
+    if (mate) bodies.push(Object.assign(bodyOf('mate'), { x: mate.x, z: mate.z, vel: [mate.vx ?? 0, mate.vz ?? 0], side: effects.side ?? null, kind: 'mate', you: true }));
+    if (far) for (const id of kept.keys()) if (id !== 'you' && id !== 'mate' && !p.soldiers.get(id)?.alive) kept.delete(id);
+    fw.t = time;
+    fw.squads = squads;
+    fw.index = indexBodies(bodies);
+    fw.indexOf = bodies;
     // who's live, still and hidden by where the camera stands
     items.length = 0;
     for (const t of figures.all()) items.push({ id: t.id, x: t.soldier.b.x, y: t.holder.position.y, z: t.soldier.b.z, falling: t.down > 0 && !t.rag?.settled });
     const eye = camera?.position ?? { x: you.x, y: you.y ?? 0, z: you.z };
     lodPick(items, eye, { count: liveCount(tier), far: BRAINS }, lod);
     let seen = false;
-    const settle = new Map(); // squad → the squad it's at, for the fights past BOLTS
-    for (const t of [...figures.all()]) {
+    settle.clear();
+    roll.length = 0;
+    for (const t of figures.all()) roll.push(t);
+    for (const t of roll) {
       const s = t.soldier;
       if (t.fig) t.fig.model.visible = lod.get(t.id) !== 'hidden';
       if (t.down) {
@@ -256,7 +281,7 @@ export function createGround({ parent, world, site, effects, tier = 'high', kit 
       }
     }
     // the bolts in flight: hits, walls and near misses
-    const struckBy = [];
+    struckBy.length = 0;
     for (const t of figures.all()) if (!t.down && t.soldier.alive) struckBy.push({ id: t.id, x: t.soldier.b.x, y: t.holder.position.y, z: t.soldier.b.z, r: 0.45, h: t.fig?.tall ?? 1.8, side: t.soldier.side });
     if (mate) struckBy.push({ id: 'mate', x: mate.x, y: mate.y ?? 0, z: mate.z, r: 0.45, h: 1.8, side: effects.side ?? null });
     for (const e of bolts.step(dt, { bodies: struckBy, seesThrough })) {
