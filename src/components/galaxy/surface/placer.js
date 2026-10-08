@@ -42,7 +42,7 @@ import { PROPS, SCATTER } from './props';
 import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
 import { seatY } from './seat';
-import { isTintable, natureLook, natureTick } from './nature';
+import { isTintable, natureLook, natureMaterials, natureTick } from './nature';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again
 
@@ -97,9 +97,9 @@ export function loadModel(kind, url = modelUrlFor(kind, detailLevel())) {
   const role = SURFACE_MODELS[kind]?.detail;
   const scan = role && detailLevel() !== 'low' ? loadScan(role) : null;
   return Promise.all([loadGlb(url).then((g) => (url !== surfaceLodUrl(kind) ? squared(g, kind) : g)), scan]).then(([gltf, got]) => {
-    // (the nature kit's: its materials shared by name, lit as leaves, in
-    // the page's wind: nature.js)
-    if (gltf && SURFACE_MODELS[kind]?.cc0) natureLook(gltf, SURFACE_MODELS[kind]);
+    // (the nature kit's: its materials shared by name across the page, its
+    // geometry stood in metres: nature.js)
+    if (gltf && SURFACE_MODELS[kind]?.cc0) natureLook(gltf);
     // (a model whose own finish reads wrong in the world: `look`, its
     // materials' metalness, roughness, ambient occlusion and reflections set)
     const look = SURFACE_MODELS[kind]?.look;
@@ -197,6 +197,10 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   const updates = [];
   const signals = [];
   const pending = [];
+  // (this world's own copies of the nature kit's materials, dressed for its
+  // look and fog: nature.js)
+  const mine = natureMaterials();
+  const ownMaterial = (kind, material) => (SURFACE_MODELS[kind]?.cc0 ? mine.all(material, SURFACE_MODELS[kind].sway) : material);
   let dead = false;
 
   const groundY = (x, z) => world.heightAt(x, z);
@@ -317,6 +321,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             if (dead) return null;
             if (!gltf) return build(spec, at);
             const o = cloneModel(gltf);
+            if (SURFACE_MODELS[spec.kind].cc0) o.traverse((m) => m.isMesh && (m.material = ownMaterial(spec.kind, m.material)));
             o.position.set(...at);
             o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
             o.scale.setScalar(spec.scale ?? 1);
@@ -344,6 +349,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             loadModel(spec.kind, surfaceLodUrl(spec.kind)).then((low) => {
               if (dead || !low) return;
               const l = cloneModel(low);
+              if (SURFACE_MODELS[spec.kind].cc0) l.traverse((m) => m.isMesh && (m.material = ownMaterial(spec.kind, m.material)));
               addLowLevel(lod, l, radiusOf(gltf) * (spec.scale ?? 1));
               warm(l);
             });
@@ -410,7 +416,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           root.updateMatrixWorld(true);
           const parts = [];
           root.traverse((o) => {
-            if (o.isMesh && !o.isSkinnedMesh) parts.push({ geometry: o.geometry, material: o.material, local: o.matrixWorld.clone(), shadow: SURFACE_MODELS[kind].shadow });
+            if (o.isMesh && !o.isSkinnedMesh) parts.push({ geometry: o.geometry, material: ownMaterial(kind, o.material), local: o.matrixWorld.clone(), shadow: SURFACE_MODELS[kind].shadow });
           });
           const box = new THREE.Box3().setFromObject(root);
           const size = box.getSize(new THREE.Vector3());
@@ -425,13 +431,16 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
               lowRoot.updateMatrixWorld(true);
               const lowParts = [];
               lowRoot.traverse((o) => {
-                if (o.isMesh && !o.isSkinnedMesh) lowParts.push({ geometry: o.geometry, material: o.material, local: o.matrixWorld.clone(), shadow: false });
+                if (o.isMesh && !o.isSkinnedMesh) lowParts.push({ geometry: o.geometry, material: ownMaterial(kind, o.material), local: o.matrixWorld.clone(), shadow: false });
               });
               const low = instanceParts(lowParts);
               for (const l of low) l.mesh.castShadow = false; // (far off: past the shadow's reach)
               splits.push({ full, low, xs, zs, r: lodDistance(radiusOf(gltf)) });
               nearAt = null;
-              warm(lowRoot);
+              // (the nature kit's light copies are drawn in this world's own
+              // materials, made with the world's prepare: the page's are left
+              // as they came)
+              if (!SURFACE_MODELS[kind].cc0) warm(lowRoot);
             });
           return null;
         });
@@ -471,6 +480,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       group.removeFromParent();
       rooms.removeFromParent();
       for (const c of casters) c.mesh.material.dispose();
+      mine.dispose();
     },
   };
 

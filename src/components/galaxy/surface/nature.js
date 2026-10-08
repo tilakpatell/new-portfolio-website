@@ -1,35 +1,51 @@
 // The nature kit as it runs (catalog/nature.js: Quaternius's CC0 megakit,
-// cut down by scripts/quaternius-nature.mjs). Each file is made over once,
-// as it loads (placer.js's loadModel):
+// cut down by scripts/quaternius-nature.mjs).
+//
+// natureLook(gltf), once a file, as it loads (placer.js's loadModel):
 //   - its materials shared by name across the page: every fern, plant and
-//     flower is drawn with the one `Leaves` and the one `Flowers`, each
-//     tree's species with its one bark and one leaf material, so a world
-//     with ten plant kinds sends those pictures once and links one shader
-//     for them (the copies, and their pictures, freed);
+//     flower is drawn from the one `Leaves` and the one `Flowers`, each
+//     tree's species from its one bark and one leaf material, so a world
+//     with ten plant kinds sends those pictures once (the copies, and their
+//     pictures, freed). They're left as they came: the page keeps them for
+//     every world, and each world dresses its own copies;
+//   - its geometry stood in metres from its foot: meshopt keeps positions in
+//     [-1, 1] with the node scaled and moved to the model's box, and the wind
+//     and the push both read a vertex's height, so the node's transform is
+//     baked into float positions and the node left at nothing.
+//
+// natureMaterials() → mine(material, sway), one a world (the placer's):
+// that world's own copy of a shared material, made once for each sway and
+// dressed (the copy shares the pictures; its world's look and fog are put
+// on it, not on the page's):
 //   - lit as leaves (lib/three/foliage: light that wraps past the edge and
 //     comes through from behind, both faces lit as one), cut out by alpha to
 //     coverage;
-//   - in one wind, the page's (NATURE: one clock, one way it blows), a tree's
-//     leaves and its branches together, by the numbers its family moves by;
-//   - pushed aside: the low plants, the flowers and the grass lean away from
-//     you as you walk through them, and spring back (pushShader);
+//   - in the page's wind (NATURE: one clock, one way it blows), every part of
+//     a model by the model's own `sway`, so a tree's leaves move with its
+//     branches and a bush's flowers with its leaves;
+//   - pushed aside, what sways as a shrub or as grass: it leans away from you
+//     as you walk through it, and springs back (pushShader);
 //   - tintable (a scatter's colour pair, placer.js): the leaves, plants,
 //     grass and stone, never the bark or the petals.
-// natureTick(kit, you) each frame (the placer's update) gives the page's
-// wind the world's clock and way, and the push where you stand. The clock
-// is the kit's, so under reduced motion (no kit.tick) it all stands still.
+// mine.dispose() frees the copies, never the pictures.
 //
-//   natureLook(gltf, entry) → gltf   isTintable(material)   pushShader(shaders) (pure)
+// natureTick(kit, you) each frame (the placer's update): the page's wind
+// takes the world's clock and way, and the push where you stand. The clock
+// is the kit's, so under reduced motion (no kit.tick) it all stands still,
+// the push too.
+//
+//   pushShader(shaders) (pure)   isTintable(material)
 
 import * as THREE from 'three';
 import { faceless, wind, wrapLighting } from '../../../lib/three/foliage';
 
 // the page's own: one clock, the way the wind blows, where you are (far off
 // till you're somewhere), and how near you push
+const NOWHERE = 1e6;
 export const NATURE = {
   time: { value: 0 },
   dir: { value: new THREE.Vector2(0.8, 0.6).normalize() },
-  push: { value: new THREE.Vector3(1e6, 0, 1e6) },
+  push: { value: new THREE.Vector3(NOWHERE, 0, NOWHERE) },
   pushR: { value: 1.6 },
 };
 
@@ -37,9 +53,8 @@ export const NATURE = {
 const familyOf = (name) =>
   name === 'Grass' ? 'grass' : name === 'Leaves' ? 'plant' : name === 'Flowers' ? 'flowers' : name.startsWith('Leaves_') || name.startsWith('Leaf_') ? 'leaves' : name.startsWith('Bark_') ? 'bark' : 'stone';
 const LEAFY = new Set(['leaves', 'plant', 'flowers', 'grass']);
-const PUSHED = new Set(['plant', 'flowers', 'grass']);
 const TINTED = new Set(['leaves', 'plant', 'grass', 'stone']);
-const MOVES = { plant: 'shrub', flowers: 'shrub', grass: 'grass' };
+const MOVES = { tree: 'tree', shrub: 'shrub', grass: 'grass' };
 
 const shared = new Map(); // `${name}|${vertexColors}` → the first material of that name
 
@@ -91,7 +106,7 @@ function pushed(material) {
   material.needsUpdate = true;
 }
 
-// a material the first time its name is seen: lit, in the wind, pushed
+// a world's copy, dressed for the model's sway
 function dress(m, sway) {
   const family = familyOf(m.name);
   if (LEAFY.has(family)) {
@@ -99,19 +114,46 @@ function dress(m, sway) {
     wrapLighting(m, { wrap: 0.45, backScatter: 0.35 });
     if (m.side === THREE.DoubleSide) faceless(m);
   }
-  // (a tree's leaves and branches by the tree's numbers, whatever loaded
-  // them first: a bush shares its leaves with a tree, and they must move
-  // with the branches they're on)
-  const moves = family === 'leaves' || family === 'bark' ? (sway ? 'tree' : null) : MOVES[family];
+  const moves = family === 'stone' ? null : MOVES[sway];
   if (moves) {
     wind(m, { kind: moves, time: NATURE.time, ...(family === 'bark' ? { leaf: 0 } : {}) });
     m.userData.wind.uWindDir = NATURE.dir;
   }
-  if (PUSHED.has(family)) pushed(m);
+  if ((moves === 'shrub' || moves === 'grass') && family !== 'bark') pushed(m);
   m.userData.tintable = TINTED.has(family);
 }
 
-export function natureLook(gltf, entry = {}) {
+// every mesh's geometry in float metres under the file's root, its own and
+// its parents' transforms baked in, and those left at nothing
+function stoodUp(root) {
+  root.updateMatrixWorld(true);
+  const toRoot = root.matrixWorld.clone().invert();
+  const meshes = [];
+  root.traverse((o) => o.isMesh && meshes.push(o));
+  const done = new Set();
+  for (const o of meshes) {
+    if (done.has(o.geometry)) o.geometry = o.geometry.clone();
+    const g = o.geometry;
+    for (const name of ['position', 'normal']) {
+      const a = g.attributes[name];
+      if (!a || (a.array instanceof Float32Array && !a.normalized)) continue;
+      const f = new Float32Array(a.count * 3);
+      for (let i = 0; i < a.count; i++) f.set([a.getX(i), a.getY(i), a.getZ(i)], i * 3);
+      g.setAttribute(name, new THREE.BufferAttribute(f, 3));
+    }
+    g.applyMatrix4(toRoot.clone().multiply(o.matrixWorld));
+    done.add(g);
+  }
+  root.traverse((o) => {
+    if (o === root) return;
+    o.position.set(0, 0, 0);
+    o.quaternion.identity();
+    o.scale.set(1, 1, 1);
+  });
+  root.updateMatrixWorld(true);
+}
+
+export function natureLook(gltf) {
   const root = gltf?.scene;
   if (!root || root.userData.nature) return gltf;
   root.traverse((o) => {
@@ -124,20 +166,47 @@ export function natureLook(gltf, entry = {}) {
         m.dispose();
         return had;
       }
-      if (!had) {
-        shared.set(key, m);
-        dress(m, entry.sway);
-      }
+      if (!had) shared.set(key, m);
       return m;
     });
     o.material = mats.length === 1 ? mats[0] : mats;
   });
+  stoodUp(root);
   root.userData.nature = true;
   return gltf;
 }
 
+export function natureMaterials() {
+  const made = new Map(); // the page's material → sway → this world's copy
+  const mine = (m, sway) => {
+    let bySway = made.get(m);
+    if (!bySway) made.set(m, (bySway = new Map()));
+    const key = sway ?? '';
+    let copy = bySway.get(key);
+    if (!copy) {
+      copy = m.clone();
+      // (none of the marks another world's look or fog left on the page's)
+      copy.userData = {};
+      dress(copy, sway);
+      bySway.set(key, copy);
+    }
+    return copy;
+  };
+  mine.all = (material, sway) => (Array.isArray(material) ? material.map((m) => mine(m, sway)) : mine(material, sway));
+  mine.dispose = () => {
+    for (const bySway of made.values()) for (const copy of bySway.values()) copy.dispose();
+    made.clear();
+  };
+  return mine;
+}
+
+let lastClock = null;
 export function natureTick(kit, you) {
-  if (kit?.wind) NATURE.time.value = kit.wind.value;
+  const clock = kit?.wind?.value ?? null;
+  const moving = clock === null || clock !== lastClock;
+  lastClock = clock;
+  if (clock !== null) NATURE.time.value = clock;
   if (kit?.windAngle != null) NATURE.dir.value.set(Math.cos(kit.windAngle), Math.sin(kit.windAngle));
-  if (you) NATURE.push.value.set(you.x, 0, you.z);
+  if (!moving) NATURE.push.value.set(NOWHERE, 0, NOWHERE);
+  else if (you) NATURE.push.value.set(you.x, 0, you.z);
 }
