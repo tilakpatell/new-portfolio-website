@@ -276,6 +276,14 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
     return { texture: tex, pixels, size: kept.width, range, area: { ...area }, ms: 0, passes: 0, dispose: () => tex.dispose() };
   };
 
+  // what the bake draws, as one root for the cache's key: every mesh under
+  // the casters but the movers' and the skipped ones (the blobs among them)
+  const staticRoot = () => {
+    for (const r of roots) r.updateMatrixWorld?.(true);
+    const list = meshesUnder(roots, new Set([...skipRoots, ...moverRoots, blobs.mesh]));
+    return { traverse: (fn) => list.forEach(fn) };
+  };
+
   const bake = () => {
     if (job) return job;
     if (disposed) return Promise.resolve(false);
@@ -285,7 +293,10 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
     bakedDir = sunDirection(sun, new THREE.Vector3());
     const preset = BAKE_TIERS[tier] ?? BAKE_TIERS.mid;
     const signal = abort;
-    const key = cache?.world && !keepShadows ? bakeKey({ world: cache.world, place: cache.place, sun: bakedDir, tier, casters: roots, area, range, params: preset }) : null;
+    // (the key from what the bake sees: what moves and what's skipped are
+    // left out of it as they are of the bake, so a walker somewhere else,
+    // or the weather, doesn't make a mask kept from an earlier visit unfit)
+    const key = cache?.world && !keepShadows ? bakeKey({ world: cache.world, place: cache.place, sun: bakedDir, tier, casters: [staticRoot()], area, range, params: preset }) : null;
     const fresh = () =>
       bakeFloorTexture(renderer, scene, {
         area,
