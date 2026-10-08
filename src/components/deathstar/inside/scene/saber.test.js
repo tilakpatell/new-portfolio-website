@@ -105,11 +105,11 @@ describe('where a fighter’s blade points', () => {
   });
 
   it('cuts through its blow at speed, never slowing to a stop on it', () => {
-    const at = (kind, t) => swing(fighter({ stroke: { kind, t, hit: false } }));
+    const way = (kind, t) => swing(fighter({ stroke: { kind, t, hit: false } }));
     for (const kind of ['light', 'heavy']) {
       const blow = STROKES[kind].at;
-      expect(degrees(at(kind, blow - 0.005), at(kind, blow))).toBeGreaterThan(6);
-      expect(degrees(at(kind, blow), at(kind, blow + 0.005))).toBeGreaterThan(2);
+      expect(degrees(way(kind, blow - 0.005), way(kind, blow))).toBeGreaterThan(6);
+      expect(degrees(way(kind, blow), way(kind, blow + 0.005))).toBeGreaterThan(2);
     }
   });
 
