@@ -17,7 +17,7 @@ describe('the offer on a first arrival', () => {
   });
 
   it('is never made over a world, a project or the terminal', () => {
-    for (const p of ['/c-137', '/galaxy/hoth', '/middle-earth', '/projects/gameboy', '/terminal', '/changes', '/nowhere']) expect(offerHere(p, null), p).toBe(false);
+    for (const p of ['/c-137', '/galaxy/hoth', '/middle-earth', '/projects/gameboy', '/terminal', '/changes', '/worlds', '/nowhere']) expect(offerHere(p, null), p).toBe(false);
   });
 
   it('is made once: once it’s been offered, taken or turned down, never again', () => {
