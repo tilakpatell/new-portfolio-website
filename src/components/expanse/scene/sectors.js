@@ -3,7 +3,7 @@
 // in its buffers stay small however far out it is; the group is moved to
 // where the sector is relative to the floating origin (reanchor). Each
 // star is a small bright sphere in its own colour; from further off than
-// farPlaces.js's FAR_REAL it's a speck on the sky instead, every star and
+// where farStars.js has it real, it's a star on the sky instead, every star and
 // wonder of the sector in one Points, one draw. A system's planets are
 // built (galaxy/bodies.js, a look for each type) only when the camera comes
 // within PLANET_NEAR of it, the nearest system's alone, and let go again
@@ -21,7 +21,7 @@
 import * as THREE from 'three';
 import { buildBody } from '../../galaxy/bodies';
 import { SKY_FAR } from '../../universe/deepspace';
-import { createFarPlaces } from '../../universe/farPlaces';
+import { createFarStars } from '../../universe/farStars';
 import { createLaneRibbons } from '../../universe/laneRibbons';
 import { rngOf } from '../gen/seed';
 
@@ -161,7 +161,7 @@ export function createSector(sector, { lanes = [], tier = 'mid', reduced = false
   });
 
   // every star and wonder as a speck, from far off
-  const far = createFarPlaces(group, {
+  const far = createFarStars(group, {
     places: [
       ...sector.systems.map((s, i) => ({ id: s.id, at: local(s.at), r: s.star.size, color: s.star.color, group: stars[i] })),
       ...sector.wonders.map((w, i) => ({ id: w.id, at: local(w.at), r: w.size * 0.4, color: (WONDER[w.kind] ?? WONDER.rogue).color, group: wonders[i] })),

@@ -43,7 +43,7 @@ export const POSES = {
   station: { station: 'home', back: 1.6, rise: 0.3 },
   // since the spread (scale.js's SPREAD): at the home system's edge looking
   // out at the furthest world, everything past FAR_REAL drawn as light
-  // (farPlaces.js); and held half way along the trunk from Middle-earth's
+  // (farStars.js); and held half way along the trunk from Middle-earth's
   // region home (hyperlanes.js), heading home along it, as a ride is
   'far-rim': { rim: 60, back: 1.6, rise: 0.3 },
   'lane-ride': { region: 'middleearth', s: 0.5, back: 1.6, rise: 0.3 },

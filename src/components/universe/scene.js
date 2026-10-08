@@ -30,8 +30,9 @@
 //   out in deep space off a fandom's planet or a wonder (ship.js's startAt),
 //   so pilots joining don't all turn up in one spot.
 //   Out past the home system is deep space (deep.js, deepspace.js), vast:
-//   the fandoms' planets are far out in it, hundreds of units apart, each
-//   marked by a beacon (beacons.js) so it reads as somewhere to go, with
+//   the fandoms' planets are far out in it, thousands of units apart, each
+//   only a star until you come near it (farStars.js), as the galaxy's other
+//   systems are, its name showing where you look, with
 //   wonders between them, all reached on the pulse drive (click a wonder
 //   and the ship takes you: ship.js's autopilot). You're not alone: traffic
 //   (traffic.js), hunters after you (hunters.js, flown by hunterRules.js:
@@ -132,7 +133,7 @@ import { createMeteors } from './meteors';
 import { createMines } from './mines';
 import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
 import { DEBRIS_DRIFT, SKY_FAR, buildDeepSpace } from './deepspace';
-import { FAR_PLACES, createFarPlaces } from './farPlaces';
+import { FAR_STARS, createFarStars } from './farStars';
 import { createSectorPortals } from './sectorPortals';
 import { GUN, gunHit, gunTransit } from './gunPortal';
 import { createGunPortal } from './gunPortalFx';
@@ -146,7 +147,6 @@ import { createFarFights, fightLabel, pickFightNode } from './farFights';
 import { placeAt } from './skirmish';
 import { createModels as createBattleModels } from '../galaxy/models';
 import { createTrench } from './trench';
-import { createBeacons } from './beacons';
 import { PHONE, createPhone } from './phone';
 import { SUPERNOVA_SITES, createSupernovae } from './supernova';
 import { DEEP, PLACES, WONDERS, moveBinaries, nearestStar, openness, reachOf, wonderById } from './deep';
@@ -662,9 +662,6 @@ export async function create(canvas, ctx) {
   const curve = createCurve(map);
   const trenches = PLANETS.filter((p) => p.trench).map((p) => createTrench({ at: p.at, r: p.r, trench: p.trench }, { small }));
   for (const tr of trenches) map.add(tr.group);
-  // and a beacon over each far world, so it reads as somewhere to go
-  const beacons = createBeacons();
-  map.add(beacons.points);
   // and a phone out past the belt that nothing mentions (phone.js)
   const phone = createPhone();
   map.add(phone.group);
@@ -691,7 +688,6 @@ export async function create(canvas, ctx) {
     return p;
   });
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
-  // and every place past FAR_REAL drawn as a point of light instead (farPlaces.js)
   // the Expanse past the rim (expanse/scene/expanse.js): asleep inside it;
   // its floating origin is the runtime's (re-anchored here as it moves)
   const origin = runtime().origin;
@@ -705,7 +701,24 @@ export async function create(canvas, ctx) {
       if (inExpanse(id)) state.note = { text: `The Expanse · ${id}`, until: wall() + 3 };
     },
   });
-  const farPlaces = createFarPlaces(map, { places: FAR_PLACES.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })), skyFar: SKY_FAR });
+  // and every place past where it's real drawn as a star instead, the
+  // galaxy's way (farStars.js): from anywhere, the other worlds are stars
+  const farStars = createFarStars(map, { places: FAR_STARS.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })), skyFar: SKY_FAR });
+  // whose name shows: while flying, a place's only where you look (within
+  // NAME_CONE of the nose), where it's real, picked or where you're going;
+  // on foot, only near or picked; with no ship (or the whole map in view), all
+  const NAME_COS = Math.cos(0.14);
+  const named = (id, at) => {
+    if ((!flying() && !onFoot()) || state.view === 'map') return true;
+    if ((farStars.kOf(id) ?? 1) < 1 || id === state.sel || id === state.auto?.id || id === state.jump?.id) return true;
+    if (onFoot() || !at) return false;
+    const s = state.ship;
+    const [nx, ny, nz] = noseOf(s);
+    const dx = at[0] - s.x;
+    const dy = at[1] - s.y;
+    const dz = at[2] - s.z;
+    return (nx * dx + ny * dy + nz * dz) / (Math.hypot(dx, dy, dz) || 1) > NAME_COS;
+  };
   const near = createNearMaps({ small, upload: (ts) => uploadSlices(renderer, ts, { sliceMB: 8 }) }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
@@ -1405,7 +1418,7 @@ export async function create(canvas, ctx) {
       // (none while the ship falls into the Maw: nothing to pick, and the
       // camera's going in; nor, on foot, the planet you're on or anything
       // below its horizon, nor anything on the way in through its air)
-      const off = Boolean(state.crash?.swallow) || SECTOR_OF[s.id] !== sector || s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60 || entering || (onFoot() && (s.id === foot.id || underground(s.id)));
+      const off = Boolean(state.crash?.swallow) || SECTOR_OF[s.id] !== sector || !named(s.id, POSITIONS[s.id]) || s.z <= 0.3 || s.x < -60 || s.x > size.w + 60 || s.y < -60 || s.y > size.h + 60 || entering || (onFoot() && (s.id === foot.id || underground(s.id)));
       // tucked behind a nearer planet, or a station's sign
       const ly = s.y + s.r + 10;
       let behind = false;
@@ -4916,8 +4929,8 @@ export async function create(canvas, ctx) {
     lights(dt);
     // (the look follows the lights; what's come into the scene since is taken on every half second or so)
     house.follow({ adopt: houseFrames++ % 30 === 0 });
-    deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
-    farPlaces.update(camera, dt, state.auto?.id ?? state.jump?.id ?? null);
+    deep.update(t, camera, camLocal, { names: onFoot() && foot.entry() ? false : (id) => named(id, wonderById(id)?.at) });
+    farStars.update(camera, dt, { focus: state.auto?.id ?? state.jump?.id ?? null, sector: mapSectorOf(camLocal.x, camLocal.y, camLocal.z) });
     expanse.update({ ship: flying() && !state.dive ? state.ship : null, camera, t, dt });
     const lanesBusy = laneLook.update(dt, { ship: flying() && !state.crash && !state.dive ? state.ship : null, ride: state.ride, view: state.view, side: sideFor(state.kind)?.id ?? null });
     sectorPortals.update(t, camera);
@@ -4940,9 +4953,6 @@ export async function create(canvas, ctx) {
       siegeOwed = false;
     }
     placeArms();
-    beacons.update(camLocal);
-    // (the beacons are the main map's places: from the Rick and Morty sector there's nothing of theirs to see)
-    beacons.points.visible = !state.ship || mapSectorOf(state.ship.x, state.ship.y, state.ship.z) === 'main';
     phone.update(t, camera);
     // the fall into the Maw: the ship's trail and glow, and its last light
     if (infall) {
@@ -5732,7 +5742,7 @@ export async function create(canvas, ctx) {
       eclipseMoon?.material.dispose();
       fleet.dispose();
       deep.dispose();
-      farPlaces.dispose();
+      farStars.dispose();
       expanse.dispose();
       laneLook.dispose();
       sectorPortals.dispose();
@@ -5740,7 +5750,6 @@ export async function create(canvas, ctx) {
       curve.dispose();
       sectorFleet.dispose();
       for (const tr of trenches) tr.dispose();
-      beacons.dispose();
       phone.dispose();
       novae.dispose();
       burst.clear();

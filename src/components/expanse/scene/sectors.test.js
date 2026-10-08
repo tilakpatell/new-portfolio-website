@@ -65,7 +65,7 @@ describe('a generated sector, drawn', () => {
     expect(s.group.name).toBe('sector:E:2,-1');
     expect(s.sector).toBe(sector);
     expect(named(s.group, 'star:')).toHaveLength(sector.systems.length);
-    expect(named(s.group, 'far-places')).toHaveLength(1);
+    expect(named(s.group, 'far-stars')).toHaveLength(1);
     expect(named(s.group, 'wonder:')).toHaveLength(sector.wonders.length);
     expect(s.count()).toBeGreaterThan(sector.systems.length);
     s.dispose();

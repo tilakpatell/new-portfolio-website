@@ -34,7 +34,7 @@
 // drive and the far ones over a minute, but 6 to 15 s on a trunk lane
 // (hyperlanes.js): a long way without a lane, a short way with one. Eight
 // made free flight a chore; six pushed the far rim past what the far
-// impostors (farPlaces.js) handle well. Only the gaps grow: the places
+// impostors (farStars.js) handle well. Only the gaps grow: the places
 // themselves, the home system and the Rick and Morty sector's own layout
 // stay as they are.
 //
