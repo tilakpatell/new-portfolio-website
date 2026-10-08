@@ -143,7 +143,7 @@ test('coneFor picks touch on coarse, pad for drag, mouse otherwise', …)
 **Interfaces:**
 - Produces: `createBolts({ pool = 48 }) → { fire(spec) → bolt, step(dt, world) → events[], live() → bolt[] }`. `spec = { from, dir, speed = 90, range = 120, owner, side ('you' | 'them' | 'none'), damage, colour, deflect = false }`. `world = { solids(a, b) → { at, normal } | null, bodies: [{ id, a, b, r, side, ref }], blades: [{ id, base, tip, r, side, ref }] }`. Events: `{ type: 'hit', bolt, body, at }`, `{ type: 'solid', bolt, at, normal }`, `{ type: 'deflect', bolt, blade, at }`, `{ type: 'gone', bolt }`. Geometry helpers exported: `segCapsule(a, b, ca, cb, r) → { t, at } | null`, `segSeg(a, b, c, d) → { s, t, dist }`.
 
-- [ ] **Step 1: Write the failing tests**:
+- [x] **Step 1: Write the failing tests**:
 
 ```js
 test('a bolt stops at a solid 10 m ahead and reports its point and normal', …)
@@ -156,7 +156,7 @@ test('the pool reuses a dead slot before the oldest live one', …)
 test('a solid at 0 m (the muzzle inside a wall) ends the bolt at the muzzle without hitting the shooter', …)
 ```
 
-- [ ] **Step 2: Run** — FAIL. **Step 3: Implement**, bodies tested nearest-first along the flown segment, solids first. **Step 4: PASS. Step 5: Commit** — `"A bolt's flight: swept against solids, capsules and blades, turned by a raised blade"`.
+- [x] **Step 2: Run** — FAIL. **Step 3: Implement**, bodies tested nearest-first along the flown segment, solids first. **Step 4: PASS. Step 5: Commit** — `"A bolt's flight: swept against solids, capsules and blades, turned by a raised blade"`.
 
 ### Task B2: `src/lib/combat/accuracy.js`
 
@@ -166,7 +166,7 @@ test('a solid at 0 m (the muzzle inside a wall) ends the bolt at the muzzle with
 **Interfaces:**
 - Produces: `spread(range, { base = 0.02, perMetre = 0.0012, moving = false, suppressed = 1, first = false, streak = 0 }) → radians`; `scatter(dir, rad, rng) → dir'`; `shotStep(s, { hit }) → s'` where `s = { streak, fresh }` (two hits in a row → the next shot's `wide: true`, once); `FIRST = 2.5`, `MOVING = 1.6`.
 
-- [ ] **Step 1:** Tests: spread grows with range; × 2.5 on `first`; × 1.6 moving; after two hits the third is thrown wide once and the streak resets. **Steps 2–5** as above. Commit — `"How an enemy shoots: spread by range and movement, a first miss, a streak cap"`.
+- [x] **Step 1:** Tests: spread grows with range; × 2.5 on `first`; × 1.6 moving; after two hits the third is thrown wide once and the streak resets. **Steps 2–5** as above. Commit — `"How an enemy shoots: spread by range and movement, a first miss, a streak cap"`.
 
 ### Task B3: `src/lib/three/combat/bolts.js`
 
@@ -176,17 +176,17 @@ test('a solid at 0 m (the muzzle inside a wall) ends the bolt at the muzzle with
 **Interfaces:**
 - Produces: `createBoltMeshes(scene, { pool, colours }) → { sync(bolts.live()), flash(at, dir, colour), dispose() }`: an `InstancedMesh` of thin additive cylinders (as `blaster.js` draws them today) placed from the pool each frame, muzzle flashes as now.
 
-- [ ] One step: build it from `blaster.js`'s drawing code (moved, not rewritten), with no world import. Commit.
+- [x] One step: build it from `blaster.js`'s drawing code (moved, not rewritten), with no world import. Commit.
 
 ### Task B4: the galaxy on the one bolt step
 
 **Files:**
 - Modify: `src/components/galaxy/surface/blaster.js` (becomes a caller: `fire`, `enemy`, `tracer` and `update` on `createBolts`; `along` and the dice go), `ground/bolts.js` (soldier-on-soldier bolts through the same pool; `farExchange` stays), `ground/groundScene.js` (the mate's capsule in `bodies`; `struck` from the `hit` event), `scene.js` (the player's shot: `aimPoint` + `bolts.fire` from the muzzle; `world.solids` = the surface's ground plus the placer's solids via one raycaster against `solids` meshes; the deflect decided by the `deflect` event, not at fire time; the 0.45 dice at 2918 removed), `ground/fight.js` and `hostiles.js` (aim = `lead`, spread = `accuracy.spread`, `world.solids` from the muzzle each frame they fire; no shot when blocked).
 
-- [ ] **Step 1:** `world.solids` for the galaxy: a function in `galaxy/surface/solids.js` (new, under 200 lines) that raycasts `placer`'s solid meshes and tests the ground; tested with a fixture world (`ground.scenario.test.js`'s pattern): a bolt at a wall stops; one over it passes.
-- [ ] **Step 2:** Wire the callers; delete `along`, the tracer's separate speed, the dice.
+- [x] **Step 1:** `world.solids` for the galaxy: a function in `galaxy/surface/solids.js` (new, under 200 lines) that raycasts `placer`'s solid meshes and tests the ground; tested with a fixture world (`ground.scenario.test.js`'s pattern): a bolt at a wall stops; one over it passes.
+- [x] **Step 2:** Wire the callers; delete `along`, the tracer's separate speed, the dice.
 - [ ] **Step 3:** `npm test` (the existing `blaster.test.js`, `bolts.test.js`, `fight.test.js` updated to the new seams); `autopilot-check --routes '/galaxy/tatooine','/galaxy/kashyyyk'`: a fight on Kashyyyk's beach in the screenshot.
-- [ ] **Step 4: Commit** — `"Every galaxy bolt flies the same way and stops at the first solid"`.
+- [x] **Step 4: Commit** — `"Every galaxy bolt flies the same way and stops at the first solid"`.
 
 ### Task B5: the universe on foot
 

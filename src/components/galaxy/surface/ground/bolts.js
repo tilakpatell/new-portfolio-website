@@ -1,13 +1,21 @@
-// Bolts that fly: a soldier's shot is a bolt, swept the whole of each step
-// against every body in its way (blaster.js's sweptHit) and stopped by the
-// first wall (the scene's line of sight), never a roll of the dice. A bolt
-// at you isn't resolved here: it's handed to the scene for blaster.enemy, so
-// your dodge, your saber and your shield have it as ever. Past 60 m from
-// you a fight is settled without bolts, by the same aim and damage
-// (farExchange), so it comes out the same watched or not. Pure, tested. The
-// design: docs/superpowers/specs/2026-10-08-ground-factions-design.md,
-// section 7.
+// Bolts that fly: a soldier's shot is a bolt on lib/combat/bolt.js's step
+// (the one every blaster on the site flies by), swept the whole of each
+// step against every body in its way and stopped by the first wall, never a
+// roll of the dice. On a surface the soldiers' bolts share the scene's pool
+// (blaster.js), with the soldiers as capsules (bodyOf) and a bolt passing
+// close keeping a head down (nearBy); this createBolts is the same step on
+// its own pool for a fight played in Node (ground.scenario.test.js), with
+// a 2D line of sight for its walls. A bolt at you isn't resolved here:
+// it's handed to the scene, so your dodge, your saber and your shield have
+// it as ever. Past 60 m from you a fight is settled without bolts, by the
+// same aim and damage (farExchange), so it comes out the same watched or
+// not. Pure, tested. The design:
+// docs/superpowers/specs/2026-10-08-ground-factions-design.md, section 7.
 //
+// bodyOf({ id, x, y, z, r, h, side }) → a capsule body for the bolt step;
+// nearBy(a, e, bodies, seen, owner) → the ids of the bodies a bolt's
+// segment a → e went within NEAR of (once a bolt: `seen`);
+// wallsOf(seesThrough) → the step's solids from a 2D line of sight;
 // createBolts({ speed, life }) → { fire({ from: [x, y, z], dir, side, owner,
 //   damage, range, target? }) → bolt, step(dt, { bodies: [{ id, x, y, z, r,
 //   h, side }], seesThrough }) → events, bolts }
@@ -16,95 +24,95 @@
 // farExchange(a, b, dt, rand, { aimError, damageOf }) → { hits: [{ from,
 //   to, damage }] }
 
-import { sweptHit } from '../blaster';
+import { createBolts as boltPool } from '../../../../lib/combat/bolt';
 import { cadenceOf } from './troops';
 
 export const NEAR = 2; // metres: a bolt this near a body suppresses it
 export const SPREAD_MAX = 0.1; // radians of aim error past which a far shot hits one time in ten
-const SPLIT = 4; // halvings to find where along a step a wall stopped a bolt
+const SPLIT = 6; // halvings to find where along a step a wall stopped a bolt
 
-export function createBolts({ speed = 90, life = 2 } = {}) {
-  let next = 1;
+export function bodyOf(o) {
+  const y = o.y ?? 0;
+  const r = o.r ?? 0.45;
+  const h = o.h ?? 1.8;
+  return { id: o.id, a: [o.x, y + r, o.z], b: [o.x, y + Math.max(r, h - r), o.z], r, side: o.side ?? 'none', ref: o.ref ?? o };
+}
+
+// the bodies a bolt's way this frame went close by, once a bolt
+export function nearBy(a, e, bodies, seen, owner = null) {
+  const out = [];
+  const dx = e[0] - a[0];
+  const dz = e[2] - a[2];
+  const seg = dx * dx + dz * dz;
+  for (const o of bodies) {
+    const x = o.x ?? o.a?.[0];
+    const z = o.z ?? o.a?.[2];
+    if (o.id === owner || seen.has(o.id) || x === undefined) continue;
+    const t = seg > 0 ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[2]) * dz) / seg)) : 0;
+    const px = a[0] + dx * t - x;
+    const pz = a[2] + dz * t - z;
+    if (px * px + pz * pz < NEAR * NEAR) {
+      seen.add(o.id);
+      out.push(o.id);
+    }
+  }
+  return out;
+}
+
+// a 2D line of sight as the bolt step's solids: where along a → b the line
+// first fails, halved down to the spot
+export function wallsOf(seesThrough) {
+  if (!seesThrough) return () => null;
+  return (a, b) => {
+    if (seesThrough({ x: a[0], z: a[2] }, { x: b[0], z: b[2] })) return null;
+    let lo = 0;
+    let hi = 1;
+    for (let k = 0; k < SPLIT; k++) {
+      const m = (lo + hi) / 2;
+      if (seesThrough({ x: a[0], z: a[2] }, { x: a[0] + (b[0] - a[0]) * m, z: a[2] + (b[2] - a[2]) * m })) lo = m;
+      else hi = m;
+    }
+    return { at: [a[0] + (b[0] - a[0]) * hi, a[1] + (b[1] - a[1]) * hi, a[2] + (b[2] - a[2]) * hi], normal: null };
+  };
+}
+
+export function createBolts({ speed = 90, life = 2, pool = 96 } = {}) {
+  const lib = boltPool({ pool });
   const bolts = [];
-  const api = {
+  const world = { solids: null, bodies: [], blades: [] };
+  return {
     bolts,
     fire({ from, dir, side = null, owner = null, damage = 10, range = 100, target = null }) {
-      const l = Math.hypot(dir[0], dir[1], dir[2]) || 1;
-      const bolt = { id: next++, p: [...from], from: [...from], d: [dir[0] / l, dir[1] / l, dir[2] / l], side, owner, damage, range, target, gone: 0, life, near: new Set() };
-      bolts.push(bolt);
-      return bolt;
+      const b = lib.fire({ from, dir, speed, range: Math.min(range, speed * life), owner, side: side ?? 'none', damage, tag: { target, near: new Set() } });
+      bolts.push(b);
+      return b;
     },
     step(dt, { bodies = [], seesThrough = null } = {}) {
       const events = [];
+      // (at you: the scene's to fly, through your dodge and your blade)
+      for (let i = bolts.length - 1; i >= 0; i--) {
+        if (bolts[i].tag?.target !== 'you') continue;
+        const b = bolts[i];
+        bolts.splice(i, 1);
+        b.alive = false;
+        events.push({ type: 'atYou', bolt: b });
+      }
+      world.solids = wallsOf(seesThrough);
+      world.bodies = bodies.map(bodyOf);
+      const was = new Map(bolts.map((b) => [b, b.pos.slice()]));
+      for (const e of lib.step(dt, world)) {
+        const b = e.bolt;
+        if (e.type === 'hit') events.push({ type: 'hit', bolt: b, target: e.body.id, at: e.at, dir: [...b.dir] });
+        else if (e.type === 'solid') events.push({ type: 'wall', bolt: b, at: e.at });
+      }
       for (let i = bolts.length - 1; i >= 0; i--) {
         const b = bolts[i];
-        // (at you: the scene's to fly, through your dodge and your blade)
-        if (b.target === 'you') {
-          bolts.splice(i, 1);
-          events.push({ type: 'atYou', bolt: b });
-          continue;
-        }
-        const len = Math.min(speed * dt, b.range - b.gone);
-        const a = b.p;
-        let e = [a[0] + b.d[0] * len, a[1] + b.d[1] * len, a[2] + b.d[2] * len];
-        // the first wall: where along the step it stops (halved down to the spot)
-        let wall = null;
-        if (seesThrough && !seesThrough({ x: a[0], z: a[2] }, { x: e[0], z: e[2] })) {
-          let lo = 0;
-          let hi = 1;
-          for (let k = 0; k < SPLIT; k++) {
-            const m = (lo + hi) / 2;
-            if (seesThrough({ x: a[0], z: a[2] }, { x: a[0] + b.d[0] * len * m, z: a[2] + b.d[2] * len * m })) lo = m;
-            else hi = m;
-          }
-          wall = [a[0] + b.d[0] * len * hi, a[1] + b.d[1] * len * hi, a[2] + b.d[2] * len * hi];
-          e = wall;
-        }
-        // the nearest body it passes through on the way
-        let hit = null;
-        let hitT = Infinity;
-        const dx = e[0] - a[0];
-        const dz = e[2] - a[2];
-        const seg = dx * dx + dz * dz;
-        for (const o of bodies) {
-          if (o.id === b.owner) continue;
-          const t = seg > 0 ? Math.max(0, Math.min(1, ((o.x - a[0]) * dx + (o.z - a[2]) * dz) / seg)) : 0;
-          const h = (o.h ?? 1.8) / 2;
-          if (sweptHit(a, e, [o.x, (o.y ?? 0) + h, o.z], o.r ?? 0.45, h)) {
-            if (t < hitT) {
-              hitT = t;
-              hit = o;
-            }
-            continue;
-          }
-          // (passed close: suppressed, once a bolt)
-          if (b.near.has(o.id)) continue;
-          const px = a[0] + dx * t - o.x;
-          const pz = a[2] + dz * t - o.z;
-          if (px * px + pz * pz < NEAR * NEAR) {
-            b.near.add(o.id);
-            events.push({ type: 'near', bolt: b, target: o.id });
-          }
-        }
-        if (hit) {
-          bolts.splice(i, 1);
-          events.push({ type: 'hit', bolt: b, target: hit.id, at: [a[0] + (e[0] - a[0]) * hitT, a[1] + (e[1] - a[1]) * hitT, a[2] + (e[2] - a[2]) * hitT], dir: [...b.d] });
-          continue;
-        }
-        if (wall) {
-          bolts.splice(i, 1);
-          events.push({ type: 'wall', bolt: b, at: wall });
-          continue;
-        }
-        b.p = e;
-        b.gone += len;
-        b.life -= dt;
-        if (b.gone >= b.range - 1e-6 || b.life <= 0) bolts.splice(i, 1);
+        for (const id of nearBy(was.get(b), b.pos, bodies, b.tag.near, b.owner)) if (!(b.alive === false && id === events.find((e) => e.bolt === b && e.type === 'hit')?.target)) events.push({ type: 'near', bolt: b, target: id });
+        if (!b.alive) bolts.splice(i, 1);
       }
       return events;
     },
   };
-  return api;
 }
 
 // two squads settling a fight out of your sight: each soldier's shots fall
