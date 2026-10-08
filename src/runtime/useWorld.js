@@ -29,11 +29,31 @@ const hold = (module, by) => holders.set(module, Math.max(0, (holders.get(module
 export const madeFor = new WeakMap();
 export const adoptable = (current, module, rebuild) => Boolean(current && current.module === module && (!madeFor.has(current.world) || madeFor.get(current.world) === rebuild));
 
+// How far a module's prepare has got (the runtime's 'prepare' events), for a
+// page's loading screen: { value 0…1, step }. A page landing on another
+// world (a dive) listens for that world's.
+export function usePrepareProgress(module) {
+  const [progress, setProgress] = useState({ value: 0, step: 'load' });
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    let shown = { value: -1, step: '' };
+    return runtime().events.on('prepare', (e) => {
+      if (e.module !== module?.id) return;
+      // (a step's change, or a percent's worth: no more re-renders than that)
+      if (e.step === shown.step && e.value - shown.value < 0.01 && e.value < 1) return;
+      shown = { value: e.value, step: e.step };
+      setProgress(shown);
+    });
+  }, [module]);
+  return progress;
+}
+
 export function useWorld(module, { props, enabled = true, onEvent = null, attempt = 0, rebuild = null } = {}) {
   const host = useRef(null);
   const world = useRef(null);
   const three = use3D();
   const [status, setStatus] = useState(() => (typeof window === 'undefined' ? 'idle' : runtime().status));
+  const progress = usePrepareProgress(module);
   const propsRef = useRef(props);
   propsRef.current = props;
   const eventRef = useRef(onEvent);
@@ -125,5 +145,5 @@ export function useWorld(module, { props, enabled = true, onEvent = null, attemp
     else delete el.dataset.gl;
   }, [meant, status]);
 
-  return { host, status, on: status === 'on', meant, world, rt: typeof window !== 'undefined' ? runtime() : null };
+  return { host, status, progress, on: status === 'on', meant, world, rt: typeof window !== 'undefined' ? runtime() : null };
 }

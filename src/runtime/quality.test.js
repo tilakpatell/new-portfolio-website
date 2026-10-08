@@ -83,3 +83,40 @@ describe('createQuality', () => {
     expect(fn).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('a quality level changed while a world is up', () => {
+  it('takes the new level’s budget', () => {
+    const q = createQuality({ tier: 'high', pace: fakePace([null]), dpr: 2 });
+    q.retune('low');
+    expect(q.budget.ratio).toBe(1);
+    expect(q.ratio).toBe(1);
+    q.retune('ultra');
+    expect(q.budget.samples).toBe(8);
+    q.retune('nonsense');
+    expect(q.budget.ratio).toBe(2);
+  });
+
+  it('draws sharper or softer by the sharpness, never past the level’s ratio', () => {
+    const q = createQuality({ tier: 'high', pace: fakePace([null]), dpr: 1, sharp: 1.5 });
+    expect(q.ratio).toBe(1.5);
+    q.setSharpness(0.5);
+    expect(q.ratio).toBe(0.5);
+    q.setSharpness(9);
+    expect(q.ratio).toBe(2);
+    expect(q.ratioUnder(1)).toBe(1);
+  });
+});
+
+describe('the renderer row a quality level starts from', () => {
+  it('starts an ultra level on ultra’s row, its tier still high', () => {
+    const q = createQuality({ tier: 'high', detail: 'ultra', pace: fakePace([null]) });
+    expect(q.tier).toBe('high');
+    expect(q.budget.samples).toBe(8);
+    expect(q.budget.shadowMap).toBe(4096);
+  });
+
+  it('keeps high on high’s row', () => {
+    const q = createQuality({ tier: 'high', detail: 'high', pace: fakePace([null]) });
+    expect(q.budget.samples).toBe(4);
+  });
+});

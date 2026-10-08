@@ -31,8 +31,25 @@ export const MODELS = {
   // Nevarro City's stone gate (its domes are the audit lane's), Lothal's Jedi
   // temple (a banded cone of rock) and a domed farmhouse of its plains, and
   // Sundari, Mandalore's domed capital
-  nevarroarch: { made: 'meshy', as: 'the gate of Nevarro City', metres: 11 },
-  lothtemple: { made: 'meshy', as: 'the Jedi temple of Lothal', metres: 70, hero: true },
-  lothdome: { made: 'meshy', as: 'the domed farmhouses of Lothal', metres: 11 },
-  sundaridome: { made: 'meshy', as: 'Sundari', metres: 51, hero: true, lod: true },
+  nevarroarch: { made: 'meshy', as: 'the gate of Nevarro City', metres: 11, tint: '#b6b2aa', detail: 'concrete' },
+  lothtemple: { made: 'meshy', as: 'the Jedi temple of Lothal', metres: 70, hero: true, tint: '#a4a99c', detail: 'rock' },
+  lothdome: { made: 'meshy', as: 'the domed farmhouses of Lothal', metres: 11, tint: '#e2d3b2', detail: 'concrete' },
+  sundaridome: { made: 'meshy', as: 'Sundari', metres: 51, hero: true, lod: true, tint: '#9d9890', detail: 'concrete' },
+  // Nevarro rebuilt (scripts/meshy-galaxy-buildings-nevarro.mjs: lifted out
+  // of the show's stills, or from words where none shows it whole): the
+  // city's grey plaster houses, dome houses and street fronts, its round-
+  // arched gate, a third-season tower, its own cantina, the Imperial base on
+  // its cliff, the Charon River's tunnel mouth and the keelboat. The town's
+  // houses repeat dozens of times, so each has a light copy for far off
+  // though they're under scripts/galaxy-surface-lod.mjs's line (made with
+  // its makeLod, `over: 5000`)
+  nevarrohouse: { made: 'meshy', lod: true, as: 'the houses of Nevarro City', metres: 12, detail: 'adobe' },
+  nevarrodomehouse: { made: 'meshy', lod: true, as: 'the dome houses of Nevarro City', metres: 10, detail: 'adobe' },
+  nevarrorow: { made: 'meshy', lod: true, as: 'the streets of Nevarro City', metres: 20, detail: 'adobe' },
+  nevarrogate: { made: 'meshy', as: 'the gate of Nevarro City', metres: 14 },
+  nevarrotower: { made: 'meshy', lod: true, as: 'the towers of the new Nevarro City', metres: 16 },
+  nevarrocantina: { made: 'meshy', as: 'Greef Karga’s cantina', metres: 18.5, detail: 'adobe' },
+  nevarrobase: { made: 'meshy', as: 'the Imperial base on Nevarro', metres: 52, hero: true, lod: true, detail: 'metal' },
+  charonportal: { made: 'meshy', as: 'the Charon River’s tunnel', metres: 16 },
+  keelboat: { made: 'meshy', as: 'the keelboat on the Charon', metres: 9 },
 };

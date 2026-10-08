@@ -18,6 +18,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { budget } from '../../../lib/device';
 import { createPace } from '../../../lib/three/pace';
+import { guard } from '../../../lib/three/frameGuard';
 import { precompile, quiet, releaseContext } from '../../../lib/three/renderer';
 import { createPost } from '../../universe/post';
 import { makeFigure, makeThing } from './bots';
@@ -44,6 +45,8 @@ const CAM = {
 export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   const B = budget(tier);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   quiet(renderer);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, B.ratio));
   renderer.outputColorSpace = THREE.SRGBColorSpace;

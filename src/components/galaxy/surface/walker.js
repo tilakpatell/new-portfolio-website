@@ -246,6 +246,13 @@ export function walk(s, input, dt, world, rules = WALK) {
     nz *= world.reach / r;
     out.bumped = true;
   }
+  // and not out into water too deep to wade (worlds that say so: wadeMax)
+  const held = shoreStep(world, s, nx, nz);
+  if (held) {
+    nx = held[0];
+    nz = held[1];
+    out.bumped = true;
+  }
   s.x = nx;
   s.z = nz;
   // (what it actually moved, for the legs)
@@ -291,6 +298,26 @@ export function walk(s, input, dt, world, rules = WALK) {
   // face the way you're going
   if (mag > 0.08 && dl > 1e-6) s.yaw = turnToward(s.yaw, Math.atan2(dx, dz), rules.turn * dt);
   return out;
+}
+
+// Is the water at (x, z) deeper than a world lets anyone wade (its
+// `wadeMax`, from the site's water)? A world with no `wadeMax` has no deep
+// water to stop at, so this is never true there and nothing about it
+// changes. (Pure.)
+export function tooDeep(world, x, z) {
+  return world.wadeMax != null && world.water != null && world.water - world.heightAt(x, z) > world.wadeMax;
+}
+
+// Where a step ends up when it would take someone from the shallows into
+// deep water: null if it's fine as it is, otherwise the nearest step that
+// is (along the shore, one axis at a time, so you slide rather than stick),
+// or where you stand. Someone already in the deep (dropped there by a
+// teleport, say) is left to move freely, so they can never be trapped.
+export function shoreStep(world, s, nx, nz) {
+  if (world.wadeMax == null || !tooDeep(world, nx, nz) || tooDeep(world, s.x, s.z)) return null;
+  if (!tooDeep(world, nx, s.z)) return [nx, s.z];
+  if (!tooDeep(world, s.x, nz)) return [s.x, nz];
+  return [s.x, s.z];
 }
 
 // the top of anything low enough to stand on, under you

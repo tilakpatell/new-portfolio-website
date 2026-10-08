@@ -179,7 +179,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Interfaces:**
 - `createChunkGrid({ size, radius, inFlight = 8, hysteresis = 1 }) → grid`.
-- `grid.update({ x, z, heading = null, radius? }) → { ask: Key[], drop: Key[] }`: `ask` is cells within `radius` (Chebyshev, in cells) not loaded and not in flight, sorted by distance then by alignment with `heading` (a cell ahead before one behind at the same distance), capped so loaded-plus-flying never exceeds the cap on in-flight asks; `drop` is loaded cells beyond `radius + hysteresis`.
+- `grid.update({ x, z, heading = null, radius? }) → { ask: Key[], drop: Key[], cancel: Key[] }`: `ask` is cells within `radius` (Chebyshev, in cells) not loaded and not in flight, sorted by distance then by alignment with `heading` (a cell ahead before one behind at the same distance), capped so flying plus asked never exceeds `inFlight`; `drop` is loaded cells beyond `radius + hysteresis`; `cancel` is flying cells now beyond `radius`. `grid.cells(x, z, { radius, heading })` is the ordered window (with no heading, Minecraft's `wantedChunks` order); `grid.unload(key)`.
 - `grid.began(key, gen)`, `grid.done(key, gen) → boolean` (false, and ignored, when `gen !== grid.gen` or the key was dropped meanwhile), `grid.failed(key)`, `grid.reset(gen)` (new seed: everything dropped, `gen` bumped), `grid.loaded: Set<Key>`, `grid.flying: Map<Key, gen>`, `grid.gen: number`. `Key = '<cx>,<cz>'`; `grid.cellOf(x, z) → [cx, cz]`.
 
 - [ ] **Step 1: Failing tests**: at origin, radius 2, `ask` has 25 keys nearest first; with heading `+x`, `'1,0'` precedes `'-1,0'`; after `began` of 8, the ninth is not asked; `done` with an old gen returns false and loads nothing; a cell at distance `radius + 1` loaded is not dropped, at `radius + 2` it is; a `reset` empties `loaded` and makes every earlier `done` false.
@@ -189,10 +189,10 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Create: `src/runtime/workers.js`, `workers.test.js`
-- Modify: `src/runtime/index.js`, `browser.js`: `rt.workers = createWorkerPool({ make })`, `size = min(4, max(1, hardwareConcurrency - 1))`.
+- Modify: `src/runtime/index.js` (no three.js, so not `browser.js`): `rt.workers = createWorkerPool({ size: poolSize(hardwareConcurrency) })`, `size = min(4, max(1, hardwareConcurrency - 1))`; a world says how to make its workers with `rt.workers.define(name, make)` (the `new Worker(new URL(...))` must sit in the world's own module for the bundler).
 
 **Interfaces:**
-- `createWorkerPool({ make: (name) => Worker-like, size }) → { request(name, msg, transfer?) → Promise<reply>, cancel(name, key), stats(), dispose() }`; `msg` has `key` and `priority` (lower first); a request is sent to the least-busy worker; `cancel` removes a queued request (resolves its promise with `null`) or posts `{ type: 'cancel', key }` to the worker that holds it. Workers are made by `name` lazily, one pool per name.
+- `createWorkerPool({ make: (name) => Worker-like, size }) → { define(name, make, { size }), request(name, msg, transfer?) → Promise<reply>, cancel(name, key), close(name), stats(), dispose() }`; `msg` has `key` and `priority` (lower first); a request is sent to the least-busy worker; `cancel` removes a queued request (resolves its promise with `null`) or posts `{ type: 'cancel', key }` to the worker that holds it. Workers are made by `name` lazily, one pool per name.
 - Worker contract (what `make(name)` returns must speak): receives `msg`, answers `{ key, ...reply }` with transferables, honours `{ type: 'cancel', key }`. Minecraft's `worker.js` already does.
 
 - [ ] **Steps 1-4:** tests with a fake worker (priority order, cancel before send resolves null, two workers share work, dispose terminates), FAIL, implement, PASS. **Step 5: Commit** `feat(runtime): a worker pool`.
@@ -200,8 +200,10 @@ One phase is one pull request from one session. Order and parallelism are in the
 ### Task 3.3: Minecraft onto `rt.chunks` and `rt.workers`
 
 **Files:**
-- Modify: `src/components/minecraft/module.js:115-205` (replace `wantedCache`, `flying`, `IN_FLIGHT`, `load`, `dropFar` use with a grid: `size: 16`, `radius: distance`; keep `editsAround`, `remesh`, `scene.chunks.*`), `src/components/minecraft/scene/chunks.js` (`workerClient` becomes a thin call into `rt.workers.request('minecraft', …)`)
-- Test: `src/components/minecraft/module.test.js` (new: the set of chunk keys requested for a player at `(40, 0, -20)` with distance 4 equals `wantedChunks(g)` from `rules/game.js`; a chunk reply after a seed change is not added)
+- Create: `src/components/minecraft/stream.js` (the chunk loop out of `module.js`, pure: a grid `size: 16`, `radius: distance`, `hysteresis: 2` as `dropFar`'s; `editsAround`, `remesh`; requests through `rt.workers.request('minecraft', …)`)
+- Modify: `src/components/minecraft/module.js` (`wantedCache`, `flying`, `IN_FLIGHT`, `load`, `dropFar` replaced by the stream), `scene/chunks.js` and `rules/jobs.js` (`workerClient` and `makeClient` removed: the pool is their protocol)
+- Test: `src/components/minecraft/module.test.js` (the set of chunk keys requested for a player at `(40, 0, -20)` with distance 4 equals `wantedChunks(g)` from `rules/game.js`; the dropped set is `dropFar`'s; a chunk reply after a seed change, or for a chunk let go of, is not added)
+- The GPU queue hook (meshes through `gpuWork` under its budget) comes when Phase 0 lands; until then Minecraft's meshes are uploaded as before.
 
 - [ ] **Steps 1-4:** tests, FAIL, implement, PASS. Browser: walk 200 blocks in each direction; `perf-probe` shows no frame over 50 ms from chunk arrival.
 - [ ] **Step 5: Commit** `refactor(minecraft): chunks through the runtime's grid and pool`.
@@ -210,7 +212,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Create: `src/runtime/origin.js`, `origin.test.js`
-- Modify: `src/runtime/index.js` (`rt.origin`), `runtime.js` (before `step`, `origin.check(anchor)`; emit `rt.events.emit('origin', { shift })`)
+- Modify: `runtime.js` (`rt.origin`, made there; before `step`, `origin.check(world.anchor())` for a world with an `anchor()`; emit `rt.events.emit('origin', { shift })`; reset to zero when a world begins)
 
 **Interfaces:**
 - `createOrigin({ cell = 50000 }) → { at: [x, y, z], check(worldPos) → shift | null, toLocal(worldPos, out?), toWorld(localPos, out?), on(fn) → undo }`; `check` moves `at` by whole cells when `|worldPos - at|` exceeds `cell` on x or z and returns the shift applied; the world (the universe module, Phase 4) subtracts the shift from every object's position in that frame and the camera's.

@@ -12,9 +12,7 @@
 // changes); TROOP_NAMES[kind]; garrisonAt(site, effects, faction) → the
 // holder's party at the landing (six to ten of its troops on a beat round
 // it and at posts, and a probe droid for an Imperial search party on a
-// world that isn't the Empire's own), as life entries marked `garrison`;
-// garrisonQuest(quest, troops) → the quest with its spawns' troopers the
-// holder's (the same quest if nothing changes).
+// world that isn't the Empire's own), as life entries marked `garrison`.
 
 // the troopers of each side's look, as the sites name them
 const FAMILIES = {
@@ -72,20 +70,4 @@ export function garrisonAt(site, effects, faction = null) {
   if (rest > 0) out.push({ kind: troops, n: rest, at: [x + 18, z - 14], spread: 6, roam: 8, speed: 0.9, name, garrison: true, says: ['Papers. No, I\'m joking. Papers.', 'Quiet posting, this.'] });
   if (IMPERIAL.has(effects.owner) && faction !== effects.owner) out.push({ kind: 'probe', at: [x + 60, z + 40], y: 2.2, roam: 50, speed: 1.6, r: 0.6, name: 'Probe droid', garrison: true, says: ['(A burst of Imperial code, crackling and urgent.)', '(It stops, turns its lenses on you, and transmits.)'] });
   return out;
-}
-
-export function garrisonQuest(quest, troops) {
-  if (!quest || !troops) return quest;
-  let changed = false;
-  const steps = quest.steps.map((st) => {
-    if (!st.spawn) return st;
-    const spawn = [].concat(st.spawn).map((sp) => {
-      const kind = troopKind(sp.kind, troops);
-      if (kind === sp.kind) return sp;
-      changed = true;
-      return { ...sp, kind };
-    });
-    return spawn.some((sp, i) => sp !== [].concat(st.spawn)[i]) ? { ...st, spawn: Array.isArray(st.spawn) ? spawn : spawn[0] } : st;
-  });
-  return changed ? { ...quest, steps } : quest;
 }

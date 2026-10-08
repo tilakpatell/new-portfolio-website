@@ -9,6 +9,7 @@ import { ORDER, keyStep } from './layout';
 import MiniMap from './MiniMap';
 import GuideCue from '../guide/GuideCue';
 import { askBrief } from '../tour/brief';
+import LoadingVeil from '../worlds/LoadingVeil';
 
 // The map: the 3D scene (scene.js and planets.js, through useScene) with the
 // planets' names as buttons over it. React renders the names once; the
@@ -76,7 +77,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   );
   const events = useRef(onEvent);
   events.current = onEvent;
-  const { wrap, on, meant, view } = useScene(load, {
+  const { wrap, on, meant, view, status, progress } = useScene(load, {
     id: 'universe',
     near: '0px',
     props: {
@@ -200,11 +201,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     <div ref={wrap} className="universe-map" data-ship={ship || undefined} data-foot={onFoot || undefined}>
       {meant ? (
         <>
-          {!on && (
-            <p className="universe-loading" role="status">
-              Charting the universe…
-            </p>
-          )}
+          {/* (until the map is drawing: everything sent to the graphics chip first, so it flies smoothly from its first frame) */}
+          <LoadingVeil className="universe-loading" shown={!on} progress={status === 'preparing' ? progress.value : 0} step={status === 'preparing' ? progress.step : 'load'} title="Charting the universe" />
           <ul className="universe-labels" aria-label="Universes" onKeyDown={onKeyDown}>
             {UNIVERSES.map((u) => (
               <li key={u.id}>

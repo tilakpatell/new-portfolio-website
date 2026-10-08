@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WALK, createSolids, groundAt, pushOut, ride, rider, walk, walker } from './walker';
+import { WALK, createSolids, groundAt, pushOut, ride, rider, shoreStep, tooDeep, walk, walker } from './walker';
 
 const flat = (h = 0, extra = {}) => ({ heightAt: () => h, normalAt: () => [0, 1, 0], reach: 500, ...extra });
 const run = (s, input, secs, world, fn = walk) => {
@@ -122,6 +122,42 @@ describe('on foot', () => {
     expect(s.y).toBeCloseTo(-WALK.wade, 5);
     expect(s.wading).toBe(1);
     expect(s.z).toBeLessThan(WALK.walk * 2 * 0.6);
+  });
+
+  // shallows (ground 0.5, dry) up to x 10, then a lagoon three metres down
+  const lagoon = (extra = {}) => ({ water: 0, wadeMax: 1.2, heightAt: (x) => (x < 10 ? 0.5 : -3), normalAt: () => [0, 1, 0], reach: 500, ...extra });
+
+  it('stops you at the deep water where a world says so', () => {
+    const world = lagoon();
+    expect(tooDeep(world, 5, 0)).toBe(false);
+    expect(tooDeep(world, 20, 0)).toBe(true);
+    // a world with no wadeMax has no deep water, however far down it goes
+    expect(tooDeep({ ...world, wadeMax: undefined }, 20, 0)).toBe(false);
+    expect(tooDeep({ ...world, water: undefined }, 20, 0)).toBe(false);
+  });
+
+  it('walking into the deep water goes nowhere', () => {
+    const s = walker(9, 0, 0.5);
+    run(s, { x: 0, y: 1, heading: Math.PI / 2, run: true }, 1.5, lagoon());
+    expect(s.x).toBeLessThan(10.2);
+    // and a world with no wadeMax lets you wade out as before
+    const t = walker(9, 0, 0.5);
+    run(t, { x: 0, y: 1, heading: Math.PI / 2, run: true }, 1.5, lagoon({ wadeMax: undefined }));
+    expect(t.x).toBeGreaterThan(12);
+  });
+
+  it('slides along the shore rather than sticking to it', () => {
+    const s = walker(9.9, 0, 0.5);
+    run(s, { x: 0, y: 1, heading: Math.PI / 4, run: true }, 1.5, lagoon());
+    expect(s.x).toBeLessThan(10.2);
+    expect(s.z).toBeGreaterThan(5);
+  });
+
+  it('leaves someone already in the deep free to move', () => {
+    const world = lagoon();
+    expect(shoreStep(world, { x: 20, z: 0 }, 21, 0)).toBeNull();
+    expect(shoreStep(world, { x: 9, z: 0 }, 11, 0)).toEqual([9, 0]);
+    expect(shoreStep(world, { x: 9, z: 0 }, 11, 3)).toEqual([9, 3]);
   });
 });
 
