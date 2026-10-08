@@ -23,6 +23,7 @@ The rest of the site reaches it through `src/lib/physics/`:
 - **A floating origin.** `onOrigin(shift)` moves every body (and a round planet’s centre) in one call, velocities kept, for an endless land.
 - **Three collision groups**, his verbatim: `floor` meets everything, `object` meets everything and bumpers, `bumper` meets objects only.
 - **The pieces beside it**: `src/lib/physics/vehicle.js` (his car on Rapier’s ray-cast vehicle controller), `src/lib/physics/heightfield.js` (land as a floor), `src/lib/physics/props.js`, `src/lib/physics/pusher.js` and `src/lib/physics/catch.js`.
+- **Colliders from names.** A model made with its physics (nodes named `physical`, their children `cuboid`, `ball`, `cylinder`, `capsule`, `hull` or `trimesh`, sized by their scale) gives its bodies through `src/lib/three/colliders.js`’s `collidersOf(model)`, its rules pure in `src/lib/physics/fromModel.js`; `scripts/gen3d/web.mjs` keeps the nodes through the web cut, the planet landings read them before a hand-written body, and `docs/assets/colliders.md` is the page a modeller reads.
 - **It never throws at a world**: bad numbers put a body back where it began, a throwing `onHit` goes to `onError`, a failed load (offline) is not cached so the next call tries again.
 
 ## What the site does not use, and why

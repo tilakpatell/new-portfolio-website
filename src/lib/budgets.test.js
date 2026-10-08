@@ -18,6 +18,18 @@ describe('how much each quality level draws', () => {
     expect(LEVELS.map((l) => budget(l).terrain)).toEqual([0.5, 0.75, 1, 2]);
     expect(LEVELS.map((l) => budget(l).cut)).toEqual(['.lo', '', '.hq', '.ultra']);
     expect(LEVELS.map((l) => budget(l).water)).toEqual([0.5, 0.75, 1, 2]);
+    expect(LEVELS.map((l) => budget(l).near)).toEqual([30, 45, 70, 110]);
+    expect(LEVELS.map((l) => budget(l).mid)).toEqual([90, 140, 220, 400]);
+    expect(LEVELS.map((l) => budget(l).leaves)).toEqual([0, 256, 1024, 2048]);
+  });
+
+  it('has twelve columns, the kit’s three last', () => {
+    expect(COLUMNS.length).toBe(12);
+    expect(COLUMNS.slice(-3)).toEqual(['near', 'mid', 'leaves']);
+  });
+
+  it('ends a kit model’s full band before its LOD1 band', () => {
+    for (const level of LEVELS) expect(budget(level).near, level).toBeLessThan(budget(level).mid);
   });
 
   it('puts no triangle ceiling on ultra', () => {
