@@ -48,6 +48,8 @@ export default function Invincible() {
   const [still, setStill] = useState(false);
   const [shake, setShake] = useState(false);
   const shook = useRef(0);
+  // the world (InvWorld) puts a function here; Think, Mark! calls it with its result (the last episode ends on it)
+  const thinkMark = useRef(null);
   useEffect(() => () => clearTimeout(shook.current), []);
   // a card's lines in their speakers' own voices, where they've been made
   // (lib/voiced.js), one after the other; another press starts over, and
@@ -124,7 +126,7 @@ export default function Invincible() {
     <div className="inv-page relative" data-shake={shake || undefined}>
       <div className="inv-dots" aria-hidden="true" />
 
-      <InvWorld />
+      <InvWorld thinkMark={thinkMark} />
 
       <section className="shell relative z-10 pb-10 pt-10 md:pb-14 md:pt-14" aria-labelledby="inv-title">
         <div className="inv-hero">
@@ -168,6 +170,7 @@ export default function Invincible() {
         <p className="lead mt-4 max-w-[60ch]">Four chapters over the city: a flight lesson with your father, a portal full of Flaxans, your father, and then the Grand Regent of the Viltrum Empire. Dodge as the ring closes on them; hit them while they recover.</p>
         <div className="mt-8">
           <ThinkMark
+            onResult={(won) => thinkMark.current?.(won)}
             fallback={
               <div className="inv-fallback">
                 <p className="inv-fallback-word">INVINCIBLE</p>

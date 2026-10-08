@@ -16,6 +16,7 @@ import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js'
 import { canvasTexture, hot } from '../../../../lib/stage3d';
 import { clamp01, fbm, makeCanvas, makeCells, makeNoise, mix, normalFromField, paintPixels, smooth } from '../../../../lib/paint';
 import { B, ball, blob, boxUV, createShireKit, cyl, cylX, cylZ, fillColor, lanternParts, lathe, parts, rng, roundBox, tf, tube } from '../../shire/props';
+import { createStride, createTracker, footAt, legRig } from '../../creatures';
 
 const TAU = Math.PI * 2;
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -2084,7 +2085,24 @@ function clothSheet(material, { cols = 11, rows = 9 } = {}) {
 // gallop: the body rocking, the head and neck nodding with it, mane and tail
 // and Arwen's hair and cloak streaming out. Standing, he shifts a little and
 // swishes his tail. Call it every frame; it eases between the two.
-export function gallop(a, t, speed = 0) {
+//
+// His legs keep their hold on the ground at any pace: how fast he really
+// goes is read from where the scene puts him (../../creatures.js), and his
+// stride both lengthens and quickens with it, uncapped, so his hooves don't
+// slide at a spurred gallop. Moved by something else (a parent group) or not
+// at all while `speed` says he's galloping, he gallops at `speed` × `base`
+// metres a second (opts.base: the ride's own pace, Weathertop's by
+// default); opts.mps says his speed outright. Each hoof is put down and held
+// where it lands while the body rocks on over it, the knee (the hock behind)
+// taking up the rest; up, it folds and comes through.
+const GALLOP_BASE = 15.2; // m/s: a full gallop at Weathertop (./rules.js RIDE.base)
+const GALLOP_STANCE = 0.25; // the share of a stride each hoof is down
+const GALLOP_OFF = [0.45, 0.55, 0.0, 0.1]; // legs[]: fore +z, fore -z, hind +z, hind -z
+// the legs as asfaloth() builds them: the knee (the hock behind) below the
+// shoulder (the hip), the hoof below that; both fold back
+const FORE = legRig({ knee: [0.02, -0.72], foot: [0.132, -0.591], bend: -1 });
+const HIND = legRig({ knee: [-0.13, -0.8], foot: [0.142, -0.551], bend: -1 });
+export function gallop(a, t, speed = 0, { mps = null, base = GALLOP_BASE } = {}) {
   if (!a?.horse) return;
   const S = a.state;
   const first = S.t == null;
@@ -2095,39 +2113,49 @@ export function gallop(a, t, speed = 0) {
   const want = smooth(0, 0.35, v);
   S.k += (want - S.k) * (first ? 1 : 1 - Math.exp(-dt * 4));
   const k = S.k;
-  // strides a second, and the wind in his mane
-  const hz = v > 0 ? Math.min(2.8, 1.5 + 0.75 * v) : 1.6;
+  // how fast he really goes: told, or read from where he's put, or (moved
+  // some other way) what `speed` says
+  S.track ??= createTracker({ fastest: 40 });
+  S.stride ??= createStride({ stride: 3.6, hz: 1.9, longest: 2.0, stance: GALLOP_STANCE, cadence: [1.6, 2.6], seed: 17 });
+  const g = a.group;
+  const m = g ? S.track(t, g.position.x, g.position.z, g.rotation.y, g.scale.x) : null;
+  const read = m && m.speed > 0.3 ? m.speed : 0;
+  const ground = mps != null ? Math.max(0, mps) : read > 0 ? read : v * base;
+  const st = S.stride.step(dt, v > 0 ? ground : 0);
+  // the wind in his mane
   const gust = v > 0 ? Math.min(1, 0.35 + 0.65 * v) : 0;
   S.wind += (gust - S.wind) * (first ? 1 : 1 - Math.exp(-dt * 3));
-  S.phase = (S.phase + dt * hz) % 1;
+  S.phase = st.cycle;
   const ph = S.phase;
+  // the body rocks and rises with the stride, highest in the air between
+  // footfalls, a little low throughout so the legs can reach
+  const rock = Math.sin((ph + 0.2) * TAU);
+  const pitch = rock * 0.07 * k;
+  const lift = (Math.abs(Math.sin((ph + 0.1) * Math.PI)) * 0.1 - 0.12) * k + Math.sin(t * 1.4) * 0.006 * (1 - k);
+  a.body.rotation.z = pitch;
+  a.body.position.y = lift;
+  const cp = Math.cos(pitch);
+  const sp = Math.sin(pitch);
+  const up = Math.min(1.3, 0.6 + 0.4 * st.reach);
   const { legs, neck, head, tail } = a.horse;
-  // each leg's place in the stride: hind left, hind right, fore left, fore right
-  const OFF = [0.55, 0.45, 0.1, 0.0];
-  const order = [1, 0, 3, 2]; // legs[]: fore +z, fore -z, hind +z, hind -z
   legs.forEach((hip, i) => {
     const { knee, hind } = hip.userData;
-    const p = (ph + OFF[order[i]] + 1) % 1;
-    // stance (on the ground) for the first third, swing for the rest
-    let swing;
-    let bend;
-    if (p < 0.36) {
-      const s = p / 0.36;
-      swing = mix(0.5, -0.55, s);
-      bend = Math.sin(s * Math.PI) * 0.12;
-    } else {
-      const s = (p - 0.36) / 0.64;
-      swing = mix(-0.55, 0.5, smooth(0, 1, s));
-      bend = Math.sin(Math.min(1, s * 1.25) * Math.PI) * 1.25;
-    }
+    const rig = hind ? HIND : FORE;
+    const f = footAt(ph + GALLOP_OFF[i], GALLOP_STANCE);
+    // where the hoof goes, from his feet, level: beneath its hip as he
+    // stands, swept back by the ground he covers while it's down
+    const hx = hip.position.x;
+    const hy = hip.position.y;
+    const gx = hx + rig.home[0] + (f.x * st.travel) / 2;
+    const gy = hy + rig.home[1] + f.lift * (hind ? 0.32 : 0.38) * up;
+    // from the hip, as the rocking body has it
+    const dx = gx - (hx * cp - hy * sp);
+    const dy = gy - (hx * sp + hy * cp + lift);
+    const [th, kn] = rig.reach(dx * cp + dy * sp, -dx * sp + dy * cp);
     const still = Math.sin(t * 0.6 + i * 1.7) * 0.02;
-    hip.rotation.z = mix(still, swing * (hind ? 0.85 : 1), k);
-    knee.rotation.z = mix(0, hind ? bend * 0.9 : -bend * 1.15, k);
+    hip.rotation.z = mix(still, th, k);
+    knee.rotation.z = mix(0, kn, k);
   });
-  // the body rocks and rises with the stride
-  const rock = Math.sin((ph + 0.2) * TAU);
-  a.body.rotation.z = rock * 0.07 * k;
-  a.body.position.y = (Math.abs(Math.sin((ph + 0.1) * Math.PI)) * 0.12 - 0.05) * k + Math.sin(t * 1.4) * 0.006 * (1 - k);
   // the neck stretches out and nods; standing, he looks about
   neck.rotation.z = mix(Math.sin(t * 0.37) * 0.06 + 0.02, -0.38 + Math.sin((ph + 0.35) * TAU) * 0.13, k);
   neck.rotation.y = Math.sin(t * 0.23) * 0.12 * (1 - k);

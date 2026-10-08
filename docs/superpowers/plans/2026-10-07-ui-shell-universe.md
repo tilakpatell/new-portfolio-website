@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Revision 2 (read first):** the spec's section 8 lists amendments C1–C3: the `kbd-styles` metric walks CSS itself, excludes `src/runtime/hud/hud.css` for now, and is not budgeted until both C's `.kbd` and D's deletion have merged (C1); two glossary rows added, "The checklist" vs "Things to do (M)", and the way out of a world reads the view (C2); the tours' visitor-facing names and the offer's button labels (C3). The guide's existing tab is "On this page", not "This page".
+
 **Goal:** One token layer, one component per concept, one word per thing across the shell, the classic pages and the universe map's HUD, without changing the site's character.
 
 **Architecture:** Tokens and the shared kit land in `src/index.css` and `src/components/ui.jsx` first; the glossary in `src/lib/words.js` with a test that greps the retired words out; then each surface is brought onto them one pull request at a time, screenshots before and after. The universe gets `hud.css` and `words.js` of its own, reading the shared ones.

@@ -69,6 +69,7 @@
   text-shadow: 2px 2px 0 var(--rm-ink), -2px 2px 0 var(--rm-ink), 2px -2px 0 var(--rm-ink), -2px -2px 0 var(--rm-ink), 0 2.5px 0 var(--rm-ink), 2.5px 0 0 var(--rm-ink), 0 -2.5px 0 var(--rm-ink), -2.5px 0 0 var(--rm-ink), 0 6px 0 var(--rm-ink);
 }
 .rm-title-num { color: var(--rm-lime); }
+.rm-title[data-planet] { white-space: normal; text-wrap: balance; } /* (a planet's name can run to four words) */
 .rm-objective { display: flex; align-items: flex-start; gap: 0.55rem; margin: 0; padding: 0.55rem 0.8rem; border: 2px solid var(--rm-ink); border-radius: 12px; background: var(--rm-glass); color: #fff; font: 600 clamp(0.82rem, 0.76rem + 0.22vw, 0.95rem)/1.4 var(--font-sans); box-shadow: 0 3px 0 rgba(27, 20, 36, 0.55); }
 .rm-flightstats { display: flex; gap: 0.4rem; margin: 0; }
 .rm-flightstats span { padding: 0.3rem 0.6rem; border: 2px solid var(--rm-ink); border-radius: 10px; background: var(--rm-glass); font: 600 0.78rem/1.2 var(--font-sans); }
@@ -200,6 +201,7 @@
 [data-done] > .rm-tick { border-color: var(--rm-ink); background: var(--rm-lime); }
 .rm-list-name { margin: 0; font: 700 0.9rem/1.3 var(--font-sans); }
 .rm-list-sub { margin: 0.15rem 0 0; color: #c9c2d6; font-size: 0.8rem; line-height: 1.4; }
+.rm-list-rest { margin: 0.5rem 0 0; padding: 0.5rem 0.55rem 0; border-top: 1px solid rgba(255, 255, 255, 0.15); color: #c9c2d6; font-size: 0.8rem; line-height: 1.4; } /* (on a planet: the rest, counted with C-137's) */
 .rm-list-back { display: inline-flex; align-items: center; gap: 0.4rem; align-self: flex-start; margin-top: 0.6rem; padding: 0.4rem 0.2rem; color: #e6e0f0; font: 600 0.82rem/1 var(--font-sans); text-decoration: none; }
 .rm-list-back:hover { color: var(--rm-lime); }
 
@@ -269,6 +271,7 @@
 .rm-cards li[data-place='school'] { background: linear-gradient(160deg, #a5503a, #74321f); }
 .rm-cards li[data-place='garage'] { background: linear-gradient(160deg, #5a4030, #2f2018); }
 .rm-cards li[data-place='arcade'] { background: radial-gradient(circle at 85% 15%, rgba(255, 122, 200, 0.45), transparent 45%), linear-gradient(160deg, #4a2a78, #23123f); }
+.rm-cards li[data-place='planet'] { grid-column: 1 / -1; background: radial-gradient(circle at 88% 12%, rgba(201, 255, 90, 0.35), transparent 45%), linear-gradient(160deg, #2c5a46, #142a22); }
 .rm-card-name { margin: 0; color: #fff; font: 400 clamp(1.35rem, 1.1rem + 0.8vw, 1.7rem)/1.05 'Luckiest Guy', var(--font-sans); letter-spacing: 0.03em; text-shadow: 0 2px 0 var(--rm-ink); }
 .rm-card-blurb { margin: 0; max-width: 46ch; color: rgba(255, 255, 255, 0.86); font-size: 0.92rem; line-height: 1.5; }
 .rm-card-acts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: auto; padding-top: 0.4rem; }
@@ -289,7 +292,7 @@
   .rm-hud-bottom { padding-right: calc(16px + 42px + 0.6rem + env(safe-area-inset-right)); }
   .rm-prompt { bottom: calc(132px + var(--rm-pad-b)); }
   .rm-hint { bottom: calc(138px + var(--rm-pad-b)); font-size: 0.76rem; }
-  .rm-toast { top: 15.5rem; }
+  .rm-toast { top: 18.5rem; } /* (under the chip column: the map, things to do, the wardrobe, the portal gun, others online) */
   .rm-place-head .rm-btn kbd { display: none; }
   .rm-quiz-options { grid-template-columns: 1fr; }
   .rm-cards { grid-template-columns: 1fr; }

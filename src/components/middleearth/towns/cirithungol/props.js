@@ -21,6 +21,7 @@ import { canvasTexture, hot } from '../../../../lib/stage3d';
 import { clamp01, fbm, makeCanvas, makeCells, makeNoise, mix, normalFromField, paintPixels, smooth } from '../../../../lib/paint';
 import { blob, boxUV, createShireKit, parts, rng, tf, tube } from '../../shire/props';
 import { STAIRS } from './rules';
+import { createStride, createTracker, ease } from '../../creatures';
 
 const TAU = Math.PI * 2;
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -1512,9 +1513,17 @@ function witchKing(K) {
     cloakGeo.computeVertexNormals();
   };
 
+  // its beat carried on from frame to frame, slowing as it glides; how hard
+  // it beats and how far he turns his head eased, so nothing jumps
+  const E = { t: null, k: null, ph: 0, turn: 0 };
   const animate = (t, { flap = 1, turn = 0 } = {}) => {
-    const k = clamp01(flap);
-    const ph = t * 2.6;
+    const dt = E.t == null || t < E.t ? 0 : Math.min(0.1, t - E.t);
+    E.t = t;
+    E.k = E.k == null ? clamp01(flap) : ease(E.k, clamp01(flap), dt, 2.5);
+    E.turn = ease(E.turn, turn, dt, 3);
+    const k = E.k;
+    E.ph += dt * 2.6 * (0.65 + 0.35 * k);
+    const ph = E.ph;
     const w = Math.sin(ph) + 0.25 * Math.sin(ph * 2);
     const up = 0.12 + 0.55 * w * k;
     const tip = 0.08 + 0.48 * (Math.sin(ph - 0.7) + 0.25 * Math.sin(ph * 2 - 1.4)) * k;
@@ -1537,7 +1546,7 @@ function witchKing(K) {
     tailB.rotation.z = Math.sin(ph - 1.8) * 0.1 * k;
     rider.rotation.z = Math.cos(ph) * 0.03 * k;
     // he turns his head, and leans a little into it, and lifts his face
-    const tr = Math.max(-1.5, Math.min(1.5, turn));
+    const tr = Math.max(-1.5, Math.min(1.5, E.turn));
     riderHead.rotation.set(0, tr, Math.abs(tr) * 0.12 + Math.sin(t * 0.9) * 0.02, 'YZX');
     rider.rotation.y = tr * 0.25;
     streamCloak(t, 0.6 + k * 0.4);
@@ -2548,9 +2557,15 @@ const TARSUS = -1.25;
 // great bulbous abdomen, black-brown and mottled, bristling, a sting at its
 // tail; a cluster of glossy eyes over two great fanged mandibles. Faces +x.
 // Skinned on one skeleton (three meshes); her feet are placed by reaching
-// for the ground. animate(t, { walking, rear, strike, hurt, recoil }), each
-// 0..1: walking her gait; rear lifts her front, legs raised; strike lunges;
-// hurt makes her sag, limp and shudder; recoil shrinks her back from a light.
+// for the ground. animate(t, { rear, strike, hurt, recoil, light }), each
+// 0..1: rear lifts her front, legs raised; strike lunges; hurt makes her
+// sag, limp and shudder; recoil shrinks her back from a light, though not
+// while she's walking off forwards (a hunt given up, home to her round);
+// light is the phial on her, and she flinches from it however she's going.
+// Her gait is read from where the scene puts her (../../creatures.js): her
+// feet keep their hold on the ground at any pace, the stride lengthening as
+// she hurries; `walking` is no longer needed. Each is eased, so she doesn't
+// snap from one to the next.
 function shelob(K) {
   const { mats } = K;
   const g = new THREE.Group();
@@ -2715,7 +2730,9 @@ function shelob(K) {
   const foot = V3();
   const loc = V3();
   let last = null;
-  let phase = 0;
+  const track = createTracker({ fastest: 20 });
+  const stride = createStride({ stride: 1.1, hz: 1.3, longest: 1.7, stance: 0.6, cadence: [1.3, 2.0], seed: 4021 });
+  const E = { rear: 0, strike: 0, hurt: 0, recoil: 0, light: 0 };
   const reach = (L, target) => {
     loc.copy(target).applyMatrix4(inv);
     const dx = loc.x - L.hip.x;
@@ -2732,15 +2749,27 @@ function shelob(K) {
     L.tibia.rotation.set(0, 0, a2);
     L.tarsus.rotation.set(0, 0, TARSUS - a1 - a2);
   };
-  const animate = (t, { walking = 0, rear = 0, strike = 0, hurt = 0, recoil = 0 } = {}) => {
+  const animate = (t, { rear = 0, strike = 0, hurt = 0, recoil = 0, light = 0 } = {}) => {
     const dt = last == null ? 0 : Math.max(0, Math.min(0.1, t - last));
     last = t;
-    const w = clamp01(walking);
-    const re = clamp01(rear);
-    const st = clamp01(strike);
-    const hu = clamp01(hurt);
-    const rc = clamp01(recoil);
-    phase += dt * (0.8 + 0.9 * w) * (w > 0.01 ? 1 : 0);
+    // how she's really going, from where she's been put
+    const m = track(t, g.position.x, g.position.z, g.rotation.y, g.scale.x);
+    const gait = stride.step(dt, m.fwd < -0.05 ? -m.speed : m.speed);
+    const w = gait.amount;
+    const phase = gait.cycle;
+    // walking off forwards she isn't shrinking from anything; the phial
+    // on her she is, whichever way she's going
+    const forward = smooth(0.3, 1.0, m.fwd);
+    E.light = ease(E.light, clamp01(light), dt, clamp01(light) > E.light ? 12 : 3);
+    const rcWant = Math.max(clamp01(recoil) * (1 - forward), E.light * 0.85);
+    E.recoil = ease(E.recoil, rcWant, dt, rcWant > E.recoil ? 10 : 3);
+    E.rear = ease(E.rear, clamp01(rear), dt, 6);
+    E.strike = ease(E.strike, clamp01(strike), dt, 14);
+    E.hurt = ease(E.hurt, clamp01(hurt), dt, 6);
+    const re = E.rear;
+    const st = E.strike;
+    const hu = Math.max(E.hurt, E.light * 0.35);
+    const rc = E.recoil;
     const breathe = Math.sin(t * 1.3);
     const shud = hu * (Math.sin(t * 31) * 0.6 + Math.sin(t * 47) * 0.4);
     // the body
@@ -2766,13 +2795,15 @@ function shelob(K) {
     for (const L of legs) {
       foot.copy(L.rest);
       if (w > 0.01) {
-        const c = (phase + L.phase) % 1;
-        const S = 1.1 * w;
+        // her feet held where they're put while they're down: they go back
+        // under her as far as she goes forward
+        const c = (phase + L.phase + 1) % 1;
+        const S = gait.travel * w;
         if (c < 0.6) foot.x += S * (0.5 - c / 0.6);
         else {
           const k = (c - 0.6) / 0.4;
           foot.x += S * (k - 0.5);
-          foot.y += Math.sin(Math.PI * k) * 0.45 * w;
+          foot.y += Math.sin(Math.PI * k) * (0.2 + 0.25 * Math.min(1.3, gait.reach)) * w;
         }
       }
       const front = L.i === 0;

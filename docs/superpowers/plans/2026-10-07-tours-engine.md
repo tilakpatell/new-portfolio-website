@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Revision 2 (read first):** the spec's section 8 lists amendments A1–A19 after a review; they override this plan's text where they differ. In short: `clear()` not `busy()` (A1); two waits and `resolveChapter`, no `rendered()` (A2); ending on POP/PUSH only, feed moves ignored (A3); `release: ['?', 'palette']` is its own field, never `keys` (A4); `ctx = { key, touch, ship }` (A5); `openTour` ignores Event arguments, `?tour=hiring` alias (A6); dots per chapter, `actions` as their own row (A7); chapter `brief` marks the basics seen (A8); the panel untucks while touring (A9); light-route actions are excursions with a carry-on notice (A10); toasts queue (A11); the scene pauses under a centred card (A12); `SHELL_STOPS` values given (A13); `addVisited(list, key)` (A14); `done: { key, is } | null`, no passwords/ROMs in the catalogue (A15); `openGuide({ tab: 'checklist' })` and the tab is called "The checklist" (A16, A17); `heavy` chapters (A18); `matchPath` in route tests (A19). `isPaletteKey` lives in `src/lib/palette.js` (not a combo that already exists there).
+
 **Goal:** Make the site tour able to carry an audience, cross routes, save progress, start from a link, and read its stops from a things-to-do catalogue that the guide also lists as a checklist.
 
 **Architecture:** The pure rules stay in `src/lib/tour.js` (progress, link parsing, plan composition, readiness) and a new `src/lib/visited.js`; `src/components/tour/TourHost.jsx` learns to navigate and wait; `src/components/tour/Tour.jsx` learns a waiting state and a `cta` button; `src/data/todo.js` is the catalogue; `GuidePanel.jsx` gains a "Things to do" tab. Stream B writes the copy against the interfaces fixed here.
@@ -9,6 +11,22 @@
 **Tech Stack:** React 19, react-router-dom 7 (HashRouter), vitest (Node, no DOM), plain CSS on the theme tokens.
 
 **Spec:** `docs/superpowers/specs/2026-10-07-audience-tours-and-ui-audit-design.md`, sections 3.2–3.5, 3.8 and 4. Read `docs/research/2026-10-07-tours-and-ui-audit/tour-system.md` sections 8 and 11 first: they list what breaks on a route change.
+
+## Interface as built (revision 2; stream B: follow these)
+
+Everything in the spec's section 8 for stream A is in. Where the code chose between readings:
+
+- **Stops**: `{ id, title, text: string | ({ key, touch, ship, mb }) => string, at?, keys?, touch?, release?: ['?', 'palette'], wait?: true, actions?: [{ label, to? , href?, download?, tour? }], todo? }`. `keys`/`touch` are only ever the key-table rows. At most four actions are drawn; `primary: true` draws one as the primary button; `label` may be a function of the same `ctx` (`ctx.mb` is `WORLD_MB`, which now has `'/universe': 6`). An action with `to` on a light route is an excursion (the tour stops, a note offers "Carry on … · chapter n of N" with Carry on and Stop); any other `to` ends the tour; `tour` ends this one (as done when it is the last stop) and starts that audience; `href` is a plain link (`download` for the PDF).
+- **Chapters**: `{ id, title, path, stops, brief?, heavy?, phone? }`. `path: null` stays on the page before. `brief: '/universe/fly'` replaces `stops` with `BRIEFS[brief]` and marks the basics seen once its last stop is passed. `heavy: true` with `phone: [chapter, …]` (agreed with B): on a coarse pointer `planFor` splices those ordinary chapters in its place.
+- **`compose(TOURS, [['recruiter', 'home', 'hood'], ['player', 'galaxy', 'colours'], END])`**: by chapter id, inclusive; a chapter object goes in as it is. An id it can't find throws (B's test sees it at import).
+- **`planFor(tours, audience, view, here, { coarse, shell, hello })`** prepends `{ id: 'shell', title: 'Getting about', path, stops }`: `hello[audience]` first, then the view tour's stops named by `shell` (`SHELL_STOPS` from `chapters/shared.js`, re-exported by `steps.js` as `SHELL_STOPS` and `HELLO`; TourHost passes them; `lib/tour`'s A13 values are the fallback; `mixed` uses the hiring tour's).
+- **`startAt(chapters, { chapter, stop, todo })`** → `{ c, stop }` or null; `openTour({ audience, chapter?, stop?, todo?, to?, only? })`; `only: true` runs one chapter alone (the guide's chapter list) and finishing it is not finishing the tour. An audience with no chapters yet falls back to the view's tour.
+- **The catalogue**: `THINGS_TO_DO` (not `TODO`: the health check counts the uppercase word), `todoFor`, `isDone(row, { unlocked, visited, stored })`, `done` one of `{ achievement }`, `{ visited }` (a route or a list, all needed), `{ key, is? }` (`SHELL_KEYS` in `src/lib/visited.js`; `storedKey` reads local then session storage), or `null`. A stop's `todo` is a row's `id`.
+- **Visited**: the shell records the pathname and, when different, `guideKeyFor(pathname)` (A14 says the key; A15's row ticks on the exact project path; both are kept).
+- **The guide**: tab ids `'page' | 'site' | 'checklist'`, the third named "The checklist"; `openGuide({ tab: 'checklist' })`; the terminal's `checklist` (`todo` still works); ⌘K "Open the checklist".
+- **Names**: `TOUR_NAMES` = "The hiring tour", "The player’s tour", "The whole tour"; links take `?tour=hiring|recruiter|player|all`; the offer's buttons "I’m hiring", "I’m here to play", "Both".
+- **Achievements**: `tourRecruiter`, `tourPlayer` exist (B's Task 4 is done).
+- `steps.test.js` passes `ctx = { key, touch, ship }`, and its key test accepts the five names. Its other cases still assume flat lists; B extends them to chapter lists.
 
 ## Global Constraints
 

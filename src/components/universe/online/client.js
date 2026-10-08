@@ -24,9 +24,11 @@
 // told to you (hunterHit → a 'hunterHit' event, once it's checked: they'd
 // just fired, and were close to it), so a friend can shoot one off your tail.
 //
-// createClient({ name, kind, loadout, build, looks, where }) → { selfId, on(fn) → off, snapshot(),
-//   setProfile({ name, kind, loadout, build, looks, where }), pose(ship, { hidden, boost, safe,
-//   shield }), foot(crew | null) (your crew on foot, protocol.js's writeFoot;
+// createClient({ name, kind, loadout, build, looks, where, level, marks }) → { selfId, factions, on(fn) → off, snapshot(),
+//   setProfile({ name, kind, loadout, build, looks, where, level, marks }) (level: the
+//   wallet's; marks: its marks(), your standing and oath, read into factions
+//   for the side of the ship you fly: relations.js's factionsFrom), pose(ship, { hidden, boost, safe,
+//   shield, lane }), poseOf(peerId) (where they were last seen, for the roster), foot(crew | null) (your crew on foot, protocol.js's writeFoot;
 //   each pilot's comes in as peer.foot, with `at`), walk(crew | null) (the
 //   same down on a world in the galaxy: peer.walk), shot(at, v, weapon),
 //   hit(peerId, damage), siege(msg) (the Citadel's siege, siege.js),
@@ -50,11 +52,13 @@
 
 import { readBuildWire, writeBuild } from '../shipyard/build';
 import { EVERYONE, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
-import { APP_ID, CURSOR_MS, DAMAGE, DAMAGE_MAX, FLAG, FOOT_MS, GUARD, PACK_MS, POSE_MS, PUNCH_MAX, ROOM, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, writeCursor, writeFoot, writeLooksWire, writePack, writePose, writeShot, WALK_MS, readWalk, writeWalk } from './protocol';
+import { APP_ID, CURSOR_MS, DAMAGE, DAMAGE_MAX, FLAG, FOOT_MS, GUARD, PACK_MS, POSE_MS, PUNCH_MAX, ROOM, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, writeCursor, writeFactions, writeFoot, writeLooksWire, writePack, writePose, writeShot, WALK_MS, readWalk, writeWalk } from './protocol';
 import { UNIVERSE, isFlight, placeName } from './where';
 import { STOCK_LOADOUT, readLoadout, writeOutfit } from '../outfit';
 import { readSiege } from '../siege';
 import { readTally } from '../tally';
+import { NO_FACTIONS, factionsFrom } from './relations';
+import { sideOf } from '../sides';
 
 const SNAPS = 12; // poses kept per pilot
 const SHOTS = 48; // shots waiting to be drawn, at most
@@ -64,10 +68,12 @@ const PILOTS = 32; // pilots kept track of, at most (each one flying sends ten b
 const HEARTBEAT_MS = 15000; // a hello this often, so a pilot sitting still isn't dropped
 const QUIET_MS = 45000; // nothing from a pilot this long: they're gone
 const ALLY_AGAIN_MS = 60000; // after you turn someone down, how long before they may ask again
+// your level as it goes out (the wallet's: 1 till it's loaded)
+const levelOf = (lv) => (Number.isInteger(lv) && lv >= 1 ? lv : 1);
 const loadRoom = () => import('./nostr').then((m) => ({ joinRoom: m.joinAsVisitor }));
 
-export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build = null, looks = null, where = UNIVERSE, load = loadRoom, now = () => performance.now() }) {
-  const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, loadout: readLoadout(loadout), build: build ? readBuildWire(writeBuild(build)) : null, looks: looks ? readLooks(looks) : null, kills: 0, where };
+export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build = null, looks = null, where = UNIVERSE, level = 1, marks = null, load = loadRoom, now = () => performance.now() }) {
+  const self = { id: null, name: cleanName(name) ?? 'Pilot', kind, loadout: readLoadout(loadout), build: build ? readBuildWire(writeBuild(build)) : null, looks: looks ? readLooks(looks) : null, kills: 0, where, level: levelOf(level), marks, factions: factionsFrom(sideOf(kind), marks) };
   const peers = new Map();
   const listeners = new Set();
   let status = 'connecting'; // connecting | online | failed | left
@@ -92,9 +98,13 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
   };
   const roster = () => emit({ type: 'roster' });
   const feed = (text, tone = 'info') => emit({ type: 'feed', text, tone });
-  const hello = () => ({ n: self.name, k: self.kind, p: self.loadout.paint, o: writeOutfit(self.loadout), ...(self.build ? { b: writeBuild(self.build) } : {}), ...writeLooksWire(self.looks), c: self.kills, w: self.where });
+  const hello = () => {
+    const f = writeFactions(self.factions);
+    return { n: self.name, k: self.kind, p: self.loadout.paint, o: writeOutfit(self.loadout), ...(self.build ? { b: writeBuild(self.build) } : {}), ...writeLooksWire(self.looks), c: self.kills, w: self.where, lv: self.level, ...(f ? { f } : {}) };
+  };
   const same = (a, b) => Object.keys(STOCK_LOADOUT).every((slot) => a[slot] === b[slot]);
   const sameBuild = (a, b) => (a ? writeBuild(a).join() : '') === (b ? writeBuild(b).join() : '');
+  const factionsKey = (f) => JSON.stringify(writeFactions(f));
   const looksKey = (l) => (l ? JSON.stringify(EVERYONE.map((who) => (l[who] ? writeLook(l[who]) : null))) : ''); // (a peer’s may have one cast’s and not the other’s)
 
   const peerOf = (id) => {
@@ -109,6 +119,8 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
         looks: null, // how they dress their Rick and Morty, their Walt and Jesse (the wardrobe’s), or null: as the show has them
         kills: 0, // the ones this browser saw
         where: null,
+        level: 1, // (theirs, as they say: it only labels them)
+        factions: NO_FACTIONS,
         ally: 'none',
         blocked: false,
         snaps: [],
@@ -242,7 +254,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       if (!p) return;
       const first = p.name === null;
       const was = p.where;
-      const changed = first || p.name !== h.name || p.kind !== h.kind || !same(p.loadout, h.loadout) || !sameBuild(p.build, h.build) || looksKey(p.looks) !== looksKey(h.looks) || p.where !== h.where;
+      const changed = first || p.name !== h.name || p.kind !== h.kind || !same(p.loadout, h.loadout) || !sameBuild(p.build, h.build) || looksKey(p.looks) !== looksKey(h.looks) || p.where !== h.where || p.level !== h.level || factionsKey(p.factions) !== factionsKey(h.factions);
       // (their own count of their kills isn't taken: p.kills is what this browser saw)
       p.name = h.name;
       p.kind = h.kind;
@@ -250,6 +262,8 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       p.build = h.build;
       p.looks = h.looks;
       p.where = h.where;
+      p.level = h.level;
+      p.factions = h.factions;
       if (was !== p.where) p.cur = null; // (a pointer is only good on the page it was on)
       if (first) feed(`${p.name} came online`, 'join');
       else if (was !== p.where) {
@@ -416,6 +430,10 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     get selfId() {
       return self.id;
     },
+    // yours, as the hello says them (for the tags' colours: pilots.js)
+    get factions() {
+      return self.factions;
+    },
     peers,
     on(fn) {
       listeners.add(fn);
@@ -424,16 +442,21 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     // for the page: who's here, as plain data
     snapshot() {
       const list = [];
-      for (const p of peers.values()) if (p.name !== null) list.push({ id: p.id, name: p.name, kind: p.kind, loadout: p.loadout, build: p.build, looks: p.looks, kills: p.kills, where: p.where, ally: p.ally, blocked: p.blocked });
+      for (const p of peers.values()) if (p.name !== null) list.push({ id: p.id, name: p.name, kind: p.kind, loadout: p.loadout, build: p.build, looks: p.looks, kills: p.kills, where: p.where, level: p.level, factions: p.factions, ally: p.ally, blocked: p.blocked });
       list.sort((a, b) => a.name.localeCompare(b.name));
-      return { status, self: { name: self.name, kind: self.kind, loadout: self.loadout, kills: self.kills, where: self.where }, peers: list };
+      return { status, self: { name: self.name, kind: self.kind, loadout: self.loadout, kills: self.kills, where: self.where, level: self.level, factions: self.factions }, peers: list };
     },
-    setProfile({ name: n = self.name, kind: k = self.kind, loadout: l = self.loadout, build: b = self.build, looks: lk = self.looks, where: w = self.where } = {}) {
+    setProfile({ name: n = self.name, kind: k = self.kind, loadout: l = self.loadout, build: b = self.build, looks: lk = self.looks, where: w = self.where, level: lv = self.level, marks: m = self.marks } = {}) {
       const clean = cleanName(n) ?? self.name;
       const fit = readLoadout(l);
       const hull = b ? readBuildWire(writeBuild(b)) : null;
       const dressed = lk ? readLooks(lk) : null;
-      if (clean === self.name && k === self.kind && same(fit, self.loadout) && sameBuild(hull, self.build) && looksKey(dressed) === looksKey(self.looks) && w === self.where) return;
+      const level = levelOf(lv);
+      const factions = factionsFrom(sideOf(k), m);
+      self.marks = m;
+      if (clean === self.name && k === self.kind && same(fit, self.loadout) && sameBuild(hull, self.build) && looksKey(dressed) === looksKey(self.looks) && w === self.where && level === self.level && factionsKey(factions) === factionsKey(self.factions)) return;
+      self.level = level;
+      self.factions = factions;
       self.looks = dressed;
       self.name = clean;
       self.kind = k;
@@ -446,13 +469,20 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     },
     // where your ship is, each frame (sent ten times a second). Hidden
     // (crashed, shot down, diving into a page) or safe (just back), hits
-    // on you don't count
-    pose(s, { hidden = false, boost = false, safe = false, shield = 100 } = {}) {
+    // on you don't count; riding a hyperlane (lane), the others far off see
+    // you as a streak along it
+    pose(s, { hidden = false, boost = false, safe = false, shield = 100, lane = false } = {}) {
       me = hidden || safe || !s ? null : s;
       const t = now();
       if (!send || !s || t - lastPose < POSE_MS) return;
       lastPose = t;
-      send.pose(writePose(s, (hidden ? FLAG.hidden : 0) | (boost ? FLAG.boost : 0) | (safe ? FLAG.safe : 0), shield));
+      send.pose(writePose(s, (hidden ? FLAG.hidden : 0) | (boost ? FLAG.boost : 0) | (safe ? FLAG.safe : 0) | (lane ? FLAG.lane : 0), shield));
+    },
+    // where a pilot was last seen on the universe map: { x, y, z }, or null
+    // (not seen there yet, or gone)
+    poseOf(id) {
+      const p = peers.get(id)?.pose;
+      return p ? { x: p.x, y: p.y, z: p.z } : null;
     },
     // the hunters after you, for the others to see: get() gives them
     // (hunters.js's wire()), asked for only when it's time to send (five

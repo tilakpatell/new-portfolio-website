@@ -91,7 +91,7 @@ export const PAGES = {
   '/universe': {
     about: 'The whole site as places in space: the stations round the sun are its pages, the planets in deep space its worlds. Fly a ship to any of them, or pick one.',
     keys: [
-      { label: 'Flying', rows: [...FLY, ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole map']] },
+      { label: 'Flying', rows: [...FLY, ['hold S', 'Drop out of a lane'], ['hold W', 'Carry on through a junction'], ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole map']] },
       { label: 'On foot', rows: [['W A S D', 'Walk'], ['Q E', 'Step sideways'], ['Shift', 'Run'], ['Space', 'Jump'], ['F / Click', 'Fire'], ['X', 'Play the other one of your crew'], ['B', 'Rick’s next gadget: the portal gun, the freeze ray, the shrink ray'], ['V', 'Out of their eyes'], ['G', 'Through a door, or back into the ship'], ['Enter', 'Into the planet’s page']] },
     ],
     touch: [
@@ -106,7 +106,7 @@ export const PAGES = {
     ],
     tips: [
       ['Pick a ship', 'Rick and Morty’s cruiser, Luke and Artoo’s X-wing, Han and Chewie’s Falcon or Walt and Jesse’s RV. Each crew has a word about every place. No ship? Pick a place and the camera flies there.'],
-      ['Getting about', 'The worlds are far apart. Boost in the open and the pulse drive takes over; it drops back near a place. Or open the nav map (M) and let the ship take you: hyperspeed (a jump), super speed or cruise. Star systems are on it too: pick one and the ship flies through the gate. Tour visits every place, nearest first; Escape stops it.'],
+      ['Getting about', 'The worlds are far apart. Boost in the open and the pulse drive takes over; it drops back near a place. Or open the nav map (M) and let the ship take you: by the hyperlanes (riding with the traffic; hold S to drop out), hyperspeed (a jump), super speed or cruise. Star systems are on it too: pick one and the ship flies through the gate. Tour visits every place, nearest first; Escape stops it.'],
       ['Links', 'Every place has a link that opens the map there (/universe/aurelia, say): Copy a link here on the nav map. The terminal’s fly <place> and ⌘K’s Fly to do the same.'],
       ['Deep space', 'Between the worlds are the wonders: a ringed gas giant, an ice giant, two other suns with their own worlds, a black hole, two nebulae, the Citadel of Ricks, a pulsar, a binary star, a rogue planet and a wreck field round a white dwarf, with a rim of ice round the edge of the map. The crew have a word about each.'],
       ['Mind the planets', 'Fly down into a planet’s air and you land on it; come in boosting and you crash into its page. Brush a station and you bounce off.'],
@@ -124,6 +124,7 @@ export const PAGES = {
     tips: [
       ['Jumping', 'Turn the nose toward a star and its name comes up; press J, or fly out of the system toward it. The galaxy map (M) filters by era or film.'],
       ['Missions', 'Each system has one. The trench run and boarding the Death Star are playable now; the rest are briefings for games still being built. Watch for the tractor beam at Alderaan.'],
+      ['Out there', 'Each system is open 2,400 out from its planet, with three to six places to find in it: a derelict, a comet, a beacon, an outpost. Well out from everything, holding Boost opens the drive into super speed; it eases off again coming up on anything.'],
       ['Online', 'The other pilots in the same system are there with you, in their own ships. The galaxy map shows how many are where.'],
       ['The wars', 'Three wars at once, one for each era: the Clone Wars, the Galactic Civil War and the Remnant War, with the Hutts against everyone. Pick yours on the galaxy map and swear to a side; battles near you count for it, you rise in its ranks, and who holds a system decides who hunts you there and who flies with you.'],
     ],
@@ -196,6 +197,61 @@ export const PAGES = {
       ['The Battle of Yavin', 'Set course for Yavin 4 and a clock starts. Fly the trench run before the moon is in range.'],
       ['The trench run', 'Shoot the TIEs and towers over the surface, then dive in: dodge the catwalks, shoot the turrets, lose Vader. Torpedoes hit the first thing in their path, so keep one for the port: it glows as you close in and turns green when you’re lined up, low and centred. Rookie, Red Five or Jedi; each keeps its best.'],
       ['The readout', 'Open any part of the station on the technical readout.'],
+    ],
+  },
+  '/deathstar/inside': {
+    keys: [
+      {
+        label: 'Moving',
+        rows: [
+          ['W A S D / ← ↑ ↓ →', 'Walk'],
+          ['Shift', 'Run'],
+          ['Space', 'Jump'],
+          ['C', 'Crouch'],
+          ['Mouse', 'Look (click the station first to hold the pointer)'],
+          ['E', 'Use: doors, lifts, consoles, people'],
+          ['V', 'Third or first person'],
+        ],
+      },
+      {
+        label: 'Fighting',
+        rows: [
+          ['Click', 'Fire'],
+          ['Right-click', 'Aim'],
+          ['R', 'Vent the gun before it overheats'],
+        ],
+      },
+      {
+        label: 'Aboard',
+        rows: [
+          ['H', 'Helmet on or off'],
+          ['G', 'Roar (as Chewbacca)'],
+          ['M / Tab', 'The station’s map'],
+          ['1 – 4', 'Choose what to say in a conversation'],
+          ['Esc / P', 'Pause'],
+        ],
+      },
+    ],
+    touch: [
+      {
+        rows: [
+          ['Stick', 'Walk (push it all the way to run)'],
+          ['Drag', 'Look'],
+          ['Fire', 'Shoot'],
+          ['Aim', 'Hold to aim'],
+          ['Use', 'Doors, lifts, consoles, people'],
+          ['Jump', 'Jump'],
+          ['Crouch', 'Crouch'],
+        ],
+      },
+    ],
+    tips: [
+      ['Two stations', 'The first Death Star, over Alderaan and Yavin, and the second, over Endor. Pick one, and a side, on the start screen.'],
+      ['Rebel or Imperial', 'A Rebel in stormtrooper armour is in disguise: running, shooting or a restricted room makes the garrison wonder, and with the helmet off you’re known at once. An Imperial serves aboard and hunts the intruders.'],
+      ['Story or free roam', 'Follow the films’ story, or walk the station as you like: the story waits for you.'],
+      ['Security', 'Each section has its own. Seen where you shouldn’t be, it goes to alert, then lockdown: the blast doors seal and squads come looking. Stay out of sight and it stands down.'],
+      ['The gun', 'It heats as you fire, and when it’s too hot it vents and won’t fire for a moment. R vents it sooner, at a time you choose.'],
+      ['Saving', 'Your story, the rooms you’ve seen and the secrets you’ve found are kept on this device.'],
     ],
   },
   '/caribbean': {
@@ -371,27 +427,40 @@ export const PAGES = {
     ],
   },
   '/c-137': {
-    about: 'The Smiths’ street in 3D, as Morty, with Rick’s cruiser in the garage and a portal to everywhere.',
+    about: 'The Smiths’ street in 3D, as Morty, with Rick’s cruiser in the driveway and his portal gun on the garage bench.',
     keys: [
-      { label: 'Walking', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Drag', 'Look round'], ['E', 'Doors, the cruiser, the games'], ['M', 'Things to do']] },
+      { label: 'Walking', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Drag', 'Look round'], ['E', 'Doors, the cruiser, the games, the portal gun on Rick’s bench'], ['P', 'The portal gun, from anywhere'], ['M', 'Things to do']] },
       { label: 'In the cruiser', rows: [['W A S D', 'Fly'], ['Space', 'Climb'], ['Shift', 'Drop'], ['E', 'Land (slow, over open ground)']] },
       { label: 'Portal panic', rows: [['W A S D', 'Move'], ['Mouse', 'Aim: the gun fires on its own'], ['F', 'Auto-fire off (then hold the mouse to fire)'], ['Space / Shift', 'Portal-dash'], ['1 2 3', 'Take a gadget'], ['P', 'Pause']] },
       { label: 'Total Rickall', rows: [['Drag', 'Aim'], ['E', 'Remember the one in the crosshair'], ['F / Click', 'Shoot them'], ['Esc', 'Stop the game']] },
       { label: 'Through the portal', rows: [['E', 'Talk, take, look, free: whatever the prompt says'], ['F', 'Fire, in a fight (Evil Rick’s lair, the Blood Dome)'], ['Run', 'From whoever’s after you: the map shows them red']] },
     ],
     touch: [
-      { rows: [['Stick', 'Walk, or fly'], ['Swipe', 'Look round'], ['Tap', 'Jump, climb, drop and act, on their buttons']] },
+      { rows: [['Stick', 'Walk, or fly'], ['Swipe', 'Look round'], ['Tap', 'Jump, climb, drop and act, on their buttons'], ['Portal gun', 'Its button at the top: pick where the garage portal goes']] },
       { label: 'Total Rickall', rows: [['Swipe', 'Aim'], ['Tap', 'Shoot the one in the crosshair (or Remember and Shoot, on their buttons)']] },
       { label: 'Through the portal', rows: [['Tap', 'The star fires, in a fight']] },
     ],
     tips: [
-      ['The portal gun', 'Fire it to look through into another dimension.'],
+      ['The portal gun', 'It’s on Rick’s bench in the garage: E there, or P (its button on a phone) anywhere, and pick a place. Then step through the portal on the garage’s west wall: twenty-six places from the show, and Blips and Chitz. Everyone in them does something; some of them come for you, and caught, you’re back at the door. Three slips to spot, a ticket to find, a cell to open, a ring to step into.'],
+      ['The planets', 'Gazorpazorp, Planet Squanch, Bird World and the rest of the show’s planets are on the universe map, in the Rick and Morty sector (through the green portal beside the Rick and Morty planet): land on one and you’re in it. What you do there counts on this list (M) too.'],
       ['Portal panic', 'Three waves in each of four dimensions; a gadget from Rick’s bench after each, and a boss to portal on. Rick, Morty or Pickle Rick. A controller works too.'],
       ['Total Rickall', 'Pick up the egg on the living-room bookcase. A parasite only ever leaves good memories of itself, so shoot the ones nobody remembers a bad day with, and nobody else.'],
       ['The Meeseeks box', 'Press the button and give him a task. Give him one he can’t do and he gets help.'],
       ['Interdimensional cable', 'Turn the dial.'],
-      ['The portal gun’s dial', 'Set it on Rick’s bench and the garage portal goes there: thirty-six places from the show. Everyone in them does something; some of them come for you, and caught, you’re back at the door. Three slips to spot, a ticket to find, a cell to open, a ring to step into.'],
+      ['A look through', 'Past the street, the page’s Fire the portal gun button shows you another dimension. It’s only a look: the gun that takes you is Rick’s, on his bench (P).'],
       ['The Smiths', 'Four of them are a color scheme for the site. Jerry can ask.'],
+    ],
+  },
+  // a Rick and Morty planet, landed on from the universe map (/c-137/<id>)
+  '/c-137/planet': {
+    about: 'A planet from the show, landed on from the universe map: you’re in it on foot, as Morty, with something to do.',
+    keys: [{ rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Drag', 'Look round'], ['E', 'Talk, take, look: whatever the prompt says'], ['M', 'Things to do']] }],
+    touch: [{ rows: [...WALK_TOUCH, ['Tap', 'Jump and act, on their buttons']] }],
+    tips: [
+      ['The way out', 'The portal you came in by, just behind you, takes you back out to space, by the planet.'],
+      ['Run', 'Some of the people here come for you: the map shows them red. Caught, you’re back where you came in.'],
+      ['A minute', 'On Planet Squanch and the Purge Planet, once it goes wrong, get back through the portal inside a minute.'],
+      ['The list', 'What you do here counts on Dimension C-137’s list of things to do too.'],
     ],
   },
   '/c-137/citadel': {
