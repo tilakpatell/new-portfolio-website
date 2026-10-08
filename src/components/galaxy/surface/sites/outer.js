@@ -45,7 +45,7 @@ export const SITES = {
     ],
     quests: [
       { id: 'waters', name: 'The Living Waters', giver: 'armorer', intro: [['The Armorer', 'Go down to the Living Waters, under the mines, and you will be redeemed.']], steps: [{ type: 'reach', at: [-200, -180], r: 14, text: 'Go down to the mines' }, { type: 'use', id: 'bathe', at: [-200, -180], r: 8, prompt: 'Recite the Creed', text: 'Bathe in the Living Waters', end: [{ say: [[null, '(The water is cold and very deep. Something huge moves far below you.)']] }, { shake: 0.6 }] }], done: [['The Armorer', 'You are redeemed. This is the Way.']] },
-      { id: 'reclaim', name: 'For Mandalore', giver: 'armorer', steps: [{ type: 'shoot', tag: 'remnant', n: 8, text: 'Drive the Remnant out of Sundari', spawn: troops('remnant', 8, [215, 100]) }], done: [['The Armorer', 'Mandalore is ours again.']] },
+      { id: 'reclaim', name: 'For Mandalore', giver: 'armorer', steps: [{ type: 'shoot', tag: 'remnant', at: [215, 100], n: 8, text: 'Drive the Remnant out of Sundari', spawn: troops('remnant', 8, [215, 100]) }], done: [['The Armorer', 'Mandalore is ours again.']] },
     ],
     flyovers: [{ kind: 'tie', n: 2, metres: 7, alt: 110, speed: 110, every: 60 }],
   },
@@ -80,7 +80,7 @@ export const SITES = {
     ],
     quests: [
       { id: 'starmap', name: 'The star map', giver: 'ahsoka', intro: [['Ahsoka Tano', 'The map to Thrawn is in pieces, hidden in the old temple stones. Find them.']], steps: [{ type: 'collect', item: 'shard', n: 3, spots: [[-150, 240], [-128, 218], [-146, 214]], text: 'Find the pieces of the star map' }, { type: 'use', id: 'map', at: [-140, 230], r: 6, prompt: 'Fit the pieces together', text: 'Open the star map', end: [{ shake: 0.4 }, { say: [[null, '(Points of light fill the air: a route to another galaxy.)']] }] }], done: [['Ahsoka Tano', 'Peridea. So that’s where they went.']] },
-      { id: 'factory', name: 'Shut down the factory', giver: 'ryder', steps: [{ type: 'shoot', tag: 'factory', n: 8, text: 'Clear the Remnant from the factory', spawn: troops('factory', 8, [-220, -200]) }, { type: 'use', id: 'power', at: [-220, -200], r: 6, prompt: 'Shut down the power', text: 'Shut the factory down', end: [{ sound: 'crash' }, { shake: 0.8 }] }], done: [['Governor Azadi', 'No more TIEs from Lothal.']] },
+      { id: 'factory', name: 'Shut down the factory', giver: 'ryder', steps: [{ type: 'shoot', tag: 'factory', at: [-220, -200], n: 8, text: 'Clear the Remnant from the factory', spawn: troops('factory', 8, [-220, -200]) }, { type: 'use', id: 'power', at: [-220, -200], r: 6, prompt: 'Shut down the power', text: 'Shut the factory down', end: [{ sound: 'crash' }, { shake: 0.8 }] }], done: [['Governor Azadi', 'No more TIEs from Lothal.']] },
     ],
     // (the plains' tall grass is the grass field round you: `grass`)
     scatter: [],
@@ -136,7 +136,7 @@ export const SITES = {
       { kind: 'villager', n: 2, at: [14, 10], spread: 5, roam: 8, speed: 0.9, name: 'Krill farmer', says: ['The village is that way, through the trees. Bring your own boots.', 'Krill harvest’s in. The raiders know it too.'] },
     ],
     quests: [
-      { id: 'raiders', name: 'Sanctuary', giver: 'omera', intro: [['Omera', 'Raiders. And they’ve got an Imperial walker. Will you help us?']], steps: [{ type: 'shoot', tag: 'raiders', n: 6, text: 'Drive off the Klatooinian raiders', spawn: { kind: 'aqualish', n: 6, at: [-240, -160], spread: 14, roam: 6, hp: 2, tag: 'raiders', hostile: hostile(42, 2.4, 8) } }, { type: 'shoot', tag: 'walker', n: 1, text: 'Bring down the AT-ST', lines: [[null, '(The trees split. An AT-ST steps out of them.)']], spawn: { kind: 'atst', at: [-220, -140], hp: 16, roam: 10, speed: 1.2, tag: 'walker', hostile: hostile(60, 2, 12) } }], done: [['Omera', 'You could stay, you know. There’s room here.']] },
+      { id: 'raiders', name: 'Sanctuary', giver: 'omera', intro: [['Omera', 'Raiders. And they’ve got an Imperial walker. Will you help us?']], steps: [{ type: 'shoot', tag: 'raiders', at: [-240, -160], n: 6, text: 'Drive off the Klatooinian raiders', spawn: { kind: 'aqualish', n: 6, at: [-240, -160], spread: 14, roam: 6, hp: 2, tag: 'raiders', hostile: hostile(42, 2.4, 8) } }, { type: 'shoot', tag: 'walker', at: [-220, -140], n: 1, text: 'Bring down the AT-ST', lines: [[null, '(The trees split. An AT-ST steps out of them.)']], spawn: { kind: 'atst', at: [-220, -140], hp: 16, roam: 10, speed: 1.2, tag: 'walker', hostile: hostile(60, 2, 12) } }], done: [['Omera', 'You could stay, you know. There’s room here.']] },
     ],
     flyovers: [{ kind: 'freighter', n: 1, metres: 40, alt: 160, speed: 40, every: 90 }],
   },

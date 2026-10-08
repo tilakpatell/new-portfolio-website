@@ -18,10 +18,10 @@
 // the clouds, and the pall of Mordor's smoke over the Black Land.
 
 import { COAST, LAKES, RIVERS, RANGES, PEAKS, FORESTS, LANDS, CITIES, FARMS } from './middleearth-geo.mjs';
-import { cells, clamp, curve, eachTexel, fbm, hex, mix, mix3, normalMap, perlin, raster, ramp, rand, ridged, sampler, save, smooth } from './sphere.mjs';
+import { cells, clamp, curve, eachTexel, fbm, hex, mix, mix3, normalMap, perlin, raster, ramp, rand, ridged, sampler, save, smooth, bakeSize } from './sphere.mjs';
 
-const W = 4096;
-const H = 2048;
+// (8192 × 4096 with --ultra: sphere.mjs's bakeSize)
+const [W, H] = bakeSize();
 const LAT0 = (35 * Math.PI) / 180;
 const MID = [430, 300]; // the sheet's middle, at (LAT0, the map's middle meridian)
 const K = 509; // sheet units a radian: the 800-wide sheet spans 90°

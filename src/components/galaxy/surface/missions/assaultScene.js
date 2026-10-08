@@ -37,7 +37,7 @@ import { disposeTree } from '../../../../lib/three/renderer';
 import { turn } from '../../../../lib/three/gait';
 import { bodyFrom } from '../../../../lib/ai/body';
 import { anyFigure } from '../actors';
-import { groundAt, pushOut } from '../walker';
+import { groundAt, pushOut, tooDeep } from '../walker';
 import { BATTLE_BODY, RULES, SOLDIERS, battleView, chooseSide as pickSide, deploy as deployAt, endBattle, hitSoldier, newBattle, objectiveFor, soldierBody, stepBattle, youDown as putYouDown } from './assault';
 import { sharpen } from '../../../../lib/three/textures';
 
@@ -211,7 +211,8 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
   let t = 0;
   let heardAt = -1;
   let barkAt = BARK.first;
-  const env = { solids: world.solids, reach: world.reach };
+  // (deep: water too deep to wade, the lagoon past the shallows, which the soldiers don't walk into)
+  const env = { solids: world.solids, reach: world.reach, deep: (x, z) => tooDeep(world, x, z) };
   const view = () => (battle ? battleView(battle) : null);
   const tell = (event = null) => emit({ type: 'mission', event, view: view() });
 
