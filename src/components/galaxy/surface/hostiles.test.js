@@ -128,10 +128,10 @@ describe('an enemy’s head', () => {
     expect(Math.hypot(d.out.x, d.out.z)).toBeLessThan(3.5);
   });
 
-  it('a chaser whose mark has gone between two choices carries on rather than falling over', () => {
-    const c = trooper({ hostile: { range: 40, chase: 2.7, melee: true, reach: 3.4 }, spec: { roam: 3, leash: 40 } });
-    // (a mark that died, or an ally with nothing left to fight, mid-close)
-    c.mind = { mode: 'close', goal: null, thinkAt: 99, clock: 0 };
+  it.each(['close', 'back', 'strafe'])('a %s in progress whose mark has gone between two choices carries on rather than falling over', (mode) => {
+    const c = trooper({ hostile: { range: 40, chase: 2.7, melee: true, reach: 3.4, strafe: { speed: 2.6, every: 2.2, keep: 14 } }, spec: { roam: 3, leash: 40 } });
+    // (a mark that died, or an ally with nothing left to fight, mid-move)
+    c.mind = { mode, goal: null, thinkAt: 99, clock: 0 };
     expect(() => hostileStep(c, { you: null, allies: [] }, DT, seeded(1))).not.toThrow();
     expect(c.mind.mode).toBe('wander');
   });

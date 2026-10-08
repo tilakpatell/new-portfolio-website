@@ -75,7 +75,11 @@ describe('Kashyyyk, as Revenge of the Sith has it', () => {
       const spawns = [].concat(s.spawn);
       expect(spawns.some((sp) => sp.side === 'yours')).toBe(true);
       // (your side carries a tag of its own: a kill of theirs, not of yours, is what the step counts)
-      for (const sp of spawns.filter((x) => x.side === 'yours')) expect(sp.tag).not.toBe(s.tag);
+      for (const sp of spawns.filter((x) => x.side === 'yours')) {
+        expect(sp.tag).not.toBe(s.tag);
+        // (the whole disc of them is on dry ground: z at its near and far edges)
+        for (const dz of [-(sp.spread ?? 0), 0, sp.spread ?? 0]) expect(standable(site, [sp.at[0], sp.at[1] + dz]), `${sp.kind} at ${sp.at} ${dz}`).toBe(true);
+      }
       for (const sp of spawns.filter((x) => x.hostile && x.side !== 'yours')) {
         expect(sp.at[1]).toBeGreaterThan(75); // in the shallows
         expect(sp.at[1] - (sp.spread ?? 0)).toBeGreaterThanOrEqual(84); // none of its spread on the sand
