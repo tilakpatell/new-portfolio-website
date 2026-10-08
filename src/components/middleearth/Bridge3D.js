@@ -417,14 +417,14 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
       }
     }
     B.position.set(bx, by, 0);
-    const stride = bx * 1.25;
     const flail = A.fall > 0.35 ? 0.5 + 0.5 * Math.sin(t * 9) : 0;
-    balrog.animate({ t, stride, moving: A.moving, spread: A.spread, raise: Math.max(A.raise, flail), lash: A.lashPose, roar: Math.max(A.roar, flail * 0.6), flare: A.flare });
+    // (its walk is its own: read from where it's put, ./kit.js)
+    balrog.animate({ t, spread: A.spread, raise: Math.max(A.raise, flail), lash: A.lashPose, roar: Math.max(A.roar, flail * 0.6), flare: A.flare });
     B.updateMatrixWorld(true);
     balrog.hand.getWorldPosition(hand);
     if (B.visible) {
-      // each footfall
-      const step = Math.floor(stride / Math.PI + 0.5);
+      // each footfall, as a foot comes down
+      const step = balrog.steps ?? 0;
       if (step !== A.step) {
         A.step = step;
         if (A.moving > 0.5) {

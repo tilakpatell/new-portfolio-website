@@ -2,34 +2,39 @@
   "*": {
     "engine": [
       "qwen",
-      "longcat"
+      "longcat",
+      "qwenft"
     ]
   },
   "rick": {
     "engine": [
       "qwen",
       "auk",
-      "longcat"
+      "longcat",
+      "qwenft"
     ]
   },
   "morty": {
     "engine": [
       "qwen",
       "auk",
-      "longcat"
+      "longcat",
+      "qwenft"
     ]
   },
   "han": {
     "engine": [
       "qwen",
-      "fish"
+      "fish",
+      "qwenft"
     ]
   },
   "hank": {
     "engine": [
       "qwen",
       "fish",
-      "longcat"
+      "longcat",
+      "qwenft"
     ]
   }
 }

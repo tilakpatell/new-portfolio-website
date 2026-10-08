@@ -20,6 +20,7 @@ import {
   RiRestartLine,
   RiRocket2Line,
   RiSearchLine,
+  RiSaveLine,
   RiSparkling2Line,
   RiTerminalBoxLine,
 } from 'react-icons/ri';
@@ -36,7 +37,7 @@ import { audioContext, setSound, soundOn } from '../lib/audio';
 import { useView } from './ViewSwitch';
 import { restartSite } from '../lib/restart';
 import { openGuide } from '../lib/palette';
-import { openTour } from '../lib/tour';
+import { TOUR_TIMES, openTour } from '../lib/tour';
 import { DESTINATIONS } from './universe/nav';
 import { byId as universeById } from './universe/universes';
 import '../styles/lazy/commandpalette.css';
@@ -89,7 +90,11 @@ export default function CommandPalette({ onClose }) {
         ? { id: 's-uni', group: 'Actions', label: 'Switch to the universe', hint: 'and open there next time', keywords: 'view mode 3d map front door start page landing universe fly', icon: RiRocket2Line, run: () => switchTo('universe') }
         : { id: 's-home', group: 'Actions', label: 'Switch to the classic site', hint: 'and open there next time', keywords: 'view mode plain pages front door start page landing home classic simple 2d', icon: RiLayoutGridLine, run: () => switchTo('classic') },
       { id: 'a-guide', group: 'Actions', label: 'Guide: the controls and tips for this page', hint: '?', keywords: 'help controls keys keyboard shortcuts how to play tips instructions question', icon: RiQuestionLine, run: openGuide },
-      { id: 'a-tour', group: 'Actions', label: 'Take the tour of the site', hint: 'Under a minute', keywords: 'tour help onboarding walkthrough new here first time show around how to get about start', icon: RiCompass3Line, run: openTour },
+      // the three tours, the same words kept so "tour" still finds them
+      { id: 'a-tour-r', group: 'Actions', label: 'Take the hiring tour', hint: TOUR_TIMES.recruiter, keywords: 'tour help onboarding walkthrough new here first time show around how to get about start recruiter hire hiring work engineering', icon: RiCompass3Line, run: () => openTour({ audience: 'recruiter' }) },
+      { id: 'a-tour-p', group: 'Actions', label: 'Take the player’s tour', hint: TOUR_TIMES.player, keywords: 'tour help onboarding walkthrough new here first time show around how to get about start player play games worlds', icon: RiCompass3Line, run: () => openTour({ audience: 'player' }) },
+      { id: 'a-tour-all', group: 'Actions', label: 'Take the whole tour', hint: TOUR_TIMES.mixed, keywords: 'tour help onboarding walkthrough new here first time show around how to get about start everything both all', icon: RiCompass3Line, run: () => openTour({ audience: 'mixed' }) },
+      { id: 'a-todo', group: 'Actions', label: 'Open the checklist', hint: 'Ticked off as you go', keywords: 'todo to do things checklist list what can i do try see games worlds help', icon: RiCompass3Line, run: () => openGuide({ tab: 'checklist' }) },
       { id: 's-again', group: 'Actions', label: 'Restart the site from the beginning', keywords: 'restart start over again reset replay intro welcome crawl cockpit first visit beginning reboot', icon: RiRestartLine, run: restartSite },
       { id: 'w-uni', group: 'Go to', label: 'The universe map', keywords: 'universe map planets worlds fandoms space ship fly x-wing falcon cruiser rick morty rv walt jesse breaking bad', icon: RiGlobalLine, run: go('/universe') },
       { id: 'p-exp', group: 'Go to', label: 'Experience', icon: RiBriefcaseLine, run: go('/experience') },
@@ -100,6 +105,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'p-music', group: 'Go to', label: 'Music room', keywords: 'sitar tanpura harmonium tabla raga indian classical', icon: RiMusic2Line, run: go('/music') },
       { id: 'p-term', group: 'Go to', label: 'Imperial terminal', keywords: 'terminal shell command line', icon: RiTerminalBoxLine, run: go('/terminal') },
       { id: 'p-changes', group: 'Go to', label: 'What’s changed', hint: 'The ship’s log', keywords: 'changes changelog log autopilot new updates revert history', icon: RiHistoryLine, run: go('/changes') },
+      { id: 'p-worlds', group: 'Go to', label: 'My worlds', hint: 'Saved on this device', keywords: 'worlds saves saved games minecraft seed new world import export continue', icon: RiSaveLine, run: go('/worlds') },
       ...projects.map((p) => ({ id: `pr-${p.id}`, group: 'Projects', label: p.title, hint: p.kind, keywords: p.stack.join(' '), icon: RiCodeBoxLine, run: go(`/projects/${p.id}`) })),
       ...roles.map((r) => ({ id: `ro-${r.id}`, group: 'Experience', label: r.company, hint: r.shortTitle, keywords: `${r.short} ${r.title} ${r.stack.join(' ')}`, icon: RiBriefcaseLine, run: go(`/experience/${r.id}`) })),
       ...PLACES.map((p) => ({ id: `pl-${p.id}`, group: 'Places', label: p.name, hint: p.photo, keywords: `travel ${p.region}`, icon: RiGlobalLine, run: go(`/travel?place=${p.id}`) })),
@@ -127,6 +133,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'e-parkour', group: 'Easter eggs', label: 'Parkour', keywords: 'the office andy dwight', icon: RiSparkling2Line, run: fun.parkour },
       { id: 'w-galaxy', group: 'Easter eggs', label: 'A galaxy far, far away', keywords: 'star wars galaxy map hyperspace tatooine hoth endor yavin bespin dagobah mustafar coruscant naboo kashyyyk kamino geonosis scarif nevarro mandalore lothal sorgan alderaan x-wing falcon jedi sith empire rebels clone wars mandalorian mando grogu razor crest ahsoka new republic world', icon: RiSparkling2Line, run: go('/galaxy') },
       { id: 'e-ds', group: 'Easter eggs', label: 'That’s no moon', keywords: 'death star star wars trench run superlaser', icon: RiSparkling2Line, run: go('/deathstar') },
+      { id: 'w-dsin', group: 'Easter eggs', label: 'Aboard the Death Star', keywords: 'star wars death star inside aboard walk explore corridors docking bay 327 detention block aa-23 cell 2187 garbage compactor tractor beam stormtrooper tk-421 disguise vader tarkin obi-wan leia luke han chewbacca emperor throne room second death star endor world walk 3d', icon: RiSparkling2Line, run: go('/deathstar/inside') },
       { id: 'w-me', group: 'Easter eggs', label: 'Middle-earth: Moria to Mordor', keywords: 'lord of the rings lotr tolkien moria doors of durin gandalf balrog one ring frodo sam mordor eye sauron map world', icon: RiSparkling2Line, run: go('/middle-earth') },
       { id: 'w-orthanc', group: 'Easter eggs', label: 'Orthanc: inside the tower of Isengard', keywords: 'lord of the rings lotr tolkien saruman gandalf isengard orthanc palantir seeing stone wizard duel moth gwaihir eagle tower world walk 3d', icon: RiSparkling2Line, run: go('/middle-earth/orthanc') },
       { id: 'w-minas', group: 'Easter eggs', label: 'Minas Tirith: the city of the kings', keywords: 'lord of the rings lotr tolkien gondor minas tirith pippin gandalf shadowfax denethor steward beacon beacons lit rohan siege trebuchet white tree aragorn king return world walk 3d', icon: RiSparkling2Line, run: go('/middle-earth/minas-tirith') },
@@ -139,7 +146,7 @@ export default function CommandPalette({ onClose }) {
       { id: 'w-abq', group: 'Easter eggs', label: 'Albuquerque: Breaking Bad', keywords: 'breaking bad walter white heisenberg jesse pinkman gus fring los pollos hermanos saul goodman mike lalo hector superlab world', icon: RiSparkling2Line, run: go('/albuquerque') },
       { id: 'w-dm', group: 'Easter eggs', label: 'Dot Matrix: a Game Boy island', keywords: 'gaming game boy gameboy dmg nintendo pixel dither green cartridges platformer mario jump coins pipes island world', icon: RiSparkling2Line, run: go('/dot-matrix') },
       { id: 'w-earth', group: 'Easter eggs', label: 'Earth: fly to every place I’ve been', keywords: 'travel globe earth orbit plane fly flight passport stamps postcards world map countries nasa blue marble', icon: RiSparkling2Line, run: go('/earth') },
-      { id: 'w-rm', group: 'Easter eggs', label: 'Dimension C-137: Rick and Morty', keywords: 'rick and morty sanchez smith summer beth jerry portal gun portal panic pickle rick meeseeks interdimensional cable plumbus cromulon snowball evil morty citadel gazorpazorp cronenberg world', icon: RiSparkling2Line, run: go('/c-137') },
+      { id: 'w-rm', group: 'Easter eggs', label: 'Dimension C-137: Rick and Morty', keywords: 'rick and morty sanchez smith summer beth jerry portal gun portal panic pickle rick meeseeks interdimensional cable plumbus cromulon snowball evil morty citadel world', icon: RiSparkling2Line, run: go('/c-137') },
       { id: 'w-m64', group: 'Easter eggs', label: 'Super Mario 64 on the N64', keywords: 'mario 64 n64 nintendo emulator emulated rom z64 peach castle paintings power stars bob-omb king bowser platformer 3d jump game play', icon: RiSparkling2Line, run: go('/dot-matrix/64') },
       { id: 'w-mc', group: 'Easter eggs', label: 'Minecraft', keywords: 'minecraft mojang eaglercraft 1.12.2 1.8.8 blocks voxel survival craft crafting table mine dig build steve creeper game play password', icon: RiSparkling2Line, run: go('/dot-matrix/minecraft') },
       { id: 'w-citadel', group: 'Easter eggs', label: 'The Citadel of Ricks', keywords: 'rick and morty citadel council ricks simple rick wafers morty day care evil morty vote cop rick cowboy rick world walk 3d', icon: RiSparkling2Line, run: go('/c-137/citadel') },

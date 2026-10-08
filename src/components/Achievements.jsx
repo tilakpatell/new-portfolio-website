@@ -5,6 +5,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
 import { partsUnlockedBy } from './universe/outfit';
 import { paintsFor } from './universe/paint';
+import { useTouring } from './tour/useTouring';
 import Gif from './Gif';
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -14,7 +15,10 @@ export const ACHIEVEMENTS = {
   order66: { name: 'Contingency', desc: 'Executed Order 66' },
   konami: { name: 'Cheat code', desc: 'Entered the Konami code' },
   tour: { name: 'Shown around', desc: 'Took the tour of the site' },
+  tourRecruiter: { name: 'Shown the work', desc: 'Took the hiring tour' },
+  tourPlayer: { name: 'Shown the ropes', desc: 'Took the player’s tour' },
   deathstar: { name: 'Fully operational', desc: 'Found the Death Star plans' },
+  'ds-aboard': { name: 'Boarding party', desc: 'Came aboard the Death Star' },
   trench: { name: 'Use the Force', desc: 'Hit the exhaust port in the trench run' },
   rebels: { name: 'Medal of Yavin', desc: 'Saved Yavin 4 in the Battle of Yavin' },
   empire: { name: 'Fear will keep them in line', desc: 'Let the Empire win at Yavin' },
@@ -201,6 +205,10 @@ export const ACHIEVEMENTS = {
   rescue: { name: 'That actually helped', desc: 'Caught someone falling over the city and set them down' },
   mimic: { name: 'A fraction of our power', desc: 'Flew alongside an airliner over the Graysons’ city' },
   flaxans: { name: 'Back through the portal', desc: 'Knocked every Flaxan out of the sky over the river in the Graysons’ city' },
+  maulers: { name: 'The bank job', desc: 'Stopped the Mauler twins’ bank job downtown in the Graysons’ city' },
+  seismic: { name: 'Who you calling ugly?', desc: 'Caught every student Doc Seismic shook off the school roof, and put him down' },
+  gda: { name: 'You look kinda dead', desc: 'Held the GDA’s hangar against the Mauler clones' },
+  season: { name: 'We need to talk', desc: 'Flew the whole first season of the Graysons’ city, and went home to talk' },
   karman: { name: 'Neil Armstrong, eat your heart out', desc: 'Flew up out of the air over the Graysons’ city, into space' },
   moonwalk: { name: 'One small step', desc: 'Landed on the Moon as Invincible' },
   redplanet: { name: 'A long way from home', desc: 'Landed on Mars as Invincible' },
@@ -312,6 +320,7 @@ export function AchievementProvider({ children }) {
     }
     if (pathname === '/terminal') unlock('hacker');
     if (pathname === '/deathstar') unlock('deathstar');
+    if (pathname === '/deathstar/inside') unlock('ds-aboard');
     if (pathname === '/resume') unlock('resume');
   }, [pathname, unlock]);
 
@@ -319,7 +328,9 @@ export function AchievementProvider({ children }) {
     if (THEME_ORDER.every((t) => seen.has(t))) unlock('cartographer');
   }, [seen, unlock]);
 
-  const toast = queue[0];
+  // (a toast waits while a tour runs: it'd sit over the tour's card)
+  const touring = useTouring();
+  const toast = touring ? null : queue[0];
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setQueue((q) => q.slice(1)), toast.gif ? 7000 : 3800);

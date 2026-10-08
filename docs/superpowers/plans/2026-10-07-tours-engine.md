@@ -12,6 +12,22 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-07-audience-tours-and-ui-audit-design.md`, sections 3.2–3.5, 3.8 and 4. Read `docs/research/2026-10-07-tours-and-ui-audit/tour-system.md` sections 8 and 11 first: they list what breaks on a route change.
 
+## Interface as built (revision 2; stream B: follow these)
+
+Everything in the spec's section 8 for stream A is in. Where the code chose between readings:
+
+- **Stops**: `{ id, title, text: string | ({ key, touch, ship, mb }) => string, at?, keys?, touch?, release?: ['?', 'palette'], wait?: true, actions?: [{ label, to? , href?, download?, tour? }], todo? }`. `keys`/`touch` are only ever the key-table rows. At most four actions are drawn; `primary: true` draws one as the primary button; `label` may be a function of the same `ctx` (`ctx.mb` is `WORLD_MB`, which now has `'/universe': 6`). An action with `to` on a light route is an excursion (the tour stops, a note offers "Carry on … · chapter n of N" with Carry on and Stop); any other `to` ends the tour; `tour` ends this one (as done when it is the last stop) and starts that audience; `href` is a plain link (`download` for the PDF).
+- **Chapters**: `{ id, title, path, stops, brief?, heavy?, phone? }`. `path: null` stays on the page before. `brief: '/universe/fly'` replaces `stops` with `BRIEFS[brief]` and marks the basics seen once its last stop is passed. `heavy: true` with `phone: [chapter, …]` (agreed with B): on a coarse pointer `planFor` splices those ordinary chapters in its place.
+- **`compose(TOURS, [['recruiter', 'home', 'hood'], ['player', 'galaxy', 'colours'], END])`**: by chapter id, inclusive; a chapter object goes in as it is. An id it can't find throws (B's test sees it at import).
+- **`planFor(tours, audience, view, here, { coarse, shell, hello })`** prepends `{ id: 'shell', title: 'Getting about', path, stops }`: `hello[audience]` first, then the view tour's stops named by `shell` (`SHELL_STOPS` from `chapters/shared.js`, re-exported by `steps.js` as `SHELL_STOPS` and `HELLO`; TourHost passes them; `lib/tour`'s A13 values are the fallback; `mixed` uses the hiring tour's).
+- **`startAt(chapters, { chapter, stop, todo })`** → `{ c, stop }` or null; `openTour({ audience, chapter?, stop?, todo?, to?, only? })`; `only: true` runs one chapter alone (the guide's chapter list) and finishing it is not finishing the tour. An audience with no chapters yet falls back to the view's tour.
+- **The catalogue**: `THINGS_TO_DO` (not `TODO`: the health check counts the uppercase word), `todoFor`, `isDone(row, { unlocked, visited, stored })`, `done` one of `{ achievement }`, `{ visited }` (a route or a list, all needed), `{ key, is? }` (`SHELL_KEYS` in `src/lib/visited.js`; `storedKey` reads local then session storage), or `null`. A stop's `todo` is a row's `id`.
+- **Visited**: the shell records the pathname and, when different, `guideKeyFor(pathname)` (A14 says the key; A15's row ticks on the exact project path; both are kept).
+- **The guide**: tab ids `'page' | 'site' | 'checklist'`, the third named "The checklist"; `openGuide({ tab: 'checklist' })`; the terminal's `checklist` (`todo` still works); ⌘K "Open the checklist".
+- **Names**: `TOUR_NAMES` = "The hiring tour", "The player’s tour", "The whole tour"; links take `?tour=hiring|recruiter|player|all`; the offer's buttons "I’m hiring", "I’m here to play", "Both".
+- **Achievements**: `tourRecruiter`, `tourPlayer` exist (B's Task 4 is done).
+- `steps.test.js` passes `ctx = { key, touch, ship }`, and its key test accepts the five names. Its other cases still assume flat lists; B extends them to chapter lists.
+
 ## Global Constraints
 
 - Tests beside files, Node only, under a second, no network (`docs/health/RULES.md`). Never skip or quieten a test.
