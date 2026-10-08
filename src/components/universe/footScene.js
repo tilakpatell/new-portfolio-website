@@ -40,7 +40,9 @@
 // comes up as you land (an 'arrive' event).
 //
 // The landing's loose things (a barrel, a hay bale, tumbleweed, stones:
-// landings/bodies.js) are rigid bodies, but not on a phone: landings/
+// landings/bodies.js) are rigid bodies, but not on a phone or with Data
+// Saver on (the engine is 1.7 MB; `small` here is any device short of
+// the high tier, which is most laptops, so it isn't what decides): landings/
 // physics.js has them, the planet pulling them to its middle; the engine
 // loads as the ship comes down, and until it's there (or if it won't
 // load) they stand as solid as ever. You and your mate and the troops
@@ -87,6 +89,7 @@ import { createSky } from './landings/sky';
 import { furnish, furnished } from './landings/furnish';
 import { createLandingPhysics } from './landings/physics';
 import { preload as preloadPhysics } from '../../lib/physics/world';
+import { device } from '../../lib/device';
 import { AIR, ENTRY, entryPath, entrySpot, fxAt } from './entry';
 import { createReentry } from './reentry';
 
@@ -1418,6 +1421,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   let rocks = null;
   // the landing's bodies (landings/physics.js): null while it loads, false if it won't
   let lp = null;
+  let physical = false; // (this landing has them at all)
   let fed = 0; // how many of the landing's bodies it has
   let settled = 0; // (when the far ones were last put to sleep)
   let haze = null;
@@ -2022,10 +2026,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.add(ground.mesh);
     if (lp) lp.dispose();
     lp = null;
+    physical = false;
     fed = 0;
     if (landing && furnished(id)) {
       const anchor = near ? { n: near.n, f: near.f } : S.spot;
-      const physical = !small;
+      physical = bodiesHere();
       const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer, warm, physical });
       rocks = { mesh: f.group, solids: f.solids, spots: f.spots, bodies: f.bodies, put: f.put, update: f.update, dispose: f.dispose };
       // (the engine on its way while the ship comes down)
@@ -2444,6 +2449,15 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
 
 
   // ── each frame ──
+  // (loose things as bodies: anywhere but a phone or Data Saver)
+  const bodiesHere = () => {
+    try {
+      const d = device();
+      return !d.phone && !d.saveData;
+    } catch {
+      return false;
+    }
+  };
   // a hard knock on a loose thing, heard as near as it is
   const heard = ({ force, at: p }) => {
     if (!S.me) return;
@@ -3324,7 +3338,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         return new V().setFromMatrixPosition(m).toArray();
       };
       return {
-        engine: lp === null ? 'loading' : lp === false ? 'failed' : 'ready',
+        engine: !physical ? 'off' : lp === null ? 'loading' : lp === false ? 'failed' : 'ready',
         bodies: list.length,
         simulated: lp ? lp.size : 0,
         pushers: lp ? lp.pushers : 0,
@@ -3377,6 +3391,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (vm) vm.gun.visible = false;
       if (lp) lp.dispose();
       lp = null;
+      physical = false;
       fed = 0;
       for (const x of [ground, rocks, haze, sides]) {
         if (!x) continue;

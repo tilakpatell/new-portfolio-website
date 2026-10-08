@@ -4,12 +4,16 @@
 // waits for the crew to be out and the engine to be in, then knocks each
 // of the first few loose things with a shot and says whether it moved
 // where it's drawn. With the dev server up (npx vite --port 5173):
-//   node scripts/props-check.mjs [planet ...]
-// Exit code 1 if a planet with loose things never got its engine, or a
-// knocked thing didn't move.
+//   node scripts/props-check.mjs [planet ...] [--allow-empty]
+// Exit code 1 if a planet's engine never came (or is off on a desktop), it
+// came down where there's nothing loose (unless --allow-empty: it says
+// which biome), or a knocked thing didn't move.
 import { chromium } from 'playwright-core';
 
-const planets = process.argv.slice(2).length ? process.argv.slice(2) : ['middleearth', 'breakingbad'];
+const args = process.argv.slice(2);
+const allowEmpty = args.includes('--allow-empty');
+const named = args.filter((a) => !a.startsWith('--'));
+const planets = named.length ? named : ['middleearth', 'breakingbad'];
 const URL = `http://localhost:${process.env.PORT ?? 5173}/?quality=mid#/universe`;
 const WALK_MS = Number(process.env.WALK_MS ?? 240000);
 const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
@@ -48,12 +52,17 @@ for (const id of planets) {
   await page.waitForFunction(() => window.__universeDebug.foot.physics().engine !== 'loading', null, { timeout: 60000, polling: 500 }).catch(() => {});
   await page.waitForTimeout(4000);
   const before = await page.evaluate(() => {
-    const p = window.__universeDebug.foot.physics();
-    return { engine: p.engine, bodies: p.bodies, simulated: p.simulated, pushers: p.pushers, kinds: [...new Set(p.kinds)] };
+    const f = window.__universeDebug.foot;
+    const p = f.physics();
+    return { biome: f.biome?.title ?? null, engine: p.engine, bodies: p.bodies, simulated: p.simulated, pushers: p.pushers, kinds: [...new Set(p.kinds)] };
   });
   console.log(`     ${id}:`, JSON.stringify(before));
-  if (before.bodies && before.engine !== 'ready') {
+  if (before.engine !== 'ready') {
     console.log('FAIL', id, `engine ${before.engine}`);
+    bad++;
+  }
+  if (!before.bodies && !allowEmpty) {
+    console.log('FAIL', id, `nothing loose where it came down (${before.biome ?? 'the planet’s own landing'})`);
     bad++;
   }
   const n = Math.min(4, before.bodies);
