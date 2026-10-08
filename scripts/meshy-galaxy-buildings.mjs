@@ -312,7 +312,10 @@ const steps = {
           ai_model: 'latest',
           should_texture: true,
           enable_pbr: true,
-          should_remesh: true,
+          // (`remesh: false` for one whose fine open framework is too dense
+          // for Meshy's remesher, which turned the half-built station down
+          // twice: its raw mesh comes back, and the squeeze simplifies it)
+          should_remesh: BUILDINGS[n].remesh ?? true,
           topology: 'triangle',
           target_polycount: BUILDINGS[n].tris,
           texture_resolution: BUILDINGS[n].texture ?? '2k',
