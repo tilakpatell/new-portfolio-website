@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { ACHIEVEMENTS } from '../../../../Achievements';
 import { createAlarm, raise } from '../alarm';
 import { CAST } from '../cast';
 import { WEAPONS } from '../combat';
-import { EGGS } from '../eggs';
 import { DS1 } from '../stations/ds1';
 import { DS2 } from '../stations/ds2';
 import { MOODS, SCENES, TYPES, checkpointOf, startStory, storyStep } from '../story';
@@ -281,7 +281,6 @@ describe('the effects', () => {
   });
 
   it('name no section, alarm, speaker, item, mood, routine or achievement that doesn’t exist', () => {
-    const achievements = new Set(EGGS.map((egg) => egg.achievement));
     eachEffect((e, story, where) => {
       const st = STATION[story.station];
       // raise refuses a cause it doesn’t know, and has no level for a section the station hasn’t
@@ -291,11 +290,19 @@ describe('the effects', () => {
       for (const item of [e.give, e.take].filter(Boolean)) expect(ITEMS, where).toContain(item);
       if (e.music) expect(MOODS, where).toContain(e.music);
       if (e.spawn) expect(ROLES, where).toContain(e.spawn.role);
-      if (e.achievement) expect(achievements.has(e.achievement), where).toBe(true);
+      // the site’s table: unlock drops an id it doesn’t have without a word
+      if (e.achievement) expect(ACHIEVEMENTS[e.achievement], where).toBeDefined();
       if (e.walls) expect(['close', 'open'], where).toContain(e.walls);
       if ('bridge' in e) expect(typeof e.bridge, where).toBe('boolean');
       if ('companion' in e) expect(typeof e.follow, where).toBe('boolean');
     });
+  });
+
+  it('give each story’s achievement as it ends, and only then', () => {
+    const given = (story) => story.steps.flatMap((s) => effectsOf(s).filter((e) => e.achievement).map((e) => [s.id, e.achievement]));
+    expect(given(STORIES['ds1-rebel'])).toEqual([['bay-escape', 'ds-ds1-rebel']]);
+    expect(given(STORIES['ds1-imperial'])).toEqual([['beacon-escape', 'ds-ds1-imperial']]);
+    for (const story of all) expect(story.steps.at(-1).end.at(-1), story.id).toEqual({ end: true });
   });
 
   it('end a story only after its last step', () => {

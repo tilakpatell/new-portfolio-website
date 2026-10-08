@@ -154,7 +154,7 @@ const BEACON = [
     text: 'The freighter lifts through the field, carrying your beacon.',
     need: { scene: 'escape' },
     start: [{ despawn: 'duel' }, { scene: 'escape' }],
-    end: [{ end: true }],
+    end: [{ achievement: 'ds-ds1-imperial' }, { end: true }],
   },
 ];
 

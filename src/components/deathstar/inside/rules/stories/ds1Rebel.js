@@ -322,7 +322,7 @@ const BAY = [
     start: [say('obiwan', 'Run, Luke. Run.'), { alarm: { section: 'bay327', how: 'seen' } }, { music: 'alert' }, ...spawn('stormtrooper', 'scan-crew', 'bay-squad', { squad: 'bay', hostile: true }, 3)],
     fail: [say('han', 'She’s not going to wait for us.')],
   },
-  { id: 'bay-escape', type: 'scene', text: 'Out through the magnetic field.', need: { scene: 'escape' }, start: [{ scene: 'escape' }], end: [{ end: true }] },
+  { id: 'bay-escape', type: 'scene', text: 'Out through the magnetic field.', need: { scene: 'escape' }, start: [{ scene: 'escape' }], end: [{ achievement: 'ds-ds1-rebel' }, { end: true }] },
 ];
 
 export const DS1_REBEL = {

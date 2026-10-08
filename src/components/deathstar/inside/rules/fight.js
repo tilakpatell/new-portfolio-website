@@ -25,11 +25,16 @@
 //   sectionSpots(layout, section) → [{ x, y, z, room }]   the station’s spots in the section, then
 //     the middle of each of its rooms (lift cars and the open field left out)
 //   searchOf(fights, section) → search        src/lib/ai/search’s, one a section, made on first use
+//   fightStep(fights, me, threat, bb, state, lostFor) → tactic   one step of a soldier’s fight
+//     threat: his surest belief; bb: the body brains.js answers with (go, face, lock, pose, aimAt,
+//     fire, gunBusy, seesThrough, canPass, solidsOf, allies, clock); state: his own, kept between steps
+//   searchStep(fights, me, bb, state) → void   one step of a searcher’s sweep: claim, walk, look about
 
 import { consider, pick } from '../../../../lib/ai/utility';
 import { apart, awayFrom, cover, nearTo, pickPlace } from '../../../../lib/ai/spatial';
 import { createSearch } from '../../../../lib/ai/search';
 import { createTokens } from '../../../../lib/ai/squad';
+import { WEAPONS } from './combat';
 import { route } from './nav';
 
 export const TACTICS = Object.freeze(['hold', 'cover', 'flank', 'advance', 'fallback', 'search']);
@@ -198,4 +203,124 @@ export function searchOf(fights, section) {
     fights.searches.set(section, s);
   }
   return s;
+}
+
+// ── a soldier’s step ──
+
+// Where a tactic takes him, worked out when it is chosen (and again as the
+// target moves), never every step: each new place is a new way to walk.
+function placeFor(fights, me, at, tactic, f, bb) {
+  const { layout } = fights;
+  if (tactic === 'cover') return f.cover;
+  if (tactic === 'flank') return f.flank ? { path: f.flank } : null;
+  if (tactic === 'fallback') return fallbackFrom(layout, me, at, { seesThrough: bb.seesThrough, canPass: bb.canPass });
+  if (tactic !== 'advance') return null;
+  const near = standOff(layout, me, at, Math.min(FIGHT.ideal, (WEAPONS[me.gun]?.range ?? 0) * 0.5) * 0.8);
+  if (near && f.sees) return near;
+  const room = layout.roomAt(at.x, at.y, at.z);
+  return room ? { x: at.x, z: at.z, room } : null;
+}
+
+// What he knows of the ground: cover from the target and a way round to it,
+// looked at again every second or two, or when the target moves off.
+function survey(fights, me, at, f, bb) {
+  if (bb.clock < f.knownUntil && f.knownAt && flat(f.knownAt, at) <= 3) return;
+  const room = fights.layout.roomAt(at.x, at.y, at.z);
+  f.knownAt = { ...at };
+  f.knownUntil = bb.clock + 1.5 + 0.5 * fights.rand();
+  f.cover = coverFrom(fights.layout, me, at, { seesThrough: bb.seesThrough, allies: bb.allies(), current: f.tactic === 'cover' ? f.place : null, canPass: bb.canPass });
+  f.flank = room && room !== me.room ? flankRoute(fights.nav, me, { x: at.x, z: at.z, room }, { canPass: bb.canPass, solidsOf: bb.solidsOf }) : null;
+}
+
+export function fightStep(fights, me, threat, bb, f, lostFor) {
+  const { tokens, rand } = fights;
+  const clock = bb.clock;
+  const at = threat.at;
+  const sees = threat.visible;
+  const dist = flat(me, at);
+  // a token is claimed while the target is in sight and given back once it has been out of it a second
+  let token = false;
+  if (me.gun && sees) token = tokens.claim('shot', me.id, { priority: 1 / (1 + dist), target: threat.id });
+  else if (lostFor > 1) tokens.release('shot', me.id, threat.id);
+  else token = tokens.held('shot', me.id, threat.id);
+  f.sees = sees;
+  if (clock >= f.think) {
+    survey(fights, me, at, f, bb);
+    const inCover = f.tactic === 'cover' && f.place && !f.place.path && flat(me, f.place) < 0.6;
+    const ctx = { sees, lostFor, dist, range: WEAPONS[me.gun]?.range ?? 0, hp: me.hp / (me.max || 100), token, cover: Boolean(f.cover), inCover, flank: Boolean(f.flank), allies: bb.allies().length };
+    const tactic = chooseTactic(ctx, { current: f.tactic, rand });
+    // an advance follows the target; the rest keep the place they were given until they get there
+    if (tactic !== f.tactic || tactic === 'advance') f.place = placeFor(fights, me, at, tactic, f, bb);
+    f.tactic = tactic;
+    f.think = clock + 0.4 + 0.4 * rand();
+  }
+  if (f.tactic === 'search') return 'search';
+  if (f.place) {
+    const status = bb.go(f.place, { run: true });
+    if (status !== 'running') {
+      f.place = null;
+      // nowhere to go after all: think again soon
+      if (status === 'failed') f.think = Math.min(f.think, clock + 0.3);
+    }
+  }
+  // he faces the target while he holds or closes in; running for cover or round a flank he faces his way
+  if (sees && (f.tactic === 'hold' || f.tactic === 'advance' || !f.place)) bb.lock(at);
+  else if (sees) bb.face(at);
+  bb.aimAt(sees || lostFor < 1 ? at : null);
+  bb.pose(me.gun ? 'aim' : 'idle');
+  if (token && sees) trigger(fights, me, threat, bb, f, dist);
+  return f.tactic;
+}
+
+// Bursts of two to four, a pause between, and never with the gun hot or the target off his line.
+function trigger(fights, me, threat, bb, f, dist) {
+  const w = WEAPONS[me.gun];
+  if (!w || dist > w.range * 0.85 || bb.clock < f.next || bb.gunBusy()) return;
+  const off = Math.atan2(threat.at.x - me.x, -(threat.at.z - me.z)) - me.yaw;
+  if (Math.abs(Math.atan2(Math.sin(off), Math.cos(off))) > 0.25) return;
+  bb.fire(threat);
+  f.burst -= 1;
+  if (f.burst > 0) f.next = bb.clock + w.gap * 1.5;
+  else {
+    f.burst = 2 + Math.floor(fights.rand() * 3);
+    f.next = bb.clock + 0.6 + 0.9 * fights.rand();
+  }
+}
+
+// ── a searcher’s step ──
+
+function lookAbout(fights, st, me, clock) {
+  Object.assign(st, { lookUntil: clock + 1 + 1.5 * fights.rand(), lookFrom: clock, lookYaw: me.yaw });
+}
+
+export function searchStep(fights, me, bb, st) {
+  const s = searchOf(fights, st.section);
+  const clock = bb.clock;
+  if (!s.active) s.start({ at: { x: me.x, y: me.y, z: me.z } }, { aggressive: true });
+  s.sweep(me.id, bb.eyes(), bb.seesThrough);
+  bb.pose(me.gun ? 'aim' : 'idle');
+  bb.aimAt(null);
+  if (clock < st.lookUntil) {
+    bb.face(st.lookYaw + 0.9 * Math.sin((clock - st.lookFrom) * 1.6));
+    return;
+  }
+  st.claim ??= s.claim(me.id, { x: me.x, y: me.y, z: me.z });
+  if (!st.claim) {
+    // every spot looked at and the hunt still on: round again, from where they were last placed
+    const left = s.state.spots.some((spot) => !spot.searched);
+    if (s.state.phase === 2 && !left && clock >= st.restartAt) {
+      s.start({ at: s.state.estimate }, { aggressive: true });
+      st.restartAt = clock + 6;
+    }
+    lookAbout(fights, st, me, clock);
+    return;
+  }
+  const at = st.claim.at;
+  const room = fights.layout.roomAt(at.x, at.y + 0.1, at.z);
+  // a spot nobody can walk to (behind a locked door) counts as looked at
+  const status = room ? bb.go({ x: at.x, z: at.z, room }) : 'failed';
+  if (status === 'running') return;
+  s.arrive(me.id);
+  st.claim = null;
+  lookAbout(fights, st, me, clock);
 }

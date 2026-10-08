@@ -53,7 +53,7 @@ const HUES = {
 const HOT = [4, 2.2, 0.9]; // a spark as it leaves
 const COOL = [1.2, 0.25, 0.04]; // and as it dies
 const FLARE = { intensity: 30, distance: 7, life: 0.08, size: 0.22 };
-const BLAST = { intensity: 120, distance: 16, life: 0.45, colour: 0xff8a3a };
+const BLAST = { intensity: 120, distance: 16, life: 0.45, colour: 0xff8a3a, flash: [4, 2.6, 1.2] };
 const SCORCH = { life: 90, fade: 10, cool: 0.9 }; // seconds a scorch stays, fades out over, glows for
 
 export function inFlight(weapon) {
@@ -349,10 +349,12 @@ export function createFx(scene, { small = false } = {}) {
     light.position.set(at.x, at.y, at.z);
     light.color.setHex(colour);
     light.distance = peak > FLARE.intensity ? BLAST.distance : FLARE.distance;
-    Object.assign(glare, { t: 0, life, peak });
+    glare.t = 0;
+    glare.life = life;
+    glare.peak = peak;
   }
 
-  function addPuff(at, { fire, from, to, life, delay = 0, spread = 0, rise = 0.35 }) {
+  function addPuff(at, fire, from, to, life, delay, spread, rise) {
     const i = puffSlots.take();
     put3(puffState.p, i, at.x + (rand() - 0.5) * spread, at.y + (rand() - 0.5) * spread * 0.6, at.z + (rand() - 0.5) * spread);
     put3(puffState.v, i, (rand() - 0.5) * 0.3, rise * (0.7 + rand() * 0.6), (rand() - 0.5) * 0.3);
@@ -426,15 +428,16 @@ export function createFx(scene, { small = false } = {}) {
     },
 
     smoke(at, size = 0.5) {
-      addPuff(at, { fire: false, from: size * 0.3, to: size * 1.2, life: 2.2 + rand() * 0.8, spread: size * 0.3 });
+      addPuff(at, false, size * 0.3, size * 1.2, 2.2 + rand() * 0.8, 0, size * 0.3, 0.35);
     },
 
     explode(at, size = 1) {
       const s = Math.max(0.2, size);
-      for (let k = 0; k < 6; k++) addPuff(at, { fire: true, from: s * 0.15, to: s * (0.45 + rand() * 0.3), life: 0.6 + rand() * 0.3, delay: rand() * 0.12, spread: s * 0.5, rise: 0.6 });
-      for (let k = 0; k < 5; k++) addPuff(at, { fire: false, from: s * 0.3, to: s * (0.9 + rand() * 0.5), life: 2.6 + rand() * 1.2, delay: 0.25 + rand() * 0.35, spread: s * 0.6, rise: 0.5 });
+      // the fireball first, then the smoke it leaves rolling up after it
+      for (let k = 0; k < 6; k++) addPuff(at, true, s * 0.15, s * (0.45 + rand() * 0.3), 0.6 + rand() * 0.3, rand() * 0.12, s * 0.5, 0.6);
+      for (let k = 0; k < 5; k++) addPuff(at, false, s * 0.3, s * (0.9 + rand() * 0.5), 2.6 + rand() * 1.2, 0.25 + rand() * 0.35, s * 0.6, 0.5);
       fx.spark(at, Math.round(10 + 20 * Math.min(s, 3)));
-      addFlash(at, s * 0.9, [4, 2.6, 1.2], 0.14);
+      addFlash(at, s * 0.9, BLAST.flash, 0.14);
       lightUp(at, BLAST.colour, BLAST.intensity * s, BLAST.life);
     },
 
