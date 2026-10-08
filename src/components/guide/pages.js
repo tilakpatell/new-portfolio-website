@@ -295,6 +295,9 @@ export const PAGES = {
           ['J / F / Click', 'Punch (a little way off, he lunges)'],
           ['E', 'Go in at a place (Cecil, at the GDA, has a job)'],
           ['T', 'The time of day'],
+          ['R', 'Take the radio’s call (a chase, a photo, Eve’s race)'],
+          ['Q', 'Call a mission off'],
+          ['H / ?', 'This guide'],
         ],
       },
       {
@@ -316,6 +319,7 @@ export const PAGES = {
       { label: 'Think, Mark!', rows: [['Stick', 'Left of the screen steers'], ['Drag', 'Right of the screen looks'], ['Tap', 'Punch'], ['Dodge', 'Dodge']] },
     ],
     tips: [
+      ['A pad', 'In the city: the left stick flies, the right stick looks, A goes up, B down, RT is flat out, X punches and Y goes in.'],
       ['The city', 'Six kilometres of downtown, river, suburbs, coast and hills. Come down fast and the street cracks; hit a tower too fast and you bounce off it. The places: the Graysons’, the high school, Burger Mart, the Guardians’ hall, the GDA.'],
       ['Things to do', 'Dad’s rings start over the street outside the house: ten of them to the Guardians’ hall, against the clock. The first season’s eight title cards are hidden round the city (one high up). Every minute or so someone needs catching: follow the red beacon, catch them, land to set them down. Fly alongside the airliner and your father has something to say.'],
       ['The Flaxans', 'They come through a portal over the river, when Cecil sends you or a few minutes in on their own. Punch them out of the sky, or fly into them fast; their purple bolts knock you about. All twelve down and the portal closes.'],
