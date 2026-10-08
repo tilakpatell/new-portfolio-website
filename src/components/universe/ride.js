@@ -37,7 +37,7 @@ const smooth = (k) => (k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k));
 
 // the tube's frame at s: where its middle is, the way along it, and the
 // right and up across it
-function frame(lane, way, s) {
+export function frame(lane, way, s) {
   const pts = carriageway(lane, way);
   const at = bezier(pts, s);
   const along = unit(tangent(pts, s));

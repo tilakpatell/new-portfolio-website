@@ -32,14 +32,21 @@ Several spec numbers changed when they met the data, and the spec says so in eac
 - Free legs are costed as they are flown: a quarter of the pulse drive inside the home system, and the boost for the last leg in.
 - `tripTime` on `lanes` is flown in Node, like the other drives.
 
+Lane B, the traffic and the look, in the PR from `claude/universe-lane-traffic`:
+
+- **The flow.** `laneFlow.js` is the traffic in every lane, worked out from the wall clock, so every pilot sees the same ships. It gives `countFor`, `slotOf`, `shipsOf`, `flowAt`, `lapAt`, `wrapsOf`, `kill`, `isDead`, `positionOf`, `flowNear` and `nearest`. A ship shot down stays down until a lap that starts half a lap after the shot. The dead map’s keys are `${lane.id}|${way}|${i}|${m}`.
+- **The streaks and ribbons.**
+  - `laneStreaks.js` is one instanced draw of every flow ship, worked out on the GPU.
+  - `laneRibbons.js` is one draw of every carriageway, on the tube’s floor.
+- **The near traffic.** `laneTraffic.js` gives models to the 12 flow ships nearest you within 400. Only one model over 20,000 triangles is drawn at a time; the rest get the kit’s built stand-ins.
+- **The scene’s side.** `laneLook.js` puts all of it together with the ride’s look: the speed lines (now `lib/three/speedLines.js`) and the lens. `scene.js` makes it beside `rode()`, updates it beside `farPlaces.update`, and asks `laneLook.hit` after `traffic.hit` at both gun sites. `__universeDebug.laneLook` has `traffic.list`, `streaks.count`, `dead` and `rideK` for the checks.
+- **The HUD.** The lane line is styled. `rideLine` now also says `junction`: whether holding W carries straight on.
+
 ## Left
 
-1. **Lane B, the traffic and the look** (start from `origin/main`).
-   - `laneFlow.js` reads `LANES`, `TIERS`, `R` and `carriageway`.
-   - `laneStreaks.js` and `laneRibbons.js` sample `carriageway(lane, way)` with `lanes.js`’s `bezier` and `tangent`.
-   - The ride’s look reads `state.ride`, which is `ride.js`’s ride: `{ lane, way, s, off, speed }`.
-   - The lane line in `UniverseMap.jsx` is deliberately plain. Its data is `rideLine`’s `{ name, tier, next, eta }`, sent as the scene event `{ type: 'ride', on, line }`.
-   - In `scene.js`, add your lines beside `rode()` and the `laneFrame` call in `fly`. Don’t move them.
+1. **Lane B** is done (above). Two things it leaves:
+   - Ship kinds on a lane that no side holds follow the crew you fly, so two pilots flying different crews see different kinds in the same places.
+   - In headless Chromium a frame takes about two real seconds, and the flow runs on the wall clock, so the near ships churn every frame there. To check them, freeze `Date.now` and hold the ship at the `lane-ride` pose.
 2. **Lane C, spread out.**
    - The director’s `zoneOf` needs `regionAt` (from `regions.js`) and `laneAt` (from `hyperlanes.js`).
    - The ambush’s end node is `nodeById(ride.way === 'out' ? ride.lane.to : ride.lane.from)`.
