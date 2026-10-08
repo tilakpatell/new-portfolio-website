@@ -56,6 +56,7 @@ import { BUILDINGS as FILL_LANE } from './meshy-galaxy-buildings-fill.mjs';
 import { BUILDINGS as BASES_LANE } from './meshy-galaxy-buildings-bases.mjs';
 import { BUILDINGS as THREE_LANE } from './meshy-galaxy-three.mjs';
 import { BUILDINGS as LIBRARY_LANE } from './meshy-galaxy-library.mjs';
+import { BUILDINGS as NEVARRO_LANE } from './meshy-galaxy-buildings-nevarro.mjs';
 import { BUILDINGS as AUDIT_LANE } from './meshy-galaxy-audit.mjs';
 import { BUILDINGS as ULTRA_LANE } from './meshy-galaxy-ultra.mjs';
 
@@ -125,6 +126,8 @@ Object.assign(BUILDINGS, BASES_LANE);
 // the three worlds' lane (scripts/meshy-galaxy-three.mjs)
 Object.assign(BUILDINGS, THREE_LANE);
 Object.assign(BUILDINGS, LIBRARY_LANE);
+// and Nevarro's (scripts/meshy-galaxy-buildings-nevarro.mjs)
+Object.assign(BUILDINGS, NEVARRO_LANE);
 // and the audit's remakes (scripts/meshy-galaxy-audit.mjs): last, so a kind
 // remade there takes over from its earlier lane's entry
 Object.assign(BUILDINGS, AUDIT_LANE);

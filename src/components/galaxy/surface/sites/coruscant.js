@@ -372,8 +372,8 @@ export const SITE = {
           text: 'Hold the steps against the 501st',
           lines: [['Clone commander', 'Execute Order Sixty-Six.']],
           spawn: [
-            { kind: 'clone', n: 8, at: [0, 150], spread: 10, roam: 4, hp: 2, tag: 'clones66', hostile: { range: 40, every: 2, damage: 8, chase: 1.6, burst: { n: 3, gap: 0.1 } } },
-            { kind: 'clone', at: [0, 140], hp: 5, roam: 3, tag: 'clones66', hostile: { range: 16, chase: 2, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.5, guard: 3, blade: { color: '#4aa8ff' } } },
+            { kind: 'clone', n: 8, at: [0, 150], spread: 10, roam: 4, leash: 96, hp: 2, tag: 'clones66', hostile: { range: 40, every: 2, damage: 8, chase: 1.6, burst: { n: 3, gap: 0.1 } } },
+            { kind: 'clone', at: [0, 140], hp: 5, roam: 3, leash: 106, tag: 'clones66', hostile: { range: 16, chase: 2, melee: true, reach: 2.6, every: 1.6, damage: 14, delay: 1, parry: 0.5, guard: 3, blade: { color: '#4aa8ff' } } },
           ],
         },
       ],

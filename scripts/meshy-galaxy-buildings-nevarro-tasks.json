@@ -1,0 +1,48 @@
+{
+  "nevarrodomehouse": {
+    "lift": [
+      "01a11886-6e8d-72b8-b24c-6e261c9b81c5"
+    ],
+    "model": "01a1188a-44b9-77e3-a359-b985f4e5f19b"
+  },
+  "nevarrohouse": {
+    "lift": [
+      "01a11888-8654-754b-b021-291dfacc8f45"
+    ],
+    "model": "01a1188a-49ed-7472-a568-0d0a3ec13fab"
+  },
+  "nevarrogate": {
+    "lift": [
+      "01a11888-d340-701c-b816-f9d9b001cdbd"
+    ],
+    "model": "01a1188a-4d09-77f9-b3b7-4195f12e50ab"
+  },
+  "nevarrotower": {
+    "lift": [
+      "01a11889-61e8-71c4-862e-6139016bc78a"
+    ],
+    "model": "01a1188a-5046-755c-93c5-c464b4528502"
+  },
+  "nevarrobase": {
+    "lift": [
+      "01a11889-b071-705f-a4c0-7ac4206ce901"
+    ],
+    "model": "01a1188a-5592-7032-84e1-bba18b688160"
+  },
+  "nevarrocantina": {
+    "image": "01a1188a-269a-72cd-a841-d8067c28e17d",
+    "model": "01a1188c-848d-73f8-9899-240fd2a35514"
+  },
+  "nevarrorow": {
+    "image": "01a1188a-966b-77f5-86fd-ac908e28703d",
+    "model": "01a1188c-8773-757c-97e0-f6f3a83c9b8d"
+  },
+  "charonportal": {
+    "image": "01a1188b-1b30-7486-84e6-4704294785d2",
+    "model": "01a1188c-8bea-71a2-9664-e2ab4665c982"
+  },
+  "keelboat": {
+    "image": "01a1188b-74fd-74c3-9df2-9900fb02278d",
+    "model": "01a1188c-8ebd-70c0-ae5d-ae554d56d299"
+  }
+}

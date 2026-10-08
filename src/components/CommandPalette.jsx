@@ -230,7 +230,7 @@ export default function CommandPalette({ onClose }) {
             spellCheck={false}
           />
           {/* the key that closes it, and on a touch screen the way to */}
-          <button type="button" className="kbd palette-close" onClick={onClose} aria-label="Close">
+          <button type="button" className="kbd palette-close" onClick={onClose} aria-label="Close (Esc)">
             Esc
           </button>
         </div>
