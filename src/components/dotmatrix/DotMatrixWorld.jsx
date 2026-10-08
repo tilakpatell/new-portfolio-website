@@ -5,7 +5,7 @@ import '@fontsource/press-start-2p/400.css';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 import { use3D } from '../../lib/gpu';
-import { settle } from '../../lib/settle';
+import { showPrepared } from '../../lib/prepareWorld';
 import LoadingVeil from '../worlds/LoadingVeil';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
@@ -73,8 +73,6 @@ function Heart({ full }) {
     </svg>
   );
 }
-
-const PREPARE_WAIT = 30000; // ms at most the veil waits on the island's prepare
 
 export default function DotMatrixWorld() {
   const three = use3D();
@@ -170,15 +168,11 @@ function World({ gl, setGl }) {
         a.setPalette(palette);
         fit();
         // everything onto the graphics chip behind the veil before the first
-        // frame (the scene's prepare: bounded, so it never holds the island up for good)
-        setGl('preparing');
-        await settle(
-          a.prepare(view(), (value, step) => !dead && setPrep({ value, step }), () => !dead),
-          PREPARE_WAIT,
-        );
+        // frame (the scene's prepare; lib/prepareWorld: PREPARE_WAIT at most,
+        // then it's told to stop)
+        await showPrepared((report, going) => a.prepare(view(), report, going), { setGl, setPrep, alive: () => !dead });
         if (dead) return undefined;
         if (import.meta.env.DEV) window.__DMG__ = { api: a, sim: sim.current }; // for the QA scripts
-        setGl((g) => (g === 'preparing' ? 'on' : g));
         return undefined;
       })
       .catch((e) => {
