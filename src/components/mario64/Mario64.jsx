@@ -309,7 +309,8 @@ export default function Mario64({ mode = 'page', onExit = null }) {
                 <KeyTable rows={tributeRows(touch)} className="m64-controls" />
                 <p className="m64-controls-pad">
                   {PAD_LINE}
-                  <GuideCue touch={touch} />
+                  {/* (over the island the overlay hides the "?", and its guide is the island's) */}
+                  {mode === 'page' && <GuideCue touch={touch} />}
                 </p>
               </>
             )}
