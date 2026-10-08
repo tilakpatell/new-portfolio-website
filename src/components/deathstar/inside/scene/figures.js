@@ -26,7 +26,7 @@
 //     multiplied into its materials; dye: dye.js’s { color, gain, keep, roughness }
 //     person: { object, kind, tall, hand, bones, play(name, opts), stop(layer, fade), base(name, opts),
 //       look(target | null), setAim(yaw, pitch, raised), hold(gun), fall(opts) → bool, rise(), fallen,
-//       settled, update(dt, motion?), dispose() }
+//       settled, fade(k), update(dt, motion?), dispose() }
 //     object: feet at its origin, facing −z, so object.rotation.y = −yaw faces yaw
 //     play: a library clip by name (or an ALIAS), on the 'full' body (default) or the 'upper' or
 //       'lower' half; { loop, hold, fade, speed }; null or a walk name stops the full body’s clip
@@ -271,6 +271,17 @@ function personOf({ object, kind, tall, hand, anim = null, bones = {}, owned }) 
     },
     get fallen() {
       return Boolean(rag);
+    },
+    // see-through, k of the way to solid (1): someone between the camera and you is faded so you
+    // can see past them
+    fade(k) {
+      const solid = k >= 0.99;
+      for (const mat of owned) {
+        if (mat.opacity === (solid ? 1 : k) && mat.transparent === !solid) continue;
+        mat.transparent = !solid;
+        mat.opacity = solid ? 1 : k;
+        mat.depthWrite = solid;
+      }
     },
     get settled() {
       return Boolean(rag?.settled);

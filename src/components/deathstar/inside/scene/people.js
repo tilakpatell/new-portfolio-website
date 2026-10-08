@@ -46,10 +46,14 @@
 //   createTrack() → { push(body, dt), at(alpha), speed(), velocity(out?), turn() }   pure: a body between
 //     its last two steps; dt: the frame’s time since the last push
 //   motionFrom(track, yaw) → figures.js’s motion   pure: the speed ahead and aside, and the turn
-//   createPeople(scene, kit, { tier, renderer, adopt, layout }) → { sync(crew, alpha, cameraAt, rooms?), hear(events), muzzle(id, out), dispose() }
+//   blocks(at, tall, camera, focus) → bool   pure: whether a body at `at` stands between the camera
+//     and the point it looks at you by (your chest), or has the camera inside it
+//   createPeople(scene, kit, { tier, renderer, adopt, layout }) → { sync(crew, alpha, cameraAt, rooms?), hear(events), figure(id), stage(id, how | null), handOf(id),
+//     muzzle(id, out), dispose() }
 //     layout: the station's (rules/layout.js), for the dead to fall against as ragdolls (without it
 //     they fall on their clips); rooms.open(doorId) and rooms.off (layout.offTags's): its doors and
-//     floors as they are now
+//     floors as they are now; rooms.camera and rooms.focus (your chest): anyone between them is faded,
+//     and rooms.ahead (a little way past you in the view) with rooms.side: a friend before it too
 //     adopt(object): handed each figure and gun as it goes into the scene (the house look’s adopt)
 //     crew: { people: Map | [person] } (or the people themselves); alpha: how far the frame is from the
 //     last step to the next; cameraAt: { x, y, z }
@@ -83,6 +87,7 @@ const RAG_AFTER = 0.15;
 const SHOT_SPEED = 2.4;
 const CUT_SPEED = 3.2;
 const SETTLE_MOST = 6; // seconds a still body's fall is played through, at most, when it has no turn
+const SEEN_THROUGH = 0.18; // how solid someone between the camera and you is drawn
 const HEAD = 1.45; // metres up a body a hit counts as one to the head
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -150,6 +155,27 @@ export function aimAngles(from, yaw, at) {
   const dx = at.x - from.x;
   const dz = at.z - from.z;
   return { yaw: wrap(Math.atan2(dx, -dz) - yaw), pitch: Math.atan2(at.y - from.y, Math.hypot(dx, dz)) };
+}
+
+// Whether a body stands between the camera and you, so it hides you: its
+// middle within a body's width of the line from the camera to your chest,
+// short of you; or the camera inside it. Pure.
+const BLOCK = 0.55; // metres from the line that count as on it
+export function blocks(at, tall, camera, focus) {
+  if (!camera || !focus) return false;
+  const c = { x: at.x, y: at.y + tall * 0.55, z: at.z };
+  const dx = focus.x - camera.x;
+  const dy = focus.y - camera.y;
+  const dz = focus.z - camera.z;
+  const l2 = dx * dx + dy * dy + dz * dz;
+  if (l2 < 1e-6) return false;
+  const t = ((c.x - camera.x) * dx + (c.y - camera.y) * dy + (c.z - camera.z) * dz) / l2;
+  if (t > 0.92) return false;
+  const k = Math.max(0, t);
+  const px = camera.x + dx * k - c.x;
+  const pz = camera.z + dz * k - c.z;
+  const py = camera.y + dy * k - c.y;
+  return Math.hypot(px, pz) < BLOCK && Math.abs(py) < tall * 0.55;
 }
 
 export function createTrack() {
@@ -656,7 +682,15 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     }
     const at = r.track.at(alpha);
     o.position.set(at.x, at.y, at.z);
-    o.rotation.y = -at.yaw;
+    o.rotation.y = -(r.staged?.yaw ?? at.yaw);
+    // (a scene can take someone out of it: Ben, gone in the duel)
+    if (r.staged?.hidden) o.visible = false;
+    // faded while it stands between the camera and you, eased in and out
+    // (and a friend just ahead of you in the view: an enemy there is the one you need to see)
+    const friend = c && world?.side && (c.side === world.side || c.side === 'neutral');
+    const see = blocks(at, fig.tall, world?.camera, world?.focus) || (friend && blocks(at, fig.tall, world?.camera, world?.ahead)) ? SEEN_THROUGH : 1;
+    r.fade = (r.fade ?? 1) + (see - (r.fade ?? 1)) * Math.min(1, dt * 10);
+    fig.fade?.(r.fade);
     const wasDead = r.dead;
     const changed = act(r, want, at.yaw);
     if (r.dead && !wasDead) r.fallFor = 0;
@@ -742,6 +776,22 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
         } else pendingHits.set(e.target, hit);
       }
       if (pendingHits.size > 64) pendingHits.clear();
+    },
+
+    // someone’s figure, while they have one (cinematics.js plays a scene’s clips on it)
+    figure(id) {
+      return records.get(id)?.fig ?? null;
+    },
+    // a scene’s say over how someone is drawn, kept until it lets them go: { yaw, hidden }
+    stage(id, how) {
+      const r = records.get(id);
+      if (r) r.staged = how ? { ...r.staged, ...how } : null;
+    },
+
+    // the bone of someone’s right hand, for what they hold in it (a sabre), while they are drawn
+    handOf(id) {
+      const r = records.get(id);
+      return r?.fig?.object.visible && !r.fig.fallen ? (r.fig.hand ?? null) : null;
     },
 
     muzzle(id, out = new THREE.Vector3()) {

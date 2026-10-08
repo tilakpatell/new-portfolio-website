@@ -409,8 +409,12 @@ function storyEvents(g, was) {
   if (g.still > 0) plot.feedPlot(g, { type: 'still', seconds: g.still });
 }
 
+// While a story's scene plays you watch it: no walking, shooting, using or talking; the look stays yours
+const watching = (input) => ({ dir: { x: 0, z: 0 }, yaw: input.yaw, pitch: input.pitch });
+
 export function step(g, input = {}, dt = STEP) {
   const { you, layout, doors } = g;
+  if (g.scene) input = watching(input);
   g.time += dt;
   g.fired = false;
   const mark = g.events.length;

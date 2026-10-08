@@ -39,7 +39,8 @@ describe('the station with its people aboard', () => {
     expect(of(events, 'saw').some((e) => e.target === 'you')).toBe(true);
     expect(of(events, 'shot').some((e) => e.by !== 'you')).toBe(true);
     expect(['alert', 'lockdown', 'hunt']).toContain(alertOf(g).level);
-  });
+    // (eight seconds of the whole garrison: a second alone, more with the suite running round it)
+  }, 20000);
 
   it('puts a trooper down with enough shots, and tells the story who fell', () => {
     const g = newGame({ station: 'ds1', side: 'rebel', mode: 'roam', seed: 3 });
@@ -99,6 +100,18 @@ describe('the station with its people aboard', () => {
     teleport(g, 'conference');
     play(g, STILL, 3);
     for (const kind of ['tarkin', 'motti', 'tagge']) expect(g.crew.people.find((p) => p.kind === kind)?.anim, kind).toBe('sit');
+  });
+
+  it('holds you still while a story’s scene plays, and lets you go when it ends', () => {
+    const g = newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 3 });
+    teleport(g, 'corr327');
+    const at = { x: g.you.x, z: g.you.z };
+    g.scene = { id: 'tractor', t: 0 };
+    play(g, { ...STILL, dir: { x: 0, z: -1 }, fire: true }, 1);
+    expect(Math.hypot(g.you.x - at.x, g.you.z - at.z)).toBeLessThan(0.01);
+    g.scene = null;
+    play(g, { ...STILL, dir: { x: 0, z: -1 } }, 1);
+    expect(Math.hypot(g.you.x - at.x, g.you.z - at.z)).toBeGreaterThan(0.5);
   });
 
   it('lets far-off people sleep where they stand', () => {
