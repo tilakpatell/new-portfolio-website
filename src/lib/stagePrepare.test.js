@@ -80,6 +80,43 @@ describe('stagePrepare', () => {
     expect(done.bake).not.toHaveBeenCalled();
   });
 
+  it('holds a floor back from baking until the late loads are in, then lets it start', async () => {
+    const stage = fakeStage();
+    const order = [];
+    let land;
+    const late = new Promise((r) => (land = r)).then(() => order.push('landed'));
+    const floor = {
+      stats: { started: false, baked: false },
+      update() {
+        if (!this.stats.started) {
+          order.push('bake');
+          this.stats.started = true;
+        }
+      },
+      bake: vi.fn(() => Promise.resolve(true)),
+    };
+    let p;
+    let frames = 0;
+    p = stagePrepare(stage, {
+      grounds: () => [floor],
+      late: () => [late],
+      frame: () => {
+        floor.update(); // (the world's frame: its floor's update, then held)
+        p.held();
+        if (++frames === 1) setTimeout(land, 5);
+        return Promise.resolve();
+      },
+    });
+    await p.prepare();
+    expect(order).toEqual(['landed', 'bake']);
+    expect(floor.bake).toHaveBeenCalledTimes(1);
+    // put back as it was
+    expect(Object.hasOwn(floor, 'update')).toBe(true);
+    floor.stats.started = false;
+    floor.update();
+    expect(order.at(-1)).toBe('bake');
+  });
+
   it('waits on its late loads and while busy, both bounded', async () => {
     const stage = fakeStage();
     let busy = 3;

@@ -19,7 +19,8 @@
 // prepared when it's first shown, as before); `grounds()` the world's
 // groundWorld handles, whose bake under way is waited for; `busy()` true
 // while something it loads is still on its way (an area, a figure);
-// `late()` promises for loads that come after the world's made. Every wait
+// `late()` promises for loads that come after the world's made (the floors'
+// bakes wait for them, so a late caster, a door, shadows the floor). Every wait
 // is bounded (`wait` ms, `bakeWait` for the bake), so it never hangs, and it
 // never throws: what isn't ready by then the first frames do as before.
 // `layout: false` for a world whose page runs no frames while it prepares
@@ -53,11 +54,29 @@ export function stagePrepare(stage, { soft = false, roots = null, grounds = () =
     holding = true;
     placed = !layout;
     living = going;
+    // the floors' bakes held back (their first update would start one) until
+    // the late loads are in, so what shadows the floor is all there
+    const paused = [];
+    const resume = () => {
+      for (const [g, update] of paused.splice(0)) g.update = update;
+    };
+    try {
+      for (const g of [].concat(grounds() ?? [])) {
+        if (!g || typeof g.update !== 'function' || g.stats?.started) continue;
+        paused.push([g, g.update]);
+        g.update = () => {};
+      }
+    } catch {
+      resume();
+    }
     try {
       say(0, null);
       // laid out once by the world's own frame, and what it's still loading in
-      const began = now();
-      while (going() && now() - began < wait && (!placed || busy())) await frame();
+      const laidOut = async () => {
+        const began = now();
+        while (going() && now() - began < wait && (!placed || busy())) await frame();
+      };
+      await laidOut();
       if (!going()) return;
       let waits = [];
       try {
@@ -67,6 +86,13 @@ export function stagePrepare(stage, { soft = false, roots = null, grounds = () =
       }
       if (waits.length) await settle(Promise.allSettled(waits), wait);
       if (!going()) return;
+      // the floors free to bake, and one more frame laid out to start them
+      if (paused.length) {
+        resume();
+        placed = !layout;
+        await laidOut();
+        if (!going()) return;
+      }
       // a floor bake under way (one not started yet waits for its floor to be shown)
       let baking = [];
       try {
@@ -113,6 +139,7 @@ export function stagePrepare(stage, { soft = false, roots = null, grounds = () =
       }
       if (going()) say(1, 'first draw');
     } finally {
+      resume();
       holding = false;
       living = () => true;
     }
@@ -127,8 +154,9 @@ export function stagePrepare(stage, { soft = false, roots = null, grounds = () =
       placed = true;
       return true;
     },
+    // (false again once the prepare's been given up on: its page's cap, or the world let go)
     get preparing() {
-      return holding;
+      return holding && living();
     },
     prepare,
   };
