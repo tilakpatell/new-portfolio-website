@@ -35,6 +35,8 @@ import { createLeaves } from '../../../lib/three/leaves.js';
 import { createWindLines } from '../../../lib/three/windLines.js';
 import { createChaseView } from '../../../lib/three/view.js';
 import { createBuggy } from './buggy.js';
+import { createPalette } from '../../../lib/three/palette.js';
+import { LOOK, PAINT } from './look.js';
 
 const CELL = 64;
 const GRASS = { ultra: 280, high: 220, mid: 160, low: 110 };
@@ -111,10 +113,15 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
   // (his orbit runs 15 to 30 m: at 15 the buggy fills the screen, so a little out)
   const view = createChaseView({ camera, small, tier, radius: VIEW });
   const grass = createGrass({ ground: map.ground, wind, tracks, side: GRASS[tier] ?? 160, size: Math.round(view.area.radius * 2) });
-  const puffs = createPuffs({ species: { a: 0xb4b536, b: 0xd8cf3b, bark: 0x6b4a32 }, count: TREES[tier] ?? 700, wind, facing: camera.position.clone().setFromSphericalCoords(1, 0.31 * Math.PI, Math.PI / 4).toArray(), sun: sunDir.toArray() });
+  // what the world builds in code takes its colour from the look's strip, and
+  // the crates and the buggy share its one material
+  const palette = createPalette(LOOK.palette);
+  const painted = palette.material();
+  const tint = (i) => palette.colour(i).getHex();
+  const puffs = createPuffs({ species: { a: tint(PAINT.crown), b: tint(PAINT.crownLit), bark: tint(PAINT.bark) }, count: TREES[tier] ?? 700, wind, facing: camera.position.clone().setFromSphericalCoords(1, 0.31 * Math.PI, Math.PI / 4).toArray(), sun: sunDir.toArray() });
   const rocks = pool(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: hex(p.rock) }), KIT, 'rocks');
-  const crates = pool(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xb98a4e }), KIT, 'crates');
-  const buggy = createBuggy({ palette: { body: 0xd8572a, cab: 0xf2e6c9, dark: 0x2a2a2a } });
+  const crates = pool(palette.paint(new THREE.BoxGeometry(1, 1, 1), PAINT.crate), painted, KIT, 'crates');
+  const buggy = createBuggy({ palette, paint: PAINT, material: painted });
 
   // the land, in world metres, at minus the origin
   const land = new THREE.Group();
@@ -280,6 +287,7 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
       rocks.dispose();
       crates.dispose();
       buggy.dispose();
+      palette.dispose();
       leaves.dispose();
       lines.dispose();
       tracks.dispose();
