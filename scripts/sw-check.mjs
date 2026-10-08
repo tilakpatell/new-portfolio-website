@@ -7,6 +7,7 @@
 //
 //   npx vite build && npx vite preview &   node scripts/sw-check.mjs [--base http://127.0.0.1:4173] [--route /earth]
 
+/* global window, caches */
 import { existsSync, readdirSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 
@@ -60,14 +61,21 @@ try {
   const served = [];
   page.on('response', (r) => served.push({ url: new URL(r.url()).pathname, sw: r.fromServiceWorker() }));
   await page.goto(`${base}/#${route}`, { waitUntil: 'load' });
+  // (software WebGL holds the world: the gate's card says it's on this device, Open)
+  const open = page.getByRole('button', { name: 'Open', exact: true });
+  if (await open.waitFor({ timeout: 15000 }).then(() => true, () => false)) {
+    check(true, 'the card says Open for an installed world');
+    await open.click();
+  }
   const doc = await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('canvas', { timeout: 90000, state: 'attached' }).catch(() => {});
   await page.waitForTimeout(8000);
   const inPack = new Set(pack.files.map((f) => f.url));
   const fromSw = served.filter((s) => s.sw).map((s) => s.url);
-  const models = fromSw.filter((u) => /\.(glb|gltf)$/.test(u));
-  const wanted = pack.files.some((f) => /\.(glb|gltf)$/.test(f.url));
-  check(!wanted || models.length > 0, `a reload serves its models from the service worker (${models.slice(0, 3).join(', ') || 'none'})`);
+  // (its models and textures: a world may load a model only later, Earth's plane when flown)
+  const media = fromSw.filter((u) => !u.startsWith('/assets/'));
+  const requested = served.filter((s) => inPack.has(s.url) && !s.url.startsWith('/assets/'));
+  check(media.length > 0 && media.length === requested.length, `a reload serves its models and textures from the service worker (${media.length} of ${requested.length}: ${media.slice(0, 3).join(', ')})`);
   check(fromSw.some((u) => u.startsWith('/assets/')), 'and its code');
   check(fromSw.every((u) => inPack.has(u)), 'and nothing outside its pack');
   check(!doc.fromServiceWorker(), 'the page itself comes from the network');

@@ -39,8 +39,12 @@ describe('the pack manifests', () => {
       '_three.js': { file: 'assets/three-def.js' },
       'src/w/scene.js': { file: 'assets/scene-1.js', imports: ['_three.js'] },
       'src/pages/Other.jsx': { file: 'assets/Other-2.js' },
+      'index.html': { file: 'assets/index-0.js', isEntry: true, dynamicImports: ['src/pages/Other.jsx', 'src/pages/W.jsx'] },
+      'src/pages/Shared.jsx': { file: 'assets/Shared-3.js', imports: ['index.html'] },
     };
     expect(chunksFrom(manifest, ['src/pages/W.jsx']).sort()).toEqual(['/assets/W-abc.css', '/assets/W-abc.js', '/assets/scene-1.js', '/assets/three-def.js']);
+    // the app's entry is taken, not the pages it can reach
+    expect(chunksFrom(manifest, ['src/pages/Shared.jsx']).sort()).toEqual(['/assets/Shared-3.js', '/assets/index-0.js']);
   });
 
   it('name a pack by its route', () => {

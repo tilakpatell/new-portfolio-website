@@ -32,6 +32,8 @@ export function chunksFrom(manifest, pages) {
     if (!c || seen.has(key)) return;
     seen.add(key);
     for (const f of [c.file, ...(c.css ?? []), ...(c.assets ?? [])]) if (f) urls.add(`/${f}`);
+    // (not through the app's entry: it can import every page, and is loaded anyway)
+    if (c.isEntry) return;
     for (const k of [...(c.imports ?? []), ...(c.dynamicImports ?? [])]) visit(k);
   };
   for (const p of pages) visit(p);
