@@ -194,7 +194,6 @@ describe('labelPlace', () => {
       { id: 'a', x: 100, y: 100, w: 80, h: 18, prio: 1 },
       { id: 'b', x: 140, y: 102, w: 60, h: 18, prio: 0 },
     ]);
-    expect(p.a).toBe('r');
     expect(p.b).not.toBe('l');
     const boxes = boxesOf([{ id: 'a', x: 100, y: 100, w: 80, h: 18 }, { id: 'b', x: 140, y: 102, w: 60, h: 18 }], p);
     expect(overlapArea(boxes)).toBe(0);
@@ -210,12 +209,17 @@ describe('labelPlace', () => {
     const p = placeLabels(items, { bounds: { x0: 0, y0: 0, x1: 380, y1: 380 } });
     expect(overlapArea(boxesOf(items, p))).toBeLessThan(overlapArea(boxesOf(items, right)) * 0.25);
   });
-  it('places the higher priority first', () => {
-    const p = placeLabels([
-      { id: 'low', x: 140, y: 100, w: 60, h: 18, prio: 0 },
-      { id: 'here', x: 100, y: 100, w: 80, h: 18, prio: 100 },
+  it('gives a contested place to the higher priority', () => {
+    const two = (pa, pb) => placeLabels([
+      { id: 'here', x: 100, y: 100, w: 80, h: 18, prio: pa },
+      { id: 'low', x: 100, y: 115, w: 80, h: 18, prio: pb },
     ]);
-    expect(p.here).toBe('r');
+    const a = two(100, 0);
+    expect(a.here).toBe('r');
+    expect(a.low).not.toBe('r');
+    const b = two(0, 100);
+    expect(b.low).toBe('r');
+    expect(b.here).not.toBe('r');
   });
 });
 ```
