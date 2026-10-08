@@ -45,6 +45,10 @@ const API = 'https://api.sketchfab.com/v3/models';
 // the half-built one; the Munificent, 966265e37e61433b919ba640a12a33f5, whose
 // paint is tiled maps that don't survive, leaving it near black; Naboo's royal
 // starship, f72431e7a97e4bf994dd8b1f3f288d7c, whose maps are black.)
+// (And brought in, then made again with Meshy, scripts/meshy-galaxy-library.mjs,
+// so left out here, or a run would put them back over the new ones: the
+// Interdictor, 452cab004f024c01969b2111fbdd55b8, a flat white wedge with one
+// small map.)
 export const MODELS = {
   // the Rebellion's
   moncal: { uid: '9b5e5e5192f64a7faad93a3bfd2efaf2', tris: 40000, tex: 1024, as: 'the Mon Calamari cruisers' },
@@ -86,8 +90,8 @@ export const MODELS = {
   // the ones still built in code (fleetRebels.js, fleetExtras.js and the
   // universe's fleetStarwars.js) that somebody had already made: the
   // Outrider's YT-2400, the Xg-1 gunboat and the GR-75 by Daniel Andersson
-  // again, Bespin's cloud cars and city, IG-88's ship, the Interdictor and
-  // the half-built second Death Star (Cloud City,
+  // again, Bespin's cloud cars and city, IG-88's ship and the half-built
+  // second Death Star (Cloud City,
   // 8e708a2749484750ae9aeab27f579d37, was tried and left: an untextured
   // low-poly saucer on a stalk, plainer than the built one)
   freighter: { uid: 'ccd2749df33641fba7a5326500abdbfb', tris: 20000, tex: 1024, as: 'the YT-2400 freighters' },
@@ -95,7 +99,6 @@ export const MODELS = {
   transport: { uid: '071b158d02c044ee9b431aeb28b85b6a', tris: 20000, tex: 1024, as: 'the GR-75 transports' },
   cloudcar: { uid: '9bc20239f9c34ed1baacb9a49ba9377d', tris: 10000, tex: 512, as: 'Bespin’s cloud cars' },
   ig2000: { uid: '527958c20fdb4d4d9f3e858db62e6139', tris: 14000, tex: 1024, as: 'IG-88’s IG-2000' },
-  interdictor: { uid: '452cab004f024c01969b2111fbdd55b8', tris: 40000, tex: 1024, as: 'the Interdictor cruisers' },
   deathstar2: { uid: '90cabd9887d748d49204f10ac3565d23', tris: 12000, tex: 2048, as: 'the second Death Star' },
 };
 

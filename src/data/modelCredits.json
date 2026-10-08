@@ -1179,20 +1179,6 @@
       "galaxy"
     ]
   },
-  "galaxy-interdictor": {
-    "title": "Interdictor Star Destroyer (Immobilizer 418)",
-    "author": "Kuat-Entralla 3D Engineering",
-    "authorUrl": "https://sketchfab.com/KuatEntralla3D",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/interdictor-star-destroyer-immobilizer-418-452cab004f024c01969b2111fbdd55b8",
-    "where": "galaxy",
-    "as": "the Interdictor cruisers",
-    "file": "/models/galaxy/interdictor.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "galaxy-lightcruiser": {
     "title": "Crucero Ligero Imperial Arquitens",
     "author": "doclusifer2",

@@ -241,6 +241,32 @@ describe('the galaxy’s models', () => {
     });
   });
 
+  // (scripts/meshy-galaxy-library.mjs: the galaxy's worst models made again,
+  // each over its old file or beside the universe map's, and each squeezed to
+  // its kind's budget: a fighter 450 KB, a capital 900 KB)
+  describe('the worst ones made again with Meshy', () => {
+    const REMADE = {
+      interdictor: { url: '/models/galaxy/interdictor.glb', kb: 900 },
+    };
+    const games = JSON.parse(readFileSync(at('/games/credits.json'), 'utf8'));
+    const sketchfab = JSON.parse(readFileSync(new URL('../../data/modelCredits.json', import.meta.url), 'utf8'));
+
+    it('are what the galaxy loads for each kind, inside its budget', () => {
+      for (const [kind, { url, kb }] of Object.entries(REMADE)) {
+        expect(MODELS[kind]?.url, kind).toBe(url);
+        expect(statSync(at(url)).size / 1024, kind).toBeLessThan(kb);
+      }
+    });
+
+    it('are each credited to Meshy, and no longer to the Sketchfab model each replaced', () => {
+      for (const { url } of Object.values(REMADE)) {
+        const name = url.split('/').pop().replace(/\.glb$/, '');
+        expect(games[`meshy/${name}`]?.source, name).toBe('https://www.meshy.ai');
+        expect(Object.values(sketchfab).map((m) => m.file), name).not.toContain(url);
+      }
+    });
+  });
+
   describe('far off, a one-piece copy', () => {
     beforeEach(canvases);
     afterEach(() => vi.unstubAllGlobals());

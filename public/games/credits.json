@@ -3609,6 +3609,15 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
+  "meshy/interdictor": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-91bd-771d-b2c8-4c3078271d9b",
+    "name": "the Interdictor cruiser, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
   "meshy/acklay": {
     "source": "https://www.meshy.ai",
     "id": "01a114d2-d8f7-763b-a485-32e0c6a3daaf",
