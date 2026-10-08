@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -69,6 +69,38 @@ describe('planet landings', () => {
         expect(existsSync(join(PUBLIC, m.url)), `${id}'s ${kind}: ${m.url}`).toBe(true);
         expect(Boolean(m.tall || m.long || m.wide), `${id}'s ${kind} has a size`).toBe(true);
       }
+    }
+  });
+
+  // (the Quaternius kits, scripts/quaternius.mjs: a GLB a family of models, a node a model)
+  it('name a kit’s model by a node the kit has, and give what can be knocked about a body', () => {
+    const manifest = JSON.parse(readFileSync(join(PUBLIC, 'models/quaternius/manifest.json'), 'utf8'));
+    let named = 0;
+    for (const [, id, l] of PLACES) {
+      for (const [kind, m] of Object.entries(l.models ?? {})) {
+        if (m.node) {
+          named++;
+          expect(manifest[m.node]?.url, `${id}'s ${kind}: ${m.node} in ${m.url}`).toBe(m.url);
+        }
+        if (m.tint) expect(m.tint, `${id}'s ${kind}`).toMatch(HEX);
+        if (!m.body) continue;
+        // (the shapes and masses landings/bodies.js makes bodies of: a loose
+        // one light or middling, so a shot sends it and a shove moves it)
+        expect(['box', 'cylinder', 'ball'], `${id}'s ${kind}`).toContain(m.body.shape);
+        if (m.body.fixed) continue;
+        expect(m.body.mass, `${id}'s ${kind}`).toBeGreaterThanOrEqual(0.5);
+        expect(m.body.mass, `${id}'s ${kind}`).toBeLessThanOrEqual(30);
+      }
+    }
+    expect(named).toBeGreaterThan(20);
+  });
+
+  it('give the lots and streets small things lying about to knock over', () => {
+    const at = Object.fromEntries(PLACES.map(([, id, l]) => [id, l]));
+    for (const id of ['office', 'breakingbad/city', 'invincible/city', 'rickmorty/street', 'marvel']) {
+      const l = at[id];
+      const loose = (l.things ?? []).filter((t) => l.models?.[t.kind]?.body && !l.models[t.kind].body.fixed);
+      expect(loose.length, id).toBeGreaterThanOrEqual(3);
     }
   });
 
