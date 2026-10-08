@@ -147,7 +147,7 @@ One session may do them in order, merging each before the next; or one session p
 
 ## Phase 2: the living layer (PR 2, branch `claude/natural-worlds-p2`)
 
-Do `docs/superpowers/plans/2026-10-08-natural-worlds.md` Tasks 2.1–2.5 as written, with these deltas. Each delta is a step added to the named task; test and commit with that task.
+Natural worlds Tasks 2.1–2.5 are already on `main` (#638), so this phase is the deltas below on top of them, each its own commit.
 
 ### Task 2.4′: puffs are the pools' far band; leaves by budget
 
@@ -169,7 +169,7 @@ Do `docs/superpowers/plans/2026-10-08-natural-worlds.md` Tasks 2.1–2.5 as writ
 
 ## Phase 3: flora, and the Expanse drawn through pools (PR 3, branch `claude/natural-worlds-p3`)
 
-Do natural worlds Tasks 3.1–3.5 as written, with these deltas.
+Natural worlds Tasks 3.1–3.5 are already on `main` (#648), so this phase is the deltas below on top of them.
 
 ### Task 3.0: `src/lib/land/flora.js`; `makeCell` writes kit names
 
