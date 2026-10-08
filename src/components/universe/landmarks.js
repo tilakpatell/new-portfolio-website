@@ -125,8 +125,8 @@ void main() {
   vCell = aCell;
   vAxis = normalize((modelViewMatrix * vec4(aAxis, 0.0)).xyz);
   vec4 mv = modelViewMatrix * vec4(aCenter, 1.0);
-  float half = uFar * tan(aSize * 0.5);
-  mv.xy += position.xy * half;
+  float extent = uFar * tan(aSize * 0.5);
+  mv.xy += position.xy * extent;
   gl_Position = aK > 0.0 ? projectionMatrix * mv : vec4(2.0, 2.0, 2.0, 1.0);
 }`;
 

@@ -111,3 +111,15 @@ describe('drawn', () => {
     lm.dispose();
   });
 });
+
+describe('its shaders', () => {
+  // (GLSL ES keeps these back for later: a variable named one doesn't compile)
+  const RESERVED = ['half', 'fixed', 'input', 'output', 'sample', 'filter', 'sizeof', 'cast', 'namespace', 'using', 'common', 'partition', 'active', 'superp', 'hvec2', 'hvec3', 'hvec4', 'fvec2', 'fvec3', 'fvec4', 'long', 'short', 'double', 'unsigned', 'external', 'interface', 'union', 'enum', 'typedef', 'template', 'this', 'goto', 'inline', 'noinline', 'volatile', 'public', 'static', 'extern', 'asm'];
+  it('names nothing with a reserved word', () => {
+    const lm = createLandmarks(new THREE.Group(), { skyFar: 24000 });
+    const { vertexShader, fragmentShader } = lm.mesh.material;
+    for (const src of [vertexShader, fragmentShader])
+      for (const w of RESERVED) expect(src, w).not.toMatch(new RegExp(`\\b(float|int|bool|vec[234]|mat[234])\\s+${w}\\b`));
+    lm.dispose();
+  });
+});
