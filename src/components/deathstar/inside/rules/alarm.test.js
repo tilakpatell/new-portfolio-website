@@ -204,6 +204,15 @@ describe('alarm', () => {
     expect(levelOf(alarm, 'aa23')).toBe('lockdown');
   });
 
+  it('keeps the place of the last sighting, not a live reference to whoever was seen', () => {
+    const alarm = createAlarm(station());
+    const you = { x: 3, z: 1 };
+    raise(alarm, 'aa23', 'seen', you, 0);
+    you.x = 50;
+    you.z = 60;
+    expect(alarm.sections.aa23.at).toEqual({ x: 3, y: 0, z: 1 });
+  });
+
   it('ignores a section the station doesn’t have, and refuses a cause it doesn’t know', () => {
     const alarm = createAlarm(station());
     expect(raise(alarm, 'nowhere', 'seen', HERE, 0)).toBe(null);

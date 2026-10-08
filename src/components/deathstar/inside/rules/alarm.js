@@ -107,7 +107,8 @@ export function raise(alarm, section, how, at, now) {
   else if (to === 'wary') s.since = now;
   // a lesser cause changes nothing, not even where the squads will look
   else if (!sighted) return s.level;
-  s.at = at ?? s.at;
+  // a copy: the body passed in moves on, the place it was seen does not
+  if (at) s.at = { x: at.x, y: at.y ?? 0, z: at.z };
   return s.level;
 }
 
