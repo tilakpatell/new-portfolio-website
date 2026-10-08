@@ -10,9 +10,12 @@
 // tinted blue and smeared; sky-hq.webp and sky.webp, which
 // build-universe-textures.py makes from it, stay as they were for the Earth's
 // background.) The photo:
-// - is turned the way the old sky lay (upside down, the Magellanic Clouds
-//   above the band, and 3° round), so everything placed against the band
-//   stays where it was;
+// - is brought to the true sky, where the stars are (starCatalog.js): the
+//   mosaic is turned 3.8° off the galactic frame and bent a little where it
+//   was stitched; scripts/fit-universe-sky.py measures both against the
+//   Hipparcos stars (scripts/data/universe-sky-fit.json), and the photo is
+//   read through them, then laid upside down (the Magellanic Clouds above
+//   the band) and a little round, as the sky before it lay;
 // - has its stars taken out: each pixel held to a little over the light
 //   round it, so points of light (and the bright stars' spikes) go, while
 //   the dust lanes (dark), the nebulae and the star clouds (wider) stay
@@ -23,13 +26,14 @@
 //   contrast and colour than the photo's own: the core's gold, the lanes'
 //   brown, the nebulae's pink.
 //
-//   NODE_USE_ENV_PROXY=1 node scripts/bake-universe-sky.mjs
+//   NODE_USE_ENV_PROXY=1 node scripts/bake-universe-sky.mjs [--check]
 //
 // (it downloads the 29 MB original to scripts/.cache the first time)
 
 import sharp from 'sharp';
 import { existsSync, statSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { SKY_TURN } from '../src/components/universe/starCatalog.js';
 
 const DIR = 'public/textures/universe';
 const SOURCE_URL = 'https://cdn.eso.org/images/original/eso0932a.tif';
@@ -38,7 +42,6 @@ const OUT = [
   { file: `${DIR}/sky-glow.webp`, width: 4096 },
   { file: `${DIR}/sky-glow-sm.webp`, width: 2048 },
 ];
-const TURN = 50; // pixels of the 6000 the panorama is turned by, round to where the old sky's band lay
 const GAIN = 0.78; // the band's light, as bright as the scene is lit for
 const PIVOT = 0.03; // and its contrast, about the band's own light: the faint
 const CONTRAST = 0.25; // halo and the lanes darker, the star clouds brighter
@@ -55,22 +58,70 @@ if (!existsSync(SOURCE)) {
   await writeFile(SOURCE, Buffer.from(await res.arrayBuffer()));
 }
 
-const { data, info } = await sharp(SOURCE).flip().removeAlpha().raw().toBuffer({ resolveWithObject: true });
+const { data, info } = await sharp(SOURCE).removeAlpha().raw().toBuffer({ resolveWithObject: true });
 const { width: W, height: H, channels: C } = info;
 const N = W * H;
 
-// to linear light, turned
+// the photo in linear light, in its own frame (l 0 in the middle, rising to
+// the left, north up)
 const toLinear = new Float32Array(256).map((_, i) => {
   const v = i / 255;
   return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
 });
+const photo = [0, 1, 2].map((c) => Float32Array.from({ length: N }, (_, i) => toLinear[data[i * C + c]]));
+
+// brought to the true sky, the frame the stars are in: each texel of the sky
+// (skyShader.js's frame, starCatalog.js's skyDir: upside down, SKY_TURN
+// round) is the true place it shows, turned and bent the way the photo has
+// it (FIT), read from the photo between its four nearest pixels
+const FIT = JSON.parse(await readFile('scripts/data/universe-sky-fit.json', 'utf8'));
+const DEG = Math.PI / 180;
+const [lons, lats] = [360 / FIT.grid, 180 / FIT.grid + 1];
+function bend(l, b) {
+  const i = Math.min(lats - 2, Math.max(0, Math.floor((b + 90) / FIT.grid)));
+  const j = Math.floor(l / FIT.grid);
+  const fi = (b + 90) / FIT.grid - i;
+  const fj = l / FIT.grid - j;
+  const at = (ii, jj) => FIT.bend[ii][((jj % lons) + lons) % lons];
+  return [0, 1].map((k) => at(i, j)[k] * (1 - fi) * (1 - fj) + at(i, j + 1)[k] * (1 - fi) * fj + at(i + 1, j)[k] * fi * (1 - fj) + at(i + 1, j + 1)[k] * fi * fj);
+}
+const R = FIT.rotation;
 const rgb = [0, 1, 2].map(() => new Float32Array(N));
 for (let y = 0; y < H; y++) {
+  const b = -90 + (180 * (y + 0.5)) / H;
   for (let x = 0; x < W; x++) {
-    const s = (y * W + ((x + TURN) % W)) * C;
+    const l = 360 * (0.5 - SKY_TURN - (x + 0.5) / W);
+    const t = [Math.cos(b * DEG) * Math.cos(l * DEG), Math.cos(b * DEG) * Math.sin(l * DEG), Math.sin(b * DEG)];
+    const q = R.map((r) => r[0] * t[0] + r[1] * t[1] + r[2] * t[2]);
+    const lq = (((Math.atan2(q[1], q[0]) / DEG) % 360) + 360) % 360;
+    const bq = Math.asin(Math.max(-1, Math.min(1, q[2]))) / DEG;
+    const [dl, db] = bend(lq, bq);
+    const lp = lq + dl / Math.max(Math.cos(bq * DEG), 0.05);
+    const bp = bq + db;
+    const px = ((((180 - lp) / 360) * W - 0.5) % W + W) % W;
+    const py = Math.min(H - 1, Math.max(0, ((90 - bp) / 180) * H - 0.5));
+    const x0 = Math.floor(px);
+    const y0 = Math.min(H - 2, Math.floor(py));
+    const fx = px - x0;
+    const fy = py - y0;
+    const x1 = (x0 + 1) % W;
     const i = y * W + x;
-    for (let c = 0; c < 3; c++) rgb[c][i] = toLinear[data[s + c]];
+    for (let c = 0; c < 3; c++) {
+      const p = photo[c];
+      rgb[c][i] = (p[y0 * W + x0] * (1 - fx) + p[y0 * W + x1] * fx) * (1 - fy) + (p[(y0 + 1) * W + x0] * (1 - fx) + p[(y0 + 1) * W + x1] * fx) * fy;
+    }
   }
+}
+photo.length = 0;
+
+// --check: the photo as brought to the true sky, stars and all, to measure
+// against the stars (scripts/fit-universe-sky.py's numbers, end to end)
+if (process.argv.includes('--check')) {
+  const check = new Uint8Array(N);
+  for (let i = 0; i < N; i++) check[i] = Math.round(255 * Math.min(1, (0.2126 * rgb[0][i] + 0.7152 * rgb[1][i] + 0.0722 * rgb[2][i]) ** (1 / 2.2)));
+  await sharp(check, { raw: { width: W, height: H, channels: 1 } }).png().toFile('scripts/.cache/sky-check.png');
+  console.log('scripts/.cache/sky-check.png');
+  process.exit(0);
 }
 const lum = new Float32Array(N);
 for (let i = 0; i < N; i++) lum[i] = 0.2126 * rgb[0][i] + 0.7152 * rgb[1][i] + 0.0722 * rgb[2][i];
