@@ -201,13 +201,18 @@ async function squeeze(from, to, a) {
     await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'png', slots: /baseColor/, resize: [a.tex, a.tex] }));
     for (const r of await recolorDoc(doc, a.recolor)) console.log(`  recolor ${r.material}: ${r.from} → ${r.to}`);
   }
+  // (`quality`: the colour map's WebP quality, for a ship whose budget a
+  // sharp 2K map would break; and a `split` one's mesh is packed at
+  // meshopt's high level, whose filters squeeze the normals and UVs of
+  // Meshy's seam-split vertices, about a tenth of a file, where the
+  // medium level leaves them as plain 16-bit numbers)
   const maps = a.split
     ? [
-        textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /baseColor|emissive/, resize: [a.tex, a.tex], quality: 84 }),
+        textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /baseColor|emissive/, resize: [a.tex, a.tex], quality: a.quality ?? 84 }),
         textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness/, resize: [a.tex / 2, a.tex / 2], quality: 80 }),
       ]
     : [textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [a.tex, a.tex] })];
-  await doc.transform(...maps, meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+  await doc.transform(...maps, meshopt({ encoder: MeshoptEncoder, level: a.split ? 'high' : 'medium' }));
   let tris = 0;
   for (const m of root.listMeshes()) for (const p of m.listPrimitives()) tris += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
   await mkdir(dirname(to), { recursive: true });
