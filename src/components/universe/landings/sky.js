@@ -11,10 +11,15 @@
 // sun goes down each colour takes the air's own change, so the horizon
 // warms and the sun reddens, as the limb does from orbit.
 //
-// createSky(sky, haze, { air }) → { mesh, mat, set({ up, sun, day }), dispose }
+// createSky(sky, haze, { air }) → { mesh, mat, set({ up, sun, day }), seenTo, dispose }
 //   (haze: the colour along the horizon; up, sun: unit directions in the
-//   map's space; day 0…1)
+//   map's space; day 0…1; seenTo: seenTo() as it is now)
 // skyAt(sky, air, sunElevation) → { zenith, horizon, sun } (linear [r, g, b])
+// seenTo(day, space) → how far from the camera there's anything to see
+//   (the map's units), or null: as far as the camera sees. In full day
+//   with no space showing through, the dome (SKY_R round the camera) hides
+//   everything beyond it, so nothing there need be drawn; it's a little
+//   past the dome, for its own edge.
 
 import * as THREE from 'three';
 import { skyColoursFor } from '../../../lib/three/atmosphere';
@@ -72,6 +77,9 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
+export const SKY_R = 30;
+export const seenTo = (day, space = 0) => (day > 0.99 && !(space > 0) ? SKY_R * 1.05 : null);
+
 export function createSky(sky = {}, haze = '#8ab4ff', { air = null } = {}) {
   const { zenith = '#3c7fd6', horizon = '#d6e6f2', sun = '#fff6e2', space = 0 } = sky;
   const mat = new THREE.ShaderMaterial({
@@ -92,7 +100,7 @@ export function createSky(sky = {}, haze = '#8ab4ff', { air = null } = {}) {
     premultipliedAlpha: true,
     depthWrite: false,
   });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(30, 48, 24), mat);
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(SKY_R, 48, 24), mat);
   mesh.frustumCulled = false;
   // first of the see-through things: over whatever's beyond it (the other
   // planets, by day), under anything nearer that's drawn after it (bolts,
@@ -110,7 +118,7 @@ export function createSky(sky = {}, haze = '#8ab4ff', { air = null } = {}) {
       // (in full day, with no space showing through, it hides what's beyond
       // it: else the stars and the Milky Way's glow, drawn after it, show
       // through a dark sky like Mordor's)
-      mat.depthWrite = mat.uniforms.uDay.value > 0.99 && !(space > 0);
+      mat.depthWrite = seenTo(mat.uniforms.uDay.value, space) !== null;
       // the colours for how high the sun is (worked out again only as it moves)
       if (air && sun) {
         const e = Math.max(-0.3, mat.uniforms.uUp.value.dot(mat.uniforms.uSunDir.value));
@@ -129,6 +137,9 @@ export function createSky(sky = {}, haze = '#8ab4ff', { air = null } = {}) {
     },
     get sunDir() {
       return mat.uniforms.uSunDir.value;
+    },
+    get seenTo() {
+      return seenTo(mat.uniforms.uDay.value, space);
     },
     dispose() {
       mesh.geometry.dispose();

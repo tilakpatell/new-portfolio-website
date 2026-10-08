@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { createTrack, leafPlaces, roomsOf } from './index';
+import { createTrack, leafPlaces, playerAct, roomsOf } from './index';
 import { createPeople } from './people';
 
 const STEP = 1 / 30;
@@ -120,5 +120,24 @@ describe('what the people are told of the rooms', () => {
     people.sync(crew, 1, eye, rooms);
     expect(bodies()).toEqual([]);
     people.dispose();
+  });
+});
+
+describe('what the player’s figure plays', () => {
+  it('crouches still or crouch-walks, and stands to walk', () => {
+    expect(playerAct({ crouch: true }).base).toBe('crouch');
+    expect(playerAct({ crouch: true, moving: true }).base).toBe('crouch.walk');
+    expect(playerAct({ moving: true }).base).toBeNull();
+  });
+
+  it('holds the gun out while aiming, fires it for a moment after each shot, and carries it otherwise', () => {
+    expect(playerAct({ gun: 'e11', aim: true }).upper).toBe('aim.pistol');
+    expect(playerAct({ gun: 'e11', shotAgo: 0.1 }).upper).toBe('shoot.pistol');
+    expect(playerAct({ gun: 'e11', shotAgo: 2 }).upper).toBeNull();
+  });
+
+  it('strokes with a blade for a moment after each swing, and holds nothing out between', () => {
+    expect(playerAct({ blade: 'blue', swungAgo: 0.1 }).upper).toBe('stroke');
+    expect(playerAct({ blade: 'blue', swungAgo: 3, aim: true }).upper).toBeNull();
   });
 });

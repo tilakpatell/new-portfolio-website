@@ -268,6 +268,9 @@ export function cloneShaded(material) {
   const m = material.clone();
   m.onBeforeCompile = material.onBeforeCompile;
   m.customProgramCacheKey = material.customProgramCacheKey;
+  // (and the marks that say what's in them, which a copy leaves behind:
+  // lib/three/house.js and core.js would put theirs on it a second time)
+  for (const k of ['house', 'core']) if (material.userData[k]) Object.defineProperty(m.userData, k, { value: material.userData[k], enumerable: false, configurable: true });
   return m;
 }
 

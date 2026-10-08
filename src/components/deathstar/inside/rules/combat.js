@@ -16,7 +16,7 @@
 //     bolt: { id, x, y, z, dx, dy, dz, speed, owner, side, weapon, damage, life, npc }
 //   stepCombat(combat, dt, { layout, open, bodies }) → events
 //     bodies: [{ id, x, y, z, r, h, side, hp, deflect?: { yaw, active } }]   y is the feet
-//     events: { type: 'hit', bolt, target, x, y, z, damage, owner, side, weapon }
+//     events: { type: 'hit', bolt, target, x, y, z, damage, owner, side, weapon, dir } (dir: the way the bolt flew)
 //       | { type: 'wall', bolt, x, y, z, normal: { x, y, z }, room, door? }
 //       | { type: 'deflect', bolt, by, x, y, z, side } | { type: 'vented', owner, weapon }
 //   heatStep(gun, dt) → 'vented' | null
@@ -255,7 +255,7 @@ function fly(bolt, dist, walls, open, bodies) {
       skip = b;
       continue;
     }
-    events.push({ type: 'hit', bolt: bolt.id, target: b.id, ...at, damage: bolt.damage, owner: bolt.owner, side: bolt.side, weapon: bolt.weapon });
+    events.push({ type: 'hit', bolt: bolt.id, target: b.id, ...at, damage: bolt.damage, owner: bolt.owner, side: bolt.side, weapon: bolt.weapon, dir: { x: bolt.dx, y: bolt.dy, z: bolt.dz } });
     return { events, spent: true };
   }
   return { events, spent: false };

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { assign } from '../brains';
 import { furnish } from '../furnish';
 import { STEP, alertOf, drain, newGame, objectiveOf, promptOf, step, teleport } from '../game';
 
@@ -48,6 +49,56 @@ describe('the station with its people aboard', () => {
     const events = play(g, (gg) => ({ ...STILL, yaw: yawTo(gg.you, target), pitch: pitchTo(gg.you, target), fire: true, aim: true }), 6);
     expect(of(events, 'shot').filter((e) => e.by === 'you').length).toBeGreaterThan(3);
     expect(of(events, 'died').map((e) => e.id)).toContain(target.id);
+  });
+
+  it('stands your companions on the floor round you, apart from you and each other, even in the smuggling hold', () => {
+    const g = newGame({ station: 'ds1', side: 'rebel', mode: 'story', hero: 'luke', seed: 3 });
+    play(g, STILL, 0.5);
+    const with_ = g.crew.people.filter((p) => p.tag?.startsWith('with:'));
+    expect(with_.length).toBeGreaterThanOrEqual(4);
+    const you = g.you;
+    for (const p of with_) {
+      expect(g.layout.floorAt(p.room, p.x, p.z), p.id).not.toBeNull();
+      expect(Math.hypot(p.x - you.x, p.z - you.z), p.id).toBeGreaterThan(0.6);
+    }
+    for (const a of with_) for (const b of with_) if (a !== b) expect(Math.hypot(a.x - b.x, a.z - b.z), `${a.id} ${b.id}`).toBeGreaterThan(0.55);
+  });
+
+  it('has two people put on one spot step apart, neither through a wall', () => {
+    const g = newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 3 });
+    const [a, b] = g.crew.people.filter((p) => p.room === 'corr327' || p.room === 'bay327').slice(0, 2);
+    const room = g.layout.rooms.get('corr327');
+    // up against the corridor's wall, both at once
+    // both given the one post there, so neither walks off of their own accord
+    const post = { room: 'corr327', x: room.box.x0 + 0.4, z: room.z, yaw: Math.PI / 2 };
+    for (const p of [a, b]) {
+      Object.assign(p, { room: 'corr327', x: post.x, z: post.z, y: room.y });
+      assign(g.crew, p.id, { type: 'post', spot: post });
+    }
+    teleport(g, 'corr327', room.x, room.z + 3);
+    play(g, STILL, 2);
+    expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThan(0.55);
+    for (const p of [a, b]) {
+      expect(p.x, p.id).toBeGreaterThanOrEqual(room.box.x0);
+      expect(g.layout.floorAt(p.room, p.x, p.z), p.id).not.toBeNull();
+    }
+  });
+
+  it('puts you on clear floor when you are put in a room, never in its furniture', () => {
+    const g = newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 3 });
+    for (const id of ['conference', 'overbridge', 'archive', 'aa23']) {
+      expect(teleport(g, id), id).toBe(true);
+      const inside = g.solidsOf(id).filter((s) => (s.box ? g.you.x > s.box.x0 && g.you.x < s.box.x1 && g.you.z > s.box.z0 && g.you.z < s.box.z1 : Math.hypot(g.you.x - s.circle.x, g.you.z - s.circle.z) < s.circle.r));
+      expect(inside, id).toEqual([]);
+      expect(g.layout.floorAt(id, g.you.x, g.you.z), id).not.toBeNull();
+    }
+  });
+
+  it('sits the conference room’s officers in their chairs', () => {
+    const g = newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 3 });
+    teleport(g, 'conference');
+    play(g, STILL, 3);
+    for (const kind of ['tarkin', 'motti', 'tagge']) expect(g.crew.people.find((p) => p.kind === kind)?.anim, kind).toBe('sit');
   });
 
   it('lets far-off people sleep where they stand', () => {

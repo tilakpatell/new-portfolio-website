@@ -18,9 +18,16 @@ import { rng } from '../../galaxy/surface/noise';
 
 const { PI, cos, sin } = Math;
 
-// the Shire's kit, made once a landing (its textures want the renderer)
+// the Shire's kit (its textures want the renderer), made once for the page:
+// its eighteen pictures are painted a pixel at a time, a second or more of
+// the landing, and the same every time. A lift-off frees what the things
+// drew with, the kit's materials and pictures too (furnish's release), and
+// the next landing sends them to the graphics chip again as it readies
+// itself, which is quick beside the painting.
+let shire = null;
 export function prepare(k) {
-  k.shire = createShireKit(k.renderer ?? { capabilities: { getMaxAnisotropy: () => 4 } });
+  shire ??= createShireKit(k.renderer ?? { capabilities: { getMaxAnisotropy: () => 4 } });
+  k.shire = shire;
 }
 
 // a Shire builder's colliders ({ x, z, r }) as a landing's solids

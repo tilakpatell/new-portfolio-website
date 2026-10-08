@@ -100,12 +100,15 @@ const GLANCE = 0.6;
 
 const TREES = {
   patrol: (role) => repeat(sequence(...role.spots.flatMap((s) => [go(s), face(s), wait([2, 4], 'idle'), face({ spot: s, turn: GLANCE }), wait([1, 2], 'idle')]))),
+  // a post on a seat (the conference room's chairs, the bench in cell 2187) is sat in, not stood at
   post: ({ spot }) =>
-    sequence(
-      go(spot),
-      face(spot),
-      repeat(sequence(wait([5, 9], 'attention'), face({ spot, turn: GLANCE }), wait([1.5, 2.5], 'attention'), face({ spot, turn: -GLANCE }), wait([1.5, 2.5], 'attention'), face(spot))),
-    ),
+    spot?.kind === 'sit'
+      ? sequence(go(spot), face(spot), repeat(wait([8, 14], 'sit')))
+      : sequence(
+          go(spot),
+          face(spot),
+          repeat(sequence(wait([5, 9], 'attention'), face({ spot, turn: GLANCE }), wait([1.5, 2.5], 'attention'), face({ spot, turn: -GLANCE }), wait([1.5, 2.5], 'attention'), face(spot))),
+        ),
   work: ({ spot }) => sequence(go(spot), face(spot), repeat(sequence(wait([6, 12], 'work'), wait([1.5, 3], 'idle')))),
   // talks while they stand together; walks back up if the other wanders off
   chat: (role) => {
@@ -170,6 +173,10 @@ const TURN = 8; // radians a second anyone turns
 const ARRIVE = 0.3; // metres from a waypoint that count as there
 const PASS = 0.45; // metres from a door’s middle that count as through it: a shut leaf holds a body 0.35 off
 const SPACING = 1.1; // how far people keep from each other
+// Someone standing closer to another than BODY_GAP shuffles out of the way, at SHUFFLE of a walk:
+// two bodies' widths with a hand's breadth between, so nobody is ever drawn inside anybody
+const BODY_GAP = 0.66;
+const SHUFFLE = 0.45;
 const RIDE = 3; // seconds a lift ride takes (game.js’s)
 const STUCK = 2; // seconds without headway before a way is worked out again
 const GIVE_UP = 3; // times stuck before the way counts as gone
@@ -301,15 +308,18 @@ export function stepLegs(crew, p, dt, frozen = false) {
   const clock = crew.clock;
   if (legs.nav.touched !== clock && legs.nav.path) legs.nav = idle();
   let dir = null;
+  let shuffle = false;
   if (legs.ride) {
     if (clock >= legs.ride.until) ride(crew, p);
   } else if (!frozen && legs.nav.path) dir = follow(crew, p);
-  const run = Boolean(dir && legs.nav.run);
+  else if (!frozen && (dir = makeRoom(crew, p))) shuffle = true;
+  const run = Boolean(dir && legs.nav.run && !shuffle);
   const g = gait((run ? BODY.run : BODY.walk) * (CAST[p.kind].speed ?? 1));
   const was = { x: p.x, z: p.z };
   stepBody(p, { dir: dir ? { x: dir.x * g.len, z: dir.z * g.len } : { x: 0, z: 0 }, run: g.run }, dt, { layout: crew.layout, open: crew.world.open, solids: crew.solidsOf(p.room) });
   const moved = flat(was, p);
-  if (dir && moved > 1e-3 && !legs.want.lock) legs.want.yaw = Math.atan2(dir.x, -dir.z);
+  // (a shuffle out of someone's way keeps the way they face)
+  if (dir && !shuffle && moved > 1e-3 && !legs.want.lock) legs.want.yaw = Math.atan2(dir.x, -dir.z);
   const most = TURN * dt;
   p.yaw = wrap(p.yaw + Math.max(-most, Math.min(most, wrap(legs.want.yaw - p.yaw))));
   if (legs.nav.path && !legs.ride) unstick(crew, p);
@@ -351,6 +361,43 @@ function ride(crew, p) {
   Object.assign(p, { x: p.x + b.x - a.x, y: p.y + b.y - a.y, z: p.z + b.z - a.z, room: to, vy: 0 });
   Object.assign(p.safe, { x: p.x, y: p.y, z: p.z, room: to });
 }
+
+// Standing still too near someone (two put on one spot, a companion come up
+// behind you): a shuffle straight away from all of them, weighed by how
+// far in each is, at SHUFFLE of a walk. One exactly on top of another goes
+// off its own way (by its id), so the two part. The dead are walked
+// round, not shuffled from; whoever rides a lift stays put.
+function makeRoom(crew, p) {
+  const you = crew.world.you;
+  let x = 0;
+  let z = 0;
+  for (const o of you ? [...crew.people, you] : crew.people) {
+    if (o === p || o.mode === 'dead' || o.mind?.legs?.ride || Math.abs(o.y - p.y) > 1) continue;
+    const dx = p.x - o.x;
+    const dz = p.z - o.z;
+    if (Math.abs(dx) > BODY_GAP || Math.abs(dz) > BODY_GAP) continue;
+    const d = Math.hypot(dx, dz);
+    if (d >= BODY_GAP) continue;
+    const k = (BODY_GAP - d) / BODY_GAP;
+    if (d > 1e-4) {
+      x += (dx / d) * k;
+      z += (dz / d) * k;
+    } else {
+      const a = idAngle(p.id);
+      x += Math.cos(a) * k;
+      z += Math.sin(a) * k;
+    }
+  }
+  const l = Math.hypot(x, z);
+  if (l < 0.05) return null;
+  const s = (SHUFFLE * Math.min(1, l * 2)) / l;
+  return { x: x * s, z: z * s };
+}
+const idAngle = (id) => {
+  let h = 2166136261;
+  for (const ch of String(id)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  return ((h >>> 0) / 4294967296) * Math.PI * 2;
+};
 
 // Straight on when nobody is close; else a context map: the way on, a pull to
 // the right so two meeting in a corridor pass each other, and danger towards
