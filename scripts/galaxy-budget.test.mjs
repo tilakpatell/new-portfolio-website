@@ -1,0 +1,40 @@
+import { describe, expect, it } from 'vitest';
+import { budget } from '../src/lib/budgets.js';
+import { KNOWN_OVER, limitsFor, overBy } from './galaxy-budget.mjs';
+
+describe('what the galaxy check holds a world to', () => {
+  it('holds a world to its baseline +10%, under its level’s row', () => {
+    const l = limitsFor({ id: 'tatooine', quality: 'high', row: budget('high'), base: { calls: 76, triangles: 819247 } });
+    expect(l.calls).toBeCloseTo(83.6);
+    expect(l.tris).toBeCloseTo(901171.7);
+    expect(l.mb).toBe(60);
+    expect(l.frame).toBe(Infinity);
+  });
+
+  it('caps a world with no baseline at the row', () => {
+    expect(limitsFor({ id: 'new', quality: 'mid', row: budget('mid'), base: null })).toMatchObject({ calls: 500, tris: 1.5e6, mb: 40 });
+  });
+
+  it('puts no triangle ceiling on ultra, and a frame-time one only on a real graphics chip', () => {
+    expect(limitsFor({ id: 'x', quality: 'ultra', row: budget('ultra'), base: null, realGpu: false })).toMatchObject({ tris: Infinity, frame: Infinity });
+    expect(limitsFor({ id: 'x', quality: 'ultra', row: budget('ultra'), base: null, realGpu: true }).frame).toBe(16.7);
+  });
+
+  it('holds a world known to be over its row to its own baseline +10% until it’s trimmed, and says so', () => {
+    expect(KNOWN_OVER.endor).toMatch(/TODO/);
+    const l = limitsFor({ id: 'endor', quality: 'high', row: budget('high'), base: { calls: 234, triangles: 3345258 } });
+    expect(l.tris).toBeCloseTo(3345258 * 1.1);
+    expect(l.known).toBe(KNOWN_OVER.endor);
+    expect(overBy({ calls: 234, triangles: 3345258, glbMB: 12.7, p95: 1 }, l)).toEqual([]);
+    expect(overBy({ calls: 234, triangles: 3.8e6, glbMB: 12.7, p95: 1 }, l)).toEqual(['tris 3800000 > 3679784']);
+    // (a world with no baseline gets no such pass)
+    expect(limitsFor({ id: 'endor', quality: 'high', row: budget('high'), base: null }).tris).toBe(3e6);
+  });
+
+  it('tightens every limit by the scale, to see it fail', () => {
+    const l = limitsFor({ id: 'tatooine', quality: 'high', row: budget('high'), base: { calls: 100, triangles: 1e6 }, scale: 0.5 });
+    expect(l.calls).toBeCloseTo(55);
+    expect(l.tris).toBeCloseTo(550000);
+    expect(l.mb).toBe(30);
+  });
+});

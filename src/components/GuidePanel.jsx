@@ -192,8 +192,8 @@ export default function GuidePanel({ pathname, initialTab, close, onLeave }) {
     <div id="guide-panel" ref={panel} className="guide-panel card" role="dialog" aria-modal="false" aria-labelledby={`${ids}-name`} tabIndex={-1}>
       <div className="guide-head">
         {/* the panel says what it is, beside the tabs that say where in it you are */}
-        <div className="flex min-w-0 items-center gap-3">
-          <p id={`${ids}-name`} className="label">
+        <div className="guide-head-tabs flex min-w-0 items-center gap-3">
+          <p id={`${ids}-name`} className="guide-name label">
             Guide
           </p>
           <div className="guide-tabs switch" data-size="md" role="tablist" aria-label="Guide">

@@ -12,7 +12,13 @@
 // rt: { gfx, input, quality, saves, assets, audio, workers, origin, events, host, status,
 //   current, loading, on(fn), invalidate(), resize(w, h), setVisible(on), lost(),
 //   mount(module, props, host) → shown, handover(module, props, host, { fade, held, after }) → shown,
-//   adopt(module, host), unmount(), dispose() }
+//   adopt(module, host), unmount(), dispose(), requality(level) → 'tuned' |
+//   'reload' | 'idle', reload() → shown, sharpen(k) }
+// (a quality level picked while a world is up: `requality` hands it to the
+// world's `onQuality(level)`, or its module's `onQuality(level, world, rt)`,
+// for a world that can retune without being built again (the pixel ratio,
+// shadows, grass, LOD reach); 'reload' says it can't, and `reload()` builds
+// it again with what it was mounted with)
 // A world with an `anchor()` (the player's world position) has the floating
 // origin moved after it before each step; a shift is the event 'origin'
 // { shift }, for the world to re-anchor its objects and camera that frame.
@@ -445,6 +451,35 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       if (r) this.resize(r.width, r.height);
       loop.kick();
       return true;
+    },
+    requality(level) {
+      // (the budget first: a world mounted next is built at the new level)
+      quality.retune?.(level);
+      if (!current || rt.loading) return 'idle';
+      if (gfx) gfx.setRatio?.(ratioFor(current.module));
+      const { world, module } = current;
+      const tune = world.onQuality ? () => world.onQuality(level) : module.onQuality ? () => module.onQuality(level, world, rt) : null;
+      if (!tune) return 'reload';
+      try {
+        tune();
+      } catch (err) {
+        if (dev) console.warn(`[${module.id}] onQuality failed`, err);
+        return 'reload';
+      }
+      loop.kick();
+      return 'tuned';
+    },
+    reload() {
+      if (!current) return Promise.resolve(false);
+      const { module, props, host } = current;
+      return this.mount(module, props, host);
+    },
+    sharpen(k) {
+      quality.setSharpness?.(k);
+      if (gfx && current) {
+        gfx.setRatio?.(ratioFor(current.module));
+        loop.kick();
+      }
     },
     unmount() {
       seq += 1;

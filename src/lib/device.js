@@ -16,12 +16,15 @@
 //   grade     how strong a desktop's graphics chip is, from its name
 //             (lib/gpuGrade): 'ultra', 'high', 'mid', or null where the name
 //             doesn't say (and on a phone, where the tier already does)
-//   detail    how fine to make textures and geometry: the tier, except that
-//             a desktop's grade moves it, up to 'ultra' for a strong card (an
-//             RTX 5090 or 4080, an RX 7900, an M3 Max) and down to 'mid' for
-//             a weak built-in chip. lib/detail turns it into texture sizes,
-//             segment counts and the like. The tier is never 'ultra': every
-//             check of the tier stays as it was.
+//   detail    the quality level in force: 'low', 'mid', 'high' or 'ultra'.
+//             Auto gives a laptop or desktop with a graphics chip 'ultra'
+//             (one whose chip grades 'mid', old built-in graphics, 'high'),
+//             a phone or a small computer its tier, software WebGL 'low'.
+//             lib/detail turns it into texture sizes and segment counts,
+//             lib/budgets into how much is drawn. The tier is never
+//             'ultra': every check of the tier stays as it was.
+//   auto      the level Auto picks here, whatever the visitor pinned (the
+//             settings panel labels Auto with it)
 //
 // `budget()` turns the tier into numbers a renderer uses: the sharpest pixel
 // ratio, multisampling, shadows, bloom, texture filtering; at the ultra
@@ -31,8 +34,11 @@
 // and a strong card that struggles anyway is held at high from then on
 // (`capDetail`, kept for that chip only).
 //
-// For testing on a desktop: ?quality=low (or mid, high, ultra) in the
-// address, or localStorage 'tp-quality', pins the tier and the detail level.
+// The visitor picks a mode in the settings panel (components/settings): Auto,
+// or a level, kept as localStorage 'tp-quality' (`setQuality`, which tells
+// the page with a 'tp:quality' event; `quality()` reads it back). A level
+// picked by hand is never capped. ?quality=low (or mid, high, ultra) in the
+// address pins one for that visit, over what is kept.
 
 import { gpuGrade } from './gpuGrade';
 
@@ -59,13 +65,13 @@ export const BUDGETS = {
   low: { tier: 'low', ratio: 1, antialias: false, samples: 0, shadows: false, shadowMap: 512, bloom: 0, aniso: 1, stars: 0.35 },
 };
 
-// The detail level from the tier and the chip's grade: a desktop's grade
-// moves it a step either way; nothing else does. A cap (`{ renderer,
-// level }`, kept when this chip struggled at ultra) holds it down for that
-// chip only.
+// What Auto picks from the tier and the chip's grade: a laptop or desktop
+// with a graphics chip ultra, unless its chip grades 'mid' (high); anything
+// else its tier. A cap (`{ renderer, level }`, kept when this chip struggled
+// at ultra) holds it down for that chip only.
 function detailOf(tier, grade, renderer, cap) {
   let detail = tier;
-  if (tier === 'high' && (grade === 'ultra' || grade === 'mid')) detail = grade;
+  if (tier === 'high') detail = grade === 'mid' ? 'high' : 'ultra';
   if (cap && cap.renderer === renderer && LEVELS.includes(cap.level) && LEVELS.indexOf(detail) > LEVELS.indexOf(cap.level)) detail = cap.level;
   return detail;
 }
@@ -87,24 +93,43 @@ export function classifyDevice({ ua = '', touchPoints = 0, coarse = false, scree
     if (why.length) tier = 'mid';
   }
   const grade = phone ? null : gpuGrade(renderer);
-  let detail = detailOf(tier, grade, renderer, cap);
+  const auto = detailOf(tier, grade, renderer, cap);
+  let detail = auto;
+  // (a level picked by hand: never capped)
   if (LEVELS.includes(override)) {
     tier = override === 'ultra' ? 'high' : override;
     detail = override;
   }
-  return { tier, phone, saveData: lowData, memory: memory ?? null, why, grade, detail };
+  return { tier, phone, saveData: lowData, memory: memory ?? null, why, grade, detail, auto };
+}
+
+function readUrlLevel() {
+  try {
+    const q = new URLSearchParams(window.location.search).get('quality') ?? new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('quality');
+    return LEVELS.includes(q) ? q : null;
+  } catch {
+    return null;
+  }
 }
 
 function readOverride() {
   try {
-    const q = new URLSearchParams(window.location.search).get('quality') ?? new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('quality');
-    if (LEVELS.includes(q)) return q;
+    const q = readUrlLevel();
+    if (q) return q;
     const kept = window.localStorage.getItem(KEY);
     return LEVELS.includes(kept) ? kept : null;
   } catch {
     return null;
   }
 }
+
+const readKey = (key) => {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
 
 // The cap a chip earned by struggling at ultra (see `capDetail`).
 function readCap() {
@@ -153,6 +178,42 @@ export function noteGpu(info) {
   cached = null;
 }
 
+// Look again from scratch (the tests; a mode just changed).
+export function resetDevice() {
+  cached = null;
+}
+
+// The mode the visitor chose ('auto' or a level; the address's ?quality=
+// counts as chosen, and `pinned` says it's the address's, which a pick in
+// the panel can't override), the level in force, and what Auto would pick.
+export function quality() {
+  const d = device();
+  return { mode: readOverride() ?? 'auto', level: d.detail, auto: d.auto, pinned: readUrlLevel() != null };
+}
+
+// Keep a mode ('auto' forgets the pick) and tell the page: a 'tp:quality'
+// event on window with the level now in force. The runtime hears it and
+// retunes the world that's up, or offers to reload it; scenes built later
+// are built to the new level.
+export function setQuality(mode) {
+  if (mode !== 'auto' && !LEVELS.includes(mode)) return;
+  try {
+    if (mode === 'auto') window.localStorage.removeItem(KEY);
+    else window.localStorage.setItem(KEY, mode);
+  } catch {
+    /* storage unavailable: it lasts for this page */
+  }
+  cached = null;
+  window.dispatchEvent(new CustomEvent('tp:quality', { detail: device().detail }));
+}
+
+// How sharp to draw against the level's own pixel ratio: ½ to 2, 1 by
+// default (the settings panel's Sharpness, kept as 'tp-sharpness').
+export function sharpness() {
+  const k = Number.parseFloat(readKey('tp-sharpness'));
+  return Number.isFinite(k) ? Math.min(2, Math.max(0.5, k)) : 1;
+}
+
 // Hold this chip at `level` from now on (lib/detail calls it when frames
 // stayed late at ultra with every softening already used up). Kept with the
 // chip's name, so a new graphics card starts fresh; ?quality=ultra tries it
@@ -184,7 +245,7 @@ export const budget = (tier) => {
 export function pixelRatio(cap = 2, tier) {
   const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
   const b = budget(tier);
-  return Math.min(cap, b.ratio, Math.max(dpr, b.minRatio ?? 0));
+  return Math.min(cap, b.ratio, Math.max(dpr, b.minRatio ?? 0) * sharpness());
 }
 
 // Room left in this site's storage, in MB (null where the browser won't say).
@@ -201,12 +262,15 @@ export async function storageFree() {
 // Whether a world of `mb` megabytes should wait for the visitor to say so
 // before it downloads its 3D, and why. Desktops just load. Phones load the
 // light ones and ask about the heavy ones; a weak device, Data Saver, or
-// too little room left asks about anything but the lightest.
+// too little room left asks about anything but the lightest. The visitor
+// can say not to ask (the settings panel's Data, 'tp-ask-download' off):
+// then only too little room still asks.
 export const HEAVY_MB = 3;
 export function worldCheck(mb, dev = device(), free = null) {
   if (mb <= 1) return { ask: false, why: null };
-  if (dev.saveData) return { ask: true, why: 'data' };
   if (free != null && free < mb * 4) return { ask: true, why: 'storage' };
+  if (readKey('tp-ask-download') === 'off') return { ask: false, why: null };
+  if (dev.saveData) return { ask: true, why: 'data' };
   if (dev.tier === 'low') return { ask: true, why: dev.why.includes('software') ? 'software' : 'weak' };
   if (dev.tier === 'mid' && dev.phone && mb >= HEAVY_MB) return { ask: true, why: 'phone' };
   return { ask: false, why: null };

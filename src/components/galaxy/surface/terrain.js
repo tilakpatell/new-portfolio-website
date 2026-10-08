@@ -66,7 +66,11 @@ const LAYERS = {
   // `at`, falling away to nothing by `r`, its edge broken up
   island: (x, z, l, seed) => {
     const [cx, cz] = l.at ?? [0, 0];
-    const d = Math.hypot(x - cx, z - cz) * (1 + fbm(x / (l.r * 0.5), z / (l.r * 0.5), { octaves: 3, seed }) * (l.ragged ?? 0.35));
+    const far = Math.hypot(x - cx, z - cz);
+    const ragged = l.ragged ?? 0.35;
+    // (out of its reach however the edge is broken, fbm being -1…1: no noise needed)
+    if (far * (1 - ragged) >= l.r && (l.core ?? 0.25) < 1) return 0;
+    const d = far * (1 + fbm(x / (l.r * 0.5), z / (l.r * 0.5), { octaves: 3, seed }) * ragged);
     return smoothstep(l.r, l.r * (l.core ?? 0.25), d) * l.height;
   },
   // a constant
@@ -92,11 +96,16 @@ export function makeRaw(ground) {
 // A world's flats: each { at: [x, z], r, edge, h } (h: the height it's
 // levelled to; left out, the land's own height at its middle)
 export function levelled(raw, flats = []) {
-  const pads = flats.map((f) => ({ x: f.at[0], z: f.at[1], r: f.r, edge: f.edge ?? Math.max(8, f.r * 0.6), h: f.h ?? raw(f.at[0], f.at[1]) }));
+  const pads = flats.map((f) => {
+    const edge = f.edge ?? Math.max(8, f.r * 0.6);
+    return { x: f.at[0], z: f.at[1], r: f.r, edge, reach: f.r + edge, h: f.h ?? raw(f.at[0], f.at[1]) };
+  });
   if (!pads.length) return raw;
   return (x, z) => {
     let h = raw(x, z);
     for (const p of pads) {
+      // (far off on either axis: out of its reach, without the square root)
+      if (Math.abs(x - p.x) >= p.reach || Math.abs(z - p.z) >= p.reach) continue;
       const d = Math.hypot(x - p.x, z - p.z);
       if (d >= p.r + p.edge) continue;
       const w = 1 - smoothstep(p.r, p.r + p.edge, d);
@@ -116,6 +125,7 @@ export function dug(height, pits = []) {
   return (x, z) => {
     let h = height(x, z);
     for (const p of holes) {
+      if (Math.abs(x - p.x) >= p.r || Math.abs(z - p.z) >= p.r) continue;
       const d = Math.hypot(x - p.x, z - p.z);
       if (d >= p.r) continue;
       const w = p.cone ? (1 - d / p.r) ** 0.85 : 1 - smoothstep(p.r * 0.7, p.r, d);

@@ -24,5 +24,5 @@ export const RIDES = {
   // from its tail to 1.8 m at the shoulders, the kaadu's saddle tops out at 2 m)
   tauntaun: { name: 'the tauntaun', figure: 'tauntaun', top: 8, boost: 13, accel: 6, brake: 12, turn: 2.1, hover: 0, bank: 0.08, radius: 0.8, grip: 1, seat: [0, 1.85, 0.1], cam: [6.5, 2.8] },
   kaadu: { name: 'the kaadu', figure: 'kaadu', top: 9, boost: 14, accel: 7, brake: 12, turn: 2.2, hover: 0, bank: 0.08, radius: 0.8, grip: 1, seat: [0, 2.0, 0], cam: [6.5, 2.6] },
-  bantha: { name: 'the bantha', figure: 'bantha', top: 4.5, boost: 7, accel: 3, brake: 6, turn: 1.1, hover: 0, bank: 0, radius: 1.6, grip: 1, seat: [0, 2.7, -0.2], cam: [9, 3.6] },
+  bantha: { name: 'the bantha', figure: 'bantha', top: 4.5, boost: 7, accel: 3, brake: 6, turn: 1.1, hover: 0, bank: 0, radius: 1.6, grip: 1, seat: [0, 2.6, 0.65], cam: [9, 3.6] },
 };
