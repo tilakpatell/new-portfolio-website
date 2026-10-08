@@ -9,6 +9,13 @@
 const DB = 'tp-bakes';
 const STORE = 'masks';
 
+// bumped whenever the bake itself changes, so old masks are never read back
+export const BAKE_VERSION = 1;
+// the most masks kept; the oldest go first
+const KEEP = 24;
+// how long a lookup may hold the bake up before it's given up on
+export const LOOKUP_MS = 400;
+
 // FNV-1a over a string, as 8 hex digits
 function fnv(str) {
   let h = 0x811c9dc5;
@@ -21,36 +28,56 @@ function fnv(str) {
 
 const r = (n, step) => Math.round(n / step) * step;
 
-// What stands in the way of the light: each mesh's vertex count and where it
-// is in the world (to a decimetre), so anything added, swapped or moved gives
-// another key.
+// What stands in the way of the light: each mesh's whole world matrix (to a
+// hundredth, so a turn or a scale counts as well as a move), its vertex count
+// and its box, so anything added, swapped, moved or reshaped gives another key.
 function describeCasters(casters) {
   const parts = [];
   for (const root of casters ?? []) {
     root.updateMatrixWorld?.(true);
     root.traverse?.((o) => {
       if (!o.isMesh || !o.geometry) return;
-      const n = o.geometry.attributes?.position?.count ?? 0;
-      const e = o.matrixWorld?.elements;
-      const p = e ? `${r(e[12], 0.1).toFixed(1)},${r(e[13], 0.1).toFixed(1)},${r(e[14], 0.1).toFixed(1)}` : '0,0,0';
-      parts.push(`${n}@${p}`);
+      const g = o.geometry;
+      const n = g.attributes?.position?.count ?? 0;
+      if (!g.boundingBox && n) g.computeBoundingBox?.();
+      const b = g.boundingBox;
+      const box = b ? [b.min.x, b.min.y, b.min.z, b.max.x, b.max.y, b.max.z].map((v) => r(v, 0.01).toFixed(2)).join(',') : '';
+      const m = o.matrixWorld?.elements ? Array.from(o.matrixWorld.elements, (v) => r(v, 0.01).toFixed(2)).join(',') : '';
+      parts.push(`${n}[${box}]@${m}`);
     });
   }
   return parts;
 }
 
+const nums = (a, step = 0.01) => (a ? Array.from(a, (v) => r(v, step).toFixed(2)).join(',') : '');
+
 // The key for a bake, or null where the bake can't be told apart from
-// another (no world or place named): then nothing is cached.
-export function bakeKey({ world, place, sun, tier, casters } = {}) {
+// another (no world or sun named): then nothing is cached. `area`, `range`
+// and `params` (the tier's size and sample counts) are what the bake was
+// asked for.
+export function bakeKey({ world, place, sun, tier, casters, area = null, range = null, params = null } = {}) {
   if (!world || !sun) return null;
-  const s = `${r(sun.x, 0.01).toFixed(2)},${r(sun.y, 0.01).toFixed(2)},${r(sun.z, 0.01).toFixed(2)}`;
-  return `${world}/${place ?? ''}/${tier ?? ''}/${s}/${fnv(describeCasters(casters).join('|'))}`;
+  const s = nums([sun.x, sun.y, sun.z]);
+  const a = area ? nums([area.x0, area.z0, area.w, area.d]) : '';
+  const p = params ? [params.size, params.sun, params.sky, params.shadow].join(':') : '';
+  return `v${BAKE_VERSION}/${world}/${place ?? ''}/${tier ?? ''}/${s}/${a}/${nums(range)}/${p}/${fnv(describeCasters(casters).join('|'))}`;
 }
 
+// opens the database; null on any failure. A database that opens after the
+// caller has stopped waiting is closed, never left held.
 function open() {
   return new Promise((resolve) => {
+    let done = false;
+    const finish = (db) => {
+      if (done) {
+        db?.close();
+        return;
+      }
+      done = true;
+      resolve(db);
+    };
     try {
-      if (typeof indexedDB === 'undefined' || !indexedDB) return resolve(null);
+      if (typeof indexedDB === 'undefined' || !indexedDB) return finish(null);
       const req = indexedDB.open(DB, 1);
       req.onupgradeneeded = () => {
         try {
@@ -59,57 +86,107 @@ function open() {
           // (already there)
         }
       };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => resolve(null);
-      req.onblocked = () => resolve(null);
+      req.onsuccess = () => finish(req.result);
+      req.onerror = () => finish(null);
+      req.onblocked = () => finish(null);
     } catch {
-      resolve(null);
+      finish(null);
     }
   });
 }
 
-// { width, height, data } as it was put, or null
+// { width, height, data } as it was put, or null (also when the database
+// doesn't answer within LOOKUP_MS)
 export async function getBake(key) {
   if (!key) return null;
-  const db = await open();
-  if (!db) return null;
-  return new Promise((resolve) => {
-    try {
-      const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(key);
-      req.onsuccess = () => {
-        const v = req.result;
-        db.close();
-        resolve(v && v.data && v.width && v.height ? v : null);
-      };
-      req.onerror = () => {
-        db.close();
-        resolve(null);
-      };
-    } catch {
+  const opened = open();
+  let timer = null;
+  let late = false;
+  const work = opened.then(
+    (db) =>
+      new Promise((resolve) => {
+        if (!db) return resolve(null);
+        if (late) {
+          db.close();
+          return resolve(null);
+        }
+        const end = (v) => {
+          try {
+            db.close();
+          } catch {
+            // (closed already)
+          }
+          resolve(v);
+        };
+        try {
+          const tx = db.transaction(STORE, 'readonly');
+          const req = tx.objectStore(STORE).get(key);
+          tx.onabort = () => end(null);
+          tx.onerror = () => end(null);
+          req.onsuccess = () => {
+            const v = req.result;
+            end(v && v.data && v.width && v.height ? v : null);
+          };
+          req.onerror = () => end(null);
+        } catch {
+          end(null);
+        }
+      }),
+  );
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      late = true;
       resolve(null);
-    }
+    }, LOOKUP_MS);
   });
+  try {
+    return await Promise.race([work, timeout]);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-// keeps the mask; resolves true when it was written, false where it couldn't be
+// keeps the mask (and drops the oldest past KEEP); resolves true when it was
+// written, false where it couldn't be
 export async function putBake(key, { width, height, data } = {}) {
   if (!key || !data) return false;
   const db = await open();
   if (!db) return false;
   return new Promise((resolve) => {
+    let ok = false;
+    const end = () => {
+      try {
+        db.close();
+      } catch {
+        // (closed already)
+      }
+      resolve(ok);
+    };
     try {
       const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put({ width, height, data }, key);
+      const store = tx.objectStore(STORE);
+      store.put({ width, height, data, at: Date.now() }, key);
+      const seen = [];
+      const cur = store.openCursor();
+      cur.onsuccess = () => {
+        const c = cur.result;
+        if (c) {
+          seen.push({ k: c.key, at: c.value?.at ?? 0 });
+          c.continue();
+          return;
+        }
+        seen.sort((x, y) => y.at - x.at);
+        for (const old of seen.slice(KEEP)) store.delete(old.k);
+      };
       tx.oncomplete = () => {
-        db.close();
-        resolve(true);
+        ok = true;
+        end();
       };
-      tx.onerror = tx.onabort = () => {
-        db.close();
-        resolve(false);
-      };
+      tx.onerror = tx.onabort = end;
     } catch {
-      resolve(false);
+      end();
     }
   });
 }

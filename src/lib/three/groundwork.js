@@ -285,7 +285,7 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
     bakedDir = sunDirection(sun, new THREE.Vector3());
     const preset = BAKE_TIERS[tier] ?? BAKE_TIERS.mid;
     const signal = abort;
-    const key = cache?.world && !keepShadows ? bakeKey({ world: cache.world, place: cache.place, sun: bakedDir, tier, casters: roots }) : null;
+    const key = cache?.world && !keepShadows ? bakeKey({ world: cache.world, place: cache.place, sun: bakedDir, tier, casters: roots, area, range, params: preset }) : null;
     const fresh = () =>
       bakeFloorTexture(renderer, scene, {
         area,
