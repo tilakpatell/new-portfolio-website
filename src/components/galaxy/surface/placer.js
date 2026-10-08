@@ -10,8 +10,9 @@
 // items, opts), update(t, dt, you), signal(name, on) (to the built things that
 // move when something happens: a trapdoor, a gate), setZone(inZone), ready (a
 // promise: everything asked for so far is in), dispose() }
-//   Whatever stands on the ground is seated on the lowest ground under its
-//   footprint (seat.js), so it never floats on a slope.
+//   With `seated` (ultra: amounts.js), whatever stands on the ground is
+//   seated on the lowest ground under its footprint (seat.js), so it never
+//   floats on a slope; below ultra, things stand as they always have.
 //   Given `shadowOnly` (near.js's createShadowPhase(…).only), scattered
 //   things don't cast shadows themselves: a stand-in for each part, drawn
 //   only into the sun's shadow, holds just the instances near `you`
@@ -155,7 +156,7 @@ export async function wearModel(object, role, { wear = wearCore, load = loadScan
   return seen.size;
 }
 
-export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null }) {
+export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null, seated = false }) {
   const group = new THREE.Group();
   group.name = 'things';
   parent.add(group);
@@ -178,9 +179,10 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   };
   // stood on the lowest ground under its footprint (seat.js), so no side
   // floats over a slope: only what's stood on the ground itself (not one
-  // hung at a height, nor a room's); a big one (a building, put on a flat)
-  // goes down a metre at most, its own foundations holding the rest
-  const seatable = (spec) => !spec.abs && spec.y == null && !spec.zone;
+  // hung at a height, nor a room's); a model put on its own (a building, a
+  // hut, a landmark) goes down a metre at most, its own foundations holding
+  // the rest
+  const seatable = (spec) => seated && !spec.abs && spec.y == null && !spec.zone;
   const seat = (spec, at, r, max = 2) => {
     if (!seatable(spec) || !(r > 0.3)) return at;
     at[1] = seatY(groundY, at[0], at[2], r, { max }) - (spec.sink ?? 0);
@@ -291,12 +293,11 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             o.position.set(...at);
             o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
             o.scale.setScalar(spec.scale ?? 1);
-            // (seated by its box, a little inside its edges: up to a metre
-            // down for anything bigger than a hut)
+            // (seated by its box, a little inside its edges: a metre down at most)
             if (seatable(spec)) {
               const size = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
               const r = Math.min(size.x, size.z) * 0.4;
-              o.position.y = seat(spec, at, r, r > 6 ? 1 : 2)[1];
+              o.position.y = seat(spec, at, r, 1)[1];
             }
             const holder = spec.zone ? rooms : group;
             holder.add(o);

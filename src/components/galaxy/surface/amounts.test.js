@@ -16,6 +16,7 @@ describe("a surface's amounts by level", () => {
       depthN: 512,
       relief: 0,
       splat: false,
+      seat: false,
       clouds: 0,
     });
   });
@@ -28,6 +29,16 @@ describe("a surface's amounts by level", () => {
     expect([a.map, a.marks, a.depthN]).toEqual([256, 256, 256]);
     expect(a.rings).toEqual({ small: true, scale: 1 });
     expect(a.splat).toBe(false);
+    expect(a.seat).toBe(false);
+  });
+
+  it('are the phone numbers on a small screen whatever the level', () => {
+    for (const level of ['low', 'mid', 'ultra']) {
+      const a = amountsFor({ level, small: true });
+      expect(a.grid.n, level).toBe(160);
+      expect(a.scatter, level).toBe(0.6);
+      expect(a.grass.side, level).toBe(120);
+    }
   });
 
   it('double the ground and the water, and half as much again of the props, at ultra', () => {
@@ -41,6 +52,7 @@ describe("a surface's amounts by level", () => {
     expect(a.depthN).toBe(1024);
     expect(a.relief).toBe(1);
     expect(a.splat).toBe(true);
+    expect(a.seat).toBe(true);
     expect(a.clouds).toBe(1);
     expect(verts(discRings(a.rings)) / verts(discRings({}))).toBeGreaterThan(1.7);
   });

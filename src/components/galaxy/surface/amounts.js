@@ -1,6 +1,6 @@
 // How much a world's surface draws, from the level's row of the budget
 // table (lib/budgets: terrain, props, grass, water, LOD1) and whether the
-// screen is small (a phone keeps the numbers it was tuned at, never more).
+// screen is small (a phone keeps the numbers it was tuned at, whatever its level).
 // High, on a big screen, is what the surface has always drawn; ultra draws
 // the ground twice as fine, half as many props again, twice the grass
 // reaching further, twice the water, and the extras only it has (the fine
@@ -13,7 +13,8 @@
 //     depth bake), relief (terrain.js's fine relief, 0…1), splat (the
 //     layered ground: ground.js), clouds (sky.js's finer clouds, 0 or 1) }
 // (whether a model's light copy stands in far off is the placer's, from
-// the same row: catalog's wantsLod)
+// the same row: catalog's wantsLod; seat: things seated on the lowest
+// ground under them, placer.js, ultra only)
 
 import { budget } from '../../../lib/budgets';
 
@@ -32,15 +33,16 @@ export function amountsFor({ level = 'high', small = false } = {}) {
   const grassSize = Math.round(HIGH.grassSize * Math.cbrt(b.grass));
   if (small)
     return {
-      grid: { n: Math.min(SMALL.n, Math.round(HIGH.n * b.terrain)), grow: SMALL.grow },
-      scatter: Math.min(SMALL.scatter, b.props),
-      grass: { side: Math.min(SMALL.grassSide, grassSide), size: HIGH.grassSize },
+      grid: { n: SMALL.n, grow: SMALL.grow },
+      scatter: SMALL.scatter,
+      grass: { side: SMALL.grassSide, size: HIGH.grassSize },
       map: SMALL.map,
       marks: SMALL.map,
       rings: { small: true, scale: 1 },
       depthN: SMALL.depth,
       relief: 0,
       splat: false,
+      seat: false,
       clouds: 0,
     };
   return {
@@ -54,6 +56,7 @@ export function amountsFor({ level = 'high', small = false } = {}) {
     depthN: pow2(HIGH.depth * b.water),
     relief: ultra ? 1 : 0,
     splat: ultra,
+    seat: ultra,
     clouds: ultra ? 1 : 0,
   };
 }

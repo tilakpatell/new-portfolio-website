@@ -75,12 +75,12 @@ const LAYERS = {
 export const LAYER_TYPES = Object.keys(LAYERS);
 
 // The fine relief ultra lays over the land (amounts.js's `relief`, 0…1):
-// two more octaves than any layer goes to, small hollows and rises a few
+// two more octaves than any layer goes to, small hollows and rises 6 to 12
 // metres across and a hand's height (the grid at ultra is fine enough to
 // draw them, a vertex every 2.5 m). A site may scale it (`ground.relief`:
 // 0.5 for packed snow, 1.4 for broken lava). Under the flats it's levelled
 // away with the rest, so pads and built ground stay flat.
-const RELIEF = { metres: [9, 3.2], height: [0.26, 0.09] };
+const RELIEF = { metres: [12, 6], height: [0.26, 0.1] }; // (every wavelength ≥ 5 m: two cells or more of ultra's 2.5 m grid, so none shimmers)
 const fineRelief = (x, z, seed) =>
   fbm(x / RELIEF.metres[0], z / RELIEF.metres[0], { octaves: 2, seed: seed + 977 }) * RELIEF.height[0] + noise2(x / RELIEF.metres[1], z / RELIEF.metres[1], seed + 991) * RELIEF.height[1];
 

@@ -22,14 +22,13 @@
 // colour map laid over the palette's colour and its normal map tilting the
 // light, at the scan's real size, fading out between `near` and `far`
 // metres so the far ground stays the shader's own. Not on the low tier.
-// Laid flat on the ground, it fades out on the steep (it would stretch down
-// a cliff); the rock colour holds there instead.
 //
 // At ultra (`splat`, amounts.js's), the ground is layered (splat.js's
 // scans): the site's scan at two sizes turned against each other (so no
 // tile repeats), a second scan in broad patches, rock wrapped round the
 // slopes from the three axes, small blotches of a fourth, all reaching
-// further out; and it's wet by the water and in the hollows (darker,
+// further out (never stretched down a cliff: the flat-laid scans give way
+// to the wrapped rock there); and it's wet by the water and in the hollows (darker,
 // smoother, catching the light). Its own program (SPLAT): high's is as it was.
 
 import * as THREE from 'three';
@@ -204,8 +203,7 @@ ${NOISE}`,
   c *= 1.0 - 0.32 * gWet;
 #else
   if (uScanK.y > 0.0) {
-    // (laid flat, so it fades out on the steep, where it would stretch)
-    float scanNear = (1.0 - smoothstep(uScanFade.x, uScanFade.y, dist)) * smoothstep(0.55, 0.8, vGroundN.y);
+    float scanNear = 1.0 - smoothstep(uScanFade.x, uScanFade.y, dist);
     vec3 sc = texture2D(uScan, xz * uScanK.x).rgb / max(uScanK.w, 0.05);
     c *= mix(vec3(1.0), sc, uScanK.y * scanNear);
   }

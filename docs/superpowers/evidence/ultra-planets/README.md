@@ -33,3 +33,8 @@ the ultra row's 1,500.
 
 No page errors at either level on any of the six worlds other than the 403s
 both runs share (resources the sandbox can't reach).
+
+The `*-high` screenshots were taken before review moved the seating
+(`seat.js`) and the cliff fade of the flat-laid scan to ultra only, so their
+props sit seated as ultra's do; at high now, things stand as on main. The
+counts are the same either way (neither changes a draw call or a triangle).
