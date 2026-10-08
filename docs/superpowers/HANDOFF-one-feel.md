@@ -60,7 +60,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 1B | | | | |
 | 1C | session_01ALnkhhCHveAZqkCSpnBLq2 | `claude/one-feel-car` | | |
 | 1D | | | | |
-| 1E | | | | |
+| 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 2A | | | | |
 | 2B | | | | |
 | 2C | | | | |
@@ -74,3 +74,6 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **1C, for 2C:** the Expanse module has `feel` on the world and on `window.__EXPANSE__`, and `vehicle.spec` is its own copy of `CAR`; its `tune()` is yours: `[...carGroups(world.vehicle), ...feelGroups(world.feel)]`. The chassis’s hit gain is a two-line copy of his law in `module.js` (`hitGain`); swap it for `lib/impact.js`’s once 1B is in.
 - **1C, for 2B, 2D and the rest:** `attachVehicleBody` takes `forward: 'z'` for a car modelled facing +z; the default is +x, as the physics car. The body must be one pivot over the chassis meshes, never the wheels, with `base` its underside’s y in the pivot’s parent. A world without a measured acceleration feeds `lateralAccel = speed × yaw rate` and `forwardAccel` its speed’s change over the frame.
 - **1C, for 1A and 2C:** the antenna (`buggy-antenna`, 6 sides, no shadow) is one more draw (settle 23 → 24 on `expanseDrive`); it is thin and dark and hard to see from the chase camera at 15 m. On the palette it might take the body’s colour, or a tip. Under a sustained turn the tip sits at `antenna.max` (0.6 × 1.2 = 41°): his numbers, kept; a finding for whoever tunes it on the panel.
+- **1E, for 2A–2F:** `collidersOf(model).bodies` gives descs relative to the model’s root; a world that stands the model somewhere adds that place to each body’s `position` and `rotation` (`fromModel.js`’s `colliderIn` composes a collider into its body’s frame). A `physical` node is hidden, so a body that is also the visible mesh vanishes: model the shapes beside the look. three.js’s loader strips `.` from node names (`cuboid.001` loads as `cuboid001`), which the prefix rules allow for.
+- **1E, for the landings’ owner:** a model’s physical nodes become one landing body (the first’s type, every collider, the masses summed): `landings/physics.js` sets its own friction, restitution and damping, so a node’s `userData.friction` and `restitution` are not used there yet, and a `kinematic` node stands fixed. `landings/models.js` sizes a model by `Box3.setFromObject`, which counts hidden objects: a physical mesh larger than the look would shrink the look a little (the web cut strips the meshes of the shapes sized by scale, so only a body’s own mesh, a hull or a trimesh can).
+- **1E, for the owner:** `scripts/gen3d/README.md` and `docs/README.md`’s `assets/` row don’t yet mention `--check-colliders` and `docs/assets/colliders.md` (outside the lane’s files).

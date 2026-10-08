@@ -16,7 +16,7 @@
 - No gameplay change: every key, save key, achievement, sound, dev hook (`window.__universe()`, `window.__RUNTIME__`) as before; every pose still resolves.
 - No new dependency; no runtime asset service; rebuilt maps are committed.
 - Draw calls and triangles at every pose at or under `lab/universe/baseline/high.json`; the sky's and the belt's lower.
-- Hero GLBs under 1.5 MB together after lane A. Both keep their triangle counts (60,050 and 133,795).
+- Hero GLBs' *maps* under 1.5 MB together after lane A (they were 1.79 MB: the 2.7 MB and 1.9 MB the audit gave are the files, of which 2.77 MB is meshopt-quantised geometry that the kept triangle counts keep). Both keep their triangle counts (60,050 and 133,795).
 - `galaxy/sky.js`'s defaults are unchanged: `dim` 1, stars past 4,200 at 0.7. Only the universe map passes otherwise. `galaxy/sky.test.js` pins the defaults.
 - Colours: `universe/palette.js` once it is on `main`; until then the hex the spec or the code gives, with a comment `// PALETTE.<name>`.
 - British spelling, curly quotes, plain sentences; comments say why. No model identifiers in code, docs or commit messages. Commits end with the attribution lines the harness gives.
@@ -45,10 +45,10 @@
 **Interfaces:**
 - Produces: `downscale(buffer, { size, sharpen: { radius, amount } | null }) → Promise<Buffer>` (sharp: Lanczos 3 resize, then unsharp when asked); `localContrast(buffer) → Promise<number>` (the standard deviation of a 5 × 5 high-pass of the luminance, 0..1); `rewrite(path, { albedo: 512, normal: 512, mr: 256, quality: 82, check: false }) → { before: [{ name, w, h, kB, contrast }], after: [...], bytes: { before, after } }`; CLI `node scripts/ship-maps.mjs [--check] <glb>...`.
 
-- [ ] **Step 1: Write the failing tests** `ship-maps.test.mjs`: `downscale` of the fixture to 32 with the sharpen keeps the line's contrast within 20 % of the original's (measure `localContrast` before and after); without the sharpen it loses more than 20 % (so the sharpen is doing something); `rewrite` with `check: true` leaves the file's bytes untouched (hash before and after) and reports nine textures for the Falcon fixture (use a tiny GLB the test builds with gltf-transform: two 64² textures).
+- [ ] **Step 1: Write the failing tests** `ship-maps.test.mjs`: `downscale` of the fixture to 32 with the sharpen keeps the line's contrast within 20 % of the original's (measure `localContrast` before and after); without the sharpen it loses more than 20 % (so the sharpen is doing something); `rewrite` with `check: true` leaves the file's bytes untouched (hash before and after) and reports both textures of a tiny GLB the test builds with gltf-transform (two 64² textures).
 - [ ] **Step 2:** `npx vitest run scripts/ship-maps.test.mjs` → FAIL.
 - [ ] **Step 3: Implement.** gltf-transform `NodeIO` with `ALL_EXTENSIONS` and the meshopt decoder/encoder (as `ktx2.mjs` registers them); for each texture, classify by slot (`baseColorTexture` → albedo, `normalTexture` → normal, `metallicRoughnessTexture`/`occlusionTexture` → mr, else albedo), `downscale`, re-encode WebP at `quality`, set it back; write with meshopt kept. Header comment: why (the audit's "5 to 6 texels a pixel").
-- [ ] **Step 4:** PASS. Run on both GLBs: `node scripts/ship-maps.mjs public/models/sketchfab/falcon-hd.glb public/models/sketchfab/xwing-hd.glb`; read the table; `ls -la` both under 1.5 MB together. Open `/universe` in the dev server (`npm run dev`, the smoke check) and look at the Falcon at `falcon-sun` through the check once C0 is merged.
+- [ ] **Step 4:** PASS. Run on both GLBs: `node scripts/ship-maps.mjs public/models/sketchfab/falcon-hd.glb public/models/sketchfab/xwing-hd.glb`; read the table; the maps under 1.5 MB together (the files are 3.2 MB: their geometry is 2.77 MB). Open `/universe` in the dev server (`npm run dev`, the smoke check) and look at the Falcon at `falcon-sun` through the check once C0 is merged.
 - [ ] **Step 5:** Commit: `git commit -m "The hero ships' maps at the size the camera sees them: 512 with the panel lines kept, under 1.5 MB together"`.
 
 ### Task A2: A graphic light ratio
@@ -61,15 +61,15 @@
 - Produces: `livery.rim({ colour, dir, key })` accepts an optional `key` colour (linear `[r, g, b]`); the hook's uniforms `uRimColour` (the complement mix), `uRimStrength` (0.5), `uFillScale` (0.25). `complement(key) → [r, g, b]`: `1 − key` normalised to the key's luminance, pure and exported.
 
 - [ ] **Step 1: Write the failing tests**: `complement([1, 0.6, 0.3])` is bluish with the same luminance within 5 %; `rim({ colour, dir, key })` sets `uRimColour` to `mix(colour, complement(key), 0.5)`; without `key` it is `colour` (today's behaviour); `uRimStrength` 0.5; `uFillScale` 0.25; a material with `userData.noPaint` is untouched.
-- [ ] **Step 2:** FAIL. **Step 3: Implement**: in the hook's GLSL, after the paint, scale the fill light's contribution: three's `#include <lights_fragment_begin>` sums every directional light; the fill is the second `DirectionalLight` the scene makes (read `scene.js` to confirm its index), so the cleanest cut is a `uFillScale` multiplied into `directLight.color` inside the light loop for `UNROLLED_LOOP_INDEX == 1` (an `onBeforeCompile` string replace on `lights_fragment_begin`, the way `planets.js`'s `keyHook` already does it: copy its pattern). Rim strength 0.5 from the profile.
+- [ ] **Step 2:** FAIL. **Step 3: Implement**: in the hook's GLSL, after the paint, scale the fill light's contribution: three's `#include <lights_fragment_begin>` sums every directional light; the fill is the second `DirectionalLight` the scene makes (read `scene.js` to confirm its index), so the cleanest cut is a `uFillScale` multiplied into `directLight.color` inside the light loop for `UNROLLED_LOOP_INDEX == 1` (an `onBeforeCompile` string replace on `lights_fragment_begin`, the way `planets.js`'s `keyHook` already does it: copy its pattern). Rim strength 0.5 from the profile. (The fill is found by its direction, the rim's, not by its index in the loop: three sorts shadow-casting lights first, and another hook may expand the loop; a macro over `getDirectionalLightInfo` after `lights_pars_begin` scales it.)
 - [ ] **Step 4:** PASS; `npm run lint`. The scene's `rim` call gains `key: l.key.colour` (one line in `scene.js`: coordinate with lane C, which owns `scene.js`: ask in your PR body for lane C to add the line if their PR is open; else add it, the one line, and say so).
 - [ ] **Step 5:** Commit: `git commit -m "The hull's light is graphic: key 1, fill a quarter, a half-strength rim in the key's complement"`.
 
 ### Task A3: Engines under the ship
 
 **Files:**
-- Modify: `src/components/universe/engines.js`, `engines.test.js`
-- Read first: `engines.js` whole; `shipModels.js`'s `ENGINES`, `LENGTH`
+- Modify: `src/components/universe/engines.js`, `engines.test.js`; and `trail.js` (the hero's long plume is a trail, not an `engines.js` glow: an optional `cap` it takes from `engines.js`'s `capPlume`, the galaxy's trails untouched) with `scene.js`'s one `createTrail` call for the hero
+- Read first: `engines.js` whole; `trail.js`; `shipModels.js`'s `ENGINES`, `LENGTH`
 
 **Interfaces:**
 - Produces: `ENGINE_CAP = { length: 0.6, luminance: 0.8 }` exported; `plumeLength(throttle, boost, length) → number ≤ length × 0.6`; the plume's peak colour scaled so its luminance ≤ 0.8 × a lit hull's (take 1.0 as the hull's lit luminance in HDR units; the engine's hot centre today passes the bloom threshold 1.7: it no longer does; the bloom still catches the shots and the suns).

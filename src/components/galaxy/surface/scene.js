@@ -343,9 +343,10 @@ export async function create(canvas, ctx) {
   const windAngle = site.ground.wind ?? 0;
   const wind = createWind({ strength: site.grass?.wind ?? 0.4, angle: windAngle });
   const kit = createKit({ seed: 31, wind: { angle: windAngle } });
-  // (the scatter casts its shadow only near you: near.js)
+  // (the scatter casts its shadow only near you: near.js; a kit model it's
+  // given is in the house's look from the start)
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
-  const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null, seated: amounts.seat, models, props: PROPS, scatter: SCATTER });
+  const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null, seated: amounts.seat, house, models, props: PROPS, scatter: SCATTER });
   // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
   const floaters = [];
   for (const t of site.things_all) {

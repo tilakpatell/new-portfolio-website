@@ -229,15 +229,20 @@ export function tune(material, { roughness = null, metalness = null, metalNames 
 }
 
 // The hero ships' finish (universe/shipModels.js): a clay-looking export
-// read as paint over metal. The paint a satin, 0.42 to 0.72 rough, a tenth
+// read as paint over metal. The paint a satin, 0.42 to 0.6 rough (the top
+// low enough that the key makes a real highlight on the hull), a tenth
 // metallic; the parts named as metal (not the hull or its plates, which are
 // painted on a ship) 0.65; and the space round it in the hull a little
 // brighter than the scene's own, 1.3, so the hull catches the stars.
 export const SHIP_PROFILE = {
-  roughness: [0.42, 0.72],
+  roughness: [0.42, 0.6],
   metalness: { metal: 0.65, paint: 0.1 },
   metalNames: /metal|steel|iron|chrome|gold|silver|brass|copper|alumin|titan|trim|engine|exhaust|thruster|nozzle|gun|cannon|barrel|pipe/i,
   envMapIntensity: 1.3,
+  // The hull's light as a graphic ratio, not a photographic one: the key at
+  // full, the fill at a quarter, the rim at a half (livery.js reads it). A
+  // soft 2.35 : fill made the ship the flattest thing in the frame.
+  light: { key: 1, fill: 0.25, rim: 0.5 },
 };
 
 // `tune` over every material under a root, each once.

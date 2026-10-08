@@ -1,5 +1,6 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { cellsOf, modelUrls, within } from './furnish';
+import { cellsOf, modelUrls, partsOf, within } from './furnish';
 
 describe('within', () => {
   it("is what the promise gives, when it's in time", async () => {
@@ -75,5 +76,22 @@ describe('cellsOf', () => {
     const before = JSON.stringify(spots);
     cellsOf(spots, { sectors: 8, inner: 20 });
     expect(JSON.stringify(spots)).toBe(before);
+  });
+});
+
+describe('partsOf', () => {
+  it('instances what a model draws, never its physical nodes or their colliders', () => {
+    const mat = new THREE.MeshBasicMaterial();
+    const model = new THREE.Group();
+    const look = new THREE.Mesh(new THREE.BoxGeometry(), mat);
+    const crate = new THREE.Mesh(new THREE.BoxGeometry(), mat);
+    crate.name = 'crate_physical_dynamic';
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(), mat);
+    hull.name = 'hull';
+    crate.add(hull);
+    model.add(look, crate);
+    const parts = partsOf(model);
+    expect(parts).toHaveLength(1);
+    expect(parts[0].geometry).toBe(look.geometry);
   });
 });
