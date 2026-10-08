@@ -41,7 +41,7 @@ describe('minecraft nodes, the blocks', () => {
 
   it('the tints: white, the pack’s greens when given, water, birch and spruce, in the mesher’s order', () => {
     const m = blockMaterial({ array: array(), pass: 'opaque', colours: { grass: [0, 255, 0] } });
-    const t = m.u.tints.array.map((v) => v.toArray().map((x) => Math.round(x * 255)));
+    const t = m.u.tints.array.map((v) => v.toArray().slice(0, 3).map((x) => Math.round(x * 255)));
     expect(t).toEqual([[255, 255, 255], [0, 255, 0], [0x77, 0xab, 0x2f], [0x3f, 0x76, 0xe4], [0x80, 0xa7, 0x55], [0x61, 0x99, 0x61]]);
   });
 

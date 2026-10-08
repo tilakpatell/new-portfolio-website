@@ -55,7 +55,7 @@ export const TINT_COLOURS = {
 };
 
 const CELL = 12; // the clouds' cell, in blocks (sky.js's)
-const v3 = ([r, g, b]) => new THREE.Vector3(r / 255, g / 255, b / 255);
+const v4 = ([r, g, b]) => new THREE.Vector4(r / 255, g / 255, b / 255, 1);
 
 const made = (Kind, opts, colorNode) => {
   const material = new Kind(opts);
@@ -71,7 +71,9 @@ export function blockMaterial({ array, pass, colours = {} }) {
   const u = {
     atlas: texture(array),
     sun: uniform(1), // the sun's brightness for the light, 0.2 at night to 1 (rules/time.js)
-    tints: uniformArray([[255, 255, 255], c.grass, c.foliage, c.water, c.birch, c.spruce].map(v3), 'vec3'),
+    // (as vec4s: a vec3 array's elements are padded to four in the
+    // uniform buffer, and a tint read from one came out of the next)
+    tints: uniformArray([[255, 255, 255], c.grass, c.foliage, c.water, c.birch, c.spruce].map(v4), 'vec4'),
     anim: uniformArray([0, 1, 2, 3].map(() => new THREE.Vector4(-1, 0, 0, 0)), 'vec4'), // the strip's layer, the frame's, the next's, the blend
     fogColour: uniform(new THREE.Vector3(0.75, 0.85, 1)),
     fogNear: uniform(100),
@@ -117,7 +119,7 @@ export function blockMaterial({ array, pass, colours = {} }) {
   const t = bb.div(bb.mul(-3).add(4)).mul(1.5);
   const sk = s.mul(f.mul(0.65).add(0.35));
   const lm = min(vec3(sk.add(t), sk.add(t.mul(t.mul(0.6).add(0.4).mul(0.6).add(0.4))), s.add(t.mul(t.mul(t).mul(0.6).add(0.4)))), vec3(1)).mul(0.96).add(0.03);
-  const vColour = varying(u.tints.element(tint).mul(shade).mul(ao.mul(0.2).add(0.4)).mul(lm), 'vColour');
+  const vColour = varying(u.tints.element(tint).xyz.mul(shade).mul(ao.mul(0.2).add(0.4)).mul(lm), 'vColour');
   const vDist = varying(length(positionWorld.xz.sub(cameraPosition.xz)), 'vDist');
 
   const colour = Fn(() => {
