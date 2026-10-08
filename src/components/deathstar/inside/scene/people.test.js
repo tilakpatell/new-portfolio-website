@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLIPS } from '../../../../lib/three/clipLibrary';
-import { FAR, LIVE, actOf, aimAngles, blocks, createPeople, createTrack, fallClip, hitClip, liveCount, lodPick, motionFrom } from './people';
+import { FAR, LIVE, actOf, aimAngles, createPeople, createTrack, fallClip, hitClip, liveCount, lodPick, motionFrom } from './people';
+// (on a line of its own: the line above is another branch's to change)
+import { blocks } from './people';
 
 const STEP = 1 / 30;
 const person = (id, kind, x, z, more = {}) => ({ id, kind, x, y: 0, z, yaw: 0, room: 'corr327', hp: 60, mode: 'routine', anim: 'idle', aim: null, ...more });
