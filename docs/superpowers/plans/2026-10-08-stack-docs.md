@@ -71,7 +71,7 @@ Branch `claude/stack-docs-p1` from `origin/claude/tender-hopper-y738gr` (it carr
 - [ ] **Step 3:** Run `npx vitest run scripts/stack-census.test.mjs` → FAIL (module missing).
 - [ ] **Step 4: Implement** `scripts/stack-census.mjs`: header comment (why: a page records no number a person counted), `makeContext` from `./health/context.mjs`, `uncomment` from `./health/graph.mjs` before the import regex (a commented import is not an import), the regex for the four forms, `PAGES` as the spec’s table, the CLI under `if (process.argv[1] === fileURLToPath(import.meta.url))`.
 - [ ] **Step 5:** Run → PASS. `npm run lint` clean.
-- [ ] **Step 6:** Write `docs/stack/README.md`: two sentences (what the folder is, how to add a page), the block with markers, then `node scripts/stack-census.mjs --write`; read the table; the `three` row should be near 677 files and `vitest` the top row. `node scripts/stack-census.mjs --check` exits 0.
+- [ ] **Step 6:** Write `docs/stack/README.md`: two sentences (what the folder is, how to add a page), the block with markers, then `node scripts/stack-census.mjs --write`; read the table; the `three` row is the top one (532 files on 2026-10-08: tests are left out, where the spec’s 677 counted them) and `vitest` shows 0 for the same reason. `node scripts/stack-census.mjs --check` exits 0.
 - [ ] **Step 7:** Commit: `git commit -m "stack-census: which files import which package, written into the stack index"`.
 
 ### Task 3: `stack-pages` in the measure
