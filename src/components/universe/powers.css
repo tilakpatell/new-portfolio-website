@@ -56,18 +56,10 @@
 }
 .ship-power-icon { color: var(--power); filter: drop-shadow(0 0 4px color-mix(in srgb, var(--power) 60%, transparent)); }
 .ship-power-name { max-width: 100%; overflow: hidden; font-size: 0.52rem; letter-spacing: 0.08em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; opacity: 0.85; }
-.ship-power kbd {
-  position: absolute;
-  left: 5px;
-  top: 4px;
-  padding: 0 3px;
-  border: 1px solid rgb(255 255 255 / 0.28);
-  border-radius: 3px;
-  color: rgb(255 255 255 / 0.75);
-  font: inherit;
-  font-size: 0.5rem;
-  line-height: 1.3;
-}
+/* the key, in the corner: the world HUD kit's cap (src/index.css's
+   kbd.hud-cap), in this tile's ink; the corner is the wrapper's, so the
+   tile draws no cap of its own */
+.ship-power-key { position: absolute; left: 5px; top: 4px; color: rgb(255 255 255 / 0.75); line-height: 1; }
 .ship-power small { position: absolute; right: 5px; top: 4px; color: rgb(255 255 255 / 0.8); font-size: 0.5rem; font-variant-numeric: tabular-nums; }
 .ship-power:focus-visible { outline: 2px solid var(--power); outline-offset: 2px; }
 /* on: the tile lit in the crew's colour */
@@ -97,7 +89,7 @@
 @media (pointer: coarse) {
   .ship-powers { left: auto; top: auto; right: calc(var(--panel-w, 0px) + 200px); bottom: 104px; flex-direction: row-reverse; }
   .ship-power { width: 58px; height: 58px; border-radius: 50%; grid-template-rows: 24px auto; padding-top: 7px; }
-  .ship-power kbd { display: none; }
+  .ship-power-key { display: none; }
   .ship-power-name { font-size: 0.44rem; letter-spacing: 0.02em; }
   .ship-power small { right: 50%; top: auto; bottom: -15px; translate: 50% 0; text-shadow: 0 1px 4px rgb(0 0 0 / 0.9); }
 }

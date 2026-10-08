@@ -85,7 +85,9 @@ export default function PowerBar({ ship, reduced, barRef, onPress }) {
               {ICONS[id]}
             </svg>
             <span className="ship-power-name">{p.short}</span>
-            <kbd>{key}</kbd>
+            <span className="ship-power-key">
+              <kbd className="hud-cap">{key}</kbd>
+            </span>
             <small aria-hidden="true" />
           </button>
         );
