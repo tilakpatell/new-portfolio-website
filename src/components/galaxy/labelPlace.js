@@ -58,7 +58,7 @@ export function placeLabels(items, { dot = DOT, bounds = null } = {}) {
       let c = n * 0.5; // (a tie keeps the earlier place: right, as the map always had it)
       for (const q of placed) c += area(b, q) * 10;
       for (const d of dots) if (d.id !== it.id) c += area(b, d) * 10;
-      if (bounds) c += outside(b, bounds) * 4;
+      if (bounds) c += outside(b, bounds) * 10; // (a name cut off by the edge is as lost as one under another)
       if (c < cost) {
         cost = c;
         best = { p, b };

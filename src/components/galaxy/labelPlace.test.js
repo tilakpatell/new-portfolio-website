@@ -38,6 +38,18 @@ describe('labelPlace', () => {
     for (const box of boxes) for (const other of items) if (other.id !== box.id && overlapArea([box, dotOf(other)]) > 0) covered.push(`${box.id} over ${other.id}`);
     expect(covered).toEqual([]);
   });
+  it('keeps a name inside the map before it keeps it off a neighbour’s dot', () => {
+    // a dot 6 px from the right edge of a 346 px map, a neighbour's dot 7 px to its left: the right's cut off by the edge (r, tr, br), the left covers the dot (l)
+    const items = [
+      { id: 'edge', x: 340, y: 100, w: 39, h: 20, prio: 0 },
+      { id: 'next', x: 333, y: 100, w: 30, h: 20, prio: 5 },
+    ];
+    const bounds = { x0: 0, y0: 0, x1: 346, y1: 346 };
+    const p = placeLabels(items, { bounds });
+    const b = boxAt(p.edge, 340, 100, 39, 20);
+    expect(b.x1).toBeLessThanOrEqual(346);
+    expect(b.x0).toBeGreaterThanOrEqual(0);
+  });
   it('does better than all-right on a phone-sized map', () => {
     const items = at(380);
     const right = Object.fromEntries(items.map((i) => [i.id, 'r']));
