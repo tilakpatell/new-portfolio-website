@@ -39,6 +39,17 @@
 // RV on Breaking Bad's, the Smiths' street on C-137's), and the place's name
 // comes up as you land (an 'arrive' event).
 //
+// The landing's loose things (a barrel, a hay bale, tumbleweed, stones:
+// landings/bodies.js) are rigid bodies, but not on a phone or with Data
+// Saver on (the engine is 1.7 MB; `small` here is any device short of
+// the high tier, which is most laptops, so it isn't what decides): landings/
+// physics.js has them, the planet pulling them to its middle; the engine
+// loads as the ship comes down (only for a landing with something loose
+// on it), and until it's there (or if it won't load) they stand as solid
+// as ever. You and your mate and the troops shove what you walk into,
+// shots knock what they hit, what's knocked stops at the landing's fixed
+// things and the parked ship, and a hard knock is heard ('impact').
+//
 // createFoot({ map, emit, reduced, small, planetOf, renderer, prepare }) → { phase, prefetch(id, kind), begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
 //   board(), look(dx, dy), first(), aimPoint(), info(), crew(),
@@ -78,6 +89,10 @@ import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
 import { furnish, furnished, prefetch as prefetchLanding, within } from './landings/furnish';
 import { createLamps } from './landings/lamps';
+import { createLandingPhysics } from './landings/physics';
+import { bodyOf } from './landings/bodies';
+import { preload as preloadPhysics } from '../../lib/physics/world';
+import { device } from '../../lib/device';
 import { AIR, ENTRY, entryPath, entrySpot, fxAt } from './entry';
 import { createReentry } from './reentry';
 
@@ -1435,6 +1450,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     });
   let ground = null;
   let rocks = null;
+  // the landing's bodies (landings/physics.js): null while it loads, false if it won't
+  let lp = null;
+  let physical = false; // (this landing has them at all)
+  let fed = 0; // how many of the landing's bodies it has
+  let walled = 0; // how many of the landing's solids are walls in it
+  let shipWalled = false;
+  let settled = 0; // (when the far ones were last put to sleep)
   let haze = null;
   let sides = null; // a trench's walls by you
   const owned = [];
@@ -2065,10 +2087,29 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     ground = createGround(planet, u, S.R, S.band, landing?.ground);
     ground.follow(n);
     root.add(ground.mesh);
+    if (lp) lp.dispose();
+    lp = null;
+    physical = false;
+    fed = walled = 0;
+    shipWalled = false;
     if (landing && furnished(id)) {
       const anchor = near ? { n: near.n, f: near.f } : S.spot;
-      const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer });
-      rocks = { mesh: f.group, solids: f.solids, spots: f.spots, lights: f.lights, update: f.update, dispose: f.dispose, built: f.ready, open: f.open };
+      physical = bodiesHere() && looseOn(landing);
+      const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer, physical });
+      rocks = { mesh: f.group, solids: f.solids, spots: f.spots, lights: f.lights, bodies: f.bodies, put: f.put, update: f.update, dispose: f.dispose, built: f.ready, open: f.open };
+      // (the engine on its way while the ship comes down)
+      if (physical) {
+        const mine = rocks;
+        preloadPhysics().catch(() => {});
+        createLandingPhysics({ R: S.R, onHit: heard })
+          .then((made) => {
+            if (rocks !== mine) made.dispose();
+            else lp = made;
+          })
+          .catch(() => {
+            if (rocks === mine) lp = false;
+          });
+      }
     } else rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
     // (out of sight till it's all been readied: below)
     rocks.ready = false;
@@ -2293,7 +2334,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const mateP = () => party?.[1 - S.lead] ?? null;
 
   // (the other pilots' ships down here too)
-  const obstacles = () => [shipObstacle(), ...(rocks?.solids ?? []), ...[...guests.values()].flatMap((g) => (g.ship ? [g.ship] : [])), ...(S.band ? [{ band: S.band }] : [])];
+  // (the landing's loose things not yet bodies, the engine still loading, as solid as the rest)
+  const unfed = () => (rocks?.bodies && fed < rocks.bodies.length ? rocks.bodies.slice(fed).flatMap((b) => b.solids) : []);
+  const obstacles = () => [shipObstacle(), ...(rocks?.solids ?? []), ...unfed(), ...[...guests.values()].flatMap((g) => (g.ship ? [g.ship] : [])), ...(S.band ? [{ band: S.band }] : [])];
 
   const troopsAlive = () => S.troops.filter((t) => t.alive);
 
@@ -2502,6 +2545,65 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
 
 
   // ── each frame ──
+  // (a landing with anything loose on it: else there's nothing to load the engine for)
+  const looseOn = (landing) => [...(landing.things ?? []), ...(landing.scatter ?? [])].some((t) => bodyOf(t.kind, landing.models?.[t.kind]));
+  // (loose things as bodies: anywhere but a phone or Data Saver)
+  const bodiesHere = () => {
+    try {
+      const d = device();
+      return !d.phone && !d.saveData;
+    } catch {
+      return false;
+    }
+  };
+  // a hard knock on a loose thing, heard as near as it is
+  const heard = ({ force, at: p }) => {
+    if (!S.me) return;
+    const d = vec.len(vec.add(p, at(S.me, S.R), -1)) / METRE;
+    const near = (1 - d / 30) * Math.min(1, Math.max(0.3, force / 40));
+    if (near > 0.1) emit({ type: 'impact', near });
+  };
+  // the landing's bodies, a frame: any new ones in, the people where the
+  // walk has them, a step, and what moved stood where it went
+  const physicsFrame = (dt) => {
+    const list = rocks?.bodies;
+    if (!list) return;
+    if (lp === false) {
+      // (no engine: they stand solid, as they always did)
+      for (; fed < list.length; fed++) rocks.solids.push(...list[fed].solids);
+      return;
+    }
+    if (!lp) return;
+    // (a few dozen a frame: a field of them arriving at once doesn't hitch)
+    for (let k = 0; fed < list.length && k < 60; fed++, k++) {
+      const b = list[fed];
+      if (!lp.add({ position: b.position, quaternion: b.quaternion, scale: b.scale, box: b.box, body: b.body, user: b })) rocks.solids.push(...b.solids);
+    }
+    // the fixed things (their walk circles, as they arrive) and the parked
+    // ship, as walls: what's knocked stops at them
+    if (walled < rocks.solids.length) {
+      lp.walls(rocks.solids.slice(walled).filter((o) => o.n && o.r));
+      walled = rocks.solids.length;
+    }
+    if (!shipWalled && (S.phase === 'out' || S.phase === 'walk')) {
+      shipWalled = true;
+      lp.walls([shipObstacle()]);
+    }
+    const people = [];
+    const walking = S.phase === 'out' || S.phase === 'walk' || S.phase === 'board';
+    if (walking && S.me) people.push({ key: 'me', at: at(S.me, S.R), up: S.me.n });
+    if (walking && S.mate) people.push({ key: 'mate', at: at(S.mate, S.R), up: S.mate.n });
+    for (const tr of S.troops) if (tr.alive) people.push({ key: tr.id, at: at(tr, S.R), up: tr.n });
+    lp.people(people, dt);
+    lp.step(dt);
+    lp.sync((entry, p, q) => rocks.put(entry.user, p, q));
+    // (beyond a bolt's reach, 96 m: nothing out there is still moving)
+    if (S.me && S.clock - settled > 1) {
+      settled = S.clock;
+      lp.settle(at(S.me, S.R), 120);
+    }
+  };
+
   const update = (dt, t, input = {}) => {
     if (!S.phase) return false;
     S.clock += dt;
@@ -2575,6 +2677,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     } else if (S.phase === 'lift') {
       liftFrame();
     }
+    physicsFrame(dt);
     // the figures where the people are
     if (party && S.phase !== 'land' && S.phase !== 'lift') drawPeople(dt);
     drawTroops(dt);
@@ -2803,7 +2906,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const keep = [];
     for (const o of S.bolts) {
       const mine = o.b.owner !== 'troop';
-      const r = flyBolt(o.b, dt, S.R, people.filter((p) => (mine ? typeof p.id === 'number' : typeof p.id === 'string')));
+      // (a loose thing in its way this frame stops it, and is knocked)
+      const knocked = lp ? lp.shot(o.b.p, vec.add(o.b.p, o.b.v, dt)) : null;
+      const r = knocked ? { bolt: { ...o.b, p: knocked.at }, hit: 'prop' } : flyBolt(o.b, dt, S.R, people.filter((p) => (mine ? typeof p.id === 'number' : typeof p.id === 'string')));
       o.b = r.bolt;
       if (r.hit || o.b.life <= 0) {
         o.mesh.visible = false;
@@ -3162,11 +3267,16 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     begin,
     // somewhere to come down on `id` (the ship's at it), in a `kind` of
     // ship: what landing there will want, fetched and made ready while it's
-    // still flying, its landing's (landings/furnish.js) and its crew's
+    // still flying, its landing's (landings/furnish.js), its crew's, and
+    // the physics engine where it has anything loose on it
     prefetch(id, kind) {
       const u = byId(id);
       if (!u || u.kind === 'core' || u.portal) return;
-      if (!u.plated && furnished(id)) prefetchLanding(id, landingOf(id), { renderer });
+      const landing = u.plated ? null : landingOf(id);
+      if (landing && furnished(id)) {
+        prefetchLanding(id, landing, { renderer });
+        if (bodiesHere() && looseOn(landing)) preloadPhysics().catch(() => {});
+      }
       warmParty(kind);
     },
     update,
@@ -3349,6 +3459,37 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       entryView.fx = e.fx ?? fxAt(e.t);
       return entryView;
     },
+    // the landing's loose things, for a check in a browser (scripts/
+    // props-check.mjs): how many, whether the engine's in, and knock(i), a
+    // shot through the i-th from a few metres off, with where it stood and
+    // where it's drawn a second later
+    physics() {
+      const list = rocks?.bodies ?? [];
+      const drawn = (b) => {
+        const m = new THREE.Matrix4();
+        if (b.object) m.copy(b.object.matrix);
+        else b.meshes[0].getMatrixAt(b.index, m);
+        return new V().setFromMatrixPosition(m).toArray();
+      };
+      return {
+        engine: !physical ? 'off' : lp === null ? 'loading' : lp === false ? 'failed' : 'ready',
+        bodies: list.length,
+        simulated: lp ? lp.size : 0,
+        pushers: lp ? lp.pushers : 0,
+        kinds: list.map((b) => b.object?.name || b.meshes?.[0]?.parent?.name || '?'),
+        drawn: (i) => (list[i] ? drawn(list[i]) : null),
+        bodyAt: (i) => list[i] && { position: list[i].position, quaternion: list[i].quaternion, scale: list[i].scale, box: list[i].box, body: list[i].body },
+        knock(i) {
+          const b = list[i];
+          if (!b || !lp) return null;
+          const p = b.position;
+          const n = vec.unit(p);
+          const mid = vec.add(p, n, ((b.box.min[1] + b.box.max[1]) / 2) * b.scale * METRE);
+          const side = vec.unit(vec.cross(n, Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]));
+          return lp.shot(vec.add(mid, side, -4 * METRE), vec.add(mid, side, 4 * METRE));
+        },
+      };
+    },
     // the ship's numbers to fly on from, once it's up (null until then)
     takeoff() {
       return S.done;
@@ -3381,6 +3522,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.bolts = [];
       fx.clear();
       if (vm) vm.gun.visible = false;
+      if (lp) lp.dispose();
+      lp = null;
+      physical = false;
+      fed = walled = 0;
+      shipWalled = false;
       for (const x of [ground, rocks, haze, sides]) {
         if (!x) continue;
         root.remove(x.mesh);

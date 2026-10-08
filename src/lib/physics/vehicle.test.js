@@ -171,3 +171,38 @@ describe('addVehicle on the flat', () => {
     physics.dispose();
   });
 });
+
+describe('addVehicle, when things go wrong', () => {
+  it('drives on through inputs that are not numbers', async () => {
+    const { physics, car } = await settle();
+    run(physics, car, 60, { throttle: NaN, steer: Infinity, brake: undefined, boost: NaN });
+    expect(car.chassis.position().every(Number.isFinite)).toBe(true);
+    run(physics, car, 120, { throttle: 1 });
+    expect(car.state.speed).toBeGreaterThan(1);
+    physics.dispose();
+  });
+
+  it('can be removed twice', async () => {
+    const { physics, car } = await settle();
+    car.remove();
+    expect(() => car.remove()).not.toThrow();
+    expect(physics.world.bodies.len()).toBe(9); // (the ground's nine cells)
+    physics.dispose();
+  });
+});
+
+describe('addVehicle in the air', () => {
+  it('says it flipped when it lands from a whole turn in the air', async () => {
+    const { physics, car } = await settle();
+    car.chassis.body.setLinvel({ x: 0, y: 12, z: 0 }, true);
+    car.chassis.body.setAngvel({ x: 0, y: 0, z: 7 }, true);
+    let flipped = false;
+    for (let i = 0; i < 240 && !flipped; i++) {
+      car.drive({}, 1 / 60);
+      physics.step(1 / 60);
+      flipped = car.measure().flipped;
+    }
+    expect(flipped).toBe(true);
+    physics.dispose();
+  });
+});

@@ -18,12 +18,18 @@
 // 11 m/s in 3 s against his 5): ours is force / (1 + 25 × overflow), which
 // holds it near 5.5. Speed is his: from the chassis's travel over the
 // simulated time since the last measure (the controller's impulses leave
-// the body's own velocity reading a few cm/s off at rest). No three.js, no
-// DOM.
+// the body's own velocity reading a few cm/s off at rest). An origin shift
+// moves its last place with it, so the speed doesn't leap. Upside down for
+// CAR.unflip.after seconds of simulated time, it rights itself (his auto-
+// unflip, again every so long until it's up); `flipped` is true on the
+// measure it lands from a turn in the air of more than FLIP radians. If
+// its chassis is removed from under it, or the world disposed, it stops
+// and does nothing more. No three.js, no DOM.
 //
 //   CAR: { chassis, friction, wheels, suspensions, steering, engineForce,
 //     boost, topSpeed, topSpeedBoost, brake, idleBrake, reverseBrake, unflip }
-//   addVehicle(physics, spec = CAR) → { chassis: Body, controller,
+//   addVehicle(physics, spec = CAR, { onHit, hitThreshold } = {}) (a hit on
+//     the chassis: a crate, a wall) → { chassis: Body, controller,
 //     drive({ throttle −1…1, steer −1…1 (+1 right), brake 0…1, boost 0…1 }),
 //     measure() → state, state: { speed, forwardSpeed, goingForward,
 //     wheels: [{ contact, point: [x, y, z], suspension }], upsideDown,
@@ -68,6 +74,7 @@ export const CAR = {
 const HIS_DELTA = 1 / 60;
 const STUCK_TIME = 3;
 const STUCK_TRAVEL = 0.5;
+const FLIP = 5; // radians turned in the air, landing, that make a flip (his)
 
 // v rotated by the quaternion q ([x, y, z, w])
 function rotate(q, v) {
@@ -80,8 +87,8 @@ function rotate(q, v) {
   return [ix * qw + iw * -qx + iy * -qz - iz * -qy, iy * qw + iw * -qy + iz * -qx - ix * -qz, iz * qw + iw * -qz + ix * -qy - iy * -qx];
 }
 
-export function addVehicle(physics, spec = CAR) {
-  const chassis = physics.add({ type: 'dynamic', position: [0, 2, 0], canSleep: false, friction: spec.friction, colliders: spec.chassis });
+export function addVehicle(physics, spec = CAR, { onHit = null, hitThreshold } = {}) {
+  const chassis = physics.add({ type: 'dynamic', position: [0, 2, 0], canSleep: false, friction: spec.friction, onHit, hitThreshold, colliders: spec.chassis });
   const controller = physics.world.createVehicleController(chassis.body);
   const w = spec.wheels;
   const [ox, oy, oz] = w.offset;
@@ -106,9 +113,19 @@ export function addVehicle(physics, spec = CAR) {
     controller.setWheelSuspensionStiffness(i, spec.suspensions.low[1]);
   }
   let simulated = 0; // seconds stepped since the last measure
+  let gone = false;
+  const live = () => !gone && !physics.disposed && !chassis.removed;
   const off = physics.onSubstep((dt) => {
+    if (!live()) {
+      off();
+      return;
+    }
     controller.updateVehicle(dt);
     simulated += dt;
+  });
+  // (an origin shift: its last place goes with it)
+  const offShift = physics.onOriginShift(([sx, sy, sz]) => {
+    if (last) last = [last[0] - sx, last[1] - sy, last[2] - sz];
   });
 
   const state = {
@@ -125,8 +142,13 @@ export function addVehicle(physics, spec = CAR) {
   let throttling = false;
   let last = null;
   let clock = 0;
+  let upTime = 0; // simulated seconds upside down
+  let air = 0; // radians turned since all four wheels left the ground
+  const was = [0, 0, 0, 1];
+  let flying = false;
 
   function drive({ throttle = 0, steer = 0, brake = 0, boost = 0 } = {}, dt = 1 / 60) {
+    if (!live()) return;
     clock += dt;
     throttling = Math.abs(throttle) > 0.1;
     const top = spec.topSpeed + (spec.topSpeedBoost - spec.topSpeed) * boost;
@@ -155,6 +177,8 @@ export function addVehicle(physics, spec = CAR) {
   const pos = [0, 0, 0];
   const quat = [0, 0, 0, 1];
   function measure() {
+    if (!live()) return state;
+    const stepped = simulated;
     chassis.quaternion(quat);
     chassis.position(pos);
     const forward = rotate(quat, [1, 0, 0]);
@@ -183,6 +207,26 @@ export function addVehicle(physics, spec = CAR) {
       s.suspension = controller.wheelSuspensionLength(i) ?? 0;
     }
     state.upsideDown = -up[1] * 0.5 + 0.5 > 0.3;
+    // his flip: how far it turned with every wheel off the ground, counted
+    // when it comes down
+    const contacts = state.wheels.reduce((n, w) => n + (w.contact ? 1 : 0), 0);
+    state.flipped = false;
+    if (contacts === 0) {
+      const d = Math.abs(was[0] * quat[0] + was[1] * quat[1] + was[2] * quat[2] + was[3] * quat[3]);
+      if (flying) air += 2 * Math.acos(Math.min(1, d));
+      flying = true;
+    } else {
+      if (flying && air > FLIP) state.flipped = true;
+      flying = false;
+      air = 0;
+    }
+    for (let i = 0; i < 4; i++) was[i] = quat[i];
+    // his auto-unflip: upside down long enough, it rights itself
+    upTime = state.upsideDown ? upTime + stepped : 0;
+    if (upTime >= spec.unflip.after) {
+      upTime = 0;
+      unflip();
+    }
     // stuck: under STUCK_TRAVEL metres in the last STUCK_TIME s of throttling
     const moved = last && simulated > 0 ? Math.hypot(pos[0] - last[0], pos[2] - last[2]) : 0;
     if (simulated > 0 || !last) last = [pos[0], pos[1], pos[2]];
@@ -196,6 +240,23 @@ export function addVehicle(physics, spec = CAR) {
     return state;
   }
 
+  // his: a hop up, and a turn by whichever axis points up
+  function unflip() {
+    if (!live()) return;
+    const body = chassis.body;
+    const mass = body.mass();
+    chassis.quaternion(quat);
+    const forward = rotate(quat, [1, 0, 0]);
+    const up = rotate(quat, [0, 1, 0]);
+    const side = rotate(quat, [0, 0, 1]);
+    body.applyImpulse({ x: 0, y: spec.unflip.force * mass, z: 0 }, true);
+    let t;
+    if (Math.abs(up[1]) >= Math.abs(forward[1]) && Math.abs(up[1]) >= Math.abs(side[1])) t = [0.8 * mass, 0, 0];
+    else t = [side[1] * 0.4 * mass, 0, -forward[1] * 0.8 * mass];
+    const [x, y, z] = rotate(quat, t);
+    body.applyTorqueImpulse({ x, y, z }, true);
+  }
+
   return {
     chassis,
     controller,
@@ -205,22 +266,9 @@ export function addVehicle(physics, spec = CAR) {
     suspension(i, name) {
       if (spec.suspensions[name]) named[i] = name;
     },
-    // his: a hop up, and a turn by whichever axis points up
-    unflip() {
-      const body = chassis.body;
-      const mass = body.mass();
-      chassis.quaternion(quat);
-      const forward = rotate(quat, [1, 0, 0]);
-      const up = rotate(quat, [0, 1, 0]);
-      const side = rotate(quat, [0, 0, 1]);
-      body.applyImpulse({ x: 0, y: spec.unflip.force * mass, z: 0 }, true);
-      let t;
-      if (Math.abs(up[1]) >= Math.abs(forward[1]) && Math.abs(up[1]) >= Math.abs(side[1])) t = [0.8 * mass, 0, 0];
-      else t = [side[1] * 0.4 * mass, 0, -forward[1] * 0.8 * mass];
-      const [x, y, z] = rotate(quat, t);
-      body.applyTorqueImpulse({ x, y, z }, true);
-    },
+    unflip,
     moveTo(x, y, z, yaw = 0) {
+      if (!live()) return;
       const body = chassis.body;
       body.setTranslation({ x, y, z }, true);
       body.setRotation({ x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) }, true);
@@ -229,9 +277,16 @@ export function addVehicle(physics, spec = CAR) {
       last = null;
       simulated = 0;
       travel = [];
+      upTime = 0;
+      flying = false;
+      air = 0;
     },
     remove() {
+      if (gone) return;
+      gone = true;
       off();
+      offShift();
+      if (physics.disposed) return;
       physics.world.removeVehicleController(controller);
       physics.remove(chassis);
     },
