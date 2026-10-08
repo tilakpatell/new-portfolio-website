@@ -27,7 +27,10 @@ import './tour.css';
 // middle ("One moment…") until the router has the page, nothing covers it
 // and the feed's page has its code; then the chapter's stops whose target
 // isn't on this screen drop out, as the view's tour's always have. Eight
-// seconds at most, then the chapter's cards show in the middle. A stop marked
+// seconds at most, then the chapter's cards show in the middle; but a
+// chapter marked `world` (the player's walk through the worlds) waits for
+// its world's download gate as long as it asks, the veil lifted so the
+// visitor can answer it, and says so on the card. A stop marked
 // `wait` waits (eight seconds too) for a target that mounts late. A stop's
 // `actions` leave for a place, a link or another tour; a stop's `release`
 // lets ? or the palette's shortcut through, with the veil down, so you can
@@ -103,6 +106,8 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
   const [shownCh, setCh] = useState(() => (crosses ? null : { c: 0, stops: resolveSteps(list, has, kind === 'brief') }));
   const [s, setS] = useState(0);
   const [late, setLate] = useState(false); // a `wait` stop's target not there yet
+  const [asking, setAsking] = useState(false); // a world chapter's gate up, waiting on the visitor
+  const [light, setLight] = useState(false); // the world chapter's 3D kept off (the gate's pill)
   const [box, setBox] = useState(null); // the lit box, or null for a card in the middle
   const [pos, setPos] = useState(null); // the card's { side, top, left }
   const [over, setOver] = useState(false); // the guide or the palette open over a release stop
@@ -156,6 +161,7 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
     back,
     skip: () => finish('skipped'),
     release: release ? step.release : null,
+    asking,
   };
 
   // On: html[data-touring] (it brings the nav and the guide's button back if
@@ -207,9 +213,17 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
     };
     if (!chapterReady({ ...at(), clear: true, loading: false })) onNavigate(target.path);
     let off = false;
-    const ready = () => (chapterReady({ ...at(), clear: clear(), loading: loading() }) ? 'ready' : null);
+    const gate = () => Boolean(target.world && document.querySelector('.world-gate'));
+    const ready = () => {
+      const up = gate();
+      setAsking(up);
+      if (up) return 'hold';
+      return chapterReady({ ...at(), clear: clear(), loading: loading() }) ? 'ready' : null;
+    };
     waitUntil(ready, { ...timers, cancelled: () => off }).then((how) => {
       if (off || how === 'cancelled') return;
+      setAsking(false);
+      setLight(Boolean(target.world && document.querySelector('.world-gate-pill')));
       const got = how === 'ready' ? resolveChapter(target.stops, has, Boolean(target.brief)) : resolveChapter(target.stops, () => false, true);
       if (!got.length) {
         const to = want.c + want.dir;
@@ -281,6 +295,7 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
     const onKey = (e) => {
       const free = act.current.release;
       if (free && (opened() || (e.key === '?' && free.includes('?')) || (isPaletteKey(e) && free.includes('palette')))) return;
+      if (act.current.asking) return; // (a world's gate has the keys while it asks)
       e.stopImmediatePropagation();
       if (e.key === 'Tab') {
         const els = [...(card.current?.querySelectorAll('button:not(:disabled), a[href]') ?? [])];
@@ -378,7 +393,8 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
     : false;
 
   const title = waiting ? (chapter?.title ?? '') : step.title;
-  const text = waiting ? 'One moment…' : textOf(step, ctx);
+  const text = waiting ? (asking ? 'This device asks before downloading a world’s 3D. Answer it below: the tour carries on either way.' : 'One moment…') : textOf(step, ctx);
+  const notice = !waiting && light && chapter?.world && s === 0 ? 'This world is in its light version on this device; the 3D loads from the button at the bottom any time.' : null;
   // (keys and touch are the key table's rows)
   const shown = waiting ? null : rowsFor(step, touch);
   const rows = Array.isArray(shown) ? shown : null;
@@ -389,7 +405,7 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
   const dot = crosses ? want.c : s;
 
   return createPortal(
-    <div className="tour" data-kind={kind} data-lit={box ? '' : undefined} data-waiting={waiting ? '' : undefined} data-release={release ? '' : undefined} data-over={over ? '' : undefined}>
+    <div className="tour" data-kind={kind} data-lit={box ? '' : undefined} data-waiting={waiting ? '' : undefined} data-asking={asking ? '' : undefined} data-release={release ? '' : undefined} data-over={over ? '' : undefined}>
       {/* the clicks on the page under it stop here */}
       <div className="tour-veil" aria-hidden="true" />
       {box && <div className="tour-spot" aria-hidden="true" style={box} />}
@@ -418,6 +434,7 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
         <p id={`${ids}-text`} className="tour-text">
           {text}
         </p>
+        {notice && <p className="tour-notice">{notice}</p>}
         {rows && <KeyTable rows={rows} className="guide-keys tour-keys" />}
         {actions.length > 0 && (
           <div className="tour-actions">
@@ -467,7 +484,7 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
         </div>
         {/* each stop said aloud as it comes (focus stays on Next); the wait once */}
         <p className="sr-only" aria-live="polite">
-          {waiting ? `${title}. One moment…` : (s > 0 || crosses) && `${s + 1} of ${stops.length}. ${step.title}. ${text}`}
+          {waiting ? `${title}. ${asking ? text : 'One moment…'}` : (s > 0 || crosses) && `${s + 1} of ${stops.length}. ${step.title}. ${text}`}
         </p>
       </div>
     </div>,

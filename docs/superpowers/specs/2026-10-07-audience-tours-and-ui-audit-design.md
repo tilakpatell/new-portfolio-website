@@ -44,6 +44,8 @@ A **tour** is an ordered list of **chapters**. A **chapter** is `{ id, title, pa
 
 A chapter may also carry `brief: '/universe/fly'` (its stops are that brief's cards, and passing it marks the brief seen), `heavy: true` (on a coarse pointer the engine shows the chapter's `phone` version, a card, instead of navigating), and `path: null` (stay where the previous chapter was: the end cards).
 
+**Amended 2026-10-08 (the owner's call):** the player's tour does walk into eight worlds (the galaxy at Hoth, Avengers HQ, Middle-earth, Scranton, Invincible, C-137, Albuquerque, Dot Matrix), one chapter each marked `world: true` (`chapters/player.js`'s `WALKED`). Such a chapter is the one exception to the light routes below: the engine opens the world and waits for it, its download gate included, for as long as the gate asks (`waitUntil`'s `hold`: the eight seconds count from the answer), with the veil lifted and the keys let through so the visitor can answer it; a world kept light is toured as it is, with a notice on the chapter's first card. A phone takes the whole tour too. The other worlds stay offered by their cards.
+
 A chapter's `path` may only be a **light route**: a feed page (`/home`, `/experience`, `/projects`, `/resume`, `/contact`, `/travel`), a project page, `/terminal`, `/changes`, or `/universe` (never `/`, which may redirect or show the front door's choice). Worlds, the galaxy and the Death Star are reached by `cta` only. The data test enforces this.
 
 ### 3.3 The engine: a tour that crosses routes
