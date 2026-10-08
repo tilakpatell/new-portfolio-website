@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { RiCloseLine, RiGroupLine } from 'react-icons/ri';
 import { NAME_MAX } from './names';
 import { AWAY, UNIVERSE, isFlight, placeName } from './where';
+import { rosterWhere } from './rosterWhere';
 import { crewById } from '../crews';
 import { paintById } from '../paint';
 import Face from '../Faces';
@@ -14,7 +15,8 @@ import './online.css';
 // many pilots are online (or offers to go online), and a card above it with
 // either the way in (your callsign, and what going online means) or who's
 // online, what they fly (and in what paint), their kills, which page they're on (with a button
-// to go there too), and the buttons to ask them to be allies, accept,
+// to go there too; out on the universe map, which region, from where they
+// were last seen: rosterWhere.js), and the buttons to ask them to be allies, accept,
 // decline or end an alliance, or block them, and whether live pointers
 // show on pages. What's happening (who came online or came to your page,
 // alliances, who shot down whom) shows in a short feed above the button.
@@ -31,6 +33,7 @@ import './online.css';
 // off after them once it's in.
 
 const TONE = { join: 'join', ally: 'ally', kill: 'kill', info: 'info' };
+const WHERE_MS = 2000; // how often the roster looks again at where everyone on the map is
 const Record = lazy(() => import('../Record'));
 
 export default function Online({ online, ship = null, floating = false }) {
@@ -68,7 +71,7 @@ export default function Online({ online, ship = null, floating = false }) {
         ))}
       </div>
       {open && (on ? <Roster online={online} ship={ship} floating={floating} focus={focus} onClose={close} /> : <Join online={online} onClose={close} />)}
-      <button type="button" className="universe-online-pill" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="universe-online-pill" data-tour="online" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="universe-online-dot" data-status={on ? room.status : 'off'} aria-hidden="true" />
         <RiGroupLine className="h-4 w-4" aria-hidden="true" />
         <span className="universe-online-full">{label}</span>
@@ -140,6 +143,15 @@ function Roster({ online, ship, floating, focus, onClose }) {
   const [name, setName] = useState(online.name ?? '');
   const id = useId();
   const others = room.peers;
+  // (poses come in ten times a second, not as roster news: while anyone's
+  // out on the map, the regions they're in are read again now and then)
+  const [, tick] = useState(0);
+  const mapped = others.some((p) => p.where === UNIVERSE);
+  useEffect(() => {
+    if (!mapped) return undefined;
+    const t = setInterval(() => tick((n) => n + 1), WHERE_MS);
+    return () => clearInterval(t);
+  }, [mapped]);
   const rename = (e) => {
     e.preventDefault();
     setName(online.rename(name));
@@ -224,7 +236,9 @@ function Pilot({ p, online, ship, mine, focus }) {
   const coat = paintById(p.loadout?.paint);
   const act = (what) => () => online.ally(p.id, what);
   const elsewhere = p.where && p.where !== online.where;
-  const at = !p.where ? '' : elsewhere ? ` · ${placeName(p.where)}` : ' · here';
+  // (out on the map, the region they're in says more than “here” does, the map being as wide as it is)
+  const pose = p.where === UNIVERSE ? (online.client?.poseOf?.(p.id) ?? null) : null;
+  const at = !p.where ? '' : pose ? ` · ${rosterWhere(p.where, pose)}` : elsewhere ? ` · ${placeName(p.where)}` : ' · here';
   // (flying here too, in a ship: somewhere the autopilot can take you, on
   // the universe map or in the same galaxy system)
   const flyTo = Boolean(ship && p.kind && p.where && !elsewhere && isFlight(online.where));

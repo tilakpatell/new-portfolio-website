@@ -214,7 +214,7 @@ function FeedDivider({ id, place }) {
   return (
     <div className="feed-divider" role="separator" aria-label={`Next: ${cat.label}`}>
       <div className="shell feed-divider-inner">
-        <p className="feed-divider-count">
+        <p className="feed-divider-count eyebrow">
           <RiArrowDownLine aria-hidden="true" /> Keep scrolling · {place} of {FEED.length}
         </p>
         <p className="feed-divider-title display">{cat.label}</p>
@@ -230,7 +230,7 @@ function FeedEnd() {
   return (
     <section className="feed-end" aria-labelledby="feed-end-title">
       <div className="shell feed-end-inner">
-        <p className="eyebrow">End of the feed</p>
+        <p className="eyebrow">The end of the pages</p>
         <h2 id="feed-end-title" className="display mt-5 text-[clamp(2.2rem,1.3rem+3.4vw,4.4rem)]">
           That’s everything, top to bottom.
         </h2>

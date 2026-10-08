@@ -17,6 +17,7 @@ import { hot } from '../../../../lib/stage3d';
 import { clamp01, makeNoise, mix, smooth } from '../../../../lib/paint';
 import { makeToyFigure } from '../../mapFigures';
 import { LOOKS } from '../../shire/people';
+import { castFigure } from '../../cast3d';
 import { B, ball, barrelParts, blob, boxUV, cyl, cylZ, fillColor, lathe, parts, rng, roundBox, tf, tube } from '../../shire/props';
 import { createWeathertopKit, gallop } from '../weathertop/props';
 import { createMarshesKit } from '../marshes/props';
@@ -427,6 +428,9 @@ function figure(look, M, id = 'folk') {
   f.look = look;
   // the top of the head (and what's on it), not a spear's point: for a label over it
   f.top = new THREE.Box3().setFromObject(f.head).max.y;
+  // on the cast once its model's here (../../cast3d.js): Gandalf the White,
+  // the Citadel's guards, the city's folk as the Bree man in their colours
+  castFigure(f, id === 'gandalf' ? 'gandalfwhite' : id, look, { town: 'minastirith', role: /^(guard|townsfolk)\d/.test(id) ? 'folk' : 'cast' });
   return f;
 }
 

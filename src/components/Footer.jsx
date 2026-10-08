@@ -35,21 +35,21 @@ export default function Footer() {
           </p>
         </div>
 
-        <nav aria-label="Footer" className="grid flex-none grid-cols-[repeat(2,max-content)] gap-x-10 gap-y-2 whitespace-nowrap text-sm sm:grid-cols-[repeat(3,max-content)]">
-          <Link className="text-body hover:text-ink" to="/experience">Experience</Link>
-          <Link className="text-body hover:text-ink" to="/projects">Projects</Link>
-          <Link className="text-body hover:text-ink" to="/travel">Travel</Link>
-          <Link className="text-body hover:text-ink" to="/contact">Contact</Link>
-          <Link className="text-body hover:text-ink" to="/terminal">Terminal</Link>
-          <Link className="text-body hover:text-ink" to="/resume">Résumé</Link>
-          <Link className="text-body hover:text-ink" to="/deathstar" title="Classified">DS-1 plans</Link>
+        <nav aria-label="Footer" className="footer-links grid flex-none grid-cols-[repeat(2,max-content)] gap-x-10 gap-y-2 whitespace-nowrap text-sm sm:grid-cols-[repeat(3,max-content)]">
+          <Link className="link-quiet" to="/experience">Experience</Link>
+          <Link className="link-quiet" to="/projects">Projects</Link>
+          <Link className="link-quiet" to="/travel">Travel</Link>
+          <Link className="link-quiet" to="/contact">Contact</Link>
+          <Link className="link-quiet" to="/terminal">Terminal</Link>
+          <Link className="link-quiet" to="/resume">Résumé</Link>
+          <Link className="link-quiet" to="/deathstar" title="Classified: the Death Star">DS-1 plans</Link>
           {here && (
-            <Link className="text-body hover:text-ink" to={`/universe/${here.id}`} title={`${here.world ?? here.label} on the universe map`}>
+            <Link className="link-quiet" to={`/universe/${here.id}`} title={`${here.world ?? here.label} in the universe`}>
               This page on the map
             </Link>
           )}
-          <Link className="text-body hover:text-ink" to="/changes" title="The ship’s log: what the site’s autopilot changed">What’s changed</Link>
-          <button type="button" className="text-left text-body hover:text-ink" onClick={restartSite} title="The welcome, the crawl and the cockpit again">
+          <Link className="link-quiet" to="/changes" title="The ship’s log: what the site’s autopilot changed">What’s changed</Link>
+          <button type="button" className="link-quiet text-left" onClick={restartSite} title="The welcome, the crawl and the cockpit again">
             Start over
           </button>
         </nav>
@@ -67,8 +67,8 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-line">
-        <div className="shell flex flex-col gap-2 py-5 text-xs text-muted sm:flex-row sm:items-start sm:justify-between sm:gap-8">
-          <p className="max-w-2xl leading-relaxed">
+        <div className="shell text-fine flex flex-col gap-2 py-5 text-muted sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+          <p className="max-w-[var(--measure)] leading-relaxed">
             © {new Date().getFullYear()} Tilak Patel. A personal, fan-made tribute: the films and shows it borrows from belong to their creators and studios, and it isn’t affiliated with or endorsed by any of them.
           </p>
           <p className="flex-none">

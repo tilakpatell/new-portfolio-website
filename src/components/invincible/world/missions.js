@@ -32,7 +32,7 @@
 
 import { PORTAL } from './foes';
 import { RINGS, LESSON_LIMIT } from './quests';
-import { COAST } from './map';
+import { COAST, rng } from './map';
 import { SPACE, BODIES } from './orbit';
 
 const MOON = BODIES.find((b) => b.id === 'moon');
@@ -373,6 +373,39 @@ export function feedMission(prev, ev) {
       break;
   }
   return { progress: p, out };
+}
+
+// ── the radio: a side call every 60–120 s while no mission is on and he's
+// in the city: a chase, a photo spot not yet taken (the five in turn, then
+// any), or Eve's race while she's flying beside him (never the same call
+// twice running; nothing while a story mission is on, or out in space) ──
+export const RADIO = { every: [60, 120], offer: 20 }; // seconds between calls; how long one waits before it's dropped
+export function newRadio(seed = 11) {
+  const r = rng(seed);
+  return { t: 0, next: RADIO.every[0] + r() * (RADIO.every[1] - RADIO.every[0]), n: 0, last: null, seed };
+}
+// state: { mission: id | null, zone: 'city' | 'space', eve: true while she's beside him, done: [ids] }
+export function nextRadioCall(prev, dt, state = {}) {
+  const radio = { ...prev };
+  const step = Math.min(0.05, Math.max(0, dt || 0));
+  if (state.mission || state.zone === 'space') return { radio, call: null };
+  radio.t += step;
+  if (radio.t < radio.next) return { radio, call: null };
+  const r = rng(radio.seed + radio.n * 7);
+  radio.n += 1;
+  radio.t = 0;
+  radio.next = RADIO.every[0] + r() * (RADIO.every[1] - RADIO.every[0]);
+  const done = new Set(Array.isArray(state.done) ? state.done : []);
+  const photos = PHOTOS.map((q) => q.id).filter((id) => !done.has(id));
+  const pool = [];
+  if (radio.last !== 'chase') pool.push('chase');
+  // (the one left untaken was the last call: no photo this time, rather than one already taken)
+  const photo = photos.find((id) => id !== radio.last) ?? (photos.length ? null : PHOTOS.map((q) => q.id).find((id) => id !== radio.last));
+  if (photo) pool.push(photo);
+  if (state.eve && radio.last !== 'everace') pool.push('everace');
+  const call = pool[Math.floor(r() * pool.length)] ?? null;
+  radio.last = call;
+  return { radio, call };
 }
 
 // the next episode to play, or null once the season's done

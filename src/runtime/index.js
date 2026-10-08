@@ -9,7 +9,7 @@
 
 import { createInput } from './input';
 import { createQuality } from './quality';
-import { createSaves } from './saves';
+import { localSaves, worldStore, winOf } from './local';
 import { createAssets } from './assets';
 import { createAudioBus } from './audio';
 import { createRuntime } from './runtime';
@@ -20,23 +20,16 @@ import './runtime.css';
 export { useWorld } from './useWorld';
 export { default as WorldHost } from './WorldHost';
 export { fromScene } from './module';
+export { localSaves, worldStore };
 
 const GPU_KEY = 'tp-gpu';
 const browser = () => import('./browser');
 const covered = () => typeof document !== 'undefined' && 'covered' in document.documentElement.dataset;
 
 let instance = null;
-
 export function runtime() {
   if (instance) return instance;
-  const win = typeof window !== 'undefined' ? window : null;
-  const store = (name) => {
-    try {
-      return win[name];
-    } catch {
-      return null;
-    }
-  };
+  const win = winOf();
   let stored = null;
   try {
     stored = win?.localStorage.getItem(GPU_KEY);
@@ -56,7 +49,8 @@ export function runtime() {
     makeBackend: (kind, opts) => browser().then((m) => m.makeBackend(kind, opts)),
     input: createInput(),
     quality: createQuality({ dpr: win?.devicePixelRatio || 1 }),
-    saves: createSaves({ local: store('localStorage'), session: store('sessionStorage'), win }),
+    saves: localSaves(),
+    store: worldStore(),
     assets: createAssets({ loaders, forget }),
     audio: createAudioBus(),
     workers: createWorkerPool({ size: poolSize(win?.navigator?.hardwareConcurrency) }),

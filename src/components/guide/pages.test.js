@@ -3,6 +3,9 @@ import { PAGES, SHORTCUTS, SITE, guideFor } from './pages';
 import { GUIDES, guideMeta } from './routes';
 import { keyTokens } from './keys';
 import { WORLDS } from '../worlds/worlds';
+import { ABOUT } from './abouts';
+import { BRIEFED } from '../tour/brief';
+import { BRIEFS } from '../tour/briefs';
 
 describe('which guide a page gets', () => {
   it('finds a page by its own path', () => {
@@ -104,5 +107,18 @@ describe('what the guide says', () => {
   it('has the site’s own shortcuts and tips', () => {
     expect(SHORTCUTS.map(([k]) => k)).toContain('?');
     expect(SITE.length).toBeGreaterThan(3);
+  });
+});
+
+describe('the line on what a world is (abouts.js)', () => {
+  it('has one for every world with basics, read from abouts.js', () => {
+    for (const key of BRIEFED) {
+      expect(PAGES[key]?.about, key).toBeTruthy();
+      expect(PAGES[key].about, key).toBe(ABOUT[key]);
+    }
+  });
+
+  it('opens each world’s basics', () => {
+    for (const key of BRIEFED) expect(BRIEFS[key].find((s) => s.id === 'hello').text.startsWith(ABOUT[key]), key).toBe(true);
   });
 });

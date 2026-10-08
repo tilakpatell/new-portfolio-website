@@ -48,7 +48,7 @@ export default function PeriodicStack({ active, onPick }) {
       <div className="relative flex flex-wrap items-end justify-between gap-4">
         <div>
           <Waypoint top="0.9rem" />
-          <h2 id="chemistry-title" className="title">
+          <h2 id="chemistry-title" className="title" data-tour="projects-table">
             The chemistry
           </h2>
           <p className="lead mt-4 max-w-[54ch]">Every technology in these projects, as a periodic table. Pick one to see where it’s used.</p>

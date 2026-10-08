@@ -123,6 +123,20 @@ describe('where they come in', () => {
     }
   });
 
+  it('waits round a point it is given (an ambush at your off-ramp), never inside anything solid', () => {
+    const ship = start({ x: 500, z: 500, heading: 1.2 });
+    const at = { x: -40, y: 10, z: 60 };
+    const solids = [moon, { id: 'rock', at: [-40, 10, 85], r: 14 }];
+    for (let i = 0; i < 6; i++) {
+      const p = entryPoint(ship, i, 6, { at, rand: seeded(i + 1), solids });
+      expect(apart(p, at), `${i}`).toBeLessThanOrEqual(40);
+      for (const o of solids) expect(apart(p, { x: o.at[0], y: o.at[1], z: o.at[2] }), `${i} ${o.id}`).toBeGreaterThanOrEqual(o.r + 1.99);
+    }
+    // (spread round it, not stacked)
+    const ps = Array.from({ length: 4 }, (_, i) => entryPoint(ship, i, 4, { at, rand: seeded(9) }));
+    for (let i = 1; i < ps.length; i++) expect(apart(ps[i], ps[i - 1])).toBeGreaterThan(4);
+  });
+
   it('lays an ambush `lead` further along, where you will be once they have the drive down', () => {
     const ship = start();
     const near = entryPoint(ship, 0, 3, { ahead: true, rand: seeded(5) });
