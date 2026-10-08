@@ -264,7 +264,7 @@
 @keyframes holomap-in { from { opacity: 0; } }
 .holomap-frame {
   display: grid;
-  grid-template-rows: auto auto auto 1fr;
+  grid-template-rows: auto auto 1fr;
   gap: 0.6rem;
   width: min(1180px, 100%);
   height: min(860px, 100%);
@@ -277,7 +277,7 @@
   overflow: hidden;
 }
 .holomap-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
-.holomap-kicker { margin: 0; color: #7fd6ff; font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.85; }
+.holomap-kicker { margin: 0; color: #7fd6ff; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.85; }
 .holomap-title { margin: 0.15rem 0 0; color: #fff; font-size: 1.35rem; font-weight: 650; }
 .holomap-close { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid rgb(127 214 255 / 0.35); border-radius: 50%; color: #bfeaff; }
 .holomap-close:hover { background: rgb(127 214 255 / 0.12); }
@@ -285,6 +285,7 @@
 .holomap button:focus-visible { outline: 2px solid #7fd6ff; outline-offset: 2px; }
 .holomap-eras,
 .holomap-films { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.holomap-eras { position: relative; }
 .holomap-eras button,
 .holomap-films button {
   padding: 0.25rem 0.65rem;
@@ -293,10 +294,17 @@
   color: #bfeaff;
   font-size: 0.74rem;
 }
-.holomap-eras button span { margin-left: 0.3rem; opacity: 0.6; font-family: var(--font-mono); font-size: 0.64rem; }
+.holomap-eras button span { margin-left: 0.3rem; opacity: 0.6; font-family: var(--font-mono); font-size: 0.7rem; }
 .holomap-eras button[aria-pressed='true'],
 .holomap-films button[aria-pressed='true'] { border-color: var(--era, #7fd6ff); background: color-mix(in srgb, var(--era, #7fd6ff) 18%, transparent); color: #fff; }
-.holomap-films button { min-width: 2.4rem; font-family: var(--font-mono); font-size: 0.68rem; }
+.holomap-films button { min-width: 2.4rem; font-family: var(--font-mono); font-size: 0.7rem; }
+.holomap-films button span { margin-left: 0.3rem; opacity: 0.7; font-family: var(--font-sans); font-size: 0.7rem; }
+/* the films, folded into one chip after the eras: it opens a panel under the row (over the map) to pick one */
+.holomap-filmpick > summary { list-style: none; cursor: pointer; padding: 0.25rem 0.65rem; border: 1px dashed rgb(127 214 255 / 0.35); border-radius: 999px; color: #bfeaff; font-size: 0.74rem; }
+.holomap-filmpick > summary::-webkit-details-marker { display: none; }
+.holomap-filmpick[data-active] > summary { border-style: solid; border-color: var(--era, #7fd6ff); background: color-mix(in srgb, var(--era, #7fd6ff) 18%, transparent); color: #fff; }
+.holomap-filmpick[open] .holomap-films { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; display: grid; grid-template-columns: repeat(3, minmax(0, auto)); width: max-content; max-width: 100%; gap: 0.35rem; padding: 0.6rem; border: 1px solid rgb(127 214 255 / 0.3); border-radius: 12px; background: rgb(2 6 16 / 0.97); }
+.holomap-filmpick .holomap-films button { border-radius: 12px; text-align: left; }
 .holomap-body { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 1rem; min-height: 0; }
 .holomap-map {
   position: relative;
@@ -456,17 +464,17 @@
 .holomap-sys { margin: 0.3rem 0 0; font-size: 1.4rem; font-weight: 650; }
 .holomap-meta { margin: 0.2rem 0 0; color: rgb(217 243 255 / 0.7); font-size: 0.78rem; }
 .holomap-stats { display: grid; gap: 0.55rem; margin: 0.9rem 0 1rem; }
-.holomap-stats dt { color: #7fd6ff; font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.holomap-stats dt { color: #7fd6ff; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .holomap-stats dd { margin: 0.1rem 0 0; font-size: 0.84rem; }
 .holomap-jump { width: 100%; justify-content: center; margin-top: auto; }
 @media (max-width: 760px) {
   .holomap { padding: 8px; }
-  .holomap-frame { height: 100%; padding: 0.8rem; grid-template-rows: auto auto auto 1fr; }
-  .holomap-body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; container-type: normal; }
+  .holomap-frame { height: 100%; padding: 0.8rem; }
+  .holomap-body { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); container-type: normal; }
   .holomap-map { width: 100%; max-height: none; }
   .holomap-side { max-height: 40svh; }
   .holomap-system { font-size: 0.7rem; }
-  .holomap-films { display: none; }
+  .holomap-filmpick[open] .holomap-films { grid-template-columns: repeat(2, minmax(0, auto)); }
 }
 
 /* "A long time ago…" */

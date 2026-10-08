@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { RiCloseLine, RiFullscreenExitLine, RiRocket2Fill, RiArrowGoBackLine } from 'react-icons/ri';
+import { RiCloseLine, RiFullscreenExitLine, RiRocket2Fill, RiArrowGoBackLine, RiStackLine } from 'react-icons/ri';
 import { systemLabel } from './warText';
 import WarCard, { SystemWar } from './WarCard';
 import WarLegend from './WarLegend';
@@ -12,9 +12,11 @@ import { badgeOf, opsOf } from './warMap';
 import { mine, onWar, warNow } from './warState';
 import { jumpTime, routeBetween, viaLanes } from './routes';
 import { onView } from './mapView';
+import { LAYERS, LAYERS_KEY, LAYER_LABEL, readLayers, warForEra } from './mapLayers';
 import { estimateWidth, placeLabels } from './labelPlace';
 import { REGION_FONT, regionAngle, regionNamesShown, unknownNameX } from './regionNames';
 import { useMapView } from './useMapView';
+import { local } from '../../lib/hooks';
 import './warmap.css';
 import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKNOWN, edgeAt, eraById, eraOf, erasOf, filmLabel, filmShort, gridAt, jumpSeconds, lightYears, systemById, yearLabel } from './systems';
 
@@ -28,12 +30,12 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // flying there now (online); Jump sends you. The eras and the films filter
 // what's lit (the rest dim), so it doubles as a timeline: the prequels'
 // worlds, the originals', the New Republic's (The Mandalorian's and
-// Ahsoka's).
+// Ahsoka's); the films are folded into one chip after the eras.
 //
 // And the galaxy's wars' table, Helldivers' galactic map (gcw.js, as the page
-// knows it: warState.js), one war at a time (a switch over the map, for
-// looking: the war you fight in is your oath's): each power's territory
-// round the systems it holds, hatched where it's fought over, the borders
+// knows it: warState.js), one war at a time (the era you pick shows its war,
+// for looking: with every era lit, the war you fight in, your oath's): each
+// power's territory round the systems it holds, hatched where it's fought over, the borders
 // where powers meet and the lanes the war runs along, each offensive an
 // arrow with its fleet closing in (WarLayers.jsx), each system ringed in its
 // holder's colour with the attacker's share of the ring growing (+ a front,
@@ -54,7 +56,9 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // the middle, and picking a system with an end of its course off the view
 // zooms to show the course. The canvas, SVG, fleets, grid letters and systems
 // are one stage that's scaled and moved (their names, dots and crests keep
-// their size); the war's strip and key stay put. Each system's name goes in
+// their size); the war's strip and key, the layers' switches (mapLayers.js:
+// territory, fronts, lanes, regions, grid, each kept in this browser) and the
+// zoom buttons stay put. Each system's name goes in
 // the place round its dot where it covers least (labelPlace.js, in screen
 // pixels, from the names' measured widths), so at any zoom they keep clear of
 // one another and the dots as far as there's room; the map's own text is no
@@ -162,6 +166,16 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   const [pick, setPick] = useState(null);
   const [era, setEra] = useState('all');
   const [film, setFilm] = useState(null);
+  // what the map draws (mapLayers.js), each switch kept in this browser (on a
+  // small map they fold behind a chip, so they don't cover the names)
+  const [layers, setLayersState] = useState(() => readLayers(local.get(LAYERS_KEY)));
+  const [layersOpen, setLayersOpen] = useState(false);
+  const toggle = (id) =>
+    setLayersState((l) => {
+      const next = { ...l, [id]: !l[id] };
+      local.set(LAYERS_KEY, next);
+      return next;
+    });
   const canvas = useRef(null);
   const box = useRef(null);
   const mv = useMapView(box);
@@ -169,11 +183,10 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   const picked = pick ? systemById(pick) : null;
   // the course to it: along the lanes where they join, straight where they don't
   const route = picked && here && picked.id !== here.id ? routeBetween(here.id, picked.id) : null;
-  // the Galactic Civil War, as it stands this second (and when what the players did changes)
-  // the war the map shows (yours till you look at another), as it stands this
-  // second (and when what the players did changes)
-  const [view, setView] = useState(oath.war);
-  useEffect(() => setView(oath.war), [oath.war]);
+  // the war the map shows: the picked era's (or film's), and with every era lit
+  // the one you fight in; as it stands this second (and when what the players
+  // did changes)
+  const view = warForEra(film ? FILMS[film].era : era, oath.war);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -333,81 +346,115 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
               {e.name} <span>{e.span}</span>
             </button>
           ))}
-        </div>
-        <div className="holomap-films" role="group" aria-label="Film">
-          {FILM_ORDER.map((id) => (
-            <button key={id} type="button" aria-pressed={film === id} style={{ '--era': eraById(FILMS[id].era).color }} onClick={() => setFilm(film === id ? null : id)} title={`${filmLabel(id)} · ${yearLabel(FILMS[id].year)}`}>
-              {filmShort(id)}
-            </button>
-          ))}
+          {/* the films, folded into a chip (a film lights its own world, and the war of its era) */}
+          <details className="holomap-filmpick" data-active={film || undefined} style={film ? { '--era': eraById(FILMS[film].era).color } : undefined}>
+            <summary>{film ? filmShort(film) : 'Films'}</summary>
+            <div className="holomap-films" role="group" aria-label="Film">
+              {FILM_ORDER.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={film === id}
+                  style={{ '--era': eraById(FILMS[id].era).color }}
+                  onClick={(e) => (setFilm(film === id ? null : id), (e.currentTarget.closest('details').open = false))}
+                  title={`${filmLabel(id)} · ${yearLabel(FILMS[id].year)}`}
+                >
+                  {filmShort(id)} <span>{filmLabel(id)}</span>
+                </button>
+              ))}
+            </div>
+          </details>
         </div>
 
         <div className="holomap-body">
-          <div ref={box} className="holomap-map" data-zoomed={mv.view.k > 1.01 || undefined} {...mv.handlers}>
+          <div ref={box} className="holomap-map" data-zoomed={mv.view.k > 1.01 || undefined} data-fronts={layers.fronts || undefined} {...mv.handlers}>
             {/* the war at a glance, and its key (they stay put while the map moves) */}
-            <WarStrip table={war} view={view} onView={setView} fighting={oath.war} />
+            <WarStrip table={war} fighting={oath.war} />
             <WarLegend war={view} />
+            <div className="holomap-layers" data-open={layersOpen || undefined}>
+              <button type="button" className="holomap-layers-toggle" aria-expanded={layersOpen} aria-controls="holomap-layers-set" onClick={() => setLayersOpen((o) => !o)}>
+                <RiStackLine aria-hidden="true" /> Layers
+              </button>
+              <div id="holomap-layers-set" className="holomap-layers-set" role="group" aria-label="Show on the map">
+                {LAYERS.map((id) => (
+                  <button key={id} type="button" aria-pressed={layers[id]} onClick={() => toggle(id)}>
+                    {LAYER_LABEL[id]}
+                  </button>
+                ))}
+              </div>
+            </div>
             {/* everything that moves with the map: zoomed and panned as one (galaxy.css) */}
             <div className="holomap-stage" style={{ '--k': mv.view.k, '--vx': mv.view.x, '--vy': mv.view.y }}>
               <canvas ref={canvas} className="holomap-canvas" aria-hidden="true" />
               <svg className="holomap-svg" viewBox={`0 0 ${SIZE} ${SIZE}`} aria-hidden="true">
-                {/* the grid */}
-                {Array.from({ length: GRID.cols + 1 }, (_, i) => (
-                  <line key={`c${i}`} x1={i} y1={0} x2={i} y2={SIZE} className="holomap-grid" />
-                ))}
-                {Array.from({ length: GRID.rows + 1 }, (_, i) => (
-                  <line key={`r${i}`} x1={0} y1={i} x2={SIZE} y2={i} className="holomap-grid" />
-                ))}
+                {/* the grid (off till asked for) */}
+                {layers.grid &&
+                  Array.from({ length: GRID.cols + 1 }, (_, i) => (
+                    <line key={`c${i}`} x1={i} y1={0} x2={i} y2={SIZE} className="holomap-grid" />
+                  ))}
+                {layers.grid &&
+                  Array.from({ length: GRID.rows + 1 }, (_, i) => (
+                    <line key={`r${i}`} x1={0} y1={i} x2={SIZE} y2={i} className="holomap-grid" />
+                  ))}
                 {/* the war's territory */}
-                <Territory table={war} />
-                {/* the regions */}
-                <path d={unknown} className="holomap-unknown" />
-                {REGIONS.map((r) => (
-                  <path key={r.id} d={ring(r.r)} className="holomap-region" data-id={r.id} />
-                ))}
-                {REGIONS.map((r, i) => {
-                  if (!regionShown.has(r.id)) return null;
-                  const a = regionAngle(i);
-                  const d = edgeAt(r.r, a) - regionFont * 0.9;
-                  const x = CORE[0] + Math.cos(a) * d;
-                  const y = CORE[1] + Math.sin(a) * d;
-                  const deg = (a * 180) / Math.PI + 90; // (along the ring)
-                  return (
-                    <text key={r.id} x={x} y={y} transform={`rotate(${deg.toFixed(1)} ${x.toFixed(3)} ${y.toFixed(3)})`} className="holomap-region-name" style={{ fontSize: regionFont, letterSpacing: regionFont * 0.18 }}>
-                      {r.name}
+                {layers.territory && <Territory table={war} />}
+                {/* the regions: their rings and names, and the Unknown Regions */}
+                {layers.regions && (
+                  <>
+                    <path d={unknown} className="holomap-unknown" />
+                    {REGIONS.map((r) => (
+                      <path key={r.id} d={ring(r.r)} className="holomap-region" data-id={r.id} />
+                    ))}
+                    {REGIONS.map((r, i) => {
+                      if (!regionShown.has(r.id)) return null;
+                      const a = regionAngle(i);
+                      const d = edgeAt(r.r, a) - regionFont * 0.9;
+                      const x = CORE[0] + Math.cos(a) * d;
+                      const y = CORE[1] + Math.sin(a) * d;
+                      const deg = (a * 180) / Math.PI + 90; // (along the ring)
+                      return (
+                        <text key={r.id} x={x} y={y} transform={`rotate(${deg.toFixed(1)} ${x.toFixed(3)} ${y.toFixed(3)})`} className="holomap-region-name" style={{ fontSize: regionFont, letterSpacing: regionFont * 0.18 }}>
+                          {r.name}
+                        </text>
+                      );
+                    })}
+                    <text x={unknownNameX(unitPx)} y={CORE[1] + 0.1} className="holomap-region-name holomap-unknown-name" style={{ fontSize: regionFont }}>
+                      Unknown Regions
                     </text>
-                  );
-                })}
-                <text x={unknownNameX(unitPx)} y={CORE[1] + 0.1} className="holomap-region-name holomap-unknown-name" style={{ fontSize: regionFont }}>
-                  Unknown Regions
-                </text>
+                  </>
+                )}
                 {/* the routes */}
-                {LANES.map((l) => (
-                  <polyline key={l.id} points={l.pts.map((p) => p.join(',')).join(' ')} className="holomap-lane">
-                    <title>{l.name}</title>
-                  </polyline>
-                ))}
+                {layers.lanes &&
+                  LANES.map((l) => (
+                    <polyline key={l.id} points={l.pts.map((p) => p.join(',')).join(' ')} className="holomap-lane">
+                      <title>{l.name}</title>
+                    </polyline>
+                  ))}
                 {/* the war's lanes, borders and offensives */}
-                <WarLines table={war} ops={ops} />
+                {layers.fronts && <WarLines table={war} ops={ops} />}
                 {/* the course */}
                 {route && <polyline points={route.pts.map((p) => p.join(',')).join(' ')} fill="none" className="holomap-course" />}
               </svg>
-              <Fleets ops={ops} />
+              {layers.fronts && <Fleets ops={ops} />}
               {/* the grid's letters and numbers */}
-              <div className="holomap-axis holomap-axis-x" aria-hidden="true">
-                {Array.from({ length: GRID.cols }, (_, i) => (
-                  <span key={i} style={{ left: pct(i + 0.5) }}>
-                    {String.fromCharCode(65 + i)}
-                  </span>
-                ))}
-              </div>
-              <div className="holomap-axis holomap-axis-y" aria-hidden="true">
-                {Array.from({ length: GRID.rows }, (_, i) => (
-                  <span key={i} style={{ top: pct(i + 0.5) }}>
-                    {i + 1}
-                  </span>
-                ))}
-              </div>
+              {layers.grid && (
+                <>
+                  <div className="holomap-axis holomap-axis-x" aria-hidden="true">
+                    {Array.from({ length: GRID.cols }, (_, i) => (
+                      <span key={i} style={{ left: pct(i + 0.5) }}>
+                        {String.fromCharCode(65 + i)}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="holomap-axis holomap-axis-y" aria-hidden="true">
+                    {Array.from({ length: GRID.rows }, (_, i) => (
+                      <span key={i} style={{ top: pct(i + 0.5) }}>
+                        {i + 1}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
               {/* the systems */}
               <ul className="holomap-systems" aria-label="Star systems">
                 {SYSTEMS.map((s) => {
@@ -529,7 +576,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                 </p>
                 {/* the war's own card: the oath, the major order, the battles on now, the areas */}
                 <WarCard table={war} now={now} oath={oath} viewOath={viewOath} suggested={suggested} record={record} seen={seen[view] ?? null} onSwear={onSwear} onTheatre={onTheatre} onPick={plot} onGo={(id) => (id === current ? onClose() : onJump(id))} current={current} />
-                <p className="mt-3 text-sm leading-relaxed text-body">Pick a system to plot a course, then jump. Or skip the map: every system’s star is out there in the sky, so point your nose at one and press J. Filter by era or film to see the galaxy as it was then.</p>
+                <p className="mt-3 text-sm leading-relaxed text-body">Pick a system to plot a course, then jump. Or skip the map: every system’s star is out there in the sky, so point your nose at one and press J. Pick an era or a film to see the galaxy, and its war, as it was then.</p>
                 <p className="mt-3 text-xs leading-relaxed text-muted">The grid squares and regions are the films’ own atlas, where it gives them; the Unknown Regions are, well, unknown.</p>
               </>
             )}

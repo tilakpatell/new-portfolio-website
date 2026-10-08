@@ -1,31 +1,23 @@
 import Emblem from './Emblem';
-import { SIDES, WARS, WAR_IDS } from './sides';
+import { SIDES, WARS } from './sides';
 import { strengthLine } from './warText';
 
 // The war on the holotable at a glance, over the map's empty north: which of
-// the galaxy's wars it shows (a switch for looking only: the war you fight
-// in is your oath's, and changes from the war card, WarCard.jsx), and each of
-// its powers' systems, share of the galaxy's worth and which way it's gone
-// in six hours (gcw.js's strength), with a bar of the three: the liberator,
-// the Hutts between, the raider.
-export default function WarStrip({ table, view, onView, fighting }) {
+// the galaxy's wars it shows (the era chips pick it, HoloMap.jsx; yours is
+// marked, the one you fight in, which changes from the war card, WarCard.jsx),
+// and each of its powers' systems, share of the galaxy's worth and which way
+// it's gone in six hours (gcw.js's strength), with a bar of the three: the
+// liberator, the Hutts between, the raider.
+export default function WarStrip({ table, fighting }) {
   const w = WARS[table.war];
   const sides = [w.liberator, 'hutt', w.raider];
   const strength = table.strength ?? {};
   return (
     <div className="holomap-strip">
-      <div className="holomap-strip-wars" role="group" aria-label="The war the map shows">
-        {WAR_IDS.map((id) => (
-          <button key={id} type="button" aria-pressed={view === id} onClick={() => onView(id)}>
-            {WARS[id].short}
-            {id === fighting && (
-              <span className="holomap-strip-yours" title="The war you fight in">
-                <span className="sr-only"> (the war you fight in)</span>
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <p className="holomap-strip-war">
+        {w.name}
+        {table.war === fighting && <span className="holomap-strip-yours"> · yours</span>}
+      </p>
       <div className="holomap-strip-board">
         <ul className="holomap-strip-sides" aria-label={`Who holds what in ${w.name}`}>
           {sides.map((side) => {

@@ -7,8 +7,8 @@ import { createGesture } from './gesture';
 // pinch, and the page's buttons and keys zoom about the middle.
 const STEP = 1.5; // (a button's or a key's zoom)
 const LINE = { 0: 1, 1: 16, 2: 120 }; // (a wheel's delta in px, lines or pages: Firefox's wheel is in lines)
-// the controls over the map (WarStrip, WarLegend, the zoom buttons): a press or a wheel on them is theirs, not the map's
-const OVERLAYS = '.holomap-strip, .holomap-legend, .holomap-zoom';
+// the controls over the map (WarStrip, WarLegend, the layers, the zoom buttons): a press or a wheel on them is theirs, not the map's
+const OVERLAYS = '.holomap-strip, .holomap-legend, .holomap-layers, .holomap-zoom';
 const over = (e) => e.target instanceof Element && e.target.closest(OVERLAYS) !== null;
 // (the same view object when nothing changed, so React doesn't draw it again)
 const keepIfSame = (v, n) => (n.k === v.k && n.x === v.x && n.y === v.y ? v : n);
