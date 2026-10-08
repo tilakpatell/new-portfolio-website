@@ -50,7 +50,7 @@
 // shots knock what they hit, what's knocked stops at the landing's fixed
 // things and the parked ship, and a hard knock is heard ('impact').
 //
-// createFoot({ map, emit, reduced, small, planetOf, renderer, warm }) → { phase, begin(...),
+// createFoot({ map, emit, reduced, small, planetOf, renderer, prepare }) → { phase, prefetch(id, kind), begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
 //   board(), look(dx, dy), first(), aimPoint(), info(), crew(),
 //   guests(list), end(), dispose() }
@@ -87,7 +87,8 @@ import { landingOf } from './landings/landings';
 import { biomeAt, fromLatLon, latLonOf, readableMap, sampleMap, towardLand, uvOf } from './landings/biomes';
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
-import { furnish, furnished } from './landings/furnish';
+import { furnish, furnished, prefetch as prefetchLanding, within } from './landings/furnish';
+import { LAMPS, createLamps } from './landings/lamps';
 import { createLandingPhysics } from './landings/physics';
 import { bodyOf } from './landings/bodies';
 import { preload as preloadPhysics } from '../../lib/physics/world';
@@ -142,7 +143,7 @@ export function dimensionOf(id) {
   const code = `${String.fromCharCode(65 + (h % 26))}-${10 + ((h >>> 5) % 290)}${GREEK[(h >>> 14) % GREEK.length]}${(h >>> 19) % 10}`;
   return { code, hue: ((h >>> 9) % 360) / 360 };
 }
-const LAND = { down: 3.4, out: 1.3, board: 0.8, lift: 2.4, fall: 2.6 }; // seconds
+const LAND = { down: 3.4, out: 1.3, board: 0.8, lift: 2.4, fall: 2.6, ready: 6, party: 2.5 }; // seconds
 const CAM = { dist: 3.4, up: 0.55, pitch: [-0.25, 0.75], look: 1.6 }; // metres, radians
 
 // ── Loading the people ──
@@ -224,7 +225,10 @@ const WEARS = new Set(EVERYONE);
 const lookFor = (who, looks) => (WEARS.has(who) ? readLooks(looks ?? local.get(LOOK_KEY))[who] : null);
 const HAND_GUNS = { portalgun: 'portal', laserpistol: 'laser' }; // the wardrobe's hand gear that's a gun on foot
 const SCARED = new Set(['morty', 'jesse']); // the ones who jump at a squad, or at a double of themselves
-async function loadModel(spec, cast, looks = null) {
+// (`templates`: a model of the site's as a copy of the one figure of it
+// kept there, loadSharedFigure's, rather than fetched and made afresh:
+// footScene's own, the map's alone)
+async function loadModel(spec, cast, looks = null, { templates = null } = {}) {
   if (spec.src.meshy) {
     const look = lookFor(spec.src.meshy, looks);
     // (the cast's figure reads its motion in metres: it's told how tall it stands)
@@ -277,9 +281,15 @@ async function loadModel(spec, cast, looks = null) {
       look: c.look,
       react: c.react,
       gun,
-      dispose: undress,
+      // (its look off, and what the cast made for this one figure alone: the
+      // cast itself lasts the page)
+      dispose: () => {
+        undress();
+        c.release?.();
+      },
     };
   }
+  if (spec.src.url && templates) return loadSharedFigure(spec.src.url, spec.tall, { seed: seedFor(spec.id ?? spec.src.url), from: templates });
   if (spec.src.url) {
     const [gltf, clips] = await Promise.all([getLoader().loadAsync(spec.src.url), borrowClips()]);
     return rigScene(gltf.scene, clips, spec.tall, { seed: seedFor(spec.id ?? spec.src.url), key: spec.src.url });
@@ -326,10 +336,14 @@ function rigScene(model, clips, tall, { shared = false, seed, key = null } = {})
 // for it), as the landings' troops share theirs. The first is rigged to
 // keep the materials and smooth the normals; it's never drawn, and stays
 // for the next world that wants one. (galaxy/surface/crew.js)
+// (`from`: another such set of originals, url → Promise<{ scene, clips } |
+// null>: a world whose copies are to take its own look, which goes onto the
+// materials they share, keeps its own, as the map does its crews')
 const sharedModels = new Map(); // url → Promise<{ scene, clips } | null>
-export async function loadSharedFigure(url, tall, { seed } = {}) {
-  if (!sharedModels.has(url))
-    sharedModels.set(
+// (the original, fetched and rigged the first time it's asked for)
+export const templateIn = (models, url) => {
+  if (!models.has(url))
+    models.set(
       url,
       Promise.all([getLoader().loadAsync(url), borrowClips()]).then(
         ([gltf, clips]) => {
@@ -337,12 +351,15 @@ export async function loadSharedFigure(url, tall, { seed } = {}) {
           return { scene: gltf.scene, clips };
         },
         () => {
-          sharedModels.delete(url); // (a failed fetch is tried again next time)
+          models.delete(url); // (a failed fetch is tried again next time)
           return null;
         },
       ),
     );
-  const tpl = await sharedModels.get(url);
+  return models.get(url);
+};
+export async function loadSharedFigure(url, tall, { seed, from = sharedModels } = {}) {
+  const tpl = await templateIn(from, url);
   return tpl ? rigScene(cloneSkinned(tpl.scene), tpl.clips, tall, { shared: true, seed, key: url }) : null;
 }
 
@@ -351,10 +368,10 @@ export async function loadSharedFigure(url, tall, { seed } = {}) {
 // figure, Jesse in the lab’s suit his own) and dressed in it. They keep
 // their own guns, as the cruiser’s two do: a bag of blue in the hand stays
 // in the wardrobe. Anyone else is loaded as they were.
-async function loadParty(spec, cast, looks = null) {
+async function loadParty(spec, cast, looks = null, { templates = null } = {}) {
   const look = spec.src.url ? lookFor(spec.id, looks) : null;
-  if (!look) return loadModel(spec, cast, looks);
-  const fig = await loadModel({ ...spec, src: { url: bodyAsset(look) } }, cast, looks);
+  if (!look) return loadModel(spec, cast, looks, { templates });
+  const fig = await loadModel({ ...spec, src: { url: bodyAsset(look) } }, cast, looks, { templates });
   // (as the show has them, there’s nothing to put on)
   if (!fig?.model || JSON.stringify(writeLook(look)) === JSON.stringify(writeLook(defaultLook(spec.id)))) return fig;
   const undress = dress({ group: fig.model }, spec.gun ? { ...look, gear: { ...look.gear, hand: 'none' } } : look);
@@ -366,6 +383,14 @@ async function loadParty(spec, cast, looks = null) {
   };
   return fig;
 }
+
+// the model a party member's figure is, where it's one of the site's (their
+// look's body: Heisenberg's is Walt's own figure, the lab suit Jesse's)
+const partyUrl = (spec, looks = null) => {
+  if (!spec.src.url) return null;
+  const look = lookFor(spec.id, looks);
+  return look ? bodyAsset(look) : spec.src.url;
+};
 
 // ── People built from shapes (no figure of their own) ──
 
@@ -1402,7 +1427,10 @@ const blobMat = () => new THREE.MeshBasicMaterial({ map: blobTexture(), transpar
 
 // ── The whole of it ──
 
-export function createFoot({ map, emit, reduced = false, small = false, planetOf, renderer = null, warm = null }) {
+// (`prepare(roots, alive)`: the map's way of readying a landing before it's
+// shown, its look put on, its pictures sent and its shaders made, a slice at
+// a time; a promise)
+export function createFoot({ map, emit, reduced = false, small = false, planetOf, renderer = null, prepare = null }) {
   const root = new THREE.Group(); // at the planet's middle, in the map
   root.name = 'foot';
   root.visible = false;
@@ -1411,6 +1439,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   let party = null; // [lead, mate] once loaded: { spec, fig, group, gun, w }
   let troopFigs = new Map(); // id → troopFig's { body, anim, group, gp, … }
   const troopModels = new Map(); // a troop's model's url → { ready: { scene, clips } once loaded } (copied for each one)
+  const partyModels = new Map(); // a crew's or a guest's model's url → Promise<{ scene, clips } | null> (copied for each one: templateIn)
   // (what a loaded scene's made of, freed when the walk's over)
   const freeScene = (scene) =>
     scene.traverse((o) => {
@@ -1483,6 +1512,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     flare.userData.peak = 2.5 * METRE * METRE; // (about the key light's brightness, a metre off)
     map.add(flare);
   }
+  // and, for the same reason, the lights of a landing's things (a portal's
+  // glow, music's lamps, Mordor's fires) shown through a few kept in the
+  // map from the start, dark but for the ones nearest you (landings/lamps.js).
+  // Every lit shader on the map pays for them, all the time: a phone keeps
+  // one, the nearest
+  const lamps = createLamps(map, { n: small ? 1 : LAMPS });
+  const lampAt = new V();
   const groundN = new V();
   const fx = createGunFx({
     parent: root,
@@ -1596,8 +1632,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     sky: 1, // how much of the landing's sky shows: coming up from nothing as the ship comes in through the air
     airWas: 0, // the planet's halo, as bright as it was before the ship went into it
     band: null, // a trench round its middle: { half (its rim), home, arc, deep (how far down the trench run's rim is) }
-    hideBody: 0, // a station: how low the camera's to be for its own model to go (0: it stays)
+    hideBody: 0, // how low the camera's to be for the planet's own model to go (0: it stays)
     bodyShown: true,
+    bodyMask: 1, // (a planet's: the layers its sphere's drawn on, put back as it goes up)
+    bodyAll: false, // (a station's: all of it goes, not just its sphere)
     // the people
     lead: 0, // which of the party you play
     me: null,
@@ -1671,15 +1709,30 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   };
 
   // ── loading ──
-  let loading = null;
-  const load = (kind) => {
+  // Everyone's figures are made once for the page and copied for each
+  // landing: the cast's (one cast, kept from the first landing on: its
+  // models fetched, parsed and sent to the graphics chip once), the site's
+  // own models (copies of originals kept here, as loadSharedFigure makes
+  // them: rigged and their normals smoothed once; the map's own, not the
+  // galaxy's, for the look that goes onto what they share is the map's),
+  // the troops' that are models of their own. A landing's end frees only
+  // its copies. (Each landing made all of them afresh, and Rick and Morty's
+  // 2048 maps went up to the chip again every time.)
+  // warmParty(kind): the figures a ship's party and its side's troops are
+  // copies of, loaded (as soon as there's somewhere to land: prefetch)
+  const warmParty = (kind) => {
     const specs = PARTY[kind] ?? PARTY.rv;
-    cast = createMeshyCast(withWardrobe()); // (the wardrobe's bodies too, for the cruiser's two)
+    cast ??= createMeshyCast(withWardrobe()); // (the wardrobe's bodies too, for the cruiser's two)
     // (and the side's troops, where the cast has them: the rest are built stand-ins)
     const sideTroops = Object.keys(sideFor(kind)?.troops ?? SIDES.rickmorty.troops);
     const needCast = [...new Set([...specs.filter((s) => s.src.meshy).map((s) => s.src.meshy), ...sideTroops.map((k) => troopLook(k).meshy).filter(Boolean).map((k) => MESHY[k]?.a ?? k)])]; // (the cast loads by asset: a Morty clone is Morty's)
     const castReady = cast.load(null, needCast).catch(() => {});
     preload(TROOP_CLIPS).catch(() => {});
+    // (the party's own, where they're the site's models)
+    for (const spec of specs) {
+      const url = partyUrl(spec);
+      if (url) templateIn(partyModels, url);
+    }
     // (and the ones that are models of their own, Albuquerque's: loaded once, copied for each)
     for (const k of sideTroops) {
       const url = troopLook(k).url;
@@ -1688,17 +1741,26 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       troopModels.set(url, entry);
       Promise.all([getLoader().loadAsync(url), borrowClips()])
         .then(([gltf, clips]) => {
-          // (the walk's over, or another's begun, while it loaded)
+          // (gone with the foot scene while it loaded)
           if (troopModels.get(url) !== entry) return freeScene(gltf.scene);
           // (the first one rigged keeps the materials and smooths the normals, shared by the copies)
           rigScene(gltf.scene, clips, 1);
           entry.ready = { scene: gltf.scene, clips };
         })
-        .catch(() => {});
+        .catch(() => {
+          // (tried again next time)
+          if (troopModels.get(url) === entry) troopModels.delete(url);
+        });
     }
+    return castReady;
+  };
+  let loading = null;
+  const load = (kind) => {
+    const specs = PARTY[kind] ?? PARTY.rv;
+    const castReady = warmParty(kind);
     loading = (async () => {
       await castReady;
-      const figs = await Promise.all(specs.map((s) => loadParty(s, cast).catch(() => null)));
+      const figs = await Promise.all(specs.map((s) => loadParty(s, cast, null, { templates: partyModels }).catch(() => null)));
       return figs.map((fig, i) => {
         const spec = specs[i];
         const f = fig ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } });
@@ -1775,6 +1837,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     got.b?.dispose();
     got.own?.dispose(); // (a copy's: its animator; what it's made of is the original's)
     got.c?.anim?.dispose();
+    got.c?.release?.(); // (and a cast copy's own: a clone's shirt)
     troopFigs.delete(id);
   };
 
@@ -2036,8 +2099,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (landing && furnished(id)) {
       const anchor = near ? { n: near.n, f: near.f } : S.spot;
       physical = bodiesHere() && looseOn(landing);
-      const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer, warm, physical });
-      rocks = { mesh: f.group, solids: f.solids, spots: f.spots, bodies: f.bodies, put: f.put, update: f.update, dispose: f.dispose };
+      const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer, physical });
+      rocks = { mesh: f.group, solids: f.solids, spots: f.spots, lights: f.lights, bodies: f.bodies, put: f.put, update: f.update, dispose: f.dispose, built: f.ready, open: f.open };
       // (the engine on its way while the ship comes down)
       if (physical) {
         const mine = rocks;
@@ -2052,14 +2115,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
           });
       }
     } else rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
+    // (out of sight till it's all been readied: below)
+    rocks.ready = false;
+    rocks.mesh.visible = false;
     root.add(rocks.mesh);
-    // (flown in, the ground's out of sight till the clouds, stepEntry: its
-    // shader's made now, while it's still shown, so it isn't on the frame it
-    // first comes into view)
-    if (S.entry) {
-      warm?.(ground.mesh)?.catch?.(() => {});
-      ground.mesh.visible = rocks.mesh.visible = false;
-    }
+    // (flown in, the ground's out of sight till the clouds, stepEntry)
+    if (S.entry) ground.mesh.visible = false;
     // (the sky from the planet's own air, where it has one: landings/sky.js)
     // (a biome may bring its own air along the horizon: Mordor's fumes)
     haze = u.airless ? null : landing?.sky ? createSky(landing.sky, landing.sky.haze ?? u.rim ?? u.swatch ?? '#8ab4ff', { air: u.air ?? null }) : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
@@ -2073,15 +2134,53 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (S.entry) reentry.start({ cloud: landing?.sky?.horizon ?? '#e9eef4' });
     sides =S.band ? createTrenchSides(n, S.R, S.band) : null;
     if (sides) root.add(sides.mesh);
-    // (a station's own model goes once the camera's low enough that the
-    // patch reaches past the horizon)
+    // the whole landing readied at once, while the ship comes down: once
+    // its things are all in, the ground, the sky, the things and the beacon
+    // over the door have their pictures sent and their shaders made (the
+    // map's prepare, a slice at a time), and the things are shown together,
+    // their solids and doors with them, rather than each popping in as its
+    // own shaders were made. (The ground and the sky show from the start,
+    // as before: the frame guard draws them as soon as they're ready.) A
+    // thing that's very slow to come (a model on a slow line) isn't waited
+    // for past LAND.ready: what's in is shown, and it comes as it may.
+    // (the ground, the sky and the trench's sides readied first, at once,
+    // not after the things: flown in, the ground's hidden till the clouds
+    // part, 2.8 s in, which the things may well not be in by)
+    const these = rocks;
+    const mine = () => rocks === these;
+    const early = prepare ? Promise.resolve(prepare([ground.mesh, haze?.mesh, sides?.mesh].filter(Boolean), mine)).catch(() => {}) : null;
+    within(these.built, LAND.ready * 1000)
+      .then(() => early)
+      .then(() => (mine() && prepare ? prepare([these.mesh], mine) : null))
+      .catch(() => {})
+      .then(() => {
+        if (!mine()) return;
+        these.ready = true;
+        these.open?.();
+        showRocks();
+      });
+    // (the planet's own model goes once the camera's low enough that the
+    // patch reaches past the horizon: under it, it's only drawn for nothing.
+    // On a planet, past it all round wherever you are on the patch, which is
+    // laid again once you're 0.3 of its radius from its middle, the camera
+    // a few metres behind you: 0.65 of its radius. A station's as it was.
+    // On a planet only its sphere goes, by its layers, which three tests an
+    // object at a time: what's put on it, the serpents round Snake Planet,
+    // the gaming world's blocks, stays.)
     S.bodyShown = planet.body?.visible ?? true;
-    S.hideBody = u.plated ? (0.8 * HULL_PATCH.radius) ** 2 / (2 * S.R) : 0;
+    S.bodyMask = planet.body?.layers.mask ?? 1;
+    S.bodyAll = Boolean(u.plated);
+    S.hideBody = u.plated ? (0.8 * HULL_PATCH.radius) ** 2 / (2 * S.R) : (0.65 * PATCH.radius) ** 2 / (2 * S.R);
     root.position.copy(S.c);
     root.visible = true;
     party = null;
-    load(kind).then((p) => {
-      if (S.id !== id || !S.phase) {
+    const here = () => S.id === id && Boolean(S.phase);
+    load(kind).then(async (p) => {
+      // (readied while the ship comes down, as the landing is, so no one
+      // steps out of the door with a shader still to make; not waited for
+      // past LAND.party)
+      if (prepare && here()) await within(prepare(p.map((o) => o.group), here), LAND.party * 1000);
+      if (!here()) {
         for (const o of p) {
           root.remove(o.group);
           o.gp?.dispose();
@@ -2092,6 +2191,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       party = p;
     });
     return true;
+  };
+
+  // the landing's things, once they're readied (and, flown in, out under the clouds)
+  const showRocks = () => {
+    if (rocks) rocks.mesh.visible = rocks.ready && (!S.entry || S.entry.t >= 0.6 * ENTRY.glide);
   };
 
   // the ship along its way down (k 0…1): over to above the spot, and down
@@ -2176,7 +2280,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // higher up it's a patch on the planet's own map, and it's in the clouds
     // that the one becomes the other
     const shown = e.t >= 0.6 * ENTRY.glide;
-    for (const x of [ground, rocks, sides]) if (x) x.mesh.visible = shown;
+    for (const x of [ground, sides]) if (x) x.mesh.visible = shown;
+    showRocks();
     // the sky comes up round it, and the halo it flew into goes
     S.sky = e.fx.sky;
     const air = planetOf[S.id]?.air;
@@ -2328,7 +2433,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.add(wk.group);
     (async () => {
       if (spec.src.meshy) await cast?.load(null, [spec.src.meshy]).catch(() => {});
-      const fig = (cast && (await loadParty(spec, cast, g.looks ?? readLooks(null)).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } }); // (in their own looks: the show’s, if they’ve sent none)
+      const fig = (cast && (await loadParty(spec, cast, g.looks ?? readLooks(null), { templates: partyModels }).catch(() => null))) ?? built({ ...spec, src: { built: spec.id === 'artoo' ? 'artoo' : 'han' } }); // (in their own looks: the show’s, if they’ve sent none)
       if (!guests.has(g.id) || !g.walkers.includes(wk)) return fig.dispose?.();
       wk.fig = fig;
       wk.group.add(fig.model);
@@ -2519,7 +2624,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (!S.phase) return false;
     S.clock += dt;
     S.t += dt;
-    map.updateMatrixWorld();
+    // (the map's own matrix and this scene's, not everything in the
+    // universe: the frame's drawing brings that up to date, once, and
+    // what's here that moves is brought up to date where it's moved)
+    root.updateWorldMatrix(true, false);
     invMap.copy(map.matrixWorld).invert();
     // the ground's map follows the planet's held turn
     const planet = planetOf[S.id];
@@ -2529,6 +2637,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     ground?.tick(S.clock);
     // (the landing's things, told where your head is: the people there turn to you)
     rocks?.update?.(S.clock, dt, S.me && S.phase === 'walk' ? { me: root.localToWorld(new V(...vec.add(at(S.me, S.R), S.me.n, 1.6 * METRE))) } : null);
+    // (and their lights through the map's, the nearest you first: you, or the camera till you're out)
+    if (rocks?.lights) lamps.drive(rocks.lights, S.me ? root.localToWorld(lampAt.set(...at(S.me, S.R))) : S.cam.pos ? map.localToWorld(lampAt.copy(S.cam.pos)) : root.getWorldPosition(lampAt));
 
     if (S.phase === 'land' && S.entry) {
       stepEntry(dt);
@@ -3136,9 +3246,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.cam.up.lerp(out.up, k).normalize();
     } else S.cam = { ...S.cam, pos: out.pos.clone(), look: out.look.clone(), up: out.up.clone() };
     placeViewGun(dt);
-    // a station's own model: not while the camera's down by the ground
+    // the planet's own model: not while the camera's down by the ground
     const body = planetOf[S.id]?.body;
-    if (body && S.hideBody) body.visible = S.bodyShown && S.cam.pos.distanceTo(S.c) - S.R > S.hideBody;
+    if (body && S.hideBody) {
+      const up = S.cam.pos.distanceTo(S.c) - S.R > S.hideBody;
+      if (S.bodyAll) body.visible = S.bodyShown && up;
+      else body.layers.mask = up ? S.bodyMask : 0;
+    }
     // the air: round the camera, by day
     if (haze) {
       haze.mesh.position.copy(S.cam.pos).sub(S.c);
@@ -3171,12 +3285,35 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       return S.id;
     },
     begin,
+    // somewhere to come down on `id` (the ship's at it), in a `kind` of
+    // ship: what landing there will want, fetched and made ready while it's
+    // still flying, its landing's (landings/furnish.js), its crew's, and
+    // the physics engine where it has anything loose on it
+    prefetch(id, kind) {
+      const u = byId(id);
+      if (!u || u.kind === 'core' || u.portal) return;
+      // (not on a phone, nor saving data: there it's fetched as it lands,
+      // as it always was)
+      if (!bodiesHere()) return;
+      const landing = u.plated ? null : landingOf(id);
+      if (landing && furnished(id)) {
+        prefetchLanding(id, landing, { renderer });
+        if (bodiesHere() && looseOn(landing)) preloadPhysics().catch(() => {});
+      }
+      warmParty(kind);
+    },
     update,
     view,
     // how much of a landing's day sky shows, and its sun's way (the map's
     // space): the scene's flare on the sun goes by them (0 with no sky)
     get sky() {
       return haze?.set && S.spot ? { day: haze.day, sun: haze.sunDir } : null;
+    },
+    // how far from the camera there's anything to see (the map's units), or
+    // null: as far as it sees. Under a full day's sky, only as far as the
+    // sky (landings/sky.js's seenTo): it hides the rest of the universe.
+    far() {
+      return S.phase && S.spot ? (haze?.seenTo ?? null) : null;
     },
     // the day where you are: how much the haze shows (light: the key light's direction, in the map's space)
     day(light) {
@@ -3392,7 +3529,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.entry = null;
       S.sky = 1;
       reentry.stop();
-      if (planet?.body && S.hideBody) planet.body.visible = S.bodyShown;
+      if (planet?.body && S.hideBody) {
+        if (S.bodyAll) planet.body.visible = S.bodyShown;
+        else planet.body.layers.mask = S.bodyMask;
+      }
       S.hideBody = 0;
       S.band = null;
       for (const p of party ?? []) {
@@ -3403,8 +3543,6 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       party = null;
       for (const g of [...guests.values()]) dropGuest(g);
       for (const id of [...troopFigs.keys()]) dropTroop(id);
-      for (const e of troopModels.values()) if (e.ready) freeScene(e.ready.scene);
-      troopModels.clear();
       for (const key of [...blobs.keys()]) dropShadow(key);
       for (const o of S.bolts) o.mesh.visible = false;
       S.bolts = [];
@@ -3421,8 +3559,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         x.dispose();
       }
       ground = rocks = haze = sides = null;
-      cast?.dispose();
-      cast = null;
+      lamps.clear();
       for (const o of owned) o?.dispose?.();
       owned.length = 0;
       if (S.model) S.model.group.scale.setScalar(1);
@@ -3435,12 +3572,20 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     },
     dispose() {
       this.end();
+      // (the figures the landings' copies were made of: the cast's, the troops' own)
+      cast?.dispose();
+      cast = null;
+      for (const e of troopModels.values()) if (e.ready) freeScene(e.ready.scene);
+      troopModels.clear();
+      for (const p of partyModels.values()) p.then((tpl) => tpl && freeScene(tpl.scene));
+      partyModels.clear();
       boltGeo.dispose();
       sleeveGeo.dispose();
       fx.dispose();
       pfx.dispose();
       gfx.dispose();
       flare?.removeFromParent();
+      lamps.dispose();
       if (vm) for (const o of vm.owned) o.dispose?.();
       shadowMat.dispose();
       for (const m of boltMats.values()) {

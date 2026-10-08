@@ -322,9 +322,13 @@ export function precompile(renderer, root, camera, scene = null, target) {
 
 // The materials of a composer's passes (bloom's blurs, the output pass, a
 // grade), compiled the same way: each on a stand-in quad, against where its
-// pass draws (the screen for the last one, a buffer for the rest).
+// pass draws (the screen for the last one, a buffer for the rest). The quad
+// has what three's full-screen quad has, a position and a uv and no normal:
+// whether a mesh has normals is part of its shader, so one made on a plane
+// was another, and the pass's own was made in the frame it first drew.
 export function precompilePasses(renderer, composer, camera) {
   const quad = new THREE.PlaneGeometry(2, 2);
+  quad.deleteAttribute('normal');
   const jobs = composer.passes.map((pass, i) => {
     const mats = pass.enabled ? passMaterials(pass) : [];
     if (!mats.length) return null;

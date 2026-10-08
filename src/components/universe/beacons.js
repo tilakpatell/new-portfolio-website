@@ -32,6 +32,9 @@ void main() {
   vColor = aColor;
   gl_PointSize = ${SIZE.toFixed(1)} * uDpr;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  // (drawn over everything, so never cut by the far plane: on foot it's at
+  // the landing's sky, footScene's far(), which the dots are well past)
+  gl_Position.z = min(gl_Position.z, gl_Position.w * 0.999999);
 }`;
 // a soft disc with a hot core: the core goes past white, so the bloom catches it a little
 const FRAG = `

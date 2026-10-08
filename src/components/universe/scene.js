@@ -219,6 +219,7 @@ const PLUME = {
 const IDLE = 40000; // ms sitting still before the crew get bored
 const PARTS_CHANGED = (a, b) => PARTS_SLOTS.some((slot) => a[slot] !== b[slot]);
 const SAFE = 3; // seconds after coming back when other pilots' shots don't count
+const PREFETCH_AFTER = 2.5; // seconds at a planet you could land on before what landing there wants is fetched (not as you fly past)
 // the cockpit view: the intro's cockpits, built on demand; the eye sits a
 // little ahead of the ship's middle and above it (map units); the lens is
 // the intro's, framed for a wide horizontal view, kept within sane vertical limits
@@ -709,7 +710,7 @@ export async function create(canvas, ctx) {
   const near = createNearMaps({ small, upload: (ts) => uploadSlices(renderer, ts, { sliceMB: 8 }) }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
-  const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, warm: (o) => warm(o) });
+  const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, prepare: (roots, alive) => prepareLanding(roots, alive) });
   const onFoot = () => Boolean(foot.phase);
   // the other pilots whose crews are down on a planet now (the scene hands
   // the ones on yours to the foot scene)
@@ -810,9 +811,24 @@ export async function create(canvas, ctx) {
   // arriving, a loaded model, the cockpit
   // (drawn into the passes' buffer while they're on, so made for it)
   // (one pass for what can be drawn in one, renderer.js's singlePass, first:
-  // that's part of the shader made)
-  const warm = (root, cam = camera, target = scene) => precompile(renderer, singlePass(root), cam, target, post.on ? post.composer.readBuffer : undefined);
+  // that's part of the shader made; and for the map, the house look, which
+  // house.follow puts on everything in it within half a second: put on
+  // after, it made each of these shaders again)
+  const warm = (root, cam = camera, target = scene) => {
+    if (target === scene) house.adopt(root);
+    return precompile(renderer, singlePass(root), cam, target, post.on ? post.composer.readBuffer : undefined);
+  };
   fleet.prepare = (o) => warm(o); // (the fleet's models too: none is made before the first frame)
+  // a landing (footScene's), readied before it's shown: the look on, its
+  // pictures sent and its shaders made, a slice at a time behind the frames
+  // (lib/three/gpuWork), all at once rather than a thing at a time
+  const prepareLanding = (roots, alive) => {
+    for (const root of roots) {
+      house.adopt(root);
+      singlePass(root);
+    }
+    return prepareScene({ renderer, roots, scene, camera, target: post.target, sliceMB: 8, alive: () => alive() && !disposed });
+  };
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
   // whose space the ship's in (sides.js sideAt): the Rick and Morty sector's
@@ -1088,6 +1104,7 @@ export async function create(canvas, ctx) {
     pullSaid: false,
     camFrom: null, // { pos, quat, start, dur }: the camera easing over from where it was (onto your feet, or back behind the ship)
     landable: null, // the planet you could land on and step out onto, where you are
+    landableFor: 0, // (how long it's been that: seconds)
   };
   const t0 = performance.now();
   let engine = null;
@@ -1308,6 +1325,16 @@ export async function create(canvas, ctx) {
   const lens = (near) => {
     if (Math.abs(camera.near - near) < near * 0.02) return;
     camera.near = near;
+    camera.updateProjectionMatrix();
+  };
+  // how far the camera draws: out to deep space's far side, but on foot
+  // under a full day's sky only as far as the sky (footScene's far(): it
+  // hides the rest of the universe), so nothing past it is drawn, nor any
+  // place's own motion worked out there (it's out of view)
+  const FAR = camera.far;
+  const reach = (far) => {
+    if (camera.far === far) return;
+    camera.far = far;
     camera.updateProjectionMatrix();
   };
 
@@ -4390,13 +4417,15 @@ export async function create(canvas, ctx) {
   const footCamera = (dt) => {
     const v = foot.view(dt);
     if (!v) return;
-    map.updateMatrixWorld();
+    // (only the map's own turn is wanted: the frame's already brought it up to date)
+    map.updateWorldMatrix(true, false);
     map.localToWorld(camera.position.copy(v.pos));
     camera.up.copy(v.up).transformDirection(map.matrixWorld);
     camera.lookAt(map.localToWorld(camLook.copy(v.look)));
     camera.up.set(0, 1, 0);
     camera.updateMatrixWorld();
     lens(0.004);
+    reach(foot.far() ?? FAR);
   };
   // the HUD on foot: the sights where the gun points, brackets on the
   // trooper it's on, the way back to the ship, and your health in the
@@ -4577,7 +4606,7 @@ export async function create(canvas, ctx) {
     if (sky && flares[0]) {
       let weight = 0;
       let ndc = [0, 0];
-      starAt.copy(sky.sun).transformDirection(map.matrixWorld).multiplyScalar(1000).add(eyeAt).project(camera);
+      starAt.copy(sky.sun).transformDirection(map.matrixWorld).multiplyScalar(camera.far * 0.5).add(eyeAt).project(camera); // (inside what the camera draws: footCamera's reach)
       if (starAt.z < 1 && sky.day > 0.02) {
         ndc = [starAt.x, starAt.y];
         weight = post.flareOn ? flareWeight({ ndc, size: 0.032 / halfTan() }) * sky.day : 0;
@@ -4720,7 +4749,15 @@ export async function create(canvas, ctx) {
     const landable = flying() && !onFoot() && !state.crash && !state.dive && state.at && byId(state.at)?.kind !== 'core' && !byId(state.at)?.portal ? state.at : null; // (not a station, nor the gate into the galaxy)
     if (landable !== state.landable) {
       state.landable = landable;
+      state.landableFor = 0;
       emit({ type: 'landable', id: landable });
+    }
+    // (and what coming down there will want, fetched while you're still
+    // flying: once you've stayed a moment, not as you fly past)
+    if (landable) {
+      const was = state.landableFor;
+      state.landableFor += dt;
+      if (was < PREFETCH_AFTER && state.landableFor >= PREFETCH_AFTER) foot.prefetch(landable, state.kind);
     }
     placeAlt();
     map.rotation.y = state.yaw;
@@ -4775,6 +4812,7 @@ export async function create(canvas, ctx) {
     }
     // on foot, the camera's behind you (footScene.js), eased over from where it was
     if (onFoot()) footCamera(dt);
+    else reach(FAR);
     easeCamera(now);
     // into the cockpit and out of it: the ship fades from view and the
     // cockpit takes its place, and your head turns a little (the cockpit
