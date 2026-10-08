@@ -571,7 +571,7 @@ export const SITES = {
       ...[[0, 2], [50, 2], [100, 1]].map(([x, n]) => ({ kind: 'clone', n, at: [x, 52], spread: 4, still: true, face: 0, name: 'Clone trooper', says: CLONE_SAYS })),
       ...[25, 75].map((x) => ({ kind: 'wookiee', n: 2, at: [x, 52], spread: 4, still: true, face: 0, name: 'Wookiee warrior', says: WOOKIEE_SAYS })),
       { kind: 'wookiee', n: 2, at: [6, -34], spread: 5, roam: 6, speed: 1.0, name: 'Wookiee', says: ['(It beats its chest once, and points you up the beach.)', '(A warm growl: a welcome.)'] },
-      { kind: 'clone', n: 2, at: [16, -40], spread: 4, roam: 4, speed: 1.0, name: 'Clone trooper', says: ['BARC’s fuelled, sir. The beach is that way.', 'Droids landed at the far end of the lagoon. We hold here.'] },
+      { kind: 'clone', n: 2, at: [16, -40], spread: 4, roam: 4, speed: 1.0, name: 'Clone trooper', says: ['BARC’s fuelled, sir. The beach is that way.', 'Droids are wading in from the lagoon. We hold the barricades.'] },
       { kind: 'atrt', n: 2, path: [[0, 40], [60, 36], [110, 40], [60, 36]], speed: 1.6, r: 0.8, name: 'AT-RT', says: ['(The clone rider nods down at you.) Good hunting, sir.', '(The walker clanks past, its rider scanning the lagoon.)'] },
       // (the AT-AP's beat behind the stores, clear of them and of Gree)
       { kind: 'atap', n: 1, path: [[20, 18], [90, 18]], speed: 1.0, r: 2.2, name: 'AT-AP', says: ['(Its heavy cannon swings out toward the water.)'] },

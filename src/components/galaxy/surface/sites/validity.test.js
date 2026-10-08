@@ -3,17 +3,13 @@ import { SITES, siteOf } from '.';
 import { ASSAULTS } from '../missions/assaults';
 import { heightFor, namedTwice, spawnProblems, standable } from './validity';
 
-// Worlds known to fail the checks below, and who fixes them. Their spawn and
-// named-twice tests are skipped, so the suite stays green until then.
-const KNOWN = { kashyyyk: 'Tasks 2 and 4 of docs/superpowers/plans/2026-10-07-ground-sides-kashyyyk-look-ai.md fix its spawns and duplicates' };
-
 describe('every world can be played as written', () => {
   for (const id of Object.keys(SITES)) {
     const site = siteOf(id);
-    it.skipIf(id in KNOWN)(`${id}: every quest's enemies stand somewhere they can come to you from`, () => {
+    it(`${id}: every quest's enemies stand somewhere they can come to you from`, () => {
       expect(spawnProblems(site)).toEqual([]);
     });
-    it.skipIf(id in KNOWN)(`${id}: nobody named is there twice`, () => {
+    it(`${id}: nobody named is there twice`, () => {
       expect(namedTwice(site)).toEqual([]);
     });
     it(`${id}: every quest giver stands on dry ground`, () => {
@@ -69,6 +65,23 @@ describe('Kashyyyk, as Revenge of the Sith has it', () => {
   it('stands everyone on Kashyyyk somewhere they can stand', () => {
     for (const a of site.life) {
       for (const p of [a.at, ...(a.path ?? [])].filter(Boolean)) expect(standable(site, p), `${a.name ?? a.kind} at ${p}`).toBe(true);
+    }
+  });
+  it('the droids come out of the shallows in three waves, with clones and Wookiees beside you', () => {
+    const q = site.quests.find((x) => x.id === 'beachhead');
+    const shoots = q.steps.filter((s) => s.type === 'shoot');
+    expect(shoots).toHaveLength(3);
+    for (const s of shoots) {
+      const spawns = [].concat(s.spawn);
+      expect(spawns.some((sp) => sp.side === 'yours')).toBe(true);
+      // (your side carries a tag of its own: a kill of theirs, not of yours, is what the step counts)
+      for (const sp of spawns.filter((x) => x.side === 'yours')) expect(sp.tag).not.toBe(s.tag);
+      for (const sp of spawns.filter((x) => x.hostile && x.side !== 'yours')) {
+        expect(sp.at[1]).toBeGreaterThan(75); // in the shallows
+        expect(sp.at[1] - (sp.spread ?? 0)).toBeGreaterThanOrEqual(84); // none of its spread on the sand
+        expect(sp.wade).toBe(true);
+      }
+      expect(s.at).toBeTruthy();
     }
   });
 });

@@ -4,6 +4,16 @@
 
 const H = (range, every, damage, extra = {}) => ({ range, every, damage, spread: 0.06, ...extra });
 
+// Kashyyyk's waves wade out of the shallows (they're knee-deep, and droids
+// hold at the lagoon's deep water), and the beach's defenders behind the
+// barricades are the same in every wave. (A wave's whole spread stays out in
+// the shallows, z 84 and beyond: nobody starts on the sand in front of the line.)
+const LAGOON = { leash: 90, roam: 8, tag: 'lagoondroids', wade: true };
+const DEFENDERS = [
+  { kind: 'clone', n: 2, at: [30, 56], spread: 10, roam: 4, hp: 4, side: 'yours', tag: 'defenders', hostile: H(45, 1.6, 6) },
+  { kind: 'wookiee', n: 2, at: [70, 56], spread: 10, roam: 5, hp: 5, side: 'yours', tag: 'defenders', hostile: H(30, 1.4, 8) },
+];
+
 export const EXTRA = {
   scarif: {
     life: [],
@@ -36,7 +46,33 @@ export const EXTRA = {
       { kind: 'wookiee', id: 'tarfful', at: [-112, -12], still: true, face: -0.6, name: 'Tarfful', named: true, quest: 'escapepod', says: ['(A long, rumbling roar.)'] },
     ],
     quests: [
-      { id: 'beachhead', name: 'The Battle of Kashyyyk', giver: 'gree', intro: [['Commander Gree', 'Separatist droids, coming across the lagoon. Hold the beach.']], steps: [{ type: 'shoot', tag: 'lagoondroids', n: 10, text: 'Hold the beach against the droids', spawn: [{ kind: 'battledroid', n: 8, at: [150, 40], spread: 18, roam: 6, hp: 1, tag: 'lagoondroids', hostile: H(45, 2.4, 7) }, { kind: 'droideka', n: 2, at: [150, 40], spread: 10, roam: 4, hp: 2, tag: 'lagoondroids', hostile: { ...H(40, 1.8, 7), shield: 3, burst: { n: 2, gap: 0.12 } } }] }], done: [['Commander Gree', 'Beach is ours. Good work.']] },
+      // The Battle of Kashyyyk, as the film has it: the droids wade out of the
+      // shallows in three waves (battle droids, then super battle droids, then
+      // droidekas), clones and Wookiees dug in behind the barricades with you.
+      // Your side carries a tag of its own: the step counts the droids' kills.
+      {
+        id: 'beachhead',
+        name: 'The Battle of Kashyyyk',
+        giver: 'gree',
+        intro: [['Commander Gree', 'Separatist droids, coming across the lagoon. Hold the beach.']],
+        steps: [
+          { type: 'shoot', tag: 'lagoondroids', n: 6, at: [50, 62], text: 'The first wave: hold the barricades', spawn: [
+            { ...LAGOON, kind: 'battledroid', n: 6, at: [50, 100], spread: 16, hp: 1, hostile: { ...H(45, 2.4, 7), chase: 1.2 } },
+            ...DEFENDERS,
+          ] },
+          { type: 'shoot', tag: 'lagoondroids', n: 6, at: [50, 62], text: 'The second wave: the super battle droids', spawn: [
+            { ...LAGOON, kind: 'battledroid', n: 4, at: [30, 100], spread: 14, hp: 1, hostile: { ...H(45, 2.4, 7), chase: 1.2 } },
+            { ...LAGOON, kind: 'superdroid', n: 2, at: [80, 100], spread: 14, hp: 3, hostile: { ...H(40, 1.6, 8), chase: 0.9, burst: { n: 3, gap: 0.15 } } },
+            ...DEFENDERS,
+          ] },
+          { type: 'shoot', tag: 'lagoondroids', n: 6, at: [50, 62], text: 'The last wave: droidekas', spawn: [
+            { ...LAGOON, kind: 'droideka', n: 2, at: [50, 104], spread: 12, hp: 2, hostile: { ...H(40, 1.8, 7), shield: 3, burst: { n: 2, gap: 0.12 }, chase: 1.6 } },
+            { ...LAGOON, kind: 'battledroid', n: 4, at: [90, 100], spread: 14, hp: 1, hostile: { ...H(45, 2.4, 7), chase: 1.2 } },
+            ...DEFENDERS,
+          ] },
+        ],
+        done: [['Commander Gree', 'Beach is ours. Good work.']],
+      },
       { id: 'escapepod', name: 'A way off-world', giver: 'tarfful', intro: [['Tarfful', '(He points south, to the hidden escape pod, and growls: it needs parts.)']], steps: [{ type: 'collect', item: 'podpart', n: 3, spots: [[-110, -360], [-136, -372], [-104, -392]], text: 'Find the escape pod’s parts' }, { type: 'use', id: 'fix', at: [-120, -380], r: 4, prompt: 'Fit the parts', text: 'Fix the escape pod' }], done: [[null, '(The pod hums into life. Somewhere, a Jedi Master is going to need it.)']] },
     ],
   },
