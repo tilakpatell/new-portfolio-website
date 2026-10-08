@@ -184,7 +184,7 @@ import { CORE, GENS, citadelGeometry, createSiege, segmentSphere } from './siege
 import { createCitadelSiege } from './citadelSiege';
 import { STALE_MS } from './online/protocol';
 import { createFoot } from './footScene';
-import { wayIn } from './landings/wayin';
+import { flownInto, wayIn, worldName } from './landings/wayin';
 import { figureVoice } from './landings/voicelines';
 import { sayVoiced, stopVoiced } from '../../lib/voiced';
 import { ENTRY, LANDABLE, airTop, entering } from './entry';
@@ -1877,6 +1877,7 @@ export async function create(canvas, ctx) {
     const next = readLoadout(raw);
     const was = state.loadout;
     state.loadout = next;
+    armory?.refit(next); // (the same line stays picked; the rack's rounds carry over)
     if (next.paint !== was.paint) dress();
     if (PARTS_CHANGED(was, next)) refit();
     ctx.invalidate();
@@ -2085,11 +2086,12 @@ export async function create(canvas, ctx) {
   // the nose, bent onto the lead point when the guns are locked on and the
   // nose is near enough to it (targeting.js, as much as the aim-assist
   // setting allows); held, the guns keep firing at the ship's own pace
-  // the guns fitted for each ship (weapons.js): the blaster, the spread and
-  // heavy ordnance, R or 1 2 3 to change
+  // the guns fitted for each ship (weapons.js): the blaster, and the
+  // secondary and ordnance the loadout fits (stock: the spread and the
+  // heavy rack), R or 1 2 3 to change
   let armory = null;
   const arms = () => {
-    if (!armory || armory.kind !== state.kind) armory = Object.assign(createArmory(state.kind), { kind: state.kind });
+    if (!armory || armory.kind !== state.kind) armory = Object.assign(createArmory(state.kind, state.loadout), { kind: state.kind });
     return armory;
   };
   const shotAt = new THREE.Vector3();
@@ -2555,15 +2557,17 @@ export async function create(canvas, ctx) {
       // (not till the guns are first used: the first minute has enough on it)
       const on = state.armed && flying() && !onFoot() && state.view !== 'map' && !state.crash && !props.frozen;
       const arm = arms();
-      const sig = on ? `${arm.index}|${arm.ammo}|${Math.floor(arm.filling * 10)}` : '';
+      const sig = on ? `${arm.index}|${arm.id}|${arm.ammo}/${arm.ammoMax}|${Math.floor(arm.filling * 10)}` : '';
       if (sig !== armsSig) {
         armsSig = sig;
         el.toggleAttribute('data-on', on);
         if (on) {
           el.dataset.weapon = arm.id;
+          el.dataset.line = arm.line;
           const name = el.querySelector('.universe-arms-name');
           if (name) name.textContent = arm.name;
           el.querySelectorAll('.universe-arms-pip').forEach((pip, i) => {
+            pip.hidden = i >= arm.ammoMax; // (as many as the fitted rack holds)
             pip.toggleAttribute('data-full', i < arm.ammo);
             pip.style.setProperty('--fill', i === arm.ammo ? arm.filling.toFixed(2) : '0');
           });
@@ -4131,10 +4135,10 @@ export async function create(canvas, ctx) {
       if (into) portalThrough(into);
       else if (gunPortal.spot && gunHit(before, state.ship, gunPortal.spot, gunPortal.age)) gunThrough();
     }
-    // into a planet's air (entry.js): at a speed it can land at, the way in
-    // takes it on down onto the ground; any faster it's no landing (it goes
-    // on into the ground, and that's the crash above, as ever), and the HUD
-    // says so. Not while the autopilot's taking it somewhere else
+    // into a planet's air (entry.js): at a speed it can land at, straight on
+    // into its world (flyInto); any faster it's no way in (it goes on into
+    // the ground, and that's the crash above, as ever), and the HUD says so.
+    // Not while the autopilot's taking it somewhere else
     if (!state.jump && !state.auto) {
       const air = entering(state.ship, LANDABLE);
       // (a planet the NX-5 removed: no landing on it till it's back)
@@ -4143,12 +4147,12 @@ export async function create(canvas, ctx) {
           state.removedSaid = air.id;
           state.note = { text: `${placeName(air.id)} has been removed. Give it a minute.`, until: wall() + 3 };
         }
-      } else if (air?.kind === 'enter' && startFoot({ id: air.id, entry: air })) return true;
+      } else if (air?.kind === 'enter' && flyInto(air.id)) return true;
       if (air?.kind !== 'enter') state.removedSaid = null;
       if (air?.kind !== 'hot') state.hotSaid = null;
       else if (state.hotSaid !== air.id) {
         state.hotSaid = air.id;
-        state.note = { text: `Too fast to land on ${placeName(air.id)}: ease off the boost`, until: wall() + 2.5 };
+        state.note = { text: `Too fast to fly into ${placeName(air.id)}: ease off the boost`, until: wall() + 2.5 };
       }
     }
     if (g) {
@@ -4351,6 +4355,22 @@ export async function create(canvas, ctx) {
     ctx.invalidate();
     return true;
   };
+  // Flown down into a planet's air (fly's entering()): straight on into its
+  // world, the way E and the panel's button go (the page dives in), not a
+  // landing beside the ship first. The ship's stopped where it is, so the
+  // next frame isn't another way in, nor on into the ground
+  const flyInto = (id) => {
+    const to = flownInto(id);
+    if (!to || !props.onOpen) return false;
+    dropAuto();
+    state.hotSaid = null;
+    state.ship = { ...state.ship, speed: 0, vy: 0, lift: 0, rate: 0, tipRate: 0, rollRate: 0 };
+    state.streak = 0;
+    state.boosting = false;
+    engine?.set({ speed: 0, boost: false, on: false });
+    props.onOpen(to);
+    return true;
+  };
   // what a planet's landing is called, as the panel's Land button has it (Middle-earth, not The Lord of the Rings)
   const placeName = (id) => byId(id).place ?? byId(id).label;
   // up and away: flying again from where the ship rose to (out past the
@@ -4517,8 +4537,8 @@ export async function create(canvas, ctx) {
       say = info.near.say;
     }
     else if (!onFoot() && state.landable && !state.auto && Math.abs(state.ship?.speed ?? 0) < SHIP.boost && LANDABLE.some((p) => p.id === state.landable)) {
-      // (no key for it: flying in is the way down)
-      text = `Fly down into the air to land on ${placeName(state.landable)}`;
+      // (no key for it: flying in is the way in)
+      text = `Fly down into the air to enter ${worldName(state.landable) ?? placeName(state.landable)}`;
       plain = true;
     }
     else if (!onFoot() && state.phoneNear && !state.auto && !state.jump && flying()) text = 'Unlock the phone';

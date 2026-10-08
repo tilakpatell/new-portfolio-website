@@ -311,6 +311,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   <i className="universe-arms-pip" />
                   <i className="universe-arms-pip" />
                   <i className="universe-arms-pip" />
+                  <i className="universe-arms-pip" />
+                  <i className="universe-arms-pip" />
                 </span>
                 <span className="universe-arms-keys">
                   <kbd>R</kbd> or <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>
@@ -434,10 +436,10 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <p className="universe-hint universe-hint-fly">
                   <span className="universe-hint-keys">
                     {/* the five keys that matter in the first minute; the guide has the rest */}
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, arrows steer, <kbd>Space</kbd> boost, <kbd>F</kbd> fire, fly down into a planet’s air to land
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, arrows steer, <kbd>Space</kbd> boost, <kbd>F</kbd> fire, fly down into a planet’s air to go into its world
                     <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag to fly, hold Boost to go fast and Fire to shoot, and fly down into a planet’s air to land<GuideCue touch /></span>
+                  <span className="universe-hint-touch">Drag to fly, hold Boost to go fast and Fire to shoot, and fly down into a planet’s air to go into its world<GuideCue touch /></span>
                 </p>
               )}
             </>

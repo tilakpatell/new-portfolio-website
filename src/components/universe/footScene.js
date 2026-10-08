@@ -2593,7 +2593,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // (a few dozen a frame: a field of them arriving at once doesn't hitch)
     for (let k = 0; fed < list.length && k < 60; fed++, k++) {
       const b = list[fed];
-      if (!lp.add({ position: b.position, quaternion: b.quaternion, scale: b.scale, box: b.box, body: b.body, user: b })) rocks.solids.push(...b.solids);
+      // (a fixed one walls the walk as well: its post stops what's knocked,
+      // but nothing in the engine stops a walker)
+      if (!lp.add({ position: b.position, quaternion: b.quaternion, scale: b.scale, box: b.box, body: b.body, user: b }) || b.body.fixed) rocks.solids.push(...b.solids);
     }
     // the fixed things (their walk circles, as they arrive) and the parked
     // ship, as walls: what's knocked stops at them
@@ -3500,6 +3502,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         simulated: lp ? lp.size : 0,
         pushers: lp ? lp.pushers : 0,
         kinds: list.map((b) => b.object?.name || b.meshes?.[0]?.parent?.name || '?'),
+        // (the loose ones, lightest first: what a shot moves furthest)
+        loose: list.flatMap((b, i) => (b.body.fixed ? [] : [i])).sort((a, b) => (list[a].body.mass ?? 0) - (list[b].body.mass ?? 0)),
         drawn: (i) => (list[i] ? drawn(list[i]) : null),
         bodyAt: (i) => list[i] && { position: list[i].position, quaternion: list[i].quaternion, scale: list[i].scale, box: list[i].box, body: list[i].body },
         knock(i) {
