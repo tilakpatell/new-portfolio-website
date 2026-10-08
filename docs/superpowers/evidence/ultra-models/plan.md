@@ -165,7 +165,14 @@ The counts are of one frame from the landing spot, so they move only where a kep
 
 ## What was verified, and how
 
-<!-- verified -->
+- `npm run lint` (`eslint .`): clean on the final tree, with `origin/main` merged in.
+- `npm test` (`vitest run`): 559 files, 6,767 passed, 1 skipped. Four of main's new suites failed once for a dependency (`fake-indexeddb`) this container's install predated; after `npm ci` all four pass.
+- `npm run test:ai`: 37 files passed, 2 skipped; 188 tests passed, 7 skipped. Its one failure was the credit audit finding the nine Meshy-made ultra files uncredited: the Meshy-made plain files are on the audit's allow-list by name, so a listed model's cuts are now listed with it (by the stem the audit already credits a model's cuts with), and `public/cc0/README.md` names the ultra cuts beside their plain files.
+- `catalog.test.js`: each of the fifteen entries has its file, under 24 MB, `ultra.tris` within four times the entry's `tris` and never under it where the entry has one; every `.ultra.glb` in the folder has an entry. `placer.test.js`: the URL at ultra and the fallback to the plain file.
+- `scripts/ultra/cut.test.mjs` (the `--ultra` arithmetic, the refusal, and `mapsOf` reading the widest map back) and `scripts/ultra/kinds.test.mjs` (the picking rule, the ultra lane taking over an earlier lane's kind, the wroshyr under its own name there).
+- Every ultra cut was judged on a sheet beside its reference picture before its catalogue line went in; the two that failed that (the Lothal temple, the Death Star) are not shipped, and the sheets of the fifteen that passed are in `docs/gen3d/ultra/`.
+- The twenty-four galaxy-check runs above loaded with no page or console error; the Kamino shot shows the rounded ultra domes where high shows the flared ones.
+- `npm run credits` leaves `CREDITS.md` unchanged (an ultra cut is credited with its model).
 
 ## Lane A
 
