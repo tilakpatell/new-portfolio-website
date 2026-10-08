@@ -9,6 +9,7 @@ import { ORDER, keyStep } from './layout';
 import MiniMap from './MiniMap';
 import GuideCue from '../guide/GuideCue';
 import { askBrief } from '../tour/brief';
+import LoadingVeil from '../worlds/LoadingVeil';
 
 // The map: the 3D scene (scene.js and planets.js, through useScene) with the
 // planets' names as buttons over it. React renders the names once; the
@@ -76,7 +77,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   );
   const events = useRef(onEvent);
   events.current = onEvent;
-  const { wrap, on, meant, view } = useScene(load, {
+  const { wrap, on, meant, view, status, progress } = useScene(load, {
     id: 'universe',
     near: '0px',
     props: {
@@ -200,11 +201,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     <div ref={wrap} className="universe-map" data-ship={ship || undefined} data-foot={onFoot || undefined}>
       {meant ? (
         <>
-          {!on && (
-            <p className="universe-loading" role="status">
-              Charting the universe…
-            </p>
-          )}
+          {/* (until the map is drawing: everything sent to the graphics chip first, so it flies smoothly from its first frame) */}
+          <LoadingVeil className="universe-loading" shown={!on} progress={status === 'preparing' ? progress.value : 0} step={status === 'preparing' ? progress.step : 'load'} title="Charting the universe" />
           <ul className="universe-labels" aria-label="Universes" onKeyDown={onKeyDown}>
             {UNIVERSES.map((u) => (
               <li key={u.id}>
@@ -287,7 +285,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   <b className="universe-nav-dist" />
                 </span>
               </div>
-              <div ref={arms} className="universe-arms" aria-hidden="true">
+              <div ref={arms} className="universe-arms" aria-hidden="true" data-ride={ride ? '' : undefined}>
                 <span className="universe-arms-name" />
                 <span className="universe-arms-rack">
                   <i className="universe-arms-pip" />
@@ -304,10 +302,29 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-siege-state" />
               </div>
               <p ref={prompt} className="universe-prompt" aria-live="polite" />
-              {/* on a hyperlane: which, where to, how soon, and the way off (plain for now: the lanes' look is still to come) */}
+              {/* on a hyperlane, in place of the gun line: the tier and the lane, the
+                  node it's coming to and how soon, and the way off (or, at a junction,
+                  the way on); the keys are a keyboard's, so a touch screen doesn't show them,
+                  and the seconds (new twice a second) aren't read out, so a screen reader
+                  hears the line as it changes lane, not every tick of the count */}
               {ride && (
-                <p className="universe-lane" role="status">
-                  <b>{ride.name}</b> <span className="universe-lane-tier">{ride.tier}</span> · {ride.next} in {Math.max(0, Math.round(ride.eta))} s · <kbd>S</kbd> to drop out
+                <p className="universe-lane" role="status" data-tier={ride.tier}>
+                  <span className="universe-lane-head">
+                    <span className="universe-lane-tier">{ride.tier}</span>
+                    <b className="universe-lane-name">{ride.name}</b>
+                  </span>
+                  <span className="universe-lane-next">
+                    {ride.next} · <span className="universe-lane-eta" aria-hidden="true">{Math.max(0, Math.round(ride.eta))} s</span>
+                    <span className="universe-lane-keys">
+                      {' '}
+                      · Hold <kbd>S</kbd> to drop out
+                      {ride.junction && (
+                        <>
+                          , hold <kbd>W</kbd> to carry on
+                        </>
+                      )}
+                    </span>
+                  </span>
                 </p>
               )}
               {/* Rick's portal gun, in any ship: a portal ahead, to his dimension or home (gunPortal.js) */}

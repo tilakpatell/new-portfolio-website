@@ -48,7 +48,10 @@ import { PLACES } from '../battleLines';
 import { systemById } from '../systems';
 import { readBuildWire, writeBuild } from '../../universe/shipyard/build';
 import * as THREE from 'three';
-import { disposeTree, precompile, singlePass } from '../../../lib/three/renderer';
+import { disposeTree, precompile, precompilePasses, singlePass } from '../../../lib/three/renderer';
+import { nextFrame as breathe, prepareScene } from '../../../lib/three/gpuWork';
+import { STEPS } from '../../../lib/three/pace';
+import { settle as settleWithin } from '../../../lib/settle';
 import { dropTransmission } from '../../../lib/three/glass';
 import { device } from '../../../lib/device';
 import { detailLevel } from '../../../lib/detail';
@@ -90,6 +93,7 @@ import { PROPS, SCATTER } from './props';
 import { createPlacer } from './placer';
 import { createActors, modelFigure } from './actors';
 import { RIDES } from './rides';
+import { SEATS, poseRider } from './riders';
 import { createPeers } from './peers';
 import { createSounds } from './sounds';
 import { createActivity } from './activity';
@@ -247,6 +251,9 @@ export async function create(canvas, ctx) {
   scene.environment = env.texture;
   scene.environmentIntensity = 0.4;
 
+  // (a frame's breath between the build's big steps: it's made behind the
+  // dive, which goes on drawing meanwhile, and one long task stopped it)
+  await breathe();
   // ── The land ──
   const height = makeHeight(site.ground, { relief: amounts.relief });
   const grid = heightGrid(height, amounts.grid);
@@ -310,6 +317,7 @@ export async function create(canvas, ctx) {
   const weather = reduced ? null : createWeather(site, { small });
   if (weather) scene.add(weather.group);
 
+  await breathe();
   // ── What's on it ──
   // one wind for the world (lib/three/wind): the grass's, and the way the
   // kit's plants and cloth lean
@@ -338,6 +346,7 @@ export async function create(canvas, ctx) {
   const panel = debugOn() ? debugPanel({ title: site.id, groups: surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), code: siteCode }) : null;
   const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops), ...garrisonAt(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
 
+  await breathe();
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
   for (const z of site.zones) {
@@ -353,6 +362,7 @@ export async function create(canvas, ctx) {
     return l;
   });
 
+  await breathe();
   // ── Things to do: the quest you're on, out in the world, and the blaster ──
   // (Rick's guns' kills, heard: the portal's swirl and snap, the shatter, the squeak and the pop)
   const showSound = (how, ev) => {
@@ -456,6 +466,7 @@ export async function create(canvas, ctx) {
       return ridee;
     });
 
+  await breathe();
   // ── Ships going over, and hanging in the sky ──
   const flights = [];
   let nextFlight = 12 + r() * 10;
@@ -494,6 +505,7 @@ export async function create(canvas, ctx) {
     return m;
   });
 
+  await breathe();
   // ── Your ship ──
   const shipKind = SHIPS[ctx.ship] ? ctx.ship : 'xwing';
   const S = SHIPS[shipKind];
@@ -563,6 +575,7 @@ export async function create(canvas, ctx) {
     world.solids.box(landAt[0], landAt[1], shipBox.w * 0.8, shipBox.l * 0.85, site.land.yaw);
   };
 
+  await breathe();
   // ── You, and your crewmate ──
   // (the hero you've picked to play as (heroes.js) walks in the lead; the
   // ship's own crew otherwise, and the one of them you aren't stays your mate.
@@ -738,6 +751,7 @@ export async function create(canvas, ctx) {
   // ── The other pilots down here (online) ──
   const peers = createPeers({ parent: scene, placer, getCast: () => (cast ??= createMeshyCast(withWardrobe())) });
 
+  await breathe();
   // ── State ──
   const state = {
     phase: mission ? (mission.ride ? 'ride' : 'walk') : reduced ? 'walk' : 'landing',
@@ -2405,6 +2419,17 @@ export async function create(canvas, ctx) {
       }, () => {});
     sat(seat.base);
   }
+  // a ride's frame in the world, as its seat's points are measured in: its
+  // holder, and a beast's step (its model's sway, actors.js) under you
+  const _rideM = new THREE.Matrix4();
+  const _swayM = new THREE.Matrix4();
+  function rideFrame(x) {
+    x.holder.updateMatrixWorld(true);
+    _rideM.copy(x.holder.matrixWorld);
+    const s = x.fig?.sway?.();
+    if (s) _rideM.multiply(_swayM.makeRotationZ(s.roll).setPosition(0, s.y, 0));
+    return _rideM;
+  }
   // where its hips are over its feet as it sits (eased: they settle as the
   // clip comes in), so they're put on the seat whatever the clip's height
   function seatLift(pp, dt) {
@@ -2428,6 +2453,18 @@ export async function create(canvas, ctx) {
   }
 
   function place(dt) {
+    // what you can ride (first: whoever's on one sits where it is this frame)
+    for (const x of rides) {
+      const s = x.state;
+      if (state.riding !== x) {
+        // parked: hovering where it's left, bobbing
+        s.y += (groundAt(world, s.x, s.z) + (x.spec.hover ?? 0) * 0.75 - s.y) * Math.min(1, dt * 3);
+        s.bank *= 0.95;
+      }
+      x.holder.position.set(s.x, s.y + (x.spec.hover > 0 ? Math.sin(state.t * 2 + s.x) * 0.04 : 0), s.z);
+      x.holder.rotation.set(-s.pitch, s.yaw, -s.bank, 'YXZ');
+      x.fig?.update(dt, clamp(Math.abs(s.speed) / 6, 0, 1));
+    }
     // the people
     people.forEach((pp, i) => {
       const st = pp.st;
@@ -2454,13 +2491,17 @@ export async function create(canvas, ctx) {
         // (on an animator, the hips put on the seat as the clip has them; else the old stand-in)
         const low = pp.seat?.lift != null ? pp.seat.lift - SEAT.pad : SEAT.low;
         pp.holder.position.set(x.state.x + seat[0] * Math.cos(yaw) + seat[2] * Math.sin(yaw), x.state.y + seat[1] - low, x.state.z - seat[0] * Math.sin(yaw) + seat[2] * Math.cos(yaw));
-        pp.holder.rotation.set(x.state.pitch * -1, yaw, x.state.bank, 'YXZ');
+        // (turned, pitched and banked as it is)
+        pp.holder.quaternion.copy(x.holder.quaternion);
         pp.fig?.update(dt, 0);
         pp.motion = null;
         if (pp.fig?.anim) {
           pp.holder.updateMatrixWorld(true);
           pp.fig.after?.(dt, STILL);
-          seatLift(pp, dt);
+          // (on a ride measured for it: the hips on its seat, the hands on
+          // its bars or reins, the feet on its pegs or down its flanks;
+          // riders.js. Else the hips put at the seat's height, as before)
+          if (!(SEATS[x.kind] && poseRider(pp.fig, pp.holder, rideFrame(x), SEATS[x.kind]))) seatLift(pp, dt);
         }
       } else {
         // (yaw first, so a tip or a roll goes about the body's own side, whichever way it faces)
@@ -2528,18 +2569,6 @@ export async function create(canvas, ctx) {
         }
       }
     });
-    // what you can ride
-    for (const x of rides) {
-      const s = x.state;
-      if (state.riding !== x) {
-        // parked: hovering where it's left, bobbing
-        s.y += (groundAt(world, s.x, s.z) + (x.spec.hover ?? 0) * 0.75 - s.y) * Math.min(1, dt * 3);
-        s.bank *= 0.95;
-      }
-      x.holder.position.set(s.x, s.y + (x.spec.hover > 0 ? Math.sin(state.t * 2 + s.x) * 0.04 : 0), s.z);
-      x.holder.rotation.set(-s.pitch, s.yaw, -s.bank, 'YXZ');
-      x.fig?.update(dt, clamp(Math.abs(s.speed) / 6, 0, 1));
-    }
   }
 
   function follow(dt) {
@@ -3120,8 +3149,33 @@ export async function create(canvas, ctx) {
   })();
   emit({ type: 'phase', phase: state.phase });
 
+  // Everything sent to the graphics chip before the surface is shown
+  // (the runtime runs it behind the dive, or behind the page's loading
+  // screen): the floor's light baked for the sun where the first frame
+  // will put it, the passes' shaders, then every picture, shader and one
+  // draw of it all, a slice at a time (lib/three/gpuWork). Drawn as it
+  // was, the bake held a frame for seconds on landing and the passes'
+  // shaders were compiled mid-frame.
+  const prepare = async (onProgress, { alive = () => true } = {}) => {
+    const on = () => alive() && !disposed;
+    onProgress?.(0, 'load');
+    await settleWithin(ready, 20000);
+    if (!on()) return;
+    if (lit && !lit.stats.started) {
+      onProgress?.(0, 'bake');
+      sun.target.position.set(landAt[0], world.heightAt(landAt[0], landAt[1]) ?? 0, landAt[1]);
+      sun.position.copy(sun.target.position).addScaledVector(sunDir, 300);
+      await settleWithin(lit.bake(), 20000);
+      if (!on()) return;
+    }
+    if (post.composer) await precompilePasses(renderer, post.composer, camera);
+    if (!on()) return;
+    await prepareScene({ renderer, roots: [scene], scene, camera, target: post.target, render: () => post.render(64, 64), onProgress, alive: on });
+  };
+
   return {
     ready,
+    prepare,
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
@@ -3141,9 +3195,13 @@ export async function create(canvas, ctx) {
     setVisible(on) {
       shown = on;
     },
-    // still slow at the lowest sharpness (the watchdog, useScene): no sun shadow,
-    // and the post without its bloom (the grade kept, so the colours stay right)
-    lowerQuality() {
+    // the runtime's quality: each step draws the passes less sharp (the
+    // canvas keeps its size: module.js's `sharpness`); still slow past the
+    // last step, no sun shadow, and the post without its bloom (the grade
+    // kept, so the colours stay right)
+    lowerQuality(level = STEPS.length) {
+      post.sharpness = STEPS[Math.min(level, STEPS.length - 1)];
+      if (level < STEPS.length) return;
       shadows = false;
       sun.castShadow = false;
       post.lite();

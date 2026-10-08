@@ -23,7 +23,12 @@
 // from then on, since ultra's textures and geometry turned out to be more
 // than this machine could carry.
 //
-// createPace({ steps, window, missed, settle, wait, longest, floorRuns, onFloor }) →
+// `climb: false` never goes back up a step: for a renderer whose sharpness
+// is its canvas's size, where every change reallocates the drawing buffer
+// and waits for the graphics chip (most of a second when it's busy), so a
+// see-saw costs far more than it saves (the world runtime's).
+//
+// createPace({ steps, window, missed, settle, wait, longest, floorRuns, onFloor, climb }) →
 //   { frame(now) → the new scale when it changes, else null, scale, level, reset() }
 // `now` is the frame's timestamp (ms); the scale is one of `steps`, sharpest first.
 
@@ -31,7 +36,7 @@ import { strained } from '../detail';
 
 export const STEPS = [1, 0.85, 0.72, 0.6, 0.5];
 
-export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25, settle = 600, wait = 4000, longest = 60000, floorRuns = 5, onFloor = strained } = {}) {
+export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25, settle = 600, wait = 4000, longest = 60000, floorRuns = 5, onFloor = strained, climb = true } = {}) {
   let stuck = 0; // runs at the last step with frames still late (floorRuns once told)
   let level = 0;
   let last = 0;
@@ -109,7 +114,7 @@ export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25,
         return null;
       }
       clean += took;
-      if (level === 0 || clean < hold) return null;
+      if (!climb || level === 0 || clean < hold) return null;
       level -= 1;
       clean = 0;
       changedAt = upAt = now;

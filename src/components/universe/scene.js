@@ -95,7 +95,9 @@ import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
 import { takeArrival } from '../../lib/arrival';
-import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, revealAll, singlePass, texturesUnder, uploadTexture, uploadTextures } from '../../lib/three/renderer';
+import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, singlePass, uploadTextures } from '../../lib/three/renderer';
+import { prepareScene, uploadSlices } from '../../lib/three/gpuWork';
+import { settle as settleWithin } from '../../lib/settle';
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
@@ -109,14 +111,17 @@ import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { houseOn } from '../../lib/three/house';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
-import { HYPER, driveById, hyperState, legOf, parkFor, riftExit } from './nav';
+import { HYPER, destinationById, driveById, hyperState, legOf, parkFor, riftExit } from './nav';
 import { REAIM_MS, parkBehind, pilotId, pilotSpace, reached } from './pilotGoal';
 import { laneAim, laneFrame, lanePlan, rideLine } from './lanePilot';
+import { createLaneLook } from './laneLook';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { AHEAD_OF, crewAt, factionsOf, kindsOf, pick as pickFaction, sideAt, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
 import { GLB, createFleet } from './glbFleet';
-import { createDirector, withWhere } from './director';
+import { createDirector, playAs, withWhere, zoneOf } from './director';
+import { AHEAD, WELL, ahead, ambushStep, offRamp } from './laneEvents';
+import { regionAt } from './regions';
 import { ECLIPSE, bodyAt, canEclipse, eclipseAt, eclipsePlan } from './eclipse';
 import { createSetPieces } from './setpieces';
 import { createLeviathans } from './leviathans';
@@ -133,7 +138,9 @@ import { createSectorFleet } from './sectorFleetView';
 import { portalById, portalHit, transit } from './portals';
 import { ROCK_RELIEF } from '../../lib/three/rock';
 import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
-import { createFront } from './front';
+import { BEACONS, ZONE as FRONT_ZONE, createFront } from './front';
+import { createFarFights, fightLabel, pickFightNode } from './farFights';
+import { placeAt } from './skirmish';
 import { createModels as createBattleModels } from '../galaxy/models';
 import { createTrench } from './trench';
 import { createBeacons } from './beacons';
@@ -515,7 +522,7 @@ export async function create(canvas, ctx) {
   // filling a retina screen at 2 is more than most graphics chips draw
   // smoothly while flying, and the names and the HUD are crisp DOM anyway;
   // and no antialiasing on the canvas: the post's target has its own, post.js)
-  const gl = createRenderer(canvas, { ratio: 1.5, antialias: false, onLost: ctx.onLost, onSlow: ctx.onSlow });
+  const gl = createRenderer(canvas, { ratio: 1.5, antialias: false, onLost: ctx.onLost, onSlow: ctx.onSlow, guard: { invalidate: ctx.invalidate } });
   const { renderer } = gl;
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
@@ -746,7 +753,7 @@ export async function create(canvas, ctx) {
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
   // and every place past FAR_REAL drawn as a point of light instead (farPlaces.js)
   const farPlaces = createFarPlaces(map, { places: FAR_PLACES.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })), skyFar: SKY_FAR });
-  const near = createNearMaps({ small }); // (the finer maps for the two planets nearest, nearMaps.js)
+  const near = createNearMaps({ small, upload: (ts) => uploadSlices(renderer, ts, { sliceMB: 8 }) }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
   const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, warm: (o) => warm(o) });
@@ -863,6 +870,7 @@ export async function create(canvas, ctx) {
   const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines }); // (every side's: another pilot's hunters, whoever they are)
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
+  const farFights = createFarFights(map); // (and seen from afar, as flickering light: farFights.js)
   const npcMemory = {}; // what each character remembers of you this visit (npcRules.js)
   // your standing with the law, the ordinary ships and the pirates
   // (standing.js): what you've done, remembered across visits, read by the
@@ -916,7 +924,7 @@ export async function create(canvas, ctx) {
     } catch {
       // (storage blocked: the war is this visit's alone)
     }
-    front = createFront(map, { side, models: battleModels, small, tier, reduced, storage: store, emit });
+    front = createFront(map, { side, beacons: BEACONS, models: battleModels, small, tier, reduced, storage: store, emit });
     return front;
   };
   renderer.localClippingEnabled = true; // (the broken flagship's halves are cut by planes)
@@ -972,12 +980,13 @@ export async function create(canvas, ctx) {
 
   // the models arrive after the map is up (their shaders made first, off
   // the main thread, so one coming into view doesn't stall a frame)
-  loadModels((id, model, spot) => {
+  // (`modelsIn`: all of them mounted, for prepare() to wait on)
+  const modelsIn = loadModels((id, model, spot) => {
     if (disposed) {
       disposeTree(model);
-      return;
+      return null;
     }
-    warm(model).then(() => {
+    return warm(model).then(() => {
       if (disposed || !planetOf[id]?.mount(model, spot)) disposeTree(model);
       ctx.invalidate();
     });
@@ -2310,7 +2319,7 @@ export async function create(canvas, ctx) {
         b.visible = false;
         continue;
       }
-      const h = traffic?.hit(shotFrom, b.position);
+      const h = traffic?.hit(shotFrom, b.position) ?? laneLook.hit(shotFrom, b.position);
       if (h) {
         b.visible = false;
         pops.hit({ point: h.at, normal: popDir.set(-d.v[0], 3, -d.v[2]).normalize(), radius: h.glance ? 0.25 : h.size * 1.6 });
@@ -2482,7 +2491,7 @@ export async function create(canvas, ctx) {
           continue;
         }
       }
-      const h = traffic?.hit(shotFrom, to);
+      const h = traffic?.hit(shotFrom, to) ?? laneLook.hit(shotFrom, to);
       if (h) {
         if (!h.glance) {
           emit({ type: 'kill', kind: h.kind });
@@ -3058,9 +3067,37 @@ export async function create(canvas, ctx) {
   // that's a few hundred units on)
   const travelling = (s) => openness(s.x, s.y, s.z) > 0.5 && Math.abs(s.speed) > 40;
   const leadOf = (s) => holdReach(s, { ramp: INTERDICT_IN, solids: siegeSt.down ? SOLIDS_OPEN : SOLIDS });
-  const happen = (id, ship) => {
+  const noLane = () => null;
+  const happen = (id, ship, was = id) => {
     const side = sideHere();
     if (!side) return;
+    // on a lane (laneEvents.js): the side's capital ship drops across it
+    // ahead and its well pulls you out, the fight where you stop; a wreck's
+    // mines across it; or a pack waiting at your off-ramp
+    if (id === 'interdiction') {
+      const on = state.ride && ahead(state.ride, AHEAD.interdiction);
+      if (!on || pieces.capital.state) return; // (past the lane's end, or a capital ship still about)
+      state.ride = null;
+      state.auto = null; // (the trip's broken: pulled out mid-lane, into a fight)
+      // (the well holds the drive down at once, as the hunters' pull does at its full: through hyperState too)
+      state.wellUntil = state.clock + WELL;
+      state.interdicted = true;
+      state.interdictAt = state.clock - INTERDICT_IN;
+      emit({ type: 'ride', on: false, line: null });
+      if (was !== 'roadblock') emit({ type: 'interdicted', faction: pickFaction(side, 'capital') ?? null }); // (the DEA's pack says it for itself)
+      if (!reduced) state.shake = Math.max(state.shake, 0.6);
+      return happen(was === 'council' || was === 'roadblock' ? was : 'destroyer', { ...ship, x: on.at[0], y: on.at[1], z: on.at[2], heading: on.heading, speed: 0 });
+    }
+    if (id === 'lanejam') {
+      const on = state.ride && ahead(state.ride, AHEAD.lanejam);
+      if (on && mines.across(on.pts, on.s)) emit({ type: 'event', id: 'minefield' });
+      return;
+    }
+    if (id === 'ambush') {
+      if (state.ride) state.ambush = { node: offRamp(state.ride), faction: pickFaction(side, 'hunt') };
+      return;
+    }
+    if (id === 'convoy' && state.ride) return emit({ type: 'event', id: 'convoy' }); // (in the lane's own traffic ahead: one to overtake)
     const ambush = travelling(ship) ? { ahead: true, interdict: true, lead: leadOf(ship) } : {};
     // (more of them, and the ace more often, the more trouble you've made; the first pack is a small one)
     const strength = { heat: state.heat, first: hunts === 0 };
@@ -3364,11 +3401,16 @@ export async function create(canvas, ctx) {
     }
     return null;
   };
+  // (at a node of the lanes in the region you're headed for, or a beacon,
+  // further than farFights.js's FAR: seen from afar, and a lane to take to it)
+  const fightGoal = () => (state.auto ? destinationById(state.then?.id ?? state.auto.id) : null);
   const farFight = (dt, t, live) => {
-    if (!skirmishes.active && live && state.clock > state.skirmishAt && !hunters.count && !pieces.destroyerHere && !leviathans.busy && !meteors.count && state.view !== 'map' && Math.abs(live.speed) < SHIP.pulse * 0.2) {
+    if (!skirmishes.active && live && state.clock > state.skirmishAt && !hunters.count && !pieces.destroyerHere && !leviathans.busy && !meteors.count && state.view !== 'map') {
       state.skirmishAt = state.clock + SKIRMISH_EVERY[0] + Math.random() * (SKIRMISH_EVERY[1] - SKIRMISH_EVERY[0]);
       const side = sideHere();
-      const at = side && skirmishSpot(live);
+      const goal = fightGoal();
+      const node = side && pickFightNode({ ship: live, headedFor: goal ? (regionAt(...goal.at)?.id ?? null) : null });
+      const at = node && placeAt(node, SOLIDS);
       if (at && skirmishes.start({ at, heading: Math.random() * Math.PI * 2, ...side.skirmish })) {
         state.skirmishHelped = 0;
         state.skirmishFamily = side.id;
@@ -3391,6 +3433,17 @@ export async function create(canvas, ctx) {
         else if (e.winner === 'enemy' && state.skirmishHelped > 0) emit({ type: 'event', id: 'skirmishLost' });
       }
     }
+  };
+
+  // the fights going on (a skirmish, the war's front), as the far fights'
+  // impostors and the chart see them (the front's battle is drawn within its own ZONE.near)
+  const fightsNow = () => {
+    const list = [];
+    const sk = skirmishes?.active && skirmishes.info;
+    if (sk?.freighter) list.push({ id: 'skirmish', at: sk.freighter.at, size: 1 + sk.hunters.length + sk.escort.length, hot: sk.over ? 0.15 : Math.min(1, sk.hunters.length / 4) });
+    const w = front?.where();
+    if (w) list.push({ id: 'front', at: w.at, size: 40, hot: 0.7, near: FRONT_ZONE.near });
+    return list;
   };
 
   // the fight with the director's capital ship (capitalRules.js's events,
@@ -3450,6 +3503,8 @@ export async function create(canvas, ctx) {
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
     if (wingmen) helpFrom(dt, t, live);
     if (skirmishes) farFight(dt, t, live);
+    if (!state.fights || state.clock - state.fightsAt > 0.25) [state.fights, state.fightsAt] = [fightsNow(), state.clock]; // (four times a second is plenty for a far flicker's place)
+    farFights.update(dt, state.fights, camera);
     if (npcs) meet(dt, t, live);
     let busy = pieces.update(dt, t, camera, live);
     for (const e of pieces.drain()) capitalEvent(e, live);
@@ -3559,11 +3614,18 @@ export async function create(canvas, ctx) {
         // (where you are: a sun lighting you, at a station, in the gate)
         const sunNow = litBy.key && litBy.key.strength > 1.2 ? LIT_STARS.find((st) => st.id === litBy.key.id) : null;
         const where = { sun: Boolean(sunNow && canEclipse({ eye: [live.x, live.y, live.z], sun: sunNow })), station: Boolean(state.at && byId(state.at)?.kind === 'core'), gate: state.at === 'starwars' };
-        const id = director.update(dt, { hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
+        const zone = state.ride ? 'lane' : zoneOf(live, { regionAt, laneAt: noLane }); // (in a carriageway but not riding it, nothing of the lane's can happen: it needs the ride)
+        const id = director.update(dt, { zone, hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: Boolean(state.ambush) || hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
         state.hurtNow = 0;
-        if (id) happen(id, live);
+        if (id) happen(playAs(id, zone), live, id);
+        // the ambush at your off-ramp: sprung as you come off there (laneEvents.js)
+        const lying = state.ambush && ambushStep(state.ambush, state.ride, live);
+        if (lying && lying !== 'wait') {
+          if (lying === 'spring') hunters.pack(state.ambush.faction, live, { at: { x: state.ambush.node.at[0], y: state.ambush.node.at[1], z: state.ambush.node.at[2] }, heat: state.heat, first: hunts++ === 0 });
+          state.ambush = null;
+        }
         // the drive comes back once they're off you (or have had their go)
-        if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
+        if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT) && !(state.clock < (state.wellUntil ?? -1))) state.interdicted = false;
       }
       for (const l of [...later]) {
         if (state.clock < l.at) continue;
@@ -3866,6 +3928,9 @@ export async function create(canvas, ctx) {
     emit({ type: 'event', id: 'gunThrough', sub: out.sector });
   };
 
+  // the lanes drawn: their ribbons, their traffic as light and the ships of
+  // it nearest you, and the ride's look (laneLook.js)
+  const laneLook = createLaneLook({ map, camera, renderer, fleet, engines, tier, phone: (window.matchMedia?.('(pointer: coarse)').matches ?? false) || Math.min(window.innerWidth, window.innerHeight) < 600, small, reduced });
   // a frame of the lanes taken in: the ride and the autopilot as they are
   // now, the hunters left behind getting on (they can't follow onto a
   // lane), and the HUD's lane line (on and off, and twice a second between)
@@ -3960,7 +4025,7 @@ export async function create(canvas, ctx) {
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     const before = state.ship;
     // on a hyperlane, or getting on or off one (lanePilot.js): the ride poses the ship in place of ship.js's step
-    const lane = state.held || state.jump ? null : laneFrame(state, input, dt, { canEnter: !state.auto || Boolean(state.auto.route) });
+    const lane = state.held || state.jump ? null : laneFrame(state, input, dt, { canEnter: (!state.auto || Boolean(state.auto.route)) && !(state.interdicted && state.clock < (state.wellUntil ?? -1)) });
     if (lane) rode(lane);
     const { ship: stepped, events } = lane?.ship ? { ship: lane.ship, events: [] } : step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
     // the Maw's pull (maw.js): drawn in, and carried round with its disk
@@ -4672,7 +4737,7 @@ export async function create(canvas, ctx) {
     const baseWant = onFoot() ? FOOT_FOV : flying() && state.view === 'cockpit' ? cabFov() : FOV;
     state.fovBase += (baseWant - state.fovBase) * (reduced ? 1 : 1 - Math.exp(-dt * 5));
     const plunging = state.crash?.swallow ? plungeAt(state.crash.age) : 0;
-    const fov = state.fovBase + (reduced || !flying() || onFoot() || state.view === 'map' ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5) + 18 * plunging ** 2);
+    const fov = state.fovBase + (reduced || !flying() || onFoot() || state.view === 'map' ? 0 : 8 * state.streak ** 1.4 + 4 * state.kick * (1 - state.kick * 0.5) + 18 * plunging ** 2 + laneLook.fov);
     if (Math.abs(camera.fov - fov) > 0.005) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -4772,12 +4837,12 @@ export async function create(canvas, ctx) {
     // anyone down on the same planet walk about with yours
     if (net) {
       const s = flying() ? state.ship : null;
-      net.pose(s, { hidden: Boolean(state.crash || state.dive || props.frozen || onFoot()), boost: state.streak > 0.3, safe: state.clock < state.safeUntil, shield: state.shield });
+      net.pose(s, { hidden: Boolean(state.crash || state.dive || props.frozen || onFoot()), boost: state.streak > 0.3, safe: state.clock < state.safeUntil, shield: state.shield, lane: Boolean(state.ride) });
       net.pack?.(() => (s && !state.crash && !state.dive && !props.frozen && !onFoot() ? (hunters?.wire() ?? []) : []));
       net.foot?.(onFoot() && !props.frozen ? foot.crew() : null);
       if (onFoot()) foot.guests(guestsOnFoot(now));
     }
-    const piloting = pilots.update(dt, now, net, { project: toScreen, tags: props.tags?.current ?? null, locked: state.lockTarget?.peer ?? null, footOn: onFoot() ? foot.id : null, me: flying() ? state.ship : null, factions: net?.factions ?? null });
+    const piloting = pilots.update(dt, now, net, { project: toScreen, tags: props.tags?.current ?? null, locked: state.lockTarget?.peer ?? null, footOn: onFoot() ? foot.id : null, me: flying() ? state.ship : null, factions: net?.factions ?? null, from: state.ship ?? null });
     placeHud();
     placePrompt();
     placeEnter();
@@ -4792,6 +4857,7 @@ export async function create(canvas, ctx) {
     house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     farPlaces.update(camera, dt, state.auto?.id ?? state.jump?.id ?? null);
+    const lanesBusy = laneLook.update(dt, { ship: flying() && !state.crash && !state.dive ? state.ship : null, ride: state.ride, view: state.view, side: sideFor(state.kind)?.id ?? null });
     sectorPortals.update(t, camera);
     curve.update(t, sectorOf(camLocal.x, camLocal.y, camLocal.z) === 'rickmorty');
     sectorFleet.update(t, Boolean(state.ship) && sectorOf(state.ship.x, state.ship.y, state.ship.z) === 'rickmorty');
@@ -4848,7 +4914,7 @@ export async function create(canvas, ctx) {
     if (state.dive) return now - state.dive.start < DIVE_MS; // then the page takes over
     if (state.crash?.through) return true; // the crater glows on while the page washes out
     if (props.frozen) return false;
-    return !still() || moving || shooting || launching || sieging || fxBusy || bursting || novaBusy || adventuring || piloting || net?.peers.size > 0 || state.kick > 0 || state.hitMark > 0 || cabWas !== state.cabK || Math.abs(state.fovBase - baseWant) > 0.01 || pulseAt || traffic?.count > 0 || state.flare > 1 || Boolean(state.jump) || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null || state.blend);
+    return !still() || moving || shooting || launching || sieging || fxBusy || bursting || novaBusy || adventuring || piloting || net?.peers.size > 0 || state.kick > 0 || state.hitMark > 0 || cabWas !== state.cabK || Math.abs(state.fovBase - baseWant) > 0.01 || pulseAt || traffic?.count > 0 || lanesBusy || state.flare > 1 || Boolean(state.jump) || Boolean(state.flight || state.drag || state.vel || state.stick?.on || state.yawTo !== null || state.blend);
   }
 
   // ── Keys, while flying ──
@@ -5211,6 +5277,10 @@ export async function create(canvas, ctx) {
     spares.add(burst.mesh);
   }
   map.add(spares);
+  // the house look on everything built so far before its shaders are made:
+  // put on at the first frame instead, it changed every lit shader after
+  // they were compiled, and they were all compiled again in that frame
+  house.follow({ adopt: true });
   const ready = Promise.all([warm(scene), post.composer ? precompilePasses(renderer, post.composer, camera) : null]).then(() => {
     // made: out of the scene (so nothing walks them each frame), and the
     // ships on to the fleet, ready to fly (the first of each kind isn't
@@ -5293,7 +5363,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView };
+    window.__universeDebug = { THREE, post, scene, renderer, camera, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView, laneLook };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -5332,6 +5402,7 @@ export async function create(canvas, ctx) {
       held: state.held?.name ?? null,
       pose: holdPose,
       ride: () => state.ride && { lane: state.ride.lane.id, way: state.ride.way, s: state.ride.s, speed: state.ride.speed, off: state.ride.off }, // (on a hyperlane: the checks)
+      soon: (id) => director.soon(id), // (the director's next, from the checks: 'interdiction' or 'ambush' mid-ride)
       lanes: () => state.auto?.route && { leg: state.auto.leg, legs: state.auto.route.legs.map((l) => l.kind) },
       frames, // (resolves after n more frames, each one drawn)
       // a blast `ahead` units in front of your ship, `size` across (to see one at a pose)
@@ -5342,38 +5413,28 @@ export async function create(canvas, ctx) {
     });
   }
 
-  // Everything drawn once while the intro covers the page (lib/three/
-  // useScene asks, while the page is idle), hidden things too, so the first
-  // frame at the launch's flash doesn't stop for it: the pictures first, a
-  // few at a time (`timeLeft()`, the ms the page can spare now: a click on
-  // the welcome never waits on them), then one draw for the meshes and the
-  // rest. False until it's done.
-  let warming = null; // the pictures still to send ahead
-  const warmUp = (timeLeft = () => Infinity) => {
-    warming ??= texturesUnder(scene);
-    while (warming.length) {
-      uploadTexture(renderer, warming.pop());
-      if (timeLeft() <= 4) break;
-    }
-    if (warming.length) return false;
-    warming = null;
-    // (the frames' own way, passes and all, so it's their shaders that are
-    // made, but small: the passes' buffers 64 across, and one pixel of the
-    // canvas. It's what's sent that counts, not the picture; the first real
-    // frame sizes the buffers back up.)
-    const undo = revealAll(scene);
-    try {
-      renderer.setScissor(0, 0, 1, 1);
-      renderer.setScissorTest(true);
-      post.render(64, 64);
-    } catch (err) {
-      if (import.meta.env.DEV) console.warn('[universe] warm-up failed', err);
-    } finally {
-      undo();
-      renderer.setScissorTest(false);
-      renderer.setRenderTarget(null);
-    }
-    return true;
+  // Everything sent to the graphics chip before the map is first seen
+  // (lib/useScene runs it, behind the intro or behind the map's loading
+  // screen): the planets' models waited for, then every picture, every
+  // shader (hidden things too) and one draw of it all, passes and all, a
+  // slice at a time (lib/three/gpuWork). The draw is small: the passes'
+  // buffers 64 across and one pixel of the canvas; it's what's sent that
+  // counts, not the picture, and the first real frame sizes them back up.
+  const prepare = async (onProgress, { alive = () => true, frame } = {}) => {
+    onProgress?.(0, 'load');
+    await settleWithin(Promise.all([ready, modelsIn]), 20000);
+    if (!alive() || disposed) return;
+    await prepareScene({
+      renderer,
+      roots: [scene],
+      scene,
+      camera,
+      target: post.target,
+      render: () => post.render(64, 64),
+      onProgress,
+      frame,
+      alive: () => alive() && !disposed,
+    });
   };
 
   return {
@@ -5388,11 +5449,10 @@ export async function create(canvas, ctx) {
       watchPanel();
     },
     render,
-    // drawn once behind the intro (above); not on a low tier (software
-    // WebGL, a budget phone), where the graphics chip's work is the
-    // processor's and its memory is short: things go up as they're first
-    // seen there, as before
-    warmUp: tier === 'low' ? undefined : warmUp,
+    // sent before it's seen (above); not on a low tier (software WebGL, a
+    // budget phone), where the graphics chip's work is the processor's and
+    // its memory is short: things go up as they're first seen there, as before
+    prepare: tier === 'low' ? undefined : prepare,
     update(next) {
       const picked = props.selected ?? null; // (the page's pick, as it last said)
       props = next;
@@ -5523,7 +5583,8 @@ export async function create(canvas, ctx) {
         crashed: Boolean(state.crash),
         interdicted: state.interdicted,
         hyper: hyperState({ last: state.hyperAt, now: wall(), interdicted: state.interdicted }),
-        pilots: pilots.targets.map((p) => ({ id: p.peer, name: p.name, x: p.at.x, z: p.at.z })),
+        pilots: pilots.chart.map((p) => ({ id: p.id, name: p.name, x: p.x, z: p.z })),
+        farFights: (state.fights ?? []).map((f) => ({ id: f.id, x: f.at[0], z: f.at[2], label: fightLabel(f.at) })), // (Fighting near …, for the nav map)
         front: front?.where() ?? null, // (the crew's war, for the nav map)
       };
     },
@@ -5582,6 +5643,7 @@ export async function create(canvas, ctx) {
       hunters?.dispose();
       wingmen?.dispose();
       skirmishes?.dispose();
+      farFights.dispose();
       front?.dispose();
       battleModels?.dispose();
       npcs?.dispose();
@@ -5597,6 +5659,7 @@ export async function create(canvas, ctx) {
       fleet.dispose();
       deep.dispose();
       farPlaces.dispose();
+      laneLook.dispose();
       sectorPortals.dispose();
       gunPortal.dispose();
       curve.dispose();

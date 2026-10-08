@@ -19,22 +19,19 @@ export const MODELS = {
   // Tatooine: the Lars homestead's domed hut, its arched door and the
   // machinery against its walls (from a still of it at sunset)
   homestead: { made: 'meshy', as: 'the Lars homestead', metres: 9, along: 'x', detail: 'adobe' },
-  // Tatooine: Jabba's palace, the keep, the watchtower and the rock it
-  // stands on (the owner's model, retextured; its gate is built)
-  palace: { made: 'meshy', as: 'Jabba’s palace', metres: 115, along: 'x', lod: true, detail: 'adobe', solids: 'built' },
   // Naboo: Theed's domed halls (from a concept image of one, which the
   // owner chose); its towers stay built
-  theed: { made: 'meshy', as: "Theed's domed halls", metres: 35, along: 'x', hero: true, lod: true, styles: ['hall', 'rotunda'], detail: 'stone' },
+  theed: { made: 'meshy', as: "Theed's domed halls", metres: 35, along: 'x', hero: true, lod: true, styles: ['hall', 'rotunda'], detail: 'stone', tint: '#f2d6c2' },
   // The filled worlds' landmarks (scripts/meshy-galaxy-buildings-fill.mjs,
   // each lifted out of a film still or a production painting): where the
   // built one had decks and doors, they stay under the model (solids: 'built')
   // Yavin 4: the Great Temple, its hangar and tiers still walkable
   massassi: { made: 'meshy', lod: true, as: 'the Great Temple of Massassi', metres: 96, along: 'x', hero: true, solids: 'built' },
   // Endor: an Ewok hut (the village's, on their decks, scaled to each)
-  ewokhut: { made: 'meshy', as: 'the Ewok huts', metres: 4, along: 'x' },
+  ewokhut: { made: 'meshy', as: 'the Ewok huts', metres: 4, along: 'x', tint: '#8a8068' },
   // Naboo: Theed's royal palace on the cliff (its courtyard stays)
-  theedpalace: { made: 'meshy', lod: true, as: "Theed's royal palace", metres: 132, along: 'x', hero: true, solids: 'built' },
-  // Kamino: a dome of Tipoca City on its stilts (its towers stay the Sketchfab one)
+  theedpalace: { made: 'meshy', lod: true, as: "Theed's royal palace", metres: 132, along: 'x', hero: true, solids: 'built', tint: '#ecd8bc', detail: 'stone' },
+  // Kamino: a dome of Tipoca City on its stilts (its towers are the audit lane's)
   tipocadome: { made: 'meshy', lod: true, as: "Tipoca City's domes", metres: 44, along: 'x', hero: true },
   // Mustafar: the mining facility (its door and podium stay)
   mining: { made: 'meshy', lod: true, as: 'the Mustafar mining facility', metres: 120, along: 'x', hero: true, solids: 'built' },
@@ -43,12 +40,11 @@ export const MODELS = {
   v150: { made: 'meshy', as: 'the v-150 Planet Defender', metres: 26, along: 'x', detail: 'metal', look: { metalness: 0.2, roughness: 0.75 } }, // (pale weathered plate, as in the film, not chrome)
   // Scarif: the Citadel tower (the vault's door stays)
   citadel: { made: 'meshy', lod: true, as: 'the Citadel tower', metres: 170, along: 'y', hero: true, solids: 'built', detail: 'concrete', detailLook: { strength: 0.4, normal: 0.6, metres: 3 } },
-  // Kashyyyk: a great wroshyr, from the picture of Kachirho's (the city tree itself stays built, for its decks)
-  wroshyrgreat: { made: 'meshy', lod: true, as: 'the great wroshyrs', metres: 230, along: 'y', hero: true },
+  // Kashyyyk: a great wroshyr, from the picture of Kachirho's (the city tree
+  // itself stays built, for its decks), re-centred on its trunk's foot
+  wroshyrgreat: { made: 'meshy', lod: true, as: 'the great wroshyrs', metres: 230, along: 'y', hero: true, detail: 'bark', detailLook: { strength: 0.5, metres: 4 } },
   // Coruscant: the Senate Building's dome (its plaza stays built)
   senate: { made: 'meshy', lod: true, as: 'the Senate Building', metres: 190, along: 'x', hero: true },
-  // Dagobah: Yoda's hut, the cluster of it
-  yodahut: { made: 'meshy', as: "Yoda's hut", metres: 10, along: 'x' },
   // The three worlds' lane (scripts/meshy-galaxy-three.mjs, each lifted out
   // of a film still or the game's render of Cloud City's streets): Cloud
   // City's towers (scattered round the deck in the built city's place) and

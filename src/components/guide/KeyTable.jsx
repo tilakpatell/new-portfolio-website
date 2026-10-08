@@ -13,7 +13,7 @@ export function Keys({ keys }) {
             {t.word}
           </span>
         ) : (
-          <kbd key={i} className={t.pointer ? 'guide-kbd is-pointer' : 'guide-kbd'}>
+          <kbd key={i} className={t.pointer ? 'kbd is-pointer' : 'kbd'}>
             {t.key}
           </kbd>
         ),

@@ -33,6 +33,8 @@ lab/*
 !lab/universe/
 lab/universe/*
 !lab/universe/baseline/
+# (and the galaxy surfaces' per-level baselines: scripts/galaxy-check.mjs BUDGET=1)
+!lab/baseline/
 
 # superpowers brainstorming companion session files
 .superpowers

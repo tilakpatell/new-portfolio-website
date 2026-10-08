@@ -23,11 +23,15 @@
 // 'away', at, heading } (the freighter, on its way after it's won, jumps).
 // A skirmish that drags on (SKIRMISH.longest) ends with the freighter
 // jumping away.
+//
+// placeAt(node, solids) → { x, y, z }: where one goes at a node of the lanes
+// (hyperlanes.js's NODES, a ramp or a beacon), so it's seen from far off and
+// a lane takes you to it.
 
-import { FACTIONS, HUNTER_KINDS, createHunt } from './hunterRules';
+import { FACTIONS, HUNTER_KINDS, clearOf, createHunt } from './hunterRules';
 import { sweptHit } from './targeting';
 import { createWing } from './wingRules';
-import { PACE } from './ship';
+import { PACE, SOLIDS } from './ship';
 
 export const SKIRMISH = {
   circle: 0.12, // radians a second the freighter turns, going round
@@ -52,6 +56,37 @@ export const SKIRMISH = {
 };
 
 const between = (rand, [a, b]) => a + rand() * (b - a);
+
+// A skirmish at a node sits PLACE_OFF above it (or below, or to a side,
+// should that be in something), out of the ramp ring and the lanes coming
+// in level to it, and PLACE_GAP clear of anything solid (the freighter goes
+// round in a ring some 26 across, and jumps away if it comes within
+// SKIRMISH.clear of one). Never more than PLACE_NEAR from the node.
+const PLACE_OFF = 90;
+const PLACE_GAP = 40;
+const PLACE_NEAR = 200;
+const PLACE_WAYS = [
+  [0, 1, 0],
+  [0, -1, 0],
+  [1, 0, 0],
+  [-1, 0, 0],
+  [0, 0, 1],
+  [0, 0, -1],
+];
+
+export function placeAt(node, solids = SOLIDS) {
+  const [x, y, z] = node.at;
+  let best = null;
+  for (const [i, j, k] of PLACE_WAYS) {
+    const p = clearOf({ x: x + i * PLACE_OFF, y: y + j * PLACE_OFF, z: z + k * PLACE_OFF }, solids, PLACE_GAP);
+    const d = Math.hypot(p.x - x, p.y - y, p.z - z);
+    const clear = solids.every((o) => Math.hypot(p.x - o.at[0], p.y - o.at[1], p.z - o.at[2]) > o.r + SKIRMISH.clear);
+    if (clear && d <= PLACE_NEAR) return p;
+    // (none both near and clear: the nearest of the clear ones)
+    if (clear && (!best || d < best.d)) best = { p, d };
+  }
+  return best?.p ?? clearOf({ x, y: y + PLACE_OFF, z }, solids, PLACE_GAP);
+}
 
 export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds = HUNTER_KINDS, solids = [] } = {}) {
   const hunt = createHunt({ rand, factions, kinds, solids, lasers: 20, firstId: 1e6, nerve: false }); // (numbered apart from your own hunters: the lock follows a number; and fought to the end: the freighter is their quarry, not you)

@@ -7,7 +7,7 @@ import { sayVoiced, stopVoiced } from '../../../lib/voiced';
 import { useVoiced } from '../../../lib/useVoiced';
 import { readPad, typing } from '../../games/pad';
 import { keyDown, keyUp, moveOf, ownButton } from '../towns/keys';
-import { Travellers } from '../towns/TownHud';
+import { Bubble, QuestList, Stick, Travellers } from '../towns/TownHud';
 import { useTravellers } from '../towns/useTravellers';
 import {
   CAST,
@@ -765,28 +765,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   };
 
   // the touch stick: drag from where you put your thumb
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   const travel = (q) => {
     const s = sim.current;
@@ -859,19 +838,14 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       )}
 
       {bubble && walking && (
-        <div ref={bubbleRef} className="shire-bubble" aria-live="polite">
-          <div>
-            <b>{bubble.name}</b>
-            <span>{bubble.line}</span>
-          </div>
-        </div>
+        <Bubble ref={bubbleRef} name={bubble.name} line={bubble.line} />
       )}
 
       {here && walking && (
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -969,60 +943,18 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         </div>
       )}
 
-      {walking && touch && (
-        <div className="shire-hud shire-hud-bottom">
-          <div className="shire-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} onLostPointerCapture={onStick} aria-hidden="true">
-            <span />
-          </div>
-        </div>
-      )}
+      {walking && touch && <Stick onMove={onStick} />}
 
       {list && (
-        <div className="shire-list" role="dialog" aria-label="Things to do in Hobbiton">
-          <div className="shire-list-head">
-            <p>Things to do</p>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setList(false)}>
-              Close
-            </button>
-          </div>
-          <ul>
-            {prog.quests.map((q) => (
-              <li key={q.id} data-done={q.done || undefined} data-open={q.open || undefined} data-next={q.id === prog.next || undefined}>
-                <span className="shire-seal" aria-hidden="true">
-                  {q.done ? '✓' : ''}
-                </span>
-                <div>
-                  <p className="shire-list-name">{q.name}</p>
-                  <p className="shire-list-sub">{q.open ? `${q.where}. ${q.blurb}` : q.locked}</p>
-                </div>
-                {q.open && !hud.spoons && (q.id !== 'rings' || prog.sky === 'day') && (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => travel(q)}>
-                    Go there
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-          <p className="shire-list-side">On the side</p>
-          <ul>
-            <li data-done={side || undefined} data-open data-side>
-              <span className="shire-seal" aria-hidden="true">
-                {side ? '✓' : ''}
-              </span>
-              <div>
-                <p className="shire-list-name">{SIDE.name}</p>
-                <p className="shire-list-sub">
-                  {SIDE.where}. {SIDE.blurb}
-                </p>
-              </div>
-              {!hud.spoons && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => travel(SIDE)}>
-                  Go there
-                </button>
-              )}
-            </li>
-          </ul>
-        </div>
+        <QuestList
+          title="Things to do in Hobbiton"
+          quests={prog.quests}
+          next={prog.next}
+          side={[{ ...SIDE, done: side }]}
+          onClose={() => setList(false)}
+          onGo={travel}
+          canGo={(q) => !hud.spoons && (q.id === SIDE.id || (q.open && (q.id !== 'rings' || prog.sky === 'day')))}
+        />
       )}
     </div>
   );
