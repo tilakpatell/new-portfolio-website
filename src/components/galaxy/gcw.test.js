@@ -497,8 +497,11 @@ describe('history', () => {
     }
     expect(checked).toBeGreaterThan(0);
   });
-  it('goes back for what it’s just lost: the liberator makes it its first front', () => {
-    // the Empire's pilots take the Rebellion's system its opening strike's on
+  it('goes back for what it’s just lost: the liberator makes it its front after its order', () => {
+    // the Empire's pilots take the Rebellion's system its opening strike's on.
+    // (It was the first front, ahead of the order; but the first front is the
+    // major order, and the ★ jumped to every system to retake while the order
+    // said elsewhere. Now the order stays first and the retaking comes next.)
     let checked = 0;
     for (let n = 0; n < 20 && checked < 2; n++) {
       const a = history('gcw', n, atStep(n, GCW.strike, 60e3), none).attacks.find((x) => x.by === 'empire');
@@ -508,9 +511,15 @@ describe('history', () => {
       let fell = null;
       for (let k = GCW.strike + 1; k < GCW.strike + 9 && fell === null; k++) if (history('gcw', n, atStep(n, k), pts).owner[a.sys] === 'empire') fell = k;
       expect(fell, `c${n}`).not.toBeNull();
-      const firsts = [];
-      for (let k = fell; k < fell + GCW.counterFor; k++) firsts.push(history('gcw', n, atStep(n, k, 60e3), pts).fronts[0]);
-      expect(firsts, `c${n}`).toContain(a.sys);
+      let worked = 0;
+      for (let k = fell; k < fell + GCW.counterFor; k++) {
+        const s = history('gcw', n, atStep(n, k, 60e3), pts);
+        if (!s.fronts.includes(a.sys)) continue;
+        expect(s.fronts.indexOf(a.sys), `c${n} ${k}`).toBeLessThanOrEqual(1);
+        expect(s.fronts[0]).toBe(s.orders.rebel.sys);
+        worked += 1;
+      }
+      expect(worked, `c${n}`).toBeGreaterThan(0);
       checked += 1;
     }
     expect(checked).toBeGreaterThan(0);
@@ -557,7 +566,9 @@ describe('history', () => {
         expect(lo.verb).toBe('liberate');
         expect(lo.until).toBe(atStep(1, (Math.floor(k / GCW.window) + 1) * GCW.window));
         expect(s.owner[lo.sys]).not.toBe(liberator);
-        if (!s.attacks.some((a) => a.sys === lo.sys)) expect(s.fronts, `${war} ${k}`).toContain(lo.sys);
+        // (and it's the first front, the major order: never one someone else is attacking)
+        expect(s.attacks.some((a) => a.sys === lo.sys), `${war} ${k}`).toBe(false);
+        expect(s.fronts[0], `${war} ${k}`).toBe(lo.sys);
         const ro = s.orders[raider];
         if (ro?.verb === 'take') expect(s.attacks.some((a) => a.sys === ro.sys && a.by === raider), `${war} ${k}`).toBe(true);
         else if (ro) {
@@ -594,6 +605,23 @@ describe('history', () => {
       expect(Object.values(end.result.vp).reduce((t, x) => t + x, 0)).toBe(TOTAL_WORTH);
       expect(end.result.vp[end.result.winner]).toBe(Math.max(...Object.values(end.result.vp)));
       expect(end.result.decisive).toBe(end.decisive);
+    }
+  });
+  it('the major order is the liberator’s order, at every step', () => {
+    // (the major was the first front, and a system to retake went first for a
+    // while after every loss, so the ★ jumped there while the order said
+    // elsewhere: on 22 to 28% of steps, and it moved about twice as often)
+    for (const war of WAR_IDS) {
+      const lib = WARS[war].liberator;
+      for (let n = 0; n < 3; n++) {
+        const run = campaignRun(war, n, none);
+        for (let k = 0; k < GCW.campaign / GCW.step; k++) {
+          const s = runAt(run, atStep(n, k, GCW.step / 2));
+          if (s.over) break;
+          expect(s.major, `${war} c${n} ${k}`).toBe(s.orders[lib]?.sys ?? null);
+          expect(s.majors[k]).toBe(s.major);
+        }
+      }
     }
   });
   it('says when the next operation’s due', () => {
