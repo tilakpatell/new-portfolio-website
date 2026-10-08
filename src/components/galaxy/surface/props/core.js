@@ -94,8 +94,8 @@ function whiten(k, object) {
 
 // ── Naboo ──
 
-const STONE = '#e8dbbe';
-const TRIM = '#d4c4a0';
+const STONE = '#dcc0a6';
+const TRIM = '#c8aa8e';
 const VERDIGRIS = '#5c9a82';
 const COLUMN = '#f3ecdc';
 
@@ -252,7 +252,7 @@ export const PROPS = {
     arch(parts, 0, 2.2, 11.2, 0, 7, 14, '#3a3024');
     return {
       object: k.build(parts, { name: 'theedpalace', shadows: true }),
-      solids: [{ circle: [0, -6, 21] }, { box: [-40, -8, 24, 16, 0] }, { box: [40, -8, 24, 16, 0] }, { box: [-62, -8, 8, 8, 0] }, { box: [62, -8, 8, 8, 0] }, { box: [0, 16, 19, 6, 0] }],
+      solids: [{ circle: [0, -6, 21] }, { box: [-40, -8, 24, 16, 0] }, { box: [40, -8, 24, 16, 0] }, { box: [-62, -8, 8, 8, 0] }, { box: [62, -8, 8, 8, 0] }, { box: [0, 16, 19, 6, 0] }, { box: [0, 34, 62, 12.5, 0] }, { box: [0, -36, 62, 11, 0] }],
     };
   },
 
@@ -910,6 +910,8 @@ export const PROPS = {
 
   // a great statue on its pedestal (the Senate's founders, the Temple's
   // Jedi of old), the pedestal's column down to the city, `drop` metres
+  // (style 'jedi': the Processional Way's, the audit lane's model where it
+  // loads; this one where it won't)
   statue(k, { h = 22, drop = 0 } = {}) {
     const S = '#c4b89c';
     const parts = [
@@ -1679,6 +1681,28 @@ export const PROPS = {
     return {
       object,
       solids: [{ box: [0, -6, 7, 4.5, 0] }, { circle: [0, 3, 2] }],
+      update(t) {
+        holo.rotation.y = t * 0.4;
+      },
+    };
+  },
+
+  // the command post's holotable on its own, the battle turning over it in
+  // blue light (in front of the audit lane's model of the command post,
+  // which has no table)
+  holotable(k) {
+    const parts = [
+      part(cyl(1.8, 2.0, 1.1, 18), { color: '#5a5c58', to: 'metal' }),
+      part(cyl(1.7, 1.7, 0.06, 18), { at: [0, 1.12, 0], color: lit('#6ac8ff', 2), to: 'glow' }),
+    ];
+    const object = k.build(parts, { name: 'holotable' });
+    const holo = new THREE.Mesh(k.own(new THREE.SphereGeometry(1.4, 14, 8, 0, PI * 2, 0, PI / 2)), k.own(new THREE.MeshBasicMaterial({ color: lit('#6ac8ff', 1.6), wireframe: true, transparent: true, opacity: 0.6, toneMapped: false })));
+    holo.position.set(0, 1.4, 0);
+    holo.scale.set(1, 0.6, 1);
+    object.add(holo);
+    return {
+      object,
+      solids: [{ circle: [0, 0, 2] }],
       update(t) {
         holo.rotation.y = t * 0.4;
       },
