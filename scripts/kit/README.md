@@ -1,0 +1,173 @@
+# The kit: Quaternius packs as family GLBs
+
+The worlds' trees, ground cover, rocks and space props come from Quaternius's
+CC0 packs, imported once into `public/kit/<pack>/`: one GLB a **family**
+(every birch in `birch.glb`, sharing one bark and one leaf material) and a
+manifest, `index.json`, that says what each model is without opening a file.
+They are for the loader, `src/lib/three/kit.js`, which draws them through
+instanced pools, and the galaxy placer's `kit:<pack>/<Model>`. The design is
+`docs/superpowers/specs/2026-10-08-kit-worlds-design.md` ("The kit pipeline").
+
+## Fetch, import, check, credit
+
+```
+node scripts/assets-fetch.mjs naturemega space            # the packs, into lab/assets/<pack>/ (git-ignored)
+node scripts/kit/import.mjs naturemega                     # every family
+node scripts/kit/import.mjs naturemega birch pine          # just these (the manifest keeps the rest)
+node scripts/kit/import.mjs space --from ~/tilakverse-assets/quaternius/ultimate-space-kit
+node scripts/kit/import.mjs naturemega --dry               # what it would write, model by model
+npx vitest run scripts/kit                                 # the pure half and the fixture import
+```
+
+- **Fetch.** `assets-fetch.mjs` unpacks a pack from the `assets-quaternius`
+  release. `--from` reads a pack from anywhere else instead (a
+  tilakverse-assets clone); any name not in `SOURCES` is read from `--from`
+  itself, as the test fixture is.
+- **Import.** Where each pack keeps its glTF is `SOURCES` in `import.mjs`
+  (`naturemega` and `nature`: `glTF/`; `space`: `{Characters,Environment,Items,Vehicles}/GLTF/`;
+  `city`: `Exports/glTF (Godot)/`). The FBX packs (`farm`, `street`,
+  `furniture`) are to be converted first, by `scripts/kit/fbx.mjs`, into
+  `lab/assets/<pack>-glb/`, which the import then reads. The same pack
+  imported twice gives the same bytes.
+- **Check.** The import ends with `checkManifest` (`manifest.mjs`) over what
+  it wrote and prints anything over budget; `scripts/kit-check.mjs` is to
+  run it over every pack and fail on it.
+- **Credit.** Every manifest carries `licence: 'CC0-1.0'` and `source`
+  (`Quaternius, <pack> (https://quaternius.com)`), for `npm run credits` to
+  name Quaternius from them.
+
+## What a family file holds
+
+- Each model is a node named as the model (`Birch_3`); its meshes carry the
+  model's name and each primitive is tagged `extras.part`: `'leaves'` (a
+  material named `Leaves…`, `Leaf…` or `Flowers…`, or one the source cuts out
+  by a map that really is see-through), `'bark'` (anything else on a tree or
+  a bush) or `'main'`. A model of several meshes (a rover and its wheels) is
+  its node tree, each part at its own transform.
+- Beside it, `<Model>.lod1`: the same tree of nodes (each `<node>.lod1`), its
+  mesh `<Model>.lod1`. Bark and solid parts are simplified toward a quarter
+  (meshopt, error 0.05, borders free, allowed across UV seams: the packs'
+  bark is hundreds of UV islands, and without that it stops at 80-96 %); a
+  tree's or a bush's leaf cards are thinned to 40 % and grown ×1.25
+  (`thinCards`, seeded by the model's name).
+- A rigged model (the space kit's astronauts, mechs and enemies, the farm
+  animals) is a file of its own, `<model, lower-cased>.glb`, with its skin
+  and clips and no LOD1.
+- The nature megakit paints a wind weight into `COLOR_0` (0.14 at a trunk's
+  foot to 1 in the crown); it becomes `_WIND`, one normalised byte a vertex
+  (three's GLTFLoader names it `_wind`). Every other `COLOR_0` is dropped.
+- A leaf material is `MASK` at 0.3 and two-sided, whatever the source had
+  (some crowns are `BLEND`, some bark `MASK`); everything else is opaque.
+- Textures are WebP q82 by role: bark colour 1024 (512 when halved, below),
+  normals 1024, leaf maps 512 with their alpha, other colour maps 1024 (never
+  enlarged). The space kit's palette atlases stay at their own size,
+  lossless. Its 92 files embed five different atlases (a 32² palette in 80,
+  a 512² in the astronauts and the large enemy, three 32² variants in the
+  mechs and rovers), which differ from the pack's `Atlas.png` by up to 97
+  levels where their models sample them, so each is kept, as `Atlas`,
+  `Atlas_2` … `Atlas_5` by how many models wear it.
+- Then `dedup`, `prune`, and meshopt (`medium`, normals in a byte a
+  component; a rig's clips resampled first).
+
+## The manifest
+
+```js
+{
+  pack: 'naturemega', licence: 'CC0-1.0', source: 'Quaternius, Stylized Nature MegaKit (https://quaternius.com)',
+  models: {
+    Birch_1: {
+      family: 'birch', file: 'birch.glb',
+      parts: ['bark', 'leaves'],        // each primitive's extras.part, in order
+      tris: 6378, tris1: 1822,          // full and LOD1 (null for a rig)
+      radius: 4.587, height: 13.293,    // half the footprint's diagonal; the top (m)
+      trunk: 0.208,                     // how far the lowest 8 % reaches across (the far band's trunk)
+      kind: 'tree',                     // lib.mjs kindOf, or 'character' for a rig
+      tones: [[r, g, b], [r, g, b]],    // a tree's or a bush's leaf map, linear, ±12 % (the far band's puffs)
+      rig: { bones: 43, clips: { Idle: 1, Walk: 1 } },   // a rigged model's (seconds)
+    },
+  },
+  materials: {
+    Leaves_Birch: { alpha: 'mask', leaf: true, wind: 'tree', maps: { colour: '512x512' } },
+    Bark_Birch: { alpha: 'opaque', leaf: false, wind: 'tree', maps: { colour: '1024x1024', normal: '1024x1024' } },
+  },
+}
+```
+
+A material is described once for the pack and shared by name across its
+family files. `wind` is how it bends (`src/lib/three/foliage.js` `WIND`):
+`'tree'` when any tree wears it (its bark bends with its crown), `'shrub'`
+when only bushes, grass, plants or flowers do, and `null` for the rest or
+when its geometry carries no `_WIND`.
+
+## Budgets
+
+| What | Budget |
+| --- | --- |
+| A family file | 1.5 MB (over it, its bark colour is halved to 512, in every family that wears that bark, and `maps.colour` says so) |
+| A tree | 15,000 triangles |
+| A LOD1 | 40 % of its model's triangles |
+| The nature megakit | 12 MB for its 116 models |
+
+## What the packs came to (2026-10-08)
+
+The nature megakit: 116 models in 19 files, **11.02 MB** (the manifest 40 KB).
+`Bark_NormalTree` is halved, because `cherryblossom.glb` is over (it stays
+over: a family is its geometry, its maps are under 120 KB).
+
+| File | Models | Triangles | LOD1 | KB |
+| --- | ---: | ---: | ---: | ---: |
+| birch.glb | 5 | 29,734 | 8,649 | 1,158 |
+| bush.glb | 6 | 10,256 | 3,404 | 444 |
+| cherryblossom.glb | 5 | 65,768 | 19,076 | 1,968 (over) |
+| clover.glb | 2 | 994 | 238 | 73 |
+| commontree.glb | 5 | 22,666 | 6,735 | 739 |
+| deadtree.glb | 5 | 29,878 | 7,432 | 851 |
+| fern.glb | 2 | 468 | 125 | 69 |
+| flower.glb | 12 | 7,879 | 2,196 | 297 |
+| giantpine.glb | 5 | 35,960 | 10,070 | 1,242 |
+| grass.glb | 7 | 3,663 | 911 | 83 |
+| mushroom.glb | 4 | 6,440 | 1,609 | 179 |
+| pebble.glb | 11 | 1,047 | 268 | 116 |
+| petal.glb | 6 | 159 | 102 | 61 |
+| pine.glb | 5 | 17,575 | 4,993 | 533 |
+| plant.glb | 10 | 3,370 | 921 | 149 |
+| rock.glb | 6 | 5,188 | 1,294 | 157 |
+| rockpath.glb | 10 | 14,839 | 3,700 | 479 |
+| tallthick.glb | 5 | 37,587 | 11,038 | 1,194 |
+| twistedtree.glb | 5 | 48,491 | 14,082 | 1,500 |
+
+The space kit: 92 models in 31 files, **4.77 MB** (the manifest 30 KB). Each
+rigged model is its own file: the astronauts 420-428 KB (18 clips each), the
+large enemy 337 KB, the mechs 183-199 KB, the small enemies 44-54 KB.
+
+| File | Models | Triangles | LOD1 | KB |
+| --- | ---: | ---: | ---: | ---: |
+| base.glb | 1 | 2,790 | 696 | 39 |
+| building.glb | 1 | 2,940 | 733 | 38 |
+| bush.glb | 3 | 4,448 | 1,109 | 61 |
+| connector.glb | 1 | 508 | 126 | 10 |
+| geodesicdome.glb | 1 | 1,432 | 358 | 28 |
+| grass.glb | 3 | 750 | 233 | 26 |
+| house.glb | 6 | 7,274 | 1,815 | 106 |
+| metalsupport.glb | 1 | 540 | 130 | 13 |
+| pickup.glb | 7 | 5,272 | 1,313 | 99 |
+| planet.glb | 11 | 23,040 | 5,754 | 313 |
+| plant.glb | 3 | 2,344 | 602 | 44 |
+| ramp.glb | 1 | 192 | 48 | 8 |
+| rock.glb | 7 | 2,216 | 584 | 63 |
+| roof.glb | 5 | 2,094 | 520 | 43 |
+| rover.glb | 3 | 22,430 | 5,590 | 322 |
+| solarpanel.glb | 3 | 2,616 | 654 | 56 |
+| spaceship.glb | 4 | 14,012 | 3,501 | 183 |
+| stairs.glb | 1 | 256 | 70 | 8 |
+| tree.glb | 18 | 42,138 | 10,526 | 482 |
+
+Over the LOD1 budget, and left so: models too small to lose 60 % within the
+error (five petals of 13-30 triangles; three flowers, two plants and a
+pebble of 48-293; one space grass of 96), and one bush whose 432 cards thin
+to 173, a card over 40 %.
+
+## Later
+
+- A `-sm` 512 copy of each bark colour map, for the low tier: a GLB carries
+  one image a texture, so it needs its own file or a path in the loader.

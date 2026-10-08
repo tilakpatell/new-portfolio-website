@@ -411,6 +411,7 @@ The asset pipeline scripts regenerate committed files. You don't need them to ru
 | `npm run cc0` | Fetch the games' CC0 scans and skies from Poly Haven and ambientCG into `public/games/` (behind a proxy, set `NODE_USE_ENV_PROXY=1`) |
 | `npm run hq-assets` | Fetch and shrink the Avengers HQ games' CC0 assets into `public/hq/` |
 | `npm run kenney` | Convert Kenney's kits for *Portal panic* (`KENNEY=/path/to/kits npm run kenney`) |
+| `node scripts/kit/import.mjs <pack> [family …] [--from <dir>]` | A Quaternius pack (fetched into `lab/assets/` by `node scripts/assets-fetch.mjs <pack>`) as the worlds' kit: one GLB a family, each model with its LOD1, and a manifest of what each is, into `public/kit/<pack>/`. The manual and the budgets: [scripts/kit/README.md](scripts/kit/README.md) |
 | `npm run photos` | Turn the Travel photos into small WebP files and record their sizes, alt text and credits |
 | `npm run globe` | Rebuild the dotted globe on the Travel page |
 | `python3 scripts/build-harmonium.py` | Rebuild the music room's harmonium from its CC0 recording (downloads it the first time) |
