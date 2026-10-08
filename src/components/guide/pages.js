@@ -297,7 +297,7 @@ export const PAGES = {
           ['T', 'The time of day'],
           ['R', 'Take the radio’s call (a chase, a photo, Eve’s race)'],
           ['Q', 'Call a mission off'],
-          ['H / ?', 'This guide'],
+          ['H / ?', 'The guide'],
         ],
       },
       {
