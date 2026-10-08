@@ -875,6 +875,7 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
   houseLook.adopt(scene);
 
   return {
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,

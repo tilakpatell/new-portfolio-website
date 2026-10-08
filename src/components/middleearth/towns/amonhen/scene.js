@@ -736,6 +736,7 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
   houseLook.adopt(scene);
 
   return {
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
