@@ -167,17 +167,10 @@
     inset -2px -4px 0 #59609a;
   outline: none;
 }
-/* Esc beside a way out, as a key in the game's own face */
-.mc kbd {
-  display: inline-block;
-  margin-left: 0.4em;
-  padding: 2px 4px;
-  border: 2px solid currentColor;
-  font: inherit;
-  font-size: max(var(--hud-min, 0.7rem), 0.85em);
-  line-height: 1.2;
-  text-shadow: none;
-}
+/* Esc beside a way out: the house HUD cap (src/index.css) in the game's
+   own face, square, with a 2 px edge, through its variables */
+.mc { --hud-key-face: var(--mc-font); --hud-key-weight: 400; --hud-key-border: 2px; --hud-key-radius: 0; }
+.mc .hud-exit .hud-cap { margin-left: 0.4em; text-shadow: none; }
 .mc-btn-half {
   flex: 0 0 auto;
 }
@@ -290,6 +283,9 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.45);
   box-shadow: none;
+  /* (the kit moves a knob 26 px at full tilt; this one went 34, to the
+     ring's edge, as it did before the kit) */
+  transform: translate(calc(var(--sx, 0px) * 34 / 26), calc(var(--sy, 0px) * 34 / 26));
 }
 .mc-keys {
   display: flex;
