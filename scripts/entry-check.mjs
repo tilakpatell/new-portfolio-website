@@ -50,6 +50,10 @@ const open = async () => {
   await page.goto(URL, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship, null, { timeout: 180000 });
   await page.waitForTimeout(3000);
+  // (a key, so the ship's being flown, and then the scene's clock running:
+  // in software its first frames are a long time coming)
+  await page.keyboard.press('w');
+  await page.waitForFunction(() => window.__universeDebug.state.clock > 0.5, null, { timeout: 600000, polling: 250 }).catch(() => null);
 };
 const leftFor = async () => {
   await page.waitForFunction(() => !/#\/universe/.test(window.location.hash), null, { timeout: 600000, polling: 100 }).catch(() => null);
@@ -69,7 +73,7 @@ await page.evaluate((id) => {
   const k = 1.5;
   d.state.ship = { ...sh, x: c.x + (sh.x - c.x) * k, z: c.z + (sh.z - c.z) * k, speed: 0 };
 }, planet);
-await page.waitForFunction((id) => window.__universe().landable === id, planet, { timeout: 60000, polling: 100 }).catch(() => null);
+await page.waitForFunction((id) => window.__universe().landable === id, planet, { timeout: 600000, polling: 100 }).catch(() => null);
 const prompt = await page.evaluate(() => {
   const el = document.querySelector('.universe-prompt');
   return { text: el?.textContent ?? '', key: el ? window.getComputedStyle(el, '::before').content : '' };
@@ -112,7 +116,7 @@ await open();
 ok(await page.evaluate((id) => window.__universeDebug.diveAt(id, 20), crashInto), `${crashInto}: put just off its air at the boost`);
 await page.keyboard.down('w');
 await page.keyboard.down('Shift');
-await page.waitForFunction(() => window.__universe().crash || window.__universe().foot || !/#\/universe/.test(window.location.hash), null, { timeout: 60000, polling: 30 }).catch(() => null);
+await page.waitForFunction(() => window.__universe().crash || window.__universe().foot || !/#\/universe/.test(window.location.hash), null, { timeout: 600000, polling: 30 }).catch(() => null);
 await page.keyboard.up('Shift');
 await page.keyboard.up('w');
 s = await snap().catch(() => null);
