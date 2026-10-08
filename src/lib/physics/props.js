@@ -10,6 +10,8 @@
 //     (2.5, 0.15), friction 0.7)
 //   addProps(physics, list, kinds = KINDS) → { bodies, sync(write(i,
 //     position, quaternion)), wake(i), reset(), remove() }
+// (a kind it doesn't know throws before anything is added; once the world
+// is disposed, every call is nothing)
 
 export const KINDS = {
   crate: { type: 'dynamic', mass: 0.02, hitThreshold: 0, lift: 0.5, colliders: [{ shape: 'cuboid', args: [0.5, 0.5, 0.5] }] },
@@ -22,6 +24,7 @@ export const KINDS = {
 const scaled = (c, s) => ({ ...c, args: c.args.map((a) => a * s) });
 
 export function addProps(physics, list, kinds = KINDS) {
+  for (const p of list) if (!kinds[p.kind]) throw new Error(`physics: no prop kind '${p.kind}'`);
   const bodies = list.map((p) => {
     const k = kinds[p.kind];
     const s = k.scales === false ? 1 : (p.scale ?? 1);
@@ -37,26 +40,32 @@ export function addProps(physics, list, kinds = KINDS) {
       colliders: k.colliders.map((c) => scaled(c, s)),
     });
   });
+  const index = new Map(bodies.map((b, i) => [b, i]));
   const pos = [0, 0, 0];
   const quat = [0, 0, 0, 1];
+  const live = () => !physics.disposed;
   return {
     bodies,
+    // (the awake ones only, from the world's own awake set: a field of
+    // sleeping props costs nothing)
     sync(write) {
-      for (let i = 0; i < bodies.length; i++) {
-        const b = bodies[i].body;
-        if (!b.isDynamic() || b.isSleeping() || !b.isEnabled()) continue;
-        write(i, bodies[i].position(pos), bodies[i].quaternion(quat));
-      }
+      if (!live()) return;
+      physics.awake((h) => {
+        const i = index.get(h);
+        if (i === undefined || !h.body.isDynamic() || !h.body.isEnabled()) return;
+        write(i, h.position(pos), h.quaternion(quat));
+      });
     },
     wake(i) {
-      bodies[i].body.wakeUp();
+      if (live() && bodies[i] && !bodies[i].removed) bodies[i].body.wakeUp();
     },
     reset() {
-      for (const b of bodies) if (b.body.isDynamic()) b.reset();
+      if (live()) for (const b of bodies) if (!b.removed && b.body.isDynamic()) b.reset();
     },
     remove() {
-      for (const b of bodies) physics.remove(b);
+      if (live()) for (const b of bodies) physics.remove(b);
       bodies.length = 0;
+      index.clear();
     },
   };
 }

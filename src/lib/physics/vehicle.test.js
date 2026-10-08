@@ -171,3 +171,22 @@ describe('addVehicle on the flat', () => {
     physics.dispose();
   });
 });
+
+describe('addVehicle, when things go wrong', () => {
+  it('drives on through inputs that are not numbers', async () => {
+    const { physics, car } = await settle();
+    run(physics, car, 60, { throttle: NaN, steer: Infinity, brake: undefined, boost: NaN });
+    expect(car.chassis.position().every(Number.isFinite)).toBe(true);
+    run(physics, car, 120, { throttle: 1 });
+    expect(car.state.speed).toBeGreaterThan(1);
+    physics.dispose();
+  });
+
+  it('can be removed twice', async () => {
+    const { physics, car } = await settle();
+    car.remove();
+    expect(() => car.remove()).not.toThrow();
+    expect(physics.world.bodies.len()).toBe(9); // (the ground's nine cells)
+    physics.dispose();
+  });
+});

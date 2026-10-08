@@ -128,3 +128,174 @@ describe('createPhysics', () => {
     p.dispose();
   });
 });
+
+describe('createPhysics, when things go wrong', () => {
+  it('shrugs off a bad frame time and keeps stepping', async () => {
+    const p = await createPhysics();
+    expect(p.step(NaN)).toBe(0);
+    expect(p.step(-1)).toBe(0);
+    expect(p.step(undefined)).toBe(0);
+    expect(p.step(1 / 60)).toBe(1);
+    p.dispose();
+  });
+
+  it('can be disposed twice, and does nothing after', async () => {
+    const p = await createPhysics();
+    const b = ball(p, [0, 1, 0]);
+    p.dispose();
+    expect(() => p.dispose()).not.toThrow();
+    expect(p.step(1 / 60)).toBe(0);
+    expect(() => p.add({ colliders: [{ shape: 'ball', args: [1] }] })).toThrow(/disposed/);
+    expect(() => p.remove(b)).not.toThrow();
+    expect(p.disposed).toBe(true);
+  });
+
+  it('keeps stepping and drains every hit when one onHit throws', async () => {
+    const errors = [];
+    const p = await createPhysics({ onError: (e) => errors.push(e) });
+    ground(p);
+    let bad = 0;
+    let good = 0;
+    ball(p, [-3, 2, 0], { hitThreshold: 0, onHit: () => (bad++, (() => { throw new Error('boom'); })()) });
+    ball(p, [3, 2, 0], { hitThreshold: 0, onHit: () => good++ });
+    for (let i = 0; i < 90; i++) expect(p.step(1 / 60)).toBe(1);
+    expect(bad).toBeGreaterThan(1);
+    expect(good).toBeGreaterThan(1);
+    expect(errors.length).toBe(bad);
+    expect(String(errors[0])).toMatch(/boom/);
+    p.dispose();
+  });
+
+  it('keeps stepping when a substep hook or the lost test throws', async () => {
+    const errors = [];
+    const p = await createPhysics({ onError: (e) => errors.push(e), lost: () => { throw new Error('lost?'); } });
+    ball(p, [0, 5, 0], { canSleep: false });
+    let ran = 0;
+    p.onSubstep(() => { throw new Error('hook'); });
+    p.onSubstep(() => ran++);
+    expect(p.step(3 / 60)).toBe(3);
+    expect(ran).toBe(3);
+    expect(errors.map(String).join()).toMatch(/hook/);
+    expect(errors.map(String).join()).toMatch(/lost\?/);
+    p.dispose();
+  });
+
+  it('removes a body from inside its own onHit without breaking the step', async () => {
+    const p = await createPhysics({ onError: (e) => { throw e; } });
+    ground(p);
+    let b = null;
+    b = ball(p, [0, 2, 0], { hitThreshold: 0, onHit: () => p.remove(b) });
+    for (let i = 0; i < 90; i++) p.step(1 / 60);
+    expect(b.removed).toBe(true);
+    expect(p.world.bodies.len()).toBe(1); // (the ground)
+    p.dispose();
+  });
+
+  it('adds nothing when a body is described wrong', async () => {
+    const p = await createPhysics();
+    expect(() => p.add({ colliders: [{ shape: 'nope' }] })).toThrow(/shape/);
+    expect(() => p.add({ position: [0, NaN, 0], colliders: [{ shape: 'ball', args: [1] }] })).toThrow(/position/);
+    expect(() => p.add({ type: 'floaty', colliders: [{ shape: 'ball', args: [1] }] })).toThrow(/type/);
+    expect(() => p.add({ group: 'wall', colliders: [{ shape: 'ball', args: [1] }] })).toThrow(/group/);
+    expect(() => p.add({ colliders: [{ shape: 'hull', args: [new Float32Array([0, 0, 0, 0, 0, 0, 0, 0, 0])] }] })).toThrow(/hull/);
+    expect(() => p.add({ colliders: [{ shape: 'ball', args: [1] }, { shape: 'nope' }] })).toThrow(/shape/);
+    expect(p.world.bodies.len()).toBe(0);
+    expect(p.world.colliders.len()).toBe(0);
+    p.dispose();
+  });
+
+  it('answers with the last place it was once a body is gone', async () => {
+    const p = await createPhysics();
+    const b = ball(p, [1, 2, 3]);
+    p.remove(b);
+    expect(b.removed).toBe(true);
+    expect(b.position()).toEqual([1, 2, 3]);
+    expect(b.quaternion()).toEqual([0, 0, 0, 1]);
+    expect(b.sleeping).toBe(true);
+    expect(() => b.reset()).not.toThrow();
+    expect(() => p.remove(b)).not.toThrow();
+    p.dispose();
+  });
+
+  it('puts back a body that is lost, or whose numbers have gone bad', async () => {
+    const p = await createPhysics({ lost: ([, y]) => y < -20 });
+    const fell = ball(p, [0, 0, 0]);
+    for (let i = 0; i < 180; i++) p.step(1 / 60);
+    expect(fell.position()[1]).toBeGreaterThan(-20);
+    expect(fell.resets).toBeGreaterThan(0);
+    const bad = ball(p, [5, 0, 0], { canSleep: false });
+    p.step(1 / 60);
+    bad.body.setLinvel({ x: NaN, y: 0, z: 0 }, true);
+    p.step(1 / 60);
+    p.step(1 / 60);
+    expect(bad.position().every(Number.isFinite)).toBe(true);
+    expect(bad.resets).toBeGreaterThan(0);
+    p.dispose();
+  });
+
+  it('brings back a body the engine turned off, but not one turned off on purpose', async () => {
+    const p = await createPhysics();
+    const quiet = ball(p, [0, 10, 0], { canSleep: false });
+    const off = ball(p, [5, 10, 0], { canSleep: false });
+    p.step(1 / 60);
+    quiet.body.setEnabled(false); // (as Rapier does to a body whose numbers went bad mid-step)
+    off.enable(false);
+    for (let i = 0; i < 61; i++) p.step(1 / 60);
+    expect(quiet.body.isEnabled()).toBe(true);
+    expect(quiet.resets).toBe(1);
+    expect(off.body.isEnabled()).toBe(false);
+    expect(off.resets).toBe(0);
+    off.enable(true);
+    expect(off.body.isEnabled()).toBe(true);
+    p.dispose();
+  });
+
+  it('holds every body under its speed limit', async () => {
+    const p = await createPhysics({ maxSpeed: 30 });
+    const b = ball(p, [0, 100, 0], { canSleep: false });
+    b.body.applyImpulse({ x: 1e6, y: 0, z: 0 }, true);
+    p.step(1 / 60);
+    const v = b.body.linvel();
+    expect(Math.hypot(v.x, v.y, v.z)).toBeLessThanOrEqual(30.001);
+    p.dispose();
+  });
+});
+
+describe('createPhysics, on a round planet', () => {
+  const planet = (p, centre, r) => p.add({ type: 'fixed', position: centre, group: 'floor', colliders: [{ shape: 'ball', args: [r] }] });
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+  it('pulls toward the middle, wherever you are on it', async () => {
+    const centre = [0, -100, 0];
+    const p = await createPhysics({ gravity: { centre, g: 9.81 } });
+    planet(p, centre, 100);
+    const top = ball(p, [30, -3, 0]);
+    const under = ball(p, [0, -205, 0]);
+    for (let i = 0; i < 300; i++) p.step(1 / 60);
+    expect(dist(top.position(), centre)).toBeCloseTo(100.5, 1);
+    expect(dist(under.position(), centre)).toBeCloseTo(100.5, 1);
+    // (and it stayed where it came down: straight down, not off sideways)
+    const t = top.position();
+    expect(Math.atan2(t[0], t[1] + 100)).toBeCloseTo(Math.atan2(30, 97), 1);
+    p.dispose();
+  });
+
+  it('leaves sleepers asleep', async () => {
+    const p = await createPhysics({ gravity: { centre: [0, -100, 0], g: 9.81 } });
+    const b = ball(p, [0, 50, 0], { sleeping: true });
+    for (let i = 0; i < 60; i++) p.step(1 / 60);
+    expect(b.sleeping).toBe(true);
+    expect(b.position()).toEqual([0, 50, 0]);
+    p.dispose();
+  });
+
+  it('moves its middle with the origin', async () => {
+    const p = await createPhysics({ gravity: { centre: [1000, -100, 0], g: 9.81 } });
+    planet(p, [1000, -100, 0], 100);
+    const b = ball(p, [1000, 3, 0]);
+    p.onOrigin([1000, 0, 0]);
+    for (let i = 0; i < 200; i++) p.step(1 / 60);
+    expect(dist(b.position(), [0, -100, 0])).toBeCloseTo(100.5, 1);
+    p.dispose();
+  });
+});

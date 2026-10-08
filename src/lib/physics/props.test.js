@@ -67,3 +67,22 @@ describe('addProps', () => {
     p.dispose();
   });
 });
+
+describe('addProps, when things go wrong', () => {
+  it('adds nothing for a kind it does not know', async () => {
+    const p = await createPhysics();
+    expect(() => addProps(p, [{ kind: 'crate', x: 0, y: 0, z: 0 }, { kind: 'piano', x: 1, y: 0, z: 0 }])).toThrow(/piano/);
+    expect(p.world.bodies.len()).toBe(0);
+    p.dispose();
+  });
+
+  it('does nothing once the world is gone', async () => {
+    const p = await createPhysics();
+    const props = addProps(p, [{ kind: 'crate', x: 0, y: 0, z: 0 }]);
+    p.dispose();
+    expect(() => props.sync(() => {})).not.toThrow();
+    expect(() => props.wake(0)).not.toThrow();
+    expect(() => props.reset()).not.toThrow();
+    expect(() => props.remove()).not.toThrow();
+  });
+});
