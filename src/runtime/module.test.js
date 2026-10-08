@@ -105,5 +105,13 @@ describe('fromScene', () => {
     expect(() => w.update({})).not.toThrow();
     expect(() => w.lowerQuality(1)).not.toThrow();
     expect(w.handoff()).toBe(null);
+    expect(w.tune).toBeUndefined();
+  });
+
+  it('passes a scene’s tune() through, for the ?debug panel', async () => {
+    const groups = [{ name: 'look', items: [] }];
+    const s = { render: () => false, resize() {}, dispose() {}, tune: vi.fn(() => groups) };
+    const w = await fromScene('x', () => s).create(rt(), {});
+    expect(w.tune()).toBe(groups);
   });
 });

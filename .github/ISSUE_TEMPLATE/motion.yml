@@ -1,0 +1,30 @@
+name: Motion clip
+description: A clip made from words on the owner's desktop GPU (HY-Motion 1.0 → BVH → Meshy's skeleton), as a pull request with a sheet beside a library clip.
+title: "clip-name"
+labels: [motion]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The **title** is the clip's name: it becomes `public/games/meshy/ual-gen.NAME.glb` (a-z, 0-9, dashes).
+        The desktop makes it when it's on; this issue is updated as it goes.
+        Say what the **body** does, in English, under 60 words: no props, places, cameras or second people (the model can't).
+        More: `scripts/motion/README.md`.
+  - type: input
+    id: prompt
+    attributes:
+      label: Prompt
+      description: What the body does.
+      placeholder: a two-handed overhead sword strike, stepping forward
+    validations:
+      required: true
+  - type: input
+    id: seconds
+    attributes:
+      label: Seconds
+      description: How long, 1 to 10 (default 3). Under 5 keeps the model under 26 GB.
+  - type: textarea
+    id: more
+    attributes:
+      label: More options
+      description: "One a line: seed: 7 · cfg: 5 · model: lite · with: sword.a (the library clip on the sheet beside it)"

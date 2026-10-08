@@ -76,6 +76,37 @@ describe('createRuntime', () => {
     expect(rt.current.module).toBe(mod); // the very object the page mounted, so useWorld can tell its own
   });
 
+  it('behind ?debug, asks a world placed and ready for its tune() and shows it under the module’s id; letting it go hides it', async () => {
+    const shown = [];
+    const debug = { on: true, show: vi.fn((id, groups) => shown.push([id, groups])), hide: vi.fn() };
+    const { rt } = make({ debug });
+    const groups = [{ name: 'look', items: [] }];
+    let ready = false;
+    const world = fakeWorld({ ready: Promise.resolve().then(() => (ready = true)), tune: vi.fn(() => (ready ? groups : null)) });
+    await rt.mount({ id: 'earth', create: () => world }, {}, fakeHost());
+    expect(rt.debug).toBe(debug);
+    expect(shown).toEqual([['earth', groups]]);
+    rt.unmount();
+    expect(debug.hide).toHaveBeenCalled();
+  });
+
+  it('without ?debug never asks a world for its tune(), and a tune() that throws costs the panel, not the world', async () => {
+    const off = { on: false, show: vi.fn(), hide: vi.fn() };
+    const tune = vi.fn(() => []);
+    const { rt } = make({ debug: off });
+    await rt.mount({ id: 'a', create: () => fakeWorld({ tune }) }, {}, fakeHost());
+    expect(tune).not.toHaveBeenCalled();
+    expect(off.show).not.toHaveBeenCalled();
+    const on = { on: true, show: vi.fn(), hide: vi.fn() };
+    const { rt: rt2, loop } = make({ debug: on });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(await rt2.mount({ id: 'b', create: () => fakeWorld({ tune: () => { throw new Error('no'); } }) }, {}, fakeHost())).toBe(true);
+    warn.mockRestore();
+    expect(on.show).toHaveBeenCalledWith('b', null);
+    expect(loop.tick(16)).toBe(true);
+    expect(rt2.status).toBe('on');
+  });
+
   it("waits for a world's prepare before showing it, and tells its progress", async () => {
     const { rt } = make();
     let finish;

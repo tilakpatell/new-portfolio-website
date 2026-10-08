@@ -22,7 +22,7 @@ export const FAKES = join(REPO, 'scripts', 'ai-e2e', 'fakes');
 
 // What a run on the Actions runner would see that a test must not act on:
 // its summary, its artifacts folder, the run's link in comments.
-const OUTSIDE = /^(GITHUB_|RUNNER_|GH_|JOB_ISSUE$|CHROME$|BASE$|GEN3D_|VOICES_|DESKTOP_)/;
+const OUTSIDE = /^(GITHUB_|RUNNER_|GH_|JOB_ISSUE$|CHROME$|BASE$|GEN3D_|VOICES_|MOTION_|DESKTOP_)/;
 
 // A child process, its output kept; a promise, so a test can serve a
 // picture from this process while the pipeline fetches it.

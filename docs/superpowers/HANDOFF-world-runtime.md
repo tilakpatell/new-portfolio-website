@@ -33,7 +33,7 @@ rt.handover(module, props, host, { fade, held, after }) → true once the new wo
              // the old world draws on, seen, until the new one is ready and `after` (its own last moment) is done; its last frame then fades out over it
 ```
 
-A module: `{ id, shading, mb, label?, create(rt, props) → world }` (`label`: what the canvas shows, for a screen reader; the runtime puts it on the canvas as `role="img"`). A world: `{ ready?, resize, step?, draw, wants?, update?, setVisible?, lowerQuality?, warmUp?, handoff?, dispose }`. `fromScene(id, create, { mb })` wraps a `useScene` scene module unchanged.
+A module: `{ id, shading, mb, label?, create(rt, props) → world }` (`label`: what the canvas shows, for a screen reader; the runtime puts it on the canvas as `role="img"`). A world: `{ ready?, resize, step?, draw, wants?, update?, setVisible?, lowerQuality?, warmUp?, handoff?, tune?, dispose }` (`tune() → groups`, `lib/debugPanel`’s: asked once the world is ready when the address has `?debug`, and shown in the one tuning panel under the module’s id; `runtime/debug.js`). `fromScene(id, create, { mb })` wraps a `useScene` scene module unchanged.
 
 The page: `const { host, status, rt } = useWorld(module, { props, onEvent, attempt })` and `<WorldHost world={{ host }} className="...">{hud}</WorldHost>`. Status is `useScene`'s (`loading | ready | on | failed | lost`); the host carries `data-gl="loading|on"`.
 
