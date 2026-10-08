@@ -294,7 +294,7 @@ function World({ attempt, onStatus }) {
             {/* the right thumb's column: Roll over Faster, on one axis */}
             <div className="earth-buttons">
               <TouchButton
-                size={52}
+                size={56}
                 className="earth-roll"
                 onPress={(e) => {
                   own(e);
@@ -304,7 +304,7 @@ function World({ attempt, onStatus }) {
                 Roll
               </TouchButton>
               <TouchButton
-                size={76}
+                size={84}
                 className="earth-boost"
                 onPress={(e) => {
                   own(e);
@@ -324,9 +324,8 @@ function World({ attempt, onStatus }) {
               <p>
                 Passport <b>{count}/{STAMPS.length}</b>
               </p>
-              {/* (P shuts it as it opened it, and Esc: the key beside the ×) */}
+              {/* (P shuts it as it opened it, and Esc) */}
               <button type="button" className="earth-x" onClick={() => setPassport(false)} aria-label="Close the passport" aria-keyshortcuts="P Escape">
-                {!touch && <kbd>P</kbd>}
                 <span aria-hidden="true">×</span>
               </button>
             </div>
