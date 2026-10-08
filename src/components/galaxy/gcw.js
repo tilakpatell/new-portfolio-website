@@ -174,7 +174,9 @@ function freshState(war) {
     owner,
     control,
     count,
-    opened: count, // (the opening's tallyOf)
+    // (the opening's tallyOf, its own: `count` changes with every capture, and the
+    // first six hours' trend is measured against this)
+    opened: tallyOf(owner, sidesOf(w)),
     attacks: [],
     fronts: [],
     counter: {}, // side → { sys, until }: what it's going back for

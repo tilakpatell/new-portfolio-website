@@ -391,6 +391,29 @@ describe('history', () => {
       for (const side of Object.keys(now)) expect(s.counts.at(-1)[side]).toBe(now[side]);
     }
   });
+  it('in a campaign’s first six hours, gives each side’s trend against the opening', () => {
+    // (the opening's count was once the running count itself, moved by every
+    // capture, so the trend read nothing all through the first six hours)
+    let moved = 0;
+    for (const war of WAR_IDS) {
+      const o = countOf(opening(war).owner);
+      for (let n = 0; n < 6; n++) {
+        const run = campaignRun(war, n, none);
+        for (let k = 1; k <= GCW.window; k++) {
+          const ms = atStep(n, k, GCW.step / 2);
+          for (const [how, s] of [
+            ['a step at a time', runAt(run, ms)],
+            ['whole', history(war, n, ms, none)],
+          ])
+            for (const [side, r] of Object.entries(s.strength)) {
+              expect(r.trend6h, `${war} c${n} ${k} ${side}, ${how}`).toBe(r.systems - (o[side] ?? 0));
+              if (r.trend6h) moved += 1;
+            }
+        }
+      }
+    }
+    expect(moved).toBeGreaterThan(0);
+  });
   it('names the campaign’s phase, when it ends and the next, and tells of each as it comes', () => {
     expect(history('gcw', 0, at(0, 20 * H), none).phase).toEqual({ index: 1, name: 'Escalation', from: atStep(0, 60), until: atStep(0, 240), next: 'Decisive' });
     expect(history('gcw', 0, at(0, 71 * H), none).phase).toMatchObject({ name: 'Climax', until: at(1, 0), next: null });
@@ -575,6 +598,26 @@ describe('history', () => {
     const moments = Array.from({ length: 20 }, () => Math.floor(rand() * GCW.campaign)).sort((a, b) => a - b);
     moments.push(moments[4]); // (and back again)
     for (const m of moments) expect(runAt(run, at(0, m)), `${m}`).toEqual(history('gcw', 0, at(0, m), v));
+  });
+  it('comes to the same from a checkpoint all through the first six hours, a capture partway through a step and all', () => {
+    // (the trend in the first six hours is measured against the opening: the
+    // twenty moments above missed that window, and the two ways differed in it)
+    let partway = 0;
+    for (const war of WAR_IDS) {
+      const t = busyTally(war, `first-hours-${war}`);
+      const v = (k) => t.value(k);
+      const run = campaignRun(war, 0, v);
+      for (let k = 0; k <= GCW.window; k++) {
+        const began = history(war, 0, atStep(0, k), v).owner;
+        for (const f of [0.1, 0.5, 0.9]) {
+          const ms = atStep(0, k, f * GCW.step);
+          const whole = history(war, 0, ms, v);
+          expect(runAt(run, ms), `${war} ${k} ${f}`).toEqual(whole);
+          if (WAR_SYSTEMS.some((id) => whole.owner[id] !== began[id])) partway += 1;
+        }
+      }
+    }
+    expect(partway).toBeGreaterThan(0);
   });
   it('counts each area’s systems by side, and names one held whole', () => {
     const s = history('gcw', 0, at(0, 60e3), none);
