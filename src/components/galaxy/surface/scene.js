@@ -109,7 +109,7 @@ import { applyEmote, createEmoteWheel, emotePacket, keepEmote, readEmote } from 
 import { preload } from '../../../lib/three/clipLibrary';
 import { fallTurn } from '../../../lib/three/locomotion';
 import { createSaber } from './saber';
-import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, lungeTo, parried, pushVelocity } from './combatRules';
+import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, parried, pushVelocity } from './combatRules';
 import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
 import { heroById, heroSpec, partyFor, refitOf, writeHero } from '../heroes';
 import { perkEffects } from '../perks';
@@ -803,7 +803,6 @@ export async function create(canvas, ctx) {
     pressAt: null, // when F went down with a saber (held, it's the heavy stroke)
     dodge: null, // { t0, dx, dz }
     dodgedAt: -99,
-    lunge: null, // { t0, dur, dx, dz }: a stroke stepping in to its target
     lock: null, // the enemy a stroke homes on
     cool: { power: -99, second: -99 }, // when each ability is ready again
     overcharge: -99, // until when the gun runs hot-free
@@ -1744,32 +1743,20 @@ export async function create(canvas, ctx) {
     const p = me();
     if (state.guard.brokenAt != null || state.dodge) return;
     camera.getWorldDirection(camDir);
-    p.st.yaw = Math.atan2(camDir.x, camDir.z);
+    // homing on the one you're facing: the stroke turns you to them over its
+    // wind-up and its own step carries you in (saber.js); with no one, you
+    // face where the camera looks
+    const t = state.lock && !state.lock.down ? state.lock : null;
+    if (!t) p.st.yaw = Math.atan2(camDir.x, camDir.z);
     state.aim = 1;
     state.aimDir.copy(camDir);
     state.saberAt = state.t;
-    const sw = p.saber.swing(state.t, { heavy });
+    // the way held at the click: W overhead, A or D a cut from that side, S rising
+    const inp = input();
+    const dir = Math.abs(inp.y) >= Math.abs(inp.x) ? (inp.y > 0.5 ? 'up' : inp.y < -0.5 ? 'rise' : null) : inp.x > 0.5 ? 'right' : inp.x < -0.5 ? 'left' : null;
+    const sw = p.saber.swing(state.t, { heavy, dir, lock: t, lunge: perks.lunge });
     if (!sw) return;
     emit({ type: 'fire' });
-    // homing on the one you're facing: turned to them, stepped in if they're a little out of reach
-    const t = state.lock;
-    if (t && !t.down) {
-      const q = t.holder.position;
-      p.st.yaw = Math.atan2(q.x - p.st.x, q.z - p.st.z);
-      const d = lungeTo(p.st, { x: q.x, z: q.z, r: 0.5 }, { ...p.saber.stance, lunge: p.saber.stance.lunge * perks.lunge });
-      if (d > 0) state.lunge = { t0: state.t, dur: Math.min(0.2, sw.dur * 0.4), dx: Math.sin(p.st.yaw) * d, dz: Math.cos(p.st.yaw) * d };
-    }
-  }
-  // the lunge: the step in, over its first moments
-  function stepLunge(dt) {
-    const l = state.lunge;
-    if (!l) return;
-    // (the whole step spread evenly over the lunge's duration)
-    const k = Math.min(1, dt / l.dur);
-    const p = me().st;
-    p.x += l.dx * k;
-    p.z += l.dz * k;
-    if (state.t - l.t0 >= l.dur) state.lunge = null;
   }
   // the dodge (X): a roll the way you're going (back, if you're still),
   // nothing landing through its first moments
@@ -2842,7 +2829,6 @@ export async function create(canvas, ctx) {
     state.powerQueued = state.secondQueued = false;
     stepSaber(dt);
     state.throwQueued = false;
-    stepLunge(dt);
     stepBombs(dt);
     if (state.phase === 'walk') pickLock();
     else if (state.lock) {
@@ -3050,7 +3036,7 @@ export async function create(canvas, ctx) {
     const net = props.net;
     if (!net) return;
     const out = state.phase === 'walk' || state.phase === 'ride' || state.phase === 'out';
-    const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed, aim: p === me() ? state.aim : 0, arms: p.spec.gun ? { gun: p.spec.gun, lit: Boolean(p.saber?.lit), color: p.spec.saber?.color ?? '', stance: p.spec.saber?.stance ?? 'single', swing: Boolean(p.saber?.swinging) } : null, emote: p === me() ? emotePacket(state.emote, state.t) : null, motion: p.motion ?? null });
+    const w = (p) => ({ who: p.spec.id, x: p.st.x, y: p.st.y, z: p.st.z, yaw: p.st.yaw, speed: state.phase === 'ride' && p === me() ? state.riding.state.speed : p.st.speed, aim: p === me() ? state.aim : 0, arms: p.spec.gun ? { gun: p.spec.gun, lit: Boolean(p.saber?.lit), color: p.spec.saber?.color ?? '', stance: p.spec.saber?.stance ?? 'single', swing: Boolean(p.saber?.swinging), stroke: p.saber?.swinging?.name ?? null } : null, emote: p === me() ? emotePacket(state.emote, state.t) : null, motion: p.motion ?? null });
     net.walk?.(out ? { world: site.id, kind: shipKind, lead: w(me()), mate: w(other()), ride: state.riding?.kind ?? null } : null);
     peers.update(net, site.id, dt);
   }

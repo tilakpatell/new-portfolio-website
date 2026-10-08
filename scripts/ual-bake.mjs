@@ -7,8 +7,8 @@
 //          the dash, the ground pound, the uppercut), the whole body, a
 //          file per clip, public/games/meshy/ual-sword.<name>.glb. Each
 //          says in its extras where its blade lands (`contact`: [t0, t1],
-//          seconds, the sword hand's fastest span widened 60 ms either
-//          side) and how far the root travels through it (`root`:
+//          seconds: the blade's fastest span ahead of the body, widened
+//          60 ms either side) and how far the root travels through it (`root`:
 //          [[t, dx, dz]…] at 30 a second, from UAL2_RM.glb, the pack's
 //          root-motion twin: metres on Luke, faced his way, +z ahead and
 //          +x to his left, from where the clip starts; `rootHips` the
@@ -58,7 +58,7 @@
 //     findBones: rig.js's (the CLI loads it through Vite)
 //   bakeFiles(setName, names, outDir) → [{ file, kb }]: a set's per-clip files
 //     baked into outDir as they are into public/games/meshy (the byte test)
-//   contactWindow(rows, { widen }) → [t0, t1]; rows: [{ t, hand: [x, y, z] }]
+//   contactWindow(rows, { widen }) → [t0, t1]; rows: [{ t, hand: [x, y, z], ahead? }]
 //   rootTravel(rows, { face, k }) → [[t, dx, dz]…]; rows: [{ t, at: [x, y, z] }]
 
 import { Document, NodeIO } from '@gltf-transform/core';
@@ -304,16 +304,19 @@ const parseGlb = (buf) => {
 };
 const loadUal = async (file) => parseGlb(await readFile(file));
 
-// Where a stroke's blade lands: the span the sword hand moves fastest
-// through (every frame at least 0.6 of its fastest, around the fastest),
-// widened `widen` either side, and kept off the clip's very ends so a
-// window is never empty or outside the clip (a clip the hand barely moves
-// in still gets one, round its middle). rows: [{ t, hand: [x, y, z] }]
+// Where a stroke's blade lands: the span the blade moves fastest through
+// (every frame at least 0.6 of its fastest, around the fastest) while it's
+// ahead of the body (a row `ahead: false` doesn't count: the strokes wind
+// the blade round behind the back first, as fast as they cut), widened
+// `widen` either side, and kept off the clip's very ends so a window is
+// never empty or outside the clip (a clip the blade barely moves in still
+// gets one, round its middle). rows: [{ t, hand: [x, y, z], ahead? }]: the
+// point to time (the bake gives it the blade's tip)
 export function contactWindow(rows, { widen = 0.06 } = {}) {
   const d = rows.at(-1).t;
   const lo = Math.min(0.05, d * 0.25);
   const hi = d - lo;
-  const speed = rows.map((r, i) => (i ? Math.hypot(...r.hand.map((v, j) => v - rows[i - 1].hand[j])) / Math.max(1e-6, r.t - rows[i - 1].t) : 0));
+  const speed = rows.map((r, i) => (i && r.ahead !== false ? Math.hypot(...r.hand.map((v, j) => v - rows[i - 1].hand[j])) / Math.max(1e-6, r.t - rows[i - 1].t) : 0));
   let peak = 0;
   speed.forEach((v, i) => v > speed[peak] && (peak = i));
   let t0 = d / 2 - 0.1;
@@ -345,10 +348,36 @@ export function rootTravel(rows, { face = (v) => v, k = 1 } = {}) {
   });
 }
 
-// a clip's extras for a stroke: the sword hand through the in-place clip
-// (the contact window) and the root through the root-motion twin's (its
-// travel), sampled at the bake's rate, in the mannequin's own frame
-function strokeExtras(src, rm, from, prep) {
+// the blade through a baked clip, on Luke: its tip a metre out of the
+// right fist the way the site's hilt sits there (gunplay.js's grip puts the
+// blade along the hand's +z on the Meshy rig; UAL's sword idles forward and
+// up on that axis, and its block holds it up across), and whether the tip
+// is ahead of the hips (Luke faces +z)
+function bladeRows(baked) {
+  const fig = rig.clone(true);
+  const hand = fig.getObjectByName('RightHand');
+  const hips = fig.getObjectByName('Hips');
+  const mixer = new THREE.AnimationMixer(fig);
+  const a = mixer.clipAction(baked).play();
+  const inv = fig.matrixWorld.clone().invert();
+  const rows = [];
+  const q = new THREE.Quaternion();
+  for (let f = 0, n = Math.round(baked.duration * FPS); f <= n; f++) {
+    a.time = Math.min(baked.duration, f / FPS);
+    mixer.update(0);
+    fig.updateMatrixWorld(true);
+    const tip = new THREE.Vector3(0, 0, 1).applyQuaternion(hand.getWorldQuaternion(q)).add(hand.getWorldPosition(new THREE.Vector3())).applyMatrix4(inv);
+    const h = hips.getWorldPosition(new THREE.Vector3()).applyMatrix4(inv);
+    rows.push({ t: a.time, hand: tip.toArray(), ahead: tip.z > h.z + 0.15 });
+  }
+  mixer.uncacheRoot(fig);
+  return rows;
+}
+
+// a clip's extras for a stroke: the blade through the baked clip (the
+// contact window) and the root through the root-motion twin's (its
+// travel), sampled at the bake's rate
+function strokeExtras(src, rm, from, prep, baked) {
   const sample = (s, clip, read) => {
     const mixer = new THREE.AnimationMixer(s.scene);
     const a = mixer.clipAction(clip).play();
@@ -366,7 +395,7 @@ function strokeExtras(src, rm, from, prep) {
     toRest(s);
     return rows;
   };
-  const contact = contactWindow(sample(src, src.clips[from], (s) => s.bones['DEF-handR']).map((r) => ({ t: r.t, hand: r.v })));
+  const contact = contactWindow(bladeRows(baked));
   const out = { contact };
   if (rm?.clips[from]) {
     const turn = (v) => new THREE.Vector3(...v).applyQuaternion(prep.face).toArray();
@@ -465,7 +494,7 @@ async function bake(file, takes, { bones = null, short = false, strokes = false 
     const extras = { hips: +baked.userData.hips.toFixed(4), source: `Quaternius UAL ${from}` };
     if (strokes) {
       toRest(src);
-      Object.assign(extras, strokeExtras(src, rmOf, from, prepareUal(src, rig)));
+      Object.assign(extras, strokeExtras(src, rmOf, from, prepareUal(src, rig), baked));
     }
     const anim = doc.createAnimation(name).setExtras(extras);
     const times = acc(baked.tracks[0].times, 'SCALAR');

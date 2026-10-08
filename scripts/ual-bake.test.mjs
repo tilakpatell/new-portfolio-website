@@ -125,6 +125,17 @@ describe('contactWindow', () => {
     expect(t1).toBeGreaterThan(0.6);
     expect(t1).toBeLessThan(0.7);
   });
+  it('counts only the frames the blade is ahead of the body (`ahead`): a wind-up behind the back isn’t a hit', () => {
+    // (fast behind between 0.1 and 0.3, fast again, ahead, between 0.6 and 0.8)
+    const rows = handRows([0.1, 0.3]).map((r) => {
+      const t = r.t;
+      const k = Math.min(1, Math.max(0, (t - 0.6) / 0.2));
+      return { t, hand: [r.hand[0] + k * 1.5, 1.2, 0], ahead: t >= 0.55 };
+    });
+    const [t0, t1] = contactWindow(rows);
+    expect(t0).toBeGreaterThan(0.5);
+    expect(t1).toBeGreaterThan(0.8);
+  });
   it('keeps a window inside [0.05, duration − 0.05] when the hand never moves, or moves at the very ends', () => {
     for (const rows of [handRows([2, 3]), handRows([0, 0.05]), handRows([0.95, 1])]) {
       const [t0, t1] = contactWindow(rows);
