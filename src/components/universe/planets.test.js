@@ -309,23 +309,28 @@ describe('the -xl maps, 4096 on ultra', () => {
     expect(mapFile('earth', 'ultra')).toBe('earth-hq.webp');
     expect(mapFile('middleearth', 'high')).toBe('middleearth.webp');
   });
-  it('the -hq copy is there to fall back on: what ultra wears from the start, and the near set’s second try', async () => {
+  it('the -hq copy is there to fall back on: the near set’s second try at ultra', async () => {
     const { nearSet } = await import('./planets');
     expect(mapFile('middleearth', 'ultra', { xl: false })).toBe('middleearth-hq.webp');
-    // (ultra already wears the -hq set: the -xl is all it adds, its fallback the file it wears)
-    expect(nearSet('middleearth', 'ultra')).toEqual([{ name: 'middleearth', file: 'middleearth-xl.ktx2', colour: true }]);
+    // (ultra wears the -sm up front and the standard set within twelve radii, since the maps by
+    // need: near, the -xl, its fallback the -hq, which it wore from the start before)
+    const colour = (set) => set.near.find((m) => m.name === 'middleearth');
+    expect(colour(nearSet('middleearth', 'ultra'))).toEqual({ name: 'middleearth', file: 'middleearth-xl.ktx2', fallback: 'middleearth-hq.webp', colour: true });
     // high near: the -hq copies, never the -xl
-    expect(nearSet('middleearth', 'high').map((m) => m.file)).not.toContain('middleearth-xl.ktx2');
+    expect(nearSet('middleearth', 'high').near.map((m) => m.file)).not.toContain('middleearth-xl.ktx2');
   });
   it('at ultra, an 8192 map where one has been baked, the -xl to fall back on', async () => {
     const { nearSet } = await import('./planets');
     const k8 = new Set(['middleearth']);
-    expect(nearSet('middleearth', 'ultra', { k8 })).toEqual([{ name: 'middleearth', file: 'middleearth-8k.ktx2', fallback: 'middleearth-xl.ktx2', colour: true }]);
+    const colour = (set) => set.near.find((m) => m.name === 'middleearth');
+    expect(colour(nearSet('middleearth', 'ultra', { k8 }))).toEqual({ name: 'middleearth', file: 'middleearth-8k.ktx2', fallback: 'middleearth-xl.ktx2', colour: true });
     // (none baked: as before; and never below ultra)
-    expect(nearSet('middleearth', 'ultra', { k8: new Set() })).toEqual([{ name: 'middleearth', file: 'middleearth-xl.ktx2', colour: true }]);
-    expect(nearSet('middleearth', 'high', { k8 }).map((m) => m.file)).not.toContain('middleearth-8k.ktx2');
-    // (Earth has no -xl: its -8k is all ultra adds near)
-    expect(nearSet('travel', 'ultra', { k8: new Set(['earth']) })).toContainEqual({ name: 'earth', file: 'earth-8k.ktx2', colour: true });
+    expect(colour(nearSet('middleearth', 'ultra', { k8: new Set() }))).toEqual({ name: 'middleearth', file: 'middleearth-xl.ktx2', fallback: 'middleearth-hq.webp', colour: true });
+    expect(nearSet('middleearth', 'high', { k8 }).near.map((m) => m.file)).not.toContain('middleearth-8k.ktx2');
+    // (Earth has no -xl: its -8k, over the -hq it wears near, which it wore from the start before)
+    expect(nearSet('travel', 'ultra', { k8: new Set(['earth']) }).near).toContainEqual({ name: 'earth', file: 'earth-8k.ktx2', fallback: 'earth-hq.webp', colour: true });
+    // (and a map with nothing finer than its standard file, Cybertron's, its -8k alone)
+    expect(nearSet('transformers', 'ultra', { k8: new Set(['transformers']) }).near).toEqual([{ name: 'transformers', file: 'transformers-8k.ktx2', colour: true }]);
     expect(mapFile('middleearth', 'high')).toBe('middleearth.webp');
   });
 });
@@ -342,15 +347,15 @@ describe('a planet’s near maps', () => {
   });
   it('near, a desktop gets the -hq copies of what has one, and only those', async () => {
     const { nearSet } = await import('./planets');
-    const set = nearSet('middleearth', 'high');
+    const set = nearSet('middleearth', 'high').near;
     expect(set.map((m) => m.file).sort()).toEqual(['middleearth-clouds-hq.webp', 'middleearth-hq.webp', 'middleearth-normal-hq.webp']);
     expect(set.find((m) => m.name === 'middleearth')).toMatchObject({ colour: true });
     expect(set.find((m) => m.name === 'middleearth-normal')).toMatchObject({ colour: false });
-    // a weak card's desktop: the standard file over its -sm
-    expect(nearSet('middleearth', 'mid').map((m) => m.file)).toContain('middleearth.webp');
-    // (Cybertron has nothing finer than what it wears)
-    expect(nearSet('transformers', 'high')).toEqual([]);
-    expect(nearSet('middleearth', 'low')).toEqual([]);
+    // the standard file over its -sm: every device's within twelve radii (a weak card's desktop's near set before)
+    expect(nearSet('middleearth', 'mid').std.map((m) => m.file)).toContain('middleearth.webp');
+    // (Cybertron has nothing finer than its standard set)
+    expect(nearSet('transformers', 'high').near).toEqual([]);
+    expect(nearSet('middleearth', 'low').near).toEqual([]);
   });
   it('swaps a built planet’s maps in place and puts them back', async () => {
     const gradient = { addColorStop() {} };
@@ -379,6 +384,35 @@ describe('a planet’s near maps', () => {
     expect(p.body.material.map).toBe(T.middleearth);
     expect(clouds[0].material.map).toBe(T['middleearth-clouds']);
     expect(p.body.material.userData.ground.uClouds.value).toBe(T['middleearth-clouds']);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('a map a builder reads, not just wears', () => {
+  it('Cybertron reads its war’s fronts again from the glow it comes to wear, once each', async () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+    vi.resetModules();
+    const read = [];
+    vi.doMock('../cybertron/war', async (importOriginal) => {
+      const war = await importOriginal();
+      return { ...war, warZones: (glow) => (read.push(glow), war.warZones(null)) };
+    });
+    const THREE = await import('three');
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    const T = { transformers: new THREE.Texture(), 'transformers-glow': new THREE.Texture(), 'transformers-normal': new THREE.Texture() };
+    const p = buildPlanet(byId('transformers'), T);
+    expect(read).toEqual([T['transformers-glow']]);
+    const own = new THREE.Texture();
+    p.swapMaps({ 'transformers-glow': own, transformers: new THREE.Texture() });
+    expect(read).toEqual([T['transformers-glow'], own]);
+    p.swapMaps({ 'transformers-glow': own }); // (the same glow: not read again)
+    p.swapMaps(null); // (its stand-in back: the fronts it found stay)
+    expect(read).toEqual([T['transformers-glow'], own]);
+    vi.doUnmock('../cybertron/war');
+    vi.resetModules();
     vi.unstubAllGlobals();
   });
 });

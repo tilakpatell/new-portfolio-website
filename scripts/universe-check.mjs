@@ -5,7 +5,7 @@
 //   node scripts/universe-check.mjs [--quality high|mid|low|all] [--poses a,b]
 //     [--out lab/universe/<tier>] [--baseline] [--url http://127.0.0.1:5173] [--chromium /path]
 //     [--frames 20] (how many frames are timed: fewer in a container that draws in software, where a frame takes seconds)
-//     [--near off] (without the planets' near maps and finer spheres, nearMaps.js: what they cost, measured on one tree)
+//     [--near off] (without the near maps' steps and finer spheres, nearMaps.js: every planet in its small set up front, what they cost, measured on one tree)
 //
 // It starts the dev server (the poses are a DEV hook, `window.__universe().pose`,
 // which a production build leaves out) unless --url names one, opens

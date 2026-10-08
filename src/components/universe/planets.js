@@ -19,10 +19,13 @@
 // What the fandoms share (their maps, clouds, orbit and shading hooks) is
 // data, planetSpecs.js's SPECS; what's each one's own is EXTRAS, below.
 //
-// loadTextures({ small }) → the textures (any that fail are just missing)
+// loadTextures({ small }) → the textures up front (any that fail are just
+//   missing; a relief, roughness or glow map a stand-in until it's near)
 // mapFile(name, level) → the file for a planet map at lib/detail's level
-// mapsOf(id), nearSet(id, level) → a planet's maps, and the finer ones it wears near (nearMaps.js)
+// mapsOf(id), nearSet(id, level) → a planet's maps, and { std, near }: the sets it wears near (nearMaps.js)
 // buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount, swapMaps(T2 | null), nearSet(level), nearGeometry(on, level) }
+// (a builder that reads a map's pixels, not just wears it, sets `p.onMaps(T2)`
+// to read them again from the maps a swap puts on: Cybertron's war fronts)
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -360,6 +363,15 @@ const EXTRAS = {
       const battle = createWar({ radius: r, zones: warZones(T['transformers-glow']), count: T.small ? 3 : 5, flares: 1, small: true, light: false });
       p.body.add(battle.group);
       p.tick.push((t, camera) => battle.update(t, camera, 0.85));
+      // (the fronts read again from its own glow when that comes: up front
+      // it wears a stand-in, planetMaps.js, and the war the fixed fronts)
+      let read = T['transformers-glow'];
+      p.onMaps = (M) => {
+        const glow = M?.['transformers-glow'];
+        if (!glow || glow === read) return;
+        read = glow;
+        battle.setZones(warZones(glow));
+      };
     }
     // Optimus Prime and Megatron on one orbit, a little apart, facing off as
     // they go round
@@ -1124,7 +1136,11 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     p.tick.push(facing(sign));
   }
   // its near maps (nearMaps.js) in place of its own (planetMaps.js)
-  const swapMaps = mapSwapper(group, T, mapsOf(u.id));
+  const swap = mapSwapper(group, T, mapsOf(u.id));
+  const swapMaps = (T2) => {
+    swap(T2);
+    p.onMaps?.(T2);
+  };
   const spin = core ? 0 : 0.05 + rng(`${u.id}-spin`)() * 0.05;
   let turn0 = body.rotation.y;
   let held = null; // the turn it's held at, while someone stands on it
@@ -1141,7 +1157,7 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     surface: core ? null : body,
     body,
     swapMaps,
-    nearSet: (level) => (core ? [] : nearSet(u.id, level)),
+    nearSet: (level) => (core ? { std: [], near: [] } : nearSet(u.id, level)),
     nearGeometry,
     get air() {
       return air;

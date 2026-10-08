@@ -105,6 +105,7 @@ import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, start
 import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SECTOR_OF, SUN, inExpanse, mapSectorOf, sectorOf } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
+import { loadMap, mapSwapper, nearSet } from './planetMaps';
 import { buildSun } from './sun';
 import { aberrationFor, createPost, spaceEnvironment } from './post';
 import { grainFor } from '../../lib/three/noise';
@@ -605,16 +606,28 @@ export async function create(canvas, ctx) {
     return m;
   });
 
-  // the planets' maps first (half size on a phone or anything below a
-  // desktop, lib/device), so nothing pops in; a weak device starts with the
-  // nearer stars thinned out
+  // the planets' small maps first (planetMaps.js: each map's smallest file,
+  // a planet's relief, roughness and glow stood in for), so every planet is
+  // dressed from the first frame; their own as they're neared (nearMaps.js,
+  // below); a weak device starts with the nearer stars thinned out
   const tier = device().tier;
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
   const T = await loadTextures({ small });
 
-  // what metal reflects, and the passes after the scene (post.js)
-  let env = spaceEnvironment(renderer, T['sky-glow']);
+  // what metal reflects, and the passes after the scene (post.js): round
+  // the sky's glow once it's come (after the first frame, render), round
+  // the key star again when that changes
+  let skyGlow = null;
+  let envWith = {};
+  let env = spaceEnvironment(renderer, skyGlow);
   scene.environment = env.texture;
+  const remakeEnv = (opts = envWith) => {
+    envWith = opts;
+    const next = spaceEnvironment(renderer, skyGlow, opts);
+    scene.environment = next.texture;
+    env.dispose();
+    env = next;
+  };
   const post = createPost(renderer, scene, camera, { small });
 
   // the sky: the Star Wars galaxy's (galaxy/sky.js), its disc and dust,
@@ -706,7 +719,20 @@ export async function create(canvas, ctx) {
     },
   });
   const farPlaces = createFarPlaces(map, { places: FAR_PLACES.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })), skyFar: SKY_FAR });
-  const near = createNearMaps({ small, upload: (ts) => uploadSlices(renderer, ts, { sliceMB: 8 }) }); // (the finer maps for the two planets nearest, nearMaps.js)
+  // each planet's maps by how near it is (nearMaps.js), on every device: its
+  // standard set within twelve radii, its near set and finer sphere within
+  // six (not on low or a phone). The sun's on the ladder too, never finer
+  // than it always was: its -hq only at ultra, which wore it from the start
+  const near = createNearMaps({ small, upload: (ts) => uploadSlices(renderer, ts, { sliceMB: 8 }) });
+  const sunNear = {
+    id: 'sun',
+    group: sun.group,
+    radius: SUN.r,
+    swapMaps: mapSwapper(sun.group, T, ['sun']),
+    nearSet: (level) => (level === 'ultra' ? nearSet('sun', level) : { ...nearSet('sun', level), near: [] }),
+  };
+  const nearBodies = [...planets, sunNear];
+  let firstFrame = null; // (when the first frame began: the DEV hook's, for scripts/perf-probe.mjs)
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
   const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, warm: (o) => warm(o) });
@@ -4637,10 +4663,7 @@ export async function create(canvas, ctx) {
     // neighbourhood to another's): its glow where the star is, in its colour
     if (l.key.id !== envStar && !lightNow.first) {
       envStar = l.key.id;
-      const next = spaceEnvironment(renderer, T['sky-glow'], { light: lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw), colour: l.key.colour });
-      scene.environment = next.texture;
-      env.dispose();
-      env = next;
+      remakeEnv({ light: lightTo.set(...l.key.dir).negate().applyAxisAngle(Y_AXIS, state.yaw).clone(), colour: l.key.colour });
     } else if (lightNow.first) envStar = l.key.id;
     const k = lightNow.first || reduced ? Infinity : 2 * dt;
     lightNow.first = false;
@@ -4676,6 +4699,24 @@ export async function create(canvas, ctx) {
     for (const p of planets) p.setLevel(pace.level);
   };
   function render(ms, now) {
+    if (firstFrame == null) {
+      firstFrame = performance.now();
+      // the sky's glow, now the first frame hasn't waited for it, put on
+      // when the page has a moment: remaking the reflections waits on the
+      // graphics chip, which mustn't come between this frame and its being
+      // shown (in software GL that wait was minutes)
+      const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 2000 }) : setTimeout(fn, 50));
+      loadMap('sky-glow')
+        .then((t) =>
+          idle(() => {
+            if (disposed) return;
+            skyGlow = t;
+            remakeEnv();
+            ctx.invalidate();
+          }),
+        )
+        .catch(() => {}); // (metal reflects the plain dark it does without)
+    }
     gl.watch(now);
     if (pace.frame(now) !== null) paceTo();
     const dt = ms / 1000;
@@ -4888,7 +4929,7 @@ export async function create(canvas, ctx) {
       const px = d > placeBound.radius ? (placeBound.radius / (d * tanHalf)) * (size.h / 2) : Infinity;
       p.update(t, camera, px > 2 && viewFrustum.intersectsSphere(placeBound));
     }
-    near.update(camera.position, planets);
+    near.update(camera.position, nearBodies);
     locate();
     placeLabels();
     if (state.hitMark > 0) state.hitMark = Math.max(0, state.hitMark - dt * 4);
@@ -5448,6 +5489,8 @@ export async function create(canvas, ctx) {
       skirmish: skirmishes?.info ?? null,
       lock: state.lock?.id ?? null,
       near: near.resident(),
+      nearStd: near.resident(1), // (the planets wearing their standard set)
+      firstFrame, // (performance.now() as the first frame began)
       manual: Boolean(state.lock?.manual),
       controls: controls(),
       loadout: { ...state.loadout },

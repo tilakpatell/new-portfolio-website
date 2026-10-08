@@ -1,4 +1,4 @@
-/* global window, document, requestAnimationFrame, WebGL2RenderingContext, WebGLRenderingContext, HTMLImageElement */
+/* global window, document, requestAnimationFrame, WebGL2RenderingContext, WebGLRenderingContext, HTMLImageElement, MutationObserver */
 // How smooth the worlds draw, measured in a real browser on the real
 // graphics chip: every frame's time, and what the graphics chip was sent in
 // it (shaders linked, pictures and buffers uploaded, draws and triangles),
@@ -15,7 +15,9 @@
 // device tier (?quality=), OUT is where the JSON report goes. Each journey
 // prints a table: a row per phase (load, idle, move...), with the frame
 // times' spread, the hitches (frames over 50 and 100 ms), and what the
-// worst frames were spent on.
+// worst frames were spent on; and where the universe map's files were
+// fetched, what its first frame waited on (its maps' bytes before the first
+// frame; FILES=1 names them: firstFetch, below).
 import { chromium } from 'playwright-core';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -101,6 +103,24 @@ function recorder() {
     return w * h * 4;
   };
   const TRIANGLES = 4;
+  // The first frame: when the scene began drawing it, where the scene says
+  // (the universe's DEV hook, `__universe().firstFrame`, read at the end),
+  // else when its box says it has drawn one (lib/three/useScene's
+  // data-gl="on", as the loading veil drops: a little after, so what that
+  // first frame itself asked for, the near maps of a planet already near,
+  // counts as before it). What the page fetched before it is what the first
+  // frame waited on (firstFetch, below).
+  const first = { frame: null, on: null };
+  try {
+    performance.setResourceTimingBufferSize(100000); // (a dev server's modules alone are thousands)
+  } catch {
+    /* (kept at its default) */
+  }
+  new MutationObserver((_, obs) => {
+    if (!document.querySelector('[data-gl="on"]')) return;
+    first.on = performance.now();
+    obs.disconnect();
+  }).observe(document, { attributes: true, attributeFilter: ['data-gl'], subtree: true });
   for (const C of [typeof WebGL2RenderingContext !== 'undefined' ? WebGL2RenderingContext : null, typeof WebGLRenderingContext !== 'undefined' ? WebGLRenderingContext : null]) {
     if (!C) continue;
     const p = C.prototype;
@@ -178,7 +198,17 @@ function recorder() {
   }
   window.__probe = {
     take() {
-      return { frames, loaf, origin: performance.timeOrigin, heap: performance.memory?.usedJSHeapSize ?? null, stacks: [...stacks.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8) };
+      // (the universe map's own files, each [path, started, bytes]: its maps, its stars)
+      const fetched = performance
+        .getEntriesByType('resource')
+        .filter((e) => e.name.includes('/textures/universe/'))
+        .map((e) => [e.name.replace(/^.*\/textures\/universe\//, ''), e.startTime, e.encodedBodySize || e.decodedBodySize || e.transferSize || 0]);
+      try {
+        first.frame = window.__universe?.().firstFrame ?? null;
+      } catch {
+        /* (no universe up) */
+      }
+      return { frames, loaf, origin: performance.timeOrigin, heap: performance.memory?.usedJSHeapSize ?? null, stacks: [...stacks.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8), first, fetched };
     },
   };
 }
@@ -248,6 +278,31 @@ function phases({ frames, marks, loaf }) {
   return rows;
 }
 
+// ── what the first frame waited on ──
+// The universe map's files (public/textures/universe/) fetched before its
+// first frame (the recorder's `first`: as the scene began drawing it, or
+// else the veil down): its maps (the manifest's .webp and .ktx2, the
+// planets' and the sky's glow) apart from its other files (stars.bin), in MB
+// of 10^6 bytes as fetched (the files' own bytes); and the maps fetched
+// after it, by the journey's end (the near maps as the ship goes). (The
+// manifests a dev server hands over as modules, `?import`, are code: bundled
+// in the built site, not counted.)
+function firstFetch(data) {
+  if (!data?.fetched) return null;
+  const at = data.first?.frame ?? data.first?.on;
+  const files = data.fetched.filter((f) => !f[0].includes('?import'));
+  const sum = (list) => ({ n: list.length, bytes: list.reduce((s, f) => s + f[2], 0), MB: Math.round(list.reduce((s, f) => s + f[2], 0) / 1e4) / 100, files: list.map((f) => f[0]) });
+  const before = at == null ? files : files.filter((f) => f[1] < at);
+  const map = (f) => /\.(webp|ktx2)$/.test(f[0]);
+  return {
+    frameS: data.first?.frame != null ? r1(data.first.frame / 1000) : null,
+    onS: data.first?.on != null ? r1(data.first.on / 1000) : null,
+    maps: sum(before.filter(map)),
+    other: sum(before.filter((f) => !map(f))),
+    later: sum(files.filter((f) => map(f) && !before.includes(f))),
+  };
+}
+
 // ── the journeys ──
 // Each is (page, mark, h) => ..., h has the helpers. A phase runs from one
 // mark to the next; the journey's last mark ends the last phase.
@@ -282,6 +337,9 @@ const JOURNEYS = {
     mark('load');
     await page.goto(`${this.base}/${this.q}#/universe`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship, null, { timeout: 180000 });
+    // (and its first frame: the loading veil down, lib/three/useScene's
+    // data-gl="on"; minutes in a container that draws in software)
+    await page.waitForFunction(() => document.querySelector('.universe-map[data-gl="on"]'), null, { timeout: 600000, polling: 250 });
     mark('settle');
     await wait(page, 4000);
     mark('idle');
@@ -491,8 +549,13 @@ try {
       await new Promise((r) => setTimeout(r, 300));
       for (const [phase, p] of profiles) console.log(`  cpu in ${phase}: ${hot(p)}`);
     }
-    report[name] = { rows, errors, failed, secs: Math.round((Date.now() - t0) / 1000), readyS: ready ? r1((ready[1] - data.origin) / 1000) : null, heapMB: data?.heap ? Math.round(data.heap / 1048576) : null };
+    report[name] = { rows, errors, failed, secs: Math.round((Date.now() - t0) / 1000), readyS: ready ? r1((ready[1] - data.origin) / 1000) : null, heapMB: data?.heap ? Math.round(data.heap / 1048576) : null, first: firstFetch(data) };
     console.log(`\n== ${name}${failed ? `  (stopped: ${failed})` : ''}  ready ${report[name].readyS}s  total ${report[name].secs}s  heap ${report[name].heapMB} MB${errors.length ? `  errors ${errors.length}` : ''}`);
+    const ff = report[name].first;
+    if (ff?.maps.n || ff?.other.n) {
+      console.log(`first frame at ${ff.frameS ?? ff.onS}s (the veil down at ${ff.onS}s): the universe's maps fetched before it ${ff.maps.MB} MB (${ff.maps.bytes} bytes, ${ff.maps.n} files), its other files ${ff.other.MB} MB${ff.other.n ? ` (${ff.other.files.join(', ')})` : ''}; maps after it, by the journey's end, ${ff.later.MB} MB (${ff.later.n} files)`);
+      if (process.env.FILES) console.log(`  before: ${ff.maps.files.join(' ')}\n  after: ${ff.later.files.join(' ')}`);
+    }
     console.log('phase      secs  fps    p50   p95   p99   max  >50 >100 links texMB bufMB draws ktris');
     for (const r of rows) {
       console.log(

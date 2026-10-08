@@ -4,13 +4,19 @@
 // the bake manifest (public/textures/universe/index.json) took its place, so
 // a line that changes here is a map whose files changed on purpose. (Changed
 // so far: Cybertron's glow, one map on the ladder in place of a lone
-// 'transformers-glow-sm'.)
+// 'transformers-glow-sm'; and the maps by need, Task 4.3: up front every
+// level asks for the low column, the smallest file, but for the LATER maps,
+// which it stands in for; the old mid near row is now STEP1, the standard set
+// every level wears within twelve radii, with the LATER maps in it; and
+// ultra's near row gained the -hq copies it wore from the start before.)
 //
 // FILES[name]: the file at low, mid, high, ultra (the -xl where there is one)
-// and ultra's start (what loadTextures asks for there), and '(data)' for a map
-// loaded as data rather than colour. NEAR[id]: a planet's near set by level
-// (`name: file | fallback`, sorted; none on low). OF[id]: its maps, sorted.
-// NONE: the places with no maps at all.
+// and ultra without its -xl (what loadTextures asked for there before the
+// maps by need; the -xl's fallback near now), and '(data)' for a map loaded
+// as data rather than colour. LATER: the maps not fetched up front at all.
+// STEP1[id]: a planet's standard set, the same on every level; NEAR[id]: its
+// near set at high and ultra (`name: file | fallback`, sorted; none on low or
+// mid). OF[id]: its maps, sorted. NONE: the places with no maps at all.
 
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -26,7 +32,7 @@ vi.mock('../../lib/three/textures', async (importOriginal) => ({
     return Promise.resolve({ url });
   },
 }));
-const { MAP_NAMES, loadTextures, mapFile, mapsOf, nearSet } = await import('./planetMaps');
+const { LATER, MAP_NAMES, loadMap, loadTextures, mapFile, mapsOf, nearSet } = await import('./planetMaps');
 
 const FILES = {
   'breakingbad': 'breakingbad-sm.webp breakingbad-sm.webp breakingbad.webp breakingbad-xl.ktx2 breakingbad-hq.webp',
@@ -78,86 +84,77 @@ const FILES = {
   'transformers-glow': 'transformers-glow-sm.webp transformers-glow-sm.webp transformers-glow.webp transformers-glow.webp transformers-glow.webp (data)',
   'transformers-normal': 'transformers-normal-sm.webp transformers-normal-sm.webp transformers-normal.webp transformers-normal.webp transformers-normal.webp (data)',
 };
+// (a planet's relief, roughness and glow, and the sky's glow: a far planet
+// doesn't show them; the stations' and the ships' tiling plates, whatever
+// their kind, aren't among them)
+const LATER_NAMES = 'breakingbad-normal breakingbad-rough caribbean-normal caribbean-rough earth-rough invincible-glow invincible-normal invincible-rough middleearth-glow middleearth-normal middleearth-rough office-normal office-rough paper-normal rickmorty-glow rickmorty-rough sky-glow transformers-glow transformers-normal';
+const STEP1 = {
+  breakingbad: ['breakingbad-clouds: breakingbad-clouds.webp (data)', 'breakingbad-night: breakingbad-night.webp', 'breakingbad-normal: breakingbad-normal.webp (data)', 'breakingbad-rough: breakingbad-rough.webp (data)', 'breakingbad: breakingbad.webp'],
+  caribbean: ['caribbean-clouds: caribbean-clouds.webp (data)', 'caribbean-normal: caribbean-normal.webp (data)', 'caribbean-rough: caribbean-rough.webp (data)', 'caribbean: caribbean.webp'],
+  earth: ['earth-clouds: earth-clouds.webp (data)', 'earth-night: earth-night.webp', 'earth-rough: earth-rough.webp (data)', 'earth: earth.webp'],
+  hull: [],
+  invincible: ['invincible-clouds: invincible-clouds.webp (data)', 'invincible-glow: invincible-glow.webp', 'invincible-night: invincible-night.webp', 'invincible-normal: invincible-normal.webp (data)', 'invincible-rough: invincible-rough.webp (data)', 'invincible: invincible.webp'],
+  marvel: ['marvel: marvel.webp'],
+  middleearth: ['middleearth-clouds: middleearth-clouds.webp', 'middleearth-glow: middleearth-glow.webp', 'middleearth-night: middleearth-night.webp', 'middleearth-normal: middleearth-normal.webp (data)', 'middleearth-rough: middleearth-rough.webp (data)', 'middleearth: middleearth.webp'],
+  music: ['music: music.webp'],
+  office: ['office-normal: office-normal.webp (data)', 'office-rough: office-rough.webp (data)', 'office: office.webp'],
+  paper: ['paper-normal: paper-normal.webp (data)'],
+  plates: [],
+  rickmorty: ['rickmorty-clouds: rickmorty-clouds.webp', 'rickmorty-glow: rickmorty-glow.webp', 'rickmorty-rough: rickmorty-rough.webp (data)', 'rickmorty: rickmorty.webp'],
+  sky: ['sky-glow: sky-glow.webp'],
+  sun: ['sun: sun.webp'],
+  transformers: ['transformers-glow: transformers-glow.webp (data)', 'transformers-normal: transformers-normal.webp (data)', 'transformers: transformers.webp'],
+  travel: ['earth-clouds: earth-clouds.webp (data)', 'earth-night: earth-night.webp', 'earth-rough: earth-rough.webp (data)', 'earth: earth.webp'],
+};
 const NEAR = {
   breakingbad: {
-    mid: ['breakingbad-clouds: breakingbad-clouds.webp (data)', 'breakingbad-night: breakingbad-night.webp', 'breakingbad-normal: breakingbad-normal.webp (data)', 'breakingbad: breakingbad.webp'],
     high: ['breakingbad-normal: breakingbad-normal-hq.webp (data)', 'breakingbad: breakingbad-hq.webp'],
-    ultra: ['breakingbad: breakingbad-xl.ktx2'],
+    ultra: ['breakingbad-normal: breakingbad-normal-hq.webp (data)', 'breakingbad: breakingbad-xl.ktx2 | breakingbad-hq.webp'],
   },
   caribbean: {
-    mid: ['caribbean-clouds: caribbean-clouds.webp (data)', 'caribbean: caribbean.webp'],
     high: ['caribbean-clouds: caribbean-clouds-hq.webp (data)', 'caribbean-normal: caribbean-normal-hq.webp (data)', 'caribbean: caribbean-hq.webp'],
-    ultra: ['caribbean: caribbean-xl.ktx2'],
+    ultra: ['caribbean-clouds: caribbean-clouds-hq.webp (data)', 'caribbean-normal: caribbean-normal-hq.webp (data)', 'caribbean: caribbean-xl.ktx2 | caribbean-hq.webp'],
   },
   earth: {
-    mid: ['earth-clouds: earth-clouds.webp (data)', 'earth-night: earth-night.webp', 'earth: earth.webp'],
     high: ['earth-clouds: earth-clouds-hq.webp (data)', 'earth-night: earth-night-hq.webp', 'earth: earth-hq.webp'],
-    ultra: [],
+    ultra: ['earth-clouds: earth-clouds-hq.webp (data)', 'earth-night: earth-night-hq.webp', 'earth: earth-hq.webp'],
   },
-  hull: {
-    mid: [],
-    high: [],
-    ultra: [],
-  },
+  hull: { high: [], ultra: [] },
   invincible: {
-    mid: ['invincible-clouds: invincible-clouds.webp (data)', 'invincible-night: invincible-night.webp', 'invincible: invincible.webp'],
     high: ['invincible-normal: invincible-normal-hq.webp (data)'],
-    ultra: [],
+    ultra: ['invincible-normal: invincible-normal-hq.webp (data)'],
   },
   marvel: {
-    mid: ['marvel: marvel.webp'],
     high: ['marvel: marvel-hq.webp'],
-    ultra: ['marvel: marvel-xl.ktx2'],
+    ultra: ['marvel: marvel-xl.ktx2 | marvel-hq.webp'],
   },
   middleearth: {
-    mid: ['middleearth-clouds: middleearth-clouds.webp', 'middleearth-night: middleearth-night.webp', 'middleearth-normal: middleearth-normal.webp (data)', 'middleearth: middleearth.webp'],
     high: ['middleearth-clouds: middleearth-clouds-hq.webp', 'middleearth-normal: middleearth-normal-hq.webp (data)', 'middleearth: middleearth-hq.webp'],
-    ultra: ['middleearth: middleearth-xl.ktx2'],
+    ultra: ['middleearth-clouds: middleearth-clouds-hq.webp', 'middleearth-normal: middleearth-normal-hq.webp (data)', 'middleearth: middleearth-xl.ktx2 | middleearth-hq.webp'],
   },
   music: {
-    mid: ['music: music.webp'],
     high: ['music: music-hq.webp'],
-    ultra: ['music: music-xl.ktx2'],
+    ultra: ['music: music-xl.ktx2 | music-hq.webp'],
   },
   office: {
-    mid: ['office-normal: office-normal.webp (data)', 'office: office.webp'],
     high: ['office-normal: office-normal-hq.webp (data)', 'office: office-hq.webp'],
-    ultra: ['office: office-xl.ktx2'],
+    ultra: ['office-normal: office-normal-hq.webp (data)', 'office: office-xl.ktx2 | office-hq.webp'],
   },
-  paper: {
-    mid: [],
-    high: [],
-    ultra: [],
-  },
-  plates: {
-    mid: [],
-    high: [],
-    ultra: [],
-  },
+  paper: { high: [], ultra: [] },
+  plates: { high: [], ultra: [] },
   rickmorty: {
-    mid: ['rickmorty-clouds: rickmorty-clouds.webp', 'rickmorty: rickmorty.webp'],
     high: ['rickmorty-clouds: rickmorty-clouds-hq.webp', 'rickmorty: rickmorty-hq.webp'],
-    ultra: ['rickmorty: rickmorty-xl.ktx2'],
+    ultra: ['rickmorty-clouds: rickmorty-clouds-hq.webp', 'rickmorty: rickmorty-xl.ktx2 | rickmorty-hq.webp'],
   },
-  sky: {
-    mid: ['sky-glow: sky-glow.webp'],
-    high: [],
-    ultra: [],
-  },
+  sky: { high: [], ultra: [] },
   sun: {
-    mid: ['sun: sun.webp'],
     high: ['sun: sun-hq.webp'],
-    ultra: [],
+    ultra: ['sun: sun-hq.webp'],
   },
-  transformers: {
-    mid: ['transformers-glow: transformers-glow.webp (data)', 'transformers-normal: transformers-normal.webp (data)', 'transformers: transformers.webp'],
-    high: [],
-    ultra: [],
-  },
+  transformers: { high: [], ultra: [] },
   travel: {
-    mid: ['earth-clouds: earth-clouds.webp (data)', 'earth-night: earth-night.webp', 'earth: earth.webp'],
     high: ['earth-clouds: earth-clouds-hq.webp (data)', 'earth-night: earth-night-hq.webp', 'earth: earth-hq.webp'],
-    ultra: [],
+    ultra: ['earth-clouds: earth-clouds-hq.webp (data)', 'earth-night: earth-night-hq.webp', 'earth: earth-hq.webp'],
   },
 };
 const NONE = ['birdworld', 'contact', 'cronenberg', 'experience', 'gaming', 'gazorpazorp', 'gearworld', 'home', 'nuptia', 'pluto', 'projects', 'purge', 'resort', 'resume', 'snakeplanet', 'squanch', 'starwars', 'terminal'];
@@ -193,14 +190,34 @@ describe('every map’s file at every level', () => {
       expect(got, name).toEqual(row(name));
     }
   });
-  it('loads each map at each level as the table says, colour or data', async () => {
-    for (const [i, level] of LEVELS.entries()) {
+  it('loads every map up front at its smallest file, the same on every device, colour or data, but the later ones', async () => {
+    expect([...LATER].sort()).toEqual(LATER_NAMES.split(' '));
+    for (const small of [false, true]) {
       asked.length = 0;
-      const T = await loadTextures({ level });
-      const want = MAP_NAMES.map((name) => [`/textures/universe/${row(name)[i === 3 ? 4 : i]}`, !FILES[name].endsWith('(data)')]);
-      expect(asked.sort(), level).toEqual(want.sort());
+      const T = await loadTextures({ small });
+      const want = MAP_NAMES.filter((name) => !LATER.has(name)).map((name) => [`/textures/universe/${row(name)[0]}`, !FILES[name].endsWith('(data)')]);
+      expect(asked.sort(), `small ${small}`).toEqual(want.sort());
       expect(Object.keys(T).filter((k) => k !== 'small').sort()).toEqual(Object.keys(FILES));
+      expect(T.small).toBe(small);
     }
+  });
+  it('stands in for each later map: flat, matte, dark, in its colour space', async () => {
+    const T = await loadTextures();
+    const px = (name) => [...T[name].image.data];
+    for (const name of LATER) {
+      const { kind, srgb } = MANIFEST[name];
+      expect(T[name].isDataTexture, name).toBe(true);
+      expect([T[name].image.width, T[name].image.height], name).toEqual([1, 1]);
+      expect(px(name), name).toEqual({ normal: [128, 128, 255, 255], rough: [255, 255, 255, 255], glow: [0, 0, 0, 255] }[kind]);
+      expect(T[name].colorSpace, name).toBe(srgb ? 'srgb' : '');
+    }
+    // (each its own: a planet's swap finds its maps by which texture they are)
+    expect(new Set([...LATER].map((n) => T[n])).size).toBe(LATER.size);
+  });
+  it('loads one later map on its own at its smallest file: the sky’s glow, after the first frame', async () => {
+    asked.length = 0;
+    await loadMap('sky-glow');
+    expect(asked).toEqual([['/textures/universe/sky-glow-sm.webp', true]]);
   });
 });
 
@@ -224,12 +241,15 @@ describe('a planet’s maps, and what it wears near', () => {
     for (const [id, names] of Object.entries(OF)) expect([...mapsOf(id)].sort(), id).toEqual(names.split(' '));
     for (const id of NONE) expect(mapsOf(id), id).toEqual([]);
   });
-  it('wears the finer set near at each level, nothing on low', () => {
+  it('wears its standard set within twelve radii on every level, the finer set within six on high and ultra, none on low or mid', () => {
     const show = (e) => `${e.name}: ${e.file}${e.fallback ? ` | ${e.fallback}` : ''}${e.colour ? '' : ' (data)'}`;
+    expect(Object.keys(STEP1)).toEqual(Object.keys(NEAR));
     for (const [id, by] of Object.entries(NEAR)) {
-      expect(nearSet(id, 'low'), id).toEqual([]);
-      for (const [level, set] of Object.entries(by)) expect(nearSet(id, level).map(show).sort(), `${id} ${level}`).toEqual(set);
+      for (const level of LEVELS) expect(nearSet(id, level).std.map(show).sort(), `${id} ${level}`).toEqual(STEP1[id]);
+      expect(nearSet(id, 'low').near, id).toEqual([]);
+      expect(nearSet(id, 'mid').near, id).toEqual([]);
+      for (const [level, set] of Object.entries(by)) expect(nearSet(id, level).near.map(show).sort(), `${id} ${level}`).toEqual(set);
     }
-    for (const id of NONE) for (const level of LEVELS) expect(nearSet(id, level), id).toEqual([]);
+    for (const id of NONE) for (const level of LEVELS) expect(nearSet(id, level), id).toEqual({ std: [], near: [] });
   });
 });

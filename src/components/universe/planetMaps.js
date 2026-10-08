@@ -1,15 +1,31 @@
 // The universe map's planet maps: which there are (the bake's manifest,
 // public/textures/universe/index.json), the file for each at a detail level,
-// loading them all (the set every planet wears from the start) and the finer
-// set a planet wears near (nearMaps.js), swapped in place.
+// the small set every planet wears from the start, the sets it wears as it
+// comes near (nearMaps.js), swapped in place.
+//
+// Maps by need, three steps. Up front every map at its smallest file (the
+// -sm where it has one), on every device: about two thirds of a megabyte
+// before the first frame, where the standard set was five. A planet within
+// twelve of its radii wears its standard set (step 1); within six, its finer
+// set over that (step 2: the -hq, the -xl at ultra). The maps a far planet
+// doesn't show, its relief, roughness and glow (LATER), aren't fetched up
+// front at all: each is stood in for (flat, matte, dark: standIn) so the
+// planet is built with the same materials and shaders it always was, and its
+// own come at step 1. The sky's glow (what metal reflects) comes after the
+// first frame (scene.js), and the Office's paper is only its normal map's
+// fallback, which a stand-in now fills. The stations' and the ships' tiling
+// plates come up front whatever their kind: each repeat of one is its own
+// clone (kit.js's tiled()), which a swap can't find.
 //
 //   mapFile(name, level) → the file for a planet map at lib/detail's level
-//   loadTextures({ small, level }) → the textures (any that fail are just missing)
-//   mapsOf(id), nearSet(id, level) → a planet's maps, and the finer ones it wears near
+//   LATER → the maps not fetched up front
+//   loadTextures({ small }) → the textures (any that fail are just missing; a LATER one a stand-in)
+//   loadMap(name) → a LATER map at its smallest file (the sky's glow, after the first frame)
+//   mapsOf(id), nearSet(id, level) → a planet's maps, and { std, near }: what it wears at steps 1 and 2
 //   mapSwapper(group, T, names) → swap(T2 | null)
 
-import { MAP_SLOTS, loadTexture } from '../../lib/three/textures';
-import { detailLevel } from '../../lib/detail';
+import * as THREE from 'three';
+import { MAP_SLOTS, loadTexture, sharpen } from '../../lib/three/textures';
 import K8_BAKED from '../../../public/textures/universe/k8.json';
 import MANIFEST from '../../../public/textures/universe/index.json';
 
@@ -37,8 +53,9 @@ export const MAP_NAMES = Object.keys(MAPS);
 // manifest lists for it: on a strong card the `-xl` (4096, KTX2: a quarter
 // of the memory raw would take) where there is one, else the `-hq` copy
 // where there is one; the standard file on a desktop; the `-sm` on a phone
-// or a weak device where there is one. `xl: false` passes over the -xl (what
-// ultra wears from the start: the -xl is only ever worn near, nearMaps.js).
+// or a weak device where there is one. `xl: false` passes over the -xl (its
+// fallback near at ultra). So low's file is a map's smallest, worn up front
+// everywhere, and high's its standard one, worn within twelve radii.
 // (A name the manifest doesn't know is taken to have an -sm and nothing finer.)
 export function mapFile(name, level = 'high', { xl: big = true } = {}) {
   const sizes = MAPS[name]?.sizes;
@@ -65,52 +82,79 @@ export function mapsOf(id) {
   return MAP_NAMES.filter((n) => n === pre || n.startsWith(`${pre}-`));
 }
 
-// What a planet wears near (nearMaps.js), at a detail level: the finer copy
-// of each of its maps that has one, never the file it already wears (the
-// loader's cache would hand back that very texture). A strong card's near
-// set is the -xl colour maps (the -hq it wears already the fallback); a
-// desktop's, the -hq copies; a weak card's desktop, the standard ones over
-// its -sm. Nothing on low. At ultra a map baked at 8192 (`k8`) is asked
-// for first, its -xl the fallback.
+// The maps not fetched up front (the kinds a far planet doesn't show), but
+// the tiling plates
+const TILES = new Set(['hull', 'plates']);
+export const LATER = new Set(MAP_NAMES.filter((name) => ['normal', 'rough', 'glow'].includes(MAPS[name].kind) && !TILES.has(name.split('-')[0])));
+// what each map is worn at up front (its smallest file) and at step 1
+const first = (name) => mapFile(name, 'low');
+const standard = (name) => mapFile(name, 'high');
+
+// What a planet wears as it comes near (nearMaps.js), at a detail level:
+// `std` within twelve radii, on every level: the standard file of each of
+// its maps that it doesn't wear already (the loader's cache would hand back
+// that very texture), and of each LATER one; `near` within six, over it: the
+// finer copy of each map that has one, the -hq on a desktop, the -xl on a
+// strong card (its -hq the fallback) and the -hq of the rest; nothing on low
+// or mid (mid's finer set is its standard one, worn at step 1). At ultra a
+// map baked at 8192 (`k8`) is asked for first, its -xl the fallback.
 export function nearSet(id, level, { k8 = K8 } = {}) {
-  const set = finerSet(id, level);
-  if (level !== 'ultra') return set;
+  const std = mapsOf(id)
+    .filter((name) => LATER.has(name) || standard(name) !== first(name))
+    .map((name) => ({ name, file: standard(name), colour: MAPS[name].srgb }));
+  const near = finerSet(id, level);
+  if (level !== 'ultra') return { std, near };
   const big = (name) => `${name}-8k.ktx2`;
-  // (a map with no -xl, Earth's, has nothing finer at ultra but its -8k)
-  const more = mapsOf(id).filter((name) => k8.has(name) && !set.some((m) => m.name === name)).map((name) => ({ name, file: big(name), colour: MAPS[name].srgb }));
-  return [...set.map((m) => (k8.has(m.name) ? { name: m.name, file: big(m.name), fallback: m.file, colour: m.colour } : m)), ...more];
+  // (a map with nothing finer than its standard file, Cybertron's, has its -8k alone)
+  const more = mapsOf(id).filter((name) => k8.has(name) && !near.some((m) => m.name === name)).map((name) => ({ name, file: big(name), colour: MAPS[name].srgb }));
+  return { std, near: [...near.map((m) => (k8.has(m.name) ? { name: m.name, file: big(m.name), fallback: m.file, colour: m.colour } : m)), ...more] };
 }
 function finerSet(id, level) {
-  if (level === 'low') return [];
-  const far = (name) => mapFile(name, level, { xl: false });
-  const files = (name) => (level === 'ultra' ? [mapFile(name, 'ultra'), mapFile(name, 'ultra', { xl: false })] : [mapFile(name, level === 'mid' ? 'high' : 'ultra', { xl: false })]);
+  if (level !== 'high' && level !== 'ultra') return [];
+  const files = (name) => (level === 'ultra' ? [mapFile(name, 'ultra'), mapFile(name, 'ultra', { xl: false })] : [mapFile(name, 'ultra', { xl: false })]);
   return mapsOf(id)
-    .map((name) => ({ name, colour: MAPS[name].srgb, files: [...new Set(files(name))].filter((f) => f !== far(name)) }))
+    .map((name) => ({ name, colour: MAPS[name].srgb, files: [...new Set(files(name))].filter((f) => f !== standard(name)) }))
     .filter((m) => m.files.length)
     .map(({ name, colour, files: [file, fallback] }) => ({ name, file, ...(fallback ? { fallback } : {}), colour }));
 }
 
-export async function loadTextures({ small = false, level = small ? 'mid' : detailLevel() } = {}) {
-  const T = { small }; // (and whether this is a phone, for the builders)
-  const get = async (name, file, colour, fallback = null) => {
-    try {
-      // (decoded off the main thread, as sharp as the device's tier allows,
-      // and shared with any other scene that wants the same map)
-      T[name] = await loadTexture(BASE + file, { color: colour });
-    } catch {
-      // missing: the standard file where a sharper set was asked for, else whoever wanted it does without
-      if (fallback) await get(name, fallback, colour);
-    }
-  };
+// A LATER map's stand-in, until its own comes: a texel of what having none
+// looks like (a flat normal, roughness as the material has it, no glow), in
+// the colour space and with the sharpening its own will have, since a swap
+// hands the one it replaces' settings on (mapSwapper)
+const BLANK = { normal: [128, 128, 255, 255], rough: [255, 255, 255, 255], glow: [0, 0, 0, 255] };
+function standIn(name) {
+  const { kind, srgb } = MAPS[name];
+  const t = new THREE.DataTexture(new Uint8Array(BLANK[kind]), 1, 1);
+  t.name = name;
+  return sharpen(t, { color: srgb });
+}
+
+// Up front: every map but the LATER ones at its smallest file, the same on
+// every device; `small` (a phone, or anything below a desktop) only tells
+// the builders, which make their spheres coarser.
+export async function loadTextures({ small = false } = {}) {
+  const T = { small };
   await Promise.all(
-    Object.entries(MAPS).map(([name, { srgb: colour }]) => {
-      const file = mapFile(name, level, { xl: false });
-      const standard = mapFile(name, 'high');
-      return get(name, file, colour, file !== standard ? standard : null);
+    MAP_NAMES.map(async (name) => {
+      if (LATER.has(name)) {
+        T[name] = standIn(name);
+        return;
+      }
+      try {
+        // (decoded off the main thread, as sharp as the device's tier allows,
+        // and shared with any other scene that wants the same map)
+        T[name] = await loadTexture(BASE + first(name), { color: MAPS[name].srgb });
+      } catch {
+        // (missing: whoever wanted it does without)
+      }
     }),
   );
   return T;
 }
+
+// A map at its smallest file, on its own (rejects if it can't be had)
+export const loadMap = (name) => loadTexture(BASE + first(name), { color: MAPS[name]?.srgb ?? true });
 
 // A planet's maps swapped in place for its near ones, wherever they're
 // worn: a material's slots and the uniforms its hooks read (the night side,

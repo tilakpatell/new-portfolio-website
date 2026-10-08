@@ -17,10 +17,13 @@
 // where it should be. Nothing is made after it's built.
 //
 // createWar({ radius, zones, count, flares, small, light })
-//   → { group, update(t, camera, level), dispose }
+//   → { group, update(t, camera, level), setZones(zones), dispose }
 // `level` (0…1) is how fierce the war is: at 1 every burst goes off, lower
 // and some sit a turn out and the rest burn smaller. `light` hangs a warm
 // point light on whichever burst is brightest, to light the plating round it.
+// `setZones` moves the fronts (warZones of a glow map that came later: the
+// universe map's planet has a stand-in for its glow until it's near), each
+// burst taking them up on its next round.
 
 import * as THREE from 'three';
 
@@ -215,7 +218,7 @@ const FRAG = /* glsl */ `
   }`;
 
 export function createWar({ radius = 1, zones = null, count = 8, flares = 1, small = false, light = false } = {}) {
-  const Z = zones ?? warZones(null);
+  let Z = zones ?? warZones(null);
   const n = count + flares;
   const group = new THREE.Group();
 
@@ -378,6 +381,9 @@ export function createWar({ radius = 1, zones = null, count = 8, flares = 1, sma
         // and flickering, as fire does
         glow.intensity = hot * 1.8 * radius * radius * (0.85 + 0.15 * Math.sin(t * 23) * Math.sin(t * 7.3));
       }
+    },
+    setZones(zones) {
+      Z = zones ?? warZones(null);
     },
     dispose() {
       quad.dispose();
