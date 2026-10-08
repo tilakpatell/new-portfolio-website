@@ -58,7 +58,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | design | the architecting session | `claude/lucid-hawking-78yzz5` | | |
 | 1A | | | | |
 | 1B | | | | |
-| 1C | `session_01ALnkhhCHveAZqkCSpnBLq2` | `claude/one-feel-car` | | |
+| 1C | `session_01ALnkhhCHveAZqkCSpnBLq2` | `claude/one-feel-car` | #700 | |
 | 1D | | | | |
 | 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 2A | | | | |
