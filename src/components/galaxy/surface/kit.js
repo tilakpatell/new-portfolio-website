@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import { bake, canvasTexture, panelTexture, part, place, rod, between, compose, mirror, ball, upright } from '../../universe/trafficKit';
 import { rng } from './noise';
 import { faceless, wind, wrapLighting } from '../../../lib/three/foliage';
+import { coverageTexture } from '../../../lib/three/textures';
 import SCANS from '../../../../public/cc0/galaxy/index.json';
 import { loadCore as loadScan, wear } from '../../../lib/three/core';
 
@@ -272,42 +273,10 @@ function strandTexture(seed = 10) {
 
 // A cut-out texture's mip levels made by hand, each level's alpha scaled so
 // as much of it is over the cut as at full size: far-off foliage stays as
-// thick as near (left to the graphics chip, averaging thins it away)
+// thick as near (left to the graphics chip, averaging thins it away). The
+// site's one way of doing it, lib/three/textures' coverageTexture.
 function keepCoverage(t, cut = 0.3) {
-  const src = t.image;
-  const levels = [src];
-  const coverage = (ctx, n) => {
-    const d = ctx.getImageData(0, 0, n, n).data;
-    let on = 0;
-    for (let i = 3; i < d.length; i += 4) if (d[i] > cut * 255) on++;
-    return on / (n * n);
-  };
-  const want = coverage(src.getContext('2d'), src.width);
-  for (let n = src.width / 2; n >= 1; n /= 2) {
-    const c = document.createElement('canvas');
-    c.width = c.height = n;
-    const ctx = c.getContext('2d');
-    ctx.drawImage(src, 0, 0, n, n);
-    // (scale alpha up till the coverage matches: a few tries)
-    const img = ctx.getImageData(0, 0, n, n);
-    let lo = 1;
-    let hi = 4;
-    for (let k = 0; k < 8; k++) {
-      const m = (lo + hi) / 2;
-      let on = 0;
-      for (let i = 3; i < img.data.length; i += 4) if (img.data[i] * m > cut * 255) on++;
-      if (on / (n * n) < want) lo = m;
-      else hi = m;
-    }
-    for (let i = 3; i < img.data.length; i += 4) img.data[i] = Math.min(255, img.data[i] * hi);
-    ctx.putImageData(img, 0, 0);
-    levels.push(c);
-  }
-  t.mipmaps = levels;
-  t.generateMipmaps = false;
-  t.minFilter = THREE.LinearMipmapLinearFilter;
-  t.needsUpdate = true;
-  return t;
+  return coverageTexture(t, { cut });
 }
 
 // The scanned surfaces, each loaded once for the page: the site's one core
