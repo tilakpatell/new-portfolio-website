@@ -50,7 +50,7 @@ Follow the spec over the plan, the code over both. Fix the plan's line in your P
 |---|---|---|
 | design | `claude/rm-worlds-design` | this PR |
 | 0: the engine's seams, Gazorpazorp bare | `claude/rm-worlds-p0` | #676 |
-| 1: the planets' kit | `claude/rm-worlds-p1` | this PR |
+| 1: the planets' kit | `claude/rm-worlds-p1` | #682 |
 
 ## Left
 
