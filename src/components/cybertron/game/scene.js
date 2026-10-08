@@ -18,7 +18,10 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { budget } from '../../../lib/device';
 import { createPace } from '../../../lib/three/pace';
-import { precompile, quiet, releaseContext } from '../../../lib/three/renderer';
+import { precompile, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
+import { guard } from '../../../lib/three/frameGuard';
+import { prepareScene } from '../../../lib/three/gpuWork';
+import { settle } from '../../../lib/settle';
 import { createPost } from '../../universe/post';
 import { makeFigure, makeThing } from './bots';
 import { bake, centresOf, cluster, makeTransformer } from './chunks';
@@ -45,6 +48,11 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   const B = budget(tier);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
   quiet(renderer);
+  // the frame guard (lib/three/frameGuard), as createRenderer puts on every
+  // renderer: a late arrival (a Decepticon the first time one's seen, the
+  // Matrix) is left out of its frames till its shader and pictures are
+  // ready, not waited on mid-frame
+  const held = guard(renderer);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, B.ratio));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = !!B.shadows && tier === 'high';
@@ -221,6 +229,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
           shade: 0x16141c,
           tier,
           auto: true,
+          cache: { world: 'cybertron', place: area.id },
         });
       }
       // the metal shines with the place's own sky (Iacon's fires low on
@@ -608,9 +617,90 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     post.render(size.w, size.h);
   };
 
+  // Everything on the graphics chip behind the page's loading veil, once
+  // the area's built: its floor light baked (or read back from an earlier
+  // visit's), the Decepticons it can field (`foes`, their models) fetched and
+  // stood in, hidden, the change from robot to vehicle made once (its
+  // material kept, so its shader stays made for every change after), the
+  // house look taken on, the passes' shaders linked, then lib/three/gpuWork's
+  // prepareScene: the pictures sent a few at a time, the shaders compiled in
+  // slices against where the scene draws, and a draw of everything the
+  // frames' own way. Each wait is a few seconds at most; what's later still
+  // is the frame guard's.
+  const BAKE_WAIT = 8000; // ms at most the floor's bake holds up the prepare
+  const MODELS_WAIT = 5000; // ms at most the Decepticons' models do
+  let warmChange = null; // (the change made once, kept for its shader)
+  const prepare = async (onProgress, alive = () => true, { foes: kinds = [] } = {}) => {
+    const going = () => alive() && !lost;
+    const say = (f, step) => onProgress?.(f, step);
+    say(0, 'bake');
+    await settle(loading, MODELS_WAIT);
+    if (!going()) return;
+    await settle(ground?.bake(), BAKE_WAIT);
+    if (!going()) return;
+    say(0.12, 'Bringing in the Decepticons');
+    const standIns = new THREE.Group();
+    standIns.visible = false;
+    const made = [];
+    const fetching = Promise.all(
+      kinds.map((k) =>
+        makeFigure(k, { shadows: false })
+          .then((f) => {
+            if (!going()) return f.dispose();
+            made.push(f);
+            standIns.add(f.group);
+          })
+          .catch(() => {}),
+      ),
+    );
+    await settle(fetching, MODELS_WAIT);
+    if (!going()) {
+      for (const f of made) f.dispose();
+      return;
+    }
+    const { forms } = player;
+    if (!warmChange && forms.robot && forms.vehicle) {
+      try {
+        warmChange = makeTransformer(forms.robot, { ...forms.vehicle, kind: 'vehicle' });
+        standIns.add(warmChange.group);
+      } catch {
+        warmChange = null; // (the first change makes it, as before)
+      }
+    }
+    scene.add(standIns);
+    lightsOf();
+    house.follow({ adopt: true });
+    try {
+      if (post.on) await settle(precompilePasses(renderer, post.composer, camera), 4000);
+      if (!going()) return;
+      renderer.setRenderTarget(post.on ? post.composer.readBuffer : null);
+      await prepareScene({
+        renderer,
+        roots: [scene],
+        scene,
+        camera,
+        alive: going,
+        onProgress: (f, step) => say(0.2 + 0.8 * f, step),
+        render: () => post.render(size.w, size.h),
+      });
+    } finally {
+      try {
+        renderer.setRenderTarget(null);
+      } catch {
+        // (gone with its renderer)
+      }
+      scene.remove(standIns);
+      if (warmChange) standIns.remove(warmChange.group);
+      // (their materials are their models' own, or clones of them, made
+      // the same way: the shaders made for these are the ones theirs use)
+      for (const f of made) f.dispose();
+    }
+  };
+
   return {
     camera,
     scene,
+    prepare,
     // (for the QA scripts: this area's floor light)
     get ground() {
       return import.meta.env.DEV ? ground : null;
@@ -676,8 +766,10 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       room.dispose();
       skyEnv?.dispose();
       pmrem.dispose();
+      warmChange?.dispose();
       post.composer?.dispose?.();
       canvas.removeEventListener('webglcontextlost', onContextLost);
+      held.dispose();
       renderer.dispose();
       if (!lost) releaseContext(renderer);
     },

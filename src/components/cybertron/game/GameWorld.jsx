@@ -6,9 +6,11 @@ import { device } from '../../../lib/device';
 import { readPad, typing } from '../../games/pad';
 import { useAchievements } from '../../Achievements';
 import { AREAS } from './areas';
-import { createSim } from './sim';
+import { createSim, foeModels } from './sim';
 import { createSounds } from './sounds';
 import { useVoiced } from '../../../lib/useVoiced';
+import { settle } from '../../../lib/settle';
+import LoadingVeil from '../../worlds/LoadingVeil';
 import './game.css';
 
 // Cybertron, the world: Iacon at war, and Team Prime's base and Jasper on
@@ -22,6 +24,7 @@ import './game.css';
 
 const KEPT = 'tp-cybertron-world'; // { done: [mission ids], area }
 const LOOK = 0.0024; // radians a pixel of mouse
+const PREPARE_WAIT = 30000; // ms at most the world's prepare holds back its first frame
 
 const KEYS = {
   KeyW: 'up',
@@ -87,6 +90,8 @@ function World({ gl, setGl, side }) {
     el.classList.add(cls);
   };
   const [toast, setToast] = useState(null);
+  // how far the world's prepare has got, while it runs (the loading veil)
+  const [prep, setPrep] = useState(null);
   const [fade, setFade] = useState(null); // a bridge crossed: its colour while the next place loads
   const [list, setList] = useState(false);
   const crossing = useRef(false);
@@ -116,14 +121,30 @@ function World({ gl, setGl, side }) {
         if (dead) return a.dispose();
         api.current = a;
         fit();
+        setPrep({ value: 0, step: null });
         await a.setArea(s.area);
         if (dead) return;
-        await Promise.race([a.precompile(), new Promise((r) => setTimeout(r, 4000))]);
-        if (!dead) setGl('on');
+        // everything onto the graphics chip before the first frame, behind
+        // the loading veil (the scene's prepare; half a minute at most)
+        // (cut short at the cap: a prepare still going stops, and says no more)
+        let capped = false;
+        const preparing = () => !dead && !capped;
+        await settle(
+          a.prepare((value, step) => preparing() && setPrep({ value, step }), preparing, { foes: foeModels(s.area) }),
+          PREPARE_WAIT,
+        );
+        capped = true;
+        if (dead) return;
+        // (the veil fades on what it last said)
+        setPrep((p) => p && { ...p, done: true });
+        setGl('on');
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
-        if (!dead) setGl('failed');
+        if (!dead) {
+          setPrep(null);
+          setGl('failed');
+        }
       });
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
     if (ro && canvas.current) ro.observe(canvas.current);
@@ -410,7 +431,8 @@ function World({ gl, setGl, side }) {
   return (
     <section ref={box} className="cyw" data-playing={playing ? '' : undefined} aria-label={`Cybertron: walk and drive as ${SIDES[playingSide].name}`}>
       <canvas ref={canvas} className="cyw-canvas" tabIndex={-1} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onWheel={onWheel} onContextMenu={(e) => e.preventDefault()} />
-      {gl !== 'on' && (
+      <LoadingVeil shown={Boolean(prep) && !prep.done && gl === 'loading'} progress={prep?.value} step={prep?.step} title="Cybertron" line="Bridging to Cybertron…" />
+      {gl !== 'on' && !prep && (
         <div className="cyw-loading" role="status">
           <span className="cyw-spinner" aria-hidden="true" />
           Bridging to Cybertron…
