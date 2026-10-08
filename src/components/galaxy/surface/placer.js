@@ -197,10 +197,6 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   const updates = [];
   const signals = [];
   const pending = [];
-  // (this world's own copies of the nature kit's materials, dressed for its
-  // look and fog: nature.js)
-  const mine = natureMaterials();
-  const ownMaterial = (kind, material) => (SURFACE_MODELS[kind]?.cc0 ? mine.all(material, SURFACE_MODELS[kind].sway) : material);
   let dead = false;
 
   const groundY = (x, z) => world.heightAt(x, z);
@@ -219,6 +215,11 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     at[1] = seatY(groundY, at[0], at[2], r, { max }) - (spec.sink ?? 0);
     return at;
   };
+
+  // (this world's own copies of the nature kit's materials, dressed for its
+  // look and fog: nature.js)
+  const mine = natureMaterials();
+  const ownMaterial = (kind, material) => (SURFACE_MODELS[kind]?.cc0 ? mine.all(material, SURFACE_MODELS[kind].sway) : material);
 
   // a built one (made once for each kind and options and copied after,
   // geometry and materials shared, unless it moves: its own update or signal)

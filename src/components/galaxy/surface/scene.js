@@ -265,13 +265,13 @@ export async function create(canvas, ctx) {
   // ground map is painted with the trees' crowns over it)
   const r = rng(site.ground.seed ?? 1);
   const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
-  // (an entry's spots from layout.js: its ring, round the origin or a
-  // place (`around`), or in patches (`clumps`); a trail's stones along its
-  // `path`; and its colour pair, `tint`, drawn from numbers of its own, so a
-  // tint never moves what comes after it)
-  const scattered = site.scatter.map((s, i) => {
+  const scattered = site.scatter.map((s) => {
     const items = [];
-    const own = rng((site.ground.seed ?? 1) * 31 + i);
+    // (an entry's spots from layout.js: its ring, round the origin or a
+    // place (`around`), or in patches (`clumps`); a trail's stones along its
+    // `path`; and its colour pair, `tint`, drawn from numbers of its own, so a
+    // tint never moves what comes after it)
+    const own = rng((site.ground.seed ?? 1) * 31 + site.scatter.indexOf(s));
     const ok = (x, z) => !(s.flat && grid.normalAt(x, z)[1] < s.flat) && !(wade != null && s.dry !== false && grid.heightAt(x, z) < wade + (s.above ?? 0.2));
     const [lo, hi] = s.scale ?? [1, 1];
     if (s.path) {

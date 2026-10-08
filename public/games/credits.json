@@ -2122,6 +2122,15 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
+  "quaternius-nature-megakit": {
+    "source": "https://quaternius.com/packs/stylizednaturemegakit.html",
+    "id": "quaternius-nature-megakit",
+    "name": "Stylized Nature MegaKit",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0"
+  },
   "meshy/garmentrick": {
     "source": "https://www.meshy.ai",
     "id": "01a11263-8161-70e2-a753-790c0405b416",
@@ -4192,14 +4201,5 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
-  },
-  "quaternius-nature-megakit": {
-    "source": "https://quaternius.com/packs/stylizednaturemegakit.html",
-    "id": "quaternius-nature-megakit",
-    "name": "Stylized Nature MegaKit",
-    "authors": [
-      "Quaternius"
-    ],
-    "license": "CC0 1.0"
   }
 }
