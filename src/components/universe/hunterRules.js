@@ -781,7 +781,8 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
       for (let i = live.length - 1; i >= 0; i--) {
         const h = live[i];
         const { type, pos, vel, pack } = h;
-        const has = (t) => hasTrait(type, t);
+        const trait = type.trait;
+        const has = (t) => t === trait || hasTrait(type, t);
         const ram = has('rammer');
         const keepOff = has('sniper') ? SNIPER.near : has('holdoff') ? HOLDOFF.near : 0; // (how far it keeps off you, if it does)
         if (h.hidden > 0) h.hidden = Math.max(0, h.hidden - dt);
@@ -1050,14 +1051,6 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
           if (!ship || (pack.fade > 2 && dx * dx + dy * dy + dz * dz > 110 * 110) || pack.fade > 30) remove(h);
           continue;
         }
-        // a rammer that reaches you bursts on you (the whole way each of
-        // you went this frame: closing at speed, it would be past you)
-        if (ram && c && !onPrey && ship && sweptHit(h.prev, pos, youPrev, you, RAM.reach + type.size) !== null) {
-          events.push({ type: 'laser', damage: type.ram ?? RAM.damage, from: { x: pos.x, y: pos.y, z: pos.z }, bomb: false, ram: true, by: h.id });
-          events.push({ type: 'rammed', id: h.id, kind: h.kind, faction: pack.faction, at: { x: pos.x, y: pos.y, z: pos.z }, size: type.size });
-          remove(h);
-          continue;
-        }
         // a medic patches up the worst hurt of its pack near it, a hit at a time
         if (has('medic') && (h.patchCool -= dt) <= 0) {
           h.patchCool = MEDIC.every;
@@ -1107,6 +1100,13 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
               if (has('bomber') && h.mode === 'run') h.bombed = true; // (its bomb's away: it breaks off)
             }
           }
+        }
+        // a rammer that reaches you bursts on you (the whole way each of
+        // you went this frame: closing at speed, it would be past you)
+        if (ram && c && !onPrey && ship && sweptHit(h.prev, pos, youPrev, you, RAM.reach + type.size) !== null) {
+          events.push({ type: 'laser', damage: type.ram ?? RAM.damage, from: { x: pos.x, y: pos.y, z: pos.z }, bomb: false, ram: true, by: h.id });
+          events.push({ type: 'rammed', id: h.id, kind: h.kind, faction: pack.faction, at: { x: pos.x, y: pos.y, z: pos.z }, size: type.size });
+          remove(h);
         }
       }
 
