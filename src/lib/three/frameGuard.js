@@ -280,6 +280,8 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
       if (queue.size || linking.size) schedule();
       if (dev && g.enabled) {
         const made = (renderer.info?.programs?.length ?? 0) - before;
+        // (every one counted, for scripts/perf-probe.mjs, however few are said)
+        if (made > 0 && typeof window !== 'undefined') window.__tpGuardSlips = (window.__tpGuardSlips ?? 0) + made;
         if (made > 0 && told < 40) {
           told += 1;
           console.warn(`[frameGuard] ${made} shader(s) compiled in a ${Math.round(clock() - t0)} ms frame`);
