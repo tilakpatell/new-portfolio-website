@@ -17,6 +17,14 @@
 //   warmUp?(timeLeft) → bool draw everything once, out of sight, a slice at
 //                            a time (made while the page is covered: see
 //                            `covered` below); true once it's done
+//   prepare?(onProgress, { alive, frame }) → Promise
+//                            everything sent to the graphics chip before the
+//                            first frame (lib/three/gpuWork's prepareScene),
+//                            covered or not: the hook says 'preparing' with
+//                            its progress meanwhile, for the page's loading
+//                            screen (components/worlds/LoadingVeil); while
+//                            the page is covered it goes on only when the
+//                            page is idle
 //   dispose()
 //   ready?                   a promise: its shaders are compiled (see
 //                            lib/three/renderer's precompile); the first
@@ -29,6 +37,7 @@ import { useEffect, useRef, useState } from 'react';
 import { use3D } from '../gpu';
 import { useReducedMotion } from '../hooks';
 import { settle } from '../settle';
+import { nextFrame } from './gpuWork';
 import { createLoop } from './loop';
 import { readTheme, watchTheme } from './theme';
 
@@ -41,7 +50,8 @@ const READY_WAIT = 4000; // ms at most a scene's `ready` holds back its first fr
 // sight, a slice at a time while the page is idle (its warmUp), so its first
 // frame as it's uncovered (the cockpit's flash, for the universe) doesn't
 // stop to send everything to the graphics chip.
-const covered = () => typeof document !== 'undefined' && 'covered' in document.documentElement.dataset;
+// (and under a tour's card in the middle, html[data-tour-still]: nothing lit to watch)
+const covered = () => typeof document !== 'undefined' && ('covered' in document.documentElement.dataset || 'tourStill' in document.documentElement.dataset);
 // fn(timeLeft) when the page has a moment; timeLeft() is the ms it can spare
 const whenIdle = (fn) => {
   if (typeof requestIdleCallback === 'function') return requestIdleCallback((deadline) => fn(() => deadline.timeRemaining()), { timeout: 500 });
@@ -50,13 +60,16 @@ const whenIdle = (fn) => {
     fn(() => Math.max(0, 12 - (performance.now() - t)));
   }, 50);
 };
+// a prepare's next step: the next frame, or while covered the next idle moment
+const prepFrame = () => (covered() ? new Promise((resolve) => whenIdle(() => resolve())) : nextFrame());
 
 export function useScene(load, { enabled = true, props, id = 'scene', near: nearMargin = '100% 0px 100% 0px' } = {}) {
   const wrap = useRef(null);
   const view = useRef(null);
   const three = use3D();
   const reduced = useReducedMotion();
-  const [status, setStatus] = useState('idle'); // idle | loading | ready | on | failed | slow | lost
+  const [status, setStatus] = useState('idle'); // idle | loading | preparing | ready | on | failed | slow | lost
+  const [progress, setProgress] = useState({ value: 0, step: 'load' });
   const [near, setNear] = useState(false);
   const visible = useRef(false);
   const loop = useRef({ last: 0, kick: () => {} });
@@ -193,10 +206,31 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
             // props the page changed meanwhile (update() runs on every render, so it's safe to repeat)
             v.update?.(propsRef.current);
           }
+          // everything sent to the graphics chip before it's first seen
+          if (v.prepare) {
+            setStatus('preparing');
+            let shown = { value: -1, step: '' };
+            const report = (value, step) => {
+              // (a step's change, or a percent's worth: the page re-renders no more than that)
+              if (step === shown.step && value - shown.value < 0.01 && value < 1) return;
+              shown = { value, step };
+              if (!dead) setProgress(shown);
+            };
+            try {
+              await v.prepare(report, { alive: () => !dead && !failed.current, frame: prepFrame });
+            } catch (err) {
+              if (import.meta.env.DEV) console.warn(`[${id}] prepare failed`, err);
+            }
+            if (dead || failed.current) {
+              v.dispose();
+              return;
+            }
+            v.update?.(propsRef.current);
+          }
           view.current = v;
           v.setVisible?.(visible.current);
           setStatus('ready');
-          if (v.warmUp && covered()) {
+          if (v.warmUp && !v.prepare && covered()) {
             const slice = (timeLeft) => {
               if (dead || view.current !== v || !covered()) return;
               let done = true;
@@ -270,5 +304,5 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
     else delete el.dataset.gl;
   }, [on, status]);
 
-  return { wrap, status, on: status === 'on', meant: on && status !== 'failed' && status !== 'slow' && status !== 'lost', view };
+  return { wrap, status, progress, on: status === 'on', meant: on && status !== 'failed' && status !== 'slow' && status !== 'lost', view };
 }

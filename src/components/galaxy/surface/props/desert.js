@@ -240,6 +240,20 @@ export const PROPS = {
     return { object: k.build(parts, { name: 'cantina' }), solids: [{ circle: [0, 0, 7] }, { circle: [7.5, -2, 3.8] }, { box: [0, 7.2, 2, 2, 0] }] };
   },
 
+  // Mos Eisley's cantina, the audit lane's remake (catalog/audit.js): the
+  // built one under the model, with the model's walls (the front wall at
+  // z 8.75 with the arched door 2.5 m right of the middle, the dome behind
+  // it, the low wing to the west; Nevarro's town keeps the old cantina)
+  moscantina(k) {
+    return { ...PROPS.cantina(k), solids: [{ box: [1, 0.5, 9, 8.25, 0] }, { box: [-9, -1, 2, 5.5, 0] }] };
+  },
+
+  // Greef Karga's cantina on Nevarro: the built cantina, under the grey copy
+  // of its model
+  nevcantina(k) {
+    return PROPS.cantina(k);
+  },
+
   // a market stall: an awning on poles over a counter
   stall(k) {
     const cloth = ['#b0552e', '#c9a04a', '#5f7a8c', '#8a4a6a'][Math.floor(k.rand() * 4)];
@@ -302,12 +316,13 @@ export const PROPS = {
       part(dome(16, 9, 28), { at: [44, 70, 10], color: '#b47d72', to: 'adobe' }),
       part(cyl(10, 12, 26, 24), { at: [-42, 0, 22], color: stone, to: 'adobe' }),
     ];
-    // (its walls as the model's are: the keep a little back of the middle,
-    // the watchtower and the small dome off to the east, the rock to the
-    // west; the gate is palacegate, in front of the keep)
+    // (its walls as the model's are, the audit lane's remake at 75 m: the
+    // keep's drum a little west of the middle, the watchtower and the small
+    // domed annex behind it to the east, the rocks at its west foot; the gate
+    // is palacegate, in front of the keep)
     return {
       object: k.build(parts, { name: 'palace', shadows: false }),
-      solids: [{ circle: [1.5, -7.4, 27] }, { circle: [53, 13, 8] }, { circle: [30, 22, 8] }, { box: [-38, -2, 14, 26, 0] }],
+      solids: [{ circle: [-3.5, 6.5, 20] }, { circle: [17.5, -19.2, 6] }, { circle: [19, -9, 7] }, { box: [-28, 4, 5, 14, 0] }],
     };
   },
   // Jabba's gate: the great door in its block, the ribs over it and the

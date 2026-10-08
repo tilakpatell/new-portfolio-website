@@ -36,6 +36,52 @@
   --r-photo: 24px;
   --eyebrow-tracking: 0.12em;
   --shadow-card: 0 1px 2px rgba(15, 17, 17, 0.05), 0 6px 20px -12px rgba(15, 17, 17, 0.18);
+  /* a thing floating over the page (a notice, the guide's ?) and a thing
+     asking for the whole of the visitor's attention (a dialog). Both read
+     --text, so they darken with the theme's ink rather than a fixed black. */
+  --shadow-float: 0 18px 40px -20px color-mix(in srgb, var(--text) 60%, transparent);
+  --shadow-dialog: 0 24px 50px -24px color-mix(in srgb, var(--text) 55%, transparent);
+
+  /* Depth, bottom to top. Every page-level layer names one of these; a layer
+     a step above or below its kind's neighbour says so with a calc and why.
+     The page's sections; the bar; things floating in a corner (the guide's ?,
+     the offers, the pills); sheets over the page (the toast, the world gate);
+     dialogs (the palette, the guide panel, the tour); covers that take the
+     whole screen (the crawl, the cockpit, the nav map); the skip link. */
+  --z-page: 10;
+  --z-nav: 40;
+  --z-float: 50;
+  --z-sheet: 60;
+  --z-dialog: 80;
+  --z-cover: 90;
+  --z-top: 100;
+
+  /* time: a hover or a press; a thing changing state; a thing arriving */
+  --t-fast: 150ms;
+  --t-base: 250ms;
+  --t-slow: 400ms;
+
+  /* Type, eleven sizes. Nothing the shell asks a visitor to read is under
+     --fs-xs; the display sizes grow with the window, between a phone's and a
+     wide screen's. */
+  --fs-xs: 0.8125rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 0.9375rem;
+  --fs-base: 1rem;
+  --fs-lg: 1.0625rem;
+  --fs-lead: clamp(1.0625rem, 1rem + 0.3vw, 1.1875rem);
+  --fs-lead-lg: clamp(1.125rem, 1rem + 0.45vw, 1.3rem);
+  --fs-title: clamp(1.65rem, 1.2rem + 1.5vw, 2.4rem);
+  --fs-display-3: clamp(1.8rem, 1.3rem + 1.6vw, 2.6rem);
+  --fs-display-2: clamp(2.2rem, 1.3rem + 3.4vw, 4.4rem);
+  --fs-display-1: clamp(3rem, 1.6rem + 6vw, 6.2rem);
+
+  /* where corner things sit from the window's edge, the first thing under the
+     bar on a page, and a comfortable line of prose */
+  --edge-x: 16px;
+  --edge-y: 22px;
+  --page-top: calc(var(--nav-h) + 40px);
+  --measure: 60ch;
   /* the site's easing, one family: out for anything arriving or settling, smooth
      for a change of state, spring for a bounce, in for anything leaving */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -54,6 +100,8 @@
      --route-x: keep --gutter-l minus this above --route-x plus 12px. */
   --swipe-inset: 8px;
   --nav-h: 68px;
+  /* the bar's own height inside --nav-h (which adds its margin round it) */
+  --bar-h: 52px;
 }
 
 @media (min-width: 768px) {
@@ -63,6 +111,8 @@
     --route-x: 44px;
     --swipe-inset: 16px;
     --nav-h: 76px;
+    --bar-h: 56px;
+    --page-top: calc(var(--nav-h) + 72px);
   }
 }
 
@@ -246,6 +296,9 @@ html[data-mode='dark'] {
   --btn-ink: #0b0b0b;
   --route-plan: #35383e;
   --shadow-card: none;
+  /* in the dark a shadow is darkness, never a pale glow of the ink */
+  --shadow-float: 0 18px 40px -20px rgb(0 0 0 / 0.7);
+  --shadow-dialog: 0 24px 50px -24px rgb(0 0 0 / 0.75);
   /* the site's easing, one family: out for anything arriving or settling, smooth
      for a change of state, spring for a bounce, in for anything leaving */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -331,6 +384,9 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
   --btn-ink: #0f1111;
   --route-plan: #4a5563;
   --shadow-card: none;
+  /* in the dark a shadow is darkness, never a pale glow of the ink */
+  --shadow-float: 0 18px 40px -20px rgb(0 0 0 / 0.7);
+  --shadow-dialog: 0 24px 50px -24px rgb(0 0 0 / 0.75);
   /* the site's easing, one family: out for anything arriving or settling, smooth
      for a change of state, spring for a bounce, in for anything leaving */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -407,25 +463,41 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
   .title {
     font-stretch: 112%;
     font-weight: 650;
-    font-size: clamp(1.65rem, 1.2rem + 1.5vw, 2.4rem);
+    font-size: var(--fs-title);
     letter-spacing: -0.02em;
     line-height: 1.08;
     color: var(--text);
   }
   .eyebrow {
     font-family: var(--font-mono);
-    font-size: 0.75rem;
+    font-size: var(--fs-xs);
     font-weight: 500;
     letter-spacing: var(--eyebrow-tracking);
     text-transform: uppercase;
     color: var(--muted);
   }
   .lead {
-    font-size: clamp(1.0625rem, 1rem + 0.3vw, 1.1875rem);
+    font-size: var(--fs-lead);
     line-height: 1.6;
     color: var(--text-body);
   }
   .mono { font-family: var(--font-mono); }
+  /* the three display sizes: a page's title, a feature's, a tile's. Home's
+     name and the Travel poster keep their own: they are the pages' faces. */
+  .display-1 { font-size: var(--fs-display-1); }
+  .display-2 { font-size: var(--fs-display-2); }
+  .display-3 { font-size: var(--fs-display-3); }
+  /* a hero's lead, a step up from a section's */
+  .lead-lg { font-size: var(--fs-lead-lg); }
+  /* the last section on a page, clear of the footer */
+  .section-last { padding-bottom: 6rem; }
+  @media (min-width: 768px) { .section-last { padding-bottom: 8rem; } }
+  /* Type on a photograph: the page's ink turns white through its tokens, so
+     the display, the lead, the eyebrow and a ghost button all follow without
+     an !important each. */
+  .on-photo { --text: #ffffff; --text-body: rgb(255 255 255 / 0.9); --muted: rgb(255 255 255 / 0.85); }
+  .on-photo .btn-ghost { border-color: rgb(255 255 255 / 0.6); background: rgb(0 0 0 / 0.2); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+  .on-photo .btn-ghost:hover { background: rgb(255 255 255 / 0.15); }
 
   .btn {
     display: inline-flex;
@@ -436,11 +508,11 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     padding: 0 1.2rem;
     border-radius: var(--r-btn);
     border: 1px solid transparent;
-    font-size: 0.9375rem;
+    font-size: var(--fs-md);
     font-weight: 600;
     line-height: 1;
     white-space: nowrap;
-    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    transition: background-color var(--t-fast) var(--ease-smooth), border-color var(--t-fast) var(--ease-smooth), color var(--t-fast) var(--ease-smooth), transform var(--t-fast) var(--ease-smooth);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
@@ -449,9 +521,9 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
   .btn-primary:hover { background: color-mix(in srgb, var(--btn-bg) 88%, #000); }
   .btn-ghost { background: var(--surface); border-color: var(--border-strong); color: var(--text); }
   .btn-ghost:hover { background: var(--surface-2); }
-  .btn-sm { min-height: 36px; padding: 0 0.9rem; font-size: 0.875rem; }
-  @media (min-width: 640px) { .btn-lg { min-height: 50px; padding: 0 1.45rem; font-size: 1rem; } }
-  .label { font-size: 0.8125rem; font-weight: 600; letter-spacing: 0; color: var(--muted); }
+  .btn-sm { min-height: 36px; padding: 0 0.9rem; font-size: var(--fs-sm); }
+  @media (min-width: 640px) { .btn-lg { min-height: 50px; padding: 0 1.45rem; font-size: var(--fs-base); } }
+  .label { font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0; color: var(--muted); }
   .chip-accent { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--accent-text); }
 
   .chip {
@@ -468,6 +540,12 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     line-height: 1.3;
     color: var(--text-body);
   }
+  /* a chip inside a line of text (an award beside a title) */
+  .chip-sm { min-height: 0; padding-block: 0.125rem; }
+  /* a chip that is a button (a filter, a skill to take off) says so */
+  button.chip { position: relative; cursor: pointer; transition: border-color var(--t-fast) var(--ease-smooth); }
+  button.chip:hover { border-color: var(--border-strong); }
+  @media (pointer: coarse) { button.chip::after { content: ''; position: absolute; inset: -8px 0; } }
 
   .card {
     position: relative;
@@ -498,9 +576,17 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     text-decoration-color: var(--border-strong);
     text-decoration-thickness: 1px;
     text-underline-offset: 0.22em;
-    transition: text-decoration-color 0.15s ease;
+    transition: text-decoration-color var(--t-fast) var(--ease-smooth);
   }
   .link:hover { text-decoration-color: var(--accent); }
+  /* a link that is its own line (an address, a route): no underline until
+     the pointer is on it, then the accent's */
+  .link-hover { text-decoration-color: var(--accent); text-underline-offset: 4px; }
+  .link-hover:hover { text-decoration-line: underline; }
+  /* a link in a list of links (the footer's), where an underline on every
+     one would be noise: the body colour, the ink on hover */
+  .link-quiet { color: var(--text-body); transition: color var(--t-fast) var(--ease-smooth); }
+  .link-quiet:hover { color: var(--text); }
 
   .divider { height: 1px; background: var(--border); }
 
@@ -527,9 +613,9 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     position: fixed;
     left: 12px;
     top: -60px;
-    z-index: 100;
+    z-index: var(--z-top);
     padding: 0.6rem 1rem;
-    border-radius: 8px;
+    border-radius: min(8px, var(--r-panel));
     background: var(--btn-bg);
     color: var(--btn-ink);
     font-weight: 600;
@@ -556,7 +642,7 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
      as the page counted as covering the page, so the browser kept the dashed
      plan and whatever section text it could merge with it on one GPU layer
      the size of the page. */
-  .route { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 15; contain: layout style; }
+  .route { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: calc(var(--z-page) + 5); contain: layout style; }
   .route-seg { position: absolute; }
   /* Drawn in layers: every dashed plan first, then the lit line, then the
      stops, then the crystal. Interleaving them (plan, lit, plan, lit…) made the
@@ -623,7 +709,57 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
   .stretch-wide { font-stretch: 125%; }
   .stretch-semi { font-stretch: 112%; }
   .tabular { font-variant-numeric: tabular-nums; }
+  /* the two small sizes, as utilities: Tailwind's text-xs and text-sm bring a
+     line height with them, and these sit inside lines that have their own */
+  .text-fine { font-size: var(--fs-xs); }
+  .text-ui { font-size: var(--fs-sm); }
 }
+
+/* ─── The house kit ─────────────────────────────────────────────────────────
+   One drawing per concept, shared by the shell (spec 5.1, rule 3). These sit
+   outside the layers, as the stylesheets that used to draw them did, so a
+   component's own rule beside them still wins by specificity alone. */
+
+/* A key cap: the guide's, raised by a thicker bottom edge. `.guide-kbd` is the
+   name it had and stays an alias until nothing writes it. */
+/* (display at no specificity, so Tailwind's `hidden` still hides a cap) */
+:where(.kbd, .guide-kbd) { display: inline-grid; }
+.kbd, .guide-kbd { place-items: center; min-width: 1.6rem; height: 1.6rem; padding: 0 0.4rem; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: min(6px, var(--r-chip)); background: var(--surface-2); color: var(--text); font: 600 0.72rem/1 var(--font-mono); white-space: nowrap; }
+/* a pointer action (Click, Drag), not a key: dashed, and in the text face */
+.kbd.is-pointer, .guide-kbd.is-pointer { border-style: dashed; border-bottom-width: 1px; font-family: var(--font-sans); font-weight: 600; }
+/* a quiet one: a hint beside a control (the bar's ⌘K), not a key to learn */
+.kbd[data-size='sm'] { min-width: 1.5rem; height: 1.4rem; padding: 0 0.35rem; border-color: var(--border); border-bottom-width: 1px; border-radius: min(5px, var(--r-chip)); color: var(--muted); font-size: 0.7rem; font-weight: 400; }
+
+/* A pill of two to four choices in a track: the view switch, the guide's
+   tabs and its keyboard/touch toggle. The one you're on is lifted out of the
+   track in the page's own colour. Sizes: sm 28 (a control inside a panel),
+   the default 30 (the bar), md 34 (tabs), menu 44 (full width, for a thumb). */
+.switch { display: inline-flex; flex: none; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
+.switch > :is(button, [role='tab']) { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-width: 32px; height: 30px; padding: 0 0.6rem; border-radius: 999px; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; transition: background-color var(--t-fast) var(--ease-smooth), color var(--t-fast) var(--ease-smooth), box-shadow var(--t-fast) var(--ease-smooth); }
+.switch > :is(button, [role='tab']):hover { color: var(--text); }
+.switch > :is([aria-pressed='true'], [aria-selected='true']) { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(15, 17, 17, 0.08), 0 0 0 1px var(--border); }
+.switch > :is(button, [role='tab']):focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+.switch[data-size='sm'] > :is(button, [role='tab']) { height: 28px; gap: 0.3rem; font-size: 0.75rem; }
+.switch[data-size='md'] > :is(button, [role='tab']) { height: 34px; padding: 0 0.85rem; font-size: 0.85rem; }
+.switch[data-size='menu'] { display: flex; width: 100%; padding: 3px; }
+.switch[data-size='menu'] > :is(button, [role='tab']) { flex: 1; height: 44px; font-size: 0.95rem; }
+/* a thumb gets 44px of target above and below the drawn pill */
+@media (pointer: coarse) { .switch:not([data-size='menu']) > :is(button, [role='tab'])::after { content: ''; position: absolute; inset: -8px 0; } }
+
+/* A floating panel's own title: the guide's page name, a dialog's heading. */
+.dialog-title { font-stretch: 112%; font-weight: 650; font-size: 1.125rem; line-height: 1.3; color: var(--text); }
+
+/* A notice in a corner: the achievement toast, the guide's first-visit note.
+   Where it sits is its own; how it looks is this. The radius is the theme's
+   panel, so the square themes square it off. */
+.notice { border: 1px solid var(--border-strong); border-radius: var(--r-panel); background: var(--surface); color: var(--text); box-shadow: var(--shadow-float); }
+
+/* The X on anything that floats. 36px is the floor on a fine pointer; a
+   thumb gets 44 without the drawn circle growing past the panel's head. */
+.close-btn { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 999px; color: var(--muted); transition: background-color var(--t-fast) var(--ease-smooth), color var(--t-fast) var(--ease-smooth); }
+.close-btn:hover { background: var(--surface-2); color: var(--text); }
+.close-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+@media (pointer: coarse) { .close-btn { width: 44px; height: 44px; } }
 
 /* ─── Nav + lightsaber scroll progress ──────────────────────────────────── */
 .site-nav {
@@ -663,12 +799,22 @@ html[data-mode='dark'] .nav-bar { box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.
 .nav-link.is-active { color: var(--text); background: var(--surface-2); }
 .nav-icon { color: var(--muted); }
 .nav-icon:hover { color: var(--text); background: var(--surface-2); }
+/* the settings gear beside the colours: a small turn on hover */
+.settings-gear svg { transition: transform 0.4s var(--ease-out, ease-out); }
+.settings-gear:hover svg { transform: rotate(60deg); }
+/* On a touch screen the bar's small buttons reach 44px tall and 40 wide
+   without being drawn bigger: the bar is 52px, and its pills are its look. */
+@media (pointer: coarse) {
+  .footer-links > * { display: inline-flex; align-items: center; min-height: 44px; }
+  .nav-icon, .nav-search { position: relative; }
+  .nav-icon::after, .nav-search::after { content: ''; position: absolute; inset: -4px -2px; }
+}
 .saber-progress {
   position: fixed;
   left: 0;
   right: 0;
   bottom: calc(6px + env(safe-area-inset-bottom));
-  z-index: 45;
+  z-index: calc(var(--z-nav) + 5); /* over the page and the bar's shadow, under the corner things */
   height: 4px;
   pointer-events: none;
   transition: opacity 0.2s ease;
@@ -897,6 +1043,17 @@ html[data-mode='dark'] .aws-logo .aws-letters { fill: #ffffff; }
      it just shows, for as long as it's up */
   .toast { animation: none !important; }
 }
+/* the same, chosen in the settings panel (Motion: Reduced) */
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-motion='reduced'] .reveal:not([data-in='true']) { opacity: 1; transform: none; }
+html[data-motion='reduced'] .toast { animation: none !important; }
 
 /* A page scene's first frame fades in over whatever it replaces instead of
    popping (lib/three/useScene marks the box data-gl="on" once a frame has

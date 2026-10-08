@@ -1,6 +1,6 @@
 {
-  "date": "2026-10-07",
-  "sha": "10eeac89",
+  "date": "2026-10-08",
+  "sha": "8525b107",
   "metrics": {
     "big-files": {
       "value": 29,
@@ -9,27 +9,35 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5451
+          "n": 5620
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
-          "n": 4505
+          "n": 4576
         },
         {
           "file": "src/components/middleearth/towns/rivendell/props.js",
           "n": 3863
         },
         {
-          "file": "src/components/middleearth/towns/doom/props.js",
-          "n": 3776
+          "file": "src/components/galaxy/surface/scene.js",
+          "n": 3440
         },
         {
-          "file": "src/components/middleearth/towns/cirithungol/props.js",
-          "n": 3309
+          "file": "src/components/middleearth/towns/doom/props.js",
+          "n": 3405
         },
         {
           "file": "src/components/middleearth/shire/props.js",
-          "n": 3296
+          "n": 3379
+        },
+        {
+          "file": "src/components/middleearth/towns/cirithungol/props.js",
+          "n": 3340
+        },
+        {
+          "file": "src/components/universe/footScene.js",
+          "n": 3329
         },
         {
           "file": "src/components/middleearth/towns/amonhen/props.js",
@@ -48,20 +56,12 @@
           "n": 3086
         },
         {
-          "file": "src/components/universe/footScene.js",
-          "n": 3051
+          "file": "src/components/cockpit/vehicles/rv.js",
+          "n": 3025
         },
         {
           "file": "src/components/universe/crews.js",
           "n": 3013
-        },
-        {
-          "file": "src/components/cockpit/vehicles/rv.js",
-          "n": 3000
-        },
-        {
-          "file": "src/components/galaxy/surface/scene.js",
-          "n": 2803
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
@@ -69,48 +69,48 @@
         },
         {
           "file": "src/components/middleearth/towns/weathertop/props.js",
-          "n": 2640
+          "n": 2668
         },
         {
           "file": "src/components/galaxy/scene.js",
-          "n": 2337
+          "n": 2479
         },
         {
           "file": "src/components/middleearth/towns/marshes/props.js",
-          "n": 2315
+          "n": 2381
         },
         {
           "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 2196
+          "n": 2291
         },
         {
           "file": "src/components/avengers/world/scene.js",
-          "n": 2075
+          "n": 2109
         },
         {
           "file": "src/components/avengers/world/rules.js",
-          "n": 2071
+          "n": 2078
         },
         {
           "file": "src/components/galaxy/surface/props/forest.js",
-          "n": 1981
+          "n": 2002
+        },
+        {
+          "file": "src/components/middleearth/towns/edoras/folk.js",
+          "n": 1817
         },
         {
           "file": "src/components/galaxy/surface/props/core.js",
           "n": 1788
         },
         {
-          "file": "src/components/middleearth/towns/edoras/folk.js",
-          "n": 1772
-        },
-        {
           "file": "src/lib/sfx.js",
-          "n": 1681
+          "n": 1779
         }
       ]
     },
     "boundary-breaks": {
-      "value": 312,
+      "value": 350,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
@@ -121,6 +121,16 @@
         },
         {
           "file": "src/lib/three/atmosphere.test.js → src/components/galaxy/bodyShaders.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/lib/three/clipLibrary.test.js → src/components/rickmorty/portal/meshyCast.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/lib/three/figureCalls.test.js → src/components/rickmorty/portal/meshyCast.js",
           "n": 1,
           "note": "lib knows no page"
         },
@@ -228,16 +238,6 @@
           "file": "src/components/caribbean/tide/DeadMansTide.jsx → src/components/middleearth/towns/useTravellers.js",
           "n": 1,
           "note": "worlds are islands"
-        },
-        {
-          "file": "src/components/caribbean/tide/Tide3D.js → src/components/middleearth/towns/ghosts.js",
-          "n": 1,
-          "note": "worlds are islands"
-        },
-        {
-          "file": "src/components/caribbean/tide/rules.test.js → src/components/middleearth/towns/travellers.js",
-          "n": 1,
-          "note": "worlds are islands"
         }
       ]
     },
@@ -269,7 +269,7 @@
       ]
     },
     "lint-disables": {
-      "value": 53,
+      "value": 54,
       "unit": "comments",
       "label": "eslint-disable comments",
       "detail": [

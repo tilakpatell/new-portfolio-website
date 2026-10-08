@@ -14,7 +14,8 @@
 // much), and splash(x, z, k) throws a burst (an aiwha going in).
 //
 // site.water: { level, color, deep, kind, foam?, glow?, legs?: [[x, z, r]…] }
-// createWater(site, sunDir, sunColor, { heightAt, small, id }) →
+// createWater(site, sunDir, sunColor, { heightAt, small, id, rings, depthN, foam }) →
+//   (rings, depthN: amounts.js's; foam: ultra's finer foam, shore, lava and chop)
 //   { mesh, glow, spray, depth, update(t, camera, dt), height(x, z, t),
 //     splash(x, z, k), dispose() }
 
@@ -53,6 +54,15 @@ void main() {
     float crust = smoothstep(0.42, 0.62, wFbm(xz * 0.11 - vec2(uTime * 0.03, 0.0)));
     vec3 hot = mix(uColor, vec3(1.0, 0.85, 0.4), smoothstep(0.55, 0.8, flow));
     c = mix(hot * uGlow * (0.8 + 0.4 * flow), uDeep, crust * 0.85);
+#ifdef FINE
+    // close up: the crust broken into plates, glowing at the cracks between
+    // them, and a finer skin on the plates
+    float near = 1.0 - smoothstep(30.0, 260.0, dist);
+    float plates = wFbm(xz * 0.42 + vec2(uTime * 0.01, 0.0));
+    float crack = 1.0 - smoothstep(0.0, 0.035, abs(plates - 0.5));
+    c += mix(uColor, vec3(1.0, 0.75, 0.3), 0.4) * uGlow * crack * crust * near * 0.9;
+    c *= 1.0 - (wFbm(xz * 1.6) - 0.5) * 0.35 * crust * near;
+#endif
   } else {
     // water (or cloud): waves in the light, darker looking down into it
     float e = 0.6;
@@ -73,6 +83,12 @@ void main() {
     }
     float fade = 1.0 - smoothstep(80.0, 900.0, dist);
     vec3 n = normalize(vec3((h0 - hx) * 3.0 * fade, 1.0, (h0 - hz) * 3.0 * fade));
+#ifdef FINE
+    // a second, finer chop over the waves, close up
+    vec2 q = xz * 0.31 * uWaves + vec2(t * -0.4, t * 0.25);
+    float c0 = wFbm(q);
+    n = normalize(n + vec3(c0 - wFbm(q + vec2(0.06, 0.0)), 0.0, c0 - wFbm(q + vec2(0.0, 0.06))) * 2.0 * (1.0 - smoothstep(20.0, 200.0, dist)));
+#endif
     float facing = clamp(dot(n, view), 0.0, 1.0);
     float fresnel = pow(1.0 - facing, 4.0);
     c = mix(uDeep, uColor, 0.35 + 0.65 * (1.0 - facing));
@@ -114,7 +130,7 @@ export function createWater(site, sunDir, sunColor, opts = {}) {
       uNoise: { value: noiseTexture() },
     },
   ]);
-  const material = new THREE.ShaderMaterial({ vertexShader: PLANE_VERT, fragmentShader: PLANE_FRAG, uniforms, fog: true });
+  const material = new THREE.ShaderMaterial({ vertexShader: PLANE_VERT, fragmentShader: PLANE_FRAG, uniforms, fog: true, defines: opts.foam ? { FINE: '' } : {} });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(FAR * 2.2, FAR * 2.2, 1, 1).rotateX(-Math.PI / 2), material);
   mesh.position.y = w.level;
   mesh.receiveShadow = false;
@@ -237,11 +253,28 @@ void main() {
   wash = smoothstep(0.62, 0.92, wash) * uShore * wet;
   float lace = (1.0 - smoothstep(0.4, 2.2, vShore)) * uShore * 0.85 * wet;
   float foam = clamp(max(max(caps, breaking), max(wash, lace) * smoothstep(0.25, 0.55, lumpy + 0.2)), 0.0, 1.0);
+#ifdef FOAM_DETAIL
+  // the foam close up: bubbles and holes in it at two finer sizes, and a
+  // thin bright lace where the wash's last band thins out over the sand
+  vec4 f1 = texture2D(uNoise, w * 0.9 + uTime * vec2(0.03, -0.02));
+  vec4 f2 = texture2D(uNoise, w * 2.7 - uTime * vec2(0.02, 0.035));
+  float cells = smoothstep(0.3, 0.7, f1.g * 0.6 + f2.r * 0.4);
+  float nearF = 1.0 - smoothstep(25.0, 120.0, dist);
+  foam *= mix(1.0, 0.45 + 0.75 * cells, nearF);
+  float edge = (1.0 - smoothstep(0.0, 1.2, vShore)) * smoothstep(0.45, 0.6, f2.b) * wet * uShore;
+  foam = max(foam, edge * nearF);
+#endif
   vec3 foamCol = vec3(0.86, 0.9, 0.92) * (0.55 + 0.6 * max(dot(N, uSun), 0.0));
   col = mix(col, foamCol, foam * 0.92);
   // a swamp's skin: scum and duckweed in patches
   float scum = smoothstep(0.55, 0.75, n1.r * 0.7 + r2.g * 0.3) * uScum;
   col = mix(col, uBed * 1.4 + vec3(0.03, 0.05, 0.0), scum * 0.7);
+#ifdef FOAM_DETAIL
+  // the shore blended: the last few centimetres of water clear over the
+  // bed, so the waterline is a soft wet edge, not a line where two meshes meet
+  float clear = 1.0 - smoothstep(0.0, 0.35, vDepth);
+  col = mix(col, uBed * 0.8, clear * 0.55 * (1.0 - foam));
+#endif
   gl_FragColor = vec4(col, 1.0);
   #include <fog_fragment>
 }`;
@@ -269,13 +302,13 @@ function discGeometry({ radii, around }) {
   return g;
 }
 
-function createSea(site, sunDir, sunColor, { heightAt, small = false, id } = {}) {
+function createSea(site, sunDir, sunColor, { heightAt, small = false, id, rings: ringOpts = { small }, depthN = small ? 256 : 512, foam: fine = false } = {}) {
   const w = site.water;
   const sea = seaFor(id, w);
   const waves = wavesFor(sea);
-  const rings = discRings({ small });
+  const rings = discRings(ringOpts);
   // (no ground to bake: all of it deep)
-  const depth = bakeDepth(heightAt ?? (() => -Infinity), w.level, { half: HALF, n: small ? 256 : 512, max: 24 });
+  const depth = bakeDepth(heightAt ?? (() => -Infinity), w.level, { half: HALF, n: depthN, max: 24 });
   const depthTex = new THREE.DataTexture(depth.rg, depth.n, depth.n, THREE.RGFormat, THREE.UnsignedByteType);
   depthTex.magFilter = depthTex.minFilter = THREE.LinearFilter;
   depthTex.wrapS = depthTex.wrapT = THREE.ClampToEdgeWrapping;
@@ -314,7 +347,8 @@ function createSea(site, sunDir, sunColor, { heightAt, small = false, id } = {})
   // (the textures after the merge, which would clone them)
   uniforms.uDepth = { value: depthTex };
   uniforms.uNoise = { value: noiseTexture() };
-  const material = new THREE.ShaderMaterial({ vertexShader: SEA_VERT(waves), fragmentShader: SEA_FRAG, uniforms, fog: true });
+  // (ultra: the foam's lace and the wash finer, the shore blended into the sand: FOAM_DETAIL)
+  const material = new THREE.ShaderMaterial({ vertexShader: SEA_VERT(waves), fragmentShader: SEA_FRAG, uniforms, fog: true, defines: fine ? { FOAM_DETAIL: '' } : {} });
   const mesh = new THREE.Mesh(discGeometry(rings), material);
   mesh.frustumCulled = false; // (it goes where the camera goes)
   mesh.receiveShadow = false;

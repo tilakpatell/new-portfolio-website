@@ -8,7 +8,7 @@
 // model kept rigged, names its clips: { idle, walk, run }.)
 export const MODELS = {
   eopie: { uid: '029de9e7d0264119bbc4cbff45b8ed04', as: 'the eopies', metres: 2.5, yaw: 0, tris: 8000, tex: 512 },
-  ronto: { uid: 'abf77799b3334497a320cda4380c9741', as: 'the rontos', metres: 4.2, yaw: 0, tris: 10000, tex: 512 },
+  ronto: { uid: 'abf77799b3334497a320cda4380c9741', turn: 1.042, as: 'the rontos', metres: 4.2, yaw: 0, tris: 10000, tex: 512 },
   // a Sullustan, for the cantina's crowd
   sullustan: { uid: '0fae75387d2c4396858d568b9fbb19ab', as: 'the Sullustans', metres: 1.6, yaw: 0, tris: 8000, tex: 512 },
   // an A-A5 speeder truck, the farms' haulier
@@ -35,8 +35,8 @@ export const MODELS = {
   // ── Kashyyyk, Geonosis ──
   // a BARC speeder, the clones' bike
   barc: { uid: '56ff0b8c18744664aa121db5d2039eb3', as: 'the BARC speeders', metres: 4.6, along: 'z', yaw: 0, tris: 12000, tex: 1024 },
-  dwarfspider: { uid: '4f5d54b98b744c439a14fd897b946a4e', as: 'the dwarf spider droids', metres: 2, yaw: 0, tris: 10000, tex: 512 },
-  homingspider: { uid: '5b714fe3a31f42e197ec0ed0e4d27c56', as: 'the homing spider droids', metres: 7.3, yaw: 0, tris: 10000, tex: 512 },
+  dwarfspider: { uid: '4f5d54b98b744c439a14fd897b946a4e', machine: true, as: 'the dwarf spider droids', metres: 2, yaw: 0, tris: 10000, tex: 512 },
+  homingspider: { uid: '5b714fe3a31f42e197ec0ed0e4d27c56', machine: true, as: 'the homing spider droids', metres: 7.3, yaw: 0, tris: 10000, tex: 512 },
   // a Phase I clone trooper, as on Kamino and Geonosis
   clonephase1: { uid: 'c64ea97f5e854920b092d1d29763c935', as: 'the Phase I clone troopers', metres: 1.83, yaw: 0, tris: 8000, tex: 512 },
   // ── Mandalore ──

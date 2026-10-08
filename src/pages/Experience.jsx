@@ -10,7 +10,7 @@ import RouteLine from '../components/RouteLine';
 import Motif from '../components/Motifs';
 import CompanyLogo from '../components/CompanyLogo';
 import AwsLogoAnimated from '../components/AwsLogoAnimated';
-import { Chips, Reveal, Saber, useFitTitle, Waypoint } from '../components/ui';
+import { Bullets, Chips, Reveal, Saber, useFitTitle, Waypoint } from '../components/ui';
 import '../styles/lazy/experience.css';
 
 const OpeningCrawl = lazy(() => import('../components/experience/OpeningCrawl'));
@@ -35,7 +35,7 @@ function TrackSwitch({ className = '', align = 'center' }) {
   return (
     <div className={`flex flex-wrap items-center gap-2 ${justify} ${className}`}>
       <span className="text-sm text-muted">Highlight</span>
-      <div className={`seg ${justify}`} role="group" aria-label="Highlight roles">
+      <div className={`seg ${justify}`} data-tour="experience-track" role="group" aria-label="Highlight roles">
         {TRACKS.map((t) => (
           <button key={t.id} type="button" aria-pressed={track === t.id} onClick={() => setTrack(t.id)}>
             {t.label}
@@ -43,19 +43,6 @@ function TrackSwitch({ className = '', align = 'center' }) {
         ))}
       </div>
     </div>
-  );
-}
-
-function Bullets({ items }) {
-  return (
-    <ul className="grid gap-3.5">
-      {items.map((b, i) => (
-        <Reveal as="li" key={i} delay={i * 50} className="grid grid-cols-[1.25rem_1fr] gap-2 leading-relaxed text-body">
-          <span className="mt-[0.7em] h-[2px] w-3 rounded-full" style={{ background: 'var(--accent)' }} aria-hidden="true" />
-          <span>{b}</span>
-        </Reveal>
-      ))}
-    </ul>
   );
 }
 
@@ -84,7 +71,7 @@ function CurrentRole({ role, onCrawl }) {
           <div className="hero-logo-card">
             {role.id === 'aws' ? <AwsLogoAnimated className="block h-auto w-full" /> : <CompanyLogo id={role.id} className="h-full w-full border-0" />}
           </div>
-          <PageTitle id={`${role.id}-title`} className="display hero-in mt-8 text-[clamp(2.4rem,1.3rem+4.4vw,5.2rem)]" style={{ '--d': '120ms' }}>
+          <PageTitle id={`${role.id}-title`} data-tour="experience-roles" className="display hero-in mt-8 text-[clamp(2.4rem,1.3rem+4.4vw,5.2rem)]" style={{ '--d': '120ms' }}>
             {role.company}
           </PageTitle>
           <p className="stretch-semi hero-in mt-4 max-w-3xl text-[clamp(1.2rem,1rem+0.8vw,1.65rem)] font-semibold leading-snug text-ink" style={{ '--d': '200ms' }}>
@@ -93,7 +80,7 @@ function CurrentRole({ role, onCrawl }) {
           <dl className="hero-in mt-8 grid w-full max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-card border border-line sm:grid-cols-4" style={{ '--d': '280ms', background: 'var(--border)' }}>
             {facts.map(([k, v]) => (
               <div key={k} className="bg-surface px-4 py-3">
-                <dt className="text-xs text-muted">{k}</dt>
+                <dt className="label">{k}</dt>
                 <dd className="mt-1 text-sm font-semibold text-ink">{v}</dd>
               </div>
             ))}
@@ -118,7 +105,7 @@ function CurrentRole({ role, onCrawl }) {
           </div>
           <div>
             <Motif name={role.motif} />
-            <p className="mt-4 text-sm text-muted">Every earlier role follows below. The site takes on each company’s colors as you reach it.</p>
+            <p className="mt-4 text-sm text-muted">Every earlier role follows below. The site takes on each company’s colours as you reach it.</p>
           </div>
         </div>
       </div>
@@ -158,14 +145,14 @@ function Chapter({ role, episode, last }) {
             <dl className="mt-7 grid max-w-md grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-5">
               {facts.map(([k, v]) => (
                 <div key={k}>
-                  <dt className="text-xs text-muted">{k}</dt>
+                  <dt className="label">{k}</dt>
                   <dd className="mt-0.5 text-sm font-semibold text-ink">{v}</dd>
                 </div>
               ))}
             </dl>
           </div>
           <div className="lg:pt-10">
-            <p className="lead max-w-2xl !text-[clamp(1.125rem,1rem+0.5vw,1.35rem)] text-ink">{role.summary}</p>
+            <p className="lead lead-lg max-w-2xl text-ink">{role.summary}</p>
             <div className="mt-8">
               <Bullets items={role.bullets} />
             </div>
@@ -272,7 +259,7 @@ export default function Experience() {
 
         <Dundies />
 
-        <section className="shell relative z-10 pb-24 pt-20" aria-labelledby="glance-title">
+        <section className="shell section-last relative z-10 pt-20" aria-labelledby="glance-title">
           <div className="relative">
             <Waypoint top="0.4rem" />
             <h2 id="glance-title" className="title">

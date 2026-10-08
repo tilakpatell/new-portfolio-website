@@ -188,10 +188,14 @@ export const SITE = {
     span([-77.7, -139.8], [-150, -270], 18, 24, 6),
     span([0, 0], [200, -290], 30, 24, 6),
     span([-150, -270], [-430, -250], 24, 36, 6),
-    // the statues along the Processional Way
+    // the statues along the Processional Way (the Jedi of old, the audit
+    // lane's model, its pedestal's top a little over the deck; a column
+    // under each down to the city, which the model hasn't)
     ...[60, 100, 140, 180, 220].flatMap((z) => [
-      { kind: 'statue', at: [-14, z], yaw: Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200 } },
-      { kind: 'statue', at: [14, z], yaw: -Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200 } },
+      { kind: 'statue', at: [-17, z], yaw: Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200, style: 'jedi' } },
+      { kind: 'statue', at: [17, z], yaw: -Math.PI / 2, abs: true, y: -6, opts: { h: 26, drop: 200, style: 'jedi' } },
+      { kind: 'plinth', at: [-17, z], abs: true, y: -6, solid: false, opts: { w: 11, round: true, depth: 200 } },
+      { kind: 'plinth', at: [17, z], abs: true, y: -6, solid: false, opts: { w: 11, round: true, depth: 200 } },
     ]),
     // Anakin's airspeeder, by your ship, and the platform's clutter: cargo
     // waiting for a lift, a lamp over it

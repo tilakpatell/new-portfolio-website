@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RiCheckLine, RiFileCopyLine, RiGitPullRequestLine, RiArrowRightUpLine } from 'react-icons/ri';
+import { RiGitPullRequestLine, RiArrowRightUpLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
-import { Waypoint } from '../components/ui';
+import { CopyButton, Waypoint } from '../components/ui';
 import { CHANGES, KINDS, KIND_ORDER, fmtDay, isBefore, pad, prUrl, revertPhrase, tally } from '../data/changes';
 import { useDocumentTitle } from '../lib/hooks';
 import { AurebeshLine } from '../components/Wordmark';
@@ -11,29 +11,10 @@ import { AurebeshLine } from '../components/Wordmark';
 // first, with a picture of it and the words to say to take it out again.
 // Plain and light: no 3D, every image lazy with its size set.
 
-function Copy({ text, label = 'Copy' }) {
-  const [done, setDone] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setDone(true);
-      setTimeout(() => setDone(false), 2000);
-    } catch {
-      /* no clipboard: the words are on the page to select */
-    }
-  };
-  return (
-    <button type="button" className="btn btn-ghost btn-sm" onClick={copy}>
-      {done ? <RiCheckLine className="h-4 w-4 text-accent" aria-hidden="true" /> : <RiFileCopyLine className="h-4 w-4" aria-hidden="true" />}
-      <span aria-live="polite">{done ? 'Copied' : label}</span>
-    </button>
-  );
-}
-
 function Entry({ c }) {
   const gone = Boolean(c.reverted);
   return (
-    <article className={`card relative p-6 sm:p-8 ${gone ? 'opacity-70' : ''}`} aria-labelledby={`change-${c.id}`}>
+    <article className="card relative p-6 sm:p-8" aria-labelledby={`change-${c.id}`}>
       <Waypoint top="2rem" />
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted">
         <span className="mono text-ink">#{pad(c.id)}</span>
@@ -54,7 +35,7 @@ function Entry({ c }) {
       {c.shots.length > 0 && (
         <div className={`mt-5 grid gap-4 ${c.shots.length > 1 ? 'sm:grid-cols-2' : 'max-w-2xl'}`}>
           {[...c.shots].sort((a, b) => Number(isBefore(b)) - Number(isBefore(a))).map((s) => (
-            <figure key={s} className="overflow-hidden rounded-panel border border-line bg-deep">
+            <figure key={s} className={`overflow-hidden rounded-panel border border-line bg-deep ${gone ? 'opacity-60 grayscale' : ''}`}>
               <img src={s} alt={`${c.title}: the page ${isBefore(s) ? 'before' : 'after'} the change`} width={960} height={600} loading="lazy" decoding="async" className="block aspect-[16/10] w-full object-cover" />
               {c.shots.some(isBefore) && <figcaption className="label border-t border-line px-3 py-1.5">{isBefore(s) ? 'Before' : 'After'}</figcaption>}
             </figure>
@@ -63,7 +44,7 @@ function Entry({ c }) {
       )}
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm">
         {c.routes.map((r) => (
-          <Link key={r} to={r} className="inline-flex items-center gap-1 text-ink hover:underline hover:decoration-[color:var(--accent)] hover:underline-offset-4">
+          <Link key={r} to={r} className="link-hover inline-flex items-center gap-1 text-ink">
             See it: <span className="mono">{r}</span>
             <RiArrowRightUpLine className="h-4 w-4 text-muted" aria-hidden="true" />
           </Link>
@@ -78,7 +59,7 @@ function Entry({ c }) {
         <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-5 text-sm">
           <span className="text-muted">Don’t like it? Tell a Claude session:</span>
           <code className="mono rounded-chip border border-line-strong bg-[var(--bg-deep)] px-2.5 py-1 text-ink">{revertPhrase(c)}</code>
-          <Copy text={revertPhrase(c)} />
+          <CopyButton text={revertPhrase(c)} />
         </div>
       )}
     </article>
@@ -92,22 +73,22 @@ export default function Changes() {
   const [withGone, setWithGone] = useState(false);
   const t = useMemo(() => tally(), []);
   const list = CHANGES.filter((c) => (kind === 'all' || c.kind === kind) && (withGone || !c.reverted));
-  const chip = (on) => `chip cursor-pointer ${on ? 'chip-accent' : ''}`;
+  const chip = (on) => `chip ${on ? 'chip-accent' : ''}`;
 
   return (
     <div ref={page} className="relative">
       <RouteLine containerRef={page} />
-      <header className="shell relative z-10 pb-12 pt-[calc(var(--nav-h)+40px)] md:pt-[calc(var(--nav-h)+72px)]">
+      <header className="shell relative z-10 pb-12 pt-[var(--page-top)]">
         <div className="relative">
           <Waypoint top="0.6rem" />
           <p className="eyebrow">The ship’s log</p>
-          <h1 className="display mt-6 text-[clamp(3rem,1.6rem+6vw,6.2rem)]">What’s changed.</h1>
+          <h1 className="display display-1 mt-6" data-tour="changes-log">What’s changed.</h1>
           <p className="mt-3 text-sm text-muted">
             <AurebeshLine>What’s changed.</AurebeshLine>
           </p>
-          <p className="lead mt-6 max-w-2xl">
-            This site improves itself. On a schedule, a Claude session makes one thing better (faster, sharper, or new), checks nothing broke, merges it and logs it here with a picture. Every change
-            is one pull request, so any can come out again: tell a Claude session <span className="mono text-ink">Revert change 12</span> and it does.
+          <p className="lead mt-6 max-w-2xl">This site improves itself: on a schedule, a Claude session makes one thing better, checks nothing broke, and logs it here with a picture.</p>
+          <p className="mt-4 max-w-2xl leading-relaxed text-body">
+            Every change is one pull request, so any can come out again: tell a Claude session <span className="mono text-ink">Revert change 12</span> and it does.
           </p>
           <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-4 text-sm">
             <div>
@@ -136,7 +117,7 @@ export default function Changes() {
         </div>
       </header>
 
-      <section className="shell relative z-10 pb-28" aria-label="The changes">
+      <section className="shell section-last relative z-10" aria-label="The changes">
         <div className="relative mb-6 flex flex-wrap items-center gap-2" role="group" aria-label="Show">
           <Waypoint top="0.4rem" />
           <button type="button" className={chip(kind === 'all')} aria-pressed={kind === 'all'} onClick={() => setKind('all')}>

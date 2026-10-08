@@ -17,6 +17,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { createStage } from '../../office/stage3d';
 import { houseOn } from '../../../lib/three/house';
 import { loadPeople } from '../../office/people';
+import { turn } from '../../../lib/three/gait';
 import { loadPbr, loadTexture } from '../../../lib/hdri';
 import { ABQ } from '../wardrobe';
 import { ROWS } from './rules';
@@ -336,14 +337,16 @@ export async function createCasa3D(canvas, { onLost, onSlow } = {}) {
 
   // ── load the dressing and the people ──
   const [people, wall, lino, cloud] = await Promise.all([
-    loadPeople([ABQ.hector, ABQ.nurse, ABQ.gus]),
+    loadPeople([ABQ.hector, ABQ.nurse, ABQ.gus], null, { clips: true }),
     loadPbr('casa-wall').catch(() => null),
     loadPbr('casa-floor').catch(() => null),
     loadTexture('cloud.webp').catch(() => null),
   ]);
   const hector = people.person(ABQ.hector, { pose: 'wheelchair', seat: SEAT, idle: true });
-  const nurse = people.person(ABQ.nurse, { pose: 'stand', idle: true });
-  const gus = people.person(ABQ.gus, { pose: 'stand' });
+  // (the two on their feet stand on clips: a calm idle, a walk paced to the
+  // floor, office/people.js; Gus breathes and looks about like anyone)
+  const nurse = people.person(ABQ.nurse, { pose: 'stand', idle: true, anim: true });
+  const gus = people.person(ABQ.gus, { pose: 'stand', idle: true, anim: true });
   if (!hector || !nurse || !gus) {
     people.dispose();
     env.dispose();
@@ -409,6 +412,7 @@ export async function createCasa3D(canvas, { onLost, onSlow } = {}) {
     nurse.group.rotation.y = yawTo(NURSE, HECTOR);
     nurse.walk(false);
     gus.group.visible = false;
+    gus.group.rotation.y = yawTo(DOOR, GUS); // (in at the door, facing into the room)
     gus.walk(false);
     gus.reach('right', null);
     hector.group.visible = true;
@@ -422,13 +426,18 @@ export async function createCasa3D(canvas, { onLost, onSlow } = {}) {
   };
   reset();
 
-  // walk a figure from a to b over [t0, t1] of `t`, facing where they go
-  const stroll = (p, a, b, t, t0, t1) => {
+  // walk a figure from a to b over [t0, t1] of `t`, easing off and easing
+  // to a stop (its feet paced to it, on clips), turning to where they go
+  // and, once there, to `face` (a yaw), by time rather than at once
+  let frameDt = 1 / 60;
+  const faceTo = (p, want, rate = 6) => (p.group.rotation.y = turn(p.group.rotation.y, want, frameDt, rate));
+  const stroll = (p, a, b, t, t0, t1, face = null) => {
     const k = clamp01((t - t0) / (t1 - t0));
-    p.group.position.lerpVectors(a, b, k);
+    p.group.position.lerpVectors(a, b, ease(k));
     p.group.position.y = p.bob();
     p.walk(k > 0 && k < 1);
-    if (k > 0 && k < 1) p.group.rotation.y = yawTo(a, b);
+    if (k > 0 && k < 1) faceTo(p, yawTo(a, b), 8);
+    else if (k >= 1 && face != null) faceTo(p, face);
     return k;
   };
 
@@ -505,6 +514,7 @@ export async function createCasa3D(canvas, { onLost, onSlow } = {}) {
   function render(s, ms = 16) {
     if (stage.lost) return;
     const dt = Math.min(0.05, ms / 1000);
+    frameDt = dt;
     clock += dt;
     if (s.phase !== phase) {
       if ((s.phase === 'rows' || s.phase === 'letters') && (phase === 'after' || phase === 'boom' || phase === 'bell' || phase === 'gus' || phase === null)) reset();
@@ -537,7 +547,15 @@ export async function createCasa3D(canvas, { onLost, onSlow } = {}) {
     if (glare > 1.4) glare = -1;
     if (glare === 0 || (glare > 0 && glare < dt * 1.5)) hector.gesture('shake');
     hector.look(glare >= 0 ? camera.position : s.phase === 'gus' || s.phase === 'bell' ? gus.headAt(v) : board.getWorldPosition(v));
-    // his finger on the bell when he rings
+    // his finger on the bell when he rings; the nurse's eyes go to him, and
+    // in the finale Gus's go down to the bell, and on the second ring he knows
+    if (tap === 0) {
+      if (nurse.group.visible && playing) nurse.glance(hector.headAt(w2), 0.7);
+      if (s.phase === 'bell' && gus.group.visible) {
+        gus.glance(bellTop, 1.4);
+        if ((s.rings ?? 0) >= 2) gus.play('alert', { layer: 'upper' });
+      }
+    }
     tap = tap >= 0 ? tap + dt : -1;
     hector.reach('right', tap >= 0 && tap < 0.32 ? w2.copy(bellTop).add(v.set(0, 0.07, 0)) : null);
     if (tap > 0.6) tap = -1;
@@ -556,8 +574,8 @@ export async function createCasa3D(canvas, { onLost, onSlow } = {}) {
       }
       gus.group.visible = true;
       const gIn = DOOR.clone().add(w2.set(0.25, 0, 0.15));
-      const k = stroll(gus, gIn, GUS, s.phase === 'gus' ? since : 9, 0, 2.4);
-      if (k >= 1) gus.group.rotation.y = yawTo(GUS, HECTOR);
+      // (in, and turned to face the old man once he's there)
+      stroll(gus, gIn, GUS, s.phase === 'gus' ? since : 9, 0, 2.4, yawTo(GUS, HECTOR));
       gus.look(hector.headAt(v));
     } else if (s.phase === 'boom') {
       boom(blown ? since : 0);
