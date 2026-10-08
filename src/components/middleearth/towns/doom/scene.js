@@ -839,7 +839,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked in each zone outdoors when it's first shown ──
   const grounds = [
-    groundTown({ renderer, scene, terrain: plainLand, outdoors: world, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x2a1a14, clip: true }),
+    groundTown({ place: 'doom', renderer, scene, terrain: plainLand, outdoors: world, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x2a1a14, clip: true }),
   ];
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);

@@ -1035,7 +1035,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the town is first drawn ──
-  const floorLight = groundTown({ renderer, scene, terrain, outdoors: hill, sun, height: ground, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WORLD.radius + 10, shade: 0x2a2620 });
+  const floorLight = groundTown({ place: 'weathertop', renderer, scene, terrain, outdoors: hill, sun, height: ground, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WORLD.radius + 10, shade: 0x2a2620 });
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);
 

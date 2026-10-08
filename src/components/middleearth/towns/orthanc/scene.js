@@ -1036,7 +1036,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked in each zone outdoors when it's first shown ──
   const grounds = [
-    groundTown({ renderer, scene, terrain: isenLand, outdoors: zones.tower, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x2a2a26, clip: true }),
+    groundTown({ place: 'orthanc-tower', renderer, scene, terrain: isenLand, outdoors: zones.tower, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x2a2a26, clip: true }),
   ];
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);

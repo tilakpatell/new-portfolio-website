@@ -3121,6 +3121,7 @@ export async function create(canvas, ctx) {
         height: world.heightAt,
         tier: small ? 'low' : 'mid',
         auto: true,
+        cache: { world: 'galaxy', place: site.id }, // (kept for the next visit: lib/three/bakeCache)
       });
       // (the grass in the floor's shadows: read where each blade stands)
       if (grass) floorShadow(grass.material, lit.mask);

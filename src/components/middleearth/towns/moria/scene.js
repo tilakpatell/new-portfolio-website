@@ -858,7 +858,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked in each zone outdoors when it's first shown ──
   const grounds = [
-    groundTown({ renderer, scene, terrain: gateLand, outdoors: zones.gate, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2026, clip: true }),
+    groundTown({ place: 'moria-gate', renderer, scene, terrain: gateLand, outdoors: zones.gate, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2026, clip: true }),
   ];
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);

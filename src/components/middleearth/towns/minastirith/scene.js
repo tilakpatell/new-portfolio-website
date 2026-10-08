@@ -1142,7 +1142,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the town is first drawn ──
-  const ground = groundTown({ renderer, scene, terrain: [land, ...streets], outdoors: zones.city, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WALL_R[0] + 25, shade: 0x34302a });
+  const ground = groundTown({ place: 'minastirith', renderer, scene, terrain: [land, ...streets], outdoors: zones.city, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WALL_R[0] + 25, shade: 0x34302a });
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);
 

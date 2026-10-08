@@ -887,8 +887,8 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked in each zone outdoors when it's first shown ──
   const grounds = [
-    groundTown({ renderer, scene, terrain: valeLand, outdoors: zones.vale, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2420, clip: true }),
-    groundTown({ renderer, scene, terrain: passLand, outdoors: zones.lair, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2420, clip: true }),
+    groundTown({ place: 'cirithungol-vale', renderer, scene, terrain: valeLand, outdoors: zones.vale, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2420, clip: true }),
+    groundTown({ place: 'cirithungol-lair', renderer, scene, terrain: passLand, outdoors: zones.lair, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2420, clip: true }),
   ];
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);

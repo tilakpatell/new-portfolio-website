@@ -778,7 +778,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the town is first drawn ──
-  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height, people: movers, skip: [sky.dome, ghosts.group, puddles.mesh], tier, radius: WORLD.radius + 10, shade: 0x262a30, matcap: [rimTrees] });
+  const ground = groundTown({ place: 'bree', renderer, scene, terrain, outdoors, sun, height, people: movers, skip: [sky.dome, ghosts.group, puddles.mesh], tier, radius: WORLD.radius + 10, shade: 0x262a30, matcap: [rimTrees] });
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);
 
