@@ -48,8 +48,9 @@ import { PLACES } from '../battleLines';
 import { systemById } from '../systems';
 import { readBuildWire, writeBuild } from '../../universe/shipyard/build';
 import * as THREE from 'three';
-import { disposeTree, precompile, precompilePasses, singlePass } from '../../../lib/three/renderer';
-import { nextFrame as breathe, prepareScene } from '../../../lib/three/gpuWork';
+import { disposeTree, precompile, precompilePasses, singlePass, texturesUnder } from '../../../lib/three/renderer';
+import { nextFrame as breathe, prepareScene, uploadSlices } from '../../../lib/three/gpuWork';
+import { cellSizeOf, createThingCells, drawRange } from './thingCells';
 import { STEPS } from '../../../lib/three/pace';
 import { settle as settleWithin } from '../../../lib/settle';
 import { dropTransmission } from '../../../lib/three/glass';
@@ -78,7 +79,7 @@ import { createSkyFog } from './skyfog';
 import { createWater } from './water';
 import { floatPose } from './floats';
 import { createWeather } from './weather';
-import { createKit } from './kit';
+import { createKit, paintKit } from './kit';
 import { createHouse } from '../../../lib/three/house';
 import { adoptLater, exposureOf, groundPieces, lookOf } from './look';
 import { surfaceTuning, siteCode } from './tune';
@@ -325,6 +326,8 @@ export async function create(canvas, ctx) {
   // kit's plants and cloth lean
   const windAngle = site.ground.wind ?? 0;
   const wind = createWind({ strength: site.grass?.wind ?? 0.4, angle: windAngle });
+  // (its pictures painted ahead, a frame between each: kit.js's paintKit)
+  await paintKit(31);
   const kit = createKit({ seed: 31, wind: { angle: windAngle } });
   // (the scatter casts its shadow only near you: near.js)
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
@@ -332,10 +335,33 @@ export async function create(canvas, ctx) {
   // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
   const floaters = [];
   for (const t of site.things_all) {
-    const put = placer.put(t);
+    // (on the grid of cells: readied a cell at a time, thingCells.js)
+    const put = placer.put({ ...t, chunk: true });
     if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
   }
   for (const { s, items } of scattered) placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
+  // The things put about the world on a grid of cells (thingCells.js): each
+  // cell's loads in (a model's light copy too) and its pictures sent in the
+  // prepare, before the world is shown (or, if the prepare was cut short, a
+  // cell at a time ahead of you as you walk), and a cell out past the fog
+  // not drawn. Nothing is hidden until the floor's light is baked, so the
+  // bake (and a kept one's key) sees every thing wherever you are.
+  const cellSize = cellSizeOf(site.reach);
+  const thingCells = createThingCells({
+    entries: placer.chunked,
+    size: cellSize,
+    ...drawRange(scene.fog.density, cellSize, site.reach),
+    hold: () => !site.noGround && !lit?.stats.baked,
+    prepareCell: async (objects) => {
+      // (its pictures, a slice at a time, on the tiers whose prepare sends
+      // them; its models' shaders were made as they came in, warm(), and the
+      // rest are the prepare's, or the frame guard's)
+      if (disposed || !objects.length || tier === 'low') return;
+      const textures = new Set();
+      for (const o of objects) for (const t of texturesUnder(o)) textures.add(t);
+      await uploadSlices(renderer, [...textures], { alive: () => !disposed });
+    },
+  });
   // the grass round you (lib/three/grass, Bruno's: a triangle a blade, one
   // draw, the patch going with you), standing on the ground map and its
   // colour, where the site grows it
@@ -2966,6 +2992,10 @@ export async function create(canvas, ctx) {
     state.aim = Math.max(0, state.aim - dt / 2.5);
     life.update(dt, state.phase === 'walk' ? me().st : null, state.phase === 'walk' || state.phase === 'ride' ? me().st : camera.position);
     placer.update(t, dt, me().st);
+    {
+      const st = me().st;
+      thingCells.update(st, { x: Math.sin(st.yaw ?? 0), z: Math.cos(st.yaw ?? 0) });
+    }
     if (!reduced) kit.tick(dt);
     grass?.update(me().st);
     wind.update(dt);
@@ -3092,6 +3122,10 @@ export async function create(canvas, ctx) {
         get ground() {
           return lit;
         },
+        // (the things' cells: how many, readied, drawn: thingCells.js)
+        get chunks() {
+          return thingCells.stats();
+        },
       },
     };
 
@@ -3163,6 +3197,10 @@ export async function create(canvas, ctx) {
     const on = () => alive() && !disposed;
     onProgress?.(0, 'load');
     await settleWithin(ready, 20000);
+    if (!on()) return;
+    // the things' cells, each one's loads in and its pictures sent (before
+    // the bake: it sees them all)
+    await thingCells.prepareAll((f) => onProgress?.(f, 'pictures'), on);
     if (!on()) return;
     if (lit && !lit.stats.started) {
       onProgress?.(0, 'bake');
@@ -3486,6 +3524,7 @@ export async function create(canvas, ctx) {
       markMat.map.dispose();
       markMat.dispose();
       life.dispose();
+      thingCells.dispose();
       placer.dispose();
       grass?.dispose();
       wind.dispose();
