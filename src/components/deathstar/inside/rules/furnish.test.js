@@ -64,6 +64,8 @@ describe('furnish', () => {
     for (const { room, thing: s } of all('solids')) {
       const { y0, y1 } = s.box ?? s.circle;
       expect(y1, room.id).toBeGreaterThan(y0);
+      if (s.circle) expect(s.circle.r, room.id).toBeGreaterThan(0.01);
+      else for (const [lo, hi] of [['x0', 'x1'], ['z0', 'z1']]) expect(s.box[hi] - s.box[lo], `${room.id}: ${JSON.stringify(s.box)}`).toBeGreaterThan(0.01);
     }
   });
 
@@ -76,6 +78,11 @@ describe('furnish', () => {
 
   it('keeps every prop’s footprint inside its room', () => {
     for (const { room, thing: p } of all('props')) for (const c of corners(p)) expect(holds(room, c), `${room.id}: ${p.kind} at ${p.x.toFixed(2)}, ${p.z.toFixed(2)}`).toBe(true);
+  });
+
+  it('keeps every prop and solid under its room’s ceiling', () => {
+    for (const { room, thing: p } of all('props')) expect(p.y + p.h, `${room.id}: ${p.kind}`).toBeLessThanOrEqual(room.y + room.h + HAIR);
+    for (const { room, thing: s } of all('solids')) expect((s.box ?? s.circle).y1, room.id).toBeLessThanOrEqual(room.y + room.h + HAIR);
   });
 
   it('keeps every solid inside its room', () => {
@@ -258,6 +265,16 @@ describe('what each room is furnished with', () => {
   it('hovers the IT-O only in the cell someone is held in', () => {
     const itos = ds1.rooms.filter(({ made }) => made.props.some((p) => p.kind === 'ito')).map(({ room }) => room.id);
     expect(itos).toEqual(['cell2187']);
+  });
+
+  it('lines a bare wall with consoles shoulder to shoulder, corner to corner', () => {
+    // fire control’s east wall has no door: its banks run unbroken along it
+    const room = ds1.layout.rooms.get('firecontrol');
+    const banks = ds1.made.get('firecontrol').props.filter((p) => p.kind === 'button-bank' && Math.abs(p.yaw + Math.PI / 2) < 1e-6).sort((a, b) => a.z - b.z);
+    // (a console short of a corner leaves less than its own width and the corner’s clearance)
+    expect(banks[0].z - banks[0].w / 2 - room.box.z0).toBeLessThan(2);
+    expect(room.box.z1 - (banks.at(-1).z + banks.at(-1).w / 2)).toBeLessThan(2);
+    for (let k = 1; k < banks.length; k++) expect(banks[k].z - banks[k].w / 2 - (banks[k - 1].z + banks[k - 1].w / 2)).toBeLessThan(0.1);
   });
 
   it('parks TIEs in rows facing the launch doors, hung clear of the deck', () => {
