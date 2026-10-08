@@ -1,12 +1,13 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RiCloseLine, RiGroupLine } from 'react-icons/ri';
 import { NAME_MAX } from './names';
-import { AWAY, UNIVERSE, placeName } from './where';
+import { AWAY, UNIVERSE, isFlight, placeName } from './where';
 import { rosterWhere } from './rosterWhere';
 import { crewById } from '../crews';
 import { paintById } from '../paint';
 import Face from '../Faces';
+import { factionText, relation } from './relations';
 import './online.css';
 
 // Multiplayer, in the bottom-left corner (of the universe map, or, once
@@ -19,14 +20,34 @@ import './online.css';
 // decline or end an alliance, or block them, and whether live pointers
 // show on pages. What's happening (who came online or came to your page,
 // alliances, who shot down whom) shows in a short feed above the button.
-// useOnline.js keeps the state.
+// useOnline.js keeps the state. A click on a pilot's tag over the map (a
+// `tp:pilot` event, pilots.js) opens the list on them. Each row says whose
+// side the pilot flies for (relations.js: their oath and rank, how the law
+// sees them) with their level, coloured by how they stand to you; your own
+// row opens your flight record (Record.jsx, loaded only then: it brings the
+// wallet).
+//
+// A pilot flying where you're flying, when you have a ship, has “Fly to”:
+// the autopilot takes you to them (online.follow, which the page acts on).
+// “Go” to another place you fly in follows them there, and the ship sets
+// off after them once it's in.
 
 const TONE = { join: 'join', ally: 'ally', kill: 'kill', info: 'info' };
 const WHERE_MS = 2000; // how often the roster looks again at where everyone on the map is
+const Record = lazy(() => import('../Record'));
 
 export default function Online({ online, ship = null, floating = false }) {
   const [open, setOpen] = useState(false);
+  const [focus, setFocus] = useState(null); // the pilot whose tag was clicked
   const { on, room, feed } = online;
+  useEffect(() => {
+    const show = (e) => {
+      setFocus(e.detail?.id ?? null);
+      setOpen(true);
+    };
+    window.addEventListener('tp:pilot', show);
+    return () => window.removeEventListener('tp:pilot', show);
+  }, []);
   const count = on ? room.peers.filter((p) => !p.blocked).length + 1 : 0;
   const here = room.peers.filter((p) => !p.blocked && p.where === online.where).length;
   const asks = room.peers.filter((p) => p.ally === 'got' && !p.blocked).length;
@@ -49,7 +70,7 @@ export default function Online({ online, ship = null, floating = false }) {
           </p>
         ))}
       </div>
-      {open && (on ? <Roster online={online} ship={ship} floating={floating} onClose={close} /> : <Join online={online} onClose={close} />)}
+      {open && (on ? <Roster online={online} ship={ship} floating={floating} focus={focus} onClose={close} /> : <Join online={online} onClose={close} />)}
       <button type="button" className="universe-online-pill" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <span className="universe-online-dot" data-status={on ? room.status : 'off'} aria-hidden="true" />
         <RiGroupLine className="h-4 w-4" aria-hidden="true" />
@@ -115,9 +136,10 @@ function Join({ online, onClose }) {
   );
 }
 
-function Roster({ online, ship, floating, onClose }) {
+function Roster({ online, ship, floating, focus, onClose }) {
   const { room } = online;
   const [renaming, setRenaming] = useState(false);
+  const [record, setRecord] = useState(false); // your flight record, in the list's place
   const [name, setName] = useState(online.name ?? '');
   const id = useId();
   const others = room.peers;
@@ -135,6 +157,14 @@ function Roster({ online, ship, floating, onClose }) {
     setName(online.rename(name));
     setRenaming(false);
   };
+  if (record)
+    return (
+      <Card title="Online" onClose={onClose}>
+        <Suspense fallback={<p className="universe-online-text">Opening the record…</p>}>
+          <Record open onClose={() => setRecord(false)} />
+        </Suspense>
+      </Card>
+    );
   return (
     <Card title="Online" onClose={onClose}>
       {renaming ? (
@@ -151,11 +181,17 @@ function Roster({ online, ship, floating, onClose }) {
         <div className="universe-online-me">
           <span>
             You’re <b>{online.name}</b>
+            {room.self?.level ? ` · Lv ${room.self.level}` : ''}
             {room.self?.kills ? ` · ${room.self.kills} ${room.self.kills === 1 ? 'kill' : 'kills'}` : ''}
           </span>
-          <button type="button" className="universe-online-link" onClick={() => setRenaming(true)}>
-            Rename
-          </button>
+          <span className="universe-online-mine">
+            <button type="button" className="universe-online-link" onClick={() => setRecord(true)}>
+              Record
+            </button>
+            <button type="button" className="universe-online-link" onClick={() => setRenaming(true)}>
+              Rename
+            </button>
+          </span>
         </div>
       )}
       {room.status === 'failed' ? (
@@ -172,7 +208,7 @@ function Roster({ online, ship, floating, onClose }) {
       ) : (
         <ul className="universe-online-list">
           {others.map((p) => (
-            <Pilot key={p.id} p={p} online={online} />
+            <Pilot key={p.id} p={p} online={online} ship={ship} mine={room.self?.factions ?? null} focus={focus === p.id} />
           ))}
         </ul>
       )}
@@ -189,8 +225,12 @@ function Roster({ online, ship, floating, onClose }) {
   );
 }
 
-function Pilot({ p, online }) {
+function Pilot({ p, online, ship, mine, focus }) {
   const navigate = useNavigate();
+  const row = useRef(null);
+  useEffect(() => {
+    if (focus) row.current?.scrollIntoView({ block: 'nearest' });
+  }, [focus]);
   const crew = crewById(p.kind);
   const who = crew ? Object.keys(crew.speakers)[0] : null;
   const coat = paintById(p.loadout?.paint);
@@ -199,13 +239,25 @@ function Pilot({ p, online }) {
   // (out on the map, the region they're in says more than “here” does, the map being as wide as it is)
   const pose = p.where === UNIVERSE ? (online.client?.poseOf?.(p.id) ?? null) : null;
   const at = !p.where ? '' : pose ? ` · ${rosterWhere(p.where, pose)}` : elsewhere ? ` · ${placeName(p.where)}` : ' · here';
+  // (flying here too, in a ship: somewhere the autopilot can take you, on
+  // the universe map or in the same galaxy system)
+  const flyTo = Boolean(ship && p.kind && p.where && !elsewhere && isFlight(online.where));
+  const goTo = () => {
+    if (isFlight(p.where)) online.follow(p.id); // (and after them, once the ship's in there)
+    navigate(p.where === UNIVERSE ? '/universe' : p.where);
+  };
+  const sides = factionText(p.factions);
   return (
-    <li className="universe-online-pilot" data-ally={p.ally === 'ally' || undefined} data-blocked={p.blocked || undefined}>
+    <li ref={row} className="universe-online-pilot" data-focus={focus || undefined} data-ally={p.ally === 'ally' || undefined} data-blocked={p.blocked || undefined} data-relation={p.blocked ? undefined : relation({ ally: p.ally === 'ally', factions: mine }, p)}>
       {who ? <Face who={who} className="universe-online-face" /> : <span className="universe-online-face" aria-hidden="true" />}
       <span className="universe-online-who">
-        <b>{p.blocked ? 'Blocked pilot' : p.name}</b>
+        <span className="universe-online-name">
+          <b>{p.blocked ? 'Blocked pilot' : p.name}</b>
+          {!p.blocked && <em className="universe-online-lv">Lv {p.level ?? 1}</em>}
+        </span>
         <span>
           {p.blocked ? 'hidden' : crew ? `${crew.ship.replace(/^(The|An) /, '')}${coat.hull ? ` in ${coat.name}` : ''}` : 'no ship yet'}
+          {!p.blocked && sides ? ` · ${sides}` : ''}
           {!p.blocked && at}
           {!p.blocked && p.kills ? ` · ${p.kills} ${p.kills === 1 ? 'kill' : 'kills'}` : ''}
           {p.ally === 'ally' && !p.blocked ? ' · ally' : ''}
@@ -219,8 +271,13 @@ function Pilot({ p, online }) {
         ) : (
           <>
             {elsewhere && p.where !== AWAY && (
-              <button type="button" className="universe-online-act" onClick={() => navigate(p.where === UNIVERSE ? '/universe' : p.where)} aria-label={`Go to ${placeName(p.where)}, where ${p.name} is`}>
+              <button type="button" className="universe-online-act" onClick={goTo} aria-label={`Go to ${placeName(p.where)}, where ${p.name} is`}>
                 Go
+              </button>
+            )}
+            {flyTo && (
+              <button type="button" className="universe-online-act" onClick={() => online.follow(p.id)} aria-label={`Fly to ${p.name}`}>
+                Fly to
               </button>
             )}
             {p.ally === 'none' && (

@@ -135,6 +135,7 @@ export default function GalaxySurface() {
       if (next !== oathKept) {
         setOathKept(next);
         local.set(SIDE_KEY, next);
+        window.dispatchEvent(new Event('tp:oath')); // (your hello says it: useOnline.js)
         unlock('gcwSworn');
         if (currentOath(next).turncoat) unlock('gcwTurncoat');
       }

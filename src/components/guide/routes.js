@@ -31,6 +31,7 @@ export const GUIDES = {
   '/albuquerque': { title: 'Albuquerque', nudge: true },
   '/c-137': { title: 'Dimension C-137', nudge: true },
   '/c-137/citadel': { title: 'The Citadel of Ricks', nudge: true },
+  '/c-137/planet': { title: 'A Rick and Morty planet' },
   '/dot-matrix': { title: 'Dot Matrix', nudge: true },
   '/dot-matrix/64': { title: 'Super Mario 64 on the N64', nudge: true },
   '/dot-matrix/minecraft': { title: 'Minecraft', nudge: true },
@@ -39,7 +40,8 @@ export const GUIDES = {
 };
 
 // The deeper paths share their section's guide: every role is Experience,
-// every place on the map the universe.
+// every place on the map the universe, every Rick and Morty planet landed on
+// from the map one of its own (not C-137's, and not its street's basics).
 const RULES = [
   [/^\/(universe(\/.*)?)?$/, '/universe'],
   [/^\/experience\/[^/]+$/, '/experience'],
@@ -48,6 +50,7 @@ const RULES = [
   [/^\/galaxy\/[^/]+\/mission$/, '/galaxy/mission'],
   [/^\/galaxy\/[^/]+$/, '/galaxy'],
   [/^\/middle-earth\/[^/]+$/, '/middle-earth/place'],
+  [/^\/c-137\/(?!citadel$)[a-z0-9-]+$/, '/c-137/planet'],
 ];
 
 export const guideKeyFor = (pathname) => (GUIDES[pathname] ? pathname : (RULES.find(([re]) => re.test(pathname))?.[1] ?? null));

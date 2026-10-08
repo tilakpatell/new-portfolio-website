@@ -6,14 +6,65 @@
 //
 // findPath(from, to, { colliders, walls, radius, bounds, step }) → [{x, z}…] | null
 // amblePaths() → [{ who, from, to, face, path, wait, every, offset }]
+// isFree(x, z, radius, colliders, walls) → whether a body that wide stands clear there
+// freeNear(p, { radius, colliders, walls }) → { x, z }: p if a body stands clear
+//   there, else the nearest spot that's clear (rings out to a metre and a half)
+// seatYaw(seat) → the way someone sat at it faces (a figure's yaw: 0 along +z,
+//   toward +x), the chair as ./set.js turns it
+// seatWay(seat, { colliders, walls, radius }) → { yaw, stand, exit }: where the
+//   feet are as they stand up out of the chair (between it and the desk, the
+//   hips over the seat as the clip sits: ../people.js SIT_BACK), and the steps
+//   out round the chair, to whichever side's clear, to where a way can start
+//   behind it (or beside it, against a wall; through it, as a last resort)
+// colliders(who): every collider but their own chair (what they're getting out of)
 
 import { pushOut } from '../../middleearth/towns/walker';
 import { AMBLES, COLLIDERS, SEATS, WALLS } from './layout';
 
-const isFree = (x, z, radius, colliders, walls) => {
+export const isFree = (x, z, radius, colliders = COLLIDERS, walls = WALLS) => {
+  // (a point at a circle's very middle isn't pushed anywhere: it's in it all the same)
+  for (const c of colliders) if (c.kind === 'circle' && Math.hypot(x - c.x, z - c.z) < c.r + radius - 1e-6) return false;
   const [px, pz] = pushOut(x, z, radius, colliders, walls);
   return Math.hypot(px - x, pz - z) < 1e-4;
 };
+
+export function freeNear(p, { radius = 0.26, colliders = COLLIDERS, walls = WALLS } = {}) {
+  if (isFree(p.x, p.z, radius, colliders, walls)) return { x: p.x, z: p.z };
+  for (let r = 0.05; r <= 1.5 + 1e-9; r += 0.05)
+    for (let k = 0; k < 24; k++) {
+      const a = (k / 24) * Math.PI * 2;
+      const x = p.x + Math.sin(a) * r;
+      const z = p.z + Math.cos(a) * r;
+      if (isFree(x, z, radius, colliders, walls)) return { x, z };
+    }
+  return { x: p.x, z: p.z };
+}
+
+export const seatYaw = (seat) => seat.turn + Math.PI + ((seat.i % 5) - 2) * 0.08;
+export const collidersFor = (seat) => COLLIDERS.filter((c) => !(c.kind === 'circle' && Math.hypot(c.x - seat.chair.x, c.z - seat.chair.z) < 0.01));
+const STAND = 0.2; // metres ahead of the chair's middle, the feet of someone getting up out of it
+const SIDE = 0.62; // metres to the chair's side, stepping round it
+const BEHIND = 0.5; // metres behind its middle, the way starts
+
+export function seatWay(seat, { colliders = collidersFor(seat), walls = WALLS, radius = 0.24 } = {}) {
+  const yaw = seatYaw(seat);
+  const f = { x: Math.sin(yaw), z: Math.cos(yaw) };
+  const l = { x: Math.cos(yaw), z: -Math.sin(yaw) }; // (the figure's left)
+  const c = seat.chair;
+  const at = (side, ahead) => ({ x: c.x + l.x * side + f.x * ahead, z: c.z + l.z * side + f.z * ahead });
+  const stand = at(0, STAND);
+  const ok = (p) => isFree(p.x, p.z, radius, colliders, walls);
+  let beside = null;
+  for (const side of [SIDE, -SIDE]) {
+    const a = at(side, 0.1);
+    const b = at(side, -BEHIND);
+    if (ok(a) && ok(b) && straight(a, b, radius * 0.9, colliders, walls)) return { yaw, stand, exit: [a, b] };
+    if (ok(a)) beside ??= a;
+  }
+  // (no room behind: out to the side, and off from there; else back through the chair)
+  if (beside) return { yaw, stand, exit: [beside] };
+  return { yaw, stand, exit: [at(0, -BEHIND)] };
+}
 
 // can a body go straight from a to b? (sampled every few centimetres)
 function straight(a, b, radius, colliders, walls) {

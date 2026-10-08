@@ -22,6 +22,21 @@ import ModelCredits from '../ModelCredits';
 // sees it change size and moves the planets into the space it leaves.
 // `onNav` opens the nav map (NavMap.jsx): everywhere, and how to get there.
 
+// A moon of the Rick and Morty sector's own card: a place from the show,
+// and going in takes you into it (not the crew's card, whose portal gun toy
+// and way to C-137 aren't the way into this one).
+function MoonCard({ moon }) {
+  return (
+    <li className="fun-card">
+      <div className="flex flex-1 flex-col p-5 sm:p-6">
+        <h3 className="stretch-semi text-xl font-semibold text-ink">{moon.label}</h3>
+        <p className="mt-1 text-sm text-muted">Rick and Morty</p>
+        <p className="mt-3 text-[0.95rem] leading-relaxed text-body">A planet from the show. Land on it and you’re straight into it, on foot as Morty, with something to do there; its own portal brings you back out to space.</p>
+      </div>
+    </li>
+  );
+}
+
 function Ships({ ship, onShip }) {
   return (
     <div className="universe-ships" data-tour="ships" role="group" aria-label="Pick a ship">
@@ -277,8 +292,8 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
       </aside>
     );
   }
-  // (a moon of the Rick and Morty system shows its crew's card: it's a place from that show)
-  const Card = CARDS[universe.id] ?? STATION_CARDS[universe.id] ?? (universe.kind === 'moon' ? CARDS[universe.crew] : null) ?? null;
+  // (a moon of the Rick and Morty sector has a card of its own: MoonCard)
+  const Card = universe.kind === 'moon' ? MoonCard : (CARDS[universe.id] ?? STATION_CARDS[universe.id] ?? null);
   const core = universe.kind === 'core';
   const before = byId(prev(universe.id));
   const after = byId(next(universe.id));
@@ -311,7 +326,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
       </button>
       {Card && (
         <ul className="universe-card mt-4" key={universe.id}>
-          <Card />
+          <Card moon={universe} />
         </ul>
       )}
       <Exits onClassic={onClassic} />
