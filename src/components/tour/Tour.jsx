@@ -100,7 +100,7 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
     stop: start?.stop,
     dir: 1,
   }));
-  const [ch, setCh] = useState(() => (crosses ? null : { c: 0, stops: resolveSteps(list, has, kind === 'brief') }));
+  const [shownCh, setCh] = useState(() => (crosses ? null : { c: 0, stops: resolveSteps(list, has, kind === 'brief') }));
   const [s, setS] = useState(0);
   const [late, setLate] = useState(false); // a `wait` stop's target not there yet
   const [box, setBox] = useState(null); // the lit box, or null for a card in the middle
@@ -115,6 +115,9 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
   // what the effects below read live: they start on a new chapter or stop, not on a new callback
   const live = useRef({});
 
+  // (the chapter shown is the one asked for: the frame between Next and the
+  // wait for its page mustn't show the last chapter's stop under the new count)
+  const ch = shownCh && (!crosses || shownCh.c === want.c) ? shownCh : null;
   const chapter = crosses ? chapters[want.c] : null;
   const stops = ch?.stops ?? [];
   const waiting = !ch || late;
