@@ -44,7 +44,7 @@ export const MODELS = {
   nkdead3: tree('DeadTree_3', 'the dead trees', 13.3),
   // bushes
   nkbush: q('Bush_Common', 'the bushes', 1.6, { sway: 'shrub' }),
-  nkbushflowers: q('Bush_Common_Flowers', 'the flowering bushes', 1.6, { sway: 'shrub' }),
+  nkbushflowers: q('Bush_Common_Flowers', 'the flowering bushes', 1.6, { sway: 'shrub', tris: 700 }),
   nkbushlarge: q('Bush_Large', 'the big bushes', 3.3, { sway: 'shrub' }),
   nkbushlong: q('Bush_Long_1', 'the tall bushes', 2.4, { sway: 'shrub' }),
   // ferns, plants and clover

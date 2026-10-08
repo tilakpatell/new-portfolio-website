@@ -315,15 +315,15 @@ export const SITES = {
       // Clones, flowering bushes, clover, round stones in the grass, cherry
       // trees round Varykino's lawn, and stepping stones from the landing
       // up toward Theed
-      { kind: 'nkflowers2', n: 140, within: [36, 460], clumps: [22, 9], scale: [0.7, 1.2], solid: false, clear: -4, tint: ['#ffffff', '#d4e6b0'] },
-      { kind: 'nkflowers3', n: 120, within: [36, 460], clumps: [18, 8], scale: [0.7, 1.2], solid: false, clear: -4, tint: ['#ffffff', '#d4e6b0'] },
-      { kind: 'nkflower7', n: 160, within: [30, 400], clumps: [26, 6], scale: [0.6, 1.1], solid: false, clear: -4, tint: ['#ffffff', '#d4e6b0'] },
-      { kind: 'nkbushflowers', n: 70, within: [40, 520], scale: [0.7, 1.3], solid: false, tint: ['#f2f8e0', '#c4d89c'] },
-      { kind: 'nkclover1', n: 160, within: [30, 420], clumps: [30, 5], scale: [0.6, 1.1], solid: false, clear: -4, tint: ['#ffffff', '#d0e0b0'] },
-      { kind: 'nkrock1', n: 40, within: [40, 520], scale: [0.4, 0.9] },
+      { kind: 'nkflowers2', n: 90, within: [32, 240], clumps: [14, 8], scale: [0.45, 0.8], solid: false, clear: -4, tint: ['#ffffff', '#d4e6b0'] },
+      { kind: 'nkflowers3', n: 80, within: [32, 260], clumps: [12, 7], scale: [0.35, 0.65], solid: false, clear: -4, tint: ['#ffffff', '#d4e6b0'] },
+      { kind: 'nkflower7', n: 120, within: [30, 240], clumps: [18, 5], scale: [0.4, 0.75], solid: false, clear: -4, tint: ['#ffffff', '#d4e6b0'] },
+      { kind: 'nkbushflowers', n: 50, within: [40, 400], scale: [0.7, 1.3], solid: false, tint: ['#f2f8e0', '#c4d89c'] },
+      { kind: 'nkclover1', n: 120, within: [30, 260], clumps: [20, 4], scale: [0.4, 0.75], solid: false, clear: -4, tint: ['#ffffff', '#d0e0b0'] },
+      { kind: 'nkrock1', n: 40, within: [40, 520], scale: [0.4, 0.9], tint: ['#b8b4a0', '#d8d4c0'] },
       { kind: 'nkcherry1', n: 5, within: [28, 46], around: [372, 330], scale: [0.6, 0.8], clear: 0, solid: 0.6 },
       { kind: 'nkcherry4', n: 4, within: [28, 46], around: [372, 330], scale: [0.6, 0.8], clear: 0, solid: 0.6 },
-      { kind: 'nkpath1', path: [[-21, 27], [-62, 74], [-100, 118], [-140, 170], [-170, 208], [-192, 246]], spacing: 1.5, jitter: 0.25, scale: [0.9, 1.15], solid: false, flat: 0.85 },
+      { kind: 'nkpath1', path: [[-21, 27], [-62, 74], [-100, 118], [-140, 170], [-170, 208], [-192, 246]], spacing: 1.5, jitter: 0.25, scale: [0.9, 1.15], solid: false, flat: 0.85, tint: ['#a8a490', '#c8c4b0'] },
     ],
     life: [
       { kind: 'gungan', n: 10, at: [250, -235], spread: 40, roam: 14, speed: 1.1, name: 'Gungan soldier', says: ['Wesa ready to do are-sa part!', 'Da shield up! Da droids no getting in here!', 'Boomas! Get da boomas!', 'Yousa stay behind da shield, okeyday?'] },

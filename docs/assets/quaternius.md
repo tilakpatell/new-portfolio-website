@@ -13,6 +13,17 @@ node scripts/assets-fetch.mjs ual2 city
 
 Then import only what a world uses into `public/models/…`, compressed (meshopt, WebP), as the other import scripts do (`scripts/sketchfab-import.mjs`, `scripts/kenney.mjs`).
 
+## In the site
+
+**The nature megakit** (`naturemega`) is on the galaxy's green worlds (Naboo, Endor, Dagobah, Yavin 4, Sorgan, Lothal, Scarif): 42 of its models, cut down to 5.7 MB in all. The design is `docs/superpowers/specs/2026-10-08-nature-kit-star-wars-design.md`.
+
+- `src/components/galaxy/surface/catalog/nature.js` is the one table: each kind's pack file, how it moves in the wind, whether it throws a shadow, a triangle cut, its pictures' size, and the colours of the leaves and grass.
+- `node scripts/quaternius-nature.mjs [kind …]` writes them to `public/models/galaxy/surface/<kind>.glb` (and the trees' `.lod1.glb`), from a clone of tilakverse-assets in the temp folder or `lab/assets/naturemega`. The pack's vertex colours are masks for its own shader, not colours: the script turns them into a grey that darkens what's low down, gives the leaves the pack's grey cut-outs and a colour, and never blends a cut-out.
+- `src/components/galaxy/surface/nature.js` makes each one over as it loads: materials shared by name across the page (so a world's ten plant kinds send `Leaves` and `Flowers` once), lit as leaves, in one wind, and the low plants, flowers and grass pushed aside as you walk through.
+- A world's `scatter` entries use them like any kind, with four more options (`layout.js`): `tint: [a, b]` (a colour pair, an instance's colour between them, on the leaves and grass only), `around: [x, z]` (the ring round a place), `clumps: [count, spread]` (in patches), and `path: [[x, z], …]` with `spacing` and `jitter` (stepping stones along a path).
+
+To bring in another of the pack's models: add its row to `catalog/nature.js`, run the script for that kind, and add its name to the `public/cc0/README.md` line.
+
 ## What's in each
 
 | pack | archive | what | best for |

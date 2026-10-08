@@ -603,7 +603,7 @@ export function copyInstances(mesh, src, which, colours = null) {
 }
 
 // a scatter's colours (r, g, b an item) on an instanced part whose material
-// takes a tint (nature.js: leaves, plants, grass; never bark or petals);
+// takes a tint (nature.js: leaves, plants, grass, stone; never bark or petals);
 // gives back the colours it kept, or null
 export function tintInstances(mesh, tints) {
   if (!tints || !isTintable(Array.isArray(mesh.material) ? mesh.material[0] : mesh.material)) return null;

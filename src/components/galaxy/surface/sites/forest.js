@@ -306,8 +306,8 @@ export const SITES = {
       { kind: 'nkredcap', n: 120, within: [8, 240], clumps: [26, 3], scale: [0.5, 1.1], solid: false, clear: -12 },
       { kind: 'nkoyster', n: 60, within: [10, 260], clumps: [20, 2.5], scale: [0.5, 0.9], solid: false, clear: -10 },
       { kind: 'nkclover1', n: 150, within: [6, 220], clumps: [30, 4], scale: [0.6, 1.1], solid: false, clear: -12, tint: ['#a4ac84', '#c8d0a4'] },
-      { kind: 'nkpebble', n: 200, within: [6, 260], scale: [0.6, 1.4], solid: false, clear: -12 },
-      { kind: 'nkpath2', path: [[34, -6], [80, -6], [120, -12], [180, -30], [219, -35]], spacing: 1.6, jitter: 0.3, scale: [0.9, 1.2], solid: false },
+      { kind: 'nkpebble', n: 200, within: [6, 260], scale: [0.6, 1.4], solid: false, clear: -12, tint: ['#6e7462', '#8a907a'] },
+      { kind: 'nkpath2', path: [[34, -6], [80, -6], [120, -12], [180, -30], [219, -35]], spacing: 1.6, jitter: 0.3, scale: [0.9, 1.2], solid: false, tint: ['#6e7462', '#8a907a'] },
     ],
     life: [
       { kind: 'ewok', n: 7, at: V, spread: 6, roam: 6, speed: 0.9, name: 'Ewok', says: ['Yub nub!', 'Ee chee wa maa!', '(It dances round the fire, banging a stick on a helmet.)', '(It looks at you, then at the fire, then back at you. Thoughtfully.)', 'Gunda!'] },
@@ -772,10 +772,10 @@ export const SITES = {
       { kind: 'rock', n: 40, within: [10, 460], scale: [0.6, 2], opts: { color: '#5a5a48', sharp: 0.3 } },
       // Quaternius's nature kit (catalog/nature.js): dead and twisted trees
       // standing in the bog, red caps and toadstools, low plants
-      { kind: 'nkdead1', n: 30, within: [40, 520], scale: [0.8, 1.3], solid: 0.5 },
-      { kind: 'nkdead3', n: 30, within: [40, 520], scale: [0.8, 1.2], solid: 0.5 },
-      { kind: 'nktwisted3', n: 16, within: [60, 520], scale: [0.7, 1], solid: 0.8, tint: ['#7c8a6a', '#9aa480'] },
-      { kind: 'nkredcap', n: 150, within: [6, 380], clumps: [36, 3], scale: [0.5, 1.2], solid: false, clear: -8 },
+      { kind: 'nkdead1', n: 22, within: [40, 520], scale: [0.8, 1.3], solid: 0.5 },
+      { kind: 'nkdead3', n: 22, within: [40, 520], scale: [0.8, 1.2], solid: 0.5 },
+      { kind: 'nktwisted3', n: 12, within: [60, 520], scale: [0.7, 1], solid: 0.8, tint: ['#7c8a6a', '#9aa480'] },
+      { kind: 'nkredcap', n: 110, within: [6, 380], clumps: [36, 3], scale: [0.5, 1.2], solid: false, clear: -8 },
       { kind: 'nkmushroom', n: 100, within: [6, 380], clumps: [26, 2], scale: [0.6, 1.4], solid: false, clear: -8 },
       { kind: 'nkplant3', n: 120, within: [6, 400], scale: [0.7, 1.4], solid: false, clear: -8, tint: ['#8a9670', '#aab890'] },
     ],

@@ -72,6 +72,10 @@ describe('the nature kit at run time', () => {
     expect(isTintable(grass)).toBe(true);
     expect(isTintable(bark)).toBe(false);
     expect(isTintable(flowers)).toBe(false);
+    // (and stone: a path's stones the colour of its world's rock)
+    const rocks = file(mesh('PathRocks'));
+    natureLook(rocks, {});
+    expect(isTintable(rocks.scene.children[0].material)).toBe(true);
     // (the grass by its own numbers: short, stiff at the root, quick at the tips)
     expect(grass.userData.wind.uWindHeight.value).toBe(WIND.grass.height);
     expect(WIND.grass.height).toBeLessThan(WIND.shrub.height);

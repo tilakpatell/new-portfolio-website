@@ -12,7 +12,9 @@
 //   - in one wind, the page's (NATURE: one clock, one way it blows), a tree's
 //     leaves and its branches together, by the numbers its family moves by;
 //   - pushed aside: the low plants, the flowers and the grass lean away from
-//     you as you walk through them, and spring back (pushShader).
+//     you as you walk through them, and spring back (pushShader);
+//   - tintable (a scatter's colour pair, placer.js): the leaves, plants,
+//     grass and stone, never the bark or the petals.
 // natureTick(kit, you) each frame (the placer's update) gives the page's
 // wind the world's clock and way, and the push where you stand. The clock
 // is the kit's, so under reduced motion (no kit.tick) it all stands still.
@@ -36,7 +38,7 @@ const familyOf = (name) =>
   name === 'Grass' ? 'grass' : name === 'Leaves' ? 'plant' : name === 'Flowers' ? 'flowers' : name.startsWith('Leaves_') || name.startsWith('Leaf_') ? 'leaves' : name.startsWith('Bark_') ? 'bark' : 'stone';
 const LEAFY = new Set(['leaves', 'plant', 'flowers', 'grass']);
 const PUSHED = new Set(['plant', 'flowers', 'grass']);
-const TINTED = new Set(['leaves', 'plant', 'grass']);
+const TINTED = new Set(['leaves', 'plant', 'grass', 'stone']);
 const MOVES = { plant: 'shrub', flowers: 'shrub', grass: 'grass' };
 
 const shared = new Map(); // `${name}|${vertexColors}` → the first material of that name
