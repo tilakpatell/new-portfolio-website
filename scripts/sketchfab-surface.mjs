@@ -37,6 +37,13 @@
 //   pick    a RegExp on its parts' names: only those are kept (one piece of
 //           a kitbash: a tower out of a whole town), stood up on its own
 //
+// --ultra (after the group): the ultra level's cut of each kind instead,
+// <kind>.ultra.glb beside the plain one, from the same download: up to four
+// times its tris and 8192 maps (or its entry's `ultra: { tris, tex }`;
+// scripts/ultra/cut.mjs), under 24 MB. A download with fewer triangles than
+// that keeps all of them. The credit already covers it; add the entry's
+// `ultra` line the run prints.
+//
 // The downloads stay out of the repo, in /tmp/sketchfab-surface/ (fetched
 // once, kept for the next run). Look at what came out on the model sheet
 // (scripts/preview/surface.html, through the dev server).
@@ -52,6 +59,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join as path } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { recolorDoc } from './recolor.mjs';
+import { checkUltra, mapsOf, takeUltra, ultraName, ultraSpec } from './ultra/cut.mjs';
 
 const ROOT = path(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path(ROOT, 'public', 'models', 'galaxy', 'surface');
@@ -115,7 +123,7 @@ async function credit(kind, uid, as) {
   };
 }
 
-async function bring(io, kind, spec) {
+async function bring(io, kind, spec, { ultra = false } = {}) {
   const src = await download(kind, spec.uid);
   const doc = await io.read(src);
   doc.setLogger(new Logger(Logger.Verbosity.ERROR));
@@ -142,7 +150,11 @@ async function bring(io, kind, spec) {
     textureCompress({ encoder: sharp, targetFormat: 'webp', slots: /normal|occlusion|metallicRoughness|specular|sheen|clearcoat|transmission/, resize: [spec.maps ?? spec.tex / 2, spec.maps ?? spec.tex / 2], quality: 80 }),
     meshopt({ encoder: MeshoptEncoder, level: 'high' }),
   );
-  const out = path(OUT, `${kind}.glb`);
+  const out = path(OUT, ultra ? ultraName(kind) : `${kind}.glb`);
+  if (ultra) {
+    const problems = checkUltra({ tris: spec.tris, after: triangles(doc), bytes: (await io.writeBinary(doc)).byteLength });
+    if (problems.length) throw new Error(`${kind} (ultra): ${problems.join('; ')}`);
+  }
   await io.write(out, doc);
   const draws = root.listMeshes().reduce((n, m) => n + m.listPrimitives().length, 0);
   const bytes = (await stat(out)).size;
@@ -152,10 +164,13 @@ async function bring(io, kind, spec) {
     `${kind.padEnd(14)} ${Math.round(before)} → ${Math.round(triangles(doc))} triangles, ${draws} draws, ${root.listTextures().length} maps, ${(bytes / 1024).toFixed(0)} KB;` +
       ` ${w.toFixed(1)} wide × ${h.toFixed(1)} tall × ${l.toFixed(1)} long (m)${clips.length ? `; clips: ${clips.join(', ')}` : ''}`,
   );
+  // (the maps as they are in the file: the source's, where it had less than 8192)
+  if (ultra) console.log(`${''.padEnd(14)} catalogue: ultra: { tris: ${Math.round(triangles(doc))}, tex: ${await mapsOf(doc)} }`);
 }
 
 async function main() {
-  const [group, ...only] = process.argv.slice(2);
+  const { ultra, args } = takeUltra(process.argv.slice(2));
+  const [group, ...only] = args;
   if (!group) throw new Error('which group? (node scripts/sketchfab-surface.mjs <group> [kind …])');
   const { MODELS } = await import(pathToFileURL(path(CATALOG, `${group}.js`)).href);
   for (const k of only) if (!MODELS[k]) throw new Error(`no ${k} in catalog/${group}.js`);
@@ -173,6 +188,10 @@ async function main() {
   // keeps what it brought in; SKIP_DONE=1 leaves a model that's already in)
   for (const kind of only.length ? only : Object.keys(MODELS)) {
     const spec = MODELS[kind];
+    if (ultra) {
+      await bring(io, kind, ultraSpec(spec), { ultra });
+      continue;
+    }
     if (!(process.env.SKIP_DONE && existsSync(path(OUT, `${kind}.glb`)))) await bring(io, kind, spec);
     credits[`surface-${kind}`] = await credit(kind, spec.uid, spec.as);
     const sorted = Object.fromEntries(Object.keys(credits).sort().map((k) => [k, credits[k]]));
