@@ -22,6 +22,9 @@
 //     floorAt(room, x, z, off?) → y | null   the highest floor there; null is a void (a shaft, a chasm,
 //       space). A floor may carry a `tag`; one whose tag is in the Set `off` isn’t there (a bridge
 //       drawn back).
+//   offTags(layout, flags) → Set<tag>   the `off` to give floorAt: every tag on the layout’s floors that
+//       no flag of that name has switched on. Everyone who asks floorAt (or reads a room’s floors)
+//       while a story runs passes this, so a bridge exists only while its flag is set, the same for all.
 //   validateStation(station) → [message]   empty when the station is sound
 //
 // A room may be nested in another (`inside: parentId`), like the Falcon’s
@@ -82,6 +85,10 @@ function floorsOf(r) {
   if (!r.floors) return [{ ...boxOf(r), y: r.y, ...(r.round ? { circle: { x: r.x, z: r.z, r: r.w / 2 } } : {}) }];
   return r.floors.map((f) => ({ x0: r.x + f.x - f.w / 2, x1: r.x + f.x + f.w / 2, z0: r.z + f.z - f.d / 2, z1: r.z + f.z + f.d / 2, y: r.y + f.y, ...(f.tag ? { tag: f.tag } : {}) }));
 }
+
+// Tags that say what a floor is rather than whether it is there: no flag
+// takes these away.
+const STANDING = new Set(['water']);
 
 function inFloor(f, x, z) {
   if (x < f.x0 || x > f.x1 || z < f.z0 || z > f.z1) return false;
@@ -275,6 +282,19 @@ export function buildLayout(station) {
   }
 
   return { station, rooms, doors, walls, lifts, jumps, roomAt, floorAt };
+}
+
+// asked every step, so each layout’s switched tags are gathered once
+const switched = new WeakMap();
+
+export function offTags(layout, flags) {
+  if (!switched.has(layout)) {
+    const tags = new Set();
+    for (const room of layout.rooms.values()) for (const f of room.floors) if (f.tag && !STANDING.has(f.tag)) tags.add(f.tag);
+    switched.set(layout, [...tags]);
+  }
+  const on = flags instanceof Set ? flags : new Set(flags ?? []);
+  return new Set(switched.get(layout).filter((tag) => !on.has(tag)));
 }
 
 function overlaps(a, b) {

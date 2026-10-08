@@ -17,7 +17,7 @@
 //
 // `restricted` marks a room a disguised Rebel draws doubt in; `dark` one
 // lit only by its consoles. A floor tagged `bridge` is there only while
-// the chasm’s bridge is out (layout.floorAt’s `off`). A jump moves whoever
+// the flag `bridge` is set (layout.offTags gives floorAt its `off`). A jump moves whoever
 // uses it to a spot and never back: down the garbage chute, across the
 // chasm on the grapple.
 

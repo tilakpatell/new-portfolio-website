@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ROOM_KINDS, buildLayout, validateStation } from './layout';
+import { ROOM_KINDS, buildLayout, offTags, validateStation } from './layout';
 import { DS1 } from './stations/ds1';
 import { STATIONS } from './stations/index';
 
@@ -332,6 +332,27 @@ describe('the layout', () => {
     expect(l.floorAt('gap', 0, 0, new Set(['bridge']))).toBeNull();
     expect(l.floorAt('gap', 0, 0, new Set(['ramp']))).toBe(0);
     expect(l.floorAt('gap', -5, 0, new Set(['bridge']))).toBe(0);
+  });
+
+  it('takes a tagged floor away until a flag of its name is set, but never the water', () => {
+    const gap = room('gap', 0, 0, 12, 4, { floors: [{ x: -5, z: 0, w: 2, d: 4, y: 0 }, { x: 0, z: 0, w: 8, d: 1.6, y: 0, tag: 'bridge' }, { x: 5, z: 0, w: 2, d: 4, y: -0.9, tag: 'water' }] });
+    const l = buildLayout(station([gap]));
+    expect([...offTags(l, new Set())]).toEqual(['bridge']);
+    expect([...offTags(l)]).toEqual(['bridge']);
+    expect(l.floorAt('gap', 0, 0, offTags(l, new Set(['ramp'])))).toBeNull();
+    expect(l.floorAt('gap', 0, 0, offTags(l, new Set(['bridge'])))).toBe(0);
+    expect(l.floorAt('gap', 0, 0, offTags(l, ['bridge']))).toBe(0);
+    expect(l.floorAt('gap', 5, 0, offTags(l, new Set()))).toBe(-0.9);
+  });
+
+  it('draws the first station’s chasm bridge back until the flag bridge is set', () => {
+    const l = buildLayout(DS1);
+    const bridge = l.rooms.get('chasm').floors.find((f) => f.tag === 'bridge');
+    const [x, z] = [(bridge.x0 + bridge.x1) / 2, (bridge.z0 + bridge.z1) / 2];
+    expect(offTags(l, new Set()).has('bridge')).toBe(true);
+    expect(offTags(l, new Set()).has('water')).toBe(false);
+    expect(l.floorAt('chasm', x, z, offTags(l, new Set()))).toBeNull();
+    expect(l.floorAt('chasm', x, z, offTags(l, new Set(['bridge'])))).toBe(bridge.y);
   });
 
   it('copies the station’s jumps, and has none when it gives none', () => {
