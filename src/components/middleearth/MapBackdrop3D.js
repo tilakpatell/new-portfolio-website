@@ -14,6 +14,7 @@ import { mapFont, paintMap, paintRelief } from './mapPaint';
 import { buildDiorama } from './mapDiorama';
 import { prefersReducedMotion } from '../../lib/hooks';
 import { budget, device, pixelRatio } from '../../lib/device';
+import { guard } from '../../lib/three/frameGuard';
 import { precompile, quiet, releaseContext } from '../../lib/three/renderer';
 
 const SCALE = 10; // sheet units to one of the scene's
@@ -23,6 +24,8 @@ export { mapFont };
 
 export function createMapBackdrop(canvas, { onLost } = {}) {
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'low-power', stencil: false }));
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;

@@ -104,8 +104,8 @@ export const SITES = {
         things: [
           { kind: 'theedpalace', at: [0, 0] },
           { kind: 'plaza', at: [0, 60], opts: { w: 72, d: 48 } },
-          { kind: 'lamp', at: [-14, 40], opts: { h: 5, light: '#ffe2a8' } },
-          { kind: 'lamp', at: [14, 40], opts: { h: 5, light: '#ffe2a8' } },
+          { kind: 'lamp', at: [-14, 50], opts: { h: 5, light: '#ffe2a8' } },
+          { kind: 'lamp', at: [14, 50], opts: { h: 5, light: '#ffe2a8' } },
           { kind: 'lamp', at: [-14, 56], opts: { h: 5, light: '#ffe2a8' } },
           { kind: 'lamp', at: [14, 56], opts: { h: 5, light: '#ffe2a8' } },
         ],

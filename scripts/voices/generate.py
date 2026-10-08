@@ -36,6 +36,9 @@ import engines
 import pick
 from common import CACHE, HERE, OUT, REFS, ROOT, console, ears, ffmpeg, read, run, speakable
 
+# the judge hears takes with Whisper large-v3-turbo (judge.py): there are thousands of them
+os.environ.setdefault("VOICES_WHISPER", "openai/whisper-large-v3-turbo")
+
 TAKES = CACHE / "takes"
 ROUNDS = 2  # a line with no passing take gets another round, with twice the takes
 BANK = CACHE / "bank"

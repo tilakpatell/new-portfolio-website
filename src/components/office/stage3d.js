@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { pixelRatio } from '../../lib/device';
+import { guard } from '../../lib/three/frameGuard';
 import { precompile as compileFor, quiet } from '../../lib/three/renderer';
 
 // `antialias`: off for a scene that draws through passes of its own (its
@@ -14,6 +15,8 @@ import { precompile as compileFor, quiet } from '../../lib/three/renderer';
 // starts the steps down.
 export function createStage(canvas, { onLost, onSlow, fov = 50, antialias = true, maxRatio = 2, slowMs = 40 } = {}) {
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias, powerPreference: 'high-performance', alpha: false }));
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;

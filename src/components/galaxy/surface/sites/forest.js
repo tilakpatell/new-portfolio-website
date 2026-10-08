@@ -171,7 +171,7 @@ export const SITES = {
           rv: [['jesse', 'Yo, that’s the biggest satellite dish I ever saw.'], ['walt', 'And they guarded it with a dozen men and some walkers. Sloppy.']],
         },
         things: [
-          { kind: 'shieldgen', at: [0, -10], yaw: 0.2 },
+          { kind: 'shieldgen', at: [0, -10], yaw: 0.2, solid: { r: 22 } },
           { kind: 'pad', at: [-10, 42], opts: { r: 14, color: '#6a6c68', light: '#ffd070' } },
           { kind: 'lambda', at: [-10, 41], yaw: -0.4 },
           { kind: 'crates', at: [-30, 26] },
@@ -512,9 +512,9 @@ export const SITES = {
       { kind: 'karst', at: [320, 250], opts: { w: 28, h: 20, seed: 7 } },
       { kind: 'karst', at: [-260, 330], opts: { w: 22, h: 15, seed: 8 } },
       // the great wroshyrs, as tall as the city's tree
-      { kind: 'wroshyrgreat', at: [60, -150], yaw: 0.4, sink: 2, solid: { r: 14 } },
-      { kind: 'wroshyrgreat', at: [-300, -300], yaw: 2.1, scale: 1.1, sink: 2, solid: { r: 15 } },
-      { kind: 'wroshyrgreat', at: [330, -260], yaw: 3.6, scale: 0.9, sink: 2, solid: { r: 13 } },
+      { kind: 'wroshyrgreat', at: [60, -150], yaw: 0.4, sink: 2, solid: { r: 28 } },
+      { kind: 'wroshyrgreat', at: [-300, -300], yaw: 2.1, scale: 1.1, sink: 2, solid: { r: 31 } },
+      { kind: 'wroshyrgreat', at: [330, -260], yaw: 3.6, scale: 0.9, sink: 2, solid: { r: 25 } },
     ],
     scatter: [
       { kind: 'wroshyr', n: 110, within: [50, 640], scale: [0.7, 1.4], opts: { seed: 1, leaf: '#354832', bark: '#50554e' } },

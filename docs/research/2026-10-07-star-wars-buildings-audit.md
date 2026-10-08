@@ -251,3 +251,19 @@ All 23 were lifted and modelled on 2026-10-07 (759 credits). The kept ones are i
 |---|---|---|---|---|---|
 | the raiders' camp tent (`tent`) | built | 3/2 | tweak (unverified) | A Tusken hide cone. The raiders' camp on screen has big dark olive canvas wall tents with peaked roofs and lantern poles. The only still of it is a near-black night shot, too dark to lift a model from, so a shape and colour fix is the practical step. | In props/desert.js add sides and color opts to tent (ConeGeometry(r, h, sides ?? 9, ...); hide from color when given). In sites/outer.js give the raiders' tent opts: { r:4, h:3.6, sides:4, color:'#4b4d40' } to make a big four-sided olive canvas tent. Tatooine's tents are unchanged. |
 | the krill farmers' huts (`stilthut`) | sketchfab | 4/2 | remake (unverified) | A rectangular gabled thatched cottage on a white base slab, its walls shredded into torn polygons. Sorgan's huts are round: a plank and wicker drum under a bulbous slatted roof rising to a tall thin spire, on the ground among the ponds, not on stilts. A village still shows one whole, with only its lower drum partly hidden. | audit lane |
+
+## Tweaks applied (2026-10-08)
+
+The landmark models' 'tweak' rows, done as each row says (no Meshy calls):
+
+- Hoth: the shield generator's tint and metal detail; the DF.9 turret's paint detail; the v-150 recoloured to the film's pale cream (straight on `v150.glb`, the bases lane's lift and `recolor` updated to match).
+- Endor: the Ewok huts' tint; the shield generator without the built solids, solid r 22.
+- Kashyyyk: the great wroshyrs re-centred on their trunk's foot (`wroshyrgreat.glb` and its light copy moved by (-57, 0, -4)), their solids r 28/31/25, and the bark detail.
+- Naboo: Theed's halls' tint and the built stone and trim colours; Varykino's tint and adobe detail; the royal palace's tint, stone detail, front and back solids, and its lamps moved to z 50.
+- Mustafar: the mining facility's crane-tower, drum and back-block solids, the council door moved to the ramp's toe, the lamp and crates out of the right drum.
+- Scarif: the two bigger bunkers scaled 1.4 and 1.6.
+- Nevarro: Greef Karga's cantina a grey copy of its own (`nevcantina`); the city gate's tint and concrete detail.
+- Mandalore: Sundari's tint and concrete detail.
+- Lothal: the domed farmhouses' and the Jedi temple's tints and details.
+
+Not done yet: the docking bay's walkable built bay, the Massassi hangar's walls and plugs, the Geonosis arena's built solids and Mace's spot, and the moss-free bunker variant (it needs a new Sketchfab download); and the code-built props' tweaks.

@@ -248,6 +248,12 @@ export const PROPS = {
     return { ...PROPS.cantina(k), solids: [{ box: [1, 0.5, 9, 8.25, 0] }, { box: [-9, -1, 2, 5.5, 0] }] };
   },
 
+  // Greef Karga's cantina on Nevarro: the built cantina, under the grey copy
+  // of its model
+  nevcantina(k) {
+    return PROPS.cantina(k);
+  },
+
   // a market stall: an awning on poles over a counter
   stall(k) {
     const cloth = ['#b0552e', '#c9a04a', '#5f7a8c', '#8a4a6a'][Math.floor(k.rand() * 4)];
