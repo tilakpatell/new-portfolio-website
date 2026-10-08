@@ -83,7 +83,8 @@ export function createLook({
   let locked = false;
   let skip = false; // the next locked move is dropped
   let released = -Infinity; // when the last lock ended
-  let dragging = null; // { id, x, y, moved, button }
+  let dragging = null; // { id, x, y, sx, sy, moved }
+  let refused = false; // the browser said no: a still click is the left button, as in drag
   let attached = false;
 
   const isLocked = () => Boolean(doc && host && doc.pointerLockElement === host);
@@ -102,9 +103,15 @@ export function createLook({
     return ask({ unadjustedMovement: true })
       .catch((err) => (err?.name === 'NotSupportedError' ? ask() : Promise.reject(err)))
       .then(
-        () => true,
+        () => {
+          refused = false;
+          return true;
+        },
         // (refused: the drag goes on turning, the prompt stays; nothing thrown)
-        () => false,
+        () => {
+          refused = true;
+          return false;
+        },
       );
   }
 
@@ -175,8 +182,9 @@ export function createLook({
     if (!dragging || e.pointerId !== dragging.id) return;
     const d = dragging;
     dragging = null;
-    // (drag mode: a click that stayed put is the left button, down and up)
-    if (mode === 'drag' && !d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < TAP) {
+    // (drag mode, or a lock the browser refused: a click that stayed put is
+    // the left button, down and up)
+    if ((mode === 'drag' || refused) && !d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < TAP) {
       onButton(0, true);
       onButton(0, false);
     }

@@ -100,6 +100,22 @@ describe('createLook', () => {
     expect(w.turns[0][0]).toBeGreaterThan(0);
   });
 
+  it('after a refusal a click that stays put is the left button, so the mouse can still fire', async () => {
+    const w = world({ refuse: 'SecurityError' });
+    w.host.fire('pointerdown', mouse({ clientX: 100, clientY: 100 }));
+    await flush();
+    w.win.fire('pointerup', mouse({ clientX: 100, clientY: 100 }));
+    w.host.fire('pointerdown', mouse({ clientX: 100, clientY: 100 }));
+    await flush();
+    w.win.fire('pointerup', mouse({ clientX: 100, clientY: 100 }));
+    expect(w.buttons).toEqual([
+      [0, true],
+      [0, false],
+      [0, true],
+      [0, false],
+    ]);
+  });
+
   it('a lock that throws at once (an old browser, an iframe) is caught too', async () => {
     const w = world();
     w.host.requestPointerLock = () => {
