@@ -10,6 +10,16 @@ export const PACK = {
     '/models/galaxy/crew/leia.glb',
     '/models/galaxy/crew/obiwan.glb',
     '/models/galaxy/troops/stormtrooper.glb',
+    '/models/galaxy/crew/officer.glb',
+    '/models/galaxy/crew/palpatine.glb',
+    '/models/galaxy/crew/senateguard.glb',
+    '/models/galaxy/crew/tiepilot.glb',
+    '/models/galaxy/crew/vader.glb',
+    '/models/galaxy/surface/c3po.glb',
+    '/models/galaxy/surface/gonk.glb',
+    '/models/galaxy/surface/mousedroid.glb',
+    '/models/galaxy/surface/r2d2.glb',
+    '/models/galaxy/surface/r5.glb',
   ], // single files
   globs: ['/games/meshy/clips-*.glb', '/models/galaxy/troops/clip-*.glb'], // folders: `*` within a folder, `**` any depth
 };
