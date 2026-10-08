@@ -10,6 +10,8 @@ import * as THREE from 'three';
 import { box, part } from '../../galaxy/surface/kit';
 import { buildQuinjet, canopyGeometry, coniferGeometry } from '../../avengers/compound/models';
 import { loadPerson, person } from '../../avengers/world/people';
+import { centredClips, rigOf } from '../../avengers/world/borrow';
+import { createLook } from '../../avengers/world/castBody';
 import { faceStep } from './face';
 import { AVENGERS_MODELS } from '../../avengers/people/models';
 import { sharpen } from '../../../lib/three/textures';
@@ -147,10 +149,13 @@ export const PROPS = {
 
   // one of the team, at their real height, idling (Thor, the Hulk, Natasha,
   // the Iron Man armour): each from its own moment of its idle, and turned
-  // to you as you come up (people.js's faceStep; the armour stands as it is)
+  // to you as you come up (face.js's faceStep), their head on you too
+  // (castBody's createLook; the armour stands as it is). The idles are
+  // borrow.js's centred ones: Thor's and Natasha's stand a metre off their
+  // spot, so turning them swung them round in an arc.
   async hero(k, { who = 'thor' } = {}) {
     const template = await loadPerson(AVENGERS_MODELS[who]);
-    const p = person(template);
+    const p = person({ ...template, clips: centredClips(template) });
     const idle = p.actions.idle?.getClip().duration ?? 0;
     p.play('idle', { speed: 0.9, from: idle ? Math.random() * idle : 0 });
     p.root.userData.shared = true; // (its geometry and textures are the loader's cache's)
@@ -159,12 +164,20 @@ export const PROPS = {
     turn.add(p.root);
     object.add(turn);
     const face = {};
+    const alive = who !== 'ironman';
+    const rig = alive ? rigOf(p.model) : null;
+    const look = rig?.bones.head ? createLook(rig.bones.head, rig.bones.neck ?? null) : null;
+    const ahead = new THREE.Vector3();
     return {
       object,
       solids: [{ circle: [0, 0, who === 'hulk' ? 0.7 : 0.4] }],
       update(t, dt, ctx) {
-        if (who !== 'ironman') faceStep(face, object, turn, ctx, dt, { rate: who === 'hulk' ? 2 : 3 });
+        look?.restore();
+        const { seen } = alive ? faceStep(face, object, turn, ctx, dt, { rate: who === 'hulk' ? 2 : 3 }) : { seen: false };
         p.update(dt);
+        if (!look) return;
+        turn.getWorldDirection(ahead); // (they face +z: the way they're turned, in the world)
+        look.update(dt, Math.atan2(ahead.x, ahead.z), seen ? ctx.me : null, object);
       },
     };
   },
