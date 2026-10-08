@@ -32,3 +32,36 @@ describe('every world can be played as written', () => {
     expect(standable(site, [150, 120])).toBe(false);
   });
 });
+
+describe('Kashyyyk, as Revenge of the Sith has it', () => {
+  const site = siteOf('kashyyyk');
+  const h = heightFor(site);
+  it('has a beach in front of the landing, and shallows in front of the beach', () => {
+    for (const x of [0, 40, 80, 110]) expect(h(x, 40), `beach ${x}`).toBeGreaterThan(0.4);
+    for (const x of [20, 60, 100]) {
+      expect(h(x, 90), `shallows ${x}`).toBeLessThan(0);
+      expect(h(x, 90), `shallows ${x}`).toBeGreaterThan(-0.8);
+    }
+  });
+  it('faces its barricades to the water, in front of the cover', () => {
+    const bar = site.things_all.filter((t) => t.kind === 'barricade');
+    expect(bar.length).toBeGreaterThanOrEqual(4);
+    for (const b of bar) expect(b.at[1]).toBeGreaterThan(50);
+  });
+  it('puts the spider-droid wreck on the sand, not in the lagoon', () => {
+    const w = site.things_all.find((t) => t.kind === 'homingspider');
+    expect(standable(site, w.at)).toBe(true);
+  });
+  it('has one Gree and one Tarfful, both where you can talk to them', () => {
+    const named = site.life.filter((a) => /Gree|Tarfful/.test(a.name ?? ''));
+    expect(named.map((a) => a.name).sort()).toEqual(['Commander Gree', 'Tarfful']);
+    const tarfful = named.find((a) => a.name === 'Tarfful');
+    // (outside Kachirho's trunk: 18 m round its middle)
+    expect(Math.hypot(tarfful.at[0] + 140, tarfful.at[1] + 30)).toBeGreaterThan(22);
+  });
+  it('has no droids wandering the lagoon floor', () => {
+    for (const a of site.life.filter((l) => ['battledroid', 'superdroid', 'dwarfspider'].includes(l.kind))) {
+      for (const p of a.path ?? [a.at]) expect(standable(site, p), `${a.kind} at ${p}`).toBe(true);
+    }
+  });
+});

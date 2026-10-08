@@ -32,8 +32,8 @@ export const EXTRA = {
   },
   kashyyyk: {
     life: [
-      { kind: 'clone', id: 'gree', at: [48, 30], still: true, face: 1, name: 'Commander Gree', named: true, quest: 'beachhead', says: ['The droids are massing at the lagoon.'] },
-      { kind: 'wookiee', id: 'tarfful', at: [-130, -24], still: true, face: 2, name: 'Tarfful', named: true, quest: 'escapepod', says: ['(A long, rumbling roar.)'] },
+      { kind: 'clone', id: 'gree', at: [30, 28], still: true, face: 0.2, name: 'Commander Gree', named: true, quest: 'beachhead', says: ['The droids are massing at the lagoon.'] },
+      { kind: 'wookiee', id: 'tarfful', at: [-112, -12], still: true, face: -0.6, name: 'Tarfful', named: true, quest: 'escapepod', says: ['(A long, rumbling roar.)'] },
     ],
     quests: [
       { id: 'beachhead', name: 'The Battle of Kashyyyk', giver: 'gree', intro: [['Commander Gree', 'Separatist droids, coming across the lagoon. Hold the beach.']], steps: [{ type: 'shoot', tag: 'lagoondroids', n: 10, text: 'Hold the beach against the droids', spawn: [{ kind: 'battledroid', n: 8, at: [150, 40], spread: 18, roam: 6, hp: 1, tag: 'lagoondroids', hostile: H(45, 2.4, 7) }, { kind: 'droideka', n: 2, at: [150, 40], spread: 10, roam: 4, hp: 2, tag: 'lagoondroids', hostile: { ...H(40, 1.8, 7), shield: 3, burst: { n: 2, gap: 0.12 } } }] }], done: [['Commander Gree', 'Beach is ours. Good work.']] },
