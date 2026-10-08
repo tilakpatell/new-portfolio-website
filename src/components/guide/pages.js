@@ -529,7 +529,7 @@ export const PAGES = {
           ['Shift', 'Crouch (Z): with a jump, a backflip or a long jump; in the air, a ground pound'],
           ['Q E / drag', 'Turn the camera'],
           ['R / wheel', 'The camera’s distance'],
-          ['Esc', 'Pause'],
+          ['Esc / P', 'Pause'],
         ],
       },
     ],
@@ -545,6 +545,8 @@ export const PAGES = {
       ['Health', 'Eight wedges. A coin gives one back, and fifty coins are a life. Under water the meter is your air: come up before it runs out.'],
       ['Bob-omb Ridge', 'King Bob-omb is on the summit: get behind him, pick him up and throw him. Eight red coins make a star. Pound the Chain Chomp’s post three times.'],
       ['The look', 'On the title and the pause menu: Modern, Ultra or the N64’s own.'],
+      // (the tribute's pause screen shows this line under its keys, by this name)
+      ['A controller', 'In the tribute, the left stick runs, A jumps, B or X punches, either trigger crouches (Z), the right stick or the bumpers turn the camera, Y sets its distance and Start pauses.'],
     ],
   },
   '/dot-matrix/minecraft': {
