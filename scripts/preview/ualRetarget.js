@@ -94,11 +94,41 @@ const ORDER = [
   'RightToeBase',
 ];
 
+// The libraries' newer rig (UAL1 and UAL2 since v3, the source packs: an
+// Unreal-style mannequin, pelvis, spine_01… thigh_l) under the names the
+// map knows, joint for joint
+const UE_NAMES = {
+  pelvis: 'DEF-hips',
+  spine_01: 'DEF-spine001',
+  spine_02: 'DEF-spine002',
+  spine_03: 'DEF-spine003',
+  neck_01: 'DEF-neck',
+  Head: 'DEF-head',
+  clavicle_l: 'DEF-shoulderL',
+  upperarm_l: 'DEF-upper_armL',
+  lowerarm_l: 'DEF-forearmL',
+  hand_l: 'DEF-handL',
+  clavicle_r: 'DEF-shoulderR',
+  upperarm_r: 'DEF-upper_armR',
+  lowerarm_r: 'DEF-forearmR',
+  hand_r: 'DEF-handR',
+  thigh_l: 'DEF-thighL',
+  calf_l: 'DEF-shinL',
+  foot_l: 'DEF-footL',
+  ball_l: 'DEF-toeL',
+  thigh_r: 'DEF-thighR',
+  calf_r: 'DEF-shinR',
+  foot_r: 'DEF-footR',
+  ball_r: 'DEF-toeR',
+};
+
 export function ualRig(gltf) {
   const bones = {};
   gltf.scene.traverse((o) => {
     if (o.isBone) bones[o.name] = o;
   });
+  // (the newer rig: each joint under its older name too)
+  if (!bones['DEF-hips'] && bones.pelvis) for (const [ue, def] of Object.entries(UE_NAMES)) if (bones[ue]) bones[def] = bones[ue];
   const clips = Object.fromEntries(gltf.animations.map((c) => [c.name, c]));
   return { scene: gltf.scene, bones, clips };
 }

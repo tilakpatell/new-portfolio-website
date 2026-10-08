@@ -789,6 +789,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null,
     renderer: import.meta.env.DEV ? renderer : null,
     render,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     fx: fxEvent,
     screenOf,
     resize: stage.resize,

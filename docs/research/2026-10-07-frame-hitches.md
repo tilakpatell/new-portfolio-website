@@ -36,3 +36,22 @@ The probe's rows are phases of a journey: `load` (the address to the world's fir
 ## So
 
 The steady frame is cheap on this machine and two to five times dearer on a laptop's chip, which is mostly the pixel count (a retina window at ratio 2, multisampling and bloom). The stalls are the problem: every world does its whole warm-up, or the next thing's, inside one frame.
+
+## After the frame guard and the universe's loading screen
+
+Same journeys, same machine, with `window.__tpNoShaderChecks` (development otherwise reads back every shader's log, which waits on each link; the built site doesn't):
+
+| journey | worst frame before → after, once the world is up |
+|---|---|
+| universe map, resting / flying | 2586 / 1290 ms → 33 / 188 ms |
+| galaxy, resting / flying | 1053 / 1256 ms → 18 / 32 ms |
+| landing on Tatooine / walking / back in space | 6005 / 31 / 72 ms → 397 / 164 / 129 ms |
+| Earth, arriving | 3119 ms → 413 ms |
+| Cybertron, Roll out opened | 10149 ms → 19 ms |
+| Albuquerque, walking | 489 ms → 62 ms |
+
+Two more causes turned up on the way. A shader made but still linking, drawn, waits for its link: the guard now draws at once only a shader known to have linked (`gpuWork`'s `markLinked`). And the pace changing the runtime's sharpness resized the canvas, which on Metal waits for the graphics chip (0.8 s or more each time, twice per change): it's one resize per change now, none when nothing changed, and the runtime's pace only ever steps down.
+
+## After calibration (part 6)
+
+The galaxy, flown from its address: worst frame resting 29 ms, flying 39 ms, and 45 ms in the first seconds after it's shown (was 430–1237 ms: the pace stepping the sharpness down in answer to start-up stalls, each step a canvas resize). The sharpness is now found behind the loading screen and held as the pace's ceiling.

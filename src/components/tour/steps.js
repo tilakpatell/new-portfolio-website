@@ -31,7 +31,7 @@ const colours = {
   id: 'colours',
   at: 'colours',
   title: 'A colour for each company',
-  text: 'Every colour scheme is a company I’ve worked at. On Auto the site follows the page you’re on; pick one to keep it.',
+  text: 'Every company I’ve worked at has its colours. On Auto the site follows the page you’re on; pick one to keep it.',
 };
 const guide = {
   id: 'guide',
@@ -81,7 +81,7 @@ export const TOURS = {
       id: 'view',
       at: 'view',
       title: 'Universe or Classic',
-      text: 'Rather read than fly? Classic is the same site as plain pages. The switch is at the top of every page, both ways.',
+      text: 'Rather read than fly? The classic site is the same site, as pages. The switch is at the top of every page, both ways.',
     },
     search,
     menu,

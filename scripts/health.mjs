@@ -22,7 +22,7 @@ const LATEST = join(ROOT, 'src/data/health/latest.json');
 const HISTORY = join(ROOT, 'src/data/health/history.jsonl');
 
 // one module per metric; the order is the order of the table
-export const METRICS = ['big-files', 'boundary-breaks', 'cycles', 'lint-disables', 'todo-notes', 'hud-kit'];
+export const METRICS = ['big-files', 'boundary-breaks', 'cycles', 'lint-disables', 'todo-notes', 'kbd-styles', 'hud-kit'];
 
 const args = new Set(process.argv.slice(2).filter((a) => a.startsWith('--')));
 const valueOf = (flag) => {

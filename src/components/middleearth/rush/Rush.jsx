@@ -92,7 +92,6 @@ function Kitchen({ level, live, invite }) {
   const sim = useRef(null);
   if (!sim.current) sim.current = { s: newRush(level, { players: 1 }), me: 0, phase: 'lobby', keys: new Set(), work: new Set(), stick: { x: 0, y: 0 }, grabs: [], dash: false, padBefore: {}, count: 0, tickAt: 11, lines: 0, t: 0, touchWork: false, sess: null, shown: {}, joinedAt: 0 };
   const hudKey = useRef('');
-  const stickAt = useRef(null);
   // the loop reads the phase from sim (set at once), the page from state
   const go = useCallback((p) => {
     sim.current.phase = p;
@@ -443,29 +442,7 @@ function Kitchen({ level, live, invite }) {
   }, live && gl === 'on');
 
   // the touch controls
-  const onStick = (e) => {
-    const s = sim.current;
-    const st = stickAt.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stickAt.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-      return;
-    }
-    if (!st || st.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stickAt.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - st.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - st.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   const copy = () => {
     const link = inviteLink(level, room.code);
@@ -678,7 +655,7 @@ function Kitchen({ level, live, invite }) {
 
       {playing && touch && (
         <>
-          <Stick onStick={onStick} />
+          <Stick onMove={onStick} />
           <div className="rush-buttons">
             <button
               type="button"

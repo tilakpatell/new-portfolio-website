@@ -73,6 +73,7 @@ import {
   stepFlock,
 } from './rules';
 import { attend, castDo, releaseCast, tickCast } from '../cast3d';
+import { nextFrame as breathe } from '../../../lib/three/gpuWork';
 
 const val = (x, ...args) => (typeof x === 'function' ? x(...args) : x);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -81,7 +82,7 @@ const faceTo = (obj, face) => {
   obj.rotation.y = face;
 };
 
-export function createShireWorld(canvas, { onLost } = {}) {
+export async function createShireWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
   const fit = budget();
@@ -121,6 +122,9 @@ export function createShireWorld(canvas, { onLost } = {}) {
   outdoors.add(water.group);
   const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: water.material, stage, house });
 
+  // (a frame's breath between the build's big steps, so the loading
+  // screen keeps moving: made in one go, it held the page for seconds)
+  await breathe();
   // ── the ground ──
   // (one map of its colour, its grass and its height: the ground, the grass
   // and the light it bounces up onto everything low all read it)
@@ -145,6 +149,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const flowerGeo = val(kit.flower);
   if (flowerGeo) outdoors.add(makeFlowers(flowerGeo, mats.flower ?? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }), Math.round(1400 * many), wind));
 
+  await breathe();
   // ── the buildings ──
   const chimneys = [];
   const placed = (part, x, z, { y = null, turn = 0, sink = 0.12 } = {}) => {
@@ -203,6 +208,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   doorLamp.position.set(BAG_END.x, height(BAG_END.x, BAG_END.z + BAG_END.r) + 2, BAG_END.z + BAG_END.r + 1);
   scene.add(lampA, lampB, innLamp, doorLamp);
 
+  await breathe();
   // ── the dressing ──
   const prop = (name, x, z, turn = 0, ...args) => {
     if (!kit[name]) return null;
@@ -352,6 +358,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const spoonGlintMat = new THREE.PointsMaterial({ color: new THREE.Color(1.9, 2.1, 2.6), size: 0.7, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, map: dotTexture() });
   outdoors.add(new THREE.Points(spoonGlintGeo, spoonGlintMat));
 
+  await breathe();
   // ── the people ──
   const frodo = makePerson('frodo');
   outdoors.add(frodo.group);
@@ -385,6 +392,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     guests.push(p);
   }
 
+  await breathe();
   // ── the animals ──
   const dogs = DOG_ROUNDS.map((_, i) => {
     const d = kit.dog({ seed: i + 1 });
@@ -438,6 +446,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   hereRing.visible = false;
   outdoors.add(hereRing);
 
+  await breathe();
   // ── effects ──
   const fx = createFx(scene, { scale: many });
   fx.placeFlies([...HOLES.map((h) => ({ x: h.x, y: height(h.x, h.z + h.r), z: h.z + h.r + 1.5, r: 4 })), { x: POND.x, y: 0, z: POND.z - POND.rz - 1, r: 8 }, { x: PARTY_TREE.x, y: 0.6, z: PARTY_TREE.z + 4, r: 7 }]);
@@ -472,6 +481,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const lens = { walk: 38, wide: 50 };
   const lensBack = () => Math.tan((lens.wide * Math.PI) / 360) / Math.tan((lens.walk * Math.PI) / 360);
 
+  await breathe();
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, cam: { at: V(0, 6, 8), look: V(0, 1, 0) }, mode: 'walk', last: null, smoke: 0, dogHop: [0, 0, 0], sniff: 0 };
   const tmp = new THREE.Vector3();
@@ -881,6 +891,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     grass: import.meta.env.DEV ? grass : null, // for the QA scripts
     wind: import.meta.env.DEV ? wind : null, // for the QA scripts
     render,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     fx: fxEvent,
     aim,
     screenOf,

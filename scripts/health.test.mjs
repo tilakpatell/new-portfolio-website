@@ -9,6 +9,7 @@ import { graph, resolve, uncomment } from './health/graph.mjs';
 import lintDisables from './health/lint-disables.mjs';
 import todoNotes from './health/todo-notes.mjs';
 import hudKit from './health/hud-kit.mjs';
+import kbdStyles, { capRules } from './health/kbd-styles.mjs';
 import { check, describe as words, ratchet } from './health/ratchet.mjs';
 
 const TREE = fileURLToPath(new URL('./health/fixtures/tree/', import.meta.url));
@@ -28,6 +29,18 @@ describe('the measure, on a fixture tree', () => {
     const m = await lintDisables(ctx);
     expect(m.value).toBe(3);
     expect(m.detail).toEqual([{ file: 'src/world/small.js', n: 2 }, { file: 'scripts/tool.mjs', n: 1 }]);
+  });
+
+  it('kbd-styles counts the rules that draw a key cap outside the house one, walking the CSS itself', async () => {
+    const m = await kbdStyles(ctx);
+    expect(m.value).toBe(2);
+    expect(m.detail).toEqual([{ file: 'src/world/world.css', n: 2 }]);
+  });
+
+  it('kbd-styles reads a selector, not a word', () => {
+    expect(capRules('.a kbd { x: 1 } .b-kbd { x: 1 } .kbd-ish { x: 1 } .keyboard { x: 1 }')).toBe(2);
+    expect(capRules('/* kbd { } */ .a { x: 1 }')).toBe(0);
+    expect(capRules('@media (x) { .a > kbd, .b { x: 1 } }')).toBe(1);
   });
 
   it('todo-notes counts TODO, FIXME and HACK under src only', async () => {

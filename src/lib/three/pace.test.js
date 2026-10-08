@@ -99,4 +99,32 @@ describe('pace', () => {
     expect(changes).toEqual(STEPS.slice(1));
     expect(pace.scale).toBe(STEPS[STEPS.length - 1]);
   });
+
+  it("never climbs back with climb: false (each step's a canvas resize)", () => {
+    const pace = createPace({ climb: false, settle: 0, wait: 100 });
+    let t = 0;
+    const run = (dt, n) => {
+      let changed = null;
+      for (let i = 0; i < n; i++) {
+        t += dt;
+        const c = pace.frame(t);
+        if (c !== null) changed = c;
+      }
+      return changed;
+    };
+    run(16, 2);
+    run(60, 40);
+    const down = pace.level;
+    expect(down).toBeGreaterThan(0);
+    run(16, 2000);
+    expect(pace.level).toBe(down);
+  });
+
+  it('set() puts it at a step and never climbs past it', () => {
+    const pace = createPace({ wait: 100 });
+    pace.set(2);
+    expect(pace.level).toBe(2);
+    run(pace, 1000, 3000, 16.7);
+    expect(pace.level).toBe(2);
+  });
 });

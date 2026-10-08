@@ -2,7 +2,7 @@
 // little air around it (a short, dark room, as much as the player sets), to
 // the site's master volume; and the room's recorder.
 
-import { output } from '../../lib/audio';
+import { musicOutput } from '../../lib/audio';
 
 let bus = null;
 let wet = null;
@@ -22,7 +22,7 @@ export function mix(ac) {
   sum.gain.value = 0.85;
   dry.connect(sum);
   dry.connect(room).connect(wet).connect(sum);
-  sum.connect(output());
+  sum.connect(musicOutput());
   bus = dry;
   return bus;
 }

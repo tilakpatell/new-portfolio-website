@@ -15,11 +15,15 @@
 //   'bounty' (one tough one alone) | 'capital' (what a capital ship
 //   launches) | 'council' (out of portals), weight?, portal? }
 // A hunter kind: hunterRules.js's row (size, speed, accel, hp, fire, tail,
-//   lead, spread, trait: one of hunterRules.js's TRAITS, and for an ace
+//   lead, spread, damage, trait: one of hunterRules.js's TRAITS, or traits:
+//   several; model: the kind it's drawn as, when it has no model of its own; and for an ace
 //   `stages`: [{ below: of its hull left, …what changes (speed, fire, trait…),
 //   summon?: a faction it calls in }], hunterRules.js's `stage`); an ally: wingRules.js's row, with its bolts' colour.
 // A side's `law` is the faction whose standing with you is the law's
 //   (standing.js): its inspectors scan you, its patrols report you.
+// A side's `police` is who comes when you're wanted (wanted.js): its
+//   faction (role 'police', never sent by the director) and the kind for
+//   each of wanted.js's RESPONSE units (cop, enforcer, heavy, medic).
 // A troop: foot.js's TROOPS row by kind, with the gun it holds (gunplay.js's
 //   GUNS) or null, and the figure it's drawn as (footScene.js's troopLook: a
 //   Meshy cast kind, a model of its own, or built; the cast's own kind if none).
@@ -38,9 +42,10 @@ const STARWARS = {
   label: 'A galaxy far, far away',
   crews: ['xwing', 'falcon'],
   factions: {
-    empire: { role: 'hunt', weight: 1, kinds: [['tie', 3], ['interceptor', 2], ['tiebomber', 1]], ace: 'tieadvanced', laser: [0.5, 5.5, 0.9], size: [3, 5] },
-    // what the Star Destroyer launches: bombers and a gunboat among the TIEs
-    navy: { role: 'capital', weight: 1, kinds: [['tie', 2], ['tiebomber', 2], ['gunboat', 1]], laser: [0.5, 5.5, 0.9], size: [3, 4] },
+    empire: { role: 'hunt', weight: 1, kinds: [['tie', 3], ['interceptor', 2], ['tiebomber', 1], ['missileboat', 0.6]], ace: 'tieadvanced', laser: [0.5, 5.5, 0.9], size: [3, 5] },
+    // what the Star Destroyer launches: bombers and a gunboat among the TIEs,
+    // a missile boat, and a repair shuttle that keeps them flying
+    navy: { role: 'capital', weight: 1, kinds: [['tie', 2], ['tiebomber', 2], ['gunboat', 1], ['missileboat', 0.7], ['repairshuttle', 0.5]], laser: [0.5, 5.5, 0.9], size: [3, 4] },
     // bounty hunters: one at a time, tough and quick (director.js's bounty)
     fett: { role: 'bounty', weight: 1, kinds: [['slave1', 1]], laser: [5.5, 0.9, 0.5], size: [1, 1] },
     ig88: { role: 'bounty', weight: 1, kinds: [['ig2000', 1]], laser: [5.5, 1.2, 0.5], size: [1, 1] },
@@ -48,6 +53,8 @@ const STARWARS = {
     dengar: { role: 'bounty', weight: 1, kinds: [['punishingone', 1]], laser: [5.5, 0.8, 0.8], size: [1, 1] },
     // pirates: Weequay skiffs, after anyone with cargo
     weequay: { role: 'pirates', weight: 1, kinds: [['skiff', 1]], laser: [6.0, 3.0, 0.6], size: [2, 3] },
+    // the ISB: who comes when you're wanted (wanted.js)
+    isb: { role: 'police', weight: 1, kinds: [['isbpatrol', 2], ['isbenforcer', 1], ['isbgunboat', 1], ['isbshuttle', 1]], laser: [0.5, 5.5, 0.9], size: [2, 4] },
   },
   kinds: {
     tie: { size: 0.3, speed: 19, accel: 17, hp: 1, fire: [0.8, 1.6] },
@@ -64,8 +71,18 @@ const STARWARS = {
     houndstooth: { size: 0.62, speed: 22, accel: 18, hp: 9, fire: [0.6, 1.0], tail: 0.3, lead: 0.85, spread: 0.9, stages: [{ below: 0.5, trait: 'holdoff', fire: [0.4, 0.7] }] },
     punishingone: { size: 0.52, speed: 24, accel: 20, hp: 7, fire: [0.5, 0.9], tail: 0.5, lead: 0.9, spread: 0.85, stages: [{ below: 0.5, trait: 'flicker', speed: 27 }] },
     skiff: { size: 0.32, speed: 17, accel: 15, hp: 1, fire: [1.0, 1.8], spread: 1.4 },
+    // the missile boat: stands off, and its missiles come round after you
+    missileboat: { size: 0.42, speed: 17, accel: 14, hp: 5, fire: [0.9, 1.5], spread: 1.1, traits: ['holdoff', 'missile'], model: 'gunboat' },
+    // a Lambda that patches up the TIEs round it: shoot it first
+    repairshuttle: { size: 0.55, speed: 15, accel: 12, hp: 5, fire: [1.4, 2.2], traits: ['medic', 'holdoff'], model: 'shuttle' },
+    // the ISB: a patrol TIE, an interceptor with ion cannons that hold your
+    // drive down, a gunboat with missiles, a shuttle that keeps them flying
+    isbpatrol: { size: 0.3, speed: 20, accel: 18, hp: 2, fire: [0.7, 1.3], model: 'tie' },
+    isbenforcer: { size: 0.32, speed: 26, accel: 22, hp: 2, fire: [0.6, 1.1], tail: 0.35, trait: 'ion', model: 'interceptor' },
+    isbgunboat: { size: 0.42, speed: 18, accel: 15, hp: 6, fire: [0.5, 0.9], spread: 1.1, traits: ['holdoff', 'missile'], model: 'gunboat' },
+    isbshuttle: { size: 0.55, speed: 16, accel: 13, hp: 5, fire: [1.4, 2.2], traits: ['medic', 'holdoff'], model: 'shuttle' },
   },
-  names: { tie: 'TIE fighter', interceptor: 'TIE interceptor', tieadvanced: 'TIE Advanced', slave1: 'Slave I', tiebomber: 'TIE bomber', gunboat: 'Assault gunboat', ig2000: 'IG-2000', houndstooth: 'Hound’s Tooth', punishingone: 'Punishing One', skiff: 'Pirate skiff' },
+  names: { isbpatrol: 'ISB patrol', isbenforcer: 'ISB enforcer', isbgunboat: 'ISB gunboat', isbshuttle: 'ISB support shuttle', missileboat: 'Missile boat', repairshuttle: 'Repair shuttle', tie: 'TIE fighter', interceptor: 'TIE interceptor', tieadvanced: 'TIE Advanced', slave1: 'Slave I', tiebomber: 'TIE bomber', gunboat: 'Assault gunboat', ig2000: 'IG-2000', houndstooth: 'Hound’s Tooth', punishingone: 'Punishing One', skiff: 'Pirate skiff' },
   allies: {
     xwing: { speed: 24, accel: 20, turn: 2.6, fire: [0.9, 1.6], spread: 0.15, size: 0.36, colour: [5.5, 0.6, 0.5] },
     // Gold Squadron: slow, and their bolts hit hard
@@ -80,6 +97,7 @@ const STARWARS = {
   skirmish: { faction: 'empire', escort: 'xwing', civil: 'transport' },
   pieces: ['destroyer'],
   law: 'empire', // (standing.js: whose inspectors and patrols)
+  police: { faction: 'isb', units: { cop: 'isbpatrol', enforcer: 'isbenforcer', heavy: 'isbgunboat', medic: 'isbshuttle' } },
   capital: 'navy', // what the Star Destroyer launches
   capitalShip: 'destroyer', // (the model the director's capital ship jumps in as)
   leviathan: 'purrgil',
@@ -98,16 +116,19 @@ const RICKMORTY = {
   label: 'Dimension C-137',
   crews: ['cruiser'],
   factions: {
-    federation: { role: 'hunt', weight: 2, kinds: [['patrol', 3], ['gunship', 1]], laser: [0.6, 2.2, 6.5], size: [3, 5] },
-    // Evil Morty's guard: a swarm of quick yellow fighters, his own ship at their head
-    mortys: { role: 'hunt', weight: 1, kinds: [['mortyfighter', 1]], ace: 'evilmortyship', laser: [5.5, 4.8, 0.6], size: [4, 6] },
+    // (and their kamikaze drones, and a medic ship that keeps the rest flying)
+    federation: { role: 'hunt', weight: 2, kinds: [['patrol', 3], ['gunship', 1], ['wardrone', 1], ['fedmedic', 0.5]], laser: [0.6, 2.2, 6.5], size: [3, 5] },
+    // Evil Morty's guard: a swarm of quick yellow fighters, a sharpshooter or two, his own ship at their head
+    mortys: { role: 'hunt', weight: 1, kinds: [['mortyfighter', 1], ['mortysniper', 0.35]], ace: 'evilmortyship', laser: [5.5, 4.8, 0.6], size: [4, 6] },
     // the Zigerions: a simulation ship that's gone when you hit it
     zigerions: { role: 'hunt', weight: 0.7, kinds: [['zigerion', 1]], laser: [0.6, 5.5, 5.0], size: [2, 3] },
     // what the Federation cruiser launches
-    fedfleet: { role: 'capital', weight: 1, kinds: [['gunship', 1], ['patrol', 2]], laser: [0.6, 2.2, 6.5], size: [3, 4] },
+    fedfleet: { role: 'capital', weight: 1, kinds: [['gunship', 1], ['patrol', 2], ['wardrone', 1], ['fedmedic', 0.5]], laser: [0.6, 2.2, 6.5], size: [3, 4] },
     council: { role: 'council', weight: 1, kinds: [['councilship', 1]], laser: [0.6, 5.5, 4.2], size: [2, 4], portal: true },
     // pirates: what's after someone in distress
     bugs: { role: 'pirates', weight: 1, kinds: [['gromflomite', 1]], laser: [0.6, 2.2, 6.5], size: [2, 3] },
+    // the Federation's police: who comes when you're wanted (wanted.js)
+    fedpolice: { role: 'police', weight: 1, kinds: [['fedcop', 2], ['fedenforcer', 1], ['fedwarden', 1], ['fedmedic', 1]], laser: [0.6, 2.2, 6.5], size: [2, 4] },
     phoenix: { role: 'bounty', weight: 1, kinds: [['phoenixperson', 1]], laser: [6.0, 2.6, 0.8], size: [1, 1] },
     // Krombopulos Michael: he just loves killing, but he waits for you to start it
     krombopulos: { role: 'bounty', weight: 1, kinds: [['krombopulos', 1]], laser: [5.5, 0.6, 2.4], size: [1, 1] },
@@ -125,8 +146,17 @@ const RICKMORTY = {
     zigerion: { size: 0.38, speed: 21, accel: 18, hp: 3, fire: [0.8, 1.4], trait: 'flicker' },
     // Krombopulos Michael: hurt to half, he goes dark between shots
     krombopulos: { size: 0.42, speed: 25, accel: 21, hp: 7, fire: [0.45, 0.8], tail: 0.5, lead: 0.95, spread: 0.7, trait: 'quietUntilFired', stages: [{ below: 0.5, trait: 'flicker', speed: 28 }] },
+    // no guns: straight at you, and it goes off
+    wardrone: { size: 0.3, speed: 26, accel: 24, hp: 1, fire: [9, 9], trait: 'rammer', model: 'gromflomite' },
+    fedmedic: { size: 0.44, speed: 16, accel: 13, hp: 5, fire: [1.2, 2.0], traits: ['medic', 'holdoff'], model: 'gunship' },
+    mortysniper: { size: 0.28, speed: 22, accel: 20, hp: 2, fire: [1.8, 2.6], trait: 'sniper', model: 'mortyfighter' },
+    // the Federation's police: patrol cruisers, enforcers with stun guns,
+    // wardens with missiles (and their medic ship)
+    fedcop: { size: 0.34, speed: 20, accel: 18, hp: 2, fire: [0.7, 1.3], model: 'patrol' },
+    fedenforcer: { size: 0.42, speed: 25, accel: 21, hp: 3, fire: [0.6, 1.1], tail: 0.35, trait: 'ion', model: 'councilship' },
+    fedwarden: { size: 0.44, speed: 17, accel: 14, hp: 6, fire: [0.5, 0.9], spread: 1.2, traits: ['holdoff', 'missile'], model: 'gunship' },
   },
-  names: { patrol: 'Federation patrol', councilship: 'Council cruiser', gromflomite: 'Gromflomite', phoenixperson: 'Phoenixperson', gunship: 'Federation gunship', mortyfighter: 'Morty fighter', evilmortyship: 'Evil Morty', zigerion: 'Zigerion ship', krombopulos: 'Krombopulos Michael' },
+  names: { fedcop: 'Federation police', fedenforcer: 'Federation enforcer', fedwarden: 'Federation warden', wardrone: 'Kamikaze drone', fedmedic: 'Federation medic ship', mortysniper: 'Morty sharpshooter', patrol: 'Federation patrol', councilship: 'Council cruiser', gromflomite: 'Gromflomite', phoenixperson: 'Phoenixperson', gunship: 'Federation gunship', mortyfighter: 'Morty fighter', evilmortyship: 'Evil Morty', zigerion: 'Zigerion ship', krombopulos: 'Krombopulos Michael' },
   allies: {
     birdperson: { speed: 22, accel: 22, turn: 3, fire: [1, 1.8], spread: 0.16, size: 0.4, colour: [0.7, 5.5, 1.2] },
     // Squanchy: close in, and every bolt counts
@@ -141,6 +171,7 @@ const RICKMORTY = {
   skirmish: { faction: 'federation', escort: 'birdperson', civil: 'saucer' },
   pieces: ['council', 'destroyer', 'remover'],
   law: 'federation',
+  police: { faction: 'fedpolice', units: { cop: 'fedcop', enforcer: 'fedenforcer', heavy: 'fedwarden', medic: 'fedmedic' } },
   capital: 'fedfleet',
   capitalShip: 'fedcruiser',
   leviathan: 'cromulon',
@@ -158,15 +189,18 @@ const BREAKINGBAD = {
   crews: ['rv'],
   factions: {
     // the DEA: black SUVs in twos and threes, Hank's own now and then
-    dea: { role: 'hunt', weight: 3, kinds: [['suv', 1]], ace: 'suvace', laser: [0.8, 1.8, 6.2], size: [3, 5] },
-    // the cartel: Tuco's lowriders, quick and wild
-    cartel: { role: 'hunt', weight: 2, kinds: [['lowrider', 1]], laser: [6.0, 4.2, 0.6], size: [2, 4] },
+    // (and a chopper with a marksman in the door)
+    dea: { role: 'hunt', weight: 3, kinds: [['suv', 1], ['deachopper', 0.35]], ace: 'suvace', laser: [0.8, 1.8, 6.2], size: [3, 5] },
+    // the cartel: Tuco's lowriders, quick and wild, and a car bomb now and then
+    cartel: { role: 'hunt', weight: 2, kinds: [['lowrider', 1], ['carbomb', 0.4]], laser: [6.0, 4.2, 0.6], size: [2, 4] },
     // Gus's people: box trucks with rockets, tough, that hold their range
-    pollos: { role: 'capital', weight: 1, kinds: [['pollostruck', 1]], ace: 'gusvolvo', laser: [6.0, 1.2, 0.6], size: [2, 3] },
+    pollos: { role: 'capital', weight: 1, kinds: [['pollostruck', 1], ['pollosrocket', 0.5]], ace: 'gusvolvo', laser: [6.0, 1.2, 0.6], size: [2, 3] },
     // the Cousins: two Mercedes, one hunter, who never say a word
     cousins: { role: 'bounty', weight: 1, kinds: [['cousins', 1]], laser: [5.5, 5.5, 5.5], size: [1, 1] },
     // Jack's crew: pickups, after anyone with something to take
     jacks: { role: 'pirates', weight: 1, kinds: [['pickup', 1]], laser: [6.0, 2.5, 0.5], size: [2, 3] },
+    // Albuquerque PD and the DEA's tactical team: who comes when you're wanted (wanted.js)
+    apd: { role: 'police', weight: 1, kinds: [['apdcruiser', 2], ['deatactical', 1], ['swattruck', 1], ['apdsupport', 1]], laser: [0.8, 1.8, 6.2], size: [2, 4] },
   },
   kinds: {
     suv: { size: 0.34, speed: 19, accel: 17, hp: 2, fire: [0.8, 1.5] },
@@ -179,8 +213,17 @@ const BREAKINGBAD = {
     gusvolvo: { size: 0.36, speed: 24, accel: 20, hp: 8, fire: [0.5, 0.85], tail: 0.3, lead: 0.95, spread: 0.6, trait: 'quietUntilFired', stages: [{ below: 0.5, trait: 'holdoff', fire: [0.35, 0.6], summon: 'pollos' }] },
     cousins: { size: 0.6, speed: 25, accel: 21, hp: 9, fire: [0.5, 0.9], tail: 0.5, lead: 0.9, spread: 0.8, trait: 'quietUntilFired', stages: [{ below: 0.5, fire: [0.3, 0.55], tail: 0.85, speed: 28 }] },
     pickup: { size: 0.32, speed: 18, accel: 16, hp: 1, fire: [0.9, 1.7] },
+    // Albuquerque PD's cruisers, the DEA's tactical team with tasers, a
+    // SWAT truck with rockets, and a support van that keeps them going
+    apdcruiser: { size: 0.34, speed: 20, accel: 18, hp: 2, fire: [0.7, 1.3], model: 'suv' },
+    deatactical: { size: 0.34, speed: 25, accel: 21, hp: 3, fire: [0.6, 1.1], tail: 0.35, trait: 'ion', model: 'suv' },
+    swattruck: { size: 0.5, speed: 17, accel: 14, hp: 6, fire: [0.5, 0.9], traits: ['holdoff', 'missile'], model: 'pollostruck' },
+    apdsupport: { size: 0.4, speed: 16, accel: 13, hp: 4, fire: [1.4, 2.2], traits: ['medic', 'holdoff'], model: 'pestvan' },
+    deachopper: { size: 0.5, speed: 18, accel: 15, hp: 4, fire: [1.6, 2.4], trait: 'sniper' },
+    carbomb: { size: 0.34, speed: 27, accel: 23, hp: 1, fire: [9, 9], trait: 'rammer', model: 'lowrider' },
+    pollosrocket: { size: 0.5, speed: 16, accel: 13, hp: 5, fire: [1.0, 1.6], traits: ['holdoff', 'missile'], model: 'pollostruck' },
   },
-  names: { suv: 'DEA SUV', suvace: 'Hank’s SUV', lowrider: 'Cartel lowrider', pollostruck: 'Pollos truck', cousins: 'The Cousins', pickup: 'Jack’s pickup', gusvolvo: 'Gus’s Volvo' },
+  names: { apdcruiser: 'APD cruiser', deatactical: 'DEA tactical', swattruck: 'SWAT truck', apdsupport: 'APD support van', deachopper: 'DEA chopper', carbomb: 'Car bomb', pollosrocket: 'Pollos rocket truck', suv: 'DEA SUV', suvace: 'Hank’s SUV', lowrider: 'Cartel lowrider', pollostruck: 'Pollos truck', cousins: 'The Cousins', pickup: 'Jack’s pickup', gusvolvo: 'Gus’s Volvo' },
   allies: {
     saulcaddy: { speed: 24, accel: 20, turn: 2.6, fire: [0.9, 1.6], spread: 0.15, size: 0.36, colour: [5.5, 5.0, 1.2] },
     mikesedan: { speed: 21, accel: 18, turn: 2.2, fire: [1.6, 2.4], spread: 0.05, size: 0.36, damage: 2, colour: [4.5, 3.6, 2.2] },
@@ -194,6 +237,7 @@ const BREAKINGBAD = {
   skirmish: { faction: 'cartel', escort: 'saulcaddy', civil: 'madrigal' },
   pieces: ['roadblock', 'destroyer'],
   law: 'dea',
+  police: { faction: 'apd', units: { cop: 'apdcruiser', enforcer: 'deatactical', heavy: 'swattruck', medic: 'apdsupport' } },
   capital: 'pollos',
   capitalShip: 'madrigal', // (a Madrigal freighter jumps in, and Gus's trucks come out of it)
   leviathan: 'bear',
