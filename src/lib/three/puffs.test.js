@@ -119,6 +119,20 @@ describe('puffFor', () => {
     expect(thick).toBeLessThan(bush.trunk);
   });
 
+  it('without a trunk radius: no NaN anywhere, and no trunk drawn (the crown alone, as a trunk of 0)', () => {
+    const { geometry } = puffFor(TONES, { radius: BIRCH.radius, height: BIRCH.height });
+    for (const name of ['position', 'normal', 'uv', 'puffTrunk'])
+      for (const v of geometry.attributes[name].array) expect(Number.isFinite(v), name).toBe(true);
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    expect(Number.isFinite(geometry.boundingSphere.radius)).toBe(true);
+    expect(geometry.boundingBox.max.y).toBeCloseTo(BIRCH.height, 3);
+    expect(geometry.attributes.position.count).toBe(80 * 6);
+    expect(geometry.attributes.puffTrunk.array.every((f) => f === 0)).toBe(true);
+    const none = puffFor(TONES, { radius: BIRCH.radius, height: BIRCH.height, trunk: 0 }).geometry;
+    expect(Array.from(none.attributes.position.array)).toEqual(Array.from(geometry.attributes.position.array));
+  });
+
   it('rewrites a Lambert: the trunk’s branch, the tones as linear colours, the bark, his cut-out turned by the wind', () => {
     const wind = createWind();
     const { material } = puffFor(TONES, { ...BIRCH, wind });

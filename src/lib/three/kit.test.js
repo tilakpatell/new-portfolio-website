@@ -596,6 +596,28 @@ describe('createPool', () => {
     expect(freed).toHaveBeenCalledTimes(2);
   });
 
+  it('seeds each model’s puff by its name: two models of one size differ in silhouette, and a name’s puff is the same in every kit', async () => {
+    const twin = { ...MANIFEST, models: { ...MANIFEST.models, Birch_1b: { ...MANIFEST.models.Birch_1 } } };
+    const { kit: a } = await kitOf({ manifest: twin });
+    const { kit: b } = await kitOf({ manifest: twin });
+    const crown = (k, name) => Array.from(k.puff(name).geometry.attributes.position.array);
+    expect(crown(a, 'Birch_1b')).toHaveLength(crown(a, 'Birch_1').length);
+    expect(crown(a, 'Birch_1b')).not.toEqual(crown(a, 'Birch_1'));
+    expect(crown(b, 'Birch_1')).toEqual(crown(a, 'Birch_1'));
+    expect(crown(b, 'Birch_1b')).toEqual(crown(a, 'Birch_1b'));
+    a.dispose();
+    b.dispose();
+  });
+
+  it('makes no puff once disposed of: kit.puff answers null, as for a model without tones, and makes nothing to leak', async () => {
+    const own = (await kitOf()).kit;
+    const made = own.puff('Birch_1');
+    expect(made).not.toBeNull();
+    own.dispose();
+    expect(own.puff('Birch_1')).toBeNull(); // (the one it freed isn't handed out again)
+    expect(own.puff('Birch_2')).toBeNull(); // (nor a new one made, for no kit to free)
+  });
+
   it('keeps the LOD1 at level 2 in a kit told `puffs: false`; a kit’s puff wears its house and its puffs’ wind, fitted to the manifest', async () => {
     const plain = await poolOf('Birch_1');
     expect(meshesAt(plain, 2)[0].geometry.attributes.puffTrunk).toBeUndefined();

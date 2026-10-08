@@ -20,7 +20,10 @@
 //     puff(name) → { geometry, material } | null: the model's far stand-in
 //       (lib/three/puffs' puffFor, made once a kit from the manifest's
 //       tones, radius, height and trunk, in the kit's house and `puffWind`,
-//       createWind's), null for a model without tones or with `puffs` false,
+//       createWind's, its cards scattered from a hash of the model's name, so
+//       two models of a family differ in silhouette), null for a model
+//       without tones, with `puffs` false, or once the kit is disposed of (a
+//       pool then draws its LOD1 there, as for a model without tones),
 //     dispose() }
 //     parts: [{ geometry, material, local: Matrix4, part }] (the galaxy
 //     placer's part contract; `local` is the part's place in the model, its
@@ -61,6 +64,7 @@
 import * as THREE from 'three';
 import { budget } from '../budgets';
 import { detailLevel, modelTexCap } from '../detail';
+import { hashSeed } from '../land/spec';
 import { faceless, wind as windOn } from './foliage';
 import { loadGltf } from './gltf';
 import { lodBand } from './lod';
@@ -267,9 +271,11 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
     model: (name) => find(models, name, '', (parts, row) => ({ parts, radius: row.radius, height: row.height, kind: row.kind, tones: row.tones ?? null })),
     lod1: (name) => find(lods, name, '.lod1', (parts) => parts),
     puff(name) {
+      if (gone) return null; // (a puff made now would have no kit to free it)
       if (!puffed.has(name)) {
         const row = info(name);
-        puffed.set(name, puffs && row?.tones && !row.rig ? puffFor(row.tones, { radius: row.radius, height: row.height, trunk: row.trunk, wind: puffWind, house }) : null);
+        // (seeded by the model's name, so its far crowns differ from another's)
+        puffed.set(name, puffs && row?.tones && !row.rig ? puffFor(row.tones, { radius: row.radius, height: row.height, trunk: row.trunk, wind: puffWind, seed: hashSeed(name), house }) : null);
       }
       return puffed.get(name);
     },
@@ -502,10 +508,10 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
   pool.ready = Promise.all([kit.model(name), lodParts]).then(([full, lod]) => {
     if (gone) return pool;
     if (lodError) console.warn(`createPool: ${name}'s LOD1 won't load (${lodError.message}); its full parts stand in`);
-    const mid = lod ?? full.parts;
+    const lod1Parts = lod ?? full.parts;
     parts[0] = full.parts;
-    parts[1] = mid;
-    parts[2] = far ? [{ geometry: far.geometry, material: far.material, local: new THREE.Matrix4() }] : mid;
+    parts[1] = lod1Parts;
+    parts[2] = far ? [{ geometry: far.geometry, material: far.material, local: new THREE.Matrix4() }] : lod1Parts;
     meshes = parts.map((list, l) => list.map((p, i) => make(l, p, i)));
     write();
     return pool;

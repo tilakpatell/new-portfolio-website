@@ -24,10 +24,13 @@
 //   createPuffs({ species: { a, b, bark }, count, wind, facing: [x, y, z],
 //     sun: [x, y, z] }) → { crowns, trunks, take() → slot | −1, set(i, x, y,
 //     z, scale, yaw), free(i), update(dt), dispose() }
-//   puffFor(tones: [a, b], { radius, height, trunk, wind, sun, bark, seed,
-//     house }) → { geometry, material } (the house's material when given a
-//     house, the puff's rewrite after its look; `wind` createWind's, or the
-//     cut-out holds still; the caller frees both)
+//   puffFor(tones: [a, b], { radius, height, trunk = 0, wind, sun, bark,
+//     seed, house }) → { geometry, material } (the house's material when
+//     given a house, the puff's rewrite after its look; `wind` createWind's,
+//     or the cut-out holds still; `seed` scatters the cards, and the kit
+//     gives each model its own, from its name, so two trees of one family
+//     differ in silhouette; a `trunk` of 0 draws the crown alone; the caller
+//     frees both)
 //   puffGeometry({ cards = 80, size = 0.8, seed }) → BufferGeometry (pure)
 //   puffShader(shader, { trunk = false, wind = true }) → { vertexShader,
 //     fragmentShader, swapped } (pure)
@@ -249,7 +252,7 @@ const shared = () => {
 
 const flagged = (g, v) => g.setAttribute('puffTrunk', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(v), 1));
 
-export function puffFor(tones, { radius, height, trunk, wind = null, sun = [0.4, 1, 0.3], bark = [0.16, 0.11, 0.07], seed = 1, house = null } = {}) {
+export function puffFor(tones, { radius, height, trunk = 0, wind = null, sun = [0.4, 1, 0.3], bark = [0.16, 0.11, 0.07], seed = 1, house = null } = {}) {
   // the crown: his cards in their unit sphere, scaled and lifted to the tree
   const crown = puffGeometry({ seed });
   crown.computeBoundingBox();

@@ -8,7 +8,8 @@
 // scripts/preview/kit.html, in headless Chromium. Every shader is checked
 // as it is made: a program that fails, a page error or a console error
 // fails the shot (exit 1), and so does a `far` asked for that drew no puff,
-// or one whose program failed or doesn't read its trunk's flag.
+// or one whose program failed or doesn't read its trunk's flag. `far` is
+// Birch_1:2 for naturemega and none for any other pack (name its own to ask).
 //
 //   node scripts/kit-shot.mjs [out dir (lab/kit)] [pack] [scatter <Name>:<n>,…] [pools <Name>,…] [far <Name>:<n>]
 //   shoot({ pack, scatter, pools, far }) → { scatter: PNG Buffer, pools: PNG Buffer,
@@ -30,7 +31,7 @@ const CHROME = () => process.env.CHROME ?? '/opt/pw-browsers/chromium';
 const W = 960;
 const H = 640;
 
-export async function shoot({ pack = 'naturemega', scatter = 'Fern_1:40,Birch_1:10', pools = 'Birch_1,Fern_1', far = 'Birch_1:2', w = W, h = H } = {}) {
+export async function shoot({ pack = 'naturemega', scatter = 'Fern_1:40,Birch_1:10', pools = 'Birch_1,Fern_1', far = pack === 'naturemega' ? 'Birch_1:2' : '', w = W, h = H } = {}) {
   const browser = await chromium.launch({ executablePath: CHROME(), args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   try {
     const page = await browser.newPage({ viewport: { width: w * 2, height: h } });
