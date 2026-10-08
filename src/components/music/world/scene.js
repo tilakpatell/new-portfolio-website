@@ -21,6 +21,9 @@ import { groundWorld } from '../../../lib/three/groundwork';
 import { houseOn } from '../../../lib/three/house';
 import { EYE, GADDI, INSTRUMENTS, LAMPS, PARAPET, PAVILION, POOL, RUG, TERRACE } from './layout';
 import { sharpen } from '../../../lib/three/textures';
+import { guard } from '../../../lib/three/frameGuard';
+import { prepareScene } from '../../../lib/three/gpuWork';
+import { settle } from '../../../lib/settle';
 
 // (the site's shared loader, fetched only once the courtyard is up)
 const loaders = () => import('../../../lib/three/gltf');
@@ -77,6 +80,11 @@ export async function createMusicWorld(el, { onLost } = {}) {
   const small = tier !== 'high';
   const stage = createStage(el, { shadows: true, fov: 64, near: 0.05, far: 9000, onLost, exposure: 1.08, bloom: { strength: 0.6, radius: 0.55, threshold: 0.86 } });
   const { scene, camera, renderer } = stage;
+  // the frame guard (lib/three/frameGuard), as createRenderer puts on every
+  // renderer: a late arrival (a note's label, a model after the veil) is
+  // left out of its frames till its shader and pictures are ready, not
+  // waited on mid-frame
+  const held = guard(renderer);
   stage.grade({ contrast: 0.1, saturation: 1.08, vignette: 0.24, grain: 0.018, shadow: [0.0, 0.006, 0.03], high: [0.035, 0.014, 0] });
   const aniso = Math.min(fit.aniso, renderer.capabilities.getMaxAnisotropy());
   scene.fog = new THREE.Fog(FOG, 70, 1100);
@@ -592,6 +600,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
   // paving and the sand, their feet darkened, a warm bounce off the
   // sandstone, and no shadow pass
   let ground = null;
+  let baking = null; // (the bake under way, for the prepare to wait on)
   const loaded = models.then(async (list) => {
     if (stage.disposed) return [];
     for (const [n, m] of list) placeModel(n, m);
@@ -608,7 +617,7 @@ export async function createMusicWorld(el, { onLost } = {}) {
     });
     house.follow({ adopt: true });
     await stage.precompile();
-    if (!stage.disposed) ground.bake();
+    if (!stage.disposed) baking = ground.bake();
     return list.filter(([, m]) => m).map(([n]) => n);
   });
 
@@ -719,9 +728,52 @@ export async function createMusicWorld(el, { onLost } = {}) {
     stage.render(ms);
   };
 
-  // build the shaders of what's there now, before the first frame
+  // (what's there now in the house look; its shaders are the prepare's, below)
   house.follow({ adopt: true });
-  await stage.precompile();
+  // (the passes' shaders, linked in the background meanwhile)
+  const passes = stage.precompile(null);
+
+  // Everything on the graphics chip behind the page's loading veil: the
+  // instruments and the chhatri waited for (a few seconds at most: they come
+  // in as they come, after it), the floor light baked for them, the house
+  // look taken on, then lib/three/gpuWork's prepareScene: the pictures sent a
+  // few at a time, the shaders compiled in slices against the composer's
+  // buffer, where the scene draws, and a draw of everything the frames' own
+  // way. The passes' own shaders are made above, and waited for here.
+  const MODELS_WAIT = 8000; // ms at most the models hold up the prepare
+  const BAKE_WAIT = 8000; // ms at most the bake does
+  const prepare = async (onProgress, alive = () => true) => {
+    const going = () => alive() && !stage.disposed && !stage.lost;
+    const say = (f, step) => onProgress?.(f, step);
+    say(0, 'Bringing in the instruments');
+    await settle(loaded, MODELS_WAIT);
+    if (!going()) return;
+    say(0.1, 'bake');
+    await settle(baking, BAKE_WAIT);
+    await settle(passes, 4000);
+    if (!going()) return;
+    house.follow({ adopt: true });
+    renderer.setRenderTarget(stage.composer.readBuffer);
+    try {
+      await prepareScene({
+        renderer,
+        roots: [scene],
+        scene,
+        camera,
+        alive: going,
+        onProgress: (f, step) => say(0.2 + 0.8 * f, step),
+        // (the composer itself: the stage holds its frames while a
+        // precompile is in flight)
+        render: () => stage.composer.render(),
+      });
+    } finally {
+      try {
+        renderer.setRenderTarget(null);
+      } catch {
+        // (gone with its renderer)
+      }
+    }
+  };
 
   return {
     // (for the QA scripts: the floor light, once the models are in)
@@ -729,11 +781,13 @@ export async function createMusicWorld(el, { onLost } = {}) {
       return import.meta.env.DEV ? ground : null;
     },
     render,
+    prepare,
     resize: fitTo,
     dispose: () => {
       ground?.dispose();
       ghosts.dispose();
       for (const t of labelCache.values()) t.dispose();
+      held.dispose();
       stage.dispose();
     },
     get lost() {
