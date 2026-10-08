@@ -42,7 +42,7 @@ describe('the surface models', () => {
         expect(CREDITS[`surface-${kind}`]?.license, `${kind}'s credit`).toBe('permission');
         expect(CREDITS[`surface-${kind}`]?.permission, `${kind}'s permission`).toBeTruthy();
       } else if (m.made) {
-        expect(m.made, kind).toBe('meshy');
+        expect(['meshy', 'quaternius'], kind).toContain(m.made);
         expect(m.uid, kind).toBeUndefined();
         expect(made.has(kind), `${kind} in public/cc0/README.md`).toBe(true);
       } else {
