@@ -3105,6 +3105,8 @@ export async function create(canvas, ctx) {
       groundWar,
       put: (x, z) => (state.phase === 'landing' || state.phase === 'out' ? (state.phase = 'walk') : null, putAt(me().st, x, z)), // (you, set down somewhere, out of the ship: the ground war's QA)
       you: () => ({ x: me().st.x, z: me().st.z, health: state.health, phase: state.phase }),
+      // (a stroke now, as the button makes one, for the QA scripts: { heavy, dir, lock } as saber.js takes them)
+      swing: (o = {}) => me().saber?.swing(state.t, { lock: state.lock, ...o }) ?? null,
       view(from, at) {
         qaView = from ? { from: [from[0], world.heightAt(from[0], from[2]) + from[1], from[2]], at: [at[0], world.heightAt(at[0], at[2]) + at[1], at[2]] } : null;
       },
