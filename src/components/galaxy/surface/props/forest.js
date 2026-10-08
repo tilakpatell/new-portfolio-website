@@ -1902,8 +1902,8 @@ const YAVIN = {
     for (let i = 1; i < 7; i++) parts.push(part(box(w, 0.012, 0.06), { at: [0, 0.04, zc - d / 2 + (i * d) / 7], color: '#3e3c36', to: 'stone' }));
     for (const x of [-w / 4, w / 4]) parts.push(part(box(0.06, 0.012, d), { at: [x, 0.04, zc], color: '#3e3c36', to: 'stone' }));
     for (const [x, z] of [
-      [4, -1],
-      [4, 13],
+      [4.8, -1],
+      [4.8, 13],
     ]) {
       parts.push(part(new THREE.RingGeometry(4.4, 4.8, 40).rotateX(-PI / 2), { at: [x, 0.05, z], color: '#b0923e', to: 'paint' }));
       parts.push(part(scorch(4.2, x + z * 3).rotateX(-PI / 2), { at: [x, 0.045, z - 4.5], color: '#3a3833', to: 'stone' }));
@@ -1961,7 +1961,8 @@ const YAVIN = {
     for (const a of [0, PI / 2, PI, -PI / 2]) parts.push(part(box(2, 12, 0.3), { at: [sin(a) * 6.6, top + 8, cos(a) * 6.6], rot: [0, a, 0], color: '#1a1814', to: 'dark' }));
     solids.push({ box: [0, 0, 6.5, 6.5, 0] });
     // the stairs up the middle of each face (the east one walked: a strip
-    // of floor every 20 cm, each no more than a step over the last)
+    // of floor every 20 cm, each no more than a step over the last, and its
+    // sides walled to its height, so it's not walked into off a terrace)
     const [r0, s0] = EAST_STAIR[0];
     const [r1, s1] = EAST_STAIR.at(-1);
     const run = r0 - r1;
@@ -1970,9 +1971,10 @@ const YAVIN = {
         .rotateZ(-Math.atan2(s1 - s0, run))
         .translate((r0 + r1) / 2, (s0 + s1) / 2 - 0.4, 0);
     for (const a of [0, PI / 2, PI, -PI / 2]) parts.push(part(flightGeo().rotateY(a), D));
-    for (let r = r0; r >= r1; r -= 0.2) {
+    for (let i = 0; r0 - i * 0.2 >= r1 - 0.6; i++) {
+      const r = r0 - i * 0.2;
       const y = eastStairAt(r);
-      solids.push({ box: [r, 0, 0.1, 8.5, 0], top: y, base: ROOF });
+      for (const z of [-8.5, 8.5]) solids.push({ box: [r, z, 0.1, 0.1, 0], top: y, base: ROOF });
       floors.push({ x: r, z: 0, hw: 0.1, hd: 8.5, yaw: 0, y });
     }
     // vines down its faces
@@ -1996,9 +1998,12 @@ const YAVIN = {
     const P = { color: '#1a1814', to: 'dark' };
     const parts = [part(box(21, 11, 0.6), { at: [0, 0, -44.5], ...P })];
     for (const s of [-1, 1]) parts.push(part(box(0.6, 11, 24), { at: [s * 44.5, 0, -0.5], ...P }));
-    const f = flight(47.6, 22.5, 0, EAST_STAIR[0][1], -1, 41, { wide: 3.6 });
+    const top = EAST_STAIR[0][1];
+    const f = flight(47.6, 22.5, 0, top, -1, 41, { wide: 3.6 });
     parts.push(...f.parts);
-    return { object: k.build(parts, { name: 'massassiplugs' }), floors: f.floors };
+    // (its landing widened, out over the plinth to the stair's foot)
+    parts.push(part(box(9.2, 0.5, 4), { at: [44.8, top - 0.5, -0.5], color: MASSASSI, to: 'stone' }));
+    return { object: k.build(parts, { name: 'massassiplugs' }), floors: [...f.floors, { x: 44.8, z: -0.5, hw: 4.6, hd: 2, yaw: 0, y: top }] };
   },
 
   // a lesser temple, swallowed by the jungle: three worn tiers, a dark

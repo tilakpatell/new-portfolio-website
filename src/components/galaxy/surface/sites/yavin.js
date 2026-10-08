@@ -101,10 +101,10 @@ export const SITE = {
         // out to the mouth at 26: the X-wings one behind the other on the
         // right, the Y-wing down the left)
         { kind: 'hangarfloor', at: [0, 0], y: 0.57, solid: false }, // (just over the temple model's own floor)
-        { kind: 'parked', at: [4, -1], y: 0.55, yaw: 0.05, opts: { kind: 'xwing', metres: 12.5 } },
-        { kind: 'parked', at: [4, 13], y: 0.55, yaw: -0.05, opts: { kind: 'xwing', metres: 12.5 } },
-        { kind: 'ywing', at: [-5.6, 11], y: 0.55, yaw: 0.02 },
-        { kind: 'yavinramp', at: [-0.6, -5], y: 0.55, yaw: 1.6 },
+        { kind: 'parked', at: [4.8, -1], y: 0.55, yaw: 0.05, opts: { kind: 'xwing', metres: 12.5 } },
+        { kind: 'parked', at: [4.8, 13], y: 0.55, yaw: -0.05, opts: { kind: 'xwing', metres: 12.5 } },
+        { kind: 'ywing', at: [-6, 11], y: 0.55, yaw: 0.02 },
+        { kind: 'yavinramp', at: [8.6, -3], y: 0.55, yaw: 0 },
         { kind: 'crates', at: [-7, 23.5], y: 0.55 },
         { kind: 'ammocan', at: [-4.4, 23.8], y: 0.55, yaw: 0.3 },
         { kind: 'ammocan', at: [-4.6, 22.8], y: 0.55, yaw: 0.2 },
