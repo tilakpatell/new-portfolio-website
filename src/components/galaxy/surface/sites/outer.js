@@ -14,7 +14,7 @@ const ring = (n, r, phase = 0) => Array.from({ length: n }, (_, i) => {
 
 // Lothal's rock spires out west, between the landing and the old tower (the
 // star map mission's run goes through them)
-const LOTHAL_SPIRES = [[-31, 4, 0.32], [-9, 35, 0.42], [-48, 46, 0.37], [-68, 14, 0.46], [-108, 32, 0.42], [-114, 69, 0.42], [-161, 68, 0.32], [-181, 37, 0.46], [-218, 53, 0.37], [-231, 88, 0.42], [-271, 71, 0.42], [-276, 34, 0.46]].map(([x, z, scale], i) => ({ kind: 'lothspire', at: [x, z], yaw: i * 1.7, opts: { h: scale * 49, r: scale * 11, seed: i + 1 } }));
+const LOTHAL_SPIRES = [[-31, 4, 0.32], [-9, 35, 0.42], [-48, 46, 0.37], [-68, 14, 0.46], [-108, 32, 0.42], [-114, 69, 0.42], [-161, 68, 0.32], [-181, 37, 0.46], [-218, 53, 0.37], [-231, 88, 0.42], [-271, 71, 0.42], [-276, 34, 0.46]].map(([x, z, scale], i) => ({ kind: 'lothtemple', at: [x, z], yaw: i * 1.7, scale: scale * 0.7, sink: 0.5 }));
 
 export const SITES = {
   // (Nevarro, rebuilt: sites/nevarro.js)
@@ -33,8 +33,8 @@ export const SITES = {
     land: { at: [0, 0], yaw: 2.2 },
     places: [
       { id: 'sundari', name: 'The ruins of Sundari', at: [300, 170], r: 95, flat: { r: 80 }, about: 'The dome city, scorched and silent. Glass where the gardens were.', things: [{ kind: 'sundaridome', at: [0, 0], yaw: 2.6, sink: 1.5 }, ...grove(17, 28, 72, 96, ['glassshard'], [1, 3.2])] },
-      { id: 'mines', name: 'The mines', at: [-200, -180], r: 40, about: 'Old tunnels under the glass, and at the bottom of them, the Living Waters.', things: [{ kind: 'needle', at: [0, 0], scale: 0.75, sink: 1 }, { kind: 'lamp', at: [6, 6] }, ...grove(29, 10, 12, 30, ['glassshard'], [0.8, 2.4])] },
-      { id: 'covert', name: 'The covert’s camp', at: [-120, 220], r: 30, flat: { r: 24 }, about: 'Mandalorians, home again for the first time in years.', things: [{ kind: 'tent', at: [0, 0] }, { kind: 'tent', at: [8, -6], yaw: 1.4 }, { kind: 'fire', at: [2, 4] }] },
+      { id: 'mines', name: 'The mines', at: [-200, -180], r: 40, about: 'Old tunnels under the glass, and at the bottom of them, the Living Waters.', things: [{ kind: 'needle', at: [0, 0], scale: 0.75, sink: 1, opts: { color: '#41494a', foot: '#383d3c' } }, { kind: 'lamp', at: [6, 6] }, ...grove(29, 10, 12, 30, ['glassshard'], [0.8, 2.4])] },
+      { id: 'covert', name: 'The covert’s camp', at: [-120, 220], r: 30, flat: { r: 24 }, about: 'Mandalorians, home again for the first time in years.', things: [{ kind: 'tent', at: [0, 0], opts: { r: 1.9, h: 4.4, color: '#3f424b' } }, { kind: 'tent', at: [8, -6], yaw: 1.4, opts: { r: 1.9, h: 4.4, color: '#3f424b' } }, { kind: 'fire', at: [2, 4] }] },
     ],
     // the glass the bombs left, in shards across the plain
     scatter: [{ kind: 'glassshard', n: 160, within: [25, 650], scale: [0.6, 2.6], sink: 0.3, solid: 0.4 }],
@@ -108,7 +108,7 @@ export const SITES = {
     land: { at: [0, 0], yaw: 0.3 },
     places: [
       { id: 'village', name: 'The krill farmers’ village', at: [180, 120], r: 50, flat: { r: 46 }, about: 'Huts on stilts over the ponds, and a harvest the raiders keep coming back for.', things: [...ring(5, 21, 0.4).map(([x, z, yaw]) => ({ kind: 'stilthut', at: [x, z], yaw, sink: 0.15 })), { kind: 'fire', at: [2, -4] }, { kind: 'crates', at: [-8, -10] }, { kind: 'crates', at: [9, 6], yaw: 0.8 }, ...ring(7, 34, 0.9).map(([x, z, yaw]) => ({ kind: 'sorganfern', at: [x, z], yaw, scale: 1.3, solid: false })), ...grove(11, 30, 54, 84, ['sorganbirch', 'sorganbirch', 'sorganfir'])] },
-      { id: 'raiders', name: 'The raiders’ camp', at: [-240, -160], r: 40, flat: { r: 30 }, about: 'Klatooinian raiders, and something big under a tarp.', things: [{ kind: 'tent', at: [0, 0] }, { kind: 'fire', at: [4, 4] }, { kind: 'crates', at: [-6, 8] }] },
+      { id: 'raiders', name: 'The raiders’ camp', at: [-240, -160], r: 40, flat: { r: 30 }, about: 'Klatooinian raiders, and something big under a tarp.', things: [{ kind: 'tent', at: [0, 0], opts: { r: 4, h: 3.6, sides: 4, color: '#4b4d40' } }, { kind: 'fire', at: [4, 4] }, { kind: 'crates', at: [-6, 8] }] },
       { id: 'woods', name: 'The deep woods', at: [-120, 220], r: 40, about: 'Old trees and mist. Something with a lot of teeth hunts here at night.', things: [{ kind: 'log', at: [0, 0], yaw: 0.7 }, { kind: 'log', at: [9, -6], yaw: 2.1, scale: 0.8 }, ...grove(23, 40, 8, 60, ['sorganfir', 'sorganbirch'], [1, 1.5]), ...grove(5, 30, 4, 50, ['sorganfern'], [1, 2])] },
     ],
     // the woods: birches and firs all round, thinning out far off, ferns

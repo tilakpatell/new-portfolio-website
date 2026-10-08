@@ -103,7 +103,12 @@ export const SITES = {
         },
         things: [
           { kind: 'theedpalace', at: [0, 0] },
-          { kind: 'plaza', at: [0, 60], opts: { w: 72, d: 48 } },
+          { kind: 'plaza', at: [0, 60], opts: { w: 72, d: 48, fountain: false } },
+          // (robed statues along the plaza, in front of the palace's façade)
+          { kind: 'statue', at: [-30, 52], scale: 0.32 },
+          { kind: 'statue', at: [-18, 52], scale: 0.32 },
+          { kind: 'statue', at: [18, 52], scale: 0.32 },
+          { kind: 'statue', at: [30, 52], scale: 0.32 },
           { kind: 'lamp', at: [-14, 50], opts: { h: 5, light: '#ffe2a8' } },
           { kind: 'lamp', at: [14, 50], opts: { h: 5, light: '#ffe2a8' } },
           { kind: 'lamp', at: [-14, 56], opts: { h: 5, light: '#ffe2a8' } },
@@ -464,7 +469,7 @@ export const SITES = {
         },
         things: [
           { kind: 'kpad', at: [0, 0], abs: true, y: 22, opts: { r: 22 } },
-          { kind: 'kmast', at: [-6, 6], abs: true, y: 22.3 },
+          { kind: 'kdischarge', at: [-6, 6], abs: true, y: 22, opts: { h: 24, seed: 7, every: 10 } },
         ],
       },
       {
@@ -705,6 +710,8 @@ export const SITES = {
         },
         things: [
           { kind: 'geohangar', at: [0, -10], yaw: -0.7 },
+          // (the mesa it's cut into)
+          { kind: 'geohive', at: [19, -33], yaw: -0.7, scale: 0.3, sink: 1.2 },
           { kind: 'solarsailer', at: [-6, 2], yaw: 2.4, y: 0.4 },
         ],
       },
@@ -720,11 +727,8 @@ export const SITES = {
           cruiser: [['rick', 'Eusocial insectoids, Morty. One queen, a billion workers, zero unions.'], ['morty', 'They’re kind of looking at us, Rick.']],
         },
         things: [
-          { kind: 'hive', at: [0, 0], opts: { h: 95, seed: 2 } },
-          { kind: 'hive', at: [34, 20], opts: { h: 70, seed: 3 } },
-          { kind: 'hive', at: [-30, 28], opts: { h: 60, seed: 4 } },
-          { kind: 'hive', at: [-24, -36], opts: { h: 80, seed: 5 } },
-          { kind: 'hive', at: [30, -30], opts: { h: 55, seed: 6 } },
+          { kind: 'geohive', at: [-10, -75], yaw: 0.4, scale: 0.55, sink: 2.2 },
+          { kind: 'geohive', at: [70, 10], yaw: 2.2, scale: 0.28, sink: 1.1 },
         ],
       },
       {
@@ -792,7 +796,7 @@ export const SITES = {
       { kind: 'nexu', n: 1, at: [-250, 186], roam: 20, speed: 2.2, r: 1.2 },
       { kind: 'reek', n: 1, at: [-274, 206], roam: 18, speed: 1.3, r: 1.8 },
       { kind: 'jedi', n: 2, at: [-256, 202], spread: 6, roam: 8, speed: 1.0, name: 'Jedi', says: ['This party’s over.', 'Hold on. This whole operation’s about to get a lot more interesting.', 'I’ve a bad feeling about this.'] },
-      { kind: 'geonosian', n: 6, path: [[-80, -360], [10, -400], [-30, -490], [-110, -440]], y: 18, speed: 5, name: 'Geonosian drone', says: ['(A buzzing dive past your head.)'] },
+      { kind: 'geonosian', n: 6, path: [[-80, -360], [10, -400], [-10, -435], [-100, -430]], y: 18, speed: 5, name: 'Geonosian drone', says: ['(A buzzing dive past your head.)'] },
       { kind: 'geonosian', n: 4, at: [-320, -210], spread: 24, roam: 14, speed: 1.1, name: 'Geonosian worker', says: ['(It clicks irritably and hauls a droid torso past you.)', '(Click. Click-click. Back to work.)'] },
       { kind: 'c3po', n: 1, at: [-312, -206], still: true, name: 'C-3PO', says: ['Oh, this is such a drag.', 'Die, Jedi dogs! …Oh, what did I say?', 'I’m terribly sorry about all this.', 'Machines making machines. How perverse.'] },
       { kind: 'clonephase1', n: 4, at: [-20, 10], spread: 5, still: true, face: -0.6, name: 'Clone trooper', says: ['Forward post, sir. The droids pulled back to the spires.', 'First day of the war, and we’re already winning.', 'Gunships inbound. Keep clear of the pad.'] },

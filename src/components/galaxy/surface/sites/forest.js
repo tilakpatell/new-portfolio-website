@@ -177,12 +177,12 @@ export const SITES = {
         },
         things: [
           { kind: 'shieldgen', at: [0, -10], yaw: 0.2, solid: { r: 22 } },
-          { kind: 'pad', at: [-10, 42], opts: { r: 14, color: '#6a6c68', light: '#ffd070' } },
+          { kind: 'pad', at: [-10, 42], opts: { r: 14, color: '#5e6064', light: '#ffd070', shape: 'square', marks: 'rings' } },
           { kind: 'lambda', at: [-10, 41], yaw: -0.4 },
           { kind: 'crates', at: [-30, 26] },
           { kind: 'crates', at: [24, 30] },
-          { kind: 'lamp', at: [4, 30], opts: { h: 5, light: '#ffe0a0' } },
-          { kind: 'lamp', at: [-24, 32], opts: { h: 5, light: '#ffe0a0' } },
+          { kind: 'lamp', at: [4, 30], opts: { h: 8, light: '#ffe0a0' } },
+          { kind: 'lamp', at: [-24, 32], opts: { h: 8, light: '#ffe0a0' } },
         ],
       },
       {
