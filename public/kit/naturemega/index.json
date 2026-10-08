@@ -374,7 +374,7 @@
       "tris1": 3552,
       "radius": 9.156,
       "height": 12.877,
-      "trunk": 5.775,
+      "trunk": 1.407,
       "kind": "tree",
       "tones": [
         [
@@ -400,7 +400,7 @@
       "tris1": 3608,
       "radius": 9.017,
       "height": 13.17,
-      "trunk": 4.072,
+      "trunk": 1.407,
       "kind": "tree",
       "tones": [
         [
@@ -841,7 +841,7 @@
       "tris1": 2104,
       "radius": 6.769,
       "height": 16.87,
-      "trunk": 2.999,
+      "trunk": 0.956,
       "kind": "tree",
       "tones": [
         [
