@@ -12,7 +12,11 @@
 // changes); TROOP_NAMES[kind]; garrisonAt(site, effects, faction) → the
 // holder's party at the landing (six to ten of its troops on a beat round
 // it and at posts, and a probe droid for an Imperial search party on a
-// world that isn't the Empire's own), as life entries marked `garrison`.
+// world that isn't the Empire's own), as life entries marked `garrison`;
+// garrisonLines(standing, rank) → what it says to you (ground/standing.js:
+// it salutes its own by rank, tells everyone else to move along).
+
+import { standingOf } from './ground/standing';
 
 // the troopers of each side's look, as the sites name them
 const FAMILIES = {
@@ -36,6 +40,8 @@ export function garrisonLife(life, troops) {
   if (!life || !troops) return life;
   let changed = false;
   const mapped = life.map((entry) => {
+    // (a named person, a quest giver, anyone the site calls by id keeps their kind and words)
+    if (entry.id || entry.named || entry.quest) return entry;
     const kind = troopKind(entry.kind, troops);
     if (kind === entry.kind) return entry;
     changed = true;
@@ -44,6 +50,12 @@ export function garrisonLife(life, troops) {
     return out;
   });
   return changed ? mapped : life;
+}
+
+export function garrisonLines(standing, rank = 0) {
+  if (standing === 'ally') return rank >= 3 ? ['General.', 'Good to have you back, General.'] : ['Commander.', 'Good to have you back.'];
+  if (standing === 'neutral') return ['Move along.'];
+  return ['Move along.', 'This world is under our protection.'];
 }
 
 // the landing party: a beat round the landing on each side, a post at each
@@ -58,16 +70,19 @@ export function garrisonAt(site, effects, faction = null) {
   const seed = [...(site.id ?? '')].reduce((a, c) => a + c.charCodeAt(0), 0);
   const n = 6 + (seed % 5); // 6..10
   const out = [];
-  const beat = (dx, dz) => ({ kind: troops, n: 2, path: [[x + dx, z + dz], [x - dz, z + dx], [x - dx, z - dz], [x + dz, z - dx]], speed: 1.2, name, garrison: true, says: ['Move along.', 'This world is under our protection.'] });
+  // (what you are to them: by the oath you swore in the ground's war, or the old words without one)
+  const standing = 'side' in effects ? standingOf(effects.owner, { side: effects.side, war: effects.war }) : 'enemy';
+  const says = garrisonLines(standing, effects.rank);
+  const beat = (dx, dz) => ({ kind: troops, n: 2, path: [[x + dx, z + dz], [x - dz, z + dx], [x - dx, z - dz], [x + dz, z - dx]], speed: 1.2, name, garrison: true, says });
   out.push(beat(34, 0));
   if (n >= 8) out.push(beat(0, 48));
   const posts = n >= 8 ? 4 : 2;
   for (let i = 0; i < posts; i++) {
     const a = (i / posts) * Math.PI * 2 + 0.6;
-    out.push({ kind: troops, at: [x + Math.cos(a) * 26, z + Math.sin(a) * 26], still: true, face: a + Math.PI, name, garrison: true, says: ['(It watches you, and says nothing.)'] });
+    out.push({ kind: troops, at: [x + Math.cos(a) * 26, z + Math.sin(a) * 26], still: true, face: a + Math.PI, name, garrison: true, says: standing === 'ally' ? says : ['(It watches you, and says nothing.)'] });
   }
   const rest = n - 2 * (n >= 8 ? 2 : 1) - posts;
-  if (rest > 0) out.push({ kind: troops, n: rest, at: [x + 18, z - 14], spread: 6, roam: 8, speed: 0.9, name, garrison: true, says: ['Papers. No, I\'m joking. Papers.', 'Quiet posting, this.'] });
+  if (rest > 0) out.push({ kind: troops, n: rest, at: [x + 18, z - 14], spread: 6, roam: 8, speed: 0.9, name, garrison: true, says: standing === 'ally' ? says : ['Papers. No, I\'m joking. Papers.', 'Quiet posting, this.'] });
   if (IMPERIAL.has(effects.owner) && faction !== effects.owner) out.push({ kind: 'probe', at: [x + 60, z + 40], y: 2.2, roam: 50, speed: 1.6, r: 0.6, name: 'Probe droid', garrison: true, says: ['(A burst of Imperial code, crackling and urgent.)', '(It stops, turns its lenses on you, and transmits.)'] });
   return out;
 }
