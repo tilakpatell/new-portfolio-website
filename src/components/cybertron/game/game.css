@@ -52,7 +52,7 @@
 .cyw-menu .hud-menu-list > :is(button, a):hover, .cyw-menu .hud-menu-list > :is(button, a):focus-visible { background: rgba(127, 216, 255, 0.14); color: #fff; }
 /* Leave: a thumb's whole 64 px to hit, round a chip that stays small */
 .cyw-leave { position: relative; border-color: rgba(255, 90, 74, 0.55); color: #ffd2cc; }
-.cyw-leave::after { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, var(--touch-action)); height: var(--touch-action); transform: translate(-50%, -50%); }
+.cyw-leave::after { content: ''; position: absolute; z-index: -1; /* (under its neighbours: where it reaches past the gap, the Menu and the energon keep their own edge, so a tap on the Menu's top never leaves) */ left: 50%; top: 50%; width: max(100%, var(--touch-action)); height: var(--touch-action); transform: translate(-50%, -50%); }
 .cyw-bars { position: absolute; left: 20px; bottom: 22px; display: grid; gap: 6px; width: min(260px, 40vw); }
 .cyw-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
 .cyw-bar span { display: block; height: 100%; background: linear-gradient(90deg, #ff4b4b, #ff9a4b); transition: width 0.2s; }
@@ -139,6 +139,9 @@
   .cyw-mission { left: 10px; top: 10px; max-width: 70%; }
   .cyw-tools { right: 10px; top: 10px; flex-direction: column-reverse; align-items: flex-end; } /* (stacked: the mission's plate has the width) */
   .cyw-list { top: calc(152px + env(safe-area-inset-top)); } /* (under that stack: the energon, the way out and the Menu) */
+  /* the boss's bar and the toast, under that stack too (centred, they'd run across the way out and the Menu) */
+  .cyw-boss { top: calc(146px + env(safe-area-inset-top)); }
+  .cyw-toast { top: calc(186px + env(safe-area-inset-top)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .cyw-spinner, .cyw-toast, .cyw-fade, .cyw-cross.cyw-hitmark, .cyw-hurt.cyw-hurt-on { animation: none; }
