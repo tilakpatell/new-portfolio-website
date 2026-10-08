@@ -85,6 +85,9 @@ describe('the ship powers in a battle', () => {
     expect(shots.length).toBeGreaterThan(0); // (the rest of the battle fires on)
     for (const s of shots) for (const q of s.quiet) expect(apart(s.at, q)).toBeGreaterThan(1.5);
     for (const f of want.filter((o) => o.alive)) expect(apart(f.pos, at)).toBeLessThan(3);
+    // (a ball of them, not all on the one point inside each other)
+    const held = want.filter((o) => o.alive);
+    for (let i = 1; i < held.length; i++) expect(apart(held[i].pos, held[0].pos)).toBeGreaterThan(0.2);
     // let go (the magnet off): free again, and quiet a moment longer (the daze)
     run(b, 1 / 30, null, { magnet: null });
     for (const f of want.filter((o) => o.alive)) {

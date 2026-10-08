@@ -18,6 +18,17 @@
 
 import { pullStep } from './shipPowers';
 
+// Where in the magnet's ball a held fighter goes: its own spot a little
+// way round the point (by its id, so it keeps it), not all of them on the
+// one point drawn inside each other
+const BALL = 1.2;
+const ballAt = (at, id) => {
+  const a = id * 2.399963; // (the golden angle: spread evenly however many)
+  const y = ((id * 0.618034) % 1) * 2 - 1;
+  const r = Math.sqrt(1 - y * y) * BALL;
+  return { x: at.x + Math.cos(a) * r, y: at.y + y * BALL, z: at.z + Math.sin(a) * r };
+};
+
 // One frame of the battle (`dt` real seconds), with whatever power is on:
 // - slow (Force Focus): the whole battle stepped at that share of the time,
 //   its fighters, its bolts and its batteries, but its clock put on to the
@@ -46,7 +57,7 @@ export function stepBattle(b, dt, you, { slow = 1, ghost = false, magnet = null,
       continue;
     }
     const was = { x, y, z };
-    const p = pullStep(was, magnet, pull, dt);
+    const p = pullStep(was, ballAt(magnet, f.id), pull, dt);
     f.prev.x = x;
     f.prev.y = y;
     f.prev.z = z;
