@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLIPS } from '../../../../lib/three/clipLibrary';
-import { FAR, LIVE, actOf, aimAngles, createPeople, createTrack, fallClip, hitClip, liveCount, lodPick, motionFrom } from './people';
+import { FAR, LIVE, actOf, aimAngles, blocks, createPeople, createTrack, fallClip, hitClip, liveCount, lodPick, motionFrom } from './people';
 
 const STEP = 1 / 30;
 const person = (id, kind, x, z, more = {}) => ({ id, kind, x, y: 0, z, yaw: 0, room: 'corr327', hp: 60, mode: 'routine', anim: 'idle', aim: null, ...more });
@@ -449,5 +449,23 @@ describe('the people aboard, drawn', () => {
     expect(muzzle.z).toBeLessThan(-4);
     expect(muzzle.y).toBeGreaterThan(0.6);
     people.dispose();
+  });
+});
+
+describe('who hides you from the camera', () => {
+  const cam = { x: 0, y: 1.6, z: 3 };
+  const you = { x: 0, y: 1.3, z: 0 };
+  it('is someone standing on the line from the camera to you, short of you', () => {
+    expect(blocks({ x: 0, y: 0, z: 1.5 }, 1.8, cam, you)).toBe(true);
+    expect(blocks({ x: 0.3, y: 0, z: 1.5 }, 1.8, cam, you)).toBe(true);
+  });
+  it('is nobody beside the line, beyond you, or on another floor', () => {
+    expect(blocks({ x: 1.2, y: 0, z: 1.5 }, 1.8, cam, you)).toBe(false);
+    expect(blocks({ x: 0, y: 0, z: -1 }, 1.8, cam, you)).toBe(false);
+    expect(blocks({ x: 0, y: -4, z: 1.5 }, 1.8, cam, you)).toBe(false);
+    expect(blocks({ x: 0, y: 0, z: 1.5 }, 1.8, null, you)).toBe(false);
+  });
+  it('is someone the camera has backed into', () => {
+    expect(blocks({ x: 0.1, y: 0, z: 3.1 }, 1.8, cam, you)).toBe(true);
   });
 });

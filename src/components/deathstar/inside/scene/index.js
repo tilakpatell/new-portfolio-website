@@ -114,6 +114,7 @@ export function createTrack() {
 }
 
 const SHOT = 0.35; // seconds the player’s figure fires for after a shot
+const AHEAD = 2.6; // metres past you in the view a friend standing in it is faded
 const STROKE = 0.55; // seconds a blade’s stroke plays for after a swing
 const STROKES = ['sword.a', 'sword.b', 'sword.c']; // the strokes, in turn
 const CROUCH_PACE = 1.0; // metres a second the crouch walk covers at its own speed
@@ -333,6 +334,11 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     // (the doors and the bridges as they are, for the dead to fall against)
     rooms.open = (id) => passable(g.doors, id);
     rooms.off = offTags(layout, g.flags ?? new Set());
+    // (and the camera and your chest, so anyone between them is faded out of the way; none in first person)
+    rooms.camera = view === 'first' ? null : camera.position;
+    rooms.focus = { x: at.x, y: at.y + (you.crouch ? 0.9 : 1.3), z: at.z };
+    rooms.ahead = { x: at.x + Math.sin(yaw) * AHEAD, y: rooms.focus.y, z: at.z - Math.cos(yaw) * AHEAD };
+    rooms.side = g.side ?? you.side;
     if (g.crew) people.sync(g.crew, alpha, camera.position, rooms);
     for (const b of g.combat?.bolts ?? []) fx.bolt(b);
     fx.update(dt);
