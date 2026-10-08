@@ -158,6 +158,28 @@ describe('createAllies', () => {
     expect(a.isBlocked(pilot(2))).toBe(true);
   });
 
+  it('remembers which of your keys an alliance was made with', () => {
+    const local = memory();
+    const saves = createSaves({ local, session: memory() });
+    const a = createAllies({ saves });
+    const mine = 'c'.repeat(64);
+    a.saveAlly(pilot(1), 'Han', mine);
+    expect(a.madeAs(pilot(1))).toBe('c'.repeat(16));
+    a.seenAlly(pilot(1), 'Han');
+    a.saveAlly(pilot(1), 'Han'); // (saved again with no key said: the one it had)
+    expect(createAllies({ saves }).madeAs(pilot(1))).toBe('c'.repeat(16));
+    expect(a.allies()).toEqual([{ id: pilot(1), name: 'Han', since: expect.any(Number), seen: expect.any(Number) }]);
+    // one made with another key since
+    a.saveAlly(pilot(1), 'Han', 'd'.repeat(64));
+    expect(a.madeAs(pilot(1))).toBe('d'.repeat(16));
+    // none said, or junk: none known
+    a.saveAlly(pilot(2), 'Leia');
+    expect(a.madeAs(pilot(2))).toBeNull();
+    expect(a.madeAs(pilot(9))).toBeNull();
+    local.setItem(ALLIES_KEY, JSON.stringify({ v: 1, data: { [pilot(3)]: { name: 'Lando', since: 1, seen: 1, as: '<b>' } } }));
+    expect(createAllies({ saves: createSaves({ local, session: memory() }) }).madeAs(pilot(3))).toBeNull();
+  });
+
   it('hears another tab’s changes to the same storage', () => {
     const saves = createSaves({ local: memory(), session: memory() });
     const one = createAllies({ saves });

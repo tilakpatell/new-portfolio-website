@@ -641,6 +641,21 @@ describe('allies that last (allies.js)', () => {
     expect(a.snapshot().away.map((x) => x.id)).toEqual([RICK]);
   });
 
+  it('a guest tab, or a new identity, doesn’t ask saved allies again: they don’t know the key it flies', async () => {
+    const OLD = 'f'.repeat(64); // (the key Han flew when the alliance was made: the browser's own, or his before a new one)
+    const { a, b, seen, stores } = await friends({ han: (s) => s.saveAlly(RICK, 'Rick', OLD), rick: (s) => s.saveAlly(OLD, 'Han') });
+    expect(a.peers.get(RICK).ally).toBe('none');
+    expect(b.peers.get(HAN).ally).toBe('none');
+    expect(feeds(seen.b).some((t) => /wants to be allies/.test(t))).toBe(false);
+    // asked for by hand: an ordinary request, and once made, kept for the key Han flies now
+    a.ally(RICK, 'ask');
+    expect(feeds(seen.b)).toContain('Han wants to be allies');
+    b.ally(HAN, 'accept');
+    expect(a.peers.get(RICK).ally).toBe('ally');
+    expect(stores.han.madeAs(RICK)).toBe(HAN.slice(0, 16));
+    expect(stores.han.allies()).toHaveLength(1);
+  });
+
   it('a flood’s mute is for the visit: a saved alliance is kept, and they’re told nothing', async () => {
     const { a, b, bus, seen, stores } = await friends({ han: (s) => s.saveAlly(RICK, 'Rick'), rick: (s) => s.saveAlly(HAN, 'Han') });
     expect(a.peers.get(RICK).ally).toBe('ally');

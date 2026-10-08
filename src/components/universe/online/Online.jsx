@@ -316,7 +316,7 @@ function Identity({ online }) {
       </div>
       {asking ? (
         <p className="universe-online-fine">
-          Your allies won’t know you. Start again?{' '}
+          Your allies won’t know you: they stay in your list, and each alliance is asked for afresh. Start again?{' '}
           <button
             type="button"
             className="universe-online-link"

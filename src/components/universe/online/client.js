@@ -22,7 +22,10 @@
 // you know them ({ t: 'ask', k: 1 }), and such an ask from a pilot you've
 // saved is a yes without a word to you, so two allies are allies again a
 // moment after both are online (and nobody's paid for it again: 'allied' is
-// for an alliance newly made). An alliance made is saved; a no or an end,
+// for an alliance newly made). Only an alliance made with the key you fly
+// now is asked for like that (a guest tab's key, or a new identity, is one
+// they don't know: those are asked for by hand). An alliance made is saved
+// with the key you flew; a no or an end,
 // theirs or yours, forgets it. A saved block holds from a pilot's first
 // word (their row is listed, blocked, to be unblocked); a block or an
 // unblock of yours is saved (and a block ends an alliance), while a flood's
@@ -113,6 +116,12 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
   // (the saved allies changed, here or in another tab: the roster's away list with them)
   const offAllies = allies?.on(roster) ?? null;
   const savedName = (id) => allies?.allies().find((a) => a.id === id)?.name ?? null;
+  // (a saved alliance made with the key you fly now: one made with another, a
+  // guest tab's or yours before a new identity, they can't know you by)
+  const madeWithMe = (id) => {
+    const as = allies?.madeAs?.(id) ?? null;
+    return !as || as === (self.id ?? '').slice(0, 16);
+  };
   const hello = () => {
     const f = writeFactions(self.factions);
     return { n: self.name, k: self.kind, p: self.loadout.paint, o: writeOutfit(self.loadout), ...(self.build ? { b: writeBuild(self.build) } : {}), ...writeLooksWire(self.looks), c: self.kills, w: self.where, lv: self.level, ...(f ? { f } : {}) };
@@ -168,7 +177,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     if (event === 'decline') p.declinedAt = now();
     // kept: an alliance made is saved; a no or an end, theirs or yours, forgets it
     const said = typeof event === 'object' ? event.in : event;
-    if (state === 'ally' && was !== 'ally') allies?.saveAlly(p.id, p.name);
+    if (state === 'ally' && was !== 'ally') allies?.saveAlly(p.id, p.name, self.id);
     else if (state === 'none' && (said === 'no' || said === 'end')) allies?.dropAlly(p.id);
     if (state === was) return;
     const who = p.name ?? savedName(p.id) ?? 'Someone';
@@ -294,10 +303,11 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
         if (p.where === self.where) feed(`${p.name} is here`, 'join');
         else if (was === self.where) feed(`${p.name} went to ${placeName(p.where)}`, 'info');
       }
-      // a saved ally back: seen now, and asked again (an ask that says you know them)
+      // a saved ally back: seen now, and asked again (an ask that says you
+      // know them), if it's from the key they know you by
       if (first && allies?.isAlly(peerId)) {
         allies.seenAlly(peerId, p.name);
-        if (p.ally === 'none') setAlly(p, 'ask');
+        if (p.ally === 'none' && madeWithMe(peerId)) setAlly(p, 'ask');
       }
       if (changed) roster();
     };
