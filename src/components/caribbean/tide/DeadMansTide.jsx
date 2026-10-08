@@ -1,21 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RiFullscreenExitLine, RiFullscreenLine, RiPauseLine } from 'react-icons/ri';
 import GpuGate from '../../games/GpuGate';
 import { edges, readPad, typing } from '../../games/pad';
 import { audioContext } from '../../../lib/audio';
 import { local, prefersReducedMotion, useMediaQuery } from '../../../lib/hooks';
 import { sayVoiced } from '../../../lib/voiced';
 import { SUNK_BOSS, SUNK_LINE } from '../lines';
-import { CHAPTERS, ISLES, STEP_BOUND, TIDE, UPS, bearing, choose, fitted, newGame, progress, shipStep, step } from './rules';
+import { CHAPTERS, STEP_BOUND, TIDE, UPS, bearing, choose, fitted, newGame, progress, shipStep, step } from './rules';
 import { autopilot } from './pilot';
+import { drawChart } from './chart';
+import TideHud from './TideHud';
+import GuideCue from '../../guide/GuideCue';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import '../fonts.css';
 import './tide.css';
 
 // Dead man's tide: the Pirates of the Caribbean game, in WebGL only (behind
 // the hardware acceleration gate). The rules are in ./rules.js, the drawing
-// in ./Tide3D.js, the sound in ./audio.js; this is the screen, the helm and
-// the HUD. Online (the site's own switch), everyone else sailing this sea
+// in ./Tide3D.js, the sound in ./audio.js, the HUD over the sea in
+// ./TideHud.jsx and its chart in ./chart.js; this is the screen, the helm
+// and the cards over it. Online (the site's own switch), everyone else sailing this sea
 // shows as a ghost ship with their name over her, and you in theirs (the
 // Middle-earth towns' travellers, a room of its own:
 // ../../middleearth/towns/useTravellers.js); off the sea (the title, paused,
@@ -38,7 +41,6 @@ const BEST = 'tp-tide-best';
 const PREFS = 'tp-tide-prefs';
 const LEVELS = Object.keys(TIDE.levels);
 const LEVEL_NOTE = { easy: 'A kind sea', normal: 'As it’s told', hard: 'No quarter' };
-const SAILS = ['Furled', 'Half sail', 'Full sail'];
 const LOOK = 1.55; // how far round the camera swings to face a broadside (radians)
 const LOST_LINE = ['The navy has the Pearl, a mile out of port.', 'The gold stays on the sea bed, and so does she.', 'The fort’s mortars found the range.', 'The Dutchman takes another crew. A hundred years before the mast.', 'The beast drags the Pearl under, captain and all.'];
 
@@ -419,6 +421,18 @@ function Game({ soft, fail }) {
      
   }, [phase, calm, touch, fail, pause, pick, drain, finish, travRef]);
 
+  // while the voyage is under way the page knows (html[data-playing]), so the
+  // guide's ? steps out from under the fire buttons; paused, on the title or
+  // over, it's back, and the guide with it
+  useEffect(() => {
+    if (phase !== 'running') return undefined;
+    const root = document.documentElement;
+    root.dataset.playing = 'tide';
+    return () => {
+      if (root.dataset.playing === 'tide') delete root.dataset.playing;
+    };
+  }, [phase]);
+
   // the sea goes quiet while paused or over
   useEffect(() => {
     if (phase !== 'running') scape.current?.set({ on: false });
@@ -532,7 +546,6 @@ function Game({ soft, fail }) {
   const running = phase === 'running';
   const over = phase === 'won' || phase === 'lost';
   const r = ui.result;
-  const chapter = CHAPTERS[ui.chapter];
   const picking = running && ui.offer.length > 0;
   return (
     <div className="dt">
@@ -575,125 +588,7 @@ function Game({ soft, fail }) {
         <div className="g3-flash" ref={(n) => (hud.current.flash = n)} aria-hidden="true" />
         <div className="dt-low" aria-hidden="true" />
 
-        <div className="g3-hud dt-hud" hidden={!running && phase !== 'paused'}>
-          <div className="dt-top">
-            <div className="dt-purse">
-              <span className="dt-coin" aria-hidden="true" />
-              <span className="dt-gold" ref={(n) => (hud.current.gold = n)}>
-                0
-              </span>
-              <span className="dt-combo" ref={(n) => (hud.current.combo = n)} />
-            </div>
-            <div className="dt-goal">
-              {ui.boss ? (
-                <div className="dt-boss">
-                  <span>{ui.boss}</span>
-                  <div className="g3-meter" style={{ '--meter': '#c8362b' }}>
-                    <i ref={(n) => (hud.current.bossBar = n)} />
-                  </div>
-                </div>
-              ) : (
-                <div className="dt-chapter">
-                  <small>
-                    Chapter {ui.chapter + 1} of {CHAPTERS.length} · {chapter.name}
-                  </small>
-                  <span>
-                    {chapter.goal}
-                    {ui.done ? ` · ${ui.done[0]} of ${ui.done[1]}` : ''}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {callout && (
-            <div key={callout.id} className="g3-callout dt-callout" data-tone={callout.tone} role="status">
-              {callout.text}
-            </div>
-          )}
-
-          <canvas ref={chart} className="dt-chart" width="264" height="264" aria-hidden="true" />
-
-          <div className="dt-deck">
-            <div className="dt-guns" ref={(n) => (hud.current.portBox = n)}>
-              <span>
-                <kbd>Q</kbd> Port
-              </span>
-              <div className="dt-load">
-                <i ref={(n) => (hud.current.port = n)} />
-              </div>
-            </div>
-            <div className="dt-hull">
-              <div className="dt-hull-bar">
-                <i ref={(n) => (hud.current.hull = n)} />
-              </div>
-              <div className="dt-hull-row">
-                <span>Hull</span>
-                <b ref={(n) => (hud.current.hullN = n)} />
-                <span className="dt-sail" aria-label={SAILS[ui.sail]}>
-                  {[0, 1].map((i) => (
-                    <i key={i} data-on={ui.sail > i || undefined} />
-                  ))}
-                  {SAILS[ui.sail]}
-                </span>
-                <span ref={(n) => (hud.current.knots = n)} />
-              </div>
-            </div>
-            <div className="dt-guns dt-guns-star" ref={(n) => (hud.current.starBox = n)}>
-              <span>
-                Starboard <kbd>E</kbd>
-              </span>
-              <div className="dt-load">
-                <i ref={(n) => (hud.current.star = n)} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {touch && running && !picking && (
-          <>
-            <div ref={(n) => (hud.current.stick = n)} className="dt-stick" hidden>
-              <i ref={(n) => (hud.current.knob = n)} />
-            </div>
-            <div className="g3-touch dt-touch-sail">
-              <button type="button" className="g3-touch-btn" onClick={trim(1)} aria-label="More sail">
-                ▲
-              </button>
-              <button type="button" className="g3-touch-btn" onClick={trim(-1)} aria-label="Less sail">
-                ▼
-              </button>
-            </div>
-            <div className="g3-touch dt-touch-fire">
-              <button type="button" className="g3-touch-btn dt-fire" onPointerDown={hold('port', true)} onPointerUp={hold('port', false)} onPointerCancel={hold('port', false)} onPointerLeave={hold('port', false)} aria-label="Fire the port guns">
-                ◀ Port
-              </button>
-              <button type="button" className="g3-touch-btn dt-fire" onPointerDown={hold('star', true)} onPointerUp={hold('star', false)} onPointerCancel={hold('star', false)} onPointerLeave={hold('star', false)} aria-label="Fire the starboard guns">
-                Star ▶
-              </button>
-            </div>
-          </>
-        )}
-
-        <div className="g3-tools">
-          {trav.available &&
-            (trav.on ? (
-              <span className="dt-players" data-on="" title="Everyone else online sailing this sea shows as a ghost ship from another world: nothing passes between you but where each of you is">
-                <b>{trav.count}</b> {trav.count === 1 ? 'player' : 'players'} here
-              </span>
-            ) : (
-              <button type="button" className="dt-players" onClick={trav.join} title="Go online, and see everyone else sailing this sea as a ghost ship from another world">
-                See other players
-              </button>
-            ))}
-          {running && (
-            <button type="button" className="g3-tool" onClick={() => pause(true)} aria-label="Pause">
-              <RiPauseLine aria-hidden="true" />
-            </button>
-          )}
-          <button type="button" className="g3-tool" onClick={toggleFull} aria-label={full ? 'Leave full screen' : 'Full screen'}>
-            {full ? <RiFullscreenExitLine aria-hidden="true" /> : <RiFullscreenLine aria-hidden="true" />}
-          </button>
-        </div>
+        <TideHud hud={hud} chart={chart} ui={ui} callout={callout} phase={phase} touch={touch} picking={picking} trav={trav} full={full} onPause={() => pause(true)} onFull={toggleFull} hold={hold} trim={trim} />
 
         {picking && (
           <div className="g3-overlay dt-overlay" data-soft>
@@ -788,7 +683,10 @@ function Game({ soft, fail }) {
       <div className="g3-below">
         <p className="g3-keys">
           {touch ? (
-            <span>Drag on the left to steer · ▲ ▼ set the sails · the two buttons fire each side</span>
+            <span>
+              Drag on the left to steer · ▲ ▼ set the sails · the two buttons fire each side
+              <GuideCue touch />
+            </span>
           ) : (
             <>
               <span>
@@ -808,6 +706,7 @@ function Game({ soft, fail }) {
               <span>mouse looks · click or <kbd>Space</kbd> fires that side</span>
               <span>
                 <kbd>P</kbd> pause
+                <GuideCue />
               </span>
             </>
           )}
@@ -815,96 +714,4 @@ function Game({ soft, fail }) {
       </div>
     </div>
   );
-}
-
-// The chart in the corner: north up, the islands, who's where, what's about
-// to land, and the wind. `facing` is the way the camera looks.
-function drawChart(canvas, g, facing) {
-  const c = canvas?.getContext('2d');
-  if (!c) return;
-  const W = canvas.width;
-  const R = W / 2;
-  const k = (R - 10) / TIDE.R;
-  const X = (x) => R + x * k;
-  const Y = (y) => R + y * k;
-  c.clearRect(0, 0, W, W);
-  c.save();
-  c.beginPath();
-  c.arc(R, R, R - 3, 0, Math.PI * 2);
-  c.fillStyle = 'rgba(8, 20, 28, 0.62)';
-  c.fill();
-  c.clip();
-  // the way you're looking: a faint fan
-  c.fillStyle = 'rgba(255, 236, 190, 0.1)';
-  c.beginPath();
-  c.moveTo(X(g.p.x), Y(g.p.y));
-  c.arc(X(g.p.x), Y(g.p.y), R * 0.7, facing - 0.5, facing + 0.5);
-  c.fill();
-  for (const i of ISLES) {
-    c.beginPath();
-    c.arc(X(i.x), Y(i.y), Math.max(3, i.r * k), 0, Math.PI * 2);
-    c.fillStyle = i.kind === 'fort' && g.fort?.hp > 0 ? '#d9584a' : '#cdb98a';
-    c.fill();
-  }
-  for (const z of g.zones) {
-    c.beginPath();
-    c.arc(X(z.x), Y(z.y), Math.max(2.5, z.r * k), 0, Math.PI * 2);
-    c.strokeStyle = z.kind === 'bubble' ? 'rgba(190, 240, 255, 0.9)' : 'rgba(255, 90, 70, 0.95)';
-    c.lineWidth = 2;
-    c.stroke();
-  }
-  const blink = 0.6 + 0.4 * Math.sin(g.t * 6);
-  for (const p of g.pickups) {
-    c.beginPath();
-    c.arc(X(p.x), Y(p.y), p.quest ? 5 : 3, 0, Math.PI * 2);
-    c.fillStyle = p.kind === 'rum' ? '#7be3a5' : `rgba(255, 207, 92, ${p.quest ? blink : 0.9})`;
-    c.fill();
-  }
-  const ship = (s, colour, size) => {
-    c.save();
-    c.translate(X(s.x), Y(s.y));
-    c.rotate(s.a);
-    c.beginPath();
-    c.moveTo(size, 0);
-    c.lineTo(-size * 0.8, size * 0.62);
-    c.lineTo(-size * 0.45, 0);
-    c.lineTo(-size * 0.8, -size * 0.62);
-    c.closePath();
-    c.fillStyle = colour;
-    c.fill();
-    c.restore();
-  };
-  for (const s of g.ships) if (!s.sunk && s.under < 0.5) ship(s, s.kind === 'ghost' ? '#7dffb0' : '#ff6a55', s.kind === 'sloop' ? 6.5 : 8.5);
-  for (const a of g.arms) {
-    c.beginPath();
-    c.arc(X(a.x), Y(a.y), 3.5, 0, Math.PI * 2);
-    c.fillStyle = '#d06ad0';
-    c.fill();
-  }
-  if (g.kraken && g.kraken.up > 0.3) {
-    c.beginPath();
-    c.arc(X(g.kraken.x), Y(g.kraken.y), 8, 0, Math.PI * 2);
-    c.fillStyle = '#d06ad0';
-    c.fill();
-  }
-  ship(g.p, '#ffffff', 9.5);
-  c.restore();
-  // the rim, and the wind blowing across it
-  c.beginPath();
-  c.arc(R, R, R - 3, 0, Math.PI * 2);
-  c.strokeStyle = 'rgba(226, 196, 130, 0.8)';
-  c.lineWidth = 3;
-  c.stroke();
-  c.save();
-  c.translate(R + Math.cos(g.wind.a + Math.PI) * (R - 16), R + Math.sin(g.wind.a + Math.PI) * (R - 16));
-  c.rotate(g.wind.a);
-  c.beginPath();
-  c.moveTo(12, 0);
-  c.lineTo(-7, 6);
-  c.lineTo(-3, 0);
-  c.lineTo(-7, -6);
-  c.closePath();
-  c.fillStyle = '#9fd6ff';
-  c.fill();
-  c.restore();
 }
