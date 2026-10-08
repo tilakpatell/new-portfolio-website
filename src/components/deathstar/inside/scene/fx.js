@@ -3,7 +3,7 @@
 // in the films is; green only for the station’s turbolasers and its
 // superlaser), the sparks off whatever a bolt strikes, the scorch it
 // leaves on the wall (glowing as it cools), the flare at the muzzle, smoke,
-// and explosions. Everything is pooled and made here at the start (five
+// and explosions. Everything is pooled and made here at the start (four
 // draws at most however hot the fight: the bolts’ cores, every glow and
 // spark and flash as one set of sprites, every puff of fire and smoke as
 // another, the scorches, and nothing for an empty pool), and its shaders
