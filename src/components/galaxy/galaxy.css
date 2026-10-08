@@ -441,6 +441,7 @@
   font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 700;
+  text-shadow: none; /* (it's in the name, which has the black halo for the light text) */
 }
 .holomap-side {
   display: flex;

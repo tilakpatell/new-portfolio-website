@@ -110,6 +110,15 @@
 .holomap-systems li:is([data-front], [data-attack], [data-cut]) .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 6.5px #020611, 0 0 0 8px #fff; }
 .holomap-you { position: absolute; left: 50%; top: -11px; width: 5px; height: 5px; translate: -50% 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px #020611; }
 .holomap-systems li[data-badge='above'] .holomap-you { top: auto; bottom: -11px; }
+/* a name above or below its dot (HoloMap.jsx's data-place, labelPlace.js's t and b) would sit on the marks there:
+   the + or − goes to the dot's other side, and the you-fought dot to the other side from the name; where the
+   badge has that side, the you-fought dot goes beside the dot */
+.holomap-systems li[data-place='b']:is([data-badge='below'], [data-badge='above']) .holomap-dot::after { top: auto; bottom: calc(100% + 1px); }
+.holomap-systems li[data-place='t']:is([data-badge='below'], [data-badge='above']) .holomap-dot::after { top: calc(100% + 1px); bottom: auto; }
+.holomap-systems li[data-place='b'] .holomap-you { top: -11px; bottom: auto; }
+.holomap-systems li[data-place='t'] .holomap-you { top: auto; bottom: -11px; }
+.holomap-systems li[data-place='b']:is([data-front], [data-attack]):is([data-badge='below'], [data-badge='above']) .holomap-you,
+.holomap-systems li[data-place='t']:is([data-front], [data-attack]):is([data-badge='below'], [data-badge='above']) .holomap-you { top: 50%; bottom: auto; left: calc(100% + 6px); translate: 0 -50%; }
 .holomap-star { margin-left: 0.25rem; color: #ffd36a; font-weight: 700; text-shadow: 0 0 6px #000; }
 .holomap-fight { margin-left: 0.2rem; color: #ffb347; font-weight: 700; text-shadow: 0 0 6px #000; }
 

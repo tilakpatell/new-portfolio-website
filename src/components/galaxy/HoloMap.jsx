@@ -13,6 +13,7 @@ import { mine, onWar, warNow } from './warState';
 import { jumpTime, routeBetween, viaLanes } from './routes';
 import { onView } from './mapView';
 import { estimateWidth, placeLabels } from './labelPlace';
+import { REGION_FONT, regionAngle, regionNamesShown, unknownNameX } from './regionNames';
 import { useMapView } from './useMapView';
 import './warmap.css';
 import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKNOWN, edgeAt, eraById, eraOf, erasOf, filmLabel, filmShort, gridAt, jumpSeconds, lightYears, systemById, yearLabel } from './systems';
@@ -58,7 +59,8 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // pixels, from the names' measured widths), so at any zoom they keep clear of
 // one another and the dots as far as there's room; the map's own text is no
 // smaller than 0.7 rem, and the regions' names (11.5 px on screen at any
-// zoom) are spread round their rings.
+// zoom) are spread round their rings, each shown once its ring has the room
+// (regionNames.js: the inner ones come in as you zoom).
 //
 // What's new in the war since you last looked is marked on its card: the
 // newest event's time each war, kept in this browser (SEEN_KEY) for you
@@ -66,7 +68,6 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 
 const SIZE = 21; // the map is GRID squares across, in its own units
 const TAU = Math.PI * 2;
-const REGION_ANGLE = [-90, -112, -68, -132, -48, -150]; // (degrees round the core, north is −90: the regions' names apart)
 const SEEN_KEY = 'tp-gcw-seen';
 const readSeen = () => {
   try {
@@ -245,6 +246,11 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   // name is its own size on screen; its offsetWidth is that, and unlike its
   // bounding box isn't bent by the stage's zoom easing in
   const [boxPx, setBoxPx] = useState(600);
+  // (the real width before the first paint, not 600 till the observer's first word)
+  useLayoutEffect(() => {
+    const w = box.current?.clientWidth;
+    if (w) setBoxPx(w);
+  }, []);
   useEffect(() => {
     const el = box.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
@@ -300,7 +306,8 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   const away = picked && picked.id !== current;
   const pct = (v) => `${(v / SIZE) * 100}%`;
   const unitPx = (boxPx * mv.view.k) / SIZE; // (screen px per map unit)
-  const regionFont = 11.5 / unitPx; // (11.5 px on screen at any zoom)
+  const regionFont = REGION_FONT / unitPx; // (11.5 px on screen at any zoom)
+  const regionShown = regionNamesShown(REGIONS, unitPx); // (the ones with the room: the inner ones as you zoom)
 
   return createPortal(
     <div className="holomap dark-scope" role="dialog" aria-modal="true" aria-labelledby="holomap-title" style={{ '--btn-bg': picked?.accent ?? '#7fd6ff', '--btn-ink': '#03040a', '--accent': picked?.accent ?? '#7fd6ff', '--accent-text': picked?.accent ?? '#7fd6ff' }}>
@@ -358,8 +365,9 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                 {REGIONS.map((r) => (
                   <path key={r.id} d={ring(r.r)} className="holomap-region" data-id={r.id} />
                 ))}
-                {REGIONS.slice(1).map((r, i) => {
-                  const a = (REGION_ANGLE[i % REGION_ANGLE.length] * Math.PI) / 180;
+                {REGIONS.map((r, i) => {
+                  if (!regionShown.has(r.id)) return null;
+                  const a = regionAngle(i);
                   const d = edgeAt(r.r, a) - regionFont * 0.9;
                   const x = CORE[0] + Math.cos(a) * d;
                   const y = CORE[1] + Math.sin(a) * d;
@@ -370,7 +378,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                     </text>
                   );
                 })}
-                <text x={CORE[0] - 9.3} y={CORE[1] + 0.1} className="holomap-region-name holomap-unknown-name" style={{ fontSize: regionFont }}>
+                <text x={unknownNameX(unitPx)} y={CORE[1] + 0.1} className="holomap-region-name holomap-unknown-name" style={{ fontSize: regionFont }}>
                   Unknown Regions
                 </text>
                 {/* the routes */}
