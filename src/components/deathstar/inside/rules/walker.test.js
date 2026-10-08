@@ -396,3 +396,40 @@ describe('aboard the first Death Star', () => {
     expect(body.y).toBeCloseTo(6, 6);
   });
 });
+
+// a 10 m shaft with a ledge at each end and a 2 m bridge across the middle, tagged so it can be drawn back
+const BRIDGED = station([
+  room('span', 0, 0, 10, 10, {
+    kind: 'chasm',
+    floors: [
+      { x: 0, z: -4, w: 10, d: 2, y: 0 },
+      { x: 0, z: 4, w: 10, d: 2, y: 0 },
+      { x: 0, z: 0, w: 2, d: 6, y: 0, tag: 'bridge' },
+    ],
+  }),
+]);
+
+describe('a floor that can be drawn back', () => {
+  it('holds you while it is out, and drops you into the shaft once it is drawn back', () => {
+    const out = world(BRIDGED);
+    const body = createBody({ x: 0, y: 0, z: 0, room: 'span' });
+    walk(body, { dir: { x: 0, z: 0 } }, 0.5, out);
+    expect(body.falls).toBe(0);
+    expect(body.y).toBeCloseTo(0, 5);
+
+    // the game says the bridge is off by answering its floor's name as open
+    const back = world(BRIDGED, { open: (id) => id === 'floor:bridge' });
+    const over = createBody({ x: 0, y: 0, z: 0, room: 'span' });
+    over.safe = { x: 0, y: 0, z: -4, room: 'span' };
+    walk(over, { dir: { x: 0, z: 0 } }, 3, back);
+    expect(over.falls).toBe(1);
+    expect(over.z).toBeCloseTo(-4, 5);
+  });
+
+  it('is walked across from one ledge to the other only while it is out', () => {
+    const body = createBody({ x: 0, y: 0, z: -4, room: 'span' });
+    walk(body, { dir: { x: 0, z: 1 } }, 6, world(BRIDGED));
+    expect(body.falls).toBe(0);
+    expect(body.z).toBeGreaterThan(3);
+  });
+});

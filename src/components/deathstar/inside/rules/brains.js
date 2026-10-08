@@ -24,7 +24,8 @@
 //       a post or work with no spot keeps the place the person was put; no role is the cast’s own
 //       (scripted for Vader, the Emperor and the Royal Guard, droid for droids, else a post)
 //     hostile: the story’s word on whether they fight you, whatever your disguise
-//   stepCrew(crew, dt, { you, alarm, doors, combat, flags, now, open, stims? }) → events
+//   stepCrew(crew, dt, { you, alarm, doors, combat, flags, now, open, stims?, awake? }) → events
+//     awake(person) → bool: who thinks and moves this step (all when absent); the rest sleep where they are
 //     you: your walker body & { id?, side, armour, helmet, doubt?, hp }; doors: doors.js’s state;
 //     flags: the story’s, whose floors drawn back (layout.offTags) the legs’ ways are worked out under;
 //     open(doorId) → bool, as the walker takes it; combat: its fresh bolts are heard as shots
@@ -252,7 +253,7 @@ export function removePerson(crew, id) {
 
 // ── a step ──
 
-export function stepCrew(crew, dt, { you = null, alarm = null, doors = null, combat = null, flags = new Set(), now, open = () => true, stims = [] } = {}) {
+export function stepCrew(crew, dt, { you = null, alarm = null, doors = null, combat = null, flags = new Set(), now, open = () => true, stims = [], awake = null } = {}) {
   crew.clock = now ?? crew.clock + dt;
   crew.out = [];
   crew.routes = 0;
@@ -261,8 +262,10 @@ export function stepCrew(crew, dt, { you = null, alarm = null, doors = null, com
   const heard = gather(crew, stims);
   const watchers = [];
   for (const p of [...crew.people]) vitals(crew, p);
-  for (const p of crew.people) think(crew, p, heard, watchers);
-  for (const p of crew.people) move(crew, p, dt);
+  // the game lets far-off people sleep: they hold where they are, mind and all, until woken
+  const up = awake ? crew.people.filter((p) => awake(p)) : crew.people;
+  for (const p of up) think(crew, p, heard, watchers);
+  for (const p of up) move(crew, p, dt);
   for (const s of crew.fights.searches.values()) s.update(dt);
   crew.fights.tokens.audit(dt, (id) => crew.byId.get(id)?.mode === 'fight');
   if (watchers.length) crew.out.push(challenge(watchers));

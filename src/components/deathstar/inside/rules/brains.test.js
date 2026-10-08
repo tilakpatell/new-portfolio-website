@@ -654,3 +654,25 @@ describe('the crew’s minds', () => {
     expect(started).toEqual([5, 5]);
   });
 });
+
+describe('people the game lets sleep', () => {
+  it('neither walk their round nor see you while asleep, and take up where they were when woken', () => {
+    const w = world(row(), { you: rebel(-2, 0, { room: 'mid' }) });
+    const p = addPerson(w.crew, { id: 'p', kind: 'stormtrooper', room: 'west', x: -14, z: 0, role: { type: 'patrol', spots: ['a', 'b'] } });
+    const at = { x: p.x, z: p.z };
+    for (let k = 0; k < 90; k++) {
+      w.now += STEP;
+      const events = stepCrew(w.crew, STEP, { you: w.you, alarm: w.alarm, doors: w.doors, combat: w.combat, flags: w.flags, now: w.now, open: () => true, awake: () => false });
+      expect(events.filter((e) => e.type === 'saw')).toEqual([]);
+    }
+    expect(p.x).toBe(at.x);
+    expect(p.z).toBe(at.z);
+    expect(p.mode).toBe('routine');
+    // (a patrol stands a while at each spot of its round before walking on)
+    for (let k = 0; k < 20 * 30; k++) {
+      w.now += STEP;
+      stepCrew(w.crew, STEP, { you: null, alarm: w.alarm, doors: w.doors, combat: w.combat, flags: w.flags, now: w.now, open: () => true, awake: () => true });
+    }
+    expect(Math.hypot(p.x - at.x, p.z - at.z)).toBeGreaterThan(1);
+  });
+});
