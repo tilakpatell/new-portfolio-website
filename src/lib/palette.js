@@ -9,6 +9,8 @@ export const openGuide = (opts) => {
   const detail = guideDetail(opts);
   window.dispatchEvent(new CustomEvent('tp:guide', detail ? { detail } : undefined));
 };
+// …or shuts it if it's open: a world's own key for it (Invincible's H), as ? does.
+export const toggleGuide = () => window.dispatchEvent(new CustomEvent('tp:guide', { detail: { toggle: true } }));
 
 // ⌘K on a Mac, Ctrl K elsewhere (either works anywhere): the palette's key,
 // for its host (App.jsx) and the tour, which lets it through where a stop
