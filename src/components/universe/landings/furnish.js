@@ -6,9 +6,13 @@
 // pilot coming down beside a friend is handed the friend's frame.
 //
 // furnish({ id, landing, frame, R, small, reduced, renderer, warm }) →
-//   { group, solids, spots, update(t, dt, ctx?), ready, dispose() }
+//   { group, solids, spots, lights, update(t, dt, ctx?), ready, dispose() }
 //   group  in the planet's space (footScene's root: its middle at the origin)
 //   solids grows as things arrive ([{ n, r }])
+//   lights grows too: the things' own lights, each kept where it is but out
+//          of the scene's count, for footScene to show through the map's
+//          few (./lamps.js: a light put in as you land made every lit
+//          shader on the map again)
 //   spots  grows too: where something answers you, the things with a door
 //          (G there opens the planet's page) or a line to say ([{ n, r,
 //          label?, say? }], r how near you have to be, map units)
@@ -32,6 +36,7 @@ import { SCATTER_MAX, scatterSpots, seedOf } from './landings';
 import { createModels } from './models';
 import { beaconOf } from './wayin';
 import { createBeacon } from './beacon';
+import { keepDark } from './lamps';
 import { byId } from '../universes';
 
 // each planet's builders, loaded when you land there
@@ -199,6 +204,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
   group.name = `landing-${id}`;
   const solids = [];
   const spots = [];
+  const lights = [];
   const updates = [];
   let dead = false;
   const kit = createKit({ seed: seedOf(id) % 1000 });
@@ -212,6 +218,8 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
   const sinkFor = (r) => (0.25 * (r * METRE) ** 2) / R;
   const add = async (object) => {
     if (dead) return false;
+    // (its lights out of the count before anything's made for them)
+    lights.push(...keepDark(object));
     if (warm) await warm(object).catch(() => {});
     if (dead) return false;
     group.add(object);
@@ -336,6 +344,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     group,
     solids,
     spots,
+    lights,
     ready,
     // (ctx: what the things may answer to; { me }: the player's head, in the world)
     update(t, dt, ctx = null) {
@@ -349,6 +358,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       updates.length = 0;
       solids.length = 0;
       spots.length = 0;
+      lights.length = 0;
     },
   };
 }

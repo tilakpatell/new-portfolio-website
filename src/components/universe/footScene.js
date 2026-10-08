@@ -77,6 +77,7 @@ import { biomeAt, fromLatLon, latLonOf, readableMap, sampleMap, towardLand, uvOf
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
 import { furnish, furnished } from './landings/furnish';
+import { createLamps } from './landings/lamps';
 import { AIR, ENTRY, entryPath, entrySpot, fxAt } from './entry';
 import { createReentry } from './reentry';
 
@@ -1461,6 +1462,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     flare.userData.peak = 2.5 * METRE * METRE; // (about the key light's brightness, a metre off)
     map.add(flare);
   }
+  // and, for the same reason, the lights of a landing's things (a portal's
+  // glow, music's lamps, Mordor's fires) shown through a few kept in the
+  // map from the start, dark but for the ones nearest you (landings/lamps.js)
+  const lamps = createLamps(map);
+  const lampAt = new V();
   const groundN = new V();
   const fx = createGunFx({
     parent: root,
@@ -2009,7 +2015,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (landing && furnished(id)) {
       const anchor = near ? { n: near.n, f: near.f } : S.spot;
       const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer, warm });
-      rocks = { mesh: f.group, solids: f.solids, spots: f.spots, update: f.update, dispose: f.dispose };
+      rocks = { mesh: f.group, solids: f.solids, spots: f.spots, lights: f.lights, update: f.update, dispose: f.dispose };
     } else rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
     root.add(rocks.mesh);
     // (flown in, the ground's out of sight till the clouds, stepEntry: its
@@ -2427,6 +2433,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     ground?.tick(S.clock);
     // (the landing's things, told where your head is: the people there turn to you)
     rocks?.update?.(S.clock, dt, S.me && S.phase === 'walk' ? { me: root.localToWorld(new V(...vec.add(at(S.me, S.R), S.me.n, 1.6 * METRE))) } : null);
+    // (and their lights through the map's, the nearest you first: you, or the camera till you're out)
+    if (rocks?.lights) lamps.drive(rocks.lights, S.me ? root.localToWorld(lampAt.set(...at(S.me, S.R))) : S.cam.pos ? map.localToWorld(lampAt.copy(S.cam.pos)) : root.getWorldPosition(lampAt));
 
     if (S.phase === 'land' && S.entry) {
       stepEntry(dt);
@@ -3280,6 +3288,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         x.dispose();
       }
       ground = rocks = haze = sides = null;
+      lamps.clear();
       cast?.dispose();
       cast = null;
       for (const o of owned) o?.dispose?.();
@@ -3300,6 +3309,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       pfx.dispose();
       gfx.dispose();
       flare?.removeFromParent();
+      lamps.dispose();
       if (vm) for (const o of vm.owned) o.dispose?.();
       shadowMat.dispose();
       for (const m of boltMats.values()) {
