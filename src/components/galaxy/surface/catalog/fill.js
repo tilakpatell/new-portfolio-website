@@ -43,11 +43,11 @@ export const MODELS = {
   armorer: { uid: 'e3e74228d7fc41b58f36ae110f58b690', as: 'the Armorer', metres: 1.75, yaw: 0, tris: 8000, tex: 512 },
   // ── every world: droids and cargo ──
   // an MSE-6 mouse droid
-  mousedroid: { uid: 'bc78bbf16cf74d2580980e3123458348', as: 'the mouse droids', metres: 0.5, along: 'z', yaw: Math.PI / 2, tris: 1000, tex: 256 },
+  mousedroid: { uid: 'bc78bbf16cf74d2580980e3123458348', machine: true, as: 'the mouse droids', metres: 0.5, along: 'z', yaw: Math.PI / 2, tris: 1000, tex: 256 },
   // an R-series astromech, not Artoo
-  astromech: { uid: '4d478a8e98f34c6193ee5d57817b3d9f', as: 'the astromech droids', metres: 1.1, yaw: 0, tris: 4000, tex: 512 },
+  astromech: { uid: '4d478a8e98f34c6193ee5d57817b3d9f', machine: true, as: 'the astromech droids', metres: 1.1, yaw: 0, tris: 4000, tex: 512 },
   // an R5 unit in Imperial grey
-  r5: { uid: '2d1bf74e06a347449a20c8f2181aac78', as: 'the R5 astromechs', metres: 1.1, yaw: 0, tris: 6000, tex: 512 },
+  r5: { uid: '2d1bf74e06a347449a20c8f2181aac78', machine: true, as: 'the R5 astromechs', metres: 1.1, yaw: 0, tris: 6000, tex: 512 },
   // the Empire's cargo: a long crate and a cube
   empirecrate: { uid: 'c004b40467914c28936fce2629d140cc', as: 'the Imperial cargo crates', metres: 1.6, along: 'max', yaw: 0, tris: 3000, tex: 512 },
   cratecube: { uid: 'd66fe8b5014b45b0ac313293a171b272', as: 'the Imperial cargo cubes', metres: 1.2, along: 'max', yaw: 0, tris: 3000, tex: 512 },
