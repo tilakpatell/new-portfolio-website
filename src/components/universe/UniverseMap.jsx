@@ -34,7 +34,7 @@ import LoadingVeil from '../worlds/LoadingVeil';
 // `charting` says the nav map's open (the director holds off meanwhile).
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, build = null, lastBuild = null, dropped = null, onBuild, onCrew = null, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap, startAt = null }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, build = null, lastBuild = null, dropped = null, onBuild, onCrew = null, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap, startAt = null, universe = null }) {
   const labels = useRef({});
   const tags = useRef(null);
   const stick = useRef(null);
@@ -84,6 +84,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     id: 'universe',
     near: '0px',
     props: {
+      universe, // (the Expanse's seed: a pocket universe's, or the shared one; read once, the map is keyed on it)
       selected,
       ship,
       loadout,

@@ -637,6 +637,66 @@ export function boomSound(big = false) {
   tones([[big ? 55 : 75, 0, big ? 0.7 : 0.35]], { type: 'sine', gain: big ? 0.3 : 0.2 });
 }
 
+// ── the ships' powers (shipPowers.js) ──
+// Each power's own sound as it goes on, and the moments in it (a torpedo
+// away, a shot from Chewie's turret, the crystal going off); the big one
+// charged is a rising chime, a power that won't go the empty trigger. The
+// words are the crew's (crews.js), on the comms.
+export function powerSound(id, what) {
+  if (what === 'denied') return drySound();
+  if (what === 'ready') {
+    tones(
+      [
+        [660, 0, 0.12],
+        [990, 0.1, 0.12],
+        [1320, 0.2, 0.32],
+      ],
+      { type: 'sine', gain: 0.05 },
+    );
+    return;
+  }
+  if (what === 'launch') return launchSound(id === 'heisenberg' ? 'rv' : 'xwing');
+  if (what === 'blast') return boomSound(true);
+  if (what === 'shot') {
+    // a quad laser: a quick falling zap, a little lower than an X-wing's
+    const ac = audioContext();
+    const out = ac ? output() : null;
+    if (!ac || !out) return;
+    const t = ac.currentTime + 0.01;
+    blip(ac, out, { type: 'sawtooth', f: 1300, at: t, dur: 0.13, gain: 0.045, glide: 0.3, filter: 2600 });
+    return;
+  }
+  if (what !== 'use') return;
+  if (id === 'focus') {
+    // the Force: a low swell, time going thick
+    whoosh(1.6, 180, 900, 0.09);
+    tones(
+      [
+        [98, 0, 1.6],
+        [147, 0.06, 1.5],
+      ],
+      { type: 'sine', gain: 0.08 },
+    );
+  } else if (id === 'odds') boostSound('falcon', false);
+  else if (id === 'portal') portalSound();
+  else if (id === 'wubba') {
+    // the death ray: a crackling hum for as long as it's on
+    tones(
+      Array.from({ length: 14 }, (_, i) => [70 + (i % 2) * 6, i * 0.25, 0.3]),
+      { type: 'sawtooth', gain: 0.05 },
+    );
+    whoosh(3.5, 2400, 900, 0.05);
+  } else if (id === 'magnets') {
+    // the magnet winding up: a rising electric whine
+    const ac = audioContext();
+    const out = ac ? output() : null;
+    if (!ac || !out) return;
+    const t = ac.currentTime + 0.01;
+    blip(ac, out, { type: 'square', f: 180, at: t, dur: 1.1, gain: 0.03, glide: 5, filter: 2200 });
+    blip(ac, out, { type: 'sine', f: 360, at: t + 0.05, dur: 1.1, gain: 0.05, glide: 4 });
+  } else if (id === 'heisenberg') whoosh(0.6, 500, 2200, 0.12); // (the crystal thrown)
+}
+
 // a shot into the Citadel's shield: a fizzing hum
 export function shieldSound() {
   tones(

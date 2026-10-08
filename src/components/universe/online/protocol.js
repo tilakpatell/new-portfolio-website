@@ -24,7 +24,9 @@
 //           level names, w: war, o: the side sworn to in it (galaxy/sides.js),
 //           r: rank on that side (galaxy/ranks.js) } or none; a build older
 //           than these sends neither: level 1, nobody's }  on joining, and on any change
-//   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields]  ten times a second while flying
+//   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields, sec?]  ten times a second while flying
+//         (sec: out in the Expanse, its sector, 'E:sx,sz', and x and z then
+//         from that sector's middle; without it, the authored map's, as ever)
 //         (flags: hidden, boosting, safe: just back, your hits don't count, and
 //         riding a hyperlane, for the streak the others far off see)
 //   shot  [x, y, z, vx, vy, vz, w?]                      a bolt fired (for drawing it); w: the
@@ -63,6 +65,8 @@ import { byId } from '../universes';
 import { KINDS as HUNTERS } from '../../galaxy/hunted';
 import { fromAngles, slerp, toAngles } from '../orient';
 import { cleanWhere } from './where';
+import { inExpanse, sectorOf } from '../layout';
+import { SECTOR, parseSector, sectorCentre } from '../../expanse/gen/grid';
 import { cleanName } from './names';
 import { LEVELS as XP_LEVELS } from '../economy';
 import { SIDES } from '../sides';
@@ -186,17 +190,30 @@ export function readCursor(data) {
 // 100); the bank with the lean into a turn on it, so others see that too
 export function writePose(s, flags = 0, shield = 100) {
   const r = (v, k = 1000) => Math.round((v || 0) * k) / k;
-  return [r(s.x, 100), r(s.y, 100), r(s.z, 100), r(s.heading), r(s.pitch), r(wrap((s.bank || 0) + (s.lean || 0))), r(s.speed, 100), r(s.vy, 100), flags | 0, Math.round(shield)];
+  const sec = sectorOf(s.x || 0, s.y || 0, s.z || 0);
+  const o = inExpanse(sec) ? sectorCentre(...parseSector(sec)) : null;
+  const out = [r(s.x - (o?.[0] ?? 0), 100), r(s.y, 100), r(s.z - (o?.[2] ?? 0), 100), r(s.heading), r(s.pitch), r(wrap((s.bank || 0) + (s.lean || 0))), r(s.speed, 100), r(s.vy, 100), flags | 0, Math.round(shield)];
+  if (o) out.push(sec);
+  return out;
 }
+// how far from its sector's middle an Expanse pose may be (its half and a margin)
+const SEC_FAR = SECTOR / 2 + 2000;
 
 // a pose as it came in: { x, y, z, heading, pitch, bank, speed, vy, hidden,
-// boost, safe, lane, shield }, or null if it isn't one (out past deep space's
-// edge, it's clamped; an older pilot's never has the lane bit, so reads not riding)
+// boost, safe, lane, shield, sec? }, or null if it isn't one (out past deep space's
+// edge, it's clamped; an older pilot's never has the lane bit, so reads not riding).
+// x and z are the map's: an Expanse pose's are put back from its sector's
+// middle (and `sec` kept); one without a sector is the authored map's.
 export function readPose(data) {
   if (!Array.isArray(data) || data.length < 9) return null;
-  const x = num(data[0], -FAR, FAR);
+  const at = data.length > 10 ? parseSector(data[10]) : null;
+  const sec = at && inExpanse(data[10]) ? data[10] : null;
+  const o = sec ? sectorCentre(...at) : null;
+  const lx = o ? num(data[0], -SEC_FAR, SEC_FAR) : num(data[0], -FAR, FAR);
   const y = num(data[1], -1300, 1300);
-  const z = num(data[2], -FAR, FAR);
+  const lz = o ? num(data[2], -SEC_FAR, SEC_FAR) : num(data[2], -FAR, FAR);
+  const x = lx === null ? null : lx + (o?.[0] ?? 0);
+  const z = lz === null ? null : lz + (o?.[2] ?? 0);
   const heading = num(data[3], -100, 100);
   if (x === null || y === null || z === null || heading === null) return null;
   const flags = Math.floor(num(data[8], 0, 255) ?? 0);
@@ -214,6 +231,7 @@ export function readPose(data) {
     safe: Boolean(flags & FLAG.safe),
     lane: Boolean(flags & FLAG.lane),
     shield: num(data[9], 0, 100) ?? 100,
+    ...(sec ? { sec } : {}),
   };
 }
 

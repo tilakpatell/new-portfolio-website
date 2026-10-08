@@ -25,6 +25,10 @@
 // counts each lane's length over its speed, RAMP_S a node, and the free legs
 // as they're flown: the pulse drive in the open, a quarter of it in the home
 // system, the boost for the last leg in. laneAt(x, y, z) says which carriageway a point is in.
+//
+// buildFor(regions, beacons, opts) builds the same kind of web over any
+// places given (build() is it over the authored map), for a generated
+// sector's lanes; laneFrom is one lane of it, clear of a keep-out list given.
 
 import { bezier, laneLength } from './lanes';
 import { REGIONS } from './regions';
@@ -67,7 +71,7 @@ const along = (a, u, d) => [a[0] + u[0] * d, a[1] + u[1] * d, a[2] + u[2] * d];
 // rings, a pulsar's glare), the Maw's pull, a binary all the way round its
 // swing (its suns go round, and SOLIDS has them where they are now), and the
 // portals
-const KEEP_OUT = [
+export const KEEP_OUT = [
   ...SOLIDS.filter((o) => !o.id.startsWith('twins')).map((o) => ({ at: o.at, r: o.reach })),
   { at: MAW.at, r: MAW.reach },
   ...WONDERS.filter((w) => w.kind === 'binary').map((w) => ({ at: w.at, r: reachOf(w) * 1.4 })),
@@ -75,13 +79,13 @@ const KEEP_OUT = [
   // the other sector: a lane through one would take its riders with it)
   ...WONDERS.filter((w) => w.kind === 'portal').map((w) => ({ at: w.at, r: w.r * 4 })),
 ];
-// how close a Bézier comes to KEEP_OUT, past each thing's edge
-function clearOf(pts, steps = 64) {
+// how close a Bézier comes to keepOut, past each thing's edge
+function clearOf(pts, keepOut = KEEP_OUT, steps = 64) {
   let min = Infinity;
   const p = [0, 0, 0];
   for (let i = 0; i <= steps; i++) {
     bezier(pts, i / steps, p);
-    for (const o of KEEP_OUT) min = Math.min(min, Math.hypot(p[0] - o.at[0], p[1] - o.at[1], p[2] - o.at[2]) - o.r);
+    for (const o of keepOut) min = Math.min(min, Math.hypot(p[0] - o.at[0], p[1] - o.at[1], p[2] - o.at[2]) - o.r);
   }
   return min;
 }
@@ -95,7 +99,7 @@ const PLACE = new Map(PLACES.map((p) => [p.id, p]));
 // home system, its stations or its sun to get to the far side. A short local
 // lane joins each to the next round the system.
 const HOME_OUT = Math.hypot(REGIONS[0].hub[0], REGIONS[0].hub[2]);
-const HOME_BEACONS = [
+export const HOME_BEACONS = [
   ['home', 0],
   ['home-e', Math.PI / 2],
   ['home-n', Math.PI],
@@ -151,8 +155,9 @@ const regionName = (id) => REGIONS.find((r) => r.id === id).name.replace(/^Near 
 
 // a lane from node a to node b, its middle lifted by turns (index i); higher
 // if it won't clear, and null if it still won't. (`bend`: its middle control
-// point given, for the lanes round the home system.)
-function laneFrom(a, b, tier, name, i, bend = null) {
+// point given, for the lanes round the home system; `keepOut`: what it stays
+// clear of, { at, r } each.)
+export function laneFrom(a, b, tier, name, i, bend = null, keepOut = KEEP_OUT) {
   const lane = (pts) => ({ id: `${tier}:${a.id}>${b.id}`, tier, from: a.id, to: b.id, pts, length: laneLength(pts, 48), name });
   if (bend) return lane([a.at, bend, b.at]);
   const mid = [(a.at[0] + b.at[0]) / 2, (a.at[1] + b.at[1]) / 2, (a.at[2] + b.at[2]) / 2];
@@ -168,42 +173,65 @@ function laneFrom(a, b, tier, name, i, bend = null) {
   const side = unit([-d[2], 0, d[0]]);
   for (const [sx, h] of [...lifts, ...bends]) {
     const pts = [a.at, [mid[0] + side[0] * sx, mid[1] + h, mid[2] + side[2] * sx], b.at];
-    if (clearOf(pts) > CLEAR + GAP / 2 + R) return lane(pts);
+    if (clearOf(pts, keepOut) > CLEAR + GAP / 2 + R) return lane(pts);
   }
   return null;
 }
 
-function build() {
+// The web over the places given: `regions` in order of angle round the disc,
+// each { id, name, hub: node, members: [ramp node, each with its name] };
+// `beacons` the home system's ring of beacons (or none); and opts:
+//   express  [{ node, name }]: a lane from home (homeOf) to each
+//   keepOut  what the lanes stay clear of, { at, r } each
+//   ring     whether the trunk runs round the regions' hubs
+//   homeOf   (at) => the home node facing `at` (or null): each hub's trunk
+//            home, and the express lanes, run from it
+// Lanes are tried in a fixed order, each lifted by the count built so far.
+export function buildFor(regions, beacons, { express = [], keepOut = KEEP_OUT, ring = true, homeOf = null } = {}) {
   const out = [];
   const add = (l) => l && out.push(l);
   // local: each member to its beacon
-  for (const r of REGIONS.slice(1)) {
-    const hub = BEACON.get(r.id);
-    for (const id of r.members) {
-      const ramp = rampOf(id);
-      if (ramp) add(laneFrom(ramp, hub, 'local', `${placeName(id)} – ${regionName(r.id)} local`, out.length));
-    }
+  for (const r of regions) {
+    for (const m of r.members) add(laneFrom(m, r.hub, 'local', `${m.name} – ${r.name} local`, out.length, null, keepOut));
   }
   // trunk: round the ring (the regions are in order of angle), and each home
-  const ring = REGIONS.slice(1);
-  ring.forEach((r, k) => {
-    const next = ring[(k + 1) % ring.length];
-    add(laneFrom(BEACON.get(r.id), BEACON.get(next.id), 'trunk', `${regionName(r.id)} – ${regionName(next.id)} trunk`, out.length));
-  });
-  for (const r of ring) add(laneFrom(BEACON.get(r.id), homeFacing(r.hub), 'trunk', `${regionName(r.id)} – Home trunk`, out.length));
-  // express: home to the gates, each from the home beacon facing it
-  for (const e of EXPRESS) {
-    const ramp = rampOf(e.place);
-    if (ramp) add(laneFrom(homeFacing(ramp.at), ramp, 'express', e.name, out.length));
+  if (ring && regions.length > 1) {
+    regions.forEach((r, k) => {
+      const next = regions[(k + 1) % regions.length];
+      add(laneFrom(r.hub, next.hub, 'trunk', `${r.name} – ${next.name} trunk`, out.length, null, keepOut));
+    });
+  }
+  if (homeOf) {
+    for (const r of regions) {
+      const home = homeOf(r.hub.at);
+      if (home) add(laneFrom(r.hub, home, 'trunk', `${r.name} – ${home.name} trunk`, out.length, null, keepOut));
+    }
+    // express: home to the gates, each from the home beacon facing it
+    for (const e of express) {
+      const home = homeOf(e.node.at);
+      if (home) add(laneFrom(home, e.node, 'express', e.name, out.length, null, keepOut));
+    }
   }
   // round the home system: each of its beacons to the next, bowed out round
   // the corner between them (the middle control point at the corner of the
   // square they sit on, so the lane stays out past the system's edge)
-  HOME_BEACONS.forEach((a, k) => {
-    const b = HOME_BEACONS[(k + 1) % HOME_BEACONS.length];
-    add(laneFrom(a, b, 'local', 'The home ring', out.length, [a.at[0] + b.at[0], a.at[1], a.at[2] + b.at[2]]));
+  beacons.forEach((a, k) => {
+    const b = beacons[(k + 1) % beacons.length];
+    add(laneFrom(a, b, 'local', 'The home ring', out.length, [a.at[0] + b.at[0], a.at[1], a.at[2] + b.at[2]], keepOut));
   });
   return out;
+}
+
+// the web over the authored map
+function build() {
+  const regions = REGIONS.slice(1).map((r) => ({
+    id: r.id,
+    name: regionName(r.id),
+    hub: BEACON.get(r.id),
+    members: r.members.map(rampOf).filter(Boolean),
+  }));
+  const express = EXPRESS.map((e) => ({ node: rampOf(e.place), name: e.name })).filter((e) => e.node);
+  return buildFor(regions, HOME_BEACONS, { express, homeOf: homeFacing });
 }
 export const LANES = build();
 export const laneById = (id) => LANES.find((l) => l.id === id) ?? null;

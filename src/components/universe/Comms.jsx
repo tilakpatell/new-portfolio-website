@@ -5,7 +5,7 @@ import { playClip, playFile } from '../../lib/clips';
 import { useMouth } from '../../lib/mouth';
 import { preloadVoiced, voiceOf, voicedSrc } from '../../lib/voiced';
 import { retold } from './callers';
-import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flareSound, flybySound, gadgetSound, gunSound, hitSound, impactSound, interdictSound, jumpSound, launchSound, popSound, portalSound, respawnSound, riftSound, shieldSound, speak, switchSound } from './sounds';
+import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flareSound, flybySound, gadgetSound, gunSound, hitSound, impactSound, interdictSound, jumpSound, launchSound, popSound, portalSound, powerSound, respawnSound, riftSound, shieldSound, speak, switchSound } from './sounds';
 import Face from './Faces';
 
 // The ship's comms: what the crew says as you fly, one line at a time with
@@ -22,11 +22,13 @@ import Face from './Faces';
 // traffic going past and a ship shot down. Hunters coming after you, their
 // hits, your shields running low, being shot down, getting away or shooting
 // the lot down, the director's set pieces and the first sight of each of
-// deep space's wonders all get theirs too. Shots are just sound.
+// deep space's wonders all get theirs too, and so do the ship's powers
+// (shipPowers.js: the big one always, the other now and then). Shots are
+// just sound.
 // The page hands events over through `control.current.handle(event)`, or an
 // exchange of its own making as `{ type: 'lines', lines, urgent }`.
 
-const GAP = { boost: 25000, bump: 12000, edge: 20000, crash: 15000, pulled: 20000, traffic: 18000, kill: 9000, hit: 14000, hunted: 8000, shielded: 15000, deflect: 10000, dry: 8000, closed: 6000 }; // ms before the same kind of line again
+const GAP = { boost: 25000, bump: 12000, edge: 20000, crash: 15000, pulled: 20000, traffic: 18000, kill: 9000, hit: 14000, hunted: 8000, shielded: 15000, deflect: 10000, dry: 8000, closed: 6000, power: 15000, refuse: 8000 }; // ms before the same kind of line again
 
 export default function Comms({ crew, reduced, control }) {
   const [line, setLine] = useState(null); // { who, text, n }
@@ -277,6 +279,16 @@ export default function Comms({ crew, reduced, control }) {
           if (lines) say(e.part ? lines.map((l) => retold(crew, l, l[1].replace('{part}', e.part))) : lines, { urgent: e.key === 'hello', after: news });
         } else if (e.type === 'sector') {
           portalSound(); // (through a portal into another sector of the map: portals.js)
+        } else if (e.type === 'power') {
+          // the ship's powers: each one's sound, and the crew's word on it
+          // (on, the big one charged, a big haul from it, or why it won't go)
+          // (a chime for the big one charged, not for the other's every cooldown; Chewie's shots not on top of each other)
+          if ((e.what !== 'ready' || e.slot === 'ultimate') && (e.what !== 'shot' || soundOnce('power', 90, now))) powerSound(e.id, e.what);
+          if (e.what === 'use') {
+            if (e.slot === 'ultimate' || often('power', now)) say(linesFor(crew, 'power', e.id, 'use'), { urgent: true });
+          } else if (e.what === 'ready' && e.slot === 'ultimate') say(linesFor(crew, 'power', e.id, 'ready'));
+          else if (e.what === 'big') say(linesFor(crew, 'power', e.id, 'big'), { urgent: true });
+          else if (e.what === 'denied' && e.why && often('refuse', now)) say(linesFor(crew, 'power', e.id, 'refuse', e.why), { urgent: true });
         } else if (e.type === 'wonder') {
           const key = `wonder:${e.id}`;
           if (said.current.has(key)) return;

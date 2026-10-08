@@ -172,6 +172,24 @@ describe('poses', () => {
     expect(p.speed).toBe(4000);
     expect(readPose([0, 1e9, 0, 0, 0, 0, 0, 0, 0]).y).toBe(1300); // (the height is as it was)
   });
+  it('carries the sector out in the Expanse, with x and z from its middle, and reads one without as the authored map', () => {
+    const out = writePose({ ...ship, x: 123456.78, y: 5, z: -81000 });
+    expect(out[10]).toBe('E:2,-1');
+    expect(out[0]).toBeCloseTo(123456.78 - 160000, 2);
+    expect(out[2]).toBeCloseTo(-81000 + 80000, 2);
+    const p = readPose(out);
+    expect(p.sec).toBe('E:2,-1');
+    expect(p.x).toBeCloseTo(123456.78, 2);
+    expect(p.z).toBeCloseTo(-81000, 2);
+    // (on the authored map: no sector, as before)
+    expect(writePose(ship)).toHaveLength(10);
+    expect(readPose(writePose(ship)).sec).toBeUndefined();
+    // (a reader given no sector, or junk for one, takes the map's coordinates)
+    expect(readPose([1, 2, 3, 0, 0, 0, 5, 0, 2, 100, 'E:x']).x).toBe(1);
+    expect(readPose([1, 2, 3, 0, 0, 0, 5, 0, 2, 100, 'main']).sec).toBeUndefined();
+    // (an Expanse pose is kept near its own sector)
+    expect(readPose([1e9, 0, 0, 0, 0, 0, 0, 0, 0, 100, 'E:1,0']).x).toBe(80000 + 42000);
+  });
   it('says when a pilot is riding a lane, and an old pose says they are not', () => {
     expect(FLAG.lane).toBe(8);
     expect(readPose(writePose(ship, FLAG.lane)).lane).toBe(true);

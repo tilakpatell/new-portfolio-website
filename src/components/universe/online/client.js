@@ -482,7 +482,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     // (not seen there yet, or gone)
     poseOf(id) {
       const p = peers.get(id)?.pose;
-      return p ? { x: p.x, y: p.y, z: p.z } : null;
+      return p ? { x: p.x, y: p.y, z: p.z, ...(p.sec ? { sec: p.sec } : {}) } : null;
     },
     // the hunters after you, for the others to see: get() gives them
     // (hunters.js's wire()), asked for only when it's time to send (five
