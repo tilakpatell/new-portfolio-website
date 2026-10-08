@@ -304,8 +304,10 @@ export default function MusicWorld({ panel }) {
 
         {near && !open && (
           <div className="mw-hud mw-hud-bottom">
+            {/* key first, as in every world's prompt; on touch the pill itself is the button, so no key */}
             <button type="button" className="mw-prompt" onClick={() => openPanel(near)}>
-              Play the {INSTRUMENTS[near].name.toLowerCase()} {!touch && <kbd>E</kbd>}
+              {!touch && <kbd>E</kbd>}
+              Play the {INSTRUMENTS[near].name.toLowerCase()}
             </button>
           </div>
         )}
