@@ -50,7 +50,7 @@ Follow the spec over the plan, the code over both. Fix the plan's line in your P
 |---|---|---|---|
 | design | the architecting session | `claude/galaxy-asset-upgrade-design` | (carried by Phase 1's PR) |
 | 1 | the implementation session | `claude/galaxy-asset-upgrade-p1` | no (pushed, no PR: the owner decides) |
-| 2 | | | |
+| 2 | the implementation session | `claude/galaxy-asset-upgrade-p2` | no (pushed, no PR) |
 | 3 | | | |
 | 4 | | | |
 | 5 | | | |
@@ -63,4 +63,16 @@ Findings for the next phase go here, as the natural-worlds hand-off does: what t
 - Audit after Phase 1: legs 15, still 27. The eleven given `legs`: anakin 0.32, armorer 0.38, baze 0.46, cassian 0.46, clonephase1 0.47, dindjarin 0.45, jyn 0.46, k2so 0.47, krennic 0.47, mace 0.3, sullustan 0.44 (crotch as a share of height, read off front and side sheets; Anakin's and Mace's at their tunic hems). Chirrut stays a statue: his robe reaches his ankles and `findLegs` finds no parted legs even when told the crotch, like the Jawa and Yoda. Mace takes his place in the eleven.
 - `legRig.js` changed (not a loader on the hand-off's list): `findLegs` read only vertices, and a low-poly leg has none at 15% of its height, so the Gungan (already given `legs`), K-2SO and the Phase I clone found no legs and swayed. `surfacePoints` adds points spread over the triangles. A legged figure standing still now shifts its weight from knee to knee (`standPose`), so it is not frozen at its bind pose.
 - `anim-check` (software Chromium, about 1.6 s of world time a run) on Scarif (teleported beside Baze and K-2SO), Kamino, Nevarro, Naboo and Geonosis: exit 0 everywhere, no figure in view over 0.15 m/s. Few figures are in view from the landing, and the check lists every out-of-view rigged figure as at its bind pose (the old Geonosians too), because actors far from view are not posed. JSON in `evidence/galaxy-asset-upgrade/anim-p1-*.json`.
+
+### Phase 2 findings
+
+- `rig.js`'s `plain` already dropped a trailing `_<digits>`; Task 3 was only the export (and a test on `mixamorig:Hips_52` names).
+- `rig.js` cannot be imported by plain Node (its imports have no extensions), so the retarget takes `findBones` as an argument: `ual-bake.mjs --rig` loads it through Vite's `ssrLoadModule`, the tests import it directly.
+- `targetMap` maps a Mixamo rig by role (Spine, Spine1, Spine2 onto Spine02, Spine01, Spine; Neck as `neck`; the shoulders); bones a rig lacks get no track, and the parent turn passes through any bone the map leaves out. A Mixamo copy of the Meshy fixture gets the Meshy rig's turns to 1e-5.
+- Byte identity: the `pro` and `ual2` sets (81 of the 119 `ual-*.glb`) re-bake byte for byte, with `--report` at float noise (0.00022 rad). The `saber` and `life` sets (38 files) need the free Standard pack (`scripts/preview/.ual/ual.glb`): opengameart.org is refused through this session's proxy, and the assets repo and its releases do not have it, so those were not re-baked. Their path is the same Meshy-name branch the pro set takes. `scripts/ual-bake.test.mjs` re-bakes three pro files and compares bytes whenever `lab/assets/ual1` is there (it skips in CI).
+- The core set is baked at 24 frames a second, not 30: at 30 it added 60.1 KB to the Ithorian (over the 60 KB line), at 24 it adds 55.9 KB (rebelpilot 56.8, rebeltech 56.6). The figure's file is written with meshopt's filter method, so the turns pack a third smaller; the meshes, already quantized, are unchanged.
+- `ithorian`, `rebelpilot`, `rebeltech` carry idle, walk, run, talk, hit.chest, die and sit.idle (the Ithorian keeps its `walk-ip`). Their rows name `anim: { idle, walk, run }`. `catalog.test.js` now checks that every clip a row names is in its file.
+- `anim-check`: Yavin exit 0, bind pose 0 (four figures play `idle`); Endor and Scarif exit 0 (their bind-pose lines are out-of-view legged figures). Clip sheets: `evidence/galaxy-asset-upgrade/clips-p2-*.png`. `surface-shot.mjs` timed out twice on Yavin waiting for the world (line 43), so there is no hangar picture.
+- `node scripts/assets-fetch.mjs starwars b1` fetched the B1 in 4 parts (`part-aa`…`-ad`, 33.5 MB), SHA256 matched; `--repo naturemega` linked the MegaKit (270 files in `glTF/`).
+- Audit after Phase 2: own-clips 10, rig-noanim 0.
 
