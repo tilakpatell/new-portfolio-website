@@ -1007,10 +1007,9 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
-  "meshy/slave1": {
+  "meshy/slave-i": {
     "source": "https://www.meshy.ai",
-    "id": "01a11b86-adb6-7282-a4f8-45e35850fd18",
-    "name": "Slave I, Boba Fett's ship, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it, over the universe map’s first Meshy one)",
+    "name": "Slave I, Boba Fett's ship, made for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
@@ -3649,6 +3648,15 @@
     "source": "https://www.meshy.ai",
     "id": "01a11b86-a7ce-72c7-9567-3e3fc5de8aad",
     "name": "the Providence dreadnought (the Invisible Hand), generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/slave1": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-adb6-7282-a4f8-45e35850fd18",
+    "name": "Slave I, Boba Fett's ship, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it, over the universe map’s first Meshy one)",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
