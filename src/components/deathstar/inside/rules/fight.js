@@ -22,7 +22,7 @@
 //   flankRoute(nav, me, threat, { canPass, solidsOf }) → route | null   into the threat’s room by
 //     another door than the straight way’s, and not too long a way round; null in the same room.
 //     Both ways are routines.js’s remembered ones: a soldier looks again every second or two, mostly
-//     from where he stood at a target that hasn’t moved, and a way across a bay is dear
+//     from where he stood at a target that hasn’t moved, and a way across a bay costs tens of milliseconds
 //   standOff(layout, from, threat, metres) → { x, y, z, room } | null   on the line from the threat
 //     towards `from`, `metres` off, kept inside the room; null when the threat is in another room
 //   sectionSpots(layout, section) → [{ x, y, z, room }]   the station’s spots in the section, then

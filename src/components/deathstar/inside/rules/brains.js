@@ -82,7 +82,7 @@ const SCATTER = 8; // and how much further off they run
 // seconds a fright lasts: a droid’s is soon over; one who ran from a fight stays down while he can see it
 const FLEE_FOR = { roar: 3, fight: 6 };
 const BODY_LOOK = 0.5; // seconds between one person’s looks round for a fallen comrade
-const TOLD = 0.6; // how sure a sighting heard on the squad’s radio leaves the one told, against the friend who saw it
+const TOLD = 0.6; // a sighting heard on the squad’s radio is this much as sure as the friend who saw it
 // the levels at which the garrison is up and looking, not standing easy
 const UP = new Set(['alert', 'lockdown', 'hunt']);
 
@@ -538,8 +538,8 @@ function fight(crew, p, threat) {
 // it is. The word is a belief handed on (perception’s share), less sure
 // than the friend’s own sight and never counted as seen, so one in cover
 // keeps the target in mind (it doesn’t fade out while friends see it),
-// aims, flanks and searches from where it is now, and counts it lost only
-// once the last friend has lost it too. → the belief told, or null
+// looks for a flank and later searches from where it is now, and counts
+// it lost only once the last friend has lost it too. → the belief, or null
 function radio(crew, p, id) {
   if (id == null) return null;
   for (const q of crew.people) {
