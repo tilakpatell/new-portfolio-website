@@ -216,6 +216,14 @@ describe('the battle out of the throne room’s window', () => {
     }
   });
 
+  it('fires on a fighter just before it is shot down', () => {
+    plan.fighters.forEach((f, i) => {
+      if (f.down == null) return;
+      const last = plan.shots.filter((s) => s.kind === 'fighter' && s.target === i && f.down - s.at > 0 && f.down - s.at < 0.5);
+      expect(last.length).toBeGreaterThan(0);
+    });
+  });
+
   it('never fires at a fighter that isn’t there', () => {
     for (const s of plan.shots.filter((x) => x.target != null && x.kind === 'fighter')) {
       const quarry = plan.fighters[s.target];
@@ -355,6 +363,18 @@ describe('a window onto space', () => {
     expect(view.object.parent).toBeNull();
   });
 
+  it('keeps its sky round wherever the window is when drawn, even with no update between', () => {
+    const view = createView('space', { tier: 'low' });
+    const room = new THREE.Group();
+    room.position.set(120, 8, -40);
+    room.add(view.object);
+    const stars = view.object.getObjectByName('stars');
+    // (as the renderer does, just before it draws them)
+    stars.onBeforeRender();
+    expect(stars.material.uniforms.uOrigin.value.toArray()).toEqual([120, 8, -40]);
+    view.dispose();
+  });
+
   it('keeps its sky out of the room’s look and off the room’s depth, drawn after the room', () => {
     const view = createView('space', { tier: 'low' });
     view.object.traverse((o) => {
@@ -395,7 +415,7 @@ describe('a window onto a planet', () => {
   });
 });
 
-describe('the battle out of the Emperor’s window', () => {
+describe('the battle as it is drawn', () => {
   it('loads every kind of ship once, each as one instanced draw', async () => {
     const { load, asked } = fakeLoad();
     const view = createView('endor-battle', { tier: 'low', load, paint: fakePaint });

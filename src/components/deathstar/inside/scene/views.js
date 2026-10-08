@@ -218,7 +218,7 @@ export function battlePlan(level) {
     for (const t0 of times) {
       for (const t of [t0, t0 + 0.14]) {
         const at = mod(t, BATTLE.loop);
-        if (showAt(quarry, at) < 1 || showAt(quarry, at + BATTLE.fighterBolt.life) < 1) continue;
+        if (showAt(quarry, at) < 1) continue; // (nothing fires at a gap where a fighter was)
         shots.push({ kind: 'fighter', from: i, target: f.chases, side: f.side, at: Number(at.toFixed(3)), miss: [r(-3, 3), r(-3, 3), r(-3, 3)] });
       }
     }
@@ -231,7 +231,7 @@ export function battlePlan(level) {
     for (let t = r(0, gap); t < BATTLE.loop; t += gap) {
       const shot = { kind: 'capital', from: i, target: foes[Math.floor(rand() * foes.length)], side: c.side, at: Number(t.toFixed(3)), gun: r(-0.3, 0.3), hit: r(-0.35, 0.35), rise: r(-0.04, 0.08) };
       shots.push(shot);
-      if (rand() < 1 / 7) blasts.push({ at: 0, shot: shots.length - 1, size: 0.18 * capitals[shot.target].length });
+      if (rand() < 1 / 7) blasts.push({ at: 0, shot: shots.length - 1, size: 0.07 * capitals[shot.target].length });
     }
   });
   // and farther off, the rest of the battle: flashes out past the fleets
@@ -753,7 +753,8 @@ export function createView(kind, { renderer = null, tier = 'high', load = loadGl
   const u = { uOrigin: { value: new THREE.Vector3() }, uSun: { value: sunLocal.clone() }, uSunColour: { value: new THREE.Color(...SUN) } };
   const deps = { level, load, renderer, paint, u, owned, alive };
 
-  object.add(makeStars(level, u, owned, renderer), makeBand(u, owned), makeSun(sky.sun, u, owned));
+  const stars = makeStars(level, u, owned, renderer);
+  object.add(stars, makeBand(u, owned), makeSun(sky.sun, u, owned));
   const bodies = sky.bodies.map((b) => makeBody(b, level, u, deps));
   for (const b of bodies) object.add(...b.meshes);
   const battle = known === 'endor-battle' ? makeBattle(object, battlePlan(level), deps) : null;
@@ -767,6 +768,8 @@ export function createView(kind, { renderer = null, tier = 'high', load = loadGl
     u.uSun.value.copy(sunLocal).applyQuaternion(object.getWorldQuaternion(q)).normalize();
   };
   follow();
+  // (and again as the sky is drawn, its stars first, so it is right however a room calls update)
+  stars.onBeforeRender = follow;
 
   return {
     object,
