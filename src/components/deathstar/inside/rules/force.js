@@ -14,10 +14,11 @@
 // returns events for everything else (a shove, a lift, a stood-down
 // guard, a noise), for whoever owns the body or the brain to act on.
 //
-// The minds are utility brains on src/lib/ai/utility. Vader guards a
-// stroke he sees coming, brings a heavy down on a held guard, cuts at an
-// open foe, pushes him off when short of breath, and from afar closes in
-// or chokes, the rand choosing between near-equals. The Emperor throws
+// The minds are utility brains on src/lib/ai/utility. Vader reads a
+// stroke a beat after it starts and times his guard to meet its blow (his
+// rand says how well), brings a heavy down on a held guard, cuts at an
+// open foe, pushes him off when short of breath, and from beyond his reach
+// closes in or chokes, the rand choosing between near-equals. The Emperor throws
 // lightning when it is ready and his foe is in front of him, and between
 // times taunts, never more than once in 6 s. The caller turns each to
 // face its foe and moves it as `move` asks.
@@ -35,13 +36,13 @@
 //   forceStep(force, caster, targets, dt) → events  cools, and runs a held choke or lightning:
 //     { type: 'choke', id, lift } | { type: 'lightning', id, damage, drain, guarded } | { type: 'end', power, id }
 //   stopForce(force) → events       lets go of a held power
-//   vaderMind(state, foe, rand) → input   state: { me: fighter, force, last }
+//   vaderMind(state, foe, rand) → input   state: { me: fighter, force, last, read }; call it every step
 //     input: { strike, guard, dodge, force: 'push' | 'choke' | null, move: 'in' | null }
 //   emperorMind(state, foe, rand) → input & { say }   state: { me, force, now: s, saidAt: s, last }
 //   TAUNTS: the Emperor’s lines
 
 import { consider, pick } from '../../../../lib/ai/utility';
-import { DEFLECT, facing, GUARD, STROKES } from './saber';
+import { DEFLECT, facing, GUARD, PARRY, STROKES } from './saber';
 
 const ADEPTS = ['vader', 'emperor', 'luke', 'obiwan'];
 
@@ -92,11 +93,14 @@ function aimed(caster, targets, range, cone) {
   return best;
 }
 
-// a thing to pull has no stagger to set; a fighter does
+// a thing to pull has no stagger to set; a fighter does, and a fighter
+// thrown or gripped is neither swinging nor dodging any more
 function reel(t, s) {
   if (typeof t.stagger !== 'number') return;
   t.stagger = Math.max(t.stagger, s);
   t.guard = false;
+  t.stroke = null;
+  t.dodge = 0;
 }
 
 export function createForce(who) {
@@ -199,14 +203,40 @@ const NONE = { strike: null, guard: false, dodge: false, force: null, move: null
 
 const VADER = [
   { id: 'guard', weight: 1.2, considerations: [(c) => (c.coming ? 1 : 0)] },
-  { id: 'heavy', weight: 1, considerations: [(c) => (c.reach ? 1 : 0), (c) => (c.me.stamina >= STROKES.heavy.cost ? 1 : 0), (c) => (c.foe.guard || c.foe.stagger > 0 ? 1 : 0.35)] },
-  { id: 'light', weight: 0.9, considerations: [(c) => (c.reach ? 1 : 0), (c) => (c.me.stamina >= STROKES.light.cost ? 1 : 0), (c) => (c.foe.guard ? 0.2 : 1)] },
+  { id: 'heavy', weight: 1, considerations: [(c) => (c.d <= STROKES.heavy.reach ? 1 : 0), (c) => (c.me.stamina >= STROKES.heavy.cost ? 1 : 0), (c) => (c.foe.guard || c.foe.stagger > 0 ? 1 : 0.35)] },
+  { id: 'light', weight: 0.9, considerations: [(c) => (c.d <= STROKES.light.reach ? 1 : 0), (c) => (c.me.stamina >= STROKES.light.cost ? 1 : 0), (c) => (c.foe.guard ? 0.2 : 1)] },
   // a push buys room to get his breath back
   { id: 'push', weight: 1.1, considerations: [(c) => (c.me.stamina < STROKES.heavy.cost ? 1 : 0), (c) => (c.d <= 3 ? 1 : 0), (c) => (canUse(c.force, 'push') && facing(c.me, c.foe, POWERS.push.cone) ? 1 : 0)] },
   { id: 'choke', weight: 0.7, considerations: [(c) => (c.d > STROKES.heavy.reach && c.d <= POWERS.choke.range ? 1 : 0), (c) => (canUse(c.force, 'choke') && facing(c.me, c.foe, POWERS.choke.cone) ? 1 : 0)] },
-  { id: 'close', weight: 0.6, considerations: [(c) => consider(c.d, [STROKES.light.reach, STROKES.light.reach + 2])] },
-  { id: 'wait', weight: 0.25 },
+  // beyond a light stroke’s reach he always does better to step in than to
+  // stand: the floor keeps him coming from just outside it, where a heavy
+  // could still poke at him, and `wait` sits below the floor
+  { id: 'close', weight: 0.6, considerations: [(c) => (c.d > STROKES.light.reach ? 1 : 0), (c) => Math.max(0.5, consider(c.d, [STROKES.light.reach, STROKES.light.reach + 2]))] },
+  { id: 'wait', weight: 0.1 },
 ];
+
+// He reads a stroke a beat after it starts and means his guard to come up
+// just before its blow lands, inside the parry window; how well he judges
+// that is his rand, so he parries most, is caught by some, and meets a few
+// with a guard up too long to parry. react: s before he can answer at all;
+// slop: s his timing is out by, either way.
+const READ = { react: 0.1, slop: 0.12 };
+
+// The moment (stroke.t) Vader answers the foe’s stroke, drawn once a stroke.
+// A stroke is new when there was none, or its clock or kind went back.
+function read(state, foe, rand) {
+  const s = foe.stroke;
+  if (!s) {
+    state.read = null;
+    return null;
+  }
+  if (!state.read || s.t < state.read.t || s.kind !== state.read.kind) {
+    const k = STROKES[s.kind];
+    state.read = { kind: s.kind, at: Math.max(READ.react, k.at - PARRY / 2) + (rand() * 2 - 1) * READ.slop };
+  }
+  state.read.t = s.t;
+  return state.read;
+}
 
 const VADER_DOES = {
   guard: { guard: true },
@@ -220,10 +250,17 @@ const VADER_DOES = {
 
 export function vaderMind(state, foe, rand) {
   const { me, force } = state;
+  // read every step, even when he can’t act on it, so each stroke is drawn for once
+  const r = read(state, foe, rand);
   if (me.stagger > 0 || me.stroke || me.dodge > 0) return { ...NONE };
   const d = flat(me, foe);
-  const coming = !!foe.stroke && !foe.stroke.hit && d <= STROKES[foe.stroke.kind].reach + 0.5;
-  const ctx = { me, foe, force, d, coming, reach: d <= STROKES.light.reach };
+  // a stroke is coming until it ends, not just until its blow, so his
+  // guard is still up on the blow’s step whichever order the caller
+  // steps the foe, runs this and resolves the blow in
+  const coming = !!r && d <= STROKES[foe.stroke.kind].reach + 0.5;
+  // not read yet: he is caught as he stands, neither cutting into it nor raising a guard
+  if (coming && foe.stroke.t < r.at) return { ...NONE, guard: me.guard };
+  const ctx = { me, foe, force, d, coming };
   const chosen = pick(VADER, ctx, { current: state.last, rand, spread: 0.15 });
   state.last = chosen.id;
   return { ...NONE, ...VADER_DOES[chosen.id] };

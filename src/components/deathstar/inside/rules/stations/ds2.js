@@ -37,10 +37,18 @@ function flight({ x, z, along, tread, width, rise, count, from = 0 }) {
 // lift is at the back. East of the stairs the reactor shaft opens in the
 // floor, an 8 × 10 m hole crossed by a 2 m bridge to a ledge on the east
 // wall; under the bridge there is nothing until the reactor.
-const THRONE = { x: -50, z: -70, y: 36 };
+// The tower stands just west of the command centre, not out at the corridor’s
+// far end: carrying Vader from the throne to the escape shuttle has to fit
+// the Rebel story’s 120 s at a walk with time to spare for the crowds and the
+// quakes. Its antechamber, both lift landings and the throne room all hang
+// off TOWER, and the gallery and its lift off SHAFT, so they move together.
+const TOWER = 6; // the antechamber’s x: its east wall stops 2 m short of the command centre’s west wall
+const THRONE = { x: TOWER, z: -70, y: 36 };
 const DAIS = 3.2;
 const STAIRS = flight({ x: 0, z: -8, along: 'z', tread: 0.6, width: 6, rise: -0.4, count: 7, from: DAIS });
 const SHAFT = { x: THRONE.x + 9, z: THRONE.z + 5, w: 8, d: 10 };
+// the gallery on Level 3, its opening on the shaft’s north side
+const GALLERY = { x: SHAFT.x, z: SHAFT.z - SHAFT.d / 2 - 5, y: -24 };
 
 // Lambda shuttles stand nose north in the dock, ramps down towards the
 // corridor door: ST 321, Vader’s, on the west, and the one Luke leaves in
@@ -68,8 +76,8 @@ export const DS2 = {
     { id: 'dockfield', kind: 'field', name: 'Magnetic field', section: 'dock', x: 70, z: 2, w: 40, d: 4, y: 0, h: 18, floors: [] },
     { id: 'hangar272', kind: 'hangar', name: 'Hangar 272', section: 'hangar272', x: 0, z: 0, w: 80, d: 60, y: 0, h: 30 },
     { id: 'field272', kind: 'field', name: 'Magnetic field', section: 'hangar272', x: 0, z: 32, w: 80, d: 4, y: 0, h: 30, floors: [] },
-    // one long corridor behind the hangars, every Level 1 room off it, so the race to the shuttles runs its length
-    { id: 'corridors2', kind: 'corridor', name: 'Level 1 corridor', section: 'level1', x: 10, z: -31.6, w: 140, d: 3.2, y: 0, h: 3.2 },
+    // one corridor behind the hangars with every Level 1 room off it, from the tower’s antechamber to the dock
+    { id: 'corridors2', kind: 'corridor', name: 'Level 1 corridor', section: 'level1', x: (TOWER - 12 + 80) / 2, z: -31.6, w: 80 - (TOWER - 12), d: 3.2, y: 0, h: 3.2 },
     {
       id: 'command',
       kind: 'command',
@@ -84,10 +92,10 @@ export const DS2 = {
       // on the equatorial trench, looking out on the fleet
       window: { wall: 'north', x: 30, y: 3, w: 18, h: 3.6 },
     },
-    { id: 'holding', kind: 'holding', name: 'Tower antechamber', section: 'tower', x: -50, z: -41.2, w: 20, d: 16, y: 0, h: 6 },
+    { id: 'holding', kind: 'holding', name: 'Tower antechamber', section: 'tower', x: TOWER, z: -41.2, w: 20, d: 16, y: 0, h: 6 },
     // the tower lift’s landings, at its foot and in the throne room
-    { id: 'towerlift', kind: 'lift', name: 'Tower lift', section: 'tower', x: -50, z: -50.7, w: 3, d: 3, y: 0, h: 3 },
-    { id: 'towerlift-top', kind: 'lift', name: 'Tower lift, throne room', section: 'tower', x: -50, z: -53.5, w: 3, d: 3, y: THRONE.y, h: 3 },
+    { id: 'towerlift', kind: 'lift', name: 'Tower lift', section: 'tower', x: TOWER, z: -50.7, w: 3, d: 3, y: 0, h: 3 },
+    { id: 'towerlift-top', kind: 'lift', name: 'Tower lift, throne room', section: 'tower', x: TOWER, z: -53.5, w: 3, d: 3, y: THRONE.y, h: 3 },
     {
       id: 'throne',
       kind: 'throne',
@@ -112,7 +120,7 @@ export const DS2 = {
     },
     // under the throne room’s floor: nothing to stand on all the way down to the reactor
     { id: 'reactorshaft', kind: 'shaft', name: 'Reactor shaft', section: 'core', x: SHAFT.x, z: SHAFT.z, w: SHAFT.w, d: SHAFT.d, y: -60, h: THRONE.y + 60, floors: [] },
-    { id: 'gallery', kind: 'gallery', name: 'Reactor shaft gallery', section: 'core', x: -41, z: -75, w: 20, d: 10, y: -24, h: 6 },
+    { id: 'gallery', kind: 'gallery', name: 'Reactor shaft gallery', section: 'core', x: GALLERY.x, z: GALLERY.z, w: 20, d: 10, y: GALLERY.y, h: 6 },
     {
       id: 'superstructure',
       kind: 'superstructure',
@@ -137,7 +145,7 @@ export const DS2 = {
     },
     { id: 'lift2-l1', kind: 'lift', name: 'Lift 2, Level 1', section: 'level1', x: 60, z: -34.7, w: 3, d: 3, y: 0, h: 3 },
     { id: 'lift2-l2', kind: 'lift', name: 'Lift 2, Level 2', section: 'works', x: 40, z: -78.5, w: 3, d: 3, y: -12, h: 3 },
-    { id: 'lift2-l3', kind: 'lift', name: 'Lift 2, Level 3', section: 'core', x: -41, z: -81.5, w: 3, d: 3, y: -24, h: 3 },
+    { id: 'lift2-l3', kind: 'lift', name: 'Lift 2, Level 3', section: 'core', x: GALLERY.x, z: GALLERY.z - 6.5, w: 3, d: 3, y: GALLERY.y, h: 3 },
   ],
   doors: [
     { id: 'dock-field', a: 'dock', b: 'dockfield', x: 70, z: 0, axis: 'x', w: 34, h: 14, kind: 'arch' },
@@ -145,14 +153,14 @@ export const DS2 = {
     { id: 'hangar272-field', a: 'hangar272', b: 'field272', x: 0, z: 30, axis: 'x', w: 72, h: 24, kind: 'arch' },
     { id: 'hangar272-corr', a: 'hangar272', b: 'corridors2', x: 0, z: -30, axis: 'x', w: 4, h: 3, kind: 'blast' },
     { id: 'command-corr', a: 'command', b: 'corridors2', x: 30, z: -33.2, axis: 'x', w: 2.4, h: 2.6, kind: 'slide' },
-    { id: 'holding-corr', a: 'holding', b: 'corridors2', x: -50, z: -33.2, axis: 'x', w: 3, h: 3, kind: 'blast' },
-    { id: 'holding-lift', a: 'holding', b: 'towerlift', x: -50, z: -49.2, axis: 'x', w: 2, h: 2.4, kind: 'slide' },
+    { id: 'holding-corr', a: 'holding', b: 'corridors2', x: TOWER, z: -33.2, axis: 'x', w: 3, h: 3, kind: 'blast' },
+    { id: 'holding-lift', a: 'holding', b: 'towerlift', x: TOWER, z: -49.2, axis: 'x', w: 2, h: 2.4, kind: 'slide' },
     { id: 'throne-lift', a: 'throne', b: 'towerlift-top', x: THRONE.x, z: -55, axis: 'x', w: 2, h: 2.4, kind: 'slide' },
     // the gallery’s rail-less opening onto the shaft, where the reactor’s glow comes up
-    { id: 'gallery-shaft', a: 'gallery', b: 'reactorshaft', x: SHAFT.x, z: -70, axis: 'x', w: 6, h: 4, kind: 'arch' },
+    { id: 'gallery-shaft', a: 'gallery', b: 'reactorshaft', x: SHAFT.x, z: GALLERY.z + 5, axis: 'x', w: 6, h: 4, kind: 'arch' },
     { id: 'corr-lift2', a: 'corridors2', b: 'lift2-l1', x: 60, z: -33.2, axis: 'x', w: 2, h: 2.4, kind: 'slide' },
     { id: 'super-lift2', a: 'superstructure', b: 'lift2-l2', x: 40, z: -80, axis: 'x', w: 2, h: 2.4, kind: 'slide' },
-    { id: 'gallery-lift2', a: 'gallery', b: 'lift2-l3', x: -41, z: -80, axis: 'x', w: 2, h: 2.4, kind: 'slide' },
+    { id: 'gallery-lift2', a: 'gallery', b: 'lift2-l3', x: GALLERY.x, z: GALLERY.z - 5, axis: 'x', w: 2, h: 2.4, kind: 'slide' },
   ],
   lifts: [
     { id: 'tower', stops: ['towerlift', 'towerlift-top'] },
@@ -174,8 +182,9 @@ export const DS2 = {
     // in the ranks west of the aisle the Emperor walks up, facing it
     ranks272: { room: 'hangar272', x: -6, z: -6, yaw: Math.PI / 2 },
     'emperor-ramp': { room: 'hangar272', x: 0, z: 4, yaw: 0 },
-    'holding-lift': { room: 'holding', x: -50, z: -47.4, yaw: 0 },
-    throne: { room: 'throne', x: THRONE.x, z: THRONE.z - 12, yaw: Math.PI },
+    'holding-lift': { room: 'holding', x: TOWER, z: -47.4, yaw: 0 },
+    // the seat itself, named apart from the room so ?at= and teleport() can find it
+    'throne-seat': { room: 'throne', x: THRONE.x, z: THRONE.z - 12, yaw: Math.PI },
     'throne-armrest': { room: 'throne', x: THRONE.x + 0.7, z: THRONE.z - 12, yaw: Math.PI },
     // on the floor beside the stairs, in the dais’s shadow
     'under-stairs': { room: 'throne', x: THRONE.x - 4.5, z: THRONE.z - 6, yaw: Math.PI },

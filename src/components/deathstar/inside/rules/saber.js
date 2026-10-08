@@ -16,7 +16,7 @@
 //   createFighter({ id, x, z, yaw = 0, side, hp = 100 }) → fighter
 //     fighter: { id, x, z, yaw, hp, stamina 0…100, guard: bool, guardT: s since it came up,
 //                stroke: { kind: 'light' | 'heavy', t, hit } | null, stagger: s, dodge: s, side, deflect }
-//   saberStep(fighter, input, dt) → events
+//   saberStep(fighter, input, dt) → events (a staggered fighter’s stroke is dropped)
 //     input: { strike: 'light' | 'heavy' | null, guard: bool, dodge: bool }
 //     events: { type: 'stroke', id, kind } (begun) | { type: 'blow', id, kind } (call resolveClash now)
 //             | { type: 'guard', id } (raised) | { type: 'dodge', id }
@@ -59,6 +59,8 @@ export function saberStep(f, input, dt) {
   const events = [];
   f.stagger = Math.max(0, f.stagger - dt);
   f.dodge = Math.max(0, f.dodge - dt);
+  // a fighter knocked off balance (a flinch, a parry, a shove, a grip) loses the stroke it was in, so a reeling body never lands a blow
+  if (f.stagger > 0) f.stroke = null;
   const free = f.stagger <= 0 && !f.stroke && f.dodge <= 0;
   if (free && input.dodge && f.stamina >= DODGE.cost) {
     f.dodge = DODGE.s;

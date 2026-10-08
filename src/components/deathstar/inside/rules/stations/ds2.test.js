@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, validateStation } from '../layout';
+import { createNav, route } from '../nav';
 import { DS2 } from './ds2';
 import { STATIONS } from './index';
 
@@ -14,9 +15,9 @@ describe('the second Death Star’s rooms', () => {
     expect(validateStation(DS2)).toEqual([]);
   });
 
-  it('is on the list of stations as ds2', () => {
-    expect(STATIONS.ds2).toBe(DS2);
+  it('is ds2, and stays off the start screen’s list until its rooms are drawn and its stories written', () => {
     expect(DS2.id).toBe('ds2');
+    expect(STATIONS.ds2).toBeUndefined();
   });
 
   it('has every room the stories walk through', () => {
@@ -30,8 +31,12 @@ describe('the second Death Star’s rooms', () => {
   });
 
   it('names every spot the DS2 stories need', () => {
-    const want = ['st321-console', 'dock-ramp', 'vader-arrive', 'ranks272', 'emperor-ramp', 'holding-lift', 'throne', 'throne-armrest', 'under-stairs', 'shaft-edge', 'firing-switch', 'shuttle-ramp', 'escape-shuttle'];
+    const want = ['st321-console', 'dock-ramp', 'vader-arrive', 'ranks272', 'emperor-ramp', 'holding-lift', 'throne-seat', 'throne-armrest', 'under-stairs', 'shaft-edge', 'firing-switch', 'shuttle-ramp', 'escape-shuttle'];
     for (const name of want) expect(DS2.spots[name], name).toBeDefined();
+  });
+
+  it('names no spot after a room, so ?at= and teleport() can reach every one', () => {
+    for (const name of Object.keys(DS2.spots)) expect(room(name), name).toBeUndefined();
   });
 
   it('makes Hangar 272 vast', () => {
@@ -56,7 +61,7 @@ describe('the Emperor’s Tower', () => {
   });
 
   it('raises the throne on a dais reached by stairs a step at a time', () => {
-    const throne = DS2.spots.throne;
+    const throne = DS2.spots['throne-seat'];
     const dais = layout.floorAt('throne', throne.x, throne.z);
     expect(dais).toBeGreaterThan(room('throne').y + 2);
     // walk from the foot of the stairs up to the throne: no rise is more than a step
@@ -87,7 +92,7 @@ describe('the Emperor’s Tower', () => {
   });
 
   it('keeps the throne, its armrest and the hiding place under the stairs inside the throne room', () => {
-    for (const name of ['throne', 'throne-armrest', 'under-stairs', 'shaft-edge']) expect(DS2.spots[name].room, name).toBe('throne');
+    for (const name of ['throne-seat', 'throne-armrest', 'under-stairs', 'shaft-edge']) expect(DS2.spots[name].room, name).toBe('throne');
     const hide = DS2.spots['under-stairs'];
     expect(layout.floorAt('throne', hide.x, hide.z)).toBe(36);
   });
@@ -103,5 +108,24 @@ describe('the superstructure', () => {
 
   it('glows with the reactor chamber far below', () => {
     expect(room('superstructure').glow).toBe('reactor');
+  });
+});
+
+describe('the way out', () => {
+  const nav = createNav(layout);
+  const length = (from, to) => {
+    const way = route(nav, DS2.spots[from], DS2.spots[to]);
+    let metres = 0;
+    for (let k = 1; k < way.length; k += 1) metres += way[k].lift ? 0 : Math.hypot(way[k].x - way[k - 1].x, way[k].z - way[k - 1].z);
+    return metres;
+  };
+
+  it('lets Luke carry Vader from the throne to the escape shuttle well inside the story’s 120 s at a walk', () => {
+    // walk is 1.6 m/s; keep a third of the time for crowds, quakes and the lift
+    expect(length('throne-seat', 'shuttle-ramp') / 1.6).toBeLessThan(80);
+  });
+
+  it('keeps the tower’s foot nearer the dock than Hangar 272’s far wall', () => {
+    expect(length('dock-ramp', 'holding-lift')).toBeLessThan(100);
   });
 });
