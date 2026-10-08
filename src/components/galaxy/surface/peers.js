@@ -189,7 +189,7 @@ export function createPeers({ parent, placer, getCast, rides: RIDES = GALAXY_RID
           const m = s.motion && !(i === 0 && w.ride) && !wk.own ? { speed: s.motion.speed * METRE, side: s.motion.side * METRE, turn: s.motion.turn, air: 0 } : null;
           if (m) wk.fig?.update(dt, going, m);
           else wk.fig?.update(dt, going);
-          if (!(i === 0 && w.ride)) wk.saber?.stand(dt, now / 1000, going); // (the body under their blade)
+          if (!(i === 0 && w.ride)) wk.saber?.stand(dt, now / 1000, going); // (how much they go: walking, a stroke leaves their legs to the walk)
           if (m && wk.fig?.after) {
             wk.holder.updateMatrixWorld(true);
             wk.fig.after(dt, m, { forward: fwd.set(Math.sin(wk.st.yaw), 0, Math.cos(wk.st.yaw)), up: UP });
@@ -209,8 +209,10 @@ export function createPeers({ parent, placer, getCast, rides: RIDES = GALAXY_RID
               if (wk.saber) {
                 // their blade as they say it is: lit or not, and a stroke each time the packet says one's on
                 wk.saber.light(lit);
-                if (s.arms?.swing && !wk.swung) wk.saber.swing(now / 1000);
+                // (a new stroke when they start swinging, or chain on to another clip: the one they're playing)
+                if (s.arms?.swing && (!wk.swung || (s.arms.stroke && s.arms.stroke !== wk.stroke))) wk.saber.swing(now / 1000, { clip: s.arms.stroke ?? null });
                 wk.swung = Boolean(s.arms?.swing);
+                wk.stroke = s.arms?.stroke ?? null;
                 wk.saber.update(dt, now / 1000, { forward: fwd, up: UP, me: { x: wk.st.x, z: wk.st.z, yaw: wk.st.yaw }, targets: [] });
               }
             }
