@@ -4,11 +4,13 @@ import { KIND, checkEvent, hex, joinRoom, signEvent, visitKeys } from './nostr';
 
 // In-memory relays that behave like the real ones: they check each event's
 // id and signature, answer OK, and pass it on to every matching listener
-// (the sender included).
+// (the sender included); a CLOSE ends one listening.
 function createRelays(urls) {
   const relays = Object.fromEntries(urls.map((u) => [u, { clients: new Set(), down: false, log: [] }]));
+  let made = 0;
   class FakeSocket {
     constructor(url) {
+      made += 1;
       this.relay = relays[url];
       this.readyState = 0;
       this.subs = new Map();
@@ -29,6 +31,7 @@ function createRelays(urls) {
     send(s) {
       const msg = JSON.parse(s);
       if (msg[0] === 'REQ') this.subs.set(msg[1], msg[2]);
+      if (msg[0] === 'CLOSE') this.subs.delete(msg[1]);
       if (msg[0] !== 'EVENT') return;
       const ev = msg[1];
       checkEvent(ev).then((ok) => {
@@ -52,6 +55,7 @@ function createRelays(urls) {
   return {
     relays,
     WebSocket: FakeSocket,
+    made: () => made, // sockets opened to the relays, all told
     // an event straight to the listeners, unchecked (a relay up to no good)
     inject: (url, ev) => pass(relays[url], ev),
     setDown(url, down) {
@@ -129,6 +133,23 @@ describe('joinRoom over Nostr relays', () => {
     await Promise.all([a.ready, b.ready]);
     a.action('hi').send({ n: 'Han' });
     await until(() => b.got.some((m) => m.ns === 'hi' && m.from === a.selfId));
+  });
+
+  it('rooms on the same relays share one socket to each, and a room that leaves stops listening', async () => {
+    const net = createRelays(URLS);
+    const a = join(net);
+    const b = join(net);
+    const other = joinRoom({ appId: 'test-app', relays: URLS, WebSocket: net.WebSocket }, 'room-2');
+    rooms.push(other);
+    await Promise.all([a.ready, b.ready, other.ready]);
+    expect(net.made()).toBe(URLS.length);
+    const listening = () => [...net.relays[URLS[0]].clients].reduce((n, c) => n + c.subs.size, 0);
+    expect(listening()).toBe(3);
+    await other.leave();
+    expect(listening()).toBe(2);
+    // (and the two still in hear each other)
+    a.action('hi').send({ n: 'Han' });
+    await until(() => b.got.some((m) => m.ns === 'hi'));
   });
 
   it('a message for one pilot reaches only them', async () => {
