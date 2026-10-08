@@ -38,16 +38,34 @@ function snap(site, kit, c, p) {
   return null;
 }
 
+// the straight walk from a to b on dry ground all the way (a look every 4 m)
+const LEG = 4;
+const legDry = (kit, a, b) => {
+  const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / LEG));
+  for (let j = 1; j < n; j++) if (!kit.standable([a[0] + ((b[0] - a[0]) * j) / n, a[1] + ((b[1] - a[1]) * j) / n])) return false;
+  return true;
+};
+// a beat that can be walked round: a corner whose leg from the last crosses water is left out, and so is
+// the last while the way back round to the first does
+export function walkable(kit, beat) {
+  const out = [];
+  for (const p of beat) if (!out.length || legDry(kit, out[out.length - 1], p)) out.push(p);
+  while (out.length > 2 && !legDry(kit, out[out.length - 1], out[0])) out.pop();
+  return out;
+}
 // a beat's square round c, each corner on dry ground or left out
 const beatAt = (site, kit, c, dx, dz) =>
-  [
-    [c[0] + dx, c[1] + dz],
-    [c[0] - dz, c[1] + dx],
-    [c[0] - dx, c[1] - dz],
-    [c[0] + dz, c[1] - dx],
-  ]
-    .map((p) => snap(site, kit, c, p))
-    .filter(Boolean);
+  walkable(
+    kit,
+    [
+      [c[0] + dx, c[1] + dz],
+      [c[0] - dz, c[1] + dx],
+      [c[0] - dx, c[1] - dz],
+      [c[0] + dz, c[1] - dx],
+    ]
+      .map((p) => snap(site, kit, c, p))
+      .filter(Boolean),
+  );
 
 const sideOf = (holder, effects) => {
   if (holder === 'owner') return effects.owner;
@@ -144,6 +162,12 @@ export function bendBeat(beat, front) {
   return beat.map((p, i) => (i === k ? [...front.at] : p));
 }
 
+// (bent to the front only where every leg of it can still be walked)
+const bentOrNot = (kit, b, front) => {
+  const bent = bendBeat(b, front);
+  return walkable(kit, bent).length === bent.length ? bent : b;
+};
+
 export function turfsOf(site, effects, kit) {
   if (!effects || !site?.land?.at) return [];
   const pad = padTurf(site, effects, kit);
@@ -156,9 +180,9 @@ export function turfsOf(site, effects, kit) {
       // (bent only where the front is ground a patrol can stand on)
       if (front && kit.standable(front.at) && inReach(site, front.at)) {
         far.front = { at: front.at, dir: [-front.dir[0], -front.dir[1]] };
-        far.beats = far.beats.map((b, i) => (i === 0 ? bendBeat(b, front) : b));
+        far.beats = far.beats.map((b, i) => (i === 0 ? bentOrNot(kit, b, front) : b));
         pad.front = front;
-        pad.beats = pad.beats.map((b, i) => (i === 0 ? bendBeat(b, front) : b));
+        pad.beats = pad.beats.map((b, i) => (i === 0 ? bentOrNot(kit, b, front) : b));
       } else if (front) far.front = { at: front.at, dir: [-front.dir[0], -front.dir[1]] };
       out.push(far);
     }

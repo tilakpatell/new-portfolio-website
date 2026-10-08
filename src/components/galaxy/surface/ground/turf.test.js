@@ -96,3 +96,23 @@ describe('turf', () => {
     }
   });
 });
+
+describe('beats a patrol can walk', () => {
+  test('no leg of a beat, its way back round included, crosses water', () => {
+    const strip = ([x, z]) => kit.standable([x, z]) && !(x > 10 && x < 20 && z > 5); // (a creek across the pad's beats)
+    const k = { ...kit, standable: strip };
+    for (const effects of [E, { ...E, front: true }]) {
+      const t = turfsOf(SITE, effects, k);
+      for (const turf of t)
+        for (const b of turf.beats) {
+          expect(b.length).toBeGreaterThanOrEqual(2);
+          for (let i = 0; i < b.length; i++) {
+            const a = b[i];
+            const c = b[(i + 1) % b.length];
+            const n = Math.ceil(Math.hypot(c[0] - a[0], c[1] - a[1]) / 4);
+            for (let j = 0; j <= n; j++) expect(strip([a[0] + ((c[0] - a[0]) * j) / n, a[1] + ((c[1] - a[1]) * j) / n]), `${turf.id} leg ${i}`).toBe(true);
+          }
+        }
+    }
+  });
+});
