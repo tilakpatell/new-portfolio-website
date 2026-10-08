@@ -60,7 +60,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 1B | | | | |
 | 1C | | | | |
 | 1D | | | | |
-| 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | PR_TBD | |
+| 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 2A | | | | |
 | 2B | | | | |
 | 2C | | | | |
