@@ -36,7 +36,6 @@ export const MIN_APART = 0.08;
 // the home system is a secret, kept out of every file but its own: its look
 // is its own business, and the roster doesn’t name it.)
 export const LOOK_FOLDERS = [
-  { folder: 'expanse/surface', routes: ['/universe/expanse/7'] },
   { folder: 'universe', routes: ['/universe'] },
   { folder: 'universe/landings', routes: ['/universe'] },
   { folder: 'universe/shipyard', routes: ['/universe'] },

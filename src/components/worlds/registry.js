@@ -3,7 +3,7 @@
 // systems, the ground are made again from it); the save is only what the
 // visitor changed.
 //
-// World = { id: `${kind}:${seed}`, kind: 'minecraft' | 'pocket' | 'planet',
+// World = { id: `${kind}:${seed}`, kind: 'minecraft' | 'pocket',
 //   seed, name, route, created, played, size (the save's bytes), thumb }
 // createRegistry(store, { now }) → { list() (last played first), get(id),
 //   add({ kind, seed, name }) (the row it has, if it has one), touch(id,
@@ -13,8 +13,8 @@
 
 import { hashSeed } from '../minecraft/rules/noise.js';
 
-export const KINDS = ['minecraft', 'pocket', 'planet'];
-export const KIND_NAMES = { minecraft: 'Minecraft', pocket: 'Pocket universe', planet: 'Planet' };
+export const KINDS = ['minecraft', 'pocket'];
+export const KIND_NAMES = { minecraft: 'Minecraft', pocket: 'Pocket universe' };
 const NAME_MAX = 40;
 
 export const worldId = (kind, seed) => `${kind}:${seed}`;
@@ -30,7 +30,6 @@ export function fileId(file) {
 export function worldUrl({ kind, seed }) {
   const s = encodeURIComponent(String(seed));
   if (kind === 'pocket') return `/universe?seed=${s}`;
-  if (kind === 'planet') return `/universe/expanse/${s}`;
   return `/dot-matrix/minecraft?world=${s}`;
 }
 
@@ -58,7 +57,11 @@ export function createRegistry(store, { now = Date.now } = {}) {
     get,
     async list() {
       const rows = await store.list('worlds');
-      return rows.map(([, w]) => w).sort((a, b) => b.played - a.played);
+      // (a row of a kind the site no longer has, such as the driven planets, isn't listed)
+      return rows
+        .map(([, w]) => w)
+        .filter((w) => KINDS.includes(w?.kind))
+        .sort((a, b) => b.played - a.played);
     },
     async add({ kind, seed, name }) {
       if (!KINDS.includes(kind) || seed == null || seed === '') throw new Error('not a world');

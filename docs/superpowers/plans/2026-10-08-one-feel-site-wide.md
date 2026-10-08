@@ -80,6 +80,7 @@ Owns: `src/lib/three/palette.js`, `src/lib/three/bloom.js`, `src/lib/stage3d.js`
 - [ ] **Step 3: Implement** `looks.js`; write the Shire’s look (`scanned`, `house`, `bloom: BLOOM`, its `shadow` left to the moods) and the Expanse’s (`painted`, a palette of its species, ground, sand, rock, crate, barrel, body, cab, dark colours, `house`, `BLOOM`); the Expanse scene and buggy take the palette.
 - [ ] **Step 4: Run** `npm test`, `node scripts/autopilot-check.mjs --routes /middle-earth/shire,/universe/expanse/7 --shots one-feel-art` → PASS; the Expanse’s crates and buggy are one material; `node scripts/perf-probe.mjs expanseDrive` worst frame no worse.
 - [ ] **Step 5: Commit** `Every world says its art: look.js, and the Shire’s and the Expanse’s`.
+- Done; then the driven Expanse went from the site (#705), and its look, its crates and buggy on the palette and its `LOOK_FOLDERS` row went with it. The Shire’s look is the proof that stays; `createPalette` waits for the next painted world.
 
 ### Task 1A.4: The `art-mix` measure
 
