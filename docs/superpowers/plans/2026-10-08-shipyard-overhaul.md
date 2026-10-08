@@ -192,7 +192,7 @@
 
 **Interfaces:**
 - Consumes: `economy.checkout`, `economy.sell`, `fit`, `setBuild`, `useEconomy()`.
-- Produces: `onApply({ diff, toBuy })`: `checkout(toBuy)`; if not ok return it; else `setBuild` for a `module` change first, then `fit` each part change, returning the first refusal or `{ ok: true }`; the note “Bought N parts for T ¢” through the page's earn note slot (`EarnNote` takes `{ text }`).
+- Produces: `onApply({ diff, toBuy, draft })`: `yardRules.fitDraft` tries every fit on a copy first (the page's `fit` reads the loadout of the last render, so fits in a row would be stale), refusing with nothing paid; then `checkout(toBuy)`; then `setBuild` and the loadout saved in one pass; the note “Bought N parts for T ¢” through the page's earn note slot (`EarnNote` takes `{ text }`).
 
 - [ ] **Step 1: Wire it** as above. The old `Hangar` props (`loadout`, `build`, `onBuild`, `onFit`, `dropped`) move to `<Shipyard live={{ build, loadout }} …>`; `dropped` is shown in the bill's issues line as the hangar showed it.
 - [ ] **Step 2: Run** `npm run lint && npm test && npm run build`; then the browser: H from the map, the panel's button, the dock line at the projects station, Escape back to the map with nothing moved.
@@ -211,7 +211,7 @@
 **Files:**
 - Create: `scripts/shipyard-check.mjs` (after `scripts/universe-check.mjs`'s server start and shot helpers)
 
-- [ ] **Step 1: Write it**: `node scripts/shipyard-check.mjs [--url] [--out lab/shipyard]`. Opens `/universe`, picks the X-wing through the start choice, presses `H`, waits for `[role=dialog][aria-label=Shipyard]`, shoots `desk.webp` at 1280 × 720 and `phone.webp` at 390 × 844 (expand the bill first); asserts the showroom canvas's colour entropy above the inspector's blank threshold; clicks the Secondary tab's `Ion scatter` row, reads the bill's total text matches `/\d+ ¢/`; runs `window.__universeDebug.economy.earn('warWin', 10)`; clicks Apply; asserts `localStorage['tp-pilot']` parses with `owned` containing `part:secondary:ion` and `tp-universe-loadout`'s xwing `secondary === 'ion'`; on the phone shot asserts the Apply button's box is inside the viewport minus the nav's height. Exit 1 on any miss.
+- [ ] **Step 1: Write it**: `node scripts/shipyard-check.mjs [--url] [--out lab/shipyard]`. Opens `/universe` with the X-wing kept as the crew (`tp-universe-ship`), presses `H`, waits for `[role=dialog][aria-label=Shipyard]`, shoots `desk.webp` at 1280 × 720 and `phone.webp` at 390 × 844 (expand the bill first); asserts the showroom canvas's colour entropy above the inspector's blank threshold; runs `window.__universeDebug.economy.earn('warWin', 10)` (level 4); clicks the Secondary tab's `Flak burst` row (the Ion burst needs the Battle of Yavin), reads the bill's total text matches `/\d+ ¢/`; clicks Apply; asserts `localStorage['tp-pilot']` (`{ v, data }`) has `owned` containing `part:secondary:flak` and `tp-universe-loadout`'s xwing `secondary === 'flak'`; on the phone shot asserts the Apply button's box is inside the viewport minus the nav's height. Exit 1 on any miss.
 - [ ] **Step 2: Run it** with the dev server; open the two shots and look. Fix what they show.
 - [ ] **Step 3: Commit**: `git commit -m "A browser check for the Shipyard at desk and phone widths"`.
 
