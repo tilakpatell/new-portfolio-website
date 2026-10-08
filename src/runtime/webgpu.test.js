@@ -2,11 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // WebGPURenderer needs a browser; a stand-in records what it was made with
 const made = [];
+let fallBack = false; // (three's renderer, finding no adapter, on its WebGL 2 backend)
 vi.mock('three/webgpu', () => ({
   WebGPURenderer: class {
     constructor(options) {
       this.options = options;
-      this.backend = { device: { lost: new Promise(() => {}) } };
+      this.backend = fallBack ? { isWebGLBackend: true } : { isWebGPUBackend: true, device: { lost: new Promise(() => {}) } };
       this.init = vi.fn(async () => {});
       this.setPixelRatio = vi.fn();
       this.setSize = vi.fn();
@@ -26,6 +27,7 @@ const fakeCanvas = () => ({ addEventListener: vi.fn(), removeEventListener: vi.f
 describe('createWebGPU', () => {
   beforeEach(() => {
     made.length = 0;
+    fallBack = false;
   });
 
   it('forceWebGL makes the nodes-webgl kind on a WebGL 2 context', async () => {
@@ -40,6 +42,17 @@ describe('createWebGPU', () => {
     expect(gfx.backend).toBe('webgpu');
     expect(made[0].options.forceWebGL).toBe(false);
     expect(canvas.addEventListener).not.toHaveBeenCalled(); // (the device says when it's lost)
+  });
+
+  it('asked for WebGPU but fallen back to WebGL 2 (no adapter), it says so, and listens to the canvas', async () => {
+    fallBack = true;
+    const onLost = vi.fn();
+    const canvas = fakeCanvas();
+    const gfx = await createWebGPU(canvas, { onLost });
+    expect(gfx.backend).toBe('nodes-webgl');
+    const [, handler] = canvas.addEventListener.mock.calls.find((c) => c[0] === 'webglcontextlost');
+    handler({ preventDefault() {} });
+    expect(onLost).toHaveBeenCalledTimes(1);
   });
 
   it('a WebGL 2 context lost is reported through onLost, and the listener goes with the gfx', async () => {

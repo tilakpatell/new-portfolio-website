@@ -63,6 +63,10 @@ export async function createWebGPU(canvas, { budget, onLost, alpha = true, toneM
   renderer.toneMappingExposure = exposure;
   if (alpha) renderer.setClearColor(0x000000, 0);
   await renderer.init();
+  // (three's renderer, asked for WebGPU and finding no adapter, quietly
+  // draws on its WebGL 2 backend: that's the nodes-webgl kind, whatever
+  // was asked, and the canvas is what says it's lost)
+  const onWebGL = forceWebGL || Boolean(renderer.backend?.isWebGLBackend);
   let lost = false;
   const gone = () => {
     if (lost) return;
@@ -75,10 +79,10 @@ export async function createWebGPU(canvas, { budget, onLost, alpha = true, toneM
     e.preventDefault();
     gone();
   };
-  if (forceWebGL) canvas.addEventListener('webglcontextlost', onContextLost);
+  if (onWebGL) canvas.addEventListener('webglcontextlost', onContextLost);
   else renderer.backend?.device?.lost?.then(gone);
   return makeGfx({
-    backend: forceWebGL ? 'nodes-webgl' : 'webgpu',
+    backend: onWebGL ? 'nodes-webgl' : 'webgpu',
     renderer,
     canvas,
     compile: (root, camera, scene) => settle(renderer.compileAsync(root, camera, scene ?? root), 4000),
@@ -99,7 +103,7 @@ export async function createWebGPU(canvas, { budget, onLost, alpha = true, toneM
     post: (passes) => buildPostProcessing(renderer, passes),
     isLost: () => lost,
     release: () => {
-      if (forceWebGL) canvas.removeEventListener('webglcontextlost', onContextLost);
+      if (onWebGL) canvas.removeEventListener('webglcontextlost', onContextLost);
     },
   });
 }
