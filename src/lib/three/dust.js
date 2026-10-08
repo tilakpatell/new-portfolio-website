@@ -7,6 +7,7 @@
 // given (a slot is free once its life is up), turned so they rise along the
 // `up` it is given (a planet’s up is not +y). What doesn’t fit is dropped: a
 // puff missed in a pile-up is better than one stolen from the one before.
+// With nothing in the air the mesh is hidden, so it costs no draw call.
 //
 //   createDust({ count = 256, colour, size = 0.5, life = 0.8, up = [0, 1, 0] })
 //     → { mesh, burst(at, n = 1, up?), update(dt), used, dispose() }
@@ -95,6 +96,8 @@ export function createDust({ count = 256, colour = 0xd9c8a8, size = 0.5, life = 
   // (the cards are placed in the shader: three’s bounds don’t know where)
   mesh.frustumCulled = false;
   mesh.renderOrder = 2;
+  // (nothing in the air, nothing drawn: no draw call for dust till a hit)
+  mesh.visible = false;
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const p = new THREE.Vector3();
@@ -104,6 +107,7 @@ export function createDust({ count = 256, colour = 0xd9c8a8, size = 0.5, life = 
   for (let i = 0; i < count; i++) mesh.setMatrixAt(i, m.identity());
   let time = 0;
   let next = 0; // where the search for a free card starts
+  let until = -Infinity; // when the last card out is gone
   const free = (i) => time - starts[i] >= life;
   return {
     mesh,
@@ -124,12 +128,15 @@ export function createDust({ count = 256, colour = 0xd9c8a8, size = 0.5, life = 
         next = (i + 1) % count;
       }
       if (!placed) return;
+      until = time + life;
+      mesh.visible = true;
       mesh.instanceMatrix.needsUpdate = true;
       aStart.needsUpdate = true;
     },
     update(dt) {
       time += Math.max(0, dt || 0);
       uniforms.uDustTime.value = time;
+      if (mesh.visible && time > until) mesh.visible = false;
     },
     get used() {
       let n = 0;

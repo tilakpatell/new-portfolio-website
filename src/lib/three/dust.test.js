@@ -33,6 +33,18 @@ describe('createDust', () => {
     dust.dispose();
   });
 
+  it('is drawn only while a puff is in the air', () => {
+    const dust = createDust({ count: 4, life: 0.5 });
+    expect(dust.mesh.visible).toBe(false);
+    dust.burst([0, 0, 0], 2);
+    expect(dust.mesh.visible).toBe(true);
+    dust.update(0.3);
+    expect(dust.mesh.visible).toBe(true);
+    dust.update(0.3);
+    expect(dust.mesh.visible).toBe(false);
+    dust.dispose();
+  });
+
   it('takes slots for a burst and frees them when their life is up', () => {
     const dust = createDust({ count: 16, life: 0.8 });
     dust.burst([1, 2, 3], 3);
