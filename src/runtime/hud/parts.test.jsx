@@ -62,6 +62,7 @@ describe('the list of things to do', () => {
     expect(html).toContain('This week at Dunder Mifflin');
     expect(html).toContain('Kitchen. Get one');
     expect(html).toContain('data-next="true"');
+    expect(renderToStaticMarkup(<QuestList quests={[{ id: 'b', name: 'Cover reception', open: true, blurb: 'Erin needs a break.' }]} onClose={() => {}} />)).toContain('>Erin needs a break.<');
   });
 });
 
