@@ -19,7 +19,8 @@ import { CITY, COAST, BEACH, HILLS, PLACES, RIVER, SPAWN, SUBURB, WATER_Y, WORLD
 import { VOICE } from './voicelines';
 import InvHud from './InvHud';
 import MissionCard from './MissionCard';
-import { COMPASS, layoutCompass, objectiveText, titleMode } from './hud';
+import { toggleGuide } from '../../../lib/palette';
+import { COMPASS, fitCanvas, layoutCompass, objectiveText, titleMode } from '../../../runtime/hud';
 import './world.css';
 import LoadingVeil from '../../worlds/LoadingVeil';
 import { throttled } from '../../worlds/loadingSteps';
@@ -155,8 +156,7 @@ function World({ gl, setGl, thinkMark }) {
   // The time of day: one clock. The HUD's button reads it, the scene is
   // given it (below), and the dev hook sets it, so they can't disagree.
   const [time, setTimeName] = useState(keptTime);
-  const [help, setHelp] = useState(false);
-  // the title: FLY, MARK. until he's flying, then a chip (./hud.js titleMode)
+  // the title: FLY, MARK. until he's flying, then a chip (the HUD kit's titleMode, runtime/hud)
   const [chip, setChip] = useState(false);
   const [toast, setToast] = useState(null);
   const [near, setNear] = useState(null);
@@ -538,17 +538,13 @@ function World({ gl, setGl, thinkMark }) {
   // Everything held, let go: the keys, the stick, the touch buttons and a
   // drag. A blur or a hidden tab (another app, a call) can swallow the
   // key-up or the lifted finger, and he'd fly on by himself.
-  const stickRef = useRef(null);
-  const stickDrag = useRef(null);
   const drag = useRef(null);
   const release = useCallback(() => {
     const s = sim.current;
     s.keys.clear();
     s.stick = { x: 0, y: 0 };
     s.touchUp = s.touchDown = s.touchBoost = false;
-    stickDrag.current = null;
     drag.current = null;
-    if (stickRef.current) stickRef.current.style.transform = '';
   }, []);
 
   // the keys
@@ -572,7 +568,8 @@ function World({ gl, setGl, thinkMark }) {
       } else if (e.code === 'KeyE' || e.key === 'Enter') {
         if (!(e.target instanceof HTMLButtonElement)) act();
       } else if (e.code === 'KeyT') cycleTime();
-      else if (e.code === 'KeyH' || e.key === '?') setHelp((v) => !v);
+      // (H was the world's own list of keys: it's the site's guide now, which ? opens too)
+      else if (e.code === 'KeyH') toggleGuide();
       else if (e.code === 'KeyR' && !e.repeat) take();
       else if (e.code === 'KeyQ' && !e.repeat) {
         // a mission called off: asked first, on its card
@@ -580,7 +577,6 @@ function World({ gl, setGl, thinkMark }) {
         else if (s.mission && !cardRef.current) openCard({ kind: 'abandon', id: s.mission.id });
       } else if (e.key === 'Escape') {
         if (cardRef.current) closeCard();
-        else setHelp(false);
       }
     };
     const up = (e) => {
@@ -1028,38 +1024,18 @@ function World({ gl, setGl, thinkMark }) {
     wind.current?.set({ speed, alt: inSpace ? Infinity : alt });
   }, live);
 
-  // the stick, on a phone: one finger at a time (a second finger landing on
-  // it, or lifting off it, leaves the first in charge)
-  const stickDown = (e) => {
-    if (stickDrag.current) return;
-    startSound();
-    stickDrag.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  };
-  const stickMove = (e) => {
-    const d = stickDrag.current;
-    if (!d || d.id !== e.pointerId) return;
-    const dx = clamp((e.clientX - d.x) / 44, -1, 1);
-    const dy = clamp((e.clientY - d.y) / 44, -1, 1);
-    sim.current.stick = { x: dx, y: dy };
-    if (stickRef.current) stickRef.current.style.transform = `translate(${dx * 26}px, ${dy * 26}px)`;
-  };
-  const stickUp = (e) => {
-    if (stickDrag.current?.id !== e.pointerId) return;
-    stickDrag.current = null;
-    sim.current.stick = { x: 0, y: 0 };
-    if (stickRef.current) stickRef.current.style.transform = '';
-  };
+  // the thumbs, on a phone (the kit's Stick: one finger at a time, read from
+  // where it went down), and the buttons held for as long as they're pressed
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   const hold = (key) => ({
-    onPointerDown: (e) => {
+    onPress: () => {
       startSound();
       if (key === 'touchUp') sim.current.jump = true;
       sim.current[key] = true;
-      e.currentTarget.setPointerCapture?.(e.pointerId);
     },
-    onPointerUp: () => (sim.current[key] = false),
-    onPointerCancel: () => (sim.current[key] = false),
+    onRelease: () => (sim.current[key] = false),
   });
+  const punch = () => (startSound(), (sim.current.punch = true));
 
   return (
     <div className="iw-stage" ref={box} data-zone={zone} data-shutter={shutter ? '1' : undefined}>
@@ -1082,59 +1058,20 @@ function World({ gl, setGl, thinkMark }) {
       <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Over the city" />
       <MissionCard card={mcard} story={sim.current.story} onClose={closeCard} onAgain={() => startMission(mcard?.id)} onStart={startMission} onAbandon={abandon} />
 
-      <InvHud hud={hud} mapRef={mapRef} time={time} cycleTime={cycleTime} help={help} setHelp={setHelp} chip={chip} trav={trav} found={found} cards={CARDS.length} near={near} act={act} toast={toast} radio={radio} take={take} />
+      <InvHud hud={hud} mapRef={mapRef} time={time} cycleTime={cycleTime} chip={chip} trav={trav} found={found} cards={CARDS.length} near={near} act={act} toast={toast} radio={radio} take={take} touch={touch} onStick={onStick} startSound={startSound} hold={hold} punch={punch} />
       {shutter && <div className="iw-shutter" key={shutter} aria-hidden="true" onAnimationEnd={() => setShutter(null)} />}
 
-      {touch && (
-        <div className="iw-touch">
-          <div className="iw-stick" onPointerDown={stickDown} onPointerMove={stickMove} onPointerUp={stickUp} onPointerCancel={stickUp} onLostPointerCapture={stickUp}>
-            <span ref={stickRef} />
-          </div>
-          <div className="iw-buttons">
-            <button type="button" {...hold('touchUp')}>
-              Up
-            </button>
-            <button type="button" {...hold('touchDown')}>
-              Down
-            </button>
-            <button type="button" className="iw-boost" {...hold('touchBoost')}>
-              Boost
-            </button>
-            <button type="button" className="iw-punch" onPointerDown={() => (startSound(), (sim.current.punch = true))}>
-              Punch
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-// ── the HUD's canvases: as many pixels as the screen has under them (sharp
-// on a 2× screen); the compass drawn in CSS pixels, so its type is the size
-// it says on a phone too, and the map in 180ths of its width, its look at
-// any size ──
-function fitCanvas(c, unit) {
-  const w = c?.clientWidth;
-  const hh = c?.clientHeight;
-  if (!w || !hh) return null; // (hidden: in space)
-  const k = Math.min(3, window.devicePixelRatio || 1);
-  const bw = Math.round(w * k);
-  const bh = Math.round(hh * k);
-  if (c.width !== bw || c.height !== bh) {
-    c.width = bw;
-    c.height = bh;
-  }
-  return unit ? { w: unit, h: (hh * unit) / w, s: bw / unit } : { w, h: hh, s: bw / w };
-}
+// ── the HUD's canvases (the kit's fitCanvas: sharp on a 2× screen): the
+// compass drawn in CSS pixels, so its type is the size it says on a phone
+// too, and the map in 180ths of its width, its look at any size ──
 function fitHud(H, map) {
   H.mapBox = fitCanvas(map, 180);
   const box = fitCanvas(H.compass);
   if (box) {
-    // under the buttons, however many rows they wrap to (world.css)
-    const stage = H.compass.parentElement?.getBoundingClientRect();
-    const tools = H.tools?.getBoundingClientRect();
-    if (stage && tools?.height) H.compass.parentElement.style.setProperty('--iw-under', `${Math.round(tools.bottom - stage.top + 6)}px`);
     // where the HUD's other things still sit over the strip (the title, the
     // goal): nothing of the compass is drawn there (by more than a sliver:
     // the title's box runs a little below its letters)

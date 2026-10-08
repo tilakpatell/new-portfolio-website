@@ -1,4 +1,5 @@
 import MyWorlds from '../components/worlds/MyWorlds';
+import InstalledPacks from '../components/worlds/InstalledPacks';
 import PageTitle from '../components/PageTitle';
 import { useDocumentTitle } from '../lib/hooks';
 
@@ -16,7 +17,7 @@ export default function Worlds() {
       </header>
       <div className="shell relative z-10 pb-28">
         <MyWorlds />
-        {/* Installed packs go here, after My worlds (the second list). */}
+        <InstalledPacks />
       </div>
     </div>
   );

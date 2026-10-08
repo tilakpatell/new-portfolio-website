@@ -119,4 +119,12 @@ describe('pace', () => {
     run(16, 2000);
     expect(pace.level).toBe(down);
   });
+
+  it('set() puts it at a step and never climbs past it', () => {
+    const pace = createPace({ wait: 100 });
+    pace.set(2);
+    expect(pace.level).toBe(2);
+    run(pace, 1000, 3000, 16.7);
+    expect(pace.level).toBe(2);
+  });
 });

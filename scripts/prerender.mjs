@@ -42,7 +42,7 @@ export function routesFrom({ projects, roles, profile, universes, systems, feed 
   for (const s of systems) out.push({ path: `/galaxy/${s.id}`, title: titled(`${s.name} · A galaxy far, far away`), description: s.about });
   out.push({ path: '/terminal', title: titled('Terminal'), description: `An Imperial terminal that takes commands: ${NAME}’s work, and a few things to find. Try help.` });
   out.push({ path: '/changes', title: titled('What’s changed'), description: `The ship’s log: every change the site’s autopilot has made, with a picture, and how to undo it.` });
-  out.push({ path: '/worlds', title: titled('Worlds'), description: `The worlds you’ve made on ${NAME}’s site, kept on your device: continue one, rename it, or take it with you as a file.` });
+  out.push({ path: '/worlds', title: titled('Worlds'), description: `The worlds you’ve made on ${NAME}’s site, kept on your device: continue one, rename it, or take it with you as a file; and the 3D worlds installed to open without the wait.` });
   return out;
 }
 

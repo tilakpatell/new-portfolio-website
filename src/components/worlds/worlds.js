@@ -1,4 +1,5 @@
 import { UNIVERSES } from '../universe/universes';
+import { classicPathFor, readStart, universePathFor, viewOf } from '../../lib/view';
 
 // The hidden worlds, one per fandom, each a page of its own (the universes
 // on the map that have one, and the pages inside them: Star Wars has the
@@ -36,3 +37,10 @@ export const WORLD_MB = {
 // and its own phone gate, not its parent's.
 export const worldAt = (pathname) =>
   WORLDS.filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
+
+// The way out of a world, for the view the visitor is in (the glossary's
+// last row): "Universe map", back to this world's place on the map, or
+// "Classic site", to the pages, for one who reads the site as pages. For a
+// world's HUD Menu (runtime/hud's Menu takes it as it is).
+export const wayOut = (pathname, start = readStart()) =>
+  viewOf(pathname, start) === 'classic' ? { label: 'Classic site', to: classicPathFor(pathname) } : { label: 'Universe map', to: universePathFor(pathname) };
