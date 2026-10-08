@@ -78,7 +78,6 @@ export const RETIRED = [
 // them (the verified audit's “keep” notes), each with where it lives.
 export const ALLOW = [
   { file: /(crews|voicelines)\.js$/, re: /./, why: 'crew lines and the characters’ voices keep the fiction’s words' },
-  { file: /Achievements\.jsx$/, re: /colou?rs?|theme/i, why: 'achievement names and their lines are the fiction' },
 ];
 
 // Every retired word among a file's visitor-facing strings ({ text, line },

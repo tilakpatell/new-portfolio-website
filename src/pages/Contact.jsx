@@ -161,7 +161,7 @@ export default function Contact() {
                 {profile.email}
               </a>
               <div className="mt-5 flex flex-wrap gap-3">
-                <CopyButton text={profile.email} label="Copy address" onFail={mailTo} data-tour="contact-copy" />
+                <CopyButton text={profile.email} label="Copy email address" onFail={mailTo} data-tour="contact-copy" />
               </div>
             </div>
             {rows.map((r) => (
