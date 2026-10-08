@@ -17,15 +17,12 @@
 // it salutes its own by rank, tells everyone else to move along).
 
 import { standingOf } from './ground/standing';
+import { FAMILIES } from './ground/troops';
+
+export { FAMILIES };
 
 // the troopers of each side's look, as the sites name them
-const FAMILIES = {
-  stormtrooper: ['stormtrooper', 'sandtrooper', 'snowtrooper', 'scouttrooper'],
-  rebel: ['rebel', 'hothtrooper'],
-  clone: ['clone'],
-  battledroid: ['battledroid', 'superdroid'],
-  mercenary: ['mercenary'],
-};
+// (ground/troops.js's: the one table)
 const FAMILY_OF = Object.fromEntries(Object.entries(FAMILIES).flatMap(([f, kinds]) => kinds.map((k) => [k, f])));
 
 export const TROOP_NAMES = { stormtrooper: 'Stormtrooper', rebel: 'Rebel trooper', clone: 'Clone trooper', battledroid: 'Battle droid', mercenary: 'Hutt enforcer' };

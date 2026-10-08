@@ -90,3 +90,11 @@ describe('the garrison knows your side', () => {
     expect(unsworn.find((a) => a.path).says).toEqual(['Move along.']);
   });
 });
+
+describe('one table of troops', () => {
+  it('the families are ground/troops.js’s', async () => {
+    const { FAMILIES } = await import('./garrison');
+    const troops = await import('./ground/troops');
+    expect(FAMILIES).toBe(troops.FAMILIES);
+  });
+});

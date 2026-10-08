@@ -37,6 +37,7 @@
 
 import { consider, cooldown, curve, pick } from '../../../lib/ai/utility';
 import { slotOf, taken } from '../../../lib/ai/needs';
+import { SOLDIERS } from './ground/troops';
 
 const REACH = 120; // metres: a want further off isn't wanted
 const AGAIN = 240; // seconds before a want visited draws again
@@ -122,7 +123,7 @@ export function relate(b, spec, others, t, { seesThrough = null } = {}) {
 // Gamorrean's axe); the ones who stand and look (the Force-users, the
 // heroes, the Hutt); the beasts and machines nothing frightens. Everyone
 // else startles and scatters.
-const SOLDIERS = new Set(['stormtrooper', 'sandtrooper', 'snowtrooper', 'scouttrooper', 'shoretrooper', 'deathtrooper', 'tiepilot', 'officer', 'clone', 'rex', 'battledroid', 'superdroid', 'rebel', 'hothtrooper', 'wingguard', 'senateguard', 'bobafett', 'greedo', 'jango', 'mando', 'bokatan', 'fennec', 'caradune', 'ig11', 'greef']);
+// (SOLDIERS: ground/troops.js's, the one table)
 const BRANDISH = new Set(['tusken', 'gamorrean']);
 const STEADY = new Set(['jedi', 'yoda', 'kenobi', 'obiwan', 'quigon', 'ahsoka', 'shaakti', 'luke', 'leia', 'han', 'chewie', 'wookiee', 'lando', 'vader', 'maul', 'dooku', 'palpatine', 'inquisitor', 'hutt', 'jabba', 'hondo']);
 const FEARLESS = new Set(['rancor', 'wampa', 'krayt', 'acklay', 'nexu', 'reek', 'sarlacc', 'atat', 'atst', 'atap', 'atte', 'probedroid', 'aiwha']);
