@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { RiCloseLine, RiCompass3Line, RiKeyboardLine, RiPlayCircleLine, RiSmartphoneLine } from 'react-icons/ri';
+import { RiKeyboardLine, RiPlayCircleLine, RiSmartphoneLine } from 'react-icons/ri';
+import { IconTour } from './icons';
+import { CloseButton } from './ui';
 import { WORLDS } from './worlds/worlds';
 import { SHORTCUTS, SITE, guideFor } from './guide/pages';
 import { KeyTable, Keys } from './guide/KeyTable';
@@ -37,7 +39,7 @@ function PageGuide({ page, basics }) {
   const groups = input === 'touch' ? page.touch : page.keys;
   return (
     <>
-      <h2 className="guide-title">{page.title}</h2>
+      <h2 className="dialog-title">{page.title}</h2>
       {page.about && <p className="guide-about">{page.about}</p>}
       {basics && (
         <button type="button" className="btn btn-ghost btn-sm mt-3" onClick={basics}>
@@ -49,7 +51,7 @@ function PageGuide({ page, basics }) {
           <div className="flex items-center justify-between gap-3">
             <p className="label">Controls</p>
             {both && (
-              <div className="guide-input" role="group" aria-label="Controls for">
+              <div className="guide-input switch" data-size="sm" role="group" aria-label="Controls for">
                 <button type="button" aria-pressed={input === 'keys'} onClick={() => setInput('keys')}>
                   <RiKeyboardLine className="h-3.5 w-3.5" aria-hidden="true" /> Keyboard
                 </button>
@@ -62,7 +64,7 @@ function PageGuide({ page, basics }) {
           <div className="mt-2">
             {groups.map((g, i) => (
               <Fragment key={g.label ?? i}>
-                {g.label && <p className="guide-group">{g.label}</p>}
+                {g.label && <p className="guide-group eyebrow">{g.label}</p>}
                 <KeyTable rows={g.rows} />
               </Fragment>
             ))}
@@ -82,7 +84,7 @@ function PageGuide({ page, basics }) {
 function SiteGuide({ onGo }) {
   return (
     <>
-      <h2 className="guide-title">The site</h2>
+      <h2 className="dialog-title">The site</h2>
       <button
         type="button"
         className="btn btn-ghost btn-sm mt-3"
@@ -91,10 +93,11 @@ function SiteGuide({ onGo }) {
           openTour();
         }}
       >
-        <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> Take the tour
+        <IconTour className="h-4 w-4" aria-hidden="true" /> Take the tour
       </button>
       <section className="mt-4" aria-label="Shortcuts">
-        <KeyTable rows={[[shortcutLabel().replace(' ', '+'), 'Search and go anywhere (the command palette)'], ...SHORTCUTS]} />
+        {/* the shortcut as the keyboard says it: one cap a key, Ctrl and K */}
+        <KeyTable rows={[[shortcutLabel(), 'Search and go anywhere (the command palette)'], ...SHORTCUTS]} />
       </section>
       <section className="mt-6">
         <Tips tips={SITE} />
@@ -145,15 +148,19 @@ export default function GuidePanel({ pathname, close, onLeave }) {
   });
 
   return createPortal(
-    <div id="guide-panel" ref={panel} className="guide-panel card" role="dialog" aria-modal="false" aria-label="Guide" tabIndex={-1}>
+    <div id="guide-panel" ref={panel} className="guide-panel card" role="dialog" aria-modal="false" aria-labelledby={`${ids}-name`} tabIndex={-1}>
       <div className="guide-head">
-        <div className="guide-tabs" role="tablist" aria-label="Guide">
-          {page && <button {...tabProps('page', 'On this page')} />}
-          <button {...tabProps('site', 'The site')} />
+        {/* the panel says what it is, beside the tabs that say where in it you are */}
+        <div className="flex min-w-0 items-center gap-3">
+          <p id={`${ids}-name`} className="label">
+            Guide
+          </p>
+          <div className="guide-tabs switch" data-size="md" role="tablist" aria-label="Guide">
+            {page && <button {...tabProps('page', 'On this page')} />}
+            <button {...tabProps('site', 'The site')} />
+          </div>
         </div>
-        <button type="button" className="guide-close" onClick={close} aria-label="Close the guide">
-          <RiCloseLine className="h-5 w-5" aria-hidden="true" />
-        </button>
+        <CloseButton label="Close the guide" onClick={close} />
       </div>
       <div id={`${ids}-panel`} role="tabpanel" aria-labelledby={`${ids}-${tab}`} className="guide-body">
         {tab === 'page' && page ? <PageGuide page={page} basics={
@@ -166,7 +173,7 @@ export default function GuidePanel({ pathname, close, onLeave }) {
             } /> : <SiteGuide onGo={onLeave} />}
       </div>
       <p className="guide-foot">
-        <Keys keys="?" /> opens and closes this · <Keys keys="Esc" /> closes it
+        <Keys keys="?" /> opens and closes the guide · <Keys keys="Esc" /> closes it
       </p>
     </div>,
     document.body,

@@ -100,6 +100,8 @@
      --route-x: keep --gutter-l minus this above --route-x plus 12px. */
   --swipe-inset: 8px;
   --nav-h: 68px;
+  /* the bar's own height inside --nav-h (which adds its margin round it) */
+  --bar-h: 52px;
 }
 
 @media (min-width: 768px) {
@@ -109,6 +111,7 @@
     --route-x: 44px;
     --swipe-inset: 16px;
     --nav-h: 76px;
+    --bar-h: 56px;
     --page-top: calc(var(--nav-h) + 72px);
   }
 }
@@ -487,7 +490,7 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     font-weight: 600;
     line-height: 1;
     white-space: nowrap;
-    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    transition: background-color var(--t-fast) var(--ease-smooth), border-color var(--t-fast) var(--ease-smooth), color var(--t-fast) var(--ease-smooth), transform var(--t-fast) var(--ease-smooth);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
@@ -545,9 +548,13 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     text-decoration-color: var(--border-strong);
     text-decoration-thickness: 1px;
     text-underline-offset: 0.22em;
-    transition: text-decoration-color 0.15s ease;
+    transition: text-decoration-color var(--t-fast) var(--ease-smooth);
   }
   .link:hover { text-decoration-color: var(--accent); }
+  /* a link in a list of links (the footer's), where an underline on every
+     one would be noise: the body colour, the ink on hover */
+  .link-quiet { color: var(--text-body); transition: color var(--t-fast) var(--ease-smooth); }
+  .link-quiet:hover { color: var(--text); }
 
   .divider { height: 1px; background: var(--border); }
 
@@ -576,7 +583,7 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
     top: -60px;
     z-index: var(--z-top);
     padding: 0.6rem 1rem;
-    border-radius: 8px;
+    border-radius: min(8px, var(--r-panel));
     background: var(--btn-bg);
     color: var(--btn-ink);
     font-weight: 600;
@@ -670,6 +677,10 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
   .stretch-wide { font-stretch: 125%; }
   .stretch-semi { font-stretch: 112%; }
   .tabular { font-variant-numeric: tabular-nums; }
+  /* the two small sizes, as utilities: Tailwind's text-xs and text-sm bring a
+     line height with them, and these sit inside lines that have their own */
+  .text-fine { font-size: var(--fs-xs); }
+  .text-ui { font-size: var(--fs-sm); }
 }
 
 /* ─── The house kit ─────────────────────────────────────────────────────────
@@ -679,9 +690,37 @@ html[data-mode='dark'][data-theme='devspace'] { --surface: #070c14; --surface-2:
 
 /* A key cap: the guide's, raised by a thicker bottom edge. `.guide-kbd` is the
    name it had and stays an alias until nothing writes it. */
-.kbd, .guide-kbd { display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6rem; padding: 0 0.4rem; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 6px; background: var(--surface-2); color: var(--text); font: 600 0.72rem/1 var(--font-mono); white-space: nowrap; }
+/* (display at no specificity, so Tailwind's `hidden` still hides a cap) */
+:where(.kbd, .guide-kbd) { display: inline-grid; }
+.kbd, .guide-kbd { place-items: center; min-width: 1.6rem; height: 1.6rem; padding: 0 0.4rem; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: min(6px, var(--r-chip)); background: var(--surface-2); color: var(--text); font: 600 0.72rem/1 var(--font-mono); white-space: nowrap; }
 /* a pointer action (Click, Drag), not a key: dashed, and in the text face */
 .kbd.is-pointer, .guide-kbd.is-pointer { border-style: dashed; border-bottom-width: 1px; font-family: var(--font-sans); font-weight: 600; }
+/* a quiet one: a hint beside a control (the bar's ⌘K), not a key to learn */
+.kbd[data-size='sm'] { min-width: 1.5rem; height: 1.4rem; padding: 0 0.35rem; border-color: var(--border); border-bottom-width: 1px; border-radius: min(5px, var(--r-chip)); color: var(--muted); font-size: 0.7rem; font-weight: 400; }
+
+/* A pill of two to four choices in a track: the view switch, the guide's
+   tabs and its keyboard/touch toggle. The one you're on is lifted out of the
+   track in the page's own colour. Sizes: sm 28 (a control inside a panel),
+   the default 30 (the bar), md 34 (tabs), menu 44 (full width, for a thumb). */
+.switch { display: inline-flex; flex: none; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
+.switch > :is(button, [role='tab']) { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-width: 32px; height: 30px; padding: 0 0.6rem; border-radius: 999px; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; transition: background-color var(--t-fast) var(--ease-smooth), color var(--t-fast) var(--ease-smooth), box-shadow var(--t-fast) var(--ease-smooth); }
+.switch > :is(button, [role='tab']):hover { color: var(--text); }
+.switch > :is([aria-pressed='true'], [aria-selected='true']) { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(15, 17, 17, 0.08), 0 0 0 1px var(--border); }
+.switch > :is(button, [role='tab']):focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+.switch[data-size='sm'] > :is(button, [role='tab']) { height: 28px; gap: 0.3rem; font-size: 0.75rem; }
+.switch[data-size='md'] > :is(button, [role='tab']) { height: 34px; padding: 0 0.85rem; font-size: 0.85rem; }
+.switch[data-size='menu'] { display: flex; width: 100%; padding: 3px; }
+.switch[data-size='menu'] > :is(button, [role='tab']) { flex: 1; height: 44px; font-size: 0.95rem; }
+/* a thumb gets 44px of target above and below the drawn pill */
+@media (pointer: coarse) { .switch:not([data-size='menu']) > :is(button, [role='tab'])::after { content: ''; position: absolute; inset: -8px 0; } }
+
+/* A floating panel's own title: the guide's page name, a dialog's heading. */
+.dialog-title { font-stretch: 112%; font-weight: 650; font-size: 1.125rem; line-height: 1.3; color: var(--text); }
+
+/* A notice in a corner: the achievement toast, the guide's first-visit note.
+   Where it sits is its own; how it looks is this. The radius is the theme's
+   panel, so the square themes square it off. */
+.notice { border: 1px solid var(--border-strong); border-radius: var(--r-panel); background: var(--surface); color: var(--text); box-shadow: var(--shadow-float); }
 
 /* The X on anything that floats. 36px is the floor on a fine pointer; a
    thumb gets 44 without the drawn circle growing past the panel's head. */
@@ -728,6 +767,13 @@ html[data-mode='dark'] .nav-bar { box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.
 .nav-link.is-active { color: var(--text); background: var(--surface-2); }
 .nav-icon { color: var(--muted); }
 .nav-icon:hover { color: var(--text); background: var(--surface-2); }
+/* On a touch screen the bar's small buttons reach 44px tall and 40 wide
+   without being drawn bigger: the bar is 52px, and its pills are its look. */
+@media (pointer: coarse) {
+  .footer-links > * { display: inline-flex; align-items: center; min-height: 44px; }
+  .nav-icon, .nav-search { position: relative; }
+  .nav-icon::after, .nav-search::after { content: ''; position: absolute; inset: -4px -2px; }
+}
 .saber-progress {
   position: fixed;
   left: 0;

@@ -292,7 +292,7 @@ html[data-script] .toast-host { bottom: calc(88px + env(safe-area-inset-bottom))
 @keyframes element-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: none; } }
 
 /* ─── Command palette ────────────────────────────────────────────────────── */
-.palette { width: min(640px, 100%); overflow: hidden; background: var(--surface); animation: palette-in 0.22s var(--ease-out); }
+.palette { width: min(640px, 100%); overflow: hidden; background: var(--surface); box-shadow: var(--shadow-dialog); animation: palette-in 0.22s var(--ease-out); }
 @keyframes palette-in { from { opacity: 0; transform: translateY(-8px) scale(0.985); } to { opacity: 1; transform: none; } }
 /* :where() keeps these at zero specificity, so Tailwind's `hidden` still hides them */
 :where(.palette-kbd) { display: inline-grid; }
@@ -317,50 +317,15 @@ html[data-script] .toast-host { bottom: calc(88px + env(safe-area-inset-bottom))
   border-radius: 999px;
   color: var(--muted);
   font-size: 0.8125rem;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--t-fast) var(--ease-smooth), color var(--t-fast) var(--ease-smooth);
 }
 .nav-search:hover { background: var(--surface-2); color: var(--text); }
 
 /* The view switch: the universe or the classic site, a pill of two beside the
    name (ViewSwitch.jsx). The one you're in is filled; on a world page, the one
    you picked. */
-.view-switch {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface-2);
-}
-.view-switch > button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  min-width: 32px;
-  height: 30px;
-  padding: 0 0.6rem;
-  border-radius: 999px;
-  color: var(--muted);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  white-space: nowrap;
-  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-}
 .view-switch > button:has(.sr-only) { padding: 0 0.45rem; }
-.view-switch > button:hover { color: var(--text); }
-.view-switch > button[aria-pressed='true'] {
-  background: var(--bg);
-  color: var(--text);
-  box-shadow: 0 1px 2px rgba(15, 17, 17, 0.08), 0 0 0 1px var(--border);
-}
 .view-switch > button[aria-pressed='true'] svg { color: var(--accent-text); }
-.view-switch > button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
-/* in the phone menu: full width, big enough for a thumb */
-.view-switch[data-size='menu'] { display: flex; width: 100%; padding: 3px; }
-.view-switch[data-size='menu'] > button { flex: 1; height: 44px; font-size: 0.95rem; }
 
 /* Home's way into the universe, under the hero's buttons */
 .hero-universe { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 44px; color: var(--muted); font-size: 0.9rem; transition: color 0.15s ease; }
@@ -376,7 +341,7 @@ html[data-script] .toast-host { bottom: calc(88px + env(safe-area-inset-bottom))
   z-index: calc(var(--z-nav) - 1); /* a sheet under the bar: the bar stays on top to close it */
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: calc(12px + 52px + 12px) var(--gutter-r) calc(28px + env(safe-area-inset-bottom)) var(--gutter-l);
+  padding: calc(12px + var(--bar-h) + 12px) var(--gutter-r) calc(28px + env(safe-area-inset-bottom)) var(--gutter-l);
   background: var(--bg);
   animation: menu-in 0.2s ease both;
 }
@@ -955,31 +920,21 @@ html[data-mode='dark'] .saber-progress[data-kind='pixels'] .blade { height: 6px;
 @media (prefers-reduced-motion: reduce) { .gus { transition-duration: 0.01s; } }
 
 /* The guide: a ? in the corner, and the panel it opens */
-.guide-btn { position: fixed; right: 16px; bottom: calc(22px + env(safe-area-inset-bottom)); z-index: calc(var(--z-float) - 4); display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--text) 60%, transparent); transition: transform 0.15s ease, border-color 0.15s ease; }
+.guide-btn { position: fixed; right: 16px; bottom: calc(22px + env(safe-area-inset-bottom)); z-index: calc(var(--z-float) - 4); display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text); box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--text) 60%, transparent); transition: transform var(--t-fast) var(--ease-smooth), border-color var(--t-fast) var(--ease-smooth); }
 .guide-btn:hover { transform: translateY(-2px); border-color: var(--accent); }
 @media (max-width: 639px) {
   .guide-btn { transition: transform 0.25s ease, opacity 0.25s ease; }
   .guide-btn[data-tucked] { transform: translateY(calc(100% + 32px)); opacity: 0; pointer-events: none; }
   .guide-btn[data-tucked]:focus-visible { transform: none; opacity: 1; pointer-events: auto; }
 }
-.guide-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
 .guide-btn[aria-expanded='true'] { background: var(--btn-bg); color: var(--btn-ink); border-color: transparent; }
 html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
-.guide-panel { position: fixed; right: 16px; bottom: calc(74px + env(safe-area-inset-bottom)); z-index: var(--z-dialog); display: flex; flex-direction: column; width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 140px); padding: 0; background: var(--surface); box-shadow: 0 24px 50px -24px color-mix(in srgb, var(--text) 55%, transparent); outline: none; overflow: hidden; }
+.guide-panel { position: fixed; right: 16px; bottom: calc(74px + env(safe-area-inset-bottom)); z-index: var(--z-dialog); display: flex; flex-direction: column; width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 140px); padding: 0; background: var(--surface); box-shadow: var(--shadow-dialog); outline: none; overflow: hidden; }
 .guide-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 0.9rem 0.75rem 1.1rem; border-bottom: 1px solid var(--border); }
 .guide-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1.1rem 1.25rem 1.25rem; }
 .guide-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; padding: 0.65rem 1.25rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--muted); }
-.guide-tabs { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); }
-.guide-tabs > [role='tab'] { min-height: 34px; padding: 0 0.85rem; border-radius: 999px; color: var(--muted); font-size: 0.85rem; font-weight: 600; transition: background-color 0.15s ease, color 0.15s ease; }
-.guide-tabs > [role='tab']:hover { color: var(--text); }
-.guide-tabs > [role='tab'][aria-selected='true'] { background: var(--bg); color: var(--text); box-shadow: 0 0 0 1px var(--border); }
-.guide-tabs > [role='tab']:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
-.guide-close { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 999px; color: var(--muted); }
-.guide-close:hover { background: var(--surface-2); color: var(--text); }
-.guide-close:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
-.guide-title { font-stretch: 112%; font-weight: 700; font-size: 1.2rem; line-height: 1.25; color: var(--text); }
 .guide-about { margin-top: 0.35rem; font-size: 0.9rem; line-height: 1.5; color: var(--text-body); }
-.guide-group { margin: 0.9rem 0 0.35rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.guide-group { margin: 0.9rem 0 0.35rem; }
 .guide-group:first-child { margin-top: 0; }
 .guide-keys { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .guide-keys tr + tr > * { border-top: 1px solid var(--border); }
@@ -987,21 +942,16 @@ html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
 .guide-keys td { padding: 0.5rem 0; line-height: 1.45; color: var(--text-body); vertical-align: top; }
 .guide-keyset { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
 .guide-or { font-size: 0.75rem; color: var(--muted); }
-.guide-input { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; }
-.guide-input > button { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 28px; padding: 0 0.6rem; border-radius: 999px; color: var(--muted); font-size: 0.75rem; font-weight: 600; }
-.guide-input > button[aria-pressed='true'] { background: var(--surface-2); color: var(--text); }
-.guide-input > button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
 .guide-list { display: grid; gap: 0.85rem; }
 .guide-list dt { font-weight: 600; color: var(--text); }
 .guide-list dd { margin: 0.15rem 0 0; font-size: 0.92rem; line-height: 1.5; color: var(--text-body); }
 /* the first time on a page with controls: a note by the button */
-.guide-nudge { position: fixed; right: 68px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: calc(var(--z-float) - 4); display: flex; align-items: flex-start; gap: 0.25rem; max-width: min(300px, calc(100vw - 92px)); padding: 0.55rem 0.35rem 0.55rem 0.8rem; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 16px 34px -18px color-mix(in srgb, var(--text) 60%, transparent); font-size: 0.82rem; line-height: 1.4; animation: guide-nudge-in 0.35s var(--ease-smooth) both; }
+/* (its skin is the house .notice) */
+.guide-nudge { position: fixed; right: 68px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: calc(var(--z-float) - 4); display: flex; align-items: flex-start; gap: 0.25rem; max-width: min(300px, calc(100vw - 92px)); padding: 0.55rem 0.35rem 0.55rem 0.8rem; font-size: 0.82rem; line-height: 1.5; animation: guide-nudge-in 0.35s var(--ease-smooth) both; }
 .guide-nudge-open { display: grid; gap: 0.1rem; text-align: left; }
-.guide-nudge-open:focus-visible, .guide-nudge-close:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 6px; }
+.guide-nudge-open:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 6px; }
 .guide-nudge-kicker { font-weight: 700; color: var(--accent-text); }
 .guide-nudge .kbd { min-width: 1.3rem; height: 1.3rem; }
-.guide-nudge-close { display: grid; flex: none; place-items: center; width: 28px; height: 28px; border-radius: 999px; color: var(--muted); }
-.guide-nudge-close:hover { background: var(--surface-2); color: var(--text); }
 @keyframes guide-nudge-in { from { opacity: 0; transform: translateX(8px); } }
 @media (pointer: coarse) { .guide-foot { display: none; } }
 /* the end of every world's first hint: where the rest of the controls are
