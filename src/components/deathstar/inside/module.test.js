@@ -153,8 +153,7 @@ describe('aboard the Death Star, coming aboard', () => {
   });
 
   it('starts a story again from its beginning when asked to start it afresh', async () => {
-    const stored = { v: 1, data: { ds1: { story: { rebel: 'compactor' } } } };
-    const { rt, world } = await make({}, { stored: stored.data });
+    const { rt, world } = await make({}, { stored: { ds1: { story: { rebel: 'compactor' } } } });
     world.step(1 / 60, snap());
     expect(last(rt, 'ui').saved.ds1.rebel).toBe(true);
     world.start({ station: 'ds1', side: 'rebel', hero: 'luke', mode: 'story', fresh: true });

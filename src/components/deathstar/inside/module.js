@@ -253,7 +253,7 @@ export default {
 
     // ── what the page is told ──
 
-    function report(dt, force = false) {
+    function report(dt) {
       const play = mode === 'play' || mode === 'pause';
       const ui = {
         mode,
@@ -274,7 +274,7 @@ export default {
         tell('ui', ui);
       }
       hudAt += dt;
-      if (hudAt < HUD_EVERY && !force) return;
+      if (hudAt < HUD_EVERY) return;
       hudAt = 0;
       const you = g.you;
       const hud = {
@@ -375,6 +375,7 @@ export default {
       attached() {
         lastUi = '';
         lastHud = '';
+        hudAt = HUD_EVERY;
       },
 
       // ── from the page ──
