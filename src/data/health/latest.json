@@ -1,6 +1,6 @@
 {
   "date": "2026-10-08",
-  "sha": "8525b107",
+  "sha": "fde57fdd",
   "metrics": {
     "big-files": {
       "value": 29,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5620
+          "n": 5740
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -21,7 +21,11 @@
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 3440
+          "n": 3519
+        },
+        {
+          "file": "src/components/universe/footScene.js",
+          "n": 3470
         },
         {
           "file": "src/components/middleearth/towns/doom/props.js",
@@ -34,10 +38,6 @@
         {
           "file": "src/components/middleearth/towns/cirithungol/props.js",
           "n": 3340
-        },
-        {
-          "file": "src/components/universe/footScene.js",
-          "n": 3329
         },
         {
           "file": "src/components/middleearth/towns/amonhen/props.js",
@@ -56,12 +56,12 @@
           "n": 3086
         },
         {
-          "file": "src/components/cockpit/vehicles/rv.js",
-          "n": 3025
+          "file": "src/components/universe/crews.js",
+          "n": 3062
         },
         {
-          "file": "src/components/universe/crews.js",
-          "n": 3013
+          "file": "src/components/cockpit/vehicles/rv.js",
+          "n": 3025
         },
         {
           "file": "src/components/middleearth/towns/lorien/props.js",
@@ -73,7 +73,7 @@
         },
         {
           "file": "src/components/galaxy/scene.js",
-          "n": 2479
+          "n": 2493
         },
         {
           "file": "src/components/middleearth/towns/marshes/props.js",
@@ -81,11 +81,11 @@
         },
         {
           "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 2291
+          "n": 2292
         },
         {
           "file": "src/components/avengers/world/scene.js",
-          "n": 2109
+          "n": 2110
         },
         {
           "file": "src/components/avengers/world/rules.js",
@@ -93,7 +93,7 @@
         },
         {
           "file": "src/components/galaxy/surface/props/forest.js",
-          "n": 2002
+          "n": 2007
         },
         {
           "file": "src/components/middleearth/towns/edoras/folk.js",
@@ -101,7 +101,7 @@
         },
         {
           "file": "src/components/galaxy/surface/props/core.js",
-          "n": 1788
+          "n": 1812
         },
         {
           "file": "src/lib/sfx.js",
@@ -110,10 +110,25 @@
       ]
     },
     "boundary-breaks": {
-      "value": 350,
+      "value": 355,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
+        {
+          "file": "src/lib/land/layers.js → src/components/galaxy/surface/noise.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/lib/land/layers.test.js → src/components/galaxy/surface/terrain.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
+        {
+          "file": "src/lib/land/rivers.js → src/components/galaxy/surface/noise.js",
+          "n": 1,
+          "note": "lib knows no page"
+        },
         {
           "file": "src/lib/seeded.test.js → src/components/middleearth/shire/rules.js",
           "n": 1,
@@ -221,21 +236,6 @@
         },
         {
           "file": "src/components/avengers/world/CompoundWorld.jsx → src/components/middleearth/towns/keys.js",
-          "n": 1,
-          "note": "worlds are islands"
-        },
-        {
-          "file": "src/components/avengers/world/CompoundWorld.jsx → src/components/middleearth/towns/useTravellers.js",
-          "n": 1,
-          "note": "worlds are islands"
-        },
-        {
-          "file": "src/components/avengers/world/scene.js → src/components/middleearth/towns/ghosts.js",
-          "n": 1,
-          "note": "worlds are islands"
-        },
-        {
-          "file": "src/components/caribbean/tide/DeadMansTide.jsx → src/components/middleearth/towns/useTravellers.js",
           "n": 1,
           "note": "worlds are islands"
         }
@@ -380,6 +380,156 @@
       "unit": "notes",
       "label": "TODO / FIXME / HACK notes",
       "detail": []
+    },
+    "kbd-styles": {
+      "value": 68,
+      "unit": "rules",
+      "label": "Key-cap rules outside the house .kbd",
+      "detail": [
+        {
+          "file": "src/components/cockpit/cockpit.css",
+          "n": 7
+        },
+        {
+          "file": "src/components/galaxy/surface/surface.css",
+          "n": 5
+        },
+        {
+          "file": "src/components/universe/universe.css",
+          "n": 5
+        },
+        {
+          "file": "src/components/rickmorty/world/world.css",
+          "n": 4
+        },
+        {
+          "file": "src/styles/extras.css",
+          "n": 4
+        },
+        {
+          "file": "src/components/albuquerque/world/world.css",
+          "n": 3
+        },
+        {
+          "file": "src/components/earth/earth.css",
+          "n": 3
+        },
+        {
+          "file": "src/components/galaxy/galaxy.css",
+          "n": 3
+        },
+        {
+          "file": "src/components/invincible/world/world.css",
+          "n": 3
+        },
+        {
+          "file": "src/styles/lazy/middleearth.css",
+          "n": 3
+        },
+        {
+          "file": "src/components/avengers/world/world.css",
+          "n": 2
+        },
+        {
+          "file": "src/components/caribbean/tide/tide.css",
+          "n": 2
+        },
+        {
+          "file": "src/components/dotmatrix/dotmatrix.css",
+          "n": 2
+        },
+        {
+          "file": "src/components/middleearth/shire/shire.css",
+          "n": 2
+        },
+        {
+          "file": "src/components/rickmorty/world/roy/roy.css",
+          "n": 2
+        },
+        {
+          "file": "src/styles/lazy/albuquerque.css",
+          "n": 2
+        },
+        {
+          "file": "src/styles/lazy/settings.css",
+          "n": 2
+        },
+        {
+          "file": "src/components/avengers/hq/hq.css",
+          "n": 1
+        },
+        {
+          "file": "src/components/avengers/trickshot/trickshot.css",
+          "n": 1
+        },
+        {
+          "file": "src/components/games/games.css",
+          "n": 1
+        },
+        {
+          "file": "src/components/middleearth/rush/rush.css",
+          "n": 1
+        },
+        {
+          "file": "src/components/middleearth/towns/bree/bree.css",
+          "n": 1
+        },
+        {
+          "file": "src/components/middleearth/towns/doom/doom.css",
+          "n": 1
+        },
+        {
+          "file": "src/components/middleearth/towns/rivendell/rivendell.css",
+          "n": 1
+        },
+        {
+          "file": "src/components/music/music.css",
+          "n": 1
+        }
+      ]
+    },
+    "hud-kit": {
+      "value": 9,
+      "unit": "worlds",
+      "label": "worlds whose HUD is off the HUD kit",
+      "detail": [
+        {
+          "file": "src/components/caribbean",
+          "n": 1
+        },
+        {
+          "file": "src/components/cybertron",
+          "n": 1
+        },
+        {
+          "file": "src/components/deathstar",
+          "n": 1
+        },
+        {
+          "file": "src/components/dotmatrix",
+          "n": 1
+        },
+        {
+          "file": "src/components/earth",
+          "n": 1
+        },
+        {
+          "file": "src/components/galaxy",
+          "n": 1
+        },
+        {
+          "file": "src/components/mario64",
+          "n": 1
+        },
+        {
+          "file": "src/components/minecraft",
+          "n": 1
+        },
+        {
+          "file": "src/components/music",
+          "n": 1
+        }
+      ]
     }
   }
 }

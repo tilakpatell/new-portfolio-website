@@ -29,5 +29,6 @@ export const PACK = {
     '/audio/clips/cool.mp3',
     '/audio/clips/cant-take-it-anymore.mp3',
   ], // single files
-  globs: ['/games/meshy**', '/models/c137/**', '/games/kenney**'], // folders: `*` within a folder, `**` any depth
+  globs: ['/games/meshy/*.glb', '/games/meshy/crowd/**', '/models/c137/**', '/games/kenney**'], // folders: `*` within a folder, `**` any depth
+  computed: ['/games/meshy'], // folders the source only builds paths in: what it takes (not rollout/, Cybertron's) is the globs above
 };
