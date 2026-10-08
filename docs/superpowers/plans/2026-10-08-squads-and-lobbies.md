@@ -95,7 +95,7 @@
 
 - [ ] Write a failing test beside `warfront.js`'s existing ones: a pilot adds damage, “reloads” (a new peer id, the same saved tally id) and tells it again; the objective's value counts it once. If the test passes as the code stands, the audit's suspicion was wrong: delete the test, note that in the handoff, and skip the fix.
 - [ ] Give the battle's tally an id kept with the battle's save (`createTally(epoch, { cap: 4000, id })`), as `warState.js:124` does.
-- [ ] Call `forget(peerId)` on the siege's and the battle's tallies when the client's roster drops a pilot (the pages already hear `roster`); test that a forgotten peer's share stays in the floor.
+- [x] Dropped: no `forget(peerId)` on a roster drop. Forgetting folds a pilot's share into the floor and hides the new work of those who stay (measured on the battle's tally: 100 seen where 130 were done), so nothing forgets; a pilot back after a reload is matched by tally id, and the siege gets an id and a save for that (`siege.js`, as `warState.js` and `warfront.js` keep theirs).
 - [ ] Fix the comment (`./net.js` → `./online.js`).
 - [ ] Run `npm test`, `npm run lint`, `npm run build`, `node scripts/health.mjs --check --skip build`. Commit.
 
