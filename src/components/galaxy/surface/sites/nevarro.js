@@ -11,8 +11,8 @@
 // Imperial base is built into the lip of a lava canyon on a plateau to the
 // west; a watch hill stands over the town, and a volcano behind it all.
 //
-// The lava is a hazard: it lies half a metre over the beds dug for it, and
-// anyone who steps in is back at the landing (`fall`).
+// The lava is a hazard: anyone who steps in is back at the landing (`fall`,
+// just under its surface).
 
 import { grove } from './stand';
 import { sky, palette, hostile, troops } from './outerKit';
@@ -22,10 +22,11 @@ const r1 = (v) => Math.round(v * 10) / 10;
 
 // ── The numbers everything hangs off ──
 
-// the lava's level, the beds dug for it (just under it), and the height
+// the lava's level, the beds dug for it (deep enough to read as lava on the
+// coarse ground grid of phones and small windows, 8 m cells), and the height
 // under which you've stepped in it
 export const LAVA = -3;
-const BED = LAVA - 0.6;
+const BED = LAVA - 5;
 const FALL = LAVA - 0.3;
 // the town: its frame (local -x points at the landing; the square in the
 // middle), the floor of its bowl, how far the bowl goes
@@ -142,7 +143,7 @@ const RIM = 87;
 const clearOf = (ang) => [...Object.values(WAYS).map((w) => w.ang), PORTAL.ang].every((b) => Math.abs(atan2(sin(ang - b), cos(ang - b))) > 0.2);
 const RIMDOMES = Array.from({ length: 24 }, (_, i) => -PI + (i + 0.5) * ((2 * PI) / 24))
   .filter(clearOf)
-  .map((ang, i) => (i % 3 === 2 ? { kind: 'nevarrodomehouse', at: polar(RIM + 1, ang), yaw: facing(-cos(ang), -sin(ang)), sink: 2.6 } : { kind: 'nevarrodome', at: polar(RIM, ang), yaw: r1(ang * 3), scale: i % 2 ? 1.3 : 1.1, sink: 0.6 }));
+  .map((ang, i) => (i % 3 === 2 ? { kind: 'nevarrodomehouse', at: polar(RIM + 1, ang), yaw: facing(-cos(ang), -sin(ang)), sink: 2.6 } : { kind: 'nevarrodome', at: polar(RIM, ang), yaw: r1(ang * 3), scale: i % 2 ? 1.3 : 1.1, sink: 2 }));
 
 // the cantina where Greef's zone door is (its world spot kept: [140, -90],
 // turned 0.3), the square in front of it, a big dome house on its east side
@@ -197,8 +198,10 @@ const GATES = [
   { kind: 'nevarroarch', at: polar(97, Sg.ang), yaw: r1(-Sg.ang + PI / 2), scale: 0.9, sink: 0.2, solid: false },
   { kind: 'nevarrogate', at: polar(97, Ng.ang), yaw: r1(-Ng.ang + PI / 2), sink: 0.6, solid: false },
 ];
-// roof gear: vaporators up on every third roof of the outer ring
-const ROOFS = OUTER.filter((_, i) => i % 3 === 0).map((b, i) => ({ kind: 'vaporator', at: [r1(b.at[0] * 1.04), r1(b.at[1] * 1.04)], y: b.kind === 'nevarrotower' ? 16 : 7.5, solid: false, yaw: i }));
+// roof gear: vaporators up on every third roof of the outer ring (each
+// kind's roof height a little behind its middle, measured off the models)
+const ROOF = { nevarrorow: 7.9, nevarrohouse: 6.8, nevarrodomehouse: 5.1, nevarrotower: 15.5 };
+const ROOFS = OUTER.filter((_, i) => i % 3 === 0).map((b, i) => ({ kind: 'vaporator', at: [r1(b.at[0] * 1.04), r1(b.at[1] * 1.04)], y: ROOF[b.kind], solid: false, yaw: i }));
 
 export const TOWN_THINGS = [...CORE, ...OUTER, ...INNER, ...RIMDOMES, ...GATES, ...LAMPS, ...ROOFS, ...COVERT_THINGS];
 
@@ -219,6 +222,15 @@ export const RIVER = [[...P0, 7], [r1(P0[0] + 4), r1(P0[1] + 20), 7.5], [242, 48
 // (where the bridge is, in metres down the river from the tunnel)
 export const BRIDGES = [[90, 124]];
 export const RIVERPITS = run(RIVER, BED, BRIDGES);
+// (the way the river leaves its tunnel: the mouth faces down it, the
+// keelboat lies along it)
+const DOWN = (() => {
+  const dx = RIVER[1][0] - RIVER[0][0];
+  const dz = RIVER[1][1] - RIVER[0][1];
+  const d = hypot(dx, dz);
+  return [dx / d, dz / d];
+})();
+const along = (m) => [r1(P0[0] + DOWN[0] * m), r1(P0[1] + DOWN[1] * m)];
 // (the first pit past the bridge: a second tunnel mouth stands in its upstream end)
 const pastBridge = (() => {
   const i = RIVERPITS.findIndex((p, j) => j > 0 && hypot(p.at[0] - RIVERPITS[j - 1].at[0], p.at[1] - RIVERPITS[j - 1].at[1]) > p.r * 2);
@@ -325,7 +337,6 @@ export const nevarro = {
       about: 'Din Djarin’s gunship, older than it looks and patched in more places than it should be. He camps beside it rather than in town.',
       things: [
         { kind: 'razorcrest', at: [0, 0], yaw: 1.2 },
-        { kind: 'fire', at: [12, 10] },
         { kind: 'crates', at: [-11, 8], yaw: 0.6 },
       ],
     },
@@ -377,7 +388,7 @@ export const nevarro = {
         { kind: 'smoke', at: [70, 0], solid: false, opts: { h: 30, n: 7, color: '#b8bcc2', spread: 0.7 } },
         // Moff Gideon's TIE, where it came down (the first season's end), still smoking
         { kind: 'parked', at: [-58, 4], yaw: 2.1, pitch: 0.45, roll: 1.1, sink: 1.2, solid: false, opts: { kind: 'tie', metres: 7 } },
-        { kind: 'wrecksmoke', at: [-58, 4], solid: false, opts: { h: 14, r: 1.4, n: 10 } },
+        { kind: 'smoke', at: [-58, 4], solid: false, opts: { h: 14, n: 10, color: '#3a3a3e', spread: 0.25 } },
         ...grove(41, 12, 18, 60, ['lavarock'], [1.5, 4.5]),
       ],
     },
@@ -399,8 +410,8 @@ export const nevarro = {
     // the Charon's tunnel mouth under the town's south-east rock, facing
     // down the river, and the keelboat at its foot; the second mouth where
     // the river comes out from under the rock bridge
-    { kind: 'charonportal', at: tw(polar(104, PORTAL.ang)), yaw: r1(TOWN.yaw + facing(cos(PORTAL.ang), sin(PORTAL.ang))), scale: 1.4, abs: true, y: LAVA - 0.5, solid: false },
-    { kind: 'keelboat', at: tw(polar(121, PORTAL.ang + 0.04)), yaw: r1(TOWN.yaw + facing(cos(PORTAL.ang), sin(PORTAL.ang)) + PI / 2), abs: true, y: LAVA - 0.4, solid: false },
+    { kind: 'charonportal', at: along(-4), yaw: facing(...DOWN), scale: 1.4, abs: true, y: LAVA - 0.5, solid: false },
+    { kind: 'keelboat', at: along(12), yaw: r1(facing(...DOWN) + PI / 2), abs: true, y: LAVA - 0.4, solid: false },
     { kind: 'charonportal', at: pastBridge.at, yaw: pastBridge.yaw, scale: 1.2, abs: true, y: LAVA - 0.5, solid: false },
     // the volcano's steam, over its crater
     { kind: 'smoke', at: VOLCANO, abs: true, y: 320, solid: false, opts: { h: 260, n: 12, color: '#c4c8cc', spread: 4 } },
@@ -433,8 +444,6 @@ export const nevarro = {
     { kind: 'basalt', n: 60, within: [60, 560], scale: [0.8, 2.0], flat: 0.85 },
     { kind: 'stones', n: 220, within: [10, 420], scale: [0.25, 0.8], solid: false, opts: { color: '#2a2a2e' } },
   ],
-  // a scout trooper's speeder bike, left at the North Lane's mouth (the ride out to the base)
-  rides: [{ kind: 'speederbike', at: [66, -146], yaw: 2.2 }],
   sound: { wind: 0.4, rain: 0, sea: 0, lava: 0.45, critters: 0, city: 0.3, ground: 'sand' },
   zones: [
     {
@@ -459,10 +468,12 @@ export const nevarro = {
     { kind: 'aqualish', n: 1, at: [-14, -4], still: true, face: 0.8, name: 'Bounty hunter', says: ['Guild business. Keep walking.', 'Cantina’s in town. Karga’s buying. Karga’s never buying.'] },
     // (the beasts of burden: blurrgs on the lava fields, a happabore in town)
     { kind: 'blurrg', n: 2, at: [70, -130], spread: 12, roam: 14, speed: 0.9, r: 1 },
-    { kind: 'happabore', n: 1, at: tw([-30, 52]), roam: 8, speed: 0.5, r: 1.8 },
+    { kind: 'happabore', n: 1, at: tw(polar(53.5, 2.2)), roam: 4, speed: 0.5, r: 1.8 },
     { kind: 'ig11', at: tw([-6, 8]), roam: 8, speed: 0.8, name: 'IG-11', named: true, says: ['I am a nurse droid. I am programmed to protect the child.'] },
-    // the town: its people about the square and the ring lane, hunters, a stall-keeper
-    { kind: 'villager', n: 6, at: TOWN.at, spread: 40, roam: 22, speed: 1, name: 'Nevarro local', says: ['The Guild’s back in business. The Empire’s not.', 'Mind the steps down off the ring lane. They go further than you’d think.'] },
+    // the town: its people about the square and down the ring lane (the lane
+    // between the rings is 15 m wide: they're kept to it), hunters, a stall-keeper
+    { kind: 'villager', n: 3, at: tw([0, 2]), spread: 8, roam: 8, speed: 1, name: 'Nevarro local', says: ['The Guild’s back in business. The Empire’s not.', 'Mind the steps down off the ring lane. They go further than you’d think.'] },
+    ...[-2.5, 0.2, 2.6].map((ang) => ({ kind: 'villager', n: 1, at: tw(polar(53.5, ang)), roam: 5, speed: 0.9, name: 'Nevarro local', says: ['Karga runs this town now. Better than the Imperials did.', 'The lava’s under the streets too. You can feel it through your boots.'] })),
     { kind: 'aqualish', n: 2, at: tw([-6, 6]), spread: 8, roam: 8, speed: 0.8, name: 'Bounty hunter', says: ['Took a puck? So did I. Same one, probably.'] },
     { kind: 'bith', at: tw([-15, 0]), still: true, face: r1(TOWN.yaw + PI / 2), name: 'A stall-keeper', says: ['Beskar? Ha. Try the Imperials. They had plenty, once.'] },
     // the covert: the Armorer at her forge, two of the Tribe
@@ -473,7 +484,7 @@ export const nevarro = {
     // the base: its garrison in the yard (the puck quest's troops spawn
     // there too), and a pair walking the canyon's lip
     { kind: 'stormtrooper', n: 4, at: BASE.at, spread: 20, roam: 12, speed: 1.2, name: 'Remnant stormtrooper', says: ['Move along. This area is restricted.'] },
-    { kind: 'stormtrooper', n: 2, path: [bt(36, -40), bt(36, 40), bt(-20, 40), bt(-20, -40)].map(([x, z]) => [r1(BASE.at[0] + x), r1(BASE.at[1] + z)]), speed: 1.1, name: 'Remnant stormtrooper', says: ['The canyon’s a long way down. Don’t lean on the rail.'] },
+    { kind: 'stormtrooper', n: 2, path: [bt(20, -40), bt(20, 40), bt(-20, 40), bt(-20, -40)].map(([x, z]) => [r1(BASE.at[0] + x), r1(BASE.at[1] + z)]), speed: 1.1, name: 'Remnant stormtrooper', says: ['The canyon’s a long way down. Don’t lean on the rail.'] },
   ],
   quests: [
     { id: 'puck', name: 'The bounty puck', giver: 'greef', intro: [['Greef Karga', 'A puck for you: the client wants an asset from the Imperial base. Alive. Questions are extra.']], steps: [{ type: 'reach', at: [-260, 160], r: 40, text: 'Go to the Imperial base' }, { type: 'shoot', tag: 'basetroops', n: 6, text: 'Get past the guards', spawn: troops('basetroops', 6, [-260, 160]) }, { type: 'collect', item: 'asset', n: 1, spots: [[-252, 166]], text: 'Collect the asset' }, { type: 'talk', zone: 'cantina', actor: 'greef', text: 'Take it to Greef Karga' }], done: [['Greef Karga', 'The client is pleased. Here: camtono of beskar. Don’t spend it all at once.']] },

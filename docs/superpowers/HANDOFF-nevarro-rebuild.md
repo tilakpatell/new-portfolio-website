@@ -103,8 +103,22 @@ The third Meshy account (`MESHY_API_KEY_ACC_3`) had 2,786 credits after #558. Pa
   - every quest spot is on level ground, and the cantina is at [140,-90] yaw 0.3, so its zone door holds;
   - the routes from the landing to the town, the Crest, the base and the hill (by the North Lane) are walkable;
   - no footprints overlap.
-- [ ] **Browser:** the cantina and the square read well. The base was raised (its roof 9 m over the plateau) after the first shots. More views are being taken.
-- [ ] **Remaining checks:** `scripts/galaxy-check.mjs surface nevarro` for the budget, `npx eslint .`, `npx vitest run`, `npm run test:ai`, `npx vite build`, then a PR.
+- [x] **Browser:** checked the gate from the landing, the square, the cantina's door, the town from the rim, the covert, the river (the keelboat on the lava below the tunnel mouth), the wreck, the base from its plateau, and the hill.
+- [x] **Budget** (`galaxy-check surface nevarro`, high): 218 calls, 1.20M triangles, 20.8 MB of models, 4.8 s load, no errors.
+- [x] **Tests and build:** eslint, vitest (5,641), `test:ai` (187), `vite build`. PR #580.
+- [x] **An adversarial review** (four lenses, each finding put to two skeptics) found these, all fixed:
+  - the first tunnel mouth and the keelboat were turned 40° off the river (the boat was buried in the bank): both now follow the river's own first leg;
+  - the base patrol walked inside the base model: it now walks at s 20;
+  - roof vaporators floated over the dome houses: each kind has its own roof height;
+  - rim domes overhung their slope: sunk 2 m;
+  - villagers spawned in and walked through houses (actors only avoid round solids): they're kept to the square and the ring lane, and the happabore to the lane;
+  - on the coarse 8 m grid (phones) the river was mostly dry and `fall` rarely caught you: the beds are now 5 m under the lava;
+  - a hover bike could be left stranded over lava (rides skip `fall`): the speeder bike is gone;
+  - performance: `terrain.js` rejects far flats, pits and islands before the square root and the noise (every world's heights identical, checked across all 17; Nevarro's ground 94 → 35 ms on the sample); light copies for the four repeated house kinds; the base's maps 2048 → 1024 (2.4 → 1.1 MB); one fire light, not two; the wreck's smoke as one instanced column.
+- [ ] **Follow-ups found but not done here** (engine-wide):
+  - the cantina's shader warm-up runs with the outdoor fires and the lava glow still lit, so the first trip through Greef's door compiles shaders (fix in `scene.js`: warm the zone with `lighting(zone)`);
+  - the lamps (23, 2 draws each) could be instanced through a fixed-items scatter path in `scene.js`;
+  - the actors' avoider only tests round solids (`actors.js:534`), so NPCs walk through box-solid buildings on every world.
 
 ## Checking it
 - **Dev server:** `npx vite --port 5188 --strictPort --host 127.0.0.1`.

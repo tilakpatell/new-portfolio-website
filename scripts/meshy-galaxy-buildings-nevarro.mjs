@@ -66,7 +66,8 @@ export const BUILDINGS = {
     metres: 52,
     along: 'w',
     tris: 24000,
-    tex: 2048,
+    // (1024 like the rest: the metal scan covers it up close)
+    tex: 1024,
   },
   // Greef Karga's cantina, as the city's own: grey plaster over black stone
   // (the Mos Eisley one, white, stood here before)

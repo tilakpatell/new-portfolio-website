@@ -41,12 +41,15 @@ export const MODELS = {
   // of the show's stills, or from words where none shows it whole): the
   // city's grey plaster houses, dome houses and street fronts, its round-
   // arched gate, a third-season tower, its own cantina, the Imperial base on
-  // its cliff, the Charon River's tunnel mouth and the keelboat
-  nevarrohouse: { made: 'meshy', as: 'the houses of Nevarro City', metres: 12, detail: 'adobe' },
-  nevarrodomehouse: { made: 'meshy', as: 'the dome houses of Nevarro City', metres: 10, detail: 'adobe' },
-  nevarrorow: { made: 'meshy', as: 'the streets of Nevarro City', metres: 20, detail: 'adobe' },
+  // its cliff, the Charon River's tunnel mouth and the keelboat. The town's
+  // houses repeat dozens of times, so each has a light copy for far off
+  // though they're under scripts/galaxy-surface-lod.mjs's line (made with
+  // its makeLod, `over: 5000`)
+  nevarrohouse: { made: 'meshy', lod: true, as: 'the houses of Nevarro City', metres: 12, detail: 'adobe' },
+  nevarrodomehouse: { made: 'meshy', lod: true, as: 'the dome houses of Nevarro City', metres: 10, detail: 'adobe' },
+  nevarrorow: { made: 'meshy', lod: true, as: 'the streets of Nevarro City', metres: 20, detail: 'adobe' },
   nevarrogate: { made: 'meshy', as: 'the gate of Nevarro City', metres: 14 },
-  nevarrotower: { made: 'meshy', as: 'the towers of the new Nevarro City', metres: 16 },
+  nevarrotower: { made: 'meshy', lod: true, as: 'the towers of the new Nevarro City', metres: 16 },
   nevarrocantina: { made: 'meshy', as: 'Greef Karga’s cantina', metres: 18.5, detail: 'adobe' },
   nevarrobase: { made: 'meshy', as: 'the Imperial base on Nevarro', metres: 52, hero: true, lod: true, detail: 'metal' },
   charonportal: { made: 'meshy', as: 'the Charon River’s tunnel', metres: 16 },
