@@ -7,8 +7,9 @@
 // portal, the Game Boy world's pixels, the debris and flyers, the gate) is
 // planets.js's EXTRAS[id](p, T, u), called in the middle. The stations and
 // the Rick and Morty moons are built by their own builders (stations.js,
-// rmWorlds.js), not from here. planetSpecs.test.js pins every body's build
-// to what the hand builders made.
+// rmWorlds.js), not from here. A world's air isn't here: it stays on u.air
+// (universes.js), which is already data. planetSpecs.test.js pins every
+// body's build to what the hand builders made.
 //
 // SPECS[id] = {
 //   base?: the maps' name, when it isn't the id ('earth' for travel)
@@ -126,11 +127,13 @@ function clouds(p, c, map, T, u, cel) {
 
 const HOOKS = {
   cel: (p) => celShade(p.body.material),
-  // the four greens, dithered, sized by the frame's ratio (p.dpr, which EXTRAS shares with its clouds and blocks)
+  // the four greens, dithered, sized by the frame's ratio (p.dpr, which EXTRAS shares with its clouds and blocks;
+  // the palette is EXTRAS.gaming's GREENS, in planets.js, in the same order)
   dither: (p, T, u) => ditherShade(p.body.material, { palette: [u.palette.dark, u.palette.glow, u.palette.base, u.palette.light], dpr: (p.dpr ??= { value: 1 }), outline: true }),
   // cybertron/skin.js colours the energon, lights the cities on the night
   // side and carries the plating on in the shader up close
   cybertron: (p, T) => {
+    // (EXTRAS.transformers, in planets.js, lights the war on the same two maps)
     if (!(T.transformers && T['transformers-glow-sm'])) return;
     const skin = cybertronSkin(p.body.material, { glow: T['transformers-glow-sm'], sun: p.sun });
     // (its seams glow a little in the colour of the light it's in: the scene's key)

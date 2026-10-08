@@ -352,6 +352,7 @@ const EXTRAS = {
     // energon, lights the cities on the night side and carries the plating
     // on in the shader up close, where the maps run out (its maps and its
     // skin: SPECS)
+    // (the same maps the skin needs: planetSpecs.js's cybertron hook checks them too)
     if (T.transformers && T['transformers-glow-sm']) {
       // and the war, a few fireballs at a time out of the burning fronts
       // (cybertron/war.js: one draw, turning with the planet)
@@ -607,6 +608,7 @@ const EXTRAS = {
       return v - Math.abs(y / H - 0.5) * 0.35;
     };
     const SEA = 0.46;
+    // (the ground's own dither, planetSpecs.js's hook, names the same four in the same order)
     const GREENS = [P.dark, P.glow, P.base, P.light];
     const map = paint(
       (g) => {

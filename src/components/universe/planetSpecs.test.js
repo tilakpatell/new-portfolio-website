@@ -4,12 +4,17 @@
 // sits where) on several tiers and sets, and written down three levels deep
 // and more: each child's name, type, geometry (its parameters and a sum of
 // its vertices), material (its scalars, which map is in which slot, its
-// hooks' cache keys and the shader they make), and where it is, once as
-// built and once running (its models mounted, picked, two moments on).
+// hooks' cache keys and the shader they make), and where it is, three
+// times: as built, running (its models mounted, picked, a few seconds on)
+// and late (a minute and a half on, so the slow ones, the pall's sway and
+// the energon's turn, have moved). Numbers are kept to six figures (the
+// vertex sums to twelve), colours as their components.
 // planetSpecs.fixture.json was recorded from the builders before the
-// refactor; the test compares the build now with it.
+// refactor; the test compares the build now with it. It is written one line
+// per body, set and node (and per material), so a re-record's diff shows
+// exactly what changed.
 //
-//   UPDATE=1 npx vitest run src/components/universe/planetSpecs.test.js   (re-records)
+//   PLANETS_FIXTURE=record npx vitest run src/components/universe/planetSpecs.test.js   (re-records)
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -43,8 +48,9 @@ const seeded = () => {
   };
 };
 
-const r4 = (x) => Math.round(x * 1e4) / 1e4 + 0;
-const vec = (v) => v.toArray().map(r4);
+// (to six figures whatever the size, an exact zero kept as one; JSON has no infinities)
+const fig = (x, n = 6) => (x === 0 ? 0 : Number.isFinite(x) ? Number(x.toPrecision(n)) : String(x));
+const vec = (v) => v.toArray().map((x) => fig(x));
 const hash = (s) => {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
@@ -54,7 +60,7 @@ const sum = (arr, w = 1) => {
   if (!arr) return null;
   let a = 0;
   for (let i = 0; i < arr.length; i++) a += arr[i] * ((i % 7) + w);
-  return r4(a);
+  return fig(a, 12);
 };
 
 const texName = (t) => {
@@ -69,10 +75,10 @@ const texName = (t) => {
 
 const value = (v, depth = 0) => {
   if (v == null) return v ?? null;
-  if (typeof v === 'number') return r4(v);
+  if (typeof v === 'number') return fig(v);
   if (typeof v === 'boolean' || typeof v === 'string') return v;
   if (v.isTexture) return texName(v);
-  if (v.isColor) return v.getHexString();
+  if (v.isColor) return [v.r, v.g, v.b].map((x) => fig(x));
   if (v.isVector2 || v.isVector3 || v.isVector4 || v.isQuaternion || v.isMatrix3 || v.isMatrix4) return vec(v);
   if (Array.isArray(v)) return depth > 2 ? 'array' : v.map((x) => value(x, depth + 1));
   if (ArrayBuffer.isView(v)) return sum(v);
@@ -127,18 +133,26 @@ const geometry = (g) => {
 
 const node = (o) => {
   const out = { name: o.name, type: o.type, position: vec(o.position) };
-  const turn = [o.rotation.x, o.rotation.y, o.rotation.z].map(r4);
+  const turn = [o.rotation.x, o.rotation.y, o.rotation.z].map((x) => fig(x));
   if (turn.some(Boolean)) out.rotation = turn;
   if (o.scale.x !== 1 || o.scale.y !== 1 || o.scale.z !== 1) out.scale = vec(o.scale);
   if (!o.visible) out.visible = false;
   if (o.renderOrder) out.renderOrder = o.renderOrder;
   if (o.frustumCulled === false) out.frustumCulled = false;
   if (o.geometry) out.geometry = geometry(o.geometry);
-  if (o.material) out.material = [].concat(o.material).map(material);
   if (o.isInstancedMesh) out.instances = { count: o.count, matrix: sum(o.instanceMatrix.array), colour: sum(o.instanceColor?.array) };
   if (Object.keys(o.userData).length) out.userData = Object.fromEntries(Object.entries(o.userData).map(([k, v]) => [k, value(v)]));
-  if (o.children.length) out.children = o.children.map(node);
+  out.children = o.children.length;
   return out;
+};
+
+// A tree as lines: '<prefix> <path>' for each node ('0.2.1': the root's
+// first child's third child's second), '<prefix> <path> material <i>' for
+// each of its materials
+const lines = (out, prefix, o, path = '0') => {
+  out[`${prefix} ${path}`] = node(o);
+  [].concat(o.material ?? []).forEach((m, i) => (out[`${prefix} ${path} material ${i}`] = material(m)));
+  o.children.forEach((c, i) => lines(out, prefix, c, `${path}.${i}`));
 };
 
 const fakeMaps = () => Object.fromEntries(MAP_NAMES.map((n) => {
@@ -159,16 +173,17 @@ const SETS = {
 };
 const SPOTS = [undefined, 'rival', 'mario', 'plant', 'cruiser', 'escort1', 'escort2'];
 
-async function record(id) {
+async function record(id, out) {
   const { buildPlanet } = await import('./planets');
   const { byId } = await import('./universes');
-  const out = {};
   for (const [set, make] of Object.entries(SETS)) {
     const rand = seeded();
     const spy = vi.spyOn(Math, 'random').mockImplementation(rand);
     const { T, tier, key = null } = make();
     const p = buildPlanet(byId(id), T, { sun: [0.3, 0.5, 0.8], tier, key });
-    const built = node(p.group);
+    const at = `${id} ${set}`;
+    const meta = (out[`${at} meta`] = {});
+    lines(out, `${at} built`, p.group);
     const camera = new THREE.PerspectiveCamera(50, 1.6, 0.1, 1e6);
     camera.position.set(300, 120, 500);
     camera.lookAt(0, 0, 0);
@@ -179,39 +194,44 @@ async function record(id) {
     p.update(2.7, camera, true);
     p.light(new THREE.Color(0.5, 0.4, 0.25), 1.5);
     p.near(2);
-    out[set] = { keys: Object.keys(p), nearGeometry: typeof p.nearGeometry, surface: p.surface === p.body, mounted, built, running: node(p.group) };
+    Object.assign(meta, { keys: Object.keys(p), nearGeometry: typeof p.nearGeometry, surface: p.surface === p.body, mounted });
+    lines(out, `${at} running`, p.group);
+    p.update(97.3, camera, true);
+    lines(out, `${at} late`, p.group);
     spy.mockRestore();
   }
-  return out;
 }
+
+// a body's lines, by its id
+const of = (all, id) => Object.fromEntries(Object.entries(all).filter(([k]) => k.startsWith(`${id} `)));
 
 describe('every body on the map, built as before (planetSpecs.fixture.json)', () => {
   const got = {};
   beforeAll(async () => {
     stubCanvas();
-    for (const id of [...FANDOMS, ...OTHERS]) got[id] = await record(id);
-    // (one line a body, so a change shows which)
-    if (process.env.UPDATE) writeFileSync(FIXTURE, `{\n${Object.entries(got).map(([id, v]) => `${JSON.stringify(id)}: ${JSON.stringify(v)}`).join(',\n')}\n}\n`);
+    for (const id of [...FANDOMS, ...OTHERS]) await record(id, got);
+    if (process.env.PLANETS_FIXTURE === 'record') writeFileSync(FIXTURE, `{\n${Object.entries(got).map(([k, v]) => `${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(',\n')}\n}\n`);
   });
   afterAll(() => vi.unstubAllGlobals());
   const want = () => {
-    expect(existsSync(FIXTURE), 'the fixture: record it with UPDATE=1 from the builders as they were').toBe(true);
+    expect(existsSync(FIXTURE), 'the fixture: record it with PLANETS_FIXTURE=record from the builders as they were').toBe(true);
     return JSON.parse(readFileSync(FIXTURE, 'utf8'));
   };
 
-  it('pins all twelve fandoms and every station and moon', () => {
+  it('pins all twelve fandoms and every station and moon, on every set', () => {
     expect(FANDOMS).toHaveLength(12);
-    expect(Object.keys(want()).sort()).toEqual([...FANDOMS, ...OTHERS].sort());
+    const metas = Object.keys(want()).filter((k) => k.endsWith(' meta'));
+    expect(metas.sort()).toEqual([...FANDOMS, ...OTHERS].flatMap((id) => Object.keys(SETS).map((set) => `${id} ${set} meta`)).sort());
   });
 
   it('builds every fandom as before', () => {
     const fixture = want();
-    for (const id of FANDOMS) for (const set of Object.keys(SETS)) expect(got[id][set], `${id} (${set})`).toEqual(fixture[id][set]);
+    for (const id of FANDOMS) expect(of(got, id), id).toEqual(of(fixture, id));
   });
 
   it('builds every station and Rick and Morty moon as before', () => {
     const fixture = want();
-    for (const id of OTHERS) for (const set of Object.keys(SETS)) expect(got[id][set], `${id} (${set})`).toEqual(fixture[id][set]);
+    for (const id of OTHERS) expect(of(got, id), id).toEqual(of(fixture, id));
   });
 });
 
