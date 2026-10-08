@@ -26,15 +26,18 @@
 // theirs), or by their peer id if they tell none (an older client). A
 // reload, under the same peer id now that a pilot's key lasts, brings the
 // save back: the same id and the same shares, told again, so the hits after
-// it count on top of those before, not under them. A peer speaks for one
-// pilot only (a second id from them is turned away), and a word under your
-// own id (another tab of yours) is yours already: only its totals count.
+// it count on top of those before, not under them. A save lasts RESPAWN_MS
+// and a siege as long as it's hit, so a pilot can be back, under the same
+// peer id, with a new siege id: what a peer tells under each id it comes to
+// speak for counts (they're different hits; and a peer's totals are taken
+// as told anyway, so more ids gain them nothing). A word under your own id
+// (another tab of yours) is yours already: only its totals count.
 //
 // createSiege({ id }) → { id, state(now), strike(part, punch, heavy, now) →
 //   event or null, receive(peer, msg, now) → [events], tick(now) → event or
 //   null, message() → the wire form, active, save(now) → what to keep,
 //   load(saved, now) (before anything's struck: a save older than
-//   RESPAWN_MS is nothing, all it knew rebuilt or patched up since),
+//   RESPAWN_MS, or one that tells no id, is nothing),
 //   forget(peer) }
 // readSiege(data, now) → a message, or null if it's not one.
 // citadelGeometry(w) → where its parts are, in map units.
@@ -85,7 +88,7 @@ export function createSiege({ id = null } = {}) {
   let epoch = 0;
   let mine = zero();
   let others = new Map(); // pilot (`i:` their siege id, or `p:` their peer id) → their shares
-  const speaks = new Map(); // peer → the pilot they speak for
+  const speaks = new Map(); // peer → the pilot they last spoke for (to forget)
   let floor = zero();
   let downAt = 0;
   let lastAt = 0;
@@ -177,9 +180,8 @@ export function createSiege({ id = null } = {}) {
     // a message from another pilot (read with readSiege) → what it changed
     receive(peer, msg, now = Date.now()) {
       if (!msg || msg.e < epoch || msg.e > epoch + EPOCH_JUMP) return [];
-      // whose shares (a peer speaks for one pilot only), and none to take if they're yours
+      // whose shares (the id they tell, or the peer), and none to take if they're yours
       const who = msg.i ? `i:${msg.i}` : `p:${peer}`;
-      if (msg.e === epoch && speaks.has(peer) && speaks.get(peer) !== who) return [];
       const was = picture();
       if (msg.e > epoch) fresh(msg.e);
       speaks.set(peer, who);
@@ -212,14 +214,15 @@ export function createSiege({ id = null } = {}) {
     // what to keep for a reload: the word as it would go out, and when
     save: (now = Date.now()) => ({ ...word(), at: now }),
     // a save taken back (before anything's struck): its id, its epoch, your
-    // shares and the totals it knew, unless it's older than RESPAWN_MS
+    // shares and the totals it knew, unless it's older than RESPAWN_MS (or
+    // tells no id: shares under another id than they were told would count twice)
     load(saved, now = Date.now()) {
       const at = num(saved?.at, 0, Number.MAX_SAFE_INTEGER);
       if (at === null || at > now + SKEW || now - at > RESPAWN_MS) return;
       const back = readSiege(saved, now);
-      if (!back) return;
+      if (!back?.i) return;
       fresh(back.e);
-      if (back.i) me = back.i;
+      me = back.i;
       mine = back.m.slice();
       floor = back.t.slice();
       downAt = back.x;
