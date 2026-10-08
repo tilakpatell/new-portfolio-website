@@ -94,8 +94,8 @@ function whiten(k, object) {
 
 // ── Naboo ──
 
-const STONE = '#e8dbbe';
-const TRIM = '#d4c4a0';
+const STONE = '#dcc0a6';
+const TRIM = '#c8aa8e';
 const VERDIGRIS = '#5c9a82';
 const COLUMN = '#f3ecdc';
 
@@ -252,7 +252,7 @@ export const PROPS = {
     arch(parts, 0, 2.2, 11.2, 0, 7, 14, '#3a3024');
     return {
       object: k.build(parts, { name: 'theedpalace', shadows: true }),
-      solids: [{ circle: [0, -6, 21] }, { box: [-40, -8, 24, 16, 0] }, { box: [40, -8, 24, 16, 0] }, { box: [-62, -8, 8, 8, 0] }, { box: [62, -8, 8, 8, 0] }, { box: [0, 16, 19, 6, 0] }],
+      solids: [{ circle: [0, -6, 21] }, { box: [-40, -8, 24, 16, 0] }, { box: [40, -8, 24, 16, 0] }, { box: [-62, -8, 8, 8, 0] }, { box: [62, -8, 8, 8, 0] }, { box: [0, 16, 19, 6, 0] }, { box: [0, 34, 62, 12.5, 0] }, { box: [0, -36, 62, 11, 0] }],
     };
   },
 
