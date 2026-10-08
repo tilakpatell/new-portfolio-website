@@ -11,13 +11,14 @@
 // twice the radius, the water, the leaves, the tracks' focus, the shadow
 // camera ±radius) and the fog's near and far.
 //
-//   createChaseView({ camera, small = false, tier = 'high' }) → { update(dt,
+//   createChaseView({ camera, small = false, tier = 'high', radius = 15 (his
+//     nearest; his orbit runs to 30) }) → { update(dt,
 //     target: { x, y, z }, speed), area: { base: [x, z], centre: [x, z],
 //     radius, near, far }, resize(w, h), shake(k), focus: Vector3, roll,
 //     shift(sx, sz) }
 //   optimalArea({ fov, aspect, phi, theta, radius }) → { base: [x, z],
 //     radius, near, far } (pure; base from the focus)
-//   chaseRadius(speed, { tier, aspect }) → metres (pure)
+//   chaseRadius(speed, { tier, aspect, base = 15 }) → metres (pure)
 
 import * as THREE from 'three';
 
@@ -35,8 +36,8 @@ const smoothstep = (a, b, x) => {
 
 const pulls = (tier) => tier === 'high' || tier === 'ultra';
 
-export function chaseRadius(speed, { tier = 'high', aspect = 16 / 9 } = {}) {
-  const r = RADIUS + (aspect < 1 ? NARROW : 0);
+export function chaseRadius(speed, { tier = 'high', aspect = 16 / 9, base = RADIUS } = {}) {
+  const r = base + (aspect < 1 ? NARROW : 0);
   return pulls(tier) ? r * (1 + SPEED_OUT * smoothstep(5, 40, speed)) : r;
 }
 
@@ -67,7 +68,7 @@ export function optimalArea({ fov = FOV, aspect = 16 / 9, phi = 0.31 * Math.PI, 
   return { base: [base.x, base.z], radius: r, near, far };
 }
 
-export function createChaseView({ camera, small = false, tier = 'high' } = {}) {
+export function createChaseView({ camera, small = false, tier = 'high', radius = RADIUS } = {}) {
   camera.fov = FOV;
   camera.updateProjectionMatrix();
   const phi = (small ? 0.27 : 0.31) * Math.PI;
@@ -106,7 +107,7 @@ export function createChaseView({ camera, small = false, tier = 'high' } = {}) {
       }
       // the focus a magnet on the car
       focus.lerp(want.set(target.x, target.y, target.z), Math.min(1, dt * 60 * 0.25));
-      const r = chaseRadius(speed, { tier, aspect: camera.aspect });
+      const r = chaseRadius(speed, { tier, aspect: camera.aspect, base: radius });
       want.setFromSphericalCoords(r, phi, THETA).add(focus);
       camera.position.lerp(want, Math.min(1, dt * 10));
       camera.lookAt(focus);

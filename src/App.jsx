@@ -49,6 +49,7 @@ const RmPlanet = lazy(() => import('./pages/RmPlanet'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Mario64 = lazy(() => import('./pages/Mario64'));
 const Minecraft = lazy(() => import('./pages/Minecraft'));
+const Expanse = lazy(() => import('./pages/Expanse'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
 const Changes = lazy(() => import('./pages/Changes'));
@@ -102,14 +103,29 @@ function ScrollToTop() {
 // the same, or, by the style in its detail (components/jumps/styles.js), a
 // crew's own way across the universe map: Rick's portal, Walt and Jesse's
 // Blue Sky. With reduced motion every one of them is the site's crossfade.
+// A page that changes under the jump says what to do once it's dark (the
+// event's onPeak): it's called at the jump's flash, or at its end, or when
+// another jump takes its place, whichever is first, and the event is marked
+// `taken` so the page knows it will be.
 function Lightspeed() {
   const { unlock } = useAchievements();
   const [on, setOn] = useState(0);
   const [style, setStyle] = useState('hyper');
   const seq = useRef([]);
+  const waiting = useRef(null); // the page's onPeak, till it's called
+  const peak = useCallback(() => {
+    const fn = waiting.current;
+    waiting.current = null;
+    fn?.();
+  }, []);
   useEffect(() => {
     const jump = (e) => {
       audioContext(); // inside the key press, so the sound may play
+      peak(); // (one jump taking another's place: whoever waited on that one goes now)
+      if (typeof e?.detail?.onPeak === 'function') {
+        waiting.current = e.detail.onPeak;
+        e.detail.taken = true;
+      }
       setStyle(prefersReducedMotion() ? 'hyper' : jumpStyle(e?.detail?.style));
       setOn(Date.now());
     };
@@ -129,12 +145,20 @@ function Lightspeed() {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('tp:hyperspace', jump);
     };
-  }, [unlock]);
+  }, [unlock, peak]);
   if (!on) return null;
   const Jump = JUMPS[style] ?? Hyperspace;
   return (
     <Suspense fallback={null}>
-      <Jump key={on} sound onDone={() => setOn(0)} />
+      <Jump
+        key={on}
+        sound
+        onPeak={peak}
+        onDone={() => {
+          peak();
+          setOn(0);
+        }}
+      />
     </Suspense>
   );
 }
@@ -376,6 +400,7 @@ function Shell() {
                 <Route path="/dot-matrix/64" element={<Mario64 />} />
                 <Route path="/dot-matrix/minecraft" element={<Minecraft />} />
                 <Route path="/earth" element={<Earth />} />
+                <Route path="/universe/expanse/:seed" element={<Expanse />} />
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="/changes" element={<Changes />} />
                 <Route path="/worlds" element={<Worlds />} />

@@ -328,7 +328,8 @@
 .holomap-unknown { fill: rgb(0 0 0 / 0.45); stroke: rgb(127 214 255 / 0.15); stroke-width: 0.03; }
 .holomap-region-name { fill: rgb(191 234 255 / 0.5); font-family: var(--font-mono); font-size: 0.26px; letter-spacing: 0.06px; text-anchor: middle; text-transform: uppercase; }
 .holomap-unknown-name { fill: rgb(191 234 255 / 0.35); }
-.holomap-lane { fill: none; stroke: rgb(255 210 120 / 0.35); stroke-width: 0.045; stroke-linejoin: round; }
+/* (dim: the war's own lanes, warmap.css, go over them) */
+.holomap-lane { fill: none; stroke: rgb(255 210 120 / 0.18); stroke-width: 0.045; stroke-linejoin: round; }
 .holomap-course { fill: none; stroke: #fff; stroke-linejoin: round; stroke-width: 0.06; stroke-dasharray: 0.18 0.12; animation: holomap-dash 1s linear infinite; }
 @keyframes holomap-dash { to { stroke-dashoffset: -0.6; } }
 .holomap-axis { position: absolute; pointer-events: none; color: rgb(127 214 255 / 0.45); font-family: var(--font-mono); font-size: 9px; }
@@ -362,6 +363,11 @@
 .holomap-systems > li[data-side='left'] .holomap-system { flex-direction: row-reverse; translate: calc(-100% + 7px) -50%; padding: 0.1rem 0 0.1rem 0.3rem; }
 .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 2px #fff; animation: holomap-here 1.6s ease-in-out infinite; }
 @keyframes holomap-here { 50% { box-shadow: 0 0 0 5px rgb(255 255 255 / 0.25); } }
+/* (still, for prefers-reduced-motion: the war's marks stop in warmap.css, but this file comes after it, so here) */
+@media (prefers-reduced-motion: reduce) {
+  .holomap-system[aria-current='location'] .holomap-dot,
+  .holomap-course { animation: none; }
+}
 .holomap-system[aria-pressed='true'] { background: rgb(2 6 16 / 0.85); box-shadow: 0 0 0 1px var(--c); color: #fff; }
 .holomap-system:hover .holomap-name { color: var(--c); }
 .holomap-name { text-shadow: 0 0 6px #000, 0 0 2px #000; }
@@ -521,73 +527,63 @@
 }
 @keyframes galaxy-entry-note { to { opacity: 0.8; } }
 
-/* the Galactic Civil War's table (gcw.js): a ring round each system in the
-   colour of who holds it, a front's liberation as an arc round its ring, a
-   system under attack pulsing red, its battle and the major order by its
-   name; the war's own card in the side panel */
-.holomap-systems li[data-held] .holomap-dot { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held); }
-.holomap-systems li[data-front] .holomap-dot { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held); animation: holomap-front 1.6s ease-in-out infinite; }
-@keyframes holomap-front {
-  50% { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held), 0 0 8px 4px rgb(255 179 71 / 0.5); }
-}
-.holomap-lib-track { fill: none; stroke: rgb(98 224 138 / 0.35); stroke-width: 0.09; }
-.holomap-lib-arc { fill: none; stroke: #ff6b4a; stroke-width: 0.12; stroke-linecap: round; }
-.holomap-lib[data-attack] .holomap-lib-track { stroke: rgb(255 70 60 / 0.35); }
-.holomap-systems li[data-attack] .holomap-dot { animation: holomap-attack 0.9s ease-in-out infinite; }
-@keyframes holomap-attack {
-  50% { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held), 0 0 0 9px rgb(255 70 60 / 0.45); }
-}
-.holomap-star { margin-left: 0.25rem; color: #ffd36a; font-weight: 700; text-shadow: 0 0 6px #000; }
-.holomap-fight { margin-left: 0.2rem; color: #ffb347; font-weight: 700; text-shadow: 0 0 6px #000; }
-.holomap-war {
-  position: absolute;
-  left: 12px;
-  bottom: 10px;
-  z-index: 1;
-  margin: 0;
-  color: var(--muted, #9aa6c0);
-  font-family: var(--font-mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.06em;
-}
-.holomap-war i { display: inline-block; width: 8px; height: 8px; margin: 0 2px 0 8px; border-radius: 50%; border: 2px solid var(--held); }
-.holomap-war b { margin: 0 2px 0 8px; color: #ffb347; }
-.holomap-war b + b { color: #ffd36a; }
-.holomap-warcard { display: grid; gap: 0.6rem; margin: 0.9rem 0 0.4rem; padding: 0.75rem; border: 1px solid rgb(255 179 71 / 0.28); border-radius: 10px; background: rgb(28 16 4 / 0.35); }
-.holomap-warcard .holomap-kicker { color: #ffb347; }
-.holomap-order { display: grid; gap: 0.25rem; padding: 0.6rem 0.7rem; border-radius: 8px; background: rgb(255 211 106 / 0.08); box-shadow: inset 0 0 0 1px rgb(255 211 106 / 0.35); color: #fff; text-align: left; }
-.holomap-order:hover { background: rgb(255 211 106 / 0.14); }
-.holomap-order-k { color: #ffd36a; font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; }
-.holomap-order-t { font-size: 1rem; font-weight: 650; }
-.holomap-order-bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, #62e08a 45%, transparent); overflow: hidden; }
-.holomap-order-bar > span { display: block; height: 100%; width: calc(var(--control) * 100%); background: #ff6b4a; }
-.holomap-order-n { color: rgb(217 243 255 / 0.75); font-size: 0.74rem; }
-.holomap-battles { display: grid; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
-.holomap-battles button { display: grid; gap: 0.1rem; width: 100%; padding: 0.45rem 0.6rem; border-radius: 8px; background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px rgb(255 179 71 / 0.25); color: #e6f6ff; text-align: left; }
-.holomap-battles button:hover { background: rgb(255 179 71 / 0.12); }
-.holomap-battles li[data-attack] button { box-shadow: inset 0 0 0 1px rgb(255 70 60 / 0.5); }
-.holomap-battles-t { font-size: 0.82rem; font-weight: 600; }
-.holomap-battles-n { color: rgb(217 243 255 / 0.65); font-size: 0.7rem; }
-@media (prefers-reduced-motion: reduce) {
-  .holomap-systems li[data-front] .holomap-dot,
-  .holomap-systems li[data-attack] .holomap-dot { animation: none; }
-}
-
-/* the galaxy's wars: the war you fight in, the oath, the areas (WarCard.jsx), and the battle on in a line (WarHud.jsx) */
+/* the galaxy's wars: the oath, the areas (WarCard.jsx), and the battle on in a line (WarHud.jsx); the holotable's war is warmap.css's */
 .galaxy-oath { display: grid; gap: 0.45rem; }
-.galaxy-oath-wars,
 .galaxy-oath-sides { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-.galaxy-oath-wars button,
 .galaxy-oath-sides button { padding: 0.32rem 0.6rem; border-radius: 999px; border: 1px solid rgb(217 243 255 / 0.22); background: rgb(255 255 255 / 0.04); color: #d9f3ff; font-size: 0.74rem; }
-.galaxy-oath-wars button[aria-pressed='true'] { border-color: #ffb347; background: rgb(255 179 71 / 0.16); color: #fff; }
 .galaxy-oath-sides button { border-color: color-mix(in srgb, var(--side, #7fd6ff) 45%, transparent); }
 .galaxy-oath-sides button[data-suggested] { box-shadow: 0 0 0 1px var(--side, #7fd6ff); }
 .galaxy-oath-sides button[aria-pressed='true'] { background: color-mix(in srgb, var(--side, #7fd6ff) 26%, transparent); color: #fff; font-weight: 600; }
-.galaxy-oath-wars button:focus-visible,
 .galaxy-oath-sides button:focus-visible { outline: 2px solid #7fd6ff; outline-offset: 2px; }
 .galaxy-oath-n { margin: 0; color: rgb(217 243 255 / 0.7); font-size: 0.72rem; }
 .galaxy-areas { display: grid; gap: 0.2rem; margin: 0; padding: 0; list-style: none; font-size: 0.72rem; color: rgb(217 243 255 / 0.7); }
 .galaxy-areas li { display: flex; justify-content: space-between; gap: 0.5rem; }
 .galaxy-areas li[data-yours] { color: #fff; }
 .galaxy-war { display: grid; gap: 0.5rem; margin-top: 0.9rem; }
-.galaxy-warhud { position: absolute; top: 4.6rem; left: 50%; z-index: 3; max-width: calc(100% - 2rem); margin: 0; padding: 0.3rem 0.8rem; transform: translateX(-50%); border-radius: 999px; border: 1px solid color-mix(in srgb, var(--side) 55%, transparent); background: rgb(2 6 16 / 0.72); color: #fff; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+/* the war's line over the galaxy (WarHud.jsx): the battle here in a pill, and
+   under it while you're in it the stage it's at, with a short bar for each of
+   its objectives; two rows, clear of the crew's line below (.galaxy-page
+   .universe-comms, nav-h + 56px, which slides in from 6px higher); centred in
+   the band between the galaxy map button (136px in) and the side panel (24px
+   off it), so its stage and bars never run under either: on a narrow screen
+   the stage's words are cut short instead */
+.galaxy-warhud { position: absolute; top: 4.6rem; left: calc((136px + 100% - var(--panel-w, 0px) - 24px) / 2); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 0.2rem; width: max-content; max-width: calc(100% - var(--panel-w, 0px) - 160px - 1rem); margin: 0; transform: translateX(-50%); color: #fff; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; pointer-events: none; }
+.galaxy-warhud p { max-width: 100%; margin: 0; white-space: nowrap; }
+.galaxy-warhud-line { overflow: hidden; padding: 0.26rem 0.8rem; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--side) 55%, transparent); background: rgb(2 6 16 / 0.72); text-overflow: ellipsis; }
+.galaxy-warhud-stage { display: flex; align-items: center; gap: 0.6rem; padding: 0.1rem 0.65rem; border-radius: 999px; background: rgb(2 6 16 / 0.62); color: rgb(217 243 255 / 0.88); font-size: 0.66rem; }
+.galaxy-warhud-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.galaxy-warhud-next { color: rgb(255 214 150 / 0.92); }
+.galaxy-warhud-bars { display: flex; flex: none; gap: 0.25rem; }
+.galaxy-warhud-bar { position: relative; width: 2.2rem; height: 0.32rem; overflow: hidden; border-radius: 999px; background: rgb(255 255 255 / 0.18); }
+.galaxy-warhud-bar::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--side); transform: scaleX(var(--k, 1)); transform-origin: left; }
+.galaxy-warhud-bar[data-down] { background: rgb(255 255 255 / 0.08); }
+@media (prefers-reduced-motion: no-preference) { .galaxy-warhud-bar::after { transition: transform 0.6s ease-out; } }
+/* (over a bright planet in a light page the glass needs more body to read) */
+@media (prefers-color-scheme: light) { .galaxy-warhud-line, .galaxy-warhud-stage { background: rgb(2 6 16 / 0.84); } }
+/* (on a phone the band between the nav and the crew's line, .galaxy-page
+   .universe-comms at nav-h + 56px, is the map button's, and beside it the
+   stage's words were cut to nothing: the HUD goes under the crew's line,
+   the whole width, as the Citadel siege's does) */
+@media (max-width: 767px) {
+  .galaxy-warhud { top: calc(var(--nav-h, 68px) + 150px); left: 50%; max-width: calc(100% - 2rem); font-size: 0.68rem; }
+  .galaxy-warhud-stage { font-size: 0.62rem; }
+  .galaxy-warhud-bar { width: 1.3rem; }
+}
+
+/* the battle's end (BattleEnd.jsx): Victory or Defeat a few seconds, why, and your part
+   (under the crew's line, which says its own word on it) */
+.galaxy-battleend { --tone: #9fb0d0; position: absolute; top: max(30%, calc(var(--nav-h, 68px) + 150px)); left: 50%; z-index: 4; width: min(22rem, calc(100% - 2rem)); padding: 0.9rem 1.1rem 1rem; transform: translateX(-50%); border-radius: 0.8rem; border: 1px solid color-mix(in srgb, var(--tone) 60%, transparent); background: rgb(2 6 16 / 0.84); box-shadow: 0 0 2.4rem color-mix(in srgb, var(--tone) 22%, transparent); color: #fff; text-align: center; pointer-events: none; }
+.galaxy-battleend[data-tone='won'] { --tone: #ffd36b; }
+.galaxy-battleend[data-tone='lost'] { --tone: #ff7a6b; }
+.galaxy-battleend-title { margin: 0; color: var(--tone); font-family: var(--font-mono); font-size: clamp(1.5rem, 7vw, 2.2rem); font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
+.galaxy-battleend-why { margin: 0.3rem 0 0; font-size: 0.95rem; }
+.galaxy-battleend-yours { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.2rem 0.8rem; margin: 0.6rem 0 0; color: rgb(217 243 255 / 0.82); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; }
+.galaxy-battleend-points { color: var(--tone); }
+/* (after the card's own rule, so they win: on a desktop it's centred in the map
+   left of the side panel, as the HUD is, with a margin so its entrance, which
+   moves it by transform, isn't knocked sideways; on a phone it sits under the
+   crew's line and the HUD) */
+@media (min-width: 768px) { .galaxy-battleend { width: min(22rem, calc(100% - var(--panel-w, 0px) - 2rem)); margin-left: calc(var(--panel-w, 0px) / -2); } }
+@media (max-width: 767px) { .galaxy-battleend { top: max(34%, calc(var(--nav-h, 68px) + 200px)); } }
+@media (prefers-reduced-motion: no-preference) { .galaxy-battleend { animation: galaxy-end-in 0.45s ease-out both; } }
+@keyframes galaxy-end-in { from { opacity: 0; transform: translate(-50%, -0.6rem) scale(0.96); } }

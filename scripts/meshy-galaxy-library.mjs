@@ -10,6 +10,15 @@
 // Their tasks go in scripts/meshy-galaxy-library-tasks.json.
 //
 //   MESHY_TASKS=scripts/meshy-galaxy-library-tasks.json node scripts/meshy-galaxy-buildings.mjs <step> <kind …>
+//   node scripts/meshy-galaxy-library.mjs <step> [--ultra] <kind …>   (the same, with this lane's tasks file and review folder)
+//
+// --ultra makes the ultra level's cut beside the plain one: `models --ultra`
+// asks Meshy again at its most polygons, `fetch --ultra` writes
+// <kind>.ultra.glb (scripts/meshy-galaxy-buildings.mjs's header has it).
+
+import { spawnSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const BEAST = 'The whole creature in frame, standing on all its feet, three-quarter view from the side, isolated on a plain light grey background, no rider, no people, no text, no ground.';
 const FLIER = 'The whole creature in frame, wings spread, three-quarter view from slightly above, isolated on a plain light grey background, no people, no text.';
@@ -113,3 +122,10 @@ export const BUILDINGS = {
   fang: ship('File:FangFighrter-SWESOV.png', 'the narrow Mandalorian fighter with its swept wings'),
   naboocruiser: ship('File:Nabooskiff-SWCTP.png', 'the gleaming chrome boomerang-shaped yacht'),
 };
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const env = { ...process.env, MESHY_TASKS: process.env.MESHY_TASKS ?? 'scripts/meshy-galaxy-library-tasks.json', MESHY_REVIEW: process.env.MESHY_REVIEW ?? join(here, '..', 'lab', 'meshy', 'library') };
+  const r = spawnSync(process.execPath, [join(here, 'meshy-galaxy-buildings.mjs'), ...process.argv.slice(2)], { stdio: 'inherit', env });
+  process.exitCode = r.status ?? 1;
+}
