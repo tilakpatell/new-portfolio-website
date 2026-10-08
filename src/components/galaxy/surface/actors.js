@@ -405,6 +405,9 @@ export function modelFigureOf(scene, { animations = [], anim: names = null, seed
     base: calls.base,
     look: calls.look,
     react: calls.react,
+    // how far its step has it off where it stands (the sway's rise and roll,
+    // in its own frame): for a rider on its back to go with it (riders.js)
+    sway: () => ({ y: (scene.position.y - rest.y) * (model.scale.y || 1), roll: scene.rotation.z - rest.z }),
     dispose() {
       anim?.dispose();
     },

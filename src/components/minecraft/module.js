@@ -33,7 +33,7 @@ import { MC } from './scene/atlasTexture.js';
 import { workerClient } from './scene/chunks.js';
 import { createStore } from '../../runtime/store.js';
 import { createRegistry } from '../worlds/registry.js';
-import { keepWorld, openWorld, randomSeed } from './worlds.js';
+import { holdWorld, keepWorld, openWorld, randomSeed } from './worlds.js';
 
 export { SAVE, SAVE_VERSION };
 
@@ -135,7 +135,16 @@ export default {
 
     let id = null; // the world's id in the store and the registry
     let opened = 0; // the latest newWorld: an older one arriving late is dropped
-    const persist = () => g && id && keepWorld({ store, registry, id, data: pack(g) }).catch(() => {});
+    // (a world deleted on /worlds meanwhile stops being saved: it is not written back)
+    const persist = () => {
+      if (!g || !id) return;
+      const was = id;
+      keepWorld({ store, registry, id, data: pack(g) })
+        .then((kept) => {
+          if (!kept && id === was) id = null;
+        })
+        .catch(() => {});
+    };
 
     function begin(save, seed, worldId) {
       for (const k of flying.keys()) client.cancel(k);
@@ -153,10 +162,16 @@ export default {
     }
     const first = await opening;
     begin(first.save, first.seed, first.id);
-    // a reload or a closed tab: the write starts as the page goes (asynchronous,
-    // so best-effort; the five-second save is the floor)
-    const onHide = () => persist();
+    // a reload, a closed tab or a phone's app switch: the save held in localStorage
+    // at once (the store's write may not land before the page is gone), and the
+    // store's write started; the next open takes back whichever is newer
+    const onHide = () => {
+      if (g && id) holdWorld({ saves: rt.saves, id, data: pack(g) });
+      persist();
+    };
+    const onVisibility = () => document.visibilityState === 'hidden' && onHide();
     globalThis.addEventListener?.('pagehide', onHide);
+    globalThis.document?.addEventListener('visibilitychange', onVisibility);
     scene.setRenderDistance(distance);
 
     // ── the chunks: asked for nearest first, a few at a time, let go behind ──
@@ -586,6 +601,7 @@ export default {
       dispose() {
         persist();
         globalThis.removeEventListener?.('pagehide', onHide);
+        globalThis.document?.removeEventListener('visibilitychange', onVisibility);
         gone = true;
         worker.terminate();
         rt.input.unbind();
