@@ -47,7 +47,8 @@
 //   removePerson(crew, id) → bool                  off the station, handing back what they held
 //   BARKS                                          the garrison’s lines, by when they’re said
 //
-// person: a walker body & { id, kind, side, hp, max, mode, anim, aim, role, squad, hostile, tag, talk, gun, mind }
+// person: a walker body & { id, kind, side, hp, max, mode, anim, aim, role, squad, hostile, tag, talk, gun, mind, hidden? }
+//   hidden: lying low (the game sets it): nobody on the other side sees them
 //   mode: 'routine' | 'wary' | 'fight' | 'search' | 'flee' | 'down' | 'dead' | 'scripted'
 //   anim: 'idle' | 'walk' | 'run' | 'aim' | 'shoot' | 'hit' | 'die' | 'kneel' | 'talk' | 'work' | 'attention'
 //   aim: the point it aims at, or null. The game hurts a person with combat.hurt (setting `hurtBy`,
@@ -368,7 +369,7 @@ function perceive(crew, p, heard, watchers) {
   const targets = [];
   if (p.side !== 'neutral') {
     if (you && !(you.hp <= 0)) targets.push({ id: yid, at: chest(you), kind: you.hero ?? 'you', hostile: hostileToYou(crew, p, you) });
-    for (const q of crew.people) if (q !== p && q.mode !== 'dead' && q.side !== 'neutral' && q.side !== p.side) targets.push({ id: q.id, at: chest(q), kind: q.kind, hostile: true });
+    for (const q of crew.people) if (q !== p && q.mode !== 'dead' && !q.hidden && q.side !== 'neutral' && q.side !== p.side) targets.push({ id: q.id, at: chest(q), kind: q.kind, hostile: true });
   }
   // only an enemy’s shots and steps are worth turning round for
   const stims = m.own.splice(0);

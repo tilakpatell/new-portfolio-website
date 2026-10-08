@@ -676,3 +676,15 @@ describe('people the game lets sleep', () => {
     expect(Math.hypot(p.x - at.x, p.z - at.z)).toBeGreaterThan(1);
   });
 });
+
+describe('people lying low', () => {
+  it('are not seen or fought by the other side while hidden', () => {
+    const w = world(hall());
+    const t = addPerson(w.crew, { id: 't', kind: 'stormtrooper', room: 'hall', x: 0, z: 0, yaw: Math.PI / 2, role: { type: 'post' } });
+    const h = addPerson(w.crew, { id: 'h', kind: 'han', room: 'hall', x: 6, z: 0, yaw: -Math.PI / 2, role: { type: 'post' } });
+    h.hidden = true;
+    simulate(w, 90);
+    expect(of(w, 'saw').filter((e) => e.target === 'h')).toEqual([]);
+    expect(t.mode).toBe('routine');
+  });
+});

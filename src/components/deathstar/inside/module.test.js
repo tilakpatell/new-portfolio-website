@@ -146,7 +146,8 @@ describe('aboard the Death Star, coming aboard', () => {
     const { rt, world } = await make();
     world.start({ station: 'ds1', side: 'rebel', hero: 'han', mode: 'story', fresh: true });
     world.step(1 / 60, snap());
-    expect(last(rt, 'ui')).toMatchObject({ mode: 'play', side: 'rebel', hero: 'han', play: 'story' });
+    // the story plays its own hero: the first Death Star’s Rebel story is Luke’s
+    expect(last(rt, 'ui')).toMatchObject({ mode: 'play', side: 'rebel', hero: 'luke', play: 'story' });
     expect(last(rt, 'ui').objective).toBeTruthy();
     expect(last(rt, 'hud').room).toBe('hold');
     expect(rt.emitted).toContainEqual({ type: 'achievement', id: 'ds-aboard' });
@@ -166,7 +167,7 @@ describe('aboard the Death Star, coming aboard', () => {
 
 describe('aboard the Death Star, walking', () => {
   it('walks you the way the camera faces, and the stick strafes across it', async () => {
-    const { world, scene } = await make({ side: 'imperial' });
+    const { world, scene } = await make({ side: 'imperial', mode: 'roam' });
     world.look(400, 0);
     world.step(1 / 60, snap());
     world.draw({ dt: 1 / 60, renderer: scene.renderer });
@@ -184,7 +185,7 @@ describe('aboard the Death Star, walking', () => {
   });
 
   it('runs at most four steps for a long frame', async () => {
-    const { world } = await make({ side: 'imperial' });
+    const { world } = await make({ side: 'imperial', mode: 'roam' });
     const you = world.game.you;
     const z = you.z;
     world.step(2, snap({ held: ['KeyW'] }));
@@ -204,7 +205,7 @@ describe('aboard the Death Star, walking', () => {
   });
 
   it('keeps the rooms you see, for the map', async () => {
-    const { rt, world } = await make({ side: 'imperial' });
+    const { rt, world } = await make({ side: 'imperial', mode: 'roam' });
     frames(world, 5, ['KeyW']);
     expect(last(rt, 'ui').map.seen).toContain('corr327');
     expect(rt.store.get(SAVE).ds1.seen).toContain('corr327');
