@@ -7,7 +7,8 @@ import { FIGURES } from '../figures';
 import { PROPS, SCATTER } from '../props';
 import { RIDES } from '../rides';
 import { LAYER_TYPES, REACH, heightGrid, makeHeight } from '../terrain';
-import { LANDABLE, SITES, siteOf } from '.';
+import { LANDABLE, SITES, siteFrom, siteOf } from '.';
+import { EXTRA } from './quests';
 import { CREW } from '../crew';
 import { talkTree } from '../talk';
 import { CLIPS } from '../../../../lib/three/clipLibrary';
@@ -177,5 +178,32 @@ describe('Bespin, inside', () => {
     const race = q.steps.at(-1);
     expect(race.type).toBe('race');
     expect(Math.hypot(race.gates.at(-1)[0], race.gates.at(-1)[1] + 255)).toBeLessThan(28);
+  });
+});
+
+// siteOf's "made whole" step stands on its own, so another book of sites
+// (the Rick and Morty planets) is made whole exactly as the galaxy's are
+describe('siteFrom', () => {
+  const named = (id) => {
+    const sys = SYSTEMS.find((s) => s.id === id);
+    return { name: sys.name, accent: sys.accent };
+  };
+
+  it('makes a raw site whole exactly as siteOf does', () => {
+    expect(EXTRA.bespin).toBeUndefined();
+    expect(siteFrom(SITES.bespin, 'bespin', named('bespin'))).toEqual(siteOf('bespin'));
+  });
+
+  it('gives siteOf’s result once the extra quests are folded in', () => {
+    const more = EXTRA.endor;
+    const raw = { ...SITES.endor, life: [...(SITES.endor.life ?? []), ...more.life], quests: [...(SITES.endor.quests ?? []), ...more.quests] };
+    expect(siteFrom(raw, 'endor', named('endor'))).toEqual(siteOf('endor'));
+  });
+
+  it('names a site by its id, in white, when nothing names it', () => {
+    const site = siteFrom(SITES.bespin, 'elsewhere');
+    expect(site.id).toBe('elsewhere');
+    expect(site.name).toBe('elsewhere');
+    expect(site.accent).toBe('#ffffff');
   });
 });

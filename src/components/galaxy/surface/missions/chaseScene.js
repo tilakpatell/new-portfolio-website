@@ -26,7 +26,7 @@
 import * as THREE from 'three';
 import { disposeTree } from '../../../../lib/three/renderer';
 import { buildFigure } from '../figures';
-import { RIDES } from '../rides';
+import { RIDES as GALAXY_RIDES } from '../rides';
 import { groundAt } from '../walker';
 import { aimAssist, chaseView, firstSolid, hitScout, knockYou, laneHits, newChase, planRoute, scoutAt, starsFor, stepChase } from './chase';
 import { sharpen } from '../../../../lib/three/textures';
@@ -240,7 +240,7 @@ export function createRider(fig, seat) {
   };
 }
 
-export function createChaseMission({ parent, world, placer, blaster, mission, emit, say, sounds }) {
+export function createChaseMission({ parent, world, placer, blaster, mission, emit, say, sounds, rides: RIDES = GALAXY_RIDES }) {
   const group = new THREE.Group();
   group.name = 'chase';
   parent.add(group);

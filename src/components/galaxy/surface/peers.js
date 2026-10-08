@@ -9,7 +9,7 @@
 // when it came in and played once: lib/emote.js); an older pilot's, without
 // them, walks as it always did.
 //
-// createPeers({ parent, placer, getCast }) → { update(net, siteId, dt),
+// createPeers({ parent, placer, getCast, rides?, models? }) → { update(net, siteId, dt),
 // dispose() }
 
 import * as THREE from 'three';
@@ -17,7 +17,7 @@ import { PARTY, loadPartyFigure } from '../../universe/footScene';
 import { HEROES, heroSpec } from '../heroes';
 import { readLooks } from '../../rickmorty/wardrobe/looks';
 import { METRE } from '../../universe/foot';
-import { RIDES } from './rides';
+import { RIDES as GALAXY_RIDES } from './rides';
 import { SEATS, poseRider } from './riders';
 import { buildFigure } from './figures';
 import { modelFigure } from './actors';
@@ -57,7 +57,7 @@ function nameTag(text) {
   return s;
 }
 
-export function createPeers({ parent, placer, getCast }) {
+export function createPeers({ parent, placer, getCast, rides: RIDES = GALAXY_RIDES, models = undefined }) {
   const group = new THREE.Group();
   group.name = 'peers';
   parent.add(group);
@@ -117,7 +117,7 @@ export function createPeers({ parent, placer, getCast }) {
       r.fig = buildFigure(spec.figure);
       if (r.fig) holder.add(r.fig.model);
       // (its catalogue model once it's here, as yours is: the seat's measured on it)
-      modelFigure(spec.figure)
+      modelFigure(spec.figure, models)
         .then((m) => {
           if (!m || dead || !holder.parent) return;
           if (r.fig) holder.remove(r.fig.model);
