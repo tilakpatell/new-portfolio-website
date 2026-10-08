@@ -344,7 +344,7 @@ Each planet on the map that has a world gets a page of its own, with its own art
 
 ## Credits
 
-This site stands on a lot of other people's work, and I'm grateful for all of it. **[CREDITS.md](CREDITS.md) lists every one**: <!-- counts:start -->261 3D models by 137 artists, 171 free scans, skies and kit pieces, 61 photos and 12 open fonts<!-- counts:end -->, each with its author, licence and where it's used. Each is credited on the page that uses it too.
+This site stands on a lot of other people's work, and I'm grateful for all of it. **[CREDITS.md](CREDITS.md) lists every one**: <!-- counts:start -->261 3D models by 137 artists, 178 free scans, skies and kit pieces, 61 photos and 12 open fonts<!-- counts:end -->, each with its author, licence and where it's used. Each is credited on the page that uses it too.
 
 **Thank you to the 3D artists** whose Sketchfab models fly, walk and stand about in the worlds:
 
@@ -406,6 +406,10 @@ The asset pipeline scripts regenerate committed files. You don't need them to ru
 | `npm run cc0` | Fetch the games' CC0 scans and skies from Poly Haven and ambientCG into `public/games/` (behind a proxy, set `NODE_USE_ENV_PROXY=1`) |
 | `npm run hq-assets` | Fetch and shrink the Avengers HQ games' CC0 assets into `public/hq/` |
 | `npm run kenney` | Convert Kenney's kits for *Portal panic* (`KENNEY=/path/to/kits npm run kenney`) |
+| `node scripts/kit/import.mjs <pack> [family …] [--from <dir>]` | A Quaternius pack (fetched into `lab/assets/` by `node scripts/assets-fetch.mjs <pack>`) as the worlds' kit: one GLB a family (more for a heavy one), each model with its LOD1, and a manifest of what each is, into `public/kit/<pack>/`. The manual and the budgets: [scripts/kit/README.md](scripts/kit/README.md) |
+| `node scripts/kit/fbx.mjs <pack>` | A Quaternius pack that comes as FBX only (the farm animals, the street and furniture packs) as GLBs in metres, clips named by their action, into `lab/assets/<pack>-glb/` for `scripts/kit/import.mjs` to read (through the dev server on 5188, started if it's down) |
+| `node scripts/kit-check.mjs` | Every kit pack in `public/kit/` against its manifest: the licence and source said, each model's file there, files, trees and LOD1s within the budgets in `scripts/kit/manifest.mjs`, no GLB that no model is in. Prints each pack's size in MiB; exit 1 on anything wrong |
+| `node scripts/kit-shot.mjs [out dir] [pack] [scatter <Name>:<n>,…] [pools <Name>,…]` | Kit models as the worlds draw them: the galaxy placer's `kit:` rows and the kit's pools, as `scatter.png` and `pools.png` in `lab/kit/` (or the out dir), failing on any shader, page or console error (through the dev server on port 5188) |
 | `npm run photos` | Turn the Travel photos into small WebP files and record their sizes, alt text and credits |
 | `npm run globe` | Rebuild the dotted globe on the Travel page |
 | `python3 scripts/build-harmonium.py` | Rebuild the music room's harmonium from its CC0 recording (downloads it the first time) |
