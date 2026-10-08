@@ -10,6 +10,9 @@
 // items, opts), update(t, dt, you), signal(name, on) (to the built things that
 // move when something happens: a trapdoor, a gate), setZone(inZone), ready (a
 // promise: everything asked for so far is in), dispose() }
+//   With `seated` (ultra: amounts.js), whatever stands on the ground is
+//   seated on the lowest ground under its footprint (seat.js), so it never
+//   floats on a slope; below ultra, things stand as they always have.
 //   Given `shadowOnly` (near.js's createShadowPhase(…).only), scattered
 //   things don't cast shadows themselves: a stand-in for each part, drawn
 //   only into the sun's shadow, holds just the instances near `you`
@@ -38,6 +41,7 @@ import { wear as wearCore } from '../../../lib/three/core';
 import { PROPS, SCATTER } from './props';
 import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
+import { seatY } from './seat';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again
 
@@ -175,7 +179,7 @@ export async function wearModel(object, role, { wear = wearCore, load = loadScan
   return seen.size;
 }
 
-export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null }) {
+export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null, seated = false }) {
   const group = new THREE.Group();
   group.name = 'things';
   parent.add(group);
@@ -195,6 +199,17 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   const spot = (spec) => {
     const [x, z] = spec.at;
     return [x, (spec.abs ? 0 : groundY(x, z)) + (spec.y ?? 0) - (spec.sink ?? 0), z];
+  };
+  // stood on the lowest ground under its footprint (seat.js), so no side
+  // floats over a slope: only what's stood on the ground itself (not one
+  // hung at a height, nor a room's); a model put on its own (a building, a
+  // hut, a landmark) goes down a metre at most, its own foundations holding
+  // the rest
+  const seatable = (spec) => seated && !spec.abs && spec.y == null && !spec.zone;
+  const seat = (spec, at, r, max = 2) => {
+    if (!seatable(spec) || !(r > 0.3)) return at;
+    at[1] = seatY(groundY, at[0], at[2], r, { max }) - (spec.sink ?? 0);
+    return at;
   };
 
   // a built one (made once for each kind and options and copied after,
@@ -301,6 +316,12 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             o.position.set(...at);
             o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
             o.scale.setScalar(spec.scale ?? 1);
+            // (seated by its box, a little inside its edges: a metre down at most)
+            if (seatable(spec)) {
+              const size = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+              const r = Math.min(size.x, size.z) * 0.4;
+              o.position.y = seat(spec, at, r, 1)[1];
+            }
             const holder = spec.zone ? rooms : group;
             holder.add(o);
             if (spec.fog === false) unfogged(o);
@@ -354,7 +375,17 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           if (shadowOnly && p.shadow !== false) casters.push({ mesh: casterFor(p, Math.min(NEAR.max, mats.length)), src, xs, zs });
           return { mesh, src };
         });
-      const instance = (parts, radius) => {
+      // (each item seated by the footprint it turns out to have: `seatR`,
+      // its radius at scale 1)
+      const instance = (parts, radius, seatR = radius) => {
+        if (seatR > 0)
+          for (let i = 0; i < mats.length; i++) {
+            const x = mats[i];
+            const it = items[i];
+            if (!seatable(it)) continue;
+            x.at = seat(it, x.at, seatR * x.s * 0.8);
+            x.m.setPosition(x.at[0], x.at[1], x.at[2]);
+          }
         const made = instanceParts(parts);
         nearAt = null; // (found again on the next update, these with them)
         if (solid && radius) for (const x of mats) world.solids.circle(x.at[0], x.at[2], radius * x.s);
@@ -376,7 +407,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           });
           const box = new THREE.Box3().setFromObject(root);
           const size = box.getSize(new THREE.Vector3());
-          const full = instance(parts, typeof solid === 'number' ? solid : Math.min(size.x, size.z) * 0.35);
+          const full = instance(parts, typeof solid === 'number' ? solid : Math.min(size.x, size.z) * 0.35, Math.min(size.x, size.z) * 0.45);
           // far off, its light copy: the items past lodDistance drawn with it
           // instead (split again as you walk, with the shadow stand-ins);
           // never at ultra, which draws the full model at every distance
@@ -401,7 +432,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
         return p;
       }
       const made = SCATTER[kind]?.(kit, opts) ?? (PROPS[kind] ? { parts: partsOf(PROPS[kind](kit, opts)), radius: opts.radius ?? 0.5 } : null);
-      if (made) instance(made.parts, typeof solid === 'number' ? solid : made.radius);
+      if (made) instance(made.parts, typeof solid === 'number' ? solid : made.radius, made.radius);
       return Promise.resolve(null);
     },
     get ready() {
