@@ -26,7 +26,7 @@
 // walkerFigure(kind, i) → a figure (actors.js's shape), or null
 
 import * as THREE from 'three';
-import { SURFACE_MODELS, surfaceUrl } from './catalog';
+import { SURFACE_MODELS, modelUrlFor } from './catalog';
 import { cloneModel, loadGlb } from './placer';
 import { crewFigure } from './crew';
 import { poseRider } from './riders';
@@ -217,10 +217,10 @@ export function splitParts(root, spec) {
 // the walker as a figure: { model, tall, anim: null, update(dt, move,
 // motion), look, react, …, dispose }; its rider (if it has one) comes when
 // its figure does, sat in the saddle
-export async function walkerFigure(kind, i = 0) {
+export async function walkerFigure(kind, i = 0, models = SURFACE_MODELS) {
   const spec = WALKERS[kind];
-  if (!spec || !SURFACE_MODELS[kind]) return null;
-  const gltf = await loadGlb(surfaceUrl(kind));
+  if (!spec || !models[kind]) return null;
+  const gltf = await loadGlb(modelUrlFor(kind, 'high', models));
   if (!gltf) return null;
   const scene = cloneModel(gltf);
   const { body, legs, pieces } = splitParts(scene, spec);

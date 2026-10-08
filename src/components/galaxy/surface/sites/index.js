@@ -78,9 +78,7 @@ export const canLand = (id) => Boolean(SITES[id]);
 const turn = ([x, z], yaw = 0) => [x * Math.cos(yaw) + z * Math.sin(yaw), -x * Math.sin(yaw) + z * Math.cos(yaw)];
 const plus = (a, b) => [a[0] + b[0], a[1] + b[1]];
 
-// A site made whole: its places' things and pits moved to where the places
-// are, its flats gathered (the landing spot's, each place's, each pit), and
-// what's left out filled in.
+// A galaxy site made whole, named for its system.
 export function siteOf(id) {
   const base = SITES[id];
   if (!base) return null;
@@ -88,6 +86,15 @@ export function siteOf(id) {
   const more = EXTRA[id];
   const raw = more ? { ...base, life: [...(base.life ?? []), ...more.life], quests: [...(base.quests ?? []), ...more.quests] } : base;
   const sys = SYSTEMS.find((s) => s.id === id);
+  return siteFrom(raw, id, { name: sys?.name, accent: sys?.accent });
+}
+
+// A raw site made whole: its places' things and pits moved to where the
+// places are, its flats gathered (the landing spot's, each place's, each
+// pit), and what's left out filled in. On its own (not inside siteOf) so a
+// book of sites outside the galaxy (the Rick and Morty planets) is made
+// whole by the same rules the scene was built for.
+export function siteFrom(raw, id, { name, accent } = {}) {
   const places = (raw.places ?? []).map((p) => ({
     ...p,
     things: (p.things ?? []).map((t) => ({ ...t, at: plus(p.at, turn(t.at, p.yaw)), yaw: (t.yaw ?? 0) + (p.yaw ?? 0), place: p.id })),
@@ -128,8 +135,8 @@ export function siteOf(id) {
   }));
   return {
     id,
-    name: sys?.name ?? id,
-    accent: sys?.accent ?? '#ffffff',
+    name: name ?? id,
+    accent: accent ?? '#ffffff',
     reach: REACH,
     weather: [],
     things: [],

@@ -479,14 +479,29 @@ export const PAGES = {
   },
   // a Rick and Morty planet, landed on from the universe map (/c-137/<id>)
   '/c-137/planet': {
-    about: 'A planet from the show, landed on from the universe map: you’re in it on foot, as Morty, with something to do.',
-    keys: [{ rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Drag', 'Look round'], ['E', 'Talk, take, look: whatever the prompt says'], ['M', 'Things to do']] }],
-    touch: [{ rows: [...WALK_TOUCH, ['Tap', 'Jump and act, on their buttons']] }],
+    about: 'A planet from the show, landed on from the universe map. Gazorpazorp is a whole world: the cruiser sets down and you climb out as Rick, Morty beside you. The others you walk into as Morty, through a portal, with something to do.',
+    keys: [
+      {
+        rows: [
+          ['W A S D / ← ↑ ↓ →', 'Walk'],
+          ['Shift', 'Run'],
+          ['Space', 'Jump'],
+          ['Drag', 'Look round'],
+          ['E', 'Talk, take, ride, get in the cruiser: whatever the prompt says'],
+          ['F', 'Fire the portal gun (on a planet the cruiser landed on)'],
+          ['M', 'Things to do'],
+          ['B', 'Hold for the emote wheel'],
+          ['Esc', 'Back to the cruiser and up to space'],
+        ],
+      },
+    ],
+    touch: [{ rows: [...WALK_TOUCH, ['Tap', 'Jump, fire and act, on their buttons']] }],
     tips: [
-      ['The way out', 'The portal you came in by, just behind you, takes you back out to space, by the planet.'],
-      ['Run', 'Some of the people here come for you: the map shows them red. Caught, you’re back where you came in.'],
+      ['The way out', 'Where the cruiser set you down, E at it takes off, back out to space by the planet. On a planet you walked into, the portal you came in by, just behind you, does it.'],
+      ['The compass', 'The places to find are on the bar at the top, with how far: walk up to one and it’s found, and kept for next time.'],
+      ['Run', 'Some of the people here come for you. Caught, you’re back where you came in.'],
       ['A minute', 'On Planet Squanch and the Purge Planet, once it goes wrong, get back through the portal inside a minute.'],
-      ['The list', 'What you do here counts on Dimension C-137’s list of things to do too.'],
+      ['The list', 'On a planet you walked into, what you do counts on Dimension C-137’s list of things to do too.'],
     ],
   },
   '/c-137/citadel': {
