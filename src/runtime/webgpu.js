@@ -1,11 +1,15 @@
-// The WebGPU backend: three/webgpu's WebGPURenderer, initialised before
-// the first frame, with three/tsl's PostProcessing for a post chain
-// described as data. Only a 'nodes' module gets it (backend.js): it can't
-// run a ShaderMaterial, an onBeforeCompile patch or an EffectComposer, so
-// a 'shader' pass is refused here. A lost device is reported through
-// onLost, and the runtime comes back on WebGL.
+// The node renderer's two kinds: three/webgpu's WebGPURenderer, initialised
+// before the first frame, with three/tsl's PostProcessing for a post chain
+// described as data. 'webgpu' is it on a WebGPU device; 'nodes-webgl' is
+// the same renderer forced onto a WebGL 2 context (forceWebGL), for a
+// browser without WebGPU or after a device loss, so the same node
+// materials draw either way. Only a 'nodes' module gets either (backend.js):
+// neither can run a ShaderMaterial, an onBeforeCompile patch or an
+// EffectComposer, so a 'shader' pass is refused here. A lost device, or a
+// lost WebGL 2 context, is reported through onLost; the runtime comes back
+// on 'nodes-webgl'.
 //
-// createWebGPU(canvas, { budget, onLost, alpha, toneMapping, exposure }) → Promise<gfx>
+// createWebGPU(canvas, { budget, onLost, alpha, toneMapping, exposure, forceWebGL }) → Promise<gfx>
 
 import * as THREE from 'three';
 import { settle } from '../lib/settle';
@@ -51,22 +55,30 @@ export function buildPostProcessing(renderer, passes) {
   };
 }
 
-export async function createWebGPU(canvas, { budget, onLost, alpha = true, toneMapping = THREE.NoToneMapping, exposure = 1 } = {}) {
+export async function createWebGPU(canvas, { budget, onLost, alpha = true, toneMapping = THREE.NoToneMapping, exposure = 1, forceWebGL = false } = {}) {
   const { WebGPURenderer } = await import('three/webgpu');
-  const renderer = new WebGPURenderer({ canvas, alpha, antialias: budget?.antialias ?? true, powerPreference: 'high-performance' });
+  const renderer = new WebGPURenderer({ canvas, alpha, antialias: budget?.antialias ?? true, powerPreference: 'high-performance', forceWebGL });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = toneMapping;
   renderer.toneMappingExposure = exposure;
   if (alpha) renderer.setClearColor(0x000000, 0);
   await renderer.init();
   let lost = false;
-  const device = renderer.backend?.device;
-  device?.lost?.then(() => {
+  const gone = () => {
+    if (lost) return;
     lost = true;
     onLost?.();
-  });
+  };
+  // on WebGL 2 the canvas says when the context goes (as the classic
+  // renderer's does); on WebGPU the device does
+  const onContextLost = (e) => {
+    e.preventDefault();
+    gone();
+  };
+  if (forceWebGL) canvas.addEventListener('webglcontextlost', onContextLost);
+  else renderer.backend?.device?.lost?.then(gone);
   return makeGfx({
-    backend: 'webgpu',
+    backend: forceWebGL ? 'nodes-webgl' : 'webgpu',
     renderer,
     canvas,
     compile: (root, camera, scene) => settle(renderer.compileAsync(root, camera, scene ?? root), 4000),
@@ -86,5 +98,8 @@ export async function createWebGPU(canvas, { budget, onLost, alpha = true, toneM
       }),
     post: (passes) => buildPostProcessing(renderer, passes),
     isLost: () => lost,
+    release: () => {
+      if (forceWebGL) canvas.removeEventListener('webglcontextlost', onContextLost);
+    },
   });
 }
