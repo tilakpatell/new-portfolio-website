@@ -29,6 +29,7 @@ import { createLoop } from '../lib/three/loop';
 import { settle } from '../lib/settle';
 import { pickBackend } from './backend';
 import { createHandover } from './handover';
+import { calibrate, calibrationKey, recall, remember } from '../lib/three/calibrate';
 import { createOrigin } from './origin';
 import { validateModule, validateWorld } from './module';
 
@@ -252,6 +253,39 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     }
     return world;
   };
+  // How sharp it can afford to be here (lib/three/calibrate), found while
+  // its loading screen is still up: drawn at the pace's steps, sharpest
+  // first, timed on the graphics chip, the sharpest that fits the frame's
+  // budget kept for this chip, world and screen, and held as the pace's
+  // ceiling so it never see-saws. Only on a mount: in a handover the old
+  // world is on the canvas, and the new one starts at what was kept.
+  const tune = async (mod, world, token, { measure = true } = {}) => {
+    if (!gfx?.renderer || mod.calibrate === false || !quality.setLevel) return;
+    const key = calibrationKey(gfx.renderer, mod.id, gfx.size.w, gfx.size.h);
+    const kept = recall(key);
+    const setLevel = (l) => {
+      quality.setLevel(l);
+      if (mod.sharpness !== 'own') gfx.setRatio(ratioFor(mod));
+      world.lowerQuality?.(l);
+    };
+    if (!measure) {
+      if (kept != null) setLevel(kept);
+      return;
+    }
+    events.emit('prepare', { module: mod.id, value: 0.97, step: 'tune' });
+    const draw = () => world.draw({ dt: 0, now: typeof performance !== 'undefined' ? performance.now() : 0, renderer: gfx.renderer, quality });
+    let level = 0;
+    try {
+      level = await calibrate({ renderer: gfx.renderer, draw, setLevel, start: kept ?? 0, frames: kept != null ? 4 : 12, alive: () => token === seq });
+    } catch (err) {
+      if (dev) console.warn(`[${mod.id}] calibration failed`, err);
+      return;
+    }
+    if (token !== seq) return;
+    setLevel(level);
+    remember(key, level);
+  };
+
   const place = (world, host, mod) => {
     if (gfx.canvas.parentNode !== host) host.prepend(gfx.canvas);
     // (the canvas is the picture: a module may say what it shows)
@@ -349,8 +383,13 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       try {
         const world = await build(mod, props, host, token);
         if (!world) return false;
-        making = null;
         place(world, host, mod);
+        await tune(mod, world, token);
+        if (token !== seq) {
+          world.dispose();
+          return false;
+        }
+        making = null;
         begin(module, world, host, props); // (the object the page mounted, so it can tell its own)
         return true;
       } catch (err) {
@@ -413,6 +452,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
         current = null;
         input.detach();
         place(world, host, mod);
+        tune(mod, world, token, { measure: false });
         begin(module, world, host, props);
         timeline = snap ? createHandover({ fade }) : null; // (nothing drawn to fade: straight in)
         fading = false;

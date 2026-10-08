@@ -51,3 +51,7 @@ Same journeys, same machine, with `window.__tpNoShaderChecks` (development other
 | Albuquerque, walking | 489 ms → 62 ms |
 
 Two more causes turned up on the way. A shader made but still linking, drawn, waits for its link: the guard now draws at once only a shader known to have linked (`gpuWork`'s `markLinked`). And the pace changing the runtime's sharpness resized the canvas, which on Metal waits for the graphics chip (0.8 s or more each time, twice per change): it's one resize per change now, none when nothing changed, and the runtime's pace only ever steps down.
+
+## After calibration (part 6)
+
+The galaxy, flown from its address: worst frame resting 29 ms, flying 39 ms, and 45 ms in the first seconds after it's shown (was 430–1237 ms: the pace stepping the sharpness down in answer to start-up stalls, each step a canvas resize). The sharpness is now found behind the loading screen and held as the pace's ceiling.

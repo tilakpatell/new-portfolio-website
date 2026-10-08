@@ -97,6 +97,7 @@ import { audioContext } from '../../lib/audio';
 import { takeArrival } from '../../lib/arrival';
 import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, singlePass, uploadTextures } from '../../lib/three/renderer';
 import { prepareScene, uploadSlices } from '../../lib/three/gpuWork';
+import { calibrate, calibrationKey, recall, remember } from '../../lib/three/calibrate';
 import { settle as settleWithin } from '../../lib/settle';
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
@@ -4568,19 +4569,20 @@ export async function create(canvas, ctx) {
     state.model?.rim({ colour: fill.color, dir: lightNow.fill });
   };
 
+  // the pace's step on everything that follows it
+  const paceTo = () => {
+    post.sharpness = pace.scale;
+    post.setLevel(pace.level);
+    blasts.setMode(pace.level >= 2 || tier === 'low' || state.low ? 'pop' : 'full');
+    // (the rocks' relief flat from the pace's step 3, and back: lib/three/rock)
+    ROCK_RELIEF.value = pace.level >= 3 ? 0 : 1;
+    // (the planets' ground detail goes at the pace's step 2, their real air for
+    // the old halo and their clouds' shadows at 3, and they come back)
+    for (const p of planets) p.setLevel(pace.level);
+  };
   function render(ms, now) {
     gl.watch(now);
-    const sharp = pace.frame(now);
-    if (sharp !== null) {
-      post.sharpness = sharp;
-      post.setLevel(pace.level);
-      blasts.setMode(pace.level >= 2 || tier === 'low' || state.low ? 'pop' : 'full');
-      // (the rocks' relief flat from the pace's step 3, and back: lib/three/rock)
-      ROCK_RELIEF.value = pace.level >= 3 ? 0 : 1;
-      // (the planets' ground detail goes at the pace's step 2, their real air for
-      // the old halo and their clouds' shadows at 3, and they come back)
-      for (const p of planets) p.setLevel(pace.level);
-    }
+    if (pace.frame(now) !== null) paceTo();
     const dt = ms / 1000;
     const t = reduced ? 0 : state.low ? state.tLow : (now - t0) / 1000;
     // (the Twins' suns going round each other: their solids where they're drawn, deep.js)
@@ -5396,6 +5398,20 @@ export async function create(canvas, ctx) {
       frame,
       alive: () => alive() && !disposed,
     });
+    if (!alive() || disposed) return;
+    // how sharp this machine can afford it, found now rather than see-sawed
+    // into while flying (lib/three/calibrate): the pace's ceiling from here
+    onProgress?.(0.97, 'tune');
+    const key = calibrationKey(renderer, 'universe', size.w, size.h);
+    const kept = recall(key);
+    const setLevel = (l) => {
+      pace.set(l);
+      paceTo();
+    };
+    const level = await calibrate({ renderer, draw: () => post.render(size.w, size.h), setLevel, start: kept ?? 0, frames: kept != null ? 4 : 12, frame, alive: () => alive() && !disposed });
+    if (!alive() || disposed) return;
+    setLevel(level);
+    remember(key, level);
   };
 
   return {
