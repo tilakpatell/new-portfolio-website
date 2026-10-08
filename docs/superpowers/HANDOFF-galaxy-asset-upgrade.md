@@ -49,10 +49,18 @@ Follow the spec over the plan, the code over both. Fix the plan's line in your P
 | Phase | Session | Branch | Merged |
 |---|---|---|---|
 | design | the architecting session | `claude/galaxy-asset-upgrade-design` | (carried by Phase 1's PR) |
-| 1 | | | |
+| 1 | the implementation session | `claude/galaxy-asset-upgrade-p1` | no (pushed, no PR: the owner decides) |
 | 2 | | | |
 | 3 | | | |
 | 4 | | | |
 | 5 | | | |
 
 Findings for the next phase go here, as the natural-worlds hand-off does: what the retarget needed on the Mixamo rigs, the B1's outcome, Endor's numbers before and after, which gen3d asks were filed.
+
+### Phase 1 findings
+
+- Audit before: crew 37, own-clips 7, legs 4, rig-noanim 3, still 38, built 8, crew-still 2, none 3, walker 1 (`atrt`). The spec's hand count missed the AT-RT and Mace (`evidence/galaxy-asset-upgrade/audit-before.md`).
+- Audit after Phase 1: legs 15, still 27. The eleven given `legs`: anakin 0.32, armorer 0.38, baze 0.46, cassian 0.46, clonephase1 0.47, dindjarin 0.45, jyn 0.46, k2so 0.47, krennic 0.47, mace 0.3, sullustan 0.44 (crotch as a share of height, read off front and side sheets; Anakin's and Mace's at their tunic hems). Chirrut stays a statue: his robe reaches his ankles and `findLegs` finds no parted legs even when told the crotch, like the Jawa and Yoda. Mace takes his place in the eleven.
+- `legRig.js` changed (not a loader on the hand-off's list): `findLegs` read only vertices, and a low-poly leg has none at 15% of its height, so the Gungan (already given `legs`), K-2SO and the Phase I clone found no legs and swayed. `surfacePoints` adds points spread over the triangles. A legged figure standing still now shifts its weight from knee to knee (`standPose`), so it is not frozen at its bind pose.
+- `anim-check` (software Chromium, about 1.6 s of world time a run) on Scarif (teleported beside Baze and K-2SO), Kamino, Nevarro, Naboo and Geonosis: exit 0 everywhere, no figure in view over 0.15 m/s. Few figures are in view from the landing, and the check lists every out-of-view rigged figure as at its bind pose (the old Geonosians too), because actors far from view are not posed. JSON in `evidence/galaxy-asset-upgrade/anim-p1-*.json`.
+
