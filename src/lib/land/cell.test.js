@@ -148,12 +148,12 @@ describe('heightAt and waterAt', () => {
     for (const [ix, iz] of [[0, 0], [3, 9], [64, 64], [10, 64]]) expect(heightAt(cell, ix, iz)).toBeCloseTo(heights[iz * N + ix], 6);
   });
 
-  it('is the plane of the triangle split (ix, iz)–(ix + 1, iz + 1) between', () => {
+  it('is the plane of the triangle split (ix + 1, iz)–(ix, iz + 1) between, as Rapier’s', () => {
     const h = (i, j) => heights[j * N + i];
-    // below the diagonal (fx ≥ fz): the triangle (0,0), (1,0), (1,1)
-    expect(heightAt(cell, 5.7, 2.2)).toBeCloseTo(h(5, 2) + (h(6, 2) - h(5, 2)) * 0.7 + (h(6, 3) - h(6, 2)) * 0.2, 5);
-    // above it: (0,0), (0,1), (1,1)
-    expect(heightAt(cell, 5.2, 2.7)).toBeCloseTo(h(5, 2) + (h(5, 3) - h(5, 2)) * 0.7 + (h(6, 3) - h(5, 3)) * 0.2, 5);
+    // fx + fz ≤ 1: the triangle (0,0), (1,0), (0,1)
+    expect(heightAt(cell, 5.7, 2.2)).toBeCloseTo(h(5, 2) + (h(6, 2) - h(5, 2)) * 0.7 + (h(5, 3) - h(5, 2)) * 0.2, 5);
+    // beyond: (1,1), (0,1), (1,0)
+    expect(heightAt(cell, 5.6, 2.7)).toBeCloseTo(h(6, 3) + (h(5, 3) - h(6, 3)) * 0.4 + (h(6, 2) - h(6, 3)) * 0.3, 5);
   });
 
   it('reads NaN water where a corner is dry', () => {

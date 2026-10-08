@@ -22,7 +22,8 @@
 //   CELL = 64, N = 65, MASK = 128, MAX_DEPTH = 3
 //   makeCell(spec, cx, cz) → { cx, cz, heights, water, mask, props }
 //   cellMesh(heights, { step = 1 | 2 }) → { positions, normals, indices } in
-//     the cell's frame (0…64), each quad split (ix, iz)–(ix + 1, iz + 1), a
+//     the cell's frame (0…64), each quad split (ix + 1, iz)–(ix, iz + 1) (as
+//     Rapier splits its heightfield, and as the galaxy's ground), a
 //     2 m skirt down every edge (it hides the crack where a step-1 cell
 //     meets a step-2 one)
 //   heightAt(cell, lx, lz), waterAt(cell, lx, lz): read off the same
@@ -119,13 +120,12 @@ function triangle(a, lx, lz) {
   const fx = x - i;
   const fz = z - j;
   const h00 = a[j * N + i];
-  const h11 = a[(j + 1) * N + i + 1];
-  if (fx >= fz) {
-    const h10 = a[j * N + i + 1];
-    return h00 + (h10 - h00) * fx + (h11 - h10) * fz;
-  }
+  const h10 = a[j * N + i + 1];
   const h01 = a[(j + 1) * N + i];
-  return h00 + (h01 - h00) * fz + (h11 - h01) * fx;
+  // (a corner that weighs nothing is left out, so a NaN there doesn't spread)
+  if (fx + fz <= 1) return h00 + (fx ? (h10 - h00) * fx : 0) + (fz ? (h01 - h00) * fz : 0);
+  const h11 = a[(j + 1) * N + i + 1];
+  return h11 + (fx < 1 ? (h01 - h11) * (1 - fx) : 0) + (fz < 1 ? (h10 - h11) * (1 - fz) : 0);
 }
 
 const mix = (a, b, c) => {
@@ -255,10 +255,10 @@ export function cellMesh(heights, { step = 1 } = {}) {
       const d = c + 1;
       indices[k++] = a;
       indices[k++] = c;
-      indices[k++] = d;
-      indices[k++] = a;
-      indices[k++] = d;
       indices[k++] = b;
+      indices[k++] = b;
+      indices[k++] = c;
+      indices[k++] = d;
     }
   // the skirts: each edge's vertices again, SKIRT metres lower, walled down
   // from the edge (wound to face out)
