@@ -323,7 +323,7 @@ export const PROPS = {
     }
     // pipes along its flanks
     for (const s of [-1, 1]) P.push(part(new THREE.CylinderGeometry(0.7, 0.7, 34, 10), { at: [s * 21, 6.5, -2], rot: [PI / 2, 0, 0], color: '#5a5254', to: 'metal' }));
-    return { object: k.build(P, { name: 'mining' }), solids: [{ box: [0, -2, 23, 17, 0] }, { circle: [-9, 6, 4] }] };
+    return { object: k.build(P, { name: 'mining' }), solids: [{ box: [0, -2, 23, 17, 0] }, { circle: [-9, 6, 4] }, { box: [-47, 9, 7, 11, 0] }, { box: [30, 7, 16, 21, 0] }, { box: [-1, -25.5, 25, 6.5, 0] }] };
   },
 
   // a lava fall: a curtain of molten rock pouring over a lip and down into

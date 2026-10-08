@@ -6,7 +6,7 @@ import { createRegistry } from '../worlds/registry';
 import mc, { KEYS, distanceFor, ticksFor } from './module';
 import { hashSeed } from './rules/noise.js';
 import { SAVE } from './rules/save.js';
-import { FIRST_NAME, keepWorld, openWorld } from './worlds';
+import { FIRST_NAME, HELD, holdWorld, keepWorld, openWorld } from './worlds';
 
 describe('Minecraft, the world module', () => {
   it('the module has id minecraft, glsl, mb 2 matching WORLD_MB', () => {
@@ -106,7 +106,7 @@ describe('Minecraft, worlds in the store', () => {
     const s = setup();
     const { id } = await openWorld({ ...s, want: '3' });
     await keepWorld({ ...s, id, data: { v: 1, seed: 3, time: 1 } });
-    expect(await s.store.get('saves', id)).toEqual({ v: 1, seed: 3, time: 1 });
+    expect(await s.store.get('saves', id)).toMatchObject({ v: 1, seed: 3, time: 1 });
     expect((await s.registry.get(id)).size).toBeGreaterThan(0);
     expect(s.saves.mem.has(SAVE)).toBe(false);
   });
@@ -134,5 +134,56 @@ describe('Minecraft, when the store fails', () => {
     await openWorld({ ...b, random: () => 1 });
     expect(await b.store.get('saves', 'minecraft:5')).toEqual({ v: 1, seed: 5, time: 3 });
     expect((await b.registry.get('minecraft:5')).name).toBe(FIRST_NAME);
+  });
+});
+
+describe('Minecraft, a save as the page goes', () => {
+  const setup = () => {
+    const mem = new Map();
+    const saves = { get: (k, f = null) => (mem.has(k) ? mem.get(k) : f), set: (k, v) => mem.set(k, v), remove: (k) => mem.delete(k), mem };
+    let t = 0;
+    const store = createStore({ indexedDB: new IDBFactory() });
+    return { saves, store, registry: createRegistry(store, { now: () => ++t }) };
+  };
+
+  it('a world held as the tab closed is taken back on the next open, when newer than the store', async () => {
+    const s = setup();
+    const { id } = await openWorld({ ...s, want: '4' });
+    await keepWorld({ ...s, id, data: { v: 1, seed: 4, time: 1 }, now: () => 100 });
+    holdWorld({ saves: s.saves, id, data: { v: 1, seed: 4, time: 2 }, now: () => 200 });
+    const w = await openWorld({ ...s, want: '4' });
+    expect(w.save.time).toBe(2);
+    expect((await s.store.get('saves', id)).time).toBe(2);
+    expect(s.saves.mem.has(HELD)).toBe(false);
+  });
+
+  it('a held save older than the store is dropped', async () => {
+    const s = setup();
+    const { id } = await openWorld({ ...s, want: '4' });
+    holdWorld({ saves: s.saves, id, data: { v: 1, seed: 4, time: 2 }, now: () => 100 });
+    await keepWorld({ ...s, id, data: { v: 1, seed: 4, time: 3 }, now: () => 200 });
+    expect((await openWorld({ ...s, want: '4' })).save.time).toBe(3);
+    expect(s.saves.mem.has(HELD)).toBe(false);
+  });
+
+  it('a held save for another world waits for that one', async () => {
+    const s = setup();
+    const { id } = await openWorld({ ...s, want: '4' });
+    holdWorld({ saves: s.saves, id, data: { v: 1, seed: 4, time: 9 }, now: () => 100 });
+    await openWorld({ ...s, want: '5' });
+    expect(s.saves.mem.get(HELD).id).toBe(id);
+    expect((await openWorld({ ...s, want: '4' })).save.time).toBe(9);
+  });
+
+  it('a world deleted from /worlds is not brought back by a held save or a late autosave', async () => {
+    const s = setup();
+    const { id } = await openWorld({ ...s, want: '4' });
+    await s.registry.remove(id);
+    expect(await keepWorld({ ...s, id, data: { v: 1, seed: 4, time: 5 } })).toBe(false);
+    expect(await s.store.get('saves', id)).toBeNull();
+    holdWorld({ saves: s.saves, id, data: { v: 1, seed: 4, time: 6 }, now: () => 100 });
+    const w = await openWorld({ ...s, want: '4' });
+    expect(w.save).toBeNull();
+    expect(s.saves.mem.has(HELD)).toBe(false);
   });
 });
