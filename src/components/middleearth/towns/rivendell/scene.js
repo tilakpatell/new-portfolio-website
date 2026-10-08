@@ -30,6 +30,7 @@ import { FIGURE, groundTown } from '../grounded';
 import { makeFolk } from '../bree/props';
 import { createRivendellKit } from './props';
 import { BRIDGE, CAST, COLLIDERS, COLONNADE, COMPANIONS, COURT, FALLS, GATE, GORGE, HOUSE, INSIDE, LAMPS, PAVILION, SEATS, SPOTS, TREES, WORLD, boxDist, height, padY, pathAmount, riverX } from './layout';
+import { attend, castDo, castPlay, followDrawn, releaseCast, tickCast } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -179,6 +180,8 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     return { g, wax, flame };
   })();
   const court = place(kit.court(), COURT, padY('court'));
+  // the Ring on its plinth, where the Council's eyes go
+  const COURT_RING = V(COURT.x, padY('court') + 0.9, COURT.z);
   place(kit.gate(), GATE);
   place(kit.bridge(BRIDGE.len), { x: BRIDGE.x, z: BRIDGE.z, turn: 0 }, BRIDGE.y0);
   const lampAt = LAMPS.map(([x, z, turn]) => {
@@ -415,12 +418,6 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
   const look = V();
   const warm = new THREE.Color(0xffc070);
   const WRAITH_FOG = new THREE.Color(0.32, 0.34, 0.4);
-  const turnTo = (p, face, dt) => {
-    let d = face - p.group.rotation.y;
-    d = Math.atan2(Math.sin(d), Math.cos(d));
-    p.group.rotation.y += d * Math.min(1, dt * 4);
-  };
-
   const render = (s, ms, fast = 1) => {
     const dt = Math.min(0.05 * fast, ms / 1000);
     A.t += dt;
@@ -472,14 +469,19 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     if (inside) {
       // in bed, sitting up as he wakes
       frodo.group.position.copy(roomAt(room.bed));
-      frodo.group.rotation.set(0, -Math.PI / 2, Math.min(Math.PI / 2, Math.max(0.3, Math.PI / 2 - s.stepT * 0.4)));
+      // (on the cast: lying, then sat up in bed by his own pose; a toy is tipped up)
+      const up = Math.PI / 2 - s.stepT * 0.4 < 0.9;
+      frodo.group.rotation.set(0, -Math.PI / 2, frodo.cast?.ready ? 0 : Math.min(Math.PI / 2, Math.max(0.3, Math.PI / 2 - s.stepT * 0.4)));
+      castDo(frodo, { base: up ? 'sit.floor' : 'sleep', seat: 0.1, look: up ? roomGandalf : null });
       pose(frodo, t, { moving: false, talk: s.talk === 'frodo' ? 1 : 0 });
     } else if (s.mode === 'council') {
+      castDo(frodo, { base: null, seat: null, look: COURT_RING });
       frodo.group.position.set(frodoSeat.x, padY('court') + (s.stood ? 0 : (court.seatHeight ?? 0.5) - frodo.baseY + 0.05), frodoSeat.z);
       frodo.group.rotation.set(0, frodoSeat.face, 0);
       pose(frodo, t, { moving: false });
       if (!s.stood) sit(frodo);
     } else {
+      castDo(frodo, { base: null, seat: null, look: null });
       frodo.group.position.set(h.x, hy, h.z);
       frodo.group.rotation.set(0, h.face, 0);
       pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
@@ -492,9 +494,12 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
       const on = !inside && s.cast?.includes(c.id) && s.mode !== 'council';
       p.group.visible = Boolean(on);
       if (!on) continue;
-      const near = Math.hypot(h.x - c.x, h.z - c.z) < 5;
-      if (!p.seated) turnTo(p, near ? Math.atan2(-(h.z - c.z), h.x - c.x) : c.face, dt);
-      // Bilbo at his desk reaches for the Ring, as the game says
+      // they turn to Frodo as he comes by: on the cast the head first, a greeting the first time
+      if (!p.seated) attend(p, h, c.face, dt, { who: frodo });
+      else castDo(p, { look: Math.hypot(h.x - c.x, h.z - c.z) < 5 ? frodo : null });
+      // Bilbo at his desk reaches for the Ring, as the game says (on the
+      // cast: his hand out over the desk, and the lunge a snarl)
+      castDo(p, { upper: c.id === 'bilbo' && s.mode === 'bilbo' && s.reach ? (s.reach.state === 'lunge' ? 'shout' : s.reach.hand > 0.2 ? 'pickup' : null) : null });
       if (c.id === 'bilbo' && s.mode === 'bilbo' && s.reach) {
         pose(p, t, { moving: false });
         sit(p);
@@ -514,14 +519,17 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
       p.group.visible = !inside && Boolean(at || waiting);
       if (!p.group.visible) continue;
       if (at) {
-        p.group.position.set(at.x, height(at.x, at.z), at.z);
-        turnTo(p, at.face, dt * 2);
-        pose(p, t + c.x, { moving: at.moving, speed: 1 });
+        // off the conga line: each walks to its place at its own pace, apart from the rest
+        const d = followDrawn(p, at, dt, { others: [...Object.values(companions).filter((o) => o !== p && o.group.visible), { x: h.x, z: h.z }] });
+        p.group.position.set(d.x, height(d.x, d.z), d.z);
+        p.group.rotation.y = d.face;
+        pose(p, t + c.x, { moving: d.v > 0.3, speed: 1 });
       } else {
+        p.drawn = null;
         p.group.position.set(c.x, height(c.x, c.z), c.z);
         const near = Math.hypot(h.x - c.x, h.z - c.z) < 5;
-        turnTo(p, near ? Math.atan2(-(h.z - c.z), h.x - c.x) : c.face, dt);
-        pose(p, t + c.x, { moving: false, wave: near ? 0.4 : 0 });
+        attend(p, h, c.face, dt, { who: frodo });
+        pose(p, t + c.x, { moving: false, wave: near && !p.cast?.ready ? 0.4 : 0 });
       }
     }
     // the Council, in their seats
@@ -543,8 +551,12 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
         const f = Math.min(1, (t - A.axe) / 0.5);
         p.group.position.set(s0.x + (COURT.x - s0.x) * 0.8 * f, padY('court'), s0.z + (COURT.z - s0.z) * 0.8 * f);
         p.arms[1].rotation.z = 2.6 - f * 3.2;
-      }
-      pose(p, t + i, { moving: false, talk: up ? 1 : 0, wave: up && i % 2 ? 0.3 : 0 });
+        // (on the cast: the blow, once, as he gets there)
+        if (!p.struck && f >= 1) p.struck = castPlay(p, 'cross', { fade: 0.08 });
+      } else p.struck = null;
+      // on the cast: up and arguing (each in their own way), all eyes on the Ring
+      castDo(p, { upper: up ? (look === 'gimli' || look === 'boromir' || look === 'dwarf' ? 'talk.angry' : 'talk.passion') : null, look: COURT_RING });
+      pose(p, t + i, { moving: false, talk: up ? 1 : 0, wave: up && i % 2 && !p.cast?.ready ? 0.3 : 0 });
       if (!up && !(look === 'gimli' && t - A.axe < 1.6)) sit(p);
     });
     // in the bedroom
@@ -553,7 +565,14 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     if (inside) {
       pose(roomGandalf, t, { moving: false, talk: s.speaker === 'gandalf' ? 1 : 0 });
       sit(roomGandalf);
-      pose(roomSam, t, { moving: false, wave: 0.5, talk: s.speaker === 'sam' ? 1 : 0 });
+      // (on the cast: they look at Frodo; Sam waves as he comes in, then hovers)
+      castDo(roomGandalf, { look: frodo });
+      castDo(roomSam, { look: frodo });
+      if (s.samIn && !A.samWaved && roomSam.cast?.ready) {
+        A.samWaved = true;
+        roomSam.cast.greet();
+      } else if (!s.samIn) A.samWaved = false;
+      pose(roomSam, t, { moving: false, wave: roomSam.cast?.ready ? 0 : 0.5, talk: s.speaker === 'sam' ? 1 : 0 });
     }
 
     // the shards on their cloth, in the order the puzzle has them
@@ -711,6 +730,8 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     sun.position.copy(camera.position).addScaledVector(sunDir, 90);
     sun.target.position.copy(camera.position);
     ground.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -772,6 +793,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
       clearTimeout(A.axeTimer);
       ghosts.dispose();
       disposeTree(scene);
+      releaseCast(scene);
       stage.dispose();
     },
   };

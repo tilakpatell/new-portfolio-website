@@ -866,7 +866,10 @@
     "source": "https://sketchfab.com/3d-models/death-star-star-wars-423fb92f677f4448aef407112a1fc032",
     "where": "galaxy",
     "as": "the Death Star",
-    "file": "/models/universe/death-star.glb"
+    "file": "/models/universe/death-star.glb",
+    "also": [
+      "galaxy-surface"
+    ]
   },
   "dickansh-arch": {
     "title": "Temple arch-3DView",
@@ -1054,14 +1057,14 @@
     ]
   },
   "galaxy-deathstar2": {
-    "title": "Death Star 2 (Remake)",
-    "author": "alfathwawaow",
-    "authorUrl": "https://sketchfab.com/alfathwawaow",
+    "title": "Death Star II",
+    "author": "N8",
+    "authorUrl": "https://sketchfab.com/nathanmlange",
     "license": "CC-BY-4.0",
     "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/death-star-2-remake-90cabd9887d748d49204f10ac3565d23",
+    "source": "https://sketchfab.com/3d-models/death-star-ii-17ccca0dbb6b4e338fa999202f9e6685",
     "where": "galaxy",
-    "as": "the second Death Star",
+    "as": "the second Death Star, its hull’s gaps plated over",
     "file": "/models/galaxy/deathstar2.glb",
     "also": [
       "galaxy"
@@ -1935,20 +1938,6 @@
       "galaxy"
     ]
   },
-  "surface-benhut": {
-    "title": "Poor Desert House",
-    "author": "Fjordreig",
-    "authorUrl": "https://sketchfab.com/Fjordreig",
-    "license": "CC-BY-NC-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
-    "source": "https://sketchfab.com/3d-models/poor-desert-house-64310fbd9b1640cdbf04f5f12ad58ba2",
-    "where": "galaxy-surface",
-    "as": "Ben Kenobi’s hut",
-    "file": "/models/galaxy/surface/benhut.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-bevelcrate": {
     "title": "Star Wars Beveled Crate S",
     "author": "tegnemaskin",
@@ -2301,20 +2290,6 @@
       "galaxy"
     ]
   },
-  "surface-fortress": {
-    "title": "Vader's Castle",
-    "author": "art16c",
-    "authorUrl": "https://sketchfab.com/art16c",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/vaders-castle-dccd24bde1c0475eab1f1674c108d42a",
-    "where": "galaxy-surface",
-    "as": "Vader's castle",
-    "file": "/models/galaxy/surface/fortress.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-geonosian": {
     "title": "Geonosian Zombie",
     "author": "StrangeUsernames1",
@@ -2522,20 +2497,6 @@
     "where": "galaxy-surface",
     "as": "the Jawas",
     "file": "/models/galaxy/surface/jawa.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-jeditemple": {
-    "title": "Jedi Temple",
-    "author": "Owen Cornelius",
-    "authorUrl": "https://sketchfab.com/omcstudios333",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/jedi-temple-317dedec15a845cbb1abc8c90804b840",
-    "where": "galaxy-surface",
-    "as": "the Jedi Temple",
-    "file": "/models/galaxy/surface/jeditemple.glb",
     "also": [
       "galaxy"
     ]
@@ -2788,20 +2749,6 @@
     "where": "galaxy-surface",
     "as": "the huts of Mos Eisley",
     "file": "/models/galaxy/surface/moshut.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-mosspire": {
-    "title": "Tattoine Buildings Kitbash",
-    "author": "chuckcg",
-    "authorUrl": "https://sketchfab.com/chuckcg",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/tattoine-buildings-kitbash-b5a2140fa2264bac8a4b6de3693272b6",
-    "where": "galaxy-surface",
-    "as": "the spires of Mos Eisley",
-    "file": "/models/galaxy/surface/mosspire.glb",
     "also": [
       "galaxy"
     ]
@@ -3272,34 +3219,6 @@
       "galaxy"
     ]
   },
-  "surface-stall": {
-    "title": "Tattoine Buildings Kitbash",
-    "author": "chuckcg",
-    "authorUrl": "https://sketchfab.com/chuckcg",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/tattoine-buildings-kitbash-b5a2140fa2264bac8a4b6de3693272b6",
-    "where": "galaxy-surface",
-    "as": "the market stalls",
-    "file": "/models/galaxy/surface/stall.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-stilthut": {
-    "title": "Thatched Hut on Stilts",
-    "author": "rajoelinirinanear",
-    "authorUrl": "https://sketchfab.com/rajoelinirinanear",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/thatched-hut-on-stilts-b73d5d61395d45a2bd65768223fb28de",
-    "where": "galaxy-surface",
-    "as": "the krill farmers’ huts",
-    "file": "/models/galaxy/surface/stilthut.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "surface-stormtrooper": {
     "title": "Battlefront 2 Remaster: imp_inf_stormtrooper",
     "author": "Harrisonfog",
@@ -3368,20 +3287,6 @@
     "where": "galaxy-surface",
     "as": "the Tatooine domed houses",
     "file": "/models/galaxy/surface/tathouse2.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "surface-tipoca": {
-    "title": "Kamino Platform Simple 1",
-    "author": "svemun",
-    "authorUrl": "https://sketchfab.com/svemun",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/kamino-platform-simple-1-9c569d83df584c06b1c6ea1b496a4704",
-    "where": "galaxy-surface",
-    "as": "Tipoca City",
-    "file": "/models/galaxy/surface/tipoca.glb",
     "also": [
       "galaxy"
     ]

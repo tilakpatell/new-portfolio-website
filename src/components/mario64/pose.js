@@ -8,16 +8,34 @@
 // loaded model alike.
 //
 // poseFor(action, t (frames in the action), { fwd, phase (the run cycle),
-// arg, pitch, vy }) → { joints, lift, offset, spin, squash }
+// swing, amount (./motion.js's stride: how far each leg reaches, and how
+// far into walking he is), arg, pitch, vy }) → { joints, lift, offset,
+// spin, squash }
+// stepAt(phase) → where a foot is along its stride, −1 (behind) … 1 (ahead)
 
 export const JOINTS = ['hips', 'spine', 'head', 'armL', 'foreL', 'armR', 'foreR', 'legL', 'shinL', 'legR', 'shinR'];
 export const TRIPLE_FRAMES = 22; // the triple jump's flip, start to finish
+export const SLEEP_AFTER = 600; // frames stood still before he sits down and nods off
 const TAU = Math.PI * 2;
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const ease = (v) => {
   const t = clamp01(v);
   return t * t * (3 - 2 * t);
 };
+
+// A foot through one stride: planted ahead at phase π/2, it goes back under
+// him at an even pace until 3π/2 (so, the stride paced to the ground, it
+// keeps to the ground: a sine's foot hurries through the middle and dawdles
+// at the ends, and slides), then up and forward again on a curve that
+// leaves the ground and meets it at that same pace, swinging a touch past
+// either end as a real foot does.
+export function stepAt(phase) {
+  let a = (phase - Math.PI / 2) % TAU;
+  if (a < 0) a += TAU;
+  if (a <= Math.PI) return 1 - (2 * a) / Math.PI;
+  const s = (a - Math.PI) / Math.PI;
+  return ((-8 * s + 12) * s - 2) * s - 1;
+}
 
 function rest() {
   const joints = {};
@@ -28,17 +46,30 @@ function rest() {
   return { joints, lift: 0, offset: [0, 0, 0], spin: [0, 0, 0], squash: 1 };
 }
 
-// the run: legs and arms swinging opposite, a lean, a bob, by speed
-function run(p, { fwd = 0, phase = 0 }) {
+// the run: legs and arms swinging opposite, a lean, a bob, by speed. With a
+// `swing` (./motion.js's, for the stride he's on), each leg reaches that
+// far and each foot keeps to the ground while it's down (stepAt); without
+// one, the legs swing by speed alone, as the stand-in's always did.
+function run(p, { fwd = 0, phase = 0, swing = null, amount = 1 }) {
   const k = Math.min(1, Math.abs(fwd) / 32);
   const s = Math.sin(phase);
   const c = Math.cos(phase);
-  p.joints.legL[0] = -s * 0.95 * k;
-  p.joints.legR[0] = s * 0.95 * k;
-  p.joints.shinL[0] = Math.max(0, c) * 1.1 * k + 0.1;
-  p.joints.shinR[0] = Math.max(0, -c) * 1.1 * k + 0.1;
-  p.joints.armL[0] = s * 0.9 * k;
-  p.joints.armR[0] = -s * 0.9 * k;
+  const reach = swing == null ? 0.95 * k : swing * amount; // how far a leg goes, either way
+  if (swing == null) {
+    p.joints.legL[0] = -s * reach;
+    p.joints.legR[0] = s * reach;
+  } else {
+    // (a straight leg's foot is sin(angle) of a leg ahead of the hip)
+    const r = Math.sin(Math.min(1.15, reach));
+    const leg = (at) => -Math.asin(Math.max(-1, Math.min(1, stepAt(at) * r)));
+    p.joints.legL[0] = leg(phase);
+    p.joints.legR[0] = leg(phase + Math.PI);
+  }
+  const fold = Math.min(1, reach) * 1.15; // the knee folds as the foot comes through, more the further it reaches
+  p.joints.shinL[0] = Math.max(0, c) * fold + 0.1;
+  p.joints.shinR[0] = Math.max(0, -c) * fold + 0.1;
+  p.joints.armL[0] = s * 0.9 * Math.min(1, reach);
+  p.joints.armR[0] = -s * 0.9 * Math.min(1, reach);
   p.joints.foreL[0] = -0.6 * k - 0.2;
   p.joints.foreR[0] = -0.6 * k - 0.2;
   p.joints.spine[0] = 0.22 * k;
@@ -55,6 +86,22 @@ const ACTIONS = {
     p.joints.armL[2] = 0.2 + 0.03 * b;
     p.joints.armR[2] = -0.2 - 0.03 * b;
     p.lift = 0.005 * b;
+    // left long enough, he sits down where he stands and nods off, his head
+    // dropping and coming up with each slow breath (any move wakes him: it's
+    // another action)
+    const z = ease((t - SLEEP_AFTER) / 40);
+    if (z <= 0) return;
+    const snore = Math.sin(t * 0.06);
+    p.lift += (-0.44 - p.lift) * z;
+    p.joints.legL[0] = -1.35 * z;
+    p.joints.legR[0] = -1.3 * z;
+    p.joints.legL[2] = 0.18 * z;
+    p.joints.legR[2] = -0.18 * z;
+    p.joints.shinL[0] = p.joints.shinR[0] = 0.25 * z;
+    p.joints.spine[0] += (0.28 + 0.03 * snore) * z;
+    p.joints.head[0] += (0.42 + 0.08 * snore) * z;
+    p.joints.armL[0] = p.joints.armR[0] = -0.55 * z;
+    p.joints.foreL[0] = p.joints.foreR[0] = -0.5 * z;
   },
   walk: (p, t, o) => run(p, o),
   stop(p) {

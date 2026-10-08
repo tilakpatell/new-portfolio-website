@@ -41,6 +41,8 @@
 import * as THREE from 'three';
 import { buildBody } from './bodies';
 import { createRocks } from './rocks';
+import { createPlaces } from './placesDraw';
+import { placesOf } from './places';
 import { createTrench } from '../universe/trench';
 import { trenchBand } from '../universe/deep';
 import { DEATHSTAR_REACH, STATION_NAMES, TRACTOR_REACH, reachOf } from './systems';
@@ -804,6 +806,19 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
     byPiece[i] = { holders: ambient.holders.slice(h0), solids: ambient.solids.slice(s0) };
   });
   building = -1;
+  // ── The places to find, out in the open (places.js; placesDraw.js draws them all in two draws) ──
+  {
+    const places = placesOf(sys);
+    const drawn = createPlaces({ places, sun: sunDirs[0]?.toArray() ?? [0, 1, 0], small });
+    group.add(drawn.group);
+    // (the nebula's not solid, r 0: at it by its reach, flown through; the rest you bump)
+    for (const p of places) addSolid({ id: p.id, name: p.name, hint: p.hint, kind: p.kind, at: [...p.at], r: Math.max(p.r, 0.01), reach: p.reach, goal: true, place: true });
+    disposers.push(() => drawn.dispose());
+    ticks.push((t) => {
+      drawn.update(t % 3600);
+      return false;
+    });
+  }
   // what's shown: nothing of it while the war's battle is on here (quiet),
   // and of the rest only what its holder has here (setEffects)
   const garrison = { ships: [], slots: [], solids: [] };

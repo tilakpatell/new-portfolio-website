@@ -1,31 +1,65 @@
 // The cast, made in code, each with its own little life: Goombas waddle and
 // frown, Bob-ombs wind their keys and blink red when lit, King Bob-omb wears
 // his crown and moustache, the Chain Chomp gnashes at the end of its chain,
-// Toad turns to talk. Each is { root, update(a, t, g) } (t in frames).
+// Toad turns to talk. Each is { root, update(a, t, g, life) } (t in frames;
+// life, from ../scene.js: { dt, the frames since the last; since, the frames
+// it's been in its state; prev, the state before; speed, metres a second }).
+// Their feet keep to the ground they cover (a phase from distance:
+// lib/three/gait.js), a Goomba hops when it spots Mario, a lit Bob-omb
+// leans into its run, a thrown one tumbles, King Bob-omb bounces as he
+// taunts and shrinks away in the time since he lost, the Chain Chomp rears
+// back before it bites, and Toad hops to greet Mario and bobs as he talks.
 // Given `hd` (a loaded model, ./hd.js), it wears that instead of the shapes
 // made here, and keeps its life: the same groups move, squash and flash.
 
 import * as THREE from 'three';
+import { breathe, createGait, sway } from '../../../lib/three/gait';
+import { stepAt } from '../pose';
 import { COLORS, canvasTexture, capsule, cone, cylinder, mesh, pbr, sphere, torus } from './common';
 
 const eyeWhite = () => pbr('#ffffff', { rough: 0.2, clearcoat: 1 });
 const pupil = () => pbr('#0c0c0c', { rough: 0.2, clearcoat: 1 });
+const secs = (life) => (life?.dt > 0 ? life.dt / 30 : 0); // (the rules' frames, 30 a second)
+const ease = (v) => (v <= 0 ? 0 : v >= 1 ? 1 : v * v * (3 - 2 * v));
+// how high a foot's lifted (0…1) at a phase of its stride: off the ground
+// from behind to ahead (where it is along it: ../pose.js's stepAt)
+const footUp = (phase) => Math.max(0, Math.cos(phase));
+// a hop of `frames`, then a squash on landing: { y (0…1 of its height), squash (1 is none) }
+function hop(since, frames, land = 4) {
+  if (!(since >= 0)) return { y: 0, squash: 1 };
+  if (since < frames) return { y: Math.sin((since / frames) * Math.PI), squash: 1 };
+  if (since < frames + land) return { y: 0, squash: 1 - 0.2 * Math.sin(((since - frames) / land) * Math.PI) };
+  return { y: 0, squash: 1 };
+}
 
-function goomba(_, hd) {
+const GOOMBA_STRIDE = 0.5; // metres a full waddle covers (two steps)
+const SPOT_HOP = 10; // frames: the little jump a Goomba gives when it spots Mario
+
+function goomba(a0, hd) {
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
+  const gait = createGait({ stride: GOOMBA_STRIDE, cadence: [2.5, 5], seed: a0?.id ?? 0 });
+  // what every Goomba does, whichever it's made of: its stride, its hop, its spin when knocked
+  const life = (a, t, l) => {
+    const walking = a.state === 'wander' || a.state === 'chase';
+    const step = gait.step(secs(l), walking ? (l?.speed ?? 0) : 0);
+    const spotted = a.state === 'chase' && l?.prev === 'wander' ? hop(l.since, SPOT_HOP) : hop(-1, SPOT_HOP);
+    if (a.state === 'knocked') root.rotation.x += 0.4 * (l?.dt ?? 0);
+    return { step, spotted, breath: breathe(t / 30, a.id ?? 0) };
+  };
   if (hd) {
     body.add(hd);
     return {
       root,
-      update(a, t) {
+      update(a, t, g, l) {
+        const { step, spotted, breath } = life(a, t, l);
         const flat = a.state === 'flat';
-        const k = a.state === 'chase' ? 0.5 : 0.25;
-        body.scale.set(flat ? 1.3 : 1, flat ? 0.25 : 1, flat ? 1.3 : 1);
-        body.position.y = flat ? 0 : Math.abs(Math.sin(t * k)) * 0.05;
-        body.rotation.z = Math.sin(t * k) * 0.08;
-        if (a.state === 'knocked') root.rotation.x += 0.4;
+        const s = sway(step.phase, step.amount);
+        const sq = spotted.squash * (1 + breath * 0.012 * (1 - step.amount));
+        body.scale.set(flat ? 1.3 : 2 - sq, flat ? 0.25 : sq, flat ? 1.3 : 2 - sq);
+        body.position.y = flat ? 0 : s.bob * 0.05 + spotted.y * 0.22;
+        body.rotation.z = s.roll * 0.08;
       },
     };
   }
@@ -58,64 +92,112 @@ function goomba(_, hd) {
   });
   return {
     root,
-    update(a, t) {
+    update(a, t, g, l) {
+      const { step, spotted, breath } = life(a, t, l);
       const flat = a.state === 'flat';
-      body.scale.y = flat ? 0.25 : 1;
-      body.scale.x = body.scale.z = flat ? 1.3 : 1;
-      const k = a.state === 'chase' ? 0.5 : 0.25;
-      feet[0].position.z = 0.05 + Math.sin(t * k) * 0.08;
-      feet[1].position.z = 0.05 - Math.sin(t * k) * 0.08;
-      body.rotation.z = Math.sin(t * k) * 0.06;
-      if (a.state === 'knocked') root.rotation.x += 0.4;
+      const sq = spotted.squash * (1 + breath * 0.012 * (1 - step.amount));
+      body.scale.y = flat ? 0.25 : sq;
+      body.scale.x = body.scale.z = flat ? 1.3 : 2 - sq;
+      body.position.y = flat ? 0 : sway(step.phase, step.amount).bob * 0.04 + spotted.y * 0.22;
+      // each foot down where it lands until it lifts (a quarter stride either side)
+      feet.forEach((f, i) => {
+        const ph = step.phase + i * Math.PI;
+        f.position.z = 0.05 + stepAt(ph) * (GOOMBA_STRIDE / 4) * step.amount;
+        f.position.y = 0.07 + footUp(ph) * 0.06 * step.amount + spotted.y * 0.22;
+      });
+      body.rotation.z = sway(step.phase, step.amount).roll * 0.06;
     },
   };
 }
 
+// What every Bob-omb does, loaded or made here: its waddle paced to the
+// ground (a King's as long as he's big), a lean into its run once it's lit,
+// a kick while it's held, a tumble once it's thrown (from the time since,
+// so the same on any screen), King Bob-omb's two bounces as he taunts you
+// and his shrinking away over the second after he's beaten (the rules' own
+// count since, between their steps: it once ran on the clock's last 60
+// frames, and started part way and popped back).
+const BOMB_STRIDE = 0.45;
+const TAUNT = 40; // frames: the King's two bounces
+function bombLife(a, t, l, gait) {
+  const going = a.state === 'walk' || a.state === 'lit';
+  const step = gait.step(secs(l), going ? (l?.speed ?? 0) : 0);
+  const since = l?.since ?? 0;
+  const beaten = Math.max(0, (a.t ?? 0) - (a.since ?? 0) - 1 + (t % 1));
+  return {
+    step,
+    lean: a.state === 'lit' ? 0.25 * ease(since / 6) : 0,
+    tumble: a.state === 'thrown' ? since * 0.32 : 0,
+    kick: a.state === 'held' ? Math.sin(t * 0.9) : 0,
+    shrink: a.state === 'defeated' ? Math.max(0.01, 1 - beaten / 60) : 1,
+    taunt: a.state === 'walk' && l?.prev === 'wait' && since < TAUNT ? hop(since % (TAUNT / 2), TAUNT / 2 - 4) : hop(-1, 1),
+    // the spark at the fuse: a flicker of its own (once a random size every frame)
+    spark: 0.5 + 0.5 * Math.sin(t * 2.3 + Math.sin(t * 0.7) * 3),
+  };
+}
+const lit = (a) => a.state === 'lit' || a.state === 'held' || a.state === 'thrown';
+const flashing = (a, t) => lit(a) && Math.floor(t / Math.max(2, 8 - (a.fuse ?? 0) / 20)) % 2 === 0;
+
 // (a loaded Bob-omb flashes red all over when it's lit: its own materials,
 // glowing)
-function hdBobomb(hd, { king }) {
+function hdBobomb(hd, { king, seed }) {
   const root = new THREE.Group();
+  const pivot = new THREE.Group(); // turned about its middle: its lean, its tumble
   const body = new THREE.Group();
-  root.add(body);
+  root.add(pivot);
+  pivot.add(body);
   body.add(hd);
   const mats = [];
   hd.traverse((o) => o.isMesh && mats.push(...[].concat(o.material)));
   const box = new THREE.Box3().setFromObject(hd);
+  const centre = (box.min.y + box.max.y) / 2;
+  pivot.position.y = centre;
+  body.position.y = -centre;
   const spark = mesh(sphere(), pbr('#fff2a0', { emissive: '#ffcf40', emissiveIntensity: 3, rough: 1 }), { y: box.max.y + 0.05, sx: 0.05, sy: 0.05, sz: 0.05, shadow: false });
   body.add(spark);
   const red = new THREE.Color('#ff2200');
   const off = new THREE.Color(0, 0, 0);
+  const gait = createGait({ stride: BOMB_STRIDE * (king ? 2.7 : 1), cadence: [1, 4], seed });
   return {
     root,
-    update(a, t) {
-      const k = a.state === 'lit' ? 0.6 : 0.25;
-      const flash = (a.state === 'lit' || a.state === 'held' || a.state === 'thrown') && Math.floor(t / Math.max(2, 8 - (a.fuse ?? 0) / 20)) % 2 === 0;
+    update(a, t, g, l) {
+      const s = bombLife(a, t, l, gait);
+      const flash = flashing(a, t);
       for (const m of mats) {
         if (!m.emissive) continue;
         m.emissive.copy(flash ? red : off);
         m.emissiveIntensity = flash ? 0.7 : 1;
       }
       spark.visible = !king && a.state !== 'walk' && a.state !== 'wait' && a.state !== 'gone';
-      spark.scale.setScalar(0.05 + Math.random() * 0.03);
+      spark.scale.setScalar(0.05 + s.spark * 0.03);
       root.visible = a.state !== 'gone';
-      body.position.y = a.state === 'walk' || a.state === 'lit' ? Math.abs(Math.sin(t * k)) * 0.04 * (king ? 3 : 1) : 0;
-      if (a.state === 'stunned' || a.state === 'defeated') body.rotation.z = Math.sin(t * 0.5) * 0.15;
-      else body.rotation.z = Math.sin(t * k) * 0.05;
-      if (a.state === 'defeated') body.scale.setScalar(Math.max(0.01, 1 - (t % 60) / 60));
+      const w = sway(s.step.phase, s.step.amount);
+      const size = king ? 3 : 1;
+      body.position.y = -centre + w.bob * 0.04 * size + s.taunt.y * 0.1 * size;
+      pivot.rotation.x = s.lean + s.tumble;
+      if (a.state === 'stunned' || a.state === 'defeated') pivot.rotation.z = Math.sin(t * 0.5) * 0.15;
+      else pivot.rotation.z = w.roll * 0.05 + s.kick * 0.12;
+      const sq = s.taunt.squash;
+      root.scale.set(s.shrink * (2 - sq), s.shrink * sq, s.shrink * (2 - sq)); // (about its feet)
     },
   };
 }
 
-function bobombBody({ scale = 1, king = false, hd = null } = {}) {
-  if (hd) return hdBobomb(hd, { king });
+function bobombBody({ scale = 1, king = false, hd = null, seed = 0 } = {}) {
+  if (hd) return hdBobomb(hd, { king, seed });
   const shell = pbr('#1c1c22', { rough: 0.22, clearcoat: 1, metal: 0.3 });
-  const lit = pbr('#ff3b2a', { rough: 0.3, clearcoat: 1, emissive: '#ff2200', emissiveIntensity: 0.9 });
+  const glow = pbr('#ff3b2a', { rough: 0.3, clearcoat: 1, emissive: '#ff2200', emissiveIntensity: 0.9 });
   const brass = pbr(COLORS.gold, { rough: 0.3, metal: 1 });
   const feet = pbr('#f2a01f', { rough: 0.45, clearcoat: 0.5 });
   const root = new THREE.Group();
+  const pivot = new THREE.Group(); // turned about its middle: its lean, its tumble
   const body = new THREE.Group();
   body.scale.setScalar(scale);
-  root.add(body);
+  pivot.position.y = 0.55 * scale;
+  body.position.y = -0.55 * scale;
+  root.add(pivot);
+  pivot.add(body);
+  const gait = createGait({ stride: BOMB_STRIDE * scale, cadence: [1, 4], seed });
   const ball = mesh(sphere(), shell, { y: 0.55, sx: 0.45, sy: 0.45, sz: 0.45 });
   body.add(ball);
   // the cap the fuse comes out of, and the fuse
@@ -156,19 +238,27 @@ function bobombBody({ scale = 1, king = false, hd = null } = {}) {
   }
   return {
     root,
-    update(a, t) {
-      key.rotation.z = t * 0.12;
-      const k = a.state === 'lit' ? 0.6 : 0.25;
-      fs[0].position.z = 0.04 + Math.sin(t * k) * 0.07;
-      fs[1].position.z = 0.04 - Math.sin(t * k) * 0.07;
-      const flash = (a.state === 'lit' || a.state === 'held' || a.state === 'thrown') && Math.floor(t / Math.max(2, 8 - (a.fuse ?? 0) / 20)) % 2 === 0;
-      ball.material = flash ? lit : shell;
+    update(a, t, g, l) {
+      const s = bombLife(a, t, l, gait);
+      // the key winds faster once it's lit
+      key.rotation.z = t * (lit(a) ? 0.3 : 0.12);
+      // each foot down where it lands until it lifts; held, they kick
+      fs.forEach((f, i) => {
+        const ph = s.step.phase + i * Math.PI;
+        f.position.z = 0.04 + stepAt(ph) * (BOMB_STRIDE / 4) * s.step.amount + (i ? -1 : 1) * s.kick * 0.07;
+        f.position.y = 0.08 + footUp(ph) * 0.05 * s.step.amount;
+      });
+      ball.material = flashing(a, t) ? glow : shell;
       spark.visible = a.state !== 'walk' && a.state !== 'wait' && a.state !== 'gone';
-      spark.scale.setScalar(0.035 + Math.random() * 0.02);
+      spark.scale.setScalar(0.035 + s.spark * 0.02);
       root.visible = a.state !== 'gone';
-      if (a.state === 'stunned' || a.state === 'defeated') body.rotation.z = Math.sin(t * 0.5) * 0.15;
-      else body.rotation.z = 0;
-      if (a.state === 'defeated') body.scale.setScalar(scale * Math.max(0.01, 1 - (t % 60) / 60));
+      const w = sway(s.step.phase, s.step.amount);
+      body.position.y = -0.55 * scale + (w.bob * 0.03 + s.taunt.y * 0.1) * scale;
+      pivot.rotation.x = s.lean + s.tumble;
+      if (a.state === 'stunned' || a.state === 'defeated') pivot.rotation.z = Math.sin(t * 0.5) * 0.15;
+      else pivot.rotation.z = w.roll * 0.04 + s.kick * 0.12;
+      const sq = s.taunt.squash;
+      root.scale.set(s.shrink * (2 - sq), s.shrink * sq, s.shrink * (2 - sq)); // (about its feet)
     },
   };
 }
@@ -215,17 +305,23 @@ function chomp(_, hd) {
   return {
     root,
     update(a, t, g) {
-      const open = a.state === 'lunge' ? 0.55 : 0.12 + Math.max(0, Math.sin(t * 0.35)) * 0.25;
+      // its tell (the rules' a.tell, 0…1, over its last moments before a
+      // bite): it rears back and up, its jaws wide, quivering, then goes
+      const tell = a.state === 'idle' ? ease(a.tell ?? 0) : 0;
+      const open = a.state === 'lunge' ? 0.55 : tell > 0 ? 0.12 + 0.5 * tell : 0.12 + Math.max(0, Math.sin(t * 0.35)) * 0.25;
       upper.rotation.x = -open;
       lower.rotation.x = open * 0.5;
-      if (hd) head.rotation.x = -open * 0.35;
-      head.position.y = 1.5 + Math.abs(Math.sin(t * 0.3)) * (a.state === 'idle' ? 0.15 : 0);
-      const post = g?.actors.find((x) => x.type === 'post' && x.def.id === a.def.post);
+      head.rotation.x = (hd ? -open * 0.35 : 0) - 0.42 * tell;
+      head.rotation.z = Math.sin(t * 2.6) * 0.05 * tell;
+      head.position.z = -0.4 * tell;
+      head.position.y = 1.5 + 0.2 * tell + Math.abs(Math.sin(t * 0.3)) * (a.state === 'idle' ? 0.15 * (1 - tell) : 0);
+      const post = g?.actors?.find((x) => x.type === 'post' && x.def.id === a.def.post);
       chain.visible = Boolean(post) && a.state !== 'free' && a.state !== 'gone';
       if (post) {
-        // links in the chomp's own frame (it is turned by its yaw)
+        // links in the chomp's own frame (turned as it's drawn: watching Mario)
+        const yaw = root.rotation.y;
         const dx = (post.pos.x - a.pos.x) * 0.01, dz = (post.pos.z - a.pos.z) * 0.01;
-        const c = Math.cos(-a.yaw), s = Math.sin(-a.yaw);
+        const c = Math.cos(-yaw), s = Math.sin(-yaw);
         const lx = dx * c + dz * s, lz = -dx * s + dz * c;
         // from its back, low, to the top of the post, sagging between
         const ly = (post.pos.y - a.pos.y) * 0.01 + 1.0;
@@ -284,19 +380,43 @@ function gate() {
   return { root, update() {} };
 }
 
+// Toad: a hop when Mario comes up (he turns to him, ../scene.js), and while
+// his words are up, a quicker bob and a sway as he talks; else a breath
+const GREET = 600; // units: Mario this near, Toad greets him
+const GREET_HOP = 12; // frames
+function toadLife() {
+  let near = false;
+  let hopAt = -99;
+  return (a, t, g) => {
+    const m = g?.mario;
+    const now = Boolean(m) && Math.hypot(m.pos.x - a.pos.x, m.pos.z - a.pos.z) < GREET;
+    if (now && !near) hopAt = t;
+    near = now;
+    const talking = g?.mode === 'dialog' && g.dialogs?.[0]?.title === (a.def?.title ?? 'Toad');
+    return {
+      hop: hop(t - hopAt, GREET_HOP),
+      bob: talking ? Math.abs(Math.sin(t * 0.45)) : Math.abs(Math.sin(t * 0.08)),
+      roll: talking ? Math.sin(t * 0.3) * 0.06 : Math.sin(t * 0.04) * 0.03,
+      talking,
+    };
+  };
+}
+function toadMoves(root, body, life) {
+  return (a, t, g) => {
+    const s = life(a, t, g);
+    body.position.y = s.bob * (s.talking ? 0.035 : 0.025) + s.hop.y * 0.14;
+    body.rotation.z = s.roll;
+    root.scale.set(2 - s.hop.squash, s.hop.squash, 2 - s.hop.squash);
+  };
+}
+
 function toad(_, hd) {
   const root = new THREE.Group();
   if (hd) {
     const body = new THREE.Group();
     body.add(hd);
     root.add(body);
-    return {
-      root,
-      update(a, t) {
-        body.position.y = Math.abs(Math.sin(t * 0.08)) * 0.03;
-        body.rotation.z = Math.sin(t * 0.04) * 0.03;
-      },
-    };
+    return { root, update: toadMoves(root, body, toadLife()) };
   }
   const spots = canvasTexture('m64-toad-cap', 256, 128, (g, w, h) => {
     g.fillStyle = '#fbfbf6';
@@ -325,18 +445,13 @@ function toad(_, hd) {
   }
   body.add(mesh(sphere(), pbr('#2a54c8', { rough: 0.7, sheen: 0.5 }), { y: 0.5, sx: 0.24, sy: 0.22, sz: 0.2 }));
   body.add(mesh(sphere(), pbr('#fbfbf6', { rough: 0.7, sheen: 0.4 }), { y: 0.28, sx: 0.21, sy: 0.17, sz: 0.19 }));
-  return {
-    root,
-    update(a, t) {
-      body.position.y = Math.abs(Math.sin(t * 0.08)) * 0.02;
-    },
-  };
+  return { root, update: toadMoves(root, body, toadLife()) };
 }
 
 export const CAST = {
   goomba,
-  bobomb: (_, hd) => bobombBody({ hd }),
-  king: (_, hd) => bobombBody({ scale: 2.7, king: true, hd }),
+  bobomb: (a, hd) => bobombBody({ hd, seed: a?.id ?? 0 }),
+  king: (a, hd) => bobombBody({ scale: 2.7, king: true, hd, seed: a?.id ?? 0 }),
   chomp,
   ironball,
   post,

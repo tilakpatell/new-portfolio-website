@@ -20,6 +20,7 @@ import { canvasTexture, hot } from '../../../../lib/stage3d';
 import { fbm, makeCanvas, makeNoise, normalFromField, paintPixels, smooth } from '../../../../lib/paint';
 import { lathe, parts, rng, tube } from '../../shire/props';
 import { createDoomKit } from '../doom/props';
+import { ease } from '../../creatures';
 import { ARCH, BRAZIERS, CASES, CORNERS, DAIS, DOORS, HALL_H, HORNS, LEAF, LECTERN, LIB, PILLARS, PIN, STAIR, STAIR_BASE, STAIR_DOOR, STAIR_LEN, THRONE, TOWER_H, WINDOWS, stairAngle, stairAt } from './layout';
 
 const TAU = Math.PI * 2;
@@ -1087,10 +1088,17 @@ function moth(K) {
   const glow = new THREE.Sprite(mats.mothGlow);
   glow.scale.setScalar(0.5);
   g.add(glow);
+  // its beat carried on from frame to frame and slowing as it settles, so
+  // settling never jumps its wings
+  const E = { t: null, flap: null, ph: 0 };
   const animate = (t, { flap = 1, open = 0 } = {}) => {
-    const beat = Math.sin(t * 38) * 0.9 * flap + open * 0.2;
+    const dt = E.t == null || t < E.t ? 0 : Math.min(0.1, t - E.t);
+    E.t = t;
+    E.flap = E.flap == null ? flap : ease(E.flap, flap, dt, 6);
+    E.ph += dt * 38 * (0.55 + 0.45 * Math.min(1, E.flap));
+    const beat = Math.sin(E.ph) * 0.9 * E.flap + open * 0.2;
     for (const w of wings) w.pivot.rotation.x = w.side * (0.25 + beat);
-    body.rotation.z = Math.sin(t * 9) * 0.1 * flap;
+    body.rotation.z = Math.sin(E.ph * 0.24) * 0.1 * E.flap;
   };
   return { group: g, animate };
 }

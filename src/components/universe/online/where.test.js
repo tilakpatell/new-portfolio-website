@@ -77,6 +77,12 @@ describe('placeName', () => {
   it('names the Citadel', () => {
     expect(placeName('/c-137/citadel')).toBe('the Citadel');
   });
+  it('names a Rick and Morty planet\'s world for the planet, not C-137', () => {
+    expect(whereOf('/c-137/squanch')).toBe('/c-137/squanch');
+    expect(placeName('/c-137/squanch')).toBe('Planet Squanch');
+    expect(placeName('/c-137/purge')).toBe('the Purge Planet');
+    expect(placeName('/c-137')).toBe('Dimension C-137');
+  });
 });
 
 describe('a page on no map', () => {

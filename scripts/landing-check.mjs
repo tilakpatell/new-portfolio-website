@@ -22,6 +22,8 @@ const ship = flag('--ship', 'falcon');
 const spot = flag('--spot', null);
 const tag = flag('--name', spot ? spot.replace(',', '_') : null);
 const look = flag('--look', null);
+// how long the crew get to walk out (WALK_MS: software GL in a container wants several minutes)
+const WALK_MS = Number(process.env.WALK_MS ?? 120000);
 const phone = args.includes('--phone') ? (args.splice(args.indexOf('--phone'), 1), true) : false;
 const out = process.env.OUT ?? '.';
 const planets = args.length ? args : ['middleearth', 'breakingbad', 'rickmorty'];
@@ -67,7 +69,7 @@ for (const id of planets) {
   console.log('    ', id, 'biome:', JSON.stringify(await page.evaluate(() => window.__universeDebug.foot.biome)));
   await page.waitForTimeout(2500);
   await shot(`${id}-1-down`);
-  await page.waitForFunction(() => window.__universeDebug.foot.phase === 'walk', null, { timeout: 120000, polling: 500 }).catch(async () => console.log('FAIL', id, 'crew never out:', await page.evaluate(() => window.__universeDebug.foot.phase)));
+  await page.waitForFunction(() => window.__universeDebug.foot.phase === 'walk', null, { timeout: WALK_MS, polling: 500 }).catch(async () => console.log('FAIL', id, 'crew never out:', await page.evaluate(() => window.__universeDebug.foot.phase)));
   await page.waitForTimeout(6000);
   await shot(`${id}-2-out`);
   const info = await page.evaluate(() => window.__universe());

@@ -39,6 +39,12 @@ describe('switching to the universe', () => {
     expect(universePathFor('/c-137/citadel')).toBe('/universe/rickmorty');
   });
 
+  it('flies to a Rick and Morty planet from its own world, not to C-137', () => {
+    expect(universePathFor('/c-137/squanch')).toBe('/universe/squanch');
+    expect(universePathFor('/c-137/purge')).toBe('/universe/purge');
+    expect(universePathFor('/c-137')).toBe('/universe/rickmorty');
+  });
+
   it('takes the classic travel page to the travel planet', () => {
     expect(universePathFor('/travel')).toBe('/universe/travel');
   });

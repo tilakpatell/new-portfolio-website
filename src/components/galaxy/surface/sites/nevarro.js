@@ -137,13 +137,14 @@ const INNER = [
   ...arcRow(RI, Sg.ang + half(Sg.w, RI), PI - half(Wg.w, RI), ['nevarrodomehouse', 'nevarrohouse', 'nevarrohouse'], { out: true }),
 ];
 // the rock's top round the bowl: domes at its level (the roofs of what's
-// under the rock, as the show's model of the city has them), and every
-// third a dome house sunk to its dome; none over the ways out
+// under the rock, as the show's model of the city has them; the dome is 7 m
+// tall, sunk to show 3.5 to 4.5 m), and every third a dome house sunk to its
+// dome; none over the ways out or the river's tunnel
 const RIM = 87;
 const clearOf = (ang) => [...Object.values(WAYS).map((w) => w.ang), PORTAL.ang].every((b) => Math.abs(atan2(sin(ang - b), cos(ang - b))) > 0.2);
 const RIMDOMES = Array.from({ length: 24 }, (_, i) => -PI + (i + 0.5) * ((2 * PI) / 24))
   .filter(clearOf)
-  .map((ang, i) => (i % 3 === 2 ? { kind: 'nevarrodomehouse', at: polar(RIM + 1, ang), yaw: facing(-cos(ang), -sin(ang)), sink: 2.6 } : { kind: 'nevarrodome', at: polar(RIM, ang), yaw: r1(ang * 3), scale: i % 2 ? 1.3 : 1.1, sink: 2 }));
+  .map((ang, i) => (i % 3 === 2 ? { kind: 'nevarrodomehouse', at: polar(RIM + 1, ang), yaw: facing(-cos(ang), -sin(ang)), sink: 2.6 } : { kind: 'nevarrodome', at: polar(RIM, ang), yaw: r1(ang * 3), scale: i % 2 ? 1 : 0.85, sink: 2.6 }));
 
 // the cantina where Greef's zone door is (its world spot kept: [140, -90],
 // turned 0.3), the square in front of it, a big dome house on its east side
