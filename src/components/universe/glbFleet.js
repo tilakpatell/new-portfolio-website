@@ -21,7 +21,7 @@
 // over (`stock`), so the first of a kind to fly doesn't stall a frame being
 // built.
 //
-// createFleet({ prepare(object) → Promise, build(kind) → model, glb }) → { want(kinds) → Promise, loaded(kind), has(kind), make(kind) → model, stock(kind, model), stocked(kind) → how many, roots() → its models, prepare (settable), dispose() }
+// createFleet({ prepare(object) → Promise, build(kind) → model, glb }) → { want(kinds), loaded(kind), has(kind), make(kind) → model, stock(kind, model), stocked(kind) → how many, prepare (settable), dispose() }
 // A model is { group, size (its box, its biggest side 1), model (true for a
 // copy of a loaded one), update(t), dispose() }, nose along +z, as
 // buildTraffic's are.
@@ -53,25 +53,18 @@ export const GLB = {
 export function createFleet({ prepare = null, build = buildTraffic, glb = GLB } = {}) {
   const templates = {};
   const stocked = {}; // kind → built ones made ahead, handed out first
-  const loading = new Map(); // kind → its load, settled once it's here (or isn't coming)
+  const loading = new Set();
   let dead = false;
   return {
-    // start loading these (the ones that are models), if they aren't yet;
-    // resolves once all of them are here and ready to fly, or have failed
-    // (never rejects: a page waiting on it, the universe's prepare, waits a
-    // while at most)
+    // start loading these (the ones that are models), if they aren't yet
     want(list) {
-      const jobs = [];
       for (const kind of list) {
         const def = glb[kind];
-        if (!def) continue;
-        if (loading.has(kind)) {
-          jobs.push(loading.get(kind));
-          continue;
-        }
+        if (!def || loading.has(kind)) continue;
+        loading.add(kind);
         // (the parse is the page's, shared with the galaxy's own models and the planets'
         // models; the roughness clamp and the rest are done on this fleet's copy of it)
-        const job = loadGLTF(def.url)
+        loadGLTF(def.url)
           .then((gltf) => {
             if (dead || !gltf) return;
             const root = cloneScene(gltf);
@@ -104,10 +97,7 @@ export function createFleet({ prepare = null, build = buildTraffic, glb = GLB } 
             return prepare ? prepare(holder).then(ready) : ready();
           })
           .catch(() => {});
-        loading.set(kind, job);
-        jobs.push(job);
       }
-      return Promise.all(jobs).then(() => {});
     },
     // its model is here
     loaded: (kind) => Boolean(templates[kind]),
@@ -138,9 +128,6 @@ export function createFleet({ prepare = null, build = buildTraffic, glb = GLB } 
       else (stocked[kind] ??= []).push(model);
     },
     stocked: (kind) => stocked[kind]?.length ?? 0,
-    // what it holds now, the loaded models and the built ones made ahead
-    // (none of them in a scene), for getting onto the graphics chip ahead
-    roots: () => [...Object.values(templates).map((t) => t.holder), ...Object.values(stocked).flatMap((list) => list.map((m) => m.group))],
     // what makes a model's shaders (it can be set after the fleet is, before
     // any model is made)
     set prepare(fn) {

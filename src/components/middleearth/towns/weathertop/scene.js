@@ -14,7 +14,6 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
-import { stagePrepare } from '../../../../lib/stagePrepare';
 import { createHouse } from '../../../../lib/three/house';
 import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
@@ -34,7 +33,7 @@ import { createWeathertopKit } from './props';
 import { ARWEN_AT, BED, CAST, COLLIDERS, CRAGS, DELL, FIRE_AT, GAPS, HILL, PATCHES, PLANTS, ROCKS, RUIN, SPOTS, STAIR, STAIR_W, STAND, TREES, TROLLS, WALLS, WORLD, WOUNDED, height, pathAmount, stairNear } from './layout';
 import { BRAND, MARK_LINES, OBSTACLES, RIDE, glowOf, roadBend, roadTurn } from './rules';
 import { sharpen } from '../../../../lib/three/textures';
-import { attend, castComing, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
+import { attend, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -124,8 +123,6 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
   const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 520, bloom: { strength: 0.7, radius: 0.55, threshold: 0.82 }, onLost });
-  // made ready behind its loading veil before its first frame (lib/stagePrepare)
-  const prep = stagePrepare(stage, { grounds: () => [floorLight], late: () => castComing(stage.scene) });
   stage.grade({ contrast: 0.14, saturation: 0.86, vignette: 0.32, grain: 0.016, shadow: [0.0, 0.01, 0.04], high: [0.03, 0.016, 0.0] });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
@@ -993,7 +990,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     // the people on the cast (../../cast3d.js), drawn for this frame
     tickCast(scene, camera, dt);
     renderer.info.reset();
-    if (!prep.held()) stage.render(ms / fast);
+    stage.render(ms / fast);
   };
 
   // ── events ──
@@ -1038,16 +1035,11 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the town is first drawn ──
-  const floorLight = groundTown({ place: 'weathertop', renderer, scene, terrain, outdoors: hill, sun, height: ground, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WORLD.radius + 10, shade: 0x2a2620 });
+  const floorLight = groundTown({ renderer, scene, terrain, outdoors: hill, sun, height: ground, people: movers, skip: [sky.dome, ghosts.group], tier, radius: WORLD.radius + 10, shade: 0x2a2620 });
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);
 
   return {
-    // everything onto the graphics chip behind the page's veil, and true meanwhile
-    prepare: prep.prepare,
-    get preparing() {
-      return prep.preparing;
-    },
     ground: import.meta.env.DEV ? floorLight : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,

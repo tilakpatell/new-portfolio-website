@@ -65,9 +65,9 @@ Pure of three.js except for the renderer it's handed; tested in Node with a fake
 
 While the veil is up, after the warm-up, the world is drawn about thirty times at each of a few sharpnesses (the device's ratio and the pace's steps under it), each frame timed on the graphics chip with `EXT_disjoint_timer_query_webgl2` (Chrome has it on Metal) or, without it, by waiting on a one-pixel read. The sharpest ratio whose typical frame fits the budget (12 ms for a 60 Hz screen) is kept, remembered for this graphics chip and this world (`tp-calibration`), and handed to the pace as its ceiling: it starts there and steps down only, so it never see-saws. A later visit skips straight to the remembered ratio and checks it with a few frames.
 
-### 5. Chunks: `src/lib/three/chunks.js`
+### 5. Chunks: the infinite-worlds design's
 
-`createChunks({ size, near, far, build, prepare })` keeps a grid of cells over a world: a cell within `near` of the camera (and further ahead along its heading) is built and prepared through the GPU queue, a step at a time; one past `far` is hidden and, past twice that, let go. In "prepare everything" mode (the default while the veil is up) every cell is built and prepared before the world is shown, and the grid only decides what's drawn. The universe uses it for its sectors, its planets' near maps and spheres and its deep-space wonders; the galaxy's surfaces for their props and buildings.
+Spatial chunking is the infinite-worlds design's (`docs/superpowers/specs/2026-10-07-infinite-worlds-design.md`, another session's), which counts this design as its Phase 0: `runtime/chunkGrid.js` (`rt.chunks`: cells nearest and ahead first, dropped past the radius plus hysteresis), `rt.workers` (generation and meshing off the main thread) and `rt.origin` (a floating origin), with Minecraft streaming through them already. No second grid is made here. What a cell sends the graphics chip goes through this design's frame guard, installed on the runtime's renderer: a cell's new materials and pictures are held back and readied under the per-frame budget. Its install packs are the Download bar that comes before this design's Prepare bar (`LoadingVeil`).
 
 ## Order of work (each its own pull request, merged when it's in and measured)
 
@@ -77,7 +77,7 @@ While the veil is up, after the warm-up, the world is drawn about thirty times a
 4. The runtime's prepare: the galaxy and its surfaces (the dive and climb as the loading screen, the surface's create in steps), Earth, and the floor-bake cache.
 5. The other worlds with their own renderers (Avengers, Middle-earth, Albuquerque, C-137, Cybertron, Invincible, the music room) on the veil and `prepareScene`, with their late loads moved into it.
 6. Calibration and the pace's ceiling.
-7. Chunks for the universe and the surfaces.
+7. Chunks: left to the infinite-worlds design (above).
 
 ## How it's checked
 

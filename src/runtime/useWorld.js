@@ -1,5 +1,5 @@
 // A page puts a world module on the runtime: useWorld(module, { props,
-// enabled, onEvent, attempt, rebuild }) → { host, status, progress, on, meant, world, rt }
+// enabled, onEvent, attempt, rebuild }) → { host, status, on, meant, world, rt }
 // (`attempt` bumped mounts it again after a failure; `rebuild` is what the
 // world is made for, and a change of it makes the world again: a mission
 // the page changes to, say). `host` is
@@ -16,24 +16,12 @@
 // (rt.unmount) a tick after the last page holding its module lets go, so
 // a handover's page can leave first and React's second run of an effect
 // in development keeps what the first one had.
-// While the world's prepare runs (after `ready`, before its first frame) the
-// status is 'preparing' and `progress` ({ value, step }, as useScene's) says
-// how far it's got, for the page's loading veil; the box still says
-// data-gl="loading". The prepare events of a world made for another page (a
-// handover's, while this page's world draws on) aren't this page's.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { use3D } from '../lib/gpu';
 import { runtime } from './index';
 
 const useBeforePaint = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
-const NO_PROGRESS = { value: 0, step: null };
-// (a change of it only: a world reporting the same twice renders nothing)
-const putProgress = (ref, set, p) => {
-  if (ref.current.value === p.value && ref.current.step === p.step) return;
-  ref.current = p;
-  set(p);
-};
 const holders = new Map(); // module → how many mounted pages hold it
 const hold = (module, by) => holders.set(module, Math.max(0, (holders.get(module) ?? 0) + by));
 // what each world a page made or adopted was for (its `rebuild`); a world
@@ -41,13 +29,31 @@ const hold = (module, by) => holders.set(module, Math.max(0, (holders.get(module
 export const madeFor = new WeakMap();
 export const adoptable = (current, module, rebuild) => Boolean(current && current.module === module && (!madeFor.has(current.world) || madeFor.get(current.world) === rebuild));
 
+// How far a module's prepare has got (the runtime's 'prepare' events), for a
+// page's loading screen: { value 0…1, step }. A page landing on another
+// world (a dive) listens for that world's.
+export function usePrepareProgress(module) {
+  const [progress, setProgress] = useState({ value: 0, step: 'load' });
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    let shown = { value: -1, step: '' };
+    return runtime().events.on('prepare', (e) => {
+      if (e.module !== module?.id) return;
+      // (a step's change, or a percent's worth: no more re-renders than that)
+      if (e.step === shown.step && e.value - shown.value < 0.01 && e.value < 1) return;
+      shown = { value: e.value, step: e.step };
+      setProgress(shown);
+    });
+  }, [module]);
+  return progress;
+}
+
 export function useWorld(module, { props, enabled = true, onEvent = null, attempt = 0, rebuild = null } = {}) {
   const host = useRef(null);
   const world = useRef(null);
   const three = use3D();
   const [status, setStatus] = useState(() => (typeof window === 'undefined' ? 'idle' : runtime().status));
-  const [progress, setProgressState] = useState(NO_PROGRESS);
-  const progressRef = useRef(progress);
+  const progress = usePrepareProgress(module);
   const propsRef = useRef(props);
   propsRef.current = props;
   const eventRef = useRef(onEvent);
@@ -70,13 +76,7 @@ export function useWorld(module, { props, enabled = true, onEvent = null, attemp
     let dead = false;
     hold(module, 1);
     const off = rt.on(setStatus);
-    // (a world made again starts its progress from the beginning)
-    putProgress(progressRef, setProgressState, NO_PROGRESS);
     const offEvents = rt.events.onAny((type, data) => {
-      if (type === 'prepare') {
-        if (rt.loading !== module) return;
-        if (!dead) putProgress(progressRef, setProgressState, { value: data?.value ?? 0, step: data?.step ?? null });
-      }
       if (rt.current?.module === module) eventRef.current?.({ type, ...(data ?? {}) });
     });
     const adopt = () => {

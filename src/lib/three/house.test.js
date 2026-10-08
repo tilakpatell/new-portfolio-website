@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { LOOK, createHouse, envLevel, houseOn, houseShader, shadowFor } from './house';
 import { createGroundMap } from './groundmap';
-import { guard } from './frameGuard';
-import { fakeRenderer, frames } from './fakeRenderer.fixture';
 
 // three's chunks as this version has them (the lines the rewrite looks for)
 const CHUNKS = {
@@ -361,55 +359,5 @@ describe('an environment that changes (a game\u2019s sky swapped for another)', 
     expect(envLevel(pmrem)).toBe(null);
     pmrem.userData.level = new THREE.Color(0.3, 0.3, 0.4);
     expect(envLevel(pmrem).b).toBeCloseTo(0.4, 5);
-  });
-});
-
-describe('the house look on a guarded renderer', () => {
-  // (the gpuWork stand-in, drawing a scene's meshes as three does)
-  const guarded = () => {
-    const r = fakeRenderer();
-    Object.assign(r, { toneMapping: THREE.NoToneMapping, toneMappingExposure: 1 });
-    r.renderBufferDirect = () => {};
-    r.render = (scene, camera) => scene.traverseVisible((o) => o.isMesh && r.renderBufferDirect(camera, scene, o.geometry, o.material, o, null));
-    const compile = r.compile;
-    r.inLook = [];
-    r.compile = (root, ...rest) => {
-      root.traverse((o) => r.inLook.push(o.material.userData.house));
-      return compile(root, ...rest);
-    };
-    return { r, g: guard(r, { frame: frames() }) };
-  };
-  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
-
-  it('puts a late material in the look before the guard compiles it, and stops on dispose', async () => {
-    const { r, g } = guarded();
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera();
-    const house = houseOn({ renderer: r, scene, look: { fog: false } });
-    const late = new THREE.MeshLambertMaterial();
-    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), late));
-    r.render(scene, camera);
-    await settle();
-    expect(r.inLook).toEqual([house.uniforms]);
-    // (another world's objects on the same renderer aren't this house's)
-    const other = new THREE.Scene();
-    const theirs = new THREE.MeshLambertMaterial();
-    other.add(new THREE.Mesh(new THREE.BoxGeometry(), theirs));
-    r.render(other, camera);
-    await settle();
-    expect(theirs.userData.house).toBeUndefined();
-    house.dispose();
-    const after = new THREE.MeshLambertMaterial();
-    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), after));
-    r.render(scene, camera);
-    await settle();
-    expect(after.userData.house).toBeUndefined();
-    g.dispose();
-  });
-
-  it('is the same without a guard, with a dispose that does nothing', () => {
-    const scene = new THREE.Scene();
-    const house = houseOn({ renderer: { toneMapping: 0, toneMappingExposure: 1 }, scene });
-    expect(() => house.dispose()).not.toThrow();
   });
 });

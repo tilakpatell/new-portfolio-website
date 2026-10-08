@@ -9,6 +9,8 @@
 // so it's tested in Node; FlightSettings.jsx shows them and scene.js reads
 // them each frame.
 
+import { DEFAULT as DEFAULT_DIFFICULTY, LEVELS } from './difficulty';
+
 export const CONTROLS_KEY = 'tp-universe-controls';
 export const STICK = 70; // px of drag for full stick, as it comes
 
@@ -25,7 +27,9 @@ export const CONTROLS = {
 };
 export const DRAG_UP = ['auto', 'pitch', 'speed'];
 export const AD = ['roll', 'turn'];
-export const DEFAULTS = { turn: 1, pitch: 1, roll: 1, level: 1, drag: 1, assist: 1, track: 1, camera: 1, invert: false, dragUp: 'auto', ad: 'roll' };
+// how hard the fight is (difficulty.js): the hunters' skill, how hard they hit, and the law's search
+export const DIFFICULTIES = LEVELS;
+export const DEFAULTS = { turn: 1, pitch: 1, roll: 1, level: 1, drag: 1, assist: 1, track: 1, camera: 1, invert: false, dragUp: 'auto', ad: 'roll', difficulty: DEFAULT_DIFFICULTY };
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
@@ -38,6 +42,7 @@ export function readControls(raw) {
   if (typeof raw.invert === 'boolean') c.invert = raw.invert;
   if (DRAG_UP.includes(raw.dragUp)) c.dragUp = raw.dragUp;
   if (AD.includes(raw.ad)) c.ad = raw.ad;
+  if (LEVELS.includes(raw.difficulty)) c.difficulty = raw.difficulty;
   return c;
 }
 

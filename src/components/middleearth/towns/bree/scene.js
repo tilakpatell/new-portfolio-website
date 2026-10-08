@@ -14,7 +14,6 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
-import { stagePrepare } from '../../../../lib/stagePrepare';
 import { createHouse } from '../../../../lib/three/house';
 import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
@@ -58,7 +57,7 @@ import {
   height,
   roadAmount,
 } from './layout';
-import { attend, castComing, castDo, releaseCast, tickCast } from '../../cast3d';
+import { attend, castDo, releaseCast, tickCast } from '../../cast3d';
 import { turn } from '../../../../lib/three/gait';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -123,8 +122,6 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
   const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 420, bloom: { strength: 0.62, radius: 0.5, threshold: 0.86 }, onLost });
-  // made ready behind its loading veil before its first frame (lib/stagePrepare)
-  const prep = stagePrepare(stage, { grounds: () => [ground], late: () => castComing(stage.scene) });
   stage.grade({ contrast: 0.12, saturation: 0.86, vignette: 0.3, grain: 0.016, shadow: [0.0, 0.012, 0.035], high: [0.03, 0.018, 0.0] });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
@@ -751,7 +748,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     // the people on the cast (../../cast3d.js), drawn for this frame
     tickCast(scene, camera, dt);
     renderer.info.reset();
-    if (!prep.held()) stage.render(ms / fast); // (the real frame time, however fast the QA runs the clock)
+    stage.render(ms / fast); // (the real frame time, however fast the QA runs the clock)
   };
 
   // ── events ──
@@ -781,16 +778,11 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the town is first drawn ──
-  const ground = groundTown({ place: 'bree', renderer, scene, terrain, outdoors, sun, height, people: movers, skip: [sky.dome, ghosts.group, puddles.mesh], tier, radius: WORLD.radius + 10, shade: 0x262a30, matcap: [rimTrees] });
+  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height, people: movers, skip: [sky.dome, ghosts.group, puddles.mesh], tier, radius: WORLD.radius + 10, shade: 0x262a30, matcap: [rimTrees] });
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);
 
   return {
-    // everything onto the graphics chip behind the page's veil, and true meanwhile
-    prepare: prep.prepare,
-    get preparing() {
-      return prep.preparing;
-    },
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,

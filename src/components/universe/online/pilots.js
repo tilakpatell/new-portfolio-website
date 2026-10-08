@@ -130,9 +130,10 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
   let clock = 0; // `now`, as of the last update
   const aim = new THREE.Vector3();
   const takeModel = (kind) => {
+    const drawn = kinds[kind]?.model ?? kind; // (drawn as another kind, as hunters.js's are)
     // a built stand-in waiting here gives way once the model is in (as hunters.js's do)
-    if (fleet.loaded(kind) && spare[kind]?.length && !spare[kind][spare[kind].length - 1].model) for (const m of spare[kind].splice(0)) m.dispose();
-    const model = spare[kind]?.pop() ?? fleet.make(kind);
+    if (fleet.loaded(drawn) && spare[kind]?.length && !spare[kind][spare[kind].length - 1].model) for (const m of spare[kind].splice(0)) m.dispose();
+    const model = spare[kind]?.pop() ?? fleet.make(drawn);
     model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1);
     parent.add(model.group);
     return model;

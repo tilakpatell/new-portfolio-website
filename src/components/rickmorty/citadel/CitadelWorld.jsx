@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
-import { showPrepared } from '../../../lib/prepareWorld';
-import LoadingVeil from '../../worlds/LoadingVeil';
 import { local, useFrameLoop, useInView, useMediaQuery, usePageVisible } from '../../../lib/hooks';
 import { readPad, typing } from '../../games/pad';
 import { Bubble, Convo, QuestList, Stick } from '../../middleearth/towns/TownHud';
@@ -30,6 +28,8 @@ import { useLooks } from '../wardrobe/useLooks';
 import './citadel.css';
 import GuideCue from '../../guide/GuideCue';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // The Citadel of Ricks, the world: walk in through the portal as Rick
 // C-137 and play the five scenes there (Morty Day Care, Simple Rick's,
@@ -102,7 +102,7 @@ export default function CitadelWorld({ onLeave, leaveLabel = 'Back to C-137' }) 
     return citadelProgress(Array.isArray(d) ? d : []).done;
   });
   const prog = citadelProgress(done);
-  const [gl, setGl] = useState('loading'); // loading | preparing | on | failed | lost
+  const [gl, setGl] = useState('loading'); // loading | on | failed | lost
   const { unlock } = useAchievements();
   const complete = useCallback(
     (id) => {
@@ -128,7 +128,7 @@ export default function CitadelWorld({ onLeave, leaveLabel = 'Back to C-137' }) 
 const ROOM = { bound: 160, motion: true };
 
 function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
-  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const trav = useTravellers('citadel', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -217,12 +217,10 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
         // (cue: something for the people to react to, as the world would say it: { type: 'seen', id } …)
         if (import.meta.env.DEV) window.__CITADEL__ = { api: a, sim: sim.current, complete, down: () => liftRef.current?.down(true), up: () => liftRef.current?.up(), cue: (c) => sim.current?.cues.push(c), emote: (id) => sim.current && (sim.current.emote = { id, at: sim.current.t }) }; // for the QA scripts
         fit();
-        // everything onto the graphics chip behind the veil (Mortytown too,
-        // if Rick's going straight back down), then shown (lib/stagePrepare:
-        // PREPARE_WAIT at most, then it's told to stop: lib/prepareWorld)
-        const town = Boolean(sim.current.autoDown);
-        await showPrepared((report, going) => a.prepare?.(report, going, { town }), { setGl, setPrep, alive: () => !dead && api.current === a });
-        if (dead || api.current !== a) return;
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (dead) return;
+        setGl('on');
         // left in Mortytown last time: back down the lift
         if (sim.current.autoDown) {
           sim.current.autoDown = false;
@@ -684,7 +682,6 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
-    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
@@ -692,7 +689,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
     s.t += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
-    const raw = gl === 'on' ? readPad() : null; // (nothing pressed behind the veil)
+    const raw = readPad();
     const before = s.padBefore ?? {};
     s.padBefore = raw ?? {};
     const pad = wardrobeRef.current ? null : raw; // (the wardrobe's open over him: the pad's for it)
@@ -984,7 +981,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
     }
     if (++s.frame % 4 === 0) drawMap(map.current, s.where === 'mortytown' ? { scale: TOWN_MAP, h: s.h, markers, base: drawTown } : { scale: MAP_SCALE, h: s.h, markers, night: red, base: drawConcourse(p) });
     if (s.frame % 120 === 0 && s.mode === 'walk') local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face, where: s.where });
-  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
+  }, live);
 
   // the world's own pointer: drag to look round
   const drag = useRef(null);
@@ -1009,28 +1006,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
   };
 
   // the touch stick
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   // the list's "go there": straight to where each scene starts
   const travel = (q) => {
@@ -1063,8 +1039,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
   return (
     <div ref={box} className="shire-stage citadel-stage" data-touch={touch || undefined} data-mode={mode} data-mood={prog.mood} data-room={inside ? hud.room : undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="The Citadel of Ricks in 3D: a terrace over a city of pale green towers under a great dome, a column of green portal fluid at its middle, crowded with Ricks and Mortys, and Rick C-137 walking through it" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
-      {gl === 'loading' && <p className="shire-loading">Opening a portal to the Citadel…</p>}
-      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="The Citadel of Ricks" line="Opening a portal to the Citadel…" />
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Opening a portal to the Citadel" />
       {townLoading && <p className="shire-loading">Taking the lift down to Mortytown…</p>}
 
       {walking && (
@@ -1140,7 +1115,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -1188,7 +1163,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
         </div>
       )}
 
-      {walking && touch && <Stick onStick={onStick} />}
+      {walking && touch && <Stick onMove={onStick} />}
 
       <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="rick" />
       {list && <QuestList title="Things to do in the Citadel" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && (q.id !== 'citadelout' || red) && (q.id !== 'locos' || !red)} />}

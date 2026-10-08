@@ -7,6 +7,7 @@ import { parseId } from '../components/universe/layout';
 import { beyondPlan, crashPlan, enterPlan } from '../components/universe/flight';
 import { beyondOf, parseWonder } from '../components/universe/deep';
 import { DRIVE_KEY, destinationById, distanceTo, parseDrive, tourFrom } from '../components/universe/nav';
+import { FLY_PAST } from '../components/universe/words';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { LOADOUT_KEY, droppedParts, equip, fitInto, loadoutOf, readLoadouts } from '../components/universe/outfit';
 import { GARAGE_KEY, HULL_KEY, readHulls } from '../components/universe/shipyard/build';
@@ -15,6 +16,7 @@ import { saveStart } from '../lib/view';
 import { useView } from '../components/ViewSwitch';
 import { portalSound } from '../components/universe/sounds';
 import { jumpEvent } from '../components/jumps/styles';
+import { jumpOut } from '../components/jumps/jumpOut';
 import UniverseMap from '../components/universe/UniverseMap';
 import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
@@ -41,6 +43,13 @@ const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put awa
 // (the page you go into knows you came from the map, so its way out can be
 // back to space: the Citadel's)
 const FROM_MAP = { state: { from: 'universe' } };
+
+// The galaxy's page and its scene, fetched once its gate is picked or
+// flown into, so the jump into it isn't waiting on them (App.jsx loads the
+// page lazily, and the page its scene), as galaxy/travel.js fetches a
+// world's surface on the way down to it.
+let galaxyFetched = null;
+const prefetchGalaxy = () => (galaxyFetched ??= Promise.all([import('./Galaxy'), import('../components/galaxy/scene')]).catch(() => (galaxyFetched = null)));
 
 // The universe map: every fandom on the site is a planet, and you travel
 // between them, flying a ship of your choice (remembered between visits,
@@ -144,7 +153,14 @@ export default function Universe({ ask = false }) {
     local.set(PANEL_KEY, on ? 'tucked' : 'open');
   };
   const timer = useRef(0);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const trip = useRef(null); // a jump out (jumps/jumpOut.js): this page gone first, its dark coming late changes nothing
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+      trip.current?.cancel();
+    },
+    [],
+  );
   // a trip on through the gate: to a star system picked on the nav map, the
   // ship flies to the gate, and when it parks there the page goes on in
   const onward = useRef(null); // { via, to }
@@ -216,7 +232,28 @@ export default function Universe({ ask = false }) {
     };
   }, []);
 
-  const select = useCallback((id) => navigate(id ? `/universe/${id}` : '/universe', { replace: true }), [navigate]);
+  // (not once the page is on its way out: the scene's last word as it's torn
+  // down, or a key pressed on the way, mustn't pull the address back to the
+  // map from the page it's leaving for)
+  const gone = useRef(false);
+  useEffect(() => {
+    gone.current = false;
+    return () => {
+      gone.current = true;
+    };
+  }, []);
+  const select = useCallback(
+    (id) => {
+      if (gone.current) return;
+      navigate(id ? `/universe/${id}` : '/universe', { replace: true });
+    },
+    [navigate],
+  );
+  // the Star Wars gate picked: the galaxy behind it fetched while you fly there
+  const toGalaxy = Boolean(universe?.to?.startsWith('/galaxy'));
+  useEffect(() => {
+    if (toGalaxy) prefetchGalaxy();
+  }, [toGalaxy]);
 
   const pickShip = (id) => {
     audioContext(); // inside the press, so the engine can start
@@ -236,12 +273,19 @@ export default function Universe({ ask = false }) {
       return;
     }
     audioContext(); // inside the press, so the way out can sound
-    if (plan.mode === 'jump') window.dispatchEvent(jumpEvent(crew?.jump));
-    else {
-      if (plan.mode === 'portal') portalSound();
-      map.current.dive(u.id);
-    }
     setLeaving({ id: u.id, mode: plan.mode });
+    if (plan.mode === 'jump') {
+      // the page changes under the jump's dark. Into the galaxy, its page
+      // and scene are fetched now, and the jump's tunnel is held from the
+      // change until the galaxy has drawn, so it clears onto the galaxy,
+      // not its loading line
+      const galaxy = Boolean(to?.startsWith('/galaxy'));
+      if (galaxy) prefetchGalaxy();
+      trip.current = jumpOut({ style: crew?.jump, to, navigate: (page) => navigate(page, FROM_MAP), hold: galaxy, delay: plan.delay });
+      return;
+    }
+    if (plan.mode === 'portal') portalSound();
+    map.current.dive(u.id);
     timer.current = setTimeout(() => navigate(to, FROM_MAP), plan.delay);
   };
   const enter = () => go(universe);
@@ -487,7 +531,7 @@ export default function Universe({ ask = false }) {
       {touring && !leaving && (
         <div className="universe-tour" role="status">
           <span>
-            Touring, {touring.i + 1} of {touring.n}: next {touring.next}
+            {FLY_PAST.pill(touring.i + 1, touring.n, touring.next)}
           </span>
           <button type="button" onClick={stopTour}>
             Stop <kbd>Esc</kbd>

@@ -4,7 +4,7 @@ import { WorldHost, useWorld } from '../../../runtime';
 import surfaceModule from './module';
 import { heroById, heroSpec } from '../heroes';
 import { ABILITIES, abilitiesOf } from './abilityRules';
-import { systemById } from '../systems';
+import LoadingVeil from '../../worlds/LoadingVeil';
 
 // (shorter names for the thumbs)
 const TOUCH = { detonator: 'Bomb', overcharge: 'Charge', fulminate: 'Bomb', rocket: 'Rocket', jetpack: 'Jet', medpack: 'Heal', hop: 'Hop' };
@@ -14,9 +14,7 @@ const TOUCH = { detonator: 'Bomb', overcharge: 'Charge', fulminate: 'Bomb', rock
 // touch screen: a stick on the left to walk (pushed all the way, you run),
 // the rest of the screen to look round, and buttons for jumping and for
 // whatever's to hand (E on a keyboard). While the 3D loads the box says
-// so, and while it's prepared (on a visit straight here: a flown trip's dive
-// is its own loading screen) the loading veil, with the world's name;
-// without 3D, a note that the world needs it.
+// so; without 3D, a note that the world needs it.
 
 export default function SurfaceView({ system, mission = null, ship, hero = null, loadout, build = null, found, done, compass, net = null, handle, onEvent, effects = null }) {
   const saber = Boolean(hero && heroById(hero.id)?.weapon === 'saber');
@@ -28,12 +26,11 @@ export default function SurfaceView({ system, mission = null, ship, hero = null,
   const reduced = useReducedMotion();
   // (a hero picked goes on in the world as it is: scene.js's setHero; another
   // mission is another world, made again)
-  const world = useWorld(surfaceModule, {
+  const { host, on, meant, rt, progress } = useWorld(surfaceModule, {
     props: { system, mission, ship, hero, loadout, build, found, done, compass, net, reduced, effects },
     rebuild: mission ?? 'explore',
     onEvent: (e) => events.current?.(e),
   });
-  const { host, on, meant, rt, status } = world;
   // the scene itself, while it's the world on the runtime
   const view = { get current() { return rt?.current?.module === surfaceModule ? rt.current.world.scene : null; } };
   useEffect(() => {
@@ -103,14 +100,10 @@ export default function SurfaceView({ system, mission = null, ship, hero = null,
   };
 
   return (
-    <WorldHost world={world} veil={{ title: systemById(system)?.name }} className="surface-map">
+    <WorldHost world={{ host }} className="surface-map">
       {meant ? (
-        !on &&
-        status !== 'preparing' && (
-          <p className="surface-loading" role="status">
-            Coming down through the atmosphere…
-          </p>
-        )
+        // (until it's drawing: on a flown landing it's up before the page is, so this is a direct visit's)
+        <LoadingVeil shown={!on} progress={progress.value} step={progress.step} title="Coming down through the atmosphere" />
       ) : (
         <p className="surface-loading" role="status">
           Landing needs 3D, and this browser has it turned off.

@@ -6,8 +6,8 @@
 
 import * as THREE from 'three';
 import { budget, pixelRatio } from '../device';
-import { fence, nextFrame } from './gpuWork';
-import { guard } from './frameGuard';
+import { guard as guardRenderer } from './frameGuard';
+import { compileSlices, revealAll } from './gpuWork';
 
 // The sharpest a device starts at: lib/device's tier (phones and small
 // screens start lower), under the scene's own cap.
@@ -35,10 +35,12 @@ export function maxSide(renderer) {
 // A [r, g, b] (0-255, sRGB) from lib/three/theme as a THREE.Color.
 export const color = (rgb, target = new THREE.Color()) => target.setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, THREE.SRGBColorSpace);
 
-// `guard` (on unless false) puts lib/three/frameGuard on it, so no frame
-// waits on a shader or a picture; a scene that draws everything once and
-// stops can do without. The returned `guard` is its handle, or null.
-export function createRenderer(canvas, { alpha = true, antialias = true, ratio = 2, toneMapping = THREE.NoToneMapping, exposure = 1, onLost, onSlow, guard: useGuard = true } = {}) {
+// `guard`: hold back from each frame whatever isn't ready on the graphics
+// chip yet, and ready it behind the frame (lib/three/frameGuard): true, or
+// { invalidate } to be asked for a frame when something held back is ready
+// (for a scene that stops drawing once it's still). Off by default: a page
+// scene that draws once and rests would never show what was held back.
+export function createRenderer(canvas, { alpha = true, antialias = true, ratio = 2, toneMapping = THREE.NoToneMapping, exposure = 1, onLost, onSlow, guard = false } = {}) {
   // (in development, window.__tpKeepFrames keeps the last frame readable for
   // automated screenshots of scenes that have stopped drawing)
   const preserveDrawingBuffer = import.meta.env.DEV && typeof window !== 'undefined' && !!window.__tpKeepFrames;
@@ -46,22 +48,29 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
   const renderer = new THREE.WebGLRenderer({ canvas, alpha, antialias: antialias && budget().antialias, powerPreference: 'high-performance', stencil: false, preserveDrawingBuffer });
   // reading a shader's error log waits on the graphics chip, every new
   // shader: only worth it while developing
-  renderer.debug.checkShaderErrors = Boolean(import.meta.env.DEV);
+  quiet(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = toneMapping;
   renderer.toneMappingExposure = exposure;
-  quiet(renderer);
   if (alpha) renderer.setClearColor(0x000000, 0);
-  const held = useGuard ? guard(renderer) : null;
+  if (guard) guardRenderer(renderer, guard === true ? {} : guard);
 
   let pixelRatio = maxRatio(ratio);
   renderer.setPixelRatio(pixelRatio);
   const size = { w: 1, h: 1 };
   const side = maxSide(renderer);
   // the watchdog's ratio, inside what the graphics chip can hold at this size
+  // (one resize of the drawing buffer, and none when nothing changed: each
+  // one reallocates the canvas's buffer, which waits for the graphics chip
+  // to finish what it's doing, a second or more when it's busy)
+  const drawn = { w: 0, h: 0, r: 0 };
   const fit = () => {
-    renderer.setPixelRatio(fitRatio(size.w, size.h, pixelRatio, { side }));
-    renderer.setSize(size.w, size.h, false);
+    const r = fitRatio(size.w, size.h, pixelRatio, { side });
+    if (drawn.w === size.w && drawn.h === size.h && drawn.r === r) return;
+    drawn.w = size.w;
+    drawn.h = size.h;
+    drawn.r = r;
+    renderer.setDrawingBufferSize(size.w, size.h, r);
   };
 
   let lost = false;
@@ -95,13 +104,17 @@ export function createRenderer(canvas, { alpha = true, antialias = true, ratio =
       size.h = Math.max(1, Math.round(h));
       fit();
     },
+    // the sharpness to draw at (an owner's own, the runtime's quality),
+    // fitted to the chip like the watchdog's
+    setRatio(r) {
+      pixelRatio = r;
+      fit();
+    },
     size,
-    guard: held,
     // call once per drawn frame, with the frame's timestamp
     watch: dog.watch,
     dispose() {
       canvas.removeEventListener('webglcontextlost', onContextLost);
-      held?.dispose();
       renderer.dispose();
       if (!lost) releaseContext(renderer); // free the GPU soon, not at GC
     },
@@ -198,34 +211,8 @@ export function disposeTree(root) {
   });
 }
 
-// Everything under `roots` shown for one draw: what's hidden too, and
-// nothing culled for being off screen, so a scene drawn once this way (behind
-// something that covers it) has every texture and mesh on the graphics chip
-// and every shader made before the moment it's first seen (three.js sends
-// each the first time it's drawn, and that frame waits). Lights stay as they
-// were: a hidden one shown would make shaders of its own. Returns the undo.
-export function revealAll(...roots) {
-  const undo = [];
-  const set = (o, key, to) => {
-    if (o[key] === to) return;
-    undo.push([o, key, o[key]]);
-    o[key] = to;
-  };
-  const show = (o, hidden) => {
-    const was = hidden || !o.visible;
-    if (o.isLight) {
-      if (was) set(o, 'visible', false);
-      return;
-    }
-    set(o, 'visible', true);
-    if (o.isMesh || o.isPoints || o.isLine || o.isSprite) set(o, 'frustumCulled', false);
-    for (const child of o.children) show(child, was);
-  };
-  for (const root of roots) show(root, false);
-  return () => {
-    for (let i = undo.length - 1; i >= 0; i--) undo[i][0][undo[i][1]] = undo[i][2];
-  };
-}
+// (revealAll lives with the rest of the GPU work, lib/three/gpuWork)
+export { revealAll };
 
 // Every picture the meshes under `root` use (each once, and only those whose
 // image has arrived).
@@ -293,8 +280,10 @@ export const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
 // three.js reads it on every program's first draw: that wait is most of a
 // page's freeze when a scene first comes into view. Development keeps the
 // diagnostics; the built site doesn't ask.
+// (scripts/perf-probe.mjs sets window.__tpNoShaderChecks, so development
+// measures what the built site does)
 export function quiet(renderer) {
-  renderer.debug.checkShaderErrors = !!import.meta.env.DEV;
+  renderer.debug.checkShaderErrors = !!import.meta.env.DEV && !(typeof window !== 'undefined' && window.__tpNoShaderChecks);
   return renderer;
 }
 
@@ -309,11 +298,6 @@ export function quiet(renderer) {
 // extension it resolves at once and the first frame waits, as before. It
 // never rejects, and never takes longer than CAP.
 //
-// With the extension, no shader is asked whether it has linked until a fence
-// (lib/three/gpuWork) says the chip has caught up with the compiles: asked
-// sooner, the answer can wait on the chip's queue. If the fence can't say
-// (the context went, or it timed out), nothing is asked and it resolves.
-//
 // `scene` is the scene `root` will be drawn in (its lights and fog are part of
 // each shader); `target` is where it will be drawn when that isn't the canvas
 // (a composer's buffer: no tone mapping or sRGB there, so different shaders).
@@ -324,24 +308,16 @@ export function quiet(renderer) {
 const CAP = 4000;
 let compiling = 0; // precompiles in flight, on any renderer (see releaseContext)
 
-export function precompile(renderer, root, camera, scene = null, target, { frame } = {}) {
-  let materials;
-  const keep = target !== undefined ? renderer.getRenderTarget() : null;
-  try {
-    if (target !== undefined) renderer.setRenderTarget(target);
-    materials = renderer.compile(root, camera, scene ?? root);
-  } catch (err) {
-    if (import.meta.env.DEV) console.warn('precompile failed', err);
-    return Promise.resolve();
-  } finally {
-    // (a renderer disposed meanwhile can throw here too, and this never throws)
-    try {
-      if (target !== undefined) renderer.setRenderTarget(keep);
-    } catch {
-      // gone with its renderer
-    }
-  }
-  return linked(renderer, materials, frame);
+export function precompile(renderer, root, camera, scene = null, target) {
+  // a slice at a time, a fence between (lib/three/gpuWork), for the target
+  // it's drawn into
+  compiling += 1;
+  return compileSlices(renderer, [root], camera, scene ?? root, { cap: CAP, target })
+    .catch(() => {})
+    .then(() => {
+      compiling -= 1;
+      if (!compiling) flushLosses();
+    });
 }
 
 // The materials of a composer's passes (bloom's blurs, the output pass, a
@@ -400,46 +376,6 @@ function primeOutputPass(pass, renderer) {
   if (tone) defines[tone] = '';
   pass.material.defines = defines;
   pass.material.needsUpdate = true;
-}
-
-const parallel = (renderer) => {
-  try {
-    return !!renderer.extensions?.has('KHR_parallel_shader_compile');
-  } catch {
-    return false;
-  }
-};
-
-// Resolves once every material's program has linked (asked once a frame,
-// and only after a fence: then asking doesn't wait), the context has gone,
-// or CAP has passed.
-function linked(renderer, materials, frame = nextFrame) {
-  const pending = [...materials];
-  const t0 = performance.now();
-  compiling += 1;
-  return new Promise((resolve) => {
-    const done = () => {
-      compiling -= 1;
-      resolve();
-      if (!compiling) flushLosses();
-    };
-    const check = () => {
-      try {
-        if (renderer.getContext().isContextLost()) return done();
-        for (let i = pending.length - 1; i >= 0; i--) {
-          // a material whose program has gone (the renderer was disposed) counts as done
-          const program = renderer.properties.get(pending[i]).currentProgram;
-          if (!program || program.isReady()) pending.splice(i, 1);
-        }
-      } catch {
-        return done();
-      }
-      if (!pending.length || performance.now() - t0 > CAP) done();
-      else frame().then(check);
-    };
-    if (!pending.length || !parallel(renderer)) return check();
-    fence(renderer, { frame, cap: CAP }).then((caughtUp) => (caughtUp ? check() : done()));
-  });
 }
 
 // ── contexts given back ──

@@ -13,7 +13,6 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../lib/stage3d';
-import { stagePrepare } from '../../../lib/stagePrepare';
 import { bake, dotTexture, farTree } from '../towns/bake';
 import { createGhosts } from '../towns/ghosts';
 import { budget, device } from '../../../lib/device';
@@ -73,7 +72,8 @@ import {
   spoonLeft,
   stepFlock,
 } from './rules';
-import { attend, castComing, castDo, releaseCast, tickCast } from '../cast3d';
+import { attend, castDo, releaseCast, tickCast } from '../cast3d';
+import { nextFrame as breathe } from '../../../lib/three/gpuWork';
 
 const val = (x, ...args) => (typeof x === 'function' ? x(...args) : x);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -82,15 +82,11 @@ const faceTo = (obj, face) => {
   obj.rotation.y = face;
 };
 
-export function createShireWorld(canvas, { onLost } = {}) {
+export async function createShireWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
   const fit = budget();
   const stage = createStage(canvas, { shadows: true, fov: 50, near: 0.1, far: 520, bloom: { strength: 0.5, radius: 0.55, threshold: 0.9 }, onLost });
-  // made ready behind its loading veil before its first frame (lib/stagePrepare):
-  // Bag End's door and the people's models in, the floor's light baked
-  let doorLoad = null;
-  const prep = stagePrepare(stage, { grounds: () => [ground], late: () => [doorLoad, ...castComing(stage.scene)] });
   stage.grade({ contrast: 0.1, saturation: 1.1, vignette: 0.22, grain: 0.012, shadow: [0.0, 0.01, 0.03], high: [0.03, 0.015, 0] });
   const { scene, camera, renderer } = stage;
   renderer.info.autoReset = false; // counted over the whole frame, every pass
@@ -126,6 +122,9 @@ export function createShireWorld(canvas, { onLost } = {}) {
   outdoors.add(water.group);
   const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: water.material, stage, house });
 
+  // (a frame's breath between the build's big steps, so the loading
+  // screen keeps moving: made in one go, it held the page for seconds)
+  await breathe();
   // ── the ground ──
   // (one map of its colour, its grass and its height: the ground, the grass
   // and the light it bounces up onto everything low all read it)
@@ -150,6 +149,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const flowerGeo = val(kit.flower);
   if (flowerGeo) outdoors.add(makeFlowers(flowerGeo, mats.flower ?? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }), Math.round(1400 * many), wind));
 
+  await breathe();
   // ── the buildings ──
   const chimneys = [];
   const placed = (part, x, z, { y = null, turn = 0, sink = 0.12 } = {}) => {
@@ -166,7 +166,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const doorModel = tier !== 'low' && !dev.saveData && bagEnd.door?.userData.leaf ? bagEnd.door : null;
   let gone = false;
   if (doorModel)
-    doorLoad = loadDoorLeaf(doorModel.userData.leaf.r, { anisotropy: fit.aniso }).then((leaf) => {
+    loadDoorLeaf(doorModel.userData.leaf.r, { anisotropy: fit.aniso }).then((leaf) => {
       if (!leaf) return;
       if (gone) return disposeTree(leaf);
       for (const built of [...doorModel.children]) {
@@ -208,6 +208,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   doorLamp.position.set(BAG_END.x, height(BAG_END.x, BAG_END.z + BAG_END.r) + 2, BAG_END.z + BAG_END.r + 1);
   scene.add(lampA, lampB, innLamp, doorLamp);
 
+  await breathe();
   // ── the dressing ──
   const prop = (name, x, z, turn = 0, ...args) => {
     if (!kit[name]) return null;
@@ -357,6 +358,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const spoonGlintMat = new THREE.PointsMaterial({ color: new THREE.Color(1.9, 2.1, 2.6), size: 0.7, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, map: dotTexture() });
   outdoors.add(new THREE.Points(spoonGlintGeo, spoonGlintMat));
 
+  await breathe();
   // ── the people ──
   const frodo = makePerson('frodo');
   outdoors.add(frodo.group);
@@ -390,6 +392,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     guests.push(p);
   }
 
+  await breathe();
   // ── the animals ──
   const dogs = DOG_ROUNDS.map((_, i) => {
     const d = kit.dog({ seed: i + 1 });
@@ -443,6 +446,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   hereRing.visible = false;
   outdoors.add(hereRing);
 
+  await breathe();
   // ── effects ──
   const fx = createFx(scene, { scale: many });
   fx.placeFlies([...HOLES.map((h) => ({ x: h.x, y: height(h.x, h.z + h.r), z: h.z + h.r + 1.5, r: 4 })), { x: POND.x, y: 0, z: POND.z - POND.rz - 1, r: 8 }, { x: PARTY_TREE.x, y: 0.6, z: PARTY_TREE.z + 4, r: 7 }]);
@@ -477,6 +481,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const lens = { walk: 38, wide: 50 };
   const lensBack = () => Math.tan((lens.wide * Math.PI) / 360) / Math.tan((lens.walk * Math.PI) / 360);
 
+  await breathe();
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, cam: { at: V(0, 6, 8), look: V(0, 1, 0) }, mode: 'walk', last: null, smoke: 0, dogHop: [0, 0, 0], sniff: 0 };
   const tmp = new THREE.Vector3();
@@ -795,7 +800,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     // the people on the cast (../cast3d.js), drawn for this frame
     tickCast(scene, camera, dt);
     renderer.info.reset();
-    if (!prep.held()) stage.render(ms);
+    stage.render(ms);
   };
 
   // ── events: bursts, puffs and barks ──
@@ -871,7 +876,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
   // (its bounce off: the house look's, from the ground map, is the bounce)
   // (the grass out of the bake: drawn from above it would wrap round the
   // bake's own camera; it reads the baked shade instead, as the floor does)
-  const ground = groundTown({ place: 'shire', renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group, grass.mesh], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees], bounce: false });
+  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group, grass.mesh], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees], bounce: false });
   floorShadow(grass.material, ground.mask);
   // (last, over the floor light's own tints: one shadow colour everywhere)
   house.adopt(scene);
@@ -880,17 +885,13 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const panel = debugOn() ? debugPanel({ title: 'The Shire', groups: shireTuning({ house, grass, wind, lens, moods: MOODS }) }) : null;
 
   return {
-    // everything onto the graphics chip behind the page's veil, and true meanwhile
-    prepare: prep.prepare,
-    get preparing() {
-      return prep.preparing;
-    },
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     house: import.meta.env.DEV ? house : null, // for the QA scripts
     grass: import.meta.env.DEV ? grass : null, // for the QA scripts
     wind: import.meta.env.DEV ? wind : null, // for the QA scripts
     render,
+    prepare: stage.prepare, // (everything sent to the graphics chip before it's seen: lib/stage3d)
     fx: fxEvent,
     aim,
     screenOf,

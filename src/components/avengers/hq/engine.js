@@ -11,11 +11,10 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { loadSky } from './assets';
 import { houseOn } from '../../../lib/three/house';
-import { device } from '../../../lib/device';
-import { fitRatio, maxSide, precompile as compileFor, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 import { guard } from '../../../lib/three/frameGuard';
 import { prepareScene } from '../../../lib/three/gpuWork';
-import { settle } from '../../../lib/settle';
+import { device } from '../../../lib/device';
+import { fitRatio, maxSide, precompile as compileFor, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 
 // What a device can afford. Phones and small GPUs start lower; the watchdog
 // steps down from there when frames run long. `pixels` caps a frame all told,
@@ -51,6 +50,8 @@ export function createEngine(canvas, opts = {}) {
   let tier = TIERS[tierName];
 
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, failIfMajorPerformanceCaveat: false }));
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = toneMapping;
   renderer.toneMappingExposure = exposure;
@@ -59,11 +60,6 @@ export function createEngine(canvas, opts = {}) {
   renderer.info.autoReset = false; // count a whole frame: shadows, scene and every pass
   renderer.setPixelRatio(Math.min(tier.dpr, window.devicePixelRatio || 1));
   const side = maxSide(renderer);
-  // the frame guard (lib/three/frameGuard), as createRenderer puts on every
-  // renderer: a draw whose shader or picture isn't ready yet is left out of
-  // that frame and readied after it, so something that arrives late pops in
-  // a few frames on instead of holding the frame up
-  const held = guard(renderer);
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(fov, 16 / 9, near, far);
@@ -302,8 +298,6 @@ export function createEngine(canvas, opts = {}) {
     pmrem.dispose();
     composer.dispose?.();
     target.dispose();
-    house.dispose?.();
-    held.dispose();
     renderer.dispose();
     // the context goes back once nothing is compiling (lib/three/renderer):
     // let go at once, it would wait for the next game's shaders, mid-scroll
@@ -325,42 +319,26 @@ export function createEngine(canvas, opts = {}) {
     return Promise.all(jobs);
   };
 
-  // Everything under `roots` (the whole scene by default) onto the graphics
-  // chip before the first frame, behind the page's loading veil: the house
-  // look taken on first (so the shaders made are the ones drawn), the
-  // passes' shaders linked, then lib/three/gpuWork's prepareScene (the
-  // pictures sent a few at a time, the shaders compiled in slices against
-  // the composer's buffer, where the scene draws, and a draw of everything
-  // the frames' own way). `onProgress(fraction, step)` as it goes; it stops
-  // at the next slice once `alive()` says the game has been left, or the
-  // context goes. Never throws.
-  const prepare = async ({ roots = [scene], onProgress, alive = () => true } = {}) => {
-    const going = () => alive() && !lost;
-    if (!going()) return;
-    try {
-      house.follow({ adopt: true });
-      if (!passesDone) {
-        passesDone = true;
-        await settle(precompilePasses(renderer, composer, view), 4000);
-      }
-      if (!going()) return;
-      renderer.setRenderTarget(composer.readBuffer);
-      await prepareScene({ renderer, roots, scene, camera: view, alive: going, onProgress, render: renderOnce });
-    } catch (err) {
-      if (import.meta.env.DEV) console.warn('prepare failed', err);
-    } finally {
-      try {
-        renderer.setRenderTarget(null);
-      } catch {
-        // (gone with its renderer)
-      }
+  // Everything sent to the graphics chip before the world is first seen
+  // (lib/three/gpuWork): the look on, the passes' shaders, then every
+  // picture, shader and one draw, a slice at a time, with progress for the
+  // page's loading screen (components/worlds/LoadingVeil)
+  const prepare = async (onProgress, { alive = () => true } = {}) => {
+    const on = () => alive() && !lost;
+    house.follow({ adopt: true });
+    if (!passesDone) {
+      passesDone = true;
+      await precompilePasses(renderer, composer, view);
     }
+    if (!on()) return;
+    await prepareScene({ renderer, roots: [scene], scene, camera: view, target: composer.readBuffer, render: () => composer.render(), onProgress, alive: on });
   };
 
   return {
     THREE,
     renderer,
     scene,
+    prepare,
     camera,
     sun,
     hemi,
@@ -375,7 +353,6 @@ export function createEngine(canvas, opts = {}) {
     info,
     dispose,
     precompile,
-    prepare,
     get size() {
       return size;
     },

@@ -30,13 +30,12 @@ import { LINES } from './lines';
 import { createNpcs } from './npcs';
 import { buildClouds, buildHaze, skyBands } from './sky';
 import { carAt, createTraffic, stepTraffic, takeCar } from './traffic';
-import { markerSize } from './hud';
+import { markerSize } from '../../../runtime/hud/hud';
 import { CITY, WATER_Y, WORLD, buildWorld, groundAt, near } from './map';
 import { BODIES, altitudeOf } from './orbit';
 import { castMaterial, loadCast, personFor, setCastRim } from './people';
 import { buildSpace } from './space';
 import { groundWorld } from '../../../lib/three/groundwork';
-import { settle } from '../../../lib/settle';
 
 const FOV = 64;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -340,8 +339,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         tier: engine.tier,
       })
     : null;
-  // (the bake under way, for the prepare to wait on)
-  const baking = skyLight?.bake();
+  skyLight?.bake();
 
   // ── the people ──
   const [markT, omniT, thraggT] = await Promise.all(['mark', 'omni', 'thragg'].map((n) => loadFigure(asset(CAST[n].file))));
@@ -989,23 +987,9 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   const tmpV = new THREE.Vector3();
   const jetDistance = (h) => jet.near(tmpV.set(h.p[0], h.p[1] + 1, h.p[2]));
 
-  // Everything on the graphics chip behind the page's loading veil: the
-  // city's sky bake waited for (a few seconds at most), so its mask goes up
-  // with the rest, then hq/engine's prepare over the whole scene, space and
-  // its stars too (hidden till he flies up, and readied now all the same).
-  const BAKE_WAIT = 8000; // ms at most the bake holds up the prepare
-  const prepare = async (onProgress, alive = () => true) => {
-    const going = () => alive() && !engine.lost;
-    onProgress?.(0, 'bake');
-    await settle(baking, BAKE_WAIT);
-    if (!going()) return;
-    await engine.prepare({ alive: going, onProgress: (f, step) => onProgress?.(0.15 + 0.85 * f, step) });
-  };
-
   return {
     ground: import.meta.env.DEV ? skyLight : null, // for the QA scripts
     engine,
-    prepare,
     world,
     frame,
     setTime,

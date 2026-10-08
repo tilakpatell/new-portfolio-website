@@ -9,13 +9,12 @@ import { INSTRUMENTS, PITCH, START, moveFor, nearInstrument, standFor, stickMove
 import './world.css';
 import '../../../styles/lazy/music.css';
 import GuideCue from '../../guide/GuideCue';
-import LoadingVeil from '../../worlds/LoadingVeil';
-import { settle } from '../../../lib/settle';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // others online in the courtyard (middleearth/towns/useTravellers), as lamps
 const ROOM = { bound: 80, motion: true };
-const PREPARE_WAIT = 30000; // ms at most the world's prepare holds back its first frame
 
 // The music planet: land in a courtyard at dusk and walk about it, first
 // person. The instruments lie on a rug before a sandstone chhatri; walk up to
@@ -35,10 +34,9 @@ export default function MusicWorld({ panel }) {
   const three = use3D();
   const touch = useMediaQuery('(pointer: coarse)');
   const [gl, setGl] = useState('loading'); // loading | on | failed | lost
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const trav = useTravellers('music', gl === 'on', ROOM);
   const [models, setModels] = useState(false);
-  // how far the world's prepare has got, while it runs (the loading veil)
-  const [prep, setPrep] = useState(null);
   const [near, setNear] = useState(null);
   const [open, setOpen] = useState(null);
   const [opened, setOpened] = useState([]); // panels made so far: they stay, so a theka plays on as you walk
@@ -71,21 +69,9 @@ export default function MusicWorld({ panel }) {
         api.current = a;
         if (import.meta.env.DEV) window.__MUSIC_WORLD__ = { api: a, sim: sim.current }; // for the QA scripts
         fit();
-        // everything onto the graphics chip before the first frame, behind
-        // the loading veil (the scene's prepare; half a minute at most)
-        setPrep({ value: 0, step: null });
-        // (cut short at the cap: a prepare still going stops, and says no more)
-        let capped = false;
-        const preparing = () => !dead && !capped;
-        await settle(
-          a.prepare((value, step) => preparing() && setPrep({ value, step }), preparing),
-          PREPARE_WAIT,
-        );
-        capped = true;
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
         if (dead) return;
-        // (the veil fades on what it last said)
-        setPrep((p) => p && { ...p, done: true });
-        if (a.lost) return;
         setGl('on');
         a.loaded.then(() => !dead && setModels(true));
       })
@@ -297,8 +283,7 @@ export default function MusicWorld({ panel }) {
         }}
       >
         <canvas ref={canvas} className="mw-canvas" data-on={gl === 'on' || undefined} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />
-        {gl !== 'on' && !prep && <p className="mw-loading">Landing on the music planet…</p>}
-        <LoadingVeil shown={Boolean(prep) && !prep.done && gl === 'loading'} progress={prep?.value} step={prep?.step} title="The music planet" line="Landing on the music planet…" />
+        <LoadingVeil shown={gl !== 'on'} progress={prep.value} step={prep.step} title="Landing on the music planet" />
 
         <div className="mw-hud mw-hud-top">
           <div>

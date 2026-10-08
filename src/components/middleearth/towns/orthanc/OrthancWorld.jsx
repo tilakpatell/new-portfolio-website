@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import LoadingVeil from '../../../worlds/LoadingVeil';
-import { showPrepared } from '../../../../lib/prepareWorld';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -86,7 +84,6 @@ export default function OrthancWorld({ onLeave }) {
 }
 
 function World({ prog, complete, gl, setGl, onLeave, again }) {
-  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -156,9 +153,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
         api.current = a;
         if (import.meta.env.DEV) window.__ORTHANC__ = { api: a, sim: sim.current, complete };
         fit();
-        // everything onto the graphics chip behind the veil, then shown
-        // (lib/prepareWorld: PREPARE_WAIT at most, then it's told to stop)
-        showPrepared((report, going) => a.prepare?.(report, going), { setGl, setPrep, alive: () => !dead });
+        setGl('on');
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -452,7 +447,6 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
-    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     // (the QA scripts hold the world still, and step it a frame at a time)
     if (import.meta.env.DEV && s.paused) {
@@ -465,7 +459,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
     s.t += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
-    const pad = gl === 'on' ? readPad() : null; // (nothing pressed behind the veil)
+    const pad = readPad();
     const before = s.padBefore ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
     s.padBefore = pad ?? {};
@@ -678,7 +672,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
       setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, inLibrary: s.zone === 'hall' && s.h.x > LIB.x0, gaze: g ? { seen: g.seen, notice: g.notice, phase: g.phase, looking: g.looking } : null, duel: du ? { phase: du.phase, will: du.will, pushes: du.pushes, blockable: blockable(du) } : null, climb: c ? { s: c.s } : null, moth: m ? { x: m.x, hand: m.hand, settle: m.settle, rising: m.warned } : null, leap: l ? { under: l.under, coming: l.warned } : null });
     }
     if (++s.frame % 120 === 0 && s.mode === 'walk' && (s.zone === 'hall' || s.zone === 'top')) local.set(AT, { zone: s.zone, x: s.h.x, z: s.h.z, face: s.h.face });
-  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
+  }, live);
 
   // look round by dragging; the stick on touch
   const drag = useRef(null);
@@ -701,28 +695,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
     }
     drag.current = null;
   };
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   const hold = (name, v) => ({
     onPointerDown: (e) => {
       e.preventDefault();
@@ -762,7 +735,6 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
     <div ref={box} className="shire-stage orthanc-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['gaze', 'duel', 'climb', 'moth', 'leap'].includes(mode) || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Orthanc in 3D: Saruman's black hall and its palantír, the library, the long stair, and the pinnacle over Isengard" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">To Isengard…</p>}
-      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="Isengard" line="To Isengard…" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">
@@ -797,7 +769,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -925,7 +897,7 @@ function World({ prog, complete, gl, setGl, onLeave, again }) {
           </div>
         </div>
       )}
-      {walking && touch && (hud.zone === 'hall' || hud.zone === 'top') && <Stick onStick={onStick} />}
+      {walking && touch && (hud.zone === 'hall' || hud.zone === 'top') && <Stick onMove={onStick} />}
       {list && <QuestList title="Things to do in Orthanc" quests={prog.quests} next={prog.next} onClose={() => setList(false)} />}
     </div>
   );

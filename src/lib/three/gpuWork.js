@@ -1,283 +1,362 @@
-// Work for the graphics chip, handed over a little at a time so no frame
-// waits on it: pictures sent a few megabytes at a time, shaders compiled a
-// few milliseconds at a time, and a fence after each batch, so the next one
-// is only sent once the chip has caught up with the last. Readiness (a
-// shader's link) is only asked after a fence has signalled, when asking no
-// longer waits on a queue. Nothing here throws or rejects: a context lost, or
-// a renderer disposed, midway just ends the work early.
+// The graphics chip's work, spread over frames: what a world sends it before
+// it's shown (its pictures, its shaders, one draw of everything), a slice at
+// a time, never asking the chip anything that would make the page wait.
 //
-// Every function takes `frame` (what to wait for between polls), so tests can
-// drive it without a browser.
+// Why: a world's whole warm-up done in one frame froze it for seconds
+// (docs/research/2026-10-07-frame-hitches.md). Pictures sent in one go,
+// shaders compiled in one go and then asked about (a synchronous question
+// waits for the chip's process to get through everything queued before it),
+// and the first draw of a hundred new shaders, each landed in a single
+// frame. Here each goes in slices, and between slices the page waits on a
+// fence: a marker put in the chip's queue that's asked about without
+// blocking, signalled once the chip has got through everything before it.
+// Only then is a shader asked whether it's linked, which by then costs
+// nothing.
+//
+// fence(renderer, { frame, cap }) → once the chip has caught up
+// uploaded(renderer, texture) → whether it's been sent (or never waits on it)
+// textureBytes(texture) → about how big it is on the chip
+// uploadSlices(renderer, textures, { sliceMB, sliceMs, onStep, frame, alive }) → how many were sent
+// drawables(roots) → one object per material and kind of mesh, hidden ones too
+// compileSlices(renderer, roots, camera, scene, { sliceMs, batch, onStep, frame, alive, cap, target }) → the materials
+// warmDraw(renderer, render, roots, { frame }) → everything drawn once, out of sight
+// prepareScene({ renderer, roots, scene, camera, render, onProgress, frame, alive, target })
+//
+// `frame` is how to wait for the next frame (requestAnimationFrame by
+// default); `alive()` says whether the world is still wanted (one left
+// while it prepares stops at the next slice). Nothing here throws, and
+// every promise resolves, a lost context included.
 
-import { revealAll, texturesUnder, uploadTexture } from './renderer';
+export const nextFrame = () => new Promise((resolve) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => resolve()) : setTimeout(resolve, 16)));
+const clock = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+const yes = () => true;
 
-// The next animation frame, or a tenth of a second, whichever comes first:
-// a hidden tab has no animation frames, and a warm-up started there should
-// go on (and not have every cap run out at once when the tab comes back).
-export const nextFrame = () =>
-  new Promise((resolve) => {
-    let timer = 0;
-    const go = () => {
-      clearTimeout(timer);
-      resolve();
-    };
-    if (typeof requestAnimationFrame === 'function') {
-      timer = setTimeout(go, 100);
-      requestAnimationFrame(go);
-    } else setTimeout(go, 16);
-  });
-
-const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
-
-// (a renderer that can't say counts as gone)
-const lost = (renderer) => {
+const contextOf = (renderer) => {
   try {
-    return renderer.getContext().isContextLost();
+    return renderer.getContext();
+  } catch {
+    return null;
+  }
+};
+const lostContext = (gl) => {
+  try {
+    return !gl || gl.isContextLost();
   } catch {
     return true;
   }
 };
 
-const materialsOf = (o) => (Array.isArray(o.material) ? o.material : o.material ? [o.material] : []);
+// ── shaders known to have linked ──
+// (the frame guard draws a material at once only if its shader is one of
+// these: one still linking, drawn, makes the frame wait for the link)
+const linkedPrograms = new WeakSet();
+export const markLinked = (program) => {
+  if (program && typeof program === 'object') linkedPrograms.add(program);
+};
+export const knownLinked = (program) => Boolean(program) && linkedPrograms.has(program);
 
-// Resolves once the graphics chip has done everything sent to it so far:
-// WebGL2's fenceSync, asked about once a frame (asking never waits). Without
-// WebGL2, two frames. Also resolves if the context goes, anything throws, or
-// `cap` milliseconds pass, but with false then: the chip may still have a
-// backlog, so anything that would wait on it (a shader's isReady) mustn't be
-// asked.
-export async function fence(renderer, { frame = nextFrame, cap = 5000 } = {}) {
-  let gl;
+// ── a fence ──
+
+export function fence(renderer, { frame = nextFrame, cap = 5000 } = {}) {
+  const gl = contextOf(renderer);
+  const twoFrames = () => frame().then(frame);
+  if (!gl || typeof gl.fenceSync !== 'function') return twoFrames();
   let sync = null;
   try {
-    gl = renderer.getContext();
-    if (typeof gl.fenceSync !== 'function') {
-      await frame();
-      await frame();
-      return true;
-    }
-    sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE ?? 0x9117, 0);
-    if (!sync) return false;
+    sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
     gl.flush();
-    const t0 = now();
-    const signalled = gl.SIGNALED ?? 0x9119;
-    const status = gl.SYNC_STATUS ?? 0x9114;
-    for (;;) {
-      await frame();
-      if (gl.isContextLost() || now() - t0 > cap) return false;
-      if (gl.getSyncParameter(sync, status) === signalled) return true;
-    }
   } catch {
-    // gone with its context: nothing left to wait for
-    return false;
-  } finally {
-    try {
-      if (sync) gl.deleteSync(sync);
-    } catch {
-      // (the context took it)
-    }
+    sync = null;
   }
+  if (!sync) return twoFrames();
+  const t0 = clock();
+  return new Promise((resolve) => {
+    const done = () => {
+      try {
+        gl.deleteSync(sync);
+      } catch {
+        // gone with its context
+      }
+      resolve();
+    };
+    const check = () => {
+      let over = true;
+      try {
+        // (asked without blocking: the answer is the browser's, kept up to date between tasks)
+        over = lostContext(gl) || gl.getSyncParameter(sync, gl.SYNC_STATUS) === gl.SIGNALED || clock() - t0 > cap;
+      } catch {
+        over = true;
+      }
+      if (over) done();
+      else frame().then(check);
+    };
+    frame().then(check);
+  });
 }
 
-// Whether a picture has nothing (more) to send before its first draw: it's up
-// already, it has no picture yet, or it's one three.js sends every frame it
-// changes (a video, what a render target draws into). Only the first upload
-// counts: a canvas redrawn every frame is up once it's been sent once.
-export function uploaded(renderer, texture) {
-  if (!texture || texture.isRenderTargetTexture || texture.isVideoTexture || texture.version === 0) return true;
-  const image = texture.image;
-  if (!image || (Array.isArray(image) && !image.length)) return true;
+// ── pictures ──
+
+const propsOf = (renderer, thing) => {
   try {
-    return !!renderer.properties.get(texture).__webglInit;
+    return renderer.properties.get(thing);
   } catch {
-    return true; // a renderer that can't say can't be sent to either
+    return {};
   }
+};
+
+// Whether a picture is on the chip already, or is one nothing waits to
+// send: no data yet (three sends it once there is), a render target's (made
+// on the chip), a video (sent every frame anyway), or one sent once and
+// changed since (a canvas redrawn every frame: only a first send is big).
+export function uploaded(renderer, t) {
+  if (!t?.isTexture) return true;
+  if (t.isRenderTargetTexture || t.isVideoTexture || t.version === 0) return true;
+  const img = t.image;
+  if (!img || (Array.isArray(img) ? img.length === 0 : img.complete === false)) return true;
+  return propsOf(renderer, t).__webglInit === true;
 }
 
-// About how many bytes a picture takes on the graphics chip: its mips' data
-// when it's compressed, else four bytes a pixel.
-export function textureBytes(texture) {
-  if (texture.isCompressedTexture && texture.mipmaps?.length) {
-    let sum = 0;
-    for (const mip of texture.mipmaps) sum += mip?.data?.byteLength ?? 0;
-    return sum;
+export function textureBytes(t) {
+  if (!t) return 0;
+  if (t.isCompressedTexture || t.isCompressedArrayTexture) {
+    let n = 0;
+    for (const m of t.mipmaps ?? []) n += m?.data?.byteLength ?? 0;
+    return n;
   }
-  const images = Array.isArray(texture.image) ? texture.image : [texture.image];
-  let sum = 0;
-  for (const img of images) if (img) sum += (img.width || 0) * (img.height || 0) * (img.depth || 1) * 4;
-  return sum;
+  const img = Array.isArray(t.image) ? t.image[0] : t.image;
+  const faces = Array.isArray(t.image) ? t.image.length : 1;
+  const w = img?.width ?? img?.naturalWidth ?? img?.videoWidth ?? 0;
+  const h = img?.height ?? img?.naturalHeight ?? img?.videoHeight ?? 0;
+  return w * h * (img?.depth ?? 1) * 4 * faces;
 }
 
-// The pictures not yet up, sent smallest first, a fence whenever what's been
-// sent since the last reaches `sliceMB`. Resolves with how many were sent.
-export async function uploadSlices(renderer, textures, { sliceMB = 24, onStep, frame = nextFrame, alive = () => true } = {}) {
-  const todo = [...new Set(textures)].filter((t) => !uploaded(renderer, t));
-  const sized = todo.map((t) => [t, textureBytes(t)]).sort((a, b) => a[1] - b[1]);
-  const slice = sliceMB * 1024 * 1024;
-  let bytes = 0;
+const send = (renderer, t) => {
+  try {
+    renderer.initTexture(t);
+  } catch {
+    /* it goes up on its first frame instead */
+  }
+};
+
+// (a slice ends at `sliceMB` of pictures or `sliceMs` of the page's time,
+// whichever comes first: many small pictures cost more than their size says)
+export async function uploadSlices(renderer, textures, { sliceMB = 24, sliceMs = 8, onStep = null, frame = nextFrame, alive = yes } = {}) {
+  const todo = [...new Set(textures)].filter((t) => !uploaded(renderer, t)).sort((a, b) => textureBytes(a) - textureBytes(b));
+  const budget = sliceMB * 1048576;
+  let inSlice = 0;
   let sent = 0;
-  for (const [t, size] of sized) {
-    if (!alive() || lost(renderer)) break;
-    uploadTexture(renderer, t);
+  let t0 = clock();
+  for (const t of todo) {
+    if (!alive() || lostContext(contextOf(renderer))) break;
+    send(renderer, t);
     sent += 1;
-    bytes += size;
-    onStep?.(sent, sized.length);
-    if (bytes >= slice) {
-      bytes = 0;
+    inSlice += textureBytes(t);
+    onStep?.(sent / todo.length);
+    if (inSlice >= budget || clock() - t0 >= sliceMs) {
+      inSlice = 0;
       await fence(renderer, { frame });
+      t0 = clock();
     }
   }
-  if (bytes > 0 && alive()) await fence(renderer, { frame });
+  if (inSlice > 0) await fence(renderer, { frame });
+  onStep?.(1);
   return sent;
 }
 
-const ids = new WeakMap();
-let nextId = 1;
-const idOf = (m) => {
-  if (!ids.has(m)) ids.set(m, nextId++);
-  return ids.get(m);
+// ── shaders ──
+
+const DRAWN = (o) => (o.isMesh || o.isPoints || o.isLine || o.isSprite) && o.material;
+const materialsOf = (o) => (Array.isArray(o.material) ? o.material : o.material ? [o.material] : []);
+// what decides a material's shader besides itself: three.js makes a program
+// per material and kind of mesh (skinned, instanced, batched, morphed, with
+// vertex colours)
+const kindOf = (o) => {
+  const g = o.geometry;
+  return `${materialsOf(o)
+    .map((m) => m.uuid)
+    .join(',')}|${o.isSkinnedMesh ? 's' : ''}${o.isInstancedMesh ? 'i' : ''}${o.isBatchedMesh ? 'b' : ''}${g?.morphAttributes && Object.keys(g.morphAttributes).length ? 'm' : ''}${g?.attributes?.color ? 'c' : ''}${o.isPoints ? 'p' : ''}${o.isLine ? 'l' : ''}${o.isSprite ? 'x' : ''}`;
 };
-// Every object under `roots` that draws (hidden ones too), one for each kind
-// of shader it needs: the same materials drawn the same way share one, while
-// skinning, instancing, batching, morphs or vertex colours each make another.
+
 export function drawables(roots) {
   const seen = new Set();
-  const found = [];
+  const out = [];
   for (const root of roots) {
     root?.traverse?.((o) => {
-      if (!(o.isMesh || o.isPoints || o.isLine || o.isSprite)) return;
-      const mats = materialsOf(o);
-      if (!mats.length) return;
-      const g = o.geometry;
-      const morph = !!(g?.morphAttributes && Object.values(g.morphAttributes).some((a) => a?.length));
-      const key = [mats.map(idOf).join(','), !!o.isSkinnedMesh, !!o.isInstancedMesh, !!o.isBatchedMesh, morph, !!g?.attributes?.color].join('|');
-      if (seen.has(key)) return;
-      seen.add(key);
-      found.push(o);
+      if (!DRAWN(o)) return;
+      const k = kindOf(o);
+      if (seen.has(k)) return;
+      seen.add(k);
+      out.push(o);
     });
   }
-  return found;
+  return out;
 }
 
-// A stand-in root for renderer.compile: its walk visits just `list`, and it
-// shows no lights of its own (the lights are the scene's).
-export const batchRoot = (list) => ({
+// a stand-in root for renderer.compile: just these objects, compiled
+// against the scene's lights and `lights` (those of roots not in the scene
+// yet: a model readied before it's added brings its own)
+const batchRoot = (list, lights = []) => ({
   traverse(fn) {
-    list.forEach(fn);
+    for (const o of list) fn(o);
   },
-  traverseVisible() {},
+  traverseVisible(fn) {
+    for (const l of lights) fn(l);
+  },
 });
-
-// The shaders under `roots` compiled in batches, each about `sliceMs` of the
-// page's time (the next batch's size is set from how long the last one's
-// objects took), against `scene`'s lights, with a fence after each. Then
-// each program is asked once a frame whether it has linked, until all have,
-// the context has gone or `cap` has passed. If the last fence didn't signal
-// (a cap, a lost context) nothing is asked: asking could wait on the chip's
-// backlog. Resolves with the materials.
-export async function compileSlices(renderer, roots, camera, scene, { sliceMs = 8, onStep, frame = nextFrame, cap = 20000, alive = () => true } = {}) {
-  const list = drawables(roots);
-  const materials = new Set();
-  const t0 = now();
-  let size = 1;
-  let done = 0;
-  let caughtUp = true;
-  while (done < list.length) {
-    if (!alive() || lost(renderer) || now() - t0 > cap) return materials;
-    const batch = list.slice(done, done + size);
-    const start = now();
-    try {
-      for (const m of renderer.compile(batchRoot(batch), camera, scene)) materials.add(m);
-    } catch {
-      return materials; // the renderer has gone
-    }
-    const each = (now() - start) / batch.length;
-    done += batch.length;
-    onStep?.(done, list.length);
-    // (no more than double, so one quick batch can't promise a huge one)
-    size = Math.max(1, Math.min(size * 2, Math.floor(sliceMs / Math.max(each, 0.01))));
-    caughtUp = await fence(renderer, { frame });
+const rootOf = (o) => {
+  while (o.parent) o = o.parent;
+  return o;
+};
+function lightsOutside(roots, scene) {
+  const out = [];
+  for (const root of roots) {
+    if (!root?.traverseVisible || rootOf(root) === scene) continue;
+    root.traverseVisible((o) => o.isLight && out.push(o));
   }
-  if (!caughtUp) return materials;
-  const pending = [...materials];
-  while (pending.length) {
-    if (!alive() || lost(renderer) || now() - t0 > cap) break;
+  return out;
+}
+
+const ready = (renderer, m) => {
+  const program = propsOf(renderer, m).currentProgram;
+  if (!program) return true; // (gone with its renderer, or nothing to wait for)
+  let ok = true;
+  try {
+    ok = program.isReady();
+  } catch {
+    ok = true;
+  }
+  if (ok) markLinked(program);
+  return ok;
+};
+
+// (`target`: where the scene will be drawn when that isn't the canvas, a
+// composer's buffer, whose shaders differ: no tone mapping, linear colour)
+export async function compileSlices(renderer, roots, camera, scene, { sliceMs = 8, batch = null, onStep = null, frame = nextFrame, alive = yes, cap = 20000, target } = {}) {
+  const objects = drawables(roots);
+  const lights = lightsOutside(roots, scene);
+  const materials = new Set();
+  let size = batch ?? 4;
+  let i = 0;
+  while (i < objects.length) {
+    if (!alive() || lostContext(contextOf(renderer))) return materials;
+    const list = objects.slice(i, i + size);
+    i += list.length;
+    const t0 = clock();
+    const keep = target !== undefined ? (renderer.getRenderTarget?.() ?? null) : null;
     try {
-      for (let i = pending.length - 1; i >= 0; i--) {
-        // (a material whose program has gone counts as done)
-        const program = renderer.properties.get(pending[i]).currentProgram;
-        if (!program || program.isReady()) pending.splice(i, 1);
+      if (target !== undefined) renderer.setRenderTarget(target);
+      for (const m of renderer.compile(batchRoot(list, lights), camera, scene)) materials.add(m);
+    } catch (err) {
+      if (import.meta.env?.DEV) console.warn('[gpuWork] compile failed', err);
+    } finally {
+      try {
+        if (target !== undefined) renderer.setRenderTarget(keep);
+      } catch {
+        // gone with its renderer
       }
-    } catch {
-      break;
     }
+    // the next batch about a slice's worth, judged by this one
+    if (!batch) {
+      const each = (clock() - t0) / list.length;
+      size = Math.max(1, Math.min(64, Math.floor(sliceMs / Math.max(0.05, each))));
+    }
+    onStep?.(0.8 * (i / objects.length));
+    await fence(renderer, { frame });
+  }
+  // linked yet? (asked only now the chip has caught up, so asking is free)
+  const pending = [...materials];
+  const t0 = clock();
+  while (pending.length && alive() && !lostContext(contextOf(renderer)) && clock() - t0 < cap) {
+    for (let k = pending.length - 1; k >= 0; k--) if (ready(renderer, pending[k])) pending.splice(k, 1);
+    onStep?.(0.8 + 0.2 * (1 - pending.length / Math.max(1, materials.size)));
     if (pending.length) await frame();
   }
+  onStep?.(1);
   return materials;
 }
 
-// Everything under `roots` drawn once into one pixel, nothing hidden or
-// culled, so the first real frame has nothing left to create; then put back
-// as it was, and fenced.
+// ── one draw of everything ──
+
+// Everything under `roots` shown for one draw: what's hidden too, and
+// nothing culled for being off screen, so a scene drawn once this way (behind
+// something that covers it) has every texture and mesh on the graphics chip
+// and every shader made before the moment it's first seen (three.js sends
+// each the first time it's drawn, and that frame waits). Lights stay as they
+// were: a hidden one shown would make shaders of its own. Returns the undo.
+export function revealAll(...roots) {
+  const undo = [];
+  const set = (o, key, to) => {
+    if (o[key] === to) return;
+    undo.push([o, key, o[key]]);
+    o[key] = to;
+  };
+  const show = (o, hidden) => {
+    const was = hidden || !o.visible;
+    if (o.isLight) {
+      if (was) set(o, 'visible', false);
+      return;
+    }
+    set(o, 'visible', true);
+    if (o.isMesh || o.isPoints || o.isLine || o.isSprite) set(o, 'frustumCulled', false);
+    for (const child of o.children) show(child, was);
+  };
+  for (const root of roots) show(root, false);
+  return () => {
+    for (let i = undo.length - 1; i >= 0; i--) undo[i][0][undo[i][1]] = undo[i][2];
+  };
+}
+
+
+// Everything under `roots` drawn once by the world's own `render` (passes
+// and all), hidden things too and nothing culled, into one pixel: what's
+// sent the first time a thing is drawn (its buffers, the chip's own state
+// for each shader) goes now, not on the first frame that's seen.
 export async function warmDraw(renderer, render, roots, { frame = nextFrame } = {}) {
   const undo = revealAll(...roots);
-  const box = {
-    copy(v) {
-      Object.assign(this, { x: v.x, y: v.y, z: v.z, w: v.w });
-      return this;
-    },
-  };
-  let scissorWas = null;
   try {
-    renderer.getScissor(box);
-    scissorWas = renderer.getScissorTest();
-    renderer.setScissorTest(true);
-    renderer.setScissor(0, 0, 1, 1);
+    renderer.setScissor?.(0, 0, 1, 1);
+    renderer.setScissorTest?.(true);
     render();
-  } catch {
-    // a renderer gone midway: the first frame does it instead
+  } catch (err) {
+    if (import.meta.env?.DEV) console.warn('[gpuWork] warm draw failed', err);
   } finally {
-    try {
-      if (scissorWas !== null) {
-        renderer.setScissor(box.x, box.y, box.z, box.w);
-        renderer.setScissorTest(scissorWas);
-      }
-    } catch {
-      // (gone with its renderer)
-    }
     undo();
+    try {
+      renderer.setScissorTest?.(false);
+      renderer.setRenderTarget?.(null);
+    } catch {
+      // gone with its renderer
+    }
   }
   await fence(renderer, { frame });
 }
 
-// A world's whole warm-up: its pictures sent, its shaders compiled and a
-// first draw, with `onProgress(fraction, step)` along the way. Stops at the
-// next slice once `alive()` says the world has been left.
-const WEIGHTS = { pictures: 0.35, shaders: 0.45, draw: 0.2 };
-export async function prepareScene({ renderer, roots, scene, camera, render, onProgress, alive = () => true, frame = nextFrame }) {
-  const list = (Array.isArray(roots) ? roots : [roots]).filter(Boolean);
-  const report = (f, step) => {
-    try {
-      onProgress?.(f, step);
-    } catch {
-      // a page's progress bar isn't the warm-up's business
-    }
+// ── a world's whole warm-up ──
+
+const share = { pictures: [0, 0.35], shaders: [0.35, 0.8], 'first draw': [0.8, 1] };
+
+export async function prepareScene({ renderer, roots, scene, camera, render = null, onProgress = null, frame = nextFrame, alive = yes, sliceMB, sliceMs, target } = {}) {
+  const tell = (step) => (f) => {
+    const [a, b] = share[step];
+    onProgress?.(a + (b - a) * Math.min(1, Math.max(0, f)), step);
   };
-  const going = () => alive() && !lost(renderer);
-  report(0, 'pictures');
+  if (!alive()) return;
   const textures = new Set();
-  for (const root of list) for (const t of texturesUnder(root)) textures.add(t);
-  await uploadSlices(renderer, [...textures], { frame, alive: going, onStep: (i, n) => report((WEIGHTS.pictures * i) / n, 'pictures') });
-  if (!going()) return;
-  report(WEIGHTS.pictures, 'shaders');
-  await compileSlices(renderer, list, camera, scene, {
-    frame,
-    alive: going,
-    onStep: (i, n) => report(WEIGHTS.pictures + (WEIGHTS.shaders * i) / n, 'shaders'),
-  });
-  if (!going()) return;
-  report(WEIGHTS.pictures + WEIGHTS.shaders, 'first draw');
-  const draw = render ?? (() => renderer.render(scene, camera));
-  await warmDraw(renderer, draw, list, { frame });
-  if (alive()) report(1, 'first draw');
+  for (const root of roots) {
+    root?.traverse?.((o) => {
+      for (const m of materialsOf(o)) {
+        for (const v of Object.values(m)) if (v?.isTexture) textures.add(v);
+        if (m.uniforms) for (const u of Object.values(m.uniforms)) if (u?.value?.isTexture) textures.add(u.value);
+      }
+    });
+  }
+  tell('pictures')(0);
+  await uploadSlices(renderer, [...textures], { sliceMB, onStep: tell('pictures'), frame, alive });
+  if (!alive()) return;
+  tell('shaders')(0);
+  await compileSlices(renderer, roots, camera, scene, { sliceMs, onStep: tell('shaders'), frame, alive, target });
+  if (!alive()) return;
+  tell('first draw')(0);
+  if (render) await warmDraw(renderer, render, roots, { frame });
+  tell('first draw')(1);
 }

@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import LoadingVeil from '../../../worlds/LoadingVeil';
-import { showPrepared } from '../../../../lib/prepareWorld';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -86,7 +84,6 @@ export default function CirithUngolWorld({ onLeave }) {
 }
 
 function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
-  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   // other travellers online, as ghosts (../useTravellers): in the Tower's
   // courtyard, or in Shelob's tunnels, whichever you're walking
   const trav = useTravellers('cirith-ungol', gl === 'on');
@@ -156,9 +153,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         api.current = a;
         if (import.meta.env.DEV) window.__CIRITHUNGOL__ = { api: a, sim: sim.current, complete };
         fit();
-        // everything onto the graphics chip behind the veil, then shown
-        // (lib/prepareWorld: PREPARE_WAIT at most, then it's told to stop)
-        showPrepared((report, going) => a.prepare?.(report, going), { setGl, setPrep, alive: () => !dead });
+        setGl('on');
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -453,7 +448,6 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
-    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
@@ -462,7 +456,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     s.stepT += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
-    const pad = gl === 'on' ? readPad() : null; // (nothing pressed behind the veil)
+    const pad = readPad();
     const before = s.padBefore ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
     s.padBefore = pad ?? {};
@@ -697,7 +691,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
       setHud({ zone: s.zone, mode: s.mode, near: s.near, moved: s.moved, talking: s.talking, line: s.talk?.at ?? null, morgul: m ? { pull: m.pull, pausing: m.pausing, gaze: m.gaze } : null, climb: c ? { s: c.s, stamina: c.stamina, spent: c.spent, ledge: onLedge(c.s), crumbling: crumbling(c.s) } : null, phial: ph ? { charge: ph.charge, on: ph.on } : null, hunted: ['alert', 'chase'].includes(s.shelob?.list?.[0]?.mode), duel: du ? { phase: du.phase, wounds: du.wounds, hearts: du.hearts } : null, spotted: Boolean(s.orcs?.list.some((w) => w.mode === 'alert' || w.mode === 'chase')), crumbs: cr ? { state: cr.state, left: cr.left, time: crumbsLeft(cr), stirred: cr.stirred, say: s.said } : null });
     }
     if (++s.frame % 120 === 0 && s.mode === 'walk' && (s.zone === 'lair' || s.zone === 'tower')) local.set(AT, { zone: s.zone, x: s.h.x, z: s.h.z, face: s.h.face });
-  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
+  }, live);
 
   // look round by dragging; the stick on touch
   const drag = useRef(null);
@@ -726,28 +720,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     }
     drag.current = null;
   };
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   const hold = (name, v) => ({
     onPointerDown: (e) => {
       e.preventDefault();
@@ -778,7 +751,6 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     <div ref={box} className="shire-stage cirith-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['morgul', 'climb', 'duel', 'crumbs'].includes(mode) || (walking && hud.zone === 'lair') || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Cirith Ungol in 3D: Minas Morgul's green light, the endless stairs, Shelob's lair, and the Tower" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">To the Morgul vale…</p>}
-      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="Cirith Ungol" line="To the Morgul vale…" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">
@@ -813,7 +785,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -976,7 +948,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           )}
         </div>
       )}
-      {walking && touch && (hud.zone === 'lair' || hud.zone === 'tower') && <Stick onStick={onStick} />}
+      {walking && touch && (hud.zone === 'lair' || hud.zone === 'tower') && <Stick onMove={onStick} />}
       {list && (
         <QuestList title="Things to do" quests={prog.quests} next={prog.next} onClose={() => setList(false)}>
           <SideList tasks={[sideTask]} onGo={startCrumbs} canGo={(t) => t.open && (sim.current.mode === 'walk' || sim.current.mode === 'end')} />

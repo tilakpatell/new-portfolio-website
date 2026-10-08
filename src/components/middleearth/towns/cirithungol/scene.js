@@ -14,7 +14,6 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
-import { stagePrepare } from '../../../../lib/stagePrepare';
 import { createHouse } from '../../../../lib/three/house';
 import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
@@ -33,7 +32,7 @@ import { createGhosts } from '../ghosts';
 import { createCirithKit } from './props';
 import { BRAWL, BRIDGE, CITY_YAW, COURT, HIDE, LAIR_OUT, MORGUL_ROAD, PASS, TOWER_DOOR, TOWER_PILLARS, TUNNELS, roughHeight, stairAt } from './layout';
 import { CRUMBS, PHIAL, STAIRS, cloakLift } from './rules';
-import { castComing, castDo, castPlay, drawWatcher, fight, releaseCast, tickCast, upgrade } from '../../cast3d';
+import { castDo, castPlay, drawWatcher, fight, releaseCast, tickCast, upgrade } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -142,8 +141,6 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
   const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 2000, bloom: { strength: 0.8, radius: 0.6, threshold: 0.8 }, onLost });
-  // made ready behind its loading veil before its first frame (lib/stagePrepare)
-  const prep = stagePrepare(stage, { grounds: () => grounds, late: () => castComing(stage.scene) });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
   // on everything, under the house tone mapper; it follows the moods below
@@ -853,7 +850,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     // the people on the cast (../../cast3d.js), drawn for this frame
     tickCast(scene, camera, dt);
     renderer.info.reset();
-    if (!prep.held()) stage.render(ms / fast);
+    stage.render(ms / fast);
   };
 
   const fxEvent = (type, id) => {
@@ -890,18 +887,13 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked in each zone outdoors when it's first shown ──
   const grounds = [
-    groundTown({ place: 'cirithungol-vale', renderer, scene, terrain: valeLand, outdoors: zones.vale, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2420, clip: true }),
-    groundTown({ place: 'cirithungol-lair', renderer, scene, terrain: passLand, outdoors: zones.lair, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2420, clip: true }),
+    groundTown({ renderer, scene, terrain: valeLand, outdoors: zones.vale, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2420, clip: true }),
+    groundTown({ renderer, scene, terrain: passLand, outdoors: zones.lair, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2420, clip: true }),
   ];
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);
 
   return {
-    // everything onto the graphics chip behind the page's veil, and true meanwhile
-    prepare: prep.prepare,
-    get preparing() {
-      return prep.preparing;
-    },
     ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,

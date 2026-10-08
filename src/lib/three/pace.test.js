@@ -92,6 +92,39 @@ describe('pace', () => {
     expect(told).toBe(0);
   });
 
+  it('says how many runs in a row it has been at its softest with frames still late', () => {
+    const pace = createPace({ onFloor: () => {} });
+    let { t } = run(pace, 1000, 120, 16.7);
+    expect(pace.stuck).toBe(0);
+    while (pace.level < STEPS.length - 1) ({ t } = run(pace, t, 1, 50)); // down to the softest
+    expect(pace.stuck).toBe(0); // (there, but not yet late there)
+    ({ t } = run(pace, t, 60, 50)); // three runs late at the softest
+    expect(pace.stuck).toBe(3);
+    ({ t } = run(pace, t, 20, 16.7)); // a run on time
+    expect(pace.stuck).toBe(0);
+  });
+
+  it('a reset starts it again from its sharpest, its waits as they were at first', () => {
+    const pace = createPace({ onFloor: () => {} });
+    let { t } = run(pace, 1000, 120, 16.7);
+    ({ t } = run(pace, t, 25, 33.4));
+    ({ t } = run(pace, t, 300, 16.7)); // back up after the wait
+    ({ t } = run(pace, t, 25, 33.4)); // and straight down again: the next wait twice as long
+    ({ t } = run(pace, t, 60, 50)); // and on down
+    expect(pace.level).toBeGreaterThan(1);
+    pace.reset();
+    expect(pace.level).toBe(0);
+    expect(pace.scale).toBe(1);
+    expect(pace.stuck).toBe(0);
+    // the next late run steps to the first step, not one past where it was
+    ({ t } = run(pace, t + 5000, 40, 16.7));
+    const down = run(pace, t, 25, 33.4);
+    expect(down.changes).toEqual([STEPS[1]]);
+    // and comes back up after the first wait (4 s), not the doubled one
+    const back = run(pace, down.t, 300, 16.7);
+    expect(back.changes).toEqual([STEPS[0]]);
+  });
+
   it('never goes past its last step', () => {
     const pace = createPace();
     const { t } = run(pace, 1000, 120, 16.7);
@@ -100,43 +133,31 @@ describe('pace', () => {
     expect(pace.scale).toBe(STEPS[STEPS.length - 1]);
   });
 
-  describe('ceiling', () => {
-    it('starts at the ceiling and reports its scale', () => {
-      const pace = createPace({ ceiling: 2 });
-      expect(pace.level).toBe(2);
-      expect(pace.scale).toBe(STEPS[2]);
-    });
+  it("never climbs back with climb: false (each step's a canvas resize)", () => {
+    const pace = createPace({ climb: false, settle: 0, wait: 100 });
+    let t = 0;
+    const run = (dt, n) => {
+      let changed = null;
+      for (let i = 0; i < n; i++) {
+        t += dt;
+        const c = pace.frame(t);
+        if (c !== null) changed = c;
+      }
+      return changed;
+    };
+    run(16, 2);
+    run(60, 40);
+    const down = pace.level;
+    expect(down).toBeGreaterThan(0);
+    run(16, 2000);
+    expect(pace.level).toBe(down);
+  });
 
-    it('steps down from the ceiling and goes back up only as far as the ceiling', () => {
-      const pace = createPace({ ceiling: 1 });
-      let { t } = run(pace, 1000, 120, 16.7);
-      const slow = run(pace, t, 25, 33.4);
-      expect(slow.changes).toEqual([STEPS[2]]);
-      const back = run(pace, slow.t, 300, 16.7);
-      expect(back.changes).toEqual([STEPS[1]]);
-      const more = run(pace, back.t, 1800, 16.7); // a long calm never goes above it
-      expect(more.changes).toEqual([]);
-      expect(pace.level).toBe(1);
-    });
-
-    it('can be set later: it moves a sharper level down to it, and leaves a softer one', () => {
-      const pace = createPace();
-      pace.ceiling = 2;
-      expect(pace.ceiling).toBe(2);
-      expect(pace.level).toBe(2);
-      pace.ceiling = 1;
-      expect(pace.level).toBe(2);
-      const { changes } = run(pace, 1000, 600, 16.7); // calm: climbs to the new ceiling and stops
-      expect(changes).toEqual([STEPS[1]]);
-      expect(pace.level).toBe(1);
-    });
-
-    it('clamps to the steps', () => {
-      const pace = createPace();
-      pace.ceiling = 99;
-      expect(pace.level).toBe(STEPS.length - 1);
-      pace.ceiling = -3;
-      expect(pace.ceiling).toBe(0);
-    });
+  it('set() puts it at a step and never climbs past it', () => {
+    const pace = createPace({ wait: 100 });
+    pace.set(2);
+    expect(pace.level).toBe(2);
+    run(pace, 1000, 3000, 16.7);
+    expect(pace.level).toBe(2);
   });
 });

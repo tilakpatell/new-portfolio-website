@@ -5,8 +5,6 @@ import '@fontsource/press-start-2p/400.css';
 import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 import { use3D } from '../../lib/gpu';
-import { showPrepared } from '../../lib/prepareWorld';
-import LoadingVeil from '../worlds/LoadingVeil';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
 import { useVoiced } from '../../lib/useVoiced';
@@ -76,7 +74,7 @@ function Heart({ full }) {
 
 export default function DotMatrixWorld() {
   const three = use3D();
-  const [gl, setGl] = useState('loading'); // loading | preparing | on | failed | lost
+  const [gl, setGl] = useState('loading'); // loading | on | failed | lost
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="dm-world" aria-labelledby="dm-title">
@@ -86,7 +84,6 @@ export default function DotMatrixWorld() {
 }
 
 function World({ gl, setGl }) {
-  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -167,12 +164,10 @@ function World({ gl, setGl }) {
         api.current = a;
         a.setPalette(palette);
         fit();
-        // everything onto the graphics chip behind the veil before the first
-        // frame (the scene's prepare; lib/prepareWorld: PREPARE_WAIT at most,
-        // then it's told to stop)
-        await showPrepared((report, going) => a.prepare(view(), report, going), { setGl, setPrep, alive: () => !dead });
+        await a.warm(view());
         if (dead) return undefined;
         if (import.meta.env.DEV) window.__DMG__ = { api: a, sim: sim.current }; // for the QA scripts
+        setGl('on');
         return undefined;
       })
       .catch((e) => {
@@ -582,7 +577,7 @@ function World({ gl, setGl }) {
 
   return (
     <div ref={box}>
-      <div ref={stage} className="dm-stage" data-palette={palette} data-on={gl === 'on' || undefined}>
+      <div ref={stage} className="dm-stage" data-tour="cartridges" data-palette={palette} data-on={gl === 'on' || undefined}>
         <canvas ref={canvas} className="dm-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} aria-label="Dot Matrix island, in 3D. Walk with the arrow keys or WASD, jump with Space, talk, read and play with X, turn the camera with Q and E, zoom with the wheel or + and -." role="img" />
         <div className="dm-lcd" aria-hidden="true" />
         <div className="dm-names" aria-hidden="true">
@@ -592,8 +587,7 @@ function World({ gl, setGl }) {
             </span>
           ))}
         </div>
-        {gl !== 'on' && gl !== 'preparing' && <p className="dm-loading">Loading the island…</p>}
-        <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="Dot Matrix island" line="Loading the island…" />
+        {gl !== 'on' && <p className="dm-loading">Loading the island…</p>}
 
         <div className="dm-hud dm-hud-top">
           <div className="dm-stats">

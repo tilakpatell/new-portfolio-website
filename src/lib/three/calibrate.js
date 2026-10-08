@@ -1,182 +1,148 @@
-// Finding the sharpest drawing this machine can keep up with, before the
-// world is shown.
+// How sharp a world can afford to be on this machine, found once while its
+// loading screen is up rather than felt for frame by frame while it's played.
 //
-// While the veil is up the world is drawn a number of times at each of a few
-// pixel ratios, each frame timed on the graphics chip (with the disjoint timer
-// query extension, where there is one) or, without it, by drawing and then
-// reading a single pixel back, which waits for the chip to finish. The
-// sharpest ratio whose typical (median) frame fits the budget is the answer;
-// if none do, the softest. The answer is kept per graphics chip and world, so
-// a later visit can start from it.
+// lib/three/pace softens the picture when frames come late and sharpens it
+// again when they don't: on a laptop that see-saws (and on the runtime each
+// step was a canvas resize, which itself stalls). Here the world is drawn a
+// dozen times at each of the pace's steps, sharpest first, each frame timed
+// on the graphics chip (EXT_disjoint_timer_query_webgl2; without it, by
+// waiting on a one-pixel read), and the sharpest step whose typical frame
+// fits the budget is the one it starts at; the pace takes it as its ceiling
+// and only ever steps down from it. The answer is kept for this graphics
+// chip, this world and this screen (`tp-calibration`), so the next visit
+// starts there with a short check instead of the whole walk down.
+//
+// pickLevel(samples: [{ level, ms }], budget) → level   (pure)
+// gpuTimer(gl) → { measure(fn) → Promise<ms | null>, dispose() } | null
+// calibrate({ renderer, draw, setLevel, levels, budget, frames, frame, alive, start }) → Promise<level>
+// recall(key) → level | null; remember(key, level); calibrationKey(renderer, id, w, h) → string
 
-const STORE = 'tp-calibration';
+import { nextFrame } from './gpuWork';
 
-// the middle of a list of numbers (so one stray frame doesn't decide)
-const median = (values) => {
-  const sorted = values.slice().sort((a, b) => a - b);
-  const mid = sorted.length >> 1;
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+export const BUDGET = 12; // ms of the graphics chip's time a frame, under a 60 Hz beat with room to spare
+const KEY = 'tp-calibration';
+
+const median = (xs) => {
+  const s = [...xs].sort((a, b) => a - b);
+  return s.length ? s[Math.floor(s.length / 2)] : Infinity;
 };
 
-// samples: [{ ratio, ms }]. The largest ratio whose median ms fits the budget,
-// else the smallest ratio measured; null when there is nothing measured.
-export function pickRatio(samples, budget) {
+// The sharpest level whose frames' median fits the budget; the softest
+// level measured when none does.
+export function pickLevel(samples, budget = BUDGET) {
   const by = new Map();
-  for (const { ratio, ms } of samples) {
-    if (!by.has(ratio)) by.set(ratio, []);
-    by.get(ratio).push(ms);
+  for (const { level, ms } of samples) {
+    if (!Number.isFinite(ms)) continue;
+    if (!by.has(level)) by.set(level, []);
+    by.get(level).push(ms);
   }
-  let best = null;
-  let smallest = null;
-  for (const [ratio, list] of by) {
-    if (smallest === null || ratio < smallest) smallest = ratio;
-    if (median(list) <= budget && (best === null || ratio > best)) best = ratio;
-  }
-  return best ?? smallest;
+  const levels = [...by.keys()].sort((a, b) => a - b);
+  for (const l of levels) if (median(by.get(l)) <= budget) return l;
+  return levels.length ? levels[levels.length - 1] : 0;
 }
 
-// Times work on the graphics chip. begin() and end() wrap the draw; poll()
-// hands back the oldest finished frame's milliseconds, or null if none is
-// ready yet (it never waits). A frame the chip flagged as disturbed (disjoint)
-// is thrown away. Null where the extension isn't there.
-export function gpuTimer(gl) {
+// Frames timed on the graphics chip. A query's answer comes a few frames
+// later; it's asked for once a frame, never waited on.
+export function gpuTimer(gl, { frame = nextFrame, cap = 30 } = {}) {
   const ext = gl?.getExtension?.('EXT_disjoint_timer_query_webgl2');
-  if (!ext) return null;
-  const pending = []; // { q, tag }, oldest first
-  let open = null;
-  const timer = {
-    // begin(tag) marks the frame; after a poll, `tag` is the one the result was for
-    tag: undefined,
-    get pending() {
-      return pending.length;
+  if (!ext || typeof gl.createQuery !== 'function') return null;
+  return {
+    async measure(fn) {
+      const q = gl.createQuery();
+      gl.beginQuery(ext.TIME_ELAPSED_EXT, q);
+      try {
+        fn();
+      } finally {
+        gl.endQuery(ext.TIME_ELAPSED_EXT);
+      }
+      for (let i = 0; i < cap; i++) {
+        await frame();
+        if (gl.isContextLost()) break;
+        if (!gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) continue;
+        const ok = !gl.getParameter(ext.GPU_DISJOINT_EXT);
+        const ns = gl.getQueryParameter(q, gl.QUERY_RESULT);
+        gl.deleteQuery(q);
+        return ok ? ns / 1e6 : null;
+      }
+      gl.deleteQuery(q);
+      return null;
     },
-    begin(tag) {
-      if (open) return;
-      open = { q: gl.createQuery(), tag };
-      gl.beginQuery(ext.TIME_ELAPSED_EXT, open.q);
-    },
-    end() {
-      if (!open) return;
-      gl.endQuery(ext.TIME_ELAPSED_EXT);
-      pending.push(open);
-      open = null;
-    },
-    poll() {
-      timer.tag = undefined;
-      const head = pending[0];
-      if (!head || !gl.getQueryParameter(head.q, gl.QUERY_RESULT_AVAILABLE)) return null;
-      pending.shift();
-      timer.tag = head.tag;
-      const disturbed = gl.getParameter(ext.GPU_DISJOINT_EXT);
-      const ns = gl.getQueryParameter(head.q, gl.QUERY_RESULT);
-      gl.deleteQuery(head.q);
-      return disturbed ? null : ns / 1e6;
-    },
-    // lets go of every query not yet read
-    dispose() {
-      if (open) gl.endQuery(ext.TIME_ELAPSED_EXT);
-      for (const { q } of [...(open ? [open] : []), ...pending.splice(0)]) gl.deleteQuery(q);
-      open = null;
-    },
+    dispose() {},
   };
-  return timer;
 }
 
-// What a remembered ratio is keyed by: the graphics chip's own name (when the
-// browser tells it) and the world.
-export function gpuKey(gl, world) {
-  let name = 'unknown';
+// (without a timer: the draw and a one-pixel read, which waits for the chip
+// to finish it; only ever while the loading screen is up)
+const px = new Uint8Array(4);
+const waited = (gl, fn) => {
+  const t0 = performance.now();
+  fn();
   try {
-    const info = gl?.getExtension?.('WEBGL_debug_renderer_info');
-    const got = info && gl.getParameter(info.UNMASKED_RENDERER_WEBGL);
-    if (got) name = String(got);
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
   } catch {
-    // keep 'unknown'
+    // (a lost context: the time's still something)
   }
-  return `${name}|${world}`;
+  return performance.now() - t0;
+};
+
+export async function calibrate({ renderer, draw, setLevel, levels = [0, 1, 2, 3, 4], budget = BUDGET, frames = 12, frame = nextFrame, alive = () => true, start = 0 }) {
+  let gl = null;
+  try {
+    gl = renderer.getContext();
+  } catch {
+    return levels[0];
+  }
+  const timer = gpuTimer(gl, { frame });
+  const samples = [];
+  for (const level of levels.filter((l) => l >= start)) {
+    if (!alive()) break;
+    setLevel(level);
+    // (a couple first: the new size's buffers made, whatever's left sent)
+    for (let i = 0; i < 2; i++) {
+      draw();
+      await frame();
+    }
+    const times = [];
+    for (let i = 0; i < frames && alive(); i++) {
+      const ms = timer ? await timer.measure(draw) : waited(gl, draw);
+      if (ms != null) times.push(ms);
+      if (!timer) await frame();
+    }
+    for (const ms of times) samples.push({ level, ms });
+    if (times.length && median(times) <= budget) break; // (sharpest that fits: the softer ones needn't be tried)
+  }
+  return pickLevel(samples, budget);
 }
 
-const readAll = () => {
+export const calibrationKey = (renderer, id, w, h) => {
+  let chip = '';
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORE));
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    const gl = renderer.getContext();
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    chip = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : '';
+  } catch {
+    chip = '';
+  }
+  // (the screen in steps of 256 px, and its pixel ratio: what the frame's cost follows)
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  return `${chip}|${id}|${Math.round(w / 256)}x${Math.round(h / 256)}@${dpr}`;
+};
+
+const read = () => {
+  try {
+    return JSON.parse(globalThis.localStorage?.getItem(KEY) ?? '{}') ?? {};
   } catch {
     return {};
   }
 };
-
-export function recall(key) {
-  const v = readAll()[key];
-  return typeof v === 'number' && v > 0 ? v : null;
-}
-
-export function remember(key, ratio) {
+export const recall = (key) => {
+  const v = read()[key];
+  return Number.isInteger(v) ? v : null;
+};
+export const remember = (key, level) => {
   try {
-    localStorage.setItem(STORE, JSON.stringify({ ...readAll(), [key]: ratio }));
+    globalThis.localStorage?.setItem(KEY, JSON.stringify({ ...read(), [key]: level }));
   } catch {
-    // storage blocked or full: it just isn't remembered
+    // (storage unavailable: it's measured again next time)
   }
-}
-
-const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
-
-// Draws `frames` frames at each of `ratios` and resolves the ratio to keep
-// (never rejects: on any trouble, or if `alive()` says the world has gone, it
-// resolves the ratio the renderer had). `draw()` renders one frame; `setRatio`
-// changes the drawing's ratio where the caller owns that (else the renderer's
-// own setPixelRatio is used). The original ratio is put back afterwards, and
-// `frame()` (a promise per frame, the browser's by default) lets the page breathe.
-export async function calibrate({ renderer, draw, ratios, budget = 12, frames = 24, frame = nextFrame, alive = () => true, setRatio } = {}) {
-  let original = 1;
-  try {
-    original = renderer.getPixelRatio();
-  } catch {
-    // keep 1
-  }
-  const set = (v) => (setRatio ? setRatio(v) : renderer.setPixelRatio(v));
-  let timer = null;
-  try {
-    const gl = renderer.getContext?.();
-    timer = gpuTimer(gl);
-    const samples = [];
-    // a timed result, for the ratio its frame was drawn at (they arrive a frame or two late)
-    const collect = () => {
-      let ms;
-      while ((ms = timer.poll()) !== null) samples.push({ ratio: timer.tag, ms });
-    };
-    for (const ratio of ratios) {
-      if (!alive()) return original;
-      set(ratio);
-      for (let i = 0; i < frames; i++) {
-        if (!alive()) return original;
-        if (timer) {
-          timer.begin(ratio);
-          draw();
-          timer.end();
-          collect();
-        } else {
-          const t0 = performance.now();
-          draw();
-          gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
-          samples.push({ ratio, ms: performance.now() - t0 });
-        }
-        await frame();
-      }
-    }
-    for (let tries = 0; timer && timer.pending && tries < 16; tries++) {
-      if (!alive()) return original;
-      await frame();
-      collect();
-    }
-    return pickRatio(samples, budget) ?? original;
-  } catch {
-    return original;
-  } finally {
-    try {
-      timer?.dispose();
-      set(original);
-    } catch {
-      // a lost context: nothing to put back
-    }
-  }
-}
+};

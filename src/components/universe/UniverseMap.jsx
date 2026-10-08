@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useScene } from '../../lib/three/useScene';
 import { local } from '../../lib/hooks';
 import { CONTROLS_KEY, readControls } from './controls';
+import { useEconomy } from './EconomyProvider';
 import FlightSettings from './FlightSettings';
 import Hangar from './Hangar';
 import { UNIVERSES } from './universes';
@@ -26,10 +27,7 @@ import LoadingVeil from '../worlds/LoadingVeil';
 // the hangar (Hangar.jsx: the ship's paint job and parts, which the page
 // keeps) and a line on how to fly until you do. While the
 // 3D loads the box says so (3D first: never the flat map in the meantime);
-// if 3D is off, fails or is lost, the flat MiniMap takes the box. While the
-// scene gets everything onto the graphics chip before its first frame
-// (scene.js's prepare), the loading veil (worlds/LoadingVeil.jsx) covers the
-// map, under the page's panel and the front door's choice, which stay usable. Online,
+// if 3D is off, fails or is lost, the flat MiniMap takes the box. Online,
 // the other pilots' callsigns ride over their ships (the scene moves them).
 // The map button (and M) opens the nav map (the page's: NavMap.jsx); `drive`
 // is the one picked there, how the ship goes anywhere it's sent, and
@@ -42,6 +40,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const stick = useRef(null);
   const alt = useRef(null);
   const shield = useRef(null);
+  const wantedEl = useRef(null); // (the law's stars and the bounty on you: wanted.js)
+  const { economy } = useEconomy({ ask: false }); // (the wallet a bounty's paid off from)
   const hud = useRef(null);
   const arms = useRef(null); // the weapon readout (weapons.js)
   const siegeEl = useRef(null); // the Citadel's siege (siege.js)
@@ -93,6 +93,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       stick,
       alt,
       shield,
+      wanted: wantedEl,
+      wallet: economy,
       hud,
       arms,
       siege: siegeEl,
@@ -204,12 +206,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     <div ref={wrap} className="universe-map" data-ship={ship || undefined} data-foot={onFoot || undefined}>
       {meant ? (
         <>
-          {!on && status !== 'preparing' && (
-            <p className="universe-loading" role="status">
-              Charting the universe…
-            </p>
-          )}
-          <LoadingVeil shown={status === 'preparing'} progress={progress.value} step={progress.step} title="The universe" line="Charting the universe…" />
+          {/* (until the map is drawing: everything sent to the graphics chip first, so it flies smoothly from its first frame) */}
+          <LoadingVeil className="universe-loading" shown={!on} progress={status === 'preparing' ? progress.value : 0} step={status === 'preparing' ? progress.step : 'load'} title="Charting the universe" />
           <ul className="universe-labels" aria-label="Universes" onKeyDown={onKeyDown}>
             {UNIVERSES.map((u) => (
               <li key={u.id}>
@@ -220,6 +218,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   type="button"
                   className="universe-label"
                   data-station={u.kind === 'core' || undefined}
+                  // (a station's big sign says a second line the button doesn't: read it too)
+                  aria-description={u.sign?.[1]}
                   style={{ '--swatch': u.swatch }}
                   aria-pressed={selected === u.id}
                   tabIndex={u.id === focusable ? 0 : -1}
@@ -236,7 +236,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
           </ul>
           <div ref={tags} className="universe-tags" aria-hidden="true" />
           {on && onMap && (
-            <button type="button" className="universe-navmap-btn" data-ship={ship ? '' : undefined} onClick={onMap} aria-label="Nav map" title="Nav map (M)">
+            <button type="button" className="universe-navmap-btn" data-ship={ship ? '' : undefined} onClick={onMap} aria-label="Nav map" title="Nav map (M)" aria-keyshortcuts="M">
               <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                 <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
                 <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.6" />
@@ -258,6 +258,17 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-shield-bar">
                   <span />
                 </span>
+              </div>
+              <div ref={wantedEl} className="universe-wanted" aria-hidden="true">
+                <span className="universe-wanted-stars">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                <b className="universe-wanted-word" />
+                <b className="universe-wanted-bounty" />
               </div>
               <div ref={hud} className="universe-hud" aria-hidden="true">
                 <span className="universe-reticle" />
@@ -364,7 +375,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               )}
               {onFoot && (
                 <button type="button" className="universe-out" onPointerDown={(e) => (e.preventDefault(), view.current?.out?.())} onContextMenu={(e) => e.preventDefault()}>
-                  Ship
+                  Board
                 </button>
               )}
               {!onFoot && !landable && phoneNear && (
@@ -411,19 +422,21 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {onFoot && footHint && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to walk, <kbd>Q</kbd> <kbd>E</kbd> to step aside, <kbd>Shift</kbd> to run, <kbd>Space</kbd> to jump, <kbd>F</kbd> or a click to fire, drag to look, <kbd>X</kbd> to switch, <kbd>B</kbd> Rick’s gadgets, <kbd>V</kbd> their eyes, <kbd>G</kbd> back in, <kbd>Enter</kbd> into the world
+                    {/* the four that matter on foot; the guide has the rest */}
+                    <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> walk, <kbd>F</kbd> fire, <kbd>G</kbd> back in, <kbd>Enter</kbd> into the world
                     <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag to walk, Jump, Run, Fire, Switch to play the other one, Ship to get back in, Enter to go into the world<GuideCue touch /></span>
+                  <span className="universe-hint-touch">Drag to walk, Fire to shoot, Board to get back in, Enter to go into the world<GuideCue touch /></span>
                 </p>
               )}
               {!flown && !onFoot && (
                 <p className="universe-hint universe-hint-fly">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>R</kbd> weapons, <kbd>T</kbd> target, <kbd>P</kbd> portal gun, <kbd>V</kbd> cockpit, fly down into a planet’s air to land, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
+                    {/* the five keys that matter in the first minute; the guide has the rest */}
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, arrows steer, <kbd>Space</kbd> boost, <kbd>F</kbd> fire, fly down into a planet’s air to land
                     <GuideCue />
                   </span>
-                  <span className="universe-hint-touch">Drag anywhere to fly, the arrows to pull the nose up and down, hold Boost to go fast and Fire to shoot, View for the cockpit, and fly down into a planet’s air to land on it<GuideCue touch /></span>
+                  <span className="universe-hint-touch">Drag to fly, hold Boost to go fast and Fire to shoot, and fly down into a planet’s air to land<GuideCue touch /></span>
                 </p>
               )}
             </>

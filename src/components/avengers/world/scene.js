@@ -39,7 +39,6 @@ import { createPacks } from './packs';
 import { createGrass } from './grass';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { groundWorld } from '../../../lib/three/groundwork';
-import { settle } from '../../../lib/settle';
 import { turn as easeTurn } from '../../../lib/three/gait';
 import { LIFE, createCastLife } from './castLife';
 import { createCastBody, createLook, poseKit } from './castBody';
@@ -1345,8 +1344,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     if (L) p.body.need([...L.train.map((e) => e.clip), L.greet, L.land, ...L.fidgets, L.talk, ...L.lines, L.won, ...L.after]);
     ground?.track(m.root, p.c.style === 'hulk' ? [1.7, 1.7] : [0.9, 0.9]);
   };
-  // (the swaps under way, for the prepare to wait on)
-  const castIn = (async () => {
+  (async () => {
     for (const p of Object.values(people).filter((x) => MODEL_OF[x.c.style]).sort((a, b) => (a.c.style === 'hulk') - (b.c.style === 'hulk'))) {
       await swapIn(p).catch(() => {
         /* no model: the figure stays */
@@ -1357,7 +1355,6 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // an Iron Man armour on a plinth by the workshop's door, lit from below;
   // suited up in, it's the hero (./rules.js SUIT), and goes home after
   let armour = null;
-  let suitUp = null; // (its model on its way, for the prepare to wait on)
   const PLINTH = new THREE.Vector3(ARMOUR.x, 0.28, ARMOUR.z);
   const plinthQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), ARMOUR.face + Math.PI / 2);
   const armourQ = new THREE.Quaternion();
@@ -1371,7 +1368,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     const glow = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.02, 8, 48).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: hot(0x8fe9ff, 2.4), toneMapped: false }));
     glow.position.set(ARMOUR.x, 0.285, ARMOUR.z);
     scene.add(glow);
-    suitUp = loadPerson(AVENGERS_MODELS.ironman)
+    loadPerson(AVENGERS_MODELS.ironman)
       .then((t) => {
         if (gone) return;
         const m = person(t);
@@ -2068,40 +2065,14 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     height: floorAt,
     tier: engine.tier,
     auto: true,
-    cache: { world: 'avengers', place: 'compound' },
   });
-
-  // ── everything on the graphics chip behind the page's loading veil ──
-  // The real Thor, Natasha, Hulk and the armour waited for (a few seconds
-  // at most: one that comes later is readied as it comes, and the frame
-  // guard holds it back till it is), the floor light baked (or read back
-  // from an earlier visit's) for the sun where it stands, then hq/engine's
-  // prepare: the pictures, the bake's among them, sent, the shaders
-  // compiled, and a draw of everything.
-  const MODELS_WAIT = 5000; // ms at most the models hold up the prepare
-  const BAKE_WAIT = 8000; // ms at most the floor's bake does
-  const prepare = async (onProgress, alive = () => true) => {
-    const going = () => alive() && !gone && !engine.lost;
-    const say = (f, step) => onProgress?.(f, step);
-    say(0, 'Bringing in the team');
-    await settle(Promise.all([castIn, suitUp]), MODELS_WAIT);
-    if (!going()) return;
-    // the sun where the frames put it (its direction is all the bake reads)
-    sun.position.copy(sun.target.position).addScaledVector(sunDir, 160);
-    sun.updateMatrixWorld();
-    sun.target.updateMatrixWorld();
-    say(0.1, 'bake');
-    await settle(ground?.bake(), BAKE_WAIT);
-    if (!going()) return;
-    await engine.prepare({ alive: going, onProgress: (f, step) => say(0.25 + 0.75 * f, step) });
-  };
 
   return {
     engine,
-    prepare,
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
+    prepare: engine.prepare, // (everything sent to the graphics chip before it's seen: hq/engine)
     fx,
     screenOf,
     resize: (w, h) => engine.resize(w, h),

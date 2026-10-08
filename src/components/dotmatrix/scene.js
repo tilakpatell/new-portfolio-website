@@ -19,9 +19,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { createRenderer, disposeTree } from '../../lib/three/renderer';
-import { compileSlices, prepareScene } from '../../lib/three/gpuWork';
-import { settle } from '../../lib/settle';
+import { createRenderer, disposeTree, precompile } from '../../lib/three/renderer';
 import { createGhosts } from '../middleearth/towns/ghosts';
 import { device } from '../../lib/device';
 import { H as SCREEN_H, W as SCREEN_W } from '../../stages/gb/font';
@@ -1003,7 +1001,7 @@ function buildN64() {
 // the giant crafting table east of it (Minecraft, ../minecraft/): a block
 // two across, its faces the pack's own tiles cut from the world's strip,
 // the front (the saw and the hammer) to the south and west, where it's
-// played from; grey until they come (`userData.ready`: once they have, or not)
+// played from; grey until they come
 function buildCraft() {
   const size = CRAFT.x1 - CRAFT.x0;
   const blank = lambert(0.45);
@@ -1012,7 +1010,7 @@ function buildCraft() {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   const base = `${import.meta.env?.BASE_URL ?? '/'}mc/`;
-  mesh.userData.ready = (async () => {
+  (async () => {
     const manifest = await (await fetch(`${base}manifest.json`)).json();
     const img = new Image();
     img.src = `${base}blocks.webp`;
@@ -1082,7 +1080,7 @@ function buildSkyClouds(rand) {
 
 export function createDotMatrix(canvas, { onLost } = {}) {
   const tier = device().tier;
-  const gl = createRenderer(canvas, { alpha: false, antialias: false, ratio: 1, onLost });
+  const gl = createRenderer(canvas, { alpha: false, antialias: false, ratio: 1, onLost, guard: true });
   const { renderer } = gl;
   renderer.setPixelRatio(1);
   renderer.shadowMap.enabled = tier !== 'low';
@@ -1129,8 +1127,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   scene.add(gameboy.group);
   const n64 = buildN64();
   scene.add(n64.group);
-  const craft = buildCraft();
-  scene.add(craft);
+  scene.add(buildCraft());
 
   // "?" blocks: a fresh face, and a spent one
   const qTex = blockFace(0.96, glyph(QUESTION, 5, 4, hex(0.1)));
@@ -1333,15 +1330,7 @@ export function createDotMatrix(canvas, { onLost } = {}) {
   let warmed = false;
   const fx = { warp: 0, warpDir: 0 };
 
-  // the frame as drawn: the island small into the target, then dithered onto the canvas
-  const draw = () => {
-    renderer.setRenderTarget(target);
-    renderer.render(scene, camera);
-    dither.render(renderer, target);
-  };
-  // `place`: everything put where this frame has it, and nothing drawn (the
-  // prepare's layout, behind the veil)
-  const render = (state, ms = 16, { place = false } = {}) => {
+  const render = (state, ms = 16) => {
     if (disposed || gl.lost) return;
     const dt = Math.min(0.05, ms / 1000);
     const { game, yaw = 0, dist = 12.5, pitch = 0.68, travellers = null } = state;
@@ -1565,8 +1554,9 @@ export function createDotMatrix(canvas, { onLost } = {}) {
     }
     bitMesh.instanceMatrix.needsUpdate = true;
 
-    if (place) return;
-    draw();
+    renderer.setRenderTarget(target);
+    renderer.render(scene, camera);
+    dither.render(renderer, target);
     watch(ms);
   };
 
@@ -1616,34 +1606,12 @@ export function createDotMatrix(canvas, { onLost } = {}) {
       v3.set(x, y, z).project(camera);
       return { x: ((v3.x + 1) / 2) * size.cssW, y: ((1 - v3.y) / 2) * size.cssH, on: v3.z < 1 && Math.abs(v3.x) < 1.1 && Math.abs(v3.y) < 1.1 };
     },
-    // Everything onto the graphics chip before the first frame, behind the
-    // page's loading veil (lib/three/gpuWork's prepareScene): laid out as
-    // `state` has it, the crafting table's faces in (a few seconds at most),
-    // the dither's shader made for the canvas, then the island's pictures
-    // and shaders made for the small target it's drawn into, and drawn once.
-    // Stops when alive() turns false; never throws.
-    async prepare(state, onProgress, alive = () => true) {
-      if (warmed) return;
+    // the shaders, compiled before the first frame
+    warm(state) {
+      if (warmed) return Promise.resolve();
       warmed = true;
-      const going = () => alive() && !disposed && !gl.lost;
-      try {
-        render(state, 0, { place: true });
-        await settle(craft.userData.ready, 4000);
-        if (!going()) return;
-        renderer.setRenderTarget(null);
-        await compileSlices(renderer, [dither.scene], dither.camera, dither.scene, { alive: going });
-        if (!going()) return;
-        renderer.setRenderTarget(target);
-        await prepareScene({ renderer, roots: [scene], scene, camera, alive: going, onProgress, render: draw });
-      } catch (err) {
-        if (import.meta.env.DEV) console.warn('Dot Matrix: prepare failed', err);
-      } finally {
-        try {
-          renderer.setRenderTarget(null);
-        } catch {
-          // (gone with its renderer)
-        }
-      }
+      render(state, 16);
+      return precompile(renderer, scene, camera);
     },
     dispose() {
       disposed = true;

@@ -9,14 +9,15 @@ The explorable interior of both Death Stars at `/deathstar/inside`, and HD exter
 
 - The design and the plan, with both stations’ stories and the Easter eggs step by step.
 - HD exteriors (Tasks 6.1 and 6.2, done early): `public/models/universe/death-star.hq.glb` (4096 maps, a baked plating normal) and N8’s Death Star II as `public/models/galaxy/deathstar2.glb` (2048) and `.hq.glb` (4096), served through `HD_MAPS` in `src/components/galaxy/models.js`. Shots in `docs/superpowers/shots/deathstar-hd/`. Still to do: load the 4096 files on ultra only, not high (about 170 MB and 250 MB of GPU memory), as planet maps already are.
-- Phase 1, in progress: Tasks 1.1 (clips moved to `src/lib/three/clips.js`, `worldAt` longest match), 1.2 (route and registries, placeholder UI), 1.3 (layout and the DS1 graph), 1.4 (walker), 1.5 (doors), 1.6 (paths), 1.8 (the Imperial kit and the first rooms: Bay 327 with the Falcon, Docking Control 327, corridors, the lift), 1.9 (streaming), and parts of 1.10 (camera, figures) are committed. Each task is reviewed and fixed by a workflow before the next stage.
+- PR #564 merged to main on 7 October (the design, the plan, the HD exteriors and Phase 1 so far). Later work goes in new PRs from the same branch, each merged once CI is green.
+- Phase 1, in progress: Tasks 1.1 (`worldAt` longest match; main had already moved Rick’s clips to `src/lib/three/clipLibrary.js`, which the figures import), 1.2 (route and registries), 1.3 (layout and the DS1 graph), 1.4 (walker), 1.5 (doors), 1.6 (paths), 1.8 (the Imperial kit and the first rooms: Bay 327 with the Falcon, Docking Control 327, corridors, the lift), 1.9 (streaming) and 1.10 (camera, figures, scene index, start screen, HUD, map, pause, touch) are committed and reviewed. The progress ledger (`.superpowers/sdd/2026-10-07-deathstar-inside/progress.md`, git-ignored) holds each task’s commits and the deferred minor findings.
 
 ## Left, in order
 
-1. Finish Phase 1: Task 1.10 (scene index, player, UI), Task 1.7 (the game and `module.js`), the gate (lint, test, build, health), then Task 1.11 (`scripts/deathstar-check.mjs`, screenshots of each room, fix the look).
+1. Finish Phase 1: Task 1.7 (the game and `module.js`, in progress), the gate (lint, test, build, health), then Task 1.11 (`scripts/deathstar-check.mjs`, screenshots of each room, fix the look). Phase 2’s briefs are written; its stages: (2.2 alarm, 2.3 disguise, 2.4 combat, 2.6 talk, 1.11 check) → (2.1 cast, 2.5 brains) → 2.7 game → (2.8 people drawn, 2.9 UI, 2.10 sound) → gate.
 2. Phases 2 to 5 and 7 of the plan; Phase 6’s views, ways in and gen3d issues.
 3. The `/deathstar` page’s “Go aboard” button waits for PR #540 (it holds `src/pages/DeathStar.jsx`).
-4. Open the PR; merge once both CI jobs are green.
+4. Open the next PR from this branch; merge once both CI jobs are green.
 
 ## Checking it
 

@@ -5,10 +5,11 @@
 //   mapFile(name, level) → the file for a planet map at lib/detail's level
 //   loadTextures({ small, level }) → the textures (any that fail are just missing)
 //   mapsOf(id), nearSet(id, level) → a planet's maps, and the finer ones it wears near
-//   mapSwapper(group, T, names) → swap(T2 | null), with swap.fit(T2)
+//   mapSwapper(group, T, names) → swap(T2 | null)
 
 import { MAP_SLOTS, loadTexture } from '../../lib/three/textures';
 import { detailLevel } from '../../lib/detail';
+import K8_BAKED from '../../../public/textures/universe/k8.json';
 
 const BASE = '/textures/universe/';
 // Each map: whether it's a colour (sRGB) or data (normals, roughness, a
@@ -53,6 +54,13 @@ export function mapFile(name, level = 'high', { xl: big = true } = {}) {
   return `${name}${suffix}.webp`;
 }
 
+// The colour maps baked at 8192 too (scripts/build-fandom-planets.mjs
+// --ultra writes `<name>-8k.ktx2` and lists it in k8.json): worn near at
+// ultra only, over the -xl. Too big to keep in the repository (about 20 MB
+// each): the list is empty until they're baked on the owner's machine and
+// published with the site, and nothing asks for one that isn't listed.
+export const K8 = new Set(K8_BAKED);
+
 // A planet's own maps: those named for it ('middleearth', 'middleearth-normal'…;
 // Earth's world is 'travel', its maps 'earth').
 const MAP_PREFIX = { travel: 'earth' };
@@ -66,8 +74,17 @@ export function mapsOf(id) {
 // loader's cache would hand back that very texture). A strong card's near
 // set is the -xl colour maps (the -hq it wears already the fallback); a
 // desktop's, the -hq copies; a weak card's desktop, the standard ones over
-// its -sm. Nothing on low.
-export function nearSet(id, level) {
+// its -sm. Nothing on low. At ultra a map baked at 8192 (`k8`) is asked
+// for first, its -xl the fallback.
+export function nearSet(id, level, { k8 = K8 } = {}) {
+  const set = finerSet(id, level);
+  if (level !== 'ultra') return set;
+  const big = (name) => `${name}-8k.ktx2`;
+  // (a map with no -xl, Earth's, has nothing finer at ultra but its -8k)
+  const more = mapsOf(id).filter((name) => k8.has(name) && !set.some((m) => m.name === name)).map((name) => ({ name, file: big(name), colour: MAPS[name].colour }));
+  return [...set.map((m) => (k8.has(m.name) ? { name: m.name, file: big(m.name), fallback: m.file, colour: m.colour } : m)), ...more];
+}
+function finerSet(id, level) {
   if (level === 'low') return [];
   const far = (name) => mapFile(name, level, { xl: false });
   const files = (name) => (level === 'ultra' ? [mapFile(name, 'ultra'), mapFile(name, 'ultra', { xl: false })] : [mapFile(name, level === 'mid' ? 'high' : 'ultra', { xl: false })]);
@@ -104,21 +121,10 @@ export async function loadTextures({ small = false, level = small ? 'mid' : deta
 // the clouds' shadows), each taking the old one's wrapping, repeat, offset,
 // colour space and anisotropy. mapSwapper(group, T, names) → swap(T2 | null);
 // null puts its own back.
-// swap.fit(T2) gives T2's maps those settings without swapping them in, so
-// a near set can be sent to the graphics chip before it's worn (three.js
-// sets a picture's wrapping and anisotropy on the chip as it sends it).
-const fitTo = (t, old) => {
-  t.wrapS = old.wrapS;
-  t.wrapT = old.wrapT;
-  t.repeat.copy(old.repeat);
-  t.offset.copy(old.offset);
-  t.colorSpace = old.colorSpace;
-  t.anisotropy = old.anisotropy;
-};
 export function mapSwapper(group, T, names) {
   const own = names.filter((n) => T[n]);
   let swapped = [];
-  const swap = (T2) => {
+  return (T2) => {
     for (const [holder, key, old] of swapped) holder[key] = old;
     swapped = [];
     if (!T2) return;
@@ -127,7 +133,12 @@ export function mapSwapper(group, T, names) {
       const old = holder?.[key];
       const t = old && by.get(old);
       if (!t) return;
-      fitTo(t, old);
+      t.wrapS = old.wrapS;
+      t.wrapT = old.wrapT;
+      t.repeat.copy(old.repeat);
+      t.offset.copy(old.offset);
+      t.colorSpace = old.colorSpace;
+      t.anisotropy = old.anisotropy;
       holder[key] = t;
       swapped.push([holder, key, old]);
     };
@@ -141,8 +152,4 @@ export function mapSwapper(group, T, names) {
       }
     });
   };
-  swap.fit = (T2) => {
-    for (const n of own) if (T2?.[n] && T2[n] !== T[n]) fitTo(T2[n], T[n]);
-  };
-  return swap;
 }

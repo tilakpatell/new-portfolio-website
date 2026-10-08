@@ -289,9 +289,6 @@ export function shadowFor(mood) {
 // recomputed when the sky light changes; `{ adopt: true }` also takes on
 // whatever has come into the scene since. Call follow() after the world
 // sets its lights (once a frame, or when they change).
-// On a renderer with a frame guard (lib/three/frameGuard), anything of this
-// scene's the guard held back takes the look before its shader is compiled,
-// so a late arrival compiles once, in the look; dispose() takes that off.
 export function houseOn({ renderer, scene, sun = null, hemi = null, ambient = null, env = null, keepExposure = false, toneMap = true, look = {} }) {
   const house = createHouse(look);
   if (toneMap) {
@@ -301,6 +298,11 @@ export function houseOn({ renderer, scene, sun = null, hemi = null, ambient = nu
   // (the shade's colour from the sky light, or from an ambient light where there's no sky)
   const sky = hemi ?? ambient;
   house.adopt(scene);
+  // what comes into the scene late, held back by the renderer's frame guard
+  // (lib/three/frameGuard), takes the look before its shader is compiled,
+  // not on the next follow({ adopt }) after it's been drawn (which compiled
+  // it again, mid-frame)
+  guardOf(renderer)?.adopt(scene, (object) => house.adopt(object));
   const seen = { hex: -1, k: -1 };
   // (an HDR environment: its mean radiance, measured again whenever its
   // picture is swapped for another)
@@ -332,12 +334,6 @@ export function houseOn({ renderer, scene, sun = null, hemi = null, ambient = nu
     if (adopt) house.adopt(scene);
   };
   house.follow();
-  const off = guardOf(renderer)?.adopt((object) => {
-    let root = object;
-    while (root.parent) root = root.parent;
-    if (root === scene) house.adopt(object);
-  });
-  house.dispose = () => off?.();
   return house;
 }
 

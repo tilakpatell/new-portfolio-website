@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import LoadingVeil from '../../../worlds/LoadingVeil';
-import { showPrepared } from '../../../../lib/prepareWorld';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -119,7 +117,6 @@ export default function MoriaWorld({ onLeave }) {
 }
 
 function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
-  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   const trav = useTravellers('moria', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -190,9 +187,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         api.current = a;
         if (import.meta.env.DEV) window.__MORIA__ = { api: a, sim: sim.current, complete };
         fit();
-        // everything onto the graphics chip behind the veil, then shown
-        // (lib/prepareWorld: PREPARE_WAIT at most, then it's told to stop)
-        showPrepared((report, going) => a.prepare?.(report, going), { setGl, setPrep, alive: () => !dead });
+        setGl('on');
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -462,7 +457,6 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
-    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
@@ -471,7 +465,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     s.stepT += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
-    const pad = gl === 'on' ? readPad() : null; // (nothing pressed behind the veil)
+    const pad = readPad();
     const before = s.padBefore ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
     s.padBefore = pad ?? {};
@@ -784,7 +778,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       } else bubbleRef.current.style.opacity = '0';
     }
     if (++s.frame % 120 === 0 && s.mode === 'walk') local.set(AT, { zone: s.zone, x: s.h.x, z: s.h.z, face: s.h.face });
-  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
+  }, live);
 
   // look round by dragging; the stick on touch
   const drag = useRef(null);
@@ -807,28 +801,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     }
     drag.current = null;
   };
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   const hold = (name, v) => ({
     onPointerDown: (e) => {
       e.preventDefault();
@@ -876,7 +849,6 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     <div ref={box} className="shire-stage moria-stage" data-touch={touch || undefined} data-mode={mode} data-zone={hud.zone ?? sim.current.zone} data-game={['dash', 'tumble', 'troll', 'flight', 'plank'].includes(mode) || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Moria in 3D: the Doors of Durin under the moon, the great halls of Dwarrowdelf in the dark, Balin's tomb, and the Bridge of Khazad-dûm" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Into the dark of Moria…</p>}
-      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="Moria" line="Into the dark of Moria…" />
 
       {(walking || mode === 'dash' || mode === 'troll') && (
         <div className="shire-hud shire-hud-top">
@@ -912,7 +884,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -1042,7 +1014,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           </div>
         </div>
       )}
-      {(walking || mode === 'dash' || mode === 'troll') && touch && <Stick onStick={onStick} />}
+      {(walking || mode === 'dash' || mode === 'troll') && touch && <Stick onMove={onStick} />}
       {list && (
         <QuestList
           title="Things to do in Moria"

@@ -46,7 +46,7 @@
 // A scene module, a world on the world runtime through ./module.js
 // (src/runtime's fromScene): create(canvas, ctx) draws with the runtime's
 // renderer (ctx.rt.gfx: the runtime sizes it and sets its sharpness) and
-// returns { ready, prepare, resize, render, update, setVisible, lowerQuality, fire,
+// returns { ready, resize, render, update, setVisible, lowerQuality, fire,
 // boost, climb, seat, escape, jump, goTo, flyTo, dispose }.
 // Props: system (an id), ship (a crew id), loadout (what's fitted to it in
 // the universe map's hangar: outfit.js; its paint and parts, and how they
@@ -68,14 +68,15 @@ import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
 import { clamp01, disposeTree, precompile, precompilePasses, singlePass } from '../../lib/three/renderer';
+import { prepareScene } from '../../lib/three/gpuWork';
+import { settle as settleWithin } from '../../lib/settle';
 import { device } from '../../lib/device';
 import { dropTransmission } from '../../lib/three/glass';
 import { gltfStats } from '../../lib/three/gltfCache';
 import { STEPS } from '../../lib/three/pace';
-import { compileSlices, prepareScene } from '../../lib/three/gpuWork';
-import { settle } from '../../lib/settle';
 import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
+import { followRatio } from './drawnAt';
 import { houseOn } from '../../lib/three/house';
 import { SHIP, autopilot, forward, spawn, step } from '../universe/ship';
 import { REAIM_MS, parkBehind, pilotSpace, reached } from '../universe/pilotGoal';
@@ -381,7 +382,7 @@ export async function create(canvas, ctx) {
   const flying = () => Boolean(state.ship);
 
   // ── The system you're in ──
-  let ratioSeen = renderer.getPixelRatio(); // the pixel ratio the sky and the skylanes were last sized for
+  const followDrawn = followRatio(post, (r) => (sky.setRatio(r), state.world?.setRatio(r))); // (the ratio the points are sized by: ./drawnAt.js)
   let detail = 1; // how finely the planets are drawn (0…1), as the world was last told
   let capDetail = false; // set when the scene is told to give up quality: the planets at their coarsest
   let env = null;
@@ -406,7 +407,7 @@ export async function create(canvas, ctx) {
     state.world = null;
     state.sys = sys;
     sky.setSystem(sys);
-    const world = buildSystem(sys, { models, bolts, flashes, small, ratio: ratioSeen });
+    const world = buildSystem(sys, { models, bolts, flashes, small, ratio: post.ratio });
     world.setDetail(detail);
     scene.add(world.group);
     state.world = world;
@@ -1833,14 +1834,10 @@ export async function create(canvas, ctx) {
       if (lastNow) longest = Math.max(longest, now - lastNow);
       lastNow = now;
     }
-    // what's sized by the pixel ratio (the runtime's quality changes it) follows it,
-    // and the planets' detail follows the sharpness
-    const ratio = gfx.ratio;
-    if (ratio !== ratioSeen) {
-      ratioSeen = ratio;
-      sky.setRatio(ratio);
-      state.world?.setRatio(ratio);
-    }
+    // what's sized in screen pixels follows the ratio the scene is drawn at
+    // (the runtime's quality softens it: ./drawnAt.js), and the planets'
+    // detail follows the sharpness
+    followDrawn();
     const wanted = capDetail ? 0 : post.sharpness;
     if (Math.abs(wanted - detail) >= 0.05) {
       detail = wanted;
@@ -1965,7 +1962,7 @@ export async function create(canvas, ctx) {
     // the speed: dust streaming past, the picture rushing out from the ship
     const dustWant = !reduced && flying() && !inTunnel ? 0.35 + 0.65 * clamp01(Math.abs(state.ship.speed) / SHIP.cruise) : 0;
     dustAmount += (dustWant - dustAmount) * clamp01(dt * 3);
-    dust.update(camera.position, dustAmount, gfx.ratio);
+    dust.update(camera.position, dustAmount, post.ratio);
     if (!reduced && flying() && (state.streak > 0.001 || spool)) {
       const k = Math.max(state.streak, state.jump?.phase === 'spool' ? clamp01(state.jump.age / JUMP.spool) : 0);
       if (state.view === 'cockpit') post.rush(k * 0.8, 0.5, 0.5);
@@ -2279,75 +2276,14 @@ export async function create(canvas, ctx) {
     }
   }
   scene.add(spares);
-  // (built and dressed, the passes' shaders on their way; the spares go to
-  // the fleet, which hands them to the prepare below)
-  const ready = Promise.all([built, dressed, post.composer ? precompilePasses(renderer, post.composer, camera) : null]).then(() => {
+  const ready = Promise.all([built, dressed, warm(scene), post.composer ? precompilePasses(renderer, post.composer, camera) : null]).then(() => {
     scene.remove(spares);
     if (disposed) return;
     for (const [k, model] of stock) fleet.stock(k, model);
+    warmed = true;
+    stocked.add(start.faction);
+    stockUp();
   });
-
-  // Everything onto the graphics chip before the first frame, behind the
-  // page's loading veil on a visit straight here, or behind the climb out of
-  // a world's air on a flown trip (the runtime runs it after `ready`, while
-  // the surface draws on): lib/three/gpuWork's prepareScene over the system
-  // and the ships made ahead, their pictures sent a few at a time, their
-  // shaders compiled (in the house look, against the buffer the frames draw
-  // into) and a draw of everything, small (the passes' buffers 64 across,
-  // one pixel of the canvas; the first real frame sizes them back up). On a
-  // low tier (software WebGL, a budget phone) only the shaders are seen
-  // through: pictures go up as they're first seen, as before. Then, however
-  // far it got, the hunters this system's side sends are made ahead.
-  const READY_HOLD = 8000; // ms at most it waits on `ready`
-  const prepare = async (onProgress, alive = () => true) => {
-    const going = () => alive() && !disposed;
-    const say = (f, step) => {
-      try {
-        onProgress?.(f, step);
-      } catch {
-        // (a page's progress bar isn't the prepare's business)
-      }
-    };
-    const target = post.on ? post.composer.readBuffer : null;
-    try {
-      await settle(ready, READY_HOLD);
-      if (!going()) return;
-      const roots = [scene, ...fleet.roots()];
-      for (const root of roots) {
-        house.adopt(root);
-        singlePass(root);
-      }
-      renderer.setRenderTarget(target);
-      if (tier === 'low') {
-        await compileSlices(renderer, roots, camera, scene, { alive: going, onStep: (i, n) => say(i / n, 'shaders') });
-        return;
-      }
-      await prepareScene({
-        renderer,
-        roots,
-        scene,
-        camera,
-        alive: going,
-        onProgress: say,
-        render: () => {
-          post.render(64, 64);
-          renderer.setRenderTarget(target);
-        },
-      });
-    } finally {
-      try {
-        renderer.setRenderTarget(null);
-      } catch {
-        // (gone with its renderer)
-      }
-      if (!disposed) {
-        warmed = true;
-        stocked.add(start.faction);
-        stockUp();
-      }
-      if (going()) say(1, 'first draw');
-    }
-  };
 
   if (import.meta.env.DEV) {
     window.__galaxy = () => ({
@@ -2394,12 +2330,20 @@ export async function create(canvas, ctx) {
 
   return {
     ready,
-    // everything onto the graphics chip before the first frame (above)
-    prepare,
+    // everything sent to the graphics chip before the galaxy's shown (the
+    // runtime runs it behind the climb, or the page's loading screen): every
+    // picture, shader and one draw of it all, a slice at a time
+    // (lib/three/gpuWork)
+    async prepare(onProgress, { alive = () => true } = {}) {
+      onProgress?.(0, 'load');
+      await settleWithin(ready, 20000);
+      if (!alive() || disposed) return;
+      await prepareScene({ renderer, roots: [scene], scene, camera, target: post.target, render: () => post.render(64, 64), onProgress, alive: () => alive() && !disposed });
+    },
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
-      sky.setRatio(gfx.ratio);
+      followDrawn();
       measure();
     },
     render,
@@ -2430,10 +2374,14 @@ export async function create(canvas, ctx) {
       state.shown = on;
       if (!on) engine?.set({ speed: 0, on: false });
     },
-    // the runtime's quality: the sharpness is its own; at the floor (past
-    // its last step), the glow and the grade go
+    // the runtime's quality: drawn softer through the post chain, a step at
+    // a time, over a canvas that keeps its size (module.js's sharpness 'own': no
+    // resize, so no cleared frame and the HUD stays crisp); at the floor
+    // (past its last step), the glow and the grade go
     lowerQuality(level = STEPS.length) {
-      sky.setRatio(gfx.ratio);
+      // (each step the passes less sharp; the canvas keeps its size: module.js's `sharpness`)
+      post.sharpness = STEPS[Math.min(level, STEPS.length - 1)];
+      followDrawn();
       if (level < STEPS.length) return;
       post.lite();
       capDetail = true;
@@ -2497,8 +2445,6 @@ export async function create(canvas, ctx) {
     dispose() {
       disposed = true;
       engine?.stop();
-      // (the runtime's renderer stays for the next world: its guard forgets this look)
-      house?.dispose();
       dropCab();
       roomEnv?.dispose();
       state.model?.dispose();

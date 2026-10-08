@@ -9,8 +9,10 @@
 // createPlacer({ parent, kit, world, warm }) → { put(spec), scatter(kind,
 // items, opts), update(t, dt, you), signal(name, on) (to the built things that
 // move when something happens: a trapdoor, a gate), setZone(inZone), ready (a
-// promise: everything asked for so far is in), chunked (the things put
-// with `chunk`, for thingCells.js), dispose() }
+// promise: everything asked for so far is in), dispose() }
+//   With `seated` (ultra: amounts.js), whatever stands on the ground is
+//   seated on the lowest ground under its footprint (seat.js), so it never
+//   floats on a slope; below ultra, things stand as they always have.
 //   Given `shadowOnly` (near.js's createShadowPhase(…).only), scattered
 //   things don't cast shadows themselves: a stand-in for each part, drawn
 //   only into the sun's shadow, holds just the instances near `you`
@@ -25,22 +27,21 @@
 //   url (a model from elsewhere on the site, in place of the kind's: the
 //   universe's Death Star over Scarif's sea; scaled to `metres` along its
 //   longest side), fog (false: drawn clear of the fog, for something hung
-//   in the sky far past where the fog would hide it), chunk (true: it stays
-//   where it's put, out in the world, and goes on the grid of cells,
-//   `chunked`: thingCells.js) }
+//   in the sky far past where the fog would hide it) }
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { gltfLoader } from '../../../lib/three/gltf';
 import { sharpenMaterial } from '../../../lib/three/textures';
 import { detailLevel } from '../../../lib/detail';
-import { SURFACE_MODELS, surfaceLodUrl, surfaceUrl } from './catalog';
+import { SURFACE_MODELS, modelUrlFor, surfaceLodUrl, wantsLod } from './catalog';
 import { withDetail } from './detail';
 import { LOOKS, loadScan, scanOf } from './kit';
 import { wear as wearCore } from '../../../lib/three/core';
 import { PROPS, SCATTER } from './props';
 import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
+import { seatY } from './seat';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again
 
@@ -67,11 +68,34 @@ export const usesModel = (spec) => hasModel(spec.kind) && spec.model !== false &
 
 // A kind's model, and (its catalogue entry's `detail`: a scan's role) the
 // scan laid over it up close (detail.js), on every tier but the lowest;
-// resolves to the gltf, or null when it won't load
-export function loadModel(kind, url = surfaceUrl(kind)) {
+// resolves to the gltf, or null when it won't load. At ultra, a kind with an
+// ultra cut loads that (catalog's modelUrlFor).
+// A model whose file came in turned off its nose (a catalogue row's `turn`,
+// radians about its up: the bantha's lies 33° to its left): turned to face
+// +z and its middle put back over its feet, once, in the loaded file itself,
+// so every copy of it (a thing placed, a herd's beast, a ride) faces the way
+// it walks. Gives the gltf back.
+export function squared(gltf, kind) {
+  const turn = SURFACE_MODELS[kind]?.turn;
+  const root = gltf?.scene;
+  if (!turn || !root || root.userData.squared) return gltf;
+  const inner = new THREE.Group();
+  inner.name = 'squared';
+  for (const c of [...root.children]) inner.add(c);
+  inner.rotation.y = turn;
+  root.add(inner);
+  root.updateMatrixWorld(true);
+  const c = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3());
+  inner.position.x -= c.x;
+  inner.position.z -= c.z;
+  root.userData.squared = true;
+  return gltf;
+}
+
+export function loadModel(kind, url = modelUrlFor(kind, detailLevel())) {
   const role = SURFACE_MODELS[kind]?.detail;
   const scan = role && detailLevel() !== 'low' ? loadScan(role) : null;
-  return Promise.all([loadGlb(url), scan]).then(([gltf, got]) => {
+  return Promise.all([loadGlb(url).then((g) => (url !== surfaceLodUrl(kind) ? squared(g, kind) : g)), scan]).then(([gltf, got]) => {
     // (a model whose own finish reads wrong in the world: `look`, its
     // materials' metalness, roughness, ambient occlusion and reflections set)
     const look = SURFACE_MODELS[kind]?.look;
@@ -155,7 +179,7 @@ export async function wearModel(object, role, { wear = wearCore, load = loadScan
   return seen.size;
 }
 
-export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null }) {
+export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null, seated = false }) {
   const group = new THREE.Group();
   group.name = 'things';
   parent.add(group);
@@ -169,15 +193,23 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   const updates = [];
   const signals = [];
   const pending = [];
-  // (the things put with `chunk`: { x, z, done (a promise: it's in),
-  // object, low (once it's in, a promise of its light copy, or null) })
-  const chunked = [];
   let dead = false;
 
   const groundY = (x, z) => world.heightAt(x, z);
   const spot = (spec) => {
     const [x, z] = spec.at;
     return [x, (spec.abs ? 0 : groundY(x, z)) + (spec.y ?? 0) - (spec.sink ?? 0), z];
+  };
+  // stood on the lowest ground under its footprint (seat.js), so no side
+  // floats over a slope: only what's stood on the ground itself (not one
+  // hung at a height, nor a room's); a model put on its own (a building, a
+  // hut, a landmark) goes down a metre at most, its own foundations holding
+  // the rest
+  const seatable = (spec) => seated && !spec.abs && spec.y == null && !spec.zone;
+  const seat = (spec, at, r, max = 2) => {
+    if (!seatable(spec) || !(r > 0.3)) return at;
+    at[1] = seatY(groundY, at[0], at[2], r, { max }) - (spec.sink ?? 0);
+    return at;
   };
 
   // a built one (made once for each kind and options and copied after,
@@ -248,14 +280,6 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       const cluster = !spec.zone && spec.model !== false && SURFACE_MODELS[spec.kind]?.cluster;
       if (cluster) return Promise.all(clusterSpecs(spec, cluster).map((m) => this.put(m))).then(() => null);
       const at = spot(spec);
-      const entry = spec.chunk && !spec.zone && spec.fog !== false ? { x: at[0], z: at[2], object: null, low: null, done: null } : null;
-      const noted = (p) => {
-        if (entry) {
-          entry.done = p.then((o) => (entry.object = o));
-          chunked.push(entry);
-        }
-        return p;
-      };
       // (a model from elsewhere on the site, by its url: stood at `at`, its
       // longest side `metres`; its build if it won't load)
       if (spec.url) {
@@ -281,7 +305,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           })
           .catch(() => null);
         pending.push(p);
-        return noted(p);
+        return p;
       }
       if (usesModel(spec)) {
         const p = loadModel(spec.kind)
@@ -292,6 +316,12 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             o.position.set(...at);
             o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
             o.scale.setScalar(spec.scale ?? 1);
+            // (seated by its box, a little inside its edges: a metre down at most)
+            if (seatable(spec)) {
+              const size = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+              const r = Math.min(size.x, size.z) * 0.4;
+              o.position.y = seat(spec, at, r, 1)[1];
+            }
             const holder = spec.zone ? rooms : group;
             holder.add(o);
             if (spec.fog === false) unfogged(o);
@@ -302,25 +332,24 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             const worn = spec.wear ? wearModel(o, spec.wear) : Promise.resolve();
             // (a tower: its windows lit in the shader, props/windows.js)
             if (spec.windows) o.traverse((m) => m.isMesh && [].concat(m.material).forEach((mat) => mat.isMeshStandardMaterial && litWindows(mat, { seed: 5, density: 0.5, cell: [4, 5] })));
-            if (!entry.lod) return worn.then(() => warm(o)).then(() => o);
+            if (!wantsLod(spec.kind, detailLevel())) return worn.then(() => warm(o)).then(() => o);
             // far off, its light model (fetched after the full one: the
             // first view doesn't wait for it)
             const lod = withLod(o, null, radiusOf(gltf) * (spec.scale ?? 1));
             holder.add(lod);
-            const low = loadModel(spec.kind, surfaceLodUrl(spec.kind)).then((low) => {
+            loadModel(spec.kind, surfaceLodUrl(spec.kind)).then((low) => {
               if (dead || !low) return;
               const l = cloneModel(low);
               addLowLevel(lod, l, radiusOf(gltf) * (spec.scale ?? 1));
               warm(l);
             });
-            if (entry) entry.low = low.catch(() => {});
             return worn.then(() => warm(o)).then(() => lod);
           })
           .catch(() => null);
         pending.push(p);
-        return noted(p);
+        return p;
       }
-      return noted(Promise.resolve(build(spec, at)));
+      return Promise.resolve(build(spec, at));
     },
     // many of one kind: items [{ at: [x, z], yaw, scale, y }]; drawn instanced
     scatter(kind, items, { opts = {}, solid = true, model = true } = {}) {
@@ -346,7 +375,17 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           if (shadowOnly && p.shadow !== false) casters.push({ mesh: casterFor(p, Math.min(NEAR.max, mats.length)), src, xs, zs });
           return { mesh, src };
         });
-      const instance = (parts, radius) => {
+      // (each item seated by the footprint it turns out to have: `seatR`,
+      // its radius at scale 1)
+      const instance = (parts, radius, seatR = radius) => {
+        if (seatR > 0)
+          for (let i = 0; i < mats.length; i++) {
+            const x = mats[i];
+            const it = items[i];
+            if (!seatable(it)) continue;
+            x.at = seat(it, x.at, seatR * x.s * 0.8);
+            x.m.setPosition(x.at[0], x.at[1], x.at[2]);
+          }
         const made = instanceParts(parts);
         nearAt = null; // (found again on the next update, these with them)
         if (solid && radius) for (const x of mats) world.solids.circle(x.at[0], x.at[2], radius * x.s);
@@ -368,10 +407,11 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           });
           const box = new THREE.Box3().setFromObject(root);
           const size = box.getSize(new THREE.Vector3());
-          const full = instance(parts, typeof solid === 'number' ? solid : Math.min(size.x, size.z) * 0.35);
+          const full = instance(parts, typeof solid === 'number' ? solid : Math.min(size.x, size.z) * 0.35, Math.min(size.x, size.z) * 0.45);
           // far off, its light copy: the items past lodDistance drawn with it
-          // instead (split again as you walk, with the shadow stand-ins)
-          if (SURFACE_MODELS[kind].lod)
+          // instead (split again as you walk, with the shadow stand-ins);
+          // never at ultra, which draws the full model at every distance
+          if (wantsLod(kind, detailLevel()))
             loadModel(kind, surfaceLodUrl(kind)).then((lowGltf) => {
               if (dead || !lowGltf) return;
               const lowRoot = prepared(lowGltf);
@@ -392,14 +432,11 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
         return p;
       }
       const made = SCATTER[kind]?.(kit, opts) ?? (PROPS[kind] ? { parts: partsOf(PROPS[kind](kit, opts)), radius: opts.radius ?? 0.5 } : null);
-      if (made) instance(made.parts, typeof solid === 'number' ? solid : made.radius);
+      if (made) instance(made.parts, typeof solid === 'number' ? solid : made.radius, made.radius);
       return Promise.resolve(null);
     },
     get ready() {
       return Promise.all(pending);
-    },
-    get chunked() {
-      return chunked;
     },
     update(t, dt, you = null) {
       for (const u of updates) u(t, dt);

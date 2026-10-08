@@ -1,36 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import LoadingVeil, { STEP_WORDS } from './LoadingVeil';
-
-const veil = (props) => renderToStaticMarkup(<LoadingVeil title="The universe" line="Lighting the stars" {...props} />);
+import LoadingVeil from './LoadingVeil';
+import { STEP_WORDS } from './loadingSteps';
 
 describe('the loading veil', () => {
-  it('says what step the world is on, in words', () => {
-    const html = veil({ shown: true, progress: 0.4, step: 'shaders' });
-    expect(html).toContain('Compiling shaders');
+  it('says what the world is doing and how far along it is', () => {
+    const html = renderToStaticMarkup(<LoadingVeil shown progress={0.42} step="shaders" title="The universe" />);
     expect(html).toContain('The universe');
-    expect(html).toContain('Lighting the stars');
+    expect(html).toContain(STEP_WORDS.shaders);
+    expect(html).toContain('42%');
+    expect(html).toContain('scaleX(0.42)');
   });
-
-  it('has words for every step prepare reports', () => {
-    for (const step of ['pictures', 'shaders', 'first draw', 'bake', 'tune']) {
-      expect(veil({ shown: true, progress: 0, step })).toContain(STEP_WORDS[step]);
-    }
+  it('keeps the bar inside its track whatever it is told', () => {
+    expect(renderToStaticMarkup(<LoadingVeil shown progress={3} />)).toContain('scaleX(1)');
+    expect(renderToStaticMarkup(<LoadingVeil shown progress={Number.NaN} />)).toContain('scaleX(0)');
   });
-
-  it('is a polite status for screen readers', () => {
-    const html = veil({ shown: true, progress: 0 });
-    expect(html).toContain('role="status"');
-    expect(html).toContain('aria-live="polite"');
-  });
-
-  it('moves its bar with a transform, clamped to 0..1', () => {
-    expect(veil({ shown: true, progress: 0.25 })).toContain('transform:scaleX(0.25)');
-    expect(veil({ shown: true, progress: 3 })).toContain('transform:scaleX(1)');
-    expect(veil({ shown: true, progress: Number.NaN })).toContain('transform:scaleX(0)');
-  });
-
-  it('is not there when it isn’t shown', () => {
-    expect(veil({ shown: false, progress: 1, step: 'tune' })).toBe('');
+  it('shows nothing when it was never shown', () => {
+    expect(renderToStaticMarkup(<LoadingVeil shown={false} />)).toBe('');
   });
 });

@@ -15,7 +15,6 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
-import { stagePrepare } from '../../../../lib/stagePrepare';
 import { createHouse } from '../../../../lib/three/house';
 import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
@@ -34,7 +33,7 @@ import { createLorienKit } from './props';
 import { createGollum } from '../marshes/props';
 import { AMBUSH, BANK, BOARDS, BUTTS, CAST, CITY, COLLIDERS, GALADHRIM, LANDING, MALLORNS, MIRROR, PATHS, RANGE, RIVER_Y, STAIR, TABLE, TREE, WOOD, groundHeight, nearPath, streamX, woodHeight } from './layout';
 import { RIVER, aimDir, riverBend, riverWide } from './rules';
-import { attend, castComing, castDo, castPlay, followDrawn, releaseCast, tickCast } from '../../cast3d';
+import { attend, castDo, castPlay, followDrawn, releaseCast, tickCast } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const X_AXIS = new THREE.Vector3(1, 0, 0);
@@ -174,8 +173,6 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
   const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 900, bloom: { strength: 0.7, radius: 0.6, threshold: 0.8 }, onLost });
-  // made ready behind its loading veil before its first frame (lib/stagePrepare)
-  const prep = stagePrepare(stage, { grounds: () => [ground], late: () => castComing(stage.scene) });
   stage.grade({ contrast: 0.08, saturation: 1.04, vignette: 0.26, grain: 0.012, shadow: [0.02, 0.02, 0.04], high: [0.05, 0.035, 0.0] });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
@@ -1055,7 +1052,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     // the people on the cast (../../cast3d.js), drawn for this frame
     tickCast(scene, camera, dt);
     renderer.info.reset();
-    if (!prep.held()) stage.render(ms / fast);
+    stage.render(ms / fast);
   };
 
   const fxEvent = (type, id) => {
@@ -1087,16 +1084,11 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the town is first drawn ──
-  const ground = groundTown({ place: 'lorien', renderer, scene, terrain, outdoors: wood, sun, height: under, people: movers, skip: [sky.dome, ghosts.group], tier, centre: [-6, 0], radius: 72, shade: 0x26301e, sunFloor: 0.4 });
+  const ground = groundTown({ renderer, scene, terrain, outdoors: wood, sun, height: under, people: movers, skip: [sky.dome, ghosts.group], tier, centre: [-6, 0], radius: 72, shade: 0x26301e, sunFloor: 0.4 });
   // (last, over the floor light's own tints: one shadow colour everywhere)
   houseLook.adopt(scene);
 
   return {
-    // everything onto the graphics chip behind the page's veil, and true meanwhile
-    prepare: prep.prepare,
-    get preparing() {
-      return prep.preparing;
-    },
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,

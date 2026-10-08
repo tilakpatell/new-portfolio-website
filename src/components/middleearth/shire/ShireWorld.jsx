@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import LoadingVeil from '../../worlds/LoadingVeil';
-import { showPrepared } from '../../../lib/prepareWorld';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
@@ -9,7 +7,7 @@ import { sayVoiced, stopVoiced } from '../../../lib/voiced';
 import { useVoiced } from '../../../lib/useVoiced';
 import { readPad, typing } from '../../games/pad';
 import { keyDown, keyUp, moveOf, ownButton } from '../towns/keys';
-import { Travellers } from '../towns/TownHud';
+import { Bubble, QuestList, Stick, Travellers } from '../towns/TownHud';
 import { useTravellers } from '../towns/useTravellers';
 import {
   CAST,
@@ -69,6 +67,8 @@ import { SWATCH } from './fx';
 import './shire.css';
 import '../../../styles/lazy/middleearth.css';
 import GuideCue from '../../guide/GuideCue';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // Hobbiton, the world: walk about the Shire as Frodo on the day of Bilbo's
 // party, and do what hobbits do there. The rules are in ./rules.js, the
@@ -102,7 +102,7 @@ export default function ShireWorld({ onLeave }) {
     const d = local.get(SIDE_DONE, []);
     return Array.isArray(d) && d.includes(SIDE.id);
   });
-  const [gl, setGl] = useState('loading'); // loading | preparing | on | failed | lost
+  const [gl, setGl] = useState('loading'); // loading | on | failed | lost
   const { unlock } = useAchievements();
   // the spoons, won: on the side, with its own seal but none on the map
   const winSide = useCallback(() => {
@@ -131,7 +131,6 @@ export default function ShireWorld({ onLeave }) {
 }
 
 function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
-  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   // other travellers online in the Shire, as ghosts (../towns/useTravellers)
   const trav = useTravellers('shire', gl === 'on');
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
@@ -139,6 +138,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const canvas = useRef(null);
   const map = useRef(null);
   const api = useRef(null);
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const sim = useRef(null);
   if (!sim.current) {
     const kept = local.get(AT, null);
@@ -202,7 +202,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         if (dead || !canvas.current) return null;
         return createShireWorld(canvas.current, { onLost: () => !dead && setGl('lost') });
       })
-      .then((a) => {
+      .then(async (a) => {
         if (!a) return;
         if (dead) {
           a.dispose();
@@ -211,9 +211,9 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         api.current = a;
         if (import.meta.env.DEV) window.__SHIRE__ = { api: a, sim: sim.current, complete }; // for the QA scripts
         fit();
-        // everything onto the graphics chip behind the veil, then shown
-        // (lib/prepareWorld: PREPARE_WAIT at most, then it's told to stop)
-        showPrepared((report, going) => a.prepare?.(report, going), { setGl, setPrep, alive: () => !dead });
+        // everything on the graphics chip before Hobbiton's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (!dead) setGl('on');
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -424,7 +424,6 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
-    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     const p = progRef.current;
     // (the QA scripts can run the clock faster, in development only)
@@ -433,7 +432,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     s.t += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
-    const pad = gl === 'on' ? readPad() : null; // (nothing pressed behind the veil)
+    const pad = readPad();
     const before = s.padBefore ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
     s.padBefore = pad ?? {};
@@ -731,7 +730,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     }
     if (++s.frame % 4 === 0) drawMap(map.current, s.h, markers, p, s.spoons ? lobelia : null);
     if (s.frame % 120 === 0) local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face });
-  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
+  }, live);
 
   // the world's own pointer: drag to look round; in an activity, aim and act
   const drag = useRef(null);
@@ -771,28 +770,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   };
 
   // the touch stick: drag from where you put your thumb
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   const travel = (q) => {
     const s = sim.current;
@@ -822,8 +800,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   return (
     <div ref={box} className="shire-stage" data-touch={touch || undefined} data-mode={mode} data-wearing={hud.wearing || undefined} data-sky={prog.sky}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Hobbiton in 3D: the Hill and Bag End, the Party Field, the pond and the mill, and Frodo on the lane" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
-      {gl === 'loading' && <p className="shire-loading">Walking into Hobbiton…</p>}
-      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="The Shire" line="Walking into Hobbiton…" />
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Walking into Hobbiton" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">
@@ -866,19 +843,14 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       )}
 
       {bubble && walking && (
-        <div ref={bubbleRef} className="shire-bubble" aria-live="polite">
-          <div>
-            <b>{bubble.name}</b>
-            <span>{bubble.line}</span>
-          </div>
-        </div>
+        <Bubble ref={bubbleRef} name={bubble.name} line={bubble.line} />
       )}
 
       {here && walking && (
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -976,60 +948,18 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         </div>
       )}
 
-      {walking && touch && (
-        <div className="shire-hud shire-hud-bottom">
-          <div className="shire-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} onLostPointerCapture={onStick} aria-hidden="true">
-            <span />
-          </div>
-        </div>
-      )}
+      {walking && touch && <Stick onMove={onStick} />}
 
       {list && (
-        <div className="shire-list" role="dialog" aria-label="Things to do in Hobbiton">
-          <div className="shire-list-head">
-            <p>Things to do</p>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setList(false)}>
-              Close
-            </button>
-          </div>
-          <ul>
-            {prog.quests.map((q) => (
-              <li key={q.id} data-done={q.done || undefined} data-open={q.open || undefined} data-next={q.id === prog.next || undefined}>
-                <span className="shire-seal" aria-hidden="true">
-                  {q.done ? '✓' : ''}
-                </span>
-                <div>
-                  <p className="shire-list-name">{q.name}</p>
-                  <p className="shire-list-sub">{q.open ? `${q.where}. ${q.blurb}` : q.locked}</p>
-                </div>
-                {q.open && !hud.spoons && (q.id !== 'rings' || prog.sky === 'day') && (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => travel(q)}>
-                    Go there
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-          <p className="shire-list-side">On the side</p>
-          <ul>
-            <li data-done={side || undefined} data-open data-side>
-              <span className="shire-seal" aria-hidden="true">
-                {side ? '✓' : ''}
-              </span>
-              <div>
-                <p className="shire-list-name">{SIDE.name}</p>
-                <p className="shire-list-sub">
-                  {SIDE.where}. {SIDE.blurb}
-                </p>
-              </div>
-              {!hud.spoons && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => travel(SIDE)}>
-                  Go there
-                </button>
-              )}
-            </li>
-          </ul>
-        </div>
+        <QuestList
+          title="Things to do in Hobbiton"
+          quests={prog.quests}
+          next={prog.next}
+          side={[{ ...SIDE, done: side }]}
+          onClose={() => setList(false)}
+          onGo={travel}
+          canGo={(q) => !hud.spoons && (q.id === SIDE.id || (q.open && (q.id !== 'rings' || prog.sky === 'day')))}
+        />
       )}
     </div>
   );

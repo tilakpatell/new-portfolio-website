@@ -8,7 +8,10 @@ import { SYSTEMS, goalsOf, lightYears, systemById } from './systems';
 import { placesOf } from './places';
 import '../universe/universe.css';
 import GuideCue from '../guide/GuideCue';
+import { letHandedGo } from '../hyperspace3d/timeline';
+import { letsJumpGo } from './jumpIn';
 import WarHud from './WarHud';
+import LoadingVeil from '../worlds/LoadingVeil';
 
 // The galaxy's 3D view (scene.js, a world module on the world runtime:
 // ./module.js) and everything over it:
@@ -19,9 +22,7 @@ import WarHud from './WarHud';
 // (the universe map's own, UniverseMap.jsx's classes, the scene moves them),
 // your shields, the touch buttons, the flight settings and a line on how to
 // fly until you do, and the war's battle on here in a line (WarHud.jsx).
-// While the 3D loads the box says so, and while it's prepared (on a visit
-// straight here: a flown trip's climb is its own loading screen) the loading
-// veil, with the system's name; without 3D, a note
+// While the 3D loads the box says so; without 3D, a note
 // that the galaxy needs it, and the panel and the map still work.
 
 export default function GalaxyView({ system, here, handle, ship, loadout, build = null, net = null, frozen, onEvent, onArrive, onAt, onBoard, onCrash, onMap, oath = null, found = [] }) {
@@ -44,7 +45,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   const events = useRef(onEvent);
   events.current = onEvent;
   const reduced = useReducedMotion();
-  const world = useWorld(galaxyModule, {
+  const { host, on, meant, rt, progress } = useWorld(galaxyModule, {
     props: {
       system,
       reduced,
@@ -75,10 +76,30 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       events.current?.(e);
     },
   });
-  const { host, on, meant, rt, status } = world;
   // the scene itself, while it's the world on the runtime: its own calls (jump, goTo, fire…)
   const view = { get current() { return rt?.current?.module === galaxyModule ? rt.current.world.scene : null; } };
   useEffect(() => setFlown(false), [ship]);
+
+  // The universe map's jump in holds its tunnel for the galaxy
+  // (hyperspace3d/timeline.js's handJump): let go once the galaxy has drawn,
+  // or as soon as it won't, or while it's frozen (./jumpIn.js says when; the
+  // runtime read as it is now, since this page's first status can be an
+  // earlier world's failure), and when this page goes (a tick later:
+  // React's second run of an effect in development comes straight back).
+  useEffect(() => {
+    const making = rt?.loading === galaxyModule || rt?.current?.module === galaxyModule;
+    if (letsJumpGo({ drawn: on, meant, frozen, making })) letHandedGo();
+  }, [on, meant, frozen, rt]);
+  const up = useRef(false);
+  useEffect(() => {
+    up.current = true;
+    return () => {
+      up.current = false;
+      setTimeout(() => {
+        if (!up.current) letHandedGo();
+      }, 0);
+    };
+  }, []);
 
   useEffect(() => {
     if (!handle) return;
@@ -114,14 +135,10 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   );
 
   return (
-    <WorldHost world={world} veil={{ title: systemById(system)?.name ?? hereSys.name }} className="universe-map galaxy-map" data-ship={ship || undefined}>
+    <WorldHost world={{ host }} className="universe-map galaxy-map" data-ship={ship || undefined}>
       {meant ? (
         <>
-          {!on && status !== 'preparing' && (
-            <p className="universe-loading" role="status">
-              Plotting a course to a galaxy far, far away…
-            </p>
-          )}
+          <LoadingVeil className="universe-loading" shown={!on} progress={progress.value} step={progress.step} title="Plotting a course to a galaxy far, far away" />
           {on && oath && <WarHud sys={here} oath={oath} />}
           <ul className="universe-labels galaxy-labels" aria-label="In this system">
             {goals.map((g) => (

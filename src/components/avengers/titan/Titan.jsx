@@ -42,7 +42,7 @@ const Titan = forwardRef(function Titan({ have, onSet, fallback }, ref) {
             v.dispose();
             return;
           }
-          await warmed(v, () => !dead); // everything on the graphics chip before the first frame
+          await warmed(v); // its shaders linked before the first frame
           if (dead || v.engine?.lost) {
             v.dispose();
             return;
@@ -110,18 +110,6 @@ const Titan = forwardRef(function Titan({ have, onSet, fallback }, ref) {
     view.current?.render(1 / 60);
     place();
   }, [status, have]);
-  // (and when the frame guard has readied something it held back: without
-  // a loop, nothing else would draw it)
-  useEffect(() => {
-    const el = canvas.current;
-    if (status !== 'on' || !calm.current || !el) return undefined;
-    const redraw = () => {
-      view.current?.render(0);
-      place();
-    };
-    el.addEventListener('tp:redraw', redraw);
-    return () => el.removeEventListener('tp:redraw', redraw);
-  }, [status]);
 
   // the snap: true if the 3D is doing it (and calls `done(tony)` at the moment
   // the fingers meet), false if the page should do it itself

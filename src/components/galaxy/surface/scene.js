@@ -30,7 +30,7 @@
 // A scene module, a world on the world runtime through ./module.js
 // (src/runtime's fromScene): create(canvas, ctx) draws with the runtime's
 // renderer (ctx.rt.gfx: the runtime sizes it and sets its sharpness) and
-// returns { ready, prepare, resize, render, update, setVisible, input, dispose }.
+// returns { ready, resize, render, update, setVisible, input, dispose }.
 // Props: system (the world's id), ship (the crew's ship: xwing, falcon…),
 // loadout (its paint), onEvent(e), compass (a ref: the compass bar, its
 // marks by data-id), found (the places already found, by id), net (the
@@ -48,9 +48,13 @@ import { PLACES } from '../battleLines';
 import { systemById } from '../systems';
 import { readBuildWire, writeBuild } from '../../universe/shipyard/build';
 import * as THREE from 'three';
-import { disposeTree, precompile, singlePass } from '../../../lib/three/renderer';
+import { disposeTree, precompile, precompilePasses, singlePass } from '../../../lib/three/renderer';
+import { nextFrame as breathe, prepareScene } from '../../../lib/three/gpuWork';
+import { STEPS } from '../../../lib/three/pace';
+import { settle as settleWithin } from '../../../lib/settle';
 import { dropTransmission } from '../../../lib/three/glass';
 import { device } from '../../../lib/device';
+import { detailLevel } from '../../../lib/detail';
 import { createPost } from '../../universe/post';
 import { SHIP_MODELS, buildShip, LENGTH } from '../../universe/shipModels';
 import { loadModel } from '../../universe/planets';
@@ -74,12 +78,13 @@ import { createSkyFog } from './skyfog';
 import { createWater } from './water';
 import { floatPose } from './floats';
 import { createWeather } from './weather';
-import { createKit, paintKit } from './kit';
+import { createKit } from './kit';
 import { createHouse } from '../../../lib/three/house';
 import { adoptLater, exposureOf, groundPieces, lookOf } from './look';
 import { surfaceTuning, siteCode } from './tune';
 import { debugOn, debugPanel } from '../../../lib/debugPanel';
 import { createGrass } from '../../../lib/three/grass';
+import { amountsFor } from './amounts';
 import { createWind } from '../../../lib/three/wind';
 import { createGroundMap } from '../../../lib/three/groundmap';
 import { groundPainter, mapAreaOf } from './groundPaint';
@@ -113,11 +118,7 @@ import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
 import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
-import { compileSlices, nextFrame, prepareScene, uploadSlices } from '../../../lib/three/gpuWork';
-import { texturesUnder } from '../../../lib/three/renderer';
-import { cellSizeOf, createThingCells, drawRange } from './thingCells';
-import { settle } from '../../../lib/settle';
-import { garrisonAt, garrisonLife, garrisonQuest } from './garrison';
+import { garrisonAt, garrisonLife } from './garrison';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -164,6 +165,9 @@ export async function create(canvas, ctx) {
   let disposed = false;
   const tier = device().tier;
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
+  // how much it draws: the level's row of the budget table (amounts.js)
+  const level = detailLevel();
+  const amounts = amountsFor({ level, small });
   const site = siteOf(ctx.system);
   if (!site) throw new Error(`no surface for ${ctx.system}`);
   // a mission played down here (missions/): you start in it, not landing
@@ -199,7 +203,7 @@ export async function create(canvas, ctx) {
     return precompile(renderer, singlePass(root), camera, scene, post.on ? post.composer.readBuffer : undefined);
   };
 
-  const sky = createSky(site);
+  const sky = createSky(site, { clouds: amounts.clouds });
   // (the fog the sky's colour that way: everything fogged with it, as it's put in the world)
   const skyFog = createSkyFog(sky, THREE.ShaderChunk);
   // (the look's halo round the sun, and its haze below the horizon where the
@@ -246,15 +250,13 @@ export async function create(canvas, ctx) {
   pmrem.dispose();
   scene.environment = env.texture;
   scene.environmentIntensity = 0.4;
-  // (the world is built a step at a time, a frame between each step, so a
-  // galaxy diving on it at a handover goes on being drawn as it is: one long
-  // build would hold up the dive's frames for as long as it took)
-  await nextFrame();
 
+  // (a frame's breath between the build's big steps: it's made behind the
+  // dive, which goes on drawing meanwhile, and one long task stopped it)
+  await breathe();
   // ── The land ──
-  const height = makeHeight(site.ground);
-  const grid = heightGrid(height, { n: small ? 160 : 256, grow: small ? 1.13 : 1.08 });
-  await nextFrame();
+  const height = makeHeight(site.ground, { relief: amounts.relief });
+  const grid = heightGrid(height, amounts.grid);
   // (water you wade in: not lava, not cloud, and not a sea far under a
   // platform with nothing else under it, which you'd fall into)
   const wade = site.water && !site.noGround && site.water.kind !== 'clouds' && site.water.kind !== 'lava' ? site.water.level : null;
@@ -266,7 +268,7 @@ export async function create(canvas, ctx) {
     const items = [];
     const [r0, r1] = s.within ?? [20, site.reach];
     let tries = 0;
-    while (items.length < Math.round(s.n * (small ? 0.6 : 1)) && tries++ < s.n * 20) {
+    while (items.length < Math.round(s.n * amounts.scatter) && tries++ < s.n * 20 * Math.max(1, amounts.scatter)) {
       const a = r() * Math.PI * 2;
       const d = Math.sqrt(r0 * r0 + r() * (r1 * r1 - r0 * r0));
       const x = Math.cos(a) * d;
@@ -279,7 +281,6 @@ export async function create(canvas, ctx) {
     }
     return { s, items };
   });
-  await nextFrame();
   // the ground as data (lib/three/groundmap): its colour and its grass
   // painted once over the walkable square (groundPaint.js), darker and
   // thinner under the trees' crowns; the floor and the grass read it, and
@@ -290,17 +291,16 @@ export async function create(canvas, ctx) {
   if (pieces.map) {
     const shade = scattered.flatMap(({ s, items }) => (SCATTER[s.kind]?.canopy ? items.map((it) => ({ at: it.at, r: SCATTER[s.kind].canopy * it.scale })) : []));
     const painter = groundPainter(site, grid, { shade });
-    const mapSize = small ? 256 : 512;
+    const mapSize = amounts.map;
     groundMap = createGroundMap({ area: mapAreaOf(), size: mapSize, heightSize: mapSize / 2, paint: painter.paint, height: painter.height });
     if (pieces.bounce) house.ground(groundMap);
   }
-  await nextFrame();
-  const gmat = groundMaterial(site, { small, map: groundMap });
-  const marks = createMarks(small ? 256 : 512);
+  const gmat = groundMaterial(site, { small, map: groundMap, splat: amounts.splat });
+  const marks = createMarks(amounts.marks);
   gmat.uniforms.uMarks.value = marks.texture;
   const ground = groundMesh(grid, gmat.material);
   if (!site.noGround) scene.add(ground);
-  const water = site.water ? createWater(site, sunDir, site.sky.suns?.[0]?.color ?? '#ffffff', { heightAt: site.noGround ? null : grid.heightAt, small, id: ctx.system }) : null;
+  const water = site.water ? createWater(site, sunDir, site.sky.suns?.[0]?.color ?? '#ffffff', { heightAt: site.noGround ? null : grid.heightAt, small, id: ctx.system, rings: amounts.rings, depthN: amounts.depthN, foam: amounts.splat }) : null;
   if (water) {
     scene.add(water.mesh);
     if (water.glow) scene.add(water.glow);
@@ -313,67 +313,42 @@ export async function create(canvas, ctx) {
     floors: [...(site.floors ?? [])],
     reach: site.reach,
     water: wade,
+    // (how deep the water can be before you're turned back: the lagoon on Kashyyyk)
+    wadeMax: wade != null ? site.water.wadeMax : undefined,
   };
   const weather = reduced ? null : createWeather(site, { small });
   if (weather) scene.add(weather.group);
-  await nextFrame();
 
+  await breathe();
   // ── What's on it ──
   // one wind for the world (lib/three/wind): the grass's, and the way the
   // kit's plants and cloth lean
   const windAngle = site.ground.wind ?? 0;
   const wind = createWind({ strength: site.grass?.wind ?? 0.4, angle: windAngle });
-  // (its pictures painted ahead, a frame between each: kit.js's paintKit)
-  await paintKit(31);
   const kit = createKit({ seed: 31, wind: { angle: windAngle } });
   // (the scatter casts its shadow only near you: near.js)
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
-  const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null });
+  const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null, seated: amounts.seat });
   // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
   const floaters = [];
   for (const t of site.things_all) {
-    // (on the grid of cells: readied a cell at a time, thingCells.js)
-    const put = placer.put({ ...t, chunk: true });
+    const put = placer.put(t);
     if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
   }
   for (const { s, items } of scattered) placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
-  // The things put about the world on a grid of cells (thingCells.js): each
-  // cell's pictures sent and shaders made in the prepare, before the world
-  // is shown (or, if the prepare was cut short, a cell at a time ahead of
-  // you as you walk), and a cell out past the fog not drawn. Nothing is
-  // hidden until the floor's light is baked, so the bake (and a kept one's
-  // key) sees every thing wherever you are.
-  const cellSize = cellSizeOf(site.reach);
-  const thingCells = createThingCells({
-    entries: placer.chunked,
-    size: cellSize,
-    ...drawRange(scene.fog.density, cellSize, site.reach),
-    hold: () => !site.noGround && !lit?.stats.baked,
-    prepareCell: async (objects) => {
-      // (its pictures, a slice at a time, on the tiers whose prepare sends
-      // them; its models' shaders were made as they came in, warm() above,
-      // and the rest are the prepare's, or the frame guard's)
-      if (disposed || !objects.length || tier === 'low') return;
-      const textures = new Set();
-      for (const o of objects) for (const t of texturesUnder(o)) textures.add(t);
-      await uploadSlices(renderer, [...textures], { alive: () => !disposed });
-    },
-  });
-  await nextFrame();
   // the grass round you (lib/three/grass, Bruno's: a triangle a blade, one
   // draw, the patch going with you), standing on the ground map and its
   // colour, where the site grows it
   const grass = pieces.grass
-    ? createGrass({ ground: groundMap, wind, side: tier === 'high' && !small ? 280 : small ? 120 : 200, size: 44, height: site.grass.h?.[1] ?? 0.5, width: site.grass.w ?? 0.05, root: 0.35 })
+    ? createGrass({ ground: groundMap, wind, side: amounts.grass.side, size: amounts.grass.size, height: site.grass.h?.[1] ?? 0.5, width: site.grass.w ?? 0.05, root: 0.35 })
     : null;
   if (grass) scene.add(grass.mesh);
-  await nextFrame();
   // ?debug: the look, the grass and the wind on sliders, copied out as the
   // site's own blocks (lib/debugPanel, tune.js)
   const panel = debugOn() ? debugPanel({ title: site.id, groups: surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), code: siteCode }) : null;
   const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops), ...garrisonAt(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
-  await nextFrame();
 
+  await breathe();
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
   for (const z of site.zones) {
@@ -389,6 +364,7 @@ export async function create(canvas, ctx) {
     return l;
   });
 
+  await breathe();
   // ── Things to do: the quest you're on, out in the world, and the blaster ──
   // (Rick's guns' kills, heard: the portal's swirl and snap, the shatter, the squeak and the pop)
   const showSound = (how, ev) => {
@@ -424,8 +400,8 @@ export async function create(canvas, ctx) {
   const _mateFrom = new V();
   const _hips = new V();
   // (a quest mission's quest is the mission's own, not one of the world's)
-  // (a quest's troopers are the holder's too: garrison.js)
-  const questOf = (id) => garrisonQuest(site.quests.find((q) => q.id === id) ?? (mission?.quest?.id === id ? mission.quest : null), ctx.effects?.troops);
+  // (a quest keeps the enemies it was written with: the garrison dresses the world's people, not its fights)
+  const questOf = (id) => site.quests.find((q) => q.id === id) ?? (mission?.quest?.id === id ? mission.quest : null);
   // who gives each quest, with a mark over them till it's done
   const givers = [];
   const markMat = new THREE.SpriteMaterial({ map: (() => {
@@ -492,8 +468,7 @@ export async function create(canvas, ctx) {
       return ridee;
     });
 
-  await nextFrame();
-
+  await breathe();
   // ── Ships going over, and hanging in the sky ──
   const flights = [];
   let nextFlight = 12 + r() * 10;
@@ -532,6 +507,7 @@ export async function create(canvas, ctx) {
     return m;
   });
 
+  await breathe();
   // ── Your ship ──
   const shipKind = SHIPS[ctx.ship] ? ctx.ship : 'xwing';
   const S = SHIPS[shipKind];
@@ -601,10 +577,7 @@ export async function create(canvas, ctx) {
     world.solids.box(landAt[0], landAt[1], shipBox.w * 0.8, shipBox.l * 0.85, site.land.yaw);
   };
 
-  // (the last step: what's below is made in one go, its pieces' loads
-  // calling back into one another)
-  await nextFrame();
-
+  await breathe();
   // ── You, and your crewmate ──
   // (the hero you've picked to play as (heroes.js) walks in the lead; the
   // ship's own crew otherwise, and the one of them you aren't stays your mate.
@@ -780,6 +753,7 @@ export async function create(canvas, ctx) {
   // ── The other pilots down here (online) ──
   const peers = createPeers({ parent: scene, placer, getCast: () => (cast ??= createMeshyCast(withWardrobe())) });
 
+  await breathe();
   // ── State ──
   const state = {
     phase: mission ? (mission.ride ? 'ride' : 'walk') : reduced ? 'walk' : 'landing',
@@ -2681,6 +2655,8 @@ export async function create(canvas, ctx) {
     camera.lookAt(camLook);
   }
 
+  let qaView = null; // (DEV: __surfaceScene.view)
+
   // places: found as you come near; the one you're in
   function places() {
     const p = me().st;
@@ -2990,10 +2966,6 @@ export async function create(canvas, ctx) {
     state.aim = Math.max(0, state.aim - dt / 2.5);
     life.update(dt, state.phase === 'walk' ? me().st : null, state.phase === 'walk' || state.phase === 'ride' ? me().st : camera.position);
     placer.update(t, dt, me().st);
-    {
-      const st = me().st;
-      thingCells.update(st, { x: Math.sin(st.yaw ?? 0), z: Math.cos(st.yaw ?? 0) });
-    }
     if (!reduced) kit.tick(dt);
     grass?.update(me().st);
     wind.update(dt);
@@ -3091,6 +3063,11 @@ export async function create(canvas, ctx) {
     weather?.update(t, camera, world.heightAt, size.h);
     compass();
     lit?.update();
+    // (DEV: a QA script's held view, __surfaceScene.view)
+    if (import.meta.env.DEV && qaView) {
+      camera.position.set(...qaView.from);
+      camera.lookAt(...qaView.at);
+    }
     const tPost = performance.now();
     post.render(size.w, size.h);
     if (import.meta.env.DEV) state.ms = { js: Math.round(tPost - now), post: Math.round(performance.now() - tPost) };
@@ -3101,16 +3078,19 @@ export async function create(canvas, ctx) {
       scene,
       post,
       renderer,
+      // (for the QA scripts: the ground's height, and a view held from one
+      // point at another, metres over the ground at each, till view(null))
+      heightAt: (x, z) => world.heightAt(x, z),
+      land: site.land.at,
+      view(from, at) {
+        qaView = from ? { from: [from[0], world.heightAt(from[0], from[2]) + from[1], from[2]], at: [at[0], world.heightAt(at[0], at[2]) + at[1], at[2]] } : null;
+      },
       // (the world's people, for the QA scripts: actors.js's, with debug, find and hear)
       life,
       // (for the QA scripts: the land's light, once its things are down)
       api: {
         get ground() {
           return lit;
-        },
-        // (the things' cells: how many, readied, drawn: thingCells.js)
-        get chunks() {
-          return thingCells.stats();
         },
       },
     };
@@ -3119,9 +3099,7 @@ export async function create(canvas, ctx) {
   // Simon's folio: lib/three/groundwork): every rock's, hut's and walker's
   // soft shadow and the sky's occlusion on the ground, under whichever suns
   // this world has, a bounce off the ground, a soft blob under you and your
-  // crewmate, and no shadow pass. Baked in the prepare, below (or on the
-  // first frame, if the prepare never got there), and kept in the browser
-  // for this world, so a second visit reads it back instead ──
+  // crewmate, and no shadow pass ──
   let lit = null;
   // ── Ready ──
   const ready = (async () => {
@@ -3143,7 +3121,6 @@ export async function create(canvas, ctx) {
         height: world.heightAt,
         tier: small ? 'low' : 'mid',
         auto: true,
-        cache: { world: 'galaxy', place: site.id },
       });
       // (the grass in the floor's shadows: read where each blade stands)
       if (grass) floorShadow(grass.material, lit.mask);
@@ -3159,100 +3136,47 @@ export async function create(canvas, ctx) {
       assault.begin();
     }
     if (!disposed) beginMission();
-  })();
-
-  // Everything onto the graphics chip before the first frame, behind the
-  // page's loading veil on a visit straight here, or behind the dive on a
-  // flown trip (the runtime runs it after `ready`, while the galaxy draws
-  // on): the floor's light baked first (step 'bake', or read back from an
-  // earlier visit), then the shaders made both ways the lights can be, so a
-  // door doesn't stall on new ones (the lamps lit and the sun's shadow off,
-  // as in a room), then lib/three/gpuWork's prepareScene over the world as
-  // it is outdoors: its pictures sent a few at a time, its shaders compiled
-  // against the buffer the frames draw into, and a draw of everything,
-  // small (the passes' buffers 64 across, one pixel of the canvas). On a low
-  // tier only the shaders are seen through, as the galaxy's.
-  const READY_HOLD = 8000; // ms at most it waits on `ready` (the props down)
-  const prepare = async (onProgress, alive = () => true) => {
-    const going = () => alive() && !disposed;
-    const say = (f, step) => {
-      try {
-        onProgress?.(f, step);
-      } catch {
-        // (a page's progress bar isn't the prepare's business)
-      }
-    };
-    const target = post.on ? post.composer.readBuffer : null;
-    try {
-      await settle(ready, READY_HOLD);
-      if (!going()) return;
-      // the things' cells, each one's loads in and its pictures and shaders
-      // readied (before the bake: it sees them all)
-      const CELLS = 0.15;
-      say(0, 'pictures');
-      await thingCells.prepareAll((f) => say(CELLS * f, 'pictures'), going);
-      if (!going()) return;
-      const BAKE = lit ? 0.3 : 0;
-      if (lit && !lit.stats.started) {
-        say(CELLS, 'bake');
-        // (the sun where the frames put it, so the bake's sun is theirs)
-        sun.target.position.set(0, 0, 0);
-        sun.position.copy(sunDir).multiplyScalar(300);
-        await lit.bake({ alive: going });
-        if (!going()) return;
-        say(CELLS + BAKE, 'bake');
-      }
-      // (fogged in the sky's colour and in the look first, as warm() does, so
-      // each shader is made once)
-      skyFog.scene(scene);
-      adoptLater(house, scene);
-      singlePass(scene);
-      const inside = Boolean(state.zone);
-      renderer.setRenderTarget(target);
-      if (site.zones.length) {
-        for (const l of lamps) l.visible = true;
-        sun.castShadow = false;
-        try {
-          await compileSlices(renderer, [scene], camera, scene, { alive: going, onStep: (i, n) => say(CELLS + BAKE + (0.2 * i) / n, 'shaders') });
-        } finally {
-          for (const l of lamps) l.visible = false;
-          sun.castShadow = shadows;
-          if (inside) lighting(state.zone);
-        }
-        if (!going()) return;
-      }
-      const from = CELLS + BAKE + (site.zones.length ? 0.2 : 0);
-      renderer.setRenderTarget(target);
-      if (tier === 'low') {
-        await compileSlices(renderer, [scene], camera, scene, { alive: going, onStep: (i, n) => say(from + ((1 - from) * i) / n, 'shaders') });
-        return;
-      }
-      await prepareScene({
-        renderer,
-        roots: [scene],
-        scene,
-        camera,
-        alive: going,
-        onProgress: (f, step) => say(from + (1 - from) * f, step),
-        render: () => {
-          post.render(64, 64);
-          renderer.setRenderTarget(target);
-        },
-      });
-    } finally {
-      try {
-        renderer.setRenderTarget(null);
-      } catch {
-        // (gone with its renderer)
-      }
-      if (going()) say(1, 'first draw');
+    // (both ways the lights can be, so a door doesn't stall on new shaders: the
+    // lamps lit and the sun's shadow off, as in a room, then as outdoors)
+    const inside = Boolean(state.zone);
+    if (site.zones.length && !disposed) {
+      for (const l of lamps) l.visible = true;
+      sun.castShadow = false;
+      await warm(scene).catch(() => {});
+      for (const l of lamps) l.visible = false;
+      sun.castShadow = shadows;
+      if (inside) lighting(state.zone);
     }
-  };
+    if (!disposed) await warm(scene).catch(() => {});
+  })();
   emit({ type: 'phase', phase: state.phase });
+
+  // Everything sent to the graphics chip before the surface is shown
+  // (the runtime runs it behind the dive, or behind the page's loading
+  // screen): the floor's light baked for the sun where the first frame
+  // will put it, the passes' shaders, then every picture, shader and one
+  // draw of it all, a slice at a time (lib/three/gpuWork). Drawn as it
+  // was, the bake held a frame for seconds on landing and the passes'
+  // shaders were compiled mid-frame.
+  const prepare = async (onProgress, { alive = () => true } = {}) => {
+    const on = () => alive() && !disposed;
+    onProgress?.(0, 'load');
+    await settleWithin(ready, 20000);
+    if (!on()) return;
+    if (lit && !lit.stats.started) {
+      onProgress?.(0, 'bake');
+      sun.target.position.set(landAt[0], world.heightAt(landAt[0], landAt[1]) ?? 0, landAt[1]);
+      sun.position.copy(sun.target.position).addScaledVector(sunDir, 300);
+      await settleWithin(lit.bake(), 20000);
+      if (!on()) return;
+    }
+    if (post.composer) await precompilePasses(renderer, post.composer, camera);
+    if (!on()) return;
+    await prepareScene({ renderer, roots: [scene], scene, camera, target: post.target, render: () => post.render(64, 64), onProgress, alive: on });
+  };
 
   return {
     ready,
-    // everything onto the graphics chip before the first frame (above)
     prepare,
     resize(w, h) {
       size.w = Math.max(1, w);
@@ -3273,9 +3197,13 @@ export async function create(canvas, ctx) {
     setVisible(on) {
       shown = on;
     },
-    // still slow at the lowest sharpness (the watchdog, useScene): no sun shadow,
-    // and the post without its bloom (the grade kept, so the colours stay right)
-    lowerQuality() {
+    // the runtime's quality: each step draws the passes less sharp (the
+    // canvas keeps its size: module.js's `sharpness`); still slow past the
+    // last step, no sun shadow, and the post without its bloom (the grade
+    // kept, so the colours stay right)
+    lowerQuality(level = STEPS.length) {
+      post.sharpness = STEPS[Math.min(level, STEPS.length - 1)];
+      if (level < STEPS.length) return;
       shadows = false;
       sun.castShadow = false;
       post.lite();
@@ -3557,7 +3485,6 @@ export async function create(canvas, ctx) {
       markMat.map.dispose();
       markMat.dispose();
       life.dispose();
-      thingCells.dispose();
       placer.dispose();
       grass?.dispose();
       wind.dispose();

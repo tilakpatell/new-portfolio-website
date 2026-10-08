@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { meshyRig, swingClip } from '../../lib/three/meshyRig.fixture';
-import { attend, castComing, castDo, drawWatcher, fight, followDrawn, releaseCast, setCastSource, tickCast, upgrade } from './cast3d';
+import { attend, castDo, drawWatcher, fight, followDrawn, releaseCast, setCastSource, tickCast, upgrade } from './cast3d';
 import { makeToyFigure, pose } from './mapFigures';
 import { makePerson, sit } from './shire/people';
 
@@ -56,20 +56,6 @@ describe('the cast on the toys', () => {
     f.group.updateMatrixWorld(true);
     const toyTop = f.head.getWorldPosition(new THREE.Vector3()).y + 0.29;
     expect(crown.y).toBeCloseTo(toyTop, 1);
-  });
-
-  it('says which figures under a root are still on their way, until they are here', async () => {
-    const scene = new THREE.Scene();
-    const f = makePerson('merry');
-    const other = makePerson('sam');
-    scene.add(f.group);
-    const waits = castComing(scene);
-    expect(waits.length).toBe(1);
-    expect(castComing(null).length).toBeGreaterThanOrEqual(2);
-    await Promise.all(waits);
-    expect(f.cast.ready).toBe(true);
-    expect(castComing(scene)).toEqual([]);
-    await ready(other);
   });
 
   it('faces the toy’s way (+x)', async () => {

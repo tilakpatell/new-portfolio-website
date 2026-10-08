@@ -11,7 +11,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { createRenderer, precompile, precompilePasses, uploadTextures } from '../lib/three/renderer';
+import { createRenderer, fitRatio, maxSide, precompile, precompilePasses, uploadTextures } from '../lib/three/renderer';
 import { makeGfx } from './gfx';
 
 // [{ kind: 'render', scene, camera }, { kind: 'bloom', strength, radius,
@@ -41,9 +41,17 @@ export function buildComposer(renderer, passes, size) {
   };
 }
 
-export function createWebGL(canvas, { budget, onLost, alpha = true, toneMapping = THREE.NoToneMapping, exposure = 1 } = {}) {
-  const gl = createRenderer(canvas, { alpha, antialias: budget?.antialias ?? true, ratio: budget?.ratio ?? 2, toneMapping, exposure, onLost });
+// (`invalidate`: the runtime's, asked for a frame when something the frame
+// guard held back is ready)
+export function createWebGL(canvas, { budget, onLost, invalidate, alpha = true, toneMapping = THREE.NoToneMapping, exposure = 1 } = {}) {
+  const gl = createRenderer(canvas, { alpha, antialias: budget?.antialias ?? true, ratio: budget?.ratio ?? 2, toneMapping, exposure, onLost, guard: { invalidate } });
   const { renderer } = gl;
+  // The gfx sizes the renderer itself, at the runtime's ratio, never through
+  // gl.setSize: that put back lib/three/renderer's own ratio (the budget's,
+  // for the page scenes and their watchdog), so the runtime and that one
+  // took turns at the canvas, the galaxy drew at 2 on a 2× screen under its
+  // 1.5 cap, and each quality step jumped from one to the other.
+  const side = maxSide(renderer);
   const gfx = makeGfx({
     backend: 'webgl',
     renderer,
@@ -53,12 +61,7 @@ export function createWebGL(canvas, { budget, onLost, alpha = true, toneMapping 
     post: (passes) => buildComposer(renderer, passes, gfx.size),
     isLost: () => gl.lost,
     release: () => gl.dispose(),
+    fit: (w, h, r) => fitRatio(w, h, r, { side }),
   });
-  // (lib/three/renderer sizes through gl; the gfx keeps the same numbers)
-  gfx.setSize = (w, h) => {
-    gfx.size.w = Math.max(1, Math.round(w));
-    gfx.size.h = Math.max(1, Math.round(h));
-    gl.setSize(gfx.size.w, gfx.size.h);
-  };
   return gfx;
 }
