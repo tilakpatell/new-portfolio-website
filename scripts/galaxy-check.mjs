@@ -104,6 +104,18 @@ for (const id of list.split(',')) {
     continue;
   }
   const loaded = (Date.now() - t0) / 1000;
+  // (the frame guard off, lib/three/frameGuard: it leaves out of the frame
+  // every material whose shader isn't compiled yet and compiles a few a
+  // frame, which at software GL's seconds a frame held most of a world back
+  // for many minutes; off, everything is drawn, as the baselines were made.
+  // The dev server's module is the page's own, so this is the page's guard)
+  await page
+    .evaluate(async (surface) => {
+      const { guardOf } = await import('/src/lib/three/frameGuard.js');
+      const g = guardOf(surface ? window.__surfaceScene.renderer : window.__galaxyDebug?.renderer);
+      if (g) g.enabled = false;
+    }, mode === 'surface')
+    .catch((e) => errors.push(`frame guard not switched off: ${e}`));
   // (on the surface, the floor's light baked first: the bake's passes are a
   // one-off, not a frame anyone plays. A world with no ground, cloud-borne,
   // has none to wait for: it runs out the clock)

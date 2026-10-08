@@ -18,15 +18,19 @@ export function limitsFor({ id, quality, row, base, scale = 1, realGpu = false }
   const ownTris = (base?.triangles ?? row.tris) * 1.1;
   const tris = row.tris === Infinity ? Infinity : (known ? ownTris : Math.min(row.tris, ownTris)) * scale;
   const frame = quality === 'ultra' && realGpu ? 16.7 * scale : Infinity;
-  return { calls, tris, mb: row.modelsMB * scale, frame, known };
+  // (a quarter of the baseline's calls: fewer is a world held back while
+  // measured, the frame guard or a cover, not one made lighter)
+  return { calls, tris, mb: row.modelsMB * scale, frame, known, baseCalls: base?.calls ?? null, floor: base ? base.calls * 0.25 : 0 };
 }
 
 // What a run went over, as short phrases; none means it passes. A run that
-// drew nothing while it was measured (the world still held back behind its
-// cover) has no numbers to hold to a budget, so it fails too.
+// drew nothing, or far less than its baseline, while it was measured (the
+// world still held back behind its cover or the frame guard) has no numbers
+// to hold to a budget, so it fails too.
 export const overBy = (r, l) =>
   [
     r.calls === 0 && 'drew nothing (no draw calls in the measured frames)',
+    r.calls > 0 && r.calls < l.floor && `drew far less than its baseline (${r.calls} of ${l.baseCalls} draw calls): held back while measured`,
     r.calls > l.calls && `calls ${r.calls} > ${Math.round(l.calls)}`,
     r.triangles > l.tris && `tris ${r.triangles} > ${Math.round(l.tris)}`,
     r.glbMB > l.mb && `models ${r.glbMB} MB > ${l.mb}`,
