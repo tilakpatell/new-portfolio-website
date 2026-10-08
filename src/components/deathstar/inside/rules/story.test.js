@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chain, checkpointOf, startStory, storyStep } from './story';
+import { chain, checkpointOf, say, spawn, startStory, storyStep } from './story';
 
 const BEGIN = { spot: 'a', hero: 'luke', armour: false, helmet: false, companions: ['han'], flags: [], gun: 'e11' };
 const story = (beats, begin = BEGIN) => ({ id: 'test', station: 'ds1', side: 'rebel', hero: 'luke', title: 'A test', steps: chain(begin, beats) });
@@ -279,5 +279,16 @@ describe('checkpoints', () => {
     cp.flags.push('tampered');
     expect(checkpointOf(s, progress).flags).toEqual([]);
     expect(checkpointOf(s, play(s, [at('r', 'b'), ...second]).progress)).toBeNull();
+  });
+});
+
+describe('writing a story', () => {
+  it('says a line as an effect, and spawns people alike as effects of their own, posted unless told otherwise', () => {
+    expect(say('han', 'Here.')).toEqual({ say: { who: 'han', text: 'Here.' } });
+    const two = spawn('stormtrooper', 'ramp', 'guard', { squad: 'ramp', hostile: true }, 2);
+    const guard = { spawn: { kind: 'stormtrooper', spot: 'ramp', role: 'post', squad: 'ramp', hostile: true, tag: 'guard' } };
+    expect(two).toEqual([guard, guard]);
+    expect(two[0]).not.toBe(two[1]);
+    expect(spawn('leia', 'cell', 'leia', { role: 'scripted' })).toEqual([{ spawn: { kind: 'leia', spot: 'cell', role: 'scripted', tag: 'leia' } }]);
   });
 });

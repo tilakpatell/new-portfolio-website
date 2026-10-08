@@ -23,6 +23,8 @@
 //     saved step `at` (an id it doesn’t know starts from the beginning)
 //   storyStep(progress, story, event) → { progress, effects }
 //   checkpointOf(story, progress) → checkpoint | null   the step’s, a copy; null once the story is over
+//   say(who, text) → effect;  spawn(kind, spot, tag, { role = 'post', squad?, hostile? }?, n = 1) → [effect]
+//     for writing stories: a line said, and n people alike brought aboard
 //
 //   story: { id, station, side, hero, title, steps: [step] }
 //   step: { id, type, text, target?, time?, need?, checkpoint, start: [effect], end: [effect], fail?: [effect] }
@@ -192,6 +194,13 @@ function advance(step, p, e) {
     (type === 'still' && e.type === 'still' && e.seconds >= step.time - EPS);
   return { p, done };
 }
+
+// ── writing one ──
+
+export const say = (who, text) => ({ say: { who, text } });
+
+// n people alike, each an effect of its own so nothing downstream shares one
+export const spawn = (kind, spot, tag, { role = 'post', ...more } = {}, n = 1) => Array.from({ length: n }, () => ({ spawn: { kind, spot, role, ...more, tag } }));
 
 export function startStory(story, at) {
   const k = indexOf(story, at);
