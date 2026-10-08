@@ -175,15 +175,42 @@ Branch `claude/universe-spread` from `origin/main`. Touches none of Lane B’s f
 **Interfaces:**
 - Produces: `ZONES = ['place', 'lane', 'void']`; every `EVENTS` entry gains `zones` (the spec §8 table: place: hunt, distress, remover, eclipse, escort, meteors, convoy; lane: interdiction, lanejam, convoy, ambush; void: leviathan, comet, rift, flare, supernova, bounty; `destroyer`, `council`, `roadblock` are `['place', 'lane']`). `update` keeps returning the id; a new pure `playAs(id, zone) -> id` maps those three to `'interdiction'` and `hunt` to `'ambush'` when `zone === 'lane'`, and the scene plays `playAs`’s id. `update(dt, { …, zone })` picks only events whose `zones` has `zone`; `zoneOf(ship, { regionAt, laneAt }) -> zone`.
 
-- [ ] **Step 1: Write the failing tests:** on a lane with a Star Wars side the picks over 200 seeded updates are only lane events; in the void only void events; `playAs('destroyer', 'lane')` is `'interdiction'`, `playAs('destroyer', 'place')` is `'destroyer'`; `zoneOf` at a member’s position is `'place'`, on a carriageway `'lane'`, elsewhere `'void'`.
-- [ ] **Step 2: Fail. Step 3: Implement. Step 4: Green. Commit.**
+- [x] **Step 1: Write the failing tests:** on a lane with a Star Wars side the picks over 200 seeded updates are only lane events; in the void only void events; `playAs('destroyer', 'lane')` is `'interdiction'`, `playAs('destroyer', 'place')` is `'destroyer'`; `zoneOf` at a member’s position is `'place'`, on a carriageway `'lane'`, elsewhere `'void'`.
+- [x] **Step 2: Fail. Step 3: Implement. Step 4: Green. Commit.**
 
 ### Task 2: the lane events in the scene
 
 **Files:** Modify `scene.js` (`happen`: `interdiction` places the side’s capital (`setpieces.js`’s destroyer, the Council’s cruisers, the roadblock) across the carriageway `600` units ahead and sets `state.ride = null` with the dropped-out speed (the gravity well), the existing `destroyer`/`council`/`roadblock` fight following; `lanejam` is `minefield.js`’s band placed across the carriageway `900` ahead; `ambush` is `hunt` with `entryPoint`’s `from` at the ride’s end node; `convoy` on a lane is a flow convoy you overtake, no spawn), `minefield.js` (`bandAcross(pts, s, r)` for a lane), `minefield.test.js`, `hunterRules.js` (`entryPoint` accepts `{ at }`: the pack comes in round that point, never inside a solid), `hunterRules.test.js`.
 
-- [ ] **Step 1: Write the failing tests:** `bandAcross` returns mines within `R × 1.3` of the carriageway at `s` and none inside a solid; `entryPoint` with `at` puts every hunter within 40 of it and outside every solid.
-- [ ] **Step 2: Fail. Step 3: Implement. Step 4:** browser: `window.__universe().soon('interdiction')` mid-ride drops the ship out before a Star Destroyer; `soon('ambush')` ends a ride in a fight at the ramp. **Commit.**
+- [x] **Step 1: Write the failing tests:** `bandAcross` returns mines within `R × 1.3` of the carriageway at `s` and none inside a solid; `entryPoint` with `at` puts every hunter within 40 of it and outside every solid.
+- [x] **Step 2: Fail. Step 3: Implement. Step 4:** browser: `window.__universe().soon('interdiction')` mid-ride drops the ship out before a Star Destroyer; `soon('ambush')` ends a ride in a fight at the ramp. **Commit.**
+
+### Task 5: evidence and the hand-off
+
+- [ ] `scripts/universe-check.mjs` at `far-rim`, `lane-ride`, `overview` on the three tiers, numbers in the PR against the budgets; a screenshot each. `docs/architecture.md`: a paragraph on `laneFlow.js`, `laneStreaks.js`, `laneRibbons.js`, `laneTraffic.js`. `HANDOFF-universe-scale.md` updated. Merge on green.
+
+---
+
+## Lane C: spread out (after Lane A merges, beside Lane B)
+
+Branch `claude/universe-spread` from `origin/main`. Touches none of Lane B’s files; where both need a line in `scene.js`, this lane’s lines are in `happen`, `farFight` and the pilots’ `update` only.
+
+### Task 1: the director’s zones
+
+**Files:** Modify `director.js`, `director.test.js`.
+
+**Interfaces:**
+- Produces: `ZONES = ['place', 'lane', 'void']`; every `EVENTS` entry gains `zones` (the spec §8 table: place: hunt, distress, remover, eclipse, escort, meteors, convoy; lane: interdiction, lanejam, convoy, ambush; void: leviathan, comet, rift, flare, supernova, bounty; `destroyer`, `council`, `roadblock` are `['place', 'lane']`). `update` keeps returning the id; a new pure `playAs(id, zone) -> id` maps those three to `'interdiction'` and `hunt` to `'ambush'` when `zone === 'lane'`, and the scene plays `playAs`’s id. `update(dt, { …, zone })` picks only events whose `zones` has `zone`; `zoneOf(ship, { regionAt, laneAt }) -> zone`.
+
+- [x] **Step 1: Write the failing tests:** on a lane with a Star Wars side the picks over 200 seeded updates are only lane events; in the void only void events; `playAs('destroyer', 'lane')` is `'interdiction'`, `playAs('destroyer', 'place')` is `'destroyer'`; `zoneOf` at a member’s position is `'place'`, on a carriageway `'lane'`, elsewhere `'void'`.
+- [x] **Step 2: Fail. Step 3: Implement. Step 4: Green. Commit.**
+
+### Task 2: the lane events in the scene
+
+**Files:** Modify `scene.js` (`happen`: `interdiction` places the side’s capital (`setpieces.js`’s destroyer, the Council’s cruisers, the roadblock) across the carriageway `600` units ahead and sets `state.ride = null` with the dropped-out speed (the gravity well), the existing `destroyer`/`council`/`roadblock` fight following; `lanejam` is `minefield.js`’s band placed across the carriageway `900` ahead; `ambush` is `hunt` with `entryPoint`’s `from` at the ride’s end node; `convoy` on a lane is a flow convoy you overtake, no spawn), `minefield.js` (`bandAcross(pts, s, r)` for a lane), `minefield.test.js`, `hunterRules.js` (`entryPoint` accepts `{ at }`: the pack comes in round that point, never inside a solid), `hunterRules.test.js`.
+
+- [x] **Step 1: Write the failing tests:** `bandAcross` returns mines within `R × 1.3` of the carriageway at `s` and none inside a solid; `entryPoint` with `at` puts every hunter within 40 of it and outside every solid.
+- [x] **Step 2: Fail. Step 3: Implement. Step 4:** browser: `window.__universe().soon('interdiction')` mid-ride drops the ship out before a Star Destroyer; `soon('ambush')` ends a ride in a fight at the ramp. **Commit.**
 
 ### Task 3: far fights and the fronts
 

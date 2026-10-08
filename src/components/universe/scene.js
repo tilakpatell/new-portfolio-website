@@ -109,7 +109,7 @@ import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { houseOn } from '../../lib/three/house';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
-import { HYPER, driveById, hyperState, legOf, parkFor, riftExit } from './nav';
+import { HYPER, destinationById, driveById, hyperState, legOf, parkFor, riftExit } from './nav';
 import { REAIM_MS, parkBehind, pilotId, pilotSpace, reached } from './pilotGoal';
 import { laneAim, laneFrame, lanePlan, rideLine } from './lanePilot';
 import { createLaneLook } from './laneLook';
@@ -117,7 +117,9 @@ import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
 import { AHEAD_OF, crewAt, factionsOf, kindsOf, pick as pickFaction, sideAt, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
 import { GLB, createFleet } from './glbFleet';
-import { createDirector, withWhere } from './director';
+import { createDirector, playAs, withWhere, zoneOf } from './director';
+import { AHEAD, WELL, ahead, ambushStep, offRamp } from './laneEvents';
+import { regionAt } from './regions';
 import { ECLIPSE, bodyAt, canEclipse, eclipseAt, eclipsePlan } from './eclipse';
 import { createSetPieces } from './setpieces';
 import { createLeviathans } from './leviathans';
@@ -134,7 +136,9 @@ import { createSectorFleet } from './sectorFleetView';
 import { portalById, portalHit, transit } from './portals';
 import { ROCK_RELIEF } from '../../lib/three/rock';
 import { ROCK_HIT, boxOf, nearBox, nearRing, rockDamage, rockGrid, sweep, toBelt } from './rockHits';
-import { createFront } from './front';
+import { BEACONS, ZONE as FRONT_ZONE, createFront } from './front';
+import { createFarFights, fightLabel, pickFightNode } from './farFights';
+import { placeAt } from './skirmish';
 import { createModels as createBattleModels } from '../galaxy/models';
 import { createTrench } from './trench';
 import { createBeacons } from './beacons';
@@ -864,6 +868,7 @@ export async function create(canvas, ctx) {
   const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines }); // (every side's: another pilot's hunters, whoever they are)
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
+  const farFights = createFarFights(map); // (and seen from afar, as flickering light: farFights.js)
   const npcMemory = {}; // what each character remembers of you this visit (npcRules.js)
   // your standing with the law, the ordinary ships and the pirates
   // (standing.js): what you've done, remembered across visits, read by the
@@ -917,7 +922,7 @@ export async function create(canvas, ctx) {
     } catch {
       // (storage blocked: the war is this visit's alone)
     }
-    front = createFront(map, { side, models: battleModels, small, tier, reduced, storage: store, emit });
+    front = createFront(map, { side, beacons: BEACONS, models: battleModels, small, tier, reduced, storage: store, emit });
     return front;
   };
   renderer.localClippingEnabled = true; // (the broken flagship's halves are cut by planes)
@@ -3059,9 +3064,37 @@ export async function create(canvas, ctx) {
   // that's a few hundred units on)
   const travelling = (s) => openness(s.x, s.y, s.z) > 0.5 && Math.abs(s.speed) > 40;
   const leadOf = (s) => holdReach(s, { ramp: INTERDICT_IN, solids: siegeSt.down ? SOLIDS_OPEN : SOLIDS });
-  const happen = (id, ship) => {
+  const noLane = () => null;
+  const happen = (id, ship, was = id) => {
     const side = sideHere();
     if (!side) return;
+    // on a lane (laneEvents.js): the side's capital ship drops across it
+    // ahead and its well pulls you out, the fight where you stop; a wreck's
+    // mines across it; or a pack waiting at your off-ramp
+    if (id === 'interdiction') {
+      const on = state.ride && ahead(state.ride, AHEAD.interdiction);
+      if (!on || pieces.capital.state) return; // (past the lane's end, or a capital ship still about)
+      state.ride = null;
+      state.auto = null; // (the trip's broken: pulled out mid-lane, into a fight)
+      // (the well holds the drive down at once, as the hunters' pull does at its full: through hyperState too)
+      state.wellUntil = state.clock + WELL;
+      state.interdicted = true;
+      state.interdictAt = state.clock - INTERDICT_IN;
+      emit({ type: 'ride', on: false, line: null });
+      if (was !== 'roadblock') emit({ type: 'interdicted', faction: pickFaction(side, 'capital') ?? null }); // (the DEA's pack says it for itself)
+      if (!reduced) state.shake = Math.max(state.shake, 0.6);
+      return happen(was === 'council' || was === 'roadblock' ? was : 'destroyer', { ...ship, x: on.at[0], y: on.at[1], z: on.at[2], heading: on.heading, speed: 0 });
+    }
+    if (id === 'lanejam') {
+      const on = state.ride && ahead(state.ride, AHEAD.lanejam);
+      if (on && mines.across(on.pts, on.s)) emit({ type: 'event', id: 'minefield' });
+      return;
+    }
+    if (id === 'ambush') {
+      if (state.ride) state.ambush = { node: offRamp(state.ride), faction: pickFaction(side, 'hunt') };
+      return;
+    }
+    if (id === 'convoy' && state.ride) return emit({ type: 'event', id: 'convoy' }); // (in the lane's own traffic ahead: one to overtake)
     const ambush = travelling(ship) ? { ahead: true, interdict: true, lead: leadOf(ship) } : {};
     // (more of them, and the ace more often, the more trouble you've made; the first pack is a small one)
     const strength = { heat: state.heat, first: hunts === 0 };
@@ -3365,11 +3398,16 @@ export async function create(canvas, ctx) {
     }
     return null;
   };
+  // (at a node of the lanes in the region you're headed for, or a beacon,
+  // further than farFights.js's FAR: seen from afar, and a lane to take to it)
+  const fightGoal = () => (state.auto ? destinationById(state.then?.id ?? state.auto.id) : null);
   const farFight = (dt, t, live) => {
-    if (!skirmishes.active && live && state.clock > state.skirmishAt && !hunters.count && !pieces.destroyerHere && !leviathans.busy && !meteors.count && state.view !== 'map' && Math.abs(live.speed) < SHIP.pulse * 0.2) {
+    if (!skirmishes.active && live && state.clock > state.skirmishAt && !hunters.count && !pieces.destroyerHere && !leviathans.busy && !meteors.count && state.view !== 'map') {
       state.skirmishAt = state.clock + SKIRMISH_EVERY[0] + Math.random() * (SKIRMISH_EVERY[1] - SKIRMISH_EVERY[0]);
       const side = sideHere();
-      const at = side && skirmishSpot(live);
+      const goal = fightGoal();
+      const node = side && pickFightNode({ ship: live, headedFor: goal ? (regionAt(...goal.at)?.id ?? null) : null });
+      const at = node && placeAt(node, SOLIDS);
       if (at && skirmishes.start({ at, heading: Math.random() * Math.PI * 2, ...side.skirmish })) {
         state.skirmishHelped = 0;
         state.skirmishFamily = side.id;
@@ -3392,6 +3430,17 @@ export async function create(canvas, ctx) {
         else if (e.winner === 'enemy' && state.skirmishHelped > 0) emit({ type: 'event', id: 'skirmishLost' });
       }
     }
+  };
+
+  // the fights going on (a skirmish, the war's front), as the far fights'
+  // impostors and the chart see them (the front's battle is drawn within its own ZONE.near)
+  const fightsNow = () => {
+    const list = [];
+    const sk = skirmishes?.active && skirmishes.info;
+    if (sk?.freighter) list.push({ id: 'skirmish', at: sk.freighter.at, size: 1 + sk.hunters.length + sk.escort.length, hot: sk.over ? 0.15 : Math.min(1, sk.hunters.length / 4) });
+    const w = front?.where();
+    if (w) list.push({ id: 'front', at: w.at, size: 40, hot: 0.7, near: FRONT_ZONE.near });
+    return list;
   };
 
   // the fight with the director's capital ship (capitalRules.js's events,
@@ -3451,6 +3500,8 @@ export async function create(canvas, ctx) {
     if (hunters) for (const e of hunters.update(dt, t, live)) onHunters(e);
     if (wingmen) helpFrom(dt, t, live);
     if (skirmishes) farFight(dt, t, live);
+    if (!state.fights || state.clock - state.fightsAt > 0.25) [state.fights, state.fightsAt] = [fightsNow(), state.clock]; // (four times a second is plenty for a far flicker's place)
+    farFights.update(dt, state.fights, camera);
     if (npcs) meet(dt, t, live);
     let busy = pieces.update(dt, t, camera, live);
     for (const e of pieces.drain()) capitalEvent(e, live);
@@ -3560,11 +3611,18 @@ export async function create(canvas, ctx) {
         // (where you are: a sun lighting you, at a station, in the gate)
         const sunNow = litBy.key && litBy.key.strength > 1.2 ? LIT_STARS.find((st) => st.id === litBy.key.id) : null;
         const where = { sun: Boolean(sunNow && canEclipse({ eye: [live.x, live.y, live.z], sun: sunNow })), station: Boolean(state.at && byId(state.at)?.kind === 'core'), gate: state.at === 'starwars' };
-        const id = director.update(dt, { hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
+        const zone = state.ride ? 'lane' : zoneOf(live, { regionAt, laneAt: noLane }); // (in a carriageway but not riding it, nothing of the lane's can happen: it needs the ride)
+        const id = director.update(dt, { zone, hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: Boolean(state.ambush) || hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
         state.hurtNow = 0;
-        if (id) happen(id, live);
+        if (id) happen(playAs(id, zone), live, id);
+        // the ambush at your off-ramp: sprung as you come off there (laneEvents.js)
+        const lying = state.ambush && ambushStep(state.ambush, state.ride, live);
+        if (lying && lying !== 'wait') {
+          if (lying === 'spring') hunters.pack(state.ambush.faction, live, { at: { x: state.ambush.node.at[0], y: state.ambush.node.at[1], z: state.ambush.node.at[2] }, heat: state.heat, first: hunts++ === 0 });
+          state.ambush = null;
+        }
         // the drive comes back once they're off you (or have had their go)
-        if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT)) state.interdicted = false;
+        if (state.interdicted && (!hunters.active || state.clock - state.interdictAt > INTERDICT) && !(state.clock < (state.wellUntil ?? -1))) state.interdicted = false;
       }
       for (const l of [...later]) {
         if (state.clock < l.at) continue;
@@ -3964,7 +4022,7 @@ export async function create(canvas, ctx) {
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     const before = state.ship;
     // on a hyperlane, or getting on or off one (lanePilot.js): the ride poses the ship in place of ship.js's step
-    const lane = state.held || state.jump ? null : laneFrame(state, input, dt, { canEnter: !state.auto || Boolean(state.auto.route) });
+    const lane = state.held || state.jump ? null : laneFrame(state, input, dt, { canEnter: (!state.auto || Boolean(state.auto.route)) && !(state.interdicted && state.clock < (state.wellUntil ?? -1)) });
     if (lane) rode(lane);
     const { ship: stepped, events } = lane?.ship ? { ship: lane.ship, events: [] } : step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
     // the Maw's pull (maw.js): drawn in, and carried round with its disk
@@ -4776,12 +4834,12 @@ export async function create(canvas, ctx) {
     // anyone down on the same planet walk about with yours
     if (net) {
       const s = flying() ? state.ship : null;
-      net.pose(s, { hidden: Boolean(state.crash || state.dive || props.frozen || onFoot()), boost: state.streak > 0.3, safe: state.clock < state.safeUntil, shield: state.shield });
+      net.pose(s, { hidden: Boolean(state.crash || state.dive || props.frozen || onFoot()), boost: state.streak > 0.3, safe: state.clock < state.safeUntil, shield: state.shield, lane: Boolean(state.ride) });
       net.pack?.(() => (s && !state.crash && !state.dive && !props.frozen && !onFoot() ? (hunters?.wire() ?? []) : []));
       net.foot?.(onFoot() && !props.frozen ? foot.crew() : null);
       if (onFoot()) foot.guests(guestsOnFoot(now));
     }
-    const piloting = pilots.update(dt, now, net, { project: toScreen, tags: props.tags?.current ?? null, locked: state.lockTarget?.peer ?? null, footOn: onFoot() ? foot.id : null, me: flying() ? state.ship : null, factions: net?.factions ?? null });
+    const piloting = pilots.update(dt, now, net, { project: toScreen, tags: props.tags?.current ?? null, locked: state.lockTarget?.peer ?? null, footOn: onFoot() ? foot.id : null, me: flying() ? state.ship : null, factions: net?.factions ?? null, from: state.ship ?? null });
     placeHud();
     placePrompt();
     placeEnter();
@@ -5337,6 +5395,7 @@ export async function create(canvas, ctx) {
       held: state.held?.name ?? null,
       pose: holdPose,
       ride: () => state.ride && { lane: state.ride.lane.id, way: state.ride.way, s: state.ride.s, speed: state.ride.speed, off: state.ride.off }, // (on a hyperlane: the checks)
+      soon: (id) => director.soon(id), // (the director's next, from the checks: 'interdiction' or 'ambush' mid-ride)
       lanes: () => state.auto?.route && { leg: state.auto.leg, legs: state.auto.route.legs.map((l) => l.kind) },
       frames, // (resolves after n more frames, each one drawn)
       // a blast `ahead` units in front of your ship, `size` across (to see one at a pose)
@@ -5528,7 +5587,8 @@ export async function create(canvas, ctx) {
         crashed: Boolean(state.crash),
         interdicted: state.interdicted,
         hyper: hyperState({ last: state.hyperAt, now: wall(), interdicted: state.interdicted }),
-        pilots: pilots.targets.map((p) => ({ id: p.peer, name: p.name, x: p.at.x, z: p.at.z })),
+        pilots: pilots.chart.map((p) => ({ id: p.id, name: p.name, x: p.x, z: p.z })),
+        farFights: (state.fights ?? []).map((f) => ({ id: f.id, x: f.at[0], z: f.at[2], label: fightLabel(f.at) })), // (Fighting near …, for the nav map)
         front: front?.where() ?? null, // (the crew's war, for the nav map)
       };
     },
@@ -5587,6 +5647,7 @@ export async function create(canvas, ctx) {
       hunters?.dispose();
       wingmen?.dispose();
       skirmishes?.dispose();
+      farFights.dispose();
       front?.dispose();
       battleModels?.dispose();
       npcs?.dispose();
