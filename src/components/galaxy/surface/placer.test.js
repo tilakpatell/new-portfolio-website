@@ -44,6 +44,19 @@ describe('a built thing under a model', () => {
   });
 });
 
+describe('a built thing that follows you', () => {
+  it('is updated with where you are, apart from the rest (whose third word is their own)', () => {
+    const update = () => {};
+    const sinks = { updates: [], follows: [], signals: [], object: true };
+    applyBuilt({ object: new THREE.Group(), update, follows: true }, {}, [0, 0, 0], fakeWorld(), sinks);
+    expect(sinks.follows).toEqual([update]);
+    expect(sinks.updates).toHaveLength(0);
+    // (one that doesn't follow stays with the rest)
+    applyBuilt({ object: new THREE.Group(), update }, {}, [0, 0, 0], fakeWorld(), sinks);
+    expect(sinks.updates).toEqual([update]);
+  });
+});
+
 describe('far away, the light model', () => {
   it('switches far enough out', () => {
     expect(lodDistance(10)).toBe(60);

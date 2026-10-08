@@ -215,6 +215,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   const splits = []; // { full, low (each [{ mesh, src }]), xs, zs, r }: scattered models drawn near and far
   let nearAt = null; // where you were when the casters were last filled
   const updates = [];
+  const follows = []; // (the built things updated with where you are)
   const signals = [];
   const pending = [];
   let dead = false;
@@ -257,7 +258,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
     o.scale.setScalar(spec.scale ?? 1);
     (spec.zone ? rooms : group).add(o);
-    applyBuilt(made, spec, at, world, { updates, signals, object: true });
+    applyBuilt(made, spec, at, world, { updates, follows, signals, object: true });
     // (a built one that wears a model on a moving part of it, once it's
     // loaded: `wear: { url, on(model) }`, the dragonsnake's head)
     if (made.wear)
@@ -464,6 +465,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     },
     update(t, dt, you = null) {
       for (const u of updates) u(t, dt);
+      for (const f of follows) f(t, dt, you);
       if (you && (casters.length || splits.length) && (!nearAt || Math.hypot(you.x - nearAt[0], you.z - nearAt[1]) > NEAR.step)) {
         nearAt = [you.x, you.z];
         for (const c of casters) fillCaster(c, you.x, you.z);
@@ -585,7 +587,8 @@ function radiusOf(gltf) {
 // scaled by spec.scale: its walls (unless spec.solid is false) and the floors
 // you walk on, and, when its own meshes are drawn (`object`), its moving
 // parts (an update each frame, an answer to signals).
-export function applyBuilt(made, spec, at, world, { updates, signals, object }) {
+export function applyBuilt(made, spec, at, world, sinks) {
+  const { updates, signals, object } = sinks;
   const yaw = spec.yaw ?? 0;
   const k = spec.scale ?? 1;
   if (spec.solid !== false) for (const s of made.solids ?? []) addSolid(world, s, at, yaw, k, null);
@@ -599,7 +602,9 @@ export function applyBuilt(made, spec, at, world, { updates, signals, object }) 
     world.floors.push(placed);
   }
   if (!object) return;
-  if (made.update) updates.push(made.update);
+  // (one that `follows` you, a planet's shelling, is told where you are;
+  // the rest have a third word of their own, a creature's pace)
+  if (made.update) (made.follows && sinks.follows ? sinks.follows : updates).push(made.update);
   if (made.signal) signals.push(made.signal);
 }
 
