@@ -44,8 +44,8 @@ describe('earth module', () => {
     api.dispose.mockClear();
   });
 
-  it('is a glsl module that makes a whole world', async () => {
-    expect(earth).toMatchObject({ id: 'earth', shading: 'glsl', mb: WORLD_MB['/earth'] });
+  it('is a nodes module that makes a whole world', async () => {
+    expect(earth).toMatchObject({ id: 'earth', shading: 'nodes', mb: WORLD_MB['/earth'] });
     const rt = fakeRt();
     const world = await earth.create(rt, {});
     await world.ready;

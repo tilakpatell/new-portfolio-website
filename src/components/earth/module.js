@@ -75,14 +75,14 @@ const onButton = () => typeof document !== 'undefined' && (document.activeElemen
 
 export default {
   id: 'earth',
-  shading: 'glsl',
+  shading: 'nodes',
   mb: 2,
   label: 'The Earth in 3D, with a plane flying over it to the places in the passport. Arrow keys or W A S D to fly, Shift to go faster, R for a barrel roll, V for the cockpit, M for orbit, P for the passport.',
   async create(rt, { small = false, labels = {}, arrow = null, travellers = null } = {}) {
     const { createEarth } = await import('./scene');
     const { saves, events } = rt;
     sounds().then((x) => x.setBus(rt.audio.bus()));
-    const api = createEarth(rt.gfx.renderer, { small, lost: () => rt.gfx?.lost ?? true });
+    const api = createEarth(rt.gfx.renderer, { small, lost: () => rt.gfx?.lost ?? true, compile: (scene, camera) => rt.gfx.compile(scene, camera) });
     const f = newFlight();
     const sun = sunVec();
     const s = {
