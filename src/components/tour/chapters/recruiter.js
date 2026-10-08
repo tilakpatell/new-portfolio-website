@@ -46,6 +46,7 @@ export const RECRUITER = [
       {
         id: 'experience-roles',
         at: 'experience-roles',
+        wait: true, // the title fades in
         title: 'Six roles, AWS first',
         text: 'Every role, newest first, each with a diagram drawn from the work, and the site in its company’s colours as you scroll.',
         todo: 'experience',
@@ -162,7 +163,6 @@ export const RECRUITER = [
     stops: [
       {
         id: 'hood-map',
-        at: 'panel',
         title: 'The universe, in Three.js',
         text: 'The universe is the same site in Three.js, with a flight model and planets mostly made in code, on a static host.',
         todo: 'universe',
@@ -170,6 +170,7 @@ export const RECRUITER = [
       {
         id: 'hood-ships',
         at: 'ships',
+        wait: true, // the map's panel and buttons come after its first frames
         title: 'Ships with real numbers',
         text: ({ ship } = {}) =>
           `${ship ? 'Your ship' : 'Pick a ship'}: hangar parts draw on a power budget, and their mass and thrust feed the flight model. A heavier ship turns slower.`,
@@ -178,15 +179,17 @@ export const RECRUITER = [
       {
         id: 'hood-online',
         at: 'online',
+        wait: true, // the map's panel and buttons come after its first frames
         title: 'Multiplayer, with no back end',
-        text: 'Players online fly beside you, with no server of my own: signed events over public Nostr relays, each checked before it’s shown.',
+        text: 'Players online fly beside you, with no server of my own: every message is signed and sent over public Nostr relays.',
         todo: 'go-online',
       },
       {
         id: 'hood-navmap',
         at: 'navmap',
+        wait: true, // the map's panel and buttons come after its first frames
         title: 'Routing, tested',
-        text: 'The nav map’s routes and trip times are plain data, tested in Node like the site’s other rules: nearly five hundred test files.',
+        text: 'The nav map’s routes and trip times are plain data, tested in Node like the site’s other rules: over five hundred test files.',
         todo: 'nav-map',
       },
       {

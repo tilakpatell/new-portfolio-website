@@ -74,7 +74,7 @@ export const END = {
 export const worldStop = ({ to, label }, about, mb, go = 'Go there', todo) => ({
   id: `world${to.replace(/\//g, '-')}`,
   title: label,
-  text: ({ touch } = {}) => (touch && mb > 1 ? `${about} ${mb} MB to download.` : about),
+  text: ({ touch } = {}) => (touch && mb > 1 ? `${about} (${mb} MB)` : about),
   actions: [{ label: go, to }],
   ...(todo && { todo }),
 });

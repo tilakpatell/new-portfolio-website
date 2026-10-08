@@ -7,18 +7,20 @@ import { BRIEFS } from './briefs';
 import { END } from './chapters/shared';
 import { isLightRoute, shellStopsFor } from '../../lib/tour';
 import { WORLDS, WORLD_MB } from '../worlds/worlds';
+import { ACHIEVEMENTS } from '../Achievements';
 import { ABOUT } from '../guide/abouts';
 
 const SRC = join(import.meta.dirname, '../..');
 
-// every data-tour="…" name marked in a file under `dir`
+// every data-tour name marked in a file under `dir`: data-tour="…", or an
+// expression naming it (data-tour={preview ? undefined : 'resume-skills'})
 const markedIn = (dir) => {
   const names = new Set();
   const walk = (d) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
       if (e.isDirectory()) walk(p);
-      else if (/\.jsx$/.test(e.name)) for (const m of readFileSync(p, 'utf8').matchAll(/data-tour="([^"]+)"/g)) m[1].split(' ').forEach((n) => names.add(n));
+      else if (/\.jsx$/.test(e.name)) for (const m of readFileSync(p, 'utf8').matchAll(/data-tour=(?:"([^"]+)"|\{[^}']*'([^'}]+)'[^}]*\})/g)) (m[1] ?? m[2]).split(' ').forEach((n) => names.add(n));
     }
   };
   walk(dir);
@@ -167,18 +169,17 @@ describe('the audience tours', () => {
     }
   });
 
-  it('lights nothing twice in a tour but the guide', () => {
+  it('lights nothing twice in a tour but the guide, the shell included', () => {
     for (const name of AUDIENCES)
-      for (const phone of [false, true]) {
-        const ats = seen(TOURS[name], phone)
-          .flatMap(stopsOf)
-          .map((s) => s.at)
-          .filter((a) => a && a !== 'guide');
-        expect(
-          ats.filter((x, i) => ats.indexOf(x) !== i),
-          `${name}${phone ? ' (phone)' : ''}`,
-        ).toEqual([]);
-      }
+      for (const v of VIEWS)
+        for (const phone of [false, true]) {
+          const shell = TOURS[v].filter((s) => shellStopsFor(name, v, SHELL_STOPS).includes(s.id));
+          const ats = [...shell, ...seen(TOURS[name], phone).flatMap(stopsOf)].map((s) => s.at).filter((a) => a && a !== 'guide');
+          expect(
+            ats.filter((x, i) => ats.indexOf(x) !== i),
+            `${name}/${v}${phone ? ' (phone)' : ''}`,
+          ).toEqual([]);
+        }
   });
 
   it('says 12 to 45 words a stop, the hiring tour’s 30 at most, in the house’s spelling and quotes', () => {
@@ -201,6 +202,7 @@ describe('the audience tours', () => {
   });
 
   it('calls the hiring tour that, never the recruiter’s', () => {
+    for (const id of ['tour', 'tourRecruiter', 'tourPlayer']) for (const t of Object.values(ACHIEVEMENTS[id])) expect(t, id).not.toMatch(/recruiter/i);
     for (const name of AUDIENCES)
       for (const s of [HELLO[name], ...own(TOURS[name])]) for (const t of [s.title, textOf(s, ctx), ...(s.actions ?? []).map((x) => labelOf(x))]) expect(t, `${name}/${s.id}`).not.toMatch(/recruiter/i);
   });
@@ -280,12 +282,12 @@ describe('the player’s worlds', () => {
     expect(worlds.stops[0].title).toContain(n);
   });
 
-  it('opens each card with the guide’s line on the world, under 25 words', () => {
+  it('opens each card with the guide’s line on the world, under 25 words on a phone too', () => {
     for (const s of cards) {
       const to = s.actions[0].to;
       expect(ABOUT[to], to).toBeTruthy();
       expect(textOf(s, ctx).startsWith(ABOUT[to]), to).toBe(true);
-      expect(words(s, ctx), `${to}: ${words(s, ctx)} words`).toBeLessThan(25);
+      expect(most(s), `${to}: ${most(s)} words`).toBeLessThan(25);
     }
   });
 

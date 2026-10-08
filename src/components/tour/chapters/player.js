@@ -86,7 +86,7 @@ export const PLAYER = [
       {
         id: 'together',
         title: 'Better with friends',
-        text: 'Online, bottom left, puts you in the universe with whoever else is here, in their own ships and paint. No account: pick a name and you’re in.',
+        text: 'Multiplayer, bottom left, puts you in the universe with whoever else is here, in their own ships and paint. No account: pick a name and you’re in.',
         todo: 'go-online',
       },
       {
@@ -106,7 +106,7 @@ export const PLAYER = [
         id: 'checklist',
         at: 'guide',
         title: 'The checklist',
-        text: 'The guide’s checklist lists what there is and ticks off what you’ve done; a row’s Show me takes you to it. Try ? now.',
+        text: ({ touch } = {}) => `The guide’s checklist lists what there is and ticks off what you’ve done; a row’s Show me takes you to it. ${touch ? 'Tap the ? button' : 'Try ? now'}.`,
         release: ['?'],
       },
       {
@@ -125,7 +125,6 @@ export const PLAYER = [
     stops: [
       {
         id: 'colours-fans',
-        at: 'colours',
         title: 'Colours to find',
         todo: 'site-colours',
         text: 'Each company I’ve worked at has its colours. Secrets unlock fan colours too: the Shire, Heisenberg, Optimus, the Black Pearl.',

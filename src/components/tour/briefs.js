@@ -34,8 +34,10 @@ export const BRIEFS = {
   '/universe/fly': [
     {
       id: 'hello',
-      title: 'You’re flying',
-      text: 'The stations round the sun are the site’s pages; the planets out in deep space are its worlds. Fly to any of them, or pick one on the panel and let the ship take you.',
+      title: 'Flying',
+      // (the player's tour shows these too, before a ship may be picked)
+      text: ({ ship } = {}) =>
+        `${ship ? 'You’re flying.' : 'Pick a ship on the panel to fly it yourself.'} The stations round the sun are the site’s pages; the planets out in deep space are its worlds. Fly to any of them, or pick one on the panel and let the ship take you.`,
     },
     {
       id: 'fly',
