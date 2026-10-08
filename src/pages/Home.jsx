@@ -122,7 +122,7 @@ export default function Home() {
       <RouteLine containerRef={page} />
 
       {/* Hero */}
-      <section data-theme-section="aws" className="shell relative z-10 pb-16 pt-[calc(var(--nav-h)+40px)] md:pb-24 md:pt-[calc(var(--nav-h)+72px)]">
+      <section data-theme-section="aws" className="shell relative z-10 pb-16 pt-[var(--page-top)] md:pb-24">
         <div className="hero-wash pointer-events-none" aria-hidden="true" />
         {/* Middle-earth or Cybertron on the horizon, when their themes are on */}
         <HeroBackdrop />
@@ -138,8 +138,8 @@ export default function Home() {
               </PageTitle>
             </Reveal>
             <Reveal delay={120}>
-              <p className="lead mt-8 max-w-[36rem] !text-[clamp(1.125rem,1rem+0.45vw,1.3rem)] text-ink">
-                I plan technical programs and build the software behind them: capacity planning at AWS, a modernization roadmap at RTX, and engineering at Bose, Pendar, Empowerreg and SRC.
+              <p className="lead lead-lg mt-8 max-w-[36rem] text-ink">
+                I plan technical programs and build the software behind them: capacity planning at AWS, a modernisation roadmap at RTX, and engineering at Bose, Pendar, Empowerreg and SRC.
               </p>
             </Reveal>
             <Reveal delay={150}>
@@ -152,7 +152,7 @@ export default function Home() {
             </Reveal>
             <Reveal delay={180} className="mt-9 flex flex-wrap gap-3">
               <Link to="/experience" className="btn btn-primary btn-lg group">
-                View experience <RiArrowRightLine className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                See experience <RiArrowRightLine className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
               </Link>
               <Link to="/resume" className="btn btn-ghost btn-lg">
                 <RiFileTextLine className="h-4 w-4" aria-hidden="true" /> Résumé
@@ -375,8 +375,8 @@ export default function Home() {
           </Suspense>
         </LazyMount>
         <PhotoBand id="band" className="travel-teaser mt-16 md:mt-24">
-          <div className="shell relative py-24">
-            <h3 className="display max-w-2xl text-[clamp(2.1rem,1.2rem+3vw,3.8rem)] !text-white">Mountains, lakes and a little heritage.</h3>
+          <div className="shell on-photo relative py-24">
+            <h3 className="display max-w-2xl text-[clamp(2.1rem,1.2rem+3vw,3.8rem)]">Mountains, lakes and a little heritage.</h3>
             <p className="mt-5 max-w-md leading-relaxed text-white/90">Postcards from every place, home base in Syracuse, and the carved stone of Akshardham.</p>
             <Link to="/travel" className="btn btn-primary btn-lg group mt-8">
               See the travel page <RiArrowRightLine className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
