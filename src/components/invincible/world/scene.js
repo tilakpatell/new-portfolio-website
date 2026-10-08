@@ -842,14 +842,15 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
       else if (VILLAIN_EV.has(e.type)) {
         // the villains (./foes.js): coming through, hit, knocked out, hitting him
         villains.fx(e);
+        // (the camera's knock goes by their size; a punch that lands stops the
+        // game 70 ms, none of it under reduced motion)
         if (e.type === 'ko') {
-          // (the camera's knock goes by their size)
           feel.trauma(e.kind === 'mauler' ? 0.5 : e.kind === 'seismic' ? 0.4 : 0.3);
-          feel.hitstop(60);
+          if (!calm) feel.hitstop(70);
           scare.push({ x: e.at[0], z: e.at[2], r: 30 });
         } else if (e.type === 'hit') {
-          feel.trauma(0.15);
-          feel.hitstop(40);
+          feel.trauma(e.kind === 'mauler' ? 0.25 : 0.15);
+          if (!calm) feel.hitstop(70);
         } else if (e.type === 'hurt') feel.trauma(e.by === 'car' || e.by === 'mauler' ? 0.5 : 0.35);
         else if (e.type === 'shake') feel.trauma(clamp(0.9 - Math.hypot(e.at[0] - h.p[0], e.at[2] - h.p[2]) / 200, 0.2, 0.9));
         else if (e.type === 'carHit' || e.type === 'carDown') scare.push({ x: e.at[0], z: e.at[2], r: 25 });
