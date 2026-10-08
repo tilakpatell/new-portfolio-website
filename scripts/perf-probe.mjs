@@ -12,7 +12,11 @@
 // to drive (Playwright's own on a Mac, on Metal, uncapped: no vsync, no
 // frame-rate limit, so a frame's time is what it cost). VIEW is the window
 // (default 1470x956@2, a 13" laptop's retina screen), QUALITY pins the
-// device tier (?quality=), OUT is where the JSON report goes. Each journey
+// device tier (?quality=), GPU picks the backend a 'nodes' world draws on
+// (?gpu=webgl|webgpu: a port's frame-time table is two runs of the same
+// journey; a 'glsl' world is on the classic renderer either way, and each
+// journey's report names the backend it was actually drawn on), OUT is
+// where the JSON report goes. Each journey
 // prints a table: a row per phase (load, idle, move...), with the frame
 // times' spread, the hitches (frames over 50 and 100 ms), and what the
 // worst frames were spent on.
@@ -25,6 +29,7 @@ const profile = Boolean(process.env.PROFILE);
 const trace = Boolean(process.env.TRACE);
 const out = process.env.OUT ?? '.';
 const quality = process.env.QUALITY ?? '';
+const gpu = ['webgl', 'webgpu'].includes(process.env.GPU) ? process.env.GPU : null;
 const [vw, vh, vdpr] = (process.env.VIEW ?? '1470x956@2').match(/(\d+)x(\d+)(?:@([\d.]+))?/).slice(1).map(Number);
 
 // ── what's recorded in the page ──
@@ -473,6 +478,9 @@ if (!base) {
 }
 const chrome = process.env.CHROME ?? `${homedir()}/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`;
 const args = process.platform === 'darwin' ? ['--use-angle=metal', '--disable-gpu-vsync', '--disable-frame-rate-limit', '--ignore-gpu-blocklist', '--enable-gpu-rasterization'] : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
+// (WebGPU on: Chromium's own chip on a desktop, SwiftShader's software
+// adapter on a Linux box with no display, whose times are software's)
+if (gpu === 'webgpu') args.push('--enable-unsafe-webgpu', '--enable-features=Vulkan', ...(process.platform === 'linux' && !process.env.DISPLAY ? ['--use-webgpu-adapter=swiftshader'] : []));
 const browser = await chromium.launch({ executablePath: chrome, args });
 const report = {};
 mkdirSync(out, { recursive: true });
@@ -524,7 +532,7 @@ try {
       await cdp.send('Profiler.enable');
       await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
     }
-    const h = { base, q: quality ? `?quality=${quality}` : '' };
+    const h = { base, q: `?${[quality && `quality=${quality}`, gpu && `gpu=${gpu}`].filter(Boolean).join('&')}`.replace(/^\?$/, '') };
     const t0 = Date.now();
     let failed = null;
     try {
@@ -534,6 +542,8 @@ try {
       failed = String(err).split('\n')[0];
       mark('end');
     }
+    // (the backend the world was drawn on: rt.gfx's kind, and whether three found a WebGPU device under it)
+    const drawnOn = await page.evaluate(() => (window.__RUNTIME__?.gfx ? `${window.__RUNTIME__.gfx.backend}${window.__RUNTIME__.gfx.renderer?.backend?.isWebGPUBackend ? ' (WebGPU device)' : ''}` : null)).catch(() => null);
     const data = await page.evaluate(() => window.__probe?.take()).catch(() => null);
     const rows = data ? phases({ ...data, marks: marks.map(([n, t]) => [n, t - data.origin]) }) : [];
     const ready = data && marks.find((m) => m[0] === 'settle');
@@ -541,8 +551,8 @@ try {
       await new Promise((r) => setTimeout(r, 300));
       for (const [phase, p] of profiles) console.log(`  cpu in ${phase}: ${hot(p)}`);
     }
-    report[name] = { rows, errors, failed, secs: Math.round((Date.now() - t0) / 1000), readyS: ready ? r1((ready[1] - data.origin) / 1000) : null, heapMB: data?.heap ? Math.round(data.heap / 1048576) : null };
-    console.log(`\n== ${name}${failed ? `  (stopped: ${failed})` : ''}  ready ${report[name].readyS}s  total ${report[name].secs}s  heap ${report[name].heapMB} MB${errors.length ? `  errors ${errors.length}` : ''}`);
+    report[name] = { backend: gpu ?? 'default', drawnOn, rows, errors, failed, secs: Math.round((Date.now() - t0) / 1000), readyS: ready ? r1((ready[1] - data.origin) / 1000) : null, heapMB: data?.heap ? Math.round(data.heap / 1048576) : null };
+    console.log(`\n== ${name}${failed ? `  (stopped: ${failed})` : ''}  on ${drawnOn ?? '?'}  ready ${report[name].readyS}s  total ${report[name].secs}s  heap ${report[name].heapMB} MB${errors.length ? `  errors ${errors.length}` : ''}`);
     const pw = Math.max(9, ...rows.map((r) => r.phase.length));
     console.log(`${'phase'.padEnd(pw)}  secs  fps    p50   p95   p99   max  >50 >100 links   mid texMB bufMB draws ktris`);
     for (const r of rows) {
@@ -567,7 +577,7 @@ try {
     await ctx.close();
   }
 } finally {
-  writeFileSync(`${out}/perf-probe.json`, JSON.stringify({ view: { vw, vh, vdpr }, quality, report }, null, 1));
+  writeFileSync(`${out}/perf-probe.json`, JSON.stringify({ view: { vw, vh, vdpr }, quality, gpu: gpu ?? 'default', report }, null, 1));
   await browser.close();
   await server?.close();
 }
