@@ -18,12 +18,12 @@ export const MODELS = {
   hothcrate: { uid: 'a45e657ce3094078b708ea180da8daba', as: 'the Rebel crates', metres: 1.4, along: 'max', yaw: 0, tris: 3000, tex: 512 },
   // ── Endor ──
   // an Ithorian in Rebel fatigues, rigged
-  ithorian: { uid: 'ca01590e107a45aa9dd9c4386ccfe094', as: 'the Ithorian Rebel', metres: 2.2, yaw: 0, tris: 8000, tex: 512, rig: true },
+  ithorian: { uid: 'ca01590e107a45aa9dd9c4386ccfe094', as: 'the Ithorian Rebel', metres: 2.2, yaw: 0, tris: 8000, tex: 512, rig: true, anim: { idle: 'idle', walk: 'walk', run: 'run' } },
   // ── Yavin 4 ──
   // a Rebel technician in the hangar, rigged
-  rebeltech: { uid: 'a0d4d80dad1e43d6b4ab1d78e79b2898', as: 'the Rebel technicians', metres: 1.8, yaw: 0, tris: 8000, tex: 512, rig: true },
+  rebeltech: { uid: 'a0d4d80dad1e43d6b4ab1d78e79b2898', as: 'the Rebel technicians', metres: 1.8, yaw: 0, tris: 8000, tex: 512, rig: true, anim: { idle: 'idle', walk: 'walk', run: 'run' } },
   // an X-wing pilot in an orange flight suit, rigged
-  rebelpilot: { uid: 'efa36772d0984634ac6ed8a0e95f8d14', as: 'the Rebel pilots', metres: 1.8, yaw: 0, tris: 8000, tex: 512, rig: true },
+  rebelpilot: { uid: 'efa36772d0984634ac6ed8a0e95f8d14', as: 'the Rebel pilots', metres: 1.8, yaw: 0, tris: 8000, tex: 512, rig: true, anim: { idle: 'idle', walk: 'walk', run: 'run' } },
   // a service ramp up to a fighter's cockpit
   yavinramp: { uid: '5e0619a6b994442983dd26db2c8448dc', as: 'the hangar service ramps', metres: 6, along: 'max', yaw: 0, tris: 12000, tex: 1024 },
   // a Y-wing, landed

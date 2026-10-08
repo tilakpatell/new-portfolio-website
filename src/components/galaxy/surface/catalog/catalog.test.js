@@ -52,6 +52,15 @@ describe('the surface models', () => {
     }
   });
 
+  it('has every clip a row names in its file (else the figure sways where it should walk)', () => {
+    const glbJson = (buf) => JSON.parse(buf.subarray(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
+    for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
+      if (!m.anim || m.cluster) continue;
+      const names = (glbJson(readFileSync(file(kind))).animations ?? []).map((a) => a.name);
+      for (const [use, clip] of Object.entries(m.anim)) expect(names, `${kind}'s ${use}: ${clip}`).toContain(clip);
+    }
+  });
+
   it('makes each cluster of models that are there', () => {
     for (const [kind, m] of Object.entries(SURFACE_MODELS))
       if (m.cluster) {

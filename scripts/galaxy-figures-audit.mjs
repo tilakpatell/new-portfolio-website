@@ -21,6 +21,8 @@ export const EXPECTED = {
   // phase 1: statues whose legs part, walked by legRig.js (Chirrut's robe
   // is to his ankles, as the Jawa's and Yoda's are: he sways)
   ...Object.fromEntries(['anakin', 'armorer', 'baze', 'cassian', 'clonephase1', 'dindjarin', 'jyn', 'k2so', 'krennic', 'mace', 'sullustan'].map((k) => [k, 'legs'])),
+  // phase 2: Mixamo rigs given UAL's core set, baked into their files (ual-bake.mjs --rig)
+  ...Object.fromEntries(['ithorian', 'rebelpilot', 'rebeltech'].map((k) => [k, 'own-clips'])),
 };
 
 const HOWS = ['walker', 'crew', 'crew-still', 'own-clips', 'legs', 'rig-noanim', 'still', 'built', 'none'];
