@@ -2191,6 +2191,8 @@ export async function create(canvas, ctx) {
 
   return {
     ready,
+    // the war's battle here as warfront.js has it (WarHud.jsx, BattleEnd.jsx), or null
+    warInfo: () => war?.info ?? null,
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);

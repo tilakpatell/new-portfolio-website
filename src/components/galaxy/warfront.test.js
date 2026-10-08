@@ -454,6 +454,43 @@ describe('the battle every pilot shares (the director)', () => {
     for (const m of k.sent.fight) for (const key of Object.keys(m.m)) expect(key).toBe('here:d');
   });
 
+  it('says where the battle’s got to: its stage, that stage’s objectives with the hp every pilot sees, and what’s next on its clock', () => {
+    const k = at('rebel', MS);
+    const info = k.front.info;
+    const plan = k.front.director.plan;
+    expect(info.stage).toMatchObject({ index: 0, count: plan.stages.length, open: true });
+    expect(info.objectives.map((o) => o.id)).toEqual(plan.stages[0].objectives.map((o) => o.id));
+    const st = k.front.director.state(info.shared.t, () => 0);
+    for (const o of info.objectives) {
+      expect(typeof o.name).toBe('string');
+      expect(o.hp).toBeCloseTo(st.objectives.find((x) => x.id === o.id).hp, 6);
+    }
+    const next = plan.escalations.find((e) => e.at > info.shared.t);
+    expect(info.next).toMatchObject({ type: next.type, at: next.at });
+    expect(info.next.in).toBeCloseTo(next.at - info.shared.t, 1);
+    expect(info.result).toBeNull();
+  });
+
+  it('sets its result once, when the director decides it: who won, why, and what you did in it', () => {
+    const k = at('rebel', MS);
+    const g = firstOpen(k.front.battle);
+    for (let i = 0; i < 400 && g.alive; i++) shoot(k.front, g.pos, 3);
+    k.front.update(1 / 30, 0, camera, null);
+    k.front.onNet(allDown(k));
+    k.at(k.front.on.start + 301e3);
+    k.front.update(1 / 30, 0, camera, null);
+    k.front.update(1 / 30, 0, camera, null);
+    const r = k.front.info.result;
+    expect(r).toMatchObject({ winner: 0, why: k.front.battle.over.why });
+    expect(typeof r.why).toBe('string');
+    expect(r.yours.objectives).toBeGreaterThanOrEqual(1);
+    expect(r.yours.points).toBeGreaterThanOrEqual(GCW.points.objective + GCW.points.win);
+    expect(r.ago).toBeLessThan(2);
+    k.front.update(1, 0, camera, null);
+    expect(k.front.info.result.yours).toEqual(r.yours);
+    expect(k.front.info.result.at).toBe(r.at);
+  });
+
   it('ends a battle only when the director says, not on the battle’s own clock', () => {
     const k = at('rebel', MS);
     k.front.battle.clock = 650;

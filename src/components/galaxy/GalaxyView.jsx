@@ -8,6 +8,7 @@ import { SYSTEMS, goalsOf, lightYears, systemById } from './systems';
 import '../universe/universe.css';
 import GuideCue from '../guide/GuideCue';
 import WarHud from './WarHud';
+import BattleEnd from './BattleEnd';
 
 // The galaxy's 3D view (scene.js, a world module on the world runtime:
 // ./module.js) and everything over it:
@@ -17,7 +18,8 @@ import WarHud from './WarHud';
 // jump to it, the other pilots' callsigns, the targeting HUD and the stick ring
 // (the universe map's own, UniverseMap.jsx's classes, the scene moves them),
 // your shields, the touch buttons, the flight settings and a line on how to
-// fly until you do, and the war's battle on here in a line (WarHud.jsx).
+// fly until you do, and the war's battle on here in a line (WarHud.jsx) with
+// its end card when it's decided (BattleEnd.jsx).
 // While the 3D loads the box says so; without 3D, a note
 // that the galaxy needs it, and the panel and the map still work.
 
@@ -74,6 +76,8 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   });
   // the scene itself, while it's the world on the runtime: its own calls (jump, goTo, fire…)
   const view = { get current() { return rt?.current?.module === galaxyModule ? rt.current.world.scene : null; } };
+  // (the war's battle here as the scene has it, for the line over the galaxy and its end card)
+  const warInfo = useCallback(() => (rt?.current?.module === galaxyModule ? (rt.current.world.scene?.warInfo?.() ?? null) : null), [rt]);
   useEffect(() => setFlown(false), [ship]);
 
   useEffect(() => {
@@ -116,7 +120,8 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
               Plotting a course to a galaxy far, far away…
             </p>
           )}
-          {on && oath && <WarHud sys={here} oath={oath} />}
+          {on && oath && <WarHud sys={here} oath={oath} front={warInfo} />}
+          {on && oath && <BattleEnd front={warInfo} />}
           <ul className="universe-labels galaxy-labels" aria-label="In this system">
             {goals.map((g) => (
               <li key={g.id}>

@@ -118,6 +118,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   // how you're doing in it (battleDifficulty.js: how hard the fight round you
   // is, yours alone): your kills and deaths, on the shared clock, since you came
   const yours = { kills: [], deaths: [], since: null, down: false, shield: 100, judged: -1e9 };
+  // and what you did in it, for its end card (BattleEnd.jsx), and how it ended
+  const part = { kills: 0, objectives: 0, intercepts: 0, points: 0 };
+  let result = null;
 
   const side = () => allegiance()?.side ?? null;
   // (with the side the battle's against, from yours: the other of its two, or its defender while you're nobody's)
@@ -128,6 +131,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   const score = (n, ms = now()) => {
     if (team === null || !sys || !on) return;
     addPoints(side(), sys.id, on.step, n, ms);
+    part.points += n;
     warDirty = true;
   };
   // a set piece's line (the galaxy's own: lines.js), not again within a while
@@ -249,6 +253,24 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   // a capital ship of the director's losses: its side's `index`th
   const lost = (l) => battle?.capitals.filter((c) => c.team === l.team)[l.index] ?? null;
 
+  // the shared state's stage, its objectives and what's next, for the HUD (warText.js says them)
+  const stageOf = (st) => {
+    const s = director.plan.stages[st.stage];
+    return { index: st.stage, count: director.plan.stages.length, open: st.open, opensIn: +st.opensIn.toFixed(1), need: s ? (s.need ?? s.objectives.length) : 0, id: s?.id ?? null, type: s?.type ?? null };
+  };
+  const objectivesOf = (st) => {
+    const s = director.plan.stages[st.stage];
+    if (!s) return [];
+    return s.objectives.map((o) => {
+      const x = st.objectives.find((y) => y.id === o.id);
+      return { id: o.id, name: o.name, type: o.type, ...(o.verbs ? { verbs: o.verbs } : {}), hp: x?.hp ?? o.hp, hpMax: o.hp, down: Boolean(x?.down) };
+    });
+  };
+  const nextOf = (st) => {
+    const e = (director.plan.escalations ?? []).find((x) => x.at > st.t);
+    return e ? { type: e.type, at: e.at, in: +(e.at - st.t).toFixed(1), name: e.name ?? null } : null;
+  };
+
   const hulls = () => {
     const out = [];
     for (const cap of battle?.capitals ?? [])
@@ -281,6 +303,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     team = null;
     asked = false;
     Object.assign(yours, { kills: [], deaths: [], since: null, down: false, shield: 100, judged: -1e9 });
+    Object.assign(part, { kills: 0, objectives: 0, intercepts: 0, points: 0 });
+    result = null;
     world?.quiet?.(false);
     if (solids.length) {
       solids = [];
@@ -460,6 +484,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         if (e.type === 'hurt') hurt += e.damage;
         else if (e.type === 'down' && e.mine && team !== null && e.team !== team) {
           yours.kills.push(sharedT(ms));
+          if (e.role === 'bomber' && !attacking() && !e.ace) part.intercepts += 1;
+          else part.kills += 1;
           if (e.ace) {
             score(GCW.points.ace, ms);
             say('ace');
@@ -478,10 +504,14 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
           const r = !battle.over && battle.runners.find((x) => x.shared && x.alive && x.team === team && Math.hypot(x.pos.x - e.at.x, x.pos.y - e.at.y, x.pos.z - e.at.z) < FRONT.cover);
           if (r) addFight(`c:${r.slot}`, 1 / scale());
         } else if (e.type === 'runner' && e.mine && team !== null && e.team !== team) {
+          part.intercepts += 1;
           score(GCW.points.intercept, ms);
           say('intercept');
         } else if (e.type === 'sub') {
-          if (e.mine && attacking()) score(GCW.points.objective, ms);
+          if (e.mine && attacking()) {
+            part.objectives += 1;
+            score(GCW.points.objective, ms);
+          }
           if (tookPart && e.kind === 'bridge') say('bridge');
           else if (tookPart && e.kind === 'reactor') say('reactor');
         } else if (e.type === 'turret' && e.mine) {
@@ -495,10 +525,21 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
           if (tookPart && team !== null) {
             if (e.winner === team) {
               addWin(side(), sys.id, on.step, ms);
+              part.points += GCW.points.win;
               warDirty = true;
             }
             say(e.winner === team ? 'won' : 'lost');
           }
+          // how it ended, for the end card and the line over the galaxy (the director's, the same for every pilot)
+          const now3 = shared();
+          const runs = now3?.runners && director.plan.runners;
+          result = {
+            winner: e.winner,
+            why: e.why,
+            at: now3?.endsAt ?? sharedT(ms),
+            runners: runs ? { kind: runs.kind, team: runs.team, out: now3.runners.filter((r) => r.out).length, down: now3.runners.filter((r) => r.down).length, need: runs.need } : null,
+            yours: { ...part, points: +part.points.toFixed(2) },
+          };
         }
       }
       // the set pieces
@@ -574,6 +615,12 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         mine,
         // (how hard the fight round you is: yours alone)
         difficulty: battle?.difficulty ?? null,
+        // the stage it's at, that stage's objectives (their hp the director's,
+        // every pilot's), what's next on its clock, and how it ended
+        stage: st ? stageOf(st) : null,
+        objectives: st ? objectivesOf(st) : [],
+        next: st ? nextOf(st) : null,
+        result: result && { ...result, ago: Math.max(0, +(sharedT() - result.at).toFixed(1)) },
         team,
         asked,
         side: side(),
