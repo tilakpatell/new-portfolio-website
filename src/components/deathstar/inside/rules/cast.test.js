@@ -14,6 +14,12 @@ const SOURCED = new Set([
     .filter((f) => f.endsWith('.json'))
     .flatMap((f) => Object.keys(json(`scripts/voices/sources/${f}`))),
 ]);
+// the bones a model’s skin is weighted to, read from its GLB’s JSON chunk
+const joints = (model) => {
+  const b = readFileSync(root(`public${model}`));
+  const gltf = JSON.parse(b.subarray(20, 20 + b.readUInt32LE(12)).toString('utf8'));
+  return gltf.skins?.[0]?.joints.map((i) => gltf.nodes[i].name).sort() ?? [];
+};
 const VOICELESS = new Set(json('scripts/ai-e2e/assets/allow-voiceless.json').speakers);
 const voiced = (who) => existsSync(root(`public/audio/voiced/${who}`));
 
@@ -45,7 +51,7 @@ const KINDS = [
   'ito',
   'dianoga',
 ];
-const BUILT = { chewie: 'chewie', ito: 'ito', dianoga: 'dianoga' };
+const BUILT = { ito: 'ito', dianoga: 'dianoga' };
 const SIDES = ['imperial', 'rebel', 'neutral'];
 const ROLES = ['soldier', 'officer', 'worker', 'droid', 'hero', 'boss', 'beast'];
 const OFFICERS = ['officer', 'tarkin', 'motti', 'tagge', 'jerjerrod'];
@@ -99,7 +105,15 @@ describe('the cast', () => {
     for (const [kind, c] of Object.entries(CAST)) if (c.model) expect(existsSync(root(`public${c.model}`)), `${kind}: ${c.model}`).toBe(true);
   });
 
-  it('builds Chewbacca, the IT-O and the dianoga in code, and only them', () => {
+  it('draws Chewbacca on his Meshy model, the cockpit’s, at his full height', () => {
+    expect(CAST.chewie).toMatchObject({ model: '/models/cockpit/chewie.glb', tall: 2.28, side: 'rebel', role: 'hero' });
+    expect(CAST.chewie.built).toBeUndefined();
+    // the crew’s own skeleton, so the shared walk, run and fight clips (his chest-pound too) play on him
+    expect(joints(CAST.chewie.model)).toHaveLength(24);
+    expect(joints(CAST.chewie.model)).toEqual(joints(CAST.officer.model));
+  });
+
+  it('builds the IT-O and the dianoga in code, and only them', () => {
     for (const [kind, c] of Object.entries(CAST)) {
       if (BUILT[kind]) expect(c, kind).toMatchObject({ model: null, built: BUILT[kind] });
       else {
