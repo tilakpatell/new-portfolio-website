@@ -44,7 +44,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 - Test: `src/components/worlds/packs.test.js`
 
 **Interfaces:**
-- Produces: `export const PACK = { id: '/earth', pages: ['src/pages/Earth.jsx'], src: ['src/components/earth', 'src/pages/Earth.jsx'], urls: ['/models/earth/...glb'], globs: ['/textures/earth/*'] }` per world (`pages`: the page modules whose chunks the build adds; `src`: what the pack check scans; the file imports nothing, so Node reads it); `packs.js`: `export const PACKS = { [to]: PACK }`, `export const packFor = (pathname) => PACK | null` (longest prefix, as `worldAt`).
+- Produces: `export const PACK = { id: '/earth', pages: ['src/pages/Earth.jsx'], src: ['src/components/earth', 'src/pages/Earth.jsx'], urls: ['/models/earth/...glb'], globs: ['/textures/earth/*'] }` per world (`pages`: the page modules whose chunks the build adds; `src`: what the pack check scans; `computed`, optional: folders the source only builds paths in, `${DIR}/${name}.glb`, whose used files the pack lists rather than the whole folder; the file imports nothing, so Node reads it); `packs.js`: `export const PACKS = { [to]: PACK }`, `export const packFor = (pathname) => PACK | null` (longest prefix, as `worldAt`).
 
 - [ ] **Step 1: Failing test** `packs.test.js`: `every WORLD_MB route has a pack with the same id`; `packFor('/dot-matrix/minecraft').id === '/dot-matrix/minecraft'`; `packFor('/about') === null`.
 - [ ] **Step 2: Run** `npx vitest run src/components/worlds/packs.test.js`. Expected: FAIL, module missing.
@@ -275,6 +275,8 @@ One phase is one pull request from one session. Order and parallelism are in the
 - [ ] **Steps 1-5:** tests, FAIL, implement, PASS, commit `feat(universe): pocket universes by seed`. **Step 6:** PR `claude/infinite-worlds-p4`.
 
 ## Phase 5: Landing on the Expanse
+
+> Tasks 5.2 and 5.3 are superseded by the natural-worlds plan's Phase 3 (`docs/superpowers/plans/2026-10-08-natural-worlds.md`: `src/components/expanse/surface/`, built on `src/lib/land` and `src/lib/physics`); Task 5.1 maps the Expanse's planet types onto `landSpec`'s types (`temperate`, `desert`, `ice`, `ocean`, `volcanic`).
 
 ### Task 5.1: `planetSpec`
 

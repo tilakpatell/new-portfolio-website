@@ -271,6 +271,7 @@ describe('every field an issue can give, read back', () => {
       faithful: ['no', { faithful: false }],
       bake: ['no', { noBake: true }],
       fresh: ['yes', { fresh: true }],
+      ultra: ['yes', { ultra: true }],
     };
     // `more` is the issue form's catch-all section, whose lines are the other fields
     expect(KEYS.filter((k) => k !== 'more').sort()).toEqual(Object.keys(cases).sort());
@@ -339,5 +340,39 @@ describe('the budget a shipped model was cut to', () => {
     expect(inferFaces({ hq: rock.hq.faces, mid: rock.mid.faces, lo: rock.lo.faces })).toBeLessThanOrEqual(4000);
     // never more than the top cut's own budget
     expect(inferFaces({ hq: 500000, mid: 1, lo: 1 })).toBe(120000);
+  });
+});
+
+describe('the ultra cut', () => {
+  it('is a fourth cut made only when asked: 300k faces, 8192 maps, 24 MB, scaled like the others', async () => {
+    const { ULTRA, TIERS, cutsFor } = await import('./budget.mjs');
+    expect(ULTRA).toMatchObject({ suffix: '.ultra', faces: 300000, tex: 8192, bytes: 24 * 1024 * 1024, detail: ['ultra'] });
+    expect(Object.keys(TIERS)).toEqual(['hq', 'mid', 'lo']);
+    expect(cutsFor(300000, 8192).ultra).toBeUndefined();
+    const big = cutsFor(300000, 8192, { ultra: true });
+    expect([big.ultra.faces, big.hq.faces, big.mid.faces, big.lo.faces]).toEqual([300000, 120000, 60000, 20000]);
+    expect([big.ultra.tex, big.hq.tex, big.mid.tex, big.lo.tex]).toEqual([8192, 4096, 2048, 1024]);
+    // (--faces is the top cut, the ultra one when it's asked for: 30000 faces scales all four by a tenth)
+    const small = cutsFor(30000, 8192, { ultra: true });
+    expect([small.ultra.faces, small.hq.faces, small.mid.faces, small.lo.faces]).toEqual([30000, 12000, 6000, 2000]);
+  });
+
+  it('is the file ultra loads where one was made, and the hq one where not', async () => {
+    const { fileFor } = await import('./budget.mjs');
+    expect(fileFor('x-wing', 'ultra')).toBe('x-wing.hq.glb');
+    expect(fileFor('x-wing', 'ultra', { ultra: true })).toBe('x-wing.ultra.glb');
+    expect(fileFor('x-wing', 'high', { ultra: true })).toBe('x-wing.hq.glb');
+    expect(fileFor('x-wing', 'mid')).toBe('x-wing.glb');
+    expect(fileFor('x-wing', 'low')).toBe('x-wing.lo.glb');
+  });
+
+  it('is asked for with ultra: yes, and passed to make.mjs as --ultra', async () => {
+    const { parseIssue, makeArgs, request } = await import('./runner.mjs');
+    const job = parseIssue({ number: 9, title: 'theed', body: 'what: Theed\nimage: https://x.test/a.png\nfaces: 300000  tex: 8192  ultra: yes' });
+    expect(job).toMatchObject({ faces: 300000, tex: 8192, ultra: true });
+    expect(makeArgs(job, 'C:/a.png')).toContain('--ultra');
+    expect(parseIssue({ number: 10, title: 'theed', body: 'what: Theed' }).ultra).toBe(false);
+    expect(makeArgs(parseIssue({ number: 10, title: 'theed', body: 'what: Theed' }))).not.toContain('--ultra');
+    expect(request({ name: 'theed', what: 'Theed', image: 'https://x.test/a.png', faces: 300000, options: 'tex: 8192  ultra: yes' }).body).toMatch(/ultra: yes/);
   });
 });

@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import CREDITS from '../../../../data/modelCredits.json';
 import { ULTRA } from '../../../../../scripts/gen3d/budget.mjs';
+import { ULTRA as CUT } from './ultra';
 import { GROUPS, SURFACE_MODELS, madeKinds, modelUrlFor, surfaceLodUrl, surfaceUltraUrl, surfaceUrl, wantsLod } from './index';
 
 const file = (kind) => new URL(`../../../../../public${surfaceUrl(kind)}`, import.meta.url);
@@ -84,6 +85,8 @@ describe('the surface models', () => {
       expect(existsSync(ultraFile(kind)), `${kind}.ultra.glb`).toBe(Boolean(m.ultra));
       if (!m.ultra) continue;
       expect(m.ultra.tris, `${kind}.ultra.tris`).toBeGreaterThan(m.tris ?? 0);
+      // (and at most four times the catalogue's cut, where the entry has one: ./ultra.js)
+      if (m.tris) expect(m.ultra.tris, `${kind}.ultra.tris`).toBeLessThanOrEqual(CUT.factor * m.tris);
       expect(m.ultra.tex, `${kind}.ultra.tex`).toBeLessThanOrEqual(ULTRA.tex);
       expect(statSync(ultraFile(kind)).size, `${kind}.ultra.glb`).toBeLessThan(ULTRA.bytes);
     }
