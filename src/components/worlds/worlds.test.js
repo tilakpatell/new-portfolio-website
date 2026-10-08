@@ -11,9 +11,6 @@ describe('the worlds', () => {
     expect(worldAt('/middle-earth/moria')?.to).toBe('/middle-earth');
     expect(worldAt('/galaxy/hoth')?.to).toBe('/galaxy');
     expect(worldAt('/galaxy/hoth/mission')?.to).toBe('/galaxy');
-    // (a planet of the Expanse, from its seed, gated as the others)
-    expect(worldAt('/universe/expanse/7')?.to).toBe('/universe/expanse');
-    expect(WORLD_MB['/universe/expanse']).toBeGreaterThan(0);
     expect(worldAt('/universe/hoth')).toBeNull();
     expect(worldAt('/deathstar')?.to).toBe('/deathstar');
     expect(worldAt('/middle-earthling')).toBeNull();

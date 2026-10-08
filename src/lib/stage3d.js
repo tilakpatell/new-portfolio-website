@@ -1,5 +1,7 @@
-// The 3D games' common ground: a renderer set up the same way for each (ACES
-// tone mapping, sRGB, multisampled, bloom for things that glow, then a grade:
+// The 3D games' common ground: a renderer set up the same way for each (the
+// house's Neutral tone mapping at the house's exposure, lib/three/house, so a
+// world that calls houseOn after it passes keepExposure; sRGB, multisampled,
+// bloom for what is over white only, lib/three/bloom's numbers; then a grade:
 // contrast, saturation, split toning, a vignette and fine grain), sized to its canvas,
 // that steps its own quality down when frames run long, tells the game when
 // the GPU goes away, and frees everything it made when the game ends.
@@ -13,10 +15,13 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { budget, pixelRatio } from './device';
+import { debugOn, debugPanel } from './debugPanel';
 import { guard } from './three/frameGuard';
 import { prepareScene } from './three/gpuWork';
 import { precompile as compileFor, precompilePasses, quiet, releaseContext } from './three/renderer';
 import { sharpen } from './three/textures';
+import { BLOOM } from './three/bloom';
+import { LOOK } from './three/house';
 
 // The last step, on the display-ready picture: a film-like grade.
 export const GRADE = {
@@ -82,12 +87,46 @@ export function stageRatio({ soft = false, tier } = {}) {
   return pixelRatio(soft ? 1 : 1.75, tier);
 }
 
+// The stage's own values for the tuning panel (lib/debugPanel): the bloom,
+// which every stage has, read and written on its pass live.
+export const stageBloomGroups = (pass) => [
+  {
+    name: 'bloom',
+    items: [
+      { key: 'threshold', type: 'range', min: 0, max: 2, get: () => pass.threshold, set: (v) => (pass.threshold = v) },
+      { key: 'strength', type: 'range', min: 0, max: 2, get: () => pass.strength, set: (v) => (pass.strength = v) },
+      { key: 'radius', type: 'range', min: 0, max: 1, get: () => pass.radius, set: (v) => (pass.radius = v) },
+    ],
+  },
+];
+
+// stage.tune(groups): behind ?debug, the one panel with the stage's bloom
+// first and the game's groups after, titled (and its values kept for the
+// tab) by the page it's on: the canvas's nearest [data-route], else the
+// document's title. Without ?debug nothing is made. (`on`, `panel` and
+// `title` are for the tests.)
+export function stageTune({ bloomPass, on = debugOn, panel: makePanel = debugPanel, title = () => null } = {}) {
+  let panel = null;
+  return {
+    tune(groups = []) {
+      if (!on()) return;
+      const name = title() || 'stage';
+      panel ??= makePanel({ title: name });
+      panel.open([...stageBloomGroups(bloomPass), ...groups], { title: name, id: name });
+    },
+    close() {
+      panel?.dispose();
+      panel = null;
+    },
+  };
+}
+
 // Steps down when frames run long: sharpness first, then shadows, then
 // bloom, then sharpness again. Nothing comes back during a game, so the
 // picture doesn't flicker between settings.
 const LADDER = ['full', 'ratio', 'shadows', 'bloom', 'low'];
 
-export function createStage(canvas, { soft = false, bloom = { strength: 0.65, radius: 0.42, threshold: 0.82 }, exposure = 1, shadows = false, fov = 60, near = 0.1, far = 600, onLost, onSlow } = {}) {
+export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LOOK.exposure, shadows = false, fov = 60, near = 0.1, far = 600, onLost, onSlow } = {}) {
   // what this device can afford (lib/device): a phone starts less sharp with
   // less multisampling, a weak device without shadows or bloom
   const fit = budget();
@@ -95,7 +134,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
   // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
   guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = exposure;
   renderer.shadowMap.enabled = shadows && !soft && fit.shadows;
   renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -208,10 +247,13 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
     watch(ms);
   };
 
+  const tuning = stageTune({ bloomPass, title: () => canvas.closest?.('[data-route]')?.dataset.route || (typeof document !== 'undefined' ? document.title : null) });
+
   let disposed = false;
   const dispose = () => {
     if (disposed) return;
     disposed = true;
+    tuning.close();
     canvas.removeEventListener('webglcontextlost', onContextLost);
     disposeTree(scene);
     if (scene.environment?.isTexture) scene.environment.dispose();
@@ -272,6 +314,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
     dispose,
     precompile,
     setLevel,
+    tune: tuning.tune,
     get size() {
       return size;
     },

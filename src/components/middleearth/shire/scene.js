@@ -28,6 +28,7 @@ import { createWind } from '../../../lib/three/wind';
 import { floorShadow } from '../../../lib/three/grounding';
 import { FIGURE, groundTown } from '../towns/grounded';
 import { MOODS, makeAtmosphere, makeSky } from './sky';
+import { LOOK } from './look';
 import { SHIRE_CORE } from './dress';
 import { shireTuning } from './tune';
 import { createFx } from './fx';
@@ -86,7 +87,7 @@ export async function createShireWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
   const fit = budget();
-  const stage = createStage(canvas, { shadows: true, fov: 50, near: 0.1, far: 520, bloom: { strength: 0.5, radius: 0.55, threshold: 0.9 }, onLost });
+  const stage = createStage(canvas, { shadows: true, fov: 50, near: 0.1, far: 520, bloom: LOOK.bloom, onLost });
   stage.grade({ contrast: 0.1, saturation: 1.1, vignette: 0.22, grain: 0.012, shadow: [0.0, 0.01, 0.03], high: [0.03, 0.015, 0] });
   const { scene, camera, renderer } = stage;
   renderer.info.autoReset = false; // counted over the whole frame, every pass

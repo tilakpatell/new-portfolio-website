@@ -1,7 +1,7 @@
 // The files a module reaches, and the GLSL in them. Pure, with the file
 // system passed in ({ read(path) → string, exists(path) → boolean }), so
 // shading.test.js can check a 'nodes' module's whole closure and not its
-// folder alone: Expanse's GLSL is all in lib/three, two files away from
+// folder alone: a world's GLSL may all be in lib/three, files away from
 // its module, and WebGPURenderer throws on it on the first frame all the
 // same.
 //

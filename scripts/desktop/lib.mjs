@@ -84,7 +84,7 @@ export const slug = (s) =>
     .toLowerCase()
     // a prefix written as one ("gen3d: …", "3D - …"), not a name's own first word ("model-627", which
     // is what ask.mjs writes for "Model 627" and must read back the same)
-    .replace(/^\s*(gen3d|3d|model|voices?|audio|lines)(\s*:\s*|\s+-\s+)/, '')
+    .replace(/^\s*(gen3d|3d|model|voices?|audio|lines|motion|clip)(\s*:\s*|\s+-\s+)/, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
