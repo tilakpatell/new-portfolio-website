@@ -31,8 +31,8 @@ export const MODELS = {
   // Nevarro City's stone gate (its domes are the audit lane's), Lothal's Jedi
   // temple (a banded cone of rock) and a domed farmhouse of its plains, and
   // Sundari, Mandalore's domed capital
-  nevarroarch: { made: 'meshy', as: 'the gate of Nevarro City', metres: 11 },
-  lothtemple: { made: 'meshy', as: 'the Jedi temple of Lothal', metres: 70, hero: true },
-  lothdome: { made: 'meshy', as: 'the domed farmhouses of Lothal', metres: 11 },
-  sundaridome: { made: 'meshy', as: 'Sundari', metres: 51, hero: true, lod: true },
+  nevarroarch: { made: 'meshy', as: 'the gate of Nevarro City', metres: 11, tint: '#b6b2aa', detail: 'concrete' },
+  lothtemple: { made: 'meshy', as: 'the Jedi temple of Lothal', metres: 70, hero: true, tint: '#a4a99c', detail: 'rock' },
+  lothdome: { made: 'meshy', as: 'the domed farmhouses of Lothal', metres: 11, tint: '#e2d3b2', detail: 'concrete' },
+  sundaridome: { made: 'meshy', as: 'Sundari', metres: 51, hero: true, lod: true, tint: '#9d9890', detail: 'concrete' },
 };

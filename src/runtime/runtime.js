@@ -8,8 +8,8 @@
 // passed in, so this runs in Node: index.js wires the real ones.
 //
 // createRuntime({ makeBackend, loop, input, quality, saves, assets, audio,
-//   events, now, gpu, override, visible }) → rt
-// rt: { gfx, input, quality, saves, assets, audio, events, host, status,
+//   workers, origin, events, now, gpu, override, visible }) → rt
+// rt: { gfx, input, quality, saves, assets, audio, workers, origin, events, host, status,
 //   current, loading, on(fn), invalidate(), resize(w, h), setVisible(on), lost(),
 //   mount(module, props, host) → shown, handover(module, props, host, { fade, held, after }) → shown,
 //   adopt(module, host), unmount(), dispose(), requality(level) → 'tuned' |
@@ -19,6 +19,9 @@
 // for a world that can retune without being built again (the pixel ratio,
 // shadows, grass, LOD reach); 'reload' says it can't, and `reload()` builds
 // it again with what it was mounted with)
+// A world with an `anchor()` (the player's world position) has the floating
+// origin moved after it before each step; a shift is the event 'origin'
+// { shift }, for the world to re-anchor its objects and camera that frame.
 // (`shown`: true once the module's world is the one drawing; false when it
 // failed, or something newer was asked for meanwhile)
 
@@ -26,6 +29,7 @@ import { createLoop } from '../lib/three/loop';
 import { settle } from '../lib/settle';
 import { pickBackend } from './backend';
 import { createHandover } from './handover';
+import { createOrigin } from './origin';
 import { validateModule, validateWorld } from './module';
 
 const READY_WAIT = 4000; // ms at most a world's `ready` holds back its first frame
@@ -54,7 +58,7 @@ export function createEvents() {
   };
 }
 
-export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input, quality, saves = null, store = null, assets, audio, events = createEvents(), gpu = false, override = null, visible = () => true }) {
+export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input, quality, saves = null, store = null, assets, audio, workers = null, origin = createOrigin(), events = createEvents(), gpu = false, override = null, visible = () => true }) {
   let gfx = null;
   let kind = null; // the backend asked for
   let lostWebGPU = false;
@@ -87,6 +91,11 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     last = t;
     const { world } = current;
     try {
+      const at = world.anchor?.();
+      if (at) {
+        const shift = origin.check(at);
+        if (shift) events.emit('origin', { shift });
+      }
       const snapshot = input.sample(t);
       world.step?.(dt, snapshot, t);
       world.draw({ dt, now: t, renderer: gfx.renderer, quality });
@@ -239,6 +248,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
   const begin = (module, world, host, props) => {
     input.attach({ win: typeof window !== 'undefined' ? window : host, host });
     current = { module, world, host, props };
+    origin.reset();
     world.setVisible?.(shown);
     last = 0;
     setStatus('ready');
@@ -255,6 +265,8 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     store,
     assets,
     audio,
+    workers,
+    origin,
     events,
     host: null,
     get status() {
@@ -448,6 +460,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       this.unmount();
       gfx?.dispose();
       gfx = null;
+      workers?.dispose?.();
     },
   };
   return rt;

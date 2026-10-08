@@ -11,6 +11,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { loadSky } from './assets';
 import { houseOn } from '../../../lib/three/house';
+import { guard } from '../../../lib/three/frameGuard';
 import { device } from '../../../lib/device';
 import { fitRatio, maxSide, precompile as compileFor, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 
@@ -48,6 +49,8 @@ export function createEngine(canvas, opts = {}) {
   let tier = TIERS[tierName];
 
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, failIfMajorPerformanceCaveat: false }));
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = toneMapping;
   renderer.toneMappingExposure = exposure;

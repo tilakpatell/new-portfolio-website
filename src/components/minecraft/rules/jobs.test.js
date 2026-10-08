@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { TEXTURES, byName } from './blocks';
 import { makeChunk, packEdits, set } from './chunk';
-import { borders, chunkKey, makeClient, makeCore, makeQueue, meshKey } from './jobs';
+import { borders, chunkKey, makeCore, makeQueue, meshKey } from './jobs';
 import { meshSection, unpack } from './mesher';
 import { makeGenerator } from './worldgen';
 
@@ -34,37 +34,6 @@ describe('the job queue', () => {
     q.push({ key: 'a', priority: 2, n: 2 });
     expect(q.size).toBe(1);
     expect(q.next().n).toBe(2);
-  });
-});
-
-describe('the client', () => {
-  it('resolves a result by its key', async () => {
-    const sent = [];
-    const client = makeClient((msg) => sent.push(msg));
-    const p = client.request({ type: 'chunk', key: 'c:1,2', cx: 1, cz: 2 });
-    expect(sent[0]).toMatchObject({ type: 'chunk', key: 'c:1,2' });
-    expect(client.receive({ type: 'chunk', key: 'c:1,2', cx: 1 })).toBe(true);
-    expect((await p).cx).toBe(1);
-  });
-
-  it('a result for a cancelled key is ignored by the client', async () => {
-    const sent = [];
-    const client = makeClient((msg) => sent.push(msg));
-    const p = client.request({ type: 'chunk', key: 'c:1,2' });
-    client.cancel('c:1,2');
-    expect(sent.at(-1)).toEqual({ type: 'cancel', key: 'c:1,2' });
-    expect(await p).toBeNull();
-    expect(client.receive({ type: 'chunk', key: 'c:1,2' })).toBe(false);
-    expect(client.pending).toBe(0);
-  });
-
-  it('a request again under a key settles the first with null', async () => {
-    const client = makeClient(() => {});
-    const a = client.request({ type: 'mesh', key: 'm:0,0,4' });
-    const b = client.request({ type: 'mesh', key: 'm:0,0,4' });
-    expect(await a).toBeNull();
-    client.receive({ type: 'mesh', key: 'm:0,0,4', ok: 1 });
-    expect((await b).ok).toBe(1);
   });
 });
 

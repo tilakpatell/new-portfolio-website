@@ -1,12 +1,13 @@
-// Minecraft, the work done off the main thread, and how the page asks for
-// it. The worker (../worker.js) is a thin shell round `makeCore`: making a
+// Minecraft, the work done off the main thread (the page asks for it
+// through the runtime's worker pool, runtime/workers.js: a promise per
+// key). The worker (../worker.js) is a thin shell round `makeCore`: making a
 // chunk (generating it, and meshing its sixteen sections against the real
 // terrain of its eight neighbours, which it makes for itself: generation is
 // a pure function of the seed, so it never needs the page's copies) and
 // re-meshing an edited section from the page's chunk and its neighbours'
 // borders. Jobs wait in a queue nearest first; a job the page no longer
 // wants (the player has moved on) is cancelled before it runs, and a result
-// that arrives for one anyway is dropped by the client.
+// that arrives for one anyway is dropped by the pool.
 //
 // Messages, page to worker:
 //   { type: 'chunk', key, seed, cx, cz, priority, edits: { [chunkKey]: packed } }
@@ -43,37 +44,6 @@ export function makeQueue() {
     },
     get size() {
       return jobs.size;
-    },
-  };
-}
-
-// The page's side: a promise per key, settled by the worker's answer, or
-// with null when it's cancelled or asked again.
-export function makeClient(post) {
-  const waiting = new Map();
-  return {
-    request(msg, transfer) {
-      waiting.get(msg.key)?.(null);
-      const p = new Promise((resolve) => waiting.set(msg.key, resolve));
-      post(msg, transfer);
-      return p;
-    },
-    receive(msg) {
-      const resolve = waiting.get(msg.key);
-      if (!resolve) return false;
-      waiting.delete(msg.key);
-      resolve(msg);
-      return true;
-    },
-    cancel(k) {
-      const resolve = waiting.get(k);
-      if (!resolve) return;
-      waiting.delete(k);
-      resolve(null);
-      post({ type: 'cancel', key: k });
-    },
-    get pending() {
-      return waiting.size;
     },
   };
 }
