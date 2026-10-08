@@ -1,4 +1,4 @@
-/* global window, document */
+/* global window */
 // Aboard the Death Star (#/deathstar/inside), checked in a browser: each
 // station started from its address, you put in each named room through the
 // dev hook (window.__deathstar: teleport, info), a few frames drawn there,
