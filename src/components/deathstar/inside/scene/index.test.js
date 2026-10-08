@@ -4,6 +4,7 @@ import { createTrack, leafPlaces } from './index';
 const STEP = 1 / 30;
 const slide = { kind: 'slide', w: 2, h: 2.6 };
 const blast = { kind: 'blast', w: 2.4, h: 2.6 };
+const hatch = { kind: 'hatch', w: 1.6, h: 1.9 };
 
 describe('a door’s leaves, from how open the game says it is', () => {
   it('shuts a sliding door with two halves meeting in the middle', () => {
@@ -32,6 +33,18 @@ describe('a door’s leaves, from how open the game says it is', () => {
     const [leaf] = leafPlaces(blast, 0.5);
     expect(leaf.y0).toBeCloseTo(1.3);
     expect(leaf.y1).toBeCloseTo(2.6);
+  });
+
+  it('swings a hatch whole on its hinge, a hundred degrees when open, and never takes its leaf away', () => {
+    const deg = (r) => (r.swing * 180) / Math.PI;
+    const [shut] = leafPlaces(hatch, 0);
+    expect(shut).toMatchObject({ x0: -0.8, x1: 0.8, y0: 0, y1: 1.9, lead: 'x1' });
+    expect(deg(shut)).toBeCloseTo(0);
+    expect(deg(leafPlaces(hatch, 0.5)[0])).toBeCloseTo(50);
+    const open = leafPlaces(hatch, 1);
+    expect(open).toHaveLength(1);
+    expect(open[0]).toMatchObject({ x0: -0.8, x1: 0.8 });
+    expect(deg(open[0])).toBeCloseTo(100);
   });
 });
 

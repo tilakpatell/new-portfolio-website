@@ -73,6 +73,8 @@ const KEYMAP = [
   [['V'], 'Cockpit'],
   [['H'], 'Hangar'],
 ];
+// (and the one way down there's no key for, said under the grid)
+const LANDING = 'Fly down into a planet’s air to land.';
 
 const and = (names) => (names.length < 2 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
@@ -261,6 +263,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
                 </div>
               ))}
             </dl>
+            <p className="universe-keymap-land">{LANDING}</p>
             <p className="universe-keymap-touch mt-4">Drag anywhere to fly, or tap a place and the ship takes you. Boost, Fire and View are on the screen, and the Hangar button opens the hangar.</p>
             <button type="button" className="universe-back universe-guide-all" onClick={openGuide}>
               <RiQuestionLine className="h-3.5 w-3.5" aria-hidden="true" /> All the controls and tips
