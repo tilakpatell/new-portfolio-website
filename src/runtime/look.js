@@ -3,8 +3,12 @@
 // trackpad and a phone alike:
 //
 //   createLook({ host, win, onTurn(dx, dy), onButton(which, down), onLock(on),
-//                sensitivity, drag, mode }) → { attach, detach, request,
-//                release, locked, mode, set(mode), prompt }
+//                sensitivity, drag, mode, active }) → { attach, detach,
+//                request, release, locked, refused, mode, set(mode), prompt }
+//
+// `active()`: whether the look is the canvas's now (the universe's map
+// shares its canvas with the walk on a planet: only on foot); while it
+// isn't, nothing is asked or turned, and a lock is let go at the next move.
 //
 // `onTurn` takes radians (positive dx: the pointer went right, positive dy:
 // down); the world decides which way that turns its camera.
@@ -76,6 +80,7 @@ export function createLook({
   sensitivity = { yaw: 0.0022, pitch: 0.0018 },
   drag: dragSense = { yaw: 0.0055, pitch: 0.0045 },
   mode: start = null,
+  active = () => true,
   now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000,
 } = {}) {
   const doc = win?.document ?? null;
@@ -135,7 +140,7 @@ export function createLook({
   };
 
   const down = (e) => {
-    if (mode === 'touch' || e.pointerType === 'touch') return;
+    if (mode === 'touch' || e.pointerType === 'touch' || !active()) return;
     if (locked) {
       if (e.button === 0 || e.button === 2) onButton(e.button, true);
       return;
@@ -151,6 +156,11 @@ export function createLook({
   };
   const move = (e) => {
     if (mode === 'touch') return;
+    if (!active()) {
+      dragging = null;
+      release();
+      return;
+    }
     if (locked) {
       if (skip) {
         skip = false;
@@ -233,11 +243,14 @@ export function createLook({
     get locked() {
       return locked;
     },
+    get refused() {
+      return refused;
+    },
     get mode() {
       return mode;
     },
     get prompt() {
-      return mode === 'lock' && !locked ? PROMPT : null;
+      return mode === 'lock' && !locked && active() ? PROMPT : null;
     },
   };
 }

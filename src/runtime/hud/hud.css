@@ -172,3 +172,6 @@
 :where(.hud-reticle[data-hit] i[data-at='l']):not(hud-none), :where(.hud-reticle[data-hit] i[data-at='r']):not(hud-none) { transform: scaleX(1.3); }
 :where(.hud-reticle b):not(hud-none) { position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; border: 1.5px solid var(--hud-accent, #f0c040); border-radius: 50%; box-shadow: 0 0 6px rgba(0, 0, 0, 0.5); opacity: 0; transform: scale(1.35); transition: opacity var(--t-fast, 120ms) ease, transform var(--t-fast, 120ms) ease; }
 :where(.hud-reticle[data-locked] b):not(hud-none) { opacity: 1; transform: scale(1); }
+@media (prefers-reduced-motion: reduce) {
+  :where(.hud-reticle i, .hud-reticle b):not(hud-none) { transition: none; }
+}

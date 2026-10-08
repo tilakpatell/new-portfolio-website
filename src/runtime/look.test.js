@@ -14,7 +14,7 @@ function fakeTarget(extra = {}) {
   };
 }
 
-function world({ refuse = null, mode = 'lock' } = {}) {
+function world({ refuse = null, mode = 'lock', active } = {}) {
   const doc = fakeTarget({ pointerLockElement: null, exitPointerLock: vi.fn() });
   const calls = [];
   const host = fakeTarget({
@@ -38,6 +38,7 @@ function world({ refuse = null, mode = 'lock' } = {}) {
     host,
     win,
     mode,
+    active,
     now: () => t,
     onTurn: (dx, dy) => turns.push([dx, dy]),
     onButton: (which, down) => buttons.push([which, down]),
@@ -216,6 +217,29 @@ describe('createLook', () => {
     expect(w.store.get(TP_LOOK)).toBe('drag');
     expect(w.look.mode).toBe('drag');
     expect(w.doc.exitPointerLock).toHaveBeenCalled();
+  });
+
+  it('while not active (the map, not the walk) nothing is asked, and a lock is let go', async () => {
+    let on = false;
+    const w = world({ active: () => on });
+    w.host.fire('pointerdown', mouse());
+    await flush();
+    expect(w.calls.length).toBe(0);
+    expect(w.look.prompt).toBe(null);
+    on = true;
+    w.lock();
+    on = false;
+    w.win.fire('pointermove', mouse({ movementX: 10 }));
+    expect(w.doc.exitPointerLock).toHaveBeenCalled();
+    expect(w.turns.length).toBe(0);
+  });
+
+  it('says when the browser refused the lock', async () => {
+    const w = world({ refuse: 'SecurityError' });
+    expect(w.look.refused).toBe(false);
+    w.host.fire('pointerdown', mouse());
+    await flush();
+    expect(w.look.refused).toBe(true);
   });
 
   it('detach takes every listener off', () => {
