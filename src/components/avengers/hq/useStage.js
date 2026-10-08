@@ -43,8 +43,14 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 // before its first frame (hq/engine's prepare, a slice at a time), so drawing
 // it doesn't stall the page; twelve seconds at most (a view without it: its
 // shaders, four), never a failure, and cut short once `alive()` says it's
-// been left.
-export const warmed = (v, alive = () => true) => (v?.engine?.prepare ? settle(v.engine.prepare({ alive }), 12000) : settle(v?.engine?.precompile?.(), 4000));
+// been left, or the twelve seconds are up (so it never runs on alongside the
+// game's own frames).
+export const warmed = async (v, alive = () => true) => {
+  if (!v?.engine?.prepare) return settle(v?.engine?.precompile?.(), 4000);
+  let capped = false;
+  await settle(v.engine.prepare({ alive: () => !capped && alive() }), 12000);
+  capped = true;
+};
 
 // `active`: this one is the page's live 3D view; `visible`: it's on screen
 export function useLive(ref, { id, enabled = true, warm }) {
