@@ -491,7 +491,15 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   let lastYou = null;
   let dead = false;
 
-  const figureOf = figure ?? ((kind, spec, i) => anyFigure(kind, spec, kit, i, models));
+  // (a page's own maker first, the Rick and Morty cast; what it has nothing
+  // for, or fails to make, is made as any other kind)
+  const anyOf = (kind, spec, i) => anyFigure(kind, spec, kit, i, models);
+  const figureOf = figure
+    ? (kind, spec, i) =>
+        Promise.resolve(figure(kind, spec, i))
+          .catch(() => null)
+          .then((fig) => fig ?? anyOf(kind, spec, i))
+    : anyOf;
   // (has something to say: a list with lines, or a tree)
   const talks = (spec) => (Array.isArray(spec.says) ? spec.says.length > 0 : Boolean(spec.says));
 

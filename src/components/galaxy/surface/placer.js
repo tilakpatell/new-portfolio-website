@@ -11,7 +11,8 @@
 // move when something happens: a trapdoor, a gate), setZone(inZone), ready (a
 // promise: everything asked for so far is in), dispose() }
 //   `models`: the book of models kinds are looked up in (catalog's
-//   SURFACE_MODELS unless a page hands in its own).
+//   SURFACE_MODELS unless a page hands in its own); `props`, `scatter`:
+//   the builds (props/'s PROPS and SCATTER unless a page hands in its own).
 //   With `seated` (ultra: amounts.js), whatever stands on the ground is
 //   seated on the lowest ground under its footprint (seat.js), so it never
 //   floats on a slope; below ultra, things stand as they always have.
@@ -40,7 +41,7 @@ import { SURFACE_MODELS, lodUrlFor, modelUrlFor, wantsLod } from './catalog';
 import { withDetail } from './detail';
 import { LOOKS, loadScan, scanOf } from './kit';
 import { wear as wearCore } from '../../../lib/three/core';
-import { PROPS, SCATTER } from './props';
+import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from './props';
 import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
 import { seatY } from './seat';
@@ -183,7 +184,7 @@ export async function wearModel(object, role, { wear = wearCore, load = loadScan
   return seen.size;
 }
 
-export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null, seated = false, models = SURFACE_MODELS }) {
+export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null, seated = false, models = SURFACE_MODELS, props: PROPS = GALAXY_PROPS, scatter: SCATTER = GALAXY_SCATTER }) {
   const group = new THREE.Group();
   group.name = 'things';
   parent.add(group);
