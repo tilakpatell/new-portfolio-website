@@ -51,7 +51,7 @@ Follow the spec over the plan, the code over both. Fix the plan's line in your P
 | design | the architecting session | `claude/galaxy-asset-upgrade-design` | (carried by Phase 1's PR) |
 | 1 | the implementation session | `claude/galaxy-asset-upgrade-p1` | no (pushed, no PR: the owner decides) |
 | 2 | the implementation session | `claude/galaxy-asset-upgrade-p2` | no (pushed, no PR) |
-| 3 | | | |
+| 3 | the implementation session | `claude/galaxy-asset-upgrade-p3` | no (pushed, no PR); the B1 rigs and walks but is not swapped in (below) |
 | 4 | | | |
 | 5 | | | |
 
@@ -75,4 +75,11 @@ Findings for the next phase go here, as the natural-worlds hand-off does: what t
 - `anim-check`: Yavin exit 0, bind pose 0 (four figures play `idle`); Endor and Scarif exit 0 (their bind-pose lines are out-of-view legged figures). Clip sheets: `evidence/galaxy-asset-upgrade/clips-p2-*.png`. `surface-shot.mjs` timed out twice on Yavin waiting for the world (line 43), so there is no hangar picture.
 - `node scripts/assets-fetch.mjs starwars b1` fetched the B1 in 4 parts (`part-aa`…`-ad`, 33.5 MB), SHA256 matched; `--repo naturemega` linked the MegaKit (270 files in `glTF/`).
 - Audit after Phase 2: own-clips 10, rig-noanim 0.
+
+### Phase 3 findings: the B1 rigs, and stays out
+
+- `node scripts/assets-fetch.mjs starwars b1`, then `node scripts/b1-import.mjs --yaw 90`: the B1 baked at rest out of its unnamed skeleton (`unskinned`), lit for daylight (`relit`: its maps are metal-rough at full metal, black without an environment map), turned to face +z (it comes facing -x; `--yaw 90`), shrunk by `sketchfab-import.mjs` (1.91 m, 12,000 triangles asked, 15,105 kept, 1024 maps), and rigged from `troops/battledroid.glb` by `rigFrom`: 24 joints, bind spread 5.6e-7, arms turned down 58° and 54° to the donor's T-pose and shortened to 0.8.
+- `rig-transfer.mjs` had a bug this found: a new mesh that came as many meshes in a nested node tree (the B1: 42) kept those meshes and nodes after the merge, off every scene, sharing their parts with the donor's mesh, and quantization then boxed each part on its own, so each one blew up to the figure's size. The merged copies are now disposed by name. A test pins one mesh out (it passes on the old code too: a flat two-mesh input does not trip it).
+- With the core set baked onto a scratch copy, it idles and walks cleanly beside the Battlefront droid (`evidence/galaxy-asset-upgrade/b1-p3-compare.png`, left the Battlefront droid, right the B1): the legs hold, nothing tears. But it reads darker and greyer than the films' tan, where the Battlefront droid reads right, and its file is about 750 KB against 174 KB. The spec swaps it only if the sheet says it is better, so `troops/battledroid.glb`, its credit and `crewList.js` are unchanged. A pass at the B1's base colour (a tan gain on `relit`) is the next thing to try; the command above rebuilds it in a minute.
+- The transfer path is proven for Phase 5: a mesh in many parts, facing turned, arms matched.
 
