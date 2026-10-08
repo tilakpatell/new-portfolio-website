@@ -65,10 +65,32 @@ export const usesModel = (spec) => hasModel(spec.kind) && spec.model !== false &
 // A kind's model, and (its catalogue entry's `detail`: a scan's role) the
 // scan laid over it up close (detail.js), on every tier but the lowest;
 // resolves to the gltf, or null when it won't load
+// A model whose file came in turned off its nose (a catalogue row's `turn`,
+// radians about its up: the bantha's lies 33° to its left): turned to face
+// +z and its middle put back over its feet, once, in the loaded file itself,
+// so every copy of it (a thing placed, a herd's beast, a ride) faces the way
+// it walks. Gives the gltf back.
+export function squared(gltf, kind) {
+  const turn = SURFACE_MODELS[kind]?.turn;
+  const root = gltf?.scene;
+  if (!turn || !root || root.userData.squared) return gltf;
+  const inner = new THREE.Group();
+  inner.name = 'squared';
+  for (const c of [...root.children]) inner.add(c);
+  inner.rotation.y = turn;
+  root.add(inner);
+  root.updateMatrixWorld(true);
+  const c = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3());
+  inner.position.x -= c.x;
+  inner.position.z -= c.z;
+  root.userData.squared = true;
+  return gltf;
+}
+
 export function loadModel(kind, url = surfaceUrl(kind)) {
   const role = SURFACE_MODELS[kind]?.detail;
   const scan = role && detailLevel() !== 'low' ? loadScan(role) : null;
-  return Promise.all([loadGlb(url), scan]).then(([gltf, got]) => {
+  return Promise.all([loadGlb(url).then((g) => (url === surfaceUrl(kind) ? squared(g, kind) : g)), scan]).then(([gltf, got]) => {
     // (a model whose own finish reads wrong in the world: `look`, its
     // materials' metalness, roughness, ambient occlusion and reflections set)
     const look = SURFACE_MODELS[kind]?.look;
