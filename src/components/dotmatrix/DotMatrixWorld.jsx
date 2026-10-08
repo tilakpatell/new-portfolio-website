@@ -15,6 +15,7 @@ import { cartInfo, readFound, saveFound, useFound } from './found';
 import { CARTRIDGES, COINS, SIGNS, ZOOM, cameraMove, islanderStep, nearAction, newGame, pitchFor, progress, step, talk, walkerAt, WALKERS, warp, zoomTo } from './rules';
 import { VOICE } from './voicelines';
 import './dotmatrix.css';
+import { Exit } from '../../runtime/hud';
 import DotMatrixHud from './DotMatrixHud';
 
 // Dot Matrix, the world: walk and jump about a Game Boy island in its four
@@ -265,9 +266,11 @@ function World({ gl, setGl }) {
     };
   }, [live, closeDialog, startMusic]);
 
-  // Escape puts the Game Boy down
+  // Escape puts the Game Boy down (and the way back has the focus, as the
+  // console's dialog opens)
   useEffect(() => {
     if (!playing) return undefined;
+    stage.current?.querySelector('.dm-play-x')?.focus();
     const down = (e) => e.key === 'Escape' && setPlaying(false);
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
@@ -580,14 +583,12 @@ function World({ gl, setGl }) {
         </div>
         {gl !== 'on' && <p className="dm-loading">Loading the island…</p>}
 
-        <DotMatrixHud touch={touch} gl={gl} hud={hud} sim={sim} palette={palette} setPalette={setPalette} musicOn={musicOn} setMusicOn={setMusicOn} trav={trav} list={list} setList={setList} banner={banner} moved={moved} prompt={prompt} dialog={dialog} shown={shown} setShown={setShown} closeDialog={closeDialog} padRef={padRef} onPad={onPad} padUp={padUp} button={button} />
+        <DotMatrixHud touch={touch} gl={gl} hud={hud} sim={sim} palette={palette} setPalette={setPalette} musicOn={musicOn} setMusicOn={setMusicOn} trav={trav} list={list} setList={setList} banner={banner} moved={moved} prompt={prompt} act={act} dialog={dialog} shown={shown} setShown={setShown} closeDialog={closeDialog} padRef={padRef} onPad={onPad} padUp={padUp} button={button} />
 
         {playing && (
           <div className="dm-play" role="dialog" aria-modal="true" aria-label="The Game Boy">
             <div className="dm-play-inner">
-              <button type="button" className="dm-chip dm-play-x" onClick={() => setPlaying(false)} autoFocus>
-                Back to the island
-              </button>
+              <Exit className="dm-chip dm-play-x" label="Back to the island" onLeave={() => setPlaying(false)} touch={touch} />
               <Suspense fallback={<p className="dm-loading">Switching on…</p>}>
                 <GameBoyStage />
               </Suspense>
