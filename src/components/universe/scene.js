@@ -161,7 +161,7 @@ import { createSkirmishes } from './skirmishes';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
 import { BUILT, ENGINES, LENGTH, SHIP_MODELS, buildShip } from './shipModels';
-import { HERO_ENGINES, createEngines } from './engines';
+import { HERO_ENGINES, capPlume, createEngines } from './engines';
 import { paintById } from './paint';
 import { FASTEST, PARTS, PARTS_SLOTS, STOCK, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
 import { createNpcs } from './npcs';
@@ -535,7 +535,8 @@ export async function create(canvas, ctx) {
     const look = PLUME[kind] ?? PLUME.falcon;
     streak.setTint(plumeColor());
     plumes = engines.map((at) => {
-      const trail = createTrail(look);
+      // (under the ship: no longer than 0.6 of it, no brighter than its lit side)
+      const trail = createTrail(capPlume(look));
       trail.setColors(plumeColor(), look.core);
       map.add(trail.mesh);
       return { trail, at: new THREE.Vector3(...at) };
@@ -4734,8 +4735,9 @@ export async function create(canvas, ctx) {
     ambient.intensity = 1;
     // (the styles that read the light or the screen: Cybertron's seams, Dot Matrix's dither)
     for (const p of planets) p.light(key.color, post.ratio);
-    // and your ship's edges catch the fill's light, so it stands off the dark (livery.js)
-    state.model?.rim({ colour: fill.color, dir: lightNow.fill });
+    // and your ship's edges catch the fill's light, so it stands off the dark
+    // (livery.js: in the key's complement, so the outline is a line of light)
+    state.model?.rim({ colour: fill.color, dir: lightNow.fill, key: key.color });
   };
 
   // the pace's step on everything that follows it

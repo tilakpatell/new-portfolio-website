@@ -1,6 +1,6 @@
 {
   "date": "2026-10-08",
-  "sha": "29351d76",
+  "sha": "6ca8a15a",
   "metrics": {
     "big-files": {
       "value": 29,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5796
+          "n": 5860
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -21,11 +21,11 @@
         },
         {
           "file": "src/components/universe/footScene.js",
-          "n": 3615
+          "n": 3619
         },
         {
           "file": "src/components/galaxy/surface/scene.js",
-          "n": 3525
+          "n": 3556
         },
         {
           "file": "src/components/middleearth/towns/doom/props.js",
@@ -110,7 +110,7 @@
       ]
     },
     "boundary-breaks": {
-      "value": 416,
+      "value": 444,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
@@ -382,7 +382,7 @@
       "detail": []
     },
     "kbd-styles": {
-      "value": 68,
+      "value": 70,
       "unit": "rules",
       "label": "Key-cap rules outside the house .kbd",
       "detail": [
@@ -391,11 +391,11 @@
           "n": 7
         },
         {
-          "file": "src/components/galaxy/surface/surface.css",
-          "n": 5
+          "file": "src/components/universe/universe.css",
+          "n": 6
         },
         {
-          "file": "src/components/universe/universe.css",
+          "file": "src/components/galaxy/surface/surface.css",
           "n": 5
         },
         {
@@ -463,6 +463,10 @@
           "n": 1
         },
         {
+          "file": "src/components/deathstar/inside/inside.css",
+          "n": 1
+        },
+        {
           "file": "src/components/games/games.css",
           "n": 1
         },
@@ -481,10 +485,6 @@
         {
           "file": "src/components/middleearth/towns/rivendell/rivendell.css",
           "n": 1
-        },
-        {
-          "file": "src/components/music/music.css",
-          "n": 1
         }
       ]
     },
@@ -496,6 +496,119 @@
         {
           "file": "src/components/deathstar",
           "n": 1
+        }
+      ]
+    },
+    "stack-pages": {
+      "value": 0,
+      "unit": "packages",
+      "label": "packages with no page in docs/stack",
+      "detail": []
+    },
+    "glsl-sites": {
+      "value": 614,
+      "unit": "sites",
+      "label": "GLSL sites a WebGPU port removes",
+      "detail": [
+        {
+          "file": "src/components/cybertron/world/CybertronBackdrop3D.js",
+          "n": 18
+        },
+        {
+          "file": "src/components/avengers/world/scene.js",
+          "n": 17
+        },
+        {
+          "file": "src/components/cybertron/planet3d.js",
+          "n": 17
+        },
+        {
+          "file": "src/components/albuquerque/world/scene.js",
+          "n": 15
+        },
+        {
+          "file": "src/lib/stage3d.js",
+          "n": 15
+        },
+        {
+          "file": "src/components/deathstar/DeathStar3D.js",
+          "n": 14
+        },
+        {
+          "file": "src/components/middleearth/towns/moria/props.js",
+          "n": 14
+        },
+        {
+          "file": "src/components/cockpit/scene.js",
+          "n": 13
+        },
+        {
+          "file": "src/components/universe/post.js",
+          "n": 13
+        },
+        {
+          "file": "src/components/avengers/hq/engine.js",
+          "n": 12
+        },
+        {
+          "file": "src/components/deathstar/Trench3D.js",
+          "n": 12
+        },
+        {
+          "file": "src/components/dickansh/scene.js",
+          "n": 12
+        },
+        {
+          "file": "src/components/mario64/looks.js",
+          "n": 12
+        },
+        {
+          "file": "src/components/middleearth/towns/doom/props.js",
+          "n": 12
+        },
+        {
+          "file": "src/components/universe/planetShading.js",
+          "n": 9
+        },
+        {
+          "file": "src/components/travel/globe3d/scene.js",
+          "n": 7
+        },
+        {
+          "file": "src/lib/three/grounding.js",
+          "n": 7
+        },
+        {
+          "file": "src/lib/three/foliage.js",
+          "n": 6
+        },
+        {
+          "file": "src/components/avengers/tesseract/models.js",
+          "n": 5
+        },
+        {
+          "file": "src/components/cockpit/space.js",
+          "n": 5
+        },
+        {
+          "file": "src/components/cockpit/vehicles/cruiser.js",
+          "n": 5
+        },
+        {
+          "file": "src/components/earth/scene.js",
+          "n": 5
+        },
+        {
+          "file": "src/components/galaxy/sky.js",
+          "n": 5
+        },
+        {
+          "file": "src/components/middleearth/towns/amonhen/props.js",
+          "n": 5
+        },
+        {
+          "file": "src/components/middleearth/towns/weathertop/props.js",
+          "n": 5
         }
       ]
     }
