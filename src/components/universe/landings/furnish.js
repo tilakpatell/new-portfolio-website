@@ -5,10 +5,13 @@
 // planet's own seed, so it's the same for every pilot who lands there; a
 // pilot coming down beside a friend is handed the friend's frame.
 //
-// furnish({ id, landing, frame, R, small, reduced, renderer, warm }) →
-//   { group, solids, spots, lights, update(t, dt, ctx?), ready, dispose() }
-//   group  in the planet's space (footScene's root: its middle at the origin)
-//   solids grows as things arrive ([{ n, r }])
+// furnish({ id, landing, frame, R, small, reduced, renderer }) →
+//   { group, solids, spots, lights, update(t, dt, ctx?), ready, open(), dispose() }
+//   group  in the planet's space (footScene's root: its middle at the origin),
+//          built out of sight: footScene readies it all at once (its
+//          pictures sent, its shaders made) and shows it, rather than each
+//          thing being readied on its own and popping in as it was
+//   solids the things' solids, once it's open ([{ n, r }])
 //   lights grows too: the things' own lights, each kept where it is but out
 //          of the scene's count, for footScene to show through the map's
 //          few (./lamps.js: a light put in as you land made every lit
@@ -17,6 +20,8 @@
 //          (G there opens the planet's page) or a line to say ([{ n, r,
 //          label?, say? }], r how near you have to be, map units)
 //   ready  a promise, once everything that's coming has come
+//   open   the things' solids and spots put in effect, once they're shown
+//          (none to walk into before they can be seen)
 //
 // The landing's door has a beacon over it (./beacon.js: the way into the
 // planet's world, seen from the ship); a landing with no door is given one.
@@ -218,11 +223,17 @@ function partsOf(object) {
   return out;
 }
 
-export function furnish({ id, landing, frame, R, small = false, reduced = false, renderer = null, warm = null }) {
+export function furnish({ id, landing, frame, R, small = false, reduced = false, renderer = null }) {
   const group = new THREE.Group();
   group.name = `landing-${id}`;
+  group.visible = false;
   const solids = [];
   const spots = [];
+  // (what's to be walked round and answered, held until the things are shown)
+  const held = { solids: [], spots: [] };
+  let opened = false;
+  const addSolid = (...xs) => (opened ? solids : held.solids).push(...xs);
+  const addSpot = (x) => (opened ? spots : held.spots).push(x);
   const lights = [];
   const updates = [];
   let dead = false;
@@ -235,12 +246,10 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
   Object.assign(kit, { renderer, models, specs, Rm: R / METRE, bend: (object) => bend(object, R / METRE), merge: mergeStatic });
   // the curve of the ground under something r metres across: how far to sink it so its edges don't float
   const sinkFor = (r) => (0.25 * (r * METRE) ** 2) / R;
-  const add = async (object) => {
+  const add = (object) => {
     if (dead) return false;
     // (its lights out of the count before anything's made for them)
     lights.push(...keepDark(object));
-    if (warm) await warm(object).catch(() => {});
-    if (dead) return false;
     group.add(object);
     return true;
   };
@@ -263,7 +272,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     o.matrixAutoUpdate = false;
     standMatrix(spot, R, 0, METRE, o.matrix);
     o.matrixWorldNeedsUpdate = true;
-    if (await add(o)) updates.push(made.update);
+    if (add(o)) updates.push(made.update);
   };
 
   const thing = async (planet, t) => {
@@ -281,13 +290,13 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     o.matrixAutoUpdate = false;
     standMatrix(spot, R, sinkFor(t.r ?? 0), METRE, o.matrix);
     o.matrixWorldNeedsUpdate = true;
-    if (!(await add(o))) return;
-    if (t.solid !== false) solids.push(...solidsOn(spot, made.solids, R));
+    if (!add(o)) return;
+    if (t.solid !== false) addSolid(...solidsOn(spot, made.solids, R));
     if (made.update) updates.push(made.update);
     // a door (at a spot of its own on it, in its frame), or something to say
     if (t.door || t.say) {
       const at = t.door?.at ? place(spot, t.door.at[0], t.door.at[1], R).n : spot.n;
-      spots.push({ n: at, r: (t.door?.reach ?? (t.door?.at ? 3 : (t.r ?? 0) + 3)) * METRE, label: t.door?.label ?? null, say: t.say ?? null });
+      addSpot({ n: at, r: (t.door?.reach ?? (t.door?.at ? 3 : (t.r ?? 0) + 3)) * METRE, label: t.door?.label ?? null, say: t.say ?? null });
     }
     // (high enough to clear what it marks: a camper van's roof, a compound's wall)
     if (beacon && t === landing.things[beacon.thing]) await putBeacon(t.door.at ? place(spot, t.door.at[0], t.door.at[1], R) : spot, Math.min(12, Math.max(4.5, (t.r ?? 0) * 0.45 + 2.5)));
@@ -337,8 +346,8 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     holder.name = `scatter-${entry.kind}`;
     holder.userData.shared = shared;
     holder.add(...meshes);
-    if (!(await add(holder))) return;
-    if (entry.solid !== false) for (const x of mats) solids.push({ n: x.spot.n, r: x.r * METRE });
+    if (!add(holder)) return;
+    if (entry.solid !== false) for (const x of mats) addSolid({ n: x.spot.n, r: x.r * METRE });
   };
 
   // (the planet's builders, and the kit's scans on before anything's made
@@ -353,9 +362,9 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       const things = landing.things ?? [];
       // (a landing with no door: one of its own, under the beacon)
       if (beacon && beacon.thing === null) {
-        const spot = place(frame, beacon.at[0], beacon.at[1], R);
-        spots.push({ n: spot.n, r: beacon.reach * METRE, label: beacon.door, say: null });
-        await putBeacon(spot, 4.5);
+        const at = place(frame, beacon.at[0], beacon.at[1], R);
+        addSpot({ n: at.n, r: beacon.reach * METRE, label: beacon.door, say: null });
+        await putBeacon(at, 4.5);
       }
       await Promise.all([...things.map((t) => thing(planet, t).catch(oops(t.kind))), ...(landing.scatter ?? []).map((e, i) => scatter(planet, e, rng(seedOf(id) + i * 7919)).catch(oops(e.kind)))]);
     })
@@ -371,6 +380,13 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     update(t, dt, ctx = null) {
       for (const u of updates) u(t, dt, ctx);
     },
+    open() {
+      if (opened || dead) return;
+      opened = true;
+      solids.push(...held.solids);
+      spots.push(...held.spots);
+      held.solids.length = held.spots.length = 0;
+    },
     dispose() {
       dead = true;
       group.removeFromParent();
@@ -380,6 +396,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       solids.length = 0;
       spots.length = 0;
       lights.length = 0;
+      held.solids.length = held.spots.length = 0;
     },
   };
 }

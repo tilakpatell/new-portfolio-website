@@ -693,7 +693,7 @@ export async function create(canvas, ctx) {
   const near = createNearMaps({ small, upload: (ts) => uploadSlices(renderer, ts, { sliceMB: 8 }) }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
-  const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, warm: (o) => warm(o) });
+  const foot = createFoot({ map, emit: (e) => emit(e), reduced, small, planetOf, renderer, prepare: (roots, alive) => prepareLanding(roots, alive) });
   const onFoot = () => Boolean(foot.phase);
   // the other pilots whose crews are down on a planet now (the scene hands
   // the ones on yours to the foot scene)
@@ -802,6 +802,16 @@ export async function create(canvas, ctx) {
     return precompile(renderer, singlePass(root), cam, target, post.on ? post.composer.readBuffer : undefined);
   };
   fleet.prepare = (o) => warm(o); // (the fleet's models too: none is made before the first frame)
+  // a landing (footScene's), readied before it's shown: the look on, its
+  // pictures sent and its shaders made, a slice at a time behind the frames
+  // (lib/three/gpuWork), all at once rather than a thing at a time
+  const prepareLanding = (roots, alive) => {
+    for (const root of roots) {
+      house.adopt(root);
+      singlePass(root);
+    }
+    return prepareScene({ renderer, roots, scene, camera, target: post.target, sliceMB: 8, alive: () => alive() && !disposed });
+  };
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
   // whose space the ship's in (sides.js sideAt): the Rick and Morty sector's

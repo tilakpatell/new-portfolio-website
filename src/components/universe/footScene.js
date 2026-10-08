@@ -39,7 +39,7 @@
 // RV on Breaking Bad's, the Smiths' street on C-137's), and the place's name
 // comes up as you land (an 'arrive' event).
 //
-// createFoot({ map, emit, reduced, small, planetOf, renderer, warm }) → { phase, begin(...),
+// createFoot({ map, emit, reduced, small, planetOf, renderer, prepare }) → { phase, begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
 //   board(), look(dx, dy), first(), aimPoint(), info(), crew(),
 //   guests(list), end(), dispose() }
@@ -76,7 +76,7 @@ import { landingOf } from './landings/landings';
 import { biomeAt, fromLatLon, latLonOf, readableMap, sampleMap, towardLand, uvOf } from './landings/biomes';
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
-import { furnish, furnished } from './landings/furnish';
+import { furnish, furnished, within } from './landings/furnish';
 import { createLamps } from './landings/lamps';
 import { AIR, ENTRY, entryPath, entrySpot, fxAt } from './entry';
 import { createReentry } from './reentry';
@@ -128,7 +128,7 @@ export function dimensionOf(id) {
   const code = `${String.fromCharCode(65 + (h % 26))}-${10 + ((h >>> 5) % 290)}${GREEK[(h >>> 14) % GREEK.length]}${(h >>> 19) % 10}`;
   return { code, hue: ((h >>> 9) % 360) / 360 };
 }
-const LAND = { down: 3.4, out: 1.3, board: 0.8, lift: 2.4, fall: 2.6 }; // seconds
+const LAND = { down: 3.4, out: 1.3, board: 0.8, lift: 2.4, fall: 2.6, ready: 6 }; // seconds
 const CAM = { dist: 3.4, up: 0.55, pitch: [-0.25, 0.75], look: 1.6 }; // metres, radians
 
 // ── Loading the people ──
@@ -1388,7 +1388,10 @@ const blobMat = () => new THREE.MeshBasicMaterial({ map: blobTexture(), transpar
 
 // ── The whole of it ──
 
-export function createFoot({ map, emit, reduced = false, small = false, planetOf, renderer = null, warm = null }) {
+// (`prepare(roots, alive)`: the map's way of readying a landing before it's
+// shown, its look put on, its pictures sent and its shaders made, a slice at
+// a time; a promise)
+export function createFoot({ map, emit, reduced = false, small = false, planetOf, renderer = null, prepare = null }) {
   const root = new THREE.Group(); // at the planet's middle, in the map
   root.name = 'foot';
   root.visible = false;
@@ -2014,17 +2017,15 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.add(ground.mesh);
     if (landing && furnished(id)) {
       const anchor = near ? { n: near.n, f: near.f } : S.spot;
-      const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer, warm });
-      rocks = { mesh: f.group, solids: f.solids, spots: f.spots, lights: f.lights, update: f.update, dispose: f.dispose };
+      const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer });
+      rocks = { mesh: f.group, solids: f.solids, spots: f.spots, lights: f.lights, update: f.update, dispose: f.dispose, built: f.ready, open: f.open };
     } else rocks = u.plated ? createHullBits(n, S.R, u, small, S.band, clear) : createRocks(n, S.R, u, small);
+    // (out of sight till it's all been readied: below)
+    rocks.ready = false;
+    rocks.mesh.visible = false;
     root.add(rocks.mesh);
-    // (flown in, the ground's out of sight till the clouds, stepEntry: its
-    // shader's made now, while it's still shown, so it isn't on the frame it
-    // first comes into view)
-    if (S.entry) {
-      warm?.(ground.mesh)?.catch?.(() => {});
-      ground.mesh.visible = rocks.mesh.visible = false;
-    }
+    // (flown in, the ground's out of sight till the clouds, stepEntry)
+    if (S.entry) ground.mesh.visible = false;
     // (the sky from the planet's own air, where it has one: landings/sky.js)
     // (a biome may bring its own air along the horizon: Mordor's fumes)
     haze = u.airless ? null : landing?.sky ? createSky(landing.sky, landing.sky.haze ?? u.rim ?? u.swatch ?? '#8ab4ff', { air: u.air ?? null }) : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
@@ -2038,6 +2039,26 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (S.entry) reentry.start({ cloud: landing?.sky?.horizon ?? '#e9eef4' });
     sides =S.band ? createTrenchSides(n, S.R, S.band) : null;
     if (sides) root.add(sides.mesh);
+    // the whole landing readied at once, while the ship comes down: once
+    // its things are all in, the ground, the sky, the things and the beacon
+    // over the door have their pictures sent and their shaders made (the
+    // map's prepare, a slice at a time), and the things are shown together,
+    // their solids and doors with them, rather than each popping in as its
+    // own shaders were made. (The ground and the sky show from the start,
+    // as before: the frame guard draws them as soon as they're ready.) A
+    // thing that's very slow to come (a model on a slow line) isn't waited
+    // for past LAND.ready: what's in is shown, and it comes as it may.
+    const these = rocks;
+    const mine = () => rocks === these;
+    within(these.built, LAND.ready * 1000)
+      .then(() => (mine() && prepare ? prepare([ground.mesh, haze?.mesh, these.mesh, sides?.mesh].filter(Boolean), mine) : null))
+      .catch(() => {})
+      .then(() => {
+        if (!mine()) return;
+        these.ready = true;
+        these.open?.();
+        showRocks();
+      });
     // (a station's own model goes once the camera's low enough that the
     // patch reaches past the horizon)
     S.bodyShown = planet.body?.visible ?? true;
@@ -2057,6 +2078,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       party = p;
     });
     return true;
+  };
+
+  // the landing's things, once they're readied (and, flown in, out under the clouds)
+  const showRocks = () => {
+    if (rocks) rocks.mesh.visible = rocks.ready && (!S.entry || S.entry.t >= 0.6 * ENTRY.glide);
   };
 
   // the ship along its way down (k 0…1): over to above the spot, and down
@@ -2141,7 +2167,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // higher up it's a patch on the planet's own map, and it's in the clouds
     // that the one becomes the other
     const shown = e.t >= 0.6 * ENTRY.glide;
-    for (const x of [ground, rocks, sides]) if (x) x.mesh.visible = shown;
+    for (const x of [ground, sides]) if (x) x.mesh.visible = shown;
+    showRocks();
     // the sky comes up round it, and the halo it flew into goes
     S.sky = e.fx.sky;
     const air = planetOf[S.id]?.air;
