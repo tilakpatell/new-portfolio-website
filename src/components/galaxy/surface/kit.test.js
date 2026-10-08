@@ -57,3 +57,54 @@ describe('the kit', () => {
     kit.dispose();
   });
 });
+
+describe('the kit’s pictures', () => {
+  it('are painted once a seed for the page: another kit of the seed has its own copies, on the same paint', () => {
+    const made = () => {
+      let n = 0;
+      const was = globalThis.document.createElement;
+      globalThis.document.createElement = (...a) => {
+        n += 1;
+        return was(...a);
+      };
+      return () => {
+        globalThis.document.createElement = was;
+        return n;
+      };
+    };
+    let count = made();
+    const a = createKit({ seed: 4242, scans: false });
+    expect(count()).toBeGreaterThan(0);
+    count = made();
+    const b = createKit({ seed: 4242, scans: false });
+    expect(count()).toBe(0);
+    for (const name of ['paint', 'metal', 'needles', 'foliage', 'fronds', 'broadleaf', 'strands']) {
+      expect(b.mats[name].map, name).not.toBe(a.mats[name].map);
+      expect(b.mats[name].map.source, name).toBe(a.mats[name].map.source);
+    }
+    a.dispose();
+    b.dispose();
+  });
+
+  it('leave its numbers as they were: a kit made again of a seed hands its builders the same ones', () => {
+    const first = createKit({ seed: 5151, scans: false });
+    const again = createKit({ seed: 5151, scans: false });
+    const draw = (k) => Array.from({ length: 6 }, () => k.rand());
+    expect(draw(again)).toEqual(draw(first));
+    first.dispose();
+    again.dispose();
+  });
+
+  it('are freed with each kit as its own copies: the paint stays for the next', () => {
+    const a = createKit({ seed: 6363, scans: false });
+    const b = createKit({ seed: 6363, scans: false });
+    const freed = [];
+    b.mats.paint.map.addEventListener('dispose', () => freed.push('b'));
+    a.dispose();
+    expect(freed).toEqual([]);
+    const c = createKit({ seed: 6363, scans: false });
+    expect(c.mats.paint.map.source).toBe(b.mats.paint.map.source);
+    b.dispose();
+    c.dispose();
+  });
+});
