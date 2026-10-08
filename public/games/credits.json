@@ -4202,6 +4202,76 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
+  "quaternius/qfern": {
+    "source": "https://quaternius.com",
+    "id": "qfern",
+    "name": "Stylized Nature MegaKit: ferns",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qfern.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/qclover": {
+    "source": "https://quaternius.com",
+    "id": "qclover",
+    "name": "Stylized Nature MegaKit: clover",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qclover.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/qmushroom": {
+    "source": "https://quaternius.com",
+    "id": "qmushroom",
+    "name": "Stylized Nature MegaKit: mushrooms",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qmushroom.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/qpebble": {
+    "source": "https://quaternius.com",
+    "id": "qpebble",
+    "name": "Stylized Nature MegaKit: a pebble",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qpebble.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/qgrass": {
+    "source": "https://quaternius.com",
+    "id": "qgrass",
+    "name": "Stylized Nature MegaKit: tall grass",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qgrass.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/qpine": {
+    "source": "https://quaternius.com",
+    "id": "qpine",
+    "name": "Stylized Nature MegaKit: a giant pine (and qpine.lod1.glb, its far-off copy)",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qpine.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
+  "quaternius/qdeadtree": {
+    "source": "https://quaternius.com",
+    "id": "qdeadtree",
+    "name": "Stylized Nature MegaKit: a dead tree",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "qdeadtree.glb among the galaxy’s surface models: its ground cover and far trees, cut down by scripts/quaternius-import.mjs and listed in its catalogue (quaternius.js)"
+  },
   "quaternius/Rock_Medium_1": {
     "source": "https://quaternius.com",
     "id": "Rock_Medium_1",

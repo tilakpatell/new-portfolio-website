@@ -185,11 +185,24 @@ function face(you, input, dt) {
     return;
   }
   const d = input.dir;
-  if (!d || Math.hypot(d.x, d.z) < 1e-3) return;
+  if (!d || Math.hypot(d.x, d.z) < 1e-3) {
+    // standing: a glance turns only the head; a look well round turns you all the way to it
+    if (!Number.isFinite(input.yaw)) return;
+    const off = wrap(input.yaw - you.yaw);
+    if (Math.abs(off) > LOOK_ROUND) you.turning = true;
+    if (!you.turning) return;
+    const most = TURN_STANDING * dt;
+    you.yaw = wrap(you.yaw + Math.max(-most, Math.min(most, off)));
+    if (Math.abs(wrap(input.yaw - you.yaw)) < 0.02) you.turning = false;
+    return;
+  }
+  you.turning = false;
   const turn = wrap(Math.atan2(d.x, -d.z) - you.yaw);
   const most = TURN * dt;
   you.yaw = wrap(you.yaw + Math.max(-most, Math.min(most, turn)));
 }
+const LOOK_ROUND = 1.0; // radians the look may stray from where you face before you turn to it
+const TURN_STANDING = 5; // radians a second you turn on the spot
 
 export function teleport(g, where, x, z, yaw) {
   const spot = g.layout.rooms.has(where) ? null : g.layout.station.spots?.[where];

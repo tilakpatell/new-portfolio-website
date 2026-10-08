@@ -302,7 +302,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
       o.position.set(at.x, at.y, at.z);
       o.rotation.y = -at.yaw;
       // (in first person the eye is inside the head; a scene's camera sees you)
-      o.visible = view !== 'first' || Boolean(shot);
+      o.visible = (view !== 'first' || Boolean(shot)) && !cine.hidesYou;
       person.hold(you.gun ?? null);
       person.setAim(wrap(yaw - at.yaw), pitch, aim || now - shotAt < SHOT);
       if ((you.hp ?? 1) <= 0 && !downed) {

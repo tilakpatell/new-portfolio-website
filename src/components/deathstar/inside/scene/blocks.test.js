@@ -20,3 +20,23 @@ describe('who hides you from the camera', () => {
     expect(blocks({ x: 0.1, y: 0, z: 3.1 }, 1.8, cam, you)).toBe(true);
   });
 });
+
+describe('a scene’s say over how someone is drawn', () => {
+  it('holds for someone whose figure isn’t made yet, from the moment it is', async () => {
+    const THREE = await import('three');
+    const { createPeople } = await import('./people');
+    const scene = new THREE.Scene();
+    const people = createPeople(scene, { mat: () => new THREE.MeshStandardMaterial() }, { tier: 'high' });
+    const ito = { id: 'ito', kind: 'ito', x: 2, y: 0, z: 0, yaw: 0, room: 'r', hp: 20, mode: 'routine', anim: 'idle', aim: null };
+    people.stage('ito', { hidden: true, yaw: 1 });
+    people.sync({ people: [ito] }, 1, { x: 0, y: 1.6, z: 0 }, { dt: 1 / 30 });
+    people.sync({ people: [ito] }, 1, { x: 0, y: 1.6, z: 0 }, { dt: 1 / 30 });
+    const fig = people.figure('ito');
+    expect(fig.object.visible).toBe(false);
+    expect(fig.object.rotation.y).toBeCloseTo(-1);
+    people.stage('ito', null);
+    people.sync({ people: [ito] }, 1, { x: 0, y: 1.6, z: 0 }, { dt: 1 / 30 });
+    expect(fig.object.visible).toBe(true);
+    people.dispose();
+  });
+});
