@@ -14,8 +14,8 @@
 //       (its yaw: back is behind where it faces); look: the place looked at (at, else); lift: how
 //       high over it
 //     place: { spot } | { tag } (someone the story spawned, by tag) | { you: true }
-//     act: { tag, t, play?, base?, loop?, face?, fall?, gone?, hide?, swing? }: on everyone the story
-//       tags so (or 'you'), t seconds in; face: a tag to turn to; fall: let go as a ragdoll pushed
+//     act: { tag, t, side?, play?, base?, loop?, face?, fall?, gone?, hide?, swing? }: on everyone the
+//       story tags so (or 'you'), t seconds in, in that side's story only if it says; face: a tag to turn to; fall: let go as a ragdoll pushed
 //       { x, y, z } (up the way they face, +y up); gone: out of the scene for good; hide: out of
 //       sight, or back; swing: { from?, to: place, s, sag, side?, apart? } across on a line from a
 //       pipe overhead, s seconds from `from` (where they stand, if it doesn't say: the jump that
@@ -90,7 +90,7 @@ export const SCENES = {
       { s: 1.9, at: { spot: 'chasm-far' }, from: [3.2, 1.1, -2.2], to: [3, 1.3, -2], lookAhead: -3, lift: 0.4 },
     ],
     acts: [
-      { tag: 'you', t: 0.5, swing: { from: { spot: 'chasm-ledge' }, to: { spot: 'chasm-far' }, s: 2.6, sag: 2.4 } },
+      { tag: 'you', t: 0.5, side: 'rebel', swing: { from: { spot: 'chasm-ledge' }, to: { spot: 'chasm-far' }, s: 2.6, sag: 2.4 } },
       { tag: 'with:leia', t: 0.5, swing: { from: { spot: 'chasm-ledge' }, to: { spot: 'chasm-far' }, s: 2.6, sag: 2.4, side: 0.35 } },
       // (the Imperial story sees the two of them go across from the upper ledge)
       { tag: 'chasm-pair', t: 0.5, swing: { from: { spot: 'chasm-ledge' }, to: { spot: 'chasm-far' }, s: 2.6, sag: 2.4, apart: 0.35 } },
@@ -103,8 +103,8 @@ export const SCENES = {
       { s: 5, at: { spot: 'falcon' }, from: [8, 3, -24], to: [6, 2, -28], lift: 4 },
     ],
     ship: { name: 'falcon', how: 'out' },
-    // (you're aboard, and your crew with you)
-    acts: [{ tag: 'you', t: 0, hide: true }, ...['han', 'chewie', 'leia', 'luke', 'threepio', 'artoo'].map((k) => ({ tag: `with:${k}`, t: 0, hide: true }))],
+    // (a Rebel is aboard, and the crew with you; the Empire's man sees it go from the deck)
+    acts: [{ tag: 'you', t: 0, hide: true, side: 'rebel' }, ...['han', 'chewie', 'leia', 'luke', 'threepio', 'artoo'].map((k) => ({ tag: `with:${k}`, t: 0, hide: true }))],
   },
   // Vader's shuttle sets down in the dock
   arrive2: {
@@ -113,12 +113,13 @@ export const SCENES = {
       { s: 4, at: { spot: 'dock-ramp' }, from: [3, 1.6, 4], to: [2, 1.6, 3] },
     ],
     ship: { name: 'lambda', how: 'down', near: { spot: 'dock-ramp' } },
-    // (aboard while it comes down: out on the ramp once it is down)
+    // (aboard while it comes down: out on the ramp once it is down; the Empire's man is at his
+    // console, and sees Vader come out)
     acts: [
-      { tag: 'you', t: 0, hide: true },
+      { tag: 'you', t: 0, hide: true, side: 'rebel' },
       { tag: 'vader', t: 0, hide: true },
       { tag: 'guards', t: 0, hide: true },
-      { tag: 'you', t: 4, hide: false },
+      { tag: 'you', t: 4, hide: false, side: 'rebel' },
       { tag: 'vader', t: 4, hide: false },
       { tag: 'guards', t: 4, hide: false },
     ],
@@ -344,6 +345,7 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
     swungYou = null;
     // the actors back to what the rules have them doing
     for (const a of spec.acts ?? []) {
+      if (a.side && g.side !== a.side) continue;
       for (const it of figuresOf(a.tag, g)) {
         if (it.you) {
           hidingYou = false;
@@ -366,6 +368,7 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
     (spec.acts ?? []).forEach((a, i) => {
       if (done.has(i) || t < a.t) return;
       done.add(i);
+      if (a.side && g.side !== a.side) return;
       figuresOf(a.tag, g).forEach((it, n) => act(a, it, g, n));
     });
     if (playing.lit) show?.lightning?.(playing.lit.from, playing.lit.to, true);
