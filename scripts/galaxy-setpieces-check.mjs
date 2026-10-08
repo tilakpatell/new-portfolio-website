@@ -83,14 +83,23 @@ if (what === 'endor') {
   await ev(() => {
     const w = window.__galaxyDebug.war;
     const e = w.pieces[0];
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 400; i++) {
       const g = e.targets.find((t) => t.kind === 'shieldgen');
       if (!g) break;
-      w.hit({ x: g.at.x, y: g.at.y + 3, z: g.at.z }, { x: g.at.x, y: g.at.y - 0.01, z: g.at.z }, 1);
+      w.hit({ x: g.at.x, y: g.at.y + 3, z: g.at.z }, { x: g.at.x, y: g.at.y - 0.01, z: g.at.z }, 3);
     }
   });
   await page.waitForTimeout(1500);
   check(await ev(() => !window.__galaxyDebug.war.pieces[0].targets.some((t) => t.kind === 'shieldgen')), 'the shield generator’s knocked out');
+  // (the battle's plan, pinned: the run opens once the Executor's bridge is
+  // down too and the last stage's gate, 5:00, is passed; the other pilots
+  // take the bridge here, their word on the tally, and the dev hook moves
+  // the shared clock on)
+  await ev(() => {
+    const w = window.__galaxyDebug.war;
+    w.onNet({ type: 'fight', from: 'check', msg: { e: w.on.id, m: { bridge: 1e4 }, t: {} } });
+    w.jump(Math.max(0, 301 - w.info.shared.t));
+  });
   // (the run opens on the next frame the battle's run on: software GL's a frame or two a second)
   await page.waitForFunction(() => window.__galaxyDebug.war.pieces[0].run.state !== 'shut', null, { timeout: 30000 }).catch(() => {});
   // to the run's mouth, and in
@@ -130,7 +139,7 @@ if (what === 'endor') {
   await snap('the-reactor');
   await ev(() => {
     const w = window.__galaxyDebug.war;
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 120; i++) {
       const c = w.pieces[0].targets.find((t) => t.kind === 'reactor');
       if (!c) break;
       w.hit({ x: c.at.x, y: c.at.y + 2, z: c.at.z }, { x: c.at.x, y: c.at.y - 0.01, z: c.at.z }, 1);
@@ -183,12 +192,28 @@ if (what === 'endor') {
     return [f.pos.x, f.pos.y, f.pos.z];
   });
   await look([pers[0] + 70, pers[1] + 30, pers[2] + 60], pers);
+  // (the battle's plan, pinned: the gate's stage, after the Persecutor's
+  // bridge and from 5:00; the other pilots take the bridge, their word on
+  // the tally, and the dev hook moves the shared clock on to the gate)
+  await ev(() => {
+    const w = window.__galaxyDebug.war;
+    w.onNet({ type: 'fight', from: 'check', msg: { e: w.on.id, m: { bridge: 1e4 }, t: {} } });
+    w.jump(Math.max(0, 301 - w.info.shared.t));
+  });
   await ev(() => window.__galaxyDebug.war.skip(12));
   await page.waitForTimeout(3000);
   check(await ev(() => window.__galaxyDebug.war.battle.capitals.some((c) => c.kind === 'hammerhead' && c.moved)), 'the Hammerhead’s coming round to ram');
   await snap('ram');
   const G = await ev(() => window.__galaxyDebug.state.sys.pieces.find((p) => p.kind === 'gate').at);
   await look([G[0] + 120, G[1] + 90, G[2] + 140], G);
+  check(await ev(() => window.__galaxyDebug.war.pieces[0].targets.some((t) => t.kind === 'gate')), 'the Shield Gate’s there to shoot');
+  // (the gate brought down, by your guns and the pilots' word on it)
+  await ev(() => {
+    const w = window.__galaxyDebug.war;
+    const g = w.pieces[0].targets.find((t) => t.kind === 'gate');
+    for (let i = 0; i < 20 && g; i++) w.hit({ x: g.at.x, y: g.at.y + 2, z: g.at.z }, { x: g.at.x, y: g.at.y - 0.01, z: g.at.z }, 3);
+    w.onNet({ type: 'fight', from: 'check', msg: { e: w.on.id, m: { gate: 1e4 }, t: {} } });
+  });
   for (let i = 0; i < 60 && !(await ev(() => window.__galaxyDebug.war.battle?.over)); i++) await ev(() => window.__galaxyDebug.war.skip(1));
   await page.waitForTimeout(2500);
   await snap('gate');
