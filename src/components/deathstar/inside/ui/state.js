@@ -15,6 +15,8 @@
 //     `use: false` is a notice with no key, such as a door that won’t open (doors open on their own,
 //     so a door is never something to press E at)
 //   gunName(id) → as stamped on the gun: E-11, DL-44, DH-17, A280
+//   layers(status, ui) → { playing, paused, mapOpen, free }   what stands over the station, from the
+//     runtime’s status and the world’s last 'ui' event; `free`: the pointer isn’t the page’s to hold
 
 import { STATIONS } from '../rules/stations';
 
@@ -85,3 +87,15 @@ export function promptLine(prompt, { touch = false } = {}) {
 const GUNS = { e11: 'E-11', dl44: 'DL-44', dh17: 'DH-17', a280: 'A280' };
 
 export const gunName = (id) => (id ? (GUNS[id] ?? id) : '');
+
+// The last 'ui' event outlives the world (a lost context keeps it, map open
+// and all), so nothing of a game stands over the station unless it is on:
+// a map left up would cover the failure screen and close on nothing.
+export function layers(status, ui) {
+  const on = status === 'on';
+  const playing = on && ui?.mode === 'play';
+  const paused = on && ui?.mode === 'pause';
+  const mapOpen = playing && Boolean(ui.map?.open);
+  // the pointer is the page’s to hold only while you walk: never over a menu, a conversation or the map
+  return { playing, paused, mapOpen, free: !playing || Boolean(ui.talk) || mapOpen };
+}

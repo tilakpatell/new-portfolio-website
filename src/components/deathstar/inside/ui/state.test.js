@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STATION_CHOICES, gunName, heroesFor, fromSearch, promptLine, sectionName, security } from './state';
+import { STATION_CHOICES, gunName, heroesFor, fromSearch, layers, promptLine, sectionName, security } from './state';
 
 describe('what a link to the station asks for', () => {
   it('reads the station, the side, story or free roam and where to stand from the address', () => {
@@ -65,5 +65,25 @@ describe('the HUD’s words', () => {
     expect(gunName('dh17')).toBe('DH-17');
     expect(gunName('a280')).toBe('A280');
     expect(gunName(null)).toBe('');
+  });
+});
+
+describe('what stands over the station', () => {
+  const walking = { mode: 'play', map: { open: false, seen: [] }, talk: null };
+  const mapUp = { ...walking, map: { open: true, seen: ['bay327'] } };
+
+  it('holds the pointer while you walk, and frees it for the map, a conversation or a menu', () => {
+    expect(layers('on', walking)).toEqual({ playing: true, paused: false, mapOpen: false, free: false });
+    expect(layers('on', mapUp)).toEqual({ playing: true, paused: false, mapOpen: true, free: true });
+    expect(layers('on', { ...walking, talk: { who: 'officer', line: 'Papers.', choices: [] } }).free).toBe(true);
+    expect(layers('on', { mode: 'pause' })).toEqual({ playing: false, paused: true, mapOpen: false, free: true });
+    expect(layers('on', { mode: 'start' }).free).toBe(true);
+  });
+
+  it('shows nothing of a game once the world has gone, though its last word had the map open', () => {
+    for (const status of ['lost', 'failed', 'loading', 'idle']) {
+      expect(layers(status, mapUp)).toEqual({ playing: false, paused: false, mapOpen: false, free: true });
+      expect(layers(status, { mode: 'pause' }).paused).toBe(false);
+    }
   });
 });

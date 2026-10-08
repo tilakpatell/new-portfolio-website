@@ -8,7 +8,7 @@ import Hud, { Pause } from './ui/Hud';
 import MapPanel from './ui/Map';
 import Start from './ui/Start';
 import Touch from './ui/Touch';
-import { fromSearch } from './ui/state';
+import { fromSearch, layers } from './ui/state';
 import './inside.css';
 
 // The page’s side of Aboard the Death Star (pages/DeathStarInside.jsx shows
@@ -70,11 +70,8 @@ export default function Inside({ mode = 'page', onExit }) {
   // (every call into the world is optional: one it lacks is left alone, not the page failing on it)
   const api = useCallback(() => (rt?.current?.module === module ? rt.current.world : null), [rt]);
 
-  const playing = ui.mode === 'play';
-  const paused = ui.mode === 'pause';
-  const mapOpen = playing && Boolean(ui.map?.open);
-  // the pointer is the page’s to hold only while you walk: never over a menu, a conversation or the map
-  const free = !playing || Boolean(ui.talk) || mapOpen;
+  // (only while the world is on: after a lost context the last 'ui' event still says play, map open)
+  const { playing, paused, mapOpen, free } = layers(status, ui);
   const freeRef = useRef(free);
   freeRef.current = free;
 
