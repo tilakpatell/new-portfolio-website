@@ -82,8 +82,8 @@ describe('validating a station', () => {
 
   it('counts a lift as a way in: without it the far landings can’t be reached', () => {
     const s = copy(DS1);
-    const stops = s.lifts.flatMap((l) => l.stops);
-    const onlyByLift = stops.filter((id) => !s.doors.some((d) => d.a === id || d.b === id));
+    // every landing off the bay’s level, and the rooms its doors lead to, are a ride away
+    const onlyByLift = s.lifts.flatMap((l) => l.stops).filter((id) => s.rooms.find((r) => r.id === id).y !== 0);
     expect(onlyByLift.length).toBeGreaterThan(0);
     s.lifts = [];
     const errors = validateStation(s);
@@ -207,6 +207,39 @@ describe('validating a station', () => {
     });
   }
 
+  it('counts a jump as a way in, one way only', () => {
+    const s = station([room('top', 0, 0, 10, 4), room('pit', 0, 20, 10, 4, { y: -6 })], [], { spots: { landing: { room: 'pit', x: 0, z: 20, yaw: 0 } } });
+    s.jumps = [{ id: 'drop', from: 'top', x: 2, z: 0, r: 1, to: 'landing', prompt: 'Drop' }];
+    expect(validateStation(s)).toEqual([]);
+    const back = copy(s);
+    back.starts.rebel = { room: 'pit', x: 0, z: 20, yaw: 0 };
+    expect(validateStation(back)).toEqual([expect.stringContaining('top')]);
+    expect(validateStation({ ...s, jumps: [] })).toEqual([expect.stringContaining('pit')]);
+  });
+
+  // each: what goes wrong with a jump, and the words one message must hold
+  const jumps = [
+    ['a jump from a room that isn’t there', { from: 'nowhere' }, ['drop', 'nowhere']],
+    ['a jump whose use-point stands outside its room', { x: 40 }, ['drop', 'outside']],
+    ['a jump to a spot that isn’t there', { to: 'moon' }, ['drop', 'moon']],
+    ['a jump with a lock it can’t read', { lock: 'ask nicely' }, ['drop', 'lock']],
+    ['a jump with no reach', { r: 0 }, ['drop', 'reach']],
+  ];
+  for (const [what, change, words] of jumps) {
+    it(`names ${what}`, () => {
+      const s = station([room('top', 0, 0, 10, 4), room('pit', 0, 20, 10, 4, { y: -6 })], [], { spots: { landing: { room: 'pit', x: 0, z: 20, yaw: 0 } } });
+      s.jumps = [{ id: 'drop', from: 'top', x: 2, z: 0, r: 1, to: 'landing', prompt: 'Drop', lock: 'flag:rope', ...change }];
+      expect(validateStation(s).some((e) => words.every((w) => e.includes(w)))).toBe(true);
+    });
+  }
+
+  it('names a jump id used twice', () => {
+    const s = station([room('top', 0, 0, 10, 4), room('pit', 0, 20, 10, 4, { y: -6 })], [], { spots: { landing: { room: 'pit', x: 0, z: 20, yaw: 0 } } });
+    const drop = { id: 'drop', from: 'top', x: 2, z: 0, r: 1, to: 'landing', prompt: 'Drop' };
+    s.jumps = [drop, { ...drop, x: -2 }];
+    expect(validateStation(s)).toEqual([expect.stringMatching(/drop.*twice/)]);
+  });
+
   it('wants a door on a round room where its wall runs along the door', () => {
     const drum = room('drum', 0, 0, 20, 20, { round: true, kind: 'reactor', h: 6 });
     const way = room('way', 0, -14, 3, 8, { h: 6 });
@@ -289,6 +322,24 @@ describe('the layout', () => {
     expect(l.floorAt('far', 101, 50)).toBeCloseTo(10.5);
     expect(l.floorAt('far', 98, 50)).toBeNull();
     expect(l.rooms.get('far').floors).toEqual([{ x0: 100, x1: 102, z0: 49, z1: 51, y: 10.5 }]);
+  });
+
+  it('keeps a floor’s tag, and reads past floors whose tag is in the set it is given', () => {
+    const gap = room('gap', 0, 0, 12, 4, { floors: [{ x: -5, z: 0, w: 2, d: 4, y: 0 }, { x: 0, z: 0, w: 8, d: 1.6, y: 0, tag: 'bridge' }, { x: 5, z: 0, w: 2, d: 4, y: 0 }] });
+    const l = buildLayout(station([gap]));
+    expect(l.rooms.get('gap').floors.map((f) => f.tag ?? null)).toEqual([null, 'bridge', null]);
+    expect(l.floorAt('gap', 0, 0)).toBe(0);
+    expect(l.floorAt('gap', 0, 0, new Set(['bridge']))).toBeNull();
+    expect(l.floorAt('gap', 0, 0, new Set(['ramp']))).toBe(0);
+    expect(l.floorAt('gap', -5, 0, new Set(['bridge']))).toBe(0);
+  });
+
+  it('copies the station’s jumps, and has none when it gives none', () => {
+    const s = station([room('top', 0, 0, 10, 4), room('pit', 0, 20, 10, 4, { y: -6 })], [], { spots: { landing: { room: 'pit', x: 0, z: 20, yaw: 0 } } });
+    const drop = { id: 'drop', from: 'top', x: 2, z: 0, r: 1, to: 'landing', prompt: 'Drop', lock: 'flag:rope' };
+    expect(buildLayout({ ...s, jumps: [drop] }).jumps).toEqual([drop]);
+    expect(buildLayout({ ...s, jumps: [drop] }).jumps[0]).not.toBe(drop);
+    expect(buildLayout(s).jumps).toEqual([]);
   });
 
   it('stands on the highest of the floors stacked at a point', () => {
