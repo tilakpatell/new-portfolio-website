@@ -43,7 +43,8 @@ import { useEconomy } from '../EconomyProvider';
 // on the kept key. Your allies and blocks are kept in this browser too
 // (allies.js, made once you're online, handed to the link, which lists the
 // saved allies who aren't here as room.away); removeAlly(id) is the roster's
-// Remove on one of those.
+// Remove on one of those, and isBlocked(id) says whether a block is kept
+// for a pilot (a world's travellers ask it too).
 
 const ONLINE_KEY = 'tp-universe-online'; // 'on' once you've gone online
 const NAME_KEY = 'tp-universe-callsign';
@@ -254,5 +255,6 @@ export function useOnlineState(where) {
     ally: (id, what) => client?.ally(id, what),
     block: (id, yes) => client?.block(id, yes),
     removeAlly: (id) => allies.current?.dropAlly(id), // (a saved ally who isn't here: forgotten)
+    isBlocked: (id) => Boolean(allies.current?.isBlocked(id)), // (a block of yours kept in this browser: for the worlds' travellers)
   };
 }
