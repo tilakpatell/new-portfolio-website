@@ -132,7 +132,7 @@ import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
 import { DEBRIS_DRIFT, SKY_FAR, buildDeepSpace } from './deepspace';
 import { FAR_STARS, createFarStars } from './farStars';
 import { createLandmarks } from './landmarks';
-import { aimFrom, aimTargets, jumpPhase } from './aim';
+import { aimFrom, aimTargets, jumpPhase, nameShows } from './aim';
 import { aligned, steerToward } from '../galaxy/space';
 import { createSectorPortals } from './sectorPortals';
 import { GUN, gunHit, gunTransit } from './gunPortal';
@@ -708,9 +708,6 @@ export async function create(canvas, ctx) {
   // on the sky, at least so big across from anywhere (landmarks.js)
   const landmarks = createLandmarks(map, { renderer, small, level: device().detail, skyFar: SKY_FAR });
   const landmarkGroup = (id) => deep.groupOf(id) ?? (id === 'sun' ? sun.group : null);
-  // whose name shows: while flying, a place's only where you look (within
-  // NAME_CONE of the nose), where it's real, picked or where you're going;
-  // on foot, only near or picked; with no ship (or the whole map in view), all
   // the aim (aim.js): while flying, the star the nose is on (the way the
   // reticle is from the eye, the ship's nose six units ahead), in this
   // sector, not the place you're at; the page hears when it changes (its
@@ -731,17 +728,28 @@ export async function create(canvas, ctx) {
     state.aim = id;
     if (id !== was) emit({ type: 'aim', id, name: id ? (destinationById(id)?.name ?? null) : null });
   };
-  const NAME_COS = Math.cos(0.14);
+  // whose name shows (aim.js's nameShows): while flying, a place's only
+  // where you look (within NAME_CONE of the nose), where it's real, picked
+  // or where you're going; on foot, only near or picked; with no ship (or
+  // the whole map in view), all
   const named = (id, at) => {
-    if ((!flying() && !onFoot()) || state.view === 'map') return true;
-    if ((farStars.kOf(id) ?? landmarks.kOf(id) ?? 1) < 1 || id === state.sel || id === state.aim || id === state.auto?.id || id === state.jump?.id) return true;
-    if (onFoot() || !at) return false;
+    let noseDot = -1;
     const s = state.ship;
-    const [nx, ny, nz] = noseOf(s);
-    const dx = at[0] - s.x;
-    const dy = at[1] - s.y;
-    const dz = at[2] - s.z;
-    return (nx * dx + ny * dy + nz * dz) / (Math.hypot(dx, dy, dz) || 1) > NAME_COS;
+    if (s && at && flying() && !onFoot()) {
+      const [nx, ny, nz] = noseOf(s);
+      const dx = at[0] - s.x;
+      const dy = at[1] - s.y;
+      const dz = at[2] - s.z;
+      noseDot = (nx * dx + ny * dy + nz * dz) / (Math.hypot(dx, dy, dz) || 1);
+    }
+    return nameShows({
+      k: farStars.kOf(id) ?? landmarks.kOf(id) ?? 1,
+      station: byId(id)?.kind === 'core',
+      picked: id === state.sel || id === state.aim || id === state.auto?.id || id === state.jump?.id,
+      viewAll: (!flying() && !onFoot()) || state.view === 'map',
+      onFoot: onFoot(),
+      noseDot,
+    });
   };
   const near = createNearMaps({ small, upload: (ts) => uploadSlices(renderer, ts, { sliceMB: 8 }) }); // (the finer maps for the two planets nearest, nearMaps.js)
   const crashFx = createCrash(map);

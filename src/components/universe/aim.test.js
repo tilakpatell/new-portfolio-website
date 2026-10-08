@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JUMP, aimFrom, aimTargets, jumpPhase } from './aim';
+import { JUMP, aimFrom, aimTargets, jumpPhase, nameShows } from './aim';
 import { HYPER, hyperState } from './nav';
 import { POSITIONS, SUN } from './layout';
 import { isGoal } from './ship';
@@ -77,5 +77,29 @@ describe('the jump', () => {
     expect(HYPER.recharge).toBe(5);
     expect(hyperState({ last: 0, now: 4 }).ready).toBe(false);
     expect(hyperState({ last: 0, now: 5 }).ready).toBe(true);
+  });
+});
+
+describe('whose name shows', () => {
+  const base = { k: 1, station: false, picked: false, viewAll: false, onFoot: false, noseDot: 0 };
+  it('shows every name with the whole map in view, or no ship', () => {
+    expect(nameShows({ ...base, viewAll: true })).toBe(true);
+  });
+  it('shows a place that is itself (near), picked, aimed at or gone to', () => {
+    expect(nameShows({ ...base, k: 0.5 })).toBe(true);
+    expect(nameShows({ ...base, picked: true })).toBe(true);
+  });
+  it('shows a far star only within 8° of the nose', () => {
+    expect(nameShows({ ...base, noseDot: Math.cos(0.1) })).toBe(true);
+    expect(nameShows({ ...base, noseDot: Math.cos(0.2) })).toBe(false);
+  });
+  it('never names a far station by the nose: out there it is not drawn at all (home is the sun)', () => {
+    expect(nameShows({ ...base, station: true, noseDot: 1 })).toBe(false);
+    expect(nameShows({ ...base, station: true, k: 0 })).toBe(true);
+    expect(nameShows({ ...base, station: true, picked: true })).toBe(true);
+  });
+  it('on foot, names only what is near or picked', () => {
+    expect(nameShows({ ...base, onFoot: true, noseDot: 1 })).toBe(false);
+    expect(nameShows({ ...base, onFoot: true, k: 0 })).toBe(true);
   });
 });
