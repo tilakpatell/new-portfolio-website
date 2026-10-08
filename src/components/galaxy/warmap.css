@@ -97,6 +97,15 @@
 .holomap-systems li[data-badge='side'][data-side='left'] .holomap-dot::after { right: auto; left: calc(100% + 1px); }
 @keyframes holomap-contest { 50% { box-shadow: 0 0 10px 4px color-mix(in srgb, var(--by) 50%, transparent); } }
 .holomap-systems li[data-decisive] .holomap-dot { outline: 1.5px solid var(--by); outline-offset: 9px; }
+/* cut off from supply (holding less well, and not mending): the holder's ring dashed, where nobody's fighting
+   over it (fought over, its ring's the fight's, and its button's words say it's cut off) */
+.holomap-systems li[data-cut]:not([data-front], [data-attack]) .holomap-dot { box-shadow: none; }
+.holomap-systems li[data-cut]:not([data-front], [data-attack]) .holomap-dot::before,
+.holomap-key-cut::before { content: ''; position: absolute; inset: -4px; border: 2px dashed var(--held); border-radius: 50%; }
+/* you are here, on a war's system: a white ring outside its war ring, beside it rather than instead (galaxy.css's
+   white ring lost to the war's, so with the pulse still for prefers-reduced-motion nothing marked where you were) */
+.holomap-systems li[data-held] .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held), 0 0 0 5.5px #020611, 0 0 0 7px #fff; }
+.holomap-systems li:is([data-front], [data-attack], [data-cut]) .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 6.5px #020611, 0 0 0 8px #fff; }
 .holomap-you { position: absolute; left: 50%; top: -11px; width: 5px; height: 5px; translate: -50% 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px #020611; }
 .holomap-systems li[data-badge='above'] .holomap-you { top: auto; bottom: -11px; }
 .holomap-star { margin-left: 0.25rem; color: #ffd36a; font-weight: 700; text-shadow: 0 0 6px #000; }
@@ -141,6 +150,8 @@
 .holomap-key-glyphs { white-space: nowrap; font-size: 0.8rem; }
 .holomap-key-glyphs b { margin: 0; }
 .holomap-key-you { display: inline-block; width: 5px; height: 5px; margin-left: 3px; border-radius: 50%; background: #fff; vertical-align: middle; }
+.holomap-key-cut { position: relative; width: 12px; height: 12px; margin: 2px 0 2px 9px; border-radius: 50%; background: radial-gradient(circle, #bfeaff 0 2.5px, transparent 3.5px); }
+.holomap-key-here { width: 12px; height: 12px; margin: 2px 0 2px 9px; border-radius: 50%; background: radial-gradient(circle, #bfeaff 0 2.5px, transparent 3.5px); box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held), 0 0 0 5.5px #020611, 0 0 0 7px #fff; }
 
 /* ── Phone width: the switch across the top, the board under it on the
    left (clear of the northern systems' names), smaller fleets ── */

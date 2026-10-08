@@ -4,7 +4,8 @@
 // progress is how much of that hold is gone, and an attacked system's is how
 // much is left.
 //
-// progressOf(row) → 0..1; standing(row, now) → a line; heldColour(side);
+// progressOf(row) → 0..1; standing(row, now) → a line; systemLabel(row, now,
+// you) → its button's words on the holotable; heldColour(side);
 // whose(side, the = 'The') → 'The Rebellion’s', 'the Separatists’';
 // areaLines(areas, side) → [{ id, name, text, yours }]; recordLine(side,
 // record) → your rank and record (warState.js's mine) | null; oathOf(war,
@@ -46,10 +47,16 @@ export function standing(row, now) {
     const by = row.attack.by === 'hutt' ? 'The Hutts raid' : `The ${SIDES[row.attack.by].short} ${does(row.attack.by, 'attacks', 'attack')}`;
     return `${by}: ${pctOf(row.control)} held, ${span(row.attack.until - now)} to hold out`;
   }
-  if (row.front) return `${pctOf(progressOf(row))} liberated · ${rateOf(row.effRate ?? row.rate)}`;
-  if (row.owner === 'hutt') return 'Hutt space';
-  return `Held by the ${SIDES[row.owner].short}`;
+  // whose it is (and cut off from its supply lines: it holds less well, and doesn't mend)
+  const held = `${row.owner === 'hutt' ? 'Hutt space' : `Held by the ${SIDES[row.owner].short}`}${row.cut ? ', cut off from supply' : ''}`;
+  if (row.front) return `${held} · ${pctOf(progressOf(row))} liberated · ${rateOf(row.effRate ?? row.rate)}`;
+  return held;
 }
+
+// a system's button on the holotable, in words: all its marks on the map say
+// (the drawing's only a picture of this)
+export const systemLabel = (row, now, you) =>
+  `${row.name}: ${standing(row, now)}${row.major ? ', the major order' : ''}${row.decisive ? ', the decisive battle' : ''}${row.battle?.fighting ? ', a battle on' : ''}${you ? ', you fought here' : ''}`;
 
 export const heldColour = (side) => SIDES[side]?.colour;
 

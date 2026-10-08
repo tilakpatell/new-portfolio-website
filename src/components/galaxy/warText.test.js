@@ -1,19 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import { GCW, warTable } from './gcw';
 import { WAR_IDS } from './sides';
-import { ago, areaLines, battleLine, campaignLine, eventLine, feedOf, heldColour, newsLine, nextOpLine, oathOf, orderLine, partLine, phaseLine, progressOf, recordLine, resultLine, soon, standing, strengthLine, whose } from './warText';
+import { ago, areaLines, battleLine, campaignLine, eventLine, feedOf, heldColour, newsLine, nextOpLine, oathOf, orderLine, partLine, phaseLine, progressOf, recordLine, resultLine, soon, standing, strengthLine, systemLabel, whose } from './warText';
 
 const NOW = 1_000_000;
 const row = (o) => ({ id: 'hoth', owner: 'empire', control: 0.75, front: false, attack: null, rate: null, ...o });
 
 describe('a system’s place in a war, in words', () => {
-  it('a front is the liberator’s progress: how much of the holder’s hold is gone', () => {
+  it('a front is the liberator’s progress: how much of the holder’s hold is gone, and whose it is', () => {
+    // (it named no holder: the map's ring says whose, but its button's words didn't)
     expect(progressOf(row({ front: true }))).toBeCloseTo(0.25, 5);
-    expect(standing(row({ front: true, rate: 4 }), NOW, 'gcw')).toBe('25% liberated · +4.0%/h');
+    expect(standing(row({ front: true, rate: 4 }), NOW, 'gcw')).toBe('Held by the Empire · 25% liberated · +4.0%/h');
+    expect(standing(row({ owner: 'hutt', front: true, rate: 4 }), NOW, 'gcw')).toBe('Hutt space · 25% liberated · +4.0%/h');
   });
   it('a front’s rate is the one that applies (its supply, areas and defence in it), when it’s known', () => {
-    expect(standing(row({ front: true, rate: 4, effRate: 2.35 }), NOW, 'gcw')).toBe('25% liberated · +2.4%/h');
-    expect(standing(row({ front: true, rate: 4, effRate: -0.5 }), NOW, 'gcw')).toBe('25% liberated · −0.5%/h');
+    expect(standing(row({ front: true, rate: 4, effRate: 2.35 }), NOW, 'gcw')).toBe('Held by the Empire · 25% liberated · +2.4%/h');
+    expect(standing(row({ front: true, rate: 4, effRate: -0.5 }), NOW, 'gcw')).toBe('Held by the Empire · 25% liberated · −0.5%/h');
+  });
+  it('a system cut off from supply says so: it holds less well, and doesn’t mend', () => {
+    expect(standing(row({ owner: 'separatists', cut: true }), NOW, 'clone')).toBe('Held by the Separatists, cut off from supply');
+    expect(standing(row({ front: true, rate: 4, cut: true }), NOW, 'gcw')).toBe('Held by the Empire, cut off from supply · 25% liberated · +4.0%/h');
   });
   it('under attack it’s the holder’s hold, and the time left to hold out', () => {
     const r = row({ owner: 'rebel', attack: { by: 'empire', until: NOW + 90e3 }, control: 0.6 });
@@ -29,6 +35,13 @@ describe('a system’s place in a war, in words', () => {
   it('a quiet system names its holder, the Hutts’ as Hutt space', () => {
     expect(standing(row({ owner: 'separatists' }), NOW, 'clone')).toBe('Held by the Separatists');
     expect(standing(row({ owner: 'hutt' }), NOW, 'gcw')).toBe('Hutt space');
+  });
+  it('a system’s button says all the map shows of it: the major order, the decisive battle, a battle on, your part', () => {
+    const r = row({ name: 'Hoth', front: true, rate: 4, major: true });
+    expect(systemLabel(r, NOW, false)).toBe('Hoth: Held by the Empire · 25% liberated · +4.0%/h, the major order');
+    const fought = { ...r, major: false, decisive: true, battle: { fighting: true } };
+    expect(systemLabel(fought, NOW, true)).toBe('Hoth: Held by the Empire · 25% liberated · +4.0%/h, the decisive battle, a battle on, you fought here');
+    expect(systemLabel(row({ name: 'Hoth', owner: 'hutt' }), NOW, false)).toBe('Hoth: Hutt space');
   });
   it('colours a system its holder’s', () => {
     expect(heldColour('rebel')).toMatch(/^#/);

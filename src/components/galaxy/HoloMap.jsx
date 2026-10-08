@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { RiCloseLine, RiRocket2Fill, RiArrowGoBackLine } from 'react-icons/ri';
-import { standing } from './warText';
+import { systemLabel } from './warText';
 import WarCard, { SystemWar } from './WarCard';
 import WarLegend from './WarLegend';
 import WarStrip from './WarStrip';
@@ -31,8 +31,8 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // where powers meet and the lanes the war runs along, each offensive an
 // arrow with its fleet closing in (WarLayers.jsx), each system ringed in its
 // holder's colour with the attacker's share of the ring growing (+ a front,
-// − an attack), its battle on now marked, the major order starred, and a dot
-// where you fought; who holds what over the map's empty north (WarStrip.jsx)
+// − an attack, a dashed ring cut off from supply), its battle on now marked,
+// the major order starred, and a dot where you fought; who holds what over the map's empty north (WarStrip.jsx)
 // and a key (WarLegend.jsx); the war's own card when nothing's picked
 // (WarCard.jsx: its phase, orders, news, battles and the nearest to join),
 // and the war's part of a system's card.
@@ -313,8 +313,8 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                 const ring = row ? { '--held': SIDES[row.owner].colour, ...(by && { '--by': SIDES[by].colour, '--take': 1 - row.control }) } : {};
                 const you = row && fought.has(s.id);
                 return (
-                <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, ...ring }} data-dim={!lit(s) || undefined} data-side={NAME_LEFT.has(s.id) ? 'left' : undefined} data-badge={row ? BADGE[s.id] : undefined} data-held={row?.owner} data-front={(by && !row.attack) || undefined} data-attack={row?.attack ? '' : undefined} data-major={row?.major || undefined} data-decisive={row?.decisive || undefined} data-fought={you || undefined}>
-                  <button type="button" className="holomap-system" aria-pressed={pick === s.id} aria-current={s.id === current ? 'location' : undefined} onClick={() => choose(s.id)} onDoubleClick={() => s.id !== current && onJump(s.id)} aria-label={row ? `${s.name}: ${standing(row, now)}${row.battle?.fighting ? ', a battle on' : ''}${you ? ', you fought here' : ''}` : undefined}>
+                <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, ...ring }} data-dim={!lit(s) || undefined} data-side={NAME_LEFT.has(s.id) ? 'left' : undefined} data-badge={row ? BADGE[s.id] : undefined} data-held={row?.owner} data-front={(by && !row.attack) || undefined} data-attack={row?.attack ? '' : undefined} data-major={row?.major || undefined} data-decisive={row?.decisive || undefined} data-cut={row?.cut || undefined} data-fought={you || undefined}>
+                  <button type="button" className="holomap-system" aria-pressed={pick === s.id} aria-current={s.id === current ? 'location' : undefined} onClick={() => choose(s.id)} onDoubleClick={() => s.id !== current && onJump(s.id)} aria-label={row ? systemLabel(row, now, you) : undefined}>
                     <span className="holomap-dot" aria-hidden="true">
                       {you && <i className="holomap-you" />}
                     </span>

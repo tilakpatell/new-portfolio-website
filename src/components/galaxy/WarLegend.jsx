@@ -92,6 +92,14 @@ export default function WarLegend({ war }) {
       'Under attack: its holder’s share of the ring drains',
     ],
     [
+      <span key="m" className="holomap-key-cut" style={{ '--held': raid.colour }} />,
+      'Cut off from supply: joined to neither its capital nor a stronghold, it holds less well and doesn’t mend',
+    ],
+    [
+      <span key="m" className="holomap-key-here" style={{ '--held': lib.colour }} />,
+      'You are here',
+    ],
+    [
       <span key="m" className="holomap-key-glyphs" aria-hidden="true">
         <b className="holomap-fight">⚔</b> <b className="holomap-star">★</b> <i className="holomap-key-you" />
       </span>,
