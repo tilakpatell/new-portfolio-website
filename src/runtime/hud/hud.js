@@ -44,15 +44,17 @@ export function stackUnder(heights, { from = 0, gap = GAP } = {}) {
 
 // 'full' (the world's title in its own face) until 2.5 s after the player
 // first moves, or at once when there's an objective: then 'chip', out of the
-// way of what's under it.
-export const titleMode = ({ t, movedAt = null, objective = false }) => (objective || (movedAt != null && t - movedAt >= 2.5) ? 'chip' : 'full');
+// way of what's under it. (Invincible's signature, which its tests keep.)
+export const titleMode = (t, movedAt, objectiveOn) => (objectiveOn || (movedAt != null && t - movedAt >= 2.5) ? 'chip' : 'full');
 
 // metres under a kilometre, kilometres to a decimal over it
 export const far = (d) => (d < 1000 ? `${Math.round(d)} m` : `${(d / 1000).toFixed(1)} km`);
 
-// The objective line: its words and how far it is ("Get to the bank · 250 m").
-export function objectiveText({ label = '', metres = null } = {}) {
-  return [label, metres == null || !Number.isFinite(metres) ? null : far(metres)].filter(Boolean).join(' · ');
+// The objective line: the step's words and how far it is ("Get to the bank
+// · 250 m"). `step`: { text }, or null for none.
+export function objectiveText(step, dist) {
+  if (!step) return '';
+  return [step.text, dist == null || !Number.isFinite(dist) ? null : far(dist)].filter(Boolean).join(' · ');
 }
 
 // The prompt, key first as the guide writes its rows ("E Go in · Burger

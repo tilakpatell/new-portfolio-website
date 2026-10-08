@@ -40,16 +40,15 @@ describe('the objective line', () => {
 });
 
 describe('the players chip', () => {
-  const trav = (on, count) => ({ available: true, on, count, join: () => {} });
   it('offers a way in with the world’s noun', () => {
-    expect(text(<PlayersChip trav={trav(false, 0)} noun="drivers" />)).toBe('See other drivers');
+    expect(text(<PlayersChip on={false} onJoin={() => {}} noun="drivers" />)).toBe('See other drivers');
   });
   it('says “N others here” once you’re in', () => {
-    expect(text(<PlayersChip trav={trav(true, 3)} noun="drivers" />)).toBe('3 others here');
-    expect(text(<PlayersChip trav={trav(true, 1)} />)).toBe('1 other here');
+    expect(text(<PlayersChip count={3} noun="drivers" />)).toBe('3 others here');
+    expect(text(<PlayersChip count={1} />)).toBe('1 other here');
   });
   it('is nothing where there’s no going online', () => {
-    expect(renderToStaticMarkup(<PlayersChip trav={{ available: false }} />)).toBe('');
+    expect(renderToStaticMarkup(<PlayersChip available={false} />)).toBe('');
   });
 });
 
