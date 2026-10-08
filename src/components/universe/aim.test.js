@@ -27,6 +27,15 @@ describe('the aim', () => {
     expect(aimFrom(from, [0, 1, 0], main)).toBe(null);
   });
 
+  it('never aims at a place near enough to be itself: only at stars (past where it\'s real)', () => {
+    // (beside Middle-earth, 1.75 of its reaches out, looking at it: it's a planet, not a star)
+    const me = POSITIONS.middleearth;
+    const beside = [me[0] + 190, me[1], me[2]];
+    expect(aimFrom(beside, toward(beside, me), main)?.id ?? null).not.toBe('middleearth');
+    // and from far off it's a star again
+    expect(aimFrom(from, toward(from, me), main)?.id).toBe('middleearth');
+  });
+
   it('sticks to the one it had', () => {
     const targets = [
       { id: 'a', at: [0, 0, -10000] },
