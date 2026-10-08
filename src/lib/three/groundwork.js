@@ -44,6 +44,7 @@
 // the bake is the sky's occlusion alone, with the bounce.
 
 import * as THREE from 'three';
+import { bakeKey, getBake, putBake } from './bakeCache';
 import { BAKE_TIERS, bakeFloorTexture, heightFromPixels } from './grounding-bake';
 import { bounce as bounceOn, createBlobShadows, floorShadow, setFloorMask, setFloorTime, standIn } from './grounding';
 import { matcapFor } from './matcap';
@@ -102,7 +103,7 @@ function blankMask() {
   return t;
 }
 
-export function groundWorld({ renderer, scene, floor = [], area = null, sun = null, casters = null, skip = [], movers = [], shade = 0x3a2c22, sunFloor = 0, bounce = {}, height = null, tier = 'mid', matcap = [], lights = null, blobOpacity = 0.75, auto = false, follow = true, clip = false, keepShadows = false } = {}) {
+export function groundWorld({ renderer, scene, floor = [], area = null, sun = null, casters = null, skip = [], movers = [], shade = 0x3a2c22, sunFloor = 0, bounce = {}, height = null, tier = 'mid', matcap = [], lights = null, blobOpacity = 0.75, auto = false, follow = true, clip = false, keepShadows = false, cache = null } = {}) {
   const box = floorBox(floor);
   if (!area) {
     // the floor's own extent, at most 240 m a side about its middle
@@ -263,6 +264,18 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
     return true;
   };
 
+  // the kept mask as the bake would have handed it over
+  const fromKept = (kept) => {
+    const pixels = new Uint8Array(kept.data);
+    const tex = new THREE.DataTexture(pixels, kept.width, kept.height, THREE.RGBAFormat, THREE.UnsignedByteType);
+    tex.colorSpace = THREE.NoColorSpace;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.generateMipmaps = true;
+    tex.needsUpdate = true;
+    return { texture: tex, pixels, size: kept.width, range, area: { ...area }, ms: 0, passes: 0, dispose: () => tex.dispose() };
+  };
+
   const bake = () => {
     if (job) return job;
     if (disposed) return Promise.resolve(false);
@@ -271,19 +284,33 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
     stats.startedAt = Math.round(performance.now());
     bakedDir = sunDirection(sun, new THREE.Vector3());
     const preset = BAKE_TIERS[tier] ?? BAKE_TIERS.mid;
-    job = bakeFloorTexture(renderer, scene, {
-      area,
-      floor,
-      casters: roots,
-      skip: [...skipRoots, ...moverRoots, blobs.mesh],
-      sun: keepShadows ? null : bakedDir.clone(),
-      size: preset.size,
-      sunSamples: preset.sun,
-      skySamples: preset.sky,
-      shadowSize: preset.shadow,
-      range,
-      signal: abort,
-    })
+    const signal = abort;
+    const key = cache?.world && !keepShadows ? bakeKey({ world: cache.world, place: cache.place, sun: bakedDir, tier, casters: roots }) : null;
+    const fresh = () =>
+      bakeFloorTexture(renderer, scene, {
+        area,
+        floor,
+        casters: roots,
+        skip: [...skipRoots, ...moverRoots, blobs.mesh],
+        sun: keepShadows ? null : bakedDir.clone(),
+        size: preset.size,
+        sunSamples: preset.sun,
+        skySamples: preset.sky,
+        shadowSize: preset.shadow,
+        range,
+        signal,
+      }).then((result) => {
+        if (result && key && result.pixels) putBake(key, { width: result.size, height: result.size, data: result.pixels });
+        return result;
+      });
+    // (a bake kept from an earlier visit stands in for the work, when the
+    // cache holds one for this place, sun and set of casters)
+    job = (key ? getBake(key) : Promise.resolve(null))
+      .then((kept) => {
+        if (signal.aborted || disposed) return null;
+        const ok = kept && kept.width === preset.size && kept.height === preset.size && kept.data?.length === preset.size * preset.size * 4;
+        return ok ? fromKept(kept) : fresh();
+      })
       .then((result) => (result ? land(result) : false))
       .catch(() => false)
       .finally(() => {
