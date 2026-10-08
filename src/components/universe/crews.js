@@ -433,6 +433,26 @@ export const CREWS = [
       ['rick', 'That’s what you get for messing with the smartest man in the universe!'],
       ['morty', 'I did most of the shooting, Rick.'],
     ],
+    // the ship's powers (shipPowers.js): using each, the big one charged
+    // and a big haul from it, and why a portal won't go
+    powers: {
+      portal: {
+        use: [['rick', 'Portal, Morty! Get on his six!']],
+        refuse: {
+          shield: [['rick', 'Portals don’t go through planetary shields, Morty. It’s physics. Ugh.']],
+          held: [['rick', 'Something’s got hold of the ship, Morty. You can’t portal out of a headlock.']],
+          solid: [['rick', 'Open a portal into that? You want to come out inside a rock, Morty? Point us somewhere with space in it.']],
+        },
+      },
+      wubba: {
+        use: [
+          ['rick', 'Wubba lubba dub dub!', 'wubba'],
+          ['morty', 'Rick, that’s way too much laser!'],
+        ],
+        ready: [['rick', 'Big gun’s charged, Morty. Don’t touch it. Okay, touch it.']],
+        big: [['rick', 'Riggity riggity wrecked, son!', 'riggity']],
+      },
+    },
     // the director's set pieces (director.js), and going out into deep space
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again: by who came
@@ -1188,6 +1208,23 @@ export const CREWS = [
       ['luke', 'That’s all of them!'],
       ['comms', 'Great shot, kid. That was one in a million.'],
     ],
+    // the ship's powers (shipPowers.js)
+    powers: {
+      focus: {
+        use: [
+          ['comms', 'Use the Force, Luke.', 'useTheForce', { name: 'Ben Kenobi', color: '#cfe0ff' }],
+          ['r2', '[a low, steady whistle: he’s with you]'],
+        ],
+      },
+      salvo: {
+        use: [
+          ['luke', 'Artoo, lock them up. Torpedoes away!'],
+          ['r2', '[four quick locking beeps, then a whoop]'],
+        ],
+        ready: [['r2', '[an excited whistle: the torpedoes are armed]']],
+        big: [['comms', 'The Force is strong with this one.', 'forceIsStrong', { name: 'Darth Vader', color: '#ff6a5a' }]],
+      },
+    },
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again: by who came
       wingmen: {
@@ -1889,6 +1926,18 @@ export const CREWS = [
       ['chewie', '[a triumphant roar]'],
       ['han', 'I know.'],
     ],
+    // the ship's powers (shipPowers.js)
+    powers: {
+      odds: { use: [['han', 'Never tell me the odds.', 'neverTellOdds']] },
+      quad: {
+        use: [
+          ['han', 'Chewie, take the guns!'],
+          ['chewie', '[a roar: he’s on the quad lasers]', 'chewieRoar'],
+        ],
+        ready: [['chewie', '[an eager growl: the turrets are his whenever you say]']],
+        big: [['chewie', '[a big, pleased laugh]', 'chewieLaugh']],
+      },
+    },
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again
       wingmen: {
@@ -2607,6 +2656,21 @@ export const CREWS = [
       ['jesse', 'We got ’em all, Mr. White!'],
       ['walt', 'Say my name.', 'sayMyName'],
     ],
+    // the ship's powers (shipPowers.js)
+    powers: {
+      magnets: {
+        use: [
+          ['jesse', 'Yeah, Mr. White! Yeah, science!', 'yeahScience'],
+          ['walt', 'Magnets, Jesse. Basic physics.'],
+        ],
+        refuse: { empty: [['jesse', 'Mr. White, there’s nothing out there to grab. Let ’em get closer, yo.']] },
+      },
+      heisenberg: {
+        use: [['walt', 'Say my name.', 'sayMyName']],
+        ready: [['jesse', 'Mr. White, the crystal’s ready. The… the boom one.']],
+        big: [['walt', 'You’re goddamn right.', 'goddamnRight']],
+      },
+    },
     events: {
       // friends on your wing in a long fight (wingmen.js), and going again:
       // Saul, Mike, and whoever else is out here
@@ -3020,7 +3084,9 @@ export const parseShip = (id) => (typeof id === 'string' && BY_ID.has(id) ? id :
 
 // What the crew says when something happens: 'launch', 'boost', 'bump',
 // 'edge', 'crash', 'pulled' and 'swallowed' (by the black hole), 'idle', 'hit',
-// 'shields', 'destroyed', 'escaped' or 'cleared' (where a crew has those),
+// 'shields', 'destroyed', 'escaped' or 'cleared' (where a crew has those), a
+// 'power' (by the ship power's id: its use, the big one charged, a big haul,
+// a refusal),
 // 'arrive' at a place, 'traffic' going
 // past (by kind), a 'kill' (by kind, or any), 'hunted' (by who: the
 // faction, or 'ace'), an 'event' (by the director's id) or a 'wonder' (by
@@ -3052,6 +3118,13 @@ export function linesFor(crew, event, id, sub, more) {
     return Array.isArray(f) ? f : (f[more] ?? f.any ?? null);
   }
   if (event === 'wonder') return crew.wonders?.[id] ?? null;
+  if (event === 'power') {
+    // the ship's powers (shipPowers.js): `sub` is when ('use', 'ready',
+    // 'big', 'refuse'), and a refusal is keyed again by why (`more`)
+    const f = crew.powers?.[id]?.[sub];
+    if (!f) return null;
+    return Array.isArray(f) ? f : (f[more] ?? f.any ?? null);
+  }
   if (event === 'foot') {
     const f = crew.foot?.[id];
     if (!f) return null;
