@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiEyeLine, RiFlashlightFill, RiLinkM, RiRoadMapFill, RiRocket2Fill, RiRouteLine, RiSearchLine, RiSpeedUpFill } from 'react-icons/ri';
 import { CHART_VIEWS, DESTINATIONS, DRIVES, KINDS, chartAt, chartHeading, chartRadius, destinationById, distanceTo, driveById, findDestinations, formatDistance, formatTime, goalOf, onChart, portalBetween, speedWord, tripTime, viewFor } from './nav';
-import { BELT, HOME_RADIUS, SECTORS, SUN, sectorOf } from './layout';
+import { BELT, HOME_RADIUS, SECTORS, SUN, mapSectorOf } from './layout';
 import { EDGE } from './ship';
 import { LANES, routeTo } from './hyperlanes';
 import { bezier } from './lanes';
@@ -43,7 +43,7 @@ const WHY = { interdicted: JAMMED.short, charging: 'Charging' };
 // the far fights (farFights.js) the scene says are on, on this chart: [{ id, x, z, label, xy }]
 const fightsOn = (now, sector, P) =>
   (Array.isArray(now?.farFights) ? now.farFights : [])
-    .filter((f) => Number.isFinite(f?.x) && Number.isFinite(f?.z) && sectorOf(f.x, 0, f.z) === sector)
+    .filter((f) => Number.isFinite(f?.x) && Number.isFinite(f?.z) && mapSectorOf(f.x, 0, f.z) === sector)
     .map((f) => ({ ...f, xy: P([f.x, 0, f.z]) }))
     .filter((f) => onChart([f.xy[0] / V, f.xy[1] / V]));
 
@@ -78,8 +78,9 @@ function paintStars(canvas) {
 // how big a thing `reach` across, `d` out from the middle, looks on the chart (SVG units)
 const sizeOn = (d, reach, view) => ((chartRadius(d + reach, view) - chartRadius(Math.max(0, d - reach), view)) / 2) * V;
 
-// which sector the ship's in (the main map's, with no ship)
-const sectorAt = (ship) => (ship ? sectorOf(ship.x, ship.y ?? 0, ship.z) : 'main');
+// which sector's chart the ship's on (the main map's, with no ship, and out
+// in the Expanse)
+const sectorAt = (ship) => (ship ? mapSectorOf(ship.x, ship.y ?? 0, ship.z) : 'main');
 
 export default function NavMap({ where, drive, onDrive, selected = null, live = false, onTravel, onEnter, onWhole, onTour, onClose }) {
   const [now, setNow] = useState(() => where?.() ?? null);
@@ -370,7 +371,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
               )}
               {/* the other pilots online */}
               {(now?.pilots ?? []).map((p) => {
-                if (sectorOf(p.x, 0, p.z) !== sector) return null;
+                if (mapSectorOf(p.x, 0, p.z) !== sector) return null;
                 const [x, y] = P([p.x, 0, p.z]);
                 return onChart([x / V, y / V]) ? <rect key={p.id} x={x - 4} y={y - 4} width="8" height="8" className="navmap-pilot" transform={`rotate(45 ${x} ${y})`} /> : null;
               })}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOME_RADIUS, MAP_RADIUS, ORDER, POSITIONS, REACH, RIM, SECTORS, SUN, keyStep, next, nextWorld, parseId, prev, sectorOf } from './layout';
+import { HOME_RADIUS, MAP_RADIUS, ORDER, POSITIONS, REACH, RIM, SECTORS, SUN, keyStep, mapSectorOf, next, nextWorld, parseId, prev, sectorById, sectorOf } from './layout';
 import { byId } from './universes';
 import { DEEP, WONDERS } from './deep';
 
@@ -123,4 +123,23 @@ describe('the spread', () => {
     expect(sectorOf(0, 0, -48000)).toBe('rickmorty');
     expect(sectorOf(0, 0, -36000)).toBe('main');
   });
+
+  it('puts the Expanse past both edges: E:sx,sz by the 80,000 grid, the authored sectors as they were', () => {
+    expect(sectorOf(36000, 0, 0)).toBe('main');
+    expect(sectorOf(36002, 0, 0)).toBe('E:0,0');
+    expect(sectorOf(40001, 0, 0)).toBe('E:1,0');
+    expect(sectorOf(-120001, 0, 200000)).toBe('E:-2,3');
+    expect(sectorOf(0, 0, -48000 - 6000)).toBe('rickmorty');
+    // (round the pocket, outside its edge, is the Expanse)
+    expect(sectorOf(0, 0, -48000 - 6003)).toBe('E:0,-1');
+    expect(sectorOf(30000, 0, -39500)).toBe('E:0,0');
+    expect(mapSectorOf(90000, 0, 0)).toBe('main');
+    expect(mapSectorOf(0, 0, -48000)).toBe('rickmorty');
+    const sec = sectorById('E:1,-2');
+    expect(sec.origin).toEqual([80000, 0, -160000]);
+    expect(sec.edge).toBe(Infinity);
+    expect(sectorById('main')).toBe(SECTORS.main);
+    expect(sectorById('nowhere')).toBeNull();
+  });
 });
+

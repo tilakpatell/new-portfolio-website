@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, KINDS, TRANSIT, chartAt, legOf, portalBetween, tourIdsIn, viewFor, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, findDestination, goalOf, parkFor, parseDrive, riftExit, riftSpot, tourFrom, tripTime, TOUR_IDS } from './nav';
+import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, KINDS, TRANSIT, chartAt, legOf, portalBetween, tourIdsIn, viewFor, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, shortDistance, hyperState, onChart, findDestination, goalOf, parkFor, parseDrive, riftExit, riftSpot, tourFrom, tripTime, TOUR_IDS } from './nav';
 import { GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, inTrench, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { ORDER, SECTORS, sectorOf } from './layout';
 import { portalHit, transit } from './portals';
@@ -215,6 +215,11 @@ describe('in words', () => {
     expect(formatTime(65)).toBe('1 min 5 s');
     expect(formatTime(null)).toBe('—');
     expect(formatDistance(0)).toBe('Here');
+    // the HUD's short form: the same measure, no unit word, thousands as k
+    expect(shortDistance(0.26 * 46)).toBe('46');
+    expect(shortDistance(0.26 * 460)).toBe('460');
+    expect(shortDistance(0.26 * 4600)).toBe('4.6k');
+    expect(shortDistance(0.26 * 46000)).toBe('46k');
     expect(formatDistance(26)).toBe('100 ship-lengths');
     expect(formatDistance(4000)).toBe('15,400 ship-lengths');
   });

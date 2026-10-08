@@ -2,7 +2,8 @@
 // so an install (src/runtime/install.js) fetches what the world will ask for and a
 // pack cannot quietly go stale. A URL is an asset when it starts with one of
 // PREFIXES; a template's `${…}` counts as a wildcard, so `/models/x/${id}.glb` needs a
-// glob over /models/x/. Run after a change to a world: `node scripts/pack-check.mjs`
+// glob over /models/x/, or /models/x in the pack's `computed` (folders the source only
+// builds paths in) with the files it takes from there listed. Run after a change to a world: `node scripts/pack-check.mjs`
 // (exit 1 listing what is undeclared, or what a pack lists that public/ lacks).
 //
 // undeclared(src, pack) → string[]   (src: a file or folder, or a list of them)
@@ -38,6 +39,8 @@ export function assetRefs(text) {
 // trailing folder slash) standing for a file name
 export function covered(ref, pack) {
   if (pack.urls?.includes(ref)) return true;
+  // a folder the source only builds paths in (`${DIR}/${name}.glb`): the pack lists the files it takes from there
+  if ((pack.computed ?? []).some((dir) => ref === dir.replace(/\/$/, '') || ref.startsWith(dir.endsWith('/') ? dir : `${dir}/`))) return true;
   // (a folder may be named without its slash: '/models/x' as a base for '/models/x/<name>')
   const samples = (ref.endsWith('/') ? [`${ref}x`] : [ref, `${ref}/x`]).map((r) => r.replace(/\*/g, 'x'));
   return (pack.globs ?? []).some((g) => samples.some((x) => globRe(g).test(x)));
@@ -55,10 +58,17 @@ export function undeclared(src, pack) {
   return [...refs].filter((r) => !covered(r, pack)).sort();
 }
 
-// what a pack lists that public/ does not have: a URL with no file, a glob matching nothing
+// what a pack lists that public/ does not have: a URL with no file, a glob matching nothing, a
+// computed folder it takes nothing from
 export function missing(pack, publicDir) {
   const all = filesIn(publicDir).map((f) => `/${relative(publicDir, f).split('\\').join('/')}`);
-  return [...(pack.urls ?? []).filter((u) => !existsSync(join(publicDir, u))), ...(pack.globs ?? []).filter((g) => !all.some((f) => globRe(g).test(f)))];
+  const listed = [...(pack.urls ?? []), ...all.filter((f) => (pack.globs ?? []).some((g) => globRe(g).test(f)))];
+  const under = (dir) => (dir.endsWith('/') ? dir : `${dir}/`);
+  return [
+    ...(pack.urls ?? []).filter((u) => !existsSync(join(publicDir, u))),
+    ...(pack.globs ?? []).filter((g) => !all.some((f) => globRe(g).test(f))),
+    ...(pack.computed ?? []).filter((d) => !listed.some((f) => f.startsWith(under(d)))),
+  ];
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

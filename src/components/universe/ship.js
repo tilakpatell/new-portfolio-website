@@ -54,7 +54,7 @@
 // rate into a wall.
 
 import { DEEP, DEEP_SOLIDS, WONDERS, driveOpen, easeOpen, gapAlong, openness, reachOf, trenchBand } from './deep';
-import { BODIES, HOME_RADIUS, POSITIONS, REACH, SECTOR_RADIUS, SUN, sectorOf, sectorOut } from './layout';
+import { BODIES, HOME_RADIUS, POSITIONS, REACH, SECTORS, SECTOR_RADIUS, SUN, sectorOf, sectorOut } from './layout';
 import { MAW } from './maw';
 import { NOSE, UP, axisAngle, conj, fromAngles, mul, normalize, rotate, toAngles, turnToward } from './orient';
 import { byId } from './universes';
@@ -361,6 +361,12 @@ export function spawn(id, start = HOME_EDGE) {
 // where the autopilot can go). Another map brings its own, the same shape
 // (the galaxy's star systems: galaxy/space.js), to step() and autopilot().
 export const SPACE = { edge: EDGE, ceilingAt, openness, driveAt, driveAlong, homeAt, boostAt, brakeAt, coastAt, approachAt, solids: SOLIDS, goals: GOALS };
+// and the map with the Expanse past its edge (expanse/gen): nothing turns the
+// ship back at the main map's edge, it flies on out into the generated
+// sectors; the Rick and Morty sector stays a pocket, its edge a wall from
+// both sides (in through its portal, as ever)
+export const OPEN_SPACE = { ...SPACE, expanse: true };
+const POCKET = SECTORS.rickmorty;
 
 // How far the ship carries on, boosting straight on, while hunters pull the
 // pulse drive down over `ramp` seconds (eased in, as the scene does it), till
@@ -472,7 +478,7 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
   // the main one's is space.edge)
   const { sec, out } = sectorOut(s.x, s.z);
   const [ox, , oz] = sec.origin;
-  const edgeR = sec.id === 'main' ? space.edge : sec.edge;
+  const edgeR = sec.id === 'main' ? (space.expanse ? Infinity : space.edge) : sec.edge;
   if (out > edgeR - 2) {
     const k = clamp((out - (edgeR - 2)) / 2, 0, 1);
     const f = rotate(q, NOSE);
@@ -531,6 +537,20 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
     if (!edge) events.push({ type: 'edge' });
     edge = true;
   } else if (Math.abs(y) > ceil) edge = true; // (eased back from the ceiling or the floor without a word)
+  // (out in the Expanse, the Rick and Morty pocket's edge is a wall: kept
+  // off it, out along the line from its middle)
+  if (sec.expanse) {
+    const px = x - POCKET.origin[0];
+    const pz = z - POCKET.origin[2];
+    const pr = Math.hypot(px, pz);
+    const wall = POCKET.edge + 2;
+    if (pr < wall) {
+      x = POCKET.origin[0] + (pr > 1e-9 ? px / pr : 1) * wall;
+      z = POCKET.origin[2] + (pr > 1e-9 ? pz / pr : 0) * wall;
+      if (!edge) events.push({ type: 'edge' });
+      edge = true;
+    }
+  }
 
   // off a planet, never through it: out along the line from its middle,
   // whichever way the ship came at it (from the side, from above or below).

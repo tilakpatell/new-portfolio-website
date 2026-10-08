@@ -2,26 +2,35 @@
 // - Echo Base's ion cannon fires on Death Squadron: two great blue bolts
 //   every twenty seconds or so, and the Star Destroyer they hit is disabled a
 //   while (battle.js's disable: its guns quiet, its hull and objectives
-//   open to it).
+//   open to it). It's the Rebellion's gun, so it fires only while the light
+//   side holds Hoth; with the Empire holding it, it's quiet.
 // - When it's the Empire attacking (the war's defence of Hoth), the GR-75
 //   transports run from the base for the jump, one after another (Hoth's an
 //   evacuation: battles.js's BATTLE_KINDS, the battle's own runners), and
 //   the Empire's fighters go after them: this calls each one out, and the
-//   evacuation done when enough are.
+//   evacuation done when enough are. (Their markers are the battle scene's,
+//   as every battle's runners are.)
+//
+// In the battle every pilot shares (the Empire attacking: the films' plan,
+// pinned, galaxy/battlePlans.js), the cannon is the first stage's objective:
+// a target while that stage is open, its hp and its fall the director's
+// (ctx.objective), and quiet for good once it's down.
 //
 // createHoth(ctx) → { update(dt, t, live, events), hit, targets, markers(live), dispose() }
 
 import * as THREE from 'three';
+import { sweptHit } from '../../universe/targeting';
 import { GCW, seeded } from '../gcw';
+import { SIDES } from '../sides';
 
 const REBELS = 0;
-const EMPIRE = 1;
 export const HOTH = {
   ionEvery: [16, 26], // seconds between the cannon's shots
   ionFor: 18, // seconds a Star Destroyer's disabled
   ionSpeed: 110,
 };
 const v = (x, y, z) => ({ x, y, z });
+const ZERO = { x: 0, y: 0, z: 0 };
 
 export function createHoth(ctx) {
   const { battle, sys } = ctx;
@@ -45,13 +54,20 @@ export function createHoth(ctx) {
   });
   let nextIon = 6 + rand() * 6;
   let ions = 0;
+  // (Echo Base held by the light side: the defender's stance, or the Rebellion's team for a battle of the old shape)
+  const held = ctx.on?.sides ? SIDES[ctx.on.sides[battle.defender]]?.stance === 'light' : battle.defender === REBELS;
+
+  // (the plan's cannon, if it's the battle every pilot shares)
+  const gun = () => ctx.objective?.('ion-cannon') ?? null;
+  const shared = Boolean(gun());
+  const gunTgt = { id: 5.4e6, at: cannon, vel: ZERO, size: 2.4, kind: 'cannon', name: 'Echo Base’s ion cannon', hp: 0, hpMax: 0, threat: 0 };
 
   // ── the transports (the battle's runners) ──
   let out = 0;
   let done = false;
 
   const shootIon = () => {
-    const foes = battle.capitals.filter((c) => c.team === EMPIRE && c.alive && c.dying <= 0 && c.disabled <= 0 && !c.gone);
+    const foes = battle.capitals.filter((c) => c.team === battle.attacker && c.alive && c.dying <= 0 && c.disabled <= 0 && !c.gone);
     if (!foes.length) return;
     const flag = foes.find((c) => c.role === 'flagship');
     const target = flag && rand() < 0.4 ? flag : foes[Math.floor(rand() * foes.length)];
@@ -81,8 +97,8 @@ export function createHoth(ctx) {
         }
       }
       if (battle.over) return {};
-      // the cannon
-      nextIon -= dt;
+      // the cannon (Echo Base's, while it's the light side's, and standing)
+      if (held && !(shared && gun()?.down)) nextIon -= dt;
       if (nextIon <= 0) {
         nextIon = HOTH.ionEvery[0] + rand() * (HOTH.ionEvery[1] - HOTH.ionEvery[0]);
         shootIon();
@@ -105,11 +121,26 @@ export function createHoth(ctx) {
       }
       return {};
     },
-    hit: () => null,
-    targets: [],
+    // your shot on the cannon, while its stage is open (shared)
+    hit(from, to, damage) {
+      const g = shared ? gun() : null;
+      if (!g?.open || g.down || sweptHit(from, to, cannon, cannon, gunTgt.size) === null) return null;
+      ctx.mine('ion-cannon', damage);
+      return { id: gunTgt.id, kind: 'cannon', at: { ...cannon }, size: 1, down: Boolean(gun()?.down), sub: 'ion-cannon' };
+    },
+    get targets() {
+      const g = shared ? gun() : null;
+      if (!g?.open || g.down) return [];
+      gunTgt.hp = g.hp;
+      gunTgt.hpMax = g.hpMax;
+      return [gunTgt];
+    },
+    // the cannon, while it stands (the transports are marked with every battle's runners: battleScene.js)
     markers(live) {
-      if (!live) return [];
-      return battle.runners.filter((r) => r.alive && r.kind === 'transport' && Math.hypot(r.pos.x - live.x, r.pos.y - live.y, r.pos.z - live.z) < 260).map((r) => ({ key: `gr75-${r.id}`, pos: r.pos, title: `${r.team === battle.you.team ? 'Protect' : 'Stop'}: transport ${battle.runners.indexOf(r) + 1}`, hp: r.hp / r.hpMax, colour: '#7cc8ff' }));
+      const g = shared ? gun() : null;
+      if (!g || g.down || !live || battle.over || Math.hypot(live.x - cannon.x, live.y - cannon.y, live.z - cannon.z) > 900) return [];
+      const attack = battle.you.team === battle.attacker;
+      return [{ key: 'ion-cannon', pos: cannon, title: `${attack ? 'Destroy' : 'Defend'}: Echo Base’s ion cannon`, hp: g.hp / g.hpMax, colour: attack ? '#ffb347' : '#7cc8ff' }];
     },
     get out() {
       return out;

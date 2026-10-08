@@ -8,8 +8,11 @@ import { SYSTEMS, goalsOf, lightYears, systemById } from './systems';
 import { placesOf } from './places';
 import '../universe/universe.css';
 import GuideCue from '../guide/GuideCue';
+import { letHandedGo } from '../hyperspace3d/timeline';
+import { letsJumpGo } from './jumpIn';
 import WarHud from './WarHud';
 import LoadingVeil from '../worlds/LoadingVeil';
+import BattleEnd from './BattleEnd';
 
 // The galaxy's 3D view (scene.js, a world module on the world runtime:
 // ./module.js) and everything over it:
@@ -19,7 +22,8 @@ import LoadingVeil from '../worlds/LoadingVeil';
 // jump to it, the other pilots' callsigns, the targeting HUD and the stick ring
 // (the universe map's own, UniverseMap.jsx's classes, the scene moves them),
 // your shields, the touch buttons, the flight settings and a line on how to
-// fly until you do, and the war's battle on here in a line (WarHud.jsx).
+// fly until you do, and the war's battle on here in a line (WarHud.jsx) with
+// its end card when it's decided (BattleEnd.jsx).
 // While the 3D loads the box says so; without 3D, a note
 // that the galaxy needs it, and the panel and the map still work.
 
@@ -76,7 +80,30 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   });
   // the scene itself, while it's the world on the runtime: its own calls (jump, goTo, fire…)
   const view = { get current() { return rt?.current?.module === galaxyModule ? rt.current.world.scene : null; } };
+  // (the war's battle here as the scene has it, for the line over the galaxy and its end card)
+  const warInfo = useCallback(() => (rt?.current?.module === galaxyModule ? (rt.current.world.scene?.warInfo?.() ?? null) : null), [rt]);
   useEffect(() => setFlown(false), [ship]);
+
+  // The universe map's jump in holds its tunnel for the galaxy
+  // (hyperspace3d/timeline.js's handJump): let go once the galaxy has drawn,
+  // or as soon as it won't, or while it's frozen (./jumpIn.js says when; the
+  // runtime read as it is now, since this page's first status can be an
+  // earlier world's failure), and when this page goes (a tick later:
+  // React's second run of an effect in development comes straight back).
+  useEffect(() => {
+    const making = rt?.loading === galaxyModule || rt?.current?.module === galaxyModule;
+    if (letsJumpGo({ drawn: on, meant, frozen, making })) letHandedGo();
+  }, [on, meant, frozen, rt]);
+  const up = useRef(false);
+  useEffect(() => {
+    up.current = true;
+    return () => {
+      up.current = false;
+      setTimeout(() => {
+        if (!up.current) letHandedGo();
+      }, 0);
+    };
+  }, []);
 
   useEffect(() => {
     if (!handle) return;
@@ -116,7 +143,8 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       {meant ? (
         <>
           <LoadingVeil className="universe-loading" shown={!on} progress={progress.value} step={progress.step} title="Plotting a course to a galaxy far, far away" />
-          {on && oath && <WarHud sys={here} oath={oath} />}
+          {on && oath && <WarHud sys={here} oath={oath} front={warInfo} />}
+          {on && oath && <BattleEnd front={warInfo} />}
           <ul className="universe-labels galaxy-labels" aria-label="In this system">
             {goals.map((g) => (
               <li key={g.id}>

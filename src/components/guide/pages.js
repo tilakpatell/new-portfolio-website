@@ -1,5 +1,7 @@
 import { ABOUT } from './abouts';
 import { GUIDES, guideKeyFor } from './routes';
+import { CYBERTRON_KEYS, CYBERTRON_TOUCH } from './cybertron';
+import { TRIBUTE_KEYS, TRIBUTE_PAD, TRIBUTE_TOUCH } from './mario64';
 
 // What the guide says about each page: a line on what it is, its controls
 // (`keys` for a keyboard, `touch` for a phone; each a list of groups, a group
@@ -389,6 +391,8 @@ export const PAGES = {
   '/cybertron': {
     about: ABOUT['/cybertron'],
     keys: [
+      // (the world at the top of the page, its start card's keys: ./cybertron.js)
+      { label: 'The world', rows: CYBERTRON_KEYS },
       {
         label: 'Roll out',
         rows: [
@@ -399,7 +403,10 @@ export const PAGES = {
         ],
       },
     ],
-    touch: [{ label: 'Roll out', rows: [['Drag', 'Steer'], ['Tap', 'The buttons to boost, jump and transform']] }],
+    touch: [
+      { label: 'The world', rows: CYBERTRON_TOUCH },
+      { label: 'Roll out', rows: [['Drag', 'Steer'], ['Tap', 'The buttons to boost, jump and transform']] },
+    ],
     tips: [
       ['Sides', 'Join the Autobots or the Decepticons: the site changes colour with you, and so does who you can transform.'],
       ['Roll out', 'As a vehicle you’re fast and smash debris; as a robot you fight and jump the barricades, but standing up burns energon. Transforming takes half a second: read the road. Clearing an obstacle pays double if you changed at the last moment.'],
@@ -494,6 +501,7 @@ export const PAGES = {
           ['X / Enter', 'Read a sign, play the Game Boy or the N64, go down a pipe'],
           ['Q E', 'Turn the camera'],
           ['Drag', 'Turn the island'],
+          ['+ − / wheel', 'Zoom'],
           ['M', 'The cartridges, with hints'],
         ],
       },
@@ -502,7 +510,7 @@ export const PAGES = {
     tips: [
       ['The cartridges', 'Eight of them, each one a project of mine, hidden round the island.'],
       ['Mind', 'Jump on the walkers; walking into one hurts. A plant won’t come up while you stand on its pipe. Three hearts, and a “?” block gives one back.'],
-      ['The screen', 'The chip at the top switches between the DMG’s greens, the Pocket’s greys and the Light’s teal.'],
+      ['The screen', 'Screen, in the Menu, switches between the DMG’s greens, the Pocket’s greys and the Light’s teal.'],
     ],
   },
   '/dot-matrix/64': {
@@ -522,20 +530,12 @@ export const PAGES = {
       },
       {
         label: 'The fan tribute',
-        rows: [
-          ['W A S D / ← ↑ ↓ →', 'Run (Mario goes the way you push, from the camera)'],
-          ['Space / K', 'Jump (A): again on landing for a double, a third for the triple'],
-          ['J / F', 'Punch, pick up, throw, dive (B); talk and read'],
-          ['Shift', 'Crouch (Z): with a jump, a backflip or a long jump; in the air, a ground pound'],
-          ['Q E / drag', 'Turn the camera'],
-          ['R / wheel', 'The camera’s distance'],
-          ['Esc', 'Pause'],
-        ],
+        rows: TRIBUTE_KEYS, // (the pause screen's too: ./mario64.js)
       },
     ],
     touch: [
       { label: 'The N64 (your own ROM)', rows: [['On-screen pad', 'The emulator’s own N64 controller']] },
-      { label: 'The fan tribute', rows: [['Stick', 'Run'], ['A', 'Jump'], ['B', 'Punch, pick up, talk'], ['Z', 'Crouch, ground pound'], ['Drag', 'Turn the camera']] },
+      { label: 'The fan tribute', rows: TRIBUTE_TOUCH },
     ],
     tips: [
       ['The N64', 'It plays a real N64 game: give it your own Super Mario 64 ROM (.z64, .n64 or .v64) and it boots in the browser. The file stays on your device, kept for next time until you forget it. A controller works; the emulator’s menu along its bottom edge has its controls, save states and full screen.'],
@@ -545,6 +545,7 @@ export const PAGES = {
       ['Health', 'Eight wedges. A coin gives one back, and fifty coins are a life. Under water the meter is your air: come up before it runs out.'],
       ['Bob-omb Ridge', 'King Bob-omb is on the summit: get behind him, pick him up and throw him. Eight red coins make a star. Pound the Chain Chomp’s post three times.'],
       ['The look', 'On the title and the pause menu: Modern, Ultra or the N64’s own.'],
+      ['A controller', TRIBUTE_PAD],
     ],
   },
   '/dot-matrix/minecraft': {
@@ -584,10 +585,20 @@ export const PAGES = {
       { label: 'From orbit', rows: [['Drag', 'Turn the globe'], ['Click', 'A place, to fly there'], ['M', 'Down to the globe, or back up']] },
       { label: 'Flying', rows: [['W A S D / ← ↑ ↓ →', 'Turn, climb and descend'], ['Shift / Space', 'Faster'], ['R', 'A barrel roll'], ['Drag', 'Look round'], ['V', 'Cockpit or chase camera'], ['P', 'The passport'], ['N', 'Always day'], ['Esc', 'Take the controls back from the autopilot']] },
     ],
-    touch: [{ rows: [['Drag', 'Turn the globe'], ['Stick', 'Fly'], ['Faster', 'Go faster']] }],
+    touch: [{ rows: [['Drag', 'Turn the globe'], ['Stick', 'Fly'], ['Faster', 'Go faster'], ['Roll', 'A barrel roll']] }],
     tips: [
       ['From orbit', 'The Earth right now: the sun where it is, so the night side is the real night.'],
       ['The passport', 'Fly over a place to stamp it and get its postcard. Fly here sets the autopilot along the great circle; the arrow at the bottom points at the next place.'],
+      ['A controller', 'Works too.'],
+    ],
+  },
+  '/universe/expanse': {
+    about: ABOUT['/universe/expanse'],
+    keys: [{ label: 'Driving', rows: [['W / ↑', 'Drive'], ['S / ↓', 'Brake, then reverse'], ['A D / ← →', 'Steer'], ['Shift', 'Boost'], ['Space', 'Jump'], ['R', 'Back to dry land']] }],
+    touch: [{ label: 'Driving', rows: [['Stick', 'Drive and steer'], ['Jump', 'Jump'], ['Boost', 'Hold to go faster'], ['Back', 'Back to dry land']] }],
+    tips: [
+      ['Water', 'The compass at the top points at the nearest water. Rivers run downhill into lakes and the sea; drive in and the car slows, and after four seconds under it comes back to dry land.'],
+      ['Another planet', 'Every seed is a different planet: change the number at the end of the address. ?type=desert, ice, ocean or volcanic changes its kind.'],
       ['A controller', 'Works too.'],
     ],
   },

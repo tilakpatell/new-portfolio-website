@@ -377,6 +377,27 @@ const JOURNEYS = {
     }
     mark('end');
   },
+  // a planet of the Expanse (seed 7) driven flat out along +x with the boost
+  // and back again, so cells keep arriving ahead and going behind
+  async expanseDrive(page, mark) {
+    mark('load');
+    await page.goto(`${this.base}/${this.q}#/universe/expanse/7`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.__RUNTIME__?.status === 'on' && window.__EXPANSE__, null, { timeout: 180000 });
+    mark('settle');
+    await wait(page, 4000);
+    for (const [name, yaw] of [['out', 0], ['back', Math.PI]]) {
+      // (turned round where it stands, still, so both legs are the same drive)
+      await page.evaluate((y) => {
+        const [x, h, z] = window.__EXPANSE__.vehicle.chassis.position();
+        window.__EXPANSE__.vehicle.moveTo(x, h + 0.5, z, y);
+      }, yaw);
+      mark(name);
+      await page.keyboard.down('ShiftLeft');
+      await hold(page, 'KeyW', 12000);
+      await page.keyboard.up('ShiftLeft');
+    }
+    mark('end');
+  },
   music: worldPage('/music'),
   scranton: worldPage('/scranton'),
   citadel: worldPage('/c-137/citadel'),

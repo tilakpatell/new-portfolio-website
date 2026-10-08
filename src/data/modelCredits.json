@@ -1966,6 +1966,20 @@
       "galaxy"
     ]
   },
+  "surface-bunkerash": {
+    "title": "Star Wars Endor Bunker",
+    "author": "aclarke064",
+    "authorUrl": "https://sketchfab.com/aclarke064",
+    "license": "CC-BY-NC-SA-4.0",
+    "licenseUrl": "http://creativecommons.org/licenses/by-nc-sa/4.0/",
+    "source": "https://sketchfab.com/3d-models/star-wars-endor-bunker-1c54abb1c6824f26a0a087d2bd7a635a",
+    "where": "galaxy-surface",
+    "as": "the Imperial bunker, its moss taken off",
+    "file": "/models/galaxy/surface/bunkerash.glb",
+    "also": [
+      "galaxy"
+    ]
+  },
   "surface-c3po": {
     "title": "C-3PO Weight Shift",
     "author": "Telkar5",
