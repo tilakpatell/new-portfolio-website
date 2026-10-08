@@ -14,3 +14,4 @@ The record of choices the site has made, so the next session that asks “why no
 
 | date | decision |
 | --- | --- |
+| 2026-10-08 | [three.js over Babylon.js](2026-10-08-three-over-babylon.md): three.js stays the renderer; WebGPU through `three/webgpu` and TSL |
