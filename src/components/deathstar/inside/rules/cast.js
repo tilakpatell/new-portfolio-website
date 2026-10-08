@@ -3,18 +3,20 @@
 // side it fights for, what it carries, how much it takes to put down, the
 // voice its lines are said in, and the mind it gets by default. One table
 // so the figures, the minds, the fights and the voices all agree on who a
-// `kind` is. Most people are the site’s rigged models loaded by URL; a few
-// are another model dressed differently (the Death Star trooper is the
-// officer in black under a helmet built in code, the Royal Guard is the
-// senate guard in red), and three (Chewbacca, the IT-O and the dianoga)
-// are built in code until the desktop’s gen3d makes them models. Tarkin,
-// the Emperor, Jerjerrod, Motti and Tagge get their voices along with the
-// world’s lines, through the voices pipeline, so they have none here. Pure.
+// `kind` is. Most people are the site’s rigged models loaded by URL
+// (Chewbacca is the cockpit’s, made and rigged by Meshy on the crew’s own
+// skeleton, so he walks and fights on their clips); a few are another model
+// dressed differently (the Death Star trooper is the officer in black under
+// a helmet built in code, the Royal Guard is the senate guard in red), and
+// two (the IT-O and the dianoga) are built in code until
+// scripts/meshy-deathstar.mjs makes them models. Tarkin, the Emperor,
+// Jerjerrod, Motti and Tagge get their voices along with the world’s lines,
+// through the voices pipeline, so they have none here. Pure.
 //
 //   CAST[kind] → { name, model, tall, tint?, side, gun?, blade?, hp, voice?, role, speed?, armour?,
 //                  helmet?, built?, scripted?, perception? }
 //     model: a path under public/, or null for a kind built in code, with `built` naming its builder
-//       ('chewie' | 'ito' | 'dianoga'); tall: metres; tint: a colour (0xrrggbb) multiplied into its materials
+//       ('ito' | 'dianoga'); tall: metres; tint: a colour (0xrrggbb) multiplied into its materials
 //     side: 'imperial' | 'rebel' | 'neutral' (the station’s own words: doors, bolts and talks use them)
 //     gun: a combat.js WEAPONS key; blade: { type: 'saber', colour } | { type: 'pike' }
 //     voice: a speaker of scripts/voices, whose folder under public/audio/voiced/ its lines come from
@@ -67,7 +69,7 @@ export const CAST = freeze({
   luke: { name: 'Luke Skywalker', model: '/models/galaxy/crew/luke.glb', tall: 1.72, side: 'rebel', gun: 'e11', hp: 100, voice: 'luke', role: 'hero' },
   han: { name: 'Han Solo', model: '/models/galaxy/crew/han.glb', tall: 1.85, side: 'rebel', gun: 'dl44', hp: 100, voice: 'han', role: 'hero' },
   obiwan: { name: 'Obi-Wan Kenobi', model: '/models/galaxy/crew/obiwan.glb', tall: 1.82, side: 'rebel', blade: { type: 'saber', colour: 0x3f8cff }, hp: 100, voice: 'obiwan', role: 'hero' },
-  chewie: { name: 'Chewbacca', model: null, built: 'chewie', tall: 2.28, side: 'rebel', hp: 160, role: 'hero' },
+  chewie: { name: 'Chewbacca', model: '/models/cockpit/chewie.glb', tall: 2.28, side: 'rebel', hp: 160, role: 'hero' },
   threepio: { name: 'C-3PO', model: '/models/galaxy/surface/c3po.glb', tall: 1.67, side: 'rebel', hp: 40, voice: 'threepio', role: 'hero', speed: 0.6 },
   artoo: { name: 'R2-D2', model: '/models/galaxy/surface/r2d2.glb', tall: 1.09, side: 'rebel', hp: 60, role: 'hero', speed: 0.7 },
   // the station’s droids belong to nobody’s fight: troopers and Rebels both let them by

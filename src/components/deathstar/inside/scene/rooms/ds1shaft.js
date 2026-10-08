@@ -5,6 +5,7 @@
 //
 //   DS1_SHAFT: { shaft, chasm, tiebay }   each (kit, room, layout, { renderer }) → { group, lamps, update, dispose }
 
+import { buildChasm, buildTiebay } from './shaft/bays';
 import { buildShaft } from './shaft/tractor';
 
-export const DS1_SHAFT = { shaft: buildShaft };
+export const DS1_SHAFT = { shaft: buildShaft, chasm: buildChasm, tiebay: buildTiebay };

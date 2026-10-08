@@ -32,6 +32,9 @@ import EarnNote from '../components/universe/EarnNote';
 import { useEarn } from '../components/universe/useEarn';
 import { goodStanding } from '../components/universe/economy';
 import { createPayLedger } from '../components/universe/earnRules';
+import { pocketOf, registerPocket } from '../components/expanse/pocket';
+import { createRegistry } from '../components/worlds/registry';
+import { worldStore } from '../runtime';
 
 const PORTAL = '#97ce4c';
 // the phone out past the belt (universe/phone.js): its lock screen, fetched
@@ -66,7 +69,15 @@ const prefetchGalaxy = () => (galaxyFetched ??= Promise.all([import('./Galaxy'),
 // there (nav.js: hyperspeed, super speed or cruise; kept between visits),
 // which is how picking a place anywhere else on the page goes too.
 export default function Universe({ ask = false }) {
-  const atRoot = useLocation().pathname === '/';
+  const { pathname, search } = useLocation();
+  const atRoot = pathname === '/';
+  // a pocket universe (/universe?seed=marble): the Expanse past the rim made
+  // from its own seed, and kept on /worlds (expanse/pocket.js)
+  const pocketWord = pocketOf(search).word;
+  const pocket = useMemo(() => pocketOf(`?seed=${encodeURIComponent(pocketWord)}`), [pocketWord]);
+  useEffect(() => {
+    if (pocket.pocket) registerPocket(createRegistry(worldStore()), pocket).catch(() => {});
+  }, [pocket]);
   useDocumentTitle(atRoot ? null : 'The universe'); // the front door keeps the site's own title
   const navigate = useNavigate();
   const param = useParams().id;
@@ -500,6 +511,8 @@ export default function Universe({ ask = false }) {
         {universe ? `${universe.label}: selected` : ''}
       </p>
       <UniverseMap
+        key={pocket.word}
+        universe={pocket.universe}
         selected={selected}
         onSelect={select}
         onOpen={(id) => go(byId(id))}
@@ -528,6 +541,11 @@ export default function Universe({ ask = false }) {
         onCrash={crashInto}
         startAt={wonder}
       />
+      {pocket.pocket && !leaving && (
+        <p className="universe-pocket" role="status">
+          Pocket universe · {pocket.name}
+        </p>
+      )}
       {touring && !leaving && (
         <div className="universe-tour" role="status">
           <span>

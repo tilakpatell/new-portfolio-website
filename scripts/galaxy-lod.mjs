@@ -32,17 +32,19 @@ const TARGET = { fighter: 1500, other: 4000 };
 const OUT = 'public/models/galaxy/lod';
 const SAMPLE = 256; // textures are read at this size: a far ship's colour is the average of a patch, not one texel
 
-// kind → url, from the two files that list them (MODELS spreads GLB's in first)
+// kind → url, from the two files that list them: MODELS spreads GLB's in
+// first and its own entries win over them, as they do here, so a kind
+// models.js gives a file of its own (the galaxy's corvette, over the
+// universe map's) has its far-off copy made from the file the galaxy loads
 function kinds() {
   const list = new Map();
-  for (const file of ['src/components/universe/glbFleet.js', 'src/components/galaxy/models.js']) {
-    const text = readFileSync(file, 'utf8');
-    for (const m of text.matchAll(/^\s+(\w+): \{ url: '([^']+\.glb)'/gm)) if (!list.has(m[1])) list.set(m[1], m[2]);
+  const models = readFileSync('src/components/galaxy/models.js', 'utf8');
+  const at = models.indexOf('export const HQ = {');
+  for (const text of [readFileSync('src/components/universe/glbFleet.js', 'utf8'), at < 0 ? models : models.slice(0, at)]) {
+    for (const m of text.matchAll(/^\s+(\w+): \{ url: '([^']+\.glb)'/gm)) list.set(m[1], m[2]);
   }
   list.delete('deathstar'); // (a sphere far off is a sphere: the world draws its own)
   // (and the capitals' close-up cuts, galaxy/models.js's HQ: their own far-off copies)
-  const models = readFileSync('src/components/galaxy/models.js', 'utf8');
-  const at = models.indexOf('export const HQ = {');
   const hq = at < 0 ? '' : models.slice(at, models.indexOf('\n};', at));
   for (const m of hq.matchAll(/^\s+(\w+): \{ url: '([^']+\.glb)'/gm)) list.set(`hq/${m[1]}`, m[2]);
   return list;

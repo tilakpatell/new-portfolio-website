@@ -161,25 +161,41 @@ describe('the people aboard, drawn', () => {
     for (let i = 0; i < n; i++) people.sync(crew, 1, at, rooms);
   };
 
-  it('builds Chewbacca, the IT-O and the dianoga in code, each standing where the crew has it, facing its way', () => {
+  it('builds the IT-O and the dianoga in code, each standing where the crew has it, facing its way', () => {
     const scene = new THREE.Scene();
     const people = createPeople(scene, kit, { tier: 'high' });
-    syncs(people, crewOf(person('chewie', 'chewie', 2, -3, { yaw: Math.PI / 2 }), person('ito', 'ito', -1, 0), person('dianoga', 'dianoga', 5, 5)));
-    const [chewie] = shown(scene, 'person-chewie');
-    expect(chewie.position.toArray()).toEqual([2, 0, -3]);
-    expect(chewie.rotation.y).toBeCloseTo(-Math.PI / 2);
-    expect(shown(scene, 'person-ito')).toHaveLength(1);
+    syncs(people, crewOf(person('ito', 'ito', 2, -3, { yaw: Math.PI / 2 }), person('dianoga', 'dianoga', 5, 5)));
+    const [ito] = shown(scene, 'person-ito');
+    expect(ito.position.toArray()).toEqual([2, 0, -3]);
+    expect(ito.rotation.y).toBeCloseTo(-Math.PI / 2);
     expect(shown(scene, 'person-dianoga')).toHaveLength(1);
     people.dispose();
   });
 
-  it('makes Chewbacca his full height, the IT-O a small sphere at a man’s eye height, and the dianoga’s eye up out of the water', () => {
+  it('loads Chewbacca from his model as it loads the crew, not building him in code, and stands him his full height where the crew has him', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     const scene = new THREE.Scene();
     const people = createPeople(scene, kit, { tier: 'high' });
-    syncs(people, crewOf(person('chewie', 'chewie', 0, 0), person('ito', 'ito', 10, 0), person('dianoga', 'dianoga', 20, 0)));
-    const chewie = box(shown(scene, 'person-chewie')[0]);
-    expect(chewie.max.y).toBeCloseTo(2.28, 1);
-    expect(chewie.min.y).toBeCloseTo(0, 1);
+    const crew = crewOf(person('chewie', 'chewie', 2, -3, { yaw: Math.PI / 2 }));
+    syncs(people, crew, 1);
+    // a figure built in code is in the scene on its first frame; a model only once it has loaded
+    expect(shown(scene, 'person-chewie')).toHaveLength(0);
+    await vi.waitFor(() => {
+      syncs(people, crew, 1);
+      expect(shown(scene, 'person-chewie')).toHaveLength(1);
+    });
+    const [chewie] = shown(scene, 'person-chewie');
+    expect(chewie.position.toArray()).toEqual([2, 0, -3]);
+    expect(chewie.rotation.y).toBeCloseTo(-Math.PI / 2);
+    expect(box(chewie).max.y).toBeCloseTo(2.28, 1);
+    expect(box(chewie).min.y).toBeCloseTo(0, 1);
+    people.dispose();
+  });
+
+  it('makes the IT-O a small sphere at a man’s eye height, and the dianoga’s eye up out of the water', () => {
+    const scene = new THREE.Scene();
+    const people = createPeople(scene, kit, { tier: 'high' });
+    syncs(people, crewOf(person('ito', 'ito', 10, 0), person('dianoga', 'dianoga', 20, 0)));
     const ito = box(shown(scene, 'person-ito')[0]);
     expect(ito.min.y).toBeGreaterThan(1);
     expect(ito.max.y).toBeLessThan(2);
@@ -219,11 +235,11 @@ describe('the people aboard, drawn', () => {
   it('lays a body down at once when it falls with no turn at moving, not leaving it standing', () => {
     const scene = new THREE.Scene();
     const people = createPeople(scene, kit, { tier: 'low' });
-    const crowd = [...Array.from({ length: 8 }, (_, i) => person(`ito-${i}`, 'ito', i + 1, 0)), person('chewie', 'chewie', 20, 0)];
+    const crowd = Array.from({ length: 9 }, (_, i) => person(`ito-${i}`, 'ito', i < 8 ? i + 1 : 20, 0));
     syncs(people, crewOf(...crowd));
-    // all nine killed at once: eight falls take the eight turns, the farthest (Chewbacca) has none
+    // all nine killed at once: eight falls take the eight turns, the farthest has none
     syncs(people, crewOf(...crowd.map((p) => ({ ...p, mode: 'dead', anim: 'die', hp: 0 }))), 1);
-    expect(box(shown(scene, 'person-chewie')[0]).max.y).toBeLessThan(1);
+    expect(box(shown(scene, 'person-ito').find((o) => o.position.x === 20)).max.y).toBeLessThan(1);
     people.dispose();
   });
 
@@ -245,28 +261,28 @@ describe('the people aboard, drawn', () => {
   it('hides someone past 60 m and shows them again as you come near', () => {
     const scene = new THREE.Scene();
     const people = createPeople(scene, kit, { tier: 'low' });
-    const crew = crewOf(person('chewie', 'chewie', 40, 0));
+    const crew = crewOf(person('ito', 'ito', 40, 0));
     syncs(people, crew, 1);
-    const [chewie] = shown(scene, 'person-chewie');
+    const [ito] = shown(scene, 'person-ito');
     syncs(people, crew, 1, { x: -30, y: 1.6, z: 0 });
-    expect(chewie.visible).toBe(false);
+    expect(ito.visible).toBe(false);
     syncs(people, crew, 1, { x: 30, y: 1.6, z: 0 });
-    expect(chewie.visible).toBe(true);
-    expect(shown(scene, 'person-chewie')).toEqual([chewie]);
+    expect(ito.visible).toBe(true);
+    expect(shown(scene, 'person-ito')).toEqual([ito]);
     people.dispose();
   });
 
   it('keeps a body where it fell while its room stands out of sight, and shows the same body when the room is seen again', () => {
     const scene = new THREE.Scene();
     const people = createPeople(scene, kit, { tier: 'low' });
-    const crew = crewOf(person('chewie', 'chewie', 4, 0, { mode: 'dead', anim: 'die', hp: 0 }));
+    const crew = crewOf(person('ito', 'ito', 4, 0, { mode: 'dead', anim: 'die', hp: 0 }));
     syncs(people, crew, 2, eye, { shown: () => true, built: () => true, dt: STEP });
-    const [body] = shown(scene, 'person-chewie');
+    const [body] = shown(scene, 'person-ito');
     syncs(people, crew, 2, eye, { shown: () => false, built: () => true, dt: STEP });
-    expect(shown(scene, 'person-chewie')).toEqual([body]);
+    expect(shown(scene, 'person-ito')).toEqual([body]);
     expect(body.visible).toBe(false);
     syncs(people, crew, 2, eye, { shown: () => true, built: () => true, dt: STEP });
-    expect(shown(scene, 'person-chewie')).toEqual([body]);
+    expect(shown(scene, 'person-ito')).toEqual([body]);
     expect(body.visible).toBe(true);
     people.dispose();
   });
@@ -276,14 +292,14 @@ describe('the people aboard, drawn', () => {
     const people = createPeople(scene, kit, { tier: 'low' });
     const inView = { shown: () => true, built: () => true, dt: STEP };
     const outOfView = { shown: () => false, built: () => true, dt: STEP };
-    const alive = [person('seen', 'chewie', 4, 0), person('unseen', 'chewie', -4, 0)];
+    const alive = [person('seen', 'ito', 4, 0), person('unseen', 'ito', -4, 0)];
     const dead = alive.map((p) => ({ ...p, mode: 'dead', anim: 'die', hp: 0 }));
     syncs(people, crewOf(...alive), 3, eye, inView);
-    // one killed in view and a third of a second into his fall when a door shuts on him, the other killed behind it
+    // one downed in view and a third of a second into its fall when a door shuts on it, the other downed behind it
     syncs(people, crewOf(dead[0], alive[1]), 9, eye, inView);
     syncs(people, crewOf(...dead), 90, eye, outOfView);
     syncs(people, crewOf(...dead), 1, eye, inView);
-    const bodies = shown(scene, 'person-chewie');
+    const bodies = shown(scene, 'person-ito');
     expect(bodies).toHaveLength(2);
     for (const body of bodies) expect(box(body).max.y).toBeLessThan(1);
     syncs(people, crewOf(...dead), 30, eye, inView);
@@ -294,24 +310,24 @@ describe('the people aboard, drawn', () => {
   it('lets a body go once its room is freed, and doesn’t draw it again when the room is built anew', () => {
     const scene = new THREE.Scene();
     const people = createPeople(scene, kit, { tier: 'low' });
-    const crew = crewOf(person('chewie', 'chewie', 4, 0, { mode: 'dead', anim: 'die', hp: 0 }));
+    const crew = crewOf(person('ito', 'ito', 4, 0, { mode: 'dead', anim: 'die', hp: 0 }));
     syncs(people, crew, 2, eye, { shown: () => true, built: () => true, dt: STEP });
-    expect(shown(scene, 'person-chewie')).toHaveLength(1);
+    expect(shown(scene, 'person-ito')).toHaveLength(1);
     syncs(people, crew, 1, eye, { shown: () => false, built: () => false, dt: STEP });
-    expect(shown(scene, 'person-chewie')).toHaveLength(0);
+    expect(shown(scene, 'person-ito')).toHaveLength(0);
     syncs(people, crew, 4, eye, { shown: () => true, built: () => true, dt: STEP });
-    expect(shown(scene, 'person-chewie')).toHaveLength(0);
+    expect(shown(scene, 'person-ito')).toHaveLength(0);
     people.dispose();
   });
 
   it('draws a body that fell where no room stood once its room is built, already lying where it fell', () => {
     const scene = new THREE.Scene();
     const people = createPeople(scene, kit, { tier: 'low' });
-    const crew = crewOf(person('chewie', 'chewie', 4, 0, { mode: 'dead', anim: 'die', hp: 0 }));
+    const crew = crewOf(person('ito', 'ito', 4, 0, { mode: 'dead', anim: 'die', hp: 0 }));
     syncs(people, crew, 3, eye, { shown: () => false, built: () => false, dt: STEP });
-    expect(shown(scene, 'person-chewie')).toHaveLength(0);
+    expect(shown(scene, 'person-ito')).toHaveLength(0);
     syncs(people, crew, 1, eye, { shown: () => true, built: () => true, dt: STEP });
-    const [body] = shown(scene, 'person-chewie');
+    const [body] = shown(scene, 'person-ito');
     expect(body.visible).toBe(true);
     expect(box(body).max.y).toBeLessThan(1);
     people.dispose();

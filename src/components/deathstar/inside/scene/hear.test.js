@@ -40,4 +40,10 @@ describe('what the game’s events sound like', () => {
     expect(heardOf({ type: 'music', mood: 'quiet' }, g)).toEqual([['music', 'quiet']]);
     expect(heardOf({ type: 'tick' }, g)).toEqual([]);
   });
+
+  it('hears a happening with no place given at your own ear, never at nowhere', () => {
+    expect(heardOf({ type: 'hit', by: 'you', target: 'x' }, g)).toEqual([['hit', undefined]]);
+    expect(heardOf({ type: 'impact', x: NaN, y: 1, z: 2 }, g)).toEqual([['hit', undefined]]);
+    expect(heardOf({ type: 'shot', weapon: 'e11' }, g)).toEqual([['blaster', 'e11', undefined]]);
+  });
 });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MiniMap } from './Map';
-import { gunName, promptLine, sectionName, security } from './state';
+import { bladeName, doubtLine, gunName, promptLine, sectionName, security } from './state';
 
 // What stands over the station while you walk it, and the pause menu. In
 // the Empire’s own manner: black glass panels with thin grey rules, small
@@ -12,9 +12,12 @@ import { gunName, promptLine, sectionName, security } from './state';
 // objective and the map stay up on the start screen too, so the tour’s
 // marks are there from the first moment.
 //
-//   <Hud ui hud say touch playing onMap onPause onChoose />
+//   <Hud ui hud say hurt hit touch playing onMap onPause onChoose />
 //     ui, hud: the world’s last 'ui' and 'hud' events (Inside.jsx lists their shape)
 //     say: { who, text } a subtitle, or null
+//     hurt: { angle, key } the last hit on you, an arc on the side it came from (all round when
+//       `angle` is null), drawn again for each new key; hit: a count of hits you landed, the
+//       reticle’s mark flashing for each
 //   <Pause ui touch onResume onSet onQuit onExit />   onSet({ view | sound | subtitles })
 
 const LOW = 30; // health at which the bar goes red
@@ -58,9 +61,10 @@ function Bar({ label, value, of = 1, red, readout, segments = 0 }) {
   );
 }
 
-export default function Hud({ ui, hud, say, touch, playing, onMap, onPause, onChoose }) {
+export default function Hud({ ui, hud, say, hurt = null, hit = 0, touch, playing, onMap, onPause, onChoose }) {
   const station = ui.station ?? 'ds1';
   const sec = security(hud?.alert);
+  const doubt = doubtLine(hud?.doubt);
   const line = playing ? promptLine(ui.prompt, { touch }) : null;
   const hp = Math.round(hud?.hp ?? 100);
   const objective =
@@ -73,8 +77,14 @@ export default function Hud({ ui, hud, say, touch, playing, onMap, onPause, onCh
   const aboard = playing || ui.mode === 'pause'; // (in a game, walking or not)
   const vitals = playing && hud && (
     <section className="ds-panel ds-vitals" aria-label="Health and gun">
-      <Bar label="Health" value={hp} of={100} red={hp <= LOW} segments={10} readout={<span className="ds-num">{hp}</span>} />
+      <Bar label="Health" value={hp} of={hud.hpMax ?? 100} red={hp <= LOW} segments={10} readout={<span className="ds-num">{hp}</span>} />
       {hud.gun && <Bar label={gunName(hud.gun)} value={hud.heat ?? 0} red={hud.venting} readout={hud.venting ? 'Venting' : 'Heat'} />}
+      {!hud.gun && hud.blade && (
+        <p className="ds-blade" data-colour={hud.blade}>
+          <span className="ds-blade-glow" aria-hidden="true" />
+          {bladeName(hud.blade)}
+        </p>
+      )}
     </section>
   );
   return (
@@ -104,6 +114,7 @@ export default function Hud({ ui, hud, say, touch, playing, onMap, onPause, onCh
                 <span className="ds-security-dot" aria-hidden="true" />
                 Security: {sec.label}
               </p>
+              {doubt && <Bar label="Disguise" value={doubt.k} red={doubt.red} readout={doubt.label} />}
             </section>
           )}
           <MiniMap station={station} seen={ui.map?.seen ?? []} here={aboard ? hud?.room : null} at={aboard ? hud?.at : null} onOpen={onMap} />
@@ -117,7 +128,12 @@ export default function Hud({ ui, hud, say, touch, playing, onMap, onPause, onCh
 
       {!touch && vitals}
 
-      {playing && !touch && !talk && <span className="ds-reticle" data-aim={hud?.aim || undefined} aria-hidden="true" />}
+      {playing && !touch && !talk && (
+        <span className="ds-reticle" data-aim={hud?.aim || undefined} aria-hidden="true">
+          {hit > 0 && <span key={hit} className="ds-hitmark" />}
+        </span>
+      )}
+      {playing && hurt && <span key={hurt.key} className="ds-hurt" data-all={hurt.angle == null || undefined} style={{ '--a': `${hurt.angle ?? 0}rad` }} aria-hidden="true" />}
 
       <div className="ds-lines">
         {say && (
@@ -130,7 +146,7 @@ export default function Hud({ ui, hud, say, touch, playing, onMap, onPause, onCh
           <p className="ds-prompt" data-note={!line.key || undefined}>
             {line.key && (
               <>
-                <kbd>{line.key}</kbd>
+                <kbd className="kbd">{line.key}</kbd>
                 <span className="ds-dash"> — </span>
               </>
             )}
@@ -148,7 +164,7 @@ export default function Hud({ ui, hud, say, touch, playing, onMap, onPause, onCh
               {talk.choices.map((c, i) => (
                 <li key={i}>
                   <button type="button" className="ds-choice" onClick={() => onChoose(i)}>
-                    {!touch && <kbd>{i + 1}</kbd>}
+                    {!touch && <kbd className="kbd">{i + 1}</kbd>}
                     <span>{c}</span>
                   </button>
                 </li>

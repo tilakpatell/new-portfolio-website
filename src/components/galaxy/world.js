@@ -360,7 +360,7 @@ export function buildSystem(sys, { models, bolts, flashes, small = false, ratio 
       slot.holder.updateMatrixWorld(true);
       const names = STATION_NAMES;
       if (p.kind === 'deathstar2') {
-        mark(addSolid({ id: 'deathstar2', name: names.deathstar2, at: p.at, r: p.size * 0.47, reach: p.size * 0.66, goal: true }));
+        mark(addSolid({ id: 'deathstar2', name: names.deathstar2, at: p.at, r: p.size * 0.47, reach: p.size * 0.66, goal: true, board: p.board }));
         if (p.shield) {
           const R = p.size * 0.66;
           const shell = addSolid({ id: 'ds2-shield', at: p.at, r: R, reach: R, shield: true });

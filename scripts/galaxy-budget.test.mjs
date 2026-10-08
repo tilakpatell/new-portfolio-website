@@ -31,6 +31,18 @@ describe('what the galaxy check holds a world to', () => {
     expect(limitsFor({ id: 'endor', quality: 'high', row: budget('high'), base: null }).tris).toBe(3e6);
   });
 
+  it('fails a world that drew nothing while it was measured, rather than calling it light', () => {
+    const l = limitsFor({ id: 'kamino', quality: 'high', row: budget('high'), base: { calls: 99, triangles: 1084196 } });
+    expect(overBy({ calls: 0, triangles: 0, glbMB: 8.8, p95: 1 }, l)).toEqual(['drew nothing (no draw calls in the measured frames)']);
+  });
+
+  it('fails a world that drew far less than its baseline (held back, not lighter)', () => {
+    const l = limitsFor({ id: 'yavin', quality: 'high', row: budget('high'), base: { calls: 78, triangles: 1727485 } });
+    expect(overBy({ calls: 1, triangles: 1, glbMB: 9.9, p95: 1 }, l)).toEqual(['drew far less than its baseline (1 of 78 draw calls): held back while measured']);
+    // (a real trim, to a third of the calls, still passes)
+    expect(overBy({ calls: 26, triangles: 600000, glbMB: 9.9, p95: 1 }, l)).toEqual([]);
+  });
+
   it('tightens every limit by the scale, to see it fail', () => {
     const l = limitsFor({ id: 'tatooine', quality: 'high', row: budget('high'), base: { calls: 100, triangles: 1e6 }, scale: 0.5 });
     expect(l.calls).toBeCloseTo(55);

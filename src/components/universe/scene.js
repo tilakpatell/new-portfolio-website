@@ -102,7 +102,7 @@ import { settle as settleWithin } from '../../lib/settle';
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SECTOR_OF, SUN, sectorOf } from './layout';
+import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SECTOR_OF, SUN, inExpanse, mapSectorOf, sectorOf } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
@@ -111,7 +111,7 @@ import { grainFor } from '../../lib/three/noise';
 import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { houseOn } from '../../lib/three/house';
-import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { OPEN_SPACE, PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, destinationById, driveById, hyperState, legOf, parkFor, riftExit, shortDistance } from './nav';
 import { REAIM_MS, parkBehind, pilotId, pilotSpace, reached } from './pilotGoal';
 import { laneAim, laneFrame, lanePlan, rideLine } from './lanePilot';
@@ -195,6 +195,9 @@ import { REMOVER, hitRemover, hpLeft, landingOpen, newRemover, stepRemover } fro
 import { NX5_LEN, createRemoverView } from './removerView';
 import { createSky } from '../galaxy/sky';
 import { SYSTEMS } from '../galaxy/systems';
+import { createExpanse } from '../expanse/scene/expanse';
+import { UNIVERSE } from '../expanse/gen/seed';
+import { runtime } from '../../runtime';
 import { deedToEarn } from './economy';
 import { createPayLedger, hunterEarn } from './earnRules';
 
@@ -690,6 +693,19 @@ export async function create(canvas, ctx) {
   });
   const planetOf = Object.fromEntries(planets.map((p) => [p.id, p]));
   // and every place past FAR_REAL drawn as a point of light instead (farPlaces.js)
+  // the Expanse past the rim (expanse/scene/expanse.js): asleep inside it;
+  // its floating origin is the runtime's (re-anchored here as it moves)
+  const origin = runtime().origin;
+  origin.reset();
+  const expanse = createExpanse(map, {
+    universe: typeof ctx.universe === 'bigint' ? ctx.universe : UNIVERSE,
+    origin,
+    tier,
+    reduced,
+    onSector: (id) => {
+      if (inExpanse(id)) state.note = { text: `The Expanse · ${id}`, until: wall() + 3 };
+    },
+  });
   const farPlaces = createFarPlaces(map, { places: FAR_PLACES.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })), skyFar: SKY_FAR });
   const crashFx = createCrash(map);
   // out of the ship and on foot on a planet (footScene.js)
@@ -830,7 +846,7 @@ export async function create(canvas, ctx) {
   // whose space the ship's in (sides.js sideAt): the Rick and Morty sector's
   // hunters, traffic and goings-on are the Rick and Morty side's, whoever's
   // flying; anywhere else the crew's own
-  const sideHere = () => sideAt(state.kind, state.ship ? sectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main');
+  const sideHere = () => sideAt(state.kind, state.ship ? mapSectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main');
   const FACTIONS_ALL = factionsOf(null);
   // how hard the fight is (the flight setting: difficulty.js), now
   const diff = () => difficultyOf(controls().difficulty);
@@ -1410,7 +1426,7 @@ export async function create(canvas, ctx) {
     if (!els) return;
     const entering = onFoot() && Boolean(foot.entry()); // (once, not for every name)
     // (the sector the ship's in: the other sector's places, tens of thousands off, have no name here)
-    const sector = state.ship ? sectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main';
+    const sector = state.ship ? mapSectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main';
     for (const s of screen) {
       const el = els[s.id];
       if (!el) continue;
@@ -1910,7 +1926,7 @@ export async function create(canvas, ctx) {
     state.kind = kind;
     setPlumes(kind, ENGINES[kind] ?? []);
     if (!same) {
-      traffic?.setCrew(crewAt(kind, sectorOf(state.ship?.x ?? 0, 0, state.ship?.z ?? 0)));
+      traffic?.setCrew(crewAt(kind, mapSectorOf(state.ship?.x ?? 0, 0, state.ship?.z ?? 0)));
       hunters?.clear();
       meteors.clear();
       mines.clear();
@@ -3898,7 +3914,7 @@ export async function create(canvas, ctx) {
   // out: parked there, the hunters left behind, a flash where it comes out)
   const riftThrough = () => {
     const s = state.ship;
-    const exit = riftExit(state.at, Math.random, sectorOf(s.x, s.y, s.z), state.saw); // (out in the sector it opened in, somewhere you haven't been)
+    const exit = riftExit(state.at, Math.random, mapSectorOf(s.x, s.y, s.z), state.saw); // (out in the sector it opened in, somewhere you haven't been)
     const park = parkFor(exit, [s.x, s.z]);
     pieces.closeRift();
     if (!park) return;
@@ -4012,7 +4028,7 @@ export async function create(canvas, ctx) {
     if (arriving && state.kind === 'cruiser' && state.ship && !state.jump && !state.held) {
       const { sector } = arriving;
       arriving = null;
-      if (sectorOf(state.ship.x, state.ship.y, state.ship.z) !== sector) gunThrough();
+      if (mapSectorOf(state.ship.x, state.ship.y, state.ship.z) !== sector) gunThrough();
     }
     let input;
     if (state.jump && wall() >= state.jump.at) {
@@ -4089,7 +4105,7 @@ export async function create(canvas, ctx) {
     // on a hyperlane, or getting on or off one (lanePilot.js): the ride poses the ship in place of ship.js's step
     const lane = state.held || state.jump ? null : laneFrame(state, input, dt, { canEnter: (!state.auto || Boolean(state.auto.route)) && !(state.interdicted && state.clock < (state.wellUntil ?? -1)) });
     if (lane) rode(lane);
-    const { ship: stepped, events } = lane?.ship ? { ship: lane.ship, events: [] } : step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
+    const { ship: stepped, events } = lane?.ship ? { ship: lane.ship, events: [] } : step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS, OPEN_SPACE);
     // the Maw's pull (maw.js): drawn in, and carried round with its disk
     const g = pullAt(stepped.x, stepped.y, stepped.z);
     const ship = g ? { ...stepped, x: stepped.x + g.v[0] * dt, y: stepped.y + g.v[1] * dt, z: stepped.z + g.v[2] * dt } : stepped;
@@ -4930,6 +4946,7 @@ export async function create(canvas, ctx) {
     house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
     farPlaces.update(camera, dt, state.auto?.id ?? state.jump?.id ?? null);
+    expanse.update({ ship: flying() && !state.dive ? state.ship : null, camera, t, dt });
     const lanesBusy = laneLook.update(dt, { ship: flying() && !state.crash && !state.dive ? state.ship : null, ride: state.ride, view: state.view, side: sideFor(state.kind)?.id ?? null });
     sectorPortals.update(t, camera);
     curve.update(t, sectorOf(camLocal.x, camLocal.y, camLocal.z) === 'rickmorty');
@@ -4953,7 +4970,7 @@ export async function create(canvas, ctx) {
     placeArms();
     beacons.update(camLocal);
     // (the beacons are the main map's places: from the Rick and Morty sector there's nothing of theirs to see)
-    beacons.points.visible = !state.ship || sectorOf(state.ship.x, state.ship.y, state.ship.z) === 'main';
+    beacons.points.visible = !state.ship || mapSectorOf(state.ship.x, state.ship.y, state.ship.z) === 'main';
     phone.update(t, camera);
     // the fall into the Maw: the ship's trail and glow, and its last light
     if (infall) {
@@ -5435,7 +5452,7 @@ export async function create(canvas, ctx) {
 
   // in development, renderer counts and the ship, for checking from a browser
   if (import.meta.env.DEV) {
-    window.__universeDebug = { THREE, post, scene, renderer, camera, nearGrid: near, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wanted, law, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView, laneLook };
+    window.__universeDebug = { THREE, post, scene, expanse, renderer, camera, nearGrid: near, traffic, hunters, wingmen, skirmishes, npcs, NPCS, meetNpc: (id) => state.ship && npcs?.add(NPCS[id], skirmishSpot(state.ship) ?? { x: state.ship.x, y: state.ship.y + 5, z: state.ship.z - 40 }), director, pieces, leviathans, meteors, fleet, novae, pilots, standing, deed, wanted, law, wonders: WONDERS.map((w) => ({ id: w.id, name: w.name, at: w.at, reach: reachOf(w) })), state, foot, planets, startFoot, travel: (id, drive) => travel(id, drive), diveAt, net: () => net, siege, citadelGeo, arms, readSiegeState, rockFields, smashed, front: () => front, happen: (id) => happen(id, state.ship), mines, escort: () => escort, eclipse: () => eclipse && { ...eclipse, k: eclipseK, key: key.intensity }, remover: () => remover, removerView, laneLook };
     window.__universe = () => ({
       calls: renderer.info.render.calls,
       triangles: renderer.info.render.triangles,
@@ -5756,6 +5773,7 @@ export async function create(canvas, ctx) {
       fleet.dispose();
       deep.dispose();
       farPlaces.dispose();
+      expanse.dispose();
       laneLook.dispose();
       sectorPortals.dispose();
       gunPortal.dispose();

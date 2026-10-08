@@ -24,7 +24,10 @@
 // createHunters(parent, { small, fleet, factions, kinds, solids, engines }) → { pack(faction, ship, { prey, size, ace, from, ahead, interdict, heat, first }) → points,
 //   update(dt, t, ship) → events,
 //   hit(from, to, damage) → hit or null, damage(id, n) → hit or null (a hit
-//   another pilot's shot made, told to you), clear(), dispose(), count,
+//   another pilot's shot made, told to you), pull(at, r, speed, secs, daze),
+//   breakOff() and swallow(at, r) (the crews' ship powers: hunterRules.js's,
+//   as they are; a ship handed to update may be a `ghost`, or carry a
+//   `magnet`), clear(), dispose(), count,
 //   active, wire() (the ones in the fight, for the other pilots to see),
 //   targets: the ones still after you (or their prey), for the guns to lock
 //   on to: [{ id, at, vel, size, kind, hp, hpMax, faction, threat }] (targeting.js;
@@ -75,8 +78,9 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     return m;
   });
 
+  const drawnAs = (kind) => kinds[kind]?.model ?? kind; // (a kind with no model of its own is drawn as another's)
   const take = (kind) => {
-    const drawn = kinds[kind]?.model ?? kind; // (a kind with no model of its own is drawn as another's)
+    const drawn = drawnAs(kind);
     // a built stand-in waiting in the pool gives way once the model is here
     if (fleet.loaded(drawn) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) drop(m);
     const model = pool[kind]?.pop() ?? fleet.make(drawn);
@@ -97,6 +101,13 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     (pool[h.kind] ??= []).push(h.view);
     h.view = null;
     shown.delete(h);
+  };
+  // one flying its built stand-in, its model come since: the model takes over
+  // where it is (the stand-in is not wanted again, so it goes, not to the pool)
+  const swap = (h) => {
+    h.view.group.removeFromParent();
+    drop(h.view);
+    h.view = take(h.kind);
   };
   const look = new THREE.Vector3();
   const answer = (r) => {
@@ -138,6 +149,9 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
       const skill = opts.skill !== undefined ? opts.skill : d ? packSkill(d.skill, { heat: opts.heat ?? 0, promote: d.promote }) : null;
       const more = opts.more ?? (d ? d.size : 0);
       const members = hunt.pack(faction, ship, { ...opts, skill, more, prey: preyOf(opts.prey ?? null) });
+      // (their models, the ones that are models and not here yet: nothing else
+      // asks for a hunter's, and a kind flies as its built one until it comes)
+      fleet.want?.([...new Set(members.map((h) => drawnAs(h.kind)))]);
       for (const h of members) {
         h.view = take(h.kind);
         shown.add(h);
@@ -155,6 +169,8 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
       // the ones that have gone (flown off, or shot down by someone else)
       for (const h of shown) if (!h.alive) give(h);
       for (const h of hunt.live) {
+        // (the moment its model is here, as the galaxy's slots swap theirs: galaxy/models.js)
+        if (h.view && !h.view.model && fleet.loaded(drawnAs(h.kind))) swap(h);
         const g = h.view?.group;
         if (!g) continue;
         g.position.set(h.pos.x, h.pos.y, h.pos.z);
@@ -192,6 +208,11 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     hit: (from, to, damage = 1) => answer(hunt.hit(from, to, damage)),
     // the same for a hit told to you (another pilot's shot at one of yours)
     damage: (id, n = 1) => answer(hunt.damage(id, n)),
+    // the crews' ship powers (shipPowers.js): the RV's magnet, Han's
+    // corkscrew, a portal's mouth (each says how many it had)
+    pull: (at, r, speed, secs, daze) => hunt.pull(at, r, speed, secs, daze),
+    breakOff: () => hunt.breakOff(),
+    swallow: (at, r) => hunt.swallow(at, r),
 
     // everyone gone at once (you were shot down, or changed ship)
     clear() {

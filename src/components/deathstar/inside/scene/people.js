@@ -1,14 +1,14 @@
 // The people aboard, drawn from what the crew’s rules say of each
 // ({ id, kind, x, y, z, yaw, room, hp, mode, anim, aim }). Each kind is
 // loaded once and copied (lib/three/gltf.js caches a model by its URL and
-// figures.js copies it for each person): the crew and the troops on the
+// figures.js copies it for each person): the crew, the troops and
+// Chewbacca (the cockpit’s Meshy model, on the crew’s own skeleton) on the
 // site’s shared rig, walked and fought on its clips; the surfaces’ droids
-// as they were modelled, rocking as they roll; and three built here in
-// code until the desktop’s gen3d makes them models: Chewbacca (tall and
-// shaggy, his bandolier across his chest), the IT-O (a black sphere with
-// its red eye and its syringe) and the dianoga (an eyestalk and tentacles
-// up out of the compactor’s water). The Death Star trooper wears his
-// black helmet, built here too, over the officer’s uniform.
+// as they were modelled, rocking as they roll; and two built here in code
+// until scripts/meshy-deathstar.mjs makes them models: the IT-O (a black
+// sphere with its red eye and its syringe) and the dianoga (an eyestalk and
+// tentacles up out of the compactor’s water). The Death Star trooper wears
+// his black helmet, built here too, over the officer’s uniform.
 //
 // Only the tier’s count nearest the camera animate (24 high, 14 mid, 8
 // low), a body still going down before anyone living; the rest stand
@@ -148,8 +148,8 @@ const noise = (x, y, z) => {
 };
 
 // A part coloured between two colours vertex by vertex, by where each
-// vertex is (so a seam’s twin vertices match), and, for fur, pushed out
-// and down a little at random so it reads as shaggy, not smooth.
+// vertex is (so a seam’s twin vertices match), and, given `shag`, pushed
+// out and down a little at random so its skin reads as rough, not smooth.
 function part(geo, from, to = from, shag = 0) {
   const pos = geo.attributes.position;
   const nor = geo.attributes.normal;
@@ -172,86 +172,17 @@ const joined = (geos) => {
 };
 const at = (geo, x, y, z) => geo.translate(x, y, z);
 
-// Fur over a part: `n` tufts, each a thin pyramid growing out of a spot on
-// its surface (spots spread by area, so a capsule’s ends aren’t crowded)
-// and hanging down as long hair does, dark at the root and light at the
-// tip, lit as the skin it grows from. `bare(normal)` keeps a face clear;
-// no tip hangs below `floor` (a foot’s fur stays off the deck).
-function furOf(geo, n, len, root, tip, seed, { bare = () => false, floor = -Infinity } = {}) {
-  const pos = geo.attributes.position;
-  const idx = geo.index;
-  const tris = idx.count / 3;
-  const area = new Float32Array(tris);
-  const [a, b, c, e1, e2, f, d, u, w, p] = Array.from({ length: 10 }, () => new THREE.Vector3());
-  let total = 0;
-  for (let t = 0; t < tris; t++) {
-    a.fromBufferAttribute(pos, idx.getX(t * 3));
-    b.fromBufferAttribute(pos, idx.getX(t * 3 + 1));
-    c.fromBufferAttribute(pos, idx.getX(t * 3 + 2));
-    total += e1.subVectors(b, a).cross(e2.subVectors(c, a)).length() / 2;
-    area[t] = total;
-  }
-  let r = seed >>> 0;
-  const rand = () => (r = (r * 1664525 + 1013904223) >>> 0) / 4294967296;
-  const P = [];
-  const N = [];
-  const C = [];
-  const I = [];
-  const rootC = new THREE.Color(root);
-  const tipC = new THREE.Color();
-  for (let i = 0; i < n; i++) {
-    const want = rand() * total;
-    let lo = 0;
-    let hi = tris - 1;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (area[mid] < want) lo = mid + 1;
-      else hi = mid;
-    }
-    a.fromBufferAttribute(pos, idx.getX(lo * 3));
-    b.fromBufferAttribute(pos, idx.getX(lo * 3 + 1));
-    c.fromBufferAttribute(pos, idx.getX(lo * 3 + 2));
-    f.crossVectors(e1.subVectors(b, a), e2.subVectors(c, a)).normalize();
-    if (bare(f)) continue;
-    let s = rand();
-    let q = rand();
-    if (s + q > 1) [s, q] = [1 - s, 1 - q];
-    p.copy(a).addScaledVector(e1, s).addScaledVector(e2, q).addScaledVector(f, -0.004);
-    d.copy(f).add(e1.set(rand() - 0.5, rand() - 0.5, rand() - 0.5).multiplyScalar(0.35)).add(e2.set(0, -1.6, 0)).normalize();
-    const L = len * (0.6 + rand() * 0.8);
-    u.set(Math.abs(d.y) < 0.9 ? 0 : 1, Math.abs(d.y) < 0.9 ? 1 : 0, 0).cross(d).normalize().multiplyScalar(L * 0.2);
-    w.crossVectors(d, u);
-    const base = P.length / 3;
-    P.push(p.x + d.x * L, Math.max(floor, p.y + d.y * L), p.z + d.z * L);
-    for (const [k1, k2] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) P.push(p.x + u.x * k1 + w.x * k2, p.y + u.y * k1 + w.y * k2, p.z + u.z * k1 + w.z * k2);
-    tipC.setHex(tip).lerp(rootC, rand() * 0.35);
-    for (let v = 0; v < 5; v++) {
-      N.push(f.x, f.y, f.z);
-      const col = v ? rootC : tipC;
-      C.push(col.r, col.g, col.b);
-    }
-    I.push(base, base + 1, base + 2, base, base + 2, base + 3, base, base + 3, base + 4, base, base + 4, base + 1);
-  }
-  const tufts = new THREE.BufferGeometry();
-  tufts.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-  tufts.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
-  tufts.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((P.length / 3) * 2), 2));
-  tufts.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
-  tufts.setIndex(I);
-  return joined([geo, tufts]);
-}
-
 // how far over a fall has turned a body, 0…1 of the way: down fast, with a bump as it lands
 const fallen = (k) => (k < 0.8 ? (k / 0.8) ** 2 : 1 - Math.sin(((k - 0.8) / 0.2) * Math.PI) * 0.06);
 
 // What every figure built here does: falls (tipping over backwards about
 // its feet, unless it floats or swims) and gets up from a knockdown,
-// flinches, keeps its aim and the gun in its hand; `pose` moves its parts;
-// `owned`, what it frees when it goes (its geometry, a skeleton).
-function builtFigure(kind, tall, { object, body, hand = null, owned, tips = true, pose }) {
+// flinches and keeps its aim; none has a hand, so none holds a gun. `pose`
+// moves its parts; `owned`, what it frees when it goes (its geometry, a
+// skeleton).
+function builtFigure(kind, tall, { object, body, owned, tips = true, pose }) {
   object.name = `person-${kind}`;
-  const s = { t: 0, phase: 0, go: 0, fall: 0, falling: false, hit: 0, yaw: 0, pitch: 0, raised: false };
-  let gun = null;
+  const s = { t: 0, go: 0, fall: 0, falling: false, hit: 0, yaw: 0, pitch: 0 };
   return {
     object,
     kind,
@@ -261,104 +192,23 @@ function builtFigure(kind, tall, { object, body, hand = null, owned, tips = true
       s.falling = name === 'die' || name === 'dieFwd' || name === 'dieBlown';
       if (name === 'hit' || name === 'shot') s.hit = 1;
     },
-    setAim(yaw, pitch, raised = true) {
-      Object.assign(s, { yaw: clamp(yaw || 0, -1.2, 1.2), pitch: clamp(pitch || 0, -0.9, 0.9), raised });
+    setAim(yaw, pitch) {
+      Object.assign(s, { yaw: clamp(yaw || 0, -1.2, 1.2), pitch: clamp(pitch || 0, -0.9, 0.9) });
     },
-    hold(which) {
-      if ((gun?.name ?? null) === (which ? `blaster-${which}` : null)) return;
-      gun?.removeFromParent();
-      gun = hand && which ? buildGun(which) : null;
-      // the hand’s −y runs down the arm: the barrel along it
-      if (gun) hand.add(gun.rotateX(-Math.PI / 2));
-    },
+    hold() {},
     update(dt, speed = 0) {
       s.t += dt;
       s.go += (clamp(speed / 1.6, 0, 1.6) - s.go) * (1 - Math.exp(-dt * 8));
-      s.phase += dt * speed * ((Math.PI * 2) / 1.7);
       s.fall = clamp(s.fall + (s.falling ? dt / 0.7 : -dt / 0.9), 0, 1);
       s.hit = Math.max(0, s.hit - dt * 4);
       if (tips) body.rotation.x = fallen(s.fall) * (Math.PI / 2) * 0.96;
       pose(s, dt);
     },
     dispose() {
-      gun?.removeFromParent();
       object.removeFromParent();
       for (const g of owned) g.dispose();
     },
   };
-}
-
-// Chewbacca: long-legged, long-armed, shaggy brown, his bandolier of
-// silver boxes across his chest. Each limb hangs from a pivot so he walks.
-function buildChewie(tall, mats) {
-  const k = tall / 2.28;
-  const FUR = [0x3a2817, 0x6e5034]; // the skin under it: dark brown
-  const ROOT = 0x4a3420;
-  const TIP = 0xa88a62; // his coat’s tawny tips
-  const leg = furOf(part(joined([at(new THREE.CapsuleGeometry(0.1, 0.9, 4, 12, 6), 0, -0.5, 0), at(new THREE.SphereGeometry(0.1, 12, 8).scale(1, 0.55, 1.5), 0, -1.02, -0.06)]), ...FUR, 0.015), 320, 0.09, ROOT, TIP, 11, { bare: (n) => n.y < -0.4, floor: -1.06 }).scale(k, k, k);
-  const arm = furOf(part(joined([at(new THREE.CapsuleGeometry(0.075, 0.66, 4, 12, 6), 0, -0.38, 0), at(new THREE.SphereGeometry(0.085, 10, 8), 0, -0.79, 0)]), ...FUR, 0.012), 260, 0.085, ROOT, TIP, 23).scale(k, k, k);
-  // the strap round his chest, tilted from his left shoulder to his right hip, its boxes along the front
-  const TILT = 0.75;
-  const tilt = new THREE.Matrix4().makeRotationZ(TILT);
-  const boxes = Array.from({ length: 9 }, (_, i) => {
-    const a = -Math.PI * (0.18 + (0.64 * i) / 8);
-    return part(new THREE.BoxGeometry(0.05, 0.03, 0.035).rotateY(-a - Math.PI / 2).translate(Math.cos(a) * 0.29, 0, Math.sin(a) * 0.23).applyMatrix4(tilt), 0x8d949b, 0xb8bec4);
-  });
-  const strap = part(new THREE.TorusGeometry(0.27, 0.018, 6, 40).scale(1.06, 0.84, 1.6).rotateX(Math.PI / 2).applyMatrix4(tilt), 0x22180f, 0x3a2a1c);
-  // the torso hangs from the hips (so it bends at the waist), the head from the neck
-  const torso = joined([furOf(part(new THREE.CapsuleGeometry(0.24, 0.5, 6, 16, 6).scale(1.12, 1, 0.85), ...FUR, 0.015), 900, 0.1, ROOT, TIP, 37), strap, ...boxes]).translate(0, 0.42, 0).scale(k, k, k);
-  // his mane long down the back of the head, his face clear of it
-  const head = joined([
-    furOf(part(new THREE.CapsuleGeometry(0.125, 0.1, 6, 14, 2), ...FUR, 0.01), 260, 0.1, ROOT, TIP, 51, { bare: (n) => n.z < -0.55 && n.y < 0.6 }),
-    part(at(new THREE.CapsuleGeometry(0.062, 0.06, 4, 10).rotateX(Math.PI / 2), 0, -0.06, -0.12), 0x7a5a3a, 0x9c7c58, 0.012),
-    part(at(new THREE.SphereGeometry(0.026, 8, 6), 0, -0.04, -0.205), 0x0a0807),
-    // his eyes, blue so dark they read black, deep under his brow
-    part(at(new THREE.SphereGeometry(0.013, 8, 6), -0.048, 0.028, -0.108), 0x101a24),
-    part(at(new THREE.SphereGeometry(0.013, 8, 6), 0.048, 0.028, -0.108), 0x101a24),
-  ]).translate(0, 0.14, 0).scale(k, k, k);
-  // (both legs one geometry, both arms another: the fur falls the same on each)
-  const geos = [leg, arm, torso, head];
-  const object = new THREE.Group();
-  const body = new THREE.Group();
-  object.add(body);
-  const chest = new THREE.Mesh(torso, mats.fur);
-  chest.position.y = 1.08 * k;
-  const top = new THREE.Mesh(head, mats.fur);
-  top.position.y = 0.88 * k;
-  chest.add(top);
-  body.add(chest);
-  const pivot = (geo, parent, x, y) => {
-    const p = new THREE.Group();
-    p.position.set(x * k, y * k, 0);
-    p.add(new THREE.Mesh(geo, mats.fur));
-    parent.add(p);
-    return p;
-  };
-  const [legL, legR, armL, armR] = [pivot(leg, body, -0.13, 1.08), pivot(leg, body, 0.13, 1.08), pivot(arm, chest, -0.31, 0.76), pivot(arm, chest, 0.31, 0.76)];
-  const hand = new THREE.Object3D();
-  hand.position.y = -0.79 * k;
-  armR.add(hand);
-  return builtFigure('chewie', tall, {
-    object,
-    body,
-    hand,
-    owned: geos,
-    pose(s) {
-      const swing = Math.sin(s.phase) * 0.5 * Math.min(1, s.go);
-      legL.rotation.x = swing;
-      legR.rotation.x = -swing;
-      armL.rotation.x = -swing * 0.7;
-      // the right arm swings too, or holds the gun out along the aim
-      if (s.raised) armR.rotation.set(Math.PI / 2 + s.pitch, -s.yaw * 0.6, 0, 'YXZ');
-      else armR.rotation.set(swing * 0.7 + 0.1, 0, 0, 'YXZ');
-      // a breath, a bob on each stride, and a flinch back when hit
-      const bob = Math.abs(Math.cos(s.phase)) * 0.035 * Math.min(1, s.go);
-      chest.scale.y = 1 + Math.sin(s.t * 1.6) * 0.008;
-      body.position.y = bob * k;
-      chest.rotation.x = -s.hit * 0.15;
-      top.rotation.set(-s.hit * 0.25 + s.pitch * 0.3, -s.yaw * 0.4, 0, 'YXZ');
-    },
-  });
 }
 
 // The IT-O: a glossy black sphere hanging in the air, its red eye, a ring
@@ -483,7 +333,7 @@ function buildDianoga(tall, mats) {
   });
 }
 
-const BUILT = { chewie: buildChewie, ito: buildIto, dianoga: buildDianoga };
+const BUILT = { ito: buildIto, dianoga: buildDianoga };
 
 // The Death Star trooper’s helmet: a black bowl with its skirt flared at
 // the back and sides, the visor and the jaw guard. One shape for every
@@ -564,8 +414,6 @@ const falls = (clip) => clip === 'dieBlown' || FALLS.includes(clip);
 export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt = null } = {}) {
   const count = liveCount(tier);
   const mats = {
-    // (both sides: a tuft seen from behind is still hair)
-    fur: new THREE.MeshStandardMaterial({ name: 'ds-fur', vertexColors: true, roughness: 0.95, metalness: 0, side: THREE.DoubleSide }),
     skin: new THREE.MeshStandardMaterial({ name: 'ds-dianoga', vertexColors: true, roughness: 0.6, metalness: 0 }),
     eye: new THREE.MeshStandardMaterial({ name: 'ds-eye', vertexColors: true, roughness: 0.15, metalness: 0 }),
     gloss: new THREE.MeshStandardMaterial({ name: 'ds-gloss', vertexColors: true, roughness: 0.22, metalness: 0.3 }),
@@ -653,12 +501,8 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     r.blaster?.removeFromParent();
     r.blaster = null;
     r.fig.hold(gun);
-    if (!gun) return;
-    if (r.fig.built) {
-      const held = r.fig.object.getObjectByName(`blaster-${gun}`);
-      if (held) adopt?.(held);
-      return;
-    }
+    // (a figure built here has no hand to hold one)
+    if (!gun || r.fig.built) return;
     const holder = r.fig.object.getObjectByName(`gun-${gun}`);
     if (!holder) return;
     for (const o of holder.children) o.visible = false;

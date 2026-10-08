@@ -17,6 +17,18 @@
   .trench-key { display: block; font: 500 0.55rem/1 var(--font-mono); letter-spacing: 0.04em; opacity: 0.75; text-transform: uppercase; }
 }
 .trench-overlay { position: absolute; z-index: 2; inset: 0; display: grid; place-content: center; justify-items: center; padding: 1.5rem; text-align: center; background: rgba(5, 6, 11, 0.62); }
+/* On a narrow phone the brief (and its guide line) can be taller than the square screen:
+   then it starts at the top and scrolls, rather than losing its title and button off both
+   edges. Where it fits, "safe" centres it exactly as before; the block padding is only the
+   room it may take before counting as too tall (centring ignores even padding). */
+.trench-overlay { place-content: safe center; overflow-y: auto; padding-block: 0.5rem; }
+/* ...and on a phone the brief sets a little tighter, so on a 390 px screen
+   the whole card, its Start included, fits without that scroll */
+@media (max-width: 420px) {
+  .trench-overlay { padding-block: 0.25rem; }
+  .trench-brief { margin-top: 0.35rem; line-height: 1.35; }
+  .trench-overlay .trench-levels, .trench-go { margin-top: 0.6rem; }
+}
 @media (max-width: 640px) {
   .trench-touch { left: 12px; }
   .trench-touch-laser { order: 3; margin-left: auto; }
