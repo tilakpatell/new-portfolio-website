@@ -534,6 +534,11 @@ export const SITES = {
       { kind: 'stones', n: 220, within: [8, 500], scale: [0.2, 0.5], solid: false, opts: { color: '#b8b098' } },
       // the undergrowth under the palms, ferns and broad leaves
       { kind: 'sorganfern', n: 340, within: [20, 560], scale: [1, 2.2], solid: false, above: 1.2 },
+      // Quaternius's nature kit (catalog/nature.js): low broad leaves and
+      // tall bushes at the edge of the beach jungle
+      { kind: 'nkplant7', n: 300, within: [20, 560], scale: [0.8, 1.6], solid: false, above: 1.2, tint: ['#d8ecc0', '#ffffff'] },
+      { kind: 'nkbushlong', n: 150, within: [24, 560], scale: [0.8, 1.4], solid: false, above: 1.4, tint: ['#c8e0a8', '#f0f8e0'] },
+      { kind: 'nkplant2', n: 120, within: [20, 560], scale: [0.8, 1.5], solid: false, above: 1.2, tint: ['#d8ecc0', '#ffffff'] },
     ],
     life: [
       // (the Empire's walkers on the beach: the rigged AT-AT model, walking its own walk; the film's cargo walkers are its taller cousins)

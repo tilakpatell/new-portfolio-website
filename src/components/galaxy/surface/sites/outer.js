@@ -83,7 +83,16 @@ export const SITES = {
       { id: 'factory', name: 'Shut down the factory', giver: 'ryder', steps: [{ type: 'shoot', tag: 'factory', at: [-220, -200], n: 8, text: 'Clear the Remnant from the factory', spawn: troops('factory', 8, [-220, -200]) }, { type: 'use', id: 'power', at: [-220, -200], r: 6, prompt: 'Shut down the power', text: 'Shut the factory down', end: [{ sound: 'crash' }, { shake: 0.8 }] }], done: [['Governor Azadi', 'No more TIEs from Lothal.']] },
     ],
     // (the plains' tall grass is the grass field round you: `grass`)
-    scatter: [],
+    // Quaternius's nature kit (catalog/nature.js): drifts of tall grass
+    // and wispy grass the gold of its plains, as in Rebels, boulders and
+    // rocks, and little flowers low in the grass
+    scatter: [
+      { kind: 'nkwheat', n: 150, within: [40, 560], clumps: [24, 8], scale: [0.7, 1.1], solid: false, tint: ['#c6ad72', '#ead9a8'] },
+      { kind: 'nkgrasswispy', n: 150, within: [30, 540], clumps: [24, 7], scale: [0.6, 1], solid: false, tint: ['#b49a62', '#dcc890'] },
+      { kind: 'nkrockbig', n: 30, within: [60, 560], scale: [0.6, 1.4] },
+      { kind: 'nkrock3', n: 40, within: [40, 560], scale: [0.5, 1.1] },
+      { kind: 'nkflower6', n: 120, within: [30, 500], clumps: [20, 5], scale: [0.7, 1.2], solid: false },
+    ],
     rides: [{ kind: 'speederbike', at: [12, -10], yaw: -1.2 }],
     // a haulier's truck at the landing, its load beside it
     things: [
@@ -128,6 +137,18 @@ export const SITES = {
       { kind: 'spruce', n: 240, within: [45, 640], scale: [1.0, 1.6], opts: { seed: 7, h: 24, leaf: '#2c3624', bark: '#4a3f33' } },
       { kind: 'sorganfir', n: 60, within: [60, 650], scale: [0.8, 1.4], sink: 0.3, solid: 0.6 },
       { kind: 'sorganfern', n: 140, within: [18, 360], scale: [0.8, 1.8], solid: false },
+      // Quaternius's nature kit (catalog/nature.js): Sorgan's birches with
+      // its firs, as in chapter 4, clumps of wispy grass the colour of its
+      // meadows, flowers, toadstools, pebbles, and a path to the village
+      { kind: 'nkbirch1', n: 30, within: [50, 600], scale: [0.8, 1.15], sink: 0.2, solid: 0.5 },
+      { kind: 'nkbirch3', n: 30, within: [50, 600], scale: [0.8, 1.15], sink: 0.2, solid: 0.5 },
+      { kind: 'nkbirch5', n: 30, within: [50, 600], scale: [0.8, 1.15], sink: 0.2, solid: 0.5 },
+      { kind: 'nkgrasswispy', n: 160, within: [20, 440], clumps: [28, 7], scale: [0.5, 0.9], solid: false, clear: -4, tint: ['#6a6c3c', '#8a864e'] },
+      { kind: 'nkflowers3', n: 80, within: [24, 420], clumps: [14, 7], scale: [0.6, 1], solid: false, clear: -4, tint: ['#c8c8a0', '#e8e8c8'] },
+      { kind: 'nkflower7', n: 120, within: [20, 400], clumps: [20, 5], scale: [0.5, 0.9], solid: false, clear: -4, tint: ['#c8c8a0', '#e8e8c8'] },
+      { kind: 'nkredcap', n: 40, within: [40, 420], clumps: [12, 2.5], scale: [0.5, 1], solid: false },
+      { kind: 'nkpebble', n: 150, within: [10, 300], scale: [0.6, 1.4], solid: false, clear: -4 },
+      { kind: 'nkpath1', path: [[28, 19], [56, 40], [80, 60], [112, 76], [141, 94]], spacing: 1.5, jitter: 0.25, scale: [0.9, 1.15], solid: false },
     ],
     life: [
       { kind: 'villager', id: 'omera', at: [186, 112], still: true, face: 2.4, name: 'Omera', named: true, quest: 'raiders', says: ['We can pay. Not much, but we can pay.'] },

@@ -227,6 +227,13 @@ export const SITE = {
     { kind: 'plant', n: 500, within: [4, 90], scale: [0.7, 1.6], solid: false, clear: -10, opts: { seed: 16, color: '#50603a' } },
     { kind: 'rock', n: 50, within: [20, 560], scale: [0.6, 2.4], opts: { color: '#6a6656', sharp: 0.4 } },
     { kind: 'log', n: 24, within: [30, 520], scale: [0.9, 1.5], solid: false, opts: { seed: 7, bark: '#6a6250', moss: '#4e6a2c' } },
+    // Quaternius's nature kit (catalog/nature.js): the Massassi jungle's big
+    // leaves and bushes, bracket fungi, and twisted trees on its edge
+    { kind: 'nkplant1big', n: 200, within: [8, 480], scale: [0.8, 1.6], solid: false, clear: -8, tint: ['#b8c8a0', '#e0ecc8'] },
+    { kind: 'nkbushlarge', n: 110, within: [14, 520], scale: [0.7, 1.3], solid: false, tint: ['#a8bc88', '#d0dcb0'] },
+    { kind: 'nkoyster', n: 60, within: [10, 420], clumps: [20, 2.5], scale: [0.6, 1], solid: false, clear: -8 },
+    { kind: 'nktwisted1', n: 20, within: [420, 620], scale: [0.8, 1.2], solid: 0.8, tint: ['#a8bc88', '#d0dcb0'] },
+    { kind: 'nktwisted3', n: 20, within: [420, 620], scale: [0.8, 1.2], solid: 0.8, tint: ['#a8bc88', '#d0dcb0'] },
   ],
   // where the people go (needs.js): the techs between the landing (knelt at
   // a ship's works), the hangar mouth (at its panels) and the field

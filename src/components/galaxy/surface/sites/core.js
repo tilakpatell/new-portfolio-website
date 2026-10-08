@@ -310,6 +310,20 @@ export const SITES = {
     scatter: [
       { kind: 'nabootree', n: 80, within: [50, 600], scale: [0.7, 1.4], flat: 0.9 },
       { kind: 'rock', n: 50, within: [40, 560], scale: [0.6, 2.4], opts: { color: '#8e8a78', sharp: 0.3 } },
+      // Quaternius's nature kit (catalog/nature.js): the lake country's
+      // meadows, flowers in patches as round the picnic in Attack of the
+      // Clones, flowering bushes, clover, round stones in the grass, cherry
+      // trees round Varykino's lawn, and stepping stones from the landing
+      // up toward Theed
+      { kind: 'nkflowers2', n: 140, within: [36, 460], clumps: [22, 9], scale: [0.7, 1.2], solid: false, clear: -4, tint: ['#ffffff', '#d4e6b0'] },
+      { kind: 'nkflowers3', n: 120, within: [36, 460], clumps: [18, 8], scale: [0.7, 1.2], solid: false, clear: -4, tint: ['#ffffff', '#d4e6b0'] },
+      { kind: 'nkflower7', n: 160, within: [30, 400], clumps: [26, 6], scale: [0.6, 1.1], solid: false, clear: -4, tint: ['#ffffff', '#d4e6b0'] },
+      { kind: 'nkbushflowers', n: 70, within: [40, 520], scale: [0.7, 1.3], solid: false, tint: ['#f2f8e0', '#c4d89c'] },
+      { kind: 'nkclover1', n: 160, within: [30, 420], clumps: [30, 5], scale: [0.6, 1.1], solid: false, clear: -4, tint: ['#ffffff', '#d0e0b0'] },
+      { kind: 'nkrock1', n: 40, within: [40, 520], scale: [0.4, 0.9] },
+      { kind: 'nkcherry1', n: 5, within: [28, 46], around: [372, 330], scale: [0.6, 0.8], clear: 0, solid: 0.6 },
+      { kind: 'nkcherry4', n: 4, within: [28, 46], around: [372, 330], scale: [0.6, 0.8], clear: 0, solid: 0.6 },
+      { kind: 'nkpath1', path: [[-21, 27], [-62, 74], [-100, 118], [-140, 170], [-170, 208], [-192, 246]], spacing: 1.5, jitter: 0.25, scale: [0.9, 1.15], solid: false, flat: 0.85 },
     ],
     life: [
       { kind: 'gungan', n: 10, at: [250, -235], spread: 40, roam: 14, speed: 1.1, name: 'Gungan soldier', says: ['Wesa ready to do are-sa part!', 'Da shield up! Da droids no getting in here!', 'Boomas! Get da boomas!', 'Yousa stay behind da shield, okeyday?'] },

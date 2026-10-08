@@ -19,7 +19,8 @@ export const NATURE_COLOURS = {
   Leaves_GiantPine: '#6f9a52',
   Leaves_TwistedTree: '#9cbc5c',
   Leaves_CherryBlossom: '#ffc8da',
-  Grass: '#a6c062',
+  // (grass pale, for each world's own colour pair to make it its grass)
+  Grass: '#e8ecd4',
 };
 
 const q = (from, as, metres, more = {}) => ({ cc0: 'quaternius', from, as, metres, tex: 512, ...more });
