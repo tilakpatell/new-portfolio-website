@@ -11,7 +11,7 @@
 import sharp from 'sharp';
 import fs from 'node:fs';
 import path from 'node:path';
-import { RUNGS, fileOf, format, recordSave, widths } from './manifest.mjs';
+import { RUNGS, fileOf, format, recordBake, recordSave, widths } from './manifest.mjs';
 
 // ── noise ──
 
@@ -316,11 +316,14 @@ async function writeKtx2(buf, w, h, channels, width, file, max) {
 }
 
 // index.json, read and written whole (a save's record is one synchronous
-// step, so two saves in flight can't lose each other's)
+// step, so two saves in flight can't lose each other's). A save's record
+// replaces the map's rungs the first time this run saves it, and merges after
+// (manifest.mjs's recordBake), so a rung a baker stops shipping leaves the
+// manifest when it next runs; PLANETS_XL's partial runs only merge.
 const readIndex = () => (fs.existsSync(INDEX) ? JSON.parse(fs.readFileSync(INDEX, 'utf8')) : {});
-function record(name, sizes, opts) {
-  fs.writeFileSync(INDEX, format(recordSave(readIndex(), name, sizes, opts)));
-}
+const writeIndex = (manifest) => fs.writeFileSync(INDEX, format(manifest));
+const SEEN = new Set();
+const PARTIAL = process.env.PLANETS_XL === 'only' || process.env.PLANETS_XL === 'skip';
 
 export async function save(data, w, h, channels, name, rungs, { quality = 86, alphaQuality = 90, lossless = false, smartSubsample = true, srgb, std2048 } = {}) {
   fs.mkdirSync(OUT, { recursive: true });
@@ -352,7 +355,7 @@ export async function save(data, w, h, channels, name, rungs, { quality = 86, al
       .toFile(file);
     console.log(`  ${path.basename(file)}  ${(fs.statSync(file).size / 1024).toFixed(0)} KB`);
   }
-  record(name, wrote, { srgb, std2048 });
+  writeIndex(recordBake(readIndex(), name, wrote, { seen: SEEN, partial: PARTIAL, srgb, std2048 }));
 }
 
 // Maps another pipeline makes (the Python's Earth, sun and tiling plates,
@@ -376,7 +379,7 @@ export async function recordFiles(names) {
       }
     }
     if (!sizes.std) throw new Error(`--record ${name}: no ${fileOf(name, 'std')} in ${OUT}`);
-    record(name, sizes, { replace: true, std2048: sizes.std[0] === 2048 });
+    writeIndex(recordSave(readIndex(), name, sizes, { replace: true, std2048: sizes.std[0] === 2048 }));
     out[name] = readIndex()[name];
     console.log(`  ${name}  ${Object.entries(sizes).map(([r, [w]]) => `${r} ${w}`).join(', ')}`);
   }

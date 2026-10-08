@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import { LADDER, fileOf, format, kindOf, onLadder, recordSave, widths } from './manifest.mjs';
+import { LADDER, fileOf, format, kindOf, onLadder, recordBake, recordSave, widths } from './manifest.mjs';
 
 describe('the size ladder', () => {
   it('is 512, 1024, 2048 and a 4096 KTX2', () => {
@@ -44,6 +44,28 @@ describe('the manifest', () => {
     m = recordSave(m, 'music', { std: [1024, 512] });
     expect(m['transformers-glow']).toEqual({ sizes: { sm: [512, 256], std: [2048, 1024] }, xl: null, kind: 'glow', srgb: false, std2048: true });
     expect(Object.keys(m)).toEqual(['transformers-glow', 'music']);
+  });
+  it('drops a rung a baker stopped shipping when it next bakes, and merges a map saved in two calls', () => {
+    // (a map that had an -hq, re-baked without one)
+    let m = recordSave({}, 'invincible-normal', { std: [1024, 512], hq: [2048, 1024] });
+    let seen = new Set();
+    m = recordBake(m, 'invincible-normal', { std: [1024, 512], sm: [512, 256] }, { seen });
+    expect(m['invincible-normal'].sizes).toEqual({ sm: [512, 256], std: [1024, 512] });
+    // (Middle-earth's relief, saved twice in one run: the second save merges)
+    seen = new Set();
+    m = recordSave(m, 'middleearth-normal', { sm: [512, 256], std: [1024, 512], hq: [2048, 1024], xl: [4096, 2048] });
+    m = recordBake(m, 'middleearth-normal', { hq: [2048, 1024] }, { seen });
+    m = recordBake(m, 'middleearth-normal', { std: [1024, 512], sm: [512, 256] }, { seen });
+    expect(m['middleearth-normal'].sizes).toEqual({ sm: [512, 256], std: [1024, 512], hq: [2048, 1024] });
+    expect(m['middleearth-normal'].xl).toBe(null);
+    // (a partial run, PLANETS_XL=only, leaves the other rungs be)
+    m = recordSave(m, 'office', { sm: [512, 256], std: [1024, 512], hq: [2048, 1024], xl: [4096, 2048] });
+    m = recordBake(m, 'office', { xl: [4096, 2048] }, { seen: new Set(), partial: true });
+    expect(Object.keys(m.office.sizes)).toEqual(['sm', 'std', 'hq', 'xl']);
+    // (and a map's colour space and flag carry over a replacing save)
+    m = recordSave(m, 'transformers-glow', { std: [2048, 1024] }, { srgb: false, std2048: true });
+    m = recordBake(m, 'transformers-glow', { std: [2048, 1024], sm: [512, 256] }, { seen: new Set() });
+    expect(m['transformers-glow']).toMatchObject({ srgb: false, std2048: true });
   });
   it('replaces a map recorded from disk: its files are the whole truth', () => {
     let m = recordSave({}, 'earth', { std: [2048, 1024], hq: [4096, 2048] }, { std2048: true });

@@ -175,8 +175,10 @@ export async function create(canvas, ctx) {
   camera.position.set(0, 0, 5.4);
 
   const small = tier === 'low';
+  // (the 2048 colour on every tier, as the relief and the glow are: the globe
+  // fills most of the frame, and the universe map's -sm is a 512)
   const [albedo, normalMap, glow] = await Promise.all([
-    fetchMap(`${MAPS}transformers${small ? '-sm' : ''}.webp`, true, renderer),
+    fetchMap(`${MAPS}transformers.webp`, true, renderer),
     fetchMap(`${MAPS}transformers-normal.webp`, false, renderer),
     fetchMap(`${MAPS}transformers-glow.webp`, false, renderer),
   ]);

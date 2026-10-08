@@ -21,7 +21,6 @@ export const PACK = {
     '/audio/clips/so-unwise.mp3',
     '/audio/clips/die.mp3',
     '/textures/universe/transformers.webp',
-    '/textures/universe/transformers-sm.webp',
     '/textures/universe/transformers-normal.webp',
     '/textures/universe/transformers-glow.webp',
     '/models/meshy/optimus-prime.glb',

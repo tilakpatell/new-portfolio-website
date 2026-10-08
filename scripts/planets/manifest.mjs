@@ -30,6 +30,7 @@
 //   fileOf(name, rung) → file            'middleearth-xl.ktx2', 'middleearth.webp'…
 //   widths(rungs, workW, { std2048 }) → [[rung, width]]   (throws on an upscale)
 //   recordSave(manifest, name, sizes, { kind, srgb, std2048, replace }) → a new manifest
+//   recordBake(manifest, name, sizes, { seen, partial, …recordSave's }) → a new manifest
 //   onLadder(entry) → the rungs off the ladder ([] when it's on)
 //   format(manifest) → index.json's text (sorted, an entry a line)
 
@@ -76,6 +77,17 @@ export function recordSave(manifest, name, sizes, { kind, srgb, std2048, replace
     ...(flag ? { std2048: true } : {}),
   };
   return { ...manifest, [name]: entry };
+}
+
+// What a bake's save records: the first save of a map in a run (`seen`, the
+// names that run has saved) puts its rungs in place of what the manifest had,
+// so a rung the baker stopped shipping goes; the run's later saves of that map
+// merge (a map saved in more than one call). A partial run (`partial`:
+// PLANETS_XL=only or skip, which leave some rungs as they are) only merges.
+export function recordBake(manifest, name, sizes, { seen, partial = false, ...opts }) {
+  const replace = !partial && !seen.has(name);
+  seen.add(name);
+  return recordSave(manifest, name, sizes, { ...opts, replace });
 }
 
 // The rungs of an entry whose width isn't the ladder's (a map another
