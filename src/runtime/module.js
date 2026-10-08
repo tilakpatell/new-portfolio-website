@@ -11,9 +11,11 @@
 // A world: { ready?, resize(w, h), step?(dt, input, now), draw(frame),
 //   wants?(), update?(props), setVisible?(on), setColors?(colors),
 //   lowerQuality?(level), warmUp?(timeLeft), prepare?(onProgress, { alive }),
-//   handoff?(), attached?(), anchor?(), dispose() } (`attached`: the page
-//   showing it is listening to its events; `anchor`: the player's world
-//   position, for the floating origin).
+//   handoff?(), attached?(), anchor?(), tune?(), dispose() } (`attached`: the
+//   page showing it is listening to its events; `anchor`: the player's world
+//   position, for the floating origin; `tune() → groups` (lib/debugPanel's),
+//   asked once the world is ready when the address has ?debug, and shown in
+//   the one tuning panel under the module's id: runtime/debug.js).
 
 import { STEPS } from '../lib/three/pace';
 
