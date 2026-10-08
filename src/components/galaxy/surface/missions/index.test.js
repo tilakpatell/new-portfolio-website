@@ -42,7 +42,7 @@ describe('missions played as quests', () => {
     expect(m?.kind).toBe('quest');
     const site = siteOf('lothal');
     const tower = site.places.find((p) => p.id === 'tower');
-    expect(tower?.things.some((t) => t.kind === 'lookout')).toBe(true);
+    expect(tower?.things.some((t) => t.kind === 'lothtower')).toBe(true);
     const race = m.quest.steps.find((s) => s.type === 'race');
     expect(race.ride).toBe('speederbike');
     expect(race.gates.length).toBeGreaterThanOrEqual(5);
