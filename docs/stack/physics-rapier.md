@@ -12,7 +12,6 @@ The census row is in [README.md](README.md): Rapier is imported by one file, `sr
 
 The rest of the site reaches it through `src/lib/physics/`:
 
-- `src/components/expanse/surface/module.js` and `src/components/expanse/surface/rules.js`: the Expanse surface, the world the module was built for.
 - `src/components/universe/landings/physics.js` and `src/components/universe/landings/bodies.js`: landings on the universe map.
 - `src/components/universe/footScene.js`: walking on a landed planet.
 
@@ -50,7 +49,7 @@ npm run build
 node scripts/health.mjs --check --skip build
 ```
 
-Then drive the Expanse surface by hand: the vehicle’s tests hold its numbers to tolerances, not its feel. Last upgrade: not recorded; record the next one here, with what it broke.
+Then land on a planet on the universe map and kick a barrel by hand: the tests hold the numbers to tolerances, not the feel. Last upgrade: not recorded; record the next one here, with what it broke.
 
 ## Gotchas
 

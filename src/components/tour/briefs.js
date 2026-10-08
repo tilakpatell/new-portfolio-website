@@ -739,31 +739,6 @@ export const BRIEFS = {
     },
     help('Earth'),
   ],
-  '/universe/expanse': [
-    {
-      id: 'hello',
-      title: 'A planet of the Expanse',
-      text: `${ABOUT['/universe/expanse']}`,
-    },
-    {
-      id: 'drive',
-      title: 'Driving',
-      text: 'Rivers run downhill into lakes and the sea; the compass at the top points at the nearest water. Under water too long, and the car comes back to dry land.',
-      keys: [
-        ['W / ↑', 'Drive'],
-        ['S / ↓', 'Brake, then reverse'],
-        ['A D / ← →', 'Steer'],
-        ['Space', 'Jump'],
-        ['R', 'Back to dry land'],
-      ],
-      touch: [
-        ['Stick', 'Drive and steer'],
-        ['Jump', 'Jump'],
-        ['Boost', 'Hold to go faster'],
-      ],
-    },
-    help('A planet of the Expanse'),
-  ],
   '/music': [
     {
       id: 'hello',
