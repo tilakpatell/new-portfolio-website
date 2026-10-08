@@ -4,7 +4,7 @@ import GpuGate from '../../games/GpuGate';
 import { edges, readPad, typing } from '../../games/pad';
 import { audioContext } from '../../../lib/audio';
 import { local, prefersReducedMotion, useMediaQuery } from '../../../lib/hooks';
-import { settle } from '../../../lib/settle';
+import { capPrepare } from '../../../lib/prepareWorld';
 import LoadingVeil from '../../worlds/LoadingVeil';
 import { sayVoiced } from '../../../lib/voiced';
 import { SUNK_BOSS, SUNK_LINE } from '../lines';
@@ -58,8 +58,6 @@ const is = (k, key) => KEYS[k].includes(key);
 // the room reaches as far as the sea does (./rules.js's shipStep)
 const ROOM = { bound: STEP_BOUND };
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-
-const PREPARE_WAIT = 30000; // ms at most the veil waits on the sea's prepare
 
 export default function DeadMansTide() {
   return <GpuGate className="dt-gate">{({ soft, fail }) => <Game soft={soft} fail={fail} />}</GpuGate>;
@@ -133,12 +131,10 @@ function Game({ soft, fail }) {
         if (import.meta.env.DEV) window.__TIDE3D__ = r; // for the browser tests
         r.resize(el.clientWidth, el.clientHeight);
         // everything onto the graphics chip behind the veil before the first
-        // frame (Tide3D's prepare: bounded, so it never holds the sea up for good)
+        // frame (Tide3D's prepare; lib/prepareWorld: PREPARE_WAIT at most, then
+        // it's told to stop)
         setPrep({ value: 0, step: null });
-        await settle(
-          r.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
-          PREPARE_WAIT,
-        );
+        await capPrepare((report, going) => r.prepare?.(report, going), { onProgress: (value, step) => setPrep({ value, step }), alive: () => !dead });
         if (dead) return;
         setPrep((p) => p && { ...p, done: true }); // (the veil fades on what it last said)
         setPhase('ready');

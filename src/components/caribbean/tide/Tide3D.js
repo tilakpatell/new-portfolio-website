@@ -871,6 +871,8 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
     caskGeo.dispose();
     caskMat.dispose();
     ghosts.dispose();
+    // the prepare's twins in the house look: their own materials (the geometry's the models')
+    for (const twin of twins) twin.traverse((o) => o.isMesh && [].concat(o.material).forEach((m) => m.dispose()));
     for (const m of models.values()) scene.add(m.root); // so the stage frees the originals too
     sea.dispose();
     stage.dispose();
