@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { SCENE_SECONDS } from '../rules/play/plot';
 import { STATIONS } from '../rules/stations';
-import { SCENES, ease, offsetIn, shotAt } from './cinematics';
+import { SCENES, ease, offsetIn, shotAt, swingAt } from './cinematics';
 
 const spots = { ...STATIONS.ds1.spots, ...STATIONS.ds2.spots };
 
@@ -49,5 +49,16 @@ describe('the shot maths', () => {
     expect(ease(0)).toBe(0);
     expect(ease(1)).toBe(1);
     expect(ease(0.5)).toBeCloseTo(0.5);
+  });
+
+  it('swings out from the ledge, dips the sag at the bottom, and lands on the far side', () => {
+    const w = { t0: 1, s: 2, sag: 2.4, from: { x: 0, y: 3, z: 0 }, to: { x: 14, y: 3, z: 0 } };
+    expect(swingAt(w, 0)).toEqual({ x: 0, y: 3, z: 0 });
+    expect(swingAt(w, 2).x).toBeCloseTo(7);
+    expect(swingAt(w, 2).y).toBeCloseTo(3 - 2.4);
+    expect(swingAt(w, 9).x).toBeCloseTo(14);
+    expect(swingAt(w, 9).y).toBeCloseTo(3);
+    // (fastest across at the bottom of the dip)
+    expect(swingAt(w, 2.1).x - swingAt(w, 1.9).x).toBeGreaterThan(swingAt(w, 1.2).x - swingAt(w, 1).x);
   });
 });

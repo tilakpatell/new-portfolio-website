@@ -26,9 +26,13 @@
 // - A hostile Emperor is run by emperorMind. With the saber thrown away,
 //   Luke’s guard is his raised arms, which force.js takes as any guard
 //   facing the Emperor: half the lightning, paid for in stamina.
-// - While the flag `carrying` is set, Vader is the companion over Luke’s
-//   shoulders, not walking, and Luke walks (never runs or jumps); while
-//   `breach` is set the station shakes, panels fall and fires burn.
+// - While the flag `carrying` is set, Vader is the companion held up at
+//   Luke’s side, his arm over Luke’s shoulders, limping as Luke walks
+//   (plot.js’s holdUp), and Luke walks (never runs, jumps or crouches);
+//   while `breach` is set the station shakes, panels burst off the walls
+//   in fire and smoke (breach.js).
+// - At the foot of the ramp Vader is set down sitting against it for the
+//   mask, and lies there once the talk is over; he goes aboard with you.
 //
 //   DS2_REBEL → { id, station, side, hero, title, steps }
 
@@ -169,7 +173,7 @@ const CARRY = [
   {
     id: 'carry',
     type: 'escort',
-    text: 'The reactor is going. Carry your father down the tower and across the station to the shuttle in the dock.',
+    text: 'The reactor is going. Get your father down the tower and across the station to the shuttle in the dock.',
     target: { spot: 'shuttle-ramp' },
     need: 'vader',
     time: 120,
@@ -193,10 +197,16 @@ const MASK = [
     type: 'scene',
     text: 'At the foot of the ramp, he asks you to stop.',
     need: { scene: 'mask' },
-    // set down here, not in the carry’s end, so a save at the ramp still finds him in Luke’s arms
-    start: [{ unflag: 'carrying' }, { companion: 'vader', follow: false }, { scene: 'mask' }],
+    // set down here, not in the carry’s end, so a save at the ramp still finds him on Luke’s shoulder
+    start: [{ unflag: 'carrying' }, { companion: 'vader', follow: false }, ...bring('vader', 'mask-seat', 'vader', { role: 'scripted', script: [{ anim: 'ground' }] }), { to: 'mask-kneel' }, { scene: 'mask' }],
   },
-  { id: 'mask-talk', type: 'talk', text: 'Your father, with his mask off.', need: { talk: 'unmasking' } },
+  {
+    id: 'mask-talk',
+    type: 'talk',
+    text: 'Your father, with his mask off.',
+    need: { talk: 'unmasking' },
+    end: [...bring('vader', 'mask-seat', 'vader', { role: 'scripted', script: [{ anim: 'lie' }] })],
+  },
 ];
 
 const ESCAPE = [

@@ -179,6 +179,11 @@ export const DS2 = {
     // where you board it: the foot of its hull by the ramp (the Lambda on escape-shuttle is solid round it)
     'escape-board': { room: 'dock', x: ESCAPE.x, z: -18.1, yaw: Math.PI },
     'shuttle-ramp': { room: 'dock', x: ESCAPE.x, z: ESCAPE.z - RAMP, yaw: Math.PI },
+    // where Vader is set down for the mask: at the foot of the ramp (which meets the deck a metre
+    // short of shuttle-ramp), his back to it, facing out under the shuttle's nose
+    'mask-seat': { room: 'dock', x: ESCAPE.x, z: ESCAPE.z - RAMP, yaw: 0 },
+    // and where Luke kneels in front of him, facing him
+    'mask-kneel': { room: 'dock', x: ESCAPE.x, z: ESCAPE.z - RAMP - 1.2, yaw: Math.PI },
     'st321-console': { room: 'command', x: 22, z: -47, yaw: 0 },
     'firing-switch': { room: 'command', x: 30, z: -49, yaw: 0 },
     // in the ranks west of the aisle the Emperor walks up, facing it

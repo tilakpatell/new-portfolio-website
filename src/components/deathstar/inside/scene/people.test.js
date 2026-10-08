@@ -70,6 +70,12 @@ describe('what a person is seen doing', () => {
     expect(actOf(tk({ mode: 'fight', anim: 'aim' }), { armed: false }).upper).toBeNull();
   });
 
+  it('sits on the floor, lies there, and limps along held up, as the rules pose it', () => {
+    expect(actOf(tk({ anim: 'ground' })).base).toBe('sit.ground');
+    expect(actOf(tk({ anim: 'lie' })).base).toBe('lie');
+    expect(actOf(tk({ anim: 'limp' })).base).toBe('walk.injured');
+  });
+
   it('stands at attention at a post, works a console, talks with its hands, sits in a seat', () => {
     expect(actOf(tk({ anim: 'attention' })).base).toBe('idle.calm');
     expect(actOf(tk({ anim: 'work' })).base).toBe('counter.idle');
