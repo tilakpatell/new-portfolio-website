@@ -179,8 +179,12 @@ export const PROPS = {
   echobase(k) {
     const object = new THREE.Group();
     const ice = [
-      roughBox(50, 34, 72, [-45, 0, -36], { seed: 3, amp: 2 }),
-      roughBox(50, 34, 72, [45, 0, -36], { seed: 3, amp: 2 }),
+      // (each flank in two: the hangar's wall, its inner face where it was,
+      // and the jagged ice face beyond the frame)
+      roughBox(8, 34, 72, [-24, 0, -36], { seed: 3, amp: 2 }),
+      roughBox(8, 34, 72, [24, 0, -36], { seed: 3, amp: 2 }),
+      roughBox(44, 34, 70, [-50, 0, -37], { seed: 4, amp: 3.4 }),
+      roughBox(44, 34, 70, [50, 0, -37], { seed: 4, amp: 3.4 }),
       roughBox(40.2, 19, 72, [0, 15, -36], { seed: 3, amp: 2 }),
       roughBox(40.2, 15, 12, [0, 0, -66], { seed: 3, amp: 1.2 }),
       // the glacier running on either side
@@ -209,7 +213,9 @@ export const PROPS = {
       [128, 18, -48, 50, 16, 56],
       [-132, 16, -44, 52, 16, 56],
     ])
-      snow.push(blob(50 + x, [x, y, z], [sx, sy, sz], { ...soft, flat: 0.5 }));
+      snow.push(blob(50 + x, [x, y, z], [sx, sy, sz], { ...soft, flat: 0.75 }));
+    // drifts banked up the face either side of the opening
+    for (const sx of [-1, 1]) snow.push(blob(60 + sx, [sx * 46, -1, 3], [44, 30, 14], { ...soft, flat: 0.7 }));
     for (const [x, z, sz] of [
       [-76, 4, 14],
       [74, 3, 12],
@@ -264,11 +270,12 @@ export const PROPS = {
       [14, -30, 16],
       [-30, -44, 11],
     ]) {
-      parts.push(rod([x, 32, z], [x, 34 + h, z], 0.25, 0.12, { color: '#5a6066', to: 'metal' }));
-      for (let i = 1; i < 4; i++) parts.push(rod([x - 1.6, 34 + (h * i) / 4, z], [x + 1.6, 34 + (h * i) / 4, z], 0.06, 0.06, { color: '#5a6066', to: 'metal' }));
-      parts.push(part(new THREE.SphereGeometry(0.3, 8, 6), { at: [x, 34.2 + h, z], color: hot('#ff4a3a', 3), to: 'glow' }));
+      // (3 m up out of the crests' snow)
+      parts.push(rod([x, 35, z], [x, 37 + h, z], 0.25, 0.12, { color: '#5a6066', to: 'metal' }));
+      for (let i = 1; i < 4; i++) parts.push(rod([x - 1.6, 37 + (h * i) / 4, z], [x + 1.6, 37 + (h * i) / 4, z], 0.06, 0.06, { color: '#5a6066', to: 'metal' }));
+      parts.push(part(new THREE.SphereGeometry(0.3, 8, 6), { at: [x, 37.2 + h, z], color: hot('#ff4a3a', 3), to: 'glow' }));
     }
-    parts.push(part(dome(2.4, 1.0, 16), { at: [14, 40, -30], rot: [-0.6, 0.3, 0], color: '#9aa2aa', to: 'metal' }));
+    parts.push(part(dome(2.4, 1.0, 16), { at: [14, 43, -30], rot: [-0.6, 0.3, 0], color: '#9aa2aa', to: 'metal' }));
     object.add(k.build(parts, { name: 'echobase' }));
     return {
       object,
@@ -592,16 +599,16 @@ export const PROPS = {
   wampacave(k) {
     const object = new THREE.Group();
     const ice = [
-      roughBox(9, 7, 18, [-7.5, 0, -8], { seed: 21, amp: 1.0, scale: 5 }),
-      roughBox(9, 7, 18, [7.5, 0, -8], { seed: 21, amp: 1.0, scale: 5 }),
-      roughBox(24, 5, 18, [0, 5.4, -8], { seed: 21, amp: 1.0, scale: 5 }),
-      roughBox(24, 7, 5, [0, 0, -18.5], { seed: 21, amp: 1.0, scale: 5 }),
+      roughBox(9, 7, 18, [-7.5, 0, -8], { seed: 21, amp: 1.8, scale: 3, seg: 1.5 }),
+      roughBox(9, 7, 18, [7.5, 0, -8], { seed: 21, amp: 1.8, scale: 3, seg: 1.5 }),
+      roughBox(24, 5, 18, [0, 5.4, -8], { seed: 21, amp: 1.0, scale: 3, seg: 1.5 }),
+      roughBox(24, 7, 5, [0, 0, -18.5], { seed: 21, amp: 1.8, scale: 3, seg: 1.5 }),
     ].map((g) => part(g, { color: '#b8cde2' }));
     // the floor of the cave: blue ice
     ice.push(part(box(6, 0.06, 16), { at: [0, 0.02, -8], color: '#9ab6d2' }));
     object.add(meshOf(k, ice, iceMat(k), { shade: iceShade((x, y, z) => Math.abs(x) < 3.8 && y < 5.8 && z < 0.6) }));
     // heaped with snow all round, so it's a hummock in the hillside
-    const soft = { smooth: true, flat: 0.5 };
+    const soft = { smooth: true, flat: 0.5, sharp: 0.6 };
     const snow = [
       blob(31, [0, 5.6, -11], [34, 16, 30], soft),
       blob(32, [-12.5, -0.5, -7], [16, 22, 22], soft),
@@ -612,12 +619,16 @@ export const PROPS = {
     ];
     object.add(meshOf(k, snow.map((p) => ({ ...p, to: undefined })), snowMat(k)));
     const icicles = [];
-    for (let i = 0; i < 26; i++) {
-      const inside = i > 13;
+    for (let i = 0; i < 70; i++) {
+      const inside = i > 25;
       const x = (k.rand() - 0.5) * (inside ? 5 : 6.2);
-      const z = inside ? -2 - k.rand() * 14 : 0.4 + k.rand() * 0.8;
-      const h = 0.4 + k.rand() * (inside ? 1.0 : 1.6);
-      icicles.push(part(new THREE.ConeGeometry(0.08 + k.rand() * 0.1, h, 6).rotateX(PI), { at: [x, 5.4 - h / 2, z], color: '#dcecff', to: 'glass' }));
+      const z = inside ? -2 - k.rand() * 14 : -0.4 + k.rand() * 0.8;
+      const h = inside ? 0.6 + k.rand() * 2.0 : 0.4 + k.rand() * 1.6;
+      const r = inside ? 0.12 + k.rand() * 0.18 : 0.08 + k.rand() * 0.1;
+      // (none over Luke, hung at x 0, z -10)
+      if (inside && Math.abs(x) < 0.6 && Math.abs(z + 10) < 1.5) continue;
+      // (rooted in the roof, so the tips stay where they were)
+      icicles.push(part(new THREE.ConeGeometry(r, h + 0.6, 6).rotateX(PI), { at: [x, 6.0 - (h + 0.6) / 2, z], color: '#dcecff', to: 'glass' }));
     }
     // hung by his ankles in the ice: legs, body, arms down, head
     const parka = '#a8a090';
@@ -656,8 +667,6 @@ export const PROPS = {
   // the shelter Han threw up the night he found Luke: a snowed-in dome
   // tent, a lamp at its door, a tauntaun lying dead beside it in the snow
   hanshelter(k) {
-    const fur = '#d8d0c4';
-    const skin = '#9a9488';
     const parts = [
       part(dome(2.4, 1.9, 20), { color: '#8e9488', to: 'cloth' }),
       part(new THREE.TorusGeometry(2.05, 0.09, 6, 24, PI), { at: [0, 0, 0], rot: [0, 0, 0], scale: [1, 0.86, 1], color: '#d0612c', to: 'cloth' }),
@@ -669,21 +678,10 @@ export const PROPS = {
       part(box(0.14, 0.14, 0.14), { at: [1.0, 0.3, 2.6], color: hot('#ffb060', 3.2), to: 'glow' }),
       rod([-1.6, 0, 2.8], [-1.6, 1.6, 2.8], 0.03, 0.03, { color: '#3a3c40', to: 'metal' }),
       part(box(0.06, 0.4, 0.3), { at: [-1.6, 1.25, 2.95], color: '#d0612c', to: 'cloth' }),
-      // the tauntaun: on its side, its legs out, its horns curled
-      part(new THREE.SphereGeometry(0.5, 16, 12), { at: [3.4, 0.55, -0.6], scale: [1.4, 1.1, 2.2], rot: [0, 0.4, 0], color: fur, to: 'cloth' }),
-      rod([3.7, 0.6, 0.3], [4.2, 0.35, 1.1], 0.26, 0.2, { color: fur, to: 'cloth' }),
-      part(new THREE.SphereGeometry(0.28, 12, 8), { at: [4.35, 0.3, 1.35], scale: [1, 0.85, 1.6], rot: [0, 0.6, 0], color: skin, to: 'cloth' }),
-      part(new THREE.TorusGeometry(0.16, 0.05, 6, 12, PI * 1.5), { at: [4.2, 0.55, 1.2], rot: [0, 0.6, 0], color: '#c8b48a', to: 'stone' }),
-      rod([2.8, 0.4, -1.6], [2.1, 0.3, -2.4], 0.08, 0.06, { color: fur, to: 'cloth' }),
     ];
-    for (const [a, b] of [
-      [[4.0, 0.5, -0.8], [4.9, 0.25, -1.1]],
-      [[3.9, 0.6, -0.2], [4.8, 0.4, -0.1]],
-    ])
-      parts.push(rod(a, b, 0.12, 0.08, { color: fur, to: 'cloth' }));
     const object = k.build(parts, { name: 'shelter' });
     object.add(meshOf(k, [blob(41, [-2.0, -0.2, -0.8], [3.4, 1.5, 4.2], { flat: 0.4, smooth: true }), blob(42, [2.4, -0.3, -2.2], [4, 1.1, 2.6], { smooth: true }), blob(43, [-0.2, -0.3, -2.8], [4.6, 1.3, 2.2], { smooth: true })].map((p) => ({ ...p, to: undefined })), snowMat(k)));
-    return { object, solids: [{ circle: [0, 0, 2.4] }, { circle: [3.5, -0.5, 1.1], top: 1.1 }] };
+    return { object, solids: [{ circle: [0, 0, 2.4] }] };
   },
 
   // smoke going up from a burning wreck: soft puffs rising, spreading and
@@ -982,7 +980,7 @@ export const PROPS = {
   // a pen for the tauntauns: a fence of posts and rails (a gate on the +z
   // side), a lean-to at the back heaped with snow, a trough
   tauntaunpen(k, { w = 18, d = 13 } = {}) {
-    const wood = '#5a4a3a';
+    const pipe = '#7a8088'; // (Rebel pipe rails)
     const parts = [];
     const solids = [];
     const edge = (a, b, gate = false) => {
@@ -994,13 +992,13 @@ export const PROPS = {
         const z = a[1] + (b[1] - a[1]) * f;
         if (gate && Math.abs(x) < 1.8) continue;
         solids.push({ circle: [x, z, 0.3] });
-        if (i % 2 === 0) parts.push(part(cyl(0.09, 0.08, 1.5, 6), { at: [x, 0, z], color: wood, to: 'bark' }));
+        if (i % 2 === 0) parts.push(part(cyl(0.09, 0.08, 1.5, 6), { at: [x, 0, z], color: pipe, to: 'metal' }));
       }
       for (const y of [0.6, 1.2]) {
         if (gate) {
-          parts.push(rod([a[0], y, a[1]], [-1.8, y, a[1]], 0.045, 0.045, { color: wood, to: 'bark' }));
-          parts.push(rod([1.8, y, a[1]], [b[0], y, b[1]], 0.045, 0.045, { color: wood, to: 'bark' }));
-        } else parts.push(rod([a[0], y, a[1]], [b[0], y, b[1]], 0.045, 0.045, { color: wood, to: 'bark' }));
+          parts.push(rod([a[0], y, a[1]], [-1.8, y, a[1]], 0.045, 0.045, { color: pipe, to: 'metal' }));
+          parts.push(rod([1.8, y, a[1]], [b[0], y, b[1]], 0.045, 0.045, { color: pipe, to: 'metal' }));
+        } else parts.push(rod([a[0], y, a[1]], [b[0], y, b[1]], 0.045, 0.045, { color: pipe, to: 'metal' }));
       }
     };
     const hw = w / 2;
@@ -1010,10 +1008,10 @@ export const PROPS = {
     edge([hw, -hd], [-hw, -hd]);
     edge([-hw, -hd], [-hw, hd]);
     // the lean-to and its snow, the trough
-    for (const x of [-hw + 1, hw - 1]) for (const z of [-hd + 0.6, -hd + 3.6]) parts.push(part(cyl(0.12, 0.1, z < -hd + 1 ? 3.2 : 2.4, 6), { at: [x, 0, z], color: wood, to: 'bark' }));
-    parts.push(part(box(w - 1, 0.18, 4.2), { at: [0, 2.6, -hd + 2.1], rot: [0.2, 0, 0], color: '#6e665c', to: 'cloth' }));
+    for (const x of [-hw + 1, hw - 1]) for (const z of [-hd + 0.6, -hd + 3.6]) parts.push(part(cyl(0.12, 0.1, z < -hd + 1 ? 3.2 : 2.4, 6), { at: [x, 0, z], color: pipe, to: 'metal' }));
+    parts.push(part(box(w - 1, 0.18, 4.2), { at: [0, 2.6, -hd + 2.1], rot: [0.2, 0, 0], color: '#8a929a', to: 'paint' }));
     parts.push(part(box(w - 0.8, 0.3, 4.4), { at: [0, 2.8, -hd + 2.1], rot: [0.2, 0, 0], color: SNOW, to: 'stone' }));
-    parts.push(part(box(4, 0.6, 0.9), { at: [3, 0, -hd + 2.5], color: '#6a5a48', to: 'bark' }));
+    parts.push(part(box(4, 0.6, 0.9), { at: [3, 0, -hd + 2.5], color: '#5c626a', to: 'metal' }));
     parts.push(part(box(3.6, 0.1, 0.6), { at: [3, 0.55, -hd + 2.5], color: '#7a8a5a', to: 'leaf' }));
     return { object: k.build(parts, { name: 'pen' }), solids };
   },

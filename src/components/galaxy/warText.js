@@ -18,11 +18,24 @@
 // nextOpLine(table, now) → the next offensive | null; orderLine(order, now) |
 // null; resultLine(table) → the campaign's result (or the last's) | null;
 // partLine(record) → your part in it (warState.js's mine) | null.
+//
+// And the battle you're in, as warfront.js's info has it (WarHud.jsx's lines
+// under its own, BattleEnd.jsx's card): stageLine(info) → 'Stage 2 of 3 ·
+// Destroy: Bridge' (or what opens next, and when); objectiveBars(info) → up
+// to three [{ id, name, k, down }]; nextLine(next) → 'Bomber wave in 0:40';
+// whyLine(result) → why it ended, in words; resultTitle(result, team) →
+// 'Victory' | 'Defeat' | 'Battle over'; yoursLine(yours) → what you did in
+// it; afterLine(info, sysName, now) → 'Victory at Hoth · next battle in
+// 4:05' (a battle decided early: the rest of its window's the end card's and
+// that line's); endCard(info) → { title, tone, why, yours, points } | null;
+// cardTime(info) → the seconds BattleEnd.jsx's card is still to show (END.show
+// from the end; none to a pilot who came after).
 
 import { BATTLE_KINDS } from './battles';
 import { rankOf } from './ranks';
 import { AREAS, SIDES, WARS } from './sides';
 import { systemById } from './systems';
+import { typeOf } from '../universe/battleObjectives';
 
 // how long, as the war table says it: 4:05, 1h 12m, 2d 3h
 export const span = (ms) => {
@@ -179,3 +192,86 @@ export function partLine(record) {
   const all = moved.length > 1 ? ` · ${moved.length} systems in all` : '';
   return `You moved ${nameOf(moved[0].id)} ${pctOf(moved[0].moved)} this campaign${all}`;
 }
+// ── the battle you're in ──
+const plural = (name) => (/s$/.test(name) ? name : `${name}s`);
+const NUMBERS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+const counted = (n, word) => `${NUMBERS[n] ?? n} ${n === 1 ? word : plural(word)}`;
+const RUNNERS = { transport: 'transport', corvette: 'corvette', gozanti: 'Gozanti', nubian: 'Nubian', shuttle: 'shuttle' };
+const attacking = (info) => (info.team === null || info.team === undefined ? null : info.team === info.laid?.attacker);
+
+export function stageLine(info) {
+  const st = info?.stage;
+  if (!st || st.index >= st.count) return null;
+  const head = `Stage ${st.index + 1} of ${st.count}`;
+  const left = (info.objectives ?? []).filter((o) => !o.down);
+  const all = info.objectives ?? [];
+  if (!all.length) return head;
+  // (all of a name: how many, or how many of them to take; else the first still standing)
+  const same = all.every((o) => o.name === all[0].name);
+  const o = same ? all[0] : (left[0] ?? all[0]);
+  const need = st.need ?? all.length;
+  const what = same && all.length > 1 ? (need < all.length ? `${need} of ${all.length} ${plural(o.name)}` : `${o.name} ×${all.length}`) : o.name;
+  if (!st.open) return `${head} · ${what} opens in ${span((st.opensIn ?? 0) * 1000)}`;
+  const att = attacking(info);
+  if (att === null) return `${head} · ${what}`;
+  const verbs = o.verbs ?? typeOf(o).verbs;
+  return `${head} · ${verbs[att ? 0 : 1]}: ${what}`;
+}
+
+export const objectiveBars = (info) => (info?.objectives ?? []).slice(0, 3).map((o) => ({ id: o.id, name: o.name, k: o.down ? 0 : Math.max(0, Math.min(1, o.hp / (o.hpMax || 1))), down: Boolean(o.down) }));
+
+const NEXT = { wave: 'Bomber wave', push: 'Final push', reserve: 'Their reserve squadron' };
+export function nextLine(next) {
+  if (!next) return null;
+  const name = NEXT[next.type] ?? (next.name ? next.name.charAt(0).toUpperCase() + next.name.slice(1) : 'More');
+  return `${name} in ${span(Math.max(0, next.in) * 1000)}`;
+}
+
+const WHY = {
+  flagship: 'The reactor went',
+  interdictor: 'The Interdictor went down',
+  deathstar: 'The Death Star’s reactor went',
+  gate: 'The Shield Gate fell',
+  objectives: 'Every objective fell',
+  clock: 'Held out to the end',
+  tickets: 'Out of fighters',
+  forced: 'Called off',
+};
+export function whyLine(result) {
+  if (!result) return null;
+  if (result.why === 'runners' && result.runners) {
+    const r = result.runners;
+    const kind = RUNNERS[r.kind] ?? r.kind;
+    return result.winner === r.team ? `${counted(r.out, kind)} got away` : `${counted(r.down, kind)} were stopped`;
+  }
+  return WHY[result.why] ?? 'It’s over';
+}
+
+export const resultTitle = (result, team) => (team === null || team === undefined ? 'Battle over' : result.winner === team ? 'Victory' : 'Defeat');
+
+export function yoursLine(yours) {
+  const parts = [];
+  if (yours?.kills) parts.push(`${yours.kills} ${yours.kills === 1 ? 'kill' : 'kills'}`);
+  if (yours?.objectives) parts.push(`${yours.objectives} ${yours.objectives === 1 ? 'objective' : 'objectives'}`);
+  if (yours?.intercepts) parts.push(`${yours.intercepts} ${yours.intercepts === 1 ? 'intercept' : 'intercepts'}`);
+  return parts.length ? parts.join(' · ') : 'Nothing of theirs down this time';
+}
+
+export function afterLine(info, sysName, now) {
+  const r = info.result;
+  const att = attacking(info);
+  const who = att === null ? `The ${SIDES[info.on?.sides?.[r.winner]]?.short ?? 'other side'} won` : resultTitle(r, info.team);
+  return `${who} at ${sysName} · next battle in ${span((info.on?.end ?? now) - now)}`;
+}
+
+export function endCard(info) {
+  const r = info?.result;
+  if (!r) return null;
+  const team = info.team ?? null;
+  const points = Math.round(r.yours?.points ?? 0);
+  return { title: resultTitle(r, team), tone: team === null ? null : r.winner === team ? 'won' : 'lost', why: whyLine(r), yours: yoursLine(r.yours), points: `+${points} ${points === 1 ? 'point' : 'points'}` };
+}
+
+// the end card's time on screen, and how often BattleEnd.jsx looks for an end
+export const END = { show: 8, every: 500 };
+export const cardTime = (info) => (info?.result ? Math.max(0, END.show - (info.result.ago ?? 0)) : 0);

@@ -28,25 +28,25 @@
     "show": "rick-and-morty",
     "clips": [],
     "quotes": [
-      "I'm performing surgery, but not on a horse, on a human",
-      "Holy crap, I am winning a Nobel Prize",
-      "When two people create a life together, they set aside their previous lives as individuals",
-      "Don't deify the people that leave you",
-      "Tomorrow is your one year anniversary back in our lives",
-      "Now that you know you could have had it better, you resent me for holding you back"
+      "horse surgeon",
+      "I am a surgeon",
+      "Space Beth",
+      "I need a glass of wine"
     ],
     "search": [
-      "Rick and Morty Beth don't deify the people that leave you scene",
-      "Rick and Morty Rixty Minutes Beth alternate reality surgeon scene",
-      "Rick and Morty The ABC's of Beth Beth and Rick Froopyland scene",
-      "Rick and Morty Beth horse surgeon scene",
-      "Rick and Morty Beth Smith best moments season 2"
+      "Rick and Morty Beth Smith horse surgeon scene",
+      "Rick and Morty Beth and Space Beth scene season 4 finale",
+      "Rick and Morty Beth Smith and Rick father daughter talk scene",
+      "Rick and Morty Beth and Jerry marriage counseling scene",
+      "Rick and Morty Beth Smith best moments compilation",
+      "Rick and Morty Beth Smith wine scene"
     ],
     "avoid": [
       "scrubs",
       "how i met your mother",
       "space beth vs"
-    ]
+    ],
+    "per_query": 4
   },
   "summer": {
     "show": "rick-and-morty",
@@ -552,43 +552,11 @@
   },
   "kingjellybean": {
     "show": "rick-and-morty",
-    "clips": [],
-    "quotes": [
-      "How are you today? I'm Mr. Jelly Bean!",
-      "Nice. Is it a fun adventure?",
-      "Well, isn't that what adventures do?",
-      "Uhh, no, stay. Go with the flow!",
-      "Stop fighting me! Just let this happen!"
-    ],
-    "search": [
-      "Rick and Morty Meeseeks and Destroy Mr. Jelly Bean bathroom scene",
-      "Rick and Morty King Jellybean scene"
-    ],
-    "avoid": [
-      "spongebob",
-      "adventure time"
-    ]
+    "design": "a creepy, oily jellybean king, sleazy high whispery voice, false friendliness, unsettling"
   },
   "zeep": {
     "show": "rick-and-morty",
-    "clips": [],
-    "quotes": [
-      "I dropped out of school. It's not a place for smart people",
-      "This isn't a fucking chocolate factory. I don't have time",
-      "Inside that container is an infinite universe with a planet capable of generating massive amounts of power. I call it a miniverse",
-      "I said 12 quantum stabilizers, not 11",
-      "No more gooble boxes"
-    ],
-    "search": [
-      "Rick and Morty The Ricks Must Be Crazy Zeep Xanflorp scene",
-      "Rick and Morty The Ricks Must Be Crazy Zeep and Rick fight in the miniverse",
-      "Rick and Morty Zeep Xanflorp miniverse explained by Zeep"
-    ],
-    "avoid": [
-      "late show",
-      "colbert report",
-      "daily show"
-    ]
+    "design": "a smug, nerdy alien scientist in a tiny universe, nasal mid-pitched American voice, condescending and fast"
   },
   "kyle": {
     "show": "rick-and-morty",
@@ -983,17 +951,7 @@
   },
   "miles": {
     "show": "rick-and-morty",
-    "clips": [],
-    "quotes": [],
-    "search": [
-      "Rick and Morty One Crew Over the Crewcoo's Morty Miles Knightly scene",
-      "Rick and Morty Heist-Con Miles Knightly heist-off challenge scene",
-      "Rick and Morty One Crew Over the Crewcoo's Morty Miles Knightly and Rick"
-    ],
-    "avoid": [
-      "the leftovers",
-      "mulholland"
-    ]
+    "design": "a slick, smooth-talking master thief, confident baritone, theatrical and self-satisfied, American"
   },
   "heister": {
     "design": "Burly adult man, slow low gravel, a dim but friendly hired muscle at a heist convention, deadpan and unhurried."
@@ -1062,25 +1020,7 @@
   },
   "risotto": {
     "show": "rick-and-morty",
-    "clips": [],
-    "quotes": [
-      "My name is Risotto Groupon",
-      "I am the assistant general manager of the restaurant",
-      "My kingdom was usurped by force with weapons and technology supplied by your father-in-law!",
-      "Would you help me kill him?",
-      "Do you... like theme-park rides?",
-      "There is a popular attraction here called the Whirly Dirly"
-    ],
-    "search": [
-      "Rick and Morty The Whirly Dirly Conspiracy Risotto Groupon and Jerry scene",
-      "Rick and Morty The Whirly Dirly Conspiracy Risotto Groupon plot to kill Rick"
-    ],
-    "avoid": [
-      "spongebob",
-      "mr. krabs",
-      "shawshank",
-      "highlander"
-    ]
+    "design": "a fussy, polite little alien restaurant manager, high nasal voice, overly formal and anxious, then vengeful"
   },
   "bartender": {
     "design": "Resort bartender, adult man, smooth upbeat lounge-host baritone, relaxed and amused, in no hurry."
@@ -1224,20 +1164,7 @@
   },
   "regularlegs": {
     "show": "rick-and-morty",
-    "clips": [],
-    "quotes": [
-      "Wow! You sure found this guy quick!",
-      "Look, Baby Legs, it's the criminal!",
-      "I'm coming, Baby Legs! I'm Regular Legs! We got him!"
-    ],
-    "search": [
-      "Rick and Morty Rixty Minutes Baby Legs detective show",
-      "Rick and Morty interdimensional cable Baby Legs and Regular Legs"
-    ],
-    "avoid": [
-      "season 7",
-      "season 8"
-    ]
+    "design": "an ordinary middle-aged man on a cheap TV show, flat average American voice, mildly confused"
   },
   "mrsneezy": {
     "show": "rick-and-morty",
@@ -1275,18 +1202,7 @@
   },
   "shmlonathan": {
     "show": "rick-and-morty",
-    "clips": [],
-    "quotes": [
-      "Schmlove, Schmlandula, Schmlonathan"
-    ],
-    "search": [
-      "Rick and Morty Rixty Minutes interdimensional cable Shmlonathan",
-      "Rick and Morty Rixty Minutes interdimensional cable channel surfing"
-    ],
-    "avoid": [
-      "season 7",
-      "season 8"
-    ]
+    "design": "a deadpan alien sitcom character, monotone nasal voice, dry and awkward"
   },
   "lilbits": {
     "show": "rick-and-morty",

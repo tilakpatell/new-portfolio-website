@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { CONTROLS_KEY, readControls } from '../components/universe/controls';
@@ -40,7 +40,10 @@ import { useEarn } from '../components/universe/useEarn';
 import { createCarry, createPayLedger } from '../components/universe/earnRules';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
-import { openGuide } from '../lib/palette';
+import { toggleGuide } from '../lib/palette';
+import { Menu } from '../runtime/hud';
+import { wayOut } from '../components/worlds/worlds';
+import GuideCue from '../components/guide/GuideCue';
 import { EMOTES, wheelAngle } from '../lib/emote';
 import '../components/universe/universe.css';
 import '../components/galaxy/galaxy.css';
@@ -66,6 +69,7 @@ const readBests = () => {
 // on it, what E does, who's talking, what you've just found and what it is.
 export default function GalaxySurface() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   // come down from space, flown (the galaxy's page handed its world over to
   // this one before the route changed): the air's glow going as you come out of it
   const [entry] = useState(() => runtime().current?.module === surfaceModule);
@@ -455,7 +459,8 @@ export default function GalaxySurface() {
     setList(false);
   };
 
-  // H (or ?, the site's own key) for the controls, in the site's guide; Q
+  // H (or ?, the site's own key) opens the controls, in the site's guide,
+  // and shuts them again (as Invincible's H does); Q
   // for the list of things to do, Escape shuts it; with the emote wheel
   // open (B held), 1 to 5 strike one
   useEffect(() => {
@@ -466,7 +471,7 @@ export default function GalaxySurface() {
         view.current?.input?.('emote', Number(e.key) - 1);
         return;
       }
-      if (e.key === 'h' || e.key === 'H') openGuide();
+      if (e.key === 'h' || e.key === 'H') toggleGuide();
       if (e.key === 'q' || e.key === 'Q') setList((l) => !l);
       if (e.key === 'Escape') setList(false);
     };
@@ -554,7 +559,13 @@ export default function GalaxySurface() {
       )}
       {list && (
         <div className="surface-list" role="dialog" aria-label="Things to do">
-          <p className="surface-list-title">Things to do on {sys.name}</p>
+          {/* (a way to shut it under the pointer and the thumb, beside Q and Esc) */}
+          <div className="surface-list-head">
+            <p className="surface-list-title">Things to do on {sys.name}</p>
+            <button type="button" className="btn btn-ghost btn-sm surface-list-close" onClick={() => setList(false)}>
+              Close
+            </button>
+          </div>
           <ul>
             {site.quests.map((q) => (
               <li key={q.id} data-done={done.includes(q.id) ? '' : undefined}>
@@ -664,15 +675,18 @@ export default function GalaxySurface() {
         <div className="surface-title" aria-hidden="true">
           <p className="surface-title-world">{sys.name}</p>
           <p className="surface-title-place">{site.place}</p>
-          <p className="surface-title-line">{site.line}</p>
+          <p className="surface-title-line">
+            {site.line}
+            <GuideCue touch={coarse} />
+          </p>
           <p className="surface-title-skip">Any key to skip</p>
         </div>
       )}
 
+      {/* the corner: who you play as, the way back up, and the world's one
+          Menu (the list, the controls in the site's guide, the way out of
+          the world); the site's own "?" stays the one button for the guide */}
       <div className="surface-corner">
-        <button type="button" className="surface-help-btn" onClick={openGuide} aria-keyshortcuts="H">
-          Controls
-        </button>
         <button type="button" className="surface-help-btn" onClick={() => setPicking((p) => !p)} aria-expanded={picking} aria-haspopup="dialog" aria-label={`Loadout: ${heroById(hero.id)?.name ?? heroSpec(hero).name}`} title="Who you play as, and what's in your hand">
           <span className="surface-help-k" aria-hidden="true">
             Loadout
@@ -682,6 +696,7 @@ export default function GalaxySurface() {
         <button type="button" className="surface-help-btn" onClick={takeOff}>
           Back to orbit
         </button>
+        <Menu className="surface-menu" todo={site.quests.length > 0 ? { onOpen: () => setList(true), done: done.length, total: site.quests.length } : null} way={wayOut(pathname)} />
         <ModelCredits where="galaxy-surface" only={kinds} className="surface-credits-corner" />
       </div>
       {picking && <HeroPanel hero={hero} onChange={pickHero} onClose={() => setPicking(false)} />}

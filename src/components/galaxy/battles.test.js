@@ -1,5 +1,9 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { createBattle } from '../universe/battle';
+import { createBattleScene } from '../universe/battleScene';
+import { createDirector } from '../universe/battleDirector';
+import { planFor } from '../universe/battlePlan';
 import { FIGHTERS, SUBSYSTEMS } from '../universe/wars';
 import { GALAXY_KINDS } from './fleet';
 import { MODELS, STAND_IN } from './models';
@@ -205,6 +209,79 @@ describe('layBattle', () => {
     expect(block.runners).toMatchObject({ team: 0 });
     expect(layBattle(systemById('scarif'), fake('scarif', 'rebel')).runners).toBeNull();
   });
+  it('routes an evacuation’s and a blockade’s runners through the fight: most of the way inside it, and past the line they have to get by', () => {
+    // (they ran beside it before: a blockade's from its own flagship to the
+    // planet without crossing the other line, an evacuation's mostly out of
+    // the fighters' reach, so they all got away untouched)
+    const inside = (route, C, r) => {
+      let all = 0;
+      let within = 0;
+      for (let i = 1; i < route.length; i++)
+        for (let k = 0; k < 50; k++) {
+          const p = route[i - 1].map((x, j) => x + (route[i][j] - x) * ((k + 0.5) / 50));
+          const d = Math.hypot(...route[i].map((x, j) => x - route[i - 1][j])) / 50;
+          all += d;
+          if (Math.hypot(p[0] - C[0], p[1] - C[1], p[2] - C[2]) < r) within += d;
+        }
+      return within / all;
+    };
+    // how near the route comes to the segment of the enemy's line of capital ships
+    const nearLine = (route, caps) => {
+      let best = Infinity;
+      for (const cap of caps)
+        for (let i = 1; i < route.length; i++)
+          for (let k = 0; k <= 100; k++) {
+            const p = route[i - 1].map((x, j) => x + (route[i][j] - x) * (k / 100));
+            best = Math.min(best, Math.hypot(p[0] - cap.pos.x, p[1] - cap.pos.y, p[2] - cap.pos.z) - cap.size * 0.3);
+          }
+      return best;
+    };
+    let n = 0;
+    for (const war of WAR_IDS)
+      for (const id of WAR_SYSTEMS.filter((x) => ['evacuation', 'blockade'].includes(kindFor(x)))) {
+        const { liberator, raider } = WARS[war];
+        for (const [att, def] of [
+          [liberator, raider],
+          [raider, liberator],
+        ]) {
+          const o = layBattle(systemById(id), fake(id, att, def, 5, war));
+          const route = o.runners.route;
+          expect(route.length, `${war} ${id}`).toBeGreaterThanOrEqual(3);
+          expect(route[0]).toEqual(o.runners.from);
+          expect(route.at(-1)).toEqual(o.runners.to);
+          expect(inside(route, o.at, o.radius), `${war} ${id} ${att}`).toBeGreaterThanOrEqual(0.6);
+          const b = createBattle({ ...o, perSide: 0, runners: null });
+          const enemy = b.capitals.filter((c) => c.team !== o.runners.team);
+          expect(nearLine(route, enemy), `${war} ${id} ${att}`).toBeLessThan(25);
+          n += 1;
+        }
+      }
+    expect(n).toBeGreaterThan(10);
+  });
+  it('marks the runners of a battle at Bespin and at Lothal, once the first of them is off', () => {
+    const stub = () => ({ slot: (kind, size) => ({ kind, size, holder: new THREE.Group(), ready: true }), want() {}, drop() {}, update() {} });
+    for (const [id, att] of [
+      ['bespin', 'rebel'],
+      ['lothal', 'empire'],
+    ]) {
+      const laid = layBattle(systemById(id), fake(id, att));
+      const plan = planFor({ id: `c0.gcw.${id}.3`, kind: laid.kind, attacker: laid.attacker, runners: laid.runners });
+      const d = createDirector({ plan, seed: plan.id });
+      const t = plan.runners.startAt + 5;
+      const b = createBattle({ ...laid, perSide: 0, plan, director: { state: () => d.state(t, () => 0) } });
+      b.setYou(0);
+      const parent = new THREE.Group();
+      const draw = createBattleScene(parent, { models: stub(), small: true });
+      draw.show(b, laid.war);
+      const events = b.update(1 / 30, null);
+      draw.update(1 / 30, 1, new THREE.PerspectiveCamera(), new THREE.Vector3(), events, 0);
+      const r = b.runners.find((x) => x.alive);
+      expect(r, id).toBeTruthy();
+      const marks = parent.children.filter((o) => o.isSprite && o.renderOrder === 10);
+      expect(marks.some((m) => m.position.distanceTo(new THREE.Vector3(r.seen.x, r.seen.y, r.seen.z)) < 1e-6), id).toBe(true);
+      draw.dispose();
+    }
+  });
   it('an ambush is a smaller fight: one escort a side, more fighters', () => {
     const o = layBattle(systemById('tatooine'), fake('tatooine', 'rebel', 'hutt'), { tier: 'mid' });
     for (const s of o.war.sides) expect(s.capitals.length).toBe(2);
@@ -236,6 +313,9 @@ describe('layBattle', () => {
             }
         }
       }
+  });
+  it('fights a galaxy battle to its clock: no ticket end (tickets: false)', () => {
+    for (const id of ['yavin', 'hoth', 'naboo', 'mandalore']) expect(layBattle(systemById(id), fake(id)).tickets, id).toBe(false);
   });
   it('sizes the battle to its ships, and gives it the shared clock', () => {
     const o = layBattle(systemById('endor'), { ...fake('endor'), start: 1000, fightEnd: 601000 }, { now: 61000 });

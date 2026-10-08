@@ -36,6 +36,7 @@ export const GUIDES = {
   '/dot-matrix/64': { title: 'Super Mario 64 on the N64', nudge: true },
   '/dot-matrix/minecraft': { title: 'Minecraft', nudge: true },
   '/earth': { title: 'Earth', nudge: true },
+  '/universe/expanse': { title: 'A planet of the Expanse', nudge: true },
   '/music': { title: 'The music room', nudge: true },
 };
 
@@ -43,6 +44,7 @@ export const GUIDES = {
 // every place on the map the universe, every Rick and Morty planet landed on
 // from the map one of its own (not C-137's, and not its street's basics).
 const RULES = [
+  [/^\/universe\/expanse\/[^/]+$/, '/universe/expanse'],
   [/^\/(universe(\/.*)?)?$/, '/universe'],
   [/^\/experience\/[^/]+$/, '/experience'],
   [/^\/projects\/[^/]+$/, '/project'],

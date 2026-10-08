@@ -1307,8 +1307,8 @@ export async function create(canvas, ctx) {
       const f = forward(state.ship.heading);
       input.overdrive = state.space.overdriveAt(state.ship.x, state.ship.y, state.ship.z, [f[0], 0, f[1]]);
     }
-    // (under the Interdictor's hold the sublight drive stays shut: the boost is the boost)
-    const { ship: stepped, events } = step(state.ship, state.held ? { ...input, interdicted: true } : input, dt, state.space.solids, state.space);
+    // (under the Interdictor's hold, or a battle's gravity wells still up, the sublight drive stays shut: the boost is the boost)
+    const { ship: stepped, events } = step(state.ship, state.held || war?.interdicted ? { ...input, interdicted: true } : input, dt, state.space.solids, state.space);
     let ship = stepped;
     // the tractor beam (Alderaan's Death Star): drawn in, and harder the nearer
     const tr = state.world.tractor;
@@ -1539,7 +1539,7 @@ export async function create(canvas, ctx) {
     let busy = pieces ? pieces.update(dt, t, camera) : false;
     if (interdictor) busy = interdictor.update(dt, t) || busy;
     if (war) {
-      const w = war.update(dt, t, camera, live);
+      const w = war.update(dt, t, camera, live, { shield: state.shield, down: Boolean(state.crash) });
       if (w.hurt && live) hurt(w.hurt);
       // (a set piece's hold on the ship: kept inside a tunnel, slowed to fly it, caught in a reactor's blast)
       if (live && state.ship && !state.crash) {
@@ -2340,6 +2340,8 @@ export async function create(canvas, ctx) {
       if (!alive() || disposed) return;
       await prepareScene({ renderer, roots: [scene], scene, camera, target: post.target, render: () => post.render(64, 64), onProgress, alive: () => alive() && !disposed });
     },
+    // the war's battle here as warfront.js has it (WarHud.jsx, BattleEnd.jsx), or null
+    warInfo: () => war?.info ?? null,
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
