@@ -39,7 +39,7 @@
 //   border system its doctrine weighs highest (sides.js's DOCTRINE), and
 //   comes from the neighbour of it it holds best. An attacked system's hold
 //   falls at the attack's rate; at 0 it's the attacker's, held to the end it
-//   gets GCW.repelled back.
+//   gets GCW.repelled back. None runs on past the campaign's end.
 // - Reactions: a side that's lost a system goes back for it (the raider
 //   attacks it at once, the liberator makes it its first front); one that's
 //   lost its capital is shaken a while; a side with few systems fights
@@ -280,7 +280,8 @@ function play(run, s, k, f) {
     const rate = +(within(raid ? GCW.raidRate : GCW.attackRate, rand()) * might[by]).toFixed(1);
     const sys = forced ?? targetOf({ by, border, owner, control, rate, hours: span / 3600e3, capitals: w.capitals, lastHit: s.lastHit, k, rand, holders: s.holders, holdsOut });
     const origin = originOf(owner, control, sys, by);
-    s.attacks.push({ sys, by, from: at(k), until: at(k) + span, rate, origin, counter: Boolean(forced) });
+    // (one launched near the campaign's end is over with it: nothing's left to hold out for)
+    s.attacks.push({ sys, by, from: at(k), until: Math.min(at(k) + span, at(STEPS)), rate, origin, counter: Boolean(forced) });
     event({ type: raid ? 'raid' : 'attack', sys, by, holder: owner[sys], origin, counter: Boolean(forced) });
     s.lastHit[sys] = k;
     if (forced) delete s.counter[by];

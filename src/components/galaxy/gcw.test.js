@@ -182,6 +182,22 @@ describe('history', () => {
       expect(a.from).toBe(atStep(0, GCW.strike));
     }
   });
+  it('ends every attack and raid by the campaign’s end', () => {
+    // (one launched in the campaign's last hour and a half once ran on past it,
+    // so the card gave longer to hold out than the campaign had left)
+    let late = 0;
+    for (const war of WAR_IDS)
+      for (let n = 0; n < 6; n++) {
+        const end = at(n + 1, 0);
+        const run = campaignRun(war, n, none);
+        for (let k = 330; k < GCW.campaign / GCW.step; k++)
+          for (const a of runAt(run, atStep(n, k, 60e3)).attacks) {
+            expect(a.until, `${war} c${n} ${k} ${a.sys}`).toBeLessThanOrEqual(end);
+            if (a.from > end - (a.by === 'hutt' ? GCW.raidFor : GCW.attackFor)) late += 1;
+          }
+      }
+    expect(late).toBeGreaterThan(0);
+  });
   it('sends the raider against a border system every so often, for GCW.attackFor', () => {
     for (const war of WAR_IDS) {
       const { raider } = WARS[war];
