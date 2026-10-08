@@ -28,6 +28,23 @@ const setup = (opts = {}) => {
 };
 
 describe('frameGuard', () => {
+  it('draws what three draws for the scene from outside it (its background box) as it is, and never holds it', async () => {
+    const { r, g, scene } = setup({ linkAfter: 1 });
+    // (three's background: a mesh of its own, drawn in the scene's frame but in no scene)
+    const sky = new THREE.ShaderMaterial();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(), sky);
+    const walk = scene.traverseVisible.bind(scene);
+    scene.traverseVisible = (fn) => {
+      fn(box);
+      walk(fn);
+    };
+    for (let i = 0; i < 3; i++) {
+      await frames(r, scene);
+      expect(r.draws).toContain(sky);
+    }
+    expect(g.pending()).toBe(0);
+  });
+
   it('leaves a never-compiled material out of the frame, and draws it once it has linked', async () => {
     const { r, scene } = setup({ linkAfter: 1 });
     const m = new THREE.MeshStandardMaterial();

@@ -293,7 +293,12 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
           }
         }
       } else if (s === undefined && knownLinked(props(material).currentProgram) && picturesUp(material)) ready(material);
-      else {
+      else if (s === undefined && (!object || !inScene(object, scn))) {
+        // three's own drawing for the scene, from outside it (its background
+        // box or plane): drawn as it is, as anything outside a scene is. Held,
+        // it was dropped behind the frame as gone from the world, and held
+        // again the next, so a world's sky never showed.
+      } else {
         if (s === undefined) hold(material, object);
         return undefined;
       }
