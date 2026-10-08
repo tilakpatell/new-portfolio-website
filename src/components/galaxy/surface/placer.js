@@ -46,17 +46,23 @@ import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
 import { seatY } from './seat';
 import { sizeFor } from '../../universe/landings/models';
+import { dropTransmission } from '../../../lib/three/glass';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again
 
 const getLoader = () => gltfLoader();
 const cache = new Map(); // url → promise of the gltf (shared by every world, while the page is up)
+// (every model a world has comes through here: things put and scattered,
+// rides, people, their glass made plain see-through glass once, as it's
+// parsed: lib/three/glass. A shuttle's canopy, a ramp's lamp or a pilot's
+// visor with transmission had three draw the whole world twice a frame.)
 export function loadGlb(url) {
   if (!cache.has(url))
     cache.set(
       url,
       getLoader()
         .loadAsync(url)
+        .then((gltf) => (dropTransmission(gltf.scene), gltf))
         .catch(() => {
           cache.delete(url);
           return null;
