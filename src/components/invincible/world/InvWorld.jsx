@@ -434,7 +434,7 @@ function World({ gl, setGl, thinkMark }) {
       // (the last episode: Dad's points, for ./companions.js to lead him through)
       if (id === 'ep7') s.mission.spar = m.steps.filter((q) => q.type === 'escort').map((q) => q.to);
       s.missionFoes = false;
-      sfx('drum');
+      sfx('stinger');
       speak(m.intro);
       setup([stepOf(s.mission)].filter(Boolean));
       openCard({ kind: 'start', id });
@@ -462,7 +462,7 @@ function World({ gl, setGl, thinkMark }) {
     const before = s.mission;
     feed({ type: 'use', id: 'photo', face: s.h.face });
     if (s.mission === before) return false;
-    sfx('knock');
+    sfx('shutter');
     setShutter(Math.random());
     return true;
   }, [feed]);
@@ -876,7 +876,7 @@ function World({ gl, setGl, thinkMark }) {
       if (r.call) {
         const m = missionOf(r.call);
         s.call = { id: r.call, until: s.t + RADIO.offer };
-        sfx('beeps');
+        sfx('crackle');
         setRadio({ id: r.call, who: m.intro[0][0], text: m.intro[0][1] });
       }
     } else if (s.t > s.call.until || s.mission) {

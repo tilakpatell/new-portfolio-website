@@ -250,6 +250,43 @@ Every band is in range, and Mark passes in spawn, streetnight and porch. He miss
 - Shots: `chase` (the car pulls out from under him, 26 m behind it), `photo` (the hall's frame from the plaza's corner), `everace` (the first gate over a downtown crossing); each driven to done.
 - Not here: Eve's ghost on the line at the best time, and Allen flying the race home (the gates are there; nobody races); the sounds the spec names (a stinger, the crackle, a shutter: `beeps` and `knock` stand in) and the docs' shots (Task 11).
 
+### Task 11: feel, docs and the hand-off (2026-10-07)
+
+- Sounds (`src/lib/sfx.js`): `stinger` (two low brass notes over a timpani thud) as an episode starts; `crackle` (bursts of static, then a tone) before the radio's call; `shutter` for a photo. The end keeps `fanfare`.
+- Feel (`scene.js`): a punch that lands stops the game 70 ms (a Mauler's knock shakes the camera harder), a knock-out likewise; neither under reduced motion (`calm`), which already kept the camera still and skips the cards' swing.
+- Docs: `docs/architecture.md`'s Invincible section names part 2's modules; the README's row names the season and the radio. Shots in `docs/superpowers/shots/2026-10-07-inv-*.webp`: the street at noon and at night, and each mission as the check script frames it; the cast sheet is `docs/gen3d/invincible/cast-sheet.webp`.
+
+#### The shots and their metrics
+
+`OUT=/tmp/shots node scripts/inv-world-check.mjs --metrics street streetnight bank chase seismic maulers gdasiege photo everace`, this task's tree, low tier, 960×540; `band` and `mark` as Task 1 defines them (targets: band 0.30–0.65 at noon, 0.12–0.35 at night; mark ≥ 0.18). The stubs' "before" numbers are in Task 1's table above.
+
+| Shot | File | What it frames | band | mark | tris |
+|---|---|---|---|---|---|
+| `street` | `2026-10-07-inv-street.webp` | The street south of the plaza at noon | 0.413 | 0.162 | 1.48 M |
+| `streetnight` | `2026-10-07-inv-streetnight.webp` | The same at night | 0.214 | 0.192 | 1.38 M |
+| `bank` | `2026-10-07-inv-bank.webp` | Episode 2 from the pavement: the bank, its marker over the door, “Get to the bank · 20 m” | 0.251 | 0.015 | 1.49 M |
+| `chase` | `2026-10-07-inv-chase.webp` | The radio's car on the grid, 27 m ahead under its marker | 0.249 | 0.005 | 1.54 M |
+| `seismic` | `2026-10-07-inv-seismic.webp` | Episode 3 over the school roof, a student at its edge | 0.489 | 0.069 | 1.61 M |
+| `maulers` | `2026-10-07-inv-maulers.webp` | Episode 2 at the truck (this run's frame caught the step before: the truck to stop) | 0.338 | 0.020 | 1.71 M |
+| `gdasiege` | `2026-10-07-inv-gdasiege.webp` | Episode 6 from over the pad: the hangar, its marker, “hangar 100% · 90 s” | 0.470 | 0.021 | 1.24 M |
+| `photo` | `2026-10-07-inv-photo.webp` | The hall's frame from the plaza's corner | 0.550 | 0.116 | 1.80 M |
+| `everace` | `2026-10-07-inv-everace.webp` | Eve's first gate over a downtown crossing | 0.469 | 0.125 | 1.63 M |
+
+The bands are in range (`bank` and `chase` sit just under 0.30, streets between glass towers). `mark` is above the target only at night and nearly at it at noon on the street; in the mission frames he's small against lit streets, as Task 2's table found for shots in the air. Everything stays under the 1.5 M triangle budget except `maulers`, `seismic`, `everace` and `photo`, which carry the truck, the Maulers or the plaza's crowd at once; the `photo` frame is the heaviest at 1.80 M.
+
+## Part 2, closed (2026-10-07)
+
+Eleven tasks, one pull request each, all merged: the sweep and the metrics (Task 1), seeing Mark and the city (2), the HUD (3), the cast (4), the crowd's brains (5), Eve and Dad (6, [#549](https://github.com/tilakpatell/new-portfolio-website/pull/549)), the villains (7, [#555](https://github.com/tilakpatell/new-portfolio-website/pull/555)), the missions' rules (8, [#571](https://github.com/tilakpatell/new-portfolio-website/pull/571)), the missions in the world (9, [#578](https://github.com/tilakpatell/new-portfolio-website/pull/578)), the radio (10, [#582](https://github.com/tilakpatell/new-portfolio-website/pull/582)) and this one.
+
+- Credits spent on Meshy: about 1,350 over the two accounts (328 for the first cast, about 1,020 for the sharper one with its clips; see the cast sections above). Nothing was bought on Sketchfab.
+- Tests: `npx vitest run src/components/invincible` runs 192 in 14 files (109 after Task 1).
+- Left for a part 3:
+  - Eve's ghost on the line at her best time, and Allen flying the race home (the gates are drawn; nobody races).
+  - The Flaxans' portal closes as the second wave goes down, before episode 5's last step; it should stay open until he flies through it.
+  - The bank model's own lettering reads GDA.
+  - Interiors, the online ghosts' rooms, and the runtime move (the plan's Task 11 notes), as the earlier list below has them.
+  - Phone frame rate on hardware.
+
 ## How to check
 
 - `npx vitest run src/components/invincible/world`: map, flight, orbit, quests, traffic, hud, brains, companions and foes (51 tests at the space merge, 89 after Task 1, 168 after Task 7, 186 after Task 8, 189 after Task 9, 192 after Task 10).
