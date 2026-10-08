@@ -66,6 +66,7 @@ export default function Guide() {
       }
     };
     const onOpen = (e) => {
+      if (e.detail?.toggle) return setOpen((o) => !o);
       setTab(e.detail?.tab ?? null);
       setOpen(true);
     };

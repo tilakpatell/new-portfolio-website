@@ -17,7 +17,9 @@
 //
 // createQuality({ tier, detail, pace, floorAfter, dpr, sharp }) → { tier, budget,
 //   level, scale, ratio, ratioUnder(cap), on(fn) → undo, frame(now) → the
-//   new level or null, reset(), retune(level), setSharpness(k) }
+//   new level or null, reset(), retune(level), setSharpness(k), setLevel(step) }
+// (`setLevel`: a calibrated step of the pace, held as its ceiling:
+// lib/three/calibrate)
 
 import { BUDGETS, device, sharpness } from '../lib/device';
 import { STEPS, createPace } from '../lib/three/pace';
@@ -87,6 +89,13 @@ export function createQuality({ tier, detail, pace = createPace(), floorAfter = 
         }
       }
       return null;
+    },
+    setLevel(l) {
+      pace.set?.(l);
+      level = pace.level ?? l;
+      scale = pace.scale ?? STEPS[level];
+      atLastSince = null;
+      tell(level);
     },
     reset() {
       pace.reset();
