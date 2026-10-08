@@ -4,15 +4,12 @@
 // draws its own cap is one more way to say "press this".
 //
 // The health context lists only scripts, so this walks src/ for .css itself.
-// src/runtime/hud/hud.css is left out until the world HUD kit's own cap rule
-// is folded into the house one (spec section 8, C1); the metric has no budget
-// until both have landed.
+// The world HUD kit's cap lives in src/index.css beside the house one.
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { metric } from './context.mjs';
 
 const HOUSE = 'src/index.css';
-const LATER = new Set(['src/runtime/hud/hud.css']);
 const SKIP = new Set(['node_modules', 'dist', '.git']);
 
 async function cssUnder(dir, out = []) {
@@ -42,7 +39,7 @@ export default async function kbdStyles(ctx) {
   let total = 0;
   for (const p of (await cssUnder(join(ctx.root, 'src'))).sort()) {
     const file = ctx.rel(p);
-    if (file === HOUSE || LATER.has(file)) continue;
+    if (file === HOUSE) continue;
     const n = capRules(await ctx.read(p));
     if (!n) continue;
     total += n;
