@@ -24,7 +24,7 @@
 //
 // groundWorld({ renderer, scene, floor, area, sun, casters, skip, movers,
 //   shade, bounce, height, tier, matcap, lights, auto, follow })
-//   → { bake(), rebake(sun), update(), track(object, size, opts),
+//   → { bake({ alive }), rebake(sun), update(), track(object, size, opts),
 //       untrack(object), blobs, mask, stats, dispose() }
 //
 // `floor` the meshes that are the floor; `area` { x0, z0, w, d } the part of
@@ -284,15 +284,24 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
     return { traverse: (fn) => list.forEach(fn) };
   };
 
-  const bake = () => {
+  // (`alive`: a caller's own reason to stop, a world's prepare that was left
+  // or given up on: the bake stops at its next chunk, and the first frame
+  // bakes it afresh)
+  const bake = ({ alive = null } = {}) => {
     if (job) return job;
     if (disposed) return Promise.resolve(false);
-    abort = { aborted: false };
+    const own = { aborted: false };
+    abort = own;
+    const left = () => Boolean(alive && !alive());
     stats.started = true;
     stats.startedAt = Math.round(performance.now());
     bakedDir = sunDirection(sun, new THREE.Vector3());
     const preset = BAKE_TIERS[tier] ?? BAKE_TIERS.mid;
-    const signal = abort;
+    const signal = {
+      get aborted() {
+        return own.aborted || left();
+      },
+    };
     // (the key from what the bake sees: what moves and what's skipped are
     // left out of it as they are of the bake, so a walker somewhere else,
     // or the weather, doesn't make a mask kept from an earlier visit unfit)
@@ -322,7 +331,11 @@ export function groundWorld({ renderer, scene, floor = [], area = null, sun = nu
         const ok = kept && kept.width === preset.size && kept.height === preset.size && kept.data?.length === preset.size * preset.size * 4;
         return ok ? fromKept(kept) : fresh();
       })
-      .then((result) => (result ? land(result) : false))
+      .then((result) => {
+        if (result) return land(result);
+        if (left() && !own.aborted && !disposed) stats.started = false;
+        return false;
+      })
       .catch(() => false)
       .finally(() => {
         job = null;

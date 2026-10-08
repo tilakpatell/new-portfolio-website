@@ -3157,7 +3157,7 @@ export async function create(canvas, ctx) {
         // (the sun where the frames put it, so the bake's sun is theirs)
         sun.target.position.set(0, 0, 0);
         sun.position.copy(sunDir).multiplyScalar(300);
-        await lit.bake();
+        await lit.bake({ alive: going });
         if (!going()) return;
         say(BAKE, 'bake');
       }

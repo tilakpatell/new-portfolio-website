@@ -29,8 +29,9 @@ function fnv(str) {
 const r = (n, step) => Math.round(n / step) * step;
 
 // What stands in the way of the light: each mesh's whole world matrix (to a
-// hundredth, so a turn or a scale counts as well as a move), its vertex count
-// and its box, so anything added, swapped, moved or reshaped gives another key.
+// hundredth, so a turn or a scale counts as well as a move), its vertex count,
+// its box and whether it's shown, so anything added, swapped, moved, reshaped,
+// hidden or shown gives another key.
 function describeCasters(casters) {
   const parts = [];
   for (const root of casters ?? []) {
@@ -43,7 +44,10 @@ function describeCasters(casters) {
       const b = g.boundingBox;
       const box = b ? [b.min.x, b.min.y, b.min.z, b.max.x, b.max.y, b.max.z].map((v) => r(v, 0.01).toFixed(2)).join(',') : '';
       const m = o.matrixWorld?.elements ? Array.from(o.matrixWorld.elements, (v) => r(v, 0.01).toFixed(2)).join(',') : '';
-      parts.push(`${n}[${box}]@${m}`);
+      // (hidden, it isn't drawn into the bake: one shown later is another mask)
+      let shown = true;
+      for (let x = o; x && shown; x = x.parent) shown = x.visible !== false;
+      parts.push(`${n}[${box}]@${m}${shown ? '' : ':hidden'}`);
     });
   }
   return parts;
