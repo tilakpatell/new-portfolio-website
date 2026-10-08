@@ -90,7 +90,7 @@ Owns: `src/lib/three/palette.js`, `src/lib/three/bloom.js`, `src/lib/stage3d.js`
 **Interfaces (produces):** `artMix({ root }) → { value, items: [{ folder, scan: file, ramp: file }] }`: for each folder in `LOOK_FOLDERS`, the closure (`src/runtime/shadingClosure.js`’s `closure`) from its scene files; a folder counts when it reaches both a ramp (`MeshToonMaterial` or `gradientMap` in a non-test source) and a scan (`lib/three/core`, `lib/cc0` or `lib/hdri` in an import).
 
 - [ ] **Step 1: Write the failing test** on a fixture tree under `scripts/health/fixtures/art-mix/`: one folder with both counts, one with a scan only doesn’t.
-- [ ] **Step 2: Run** `node --test scripts/health/art-mix.test.mjs` → FAIL.
+- [ ] **Step 2: Run** `npx vitest run scripts/health/art-mix.test.mjs` → FAIL (the health measures’ tests run under Vitest, as `scripts/health.test.mjs` does). `lib/three/frameGuard.js` names `gradientMap` to guard a material’s textures and is exempt; `lib/hdri` counts only where `loadPbr` is imported (its skies are light, not a scan).
 - [ ] **Step 3: Implement**; register the metric as the others are; budget it at its first value (`node scripts/health.mjs --json`).
 - [ ] **Step 4: Run** `node scripts/health.mjs --check --skip build` → green.
 - [ ] **Step 5: Commit** `art-mix: a world that wears a scan and a toon ramp at once, counted and ratcheted`. Open the pull request; fill the handoff row.
