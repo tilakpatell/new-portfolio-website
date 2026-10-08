@@ -519,7 +519,7 @@ function hunt(crew, p, threat) {
   if (threat?.visible && threat.confidence >= SURE) return engage(crew, p, threat);
   const level = crew.world.alarm ? levelOf(crew.world.alarm, st.section) : null;
   if (UP.has(level)) st.raised = true;
-  const over = st.raised ? level !== 'lockdown' && level !== 'alert' : searchOf(crew.fights, st.section).done(p.id);
+  const over = st.raised ? !UP.has(level) : searchOf(crew.fights, st.section).done(p.id);
   if (over) {
     st.leaveAt ??= crew.clock + 0.4 + 2.2 * crew.rand();
     if (crew.clock >= st.leaveAt) return standDown(crew, p, st.section);
