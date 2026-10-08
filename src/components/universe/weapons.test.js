@@ -19,6 +19,10 @@ describe('weapons', () => {
     }
   });
 
+  it('every ordnance weapon is heavy, and nothing else is (the launch, the rack and its sound key on it)', () => {
+    for (const [id, w] of Object.entries(WEAPONS)) expect(Boolean(w.heavy), id).toBe(w.line === 'ordnance');
+  });
+
   it('an unknown code is the blaster', () => {
     expect(byCode(40)).toBe('blaster');
     expect(byCode(-1)).toBe('blaster');

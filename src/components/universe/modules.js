@@ -387,7 +387,7 @@ export function buildModules(kind, loadout = {}, engines = [], { fresh = [], mou
   begin('secondary');
   if (loadout.secondary && loadout.secondary !== STOCK) gunAt(looks('secondary'), [at.gun[0] * 1.6, at.gun[1] - 0.012, at.gun[2] + 0.03]);
   begin('ordnance');
-  if (loadout.ordnance && loadout.ordnance !== STOCK) gunAt(looks('ordnance'), [at.belly[0] + 0.045, at.belly[1] - 0.006, at.belly[2] + 0.03]);
+  if (loadout.ordnance && loadout.ordnance !== STOCK) gunAt(looks('ordnance'), [at.belly[0], at.belly[1] - 0.026, at.belly[2] + 0.05]); // (centred, slung below where a fusion primary hangs)
 
   // Shields
   begin('shields');
