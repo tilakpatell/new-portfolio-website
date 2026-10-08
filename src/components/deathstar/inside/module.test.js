@@ -9,6 +9,7 @@ import { keyTokens } from '../../guide/keys';
 import { briefKeyFor } from '../../tour/brief';
 import { ACHIEVEMENTS } from '../../Achievements';
 import { SAVE } from './rules/save';
+import { objectiveOf } from './rules/game';
 import inside, { KEYS } from './module';
 
 const PATH = '/deathstar/inside';
@@ -18,7 +19,7 @@ const PATH = '/deathstar/inside';
 const { made } = vi.hoisted(() => ({ made: [] }));
 vi.mock('./scene/index.js', () => ({
   createScene: vi.fn((renderer, opts) => {
-    const s = { renderer, opts, scene: { name: 'station' }, camera: { name: 'eye' }, ready: Promise.resolve(), sync: vi.fn(), resize: vi.fn(), render: vi.fn(), dispose: vi.fn() };
+    const s = { renderer, opts, scene: { name: 'station' }, camera: { name: 'eye' }, ready: Promise.resolve(), sync: vi.fn(), hear: vi.fn(), resize: vi.fn(), render: vi.fn(), dispose: vi.fn() };
     made.push(s);
     return s;
   }),
@@ -146,7 +147,8 @@ describe('aboard the Death Star, coming aboard', () => {
     const { rt, world } = await make();
     world.start({ station: 'ds1', side: 'rebel', hero: 'han', mode: 'story', fresh: true });
     world.step(1 / 60, snap());
-    expect(last(rt, 'ui')).toMatchObject({ mode: 'play', side: 'rebel', hero: 'han', play: 'story' });
+    // the story plays its own hero: the first Death Star’s Rebel story is Luke’s
+    expect(last(rt, 'ui')).toMatchObject({ mode: 'play', side: 'rebel', hero: 'luke', play: 'story' });
     expect(last(rt, 'ui').objective).toBeTruthy();
     expect(last(rt, 'hud').room).toBe('hold');
     expect(rt.emitted).toContainEqual({ type: 'achievement', id: 'ds-aboard' });
@@ -164,9 +166,63 @@ describe('aboard the Death Star, coming aboard', () => {
   });
 });
 
+describe('aboard the Death Star, what the page is told of the game', () => {
+  it('shows the story’s step as the objective, and none in free roam', async () => {
+    const story = await make({ side: 'rebel', mode: 'story' });
+    story.world.step(1 / 60, snap());
+    expect(last(story.rt, 'ui').objective).toBe(objectiveOf(story.world.game));
+    expect(last(story.rt, 'ui').objective).toBeTruthy();
+    const roam = await make({ side: 'imperial', mode: 'roam' });
+    roam.world.step(1 / 60, snap());
+    expect(last(roam.rt, 'ui').objective).toBeNull();
+  });
+
+  it('tells the HUD your health out of its most, the section’s security and, in armour, the doubt', async () => {
+    const { rt, world } = await make({ side: 'imperial', mode: 'roam' });
+    world.step(1 / 60, snap());
+    expect(last(rt, 'hud')).toMatchObject({ hp: 100, hpMax: 100, alert: 'calm', doubt: null, blade: null, roomName: 'Docking Bay 327' });
+    const rebel = await make({ side: 'rebel', mode: 'roam' });
+    Object.assign(rebel.world.game.you, { armour: true, helmet: true });
+    rebel.world.step(1 / 60, snap());
+    expect(last(rebel.rt, 'hud').doubt).toBe(0);
+  });
+
+  it('shows a conversation with its speaker’s name, the line and the choices', async () => {
+    const { rt, world } = await make({ side: 'imperial', mode: 'roam' });
+    world.game.talk = { id: 'x', node: 'a', who: 'tarkin', say: 'You may fire when ready.', choices: ['Yes, sir', 'Leave'], end: false, npc: null };
+    world.step(1 / 60, snap());
+    expect(last(rt, 'ui').talk).toEqual({ who: 'Governor Tarkin', line: 'You may fire when ready.', choices: ['Yes, sir', 'Leave'] });
+    expect(last(rt, 'ui').prompt).toBeNull();
+  });
+
+  it('says the game’s lines as subtitles, passes on its achievements and hands the scene every event', async () => {
+    const { rt, world, scene } = await make({ side: 'imperial', mode: 'roam' });
+    world.step(1 / 60, snap());
+    world.game.events.push({ type: 'say', who: 'tarkin', name: 'Grand Moff Tarkin', text: 'Evacuate?' }, { type: 'achievement', id: 'ds-1138' });
+    world.step(1 / 30, snap());
+    expect(rt.emitted).toContainEqual({ type: 'say', who: 'Grand Moff Tarkin', text: 'Evacuate?' });
+    expect(rt.emitted).toContainEqual({ type: 'achievement', id: 'ds-1138' });
+    const heard = scene.hear.mock.calls.flatMap(([events]) => events);
+    expect(heard).toContainEqual(expect.objectContaining({ type: 'say', text: 'Evacuate?' }));
+  });
+
+  it('tells the page where a hit on you came from, as a turn from where you face', async () => {
+    const { rt, world } = await make({ side: 'imperial', mode: 'roam' });
+    world.step(1 / 60, snap());
+    const you = world.game.you;
+    you.yaw = 0;
+    // from straight behind: +z when you face −z
+    world.game.events.push({ type: 'hurt', amount: 10, from: { x: you.x, z: you.z + 5 } });
+    world.step(1 / 30, snap());
+    const hit = rt.emitted.filter((e) => e.type === 'hurt').at(-1);
+    expect(hit.amount).toBe(10);
+    expect(Math.abs(hit.angle)).toBeCloseTo(Math.PI);
+  });
+});
+
 describe('aboard the Death Star, walking', () => {
   it('walks you the way the camera faces, and the stick strafes across it', async () => {
-    const { world, scene } = await make({ side: 'imperial' });
+    const { world, scene } = await make({ side: 'imperial', mode: 'roam' });
     world.look(400, 0);
     world.step(1 / 60, snap());
     world.draw({ dt: 1 / 60, renderer: scene.renderer });
@@ -184,7 +240,7 @@ describe('aboard the Death Star, walking', () => {
   });
 
   it('runs at most four steps for a long frame', async () => {
-    const { world } = await make({ side: 'imperial' });
+    const { world } = await make({ side: 'imperial', mode: 'roam' });
     const you = world.game.you;
     const z = you.z;
     world.step(2, snap({ held: ['KeyW'] }));
@@ -204,7 +260,7 @@ describe('aboard the Death Star, walking', () => {
   });
 
   it('keeps the rooms you see, for the map', async () => {
-    const { rt, world } = await make({ side: 'imperial' });
+    const { rt, world } = await make({ side: 'imperial', mode: 'roam' });
     frames(world, 5, ['KeyW']);
     expect(last(rt, 'ui').map.seen).toContain('corr327');
     expect(rt.store.get(SAVE).ds1.seen).toContain('corr327');

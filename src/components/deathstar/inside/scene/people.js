@@ -11,23 +11,39 @@
 // black helmet, built here too, over the officer’s uniform.
 //
 // Only the tier’s count nearest the camera animate (24 high, 14 mid, 8
-// low); the rest hold their last pose, and anyone past 60 m or in a room
-// that isn’t drawn is hidden. A person is drawn between the game’s last
-// two steps, so they move smoothly at any frame rate. A body stays where it
-// fell for as long as the crew keeps it, until its room is freed.
+// low), a body still going down before anyone living; the rest stand
+// still. Every figure is posed the first time it is drawn, played on to
+// where what it is doing comes to rest (a body found dead lies there, not
+// falling as you look), and a still one is played on again whenever the
+// rules have it do something new (so a body killed with no turn at moving
+// lies on the deck, one that loses its turn mid-fall lands, and one whose
+// fall ran its course out of sight is seen lying when it comes back into
+// view). Figures are made only for people within 60 m in a room that
+// stands, nearest first and two a frame, so a crowd coming into view never
+// stalls a frame; anyone past 60 m or in a room that isn’t drawn is
+// hidden, and anyone whose room is freed is let go. A person is drawn
+// between the game’s last two steps, so they move smoothly at any frame
+// rate. A body stays where it fell for as long as the crew keeps it, until
+// its room is freed: hidden while the room stands undrawn (a door shut on
+// it), let go for good once the stream frees the room. One that fell where
+// no room stood is drawn lying there once its room is built.
 //
 //   LIVE → { ultra, high, mid, low }   how many people animate on each tier;  FAR: 60 m, past which nobody is drawn
 //   liveCount(tier) → n
 //   lodPick(items, at, { count, far }, out?) → Map<id, 'live' | 'still' | 'hidden'>   pure
-//     items: [{ id, x, y, z, settled?, shown? }]: settled, a body done falling; shown false, in a room not drawn
+//     items: [{ id, x, y, z, falling?, settled?, shown? }]: falling, a body still going down (live before
+//     anyone nearer); settled, a body done falling; shown false, in a room not drawn
 //   clipFor(person) → { clip, loop, raised }   pure: the figure’s clip for what the rules say it is doing
 //     (null: walking, running or standing on its gait), and whether its gun is up
 //   aimAngles(from, yaw, at) → { yaw, pitch }   pure: the turn (+ right) and tilt (+ up) from facing `yaw` to `at`
 //   createTrack() → { push(body, dt), at(alpha), speed() }   pure: a body between its last two steps;
 //     dt: the frame’s time since the last push
-//   createPeople(scene, kit, { tier, renderer }) → { sync(crew, alpha, cameraAt, shown?), muzzle(id, out), dispose() }
+//   createPeople(scene, kit, { tier, renderer, adopt }) → { sync(crew, alpha, cameraAt, rooms?), muzzle(id, out), dispose() }
+//     adopt(object): handed each figure and gun as it goes into the scene (the house look’s adopt)
 //     crew: { people: Map | [person] } (or the people themselves); alpha: how far the frame is from the
-//     last step to the next; cameraAt: { x, y, z }; shown(roomId) → bool, the rooms drawn (all, without it)
+//     last step to the next; cameraAt: { x, y, z }
+//     rooms: { shown(roomId), built(roomId), dt }: the rooms drawn and the rooms standing (the stream’s
+//       built, not yet freed; every room, without them), and the frame’s seconds (the clock’s, without it)
 //     muzzle(id, out) → out | null   where the person’s gun’s muzzle is, for a shot’s flare
 
 import * as THREE from 'three';
@@ -43,6 +59,8 @@ const STEP = 1 / 30; // the game’s step
 const JUMP = 3; // metres between two steps that are a ride or a teleport, not a stride
 const SETTLE = 1.5 * STEP; // seconds unmoved after which a body has stopped, not paused between steps
 const FALL = 2.5; // seconds a fall takes to play: after it a body needs no animating
+const LAND = { time: FALL, step: 0.25 }; // how far a still figure is played on to land what it was given, and in what steps
+const MAKE = 2; // figures made a frame at most
 const CHEST = 0.75; // of a person’s height, where a gun is held for aiming
 const HOVER = 1.45; // metres: the IT-O floats at a standing man’s eyes
 const DEEP = 1.0; // the compactor’s water over the floor the dianoga lies on (ds1.js)
@@ -67,10 +85,11 @@ export function lodPick(items, at, { count = LIVE.low, far = FAR } = {}, out = n
     const d = Math.hypot(p.x - at.x, p.y - at.y, p.z - at.z);
     if (p.shown === false || !(d <= far)) out.set(p.id, 'hidden');
     else if (p.settled) out.set(p.id, 'still');
-    else near.push([d, p.id]);
+    else near.push([p.falling ? 0 : 1, d, p.id]);
   }
-  near.sort((a, b) => a[0] - b[0]);
-  near.forEach(([, id], i) => out.set(id, i < count ? 'live' : 'still'));
+  // a body going down first, nearest first among each: a fall that loses its turn has to be cut short
+  near.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  near.forEach(([, , id], i) => out.set(id, i < count ? 'live' : 'still'));
   return out;
 }
 
@@ -227,8 +246,9 @@ const fallen = (k) => (k < 0.8 ? (k / 0.8) ** 2 : 1 - Math.sin(((k - 0.8) / 0.2)
 
 // What every figure built here does: falls (tipping over backwards about
 // its feet, unless it floats or swims) and gets up from a knockdown,
-// flinches, keeps its aim and the gun in its hand; `pose` moves its parts.
-function builtFigure(kind, tall, { object, body, hand = null, geos, tips = true, pose }) {
+// flinches, keeps its aim and the gun in its hand; `pose` moves its parts;
+// `owned`, what it frees when it goes (its geometry, a skeleton).
+function builtFigure(kind, tall, { object, body, hand = null, owned, tips = true, pose }) {
   object.name = `person-${kind}`;
   const s = { t: 0, phase: 0, go: 0, fall: 0, falling: false, hit: 0, yaw: 0, pitch: 0, raised: false };
   let gun = null;
@@ -263,7 +283,7 @@ function builtFigure(kind, tall, { object, body, hand = null, geos, tips = true,
     dispose() {
       gun?.removeFromParent();
       object.removeFromParent();
-      for (const g of geos) g.dispose();
+      for (const g of owned) g.dispose();
     },
   };
 }
@@ -322,7 +342,7 @@ function buildChewie(tall, mats) {
     object,
     body,
     hand,
-    geos,
+    owned: geos,
     pose(s) {
       const swing = Math.sin(s.phase) * 0.5 * Math.min(1, s.go);
       legL.rotation.x = swing;
@@ -370,7 +390,7 @@ function buildIto(tall, mats, kit) {
   return builtFigure('ito', tall, {
     object,
     body,
-    geos: [shell, metal, eye],
+    owned: [shell, metal, eye],
     tips: false, // (a floating droid drops where it is)
     pose(s) {
       // a slow hover; a fallen one lies on the deck where it dropped
@@ -423,7 +443,8 @@ function buildDianoga(tall, mats) {
   const skin = new THREE.SkinnedMesh(skinGeo, mats.skin);
   skin.add(...roots);
   skin.updateMatrixWorld(true);
-  skin.bind(new THREE.Skeleton(bones));
+  const skeleton = new THREE.Skeleton(bones);
+  skin.bind(skeleton);
   skin.frustumCulled = false;
   // the eye at the stalk’s tip, looking out along −z: pale, ringed, a dark slit
   const eyeGeo = joined([part(new THREE.SphereGeometry(0.09, 20, 14), 0xb9b48e, 0xd9d3b0), part(at(new THREE.CircleGeometry(0.05, 20).rotateY(Math.PI), 0, 0, -0.0895), 0x6a3a14, 0x8a5a24), part(at(new THREE.PlaneGeometry(0.014, 0.06).rotateY(Math.PI), 0, 0, -0.0905), 0x030303)]);
@@ -438,7 +459,8 @@ function buildDianoga(tall, mats) {
   return builtFigure('dianoga', tall, {
     object,
     body,
-    geos: [skinGeo, eyeGeo],
+    // (the skeleton too: drawn, it keeps its bones’ matrices in a texture of its own)
+    owned: [skinGeo, eyeGeo, skeleton],
     tips: false,
     pose(s) {
       // dead, it sinks out of sight and stays down
@@ -464,15 +486,20 @@ function buildDianoga(tall, mats) {
 const BUILT = { chewie: buildChewie, ito: buildIto, dianoga: buildDianoga };
 
 // The Death Star trooper’s helmet: a black bowl with its skirt flared at
-// the back and sides, the visor and the jaw guard, sized to the head it
-// sits on (from the head bone to the top of the head).
-function helmetOn(fig, mats) {
+// the back and sides, the visor and the jaw guard. One shape for every
+// trooper (helmetGeometry), each one sized to the head it sits on (from
+// the head bone to the top of the head).
+function helmetGeometry() {
   const geos = [
     new THREE.LatheGeometry([[0, 0.17], [0.07, 0.165], [0.115, 0.14], [0.14, 0.09], [0.145, 0.03], [0.15, -0.02], [0.175, -0.06], [0.168, -0.066], [0.14, -0.03]].map(([x, y]) => new THREE.Vector2(x, y)), 28),
     at(new THREE.BoxGeometry(0.17, 0.07, 0.04), 0, 0.05, -0.135),
     at(new THREE.BoxGeometry(0.11, 0.06, 0.05), 0, -0.04, -0.12),
   ];
-  const helmet = new THREE.Mesh(joined([part(geos[0], 0x0c0c0e), part(geos[1], 0x020203), part(geos[2], 0x141416)]), mats.gloss);
+  return joined([part(geos[0], 0x0c0c0e), part(geos[1], 0x020203), part(geos[2], 0x141416)]);
+}
+
+function helmetOn(fig, geo, mats) {
+  const helmet = new THREE.Mesh(geo, mats.gloss);
   helmet.name = 'helmet';
   const o = fig.object;
   o.updateMatrixWorld(true);
@@ -515,7 +542,7 @@ function buildProp(kind, tall, gltf) {
   const fig = builtFigure(kind, tall, {
     object,
     body,
-    geos: [],
+    owned: [],
     pose(s, dt) {
       mixer?.update(dt);
       turn.rotation.z = Math.sin(s.t * 9) * 0.05 * Math.min(1, s.go);
@@ -532,7 +559,9 @@ function buildProp(kind, tall, gltf) {
 
 // ── the people ──
 
-export function createPeople(scene, kit, { tier = 'high', renderer = null } = {}) {
+const falls = (clip) => clip === 'dieBlown' || FALLS.includes(clip);
+
+export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt = null } = {}) {
   const count = liveCount(tier);
   const mats = {
     // (both sides: a tuft seen from behind is still hair)
@@ -541,9 +570,15 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null } = {}
     eye: new THREE.MeshStandardMaterial({ name: 'ds-eye', vertexColors: true, roughness: 0.15, metalness: 0 }),
     gloss: new THREE.MeshStandardMaterial({ name: 'ds-gloss', vertexColors: true, roughness: 0.22, metalness: 0.3 }),
   };
-  const records = new Map(); // id → { id, kind, fig, track, clip, gun, blaster, deadFor, seen }
-  const cleared = new Set(); // bodies let go when their rooms were freed: not drawn again
-  const items = [];
+  let helmetShape = null; // the Death Star troopers’ one helmet shape, made for the first of them
+  const records = new Map(); // id → { id, kind, fig, track, clip, gun, blaster, fallFor, posed, seen }
+  // bodies by id, each with the frame the crew last listed it in: `lying`, seen dead in a room that
+  // stood (so let go when that room is freed); `cleared`, let go, and never drawn again
+  const lying = new Map();
+  const cleared = new Map();
+  const items = []; // what lodPick weighs, one kept per person drawn and reused frame to frame
+  let listed = 0;
+  const wanted = []; // [distance, person, in view] for people near who have no figure yet
   const picks = new Map();
   let frame = 0;
   let last = null;
@@ -560,18 +595,21 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null } = {}
     }
     const fig = await loadPerson(PEOPLE[kind] || !c ? kind : c.model, { tall: c?.tall, tint: c?.tint ?? null, renderer });
     fig.object.name = `person-${kind}`;
-    if (c?.helmet === 'dstrooper') helmetOn(fig, mats);
+    if (c?.helmet === 'dstrooper' && !disposed) helmetOn(fig, (helmetShape ??= helmetGeometry()), mats);
     return fig;
   }
 
   function place(r, fig) {
     if (disposed || records.get(r.id) !== r) return fig.dispose();
     r.fig = fig;
+    // out of sight until a sync has put it in its place and posed it
+    fig.object.visible = false;
     scene.add(fig.object);
+    adopt?.(fig.object);
   }
 
   function follow(p) {
-    const r = { id: p.id, kind: p.kind, fig: null, track: createTrack(), clip: undefined, gun: undefined, blaster: null, deadFor: 0, seen: frame };
+    const r = { id: p.id, kind: p.kind, fig: null, track: createTrack(), clip: undefined, gun: undefined, blaster: null, fallFor: 0, posed: false, seen: frame };
     records.set(p.id, r);
     const c = CAST[p.kind];
     if (c?.built) place(r, BUILT[c.built](c.tall, mats, kit));
@@ -579,10 +617,32 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null } = {}
     return r;
   }
 
+  // a body the crew no longer lists needs no remembering
+  function forget(bodies) {
+    for (const [id, seen] of bodies) if (seen !== frame) bodies.delete(id);
+  }
+
   function drop(r) {
     records.delete(r.id);
     r.blaster?.removeFromParent();
     r.fig?.dispose();
+  }
+
+  // a person this frame: where the rules have them, and what lodPick needs to weigh them
+  function see(r, p, inView, dt) {
+    r.seen = frame;
+    r.track.push(p, dt);
+    const it = items[listed] ?? (items[listed] = {});
+    listed++;
+    const fall = p.mode === 'dead' || p.mode === 'down';
+    it.id = p.id;
+    it.x = p.x;
+    it.y = p.y ?? 0;
+    it.z = p.z;
+    it.falling = fall && r.fallFor < FALL;
+    it.settled = p.mode === 'dead' && r.fallFor >= FALL;
+    it.shown = inView;
+    it.p = p;
   }
 
   // the gun in a person’s hands: the shared rig’s figures hold their own
@@ -593,26 +653,55 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null } = {}
     r.blaster?.removeFromParent();
     r.blaster = null;
     r.fig.hold(gun);
-    if (!gun || r.fig.built) return;
+    if (!gun) return;
+    if (r.fig.built) {
+      const held = r.fig.object.getObjectByName(`blaster-${gun}`);
+      if (held) adopt?.(held);
+      return;
+    }
     const holder = r.fig.object.getObjectByName(`gun-${gun}`);
     if (!holder) return;
     for (const o of holder.children) o.visible = false;
     r.blaster = buildGun(gun);
-    if (r.blaster) holder.add(r.blaster);
+    if (!r.blaster) return;
+    holder.add(r.blaster);
+    adopt?.(r.blaster);
+  }
+
+  // A figure played on, in steps (so a clip’s fade in and out run their
+  // course as they would), far enough to land what it was last given: a
+  // fall lies down, a flinch is over and back to standing, and one never
+  // yet drawn stands in its pose, not as it was made.
+  function land(r) {
+    for (let t = 0; t < LAND.time; t += LAND.step) r.fig.update(LAND.step, 0);
+    // (once more with no time: the gait takes back the weight a finished clip let go of)
+    r.fig.update(0, 0);
+    r.posed = true;
+    if (falls(r.clip)) r.fallFor = FALL;
   }
 
   function draw(r, p, pick, alpha, dt) {
     const fig = r.fig;
     const o = fig.object;
+    const want = clipFor(p);
+    const fall = falls(want.clip);
+    if (!fall) r.fallFor = 0;
     o.visible = pick !== 'hidden';
-    if (!o.visible) return;
+    if (!o.visible) {
+      // out of sight a fall goes on all the same, and one that runs its course there is
+      // to be landed when next seen (a still figure’s clip unchanged would never be played on)
+      if (fall && r.fallFor < FALL && (r.fallFor += dt) >= FALL) r.posed = false;
+      return;
+    }
     const at = r.track.at(alpha);
     o.position.set(at.x, at.y, at.z);
     o.rotation.y = -at.yaw;
-    const want = clipFor(p);
     // one fall into another (knocked down, then dead) carries on falling, not standing to fall again
-    const falls = (n) => n === 'dieBlown' || FALLS.includes(n);
-    if (want.clip !== r.clip && !(falls(want.clip) && falls(r.clip))) fig.play(want.clip, { loop: want.loop });
+    const changed = want.clip !== r.clip && !(fall && falls(r.clip));
+    if (changed) {
+      fig.play(want.clip, { loop: want.loop });
+      if (fall) r.fallFor = 0;
+    }
     r.clip = want.clip;
     const gun = p.gun !== undefined ? p.gun : (CAST[p.kind]?.gun ?? null);
     if (gun !== r.gun) arm(r, gun);
@@ -620,41 +709,63 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null } = {}
       const a = aimAngles({ x: at.x, y: at.y + fig.tall * CHEST, z: at.z }, at.yaw, p.aim);
       fig.setAim(a.yaw, a.pitch, want.raised);
     } else fig.setAim(0, 0, want.raised);
-    if (pick !== 'live') return;
-    if (p.mode === 'dead') r.deadFor += dt;
-    fig.update(dt, r.track.speed());
+    if (!r.posed || (pick !== 'live' && (changed || (fall && r.fallFor < FALL)))) land(r);
+    else if (pick === 'live') {
+      if (fall) r.fallFor += dt;
+      fig.update(dt, r.track.speed());
+    }
   }
 
   return {
-    sync(crew, alpha = 1, cameraAt = null, shown = null) {
+    sync(crew, alpha = 1, cameraAt = null, rooms = null) {
       if (disposed) return;
       const now = performance.now() / 1000;
-      const dt = last === null ? 0 : clamp(now - last, 0, 0.1);
+      const dt = rooms?.dt ?? (last === null ? 0 : clamp(now - last, 0, 0.1));
       last = now;
       frame++;
+      const at = cameraAt ?? { x: 0, y: 0, z: 0 };
       const all = crew?.people ?? crew ?? [];
-      items.length = 0;
+      listed = 0;
+      wanted.length = 0;
       for (const p of all instanceof Map ? all.values() : all) {
-        if (p?.id == null || cleared.has(p.id)) continue;
-        const inView = shown ? shown(p.room) : true;
-        let r = records.get(p.id);
-        if (p.mode === 'dead' && !inView) {
-          // its room freed: the body goes with it
-          if (r) drop(r);
-          cleared.add(p.id);
+        if (p?.id == null) continue;
+        if (cleared.has(p.id)) {
+          cleared.set(p.id, frame);
           continue;
         }
-        if (!r) r = follow(p);
-        else if (r.kind !== p.kind) {
+        // (someone the rules have in no room is drawn by distance alone)
+        const standing = p.room == null || !rooms?.built || rooms.built(p.room);
+        const inView = standing && (p.room == null || !rooms?.shown || rooms.shown(p.room));
+        let r = records.get(p.id);
+        if (r && r.kind !== p.kind) {
           drop(r);
-          r = follow(p);
+          r = undefined;
         }
-        r.seen = frame;
-        r.track.push(p, dt);
-        items.push({ id: p.id, x: p.x, y: p.y ?? 0, z: p.z, settled: r.deadFor >= FALL, shown: inView, p });
+        if (!standing) {
+          // its room freed (or not yet built): nothing of it drawn, and a body that lay in it while it stood is gone with it
+          if (lying.has(p.id)) {
+            lying.delete(p.id);
+            cleared.set(p.id, frame);
+          }
+          if (r) drop(r);
+          continue;
+        }
+        if (p.mode === 'dead') lying.set(p.id, frame);
+        if (r) see(r, p, inView, dt);
+        else {
+          const d = Math.hypot(p.x - at.x, (p.y ?? 0) - at.y, p.z - at.z);
+          if (d <= FAR) wanted.push([d, p, inView]);
+        }
       }
-      for (const r of [...records.values()]) if (r.seen !== frame) drop(r);
-      lodPick(items, cameraAt ?? { x: 0, y: 0, z: 0 }, { count }, picks);
+      // figures for the nearest of those near without one, a couple a frame, so a crowd never stalls one
+      wanted.sort((a, b) => a[0] - b[0]);
+      for (let i = 0; i < Math.min(MAKE, wanted.length); i++) see(follow(wanted[i][1]), wanted[i][1], wanted[i][2], dt);
+      // (a Map walked while it is deleted from carries on with what is left)
+      for (const r of records.values()) if (r.seen !== frame) drop(r);
+      forget(lying);
+      forget(cleared);
+      items.length = listed;
+      lodPick(items, at, { count }, picks);
       for (const it of items) {
         const r = records.get(it.id);
         if (r?.fig) draw(r, it.p, picks.get(it.id), alpha, dt);
@@ -673,7 +784,10 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null } = {}
       disposed = true;
       for (const r of [...records.values()]) drop(r);
       for (const m of Object.values(mats)) m.dispose();
+      helmetShape?.dispose();
       disposeGuns();
+      lying.clear();
+      cleared.clear();
     },
   };
 }

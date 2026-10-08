@@ -49,6 +49,7 @@ const RmPlanet = lazy(() => import('./pages/RmPlanet'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Mario64 = lazy(() => import('./pages/Mario64'));
 const Minecraft = lazy(() => import('./pages/Minecraft'));
+const Expanse = lazy(() => import('./pages/Expanse'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
 const Changes = lazy(() => import('./pages/Changes'));
@@ -399,6 +400,7 @@ function Shell() {
                 <Route path="/dot-matrix/64" element={<Mario64 />} />
                 <Route path="/dot-matrix/minecraft" element={<Minecraft />} />
                 <Route path="/earth" element={<Earth />} />
+                <Route path="/universe/expanse/:seed" element={<Expanse />} />
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="/changes" element={<Changes />} />
                 <Route path="/worlds" element={<Worlds />} />
