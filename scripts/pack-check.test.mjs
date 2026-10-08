@@ -27,6 +27,6 @@ describe('the pack check', () => {
   });
 
   it('names what a pack lists that is not there', () => {
-    expect(missing({ urls: ['/models/w/plane.glb', '/models/w/gone.glb'], globs: ['/models/w/*', '/hq/none/*'] }, join(FIX, 'dist'))).toEqual(['/models/w/gone.glb', '/hq/none/*']);
+    expect(missing({ urls: ['/models/w/plane.glb', '/models/w/gone.glb'], globs: ['/models/w/*', '/hq/none/*'] }, join(FIX, 'site'))).toEqual(['/models/w/gone.glb', '/hq/none/*']);
   });
 });

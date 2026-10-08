@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildManifest, chunksFrom, slugOf } from './packs.mjs';
 
-const FIX = join(import.meta.dirname, 'fixtures/packs/dist');
+const FIX = join(import.meta.dirname, 'fixtures/packs/site');
 const PACK = { id: '/w', urls: ['/models/w/plane.glb'], globs: ['/models/w/*.glb'] };
 const chunksOf = () => ['/assets/W-abc.js', '/assets/W-abc.css'];
 
