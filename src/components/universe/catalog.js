@@ -23,6 +23,7 @@ import { RANKS } from '../galaxy/ranks';
 import { PARTS, STOCK } from './outfit';
 import { PAINTS } from './paint';
 import { BUILD_SLOTS, modulesFor } from './shipyard/parts';
+import { WHO } from './standing';
 
 // Prices by how much an item does, as a share added on to the ship as it
 // comes (a booster's 0.25 more boost is about 400): the smallest band at or
@@ -98,13 +99,6 @@ export function priceOf(keyOrId) {
   return found.length === 1 ? found[0].price : null;
 }
 
-// Who a standing is with, side by side: the law (sides.js's `law`), the
-// ordinary ships, the pirates (the side's distress pirates).
-const WHO = {
-  starwars: { law: 'the Empire', civil: 'the galaxy’s spacers', outlaw: 'the Weequay pirates' },
-  rickmorty: { law: 'the Federation', civil: 'the people of C-137', outlaw: 'the Gromflomite raiders' },
-  breakingbad: { law: 'the DEA', civil: 'the people of Albuquerque', outlaw: 'Uncle Jack’s crew' },
-};
 // what being at each standing level is, as the start of a sentence
 const STANDING_VERB = { trusted: 'be trusted by', hero: 'be a hero to', friend: 'be a friend to', suspect: 'be a suspect to', wanted: 'be wanted by', feared: 'be feared by' };
 const an = (word) => (/^[aeiou]/i.test(word) ? 'an' : 'a');

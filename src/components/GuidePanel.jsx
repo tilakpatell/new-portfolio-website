@@ -1,20 +1,26 @@
-import { Fragment, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
-import { RiKeyboardLine, RiPlayCircleLine, RiSmartphoneLine } from 'react-icons/ri';
+import { RiKeyboardLine, RiPlayCircleLine, RiRefreshLine, RiSmartphoneLine } from 'react-icons/ri';
 import { IconTour } from './icons';
 import { CloseButton } from './ui';
-import { WORLDS } from './worlds/worlds';
 import { SHORTCUTS, SITE, guideFor } from './guide/pages';
 import { KeyTable, Keys } from './guide/KeyTable';
 import { shortcutLabel } from '../lib/palette';
-import { openTour } from '../lib/tour';
+import { local } from '../lib/hooks';
+import { AUDIENCES, TOUR_KEY, TOUR_NAMES, TOUR_TIMES, openTour, readProgress, tourFor, unfinished } from '../lib/tour';
+import * as steps from './tour/steps';
+import { planOf } from './tour/plan';
 import { briefKeyFor, openBrief } from './tour/brief';
+import './guide/tours.css';
+
+// (its own chunk: the catalogue is the biggest thing the guide shows)
+const TodoList = lazy(() => import('./guide/TodoList'));
 
 // The guide's panel: the page's controls (keyboard or touch) as a table of
-// keys, then its tips; and the site as a whole. Loaded the first time the
-// guide opens (components/Guide.jsx), not before, and mounted each time it
-// opens, so it starts on this page's tab.
+// keys, then its tips; the site as a whole, with its tours; and the
+// checklist of things to do. Loaded the first time the guide opens
+// (components/Guide.jsx), not before, and mounted each time it opens, so it
+// starts on this page's tab (or the one it was opened on).
 
 const coarse = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
 
@@ -81,20 +87,65 @@ function PageGuide({ page, basics }) {
   );
 }
 
-function SiteGuide({ onGo }) {
+// The tours: the three audiences', each with its chapters to take on
+// their own, and "Carry on…" when one was left part way; and the quick
+// look round the view you're in. An audience whose chapters aren't written
+// yet isn't offered.
+function Tours({ pathname, onGo }) {
+  const take = (detail) => () => {
+    onGo();
+    openTour(detail);
+  };
+  const view = tourFor(pathname);
+  const kept = readProgress(local.get(TOUR_KEY, null));
+  const left = unfinished(kept);
+  const plan = (a) => planOf(steps, a, view, pathname);
+  const shown = AUDIENCES.filter((a) => steps.TOURS[a]?.length);
+  const at = left && steps.TOURS[left.audience]?.length ? plan(left.audience) : null;
+  const n = at ? at.findIndex((c) => c.id === left.chapter) + 1 : 0;
+  return (
+    <section className="mt-3" aria-label="Tours">
+      {n > 0 && (
+        <button type="button" className="btn btn-primary btn-sm" onClick={take({ ...left, stop: kept.stop })}>
+          <RiRefreshLine className="h-4 w-4" aria-hidden="true" /> Carry on {TOUR_NAMES[left.audience].replace(/^The/, 'the')} (chapter {n} of {at.length})
+        </button>
+      )}
+      {shown.length > 0 && (
+        <ul className="guide-tours">
+          {shown.map((a) => (
+            <li key={a}>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={take({ audience: a })}>
+                <IconTour className="h-4 w-4" aria-hidden="true" /> {TOUR_NAMES[a]}
+              </button>
+              <span className="guide-tour-time">{TOUR_TIMES[a]}</span>
+              <details className="guide-chapters">
+                <summary>Its chapters</summary>
+                <ol>
+                  {plan(a).map((c) => (
+                    <li key={c.id}>
+                      <button type="button" className="guide-chapter" onClick={take({ audience: a, chapter: c.id, only: true })}>
+                        {c.title}
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button type="button" className="btn btn-ghost btn-sm mt-2" onClick={take()}>
+        <IconTour className="h-4 w-4" aria-hidden="true" /> A quick look round
+      </button>
+    </section>
+  );
+}
+
+function SiteGuide({ pathname, onGo }) {
   return (
     <>
       <h2 className="dialog-title">The site</h2>
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm mt-3"
-        onClick={() => {
-          onGo();
-          openTour();
-        }}
-      >
-        <IconTour className="h-4 w-4" aria-hidden="true" /> Take the tour
-      </button>
+      <Tours pathname={pathname} onGo={onGo} />
       <section className="mt-4" aria-label="Shortcuts">
         {/* the shortcut as the keyboard says it: one cap a key, Ctrl and K */}
         <KeyTable rows={[[shortcutLabel(), 'Search and go anywhere (the command palette)'], ...SHORTCUTS]} />
@@ -102,23 +153,13 @@ function SiteGuide({ onGo }) {
       <section className="mt-6">
         <Tips tips={SITE} />
       </section>
-      <p className="label mt-6">The worlds</p>
-      <ul className="mt-2 flex flex-wrap gap-2">
-        {WORLDS.map((w) => (
-          <li key={w.to}>
-            <Link to={w.to} className="world-link" onClick={onGo}>
-              {w.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
     </>
   );
 }
 
-export default function GuidePanel({ pathname, close, onLeave }) {
+export default function GuidePanel({ pathname, initialTab, close, onLeave }) {
   const page = guideFor(pathname);
-  const [tab, setTab] = useState(page ? 'page' : 'site');
+  const [tab, setTab] = useState(initialTab === 'checklist' || initialTab === 'site' ? initialTab : page ? 'page' : 'site');
   const panel = useRef(null);
   const ids = useId();
   useEffect(() => {
@@ -126,7 +167,7 @@ export default function GuidePanel({ pathname, close, onLeave }) {
   }, []);
 
   // tabs: arrow keys move between them, as tabs do
-  const tabs = page ? ['page', 'site'] : ['site'];
+  const tabs = page ? ['page', 'site', 'checklist'] : ['site', 'checklist'];
   const onTabKey = (e) => {
     const at = tabs.indexOf(tab);
     const next = e.key === 'ArrowRight' ? tabs[(at + 1) % tabs.length] : e.key === 'ArrowLeft' ? tabs[(at - 1 + tabs.length) % tabs.length] : null;
@@ -158,19 +199,24 @@ export default function GuidePanel({ pathname, close, onLeave }) {
           <div className="guide-tabs switch" data-size="md" role="tablist" aria-label="Guide">
             {page && <button {...tabProps('page', 'On this page')} />}
             <button {...tabProps('site', 'The site')} />
+            <button {...tabProps('checklist', 'The checklist')} />
           </div>
         </div>
         <CloseButton label="Close the guide" onClick={close} />
       </div>
       <div id={`${ids}-panel`} role="tabpanel" aria-labelledby={`${ids}-${tab}`} className="guide-body">
-        {tab === 'page' && page ? <PageGuide page={page} basics={
+        {tab === 'checklist' ? (
+          <Suspense fallback={null}>
+            <TodoList pathname={pathname} onGo={onLeave} />
+          </Suspense>
+        ) : tab === 'page' && page ? <PageGuide page={page} basics={
               briefKeyFor(pathname)
                 ? () => {
                     onLeave();
                     openBrief();
                   }
                 : null
-            } /> : <SiteGuide onGo={onLeave} />}
+            } /> : <SiteGuide pathname={pathname} onGo={onLeave} />}
       </div>
       <p className="guide-foot">
         <Keys keys="?" /> opens and closes the guide · <Keys keys="Esc" /> closes it

@@ -91,7 +91,7 @@ export default function Resume() {
           <p className="lead mt-5 max-w-[46ch]">Click any skill on the résumé to light up every line that uses it.</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <a className="btn btn-primary" href={profile.resume.href} download={profile.resume.filename}>
+          <a className="btn btn-primary" href={profile.resume.href} download={profile.resume.filename} data-tour="resume-pdf">
             <RiDownloadLine className="h-4 w-4" aria-hidden="true" /> Download PDF
           </a>
           <button type="button" className="btn btn-ghost" onClick={() => window.print()}>

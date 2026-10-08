@@ -31,7 +31,8 @@ import { createGollum } from '../marshes/props';
 import { createGhosts } from '../ghosts';
 import { createCirithKit } from './props';
 import { BRAWL, BRIDGE, CITY_YAW, COURT, HIDE, LAIR_OUT, MORGUL_ROAD, PASS, TOWER_DOOR, TOWER_PILLARS, TUNNELS, roughHeight, stairAt } from './layout';
-import { CRUMBS, STAIRS, cloakLift } from './rules';
+import { CRUMBS, PHIAL, STAIRS, cloakLift } from './rules';
+import { castDo, castPlay, drawWatcher, fight, releaseCast, tickCast, upgrade } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -288,11 +289,14 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   zones.tower.add(court.group);
   court.group.updateMatrixWorld(true);
   const torches = (court.torches ?? []).map((p) => p.clone().add(AT.tower));
+  // (each orc on the cast once its model's here, ../../cast3d.js: the
+  // orc, as tall as this one, its own body hidden, and kept should it not come)
+  const onCast = (o, seed) => upgrade(o, 'orc', { role: 'folk', hide: [...o.group.children], top: new THREE.Box3().setFromObject(o.group).getSize(V()).y * 0.95, seed });
   const orcs = Array.from({ length: 3 }, (_, i) => {
     const o = kit.orc(i + 1, { big: i === 1 });
     o.group.visible = false;
     zones.tower.add(o.group);
-    return o;
+    return onCast(o, i + 1);
   });
   const brawl = Array.from({ length: 4 }, (_, i) => {
     const o = kit.orc(10 + i, { big: i === 0 });
@@ -301,6 +305,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     o.group.rotation.y = Math.atan2(Math.sin(a), -Math.cos(a));
     o.seed = i;
     zones.tower.add(o.group);
+    onCast(o, 10 + i);
     return o;
   });
   // other travellers, online, from other worlds (../ghosts.js), in whichever
@@ -361,7 +366,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   for (const k of COLOURS) cur[k] = new THREE.Color(MOODS.vale[k]);
   for (const k of NUMBERS) cur[k] = MOODS.vale[k];
   const sunDir = V(...MOODS.vale.sun).normalize();
-  const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, first: true, beam: 0, stab: 0, dodge: 0, hit: 0, embers: 0, dust: 0, fov: 52, mood: '' };
+  const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, first: true, beam: 0, stab: 0, dodge: 0, hit: 0, embers: 0, dust: 0, fov: 52, mood: '', near: 0 };
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -385,6 +390,8 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     wpos(zone, x, y, z, f.group.position);
     f.group.rotation.set(0, face, 0);
     sit(f, false);
+    // (on the cast: what each does here is set after, frame by frame)
+    castDo(f, { base: null, upper: null, look: null });
   };
   // the phial in a hand, raised or at the side
   const holdPhial = (f, up) => {
@@ -454,9 +461,9 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
       morgul.update?.(t, { beam: A.beam, glow: 1 + A.beam * 0.4 + (m?.pausing ? 0.3 : 0) });
       // crouched among the rocks, Sam by you, Gollum flat on the rock
       stand(frodo, 'vale', HIDE.x, valeHeight(HIDE.x, HIDE.z) - 0.3, HIDE.z, CITY_YAW - Math.PI / 2);
-      sit(frodo, true);
+      sit(frodo, true, 'floor');
       stand(sam, 'vale', HIDE.x - 1.1, valeHeight(HIDE.x - 1.1, HIDE.z - 0.5) - 0.3, HIDE.z - 0.5, CITY_YAW - Math.PI / 2 + 0.3);
-      sit(sam, true);
+      sit(sam, true, 'floor');
       gollum.group.visible = true;
       wpos('vale', HIDE.x + 1.3, valeHeight(HIDE.x + 1.3, HIDE.z - 0.4), HIDE.z - 0.4, gollum.group.position);
       gollum.group.rotation.set(0, CITY_YAW - Math.PI / 2 - 0.4, 0);
@@ -523,12 +530,15 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
       pose(sam, t * 0.3, { moving: false });
       sit(sam, true);
       sam.head.rotation.z = 0.35 + Math.sin(t * 0.8) * 0.03;
+      // (on the cast: dozing where he sits)
+      castDo(sam, { base: 'sit.doze' });
       // Frodo asleep by him, stirring as the light comes
       const stir = Math.max(0, 1 - (t - (A.stirAt ?? -9)) / 1.4);
       stand(frodo, 'stairs', CLOAK.x + CRUMBS.w / 2 + 0.55, CLOAK.y, CLOAK.z - 0.3, -Math.PI / 2 - 0.4);
       pose(frodo, t * 0.3 + 2, { moving: false });
       sit(frodo, true);
       frodo.head.rotation.z = -0.4 + Math.sin(t * 9) * 0.12 * stir;
+      castDo(frodo, { base: 'sit.doze' });
       frodo.group.rotation.z = 0.1 * stir * Math.sin(t * 6);
       // Gollum, a few steps up, watching
       gollum.group.visible = true;
@@ -590,6 +600,8 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
         stand(sam, 'lair', sx + lunge, roughHeight(sx, sz), sz, 0);
         pose(sam, t, { moving: duel?.phase === 'stalk', speed: 0.4 });
         if (sam.arms?.[0]) sam.arms[0].rotation.x = -1.2 - A.stab * 1.2;
+        // (on the cast: the phial and Sting held out at her, his eyes on her)
+        castDo(sam, { upper: 'aim.pistol', look: shelob.group });
         if (s.talking === 'frodo') {
           // kneeling by him, the silk cut
           stand(sam, 'lair', PASS.x + 3.6, roughHeight(PASS.x + 3.6, PASS.z + 1), PASS.z + 1, -0.54);
@@ -613,10 +625,11 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
           const ph = duel?.phase ?? 'stalk';
           const k = duel ? Math.max(0, duel.phaseT) : 0;
           const near = ph === 'strike' ? 1.4 : ph === 'tell' ? -0.4 : ph === 'rear' ? 0.6 : 0;
-          shelob.group.position.set(PASS.x + 1.6 - near + Math.sin(t * 0.9) * 0.3, roughHeight(PASS.x + 1.6, PASS.z), PASS.z + Math.sin(t * 0.6) * 0.4);
+          // (eased: she comes on and draws off, she isn't put there, so her feet step it)
+          A.near += (near - A.near) * Math.min(1, dt * 6);
+          shelob.group.position.set(PASS.x + 1.6 - A.near + Math.sin(t * 0.9) * 0.3, roughHeight(PASS.x + 1.6, PASS.z), PASS.z + Math.sin(t * 0.6) * 0.4);
           shelob.group.rotation.set(0, Math.PI, 0);
           shelob.animate?.(t, {
-            walking: ph === 'stalk' ? 0.5 : 0,
             rear: ph === 'rear' ? 1 : 0,
             strike: ph === 'strike' ? 1 : ph === 'tell' ? 0.25 : 0,
             hurt: (duel?.wounds ?? 0) / 4 + A.hit * 0.3,
@@ -630,6 +643,8 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
         const ph = s.phial;
         phial.group.visible = true;
         const up = ph?.on ? 1 : 0;
+        // (on the cast: the phial held up like a torch)
+        castDo(frodo, { upper: up ? 'torch' : null });
         holdPhial(frodo, up);
         const glow = ph ? (ph.on ? 0.45 + ph.charge * 0.28 : 0.08) : 0.08;
         phial.set?.(glow);
@@ -638,8 +653,8 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
           shelob.group.visible = true;
           shelob.group.position.set(sh.x, 0, sh.z);
           turnTo(shelob, sh.face + (sh.look ?? 0), dt, 5);
-          const moving = sh.mode === 'chase' || sh.mode === 'back' || (sh.mode === 'patrol' && sh.wait <= 0);
-          shelob.animate?.(t, { walking: moving ? (sh.mode === 'chase' ? 1 : 0.6) : 0, rear: sh.mode === 'alert' ? 0.4 : 0, strike: 0, hurt: 0, recoil: sh.mode === 'back' ? 1 : 0 });
+          // her gait from where she's put; she walks home unreared, and flinches from the phial held up close (props.js)
+          shelob.animate?.(t, { rear: sh.mode === 'alert' ? 0.4 : 0, light: ph?.on && Math.hypot(sh.x - h.x, sh.z - h.z) < PHIAL.reach ? 0.5 + ph.charge * 0.5 : 0 });
         }
       }
       // dust in the dark, and webs drifting
@@ -667,6 +682,8 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
         stand(sam, 'tower', h.x, 0, h.z, h.face);
         pose(sam, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
         if (sam.arms?.[0]) sam.arms[0].rotation.x = -0.6;
+        // (on the cast: Sting up, ready)
+        castDo(sam, { upper: 'walk.fight' });
       }
       const list = s.orcs ?? [];
       orcs.forEach((o, i) => {
@@ -674,10 +691,17 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
         o.group.visible = Boolean(w);
         if (!w) return;
         o.group.position.set(w.x, 0, w.z);
-        turnTo(o, w.face + (w.look ?? 0), dt, 8);
-        o.animate?.(t + i, { running: w.mode === 'chase' || w.mode === 'back' || (w.mode === 'patrol' && w.wait <= 0), fighting: w.mode === 'chase' ? 0.5 : 0 });
+        // (on the cast its head does the looking about; the toy turned its whole self)
+        turnTo(o, w.face + (o.cast?.ready ? 0 : (w.look ?? 0)), dt, 8);
+        if (!drawWatcher(o, w, dt, { you: sam })) o.animate?.(t + i, { running: w.mode === 'chase' || w.mode === 'back' || (w.mode === 'patrol' && w.wait <= 0), fighting: w.mode === 'chase' ? 0.5 : 0 });
       });
-      brawl.forEach((o) => o.animate?.(t + o.seed * 0.7, { running: false, fighting: 1 }));
+      // the brawl: on the cast, two pairs trading blows and taking them (drawn only)
+      brawl.forEach((o, i) => {
+        const foe = brawl[i ^ 1];
+        if (o.cast?.ready && foe.cast?.ready) {
+          if (fight(o, foe, dt, { every: [1.2, 2.6] }) && o.cast.blows % 2) castPlay(foe, o.cast.blows % 4 === 1 ? 'hit.head' : 'hit.chest', { layer: 'full', fade: 0.08 });
+        } else o.animate?.(t + o.seed * 0.7, { running: false, fighting: 1 });
+      });
       // the nearest torches
       const cam = camera.position;
       const near = torches.map((p) => [p, p.distanceToSquared(cam)]).sort((a, b) => a[1] - b[1]);
@@ -823,6 +847,8 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     sun.target.position.copy(camera.position);
     stage.grade({ saturation: zone === 'lair' ? 0.75 : 0.9, contrast: 0.12, vignette: zone === 'lair' && lead === frodo ? 0.55 : 0.32, grain: 0.02 });
     for (const g of grounds) g.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -839,7 +865,11 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     } else if (type === 'stab') {
       A.stab = 1;
       A.shake = Math.max(A.shake, 0.12);
-    } else if (type === 'dodge') A.dodge = 1;
+      castPlay(sam, 'jab', { layer: 'upper', fade: 0.06 });
+    } else if (type === 'dodge') {
+      A.dodge = 1;
+      castPlay(sam, 'dodge', { layer: 'full', fade: 0.06 });
+    }
     else if (type === 'brush' && id) fx.pop(tmp2.set(CLOAK.x + id.u, CLOAK.y + 0.08, CLOAK.z + id.v).add(AT.stairs), 'white', 2 + id.got * 2, 0.3);
     else if (type === 'stir') A.stirAt = A.t;
   };
@@ -885,6 +915,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
       for (const g of grounds) g.dispose();
       ghosts.dispose();
       disposeTree(scene);
+      releaseCast(scene);
       stage.dispose();
     },
   };

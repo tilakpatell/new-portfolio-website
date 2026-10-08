@@ -4,11 +4,21 @@
 // left out (lib/tour's resolveSteps): on a phone the nav's links, search and
 // colours are in the menu, so the menu's stop shows instead. `text` is a
 // string, or a function of { key } (⌘K or Ctrl K, whichever this device uses).
+//
+// The audience tours (the hiring tour, `recruiter`; the player's; and the
+// whole tour, the two folded together) are chapters, not stops:
+// chapters/*.js, and shared.js says how they fit.
+
+import { compose } from '../../lib/tour';
+import { END } from './chapters/shared';
+import { RECRUITER } from './chapters/recruiter';
+import { PLAYER } from './chapters/player';
 
 const search = {
   id: 'search',
   at: 'search',
   title: 'Go anywhere',
+  release: ['palette'], // an audience tour lets the palette's shortcut through here, to try it
   text: ({ key }) => `${key} searches every page, project, world and shortcut on the site. Type a few letters and press Enter.`,
 };
 const menu = {
@@ -27,6 +37,7 @@ const guide = {
   id: 'guide',
   at: 'guide',
   title: 'Stuck? Press ?',
+  release: ['?'],
   text: 'The guide has every page’s controls, for the keyboard or touch, and its tips. Press ? on any page.',
 };
 const resume = {
@@ -110,6 +121,15 @@ export const TOURS = {
     resume,
     done('Scroll on, or open a page from the top.'),
   ],
+  recruiter: RECRUITER,
+  player: PLAYER,
 };
+// the whole tour: the hiring tour's chapters to Under the hood (which has
+// toured the panel, the ship and the nav map, so the player's Flying is
+// left out), the player's from the galaxy to the colours, and one end
+TOURS.mixed = compose(TOURS, [['recruiter', 'home', 'hood'], ['player', 'galaxy', 'colours'], END]);
+
+// TourHost reads the shell's stops and each audience's hello from here
+export { HELLO, SHELL_STOPS } from './chapters/shared';
 
 export const textOf = (step, ctx) => (typeof step.text === 'function' ? step.text(ctx) : step.text);

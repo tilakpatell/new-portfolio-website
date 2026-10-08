@@ -82,7 +82,7 @@ export default function Changes() {
         <div className="relative">
           <Waypoint top="0.6rem" />
           <p className="eyebrow">The ship’s log</p>
-          <h1 className="display mt-6 text-[clamp(3rem,1.6rem+6vw,6.2rem)]">What’s changed.</h1>
+          <h1 className="display mt-6 text-[clamp(3rem,1.6rem+6vw,6.2rem)]" data-tour="changes-log">What’s changed.</h1>
           <p className="mt-3 text-sm text-muted">
             <AurebeshLine>What’s changed.</AurebeshLine>
           </p>

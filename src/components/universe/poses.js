@@ -12,9 +12,12 @@
 // (turned `off` radians round from the line to the sun, so a limb shows
 // its terminator), facing the planet, the camera just behind it: the day
 // side toward the camera, which is how a visitor should arrive.
-import { BELT, HOME_RADIUS, POSITIONS, REACH, SUN } from './layout';
+import { BELT, HOME_RADIUS, ORDER, POSITIONS, REACH, SUN } from './layout';
 import { MAW } from './maw';
 import { SHIP, parkAt } from './ship';
+import { LANES, carriageway } from './hyperlanes';
+import { bezier, tangent } from './lanes';
+import { byId } from './universes';
 
 export const POSES = {
   overview: { view: 'map', at: [0, SHIP.height, HOME_RADIUS + 1.5], heading: 0 },
@@ -38,6 +41,12 @@ export const POSES = {
   // parked at the Home station as the autopilot parks, from the overview's
   // side: the home system up close, and how big it is against the ship
   station: { station: 'home', back: 1.6, rise: 0.3 },
+  // since the spread (scale.js's SPREAD): at the home system's edge looking
+  // out at the furthest world, everything past FAR_REAL drawn as light
+  // (farPlaces.js); and held half way along the trunk from Middle-earth's
+  // region home (hyperlanes.js), heading home along it, as a ride is
+  'far-rim': { rim: 60, back: 1.6, rise: 0.3 },
+  'lane-ride': { region: 'middleearth', s: 0.5, back: 1.6, rise: 0.3 },
 };
 export const POSE_NAMES = Object.keys(POSES);
 
@@ -85,6 +94,21 @@ export function poseFor(name, { positions = POSITIONS, sun = SUN.at, reach = REA
     const k = parkAt(p.station, [0, HOME_RADIUS]);
     const at = [k.x, k.y, k.z];
     return { name, station: p.station, at, heading: k.heading, ...chase(at, k.heading, { back: p.back, rise: p.rise, look: positions[p.station] }) };
+  }
+  if (name === 'far-rim') {
+    const far = ORDER.filter((id) => byId(id).kind !== 'core').reduce((a, b) => (Math.hypot(positions[a][0], positions[a][2]) > Math.hypot(positions[b][0], positions[b][2]) ? a : b));
+    const out = unit([positions[far][0], 0, positions[far][2]]);
+    const at = add([0, SHIP.height, 0], out, HOME_RADIUS + p.rim);
+    const heading = headingOf(out);
+    return { name, toward: far, at, heading, ...chase(at, heading, { back: p.back, rise: p.rise, look: positions[far] }) };
+  }
+  if (name === 'lane-ride') {
+    const lane = LANES.find((l) => l.tier === 'trunk' && l.from === `beacon:${p.region}` && l.to.startsWith('beacon:home'));
+    const pts = carriageway(lane, 'out');
+    const at = bezier(pts, p.s);
+    const d = unit(tangent(pts, p.s));
+    const heading = headingOf(d);
+    return { name, lane: lane.id, at, heading, ...chase(at, heading, { back: p.back, rise: p.rise }) };
   }
   if (name === 'belt') {
     const at = [p.ring * Math.cos(p.angle), 0, p.ring * Math.sin(p.angle)];

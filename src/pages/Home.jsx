@@ -143,7 +143,7 @@ export default function Home() {
               </p>
             </Reveal>
             <Reveal delay={150}>
-              <p className="open-to mt-6">
+              <p className="open-to mt-6" data-tour="home-open">
                 <span className="open-dot" aria-hidden="true" />
                 <span>
                   Open to <strong>technical program manager</strong> and <strong>software engineer</strong> roles. Graduating May 2027.
@@ -192,7 +192,7 @@ export default function Home() {
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-20">
           <div className="relative">
             <Waypoint top="0.9rem" />
-            <h2 id="gb-title" className="display text-[clamp(2.4rem,1.4rem+3.6vw,4.4rem)]">
+            <h2 id="gb-title" data-tour="home-gameboy" className="display text-[clamp(2.4rem,1.4rem+3.6vw,4.4rem)]">
               {gameboy.title}
             </h2>
             <p className="lead mt-6 max-w-xl">{gameboy.summary}</p>

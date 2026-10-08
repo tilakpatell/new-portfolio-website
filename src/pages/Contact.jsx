@@ -73,7 +73,7 @@ function MessageForm() {
   return (
     <form onSubmit={submit} noValidate className="card memo-form grid gap-5 p-6 sm:p-8">
       <div className="memo-top">
-        <p className="memo-head">Dunder Mifflin Paper Company · Interoffice memo</p>
+        <p className="memo-head" data-tour="contact-form">Dunder Mifflin Paper Company · Interoffice memo</p>
         <p className="mt-3 text-sm text-ink">
           <span className="font-semibold">To:</span> Tilak Patel
         </p>
@@ -161,7 +161,7 @@ export default function Contact() {
                 {profile.email}
               </a>
               <div className="mt-5 flex flex-wrap gap-3">
-                <CopyButton text={profile.email} label="Copy email address" onFail={mailTo} />
+                <CopyButton text={profile.email} label="Copy email address" onFail={mailTo} data-tour="contact-copy" />
               </div>
             </div>
             {rows.map((r) => (
