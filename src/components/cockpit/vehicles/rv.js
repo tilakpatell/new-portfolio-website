@@ -2396,13 +2396,27 @@ export async function build({ rich, coarse, renderer, pmrem, say, added }) {
   // ── the crew ──
   // in their looks (nothing in Jesse’s hand: it rests on his knee)
   const undress = [jesse && dress(jesse, { ...looks.jesse, gear: { ...looks.jesse.gear, hand: 'none' } }), walt && dress(walt, looks.walt)].filter(Boolean);
-  // Jesse sat back, his head turned your way; Mr. White watching the road
+  // Jesse sat back, his head turned your way; Mr. White watching the road.
+  // Both answer the driving (`ride`, set each frame): pressed back into the
+  // seat as it pulls away, swaying with the wheel, Jesse's hands up at the
+  // dash as it lifts and his head out at the wings; Walt, stood in the
+  // aisle, braces against the pull and leans into the turns.
+  const ride = { push: 0, sway: 0, lift: 0, wings: 0 };
   const jesseSit = jesseFile && jesse ? retarget(sitClip, jesse.bones.Hips?.position.y ?? 1, sitClip?.userData.hips ?? jesse.bones.Hips?.position.y ?? 1) : sitClip;
   const jesseMove = calmly(jesse, jesseSit, 9.5, 1.2, 0.5, (b, t) => {
-    nudge(b.Spine01, -0.04, 0, 0);
-    nudge(b.Head, -0.06, 0.45 + Math.sin(t * 0.23) * 0.12, 0);
+    nudge(b.Spine01, -0.04 - ride.push * 0.16, 0, ride.sway * 0.5);
+    nudge(b.Head, -0.06 - ride.push * 0.08 + ride.lift * 0.12, 0.45 + Math.sin(t * 0.23) * 0.12 - ride.wings * 0.9, ride.sway * 0.3);
+    // (the arms up and out at the dash while it's lifting: a hold on, a yo)
+    nudge(b.LeftArm, -ride.lift * 0.9, 0, ride.lift * 0.5);
+    nudge(b.RightArm, -ride.lift * 0.9, 0, -ride.lift * 0.5);
+    nudge(b.LeftForeArm, -ride.lift * 0.6, 0, 0);
+    nudge(b.RightForeArm, -ride.lift * 0.6, 0, 0);
   });
-  const waltMove = calmly(walt, idleClip, 3.2, 0.5, 0.35, (b, t) => nudge(b.Head, 0.04, Math.sin(t * 0.17) * 0.15, 0));
+  const waltMove = calmly(walt, idleClip, 3.2, 0.5, 0.35, (b, t) => {
+    nudge(b.Hips, ride.push * 0.1, 0, -ride.sway * 0.4);
+    nudge(b.Spine01, ride.push * 0.14, 0, -ride.sway * 0.35);
+    nudge(b.Head, 0.04 - ride.push * 0.06 + ride.lift * 0.1, Math.sin(t * 0.17) * 0.15, 0);
+  });
   jesseMove?.(0);
   waltMove?.(0);
   if (jesse) inside.add(jesse.group);
@@ -2983,6 +2997,17 @@ export async function build({ rich, coarse, renderer, pmrem, say, added }) {
       swing.b += swing.w * sdt;
       tree.rotation.set(swing.a + Math.sin(t * 1.3) * 0.02, Math.sin(t * 0.5) * 0.4, swing.b + Math.sin(t * 1.7) * 0.015);
 
+      // (how the ride feels to the two of them, eased: the pull of the
+      // speed coming on, the sway of the steering, the lift, the wings out)
+      {
+        const push = launching ? clamp01((v - 2) / 18) * (1 - lift) : 0;
+        const sway = launching ? steer * 6 : 0;
+        const k = Math.min(1, dt * 4);
+        ride.push += (push - ride.push) * k;
+        ride.sway += (sway - ride.sway) * k;
+        ride.lift += (lift * (1 - smooth((lt - p.peak) / 2500)) - ride.lift) * k;
+        ride.wings += (open[0] * (1 - smooth((lt - p.wings - 4500) / 1500)) - ride.wings) * k;
+      }
       jesseMove?.(t);
       waltMove?.(t);
     },

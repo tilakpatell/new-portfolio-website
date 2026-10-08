@@ -10,7 +10,7 @@
 import { createInput } from './input';
 import { createQuality } from './quality';
 import { createPace } from '../lib/three/pace';
-import { createSaves } from './saves';
+import { localSaves, worldStore, winOf } from './local';
 import { createAssets } from './assets';
 import { createAudioBus } from './audio';
 import { createRuntime } from './runtime';
@@ -20,23 +20,16 @@ import './runtime.css';
 export { useWorld } from './useWorld';
 export { default as WorldHost } from './WorldHost';
 export { fromScene } from './module';
+export { localSaves, worldStore };
 
 const GPU_KEY = 'tp-gpu';
 const browser = () => import('./browser');
 const covered = () => typeof document !== 'undefined' && 'covered' in document.documentElement.dataset;
 
 let instance = null;
-
 export function runtime() {
   if (instance) return instance;
-  const win = typeof window !== 'undefined' ? window : null;
-  const store = (name) => {
-    try {
-      return win[name];
-    } catch {
-      return null;
-    }
-  };
+  const win = winOf();
   let stored = null;
   try {
     stored = win?.localStorage.getItem(GPU_KEY);
@@ -57,7 +50,8 @@ export function runtime() {
     input: createInput(),
     // (down only: each step resizes the canvas, lib/three/pace's `climb`)
     quality: createQuality({ dpr: win?.devicePixelRatio || 1, pace: createPace({ climb: false }) }),
-    saves: createSaves({ local: store('localStorage'), session: store('sessionStorage'), win }),
+    saves: localSaves(),
+    store: worldStore(),
     assets: createAssets({ loaders, forget }),
     audio: createAudioBus(),
     gpu: Boolean(win?.navigator?.gpu),

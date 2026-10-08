@@ -18,17 +18,19 @@ import { createGhosts } from '../../middleearth/towns/ghosts';
 import { createChallenges } from './challenges';
 import { DAD, newDad, stepDad } from './companions';
 import { buildCity } from './city';
-import { createFlaxans } from './flaxans';
+import { anyOf, standing } from './foes';
+import { createVillains } from './villains';
 import { surfaceAt } from './flight';
 import { createFlightFx } from './fx';
 import { buildGround } from './ground';
 import { buildJet } from './jet';
 import { buildLandmarks } from './landmarks';
-import { buildLife } from './life';
+import { buildLife, carGeometry } from './life';
 import { LINES } from './lines';
 import { createNpcs } from './npcs';
 import { buildClouds, buildHaze, skyBands } from './sky';
-import { createTraffic, stepTraffic } from './traffic';
+import { carAt, createTraffic, stepTraffic, takeCar } from './traffic';
+import { markerSize } from './hud';
 import { CITY, WATER_Y, WORLD, buildWorld, groundAt, near } from './map';
 import { BODIES, altitudeOf } from './orbit';
 import { castMaterial, loadCast, personFor, setCastRim } from './people';
@@ -41,6 +43,8 @@ const damp = (v, to, rate, dt) => v + (to - v) * (1 - Math.exp(-rate * dt));
 const luma = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 const Y = new THREE.Vector3(0, 1, 0);
 const Z = new THREE.Vector3(0, 0, 1);
+// what the villains do that's drawn and felt (./villains.js's fx)
+const VILLAIN_EV = new Set(['spawn', 'hit', 'ko', 'down', 'hurt', 'won', 'swing', 'throw', 'carHit', 'carAway', 'carDown', 'quake', 'blast', 'shake']);
 
 // the times of day: the sky, how it sits, the light, the haze, the night,
 // the light that follows Mark (`spot`) and the rim round the cast (`rim`).
@@ -110,6 +114,183 @@ function rayBox(o, d, b) {
   return t0;
 }
 
+// ── the missions' props: the bank (CAST.bank) on its block east of the plaza,
+// and the getaway truck (CAST.truck) driven along the grid by ./getaway.js;
+// each a code stand-in if its model won't load ──
+async function loadProps(scene, world, { rim }) {
+  const group = new THREE.Group();
+  group.name = 'mission-props';
+  scene.add(group);
+  const casts = [];
+  const geos = [];
+  // a prop's model, stood on the ground at `h` metres tall (its front toward +z)
+  async function prop(name, h) {
+    try {
+      const t = await loadFigure(asset(CAST[name].file));
+      const m = t.scene.clone(true);
+      const box = new THREE.Box3().setFromObject(m);
+      const size = box.getSize(new THREE.Vector3());
+      const k = h / Math.max(1e-3, size.y);
+      m.scale.setScalar(k);
+      m.position.set(-((box.min.x + box.max.x) / 2) * k, -box.min.y * k, -((box.min.z + box.max.z) / 2) * k);
+      const holder = new THREE.Group();
+      holder.add(m);
+      casts.push(castMaterial(m, { rim }));
+      return holder;
+    } catch {
+      return null;
+    }
+  }
+  const bankAt = world.landmarks.find((l) => l.id === 'bank');
+  let bank = bankAt ? await prop('bank', CAST.bank.h) : null;
+  if (bankAt) {
+    if (!bank) {
+      // a stand-in: a stone box with a dark door, the size the map has it
+      bank = new THREE.Group();
+      const g = new THREE.BoxGeometry(bankAt.w, bankAt.h, bankAt.d);
+      const d = new THREE.BoxGeometry(0.4, 5, 6);
+      geos.push(g, d);
+      const wall = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xd9d2c3, roughness: 0.75 }));
+      wall.position.y = bankAt.h / 2;
+      const door = new THREE.Mesh(d, new THREE.MeshStandardMaterial({ color: 0x1b2a36, roughness: 0.3, metalness: 0.6 }));
+      door.position.set(-bankAt.w / 2, 2.5, 0);
+      bank.add(wall, door);
+    }
+    bank.position.set(bankAt.x, groundAt(bankAt.x, bankAt.z), bankAt.z);
+    bank.rotation.y = -Math.PI / 2; // its front to the west: the hall across the street
+    group.add(bank);
+  }
+  let truck = await prop('truck', CAST.truck.h);
+  if (!truck) {
+    truck = new THREE.Group();
+    const g = carGeometry(3);
+    geos.push(g);
+    truck.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x3a3f47, roughness: 0.5, metalness: 0.4, vertexColors: true })));
+  }
+  truck.visible = false;
+  group.add(truck);
+  return {
+    group,
+    update(g) {
+      truck.visible = Boolean(g);
+      if (!g) return;
+      truck.position.set(g.p[0], g.p[1], g.p[2]);
+      truck.rotation.y = g.yaw;
+    },
+    dispose() {
+      group.removeFromParent();
+      for (const c of casts) c.dispose();
+      for (const g of geos) g.dispose();
+    },
+  };
+}
+
+// ── the marker over a mission's target: a chevron pointing down at it,
+// bobbing, turning, in the mission's colour, the size the HUD's rules give
+// it (./hud.js markerSize: a 6 m chevron as the camera sees it, never under
+// 24 px); unlit, through anything in front of it ──
+function createMarker(scene) {
+  const holder = new THREE.Group();
+  holder.visible = false;
+  holder.renderOrder = 9;
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffd23a, transparent: true, opacity: 0.92, depthTest: false, toneMapped: false });
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(1.6, 3.2, 4), mat);
+  cone.rotation.x = Math.PI; // (point down)
+  cone.position.y = 1.6;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.22, 6, 24), mat);
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 3.6;
+  holder.add(cone, ring);
+  scene.add(holder);
+  const col = new THREE.Color();
+  return {
+    update(m, t, camera, screenH) {
+      holder.visible = Boolean(m);
+      if (!m) return;
+      const d = Math.max(1, camera.position.distanceTo(new THREE.Vector3(m.p[0], m.p[1], m.p[2])));
+      const px = markerSize(d, screenH, { fov: camera.fov });
+      // the chevron is 6 m tall as drawn; the size on screen is px of screenH
+      const want = (px * 2 * d * Math.tan((camera.fov * Math.PI) / 360)) / screenH;
+      const k = want / 6;
+      holder.scale.setScalar(k);
+      holder.position.set(m.p[0], m.p[1] + 3 * k + Math.sin(t * 2.4) * 0.4 * k, m.p[2]);
+      holder.rotation.y = t * 1.2;
+      if (m.color) mat.color.copy(col.set(m.color));
+    },
+    dispose() {
+      holder.removeFromParent();
+      cone.geometry.dispose();
+      ring.geometry.dispose();
+      mat.dispose();
+    },
+  };
+}
+
+// ── a race's gates (Eve's eight round downtown; the three home from the
+// Moon, in space's frame, which is the scene's) as rings, the next one
+// bright, the ones through gone; and a photo's frame: a rectangle to look
+// through, a few metres ahead of its spot, the way it faces ──
+function createCourse(scene) {
+  const group = new THREE.Group();
+  group.visible = false;
+  scene.add(group);
+  const ringGeo = new THREE.TorusGeometry(1, 0.06, 8, 48);
+  const rings = Array.from({ length: 8 }, () => {
+    const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xf5c518, transparent: true, opacity: 0.3, toneMapped: false }));
+    m.visible = false;
+    group.add(m);
+    return m;
+  });
+  const frame = new THREE.Group();
+  const bar = new THREE.BoxGeometry(1, 1, 1);
+  // (the radio's yellow, through anything: the hall's columns are white too)
+  const frameMat = new THREE.MeshBasicMaterial({ color: 0xf5c518, transparent: true, opacity: 0.9, depthTest: false, toneMapped: false });
+  for (const [x, y, w, h] of [
+    [0, 2, 6.4, 0.22],
+    [0, -2, 6.4, 0.22],
+    [3.1, 0, 0.22, 4.2],
+    [-3.1, 0, 0.22, 4.2],
+  ]) {
+    const m = new THREE.Mesh(bar, frameMat);
+    m.position.set(x, y, 0);
+    m.scale.set(w, h, 0.22);
+    m.renderOrder = 8;
+    frame.add(m);
+  }
+  frame.visible = false;
+  group.add(frame);
+  return {
+    update(gates, photo, t) {
+      group.visible = Boolean(gates || photo);
+      rings.forEach((m, i) => {
+        const g = gates?.list[i];
+        m.visible = Boolean(g) && i >= (gates.next ?? 0);
+        if (!m.visible) return;
+        const next = i === gates.next;
+        m.position.set(g[0], g[1], g[2]);
+        m.scale.setScalar(gates.r * (next ? 1 + Math.sin(t * 4) * 0.04 : 1));
+        m.material.opacity = next ? 0.95 : 0.3;
+        // (facing the one before it, or him: a ring stands across the way)
+        const from = gates.list[i - 1] ?? [g[0], g[1], g[2] + 1];
+        m.lookAt(from[0], from[1], from[2]);
+      });
+      frame.visible = Boolean(photo);
+      if (photo) {
+        const d = [Math.sin(photo.face), 0, Math.cos(photo.face)];
+        frame.position.set(photo.p[0] + d[0] * 9, photo.p[1] + 1.2, photo.p[2] + d[2] * 9);
+        frame.rotation.set(0, photo.face, 0);
+      }
+    },
+    dispose() {
+      group.removeFromParent();
+      ringGeo.dispose();
+      bar.dispose();
+      frameMat.dispose();
+      for (const m of rings) m.material.dispose();
+    },
+  };
+}
+
 export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = {}) {
   const engine = createEngine(canvas, { exposure: 1, fov: FOV, near: 0.3, far: 26000, bloom: { strength: 0.5, radius: 0.5, threshold: 0.92 }, onLost, onSlow });
   const { scene, camera } = engine;
@@ -122,7 +303,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   scene.add(ground.group, city.group, landmarks.group);
   // who's about, the clouds, and the airliner going round
   // (the HD figures for those the cast has; the kit's people for the rest)
-  const people = await loadCast(['eve', 'debbie', 'cecil', 'allen', 'civA', 'civB', 'civC']);
+  const people = await loadCast(['eve', 'debbie', 'cecil', 'allen', 'civA', 'civB', 'civC', 'mauler', 'seismic']);
   const npcs = createNpcs(scene, world, people);
   const clouds = buildClouds({ small });
   scene.add(clouds.mesh);
@@ -212,7 +393,12 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
 
   const fx = createFlightFx(scene, { calm, small });
   const challenges = createChallenges(scene, world, fx.vfx);
-  const flaxans = createFlaxans(scene, fx.vfx, { calm });
+  const villains = createVillains(scene, fx.vfx, { calm, templates: { mauler: people.mauler, seismic: people.seismic }, rim: LOOK.noon.rim });
+  // the missions' things (./missions.js, run by InvWorld.jsx): the bank on
+  // its block, the getaway truck on the grid, the marker over the step's target
+  const props = await loadProps(scene, world, { rim: LOOK.noon.rim });
+  const marker = createMarker(scene);
+  const course = createCourse(scene);
   const feel = createFeel({ calm, baseFov: FOV, offset: 0.4 });
 
   // ── the time of day ──
@@ -297,7 +483,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
   await setTime('noon');
 
   // ── the city or space: one or the other is drawn ──
-  const cityOnly = [ground.group, city.group, landmarks.group, clouds.mesh, hazeSky.mesh, jet.group, life.group, challenges.group, flaxans.group, omni.holder];
+  const cityOnly = [ground.group, city.group, landmarks.group, clouds.mesh, hazeSky.mesh, jet.group, life.group, challenges.group, villains.group, omni.holder];
   function spaceLook() {
     scene.background = new THREE.Color(0, 0, 0.004);
     scene.fog = null;
@@ -615,11 +801,11 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     // what happened this frame (and what sends the people and the traffic running)
     const scare = [];
     // and what the townspeople make of it (./brains.js)
-    const crowd = { slam: null, hit: null, fight: Boolean(sim.fight?.on), won: false, time: timeName, lesson: sim.quests?.lesson ?? null, mission: sim.mission?.id ?? null };
+    const crowd = { slam: null, hit: null, fight: Boolean(sim.foes?.on), won: false, time: timeName, lesson: sim.quests?.lesson ?? null, mission: sim.mission?.id ?? null };
     // (Eve goes for the foes still standing)
     crowd.talk = Boolean(sim.talkEve);
     sim.talkEve = false;
-    crowd.foes = sim.fight?.on ? sim.fight.foes.filter((e) => e.state === 'fight').map((e) => ({ id: e.id, p: e.p })) : [];
+    crowd.foes = sim.foes ? standing(sim.foes).map((e) => ({ id: e.id, p: e.p })) : [];
     // what Eve and Dad say and do this frame, for ./InvWorld.jsx
     sim.companion ??= [];
     for (const e of sim.events) {
@@ -653,14 +839,22 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
           splashed.speed = e.speed;
         }
       } else if (e.type === 'takeoff') fx.takeoff(e.at);
-      else if (e.type === 'spawn' || e.type === 'ko' || e.type === 'down' || e.type === 'hurt' || e.type === 'won') {
-        // the Flaxans: coming through, knocked out, hitting him
-        flaxans.fx(e);
+      else if (VILLAIN_EV.has(e.type)) {
+        // the villains (./foes.js): coming through, hit, knocked out, hitting him
+        villains.fx(e);
+        // (the camera's knock goes by their size; a punch that lands stops the
+        // game 70 ms, none of it under reduced motion)
         if (e.type === 'ko') {
-          feel.trauma(0.3);
-          feel.hitstop(60);
+          feel.trauma(e.kind === 'mauler' ? 0.5 : e.kind === 'seismic' ? 0.4 : 0.3);
+          if (!calm) feel.hitstop(70);
           scare.push({ x: e.at[0], z: e.at[2], r: 30 });
-        } else if (e.type === 'hurt') feel.trauma(0.35);
+        } else if (e.type === 'hit') {
+          feel.trauma(e.kind === 'mauler' ? 0.25 : 0.15);
+          if (!calm) feel.hitstop(70);
+        } else if (e.type === 'hurt') feel.trauma(e.by === 'car' || e.by === 'mauler' ? 0.5 : 0.35);
+        else if (e.type === 'shake') feel.trauma(clamp(0.9 - Math.hypot(e.at[0] - h.p[0], e.at[2] - h.p[2]) / 200, 0.2, 0.9));
+        else if (e.type === 'carHit' || e.type === 'carDown') scare.push({ x: e.at[0], z: e.at[2], r: 25 });
+        else if (e.type === 'throw' && e.car != null && traffic.cars[e.car]) traffic = takeCar(traffic, traffic.cars[e.car].id);
       } else if (e.type === 'land' && e.n) {
         // down on the Moon or Mars: a ring of dust thrown out round him
         const at = new THREE.Vector3(...e.at);
@@ -731,7 +925,18 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
         jet.update(frameDt, t);
       }
       if (sim.quests) challenges.update(sim.quests, frameDt, t);
-      if (sim.fight) flaxans.update(sim.fight, frameDt, t, h);
+      if (sim.foes) {
+        villains.update(sim.foes, frameDt, t, h);
+        // (a Mauler about: where the traffic's cars are, for him to take one; a car he's taken is nowhere)
+        sim.cars = anyOf(sim.foes, 'mauler')
+          ? traffic.cars.map((c) => {
+              if (c.gone) return [1e9, 0, 1e9];
+              const [x, z] = carAt(c);
+              return [x, 0, z];
+            })
+          : null;
+      }
+      props.update(sim.getaway, frameDt);
       // (no traffic to speak of from up where the clouds are)
       if (h.p[1] < 2200 || scare.length) {
         traffic = stepTraffic(traffic, frameDt, { cx: camera.position.x, cz: camera.position.z, yaw: sim.yaw, scare });
@@ -751,6 +956,8 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     ghosts.update(sim.travellers ?? [], t, frameDt);
 
     placeCamera(h, sim.yaw, sim.pitch, speed, snap ? 0 : dt);
+    marker.update(sim.marker, t, camera, engine.size.h);
+    course.update(sim.gates, sim.photo, t);
     ground.update(t);
     city.update(t, look?.night ?? 0);
     // coming down through the air from space, fast: the air in front of him burns
@@ -796,6 +1003,7 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     debug: {
       npcs,
       jet,
+      villains,
       world,
       bodies: BODIES,
       allen: ALLEN,
@@ -814,6 +1022,10 @@ export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = 
     dispose() {
       skyLight?.dispose();
       fx.dispose();
+      villains.dispose();
+      props.dispose();
+      marker.dispose();
+      course.dispose();
       ghosts.dispose();
       for (const c of casts) c.dispose();
       mark.dispose();

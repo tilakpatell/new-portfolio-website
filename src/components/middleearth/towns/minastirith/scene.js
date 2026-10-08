@@ -64,6 +64,8 @@ import {
   roadAt,
   towerX,
 } from './layout';
+import { attend, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
+import { turn as easeYaw } from '../../../../lib/three/gait';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 // where each place is drawn
@@ -474,6 +476,15 @@ export function createMinasWorld(canvas, { onLost } = {}) {
     f.group.scale.setScalar(1);
     sit(f, false);
     if (f.blob) f.blob.visible = true;
+    // (on the cast: what each does here is set after, frame by frame)
+    castDo(f, { base: null, upper: null, look: null, crouch: false, seat: null });
+  };
+  // a figure kneeling (the crowning), on the cast: held low in a kneel, till it's let up
+  const kneel = (f, on) => {
+    if (!f.cast?.ready || Boolean(f.kneeling) === on) return;
+    f.kneeling = on;
+    if (on) castPlay(f, 'kneel.fix', { layer: 'full', at: 1.2, speed: 0.04, loop: true, fade: 0.4 });
+    else f.cast.stop('full', 0.5);
   };
   const hideAll = () => {
     for (const f of [pippin, pippinGuard, gandalf, beregond, denethor, aragorn, keeper, ...wallGuards]) f.group.visible = false;
@@ -569,8 +580,26 @@ export function createMinasWorld(canvas, { onLost } = {}) {
             th.obj.userData.peck?.(t + th.o.s);
             th.obj.position.y = roadAt(th.o.s).y + th.tip * Math.abs(Math.sin(t * 9)) * 0.5;
           } else if (th.o.kind === 'folk') {
-            for (const f of th.obj.userData.figures ?? []) pose(f, t + th.o.s, { moving: th.tip > 0, wave: th.tip > 0 ? 0 : 0.3 });
-            th.obj.rotation.y = th.face + th.tip * 2.4;
+            const figs = th.obj.userData.figures ?? [];
+            if (figs.length && figs.every((f) => f.cast?.ready)) {
+              // on the cast: talking together in the road till he's into
+              // them, then they run for it, each off its own side (not spun)
+              th.obj.rotation.y = th.face;
+              th.ran = th.tip > 0 ? (th.ran ?? 0) + dt : 0;
+              figs.forEach((f, j) => {
+                f.home ??= f.group.position.clone();
+                f.homeFace ??= f.group.rotation.y;
+                const side = f.home.z < 0 ? -1 : 1;
+                const away = Math.min(5, th.ran * th.ran * 2 + th.ran * 2.5);
+                f.group.position.set(f.home.x + away * 0.45, f.home.y, f.home.z + side * away);
+                f.group.rotation.y = th.ran > 0 ? easeYaw(f.group.rotation.y, Math.atan2(-side, 0.45), dt, 10) : f.homeFace;
+                castDo(f, { look: th.ran > 0 ? null : figs[1 - j] ?? null, upper: th.ran > 0 ? 'wave.help' : null });
+                pose(f, t + th.o.s, { moving: th.ran > 0, talk: th.ran > 0 ? 0 : 1 });
+              });
+            } else {
+              for (const f of figs) pose(f, t + th.o.s, { moving: th.tip > 0, wave: th.tip > 0 ? 0 : 0.3 });
+              th.obj.rotation.y = th.face + th.tip * 2.4;
+            }
           } else th.obj.rotation.z = -th.tip * 0.9;
         }
         const p = besideRoad(r.s, r.lane * RIDE.lanes);
@@ -596,9 +625,14 @@ export function createMinasWorld(canvas, { onLost } = {}) {
         for (const g of guards) {
           stand(g.fig, 'city', g.x, COURT_Y, g.z, g.face);
           pose(g.fig, t + g.x, { moving: false });
+          // (on the cast: the Guards of the Citadel stand still, but their eyes follow you by)
+          castDo(g.fig, { look: h && Math.hypot(h.x - g.x, h.z - g.z) < 6 ? me : null });
         }
         if (!crowning && s.next === 'court') {
-          stand(beregond, 'city', BEREGOND.x, COURT_Y, BEREGOND.z, s.talking === 'beregond' ? faceTo(BEREGOND.x, BEREGOND.z, h.x, h.z) : BEREGOND.face);
+          stand(beregond, 'city', BEREGOND.x, COURT_Y, BEREGOND.z, BEREGOND.face);
+          // (on the cast: his eyes on you and his body round over a moment; a toy faces you at once)
+          if (beregond.cast?.ready) attend(beregond, h, s.talking === 'beregond' ? faceTo(BEREGOND.x, BEREGOND.z, h.x, h.z) : BEREGOND.face, dt, { who: me, near: s.talking === 'beregond' ? 30 : 5 });
+          else if (s.talking === 'beregond') beregond.group.rotation.y = faceTo(BEREGOND.x, BEREGOND.z, h.x, h.z);
           pose(beregond, t + 3, { talk: s.speaker === 'beregond' ? 1 : 0 });
         }
         if (crowning) {
@@ -609,7 +643,9 @@ export function createMinasWorld(canvas, { onLost } = {}) {
             pose(f.fig, t + f.x * 2, {});
           }
           // and when he kneels, so do they all
-          if (s.talking === 'crown' && (s.line === 'kneel' || s.line === 'none')) {
+          const kneeling = s.talking === 'crown' && (s.line === 'kneel' || s.line === 'none');
+          for (const f of [aragorn, ...friends.map((x) => x.fig), ...guards.map((g) => g.fig)]) kneel(f, kneeling && !(f === aragorn && s.line !== 'kneel'));
+          if (kneeling) {
             const k = s.line === 'kneel' ? 1 : 0.4;
             for (const f of [aragorn, ...friends.map((x) => x.fig), ...guards.map((g) => g.fig)]) {
               if (f === aragorn && s.line !== 'kneel') continue;
@@ -641,6 +677,8 @@ export function createMinasWorld(canvas, { onLost } = {}) {
         if (s.talking === 'dusk') {
           stand(gandalf, 'city', OVERLOOK.x - 0.4, COURT_Y, OVERLOOK.z - 1.2, 0.2);
           pose(gandalf, t + 1, { talk: s.speaker === 'gandalf' ? 1 : 0 });
+          castDo(gandalf, { look: s.speaker === 'pippin' ? me : null });
+          castDo(me, { look: s.speaker === 'gandalf' ? gandalf : null });
         }
       }
 
@@ -652,6 +690,8 @@ export function createMinasWorld(canvas, { onLost } = {}) {
         sit(keeper, true);
         keeper.body.position.y = keeper.baseY - 0.32;
         const ph = n?.phase ?? 'eat';
+        // (on the cast: at his supper, stirring the pot, or looking about him; drawn only)
+        castDo(keeper, { seat: keeper.baseY - 0.32, upper: ph === 'eat' ? 'sit.drink' : ph === 'stir' ? 'interact' : 'look.around' });
         // his supper fire, by the stool
         const sup = wpos('city', gs.x + 0.9, gs.y + 0.3, gs.z + 0.7, tmp2);
         if (Math.random() < dt * 26 * Math.max(0.5, many)) flames.emit(sup.x + R(0.15), sup.y, sup.z + R(0.15), R(0.1), 0.7 + Math.random() * 0.4, R(0.1), 0.5, 0.35, 0.08, 1);
@@ -666,6 +706,8 @@ export function createMinasWorld(canvas, { onLost } = {}) {
           const onPile = n.s >= PILE.s - 0.05;
           stand(me, 'city', lx + (onPile ? 0.2 : 0.4), ly + up, lz - (onPile ? 0.6 + n.climb * 0.9 : 0), Math.PI / 2);
           me.body.rotation.z = n.covered || (!n.moving && n.phase !== 'eat') ? -0.4 : 0;
+          // (on the cast: crouched low while he's watched, eyes on the guard)
+          castDo(me, { crouch: Boolean(n.covered || (!n.moving && n.phase !== 'eat')), look: keeper });
           if (onPile && n.climb > 0) {
             me.arms[0].rotation.x = -2.6;
             me.arms[1].rotation.x = -2.6 + Math.sin(t * 8) * 0.4;
@@ -711,6 +753,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
         pose(me, t, { talk: s.speaker === 'pippin' ? 1 : 0 });
         stand(gandalf, 'city', SIEGE_AT.x - 1.4, SIEGE_AT.y, SIEGE_AT.z - 2.2, 0.15);
         pose(gandalf, t + 2, { talk: s.speaker === 'gandalf' ? 1 : 0 });
+        castDo(gandalf, { look: s.speaker === 'pippin' ? me : null });
         wallGuards.forEach((f, i) => {
           const a = 0.02 + i * 0.09 - (i > 1 ? 0.3 : 0);
           stand(f, 'city', Math.cos(a) * (WALL_R[0] - 1.6), LEVEL_Y[0], Math.sin(a) * (WALL_R[0] - 1.6), -a);
@@ -876,13 +919,15 @@ export function createMinasWorld(canvas, { onLost } = {}) {
     // ── the hall of the kings ──
     if (shown === 'hall') {
       ghosts.update([], t, dt);
-      stand(denethor, 'hall', CHAIR.x, 0.35, CHAIR.z, s.talking === 'denethor' ? faceTo(CHAIR.x, CHAIR.z, h.x, h.z) : DENETHOR.face);
+      // (on the cast: the Steward stays in his chair and looks at you; a toy turns the chair)
+      stand(denethor, 'hall', CHAIR.x, 0.35, CHAIR.z, s.talking === 'denethor' && !denethor.cast?.ready ? faceTo(CHAIR.x, CHAIR.z, h.x, h.z) : DENETHOR.face);
       sit(denethor, true);
       denethor.body.position.y = denethor.baseY - 0.1;
       pose(denethor, t, { talk: s.speaker === 'denethor' ? 1 : 0 });
       sit(denethor, true);
       // at his supper, when you're near the dish
       if (s.talking === 'tomato') denethor.arms[1].rotation.x = -1.4 + Math.sin(t * 3) * 0.2;
+      castDo(denethor, { seat: denethor.baseY - 0.1, upper: s.talking === 'tomato' ? 'sit.drink' : null, look: s.talking ? me : null });
       stand(me, 'hall', h.x, 0, h.z, h.face);
       pose(me, t, { moving: (h.speed ?? 0) > 0.3, speed: Math.min(1.4, (h.speed ?? 0) / 3.4), talk: s.speaker === 'pippin' ? 1 : 0 });
       // the braziers by the throne
@@ -1068,6 +1113,8 @@ export function createMinasWorld(canvas, { onLost } = {}) {
       high: moodKey === 'day' ? [0.02, 0.015, 0] : [0, 0, 0],
     });
     ground.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -1117,6 +1164,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
       clearThings();
       ghosts.dispose();
       disposeTree(scene);
+      releaseCast(scene);
       stage.dispose();
     },
   };

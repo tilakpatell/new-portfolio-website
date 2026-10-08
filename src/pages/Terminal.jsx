@@ -5,7 +5,7 @@ import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES } from '../theme/themes';
 import { useFun } from '../fun/FunProvider';
 import { SCRIPTS } from '../fun/scripts';
-import { openPalette } from '../lib/palette';
+import { openGuide, openPalette } from '../lib/palette';
 import { audioContext, setSound, soundOn } from '../lib/audio';
 import { sayVoiced } from '../lib/voiced';
 import { LIGHTSABER, QUOTES } from '../components/terminal/quotes';
@@ -14,9 +14,11 @@ import { education, profile, skills } from '../data/profile';
 import { DESTINATIONS, findDestination } from '../components/universe/nav';
 import { roles, fmtShortRange, fmtMonth } from '../data/roles';
 import { projects } from '../data/projects';
-import { useDocumentTitle } from '../lib/hooks';
+import { local, useDocumentTitle } from '../lib/hooks';
 import { restartSite } from '../lib/restart';
-import { openTour } from '../lib/tour';
+import { TOUR_NAMES, openTour } from '../lib/tour';
+import { THINGS_TO_DO, isDone } from '../data/todo';
+import { VISITED_KEY, storedKey } from '../lib/visited';
 
 // The Imperial terminal — the one place on the site that stays fully in character.
 // `hang` is how far a wrapped line indents (it defaults to the line's own
@@ -89,7 +91,10 @@ const HELP = [
   L('  achievements     what you have unlocked', 'out', 19),
   L('  clear            clear the screen', 'out', 19),
   BLANK,
-  L('  Also: whoami · date · ls · cat · echo · history · neofetch · tour (a look round the site) · restart (the site, from the beginning) · exit', 'dim'),
+  L('  tour [who]       a tour of the site: tour hiring, tour player, tour all (or just tour, a quick look round)', 'out', 19),
+  L('  checklist        the things to do here, ticked off as you do them', 'out', 19),
+  BLANK,
+  L('  Also: whoami · date · ls · cat · echo · history · neofetch · restart (the site, from the beginning) · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
   L('  Worlds: worlds · galaxy · deathstar · moria · avengers · scranton · cybertron · albuquerque · c137 · dotmatrix · earth · music', 'dim'),
   L('  Languages: language · aurebesh · cybertronian · runes · english (back to English)', 'dim'),
@@ -372,7 +377,7 @@ export default function Terminal() {
       theme: (arg) => {
         if (arg === 'auto') {
           pin(null);
-          return [L('  Colors follow the page again.', 'ok')];
+          return [L('  Colours follow the page again.', 'ok')];
         }
         const fan = FAN_THEMES.find((f) => f.id === arg);
         if (fan && !unlocked.includes(fan.achievement)) return [L(`  Locked. Hint: ${fan.hint}`, 'err')];
@@ -515,9 +520,23 @@ export default function Terminal() {
         setTimeout(() => navigate('/'), 300);
         return [L('  Closing channel.', 'sys')];
       },
-      tour: () => {
-        setTimeout(openTour, 500);
-        return [L('  Showing you round…', 'ok')];
+      tour: (arg) => {
+        const audience = { hiring: 'recruiter', recruiter: 'recruiter', hire: 'recruiter', player: 'player', play: 'player', all: 'mixed', whole: 'mixed' }[arg];
+        if (arg && !audience) return [L(`  tour: ${arg}: no such tour. Try: tour hiring, tour player, tour all`, 'err')];
+        setTimeout(() => openTour(audience ? { audience } : undefined), 500);
+        return [L(audience ? `  ${TOUR_NAMES[audience]}. Showing you round…` : '  Showing you round…', 'ok')];
+      },
+      checklist: () => {
+        const visited = local.get(VISITED_KEY, []);
+        const ticked = THINGS_TO_DO.filter((t) => isDone(t, { unlocked, visited, stored: storedKey })).length;
+        // (the input keeps the focus here, so ? would type: the guide opens itself)
+        setTimeout(() => openGuide({ tab: 'checklist' }), 600);
+        return [
+          L(`  THE CHECKLIST: ${ticked}/${THINGS_TO_DO.length} done`, 'head'),
+          ...THINGS_TO_DO.map((t) => (isDone(t, { unlocked, visited, stored: storedKey }) ? L(`  ■ ${t.title}`) : L(`  □ ${t.title}`, 'dim'))),
+          BLANK,
+          L('  Opening the guide’s checklist, where Show me takes you to any of them…', 'dim'),
+        ];
       },
       restart: () => {
         setTimeout(restartSite, 700);
@@ -539,7 +558,8 @@ export default function Terminal() {
       setHistory((h) => [...h, text]);
       setCursor(-1);
       const [name, ...args] = text.split(/\s+/);
-      const cmd = name.toLowerCase();
+      // (todo was the checklist's first name)
+      const cmd = name.toLowerCase() === 'todo' ? 'checklist' : name.toLowerCase();
       const arg = args.join(' ').toLowerCase();
 
       if (cmd === 'clear') return setLines([]);
@@ -662,6 +682,7 @@ export default function Terminal() {
             </label>
             <input
               id="term-input"
+              data-tour="terminal-input"
               ref={inputRef}
               value={input}
               disabled={busy}

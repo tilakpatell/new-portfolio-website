@@ -15,6 +15,7 @@ import { prefersReducedMotion } from '../../../lib/hooks';
 import { buildChariot, buildPortal } from '../lawn/models';
 import { CHARIOT, KINDS, LANE, RUN } from './rules';
 import { aim, fitted, loadMeshy, meshyFigure, meshyParts } from './meshy';
+import { createChitauri, flail } from './chitauri';
 import { CAR_COLOURS, CAR_KINDS, STREET, blockMaterials, buildBlock, lampGeometries, buildStarkTower, carGeometries, carMaterials, craterMaps, craterRim, facadeAtlas, laneWarning, roadMarkings, wallField, wallGeometries } from './models';
 
 const FOV = 56;
@@ -308,6 +309,22 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
   const camLook = new THREE.Vector3(0, 1.8, -16);
   const flying = []; // smashed things in the air: { kind, at, x, y, vAt, vx, vy, rx, ry, rz, sx, sy, sz, t, life, … }
   const soldierFor = new Map(); // obstacle id → figure
+  // the Chitauri's fire: one at a time on a phone, two otherwise
+  const chit = createChitauri({ shooters: small ? 1 : 2 });
+  const muzzle = new THREE.Vector3();
+  const boltTo = new THREE.Vector3();
+  // a bolt from the staff rifle's muzzle at him (most strike him and glance
+  // off in sparks, the rest go past into the road)
+  function fireBolt(h, g) {
+    h.root.updateMatrixWorld(true);
+    h.bones.handR.localToWorld(muzzle.set(0, -0.67 * h.scale, 0.03 * h.scale));
+    const hit = Math.random() < 0.65;
+    const hy = g.hulk.y ?? 0;
+    if (hit) boltTo.set(g.hulk.x + (Math.random() - 0.5) * 1.2, hy + 1.3 + Math.random() * 1.5, 0.4);
+    else boltTo.set(g.hulk.x + (Math.random() - 0.5) * 5, 0.05, -2 + Math.random() * 5);
+    vfx.beam(muzzle, boltTo, { color: 0x6fd8ff, width: 0.07, life: 0.09 });
+    vfx.sparks(boltTo, { count: hit ? 8 : 5, speed: 4, color: 0xdff0ff, to: 0x6fd8ff, life: 0.25, size: 0.07, gravity: 3 });
+  }
 
   const tall = () => camera.aspect < 1.2;
   const zAt = (g, at) => g.d - at;
@@ -574,12 +591,18 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
         }
         seen.add(h);
         h.root.visible = true;
-        h.root.position.set(o.x + Math.sin(clock * 0.7 + o.id) * 0.15, 0, z);
+        // where the rules have it (it walks; it doesn't drift sideways on the spot)
+        h.root.position.set(o.x, 0, z);
         h.root.rotation.set(0, 0, 0); // they face him (+z)
         if (h.meshy) {
           h.set('walk', 1.1);
           h.update(dt);
-        } else poseHumanoid(h, { t: clock, mode: 'walk', speed: 1.1, phase: o.id * 1.3, aim: ahead < 30 ? 0.7 : 0.25, lean: 0.25 });
+        } else {
+          // its legs by the ground it covers, its rifle up as he comes, and
+          // a couple of them at a time shooting (./chitauri.js)
+          const firing = chit.claim(o, ahead, g.phase === 'run' && !o.passed);
+          if (chit.pose(h, o, { dt, ahead, firing, walk: o.passed ? 0 : KINDS.soldier.walk, calm })) fireBolt(h, g);
+        }
       } else if (o.kind === 'car') {
         const { kind, c } = carLook(o.id);
         const yaw = (hash(o.id, 4) - 0.5) * 0.5 + (hash(o.id, 5) < 0.5 ? Math.PI : 0);
@@ -602,6 +625,8 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
     for (const c of craters) if (!c.used) c.m.visible = false;
     fields.count = nf;
     fields.instanceMatrix.needsUpdate = true;
+    // (a shooter gone from the road gives its turn up)
+    chit.audit(dt, (id) => soldierFor.has(id));
     // soldiers no longer in the rules: back to the pool (unless flying)
     for (const h of soldiers) {
       if (h.id != null && !seen.has(h) && !h.flying) {
@@ -666,7 +691,8 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
         f.fig.root.visible = true;
         f.fig.root.position.set(f.x, f.y, z);
         f.fig.root.rotation.set(f.rx, f.ry, f.rz);
-        if (!f.fig.meshy) poseHumanoid(f.fig, { t: clock, mode: 'idle', flinch: 1 });
+        // flung: flailing, then sprawled once it's hit the road
+        if (!f.fig.meshy) flail(f.fig, f.t, Boolean(f.bounced));
       }
     }
     // an empty pool still draws one hidden copy: hide it instead

@@ -17,7 +17,7 @@
 
 import { seeded } from '../../../lib/seeded';
 import { makeWalker, pushOut } from '../../middleearth/towns/walker';
-import { DESTINATIONS, GARAGE_BACK } from './dimensions/destinations';
+import { DESTINATIONS, GARAGE_BACK, isPlanet } from './dimensions/destinations';
 
 export { behindYaw, cameraMove } from '../../middleearth/towns/walker';
 
@@ -186,8 +186,9 @@ export const LINKS = [
   { id: 'garage-kitchen', area: 'garage', x: -296.85, z: 100.2, r: 0.9, kind: 'door', to: 'house', label: 'The kitchen', arrive: { x: -309.4, z: 1.1, face: 0 } },
   { id: 'stairs-up', area: 'house', x: -295.1, z: 2.6, r: 0.9, kind: 'stairs', to: 'upstairs', label: 'Upstairs', arrive: { x: -303, z: 402, face: FACE_N } },
   { id: 'stairs-down', area: 'upstairs', x: -303, z: 403.4, r: 0.9, kind: 'stairs', to: 'house', label: 'Downstairs', arrive: { x: -296.9, z: 0.6, face: FACE_N } },
-  // (the portal swirls on the garage's west wall, past the end of the bench)
-  { id: 'garage-portal', area: 'garage', x: -303, z: 101.4, r: 1.4, kind: 'portal', to: 'annex', label: 'Through the portal', arrive: { x: 400, z: 9, face: FACE_N } },
+  // (the portal swirls on the garage's west wall, past the end of the bench;
+  // its reach stops short of the portal gun's spot beside it, so the gun can be dialled)
+  { id: 'garage-portal', area: 'garage', x: -303, z: 101.4, r: 1.1, kind: 'portal', to: 'annex', label: 'Through the portal', arrive: { x: 400, z: 9, face: FACE_N } },
   { id: 'annex-portal', area: 'annex', x: 400, z: 13, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: { x: -301.2, z: 101.4, face: 0 } },
   // down the hatch to the foot of the ladder, and up it to beside the hatch
   { id: 'garage-hatch', area: 'garage', x: HATCH.x, z: HATCH.z, r: 0.9, kind: 'hatch', to: 'basement', label: 'Down the hatch', arrive: into('basement') },
@@ -1013,7 +1014,7 @@ export const TASKS = [
   { id: 'president', name: 'Meet the President', hint: 'The President’s limo is parked outside the Smith house, and he wants Rick.' },
   { id: 'oval', name: 'Visit the Oval Office', hint: 'Take the President’s portal by the garage door in Rick’s garage.' },
   { id: 'diner', name: 'Have breakfast at Shoney’s', hint: 'A Federation agent is waiting in a booth at Shoney’s, up the street from the Smiths’.' },
-  { id: 'portal', name: 'Go through the portal', hint: 'Step through the portal on the west wall of Rick’s garage.' },
+  { id: 'portal', name: 'Go through the portal', hint: 'The portal gun is on Rick’s bench in the garage (or its button up top, from anywhere): dial a dimension, then step through the portal on the west wall.' },
   { id: 'basement', name: 'Find Rick’s secret lab', hint: 'There’s a hatch in the garage floor.' },
   { id: 'mindblowers', name: 'Watch Morty’s Mind Blowers', hint: 'Through the door in Rick’s clone lab, sit in the chair.' },
   { id: 'roy', name: 'Play Roy', hint: 'Find Blips and Chitz on the other side of the portal, and put the headset on at the Roy cabinet.' },
@@ -1040,11 +1041,19 @@ export const MEMORIES = [
 ];
 export const MEMORY_COLORS = { blue: '#52d6ff', purple: '#b47cff', red: '#ff4d5e', pink: '#ff8fd0' };
 
+// the planets' things to do, done on the planets themselves (landed on from the universe map)
+export const PLANET_TASKS = new Set(DESTINATIONS.filter((d) => isPlanet(d.id)).flatMap((d) => d.tasks.map((t) => t.id)));
+
 // What's done and what's next. `done` is the ids finished, in any order.
-export function progress(done = []) {
+// `skip` (ids, or a Set) is passed over when picking what's next, but still
+// counts: C-137 skips PLANET_TASKS.
+export function progress(done = [], { skip = [] } = {}) {
+  const passed = new Set(skip);
   const finished = TASKS.filter((t) => done.includes(t.id));
-  const next = TASKS.find((t) => !done.includes(t.id)) ?? null;
-  return { done: finished.map((t) => t.id), count: finished.length, total: TASKS.length, next, objective: next ? next.hint : 'Everything’s done. Wubba lubba dub dub.' };
+  const left = TASKS.filter((t) => !done.includes(t.id));
+  const next = left.find((t) => !passed.has(t.id)) ?? null;
+  const rest = left.every((t) => PLANET_TASKS.has(t.id)) ? 'Everything here’s done. The rest are on the planets in the Rick and Morty sector of the universe map.' : 'Everything here’s done.';
+  return { done: finished.map((t) => t.id), count: finished.length, total: TASKS.length, next, objective: next ? next.hint : left.length ? rest : 'Everything’s done. Wubba lubba dub dub.' };
 }
 
 // ── the pop quiz ──
