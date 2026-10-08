@@ -97,7 +97,7 @@ export function createVehicleFeel(opts = FEEL) {
 
     // a landing or a hit sets the squash at once; it rings back from there
     const kick = Math.max(Math.max(0, num(landed)) * o.squashPerLanding, Math.max(0, Math.min(1, num(hit))) * o.squashPerHit);
-    if (kick > squash) squash = Math.min(kick, o.squashMax);
+    if (kick > 0 && kick > squash) squash = Math.min(kick, o.squashMax);
 
     out.pitch = pitch;
     out.roll = roll;

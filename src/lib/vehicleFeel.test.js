@@ -47,6 +47,10 @@ describe('createVehicleFeel', () => {
     let peak = feel.step({ landed: 4 }, DT).squash;
     for (let i = 0; i < 5; i++) peak = Math.max(peak, feel.step({}, DT).squash);
     expect(peak).toBeGreaterThan(0.1);
+    // (a spring: it overshoots, stretching past rest, before it settles)
+    let stretch = 0;
+    for (let i = 0; i < 30; i++) stretch = Math.min(stretch, feel.step({}, DT).squash);
+    expect(stretch).toBeLessThan(-0.01);
     run(feel, 1);
     expect(Math.abs(feel.step({}, DT).squash)).toBeLessThan(0.01);
   });
