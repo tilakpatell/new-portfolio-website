@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { bakeSize, createSky, nebulaeOf } from './sky';
+import { bakeSize, createSky, nebulaeOf, starCount } from './sky';
+import FIXTURE from './__fixtures__/sky.json';
 import { SYSTEMS, systemById } from './systems';
 
 // a renderer as far as the bake uses it: where it draws to, what it draws
@@ -100,5 +101,87 @@ describe('the bake', () => {
     sky.dispose();
     await sky.prepare();
     expect(r.compile).toHaveBeenCalledTimes(1);
+  });
+});
+
+// the sky as it was before its fidelity went up (__fixtures__/sky.json: the
+// bake's uniforms, and a hash of the first 4,200 stars, rounded)
+const r4 = (v) => Math.round(v * 1e4) / 1e4;
+const r2 = (v) => Math.round(v * 100) / 100;
+const fnv = (s) => {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
+  return h.toString(16);
+};
+const starsOf = (sky) => sky.group.children.find((c) => c.isPoints && c.geometry.attributes.position.count > 1000).geometry.attributes;
+const hashStars = (g, n) => {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const s = [g.position.getX(i), g.position.getY(i), g.position.getZ(i), g.aSize.getX(i), g.aColor.getX(i), g.aColor.getY(i), g.aColor.getZ(i)].map(r4);
+    out.push([r2(s[0]), r2(s[1]), r2(s[2]), r2(s[3] * 100) / 100, r2(s[4] * 100) / 100, r2(s[5] * 100) / 100, r2(s[6] * 100) / 100]);
+  }
+  return fnv(JSON.stringify(out));
+};
+const SYSTEM_OF = { hoth: () => systemById('hoth'), tatooine: () => systemById('tatooine'), 'kashyyyk-borrowed': () => ({ ...systemById('kashyyyk'), suns: [] }) };
+const ser = (v) => (Array.isArray(v) ? v.map(ser) : typeof v === 'number' ? r4(v) : v.toArray().map(r4));
+
+describe('its fidelity', () => {
+  it('sizes the bake by level', () => {
+    expect(bakeSize({ small: true, level: 'ultra' })).toBe(512);
+    expect(bakeSize({ level: 'ultra' })).toBe(2048);
+    expect(bakeSize({ level: 'high' })).toBe(1536);
+    expect(bakeSize({ level: 'mid' })).toBe(1024);
+    expect(bakeSize({ level: 'low' })).toBe(512);
+    expect(bakeSize({ small: false })).toBe(1024);
+    expect(bakeSize({ small: true })).toBe(512);
+  });
+
+  it('counts the stars by level', () => {
+    expect(starCount({ level: 'ultra' })).toBe(12000);
+    expect(starCount({ level: 'high' })).toBe(12000);
+    expect(starCount({ level: 'mid' })).toBe(7000);
+    expect(starCount({ level: 'low' })).toBe(3000);
+    expect(starCount({ small: true, level: 'high' })).toBe(3000);
+  });
+
+  it('looks as it did: the same bake, and the same first 4,200 stars', () => {
+    for (const [id, want] of Object.entries(FIXTURE)) {
+      const sky = createSky({ level: 'high' });
+      sky.setSystem(SYSTEM_OF[id]());
+      const r = fakeRenderer();
+      let scene = null;
+      r.render = vi.fn((s) => (scene = s));
+      sky.bake(r);
+      const un = scene.children[0].material.uniforms;
+      for (const [k, v] of Object.entries(want.uniforms)) expect(ser(un[k].value), `${id} ${k}`).toEqual(v);
+      const g = starsOf(sky);
+      expect(g.position.count).toBe(12000);
+      expect(hashStars(g, 4200), id).toBe(want.stars.hash);
+      sky.dispose();
+    }
+  });
+
+  it('bakes without mipmaps (the sky is only ever magnified)', () => {
+    const sky = createSky({ level: 'ultra' });
+    sky.setSystem(systemById('hoth'));
+    sky.bake(fakeRenderer());
+    const tex = sky.group.children[0].material.uniforms.uSky.value;
+    expect(tex.generateMipmaps).toBe(false);
+    expect(tex.minFilter).toBe(THREE.LinearFilter);
+    expect(tex.image[0].width).toBe(2048);
+    sky.dispose();
+  });
+
+  it('draws the stars past today\'s fainter, for depth rather than a new pattern', () => {
+    const sky = createSky({ level: 'high' });
+    sky.setSystem(systemById('hoth'));
+    const g = starsOf(sky);
+    const mean = (a, b) => {
+      let s = 0;
+      for (let i = a; i < b; i++) s += g.aColor.getX(i) + g.aColor.getY(i) + g.aColor.getZ(i);
+      return s / (b - a);
+    };
+    expect(mean(4200, 12000)).toBeLessThan(mean(0, 4200) * 0.8);
+    sky.dispose();
   });
 });

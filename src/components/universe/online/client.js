@@ -469,8 +469,8 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     },
     // where your ship is, each frame (sent ten times a second). Hidden
     // (crashed, shot down, diving into a page) or safe (just back), hits
-    // on you don't count; riding a hyperlane (lane), the others far off see
-    // you as a streak along it
+    // on you don't count (`lane` is kept for the protocol: the hyperlanes
+    // went, and nothing sets it now)
     pose(s, { hidden = false, boost = false, safe = false, shield = 100, lane = false } = {}) {
       me = hidden || safe || !s ? null : s;
       const t = now();

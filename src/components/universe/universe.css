@@ -1001,6 +1001,40 @@ body:has(.universe-panel) .guide-btn { display: none; }
   .universe-portalgun-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .universe-portalgun-swirl { width: 30px; height: 30px; }
 }
+/* the star the nose is on (aim.js): a jump to it, for a touch screen (a
+   keyboard has J, which the prompt shows); in the hyperspace jump's blue */
+.universe-jump {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: 150px;
+  translate: calc(-50% - (var(--panel-w) + 24px) / 2) 0;
+  display: none;
+  align-items: center;
+  gap: 0.5em;
+  min-height: 44px;
+  max-width: min(calc(100vw - 32px), calc(100% - var(--panel-w) - 64px));
+  padding: 0.45rem 0.95rem;
+  border: 1px solid rgb(150 205 255 / 0.7);
+  border-radius: 999px;
+  background: rgb(4 10 22 / 0.8);
+  color: #d7ecff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgb(120 190 255 / 0.3);
+}
+.universe-jump-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.universe-jump:active { background: rgb(40 90 160 / 0.6); }
+.universe-jump kbd { border-color: rgb(150 205 255 / 0.5); color: inherit; }
+@media (pointer: coarse) {
+  .universe-jump { display: inline-flex; }
+  .universe-jump kbd { display: none; }
+}
+@media (max-width: 767px) {
+  .universe-jump { bottom: calc(var(--sheet-h) + 156px); translate: -50% 0; }
+}
 .universe-hint {
   /* across the map's open part, clear of the buttons in its corners: it wraps
      rather than running off the left edge (it's longer than a laptop's map) */
@@ -1520,70 +1554,6 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .start-remember { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1.1rem; color: var(--muted); font-size: 0.82rem; cursor: pointer; }
 .start-remember input { width: 16px; height: 16px; accent-color: var(--accent-text); }
 .start-note { margin-top: 0.85rem; color: var(--muted); font-size: 0.78rem; line-height: 1.5; }
-
-/* on a hyperlane (lanePilot.js's rideLine), in place of the gun line: two
-   rows in one pill over the prompt, the tier’s chip and the lane’s name, then
-   the node ahead, the time to it and the keys off. The chip says the tier by
-   its colour as well as its word, the express the brightest; the seconds are
-   tabular and given room so the pill doesn’t twitch as they count down. The
-   colours hold 4.5:1 or better on the pill’s near-black. */
-.universe-lane {
-  position: absolute;
-  left: 50%;
-  bottom: 112px;
-  translate: calc(-50% - (var(--panel-w) + 24px) / 2) 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: center;
-  gap: 0.2rem;
-  /* (its own width, not the half of the page left of 50% an absolute box
-     would shrink to, and never past the screen, or the panel beside it) */
-  width: max-content;
-  max-width: min(calc(100vw - 32px), calc(100% - var(--panel-w) - 64px));
-  margin: 0;
-  padding: 0.45rem 0.95rem 0.5rem;
-  border: 1px solid rgb(255 255 255 / 0.12);
-  border-radius: 14px;
-  background: rgb(3 6 14 / 0.8);
-  box-shadow: 0 6px 24px rgb(0 0 0 / 0.45);
-  color: #e3eeff;
-  font-size: 0.8rem;
-  line-height: 1.35;
-  text-align: center;
-  pointer-events: none;
-}
-.universe-lane-head,
-.universe-lane-next { display: flex; align-items: baseline; justify-content: center; gap: 0.5rem; min-width: 0; max-width: 100%; white-space: nowrap; }
-.universe-lane-next { display: block; overflow: hidden; text-overflow: ellipsis; color: #b9c8de; font-size: 0.74rem; }
-.universe-lane-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; letter-spacing: 0.01em; }
-.universe-lane-tier {
-  flex: none;
-  padding: 0.05rem 0.45rem;
-  border: 1px solid rgb(255 255 255 / 0.3);
-  border-radius: 999px;
-  color: #c9d3e6;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.universe-lane[data-tier='trunk'] .universe-lane-tier { border-color: #7cc4ff; background: rgb(124 196 255 / 0.16); color: #cdeaff; }
-.universe-lane[data-tier='express'] .universe-lane-tier { border-color: #ffe08a; background: #ffe08a; color: #1a1405; box-shadow: 0 0 10px rgb(255 224 138 / 0.55); }
-.universe-lane-eta { display: inline-block; min-width: 4ch; color: #e3eeff; font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: left; }
-.universe-lane kbd { border-color: rgb(255 255 255 / 0.35); color: #e3eeff; }
-/* (the gun line steps aside while riding: the guns are no use in a lane) */
-.universe-arms[data-ride] { opacity: 0; }
-@media (pointer: coarse) { .universe-lane-keys { display: none; } }
-@media (prefers-reduced-motion: no-preference) {
-  .universe-lane { animation: universe-lane-in 0.3s ease-out; }
-}
-@keyframes universe-lane-in {
-  from { opacity: 0; }
-}
-@media (max-width: 767px) {
-  /* (where the way-in button sits when landed: never both at once) */
-  .universe-lane { bottom: calc(var(--sheet-h) + 156px); translate: -50% 0; max-width: calc(100vw - 32px); }
-}
 
 /* what you've just earned (EarnNote.jsx): a moment over the HUD's own note
    (.universe-prompt), in the same pill; a level reached in the engine's colour */
