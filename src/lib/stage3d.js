@@ -1,5 +1,7 @@
-// The 3D games' common ground: a renderer set up the same way for each (ACES
-// tone mapping, sRGB, multisampled, bloom for things that glow, then a grade:
+// The 3D games' common ground: a renderer set up the same way for each (the
+// house's Neutral tone mapping at the house's exposure, lib/three/house, so a
+// world that calls houseOn after it passes keepExposure; sRGB, multisampled,
+// bloom for what is over white only, lib/three/bloom's numbers; then a grade:
 // contrast, saturation, split toning, a vignette and fine grain), sized to its canvas,
 // that steps its own quality down when frames run long, tells the game when
 // the GPU goes away, and frees everything it made when the game ends.
@@ -17,6 +19,8 @@ import { guard } from './three/frameGuard';
 import { prepareScene } from './three/gpuWork';
 import { precompile as compileFor, precompilePasses, quiet, releaseContext } from './three/renderer';
 import { sharpen } from './three/textures';
+import { BLOOM } from './three/bloom';
+import { LOOK } from './three/house';
 
 // The last step, on the display-ready picture: a film-like grade.
 export const GRADE = {
@@ -87,7 +91,7 @@ export function stageRatio({ soft = false, tier } = {}) {
 // picture doesn't flicker between settings.
 const LADDER = ['full', 'ratio', 'shadows', 'bloom', 'low'];
 
-export function createStage(canvas, { soft = false, bloom = { strength: 0.65, radius: 0.42, threshold: 0.82 }, exposure = 1, shadows = false, fov = 60, near = 0.1, far = 600, onLost, onSlow } = {}) {
+export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LOOK.exposure, shadows = false, fov = 60, near = 0.1, far = 600, onLost, onSlow } = {}) {
   // what this device can afford (lib/device): a phone starts less sharp with
   // less multisampling, a weak device without shadows or bloom
   const fit = budget();
@@ -95,7 +99,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
   // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
   guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = exposure;
   renderer.shadowMap.enabled = shadows && !soft && fit.shadows;
   renderer.shadowMap.type = THREE.PCFShadowMap;

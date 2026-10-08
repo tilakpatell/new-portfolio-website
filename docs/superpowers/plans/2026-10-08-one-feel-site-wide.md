@@ -57,7 +57,7 @@ Owns: `src/lib/three/palette.js`, `src/lib/three/bloom.js`, `src/lib/stage3d.js`
 
 **Files:**
 - Create: `src/lib/three/bloom.js`, `src/lib/three/bloom.test.js`
-- Modify: `src/lib/stage3d.js:1-5` (the header: Neutral, not ACES), `:90` (`bloom = BLOOM`, `exposure = LOOK.exposure`), `:97-98` (`NeutralToneMapping`), `src/runtime/webgl.js:26` (`p.strength ?? BLOOM.strength` and the rest), `:46` (`toneMapping = THREE.NeutralToneMapping`), `src/runtime/webgpu.js:58`.
+- Modify: `src/lib/stage3d.js:1-5` (the header: Neutral, not ACES), `:90` (`bloom = BLOOM`, `exposure = LOOK.exposure`), `:97-98` (`NeutralToneMapping`), `src/runtime/webgl.js:26` (`p.strength ?? BLOOM.strength` and the rest), `:46` (`toneMapping = THREE.NeutralToneMapping`), `src/runtime/webgpu.js:58`; and the three stage worlds that call `houseOn` on the stage’s default exposure (`middleearth/rush/scene.js`, `rickmorty/citadel/scene.js`, `albuquerque/casa/scene.js`) pass `keepExposure: true`, or the house’s 1.4 would be lifted twice.
 
 **Interfaces (produces):** `BLOOM = { threshold: 1, strength: 0.25, radius: 0.4 }`; `bloomGroups(pass: UnrealBloomPass) → groups` (one group `bloom` with `threshold 0…2`, `strength 0…1.5`, `radius 0…1`, as `lib/debugPanel`’s items). `createStage` defaults to `BLOOM` and Neutral at `LOOK.exposure` (`lib/three/house.js`).
 
@@ -80,6 +80,7 @@ Owns: `src/lib/three/palette.js`, `src/lib/three/bloom.js`, `src/lib/stage3d.js`
 - [ ] **Step 3: Implement** `looks.js`; write the Shire’s look (`scanned`, `house`, `bloom: BLOOM`, its `shadow` left to the moods) and the Expanse’s (`painted`, a palette of its species, ground, sand, rock, crate, barrel, body, cab, dark colours, `house`, `BLOOM`); the Expanse scene and buggy take the palette.
 - [ ] **Step 4: Run** `npm test`, `node scripts/autopilot-check.mjs --routes /middle-earth/shire,/universe/expanse/7 --shots one-feel-art` → PASS; the Expanse’s crates and buggy are one material; `node scripts/perf-probe.mjs expanseDrive` worst frame no worse.
 - [ ] **Step 5: Commit** `Every world says its art: look.js, and the Shire’s and the Expanse’s`.
+- Done; then the driven Expanse went from the site (#705), and its look, its crates and buggy on the palette and its `LOOK_FOLDERS` row went with it. The Shire’s look is the proof that stays; `createPalette` waits for the next painted world.
 
 ### Task 1A.4: The `art-mix` measure
 
@@ -90,7 +91,7 @@ Owns: `src/lib/three/palette.js`, `src/lib/three/bloom.js`, `src/lib/stage3d.js`
 **Interfaces (produces):** `artMix({ root }) → { value, items: [{ folder, scan: file, ramp: file }] }`: for each folder in `LOOK_FOLDERS`, the closure (`src/runtime/shadingClosure.js`’s `closure`) from its scene files; a folder counts when it reaches both a ramp (`MeshToonMaterial` or `gradientMap` in a non-test source) and a scan (`lib/three/core`, `lib/cc0` or `lib/hdri` in an import).
 
 - [ ] **Step 1: Write the failing test** on a fixture tree under `scripts/health/fixtures/art-mix/`: one folder with both counts, one with a scan only doesn’t.
-- [ ] **Step 2: Run** `node --test scripts/health/art-mix.test.mjs` → FAIL.
+- [ ] **Step 2: Run** `npx vitest run scripts/health/art-mix.test.mjs` → FAIL (the health measures’ tests run under Vitest, as `scripts/health.test.mjs` does). `lib/three/frameGuard.js` names `gradientMap` to guard a material’s textures and is exempt; `lib/hdri` counts only where `loadPbr` is imported (its skies are light, not a scan).
 - [ ] **Step 3: Implement**; register the metric as the others are; budget it at its first value (`node scripts/health.mjs --json`).
 - [ ] **Step 4: Run** `node scripts/health.mjs --check --skip build` → green.
 - [ ] **Step 5: Commit** `art-mix: a world that wears a scan and a toon ramp at once, counted and ratcheted`. Open the pull request; fill the handoff row.
