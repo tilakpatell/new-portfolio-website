@@ -24,15 +24,15 @@ The design is [specs/2026-10-07-site-tour-design.md](specs/2026-10-07-site-tour-
 The spec is [specs/2026-10-07-audience-tours-and-ui-audit-design.md](specs/2026-10-07-audience-tours-and-ui-audit-design.md) as its section 8 (Revision 2) amends it; the plan [plans/2026-10-07-tours-content.md](plans/2026-10-07-tours-content.md). The engine that runs them is stream A's (`claude/tours-engine`).
 
 - **The chapters.** `tour/chapters/recruiter.js` is the hiring tour: Home, Experience, Projects, the résumé, Contact, Under the hood and the end, which are chapters 2 to 8. `player.js` is the player's: Flying, the galaxy, the worlds, the games, Together, the checklist, Colours and scripts and the end, chapters 2 to 9. `shared.js` holds three things:
-  - `SHELL_STOPS`, the view tour's stops each audience keeps as chapter 1, per A13;
-  - `HELLO`, each audience's opening card;
+  - `SHELL_STOPS`, the view tour's stops each audience keeps as chapter 1, per A13 (the whole tour uses the hiring tour's);
+  - `HELLO`, each audience's opening card, which `planFor` puts first in the shell (both reach `TourHost` through `steps.js`);
   - `END`, the whole tour's last card, plus `CONTACT_ACTIONS` and `worldStop`.
 
-  `steps.js` exports them as `TOURS.recruiter`, `.player` and `.mixed`. The last is composed by chapter id: the hiring tour from Home to Under the hood, the player's from the galaxy to the colours, then `END`. Until A's revision-2 `compose` lands, `steps.js` has a stand-in, marked to give way to it.
+  `steps.js` exports them as `TOURS.recruiter`, `.player` and `.mixed`. The last is composed by chapter id with `lib/tour`'s `compose`: the hiring tour from Home to Under the hood, the player's from the galaxy to the colours, then `END`.
 - **The shape** is the spec's 3.2 as amended:
   - Stops carry `actions` (`to`, `href` with `download`, or `tour`; `primary` on the PDF), `release` (on the shell's search and guide stops, and the checklist stop) and `todo`. Every `todo` is one of A's catalogue ids, and each world card carries its world's.
   - Flying is `brief: '/universe/fly'`, with no copy of its own.
-  - Under the hood is `heavy`. Its `phone` version is two chapters, told from `/changes` and `/terminal`, offering the universe with its size once `WORLD_MB['/universe']` exists (A18).
+  - Under the hood is `heavy`. Its `phone` is two chapters that take its place on a coarse pointer, told from `/changes` and `/terminal`; the terminal's card offers the universe, its label reading the size from `ctx.mb['/universe']`.
   - The end chapters have `path: null`.
   - The ships stop reads `ctx.ship`, and the world cards read `ctx.touch`.
 - **The worlds.** Star Wars' worlds are in the galaxy's chapter and every other world in `WORLDS` is a card in the worlds chapter, built by `worldCards()`. Each card is `ABOUT[to]` and, on a phone, its download where that's over 1 MB.
@@ -48,15 +48,15 @@ The spec is [specs/2026-10-07-audience-tours-and-ui-audit-design.md](specs/2026-
   - 12 to 45 words a stop, and 30 at most on the hiring tour;
   - world cards under 25 words;
   - British spelling and curly quotes, and "the hiring tour", never "recruiter", on screen;
-  - the reading time by B5's formula, under 5, 8 and 12 minutes. Today it is 269 s, 440 s and 573 s.
+  - the reading time by B5's formula, under 5, 8 and 12 minutes. Today it is 268 s, 435 s and 565 s.
 - **The marks** (`data-tour`, attributes only): `home-open`, `home-gameboy`, `home-github` (the heading in `FindMeOnline.jsx`), `experience-roles`, `experience-track`, `projects-featured`, `projects-table`, `resume-skills`, `resume-pdf`, `contact-copy`, `contact-form` (the memo's head line), `changes-log`, `terminal-input`, `online`, and `ships` also on the panel's flying block. There is no achievements control, so none is marked.
 - **The achievements**: `tourRecruiter` "Shown the work" and `tourPlayer` "Shown the ropes". A's engine unlocks them.
 - **The copy** was read by a panel (a recruiter, a player, the editor, two fact-checkers and a sceptical judge) and its findings applied before revision 2. Revision 2's new lines were checked again by the adversarial review before the pull request.
 
 ## Left
 
-- Stream A's engine at revision 2 (`claude/tours-engine` was at revision 1 when this was written: `cta`, positional `compose`). Rebase on it, take A's `compose`, `LIGHT_ROUTES` and `SHELL_STOPS` where A puts them, then run `node scripts/tour-check.mjs --both` for all five tours and put the walker's tables in the pull request.
-- A new world gets its basics by a key in `BRIEFED` and its cards in `briefs.js` (the tests fail until both are there), and its card in the player's tour in `chapters/player.js`.
+- Nothing for the copy. Stops that wait for their targets carry `wait: true` (the map's ships, Multiplayer button and nav map; a role's fading title); a new one on the map will want it too. `node scripts/tour-check.mjs --both` walks all ten tours, and passed on the merged build of A's engine and this branch.
+- A new world gets its basics by a key in `BRIEFED` and its cards in `briefs.js` (the tests fail until both are there), and its about in `guide/abouts.js`, which becomes its card in the player's tour (`worldCards()`; its checklist row goes in `player.js`'s `ROW`).
 
 ## Checking it
 
