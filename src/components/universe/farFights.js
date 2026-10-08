@@ -23,7 +23,7 @@
 // HOT_BOLTS that are flying).
 
 import * as THREE from 'three';
-import { NODES } from './hyperlanes';
+import { NODES } from './waypoints';
 import { regionAt } from './regions';
 
 export const FAR = 2000; // past this from the camera, a fight is its impostor

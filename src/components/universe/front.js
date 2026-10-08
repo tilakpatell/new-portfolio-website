@@ -36,7 +36,7 @@ import { createBattleScene } from './battleScene';
 import { contested, loadWar, newWar, owner, resolve, saveWar } from './war';
 import { warFor } from './wars';
 import { DEEP, easeOpen, gapAlong } from './deep';
-import { NODES } from './hyperlanes';
+import { NODES } from './waypoints';
 import { sharpen } from '../../lib/three/textures';
 
 export const ZONE = {
@@ -51,7 +51,7 @@ export function zoneOf(dist, was) {
   return dist < ZONE.near ? 'near' : 'out';
 }
 
-// the lanes' beacons, where a war's front can be (hyperlanes.js)
+// the waypoints' beacons, where a war's front can be (waypoints.js)
 export const BEACONS = NODES.filter((n) => n.kind === 'beacon');
 
 // the beacon nearest the middle of the war's own places: the first side's
