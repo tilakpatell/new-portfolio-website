@@ -308,6 +308,9 @@ export const SITES = {
       { kind: 'grove', at: [-60, 120], opts: { n: 8, r: 20, seed: 26 } },
     ],
     scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qclover', n: 150, within: [4, 100], scale: [0.8, 1.6], solid: false },
+      { kind: 'qgrass', n: 200, within: [4, 120], scale: [0.8, 1.5], solid: false },
       { kind: 'nabootree', n: 80, within: [50, 600], scale: [0.7, 1.4], flat: 0.9 },
       { kind: 'rock', n: 50, within: [40, 560], scale: [0.6, 2.4], opts: { color: '#8e8a78', sharp: 0.3 } },
     ],

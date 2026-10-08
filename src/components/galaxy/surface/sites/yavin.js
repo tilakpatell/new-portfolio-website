@@ -213,6 +213,9 @@ export const SITE = {
     { kind: 'lamp', at: [16, -30], opts: { h: 5, light: '#ffe0a0' } },
   ],
   scatter: [
+    // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+    { kind: 'qfern', n: 80, within: [8, 120], scale: [0.8, 1.5], solid: false },
+    { kind: 'qclover', n: 120, within: [4, 80], scale: [0.8, 1.6], solid: false },
     // the tall trees, vines hanging from them, then the built ones between
     // (the jungle's own trees close in all round, their umbrella crowns a
     // roof overhead, as the film's are: built here, in the world's own

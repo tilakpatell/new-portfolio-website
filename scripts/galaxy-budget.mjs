@@ -9,7 +9,7 @@
 // instead of the row, until its content is trimmed and it comes off the list.
 
 export const KNOWN_OVER = {
-  endor: 'TODO (Lane B, claude/ultra-planets): 3.35M triangles at high, 2.04M at mid, over the 3M and 1.5M rows; trim the forest moon and take it off this list',
+  endor: 'TODO: 4.32M triangles at high on 2026-10-08 (3.35M when first listed), over the 3M row; the far redwoods are 0.1M of it: the near full redwoods (1.1M with their shadow pass), the crew figures (0.73M), the ground (0.58M) and the built ferns (0.52M) are where it goes (docs/superpowers/HANDOFF-galaxy-asset-upgrade.md, Phase 4); trim those and take it off this list',
 };
 
 export function limitsFor({ id, quality, row, base, scale = 1, realGpu = false }) {
