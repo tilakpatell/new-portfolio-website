@@ -1,5 +1,6 @@
 import { ABOUT } from './abouts';
 import { GUIDES, guideKeyFor } from './routes';
+import { CYBERTRON_KEYS, CYBERTRON_TOUCH } from './cybertron';
 
 // What the guide says about each page: a line on what it is, its controls
 // (`keys` for a keyboard, `touch` for a phone; each a list of groups, a group
@@ -389,6 +390,8 @@ export const PAGES = {
   '/cybertron': {
     about: ABOUT['/cybertron'],
     keys: [
+      // (the world at the top of the page, its start card's keys: ./cybertron.js)
+      { label: 'The world', rows: CYBERTRON_KEYS },
       {
         label: 'Roll out',
         rows: [
@@ -399,7 +402,10 @@ export const PAGES = {
         ],
       },
     ],
-    touch: [{ label: 'Roll out', rows: [['Drag', 'Steer'], ['Tap', 'The buttons to boost, jump and transform']] }],
+    touch: [
+      { label: 'The world', rows: CYBERTRON_TOUCH },
+      { label: 'Roll out', rows: [['Drag', 'Steer'], ['Tap', 'The buttons to boost, jump and transform']] },
+    ],
     tips: [
       ['Sides', 'Join the Autobots or the Decepticons: the site changes colour with you, and so does who you can transform.'],
       ['Roll out', 'As a vehicle you’re fast and smash debris; as a robot you fight and jump the barricades, but standing up burns energon. Transforming takes half a second: read the road. Clearing an obstacle pays double if you changed at the last moment.'],

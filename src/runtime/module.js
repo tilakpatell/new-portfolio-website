@@ -3,9 +3,11 @@
 // → bool, ... }) into a world module without changing it.
 //
 // A world module: { id, shading: 'glsl' | 'nodes', mb, label?, ratio?, sharpness?, create(rt, props) }
-// (`sharpness: 'own'`: the runtime's quality steps are the world's to draw at
-// inside its passes, lowerQuality(level); the canvas isn't resized for them)
-// (`label` says what the canvas shows, for a screen reader; `ratio` caps its pixel ratio).
+// (`label` says what the canvas shows, for a screen reader; `ratio` caps its
+// pixel ratio; `sharpness: 'own'`: when frames run late its world draws
+// softer through its own passes, told the level by lowerQuality, and the
+// runtime keeps the canvas at its size rather than resize it for each
+// level, which cost a cleared buffer and a jump in sharpness each time).
 // A world: { ready?, resize(w, h), step?(dt, input, now), draw(frame),
 //   wants?(), update?(props), setVisible?(on), setColors?(colors),
 //   lowerQuality?(level), warmUp?(timeLeft), prepare?(onProgress, { alive }),
@@ -34,11 +36,12 @@ export function validateWorld(world) {
   return world;
 }
 
-// fromScene(id, create, { shading, mb, label, ratio }): the scene's
+// fromScene(id, create, { shading, mb, label, ratio, sharpness }): the scene's
 // render(ms, now) is the world's draw, its answer is wants(); ctx gets the
 // runtime as `rt` (its renderer, saves, sounds, assets), the canvas's box
 // as `el`, the runtime's invalidate and lost, and the quality floor as
-// onSlow. `ratio` caps the module's pixel ratio. What the scene tells the
+// onSlow. `ratio` caps the module's pixel ratio, and `sharpness` is the
+// module's (above). What the scene tells the
 // page (its onEvent) goes out through rt.events, held until the page that
 // shows it says it's listening (attached(), from useWorld): a world made at
 // a handover, before its page is up, says nothing to the page it's

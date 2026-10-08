@@ -3,13 +3,15 @@
     "lift": [
       "01a1169c-af64-772e-a386-0f9d0852544b"
     ],
-    "model": "01a116a5-3543-74ca-bf8e-d913c89adea9"
+    "model": "01a116a5-3543-74ca-bf8e-d913c89adea9",
+    "ultra": "01a118b4-b717-750b-94b0-3305c4cda866"
   },
   "cloudtower2": {
     "lift": [
       "01a1169d-2a01-73c8-bd7c-d484cdce34c6"
     ],
-    "model": "01a116a5-39b1-730e-a0e5-0dc3c790d657"
+    "model": "01a116a5-39b1-730e-a0e5-0dc3c790d657",
+    "ultra": "01a118b4-bb90-7301-8946-ab2a895b3068"
   },
   "cloudplaza": {
     "lift": [
