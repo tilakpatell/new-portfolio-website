@@ -19,6 +19,7 @@ describe('chaseRadius', () => {
     expect(chaseRadius(40, { tier: 'high' })).toBeCloseTo(15 * 1.4, 5);
     expect(chaseRadius(40, { tier: 'low' })).toBe(chaseRadius(0, { tier: 'low' }));
     expect(chaseRadius(0, { tier: 'high', aspect: 0.6 })).toBeCloseTo(24, 5);
+    expect(chaseRadius(0, { tier: 'high', base: 22 })).toBe(22);
   });
 });
 

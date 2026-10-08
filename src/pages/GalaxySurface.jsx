@@ -29,7 +29,7 @@ import { HERO_KEY, heroById, heroSpec, loadoutLine, readHero, writeHero } from '
 import { missionOf } from '../components/galaxy/surface/missions';
 import { sideFor, warSideOf } from '../components/galaxy/surface/missions/assault';
 import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../components/galaxy/allegiance';
-import { GCW, campaignAt } from '../components/galaxy/gcw';
+import { GCW, campaignAt, scoresAt } from '../components/galaxy/gcw';
 import { warOfSide } from '../components/galaxy/sides';
 import { effectsFor } from '../components/galaxy/warEffects';
 import { addPoints, addWin, mine, warNow, warVersion } from '../components/galaxy/warState';
@@ -405,8 +405,10 @@ export default function GalaxySurface() {
         if (mission?.kind === 'assault' && v?.result && !posted.current) {
           posted.current = true;
           const side = warSideOf(mission, v.result.side);
-          if (warOfSide(side)) {
-            const now = Date.now();
+          const now = Date.now();
+          // (it counts where there's a battle on here, or this world's your side's to hold: gcw.js's scoresAt)
+          const row = warOfSide(side) ? warNow(now, warOfSide(side)).systems.find((r) => r.id === id) : null;
+          if (row && scoresAt(row, side)) {
             const step = campaignAt(now).step;
             const points = (v.result.posts?.[v.result.side] ?? 0) * GCW.points.objective;
             const before = warVersion();
