@@ -41,7 +41,7 @@ describe('the garrison on the ground', () => {
 describe('who meets you at the landing', () => {
   const site = { id: 'yavin', land: { at: [10, -20] }, life: [] };
   it('gives the holder’s troops round the landing, on paths and at posts, and a search party where the holder isn’t the world’s own', () => {
-    const own = garrisonAt(site, { owner: 'rebel', troops: 'rebel' }, 'rebel');
+    const own = garrisonAt(site, { owner: 'rebel', troops: 'rebel' }, 'rebel').life;
     const count = (list) => list.reduce((n, a) => n + (a.n ?? 1), 0);
     expect(count(own)).toBeGreaterThanOrEqual(6);
     expect(count(own)).toBeLessThanOrEqual(10);
@@ -54,12 +54,48 @@ describe('who meets you at the landing', () => {
     expect(own.some((a) => a.path)).toBe(true);
     expect(own.some((a) => a.still)).toBe(true);
     expect(own.some((a) => a.kind === 'probe')).toBe(false);
-    const taken = garrisonAt(site, { owner: 'empire', troops: 'stormtrooper' }, 'rebel');
+    const taken = garrisonAt(site, { owner: 'empire', troops: 'stormtrooper' }, 'rebel').life;
     expect(count(taken.filter((a) => a.kind === 'stormtrooper'))).toBeGreaterThanOrEqual(6);
     expect(taken.filter((a) => a.kind === 'probe').length).toBe(1);
   });
   it('nobody without a holder, and nobody from the Hutts but their enforcers', () => {
-    expect(garrisonAt(site, null, 'rebel')).toEqual([]);
-    expect(garrisonAt(site, { owner: 'hutt', troops: 'mercenary' }, 'rebel').every((a) => a.kind === 'mercenary')).toBe(true);
+    expect(garrisonAt(site, null, 'rebel')).toEqual({ life: [], hostiles: [] });
+    expect(garrisonAt(site, { owner: 'hutt', troops: 'mercenary' }, 'rebel').life.every((a) => a.kind === 'mercenary')).toBe(true);
+  });
+});
+
+describe('the garrison knows your side', () => {
+  const site = { id: 'endor', land: { at: [0, 0] }, life: [] };
+  it('never re-dresses someone named or with a quest', () => {
+    const life = [{ kind: 'clone', id: 'gree', named: true, quest: 'beachhead', name: 'Commander Gree', says: ['x'] }, { kind: 'clone', n: 3 }];
+    const out = garrisonLife(life, 'rebel');
+    expect(out[0]).toBe(life[0]);
+    expect(out[1].kind).toBe('rebel');
+  });
+  it('an enemy garrison is hostiles, not people to talk to', () => {
+    const { life, hostiles } = garrisonAt(site, { troops: 'stormtrooper', owner: 'empire', side: 'rebel', hostile: true, yours: false });
+    expect(life).toEqual([]);
+    expect(hostiles.length).toBeGreaterThan(0);
+    for (const h of hostiles) {
+      expect(h.hostile).toBeTruthy();
+      expect(h.tag).toBe('garrison');
+    }
+    // (the same party as it stands about a world it doesn't hunt you on: six to ten)
+    const n = (list) => list.reduce((k, a) => k + (a.n ?? 1), 0);
+    expect(n(hostiles.filter((h) => h.kind === 'stormtrooper'))).toBe(n(garrisonAt(site, { troops: 'stormtrooper', owner: 'empire' }).life.filter((a) => a.kind === 'stormtrooper')));
+  });
+  it('a friendly garrison greets you by rank', () => {
+    const { life, hostiles } = garrisonAt(site, { troops: 'rebel', owner: 'rebel', side: 'rebel', yours: true, rank: 3 });
+    expect(hostiles).toEqual([]);
+    expect(life.some((e) => e.says.some((s) => /Commander|Captain|Lieutenant|General|sir/i.test(s)))).toBe(true);
+    expect(life.some((e) => e.says.some((s) => /Squadron Leader/.test(s)))).toBe(true);
+  });
+  it('unsworn, the garrison is as it always was', () => {
+    const { life, hostiles } = garrisonAt(site, { troops: 'stormtrooper', owner: 'empire', side: null, war: 'gcw' });
+    expect(hostiles).toEqual([]);
+    expect(life.some((e) => e.says.includes('Move along.'))).toBe(true);
+  });
+  it('the Hutts’ enforcers never hunt anyone', () => {
+    expect(garrisonAt(site, { troops: 'mercenary', owner: 'hutt', side: 'rebel', war: 'gcw', hostile: true }).hostiles).toEqual([]);
   });
 });

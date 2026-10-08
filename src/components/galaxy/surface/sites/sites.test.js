@@ -11,6 +11,7 @@ import { LANDABLE, SITES, siteOf } from '.';
 import { CREW } from '../crew';
 import { talkTree } from '../talk';
 import { CLIPS } from '../../../../lib/three/clipLibrary';
+import { SIDES } from '../../sides';
 
 const SHIPS = new Set([...GALAXY_KINDS, ...BUILT_KINDS]);
 const placeable = (kind) => Boolean(PROPS[kind] || SURFACE_MODELS[kind]);
@@ -177,5 +178,23 @@ describe('Bespin, inside', () => {
     const race = q.steps.at(-1);
     expect(race.type).toBe('race');
     expect(Math.hypot(race.gates.at(-1)[0], race.gates.at(-1)[1] + 255)).toBeLessThan(28);
+  });
+});
+
+describe('quests by side', () => {
+  it('a quest takes its giver’s side, a real one, and the ones whose side matters say it', () => {
+    const sideOf = (sys, id) => siteOf(sys).quests.find((q) => q.id === id)?.side ?? null;
+    expect(sideOf('kashyyyk', 'beachhead')).toBe('republic');
+    expect(sideOf('yavin', 'briefing')).toBe('rebel');
+    expect(sideOf('scarif', 'walkers')).toBe('rebel');
+    expect(sideOf('endor', 'bunker')).toBe('rebel');
+    expect(sideOf('hoth', 'luke')).toBe('rebel');
+    // (a native's, a farmer's: anyone's)
+    expect(sideOf('kashyyyk', 'escapepod')).toBe(null);
+    expect(sideOf('tatooine', 'converters')).toBe(null);
+    for (const id of LANDABLE) for (const q of siteOf(id).quests) if (q.side) expect(SIDES[q.side], `${id} ${q.id}`).toBeTruthy();
+  });
+  it('no quest counts the garrison’s kills (they hunt you whatever quest is on)', () => {
+    for (const id of LANDABLE) for (const q of siteOf(id).quests) for (const st of q.steps) expect(st.tag, `${id} ${q.id}`).not.toBe('garrison');
   });
 });

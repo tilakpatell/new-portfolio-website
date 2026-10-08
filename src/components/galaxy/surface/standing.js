@@ -4,7 +4,17 @@
 // gives `war` and `side`). Pure: no three.js. The design:
 // docs/superpowers/specs/2026-10-07-ground-sides-kashyyyk-look-ai-design.md §2.
 import { SIDES, WARS } from '../sides.js';
-import { FAMILIES } from './garrison.js';
+
+// the troopers of each side's look, as the sites name them (garrison.js
+// re-exports it: it's here so garrison.js can ask standingOf without the
+// two importing each other)
+export const FAMILIES = {
+  stormtrooper: ['stormtrooper', 'sandtrooper', 'snowtrooper', 'scouttrooper'],
+  rebel: ['rebel', 'hothtrooper'],
+  clone: ['clone'],
+  battledroid: ['battledroid', 'superdroid'],
+  mercenary: ['mercenary'],
+};
 
 // The war's light side and its raiders: the Empire's kit is the Remnant's in
 // the Remnant War, the Rebellion's is the New Republic's. The Clone Wars have

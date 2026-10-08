@@ -29,6 +29,8 @@
 // type: 'mount', kind }, { type: 'gate', i }, { type: 'use', id }, { type:
 // 'enter', zone }, { type: 'trip', tag }, { type: 'tick', dt }.
 
+import { standingOf } from './standing';
+
 export const STEP_TYPES = ['reach', 'talk', 'collect', 'shoot', 'ride', 'race', 'use', 'enter', 'trip'];
 
 export const start = (quest) => ({ id: quest.id, step: 0, count: 0, time: 0 });
@@ -123,3 +125,25 @@ export function stepTarget(step, progress, actors = null) {
 export const questsOf = (spec) => [spec?.quest ?? []].flat();
 export const isOffered = (quest, done) => !quest?.after || quest.after.every((id) => done.has(id));
 export const nextQuest = (spec, done, byId = null) => questsOf(spec).find((id) => !done.has(id) && (!byId || isOffered(byId(id), done))) ?? null;
+
+// Whether a quest's giver will give it to you: a quest has a side (its own
+// `side`, else its giver's: Gree's is the Republic's, Sefla's the
+// Rebellion's), and sworn to that side's enemy in the world's war you're
+// refused, in a line by the side you're on. Unsworn, or for a quest of
+// nobody's side (a farmer's, a Jawa's), anyone may take it.
+// questOpen(quest, giver, effects) → { open, line? } (effects: siteWar.js's
+// groundEffects, its `war` and `side`)
+const REFUSED = {
+  empire: 'I don’t deal with Imperials.',
+  remnant: 'The war’s over for your lot. I don’t deal with Imperials.',
+  rebel: 'Rebel scum. Be glad I don’t call it in.',
+  newrepublic: 'The New Republic? Not here. Not from me.',
+  republic: 'A Republic dog. We have nothing to say to each other.',
+  separatists: 'You fly with the droids. Walk away while you still can.',
+};
+export function questOpen(quest, giver, effects) {
+  const side = quest?.side ?? giver?.side ?? null;
+  if (!side) return { open: true };
+  if (standingOf({ kind: giver?.kind, side }, effects) !== 'enemy') return { open: true };
+  return { open: false, line: REFUSED[effects.side] ?? 'I’ve nothing for you.' };
+}

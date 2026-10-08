@@ -188,6 +188,32 @@ describe('a hostile’s body in the world', () => {
     a.dispose();
   });
 
+  it('a standing group is out whatever the quest, fires on you, counts its kills by its own tag, and goes only with clear()', async () => {
+    const a = createActivity({ parent: new THREE.Group(), world });
+    a.standing([{ kind: 'stormtrooper', n: 2, at: [0, 14], spread: 2, roam: 4, leash: 40, hp: 1, tag: 'garrison', hostile: { range: 42, every: 1.2, damage: 8, delay: 0.3 } }]);
+    await settle();
+    expect(a.targets.length).toBe(2);
+    // a quest's step put out and taken in again: the garrison stays
+    a.show({ id: 'q', steps: [{ type: 'shoot', tag: 'foe', n: 1, spawn: { kind: 'stormtrooper', at: [30, 0], tag: 'foe' } }] }, { step: 0, count: 0 });
+    await settle();
+    expect(a.targets.length).toBe(3);
+    a.show(null, null);
+    expect(a.targets.map((t) => t.tag)).toEqual(['garrison', 'garrison']);
+    const you = { x: 0, y: 0, z: 0 };
+    const { shots } = run(a, you, 0, 4);
+    expect(shots.length).toBeGreaterThan(0);
+    a.kill('garrison');
+    const { events } = run(a, you, 4, 0.5);
+    expect(events.filter((e) => e.type === 'kill')).toEqual([{ type: 'kill', tag: 'garrison' }, { type: 'kill', tag: 'garrison' }]);
+    // put in place of what was out, and gone with clear()
+    a.standing([{ kind: 'stormtrooper', n: 1, at: [0, 20], tag: 'garrison', hostile: { range: 42, every: 1.8, damage: 8 } }]);
+    await settle();
+    expect(a.debug().length).toBe(1);
+    a.clear();
+    expect(a.debug().length).toBe(0);
+    a.dispose();
+  });
+
   it('a duellist holds its saber in its own hand; one built from shapes holds no gun and goes down as before, without its clip', async () => {
     const v = out('vader', { hostile: { range: 16, chase: 2, melee: true, reach: 2.6, every: 1.5, damage: 16, parry: 0.8, guard: 4, blade: { color: '#ff3b3b' } } });
     await settle();

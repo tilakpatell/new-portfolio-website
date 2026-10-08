@@ -317,7 +317,7 @@ export const SITES = {
       { kind: 'stormtrooper', n: 1, at: [245, -38], still: true, face: 0, name: 'Stormtrooper', says: ['This area is off limits.', 'Move along.'] },
       { kind: 'stormtrooper', n: 1, at: [255, -38], still: true, face: 0, name: 'Stormtrooper', says: ['Freeze! Don’t move!', 'There’s nothing to see here.'] },
       { kind: 'rebel', n: 3, at: [214, -12], spread: 4, roam: 3, speed: 0.8, name: 'Rebel commando', says: ['Quiet. There’s a scout trooper right over there.', 'We go in on General Solo’s signal.', 'I hope the fleet’s on time.'] },
-      { kind: 'rebelpilot', id: 'tydirium', at: [-14, -6], still: true, face: 1.2, name: 'The shuttle’s pilot', quest: 'tydirium', says: ['That code was old. They’ll have changed it by now.'] },
+      { kind: 'rebelpilot', id: 'tydirium', side: 'rebel', at: [-14, -6], still: true, face: 1.2, name: 'The shuttle’s pilot', quest: 'tydirium', says: ['That code was old. They’ll have changed it by now.'] },
       { kind: 'scouttrooper', n: 2, at: [60, 250], spread: 4, roam: 5, speed: 0.8, name: 'Scout trooper', says: ['Hey, did you hear something?', 'Stay with the bikes. I’ll check the perimeter.'] },
       { kind: 'atst', n: 1, path: [[400, -282], [430, -270], [442, -240], [430, -210], [400, -198], [370, -210], [358, -240], [370, -270]], speed: 1.4, r: 1.6, name: 'AT-ST', says: ['(The walker stops, its head turning toward you with a hiss of hydraulics.)', '(Its chin guns track you. Then it stalks on.)'] },
       { kind: 'scouttrooper', n: 2, path: [[420, -200], [442, -200], [442, -182], [420, -182]], speed: 1.2, name: 'Scout trooper', says: ['The shield must stay up. Lord Vader’s orders.', 'Back to the platform. Now.'] },

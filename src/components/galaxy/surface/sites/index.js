@@ -117,8 +117,11 @@ export function siteOf(id) {
   // (and the places in them its people go to, where they are)
   const zoneWants = zones.flatMap((z) => (z.wants ?? []).map((w) => ({ ...w, zone: z.id, at: inZone(z.id, w.at), ...(w.spots ? { spots: w.spots.map((q) => inZone(z.id, q)) } : {}) })));
   const levelIn = (id, y) => (y == null ? undefined : zones.find((q) => q.id === id).origin[1] + y);
+  // (a quest's side is its giver's, where it doesn't say its own: quests.js's questOpen)
+  const giverSide = (q) => q.side ?? [...(raw.life ?? []), ...zoneLife].find((a) => a.id && a.id === q.giver)?.side;
   const quests = (raw.quests ?? []).map((q) => ({
     ...q,
+    ...(giverSide(q) ? { side: giverSide(q) } : {}),
     steps: q.steps.map((st) => {
       const zid = st.zone && st.type !== 'enter' ? st.zone : null;
       if (!zid) return st;

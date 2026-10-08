@@ -8,7 +8,8 @@
 // progress), update(dt, you, t) → events (pickups and kills, for the
 // quest), targets (what the blaster can hit: { x, y, z, r, hit(damage) }),
 // kill(tag), shooters (who fire back, or swipe: { from, spread, damage,
-// melee }), clear(), dispose() }
+// melee }), standing(groups) (hostiles of the world's own, out whatever
+// quest is on: a garrison that hunts you), clear(), dispose() }
 //
 // A step's spawn: { kind, n, at, spread, roam, speed, hp, tag, scale,
 // model, still, face, y, level (the height it's on, where there are
@@ -340,16 +341,24 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       m.geometry.dispose();
       for (const mat of [m.material].flat()) mat.dispose();
     });
-  const clearStep = () => {
-    searches.clear();
-    tokens.clear();
-    for (const t of targets) {
+  // (a figure gone: what it carries, its body and its holder)
+  const drop = (list) => {
+    for (const t of list) {
       t.show?.dispose();
       t.bar?.dispose();
       t.saber?.owned.forEach((o) => o.dispose?.());
       t.blade?.dispose();
       t.gp?.dispose();
+      t.holder.removeFromParent();
+      t.fig?.dispose?.();
     }
+  };
+  // the step's own things gone (the standing groups stay: they're the
+  // world's, not the quest's)
+  const clearStep = () => {
+    for (const tag of searches.keys()) if (!targets.some((t) => t.standing && t.tag === tag)) searches.delete(tag);
+    tokens.clear();
+    drop(targets.filter((t) => !t.standing));
     for (const p of pickups) {
       p.mesh.removeFromParent();
       release(p.mesh);
@@ -358,12 +367,15 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       g.removeFromParent();
       release(g);
     }
-    for (const t of targets) {
-      t.holder.removeFromParent();
-      t.fig?.dispose?.();
-    }
     pickups = [];
     gates = [];
+    targets = targets.filter((t) => t.standing);
+  };
+  // and everything, the standing groups too
+  const clearAll = () => {
+    clearStep();
+    searches.clear();
+    drop(targets);
     targets = [];
   };
 
@@ -410,6 +422,42 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     if (fig.model?.getObjectByName('RightHand')?.isBone) t.gp = createGunplay({ model: fig.model, bones: fig.bones }, kind, { unit: 1, who: s.kind });
   };
 
+  // a spawn's figures put out (`tag`: the step's, where the spawn has none;
+  // `standing`: one of the world's standing groups, kept past the step)
+  const spawn = (s, tag, standing = false) => {
+    for (let i = 0; i < (s.n ?? 1); i++) {
+      const a = r() * Math.PI * 2;
+      const d = Math.sqrt(r()) * (s.spread ?? 0);
+      const home = [s.at[0] + Math.cos(a) * d, s.at[1] + Math.sin(a) * d];
+      const holder = new THREE.Group();
+      holder.visible = false;
+      group.add(holder);
+      const t = { tag: s.tag ?? tag, standing, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0, shield: s.hostile?.shield ?? 0, burst: null, bubble: null, stagger: 0, knock: null, bar: null, barAt: null, guard: s.hostile?.guard ?? 0, guardAt: -99, saber: null, swingAt: -99 };
+      // its body's own (no draw from r: the spawns and their heads are as they were)
+      Object.assign(t, { posture: createPosture({ seed: targets.length * 7919 + Math.round(home[0] * 13) * 31 + Math.round(home[1] * 17) }), pose: null, gp: null, blade: null, firedAt: -99, kick: 0, death: null, reacted: false, mark: null, based: null, looked: null });
+      targets.push(t);
+      if (t.shield) {
+        // its shield: a bubble round it, bright for a moment where it's hit
+        const bubble = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12), new THREE.MeshBasicMaterial({ color: '#7fd0ff', transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+        const tall = (s.tall ?? 1.8) * (s.scale ?? 1);
+        bubble.position.y = tall * 0.5;
+        bubble.scale.setScalar(tall * 0.75);
+        bubble.userData.flash = 0;
+        holder.add(bubble);
+        t.bubble = bubble;
+      }
+      figure(s.kind, s).then((fig) => {
+        if (!fig || dead || !holder.parent) return;
+        fig.model.scale.multiplyScalar(s.scale ?? 1);
+        holder.add(fig.model);
+        t.fig = fig;
+        armed(t, fig);
+        fetchFight(fig);
+        warm(holder).then(() => (holder.visible = true));
+      });
+    }
+  };
+
   // the step's own things, put out
   const build = (quest, progress) => {
     clearStep();
@@ -433,40 +481,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
         group.add(holder);
         return holder;
       });
-    if (step.spawn)
-      for (const s of [].concat(step.spawn)) {
-        for (let i = 0; i < (s.n ?? 1); i++) {
-          const a = r() * Math.PI * 2;
-          const d = Math.sqrt(r()) * (s.spread ?? 0);
-          const home = [s.at[0] + Math.cos(a) * d, s.at[1] + Math.sin(a) * d];
-          const holder = new THREE.Group();
-          holder.visible = false;
-          group.add(holder);
-          const t = { tag: s.tag ?? step.tag, holder, fig: null, b: { x: home[0], z: home[1], yaw: s.face ?? r() * 6.28, to: null, wait: r() * 2 }, home, hp: s.hp ?? 1, hostile: s.hostile ?? null, down: 0, spec: s, cool: s.hostile?.delay ?? 1 + r() * 2, flinch: 0, shield: s.hostile?.shield ?? 0, burst: null, bubble: null, stagger: 0, knock: null, bar: null, barAt: null, guard: s.hostile?.guard ?? 0, guardAt: -99, saber: null, swingAt: -99 };
-          // its body's own (no draw from r: the spawns and their heads are as they were)
-          Object.assign(t, { posture: createPosture({ seed: targets.length * 7919 + Math.round(home[0] * 13) * 31 + Math.round(home[1] * 17) }), pose: null, gp: null, blade: null, firedAt: -99, kick: 0, death: null, reacted: false, mark: null, based: null, looked: null });
-          targets.push(t);
-          if (t.shield) {
-            // its shield: a bubble round it, bright for a moment where it's hit
-            const bubble = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12), new THREE.MeshBasicMaterial({ color: '#7fd0ff', transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
-            const tall = (s.tall ?? 1.8) * (s.scale ?? 1);
-            bubble.position.y = tall * 0.5;
-            bubble.scale.setScalar(tall * 0.75);
-            bubble.userData.flash = 0;
-            holder.add(bubble);
-            t.bubble = bubble;
-          }
-          figure(s.kind, s).then((fig) => {
-            if (!fig || dead || !holder.parent) return;
-            fig.model.scale.multiplyScalar(s.scale ?? 1);
-            holder.add(fig.model);
-            t.fig = fig;
-            armed(t, fig);
-            fetchFight(fig);
-            warm(holder).then(() => (holder.visible = true));
-          });
-        }
-      }
+    if (step.spawn) for (const s of [].concat(step.spawn)) spawn(s, step.tag);
   };
 
   // gone down: which way (the way the shot went, else away from you, else
@@ -956,7 +971,19 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       }
       return out;
     },
-    clear: clearStep,
+    // The world's standing groups (the garrison of a world the other side
+    // holds): hostiles not tied to any quest's step, spawns shaped as a
+    // step's are, out from now until clear() or the next standing() (which
+    // puts these in place of those). Their kills are events as a quest's
+    // are ({ type: 'kill', tag }); no step counts the garrison's tag.
+    standing(groups) {
+      const was = targets.filter((t) => t.standing);
+      drop(was);
+      targets = targets.filter((t) => !t.standing);
+      for (const tag of new Set(was.map((t) => t.tag))) searches.delete(tag);
+      for (const s of groups ?? []) spawn(s, s.tag, true);
+    },
+    clear: clearAll,
     // (for tests: who's out, and what each is at)
     // (body: how it's drawn, crouched, its gun up, its mark, what it carries, the clip it went down on)
     debug: () => targets.map((t) => ({ tag: t.tag, side: t.spec.side ?? null, hp: t.hp, down: t.down > 0, fig: Boolean(t.fig), aim: Boolean(t.aim), victim: t.victim?.tag ?? null, mode: t.mind?.mode ?? null, at: [+t.b.x.toFixed(1), +t.b.z.toFixed(1)], body: { base: t.pose?.base ?? null, gun: t.gp ? t.gp.kind : t.blade ? 'saber:hand' : t.saber ? 'saber:held' : null, up: t.gp ? +t.gp.aim.toFixed(2) : null, mark: t.pose?.mark ?? null, rigged: Boolean(t.fig?.anim), death: t.death?.clip ?? null } })),
@@ -966,7 +993,7 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
     },
     dispose() {
       dead = true;
-      clearStep();
+      clearAll();
       pfx.dispose();
       gfx.dispose();
       marks.dispose();

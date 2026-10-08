@@ -488,7 +488,10 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   // (has something to say: a list with lines, or a tree)
   const talks = (spec) => (Array.isArray(spec.says) ? spec.says.length > 0 : Boolean(spec.says));
 
-  life.forEach((spec, si) => {
+  // an entry's people put out (`si`: its place in the life, for its band's name)
+  let entries = 0;
+  const add = (spec, si = entries) => {
+    entries = Math.max(entries, si + 1);
     const n = spec.n ?? 1;
     for (let i = 0; i < n; i++) {
       const a = r() * Math.PI * 2;
@@ -532,11 +535,12 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
           }
           // (one sat in a booth: sat)
           if (spec.sit) fig.base?.('sit');
-          return warm(holder).then(() => (holder.visible = !actor.hidden && !actor.culled));
+          return warm(holder).then(() => (holder.visible = !actor.hidden && !actor.culled && !actor.gone));
         })
         .catch(() => {});
     }
-  });
+  };
+  life.forEach((spec, si) => add(spec, si));
   // whom the people see: the others out and about, as needs.js's relate reads them, and the walls between
   let clock = 0;
   const seesThrough = (a, c) => lineClear(world.solids, a, c);
@@ -544,7 +548,7 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   // not into each other, or walls and trees
   const avoider = (self) => (x, z) => {
     if (world.solids) for (const s of world.solids.near(x, z, 0.6)) if (!s.off && s.type === 'circle' ? Math.hypot(x - s.x, z - s.z) < s.r + 0.4 : false) return true;
-    for (const o of actors) if (o !== self && Math.hypot(x - o.b.x, z - o.b.z) < 0.9 * (o.spec.scale ?? 1) && Math.hypot(self.b.x - o.b.x, self.b.z - o.b.z) > Math.hypot(x - o.b.x, z - o.b.z)) return true;
+    for (const o of actors) if (o !== self && !o.gone && Math.hypot(x - o.b.x, z - o.b.z) < 0.9 * (o.spec.scale ?? 1) && Math.hypot(self.b.x - o.b.x, self.b.z - o.b.z) > Math.hypot(x - o.b.x, z - o.b.z)) return true;
     // (and not out of the shallows into deep water, unless it's a swimmer)
     if (!self.spec.dive && tooDeep(world, x, z) && !tooDeep(world, self.b.x, self.b.z)) return true;
     // (inside somewhere, the floor's flat and the world's edge is far off)
@@ -776,7 +780,7 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
     debug: () =>
       actors
         .filter((a) => !a.hidden)
-        .map((a) => ({ kind: a.spec.kind, id: a.spec.id ?? null, at: [+a.b.x.toFixed(1), +a.b.z.toFixed(1)], want: a.b.want?.id ?? null, last: a.b.last, flee: Boolean(a.b.flee), chase: Boolean(a.b.chase), culled: a.culled, use: a.b.use?.want.id ?? null, with: a.mode })),
+        .map((a) => ({ kind: a.spec.kind, id: a.spec.id ?? null, garrison: Boolean(a.spec.garrison), at: [+a.b.x.toFixed(1), +a.b.z.toFixed(1)], want: a.b.want?.id ?? null, last: a.b.last, flee: Boolean(a.b.flee), chase: Boolean(a.b.chase), culled: a.culled, use: a.b.use?.want.id ?? null, with: a.mode })),
     // one by its id (a quest's), where it is now
     find(id) {
       return actors.find((a) => a.spec.id === id && !a.hidden) ?? null;
@@ -785,7 +789,7 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
     // and at you), or back
     hide(id, hidden = true) {
       for (const a of actors)
-        if (a.spec.id === id) {
+        if (a.spec.id === id && !a.gone) {
           a.hidden = hidden;
           a.holder.visible = !hidden && !a.culled && Boolean(a.fig);
         }
@@ -794,17 +798,37 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
     // world while a battle's fought over it), or back
     hideKinds(kinds, hidden = true) {
       for (const a of actors)
-        if (kinds.includes(a.spec.kind)) {
+        if (kinds.includes(a.spec.kind) && !a.gone) {
           a.hidden = hidden;
           a.holder.visible = !hidden && !a.culled && Boolean(a.fig);
         }
     },
-    // the nearest one with something to say, within reach of (x, z)
-    talker(x, z, reach = 3, y = null) {
+    // Some of them gone for good, and others out in their place (the
+    // landing party, when you swear to a side while you're down): `test`
+    // picks the entries to go by their spec, `life` the entries to put out.
+    // The gone stay in the list, hidden, so everyone's number (social.js's
+    // id for them) stays as it was.
+    replace(test, more = []) {
+      for (const a of actors) {
+        if (a.gone || !test(a.spec)) continue;
+        a.gone = true;
+        a.hidden = true;
+        a.holder.visible = false;
+        a.holder.removeFromParent();
+        a.fig?.dispose();
+        a.saber?.owned.forEach((o) => o.dispose?.());
+        a.fig = null;
+      }
+      for (const spec of more) add(spec);
+    },
+    // the nearest one with something to say, within reach of (x, z) (and,
+    // given `ok`, one it says yes to: not someone who'd sooner shoot you)
+    talker(x, z, reach = 3, y = null, ok = null) {
       let best = null;
       let bestD = Infinity;
       for (const a of actors) {
         if (!(talks(a.spec) || a.spec.quest || a.spec.id) || !a.fig || a.hidden) continue;
+        if (ok && !ok(a)) continue;
         if (y != null && Math.abs(y - a.holder.position.y) > 3) continue;
         // (someone big, a Hutt on his dais, can be talked to from further off)
         const d = Math.hypot(x - a.b.x, z - a.b.z);

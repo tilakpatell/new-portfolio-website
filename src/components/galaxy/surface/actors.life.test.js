@@ -310,3 +310,29 @@ describe('a creature’s legs', () => {
     expect(a.time).toBeCloseTo(t, 6);
   });
 });
+
+describe('the landing party changed while you’re down', () => {
+  it('replace() takes the entries it picks away for good and puts the new ones out, everyone else as they were', async () => {
+    const { actors } = await world([
+      { kind: 'jawa', id: 'trader', at: [0, 0], still: true, says: ['Utinni!'] },
+      { kind: 'stormtrooper', n: 2, at: [5, 5], still: true, garrison: true, says: ['Move along.'] },
+    ]);
+    const before = actors.actors.length;
+    actors.replace((s) => s.garrison, [{ kind: 'rebel', n: 3, at: [8, 8], still: true, garrison: true, says: ['Good to have you back, sir.'] }]);
+    await settle();
+    await settle();
+    const shown = actors.debug();
+    expect(shown.map((a) => a.kind).sort()).toEqual(['jawa', 'rebel', 'rebel', 'rebel']);
+    expect(shown.filter((a) => a.garrison)).toHaveLength(3);
+    // (the gone keep their place in the list, so everyone's number stays theirs)
+    expect(actors.actors.length).toBe(before + 3);
+    expect(actors.actors.slice(0, before).filter((a) => a.gone)).toHaveLength(2);
+    // nobody gone comes back with the kinds shown again, or is talked to
+    actors.hideKinds(['stormtrooper'], false);
+    expect(actors.debug().some((a) => a.kind === 'stormtrooper')).toBe(false);
+    expect(actors.talker(5, 5, 3)).toBe(null);
+    expect(actors.talker(8, 8, 3)?.spec.kind).toBe('rebel');
+    expect(actors.talker(0, 0, 3, null, (a) => a.spec.kind !== 'jawa')).toBe(null);
+    for (let i = 0; i < 30; i++) actors.update(DT, { x: 8, y: 0, z: 8, yaw: 0, speed: 0 }, ORIGIN);
+  });
+});

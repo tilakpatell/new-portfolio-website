@@ -109,7 +109,8 @@ import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weapon
 import { heroById, heroSpec, partyFor, refitOf, writeHero } from '../heroes';
 import { perkEffects } from '../perks';
 import { ABILITIES, JET, abilitiesOf, jetStep, newJet } from './abilityRules';
-import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
+import { feed, isOffered, nextQuest, questOpen, questsOf, start as startQuest, stepTarget, stepText } from './quests';
+import { standingOf } from './standing';
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, lineClear, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
@@ -350,7 +351,13 @@ export async function create(canvas, ctx) {
   // ?debug: the look, the grass and the wind on sliders, copied out as the
   // site's own blocks (lib/debugPanel, tune.js)
   const panel = debugOn() ? debugPanel({ title: site.id, groups: surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), code: siteCode }) : null;
-  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops), ...garrisonAt(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
+  // the landing party (garrison.js): by your side, at ease, saluting you, or
+  // (on the other side's world) out hunting you with the quest's enemies
+  // (activity.js's standing groups, put out once the activity's made); made
+  // again when you swear to a side while you're down (update)
+  const partyOf = (effects) => garrisonAt(site, effects, systemById(site.id)?.faction ?? null);
+  let garrison = partyOf(ctx.effects);
+  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops), ...garrison.life], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
 
   await breathe();
   // ── The places you go into (zones): built high over the world, out of
@@ -378,6 +385,9 @@ export async function create(canvas, ctx) {
     } else gadgetSound(how, ev);
   };
   const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound });
+  // (not through a chase or a battle: they're fights of their own)
+  const hunted = !(mission?.kind === 'chase' || mission?.kind === 'assault');
+  if (hunted) activity.standing(garrison.hostiles);
   // (a battle fills the air with bolts: room for them)
   const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
   // what a shot does round the gun and where it lands (universe/gunfx.js),
@@ -1311,7 +1321,8 @@ export async function create(canvas, ctx) {
       }
     }
     if (best) return best;
-    const a = life.talker(p.x, p.z, REACH, p.y);
+    // (nobody who'd sooner shoot you: but a quest's giver, to say so)
+    const a = life.talker(p.x, p.z, REACH, p.y, (o) => Boolean(o.spec.quest) || standingOf(o.spec, ctx.effects) !== 'enemy');
     if (a) return { kind: 'talk', actor: a, text: `Talk to ${a.spec.named ? '' : 'the '}${a.spec.name ?? a.spec.kind}` };
     return null;
   };
@@ -1431,7 +1442,10 @@ export async function create(canvas, ctx) {
       const offered = nextQuest(spec, state.done, questOf) ?? questsOf(spec).filter((id) => isOffered(questOf(id), state.done)).at(-1) ?? null;
       const q = offered && questOf(offered);
       const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
-      if (q && !state.done.has(q.id) && !state.quest) beginQuest(q);
+      // (one of the other side's: not to you, and they say why)
+      const shut = q && !state.done.has(q.id) && !state.quest ? questOpen(q, spec, ctx.effects) : null;
+      if (shut && !shut.open) emit({ type: 'talk', who: spec.name ?? spec.kind, text: shut.line, voice: spec.voice ?? null });
+      else if (q && !state.done.has(q.id) && !state.quest) beginQuest(q);
       else if (step?.type === 'talk' && step.actor === spec.id) questEvent({ type: 'talk', actor: spec.id });
       else {
         const line = life.say(tg.actor);
@@ -2866,7 +2880,8 @@ export async function create(canvas, ctx) {
       questEvent({ type: 'tick', dt });
       questEvent({ type: 'at', x: p.x, z: p.z, riding: state.riding?.kind ?? null });
     }
-    for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor })) questEvent(ev);
+    // (the garrison's dead are nobody's quest)
+    for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor })) if (ev.tag !== 'garrison') questEvent(ev);
     if (state.phase === 'walk' || state.phase === 'ride')
       for (const s of activity.shooters(dt, me().st, state.t)) {
         // a duellist's Force: you're shoved away from it, off your feet
@@ -2957,7 +2972,7 @@ export async function create(canvas, ctx) {
         scene.add(m.sprite);
         givers.push(m);
       }
-      const on = q && !state.quest && a.fig && !a.hidden;
+      const on = q && !state.quest && a.fig && !a.hidden && questOpen(questOf(q), a.spec, ctx.effects).open;
       m.sprite.visible = Boolean(on);
       if (on) m.sprite.position.set(a.b.x, a.holder.position.y + (a.fig.tall ?? 1.8) * (a.spec.scale ?? 1) + 0.6 + Math.sin(state.t * 3) * 0.08, a.b.z);
     }
@@ -3202,6 +3217,17 @@ export async function create(canvas, ctx) {
     render,
     update(next) {
       props = next;
+      // sworn to a side while you're down: talk has it at once, and the
+      // landing party's made again (to salute you, or to hunt you)
+      const was = ctx.effects;
+      const now = next.effects ?? null;
+      if (now !== was && ['side', 'rank', 'owner', 'troops', 'war'].some((k) => now?.[k] !== was?.[k])) {
+        ctx.effects = now;
+        garrison = partyOf(now);
+        life.replace((spec) => spec.garrison, garrison.life);
+        if (assault) life.hideKinds(mission.hideLife ?? []);
+        if (hunted) activity.standing(garrison.hostiles);
+      }
       for (const id of next.found ?? []) state.found.add(id);
       for (const id of next.done ?? []) state.done.add(id);
       if (next.hero) setHero(next.hero);

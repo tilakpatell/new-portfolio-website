@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { feed, isOffered, nextQuest, questsOf, start, stepTarget, stepText } from './quests';
+import { feed, isOffered, nextQuest, questOpen, questsOf, start, stepTarget, stepText } from './quests';
 
 const QUEST = {
   id: 'droids',
@@ -91,5 +91,17 @@ describe('someone with more than one thing to ask', () => {
     expect(nextQuest(leia, new Set(['brief', 'scramble']), (id) => byId[id])).toBe('medals');
     // (without a lookup, as before: the first not done)
     expect(nextQuest(leia, new Set(['brief']))).toBe('medals');
+  });
+});
+
+describe('quests by side', () => {
+  it('a giver of the other side won’t give you the quest', () => {
+    const r = questOpen({ id: 'q', side: 'republic' }, { kind: 'clone', side: 'republic' }, { war: 'clone', side: 'separatists' });
+    expect(r.open).toBe(false);
+    expect(r.line).toBeTruthy();
+    expect(questOpen({ id: 'q', side: 'republic' }, { kind: 'clone' }, { war: 'clone', side: null }).open).toBe(true);
+    // (your own side's, and a quest with no side, anyone's)
+    expect(questOpen({ id: 'q', side: 'republic' }, { kind: 'clone' }, { war: 'clone', side: 'republic' }).open).toBe(true);
+    expect(questOpen({ id: 'q' }, { kind: 'farmer' }, { war: 'gcw', side: 'empire' }).open).toBe(true);
   });
 });

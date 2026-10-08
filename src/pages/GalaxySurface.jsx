@@ -31,9 +31,8 @@ import { sideFor, warSideOf } from '../components/galaxy/surface/missions/assaul
 import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../components/galaxy/allegiance';
 import { GCW, campaignAt } from '../components/galaxy/gcw';
 import { warOfSide } from '../components/galaxy/sides';
-import { effectsFor } from '../components/galaxy/warEffects';
-import { addPoints, addWin, mine, warNow, warVersion } from '../components/galaxy/warState';
-import { RANKS, rankOf } from '../components/galaxy/ranks';
+import { groundEffects } from '../components/galaxy/siteWar';
+import { addPoints, addWin, warVersion } from '../components/galaxy/warState';
 import ModelCredits from '../components/ModelCredits';
 import EarnNote from '../components/universe/EarnNote';
 import { useEarn } from '../components/universe/useEarn';
@@ -118,14 +117,16 @@ export default function GalaxySurface() {
   // this world (warEffects.js: the troopers you meet are theirs); an assault
   // here is that war's, fought for one of its sides
   const [oathKept, setOathKept] = useState(() => readAllegiance(local.get(SIDE_KEY)));
-  const oath = useMemo(() => currentOath(oathKept), [oathKept]);
-  // (and, for the people's talk: the side you swore to, and your rank in it, as a step up its ladder)
-  const effects = useMemo(() => {
-    const e = effectsFor(id, warNow(Date.now(), oath.war), oath);
-    if (!e) return e;
-    const rank = oath.side ? rankOf(oath.side, mine(oath.war).points) : null;
-    return { ...e, side: oath.side ?? null, rank: rank ? (RANKS[oath.side]?.findIndex((r) => r.id === rank.id) ?? 0) : 0 };
-  }, [id, oath]);
+  // (and, for the ground: the war its film is staged in (siteWar.js), the
+  // side you swore to in it, and your rank there, as a step up its ladder)
+  const effects = useMemo(() => groundEffects(id, oathKept), [id, oathKept]);
+  // (sworn somewhere else while you're down, the page hears it: the ground's
+  // people know at once)
+  useEffect(() => {
+    const heard = () => setOathKept(readAllegiance(local.get(SIDE_KEY)));
+    window.addEventListener('tp:oath', heard);
+    return () => window.removeEventListener('tp:oath', heard);
+  }, []);
   const assaultWar = mission?.kind === 'assault' ? warOfSide(warSideOf(mission, 'attack')) : null;
   const sworn = assaultWar ? sideFor(mission, oathKept.oaths[assaultWar]?.side ?? null) : null;
   const onAssaultSide = (k) => {

@@ -26,8 +26,8 @@ export const EXTRA = {
   },
   endor: {
     life: [
-      { kind: 'rebel', id: 'scout', at: [70, 240], still: true, face: 3, name: 'A Rebel scout', quest: ['bikechase', 'scoutcamp'], says: ['They saw us. If they get word back to the base…'] },
-      { kind: 'rebel', id: 'strike', at: [222, -12], still: true, face: 2, name: 'General Solo’s strike team', quest: 'bunker', says: ['The shield’s still up. Get those charges in.'] },
+      { kind: 'rebel', id: 'scout', side: 'rebel', at: [70, 240], still: true, face: 3, name: 'A Rebel scout', quest: ['bikechase', 'scoutcamp'], says: ['They saw us. If they get word back to the base…'] },
+      { kind: 'rebel', id: 'strike', side: 'rebel', at: [222, -12], still: true, face: 2, name: 'General Solo’s strike team', quest: 'bunker', says: ['The shield’s still up. Get those charges in.'] },
     ],
     quests: [
       { id: 'bikechase', name: 'Speeder-bike chase', giver: 'scout', intro: [['A Rebel scout', 'Two scouts got away on bikes. Catch them before they reach the bunker!']], steps: [{ type: 'ride', kind: 'speederbike', text: 'Get on a speeder bike' }, { type: 'race', ride: 'speederbike', gates: [[90, 220], [140, 170], [190, 95], [230, 25], [250, -20]], r: 10, time: 40, text: 'Through the trees to the bunker' }], done: [[null, '(You pull up at the bunker, the trees still whipping past in your head.)']] },
@@ -42,7 +42,7 @@ export const EXTRA = {
   },
   kashyyyk: {
     life: [
-      { kind: 'clone', id: 'gree', at: [30, 28], still: true, face: 0.2, name: 'Commander Gree', named: true, quest: 'beachhead', says: ['The droids are massing at the lagoon.'] },
+      { kind: 'clone', id: 'gree', side: 'republic', at: [30, 28], still: true, face: 0.2, name: 'Commander Gree', named: true, quest: 'beachhead', says: ['The droids are massing at the lagoon.'] },
       { kind: 'wookiee', id: 'tarfful', at: [-112, -12], still: true, face: -0.6, name: 'Tarfful', named: true, quest: 'escapepod', says: ['(A long, rumbling roar.)'] },
     ],
     quests: [
@@ -100,7 +100,7 @@ export const EXTRA = {
     ],
   },
   geonosis: {
-    life: [{ kind: 'mace', id: 'mace', at: [-230, 170], still: true, face: -2, name: 'Mace Windu', named: true, quest: ['arena', 'foundry', 'dooku'], says: ['This party’s over.'] }],
+    life: [{ kind: 'mace', id: 'mace', side: 'republic', at: [-230, 170], still: true, face: -2, name: 'Mace Windu', named: true, quest: ['arena', 'foundry', 'dooku'], says: ['This party’s over.'] }],
     quests: [
       { id: 'arena', name: 'The Petranaki arena', giver: 'mace', intro: [['Mace Windu', 'They’ve let the beasts out. Take the acklay.']], steps: [{ type: 'reach', at: [-260, 200], r: 30, text: 'Into the arena' }, { type: 'shoot', tag: 'acklay', n: 1, text: 'Bring down the acklay', spawn: { kind: 'acklay', at: [-260, 210], hp: 14, leash: 40, tag: 'acklay', hostile: { range: 40, chase: 3, melee: true, reach: 3.4, every: 1.4, damage: 25, delay: 1 } } }], done: [['Mace Windu', 'Not bad. Now the droids.']] },
       { id: 'foundry', name: 'The droid foundry', giver: 'mace', steps: [{ type: 'collect', item: 'part', n: 3, spots: [[-312, -212], [-300, -222], [-318, -200]], text: 'Find Threepio’s pieces in the foundry' }], done: [['C-3PO', 'Oh, thank the Maker. Though I do believe my head is on backwards.']] },
