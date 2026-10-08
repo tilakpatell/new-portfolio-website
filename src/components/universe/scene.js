@@ -1877,6 +1877,7 @@ export async function create(canvas, ctx) {
     const next = readLoadout(raw);
     const was = state.loadout;
     state.loadout = next;
+    armory?.refit(next); // (the same line stays picked; the rack's rounds carry over)
     if (next.paint !== was.paint) dress();
     if (PARTS_CHANGED(was, next)) refit();
     ctx.invalidate();
@@ -2085,11 +2086,12 @@ export async function create(canvas, ctx) {
   // the nose, bent onto the lead point when the guns are locked on and the
   // nose is near enough to it (targeting.js, as much as the aim-assist
   // setting allows); held, the guns keep firing at the ship's own pace
-  // the guns fitted for each ship (weapons.js): the blaster, the spread and
-  // heavy ordnance, R or 1 2 3 to change
+  // the guns fitted for each ship (weapons.js): the blaster, and the
+  // secondary and ordnance the loadout fits (stock: the spread and the
+  // heavy rack), R or 1 2 3 to change
   let armory = null;
   const arms = () => {
-    if (!armory || armory.kind !== state.kind) armory = Object.assign(createArmory(state.kind), { kind: state.kind });
+    if (!armory || armory.kind !== state.kind) armory = Object.assign(createArmory(state.kind, state.loadout), { kind: state.kind });
     return armory;
   };
   const shotAt = new THREE.Vector3();
@@ -2555,15 +2557,17 @@ export async function create(canvas, ctx) {
       // (not till the guns are first used: the first minute has enough on it)
       const on = state.armed && flying() && !onFoot() && state.view !== 'map' && !state.crash && !props.frozen;
       const arm = arms();
-      const sig = on ? `${arm.index}|${arm.ammo}|${Math.floor(arm.filling * 10)}` : '';
+      const sig = on ? `${arm.index}|${arm.id}|${arm.ammo}/${arm.ammoMax}|${Math.floor(arm.filling * 10)}` : '';
       if (sig !== armsSig) {
         armsSig = sig;
         el.toggleAttribute('data-on', on);
         if (on) {
           el.dataset.weapon = arm.id;
+          el.dataset.line = arm.line;
           const name = el.querySelector('.universe-arms-name');
           if (name) name.textContent = arm.name;
           el.querySelectorAll('.universe-arms-pip').forEach((pip, i) => {
+            pip.hidden = i >= arm.ammoMax; // (as many as the fitted rack holds)
             pip.toggleAttribute('data-full', i < arm.ammo);
             pip.style.setProperty('--fill', i === arm.ammo ? arm.filling.toFixed(2) : '0');
           });

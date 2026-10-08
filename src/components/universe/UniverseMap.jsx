@@ -311,6 +311,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   <i className="universe-arms-pip" />
                   <i className="universe-arms-pip" />
                   <i className="universe-arms-pip" />
+                  <i className="universe-arms-pip" />
+                  <i className="universe-arms-pip" />
                 </span>
                 <span className="universe-arms-keys">
                   <kbd>R</kbd> or <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>

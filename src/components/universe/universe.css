@@ -360,8 +360,8 @@ body:has(.universe-panel) .guide-btn { display: none; }
   text-transform: uppercase;
   text-shadow: 0 1px 6px rgb(0 0 0 / 0.8);
 }
-.universe-arms[data-weapon='heavy'] .universe-arms-name { color: #ffc070; }
-.universe-arms[data-weapon='spread'] .universe-arms-name { color: #9fd8ff; }
+.universe-arms[data-line='ordnance'] .universe-arms-name { color: #ffc070; }
+.universe-arms[data-line='secondary'] .universe-arms-name { color: #9fd8ff; }
 .universe-arms-rack { display: flex; gap: 4px; }
 .universe-arms-pip {
   position: relative;
@@ -381,6 +381,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
   transform: scaleX(var(--fill, 0));
 }
 .universe-arms-pip[data-full]::after { transform: none; }
+.universe-arms-pip[hidden] { display: none; }
 .universe-arms-keys { color: rgb(255 255 255 / 0.5); font-size: 0.62rem; }
 .universe-arms-keys kbd { min-width: 0; padding: 0 3px; font-size: 0.62rem; }
 /* the Citadel's siege (siege.js), while you're near it */

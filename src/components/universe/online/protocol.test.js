@@ -290,6 +290,14 @@ describe('shots', () => {
     expect(readShot([1, 2, 3, 0, 0, -20, 7]).w).toBe(0);
     expect(readShot([1, 2, 3, 0, 0, -20, 'x']).w).toBe(0);
   });
+
+  it('a shot code past the table reads as the blaster', () => {
+    expect(readShot([0, 0, 0, 1, 0, 0, 40]).w).toBe(0);
+    expect(readShot([0, 0, 0, 1, 0, 0, 6]).w).toBe(6);
+    expect(readShot([0, 0, 0, 1, 0, 0, 2]).w).toBe(2); // (an old peer's heavy round is still one)
+    expect(readShot([0, 0, 0, 1, 0, 0, 2.5]).w).toBe(0);
+    expect(readShot([0, 0, 0, 1, 0, 0, -1]).w).toBe(0);
+  });
   it('refuses one from far off where the pilot was, or impossibly fast', () => {
     expect(readShot([50, 0, 0, 0, 0, -20], { x: 0, y: 0, z: 0 })).toBeNull();
     expect(readShot([0, 0, 0, 0, 0, -5000])).toBeNull();
