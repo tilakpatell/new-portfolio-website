@@ -15,6 +15,8 @@
 // and the Black Pearl) load after the map is up and are parked on orbits or
 // stood on the ground (a model can take the painted sphere's place, `skin`);
 // a planet whose model never arrives simply goes without. The sun is sun.js's.
+// What the fandoms share (their maps, clouds, orbit and shading hooks) is
+// data, planetSpecs.js's SPECS; what's each one's own is EXTRAS, below.
 //
 // loadTextures({ small }) → the textures (any that fail are just missing)
 // mapFile(name, level) → the file for a planet map at lib/detail's level
@@ -31,14 +33,14 @@ import { facing, fit, glowMat, orbit, paint, rng, rounded, tiled } from './kit';
 import { STATIONS } from './stations';
 import { RM_WORLDS } from './rmWorlds';
 import { buildGateway } from '../galaxy/gateway';
-import { SIDES, cybertronSkin } from '../cybertron/skin';
 import { createAtmosphere, stepsFor } from '../../lib/three/atmosphere';
 import { createWar, warZones } from '../cybertron/war';
 import { ringGeometry } from '../middleearth/ringShape';
 import { bossMug, elementTile, glowingGems, shardCluster } from './props';
 import { keyHook } from '../../lib/three/keySun';
 import { mapSwapper, mapsOf, nearSet } from './planetMaps';
-import { LIGHT, RIM, airGlow, celShade, ditherShade, groundHooks, halo, styleFor } from './planetShading';
+import { LIGHT, RIM, airGlow, ditherShade, groundHooks, halo, styleFor } from './planetShading';
+import { SPECS, buildFromSpec } from './planetSpecs';
 
 // (the planets' shading, moved out to keep this file under the size the
 // health check allows: planetShading.js; its exports are this file's as before)
@@ -235,9 +237,13 @@ function tengwar(g, w, h, b0, b1, rand) {
 }
 
 // ── The fandoms ──
+// What each world has of its own (its shared shape, the maps, clouds,
+// orbit and hooks, is planetSpecs.js's SPECS): EXTRAS[id](p, T, u), called
+// by buildFromSpec once the spec's material and clouds are on and before
+// its hooks and orbit (p.ownOrbit() hands an extra that orbit early).
 
-const BUILDERS = {
-  starwars(p, { u, T }) {
+const EXTRAS = {
+  starwars(p, T, u) {
     const r = u.size;
     // not a planet: the way into a galaxy far, far away (galaxy/gateway.js),
     // the galaxy itself in miniature behind a hyperspace gate; the painted
@@ -263,9 +269,8 @@ const BUILDERS = {
     };
   },
 
-  music(p, { u, T }) {
+  music(p, T, u) {
     const r = u.size;
-    p.body.material = new THREE.MeshStandardMaterial({ map: T.music ?? null, color: T.music ? '#ffffff' : u.palette.base, roughness: 1 });
     // the rings are a sitar's strings: thin brass lines, plucked when it's
     // picked, over a banded disc of saffron and brass dust (its texture runs
     // out from the planet: the ring geometry's own uvs are remapped to radius)
@@ -314,41 +319,16 @@ const BUILDERS = {
         line.rotation.y = a * 0.6;
       });
     });
-    const o = orbit(p.group, { radius: r * 1.2, tilt: -0.55, speed: 0.2, phase: 0.6 });
-    p.orbits.push(o);
-    p.slot = { holder: o.holder, size: r * 0.78, turn: [0, Math.PI / 2, 0.35] };
   },
 
-  middleearth(p, { u, T }) {
+  middleearth(p, T, u) {
     const r = u.size;
     // Tolkien's map from orbit (scripts/planets/middleearth.mjs): Lindon and
     // the Gulf of Lhûn, the Misty and White Mountains, Mirkwood, Rohan's
     // grass, the Anduin to the Bay of Belfalas, Mordor's black walls round
     // Gorgoroth with Orodruin alight, the Sea of Rhûn, Harad's sands; the
     // sea catches the sun, the cities light the night side, and Mordor's
-    // smoke hangs over the Black Land
-    p.body.material = new THREE.MeshStandardMaterial({
-      map: T.middleearth ?? null,
-      color: T.middleearth ? '#ffffff' : u.palette.base,
-      normalMap: T['middleearth-normal'] ?? null,
-      normalScale: new THREE.Vector2(1, 1),
-      roughnessMap: T['middleearth-rough'] ?? null,
-      roughness: 1,
-      metalness: 0,
-      emissive: '#ffffff',
-      emissiveMap: T['middleearth-glow'] ?? null,
-      emissiveIntensity: T['middleearth-glow'] ? 2.2 : 0,
-    });
-    p.night = T['middleearth-night'] ?? null;
-    if (T['middleearth-clouds']) {
-      // on the body, so the pall stays over Mordor; it sways a little, as weather
-      const sky = new THREE.Mesh(
-        new THREE.SphereGeometry(r * 1.01, T.small ? 44 : 72, T.small ? 28 : 48),
-        new THREE.MeshStandardMaterial({ map: T['middleearth-clouds'], transparent: true, depthWrite: false, roughness: 1, metalness: 0 }),
-      );
-      p.body.add(sky);
-      p.tick.push((t) => (sky.rotation.y = Math.sin(t * 0.021) * 0.035));
-    }
+    // smoke hangs over the Black Land (its maps, night and pall: SPECS)
     // the One Ring: the plain band the Ring page turns (middleearth/ringShape.js),
     // with its inscription burning round the outside in one line of
     // Elvish letters, as it shows in the fire
@@ -357,43 +337,22 @@ const BUILDERS = {
     const ringMat = new THREE.MeshStandardMaterial({ color: '#e6a53e', metalness: 1, roughness: 0.2, emissive: '#ff5a12', emissiveMap: words, emissiveIntensity: 1.1 });
     const ring = new THREE.Mesh(band, ringMat);
     ring.scale.setScalar(r * 0.24);
-    const o = orbit(p.group, { radius: r * 1.55, tilt: 0.42, speed: 0.22, phase: 4 });
-    o.holder.add(ring);
-    p.orbits.push(o);
+    p.ownOrbit().holder.add(ring);
     p.tick.push((t) => {
       ring.rotation.set(0.9 + Math.sin(t * 0.5) * 0.3, t * 0.6, 0.3);
       ringMat.emissiveIntensity = 0.75 + 0.35 * Math.sin(t * 1.7) ** 2;
     });
   },
 
-  transformers(p, { u, T }) {
+  transformers(p, T, u) {
     const r = u.size;
     // built over from pole to pole (scripts/build-cybertron-planet.mjs):
     // tiers of plating, chasms with energon running in them, the city-states'
     // discs, the Sea of Rust, the war's fires; cybertron/skin.js colours the
     // energon, lights the cities on the night side and carries the plating
-    // on in the shader up close, where the maps run out
-    const mat = new THREE.MeshStandardMaterial({
-      map: T.transformers ?? null,
-      color: T.transformers ? '#ffffff' : u.palette.base,
-      normalMap: T['transformers-normal'] ?? null,
-      normalScale: new THREE.Vector2(1.1, 1.1),
-      roughness: 0.55,
-      metalness: 0.45,
-    });
-    p.body.material = mat;
+    // on in the shader up close, where the maps run out (its maps and its
+    // skin: SPECS)
     if (T.transformers && T['transformers-glow-sm']) {
-      const skin = cybertronSkin(mat, { glow: T['transformers-glow-sm'], sun: p.sun });
-      // (its seams glow a little in the colour of the light it's in: the scene's key)
-      p.keyColour = skin.uKeyColour.value;
-      // the energon breathes, and turns from the Autobots' blue to the
-      // Decepticons' violet and back as the war goes one way and the other
-      const blue = SIDES.autobot.energon;
-      const violet = SIDES.decepticon.energon;
-      p.tick.push((t) => {
-        skin.uTime.value = t;
-        skin.uEnergon.value.copy(blue).lerp(violet, 0.5 + 0.5 * Math.sin(t * 0.05));
-      });
       // and the war, a few fireballs at a time out of the burning fronts
       // (cybertron/war.js: one draw, turning with the planet)
       const battle = createWar({ radius: r, zones: warZones(T['transformers-glow-sm']), count: T.small ? 3 : 5, flares: 1, small: true, light: false });
@@ -402,9 +361,8 @@ const BUILDERS = {
     }
     // Optimus Prime and Megatron on one orbit, a little apart, facing off as
     // they go round
-    const R = r * 1.55;
-    const o = orbit(p.group, { radius: R, tilt: 0.3, speed: 0.12, phase: 1.2 });
-    p.orbits.push(o);
+    const R = r * SPECS.transformers.orbit.r;
+    const o = p.ownOrbit();
     const apart = 0.55; // radians between them on the orbit
     const rival = new THREE.Group();
     rival.position.set(Math.cos(apart) * R, 0, -Math.sin(apart) * R);
@@ -416,9 +374,8 @@ const BUILDERS = {
     p.slots = { rival: { holder: rival, size: r * 0.58, turn: [0, Math.atan2(-dx, -dz), 0], sway: 0.12 } };
   },
 
-  marvel(p, { u, T }) {
+  marvel(p, T, u) {
     const r = u.size;
-    p.body.material = new THREE.MeshStandardMaterial({ map: T.marvel ?? null, color: T.marvel ? '#ffffff' : u.palette.base, roughness: 1 });
     // the six Stones in a ring round it, cut as they're set in the
     // gauntlet and lit from within: Space, Mind, Reality, Power, Time, Soul
     const STONES = ['#3d7bff', '#ffd23d', '#ff2e2e', '#a34dff', '#3dff8a', '#ff8a3d'];
@@ -461,35 +418,14 @@ const BUILDERS = {
       }
       stones.instanceMatrix.needsUpdate = true;
     });
-    const o = orbit(p.group, { radius: r * 1.55, tilt: -0.4, speed: 0.16, phase: 3 });
-    p.orbits.push(o);
-    p.slot = { holder: o.holder, size: r * 0.62, turn: [0, Math.PI / 2, 0] };
   },
 
-  breakingbad(p, { u, T }) {
+  breakingbad(p, T, u) {
     const r = u.size;
     // New Mexico's high desert (scripts/planets/breakingbad.mjs): ranges
     // north to south, mesas in the Chinle's bands, malpais, White Sands, and
     // the Rio Grande down the near face past Albuquerque, whose grid and
-    // interstates light up at night; thunderheads over the mountains
-    p.body.material = new THREE.MeshStandardMaterial({
-      map: T.breakingbad ?? null,
-      color: T.breakingbad ? '#ffffff' : u.palette.base,
-      normalMap: T['breakingbad-normal'] ?? null,
-      normalScale: new THREE.Vector2(1.3, 1.3),
-      roughnessMap: T['breakingbad-rough'] ?? null,
-      roughness: 1,
-      metalness: 0,
-    });
-    p.night = T['breakingbad-night'] ?? null;
-    if (T['breakingbad-clouds']) {
-      const sky = new THREE.Mesh(
-        new THREE.SphereGeometry(r * 1.008, T.small ? 44 : 64, T.small ? 28 : 40),
-        new THREE.MeshStandardMaterial({ color: '#ffffff', alphaMap: T['breakingbad-clouds'], transparent: true, depthWrite: false, roughness: 1 }),
-      );
-      p.group.add(sky);
-      p.tick.push((t) => (sky.rotation.y = t * 0.06));
-    }
+    // interstates light up at night; thunderheads over the mountains (SPECS)
     // Blue Sky, in clusters of glassy shards, going round
     const crystals = new THREE.InstancedMesh(
       shardCluster('blue-sky').scale(r * 0.16, r * 0.16, r * 0.16),
@@ -543,29 +479,18 @@ const BUILDERS = {
         tile.rotateX(Math.sin(t * 0.5 + i) * 0.12);
       }
     });
-    const o = orbit(p.group, { radius: r * 1.5, tilt: 1.0, speed: 0.2, phase: 0.4 });
-    p.orbits.push(o);
-    p.slot = { holder: o.holder, size: r * 0.6, turn: [0, Math.PI / 2, 0] };
   },
 
-  office(p, { u, T }) {
+  office(p, T, u) {
     const r = u.size;
     // a sheet of Dunder Mifflin's letterhead crumpled into a ball, the paper
     // that gets thrown at the bin (scripts/planets/office.mjs): flat facets
     // with sharp creases, the memo's print running on across the folds; lit
     // as paper: a sheen in its own colour, so its fibre shows under a
-    // grazing light (the creases toward the terminator)
-    p.body.material = new THREE.MeshPhysicalMaterial({
-      map: T.office ?? null,
-      color: T.office ? '#ffffff' : u.palette.base, // (the map's own paper, #f1ead8: warm, not snow)
-      normalMap: T['office-normal'] ?? tiled(T['paper-normal'], 4, 2),
-      normalScale: new THREE.Vector2(1, 1),
-      roughnessMap: T['office-rough'] ?? null,
-      roughness: 1,
-      sheen: 0.6,
-      sheenColor: '#f3ecd8',
-      sheenRoughness: 0.8,
-    });
+    // grazing light (the creases toward the terminator): SPECS. Its colour
+    // is the map's own paper, #f1ead8: warm, not snow; without the
+    // letterhead's relief, plain paper's, tiled
+    if (!T['office-normal']) p.body.material.normalMap = tiled(T['paper-normal'], 4, 2);
     // and its outline a crumpled ball's: the sphere cut by a few big flat
     // planes a little inside it, so it has broad facets and corners (never
     // out past the sphere, which the halo and a crash's shockwave are sized to)
@@ -604,41 +529,19 @@ const BUILDERS = {
     // Michael's mug (props.js)
     const mug = bossMug();
     mug.scale.setScalar(r * 0.27);
-    const o = orbit(p.group, { radius: r * 1.5, tilt: 0.32, speed: 0.28, phase: 5 });
-    o.holder.add(mug);
-    p.orbits.push(o);
+    p.ownOrbit().holder.add(mug);
     p.tick.push((t) => mug.rotation.set(0.25 + Math.sin(t * 0.6) * 0.2, t * 0.5, 0.15));
   },
 
-  rickmorty(p, { u, T }) {
+  rickmorty(p, T, u) {
     const r = u.size;
     // an alien world as the show draws one (scripts/planets/rickmorty.mjs):
     // flat colour in cel steps, inked round every shape, teal seas, purple
     // lands, pink deserts, lime jungle, lakes of glowing ooze, cartoon
-    // craters, and the show's inked puffs of cloud going over
-    p.body.material = new THREE.MeshStandardMaterial({
-      map: T.rickmorty ?? null,
-      color: T.rickmorty ? '#ffffff' : u.palette.base,
-      emissive: '#ffffff',
-      emissiveMap: T['rickmorty-glow'] ?? null,
-      emissiveIntensity: T['rickmorty-glow'] ? 1.3 : 0,
-      // (the seas glossy, so they catch the sun: scripts/planets/rickmorty.mjs)
-      roughnessMap: T['rickmorty-rough'] ?? null,
-      roughness: T['rickmorty-rough'] ? 1 : 0.85,
-      metalness: 0,
-    });
-    // lit as the show lights it: in flat bands, its limb inked (celShade)
-    celShade(p.body.material);
-    if (T['rickmorty-clouds']) {
-      const sky = new THREE.Mesh(
-        new THREE.SphereGeometry(r * 1.012, T.small ? 44 : 64, T.small ? 28 : 40),
-        celShade(new THREE.MeshStandardMaterial({ map: T['rickmorty-clouds'], transparent: true, depthWrite: false, roughness: 1, metalness: 0 }), { ink: 0 }),
-      );
-      p.group.add(sky);
-      p.tick.push((t) => (sky.rotation.y = t * 0.05));
-    }
+    // craters, and the show's inked puffs of cloud going over (SPECS, its
+    // cel shading too)
     // a portal hangs on the cruiser's orbit, so it flies through it
-    const o = orbit(p.group, { radius: r * 1.55, tilt: 0.36, speed: 0.24, phase: 1 });
+    const o = p.ownOrbit();
     const portalMat = new THREE.ShaderMaterial({
       transparent: true,
       premultipliedAlpha: true,
@@ -668,11 +571,9 @@ const BUILDERS = {
       portal.parent.getWorldQuaternion(q);
       portal.quaternion.copy(q.invert()).multiply(camera.quaternion);
     });
-    p.orbits.push(o);
-    p.slot = { holder: o.holder, size: r * 0.58, turn: [0.15, Math.PI, 0] }; // its nose (the headlights) is +z: turned along the orbit
   },
 
-  gaming(p, { u }) {
+  gaming(p, T, u) {
     const r = u.size;
     const P = u.palette;
     const rand = rng('gaming');
@@ -736,9 +637,8 @@ const BUILDERS = {
     map.anisotropy = 1;
     p.body.material = new THREE.MeshStandardMaterial({ map, roughness: 0.85, metalness: 0 });
     // lit as a Game Boy would light it: the four greens, dithered (ditherShade),
-    // the ground, its clouds and its mountains alike, sized by one ratio
+    // the ground (SPECS' hook), its clouds and its mountains alike, sized by one ratio
     p.dpr = { value: 1 };
-    ditherShade(p.body.material, { palette: GREENS, dpr: p.dpr, outline: true });
     // pixel clouds, drifting a little faster than the ground
     const clouds = paint(
       (g) => {
@@ -812,40 +712,16 @@ const BUILDERS = {
       mario: { holder: hero, size: r * 0.34, turn: [0, 0, 0], sway: 0.35, hop: true },
       plant: { holder: plant, size: r * 0.26, turn: [0, 0.6, 0], sway: 0.5, chomp: true },
     };
-    const o = orbit(p.group, { radius: r * 1.55, tilt: -0.3, speed: 0.22, phase: 2.6 });
-    p.orbits.push(o);
-    p.slot = { holder: o.holder, size: r * 0.6, turn: [0, Math.PI, 0.2] };
-
   },
 
-  caribbean(p, { u, T }) {
-    const r = u.size;
+  caribbean(p, T, u) {
     const P = u.palette;
     const rand = rng('caribbean');
-    if (T.caribbean) {
-      // a world of warm sea (scripts/planets/caribbean.mjs): the deep, the
-      // banks' turquoise shallows with surf on their edges, island arcs,
-      // jungle islands ringed with white sand, Tortuga shaped as its name,
-      // Davy Jones's maelstrom; the sea catches the sun, the ports' lanterns
-      // light the night, and the trade-wind cloud and a hurricane go over
-      p.body.material = new THREE.MeshStandardMaterial({
-        map: T.caribbean,
-        normalMap: T['caribbean-normal'] ?? null,
-        normalScale: new THREE.Vector2(1.2, 1.2),
-        roughnessMap: T['caribbean-rough'] ?? null,
-        roughness: 1,
-        metalness: 0,
-      });
-      p.night = T['caribbean-night'] ?? null;
-      if (T['caribbean-clouds']) {
-        const sky = new THREE.Mesh(
-          new THREE.SphereGeometry(r * 1.01, T.small ? 44 : 64, T.small ? 28 : 40),
-          new THREE.MeshStandardMaterial({ color: '#ffffff', alphaMap: T['caribbean-clouds'], transparent: true, depthWrite: false, roughness: 1 }),
-        );
-        p.group.add(sky);
-        p.tick.push((t) => (sky.rotation.y = t * 0.07));
-      }
-    }
+    // a world of warm sea (scripts/planets/caribbean.mjs, worn by SPECS): the
+    // deep, the banks' turquoise shallows with surf on their edges, island
+    // arcs, jungle islands ringed with white sand, Tortuga shaped as its
+    // name, Davy Jones's maelstrom; the sea catches the sun, the ports'
+    // lanterns light the night, and the trade-wind cloud and a hurricane go over
     // (without the maps: painted here, a world that is nearly all sea: deep
     // water, turquoise shallows round small islands of sand and green)
     const map = T.caribbean ? null : paint(
@@ -885,44 +761,21 @@ const BUILDERS = {
       512,
     );
     if (map) p.body.material = new THREE.MeshStandardMaterial({ map, roughness: 0.6 });
-    // the black galleon sails round it
-    const o = orbit(p.group, { radius: r * 1.5, tilt: 0.22, speed: 0.2, phase: 0.7 });
-    p.orbits.push(o);
-    p.slot = { holder: o.holder, size: r * 0.9, turn: [0.1, -Math.PI / 2, 0] }; // her bow is −x: along the orbit
+    // (the black galleon sails round it: SPECS)
   },
 
-  invincible(p, { u, T }) {
+  invincible(p, T, u) {
     const r = u.size;
     const P = u.palette;
     const rand = rng('invincible');
     if (T.invincible) {
-      // a war-worn world (scripts/build-invincible-planet.mjs): rust plateaus
-      // over dark old sea beds, ridges, craters thrown wide, and long rifts
-      // still molten along their floors; cities light its night side, and
-      // high dust streams round it in bands
-      const mat = new THREE.MeshStandardMaterial({
-        map: T.invincible,
-        normalMap: T['invincible-normal'] ?? null,
-        normalScale: new THREE.Vector2(1.35, 1.35),
-        emissive: '#ffffff',
-        emissiveMap: T['invincible-glow'] ?? null,
-        emissiveIntensity: T['invincible-glow'] ? 2.4 : 0,
-        // (the old sea beds glossy: scripts/build-invincible-planet.mjs)
-        roughnessMap: T['invincible-rough'] ?? null,
-        roughness: T['invincible-rough'] ? 1 : 0.92,
-      });
-      p.body.material = mat;
-      p.night = T['invincible-night'] ?? null;
-      // the rifts breathe, slowly
+      // a war-worn world (scripts/build-invincible-planet.mjs, worn by
+      // SPECS): rust plateaus over dark old sea beds, ridges, craters thrown
+      // wide, and long rifts still molten along their floors; cities light
+      // its night side, and high dust streams round it in bands.
+      // The rifts breathe, slowly
+      const mat = p.body.material;
       if (T['invincible-glow']) p.tick.push((t) => (mat.emissiveIntensity = 2 + 1.2 * (0.5 + 0.5 * Math.sin(t * 1.1)) ** 2));
-      if (T['invincible-clouds']) {
-        const dust = new THREE.Mesh(
-          new THREE.SphereGeometry(r * 1.016, T.small ? 44 : 64, T.small ? 28 : 40),
-          new THREE.MeshStandardMaterial({ color: '#f3d4b4', alphaMap: T['invincible-clouds'], transparent: true, depthWrite: false, roughness: 1 }),
-        );
-        p.group.add(dust);
-        p.tick.push((t) => (dust.rotation.y = t * 0.065));
-      }
     } else {
       // (without the maps: painted here, rust and ochre, dark old sea beds, bands of high cloud)
       const map = paint(
@@ -1160,27 +1013,11 @@ const BUILDERS = {
     flyer('#ffffff', '#ff3a2a', { radius: r * 1.4, tilt: -0.25, yaw: 1.9, speed: 0.48, phase: 2.1, boom: 3.2 });
   },
 
-  travel(p, { u, T }) {
+  travel(p, T, u) {
     const r = u.size;
-    // the oceans catch the sun (a roughness map), the cities light the night side (in airGlow)
-    p.body.material = new THREE.MeshStandardMaterial({
-      map: T.earth ?? null,
-      color: T.earth ? '#ffffff' : u.palette.base,
-      roughnessMap: T['earth-rough'] ?? null,
-      roughness: T['earth-rough'] ? 1 : 0.85,
-      metalness: 0,
-    });
-    p.night = T['earth-night'] ?? null;
-    // the clouds, drifting a little faster than the ground
-    if (T['earth-clouds']) {
-      const clouds = new THREE.Mesh(
-        new THREE.SphereGeometry(r * 1.012, 64, 40),
-        new THREE.MeshStandardMaterial({ color: '#ffffff', alphaMap: T['earth-clouds'], transparent: true, depthWrite: false, roughness: 1 }),
-      );
-      p.group.add(clouds);
-      p.tick.push((t) => (clouds.rotation.y = t * 0.075));
-    }
-    // a few routes from home, lifted off the surface (the travel globe's own)
+    // the oceans catch the sun (a roughness map), the cities light the night
+    // side (in airGlow), the clouds drift a little faster than the ground: SPECS.
+    // A few routes from home, lifted off the surface (the travel globe's own)
     const data = globeData();
     const routes = data.arcs.filter(Boolean);
     const pick = [0, 0.2, 0.4, 0.6, 0.8].map((k) => routes[Math.floor(k * routes.length)]).filter(Boolean);
@@ -1200,10 +1037,11 @@ const BUILDERS = {
       p.body.add(arcs);
     }
   },
-  ...STATIONS,
-  // the Central Finite Curve's worlds, alive (rmWorlds.js)
-  ...RM_WORLDS,
 };
+
+// The rest of the map's bodies, built their own way: the stations, and the
+// Central Finite Curve's worlds, alive (rmWorlds.js)
+const BUILDERS = { ...STATIONS, ...RM_WORLDS };
 
 // The sphere's segments near (nearMaps.js swaps it in with the near maps):
 // parked 2.4 radii out the limb is about 1,900 pixels round, and at 64 a
@@ -1244,7 +1082,8 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
   }
   const p = { group, body, orbits: [], tick: [], focus: [], slot: null, onSelect: null, sun: sunW };
   const sphere = body.geometry;
-  BUILDERS[u.id]?.(p, { u, T });
+  if (SPECS[u.id]) buildFromSpec(p, T, u, EXTRAS[u.id]);
+  else BUILDERS[u.id]?.(p, { u, T });
 
   if (!core && p.body.material?.isMeshStandardMaterial) airGlow(p.body.material, u.rim ?? u.swatch, { night: p.night, sun: sunW });
   // the clouds' shadows, the ground's detail and a sea's glint (groundHooks),

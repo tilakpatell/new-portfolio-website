@@ -214,3 +214,11 @@ describe('every body on the map, built as before (planetSpecs.fixture.json)', ()
     for (const id of OTHERS) for (const set of Object.keys(SETS)) expect(got[id][set], `${id} (${set})`).toEqual(fixture[id][set]);
   });
 });
+
+describe('the specs', () => {
+  it('name only maps the loader loads, for the twelve fandoms', async () => {
+    const { SPECS } = await import('./planetSpecs');
+    expect(Object.keys(SPECS).sort()).toEqual([...FANDOMS].sort());
+    for (const [id, spec] of Object.entries(SPECS)) for (const k of spec.maps) expect(MAP_NAMES, `${id} ${k}`).toContain(k === 'colour' ? (spec.base ?? id) : `${spec.base ?? id}-${k}`);
+  });
+});
