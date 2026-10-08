@@ -30,7 +30,7 @@ import { missionOf } from '../components/galaxy/surface/missions';
 import { sideFor, warSideOf } from '../components/galaxy/surface/missions/assault';
 import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../components/galaxy/allegiance';
 import { GCW, campaignAt, scoresAt } from '../components/galaxy/gcw';
-import { warOfSide } from '../components/galaxy/sides';
+import { SIDES, warOfSide } from '../components/galaxy/sides';
 import { groundEffects } from '../components/galaxy/siteWar';
 import { addPoints, addWin, warNow, warVersion } from '../components/galaxy/warState';
 import ModelCredits from '../components/ModelCredits';
@@ -314,6 +314,10 @@ export default function GalaxySurface() {
         setToast((t) => ({ title: place.name, text: place.about, n: (t?.n ?? 0) + 1 }));
         later('toast', 7000, () => setToast(null));
         comms.current?.handle({ type: 'event', id: `surface:${e.id}` });
+      } else if (e.type === 'war') {
+        // the ground war's news (ground/director.js): a raid, a post lost or held, a hunt, one line at a time
+        setToast((t) => ({ title: SIDES[e.side]?.short ?? 'The ground war', text: e.text, n: (t?.n ?? 0) + 1 }));
+        later('toast', 5000, () => setToast(null));
       } else if (e.type === 'edge') {
         setToast((t) => ({ title: 'Nothing out there', text: site?.edge ?? 'Just more of the same, as far as you can see. Better turn back.', n: (t?.n ?? 0) + 1 }));
         later('toast', 4000, () => setToast(null));
