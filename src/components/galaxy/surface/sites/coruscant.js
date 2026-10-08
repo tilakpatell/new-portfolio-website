@@ -45,7 +45,7 @@ export const SITE = {
   },
   land: { at: [0, 0], yaw: 0.6 },
   // (on the other side's Coruscant: the lesser pad out on the bridge to Dex's)
-  covert: { at: [-77, -140], yaw: -1.07 },
+  covert: { at: [-77.7, -139.8], yaw: -1.06 },
   places: [
     {
       id: 'temple',
@@ -179,10 +179,13 @@ export const SITE = {
     span([0, 0], [0, 290], 30, 40, 16),
     span([0, 0], [340, 40], 30, 50.4, 7),
     span([0, 0], [-308.5, 65.4], 30, 15.6, 6),
-    span([0, 0], [-150, -270], 30, 24, 6),
-    // a lesser pad on that bridge, out of the garrison's way: where a ship
-    // the city's holders wouldn't welcome sets down (`covert`, landing.js)
-    { kind: 'cplatform', at: [-77, -140], abs: true, y: 0, opts: { r: 18, light: '#8fd0ff' } },
+    // the bridge to Dex's, in two, with a lesser pad between, out of the
+    // garrison's way: where a ship the city's holders wouldn't welcome sets
+    // down (`covert`, landing.js); the halves end at its rim, so their rails
+    // don't cross it
+    span([0, 0], [-77.7, -139.8], 30, 18, 6),
+    { kind: 'cplatform', at: [-77.7, -139.8], abs: true, y: 0, opts: { r: 18, light: '#8fd0ff' } },
+    span([-77.7, -139.8], [-150, -270], 18, 24, 6),
     span([0, 0], [200, -290], 30, 24, 6),
     span([-150, -270], [-430, -250], 24, 36, 6),
     // the statues along the Processional Way

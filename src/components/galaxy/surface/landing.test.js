@@ -52,6 +52,7 @@ describe('where you set down', () => {
       expect(away(at, s.land.at)).toBeLessThanOrEqual(221);
       expect(g(...at)).toBeGreaterThan((s.water?.level ?? -Infinity) + 0.3);
       expect(Math.abs(g(at[0] + 3, at[1]) - g(at[0] - 3, at[1])) / 6).toBeLessThanOrEqual(0.25);
+      expect(Math.abs(g(at[0], at[1] + 3) - g(at[0], at[1] - 3)) / 6).toBeLessThanOrEqual(0.25);
       expect(Math.hypot(...at)).toBeLessThanOrEqual(REACH - 40);
       expect(covertFor(s, g)).toEqual(at);
     });
