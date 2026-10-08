@@ -179,6 +179,7 @@ import { DEFAULTS as CONTROL_DEFAULTS, STICK, dragSteers, keyAxes, keyFlies, sti
 import { byId } from './universes';
 import { createPilots } from './online/pilots';
 import { arsenalOf, createArmory, fan, steer } from './weapons';
+import { JAMMED, jumpState } from './words';
 import { CORE, GENS, citadelGeometry, createSiege, segmentSphere } from './siege';
 import { createCitadelSiege } from './citadelSiege';
 import { STALE_MS } from './online/protocol';
@@ -983,6 +984,7 @@ export async function create(canvas, ctx) {
 
   const size = { w: 1, h: 1 };
   const state = {
+    armed: false, // the guns used at least once (the readout waits for it)
     through: null, // a gate flown into (galaxy/gateway.js): the page's taking you through
     yaw: 0,
     vel: 0, // radians per ms, after a flick
@@ -1604,7 +1606,7 @@ export async function create(canvas, ctx) {
       if (hyper) {
         // (not yet: on super speed instead, and the HUD says why)
         emit({ type: 'hyper', why: hyper.why, wait: hyper.wait });
-        state.note = { text: hyper.why === 'interdicted' ? 'Interdicted: no jump till the hunters are gone' : `Hyperdrive charging (${Math.ceil(hyper.wait)} s): super speed instead`, until: wall() + 3.5 };
+        state.note = { text: hyper.why === 'interdicted' ? JAMMED.long : `${jumpState(false, hyper.wait)}: super speed instead`, until: wall() + 3.5 };
       }
       state.ride = null; // (off any lane it's on: the trip starts from here)
       // (not by the lanes to a pilot: they move, and the lanes' plan is fixed)
@@ -2085,6 +2087,7 @@ export async function create(canvas, ctx) {
   // setting allows); held, the guns keep firing at the ship's own pace,
   // each weapon at its own multiple of it
   const fire = () => {
+    state.armed = true; // (the weapon readout shows from the first shot: placeArms)
     const s = state.ship;
     const now = performance.now();
     const g = state.stats;
@@ -2124,6 +2127,7 @@ export async function create(canvas, ctx) {
   };
   // change weapons: R (Shift+R back), 1 2 3, or the phone's button
   const pickWeapon = (i) => {
+    state.armed = true;
     const arm = arms();
     if (i === 'next' || i === 'back') arm.cycle(i === 'back' ? -1 : 1);
     else if (!arm.select(i)) return;
@@ -2513,7 +2517,8 @@ export async function create(canvas, ctx) {
   const placeArms = () => {
     const el = props.arms?.current;
     if (el) {
-      const on = flying() && !onFoot() && state.view !== 'map' && !state.crash && !props.frozen;
+      // (not till the guns are first used: the first minute has enough on it)
+      const on = state.armed && flying() && !onFoot() && state.view !== 'map' && !state.crash && !props.frozen;
       const arm = arms();
       const sig = on ? `${arm.index}|${arm.ammo}|${Math.floor(arm.filling * 10)}` : '';
       if (sig !== armsSig) {
@@ -2541,7 +2546,7 @@ export async function create(canvas, ctx) {
         const sec = Math.ceil(siegeSt.rebuildIn / 1000);
         text = `Destroyed · the Ricks rebuild it in ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
       } else if (siegeSt.shield) text = `Shield up · ${siegeSt.gensLeft} of ${GENS} generators running · knock them out`;
-      else text = `Shield down · core ${Math.max(1, Math.round(siegeSt.core * 100))}% · heavy ordnance only (3)`;
+      else text = `Shield down · core ${Math.max(1, Math.round(siegeSt.core * 100))}% · ${arsenalOf(state.kind).names[2].toLowerCase()} only (3)`;
     }
     const sig = show ? text : '';
     if (sig === siegeSig) return;
@@ -4467,7 +4472,7 @@ export async function create(canvas, ctx) {
     } else if (info && foot.phase === 'walk' && info.gadget?.fresh) {
       text = `${info.gadget.name} · B for the next`;
       plain = true;
-    } else if (info && foot.phase === 'walk' && info.near?.label) text = `Into ${info.near.label}`;
+    } else if (info && foot.phase === 'walk' && info.near?.label) text = `Go in · ${info.near.label}`;
     else if (info && foot.phase === 'walk' && info.ship.near) text = `Get back in ${SHIP_NAMES[state.kind]?.replace(/^The /, 'the ') ?? 'the ship'}`;
     else if (info && foot.phase === 'walk' && info.near?.say) {
       text = `${info.near.say.name}: “${info.near.say.line}”`;
@@ -4484,7 +4489,14 @@ export async function create(canvas, ctx) {
     // what they say, in their own voice where it's been made (landings/voicelines.js); walking off stops it
     if (say) sayVoiced(figureVoice(say), say.line);
     else if (el.hasAttribute('data-say')) stopVoiced();
-    el.textContent = text;
+    // the key first, as a real cap (read with the words), unless there's no
+    // key to press: a word on the HUD, someone talking
+    if (text && !plain && !say) {
+      const key = document.createElement('kbd');
+      key.className = 'hud-kbd universe-prompt-key';
+      key.textContent = 'G';
+      el.replaceChildren(key, document.createTextNode(text));
+    } else el.textContent = text;
     el.toggleAttribute('data-on', Boolean(text));
     el.toggleAttribute('data-say', Boolean(say));
     el.toggleAttribute('data-plain', plain);

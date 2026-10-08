@@ -6,6 +6,7 @@ import { BELT, HOME_RADIUS, SECTORS, SUN, sectorOf } from './layout';
 import { EDGE } from './ship';
 import { LANES, routeTo } from './hyperlanes';
 import { bezier } from './lanes';
+import { FLY_PAST, JAMMED, NAV, PICK_A_SHIP, jumpState } from './words';
 import './navmap.css';
 
 // The nav map: the whole universe from straight above, the way the galaxy's
@@ -38,7 +39,7 @@ const V = 1000; // the SVG's units across
 const ICONS = { lanes: RiRoadMapFill, hyper: RiFlashlightFill, super: RiSpeedUpFill, cruise: RiRocket2Fill };
 // names that'd sit on a neighbour's (on the universe chart): under their dot instead
 const UNDER = new Set(['maw', 'glacia']);
-const WHY = { interdicted: 'Interdicted: hunters are holding the drive down', charging: 'Charging' };
+const WHY = { interdicted: JAMMED.short, charging: 'Charging' };
 // the far fights (farFights.js) the scene says are on, on this chart: [{ id, x, z, label, xy }]
 const fightsOn = (now, sector, P) =>
   (Array.isArray(now?.farFights) ? now.farFights : [])
@@ -209,7 +210,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
 
   const verb = (d) => {
     if (!d) return '';
-    if (!flying) return d.kind === 'wonder' ? 'Pick a ship to fly out to it' : d.via ? `Show me the gate` : `Show me ${d.name}`;
+    if (!flying) return d.kind === 'wonder' ? PICK_A_SHIP.replace(/\.$/, '') : d.via ? `Show me the gate` : `Show me ${d.name}`;
     if (now?.foot) return 'Back in the ship first (G)';
     if (at(d.id)) return d.via ? `Through the gate to ${d.name}` : `You’re at ${d.name}`;
     if (d.sector !== shipSector) return `${driveById(fallsBack ? 'super' : drive).verb} through the portal to ${d.name}`;
@@ -233,13 +234,13 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
       <div className="navmap-frame">
         <header className="navmap-head">
           <div>
-            <p className="navmap-kicker">Nav computer · the whole site</p>
+            <p className="navmap-kicker">{NAV.kicker}</p>
             <h2 id="navmap-title" className="navmap-title">
               Where to?
             </h2>
           </div>
           <div className="navmap-head-tools">
-            <div className="navmap-views" role="group" aria-label="Chart">
+            <div className="navmap-views" role="group" aria-label={NAV.view}>
               {Object.values(CHART_VIEWS).map((c) => (
                 <button key={c.id} type="button" aria-pressed={view === c.id} onClick={() => setView(c.id)}>
                   {c.name}
@@ -248,12 +249,12 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
             </div>
             {live && flying && onWhole && (
               <button type="button" className="navmap-tool" onClick={onWhole} title="Pull back over the map in 3D">
-                <RiEyeLine className="h-4 w-4" aria-hidden="true" /> <span>3D view</span>
+                <RiEyeLine className="h-4 w-4" aria-hidden="true" /> <span>{NAV.back}</span>
               </button>
             )}
             {live && canFly && onTour && (
-              <button type="button" className="navmap-tool" onClick={onTour} title="The grand tour: every station, world and wonder, nearest first, the crew talking; Escape stops it">
-                <RiRouteLine className="h-4 w-4" aria-hidden="true" /> <span>Tour</span>
+              <button type="button" className="navmap-tool" onClick={onTour} title={FLY_PAST.title} aria-label={FLY_PAST.name}>
+                <RiRouteLine className="h-4 w-4" aria-hidden="true" /> <span>{FLY_PAST.short}</span>
               </button>
             )}
             <button ref={close} type="button" className="navmap-close" onClick={onClose} aria-label="Close the nav map">
@@ -439,13 +440,13 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
             </ul>
             {view === 'home' && (
               <button type="button" className="navmap-out" onClick={() => setView('all')}>
-                <RiArrowLeftLine className="h-3.5 w-3.5" aria-hidden="true" /> Out to the whole universe
+                <RiArrowLeftLine className="h-3.5 w-3.5" aria-hidden="true" /> {NAV.out}
               </button>
             )}
             {/* in the Rick and Morty sector: the way home */}
             {view === 'rickmorty' && (
               <button type="button" className="navmap-out" onClick={() => (canFly && shipSector === 'rickmorty' ? onTravel('rmportal-back', drive) : setView('all'))}>
-                <RiArrowLeftLine className="h-3.5 w-3.5" aria-hidden="true" /> {canFly && shipSector === 'rickmorty' ? 'Back through the portal' : 'Back to the main map'}
+                <RiArrowLeftLine className="h-3.5 w-3.5" aria-hidden="true" /> {canFly && shipSector === 'rickmorty' ? 'Back through the portal' : NAV.out}
               </button>
             )}
           </div>
@@ -462,7 +463,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                     {goingTo && !now.foot ? `, ${now.going.drive === 'hyper' ? 'jumping' : 'on the way'} to ${goingTo.name}` : ''}
                   </p>
                   <p className="navmap-meta" data-warn={!hyper.ready || undefined}>
-                    Hyperdrive: {hyper.ready ? 'charged' : hyper.why === 'charging' ? `charging, ${Math.ceil(hyper.wait)} s` : WHY[hyper.why]}
+                    {hyper.ready || hyper.why === 'charging' ? jumpState(hyper.ready, hyper.wait) : WHY[hyper.why]}
                   </p>
                 </>
               ) : (
@@ -482,18 +483,18 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   <button key={d.id} type="button" role="radio" aria-checked={drive === d.id} className="navmap-drive" data-drive={d.id} onClick={() => onDrive(d.id)} title={d.about}>
                     <Icon className="navmap-drive-icon" aria-hidden="true" />
                     <span className="navmap-drive-name">{d.name}</span>
-                    <span className="navmap-drive-time">{t === undefined ? (d.id === 'hyper' ? 'Jump' : d.id === 'lanes' ? 'Lanes' : d.id === 'super' ? '3×' : '1×') : t === null ? '—' : formatTime(t)}</span>
+                    <span className="navmap-drive-time">{t === undefined ? (d.id === 'hyper' ? 'instant' : d.id === 'lanes' ? 'Lanes' : d.id === 'super' ? '3×' : '1×') : t === null ? '—' : formatTime(t)}</span>
                   </button>
                 );
               })}
             </div>
             <p className="navmap-drive-about">{driveById(drive).about}</p>
-            {fallsBack && flying && <p className="navmap-note">The hyperdrive’s {hyper.why === 'charging' ? `charging (${Math.ceil(hyper.wait)} s)` : 'held down by hunters'}: till it’s ready, you’ll go at super speed.</p>}
+            {fallsBack && flying && <p className="navmap-note">{hyper.why === 'charging' ? `The jump is charging (${Math.ceil(hyper.wait)} s)` : JAMMED.long.replace(/\.[^.]*\.$/, '')}: till it’s ready, you’ll go at super speed.</p>}
 
             {picked ? (
               <div className="navmap-pick">
                 <button type="button" className="navmap-back" onClick={() => setPick(null)}>
-                  <RiArrowLeftLine className="h-3.5 w-3.5" aria-hidden="true" /> Every place
+                  <RiArrowLeftLine className="h-3.5 w-3.5" aria-hidden="true" /> All places
                 </button>
                 <p className="navmap-kicker">{picked.type}</p>
                 <h3 className="navmap-place-name" style={{ color: picked.color }}>
@@ -551,7 +552,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                     ))}
                   </ul>
                 ) : (
-                  <p className="navmap-meta">Nothing by that name. Try a fandom (Marvel), a page (Projects) or a kind of thing (nebula).</p>
+                  <p className="navmap-meta">Nothing by that name. Try a world (Marvel), a page (Projects) or a kind of thing (nebula).</p>
                 )}
               </div>
             )}
