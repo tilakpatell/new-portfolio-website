@@ -1077,6 +1077,9 @@ export function buildDeepSpace({ small = false, tier = 'high', streamed = false 
             dispose() {
               if (on) show(false);
               g.remove(holder);
+              // (its own materials only: the model's geometry and pictures
+              // are the GLB's, which lib/three/gltfCache keeps, so coming
+              // back to the Citadel doesn't fetch it again)
               for (const m of mine) m.dispose();
             },
           };

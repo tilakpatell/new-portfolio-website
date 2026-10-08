@@ -2,35 +2,43 @@
 // (lib/three/chunks): the planets' near maps and finer spheres
 // (nearMaps.js's nearItems) and deep space's models (deepspace.js's
 // `models`: the Citadel's). Each item sits in the cell of the map's XZ plane
-// its middle is in. A cell within `near` of the camera, or of a point
-// `ahead` of it along the way it's going, is built (its items fetched) and
-// prepared (the scene's `prepare`: their pictures sent and their shaders
-// made, a little at a time, with a fence after each) before anything in it
-// is shown, so nothing new is sent or made in the frame it first appears.
-// A cell past `far` is hidden (its planets back in their own maps); past
-// twice that it's let go.
+// its middle is in. A cell whose nearest edge is within `near` of the
+// camera, or of a point `ahead` of it along the way it's going, is built
+// (its items fetched) and prepared (the scene's `prepare`: their pictures
+// sent and their shaders made, a little at a time, with a fence after each)
+// before anything in it is shown, so nothing new is sent or made in the
+// frame it first appears. What's shown goes by the camera alone: a made
+// cell is shown once its edge is within `near` of the camera and hidden
+// (its planets back in their own maps) once it's past `far`; the grid lets
+// it go past twice `far` (from the camera or the point ahead).
 //
 // Not everything is kept, as a world's props are: the near maps are big (a
 // planet's -hq set 11 to 100 MB on the graphics chip, about 265 MB for all
-// of them on high), and the planets are thousands of units apart, so with
-// the defaults only the one or two the ship is by or heading for are held.
+// of them on high). So at most `max` cells holding a planet's near set (an
+// item marked `heavy`) are held, two as before: a third, nearer than one
+// held, has the furthest let go to make room; one further off than all of
+// them waits till it's nearer than one of them (or one goes).
 //
-//   createNearGrid({ items, prepare, onReady, size, near, far, ahead })
+//   createNearGrid({ items, prepare, onReady, size, near, far, ahead, max })
 //       → { update(at), settle(at, { alive, cap }), shown(), dispose() }
-//   (each item: { id, at: [x, y, z], build() → Promise<{ id, textures?, roots?, show(on), dispose() }> })
+//   (each item: { id, at: [x, y, z], heavy?, build() → Promise<{ id, textures?, roots?, show(on), dispose() }> })
 //   (`at` and the items' places are in the map's own space)
 
 import { cellKey, cellOf, createChunks } from '../../lib/three/chunks';
 
-// a cell is 1500 map units across (the planets are 4000 or more apart, the
-// Rick and Morty sector's moons 1000 to 3000); one is made from 1500 out
-// (from 4500 ahead), so at the pulse drive's 300 a second it has seconds
-// to come, and the drive eases off on the way in anyway
-export const GRID = { size: 1500, near: 1500, far: 2400, ahead: 3000 };
+const parse = (key) => key.split(',').map(Number);
+
+// a cell is 1500 map units across (the planets with near maps are 10,000 or
+// more apart, the Rick and Morty sector's moons 1000 to 3000). One is made
+// once its edge is 1500 from the camera, or from the point 3000 ahead (so
+// up to 4500 out on the way in: at the pulse drive's 300 a second, seconds
+// to come, and the drive eases off on the way in anyway); shown from 1500
+// of the camera, hidden past 2400, let go past 4800
+export const GRID = { size: 1500, near: 1500, far: 2400, ahead: 3000, max: 2 };
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export function createNearGrid({ items = [], prepare = async () => {}, onReady = () => {}, size = GRID.size, near = GRID.near, far = GRID.far, ahead = GRID.ahead } = {}) {
+export function createNearGrid({ items = [], prepare = async () => {}, onReady = () => {}, size = GRID.size, near = GRID.near, far = GRID.far, ahead = GRID.ahead, max = GRID.max } = {}) {
   const byCell = new Map();
   for (const item of items) {
     const { ix, iz } = cellOf(item.at[0], item.at[2], size);
@@ -40,10 +48,37 @@ export function createNearGrid({ items = [], prepare = async () => {}, onReady =
   }
   const handles = new Map(); // key → its cell's handle, from built till let go
   let busy = 0; // cells being built or prepared
+  let started = 0; // builds begun, ever (settle: whether an update began one)
   let idle = null; // resolves when busy comes back to 0
   let gone = false;
   const last = { x: 0, z: 0, set: false };
   const heading = { x: 0, z: 0 };
+  const deferred = new Set(); // heavy cells refused for want of room
+
+  // how far the camera is from a cell's nearest edge (0 inside it)
+  const camDist = (key) => {
+    const [ix, iz] = parse(key);
+    const dx = Math.max(ix * size - last.x, 0, last.x - (ix + 1) * size);
+    const dz = Math.max(iz * size - last.z, 0, last.z - (iz + 1) * size);
+    return Math.hypot(dx, dz);
+  };
+  const heavy = (key) => (byCell.get(key) ?? []).some((i) => i.heavy);
+  // the furthest of the heavy cells held, if they're `max` already
+  const full = () => {
+    const held = [...handles.keys()].filter(heavy);
+    if (held.length < max) return null;
+    return held.reduce((a, b) => (camDist(a) >= camDist(b) ? a : b));
+  };
+  // Room for a heavy cell: the furthest held let go if this one's nearer;
+  // false if it's the furthest.
+  const makeRoom = (key) => {
+    for (let worst = full(); worst; worst = full()) {
+      if (camDist(worst) <= camDist(key)) return false;
+      chunks.forget(worst);
+      handles.get(worst)?.dispose(); // (one still being made: let go now all the same)
+    }
+    return true;
+  };
 
   const settled = () => {
     if (busy > 0 || !idle) return;
@@ -65,7 +100,13 @@ export function createNearGrid({ items = [], prepare = async () => {}, onReady =
   // cell, which the grid tries again a little later (three tries in all).
   async function build(key) {
     busy++;
+    started++;
     try {
+      if (heavy(key) && !makeRoom(key)) {
+        deferred.add(key);
+        throw new Error('no room for another near set');
+      }
+      deferred.delete(key);
       const list = byCell.get(key) ?? [];
       const got = await Promise.allSettled(list.map((item) => item.build()));
       const parts = got.filter((r) => r.status === 'fulfilled' && r.value).map((r) => r.value);
@@ -142,9 +183,22 @@ export function createNearGrid({ items = [], prepare = async () => {}, onReady =
     last.z = at.z;
     last.set = true;
     chunks.update(at, heading);
+    // shown by the camera's distance alone (the point ahead only says what to make)
+    const ready = new Set(chunks.cells());
     for (const [key, h] of handles) {
-      const v = chunks.visible(key);
+      const d = camDist(key);
+      const v = ready.has(key) && (d <= near || (h.on && d <= far));
       if (v !== h.on) h.set(v);
+    }
+    // a refused cell, once there's room for it or it's nearer than the
+    // furthest held: made afresh (its tries back to none) when next wanted
+    for (const key of deferred) {
+      const worst = full();
+      // (and one gone well out of range is forgotten too: nothing to wait for)
+      if (!worst || camDist(key) < camDist(worst) || camDist(key) > 2 * far) {
+        deferred.delete(key);
+        chunks.forget(key);
+      }
     }
   }
 
@@ -154,10 +208,17 @@ export function createNearGrid({ items = [], prepare = async () => {}, onReady =
     const t0 = Date.now();
     for (;;) {
       if (gone || !alive()) return;
+      const was = started;
       update(at);
-      if (busy === 0) return;
+      // (nothing begun and nothing in hand: all that's wanted is made, or failed)
+      if (busy === 0 && started === was) return;
       const left = cap - (Date.now() - t0);
       if (left <= 0) return;
+      if (busy === 0) {
+        // (one begun and already over, refused or failed: the grid takes note, then the next)
+        await wait(0);
+        continue;
+      }
       if (!idle) {
         let resolve;
         const promise = new Promise((r) => (resolve = r));

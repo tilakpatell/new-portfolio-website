@@ -184,6 +184,13 @@ export function createChunks({ size, near, far, cells, build, prepare, ahead = s
     }
   }
 
+  // Let one cell go now (its handle disposed, or, if it's being made, once
+  // it's done), so it's made afresh, its tries back to none, when next wanted.
+  const forget = (key) => {
+    const c = held.get(key);
+    if (c) release(c);
+  };
+
   const visible = (key) => {
     const c = held.get(key);
     return !!c && c.state === 'ready' && c.shown;
@@ -197,5 +204,5 @@ export function createChunks({ size, near, far, cells, build, prepare, ahead = s
   // the keys of the cells that are built and prepared
   const list = () => [...held.values()].filter((c) => c.state === 'ready').map((c) => c.key);
 
-  return { update, prepareAll, visible, dispose, cells: list };
+  return { update, prepareAll, visible, forget, dispose, cells: list };
 }

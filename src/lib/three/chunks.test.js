@@ -323,3 +323,34 @@ describe('prepareAll against update', () => {
     expect(disposed).toEqual([]);
   });
 });
+
+describe('forget', () => {
+  it('lets a ready cell go now and makes it afresh when next wanted', async () => {
+    const { c, built, disposed } = make();
+    await settle(c, { x: 5, z: 5 }, { x: 0, z: 0 });
+    const before = built.filter((k) => k === '0,0').length;
+    c.forget('0,0');
+    expect(disposed).toContain('0,0');
+    expect(c.visible('0,0')).toBe(false);
+    await settle(c, { x: 5, z: 5 }, { x: 0, z: 0 });
+    expect(built.filter((k) => k === '0,0').length).toBe(before + 1);
+    expect(c.visible('0,0')).toBe(true);
+  });
+
+  it('a cell forgotten while it is made is disposed once it is done, never shown', async () => {
+    let release;
+    const { c, disposed } = make({ prepare: vi.fn(() => new Promise((r) => (release = r))) });
+    c.update({ x: 5, z: 5 }, { x: 0, z: 0 });
+    await flush();
+    c.forget('0,0');
+    release();
+    await flush();
+    expect(disposed).toEqual(['0,0']);
+    expect(c.visible('0,0')).toBe(false);
+  });
+
+  it('forgetting a cell it never held does nothing', () => {
+    const { c } = make();
+    expect(() => c.forget('9,9')).not.toThrow();
+  });
+});

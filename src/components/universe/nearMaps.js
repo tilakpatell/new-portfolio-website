@@ -19,7 +19,7 @@
 // The universe map itself puts its planets on a grid instead (nearGrid.js),
 // so a near set is fetched and sent to the graphics chip a cell ahead of the
 // ship and only worn once it's there:
-//   nearItems(planets, { level, small, load, forget }) → [{ id, at, build() }]
+//   nearItems(planets, { level, small, load, forget }) → [{ id, at, heavy, build() }]
 //       build() → { id, textures, show(on), dispose() }
 
 import * as THREE from 'three';
@@ -178,6 +178,7 @@ export function nearItems(planets, { level = detailLevel(), small = false, load 
     items.push({
       id: p.id,
       at,
+      heavy: list.length > 0, // (a set of maps: nearGrid.js holds two at most)
       async build() {
         const got = await Promise.all(list.map(async (m) => [m.name, await fetchOne(m)]));
         const T2 = {};

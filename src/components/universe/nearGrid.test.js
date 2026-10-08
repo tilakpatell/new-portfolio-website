@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createNearGrid } from './nearGrid';
+import { RETRY_UPDATES } from '../../lib/three/chunks';
 import { nearItems } from './nearMaps';
 
 const flush = async (n = 4) => {
@@ -7,10 +8,10 @@ const flush = async (n = 4) => {
 };
 
 // an item whose build the test can hold, and whose part says what was done to it
-const item = (id, x, z = 0) => {
+const item = (id, x, z = 0, heavy = false) => {
   const log = [];
   const part = { id, textures: [], show: vi.fn((on) => log.push(on ? 'on' : 'off')), dispose: vi.fn(() => log.push('gone')) };
-  const it = { id, at: [x, 0, z], log, part, build: vi.fn(async () => part) };
+  const it = { id, at: [x, 0, z], heavy, log, part, build: vi.fn(async () => part) };
   return it;
 };
 const at = (x, z = 0) => ({ x, y: 0, z });
@@ -81,6 +82,7 @@ describe('the near grid', () => {
     await grid.settle(at(0), { cap: 30 });
     expect(Date.now() - t0).toBeLessThan(1000);
     expect(grid.shown()).toEqual([]);
+    grid.dispose();
   });
 
   it('a cell with an item that fails lets the rest go and is tried again later', async () => {
@@ -92,7 +94,7 @@ describe('the near grid', () => {
     expect(a.part.dispose).toHaveBeenCalledTimes(1);
     expect(grid.shown()).toEqual([]);
     await grid.settle(at(0), { cap: 50 }); // (nothing in flight: settle returns)
-    for (let i = 0; i < 130; i++) grid.update(at(0));
+    for (let i = 0; i < RETRY_UPDATES; i++) grid.update(at(0));
     await flush();
     expect(bad.build).toHaveBeenCalledTimes(2);
   });
@@ -106,6 +108,46 @@ describe('the near grid', () => {
     grid.update(at(20)); // (heading +x: the point ahead is at 320)
     await flush();
     expect(b.build).toHaveBeenCalledTimes(1);
+    // made, but shown by the camera alone: 380 off, not yet
+    grid.update(at(21));
+    expect(b.part.show).not.toHaveBeenCalled();
+    grid.update(at(310)); // (90 off)
+    expect(b.log).toEqual(['on']);
+  });
+
+  it('holds two near sets at most: a nearer third lets the furthest go', async () => {
+    // three heavy cells in a row along x, 200 apart; near 100 reaches two at a time
+    const a = item('a', 50, 0, true);
+    const b = item('b', 250, 0, true);
+    const c = item('c', 450, 0, true);
+    const grid = createNearGrid({ items: [a, b, c], ...opts, near: 300, far: 600 });
+    await grid.settle(at(0), { cap: 500 });
+    expect(grid.shown().sort()).toEqual(['a', 'b']);
+    expect(c.build).not.toHaveBeenCalled(); // (350 off: further than both, refused first)
+    // the camera comes past b: c is nearer than a now, a goes to make room
+    await grid.settle(at(420), { cap: 500 });
+    await flush();
+    await grid.settle(at(420), { cap: 500 });
+    expect(a.part.dispose).toHaveBeenCalled();
+    expect(grid.shown().sort()).toEqual(['b', 'c']);
+    grid.dispose();
+  });
+
+  it('a heavy cell further off than the two held waits, and comes once there is room', async () => {
+    const a = item('a', 50, 0, true);
+    const b = item('b', 150, 0, true);
+    const c = item('c', 250, 0, true);
+    const light = item('moon', 350); // (not a near set: never counted)
+    const grid = createNearGrid({ items: [a, b, c, light], ...opts, near: 300, far: 600 });
+    await grid.settle(at(0), { cap: 500 });
+    expect(grid.shown().sort()).toEqual(['a', 'b', 'moon']);
+    expect(c.part.show).not.toHaveBeenCalled();
+    // the camera moves on to c's cell: nearer than a now, so a makes room
+    grid.update(at(260));
+    await grid.settle(at(260), { cap: 500 });
+    expect(grid.shown().sort()).toEqual(['b', 'c', 'moon']);
+    expect(a.part.dispose).toHaveBeenCalledTimes(1);
+    grid.dispose();
   });
 
   it('puts everything back when it goes', async () => {
