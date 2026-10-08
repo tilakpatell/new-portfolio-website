@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, beamOf, blastPunch, cancel, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readKept, step, turretPick, view, writeKept } from './shipPowers';
+import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, beamOf, blastPunch, cancel, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readKept, step, turretPick, view, writeKept } from './shipPowers';
 import { CREWS } from './crews';
+import { spawn, step as fly } from './ship';
+import { makeSpace } from '../galaxy/space';
 
 // the state a few seconds on, a tenth of a second at a time; the events it said
 const run = (st, seconds, opts) => {
@@ -10,6 +12,18 @@ const run = (st, seconds, opts) => {
 };
 const ship = { x: 0, y: 0, z: 0, heading: 0, pitch: 0 }; // (the nose along −z)
 const T = (id, x, z, threat = 0, more = {}) => ({ id, at: { x, y: 0, z }, vel: { x: 0, y: 0, z: 0 }, size: 0.5, threat, ...more });
+// the real ship flown on from a portal's exit for `seconds` with the stick
+// held as `input` says: the first crash it comes to, or null
+const flown = (exit, input, seconds, space) => {
+  let s = { ...spawn('x'), x: exit.x, y: exit.y, z: exit.z, heading: exit.heading, pitch: exit.pitch, bank: 0, speed: exit.speed };
+  for (let t = 0; t < seconds; t += 1 / 30) {
+    const r = fly(s, { throttle: 0, turn: 0, climb: 0, roll: 0, ...input }, 1 / 30, space.solids, space);
+    s = r.ship;
+    const crash = r.events.find((e) => e.type === 'crash');
+    if (crash) return { ...crash, t };
+  }
+  return null;
+};
 
 describe('the crews’ ship powers', () => {
   it('gives every crew a power on G with a cooldown and a big one on X, and nobody else anything', () => {
@@ -177,14 +191,79 @@ describe('the crews’ ship powers', () => {
     expect(still.heading).toBeCloseTo(0, 6);
   });
 
-  it('hops 40 along the nose with no target, never into a planet, never past the edge', () => {
+  it('hops 40 along the nose with no target, at cruise at least, never past the edge, the ceiling or the floor', () => {
     const hop = portalExit(ship, null, POWERS.portal);
     expect(hop.z).toBeCloseTo(-40, 6);
-    const planet = [{ at: [0, 0, -40], r: 15 }];
-    const clear = portalExit(ship, null, POWERS.portal, planet);
-    expect(Math.hypot(clear.x, clear.y, clear.z + 40)).toBeGreaterThanOrEqual(16 - 1e-6);
+    expect(hop.speed).toBe(POWERS.portal.out);
+    expect(hop.short).toBe(false);
+    expect(portalExit({ ...ship, speed: 9 }, null, POWERS.portal).speed).toBe(9);
     const edged = portalExit(ship, null, POWERS.portal, [], { edge: 30 });
     expect(Math.hypot(edged.x, edged.z)).toBeLessThanOrEqual(25 + 1e-6);
+    // (nose down near the floor: it used to let you out 40 under the floor)
+    const low = { ...ship, y: -400, pitch: -1.2 };
+    expect(portalExit(low, null, POWERS.portal).y).toBeLessThan(-420);
+    const floored = portalExit(low, null, POWERS.portal, [], { ceiling: () => 420 });
+    expect(Math.abs(floored.y)).toBeLessThanOrEqual(415 + 1e-6);
+    const high = portalExit({ ...ship, y: 400, pitch: 1.2 }, null, POWERS.portal, [], { ceiling: () => 420 });
+    expect(Math.abs(high.y)).toBeLessThanOrEqual(415 + 1e-6);
+  });
+
+  // (A hop into a planet used to be pushed out to a unit off its ground, the
+  // nose still on it and at cruise at least: a crash no pilot could fly out
+  // of. Now it stops short, with room ahead to turn off, at the ship's own
+  // speed; and with no room for a hop worth having, there's none.)
+  it('stops a hop short of a planet in its way, with room to turn off it, at the ship’s own speed', () => {
+    const P = POWERS.portal;
+    const planet = [{ id: 'planet', at: [0, 0, -90], r: 60, reach: 70, planet: true }];
+    const space = makeSpace(planet);
+    // 30 off the ground, stopped, the nose on its middle
+    const out = portalExit(ship, null, P, planet);
+    expect(out.short).toBe(true);
+    expect(out.speed).toBe(0);
+    expect(-out.z).toBeGreaterThanOrEqual(P.least - 1e-6); // (still a hop)
+    expect(out.z - -30).toBeGreaterThanOrEqual(P.room - 1e-6); // (room before the ground)
+    // flown on from there with the real ship: no crash in a second with no
+    // hand on the stick, nor in four with it pulled full up, however fast it went in
+    for (const speed of [0, 3.3, 6, 9, 12]) {
+      const exit = portalExit({ ...ship, speed }, null, P, planet);
+      expect(exit, `at ${speed}`).not.toBeNull();
+      expect(flown(exit, {}, 1, space), `at ${speed}, no hands`).toBeNull();
+      expect(flown(exit, { climb: 1 }, 4, space), `at ${speed}, pulling up`).toBeNull();
+    }
+    // nowhere to come out with room ahead, and not a hop worth having short
+    // of that: none (6 off the ground; or 30 off it but going in at 20, a
+    // second and a half from it already)
+    expect(portalExit({ ...ship, z: -24 }, null, P, planet)).toBeNull();
+    expect(portalExit({ ...ship, speed: 20 }, null, P, planet)).toBeNull();
+  });
+
+  it('lets the portal out short of a hull a still target sits on, facing it, or not at all', () => {
+    const P = POWERS.portal;
+    const hull = [{ id: 'war-7-0', at: [0, 0, -40], r: 8 }];
+    const space = makeSpace(hull);
+    // a battery on the hull's near face: past it, away from you, is inside the hull
+    const battery = { id: 3, at: { x: 0, y: 0, z: -31.6 }, vel: { x: 0, y: 0, z: 0 } };
+    const out = portalExit(ship, battery, P, hull);
+    expect(out.short).toBe(true);
+    expect(out.heading).toBeCloseTo(0, 6); // (facing it)
+    expect(out.z - -32).toBeGreaterThanOrEqual(P.room - 1e-6);
+    expect(flown(out, {}, 1, space)).toBeNull();
+    // and one in a hollow of hulls, with no room anywhere behind it: none
+    const boxed = [...hull, { id: 'war-7-1', at: [0, 0, -14], r: 11 }];
+    expect(portalExit(ship, battery, P, boxed)).toBeNull();
+  });
+
+  it('keeps a ship that’s down in a trench in it, clearing it to the trench’s floor, not out over the top', () => {
+    // (Yavin's Death Star: its rim at 34, the trench's floor at 31.98, round its middle)
+    const ds = [{ id: 'deathstar', at: [0, 0, 0], r: 34, band: { half: 1.2, floor: 31.98, home: 0, arc: Math.PI } }];
+    expect(clearOfSolids({ x: 32.99, y: 0, z: 0 }, ds, 0.5).x).toBeCloseTo(32.99, 6);
+    expect(clearOfSolids({ x: 31, y: 0, z: 0 }, ds, 0.5).x).toBeCloseTo(32.48, 6);
+    const above = clearOfSolids({ x: 0, y: 33, z: 0 }, ds, 0.5);
+    expect(above.y).toBeCloseTo(34.5, 6);
+    // and a hop along the trench comes out in it, not thrown up over the rim
+    const inTrench = { x: 32.99, y: 0, z: 0, heading: 0, pitch: 0, speed: 3 };
+    const out = portalExit(inTrench, null, { ...POWERS.portal, hop: 5, least: 2 }, ds);
+    expect(Math.hypot(out.x, out.y, out.z)).toBeLessThan(34);
   });
 
   it('knows when a hop crosses a shield round the middle (Scarif’s)', () => {

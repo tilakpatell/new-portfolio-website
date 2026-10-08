@@ -67,8 +67,9 @@ describe('the crews', () => {
     expect(linesFor(crewById('falcon'), 'power', 'odds', 'use')[0][2]).toBe('neverTellOdds');
     expect(linesFor(crewById('cruiser'), 'power', 'wubba', 'use')[0][2]).toBe('wubba');
     expect(linesFor(crewById('rv'), 'power', 'heisenberg', 'use')[0][2]).toBe('sayMyName');
-    // Rick says why a portal won't go: Scarif's shield, and a hold on the ship
-    for (const why of ['shield', 'held']) expect(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', why)?.length, why).toBeGreaterThan(0);
+    // Rick says why a portal won't go: Scarif's shield, a hold on the ship,
+    // and nowhere to come out but into something solid
+    for (const why of ['shield', 'held', 'solid']) expect(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', why)?.length, why).toBeGreaterThan(0);
     expect(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', 'shield')).not.toBe(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', 'held'));
     expect(linesFor(crewById('xwing'), 'power', 'nope', 'use')).toBeNull();
   });

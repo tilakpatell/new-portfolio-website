@@ -436,6 +436,7 @@ export const CREWS = [
         refuse: {
           shield: [['rick', 'Portals don’t go through planetary shields, Morty. It’s physics. Ugh.']],
           held: [['rick', 'Something’s got hold of the ship, Morty. You can’t portal out of a headlock.']],
+          solid: [['rick', 'Open a portal into that? You want to come out inside a rock, Morty? Point us somewhere with space in it.']],
         },
       },
       wubba: {

@@ -31,11 +31,12 @@
 //   mods(st)               what the scene changes this frame
 //   view(st)               the HUD's
 //   readKept / writeKept   the big one's charge, kept in the session across a landing
-//   pickTargets, portalExit, beamOf, blastPunch, pullStep, jinkStep,
-//   turretPick, crossesShell, isObjective, firstAlong: the geometry, pure
+//   pickTargets, portalExit, clearOfSolids, solidAhead, beamOf, blastPunch,
+//   pullStep, jinkStep, turretPick, crossesShell, isObjective, firstAlong:
+//   the geometry, pure
 
 import { aimAngles, bearing, nose, sweptHit } from './targeting';
-import { clearOf } from './hunterRules';
+import { inTrench } from './ship';
 
 export const POWER_KEYS = { primary: 'g', ultimate: 'x' };
 export const KEPT_KEY = 'tp:ship-powers'; // (the session's: the big one's charge, so a landing doesn't lose it)
@@ -61,7 +62,12 @@ export const POWERS = {
   // (his bolts at the guns' own speed: any quicker and they're gone before they're seen)
   quad: { crew: 'falcon', slot: 'ultimate', name: 'Chewie on the quad guns', short: 'Chewie', about: 'Chewie takes the turrets and shoots at anything near, all the way round.', dur: 12, every: 0.22, range: 35, punch: 1, chance: 0.7, speed: 60, miss: 1.5 },
   // Rick and Morty
-  portal: { crew: 'cruiser', slot: 'primary', name: 'Portal gun', short: 'Portal', about: 'Through a portal and out on your target’s tail (or a long hop ahead).', cool: 10, dur: 0.35, behind: 5, hop: 40, swallow: 6, range: 60, mouth: 2 },
+  // (out at cruise at least, `out`, with `room` ahead of it clear of
+  // anything solid, or `lead` seconds of it at that speed if that's more:
+  // flown from the exit with the real ship, that's time to pull up off a
+  // planet at any speed. Short of that a hop stops early, no shorter than
+  // `least`, and an exit on a tail goes up to `back` further behind)
+  portal: { crew: 'cruiser', slot: 'primary', name: 'Portal gun', short: 'Portal', about: 'Through a portal and out on your target’s tail (or a long hop ahead).', cool: 10, dur: 0.35, behind: 5, hop: 40, swallow: 6, range: 60, mouth: 2, out: 3.3, room: 6, lead: 1.5, least: 10, back: 20 },
   wubba: { crew: 'cruiser', slot: 'ultimate', name: 'Wubba lubba dub dub', short: 'Death ray', about: 'The cruiser’s big laser, straight ahead, into whatever’s first in its way.', dur: 3.5, length: 45, tick: 0.1, punch: 0.6, sub: 0.3, turn: 0.6 },
   // Walt and Jesse
   magnets: { crew: 'rv', slot: 'primary', name: 'Magnets', short: 'Magnets', about: 'Yeah, science: every fighter near is dragged into a ball ahead of you, guns jammed.', cool: 20, dur: 4, radius: 22, ahead: 6, pull: 16, daze: 1 },
@@ -212,11 +218,74 @@ export function pickTargets(ship, targets, { count = 4, cone = 0.6, range = 60 }
   return pool.slice(0, count).map((e) => e.t);
 }
 
+// Out of whatever's solid (ship.js's solids), `gap` off its surface: as
+// hunterRules.js's clearOf, but a ship down in a trench (the Death Star's)
+// is cleared to the trench's floor, as ship.js flies it, not thrown up over
+// its rim
+const GAP = 1; // (a portal's way out, off anything solid)
+const reachHere = (o, p) => (o.band && inTrench(o, p.x, p.y, p.z) ? o.band.floor : o.r);
+export function clearOfSolids(p, solids, gap = 0.5) {
+  for (let pass = 0, moved = true; moved && pass < 4; pass++) {
+    moved = false;
+    for (const o of solids) {
+      const dx = p.x - o.at[0];
+      const dy = p.y - o.at[1];
+      const dz = p.z - o.at[2];
+      const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const r = reachHere(o, p) + gap;
+      if (d >= r - 1e-9) continue;
+      moved = true;
+      if (d < 1e-6) {
+        p.y = o.at[1] + r;
+        continue;
+      }
+      const k = r / d;
+      p.x = o.at[0] + dx * k;
+      p.y = o.at[1] + dy * k;
+      p.z = o.at[2] + dz * k;
+    }
+  }
+  return p;
+}
+
+// Whether `p` is inside anything solid, `gap` off its surface (a trench
+// it's down in counted to its floor)
+const insideAny = (p, solids, gap) => solids.some((o) => Math.hypot(p.x - o.at[0], p.y - o.at[1], p.z - o.at[2]) < reachHere(o, p) + gap);
+
+// How far along `dir` (a unit vector) from `p` the first solid is, `gap` off
+// its surface: Infinity for none. One whose trench `p` is down in doesn't
+// count (flying the trench is the pilot's: ship.js keeps it to its floor)
+export function solidAhead(p, dir, solids, gap = 0) {
+  let best = Infinity;
+  for (const o of solids) {
+    if (o.band && inTrench(o, p.x, p.y, p.z)) continue;
+    const ox = p.x - o.at[0];
+    const oy = p.y - o.at[1];
+    const oz = p.z - o.at[2];
+    const r = o.r + gap;
+    const b = ox * dir[0] + oy * dir[1] + oz * dir[2];
+    const c = ox * ox + oy * oy + oz * oz - r * r;
+    if (c <= 0) return 0; // (inside it already)
+    const disc = b * b - c;
+    if (b >= 0 || disc < 0) continue; // (behind, or wide of it)
+    best = Math.min(best, -b - Math.sqrt(disc));
+  }
+  return best;
+}
+
 // Where the portal lets you out: `behind` units behind the target the way
 // it's going (or past it, away from you, when it's still), facing it; with
-// no target, `hop` units on along the nose. Never inside anything solid
-// (`solids`: ship.js's), never past the system's edge.
-export function portalExit(ship, target, P = POWERS.portal, solids = [], { edge = Infinity } = {}) {
+// no target, `hop` units on along the nose. Never past the system's edge
+// (`edge`) or its ceiling and floor (`ceiling(x, z)`), never inside anything
+// solid (`solids`: ship.js's), and never facing something solid closer than
+// its `room` (or `lead` seconds at the speed it comes out at): where it
+// would be, the exit comes back toward you along the way it faces until it
+// isn't, by up to `back` behind a target or as far as a hop of `least`.
+// Null when there's nowhere like that: no portal. It comes out at `out`
+// (cruise) at least, unless it was brought back (then at the ship's own
+// speed: a stopped ship isn't thrown at what's ahead).
+// → { x, y, z, heading, pitch, speed, short } or null
+export function portalExit(ship, target, P = POWERS.portal, solids = [], { edge = Infinity, ceiling = null } = {}) {
   let p;
   let face;
   if (target) {
@@ -235,15 +304,25 @@ export function portalExit(ship, target, P = POWERS.portal, solids = [], { edge 
     face = nose(ship);
     p = { x: ship.x + face[0] * P.hop, y: ship.y + face[1] * P.hop, z: ship.z + face[2] * P.hop };
   }
-  clearOf(p, solids, 1);
-  const r = Math.hypot(p.x, p.z);
-  if (r > edge - 5) {
-    const k = (edge - 5) / r;
-    p.x *= k;
-    p.z *= k;
-  }
+  const own = Math.max(0, ship.speed ?? 0);
+  const fast = Math.max(own, P.out);
+  const room = Math.max(P.room, fast * P.lead);
+  const most = target ? P.back : Math.max(0, P.hop - P.least);
   const { heading, pitch } = aimAngles(face);
-  return { x: p.x, y: p.y, z: p.z, heading, pitch };
+  for (let back = 0; back <= most + 1e-9; back += 0.5) {
+    const q = { x: p.x - face[0] * back, y: p.y - face[1] * back, z: p.z - face[2] * back };
+    const r = Math.hypot(q.x, q.z);
+    if (r > edge - 5) {
+      const k = (edge - 5) / r;
+      q.x *= k;
+      q.z *= k;
+    }
+    const top = ceiling ? ceiling(q.x, q.z) - 5 : Infinity;
+    if (Math.abs(q.y) > top) q.y = Math.sign(q.y) * top;
+    if (insideAny(q, solids, GAP) || solidAhead(q, face, solids, GAP) < room) continue;
+    return { x: q.x, y: q.y, z: q.z, heading, pitch, speed: back > 0 ? own : fast, short: back > 0 };
+  }
+  return null;
 }
 
 // The death ray this frame: from the nose, `length` on

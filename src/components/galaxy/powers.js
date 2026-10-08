@@ -43,11 +43,10 @@
 // put there, the camera with it.
 
 import * as THREE from 'three';
-import { KEPT_KEY, POWERS, beamOf, blastPunch, cancel as cancelAll, createPowers, crossesShell, finish, firstAlong, gain as charge, isObjective, isOn, jinkStep, mods as modsOf, pickTargets, portalExit, press as pressSlot, readKept, step, turretPick, view as viewOf, writeKept } from '../universe/shipPowers';
+import { KEPT_KEY, POWERS, beamOf, blastPunch, cancel as cancelAll, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain as charge, isObjective, isOn, jinkStep, mods as modsOf, pickTargets, portalExit, press as pressSlot, readKept, step, turretPick, view as viewOf, writeKept } from '../universe/shipPowers';
 import { createPowerFx } from '../universe/powerFx';
 import { steer } from '../universe/weapons';
 import { assist, dirTo, intercept, nose } from '../universe/targeting';
-import { clearOf } from '../universe/hunterRules';
 import { LASER } from './fx';
 
 const SLOTS = ['primary', 'ultimate'];
@@ -229,7 +228,7 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
     j.t += dt;
     j.roll = step1.roll;
     const p = { x: ship.x + Math.cos(ship.heading) * step1.step, y: ship.y, z: ship.z - Math.sin(ship.heading) * step1.step };
-    clearOf(p, state.space?.solids ?? [], 0.5);
+    clearOfSolids(p, state.space?.solids ?? [], 0.5); // (down in the Death Star's trench, kept in it)
     return { ...ship, x: p.x, y: p.y, z: p.z };
   };
 
@@ -274,15 +273,17 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
   // shield, else where it was; the other swirl just behind, round the ship
   // as it comes out (any further back and the chase camera is past it before
   // it's open)
+  // (where the portal lets the ship out: shipPowers.js's portalExit, inside
+  // the system's edge, ceiling and floor, with room ahead of it)
+  const exitFor = (target) => portalExit(state.ship, target, POWERS.portal, state.space?.solids ?? [], { edge: state.space?.edge ?? Infinity, ceiling: state.space?.ceilingAt ?? null });
   const exitHop = () => {
-    const P = POWERS.portal;
     const s = state;
     let exit = run.hop.exit;
     if (known(run.hop.target)) {
-      const again = portalExit(s.ship, run.hop.target, P, s.space?.solids ?? [], { edge: s.space?.edge ?? Infinity });
-      if (!(s.world?.shield && crossesShell(s.ship, again, s.world.shield.r))) exit = again;
+      const again = exitFor(run.hop.target);
+      if (again && !(s.world?.shield && crossesShell(s.ship, again, s.world.shield.r))) exit = again;
     }
-    teleport({ x: exit.x, y: exit.y, z: exit.z, heading: exit.heading, pitch: exit.pitch, bank: 0, speed: Math.max(s.ship.speed, 3.3) });
+    teleport({ x: exit.x, y: exit.y, z: exit.z, heading: exit.heading, pitch: exit.pitch, bank: 0, speed: exit.speed });
     const [fx, fy, fz] = nose(exit);
     pops.arrive({ point: v1.set(exit.x - fx * 0.3, exit.y - fy * 0.3, exit.z - fz * 0.3), kind: 'cruiser' });
   };
@@ -396,7 +397,9 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
         // (no portal out of the tractor beam's hold, or a set piece's)
         if (s.pull > 0.3 || hold) return this.deny(slot, id, 'held');
         target = known(s.lockTarget) && apart(s.lockTarget.at, s.ship) <= P.range ? s.lockTarget : null;
-        exit = portalExit(s.ship, target, P, s.space?.solids ?? [], { edge: s.space?.edge ?? Infinity });
+        exit = exitFor(target);
+        // (nowhere to come out with room to turn off what's ahead: no portal, and no cooldown spent)
+        if (!exit) return this.deny(slot, id, 'solid');
         if (s.world?.shield && crossesShell(s.ship, exit, s.world.shield.r)) return this.deny(slot, id, 'shield');
       }
       const r = pressSlot(st, slot);
