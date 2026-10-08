@@ -43,7 +43,7 @@ Phase 1’s five lanes run at once; each owns the files its row in the spec’s 
 - **1A**: `createPalette` tested; `createStage`, `runtime/webgl.js` and `webgpu.js` default to Neutral and `BLOOM`; the Shire and the Expanse have `look.js`; `looks.test.js` fails any other folder that gains or loses one unannounced; `art-mix` measured and budgeted.
 - **1B**: a barrel kicked on a landing makes a thud where it is, a puff of dust, and a nudge of the camera; `lib/three/feel.js` and `pool.js` exist and the HQ games and the Expanse import them unchanged.
 - **1C**: the Expanse buggy leans into a turn, squashes on landing, whips its antenna; every number of the car and its feel is on the panel’s groups (`carGroups`, `feelGroups`).
-- **1D**: `/earth?debug` and `/galaxy/yavin?debug` open one panel built from the module’s `tune()` or the stage’s `tune`; without `?debug` nothing is made; `houseGroups` serves any world on the look.
+- **1D**: `/#/earth?debug` and `/#/galaxy/yavin/surface?debug` open one panel built from the module’s `tune()` or the stage’s `tune`; without `?debug` nothing is made; `houseGroups` serves any world on the look.
 - **1E**: a GLB node named `crate_physical_dynamic` with a `cuboid` child becomes a sleeping dynamic body through `collidersOf`; `scripts/gen3d/web.mjs` keeps such nodes; `docs/assets/colliders.md` says how to model one.
 - **2A–2F**: every world in the lane’s row of the spec’s roster has a `look.js` that validates, no ACES line, no bloom literal, its hits wired, its vehicles on the feel, `tune()` or `stage.tune`, and `collidersOf` where it loads a GLB into Rapier; `EXPECTED_MISSING` in `looks.test.js` has none of the lane’s folders; before and after shots in the pull request.
 
@@ -59,7 +59,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 1A | `session_018TPUBuBVbG9Xbm68QY6rAd` | `claude/one-feel-art` | #701 | |
 | 1B | session_0125kUpviRHiF3dVxbGM3odg | `claude/one-feel-hits` | #699 | |
 | 1C | | | | |
-| 1D | | | | |
+| 1D | `session_01Y9gSEa16P9tye2wPhYum7h` | `claude/one-feel-panel` | #702 | |
 | 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 2A | | | | |
 | 2B | | | | |
@@ -85,3 +85,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **1E, for 2A–2F:** `collidersOf(model).bodies` gives descs relative to the model’s root; a world that stands the model somewhere adds that place to each body’s `position` and `rotation` (`fromModel.js`’s `colliderIn` composes a collider into its body’s frame). A `physical` node is hidden, so a body that is also the visible mesh vanishes: model the shapes beside the look. three.js’s loader strips `.` from node names (`cuboid.001` loads as `cuboid001`), which the prefix rules allow for.
 - **1E, for the landings’ owner:** a model’s physical nodes become one landing body (the first’s type, every collider, the masses summed): `landings/physics.js` sets its own friction, restitution and damping, so a node’s `userData.friction` and `restitution` are not used there yet, and a `kinematic` node stands fixed. `landings/models.js` sizes a model by `Box3.setFromObject`, which counts hidden objects: a physical mesh larger than the look would shrink the look a little (the web cut strips the meshes of the shapes sized by scale, so only a body’s own mesh, a hull or a trimesh can).
 - **1E, for the owner:** `scripts/gen3d/README.md` and `docs/README.md`’s `assets/` row don’t yet mention `--check-colliders` and `docs/assets/colliders.md` (outside the lane’s files).
+- **1D, for 2A–2F:** a world gives the panel its groups with `tune() → groups` on the world (`rt.debug` asks once it is placed and ready, behind `?debug`, and shows them under the module’s id; the values are kept for the tab under `tp-tune-<id>`). A `fromScene` world gets it from its scene’s `tune()`, passed through; a `createStage` game calls `stage.tune(groups)` once its groups exist (the stage’s bloom comes first, for free). `houseGroups(house, { exposure: { get, set } })` is the look in one line; swap any item a world keeps its own way, as the galaxy surface does its fog. Items may be `bool` and `select` (`options`) now.
+- **1D, for the galaxy surfaces (2B):** `galaxy/surface/scene.js` still makes its own panel from `tune.js` (it is outside 1D’s files); moving it onto `tune()` through the module makes it the one panel the runtime opens and closes. Until then it is the only panel on that route (the galaxy’s module has no `tune()`), so nothing doubles.
+- **1D, for 1A:** `lib/stage3d.js` has `stageBloomGroups(pass)` for the stage’s bloom group, since `lib/three/bloom.js` is 1A’s; once `bloomGroups(pass)` lands, `stageTune` can take it in its place (the same shape: `threshold`, `strength`, `radius`).
+- **1D, for the owner:** `stage.tune`’s title is the canvas’s nearest `[data-route]`, but no page sets one yet, so every stage game is titled by the document’s title (and keeps its values under it); a page that wants its own key sets `data-route` on the game’s box.
