@@ -97,6 +97,21 @@ describe('the finished render', () => {
     expect(u.uAberration.value).toBeCloseTo(0.004);
   });
 
+  it("draws the passes softer at a lower sharpness, the renderer's own ratio and the canvas left as they are", () => {
+    const r = { ...renderer(), getPixelRatio: () => 1.5 };
+    const post = createPost(r, new THREE.Scene(), new THREE.PerspectiveCamera());
+    post.composer.render = () => {};
+    const setRatio = vi.spyOn(post.composer, 'setPixelRatio');
+    post.render(800, 600);
+    expect(setRatio).toHaveBeenLastCalledWith(1.5);
+    post.sharpness = 0.72;
+    post.render(800, 600);
+    expect(setRatio).toHaveBeenLastCalledWith(1.5 * 0.72);
+    expect(post.ratio).toBeCloseTo(1.08);
+    expect(r.setPixelRatio).not.toHaveBeenCalled();
+    expect(r.setSize).not.toHaveBeenCalled();
+  });
+
   it('resizes the bloom target instead of making a new one', () => {
     const post = createPost(renderer(), new THREE.Scene(), new THREE.PerspectiveCamera());
     const bloom = bloomOf(post);
