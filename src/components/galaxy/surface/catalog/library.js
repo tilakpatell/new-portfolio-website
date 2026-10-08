@@ -57,8 +57,10 @@ export const MODELS = {
   // higher than the duel's built one). (The Gungans' stone heads are the
   // audit lane's now, catalog/audit.js.)
   cantina: { made: 'meshy', as: 'the cantina', metres: 18.5, along: 'max', solids: 'built', detail: 'adobe' },
-  varykino: { made: 'meshy', as: 'the lake retreat at Varykino', metres: 28, along: 'y', solids: 'built', hero: true, lod: true, detail: 'stone' },
-  shieldgen: { made: 'meshy', as: 'the shield generator', metres: 70, along: 'y', solids: 'built' },
+  // (Nevarro's: a copy of it in the grey of the city's concrete, Greef Karga's)
+  nevcantina: { made: 'meshy', as: 'Greef Karga’s cantina', metres: 18.5, along: 'max', solids: 'built', detail: 'concrete', tint: '#9c9a94' },
+  varykino: { made: 'meshy', as: 'the lake retreat at Varykino', metres: 28, along: 'y', solids: 'built', hero: true, lod: true, detail: 'adobe', tint: '#f2d3a0' },
+  shieldgen: { made: 'meshy', as: 'the shield generator', metres: 70, along: 'y' },
   lavacollector: { made: 'meshy', as: 'the lava collector', metres: 16, along: 'max' },
   // the vehicles the worlds built in code: Naboo's MTT and Gungan bongo
   // (the AAT is Sketchfab's, above); and for the worlds to come: Jabba's
