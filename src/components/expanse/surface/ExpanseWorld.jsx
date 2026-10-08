@@ -3,7 +3,8 @@ import { useLocation } from 'react-router-dom';
 import { useMediaQuery } from '../../../lib/hooks';
 import { WorldHost, useWorld } from '../../../runtime';
 import { wayOut } from '../../worlds/worlds';
-import ExpanseHud, { screenAngle } from './ExpanseHud';
+import ExpanseHud from './ExpanseHud';
+import { screenAngle } from './rules';
 import module from './module';
 import './surface.css';
 

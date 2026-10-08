@@ -15,6 +15,9 @@
 //     [x, y, z], waterAt(x, z) → { level, kind: 'sea' | 'lake' | 'river' } |
 //     null }) → { respawn, to: [x, y, z] | null, drag: 0 | 1, moment: kind |
 //     null }
+//   screenAngle(bearing) → degrees clockwise from the top of the screen to
+//     a world bearing (radians from +x toward +z), for the chase view's
+//     fixed look along −x −z (the HUD's compass)
 
 const CELL = 64;
 const N = 65;
@@ -73,4 +76,13 @@ export function stepDriver(s, v, input = {}, dt, { position, waterAt }) {
     if (pick) s.kept = s.kept.filter((k) => k[0] <= pick[0]);
   }
   return { respawn, to, drag: under ? 1 : 0, moment: wet ? w.kind : null };
+}
+
+export function screenAngle(bearing) {
+  const bx = Math.cos(bearing);
+  const bz = Math.sin(bearing);
+  // the view's right on the ground is (1, −1)/√2, its up (−1, −1)/√2
+  const sx = (bx - bz) / Math.SQRT2;
+  const sy = -(bx + bz) / Math.SQRT2;
+  return ((Math.atan2(sx, sy) * 180) / Math.PI + 360) % 360;
 }

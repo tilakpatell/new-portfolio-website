@@ -5,7 +5,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 const three = { on: true, can: true, set: vi.fn() };
 vi.mock('../lib/gpu', () => ({ use3D: () => three }));
 vi.mock('../components/expanse/surface/ExpanseWorld', () => ({ default: ({ seed, type, name }) => <div data-world={`${seed}:${type}`}>{name}</div> }));
-const { default: Expanse, planetName } = await import('./Expanse');
+const { default: Expanse } = await import('./Expanse');
+const { planetName } = await import('../components/expanse/surface/names');
 
 const at = (url) =>
   renderToStaticMarkup(

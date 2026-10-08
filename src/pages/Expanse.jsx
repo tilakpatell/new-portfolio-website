@@ -3,13 +3,12 @@ import ExpanseWorld from '../components/expanse/surface/ExpanseWorld';
 import { LAND_TYPES } from '../lib/land/spec';
 import { use3D } from '../lib/gpu';
 import { useDocumentTitle } from '../lib/hooks';
+import { planetName } from '../components/expanse/surface/names';
 
 // A planet of the Expanse, from its seed: /universe/expanse/:seed, its type
 // in ?type= (temperate by default). The land is made from the seed; the
 // car is driven on it (components/expanse/surface). Without 3D, a line
 // saying so.
-export const planetName = (seed, type) => `${type[0].toUpperCase()}${type.slice(1)} planet ${seed}`;
-
 export default function Expanse() {
   const { seed = '7' } = useParams();
   const [query] = useSearchParams();

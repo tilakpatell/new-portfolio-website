@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import ExpanseHud, { screenAngle } from './ExpanseHud';
+import ExpanseHud from './ExpanseHud';
+import { screenAngle } from './rules';
 
 const refs = () => ({ speed: createRef(), water: createRef(), arrow: createRef(), moment: createRef() });
 

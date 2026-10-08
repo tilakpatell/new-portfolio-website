@@ -8,18 +8,7 @@ import { Hud, Menu, Prompt, Stick, TouchButton } from '../../../runtime/hud';
 //
 //   <ExpanseHud name refs={{ speed, water, arrow, moment }} touch way
 //     onStick(x, y) onRespawn onJump onBoost(down) />
-//   screenAngle(bearing) → degrees clockwise from the top of the screen to
-//     a world bearing (radians from +x toward +z), for the chase view's
-//     fixed look along −x −z
-
-export function screenAngle(bearing) {
-  const bx = Math.cos(bearing);
-  const bz = Math.sin(bearing);
-  // the view's right on the ground is (1, −1)/√2, its up (−1, −1)/√2
-  const sx = (bx - bz) / Math.SQRT2;
-  const sy = -(bx + bz) / Math.SQRT2;
-  return ((Math.atan2(sx, sy) * 180) / Math.PI + 360) % 360;
-}
+// (the compass arrow's angle is rules.js's screenAngle)
 
 export default function ExpanseHud({ name, refs, touch = false, way = null, onStick, onRespawn, onJump, onBoost }) {
   const tools = (
