@@ -57,7 +57,7 @@ Owns: `src/lib/three/palette.js`, `src/lib/three/bloom.js`, `src/lib/stage3d.js`
 
 **Files:**
 - Create: `src/lib/three/bloom.js`, `src/lib/three/bloom.test.js`
-- Modify: `src/lib/stage3d.js:1-5` (the header: Neutral, not ACES), `:90` (`bloom = BLOOM`, `exposure = LOOK.exposure`), `:97-98` (`NeutralToneMapping`), `src/runtime/webgl.js:26` (`p.strength ?? BLOOM.strength` and the rest), `:46` (`toneMapping = THREE.NeutralToneMapping`), `src/runtime/webgpu.js:58`.
+- Modify: `src/lib/stage3d.js:1-5` (the header: Neutral, not ACES), `:90` (`bloom = BLOOM`, `exposure = LOOK.exposure`), `:97-98` (`NeutralToneMapping`), `src/runtime/webgl.js:26` (`p.strength ?? BLOOM.strength` and the rest), `:46` (`toneMapping = THREE.NeutralToneMapping`), `src/runtime/webgpu.js:58`; and the three stage worlds that call `houseOn` on the stage’s default exposure (`middleearth/rush/scene.js`, `rickmorty/citadel/scene.js`, `albuquerque/casa/scene.js`) pass `keepExposure: true`, or the house’s 1.4 would be lifted twice.
 
 **Interfaces (produces):** `BLOOM = { threshold: 1, strength: 0.25, radius: 0.4 }`; `bloomGroups(pass: UnrealBloomPass) → groups` (one group `bloom` with `threshold 0…2`, `strength 0…1.5`, `radius 0…1`, as `lib/debugPanel`’s items). `createStage` defaults to `BLOOM` and Neutral at `LOOK.exposure` (`lib/three/house.js`).
 

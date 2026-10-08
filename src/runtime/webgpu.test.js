@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as THREE from 'three';
 
 // WebGPURenderer needs a browser; a stand-in records what it was made with
 const made = [];
@@ -38,6 +39,13 @@ describe('createWebGPU', () => {
     const gfx = await createWebGPU(fakeCanvas(), { forceWebGL: true });
     expect(gfx.backend).toBe('nodes-webgl');
     expect(made[0].options.forceWebGL).toBe(true);
+  });
+
+  it('tone-maps the house’s way unless a world asks otherwise', async () => {
+    await createWebGPU(fakeCanvas());
+    expect(made[0].toneMapping).toBe(THREE.NeutralToneMapping);
+    await createWebGPU(fakeCanvas(), { toneMapping: THREE.NoToneMapping });
+    expect(made[1].toneMapping).toBe(THREE.NoToneMapping);
   });
 
   it('without it the kind is webgpu', async () => {
