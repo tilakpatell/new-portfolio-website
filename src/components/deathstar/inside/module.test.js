@@ -275,7 +275,8 @@ describe('aboard the Death Star, drawing', () => {
     const { rt, world, scene } = await make({ side: 'imperial' });
     expect(rt.gfx.post).toHaveBeenCalledWith([
       { kind: 'render', scene: scene.scene, camera: scene.camera },
-      { kind: 'bloom', strength: 0.6, radius: 0.4, threshold: 0.85 },
+      // (over the lamp-lit walls and floor, which reach about 2 in linear light: only the light strips and grids glow)
+      { kind: 'bloom', strength: 0.6, radius: 0.4, threshold: 2.2 },
       { kind: 'output' },
     ]);
     world.step(1 / 60, snap());

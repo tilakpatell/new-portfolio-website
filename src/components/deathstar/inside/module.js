@@ -59,6 +59,11 @@ const PITCH = 1.2; // radians the head tilts at most up or down
 const PAD_TURN = 3; // radians a second the pad’s right stick turns at full tilt
 const RUN_PUSH = 0.95; // a stick pushed this far runs
 const HUD_EVERY = 0.1; // seconds between 'hud' events at most
+// The glow round the light strips and grids. Bloom picks what is brighter
+// than the threshold before the house look tone-maps it, and under the
+// station’s lamps the walls and the glossy floor reach about 2 there: a
+// lower threshold glows the whole corridor into a grey veil.
+const BLOOM = { strength: 0.6, radius: 0.4, threshold: 2.2 };
 // presses the game takes for the one step after them: kept until a step comes, so a
 // press in a frame too short for a step still counts
 const PRESSES = ['use', 'helmet', 'roar', 'reload', 'jump'];
@@ -124,7 +129,7 @@ export default {
       if (!bloom || !rt.gfx.post || !view) return;
       post = rt.gfx.post([
         { kind: 'render', scene: view.scene, camera: view.camera },
-        { kind: 'bloom', strength: 0.6, radius: 0.4, threshold: 3 },
+        { kind: 'bloom', ...BLOOM },
         { kind: 'output' },
       ]);
       post.composer?.setPixelRatio?.(renderer.getPixelRatio?.() ?? 1);
