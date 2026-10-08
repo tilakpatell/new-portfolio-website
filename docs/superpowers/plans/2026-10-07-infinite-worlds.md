@@ -240,7 +240,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Interfaces:**
 - `SECTOR = 80000`; `makeSector(universe, sx, sz) → Sector`; `Sector = { id: 'E:sx,sz', seed, origin: [x, 0, z] (sector centre in universe units: sx * SECTOR, sz * SECTOR), systems: System[], wonders: Wonder[], beacons: { n, e, s, w: [x,y,z] } }`; `System = { id: 'E:sx,sz:<i>', name, at, star: { class, color, size }, planets: Planet[], faction, traffic: 0..1, hazard: null | 'storm' | 'pirates' | 'minefield' }`; `Planet = { id, name, type, radius, color, at (orbit position at t = 0), moons: number, rings: boolean, seed }`.
-- Systems placed by Poisson disc (minimum gap `6000`) inside the sector's inscribed disc, count in `8..24` by `rng`; none within `MAP_RADIUS + 4000` of the authored map's centre when `(sx, sz)` is one of the eight neighbours of `0,0` (so nothing overlaps the map). Sector `0,0` itself returns the authored map's places: `systems: []`, `wonders: []`, with `beacons` at the map's four hyperlane home beacons (`hyperlanes.js`'s `BEACONS` for `home`).
+- Systems placed by Poisson disc (minimum gap `6000`) inside the sector's inscribed disc, count in `8..24` by `rng`; none within `MAP_RADIUS + 4000` of the authored map's centre when `(sx, sz)` is one of the eight neighbours of `0,0` (so nothing overlaps the map), and none within `SECTOR_RADIUS.rickmorty + 4000` of the Rick and Morty pocket, which lies inside sector `0,-1`. Sector `0,0` itself returns the authored map's places: `systems: []`, `wonders: []`, with `beacons` at the map's four hyperlane home beacons (`hyperlanes.js`'s `BEACONS` for `home`).
 
 - [ ] **Steps 1-4:** tests (same input, deep-equal output twice; count in range over 200 sectors; min gap holds; neighbours of `0,0` clear the map; `0,0` empty), FAIL, implement, PASS. **Step 5: Commit** `feat(expanse): sectors from seeds`.
 
@@ -260,7 +260,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Create: `src/components/expanse/scene/sectors.js` (one loaded sector: far-place impostors via `farPlaces.js`, stars as `bodies.js` spheres, lanes via the map's lane drawer, a `dispose`), `starfield.js` (the beyond: one `Points` of distant sectors' systems at impostor size, rebuilt on a sector change)
-- Modify: `src/components/universe/scene.js` (a `rt.chunks` grid `size: SECTOR, radius: 1` keyed on the ship's position; `rt.origin` adopted: every placed object and the camera shift on `origin` events; `sectorOf`/`inSector` in `layout.js` gain the Expanse: `sectorOf` returns `'E:sx,sz'` beyond the two authored sectors), `src/components/universe/online/where.js` (`whereOf` for `/universe` with a sector query: `Universe · E:3,-2 · <system name>`), `online/protocol.js` (a pose carries `sec: 'E:sx,sz'` and local coordinates; a reader without the field assumes the authored sector)
+- Modify: `src/components/universe/scene.js` (the universe map is a `useScene` scene, not a runtime module, so it has no `rt`: `expanse/scene/expanse.js` holds a `createChunkGrid({ size: SECTOR, radius: 1 })` keyed on the ship's position and adopts `runtime().origin`: the Expanse's root sits at the origin and each sector's group at its centre less it, re-anchored in the frame the origin moves, while the authored map keeps its coordinates (its draw already re-centres on the camera, `drawn`) and the origin stays at the middle inside the rim; `sectorOf` in `layout.js` returns `'E:sx,sz'` beyond the two authored sectors, `mapSectorOf` keeps the map's own logic on `main`/`rickmorty`; `ship.js`'s `OPEN_SPACE` lets the ship past the main edge, `SPACE` still turns it back), `src/components/universe/online/rosterWhere.js` (a pose with `sec` reads `Universe · E:3,-2 · <system name>`; `whereOf` keeps `/universe`, which older clients match exactly), `online/protocol.js` (a pose carries `sec: 'E:sx,sz'` and local coordinates; a reader without the field assumes the authored sector)
 - Test: `src/components/universe/layout.test.js` (sectorOf beyond the map), `online/protocol.test.js` (pose round-trips `sec`), `expanse/scene/sectors.test.js` (a loaded sector adds N impostors and disposes to zero objects, three.js in Node as the repo's scene tests do)
 
 - [ ] **Steps 1-4:** tests, FAIL, implement, PASS. Browser: fly past the rim; sectors appear ahead; `window.__RUNTIME__.origin.at` changes once past 50,000 and nothing jumps; roster shows `E:1,0`.
@@ -270,7 +270,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Modify: `src/components/universe/Front.jsx` (or the page that owns `/universe`): `?seed=` → the Expanse's universe seed; a seed other than the default registers a `pocket` world (Phase 2's registry) and the HUD names it.
-- Test: the page test for `/universe?seed=marble` passes `universe: hash64('marble')` to the module and registers `pocket:marble`.
+- Test: `src/components/expanse/pocket.test.js`: `pocketOf('?seed=marble')` gives `universe: hash64('marble')`, and `registerPocket` registers `pocket:marble` (`pages/Universe.jsx` passes it to `UniverseMap` as `universe`, keyed on the word).
 
 - [ ] **Steps 1-5:** tests, FAIL, implement, PASS, commit `feat(universe): pocket universes by seed`. **Step 6:** PR `claude/infinite-worlds-p4`.
 
