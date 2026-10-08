@@ -617,6 +617,11 @@ export async function create(canvas, ctx) {
   let env = spaceEnvironment(renderer, T['sky-glow']);
   scene.environment = env.texture;
   const post = createPost(renderer, scene, camera, { small });
+  // the map's lens (post.js; the galaxy keeps its picture): a floor under
+  // the sky, a little more contrast, and the corners soft but on a low tier
+  post.setToe(0.02, 0.08);
+  post.contrast(0.18);
+  post.defocus(tier === 'low' ? 0 : 1);
 
   // the sky: the Star Wars galaxy's (galaxy/sky.js), its disc and dust,
   // its core and nebulae, as Kashyyyk sees it (the core a third of the way
