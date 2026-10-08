@@ -971,7 +971,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         <div className="shire-door">
           <p className="shire-door-name">{here ? here[0] : thingHere.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => (here ? enter(hud.near) : lookAt(hud.thing))}>
-            {!touch && <kbd>E</kbd>} {here ? here[1] : 'Look'}
+            {!touch && <kbd className="key-first">E</kbd>} {here ? here[1] : 'Look'}
           </button>
         </div>
       )}

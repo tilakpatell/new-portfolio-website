@@ -76,7 +76,7 @@
 
 .shire-door { position: absolute; left: 50%; bottom: clamp(1.2rem, 6%, 2.5rem); z-index: 2; display: grid; justify-items: center; gap: 0.45rem; width: min(22rem, calc(100% - 2rem)); padding: 0.85rem 1rem 0.95rem; border: 1px solid rgba(240, 192, 64, 0.55); border-radius: 12px; background: var(--shire-glass-hi); color: var(--shire-ink); text-align: center; transform: translateX(-50%); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); }
 /* the key first, as the guide writes it ("E Go in") */
-.shire-world .btn > kbd:first-child { margin: 0 0.35rem 0 0; }
+.shire-world kbd.key-first { margin: 0 0.35rem 0 0; }
 .shire-door-name { margin: 0; font: 600 1.15rem/1.15 'Cinzel', Georgia, serif; letter-spacing: 0.03em; }
 .shire-world .btn-primary { background: var(--shire-gold); color: #1d160a; border-color: transparent; }
 .shire-world .btn-ghost { background: rgba(255, 255, 255, 0.08); color: var(--shire-ink); border-color: rgba(255, 255, 255, 0.35); }

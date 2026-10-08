@@ -837,7 +837,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {!touch && <kbd>E</kbd>} {here.act}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
