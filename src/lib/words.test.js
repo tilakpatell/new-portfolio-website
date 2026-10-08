@@ -31,9 +31,9 @@ const FILES = [
 // below fails if a file here is already clean, so the list only shrinks.
 const PENDING = new Set([]);
 // Files another stream is rewriting: skipped, without the shrink check, so
-// their cleaning up doesn't turn this test red. The tour's copy (streams A
-// and B): briefs.js says “Escape”; steps.js “plain pages”, “colour scheme”.
-const ELSEWHERE = new Set(['components/tour/briefs.js', 'components/tour/steps.js']);
+// their cleaning up doesn't turn this test red. (None now: the tour's copy
+// reads the glossary's words.)
+const ELSEWHERE = new Set();
 
 // Attributes that hold code, not words.
 const CODE_ATTRS = /^(className|class|id|key|href|to|src|type|role|rel|target|name|htmlFor|style|viewBox|d|fill|stroke|inputMode|autoComplete|method|action|as|lang|dir|aria-(controls|labelledby|describedby|owns|current|haspopup)|data-[\w-]+)$/;
