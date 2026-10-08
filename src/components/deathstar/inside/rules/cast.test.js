@@ -94,7 +94,9 @@ describe('the cast', () => {
   });
 
   it('puts the droids on the surfaces’ models', () => {
-    expect(CAST.threepio.model).toBe('/models/galaxy/surface/c3po.glb');
+    expect(CAST.threepio.model).toBe('/models/deathstar/c3po.glb');
+    // (on the crew’s skeleton, not the surfaces’ Mixamo one, so the shared clips play on him)
+    expect(joints(CAST.threepio.model)).toEqual(joints(CAST.officer.model));
     expect(CAST.artoo.model).toBe('/models/galaxy/surface/r2d2.glb');
     expect(CAST.mouse.model).toBe('/models/galaxy/surface/mousedroid.glb');
     expect(CAST.gonk.model).toBe('/models/galaxy/surface/gonk.glb');

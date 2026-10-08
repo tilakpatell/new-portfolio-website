@@ -9,6 +9,13 @@
 //
 //   node scripts/rig-transfer.mjs <donor.glb> <mesh.glb> <out.glb> [--tex 2048]
 //
+// The new mesh comes unrigged. One rigged some other way (C-3PO, on
+// Mixamo's bones, whose exporter leans on three.js's way of binding a skin)
+// is first baked where three.js stands it at rest: in a page, each skinned
+// mesh's getVertexPosition put through its localToWorld, the meshes
+// exported with GLTFExporter. C-3PO's was baked so from
+// public/models/galaxy/surface/c3po.glb, and rigged from the officer.
+//
 //   transferWeights(donor, target, { k, turn }) → { joints, weights }   pure
 //     donor: { positions, normals?, joints, weights } (flat arrays, 3 and 4 a vertex) in one space;
 //     target: { positions, normals? } in the same space; k: donor points blended for each vertex;
@@ -434,10 +441,12 @@ export async function rigFrom(donorFile, meshFile, outFile, { tex = 2048 } = {})
 
   const src = await io.read(meshFile);
   await src.transform(f.dequantize());
-  // every primitive of the new mesh, in its scene's space
+  // every primitive of the new mesh, in its scene's space (a mesh rigged
+  // some other way is baked at rest first: see the header)
   const prims = [];
   for (const node of src.getRoot().listNodes()) {
     if (!node.getMesh()) continue;
+    if (node.getSkin()) throw new Error(`${meshFile}: ${node.getName()} is skinned; bake it at rest first`);
     const w = node.getWorldMatrix();
     for (const prim of node.getMesh().listPrimitives()) {
       const p = floats(prim.getAttribute('POSITION'));

@@ -17,7 +17,7 @@ export const PACK = {
     '/models/galaxy/crew/tiepilot.glb',
     '/models/galaxy/crew/vader.glb',
     '/models/cockpit/chewie.glb', // Chewbacca: the cockpit's Meshy model, rigged as the crew are
-    '/models/galaxy/surface/c3po.glb',
+    '/models/deathstar/c3po.glb', // C-3PO, rigged again on the crew's skeleton
     '/models/galaxy/surface/gonk.glb',
     '/models/galaxy/surface/mousedroid.glb',
     '/models/galaxy/surface/r2d2.glb',

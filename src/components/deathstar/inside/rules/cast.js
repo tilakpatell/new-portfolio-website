@@ -71,7 +71,8 @@ export const CAST = freeze({
   // old Ben, as the first film has him (the galaxy’s Obi-Wan is the Clone Wars general)
   obiwan: { name: 'Obi-Wan Kenobi', model: '/models/deathstar/obiwan.glb', tall: 1.78, side: 'rebel', blade: { type: 'saber', colour: 0x3f8cff }, hp: 100, voice: 'obiwan', role: 'hero' },
   chewie: { name: 'Chewbacca', model: '/models/cockpit/chewie.glb', tall: 2.28, side: 'rebel', hp: 160, role: 'hero' },
-  threepio: { name: 'C-3PO', model: '/models/galaxy/surface/c3po.glb', tall: 1.67, side: 'rebel', hp: 40, voice: 'threepio', role: 'hero', speed: 0.6 },
+  // (the surfaces’ C-3PO, rigged again on the crew’s skeleton by scripts/rig-transfer.mjs)
+  threepio: { name: 'C-3PO', model: '/models/deathstar/c3po.glb', tall: 1.67, side: 'rebel', hp: 40, voice: 'threepio', role: 'hero', speed: 0.6 },
   artoo: { name: 'R2-D2', model: '/models/galaxy/surface/r2d2.glb', tall: 1.09, side: 'rebel', hp: 60, role: 'hero', speed: 0.7 },
   // the station’s droids belong to nobody’s fight: troopers and Rebels both let them by
   mouse: { name: 'Mouse droid', model: '/models/galaxy/surface/mousedroid.glb', tall: 0.25, side: 'neutral', hp: 10, role: 'droid', speed: 1.6, perception: { sight: 8 } },
