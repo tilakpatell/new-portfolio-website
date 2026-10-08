@@ -80,7 +80,7 @@ function Bar({ label, value, of = 1, red, readout, segments = 0 }) {
 }
 
 // The first game's card: the keys that matter, and the diamond to follow
-function Tips({ touch, onDone }) {
+function Tips({ touch, story, onDone }) {
   return (
     <section className="ds-panel ds-tips" aria-label="How to play">
       <p className="ds-kicker">How to play</p>
@@ -91,9 +91,11 @@ function Tips({ touch, onDone }) {
           </li>
         ))}
       </ul>
-      <p className="ds-tips-way">
-        <span className="ds-tips-diamond" aria-hidden="true" /> Follow the diamond to the next objective.
-      </p>
+      {story && (
+        <p className="ds-tips-way">
+          <span className="ds-tips-diamond" aria-hidden="true" /> Follow the diamond to the next objective.
+        </p>
+      )}
       <button type="button" className="ds-btn ds-btn-ghost" onClick={onDone}>
         Got it
       </button>
@@ -138,7 +140,7 @@ export default function Hud({ ui, hud, say, hurt = null, hit = 0, touch, playing
   );
   return (
     <div className="ds-hud" data-touch={touch || undefined} data-start={ui.mode === 'start' || ui.mode === 'loading' || undefined}>
-      {wantTips && tipsUp && !ui.talk && <Tips touch={touch} onDone={() => onSet?.({ tips: false })} />}
+      {wantTips && tipsUp && !ui.talk && <Tips touch={touch} story={ui.play === 'story'} onDone={() => onSet?.({ tips: false })} />}
       <div className="ds-top">
         <div className="ds-top-left">
           <section className="ds-panel ds-objective" data-tour="ds-objective" aria-label="Objective">
