@@ -32,6 +32,7 @@ export const GCW = {
   defence: 1, // %/hour a front's holder puts back (cut off from its capital, cutDefence of that)
   cutDefence: 0.3,
   stronghold: 2, // a system worth this much supplies its own piece of territory, as a capital does (gcwAI.js's supplied)
+  fortified: 0.75, // and holds out longer: an attack on it goes at this share of its pace (gcwAI.js's attackPace)
   regen: 4, // %/hour a system nobody's fighting over gets back, if it's in supply
   captured: 0.7, // a system's hold when it's just been taken
   repelled: 0.25, // what an attack held to the end gives back
@@ -39,7 +40,12 @@ export const GCW = {
   stallDrop: 0.1,
   lastStand: 1, // a side's last this many systems can't fall before the Climax
   lastHold: 0.02, // (nor its hold of them go below this)
-  underdog: { below: 0.3, boost: 1.35, above: 0.6, damp: 0.8 }, // a side's rates, by its share of the systems
+  // a side's rates, by its share of the systems (the leader eased off past 0.6, but that was the New
+  // Republic's opening, 10 of 16, and it lost a third of its share from the start: now past 0.65)
+  underdog: { below: 0.3, boost: 1.35, above: 0.65, damp: 0.8 },
+  // and by how far it's come since the opening: `by` systems gained, it's stretched thin; lost, it
+  // fights harder for its own (so a war drifts back towards where it began)
+  stretch: { by: 2, damp: 0.8, boost: 1.25 },
   counterFor: 10, // steps a side goes back for what it's just lost
   counterBonus: 6, // %/hour more, for the liberator retaking it
   climaxMult: 2, // the first front's rate in the Climax: the decisive battle
@@ -59,6 +65,7 @@ export const GCW = {
   ],
   // a target's weights, past the doctrine's (gcwAI.js's targetOf and orderTarget)
   weigh: { weak: 2, area: 2, weight: 0.5, reach: 0.8, can: 2, cannot: -4, recent: 3, recentFor: 60, pace: 0.25, again: 4 },
+  huttReach: 1, // the raider attacks a Hutt world only where the attack would take it whole (gcw.js)
   routeReach: 2.2, // grid squares: how near a route's point a system must be to be on it
   neighbours: 2, // the nearest few, besides the routes
   links: [

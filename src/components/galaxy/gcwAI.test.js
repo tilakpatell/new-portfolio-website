@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { areaWhole, cutOff, frontPace, frontsFor, lean, orderOver, orderTarget, originOf, phaseAt, pointsCount, raiderOrder, soft, supplied, targetOf } from './gcwAI';
+import { areaWhole, attackPace, cutOff, frontPace, frontsFor, lean, orderOver, orderTarget, originOf, phaseAt, pointsCount, raiderOrder, reaches, soft, supplied, targetOf } from './gcwAI';
 import { GCW, NEIGHBOURS, WAR_SYSTEMS, areaBonusOf, areaOf, opening, pressureOn, supplyOf } from './gcw';
 import { WARS } from './sides';
 
@@ -45,6 +45,22 @@ describe('the underdog and the leader', () => {
     expect(lean({ rebel: n - 2 }, 'rebel')).toBe(GCW.underdog.damp);
     expect(GCW.underdog.boost).toBeGreaterThan(1);
     expect(GCW.underdog.damp).toBeLessThan(1);
+  });
+  it('a side that’s gained GCW.stretch.by systems since the opening is stretched thin, one that’s lost as many fights harder for its own', () => {
+    // (so a war drifts back towards where it began: left alone, the
+    // Civil War's Rebellion went from 5 systems to 6.75, and the Remnant
+    // War's New Republic from 70% of the galaxy's worth to 35%)
+    const opened = { rebel: 7 };
+    expect(GCW.stretch.by).toBe(2);
+    expect(lean({ rebel: 8 }, 'rebel', opened)).toBe(1);
+    expect(lean({ rebel: 9 }, 'rebel', opened)).toBe(GCW.stretch.damp);
+    expect(lean({ rebel: 6 }, 'rebel', opened)).toBe(1);
+    expect(lean({ rebel: 5 }, 'rebel', opened)).toBe(GCW.stretch.boost);
+    // (on top of the underdog's and the leader's)
+    expect(lean({ rebel: 2 }, 'rebel', { rebel: 5 })).toBeCloseTo(GCW.underdog.boost * GCW.stretch.boost, 9);
+    expect(lean({ rebel: 2 }, 'rebel')).toBe(GCW.underdog.boost);
+    expect(GCW.stretch.damp).toBeLessThan(1);
+    expect(GCW.stretch.boost).toBeGreaterThan(1);
   });
 });
 
@@ -110,6 +126,26 @@ describe('picking a target', () => {
     const c = { by: 'empire', border: ['kamino', 'naboo', 'tatooine'], owner, control, rate: 40, hours: GCW.attackFor / 3600e3, capitals, lastHit: {}, k: 100, rand: still };
     expect(pressureOn('hutt', 40 + supplyOf('tatooine', owner, 'empire')) * 1.6).toBeLessThan(80);
     expect(targetOf(c)).toBe('naboo');
+  });
+  it('knows whether an attack would take a system in its time, or come within a share of it', () => {
+    const owner = map('rebel', { geonosis: 'empire', tatooine: 'hutt' });
+    const c = { id: 'tatooine', by: 'empire', owner, control: whole(), rate: 40, hours: GCW.attackFor / 3600e3 };
+    // (the Hutts halve it: 0.5 × (40 + 0) × 1.6 h is 32% of a hold)
+    expect(supplyOf('tatooine', owner, 'empire')).toBe(0);
+    expect(reaches(c)).toBe(false);
+    expect(reaches({ ...c, rate: 130 })).toBe(true);
+    expect(reaches({ ...c, control: { ...whole(), tatooine: 0.35 } })).toBe(true);
+    expect(reaches({ ...c, control: { ...whole(), tatooine: 0.35 } }, 1)).toBe(false);
+    expect(reaches({ ...c, control: { ...whole(), tatooine: 0.3 } }, 1)).toBe(true);
+  });
+  it('goes at a stronghold at GCW.fortified of an attack’s pace: it holds out longer', () => {
+    // (the raiders took the liberator's worthiest systems most of all: the New
+    // Republic held 70% of the galaxy's worth at the opening and 35% at the end)
+    const owner = map('rebel', { geonosis: 'empire', tatooine: 'empire' });
+    const plain = attackPace({ id: 'naboo', by: 'empire', owner, rate: 40 });
+    expect(plain).toBe(40 + supplyOf('naboo', owner, 'empire'));
+    expect(GCW.fortified).toBeLessThan(1);
+    expect(attackPace({ id: 'coruscant', by: 'empire', owner, rate: 40 })).toBeCloseTo((40 + supplyOf('coruscant', owner, 'empire')) * GCW.fortified, 9);
   });
   it('goes elsewhere than where it went lately', () => {
     const c = at('hutt');
