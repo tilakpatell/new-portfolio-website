@@ -6,8 +6,10 @@
 // (`battleAt`), and a battle against the Hutts its own (`hutt`, for a front,
 // a win and a loss). The lines have blanks the battle fills: {us} (your
 // side, "the Rebellion"), {them} (the other, "the Hutts") and {place} (the
-// system's name). Data in battleCrews/, one file a crew; the rules here,
-// pure and tested.
+// system's name). Data in battleCrews/, one file a crew, and the stages'
+// lines (a group of targets, a zone to hold, a boarding, a bomber wave, an
+// ace joining) for all four in battleCrews/stages.js; the rules here, pure
+// and tested.
 //
 // BATTLE_KEYS: what's said in a battle; HUTT_KEYS: what the Hutts' battles
 // have their own for; PLACES: the systems with their own.
@@ -22,13 +24,16 @@ import cruiser from './battleCrews/cruiser';
 import xwing from './battleCrews/xwing';
 import falcon from './battleCrews/falcon';
 import rv from './battleCrews/rv';
+import stages from './battleCrews/stages';
 
-export const BATTLE_KEYS = ['ask', 'front', 'join', 'gens', 'bridge', 'reactor', 'won', 'lost', 'turncoat', 'ace', 'escort', 'deserter', 'intercept', 'runners', 'gate', 'interdictor', 'blockade'];
+export const BATTLE_KEYS = ['ask', 'front', 'join', 'gens', 'bridge', 'reactor', 'won', 'lost', 'turncoat', 'ace', 'escort', 'deserter', 'intercept', 'runners', 'gate', 'interdictor', 'blockade', 'group', 'zone', 'board', 'wave', 'hunt'];
 export const HUTT_KEYS = ['front', 'won', 'lost'];
 // (each in the war its moment is from: battleAt[sys].war)
 export const PLACES = { endor: 'gcw', hoth: 'gcw', scarif: 'gcw', yavin: 'gcw', bespin: 'gcw', coruscant: 'clone', naboo: 'clone', lothal: 'remnant' };
 
-export const BATTLE_LINES = { cruiser, xwing, falcon, rv };
+// (each crew's own, with its stages' lines among its battle's)
+const withStages = (crew, id) => ({ ...crew, battle: { ...crew.battle, ...stages[id] } });
+export const BATTLE_LINES = { cruiser: withStages(cruiser, 'cruiser'), xwing: withStages(xwing, 'xwing'), falcon: withStages(falcon, 'falcon'), rv: withStages(rv, 'rv') };
 
 const theSide = (side) => (side === 'hutt' ? 'the Hutts' : SIDES[side] ? `the ${SIDES[side].short}` : 'them');
 
