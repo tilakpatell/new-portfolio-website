@@ -104,29 +104,17 @@ for (const id of list.split(',')) {
     continue;
   }
   const loaded = (Date.now() - t0) / 1000;
-  // (the frame guard off, lib/three/frameGuard: it leaves out of the frame
-  // every material whose shader isn't compiled yet and compiles a few a
-  // frame, which at software GL's seconds a frame held most of a world back
-  // for many minutes; off, everything is drawn, as the baselines were made.
-  // The dev server's module is the page's own, so this is the page's guard)
-  await page
-    .evaluate(async (surface) => {
-      const { guardOf } = await import('/src/lib/three/frameGuard.js');
-      const g = guardOf(surface ? window.__surfaceScene.renderer : window.__galaxyDebug?.renderer);
-      if (g) g.enabled = false;
-    }, mode === 'surface')
-    .catch((e) => errors.push(`frame guard not switched off: ${e}`));
   // (on the surface, the floor's light baked first: the bake's passes are a
   // one-off, not a frame anyone plays. A world with no ground, cloud-borne,
   // has none to wait for: it runs out the clock)
   if (mode === 'surface') await page.waitForFunction(() => Boolean(window.__surfaceScene.api?.ground?.stats?.baked), null, { timeout: Number(process.env.BAKE_WAIT ?? 150000), polling: 1000 }).catch(() => {});
   await page.waitForTimeout(settle);
-  // (the world drawing before it's measured: a world is prepared out of
-  // sight and shown when it's ready, which in software GL can outlast the
-  // settle wait; measured then, it drew nothing, and the gate fails it)
-  await page
-    .waitForFunction((surface) => ((surface ? window.__surfaceScene?.renderer : window.__galaxyDebug?.renderer)?.info.render.calls ?? 0) > 0, mode === 'surface', { timeout: Number(process.env.DRAW_WAIT ?? 180000), polling: 1000 })
-    .catch(() => {});
+  // (the world up before it's measured: a world is prepared out of sight,
+  // every picture and shader sent a slice a frame behind its loading screen,
+  // and only then shown, the runtime's status 'on'; in software GL that can
+  // outlast the settle wait. Measured before, it drew nothing of itself, and
+  // the gate fails it)
+  await page.waitForFunction(() => !window.__RUNTIME__ || window.__RUNTIME__.status === 'on', null, { timeout: Number(process.env.DRAW_WAIT ?? 600000), polling: 2000 }).catch(() => errors.push('the world never came up (runtime status not on)'));
   // (in space, the ship put in one place, the same for every run: off the
   // planet on its sun side, facing it, stopped. The seeded randomness alone
   // can't hold it there: three.js draws on Math.random for every object's
@@ -162,12 +150,17 @@ for (const id of list.split(',')) {
         let frame = null;
         let last = performance.now();
         const t0 = last;
+        window.__RUNTIME__?.invalidate();
+        // (a frame asked for every tick, and three ticks at least, whatever a
+        // software GL's frame takes: the runtime draws only when something
+        // changes, and with the clock held a still world isn't drawn again)
         const tick = (now) => {
+          window.__RUNTIME__?.invalidate();
           times.push(now - last);
           last = now;
           frame = { calls: info.render.calls, triangles: info.render.triangles, points: info.render.points, lines: info.render.lines };
           info.reset();
-          if (now - t0 < 4000) requestAnimationFrame(tick);
+          if (now - t0 < 4000 || times.length < 3) requestAnimationFrame(tick);
           else {
             info.autoReset = wasAuto;
             times.sort((a, b) => a - b);
