@@ -70,8 +70,6 @@ for (const [, kind, name, from, url, by] of (await read('public/hq/CREDITS.md'))
   const where = name.trim().startsWith('m64-') ? 'Super Mario 64' : 'Avengers HQ';
   cc0.push({ name: `${name.trim()} (${kind.toLowerCase()}, ${where})`, source: url, by: by.trim(), from });
 }
-// Quaternius's kits, where the galaxy uses them (public/cc0/README.md's line for the ground cover and far trees)
-if (/models\/galaxy\/surface\/\{qfern/.test(cc0Readme)) cc0.push({ name: "Stylized Nature MegaKit (the galaxy's ground cover and far trees)", source: 'https://quaternius.com', by: 'Quaternius' });
 // textures shared alike, and textures used with their owners' permission (the Minecraft tribute's): by name, owner and use
 const shareAlike = Object.values(await json('public/games/credits.json')).filter((a) => /BY-SA/.test(a.license));
 const permittedTextures = Object.values(await json('public/games/credits.json')).filter((a) => /permission/i.test(a.license));

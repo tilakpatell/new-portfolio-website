@@ -62,8 +62,9 @@ describe('the surface models', () => {
     }
   });
 
-  it('credits only the nature kinds there are', () => {
-    for (const key of Object.keys(GAMES).filter((k) => k.startsWith('quaternius-galaxy/'))) expect(SURFACE_MODELS[key.split('/')[1]]?.cc0, key).toBe('quaternius');
+  it('credits only the megakit kinds there are (the nature kit’s and the galaxy asset upgrade’s)', () => {
+    for (const key of Object.keys(GAMES).filter((k) => k.startsWith('quaternius-galaxy/'))) expect(SURFACE_MODELS[key.split('/')[1]]?.cc0 ?? SURFACE_MODELS[key.split('/')[1]]?.made, key).toBe('quaternius');
+    for (const [kind, m] of Object.entries(SURFACE_MODELS)) if (m.made === 'quaternius') expect(GAMES[`quaternius-galaxy/${kind}`]?.license, `${kind}'s credit`).toBe('CC0 1.0');
   });
 
   it('has every clip a row names in its file (else the figure sways where it should walk)', () => {

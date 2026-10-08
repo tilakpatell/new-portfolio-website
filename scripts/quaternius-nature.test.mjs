@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MODELS, NATURE_COLOURS } from '../src/components/galaxy/surface/catalog/nature.js';
-import { CREDIT, familyOf, galaxyCredit, greyOf, packRoots } from './quaternius-nature.mjs';
+import { CREDIT, creditsFor, familyOf, galaxyCredit, greyOf, packRoots } from './quaternius-nature.mjs';
+import { QUATERNIUS } from './quaternius-import.mjs';
 
 describe('the nature kit import', () => {
   it('names each kind nk-something, from a file of the pack', () => {
@@ -50,6 +51,16 @@ describe('the nature kit import', () => {
     const roots = packRoots({ QUATERNIUS: '/a:/b' }, '/repo', '/tmp');
     expect(roots.slice(0, 2)).toEqual(['/a/stylized-nature-megakit/glTF', '/b/stylized-nature-megakit/glTF']);
     expect(packRoots({}, '/x/repo', '/tmp')).toEqual(['/x/tilakverse-assets/quaternius/stylized-nature-megakit/glTF', '/tmp/tilakverse-assets/quaternius/stylized-nature-megakit/glTF', '/x/repo/lab/assets/naturemega/glTF']);
+  });
+
+  it('credits the galaxy asset upgrade’s q kinds too, from its own table, so every megakit file on the galaxy has one', () => {
+    const all = creditsFor();
+    for (const kind of Object.keys(MODELS)) expect(all[CREDIT(kind)]?.id, kind).toBe(MODELS[kind].from);
+    for (const [kind, args] of Object.entries(QUATERNIUS)) {
+      expect(all[CREDIT(kind)]?.id, kind).toBe(args[1]);
+      expect(all[CREDIT(kind)].use, kind).toContain('scripts/quaternius-import.mjs');
+    }
+    for (const c of Object.values(all)) expect(JSON.stringify(c)).not.toMatch(/public\//);
   });
 });
 

@@ -47,6 +47,7 @@ import sharp from 'sharp';
 import { MODELS, NATURE_COLOURS } from '../src/components/galaxy/surface/catalog/nature.js';
 import { bounds, dims, simplified, triangles } from './lib/surface-model.mjs';
 import { makeLod } from './galaxy-surface-lod.mjs';
+import { QUATERNIUS } from './quaternius-import.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models', 'galaxy', 'surface');
@@ -63,20 +64,30 @@ export const packRoots = (env = process.env, root = ROOT, tmp = tmpdir()) => [
 // the key's name (scripts/ai-e2e/assets/credits.mjs), so its text never
 // names a public/ folder, which it would take for the whole folder
 export const CREDIT = (kind) => `quaternius-galaxy/${kind}`;
-export const galaxyCredit = (kind, m) => ({
+export const galaxyCredit = (kind, m, { table = 'catalog/nature.js', script = 'scripts/quaternius-nature.mjs' } = {}) => ({
   source: 'https://quaternius.com',
   id: m.from,
   name: `Stylized Nature MegaKit: ${m.from}`,
   authors: ['Quaternius'],
   license: 'CC0 1.0',
-  use: `On the galaxy's green worlds as the surface kind ${kind} (src/components/galaxy/surface/catalog/nature.js, scripts/quaternius-nature.mjs)`,
+  use: `On the galaxy's worlds as the surface kind ${kind} (src/components/galaxy/surface/${table}, ${script})`,
 });
+// Every megakit kind of the galaxy's: this script's, and the galaxy asset
+// upgrade's q kinds (scripts/quaternius-import.mjs, catalog/quaternius.js),
+// which came in without credits of their own; key → credit
+export function creditsFor() {
+  const out = {};
+  for (const [kind, m] of Object.entries(MODELS)) out[CREDIT(kind)] = galaxyCredit(kind, m);
+  for (const [kind, args] of Object.entries(QUATERNIUS)) if (args[0] === 'naturemega') out[CREDIT(kind)] = galaxyCredit(kind, { from: args[1] }, { table: 'catalog/quaternius.js', script: 'scripts/quaternius-import.mjs' });
+  return out;
+}
 function writeCredits() {
   const file = join(ROOT, 'public', 'games', 'credits.json');
   const credits = JSON.parse(readFileSync(file, 'utf8'));
-  // (each kept where it is; a kind no longer in the catalogue dropped)
-  for (const key of Object.keys(credits)) if (key.startsWith(CREDIT('')) && !MODELS[key.slice(CREDIT('').length)]) delete credits[key];
-  for (const [kind, m] of Object.entries(MODELS)) credits[CREDIT(kind)] = galaxyCredit(kind, m);
+  const ours = creditsFor();
+  // (each kept where it is; a kind no longer in either table dropped)
+  for (const key of Object.keys(credits)) if (key.startsWith(CREDIT('')) && !ours[key]) delete credits[key];
+  Object.assign(credits, ours);
   writeFileSync(file, `${JSON.stringify(credits, null, 2)}\n`);
 }
 
