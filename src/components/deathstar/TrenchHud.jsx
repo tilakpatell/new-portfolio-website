@@ -38,7 +38,7 @@ export function TrenchCard({ ui, best, level, setLevel, onStart }) {
   return (
     <div className="trench-overlay">
       <p className="stretch-semi text-2xl font-semibold text-white">{ui.phase === 'won' ? 'Direct hit. The Death Star is gone.' : ui.phase === 'lost' ? 'Pull up.' : 'Trench run'}</p>
-      <p className="mt-2 max-w-md text-sm text-white/80">
+      <p className="trench-brief mt-2 max-w-md text-sm text-white/80">
         {ui.phase === 'ready'
           ? 'Over the surface first: shoot down the TIE fighters and dodge the towers. Then dive into the trench, thread the catwalks and walls, lose Vader, and put a torpedo in the exhaust port. A torpedo spent in the trench blasts a catwalk, a wall or a turret out of your way, but you only have two. Arrows or W A S D steer (drag on a touch screen), Space or a held click fires the lasers, F or Enter fires a torpedo, T switches off the targeting computer.'
           : ui.message}
@@ -66,7 +66,7 @@ export function TrenchCard({ ui, best, level, setLevel, onStart }) {
           </button>
         ))}
       </div>
-      <button type="button" className="btn btn-primary mt-4" onClick={onStart}>
+      <button type="button" className="trench-go btn btn-primary mt-4" onClick={onStart}>
         {ui.phase === 'ready' ? 'Start the run' : 'Fly it again'}
       </button>
     </div>
