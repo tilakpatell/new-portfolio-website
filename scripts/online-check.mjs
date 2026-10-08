@@ -234,11 +234,14 @@ if (universe) {
       }, 150000, `the ally's tag at ${dist}`);
       check(t.opacity === '1' && t.px >= 12 && t.inside, `ally's tag at ${dist} units: ${JSON.stringify(t)}`);
     }
+    // (put 20 off a kilometre away, Bravo comes in over a few frames as his
+    // poses arrive, and his tag passes through the near band that shows a
+    // distance, 40 to 140 units, on its way: it's read once he's in)
     const near = await waitFor(async () => {
       await placeBravo(20);
       const t = await tagOf(a, 'Bravo');
-      return t?.mode === 'near' ? t : null;
-    }, 150000, 'the near tag');
+      return t?.mode === 'near' && t.dist === '' ? t : null;
+    }, 150000, 'the near tag, Bravo in from where he was');
     check(/^Lv \d+$/.test(near.level ?? '') && near.dist === '', `near tag at 20 units: ${JSON.stringify(near)}`);
     if (out) await a.screenshot({ path: `${out}/tags-near.png`, timeout: 120000 });
     const mate = await waitFor(async () => {
