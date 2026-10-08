@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. (The owner chose inline execution: superpowers:executing-plans, no workflows.)
 
-**Goal:** One shared sky with per-universe looks, far worlds drawn as stars, the big wonders as landmarks, the hyperlanes removed, and the galaxy's aim-and-jump on the universe map.
+**Goal:** The shared sky kept as it looks but sharper, far worlds drawn as stars, the big wonders as landmarks, the hyperlanes removed, and the galaxy's aim-and-jump on the universe map.
 
-**Architecture:** The galaxy's baked sky becomes a look-driven kit in `lib/three`; the universe map picks a look by sector. `farStars.js` replaces `farPlaces.js` and `beacons.js` (every non-landmark place is a star past `realAt`); `landmarks.js` draws the Maw, the nebulae and the big stars on the sky at a least size. The lane modules are deleted, their nodes kept as `waypoints.js`; the jump gains the galaxy's align phase and an aim.
+**Architecture:** `galaxy/sky.js` (already every universe's sky) keeps its look and gains fidelity: a bake sized by detail level, screen-resolution grain and more stars. `farStars.js` replaces `farPlaces.js` and `beacons.js` (every non-landmark place is a star past `realAt`); `landmarks.js` draws the Maw, the nebulae and the big stars on the sky at a least size. The lane modules are deleted, their nodes kept as `waypoints.js`; the jump gains the galaxy's align phase and an aim.
 
 **Tech Stack:** Three.js r186 (GLSL ShaderMaterial, Points, instanced quads, cube render target), React 19, Vitest 5, Vite 8.
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- The galaxy's sky must not change in look: `galaxyLook(sys)` gives today's bake uniforms and today's first 4,200 stars (pinned from a fixture captured before the move).
+- The sky must not change in look anywhere (the owner's word: "keep it like that, improve only fidelity"): bake uniforms and the first 4,200 stars equal today's for every system and Kashyyyk's borrowed view (pinned from a fixture captured before the change). No images fetched or added.
 - Bake face: 2048 `ultra`, 1536 `high`, 1024 `mid` (and when no level is given), 512 `low` or small; no mipmaps.
 - Stars: 12,000 `high`/`ultra`, 7,000 `mid`, 3,000 `low` or small.
 - `realAt(place) = max(1500, reach × 20)`; crossfade over the last fifth; star `k = clamp(realAt × 4 / dist, 0.12, 1)`, size `7 + 13·k` px, colour × `(1.1 + 2·k)`, swatch lerped 0.25 to white; stations real within 2,500 of the sun, nothing past.
@@ -25,96 +25,55 @@
 
 ## Review Focus
 
-1. **Crossing sectors** (portal or Rick's portal gun, both ways): the sky's look follows the camera, the other sector's far stars vanish, and no landmark of the other sector shows. Test in Task 2 (`lookFor`) and Task 3 (`sector` filter).
-2. **A jump asked for while one is aligning, while interdicted, or charging**: no second jump starts, interdiction refuses as today, a charging drive falls back to super speed with the note. Test in Task 7.
-3. **Stick input during align**: the jump is cancelled and the pilot has the ship. Test in Task 7 (`jumpPhase` rule).
-4. **The place you're at, and a place in the other sector**: never the aim. Test in Task 7.
-5. **A stored `tp-universe-drive` of `lanes`** from before this change: reads as `hyper`, the nav map shows Jump picked. Test in Task 6.
+1. **Crossing sectors** (portal or Rick's portal gun, both ways): the other sector's far stars vanish and no landmark of the other sector shows. Test in Task 2 (`sector` filter) and Task 3.
+2. **A jump asked for while one is aligning, while interdicted, or charging**: no second jump starts, interdiction refuses as today, a charging drive falls back to super speed with the note. Test in Task 6.
+3. **Stick input during align**: the jump is cancelled and the pilot has the ship. Test in Task 6 (`jumpPhase` rule).
+4. **The place you're at, and a place in the other sector**: never the aim. Test in Task 6.
+5. **A stored `tp-universe-drive` of `lanes`** from before this change: reads as `hyper`, the nav map shows Jump picked. Test in Task 5.
 
 ---
 
-### Task 1: The sky kit
+### Task 1: The sky, sharper
 
 **Files:**
-- Create: `src/lib/three/spaceSky.js`, `src/lib/three/spaceSky.test.js`, `src/lib/three/__fixtures__/galaxySky.json`
-- Modify: `src/components/galaxy/sky.js` (becomes the wrapper), `src/components/galaxy/scene.js` (pass `level`)
-- Test: `src/components/galaxy/sky.test.js` (unchanged, must pass)
+- Create: `src/components/galaxy/__fixtures__/sky.json`
+- Modify: `src/components/galaxy/sky.js`, `src/components/galaxy/scene.js`, `src/components/universe/scene.js`, `src/components/rickmorty/GalaxyBackdrop.jsx` (each passes `level: device().detail`)
+- Test: `src/components/galaxy/sky.test.js` (today's tests unchanged, new ones added)
 
 **Interfaces:**
-- Produces: `createSpaceSky({ small = false, level = null, renderer = null, beacons = true }) → { group, setLook(look), bake(r), prepare(r) → Promise, update(camera, t), focus(id), setRatio(dpr), beacons, sunDirs, dispose() }`; `bakeSize({ small, level }) → number`; `starCount({ small, level }) → number`; `seeded(text) → () => number` (moved from galaxy/sky.js). A look's shape is the spec's §1 block; `look.beacons` (galaxy only): `[{ id, dir: THREE.Vector3, size, color: THREE.Color }]`.
-- Produces (galaxy/sky.js): `galaxyLook(sys) → look`, and today's `createSky({ small, level, renderer, beacons })` with `setSystem(sys)` = `setLook(galaxyLook(sys))`; `nebulaeOf`, `bakeSize` still exported.
+- Produces: `createSky({ small, level = null, renderer, beacons })` (today's API plus `level`); `bakeSize({ small, level }) → number`; `starCount({ small, level }) → number`.
 
-- [ ] **Step 1: Capture today's galaxy sky as a fixture.** A throwaway test in `src/__scratch/` that, on today's `galaxy/sky.js`, calls `createSky({})`, `setSystem` for `hoth` and `tatooine`, and writes `{ [id]: { uniforms: { uCore, uNear, uSide, uSeed, uNebDir, uNebCol, uNebShape }, stars: first 4200 × [x,y,z,size,r,g,b] rounded to 1e-4, beacons: [{ id, size, color }] } }` to `src/lib/three/__fixtures__/galaxySky.json`. Delete the scratch test after.
+- [ ] **Step 1: Capture today's sky as a fixture.** A throwaway test in `src/__scratch/` on today's `galaxy/sky.js`: `createSky({})`, `setSystem` for `hoth`, `tatooine` and `{ ...kashyyyk, suns: [] }`; write `{ [id]: { uniforms: { uCore, uNear, uSide, uSeed, uNebDir, uNebCol, uNebShape }, stars: first 4200 × [x,y,z,size,r,g,b] rounded to 1e-4 } }` to `src/components/galaxy/__fixtures__/sky.json`. Delete the scratch test.
 
-- [ ] **Step 2: Write the failing tests** in `src/lib/three/spaceSky.test.js`:
+- [ ] **Step 2: Write the failing tests** in `sky.test.js`:
 
 ```js
 it('sizes the bake by level', () => {
   expect(bakeSize({ small: true, level: 'ultra' })).toBe(512);
-  expect(bakeSize({ level: 'ultra' })).toBe(2048);
-  expect(bakeSize({ level: 'high' })).toBe(1536);
-  expect(bakeSize({ level: 'mid' })).toBe(1024);
-  expect(bakeSize({ level: 'low' })).toBe(512);
-  expect(bakeSize({})).toBe(1024);
+  expect(bakeSize({ level: 'ultra' })).toBe(2048); expect(bakeSize({ level: 'high' })).toBe(1536);
+  expect(bakeSize({ level: 'mid' })).toBe(1024); expect(bakeSize({ level: 'low' })).toBe(512);
+  expect(bakeSize({ small: false })).toBe(1024); expect(bakeSize({ small: true })).toBe(512);
 });
 it('counts the stars by level', () => {
   expect(starCount({ level: 'ultra' })).toBe(12000); expect(starCount({ level: 'high' })).toBe(12000);
   expect(starCount({ level: 'mid' })).toBe(7000); expect(starCount({ level: 'low' })).toBe(3000); expect(starCount({ small: true, level: 'high' })).toBe(3000);
 });
-it('gives the galaxy today\'s sky', () => { /* for hoth and tatooine: createSky({ level: 'high' }).setSystem(sys); the bake material's uniforms equal the fixture's; the star attributes' first 4200 equal the fixture's within 1e-4; beacons' sizes and colours equal */ });
-it('bakes without mipmaps', () => { /* sky.bake(fakeRenderer) → the cube texture's generateMipmaps false, minFilter LinearFilter */ });
-it('defaults the new look fields to today\'s bake', () => { /* setLook({ ...galaxyLook(hoth), band: undefined, dust: undefined, void: undefined, rifts: undefined, horizon: undefined }) leaves uBandFar, uBandNear, uWidth, uGlow, uDust, uVoid at today's constants (0.5,0.58,0.85), (1,0.86,0.68), [0.11,0.2], 1, 1, (0.0035,0.005,0.011); uRiftN 0, uHorizon strength 0 */ });
+it('looks as it did', () => { /* for each fixture id, createSky({ level: 'high' }).setSystem(sys): the bake uniforms equal the fixture's; the star attributes' first 4200 equal it within 1e-4 */ });
+it('bakes without mipmaps', () => { /* after bake(fakeRenderer): the cube texture's generateMipmaps false, minFilter THREE.LinearFilter */ });
+it('draws the extra stars fainter', () => { /* createSky({ level: 'high' }).setSystem(hoth): mean brightness (colour sum) of stars 4200… under that of 0…4199 */ });
 ```
 
-- [ ] **Step 3: Run** `npx vitest run src/lib/three/spaceSky.test.js` — expected FAIL (module missing).
+- [ ] **Step 3: Run** `npx vitest run src/components/galaxy/sky.test.js` — expected FAIL (no `starCount`, no `level`).
 
-- [ ] **Step 4: Implement `spaceSky.js`.** Move the engine from `galaxy/sky.js` (shaders, sphere, bake scene, cube camera, stars, suns, beacons). New bake uniforms with today's values as defaults: `uBandFar`, `uBandNear` (vec3), `uWidth` (vec2: min, max), `uGlow`, `uDust`, `uVoid`, `uRiftDir[3]`, `uRiftCol[3]`, `uRiftSize[3]`, `uRiftN`, `uHorizonCol`, `uHorizon`; `uNebDir/Col/Shape` grow to 4 with `uNebN`. Rifts: inside each rift's cone (`exp(-(a/size)²)`) a two-armed log spiral (`sin(2·φ + 6·log(a/size + 0.05) + fbm4·3)`), soft, in its colour, ×0.12. Horizon: `col += uHorizonCol * exp(-lat²/0.0009) * uHorizon`. The look-up shader gains grain: a 256 `tileFbm(11, { base: 8 })` DataTexture (made once per module), read on three sides (as `skyShader.js`'s `cloud()`) at 40 and 110 per radian, `c *= 1 + (g − 0.5) · 0.4 · smoothstep(0.004, 0.05, luma(c))`. Cube target: `generateMipmaps: false`, `minFilter: THREE.LinearFilter`, size `bakeSize`. Stars: `starCount` of them from `look.rand ?? seeded(look.id)`, today's placement loop (half anywhere, half along the band, thickest toward the core) with `look.stars?.tints` (default today's four).
+- [ ] **Step 4: Implement in `galaxy/sky.js`.** `bakeSize`/`starCount` by level; the cube target `generateMipmaps: false`, `minFilter: THREE.LinearFilter`; the star buffers sized `starCount`, filled by today's loop from today's stream, stars past 4,200 with their brightness × 0.7. The look-up shader's grain: a 256 `tileFbm(11, { base: 8 })` `DataTexture` (made once per module, `RepeatWrapping`, linear), read on three sides as `skyShader.js`'s `cloud()` reads its clouds, at 40 and 110 a radian; `c *= 1.0 + (g - 0.5) * 0.4 * smoothstep(0.004, 0.05, dot(c, vec3(0.2126, 0.7152, 0.0722)))`. Nothing else in the bake changes.
 
-- [ ] **Step 5: Make `galaxy/sky.js` the wrapper.** `galaxyLook(sys)`: today's `setSystem` numbers (core from `coreBearing`, near, side, seed, `nebulaeFrom`, suns, beacons by `courseTo`/`distance`) with `rand` the same stream after the nebulae. `createSky(opts)` = the kit plus `setSystem(sys) { kit.setLook(galaxyLook(sys)) }`. `galaxy/scene.js` passes `level: device().detail`.
+- [ ] **Step 5: Pass the level** from `galaxy/scene.js`, `universe/scene.js` and `GalaxyBackdrop.jsx` (`device().detail`).
 
-- [ ] **Step 6: Run** `npx vitest run src/lib/three/spaceSky.test.js src/components/galaxy/` — expected PASS (including `sky.test.js` and `drawnAt.test.js` unchanged).
+- [ ] **Step 6: Run** `npx vitest run src/components/galaxy src/components/universe src/components/rickmorty` and `npx eslint src/components/galaxy src/components/universe/scene.js src/components/rickmorty` — expected PASS, clean.
 
-- [ ] **Step 7: Commit** `feat(sky): the galaxy's sky as a kit driven by looks; sharper bake, grain and more stars`.
+- [ ] **Step 7: Commit** `feat(sky): the same sky, sharper: a bake by level, fine grain, more stars`.
 
-### Task 2: The universe's looks
-
-**Files:**
-- Create: `src/components/universe/skyLooks.js`, `src/components/universe/skyLooks.test.js`
-- Modify: `src/components/universe/scene.js` (the sky: kit + look by sector, rebake on change), `src/components/rickmorty/GalaxyBackdrop.jsx`, `src/components/universe/planetMaps.js` and `planets.test.js` (comments naming `skyShader.js`)
-- Delete: `src/components/universe/skyShader.js`, `starField.js`, `starCatalog.js`, `starCatalog.test.js` (if present), `public/textures/universe/stars.bin`, `scripts/bake-universe-stars.mjs`
-
-**Interfaces:**
-- Consumes: `createSpaceSky`, look shape (Task 1).
-- Produces: `LOOKS: { main, rickmorty }`, `lookFor(sectorId) → 'main' | 'rickmorty'`.
-
-- [ ] **Step 1: Write the failing tests** in `skyLooks.test.js`:
-
-```js
-it('maps sectors to looks', () => {
-  expect(lookFor('rickmorty')).toBe('rickmorty');
-  expect(lookFor('main')).toBe('main');
-  expect(lookFor('E:3,-2')).toBe('main');
-  expect(lookFor(undefined)).toBe('main');
-});
-it('keeps every look in range', () => { /* for each look: core.dir unit, near/side in [0,1)/[0,0.95], ≤ 4 nebulae each with unit dir, #rrggbb colour, size 0.15…0.6, warp 0.6…1.6; ≤ 3 rifts; seed 0…40 */ });
-it('gives the Rick and Morty look its rifts and horizon, and main none', () => {
-  expect(LOOKS.rickmorty.rifts.length).toBeGreaterThanOrEqual(2); expect(LOOKS.rickmorty.horizon.strength).toBeGreaterThan(0);
-  expect(LOOKS.main.rifts ?? []).toEqual([]); expect(LOOKS.main.horizon ?? null).toBe(null);
-});
-it('makes main its own galaxy', () => { expect(LOOKS.main.band.glow).toBeCloseTo(1.3); expect(LOOKS.main.band.width[1]).toBeCloseTo(0.2 * 1.15); expect(LOOKS.main.seed).not.toBe(LOOKS.rickmorty.seed); });
-```
-
-- [ ] **Step 2: Run** `npx vitest run src/components/universe/skyLooks.test.js` — expected FAIL.
-
-- [ ] **Step 3: Implement `skyLooks.js`.** `main`: core low and warm (`dir` ≈ normalize(0.62, −0.08, −0.78), `near` 0.45, `side` 0.15), band far `(0.48,0.56,0.9)` near `(1,0.84,0.66)`, `width` `[0.127, 0.23]`, `glow` 1.3, `void` `(0.003,0.0045,0.013)`, nebulae: Veil `#5b3fd1`/`#d14f9a`, Cradle `#2f9e6b`/`#c9d14f` (four, spread round the band). `rickmorty`: band far `(0.35,0.75,0.55)` near `(0.85,1,0.55)`, `void` `(0.002,0.008,0.006)`, nebulae `#7dff9a`, `#d6ff4f`, `#9b5cff`, two rifts in `#7dff9a`, horizon `#9dffb0` strength 0.06, `dust` 1.2.
-
-- [ ] **Step 4: Wire it.** `scene.js`: `createSpaceSky({ small, level: device().detail, renderer, beacons: false })`, `setLook(LOOKS.main)`; each frame, `const look = lookFor(mapSectorOf(camLocal…))`; on change `sky.setLook(LOOKS[look]); sky.bake(renderer)`. `GalaxyBackdrop.jsx`: the kit with `LOOKS.rickmorty`. Delete the leftovers; fix the two comments.
-
-- [ ] **Step 5: Run** `npx vitest run src/components/universe src/components/rickmorty src/lib/three && npx eslint src/components/universe/scene.js src/components/rickmorty/GalaxyBackdrop.jsx` — expected PASS, no lint errors; `grep -rn "starCatalog\|starField\|skyShader\|stars.bin" src scripts` prints nothing.
-
-- [ ] **Step 6: Commit** `feat(universe): the main universe and the Curve each get their own sky; the old photo sky goes`.
-
-### Task 3: Far stars
+### Task 2: Far stars
 
 **Files:**
 - Create: `src/components/universe/farStars.js`, `farStars.test.js`
@@ -122,7 +81,7 @@ it('makes main its own galaxy', () => { expect(LOOKS.main.band.glow).toBeCloseTo
 - Modify: `scene.js` (make/update/dispose; `placeLabels`' rule), `deepspace.js` (`update`'s `names` may be a function), `expanse/scene/starfield.js` (import swap), `expanse/scene/starfield.test.js` if it names farPlaces
 
 **Interfaces:**
-- Consumes: `SKY_FAR` (deepspace.js), `POSITIONS`, `REACH`, `SECTOR_OF`, `SUN` (layout.js), `WONDERS`, `reachOf` (deep.js), `byId`, `UNIVERSES`, `MOONS` (universes.js), `LANDMARK_IDS` (Task 4 — until then an empty set; Task 4 fills it).
+- Consumes: `SKY_FAR` (deepspace.js), `POSITIONS`, `REACH`, `SECTOR_OF`, `SUN` (layout.js), `WONDERS`, `reachOf` (deep.js), `byId`, `UNIVERSES`, `MOONS` (universes.js), `LANDMARK_IDS` (Task 3 — until then an empty set; Task 3 fills it).
 - Produces: `realAt({ reach, r }) → number`; `starK(dist, real) → 0…1` (0 real, 1 star); `brightness(dist, real) → k`; `starPx(k) → px`; `FAR_STARS: [{ id, at, reach, color, sector, station? }]`; `createFarStars(parent, { places, skyFar }) → { points, update(camera, dt, { focus, sector }), kOf(id) → number, dispose() }` (Expanse calls `update(camera, dt)`: no sector filter).
 
 - [ ] **Step 1: Write the failing tests** in `farStars.test.js`:
@@ -146,7 +105,7 @@ it('folds the stations into home', () => { /* a station place 3000 from the came
 
 - [ ] **Step 6: Commit** `feat(universe): far worlds are stars, names only where you look`.
 
-### Task 4: Landmarks
+### Task 3: Landmarks
 
 **Files:**
 - Create: `src/components/universe/landmarks.js`, `landmarks.test.js`
@@ -186,7 +145,7 @@ it('keeps the curve\'s sun to its sector', () => { expect(LANDMARKS.find((l) => 
 
 - [ ] **Step 6: Commit** `feat(universe): the Maw, the nebulae and the big stars as landmarks on the sky`.
 
-### Task 5: Waypoints
+### Task 4: Waypoints
 
 **Files:**
 - Create: `src/components/universe/waypoints.js`, `waypoints.test.js`, `src/components/universe/__fixtures__/nodes.json`
@@ -202,7 +161,7 @@ it('keeps the curve\'s sun to its sector', () => { expect(LANDMARKS.find((l) => 
 - [ ] **Step 5: Run** `npx vitest run src/components/universe/waypoints.test.js src/components/universe/front.test.js src/components/universe/farFights.test.js` — expected PASS.
 - [ ] **Step 6: Commit** `refactor(universe): the lane nodes as waypoints, ids and all`.
 
-### Task 6: The hyperlanes go
+### Task 5: The hyperlanes go
 
 **Files:**
 - Delete: `src/components/universe/hyperlanes.js`, `laneFlow.js`, `laneLook.js`, `laneRibbons.js`, `laneStreaks.js`, `laneTraffic.js`, `lanePilot.js`, `laneEvents.js`, `ride.js` and their `*.test.js`; `src/components/expanse/gen/lanes.js` and its test
@@ -217,14 +176,14 @@ it('keeps the curve\'s sun to its sector', () => { expect(LANDMARKS.find((l) => 
 - [ ] **Step 4: Run** `grep -rn "hyperlanes\|laneFlow\|laneLook\|laneRibbons\|laneStreaks\|laneTraffic\|lanePilot\|laneEvents\|from './ride'\|gen/lanes\|state.ride" src scripts` — expected nothing; then `npx vitest run` — expected all PASS; `npx eslint .` — clean.
 - [ ] **Step 5: Commit** `feat(universe): the hyperlanes go`.
 
-### Task 7: The jump, the galaxy's way
+### Task 6: The jump, the galaxy's way
 
 **Files:**
 - Create: `src/components/universe/aim.js`, `aim.test.js`
 - Modify: `nav.js` (`HYPER.recharge` 5; the `hyper` drive's `about`), `scene.js` (aim, `J`, phases, prompt key, `__universe().aim`), `UniverseMap.jsx` (the Jump button, the `aim` event), `universe.css`, `Universe.jsx` (only if the `jump` event's timing needs it: it fires at spool now)
 
 **Interfaces:**
-- Consumes: `starAhead` (galaxy/systems.js, with `dirs`), `steerToward`, `aligned` (galaxy/space.js), `FAR_STARS` (Task 3), `LANDMARKS` (Task 4).
+- Consumes: `starAhead` (galaxy/systems.js, with `dirs`), `steerToward`, `aligned` (galaxy/space.js), `FAR_STARS` (Task 2), `LANDMARKS` (Task 3).
 - Produces: `aimTargets(sector, at) → [{ id, at }]` (far stars and landmarks of the sector, the twins once, never `at`); `aimFrom(from, nose, targets, keep) → { id, angle } | null` (cone 0.06, sticky 0.012); `JUMP = { align: 4.5, aligned: 0.996 }`; `jumpPhase(jump, { aligned, age, input }) → 'align' | 'spool' | 'cancel'`.
 
 - [ ] **Step 1: Write the failing tests** in `aim.test.js`:
@@ -253,13 +212,13 @@ it('recharges in five seconds', () => { expect(HYPER.recharge).toBe(5); expect(h
 - [ ] **Step 6: Run** `npx vitest run src/components/universe` and lint — expected PASS.
 - [ ] **Step 7: Commit** `feat(universe): aim at a star and jump, the galaxy's way`.
 
-### Task 8: Docs, shots and the whole check
+### Task 7: Docs, shots and the whole check
 
 **Files:**
 - Modify: `README.md` (the universe section's lanes paragraph, the keys table's `J` and `M` rows, the nav map row's drives), `docs/architecture.md` (the universe entries for the lanes, the far places, the sky)
 - Shots: `lab/` (ignored) only
 
-- [ ] **Step 1: Docs.** Replace the lanes paragraph with the vastness (far stars, landmarks, the jump: aim and `J`); the drives are Jump, super speed and cruise; architecture: one paragraph each for `spaceSky.js`/`skyLooks.js`, `farStars.js`, `landmarks.js`, `waypoints.js`, `aim.js`, and drop the lanes' entries.
+- [ ] **Step 1: Docs.** Replace the lanes paragraph with the vastness (far stars, landmarks, the jump: aim and `J`); the drives are Jump, super speed and cruise; architecture: one paragraph each for the sky's fidelity, `farStars.js`, `landmarks.js`, `waypoints.js`, `aim.js`, and drop the lanes' entries.
 - [ ] **Step 2: Whole check.** `npx vitest run` (all PASS), `npm run lint` (clean), `npm run build` (succeeds).
 - [ ] **Step 3: Shots.** With the dev server, `lab/shot-tmp.mjs` at `overview`, `maw`, `far-rim`, `middleearth-limb`, and `eval:` a Rick and Morty sector pose (`window.__universeDebug.travel('citadel','hyper')` then frames), on `high`; compare with the before shots side by side. Then the galaxy at Hoth (`#/galaxy/hoth`) to check it looks as it did. Then a jump in the browser: aim (`__universe().aim()` non-null with the nose on a world), `J`, align, spool, out parked.
 - [ ] **Step 4: Commit and push** `docs: the universe made vast`.
