@@ -112,9 +112,15 @@ describe('a kit model, by name', () => {
   // (a kit of one plant of two parts and one tree, each with a LOD1 of one
   // part, standing in for lib/three/kit's loadKit)
   const part = (name, y = 0.5) => ({ geometry: new THREE.BoxGeometry(1, 1, 1), material: new THREE.MeshLambertMaterial({ name }), local: new THREE.Matrix4().makeTranslation(0, y, 0), part: 'main' });
-  const ROWS = { Fern_1: { file: 'fern.glb', radius: 1.9, height: 0.8, trunk: 0.4, kind: 'plant' }, Birch_1: { file: 'birch.glb', radius: 30, height: 13, trunk: 0.25, kind: 'tree' } };
+  // (and a shrub with no LOD1, and a broken one whose part has no place)
+  const ROWS = {
+    Fern_1: { file: 'fern.glb', radius: 1.9, height: 0.8, trunk: 0.4, kind: 'plant' },
+    Birch_1: { file: 'birch.glb', radius: 30, height: 13, trunk: 0.25, kind: 'tree' },
+    Shrub_1: { file: 'shrub.glb', radius: 1, height: 1, kind: 'plant' },
+    Broken_1: { file: 'broken.glb', radius: 1, height: 1, kind: 'plant' },
+  };
   const fakeKit = () => {
-    const full = { Fern_1: [part('Leaves'), part('Fronds', 1)], Birch_1: [part('Bark'), part('Leaves_Birch', 6)] };
+    const full = { Fern_1: [part('Leaves'), part('Fronds', 1)], Birch_1: [part('Bark'), part('Leaves_Birch', 6)], Shrub_1: [part('Leaves')], Broken_1: [{ ...part('Leaves'), local: null }] };
     const low = { Fern_1: [part('Leaves')], Birch_1: [part('Bark')] };
     return {
       manifest: Promise.resolve({ models: ROWS }),
@@ -126,7 +132,12 @@ describe('a kit model, by name', () => {
       dispose: vi.fn(),
     };
   };
-  const galaxyKit = () => ({ wind: { value: 0 }, mats: { rock: new THREE.MeshLambertMaterial() }, geometry: () => new THREE.BoxGeometry() });
+  const galaxyKit = () => ({ wind: { value: 0 }, mats: { rock: new THREE.MeshLambertMaterial() }, geometry: () => new THREE.BoxGeometry(), build: () => new THREE.Group() });
+  const high = () => {
+    vi.stubGlobal('window', { location: { search: '?quality=high', hash: '' }, localStorage: { getItem: () => null } });
+    resetDevice();
+  };
+  const quiet = () => vi.spyOn(console, 'warn').mockImplementation(() => {});
   const setup = () => {
     const kit = fakeKit();
     const loader = vi.fn(() => kit);
@@ -143,6 +154,7 @@ describe('a kit model, by name', () => {
   afterEach(() => {
     setKitLoader(null);
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     resetDevice();
   });
 
@@ -187,8 +199,7 @@ describe('a kit model, by name', () => {
   });
 
   it('draws its LOD1 far off where the level has one, shadowless, split at the model’s distance', async () => {
-    vi.stubGlobal('window', { location: { search: '?quality=high', hash: '' }, localStorage: { getItem: () => null } });
-    resetDevice();
+    high();
     const { kit, placer } = setup();
     placer.scatter('birch', items(3), { model: 'kit:naturemega/Birch_1' });
     await placer.ready;
@@ -199,11 +210,30 @@ describe('a kit model, by name', () => {
     expect(low[0].castShadow).toBe(false);
     // (you at the first item: the others, 4 and 8 m off, are inside the
     // birch's 90 m, so the full model draws all three and its LOD1 none)
+    const full = instanced(placer).filter((m) => kit.full.Birch_1.some((p) => p.geometry === m.geometry));
+    expect(full).toHaveLength(2);
     placer.update(0, 0, { x: 0, z: 0 });
     expect(low[0].count).toBe(0);
+    for (const m of full) expect(m.count).toBe(3);
     expect(lodDistance(ROWS.Birch_1.radius)).toBe(90);
+    // (and you 300 m off: the LOD1 draws all three and the full model none)
     placer.update(0, 0, { x: 300, z: 0 });
     expect(low[0].count).toBe(3);
+    for (const m of full) expect(m.count).toBe(0);
+  });
+
+  it('says once that a kit model has no LOD1, and draws it full at every distance', async () => {
+    high();
+    const warn = quiet();
+    const { kit, placer } = setup();
+    placer.scatter('shrub', items(2), { model: 'kit:naturemega/Shrub_1' });
+    placer.scatter('shrub', items(3), { model: 'kit:naturemega/Shrub_1' });
+    await placer.ready;
+    await tick();
+    expect(kit.lod1).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toMatch(/Shrub_1's LOD1 won't load/);
+    expect(instanced(placer).map((m) => m.count)).toEqual([2, 3]);
   });
 
   it('puts one kit model as its parts under one group', async () => {
@@ -219,21 +249,50 @@ describe('a kit model, by name', () => {
     expect(world.solids.circle).toHaveBeenCalledWith(5, 2, 0.5);
   });
 
+  it('puts a kit model you walk through, tree or not, with no solid', async () => {
+    const { world, placer } = setup();
+    await placer.put({ kind: 'birch', model: 'kit:naturemega/Birch_1', at: [0, 0], solid: false });
+    await placer.put({ kind: 'fern', model: 'kit:naturemega/Fern_1', at: [9, 0], solid: false });
+    expect(world.solids.circle).not.toHaveBeenCalled();
+    expect(world.solids.box).not.toHaveBeenCalled();
+  });
+
+  it('puts its kind’s build where the kit model won’t load, and says what stands in', async () => {
+    const warn = quiet();
+    const { world, placer } = setup();
+    const o = await placer.put({ kind: 'lamp', model: 'kit:naturemega/Nothing_1', at: [3, 4] });
+    expect(o.parent).toBe(placer.group);
+    expect(o.position.toArray()).toEqual([3, 0, 4]);
+    expect(world.solids.circle.mock.calls[0][2]).toBeCloseTo(0.2);
+    expect(warn.mock.calls[0][0]).toMatch(/its build stands in/);
+    expect(await placer.put({ kind: 'nothingatall', model: 'kit:naturemega/Nothing_1', at: [0, 0] })).toBe(null);
+    expect(warn.mock.calls[1][0]).toMatch(/nothing stands in/);
+  });
+
+  it('never sinks ready with a put that fails', async () => {
+    const { placer } = setup();
+    await expect(placer.put({ kind: 'fern', model: 'kit:naturemega/Broken_1', at: [0, 0] })).resolves.toBe(null);
+    await expect(placer.ready).resolves.toEqual([null]);
+  });
+
   it('knows a kit model is a model, and a kind with none still isn’t', () => {
     expect(usesModel({ kind: 'fern', model: 'kit:naturemega/Fern_1' })).toBe(true);
     expect(hasModel('nothing')).toBe(false);
     expect(hasModel('kit:naturemega/Fern_1')).toBe(false);
   });
 
-  it('scatters its kind’s build where the kit model won’t load', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('scatters its kind’s build where the kit model won’t load, and says what stands in', async () => {
+    const warn = quiet();
     const { placer } = setup();
     await placer.scatter('rock', items(3), { model: 'kit:naturemega/Nothing_1' });
     const meshes = instanced(placer);
     expect(meshes).toHaveLength(1);
     expect(meshes[0].count).toBe(3);
     expect(warn).toHaveBeenCalledTimes(1);
-    warn.mockRestore();
+    expect(warn.mock.calls[0][0]).toMatch(/its build stands in/);
+    await placer.scatter('nothingatall', items(2), { model: 'kit:naturemega/Nothing_1' });
+    expect(instanced(placer)).toHaveLength(1);
+    expect(warn.mock.calls[1][0]).toMatch(/nothing stands in/);
   });
 
   it('scatters a kind with no kit model as it always has', async () => {

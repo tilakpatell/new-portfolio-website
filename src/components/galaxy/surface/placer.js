@@ -208,8 +208,10 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   // the kits named so far, by pack: each in the world's wind (the galaxy
   // kit's clock, and the way its foliage leans) and the house's look
   const kits = new Map();
+  const lodWarned = new Set(); // (the kit models whose LOD1 wouldn't load, said once)
   const kitFor = (pack) => {
     if (!kits.has(pack)) {
+      // (a copy of the way the foliage leans: wind() clones its dir, so the two agree only while nothing turns the wind at run time, and nothing does)
       const dir = kit?.mats?.foliage?.userData.wind?.uWindDir?.value;
       kits.set(pack, kitLoader(pack, { house, wind: { time: kit?.wind, ...(dir ? { dir } : {}) } }));
     }
@@ -347,36 +349,40 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       // as a kind's model is; its build if it won't load)
       if (ref) {
         const k = kitFor(ref.pack);
-        const p = k.model(ref.name).then(
-          (got) => {
-            if (dead) return null;
-            const o = new THREE.Group();
-            o.name = spec.model;
-            for (const part of got.parts) {
-              const m = new THREE.Mesh(part.geometry, part.material);
-              part.local.decompose(m.position, m.quaternion, m.scale);
-              m.castShadow = true;
-              m.receiveShadow = true;
-              o.add(m);
-            }
-            const scale = spec.scale ?? 1;
-            o.position.set(...at);
-            o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
-            o.scale.setScalar(scale);
-            const foot = kitFootprint(got.parts, k.info(ref.name));
-            o.position.y = seat(spec, at, foot.seat * scale, 1)[1];
-            (spec.zone ? rooms : group).add(o);
-            if (spec.fog === false) unfogged(o);
-            if (foot.trunk && (spec.solid == null || spec.solid === true)) world.solids.circle(at[0], at[2], foot.trunk * scale);
-            else footprint(o, spec, at);
-            return warm(o).then(() => o);
-          },
-          (e) => {
-            if (dead) return null;
-            console.warn(`placer: ${spec.model} won't load (${e?.message ?? e}); its build stands in`);
-            return build(spec, at);
-          },
-        );
+        const p = k
+          .model(ref.name)
+          .then(
+            (got) => {
+              if (dead) return null;
+              const o = new THREE.Group();
+              o.name = spec.model;
+              for (const part of got.parts) {
+                const m = new THREE.Mesh(part.geometry, part.material);
+                part.local.decompose(m.position, m.quaternion, m.scale);
+                m.castShadow = true;
+                m.receiveShadow = true;
+                o.add(m);
+              }
+              const scale = spec.scale ?? 1;
+              o.position.set(...at);
+              o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
+              o.scale.setScalar(scale);
+              const foot = kitFootprint(got.parts, k.info(ref.name));
+              o.position.y = seat(spec, at, foot.seat * scale, 1)[1];
+              (spec.zone ? rooms : group).add(o);
+              if (spec.fog === false) unfogged(o);
+              if (foot.trunk && (spec.solid == null || spec.solid === true)) world.solids.circle(at[0], at[2], foot.trunk * scale);
+              else footprint(o, spec, at);
+              return warm(o).then(() => o);
+            },
+            (e) => {
+              if (dead) return null;
+              const o = build(spec, at);
+              console.warn(`placer: ${spec.model} won't load (${e?.message ?? e}); ${o ? 'its build stands in' : 'nothing stands in'}`);
+              return o;
+            },
+          )
+          .catch(() => null);
         pending.push(p);
         return p;
       }
@@ -464,10 +470,12 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
         if (solid && radius) for (const x of mats) world.solids.circle(x.at[0], x.at[2], radius * x.s);
         return made;
       };
-      // (built, as a kind with no model is: SCATTER's, or a prop's parts)
+      // (built, as a kind with no model is: SCATTER's, or a prop's parts;
+      // whether there was anything to build)
       const built = () => {
         const made = SCATTER[kind]?.(kit, opts) ?? (PROPS[kind] ? { parts: partsOf(PROPS[kind](kit, opts)), radius: opts.radius ?? 0.5 } : null);
         if (made) instance(made.parts, typeof solid === 'number' ? solid : made.radius, made.radius);
+        return Boolean(made);
       };
       // a kit model: its parts as a kind's model's are, its LOD1 split off
       // far away as a kind's light copy is (at the levels that have one);
@@ -489,14 +497,18 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
                   splits.push({ full, low, xs, zs, r: lodDistance(got.radius) });
                   nearAt = null;
                 },
-                () => {}, // (no LOD1: the full model at every distance, as at ultra)
+                (e) => {
+                  // (no LOD1: the full model at every distance, as at ultra)
+                  if (dead || lodWarned.has(model)) return;
+                  lodWarned.add(model);
+                  console.warn(`placer: ${model}'s LOD1 won't load (${e?.message ?? e}); the full model draws at every distance`);
+                },
               );
             return null;
           },
           (e) => {
             if (dead) return null;
-            console.warn(`placer: ${model} won't load (${e?.message ?? e}); its build stands in`);
-            built();
+            console.warn(`placer: ${model} won't load (${e?.message ?? e}); ${built() ? 'its build stands in' : 'nothing stands in'}`);
             return null;
           },
         );

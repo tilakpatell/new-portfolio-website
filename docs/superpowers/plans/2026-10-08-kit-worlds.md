@@ -130,7 +130,7 @@ One session may do them in order, merging each before the next; or one session p
 
 ### Task 1.7: the galaxy placer takes `kit:` models
 
-**Files:** Modify `src/components/galaxy/surface/placer.js:46-63, 94-132, 409-421` (resolve `model: 'kit:<pack>/<Name>'` through a module-level `kits` map of `loadKit(pack)`; `usesModel(spec)` true for it; scatter parts come from `kit.model(name).parts` and lod1 from `kit.lod1(name)`), `src/components/galaxy/surface/placer.test.js`, `src/components/galaxy/pack.js` (globs `/kit/naturemega/*.glb`, `/kit/naturemega/index.json`).
+**Files:** Modify `src/components/galaxy/surface/placer.js:46-63, 94-132, 409-421` (resolve `model: 'kit:<pack>/<Name>'` through a module-level `kits` map of `loadKit(pack)`; `usesModel(spec)` true for it; scatter parts come from `kit.model(name).parts` and lod1 from `kit.lod1(name)`), `src/components/galaxy/surface/placer.test.js`, `scripts/pack-check.mjs` (`/kit/` an asset prefix), `public/sw.js` (`kit` served from an installed pack). `src/components/galaxy/pack.js` gains the kit files a site row uses, in Phase 6: a world's pack lists only the kit files it fetches, and no galaxy row names a kit model before then.
 
 - [ ] Step 1: Test (placer.test.js, with a fake `loadKit` injected through an exported `setKitLoader` or the existing injection pattern the file uses): a scatter of 3 items with `model: 'kit:naturemega/Fern_1'` makes 1 `InstancedMesh` per part with `count 3`; `hasModel` stays false for an unknown kind; a `kit:` single `put` places `parts` under one Group.
 - [ ] Step 2: Run (fail), implement, run (pass); `node scripts/pack-check.mjs` green.

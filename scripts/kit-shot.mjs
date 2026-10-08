@@ -9,8 +9,10 @@
 //
 //   node scripts/kit-shot.mjs [out dir (lab/kit)] [pack] [scatter <Name>:<n>,…] [pools <Name>,…]
 //   shoot({ pack, scatter, pools }) → { scatter: PNG Buffer, pools: PNG Buffer,
-//                                       result (the page's), errors }
-// The scatter's picture is <out>/fern.png, the pools' <out>/pools.png.
+//                                       result (the page's), errors, console, args }
+// The scatter's picture is <out>/scatter.png, the pools' <out>/pools.png. A
+// shot with rows asked for that drew no kit program in the wind fails too:
+// nothing was checked.
 
 import { chromium } from 'playwright-core';
 import sharp from 'sharp';
@@ -40,7 +42,7 @@ export async function shoot({ pack = 'naturemega', scatter = 'Fern_1:40,Birch_1:
     const result = await page.evaluate(() => window.__done);
     const png = await page.screenshot();
     const crop = (left) => sharp(png).extract({ left, top: 0, width: w, height: h }).png().toBuffer();
-    return { scatter: await crop(0), pools: await crop(w), result, errors, console: console_ };
+    return { scatter: await crop(0), pools: await crop(w), result, errors, console: console_, args: { pack, scatter, pools } };
   } finally {
     await browser.close();
   }
@@ -50,10 +52,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [out = 'lab/kit', pack, scatter, pools] = process.argv.slice(2);
   const shot = await shoot({ pack, scatter, pools });
   mkdirSync(out, { recursive: true });
-  writeFileSync(join(out, 'fern.png'), shot.scatter);
+  writeFileSync(join(out, 'scatter.png'), shot.scatter);
   writeFileSync(join(out, 'pools.png'), shot.pools);
   console.log(JSON.stringify({ ...shot.result, errors: shot.errors, console: shot.console }, null, 1));
-  const bad = shot.errors.length || shot.result.error || shot.result.failed?.length || shot.result.weighted?.some((p) => !p.ok || !p.weight);
-  console.log(bad ? 'kit shot: FAILED' : `kit shot: ${join(out, 'fern.png')}, ${join(out, 'pools.png')}; ${shot.result.programs} programs, none failed`);
+  const asked = [shot.args.scatter, shot.args.pools].some((list) => list.split(',').filter(Boolean).length);
+  const weighted = shot.result.weighted ?? [];
+  const bad = shot.errors.length || shot.result.error || shot.result.failed?.length || weighted.some((p) => !p.ok || !p.weight) || (asked && !weighted.length);
+  console.log(bad ? 'kit shot: FAILED' : `kit shot: ${join(out, 'scatter.png')}, ${join(out, 'pools.png')}; ${shot.result.programs} programs, none failed, ${weighted.length} in the wind by their weight`);
   process.exit(bad ? 1 : 0);
 }
