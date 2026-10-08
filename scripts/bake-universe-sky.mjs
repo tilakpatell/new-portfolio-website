@@ -43,6 +43,10 @@ const GAIN = 0.78; // the band's light, as bright as the scene is lit for
 const PIVOT = 0.03; // and its contrast, about the band's own light: the faint
 const CONTRAST = 0.25; // halo and the lanes darker, the star clouds brighter
 const SATURATION = 1.3;
+// and white-balanced: the photo holds its green back (the band's light came
+// out magenta, red and blue each a fifth over green), where the Milky Way's
+// light, all its stars together, is a warm white
+const BALANCE = [0.89, 1, 0.875];
 
 if (!existsSync(SOURCE)) {
   const res = await fetch(SOURCE_URL);
@@ -133,7 +137,7 @@ for (let i = 0; i < N; i++) {
   const k = l > 0 ? (lit / l) * (lit / PIVOT) ** CONTRAST : 0;
   const c = [rgb[0][i] * k, rgb[1][i] * k, rgb[2][i] * k];
   const g = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-  for (let j = 0; j < 3; j++) out[i * 3 + j] = Math.round(Math.min(1, Math.max(0, toSrgb(g + (c[j] - g) * SATURATION))) * 65535);
+  for (let j = 0; j < 3; j++) out[i * 3 + j] = Math.round(Math.min(1, Math.max(0, toSrgb((g + (c[j] - g) * SATURATION) * BALANCE[j]))) * 65535);
   const y = Math.floor(i / W);
   if (y > H * 0.45 && y < H * 0.55) {
     bandSum += g;
