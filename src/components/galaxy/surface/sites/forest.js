@@ -171,7 +171,7 @@ export const SITES = {
           rv: [['jesse', 'Yo, that’s the biggest satellite dish I ever saw.'], ['walt', 'And they guarded it with a dozen men and some walkers. Sloppy.']],
         },
         things: [
-          { kind: 'shieldgen', at: [0, -10], yaw: 0.2 },
+          { kind: 'shieldgen', at: [0, -10], yaw: 0.2, solid: { r: 22 } },
           { kind: 'pad', at: [-10, 42], opts: { r: 14, color: '#6a6c68', light: '#ffd070' } },
           { kind: 'lambda', at: [-10, 41], yaw: -0.4 },
           { kind: 'crates', at: [-30, 26] },
@@ -487,11 +487,11 @@ export const SITES = {
           cruiser: [['rick', 'Big hairy guys, small cosy houses. That’s the whole species, Morty.'], ['morty', 'I feel like we should take our shoes off.']],
         },
         things: [
-          { kind: 'wookieehouse', at: [0, 16], yaw: 3.1 },
-          { kind: 'wookieehouse', at: [17, 2], yaw: 4.6 },
-          { kind: 'wookieehouse', at: [-16, 4], yaw: 1.7 },
-          { kind: 'wookieehouse', at: [8, -16], yaw: 5.8 },
-          { kind: 'wookieehouse', at: [-10, -15], yaw: 0.6 },
+          { kind: 'wookieehouse', at: [0, 16], yaw: 3.1, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [17, 2], yaw: 4.6, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [-16, 4], yaw: 1.7, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [8, -16], yaw: 5.8, solid: { r: 4 } },
+          { kind: 'wookieehouse', at: [-10, -15], yaw: 0.6, solid: { r: 4 } },
           { kind: 'fire', at: [0, 0], scale: 1.3 },
         ],
       },
@@ -512,9 +512,9 @@ export const SITES = {
       { kind: 'karst', at: [320, 250], opts: { w: 28, h: 20, seed: 7 } },
       { kind: 'karst', at: [-260, 330], opts: { w: 22, h: 15, seed: 8 } },
       // the great wroshyrs, as tall as the city's tree
-      { kind: 'wroshyrgreat', at: [60, -150], yaw: 0.4, sink: 2, solid: { r: 14 } },
-      { kind: 'wroshyrgreat', at: [-300, -300], yaw: 2.1, scale: 1.1, sink: 2, solid: { r: 15 } },
-      { kind: 'wroshyrgreat', at: [330, -260], yaw: 3.6, scale: 0.9, sink: 2, solid: { r: 13 } },
+      { kind: 'wroshyrgreat', at: [60, -150], yaw: 0.4, sink: 2, solid: { r: 28 } },
+      { kind: 'wroshyrgreat', at: [-300, -300], yaw: 2.1, scale: 1.1, sink: 2, solid: { r: 31 } },
+      { kind: 'wroshyrgreat', at: [330, -260], yaw: 3.6, scale: 0.9, sink: 2, solid: { r: 25 } },
     ],
     scatter: [
       { kind: 'wroshyr', n: 110, within: [50, 640], scale: [0.7, 1.4], opts: { seed: 1, leaf: '#354832', bark: '#50554e' } },

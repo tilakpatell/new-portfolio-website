@@ -7,7 +7,8 @@
 // A world: { ready?, resize(w, h), step?(dt, input, now), draw(frame),
 //   wants?(), update?(props), setVisible?(on), setColors?(colors),
 //   lowerQuality?(level), warmUp?(timeLeft), handoff?(), attached?(),
-//   dispose() } (`attached`: the page showing it is listening to its events).
+//   anchor?(), dispose() } (`attached`: the page showing it is listening to its
+//   events; `anchor`: the player's world position, for the floating origin).
 
 import { STEPS } from '../lib/three/pace';
 
