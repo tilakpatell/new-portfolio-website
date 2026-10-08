@@ -2151,10 +2151,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         showRocks();
       });
     // (the planet's own model goes once the camera's low enough that the
-    // patch reaches past the horizon: under it, it was drawn over the
-    // ground's half of the frame for nothing)
+    // patch reaches past the horizon: under it, it's only drawn for nothing.
+    // On a planet, past it all round wherever you are on the patch, which is
+    // laid again once you're 0.3 of its radius from its middle, the camera
+    // a few metres behind you: 0.65 of its radius. A station's as it was.)
     S.bodyShown = planet.body?.visible ?? true;
-    S.hideBody = (0.8 * (u.plated ? HULL_PATCH : PATCH).radius) ** 2 / (2 * S.R);
+    S.hideBody = u.plated ? (0.8 * HULL_PATCH.radius) ** 2 / (2 * S.R) : (0.65 * PATCH.radius) ** 2 / (2 * S.R);
     root.position.copy(S.c);
     root.visible = true;
     party = null;
