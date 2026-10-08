@@ -11,6 +11,23 @@
 //   (run.js), down to the main reactor, shoot it, and out before the station
 //   goes up. When it goes, the Rebellion's won.
 //
+// The generator and the reactor are the Rebellion's to take (team 0's),
+// whether it's attacking Endor or holding it: only its pilots' shots count
+// on them (ctx.mineAs), and the station's fall ends the battle only when
+// it's the Empire the Rebellion's fighting there.
+//
+// In the battle every pilot shares (the Rebellion attacking: the films'
+// plan, pinned, galaxy/battlePlans.js), the generator and the reactor are
+// the plan's objectives: their hp, their fall and when the run opens (the
+// Executor's bridge down, its gate passed) are the director's
+// (ctx.objective), and so is the battle's end: the station going up is the
+// end the director's already called, not one of its own. The superlaser's
+// shots are the plan's too, whoever's attacking (its losses `by` the
+// superlaser, ctx.losses, on the shared clock, ctx.clock): the beam is fired
+// to meet the cruiser the plan loses as it loses it, so every pilot sees the
+// same ships go when they do, and one who comes late sees no shot at a ship
+// long gone.
+//
 // createEndor(ctx) → { update(dt, t, live, events), hit, targets,
 //   markers(live), dispose() }
 
@@ -23,6 +40,7 @@ import { createRun } from './run';
 const REBELS = 0;
 const EMPIRE = 1;
 const GEN_HP = 26;
+const BEAM_HIT = 1.9; // seconds from the superlaser's charge to the ship it's on gone
 const ZERO = { x: 0, y: 0, z: 0 };
 const v = (x, y, z) => ({ x, y, z });
 const len = (a) => Math.hypot(a.x, a.y, a.z);
@@ -79,6 +97,12 @@ export function createEndor(ctx) {
   const rand = seeded(`${ctx.on.id}-endor`);
   // the shield held up till its generator's gone
   world?.war?.holdShield(true);
+  // (the plan's objectives, if it's the battle every pilot shares)
+  const planned = (id) => ctx.objective?.(id) ?? null;
+  const shared = Boolean(planned('moon-gen'));
+  const genLeft = () => (shared ? planned('moon-gen').hp : Math.max(0, GEN_HP - ctx.shared('moon-gen')));
+  const genMax = shared ? planned('moon-gen').hpMax : GEN_HP;
+  const genGone = () => (shared ? planned('moon-gen').down : ctx.shared('moon-gen') >= GEN_HP);
 
   // ── the shield generator, on the moon under the station ──
   const up = unit(v(D.x + moonR * 0.25, D.y, D.z - moonR * 0.15));
@@ -90,7 +114,7 @@ export function createEndor(ctx) {
   ctx.scene?.add(gen.group);
   let genDown = false;
   let flak = 0;
-  const genTgt = { id: 5.1e6, at: genTop, vel: ZERO, size: 1.8, kind: 'shieldgen', name: 'Shield generator', hp: GEN_HP, hpMax: GEN_HP, threat: 0 };
+  const genTgt = { id: 5.1e6, at: genTop, vel: ZERO, size: 1.8, kind: 'shieldgen', name: 'Shield generator', hp: genMax, hpMax: genMax, threat: 0 };
   const knockOut = (mine) => {
     if (genDown) return;
     genDown = true;
@@ -106,12 +130,31 @@ export function createEndor(ctx) {
   const beam = buildBeam();
   ctx.scene?.add(beam.mesh);
   let nextShot = 50 + rand() * 30;
-  let shot = null; // { target, age }
+  let shot = null; // { target, age, from? }
+  // (in the battle every pilot shares, its shots are the plan's losses: each
+  // cruiser it takes, and when, the same for everyone, the beam fired to
+  // meet it, not on a timer of its own from when you came)
+  const scheduled = Boolean(ctx.losses?.());
+  const fired = new Set();
+  const capOf = (l) => battle.capitals.filter((c) => c.team === l.team)[l.index] ?? null;
+  const nextScheduled = () => {
+    const now = ctx.clock();
+    for (const l of ctx.losses() ?? []) {
+      const key = `${l.team}:${l.index}`;
+      if (l.by !== 'superlaser' || fired.has(key) || now < l.at - BEAM_HIT || now > l.at + 1) continue;
+      fired.add(key);
+      const target = capOf(l);
+      if (target?.alive && target.dying <= 0) return { target, age: now - (l.at - BEAM_HIT), from: l.at - BEAM_HIT };
+    }
+    return null;
+  };
   const dish = new THREE.Vector3();
   const aim = new THREE.Vector3();
 
   // ── the Executor, its bridge gone ──
   const exec = battle.capitals.find((c) => c.team === EMPIRE && c.role === 'flagship');
+  // (the Death Star's the Empire's: its fall is the Rebellion's win only against the Empire)
+  const againstEmpire = (ctx.on?.sides?.[EMPIRE] ?? 'empire') === 'empire';
   let dive = null; // { age }
 
   // ── the reactor run ──
@@ -122,6 +165,7 @@ export function createEndor(ctx) {
   const run = createRun(ctx, {
     id: 5.15e6,
     key: 'ds2-core',
+    team: REBELS,
     name: 'the main reactor',
     wayIn: 'Fly in: the main reactor',
     mouth,
@@ -136,7 +180,8 @@ export function createEndor(ctx) {
     speed: 10,
     drawWithin: 500,
     markWithin: 600,
-    open: () => genDown,
+    open: () => (shared ? Boolean(planned('ds2-core')?.open) : genDown),
+    ...(shared ? { down: () => Boolean(planned('ds2-core')?.down), left: () => planned('ds2-core').hp / planned('ds2-core').hpMax } : {}),
     solidsOff: (off) => ctx.solid('deathstar2', !off),
     enter: () => ctx.event('gcw-run'),
     onBlown: (mine) => {
@@ -146,7 +191,7 @@ export function createEndor(ctx) {
       world?.war?.station('deathstar2', false);
       ctx.event('gcw-ds2');
       if (mine || ctx.tookPart()) ctx.points(GCW.points.objective * 3);
-      if (!battle.over) battle.end(REBELS, 'deathstar');
+      if (!battle.over && againstEmpire && !shared) battle.end(REBELS, 'deathstar');
     },
   });
 
@@ -155,7 +200,7 @@ export function createEndor(ctx) {
     update(dt, t, live, events) {
       const res = {};
       // what's been done to the generator, here and by the pilots in the system
-      if (!genDown && ctx.shared('moon-gen') >= GEN_HP) knockOut(false);
+      if (!genDown && genGone()) knockOut(false);
       // its guns, at anyone who comes down to it
       if (!genDown && live) {
         const d = Math.hypot(live.x - genTop.x, live.y - genTop.y, live.z - genTop.z);
@@ -167,7 +212,12 @@ export function createEndor(ctx) {
         }
       }
       // the superlaser, on a Rebel cruiser
-      if (!blown) {
+      if (!blown && scheduled) {
+        if (!shot && !battle.over) {
+          shot = nextScheduled();
+          if (shot) ctx.event('gcw-superlaser');
+        }
+      } else if (!blown) {
         nextShot -= dt;
         if (!shot && nextShot <= 0 && !battle.over) {
           const cruisers = battle.capitals.filter((c) => c.team === REBELS && c.role !== 'flagship' && c.alive && c.dying <= 0 && c.size > 4);
@@ -177,34 +227,35 @@ export function createEndor(ctx) {
           }
           nextShot = 70 + rand() * 25;
         }
-        if (shot) {
-          shot.age += dt;
-          const tp = shot.target.pos;
-          aim.set(tp.x - D.x, tp.y - D.y + R * 0.35, tp.z - D.z).normalize();
-          dish.set(D.x, D.y, D.z).addScaledVector(aim, R * 1.02);
-          aim.set(tp.x - dish.x, tp.y - dish.y, tp.z - dish.z);
-          // the charge (a glow at the dish), the beam, the ship gone
-          if (shot.age < 1.6) {
-            if (rand() < dt * 12) ctx.draw?.flash(dish, { size: 6 + shot.age * 6, life: 0.5, color: [0.8, 3.5, 0.9] });
-            beam.mesh.visible = false;
-          } else if (shot.age < 3) {
-            beam.mesh.visible = true;
-            beam.mesh.position.copy(dish);
-            beam.mesh.scale.set(1.4 + Math.sin(t * 40) * 0.3, 1.4, aim.length());
-            beam.mesh.lookAt(tp.x, tp.y, tp.z);
-            if (!shot.hit && shot.age > 1.9) {
-              shot.hit = true;
-              battle.wreck(shot.target.id);
-              ctx.draw?.flash(tp, { size: shot.target.size * 1.4, life: 2.4, color: [2.4, 3.2, 1.2], bright: 1.6 });
-            }
-          } else {
-            beam.mesh.visible = false;
-            shot = null;
+      }
+      if (!blown && shot) {
+        shot.age = shot.from !== undefined ? ctx.clock() - shot.from : shot.age + dt;
+        const tp = shot.target.pos;
+        aim.set(tp.x - D.x, tp.y - D.y + R * 0.35, tp.z - D.z).normalize();
+        dish.set(D.x, D.y, D.z).addScaledVector(aim, R * 1.02);
+        aim.set(tp.x - dish.x, tp.y - dish.y, tp.z - dish.z);
+        // the charge (a glow at the dish), the beam, the ship gone
+        if (shot.age < 1.6) {
+          if (rand() < dt * 12) ctx.draw?.flash(dish, { size: 6 + shot.age * 6, life: 0.5, color: [0.8, 3.5, 0.9] });
+          beam.mesh.visible = false;
+        } else if (shot.age < 3) {
+          beam.mesh.visible = true;
+          beam.mesh.position.copy(dish);
+          beam.mesh.scale.set(1.4 + Math.sin(t * 40) * 0.3, 1.4, aim.length());
+          beam.mesh.lookAt(tp.x, tp.y, tp.z);
+          if (!shot.hit && shot.age > BEAM_HIT) {
+            shot.hit = true;
+            battle.wreck(shot.target.id);
+            ctx.draw?.flash(tp, { size: shot.target.size * 1.4, life: 2.4, color: [2.4, 3.2, 1.2], bright: 1.6 });
           }
+        } else {
+          beam.mesh.visible = false;
+          shot = null;
         }
       }
       // the Executor's bridge gone: it turns, and dives into the station
-      if (!dive && exec && events.some((e) => e.type === 'sub' && e.kind === 'bridge')) {
+      // (its own bridge: with the Empire attacking, the objectives are the Rebels')
+      if (!dive && exec?.objective && events.some((e) => e.type === 'sub' && e.kind === 'bridge')) {
         dive = { age: 0, speed: 1 };
         for (const s of exec.subs) if (s.phase === 3) s.hidden = true; // (its reactor's not the way now: the Death Star's is)
         exec.disabled = 1e9;
@@ -233,8 +284,8 @@ export function createEndor(ctx) {
     },
     hit(from, to, damage) {
       if (!genDown && sweptHit(from, to, genTop, genTop, 2) !== null) {
-        ctx.mine('moon-gen', damage);
-        if (ctx.shared('moon-gen') >= GEN_HP) knockOut(true);
+        if (!shared || planned('moon-gen').open) ctx.mineAs(REBELS, 'moon-gen', damage);
+        if (genGone()) knockOut(true);
         return { id: genTgt.id, kind: 'shieldgen', at: { ...genTop }, size: 1, down: genDown, sub: 'moon-gen' };
       }
       return run.hit(from, to, damage);
@@ -242,14 +293,14 @@ export function createEndor(ctx) {
     get targets() {
       const list = run.targets;
       if (!genDown) {
-        genTgt.hp = Math.max(0, GEN_HP - ctx.shared('moon-gen'));
+        genTgt.hp = genLeft();
         list.push(genTgt);
       }
       return list;
     },
     markers(live) {
       const list = run.markers(live);
-      if (!genDown) list.push({ key: 'moon-gen', pos: genTop, title: 'Destroy: the shield generator', hp: Math.max(0, GEN_HP - ctx.shared('moon-gen')) / GEN_HP, colour: '#ffb347' });
+      if (!genDown) list.push({ key: 'moon-gen', pos: genTop, title: 'Destroy: the shield generator', hp: genLeft() / genMax, colour: '#ffb347' });
       return list;
     },
     dispose() {

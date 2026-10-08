@@ -540,4 +540,50 @@
 .galaxy-areas li { display: flex; justify-content: space-between; gap: 0.5rem; }
 .galaxy-areas li[data-yours] { color: #fff; }
 .galaxy-war { display: grid; gap: 0.5rem; margin-top: 0.9rem; }
-.galaxy-warhud { position: absolute; top: 4.6rem; left: 50%; z-index: 3; max-width: calc(100% - 2rem); margin: 0; padding: 0.3rem 0.8rem; transform: translateX(-50%); border-radius: 999px; border: 1px solid color-mix(in srgb, var(--side) 55%, transparent); background: rgb(2 6 16 / 0.72); color: #fff; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+/* the war's line over the galaxy (WarHud.jsx): the battle here in a pill, and
+   under it while you're in it the stage it's at, with a short bar for each of
+   its objectives; two rows, clear of the crew's line below (.galaxy-page
+   .universe-comms, nav-h + 56px, which slides in from 6px higher); centred in
+   the band between the galaxy map button (136px in) and the side panel (24px
+   off it), so its stage and bars never run under either: on a narrow screen
+   the stage's words are cut short instead */
+.galaxy-warhud { position: absolute; top: 4.6rem; left: calc((136px + 100% - var(--panel-w, 0px) - 24px) / 2); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 0.2rem; width: max-content; max-width: calc(100% - var(--panel-w, 0px) - 160px - 1rem); margin: 0; transform: translateX(-50%); color: #fff; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; pointer-events: none; }
+.galaxy-warhud p { max-width: 100%; margin: 0; white-space: nowrap; }
+.galaxy-warhud-line { overflow: hidden; padding: 0.26rem 0.8rem; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--side) 55%, transparent); background: rgb(2 6 16 / 0.72); text-overflow: ellipsis; }
+.galaxy-warhud-stage { display: flex; align-items: center; gap: 0.6rem; padding: 0.1rem 0.65rem; border-radius: 999px; background: rgb(2 6 16 / 0.62); color: rgb(217 243 255 / 0.88); font-size: 0.66rem; }
+.galaxy-warhud-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.galaxy-warhud-next { color: rgb(255 214 150 / 0.92); }
+.galaxy-warhud-bars { display: flex; flex: none; gap: 0.25rem; }
+.galaxy-warhud-bar { position: relative; width: 2.2rem; height: 0.32rem; overflow: hidden; border-radius: 999px; background: rgb(255 255 255 / 0.18); }
+.galaxy-warhud-bar::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--side); transform: scaleX(var(--k, 1)); transform-origin: left; }
+.galaxy-warhud-bar[data-down] { background: rgb(255 255 255 / 0.08); }
+@media (prefers-reduced-motion: no-preference) { .galaxy-warhud-bar::after { transition: transform 0.6s ease-out; } }
+/* (over a bright planet in a light page the glass needs more body to read) */
+@media (prefers-color-scheme: light) { .galaxy-warhud-line, .galaxy-warhud-stage { background: rgb(2 6 16 / 0.84); } }
+/* (on a phone the band between the nav and the crew's line, .galaxy-page
+   .universe-comms at nav-h + 56px, is the map button's, and beside it the
+   stage's words were cut to nothing: the HUD goes under the crew's line,
+   the whole width, as the Citadel siege's does) */
+@media (max-width: 767px) {
+  .galaxy-warhud { top: calc(var(--nav-h, 68px) + 150px); left: 50%; max-width: calc(100% - 2rem); font-size: 0.68rem; }
+  .galaxy-warhud-stage { font-size: 0.62rem; }
+  .galaxy-warhud-bar { width: 1.3rem; }
+}
+
+/* the battle's end (BattleEnd.jsx): Victory or Defeat a few seconds, why, and your part
+   (under the crew's line, which says its own word on it) */
+.galaxy-battleend { --tone: #9fb0d0; position: absolute; top: max(30%, calc(var(--nav-h, 68px) + 150px)); left: 50%; z-index: 4; width: min(22rem, calc(100% - 2rem)); padding: 0.9rem 1.1rem 1rem; transform: translateX(-50%); border-radius: 0.8rem; border: 1px solid color-mix(in srgb, var(--tone) 60%, transparent); background: rgb(2 6 16 / 0.84); box-shadow: 0 0 2.4rem color-mix(in srgb, var(--tone) 22%, transparent); color: #fff; text-align: center; pointer-events: none; }
+.galaxy-battleend[data-tone='won'] { --tone: #ffd36b; }
+.galaxy-battleend[data-tone='lost'] { --tone: #ff7a6b; }
+.galaxy-battleend-title { margin: 0; color: var(--tone); font-family: var(--font-mono); font-size: clamp(1.5rem, 7vw, 2.2rem); font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
+.galaxy-battleend-why { margin: 0.3rem 0 0; font-size: 0.95rem; }
+.galaxy-battleend-yours { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.2rem 0.8rem; margin: 0.6rem 0 0; color: rgb(217 243 255 / 0.82); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; }
+.galaxy-battleend-points { color: var(--tone); }
+/* (after the card's own rule, so they win: on a desktop it's centred in the map
+   left of the side panel, as the HUD is, with a margin so its entrance, which
+   moves it by transform, isn't knocked sideways; on a phone it sits under the
+   crew's line and the HUD) */
+@media (min-width: 768px) { .galaxy-battleend { width: min(22rem, calc(100% - var(--panel-w, 0px) - 2rem)); margin-left: calc(var(--panel-w, 0px) / -2); } }
+@media (max-width: 767px) { .galaxy-battleend { top: max(34%, calc(var(--nav-h, 68px) + 200px)); } }
+@media (prefers-reduced-motion: no-preference) { .galaxy-battleend { animation: galaxy-end-in 0.45s ease-out both; } }
+@keyframes galaxy-end-in { from { opacity: 0; transform: translate(-50%, -0.6rem) scale(0.96); } }
