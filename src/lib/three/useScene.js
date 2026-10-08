@@ -161,6 +161,11 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
 
   // make the scene, and drop it when it's far away, turned off or broken
   useEffect(() => {
+    // a scene made again starts its veil from the beginning, not at the last one's 1
+    if (progressRef.current.value !== 0 || progressRef.current.step !== null) {
+      progressRef.current = { value: 0, step: null };
+      setProgressState(progressRef.current);
+    }
     if (!on || !near || failed.current) {
       setStatus((s) => (s === 'failed' || s === 'slow' || s === 'lost' ? s : 'idle'));
       return undefined;
@@ -260,6 +265,10 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
           // covered page the warmUp waits for idle moments instead, below)
           let warmed = false;
           if (v.prepare || (v.warmUp && !covered())) {
+            // sized as its box is now (it may have changed while it loaded), so
+            // what it prepares is what it will draw
+            const box = wrap.current?.getBoundingClientRect();
+            if (box) v.resize(box.width, box.height);
             let gaveUp = false;
             const alive = () => !dead && !gaveUp && !failed.current;
             setProgress(0, v.prepare ? null : 'first draw');
