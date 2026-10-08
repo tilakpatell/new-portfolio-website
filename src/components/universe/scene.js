@@ -98,7 +98,8 @@ import { takeArrival } from '../../lib/arrival';
 import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, singlePass, uploadTextures } from '../../lib/three/renderer';
 import { compileSlices, nextFrame, prepareScene } from '../../lib/three/gpuWork';
 import { device } from '../../lib/device';
-import { createPace } from '../../lib/three/pace';
+import { STEPS, createPace } from '../../lib/three/pace';
+import { calibrate, gpuKey, recall, remember } from '../../lib/three/calibrate';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
 import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SECTOR_OF, SUN, sectorOf } from './layout';
 import { HOME_SPREAD } from './scale';
@@ -4620,19 +4621,21 @@ export async function create(canvas, ctx) {
     state.model?.rim({ colour: fill.color, dir: lightNow.fill });
   };
 
+  // everything that follows the pace's step
+  function applyLevel() {
+    post.sharpness = pace.scale;
+    post.setLevel(pace.level);
+    blasts.setMode(pace.level >= 2 || tier === 'low' || state.low ? 'pop' : 'full');
+    // (the rocks' relief flat from the pace's step 3, and back: lib/three/rock)
+    ROCK_RELIEF.value = pace.level >= 3 ? 0 : 1;
+    // (the planets' ground detail goes at the pace's step 2, their real air for
+    // the old halo and their clouds' shadows at 3, and they come back)
+    for (const p of planets) p.setLevel(pace.level);
+  }
+
   function render(ms, now) {
     gl.watch(now);
-    const sharp = pace.frame(now);
-    if (sharp !== null) {
-      post.sharpness = sharp;
-      post.setLevel(pace.level);
-      blasts.setMode(pace.level >= 2 || tier === 'low' || state.low ? 'pop' : 'full');
-      // (the rocks' relief flat from the pace's step 3, and back: lib/three/rock)
-      ROCK_RELIEF.value = pace.level >= 3 ? 0 : 1;
-      // (the planets' ground detail goes at the pace's step 2, their real air for
-      // the old halo and their clouds' shadows at 3, and they come back)
-      for (const p of planets) p.setLevel(pace.level);
-    }
+    if (pace.frame(now) !== null) applyLevel();
     const dt = ms / 1000;
     const t = reduced ? 0 : state.low ? state.tLow : (now - t0) / 1000;
     // (the Twins' suns going round each other: their solids where they're drawn, deep.js)
@@ -5469,6 +5472,42 @@ export async function create(canvas, ctx) {
           ...Object.keys(AHEAD_OF(side)),
         ].filter(Boolean)
       : [];
+  // The sharpest the passes can be drawn at and still fit a 60 Hz frame on this
+  // chip (lib/three/calibrate): remembered per chip, checked with a few frames
+  // on a later visit, and handed to the pace as its ceiling, so it starts there
+  // and only steps down. The universe's sharpness is the post's share of the
+  // renderer's ratio (the pace's steps), so ratios here are that ratio times a step.
+  const tune = async (going, say) => {
+    const full = renderer.getPixelRatio();
+    const levels = STEPS.map((k) => full * k);
+    const nearest = (r) => levels.reduce((best, v, i) => (Math.abs(v - r) < Math.abs(levels[best] - r) ? i : best), 0);
+    const key = gpuKey(renderer.getContext(), 'universe');
+    const run = (ratios, frames) =>
+      calibrate({ renderer, draw: () => post.render(size.w, size.h), ratios, frames, alive: going, setRatio: (r) => (post.sharpness = Math.min(1, r / full)) });
+    say(0.97, 'tune');
+    let level = null;
+    const was = recall(key);
+    if (was !== null) {
+      // still fits? (against the next step softer: it is kept only if it wins)
+      const at = nearest(was);
+      const ratios = [levels[at], ...levels.slice(at + 1, at + 2)];
+      if (!ratios[1] || (await run(ratios, 6)) === ratios[0]) level = at;
+    }
+    if (level === null && going()) {
+      const picked = await run(levels, 24);
+      if (going()) {
+        remember(key, picked);
+        level = nearest(picked);
+      }
+    }
+    if (level !== null && going()) {
+      pace.ceiling = level;
+      applyLevel();
+    } else if (going()) {
+      post.sharpness = pace.scale;
+    }
+  };
+
   const prepare = async (onProgress, alive = () => true) => {
     const going = () => alive() && !disposed;
     const say = (f, step) => onProgress?.(f, step);
@@ -5511,18 +5550,23 @@ export async function create(canvas, ctx) {
           renderer.setRenderTarget(target);
         },
       });
-      if (!cabbing || !going()) return;
-      // the cockpit: built by now, or soon (a few seconds at most)
-      await within(buildCab(state.kind), POOL_WAIT);
-      if (!cab || !going()) return;
-      await prepareScene({
-        renderer,
-        roots: [cabScene],
-        scene: cabScene,
-        camera: camIn,
-        alive: going,
-        onProgress: (f, step) => say(0.1 + share + (0.9 - share) * f, step),
-      });
+      if (cabbing && going()) {
+        // the cockpit: built by now, or soon (a few seconds at most)
+        await within(buildCab(state.kind), POOL_WAIT);
+        if (cab && going()) {
+          await prepareScene({
+            renderer,
+            roots: [cabScene],
+            scene: cabScene,
+            camera: camIn,
+            alive: going,
+            onProgress: (f, step) => say(0.1 + share + (0.9 - share) * f, step),
+          });
+        }
+      }
+      // every shader is made and its fence has signalled: now it is safe to
+      // time frames (the one-pixel read waits on the chip)
+      if (going() && post.on) await tune(going, say);
     } finally {
       try {
         renderer.setScissorTest(false);

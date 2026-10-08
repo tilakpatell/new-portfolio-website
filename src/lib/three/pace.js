@@ -35,9 +35,9 @@ import { strained } from '../detail';
 
 export const STEPS = [1, 0.85, 0.72, 0.6, 0.5];
 
-export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25, settle = 600, wait = 4000, longest = 60000, floorRuns = 5, onFloor = strained, ceiling: first = 0 } = {}) {
+export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25, settle = 600, wait = 4000, longest = 60000, floorRuns = 5, onFloor = strained, ceiling: startAt = 0 } = {}) {
   const clamp = (v) => Math.max(0, Math.min(steps.length - 1, Math.round(v) || 0));
-  let top = clamp(first); // the sharpest level it may use (calibration sets it)
+  let top = clamp(startAt); // the sharpest level it may use (calibration sets it)
   let stuck = 0; // runs at the last step with frames still late (floorRuns once told)
   let level = top;
   let last = 0;

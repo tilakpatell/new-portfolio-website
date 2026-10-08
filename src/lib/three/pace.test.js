@@ -126,9 +126,9 @@ describe('pace', () => {
       expect(pace.level).toBe(2);
       pace.ceiling = 1;
       expect(pace.level).toBe(2);
-      const { t } = run(pace, 1000, 600, 16.7);
+      const { changes } = run(pace, 1000, 600, 16.7); // calm: climbs to the new ceiling and stops
+      expect(changes).toEqual([STEPS[1]]);
       expect(pace.level).toBe(1);
-      expect(t).toBeGreaterThan(0);
     });
 
     it('clamps to the steps', () => {

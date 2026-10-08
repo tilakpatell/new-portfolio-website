@@ -120,6 +120,31 @@ describe('gpuTimer', () => {
     expect(t.poll()).toBeNull();
     expect(gl.deleteQuery).toHaveBeenCalled();
   });
+  it('hands back the tag of the frame a result is for', () => {
+    const gl = fakeGl();
+    const t = gpuTimer(gl);
+    t.begin('a');
+    t.end();
+    t.begin('b');
+    t.end();
+    gl.queries[0].ready = gl.queries[1].ready = true;
+    t.poll();
+    expect(t.tag).toBe('a');
+    t.poll();
+    expect(t.tag).toBe('b');
+    t.poll();
+    expect(t.tag).toBeUndefined();
+  });
+  it('dispose deletes every query not yet read', () => {
+    const gl = fakeGl();
+    const t = gpuTimer(gl);
+    t.begin();
+    t.end();
+    t.begin();
+    t.dispose();
+    expect(gl.deleteQuery).toHaveBeenCalledTimes(2);
+    expect(t.pending).toBe(0);
+  });
   it('answers in order across several frames', () => {
     const gl = fakeGl();
     const t = gpuTimer(gl);
@@ -174,6 +199,7 @@ describe('calibrate', () => {
     expect(got).toBe(1.5);
     expect(draw).toHaveBeenCalledTimes(12);
     expect(f.ratio).toBe(2);
+    expect(f.gl.deleteQuery).toHaveBeenCalledTimes(12);
   });
   it('uses a passed setRatio instead of the renderer', async () => {
     const f = fakeRenderer(() => 1);

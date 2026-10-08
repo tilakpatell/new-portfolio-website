@@ -42,13 +42,18 @@ export function pickRatio(samples, budget) {
 export function gpuTimer(gl) {
   const ext = gl?.getExtension?.('EXT_disjoint_timer_query_webgl2');
   if (!ext) return null;
-  const pending = [];
+  const pending = []; // { q, tag }, oldest first
   let open = null;
-  return {
-    begin() {
+  const timer = {
+    // begin(tag) marks the frame; after a poll, `tag` is the one the result was for
+    tag: undefined,
+    get pending() {
+      return pending.length;
+    },
+    begin(tag) {
       if (open) return;
-      open = gl.createQuery();
-      gl.beginQuery(ext.TIME_ELAPSED_EXT, open);
+      open = { q: gl.createQuery(), tag };
+      gl.beginQuery(ext.TIME_ELAPSED_EXT, open.q);
     },
     end() {
       if (!open) return;
@@ -57,15 +62,24 @@ export function gpuTimer(gl) {
       open = null;
     },
     poll() {
-      const q = pending[0];
-      if (!q || !gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) return null;
+      timer.tag = undefined;
+      const head = pending[0];
+      if (!head || !gl.getQueryParameter(head.q, gl.QUERY_RESULT_AVAILABLE)) return null;
       pending.shift();
+      timer.tag = head.tag;
       const disturbed = gl.getParameter(ext.GPU_DISJOINT_EXT);
-      const ns = gl.getQueryParameter(q, gl.QUERY_RESULT);
-      gl.deleteQuery(q);
+      const ns = gl.getQueryParameter(head.q, gl.QUERY_RESULT);
+      gl.deleteQuery(head.q);
       return disturbed ? null : ns / 1e6;
     },
+    // lets go of every query not yet read
+    dispose() {
+      if (open) gl.endQuery(ext.TIME_ELAPSED_EXT);
+      for (const { q } of [...(open ? [open] : []), ...pending.splice(0)]) gl.deleteQuery(q);
+      open = null;
+    },
   };
+  return timer;
 }
 
 // What a remembered ratio is keyed by: the graphics chip's own name (when the
@@ -120,25 +134,26 @@ export async function calibrate({ renderer, draw, ratios, budget = 12, frames = 
     // keep 1
   }
   const set = (v) => (setRatio ? setRatio(v) : renderer.setPixelRatio(v));
+  let timer = null;
   try {
     const gl = renderer.getContext?.();
-    const timer = gpuTimer(gl);
+    timer = gpuTimer(gl);
     const samples = [];
+    // a timed result, for the ratio its frame was drawn at (they arrive a frame or two late)
+    const collect = () => {
+      let ms;
+      while ((ms = timer.poll()) !== null) samples.push({ ratio: timer.tag, ms });
+    };
     for (const ratio of ratios) {
       if (!alive()) return original;
       set(ratio);
-      let got = 0;
       for (let i = 0; i < frames; i++) {
         if (!alive()) return original;
         if (timer) {
-          timer.begin();
+          timer.begin(ratio);
           draw();
           timer.end();
-          const ms = timer.poll();
-          if (ms !== null) {
-            samples.push({ ratio, ms });
-            got += 1;
-          }
+          collect();
         } else {
           const t0 = performance.now();
           draw();
@@ -147,24 +162,18 @@ export async function calibrate({ renderer, draw, ratios, budget = 12, frames = 
         }
         await frame();
       }
-      // timer results arrive a frame or two late: collect what is left
-      if (timer) {
-        for (let tries = 0; tries < 8 && got < frames; tries++) {
-          let ms;
-          while ((ms = timer.poll()) !== null) {
-            samples.push({ ratio, ms });
-            got += 1;
-          }
-          if (!alive()) return original;
-          await frame();
-        }
-      }
+    }
+    for (let tries = 0; timer && timer.pending && tries < 16; tries++) {
+      if (!alive()) return original;
+      await frame();
+      collect();
     }
     return pickRatio(samples, budget) ?? original;
   } catch {
     return original;
   } finally {
     try {
+      timer?.dispose();
       set(original);
     } catch {
       // a lost context: nothing to put back
