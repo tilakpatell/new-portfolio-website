@@ -25,6 +25,10 @@ export const PACK = {
     '/audio/clips/nobody-likes-you.mp3',
     '/audio/clips/you-bow-to-no-one.mp3',
     '/audio/clips/lotr-theme.mp3',
+    '/models/sketchfab/orthanc.glb',
+    '/models/sketchfab/minas-tirith.glb',
+    '/models/sketchfab/bag-end-door.glb',
   ], // single files
-  globs: ['/models/sketchfab/*.glb', '/cc0/galaxy/**', '/models/middleearth/cast/*'], // folders: `*` within a folder, `**` any depth
+  globs: ['/cc0/galaxy/**', '/models/middleearth/cast/*'], // folders: `*` within a folder, `**` any depth
+  computed: ['/models/sketchfab'], // folders the source only builds paths in: the files it takes are listed above
 };

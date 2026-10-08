@@ -44,7 +44,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 - Test: `src/components/worlds/packs.test.js`
 
 **Interfaces:**
-- Produces: `export const PACK = { id: '/earth', pages: ['src/pages/Earth.jsx'], src: ['src/components/earth', 'src/pages/Earth.jsx'], urls: ['/models/earth/...glb'], globs: ['/textures/earth/*'] }` per world (`pages`: the page modules whose chunks the build adds; `src`: what the pack check scans; the file imports nothing, so Node reads it); `packs.js`: `export const PACKS = { [to]: PACK }`, `export const packFor = (pathname) => PACK | null` (longest prefix, as `worldAt`).
+- Produces: `export const PACK = { id: '/earth', pages: ['src/pages/Earth.jsx'], src: ['src/components/earth', 'src/pages/Earth.jsx'], urls: ['/models/earth/...glb'], globs: ['/textures/earth/*'] }` per world (`pages`: the page modules whose chunks the build adds; `src`: what the pack check scans; `computed`, optional: folders the source only builds paths in, `${DIR}/${name}.glb`, whose used files the pack lists rather than the whole folder; the file imports nothing, so Node reads it); `packs.js`: `export const PACKS = { [to]: PACK }`, `export const packFor = (pathname) => PACK | null` (longest prefix, as `worldAt`).
 
 - [ ] **Step 1: Failing test** `packs.test.js`: `every WORLD_MB route has a pack with the same id`; `packFor('/dot-matrix/minecraft').id === '/dot-matrix/minecraft'`; `packFor('/about') === null`.
 - [ ] **Step 2: Run** `npx vitest run src/components/worlds/packs.test.js`. Expected: FAIL, module missing.

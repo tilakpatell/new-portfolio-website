@@ -53,7 +53,7 @@ export default function Welcome({ onStart, onSkip }) {
           A portfolio you can fly through
         </h1>
         <p id="welcome-text" className="welcome-text">
-          I’m Tilak Patel, a software engineer and technical program manager. My site opens with a short intro, about a minute end to end. Here’s what happens.
+          I’m Tilak Patel, a technical program manager and software engineer. My site opens with a short intro, about a minute end to end. Here’s what happens.
         </p>
 
         <ol className="welcome-beats">
@@ -86,7 +86,7 @@ export default function Welcome({ onStart, onSkip }) {
             <RiPlayFill className="h-4 w-4" aria-hidden="true" /> Start the intro
           </button>
           <button type="button" className="btn btn-ghost" onClick={onSkip}>
-            Skip to the site <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
+            Skip the intro <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
