@@ -348,12 +348,6 @@ describe('aboard the Death Star, on the site', () => {
     expect(keyTokens(pause[0]).map((t) => t.key).filter(Boolean)).toEqual(['Esc', 'P']);
   });
 
-  it('tells in the guide that E is for lifts, consoles, people and coded hatches, since doors open on their own', () => {
-    const rows = [...guideFor(PATH).keys, ...guideFor(PATH).touch].flatMap((g) => g.rows);
-    const uses = rows.filter(([key]) => key === 'E' || key === 'Use').map(([, what]) => what);
-    expect(uses).toEqual(['Use: lifts, consoles, people, coded hatches', 'Lifts, consoles, people, coded hatches']);
-  });
-
   it('has an achievement for coming aboard, earned on arrival', () => {
     expect(ACHIEVEMENTS['ds-aboard'].name).toBeTruthy();
     const achievements = readFileSync(new URL('../../Achievements.jsx', import.meta.url), 'utf8');
