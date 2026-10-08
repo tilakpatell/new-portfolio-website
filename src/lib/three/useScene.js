@@ -14,13 +14,23 @@
 //   setVisible?(on)          its box came on or went off screen
 //   update?(props)           new props from the page
 //   lowerQuality?()          still slow at the lowest sharpness: simplify
-//   warmUp?(timeLeft) → bool draw everything once, out of sight, a slice at
-//                            a time (made while the page is covered: see
-//                            `covered` below); true once it's done
+//   prepare?(onProgress, alive) → promise
+//                            get everything onto the graphics chip before
+//                            the first frame (lib/three/gpuWork's
+//                            prepareScene); onProgress(fraction, step) moves
+//                            the page's loading veil, and alive() turns false
+//                            once the scene is let go, so it can stop
+//   warmUp?(timeLeft) → bool the older way: draw everything once, out of
+//                            sight, a slice at a time; true once it's done
 //   dispose()
 //   ready?                   a promise: its shaders are compiled (see
 //                            lib/three/renderer's precompile); the first
 //                            frame waits for it (READY_WAIT at most)
+// After `ready` the hook says 'preparing' while prepare (or, on a page that
+// isn't covered, warmUp a slice a frame) runs, and hands back `progress`
+// ({ value 0..1, step }) for the page's LoadingVeil; then 'ready', then 'on'.
+// A prepare or warm-up that fails or throws is passed over, never a reason
+// not to show the scene.
 // ctx is { el, colors, reduced, invalidate, onLost, onSlow, ...props }
 // (colours as seen inside `el`, so a scene in a .dark-scope gets dark ones):
 // `el` is the scene's box (for pointer events), `invalidate()` asks for frames.
@@ -34,13 +44,15 @@ import { readTheme, watchTheme } from './theme';
 
 const DROP_AFTER = 10000; // ms far from the viewport before the scene is let go
 const READY_WAIT = 4000; // ms at most a scene's `ready` holds back its first frame
+const PREPARE_WAIT = 30000; // ms at most a scene's prepare holds back its first frame
 
 // Something full screen over the whole page (the opening crawl, the cockpit)
 // sets html[data-covered]: scenes underneath stay made but draw nothing until
 // it's gone (App sends tp:uncover then). One made meanwhile warms up, out of
 // sight, a slice at a time while the page is idle (its warmUp), so its first
 // frame as it's uncovered (the cockpit's flash, for the universe) doesn't
-// stop to send everything to the graphics chip.
+// stop to send everything to the graphics chip. One made on an uncovered page
+// has its warmUp driven a slice a frame before it's shown (driveWarmUp).
 const covered = () => typeof document !== 'undefined' && 'covered' in document.documentElement.dataset;
 // fn(timeLeft) when the page has a moment; timeLeft() is the ms it can spare
 const whenIdle = (fn) => {
@@ -51,12 +63,53 @@ const whenIdle = (fn) => {
   }, 50);
 };
 
+// the next frame, or 100 ms on if frames have stopped (a hidden tab); the
+// same as lib/three/gpuWork's, kept here so pages don't load three.js for it
+const nextFrame = () =>
+  new Promise((resolve) => {
+    let timer = 0;
+    const go = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    if (typeof requestAnimationFrame === 'function') {
+      timer = setTimeout(go, 100);
+      requestAnimationFrame(go);
+    } else setTimeout(go, 16);
+  });
+
+// A scene's warmUp(timeLeft) run a slice a frame, each slice given `budget`
+// ms, until it says it's done (anything but false). Resolves true when it's
+// over (finished, or threw: a warm-up only makes things smoother, so a
+// broken one is simply over), false when it stopped first: alive() turned
+// false (the scene was let go) or it had run `cap` ms of frames. Never
+// rejects.
+export async function driveWarmUp(warmUp, { frame = nextFrame, alive = () => true, budget = 10, cap = 20000 } = {}) {
+  const began = performance.now();
+  for (;;) {
+    if (!alive()) return false;
+    const start = performance.now();
+    let done = true;
+    try {
+      done = warmUp(() => Math.max(0, budget - (performance.now() - start))) !== false;
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn('3D warm-up failed', err);
+    }
+    if (done) return true;
+    if (performance.now() - began >= cap) return false;
+    await frame();
+  }
+}
+
 export function useScene(load, { enabled = true, props, id = 'scene', near: nearMargin = '100% 0px 100% 0px' } = {}) {
   const wrap = useRef(null);
   const view = useRef(null);
   const three = use3D();
   const reduced = useReducedMotion();
-  const [status, setStatus] = useState('idle'); // idle | loading | ready | on | failed | slow | lost
+  const [status, setStatus] = useState('idle'); // idle | loading | preparing | ready | on | failed | slow | lost
+  // how far its prepare has got, for the page's loading veil
+  const [progress, setProgressState] = useState({ value: 0, step: null });
+  const progressRef = useRef(progress);
   const [near, setNear] = useState(false);
   const visible = useRef(false);
   const loop = useRef({ last: 0, kick: () => {} });
@@ -115,6 +168,12 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
     let dead = false;
     let shown = false;
     const L = loop.current;
+    const setProgress = (value, step) => {
+      const p = progressRef.current;
+      if (dead || (p.value === value && p.step === step)) return;
+      progressRef.current = { value, step };
+      setProgressState(progressRef.current);
+    };
     const stop = () => chain.stop();
     // a fresh canvas for every scene: a context that has been let go can't
     // be had again from the same element
@@ -196,10 +255,43 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
             // props the page changed meanwhile (update() runs on every render, so it's safe to repeat)
             v.update?.(propsRef.current);
           }
+          // get it onto the graphics chip before it's shown, behind the
+          // page's veil: its prepare, or its warmUp a slice a frame (on a
+          // covered page the warmUp waits for idle moments instead, below)
+          let warmed = false;
+          if (v.prepare || (v.warmUp && !covered())) {
+            let gaveUp = false;
+            const alive = () => !dead && !gaveUp && !failed.current;
+            setProgress(0, v.prepare ? null : 'first draw');
+            setStatus('preparing');
+            const onProgress = (value, step) => {
+              if (alive()) setProgress(Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0, step ?? null);
+            };
+            // a prepare counts as the warm-up whatever happens to it
+            const work = v.prepare ? Promise.resolve().then(() => v.prepare(onProgress, alive)).then(() => true) : driveWarmUp(v.warmUp, { alive });
+            let timer = 0;
+            warmed = await Promise.race([
+              work.catch((err) => {
+                if (import.meta.env.DEV) console.warn(`[${id}] 3D prepare failed`, err);
+                return true;
+              }),
+              new Promise((resolve) => {
+                timer = setTimeout(() => resolve(Boolean(v.prepare)), PREPARE_WAIT);
+              }),
+            ]);
+            clearTimeout(timer);
+            gaveUp = true; // one still going after PREPARE_WAIT stops at its next slice
+            if (dead || failed.current) {
+              v.dispose();
+              return;
+            }
+            setProgress(1, progressRef.current.step);
+            v.update?.(propsRef.current);
+          }
           view.current = v;
           v.setVisible?.(visible.current);
           setStatus('ready');
-          if (v.warmUp && covered()) {
+          if (v.warmUp && !warmed && covered()) {
             const slice = (timeLeft) => {
               if (dead || view.current !== v || !covered()) return;
               let done = true;
@@ -238,7 +330,7 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
   // its size, its colours and the page's props, without re-rendering anything
   useEffect(() => {
     const el = wrap.current;
-    if (!el || status === 'idle' || status === 'loading') return undefined;
+    if (!el || status === 'idle' || status === 'loading' || status === 'preparing') return undefined;
     const ro =
       typeof ResizeObserver !== 'undefined'
         ? new ResizeObserver(([e]) => {
@@ -264,7 +356,7 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
   });
 
   // 3D first: while the scene is meant to show (3D on, not failed or lost),
-  // its box carries data-gl="loading" and then "on", so the page can hide the
+  // its box carries data-gl="loading" (preparing too) and then "on", so the page can hide the
   // fallback from the start instead of flashing it before the 3D arrives
   useEffect(() => {
     const el = wrap.current;
@@ -274,5 +366,5 @@ export function useScene(load, { enabled = true, props, id = 'scene', near: near
     else delete el.dataset.gl;
   }, [on, status]);
 
-  return { wrap, status, on: status === 'on', meant: on && status !== 'failed' && status !== 'slow' && status !== 'lost', view };
+  return { wrap, status, progress, on: status === 'on', meant: on && status !== 'failed' && status !== 'slow' && status !== 'lost', view };
 }
