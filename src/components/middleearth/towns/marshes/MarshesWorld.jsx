@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { Convo, QuestList, Stick, Travellers } from '../TownHud';
 import { SideList } from '../SideList';
@@ -15,7 +16,7 @@ import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { newWatchers, stepWatchers } from '../watchers';
 import { newLead, stepLead } from '../lorien/rules';
 import { BED, EMYN_COLLIDERS, EMYN_START, EMYN_WALLS, GATE_COLLIDERS, GATE_WALLS, LIGHTS, LOOKOUT, MARSH_PATH, MARSH_START, POOL_BANK, SCOUT_ROUNDS, SLOPE_START, SPOTS, inMarsh, validAt } from './layout';
-import { CONVOS, QUESTS, SEAL, SIDE, SPEAKERS, WAY_SAYS, marshesProgress } from './story';
+import { CONVOS, QUESTS, SAYS, SEAL, SIDE, SPEAKERS, WAY_SAYS, marshesProgress } from './story';
 import { CREEP, ROPE, SCOUTS, WAY, hopWay, newCreep, newDescent, newFell, newLure, newWay, pounce, stepCreep, stepDescent, stepFell, stepLure, stepWay } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
@@ -117,7 +118,12 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   const hudKey = useRef('');
   const [toast, setToast] = useState(null);
   const [list, setList] = useState(false);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
+  const say = useCallback((text, bad = false, who = null) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, text);
+  }, []);
+  useEffect(() => stopVoiced, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -255,16 +261,21 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     s.scouts = newWatchers(SCOUT_ROUNDS);
   }, [toZone]);
 
-  // Sméagol's safe way across a pool
+  // Sméagol's safe way across a pool, and what he says there, in his voice
+  // (./voicelines.js)
+  const waySay = useCallback((text) => {
+    sim.current.said = text;
+    sayVoiced('gollum', text);
+  }, []);
   const startWay = useCallback(() => {
     const s = sim.current;
     s.mode = 'way';
     s.way = newWay(Math.floor(Math.random() * 1000) + 1);
     s.h = newWalker(POOL_BANK);
-    s.said = WAY_SAYS.start;
+    waySay(WAY_SAYS.start);
     s.safeN = 0;
     sounds().then((x) => x.gollum(0.4));
-  }, []);
+  }, [waySay]);
   const leaveWay = useCallback(() => {
     const s = sim.current;
     if (s.mode !== 'way') return;
@@ -283,19 +294,19 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
       if (r === 'safe') {
         sounds().then((x) => x.squelch(1));
         s.safeN += 1;
-        if (s.safeN % 2 === 0) s.said = WAY_SAYS.safe[(s.safeN / 2 - 1) % WAY_SAYS.safe.length];
+        if (s.safeN % 2 === 0) waySay(WAY_SAYS.safe[(s.safeN / 2 - 1) % WAY_SAYS.safe.length]);
       } else if (r === 'sank') {
         sounds().then((x) => x.sink());
         api.current?.fx('sank');
-        s.said = s.way.sankAt?.lit ? WAY_SAYS.lit : WAY_SAYS.sank;
+        waySay(s.way.sankAt?.lit ? WAY_SAYS.lit : WAY_SAYS.sank);
       } else if (r === 'across') {
         sounds().then((x) => x.squelch(1));
         api.current?.fx('across');
-        s.said = WAY_SAYS.won(s.way.slips);
+        waySay(WAY_SAYS.won(s.way.slips));
         recordGo({ won: true, score: s.way.slips });
       }
     },
-    [recordGo],
+    [recordGo, waySay],
   );
 
   const enter = useCallback(
@@ -508,7 +519,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           say(s.descent.knocks === 1 ? 'You swing into the rock, hard. Swing clear of the outcrops (A and D).' : 'Another! Your hands are slipping on the rope.', true);
         } else if (e.type === 'fell') {
           s.busy = true;
-          say('Your hands open, and you fall, and land in a heap on a ledge. Sam: “Mr. Frodo!” Up you climb again… Swing clear of the rock this time.', true);
+          say(SAYS.fell.text, true, SAYS.fell.who);
           later(() => sim.current?.mode === 'rope' && startRope(), 2200);
         } else if (e.type === 'down') {
           sounds().then((x) => x.thunder());
@@ -543,7 +554,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     if (s.zone === 'marsh' && s.mode === 'walk' && s.lead && !s.busy) {
       const path = MARSH_PATH.slice(s.lead.base);
       for (const e of stepLead(s.lead, dt, s.h, path)) {
-        if (e.type === 'wait') say('Gollum looks back. “Hurry, hobbitses! Follow Sméagol!”');
+        if (e.type === 'wait') say(SAYS.hurry.text, false, SAYS.hurry.who);
         else if (e.type === 'there') {
           complete('marsh');
           s.lead = null;
@@ -562,7 +573,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
               s.faced = true;
               later(() => sim.current && startTalk('faces'), 700);
             } else {
-              say('Into the water again, among the faces, and Gollum drags you out. “Don’t follow the lights!”', true);
+              say(SAYS.lights.text, true, SAYS.lights.who);
               later(() => {
                 const ss = sim.current;
                 if (!ss?.lead) return;
@@ -612,9 +623,9 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
       }
       for (const e of stepWay(s.way, dt)) {
         if (e.type === 'gollum') sounds().then((x) => x.squelch(0.5));
-        else if (e.type === 'shown') s.said = WAY_SAYS.shown;
+        else if (e.type === 'shown') waySay(WAY_SAYS.shown);
         else if (e.type === 'again') {
-          s.said = WAY_SAYS.again;
+          waySay(WAY_SAYS.again);
           s.safeN = 0;
         }
       }

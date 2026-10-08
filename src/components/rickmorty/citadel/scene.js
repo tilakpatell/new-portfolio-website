@@ -3,7 +3,11 @@
 // show's look (toon shading and the ink line from ../portal/toon.js, bloom
 // on the light strips), with the third-person camera the towns use and a
 // camera for each room's beat and for the cruiser getting away. The state
-// it draws comes from ./CitadelWorld.jsx each frame.
+// it draws comes from ./CitadelWorld.jsx each frame, with its cues (what's
+// just happened, for the people to react to). Every figure is stepped as
+// lib/three/animBudget.js says: near and in view every frame, further off
+// less often, out of view not at all; the crowd's nearest few are live
+// figures of the people's cast (./crowd.js's live).
 //
 // createCitadelWorld(canvas, { onLost }) → Promise<{ render(state, ms),
 // fx(type, at?), screenOf(kind, id), resize, dispose, info, lost,
@@ -16,13 +20,15 @@ import { device } from '../../../lib/device';
 import { allOrUndo } from '../../../lib/settle';
 import { createFx } from '../../middleearth/shire/fx';
 import { createGhosts } from '../../middleearth/towns/ghosts';
+import { createAnimBudget } from '../../../lib/three/animBudget';
+import { applyEmote } from '../../../lib/emote';
 import { groundWorld } from '../../../lib/three/groundwork';
 import { houseOn } from '../../../lib/three/house';
 import { createMeshyCast } from '../portal/meshyCast';
 import { InkPass } from '../portal/toon';
 import { EDGE_BUILDINGS, buildConcourse } from './concourse';
 import { createCrowd } from './crowd';
-import { createPeople } from './people';
+import { LIVE, createPeople } from './people';
 import { ROOMS, buildRooms } from './rooms';
 import { COLLIDERS, DOORS, PEN, RICK, spot } from './layout';
 import { COLLIDERS as TOWN_COLLIDERS, COP, LIFT, MORTYTOWN, ORIGIN as TOWN } from './mortytown';
@@ -127,6 +133,8 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
     [concourse, rooms] = await allOrUndo([buildConcourse(renderer, { models, tier }), buildRooms(renderer, { models, tier })], made);
     scene.add(concourse.group, rooms.factory, rooms.council);
     [people, crowd] = await allOrUndo([createPeople({ outdoors: concourse.group, factory: rooms.factory, council: rooms.council, places: rooms.places, tier, look: looks?.rick ?? null }), createCrowd(concourse.group, { tier })], made);
+    // (the crowd's nearest few, live: figures of the people's cast)
+    crowd.live({ make: people.live, free: people.unlive }, LIVE);
     // the cruiser, waiting in the hangar
     props = createMeshyCast();
     made.push(props);
@@ -163,11 +171,29 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
       group.add(o.f.group);
       return { group, top: 1.95, rick: o, shared: true, dispose: o.stop };
     },
-    animate: (f, t, p) => f.rick?.step(t, Math.min(1, (p.speed ?? (p.moving ? RICK.walk : 0)) / RICK.run)),
+    // their feet paced to how they say they move, and what they've struck off
+    // their wheel (an older client's packet has neither: their pace as before)
+    animate: (f, t, p) => {
+      const m = p.motion ?? null;
+      f.rick?.step(t, Math.min(1, Math.abs(m?.speed ?? p.speed ?? (p.moving ? RICK.walk : 0)) / RICK.run), m ? { speed: m.speed ?? 0, side: m.side ?? 0, turn: m.turn ?? 0 } : null);
+      if (f.rick) f.shown = applyEmote(f.rick.f, p.emote ?? null, f.shown ?? null);
+    },
     tag: 0.36,
     halo: 0.9,
   });
   concourse.group.add(ghosts.group);
+
+  // how often each figure's stepped, and whether it's on screen (by last
+  // frame's camera: near enough)
+  const budget = createAnimBudget({ near: 12, far: 40, max: tier === 'high' ? 40 : tier === 'mid' ? 24 : 14 });
+  const frustum = new THREE.Frustum();
+  const viewProj = new THREE.Matrix4();
+  const ball = new THREE.Sphere(new THREE.Vector3(), 1.3);
+  const view = (p) => {
+    ball.center.set(p.x, p.y + 0.9, p.z);
+    return frustum.intersectsSphere(ball);
+  };
+  const figures = { camera, budget, view };
 
   const A = { t: 0, mode: null, beat: null, room: null, where: null, cam: { at: V(0, 6, 40), look: V(0, 2, 30) }, shake: 0, suggest: null, mood: 'day', red: 0, near: [], nearAt: -1 };
   const FOG = { concourse: [0xe0b57a, 80, 360], mortytown: [0x9a7448, 22, 240] };
@@ -315,9 +341,13 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
 
     // ── the people ──
     ghosts.update(s.travellers ?? [], t, dt);
-    people.update(s, t, camera.position);
-    if (away) town.folk?.update(s, t, camera.position);
+    camera.updateMatrixWorld();
+    frustum.setFromProjectionMatrix(viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    budget.frame();
+    people.update(s, t, camera.position, figures);
+    if (away) town.folk?.update(s, t, camera.position, figures);
     crowd.setMood(s.mood);
+    if (!inside && !away) crowd.update(t, dt, { ...figures, rick: s.mode === 'walk' || s.mode === 'talk' ? h : null, cues: s.cues });
 
     // ── the camera ──
     let camAt;
@@ -455,7 +485,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
         sun: key,
         casters: [concourse.group],
         skip: [fxRoot, ghosts.group, ...concourse.hide],
-        movers: [people.rick, ...(people.cast ?? []), ...(people.mortys ?? []), ...(people.cops ?? [])].filter((f) => f?.group).map(walker),
+        movers: [people.rick, ...(people.cast?.values() ?? []), ...(people.mortys ?? []), ...(people.cops ?? []), ...(people.crowd ?? [])].filter((f) => f?.group).map(walker),
         shade: 0x3a3424,
         blobOpacity: 0.55, // (the deck is pale and evenly lit: a lighter touch)
         tier,
@@ -483,6 +513,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
+    people: import.meta.env.DEV ? people : null, // (and their figures: people.cast.get(id).react('greet'), …)
     render,
     fx: fxEvent,
     // Mortytown: built (once) before the lift takes Rick down; resolves true

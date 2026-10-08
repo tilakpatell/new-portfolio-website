@@ -209,6 +209,12 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     o.scale.setScalar(spec.scale ?? 1);
     (spec.zone ? rooms : group).add(o);
     applyBuilt(made, spec, at, world, { updates, signals, object: true });
+    // (a built one that wears a model on a moving part of it, once it's
+    // loaded: `wear: { url, on(model) }`, the dragonsnake's head)
+    if (made.wear)
+      loadGlb(made.wear.url)
+        .then((gltf) => !dead && gltf && made.wear.on(cloneModel(gltf)))
+        .catch(() => {});
     return o;
   };
   // a built one's walls and floors only, under its model (its meshes thrown

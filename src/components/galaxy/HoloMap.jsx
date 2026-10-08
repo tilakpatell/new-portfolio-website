@@ -6,6 +6,7 @@ import { heldColour, progressOf, standing } from './warText';
 import WarCard, { SystemWar } from './WarCard';
 import { SIDES, WARS } from './sides';
 import { mine, onWar, warNow } from './warState';
+import { jumpTime, routeBetween, viaLanes } from './routes';
 import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKNOWN, edgeAt, eraById, eraOf, erasOf, filmLabel, filmShort, gridAt, jumpSeconds, lightYears, systemById, yearLabel } from './systems';
 
 // The galaxy map, the way a holotable shows it: the galaxy's disc (its
@@ -13,11 +14,12 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 // middle (they reach further to the south), the Unknown Regions off to the
 // west, the atlas's grid (A to U across, 1 to 21 down), the great hyperspace
 // routes, and every system you can jump to, in its own colour. Pick one and
-// it shows where it is, its era and its films, how far it is and how long
-// the jump takes, and who's flying there now (online); Jump sends you. The
-// eras and the films filter what's lit (the rest dim), so it doubles as a
-// timeline: the prequels' worlds, the originals', the New Republic's (The
-// Mandalorian's and Ahsoka's).
+// it shows where it is, its era and its films, how far it is, the course the
+// jump takes along the lanes (routes.js) and how long it takes, and who's
+// flying there now (online); Jump sends you. The eras and the films filter
+// what's lit (the rest dim), so it doubles as a timeline: the prequels'
+// worlds, the originals', the New Republic's (The Mandalorian's and
+// Ahsoka's).
 //
 // And the Galactic Civil War's table, Helldivers' galactic map (gcw.js, as
 // the page knows it: warState.js): every system it's fought over ringed in
@@ -123,6 +125,8 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
   const box = useRef(null);
   const close = useRef(null);
   const picked = pick ? systemById(pick) : null;
+  // the course to it: along the lanes where they join, straight where they don't
+  const route = picked && here && picked.id !== here.id ? routeBetween(here.id, picked.id) : null;
   // the Galactic Civil War, as it stands this second (and when what the players did changes)
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -244,7 +248,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                   );
                 })}
               {/* the course */}
-              {picked && <line x1={here.pos[0]} y1={here.pos[1]} x2={picked.pos[0]} y2={picked.pos[1]} className="holomap-course" />}
+              {route && <polyline points={route.pts.map((p) => p.join(',')).join(' ')} fill="none" className="holomap-course" />}
             </svg>
             {/* the grid's letters and numbers */}
             <div className="holomap-axis holomap-axis-x" aria-hidden="true">
@@ -310,8 +314,14 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                   </div>
                   <div>
                     <dt>In hyperspace</dt>
-                    <dd>{jumpSeconds(here, picked).toFixed(1)} s (the navicomputer’s fast)</dd>
+                    <dd>{(route ? jumpTime(route) : jumpSeconds(here, picked)).toFixed(1)} s (the navicomputer’s fast)</dd>
                   </div>
+                  {route && (
+                    <div>
+                      <dt>Route</dt>
+                      <dd>{viaLanes(route)}</dd>
+                    </div>
+                  )}
                   <div>
                     <dt>There now</dt>
                     <dd>{picked.moment.title}</dd>

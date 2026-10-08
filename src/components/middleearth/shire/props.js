@@ -19,6 +19,7 @@ import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferG
 import { canvasTexture, hot } from '../../../lib/stage3d';
 import { clamp01, fbm, makeCanvas, makeNoise, mix, normalFromField, paintPixels, ramp, smooth } from '../../../lib/paint';
 import { stoneTextures } from '../kit';
+import { STANCE, TROT, WALK, createStride, createTracker, ease, gaitOffsets, legSwing } from '../creatures';
 
 const TAU = Math.PI * 2;
 const UP = new THREE.Vector3(0, 1, 0);
@@ -2500,7 +2501,30 @@ function sheep(K, { seed = 1 } = {}) {
   hk.add(mats.beast, ball(0.03, 6, 5), { p: [0.24, -0.13, 0], color: 0x15100e });
   hk.add(mats.wool, blob(0.11, { detail: 1, amp: 0.25, freq: 5, seed: seed + 3 }), { p: [-0.04, 0.08, 0] });
   hk.build(head);
-  return { group: g, legs, head };
+
+  // How it moves (../creatures.js): its legs from the ground it covers, read
+  // from where the scene puts it, a sheep's ambling walk and a trot when it's
+  // startled; standing, its head goes down to graze (`graze` to say so
+  // instead).
+  const track = createTracker();
+  const stride = createStride({ stride: 0.62, hz: 1.1, longest: 1.4, cadence: [1.2, 1.9], seed });
+  const LEG = 0.47;
+  let grazing = 0;
+  const animate = (t, { graze } = {}) => {
+    const m = track(t, g.position.x, g.position.z, g.rotation.y, g.scale.x);
+    const st = stride.step(m.dt, m.fwd < -0.05 ? -m.speed : m.speed);
+    const offs = gaitOffsets(st.run, WALK, TROT);
+    const stance = mix(STANCE.walk, STANCE.trot, st.run);
+    legs.forEach((hip, j) => {
+      const { angle, lift } = legSwing(st.cycle + offs[j], stance, stance * st.stride, LEG);
+      hip.rotation.z = angle * st.amount;
+      hip.scale.y = 1 - 0.14 * lift * st.amount;
+    });
+    grazing = ease(grazing, (graze ?? st.amount < 0.05) ? 1 : 0, m.dt, 1.6);
+    head.rotation.z = mix(Math.sin(st.phase * 2) * 0.05 * st.amount, -0.5 + Math.sin(t * 2 + seed) * 0.1, grazing);
+    head.rotation.y = (1 - grazing) * (1 - st.amount) * Math.sin(t * 0.45 + seed * 1.7) * 0.25;
+  };
+  return { group: g, legs, head, animate };
 }
 
 // A farm dog, facing +x (Maggot's Grip, Fang and Wolf: give each a coat): a
@@ -2556,7 +2580,41 @@ function dog(K, { coat = 0x7a5232, patch = 0xeee4d0, seed = 1 } = {}) {
   const tk = parts();
   tk.add(mats.beast, tube([[0, 0, 0], [-0.12, 0.06, 0], [-0.2, 0.18, 0], [-0.22, 0.26, 0]], 0.04, 0.018, { seg: 6, radial: 5 }), { color: (x, y, z, out) => out.copy(y > 0.2 ? c1 : c0) });
   tk.build(tail);
-  return { group: g, legs, head, tail };
+
+  // How it moves (../creatures.js): its legs from the ground it covers, read
+  // from where the scene puts it, a trot on its rounds lengthening into a
+  // gallop after you. `mode` is its watcher's (../towns/watchers.js): ears
+  // up and barking on the alert, nose down and tail out giving chase, nose
+  // to the ground casting about on a search; `look` turns its head.
+  const track = createTracker();
+  const stride = createStride({ stride: 1.08, hz: 1.6, longest: 1.5, cadence: [1.9, 2.9], seed });
+  const LEG = 0.45;
+  const A = { look: 0, sniff: 0, bark: 0, chase: 0, wag: seed * 1.3 };
+  const animate = (t, { mode = 'patrol', look = 0 } = {}) => {
+    const m = track(t, g.position.x, g.position.z, g.rotation.y, g.scale.x);
+    const dt = m.dt;
+    const st = stride.step(dt, m.fwd < -0.05 ? -m.speed : m.speed);
+    const offs = gaitOffsets(st.run, TROT);
+    const stance = mix(STANCE.trot, STANCE.gallop, st.run);
+    legs.forEach((hip, j) => {
+      const { angle, lift } = legSwing(st.cycle + offs[j], stance, stance * st.stride, LEG);
+      hip.rotation.z = angle * st.amount;
+      hip.scale.y = 1 - 0.16 * lift * st.amount;
+    });
+    A.look = ease(A.look, look, dt, 8);
+    A.sniff = ease(A.sniff, mode === 'search' || mode === 'suspicious' ? 1 : 0, dt, 4);
+    A.bark = ease(A.bark, mode === 'alert' ? 1 : 0, dt, 10);
+    A.chase = ease(A.chase, mode === 'chase' ? 1 : 0, dt, 5);
+    // the tail wags quicker and higher the keener it is
+    const keen = Math.max(A.bark, A.chase, A.sniff * 0.6);
+    A.wag += dt * (7 + 11 * keen);
+    tail.rotation.y = Math.sin(A.wag) * (0.25 + 0.3 * keen) * (1 - 0.6 * A.chase);
+    tail.rotation.z = -0.3 * A.chase + 0.12 * A.sniff;
+    const cast = Math.sin(t * 3.1 + seed) * 0.45 + Math.sin(t * 7.3 + seed) * 0.1;
+    head.rotation.y = A.look * (1 - A.sniff) + A.sniff * cast;
+    head.rotation.z = -0.45 * A.sniff - 0.18 * A.chase + A.bark * (0.2 + Math.max(0, Math.sin(t * 13)) * 0.15) + Math.sin(st.phase * 2) * 0.04 * st.amount;
+  };
+  return { group: g, legs, head, tail, animate };
 }
 
 // A Black Rider, facing +x: a tall black horse (about 1.9 at the withers)
@@ -2717,7 +2775,32 @@ function blackRider(K) {
   hk2.add(mats.robe, hood, { s: [1, 1.1, 0.95] });
   hk2.add(mats.void, ball(0.22, 8, 6), { p: [0.0, -0.01, 0] });
   hk2.build(head);
-  return { group: g, horse: { group: horse, legs, neck, head: hd, tail }, rider: { group: rider, body, head } };
+
+  // How the horse moves (../creatures.js): its legs from the ground it
+  // covers, read from where the scene puts the rider, a walk lengthening
+  // into a gallop at the Rider's pace; its head nodding with the stride and
+  // tossing at a stand. `sniff` (0…1) puts its head down at the hollow.
+  const track = createTracker();
+  const stride = createStride({ stride: 1.7, hz: 0.9, longest: 3.4, cadence: [1.05, 1.5], seed: 66 });
+  const LEG = 1.32;
+  const A = { sniff: 0 };
+  const animate = (t, { sniff = 0 } = {}) => {
+    const m = track(t, g.position.x, g.position.z, g.rotation.y, g.scale.x);
+    const st = stride.step(m.dt, m.fwd < -0.05 ? -m.speed : m.speed);
+    const offs = gaitOffsets(st.run, WALK);
+    const stance = mix(STANCE.walk, 0.3, st.run);
+    legs.forEach((hip, j) => {
+      const { angle, lift } = legSwing(st.cycle + offs[j], stance, stance * st.stride, LEG);
+      const still = Math.sin(t * 1.5 + j) * 0.05;
+      hip.rotation.z = mix(still, angle, st.amount);
+      hip.scale.y = 1 - 0.12 * lift * st.amount;
+    });
+    A.sniff = ease(A.sniff, sniff, m.dt, 2);
+    const nod = Math.sin(st.phase + 0.6 * st.run) * (0.04 + 0.06 * st.run) * st.amount;
+    neck.rotation.z = mix(nod + Math.sin(t * 0.7) * 0.03 * (1 - st.amount), -0.25 + Math.sin(t * 1.3) * 0.08, A.sniff);
+    tail.rotation.z = (-0.25 * st.run + Math.sin(st.phase) * 0.05) * st.amount;
+  };
+  return { group: g, horse: { group: horse, legs, neck, head: hd, tail }, rider: { group: rider, body, head }, animate };
 }
 
 // ── small dressing ──

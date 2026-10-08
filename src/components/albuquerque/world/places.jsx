@@ -45,7 +45,11 @@ export function Saul() {
   const [career, setCareer] = useState(readCareer);
   const [call, setCall] = useState(false);
   const [said, setSaid] = useState('');
-  useEffect(() => stopVoiced, []);
+  // his pitch as you come in, in his own voice where it's been made (lib/voiced.js)
+  useEffect(() => {
+    sayVoiced('saul', SAUL.pitch);
+    return stopVoiced;
+  }, []);
   const purchase = (u) => {
     audioContext();
     const c = buy(career, u.id);
@@ -75,7 +79,7 @@ export function Saul() {
         )}
       </div>
       <div>
-        <p className="lead max-w-[46ch]">“You’ve got cash, I’ve got solutions.” Spend what you’ve cooked: every one of these carries into the next shift.</p>
+        <p className="lead max-w-[46ch]">{SAUL.pitch}</p>
         <p className="abq-cash mt-4">
           In the bag: <b>${career.money}</b>
         </p>

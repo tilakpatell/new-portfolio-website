@@ -461,6 +461,128 @@ export const GUNS = {
     },
     fore: { r: 0.022, axis: 'up' },
   },
+  // the stormtroopers' E-11 (a Sterling under it), theirs and their kin's
+  // (sand, snow, shore and death troopers): a black tube of a receiver, its
+  // front pierced down the top, rails along its sides, the power pack out
+  // to the left, the M38 sight high on the left, a cone at the muzzle with
+  // the front sight over it, the stock folded under the barrel
+  e11: {
+    hands: 2,
+    support: false,
+    stock: true,
+    pitch: 0.08,
+    reach: 0.38,
+    rise: -0.14,
+    lateral: -0.3,
+    kick: { back: 0.7, up: 1.3 },
+    casing: false,
+    flash: { color: '#ff4a3d', size: 0.24 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      k.tube(0.02, 0.4, m.black, [0, 0.062, 0.1]); // the receiver, end cap to muzzle
+      k.tube(0.022, 0.024, m.gunmetal, [0, 0.062, -0.09]); // the end cap
+      // the holes down the front of it, two rows over the top
+      for (let i = 0; i < 5; i++)
+        for (const s of [-1, 1]) k.drum(0.0045, 0.004, m.gunmetal, [s * 0.0142, 0.0762, 0.14 + i * 0.03], [0, 0, -s * (Math.PI / 4)], 8);
+      for (const s of [-1, 1]) k.box(0.004, 0.008, 0.18, m.gunmetal, [s * 0.021, 0.062, 0.0]); // the rails
+      k.box(0.026, 0.03, 0.09, m.black, [0, 0.032, 0.02]); // the trigger housing under it
+      k.box(0.075, 0.02, 0.032, m.black, [0.0575, 0.062, 0.06]); // the power pack, out to the left
+      k.box(0.008, 0.026, 0.036, m.gunmetal, [0.096, 0.062, 0.06]); // its end
+      k.box(0.012, 0.014, 0.03, m.gunmetal, [0.008, 0.087, 0.03]); // the sight's mount
+      k.box(0.022, 0.034, 0.075, m.black, [0.012, 0.11, 0.03]); // the M38 sight
+      k.tube(0.009, 0.03, m.black, [0.012, 0.116, -0.02]); // its eyepiece
+      k.box(0.024, 0.022, 0.012, m.gunmetal, [0.012, 0.114, 0.072]); // its window
+      k.cone(0.02, 0.012, 0.035, m.black, [0, 0.062, 0.3175]); // the muzzle's cone
+      k.box(0.004, 0.022, 0.008, m.gunmetal, [0, 0.09, 0.285]); // the front sight
+      for (const s of [-1, 1]) k.box(0.005, 0.006, 0.24, m.gunmetal, [s * 0.016, 0.03, 0.12]); // the stock's arms, folded
+      k.box(0.045, 0.012, 0.03, m.black, [0, 0.026, 0.25]); // its butt plate, under the barrel
+      k.box(0.03, 0.09, 0.034, m.black, [0, -0.03, -0.01], [0.28, 0, 0]).name = 'grip';
+      k.box(0.024, 0.006, 0.05, m.steel, [0, 0.0, 0.045]); // the trigger guard
+      k.box(0.004, 0.024, 0.012, m.steel, [0, 0.012, 0.045], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.062, 0.336]);
+      k.point('foregrip', [0, 0.035, 0.19]);
+      k.point('fore', [0, 0.062, 0.19]); // the other hand round the barrel, ahead of the pack
+    },
+    fore: { r: 0.02, axis: 'dir' },
+  },
+  // the clones' DC-15A: a long rifle, a pale square receiver with a dark
+  // power cell on its right, a long barrel shroud ringed with vents, a
+  // narrower barrel and a brake past it, a scope on top, a skeleton stock
+  dc15: {
+    hands: 2,
+    support: false,
+    stock: true,
+    pitch: 0.07,
+    reach: 0.38,
+    rise: -0.15,
+    lateral: -0.3,
+    kick: { back: 0.8, up: 1.2 },
+    casing: false,
+    flash: { color: '#62c8ff', size: 0.26 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      k.box(0.048, 0.07, 0.3, m.grey, [0, 0.05, 0.06]); // the receiver
+      k.box(0.04, 0.018, 0.28, m.bone, [0, 0.094, 0.06]); // its top
+      k.box(0.012, 0.04, 0.1, m.black, [-0.03, 0.045, 0.08]); // the power cell, on the right
+      k.tube(0.019, 0.36, m.grey, [0, 0.058, 0.39]); // the barrel shroud
+      for (let i = 0; i < 4; i++) k.ring(0.02, 0.003, m.black, [0, 0.058, 0.27 + i * 0.075], [0, 0, 0]); // its vents
+      k.tube(0.011, 0.1, m.gunmetal, [0, 0.058, 0.62]); // the barrel
+      k.tube(0.015, 0.03, m.black, [0, 0.058, 0.68]); // the brake
+      k.tube(0.013, 0.16, m.black, [0, 0.13, 0.06]); // the scope
+      k.box(0.008, 0.025, 0.014, m.black, [0, 0.112, 0.0]);
+      k.box(0.008, 0.025, 0.014, m.black, [0, 0.112, 0.12]);
+      k.box(0.016, 0.02, 0.26, m.grey, [0, 0.05, -0.22]); // the stock's bars
+      k.box(0.016, 0.016, 0.24, m.grey, [0, -0.002, -0.23]);
+      k.box(0.036, 0.11, 0.028, m.black, [0, 0.025, -0.36]); // the butt
+      k.box(0.03, 0.09, 0.035, m.black, [0, -0.035, -0.01], [0.28, 0, 0]).name = 'grip';
+      k.box(0.024, 0.006, 0.05, m.steel, [0, 0.0, 0.04]); // the trigger guard
+      k.box(0.004, 0.024, 0.012, m.steel, [0, 0.012, 0.04], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.058, 0.697]);
+      k.point('foregrip', [0, 0.02, 0.3]);
+      k.point('fore', [0, 0.058, 0.3]); // the other hand round the shroud
+    },
+    fore: { r: 0.02, axis: 'dir' },
+  },
+  // the battle droids' E-5: slim and long, a squared receiver with a hump
+  // on top, a thin barrel with a rod under it held by a clamp, a flared
+  // muzzle, a power cell on the right, an open skeleton of a stock
+  e5: {
+    hands: 2,
+    support: false,
+    stock: true,
+    pitch: 0.08,
+    reach: 0.38,
+    rise: -0.14,
+    lateral: -0.3,
+    kick: { back: 0.6, up: 1.1 },
+    casing: false,
+    flash: { color: '#ff4a3d', size: 0.22 },
+    build(g, owned) {
+      const m = mats(owned);
+      const k = kit(g, owned);
+      k.box(0.034, 0.055, 0.22, m.gunmetal, [0, 0.05, 0.05]); // the receiver
+      k.box(0.028, 0.03, 0.1, m.gunmetal, [0, 0.088, 0.03]); // its hump
+      k.box(0.006, 0.014, 0.01, m.black, [0, 0.108, 0.07]); // the sight
+      k.tube(0.008, 0.36, m.black, [0, 0.06, 0.34]); // the barrel
+      k.tube(0.006, 0.26, m.steel, [0, 0.042, 0.29]); // the rod under it
+      k.box(0.02, 0.03, 0.012, m.gunmetal, [0, 0.051, 0.42]); // the clamp round both
+      k.cone(0.008, 0.013, 0.03, m.black, [0, 0.06, 0.535]); // the flared muzzle
+      k.box(0.004, 0.016, 0.006, m.black, [0, 0.074, 0.51]); // the front sight
+      k.box(0.016, 0.03, 0.06, m.steel, [-0.025, 0.05, 0.08]); // the power cell, on the right
+      k.box(0.016, 0.018, 0.25, m.gunmetal, [0, 0.062, -0.18]); // the stock's top bar
+      k.box(0.016, 0.018, 0.25, m.gunmetal, [0, -0.025, -0.175]); // and its lower, an open frame between
+      k.box(0.03, 0.11, 0.026, m.black, [0, 0.02, -0.31]); // the butt
+      k.box(0.028, 0.085, 0.032, m.black, [0, -0.032, -0.01], [0.28, 0, 0]).name = 'grip';
+      k.box(0.024, 0.006, 0.05, m.steel, [0, 0.0, 0.04]); // the trigger guard
+      k.box(0.004, 0.024, 0.012, m.steel, [0, 0.012, 0.04], [0.3, 0, 0]);
+      k.point('muzzle', [0, 0.06, 0.552]);
+      k.point('foregrip', [0, 0.022, 0.2]);
+      k.point('fore', [0, 0.05, 0.2]); // the other hand under the receiver's front
+    },
+    fore: { r: 0.018, axis: 'dir' },
+  },
   // the DLT-19 heavy repeater (the MG 34 under it): a long finned barrel,
   // a drum under the receiver, a bipod folded along the barrel
   dlt19: {

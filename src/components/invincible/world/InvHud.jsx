@@ -9,7 +9,9 @@ import { useEffect, useRef, useState } from 'react';
 
 const TIME_NAME = { noon: 'Noon', dusk: 'Dusk', night: 'Night' };
 
-export default function InvHud({ hud, mapRef, time, cycleTime, help, setHelp, chip, trav, found, cards, near, act, toast }) {
+const WHO = { cecil: 'Cecil', eve: 'Eve', omni: 'Dad', allen: 'Allen' };
+
+export default function InvHud({ hud, mapRef, time, cycleTime, help, setHelp, chip, trav, found, cards, near, act, toast, radio = null, take = null }) {
   const [menu, setMenu] = useState(false);
   const menuRef = useRef(null);
   // (the menu closes on a click anywhere else, or Escape)
@@ -79,7 +81,11 @@ export default function InvHud({ hud, mapRef, time, cycleTime, help, setHelp, ch
             <dt>J · F · click</dt>
             <dd>Punch (a little way off, he lunges)</dd>
             <dt>E</dt>
-            <dd>At a place: go in (Cecil, at the GDA, has a job)</dd>
+            <dd>At a place: go in (Cecil’s board, at the GDA, has the season)</dd>
+            <dt>R</dt>
+            <dd>Take the radio’s call (a chase, a photo, Eve’s race)</dd>
+            <dt>Q</dt>
+            <dd>Call a mission off</dd>
             <dt>T</dt>
             <dd>Noon, dusk, night</dd>
             <dt>Up, up</dt>
@@ -112,6 +118,11 @@ export default function InvHud({ hud, mapRef, time, cycleTime, help, setHelp, ch
           </p>
         </div>
         <div className="iw-mid">
+          {radio && (
+            <button type="button" className="iw-radio" onClick={take} aria-live="polite">
+              <b>{WHO[radio.who] ?? radio.who}</b> {radio.text} <kbd>R</kbd>
+            </button>
+          )}
           {near && (
             <button type="button" className="iw-prompt" onClick={act}>
               <kbd>E</kbd> {near.name}

@@ -123,4 +123,10 @@ export const CONVOS = {
 };
 
 // Who says what in a conversation's bubble
+// the toasts someone speaks in (../voice.js)
+export const SAYS = {
+  tomatoes: { who: 'pippin', text: 'Out, every last ember. Pippin: “Oh, that’s nice! Ash on my tomatoes!”' },
+  cold: { who: 'strider', text: 'Frodo’s gone so cold. Strider: “Sam! Quickly!” Start again, and hurry.' },
+};
+
 export const SPEAKERS = { strider: 'Strider', sam: 'Samwise Gamgee', pippin: 'Pippin Took', merry: 'Merry Brandybuck', frodo: 'Frodo', arwen: 'Arwen', nazgul: 'The Nazgûl', narrator: '' };

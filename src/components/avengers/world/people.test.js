@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { clipsFor } from './people';
-import { HERO, gaitFor } from './rules';
+import { GAIT, HERO, gaitFor } from './rules';
 
 // a model of one bone, and clips that move it (walk a second long, run 0.6 s)
 const rig = () => {
@@ -37,6 +37,32 @@ describe('clipsFor', () => {
     expect(c.actions.idle.time).toBe(0);
   });
 
+  it('takes clips made for it later, and says when a one-shot has played through', () => {
+    const { model, clips } = rig();
+    const c = clipsFor(model, clips);
+    const wave = new THREE.AnimationClip('wave', 0.8, [new THREE.NumberKeyframeTrack('b.position[y]', [0, 0.8], [0, 1])]);
+    expect(c.play('wave')).toBe(false);
+    c.add(wave);
+    c.play('idle');
+    expect(c.play('wave', { loop: false, fade: 0.5 })).toBe(true);
+    expect(c.playing).toBe('wave');
+    expect(c.finished('wave')).toBe(false);
+    c.update(0.25);
+    // (still fading in over its half second)
+    expect(c.actions.wave.getEffectiveWeight()).toBeLessThan(1);
+    c.update(0.75);
+    expect(c.finished('wave')).toBe(true);
+    // asked again once it's over, it plays again from the start
+    c.play('wave', { loop: false, again: true });
+    expect(c.finished('wave')).toBe(false);
+    expect(c.actions.wave.time).toBe(0);
+    // its own clip of a name is kept over one made for it
+    const own = c.actions.idle;
+    c.add(new THREE.AnimationClip('idle', 1, []));
+    expect(c.actions.idle).toBe(own);
+    expect(c.finished('idle')).toBe(false);
+  });
+
   it("doesn't start a clip over when it's taken back before it has faded out", () => {
     const { model, clips } = rig();
     const c = clipsFor(model, clips);
@@ -50,7 +76,23 @@ describe('clipsFor', () => {
 });
 
 describe('gaitFor', () => {
-  const line = (HERO.walk + HERO.run) / 2.2;
+  const line = (GAIT.up + GAIT.down) / 2;
+
+  it('never walks faster than the walk clip can step, nor runs slower than the run can', () => {
+    // speeding up from a standstill to flat out, and easing off again
+    const speeds = [];
+    for (let v = 0; v <= HERO.run; v += 0.05) speeds.push(v);
+    for (let v = HERO.run; v >= 0; v -= 0.05) speeds.push(v);
+    let g = 'idle';
+    for (const v of speeds) {
+      g = gaitFor(g, v);
+      if (g === 'walk') expect(v / GAIT.walk).toBeLessThanOrEqual(GAIT.rates.walk[1]);
+      if (g === 'run') expect(v / GAIT.run).toBeGreaterThanOrEqual(GAIT.rates.run[0]);
+    }
+    // and his plain walk is a walk
+    expect(gaitFor('walk', HERO.walk)).toBe('walk');
+    expect(gaitFor('run', HERO.walk)).toBe('walk');
+  });
 
   it('picks the clip for the speed', () => {
     expect(gaitFor(null, 0)).toBe('idle');
@@ -64,7 +106,7 @@ describe('gaitFor', () => {
     let g = 'walk';
     const seen = [];
     for (let i = 0; i < 40; i++) {
-      g = gaitFor(g, line + Math.sin(i) * 0.3);
+      g = gaitFor(g, line + Math.sin(i) * 0.18);
       seen.push(g);
     }
     expect(new Set(seen).size).toBe(1);
