@@ -1,5 +1,6 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { builderUrls, cellsOf, kindUrls, modelUrls, viewUrls, within } from './furnish';
+import { builderUrls, cellsOf, crownsOf, kindUrls, modelUrls, viewUrls, within } from './furnish';
 import { LANDINGS } from './landings';
 import { biomeAt, viewOf } from './biomes';
 
@@ -133,5 +134,30 @@ describe('cellsOf', () => {
     const before = JSON.stringify(spots);
     cellsOf(spots, { sectors: 8, inner: 20 });
     expect(JSON.stringify(spots)).toBe(before);
+  });
+});
+
+describe('crownsOf', () => {
+  // (a tree's parts as a scatter takes them: its bark, and its leaves scaled up 2 and lifted)
+  const leaves = new THREE.MeshStandardMaterial({ name: 'Leaves_NormalTree' });
+  const tree = (leafMaterial = leaves) => [
+    { geometry: new THREE.BoxGeometry(0.4, 4, 0.4).translate(0, 2, 0), material: new THREE.MeshStandardMaterial({ name: 'Bark_NormalTree' }), local: null },
+    { geometry: new THREE.BoxGeometry(2, 1, 1.5), material: leafMaterial, local: new THREE.Matrix4().compose(new THREE.Vector3(0, 5, 0), new THREE.Quaternion(), new THREE.Vector3(2, 2, 2)) },
+  ];
+
+  it('is the leaves’ reach round and how high they start and end, not the bark’s', () => {
+    const c = crownsOf(tree());
+    expect(c.r).toBeCloseTo(2, 9);
+    expect(c.lo).toBeCloseTo(4, 9);
+    expect(c.hi).toBeCloseTo(6, 9);
+    // (a tinted copy keeps the name, and is a crown too)
+    expect(crownsOf(tree(Object.assign(leaves.clone(), { name: 'Leaves_NormalTree.001' }))).hi).toBeCloseTo(6, 9);
+  });
+
+  it('is none for a thing with no leafy crown, and one too low to shed (a hedge) falls short', () => {
+    expect(crownsOf([tree()[0]])).toBeNull();
+    expect(crownsOf(tree(new THREE.MeshStandardMaterial({ name: 'Leaves_Pine' })))).toBeNull();
+    const hedge = [{ geometry: new THREE.BoxGeometry(1.6, 1.1, 1.6).translate(0, 0.55, 0), material: leaves, local: null }];
+    expect(crownsOf(hedge).hi).toBeLessThan(2.5);
   });
 });

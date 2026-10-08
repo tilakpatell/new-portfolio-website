@@ -7,14 +7,16 @@
 // furnishes the place (viewOf).
 //
 //   biomes  [{ id, match?(c, at), near?: [lat, lon, deg], sea?, title?,
-//            sub?, ground?, sky?, things?, models?, scatter? }]
+//            sub?, ground?, sky?, things?, models?, scatter?, leaves?, wind? }]
 //            match: on the map's colour there as classify gives it ({ h
 //            0…360, s, l 0…1 }) and where it is ([lat, lon] degrees, or
 //            null); near: within deg of a place, whatever its colour (a
 //            town too small to see from orbit); sea: no landing there, so
 //            the spot moves on toward land (towardLand), reach?: how many
 //            0.02 rad strides out it goes (24 if left out). Anything left
-//            out is the landing's own.
+//            out is the landing's own, but its leaves (./litter.js): those
+//            go with its scatter, so a biome with trees of its own names
+//            its own, and one with none (Mordor's ash, the ice) has none.
 
 import { facingAlong, rotate, vec } from '../foot';
 
@@ -72,7 +74,7 @@ const holds = (b, c, at) => {
 // fields where it leaves them out. A landing with no biomes is its own,
 // 'default'.
 export function biomeAt(landing, rgb, at = null) {
-  const own = { title: landing.title, sub: landing.sub, ground: landing.ground, sky: landing.sky, things: landing.things, scatter: landing.scatter, models: landing.models };
+  const own = { title: landing.title, sub: landing.sub, ground: landing.ground, sky: landing.sky, things: landing.things, scatter: landing.scatter, models: landing.models, leaves: landing.leaves ?? null, wind: landing.wind ?? null };
   const list = landing.biomes ?? [];
   if (!list.length) return { id: 'default', sea: false, ...own };
   const c = classify(rgb);
@@ -88,6 +90,8 @@ export function biomeAt(landing, rgb, at = null) {
     things: pick('things'),
     scatter: pick('scatter'),
     models: b.models ? { ...own.models, ...b.models } : own.models,
+    leaves: b.leaves !== undefined ? b.leaves : b.scatter ? null : own.leaves,
+    wind: pick('wind'),
   };
 }
 

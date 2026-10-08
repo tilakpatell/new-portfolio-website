@@ -127,6 +127,42 @@ describe('a landing’s biome, from the colour of the map under it', () => {
   });
 });
 
+describe('the leaves and the wind where you come down', () => {
+  const me = LANDINGS.middleearth;
+  const at = (id, hex, where = null) => biomeAt(LANDINGS[id], rgb(hex), where);
+  const forest = me.biomes.find((b) => b.id === 'forest' && !b.near);
+  const lorien = me.biomes.find((b) => b.id === 'forest' && b.near);
+
+  it('are the Shire’s in the Shire and out of the sea, the wood’s own under the eaves, and Lothlórien’s gold there', () => {
+    expect(me.leaves).toBeTruthy();
+    expect(at('middleearth', '#5a8a3a').leaves).toBe(me.leaves);
+    expect(at('middleearth', '#2a4a8a').leaves).toBe(me.leaves);
+    expect(at('middleearth', '#23331c').leaves).toBe(forest.leaves);
+    const gold = at('middleearth', '#5a8a3a', [36.9, 3.4]);
+    expect(gold.id).toBe('forest');
+    expect(gold.leaves).toBe(lorien.leaves);
+    expect(lorien.leaves).not.toBe(forest.leaves);
+  });
+
+  it('are none where the place has a scatter of its own and names none: Mordor, Harad, the mountains, the ice', () => {
+    expect(at('middleearth', '#3a3030').leaves).toBeNull();
+    expect(at('middleearth', '#c8a86a').leaves).toBeNull();
+    const peaks = at('middleearth', '#9a9a9a');
+    expect(peaks.leaves).toBeNull();
+    expect(peaks.wind.strength).toBe(0.6);
+    // (the rest's wind the Shire's)
+    expect(at('middleearth', '#3a3030').wind).toBe(me.wind);
+    expect(at('travel', '#eef2f6').leaves).toBeNull();
+    expect(at('travel', '#5a7a3a').leaves).toBe(LANDINGS.travel.leaves);
+  });
+
+  it('are a landing’s own where it has no biomes', () => {
+    expect(at('marvel', '#ffffff').leaves).toBe(LANDINGS.marvel.leaves);
+    expect(at('marvel', '#ffffff').wind).toBe(LANDINGS.marvel.wind);
+    expect(at('office', '#ffffff').leaves).toBeNull();
+  });
+});
+
 describe('a spot over the sea moves on to land', () => {
   // a world that's sea west of u 0.5 and land east of it; [u, 0, 0] the sampler hands back
   const half = ([u]) => [u, 0, 0];

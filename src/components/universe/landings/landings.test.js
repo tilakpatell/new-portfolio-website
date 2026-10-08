@@ -95,6 +95,30 @@ describe('planet landings', () => {
     expect(named).toBeGreaterThan(20);
   });
 
+  it('give the leafy places fallen leaves, and a wind every place that has one', () => {
+    for (const [, id, l] of PLACES) {
+      if (l.leaves) {
+        const { colours, density, size, shed, crown } = l.leaves;
+        expect(colours, id).toHaveLength(3);
+        for (const c of colours) expect(c, id).toMatch(HEX);
+        expect(density, id).toBeGreaterThan(0);
+        expect(density, id).toBeLessThanOrEqual(1);
+        expect(size, id).toBeGreaterThanOrEqual(0.1);
+        expect(size, id).toBeLessThanOrEqual(0.3);
+        expect(shed, id).toBeGreaterThanOrEqual(0);
+        if (crown) for (const k of ['lit', 'shade']) expect(crown[k], `${id}'s crown ${k}`).toHaveLength(3);
+      }
+      if (l.wind) {
+        expect(l.wind.strength, id).toBeGreaterThanOrEqual(0.1);
+        expect(l.wind.strength, id).toBeLessThanOrEqual(1);
+      }
+    }
+    const at = (id) => PLACES.filter(([, x]) => x === id).map(([, , l]) => l);
+    for (const id of ['middleearth', 'middleearth/shire', 'middleearth/forest', 'marvel', 'travel', 'travel/land', 'music']) for (const l of at(id)) expect(l.leaves, id).toBeTruthy();
+    expect(at('middleearth/forest')).toHaveLength(2);
+    for (const id of ['middleearth/mordor', 'middleearth/harad', 'middleearth/mountains', 'breakingbad', 'breakingbad/mountains', 'caribbean', 'travel/ice']) for (const l of at(id)) expect(l.leaves ?? null, id).toBeNull();
+  });
+
   it('give the lots and streets small things lying about to knock over', () => {
     const at = Object.fromEntries(PLACES.map(([, id, l]) => [id, l]));
     for (const id of ['office', 'breakingbad/city', 'invincible/city', 'rickmorty/street', 'marvel']) {

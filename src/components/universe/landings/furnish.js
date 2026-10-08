@@ -6,8 +6,8 @@
 // pilot coming down beside a friend is handed the friend's frame.
 //
 // furnish({ id, landing, frame, R, small, reduced, renderer, physical }) →
-//   { group, solids, spots, lights, bodies, put(entry, position, quaternion),
-//   update(t, dt, ctx?), ready, open(), dispose() }
+//   { group, solids, spots, lights, bodies, crowns, put(entry, position,
+//   quaternion), update(t, dt, ctx?), ready, open(), dispose() }
 //   group  in the planet's space (footScene's root: its middle at the origin),
 //          built out of sight: footScene readies it all at once (its
 //          pictures sent, its shaders made) and shows it, rather than each
@@ -28,6 +28,11 @@
 //          solids, not in `solids`, so the walk goes into them (and shoves
 //          them, ./physics.js) instead of round them; put() stands one
 //          where its body has gone
+//   crowns grows too: the leafy crowns of the trees, for leaves to fall
+//          from (./litter.js): [{ x, z, r, lo, hi }], metres on the frame
+//          (as the things' `at`), its reach and how high it starts and ends;
+//          a scattered model's (its Leaves_NormalTree, a tree 2.5 m and up),
+//          and a thing's builder's (its `crowns`, at spots of its own)
 //   ready  a promise, once everything that's coming has come
 //   open   the things' solids, bodies and spots put in effect, once
 //          they're shown (none to walk into before they can be seen)
@@ -314,6 +319,18 @@ function partsBox(parts) {
   return box.isEmpty() ? null : { min: box.min.toArray(), max: box.max.toArray() };
 }
 
+// a scatter kind's leafy crown (its parts drawn with Leaves_NormalTree, the
+// oaks' and the bushes'), in the kind's own frame, metres: how far it
+// reaches round, and how high it starts and ends; null if it has none
+export function crownsOf(parts) {
+  const leaves = parts.filter((p) => /^Leaves_NormalTree(\.\d+)?$/.test(p.material?.name ?? ''));
+  const box = leaves.length ? partsBox(leaves) : null;
+  if (!box) return null;
+  return { r: Math.max(box.max[0] - box.min[0], box.max[2] - box.min[2]) / 2, lo: box.min[1], hi: box.max[1] };
+}
+// (one lower than this, a hedge, sheds nothing)
+const CROWN_MIN = 2.5;
+
 // a built thing's meshes as instancing parts (scattering a built kind, or a model)
 function partsOf(object) {
   const out = [];
@@ -332,6 +349,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
   const solids = [];
   const bodies = [];
   const spots = [];
+  const crowns = [];
   // (what's to be walked round, knocked about and answered, held until the things are shown)
   const held = { solids: [], spots: [], bodies: [] };
   let opened = false;
@@ -407,6 +425,8 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       addBody({ object: o, position: P.toArray(), quaternion: Q.toArray(), scale: 1, box, body, solids: circles });
     } else addSolid(...circles);
     if (made.update) updates.push(made.update);
+    // (its builder's crowns, at spots of their own on it)
+    for (const k of made.crowns ?? []) crowns.push({ x: t.at[0] + (k.at?.[0] ?? 0), z: t.at[1] + (k.at?.[1] ?? 0), r: k.r, lo: k.lo, hi: k.hi });
     // a door (at a spot of its own on it, in its frame), or something to say
     if (t.door || t.say) {
       const at = t.door?.at ? place(spot, t.door.at[0], t.door.at[1], R).n : spot.n;
@@ -422,6 +442,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     let reach = 0.5;
     let tints = null;
     let shared = false; // (a model's: its geometry and materials are the loader's cache's)
+    let made = null;
     if (spec) {
       const object = await models.get(spec);
       if (!object) return;
@@ -429,7 +450,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       shared = true;
       reach = entry.reach ?? spec.reach ?? object.userData.footprint * 0.7;
     } else if (planet.SCATTER?.[entry.kind]) {
-      const made = planet.SCATTER[entry.kind](kit, entry.opts ?? {});
+      made = planet.SCATTER[entry.kind](kit, entry.opts ?? {});
       parts = made.parts;
       tints = made.tints ?? null;
       reach = made.radius ?? 0.4;
@@ -476,6 +497,9 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     holder.userData.shared = shared;
     holder.add(...cells.flat());
     if (!add(holder)) return;
+    // (the trees' crowns, for leaves to fall from)
+    const crown = spec ? crownsOf(parts) : (made?.crown ?? null);
+    if (crown) for (const p of items) if (crown.hi * p.s >= CROWN_MIN) crowns.push({ x: p.x, z: p.z, r: crown.r * p.s, lo: crown.lo * p.s, hi: crown.hi * p.s });
     const locals = parts.map((part) => part.local ?? null);
     // (each instance's body: its cell's meshes, and where it is among them)
     cellIds.forEach((ids, c) =>
@@ -539,6 +563,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     spots,
     lights,
     bodies,
+    crowns,
     put,
     ready,
     // (ctx: what the things may answer to; { me }: the player's head, in the world)
@@ -563,6 +588,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       spots.length = 0;
       lights.length = 0;
       bodies.length = 0;
+      crowns.length = 0;
       held.solids.length = held.spots.length = held.bodies.length = 0;
     },
   };
