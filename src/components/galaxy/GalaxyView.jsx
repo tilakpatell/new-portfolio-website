@@ -19,7 +19,9 @@ import WarHud from './WarHud';
 // (the universe map's own, UniverseMap.jsx's classes, the scene moves them),
 // your shields, the touch buttons, the flight settings and a line on how to
 // fly until you do, and the war's battle on here in a line (WarHud.jsx).
-// While the 3D loads the box says so; without 3D, a note
+// While the 3D loads the box says so, and while it's prepared (on a visit
+// straight here: a flown trip's climb is its own loading screen) the loading
+// veil, with the system's name; without 3D, a note
 // that the galaxy needs it, and the panel and the map still work.
 
 export default function GalaxyView({ system, here, handle, ship, loadout, build = null, net = null, frozen, onEvent, onArrive, onAt, onBoard, onCrash, onMap, oath = null, found = [] }) {
@@ -42,7 +44,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   const events = useRef(onEvent);
   events.current = onEvent;
   const reduced = useReducedMotion();
-  const { host, on, meant, rt } = useWorld(galaxyModule, {
+  const world = useWorld(galaxyModule, {
     props: {
       system,
       reduced,
@@ -73,6 +75,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       events.current?.(e);
     },
   });
+  const { host, on, meant, rt, status } = world;
   // the scene itself, while it's the world on the runtime: its own calls (jump, goTo, fire…)
   const view = { get current() { return rt?.current?.module === galaxyModule ? rt.current.world.scene : null; } };
   useEffect(() => setFlown(false), [ship]);
@@ -111,10 +114,10 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   );
 
   return (
-    <WorldHost world={{ host }} className="universe-map galaxy-map" data-ship={ship || undefined}>
+    <WorldHost world={world} veil={{ title: systemById(system)?.name ?? hereSys.name }} className="universe-map galaxy-map" data-ship={ship || undefined}>
       {meant ? (
         <>
-          {!on && (
+          {!on && status !== 'preparing' && (
             <p className="universe-loading" role="status">
               Plotting a course to a galaxy far, far away…
             </p>
