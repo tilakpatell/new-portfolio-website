@@ -19,12 +19,16 @@ import { useWar } from './useWar';
 export default function WarHud({ sys, oath, front = null }) {
   const { now, table } = useWar(oath?.war);
   const row = table.systems.find((r) => r.id === sys);
-  if (!row?.battle) return null;
-  const b = row.battle;
+  // (the battle here as the front has it, if it has one: the war table's, or
+  // one a dev hook forced; whether it's still fighting from the clock, not
+  // what the battle kept from its start)
   const got = front?.() ?? null;
-  const info = got && got.on?.id === b.id ? got : null;
+  const info = got?.on && got.sys === sys ? got : null;
+  const was = info?.on ?? row?.battle;
+  if (!was) return null;
+  const b = { ...was, fighting: now < was.fightEnd };
   const ended = Boolean(b.fighting && info?.result);
-  const line = ended ? afterLine(info, systemById(sys)?.name ?? sys, now) : battleLine(row, now, oath?.side);
+  const line = ended ? afterLine(info, systemById(sys)?.name ?? sys, now) : battleLine({ ...row, kind: info?.laid?.kind ?? row?.kind, battle: b }, now, oath?.side);
   const stage = b.fighting && !ended && info ? stageLine(info) : null;
   const next = stage ? nextLine(info.next) : null;
   const bars = stage ? objectiveBars(info) : [];

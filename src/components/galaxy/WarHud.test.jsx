@@ -50,9 +50,19 @@ describe('the war’s line over the galaxy', () => {
     expect(out).toContain('Defeat at Hoth · next battle in 4:05');
     expect(out).not.toContain('Stage 1');
   });
-  it('another battle’s info (or none) leaves it at the one line', () => {
-    expect(hud(hoth(fighting), () => info({ on: { ...fighting, id: 'other' } }))).not.toContain('Stage');
+  it('another system’s info (or none) leaves it at the one line', () => {
+    expect(hud(hoth(fighting), () => info({ sys: 'yavin' }))).not.toContain('Stage');
     expect(hud(hoth(fighting), () => null)).toContain('Hold the evacuation · 2:05 left');
+  });
+  it('a battle the war table doesn’t have here (a dev hook’s, forced) still gets its lines, from the battle itself', () => {
+    const forced = info({ on: { ...fighting, id: 'dev.gcw.hoth.1' }, laid: { attacker: 1, kind: 'siege' } });
+    const out = hud(null, () => forced);
+    expect(out).toContain('Hold the siege line · 2:05 left');
+    expect(out).toContain('Stage 1 of 3');
+  });
+  it('in the lull after its fighting’s done, the regrouping line, whatever the battle kept from its start', () => {
+    const late = { ...fighting, fightEnd: NOW - 5e3, fighting: true };
+    expect(hud(hoth(late), () => info({ on: { ...late, attackerTeam: 1 } }))).toContain('Evacuation: regrouping, the next in 4:05');
   });
   it('is nothing where there’s no battle', () => {
     expect(hud(hoth(null))).toBe('');
