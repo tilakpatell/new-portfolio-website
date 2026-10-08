@@ -21,10 +21,16 @@
 // few seconds), it calls `onFloor` once: by default lib/detail's
 // `strained`, which holds a strong graphics card at the high detail level
 // from then on, since ultra's textures and geometry turned out to be more
-// than this machine could carry.
+// than this machine could carry. `stuck` says how many runs in a row it has
+// been late there (0 once one comes on time).
+//
+// reset() starts it again as new, for a new scene on the same screen: its
+// sharpest, its first wait, nothing counted. Only the display's beat, which
+// is the screen's, and having told `onFloor`, which is the machine's, are
+// kept.
 //
 // createPace({ steps, window, missed, settle, wait, longest, floorRuns, onFloor }) →
-//   { frame(now) → the new scale when it changes, else null, scale, level, reset() }
+//   { frame(now) → the new scale when it changes, else null, scale, level, stuck, reset() }
 // `now` is the frame's timestamp (ms); the scale is one of `steps`, sharpest first.
 
 import { strained } from '../detail';
@@ -32,7 +38,8 @@ import { strained } from '../detail';
 export const STEPS = [1, 0.85, 0.72, 0.6, 0.5];
 
 export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25, settle = 600, wait = 4000, longest = 60000, floorRuns = 5, onFloor = strained } = {}) {
-  let stuck = 0; // runs at the last step with frames still late (floorRuns once told)
+  let stuck = 0; // runs in a row at the last step with frames still late
+  let told = false; // onFloor called (once)
   let level = 0;
   let last = 0;
   let beat = 1000 / 60; // the display's own, as read from the frames
@@ -45,11 +52,20 @@ export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25,
   let upAt = -Infinity;
   let hold = wait; // ms of clean running before going back up a step
 
+  // (it used to keep the level and the waits, so a scene after a struggling
+  // one went straight to wherever that one had got to, the next step past it)
   const reset = () => {
+    level = 0;
     last = 0;
     n = 0;
     late = 0;
+    runStart = 0;
     clean = 0;
+    stuck = 0;
+    recent.length = 0;
+    changedAt = -Infinity;
+    upAt = -Infinity;
+    hold = wait;
   };
 
   return {
@@ -58,6 +74,9 @@ export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25,
     },
     get level() {
       return level;
+    },
+    get stuck() {
+      return stuck;
     },
     reset,
     frame(now) {
@@ -93,7 +112,10 @@ export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25,
           // as soft as it goes and still late: say so, once (lib/detail
           // holds a strong graphics card back at high next time)
           stuck += 1;
-          if (stuck === floorRuns) onFloor?.();
+          if (stuck >= floorRuns && !told) {
+            told = true;
+            onFloor?.();
+          }
           return null;
         }
         if (now - changedAt < settle) return null;
@@ -103,7 +125,7 @@ export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25,
         changedAt = now;
         return steps[level];
       }
-      if (stuck < floorRuns) stuck = 0;
+      stuck = 0;
       if (share > 0) {
         clean = 0;
         return null;

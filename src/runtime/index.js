@@ -14,6 +14,7 @@ import { createAssets } from './assets';
 import { createAudioBus } from './audio';
 import { createRuntime } from './runtime';
 import { readOverride } from './backend';
+import { budget } from '../lib/device';
 import './runtime.css';
 
 export { useWorld } from './useWorld';
@@ -47,7 +48,8 @@ export function runtime() {
   instance = createRuntime({
     makeBackend: (kind, opts) => browser().then((m) => m.makeBackend(kind, opts)),
     input: createInput(),
-    quality: createQuality({ dpr: win?.devicePixelRatio || 1 }),
+    // (the least ratio from this device's own budget row: a strong card's is ultra's, as lib/three/renderer reads it)
+    quality: createQuality({ dpr: win?.devicePixelRatio || 1, minRatio: budget().minRatio ?? 0 }),
     saves: localSaves(),
     store: worldStore(),
     assets: createAssets({ loaders, forget }),
