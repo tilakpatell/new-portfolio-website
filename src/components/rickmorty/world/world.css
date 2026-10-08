@@ -37,7 +37,7 @@
 .rm-world-canvas:active { cursor: grabbing; }
 .rm-world-canvas[data-on] { opacity: 1; }
 .rm-world kbd, .rm-place kbd { display: inline-grid; place-items: center; min-width: 1.45em; margin-left: 0.4rem; padding: 0.1rem 0.32rem; border: 1.5px solid currentColor; border-radius: 5px; font: 700 0.7rem/1.2 var(--font-mono); opacity: 0.8; }
-.rm-world kbd.key-first { margin: 0 0.4rem 0 0; } /* (the key first in a prompt, as the guide writes it) */
+.rm-world .key-first { margin: 0 0.4rem 0 0; } /* (the key first in a prompt, as the guide writes it; by its class alone, so the house cap stays the one cap rule) */
 
 /* through a door: a fade to black; through the portal, to green */
 .rm-fade { position: absolute; inset: 0; z-index: 6; background: #07040c; opacity: 0; pointer-events: none; transition: opacity 0.26s ease; }
