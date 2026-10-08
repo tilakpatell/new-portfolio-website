@@ -6,7 +6,11 @@
 // `ultra: { tris, tex }`; the placer loads it at the ultra level only, and
 // at ultra draws every model whole at any distance (no far copy). The
 // catalogue's `tris` stays the high cut, so nothing at high gets heavier.
-// (Until lib/budgets.js lands, "far copies at this level" is level !== 'ultra'.)
+// Which file a level loads and whether it swaps to the far copy are read by
+// the placer through ./index.js (modelUrlFor, wantsLod, on lib/budgets);
+// this file holds the cut's numbers for the importers and the tests.
+
+import { budget } from '../../../../lib/budgets';
 
 export const ULTRA = { factor: 4, tex: 8192, bytes: 24 * 1024 * 1024 };
 
@@ -16,5 +20,6 @@ export const ultraCut = (entry) => entry.ultra ?? { tris: ULTRA.factor * entry.t
 // whether a kind loads its ultra cut at this level
 export const usesUltra = (entry, level) => level === 'ultra' && Boolean(entry?.ultra);
 
-// whether far-off things swap to their light copy (<kind>.lod1.glb) at this level
-export const farCopies = (level) => level !== 'ultra';
+// whether far-off things swap to their light copy (<kind>.lod1.glb) at this
+// level: the level's budget says (lib/budgets' lod1; ultra keeps the whole model)
+export const farCopies = (level) => Boolean(budget(level).lod1);

@@ -17,7 +17,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { gen3dUrl } from '../../lib/three/gen3d';
+import { gen3dUrlChecked } from '../../lib/three/gen3d';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { TRENCH, portZ } from './trench';
 import { CAMERA_BACK, createTieLife, vaderFlight } from './ties';
@@ -547,8 +547,8 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   // doesn't stall a frame
   let disposed = false;
   let house = null; // (the house look, set below once the scene is built)
-  gltfLoader()
-    .loadAsync(gen3dUrl('x-wing')) // the cut for this device's detail level
+  gen3dUrlChecked('x-wing') // the cut for this device's detail level (its .ultra one where it has one)
+    .then((url) => gltfLoader().loadAsync(url))
     .then(async ({ scene: model }) => {
       if (disposed || lost) return disposeModel(model);
       house?.adopt(model); // (in the house look, as the rest)

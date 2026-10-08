@@ -1,8 +1,9 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import CREDITS from '../../../../data/modelCredits.json';
-import { GROUPS, SURFACE_MODELS, madeKinds, surfaceLodUrl, surfaceUltraUrl, surfaceUrl } from './index';
-import { ULTRA } from './ultra';
+import { ULTRA } from '../../../../../scripts/gen3d/budget.mjs';
+import { ULTRA as CUT } from './ultra';
+import { GROUPS, SURFACE_MODELS, madeKinds, modelUrlFor, surfaceLodUrl, surfaceUltraUrl, surfaceUrl, wantsLod } from './index';
 
 const file = (kind) => new URL(`../../../../../public${surfaceUrl(kind)}`, import.meta.url);
 const ultraFile = (kind) => new URL(`../../../../../public${surfaceUltraUrl(kind)}`, import.meta.url);
@@ -78,18 +79,36 @@ describe('the surface models', () => {
     for (const f of readdirSync(dir).filter((f) => f.endsWith('.lod1.glb'))) expect(SURFACE_MODELS[f.slice(0, -9)]?.lod, f).toBe(true);
   });
 
-  it('has an ultra cut beside each one that says so, and only those, each under 24 MB (./ultra.js)', () => {
+  it('has an ultra cut beside each one whose entry says so, and only those, each within the ultra cut’s size', () => {
     for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
       if (m.cluster) continue;
       expect(existsSync(ultraFile(kind)), `${kind}.ultra.glb`).toBe(Boolean(m.ultra));
       if (!m.ultra) continue;
+      expect(m.ultra.tris, `${kind}.ultra.tris`).toBeGreaterThan(m.tris ?? 0);
+      // (and at most four times the catalogue's cut, where the entry has one: ./ultra.js)
+      if (m.tris) expect(m.ultra.tris, `${kind}.ultra.tris`).toBeLessThanOrEqual(CUT.factor * m.tris);
+      expect(m.ultra.tex, `${kind}.ultra.tex`).toBeLessThanOrEqual(ULTRA.tex);
       expect(statSync(ultraFile(kind)).size, `${kind}.ultra.glb`).toBeLessThan(ULTRA.bytes);
-      expect(m.ultra.tex, kind).toBeLessThanOrEqual(ULTRA.tex);
-      if (m.tris) expect(m.ultra.tris, kind).toBeLessThanOrEqual(ULTRA.factor * m.tris);
-      // (never fewer than the high cut: an ultra cut lighter than high is no ultra cut)
-      if (m.tris) expect(m.ultra.tris, kind).toBeGreaterThanOrEqual(m.tris);
     }
     const dir = new URL('../../../../../public/models/galaxy/surface/', import.meta.url);
     for (const f of readdirSync(dir).filter((f) => f.endsWith('.ultra.glb'))) expect(SURFACE_MODELS[f.slice(0, -10)]?.ultra, f).toBeTruthy();
+  });
+});
+
+describe('which file a level loads, and whether it swaps to the light one far off', () => {
+  const models = { plain: { lod: true }, tall: { lod: true, ultra: { tris: 400000, tex: 8192 } }, small: {} };
+
+  it('loads the ultra cut at ultra where the kind has one, the plain file otherwise', () => {
+    expect(modelUrlFor('tall', 'ultra', models)).toBe(surfaceUltraUrl('tall'));
+    expect(modelUrlFor('tall', 'high', models)).toBe(surfaceUrl('tall'));
+    expect(modelUrlFor('plain', 'ultra', models)).toBe(surfaceUrl('plain'));
+    expect(modelUrlFor('nothing', 'ultra', models)).toBe(surfaceUrl('nothing'));
+  });
+
+  it('never swaps to the light model at ultra, and does below it where the kind has one', () => {
+    expect(wantsLod('plain', 'ultra', models)).toBe(false);
+    expect(wantsLod('plain', 'high', models)).toBe(true);
+    expect(wantsLod('plain', 'low', models)).toBe(true);
+    expect(wantsLod('small', 'high', models)).toBe(false);
   });
 });

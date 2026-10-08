@@ -4,7 +4,7 @@
 
 .dm-world {
   --shire-ink: #f6f4ee;
-  --shire-glass: rgba(24, 30, 42, 0.74);
+  --shire-glass: rgba(24, 30, 42, 0.78);
   --shire-glass-hi: rgba(26, 34, 48, 0.92);
   --shire-gold: #8fb6ff;
   --shire-green: #1f4e8c;
@@ -28,7 +28,7 @@
 @media (prefers-reduced-motion: reduce) { .dm-alarm { animation: none; } }
 .dm-stage[data-fire] { --shire-gold: #ff7a64; --shire-line: rgba(255, 122, 100, 0.45); }
 .dm-stage[data-mode='talk'] .shire-canvas { cursor: default; touch-action: none; }
-.dm-stage .shire-hud-top { padding-top: clamp(0.7rem, 2vw, 1.2rem); }
+.dm-stage { --shire-bar-clear: var(--hud-pad); } /* (no chapter bar over the office) */
 
 /* the paper toss and the fact check, over the office */
 .dm-place { position: fixed; inset: 0; z-index: 80; overflow: auto; background: rgba(233, 230, 222, 0.97); color: var(--ink, #1b1f27); outline: none; }

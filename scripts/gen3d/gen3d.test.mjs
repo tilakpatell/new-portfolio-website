@@ -172,6 +172,17 @@ describe('the three cuts of a smaller model', () => {
   });
 });
 
+describe('the ultra cut, made only for the models asked for it', () => {
+  it('is the raw mesh at 300k faces, with 8192 maps, under 24 MB, and kept out of the three standard cuts', async () => {
+    const { TIERS, ULTRA, fileFor } = await import('./budget.mjs');
+    expect(ULTRA).toEqual({ suffix: '.ultra', faces: 300000, tex: 8192, bytes: 24 * 1024 * 1024, detail: ['ultra'] });
+    expect(Object.keys(TIERS)).toEqual(['hq', 'mid', 'lo']);
+    expect(fileFor('x-wing', 'ultra')).toBe('x-wing.hq.glb');
+    expect(fileFor('x-wing', 'ultra', { ultra: true })).toBe('x-wing.ultra.glb');
+    expect(fileFor('x-wing', 'high', { ultra: true })).toBe('x-wing.hq.glb');
+  });
+});
+
 describe('a step made again only when its inputs change', () => {
   it('reuses the last output for the same key', async () => {
     const { once, digest } = await import('./steps.mjs');

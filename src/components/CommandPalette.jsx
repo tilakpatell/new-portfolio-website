@@ -20,6 +20,7 @@ import {
   RiRestartLine,
   RiRocket2Line,
   RiSearchLine,
+  RiSettings3Line,
   RiSaveLine,
   RiSparkling2Line,
   RiTerminalBoxLine,
@@ -36,7 +37,7 @@ import { BACK, SCRIPTS } from '../fun/scripts';
 import { audioContext, setSound, soundOn } from '../lib/audio';
 import { useView } from './ViewSwitch';
 import { restartSite } from '../lib/restart';
-import { openGuide } from '../lib/palette';
+import { openGuide, openSettings } from '../lib/palette';
 import { TOUR_TIMES, openTour } from '../lib/tour';
 import { DESTINATIONS } from './universe/nav';
 import { byId as universeById } from './universe/universes';
@@ -91,6 +92,7 @@ export default function CommandPalette({ onClose }) {
         ? { id: 's-uni', group: 'Actions', label: 'Switch to the universe', hint: 'and open there next time', keywords: 'view mode 3d map front door start page landing universe fly', icon: RiRocket2Line, run: () => switchTo('universe') }
         : { id: 's-home', group: 'Actions', label: 'Switch to the classic site', hint: 'and open there next time', keywords: 'view mode plain pages front door start page landing home classic simple 2d', icon: RiLayoutGridLine, run: () => switchTo('classic') },
       { id: 'a-guide', group: 'Actions', label: 'Guide: the controls and tips for this page', hint: '?', keywords: 'help controls keys keyboard shortcuts how to play tips instructions question', icon: RiQuestionLine, run: openGuide },
+      { id: 'a-settings', group: 'Actions', label: 'Settings', hint: 'Quality, sound, this device', keywords: 'settings preferences options quality graphics ultra high medium low performance fps sharpness resolution pixel ratio 3d sound volume music voices motion data download gpu device', icon: RiSettings3Line, run: openSettings },
       // the three tours, the same words kept so "tour" still finds them
       { id: 'a-tour-r', group: 'Actions', label: 'Take the hiring tour', hint: TOUR_TIMES.recruiter, keywords: 'tour help onboarding walkthrough new here first time show around how to get about start recruiter hire hiring work engineering', icon: RiCompass3Line, run: () => openTour({ audience: 'recruiter' }) },
       { id: 'a-tour-p', group: 'Actions', label: 'Take the player’s tour', hint: TOUR_TIMES.player, keywords: 'tour help onboarding walkthrough new here first time show around how to get about start player play games worlds', icon: RiCompass3Line, run: () => openTour({ audience: 'player' }) },
