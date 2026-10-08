@@ -74,6 +74,10 @@ import { bounce, createBlobShadows, floorShadow, loadFloorShadow, setFloorTime }
 import { createHouse, shadowFor } from '../../../lib/three/house';
 import { coreOf, loadCore, wear } from '../../../lib/three/core';
 import { sharpen } from '../../../lib/three/textures';
+import { guard } from '../../../lib/three/frameGuard';
+import { prepareScene } from '../../../lib/three/gpuWork';
+import { precompilePasses } from '../../../lib/three/renderer';
+import { settle } from '../../../lib/settle';
 
 // Models from Sketchfab (CC Attribution, credited in public/cc0/README.md; scripts/sketchfab-import.mjs
 // brings them to web size): the RV, Saul's car, the water tank, the train's tank cars, cacti, a
@@ -256,6 +260,10 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     },
   });
   const { renderer, scene, camera } = stage;
+  // the frame guard (lib/three/frameGuard), as createRenderer puts on every
+  // renderer: a late arrival's draw is left out till its shader and its
+  // pictures are ready, not waited on mid-frame
+  const held = guard(renderer);
   // (no shadow pass: the floor's shadows are baked, see the top)
   renderer.shadowMap.enabled = false;
   // the house look (lib/three/house): one shadow colour on everything, from
@@ -804,6 +812,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   // hoodie or the lab’s suit, its colours and his gear on. ──
   const cast = []; // { id, p, clock (how often it's stepped), errand?, doing, talk }
   let people = null;
+  let castIn = null; // (them on their way, for the prepare to wait on)
   let gone = false;
   const undress = [];
   const street = createStreet();
@@ -812,7 +821,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     const specOf = (id) => (id === 'jesse' ? jesse.spec : ABQ[id]);
     const ids = castFor({ phone: mobile, bloom: fit.bloom });
     const walkers = mobile || !(fit.bloom > 0) ? [] : CIVILIANS;
-    loadPeople([...ids.map(specOf), ...walkers.map((c) => ABQ[c.id])].filter(Boolean), null, { clips: true })
+    castIn = loadPeople([...ids.map(specOf), ...walkers.map((c) => ABQ[c.id])].filter(Boolean), null, { clips: true })
       .then((got) => {
         if (gone) return got.dispose();
         people = got;
@@ -1311,21 +1320,51 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     stage.render(ms);
   }
 
-  // the shaders of what only shows later (the night's lamps and pools, a
-  // delivery's drop, the unlock beam, the car wash's water) built now, while
-  // the page is still loading, not as a stall the first time dark falls
   // (everything built so far in the house look, before the shaders are)
   house.adopt(scene);
-  {
-    const later = [night.object, drop, beamMesh, water];
-    const was = later.map((o) => o.visible);
-    for (const o of later) o.visible = true;
-    await stage.precompile().catch(() => {});
-    later.forEach((o, i) => (o.visible = was[i]));
-  }
+
+  // Everything on the graphics chip behind the page's loading veil: the cast
+  // and the stucco waited for (a few seconds at most: the stucco reworks
+  // every wall's shader, and arriving later it did that mid-drive), the
+  // passes' shaders linked, then lib/three/gpuWork's prepareScene: the
+  // pictures sent a few at a time, the shaders compiled in slices against
+  // where the scene draws (the composer's buffer, with the glow), and a draw
+  // of everything the frames' own way. What only shows later (the night's
+  // lamps and pools, a delivery's drop, the unlock beam, the car wash's
+  // water) is hidden now and readied all the same, so dark falling isn't a
+  // stall. Anything later still is the frame guard's.
+  const LATE_WAIT = 5000; // ms at most the cast and the stucco hold up the prepare
+  const prepare = async (onProgress, alive = () => true) => {
+    const going = () => alive() && !gone && !stage.lost;
+    const say = (f, step) => onProgress?.(f, step);
+    say(0, 'Bringing in the cast');
+    await settle(Promise.all([castIn, stucco]), LATE_WAIT);
+    if (!going()) return;
+    if (post) await settle(precompilePasses(renderer, post.composer, camera), 4000);
+    if (!going()) return;
+    renderer.setRenderTarget(post ? post.composer.readBuffer : null);
+    try {
+      await prepareScene({
+        renderer,
+        roots: [scene],
+        scene,
+        camera,
+        alive: going,
+        onProgress: (f, step) => say(0.1 + 0.9 * f, step),
+        render: () => (stage.draw ? stage.draw(0) : renderer.render(scene, camera)),
+      });
+    } finally {
+      try {
+        renderer.setRenderTarget(null);
+      } catch {
+        // (gone with its renderer)
+      }
+    }
+  };
 
   return {
     render,
+    prepare,
     setPlaces,
     // a beam of light over a place that's just opened
     beam(id) {
@@ -1420,6 +1459,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
         post.bloom.dispose();
         post.grade.dispose?.();
       }
+      held.dispose();
       stage.dispose();
     },
     get lost() {

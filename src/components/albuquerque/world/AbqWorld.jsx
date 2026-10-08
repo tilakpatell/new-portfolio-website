@@ -16,6 +16,8 @@ import { carSound } from './sounds';
 import './world.css';
 import '../../../styles/lazy/albuquerque.css';
 import GuideCue from '../../guide/GuideCue';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { settle } from '../../../lib/settle';
 
 // Albuquerque, the world: drive Walt's Aztek round town, and go into the
 // places as they open. The rules are in ./rules.js, the drawing in
@@ -38,6 +40,7 @@ const clip = (id, opts) => import('../../../lib/clips').then((c) => c.playClip(i
 const VISITED = 'tp-abq-visited';
 const OPENED = 'tp-abq-opened'; // what was open last time, to light up what's new
 const PARKED = 'tp-abq-car';
+const PREPARE_WAIT = 30000; // ms at most the world's prepare holds back its first frame
 const BLUE = 'tp-abq-blue'; // the Blue Sky crystals found so far
 const readBlue = () => {
   const b = local.get(BLUE, []);
@@ -165,6 +168,8 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
   const canvas = useRef(null);
   const map = useRef(null);
   const sim = useRef(null);
+  // how far the world's prepare has got, while it runs (the loading veil)
+  const [prep, setPrep] = useState(null);
   if (!sim.current) {
     const parked = local.get(PARKED, null);
     const ok = parked && Number.isFinite(parked.x) && Math.hypot(parked.x, parked.z) < WORLD_RADIUS;
@@ -254,7 +259,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     };
     import('./scene')
       .then(({ createAbqWorld }) => createAbqWorld(canvas.current, { onLost: () => !dead && setGl('lost') }))
-      .then((a) => {
+      .then(async (a) => {
         if (dead) return a.dispose();
         api.current = a;
         if (import.meta.env.DEV) window.__ABQ__ = { api: a, sim: sim.current }; // for the QA scripts
@@ -262,6 +267,21 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         a.setBlue(sim.current.blue, sim.current.blue.length === CRYSTALS.length);
         a.setPizzas(Number(local.get(PIZZAS, 0)) || 0);
         fit();
+        // everything onto the graphics chip before the first frame, behind
+        // the loading veil (the scene's prepare; half a minute at most)
+        setPrep({ value: 0, step: null });
+        // (cut short at the cap: a prepare still going stops, and says no more)
+        let capped = false;
+        const preparing = () => !dead && !capped;
+        await settle(
+          a.prepare((value, step) => preparing() && setPrep({ value, step }), preparing),
+          PREPARE_WAIT,
+        );
+        capped = true;
+        if (dead) return;
+        // (the veil fades on what it last said)
+        setPrep((p) => p && { ...p, done: true });
+        if (a.lost) return;
         setGl('on');
         announce(progRef.current);
       })
@@ -568,7 +588,8 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
   return (
     <div ref={box} className="abq-world-stage" data-touch={touch || undefined}>
       <canvas ref={canvas} className="abq-world-canvas" data-on={gl === 'on' || undefined} aria-label="Albuquerque from above Walt’s Aztek: the desert, the Sandias, and the roads into town" role="img" />
-      {gl === 'loading' && <p className="abq-world-loading">Driving into Albuquerque…</p>}
+      {gl === 'loading' && !prep && <p className="abq-world-loading">Driving into Albuquerque…</p>}
+      <LoadingVeil shown={Boolean(prep) && !prep.done && gl === 'loading'} progress={prep?.value} step={prep?.step} title="Albuquerque" line="Driving into Albuquerque…" />
 
       <div className="abq-hud abq-hud-top">
         <div className="abq-hud-brand">
