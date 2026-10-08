@@ -438,6 +438,22 @@ describe('the battle every pilot shares (the director)', () => {
     }
   });
 
+  it('sets how hard the fight round you is from your own kills, deaths and shields, and tells the tally nothing of it', () => {
+    const k = at('empire', MS);
+    const p = k.front.info.laid.at;
+    const here = { x: p[0], y: p[1], z: p[2] };
+    for (let i = 0; i < 3; i++) k.front.update(1, 0, camera, here, { shield: 100, down: false });
+    expect(k.front.info.difficulty).toBeCloseTo(1, 1); // (just come in: at par)
+    // shot down twice, and low on shields
+    for (let n = 0; n < 2; n++) {
+      k.front.update(1, 0, camera, null, { shield: 0, down: true });
+      k.front.update(1, 0, camera, here, { shield: 20, down: false });
+    }
+    for (let i = 0; i < 3; i++) k.front.update(1, 0, camera, here, { shield: 20, down: false });
+    expect(k.front.info.difficulty).toBe(0.6);
+    for (const m of k.sent.fight) for (const key of Object.keys(m.m)) expect(key).toBe('here:d');
+  });
+
   it('ends a battle only when the director says, not on the battle’s own clock', () => {
     const k = at('rebel', MS);
     k.front.battle.clock = 650;

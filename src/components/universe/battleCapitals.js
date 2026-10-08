@@ -121,7 +121,9 @@ export function fireBatteries(k, cap, dt) {
           near = f;
         }
       }
-      const youNear = k.youIn() && b.you.team !== cap.team && dist2(b.you.pos, tu.at) < nd;
+      // (you, within the difficulty's reach for you: battleDifficulty.js)
+      const dy = k.youIn() && b.you.team !== cap.team ? dist2(b.you.pos, tu.at) : Infinity;
+      const youNear = dy < nd && (!k.pressure || dy < k.pressure.flak * k.pressure.flak);
       const tp = youNear ? b.you.pos : near?.pos;
       if (tp) {
         const s = 0.1;

@@ -1482,7 +1482,7 @@ export async function create(canvas, ctx) {
     let busy = pieces ? pieces.update(dt, t, camera) : false;
     if (interdictor) busy = interdictor.update(dt, t) || busy;
     if (war) {
-      const w = war.update(dt, t, camera, live);
+      const w = war.update(dt, t, camera, live, { shield: state.shield, down: Boolean(state.crash) });
       if (w.hurt && live) hurt(w.hurt);
       // (a set piece's hold on the ship: kept inside a tunnel, slowed to fly it, caught in a reactor's blast)
       if (live && state.ship && !state.crash) {

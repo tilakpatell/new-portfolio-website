@@ -41,16 +41,19 @@
 // caught in a blast) goes back to the scene in what update returns.
 //
 // createWarFront(scene, { models, small, reduced, tier, emit, makeScene,
-//   now, allegiance }) → { enter(sys, world), update(dt, t, camera, live) → { busy, hurt,
+//   now, allegiance }) → { enter(sys, world), update(dt, t, camera, live, you) → { busy, hurt,
 //   ship?, speedCap?, kill? },
 //   hit(from, to, damage), targets, solids, setNet(client), onNet(e), battle,
 //   director, info, win(team), dispose() }
-// `allegiance()` → { war, side } (allegiance.js's current). `live`: the ship ({ x, y, z }) while it's flying, or null. `solids`: the
+// `allegiance()` → { war, side } (allegiance.js's current). `live`: the ship ({ x, y, z }) while it's flying, or null;
+// `you`: { shield, down } (your shields, and whether you're shot down), for the
+// fight round you's difficulty (universe/battleDifficulty.js). `solids`: the
 // capital ships' hulls, for the ship to bump into (ship.js's, like the
 // world's), changed when a battle starts or ends (onSolids is told).
 
 import { createBattle } from '../universe/battle';
 import { createDirector } from '../universe/battleDirector';
+import { difficulty, statsOf } from '../universe/battleDifficulty';
 import { TYPES } from '../universe/battleObjectives';
 import { createBattleScene } from '../universe/battleScene';
 import { createTally } from '../universe/tally';
@@ -66,6 +69,7 @@ export const FRONT = {
   metres: 53.3, // a map unit in the galaxy
   fightEvery: 0.4, // seconds between your word on the battle's objectives, at most
   fightAgain: 5, // and every this often anyway, while it's on
+  judge: 2, // seconds between the fight round you's difficulty being weighed again
   warEvery: 2, // seconds between your word on the war, at most
   warAgain: 30, // and every this often anyway
   near: 1.5, // within this many of its radii, you're in it
@@ -111,6 +115,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   let warDirty = false;
   let warSent = -1e9;
   let clock = 0;
+  // how you're doing in it (battleDifficulty.js: how hard the fight round you
+  // is, yours alone): your kills and deaths, on the shared clock, since you came
+  const yours = { kills: [], deaths: [], since: null, down: false, shield: 100, judged: -1e9 };
 
   const side = () => allegiance()?.side ?? null;
   // (with the side the battle's against, from yours: the other of its two, or its defender while you're nobody's)
@@ -273,6 +280,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     ended = false;
     team = null;
     asked = false;
+    Object.assign(yours, { kills: [], deaths: [], since: null, down: false, shield: 100, judged: -1e9 });
     world?.quiet?.(false);
     if (solids.length) {
       solids = [];
@@ -368,7 +376,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       world = w;
     },
 
-    update(dt, t, camera, live) {
+    update(dt, t, camera, live, you = null) {
       last.t = t;
       last.camera = camera;
       sendNet(dt);
@@ -407,6 +415,18 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
           }
         }
       }
+      // how you're doing (your shields, and whether you've just been shot
+      // down), and so how hard the fight round you is, now and then
+      if (you) {
+        yours.shield = you.shield ?? 100;
+        if (you.down && !yours.down && tookPart) yours.deaths.push(sharedT(ms));
+        yours.down = Boolean(you.down);
+      }
+      if (tookPart && yours.since === null) yours.since = sharedT(ms);
+      if (team !== null && yours.since !== null && clock - yours.judged >= FRONT.judge) {
+        yours.judged = clock;
+        battle.setDifficulty(difficulty(statsOf({ ...yours, now: sharedT(ms) })));
+      }
       // in it: counted in, once, on your side
       if (tookPart && team !== null && !here.has(team) && !battle.over) {
         here.add(team);
@@ -439,6 +459,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       for (const e of events) {
         if (e.type === 'hurt') hurt += e.damage;
         else if (e.type === 'down' && e.mine && team !== null && e.team !== team) {
+          yours.kills.push(sharedT(ms));
           if (e.ace) {
             score(GCW.points.ace, ms);
             say('ace');
@@ -551,6 +572,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         joined,
         tookPart,
         mine,
+        // (how hard the fight round you is: yours alone)
+        difficulty: battle?.difficulty ?? null,
         team,
         asked,
         side: side(),

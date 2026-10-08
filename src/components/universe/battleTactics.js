@@ -31,7 +31,7 @@
 //
 // createTactics(k) → { kinds(team, n), think(f, dt), drop(f), form(),
 // adopt(fighters), step(dt, out), steer(f, dist), sense(), nerve(flight),
-// struck(), flights }: think chooses what a fighter goes after (when it's
+// struck(), pressure(), flights }: think chooses what a fighter goes after (when it's
 // time to), drop lets go of a fighter's tokens when it's down; the rest are
 // the flights'. `k` is the battle's inner context (battle.js's createBattle).
 
@@ -62,6 +62,11 @@ export function createTactics(k) {
   const { b, rand } = k;
   const tokens = createTokens({ pools: { intercept: TACTICS.intercepts }, timeout: Infinity });
   const flights = createFlights(k);
+  // (with a difficulty set, battleDifficulty.js: a pool of tokens the fighters
+  // claim before they come for you, in place of BATTLE.onYou and the old
+  // two-always-within-seventy rule; within seventy a free token's taken)
+  let you = null;
+  const youFull = (f) => f.target !== b.you && (k.pressure ? you.count('you') >= k.pressure.onYou : b.you.on >= BATTLE.onYou);
   const alive = (t) => Boolean(t) && (t === b.you ? k.youIn() : t.alive !== false);
 
   // a point on one of the other side's capital ships, there while the ship is
@@ -147,8 +152,11 @@ export function createTactics(k) {
     if (k.youIn() && b.you.team !== f.team && (!keep || dist2(b.you.pos, keep[0]) < keep[1] * keep[1])) {
       const d = dist2(b.you.pos, f.pos);
       const on = f.target === b.you;
-      if (!on && b.you.on < 2 && d < 70 * 70) return b.you;
-      if (on || b.you.on < BATTLE.onYou) opts.push({ id: 'you', weight: near(d * 0.35), t: b.you });
+      if (k.pressure && f.ace) {
+        // (their ace comes looking for a duel only if you're flying well enough for one)
+        if (k.pressure.aceDuels) return b.you;
+      } else if (!on && d < 70 * 70 && (k.pressure ? !youFull(f) : b.you.on < 2)) return b.you;
+      else if (!youFull(f)) opts.push({ id: 'you', weight: near(d * 0.35), t: b.you });
     }
     const got = pick(opts, null, { current: idOf(f.target, b.you), momentum: TACTICS.momentum });
     return got ? opts.find((o) => o.id === got.id).t : null;
@@ -201,8 +209,14 @@ export function createTactics(k) {
     claim(f, t);
     f.target = t;
     f.chose = b.clock;
-    if (was === b.you) b.you.on = Math.max(0, b.you.on - 1);
-    if (t === b.you) b.you.on += 1;
+    if (was === b.you) {
+      b.you.on = Math.max(0, b.you.on - 1);
+      you?.release('you', f.id);
+    }
+    if (t === b.you) {
+      b.you.on += 1;
+      you?.claim('you', f.id);
+    }
   };
   // a wingman's: whoever's on its leader's tail, or its leader's target
   const wingTarget = (f, lead) => {
@@ -211,7 +225,7 @@ export function createTactics(k) {
     if (f.role === 'bomber') return alive(f.target) && !f.rethink ? f.target : alive(lead.target) ? ((f.rethink = false), lead.target) : null;
     if (b.clock - lead.chased < 0.6 && lead.chaser?.alive && lead.chaser.team !== f.team) t = lead.chaser;
     else if (alive(lead.target)) t = lead.target;
-    if (t === b.you && f.target !== b.you && b.you.on >= BATTLE.onYou) t = null;
+    if (t === b.you && youFull(f)) t = null;
     if (t?.role === 'bomber' && t !== f.target && !tokens.held('intercept', f.id, t.id) && tokens.count('intercept', t.id) >= TACTICS.intercepts) t = null;
     return t;
   };
@@ -278,11 +292,26 @@ export function createTactics(k) {
       }
       setTarget(f, t);
     },
-    // a fighter down: its token let go
+    // a fighter down (or gone home): its tokens let go
     drop(f) {
       claim(f, null);
+      you?.release('you', f.id);
       f.rethink = false;
       f.chose = -Infinity;
+    },
+    // the difficulty set (k.pressure, battleDifficulty.js): the pool on you
+    // sized to it, those on you now kept as far as it goes, the rest let go
+    pressure() {
+      you = createTokens({ pools: { you: 1 }, scale: k.pressure.onYou, timeout: Infinity });
+      for (const f of b.fighters) {
+        if (f.target !== b.you) continue;
+        if (f.ace && k.pressure.aceDuels) continue;
+        if (!you.claim('you', f.id)) {
+          f.target = null;
+          f.retarget = 0;
+          b.you.on = Math.max(0, b.you.on - 1);
+        }
+      }
     },
   };
 }

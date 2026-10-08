@@ -72,7 +72,7 @@
 //   { teams, capitals, fighters, bolts, phase, clock, over, you, defender, lines, radius, length,
 //   attacker, ahead, stageOpen, opensIn, setYou(team | null), update(dt, you) → events, hit(from, to,
 //   damage) → hit | null, fire(team, from, dir, kind, target), targets,
-//   info, end(winner, why, ago), tactics, fleet }
+//   info, end(winner, why, ago), setDifficulty(d), tactics, fleet }
 // `you`: { x, y, z, alive } (the ship, as the scene has it), or null.
 // update(dt) steps the battle BATTLE.step at a time, whatever the frame
 // rate, so the same seed fights the same battle on any screen; `ahead` is
@@ -97,6 +97,7 @@ import { createRunners } from './battleRunners';
 import { createStages } from './battleStages';
 import { createTactics } from './battleTactics';
 import { createFleet } from './battleFleet';
+import { pressureOf } from './battleDifficulty';
 
 export { BATTLE, WIDTH, inSights, perSide, turnToward } from './battleKit';
 
@@ -255,6 +256,15 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   };
 
   // ── you ──
+  // how hard the fight round you is (battleDifficulty.js: from your own
+  // stats, galaxy/warfront.js's), which changes only what shoots at you
+  k.pressure = null;
+  b.difficulty = null;
+  b.setDifficulty = (d) => {
+    k.pressure = pressureOf(d);
+    b.difficulty = k.pressure.d;
+    k.tactics?.pressure();
+  };
   b.setYou = (team) => {
     b.you.team = team === 0 || team === 1 ? team : null;
     for (const f of b.fighters) if (f.target === b.you) f.target = null;

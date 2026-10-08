@@ -327,7 +327,8 @@ export function flyFighter(k, f, dt) {
     return;
   }
   if (!inSights(f.fwd, tmp, f.type)) return;
-  const spread = 0.02;
+  // (at you, as true as the difficulty says: battleDifficulty.js)
+  const spread = t === b.you && k.pressure ? k.pressure.spread : 0.02;
   set(tmp, tmp.x / len(tmp) + (rand() - 0.5) * spread * 2, tmp.y / len(tmp) + (rand() - 0.5) * spread * 2, tmp.z / len(tmp) + (rand() - 0.5) * spread * 2);
   // (a battery strafed: the bolt knows what it's at, so it can take the battery's hp)
   b.fire(f.team, { x: f.pos.x + f.fwd.x * f.size * 0.6, y: f.pos.y + f.fwd.y * f.size * 0.6, z: f.pos.z + f.fwd.z * f.size * 0.6 }, tmp, 'laser', t?.battery ? t : null);
