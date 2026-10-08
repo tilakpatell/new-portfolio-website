@@ -4192,5 +4192,14 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "quaternius-nature-megakit": {
+    "source": "https://quaternius.com/packs/stylizednaturemegakit.html",
+    "id": "quaternius-nature-megakit",
+    "name": "Stylized Nature MegaKit",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0"
   }
 }

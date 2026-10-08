@@ -36,7 +36,14 @@ describe('the surface models', () => {
     const made = madeKinds(README);
     for (const [kind, m] of Object.entries(SURFACE_MODELS)) {
       if (m.cluster) continue;
-      if (m.made === 'battlefront') {
+      if (m.cc0) {
+        // (CC0, brought in by scripts/quaternius-nature.mjs: listed in public/cc0/README.md)
+        expect(m.cc0, kind).toBe('quaternius');
+        expect(m.uid, kind).toBeUndefined();
+        expect(made.has(kind), `${kind} in public/cc0/README.md`).toBe(true);
+        // (its colours are its materials', shared by every kind: never tinted, looked or detailed a kind at a time)
+        expect(m.tint ?? m.look ?? m.detail, kind).toBeUndefined();
+      } else if (m.made === 'battlefront') {
         // (brought in by scripts/battlefront-import.mjs: credited with its permission)
         expect(m.uid, kind).toBeUndefined();
         expect(CREDITS[`surface-${kind}`]?.license, `${kind}'s credit`).toBe('permission');
@@ -50,6 +57,15 @@ describe('the surface models', () => {
         expect(CREDITS[`surface-${kind}`]?.file, `${kind}'s credit`).toBe(surfaceUrl(kind));
       }
     }
+  });
+
+  it('credits the nature kit once, as CC0', () => {
+    const games = JSON.parse(readFileSync(new URL('../../../../../public/games/credits.json', import.meta.url), 'utf8'));
+    const kit = Object.values(games).filter((a) => a.source === 'https://quaternius.com/packs/stylizednaturemegakit.html');
+    expect(kit).toHaveLength(1);
+    expect(kit[0].license).toBe('CC0 1.0');
+    expect(kit[0].authors).toEqual(['Quaternius']);
+    expect(Object.values(SURFACE_MODELS).some((m) => m.cc0 === 'quaternius')).toBe(true);
   });
 
   it('makes each cluster of models that are there', () => {

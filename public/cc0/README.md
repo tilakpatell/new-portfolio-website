@@ -17,6 +17,7 @@ Everything in this folder is CC0 (public domain): free to use, no credit require
 
 Elsewhere, also CC0:
 
+- `../models/galaxy/surface/{nkbirch1,nkbirch3,nkbirch5,nkcherry1,nkcherry4,nkcommon1,nkcommon3,nkpine2,nkpine5,nktwisted1,nktwisted3,nkdead1,nkdead3,nkbush,nkbushflowers,nkbushlarge,nkbushlong,nkfern1,nkplant1big,nkplant2,nkplant3,nkplant7,nkclover1,nkflowers2,nkflowers3,nkflower3,nkflower6,nkflower7,nkgrass,nkgrasswide,nkgrasswispy,nkwheat,nkredcap,nkmushroom,nkoyster,nkrock1,nkrock3,nkrockbig,nkpath1,nkpath2,nkpebble,nkpebblesq}.glb` (and the trees' `.lod1.glb` light copies): Quaternius's [Stylized Nature MegaKit](https://quaternius.com/packs/stylizednaturemegakit.html), CC0: trees, bushes, ferns, flowers, grass, mushrooms, rocks, stepping stones and pebbles, cut down for the galaxy's green worlds by `scripts/quaternius-nature.mjs` (the pack's masks made a grey, its leaves given a colour, pictures WebP at 512 or less, meshopt). Listed in `src/components/galaxy/surface/catalog/nature.js`.
 - `../games/meshy/ual-saber.glb`: two clips from Quaternius's [Universal Animation Library](https://quaternius.itch.io/universal-animation-library) (the free Standard pack), `Sword_Idle` and `Sword_Attack`, retargeted onto the Meshy rig and cut to the hips, spine, neck and legs by `scripts/ual-bake.mjs`: the body under a lit lightsaber (`src/components/galaxy/surface/saberBody.js`).
 
 ## Not CC0: made for this site
