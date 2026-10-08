@@ -110,6 +110,7 @@ input snapshot (keys, `look.js`'s turn and buttons, the stick) → the camera's 
 ## Done when
 
 - A stroke is a clip; the blade's sweep decides the hit; the hit point is on the blade.
+- Blocking works: the blade held up on the right button, C or the touch button; a bolt that crosses it is turned back at its shooter and one that passes beside it is not; an enemy's stroke into the raised blade spends the guard and deals nothing; a block begun inside the parry window is a parry.
 - Every bolt on the site stops at the first solid; the crosshair is up whenever a gun is; the universe's shot goes where the reticle is.
 - A click locks the look on a mouse or a trackpad; a trackpad user can turn and fire; touch has friction and a snap.
 - A duellist blocks, parries on contact and ripostes; a parry of yours staggers them.
