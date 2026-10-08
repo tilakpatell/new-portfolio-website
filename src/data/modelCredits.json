@@ -1221,20 +1221,6 @@
       "galaxy"
     ]
   },
-  "galaxy-munificent": {
-    "title": "Munificent-Class Star Frigate",
-    "author": "A308 Digital",
-    "authorUrl": "https://sketchfab.com/A308",
-    "license": "CC-BY-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by/4.0/",
-    "source": "https://sketchfab.com/3d-models/munificent-class-star-frigate-44d5db77bb1342e5a6e58c24a0dcb256",
-    "where": "galaxy",
-    "as": "the Munificent frigates",
-    "file": "/models/galaxy/munificent.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
   "galaxy-n1": {
     "title": "Naboo N-1 Starfighter - Star Wars",
     "author": "Quiznos323",
@@ -1287,20 +1273,6 @@
     "where": "galaxy",
     "as": "the Naboo royal starship",
     "file": "/models/galaxy/nubian.glb",
-    "also": [
-      "galaxy"
-    ]
-  },
-  "galaxy-providence": {
-    "title": "Star Wars: The Clone Wars Providence",
-    "author": "lolqeeeeeeeeee",
-    "authorUrl": "https://sketchfab.com/lolqeeeeeeeeee",
-    "license": "CC-BY-NC-4.0",
-    "licenseUrl": "http://creativecommons.org/licenses/by-nc/4.0/",
-    "source": "https://sketchfab.com/3d-models/star-wars-the-clone-wars-providence-8d27764a7d254fd7948557daf6d7ccdc",
-    "where": "galaxy",
-    "as": "the Invisible Hand",
-    "file": "/models/galaxy/providence.glb",
     "also": [
       "galaxy"
     ]

@@ -121,6 +121,8 @@ export const BUILDINGS = {
   deathstar2: remake('File:DeathStar2.jpg', 'the half-built spherical battle station, the open side showing its exposed skeletal superstructure of girders and decks, its round dish in the upper half', {
     shot: 'The whole space station in frame, seen from the same angle as in the picture, isolated on a plain light grey background, no stars, no planet, no ships, no text.',
     lifter: 'nano-banana-pro',
+    ai: 'meshy-5',
+    texture: '2k', // (the older model makes no 4K maps)
     tris: 40000,
     tex: 2048,
   }),
@@ -133,7 +135,8 @@ export const BUILDINGS = {
   // (over the universe map's, which the galaxy's bounty hunter flies too)
   slave1: remake(['File:BobaFettsStarship-MF65.png', 'File:BobaFettsStarshipAft-MF65.png'], 'the green and red patrol craft with its rounded hull, its two curved wing plates and its twin cannons', { tris: 12000, tex: 768, quality: 80, turn: [0.5, 0.5, 0.5, 0.5], out: 'models/universe/slave1.glb' }),
   // (the pirates' fighter, for the kind the galaxy calls a skiff: named apart
-  // from the surfaces' cargo skiff)
+  // from the surfaces' cargo skiff. Made once and turned down, a lumpy disc
+  // that read as nothing, so the skiff keeps its built model)
   pirateskiff: remake('File:Flarestar-class-attack-shuttle-SWESV.png', 'the battered disc-shaped grey and white pirate attack shuttle with its red markings and its two cockpit canopies', { tris: 8000, yaw: 0 }),
   tieadvanced: remake(['File:Rebels TIE Advanced x1 Fathead.png', 'File:TIEAdvancedx1-MF78.png'], 'the fighter with a ball cockpit, a long rear hull and two bent dark solar wings', { tris: 12000 }),
   tiebomber: remake('File:TIE Bomber BF2.png', 'the twin-hulled bomber, a ball cockpit beside a long ordnance pod, between two bent dark solar wings', { tris: 12000 }),

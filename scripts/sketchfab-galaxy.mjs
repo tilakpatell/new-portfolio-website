@@ -48,7 +48,9 @@ const API = 'https://api.sketchfab.com/v3/models';
 // (And brought in, then made again with Meshy, scripts/meshy-galaxy-library.mjs,
 // so left out here, or a run would put them back over the new ones: the
 // Interdictor, 452cab004f024c01969b2111fbdd55b8, a flat white wedge with one
-// small map.)
+// small map; the Munificent, 44d5db77bb1342e5a6e58c24a0dcb256, a blotchy
+// scan; the Invisible Hand, 8d27764a7d254fd7948557daf6d7ccdc, a muddy paint
+// job.)
 export const MODELS = {
   // the Rebellion's
   moncal: { uid: '9b5e5e5192f64a7faad93a3bfd2efaf2', tris: 40000, tex: 1024, as: 'the Mon Calamari cruisers' },
@@ -71,8 +73,6 @@ export const MODELS = {
   coreship: { uid: '0d829115bb4d472da5d05cdf529b6694', tris: 20000, tex: 1024, as: 'the Separatist core ships' },
   vulture: { uid: '5542f951834e4032b229ebdee12d3310', tris: 10000, tex: 512, as: 'the vulture droids' },
   trifighter: { uid: '9c06ba9b24144221aa80f56192f485b6', tris: 10000, tex: 512, as: 'the droid tri-fighters' },
-  munificent: { uid: '44d5db77bb1342e5a6e58c24a0dcb256', tris: 25000, tex: 1024, as: 'the Munificent frigates' },
-  providence: { uid: '8d27764a7d254fd7948557daf6d7ccdc', tris: 10000, tex: 1024, as: 'the Invisible Hand' },
   // the Republic's
   acclamator: { uid: 'e6a2171be5c34bb68a05aba657fd8fa8', tris: 30000, tex: 1024, as: 'the Acclamators' },
   delta7: { uid: 'b4a8ad8a1e8b4e5b961cf4726d8a8646', tris: 12000, tex: 512, as: 'the Jedi starfighters' },
