@@ -16,7 +16,7 @@ export const MODELS = {
   // Ahsoka Tano, grown (as on Corvus)
   ahsokafig: { uid: '6979913cf90342ffa37b1151641babd2', as: 'Ahsoka Tano', metres: 1.85, yaw: 0, tris: 6000, tex: 512 },
   // the Mandalorian, Din Djarin
-  dindjarin: { uid: 'e70db49d54f04cdfbdbbd2e36f84f0a6', as: 'the Mandalorian', metres: 1.85, yaw: 0, tris: 16000, tex: 1024, maps: 512 },
+  dindjarin: { uid: 'e70db49d54f04cdfbdbbd2e36f84f0a6', legs: { crotch: 0.45 }, as: 'the Mandalorian', metres: 1.85, yaw: 0, tris: 16000, tex: 1024, maps: 512 },
   // Sorgan's woods: birches and firs, and ferns under them (the krill
   // farmers' huts are the audit lane's, catalog/audit.js)
   sorganbirch: { uid: 'aa842dffd9654d33b8b91170ce83c172', as: 'the birches of Sorgan', metres: 15, yaw: 0, tris: 3000, tex: 1024 },

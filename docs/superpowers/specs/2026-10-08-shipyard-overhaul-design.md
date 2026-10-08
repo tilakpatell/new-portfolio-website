@@ -281,8 +281,9 @@ its pure helpers): `createShowroom(canvas, { reduced }) → { show({ kind,
 build, loadout }), focus(slot | null), dispose() }`. One renderer at the
 device's pixel ratio capped at 2, `quiet`-ed and released on dispose as the
 wardrobe's is; a key, fill and rim light in the universe's colours; a disc
-with a grid. `show` builds with `buildShip(kind, {}, { build })` (plain
-hulls, as the galaxy does), `createLivery` for the paint and
+with a grid. `show` builds with `buildShip(kind, {}, { build })` and puts
+the iconic ships' own models over the stand-in, as the map and the galaxy do
+(amended at the owner's word, 2026-10-08), `createLivery` for the paint and
 `model.outfit(loadout)` for the parts, disposes the last. A change of paint
 or part is a new `outfit` and `set`, not a rebuild; a change of hull or
 module is a rebuild. `focus` sets an emissive pulse on the named holder.

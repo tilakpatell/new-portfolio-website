@@ -4205,6 +4205,8 @@ export async function create(canvas, ctx) {
           props.onPick?.(now);
         }
         emit({ type: 'arrive', id: now });
+        // (the spacedock at the projects station: the Shipyard's door, once an approach)
+        if (now === 'projects' && !onFoot()) state.note = { text: 'Dock at the shipyard (H)', until: wall() + 3 };
         law?.arrive(props.wallet ?? null); // (a bounty on your head paid off here, out of the wallet)
         state.saw.add(now); // (been here: a rift takes you somewhere else)
         pulseAt = { id: now, age: 0 };

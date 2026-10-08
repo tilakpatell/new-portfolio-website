@@ -4,7 +4,7 @@ import { itemFor } from './catalog';
 import { STOCK, STOCK_LOADOUT, partById } from './outfit';
 import { STOCK_BUILD, buildCode } from './shipyard/build';
 import { modulesFor } from './shipyard/parts';
-import { check, diff, itemOfModule, itemOfPart, openDraft, pasteDraft, rollDraft, setHull, setModule, setPart, sellable } from './yardRules';
+import { check, diff, draftKeys, fitDraft, hullLine, itemOfModule, itemOfPart, openDraft, pasteDraft, rollDraft, setHull, setModule, setPart, sellable } from './yardRules';
 
 const wallet = ({ credits = 0, owned = [], unlocked = [] } = {}) => {
   const e = createEconomy({ achievements: () => unlocked });
@@ -161,5 +161,48 @@ describe('sellable', () => {
     expect(itemOfPart('booster', 'srb')).toBe(itemFor('part', 'booster', 'srb'));
     expect(itemOfPart('paint', 'portal')).toBe(itemFor('paint', 'paint', 'portal'));
     expect(itemOfModule('wings', STOCK_BUILD.wings).stock).toBe(true);
+  });
+});
+
+describe('fitDraft', () => {
+  it('fits every part change in diff’s order, and keeps the saved loadout’s others', () => {
+    const from = { build: null, loadout: { ...STOCK_LOADOUT, booster: 'portal' } };
+    const d = setPart(setPart(openDraft(from), 'booster', STOCK), 'shields', 'fastcharge');
+    const saved = { ...STOCK_LOADOUT, booster: 'portal', fins: 'fins' };
+    const r = fitDraft('rv', d, diff(d, from), { saved, unlocked: ['showmewhatyougot', 'captain'] });
+    expect(r.ok).toBe(true);
+    expect(r.loadout.booster).toBe(STOCK);
+    expect(r.loadout.shields).toBe('fastcharge');
+    expect(r.saved).toEqual({ ...saved, booster: STOCK, shields: 'fastcharge' });
+  });
+
+  it('refuses the lot when a fit won’t go on (another tab took the plant)', () => {
+    const d = setPart(setPart(openDraft(live), 'booster', 'portal'), 'thrusters', 'vector');
+    const r = fitDraft('rv', { ...d, loadout: { ...d.loadout, shields: 'fastcharge' } }, diff({ ...d, loadout: { ...d.loadout, shields: 'fastcharge' } }, live), { saved: {}, unlocked: ['showmewhatyougot', 'grounded', 'captain'] });
+    expect(r).toMatchObject({ ok: false, why: 'power' });
+  });
+});
+
+describe('draftKeys', () => {
+  it('names every non-stock part, paint and module a draft holds, owned or not', () => {
+    const wing = modulesFor('wings').find((m) => m.id !== STOCK_BUILD.wings && m.id !== 'none');
+    const d = setModule(setPart(setPart(openDraft(live), 'booster', 'srb'), 'paint', 'portal'), 'wings', wing.id);
+    expect(draftKeys(d).sort()).toEqual([itemOfModule('wings', wing.id).key, itemOfPart('booster', 'srb').key, itemOfPart('paint', 'portal').key].sort());
+    expect(draftKeys(openDraft(live))).toEqual([]);
+  });
+
+  it('kept from sale: an owned part staged on the draft isn’t sellable', () => {
+    const e = wallet({ owned: [srb.key, rcs.key] });
+    const d = setPart(openDraft(live), 'booster', 'srb');
+    expect(sellable({ loadouts: {}, hulls: {}, garage: {}, keep: draftKeys(d) }, e).map((s) => s.item.key)).toEqual([rcs.key]);
+  });
+});
+
+describe('hullLine', () => {
+  it('says when a garage build flies in place of the crew’s own ship, and nothing otherwise', () => {
+    expect(hullLine(null, 'An X-wing')).toBeNull();
+    const b = { ...STOCK_BUILD, seed: 5 };
+    expect(hullLine(b, 'An X-wing')).toBe(`Flying garage build ${buildCode(b)} in place of an X-wing. Pick Stock in the shipyard’s Hull to fly it again.`);
+    expect(hullLine(b, '')).toBe(`Flying garage build ${buildCode(b)}. Pick Stock in the shipyard’s Hull to fly the crew’s own ship again.`);
   });
 });

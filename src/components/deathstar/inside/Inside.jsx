@@ -212,11 +212,12 @@ export default function Inside({ mode = 'page', onExit }) {
             onMap={() => api()?.map?.(true)}
             onPause={() => api()?.pause?.(true)}
             onChoose={(i) => api()?.choose?.(i)}
+            onSet={(set) => api()?.set?.(set)}
           />
         )}
         {showing && ui.mode === 'start' && <Start ui={ui} initial={startFrom(asked, ui)} onStart={begin} onExit={onExit} touch={touch} />}
         {showing && paused && <Pause ui={ui} touch={touch} onResume={resume} onSet={(s) => api()?.set?.(s)} onQuit={() => api()?.quit?.()} onExit={onExit} />}
-        {mapOpen && <MapPanel station={ui.station ?? 'ds1'} seen={ui.map?.seen ?? []} here={hud?.room} at={hud?.at} onClose={closeMap} />}
+        {mapOpen && <MapPanel station={ui.station ?? 'ds1'} seen={ui.map?.seen ?? []} here={hud?.room} at={hud?.at} route={hud?.route} onClose={closeMap} />}
         {showing && touch && playing && !mapOpen && !ui.talk && <Touch api={api} />}
       </WorldHost>
     </div>
