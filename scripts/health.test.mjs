@@ -61,6 +61,10 @@ describe('the HUD kit, on a fixture tree', () => {
     const hud = await makeContext(fileURLToPath(new URL('./health/fixtures/hud/', import.meta.url)));
     expect((await hudKit(hud, ['gamma'])).value).toBe(0);
   });
+  it('counts a world on the kit through its own page', async () => {
+    const hud = await makeContext(fileURLToPath(new URL('./health/fixtures/hud/', import.meta.url)));
+    expect((await hudKit(hud, ['beta'], { beta: ['src/pages/BetaPage.jsx'] })).value).toBe(0);
+  });
 });
 
 describe('the import graph, on a fixture tree', () => {
