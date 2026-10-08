@@ -53,6 +53,13 @@ describe('createSpring', () => {
     }
   });
 
+  it('can be set at once, and rings back from there', () => {
+    const s = createSpring();
+    s.x = 0.2;
+    expect(s.x).toBe(0.2);
+    expect(s.step(1 / 60)).toBeLessThan(0.2);
+  });
+
   it('clamps to its max', () => {
     const s = createSpring({ max: 0.05 });
     s.kick(10);

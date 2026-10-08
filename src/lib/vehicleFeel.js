@@ -19,7 +19,10 @@
 // His antenna numbers are per frame at 60 a second and his velocity is in
 // metres a frame, so a frame’s change in it is the acceleration × (1/60)²:
 // the springs here step at that fixed 1/60 s whatever the frame rate (the
-// note’s pitfall: eased per frame, his feel shifted at 120 Hz).
+// note’s pitfall: eased per frame, his feel shifted at 120 Hz). Both are the
+// kit’s springs (lib/spring.js): the squash in seconds, the antenna in his
+// frames (a step of 1, its pull the stiffness, its damping the damping, the
+// acceleration’s push the place it is pulled towards).
 //
 //   FEEL: { pitchPer, pitchMax, rollPer, rollMax, squashStiffness,
 //     squashDamping, squashPerLanding, squashPerHit, squashMax,
@@ -32,6 +35,8 @@
 //
 // forwardSpeed and steer are taken and not used: the accelerations already
 // carry them, and a world without a measured one passes what it has.
+
+import { createSpring } from './spring';
 
 export const FEEL = {
   pitchPer: 0.05 / 9.81, // rad per m/s² of forward acceleration
@@ -59,13 +64,19 @@ export function createVehicleFeel(opts = FEEL) {
   };
   set({ ...FEEL, ...opts, antenna: { ...FEEL.antenna, ...opts.antenna } });
 
-  let pitch, roll, squash, squashV, carry;
-  const tip = [0, 0];
-  const tipV = [0, 0];
+  let pitch, roll, carry;
+  const squash = createSpring();
+  const tip = createSpring({ dims: 2 });
+  // the springs take the numbers as they are now (the panel may have moved them)
+  const tune = () => {
+    squash.set({ k: o.squashStiffness, c: o.squashDamping, max: o.squashMax });
+    tip.set({ k: o.antenna.pullBackStrength, c: o.antenna.damping, max: o.antenna.max });
+  };
   const out = { squash: 0, roll: 0, pitch: 0, antenna: [0, 0] };
   function reset() {
-    pitch = roll = squash = squashV = carry = 0;
-    tip[0] = tip[1] = tipV[0] = tipV[1] = 0;
+    pitch = roll = carry = 0;
+    squash.reset();
+    tip.reset();
   }
   reset();
 
@@ -83,27 +94,28 @@ export function createVehicleFeel(opts = FEEL) {
     // the springs, at their own step (a hair’s slack so halves add up to a whole)
     carry = Math.min(carry + t, MOST * H);
     const a = o.antenna;
-    const accel = [fa, la];
+    tune();
+    // a frame’s push on the tip, in his units
+    const push = [fa * a.speedStrength * H * H, la * a.speedStrength * H * H];
+    // (with no pull back there is no place to be pulled to: the push is a kick)
+    const pulled = a.pullBackStrength > 0;
+    if (pulled) tip.target(push.map((f) => f / a.pullBackStrength));
     while (carry >= H - 1e-9) {
       carry -= H;
-      squashV += (-o.squashStiffness * squash - o.squashDamping * squashV) * H;
-      squash = clamp(squash + squashV * H, o.squashMax);
-      for (let i = 0; i < 2; i++) {
-        tipV[i] += -tip[i] * a.pullBackStrength - tipV[i] * a.damping + accel[i] * a.speedStrength * H * H;
-        tip[i] = clamp(tip[i] + tipV[i], a.max);
-      }
+      squash.step(H);
+      if (!pulled) tip.kick(push);
+      tip.step(1);
     }
     carry = Math.max(0, carry);
 
     // a landing or a hit sets the squash at once; it rings back from there
     const kick = Math.max(Math.max(0, num(landed)) * o.squashPerLanding, Math.max(0, Math.min(1, num(hit))) * o.squashPerHit);
-    if (kick > 0 && kick > squash) squash = Math.min(kick, o.squashMax);
+    if (kick > 0 && kick > squash.x) squash.x = Math.min(kick, o.squashMax);
 
     out.pitch = pitch;
     out.roll = roll;
-    out.squash = squash;
-    out.antenna[0] = tip[0];
-    out.antenna[1] = tip[1];
+    out.squash = squash.x;
+    [out.antenna[0], out.antenna[1]] = tip.x;
     return out;
   }
 

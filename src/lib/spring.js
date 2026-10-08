@@ -10,7 +10,7 @@
 //
 //   springStep(x, v, target, k, c, dt) → [x, v]
 //   createSpring({ k = 120, c = 8, max = Infinity, dims = 1, x = 0 })
-//     → { x, v (numbers, or arrays of `dims`), kick(dv), target(t),
+//     → { x (settable), v (numbers, or arrays of `dims`), kick(dv), target(t),
 //         step(dt) → x, reset(), set({ k, c, max }), values() }
 //   springGroups(spring, name) → the ?debug panel’s groups (lib/debugPanel)
 
@@ -40,6 +40,10 @@ export function createSpring({ k = 120, c = 8, max = Infinity, dims = 1, x = 0 }
   return {
     get x() {
       return out(xs);
+    },
+    // set at once (a landing’s squash): it rings back from there
+    set x(val) {
+      each(val, (i, d) => (xs[i] = d));
     },
     get v() {
       return out(vs);
