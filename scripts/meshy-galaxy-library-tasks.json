@@ -252,5 +252,15 @@
   "lavacollector": {
     "image": "01a114ea-1b31-744f-ab61-cb70dd6b0c15",
     "model": "01a114ea-9690-7613-bcda-5692df715d02"
+  },
+  "deathstar2": {
+    "lift": [
+      "01a119e7-bafa-775a-ad3e-e462288d2e82"
+    ]
+  },
+  "interdictor": {
+    "lift": [
+      "01a119e8-ae82-77c6-bdc8-48cd516a2008"
+    ]
   }
 }
