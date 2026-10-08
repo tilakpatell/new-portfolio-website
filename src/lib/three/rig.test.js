@@ -312,3 +312,27 @@ describe('the library', () => {
     expect(figure(template([swing])).has('wave')).toBe(true);
   });
 });
+
+describe('findBones on a downloaded Mixamo rig', () => {
+  it('finds the roles through the number a download appended (mixamorig:Hips_52)', async () => {
+    const { findBones } = await import('./rig');
+    const make = (name, parent) => {
+      const b = new THREE.Bone();
+      b.name = name;
+      parent?.add(b);
+      return b;
+    };
+    const hips = make('mixamorig:Hips_52');
+    const s0 = make('mixamorig:Spine_38', hips);
+    const s1 = make('mixamorig:Spine1_37', s0);
+    const s2 = make('mixamorig:Spine2_35', s1);
+    const neck = make('mixamorig:Neck_1', s2);
+    const head = make('mixamorig:Head_0', neck);
+    const thigh = make('mixamorig:LeftUpLeg_7', hips);
+    const { bones, spine } = findBones(hips);
+    expect(bones.hips).toBe(hips);
+    expect(bones.head).toBe(head);
+    expect(bones.thighL).toBe(thigh);
+    expect(spine).toEqual([s0, s1, s2, neck]);
+  });
+});

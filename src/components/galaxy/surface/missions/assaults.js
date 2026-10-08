@@ -420,7 +420,7 @@ export const ASSAULTS = {
       { name: 'The temple steps', posts: ['summit'], tickets: 70 },
     ],
     tickets: { attack: 90, defend: 120 },
-    hideLife: ['rebel', 'rebeltech', 'rebelpilot', 'pilot'],
+    hideLife: ['rebel', 'rebeltech', 'rebelpilot'],
     ends: {
       won: 'The temple holds',
       lost: 'The temple is lost',

@@ -39,10 +39,25 @@
 // put its Godot/AnimationLibrary_Godot_Standard.glb at
 // scripts/preview/.ual/ual.glb (git-ignored), or pass its path.
 //
-//   node scripts/ual-bake.mjs [ual.glb] [--set saber|life] [--report]
-//     (every set, when --set doesn't name one)
+//   node scripts/ual-bake.mjs [ual.glb] [--set saber|life|pro|ual2] [--report]
+//     (every set but core, when --set doesn't name one)
+//
+// Into a figure: a set's clips retargeted onto the figure's own skeleton
+// (any humanoid's: Mixamo's, found by role through rig.js's findBones) and
+// written into a copy of its GLB as its animations, named as the clip
+// library names them, so a catalogue row's `anim` plays them. `core` (UAL1:
+// idle, walk, run, talk, hit, die, sit) is the set a surface figure needs.
+//
+//   node scripts/ual-bake.mjs --rig <figure.glb> --into <out.glb> [--set core]
+//   bakeInto(figureFile, outFile, { set, src, findBones }) → { clips, bytes, added }
+//     src: a mannequin (ualRig, keepRest) in place of the set's pack;
+//     findBones: rig.js's (the CLI loads it through Vite)
+//   bakeFiles(setName, names, outDir) → [{ file, kb }]: a set's per-clip files
+//     baked into outDir as they are into public/games/meshy (the byte test)
 
 import { Document, NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS, EXTMeshoptCompression } from '@gltf-transform/extensions';
+import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -51,9 +66,11 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { UAL_MAP, keepRest, prepareUal, retargetUal, toRest, ualRig } from './preview/ualRetarget.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const args = process.argv.slice(2);
-const ONLY = args.includes('--set') ? args[args.indexOf('--set') + 1] : null;
-const SRC = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--set') ?? join(ROOT, 'scripts', 'preview', '.ual', 'ual.glb');
+const MAIN = process.argv[1] === fileURLToPath(import.meta.url);
+const args = MAIN ? process.argv.slice(2) : [];
+const opt = (k) => (args.includes(k) ? args[args.indexOf(k) + 1] : null);
+const ONLY = opt('--set');
+const SRC = args.find((a, i) => !a.startsWith('--') && !['--set', '--rig', '--into'].includes(args[i - 1])) ?? join(ROOT, 'scripts', 'preview', '.ual', 'ual.glb');
 const REPORT = args.includes('--report');
 const RIG = join(ROOT, 'public', 'models', 'galaxy', 'crew', 'luke.glb');
 const OUT = join(ROOT, 'public', 'games', 'meshy');
@@ -66,7 +83,17 @@ const BODY = ['Hips', 'Spine02', 'Spine01', 'Spine', 'neck', 'LeftUpLeg', 'LeftL
 // the turns go out as 16-bit numbers (`short`: glTF lets a rotation be a
 // normalized short, half a float's bytes, and three's loader reads it back
 // as one; a turn moves by about 1e-4 rad)
-const SETS = [
+export const SETS = [
+  // what a surface figure needs to live (actors.js: walk, idle, talk, sit,
+  // hit, die), baked into the figure's own file (--rig, --into), not out
+  {
+    name: 'core',
+    pack: 'ual1',
+    short: true,
+    into: true,
+    fps: 24, // (thirty a second came to just over 60 KB a figure)
+    clips: { Idle_Loop: 'idle', Walk_Loop: 'walk', Jog_Fwd_Loop: 'run', Idle_Talking_Loop: 'talk', Hit_Chest: 'hit.chest', Death01: 'die', Sitting_Idle_Loop: 'sit.idle' },
+  },
   { name: 'saber', file: 'ual-saber.glb', bones: BODY, clips: { Sword_Idle: 'Sword_Idle', Sword_Attack: 'Sword_Attack' } },
   {
     name: 'life',
@@ -339,7 +366,7 @@ async function drift(bytes, takes) {
 // channels name, and the hips' height to scale their travel by), and its
 // clips (`takes`: [UAL's name, the name it goes out under]) on the bones
 // the set sends out, as its set has them
-async function bake(file, takes, { bones = null, short = false }) {
+async function bake(file, takes, { bones = null, short = false }, out = OUT) {
   const doc = new Document();
   const buffer = doc.createBuffer();
   const scene = doc.createScene(file.replace(/\.glb$/, ''));
@@ -371,15 +398,15 @@ async function bake(file, takes, { bones = null, short = false }) {
     console.log(name === from ? name : `${name} (${from})`, `${baked.duration.toFixed(2)} s`, baked.tracks[0].times.length, 'frames', JSON.stringify(extras));
   }
   const bytes = await new NodeIO().writeBinary(doc);
-  await writeFile(join(OUT, file), bytes);
+  await writeFile(join(out, file), bytes);
   const kb = bytes.byteLength / 1024;
-  console.log(join(OUT, file), `${kb.toFixed(1)} KB`);
+  console.log(join(out, file), `${kb.toFixed(1)} KB`);
   const off = REPORT ? await drift(bytes, takes) : [];
   off.forEach((w, i) => console.log(`  ${takes[i][1]} off the mannequin: ${w.keys.toFixed(5)} rad on the keys, ${w.between.toFixed(5)} between, hips ${w.hips.toFixed(5)} of their height`));
   return { file, kb, off };
 }
 
-const rig = restRig(glbJson(await readFile(RIG)));
+let rig = null;
 // (each pack's mannequin, loaded once: the free pack's unless a set names another)
 const sources = new Map();
 const sourceOf = async (set) => {
@@ -388,26 +415,120 @@ const sourceOf = async (set) => {
   return sources.get(file);
 };
 let src = null;
-const sets = ONLY ? SETS.filter((s) => s.name === ONLY) : SETS;
-if (!sets.length) throw new Error(`no set ${ONLY} (${SETS.map((s) => s.name).join(', ')})`);
-for (const set of sets) {
-  const from = await sourceOf(set);
-  const missing = Object.keys(set.clips).filter((n) => !from.clips[n]);
-  if (missing.length) throw new Error(`${set.name}: no ${missing.join(', ')}`);
-}
+const setOf = (name) => {
+  const set = SETS.find((s) => s.name === name);
+  if (!set) throw new Error(`no set ${name} (${SETS.map((s) => s.name).join(', ')})`);
+  return set;
+};
 
-const made = [];
-for (const set of sets) {
+export async function bakeFiles(setName, names, outDir) {
+  const set = setOf(setName);
+  rig ??= restRig(glbJson(await readFile(RIG)));
   src = await sourceOf(set);
   toRest(src);
-  const takes = Object.entries(set.clips);
-  if (set.file) made.push(await bake(set.file, takes, set));
-  else for (const take of takes) made.push(await bake(`ual-${take[1]}.glb`, [take], set));
+  const made = [];
+  for (const take of Object.entries(set.clips).filter(([, n]) => names.includes(n))) made.push(await bake(`ual-${take[1]}.glb`, [take], set, outDir));
+  return made;
 }
-const kbs = made.map((m) => m.kb);
-console.log(`${made.length} files, ${Math.min(...kbs).toFixed(1)}–${Math.max(...kbs).toFixed(1)} KB, ${kbs.reduce((a, b) => a + b, 0).toFixed(0)} KB in all`);
-if (REPORT) {
-  const all = made.flatMap((m) => m.off);
-  const most = (k) => Math.max(...all.map((w) => w[k])).toFixed(5);
-  console.log(`off the mannequin at worst: ${most('keys')} rad on the keys, ${most('between')} between, hips ${most('hips')} of their height`);
+
+// the figure's file read and written with its compression as it came
+let io = null;
+async function ioOf() {
+  if (io) return io;
+  await Promise.all([MeshoptDecoder.ready, MeshoptEncoder.ready]);
+  io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder, 'meshopt.encoder': MeshoptEncoder });
+  return io;
 }
+
+export async function bakeInto(figureFile, outFile, { set: setName = 'core', src: given = null, findBones = null } = {}) {
+  const set = setOf(setName);
+  const from = given ?? (await sourceOf(set));
+  const missing = Object.keys(set.clips).filter((n) => !from.clips[n]);
+  if (missing.length) throw new Error(`${set.name}: no ${missing.join(', ')}`);
+  const buf = await readFile(figureFile);
+  const json = glbJson(buf);
+  const rest = restRig(json);
+  // (the skeleton's bones by name: each a node of the file, by its index)
+  const index = new Map();
+  json.nodes.forEach((n, i) => {
+    const name = n.name ?? `node${i}`;
+    if (index.has(name)) index.set(name, -1);
+    else index.set(name, i);
+  });
+  const doc = await (await ioOf()).readBinary(new Uint8Array(buf));
+  const nodes = doc.getRoot().listNodes();
+  if (nodes.length !== json.nodes.length) throw new Error(`${figureFile}: ${nodes.length} nodes read, ${json.nodes.length} in its JSON`);
+  const buffer = doc.getRoot().listBuffers()[0] ?? doc.createBuffer();
+  const acc = (array, type) => doc.createAccessor().setArray(array).setType(type).setBuffer(buffer);
+  const turns = (values) => (set.short ? acc(Int16Array.from(values, (v) => Math.round(v * 32767)), 'VEC4').setNormalized(true) : acc(values, 'VEC4'));
+  const before = buf.byteLength;
+  const clips = [];
+  toRest(from);
+  for (const [take, name] of Object.entries(set.clips)) {
+    for (const a of doc.getRoot().listAnimations()) if (a.getName() === name) a.dispose();
+    const baked = retargetUal(from, from.clips[take], rest, { fps: set.fps ?? FPS, findBones });
+    const anim = doc.createAnimation(name).setExtras({ source: `Quaternius UAL ${take}` });
+    const times = acc(baked.tracks[0].times, 'SCALAR');
+    for (const tr of baked.tracks) {
+      const dot = tr.name.lastIndexOf('.');
+      const [bone, prop] = [tr.name.slice(0, dot), tr.name.slice(dot + 1)];
+      const i = index.get(bone);
+      if (i == null || i < 0) throw new Error(`${figureFile}: no one node named ${bone}`);
+      const vec = prop === 'quaternion';
+      const sampler = doc.createAnimationSampler().setInput(times).setOutput(vec ? turns(tr.values) : acc(tr.values, 'VEC3')).setInterpolation('LINEAR');
+      anim.addSampler(sampler).addChannel(doc.createAnimationChannel().setTargetNode(nodes[i]).setTargetPath(vec ? 'rotation' : 'translation').setSampler(sampler));
+    }
+    clips.push(name);
+  }
+  // (the turns filtered as meshopt packs a quaternion: a third smaller; the
+  // mesh, already quantized, comes out as it went in)
+  doc.createExtension(EXTMeshoptCompression).setRequired(true).setEncoderOptions({ method: EXTMeshoptCompression.EncoderMethod.FILTER });
+  const bytes = await (await ioOf()).writeBinary(doc);
+  await writeFile(outFile, bytes);
+  return { clips, bytes: bytes.byteLength, added: bytes.byteLength - before };
+}
+
+async function main() {
+  if (opt('--rig')) {
+    const figure = opt('--rig');
+    const out = opt('--into') ?? figure;
+    // (rig.js's role finder, which imports as Vite resolves, through Vite)
+    const { createServer } = await import('vite');
+    const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
+    try {
+      const { findBones } = await vite.ssrLoadModule('/src/lib/three/rig.js');
+      const r = await bakeInto(figure, out, { set: ONLY ?? 'core', findBones });
+      console.log(out, `${(r.bytes / 1024).toFixed(1)} KB (${(r.added / 1024).toFixed(1)} KB more)`, r.clips.join(', '));
+    } finally {
+      await vite.close();
+    }
+    return;
+  }
+  rig = restRig(glbJson(await readFile(RIG)));
+  const sets = ONLY ? SETS.filter((s) => s.name === ONLY) : SETS.filter((s) => !s.into);
+  if (!sets.length) throw new Error(`no set ${ONLY} (${SETS.map((s) => s.name).join(', ')})`);
+  if (sets.some((s) => s.into)) throw new Error(`${ONLY} goes into a figure: --rig <figure.glb> --into <out.glb>`);
+  for (const set of sets) {
+    const from = await sourceOf(set);
+    const missing = Object.keys(set.clips).filter((n) => !from.clips[n]);
+    if (missing.length) throw new Error(`${set.name}: no ${missing.join(', ')}`);
+  }
+
+  const made = [];
+  for (const set of sets) {
+    src = await sourceOf(set);
+    toRest(src);
+    const takes = Object.entries(set.clips);
+    if (set.file) made.push(await bake(set.file, takes, set));
+    else for (const take of takes) made.push(await bake(`ual-${take[1]}.glb`, [take], set));
+  }
+  const kbs = made.map((m) => m.kb);
+  console.log(`${made.length} files, ${Math.min(...kbs).toFixed(1)}–${Math.max(...kbs).toFixed(1)} KB, ${kbs.reduce((a, b) => a + b, 0).toFixed(0)} KB in all`);
+  if (REPORT) {
+    const all = made.flatMap((m) => m.off);
+    const most = (k) => Math.max(...all.map((w) => w[k])).toFixed(5);
+    console.log(`off the mannequin at worst: ${most('keys')} rad on the keys, ${most('between')} between, hips ${most('hips')} of their height`);
+  }
+}
+
+if (MAIN) await main();

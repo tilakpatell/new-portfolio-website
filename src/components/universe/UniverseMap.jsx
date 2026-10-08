@@ -24,8 +24,8 @@ import LoadingVeil from '../worlds/LoadingVeil';
 // going; the scene places them), Boost, Fire (held, it keeps firing), View
 // (the cockpit or behind the ship) and nose-up and nose-down buttons on touch
 // screens, the flight settings (FlightSettings.jsx, kept between visits),
-// the hangar (Hangar.jsx: the ship's paint job and parts, which the page
-// keeps) and a line on how to fly until you do. While the
+// the way into the Shipyard (Hangar.jsx, the button; the yard is the
+// page's) and a line on how to fly until you do. While the
 // 3D loads the box says so (3D first: never the flat map in the meantime);
 // if 3D is off, fails or is lost, the flat MiniMap takes the box. Online,
 // the other pilots' callsigns ride over their ships (the scene moves them).
@@ -34,7 +34,7 @@ import LoadingVeil from '../worlds/LoadingVeil';
 // `charting` says the nav map's open (the director holds off meanwhile).
 const load = () => import('./scene');
 
-export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, shipName = '', loadout, build = null, lastBuild = null, dropped = null, onBuild, onCrew = null, onFit, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap, startAt = null, universe = null }) {
+export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen, ship, loadout, build = null, canFit = false, hangar = false, onHangar, net = null, onEvent, onLand, onCrash, drive = 'super', charting = false, onMap, startAt = null, universe = null }) {
   const labels = useRef({});
   const tags = useRef(null);
   const stick = useRef(null);
@@ -103,7 +103,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       tags,
       prompt,
       enter: enterBtn,
-      frozen,
+      frozen: frozen || hangar, // (the Shipyard over it: nothing moves, nothing's drawn)
       drive,
       charting,
       startAt,
@@ -397,7 +397,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 {onFoot ? 'Run' : 'Boost'}
               </button>
               {!onFoot && <FlightSettings controls={controls} onChange={setControls} open={settingsOpen} onOpen={openSettings} />}
-              {!onFoot && onFit && <Hangar ship={ship} shipName={shipName} loadout={loadout} build={build} lastBuild={lastBuild} dropped={dropped} onBuild={onBuild} onCrew={onCrew} onFit={onFit} open={hangar} onOpen={openHangar} />}
+              {!onFoot && canFit && <Hangar open={hangar} onOpen={openHangar} />}
               {arrive && (
                 <div className="universe-arrive" key={arrive.at} role="status">
                   <p className="universe-arrive-title">{arrive.title}</p>
