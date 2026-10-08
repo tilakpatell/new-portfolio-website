@@ -21,7 +21,12 @@
 // the plan's objectives: their hp, their fall and when the run opens (the
 // Executor's bridge down, its gate passed) are the director's
 // (ctx.objective), and so is the battle's end: the station going up is the
-// end the director's already called, not one of its own.
+// end the director's already called, not one of its own. The superlaser's
+// shots are the plan's too, whoever's attacking (its losses `by` the
+// superlaser, ctx.losses, on the shared clock, ctx.clock): the beam is fired
+// to meet the cruiser the plan loses as it loses it, so every pilot sees the
+// same ships go when they do, and one who comes late sees no shot at a ship
+// long gone.
 //
 // createEndor(ctx) → { update(dt, t, live, events), hit, targets,
 //   markers(live), dispose() }
@@ -35,6 +40,7 @@ import { createRun } from './run';
 const REBELS = 0;
 const EMPIRE = 1;
 const GEN_HP = 26;
+const BEAM_HIT = 1.9; // seconds from the superlaser's charge to the ship it's on gone
 const ZERO = { x: 0, y: 0, z: 0 };
 const v = (x, y, z) => ({ x, y, z });
 const len = (a) => Math.hypot(a.x, a.y, a.z);
@@ -124,7 +130,24 @@ export function createEndor(ctx) {
   const beam = buildBeam();
   ctx.scene?.add(beam.mesh);
   let nextShot = 50 + rand() * 30;
-  let shot = null; // { target, age }
+  let shot = null; // { target, age, from? }
+  // (in the battle every pilot shares, its shots are the plan's losses: each
+  // cruiser it takes, and when, the same for everyone, the beam fired to
+  // meet it, not on a timer of its own from when you came)
+  const scheduled = Boolean(ctx.losses?.());
+  const fired = new Set();
+  const capOf = (l) => battle.capitals.filter((c) => c.team === l.team)[l.index] ?? null;
+  const nextScheduled = () => {
+    const now = ctx.clock();
+    for (const l of ctx.losses() ?? []) {
+      const key = `${l.team}:${l.index}`;
+      if (l.by !== 'superlaser' || fired.has(key) || now < l.at - BEAM_HIT || now > l.at + 1) continue;
+      fired.add(key);
+      const target = capOf(l);
+      if (target?.alive && target.dying <= 0) return { target, age: now - (l.at - BEAM_HIT), from: l.at - BEAM_HIT };
+    }
+    return null;
+  };
   const dish = new THREE.Vector3();
   const aim = new THREE.Vector3();
 
@@ -189,7 +212,12 @@ export function createEndor(ctx) {
         }
       }
       // the superlaser, on a Rebel cruiser
-      if (!blown) {
+      if (!blown && scheduled) {
+        if (!shot && !battle.over) {
+          shot = nextScheduled();
+          if (shot) ctx.event('gcw-superlaser');
+        }
+      } else if (!blown) {
         nextShot -= dt;
         if (!shot && nextShot <= 0 && !battle.over) {
           const cruisers = battle.capitals.filter((c) => c.team === REBELS && c.role !== 'flagship' && c.alive && c.dying <= 0 && c.size > 4);
@@ -199,30 +227,30 @@ export function createEndor(ctx) {
           }
           nextShot = 70 + rand() * 25;
         }
-        if (shot) {
-          shot.age += dt;
-          const tp = shot.target.pos;
-          aim.set(tp.x - D.x, tp.y - D.y + R * 0.35, tp.z - D.z).normalize();
-          dish.set(D.x, D.y, D.z).addScaledVector(aim, R * 1.02);
-          aim.set(tp.x - dish.x, tp.y - dish.y, tp.z - dish.z);
-          // the charge (a glow at the dish), the beam, the ship gone
-          if (shot.age < 1.6) {
-            if (rand() < dt * 12) ctx.draw?.flash(dish, { size: 6 + shot.age * 6, life: 0.5, color: [0.8, 3.5, 0.9] });
-            beam.mesh.visible = false;
-          } else if (shot.age < 3) {
-            beam.mesh.visible = true;
-            beam.mesh.position.copy(dish);
-            beam.mesh.scale.set(1.4 + Math.sin(t * 40) * 0.3, 1.4, aim.length());
-            beam.mesh.lookAt(tp.x, tp.y, tp.z);
-            if (!shot.hit && shot.age > 1.9) {
-              shot.hit = true;
-              battle.wreck(shot.target.id);
-              ctx.draw?.flash(tp, { size: shot.target.size * 1.4, life: 2.4, color: [2.4, 3.2, 1.2], bright: 1.6 });
-            }
-          } else {
-            beam.mesh.visible = false;
-            shot = null;
+      }
+      if (!blown && shot) {
+        shot.age = shot.from !== undefined ? ctx.clock() - shot.from : shot.age + dt;
+        const tp = shot.target.pos;
+        aim.set(tp.x - D.x, tp.y - D.y + R * 0.35, tp.z - D.z).normalize();
+        dish.set(D.x, D.y, D.z).addScaledVector(aim, R * 1.02);
+        aim.set(tp.x - dish.x, tp.y - dish.y, tp.z - dish.z);
+        // the charge (a glow at the dish), the beam, the ship gone
+        if (shot.age < 1.6) {
+          if (rand() < dt * 12) ctx.draw?.flash(dish, { size: 6 + shot.age * 6, life: 0.5, color: [0.8, 3.5, 0.9] });
+          beam.mesh.visible = false;
+        } else if (shot.age < 3) {
+          beam.mesh.visible = true;
+          beam.mesh.position.copy(dish);
+          beam.mesh.scale.set(1.4 + Math.sin(t * 40) * 0.3, 1.4, aim.length());
+          beam.mesh.lookAt(tp.x, tp.y, tp.z);
+          if (!shot.hit && shot.age > BEAM_HIT) {
+            shot.hit = true;
+            battle.wreck(shot.target.id);
+            ctx.draw?.flash(tp, { size: shot.target.size * 1.4, life: 2.4, color: [2.4, 3.2, 1.2], bright: 1.6 });
           }
+        } else {
+          beam.mesh.visible = false;
+          shot = null;
         }
       }
       // the Executor's bridge gone: it turns, and dives into the station

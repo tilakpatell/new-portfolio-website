@@ -432,6 +432,27 @@ describe('a set piece’s target that’s one side’s to take, whoever attacks 
   });
 });
 
+describe('the Death Star’s superlaser at Endor (ctx.clock, ctx.losses)', () => {
+  it('fires at the cruiser the plan loses when the shared clock says, not on a timer from when you came', () => {
+    const k = kit('rebel');
+    k.front.enter(systemById('endor'), k.world);
+    k.front.update(1 / 30, 0, camera, null);
+    k.front.force('empire');
+    const shot = k.front.director.plan.losses.find((l) => l.by === 'superlaser');
+    expect(shot).toBeTruthy();
+    const fired = () => k.said.some((e) => e.type === 'event' && e.id === 'gcw-superlaser');
+    k.front.skip(20);
+    expect(fired()).toBe(false);
+    k.front.jump(shot.at - 1 - 20);
+    k.front.update(0.1, 0, camera, null);
+    expect(fired()).toBe(true);
+    const cap = k.front.battle.capitals.filter((c) => c.team === shot.team)[shot.index];
+    expect(cap.alive && cap.dying <= 0).toBe(true);
+    k.front.skip(2);
+    expect(cap.alive && cap.dying <= 0).toBe(false);
+  });
+});
+
 describe('every kind of battle', () => {
   it('a battle of each kind, in each war, starts and runs ten seconds without throwing', async () => {
     const { BATTLE_KINDS } = await import('./battles');

@@ -41,7 +41,11 @@
 // Empire attacking (Echo Base's ion cannon, then the flagship's bridge and
 // reactor, the transports running all the while).
 //
-// MENUS[kind] = { stages: [[option(c)…]…] }, MENUS.pinned(c), MENUS.side(c);
+// At Endor, wherever the Rebellion and the Empire meet there, the Death
+// Star's superlaser takes a Rebel cruiser every minute and a bit.
+//
+// MENUS[kind] = { stages: [[option(c)…]…] }, MENUS.pinned(c), MENUS.side(c),
+// MENUS.losses(c, stages) (the set pieces' own losses, each with `by`);
 // planOf(sys, battle, laid) → the battle's plan (universe/battlePlan.js's
 // shape). An option's `c` is the battle (its kind, war, system, sides by
 // team, attacker and defender, each side's capital ships, its aces) with
@@ -156,6 +160,28 @@ const echoCannon = (c) => ({ id: 'cannon', type: 'destroy', objectives: [{ id: '
 
 const GIDEON = { kind: 'tiedefender', name: 'Moff Gideon’s TIE Defender', hp: 14 };
 
+// the second Death Star's superlaser, on the Rebel cruisers at Endor: the
+// first a minute or so in (the Liberty, as in the film, if she's there),
+// then one every minute and a bit while there are cruisers left to take.
+// Their times are the plan's, so every pilot sees the same ships go when
+// they do (endor.js fires the beam to meet them). Never a ship an
+// objective's on.
+const SUPERLASER = { first: [50, 80], every: [70, 95], size: 4 };
+function superlaser(c, stages) {
+  if (c.war !== 'gcw' || c.sys !== 'endor' || c.sides[0] !== 'rebel' || c.sides[1] !== 'empire') return [];
+  const used = new Set();
+  if (c.defender === 0) for (const s of stages) for (const o of s.objectives) if (typeof o.on?.ship === 'number') used.add(o.on.ship);
+  const free = c.capitals[0].map((cap, i) => ({ cap, i })).filter(({ cap, i }) => cap.role === 'escort' && cap.size > SUPERLASER.size && !used.has(i));
+  const span = ([lo, hi]) => lo + c.rand() * (hi - lo);
+  const out = [];
+  for (let at = span(SUPERLASER.first); free.length && at < c.length - 10; at += span(SUPERLASER.every)) {
+    const named = free.findIndex(({ cap }) => cap.name === 'Liberty');
+    const [{ i }] = free.splice(named >= 0 ? named : Math.floor(c.rand() * free.length), 1);
+    out.push({ team: 0, index: i, at: Math.round(at), by: 'superlaser' });
+  }
+  return out;
+}
+
 export const MENUS = {
   assault: { stages: [[gens, satellites, batteries, uplink], [bridge, relay, droids], [reactor]] },
   siege: { stages: [[platforms, ionCannon, gens, batteries, tantive], [bridge, beacon, droids], [reactor]] },
@@ -173,6 +199,8 @@ export const MENUS = {
     if (c.sys === 'hoth' && att === 'empire' && def === 'rebel') return { id: 'hoth', stages: [[echoCannon], [bridge], [reactor]] };
     return null;
   },
+  // the ships the films' set pieces lose at their own times
+  losses: (c, stages) => superlaser(c, stages),
   // the bomber waves, where there's a line of battle, and the aces
   side(c) {
     const out = [];
