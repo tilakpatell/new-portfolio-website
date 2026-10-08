@@ -154,16 +154,17 @@ const decode = async (image) => {
 
 // The pack's materials, decided once for every file: whether each is a leaf,
 // and its name. Materials are shared by name across the family files, so two
-// that share a name but not their maps (the space kit's atlases, which
-// differ a few texels file to file) become `Name`, `Name_2`… by how many
-// models wear each. Each material is set up as the kit draws it.
+// that share a name but not their maps or their colour (the space kit's
+// atlases, which differ a few texels file to file; the farm animals' flat
+// colours, one `Brown` darker than another) become `Name`, `Name_2`… by how
+// many models wear each. Each material is set up as the kit draws it.
 async function settleMaterials(models, source) {
-  const seen = new Map(); // base name → maps' key → { count, models, materials, image, cut }
+  const seen = new Map(); // base name → maps' and colour's key → { count, models, materials, image, cut }
   for (const m of models) {
     for (const mat of m.doc.getRoot().listMaterials()) {
       const base = source.atlas ?? mat.getName();
       const image = mat.getBaseColorTexture()?.getImage();
-      const key = `${hash(image)}|${hash(mat.getNormalTexture()?.getImage())}`;
+      const key = `${hash(image)}|${hash(mat.getNormalTexture()?.getImage())}|${mat.getBaseColorFactor().map((x) => x.toFixed(4))}`;
       const byKey = seen.get(base) ?? seen.set(base, new Map()).get(base);
       const entry = byKey.get(key) ?? byKey.set(key, { count: 0, materials: [], image, cut: false, models: new Set() }).get(key);
       if (!entry.models.has(m.name)) entry.count++;

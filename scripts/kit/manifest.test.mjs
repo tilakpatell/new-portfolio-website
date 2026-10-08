@@ -240,3 +240,42 @@ describe('a family too heavy for one file', () => {
     }
   }, 60000);
 });
+
+describe('materials of one name in different colours', () => {
+  it('are told apart, `Name` for the colour most models wear and `Name_2` for the next, each keeping its colour', async () => {
+    const { Document, NodeIO } = await import('@gltf-transform/core');
+    const { ALL_EXTENSIONS } = await import('@gltf-transform/extensions');
+    const { MeshoptDecoder } = await import('meshoptimizer');
+    await MeshoptDecoder.ready;
+    const [from, out] = [mkdtempSync(join(tmpdir(), 'kit-flat-')), mkdtempSync(join(tmpdir(), 'kit-flat-out-'))];
+    const DARK = [0.03, 0.009, 0.004, 1];
+    const DARKER = [0.003, 0.001, 0.0007, 1];
+    try {
+      // three tetrahedra in a flat colour named `Brown`, the second darker
+      // (as two of the farm animals' are)
+      const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
+      for (const [name, colour] of [['Box_1', DARK], ['Box_2', DARKER], ['Box_3', DARK]]) {
+        const doc = new Document();
+        const buffer = doc.createBuffer();
+        const position = doc.createAccessor().setType('VEC3').setArray(new Float32Array([0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0])).setBuffer(buffer);
+        const indices = doc.createAccessor().setType('SCALAR').setArray(new Uint16Array([0, 1, 2, 0, 3, 1, 0, 2, 3, 1, 3, 2])).setBuffer(buffer);
+        const material = doc.createMaterial('Brown').setBaseColorFactor(colour);
+        const mesh = doc.createMesh(name).addPrimitive(doc.createPrimitive().setAttribute('POSITION', position).setIndices(indices).setMaterial(material));
+        doc.createScene().addChild(doc.createNode(name).setMesh(mesh));
+        await io.write(join(from, `${name}.glb`), doc);
+      }
+      const m = await importPack({ pack: 'flat', from, out, log: () => {} });
+      expect(Object.keys(m.materials)).toEqual(['Brown', 'Brown_2']);
+      const root = (await io.read(join(out, 'box.glb'))).getRoot();
+      const worn = (model) => root.listMeshes().find((x) => x.getName() === model).listPrimitives()[0].getMaterial();
+      expect(worn('Box_1').getName()).toBe('Brown');
+      expect(worn('Box_3').getName()).toBe('Brown');
+      expect(worn('Box_2').getName()).toBe('Brown_2');
+      expect(worn('Box_1').getBaseColorFactor().map((x) => Number(x.toFixed(4)))).toEqual(DARK);
+      expect(worn('Box_2').getBaseColorFactor().map((x) => Number(x.toFixed(4)))).toEqual(DARKER);
+    } finally {
+      rmSync(from, { recursive: true, force: true });
+      rmSync(out, { recursive: true, force: true });
+    }
+  }, 60000);
+});

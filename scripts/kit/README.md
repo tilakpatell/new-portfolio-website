@@ -11,7 +11,8 @@ instanced pools, and the galaxy placer's `kit:<pack>/<Model>`. The design is
 ## Fetch, import, check, credit
 
 ```
-node scripts/assets-fetch.mjs naturemega space            # the packs, into lab/assets/<pack>/ (git-ignored)
+node scripts/assets-fetch.mjs naturemega space farm       # the packs, into lab/assets/<pack>/ (git-ignored)
+node scripts/kit/fbx.mjs farm                              # an FBX pack to lab/assets/farm-glb/ first
 node scripts/kit/import.mjs naturemega                     # every family
 node scripts/kit/import.mjs naturemega birch pine          # just these (the manifest keeps the rest)
 node scripts/kit/import.mjs space --from ~/tilakverse-assets/quaternius/ultimate-space-kit
@@ -26,15 +27,42 @@ npx vitest run scripts/kit                                 # the pure half and t
 - **Import.** Where each pack keeps its glTF is `SOURCES` in `import.mjs`
   (`naturemega` and `nature`: `glTF/`; `space`: `{Characters,Environment,Items,Vehicles}/GLTF/`;
   `city`: `Exports/glTF (Godot)/`). The FBX packs (`farm`, `street`,
-  `furniture`) are to be converted first, by `scripts/kit/fbx.mjs`, into
+  `furniture`) are converted first, by `scripts/kit/fbx.mjs` (below), into
   `lab/assets/<pack>-glb/`, which the import then reads. The same pack
-  imported twice gives the same bytes.
+  converted or imported twice gives the same bytes.
 - **Check.** The import ends with `checkManifest` (`manifest.mjs`) over what
   it wrote and prints anything over budget; `scripts/kit-check.mjs` is to
   run it over every pack and fail on it.
 - **Credit.** Every manifest carries `licence: 'CC0-1.0'` and `source`
   (`Quaternius, <pack> (https://quaternius.com)`), for `npm run credits` to
   name Quaternius from them.
+
+## FBX packs
+
+`node scripts/kit/fbx.mjs <pack>` turns every `lab/assets/<pack>/FBX/*.fbx`
+into `lab/assets/<pack>-glb/<Name>.glb` through `scripts/fbx-to-glb.mjs`
+(three's FBXLoader and GLTFExporter in headless Chromium: skeleton, skin
+and clips kept, each FBX material's colour kept as it is). That needs the
+dev server: the one on 5188 when it answers, else vite started on a free
+port and stopped when the run ends, error or not. Each GLB is then
+rewritten twice over:
+
+- **In metres.** Blender's FBX is in centimetres (`UnitScaleFactor` 1, every
+  object scaled ×100), which FBXLoader keeps, so a horse came out 692 tall.
+  The factor rides on the scene's root (`extras.unitScaleFactor`), and the
+  root is scaled by it over 100 (`toMetres`): the animals then measure what
+  the pack's OBJs do, bind pose and the first frame of `Idle` alike, to
+  0.3 %.
+- **Clips by their action's name.** Blender names a take for its armature
+  too, `Armature|Walk`; the GLB's clips are renamed `Walk` (`clipName`,
+  `renameClips`), so the manifest and the runtime's mixer know them so.
+
+The import then files each animal as a rigged model, `<name>.glb`. The
+animals' materials are flat colours under names that repeat across the
+pack (`Brown` on the llama and, darker, on the pug; `Material.003` the
+horse's coat and the pig's skin), and the kit shares a material by its
+name, so the import tells materials apart by their colour as well as their
+maps: one colour per name, `Brown`, `Brown_2` … by how many models wear it.
 
 ## What a family file holds
 
@@ -73,7 +101,7 @@ npx vitest run scripts/kit                                 # the pure half and t
   order, each as full as fits; the manifest's `file` says which holds a
   model, and the materials keep their names in each.
 
-Three choices the plan didn't make, and why:
+Choices the plan didn't make, and why:
 
 - **Simplify crosses UV seams** (meshopt's `Permissive`): without it the
   bark, hundreds of UV islands, stops at 79-96 % and no tree's LOD1 makes 40 %;
@@ -83,6 +111,12 @@ Three choices the plan didn't make, and why:
 - **Five space atlases, five materials**: the pack's files embed atlases up
   to 97 levels off its `Atlas.png` where they are sampled, so each is kept,
   and named apart because the kit shares a material by its name.
+- **FBX packs in metres**: FBXLoader keeps Blender's centimetres, which made
+  every farm animal 100 times its OBJ; the GLB's root is scaled to metres
+  before the import, so the manifest's `radius` and `height` are metres too.
+- **Materials told apart by colour too**: the farm's flat colours repeat
+  names across animals (`Material.003` brown on one, pink on another);
+  named apart, each keeps its colour where the kit shares by name.
 
 ## The manifest
 
@@ -127,7 +161,7 @@ when its geometry carries no `_WIND`.
 
 The nature megakit: 116 models in 20 files, **11.23 MB** (the manifest 40 KB).
 The cherry blossoms are in two files, the first three and the last two; no
-bark is halved. `checkManifest` is clean on both packs.
+bark is halved. `checkManifest` is clean on all three packs.
 
 | File | Models | Triangles | LOD1 | KB |
 | --- | ---: | ---: | ---: | ---: |
@@ -181,6 +215,20 @@ large enemy 337 KB, the mechs 183-199 KB, the small enemies 44-54 KB.
 Some small models' LOD1s save little (five petals of 13-30 triangles keep
 nearly all of them; three flowers, two plants and a pebble of 48-293, and
 one space grass, 42-79 %): none is a tree, and none is heavier than its model.
+
+The farm animals: 7 models in 7 files, **1.00 MB** (the manifest 4 KB),
+each a rig with its clips (seconds) and no LOD1; 12 flat-colour materials,
+no textures.
+
+| File | Bones | Triangles | Clips | KB |
+| --- | ---: | ---: | --- | ---: |
+| cow.glb | 28 | 796 | WalkSlow 2.083, Death 1.25, Jump 1.708, Idle 6.25, Walk 3.333, Run 1.417 | 232 |
+| horse.glb | 28 | 690 | WalkSlow 2, Death 1.083, Jump 1.5, Idle 6.25, Walk 2.667, Run 0.833 | 214 |
+| llama.glb | 24 | 662 | Jump 1.125, Idle 6.25 | 88 |
+| pig.glb | 24 | 562 | Jump 1.5, Idle 6.25 | 87 |
+| pug.glb | 24 | 644 | Jump 1.5, Idle 6.25 | 89 |
+| sheep.glb | 24 | 612 | Jump 1.125, Idle 6.25 | 87 |
+| zebra.glb | 28 | 1,354 | WalkSlow 2, Death 1.083, Jump 1.5, Idle 6.25, Walk 2.667, Run 0.833 | 230 |
 
 ## Later
 
