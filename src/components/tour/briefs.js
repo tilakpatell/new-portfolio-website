@@ -9,6 +9,8 @@
 // phone's, whichever this device is; `at` lights something on the page
 // (data-tour), and a card in the middle where it isn't showing.
 
+import { ABOUT } from '../guide/abouts';
+
 const help = (where) => ({
   id: 'help',
   at: 'guide',
@@ -32,8 +34,10 @@ export const BRIEFS = {
   '/universe/fly': [
     {
       id: 'hello',
-      title: 'You’re flying',
-      text: 'The stations round the sun are the site’s pages; the planets out in deep space are its worlds. Fly to any of them, or pick one on the panel and let the ship take you.',
+      title: 'Flying',
+      // (the player's tour shows these too, before a ship may be picked)
+      text: ({ ship } = {}) =>
+        `${ship ? 'You’re flying.' : 'Pick a ship on the panel to fly it yourself.'} The stations round the sun are the site’s pages; the planets out in deep space are its worlds. Fly to any of them, or pick one on the panel and let the ship take you.`,
     },
     {
       id: 'fly',
@@ -83,7 +87,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'A galaxy far, far away',
-      text: 'Eighteen star systems from the films and the shows, each a moment from them playing out round you. Pick a ship on the panel to fly it yourself.',
+      text: `${ABOUT['/galaxy']} Pick a ship on the panel to fly it yourself.`,
     },
     {
       id: 'fly',
@@ -131,7 +135,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Down on the surface',
-      text: 'A world from the films, on foot: places to find, people to talk to, things to ride. The button with your name on it, top right, picks who you play.',
+      text: `${ABOUT['/galaxy/surface']} The button with your name on it, top right, picks who you play.`,
     },
     {
       id: 'move',
@@ -181,7 +185,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'The Death Star',
-      text: 'That’s no moon. Open any part of the station on the technical readout, fire the superlaser, or fly the trench run in an X-wing.',
+      text: ABOUT['/deathstar'],
     },
     {
       id: 'fly',
@@ -211,11 +215,63 @@ export const BRIEFS = {
     },
     help('the Death Star'),
   ],
+  '/deathstar/inside': [
+    {
+      id: 'hello',
+      title: 'Aboard the Death Star',
+      text: ABOUT['/deathstar/inside'],
+    },
+    {
+      id: 'walk',
+      title: 'Walking',
+      text: 'Click the station to take the pointer, and the mouse turns your head. Doors open as you come near.',
+      keys: [
+        ['W A S D / ← ↑ ↓ →', 'Walk'],
+        ['Shift', 'Run'],
+        ['Mouse', 'Look'],
+        ['E', 'Use: lifts, consoles, people'],
+        ['V', 'Third or first person'],
+      ],
+      touch: [
+        ['Stick', 'Walk'],
+        ['Drag', 'Look'],
+        ['Use', 'Lifts, consoles, people'],
+      ],
+    },
+    {
+      id: 'fight',
+      title: 'Blasters',
+      text: 'Bolts fly, and stop at walls. Your gun heats as you fire; let it get too hot and it vents, so vent it yourself first.',
+      keys: [
+        ['Click', 'Fire'],
+        ['Right-click', 'Aim'],
+        ['R', 'Vent the gun'],
+      ],
+      touch: [
+        ['Fire', 'Shoot'],
+        ['Aim', 'Hold to aim'],
+      ],
+    },
+    {
+      id: 'objective',
+      at: 'ds-objective',
+      title: 'What to do',
+      text: 'Your objective is up here. Follow the story, or roam the station free: the story waits for you.',
+    },
+    {
+      id: 'map',
+      at: 'ds-map',
+      title: 'The map',
+      text: 'The station’s blueprint, filled in as you see each room.',
+      keys: [['M / Tab', 'Open the map']],
+    },
+    help('the station'),
+  ],
   '/caribbean': [
     {
       id: 'hello',
       title: 'The Caribbean',
-      text: 'You’re Jack Sparrow at the Black Pearl’s helm in Dead Man’s Tide. The page has the captain’s effects, the wanted posters and the code too.',
+      text: `${ABOUT['/caribbean']} The page has the captain’s effects, the wanted posters and the code too.`,
     },
     {
       id: 'sail',
@@ -253,7 +309,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Invincible',
-      text: 'The Graysons’ city to fly about as Mark: six kilometres of downtown, river, suburbs, coast and hills. Think, Mark!, the game, is on the page too.',
+      text: `${ABOUT['/invincible']} Think, Mark!, the game, is on the page too.`,
     },
     {
       id: 'fly',
@@ -294,7 +350,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Middle-earth',
-      text: 'A map of the road from Hobbiton to Mount Doom. Every stop is a chapter: a place to walk as Frodo, a kitchen to cook in, and its own game.',
+      text: ABOUT['/middle-earth'],
     },
     {
       id: 'map',
@@ -314,7 +370,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'A stop on the road',
-      text: 'Walk the place as Frodo, then cook in its kitchen, Overcooked-style, alone or with friends.',
+      text: ABOUT['/middle-earth/place'],
     },
     {
       id: 'walk',
@@ -344,7 +400,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Avengers HQ',
-      text: 'The compound in 3D, as Spider-Man. Each building opens its game, and each game wins an Infinity Stone.',
+      text: ABOUT['/avengers'],
     },
     {
       id: 'walk',
@@ -391,7 +447,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Dunder Mifflin',
-      text: 'The office in 3D, as Jim. A week of seven jobs: reception, the stapler in Jell-O, Kevin’s chili, paper toss, the fact check, Dwight’s fire drill and the Dundies.',
+      text: ABOUT['/scranton'],
     },
     {
       id: 'walk',
@@ -417,7 +473,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Cybertron',
-      text: 'Iacon at war, to walk and drive as Optimus (or Kaon, as Megatron). Join the Autobots or the Decepticons and the site changes colour with you. Roll out, the game, is further down.',
+      text: `${ABOUT['/cybertron']} Roll out, the game, is further down.`,
     },
     {
       id: 'move',
@@ -453,7 +509,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Albuquerque',
-      text: 'Drive round town in Walt’s Aztek. Places open up as Walt’s career grows, each with its own game.',
+      text: ABOUT['/albuquerque'],
     },
     {
       id: 'drive',
@@ -485,7 +541,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Dimension C-137',
-      text: 'The Smiths’ street in 3D, as Morty, with Rick’s cruiser in the garage and a portal to everywhere.',
+      text: ABOUT['/c-137'],
     },
     {
       id: 'walk',
@@ -508,7 +564,11 @@ export const BRIEFS = {
     {
       id: 'goal',
       title: 'Where to start',
-      text: 'Set the portal gun’s dial on Rick’s bench in the garage and the portal goes there: thirty-six places from the show. Or take the cruiser up (E by it).',
+      text: 'The portal gun’s on Rick’s bench in the garage: dial Blips and Chitz or one of twenty-six places from the show, then step through the portal on the west wall. Or take the cruiser up (E by it). The show’s planets are on the universe map: land on one and you’re in it.',
+      keys: [
+        ['E', 'The portal gun, at Rick’s bench'],
+        ['P', 'The portal gun, from anywhere'],
+      ],
     },
     help('C-137'),
   ],
@@ -516,7 +576,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'The Citadel of Ricks',
-      text: 'Ricks and Mortys as far as you can see, and jobs for you: Morty Day Care, Simple Rick’s, the Council, then election day.',
+      text: ABOUT['/c-137/citadel'],
     },
     {
       id: 'walk',
@@ -541,7 +601,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Dot Matrix',
-      text: 'A Game Boy island. Eight cartridges, each a project of mine, are hidden round it.',
+      text: ABOUT['/dot-matrix'],
     },
     {
       id: 'move',
@@ -574,7 +634,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Super Mario 64',
-      text: 'Two ways to play: the fan tribute, the castle and Bob-omb Ridge rebuilt in the browser, or the real game on the N64, from your own ROM.',
+      text: `${ABOUT['/dot-matrix/64']} Or play the real game on the N64, from your own ROM.`,
     },
     {
       id: 'run',
@@ -615,7 +675,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Minecraft',
-      text: 'A fan tribute: an endless world of blocks made from a seed, drawn in Pixel Perfection, a free pack close to the game’s own.',
+      text: `${ABOUT['/dot-matrix/minecraft']} Minecraft itself, 1.12.2 and 1.8.8, is here too, behind a password.`,
     },
     {
       id: 'walk',
@@ -661,7 +721,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'Earth',
-      text: 'The Earth right now, from orbit: the sun where it is, so the night side is the real night. Pick a place and fly there in a little plane.',
+      text: `${ABOUT['/earth']} The sun is where it is, so the night side is the real night.`,
     },
     {
       id: 'orbit',
@@ -695,7 +755,7 @@ export const BRIEFS = {
     {
       id: 'hello',
       title: 'The music room',
-      text: 'A sandstone courtyard at dusk, with a sitar, a harmonium, a tabla and a tanpura, all tuned to the same Sa.',
+      text: `${ABOUT['/music']} Everything tunes to the same Sa.`,
     },
     {
       id: 'walk',

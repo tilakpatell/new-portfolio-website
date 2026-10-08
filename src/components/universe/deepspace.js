@@ -67,7 +67,7 @@ import { BILLBOARD_VERT, CITADEL_FRAG, CITADEL_GLASS_FRAG, CITADEL_VERT, DISK_FR
 const { PI, sin, cos, hypot, max, min } = Math;
 const TAU = PI * 2;
 
-const SKY_FAR = 24000; // how far off the background galaxies ride (inside the camera's far plane)
+export const SKY_FAR = 24000; // how far off the background galaxies ride (inside the camera's far plane)
 const SKY_SIZE = SKY_FAR / 2200; // (their sizes below are at 2200)
 const LABEL_H = 0.15; // a name's height on screen, in clip units (about a thirteenth of the screen)
 const LABEL_W = 1024; // a name's row in the atlas, in px
@@ -1063,7 +1063,8 @@ export function buildDeepSpace({ small = false, tier = 'high' } = {}) {
         varying vec2 vC;
         void main() {
           float r = length(vC);
-          float a = exp(-r * r * 3.2) * 0.42 + exp(-r * r * 12.0) * 0.18;
+          // (down to nothing by the quad's edge: close in, the post's lift would show its square)
+          float a = (exp(-r * r * 3.2) * 0.42 + exp(-r * r * 12.0) * 0.18) * (1.0 - smoothstep(0.6, 1.0, r));
           gl_FragColor = vec4(vec3(0.62, 0.32, 0.1) * a, a);
         }`,
         { uR: { value: 75 * k } },

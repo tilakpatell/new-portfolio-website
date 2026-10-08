@@ -309,6 +309,8 @@ export const SITES = {
     life: [
       { kind: 'gungan', n: 10, at: [250, -235], spread: 40, roam: 14, speed: 1.1, name: 'Gungan soldier', says: ['Wesa ready to do are-sa part!', 'Da shield up! Da droids no getting in here!', 'Boomas! Get da boomas!', 'Yousa stay behind da shield, okeyday?'] },
       { kind: 'kaadu', n: 5, at: [230, -220], spread: 30, roam: 18, speed: 1.4, r: 0.8 },
+      // (the army's fambaas, which carried the shield generators)
+      { kind: 'fambaa', n: 2, at: [262, -262], spread: 30, roam: 10, speed: 0.5, r: 3.5 },
       { kind: 'gungan', n: 1, at: [40, 30], roam: 20, speed: 1.2, name: 'Jar Jar Binks', says: ['Meesa Jar Jar Binks!', 'Exsqueeze me, but de mostest safest place would be Gunga City.', 'How wude!', 'Mesa day startin’ pretty okee-day, with a brisky morning munchy. Den BOOM!', 'Mesa called Jar Jar Binks. Mesa your humble servant.'] },
       { kind: 'gungan', n: 1, at: [-320, -238], still: true, scale: 1.35, r: 0.7, name: 'Boss Nass', says: ['Wesa no like da Naboo. Un dey no like uss-en.', 'Yousa tinkin’ yousa people ganna die?', 'Mesa like dis. Maybe wesa bein’ friends.'] },
       { kind: 'gungan', n: 4, at: [-322, -226], spread: 14, roam: 8, speed: 0.9, name: 'Gungan', says: ['Dis a sacred place. Yousa be quiet, okeyday?', 'Da Naboo tink dey so smarty. Dey tink dey brainses so big.', 'Boss Nass say we hide here till da droids go.'] },
@@ -786,6 +788,9 @@ export const SITES = {
       { kind: 'geonosian', n: 8, at: [-250, 190], spread: 30, roam: 16, speed: 1.2, name: 'Geonosian', says: ['(A dry, clicking chatter.)', '(It buzzes its wings and points you back toward the gate.)', '(Clicks, a hiss, and something like a laugh.)'] },
       { kind: 'geonosian', n: 1, at: [-262, 220], still: true, scale: 1.1, name: 'Poggle the Lesser', says: ['(The Archduke clicks a command. Somewhere, the crowd roars.)', '(He gestures at the pillars, and then at you, and then at the pillars again.)'] },
       { kind: 'acklay', n: 1, at: [-262, 196], roam: 22, speed: 1.6, r: 2 },
+      // (and the other two beasts they let out for the three at the pillars)
+      { kind: 'nexu', n: 1, at: [-250, 186], roam: 20, speed: 2.2, r: 1.2 },
+      { kind: 'reek', n: 1, at: [-274, 206], roam: 18, speed: 1.3, r: 1.8 },
       { kind: 'jedi', n: 2, at: [-256, 202], spread: 6, roam: 8, speed: 1.0, name: 'Jedi', says: ['This party’s over.', 'Hold on. This whole operation’s about to get a lot more interesting.', 'I’ve a bad feeling about this.'] },
       { kind: 'geonosian', n: 6, path: [[-80, -360], [10, -400], [-30, -490], [-110, -440]], y: 18, speed: 5, name: 'Geonosian drone', says: ['(A buzzing dive past your head.)'] },
       { kind: 'geonosian', n: 4, at: [-320, -210], spread: 24, roam: 14, speed: 1.1, name: 'Geonosian worker', says: ['(It clicks irritably and hauls a droid torso past you.)', '(Click. Click-click. Back to work.)'] },

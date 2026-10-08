@@ -15,6 +15,7 @@ import { saveStart } from '../lib/view';
 import { useView } from '../components/ViewSwitch';
 import { portalSound } from '../components/universe/sounds';
 import { jumpEvent } from '../components/jumps/styles';
+import { jumpOut } from '../components/jumps/jumpOut';
 import UniverseMap from '../components/universe/UniverseMap';
 import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
@@ -26,6 +27,10 @@ import Wardrobe from '../components/rickmorty/wardrobe/Wardrobe';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { CASTS, castOfCrew } from '../components/rickmorty/wardrobe/looks';
 import { useOnline } from '../components/universe/online/useOnline';
+import EarnNote from '../components/universe/EarnNote';
+import { useEarn } from '../components/universe/useEarn';
+import { goodStanding } from '../components/universe/economy';
+import { createPayLedger } from '../components/universe/earnRules';
 
 const PORTAL = '#97ce4c';
 // the phone out past the belt (universe/phone.js): its lock screen, fetched
@@ -34,6 +39,16 @@ const PhoneOverlay = lazy(() => import('../components/dickansh/PhoneOverlay'));
 const SAFFRON = '#ff9a2a';
 const PHONE_MS = 700;
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
+// (the page you go into knows you came from the map, so its way out can be
+// back to space: the Citadel's)
+const FROM_MAP = { state: { from: 'universe' } };
+
+// The galaxy's page and its scene, fetched once its gate is picked or
+// flown into, so the jump into it isn't waiting on them (App.jsx loads the
+// page lazily, and the page its scene), as galaxy/travel.js fetches a
+// world's surface on the way down to it.
+let galaxyFetched = null;
+const prefetchGalaxy = () => (galaxyFetched ??= Promise.all([import('./Galaxy'), import('../components/galaxy/scene')]).catch(() => (galaxyFetched = null)));
 
 // The universe map: every fandom on the site is a planet, and you travel
 // between them, flying a ship of your choice (remembered between visits,
@@ -69,6 +84,12 @@ export default function Universe({ ask = false }) {
   const online = useOnline(); // (OnlineProvider, above the pages: the link stays up off the map)
   const { setKind, setLoadout, setBuild: tellBuild } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
+  // the wallet (economy.js): what the scene pays for, a good standing
+  // reached and an alliance made earn into it, with a note over the HUD
+  const { pay, note: earned } = useEarn({ client: online.client });
+  // (a level is paid for once a visit: lost and won back with a shot at the
+  // law and a hunter down, it's no living)
+  const [stood] = useState(createPayLedger);
   // what each ship's fitted with in the hangar (kept between visits): the
   // paint job and parts it flies with, while they're still earned
   const { unlocked, unlock } = useAchievements();
@@ -131,7 +152,14 @@ export default function Universe({ ask = false }) {
     local.set(PANEL_KEY, on ? 'tucked' : 'open');
   };
   const timer = useRef(0);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const trip = useRef(null); // a jump out (jumps/jumpOut.js): this page gone first, its dark coming late changes nothing
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+      trip.current?.cancel();
+    },
+    [],
+  );
   // a trip on through the gate: to a star system picked on the nav map, the
   // ship flies to the gate, and when it parks there the page goes on in
   const onward = useRef(null); // { via, to }
@@ -145,6 +173,33 @@ export default function Universe({ ask = false }) {
     setTouring(null);
   }, []);
   useEffect(() => () => clearTimeout(tour.current?.timer), []);
+
+  // flying to another pilot (the roster's “Fly to”, or its “Go” from
+  // another page: useOnline's follow): once the ship's in and they're
+  // flying here in sight, the autopilot takes it to them (scene.js's
+  // `pilot:<id>`, by the drive picked). Tried till it goes; the trip's end
+  // (there, gone, or the stick taken back) or the follow's own minute
+  // forgets it
+  const { followId, follow } = online;
+  const followRef = useRef(null); // the pilot whose trip is under way
+  useEffect(() => {
+    if (!followId || !ship) return undefined;
+    const go = () => {
+      if (followRef.current === followId) return true;
+      if (!map.current.live || !map.current.travel(`pilot:${followId}`, driveRef.current)) return false;
+      followRef.current = followId;
+      stopTour();
+      onward.current = null;
+      setCharting(false);
+      return true;
+    };
+    if (go()) return undefined;
+    const t = setInterval(() => go() && clearInterval(t), 500);
+    return () => clearInterval(t);
+  }, [followId, ship, stopTour]);
+  useEffect(() => {
+    if (!followId) followRef.current = null;
+  }, [followId]);
 
   // out of the cockpit's launch (App's intro, or ⌘K's replay): flying the
   // ship it was, with no question first. Sat down in the cockpit with no
@@ -177,6 +232,11 @@ export default function Universe({ ask = false }) {
   }, []);
 
   const select = useCallback((id) => navigate(id ? `/universe/${id}` : '/universe', { replace: true }), [navigate]);
+  // the Star Wars gate picked: the galaxy behind it fetched while you fly there
+  const toGalaxy = Boolean(universe?.to?.startsWith('/galaxy'));
+  useEffect(() => {
+    if (toGalaxy) prefetchGalaxy();
+  }, [toGalaxy]);
 
   const pickShip = (id) => {
     audioContext(); // inside the press, so the engine can start
@@ -192,17 +252,24 @@ export default function Universe({ ask = false }) {
     stopTour();
     const plan = enterPlan(u, { reduced, three: map.current.live, ship });
     if (plan.mode === 'now') {
-      navigate(to);
+      navigate(to, FROM_MAP);
       return;
     }
     audioContext(); // inside the press, so the way out can sound
-    if (plan.mode === 'jump') window.dispatchEvent(jumpEvent(crew?.jump));
-    else {
-      if (plan.mode === 'portal') portalSound();
-      map.current.dive(u.id);
-    }
     setLeaving({ id: u.id, mode: plan.mode });
-    timer.current = setTimeout(() => navigate(to), plan.delay);
+    if (plan.mode === 'jump') {
+      // the page changes under the jump's dark. Into the galaxy, its page
+      // and scene are fetched now, and the jump's tunnel is held from the
+      // change until the galaxy has drawn, so it clears onto the galaxy,
+      // not its loading line
+      const galaxy = Boolean(to?.startsWith('/galaxy'));
+      if (galaxy) prefetchGalaxy();
+      trip.current = jumpOut({ style: crew?.jump, to, navigate: (page) => navigate(page, FROM_MAP), hold: galaxy, delay: plan.delay });
+      return;
+    }
+    if (plan.mode === 'portal') portalSound();
+    map.current.dive(u.id);
+    timer.current = setTimeout(() => navigate(to, FROM_MAP), plan.delay);
   };
   const enter = () => go(universe);
   // the phone unlocked: the Dickansh and Deekbeggers Universe (its page keeps
@@ -248,7 +315,7 @@ export default function Universe({ ask = false }) {
     if (!plan) return false;
     setLeaving({ id: u.id, mode: plan.mode });
     // (a wonder with a page of its own, the Citadel, goes there)
-    timer.current = setTimeout(() => navigate(page ?? u.crashTo ?? u.to), plan.delay);
+    timer.current = setTimeout(() => navigate(page ?? u.crashTo ?? u.to, FROM_MAP), plan.delay);
     return true;
   };
 
@@ -269,6 +336,15 @@ export default function Universe({ ask = false }) {
   // portal or the RV's Blue Sky: the scene has the ship out at the place
   // under its flash either way), through a gate, or something for the crew to say
   const onEvent = (e) => {
+    if (e.type === 'earn') {
+      pay(e.what, e.n, e.side);
+      return;
+    }
+    // (the hello says what you are to the others: useOnline.js reads it again)
+    if (e.type === 'event' && e.id === 'standing') window.dispatchEvent(new Event('tp:standing'));
+    if (e.type === 'event' && e.id === 'standing' && goodStanding(e.sub) && stood.once(`${e.side}:${e.sub}`)) pay('standingUp', 1, e.side);
+    // a trip to a pilot over (with them, gone, or the stick taken back): the follow's done
+    if ((e.type === 'arrived' || e.type === 'jumped' || e.type === 'lost') && followRef.current && e.id === `pilot:${followRef.current}`) follow(null);
     // a trip ended: on through the gate, or the tour's next leg
     if (e.type === 'arrived' || e.type === 'jumped') {
       const done = e.type === 'jumped' || e.done;
@@ -446,6 +522,7 @@ export default function Universe({ ask = false }) {
         </div>
       )}
       {crew && <Comms control={comms} crew={crew} reduced={reduced} />}
+      {!leaving && <EarnNote note={earned} />}
       <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} cast={dressing} who={CASTS[dressing][0]} returnTo=".universe-hangar-btn" />
       {!asking && !leaving && <Online online={online} ship={ship} />}
       <UniversePanel

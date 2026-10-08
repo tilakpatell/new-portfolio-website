@@ -10,7 +10,7 @@ import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
 import { useSays } from '../hq/useSays';
 import { KINDS, LANE, RUN, STONE_AT, leap, moveLane, newRun, smash, startRun, stepRun } from './rules';
-import { SPOKEN, TEACH } from './lines';
+import { HIT, SPOKEN, STONE, TEACH } from './lines';
 import './smash.css';
 import '../../../styles/lazy/avengers.css';
 
@@ -29,8 +29,9 @@ const STEP = 1 / 120;
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 const fine = typeof window !== 'undefined' ? window.matchMedia?.('(hover: hover) and (pointer: fine)') : null;
 
-// what Banner tells you as each new thing comes down the avenue (./lines.js),
-// in his own voice where it's been made (lib/voiced.js)
+// what Banner tells you as each new thing comes down the avenue, the first time
+// one gets you and at the Time Stone (./lines.js), in his own voice where it's
+// been made (lib/voiced.js)
 const VOICED = new Set(SPOKEN);
 const SMASH_SOUND = { soldier: 'hit', barricade: 'crumble', car: 'blast', barrier: 'shatter' };
 
@@ -114,13 +115,13 @@ export default function SmashRun({ fallback }) {
             f.hurt = 1;
             if (e.by === 'barrier' && !f.taught.has('wall-hit')) {
               f.taught.add('wall-hit');
-              important = { message: 'Not even Hulk goes through an energy wall. Change lanes.' };
+              important = { message: HIT.barrier };
             } else if (e.by === 'crater' && !f.taught.has('crater-hit')) {
               f.taught.add('crater-hit');
-              important = { message: 'Leap a crater, a moment before the edge.' };
+              important = { message: HIT.crater };
             } else if (e.by === 'chariot' && !f.taught.has('chariot-hit')) {
               f.taught.add('chariot-hit');
-              important = { message: 'When a lane glows red, leave it, or leap as the fire comes.' };
+              important = { message: HIT.chariot };
             }
             break;
           case 'rage':
@@ -156,7 +157,7 @@ export default function SmashRun({ fallback }) {
             buzz(150);
             unlock('hulk');
             const first = earnStone('time');
-            important = { message: first ? 'The Time Stone is yours: the Ancient One would have let you have it. Keep running.' : 'The Time Stone again. Keep running.' };
+            important = { message: first ? STONE.first : STONE.again };
             break;
           }
           case 'lost': {

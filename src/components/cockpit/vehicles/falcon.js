@@ -479,15 +479,23 @@ export async function build({ rich, coarse, renderer }) {
   }
 
   // ── Chewie ──
+  // (sat up, head turned a little towards the window; as the launch comes
+  // he leans in over the console, his arm out to the levers with yours,
+  // and his head comes round to the stars: `launch`, 0…1, set each frame)
+  const launch = { k: 0 };
   const chewie = await loadCrew('chewie', {
     clip: 'sit',
     height: 2.28,
     hips: [0.52, 0.6, 0.06],
     rough: 0.95,
     pose: (b) => {
-      // sat up, head turned a little towards the window
-      nudge(b.Spine01, -0.08, 0, 0);
-      nudge(b.Head, -0.05, 0.12, 0);
+      const k = launch.k;
+      nudge(b.Spine01, -0.08 + k * 0.22, 0, -k * 0.06);
+      nudge(b.Spine02, k * 0.1, 0, 0);
+      nudge(b.Head, -0.05 - k * 0.12, 0.12 - k * 0.3, 0);
+      // the left arm (toward the middle of the console) forward and down to the levers
+      nudge(b.LeftArm, -k * 1.1, k * 0.25, k * 0.2);
+      nudge(b.LeftForeArm, -k * 0.35, 0, 0);
     },
   });
   if (chewie) inside.add(chewie.group);
@@ -593,10 +601,12 @@ export async function build({ rich, coarse, renderer }) {
     update(dt, t, { launching, t: lt, throttle }) {
       for (const s of screens) s.tick(t);
       lights.tick(t);
-      chewie?.update(dt);
-      world.spin(dt);
       // the levers: pushed forward in the first moments of the launch
       const want = launching ? smooth(lt / 380) : 0;
+      // (Chewie in over them a moment ahead of you, and easing back once the ship's away)
+      launch.k += ((launching ? smooth((lt + 500) / 900) * (1 - smooth((lt - 6000) / 3000)) : 0) - launch.k) * Math.min(1, dt * 3);
+      chewie?.update(dt);
+      world.spin(dt);
       leverK += (want - leverK) * Math.min(1, dt * 18);
       levers.forEach((l, i) => (l.rotation.x = 0.45 - leverK * (0.95 + i * 0.04)));
       leverRing.material.opacity = launching ? Math.max(0, leverRing.material.opacity - dt * 3) : 0.18 + 0.14 * Math.sin(t * 2.4);

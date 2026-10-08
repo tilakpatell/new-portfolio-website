@@ -1,13 +1,17 @@
 // The rooms' people, for ../interiors.js: Rick and the Smiths from the
 // Meshy cast (portal/meshyCast.js), loaded once for every room that asks,
-// Rick's sat clip for whoever has to sit, and people in shapes, the show's
-// way, for the teacher and for anyone whose model won't load.
+// and people in shapes, the show's way, for the teacher and for anyone whose
+// model won't load. Each one stands (or sits, through seat(): one way for
+// every sitter in the world) on its animator, breathing in its own time, its
+// head turning to Morty when he comes up and its hands going while he talks
+// to it (../living.js's attend); inHand() puts something in a figure's right
+// hand (Beth's wine, Rick's flask).
 
 import * as THREE from 'three';
-import { BASE, faceForward, heading } from '../../portal/meshyCast';
 import { mergeParts } from '../kit';
-import { CYL } from './shell';
-import { gltfLoader } from '../../../../lib/three/gltf';
+import { attend } from '../living';
+import { CYL, lathe } from './shell';
+import { loadClip } from '../../../../lib/three/clipLibrary';
 
 // The cast (Rick and the Smiths), loaded once for every room that asks;
 // whoever doesn't load is drawn in shapes. They only stand (and Jerry sits),
@@ -24,13 +28,24 @@ export async function needCast(kit, names) {
 
 // A person standing at (x, z), facing `face` (rules.js's heading), `h` tall:
 // the Meshy figure for `kind`, or a code-drawn one to `look` (if it won't
-// load, or `meshy` is false). Its tick plays the idle.
-export function person(R, kind, { x, z, face, h, look, y = 0, meshy = true }) {
+// load, or `meshy` is false). Its tick plays the idle, and turns its head to
+// Morty within `near` m or while he talks to it (`id`: whom his word's to,
+// rules.js's PEOPLE id), its hands going while he does.
+export function person(R, kind, { x, z, face, h, look, y = 0, meshy = true, id = kind, near = 3 }) {
   const c = meshy ? R.kit.cast.make(kind) : null;
   let fig;
   if (c) {
     c.group.scale.setScalar(h / c.height);
-    fig = { group: c.group, cast: c, hand: c.hand, tick: (t) => c.update(t, 0, 0) };
+    const b = {};
+    fig = {
+      group: c.group,
+      cast: c,
+      hand: c.hand,
+      tick: (t, dt, state) => {
+        c.update(t, 0, 0, { dt });
+        attend(c, b, id, t, state, { y, near });
+      },
+    };
   } else fig = toonPerson(R, look, h);
   fig.group.position.set(x, y, z);
   fig.group.rotation.y = face + Math.PI / 2;
@@ -39,44 +54,119 @@ export function person(R, kind, { x, z, face, h, look, y = 0, meshy = true }) {
   return fig;
 }
 
-// Rick's sat clip, for the Smiths who haven't one of their own (the same
-// skeleton): turns only, so it keeps the sitter's own proportions. Null if it
-// won't load, or takes longer than SIT_WAIT (so a room never waits on it).
-const SIT_WAIT = 8000;
-let sitClip = null;
-export function sitting() {
-  sitClip ??= Promise.race([
-    gltfLoader()
-      .loadAsync(`${BASE}/rick-sit.glb`)
-      .then((g) => {
-        const clip = g.animations[0] ?? null;
-        if (clip) clip.tracks = clip.tracks.filter((t) => t.name.endsWith('.quaternion'));
-        return clip;
-      }),
-    new Promise((done) => setTimeout(() => done(null), SIT_WAIT)),
-  ])
-    .catch(() => null)
-    .then((clip) => {
-      if (!clip) sitClip = null; // (asked again, it tries again)
-      return clip;
-    });
-  return sitClip;
+// ── sat down ──
+//
+// seat(R, c, { x, z, face, id }, { h, seatY, wait }) → { group, cast } | null:
+// `c` (a figure from the cast) sat, `h` tall, facing `face`, its hips on the
+// seat at (x, seatY, z). Its own sat clip if it was loaded with one, else the
+// clip library's sitting idle, through its animator's base (meshyCast's
+// c.base('sit')), so each sitter breathes in its own time and a word or a
+// look plays on its upper half without standing it up. The way into the
+// seat is played through out of sight, a tenth of a second at a time, and
+// where its hips came to rest is measured then (a clip carries each body
+// its own way: a short-legged one sits lower and further back), so it's on
+// its seat from the first frame it's seen. Null if it can't sit (it isn't
+// rigged), or isn't sat within `wait` ms, so a room never waits long on it.
+// Its tick: its idle, and its head on Morty as person()'s is.
+const SEAT_WAIT = 8000;
+const SAT = ['seat', 'sit.idle']; // the base it sits in: its own sat clip (meshyCast's name for it), or the library's
+export async function seat(R, c, { x, z, face, id = c?.kind }, { h, seatY, wait = SEAT_WAIT, near = 2.5 }) {
+  if (!c?.anim || !c.base) return null;
+  c.group.scale.setScalar(h / c.height);
+  c.group.rotation.y = face + Math.PI / 2;
+  c.group.position.set(x, 0, z);
+  let cut = false;
+  c.base('sit').then((r) => (cut = r === 'cut'));
+  // (the files first: the library's sitting clips, when it has no sat clip
+  // of its own; then the animator's turns of the clock till it's there: its
+  // sat clip, the base, at its whole weight)
+  if (!c.act?.sit) await Promise.race([Promise.all(['sit.idle', 'sit.enter'].map((n) => loadClip(n))), new Promise((done) => setTimeout(done, wait))]);
+  const there = () => SAT.some((n) => (c.anim.actions[n]?.getEffectiveWeight() ?? 0) > 0.999);
+  for (let i = 0; i < 120 && !cut && !there(); i++) {
+    c.update(0, 0, 0, { dt: 0.1 });
+    await null;
+  }
+  if (!there()) {
+    c.base(null);
+    return null;
+  }
+  c.group.updateMatrixWorld(true);
+  const hips = c.group.getObjectByName('Hips');
+  const at = hips ? hips.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(x, seatY, z);
+  c.group.position.set(2 * x - at.x, seatY - at.y, 2 * z - at.z);
+  R.group.add(c.group);
+  const b = {};
+  R.tick((t, dt, state) => {
+    c.update(t, 0, 0, { dt });
+    attend(c, b, id, t, state, { y: 0, near });
+  });
+  return { group: c.group, cast: c };
 }
 
-// Rick's sat clip for someone else of the cast, turned (as meshyCast turns
-// every clip it loads) so its hips face the way the sitter's walk does: ahead
-export function facingAhead(c, clip) {
-  const own = clip.clone();
-  const hips = c.group.getObjectByName('Hips');
-  const ref = c.act.walk?.getClip();
-  if (!hips?.parent || !ref) return own;
+// ── in a hand ──
+//
+// inHand(c, obj, { reach = 0.09 }) → obj | null: `obj` (built in metres, its
+// grip at its origin, its up +y) put in the figure's right hand, upright as
+// the figure stands now, a little way down from the wrist past the palm.
+// It moves with the hand from then on: a glass raised to the lips tips with
+// it. Call it once the figure's posed (after an update), not in its bind pose.
+export function inHand(c, obj, { reach = 0.09 } = {}) {
+  const hand = c?.hand;
+  const arm = hand?.parent;
+  if (!hand || !arm?.isBone) return null;
   c.group.updateMatrixWorld(true);
-  // up, in the hips' parent's frame within the model
-  const rel = c.body.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(hips.parent.getWorldQuaternion(new THREE.Quaternion()));
-  const up = new THREE.Vector3(0, 1, 0).applyQuaternion(rel.invert());
-  const ahead = heading(ref, up);
-  if (ahead != null) faceForward(own, up, ahead);
-  return own;
+  const wrist = hand.getWorldPosition(new THREE.Vector3());
+  const along = wrist.clone().sub(arm.getWorldPosition(new THREE.Vector3())).normalize();
+  const grip = wrist.addScaledVector(along, reach);
+  const world = new THREE.Matrix4().compose(grip, new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
+  hand.matrixWorld.clone().invert().multiply(world).decompose(obj.position, obj.quaternion, obj.scale);
+  hand.add(obj);
+  return obj;
+}
+
+// Something kept in a figure's hand from its first frame stood (inHand
+// wants it posed); `show(c)`, if given, says each frame whether it's out
+export function holding(R, c, obj, { reach, show = null } = {}) {
+  if (!c?.hand) return null;
+  let held = false;
+  obj.visible = false;
+  R.tick(() => {
+    if (!held) held = Boolean(inHand(c, obj, { reach }));
+    obj.visible = held && (show ? show(c) : true);
+  });
+  return obj;
+}
+
+// Rick at his bench: at whatever's on it now and then (`interact`), and
+// a pull on his flask, which is out of his coat only while he drinks
+export function tinker(R, c) {
+  if (!c?.anim) return;
+  c.anim.idles({ fidgets: ['interact', 'interact', 'drink'], every: [5, 12] });
+  holding(R, c, hipFlask(R), { reach: 0.08, show: (f) => f.anim.playing('upper') === 'drink' });
+}
+
+// Beth's glass of wine: a stemmed glass, the wine a third up its bowl,
+// held by the stem (its middle at the origin)
+export function wineGlass(R) {
+  const g = new THREE.Group();
+  const m = R.kit.mats;
+  const glass = new THREE.Mesh(R.own(lathe([[0.034, -0.045], [0.034, -0.04], [0.006, -0.036], [0.005, 0.03], [0.012, 0.036], [0.036, 0.06], [0.043, 0.095], [0.04, 0.13]], 20)), m.glass);
+  const wine = new THREE.Mesh(R.own(lathe([[0, 0.04], [0.026, 0.05], [0.036, 0.068], [0.039, 0.085], [0, 0.085]], 20)), m.toon(0x7a1430));
+  glass.renderOrder = 2;
+  g.add(wine, glass);
+  return g;
+}
+
+// Rick's hip flask: a curved silver flask with its cap, held round its
+// middle, out only while he drinks
+export function hipFlask(R) {
+  const g = new THREE.Group();
+  const m = R.kit.mats;
+  const body = new THREE.Mesh(R.own(new THREE.CylinderGeometry(0.055, 0.055, 0.12, 16, 1).scale(1, 1, 0.38)), m.metal);
+  const neck = new THREE.Mesh(R.own(new THREE.CylinderGeometry(0.012, 0.016, 0.02, 10).translate(0, 0.07, 0)), m.metal);
+  const cap = new THREE.Mesh(R.own(new THREE.CylinderGeometry(0.016, 0.016, 0.018, 10).translate(0, 0.088, 0)), m.toon(0x5a5f66));
+  g.add(body, neck, cap);
+  return g;
 }
 
 // ── the multiverse's people (rules.js's PEOPLE from Phase 2 on) ──
@@ -108,36 +198,18 @@ async function figure(R, kind, clips, wait = 15000) {
 }
 
 // One of them sat in their own sat clip (Meshy made each one's): `h` tall,
-// facing `face`, hips on the seat at (x, seatY, z). The clip carries each body
-// its own way (a short-legged one sits lower and further back), so where its
-// hips land is measured at the clip's first frame and the figure moved to put
-// them on the seat. Null if it won't load, or has no sat clip.
-export async function seatOwn(R, kind, { x, z, face }, { h, seatY }) {
+// facing `face`, hips on the seat at (x, seatY, z), through seat() above.
+// Null if it won't load, or has no sat clip.
+export async function seatOwn(R, kind, { x, z, face, id = kind }, { h, seatY }) {
   const c = await figure(R, kind, ['idle', 'walk', 'sit']);
-  const sit = c?.act?.sit;
-  if (!sit) return null;
-  for (const a of Object.values(c.act)) a.setEffectiveWeight(a === sit ? 1 : 0);
-  sit.time = 0;
-  c.group.scale.setScalar(h / c.height);
-  c.group.rotation.y = face + Math.PI / 2;
-  c.mixer.update(0);
-  c.group.updateMatrixWorld(true);
-  const hips = c.group.getObjectByName('Hips');
-  const at = hips ? hips.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3();
-  c.group.position.set(x - at.x, seatY - at.y, z - at.z);
-  R.group.add(c.group);
-  let last = null;
-  R.tick((t) => {
-    c.mixer.update(last == null ? 0 : Math.min(0.1, t - last));
-    last = t;
-  });
-  return { group: c.group, cast: c };
+  if (!c?.act?.sit) return null;
+  return seat(R, c, { x, z, face, id }, { h, seatY });
 }
 
 // One of them as a hologram, standing in their idle: see-through cyan over
 // their own colours, flickering a little, drawn without the ink (a projection
 // has no outline). `flat` is a group of the room's that the ink leaves alone.
-export async function hologram(R, kind, { x, z, face }, { h, flat }) {
+export async function hologram(R, kind, { x, z, face, id = kind }, { h, flat }) {
   const c = await figure(R, kind, ['idle', 'walk']);
   if (!c) return null;
   c.group.scale.setScalar(h / c.height);
@@ -153,8 +225,10 @@ export async function hologram(R, kind, { x, z, face }, { h, flat }) {
     mats.push(m);
   });
   flat.add(c.group);
-  R.tick((t) => {
-    c.update(t, 0, 0);
+  const b = {};
+  R.tick((t, dt, state) => {
+    c.update(t, 0, 0, { dt });
+    attend(c, b, id, t, state, { near: 3 });
     // (a flicker now and then, as a projection has)
     const flick = Math.sin(t * 23) > 0.96 ? 0.25 : 0;
     for (const m of mats) m.opacity = 0.5 + Math.sin(t * 2.2) * 0.06 - flick;

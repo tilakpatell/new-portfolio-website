@@ -57,6 +57,8 @@ import {
   height,
   roadAmount,
 } from './layout';
+import { attend, castDo, releaseCast, tickCast } from '../../cast3d';
+import { turn } from '../../../../lib/three/gait';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const faceTo = (obj, face) => {
@@ -299,6 +301,13 @@ export function createBreeWorld(canvas, { onLost } = {}) {
   const bill = blob(kit.billPony(), 1.6);
   outdoors.add(bill.group);
   const billStable = stable.stalls[1].clone().applyMatrix4(stable.group.matrixWorld);
+  // his way to the East Gate and back: out of his stall into the yard (clear
+  // of the trough), then across to Sam; walked, never put there
+  const billYard = V(stable.stalls[1].x, 0, STABLE.d / 2 + 1.4).applyMatrix4(stable.group.matrixWorld);
+  const billPath = [billStable, billYard, V(BILL.x, 0, BILL.z)];
+  const billLegs = billPath.slice(1).map((p, i) => Math.hypot(p.x - billPath[i].x, p.z - billPath[i].z));
+  const billLong = billLegs.reduce((a, b) => a + b, 0);
+  const billWalk = { s: null, face: -Math.PI / 2 + 0.2 }; // s: how far along his way he is (m)
   // the Nazgûl, and two of their horses by the broken gate
   const wraithKit = createWraithKit(renderer);
   // (the Ring's pale form, compiled now so putting it on doesn't stall)
@@ -543,6 +552,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     frodo.group.visible = A.wraith < 0.5 && !inside;
     pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
     if (s.crouch) frodo.body.position.y -= 0.12;
+    castDo(frodo, { crouch: Boolean(s.crouch) });
     ghosts.update(s.travellers ?? [], t, dt, { ringOn: Boolean(s.wearing) });
 
     // ── who's about ──
@@ -552,31 +562,46 @@ export function createBreeWorld(canvas, { onLost } = {}) {
       const on = c.when.includes(tod) && !inside && !(c.id === 'harry' && !s.gateOpen);
       p.group.visible = on;
       if (!on) continue;
-      const near = Math.hypot(h.x - c.x, h.z - c.z) < 5;
-      const want = near ? Math.atan2(-(h.z - c.z), h.x - c.x) : p.home.face;
-      let d = want - p.group.rotation.y;
-      d = Math.atan2(Math.sin(d), Math.cos(d));
-      p.group.rotation.y += d * Math.min(1, dt * 4);
+      // they turn to Frodo as he comes by: on the cast the head first, a greeting the first time
+      attend(p, h, p.home.face, dt, { who: frodo });
       pose(p, t + c.x, { moving: false, wave: s.talk === c.id ? 0.5 : 0, talk: s.talk === c.id ? 1 : 0 });
     }
     // Strider waits by the East Gate at night
     striderNight.group.visible = tod === 'night' && !inside;
     if (striderNight.group.visible) {
-      faceTo(striderNight.group, Math.atan2(-(h.z - STRIDER_NIGHT.z), h.x - STRIDER_NIGHT.x));
+      // (on the cast: his eyes on you from the gate, his body turning only as he must; a toy faces you)
+      if (striderNight.cast?.ready) attend(striderNight, h, Math.atan2(-(h.z - STRIDER_NIGHT.z), h.x - STRIDER_NIGHT.x), dt, { who: frodo, near: 12, greet: false });
+      else faceTo(striderNight.group, Math.atan2(-(h.z - STRIDER_NIGHT.z), h.x - STRIDER_NIGHT.x));
       pose(striderNight, t, { moving: false, wave: Math.hypot(h.x - STRIDER_NIGHT.x, h.z - STRIDER_NIGHT.z) < 8 ? 0.4 : 0 });
     }
-    // Bill: in the stable, then at the East Gate with Sam
+    // Bill: in the stable, then at the East Gate with Sam, walked there at a
+    // pony's walk (put straight there when no one's looking: inside, or the
+    // first frame)
     bill.group.visible = !inside;
-    if (tod === 'dawn') {
-      bill.group.position.set(BILL.x, height(BILL.x, BILL.z), BILL.z);
-      faceTo(bill.group, BILL.face);
-    } else {
-      bill.group.position.copy(billStable);
-      faceTo(bill.group, -Math.PI / 2 + 0.2);
+    {
+      const goal = tod === 'dawn' ? billLong : 0;
+      const snap = billWalk.s == null || inside;
+      if (snap) billWalk.s = goal;
+      const was = billWalk.s;
+      billWalk.s += Math.sign(goal - was) * Math.min(Math.abs(goal - was), dt * 1.1);
+      // where that is along his way, and which way the leg he's on runs
+      let k = billWalk.s;
+      let leg = 0;
+      while (leg < billLegs.length - 1 && k > billLegs[leg]) k -= billLegs[leg++];
+      const a = billPath[leg];
+      const b = billPath[leg + 1];
+      const u = billLegs[leg] > 0 ? Math.min(1, Math.max(0, k / billLegs[leg])) : 0;
+      const x = a.x + (b.x - a.x) * u;
+      const z = a.z + (b.z - a.z) * u;
+      bill.group.position.set(x, height(x, z), z);
+      const going = billWalk.s - was;
+      const rest = tod === 'dawn' ? BILL.face : -Math.PI / 2 + 0.2;
+      const want = going ? Math.atan2(-(b.z - a.z) * Math.sign(going), (b.x - a.x) * Math.sign(going)) : rest;
+      billWalk.face = snap ? rest : turn(billWalk.face, want, dt, going ? 6 : 2);
+      faceTo(bill.group, billWalk.face);
     }
-    bill.legs.forEach((leg) => (leg.rotation.z = 0));
-    bill.neck.rotation.z = -0.25 + Math.sin(t * 0.8) * 0.06;
-    bill.tail.rotation.y = Math.sin(t * 1.3) * 0.3;
+    // his legs from the ground he covers; standing, he picks at the straw (props.js)
+    bill.animate?.(t);
     // the Nazgûl: stooped and sniffing on their rounds, upright and
     // reaching once they've a scent; pale, through the Ring
     const ws = s.watchers ?? [];
@@ -607,8 +632,8 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     horses.forEach((r, i) => {
       r.group.visible = tod === 'night' && !inside;
       if (!r.group.visible) return;
-      r.horse.neck.rotation.z = -0.1 + Math.sin(t * 0.9 + i) * 0.08;
-      r.horse.legs.forEach((leg, j) => (leg.rotation.z = Math.sin(t * 1.4 + j + i) * 0.04));
+      // stood waiting: shifting their feet, tossing their heads (../../shire/props.js)
+      r.animate?.(t + i);
     });
     // the people far off aren't drawn
     if (!inside) {
@@ -720,6 +745,8 @@ export function createBreeWorld(canvas, { onLost } = {}) {
     sun.position.copy(frodo.group.position).addScaledVector(sunDir, 70);
     sun.target.position.copy(frodo.group.position);
     ground.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast); // (the real frame time, however fast the QA runs the clock)
   };
@@ -777,6 +804,7 @@ export function createBreeWorld(canvas, { onLost } = {}) {
       ground.dispose();
       ghosts.dispose();
       disposeTree(inn.group);
+      releaseCast(scene);
       stage.dispose();
     },
   };

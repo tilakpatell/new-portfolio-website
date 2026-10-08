@@ -1,13 +1,12 @@
 {
-  "name": "Pixel Perfection Legacy",
+  "name": "Minecraft",
   "authors": [
-    "XSSheep",
-    "Nova_Wostra"
+    "Mojang Studios"
   ],
-  "source": "https://modrinth.com/resourcepack/pixel-perfection-legacy",
-  "license": "CC BY-SA 4.0",
-  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
-  "id": "pixel-perfection",
+  "source": "https://www.minecraft.net",
+  "license": "Used with Mojang Studios' permission",
+  "licenseUrl": "https://www.minecraft.net/en-us/eula",
+  "id": "vanilla",
   "blocks": [
     "acacia_leaves",
     "acacia_log",
@@ -249,38 +248,38 @@
   ],
   "frames": {
     "lava_flow": 16,
-    "lava_still": 16,
-    "water_flow": 16,
-    "water_still": 16
+    "lava_still": 20,
+    "water_flow": 32,
+    "water_still": 32
   },
   "anim": {
     "lava_flow": {
       "layer": 71,
       "extra": 132,
       "frames": 16,
-      "time": 2,
+      "time": 3,
       "interpolate": false
     },
     "lava_still": {
       "layer": 72,
       "extra": 147,
-      "frames": 16,
-      "time": 4,
+      "frames": 38,
+      "time": 2,
       "interpolate": false
     },
     "water_flow": {
       "layer": 120,
-      "extra": 162,
-      "frames": 16,
+      "extra": 184,
+      "frames": 32,
       "time": 1,
       "interpolate": false
     },
     "water_still": {
       "layer": 121,
-      "extra": 177,
-      "frames": 16,
-      "time": 100,
-      "interpolate": true
+      "extra": 215,
+      "frames": 32,
+      "time": 2,
+      "interpolate": false
     }
   },
   "missing": []

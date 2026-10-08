@@ -7,6 +7,7 @@
 // Thragg are the page's HD figures (../cast.js), not these; and where the
 // cast has a figure for one of these (Eve, Debbie, Cecil, Allen),
 // `personFor` stands it in, keeping the kit's person as the fallback.
+// Everyone, HD or kit, wears one finish (`castMaterial`), as Mark does.
 
 import * as THREE from 'three';
 import { buildHumanoid } from '../../avengers/hq/kit/humanoid';
@@ -14,6 +15,116 @@ import { limb, rbox, taper } from '../../avengers/hq/kit/shapes';
 import { hot } from '../../avengers/hq/engine';
 import { POSES, figure, loadFigure } from '../../../lib/three/rig';
 import { CAST, asset } from '../cast';
+
+// ── one finish for the whole cast ──
+
+// The style line's matte surfaces: rough and unmetallic, the sky's light
+// only a hint on them, so a figure reads by its colours and not by the
+// HDRI's reflections. The colour map a little richer (`saturation`: Meshy's
+// atlases come out a shade grey under the city's light). And a rim of cool
+// light where the surface turns from the eye (`rimPower`: the higher, the
+// thinner), the show's back light, which lifts his outline off a busy
+// street by day and off the dark at night; `rimTint` of it takes the
+// surface's own colour, so it's light on the suit, not a neon line round it.
+const FINISH = { roughness: 0.78, metalness: 0, env: 0.2, saturation: 1.1, rim: 0xdff1ff, rimPower: 2.5, rimTint: 0.25 };
+
+const RIM_RGB = new THREE.Color(FINISH.rim)
+  .toArray()
+  .map((v) => v.toFixed(4))
+  .join(', ');
+const FINISH_KEY = `cast-${FINISH.saturation}-${FINISH.rimPower}-${FINISH.rimTint}-${FINISH.rim}`;
+
+// each finished material's uRim (a WeakMap, not userData: Material.copy
+// carries userData to a clone through JSON, which would mark a copy as done
+// that never got the hook)
+const FINISHED = new WeakMap();
+// every castMaterial's rims, for setCastRim; and the level the next person
+// made starts at, so one made after dark isn't lit as at noon
+const RIMS = new Set();
+let castRim = 0.35;
+
+// The finish onto one lit material, after whatever hook it already has
+// (the house look's, a facade's), on a program of its own.
+function finish(m, uRim, uFloor) {
+  m.roughness = FINISH.roughness;
+  m.metalness = FINISH.metalness;
+  m.envMapIntensity = FINISH.env;
+  const before = m.onBeforeCompile;
+  const key = Object.hasOwn(m, 'customProgramCacheKey') ? m.customProgramCacheKey : null;
+  m.onBeforeCompile = (sh, r) => {
+    before?.call(m, sh, r);
+    sh.uniforms.uRim = uRim;
+    sh.uniforms.uFloor = uFloor;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('void main() {', 'uniform float uRim;\nuniform vec3 uFloor;\nvoid main() {')
+      // (in linear light, on the map's texels only: a kit person's flat
+      // colours are chosen as they are)
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        #ifdef USE_MAP
+          diffuseColor.rgb = max(mix(vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))), diffuseColor.rgb, ${FINISH.saturation.toFixed(3)}), 0.0);
+          diffuseColor.rgb = max(diffuseColor.rgb, uFloor * (1.0 - smoothstep(0.02, 0.08, dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)))));
+        #endif`,
+      )
+      // the surface's own normal, not a normal map's, so the rim is an
+      // edge and not a speckle; added before the fog, so it fades with him
+      .replace(
+        '#include <opaque_fragment>',
+        `{
+          vec3 castV = isOrthographic ? vec3(0.0, 0.0, 1.0) : normalize(vViewPosition);
+          float castF = pow(1.0 - saturate(dot(nonPerturbedNormal, castV)), ${FINISH.rimPower.toFixed(3)});
+          outgoingLight += vec3(${RIM_RGB}) * mix(vec3(1.0), diffuseColor.rgb, ${FINISH.rimTint.toFixed(3)}) * castF * uRim;
+        }
+        #include <opaque_fragment>`,
+      );
+  };
+  m.customProgramCacheKey = () => `${key ? key.call(m) : String(before)}|${FINISH_KEY}`;
+  m.needsUpdate = true;
+  FINISHED.set(m, uRim);
+}
+
+// The finish on every lit material under `root` (a figure's model, a kit
+// person's root: three's standard ones, the only lit kind the cast has),
+// once each however often it's asked; its rim at `rim`. `floor` (a colour,
+// or none) is the darkest its colour map's near-black texels go: a suit
+// drawn black in the atlas sinks into a dark street or the night, his arms
+// and legs gone, where the show's ink is a navy that still reads as blue.
+// Returns { setRim(k) } for all of them, and dispose() to let them go from
+// setCastRim's list.
+export function castMaterial(root, { rim = 0.35, floor = null } = {}) {
+  const uRim = { value: rim };
+  const uFloor = { value: new THREE.Color(floor ?? 0x000000) };
+  const rims = new Set([uRim]);
+  root?.traverse?.((o) => {
+    if (!o.isMesh) return;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      // (an unlit one, Eve's glowing atom, is left as it is)
+      if (!m?.isMeshStandardMaterial) continue;
+      const had = FINISHED.get(m);
+      if (had) rims.add(had);
+      else finish(m, uRim, uFloor);
+    }
+  });
+  const cast = {
+    setRim(k) {
+      for (const u of rims) u.value = k;
+    },
+    dispose() {
+      RIMS.delete(cast);
+    },
+  };
+  cast.setRim(rim);
+  RIMS.add(cast);
+  return cast;
+}
+
+// Every rim castMaterial made (the crowd's, and whoever the scene cast),
+// and everyone made from now on: the time of day's level.
+export function setCastRim(k) {
+  castRim = k;
+  for (const c of RIMS) c.setRim(k);
+}
 
 const ball = (r, w = 10, h = 8) => new THREE.SphereGeometry(r, Math.min(w, 12), Math.min(h, 9));
 
@@ -180,8 +291,8 @@ const BOTTOMS = [0x2c3a55, 0x3b3b3e, 0x6b5a45, 0x1d1f24, 0x8a7c66, 0x41556b];
 const SKINS = [0xf2cfb4, 0xe0ac8a, 0xc68863, 0x9b6747, 0x6e4632, 0xf5d7c2];
 const HAIRS = [0x1d1612, 0x4a3020, 0x7a5232, 0xc49a5a, 0x8a8a88, 0x2a1d17];
 
-// One person: { h (the kit's figure), kind, height }. `seed` picks a
-// townsperson's colours.
+// One person: { h (the kit's figure), kind, height, materials, cast (its
+// castMaterial) }. `seed` picks a townsperson's colours.
 export function buildPerson(kind, seed = 0) {
   const pick = (list, k) => list[Math.floor(Math.abs(Math.sin(seed * 12.9898 + k * 78.233)) * 43758.5453) % list.length];
   const materials =
@@ -197,7 +308,7 @@ export function buildPerson(kind, seed = 0) {
   const joints = kind === 'cecil' || kind === 'allen' ? BROAD : SLIM;
   const scale = { eve: 0.88, debbie: 0.88, cecil: 0.95, allen: 1.12 }[kind] ?? 0.86 + (seed % 5) * 0.03;
   const h = buildHumanoid({ style: STYLES[kind] ?? STYLES.person, materials, scale, joints });
-  return { h, kind, height: h.height, materials };
+  return { h, kind, height: h.height, materials, cast: castMaterial(h.root, { rim: castRim }) };
 }
 
 const set = (b, x = 0, y = 0, z = 0) => b.rotation.set(x, y, z);
@@ -320,13 +431,18 @@ export function personFor(kind, seed, template = null, spec = CAST[kind]) {
       const f = figure(template, spec);
       for (const b of NEED) if (!f.bones[b]) throw new Error(`${spec.file}: no bone ${b}`);
       f.snap(figurePose('idle', 0));
+      const cast = castMaterial(f.model, { rim: castRim });
       // its motion-captured clip for a mode where it has one (arms folded
       // has none: posed), started somewhere of its own in it
       const pose = ({ mode = 'idle', t = 0, phase = 0 }, dt = 1 / 60) => {
         if (!(CLIP_OF[mode] && f.act(CLIP_OF[mode], { at: phase * 0.37, fade: 0.4 }))) f.pose(figurePose(mode, t + phase), dt, 10);
         f.tick(dt);
       };
-      return { root: f.holder, hipY: f.hipHeight, height: f.height, fig: f, clips: f.clips, pose, dispose: () => f.dispose() };
+      const dispose = () => {
+        cast.dispose();
+        f.dispose();
+      };
+      return { root: f.holder, hipY: f.hipHeight, height: f.height, fig: f, clips: f.clips, pose, cast, dispose };
     } catch (e) {
       if (import.meta.env?.DEV) console.warn(String(e.message ?? e)); // the kit's person stands in, not a T-pose
     }
@@ -336,5 +452,5 @@ export function personFor(kind, seed, template = null, spec = CAST[kind]) {
   p.h.root.position.y = -hipY;
   const root = new THREE.Group();
   root.add(p.h.root);
-  return { root, hipY, height: p.height, kit: p, clips: [], pose: (o) => posePerson(p, o), dispose: () => {} };
+  return { root, hipY, height: p.height, kit: p, clips: [], pose: (o) => posePerson(p, o), cast: p.cast, dispose: () => p.cast.dispose() };
 }

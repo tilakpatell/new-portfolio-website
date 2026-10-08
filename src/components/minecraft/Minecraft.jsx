@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import '@fontsource/press-start-2p/400.css';
 import { useMediaQuery } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
 import { WorldHost, useWorld } from '../../runtime';
 import module from './module';
 import { ITEMS } from './rules/items';
+import { hashSeed } from './rules/noise';
 import { MC } from './scene/atlasTexture';
 import './minecraft.css';
 
@@ -17,6 +19,7 @@ import './minecraft.css';
 // phone: a stick on the left, look by dragging the right, jump and sneak buttons.
 //
 // <Minecraft mode="page" | "overlay" onExit />
+// On the page the world is the address's ?world=<seed> (set to the world played when missing).
 
 const sprite = (name) => `${MC}sprites/${name}.webp`;
 
@@ -128,7 +131,10 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
   const [ui, setUi] = useState({ mode: 'loading' });
   const [hud, setHud] = useState(null);
   const [seed, setSeed] = useState('');
-  const [props] = useState(() => ({}));
+  // the world is the address's (?world=<seed>) on the page; over the island, the one played last
+  const [params, setParams] = useSearchParams();
+  const want = mode === 'page' ? params.get('world') : null;
+  const [props] = useState(() => (want ? { seed: want } : {}));
   const [say, setSay] = useState(null);
   const sayTimer = useRef(null);
   const onEvent = useCallback((e) => {
@@ -143,6 +149,26 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
   useEffect(() => () => clearTimeout(sayTimer.current), []);
   const { host, status, rt } = useWorld(module, { props, onEvent });
   const api = useCallback(() => (rt?.current?.module === module ? rt.current.world : null), [rt]);
+  // the address follows the world played, and a new address opens its world
+  const lastWant = useRef(want);
+  useEffect(() => {
+    if (mode !== 'page' || ui.seed == null) return;
+    if (want !== lastWant.current) {
+      lastWant.current = want;
+      if (want && hashSeed(want) !== ui.seed) {
+        api()?.newWorld(want, { play: false });
+        return;
+      }
+    }
+    if (!want || hashSeed(want) !== ui.seed)
+      setParams(
+        (p) => {
+          p.set('world', String(ui.seed));
+          return p;
+        },
+        { replace: true },
+      );
+  }, [mode, want, ui.seed, api, setParams]);
   const playing = ui.mode === 'play';
   const paused = ui.mode === 'pause';
   const dead = ui.mode === 'dead';
@@ -423,7 +449,7 @@ export default function Minecraft({ mode = 'page', onExit = null }) {
                 </button>
               )}
             </div>
-            <p className="mc-disclaimer">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Textures: Pixel Perfection (XSSheep, Nova_Wostra), CC BY-SA 4.0.</p>
+            <p className="mc-disclaimer">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft. Textures © Mojang Studios, used with permission.</p>
           </div>
         )}
 

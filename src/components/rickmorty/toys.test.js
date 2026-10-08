@@ -9,6 +9,10 @@ describe('what the Rick and Morty page says aloud', () => {
   it('says a Meeseeks’ line without its *poof*', () => {
     expect(aloud(MEESEEKS.letGo)).toBe('Ok, we’re done. Everybody.');
     expect(aloud(MEESEEKS.done.top)).toBe('All done!');
+    // (said when the task's done, but not turning the site green: the portal theme says that)
+    expect(VOICELINES).toContainEqual({ who: 'meeseeks', text: 'All done!' });
+    expect(VOICELINES).toContainEqual({ who: 'meeseeks', text: 'Shaken!' });
+    expect(VOICELINES.some((l) => l.text.startsWith('Ooh, can do'))).toBe(false);
     expect(aloud(MEESEEKS.stress[0])).toBe(MEESEEKS.stress[0]);
   });
   it('lists only lines with a voice, once each', () => {
@@ -17,7 +21,7 @@ describe('what the Rick and Morty page says aloud', () => {
     expect(new Set(all.map((l) => lineId(voiceOf(l.who), l.text))).size).toBe(all.length);
   });
   it('says Portal panic’s talking callouts, by a clip or a voice, and not the rest', () => {
-    for (const t of [OPENER.rick, OPENER.morty, OPENER.pickle, BOSS_LINE.cronenberg, LOST_LINE.morty]) expect(ALOUD[t]?.clip || ALOUD[t]?.who, t).toBeTruthy();
+    for (const t of [OPENER.rick, OPENER.morty, OPENER.pickle, BOSS_LINE.cronenberg, LOST_LINE.rick, LOST_LINE.morty]) expect(ALOUD[t]?.clip || ALOUD[t]?.who, t).toBeTruthy();
     for (const t of [BOSS_LINE.snowball, BOSS_LINE.evilmorty, BOSS_LINE.cromulon, LOST_LINE.pickle]) expect(ALOUD[t], t).toBeUndefined();
     expect(PORTAL.some((l) => l.who === 'rick' && l.text === 'You stop shots.')).toBe(true);
   });
