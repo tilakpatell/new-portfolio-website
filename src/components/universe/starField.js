@@ -20,12 +20,17 @@ import { bvToRgb, decodeStars } from './starCatalog';
 export const STARS_URL = '/textures/universe/stars.bin';
 export const STAR_RADIUS = 23000; // inside the sky (SKY_RADIUS), behind everything else
 const SATURATION = 0.6; // of a black body's colour: as the eye sees stars, paler
-const SPIKES = 2.4; // the brightness the spikes start from (about magnitude 1.8)
+const SPIKES = 2.4; // the brightness the spikes start from (about magnitude 2.7: some seventy stars)
 
-// a star's brightness from its V magnitude: a sixth-magnitude star 0.35,
-// each magnitude brighter 10^0.2 more (half the true step, as a camera's
-// curve has it, so the faint aren't lost and the bright aren't blinding)
-export const starBrightness = (v) => 0.35 * 10 ** (-0.2 * (v - 6));
+// a star's brightness from its V magnitude: a sixth-magnitude star (the
+// naked eye's faintest) 0.25, each magnitude brighter 10^0.3 more (three
+// quarters of the true step, as a camera's curve has it: the catalogue's
+// tenth-magnitude stars a dust behind the naked eye's, not a crowd), and
+// past 3 the brightest held back on a log (Sirius 11, not 43)
+export function starBrightness(v) {
+  const b = 0.25 * 10 ** (-0.3 * (v - 6));
+  return b <= 3 ? b : 3 + 3 * Math.log(b / 3);
+}
 
 export async function loadStarCatalog() {
   try {
