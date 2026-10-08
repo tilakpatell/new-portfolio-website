@@ -171,6 +171,7 @@ function mindOf(crew, p, home) {
     flee: null,
     wary: null,
     found: false,
+    heardShot: null, // a shot heard this step, for a calm mind to call in
   };
   m.bb = blackboard(crew, p, m);
   return m;
@@ -309,9 +310,13 @@ function die(crew, p) {
   crew.out.push({ type: 'died', id: p.id, kind: p.kind, tag: p.tag, room: p.room, x: p.x, y: p.y, z: p.z });
 }
 
-// Lets go of a shot token and a search claim, leaving the search when the last searcher goes.
+// Lets go of what a mode held: a shot token, a search claim (leaving the search when the last
+// searcher goes), and a shot heard but not yet called in. Only a calm mind calls a shot in, so one
+// heard in a fight, a search or a flight is spent when that mode ends: kept, it would be called in
+// again, long after, by a squad stood down at its posts.
 function release(crew, p) {
   const m = p.mind;
+  m.heardShot = null;
   if (m.fight?.target) crew.fights.tokens.release('shot', p.id, m.fight.target);
   if (m.search) {
     const { section } = m.search;
