@@ -76,7 +76,7 @@
 - Test: `src/components/universe/catalog.test.js`
 
 **Interfaces:**
-- Produces: `partShare` adds `(count × punch / cadence) / (5 × 0.6 / 2.4) − 1` for a part with `weapon` on line `secondary`, and `(punch × ammo / reload) / (8 × 4 / 6.5) − 1` for one on `ordnance` (the weapon's numbers from `WEAPONS[p.weapon]`); `NEW` gains `'part:secondary:flak': { needs: { level: 4 } }` and `'part:ordnance:missiles': { needs: { level: 3 } }` (prices from the bands, `from: null`).
+- Produces: `partShare` adds `(count × punch / cadence) / (5 × 0.6 / 2.4) − 1` for a part with `weapon` on line `secondary`, and `(punch × ammo / reload) / (8 × 4 / 6.5) − 1` for one on `ordnance` (the weapon's numbers from `WEAPONS[p.weapon]`); `NEW` gains `'part:secondary:flak': { needs: { level: 4 } }` and `'part:ordnance:missiles': { needs: { level: 3 } }` (prices from the bands, `from: null`). The ion burst and the Mk II come out at 100 by those formulas (their worth is the harder hit, not more a second), so `NEW` prices them by hand as the incom part is: `'part:secondary:ion': 700`, `'part:ordnance:mk2': 900`, both `from: 'starwars'`.
 
 - [ ] **Step 1: Write the failing tests**: `the new weapons are priced between 400 and 1000` (`itemFor('part','secondary','ion')`, `flak`, `ordnance/missiles`, `mk2` each `price` in `[400, 1000]`, none stock); `stock weapons are free and owned` (`itemFor('part','secondary','stock').stock === true`); `flak needs level 4 and missiles level 3`.
 - [ ] **Step 2: Run**: FAIL. **Step 3: Implement.** **Step 4: Run** `npx vitest run src/components/universe/catalog.test.js src/components/universe/economy.test.js src/components/universe/shop.test.js`: PASS.

@@ -22,6 +22,7 @@ import { SIDES as WAR_SIDES } from '../galaxy/sides';
 import { RANKS } from '../galaxy/ranks';
 import { PARTS, STOCK } from './outfit';
 import { PAINTS } from './paint';
+import { WEAPONS, burstOf, rackOf } from './weaponTable';
 import { BUILD_SLOTS, modulesFor } from './shipyard/parts';
 import { WHO } from './standing';
 
@@ -44,13 +45,18 @@ const bandOf = (share) => BANDS.find((b) => share <= b.upTo).price;
 
 // What a part does, as one share: the flying shares as they are (levelling
 // at half, it being the least felt), and the guns and shields by how much
-// better they do against the factory's.
+// better they do against the factory's; a secondary by what a burst lands
+// a second against the stock scatter's, an ordnance rack by its rounds a
+// second against the stock torpedoes'.
 function partShare(p) {
   let share = (p.boost ?? 0) + (p.accel ?? 0) + (p.cruise ?? 0) + (p.agility ?? 0) + (p.level ?? 0) / 2;
   if (p.cadence || p.punch) share += (p.punch ?? 1) / (p.cadence ?? 1) - 1;
   if (p.armor) share += 1 / p.armor - 1;
   if (p.regen) share += p.regen - 1;
   if (p.delay) share += (5 - p.delay) / 5;
+  const w = p.weapon && p.id !== STOCK ? WEAPONS[p.weapon] : null;
+  if (w?.line === 'secondary') share += burstOf(w) / burstOf(WEAPONS.spread) - 1;
+  if (w?.line === 'ordnance') share += rackOf(w) / rackOf(WEAPONS.heavy) - 1;
   return share;
 }
 const STOCK_PLANT = modulesFor('hull')[0].does.plant;
@@ -68,6 +74,13 @@ const NEW = {
   'part:guns:incom': { price: 900, from: 'starwars', needs: { achievement: 'rebels' } },
   'part:fins:council': { price: 700, from: 'rickmorty', needs: { level: 5 } },
   'part:thrusters:vamonos': { price: 450, from: 'breakingbad', needs: { level: 3 } },
+  'part:secondary:flak': { needs: { level: 4 } },
+  'part:ordnance:missiles': { needs: { level: 3 } },
+  // (the ion burst lands no more a second than the scatter, and the Mk II
+  // less than the stock rack: what they're worth is the harder hit, so
+  // they're priced by hand, as the incom part is)
+  'part:secondary:ion': { price: 700, from: 'starwars' },
+  'part:ordnance:mk2': { price: 900, from: 'starwars' },
 };
 
 export const keyOf = (kind, slot, id) => `${kind}:${slot}:${id}`;
