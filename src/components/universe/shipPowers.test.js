@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, beamOf, blastPunch, cancel, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readKept, step, turretPick, view, writeKept } from './shipPowers';
+import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, aimHelp, beamOf, blastPunch, cancel, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readKept, step, turretPick, view, writeKept } from './shipPowers';
 import { CREWS } from './crews';
 import { spawn, step as fly } from './ship';
 import { makeSpace } from '../galaxy/space';
@@ -128,12 +128,17 @@ describe('the crews’ ship powers', () => {
   });
 
   it('tells the scene what to change: time slowed and the guns helped only while Focus is on, a ghost while Han jinks or Rick portals, a heavy hand on the death ray', () => {
-    const none = { slow: 1, assist: 0, track: 0, cadence: 1, ghost: false, turn: 1, agility: 1 };
+    // (Force Focus no longer quickens the guns: the X-wing's own cadence,
+    // 0.12 s, is already the quickest the wire lets in, so ×0.7 changed
+    // nothing on any gun but the fusion cannon, and a power that does nothing
+    // as the ship comes reads as broken)
+    const none = { slow: 1, assist: 0, track: 0, ghost: false, turn: 1, agility: 1 };
     expect(mods(null)).toEqual(none);
     const x = createPowers('xwing');
     expect(mods(x)).toEqual(none);
     press(x, 'primary');
-    expect(mods(x)).toMatchObject({ slow: 0.35, assist: 2.5, track: 2, cadence: 0.7, ghost: false });
+    expect(mods(x)).toEqual({ ...none, slow: 0.35, assist: 2.5, track: 2 });
+    expect(POWERS.focus.cadence).toBeUndefined();
     run(x, 5.1);
     expect(mods(x).slow).toBe(1);
     const f = createPowers('falcon');
@@ -146,6 +151,18 @@ describe('the crews’ ship powers', () => {
     expect(mods(c).ghost).toBe(false);
     press(c, 'ultimate');
     expect(mods(c).turn).toBe(0.6);
+  });
+
+  it('turns the guns’ help up onto the game’s own ships only, never onto another pilot', () => {
+    const own = { assist: 1, track: 0.5 };
+    const x = createPowers('xwing');
+    press(x, 'primary');
+    expect(aimHelp(mods(x), own, true)).toEqual({ assist: 2.5, track: 2 });
+    // (locked on another pilot: the visitor's own settings, as with no power on)
+    expect(aimHelp(mods(x), own, false)).toEqual(own);
+    expect(aimHelp(mods(null), own, true)).toEqual(own);
+    // (and never less than the visitor's own)
+    expect(aimHelp(mods(x), { assist: 3, track: 2.2 }, true)).toEqual({ assist: 3, track: 2.2 });
   });
 
   it('gives the HUD its keys, names and how far round each ring is', () => {

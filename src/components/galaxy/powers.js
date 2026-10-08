@@ -34,7 +34,7 @@
 // doesn't lose it; another crew starts from nothing.
 //
 // createGalaxyPowers({ parent, reduced, hunters, war, bolts, flashes, crashFx, pops, post, state, emit, strike, scored, teleport, controls })
-//   → { setCrew(kind), press(slot) → { ok, id } or { ok: false, why }, gain(what), mods,
+//   → { setCrew(kind), press(slot) → { ok, id } or { ok: false, why }, gain(what), mods, aim(own),
 //       shipFor(live), warOpts, hold, afterStep(ship, dt) → ship, roll, hidden, frame(dt, live),
 //       cancel(), place(el, on), view, info, busy, keep(), fill(), dispose() }
 // state: the scene's (its ship, lock, world, space, keys and stick, and the
@@ -43,7 +43,7 @@
 // put there, the camera with it.
 
 import * as THREE from 'three';
-import { KEPT_KEY, POWERS, beamOf, blastPunch, cancel as cancelAll, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain as charge, isObjective, isOn, jinkStep, mods as modsOf, pickTargets, portalExit, press as pressSlot, readKept, step, turretPick, view as viewOf, writeKept } from '../universe/shipPowers';
+import { KEPT_KEY, POWERS, aimHelp, beamOf, blastPunch, cancel as cancelAll, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain as charge, isObjective, isOn, jinkStep, mods as modsOf, pickTargets, portalExit, press as pressSlot, readKept, step, turretPick, view as viewOf, writeKept } from '../universe/shipPowers';
 import { createPowerFx } from '../universe/powerFx';
 import { steer } from '../universe/weapons';
 import { assist, dirTo, intercept, nose } from '../universe/targeting';
@@ -427,6 +427,12 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
     },
     get mods() {
       return m;
+    },
+    // the guns' help onto the lead and the nose's tracking of the lock
+    // (`own`: the flight settings'), Force Focus's only while the lock is one
+    // of the game's own ships: never onto another pilot
+    aim(own) {
+      return aimHelp(m, own, known(state.lockTarget));
     },
     // the ship as the hunters are handed it: a ghost, or with the magnet ahead
     shipFor(live) {

@@ -854,14 +854,13 @@ export async function create(canvas, ctx) {
     const s = state.ship;
     const now = performance.now();
     const g = state.stats; // (the guns fitted in the hangar: how fast, how hard)
-    // (Force Focus quickens them, never past what the wire lets in: FASTEST)
-    if (!s || props.frozen || state.crash || state.jump || now - state.lastShot < Math.max(FASTEST, (CADENCE[state.kind] ?? 0.18) * g.cadence * powers.mods.cadence) * 1000) return;
+    if (!s || props.frozen || state.crash || state.jump || now - state.lastShot < Math.max(FASTEST, (CADENCE[state.kind] ?? 0.18) * g.cadence) * 1000) return;
     state.lastShot = now;
     state.lastInput = now;
     const b = myBolts.find((m) => !m.visible) ?? myBolts[0];
     const [fx, fz] = forward(s.heading);
     let dir = nose(s);
-    if (state.lead && state.lead.t <= AIM.life) dir = assist(dir, dirTo(s, state.lead), Math.max(controls().assist, powers.mods.assist));
+    if (state.lead && state.lead.t <= AIM.life) dir = assist(dir, dirTo(s, state.lead), powers.aim(controls()).assist); // (Force Focus's help onto the game's ships only)
     const { heading, pitch } = aimAngles(dir);
     // from the guns fitted, their barrels in turn; or the ship's own
     const mods = state.model?.modules;
@@ -1335,7 +1334,7 @@ export async function create(canvas, ctx) {
       // the nose follows the lock (targeting.js: a nudge toward the lead,
       // as much as the lock-tracking setting allows, giving way to the stick)
       if (state.trackable && state.lead && state.lead.t <= AIM.life) {
-        const n = trackNudge(state.ship, state.lead, Math.max(controls().track, powers.mods.track), input);
+        const n = trackNudge(state.ship, state.lead, powers.aim(controls()).track, input);
         input.turn = clamp(input.turn + n.turn, -1, 1);
         input.climb = clamp(input.climb + n.climb, -1, 1);
       }

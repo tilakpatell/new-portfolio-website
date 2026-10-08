@@ -29,6 +29,7 @@
 //   finish(st, slot)       one power stops early, its work done (the last torpedo home)
 //   cancel(st)             whatever's on stops (shot down, crashed, jumping)
 //   mods(st)               what the scene changes this frame
+//   aimHelp(m, own, gameShip)  the guns' help onto the lead and the lock's tracking, a power's only onto the game's ships
 //   view(st)               the HUD's
 //   readKept / writeKept   the big one's charge, kept in the session across a landing
 //   pickTargets, portalExit, clearOfSolids, solidAhead, beamOf, blastPunch,
@@ -53,7 +54,9 @@ export const CHARGE = { kill: 0.2, ace: 0.5, objective: 0.3, hit: 0.02, second: 
 // one can't take a shield generator down on its own.
 export const POWERS = {
   // Luke and Artoo
-  focus: { crew: 'xwing', slot: 'primary', name: 'Force Focus', short: 'Force', about: 'Time slows for everyone but you, and your shots find their mark.', cool: 22, dur: 5, slow: 0.35, assist: 2.5, track: 2, cadence: 0.7 },
+  // (it doesn't quicken the guns: the X-wing's own are already as quick as
+  // the wire lets in)
+  focus: { crew: 'xwing', slot: 'primary', name: 'Force Focus', short: 'Force', about: 'Time slows for everyone but you, and your shots find their mark.', cool: 22, dur: 5, slow: 0.35, assist: 2.5, track: 2 },
   // (on until the last torpedo's home or gone: four launched over the
   // first half second, each living 2.8 s)
   salvo: { crew: 'xwing', slot: 'ultimate', name: 'Torpedo salvo', short: 'Torpedoes', about: 'Four torpedoes away, each locked on a target of its own.', dur: 3.4, count: 4, every: 0.15, punch: 8, sub: 4, speed: 30, life: 2.8, turn: 2.4, cone: 0.6, range: 60, near: 1 },
@@ -158,16 +161,26 @@ export const isOn = (st, id) => Boolean(st && SLOTS.some((slot) => st[slot].id =
 
 // What the scene changes while a power's on: the others' clock (slow), the
 // guns' help onto the lead (assist, track: the least of each, over the
-// visitor's own settings), how fast they fire (cadence: of the gap between
-// shots), whether anything can hit you (ghost), how hard the stick turns the
-// ship (turn) and how quick it is to answer (agility)
+// visitor's own settings, and only onto the game's own ships: aimHelp),
+// whether anything can hit you (ghost), how hard the stick turns the ship
+// (turn) and how quick it is to answer (agility)
 export function mods(st) {
-  const m = { slow: 1, assist: 0, track: 0, cadence: 1, ghost: false, turn: 1, agility: 1 };
-  if (isOn(st, 'focus')) Object.assign(m, { slow: POWERS.focus.slow, assist: POWERS.focus.assist, track: POWERS.focus.track, cadence: POWERS.focus.cadence });
+  const m = { slow: 1, assist: 0, track: 0, ghost: false, turn: 1, agility: 1 };
+  if (isOn(st, 'focus')) Object.assign(m, { slow: POWERS.focus.slow, assist: POWERS.focus.assist, track: POWERS.focus.track });
   if (isOn(st, 'odds')) Object.assign(m, { ghost: true, agility: POWERS.odds.agility });
   if (isOn(st, 'portal')) m.ghost = true;
   if (isOn(st, 'wubba')) m.turn = POWERS.wubba.turn;
   return m;
+}
+
+// How hard the guns bend onto the lead and the nose follows the lock
+// (targeting.js's assist and trackNudge): the visitor's own settings
+// (`own`: { assist, track }), turned up by a power only while the lock is
+// one of the game's own ships (`gameShip`). Another pilot never meets a
+// power, so a dogfight is flown on the settings alone
+export function aimHelp(m, own, gameShip) {
+  if (!gameShip) return { assist: own.assist, track: own.track };
+  return { assist: Math.max(own.assist, m.assist), track: Math.max(own.track, m.track) };
 }
 
 // The HUD's: each slot's name and key, its phase, and how far round its ring
