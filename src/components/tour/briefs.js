@@ -10,6 +10,7 @@
 // (data-tour), and a card in the middle where it isn't showing.
 
 import { ABOUT } from '../guide/abouts';
+import { CYBERTRON_TOUCH, cybertronRows } from '../guide/cybertron';
 
 const help = (where) => ({
   id: 'help',
@@ -479,29 +480,16 @@ export const BRIEFS = {
       id: 'move',
       title: 'Walking and driving',
       text: 'Click the world to play; Esc lets go of the mouse.',
-      keys: [
-        ['W A S D', 'Walk or drive'],
-        ['Shift', 'Run, or boost'],
-        ['Space', 'Jump'],
-        ['Q', 'Transform'],
-      ],
-      touch: [
-        ['Stick', 'Walk or drive'],
-        ['Drag', 'Look round (right of the screen)'],
-        ['Transform', 'Transform'],
-      ],
+      // (the world's one list of keys, the start card's and the guide's: guide/cybertron.js)
+      keys: cybertronRows(['W A S D', 'Shift', 'Space', 'Q']),
+      touch: cybertronRows(['Stick', 'Drag', 'Transform'], CYBERTRON_TOUCH),
     },
     {
       id: 'act',
       title: 'Fighting and missions',
       text: 'When someone has a job for you, it says so at the top: walk up and talk. E by a ground bridge goes through it.',
-      keys: [
-        ['Mouse', 'Look and aim'],
-        ['Click / F', 'Fire'],
-        ['E', 'Talk, use bridges'],
-        ['M', 'Missions'],
-      ],
-      touch: [['Fire', 'Hold to fire']],
+      keys: cybertronRows(['Mouse', 'Click / F', 'E', 'M']),
+      touch: cybertronRows(['Fire'], CYBERTRON_TOUCH),
     },
     help('Cybertron'),
   ],
