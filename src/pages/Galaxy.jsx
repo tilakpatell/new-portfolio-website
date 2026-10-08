@@ -17,7 +17,8 @@ import { canLand } from '../components/galaxy/surface/sites';
 import galaxyModule from '../components/galaxy/module';
 import surfaceModule from '../components/galaxy/surface/module';
 import { prefetchSurface, surfaceProps } from '../components/galaxy/travel';
-import { runtime } from '../runtime';
+import { runtime, usePrepareProgress } from '../runtime';
+import LoadingVeil from '../components/worlds/LoadingVeil';
 import { galaxyCrew } from '../components/galaxy/lines';
 import { battleSay } from '../components/galaxy/warVoice';
 import { effectsFor } from '../components/galaxy/warEffects';
@@ -245,6 +246,7 @@ export default function Galaxy() {
     return () => void (alive.current = false);
   }, []);
   const dove = useRef(null); // resolves the dive's end
+  const landing = usePrepareProgress(surfaceModule); // (the surface's prepare, for Land's loading screen)
   const land = useCallback(
     (id) => {
       if (!canLand(id) || leaving) return;
@@ -252,15 +254,24 @@ export default function Galaxy() {
       prefetchSurface();
       const to = `/galaxy/${id}/surface`;
       const host = view.current.live ? view.current.host?.() : null;
-      if (!host || !view.current.dive()) {
+      if (!host) {
         leave(to, { land: true });
         return;
       }
-      setLeaving({ to, land: true, dive: true });
+      // the surface made and sent to the graphics chip first, behind the
+      // landing's loading screen, with the ship holding where it is; then the
+      // dive, which has nothing left to load (built behind it, the dive
+      // stopped for a second or more)
+      setLeaving({ to, prep: true });
       const after = new Promise((r) => (dove.current = r));
-      timer.current = setTimeout(() => dove.current?.(), DIVE_MAX); // (a dive that never ends still lands)
+      const onBuilt = () => {
+        if (!alive.current) return;
+        setLeaving({ to, land: true, dive: true });
+        if (!view.current.dive()) dove.current?.(); // (a dive it can't make: straight down)
+        timer.current = setTimeout(() => dove.current?.(), DIVE_MAX); // (a dive that never ends still lands)
+      };
       runtime()
-        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced, effects: effectsFor(id, warNow(Date.now(), oath.war), oath) }), host, { fade: 900, held: true, after })
+        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced, effects: effectsFor(id, warNow(Date.now(), oath.war), oath) }), host, { fade: 900, held: true, after, onBuilt })
         .catch(() => false)
         .then(() => after)
         .then(() => {
@@ -417,7 +428,7 @@ export default function Galaxy() {
   // (every system's colour is light, readable on the dark page: so dark on a button)
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
   return (
-    <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving ? (leaving.land ? 'land' : leaving.crash ? 'crash' : 'fade') : undefined} data-jumping={jumping?.phase} data-held={held ? '' : undefined}>
+    <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving && !leaving.prep ? (leaving.land ? 'land' : leaving.crash ? 'crash' : 'fade') : undefined} data-jumping={jumping?.phase} data-held={held ? '' : undefined}>
       <h1 className="sr-only">A galaxy far, far away: {sys.name}</h1>
       <p className="sr-only" aria-live="polite">
         {jumping ? `Jumping to ${systemById(jumping.to)?.name ?? 'lightspeed'}` : held ? `Interdicted short of ${systemById(held.to)?.name ?? sys.name}: an Imperial Interdictor's gravity well holds you` : `In the ${sys.system ?? sys.name} system`}
@@ -487,6 +498,8 @@ export default function Galaxy() {
         </button>
       )}
       {exit && <div className="galaxy-exit" aria-hidden="true" />}
+      {/* (the surface getting ready before the dive: Land's loading screen) */}
+      <LoadingVeil shown={Boolean(leaving?.prep)} progress={landing.value} step={landing.step} title={`Preparing to land on ${sys.name}`} />
       {leaving?.land && <div className="galaxy-entry" aria-hidden="true" />}
       {leaving?.dive && (
         <p className="galaxy-entry-note" role="status">

@@ -2,11 +2,14 @@
 // written for lib/three/useScene (create(canvas, ctx) → { render(ms, now)
 // → bool, ... }) into a world module without changing it.
 //
-// A world module: { id, shading: 'glsl' | 'nodes', mb, label?, ratio?, create(rt, props) }
+// A world module: { id, shading: 'glsl' | 'nodes', mb, label?, ratio?, sharpness?, create(rt, props) }
+// (`sharpness: 'own'`: the runtime's quality steps are the world's to draw at
+// inside its passes, lowerQuality(level); the canvas isn't resized for them)
 // (`label` says what the canvas shows, for a screen reader; `ratio` caps its pixel ratio).
 // A world: { ready?, resize(w, h), step?(dt, input, now), draw(frame),
 //   wants?(), update?(props), setVisible?(on), setColors?(colors),
-//   lowerQuality?(level), warmUp?(timeLeft), handoff?(), attached?(),
+//   lowerQuality?(level), warmUp?(timeLeft), prepare?(onProgress, { alive }),
+//   handoff?(), attached?(),
 //   dispose() } (`attached`: the page showing it is listening to its events).
 
 import { STEPS } from '../lib/three/pace';
@@ -40,13 +43,14 @@ export function validateWorld(world) {
 // a handover, before its page is up, says nothing to the page it's
 // replacing. The scene itself is `world.scene`, for the page's calls.
 const HELD = 200; // events kept at most before a page is listening
-export function fromScene(id, create, { shading = 'glsl', mb = 0, label, ratio } = {}) {
+export function fromScene(id, create, { shading = 'glsl', mb = 0, label, ratio, sharpness } = {}) {
   return {
     id,
     shading,
     mb,
     ...(label ? { label } : {}),
     ...(ratio ? { ratio } : {}),
+    ...(sharpness ? { sharpness } : {}),
     async create(rt, props = {}) {
       let scene = null;
       let held = [];
@@ -89,6 +93,7 @@ export function fromScene(id, create, { shading = 'glsl', mb = 0, label, ratio }
         dispose: () => scene.dispose(),
       };
       if (scene.ready) world.ready = scene.ready;
+      if (scene.prepare) world.prepare = (onProgress, opts) => scene.prepare(onProgress, opts);
       return world;
     },
   };
