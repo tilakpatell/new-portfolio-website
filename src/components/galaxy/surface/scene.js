@@ -30,7 +30,7 @@
 // A scene module, a world on the world runtime through ./module.js
 // (src/runtime's fromScene): create(canvas, ctx) draws with the runtime's
 // renderer (ctx.rt.gfx: the runtime sizes it and sets its sharpness) and
-// returns { ready, resize, render, update, setVisible, input, dispose }.
+// returns { ready, prepare, resize, render, update, setVisible, input, dispose }.
 // Props: system (the world's id), ship (the crew's ship: xwing, falcon…),
 // loadout (its paint), onEvent(e), compass (a ref: the compass bar, its
 // marks by data-id), found (the places already found, by id), net (the
@@ -113,6 +113,8 @@ import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
 import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
+import { compileSlices, nextFrame, prepareScene } from '../../../lib/three/gpuWork';
+import { settle } from '../../../lib/settle';
 import { garrisonAt, garrisonLife, garrisonQuest } from './garrison';
 
 const V = THREE.Vector3;
@@ -242,10 +244,15 @@ export async function create(canvas, ctx) {
   pmrem.dispose();
   scene.environment = env.texture;
   scene.environmentIntensity = 0.4;
+  // (the world is built a step at a time, a frame between each step, so a
+  // galaxy diving on it at a handover goes on being drawn as it is: one long
+  // build would hold up the dive's frames for as long as it took)
+  await nextFrame();
 
   // ── The land ──
   const height = makeHeight(site.ground);
   const grid = heightGrid(height, { n: small ? 160 : 256, grow: small ? 1.13 : 1.08 });
+  await nextFrame();
   // (water you wade in: not lava, not cloud, and not a sea far under a
   // platform with nothing else under it, which you'd fall into)
   const wade = site.water && !site.noGround && site.water.kind !== 'clouds' && site.water.kind !== 'lava' ? site.water.level : null;
@@ -270,6 +277,7 @@ export async function create(canvas, ctx) {
     }
     return { s, items };
   });
+  await nextFrame();
   // the ground as data (lib/three/groundmap): its colour and its grass
   // painted once over the walkable square (groundPaint.js), darker and
   // thinner under the trees' crowns; the floor and the grass read it, and
@@ -284,6 +292,7 @@ export async function create(canvas, ctx) {
     groundMap = createGroundMap({ area: mapAreaOf(), size: mapSize, heightSize: mapSize / 2, paint: painter.paint, height: painter.height });
     if (pieces.bounce) house.ground(groundMap);
   }
+  await nextFrame();
   const gmat = groundMaterial(site, { small, map: groundMap });
   const marks = createMarks(small ? 256 : 512);
   gmat.uniforms.uMarks.value = marks.texture;
@@ -305,6 +314,7 @@ export async function create(canvas, ctx) {
   };
   const weather = reduced ? null : createWeather(site, { small });
   if (weather) scene.add(weather.group);
+  await nextFrame();
 
   // ── What's on it ──
   // one wind for the world (lib/three/wind): the grass's, and the way the
@@ -322,6 +332,7 @@ export async function create(canvas, ctx) {
     if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
   }
   for (const { s, items } of scattered) placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
+  await nextFrame();
   // the grass round you (lib/three/grass, Bruno's: a triangle a blade, one
   // draw, the patch going with you), standing on the ground map and its
   // colour, where the site grows it
@@ -329,10 +340,12 @@ export async function create(canvas, ctx) {
     ? createGrass({ ground: groundMap, wind, side: tier === 'high' && !small ? 280 : small ? 120 : 200, size: 44, height: site.grass.h?.[1] ?? 0.5, width: site.grass.w ?? 0.05, root: 0.35 })
     : null;
   if (grass) scene.add(grass.mesh);
+  await nextFrame();
   // ?debug: the look, the grass and the wind on sliders, copied out as the
   // site's own blocks (lib/debugPanel, tune.js)
   const panel = debugOn() ? debugPanel({ title: site.id, groups: surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), code: siteCode }) : null;
   const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops), ...garrisonAt(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
+  await nextFrame();
 
   // ── The places you go into (zones): built high over the world, out of
   // sight, each with its own lamps ──
@@ -452,6 +465,8 @@ export async function create(canvas, ctx) {
       return ridee;
     });
 
+  await nextFrame();
+
   // ── Ships going over, and hanging in the sky ──
   const flights = [];
   let nextFlight = 12 + r() * 10;
@@ -558,6 +573,10 @@ export async function create(canvas, ctx) {
     shipSolid = true;
     world.solids.box(landAt[0], landAt[1], shipBox.w * 0.8, shipBox.l * 0.85, site.land.yaw);
   };
+
+  // (the last step: what's below is made in one go, its pieces' loads
+  // calling back into one another)
+  await nextFrame();
 
   // ── You, and your crewmate ──
   // (the hero you've picked to play as (heroes.js) walks in the lead; the
@@ -3065,7 +3084,9 @@ export async function create(canvas, ctx) {
   // Simon's folio: lib/three/groundwork): every rock's, hut's and walker's
   // soft shadow and the sky's occlusion on the ground, under whichever suns
   // this world has, a bounce off the ground, a soft blob under you and your
-  // crewmate, and no shadow pass ──
+  // crewmate, and no shadow pass. Baked in the prepare, below (or on the
+  // first frame, if the prepare never got there), and kept in the browser
+  // for this world, so a second visit reads it back instead ──
   let lit = null;
   // ── Ready ──
   const ready = (async () => {
@@ -3087,6 +3108,7 @@ export async function create(canvas, ctx) {
         height: world.heightAt,
         tier: small ? 'low' : 'mid',
         auto: true,
+        cache: { world: 'galaxy', place: site.id },
       });
       // (the grass in the floor's shadows: read where each blade stands)
       if (grass) floorShadow(grass.material, lit.mask);
@@ -3102,23 +3124,95 @@ export async function create(canvas, ctx) {
       assault.begin();
     }
     if (!disposed) beginMission();
-    // (both ways the lights can be, so a door doesn't stall on new shaders: the
-    // lamps lit and the sun's shadow off, as in a room, then as outdoors)
-    const inside = Boolean(state.zone);
-    if (site.zones.length && !disposed) {
-      for (const l of lamps) l.visible = true;
-      sun.castShadow = false;
-      await warm(scene).catch(() => {});
-      for (const l of lamps) l.visible = false;
-      sun.castShadow = shadows;
-      if (inside) lighting(state.zone);
-    }
-    if (!disposed) await warm(scene).catch(() => {});
   })();
+
+  // Everything onto the graphics chip before the first frame, behind the
+  // page's loading veil on a visit straight here, or behind the dive on a
+  // flown trip (the runtime runs it after `ready`, while the galaxy draws
+  // on): the floor's light baked first (step 'bake', or read back from an
+  // earlier visit), then the shaders made both ways the lights can be, so a
+  // door doesn't stall on new ones (the lamps lit and the sun's shadow off,
+  // as in a room), then lib/three/gpuWork's prepareScene over the world as
+  // it is outdoors: its pictures sent a few at a time, its shaders compiled
+  // against the buffer the frames draw into, and a draw of everything,
+  // small (the passes' buffers 64 across, one pixel of the canvas). On a low
+  // tier only the shaders are seen through, as the galaxy's.
+  const READY_HOLD = 8000; // ms at most it waits on `ready` (the props down)
+  const prepare = async (onProgress, alive = () => true) => {
+    const going = () => alive() && !disposed;
+    const say = (f, step) => {
+      try {
+        onProgress?.(f, step);
+      } catch {
+        // (a page's progress bar isn't the prepare's business)
+      }
+    };
+    const target = post.on ? post.composer.readBuffer : null;
+    try {
+      await settle(ready, READY_HOLD);
+      if (!going()) return;
+      const BAKE = lit ? 0.3 : 0;
+      if (lit && !lit.stats.started) {
+        say(0, 'bake');
+        // (the sun where the frames put it, so the bake's sun is theirs)
+        sun.target.position.set(0, 0, 0);
+        sun.position.copy(sunDir).multiplyScalar(300);
+        await lit.bake();
+        if (!going()) return;
+        say(BAKE, 'bake');
+      }
+      // (fogged in the sky's colour and in the look first, as warm() does, so
+      // each shader is made once)
+      skyFog.scene(scene);
+      adoptLater(house, scene);
+      singlePass(scene);
+      const inside = Boolean(state.zone);
+      renderer.setRenderTarget(target);
+      if (site.zones.length) {
+        for (const l of lamps) l.visible = true;
+        sun.castShadow = false;
+        try {
+          await compileSlices(renderer, [scene], camera, scene, { alive: going, onStep: (i, n) => say(BAKE + (0.2 * i) / n, 'shaders') });
+        } finally {
+          for (const l of lamps) l.visible = false;
+          sun.castShadow = shadows;
+          if (inside) lighting(state.zone);
+        }
+        if (!going()) return;
+      }
+      const from = BAKE + (site.zones.length ? 0.2 : 0);
+      renderer.setRenderTarget(target);
+      if (tier === 'low') {
+        await compileSlices(renderer, [scene], camera, scene, { alive: going, onStep: (i, n) => say(from + ((1 - from) * i) / n, 'shaders') });
+        return;
+      }
+      await prepareScene({
+        renderer,
+        roots: [scene],
+        scene,
+        camera,
+        alive: going,
+        onProgress: (f, step) => say(from + (1 - from) * f, step),
+        render: () => {
+          post.render(64, 64);
+          renderer.setRenderTarget(target);
+        },
+      });
+    } finally {
+      try {
+        renderer.setRenderTarget(null);
+      } catch {
+        // (gone with its renderer)
+      }
+      if (going()) say(1, 'first draw');
+    }
+  };
   emit({ type: 'phase', phase: state.phase });
 
   return {
     ready,
+    // everything onto the graphics chip before the first frame (above)
+    prepare,
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);

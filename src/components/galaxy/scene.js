@@ -46,7 +46,7 @@
 // A scene module, a world on the world runtime through ./module.js
 // (src/runtime's fromScene): create(canvas, ctx) draws with the runtime's
 // renderer (ctx.rt.gfx: the runtime sizes it and sets its sharpness) and
-// returns { ready, resize, render, update, setVisible, lowerQuality, fire,
+// returns { ready, prepare, resize, render, update, setVisible, lowerQuality, fire,
 // boost, climb, seat, escape, jump, goTo, flyTo, dispose }.
 // Props: system (an id), ship (a crew id), loadout (what's fitted to it in
 // the universe map's hangar: outfit.js; its paint and parts, and how they
@@ -72,6 +72,8 @@ import { device } from '../../lib/device';
 import { dropTransmission } from '../../lib/three/glass';
 import { gltfStats } from '../../lib/three/gltfCache';
 import { STEPS } from '../../lib/three/pace';
+import { compileSlices, prepareScene } from '../../lib/three/gpuWork';
+import { settle } from '../../lib/settle';
 import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
 import { houseOn } from '../../lib/three/house';
@@ -2277,14 +2279,75 @@ export async function create(canvas, ctx) {
     }
   }
   scene.add(spares);
-  const ready = Promise.all([built, dressed, warm(scene), post.composer ? precompilePasses(renderer, post.composer, camera) : null]).then(() => {
+  // (built and dressed, the passes' shaders on their way; the spares go to
+  // the fleet, which hands them to the prepare below)
+  const ready = Promise.all([built, dressed, post.composer ? precompilePasses(renderer, post.composer, camera) : null]).then(() => {
     scene.remove(spares);
     if (disposed) return;
     for (const [k, model] of stock) fleet.stock(k, model);
-    warmed = true;
-    stocked.add(start.faction);
-    stockUp();
   });
+
+  // Everything onto the graphics chip before the first frame, behind the
+  // page's loading veil on a visit straight here, or behind the climb out of
+  // a world's air on a flown trip (the runtime runs it after `ready`, while
+  // the surface draws on): lib/three/gpuWork's prepareScene over the system
+  // and the ships made ahead, their pictures sent a few at a time, their
+  // shaders compiled (in the house look, against the buffer the frames draw
+  // into) and a draw of everything, small (the passes' buffers 64 across,
+  // one pixel of the canvas; the first real frame sizes them back up). On a
+  // low tier (software WebGL, a budget phone) only the shaders are seen
+  // through: pictures go up as they're first seen, as before. Then, however
+  // far it got, the hunters this system's side sends are made ahead.
+  const READY_HOLD = 8000; // ms at most it waits on `ready`
+  const prepare = async (onProgress, alive = () => true) => {
+    const going = () => alive() && !disposed;
+    const say = (f, step) => {
+      try {
+        onProgress?.(f, step);
+      } catch {
+        // (a page's progress bar isn't the prepare's business)
+      }
+    };
+    const target = post.on ? post.composer.readBuffer : null;
+    try {
+      await settle(ready, READY_HOLD);
+      if (!going()) return;
+      const roots = [scene, ...fleet.roots()];
+      for (const root of roots) {
+        house.adopt(root);
+        singlePass(root);
+      }
+      renderer.setRenderTarget(target);
+      if (tier === 'low') {
+        await compileSlices(renderer, roots, camera, scene, { alive: going, onStep: (i, n) => say(i / n, 'shaders') });
+        return;
+      }
+      await prepareScene({
+        renderer,
+        roots,
+        scene,
+        camera,
+        alive: going,
+        onProgress: say,
+        render: () => {
+          post.render(64, 64);
+          renderer.setRenderTarget(target);
+        },
+      });
+    } finally {
+      try {
+        renderer.setRenderTarget(null);
+      } catch {
+        // (gone with its renderer)
+      }
+      if (!disposed) {
+        warmed = true;
+        stocked.add(start.faction);
+        stockUp();
+      }
+      if (going()) say(1, 'first draw');
+    }
+  };
 
   if (import.meta.env.DEV) {
     window.__galaxy = () => ({
@@ -2331,6 +2394,8 @@ export async function create(canvas, ctx) {
 
   return {
     ready,
+    // everything onto the graphics chip before the first frame (above)
+    prepare,
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);

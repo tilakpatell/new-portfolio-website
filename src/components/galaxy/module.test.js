@@ -54,4 +54,16 @@ describe('the galaxy and its surfaces as world modules', () => {
     w.attached();
     expect(rt.emitted).toEqual([{ type: 'phase', phase: 'landing' }]);
   });
+
+  it('hand their prepare to the runtime, to run before the first frame', async () => {
+    const rt = fakeRt();
+    const prepare = vi.fn(async (report) => report(0.5, 'shaders'));
+    surfaceScene.create.mockImplementationOnce((canvas, ctx) => ({ ctx, render: vi.fn(() => true), resize: vi.fn(), dispose: vi.fn(), prepare }));
+    const w = await surface.create(rt, { system: 'tatooine' });
+    const report = vi.fn();
+    const alive = () => true;
+    await w.prepare(report, alive);
+    expect(prepare).toHaveBeenCalledWith(report, alive);
+    expect(report).toHaveBeenCalledWith(0.5, 'shaders');
+  });
 });
