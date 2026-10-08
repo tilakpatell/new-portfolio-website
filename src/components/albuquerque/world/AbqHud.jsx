@@ -1,6 +1,6 @@
 import { useId, useLayoutEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Hud, Menu, MenuItem, Objective, QuestList, Stick, Toast, TouchButton } from '../../../runtime/hud';
+import { Hud, Menu, MenuItem, Objective, Stick, Toast, TouchButton } from '../../../runtime/hud';
 import { wayOut } from '../../worlds/worlds';
 import { splitWord } from '../elements';
 import { CRYSTALS, DRIVING, DRIVING_DEFAULTS } from './rules';
@@ -49,7 +49,7 @@ export default function AbqHud({ touch, gl, prog, snap, rank, blue, speedo, map,
     setTuning(false);
   };
   // the places as things to do: seen once you've been in
-  const places = prog.places.map((p) => ({ ...p, done: p.visited, blurb: p.sub, locked: p.hint }));
+  const places = prog.places.map((p) => ({ ...p, done: p.visited }));
   const seen = places.filter((p) => p.done).length;
   // the one thing to do that isn't a place: on a phone over the handbrake, at the foot otherwise
   const run = (
@@ -174,7 +174,7 @@ export default function AbqHud({ touch, gl, prog, snap, rank, blue, speedo, map,
 
       {tuning && <Driving id={tuneId} driving={driving} onChange={changeDriving} onClose={() => setTuning(false)} touch={touch} />}
 
-      {list && <QuestList className="abq-list" title="Things to do" label="Things to do in Albuquerque" sub="The places in town, as each one opens" quests={places} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open} />}
+      {list && <Places places={places} next={prog.next} onClose={() => setList(false)} onGo={travel} />}
     </Hud>
   );
 }
@@ -195,6 +195,45 @@ export function Title() {
         {after}
       </span>
     </h1>
+  );
+}
+
+// The things to do: the places, drawn as the kit's list (runtime/hud
+// QuestList: its classes, so its seals and its skin) but in the town's own
+// words, which the kit's list can't say: "Drive there" to an open place
+// (the kit hardcodes "Go there"), and a closed one "Locked", with how it
+// opens. Closes with Close, M or Esc (./AbqWorld.jsx's keys).
+function Places({ places, next, onClose, onGo }) {
+  return (
+    <div className="hud-list abq-list" role="dialog" aria-label="Things to do in Albuquerque">
+      <div className="hud-list-head">
+        <p>Things to do</p>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <p className="hud-list-flavour">The places in town, as each one opens</p>
+      <ul>
+        {places.map((p) => (
+          <li key={p.id} data-done={p.done || undefined} data-open={p.open || undefined} data-next={p.id === next || undefined}>
+            <span className="hud-seal" aria-hidden="true">
+              {p.done ? '✓' : ''}
+            </span>
+            <div>
+              <p className="hud-list-name">{p.name}</p>
+              <p className="hud-list-sub">{p.open ? p.sub : p.hint}</p>
+            </div>
+            {p.open ? (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => onGo(p)}>
+                Drive there
+              </button>
+            ) : (
+              <span className="abq-lock">Locked</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

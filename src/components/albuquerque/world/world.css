@@ -78,6 +78,8 @@
 @keyframes abq-toast { 0% { opacity: 0; transform: translate(-50%, -8px); } 8%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
 
 .abq-door { position: absolute; left: 50%; bottom: clamp(5.5rem, 14%, 7.5rem); z-index: 2; display: grid; justify-items: center; gap: 0.35rem; width: min(26rem, calc(100% - 2rem)); padding: 0.9rem 1.1rem 1rem; border: 1px solid rgba(240, 195, 48, 0.55); border-radius: 10px; background: rgba(16, 20, 15, 0.84); color: var(--abq-ink); text-align: center; transform: translateX(-50%); box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35); }
+/* (the HUD frame takes no pointer but its rows': the door card's buttons do, the only way in on a phone) */
+.abq-door { pointer-events: auto; }
 .abq-door:not([data-open]) { border-color: rgba(255, 255, 255, 0.2); }
 .abq-door-name { margin: 0; font: 700 1.3rem/1.15 Georgia, 'Times New Roman', serif; }
 .abq-door-sub { margin: 0; color: #c9d1c4; font-size: 0.9rem; line-height: 1.4; }
@@ -167,7 +169,7 @@
   .abq-places-btn kbd { display: none; }
   .abq-run { font-size: 0.74rem; max-width: calc(100% - 1.5rem); overflow: hidden; text-overflow: ellipsis; }
   .abq-world-stage { height: calc(100svh - var(--nav-h)); min-height: 30rem; }
-  .abq-hud .hud-brand { max-width: 64%; }
+  .abq-hud .hud-brand { max-width: min(64%, calc(100% - min(14rem, 44vw) - 0.5rem)); } /* (and clear of the chips' column, which hangs beside it under a time of day as short as "Night") */
   .abq-list { top: max(var(--hud-under), var(--abq-row, 0px)); max-height: calc(100% - max(var(--hud-under), var(--abq-row, 0px)) - var(--guide-clear)); } /* (under the title and its line, measured: ./AbqHud.jsx) */
   .abq-world-title { font-size: 1.65rem; }
   .abq-map { width: 104px; height: 104px; }
