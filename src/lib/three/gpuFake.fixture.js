@@ -7,7 +7,10 @@
 //   that's ready after `linkAfter` asks; initTexture() marks a picture sent;
 //   render(scene, camera) draws every visible mesh through
 //   renderBufferDirect, as three.js does; `compiled`, `uploads` and `draws`
-//   record what happened
+//   record what happened. A material changed since its program was made
+//   (marked changed, and with another program key or map: a look put on, a
+//   map taken off) is given a new one, mid-draw if it's drawn first, as
+//   three.js does
 
 export function fakeGl({ signalAfter = 2, fences = true } = {}) {
   const gl = {
@@ -39,12 +42,17 @@ export function fakeGl({ signalAfter = 2, fences = true } = {}) {
   return gl;
 }
 
+// (what three's program cache key would see change)
+const keyOf = (m) => `${m.customProgramCacheKey()}|${m.map ? 'map' : ''}`;
+
 export function fakeRenderer({ gl = fakeGl(), linkAfter = 0 } = {}) {
   const props = new WeakMap();
   const get = (o) => {
     if (!props.has(o)) props.set(o, {});
     return props.get(o);
   };
+  // (a program for `m` as it is now, unless the one it has still is)
+  const stale = (m, p) => !p.currentProgram || (p.version !== m.version && p.key !== keyOf(m));
   const r = {
     gl,
     compiled: [],
@@ -73,9 +81,11 @@ export function fakeRenderer({ gl = fakeGl(), linkAfter = 0 } = {}) {
           if (!m) continue;
           mats.add(m);
           const p = get(m);
-          if (p.currentProgram) continue;
+          if (!stale(m, p)) continue;
           let left = linkAfter;
           p.currentProgram = { isReady: () => left-- <= 0 };
+          p.version = m.version;
+          p.key = keyOf(m);
           r.info.programs.push(p.currentProgram);
           r.compiled.push(m);
         }
@@ -91,11 +101,13 @@ export function fakeRenderer({ gl = fakeGl(), linkAfter = 0 } = {}) {
     renderBufferDirect(camera, scene, geometry, material) {
       // (a draw with no program yet makes one, as three.js does, mid-frame)
       const p = get(material);
-      if (scene !== null && !p.currentProgram) {
+      if (scene !== null && stale(material, p)) {
         p.currentProgram = { isReady: () => true };
         r.info.programs.push(p.currentProgram);
         r.compiled.push(material);
       }
+      p.version = material.version;
+      p.key = keyOf(material);
       r.draws.push(material);
     },
     render(scene, camera) {
