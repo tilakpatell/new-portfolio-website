@@ -11,7 +11,7 @@
 
 .feed-divider {
   position: relative;
-  z-index: 10;
+  z-index: var(--z-page);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   background: var(--bg-deep);
@@ -33,7 +33,7 @@
 .feed-divider-title { font-size: clamp(2rem, 1.2rem + 2.8vw, 3.4rem); }
 .feed-divider-blurb { max-width: 44ch; color: var(--text-body); }
 
-.feed-end { position: relative; z-index: 10; border-top: 1px solid var(--border); }
+.feed-end { position: relative; z-index: var(--z-page); border-top: 1px solid var(--border); }
 .feed-end-inner { padding-block: clamp(4rem, 10vw, 7rem); }
 
 @media (prefers-reduced-motion: reduce) {

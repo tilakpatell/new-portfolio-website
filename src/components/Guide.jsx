@@ -168,7 +168,7 @@ export default function Guide() {
           <button type="button" className="guide-nudge-open" onClick={() => setOpen(true)}>
             <span className="guide-nudge-kicker">New here?</span>
             <span>
-              The controls for {meta.title} are in the guide. Press <kbd className="guide-kbd">?</kbd> any time.
+              The controls for {meta.title} are in the guide. Press <kbd className="kbd">?</kbd> any time.
             </span>
           </button>
           <button type="button" className="guide-nudge-close" onClick={() => setNudge(false)} aria-label="Dismiss">

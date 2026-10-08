@@ -1,7 +1,7 @@
 /* The tour (Tour.jsx): over everything but the intro's cover. The dim is the
    lit box's shadow, so the box shows the thing it's on; a card in the middle,
    with nothing lit, dims the veil instead. */
-.tour { position: fixed; inset: 0; z-index: 88; }
+.tour { position: fixed; inset: 0; z-index: calc(var(--z-dialog) + 8); } /* over any dialog it points at, under the covers */
 .tour-veil { position: absolute; inset: 0; background: rgb(2 6 14 / 0.62); }
 .tour[data-lit] .tour-veil { background: transparent; }
 .tour-spot {
@@ -51,7 +51,7 @@
 .tour[data-release] .tour-card { pointer-events: auto; }
 .tour[data-release] .tour-veil { display: none; }
 .tour[data-release] .tour-spot { box-shadow: 0 0 0 2px var(--accent); }
-.tour[data-over] { z-index: 79; }
+.tour[data-over] { z-index: calc(var(--z-dialog) - 1); } /* under the guide or the palette while a release stop lets them open */
 /* on the way to a stop's page: the card in the middle, the page under it dimmed */
 .tour[data-waiting] .tour-text { color: var(--muted); }
 @keyframes tour-in { from { opacity: 0; transform: translateY(6px); } }

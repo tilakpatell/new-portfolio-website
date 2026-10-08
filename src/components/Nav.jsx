@@ -367,7 +367,7 @@ export default function Nav() {
   return (
     <header
       ref={header}
-      className="site-nav fixed inset-x-0 top-0 z-40"
+      className="site-nav fixed inset-x-0 top-0 z-[var(--z-nav)]"
       data-hidden={hidden && !open ? 'true' : 'false'}
       onFocusCapture={() => setHidden(false)}
     >
