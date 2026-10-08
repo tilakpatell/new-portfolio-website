@@ -540,6 +540,7 @@ export default {
         if (s.sound === false) silence();
         if (typeof s.subtitles === 'boolean') save.settings.subtitles = s.subtitles;
         if (typeof s.guide === 'boolean') save.settings.guide = s.guide;
+        if (typeof s.tips === 'boolean') save.settings.tips = s.tips;
         persist();
       },
       quit() {

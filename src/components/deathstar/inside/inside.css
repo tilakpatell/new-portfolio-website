@@ -749,3 +749,45 @@
 .ds-marker[data-off='true'] .ds-marker-text {
   top: 14px;
 }
+
+/* The first game's tips (Hud.jsx): the few keys that matter, bottom left
+   over the health panel (clear of the marker on the screen's edges), until
+   you have them. */
+.ds-tips {
+  position: absolute;
+  left: var(--ds-left);
+  bottom: calc(var(--ds-bottom) + 84px);
+  max-width: 280px;
+  padding: 12px 14px;
+  pointer-events: auto;
+}
+.ds-tips ul {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ds-dim);
+}
+.ds-tips li .kbd,
+.ds-tip-key {
+  margin-right: 4px;
+  color: var(--ds-ink);
+}
+.ds-tips-way {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--ds-ink);
+}
+.ds-tips-diamond {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid #f2d36b;
+  transform: rotate(45deg);
+}

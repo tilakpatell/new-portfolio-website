@@ -212,6 +212,7 @@ export default function Inside({ mode = 'page', onExit }) {
             onMap={() => api()?.map?.(true)}
             onPause={() => api()?.pause?.(true)}
             onChoose={(i) => api()?.choose?.(i)}
+            onSet={(set) => api()?.set?.(set)}
           />
         )}
         {showing && ui.mode === 'start' && <Start ui={ui} initial={startFrom(asked, ui)} onStart={begin} onExit={onExit} touch={touch} />}
