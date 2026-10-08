@@ -12,7 +12,10 @@
 // newId(), youIn(), finish(winner, why, out), decides }.
 // layCapitals(k, objectivesOn); fireBatteries(k, cap, dt); hullHit(cap,
 // damage, out, spare); ageCapitals(k, dt, out); holdCapitals(k) gives the battle
-// disable(id, s), wreck(id), moveCapital(cap, d) and turnCapital(cap, axis, a).
+// disable(id, s), wreck(id), moveCapital(cap, d) and turnCapital(cap, axis, a);
+// shiftCapital(cap, d) and turnCapitalBy(cap, axis, a) move one with everything
+// on it. With the battle fought as a fleet (k.fleet, battleFleet.js) a battery
+// fires where the fleet says.
 
 import { HULLS, SUBSYSTEMS, TURRETS } from './wars';
 import { BATTLE, UP, copy, cross, dist2, dot, len, norm, set, v3, widthOf } from './battleKit';
@@ -93,12 +96,14 @@ export function fireBatteries(k, cap, dt) {
     tu.flak -= dt;
     if (tu.turbo <= 0) {
       tu.turbo = between([1.2, 2.6]);
-      const foes = b.capitals.filter((c) => c.team === enemy && c.alive && c.dying <= 0);
-      if (foes.length) {
-        const foe = foes[Math.floor(rand() * foes.length)];
+      // (fought as a fleet, battleFleet.js: the focus, every shot meant, or the nearest; else one at random)
+      const aim = k.fleet?.aim(cap, tu);
+      const foes = aim ? null : b.capitals.filter((c) => c.team === enemy && c.alive && c.dying <= 0);
+      if (aim || foes.length) {
+        const foe = aim ? aim.foe : foes[Math.floor(rand() * foes.length)];
         const sp = foe.spheres[Math.floor(rand() * foe.spheres.length)];
         // somewhere on it, or a near miss
-        const miss = rand() < 0.4 ? foe.size * 0.25 : 0;
+        const miss = !aim?.focus && rand() < 0.4 ? foe.size * 0.25 : 0;
         set(aimAt, sp.c.x + (rand() - 0.5) * (sp.r + miss), sp.c.y + (rand() - 0.5) * (sp.r + miss), sp.c.z + (rand() - 0.5) * (sp.r + miss));
         b.fire(cap.team, tu.at, set(tmp, aimAt.x - tu.at.x, aimAt.y - tu.at.y, aimAt.z - tu.at.z), 'turbo');
       }
@@ -173,6 +178,26 @@ const rotate = (o, ax, c, sn) => {
   const cz = ax.x * o.y - ax.y * o.x;
   return set(o, o.x * c + cx * sn + ax.x * d * (1 - c), o.y * c + cy * sn + ax.y * d * (1 - c), o.z * c + cz * sn + ax.z * d * (1 - c));
 };
+// a capital ship moved by `d`, and turned about `axis` by `angle`, with
+// everything on it (battleFleet.js's push; holdCapitals' for the set pieces)
+export function shiftCapital(cap, d) {
+  for (const p of points(cap)) set(p, p.x + d.x, p.y + d.y, p.z + d.z);
+  cap.moved = true;
+}
+export function turnCapitalBy(cap, axis, angle) {
+  cap.moved = true;
+  const ax = norm(copy(v3(), axis));
+  const c = Math.cos(angle);
+  const sn = Math.sin(angle);
+  for (const dir of [cap.fwd, cap.up, cap.right]) norm(rotate(dir, ax, c, sn));
+  const o = cap.pos;
+  for (const p of points(cap).slice(1)) {
+    set(tmp, p.x - o.x, p.y - o.y, p.z - o.z);
+    rotate(tmp, ax, c, sn);
+    set(p, o.x + tmp.x, o.y + tmp.y, o.z + tmp.z);
+  }
+}
+
 export function holdCapitals(k) {
   const { b, pending } = k;
   // a capital ship gone (the second Death Star's superlaser, a reactor blown from inside)
@@ -189,21 +214,13 @@ export function holdCapitals(k) {
     cap.disabled = Math.max(cap.disabled, seconds);
     pending.push({ type: 'disabled', id, at: copy(v3(), cap.pos), size: cap.size });
   };
+  // (a ship a set piece moves is its own from then on: the fleet's push leaves it be, `held`)
   b.moveCapital = (cap, d) => {
-    for (const p of points(cap)) set(p, p.x + d.x, p.y + d.y, p.z + d.z);
-    cap.moved = true;
+    shiftCapital(cap, d);
+    cap.held = true;
   };
   b.turnCapital = (cap, axis, angle) => {
-    cap.moved = true;
-    const ax = norm(copy(v3(), axis));
-    const c = Math.cos(angle);
-    const sn = Math.sin(angle);
-    for (const dir of [cap.fwd, cap.up, cap.right]) norm(rotate(dir, ax, c, sn));
-    const o = cap.pos;
-    for (const p of points(cap).slice(1)) {
-      set(tmp, p.x - o.x, p.y - o.y, p.z - o.z);
-      rotate(tmp, ax, c, sn);
-      set(p, o.x + tmp.x, o.y + tmp.y, o.z + tmp.z);
-    }
+    turnCapitalBy(cap, axis, angle);
+    cap.held = true;
   };
 }

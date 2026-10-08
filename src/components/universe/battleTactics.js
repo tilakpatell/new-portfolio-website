@@ -122,7 +122,7 @@ export function createTactics(k) {
     let closest = Infinity;
     const bombers = flights.escortOf(f);
     const ship = flights.cover(f);
-    const keep = bombers ? [bombers.pos, FLIGHTS.escortReach] : ship ? [ship.pos, FLIGHTS.coverReach] : null;
+    const keep = keepOf(f);
     const threat = f.team === k.defender ? flights.threat : null;
     for (const o of b.fighters) {
       if (!o.alive || o.team === f.team) continue;
@@ -184,6 +184,17 @@ export function createTactics(k) {
     if (t && t.role === 'bomber' && t !== b.you && tokens.claim('intercept', f.id, { target: t.id })) f.token = t.id;
   };
 
+  // an escort's bombers and their reach, or the cover's ship and its
+  // (a target that's got further off than that is let go, chosen or not)
+  const keepOf = (f) => {
+    const bombers = flights.escortOf(f);
+    const ship = bombers ? null : flights.cover(f);
+    return bombers ? [bombers.pos, FLIGHTS.escortReach] : ship ? [ship.pos, FLIGHTS.coverReach] : null;
+  };
+  const strayed = (f) => {
+    const keep = f.target && f.target !== b.you && f.target.pos ? keepOf(f) : null;
+    return Boolean(keep) && dist2(f.target.pos, keep[0]) > (keep[1] * 1.3) ** 2;
+  };
   const setTarget = (f, t) => {
     if (t === f.target) return;
     const was = f.target;
@@ -252,7 +263,7 @@ export function createTactics(k) {
         return;
       }
       f.retarget -= dt;
-      const there = alive(f.target);
+      const there = alive(f.target) && !strayed(f);
       if (there && f.retarget > 0) return;
       f.retarget = TACTICS.think;
       let t;

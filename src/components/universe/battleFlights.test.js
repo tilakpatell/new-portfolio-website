@@ -63,9 +63,10 @@ describe('flights of three', () => {
   });
 
   it('holds formation on the way in: a wingman far from the target keeps to its slot off its leader’s wing', () => {
-    const b = make({ perSide: 9 });
+    // (lines far apart, so there's a way to fly in on)
+    const b = make({ perSide: 9, lines: 160, radius: 260 });
     const gaps = [];
-    watch(b, 6, (bb) => {
+    watch(b, 8, (bb) => {
       for (const fl of flightsOf(bb)) {
         const lead = leaderOf(fl);
         if (!lead?.target || lead.role === 'bomber' || d(lead.pos, lead.target.pos ?? bb.you.pos) < FLIGHTS.transit + 10) continue;

@@ -72,7 +72,7 @@
 //   { teams, capitals, fighters, bolts, phase, clock, over, you, defender, lines, radius, length,
 //   attacker, ahead, stageOpen, opensIn, setYou(team | null), update(dt, you) → events, hit(from, to,
 //   damage) → hit | null, fire(team, from, dir, kind, target), targets,
-//   info, end(winner, why) }
+//   info, end(winner, why, ago), tactics, fleet }
 // `you`: { x, y, z, alive } (the ship, as the scene has it), or null.
 // update(dt) steps the battle BATTLE.step at a time, whatever the frame
 // rate, so the same seed fights the same battle on any screen; `ahead` is
@@ -84,7 +84,9 @@
 // team, at }, { type: 'arrive', team, kind, at }, { type: 'impact', at,
 // size, shield }, { type: 'over', winner, why }, { type: 'turret', id, cap,
 // at, mine }, { type: 'disabled', id, at, size }, { type: 'escaped', id,
-// team, kind, at }, { type: 'runner', id, team, kind, at, mine? } (one shot down).
+// team, kind, at }, { type: 'runner', id, team, kind, at, mine? } (one shot down),
+// { type: 'jumped', id, kind, team, at, size, late? } (a capital ship gone to
+// hyperspace, battleFleet.js: not destroyed).
 
 import { sweptHit } from './targeting';
 import { NAMES } from './wars';
@@ -94,6 +96,7 @@ import { ageCapitals, fireBatteries, holdCapitals, hullHit, layCapitals } from '
 import { createRunners } from './battleRunners';
 import { createStages } from './battleStages';
 import { createTactics } from './battleTactics';
+import { createFleet } from './battleFleet';
 
 export { BATTLE, WIDTH, inSights, perSide, turnToward } from './battleKit';
 
@@ -133,6 +136,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const finish = (winner, why, out) => {
     if (b.over) return;
     b.over = { winner, why };
+    b.since = 0; // (seconds since it ended: the losing fleet jumps out on it, battleFleet.js)
     out.push({ type: 'over', winner, why });
   };
   const subDown = (s, mine) => {
@@ -148,8 +152,10 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   k.tactics = tactics ? createTactics(k) : null;
   b.tactics = k.tactics;
 
-  // the capital ships in their lines, the fighters up, the runners ready
+  // the capital ships in their lines (fought as fleets, with tactics: battleFleet.js), the fighters up, the runners ready
   layCapitals(k, objectivesOn);
+  k.fleet = tactics ? createFleet(k, typeof tactics === 'object' ? tactics : {}) : null;
+  b.fleet = k.fleet;
   muster(k, n, ace);
   k.tactics?.form();
   holdCapitals(k);
@@ -437,6 +443,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // one step of the battle, `dt` long
   const step = (dt, out) => {
     if (!b.over) b.clock += dt;
+    else b.since += dt;
     for (const f of b.fighters) {
       if (f.alive) flyFighter(k, f, dt);
       else if (!k.tactics && Number.isFinite(f.respawn) && !b.over) {
@@ -455,6 +462,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     runs.fly(dt, out);
     runs.sync(out);
     runs.judge(out, before);
+    k.fleet?.step(dt, out);
     if (!b.over) for (const cap of b.capitals) fireBatteries(k, cap, dt);
     moveBolts(dt, out);
     if (stages) stages.sync(out);
@@ -637,6 +645,10 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     },
   });
 
-  b.end = (winner, why = 'forced') => finish(winner, why, pending);
+  // (`ago`: how long since it ended, for a pilot arriving after: the losing fleet gone already)
+  b.end = (winner, why = 'forced', ago = 0) => {
+    finish(winner, why, pending);
+    if (ago > 0 && b.over?.winner === winner) b.since = Math.max(b.since, ago);
+  };
   return b;
 }

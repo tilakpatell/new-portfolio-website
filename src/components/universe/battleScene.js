@@ -172,6 +172,15 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
     else if (e.type === 'sub') {
       flashes.at(pt.set(e.at.x, e.at.y, e.at.z), { size: 6, life: 1.6, bright: 1.3 });
       fires.add(e.at, 1.2);
+    } else if (e.type === 'jumped') {
+      // gone to hyperspace: a white-blue streak of light where it was (none for one gone before you came)
+      const cap = battle.capitals.find((c) => c.id === e.id);
+      const slot = cap && slots.get(cap);
+      if (slot) slot.holder.visible = false;
+      if (!e.late) {
+        flashes.at(pt.set(e.at.x, e.at.y, e.at.z), { size: e.size * 0.5, life: 0.6, color: [1.6, 2.2, 3.6], bright: 1.4 });
+        if (cap) flashes.at(pt.set(e.at.x + cap.fwd.x * e.size * 0.6, e.at.y + cap.fwd.y * e.size * 0.6, e.at.z + cap.fwd.z * e.size * 0.6), { size: e.size * 0.25, life: 0.8, color: [1.2, 1.8, 3.4] });
+      }
     } else if (e.type === 'capital') {
       const cap = battle.capitals.find((c) => c.id === e.id);
       const slot = cap && slots.get(cap);
@@ -258,10 +267,10 @@ export function createBattleScene(parent, { models, small = false, reduced = fal
       chain -= dt;
       for (const cap of battle.capitals) {
         const s = slots.get(cap);
-        if (!s || !s.holder.visible || cap.gone) continue;
+        if (!s || !s.holder.visible || cap.gone || cap.jumped) continue;
         const bob = reduced ? 0 : Math.sin(t * 0.3 + cap.id) * 0.15;
         s.holder.position.set(cap.pos.x, cap.pos.y + bob, cap.pos.z);
-        if (cap.moved) orient(s.holder, cap.fwd, cap.up); // (turned by a set piece: the Scarif ram, the Executor's dive)
+        if (cap.moved) orient(s.holder, cap.fwd, cap.up); // (turned by a set piece, the Scarif ram, the Executor's dive, or the fleet's push)
         if (cap.dying > 0 && chain <= 0) flashes.at(onHull(cap, pt), { size: 1.5 + Math.random() * cap.size * 0.08, life: 0.9 + Math.random() * 0.6 });
       }
       if (chain <= 0) chain = 0.12;

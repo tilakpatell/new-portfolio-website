@@ -45,7 +45,7 @@ export const FLIGHTS = {
   cover: 50, // the defender's interceptors' cover over the objective ship
   coverReach: 80, // and how far off it they'll go after anything
   orbit: 35, // how far off it they circle, with nothing to take on
-  escortReach: 70, // an escort goes after what's this near its bombers
+  escortReach: 45, // an escort goes after what's this near its bombers
   threat: 40, // an enemy this near an objective is a threat to it
   heat: 10, // seconds a hit on an objective counts in its threat
   weigh: 2, // and how much more the defender weighs the enemy round the most threatened

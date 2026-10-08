@@ -293,8 +293,10 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       rand: seeded(b.id),
       plan: director.plan,
       director: { state: shared },
-      // (its fighters flown with tactics: committed to what they're after, in flights, strafing when there's nothing to dogfight)
-      tactics: true,
+      // (its fighters flown with tactics, in flights, and its capital ships as
+      // fleets: the push at the plan's time on the shared clock, each ship's
+      // hull you bump into moved with it)
+      tactics: { push: director.plan.escalations?.find((e) => e.type === 'push')?.at ?? 480, clock: () => sharedT(), onMove: (cap) => ctx.moveHull(cap) },
       // (the plan's aces, launched at their time: battleStages.js)
       ace: Object.fromEntries(aces.map((a) => [a.team, { kind: a.kind, name: a.name, hp: a.hp }])),
       // your shot on an objective (the attacker's to take), on one of the
@@ -388,7 +390,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       let hurt = 0;
       // the battle as the director has it: its end, and the capital ships it's lost by now
       const st = shared();
-      if (st.winner !== null && !battle.over) battle.end(st.winner, st.why);
+      // (a pilot arriving after the end sees the losing fleet gone already: how long ago it ended)
+      if (st.winner !== null && !battle.over) battle.end(st.winner, st.why, Math.max(0, sharedT(ms) - st.endsAt));
       for (const l of st.losses) {
         const cap = l.dead ? lost(l) : null;
         if (cap?.alive && cap.dying <= 0 && !battle.over) battle.wreck(cap.id);
@@ -463,8 +466,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         } else if (e.type === 'turret' && e.mine) {
           if (battle.capitals.find((c) => c.id === e.cap)?.team !== team) score(GCW.points.turret, ms);
         } else if (e.type === 'shield' && tookPart) say('gens');
-        else if (e.type === 'capital') {
-          // a capital ship gone: its hull's not there to hit any more
+        else if (e.type === 'capital' || e.type === 'jumped') {
+          // a capital ship gone (or jumped out): its hull's not there to hit any more
           for (const o of solids) if (o.cap.id === e.id) o.r = o.reach = 0;
         } else if (e.type === 'over' && !ended) {
           ended = true;

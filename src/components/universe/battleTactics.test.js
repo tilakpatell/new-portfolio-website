@@ -23,7 +23,7 @@ const watch = (b, seconds, look) => {
 const isFighter = (t) => t && t.team !== undefined && t.type;
 
 describe('a fighter’s commitment (tactics)', () => {
-  it('a dogfighter sticks with what it’s after: no more than a switch every four seconds, where the untactical AI switched every second and a half', () => {
+  it('a dogfighter sticks with what it’s after: no more than a switch every four seconds, well under the untactical AI’s rate', () => {
     const rate = (tactics) => {
       const b = make({ tactics, perSide: 10 });
       const prev = new Map();
@@ -47,7 +47,10 @@ describe('a fighter’s commitment (tactics)', () => {
     const old = rate(false);
     const now = rate(true);
     expect(now).toBeLessThanOrEqual(0.25);
-    expect(now).toBeLessThan(old / 2);
+    // (counted as here, from one still there to another, the untactical AI
+    // switched about 0.27 a second; a flight's wingmen now follow their
+    // leader's switches and whoever gets on its tail, so not quite half)
+    expect(now).toBeLessThan(old * 0.6);
   });
 
   it('a bomber keeps its run’s target till its torpedo’s away or the target’s gone: two switches a life at most', () => {
@@ -133,9 +136,10 @@ describe('a fighter’s commitment (tactics)', () => {
     watch(b, 40, () => {
       for (const f of b.fighters) {
         if (!f.alive || f.team !== 0) continue;
-        // (since the flights, battleFlights.js, a fighter going home hurt
-        // has somewhere to be: that's not idling round the middle)
-        const has = (f.target && f.target.alive !== false) || f.mode === 'rtb';
+        // (since the flights, battleFlights.js, a fighter going home hurt, or
+        // an escort keeping by its bombers, has somewhere to be: that's not
+        // idling round the middle)
+        const has = (f.target && f.target.alive !== false) || f.mode === 'rtb' || (f.flight?.escorting && f.station);
         idle.set(f, has ? 0 : (idle.get(f) ?? 0) + step);
         worst = Math.max(worst, idle.get(f));
       }

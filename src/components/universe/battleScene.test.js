@@ -45,6 +45,29 @@ describe('createBattleScene', () => {
     draw.dispose();
   });
 
+  it('hides a capital ship that’s jumped out (battleFleet.js), and draws one the fleet’s push has moved where it is now', () => {
+    const parent = new THREE.Group();
+    const models = stubModels();
+    const draw = createBattleScene(parent, { models, small: true });
+    const battle = createBattle({ war: WARS.starwars, attacker: 0, at: [0, 0, 0], axis: [1, 0], perSide: 2, tactics: true, elapsed: 600 });
+    draw.show(battle, WARS.starwars);
+    const cam = new THREE.PerspectiveCamera();
+    const esc = battle.capitals.find((c) => c.team === 1 && c.role === 'escort');
+    esc.hull = esc.hullMax * 0.05;
+    const slotOf = (cap) => models.slots.find((s) => s.kind === cap.kind && s.size === cap.size && Math.abs(s.holder.position.x - cap.pos.x) < 1e-6 && Math.abs(s.holder.position.z - cap.pos.z) < 1e-6);
+    const slot = slotOf(esc);
+    expect(slot.holder.visible).toBe(true);
+    const events = battle.update(1 / 30, null);
+    expect(events.some((e) => e.type === 'jumped' && e.id === esc.id)).toBe(true);
+    draw.update(1 / 30, 1, cam, new THREE.Vector3(), events, 0);
+    expect(slot.holder.visible).toBe(false);
+    // (an attacker's escort, come forward at the push: drawn where it is)
+    const ours = battle.capitals.find((c) => c.team === 0 && c.role === 'escort' && c.alive);
+    draw.update(1 / 30, 1, cam, new THREE.Vector3(), battle.update(1 / 30, null), 0);
+    expect(slotOf(ours)).toBeTruthy();
+    draw.dispose();
+  });
+
   // (the battle steps 1/30 s at a time: drawn where it was at the last step, a
   // fighter would stutter on a faster screen, so it's carried on along its way
   // by the time the step still owes, as the guns' lock has it)

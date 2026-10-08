@@ -410,6 +410,34 @@ describe('the battle every pilot shares (the director)', () => {
     expect(k.front.interdicted).toBe(true);
   });
 
+  it('brings the attacker’s escorts forward at the final push, their hulls you bump into with them', () => {
+    const k = at('rebel', MS);
+    const esc = k.front.battle.capitals.find((c) => c.team === k.front.battle.attacker && c.role === 'escort' && !c.held);
+    const was = { ...esc.pos };
+    k.front.jump(480 + 45 - k.front.info.shared.t);
+    k.front.update(0.1, 0, camera, null);
+    expect(esc.advanced).toBeGreaterThan(30);
+    expect(Math.hypot(esc.pos.x - was.x, esc.pos.z - was.z)).toBeGreaterThan(30);
+    const solid = k.front.solids.find((o) => o.cap === esc && o.i === 0);
+    expect(solid.at[0]).toBeCloseTo(esc.spheres[0].c.x, 6);
+    expect(solid.at[2]).toBeCloseTo(esc.spheres[0].c.z, 6);
+  });
+
+  it('once it’s over, the losing fleet jumps out, and its hulls aren’t there to bump into', () => {
+    const k = at('rebel', MS);
+    k.front.onNet(allDown(k));
+    k.at(k.front.on.start + 301e3);
+    k.front.update(1 / 30, 0, camera, null);
+    expect(k.front.battle.over).toMatchObject({ winner: 0 });
+    const losers = k.front.battle.capitals.filter((c) => c.team === 1 && c.alive && c.dying <= 0);
+    expect(losers.length).toBeGreaterThan(0);
+    for (let i = 0; i < (losers.length * 3 + 2) * 10; i++) k.front.update(0.1, 0, camera, null);
+    for (const c of losers) {
+      expect(c.jumped, c.kind).toBe(true);
+      for (const o of k.front.solids.filter((x) => x.cap === c)) expect(o.r).toBe(0);
+    }
+  });
+
   it('ends a battle only when the director says, not on the battle’s own clock', () => {
     const k = at('rebel', MS);
     k.front.battle.clock = 650;
