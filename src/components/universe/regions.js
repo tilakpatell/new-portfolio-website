@@ -1,5 +1,5 @@
 // The universe map's neighbourhoods. Pure numbers, tested in Node:
-// hyperlanes.js runs its lanes between them, the director (where you are)
+// waypoints.js sits its beacons at their hubs, the director (where you are)
 // and the roster (“Universe · Near Middle-earth”) read them.
 //
 // Since the spread (scale.js's SPREAD) the places sit 3,000 to 10,000 apart,
@@ -14,7 +14,7 @@
 //
 // Each region has a hub, its beacon: the middle of its members weighted by
 // how far each reaches (the big ones pull it), lifted HUB_LIFT off the disc
-// (up and down by turns, so the lanes into neighbouring hubs don't meet), and
+// (up and down by turns), and
 // pushed straight out of anything it lands in (the Veil is 700 across; a
 // sun's planets reach further). The home system is a region of its own, its
 // beacon just past its edge on the side the ship starts.

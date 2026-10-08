@@ -28,11 +28,22 @@ export const surfaceLodUrl = (kind) => `/models/galaxy/surface/${kind}.lod1.glb`
 // A kind's ultra cut (its entry's optional `ultra: { tris, tex }`; the entry's
 // own `tris` stays the high cut): loaded at ultra, the plain file otherwise.
 export const surfaceUltraUrl = (kind) => `/models/galaxy/surface/${kind}.ultra.glb`;
-export const modelUrlFor = (kind, level, models = SURFACE_MODELS) => (level === 'ultra' && models[kind]?.ultra ? surfaceUltraUrl(kind) : surfaceUrl(kind));
-// Whether a kind swaps to its light model far off: it has one (`lod`), and
-// the level's budget swaps (lib/budgets' lod1; ultra keeps the full model at
-// every distance).
-export const wantsLod = (kind, level, models = SURFACE_MODELS) => Boolean(models[kind]?.lod) && budget(level).lod1;
+// An entry with its own `url` (a book of models kept outside this folder:
+// the Rick and Morty planets') loads that, and its ultra and light cuts only
+// where it names them (`ultraUrl`, `lodUrl`): no file is guessed at.
+export const modelUrlFor = (kind, level, models = SURFACE_MODELS) => {
+  const m = models[kind];
+  if (m?.url) return (level === 'ultra' && m.ultraUrl) || m.url;
+  return level === 'ultra' && m?.ultra ? surfaceUltraUrl(kind) : surfaceUrl(kind);
+};
+export const lodUrlFor = (kind, models = SURFACE_MODELS) => {
+  const m = models[kind];
+  return m?.url ? (m.lodUrl ?? m.url) : surfaceLodUrl(kind);
+};
+// Whether a kind swaps to its light model far off: it has one (`lod`, or
+// its own `lodUrl`), and the level's budget swaps (lib/budgets' lod1; ultra
+// keeps the full model at every distance).
+export const wantsLod = (kind, level, models = SURFACE_MODELS) => Boolean(models[kind]?.url ? models[kind].lodUrl : models[kind]?.lod) && budget(level).lod1;
 // the made kinds public/cc0/README.md lists (its
 // `models/galaxy/surface/{a,b,…}.glb` lines, one a lane): each made model
 // has to be there
