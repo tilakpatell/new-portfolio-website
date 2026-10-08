@@ -13,7 +13,7 @@
 // stamped, the trail) and decides nothing.
 //
 // createEarth(renderer, { small, lost }) returns { render(state, ms),
-// screenOf(v), pick(ndcX, ndcY), resize, warm(state), dispose, ready }. The
+// screenOf(v), pick(ndcX, ndcY), resize, snap(), warm(state), dispose, ready }. The
 // renderer is the world runtime's (src/runtime); `lost` says if its context
 // has gone; resize is told the canvas's CSS size (the runtime sizes the
 // renderer itself).
@@ -643,7 +643,9 @@ export function createEarth(renderer, { small = false, lost = () => false } = {}
     if (disposed || lost()) return;
     const dt = Math.min(0.05, ms / 1000);
     const { flight: f, sun: s, view, stamped, orbit, trail = null, trailV = 0, look = null, cockpit = false, travellers = null } = state;
-    const t = performance.now() / 1000;
+    // (the clouds' drift, the strobe and the beacons' pulse run on the clock,
+    // unless a view held it: module.js's, for the parity check)
+    const t = state.t ?? performance.now() / 1000;
     sunDir.set(s[0], s[1], s[2]);
     sun.position.copy(sunDir).multiplyScalar(40);
     light.position.copy(sunDir).multiplyScalar(10);
@@ -790,6 +792,10 @@ export function createEarth(renderer, { small = false, lost = () => false } = {}
     resize,
     screenOf,
     pick,
+    // the chase camera straight to where it wants to be on the next frame, not eased there
+    snap() {
+      pose.ready = false;
+    },
     warm(state) {
       if (warmed) return Promise.resolve();
       warmed = true;
