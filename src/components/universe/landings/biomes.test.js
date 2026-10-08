@@ -198,6 +198,16 @@ describe('the landing as it is on its biome', () => {
     for (const k of ['title', 'ground', 'sky', 'things', 'scatter', 'models']) expect(shire[k], k).toBe(me[k]);
   });
 
+  it('carries the biome’s leaves and wind on with the rest', () => {
+    const me = LANDINGS.middleearth;
+    const leaves = { n: 40 };
+    const wind = { strength: 0.5 };
+    const v = viewOf(me, { ...biomeAt(me, rgb('#3a3030')), leaves, wind });
+    expect(v.leaves).toBe(leaves);
+    expect(v.wind).toBe(wind);
+    expect(v.biome).toBe('mordor');
+  });
+
   it('is the landing itself with no biome', () => {
     const me = LANDINGS.middleearth;
     expect(viewOf(me, null)).toBe(me);
