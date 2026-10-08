@@ -22,11 +22,10 @@ const station = (rooms, doors = [], spots = {}, sections = { s: 'Block S' }, lif
 
 // Three rooms in a row, west to east, two doors apart.
 const row = () =>
-  station(
-    [room('west', -12, 0, 8, 4), room('mid', 0, 0, 16, 3.2), room('east', 12, 0, 8, 4)],
-    [door('wm', 'west', 'mid', -8, 0, 'z'), door('me', 'mid', 'east', 8, 0, 'z')],
-    { a: { room: 'west', x: -14, z: 0, yaw: Math.PI / 2 }, b: { room: 'east', x: 14, z: 0, yaw: -Math.PI / 2 } },
-  );
+  station([room('west', -12, 0, 8, 4), room('mid', 0, 0, 16, 3.2), room('east', 12, 0, 8, 4)], [door('wm', 'west', 'mid', -8, 0, 'z'), door('me', 'mid', 'east', 8, 0, 'z')], {
+    a: { room: 'west', x: -14, z: 0, yaw: Math.PI / 2 },
+    b: { room: 'east', x: 14, z: 0, yaw: -Math.PI / 2 },
+  });
 
 // One bare hall, 30 by 20.
 const hall = () => station([room('hall', 0, 0, 30, 20, { h: 4 })]);
@@ -68,7 +67,19 @@ const rebel = (x, z, o = {}) => ({ id: 'you', x, y: 0, z, r: 0.35, h: 1.8, side:
 function world(s, { seed = 1, you = null } = {}) {
   const layout = buildLayout(s);
   const nav = createNav(layout);
-  return { layout, nav, crew: createCrew({ rand: seeded(seed), layout, nav }), doors: createDoors(layout), alarm: createAlarm(s), combat: createCombat(), flags: new Set(), now: 0, you, log: [], stims: [] };
+  return {
+    layout,
+    nav,
+    crew: createCrew({ rand: seeded(seed), layout, nav }),
+    doors: createDoors(layout),
+    alarm: createAlarm(s),
+    combat: createCombat(),
+    flags: new Set(),
+    now: 0,
+    you,
+    log: [],
+    stims: [],
+  };
 }
 
 // Steps the world as the game will: doors for whoever is near them, the
@@ -184,7 +195,9 @@ describe('the crew’s minds', () => {
   it('searches the section when it loses you, and goes back to its routine once the alarm stands down', () => {
     const you = rebel(-5, 0);
     const w = world(block(), { you, seed: 4 });
-    const squad = ['post1', 'post2', 'post3'].map((spot, i) => addPerson(w.crew, { id: `tk${i + 1}`, kind: 'stormtrooper', room: 'hall', ...w.layout.station.spots[spot], role: { type: 'post', spot }, squad: 'block' }));
+    const squad = ['post1', 'post2', 'post3'].map((spot, i) =>
+      addPerson(w.crew, { id: `tk${i + 1}`, kind: 'stormtrooper', room: 'hall', ...w.layout.station.spots[spot], role: { type: 'post', spot }, squad: 'block' }),
+    );
     const searched = new Set();
     let early = null;
     let searching = false;
@@ -195,7 +208,8 @@ describe('the crew’s minds', () => {
         if (squad.every((p) => p.mode === 'search')) searching = true;
         for (const p of squad) if (p.mode === 'search') searched.add(p.room);
         const level = levelOf(wd.alarm, 's');
-        if (wd.now > 5 && ['alert', 'lockdown', 'hunt'].includes(level) && squad.some((p) => p.mode === 'routine')) early ??= `${squad.find((p) => p.mode === 'routine').id} went back at ${wd.now.toFixed(1)} s with the section at ${level}`;
+        if (wd.now > 5 && ['alert', 'lockdown', 'hunt'].includes(level) && squad.some((p) => p.mode === 'routine'))
+          early ??= `${squad.find((p) => p.mode === 'routine').id} went back at ${wd.now.toFixed(1)} s with the section at ${level}`;
       },
     });
     expect(searching).toBe(true);
@@ -257,6 +271,13 @@ describe('the crew’s minds', () => {
     expect(p.mode).toBe('fight');
   });
 
+  it('asks for no disguise check when there is no disguise: an Imperial is simply one of them', () => {
+    const w = world(hall(), { you: rebel(5, 0, { side: 'imperial', armour: true, helmet: true }) });
+    addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'hall', x: -5, z: 0, yaw: Math.PI / 2, role: { type: 'post' } });
+    simulate(w, 45);
+    expect(of(w, 'challenge')).toEqual([]);
+  });
+
   it('lets a trooper the game has shot dead fall, once, and hand back its token', () => {
     const w = world(hall(), { you: rebel(5, 0) });
     const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'hall', x: -5, z: 0, yaw: Math.PI / 2, role: { type: 'post' }, tag: 'guard' });
@@ -288,6 +309,16 @@ describe('the crew’s minds', () => {
     expect(flat(v, { x: 14, z: 0 })).toBeLessThan(0.5);
     expect(of(w, 'arrive')).toEqual([expect.objectContaining({ id: 'vader', spot: 'b', room: 'east' })]);
     expect(v.anim).toBe('attention');
+  });
+
+  it('takes a furnished spot (one that names its room) as a role’s place, and says when it gets there', () => {
+    const w = world(row());
+    const desk = { name: 'east/work1', kind: 'work', room: 'east', x: 13, y: 0, z: 1, yaw: Math.PI / 2 };
+    const p = addPerson(w.crew, { id: 'tech', kind: 'technician', room: 'west', x: -12, z: 0, role: { type: 'work', spot: desk } });
+    simulate(w, 20 * 30);
+    expect(of(w, 'arrive')).toEqual([expect.objectContaining({ id: 'tech', spot: 'east/work1', room: 'east' })]);
+    expect(p.anim === 'work' || p.anim === 'idle').toBe(true);
+    expect(Math.abs(p.yaw - Math.PI / 2)).toBeLessThan(0.05);
   });
 
   it('refuses a spot the station hasn’t got, so a story’s typo fails its test', () => {
@@ -448,9 +479,9 @@ describe('the crew’s minds', () => {
   it('rides a lift to a spot on another level', () => {
     const w = world(tower());
     const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'up', x: 8, z: 0, role: { type: 'patrol', spots: ['top', 'bottom'] } });
-    simulate(w, 40 * 30);
-    expect(of(w, 'arrive').map((e) => e.spot)).toContain('bottom');
-    expect(p.room === 'down' || p.room === 'car-down' || p.room === 'up' || p.room === 'car-up').toBe(true);
+    let below = null;
+    simulate(w, 40 * 30, { each: (wd, events) => events.some((e) => e.type === 'arrive' && e.spot === 'bottom') && (below ??= { y: p.y, room: p.room }) });
+    expect(below).toEqual({ y: -12, room: 'down' });
   });
 
   it('brings two who chat together to talk', () => {
@@ -461,5 +492,13 @@ describe('the crew’s minds', () => {
     simulate(w, 20 * 30, { each: () => [a, b].filter((p) => p.anim === 'talk').forEach((p) => talked.add(p.id)) });
     expect(flat(a, b)).toBeLessThan(2.4);
     expect(talked).toEqual(new Set(['o1', 'o2']));
+  });
+
+  it('works out at most two new ways a step, so a squad setting off at once doesn’t stall the station', () => {
+    const w = world(row());
+    const people = [0, 1, 2, 3, 4].map((i) => addPerson(w.crew, { id: `tk${i}`, kind: 'stormtrooper', room: 'west', x: -15 + i * 0.7, z: 1, role: { type: 'march', spots: ['b', 'a'] } }));
+    const started = [];
+    simulate(w, 4, { each: () => started.push(people.filter((p) => p.mind.legs.nav.path).length) });
+    expect(started).toEqual([2, 4, 5, 5]);
   });
 });

@@ -3,7 +3,7 @@ import { seeded } from '../../../../lib/seeded';
 import { buildLayout } from './layout';
 import { createNav } from './nav';
 import { lineClear } from './walker';
-import { chooseTactic, coverFrom, createFights, fallbackFrom, flankRoute, searchOf, sectionSpots, standOff, TACTICS } from './fight';
+import { chooseTactic, coverFrom, createFights, fallbackFrom, fightStep, flankRoute, searchOf, sectionSpots, standOff, TACTICS } from './fight';
 
 const room = (id, x, z, w, d, o = {}) => ({ id, kind: 'corridor', name: id, section: 's', x, z, w, d, y: 0, h: 3, ...o });
 const door = (id, a, b, x, z, axis, w = 2) => ({ id, a, b, x, z, axis, w, h: 2.4, kind: 'slide' });
@@ -196,5 +196,42 @@ describe('searching a section', () => {
     const got = ['t1', 't2', 't3', 't4'].map((id) => fights.tokens.claim('shot', id, { target: 'you' }));
     expect(got).toEqual([true, true, true, false]);
     expect(fights.tokens.claim('shot', 't4', { target: 'han' })).toBe(true);
+  });
+});
+
+describe('a soldier’s step', () => {
+  it('keeps the place an advance takes him to while the target drifts, and moves it once the target has moved off', () => {
+    const layout = buildLayout(station([room('long', 0, 0, 50, 6)]));
+    const fights = createFights({ rand: seeded(1), layout, nav: createNav(layout) });
+    const me = { id: 'tk', x: -22, y: 0, z: 0, yaw: Math.PI / 2, room: 'long', hp: 60, max: 60, gun: 'e11' };
+    const places = new Set();
+    const bb = {
+      clock: 0,
+      go: (where) => (places.add(`${where.x.toFixed(2)},${where.z.toFixed(2)}`), 'running'),
+      face() {},
+      lock() {},
+      pose() {},
+      aimAt() {},
+      fire() {},
+      gunBusy: () => false,
+      seesThrough: sees(layout),
+      canPass: () => true,
+      solidsOf: () => [],
+      allies: () => [],
+    };
+    const threat = { id: 'you', at: { x: 8, y: 1.2, z: -2 }, visible: true, confidence: 1 };
+    const f = { tactic: null, think: 0, place: null, burst: 0, next: 0, knownUntil: -Infinity };
+    const run = (seconds) => {
+      for (let k = 0; k < seconds * 30; k++) {
+        bb.clock += 1 / 30;
+        threat.at = { ...threat.at, z: threat.at.z + 1.5 / 30 };
+        fightStep(fights, me, threat, bb, f, { unseen: 0, lostFor: 0 });
+      }
+    };
+    run(1);
+    expect(f.tactic).toBe('advance');
+    expect(places.size).toBe(1);
+    run(1.2);
+    expect(places.size).toBe(2);
   });
 });

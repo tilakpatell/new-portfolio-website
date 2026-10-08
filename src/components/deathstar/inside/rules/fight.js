@@ -251,11 +251,27 @@ export function fightStep(fights, me, threat, bb, f, { unseen, lostFor, told = f
     survey(fights, me, at, f, bb);
     const inCover = f.tactic === 'cover' && Boolean(f.covered) && flat(me, f.covered) < 0.6;
     const free = tokens.count('shot', threat.id) < FIGHT.shots;
-    const ctx = { sees, lostFor, dist, range: WEAPONS[me.gun]?.range ?? 0, hp: me.hp / (me.max || 100), token, cover: Boolean(f.cover), inCover, flank: Boolean(f.flank), allies: bb.allies().length, told, free };
+    const ctx = {
+      sees,
+      lostFor,
+      dist,
+      range: WEAPONS[me.gun]?.range ?? 0,
+      hp: me.hp / (me.max || 100),
+      token,
+      cover: Boolean(f.cover),
+      inCover,
+      flank: Boolean(f.flank),
+      allies: bb.allies().length,
+      told,
+      free,
+    };
     const tactic = chooseTactic(ctx, { current: f.tactic, rand });
-    // an advance follows the target; the rest keep the place they were given until they get there
-    if (tactic !== f.tactic || tactic === 'advance') {
+    // an advance follows the target once it has moved off (each new place is a new way to work out);
+    // the rest keep the place they were given until they get there
+    const drifted = tactic === 'advance' && (!f.place || !f.placedFor || flat(f.placedFor, at) > 2);
+    if (tactic !== f.tactic || drifted) {
       f.place = placeFor(fights, me, at, tactic, f, bb);
+      f.placedFor = { ...at };
       f.covered = null;
     }
     f.tactic = tactic;

@@ -6,14 +6,14 @@
 // (routines.js) while nothing is wrong; and, for a soldier who is sure of
 // an enemy, a fight (fight.js) that ends in a search of the section when
 // the enemy gets away, and in the routine again once the alarm stands
-// down. They walk on routines.js’s legs: nav.route’s waypoints, kept
-// apart with steer.separate.
-// A Rebel in armour is watched rather than shot, and the watching is handed
-// to the game as a disguise check. Mouse droids run squealing from a roar.
-// Vader, the Emperor and the Royal Guard stand where the story puts them
-// and move only as it directs. Nothing here touches the game: what happens
-// comes back as events for the game to act on (a shot to fire, a call to
-// raise the alarm with). Pure apart from the crew and people it is given.
+// down. They walk on routines.js’s legs: nav.route’s waypoints, kept apart
+// with steer.separate. A Rebel in armour is watched rather than shot, and
+// the watching is handed to the game as a disguise check. Mouse droids run
+// squealing from a roar. Vader, the Emperor and the Royal Guard stand where
+// the story puts them and move only as it directs. Nothing here touches the
+// game: what happens comes back as events for the game to act on (a shot to
+// fire, a call to raise the alarm with). Pure apart from the crew and people
+// it is given.
 //
 //   createCrew({ rand, layout, nav, solidsOf? }) → crew      { people, byId, fights, clock }
 //     solidsOf(roomId) → the walker’s solids standing in a room (nav reads their footprints)
@@ -79,8 +79,10 @@ const STAGGER = 0.35; // seconds a lesser hit staggers
 const SHOT_POSE = 0.15; // seconds the shooting pose shows after a shot
 const ROAR = 8; // metres a roar scatters mouse droids within
 const SCATTER = 8; // and how much further off they run
+// seconds a fright lasts: a droid’s is soon over; one who ran from a fight stays down while he can see it
 const FLEE_FOR = { roar: 3, fight: 6 };
 const BODY_LOOK = 0.5; // seconds between one person’s looks round for a fallen comrade
+// the levels at which the garrison is up and looking, not standing easy
 const UP = new Set(['alert', 'lockdown', 'hunt']);
 
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -92,7 +94,7 @@ const chest = (b) => ({ x: b.x, y: b.y + Math.min(FIGHT.chest, (b.h ?? BODY.h) *
 const youId = (you) => you?.id ?? 'you';
 
 export function createCrew({ rand, layout, nav, solidsOf = () => [] }) {
-  return { rand, layout, nav, solidsOf, people: [], byId: new Map(), fights: createFights({ rand, layout, nav }), clock: 0, heard: 0, out: [], world: null, cleared: new Map() };
+  return { rand, layout, nav, solidsOf, people: [], byId: new Map(), fights: createFights({ rand, layout, nav }), clock: 0, heard: 0, out: [], routes: 0, world: null, cleared: new Map() };
 }
 
 // ── who is aboard ──
@@ -122,7 +124,23 @@ export function addPerson(crew, { id, kind, room, x, z, yaw = 0, role, squad = n
   checkSpots(crew.layout, given, script);
   // a droid is narrower than a man; nobody is wider
   const body = createBody({ x, y: crew.layout.floorAt(room, x, z) ?? r.y, z, yaw, r: Math.min(BODY.r, Math.max(0.15, cast.tall * 0.3)), h: cast.tall, room });
-  const p = Object.assign(body, { id, kind, side: cast.side, hp: cast.hp, max: cast.hp, mode: given.type === 'scripted' ? 'scripted' : 'routine', anim: 'idle', aim: null, role: given, squad, hostile, script, tag, talk, gun: cast.gun ?? null });
+  const p = Object.assign(body, {
+    id,
+    kind,
+    side: cast.side,
+    hp: cast.hp,
+    max: cast.hp,
+    mode: given.type === 'scripted' ? 'scripted' : 'routine',
+    anim: 'idle',
+    aim: null,
+    role: given,
+    squad,
+    hostile,
+    script,
+    tag,
+    talk,
+    gun: cast.gun ?? null,
+  });
   p.mind = mindOf(crew, p, home);
   crew.people.push(p);
   crew.byId.set(id, p);
@@ -230,6 +248,7 @@ export function removePerson(crew, id) {
 export function stepCrew(crew, dt, { you = null, alarm = null, doors = null, combat = null, flags = new Set(), now, open = () => true, stims = [] } = {}) {
   crew.clock = now ?? crew.clock + dt;
   crew.out = [];
+  crew.routes = 0;
   crew.world = { you, alarm, doors, combat, flags, open, dt };
   const heard = gather(crew, stims);
   const watchers = [];
@@ -271,7 +290,7 @@ function vitals(crew, p) {
   if (p.hp < m.lastHp && p.mode !== 'scripted') {
     if (m.lastHp - p.hp >= COMBAT.knock) {
       release(crew, p);
-      p.mode = 'down';
+      Object.assign(p, { mode: 'down', aim: null });
       m.downUntil = crew.clock + DOWN;
     } else m.hitUntil = crew.clock + STAGGER;
     // a hit says where it came from: whoever the game says shot, else you
@@ -349,7 +368,7 @@ function perceive(crew, p, heard, watchers) {
   const solids = crew.solidsOf(p.room);
   sense(m.senses, m.eye, { targets, stims }, crew.world.dt, { seesThrough: (a, b) => lineClear(crew.layout, crew.world.open, a, b, solids) });
   const b = m.eye.beliefs[yid];
-  if (b?.visible && !b.hostile && p.side === 'imperial' && you) watchers.push({ p, dist: flat(p, you), officer: CAST[p.kind].role === 'officer' });
+  if (b?.visible && !b.hostile && p.side === 'imperial' && disguised(you)) watchers.push({ p, dist: flat(p, you), officer: CAST[p.kind].role === 'officer' });
   return surest(m.eye, { hostile: true });
 }
 

@@ -33,13 +33,15 @@
 //   face: a yaw | a spot name (its yaw) | { spot, turn } (its yaw turned) | { who: id } | a point
 //
 //   legsOf(person) → legs                  { nav, want: { yaw, lock }, ride, ctx, wander }, kept in person.mind.legs
-//   walkTo(crew, person, where, opts) → 'running' | 'done' | 'failed'   (an 'arrive' event at a named spot)
+//   walkTo(crew, person, where, opts) → 'running' | 'done' | 'failed'   (an 'arrive' event at a named spot,
+//     the station’s or a furnished one’s { name, room, x, z, yaw })
 //   faceTo(crew, person, target)
 //   placeOf(crew, person, where) → { x, z, room, y?, yaw? } | null
 //   canPass(crew, person, doorId, door) → bool   not sealed, and not locked against them
 //   stepLegs(crew, person, dt, frozen) → { speed, run, riding }   one step of walking the way asked for
 //     this step (a way nobody asked for is dropped, so a stop is a stop)
-//   crew: brains.js’s ({ layout, nav, rand, clock, people, byId, solidsOf, out, world: { you, open, doors } })
+//   crew: brains.js’s ({ layout, nav, rand, clock, people, byId, solidsOf, out, routes, world: { you, open, doors } }),
+//     routes: the new ways worked out this step, which brains.js sets back to 0 each step
 
 import { DONE, guard, repeat, reset, RUNNING, select, sequence, tick } from '../../../../lib/ai/tree';
 import { clear as clearSteer, createContext, interest, resolve, seek, separate } from '../../../../lib/ai/steer';
@@ -91,13 +93,23 @@ const TREES = {
   // talks while they stand together; walks back up if the other wanders off
   chat: (role) => {
     const who = { who: role.with };
-    return repeat(select(guard((bb) => bb.near(who, 2.4), sequence(face(who), wait([3, 6], 'talk'), wait([2, 4], 'idle'))), go(who, { near: 1.6 })));
+    return repeat(
+      select(
+        guard((bb) => bb.near(who, 2.4), sequence(face(who), wait([3, 6], 'talk'), wait([2, 4], 'idle'))),
+        go(who, { near: 1.6 }),
+      ),
+    );
   },
   march: (role) => repeat(sequence(...role.spots.map((s) => go(s)))),
   droid: () => repeat(sequence(go({ wander: true }), wait([0.5, 2.5], 'idle'))),
   follow: (role) => {
     const who = { who: role.who };
-    return repeat(select(guard((bb) => bb.near(who, 3), wait(0.5, 'idle')), go(who, { near: 2, keepUp: true })));
+    return repeat(
+      select(
+        guard((bb) => bb.near(who, 3), wait(0.5, 'idle')),
+        go(who, { near: 2, keepUp: true }),
+      ),
+    );
   },
   scripted: (role, script) => sequence(...(script ?? []).map(stepOf), repeat(wait(1))),
 };
@@ -145,6 +157,9 @@ const RIDE = 3; // seconds a lift ride takes (game.js’s)
 const STUCK = 2; // seconds without headway before a way is worked out again
 const GIVE_UP = 3; // times stuck before the way counts as gone
 const RETRY = 3; // seconds before a way that failed is tried again
+// New ways worked out a step, crew-wide: a long way across a bay with stairs in it costs tens of
+// milliseconds, so a squad setting off at once is spread over a few steps (anyone left waits a step).
+const ROUTES = 2;
 
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -212,7 +227,9 @@ export function walkTo(crew, p, where, { run = false, near = ARRIVE, keepUp = fa
   const key = keyOf(where, to);
   const nav = legs.nav;
   if (flat(p, to) <= near && (p.room === to.room || near > ARRIVE)) {
-    if (nav.key === key && nav.path && typeof where === 'string') crew.out.push({ type: 'arrive', id: p.id, spot: where, room: p.room });
+    // a station’s spot goes by its name, a furnished one (rules/furnish.js) by the name it carries
+    const spot = typeof where === 'string' ? where : where.name;
+    if (nav.key === key && nav.path && spot) crew.out.push({ type: 'arrive', id: p.id, spot, room: p.room });
     if (where.wander) legs.wander = null;
     legs.nav = idle();
     return 'done';
@@ -221,6 +238,8 @@ export function walkTo(crew, p, where, { run = false, near = ARRIVE, keepUp = fa
   // someone walked towards moves on: the way is worked out again now and then
   const moved = where.who !== undefined && nav.path && flat(nav.path.at(-1), to) > 1.5 && clock - nav.routedAt > 0.5;
   if (nav.key !== key || !nav.path || moved) {
+    if (!where.path && crew.routes >= ROUTES) return 'running';
+    if (!where.path) crew.routes = (crew.routes ?? 0) + 1;
     const path = where.path ?? route(crew.nav, p, to, { canPass: (id, door) => canPass(crew, p, id, door), solidsOf: crew.solidsOf });
     const stuck = nav.key === key ? nav.stuck : 0;
     if (!path) {

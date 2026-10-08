@@ -157,7 +157,14 @@ describe('routines', () => {
 
   it('plays a script once, step by step, and then stands as it was left', () => {
     const { bb, log } = fakeBody({ legs: 2 });
-    const node = routineFor({ type: 'scripted' }, [{ to: 'dais' }, { face: 'window' }, { say: 'Everything is proceeding as I have foreseen.', key: 'foreseen' }, { anim: 'kneel', s: 1 }, { wait: 1 }, { anim: 'attention' }]);
+    const node = routineFor({ type: 'scripted' }, [
+      { to: 'dais' },
+      { face: 'window' },
+      { say: 'Everything is proceeding as I have foreseen.', key: 'foreseen' },
+      { anim: 'kneel', s: 1 },
+      { wait: 1 },
+      { anim: 'attention' },
+    ]);
     const status = run(node, bb, 6);
     expect(status).toBe(RUNNING);
     expect(log.map(([what]) => what)).toEqual(['go', 'face', 'say']);
