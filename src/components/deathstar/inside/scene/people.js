@@ -616,6 +616,11 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     return r;
   }
 
+  // a body the crew no longer lists needs no remembering
+  function forget(bodies) {
+    for (const [id, seen] of bodies) if (seen !== frame) bodies.delete(id);
+  }
+
   function drop(r) {
     records.delete(r.id);
     r.blaster?.removeFromParent();
@@ -755,7 +760,8 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
       for (let i = 0; i < Math.min(MAKE, wanted.length); i++) see(follow(wanted[i][1]), wanted[i][1], wanted[i][2], dt);
       // (a Map walked while it is deleted from carries on with what is left)
       for (const r of records.values()) if (r.seen !== frame) drop(r);
-      for (const book of [lying, cleared]) for (const [id, seen] of book) if (seen !== frame) book.delete(id);
+      forget(lying);
+      forget(cleared);
       items.length = listed;
       lodPick(items, at, { count }, picks);
       for (const it of items) {
