@@ -40,8 +40,9 @@
 }
 .resume-skill:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .resume-skill[aria-pressed='true'] { background: var(--btn-bg); color: var(--btn-ink); text-decoration: none; }
-.resume-entry { position: relative; margin-bottom: 0.7rem; transition: opacity 0.25s ease; }
-.resume-entry[data-dim] { opacity: 0.35; }
+.resume-entry { position: relative; margin-bottom: 0.7rem; transition: color 0.25s ease; }
+/* not what the filter picked: the muted ink, still 4.5:1, never faded out */
+.resume-entry[data-dim] { --text: var(--muted); --text-body: var(--muted); color: var(--muted); }
 .resume-entry[data-lit]::before { content: ''; position: absolute; left: -0.9rem; top: 0.15rem; bottom: 0.15rem; width: 3px; border-radius: 2px; background: var(--accent); }
 .resume-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 1rem; }
 .resume-row strong,
@@ -51,14 +52,14 @@
 .resume-stack { font-style: italic; font-size: 0.875rem; }
 .resume-link { font-size: 0.875rem; text-decoration: underline; text-underline-offset: 2px; }
 .resume-bullets { margin: 0.25rem 0 0; padding-left: 1.2rem; list-style: disc; }
-.resume-bullets li { margin: 0.12rem 0; transition: opacity 0.25s ease; }
-.resume-entry[data-lit] .resume-bullets li[data-dim] { opacity: 0.55; }
+.resume-bullets li { margin: 0.12rem 0; transition: color 0.25s ease; }
+.resume-entry[data-lit] .resume-bullets li[data-dim] { color: var(--muted); }
 .resume-bullets mark { padding: 0 0.12em; border-radius: 3px; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); }
 .resume-course { margin: 0.3rem 0 0; font-size: 0.875rem; }
 
 @media print {
   .resume-sheet { max-width: none; border: 0; border-radius: 0; box-shadow: none; padding: 0; color: #111; background: #fff; font-size: 10.5pt; }
-  .resume-entry[data-dim], .resume-bullets li[data-dim] { opacity: 1; }
+  .resume-entry[data-dim], .resume-bullets li[data-dim], .resume-entry[data-lit] .resume-bullets li[data-dim] { --text: inherit; --text-body: inherit; color: inherit; }
   .resume-entry[data-lit]::before { display: none; }
   .resume-skill { text-decoration: none; padding: 0; }
   .resume-skill[aria-pressed='true'] { background: none; color: inherit; }

@@ -14,7 +14,5 @@
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   box-shadow: 0 10px 30px -22px color-mix(in srgb, var(--text) 50%, transparent);
 }
-.resume-tabs { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--surface-2); }
-.resume-tab { padding: 0.4rem 0.95rem; border-radius: 999px; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
-.resume-tab[aria-selected='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 18%, transparent); }
+/* (the view tabs are the house .switch) */
 .resume-pdf { height: min(1100px, 82vh); overflow: hidden; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); }

@@ -29,7 +29,7 @@ function PdfView() {
               Open the PDF
             </a>
             <a className="btn btn-ghost" href={profile.resume.href} download={profile.resume.filename}>
-              <RiDownloadLine className="h-4 w-4" aria-hidden="true" /> Download
+              <RiDownloadLine className="h-4 w-4" aria-hidden="true" /> Download the PDF
             </a>
           </div>
         </div>
@@ -44,7 +44,7 @@ function PdfView() {
             <p className="stretch-semi text-lg font-semibold text-ink">This browser won’t show the PDF here.</p>
             <p className="mt-2 text-body">Download it instead, or use the interactive version.</p>
             <a className="btn btn-primary mt-6" href={profile.resume.href} download={profile.resume.filename}>
-              <RiDownloadLine className="h-4 w-4" aria-hidden="true" /> Download PDF
+              <RiDownloadLine className="h-4 w-4" aria-hidden="true" /> Download the PDF
             </a>
           </div>
         </div>
@@ -83,16 +83,17 @@ export default function Resume() {
   const lines = active.reduce((n, s) => n + skillCount(s), 0);
 
   return (
-    <div className="shell relative z-10 pb-24 pt-[calc(var(--nav-h)+40px)] md:pt-[calc(var(--nav-h)+64px)]">
+    <div className="shell section-last relative z-10 pt-[var(--page-top)]">
       <header className="resume-header flex flex-wrap items-end justify-between gap-8">
         <div>
           <p className="eyebrow">Résumé</p>
+          {/* its own size: at the shared page size it breaks in two at laptop widths */}
           <PageTitle className="display mt-5 text-[clamp(2.6rem,1.4rem+4.6vw,5rem)]">One page, filterable.</PageTitle>
           <p className="lead mt-5 max-w-[46ch]">Click any skill on the résumé to light up every line that uses it.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <a className="btn btn-primary" href={profile.resume.href} download={profile.resume.filename} data-tour="resume-pdf">
-            <RiDownloadLine className="h-4 w-4" aria-hidden="true" /> Download PDF
+            <RiDownloadLine className="h-4 w-4" aria-hidden="true" /> Download the PDF
           </a>
           <button type="button" className="btn btn-ghost" onClick={() => window.print()}>
             <RiPrinterLine className="h-4 w-4" aria-hidden="true" /> Print
@@ -102,7 +103,7 @@ export default function Resume() {
       </header>
 
       <div className="resume-toolbar mt-10">
-        <div className="resume-tabs" role="tablist" aria-label="Résumé view">
+        <div className="resume-tabs switch" data-size="md" role="tablist" aria-label="Résumé view">
           {VIEWS.map((v, i) => (
             <button
               key={v.id}

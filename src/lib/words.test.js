@@ -30,10 +30,6 @@ const FILES = [
 // request at a time; each comes off as its pull request lands, and the test
 // below fails if a file here is already clean, so the list only shrinks.
 const PENDING = new Set([
-  // the classic pages
-  'pages/Home.jsx',
-  'pages/Experience.jsx',
-  'pages/Resume.jsx',
   // the universe map (and the guide's entry for it)
   'components/guide/pages.js',
   'components/universe/UniversePanel.jsx',
