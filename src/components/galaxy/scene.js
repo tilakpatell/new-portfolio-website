@@ -106,6 +106,7 @@ import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, 
 import { createInterdictor } from './interdictor';
 import { createWarFront } from './warfront';
 import { createGalaxyPowers } from './powers';
+import { chargeFor } from '../universe/shipPowers';
 import { effectsFor } from './warEffects';
 import { warNow } from './warState';
 import { createWingmen } from '../universe/wingmen';
@@ -919,7 +920,7 @@ export async function create(canvas, ctx) {
     const ship = src !== 'war' || (!hit.sub && !hit.capital && !hit.shield);
     landed(src === 'war' ? { at: new THREE.Vector3(hit.at.x, hit.at.y, hit.at.z), size: ship ? hit.size : 0.15, down: ship && hit.down } : hit, normal);
     state.hitMark = 1;
-    if (!by) powers.gain(!hit.down ? 'hit' : !ship || hit.turret ? 'objective' : FACTIONS[hit.faction]?.ace === hit.kind ? 'ace' : 'kill');
+    if (!by) powers.gain(chargeFor(hit, { war: src === 'war', ace: FACTIONS[hit.faction]?.ace === hit.kind }), `${src}:${hit.id}`); // (nothing for a shield or a hull)
     if (ship && hit.down) {
       emit(by ? { type: 'kill', kind: hit.kind, by } : { type: 'kill', kind: hit.kind });
       if (src === 'hunters') pay(hunterEarn(FACTIONS, hit));
@@ -947,7 +948,7 @@ export async function create(canvas, ctx) {
     state.hitMark = 1;
     if (ph.hunter) {
       net?.hunterHit(ph.id, ph.hunter, punch);
-      powers.gain(ph.down ? 'kill' : 'hit');
+      powers.gain(ph.down ? 'kill' : 'hit', `pilots:${ph.id}:${ph.hunter}`);
       if (ph.down) {
         emit({ type: 'kill', kind: ph.kind });
         if (state.helped.once(`${ph.id}:${ph.hunter}`)) pay('hunterHelped'); // (one shot off someone else's tail)

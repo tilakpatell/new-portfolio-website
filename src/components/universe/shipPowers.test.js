@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, aimHelp, beamOf, blastPunch, cancel, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readKept, step, turretPick, view, writeKept } from './shipPowers';
+import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, aimHelp, beamOf, blastPunch, cancel, chargeFor, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readKept, step, turretPick, view, writeKept } from './shipPowers';
 import { CREWS } from './crews';
 import { spawn, step as fly } from './ship';
 import { makeSpace } from '../galaxy/space';
@@ -93,6 +93,38 @@ describe('the crews’ ship powers', () => {
     expect(CHARGE.ace).toBeGreaterThan(CHARGE.kill);
     expect(CHARGE.hit).toBeGreaterThan(0);
     expect(CHARGE.hit).toBeLessThan(CHARGE.kill);
+  });
+
+  // (Every hit that downed nothing used to charge it, a battle's shield and a
+  // capital ship's hull among them: holding fire on a shielded Star
+  // Destroyer at the X-wing's 8.3 shots a second filled it in 6 s.)
+  it('charges the big one only from what the guns can take down, and a little from hits on any one of them', () => {
+    expect(chargeFor({ down: false, shield: true }, { war: true })).toBeNull();
+    expect(chargeFor({ down: false, capital: true }, { war: true })).toBeNull();
+    expect(chargeFor(null)).toBeNull();
+    expect(chargeFor({ down: false })).toBe('hit');
+    expect(chargeFor({ down: false, sub: 'shield' }, { war: true })).toBe('hit');
+    expect(chargeFor({ down: true, sub: 'shield' }, { war: true })).toBe('objective');
+    expect(chargeFor({ down: true, turret: true }, { war: true })).toBe('objective');
+    expect(chargeFor({ down: true }, { war: true })).toBe('kill');
+    expect(chargeFor({ down: true }, { ace: true })).toBe('ace');
+    // a minute's fire into a shield at the quickest the guns go: nothing
+    const st = createPowers('xwing');
+    for (let i = 0; i < 60 / 0.12; i++) {
+      const what = chargeFor({ down: false, shield: true }, { war: true });
+      if (what) gain(st, what, 1, 'war:7');
+    }
+    expect(st.ultimate.charge).toBe(0);
+    // hits on any one thing charge it CHARGE.hitCap at most (a 120-hp
+    // objective takes thirty: they'd have been most of a fill), but on
+    // several, each its own share
+    for (let i = 0; i < 30; i++) gain(st, 'hit', 1, 'war:2000123');
+    expect(st.ultimate.charge).toBeCloseTo(CHARGE.hitCap, 6);
+    for (let i = 0; i < 3; i++) gain(st, 'hit', 1, `hunters:${i}`);
+    expect(st.ultimate.charge).toBeCloseTo(CHARGE.hitCap + 3 * CHARGE.hit, 6);
+    // (and a long session's targets don't pile up without end)
+    for (let i = 0; i < 1000; i++) gain(st, 'hit', 0, `hunters:${i + 10}`);
+    expect(st.hits.size).toBeLessThanOrEqual(64);
   });
 
   it('never charges the big one from its own kills, and a cancel ends it into charging again', () => {

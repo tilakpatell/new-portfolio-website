@@ -25,7 +25,8 @@
 //   createPowers(crew, { charge }) → state, or null for no crew
 //   press(st, slot)        → { ok, id } or { ok: false, why }
 //   step(st, dt, { flying }) → events ({ type: 'end' | 'ready', slot, id })
-//   gain(st, what, n)      the big one charged (never while it's on); → true the moment it fills
+//   gain(st, what, n, key) the big one charged (never while it's on); → true the moment it fills
+//   chargeFor(hit, { war, ace })  what a hit charges it with, or null (a shield, a hull)
 //   finish(st, slot)       one power stops early, its work done (the last torpedo home)
 //   cancel(st)             whatever's on stops (shot down, crashed, jumping)
 //   mods(st)               what the scene changes this frame
@@ -43,8 +44,11 @@ export const POWER_KEYS = { primary: 'g', ultimate: 'x' };
 export const KEPT_KEY = 'tp:ship-powers'; // (the session's: the big one's charge, so a landing doesn't lose it)
 
 // What fills the big one: five kills, or two minutes and a half of flying
-// (an ace counts for more, a battle's objective more than a fighter)
-export const CHARGE = { kill: 0.2, ace: 0.5, objective: 0.3, hit: 0.02, second: 1 / 150 };
+// (an ace counts for more, a battle's objective more than a fighter), and a
+// little for a hit, but no more than `hitCap` from hits on any one thing (a
+// 120-hp objective takes thirty, and they'd have been most of a fill)
+export const CHARGE = { kill: 0.2, ace: 0.5, objective: 0.3, hit: 0.02, hitCap: 0.1, second: 1 / 150 };
+const HITS_KEPT = 64; // (the things hit lately whose share is counted: older ones forgotten)
 
 // The numbers come from fights flown in Node (hunterRules.js's): in a fight
 // a hunter sits a median 7.5 to 9 units off you and a pack is 8 to 10 units
@@ -135,14 +139,36 @@ export function step(st, dt, { flying = true } = {}) {
   return out;
 }
 
-// (only while it's charging: the big one's own kills never pay for the next)
-export function gain(st, what, n = 1) {
+// (only while it's charging: the big one's own kills never pay for the
+// next; a hit's share by what was hit, `key`, up to CHARGE.hitCap each)
+export function gain(st, what, n = 1, key = null) {
   const u = st?.ultimate;
   if (!u || u.phase !== 'charging') return false;
-  u.charge = Math.min(1, u.charge + (CHARGE[what] ?? 0) * n);
+  let add = (CHARGE[what] ?? 0) * n;
+  if (what === 'hit' && key !== null) {
+    st.hits ??= new Map();
+    const had = st.hits.get(key) ?? 0;
+    add = Math.max(0, Math.min(add, CHARGE.hitCap - had));
+    st.hits.delete(key); // (the latest last, so the oldest go first)
+    st.hits.set(key, had + add);
+    if (st.hits.size > HITS_KEPT) st.hits.delete(st.hits.keys().next().value);
+  }
+  u.charge = Math.min(1, u.charge + add);
   if (u.charge < 1) return false;
   u.phase = 'ready';
   return true;
+}
+
+// What a hit charges the big one with (gain's `what`), or nothing: a kill,
+// an ace, a battle's objective (`war`: the war's battle's hit, battle.js's)
+// or a hit on something the guns can take down; never a battle's shield or
+// a capital ship's hull, which they can't
+export function chargeFor(hit, { war = false, ace = false } = {}) {
+  if (!hit) return null;
+  if (war && (hit.shield || hit.capital)) return null;
+  if (!hit.down) return 'hit';
+  if (war && (hit.sub || hit.turret)) return 'objective';
+  return ace ? 'ace' : 'kill';
 }
 
 export function finish(st, slot) {

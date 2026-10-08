@@ -34,7 +34,7 @@
 // doesn't lose it; another crew starts from nothing.
 //
 // createGalaxyPowers({ parent, reduced, hunters, war, bolts, flashes, crashFx, pops, post, state, emit, strike, scored, teleport, controls })
-//   → { setCrew(kind), press(slot) → { ok, id } or { ok: false, why }, gain(what), mods, aim(own),
+//   → { setCrew(kind), press(slot) → { ok, id } or { ok: false, why }, gain(what, key), mods, aim(own),
 //       shipFor(live), warOpts, hold, afterStep(ship, dt) → ship, roll, hidden, frame(dt, live),
 //       cancel(), place(el, on), view, info, busy, keep(), fill(), dispose() }
 // state: the scene's (its ship, lock, world, space, keys and stick, and the
@@ -415,13 +415,14 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
       return { ok: false, why };
     },
 
-    // what your guns did, toward the big one ('hit', 'kill', 'ace', 'objective');
-    // a kill's charge kept at once, not at the next of the every-two-seconds
-    // writes (at a low frame rate those are far apart, and a landing may
-    // come first)
-    gain(what) {
-      if (!st) return;
-      const full = charge(st, what);
+    // what your guns did, toward the big one ('hit', 'kill', 'ace',
+    // 'objective', or nothing: shipPowers.js's chargeFor), `key` what was hit
+    // (a hit's share is by what it hit); a kill's charge kept at once, not
+    // at the next of the every-two-seconds writes (at a low frame rate those
+    // are far apart, and a landing may come first)
+    gain(what, key = null) {
+      if (!st || !what) return;
+      const full = charge(st, what, 1, key);
       if (full) say('ready', 'ultimate', st.ultimate.id);
       if (full || what !== 'hit') this.keep();
     },
