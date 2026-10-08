@@ -24,9 +24,9 @@
 //   right after the first frame)
 // mapFile(name, level) → the file for a planet map at lib/detail's level
 // mapsOf(id), nearSet(id, level) → a planet's maps, and { later, std, near }: the sets it wears after the first frame and near (nearMaps.js)
-// buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount, swapMaps(T2 | null), nearSet(level), nearGeometry(on, level) }
+// buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount, swapMaps(T2 | null), nearSet(level, { small }), nearGeometry(on, level) }
 // (a builder that reads a map's pixels, not just wears it, sets `p.onMaps(T2)`
-// to read them again from the maps a swap puts on: Cybertron's war fronts)
+// to read them from the first real map a swap puts on: Cybertron's war fronts)
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -43,7 +43,7 @@ import { createWar, warZones } from '../cybertron/war';
 import { ringGeometry } from '../middleearth/ringShape';
 import { bossMug, elementTile, glowingGems, shardCluster } from './props';
 import { keyHook } from '../../lib/three/keySun';
-import { mapSwapper, mapsOf, nearSet } from './planetMaps';
+import { isStandIn, mapSwapper, mapsOf, nearSet } from './planetMaps';
 import { LIGHT, RIM, airGlow, ditherShade, groundHooks, halo, styleFor } from './planetShading';
 import { SPECS, buildFromSpec } from './planetSpecs';
 
@@ -364,12 +364,14 @@ const EXTRAS = {
       const battle = createWar({ radius: r, zones: warZones(T['transformers-glow']), count: T.small ? 3 : 5, flares: 1, small: true, light: false });
       p.body.add(battle.group);
       p.tick.push((t, camera) => battle.update(t, camera, 0.85));
-      // (the fronts read again from its own glow when that comes: up front
-      // it wears a stand-in, planetMaps.js, and the war the fixed fronts)
+      // (the fronts read once from its own glow when that comes: up front
+      // it wears a stand-in, planetMaps.js, and the war the fixed fronts;
+      // a drawImage and getImageData of the whole map, so never again for
+      // the finer copies after it)
       let read = T['transformers-glow'];
       p.onMaps = (M) => {
         const glow = M?.['transformers-glow'];
-        if (!glow || glow === read) return;
+        if (!glow || !isStandIn(read)) return;
         read = glow;
         battle.setZones(warZones(glow));
       };
@@ -1158,7 +1160,7 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     surface: core ? null : body,
     body,
     swapMaps,
-    nearSet: (level) => (core ? { later: [], std: [], near: [] } : nearSet(u.id, level)),
+    nearSet: (level, opts) => (core ? { later: [], std: [], near: [] } : nearSet(u.id, level, opts)),
     nearGeometry,
     get air() {
       return air;

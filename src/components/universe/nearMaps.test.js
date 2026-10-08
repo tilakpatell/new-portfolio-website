@@ -315,25 +315,50 @@ describe('step 0: what a far planet shows, right after the first frame', () => {
     return { idle: (fn) => q.push(fn), run: () => q.shift()?.(), get size() { return q.length; } };
   };
 
-  it('loads nothing up front, then each planet’s later maps one idle moment at a time, nearest first, and puts them on', async () => {
+  it('fetches nothing for the first frame, every planet’s later maps at the first idle moment, and puts them on one planet per idle moment, nearest first', async () => {
     const { load, calls } = loader();
     const { idle, run } = idler();
     const near = createNearMaps({ level: 'high', load, idle });
     const ps = [far('b', 300), far('a', 100)];
     near.update([0, 0, 0], ps);
     expect(load).not.toHaveBeenCalled(); // (the first frame asks for none of them)
-    run();
-    expect(calls.map((c) => c.url)).toEqual(['/textures/universe/a-glow.webp', '/textures/universe/a-normal-sm.webp']);
+    run(); // the first idle moment: every fetch at once (about 0.78 MB on the map)
+    expect(calls.map((c) => c.url)).toEqual(['/textures/universe/a-glow.webp', '/textures/universe/a-normal-sm.webp', '/textures/universe/b-glow.webp', '/textures/universe/b-normal-sm.webp']);
     for (const c of calls) c.resolve();
+    await flush();
+    expect(ps[1].swapMaps).not.toHaveBeenCalled(); // (the putting on waits for an idle moment of its own)
+    run();
     await flush();
     expect(ps[1].swapMaps.mock.lastCall[0]).toEqual({ 'a-glow': expect.objectContaining({ url: '/textures/universe/a-glow.webp' }), 'a-normal': expect.objectContaining({ url: '/textures/universe/a-normal-sm.webp' }) });
     expect(near.resident(0)).toEqual(['a']);
+    expect(ps[0].swapMaps).not.toHaveBeenCalled();
     expect(ps[1].nearGeometry).not.toHaveBeenCalled();
     run(); // (the next planet's at the next idle moment)
-    expect(calls.map((c) => c.url).slice(2)).toEqual(['/textures/universe/b-glow.webp', '/textures/universe/b-normal-sm.webp']);
-    for (const c of calls.slice(2)) c.resolve();
     await flush();
+    expect(ps[0].swapMaps).toHaveBeenCalledTimes(1);
     expect(near.resident(0).sort()).toEqual(['a', 'b']);
+    expect(load).toHaveBeenCalledTimes(4);
+  });
+
+  it('a planet whose maps are slow comes on when they land, the rest after it in turn', async () => {
+    const { load, calls } = loader();
+    const { idle, run } = idler();
+    const near = createNearMaps({ level: 'high', load, idle });
+    const ps = [far('a', 100), far('b', 300)];
+    near.update([0, 0, 0], ps);
+    run();
+    for (const c of calls.slice(2)) c.resolve(); // (b's land first)
+    await flush();
+    run();
+    await flush();
+    expect(near.resident(0)).toEqual([]); // (a, nearest, is first in turn)
+    for (const c of calls.slice(0, 2)) c.resolve();
+    await flush();
+    run();
+    await flush();
+    run();
+    await flush();
+    expect(near.resident(0)).toEqual(['a', 'b']);
   });
 
   it('sends each set to the graphics chip a slice at a time before it goes on', async () => {
@@ -345,6 +370,8 @@ describe('step 0: what a far planet shows, right after the first frame', () => {
     near.update([0, 0, 0], [a]);
     run();
     for (const c of calls) c.resolve();
+    await flush();
+    run();
     await flush();
     expect(sent).toEqual([['/textures/universe/a-glow.webp', '/textures/universe/a-normal-sm.webp']]);
     expect(a.swapMaps).toHaveBeenCalledTimes(1);
@@ -358,6 +385,8 @@ describe('step 0: what a far planet shows, right after the first frame', () => {
     near.update([100, 0, 0], [a]);
     run();
     for (const c of calls) c.resolve();
+    await flush();
+    run();
     await flush();
     near.update([10, 0, 0], [a]); // step 1: its standard glow over the small one
     calls[2].resolve();
@@ -382,6 +411,8 @@ describe('step 0: what a far planet shows, right after the first frame', () => {
     run();
     for (const c of calls) c.resolve();
     await flush();
+    run();
+    await flush();
     near.update([100, 0, 0], [a]); // step 1 goes; step 0 still wears the file
     expect((await load.mock.results[0].value).disposed).toBe(false);
   });
@@ -394,6 +425,19 @@ describe('step 0: what a far planet shows, right after the first frame', () => {
       near.update([0, 0, 0], [far('a', 100)]);
       run();
       expect(calls.length, JSON.stringify(opts)).toBe(2);
+    }
+  });
+});
+
+describe('a phone’s standard set', () => {
+  it('asks each planet for its sets as a phone, so a 2048 standard map stays at its smallest there', () => {
+    for (const [opts, small] of [[{ level: 'high', small: true }, true], [{ level: 'low' }, false], [{ level: 'high' }, false]]) {
+      const { load } = loader();
+      const near = createNearMaps({ ...opts, load, idle: () => {} });
+      const a = planet('a', 100);
+      a.nearSet = vi.fn(() => ({ later: [], std: [], near: [] }));
+      near.update([0, 0, 0], [a]);
+      expect(a.nearSet).toHaveBeenCalledWith(opts.level, { small });
     }
   });
 });

@@ -20,14 +20,15 @@
 // tiled()), which a swap can't find.
 //
 //   mapFile(name, level) → the file for a planet map at lib/detail's level
-//   LATER → the maps not fetched up front
+//   LATER → the maps not fetched up front; isStandIn(texture) → one stood in for them
 //   loadTextures({ small }) → the textures (any that fail are just missing; a LATER one a stand-in)
 //   loadMap(name) → a LATER map at its smallest file (the sky's glow, after the first frame)
-//   mapsOf(id), nearSet(id, level) → a planet's maps, and { later, std, near }: what it wears at steps 0, 1 and 2
+//   mapsOf(id), nearSet(id, level, { small }) → a planet's maps, and { later, std, near }: what it wears at steps 0, 1 and 2
 //   mapSwapper(group, T, names) → swap(T2 | null)
 
 import * as THREE from 'three';
 import { MAP_SLOTS, loadTexture, sharpen } from '../../lib/three/textures';
+import { DETAIL } from '../../lib/detail';
 import K8_BAKED from '../../../public/textures/universe/k8.json';
 import MANIFEST from '../../../public/textures/universe/index.json';
 
@@ -91,23 +92,30 @@ export const LATER = new Set(MAP_NAMES.filter((name) => ['normal', 'rough', 'glo
 // what each map is worn at up front (its smallest file) and at step 1
 const first = (name) => mapFile(name, 'low');
 const standard = (name) => mapFile(name, 'high');
+// (on low and on a phone, step 1 goes no wider than lib/detail's ceiling
+// for a phone's maps, 1024: Earth's and Cybertron's 2048 standard maps, and
+// the sky's 4096, keep their smallest there)
+const SMALL_MAX = DETAIL.mid.texMax;
+const wide = (name) => (MAPS[name]?.sizes?.std?.[0] ?? 0) > SMALL_MAX;
 
 // What a planet wears after the first frame and as it comes near
 // (nearMaps.js), at a detail level: `later` wherever it is, once the first
 // frame is drawn, on every level: its LATER maps' smallest files; `std`
 // within twelve radii, on every level: the standard file of each of
 // its maps that it doesn't wear already (the loader's cache would hand back
-// that very texture), and of each LATER one; `near` within six, over it: the
+// that very texture), and of each LATER one, but on low or a phone (`small`)
+// none wider than 1024; `near` within six, over it: the
 // finer copy of each map that has one, the -hq on a desktop, the -xl on a
 // strong card (its -hq the fallback) and the -hq of the rest; nothing on low
 // or mid (mid's finer set is its standard one, worn at step 1). At ultra a
 // map baked at 8192 (`k8`) is asked for first, its -xl the fallback.
-export function nearSet(id, level, { k8 = K8 } = {}) {
+export function nearSet(id, level, { k8 = K8, small = false } = {}) {
+  const narrow = level === 'low' || small;
   const later = mapsOf(id)
     .filter((name) => LATER.has(name))
     .map((name) => ({ name, file: first(name), colour: MAPS[name].srgb }));
   const std = mapsOf(id)
-    .filter((name) => LATER.has(name) || standard(name) !== first(name))
+    .filter((name) => (LATER.has(name) || standard(name) !== first(name)) && !(narrow && wide(name)))
     .map((name) => ({ name, file: standard(name), colour: MAPS[name].srgb }));
   const near = finerSet(id, level);
   if (level !== 'ultra') return { later, std, near };
@@ -128,14 +136,18 @@ function finerSet(id, level) {
 // A LATER map's stand-in, until its own comes: a texel of what having none
 // looks like (a flat normal, roughness as the material has it, no glow), in
 // the colour space and with the sharpening its own will have, since a swap
-// hands the one it replaces' settings on (mapSwapper)
+// hands the one it replaces' settings on (mapSwapper). isStandIn(texture)
+// says whether a texture is one (a builder that reads a map's pixels waits
+// for the real one: planets.js's Cybertron)
 const BLANK = { normal: [128, 128, 255, 255], rough: [255, 255, 255, 255], glow: [0, 0, 0, 255] };
 function standIn(name) {
   const { kind, srgb } = MAPS[name];
   const t = new THREE.DataTexture(new Uint8Array(BLANK[kind]), 1, 1);
   t.name = name;
+  t.userData.standIn = true;
   return sharpen(t, { color: srgb });
 }
+export const isStandIn = (t) => t?.userData?.standIn === true;
 
 // Up front: every map but the LATER ones at its smallest file, the same on
 // every device; `small` (a phone, or anything below a desktop) only tells
@@ -148,12 +160,17 @@ export async function loadTextures({ small = false } = {}) {
         T[name] = standIn(name);
         return;
       }
-      try {
-        // (decoded off the main thread, as sharp as the device's tier allows,
-        // and shared with any other scene that wants the same map)
-        T[name] = await loadTexture(BASE + first(name), { color: MAPS[name].srgb });
-      } catch {
-        // (missing: whoever wanted it does without)
+      // (decoded off the main thread, as sharp as the device's tier allows,
+      // and shared with any other scene that wants the same map; the
+      // standard file where the smallest won't come, so one bad fetch doesn't
+      // lose a map for the visit; else whoever wanted it does without)
+      for (const file of [...new Set([first(name), standard(name)])]) {
+        try {
+          T[name] = await loadTexture(BASE + file, { color: MAPS[name].srgb });
+          return;
+        } catch {
+          // (the next file, if there's one)
+        }
       }
     }),
   );

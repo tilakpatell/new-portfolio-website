@@ -732,7 +732,7 @@ export async function create(canvas, ctx) {
     group: sun.group,
     radius: SUN.r,
     swapMaps: mapSwapper(sun.group, T, ['sun']),
-    nearSet: (level) => (level === 'ultra' ? nearSet('sun', level) : { ...nearSet('sun', level), near: [] }),
+    nearSet: (level, opts) => (level === 'ultra' ? nearSet('sun', level, opts) : { ...nearSet('sun', level, opts), near: [] }),
   };
   const nearBodies = [...planets, sunNear];
   let firstFrame = null; // (when the first frame began: the DEV hook's, for scripts/perf-probe.mjs)

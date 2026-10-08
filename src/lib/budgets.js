@@ -30,3 +30,10 @@ export const BUDGET_ROWS = Object.freeze({
 
 // A level's row; anything else (a typo, nothing) reads as high's.
 export const budget = (level) => BUDGET_ROWS[level] ?? BUDGET_ROWS.high;
+
+// What the universe map waits for: the bytes of its planets' maps (and the
+// sky's) fetched before its first frame, in MB of 10^6 as fetched, the same
+// on every level (planetMaps.js's up-front set; the rest come after it,
+// nearMaps.js). planetMaps.test.js sums the files; scripts/perf-probe.mjs
+// measures them in a browser.
+export const FIRST_FRAME_MAPS_MB = 0.7;

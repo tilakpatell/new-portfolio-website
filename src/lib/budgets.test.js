@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUDGET_ROWS, COLUMNS, budget } from './budgets';
+import { BUDGET_ROWS, COLUMNS, FIRST_FRAME_MAPS_MB, budget } from './budgets';
 import { LEVELS } from './device';
 
 describe('how much each quality level draws', () => {
@@ -39,5 +39,11 @@ describe('how much each quality level draws', () => {
 
   it('keeps its rows from being changed by a reader', () => {
     expect(Object.isFrozen(budget('high'))).toBe(true);
+  });
+});
+
+describe('what the universe map waits for', () => {
+  it('fetches at most 0.7 MB of planet maps before its first frame', () => {
+    expect(FIRST_FRAME_MAPS_MB).toBe(0.7);
   });
 });

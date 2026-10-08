@@ -19,21 +19,24 @@
 // near set at high and ultra (`name: file | fallback`, sorted; none on low or
 // mid). OF[id]: its maps, sorted. NONE: the places with no maps at all.
 
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import MANIFEST from '../../../public/textures/universe/index.json';
 import { fileOf } from '../../../scripts/planets/manifest.mjs';
+import { FIRST_FRAME_MAPS_MB } from '../../lib/budgets';
 
 const asked = [];
+const failing = new Set(); // (files the fake loader can't have)
 vi.mock('../../lib/three/textures', async (importOriginal) => ({
   ...(await importOriginal()),
   loadTexture: (url, { color }) => {
     asked.push([url, color]);
+    if (failing.has(url)) return Promise.reject(new Error(`no ${url}`));
     return Promise.resolve({ url });
   },
 }));
-const { LATER, MAP_NAMES, loadMap, loadTextures, mapFile, mapsOf, nearSet } = await import('./planetMaps');
+const { LATER, MAP_NAMES, isStandIn, loadMap, loadTextures, mapFile, mapsOf, nearSet } = await import('./planetMaps');
 
 const FILES = {
   'breakingbad': 'breakingbad-sm.webp breakingbad-sm.webp breakingbad.webp breakingbad-xl.ktx2 breakingbad-hq.webp',
@@ -211,9 +214,34 @@ describe('every map’s file at every level', () => {
       expect([T[name].image.width, T[name].image.height], name).toEqual([1, 1]);
       expect(px(name), name).toEqual({ normal: [128, 128, 255, 255], rough: [255, 255, 255, 255], glow: [0, 0, 0, 255] }[kind]);
       expect(T[name].colorSpace, name).toBe(srgb ? 'srgb' : '');
+      expect(isStandIn(T[name]), name).toBe(true);
     }
+    expect(isStandIn(T.caribbean)).toBe(false);
     // (each its own: a planet's swap finds its maps by which texture they are)
     expect(new Set([...LATER].map((n) => T[n])).size).toBe(LATER.size);
+  });
+  it('asks for the standard file when the smallest won’t load, so one bad fetch doesn’t lose a map for the visit', async () => {
+    asked.length = 0;
+    failing.add('/textures/universe/caribbean-sm.webp');
+    failing.add('/textures/universe/hull.webp'); // (no smaller file: nothing else to try)
+    try {
+      const T = await loadTextures();
+      expect(T.caribbean.url).toBe('/textures/universe/caribbean.webp');
+      expect(asked.filter(([u]) => u.includes('/caribbean')).map(([u]) => u)).toEqual(expect.arrayContaining(['/textures/universe/caribbean-sm.webp', '/textures/universe/caribbean.webp']));
+      expect(T.hull).toBeUndefined();
+      expect(asked.filter(([u]) => u === '/textures/universe/hull.webp')).toHaveLength(1);
+    } finally {
+      failing.clear();
+    }
+  });
+  it('keeps what it fetches before the first frame on high within the budget (lib/budgets)', async () => {
+    asked.length = 0;
+    await loadTextures({ small: false });
+    const files = asked.map(([u]) => u.replace('/textures/universe/', ''));
+    const bytes = files.reduce((sum, f) => sum + statSync(resolve('public/textures/universe', f)).size, 0);
+    // (673,308 bytes in 28 files when this was written: Task 4.3's measure in Chromium)
+    expect(files).toHaveLength(28);
+    expect(bytes / 1e6).toBeLessThanOrEqual(FIRST_FRAME_MAPS_MB);
   });
   it('loads one later map on its own at its smallest file: the sky’s glow, after the first frame', async () => {
     asked.length = 0;
@@ -246,12 +274,27 @@ describe('a planet’s maps, and what it wears near', () => {
     const show = (e) => `${e.name}: ${e.file}${e.fallback ? ` | ${e.fallback}` : ''}${e.colour ? '' : ' (data)'}`;
     expect(Object.keys(STEP1)).toEqual(Object.keys(NEAR));
     for (const [id, by] of Object.entries(NEAR)) {
-      for (const level of LEVELS) expect(nearSet(id, level).std.map(show).sort(), `${id} ${level}`).toEqual(STEP1[id]);
+      for (const level of ['mid', 'high', 'ultra']) expect(nearSet(id, level).std.map(show).sort(), `${id} ${level}`).toEqual(STEP1[id]);
       expect(nearSet(id, 'low').near, id).toEqual([]);
       expect(nearSet(id, 'mid').near, id).toEqual([]);
       for (const [level, set] of Object.entries(by)) expect(nearSet(id, level).near.map(show).sort(), `${id} ${level}`).toEqual(set);
     }
     for (const id of NONE) for (const level of LEVELS) expect(nearSet(id, level), id).toEqual({ later: [], std: [], near: [] });
+  });
+  it('never goes past 1024 wide at step 1 on low or a phone: a 2048 standard map keeps its smallest there', () => {
+    const show = (e) => `${e.name}: ${e.file}${e.colour ? '' : ' (data)'}`;
+    // (the standard 2048s, Earth's and Cybertron's, by the manifest's flag, and the sky's glow, 4096)
+    const WIDE = ['earth', 'earth-night', 'sky-glow', 'transformers', 'transformers-glow', 'transformers-normal'];
+    expect(MAP_NAMES.filter((n) => MANIFEST[n].sizes.std[0] > 1024).sort()).toEqual(WIDE);
+    const narrow = (id) => STEP1[id].filter((line) => !WIDE.includes(line.split(':')[0]));
+    for (const id of Object.keys(STEP1)) {
+      expect(nearSet(id, 'low').std.map(show).sort(), `${id} low`).toEqual(narrow(id));
+      for (const level of ['mid', 'high', 'ultra']) expect(nearSet(id, level, { small: true }).std.map(show).sort(), `${id} ${level} small`).toEqual(narrow(id));
+    }
+    expect(nearSet('transformers', 'low').std).toEqual([]);
+    expect(nearSet('travel', 'low').std.map((m) => m.file).sort()).toEqual(['earth-clouds.webp', 'earth-rough.webp']);
+    // (mid keeps its standard set from twelve radii: every 1024)
+    expect(nearSet('middleearth', 'mid').std.map(show).sort()).toEqual(STEP1.middleearth);
   });
   it('fetches its later maps’ smallest files right after the first frame, on every level', () => {
     const show = (e) => `${e.name}: ${e.file}${e.colour ? '' : ' (data)'}`;

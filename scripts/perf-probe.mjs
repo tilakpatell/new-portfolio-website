@@ -17,10 +17,12 @@
 // times' spread, the hitches (frames over 50 and 100 ms), and what the
 // worst frames were spent on; and where the universe map's files were
 // fetched, what its first frame waited on (its maps' bytes before the first
-// frame; FILES=1 names them: firstFetch, below).
+// frame, held to lib/budgets' FIRST_FRAME_MAPS_MB; FILES=1 names them:
+// firstFetch, below).
 import { chromium } from 'playwright-core';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { FIRST_FRAME_MAPS_MB } from '../src/lib/budgets.js';
 
 const argv = process.argv.slice(2);
 const profile = Boolean(process.env.PROFILE);
@@ -553,7 +555,8 @@ try {
     console.log(`\n== ${name}${failed ? `  (stopped: ${failed})` : ''}  ready ${report[name].readyS}s  total ${report[name].secs}s  heap ${report[name].heapMB} MB${errors.length ? `  errors ${errors.length}` : ''}`);
     const ff = report[name].first;
     if (ff?.maps.n || ff?.other.n) {
-      console.log(`first frame at ${ff.frameS ?? ff.onS}s (the veil down at ${ff.onS}s): the universe's maps fetched before it ${ff.maps.MB} MB (${ff.maps.bytes} bytes, ${ff.maps.n} files), its other files ${ff.other.MB} MB${ff.other.n ? ` (${ff.other.files.join(', ')})` : ''}; maps after it, by the journey's end, ${ff.later.MB} MB (${ff.later.n} files)`);
+      const verdict = ff.maps.bytes / 1e6 <= FIRST_FRAME_MAPS_MB ? `within its ${FIRST_FRAME_MAPS_MB} MB budget` : `OVER its ${FIRST_FRAME_MAPS_MB} MB budget`;
+      console.log(`first frame at ${ff.frameS ?? ff.onS}s (the veil down at ${ff.onS}s): the universe's maps fetched before it ${ff.maps.MB} MB (${ff.maps.bytes} bytes, ${ff.maps.n} files, ${verdict}), its other files ${ff.other.MB} MB${ff.other.n ? ` (${ff.other.files.join(', ')})` : ''}; maps after it, by the journey's end, ${ff.later.MB} MB (${ff.later.n} files)`);
       if (process.env.FILES) console.log(`  before: ${ff.maps.files.join(' ')}\n  after: ${ff.later.files.join(' ')}`);
     }
     console.log('phase      secs  fps    p50   p95   p99   max  >50 >100 links texMB bufMB draws ktris');

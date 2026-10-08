@@ -2,13 +2,14 @@
 // files). Up front every planet wears its small set (planets.js's
 // loadTextures: each map's smallest file, and stand-ins for its relief,
 // roughness and glow). Right after the first frame (step 0) the smallest
-// files of those it stood in for come in the background, one planet at a
-// time, nearest first, each at an idle moment and sent to the graphics chip
-// a slice at a time, and stay: so from afar every planet looks as it always
-// did, which is right across the map: twelve radii out a planet is under 200
-// pixels tall. Within twelve radii it gets its standard
-// set (step 1: 1024 on a desktop's ladder, and its own relief, roughness and
-// glow); within six, its near set over that and its finer sphere (step 2,
+// files of those it stood in for are all asked for at its first idle moment,
+// then put on in the background, one planet at a time, nearest first, each
+// at an idle moment and sent to the graphics chip a slice at a time, and
+// stay: so from afar every planet looks as it always did, which is right
+// across the map: twelve radii out a planet is under 200 pixels tall.
+// Within twelve radii it gets its standard set (step 1: 1024 on a desktop's
+// ladder, no wider on low or a phone, planetMaps.js's `small`; and its own
+// relief, roughness and glow at that size); within six, its near set over that and its finer sphere (step 2,
 // nearGeometry): parked 2.4 radii out, a planet fills 600 pixels with a
 // quarter of its surface, 256 texels of a 1024 map, so the -hq copies, and on
 // ultra the -xl colour map, or the 8192 -8k where one has been baked
@@ -33,7 +34,7 @@
 //   time before it's put on, rather than all in the frame it's swapped in;
 //   `idle(fn)`: fn at the page's next idle moment, for step 0)
 //       → { update(shipAt, planets), resident(step = 2), dispose() }
-//   (each planet: { id, at | group, r | radius, nearSet(level) → { later, std, near }, swapMaps(T2 | null), nearGeometry(on) })
+//   (each planet: { id, at | group, r | radius, nearSet(level, { small }) → { later, std, near }, swapMaps(T2 | null), nearGeometry(on) })
 
 import * as THREE from 'three';
 import { forgetTexture, loadTexture } from '../../lib/three/textures';
@@ -78,7 +79,7 @@ export function createNearMaps({ level = detailLevel(), small = false, load = lo
   // by step, id → { planet, state: 'loading' | 'on', T2, urls, asked }
   const sets = { 0: new Map(), 1: new Map(), 2: new Map() };
   const all = () => [...sets[0].values(), ...sets[1].values(), ...sets[2].values()];
-  let queue = null; // step 0's planets still to come, nearest first (made at the first update)
+  let queue = null; // step 0's planets, nearest first (made at the first update)
   let gone = false;
   const v = new THREE.Vector3();
   const lists = new Map(); // planet → its sets (worked out once)
@@ -127,35 +128,52 @@ export function createNearMaps({ level = detailLevel(), small = false, load = lo
     }
     return null;
   };
-  const start = (step, p, list) => {
+  // a set asked for (each map's first file that loads, or none), and then
+  // sent up and put on (unless it's gone on meanwhile: then only freed)
+  const fetchSet = (step, p, list) => {
     const s = { planet: p, state: 'loading', T2: {}, urls: {}, asked: new Set() };
     sets[step].set(p.id, s);
-    return Promise.all(list.map(async (m) => [m.name, await fetchOne(s, m)])).then(async (got) => {
-      for (const [name, r] of got) {
+    const got = Promise.all(list.map(async (m) => [m.name, await fetchOne(s, m)])).then((all) => {
+      for (const [name, r] of all) {
         if (!r) continue;
         s.T2[name] = r.t;
         s.urls[name] = r.url;
       }
-      if (upload && !gone && sets[step].get(p.id) === s && Object.keys(s.T2).length) {
-        try {
-          await upload(Object.values(s.T2));
-        } catch {
-          // (they go up as they're drawn instead)
-        }
-      }
-      // (gone on, dropped for a nearer one, or the scene's gone: never installed)
-      if (gone || sets[step].get(p.id) !== s) return free(s);
-      s.state = 'on';
-      wear(p);
-      if (step === 2) p.nearGeometry?.(true, level);
     });
+    return { s, got };
+  };
+  const putOn = async (step, s) => {
+    const p = s.planet;
+    if (upload && !gone && sets[step].get(p.id) === s && Object.keys(s.T2).length) {
+      try {
+        await upload(Object.values(s.T2));
+      } catch {
+        // (they go up as they're drawn instead)
+      }
+    }
+    // (gone on, dropped for a nearer one, or the scene's gone: never installed)
+    if (gone || sets[step].get(p.id) !== s) return free(s);
+    s.state = 'on';
+    wear(p);
+    if (step === 2) p.nearGeometry?.(true, level);
+  };
+  const start = (step, p, list) => {
+    const { s, got } = fetchSet(step, p, list);
+    got.then(() => putOn(step, s));
   };
 
-  // step 0: the next planet's later maps, at an idle moment, then the next's
+  // step 0: at the first idle moment every planet's later maps asked for at
+  // once (about 0.78 MB in all), then each planet's sent up and put on at an
+  // idle moment of its own, nearest first, once they've landed
   const later = () => {
-    const q = queue.shift();
-    if (!q || gone) return;
-    start(0, q.p, q.later).then(() => queue.length && !gone && idle(later));
+    if (gone) return;
+    const sets0 = queue.map((q) => fetchSet(0, q.p, q.later));
+    const next = () => {
+      const f = sets0.shift();
+      if (!f || gone) return;
+      f.got.then(() => idle(() => putOn(0, f.s).then(next)));
+    };
+    next();
   };
 
   return {
@@ -163,7 +181,7 @@ export function createNearMaps({ level = detailLevel(), small = false, load = lo
       if (gone) return;
       const ps = new Map();
       for (const p of planets) {
-        if (!lists.has(p)) lists.set(p, p.nearSet?.(level) ?? {});
+        if (!lists.has(p)) lists.set(p, p.nearSet?.(level, { small }) ?? {});
         const { later: list0 = [], std = [], near: list = [] } = lists.get(p);
         if (!list0.length && !std.length && !list.length && !p.nearGeometry) continue;
         // (where it is in the world: a built planet's group, wherever the map's turned it)

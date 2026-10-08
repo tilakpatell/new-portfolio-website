@@ -389,7 +389,7 @@ describe('a planet’s near maps', () => {
 });
 
 describe('a map a builder reads, not just wears', () => {
-  it('Cybertron reads its war’s fronts again from the glow it comes to wear, once each', async () => {
+  it('Cybertron reads its war’s fronts once, from the first real glow it comes to wear', async () => {
     const gradient = { addColorStop() {} };
     const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
     vi.stubGlobal('document', { createElement: () => canvas });
@@ -402,15 +402,25 @@ describe('a map a builder reads, not just wears', () => {
     const THREE = await import('three');
     const { buildPlanet } = await import('./planets');
     const { byId } = await import('./universes');
-    const T = { transformers: new THREE.Texture(), 'transformers-glow': new THREE.Texture(), 'transformers-normal': new THREE.Texture() };
+    // (built on the stand-in planetMaps.js gives a held-back glow)
+    const standIn = new THREE.DataTexture(new Uint8Array(4), 1, 1);
+    standIn.userData.standIn = true;
+    const T = { transformers: new THREE.Texture(), 'transformers-glow': standIn, 'transformers-normal': new THREE.Texture() };
     const p = buildPlanet(byId('transformers'), T);
-    expect(read).toEqual([T['transformers-glow']]);
-    const own = new THREE.Texture();
+    expect(read).toEqual([standIn]);
+    const own = new THREE.Texture(); // (its -sm, step 0)
     p.swapMaps({ 'transformers-glow': own, transformers: new THREE.Texture() });
-    expect(read).toEqual([T['transformers-glow'], own]);
-    p.swapMaps({ 'transformers-glow': own }); // (the same glow: not read again)
+    expect(read).toEqual([standIn, own]);
+    p.swapMaps({ 'transformers-glow': new THREE.Texture() }); // (its 2048, near: not read again, a whole map's pixels on the main thread)
+    p.swapMaps({ 'transformers-glow': own });
     p.swapMaps(null); // (its stand-in back: the fronts it found stay)
-    expect(read).toEqual([T['transformers-glow'], own]);
+    expect(read).toEqual([standIn, own]);
+    // (built on its real glow, as the Cybertron page would: read at build, never again)
+    read.length = 0;
+    const real = new THREE.Texture();
+    const q = buildPlanet(byId('transformers'), { ...T, 'transformers-glow': real });
+    q.swapMaps({ 'transformers-glow': new THREE.Texture() });
+    expect(read).toEqual([real]);
     vi.doUnmock('../cybertron/war');
     vi.resetModules();
     vi.unstubAllGlobals();
