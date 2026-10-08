@@ -15,9 +15,10 @@ import '../../../styles/lazy/middleearth.css';
 // shire-list skin) and, under it, anything a town has on the side or a
 // town's own list of them (./SideList.jsx), as children. `title` is the
 // town's name for it, which a screen reader hears; the heading says
-// "Things to do" in every town.
+// "Things to do" in every town. It hangs under the map and the chips, as
+// many as there are (measured).
 export function QuestList({ title, ...rest }) {
-  return <KitQuestList className="shire-list" label={title} {...rest} />;
+  return <KitQuestList className="shire-list" label={title} under=".shire-side" {...rest} />;
 }
 
 // Who's talking, over their head, and in their own voice where it's been

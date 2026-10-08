@@ -995,7 +995,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
 
       {walking && touch && <Stick onMove={onStick} />}
 
-      {list && <QuestList title="This week at Dunder Mifflin" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && !hud.fire && !hud.carry} />}
+      {list && <QuestList title="This week at Dunder Mifflin" quests={prog.quests.map((q) => ({ ...q, blurb: q.go }))} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && !hud.fire && !hud.carry} />}
     </div>
   );
 }
