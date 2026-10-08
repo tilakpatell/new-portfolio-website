@@ -1,6 +1,6 @@
 # Quaternius packs (CC0)
 
-The owner's Quaternius packs, bought or downloaded on 2026-10-08, kept as the GitHub release [`assets-quaternius`](https://github.com/tilakpatell/tilakpatell.com/releases/tag/assets-quaternius) instead of in the repo. Together the archives come to about 1.5 GB, and most of each pack is source files (`.blend`, FBX, OBJ, engine projects) the site never serves. Every pack is CC0 1.0 (public domain): the GLBs can be served on the site, and credit is optional. When a pack's models go into a world, list them in `scripts/credits.mjs`'s CC0 kits so CREDITS.md names Quaternius.
+The owner's Quaternius packs, bought or downloaded on 2026-10-08, kept as the GitHub release [`assets-quaternius`](https://github.com/tilakpatell/tilakpatell.com/releases/tag/assets-quaternius) instead of in the repo. Together the archives come to about 1.5 GB, and most of each pack is source files (`.blend`, FBX, OBJ, engine projects) the site never serves. Every pack is CC0 1.0 (public domain): the GLBs can be served on the site, and credit is optional. An imported pack's manifest (`public/kit/<pack>/index.json`) carries its licence and source, and `npm run credits` (`scripts/credits.mjs`) reads every manifest to name Quaternius, each pack and its model count in CREDITS.md's CC0 section.
 
 Unpacked, exactly as downloaded (Blender sources, FBX, glTF, textures, engine exports), the same packs are in their own repo, [tilakpatell/tilakverse-assets](https://github.com/tilakpatell/tilakverse-assets): clone it whole (about 2.2 GB), or one pack with a sparse checkout (its README shows how). It's public, so a session on any machine or account can get it.
 
@@ -11,7 +11,7 @@ node scripts/assets-fetch.mjs list
 node scripts/assets-fetch.mjs ual2 city
 ```
 
-Then import only what a world uses into `public/models/…`, compressed (meshopt, WebP), as the other import scripts do (`scripts/sketchfab-import.mjs`, `scripts/kenney.mjs`).
+Then a model pack goes in as the worlds' kit with `node scripts/kit/import.mjs <pack>`: one GLB a family, each model with its LOD1, compressed (meshopt, WebP), and a manifest, into `public/kit/<pack>/`. A pack that comes as FBX only (`farm`, `street`, `furniture`) is turned into GLBs first by `node scripts/kit/fbx.mjs <pack>`. `node scripts/kit-check.mjs` then holds every pack to its budgets. The manual is [`scripts/kit/README.md`](../../scripts/kit/README.md). The two animation libraries (`ual1`, `ual2`) go through `scripts/ual-bake.mjs` instead.
 
 ## What's in each
 

@@ -1,12 +1,13 @@
 // CREDITS.md, from the lists the site credits from itself: every Sketchfab
 // model (src/data/modelCredits.json, and the ones public/cc0/README.md lists
 // by hand), every CC0 scan, sky and kit (public/games/credits.json,
-// public/games/caribbean/credits.json, public/hq/CREDITS.md), every photo
+// public/games/caribbean/credits.json, public/hq/CREDITS.md, and the kit
+// packs' manifests, public/kit/*/index.json), every photo
 // (src/data/photos.js), the fonts and the public data, and the README's
 // thank-you to the artists. Run it after any of those change:
 //
 //   npm run credits
-import { readFile, writeFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 
@@ -78,6 +79,28 @@ const cc0Unique = [...new Map(cc0.map((a) => [`${a.source}|${a.name}`, a])).valu
 const kenney = cc0Unique.filter((a) => site(a.source) === 'Kenney');
 const scans = cc0Unique.filter((a) => site(a.source) !== 'Kenney').sort((a, b) => site(a.source).localeCompare(site(b.source)) || a.name.localeCompare(b.name));
 const cc0People = [...new Set(scans.flatMap((a) => a.by.split(/,\s*/)))].filter((p) => p !== 'ambientCG').sort();
+
+// the kit's packs (public/kit/<pack>/, scripts/kit/README.md), each from its
+// manifest: who made it and its title from `source` ('Quaternius, Ultimate
+// Space Kit (https://quaternius.com)'), its licence, how many models it has
+async function kits() {
+  const dirs = await readdir(join(ROOT, 'public/kit'), { withFileTypes: true }).catch(() => []);
+  const out = [];
+  for (const pack of dirs.filter((d) => d.isDirectory()).map((d) => d.name).sort()) {
+    const m = await json(`public/kit/${pack}/index.json`);
+    const [, by = m.source, title = pack, url] = m.source.match(/^([^,]+), (.+) \((https?:[^)]+)\)$/) ?? [];
+    out.push({ pack, by, title, url, licence: m.licence, models: Object.keys(m.models).length });
+  }
+  return out;
+}
+const and = (list) => (list.length < 2 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list.at(-1)}`);
+// one line a maker of the CC0 ones: each pack and its model count
+const kitsBy = new Map();
+for (const k of await kits()) if (k.licence === 'CC0-1.0') kitsBy.set(k.by, [...(kitsBy.get(k.by) ?? []), k]);
+const kitLines = [...kitsBy].map(
+  ([by, list]) =>
+    `**Kits:** ${link(by, list[0].url)}'s ${and(list.map((k) => `*${k.title}* (${k.models} models)`))}, under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/): trees, plants, rocks, space props and farm animals for the worlds, in [\`public/kit\`](public/kit) (brought in by [\`scripts/kit/import.mjs\`](scripts/kit/README.md)).`,
+);
 
 // ── photos ──
 const photos = Object.values(PHOTOS)
@@ -153,6 +176,7 @@ md.push(
   '',
   `Public domain, so no credit is needed, but they deserve it. From [Poly Haven](https://polyhaven.com) (${cc0People.join(', ')}), [ambientCG](https://ambientcg.com) and [Kenney](https://kenney.nl), whose kits make up *Portal panic* and more (${kenney.length} pieces). The lists by game are in [\`public/games/credits.json\`](public/games/credits.json), [\`public/hq/CREDITS.md\`](public/hq/CREDITS.md) and [\`public/cc0/README.md\`](public/cc0/README.md).`,
   '',
+  ...kitLines.flatMap((l) => [l, '']),
   '<details>',
   `<summary>All ${scans.length} scans and skies</summary>`,
   '',

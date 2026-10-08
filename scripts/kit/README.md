@@ -17,7 +17,8 @@ node scripts/kit/import.mjs naturemega                     # every family
 node scripts/kit/import.mjs naturemega birch pine          # just these (the manifest keeps the rest)
 node scripts/kit/import.mjs space --from ~/tilakverse-assets/quaternius/ultimate-space-kit
 node scripts/kit/import.mjs naturemega --dry               # what it would write, model by model
-npx vitest run scripts/kit                                 # the pure half and the fixture import
+node scripts/kit-check.mjs                                 # every pack against its manifest and budgets
+npx vitest run scripts/kit scripts/kit-check.test.mjs      # the pure half, the fixture import, the check
 ```
 
 - **Fetch.** `assets-fetch.mjs` unpacks a pack from the `assets-quaternius`
@@ -31,11 +32,14 @@ npx vitest run scripts/kit                                 # the pure half and t
   `lab/assets/<pack>-glb/`, which the import then reads. The same pack
   converted or imported twice gives the same bytes.
 - **Check.** The import ends with `checkManifest` (`manifest.mjs`) over what
-  it wrote and prints anything over budget; `scripts/kit-check.mjs` is to
-  run it over every pack and fail on it.
+  it wrote and prints anything over budget. `node scripts/kit-check.mjs`
+  runs it over every pack in `public/kit/`, flags any GLB in a pack's folder
+  that no model is in (a part left from an older import), prints each
+  pack's models, files and MiB, and exits 1 on anything wrong.
 - **Credit.** Every manifest carries `licence: 'CC0-1.0'` and `source`
-  (`Quaternius, <pack> (https://quaternius.com)`), for `npm run credits` to
-  name Quaternius from them.
+  (`Quaternius, <pack> (https://quaternius.com)`); `npm run credits` reads
+  them (`kits()` in `scripts/credits.mjs`) into one line of CREDITS.md's
+  CC0 section: Quaternius, each pack and its model count.
 
 ## FBX packs
 
