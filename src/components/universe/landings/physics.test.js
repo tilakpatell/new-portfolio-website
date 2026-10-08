@@ -88,7 +88,7 @@ describe('createLandingPhysics', () => {
 
   it('tells of a hard hit, with where and how hard', async () => {
     const hits = [];
-    const lp = await createLandingPhysics({ R, onHit: (h) => hits.push(h) });
+    const lp = await createLandingPhysics({ R, onHit: (force, at, entry) => hits.push({ force, at, entry }) });
     // (a barrel dropped a metre and a half onto the ground)
     const top = onTop();
     lp.add({ position: [top[0], top[1] + 1.5 * METRE, top[2]], quaternion: [0, 0, 0, 1], scale: 1, box: barrel, body: { shape: 'cylinder', mass: 2 }, awake: true });
@@ -96,6 +96,7 @@ describe('createLandingPhysics', () => {
     expect(hits.length).toBeGreaterThan(0);
     expect(hits.length).toBeLessThan(6); // (once a landing, not once a frame)
     expect(hits[0].force).toBeGreaterThan(0);
+    expect(hits[0].entry.handle).toBeTruthy();
     expect(Math.abs(dist(hits[0].at) - R) / METRE).toBeLessThan(2);
     lp.dispose();
   });

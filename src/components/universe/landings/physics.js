@@ -11,8 +11,8 @@
 // layout is every pilot's (seeded), but what's been knocked about isn't
 // sent: each pilot's props are their own.
 //
-// createLandingPhysics({ R, metre = METRE, g = 9.81, onHit({ entry, force,
-//   at }) }) → Promise<{ add({ position, quaternion, scale, box (metres,
+// createLandingPhysics({ R, metre = METRE, g = 9.81, onHit(force, at,
+//   entry) }) → Promise<{ add({ position, quaternion, scale, box (metres,
 //   its own frame), body, awake?, user }) → entry | null, walls([{ n, r }])
 //   (the landing's fixed things, as walk() has them: a circle along the
 //   ground round n, r map units; each a fixed post 3 m tall, so what's
@@ -26,7 +26,9 @@
 // step nothing, and a capsule sent at the frame's speed would run ahead of
 // its walker and fling what it meets.
 //   (onHit only for a hit over three times the thing's own weight, and not
-//   again within HIT_GAP s; position and at in map units)
+//   again within HIT_GAP s; position and at in map units; its arguments are
+//   lib/three/impacts.js's onHit's, the entry the key, so it can be handed
+//   the wiring's own)
 
 import { STEP, createPhysics } from '../../../lib/physics/world';
 import { addPusher } from '../../../lib/physics/pusher';
@@ -96,7 +98,7 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, onHit =
           ? (force, at) => {
               if (clock - entry.told < HIT_GAP) return;
               entry.told = clock;
-              onHit({ entry, force, at: at.map((a) => a * metre) });
+              onHit(force, at.map((a) => a * metre), entry);
             }
           : null,
       });

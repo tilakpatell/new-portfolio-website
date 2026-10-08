@@ -1755,6 +1755,65 @@ function shutterRaw(acIn, destIn, when = 0) {
   return 0.15;
 }
 
+// ── a thing knocked: a knock scaled by how hard (lib/impact.js’s gain, taken
+// as given) and placed round the listener, so a crate behind you is behind
+// you. The room is turned into the listener’s own frame here, rather than
+// moving the context’s one listener, which other sounds share. False when
+// there’s no sound to make (sound off, or before the first gesture). ──
+const PLACED = { panningModel: 'equalpower', distanceModel: 'linear', maxDistance: 60 };
+
+// `at` relative to the listener, as x right, y up, z behind
+function heardFrom(at, { position, forward, up = [0, 1, 0] }) {
+  const d = [0, 1, 2].map((i) => at[i] - position[i]);
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const f = forward.map((a) => a / (Math.hypot(...forward) || 1));
+  const r = cross(f, up);
+  const rl = Math.hypot(...r);
+  // (looking straight up or down: no right to speak of)
+  if (!(rl > 1e-6)) return d;
+  const right = r.map((a) => a / rl);
+  return [dot(d, right), dot(d, cross(right, f)), -dot(d, f)];
+}
+
+export function thud({ gain, pitch = 1, at = null, listener = null, context = audioContext, destination = output } = {}) {
+  const ac = context();
+  const dest = ac ? destination() : null;
+  if (!ac || !dest || !(gain > 0)) return false;
+  const t = ac.currentTime + 0.005;
+  let out = dest;
+  if (at && listener) {
+    const p = ac.createPanner();
+    Object.assign(p, PLACED);
+    const [x, y, z] = heardFrom(at, listener);
+    if (p.positionX) [p.positionX.value, p.positionY.value, p.positionZ.value] = [x, y, z];
+    else p.setPosition?.(x, y, z);
+    p.connect(dest);
+    out = p;
+  }
+  // the knock: noise through a band, sharp in and quickly gone
+  const n = noiseSource(ac, 'white', 1);
+  const band = ac.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = 1800 * pitch;
+  band.Q.value = 1.2;
+  const ng = ac.createGain();
+  env(ng.gain, t, [[0, 0.0001], [0.004, 0.3 * gain, 'lin'], [0.09, 0.0001]]);
+  n.connect(band).connect(ng).connect(out);
+  n.start(t, Math.random() * 0.5);
+  n.stop(t + 0.1);
+  // the body: a low sine falling to half
+  const o = ac.createOscillator();
+  o.type = 'sine';
+  env(o.frequency, t, [[0, 90 * pitch], [0.12, 45 * pitch]]);
+  const og = ac.createGain();
+  env(og.gain, t, [[0, 0.0001], [0.01, 0.18 * gain, 'lin'], [0.12, 0.0001]]);
+  o.connect(og).connect(out);
+  o.start(t);
+  o.stop(t + 0.15);
+  return true;
+}
+
 const every = (ms, fn) => {
   let last = -1e9;
   return (ac, ...rest) => {

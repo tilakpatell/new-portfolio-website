@@ -48,7 +48,9 @@
 // on it), and until it's there (or if it won't load) they stand as solid
 // as ever. You and your mate and the troops shove what you walk into,
 // shots knock what they hit, what's knocked stops at the landing's fixed
-// things and the parked ship, and a hard knock is heard ('impact').
+// things and the parked ship, and a hard knock is heard where it was, puffs
+// dust and nudges the camera (lib/three/impacts.js; a shot's own knock is
+// still 'impact').
 //
 // createFoot({ map, emit, reduced, small, planetOf, renderer, prepare }) → { phase, prefetch(id, kind), begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
@@ -78,6 +80,8 @@ import { applyEmote, createEmoteWheel, heardEmote, keepEmote, readEmote, readEmo
 import { createPortalFx, meshyJoints } from '../../lib/three/portalFx';
 import { createGadgetFx } from '../../lib/three/gadgetFx';
 import { frameFrom, spring } from '../../lib/three/ik';
+import { createDust } from '../../lib/three/dust';
+import { wireImpacts } from '../../lib/three/impacts';
 import { SIDES, sideFor, squadKinds } from './sides';
 import { FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, bolt as makeBolt, byTrench, facingAlong, flat, fly as flyBolt, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
 import { TRENCH_MODEL, trenchOf } from './deep';
@@ -2572,12 +2576,32 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       return false;
     }
   };
-  // a hard knock on a loose thing, heard as near as it is
-  const heard = ({ force, at: p }) => {
+  // a hard knock on a loose thing (lib/three/impacts.js): a thud where it
+  // was round your ears, a puff of dust rising off the ground there, and a
+  // nudge of the camera's own kick for a near one. All of it in metres in
+  // the planet's space (the dust's mesh is scaled to the map), so the hit
+  // law's numbers are a barrel's.
+  const knocks = wireImpacts({
+    dust: (() => {
+      const d = createDust({ count: small ? 96 : 192 });
+      d.mesh.scale.setScalar(METRE);
+      root.add(d.mesh);
+      return d;
+    })(),
+    listener: () => (S.me ? { position: at(S.me, S.R).map((a) => a / METRE), forward: S.me.f, up: S.me.n } : null),
+    toWorld: (p) => p.map((a) => a / METRE),
+    up: (p) => vec.unit(p),
+    shake: (k) => {
+      // (a hit by you, not one over the field; none with reduced motion)
+      const d = knocked && S.me ? vec.len(vec.add(knocked, at(S.me, S.R), -1)) / METRE : Infinity;
+      if (!reduced && d < 12) S.cam.kick.v += k * 6 * (1 - d / 12);
+    },
+  });
+  let knocked = null; // (where the hit being told was, map units)
+  const heard = (force, p, entry) => {
     if (!S.me) return;
-    const d = vec.len(vec.add(p, at(S.me, S.R), -1)) / METRE;
-    const near = (1 - d / 30) * Math.min(1, Math.max(0.3, force / 40));
-    if (near > 0.1) emit({ type: 'impact', near });
+    knocked = p;
+    knocks.onHit(force, p, entry);
   };
   // the landing's bodies, a frame: any new ones in, the people where the
   // walk has them, a step, and what moved stood where it went
@@ -2704,6 +2728,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     fx.update(dt);
     pfx.update(dt);
     gfx.update(dt);
+    knocks.update(dt);
     spring(S.cam.kick, dt, 240, 22);
     for (const s of puffs) {
       if (!s.visible) continue;
@@ -3588,6 +3613,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       fx.dispose();
       pfx.dispose();
       gfx.dispose();
+      knocks.dispose();
       flare?.removeFromParent();
       lamps.dispose();
       if (vm) for (const o of vm.owned) o.dispose?.();
