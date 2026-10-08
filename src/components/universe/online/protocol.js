@@ -43,9 +43,10 @@
 //   foot  { p: planet, k: ship kind, s: [n, f] where it's parked, a: walker, b: walker or null }
 //         ten times a second while your crew are down on a planet ({ p: null }: back in);
 //         a walker is [who, n (3), f (3), h, speed, side, aim] (footScene.js, foot.js)
-//   siege { e, m, t, x, l }                              the Citadel's siege (siege.js): its epoch,
+//   siege { e, m, t, x, l, i }                           the Citadel's siege (siege.js): its epoch,
 //                                                       your share of each part's damage, the
-//                                                       totals you know, when it went up, the last hit
+//                                                       totals you know, when it went up, the last
+//                                                       hit; your siege id, the same through a reload
 //   war   { e, m, t, i }                               the galaxy's war (galaxy/gcw.js, a tally.js
 //                                                       message): the campaign, your points and the
 //                                                       totals you know, a page of TALLY.keys at a
