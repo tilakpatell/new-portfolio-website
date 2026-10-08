@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
+import { settle } from '../../../lib/settle';
+import LoadingVeil from '../../worlds/LoadingVeil';
 import { local, useFrameLoop, useInView, useMediaQuery, usePageVisible } from '../../../lib/hooks';
 import { readPad, typing } from '../../games/pad';
 import { Bubble, Convo, QuestList, Stick } from '../../middleearth/towns/TownHud';
@@ -93,6 +95,8 @@ function useSaid(who, text) {
 }
 
 // (`leaveLabel`: what the hangar's way out says; the page knows where it goes)
+const PREPARE_WAIT = 30000; // ms at most the veil waits on the Citadel's prepare
+
 export default function CitadelWorld({ onLeave, leaveLabel = 'Back to C-137' }) {
   const three = use3D();
   const [done, setDone] = useState(() => {
@@ -100,7 +104,7 @@ export default function CitadelWorld({ onLeave, leaveLabel = 'Back to C-137' }) 
     return citadelProgress(Array.isArray(d) ? d : []).done;
   });
   const prog = citadelProgress(done);
-  const [gl, setGl] = useState('loading'); // loading | on | failed | lost
+  const [gl, setGl] = useState('loading'); // loading | preparing | on | failed | lost
   const { unlock } = useAchievements();
   const complete = useCallback(
     (id) => {
@@ -126,6 +130,7 @@ export default function CitadelWorld({ onLeave, leaveLabel = 'Back to C-137' }) 
 const ROOM = { bound: 160, motion: true };
 
 function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
+  const [prep, setPrep] = useState({ value: 0, step: null }); // how far its prepare has got, for the veil
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const trav = useTravellers('citadel', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -203,7 +208,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
         if (dead || !canvas.current) return null;
         return createCitadelWorld(canvas.current, { onLost: () => !dead && setGl('lost'), looks: looksRef.current });
       })
-      .then((a) => {
+      .then(async (a) => {
         if (!a) return;
         if (dead) {
           a.dispose();
@@ -214,7 +219,16 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
         // (cue: something for the people to react to, as the world would say it: { type: 'seen', id } …)
         if (import.meta.env.DEV) window.__CITADEL__ = { api: a, sim: sim.current, complete, down: () => liftRef.current?.down(true), up: () => liftRef.current?.up(), cue: (c) => sim.current?.cues.push(c), emote: (id) => sim.current && (sim.current.emote = { id, at: sim.current.t }) }; // for the QA scripts
         fit();
-        setGl('on');
+        // everything onto the graphics chip behind the veil (Mortytown too,
+        // if Rick's going straight back down), then shown (lib/stagePrepare:
+        // bounded, so it never holds the Citadel up for good)
+        setGl('preparing');
+        await settle(
+          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead, { town: Boolean(sim.current.autoDown) }),
+          PREPARE_WAIT,
+        );
+        if (dead || api.current !== a) return;
+        setGl((g) => (g === 'preparing' ? 'on' : g));
         // left in Mortytown last time: back down the lift
         if (sim.current.autoDown) {
           sim.current.autoDown = false;
@@ -676,6 +690,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
   useFrameLoop((ms) => {
     const a = api.current;
     if (!a || a.lost) return;
+    if (a.preparing) ms = 0; // (behind the veil: laid out, nothing moving)
     const s = sim.current;
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
@@ -975,7 +990,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
     }
     if (++s.frame % 4 === 0) drawMap(map.current, s.where === 'mortytown' ? { scale: TOWN_MAP, h: s.h, markers, base: drawTown } : { scale: MAP_SCALE, h: s.h, markers, night: red, base: drawConcourse(p) });
     if (s.frame % 120 === 0 && s.mode === 'walk') local.set(AT, { x: s.h.x, z: s.h.z, face: s.h.face, where: s.where });
-  }, live);
+  }, live || (gl === 'preparing' && inView)); // (and laid out, undrawn, behind the veil)
 
   // the world's own pointer: drag to look round
   const drag = useRef(null);
@@ -1055,6 +1070,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
     <div ref={box} className="shire-stage citadel-stage" data-touch={touch || undefined} data-mode={mode} data-mood={prog.mood} data-room={inside ? hud.room : undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="The Citadel of Ricks in 3D: a terrace over a city of pale green towers under a great dome, a column of green portal fluid at its middle, crowded with Ricks and Mortys, and Rick C-137 walking through it" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
       {gl === 'loading' && <p className="shire-loading">Opening a portal to the Citadel…</p>}
+      <LoadingVeil shown={gl === 'preparing'} progress={prep.value} step={prep.step} title="The Citadel of Ricks" line="Opening a portal to the Citadel…" />
       {townLoading && <p className="shire-loading">Taking the lift down to Mortytown…</p>}
 
       {walking && (

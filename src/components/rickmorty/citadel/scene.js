@@ -15,6 +15,7 @@
 
 import * as THREE from 'three';
 import { createStage } from '../../../lib/stage3d';
+import { stagePrepare } from '../../../lib/stagePrepare';
 import { createModels } from '../../../lib/models';
 import { device } from '../../../lib/device';
 import { allOrUndo } from '../../../lib/settle';
@@ -96,6 +97,10 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
   const tier = device().tier;
   const soft = tier === 'low';
   const stage = createStage(canvas, { soft, shadows: false, fov: 52, near: 0.1, far: 520, bloom: { strength: 0.5, radius: 0.42, threshold: 0.9 }, onLost });
+  // made ready behind its loading veil before its first frame (lib/stagePrepare):
+  // Mortytown built first if Rick's going back down to it, both floors' light
+  // baked, everything (the rooms and Mortytown too, hidden) sent and compiled
+  const prep = stagePrepare(stage, { soft, roots: () => [stage.scene], grounds: () => [ground, town?.ground], late: () => (townJob ? [townJob] : []) });
   stage.grade({ contrast: 0.08, saturation: 1.08, vignette: 0.2, grain: 0.008, shadow: [0.0, 0.012, 0.02], high: [0.02, 0.012, 0.0] });
   const { scene, camera, renderer } = stage;
   renderer.info.autoReset = false;
@@ -225,7 +230,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
           unlined.push(...district.hide);
           const lights = district.lights.map(([x, y, z, c]) => [x + TOWN.x, y + TOWN.y, z + TOWN.z, c]);
           const tracked = [...(folk?.movers ?? []), people.rick].filter((f) => f?.group).map(walker);
-          const ground = groundWorld({ renderer, scene, floor: [district.floor], sun: key, casters: [district.group], skip: [fxRoot, ...district.hide], movers: tracked, shade: 0x2a2418, blobOpacity: 0.6, tier, auto: true, clip: true });
+          const ground = groundWorld({ renderer, scene, floor: [district.floor], sun: key, casters: [district.group], skip: [fxRoot, ...district.hide], movers: tracked, shade: 0x2a2418, blobOpacity: 0.6, tier, auto: true, clip: true, cache: { world: 'citadel', place: 'mortytown' } });
           house?.adopt(district.group);
           await stage.precompile(district.group);
           district.group.visible = false;
@@ -415,7 +420,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
     ground?.update();
     town?.ground.update();
     renderer.info.reset();
-    stage.render(ms / fast);
+    if (!prep.held()) stage.render(ms / fast);
   };
 
   // ── events: a burst of sparks, a puff, a shake ──
@@ -491,6 +496,7 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
         tier,
         auto: true,
         clip: true,
+        cache: { world: 'citadel', place: 'concourse' },
       })
     : null;
   const setRick = (look) => {
@@ -511,6 +517,15 @@ export async function createCitadelWorld(canvas, { onLost, looks = null } = {}) 
   await stage.precompile();
 
   return {
+    // everything onto the graphics chip behind the page's veil (Mortytown
+    // built first when `town`: Rick's going straight back down), and true meanwhile
+    prepare(onProgress, alive, { town: down = false } = {}) {
+      if (down) enterTown();
+      return prep.prepare(onProgress, alive);
+    },
+    get preparing() {
+      return prep.preparing;
+    },
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     people: import.meta.env.DEV ? people : null, // (and their figures: people.cast.get(id).react('greet'), …)
