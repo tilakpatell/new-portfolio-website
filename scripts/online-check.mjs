@@ -15,10 +15,10 @@
 // even past where a stranger's is gone; close by it's the full tag with its
 // level chip, and with Bravo behind, Alpha's HUD has a green marker at the
 // edge with Bravo's callsign.
-// or, on the universe map (--ride): Bravo rides a hyperlane far out of
-// Alpha's 3,000 (online/pilotsRules.js's DRAW), so Alpha sees a streak along
-// the lane; Alpha's roster names the region Bravo is in; then Bravo comes off
-// the lane beside Alpha, and is a ship again:
+// or, on the universe map (--ride): Bravo goes far out of Alpha's 3,000
+// (online/pilotsRules.js's DRAW), so Alpha has Bravo as a blip on the chart
+// alone; Alpha's roster names the region Bravo is in; then Bravo comes in
+// beside Alpha, and is a ship again:
 //   node scripts/online-check.mjs --ride
 // (BASE=http://127.0.0.1:5188/?quality=low# for a dev server elsewhere)
 // (behind a proxy: HTTPS_PROXY, and BRIDGE=1 NODE_USE_ENV_PROXY=1 if the
@@ -297,6 +297,37 @@ if (ride) {
   try {
     await Promise.all([a.goto(BASE + '/universe'), b.goto(BASE + '/universe')]);
     await Promise.all([a, b].map((p) => p.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship, null, { timeout: 240000 })));
+    // how Alpha draws Bravo: 'ship' or 'blip' (pilots.js's chart)
+    const modeOf = () => a.evaluate(() => window.__universeDebug.pilots.chart.find((p) => p.name === 'Bravo')?.mode ?? null);
+    console.log(`ok   Alpha sees Bravo on the map: ${await waitFor(modeOf, 150000, 'Alpha sees Bravo on the map')}`);
+    // Bravo out at the world furthest from the middle of the map
+    const far = await b.evaluate(async () => {
+      const L = await import('/src/components/universe/layout.js');
+      const id = L.ORDER.reduce((x, y) => (Math.hypot(L.POSITIONS[y][0], L.POSITIONS[y][2]) > Math.hypot(L.POSITIONS[x][0], L.POSITIONS[x][2]) ? y : x));
+      const [x, y, z] = L.POSITIONS[id];
+      const st = window.__universeDebug.state;
+      st.auto = null;
+      Object.assign(st.ship, { x: x + L.REACH[id] * 3, y, z, speed: 0 });
+      return id;
+    });
+    console.log(`ok   Bravo out by ${far}: ${await waitFor(async () => ((await modeOf()) === 'blip' ? 'a blip' : null), 120000, 'Bravo far off is a blip')}`);
+    if (out) await a.screenshot({ path: `${out}/online-far.png` });
+    const line = await waitFor(async () => {
+      const l = await rosterLine(a, 'Bravo').catch(() => '');
+      return l.includes('here') ? null : l || null;
+    }, 90000, `roster names where Bravo went (${then})`);
+    console.log(`ok   roster: ${line}`);
+    const lv = await a.locator('.universe-online-pilot', { hasText: 'Bravo' }).first().locator('.universe-online-lv').textContent();
+    check(/^Lv \d+$/.test(lv), `Bravo's row has a level chip (${lv})`);
+  } catch (e) {
+    failed++;
+    console.log(`FAIL ${e.message}`);
+  }
+}
+if (ride) {
+  try {
+    await Promise.all([a.goto(BASE + '/universe'), b.goto(BASE + '/universe')]);
+    await Promise.all([a, b].map((p) => p.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship, null, { timeout: 240000 })));
     // how Alpha draws Bravo: 'ship', 'streak' or 'blip' (pilots.js's chart)
     const modeOf = () => a.evaluate(() => window.__universeDebug.pilots.chart.find((p) => p.name === 'Bravo')?.mode ?? null);
     console.log(`ok   Alpha sees Bravo on the map: ${await waitFor(modeOf, 150000, 'Alpha sees Bravo on the map')}`);
@@ -320,14 +351,13 @@ if (ride) {
       return /Universe · /.test(l) ? l : null;
     }, 60000, 'the roster names Bravo’s region');
     console.log(`ok   roster: ${line}`);
-    // off the lane, beside Alpha
+    // in beside Alpha
     const near = await a.evaluate(() => {
       const s = window.__universeDebug.state.ship;
       return [s.x + 40, s.y, s.z + 40];
     });
     await b.evaluate(([x, y, z]) => {
       const st = window.__universeDebug.state;
-      st.ride = null;
       Object.assign(st.ship, { x, y, z, speed: 0 });
     }, near);
     console.log(`ok   Bravo beside Alpha: ${await waitFor(async () => ((await modeOf()) === 'ship' ? 'a ship' : null), 120000, 'Bravo near is a ship')}`);

@@ -11,12 +11,12 @@
 // is fought in the galaxy, galaxy/gcw.js, not here; Rick and Morty's and
 // Breaking Bad's are here.)
 //
-// Since the spread (scale.js's SPREAD) a war's front can sit at a junction
-// of the lanes instead (the design:
+// Since the spread (scale.js's SPREAD) a war's front can sit at a waypoint
+// instead (waypoints.js, once the hyperlanes' nodes) (the design:
 // docs/superpowers/specs/2026-10-07-universe-scale-hyperlanes-design.md,
 // decision 9): the beacon nearest the middle of the war's own places, its
-// first sector and its last (frontAt), so the war is somewhere the lanes go,
-// seen from them as a far fight, not met by accident. Given `beacons`,
+// first sector and its last (frontAt), so the war is somewhere to go,
+// seen from afar as a far fight, not met by accident. Given `beacons`,
 // createFront fights every battle there; the sectors are still what's fought
 // over, by name, and still move on as they're won.
 //
@@ -36,7 +36,7 @@ import { createBattleScene } from './battleScene';
 import { contested, loadWar, newWar, owner, resolve, saveWar } from './war';
 import { warFor } from './wars';
 import { DEEP, easeOpen, gapAlong } from './deep';
-import { NODES } from './hyperlanes';
+import { NODES } from './waypoints';
 import { sharpen } from '../../lib/three/textures';
 
 export const ZONE = {
@@ -51,7 +51,7 @@ export function zoneOf(dist, was) {
   return dist < ZONE.near ? 'near' : 'out';
 }
 
-// the lanes' beacons, where a war's front can be (hyperlanes.js)
+// the waypoints' beacons, where a war's front can be (waypoints.js)
 export const BEACONS = NODES.filter((n) => n.kind === 'beacon');
 
 // the beacon nearest the middle of the war's own places: the first side's
@@ -117,7 +117,7 @@ export function createFront(map, { side, war: given = null, beacons = null, mode
     return [dx / l, dz / l];
   })();
   const sector = () => war.sectors[Math.max(0, Math.min(war.sectors.length - 1, contested(state)))];
-  // where the battles are: the war's beacon, given the lanes' (it doesn't
+  // where the battles are: the war's beacon, given the waypoints' (it doesn't
   // move), else the sector fought over
   const post = beacons ? frontAt(war, beacons) : null;
   const spot = () => post?.at ?? sector().at;

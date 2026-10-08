@@ -125,7 +125,7 @@ All of the content (roles, projects, skills, education) lives in [`src/data/`](s
 
 The front door (`/`) is a map of the whole site as places in space: the portfolio's pages are stations round a sun, and each fandom is a planet out in the dark. A first visit opens with a crawl, then puts you in a cockpit (the Millennium Falcon, an X-wing, Rick's space cruiser or Walt and Jesse's RV) and launches you into the map. Fly to a planet to open its page.
 
-The places are a long way apart, the far ones only specks of light until you come near, and a web of hyperlanes runs between them in three tiers: local lanes round each neighbourhood, trunk routes between them and an express out to the gates. Fly into a lane’s ring, or merge into it at speed, and you ride it at hyperspeed with the traffic; hold S to pull out anywhere, or pick a place on the nav map and the autopilot takes the lanes for you. From far off the lanes are threads of moving light; on one, freighters, convoys and fighters ride beside you, the same ships for every pilot online, and you can shoot them.
+The places are a long way apart, and it feels it, the way the Star Wars galaxy does: from anywhere, the other worlds are only stars in the sky, white-hot and tinted their own colour, the nearer ones brighter, and a world turns into a planet only when you come near it. The big things read from anywhere: the Maw's burning disk, the Veil and the Cradle hanging huge in the dark, the big suns glaring. Names show where you look. Put the nose on a star and press `J` (or tap Jump), and the ship comes round onto it, spools up and jumps; or fly there yourself, at super speed or cruising. All of it under one sky, shared by every universe on the site and sharper on a strong machine.
 
 <table>
 <tr>
@@ -180,7 +180,7 @@ The places are a long way apart, the far ones only specks of light until you com
 | `O` | Flight settings (steering, aim assist, lock tracking, inverted pitch and more) |
 | `H` | The hangar: paint and parts for the ship you're flying |
 | `M` | The nav map: everywhere on one chart. Pick a place and a drive (hyperspeed, a jump; super speed, 3× the pulse drive; or cruise), with the trip time for each. The galaxy's star systems are on it too (the ship flies to the gate and on through), every place has a link that opens the map right there, and Tour takes you round everything in turn |
-| `J` | Jump to the place picked at hyperspeed. Each crew goes its own way: the X-wing and the Falcon to lightspeed, Rick's cruiser through a portal, Walt and Jesse's RV crystallising into Blue Sky and shattering out of it at the other end |
+| `J` | Jump to the star your nose is on (its name shows with J), or else the place picked: the ship comes round onto it and goes. Each crew goes its own way: the X-wing and the Falcon to lightspeed, Rick's cruiser through a portal, Walt and Jesse's RV crystallising into Blue Sky and shattering out of it at the other end |
 
 To go into a planet's world, fly down into its air: the glow round it. Come in at a normal speed and you're straight into the world itself (fly down into Bird World and you're with Birdperson), with no landing pad on the way. Come in boosting and it's a crash, and the crash takes you into the planet's world as it always has.
 

@@ -7,9 +7,9 @@ import { RIM, SECTORS } from '../../universe/layout';
 // fakes for the drawing: what was made, re-anchored and let go
 function fakes() {
   const made = new Map();
-  const make = (sector, { lanes }) => {
+  const make = (sector) => {
     const group = new THREE.Group();
-    const s = { group, sector, lanes, at: null, disposed: false, update() {}, reanchor: (at) => (s.at = at), dispose: () => ((s.disposed = true), group.removeFromParent()) };
+    const s = { group, sector, at: null, disposed: false, update() {}, reanchor: (at) => (s.at = at), dispose: () => ((s.disposed = true), group.removeFromParent()) };
     made.set(sector.id, s);
     return s;
   };
@@ -52,8 +52,6 @@ describe('the Expanse on the map', () => {
     run(90000, { ex }, 20);
     expect([...f.made.keys()].sort()).toEqual(['E:0,-1', 'E:0,1', 'E:1,-1', 'E:1,0', 'E:1,1', 'E:2,-1', 'E:2,0', 'E:2,1'].sort());
     expect(f.field.builds.at(-1).slice(0, 2)).toEqual([1, 0]);
-    // (each with its lanes)
-    expect(f.made.get('E:1,0').lanes.length).toBeGreaterThan(8);
     // back inside the rim: all of it let go
     run(0, { ex }, 2);
     expect([...f.made.values()].every((s) => s.disposed)).toBe(true);
