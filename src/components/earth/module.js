@@ -15,7 +15,7 @@
 
 import { HOME_CITY } from '../../data/places';
 import { countryName, globeData } from '../travel/globe3d/data';
-import { AROUND_KM, HOME_V, KM, STAMPS, add, angle, arrivals, autopilot, bearingOf, bearingTo, cross, easeLook, fly, kmBetween, logTrail, newFlight, newLook, nextStamp, packPose, placeById, rotate, scale, seaName, sunVec, toLonLat, turnLook, unit } from './rules';
+import { ALT, AROUND_KM, HOME_V, KM, STAMPS, add, angle, arrivals, autopilot, bearingOf, bearingTo, cross, easeLook, fly, kmBetween, logTrail, newFlight, newLook, nextStamp, packPose, placeById, rotate, scale, seaName, sunVec, toLonLat, turnLook, unit } from './rules';
 import { addFlown, addStamp, readFlown, readStamps } from './stamps';
 
 const sounds = () => import('./sounds');
@@ -75,14 +75,14 @@ const onButton = () => typeof document !== 'undefined' && (document.activeElemen
 
 export default {
   id: 'earth',
-  shading: 'glsl',
+  shading: 'nodes',
   mb: 2,
   label: 'The Earth in 3D, with a plane flying over it to the places in the passport. Arrow keys or W A S D to fly, Shift to go faster, R for a barrel roll, V for the cockpit, M for orbit, P for the passport.',
   async create(rt, { small = false, labels = {}, arrow = null, travellers = null } = {}) {
     const { createEarth } = await import('./scene');
     const { saves, events } = rt;
     sounds().then((x) => x.setBus(rt.audio.bus()));
-    const api = createEarth(rt.gfx.renderer, { small, lost: () => rt.gfx?.lost ?? true });
+    const api = createEarth(rt.gfx.renderer, { small, lost: () => rt.gfx?.lost ?? true, compile: (scene, camera) => rt.gfx.compile(scene, camera) });
     const f = newFlight();
     const sun = sunVec();
     const s = {
@@ -352,7 +352,7 @@ export default {
 
     const draw = ({ dt }) => {
       if (disposed) return;
-      api.render({ flight: f, sun: s.sun, view: s.view, stamped: s.stamped, orbit: s.orbit, trail: s.trail, trailV: s.trailV, look: s.look, cockpit: s.cockpit, travellers: s.others }, dt * 1000);
+      api.render({ flight: f, sun: s.sun, view: s.view, stamped: s.stamped, orbit: s.orbit, trail: s.trail, trailV: s.trailV, look: s.look, cockpit: s.cockpit, travellers: s.others, t: s.held }, dt * 1000);
       // the labels over the places on screen
       const close = flying();
       for (const st of [...STAMPS, { id: 'home', v: HOME_V }]) {
@@ -414,6 +414,23 @@ export default {
         if (import.meta.env.DEV && typeof window !== 'undefined' && window.__EARTH__?.sim === s) delete window.__EARTH__;
       },
     };
+    // (development: a named view for scripts/gpu-parity.mjs, the world put
+    // somewhere fixed and held still, the clouds' drift and the beacons'
+    // pulse too, so two renders of it can be compared: 'orbit', the globe
+    // as it opens over home; 'low', at the lowest the plane flies, over
+    // Syracuse heading east)
+    if (import.meta.env.DEV) {
+      world.view = (name) => {
+        if (name !== 'orbit' && name !== 'low') throw new Error(`no view ${name}`);
+        Object.assign(f, newFlight({ bearing: name === 'low' ? 90 : 75 }));
+        if (name === 'low') f.alt = ALT.min;
+        Object.assign(s, { touched: true, dived: true, paused: true, target: null, look: newLook(), cockpit: false, view: name === 'low' ? 1 : 0, trail: [], trailV: s.trailV + 1, held: 1000 });
+        s.sun = s.sunMode === 'day' && name === 'low' ? daySun(f) : sunVec();
+        s.orbit = orbitOver(f.p, s.sun);
+        setMode(name === 'low' ? 'fly' : 'orbit');
+        api.snap?.();
+      };
+    }
     if (import.meta.env.DEV && typeof window !== 'undefined') window.__EARTH__ = { api, sim: s, world }; // for the QA scripts
     return world;
   },
