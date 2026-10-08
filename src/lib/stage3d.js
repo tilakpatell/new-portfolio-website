@@ -13,6 +13,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { budget, pixelRatio } from './device';
+import { guard } from './three/frameGuard';
 import { precompile as compileFor, precompilePasses, quiet, releaseContext } from './three/renderer';
 import { sharpen } from './three/textures';
 
@@ -90,6 +91,8 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
   // less multisampling, a weak device without shadows or bloom
   const fit = budget();
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false, stencil: false }));
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = exposure;

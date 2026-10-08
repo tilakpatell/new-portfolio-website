@@ -87,10 +87,29 @@ describe('where there is to go', () => {
 });
 
 describe('the drives', () => {
-  it('keeps the drive picked, and falls back to super speed for anything else', () => {
+  it('keeps the drive picked, and falls back to the lanes for anything else', () => {
     for (const d of DRIVES) expect(parseDrive(d.id)).toBe(d.id);
-    expect(parseDrive(undefined)).toBe('super');
-    expect(parseDrive('warp')).toBe('super');
+    expect(parseDrive(undefined)).toBe('lanes');
+    expect(parseDrive('warp')).toBe('lanes');
+    expect(parseDrive('nonsense')).toBe('lanes');
+  });
+
+  it('has the lanes first, the everyday way, and the hyperdrive slow to charge', () => {
+    expect(DRIVES[0]).toMatchObject({ id: 'lanes', name: 'Hyperlanes', verb: 'Take the lanes', about: 'The autopilot takes the lanes, riding with the traffic. You fly the whole way and can pull out any time.' });
+    expect(HYPER.recharge).toBe(30);
+  });
+
+  it('times a trip by the lanes from the route, quicker than super speed out to the furthest world', () => {
+    const from = spawn(null);
+    const far = worlds.filter(inMain).reduce((a, b) => (Math.hypot(...destinationById(a).at) > Math.hypot(...destinationById(b).at) ? a : b));
+    const lanes = tripTime(from, far, 'lanes');
+    expect(lanes).toBeLessThan(40);
+    expect(lanes).toBeLessThan(tripTime(from, far, 'super'));
+    // (Review Focus 4: a hop between two home stations is the autopilot of today's: the same time as super speed)
+    const home = { ...spawn('home'), speed: 0 };
+    expect(tripTime(home, 'projects', 'lanes')).toBe(tripTime(home, 'projects', 'super'));
+    // and through the portal: by the lanes to it, on from the far end at super speed
+    expect(tripTime(from, MOONS[0].id, 'lanes')).toBeGreaterThan(0);
   });
 
   it('lets the hyperdrive jump once it has charged, and never while interdicted', () => {
@@ -108,7 +127,7 @@ describe('the drives', () => {
       expect(quick.hits, id).toBe(0);
       expect(orbiting(quick.s, null), id).toBe(id);
       expect(quick.t, id).toBeLessThan(cruise.t * 0.65);
-      expect(quick.t, id).toBeLessThan(20);
+      expect(quick.t, id).toBeLessThan(40); // (34 s to the Caribbean, the furthest, since the spread: scale.js's SPREAD; under 20 before)
       if (id !== 'starwars') expect(quick.top, id).toBeGreaterThan(SHIP.pulse * (inMain(id) ? 2 : 1)); // (well past the pulse drive; the gate's close to home, and the sector's first worlds to the Citadel)
     }
   });
@@ -349,6 +368,19 @@ describe('across the sectors', () => {
     expect(legOf(there, 'gazorpazorp')).toBe('gazorpazorp');
     expect(legOf(there, 'marvel')).toBe('rmportal-back');
     expect(legOf(there, 'home')).toBe('rmportal-back');
+  });
+
+  it('a pilot goal in the other sector goes by the portal', () => {
+    // (where they are says which sector: their pose, not a place on the map)
+    const inCurve = { x: RM[0] + 300, y: 2, z: RM[2] + 120, heading: 0 };
+    const atHome = { x: 40, y: 2, z: 300, heading: 1 };
+    expect(legOf(home(), 'pilot:ab12', inCurve)).toBe('rmportal');
+    expect(legOf(home(), 'pilot:ab12', atHome)).toBe('pilot:ab12');
+    const there = startFor('gazorpazorp');
+    expect(legOf(there, 'pilot:ab12', atHome)).toBe('rmportal-back');
+    expect(legOf(there, 'pilot:ab12', inCurve)).toBe('pilot:ab12');
+    // with no pose, nowhere to route by: the goal as it is
+    expect(legOf(home(), 'pilot:ab12', null)).toBe('pilot:ab12');
   });
 
   it('counts the way through the portal in the distance and the trip time', () => {

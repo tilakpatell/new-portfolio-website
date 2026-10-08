@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFoot, writeLooksWire, writePack, writePose, writeShot } from './protocol';
+import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFactions, writeFoot, writeLooksWire, writePack, writePose, writeShot } from './protocol';
 import { STOCK_LOADOUT, writeOutfit } from '../outfit';
 import { STOCK_BUILD, writeBuild } from '../shipyard/build';
 import { defaultLook, readLook, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
@@ -40,13 +40,48 @@ describe('randomCallsign', () => {
   });
 });
 
+const NO_FACTIONS = { side: null, standing: null, war: null, oath: null, rank: null };
+
 describe('readHello', () => {
+  it('a hello without the new fields reads as before', () => {
+    // (a pilot on a build from before the wallet: level 1, nobody's)
+    const h = readHello({ n: 'Old Timer', k: 'falcon', c: 2, w: '/universe' });
+    expect(h.level).toBe(1);
+    expect(h.factions).toEqual(NO_FACTIONS);
+    expect(h).toMatchObject({ name: 'Old Timer', kind: 'falcon', kills: 2, where: '/universe' });
+  });
+  it('lv is clamped and f is whitelisted', () => {
+    expect(readHello({ n: 'A', lv: 99 }).level).toBe(11);
+    expect(readHello({ n: 'A', lv: 7 }).level).toBe(7);
+    expect(readHello({ n: 'A', lv: 4.7 }).level).toBe(4);
+    for (const junk of [0, -3, '9', null, NaN, [5], { v: 5 }]) expect(readHello({ n: 'A', lv: junk }).level).toBe(1);
+    expect(readHello({ n: 'A', f: { s: 'disney' } }).factions.side).toBeNull();
+    expect(readHello({ n: 'A', f: { s: 'starwars' } }).factions.side).toBe('starwars');
+    expect(readHello({ n: 'A', f: { o: 'empire', r: 'admiral' } }).factions).toMatchObject({ oath: 'empire', rank: 'admiral' });
+    // (a rank that isn't the oath's side's is nobody's)
+    expect(readHello({ n: 'A', f: { o: 'rebel', r: 'admiral' } }).factions).toMatchObject({ oath: 'rebel', rank: null });
+    // nobody swears to the Hutts, and an oath must be to a side of the war named
+    expect(readHello({ n: 'A', f: { o: 'hutt' } }).factions.oath).toBeNull();
+    expect(readHello({ n: 'A', f: { w: 'clone', o: 'rebel' } }).factions).toMatchObject({ war: 'clone', oath: null });
+    expect(readHello({ n: 'A', f: { w: 'order66', o: 'rebel' } }).factions).toMatchObject({ war: null, oath: 'rebel' });
+    // standing names only from standing.js, and only with a side to have it with
+    expect(readHello({ n: 'A', f: { s: 'rickmorty', st: { law: 'trusted', civil: 'emperor', outlaw: 7 } } }).factions.standing).toEqual({ law: 'trusted', civil: null, outlaw: null });
+    expect(readHello({ n: 'A', f: { s: 'rickmorty', st: { law: 'friend' } } }).factions.standing).toEqual({ law: null, civil: null, outlaw: null });
+    expect(readHello({ n: 'A', f: { st: { law: 'trusted' } } }).factions.standing).toBeNull();
+    for (const junk of ['rebel', 7, [1, 2], null, { s: { toString: () => 'starwars' } }]) expect(readHello({ n: 'A', f: junk }).factions).toEqual(NO_FACTIONS);
+  });
+  it('writes the factions it reads back', () => {
+    const f = { side: 'starwars', standing: { law: 'wanted', civil: null, outlaw: 'friend' }, war: 'gcw', oath: 'rebel', rank: 'flight-leader' };
+    expect(readHello({ n: 'A', lv: 5, f: writeFactions(f) })).toMatchObject({ level: 5, factions: f });
+    expect(readHello({ n: 'A', f: writeFactions(NO_FACTIONS) }).factions).toEqual(NO_FACTIONS);
+  });
+
   it('reads a hello and cleans it', () => {
-    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', loadout: STOCK_LOADOUT, build: null, looks: null, kills: 3, where: '/middle-earth' });
+    expect(readHello({ n: ' Ace ', k: 'xwing', c: 3, w: '/middle-earth' })).toEqual({ name: 'Ace', kind: 'xwing', loadout: STOCK_LOADOUT, build: null, looks: null, kills: 3, where: '/middle-earth', level: 1, factions: NO_FACTIONS });
   });
   it('drops an unknown ship and bad kills', () => {
-    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: null });
-    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: null });
+    expect(readHello({ n: 'A', k: '<img>', c: -5, w: 'javascript:alert(1)' })).toEqual({ name: 'A', kind: null, loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: null, level: 1, factions: NO_FACTIONS });
+    expect(readHello({ n: '', k: null, c: 'lots' })).toEqual({ name: 'Pilot', kind: null, loadout: STOCK_LOADOUT, build: null, looks: null, kills: 0, where: null, level: 1, factions: NO_FACTIONS });
   });
   it('reads the paint job and parts fitted, and only ones it knows', () => {
     const l = { ...STOCK_LOADOUT, paint: 'sith', booster: 'portal', guns: 'fusion', fins: 'fins' };
@@ -124,10 +159,34 @@ describe('poses', () => {
     expect(readPose(['a', 0, 0, 0, 0, 0, 0, 0, 0])).toBeNull();
     expect(readPose([NaN, 0, 0, 0, 0, 0, 0, 0, 0])).toBeNull();
     const p = readPose([1e9, 0, 0, 0, 9, 0, 1e6, 0, 1]);
-    expect(p.x).toBe(7500);
+    expect(p.x).toBe(60000);
     expect(p.pitch).toBe(1.6);
-    expect(p.speed).toBe(600);
+    expect(p.speed).toBe(5000);
     expect(p.hidden).toBe(true);
+  });
+  it('reaches as far as the spread universe does, and as fast as its lanes run', () => {
+    // (the Rick and Morty sector sits at z −48,000; an express lane runs at 4,000 a second)
+    const p = readPose(writePose({ ...ship, x: 36000, z: -48000, speed: 4000 }));
+    expect(p.x).toBe(36000);
+    expect(p.z).toBe(-48000);
+    expect(p.speed).toBe(4000);
+    expect(readPose([0, 1e9, 0, 0, 0, 0, 0, 0, 0]).y).toBe(1300); // (the height is as it was)
+  });
+  it('says when a pilot is riding a lane, and an old pose says they are not', () => {
+    expect(FLAG.lane).toBe(8);
+    expect(readPose(writePose(ship, FLAG.lane)).lane).toBe(true);
+    expect(readPose(writePose(ship, FLAG.boost | FLAG.lane)).boost).toBe(true);
+    expect(readPose(writePose(ship, FLAG.boost)).lane).toBe(false);
+    // (nine fields, from a pilot whose site is older than the shields on the pose)
+    expect(readPose([1, 2, 3, 0, 0, 0, 5, 0, 2]).lane).toBe(false);
+  });
+  it('carries the lane bit to where they are drawn', () => {
+    const snaps = [
+      { ...readPose(writePose(ship, FLAG.lane)), at: 0 },
+      { ...readPose(writePose({ ...ship, x: 20 }, FLAG.lane)), at: 100 },
+    ];
+    expect(sample(snaps, 190).lane).toBe(true); // (between the two)
+    expect(sample(snaps, 300).lane).toBe(true); // (and past the newest)
   });
 });
 
@@ -146,6 +205,19 @@ describe('crews on foot', () => {
     expect(f.lead.speed).toBeCloseTo(0.05, 4);
     expect(f.lead.aim).toBe(1);
     expect(f.mate.who).toBe('jesse');
+  });
+  it('carries what the body is doing beside where it is, and reads an older packet as doing nothing', () => {
+    const f = readFoot(JSON.parse(JSON.stringify(writeFoot({ ...crew, lead: walker('walt', { e: ['wave', 1.234], hurt: 0.5, down: 1 }) }))));
+    expect(f.lead.e).toEqual(['wave', 1.23]);
+    expect(f.lead.hurt).toBe(0.5);
+    expect(f.lead.down).toBe(1);
+    expect(f.mate.e).toBeNull();
+    expect(f.mate.hurt).toBe(0);
+    expect(f.mate.down).toBe(0);
+    const old = readFoot({ ...writeFoot(crew), a: ['walt', 0.6, 0.8, 0, 0, 0, 1, 0, 0, 0, 1] });
+    expect(old.lead.e).toBeNull();
+    expect(old.lead.down).toBe(0);
+    expect(readFoot({ ...writeFoot(crew), a: ['walt', 0.6, 0.8, 0, 0, 0, 1, 0, 0, 0, 1, ['wave', 'x'], 9, -1] }).lead).toMatchObject({ e: null, hurt: 1, down: 0 });
   });
   it('says when the crew are back in, and takes a ship just landing with nobody out', () => {
     expect(readFoot(writeFoot(null))).toEqual({ off: true });
@@ -204,6 +276,11 @@ describe('shots', () => {
     expect(readShot([50, 0, 0, 0, 0, -20], { x: 0, y: 0, z: 0 })).toBeNull();
     expect(readShot([0, 0, 0, 0, 0, -5000])).toBeNull();
     expect(readShot([0, 0, 0, 0, 0])).toBeNull();
+  });
+  it('reads a shot fired anywhere in the spread universe', () => {
+    const s = readShot(writeShot({ x: 30000, y: 0, z: -48000 }, [0, 0, -20]));
+    expect(s.p).toEqual([30000, 0, -48000]);
+    expect(readShot([1e9, 0, 0, 0, 0, -20]).p[0]).toBe(60000);
   });
 });
 
@@ -292,7 +369,10 @@ describe('the hunters after a pilot', () => {
       [5, 'tie', 1e9, 0, 0, 1e9, 'fast', 0, 1e9],
       [5, 'tie', 0, 0, 0, 0, 0, 0, 1], // the same one twice
     ]);
-    expect(got).toEqual([{ id: 5, kind: 'tie', x: 7500, y: 0, z: 0, vx: 80, vy: 0, vz: 0, hp: 99 }]);
+    expect(got).toEqual([{ id: 5, kind: 'tie', x: 60000, y: 0, z: 0, vx: 80, vy: 0, vz: 0, hp: 99 }]);
+  });
+  it('reads hunters anywhere in the spread universe', () => {
+    expect(readPack([[1, 'tie', 20000, 0, -48000, 0, 0, 0, 1]])[0]).toMatchObject({ x: 20000, z: -48000 });
   });
   it('reads a hit on one, capped at what a bolt can be worth', () => {
     expect(readHunterHit({ i: 7, d: 1 })).toEqual({ id: 7, damage: 1 });

@@ -529,4 +529,11 @@ export const RM_WORLDS = {
     ground(p, u);
     field(p, u.size, T.small);
   },
+  // (their grounds are all they need: the flesh breathes, the villages burn)
+  cronenberg(p, { u }) {
+    ground(p, u);
+  },
+  purge(p, { u }) {
+    ground(p, u);
+  },
 };

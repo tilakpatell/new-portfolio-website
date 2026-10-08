@@ -28,5 +28,15 @@
       "bytes": 13542646
     }
   ],
-  "worlds": []
+  "worlds": [
+    {
+      "id": "the-plaza-1-12-2",
+      "name": "The Plaza",
+      "client": "1.12.2",
+      "kind": "zip",
+      "file": "worlds/the-plaza-1-12-2.bin",
+      "bytes": 2034148,
+      "sha256": "29ae49f9e68ea6061b49c5048fb807f3c712374614ae3adb0fc63ed5306f076f"
+    }
+  ]
 }

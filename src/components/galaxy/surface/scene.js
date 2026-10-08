@@ -88,6 +88,7 @@ import { PROPS, SCATTER } from './props';
 import { createPlacer } from './placer';
 import { createActors, modelFigure } from './actors';
 import { RIDES } from './rides';
+import { SEATS, poseRider } from './riders';
 import { createPeers } from './peers';
 import { createSounds } from './sounds';
 import { createActivity } from './activity';
@@ -2402,6 +2403,17 @@ export async function create(canvas, ctx) {
       }, () => {});
     sat(seat.base);
   }
+  // a ride's frame in the world, as its seat's points are measured in: its
+  // holder, and a beast's step (its model's sway, actors.js) under you
+  const _rideM = new THREE.Matrix4();
+  const _swayM = new THREE.Matrix4();
+  function rideFrame(x) {
+    x.holder.updateMatrixWorld(true);
+    _rideM.copy(x.holder.matrixWorld);
+    const s = x.fig?.sway?.();
+    if (s) _rideM.multiply(_swayM.makeRotationZ(s.roll).setPosition(0, s.y, 0));
+    return _rideM;
+  }
   // where its hips are over its feet as it sits (eased: they settle as the
   // clip comes in), so they're put on the seat whatever the clip's height
   function seatLift(pp, dt) {
@@ -2425,6 +2437,18 @@ export async function create(canvas, ctx) {
   }
 
   function place(dt) {
+    // what you can ride (first: whoever's on one sits where it is this frame)
+    for (const x of rides) {
+      const s = x.state;
+      if (state.riding !== x) {
+        // parked: hovering where it's left, bobbing
+        s.y += (groundAt(world, s.x, s.z) + (x.spec.hover ?? 0) * 0.75 - s.y) * Math.min(1, dt * 3);
+        s.bank *= 0.95;
+      }
+      x.holder.position.set(s.x, s.y + (x.spec.hover > 0 ? Math.sin(state.t * 2 + s.x) * 0.04 : 0), s.z);
+      x.holder.rotation.set(-s.pitch, s.yaw, -s.bank, 'YXZ');
+      x.fig?.update(dt, clamp(Math.abs(s.speed) / 6, 0, 1));
+    }
     // the people
     people.forEach((pp, i) => {
       const st = pp.st;
@@ -2451,13 +2475,17 @@ export async function create(canvas, ctx) {
         // (on an animator, the hips put on the seat as the clip has them; else the old stand-in)
         const low = pp.seat?.lift != null ? pp.seat.lift - SEAT.pad : SEAT.low;
         pp.holder.position.set(x.state.x + seat[0] * Math.cos(yaw) + seat[2] * Math.sin(yaw), x.state.y + seat[1] - low, x.state.z - seat[0] * Math.sin(yaw) + seat[2] * Math.cos(yaw));
-        pp.holder.rotation.set(x.state.pitch * -1, yaw, x.state.bank, 'YXZ');
+        // (turned, pitched and banked as it is)
+        pp.holder.quaternion.copy(x.holder.quaternion);
         pp.fig?.update(dt, 0);
         pp.motion = null;
         if (pp.fig?.anim) {
           pp.holder.updateMatrixWorld(true);
           pp.fig.after?.(dt, STILL);
-          seatLift(pp, dt);
+          // (on a ride measured for it: the hips on its seat, the hands on
+          // its bars or reins, the feet on its pegs or down its flanks;
+          // riders.js. Else the hips put at the seat's height, as before)
+          if (!(SEATS[x.kind] && poseRider(pp.fig, pp.holder, rideFrame(x), SEATS[x.kind]))) seatLift(pp, dt);
         }
       } else {
         // (yaw first, so a tip or a roll goes about the body's own side, whichever way it faces)
@@ -2525,18 +2553,6 @@ export async function create(canvas, ctx) {
         }
       }
     });
-    // what you can ride
-    for (const x of rides) {
-      const s = x.state;
-      if (state.riding !== x) {
-        // parked: hovering where it's left, bobbing
-        s.y += (groundAt(world, s.x, s.z) + (x.spec.hover ?? 0) * 0.75 - s.y) * Math.min(1, dt * 3);
-        s.bank *= 0.95;
-      }
-      x.holder.position.set(s.x, s.y + (x.spec.hover > 0 ? Math.sin(state.t * 2 + s.x) * 0.04 : 0), s.z);
-      x.holder.rotation.set(-s.pitch, s.yaw, -s.bank, 'YXZ');
-      x.fig?.update(dt, clamp(Math.abs(s.speed) / 6, 0, 1));
-    }
   }
 
   function follow(dt) {

@@ -36,6 +36,9 @@ import engines
 import pick
 from common import CACHE, HERE, OUT, REFS, ROOT, console, ears, ffmpeg, read, run, speakable
 
+# the judge hears takes with Whisper large-v3-turbo (judge.py): there are thousands of them
+os.environ.setdefault("VOICES_WHISPER", "openai/whisper-large-v3-turbo")
+
 TAKES = CACHE / "takes"
 ROUNDS = 2  # a line with no passing take gets another round, with twice the takes
 BANK = CACHE / "bank"
@@ -115,9 +118,10 @@ def engines_for(who, cfg, override):
     # refs.json's "*" is every voice's that names none of its own
     want = [override] if override else cfg.get(who, {}).get("engine") or cfg.get("*", {}).get("engine") or []
     want = [want] if isinstance(want, str) else list(want)
-    have = [e for e in want if e in engines.ENGINES and engines.python(e)]
+    # qwenft is a model of the voice's own (finetune.py): only a voice that has one
+    have = [e for e in want if e in engines.ENGINES and engines.python(e) and (e != "qwenft" or (CACHE / "finetune" / who / "best" / "model.safetensors").exists())]
     for e in want:
-        if e not in have:
+        if e not in have and e != "qwenft":
             print(f"{who}: {e} isn't set up here (engines/README.md)")
     if have:
         return have

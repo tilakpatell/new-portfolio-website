@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BRIEFS, rowsFor } from './briefs';
+import { textOf } from './steps';
 import { ASKED, BRIEFED } from './brief';
 import { GUIDES } from '../guide/routes';
 import { keyTokens } from '../guide/keys';
@@ -45,7 +46,8 @@ describe('the worlds’ basics', () => {
       expect(new Set(steps.map((s) => s.id)).size, key).toBe(steps.length);
       for (const s of steps) {
         expect(s.title, `${key}/${s.id}`).toBeTruthy();
-        expect(s.text.length, `${key}/${s.id}`).toBeGreaterThan(20);
+        // (a text may read the ship you're in: the map's own reads both ways)
+        for (const ship of [null, 'The X-wing']) expect(textOf(s, { key: '⌘K', touch: false, ship }).length, `${key}/${s.id}`).toBeGreaterThan(20);
       }
     }
   });

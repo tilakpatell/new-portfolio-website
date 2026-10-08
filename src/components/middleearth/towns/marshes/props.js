@@ -20,6 +20,7 @@ import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js'
 import { canvasTexture, hot } from '../../../../lib/stage3d';
 import { clamp01, fbm, makeCanvas, makeCells, makeNoise, mix, normalFromField, paintPixels, smooth } from '../../../../lib/paint';
 import { blob, boxUV, createShireKit, parts, rng, tf, tube } from '../../shire/props';
+import { createStride, ease, footAt } from '../../creatures';
 
 const TAU = Math.PI * 2;
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -801,6 +802,8 @@ function rope(K) {
 const GOLLUM = { thigh: 0.3, shin: 0.31, arm: 0.27, fore: 0.26, foot: 0.05, wrist: 0.05 };
 const GOLLUM_SKIN = { base: C(0xc2c0b0), green: C(0xa2a892), pale: C(0xdcd2c4), deep: C(0x72705e), lip: C(0xb09a90) };
 const _q0 = new THREE.Quaternion();
+const _qf = new THREE.Quaternion();
+const _zf = V3(0, 0, 1);
 const CLIMB_Q = new THREE.Quaternion().setFromAxisAngle(UP, Math.PI).multiply(new THREE.Quaternion().setFromAxisAngle(V3(0, 0, 1), -Math.PI / 2));
 const CLIMB_AT = V3(0.5, 0.38, 0);
 const rot2 = (x, y, a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
@@ -833,8 +836,15 @@ function reach2(rx, ry, tx, ty, L1, L2, bend) {
 // animate(t, { pose, speed, look, reach }): pose 'crouch' (on his heels),
 // 'crawl' (all fours along +x), 'climb' (head first down a rock face, belly
 // to it: the face is at his +x, so turned as the scene turns him it is at
-// −z of the world, and he looks out), 'cower' (curled up).
-function gollum(K) {
+// −z of the world, and he looks out), 'cower' (curled up), 'fall' (the
+// Ring held high, toppling over backwards, legs kicking: falling, he tips
+// back about his hips towards −x). His crawl and his climb go by the ground
+// he covers (../../creatures.js), read from where the scene puts him, so
+// his hands and feet hold where they're put however fast he scuttles; still,
+// he doesn't paw the air. `speed` is no longer needed.
+// The one Gollum: the Marshes' and Cirith Ungol's, Mount Doom's (with its
+// kit's materials, ../doom/props.js) and the Rush thief's.
+export function gollum(K) {
   const { mats } = K;
   const g = new THREE.Group();
   g.name = 'gollum';
@@ -1047,24 +1057,43 @@ function gollum(K) {
   // ── the poses
   const P = {};
   const T = {};
-  const KEYS = ['hx', 'hy', 'tilt', 'spine', 'neck', 'head', 'yaw', 'abd', 'out', 'f0x', 'f0y', 'f1x', 'f1y', 'h0x', 'h0y', 'h1x', 'h1y', 'hand', 'climb', 'twist', 'roll'];
+  const KEYS = ['hx', 'hy', 'tilt', 'spine', 'neck', 'head', 'yaw', 'abd', 'out', 'f0x', 'f0y', 'f1x', 'f1y', 'h0x', 'h0y', 'h1x', 'h1y', 'hand', 'climb', 'twist', 'roll', 'fall', 'gait'];
   let last = null;
+  // his scuttle: a stride from the ground he covers (up or down a rock face
+  // as much as along the ground), each limb down a little over half of it,
+  // a hand and the other side's foot together
+  const stride = createStride({ stride: 0.44, hz: 1.35, longest: 1.6, stance: 0.55, cadence: [1.4, 2.6], seed: 5 });
+  const moved = { x: 0, y: 0, z: 0, t: null, v: 0 };
+  const LIMBS = [['f0', 0], ['f1', 0.5], ['h0', 0.5], ['h1', 0]];
+  const Q = {};
   const legAt = (s) => [0, -0.01, s * 0.068];
   const armAt = [0, 0.3];
   const target = (t, pose, speed, look, reach) => {
-    const sp = Math.min(1, Math.max(0, speed));
     const breathe = Math.sin(t * 2.3);
     T.yaw = look;
     T.twist = 0;
     T.roll = 0;
-    if (pose === 'crawl' || pose === 'climb') {
+    T.fall = 0;
+    T.gait = 0;
+    if (pose === 'fall') {
+      // arms flung up, the hand with the Ring highest; arched back, legs kicking
+      const k = Math.sin(t * 8.5);
+      const k2 = Math.sin(t * 6.1 + 1);
+      Object.assign(T, { hx: 0, hy: 0.46, tilt: 0, spine: 0.32 + k * 0.05, neck: -0.25, head: -0.1 + k2 * 0.1, abd: 0.3, out: 0.55, hand: 0.6, climb: 0, fall: 1 });
+      T.f0x = 0.32 + k * 0.1;
+      T.f0y = 0.3 + k * 0.08;
+      T.f1x = 0.2 - k * 0.1;
+      T.f1y = 0.14 - k * 0.06;
+      T.h0x = -0.12 + k2 * 0.06;
+      T.h0y = 1.16;
+      T.h1x = 0.02 - k2 * 0.04;
+      T.h1y = 1.26;
+    } else if (pose === 'crawl' || pose === 'climb') {
+      // the stance he crawls from; his stride's steps go on top (animate)
       const climb = pose === 'climb';
-      const ph = t * (climb ? 5 : 8.5);
-      const stride = climb ? 0.09 : 0.11;
-      const lift = climb ? 0.05 : 0.065;
       Object.assign(T, {
         hx: -0.12,
-        hy: (climb ? 0.17 : 0.35) + Math.sin(ph * 2) * 0.012 * sp + breathe * 0.004,
+        hy: (climb ? 0.17 : 0.35) + breathe * 0.004,
         tilt: 0,
         spine: (climb ? -1.6 : -1.36) + breathe * 0.02,
         neck: climb ? 0.95 : 0.72,
@@ -1073,22 +1102,16 @@ function gollum(K) {
         out: climb ? 0.95 : 0.22,
         hand: climb ? 1.35 : 1.25,
         climb: climb ? 1 : 0,
-        twist: Math.sin(ph) * 0.12 * sp,
-        roll: Math.sin(ph) * 0.05 * sp,
+        gait: 1,
       });
-      const step = (o) => [Math.sin(ph + o) * stride * sp, Math.max(0, Math.cos(ph + o)) * lift * sp];
-      const [l0x, l0y] = step(0);
-      const [l1x, l1y] = step(Math.PI);
-      const [a0x, a0y] = step(Math.PI);
-      const [a1x, a1y] = step(0);
-      T.f0x = -0.04 + l0x;
-      T.f0y = GOLLUM.foot + l0y;
-      T.f1x = -0.04 + l1x;
-      T.f1y = GOLLUM.foot + l1y;
-      T.h0x = (climb ? 0.3 : 0.38) + a0x;
-      T.h0y = GOLLUM.wrist + a0y;
-      T.h1x = (climb ? 0.3 : 0.38) + a1x;
-      T.h1y = GOLLUM.wrist + a1y;
+      T.f0x = -0.04;
+      T.f0y = GOLLUM.foot;
+      T.f1x = -0.04;
+      T.f1y = GOLLUM.foot;
+      T.h0x = climb ? 0.3 : 0.38;
+      T.h0y = GOLLUM.wrist;
+      T.h1x = climb ? 0.3 : 0.38;
+      T.h1y = GOLLUM.wrist;
     } else if (pose === 'cower') {
       const shiver = Math.sin(t * 37) * 0.012 + Math.sin(t * 23) * 0.008;
       Object.assign(T, { hx: 0, hy: 0.21 + shiver * 0.3, tilt: 0, spine: -1.18 + shiver, neck: -0.15, head: -0.45 + shiver, abd: 0.18, out: -0.35, hand: 2.6, climb: 0, f0x: 0.12, f0y: GOLLUM.foot, f1x: 0.12, f1y: GOLLUM.foot, h0x: 0.38, h0y: 0.43, h1x: 0.4, h1y: 0.43 });
@@ -1114,43 +1137,79 @@ function gollum(K) {
     last = t;
     const f = dt < 0 || dt > 0.5 ? 1 : 1 - Math.exp(-dt * 9);
     for (const k of KEYS) P[k] = P[k] == null || f === 1 ? T[k] : P[k] + (T[k] - P[k]) * f;
+    // how fast he's really going, along the ground or up and down the rock,
+    // from where he's been put (a jump of the scene's is a jump, not a dash)
+    const gp = g.position;
+    if (moved.t != null && t > moved.t && t - moved.t < 1) {
+      const span = t - moved.t;
+      let raw = Math.hypot(gp.x - moved.x, gp.y - moved.y, gp.z - moved.z) / span / (g.scale.x || 1);
+      if (raw > 12) raw = 0;
+      moved.v += (raw - moved.v) * (1 - Math.exp(-Math.min(0.1, span) / 0.08));
+    } else moved.v = 0;
+    moved.x = gp.x;
+    moved.y = gp.y;
+    moved.z = gp.z;
+    moved.t = t;
+    const st = stride.step(dt > 0 && dt <= 0.5 ? dt : 0, moved.v);
+    // his steps on top of the stance: each hand and foot back under him as
+    // far as he goes on while it's down, then up and through
+    for (const k of KEYS) Q[k] = P[k];
+    const amt = st.amount * P.gait;
+    if (amt > 0.001) {
+      const lift = mix(0.065, 0.05, P.climb) * Math.min(1.3, 0.6 + 0.4 * st.reach);
+      for (const [limb, off] of LIMBS) {
+        const fo = footAt(st.cycle + off, 0.55);
+        Q[limb + 'x'] += ((fo.x * st.travel) / 2) * amt;
+        Q[limb + 'y'] += fo.lift * lift * amt;
+      }
+      const sway = Math.sin(st.phase);
+      Q.twist += sway * 0.12 * amt;
+      Q.roll += sway * 0.05 * amt;
+      Q.hy += Math.sin(st.phase * 2) * 0.012 * amt;
+    }
     // head first down the rock: the crawl turned so +x runs down and the
     // ground under him becomes the rock face at his +x
-    rig.quaternion.copy(_q0).slerp(CLIMB_Q, P.climb);
-    rig.position.copy(CLIMB_AT).multiplyScalar(P.climb);
-    hips.position.set(P.hx, P.hy, 0);
-    hips.rotation.set(P.roll, 0, P.tilt);
-    spine.rotation.set(0, P.twist, P.spine);
-    neck.rotation.set(0, -P.twist * 0.6, P.neck);
-    head.rotation.set(0, P.yaw, P.head);
+    rig.quaternion.copy(_q0).slerp(CLIMB_Q, Q.climb);
+    rig.position.copy(CLIMB_AT).multiplyScalar(Q.climb);
+    // toppling over backwards, about his hips
+    if (Q.fall > 0.001) {
+      rig.quaternion.multiply(_qf.setFromAxisAngle(_zf, 0.85 * Q.fall));
+      rig.position.x += 0.18 * Q.fall;
+      rig.position.y += 0.06 * Q.fall;
+    }
+    hips.position.set(Q.hx, Q.hy, 0);
+    hips.rotation.set(Q.roll, 0, Q.tilt);
+    spine.rotation.set(0, Q.twist, Q.spine);
+    neck.rotation.set(0, -Q.twist * 0.6, Q.neck);
+    head.rotation.set(0, Q.yaw, Q.head);
     const blink = t % 3.7 < 0.13 || (t + 1.1) % 7.9 < 0.1;
     for (const e of eyes) e.scale.y = blink ? 0.15 : 1;
     // the legs to their feet
     for (const L of legs) {
       const i = L.s < 0 ? 0 : 1;
-      const [lx, ly] = rot2(legAt(L.s)[0], legAt(L.s)[1], P.tilt);
-      const rx = P.hx + lx;
-      const ry = P.hy + ly;
-      const c = Math.cos(P.abd);
-      const [a1, a2] = reach2(rx, ry, P[`f${i}x`], ry + (P[`f${i}y`] - ry) / c, GOLLUM.thigh, GOLLUM.shin, 1);
-      L.thigh.rotation.set(-L.s * P.abd, 0, a1 - P.tilt);
+      const [lx, ly] = rot2(legAt(L.s)[0], legAt(L.s)[1], Q.tilt);
+      const rx = Q.hx + lx;
+      const ry = Q.hy + ly;
+      const c = Math.cos(Q.abd);
+      const [a1, a2] = reach2(rx, ry, Q[`f${i}x`], ry + (Q[`f${i}y`] - ry) / c, GOLLUM.thigh, GOLLUM.shin, 1);
+      L.thigh.rotation.set(-L.s * Q.abd, 0, a1 - Q.tilt);
       L.shin.rotation.set(0, 0, a2 - a1);
-      L.foot.rotation.set(L.s * P.abd * 0.8, 0, -a2);
+      L.foot.rotation.set(L.s * Q.abd * 0.8, 0, -a2);
     }
     // the arms to their hands
-    const sa = P.tilt + P.spine;
-    const [sx0, sy0] = rot2(-0.005, 0.045, P.tilt);
+    const sa = Q.tilt + Q.spine;
+    const [sx0, sy0] = rot2(-0.005, 0.045, Q.tilt);
     const [ax, ay] = rot2(armAt[0], armAt[1], sa);
     for (const A of arms) {
       const i = A.s < 0 ? 0 : 1;
-      const rx = P.hx + sx0 + ax;
-      const ry = P.hy + sy0 + ay;
-      const out = i === 1 ? mix(P.out, 0.05, clamp01(reach)) : P.out;
+      const rx = Q.hx + sx0 + ax;
+      const ry = Q.hy + sy0 + ay;
+      const out = i === 1 ? mix(Q.out, 0.05, clamp01(reach)) : Q.out;
       const c = Math.cos(out);
-      const [a1, a2] = reach2(rx, ry, P[`h${i}x`], ry + (P[`h${i}y`] - ry) / c, GOLLUM.arm, GOLLUM.fore, -1);
+      const [a1, a2] = reach2(rx, ry, Q[`h${i}x`], ry + (Q[`h${i}y`] - ry) / c, GOLLUM.arm, GOLLUM.fore, -1);
       A.arm.rotation.set(-A.s * out, 0, a1 - sa);
       A.fore.rotation.set(0, 0, a2 - a1);
-      const hand = i === 1 ? mix(P.hand, a2 + 0.15, clamp01(reach)) : P.hand;
+      const hand = i === 1 ? mix(Q.hand, a2 + 0.15, clamp01(reach)) : Q.hand;
       A.hand.rotation.set(0, 0, hand - a2);
     }
   };
@@ -1692,9 +1751,16 @@ function fellBeast(K) {
     cloakGeo.computeVertexNormals();
   };
 
+  // its beat carried on from frame to frame, slowing as it glides, and how
+  // hard it beats eased, so going from one to the other never jumps a wing
+  const E = { t: null, k: null, ph: 0 };
   const animate = (t, { flap = 1 } = {}) => {
-    const k = clamp01(flap);
-    const ph = t * 2.6;
+    const dt = E.t == null || t < E.t ? 0 : Math.min(0.1, t - E.t);
+    E.t = t;
+    E.k = E.k == null ? clamp01(flap) : ease(E.k, clamp01(flap), dt, 2.5);
+    const k = E.k;
+    E.ph += dt * 2.6 * (0.65 + 0.35 * k);
+    const ph = E.ph;
     // a heavy downstroke, a slower recovery
     const w = Math.sin(ph) + 0.25 * Math.sin(ph * 2);
     const up = 0.12 + 0.55 * w * k;

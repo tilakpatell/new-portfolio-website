@@ -2001,3 +2001,6 @@ for (const [kind, crown] of [
   SCATTER[kind].canopy = crown;
 
 export const PROPS = { ...TREES, ...ENDOR, ...KASHYYYK, ...DAGOBAH, ...YAVIN };
+// Lothal's old Imperial tower: the audit lane's model where it loads, this
+// lattice where it won't
+PROPS.lothtower = PROPS.lookout;

@@ -9,33 +9,28 @@
 
 import { createInput } from './input';
 import { createQuality } from './quality';
-import { createSaves } from './saves';
+import { createPace } from '../lib/three/pace';
+import { localSaves, worldStore, winOf } from './local';
 import { createAssets } from './assets';
 import { createAudioBus } from './audio';
 import { createRuntime } from './runtime';
+import { createWorkerPool, poolSize } from './workers';
 import { readOverride } from './backend';
 import './runtime.css';
 
 export { useWorld } from './useWorld';
 export { default as WorldHost } from './WorldHost';
 export { fromScene } from './module';
+export { localSaves, worldStore };
 
 const GPU_KEY = 'tp-gpu';
 const browser = () => import('./browser');
 const covered = () => typeof document !== 'undefined' && 'covered' in document.documentElement.dataset;
 
 let instance = null;
-
 export function runtime() {
   if (instance) return instance;
-  const win = typeof window !== 'undefined' ? window : null;
-  const store = (name) => {
-    try {
-      return win[name];
-    } catch {
-      return null;
-    }
-  };
+  const win = winOf();
   let stored = null;
   try {
     stored = win?.localStorage.getItem(GPU_KEY);
@@ -52,12 +47,16 @@ export function runtime() {
     gltf: (url) => browser().then((m) => m.forget.gltf(url)),
   };
   instance = createRuntime({
-    makeBackend: (kind, opts) => browser().then((m) => m.makeBackend(kind, opts)),
+    // (`invalidate`: the frame guard asks for a frame when what it held back is ready)
+    makeBackend: (kind, opts) => browser().then((m) => m.makeBackend(kind, { ...opts, invalidate: () => instance?.invalidate() })),
     input: createInput(),
-    quality: createQuality({ dpr: win?.devicePixelRatio || 1 }),
-    saves: createSaves({ local: store('localStorage'), session: store('sessionStorage'), win }),
+    // (down only: each step resizes the canvas, lib/three/pace's `climb`)
+    quality: createQuality({ dpr: win?.devicePixelRatio || 1, pace: createPace({ climb: false }) }),
+    saves: localSaves(),
+    store: worldStore(),
     assets: createAssets({ loaders, forget }),
     audio: createAudioBus(),
+    workers: createWorkerPool({ size: poolSize(win?.navigator?.hardwareConcurrency) }),
     gpu: Boolean(win?.navigator?.gpu),
     override: readOverride(win?.location.search ?? '', win?.location.hash ?? '', stored),
     visible: () => !(typeof document !== 'undefined' && document.hidden) && !covered(),

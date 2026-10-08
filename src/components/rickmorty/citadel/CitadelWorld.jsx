@@ -92,7 +92,8 @@ function useSaid(who, text) {
   }, [who, text]);
 }
 
-export default function CitadelWorld({ onLeave }) {
+// (`leaveLabel`: what the hangar's way out says; the page knows where it goes)
+export default function CitadelWorld({ onLeave, leaveLabel = 'Back to C-137' }) {
   const three = use3D();
   const [done, setDone] = useState(() => {
     const d = local.get(DONE, []);
@@ -116,7 +117,7 @@ export default function CitadelWorld({ onLeave }) {
   const world = three.on && gl !== 'failed' && gl !== 'lost';
   return (
     <section className="shire-world citadel-world" aria-labelledby="citadel-title" data-mode={world ? '3d' : 'cards'}>
-      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
+      {world ? <World prog={prog} done={done} complete={complete} gl={gl} setGl={setGl} onLeave={onLeave} leaveLabel={leaveLabel} /> : <Cards prog={prog} three={three} gl={gl} retry={() => setGl('loading')} />}
     </section>
   );
 }
@@ -124,7 +125,7 @@ export default function CitadelWorld({ onLeave }) {
 // others online on the concourse (middleearth/towns/useTravellers), as Ricks from other dimensions
 const ROOM = { bound: 160, motion: true };
 
-function World({ prog, done, complete, gl, setGl, onLeave }) {
+function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const trav = useTravellers('citadel', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -999,28 +1000,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
   };
 
   // the touch stick
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   // the list's "go there": straight to where each scene starts
   const travel = (q) => {
@@ -1039,7 +1019,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
     setList(false);
   };
 
-  const here = hud.near ? PROMPT[hud.near] : null;
+  const here = hud.near === 'leave' ? { ...PROMPT.leave, act: leaveLabel } : hud.near ? PROMPT[hud.near] : null;
   const mode = hud.mode;
   const walking = mode === 'walk';
   const inside = mode === 'inside';
@@ -1129,7 +1109,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -1177,7 +1157,7 @@ function World({ prog, done, complete, gl, setGl, onLeave }) {
         </div>
       )}
 
-      {walking && touch && <Stick onStick={onStick} />}
+      {walking && touch && <Stick onMove={onStick} />}
 
       <Wardrobe open={wardrobe} onClose={closeWardrobe} looks={looks} onLook={setLook} who="rick" />
       {list && <QuestList title="Things to do in the Citadel" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && (q.id !== 'citadelout' || red) && (q.id !== 'locos' || !red)} />}
