@@ -99,7 +99,7 @@ import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePa
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
-import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SECTOR_OF, SUN, sectorOf } from './layout';
+import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SECTOR_OF, SUN, mapSectorOf, sectorOf } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
@@ -108,7 +108,7 @@ import { grainFor } from '../../lib/three/noise';
 import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { houseOn } from '../../lib/three/house';
-import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { OPEN_SPACE, PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, destinationById, driveById, hyperState, legOf, parkFor, riftExit } from './nav';
 import { REAIM_MS, parkBehind, pilotId, pilotSpace, reached } from './pilotGoal';
 import { laneAim, laneFrame, lanePlan, rideLine } from './lanePilot';
@@ -863,7 +863,7 @@ export async function create(canvas, ctx) {
   // whose space the ship's in (sides.js sideAt): the Rick and Morty sector's
   // hunters, traffic and goings-on are the Rick and Morty side's, whoever's
   // flying; anywhere else the crew's own
-  const sideHere = () => sideAt(state.kind, state.ship ? sectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main');
+  const sideHere = () => sideAt(state.kind, state.ship ? mapSectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main');
   const FACTIONS_ALL = factionsOf(null);
   const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines }); // (every side's: another pilot's hunters, whoever they are)
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
@@ -1396,7 +1396,7 @@ export async function create(canvas, ctx) {
     if (!els) return;
     const entering = onFoot() && Boolean(foot.entry()); // (once, not for every name)
     // (the sector the ship's in: the other sector's places, tens of thousands off, have no name here)
-    const sector = state.ship ? sectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main';
+    const sector = state.ship ? mapSectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main';
     for (const s of screen) {
       const el = els[s.id];
       if (!el) continue;
@@ -1896,7 +1896,7 @@ export async function create(canvas, ctx) {
     state.kind = kind;
     setPlumes(kind, ENGINES[kind] ?? []);
     if (!same) {
-      traffic?.setCrew(crewAt(kind, sectorOf(state.ship?.x ?? 0, 0, state.ship?.z ?? 0)));
+      traffic?.setCrew(crewAt(kind, mapSectorOf(state.ship?.x ?? 0, 0, state.ship?.z ?? 0)));
       hunters?.clear();
       meteors.clear();
       mines.clear();
@@ -3838,7 +3838,7 @@ export async function create(canvas, ctx) {
   // out: parked there, the hunters left behind, a flash where it comes out)
   const riftThrough = () => {
     const s = state.ship;
-    const exit = riftExit(state.at, Math.random, sectorOf(s.x, s.y, s.z), state.saw); // (out in the sector it opened in, somewhere you haven't been)
+    const exit = riftExit(state.at, Math.random, mapSectorOf(s.x, s.y, s.z), state.saw); // (out in the sector it opened in, somewhere you haven't been)
     const park = parkFor(exit, [s.x, s.z]);
     pieces.closeRift();
     if (!park) return;
@@ -3952,7 +3952,7 @@ export async function create(canvas, ctx) {
     if (arriving && state.kind === 'cruiser' && state.ship && !state.jump && !state.held) {
       const { sector } = arriving;
       arriving = null;
-      if (sectorOf(state.ship.x, state.ship.y, state.ship.z) !== sector) gunThrough();
+      if (mapSectorOf(state.ship.x, state.ship.y, state.ship.z) !== sector) gunThrough();
     }
     let input;
     if (state.jump && wall() >= state.jump.at) {
@@ -4024,7 +4024,7 @@ export async function create(canvas, ctx) {
     // on a hyperlane, or getting on or off one (lanePilot.js): the ride poses the ship in place of ship.js's step
     const lane = state.held || state.jump ? null : laneFrame(state, input, dt, { canEnter: (!state.auto || Boolean(state.auto.route)) && !(state.interdicted && state.clock < (state.wellUntil ?? -1)) });
     if (lane) rode(lane);
-    const { ship: stepped, events } = lane?.ship ? { ship: lane.ship, events: [] } : step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS);
+    const { ship: stepped, events } = lane?.ship ? { ship: lane.ship, events: [] } : step(state.ship, input, dt, siegeSt.down ? SOLIDS_OPEN : SOLIDS, OPEN_SPACE);
     // the Maw's pull (maw.js): drawn in, and carried round with its disk
     const g = pullAt(stepped.x, stepped.y, stepped.z);
     const ship = g ? { ...stepped, x: stepped.x + g.v[0] * dt, y: stepped.y + g.v[1] * dt, z: stepped.z + g.v[2] * dt } : stepped;
@@ -4877,7 +4877,7 @@ export async function create(canvas, ctx) {
     placeArms();
     beacons.update(camLocal);
     // (the beacons are the main map's places: from the Rick and Morty sector there's nothing of theirs to see)
-    beacons.points.visible = !state.ship || sectorOf(state.ship.x, state.ship.y, state.ship.z) === 'main';
+    beacons.points.visible = !state.ship || mapSectorOf(state.ship.x, state.ship.y, state.ship.z) === 'main';
     phone.update(t, camera);
     // the fall into the Maw: the ship's trail and glow, and its last light
     if (infall) {

@@ -21,7 +21,7 @@ import { EDGE, GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, forward, headingTo, pa
 import { PORTALS, portalById, portalHit, transit } from './portals';
 import { MAW, parkNear } from './maw';
 import { WONDERS, reachOf } from './deep';
-import { HOME_RADIUS, ORDER, POSITIONS, REACH, SECTORS, sectorOf } from './layout';
+import { HOME_RADIUS, ORDER, POSITIONS, REACH, SECTORS, mapSectorOf, sectorOf } from './layout';
 import { laneAim, laneFrame, lanePlan } from './lanePilot';
 import { MOONS, byId } from './universes';
 import { LENGTH } from './scale';
@@ -179,9 +179,9 @@ export const sectorOfGoal = (id) => {
 export const portalBetween = (from, to) => PORTALS.find((p) => sectorOf(...p.at) === from && p.leadsTo.sector === to) ?? null;
 export function legOf(ship, id, pose = null) {
   const goal = goalOf(id);
-  const there = pilotId(goal) ? (pose ? sectorOf(pose.x, pose.y ?? 0, pose.z) : null) : sectorOfGoal(goal);
+  const there = pilotId(goal) ? (pose ? mapSectorOf(pose.x, pose.y ?? 0, pose.z) : null) : sectorOfGoal(goal);
   if (!ship || !there) return goal;
-  const here = sectorOf(ship.x, ship.y ?? 0, ship.z);
+  const here = mapSectorOf(ship.x, ship.y ?? 0, ship.z); // (out in the Expanse, by the main map's portals)
   return here === there ? goal : (portalBetween(here, there)?.id ?? goal);
 }
 
@@ -217,7 +217,7 @@ export function findDestination(query = '') {
 // to its nearest left (by default, the places in the sector it's in)
 export const TOUR_IDS = DESTINATIONS.filter((d) => d.kind !== 'system').map((d) => d.id);
 export const tourIdsIn = (sector) => TOUR_IDS.filter((id) => BY_ID.get(id).sector === sector);
-export function tourFrom(ship, ids = tourIdsIn(sectorOf(ship.x, ship.y ?? 0, ship.z))) {
+export function tourFrom(ship, ids = tourIdsIn(mapSectorOf(ship.x, ship.y ?? 0, ship.z))) {
   const left = new Set(ids);
   const order = [];
   let at = { x: ship.x, y: ship.y ?? 0, z: ship.z };
