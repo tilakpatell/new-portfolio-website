@@ -134,6 +134,7 @@ import { createMines } from './mines';
 import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
 import { DEBRIS_DRIFT, SKY_FAR, buildDeepSpace } from './deepspace';
 import { FAR_STARS, createFarStars } from './farStars';
+import { createLandmarks } from './landmarks';
 import { createSectorPortals } from './sectorPortals';
 import { GUN, gunHit, gunTransit } from './gunPortal';
 import { createGunPortal } from './gunPortalFx';
@@ -703,14 +704,18 @@ export async function create(canvas, ctx) {
   });
   // and every place past where it's real drawn as a star instead, the
   // galaxy's way (farStars.js): from anywhere, the other worlds are stars
-  const farStars = createFarStars(map, { places: FAR_STARS.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })), skyFar: SKY_FAR });
+  const farStars = createFarStars(map, { places: FAR_STARS.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? null })), skyFar: SKY_FAR });
+  // and the big things, the Maw, the nebulae and the big stars, as landmarks
+  // on the sky, at least so big across from anywhere (landmarks.js)
+  const landmarks = createLandmarks(map, { renderer, small, level: device().detail, skyFar: SKY_FAR });
+  const landmarkGroup = (id) => deep.groupOf(id) ?? (id === 'sun' ? sun.group : null);
   // whose name shows: while flying, a place's only where you look (within
   // NAME_CONE of the nose), where it's real, picked or where you're going;
   // on foot, only near or picked; with no ship (or the whole map in view), all
   const NAME_COS = Math.cos(0.14);
   const named = (id, at) => {
     if ((!flying() && !onFoot()) || state.view === 'map') return true;
-    if ((farStars.kOf(id) ?? 1) < 1 || id === state.sel || id === state.auto?.id || id === state.jump?.id) return true;
+    if ((farStars.kOf(id) ?? landmarks.kOf(id) ?? 1) < 1 || id === state.sel || id === state.auto?.id || id === state.jump?.id) return true;
     if (onFoot() || !at) return false;
     const s = state.ship;
     const [nx, ny, nz] = noseOf(s);
@@ -4930,7 +4935,9 @@ export async function create(canvas, ctx) {
     // (the look follows the lights; what's come into the scene since is taken on every half second or so)
     house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: onFoot() && foot.entry() ? false : (id) => named(id, wonderById(id)?.at) });
-    farStars.update(camera, dt, { focus: state.auto?.id ?? state.jump?.id ?? null, sector: mapSectorOf(camLocal.x, camLocal.y, camLocal.z) });
+    const skySector = mapSectorOf(camLocal.x, camLocal.y, camLocal.z);
+    farStars.update(camera, dt, { focus: state.auto?.id ?? state.jump?.id ?? null, sector: skySector });
+    landmarks.update(camera, t, { sector: skySector, groups: landmarkGroup });
     expanse.update({ ship: flying() && !state.dive ? state.ship : null, camera, t, dt });
     const lanesBusy = laneLook.update(dt, { ship: flying() && !state.crash && !state.dive ? state.ship : null, ride: state.ride, view: state.view, side: sideFor(state.kind)?.id ?? null });
     sectorPortals.update(t, camera);
@@ -5743,6 +5750,7 @@ export async function create(canvas, ctx) {
       fleet.dispose();
       deep.dispose();
       farStars.dispose();
+      landmarks.dispose();
       expanse.dispose();
       laneLook.dispose();
       sectorPortals.dispose();

@@ -29,6 +29,7 @@ import * as THREE from 'three';
 import { WONDERS, reachOf } from './deep';
 import { POSITIONS, REACH, SUN } from './layout';
 import { MOONS, UNIVERSES } from './universes';
+import { LANDMARK_IDS } from './landmarks';
 
 const REAL_REACHES = 20; // a place is real within this many of its reaches
 const REAL_LEAST = 1500; // and never less
@@ -52,12 +53,13 @@ export const starPx = (k) => 7 + 13 * k;
 
 // every place that can be a star far off: the fandoms' worlds (their
 // swatch), the Rick and Morty sector's, the home system's stations (folded
-// into home), every wonder (its colour, or its first) and the home sun
+// into home) and every wonder (its colour, or its first) but the big ones,
+// which are landmarks (landmarks.js: the Maw, the nebulae, the big stars and
+// the home sun)
 const stationIds = new Set(UNIVERSES.filter((u) => u.kind === 'core').map((u) => u.id));
 export const FAR_STARS = [
-  { id: 'sun', at: SUN.at, reach: SUN.r, color: '#ffcf6a', sector: 'main' },
   ...[...UNIVERSES, ...MOONS].map((u) => ({ id: u.id, at: POSITIONS[u.id], reach: REACH[u.id], color: u.swatch, sector: u.sector ?? 'main', ...(stationIds.has(u.id) ? { station: true } : {}) })),
-  ...WONDERS.map((w) => ({ id: w.id, at: w.at, reach: reachOf(w), color: w.color ?? w.colors?.[0] ?? '#ffb47a', sector: w.sector ?? 'main' })),
+  ...WONDERS.filter((w) => !LANDMARK_IDS.has(w.id)).map((w) => ({ id: w.id, at: w.at, reach: reachOf(w), color: w.color ?? w.colors?.[0] ?? '#ffb47a', sector: w.sector ?? 'main' })),
 ];
 
 const VERT = /* glsl */ `
