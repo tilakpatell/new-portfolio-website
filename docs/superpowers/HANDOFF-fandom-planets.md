@@ -4,7 +4,7 @@ The planets outside the Star Wars galaxy, as the universe map shows them from sp
 
 ## Done
 
-- **The bake.** `scripts/build-fandom-planets.mjs` runs a baker per planet from `scripts/planets/`, on a shared kit (`sphere.mjs`). Each map is baked at 4096 and ships in lib/detail's three sizes: 2048 (`-hq`, a strong card), 1024 (a desktop) and 512 (`-sm`, a phone or a weak device). Night lights, glow, roughness and Breaking Bad's clouds stop at 1024. `scripts/build-universe-textures.py` no longer writes these planets.
+- **The bake.** `scripts/planets/bake.mjs` (once `scripts/build-fandom-planets.mjs`) runs a baker per planet from `scripts/planets/`, on a shared kit (`sphere.mjs`), and records every map it writes in `public/textures/universe/index.json`, which `planetMaps.js` reads. Each map is baked at 4096 and ships in lib/detail's three sizes: 2048 (`-hq`, a strong card), 1024 (a desktop) and 512 (`-sm`, a phone or a weak device). Night lights, glow, roughness and Breaking Bad's clouds stop at 1024. `scripts/build-universe-textures.py` no longer writes these planets.
 - **Middle-earth.** Tolkien's Third Age map, from `middleearth-geo.mjs` on the same 800×560 sheet as `src/components/middleearth/mapData.js`. It has the coasts, the ranges, the rivers, the forests and the lands, plus night lights, Orodruin's glow, the Eye and Minas Morgul. Mordor's smoke sits on a cloud layer that turns with the ground.
 - **Breaking Bad.** New Mexico, with the Rio Grande past Albuquerque. The city's grid and the Big I light up at night.
 - **The Caribbean.** Banks, reefs and island arcs, plus Tortuga, the maelstrom, a hurricane and Isla de Muerta's fog.
@@ -41,7 +41,7 @@ The planets outside the Star Wars galaxy, as the universe map shows them from sp
 
 ## Checking it
 
-- `node scripts/build-fandom-planets.mjs [id …]` rebakes. The ids are `middleearth`, `breakingbad`, `caribbean`, `rickmorty`, `office` and `giants`. `giants` fetches once into `node_modules/.cache/universe`.
+- `node scripts/planets/bake.mjs --only <id,…>` rebakes (`--all` every one). The ids are `middleearth`, `breakingbad`, `caribbean`, `rickmorty`, `office`, `giants`, `transformers` and `invincible`. `giants` fetches once into `node_modules/.cache/universe`.
 - `/scripts/preview/planets.html?id=middleearth&spin=0&yaw=-0.5&pitch=0.4&turn=-2.07&dist=2.2` shows a planet through the dev server. Use `turn` to choose which side faces the key light, and `window.__planets.follow(test | object3D, distance)` to look at something on an orbit.
 - In the map, open the nav map (`M`), pick the planet and jump.
 - On Windows, two things fail that CI doesn't hit. `src/runtime/shading.test.js` and `src/data/changes.test.js` build paths from `URL.pathname`. `vite build` resolves `components/music/Harmonium` to `harmonium.js` on a case-insensitive disk.

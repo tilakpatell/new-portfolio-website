@@ -1,6 +1,7 @@
-// The universe map's planet maps: which there are, the file for each at a
-// detail level, loading them all (the set every planet wears from the start)
-// and the finer set a planet wears near (nearMaps.js), swapped in place.
+// The universe map's planet maps: which there are (the bake's manifest,
+// public/textures/universe/index.json), the file for each at a detail level,
+// loading them all (the set every planet wears from the start) and the finer
+// set a planet wears near (nearMaps.js), swapped in place.
 //
 //   mapFile(name, level) → the file for a planet map at lib/detail's level
 //   loadTextures({ small, level }) → the textures (any that fail are just missing)
@@ -10,51 +11,46 @@
 import { MAP_SLOTS, loadTexture } from '../../lib/three/textures';
 import { detailLevel } from '../../lib/detail';
 import K8_BAKED from '../../../public/textures/universe/k8.json';
+import MANIFEST from '../../../public/textures/universe/index.json';
 
 const BASE = '/textures/universe/';
-// Each map: whether it's a colour (sRGB) or data (normals, roughness, a
-// cloud's alpha), and which sizes it comes in: `sm`, a half-size copy for a
-// phone or a weak device; `hq`, a copy at twice the texels for a strong
-// graphics card (lib/detail's 'ultra'), so a planet filling the screen and
-// the Milky Way behind it stay sharp as the camera comes in. The fandoms'
-// own maps are baked by scripts/build-fandom-planets.mjs (Middle-earth,
-// Breaking Bad, the Caribbean, C-137, the Office, Music, Marvel) at all
-// three sizes; Earth's, the sun's and the sky's by
-// scripts/build-universe-textures.py (--hq for the -hq set); Cybertron's and
-// Invincible's by their own scripts (Invincible's relief with an -hq;
-// Cybertron's is 2048 on high and up, 1024 below).
-// The universe map's own sky is 'sky-glow', the Milky Way's light only,
-// baked from the 8K sky by scripts/bake-universe-sky.mjs (skyShader.js
-// draws its stars); 'sky' itself, with its stars, is the Earth's.
-const map = (names, opts) => names.map((n) => [n, opts]);
-const MAPS = Object.fromEntries([
-  ...map(['music', 'middleearth', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty'], { sm: true, hq: true, xl: true, colour: true }),
-  ...map(['middleearth-clouds', 'rickmorty-clouds', 'earth', 'earth-night', 'sun'], { sm: true, hq: true, colour: true }),
-  ...map(['middleearth-normal', 'office-normal', 'breakingbad-normal', 'caribbean-clouds', 'earth-clouds'], { sm: true, hq: true, colour: false }),
-  ...map(['caribbean-normal', 'invincible-normal'], { sm: false, hq: true, colour: false }),
-  ...map(['transformers-normal'], { sm: true, hq: false, colour: false }),
-  ...map(['middleearth-night', 'breakingbad-night', 'transformers', 'invincible', 'invincible-night', 'sky-glow'], { sm: true, hq: false, colour: true }),
-  ...map(['breakingbad-clouds', 'invincible-clouds'], { sm: true, hq: false, colour: false }),
-  ...map(['middleearth-glow', 'caribbean-night', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'], { sm: false, hq: false, colour: true }),
-  ...map(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-glow-sm', 'middleearth-rough', 'office-rough', 'breakingbad-rough', 'caribbean-rough', 'earth-rough', 'rickmorty-rough', 'invincible-rough'], { sm: false, hq: false, colour: false }),
-]);
+// Each map, from the bake's manifest (index.json: scripts/planets/bake.mjs
+// writes it, scripts/planets/manifest.mjs says its shape): whether it's a
+// colour (sRGB) or data (normals, roughness, a cloud's alpha), and which
+// sizes it comes in, on one ladder: `sm` 512, for a phone or a weak device;
+// `std` 1024 (2048 for Earth's and Cybertron's, by the manifest's flag), a
+// desktop's; `hq` 2048, for a strong graphics card (lib/detail's 'ultra'),
+// so a planet filling the screen and the Milky Way behind it stay sharp as
+// the camera comes in; `xl` 4096 as KTX2, worn near at ultra. The fandoms'
+// maps are baked by scripts/planets/; Earth's, the sun's and the stations'
+// plates by scripts/build-universe-textures.py (--hq for the -hq set) and
+// recorded as they are. The universe map's own sky is 'sky-glow', the Milky
+// Way's light only, baked from the 8K sky by scripts/bake-universe-sky.mjs
+// (skyShader.js draws its stars); the Earth page's sky, with its stars, is
+// in /textures/earth.
+const MAPS = MANIFEST;
 
+// every map the manifest lists
 export const MAP_NAMES = Object.keys(MAPS);
 
-// The file for a map at a detail level (lib/detail): on a strong card the
-// `-xl` (4096, KTX2: a quarter of the memory raw would take) where there is
-// one, else the `-hq` copy where there is one; the standard file on a
-// desktop; the `-sm` half on a phone or a weak device where there is one.
-// `xl: false` passes over the -xl (what ultra wears from the start: the -xl
-// is only ever worn near, nearMaps.js).
+// The file for a map at a detail level (lib/detail), from the sizes the
+// manifest lists for it: on a strong card the `-xl` (4096, KTX2: a quarter
+// of the memory raw would take) where there is one, else the `-hq` copy
+// where there is one; the standard file on a desktop; the `-sm` on a phone
+// or a weak device where there is one. `xl: false` passes over the -xl (what
+// ultra wears from the start: the -xl is only ever worn near, nearMaps.js).
+// (A name the manifest doesn't know is taken to have an -sm and nothing finer.)
 export function mapFile(name, level = 'high', { xl: big = true } = {}) {
-  const { sm = true, hq = false, xl = false } = MAPS[name] ?? {};
+  const sizes = MAPS[name]?.sizes;
+  const sm = sizes ? Boolean(sizes.sm) : true;
+  const hq = Boolean(sizes?.hq);
+  const xl = Boolean(sizes?.xl);
   if (level === 'ultra' && xl && big) return `${name}-xl.ktx2`;
   const suffix = level === 'ultra' ? (hq ? '-hq' : '') : level === 'high' ? '' : sm ? '-sm' : '';
   return `${name}${suffix}.webp`;
 }
 
-// The colour maps baked at 8192 too (scripts/build-fandom-planets.mjs
+// The colour maps baked at 8192 too (scripts/planets/bake.mjs
 // --ultra writes `<name>-8k.ktx2` and lists it in k8.json): worn near at
 // ultra only, over the -xl. Too big to keep in the repository (about 20 MB
 // each): the list is empty until they're baked on the owner's machine and
@@ -81,7 +77,7 @@ export function nearSet(id, level, { k8 = K8 } = {}) {
   if (level !== 'ultra') return set;
   const big = (name) => `${name}-8k.ktx2`;
   // (a map with no -xl, Earth's, has nothing finer at ultra but its -8k)
-  const more = mapsOf(id).filter((name) => k8.has(name) && !set.some((m) => m.name === name)).map((name) => ({ name, file: big(name), colour: MAPS[name].colour }));
+  const more = mapsOf(id).filter((name) => k8.has(name) && !set.some((m) => m.name === name)).map((name) => ({ name, file: big(name), colour: MAPS[name].srgb }));
   return [...set.map((m) => (k8.has(m.name) ? { name: m.name, file: big(m.name), fallback: m.file, colour: m.colour } : m)), ...more];
 }
 function finerSet(id, level) {
@@ -89,7 +85,7 @@ function finerSet(id, level) {
   const far = (name) => mapFile(name, level, { xl: false });
   const files = (name) => (level === 'ultra' ? [mapFile(name, 'ultra'), mapFile(name, 'ultra', { xl: false })] : [mapFile(name, level === 'mid' ? 'high' : 'ultra', { xl: false })]);
   return mapsOf(id)
-    .map((name) => ({ name, colour: MAPS[name].colour, files: [...new Set(files(name))].filter((f) => f !== far(name)) }))
+    .map((name) => ({ name, colour: MAPS[name].srgb, files: [...new Set(files(name))].filter((f) => f !== far(name)) }))
     .filter((m) => m.files.length)
     .map(({ name, colour, files: [file, fallback] }) => ({ name, file, ...(fallback ? { fallback } : {}), colour }));
 }
@@ -107,7 +103,7 @@ export async function loadTextures({ small = false, level = small ? 'mid' : deta
     }
   };
   await Promise.all(
-    Object.entries(MAPS).map(([name, { colour }]) => {
+    Object.entries(MAPS).map(([name, { srgb: colour }]) => {
       const file = mapFile(name, level, { xl: false });
       const standard = mapFile(name, 'high');
       return get(name, file, colour, file !== standard ? standard : null);

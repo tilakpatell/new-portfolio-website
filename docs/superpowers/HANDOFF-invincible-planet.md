@@ -1,8 +1,8 @@
 # Handoff: the Invincible planet (universe map)
 
-Done in `src/components/universe/planets.js` (`BUILDERS.invincible`) and `scripts/build-invincible-planet.mjs`:
+Done in `src/components/universe/planets.js` (`BUILDERS.invincible`) and `scripts/build-invincible-planet.mjs` (now `scripts/planets/invincible.mjs`):
 
-- New maps generated offline (`node scripts/build-invincible-planet.mjs`, ~20 s): `public/textures/universe/invincible{,-sm}.webp` (rust plateaus, dark sea beds, craters, rifts), `invincible-normal.webp`, `invincible-glow.webp` (molten rifts and vents), `invincible-night{,-sm}.webp` (city lights on the night side, through `airGlow`), `invincible-clouds{,-sm}.webp` (high dust bands). Registered in `PLANET_MAPS` / `FIXED` / `DATA`.
+- New maps generated offline (`node scripts/planets/bake.mjs --only invincible`, ~20 s): `public/textures/universe/invincible{,-sm}.webp` (rust plateaus, dark sea beds, craters, rifts), `invincible-normal.webp`, `invincible-glow.webp` (molten rifts and vents), `invincible-night{,-sm}.webp` (city lights on the night side, through `airGlow`), `invincible-clouds{,-sm}.webp` (high dust bands). Registered in `PLANET_MAPS` / `FIXED` / `DATA`.
 - Material with relief and a breathing molten glow, a dust shell, a debris belt (instanced rocks + faint dust disc), a broken moon with glowing cracks and drifting chunks, and two comet-like flyers with tapered trails and a periodic shockwave ring.
 - Falls back to the old painted map if the textures don't load.
 

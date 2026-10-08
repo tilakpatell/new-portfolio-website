@@ -627,7 +627,7 @@ export const LANDINGS = {
       { kind: 'rubble', n: 160, from: 4, to: 60, scale: range(1.2), solid: false },
       { kind: 'glass', n: 120, from: 3, to: 50, scale: range(1), solid: false },
     ],
-    // the war-worn world (scripts/build-invincible-planet.mjs): its pale
+    // the war-worn world (scripts/planets/invincible.mjs): its pale
     // rust plateaus, out of town; the dark old sea beds, the city
     biomes: [
       {

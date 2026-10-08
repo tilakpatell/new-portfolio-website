@@ -178,7 +178,7 @@ Lane B, **planets and surfaces**:
   double, the sky's atmosphere steps rise.
 - The universe's planets: the `-xl` 4096 KTX2 colour maps get an 8192
   companion for the seven baked planets and the Star Wars ones
-  (`scripts/build-fandom-planets.mjs --ultra`, `build-universe-textures.py
+  (`scripts/build-fandom-planets.mjs --ultra`, now `scripts/planets/bake.mjs --ultra`, `build-universe-textures.py
   --ultra`), loaded by `nearMaps.js` at ultra within six radii; the near
   sphere goes to 320 × 200 segments.
 - Every surface's landing site gets a "robustness" pass: no seam, no

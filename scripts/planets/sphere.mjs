@@ -3,11 +3,15 @@
 // equirectangular grid three's SphereGeometry maps (u east from the −x side,
 // v from the north pole down), relief turned into a tangent-space normal
 // map, and WebP out through sharp, supersampled and brought down with
-// Lanczos so coasts and ridges come out clean at the size the map ships at.
+// Lanczos so coasts and ridges come out clean at the size the map ships at:
+// the one size ladder (manifest.mjs), each map recorded in
+// public/textures/universe/index.json as it's written. Every baker under
+// scripts/planets/ saves through it; scripts/planets/bake.mjs runs them.
 
 import sharp from 'sharp';
 import fs from 'node:fs';
 import path from 'node:path';
+import { RUNGS, fileOf, format, recordSave, widths } from './manifest.mjs';
 
 // ── noise ──
 
@@ -265,18 +269,26 @@ export function blur(field, w, h, radius) {
 // ── out ──
 
 const OUT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1')), '../../public/textures/universe');
+const INDEX = path.join(OUT, 'index.json');
 
-// Float data (0…1, `channels` a texel) to a WebP at each size asked for,
-// e.g. save(rgb, 4096, 2048, 3, 'middleearth', [[4096, '-xl'], [2048, '-hq'], [1024, ''], [512, '-sm']]).
-// The `-xl` size (a colour map at 4096, worn near on ultra) is a KTX2
+// A map (float data 0…1, or bytes 0…255, `channels` a texel, worked at
+// w × h) to a WebP at each rung of the one ladder asked for (manifest.mjs:
+// -sm 512, std 1024, -hq 2048, -xl 4096; std 2048 with `std2048`), e.g.
+// save(rgb, 4096, 2048, 3, 'middleearth', ['xl', 'hq', 'std', 'sm']), and
+// each recorded in index.json, which is how the site knows which sizes a map
+// comes in. The `-xl` (a colour map at 4096, worn near on ultra) is a KTX2
 // instead (UASTC through scripts/ktx2.mjs, flipped for three's UVs, sRGB):
 // a quarter of the graphics memory a 4096 WebP takes once decoded. With
 // PLANETS_XL=only in the environment just the -xl files are written (the
 // rest left as they are); with PLANETS_XL=skip, all but them (a quick look).
+// `srgb` where the map's kind says otherwise (colour clouds; Cybertron's
+// packed glow is data); `lossless` where lossy WebP would smear one packed
+// channel into the next; `smartSubsample: false` for the plain chroma
+// subsampling Cybertron's and Invincible's maps were always written with.
 const XL_MAX = 6 * 1024 * 1024; // (an -xl past this is too much download for one map)
 const K8_MAX = 24 * 1024 * 1024; // (and an -8k past this)
 
-// --ultra (scripts/build-fandom-planets.mjs sets PLANETS_8K=1): every map
+// --ultra (scripts/planets/bake.mjs sets PLANETS_8K=1): every map
 // baked at 8192 × 4096, and only the colour maps that have an -xl written,
 // as `-8k.ktx2` (worn near at ultra, over the -xl: universe/planetMaps.js),
 // each listed in k8.json, which is how the site knows it's there.
@@ -303,11 +315,19 @@ async function writeKtx2(buf, w, h, channels, width, file, max) {
   console.log(`  ${path.basename(file)}  ${(ktx2.byteLength / 1024).toFixed(0)} KB (${how})`);
 }
 
-export async function save(data, w, h, channels, name, sizes, { quality = 86, alphaQuality = 90 } = {}) {
+// index.json, read and written whole (a save's record is one synchronous
+// step, so two saves in flight can't lose each other's)
+const readIndex = () => (fs.existsSync(INDEX) ? JSON.parse(fs.readFileSync(INDEX, 'utf8')) : {});
+function record(name, sizes, opts) {
+  fs.writeFileSync(INDEX, format(recordSave(readIndex(), name, sizes, opts)));
+}
+
+export async function save(data, w, h, channels, name, rungs, { quality = 86, alphaQuality = 90, lossless = false, smartSubsample = true, srgb, std2048 } = {}) {
   fs.mkdirSync(OUT, { recursive: true });
-  if (ULTRA && !sizes.some(([, suffix]) => suffix === '-xl')) return;
-  const buf = Buffer.alloc(w * h * channels);
-  for (let i = 0; i < buf.length; i++) buf[i] = Math.round(clamp(data[i]) * 255);
+  const plan = widths(rungs, w, { std2048 });
+  if (ULTRA && !rungs.includes('xl')) return;
+  const buf = data instanceof Uint8Array ? Buffer.from(data.buffer, data.byteOffset, data.byteLength) : Buffer.alloc(w * h * channels);
+  if (!(data instanceof Uint8Array)) for (let i = 0; i < buf.length; i++) buf[i] = Math.round(clamp(data[i]) * 255);
   if (ULTRA) {
     await writeKtx2(buf, w, h, channels, 8192, path.join(OUT, `${name}-8k.ktx2`), K8_MAX);
     const list = path.join(OUT, 'k8.json');
@@ -315,20 +335,52 @@ export async function save(data, w, h, channels, name, sizes, { quality = 86, al
     fs.writeFileSync(list, `${JSON.stringify([...new Set([...had, name])].sort())}\n`);
     return;
   }
-  for (const [width, suffix] of sizes) {
-    if (process.env.PLANETS_XL === 'only' && suffix !== '-xl') continue;
-    if (process.env.PLANETS_XL === 'skip' && suffix === '-xl') continue;
-    if (suffix === '-xl') {
-      await writeKtx2(buf, w, h, channels, width, path.join(OUT, `${name}${suffix}.ktx2`), XL_MAX);
+  const wrote = {};
+  for (const [rung, width] of plan) {
+    if (process.env.PLANETS_XL === 'only' && rung !== 'xl') continue;
+    if (process.env.PLANETS_XL === 'skip' && rung === 'xl') continue;
+    const file = path.join(OUT, fileOf(name, rung));
+    const size = [width, Math.round((width * h) / w)];
+    wrote[rung] = size;
+    if (rung === 'xl') {
+      await writeKtx2(buf, w, h, channels, width, file, XL_MAX);
       continue;
     }
-    const file = path.join(OUT, `${name}${suffix}.webp`);
     await sharp(buf, { raw: { width: w, height: h, channels } })
-      .resize(width, Math.round((width * h) / w), { kernel: 'lanczos3' })
-      .webp({ quality, alphaQuality, effort: 6, smartSubsample: true })
+      .resize(...size, { kernel: 'lanczos3' })
+      .webp(lossless ? { lossless: true, effort: 6 } : { quality, alphaQuality, effort: 6, smartSubsample })
       .toFile(file);
     console.log(`  ${path.basename(file)}  ${(fs.statSync(file).size / 1024).toFixed(0)} KB`);
   }
+  record(name, wrote, { srgb, std2048 });
+}
+
+// Maps another pipeline makes (the Python's Earth, sun and tiling plates,
+// the universe sky), recorded in index.json from their files as they are on
+// disk: each rung's file that's there, its size read from the file.
+// recordFiles(['earth', 'sun', …]) → the entries recorded
+export async function recordFiles(names) {
+  const out = {};
+  for (const name of names) {
+    const sizes = {};
+    for (const rung of RUNGS) {
+      const file = path.join(OUT, fileOf(name, rung));
+      if (!fs.existsSync(file)) continue;
+      if (rung === 'xl') {
+        // (a KTX2's header: its width and height at bytes 20 and 24)
+        const head = fs.readFileSync(file).subarray(0, 28);
+        sizes.xl = [head.readUInt32LE(20), head.readUInt32LE(24)];
+      } else {
+        const { width, height } = await sharp(file).metadata();
+        sizes[rung] = [width, height];
+      }
+    }
+    if (!sizes.std) throw new Error(`--record ${name}: no ${fileOf(name, 'std')} in ${OUT}`);
+    record(name, sizes, { replace: true, std2048: sizes.std[0] === 2048 });
+    out[name] = readIndex()[name];
+    console.log(`  ${name}  ${Object.entries(sizes).map(([r, [w]]) => `${r} ${w}`).join(', ')}`);
+  }
+  return out;
 }
 
 // An SVG drawn into a single-channel field (its red, 0…255), w×h, blurred

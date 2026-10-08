@@ -33,7 +33,7 @@ function dir(lat, lon, out = new THREE.Vector3()) {
 }
 
 // the fronts, for when there's no glow map to read them from (these are the
-// ones scripts/build-cybertron-planet.mjs burned in when this was written)
+// ones scripts/planets/transformers.mjs burned in when this was written)
 const FRONTS = [
   [-5, 60, 0.32],
   [-12, 160, 0.26],

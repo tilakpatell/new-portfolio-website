@@ -1,14 +1,15 @@
 // The places on the universe map: the fandoms as planets, and (built by
 // stations.js) the site's own pages as stations round the sun. The planets
-// wear real planetary maps recoloured for their worlds
-// (scripts/build-universe-textures.py makes them, from Solar System Scope's
-// maps and ambientCG's materials), or are painted here (the Game Boy world in
-// pixels, the Caribbean's islands); each has air round it in its colour and
-// the things that make it that place, in orbit or on it: the sitar's strings,
-// the One Ring, Cybertron's energon seams, the Infinity Stones, the crystals
-// and element tiles, the mug, the portal, the travel routes. Star Wars isn't
-// a planet but the way into a galaxy far, far away: the galaxy in miniature
-// behind a hyperspace gate (galaxy/gateway.js), Star Destroyers on guard.
+// wear maps baked for their worlds (scripts/planets/bake.mjs makes them, and
+// scripts/build-universe-textures.py Earth's, from Solar System Scope's maps
+// and ambientCG's materials; planetMaps.js lists them), or are painted here
+// (the Game Boy world in pixels, the Caribbean's islands); each has air
+// round it in its colour and the things that make it that place, in orbit
+// or on it: the sitar's strings, the One Ring, Cybertron's energon seams,
+// the Infinity Stones, the crystals and element tiles, the mug, the portal,
+// the travel routes. Star Wars isn't a planet but the way into a galaxy far,
+// far away: the galaxy in miniature behind a hyperspace gate
+// (galaxy/gateway.js), Star Destroyers on guard.
 // The models (the site owner's, from Meshy: the sitar, Optimus Prime and
 // Megatron, the gauntlet, the motorhome, the Game Boy, Mario and a Piranha
 // Plant, a Republic attack cruiser; plus Rick's cruiser from the C-137 page
@@ -346,17 +347,17 @@ const EXTRAS = {
 
   transformers(p, T, u) {
     const r = u.size;
-    // built over from pole to pole (scripts/build-cybertron-planet.mjs):
+    // built over from pole to pole (scripts/planets/transformers.mjs):
     // tiers of plating, chasms with energon running in them, the city-states'
     // discs, the Sea of Rust, the war's fires; cybertron/skin.js colours the
     // energon, lights the cities on the night side and carries the plating
     // on in the shader up close, where the maps run out (its maps and its
     // skin: SPECS)
     // (the same maps the skin needs: planetSpecs.js's cybertron hook checks them too)
-    if (T.transformers && T['transformers-glow-sm']) {
+    if (T.transformers && T['transformers-glow']) {
       // and the war, a few fireballs at a time out of the burning fronts
       // (cybertron/war.js: one draw, turning with the planet)
-      const battle = createWar({ radius: r, zones: warZones(T['transformers-glow-sm']), count: T.small ? 3 : 5, flares: 1, small: true, light: false });
+      const battle = createWar({ radius: r, zones: warZones(T['transformers-glow']), count: T.small ? 3 : 5, flares: 1, small: true, light: false });
       p.body.add(battle.group);
       p.tick.push((t, camera) => battle.update(t, camera, 0.85));
     }
@@ -771,7 +772,7 @@ const EXTRAS = {
     const P = u.palette;
     const rand = rng('invincible');
     if (T.invincible) {
-      // a war-worn world (scripts/build-invincible-planet.mjs, worn by
+      // a war-worn world (scripts/planets/invincible.mjs, worn by
       // SPECS): rust plateaus over dark old sea beds, ridges, craters thrown
       // wide, and long rifts still molten along their floors; cities light
       // its night side, and high dust streams round it in bands.

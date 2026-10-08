@@ -1,6 +1,6 @@
 // Cybertron in WebGL, the way War for Cybertron, Fall of Cybertron and Prime
 // show it from space: a world built over from pole to pole. Its maps are
-// worked out offline (scripts/build-cybertron-planet.mjs: tiers of plating,
+// worked out offline (scripts/planets/transformers.mjs: tiers of plating,
 // stepped chasms, the city-states' discs of rings, the Sea of Rust, the
 // war's craters and fires) and dressed by ./skin.js, which colours the
 // energon by side, lights the cities on the night side and carries the

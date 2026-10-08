@@ -10,23 +10,25 @@
 // trenches, bursting out where the fighting is. Sampled in 3D on the sphere,
 // so there's no seam.
 //
-//   transformers.webp / -sm   the colour
-//   transformers-normal.webp  the relief, as a tangent-space normal map
-//   transformers-glow.webp    what glows, packed: red the energon, green the
-//                             fires, blue the cities' lights (for the night
-//                             side), so each side's energon can be its own
-//                             colour. Lossless: lossy webp would smear one
-//                             channel into the next.
+// Saved through sphere.mjs's save on the one ladder, with std at 2048 (the
+// manifest's flag: Cybertron's standard file always was):
 //
-// node scripts/build-cybertron-planet.mjs   (a minute or two; CY_W=2048 for
-// a quick look)
+//   transformers.webp / -sm          the colour, 2048 and 512
+//   transformers-normal.webp / -sm   the relief, as a tangent-space normal map
+//   transformers-glow.webp / -sm     what glows, packed: red the energon, green
+//                                    the fires, blue the cities' lights (for
+//                                    the night side), so each side's energon
+//                                    can be its own colour. Lossless: lossy
+//                                    webp would smear one channel into the
+//                                    next. (The 2048 is the Cybertron page's
+//                                    too: planet3d.js.)
+//
+//   bake() → writes them   (node scripts/planets/bake.mjs --only transformers:
+//                           a minute or two; CY_W=2048 for a quick look)
 
-import sharp from 'sharp';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
+import { save } from './sphere.mjs';
 
-const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'textures', 'universe');
-const W = +(process.env.CY_W ?? 4096); // worked out at this size, saved at half (and a quarter)
+const W = +(process.env.CY_W ?? 4096); // worked out at this size, saved at half (and an eighth)
 const H = W / 2;
 
 // ── noise ──
@@ -854,30 +856,6 @@ function sample(p) {
   return { h, col, glow: [clamp(en), clamp(fire), lit] };
 }
 
-// ── work it out ──
-console.time('cybertron');
-const height = new Float32Array(W * H);
-const colourF = new Float32Array(W * H * 3);
-const glowF = new Float32Array(W * H * 3);
-for (let j = 0; j < H; j++) {
-  const v = 1 - (j + 0.5) / H;
-  const lat = (v - 0.5) * Math.PI;
-  const cl = Math.cos(lat);
-  const sl = Math.sin(lat);
-  for (let i = 0; i < W; i++) {
-    const lon = ((i + 0.5) / W) * Math.PI * 2;
-    const p = [-Math.cos(lon) * cl, sl, Math.sin(lon) * cl];
-    const s = sample(p);
-    const k = j * W + i;
-    height[k] = s.h;
-    for (let c = 0; c < 3; c++) {
-      colourF[k * 3 + c] = s.col[c];
-      glowF[k * 3 + c] = s.glow[c];
-    }
-  }
-  if (j % 256 === 0) console.log(`  row ${j}/${H}`);
-}
-
 // a box blur, as wide on the sphere at every latitude
 function blur(src, r, stride = 1, at = 0) {
   const tmp = new Float32Array(W * H);
@@ -904,72 +882,93 @@ function blur(src, r, stride = 1, at = 0) {
   }
   return out;
 }
-const S = W / 4096; // blur reaches were set at the full size
 
-// the fires light the metal round them: a soft spill of the fire's glow
-// into the glow itself (so a thin seam still reads from far off) and a warm
-// cast on the colour
-const spill = blur(blur(glowF, Math.round(10 * S), 3, 1), Math.round(10 * S));
-const spillE = blur(glowF, Math.round(8 * S), 3, 0);
-const glow = new Uint8Array(W * H * 3);
-for (let k = 0; k < W * H; k++) {
-  const f = glowF[k * 3 + 1];
-  const sp = Math.min(1, spill[k] * 2.2);
-  glow[k * 3] = Math.round(clamp(glowF[k * 3] + (1 - glowF[k * 3]) * Math.min(1, spillE[k] * 1.5) * 0.25) * 255);
-  glow[k * 3 + 1] = Math.round(clamp(f + (1 - f) * sp * 0.4) * 255);
-  glow[k * 3 + 2] = Math.round(clamp(glowF[k * 3 + 2]) * 255);
-}
-
-// shade the hollows: how far each point lies below the land round it
-// (a blur of the height at two reaches), darker the deeper it sits
-const near = blur(height, Math.max(2, Math.round(6 * S)));
-const far = blur(height, Math.round(28 * S));
-const colour = new Uint8Array(W * H * 3);
-const WARM = [1.0, 0.45, 0.14];
-for (let k = 0; k < W * H; k++) {
-  const cavity = Math.max(0, near[k] - height[k]) * 90 + Math.max(0, far[k] - height[k]) * 22;
-  const ridge = Math.max(0, height[k] - near[k]) * 40;
-  const ao = clamp(1 - cavity * 0.7, 0.3, 1) * (1 + Math.min(0.25, ridge));
-  const warm = Math.min(1, spill[k] * 2.2) * 0.22;
-  for (let c = 0; c < 3; c++) colour[k * 3 + c] = Math.round(clamp(colourF[k * 3 + c] * ao + WARM[c] * warm) * 255);
-}
-
-// the relief, as a tangent-space normal map: east along u, north along v
-const normal = new Uint8Array(W * H * 3);
-const STRENGTH = 1.0;
-for (let j = 0; j < H; j++) {
-  const lat = (0.5 - (j + 0.5) / H) * Math.PI;
-  const cl = Math.max(0.08, Math.cos(lat));
-  const du = ((2 * Math.PI) / W) * cl * 2; // arc length across two pixels east
-  const dv = (Math.PI / H) * 2;
-  for (let i = 0; i < W; i++) {
-    const e = height[j * W + ((i + 1) % W)];
-    const w = height[j * W + ((i - 1 + W) % W)];
-    const n = height[Math.max(0, j - 1) * W + i];
-    const s = height[Math.min(H - 1, j + 1) * W + i];
-    const gx = ((e - w) / du) * STRENGTH;
-    const gy = ((n - s) / dv) * STRENGTH;
-    const l = Math.hypot(gx, gy, 1);
-    const k = (j * W + i) * 3;
-    normal[k] = Math.round((0.5 - (0.5 * gx) / l) * 255);
-    normal[k + 1] = Math.round((0.5 - (0.5 * gy) / l) * 255);
-    normal[k + 2] = Math.round((0.5 + 0.5 / l) * 255);
+// ── work it out ──
+export async function bake() {
+  console.time('cybertron');
+  const height = new Float32Array(W * H);
+  const colourF = new Float32Array(W * H * 3);
+  const glowF = new Float32Array(W * H * 3);
+  for (let j = 0; j < H; j++) {
+    const v = 1 - (j + 0.5) / H;
+    const lat = (v - 0.5) * Math.PI;
+    const cl = Math.cos(lat);
+    const sl = Math.sin(lat);
+    for (let i = 0; i < W; i++) {
+      const lon = ((i + 0.5) / W) * Math.PI * 2;
+      const p = [-Math.cos(lon) * cl, sl, Math.sin(lon) * cl];
+      const s = sample(p);
+      const k = j * W + i;
+      height[k] = s.h;
+      for (let c = 0; c < 3; c++) {
+        colourF[k * 3 + c] = s.col[c];
+        glowF[k * 3 + c] = s.glow[c];
+      }
+    }
+    if (j % 256 === 0) console.log(`  row ${j}/${H}`);
   }
-}
-console.timeEnd('cybertron');
 
-const save = async (buf, name, w, opts) => {
-  await sharp(buf, { raw: { width: W, height: H, channels: 3 } })
-    .resize(w, w / 2, { kernel: 'lanczos3' })
-    .webp({ effort: 6, ...opts })
-    .toFile(path.join(OUT, name));
-  console.log('  wrote', name);
-};
-console.log('saving…');
-await save(colour, 'transformers.webp', 2048, { quality: 82 });
-await save(colour, 'transformers-sm.webp', 1024, { quality: 80 });
-await save(normal, 'transformers-normal.webp', 2048, { quality: 88 });
-await save(glow, 'transformers-glow.webp', 2048, { lossless: true });
-// (and lighter ones for the universe map, which loads every planet at once)
-await save(normal, 'transformers-normal-sm.webp', 1024, { quality: 86 });
-await save(glow, 'transformers-glow-sm.webp', 1024, { lossless: true });
+  const S = W / 4096; // blur reaches were set at the full size
+
+  // the fires light the metal round them: a soft spill of the fire's glow
+  // into the glow itself (so a thin seam still reads from far off) and a warm
+  // cast on the colour
+  const spill = blur(blur(glowF, Math.round(10 * S), 3, 1), Math.round(10 * S));
+  const spillE = blur(glowF, Math.round(8 * S), 3, 0);
+  const glow = new Uint8Array(W * H * 3);
+  for (let k = 0; k < W * H; k++) {
+    const f = glowF[k * 3 + 1];
+    const sp = Math.min(1, spill[k] * 2.2);
+    glow[k * 3] = Math.round(clamp(glowF[k * 3] + (1 - glowF[k * 3]) * Math.min(1, spillE[k] * 1.5) * 0.25) * 255);
+    glow[k * 3 + 1] = Math.round(clamp(f + (1 - f) * sp * 0.4) * 255);
+    glow[k * 3 + 2] = Math.round(clamp(glowF[k * 3 + 2]) * 255);
+  }
+
+  // shade the hollows: how far each point lies below the land round it
+  // (a blur of the height at two reaches), darker the deeper it sits
+  const near = blur(height, Math.max(2, Math.round(6 * S)));
+  const far = blur(height, Math.round(28 * S));
+  const colour = new Uint8Array(W * H * 3);
+  const WARM = [1.0, 0.45, 0.14];
+  for (let k = 0; k < W * H; k++) {
+    const cavity = Math.max(0, near[k] - height[k]) * 90 + Math.max(0, far[k] - height[k]) * 22;
+    const ridge = Math.max(0, height[k] - near[k]) * 40;
+    const ao = clamp(1 - cavity * 0.7, 0.3, 1) * (1 + Math.min(0.25, ridge));
+    const warm = Math.min(1, spill[k] * 2.2) * 0.22;
+    for (let c = 0; c < 3; c++) colour[k * 3 + c] = Math.round(clamp(colourF[k * 3 + c] * ao + WARM[c] * warm) * 255);
+  }
+
+  // the relief, as a tangent-space normal map: east along u, north along v
+  const normal = new Uint8Array(W * H * 3);
+  const STRENGTH = 1.0;
+  for (let j = 0; j < H; j++) {
+    const lat = (0.5 - (j + 0.5) / H) * Math.PI;
+    const cl = Math.max(0.08, Math.cos(lat));
+    const du = ((2 * Math.PI) / W) * cl * 2; // arc length across two pixels east
+    const dv = (Math.PI / H) * 2;
+    for (let i = 0; i < W; i++) {
+      const e = height[j * W + ((i + 1) % W)];
+      const w = height[j * W + ((i - 1 + W) % W)];
+      const n = height[Math.max(0, j - 1) * W + i];
+      const s = height[Math.min(H - 1, j + 1) * W + i];
+      const gx = ((e - w) / du) * STRENGTH;
+      const gy = ((n - s) / dv) * STRENGTH;
+      const l = Math.hypot(gx, gy, 1);
+      const k = (j * W + i) * 3;
+      normal[k] = Math.round((0.5 - (0.5 * gx) / l) * 255);
+      normal[k + 1] = Math.round((0.5 - (0.5 * gy) / l) * 255);
+      normal[k + 2] = Math.round((0.5 + 0.5 / l) * 255);
+    }
+  }
+  console.timeEnd('cybertron');
+
+  console.log('saving…');
+  // (plain chroma subsampling, as these were always written)
+  const plain = { smartSubsample: false, std2048: true };
+  await save(colour, W, H, 3, 'transformers', ['std'], { quality: 82, ...plain });
+  await save(colour, W, H, 3, 'transformers', ['sm'], { quality: 80, ...plain });
+  await save(normal, W, H, 3, 'transformers-normal', ['std'], { quality: 88, ...plain });
+  await save(normal, W, H, 3, 'transformers-normal', ['sm'], { quality: 86, ...plain });
+  // (the 2048 is the Cybertron page's too, planet3d.js)
+  await save(glow, W, H, 3, 'transformers-glow', ['std', 'sm'], { lossless: true, srgb: false, std2048: true });
+}

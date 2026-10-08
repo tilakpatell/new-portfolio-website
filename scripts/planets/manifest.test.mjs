@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 import { LADDER, fileOf, format, kindOf, onLadder, recordSave, widths } from './manifest.mjs';
 
@@ -65,5 +67,45 @@ describe('the manifest', () => {
     expect(format(a)).toBe(format(b));
     expect(format(a).split('\n')).toEqual(['{', '  "earth": {"sizes":{"std":[2048,1024]},"xl":null,"kind":"colour","srgb":true},', '  "office": {"sizes":{"std":[1024,512]},"xl":null,"kind":"colour","srgb":true}', '}', '']);
     expect(JSON.parse(format(a))).toEqual(a);
+  });
+});
+
+// The manifest on disk, as the bake left it: every map in it with its files,
+// at the sizes it says, the bake's own maps on the ladder.
+describe('index.json', () => {
+  const DIR = 'public/textures/universe';
+  const index = JSON.parse(readFileSync(`${DIR}/index.json`, 'utf8'));
+  // (made elsewhere and recorded as they are: Earth's by the Python, a 1024
+  // -sm and a 4096 -hq; the stations' and the paper's square 512 tiles; the
+  // universe's sky, 4096 with a 2048 -sm)
+  const OFF_LADDER = ['earth', 'earth-night', 'hull', 'hull-normal', 'hull-rough', 'paper-normal', 'plates', 'plates-normal', 'plates-rough', 'sky-glow'];
+
+  it('is written as format() writes it', () => {
+    expect(readFileSync(`${DIR}/index.json`, 'utf8')).toBe(format(index));
+  });
+  it('gives every map a std, and each size it lists is its file’s', async () => {
+    const wrong = [];
+    for (const [name, { sizes, xl }] of Object.entries(index)) {
+      if (!sizes.std) wrong.push(`${name}: no std`);
+      if (xl !== (sizes.xl ? 'ktx2' : null)) wrong.push(`${name}: xl ${xl}`);
+      for (const [rung, size] of Object.entries(sizes)) {
+        const file = `${DIR}/${fileOf(name, rung)}`;
+        if (!existsSync(file)) {
+          wrong.push(`${file}: missing`);
+          continue;
+        }
+        const head = readFileSync(file).subarray(0, 28);
+        const got = rung === 'xl' ? [head.readUInt32LE(20), head.readUInt32LE(24)] : await sharp(file).metadata().then((m) => [m.width, m.height]);
+        if (got.join('x') !== size.join('x')) wrong.push(`${file}: ${got.join('x')}, listed ${size.join('x')}`);
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+  it('has the bake’s maps on the ladder, and only the recorded ones off it', () => {
+    const off = Object.keys(index).filter((name) => onLadder(index[name]).length);
+    expect(off.sort()).toEqual(OFF_LADDER);
+  });
+  it('flags a 2048 std on Earth’s and Cybertron’s maps only', () => {
+    expect(Object.keys(index).filter((name) => index[name].std2048).sort()).toEqual(['earth', 'earth-night', 'transformers', 'transformers-glow', 'transformers-normal']);
   });
 });

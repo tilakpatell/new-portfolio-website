@@ -22,7 +22,8 @@ The owner's asks:
 - **The planet at war** (PR #178). The hero globe and the universe
   map's Cybertron share `skin.js` (energon, fire and city lights) and
   `war.js` (bursts over the fighting). The maps come from
-  `scripts/build-cybertron-planet.mjs`.
+  `scripts/planets/transformers.mjs` (once `scripts/build-cybertron-planet.mjs`;
+  `node scripts/planets/bake.mjs --only transformers`).
 - **The world** (PR #217):
   - 35 Sketchfab models under CC BY: `catalog.js`,
     `scripts/sketchfab-cybertron.mjs`, credited as `cybertron-<kind>`.

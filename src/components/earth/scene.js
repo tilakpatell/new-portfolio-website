@@ -364,8 +364,8 @@ export function createEarth(renderer, { small = false, lost = () => false } = {}
   air.renderOrder = 1;
   scene.add(air);
 
-  // the stars (the universe map's Milky Way), faint
-  loadTexture(`/textures/universe/sky${big ? '' : '-sm'}.webp`, { renderer, color: true })
+  // the stars (Solar System Scope's Milky Way, scripts/build-universe-textures.py), faint
+  loadTexture(`${BASE}sky${big ? '' : '-sm'}.webp`, { renderer, color: true })
     .then((t) => {
       t.mapping = THREE.EquirectangularReflectionMapping;
       owned.push(t);

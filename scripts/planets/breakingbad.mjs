@@ -325,10 +325,10 @@ export async function bake() {
   console.log(`  the valley ${v.toFixed(3)} against the mesa ${m.toFixed(3)}: contrast ${(m - v).toFixed(3)} (at least 0.18)`);
 
   console.log('breaking bad: saving');
-  await save(albedo, W, H, 3, 'breakingbad', [[4096, '-xl'], [2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
-  await save(normalMap(height, W, H, 1), W, H, 3, 'breakingbad-normal', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
-  await save(rough, W, H, 3, 'breakingbad-rough', [[1024, '']], { quality: 84 });
+  await save(albedo, W, H, 3, 'breakingbad', ['xl', 'hq', 'std', 'sm'], { quality: 88 });
+  await save(normalMap(height, W, H, 1), W, H, 3, 'breakingbad-normal', ['hq', 'std', 'sm'], { quality: 90 });
+  await save(rough, W, H, 3, 'breakingbad-rough', ['std'], { quality: 84 });
   // (the lights, and a few soft clouds: 1024 holds them)
-  await save(night, W, H, 3, 'breakingbad-night', [[1024, ''], [512, '-sm']], { quality: 86 });
-  await save(clouds, W, H, 3, 'breakingbad-clouds', [[1024, ''], [512, '-sm']], { quality: 80 });
+  await save(night, W, H, 3, 'breakingbad-night', ['std', 'sm'], { quality: 86 });
+  await save(clouds, W, H, 3, 'breakingbad-clouds', ['std', 'sm'], { quality: 80 });
 }

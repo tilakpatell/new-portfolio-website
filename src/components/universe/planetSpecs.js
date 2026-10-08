@@ -83,7 +83,7 @@ export const SPECS = {
   invincible: {
     maps: ['colour', 'normal', 'glow', 'rough', 'night', 'clouds'],
     material: 'standard',
-    // (the old sea beds glossy: scripts/build-invincible-planet.mjs)
+    // (the old sea beds glossy: scripts/planets/invincible.mjs)
     params: { roughness: 0.92 },
     normal: 1.35,
     glow: 2.4,
@@ -134,8 +134,8 @@ const HOOKS = {
   // side and carries the plating on in the shader up close
   cybertron: (p, T) => {
     // (EXTRAS.transformers, in planets.js, lights the war on the same two maps)
-    if (!(T.transformers && T['transformers-glow-sm'])) return;
-    const skin = cybertronSkin(p.body.material, { glow: T['transformers-glow-sm'], sun: p.sun });
+    if (!(T.transformers && T['transformers-glow'])) return;
+    const skin = cybertronSkin(p.body.material, { glow: T['transformers-glow'], sun: p.sun });
     // (its seams glow a little in the colour of the light it's in: the scene's key)
     p.keyColour = skin.uKeyColour.value;
     // the energon breathes, and turns from the Autobots' blue to the

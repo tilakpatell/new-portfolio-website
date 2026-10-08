@@ -1,6 +1,6 @@
 // Cybertron's skin, for any MeshStandardMaterial wrapped round a sphere: the
 // universe map's planet and the Cybertron page's. The big shapes come from
-// the maps (scripts/build-cybertron-planet.mjs): the colour, the relief, and
+// the maps (scripts/planets/transformers.mjs): the colour, the relief, and
 // what glows, packed one thing to a channel (red the energon, green the
 // fires, blue the cities' lights) so the energon can take each side's colour
 // and the cities light only the night side. Up close, where the maps run out

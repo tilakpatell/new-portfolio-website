@@ -4,7 +4,7 @@
 
 **Goal:** The fandom planets sharp and accurate from the ship, the galaxy's worlds sharp from orbit, three more universe events, and a landing's ground matching where on the map you came down.
 
-**Architecture:** Three lanes on disjoint files, each its own worktree and PRs. Lane 1 is `src/components/universe/planets.js`, `planetShading.js`, `scripts/planets/`, `scripts/build-fandom-planets.mjs`, `src/components/universe/poses.js` and `public/textures/universe/`. Lane 2 is `src/components/galaxy/bodies.js`, `bodyShaders.js`, `src/components/universe/director.js`, `scene.js` and the `claude/universe-ship-pace` branch's files. Lane 3 is `src/components/universe/landings/` and `footScene.js`'s one `furnish` call. A lane never edits another lane's files; if it must, it says so in its PR and merges main first.
+**Architecture:** Three lanes on disjoint files, each its own worktree and PRs. Lane 1 is `src/components/universe/planets.js`, `planetShading.js`, `scripts/planets/`, `scripts/build-fandom-planets.mjs` (since folded into `scripts/planets/bake.mjs`), `src/components/universe/poses.js` and `public/textures/universe/`. Lane 2 is `src/components/galaxy/bodies.js`, `bodyShaders.js`, `src/components/universe/director.js`, `scene.js` and the `claude/universe-ship-pace` branch's files. Lane 3 is `src/components/universe/landings/` and `footScene.js`'s one `furnish` call. A lane never edits another lane's files; if it must, it says so in its PR and merges main first.
 
 **Tech Stack:** three r186 (WebGL 2), vitest, eslint, sharp (bakes), basisu through `scripts/ktx2.mjs`, headless Chromium through `scripts/universe-check.mjs`, `scripts/galaxy-check.mjs` and `scripts/landing-check.mjs`.
 
@@ -74,7 +74,7 @@ it('disposes a dropped planet's near set', async () => { /* three planets come n
 
 - [ ] **Step 1: Test** in `planets.test.js`: `mapFile('middleearth', 'ultra')` is `'middleearth-xl.ktx2'`; `mapFile('middleearth-normal', 'ultra')` is unchanged; `mapFile('transformers', 'ultra')` is unchanged. Run, see it fail.
 - [ ] **Step 2: Implement** the `xl` flag and `mapFile`.
-- [ ] **Step 3: Bake.** `node scripts/build-fandom-planets.mjs` after the `save` change. UASTC through `node scripts/ktx2.mjs convert` (read its header for the flags). If any `-xl.ktx2` is over 6 MB, drop to ETC1S for that one and note it in the handoff.
+- [ ] **Step 3: Bake.** `node scripts/build-fandom-planets.mjs` (now `node scripts/planets/bake.mjs --all`) after the `save` change. UASTC through `node scripts/ktx2.mjs convert` (read its header for the flags). If any `-xl.ktx2` is over 6 MB, drop to ETC1S for that one and note it in the handoff.
 - [ ] **Step 4: Test the fallback** in `nearMaps.test.js`: a `load` that rejects the `.ktx2` URL resolves the `-hq.webp` one; `swapMaps` receives the WebP textures.
 - [ ] **Step 5: Look** on a strong card (`?detail=ultra` if the DEV query exists in `lib/detail`; else `localStorage` cap off) at Middle-earth parked: the rivers are lines, not smears. Screenshot.
 - [ ] **Step 6: Commit.** Keep the bake deterministic (seeded) so a rebake is a no-op diff.

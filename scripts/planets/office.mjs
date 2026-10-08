@@ -152,7 +152,7 @@ export async function bake() {
     rough[i * 3] = rough[i * 3 + 1] = rough[i * 3 + 2] = 0.88 - crease * 0.08;
   });
 
-  await save(albedo, W, H, 3, 'office', [[4096, '-xl'], [2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
-  await save(normal, W, H, 3, 'office-normal', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 90 });
-  await save(rough, W, H, 3, 'office-rough', [[1024, '']], { quality: 84 });
+  await save(albedo, W, H, 3, 'office', ['xl', 'hq', 'std', 'sm'], { quality: 88 });
+  await save(normal, W, H, 3, 'office-normal', ['hq', 'std', 'sm'], { quality: 90 });
+  await save(rough, W, H, 3, 'office-rough', ['std'], { quality: 84 });
 }

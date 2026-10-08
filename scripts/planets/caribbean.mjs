@@ -302,10 +302,10 @@ export async function bake() {
 
   // (ONLY=normal: just the relief, at 2048 for ultra too, the others left as they are)
   const only = process.env.ONLY;
-  if (only !== 'normal') await save(albedo, W, H, 3, 'caribbean', [[4096, '-xl'], [2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 88 });
-  await save(normalMap(height, W, H, 1), W, H, 3, 'caribbean-normal', [[2048, '-hq'], [1024, '']], { quality: 90 });
+  if (only !== 'normal') await save(albedo, W, H, 3, 'caribbean', ['xl', 'hq', 'std', 'sm'], { quality: 88 });
+  await save(normalMap(height, W, H, 1), W, H, 3, 'caribbean-normal', ['hq', 'std'], { quality: 90 });
   if (only === 'normal') return;
-  await save(rough, W, H, 3, 'caribbean-rough', [[1024, '']], { quality: 84 });
-  await save(night, W, H, 3, 'caribbean-night', [[1024, '']], { quality: 86 });
-  await save(clouds, W, H, 3, 'caribbean-clouds', [[2048, '-hq'], [1024, ''], [512, '-sm']], { quality: 80 });
+  await save(rough, W, H, 3, 'caribbean-rough', ['std'], { quality: 84 });
+  await save(night, W, H, 3, 'caribbean-night', ['std'], { quality: 86 });
+  await save(clouds, W, H, 3, 'caribbean-clouds', ['hq', 'std', 'sm'], { quality: 80 });
 }

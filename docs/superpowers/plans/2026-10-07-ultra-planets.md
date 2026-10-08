@@ -95,7 +95,7 @@
 
 ### Task 9: The universe's planets at 8192
 
-**Files:** Modify `universe/planets.js` (`NEAR_SEG.ultra = [320, 200]`), `planetMaps.js` (`k8` flag; `nearSet` at ultra: `-8k.ktx2` → `-xl.ktx2` → `-hq.webp`), `scripts/planets/sphere.mjs` (`-8k` size), `scripts/build-fandom-planets.mjs --ultra`, `scripts/build-universe-textures.py --ultra`.
+**Files:** Modify `universe/planets.js` (`NEAR_SEG.ultra = [320, 200]`), `planetMaps.js` (`k8` flag; `nearSet` at ultra: `-8k.ktx2` → `-xl.ktx2` → `-hq.webp`), `scripts/planets/sphere.mjs` (`-8k` size), `scripts/build-fandom-planets.mjs --ultra` (now `scripts/planets/bake.mjs --ultra`), `scripts/build-universe-textures.py --ultra`.
 
 - [ ] Tests: ultra nearSet for 'middleearth' with `k8` asks for `middleearth-8k.ktx2` with fallbacks; without `k8` unchanged; `nearSegments('ultra')` is [320, 200].
 - [ ] Commit.

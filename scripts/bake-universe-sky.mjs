@@ -9,7 +9,7 @@
 // (The sky before was Solar System Scope's repaint of this same panorama,
 // tinted blue and smeared; sky-hq.webp and sky.webp, which
 // build-universe-textures.py makes from it, stay as they were for the Earth's
-// background.) The photo:
+// background, in public/textures/earth/.) The photo:
 // - is brought to the true sky, where the stars are (starCatalog.js): the
 //   mosaic is turned 3.8° off the galactic frame and bent a little where it
 //   was stitched; scripts/fit-universe-sky.py measures both against the
@@ -28,7 +28,9 @@
 //
 //   NODE_USE_ENV_PROXY=1 node scripts/bake-universe-sky.mjs [--check]
 //
-// (it downloads the 29 MB original to scripts/.cache the first time)
+// (it downloads the 29 MB original to scripts/.cache the first time, and
+// records the two files in the planet maps' manifest, index.json, as
+// scripts/planets/bake.mjs --record does)
 
 import sharp from 'sharp';
 import { existsSync, statSync } from 'node:fs';
@@ -205,3 +207,6 @@ for (const { file, width } of OUT) {
     .toFile(file);
   console.log(`${file}: ${width}x${width / 2}, ${Math.round(statSync(file).size / 1024)} KB`);
 }
+// (planetMaps.js knows a map's sizes from the manifest)
+const { recordFiles } = await import('./planets/sphere.mjs');
+await recordFiles(['sky-glow']);

@@ -1,27 +1,34 @@
-"""Builds the universe map's textures into public/textures/universe/.
+"""Builds Earth's, the sun's and the stations' textures for the universe map
+into public/textures/universe/, the Death Star the X-wing's launch sees
+there too (cockpit/vehicles/xwing.js), and the Earth page's sky into
+public/textures/earth/. (The fandoms' planets are baked by
+scripts/planets/bake.mjs, which also keeps the universe map's manifest,
+public/textures/universe/index.json: this script has it record the planet
+maps it wrote, as the files are on disk, when it's done.)
 
 Sources (credited on the map itself, in its panel):
 - Planet maps by Solar System Scope (https://www.solarsystemscope.com/textures/),
   CC BY 4.0, fetched from their copies on Wikimedia Commons: Mercury under the
-  Death Star's plates, and Earth as it is. (The fandoms' planets are baked by
-  scripts/build-fandom-planets.mjs.)
+  Death Star's plates, Earth as it is, and the sun.
 - Metal plates and paper from ambientCG (https://ambientcg.com), CC0: the
-  Death Star's and Cybertron's panels, the stations' hulls, the paper's grain.
+  Death Star's panels, the stations' plates and hulls, the paper's grain.
 
-- The sky: Solar System Scope's Milky Way (8K, CC BY 4.0), brought up from
-  its very dim original so the band of the galaxy shows (its glow brought up
-  apart from its stars, so they stay pinpoints), its arms cooled toward blue
-  and its core warmed, with a fine field of faint stars of our own laid
-  over, 4096x2048 (2048 on phones).
+- The Earth page's sky: Solar System Scope's Milky Way (8K, CC BY 4.0),
+  brought up from its very dim original so the band of the galaxy shows (its
+  glow brought up apart from its stars, so they stay pinpoints), its arms
+  cooled toward blue and its core warmed, with a fine field of faint stars of
+  our own laid over, 4096x2048 (2048 on phones). (The universe map's own sky
+  is scripts/bake-universe-sky.mjs's.)
 - Earth's night lights (Solar System Scope, from Commons' 1920 px copy), and
   a roughness map made from its day map, so the oceans catch the sun.
 
-Each planet map is 1024x512 WebP (Earth 2048x1024) with a half-size `-sm`
-copy for phones; the tiling materials are 512 px.
+Each planet map is 1024x512 WebP (Earth 2048x1024: the manifest's std 2048)
+with a half-size `-sm` copy for phones; the tiling materials are 512 px.
 
 `--hq` builds the sharper set instead, for strong graphics cards (lib/detail's
 'ultra' level: planets.js picks the `-hq` file): every planet map at twice
-its size (2048x1024, Earth and its night 4096x2048) and the sky at 8192x4096,
+its size (2048x1024, Earth and its night 4096x2048) and the Earth page's
+sky at 8192x4096,
 worked from Solar System Scope's own 8K originals (their site serves them;
 Commons rate-limits originals from some networks and caps thumbnails at
 3840 px). It writes only the `-hq` files: the standard set stays as it is.
@@ -49,6 +56,8 @@ from PIL import Image, ImageFilter
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CACHE = ROOT / 'node_modules/.cache/universe'
 OUT = ROOT / 'public/textures/universe'
+EARTH = ROOT / 'public/textures/earth'  # (the Earth page's sky)
+WROTE = []  # the universe map's planet maps written, for its manifest (see record)
 UA = {'User-Agent': 'tilakpatell.com universe build (https://tilakpatell.com)'}
 
 HQ = '--hq' in sys.argv  # the sharper set for strong graphics cards (see above)
@@ -221,22 +230,33 @@ def normal_map(height, strength):
     return n * 0.5 + 0.5
 
 
-def save(a, name, full=(1024, 512), small=True, quality=84, hq=True):
+def save(a, name, full=(1024, 512), small=True, quality=84, hq=True, out=OUT, planet=True):
     """The standard file and its -sm half; with --hq, only the -hq file at
     twice the standard size (a map that has no sharper version, `hq=False`,
-    is skipped: planets.js falls back to the standard file)."""
-    OUT.mkdir(parents=True, exist_ok=True)
+    is skipped: planets.js falls back to the standard file). A universe
+    planet map (`planet`, in OUT) is listed for the manifest."""
+    out.mkdir(parents=True, exist_ok=True)
     im = img(a)
     if HQ:
         if not hq:
             return
-        im.resize((full[0] * 2, full[1] * 2), Image.LANCZOS).save(OUT / f'{name}-hq.webp', quality=quality, method=6)
+        im.resize((full[0] * 2, full[1] * 2), Image.LANCZOS).save(out / f'{name}-hq.webp', quality=quality, method=6)
         print(f'  {name}-hq.webp')
-        return
-    im.resize(full, Image.LANCZOS).save(OUT / f'{name}.webp', quality=quality, method=6)
-    if small:
-        im.resize((full[0] // 2, full[1] // 2), Image.LANCZOS).save(OUT / f'{name}-sm.webp', quality=quality - 2, method=6)
-    print(f'  {name}.webp')
+    else:
+        im.resize(full, Image.LANCZOS).save(out / f'{name}.webp', quality=quality, method=6)
+        if small:
+            im.resize((full[0] // 2, full[1] // 2), Image.LANCZOS).save(out / f'{name}-sm.webp', quality=quality - 2, method=6)
+        print(f'  {name}.webp')
+    if planet and out == OUT:
+        WROTE.append(name)
+
+
+def record(names):
+    """The planet maps written here into the universe map's manifest
+    (public/textures/universe/index.json), each as its files now are on disk:
+    scripts/planets/bake.mjs --record."""
+    import subprocess
+    subprocess.run(['node', str(ROOT / 'scripts/planets/bake.mjs'), '--record', ','.join(names)], check=True)
 
 
 def ultra():
@@ -264,11 +284,12 @@ def main():
     plates1 = material('MetalPlates001', 'Color')
 
     # (The fandoms' planets, Music, Marvel, Breaking Bad, Middle-earth, Rick
-    # and Morty and the Office, are baked by scripts/build-fandom-planets.mjs,
-    # at all three sizes, -hq included: none of them is written here.)
+    # and Morty, the Office, Cybertron and Invincible, are baked by
+    # scripts/planets/bake.mjs: none of them is written here.)
 
-    # The Death Star: Mercury's grey under hull plates, the trench round the
-    # middle and the superlaser's dish
+    # The Death Star the X-wing's launch sees (cockpit/vehicles/xwing.js; the
+    # universe map's Star Wars is a gate, and wears no map): Mercury's grey
+    # under hull plates, the trench round the middle and the superlaser's dish
     base = ramp(stretch(lum(P['mercury'])), [(0, '#41464d'), (1, '#b9bec6')])
     plates = lum(tile(plates1, W, H, 32, 16))
     plates = np.clip(0.75 + highpass(plates, 2) * 3, 0, 1.2)
@@ -291,12 +312,10 @@ def main():
     dish = np.clip(1 - r / 0.05, 0, 1)
     rings = 0.5 + 0.5 * np.cos(r * 380)
     ds = ds * (1 - (dish > 0)[..., None] * (0.35 + 0.15 * rings[..., None])) - (dish > 0.85)[..., None] * 0.15
-    save(ds, 'starwars')
-    save(np.clip(1 - r / 0.006, 0, 1)[..., None] * hexrgb('#7dff7a'), 'starwars-glow', small=False, hq=False)
+    save(ds, 'starwars', hq=False, planet=False)
+    save(np.clip(1 - r / 0.006, 0, 1)[..., None] * hexrgb('#7dff7a'), 'starwars-glow', small=False, hq=False, planet=False)
 
-    # (Cybertron's maps are worked out on their own: scripts/build-cybertron-planet.mjs)
-
-    # Earth, as it is, and its clouds; Alderaan is Earth turned over and greener
+    # Earth, as it is, and its clouds
     save(P['earth_daymap'], 'earth', full=(2048, 1024))
     # the oceans smooth (they catch the sun), the land rough
     e = P['earth_daymap']
@@ -305,13 +324,10 @@ def main():
     night = arr(Image.open(io.BytesIO(fetch(SSS_HQ.format(size='8k', name='earth_nightmap'), '8k_earth_nightmap.jpg') if HQ else fetch(NIGHT, 'earth_nightmap.jpg'))).convert('RGB').resize((W, H), Image.LANCZOS))
     save(np.clip(night * np.array([1.15, 0.95, 0.7]) * 1.3, 0, 1), 'earth-night', full=(2048, 1024))
     save(np.stack([lum(P['earth_clouds'])] * 3, -1), 'earth-clouds')
-    e = P['earth_daymap'][::-1]
-    alderaan = e * np.array([0.85, 1.05, 0.95]) + np.stack([lum(P['earth_clouds'])[::-1]] * 3, -1) * 0.45
-    save(alderaan, 'alderaan', full=(512, 256), small=False, hq=False)
     save(P['sun'], 'sun', full=(1024, 512))
 
-    # the sky: the Milky Way, brought up from its very dim original (most of
-    # it is a hair off black) so the galaxy's band shows. The glow and the
+    # the Earth page's sky: the Milky Way, brought up from its very dim
+    # original (most of it is a hair off black) so the galaxy's band shows. The glow and the
     # stars are brought up apart: the glow (an opening, min then max, takes
     # the points out) a lot, with a toe so the near-black stays black, and the
     # stars only a little, so they stay pinpoints rather than blown-out
@@ -348,10 +364,10 @@ def main():
     field = arr(Image.fromarray((field * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.6 * S))) * 1.6
     sky = np.clip(g * 0.95 + stars + np.stack([field * 0.9, field * 0.95, field], -1), 0, 1) ** 0.82
     sky += (rng.random(sky.shape[:2])[..., None] - 0.5) / 255
-    save(sky, 'sky', full=(4096, 2048), quality=88 if S == 1 else 84)
+    save(sky, 'sky', full=(4096, 2048), quality=88 if S == 1 else 84, out=EARTH)
 
     if HQ:
-        return  # (the tiling materials have no sharper set: they're 1K sources tiled)
+        return record(WROTE)  # (the tiling materials have no sharper set: they're 1K sources tiled)
     # Tiling materials for the stations and ships
     for asset, short in (('MetalPlates001', 'plates'), ('MetalPlates014', 'hull')):
         for kind, suffix in (('Color', ''), ('NormalGL', '-normal'), ('Roughness', '-rough')):
@@ -359,8 +375,11 @@ def main():
             OUT.mkdir(parents=True, exist_ok=True)
             im.save(OUT / f'{short}{suffix}.webp', quality=86, method=6)
             print(f'  {short}{suffix}.webp')
+            WROTE.append(f'{short}{suffix}')
     material('Paper001', 'NormalGL').resize((512, 512), Image.LANCZOS).save(OUT / 'paper-normal.webp', quality=86, method=6)
     print('  paper-normal.webp')
+    WROTE.append('paper-normal')
+    record(WROTE)
 
 
 if __name__ == '__main__':

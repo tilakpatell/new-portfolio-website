@@ -2,7 +2,9 @@
 // mapFile, loadTextures, mapsOf and nearSet give for every name and every
 // planet. The table was recorded from the hand list planetMaps.js had before
 // the bake manifest (public/textures/universe/index.json) took its place, so
-// a line that changes here is a map whose files changed on purpose.
+// a line that changes here is a map whose files changed on purpose. (Changed
+// so far: Cybertron's glow, one map on the ladder in place of a lone
+// 'transformers-glow-sm'.)
 //
 // FILES[name]: the file at low, mid, high, ultra (the -xl where there is one)
 // and ultra's start (what loadTextures asks for there), and '(data)' for a map
@@ -10,7 +12,11 @@
 // (`name: file | fallback`, sorted; none on low). OF[id]: its maps, sorted.
 // NONE: the places with no maps at all.
 
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import MANIFEST from '../../../public/textures/universe/index.json';
+import { fileOf } from '../../../scripts/planets/manifest.mjs';
 
 const asked = [];
 vi.mock('../../lib/three/textures', async (importOriginal) => ({
@@ -68,7 +74,8 @@ const FILES = {
   'sky-glow': 'sky-glow-sm.webp sky-glow-sm.webp sky-glow.webp sky-glow.webp sky-glow.webp',
   'sun': 'sun-sm.webp sun-sm.webp sun.webp sun-hq.webp sun-hq.webp',
   'transformers': 'transformers-sm.webp transformers-sm.webp transformers.webp transformers.webp transformers.webp',
-  'transformers-glow-sm': 'transformers-glow-sm.webp transformers-glow-sm.webp transformers-glow-sm.webp transformers-glow-sm.webp transformers-glow-sm.webp (data)',
+  // (on the ladder since the manifest: the universe's glow is the 2048 the Cybertron page wears, its -sm a 512)
+  'transformers-glow': 'transformers-glow-sm.webp transformers-glow-sm.webp transformers-glow.webp transformers-glow.webp transformers-glow.webp (data)',
   'transformers-normal': 'transformers-normal-sm.webp transformers-normal-sm.webp transformers-normal.webp transformers-normal.webp transformers-normal.webp (data)',
 };
 const NEAR = {
@@ -143,7 +150,7 @@ const NEAR = {
     ultra: [],
   },
   transformers: {
-    mid: ['transformers-normal: transformers-normal.webp (data)', 'transformers: transformers.webp'],
+    mid: ['transformers-glow: transformers-glow.webp (data)', 'transformers-normal: transformers-normal.webp (data)', 'transformers: transformers.webp'],
     high: [],
     ultra: [],
   },
@@ -169,7 +176,7 @@ const OF = {
   rickmorty: 'rickmorty rickmorty-clouds rickmorty-glow rickmorty-rough',
   sky: 'sky-glow',
   sun: 'sun',
-  transformers: 'transformers transformers-glow-sm transformers-normal',
+  transformers: 'transformers transformers-glow transformers-normal',
   travel: 'earth earth-clouds earth-night earth-rough',
 };
 
@@ -194,6 +201,21 @@ describe('every map’s file at every level', () => {
       expect(asked.sort(), level).toEqual(want.sort());
       expect(Object.keys(T).filter((k) => k !== 'small').sort()).toEqual(Object.keys(FILES));
     }
+  });
+});
+
+describe('the maps the manifest lists', () => {
+  it('picks a file from the manifest’s sizes', () => {
+    expect(mapFile('music', 'ultra')).toBe('music-xl.ktx2');
+    expect(mapFile('earth-clouds', 'low')).toBe('earth-clouds-sm.webp');
+    // (Cybertron's standard is 2048, by the manifest's flag)
+    expect(mapFile('transformers', 'high')).toBe('transformers.webp');
+    expect(MANIFEST.transformers).toMatchObject({ sizes: { sm: [512, 256], std: [2048, 1024] }, std2048: true });
+  });
+  it('has a file for every size it lists', () => {
+    const missing = [];
+    for (const [name, { sizes }] of Object.entries(MANIFEST)) for (const rung of Object.keys(sizes)) if (!existsSync(resolve('public/textures/universe', fileOf(name, rung)))) missing.push(fileOf(name, rung));
+    expect(missing).toEqual([]);
   });
 });
 
