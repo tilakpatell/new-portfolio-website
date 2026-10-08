@@ -1309,6 +1309,16 @@ export async function create(canvas, ctx) {
     camera.near = near;
     camera.updateProjectionMatrix();
   };
+  // how far the camera draws: out to deep space's far side, but on foot
+  // under a full day's sky only as far as the sky (footScene's far(): it
+  // hides the rest of the universe), so nothing past it is drawn, nor any
+  // place's own motion worked out there (it's out of view)
+  const FAR = camera.far;
+  const reach = (far) => {
+    if (camera.far === far) return;
+    camera.far = far;
+    camera.updateProjectionMatrix();
+  };
 
   // ── Where each planet is on screen: for the names and for picking ──
   const screen = planets.map((p) => ({ id: p.id, x: 0, y: 0, r: 0, z: -1 }));
@@ -4388,13 +4398,15 @@ export async function create(canvas, ctx) {
   const footCamera = (dt) => {
     const v = foot.view(dt);
     if (!v) return;
-    map.updateMatrixWorld();
+    // (only the map's own turn is wanted: the frame's already brought it up to date)
+    map.updateWorldMatrix(true, false);
     map.localToWorld(camera.position.copy(v.pos));
     camera.up.copy(v.up).transformDirection(map.matrixWorld);
     camera.lookAt(map.localToWorld(camLook.copy(v.look)));
     camera.up.set(0, 1, 0);
     camera.updateMatrixWorld();
     lens(0.004);
+    reach(foot.far() ?? FAR);
   };
   // the HUD on foot: the sights where the gun points, brackets on the
   // trooper it's on, the way back to the ship, and your health in the
@@ -4575,7 +4587,7 @@ export async function create(canvas, ctx) {
     if (sky && flares[0]) {
       let weight = 0;
       let ndc = [0, 0];
-      starAt.copy(sky.sun).transformDirection(map.matrixWorld).multiplyScalar(1000).add(eyeAt).project(camera);
+      starAt.copy(sky.sun).transformDirection(map.matrixWorld).multiplyScalar(camera.far * 0.5).add(eyeAt).project(camera); // (inside what the camera draws: footCamera's reach)
       if (starAt.z < 1 && sky.day > 0.02) {
         ndc = [starAt.x, starAt.y];
         weight = post.flareOn ? flareWeight({ ndc, size: 0.032 / halfTan() }) * sky.day : 0;
@@ -4775,6 +4787,7 @@ export async function create(canvas, ctx) {
     }
     // on foot, the camera's behind you (footScene.js), eased over from where it was
     if (onFoot()) footCamera(dt);
+    else reach(FAR);
     easeCamera(now);
     // into the cockpit and out of it: the ship fades from view and the
     // cockpit takes its place, and your head turns a little (the cockpit

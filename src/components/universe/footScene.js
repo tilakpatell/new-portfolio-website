@@ -1608,7 +1608,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     sky: 1, // how much of the landing's sky shows: coming up from nothing as the ship comes in through the air
     airWas: 0, // the planet's halo, as bright as it was before the ship went into it
     band: null, // a trench round its middle: { half (its rim), home, arc, deep (how far down the trench run's rim is) }
-    hideBody: 0, // a station: how low the camera's to be for its own model to go (0: it stays)
+    hideBody: 0, // how low the camera's to be for the planet's own model to go (0: it stays)
     bodyShown: true,
     // the people
     lead: 0, // which of the party you play
@@ -2109,10 +2109,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         these.open?.();
         showRocks();
       });
-    // (a station's own model goes once the camera's low enough that the
-    // patch reaches past the horizon)
+    // (the planet's own model goes once the camera's low enough that the
+    // patch reaches past the horizon: under it, it was drawn over the
+    // ground's half of the frame for nothing)
     S.bodyShown = planet.body?.visible ?? true;
-    S.hideBody = u.plated ? (0.8 * HULL_PATCH.radius) ** 2 / (2 * S.R) : 0;
+    S.hideBody = (0.8 * (u.plated ? HULL_PATCH : PATCH).radius) ** 2 / (2 * S.R);
     root.position.copy(S.c);
     root.visible = true;
     party = null;
@@ -2505,7 +2506,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (!S.phase) return false;
     S.clock += dt;
     S.t += dt;
-    map.updateMatrixWorld();
+    // (the map's own matrix and this scene's, not everything in the
+    // universe: the frame's drawing brings that up to date, once, and
+    // what's here that moves is brought up to date where it's moved)
+    root.updateWorldMatrix(true, false);
     invMap.copy(map.matrixWorld).invert();
     // the ground's map follows the planet's held turn
     const planet = planetOf[S.id];
@@ -3121,7 +3125,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.cam.up.lerp(out.up, k).normalize();
     } else S.cam = { ...S.cam, pos: out.pos.clone(), look: out.look.clone(), up: out.up.clone() };
     placeViewGun(dt);
-    // a station's own model: not while the camera's down by the ground
+    // the planet's own model: not while the camera's down by the ground
     const body = planetOf[S.id]?.body;
     if (body && S.hideBody) body.visible = S.bodyShown && S.cam.pos.distanceTo(S.c) - S.R > S.hideBody;
     // the air: round the camera, by day
@@ -3171,6 +3175,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // space): the scene's flare on the sun goes by them (0 with no sky)
     get sky() {
       return haze?.set && S.spot ? { day: haze.day, sun: haze.sunDir } : null;
+    },
+    // how far from the camera there's anything to see (the map's units), or
+    // null: as far as it sees. Under a full day's sky, only as far as the
+    // sky (landings/sky.js's seenTo): it hides the rest of the universe.
+    far() {
+      return S.phase && S.spot ? (haze?.seenTo ?? null) : null;
     },
     // the day where you are: how much the haze shows (light: the key light's direction, in the map's space)
     day(light) {
