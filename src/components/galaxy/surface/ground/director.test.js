@@ -143,3 +143,18 @@ describe('the director over water', () => {
     for (const s of raiders) expect(wet([s.b.x, s.b.z]), s.id).toBe(true);
   });
 });
+
+describe('the director over a long visit', () => {
+  test('the patrols that met are forgotten after a while', () => {
+    const d = createDirector({ turfs, effects: F, tier: 'high', rand: () => 0.5 });
+    const population = popOf();
+    for (let k = 0; k < 100; k++) {
+      population.soldiers = new Map([
+        [`a${k}`, { id: `a${k}`, squad: `A${k}`, side: 'empire', role: 'patrol', alive: true, b: { x: 0, z: 0 } }],
+        [`b${k}`, { id: `b${k}`, squad: `B${k}`, side: 'rebel', role: 'patrol', alive: true, b: { x: 10, z: 0 } }],
+      ]);
+      d.update(10, { you: far, population });
+    }
+    expect(d.sizes().met).toBeLessThanOrEqual(10);
+  });
+});

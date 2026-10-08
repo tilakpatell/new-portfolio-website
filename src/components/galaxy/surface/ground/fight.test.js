@@ -197,3 +197,22 @@ describe('the fight', () => {
     expect(Math.hypot(t.b.x, t.b.z)).toBeLessThanOrEqual(t.leash + range + 0.5);
   });
 });
+
+describe('the squads over a long visit', () => {
+  test('a squad all down or gone is forgotten, and so are the fallen once counted', () => {
+    const list = [];
+    const sq = squadsOf(list, { reach: 18, war: 'gcw' });
+    for (let k = 0; k < 50; k++) {
+      const a = mk('stormtrooper', 'empire', k * 100, 0);
+      const b = mk('rebel', 'rebel', k * 100, 20);
+      list.push(a, b);
+      sq.update(0.5);
+      a.alive = false;
+      sq.died(a.id);
+      sq.update(0.5);
+      list.length = 0; // (dropped behind you)
+      sq.update(0.5);
+    }
+    expect(sq.sizes()).toEqual({ squads: 0, fallen: 0 });
+  });
+});

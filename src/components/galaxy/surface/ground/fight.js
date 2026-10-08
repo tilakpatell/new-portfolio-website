@@ -241,6 +241,9 @@ export function squadsOf(soldiers, { reach = 18, war = 'gcw', near = 80 } = {}) 
       const members = all.map((s) => ({ id: s.id, at: at(s), side: s.side, alive: s.alive }));
       const squads = sq.update(members);
       const ids = byId();
+      // (a squad gone, all down or let go of: forgotten)
+      const now = new Set(squads.map((q) => q.id));
+      for (const id of state.keys()) if (!now.has(id)) state.delete(id);
       for (const squad of squads) {
         const st = state.get(squad.id) ?? { level: 'neutral', losses: 0, flank: new Set(), leader: squad.members[0], known: new Set() };
         state.set(squad.id, st);
@@ -270,7 +273,9 @@ export function squadsOf(soldiers, { reach = 18, war = 'gcw', near = 80 } = {}) 
           for (const f of flankersOf(squad, members, front, foes.map((e) => ({ id: e.id, at: at(e), alive: true })))) st.flank.add(f.id);
         }
       }
+      fallen.clear(); // (each counted, by the squad it was in, this once)
     },
+    sizes: () => ({ squads: state.size, fallen: fallen.size }),
     died: (id) => fallen.add(id),
     of: (id) => sq.of(id),
     membersOf: (id) => sq.of(id)?.members ?? [id],

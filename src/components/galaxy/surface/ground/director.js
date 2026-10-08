@@ -30,6 +30,7 @@ export const FIGHTS = 2; // squads engaged near you before a raid waits
 const NEAR = 200; // metres round you a fight counts
 const ARRIVED = 3; // metres from its post a reinforcement holds it
 const CONTACT = 40; // metres: two enemy patrols this near have met
+const MET = 60; // seconds two squads that met aren't said to meet again
 
 // what a side's soldiers are called on the HUD
 const THEM = { empire: 'Imperials', remnant: 'Imperials', rebel: 'Rebels', newrepublic: 'New Republic troops', republic: 'Clones', separatists: 'Droids', hutt: 'The Hutts’ men' };
@@ -69,6 +70,7 @@ export function createDirector({ turfs, effects, tier = 'high', rand = Math.rand
   const api = {
     posts,
     fights: 0,
+    sizes: () => ({ met: met.size }),
     update(dt, { you, population, seen = false } = {}) {
       clock += dt;
       const events = [];
@@ -78,6 +80,7 @@ export function createDirector({ turfs, effects, tier = 'high', rand = Math.rand
       const engaged = new Set();
       for (const s of soldiers.values()) if (s.alive && s.target && near([s.b.x, s.b.z], here, NEAR)) engaged.add(s.squad);
       api.fights = engaged.size;
+      for (const [k, when] of met) if (clock - when >= MET) met.delete(k); // (forgotten after a while)
       // two enemy patrols in sight of each other
       const patrols = [...soldiers.values()].filter((s) => s.alive && (s.role === 'patrol' || s.role === 'raid'));
       for (let i = 0; i < patrols.length; i++)
@@ -86,7 +89,7 @@ export function createDirector({ turfs, effects, tier = 'high', rand = Math.rand
           const b = patrols[j];
           if (a.squad === b.squad || relation(a.side, b.side, war) !== 'enemy' || !near([a.b.x, a.b.z], [b.b.x, b.b.z], CONTACT)) continue;
           const key = [a.squad, b.squad].sort().join('|');
-          if (clock - (met.get(key) ?? -Infinity) < 60) continue;
+          if (clock - (met.get(key) ?? -Infinity) < MET) continue;
           met.set(key, clock);
           const mine = effects.side && relation(a.side, effects.side, war) === 'enemy' ? a : b;
           events.push(say({ type: 'contact', side: mine.side, at: [mine.b.x, mine.b.z] }, `${ONE[mine.side] ?? 'Enemy'} patrol ahead.`));
