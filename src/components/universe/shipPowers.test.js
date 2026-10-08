@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, aimHelp, beamOf, blastPunch, cancel, chargeFor, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readKept, shotAt, step, turretPick, view, within, writeKept } from './shipPowers';
+import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, aimHelp, beamOf, blastPunch, cancel, chargeFor, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readKept, shotAt, step, turretPick, view, writeKept } from './shipPowers';
 import { CREWS } from './crews';
 import { spawn, step as fly } from './ship';
 import { makeSpace } from '../galaxy/space';
@@ -392,12 +392,6 @@ describe('the crews’ ship powers', () => {
     const over = shotAt(t, { x: 0, y: 0, z: -10 });
     expect(over.from.y).toBeGreaterThan(0);
     expect(over.from.z).toBeCloseTo(-10, 6);
-  });
-
-  it('knows what’s within reach of a point (what a magnet would hold)', () => {
-    const at = { x: 0, y: 0, z: -6 };
-    expect(within([T(1, 0, -20), T(2, 0, -30), T(3, 15, 0)], at, 22).map((t) => t.id)).toEqual([1, 3]);
-    expect(within([], at, 22)).toEqual([]);
   });
 
   it('keeps the big one’s charge across a landing for the same crew, and starts again for another', () => {

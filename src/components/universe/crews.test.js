@@ -71,6 +71,8 @@ describe('the crews', () => {
     // and nowhere to come out but into something solid
     for (const why of ['shield', 'held', 'solid']) expect(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', why)?.length, why).toBeGreaterThan(0);
     expect(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', 'shield')).not.toBe(linesFor(crewById('cruiser'), 'power', 'portal', 'refuse', 'held'));
+    // and Jesse, when the magnet's got nothing near enough to hold
+    expect(linesFor(crewById('rv'), 'power', 'magnets', 'refuse', 'empty')?.length).toBeGreaterThan(0);
     expect(linesFor(crewById('xwing'), 'power', 'nope', 'use')).toBeNull();
   });
 

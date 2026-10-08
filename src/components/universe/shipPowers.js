@@ -34,7 +34,7 @@
 //   view(st)               the HUD's
 //   readKept / writeKept   the big one's charge, kept in the session across a landing
 //   pickTargets, portalExit, clearOfSolids, solidAhead, beamOf, blastPunch,
-//   pullStep, jinkStep, turretPick, shotAt, within, crossesShell, isObjective,
+//   pullStep, jinkStep, turretPick, shotAt, crossesShell, isObjective,
 //   firstAlong: the geometry, pure
 
 import { aimAngles, bearing, nose, sweptHit } from './targeting';
@@ -427,9 +427,6 @@ export function shotAt(t, from, reach = (t.size ?? 0.5) + 0.6) {
   else [ux, uy, uz] = [ux / l, uy / l, uz / l];
   return { from: { x: t.at.x + ux * reach, y: t.at.y + uy * reach, z: t.at.z + uz * reach }, to: { x: t.at.x, y: t.at.y, z: t.at.z } };
 }
-
-// The ones of `targets` within `r` of `at` (what a magnet there would hold)
-export const within = (targets, at, r) => targets.filter((t) => Math.hypot(t.at.x - at.x, t.at.y - at.y, t.at.z - at.z) <= r);
 
 // Whether a hop from `a` to `b` crosses a shell of radius `r` round the middle (Scarif's shield)
 export const crossesShell = (a, b, r) => (Math.hypot(a.x, a.y, a.z) - r) * (Math.hypot(b.x, b.y, b.z) - r) < 0;

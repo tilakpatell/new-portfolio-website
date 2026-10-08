@@ -2621,6 +2621,7 @@ export const CREWS = [
           ['jesse', 'Yeah, Mr. White! Yeah, science!', 'yeahScience'],
           ['walt', 'Magnets, Jesse. Basic physics.'],
         ],
+        refuse: { empty: [['jesse', 'Mr. White, there’s nothing out there to grab. Let ’em get closer, yo.']] },
       },
       heisenberg: {
         use: [['walt', 'Say my name.', 'sayMyName']],

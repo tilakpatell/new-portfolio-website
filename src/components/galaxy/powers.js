@@ -123,7 +123,7 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
   };
 
   // ── each power, as it goes on ──
-  const start = (id, { exit, target }) => {
+  const start = (id, { exit, target, magnetAt }) => {
     const s = state;
     const ship = s.ship;
     run.kills = POWERS[id].slot === 'ultimate' ? 0 : run.kills;
@@ -147,13 +147,8 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
       hunters.swallow(mouth, P.swallow);
       run.hop = { exit, target };
     } else if (id === 'wubba') run.beam = { tick: 0, reach: POWERS.wubba.length };
-    else if (id === 'magnets') {
-      const P = POWERS.magnets;
-      const at = ahead(ship, P.ahead);
-      hunters.pull(at, P.radius, P.pull, P.dur, P.daze);
-      war?.pull(at, P.radius, P.dur, P.daze);
-      run.magnet = { at, k: 0, sparks: 0 };
-    } else if (id === 'heisenberg') {
+    else if (id === 'magnets') run.magnet = { at: magnetAt, k: 0, sparks: 0 }; // (they're held already: press)
+    else if (id === 'heisenberg') {
       const P = POWERS.heisenberg;
       const speed = P.speed + Math.max(0, ship.speed);
       let dir = nose(ship);
@@ -421,9 +416,18 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
         if (!exit) return this.deny(slot, id, 'solid');
         if (s.world?.shield && crossesShell(s.ship, exit, s.world.shield.r)) return this.deny(slot, id, 'shield');
       }
+      let magnetAt = null;
+      if (id === 'magnets' && st.primary.phase === 'ready') {
+        // everyone near enough held (the hunters and the war's fighters); with
+        // nobody, no magnet, and no cooldown spent on nothing
+        const P = POWERS.magnets;
+        magnetAt = ahead(s.ship, P.ahead);
+        const held = hunters.pull(magnetAt, P.radius, P.pull, P.dur, P.daze) + (war?.pull(magnetAt, P.radius, P.dur, P.daze) ?? 0);
+        if (!held) return this.deny(slot, id, 'empty');
+      }
       const r = pressSlot(st, slot);
       if (!r.ok) return this.deny(slot, id, r.why);
-      start(id, { exit, target });
+      start(id, { exit, target, magnetAt });
       m = modsOf(st);
       say('use', slot, id);
       this.keep();
