@@ -5,14 +5,19 @@
 // enough for a good look, walking a prisoner nobody ordered moved. With
 // nobody watching it fades. Two things need no doubting: a shot fired, or
 // a face where a helmet should be, blows it the step it is seen. Blown
-// stays blown, since nobody unsees a Rebel; the game starts a fresh doubt
-// only with fresh armour. When the doubt climbs over half, someone
-// challenges you, by what made them wonder; whoever wears TK-421’s armour
-// hears the one famous line. Pure.
+// stays blown, since nobody unsees a Rebel. That makes the doubt a trap
+// for a Rebel who has no armour yet: seen once, he would be blown for good
+// before he ever put any on. So the game steps the doubt only while
+// `disguised(you)`, and sets it back to FRESH whenever armour is put on
+// (a pickup, a story’s give, a checkpoint that restores it). When the doubt
+// climbs over half, someone challenges you, by what made them wonder;
+// whoever wears TK-421’s armour hears the one famous line. Pure.
 //
 //   RATES                          doubt a second for each odd thing seen, and the fade unseen
 //   CHALLENGE                      0.5, the doubt at which someone asks who you are
+//   FRESH                          0, the doubt that armour just put on starts at
 //   LINES                          { [key]: text } every line this says
+//   disguised(you) → bool          whether there is a disguise to doubt: a Rebel in armour
 //   doubtStep(doubt, ctx, dt) → { doubt, blown, says }
 //     ctx: { armour, helmet, running, shooting, restricted, escorting, ordered, officerAt, watchers, tk? }
 //       officerAt: metres to the nearest officer who can see you (null or absent when none)
@@ -28,6 +33,14 @@ export const RATES = Object.freeze({
 });
 
 export const CHALLENGE = 0.5;
+
+export const FRESH = 0;
+
+// An Imperial has nothing to hide and a Rebel out of armour has no disguise
+// yet; stepping the doubt for either would only blow a disguise not worn.
+export function disguised(you) {
+  return you?.side === 'rebel' && Boolean(you.armour);
+}
 
 // an officer this close looks at the trooper and not just the armour
 const OFFICER_NEAR = 3;

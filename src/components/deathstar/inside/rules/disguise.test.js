@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHALLENGE, LINES, doubtStep } from './disguise';
+import { CHALLENGE, FRESH, LINES, disguised, doubtStep } from './disguise';
 
 const STEP = 1 / 30;
 
@@ -148,5 +148,30 @@ describe('the lines', () => {
   it('quote the film only in the one famous line', () => {
     const famous = Object.values(LINES).filter((t) => t.includes('TK-421'));
     expect(famous).toEqual([LINES['challenge-tk421']]);
+  });
+});
+
+describe('when there is a disguise to doubt', () => {
+  it('is only a Rebel in armour', () => {
+    expect(disguised({ side: 'rebel', armour: true, helmet: true })).toBe(true);
+    expect(disguised({ side: 'rebel', armour: true, helmet: false })).toBe(true);
+    expect(disguised({ side: 'rebel', armour: false, helmet: false })).toBe(false);
+    expect(disguised({ side: 'imperial', armour: true, helmet: true })).toBe(false);
+    expect(disguised(null)).toBe(false);
+  });
+
+  it('starts armour just put on at a fresh doubt of 0', () => {
+    expect(FRESH).toBe(0);
+  });
+
+  it('leaves a Rebel seen out of armour, then given armour, starting again from nothing', () => {
+    // stepped out of armour, the doubt would blow and stay blown, which is why the game must not step it then
+    expect(doubtStep(0, calm({ armour: false, helmet: false }), STEP)).toMatchObject({ doubt: 1, blown: true });
+    expect(doubtStep(1, calm(), STEP)).toMatchObject({ doubt: 1, blown: true });
+    // armour put on starts at FRESH, and a calm walk past a watcher keeps it there
+    const after = run(FRESH, calm(), 2);
+    expect(after.doubt).toBe(0);
+    expect(after.steps.every((s) => !s.blown)).toBe(true);
+    expect(after.said).toEqual([]);
   });
 });
