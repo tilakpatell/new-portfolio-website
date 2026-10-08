@@ -8,7 +8,7 @@ import { GUIDES, guideKeyFor } from './routes';
 // are in routes.js. Loaded with the guide's panel, not before.
 
 // the portfolio pages run into one another (components/feed)
-const FEED_TIP = ['Keep scrolling', 'The six portfolio pages run into one another: reach the end of one and the next begins. After the sixth, the end.'];
+const FEED_TIP = ['Keep scrolling', 'The classic site’s six pages run into one another: reach the end of one and the next begins. After the sixth, the end.'];
 
 const FLY = [
   ['W S', 'Throttle'],
@@ -59,7 +59,7 @@ export const PAGES = {
   },
   '/experience': {
     tips: [
-      ['Company colors', 'Each role re-themes the site as you scroll past it.'],
+      ['Company colours', 'Each role re-themes the site as you scroll past it.'],
       ['The crawl', 'Play the opening crawl for the whole story so far.'],
       ['Share a role', 'Each role has its own address (/experience/aws): a link opens right on it.'],
       FEED_TIP,
@@ -85,14 +85,14 @@ export const PAGES = {
   '/contact': {
     tips: [
       ['The memo', 'The form opens your email app with the memo filled in. Nothing is sent from this page.'],
-      ['Email', 'Copy address copies it with one press; ⌘K (Ctrl+K) can copy it from anywhere on the site, too.'],
+      ['Email', 'Copy email address copies it with one press; ⌘K (Ctrl K) can copy it from anywhere on the site, too.'],
       FEED_TIP,
     ],
   },
   '/universe': {
     about: ABOUT['/universe'],
     keys: [
-      { label: 'Flying', rows: [...FLY, ['hold S', 'Drop out of a lane'], ['hold W', 'Carry on through a junction'], ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole map']] },
+      { label: 'Flying', rows: [...FLY, ['hold S', 'Drop out of a lane'], ['hold W', 'Carry on through a junction'], ['M', 'The nav map: pick a place and a drive'], ['J', 'Jump to the place picked'], ['E / Enter', 'Land or dock where you are'], ['H', 'The hangar: paint and parts'], ['O', 'Flight settings'], ['Esc', 'Back out to the whole universe']] },
       { label: 'On foot', rows: [['W A S D', 'Walk'], ['Q E', 'Step sideways'], ['Shift', 'Run'], ['Space', 'Jump'], ['F / Click', 'Fire'], ['X', 'Play the other one of your crew'], ['B', 'Rick’s next gadget: the portal gun, the freeze ray, the shrink ray'], ['V', 'Out of their eyes'], ['G', 'Through a door, or back into the ship'], ['Enter', 'Into the planet’s page']] },
     ],
     touch: [
@@ -333,7 +333,7 @@ export const PAGES = {
       ['The Doors of Durin', 'Move your pointer over the cliff to light the lines, or call the moon. Then say the word: read the arch.'],
       ['The bridge', 'Face the Balrog. Raise the staff (Space) as the whip falls; strike the bridge (Enter) with it right over the deep for a perfect.'],
       ['Gorgoroth', 'Hold to walk (Space or →). Let go when the Eye’s light comes close: standing still, the elven cloaks hide you. Rest before the Ring gets too heavy.'],
-      ['The Ring', 'Hold it to the fire to read it, put it on (Escape takes it off), or cast it in.'],
+      ['The Ring', 'Hold it to the fire to read it, put it on (Esc takes it off), or cast it in.'],
     ],
   },
   '/middle-earth/place': {
@@ -397,11 +397,11 @@ export const PAGES = {
     ],
     touch: [{ label: 'Roll out', rows: [['Drag', 'Steer'], ['Tap', 'The buttons to boost, jump and transform']] }],
     tips: [
-      ['Sides', 'Join the Autobots or the Decepticons: the site changes color with you, and so does who you can transform.'],
+      ['Sides', 'Join the Autobots or the Decepticons: the site changes colour with you, and so does who you can transform.'],
       ['Roll out', 'As a vehicle you’re fast and smash debris; as a robot you fight and jump the barricades, but standing up burns energon. Transforming takes half a second: read the road. Clearing an obstacle pays double if you changed at the last moment.'],
       ['Ground bridge', 'Hold the button, Space, or the scene to open the bridge as an Autobot reaches it. Let go before a Vehicon does.'],
       ['The Iacon database', 'Pick what each Cybertronian entry says before the decryption bar fills. Show the key to read it letter by letter.'],
-      ['The roster', 'Roll out as any of them to wear their colors. The soundboard plays through Soundwave’s visor.'],
+      ['The roster', 'Roll out as any of them to wear their colours. The soundboard plays through Soundwave’s visor.'],
     ],
   },
   '/albuquerque': {
@@ -453,7 +453,7 @@ export const PAGES = {
       ['The Meeseeks box', 'Press the button and give him a task. Give him one he can’t do and he gets help.'],
       ['Interdimensional cable', 'Turn the dial.'],
       ['A look through', 'Past the street, the page’s Fire the portal gun button shows you another dimension. It’s only a look: the gun that takes you is Rick’s, on his bench (P).'],
-      ['The Smiths', 'Four of them are a color scheme for the site. Jerry can ask.'],
+      ['The Smiths', 'Four of them are site colours. Jerry can ask.'],
     ],
   },
   // a Rick and Morty planet, landed on from the universe map (/c-137/<id>)
@@ -497,7 +497,7 @@ export const PAGES = {
     touch: [{ rows: [['Pad', 'Walk'], ['A', 'Jump'], ['B', 'Read, play, go down'], ['Drag', 'Turn the island']] }],
     tips: [
       ['The cartridges', 'Eight of them, each one a project of mine, hidden round the island.'],
-      ['Mind', 'Jump on the walkers; walking into one hurts. A plant won’t come up while you stand on its pipe. Three hearts, and a "?" block gives one back.'],
+      ['Mind', 'Jump on the walkers; walking into one hurts. A plant won’t come up while you stand on its pipe. Three hearts, and a “?” block gives one back.'],
       ['The screen', 'The chip at the top switches between the DMG’s greens, the Pocket’s greys and the Light’s teal.'],
     ],
   },
@@ -611,15 +611,15 @@ export const PAGES = {
 
 // The site's own keys, after ⌘K (the guide adds that one, in this device's way)
 export const SHORTCUTS = [
-  ['?', 'This guide'],
+  ['?', 'The guide'],
   ['Esc', 'Close whatever’s open'],
   ['↑ ↑ ↓ ↓ ← → ← → B A', 'Lightspeed'],
 ];
 
 export const SITE = [
-  ['Two ways round', 'The Universe and Classic switch at the top: fly the site as a universe, or read it as plain pages. Either takes you to the same place in the other, and the site remembers which you picked.'],
+  ['Two ways round', 'The Universe and Classic switch at the top: fly through the universe, or read the classic site. Either takes you to the same place in the other, and the site remembers which you picked.'],
   ['Getting around', 'The menu at the top, or the command palette, which goes anywhere and does most things. The Terminal page takes commands too.'],
-  ['Colors', 'The dot in the menu picks a color scheme: each company I’ve worked at, any fan theme you’ve unlocked, or your own color. Each scheme brings a background: quiet for the companies, lively for the fan themes (click on empty page). Switch them off at the bottom of the same menu.'],
+  ['Colours', 'The dot in the menu picks the site’s colours: each company I’ve worked at, any fan world’s you’ve unlocked, or your own. Each brings a background: quiet for the companies, lively for the fan worlds (click an empty part of the page). Switch them off at the bottom of the same menu.'],
   ['Languages', 'Read the whole site in Aurebesh, Cybertronian or Dwarf runes, from the Off the clock row, ⌘K, or the Death Star, Middle-earth and Cybertron pages. Back to English is always at the bottom of the screen, or type english.'],
   ['Easter eggs', 'One on each main page, and one more on the page that isn’t there. Some words work typed anywhere: try aurebesh, rollout, mellon, snap, twss, parkour, precious, wubbalubbadubdub or say my name.'],
   ['Achievements', 'Each egg you find is counted; the Dundies in Scranton show you where you stand.'],

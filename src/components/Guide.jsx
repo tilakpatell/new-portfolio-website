@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { RiCloseLine, RiQuestionLine } from 'react-icons/ri';
+import { IconGuide } from './icons';
+import { CloseButton } from './ui';
 import { guideMeta } from './guide/routes';
 import { BRIEFED } from './tour/brief';
 import { local } from '../lib/hooks';
@@ -161,19 +162,17 @@ export default function Guide() {
         aria-label={meta ? `Guide: controls and tips for ${meta.title}` : 'Guide: how this site works'}
         title="Guide (?)"
       >
-        <RiQuestionLine className="h-5 w-5" aria-hidden="true" />
+        <IconGuide className="h-5 w-5" aria-hidden="true" />
       </button>
       {nudge && !open && meta && (
-        <div className="guide-nudge" role="status">
+        <div className="guide-nudge notice" role="status">
           <button type="button" className="guide-nudge-open" onClick={() => setOpen(true)}>
             <span className="guide-nudge-kicker">New here?</span>
             <span>
-              The controls for {meta.title} are in the guide. Press <kbd className="guide-kbd">?</kbd> any time.
+              The controls for {meta.title} are in the guide. Press <kbd className="kbd">?</kbd> any time.
             </span>
           </button>
-          <button type="button" className="guide-nudge-close" onClick={() => setNudge(false)} aria-label="Dismiss">
-            <RiCloseLine className="h-4 w-4" aria-hidden="true" />
-          </button>
+          <CloseButton onClick={() => setNudge(false)} />
         </div>
       )}
       {open && (

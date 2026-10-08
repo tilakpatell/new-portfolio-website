@@ -4,7 +4,7 @@
    drive goes (a bright straight jump, dashes for super speed, dots cruising). */
 .navmap {
   position: fixed;
-  z-index: 90;
+  z-index: var(--z-cover);
   inset: 0;
   display: grid;
   place-items: center;

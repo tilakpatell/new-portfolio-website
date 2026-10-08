@@ -40,6 +40,7 @@ import { openGuide } from '../lib/palette';
 import { TOUR_TIMES, openTour } from '../lib/tour';
 import { DESTINATIONS } from './universe/nav';
 import { byId as universeById } from './universe/universes';
+import { IconDownload, IconSound, IconUniverse } from './icons';
 import '../styles/lazy/commandpalette.css';
 
 // ⌘K / Ctrl+K: jump anywhere on the site, or run one of its tricks.
@@ -95,8 +96,8 @@ export default function CommandPalette({ onClose }) {
       { id: 'a-tour-p', group: 'Actions', label: 'Take the player’s tour', hint: TOUR_TIMES.player, keywords: 'tour help onboarding walkthrough new here first time show around how to get about start player play games worlds', icon: RiCompass3Line, run: () => openTour({ audience: 'player' }) },
       { id: 'a-tour-all', group: 'Actions', label: 'Take the whole tour', hint: TOUR_TIMES.mixed, keywords: 'tour help onboarding walkthrough new here first time show around how to get about start everything both all', icon: RiCompass3Line, run: () => openTour({ audience: 'mixed' }) },
       { id: 'a-todo', group: 'Actions', label: 'Open the checklist', hint: 'Ticked off as you go', keywords: 'todo to do things checklist list what can i do try see games worlds help', icon: RiCompass3Line, run: () => openGuide({ tab: 'checklist' }) },
-      { id: 's-again', group: 'Actions', label: 'Restart the site from the beginning', keywords: 'restart start over again reset replay intro welcome crawl cockpit first visit beginning reboot', icon: RiRestartLine, run: restartSite },
-      { id: 'w-uni', group: 'Go to', label: 'The universe map', keywords: 'universe map planets worlds fandoms space ship fly x-wing falcon cruiser rick morty rv walt jesse breaking bad', icon: RiGlobalLine, run: go('/universe') },
+      { id: 's-again', group: 'Actions', label: 'Start over', hint: 'From the beginning', keywords: 'restart start over again reset replay intro welcome crawl cockpit first visit beginning reboot', icon: RiRestartLine, run: restartSite },
+      { id: 'w-uni', group: 'Go to', label: 'The universe', keywords: 'universe map planets worlds fandoms space ship fly x-wing falcon cruiser rick morty rv walt jesse breaking bad', icon: IconUniverse, run: go('/universe') },
       { id: 'p-exp', group: 'Go to', label: 'Experience', icon: RiBriefcaseLine, run: go('/experience') },
       { id: 'p-proj', group: 'Go to', label: 'Projects', icon: RiCodeBoxLine, run: go('/projects') },
       { id: 'p-travel', group: 'Go to', label: 'Travel', keywords: 'places globe heritage akshardham', icon: RiGlobalLine, run: go('/travel') },
@@ -124,7 +125,7 @@ export default function CommandPalette({ onClose }) {
           }
         },
       },
-      { id: 'a-pdf', group: 'Actions', label: 'Download résumé (PDF)', keywords: 'resume cv pdf', icon: RiFileTextLine, run: () => Object.assign(document.createElement('a'), { href: profile.resume.href, download: profile.resume.filename }).click() },
+      { id: 'a-pdf', group: 'Actions', label: 'Download the PDF', hint: 'The résumé', keywords: 'resume cv pdf download', icon: IconDownload, run: () => Object.assign(document.createElement('a'), { href: profile.resume.href, download: profile.resume.filename }).click() },
       { id: 'a-mode', group: 'Actions', label: mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode', keywords: 'theme dark light mode', icon: RiContrast2Line, run: toggleMode },
       { id: 'e-script', group: 'Easter eggs', label: fun.script ? `${BACK} (turn off ${SCRIPTS[fun.script].name})` : `Read the site in ${fun.scriptName}`, keep: Boolean(fun.script), keywords: 'language english back off aurebesh star wars cybertronian transformers runes tolkien dwarf font', icon: RiSparkling2Line, run: fun.toggleScript },
       { id: 'e-name', group: 'Easter eggs', label: 'Say my name', keywords: 'breaking bad heisenberg walter white', icon: RiSparkling2Line, run: fun.sayMyName },
@@ -157,10 +158,10 @@ export default function CommandPalette({ onClose }) {
       { id: 'e-rollout', group: 'Easter eggs', label: 'Autobots, roll out', keywords: 'transformers optimus prime megatron bumblebee', icon: RiSparkling2Line, run: () => fun.rollOut('optimus') },
       { id: 'e-schwifty', group: 'Easter eggs', label: 'Get schwifty', keywords: 'rick and morty wubba lubba dub dub wubbalubbadubdub portal green', icon: RiSparkling2Line, run: () => fun.getSchwifty('portal') },
       { id: 'e-savvy', group: 'Easter eggs', label: 'Savvy? Hoist the colours', keywords: 'pirates of the caribbean jack sparrow black pearl flying dutchman davy jones tortuga pirate theme', icon: RiSparkling2Line, run: () => fun.savvy('pearl') },
-      { id: 'a-sound', group: 'Actions', label: soundOn() ? 'Turn sound off' : 'Turn sound on', keywords: 'mute audio volume', icon: RiContrast2Line, run: () => setSound(!soundOn()) },
-      { id: 't-auto', group: 'Themes', label: 'Auto colors', hint: 'Follow the page', keywords: 'theme colors', icon: RiPaletteLine, run: () => pin(null) },
-      ...THEME_ORDER.map((id) => ({ id: `t-${id}`, group: 'Themes', label: `${THEMES[id].company} colors`, keywords: 'theme', icon: RiPaletteLine, run: () => pin(id) })),
-      ...FAN_THEMES.filter((f) => unlocked.includes(f.achievement)).map((f) => ({ id: `t-${f.id}`, group: 'Themes', label: `${THEMES[f.id].company} colors`, hint: 'Unlocked', keywords: 'theme fan', icon: RiPaletteLine, run: () => pin(f.id) })),
+      { id: 'a-sound', group: 'Actions', label: soundOn() ? 'Turn sound off' : 'Turn sound on', keywords: 'mute audio volume', icon: IconSound, run: () => setSound(!soundOn()) },
+      { id: 't-auto', group: 'Colours', label: 'Auto colours', hint: 'Follows the page you’re on', keywords: 'theme colors colours', icon: RiPaletteLine, run: () => pin(null) },
+      ...THEME_ORDER.map((id) => ({ id: `t-${id}`, group: 'Colours', label: `${THEMES[id].company} colours`, keywords: 'theme colors', icon: RiPaletteLine, run: () => pin(id) })),
+      ...FAN_THEMES.filter((f) => unlocked.includes(f.achievement)).map((f) => ({ id: `t-${f.id}`, group: 'Colours', label: `${THEMES[f.id].company} colours`, hint: 'Unlocked', keywords: 'theme colors fan', icon: RiPaletteLine, run: () => pin(f.id) })),
       { id: 'l-gh', group: 'Links', label: 'GitHub', hint: `github.com/${profile.github.handle}`, icon: RiGithubFill, run: () => window.open(profile.github.url, '_blank', 'noopener') },
       { id: 'l-li', group: 'Links', label: 'LinkedIn', hint: `in/${profile.linkedin.handle}`, icon: RiLinkedinBoxFill, run: () => window.open(profile.linkedin.url, '_blank', 'noopener') },
       { id: 'l-mail', group: 'Links', label: 'Email', hint: profile.email, icon: RiMailLine, run: () => (window.location.href = `mailto:${profile.email}`) },
@@ -216,7 +217,7 @@ export default function CommandPalette({ onClose }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search pages, projects, places, or try “snap”"
+            placeholder="Search pages, projects, places or try “snap”"
             className="palette-input"
             role="combobox"
             aria-expanded="true"
@@ -226,7 +227,10 @@ export default function CommandPalette({ onClose }) {
             autoComplete="off"
             spellCheck={false}
           />
-          <kbd className="palette-kbd">esc</kbd>
+          {/* the key that closes it, and on a touch screen the way to */}
+          <button type="button" className="kbd palette-close" onClick={onClose} aria-label="Close">
+            Esc
+          </button>
         </div>
         <ul ref={list} id="palette-list" role="listbox" aria-label="Results" className="palette-list">
           {shown.length === 0 && <li className="px-4 py-8 text-center text-sm text-muted">Nothing matches “{q}”. Try a page, a project or a country.</li>}
@@ -236,7 +240,7 @@ export default function CommandPalette({ onClose }) {
             const Icon = it.icon;
             return (
               <li key={it.id} role="presentation">
-                {header && <p className="palette-group">{it.group}</p>}
+                {header && <p className="palette-group label">{it.group}</p>}
                 <div
                   id={`pal-${it.id}`}
                   role="option"
@@ -248,7 +252,7 @@ export default function CommandPalette({ onClose }) {
                 >
                   <Icon className="h-4 w-4 flex-none text-muted" aria-hidden="true" />
                   <span className={`min-w-0 flex-1 truncate text-ink${it.keep ? ' ab-keep' : ''}`}>{it.label}</span>
-                  {it.hint && <span className="hidden truncate text-xs text-muted sm:block">{it.hint}</span>}
+                  {it.hint && <span className="text-fine hidden truncate text-muted sm:block">{it.hint}</span>}
                 </div>
               </li>
             );
@@ -256,10 +260,10 @@ export default function CommandPalette({ onClose }) {
         </ul>
         <p className="palette-foot">
           <span>
-            <kbd className="palette-kbd">↑</kbd> <kbd className="palette-kbd">↓</kbd> to move
+            <kbd className="kbd">↑</kbd> <kbd className="kbd">↓</kbd> to move
           </span>
           <span>
-            <kbd className="palette-kbd">↵</kbd> to open
+            <kbd className="kbd">↵</kbd> to open
           </span>
           <span className="ml-auto hidden sm:inline">Type a word anywhere on the site, too.</span>
         </p>
