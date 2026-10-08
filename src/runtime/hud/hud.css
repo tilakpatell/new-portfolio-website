@@ -118,9 +118,7 @@
 :where(.hud-touch-btn[data-size='primary']):not(hud-none) { width: var(--touch-primary); height: var(--touch-primary); }
 :where(.hud-touch-btn:active):not(hud-none) { background: var(--hud-accent); color: var(--hud-accent-ink); }
 
-/* the one key cap in a HUD (the guide's look). Goes when the site's global
-   .kbd lands (stream C): see docs/superpowers/HANDOFF-world-runtime.md */
-:where(.hud kbd):not(hud-none) { display: inline-block; min-width: 1.4em; padding: 0.05rem 0.35rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.7rem/1.4 var(--font-mono); text-align: center; }
+/* (a HUD's key cap is the house one's, in src/index.css beside .kbd) */
 
 @media (max-width: 639px) {
   :where(.hud-bubble > div):not(hud-none) { max-width: 13rem; font-size: 0.8rem; }
