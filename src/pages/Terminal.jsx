@@ -372,7 +372,7 @@ export default function Terminal() {
       theme: (arg) => {
         if (arg === 'auto') {
           pin(null);
-          return [L('  Colors follow the page again.', 'ok')];
+          return [L('  Colours follow the page again.', 'ok')];
         }
         const fan = FAN_THEMES.find((f) => f.id === arg);
         if (fan && !unlocked.includes(fan.achievement)) return [L(`  Locked. Hint: ${fan.hint}`, 'err')];
