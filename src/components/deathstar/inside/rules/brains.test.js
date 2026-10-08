@@ -254,8 +254,10 @@ describe('the crew’s minds', () => {
     addPerson(w.crew, { id: 'm1', kind: 'mouse', room: 'mid', x: 0, z: 0, role: { type: 'droid' } });
     addPerson(w.crew, { id: 'o1', kind: 'officer', room: 'west', x: -12, z: 1, role: { type: 'chat', with: 'o2' } });
     addPerson(w.crew, { id: 'o2', kind: 'officer', room: 'east', x: 12, z: -1, role: { type: 'chat', with: 'o1' } });
-    simulate(w, 30 * 30, { each: walled(w) });
+    // long enough for each patrol’s third leg, the first again, walked on the way it remembers
+    simulate(w, 75 * 30, { each: walled(w) });
     expect(w.faults).toEqual([]);
+    for (const id of ['tk1', 'tk2']) expect(of(w, 'arrive').filter((e) => e.id === id).length).toBeGreaterThanOrEqual(3);
 
     const ds = world(DS1, { seed: 3 });
     const spot = (name) => ({ room: DS1.spots[name].room, x: DS1.spots[name].x, z: DS1.spots[name].z, yaw: DS1.spots[name].yaw });
