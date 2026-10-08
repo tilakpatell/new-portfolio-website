@@ -2,7 +2,7 @@
 
 One page per library, engine or framework the site is built on, and this index of every package in `package.json`: its version, the page it belongs to, and how many files under `src/` and `scripts/` import it (tests left out). To add a dependency, give it a row in `PAGES` in `scripts/stack-census.mjs` and a page made from `_template.md`, then run `node scripts/stack-census.mjs --write`; the measure’s `stack-pages` fails until the package has a row here.
 
-A page not yet written shows as a link that leads nowhere; until it is, the row is still the package’s place.
+A page not yet written shows as a link that leads nowhere; until it is, the row is still the package’s place. `three/webgpu` and `three/tsl` ship inside `three` and so have no row; their page is [webgpu-tsl.md](webgpu-tsl.md).
 
 <!-- census:start -->
 | package | version | page | files |
