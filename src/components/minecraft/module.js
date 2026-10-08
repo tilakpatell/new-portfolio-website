@@ -91,7 +91,7 @@ const SCREENS = new Set(['inventory', 'table', 'chest', 'furnace']);
 
 export default {
   id: 'minecraft',
-  shading: 'glsl',
+  shading: 'nodes',
   mb: 2,
   label: 'Minecraft, a fan tribute: an endless blocky world to dig and build in',
   async create(rt, props = {}) {
@@ -103,14 +103,16 @@ export default {
     const take = (r) => {
       if (r === renderer) return;
       if (renderer && was) {
-        Object.assign(renderer, { toneMapping: was.toneMapping, toneMappingExposure: was.exposure });
+        Object.assign(renderer, { toneMapping: was.toneMapping, toneMappingExposure: was.exposure, outputColorSpace: was.colourSpace });
         renderer.shadowMap.enabled = was.shadows;
       }
       renderer = r;
-      was = { toneMapping: r.toneMapping, exposure: r.toneMappingExposure, shadows: r.shadowMap.enabled };
-      // the game's flat light: no tone mapping, no shadows
+      was = { toneMapping: r.toneMapping, exposure: r.toneMappingExposure, colourSpace: r.outputColorSpace, shadows: r.shadowMap.enabled };
+      // the game's flat light: no tone mapping, no shadows, and the colour
+      // its materials make written as it is (scene/nodes.js says why)
       r.toneMapping = THREE.NoToneMapping;
       r.toneMappingExposure = 1;
+      r.outputColorSpace = THREE.LinearSRGBColorSpace;
       r.shadowMap.enabled = false;
     };
     take(rt.gfx.renderer);
@@ -533,6 +535,7 @@ export default {
         scene.dispose();
         renderer.toneMapping = was.toneMapping;
         renderer.toneMappingExposure = was.exposure;
+        renderer.outputColorSpace = was.colourSpace;
         renderer.shadowMap.enabled = was.shadows;
       },
     };

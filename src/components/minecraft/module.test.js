@@ -11,8 +11,8 @@ import { SAVE } from './rules/save.js';
 import { FIRST_NAME, HELD, holdWorld, keepWorld, openWorld } from './worlds';
 
 describe('Minecraft, the world module', () => {
-  it('the module has id minecraft, glsl, mb 2 matching WORLD_MB', () => {
-    expect(mc).toMatchObject({ id: 'minecraft', shading: 'glsl', mb: 2 });
+  it('the module has id minecraft, nodes, mb 2 matching WORLD_MB', () => {
+    expect(mc).toMatchObject({ id: 'minecraft', shading: 'nodes', mb: 2 });
     expect(WORLD_MB['/dot-matrix/minecraft']).toBe(2);
     expect(typeof mc.create).toBe('function');
     expect(mc.label).toMatch(/Minecraft/);
