@@ -1,0 +1,58 @@
+# Handoff: the galaxy's people and props, upgraded and rigged (five phases, one branch each)
+
+Every person on the seventeen Star Wars worlds moves; the assets repo (`tilakpatell/tilakverse-assets`) becomes a source the scripts read; Endor comes under budget. Read these first, in this order:
+
+1. `docs/superpowers/specs/2026-10-08-galaxy-asset-upgrade-design.md` (what and why; the table of how every life kind is drawn today; the decisions; what it is not)
+2. `docs/superpowers/plans/2026-10-08-galaxy-asset-upgrade.md` (your phase's tasks: files, interfaces, tests)
+3. `docs/superpowers/HANDOFF-galaxy-surfaces.md` (the surfaces' rules: no sequels, the engine's shape) and `docs/assets/quaternius.md` (the packs)
+4. The headers of `scripts/ual-bake.mjs`, `scripts/preview/ualRetarget.js`, `scripts/rig-transfer.mjs`, `src/components/galaxy/surface/legRig.js`, `actors.js` (`figureFor`, `modelFigureOf`) and `src/lib/three/rig.js`
+
+## Which phase is yours
+
+| Phase | Branch | Tasks | Starts from | Blocked by |
+|---|---|---|---|---|
+| 1: the audit; statues walk | `claude/galaxy-asset-upgrade-p1` | 1, 2 | `main` (merge `claude/galaxy-asset-upgrade-design` in first, or cherry-pick its one commit) | nothing |
+| 2: the assets source; the retarget for any skeleton | `claude/galaxy-asset-upgrade-p2` | 3–7 | `main` after 1 | 1 |
+| 3: the B1 battle droid | `claude/galaxy-asset-upgrade-p3` | 8 | `main` after 2 | 2 |
+| 4: Quaternius ground cover; Endor under budget | `claude/galaxy-asset-upgrade-p4` | 9, 10 | `main` after 2 | 2 (Task 7's fetch) |
+| 5: the built people, asked for | `claude/galaxy-asset-upgrade-p5` | 11 | `main` after 3 | 3 (the transfer path seen working, or seen failing and why) |
+
+One session can take the phases in order, merging each before the next; stop and write the status table when your context is heavy, and the next session picks up the next phase.
+
+## The rules (don't break)
+
+- **No paid service.** No Meshy, no Sketchfab API. The assets come from the assets repo and its releases by URL, and from the Quaternius release zips. A step that would need a key stops and says so in the PR.
+- **No sequel trilogy** figure, place or name, anywhere.
+- **The loaders are not touched**: `actors.js`, `crew.js`, `placer.js`, `animator.js`, `clipLibrary.js`. `rig.js` gains `findBones` exported and a `_<digits>` suffix rule, nothing else. The work is scripts, catalogue rows and model files.
+- **Byte identity**: every shipped `public/games/meshy/ual-*.glb` re-bakes identical after Task 4. Do not regenerate them.
+- **Sizes**: a surface model under 2.5 MB (4 MB `hero`); a baked core set under 60 KB a figure; nothing under `lab/` is committed.
+- **Credits**: Sketchfab models in `src/data/modelCredits.json` (its test is the law); CC0 Quaternius models as a `models/galaxy/surface/{…}.glb` line in `public/cc0/README.md`, and Quaternius in `CREDITS.md` through `scripts/credits.mjs`.
+- **Compare, never assume**: the B1 replaces the troops' battle droid only if it rigs and the sheet says it is better. The Venator and TIE in the assets release are not brought in.
+- **One phase per PR, merged on its own.** PR to `main`, CI green, merge commit. Never merge red, never force-push, never rebase someone else's branch.
+- **Before the PR**: `npx eslint .`, `npx vitest run`, `npx vite build`; the phase's `anim-check` JSON and `surface-shot` PNGs under `docs/superpowers/evidence/galaxy-asset-upgrade/`; the audit script's table before and after.
+- Keep output terse. Commits end with the harness's attribution lines; no model names in code, docs or commits.
+
+## What done looks like, per phase
+
+- **1**: `node scripts/galaxy-figures-audit.mjs` prints the spec's table and exits 0; eleven statues (`anakin`, `armorer`, `baze`, `cassian`, `chirrut`, `clonephase1`, `dindjarin`, `jyn`, `k2so`, `krennic`, `sullustan`) have `legs` and walk in `anim-check` on Scarif, Kamino, Nevarro, Coruscant and Naboo with planted toes under 0.15 m/s.
+- **2**: `node scripts/assets-fetch.mjs starwars b1` and `--repo naturemega` fill `lab/assets/`; `targetMap` maps a Mixamo skeleton; `node scripts/ual-bake.mjs --rig <figure.glb> --into <out.glb> --set core` bakes seven clips into a figure; `ithorian`, `rebelpilot`, `rebeltech` walk on Yavin, Endor and Scarif; the shipped `ual-*.glb` files are byte-identical.
+- **3**: either `troops/battledroid.glb` is leoxx300's B1 rigged by transfer and credited, walking on Geonosis, with the Battlefront one kept as `battledroid.bf.glb`; or the status table below says exactly why not (pose, spread, torn legs) with the sheet PNG.
+- **4**: seven `q*` kinds in `catalog/quaternius.js`, imported by `scripts/quaternius-import.mjs`, listed in the README and `CREDITS.md`; ferns and mushrooms on Endor's and Dagobah's floors; Endor under 3M triangles at high in `galaxy-check` and off `KNOWN_OVER`.
+- **5**: `docs/superpowers/evidence/galaxy-asset-upgrade/gen3d-asks.md` holds ten issue bodies with the A-pose wording (filed, or ready for the owner to file); the status table below lists each kind's donor, transfer command and `CREW` row; `audit-after.md` beside `audit-before.md`.
+
+## When something in the plan is wrong
+
+Follow the spec over the plan, the code over both. Fix the plan's line in your PR and say so in the PR body in one sentence. If a loader has to change after all (the spec's one allowance is `placer.js` for foliage, and the plan found a way round it), say which lines and why in the PR body.
+
+## Status
+
+| Phase | Session | Branch | Merged |
+|---|---|---|---|
+| design | the architecting session | `claude/galaxy-asset-upgrade-design` | (carried by Phase 1's PR) |
+| 1 | | | |
+| 2 | | | |
+| 3 | | | |
+| 4 | | | |
+| 5 | | | |
+
+Findings for the next phase go here, as the natural-worlds hand-off does: what the retarget needed on the Mixamo rigs, the B1's outcome, Endor's numbers before and after, which gen3d asks were filed.
