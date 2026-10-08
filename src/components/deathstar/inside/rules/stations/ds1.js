@@ -119,11 +119,11 @@ export const DS1 = {
     { id: 'lift1-l5', kind: 'lift', name: 'Lift 1, Level 5', section: 'level5', x: 40, z: -90, w: 3, d: 3, y: -36, h: 3 },
     { id: 'lift1-l6', kind: 'lift', name: 'Lift 1, Level 6', section: 'level6', x: -40, z: -110, w: 3, d: 3, y: -48, h: 3 },
 
-    // Level 2, west of the bay: the ring corridor goes on to lift 2 and the TIE launch bay
-    { id: 'ring2w', kind: 'corridor', name: 'Level 2 ring corridor, west', section: 'level2', x: -27, z: -44, w: 26, d: 3.2, y: 0, h: 3.2 },
-    { id: 'lift2-l2', kind: 'lift', name: 'Lift 2, Level 2', section: 'level2', x: -30, z: -47.1, w: 3, d: 3, y: 0, h: 3 },
-    { id: 'tiebay', kind: 'tiebay', name: 'TIE launch bay', section: 'tiebay', x: -52, z: -23.4, w: 36, d: 38, y: 0, h: 16 },
-    { id: 'field-tie', kind: 'field', name: 'Magnetic field', section: 'tiebay', x: -52, z: -2.4, w: 36, d: 4, y: 0, h: 16, floors: [] },
+    // Level 2, wall to wall with the bay on its west: the TIE launch bay, with lift 2 at its back
+    // and its launch doors onto space at its south end
+    { id: 'tiebay', kind: 'tiebay', name: 'TIE launch bay', section: 'tiebay', x: -50, z: -18, w: 36, d: 36, y: 0, h: 16 },
+    { id: 'field-tie', kind: 'field', name: 'Launch field', section: 'tiebay', x: -50, z: 2, w: 36, d: 4, y: 0, h: 16, floors: [] },
+    { id: 'lift2-l2', kind: 'lift', name: 'Lift 2, Level 2', section: 'tiebay', x: -60, z: -37.5, w: 3, d: 3, y: 0, h: 3 },
 
     // Level 1, the officers’ deck, over the corridors behind the bay
     { id: 'lift2-l1', kind: 'lift', name: 'Lift 2, Level 1', section: 'level1', x: -6, z: -67.1, w: 3, d: 3, y: L1, h: 3 },
@@ -222,10 +222,10 @@ export const DS1 = {
     { id: 'lobby1-lift', a: 'lobby1', b: 'lift1-l2', x: 10, z: -48, axis: 'x', w: 2, h: 2.4, kind: 'slide' },
     { id: 'lobby1-ring2', a: 'lobby1', b: 'ring2', x: 5, z: -44, axis: 'z', w: 2.4, h: 2.6, kind: 'slide' },
 
-    { id: 'ring2-ring2w', a: 'ring2', b: 'ring2w', x: -14, z: -44, axis: 'z', w: 2.4, h: 2.6, kind: 'slide' },
-    { id: 'ring2w-lift2', a: 'ring2w', b: 'lift2-l2', x: -30, z: -45.6, axis: 'x', w: 2, h: 2.4, kind: 'slide' },
-    { id: 'ring2w-tiebay', a: 'ring2w', b: 'tiebay', x: -37, z: -42.4, axis: 'x', w: 2.4, h: 2.6, kind: 'blast' },
-    { id: 'tiebay-field', a: 'tiebay', b: 'field-tie', x: -52, z: -4.4, axis: 'x', w: 30, h: 12, kind: 'arch' },
+    { id: 'bay327-tiebay', a: 'bay327', b: 'tiebay', x: -32, z: -10, axis: 'z', w: 3, h: 3, kind: 'blast' },
+    { id: 'tiebay-lift2', a: 'tiebay', b: 'lift2-l2', x: -60, z: -36, axis: 'x', w: 2, h: 2.4, kind: 'slide' },
+    // the launch doors: shut on space until a fighter goes out
+    { id: 'tiebay-field', a: 'tiebay', b: 'field-tie', x: -50, z: 0, axis: 'x', w: 30, h: 12, kind: 'blast', lock: 'flag:launch' },
 
     { id: 'deck1-lift2', a: 'deck1', b: 'lift2-l1', x: -6, z: -65.6, axis: 'x', w: 2, h: 2.4, kind: 'slide' },
     { id: 'deck1-conference', a: 'deck1', b: 'conference', x: 7, z: -62.4, axis: 'x', w: 2, h: 2.6, kind: 'slide' },
@@ -237,9 +237,10 @@ export const DS1 = {
     { id: 'lobby5-lift', a: 'lobby5', b: 'lift1-l5', x: 40, z: -88.5, axis: 'x', w: 2, h: 2.4, kind: 'slide' },
     { id: 'lobby5-ring5', a: 'lobby5', b: 'ring5', x: 35, z: -84.5, axis: 'z', w: 2.4, h: 2.6, kind: 'slide' },
     { id: 'lobby5-corr5', a: 'lobby5', b: 'corr5', x: 45, z: -84.5, axis: 'z', w: 2.4, h: 2.6, kind: 'slide' },
-    { id: 'corr5-aa23', a: 'corr5', b: 'aa23', x: 55, z: -84.5, axis: 'z', w: 2.4, h: 2.6, kind: 'blast' },
+    { id: 'corr5-aa23', a: 'corr5', b: 'aa23', x: 55, z: -84.5, axis: 'z', w: 2.4, h: 2.6, kind: 'slide' },
     { id: 'aa23-cellbay', a: 'aa23', b: 'cellbay', x: 60, z: -89, axis: 'x', w: 2.4, h: 2.6, kind: 'slide' },
-    { id: 'cellbay-bend', a: 'cellbay', b: 'cellbay2', x: 60, z: -113, axis: 'x', w: 3.6, h: 3, kind: 'arch' },
+    // a bulkhead at the bend, sliding rather than blast so a lockdown can’t shut Leia’s cell off
+    { id: 'cellbay-bend', a: 'cellbay', b: 'cellbay2', x: 60, z: -113, axis: 'x', w: 3.6, h: 3, kind: 'slide' },
     // a cell opens for an Imperial, or anyone passing for one, at the panel by its door
     ...CELLS.map((c) => {
       const east = c.wall === 'east';
@@ -257,7 +258,7 @@ export const DS1 = {
     { id: 'maint2-chasm', a: 'maint2', b: 'chasm', x: CHASM.x - CHASM.w / 2, z: CHASM.z, axis: 'z', w: 2, h: 2.6, kind: 'blast' },
     { id: 'maint2-gantry', a: 'maint2', b: 'gantry', x: 24.7, z: -105.2, axis: 'z', w: 2.4, h: 2.6, kind: 'slide' },
     { id: 'gantry-chasm', a: 'gantry', b: 'chasm', x: 35.5, z: CHASM.z - CHASM.d / 2, axis: 'x', w: 1.4, h: 2.4, kind: 'slide' },
-    { id: 'chasm-chasmway', a: 'chasm', b: 'chasmway', x: CHASM.x + CHASM.w / 2, z: CHASM.z, axis: 'z', w: 2, h: 2.6, kind: 'blast' },
+    { id: 'chasm-chasmway', a: 'chasm', b: 'chasmway', x: CHASM.x + CHASM.w / 2, z: CHASM.z, axis: 'z', w: 2, h: 2.6, kind: 'slide' },
     { id: 'chasmway-lift2', a: 'chasmway', b: 'lift2-l6', x: 58.7, z: -99.6, axis: 'z', w: 2, h: 2.4, kind: 'slide' },
   ],
   lifts: [
@@ -291,16 +292,17 @@ export const DS1 = {
     ranks: { room: 'bay327', x: 16, z: 2, yaw: -Math.PI / 2 },
     'vader-bay': { room: 'bay327', x: 12, z: -14, yaw: -Math.PI / 2 },
     beacon: { room: 'bay327', x: 5.2, z: 0, yaw: -Math.PI / 2 },
-    duel: { room: 'bay327', x: 4, z: -21, yaw: Math.PI / 2 },
-    'bay-door': { room: 'corr327', x: 10, z: -25.5, yaw: Math.PI },
+    duel: { room: 'bay327', x: -4, z: -22, yaw: Math.PI / 2 },
+    // where the way back from the chasm (lift 2, the TIE bay) comes into Docking Bay 327
+    'bay-door': { room: 'tiebay', x: -33.5, z: -10, yaw: Math.PI / 2 },
     'ctl-door': { room: 'bay327', x: CONTROL.x, z: -23.2, yaw: 0 },
     'ctl-officer': { room: 'ctl327', x: 23.5, z: -27, yaw: Math.PI },
     'ctl-aide': { room: 'ctl327', x: 19, z: -28.5, yaw: Math.PI },
     'ctl-intercom': { room: 'ctl327', x: 21, z: -30.4, yaw: 0 },
     'ctl-closet': { room: 'ctl327', x: 17.8, z: -30.2, yaw: Math.PI / 2 },
     scomp: { room: 'ctl327', x: 25, z: -30.4, yaw: 0 },
-    'lift2-call': { room: 'ring2w', x: -30, z: -44, yaw: 0 },
-    'tie-start': { room: 'tiebay', x: -52, z: -30, yaw: Math.PI },
+    'lift2-call': { room: 'tiebay', x: -60, z: -34.5, yaw: 0 },
+    'tie-start': { room: 'tiebay', x: -50, z: -20, yaw: Math.PI },
 
     // the officers’ deck
     'deck1-lift': { room: 'deck1', x: -6, z: -64, yaw: Math.PI / 2 },

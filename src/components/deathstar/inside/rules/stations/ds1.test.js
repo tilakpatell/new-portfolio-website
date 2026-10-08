@@ -128,7 +128,6 @@ describe('the first Death Star, whole', () => {
       ranks: 'bay327',
       beacon: 'bay327',
       'falcon-ramp': 'bay327',
-      'bay-door': 'corr327',
     };
     for (const [name, id] of Object.entries(where)) expect(spot(name).room, name).toBe(id);
   });
@@ -154,11 +153,10 @@ describe('its levels and lifts', () => {
     for (const r of landings) expect([r.w, r.d], r.id).toEqual([3, 3]);
   });
 
-  it('puts the TIE bay beside Docking Bay 327, opening onto space as the bay does', () => {
-    const tie = room('tiebay');
-    const bay = room('bay327');
-    expect(Math.min(Math.abs(tie.box.x1 - bay.box.x0), Math.abs(bay.box.x1 - tie.box.x0))).toBeLessThan(4);
-    expect(doorsOf('tiebay').some((d) => d.kind === 'arch' && room(d.a === 'tiebay' ? d.b : d.a).kind === 'field')).toBe(true);
+  it('puts the TIE bay through a door from Docking Bay 327, with launch doors onto space that stay shut until a launch', () => {
+    expect(between('bay327', 'tiebay')).toBeDefined();
+    const launch = doorsOf('tiebay').find((d) => room(d.a === 'tiebay' ? d.b : d.a).kind === 'field');
+    expect(launch.lock).toMatch(/^flag:/);
   });
 
   it('keeps the officers’ deck and fire control restricted, and the tractor shaft and the chasm dark', () => {
@@ -179,7 +177,8 @@ describe('the prison level', () => {
   });
 
   it('drops you from the chute into the compactor’s water, without a lift', () => {
-    const drop = layout.jumps.find((j) => j.from === 'chute');
+    const drop = jump('chute-drop');
+    expect(drop.from).toBe('chute');
     expect(spot(drop.to).room).toBe('compactor');
     expect(layout.floorAt('compactor', spot(drop.to).x, spot(drop.to).z)).toBeCloseTo(room('compactor').y - 0.9);
   });
@@ -222,8 +221,8 @@ describe('the chasm', () => {
   });
 
   it('swings you across from the ledge’s edge, once you have the grapple', () => {
-    const swing = layout.jumps.find((j) => j.from === 'chasm' && j.to === 'chasm-far');
-    expect(swing.lock).toBe('flag:grapple');
+    const swing = jump('swing');
+    expect([swing.from, swing.to, swing.lock]).toEqual(['chasm', 'chasm-far', 'flag:grapple']);
     expect(Math.hypot(swing.x - spot('chasm-ledge').x, swing.z - spot('chasm-ledge').z)).toBeLessThanOrEqual(swing.r);
   });
 
