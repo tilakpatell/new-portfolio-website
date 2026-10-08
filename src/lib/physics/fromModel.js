@@ -17,6 +17,8 @@
 //   bodiesFromNodes(nodes, { mass = 0.1 }) → [{ name, desc, node }] (desc
 //     for lib/physics/world.js's add(); `mass` a dynamic body's when its
 //     node doesn't name one)
+//   colliderIn(desc, collider) → the collider in the frame its body is in
+//     (to make one body of several: a landing's prop is one thing)
 //
 // A body is placed in the frame the nodes are in: a physical node inside
 // another (or inside any group) is its own body, its place through its
@@ -106,6 +108,12 @@ function descOf(node, place, mass) {
   if (Number.isFinite(u.friction)) desc.friction = u.friction;
   if (Number.isFinite(u.restitution)) desc.restitution = u.restitution;
   return desc;
+}
+
+export function colliderIn(desc, c) {
+  const q = desc.rotation ?? [0, 0, 0, 1];
+  const at = turn(q, c.position ?? [0, 0, 0]);
+  return { ...c, position: (desc.position ?? [0, 0, 0]).map((p, i) => p + at[i]), rotation: mul(q, c.rotation ?? [0, 0, 0, 1]) };
 }
 
 export function bodiesFromNodes(nodes, { mass = 0.1 } = {}) {

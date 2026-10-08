@@ -376,3 +376,40 @@ describe('the ultra cut', () => {
     expect(request({ name: 'theed', what: 'Theed', image: 'https://x.test/a.png', faces: 300000, options: 'tex: 8192  ultra: yes' }).body).toMatch(/ultra: yes/);
   });
 });
+
+describe('a prop’s physics, kept through the web cut', () => {
+  it('a GLB with a crate_physical_dynamic node reads back one body after the cut', async () => {
+    const { Document } = await import('@gltf-transform/core');
+    const { collidersIn, io, webReady } = await import('./web.mjs');
+    const doc = new Document();
+    const buffer = doc.createBuffer();
+    // a unit cube's corners, as twelve triangles
+    const p = [-1, -1, -1, 1, -1, -1, 1, 1, -1, -1, 1, -1, -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1].map((v) => v / 2);
+    const idx = [0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 3, 6, 2, 3, 7, 6, 0, 4, 7, 0, 7, 3, 1, 2, 6, 1, 6, 5];
+    const cube = () =>
+      doc.createMesh().addPrimitive(
+        doc
+          .createPrimitive()
+          .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(new Float32Array(p)).setBuffer(buffer))
+          .setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(idx)).setBuffer(buffer)),
+      );
+    const look = doc.createNode('crate').setMesh(cube());
+    // (the collider a unit cube scaled to fit, as a modeller makes it; and an empty one)
+    const cuboid = doc.createNode('cuboid').setMesh(cube()).setScale([1.2, 0.8, 1.2]).setTranslation([0, 0.4, 0]);
+    const lid = doc.createNode('lid_physical_dynamic').setTranslation([0, 1, 0]).addChild(doc.createNode('cuboid.001').setScale([1.2, 0.2, 1.2]));
+    const crate = doc.createNode('crate_physical_dynamic').setExtras({ mass: 3 }).addChild(cuboid).addChild(lid);
+    doc.createScene('scene').addChild(look).addChild(crate);
+    await webReady(doc, { tris: 1000, tex: 256 });
+    const back = await (await io()).readBinary(await (await io()).writeBinary(doc));
+    const bodies = collidersIn(back);
+    expect(bodies.map((b) => b.name)).toEqual(['crate_physical_dynamic', 'lid_physical_dynamic']);
+    const [c] = bodies[0].desc.colliders;
+    expect(c.shape).toBe('cuboid');
+    c.args.forEach((v, i) => expect(v).toBeCloseTo([0.6, 0.4, 0.6][i], 3));
+    c.position.forEach((v, i) => expect(v).toBeCloseTo([0, 0.4, 0][i], 3));
+    expect(bodies[0].desc.mass).toBe(3);
+    expect(bodies[1].desc.colliders[0].args[1]).toBeCloseTo(0.1, 3);
+    // (the look is still drawn: the cut took nothing but the colliders’ meshes)
+    expect(back.getRoot().listNodes().find((n) => n.getName() === 'crate').getMesh()).toBeTruthy();
+  });
+});
