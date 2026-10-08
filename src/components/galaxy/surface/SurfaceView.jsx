@@ -16,7 +16,10 @@ const TOUCH = { detonator: 'Bomb', overcharge: 'Charge', fulminate: 'Bomb', rock
 // whatever's to hand (E on a keyboard). While the 3D loads the box says
 // so; without 3D, a note that the world needs it.
 
-export default function SurfaceView({ system, mission = null, ship, hero = null, loadout, build = null, found, done, compass, net = null, handle, onEvent, effects = null }) {
+// A world outside the galaxy (the Rick and Morty planets) hands in its own
+// `site` (made whole), `missionSpec`, and its books of `models`, `rides`,
+// `props`, `scatter` and `figures` (scene.js's header) in place of `system`.
+export default function SurfaceView({ system = null, site = null, mission = null, missionSpec = null, models = null, rides = null, props: built = null, scatter = null, figures = null, ship, hero = null, loadout, build = null, found, done, compass, net = null, handle, onEvent, effects = null }) {
   const saber = Boolean(hero && heroById(hero.id)?.weapon === 'saber');
   // (the hero's own two abilities, on the buttons: abilityRules.js)
   const powers = abilitiesOf(hero ? heroSpec(hero) : null);
@@ -27,8 +30,8 @@ export default function SurfaceView({ system, mission = null, ship, hero = null,
   // (a hero picked goes on in the world as it is: scene.js's setHero; another
   // mission is another world, made again)
   const { host, on, meant, rt, progress } = useWorld(surfaceModule, {
-    props: { system, mission, ship, hero, loadout, build, found, done, compass, net, reduced, effects },
-    rebuild: mission ?? 'explore',
+    props: { system, site, mission, missionSpec, models, rides, props: built, scatter, figures, ship, hero, loadout, build, found, done, compass, net, reduced, effects },
+    rebuild: missionSpec?.id ?? mission ?? 'explore',
     onEvent: (e) => events.current?.(e),
   });
   // the scene itself, while it's the world on the runtime

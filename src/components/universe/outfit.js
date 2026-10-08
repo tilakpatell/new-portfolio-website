@@ -18,11 +18,14 @@
 import { PAINTS, STOCK, isOpen as paintOpen, parsePaint } from './paint';
 import { statsOfBuild } from './shipyard/build';
 import { tuned } from './ship';
+import { WEAPONS, rackOf } from './weaponTable';
 
 export { STOCK };
 export const LOADOUT_KEY = 'tp-universe-loadout';
-export const SLOTS = ['paint', 'booster', 'thrusters', 'guns', 'shields', 'fins'];
-export const SLOT_LABEL = { paint: 'Paint', booster: 'Boosters', thrusters: 'Thrusters', guns: 'Weapons', shields: 'Shields', fins: 'Fins' };
+// (secondary and ordnance came last, after the fins, so every loadout kept
+// and every peer's wire reads as it did: a slot it never had is stock)
+export const SLOTS = ['paint', 'booster', 'thrusters', 'guns', 'shields', 'fins', 'secondary', 'ordnance'];
+export const SLOT_LABEL = { paint: 'Paint', booster: 'Boosters', thrusters: 'Thrusters', guns: 'Primary', shields: 'Shields', fins: 'Fins', secondary: 'Secondary', ordnance: 'Ordnance' };
 export const PARTS_SLOTS = SLOTS.slice(1); // (the ones that are parts, not paint)
 export const FASTEST = 0.12; // seconds between shots, at the quickest any gun may fire (protocol.js lets in ten a second)
 const MASS_K = 0.03; // how much each tonne of parts takes off how quickly it turns
@@ -37,7 +40,8 @@ export const PLANT = { xwing: 7, falcon: 9, cruiser: 8, rv: 5 };
 // shots, multiplied), punch (hits on a hunter each bolt is worth), bolt
 // (how big the bolt is drawn), armor (damage taken, multiplied), regen (how
 // fast shields come back, multiplied), delay (seconds after a hit before
-// they start). A part with a `look` is drawn as that part of its slot is
+// they start). A secondary or ordnance part names the `weapon`
+// (weaponTable.js) it puts on that line of the armoury (weapons.js). A part with a `look` is drawn as that part of its slot is
 // (modules.js): one that's new in the numbers, with no model of its own.
 // What a part costs, and any lock beyond an achievement, is catalog.js's.
 const part = (slot, id, name, blurb, { mass = 0, power = 0, achievement = null, hint = null, ...does } = {}) => ({ id, slot, name, blurb, mass, power, achievement, hint, ...does });
@@ -145,6 +149,28 @@ export const PARTS = [
     agility: 0.1,
     look: 'fins',
   }),
+  // the secondary line: a fan of shorter shots
+  part('secondary', STOCK, 'Scatter', 'The scatter it came with.', { weapon: 'spread' }),
+  part('secondary', 'ion', 'Ion burst', 'Three heavier ion bolts a burst, tighter than the scatter.', {
+    mass: 1,
+    power: 1,
+    weapon: 'ion',
+    achievement: 'rebels',
+    hint: 'Save Yavin 4 in the Battle of Yavin',
+    look: 'twin',
+  }),
+  part('secondary', 'flak', 'Flak burst', 'Seven short-lived shells in a wide fan: hard to miss with, light on each hit.', { mass: 1.5, power: 2, weapon: 'flak', look: 'twin' }),
+  // the ordnance line: slow homing rounds from a rack
+  part('ordnance', STOCK, 'Torpedo rack', 'The rack it came with: four heavy rounds.', { weapon: 'heavy' }),
+  part('ordnance', 'missiles', 'Missile rack', 'Six lighter missiles that turn harder and come back sooner.', { mass: 1, power: 1, weapon: 'missiles', look: 'fusion' }),
+  part('ordnance', 'mk2', 'Mk II torpedoes', 'Three slow torpedoes that hit half as hard again as the stock rack’s, and take their time coming back.', {
+    mass: 2,
+    power: 2,
+    weapon: 'mk2',
+    achievement: 'trench',
+    hint: 'Hit the exhaust port in the trench run',
+    look: 'fusion',
+  }),
 ];
 
 const BY_SLOT = Object.fromEntries(SLOTS.map((slot) => [slot, new Map()]));
@@ -209,6 +235,9 @@ export function statsOf(kind, loadout = STOCK_LOADOUT, build = null) {
     s.bolt = Math.max(s.bolt, p.bolt ?? 1);
     s.delay = Math.min(s.delay, p.delay ?? 5);
   }
+  // the ordnance rack's worth, against the stock torpedoes'
+  const rack = WEAPONS[partById('ordnance', loadout.ordnance)?.weapon] ?? WEAPONS.heavy;
+  s.ordnance = rackOf(rack) / rackOf(WEAPONS.heavy);
   const mass = massOf(loadout) + (own?.mass ?? 0);
   s.agility /= 1 + MASS_K * mass;
   // (rounded: halves and tenths of a tonne summed came out as 4.199999999999999 t)
@@ -272,6 +301,7 @@ const measures = (s) => ({
   firepower: s.punch / s.cadence, // (what the guns do to hunters in a second, against the factory guns)
   shields: 1 / s.armor,
   recharge: s.regen * (5 / s.delay),
+  ordnance: s.ordnance,
 });
 // the best of each over every fit there is (power aside)
 const BEST = (() => {
@@ -303,7 +333,10 @@ export function partEffects(p) {
   if (p.armor) out.push(`Damage taken ${pct(p.armor - 1)}`);
   if (p.regen) out.push(`Recharge ${pct(p.regen - 1)}`);
   if (p.delay) out.push(`Recharges ${p.delay} s after a hit`);
+  const w = p.id !== STOCK && WEAPONS[p.weapon];
+  if (w && p.slot === 'secondary') out.push(`${w.count} shots a burst`, `${w.punch}× on hunters a shot`);
+  if (w && p.slot === 'ordnance') out.push(`Rounds: ${w.ammo}, one back every ${w.reload} s`, `${w.punch}× on hunters`);
   return out;
 }
 
-export const READOUT_LABEL = { speed: 'Boost speed', accel: 'Acceleration', agility: 'Agility', firepower: 'Firepower', shields: 'Shield strength', recharge: 'Shield recharge' };
+export const READOUT_LABEL = { speed: 'Boost speed', accel: 'Acceleration', agility: 'Agility', firepower: 'Firepower', shields: 'Shield strength', recharge: 'Shield recharge', ordnance: 'Ordnance' };
