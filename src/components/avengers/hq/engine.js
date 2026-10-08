@@ -12,6 +12,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { loadSky } from './assets';
 import { houseOn } from '../../../lib/three/house';
 import { guard } from '../../../lib/three/frameGuard';
+import { prepareScene } from '../../../lib/three/gpuWork';
 import { device } from '../../../lib/device';
 import { fitRatio, maxSide, precompile as compileFor, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 
@@ -318,10 +319,26 @@ export function createEngine(canvas, opts = {}) {
     return Promise.all(jobs);
   };
 
+  // Everything sent to the graphics chip before the world is first seen
+  // (lib/three/gpuWork): the look on, the passes' shaders, then every
+  // picture, shader and one draw, a slice at a time, with progress for the
+  // page's loading screen (components/worlds/LoadingVeil)
+  const prepare = async (onProgress, { alive = () => true } = {}) => {
+    const on = () => alive() && !lost;
+    house.follow({ adopt: true });
+    if (!passesDone) {
+      passesDone = true;
+      await precompilePasses(renderer, composer, view);
+    }
+    if (!on()) return;
+    await prepareScene({ renderer, roots: [scene], scene, camera: view, target: composer.readBuffer, render: () => composer.render(), onProgress, alive: on });
+  };
+
   return {
     THREE,
     renderer,
     scene,
+    prepare,
     camera,
     sun,
     hemi,

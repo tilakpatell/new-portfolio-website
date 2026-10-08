@@ -14,6 +14,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { budget, pixelRatio } from './device';
 import { guard } from './three/frameGuard';
+import { prepareScene } from './three/gpuWork';
 import { precompile as compileFor, precompilePasses, quiet, releaseContext } from './three/renderer';
 import { sharpen } from './three/textures';
 
@@ -244,11 +245,26 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
     });
   };
 
+  // Everything sent to the graphics chip before the world is first seen
+  // (lib/three/gpuWork): the passes' shaders, then every picture, every
+  // shader and one draw of it all, a slice at a time, with progress for
+  // the page's loading screen (components/worlds/LoadingVeil)
+  const prepare = async (onProgress, { alive = () => true } = {}) => {
+    const on = () => alive() && !lost && !disposed;
+    if (!soft && !passesDone) {
+      passesDone = true;
+      await precompilePasses(renderer, composer, camera);
+    }
+    if (!on()) return;
+    await prepareScene({ renderer, roots: [scene], scene, camera, target: soft ? null : composer.readBuffer, render: () => (soft ? renderer.render(scene, camera) : composer.render()), onProgress, alive: on });
+  };
+
   return {
     renderer,
     scene,
     camera,
     composer,
+    prepare,
     bloomPass,
     grade,
     resize,

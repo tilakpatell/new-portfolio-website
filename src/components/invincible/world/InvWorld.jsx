@@ -21,6 +21,8 @@ import InvHud from './InvHud';
 import MissionCard from './MissionCard';
 import { COMPASS, layoutCompass, objectiveText, titleMode } from './hud';
 import './world.css';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // The Graysons' city, the world: fly about it as Invincible. The rules are
 // in ./flight.js and ./map.js, the drawing in ./scene.js; this is the
@@ -140,6 +142,7 @@ export default function InvWorld({ thinkMark = null }) {
 }
 
 function World({ gl, setGl, thinkMark }) {
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   // other players online here, as holograms (middleearth/towns/useTravellers)
   const trav = useTravellers('invincible', gl === 'on', ROOM);
@@ -269,6 +272,9 @@ function World({ gl, setGl, thinkMark }) {
           hook.story = () => sim.current.story;
           window.__INVWORLD__ = { api: hook, sim: sim.current };
         }
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.engine?.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (dead) return;
         setGl('on');
       })
       .catch((e) => {
@@ -1073,7 +1079,7 @@ function World({ gl, setGl, thinkMark }) {
           </div>
         </div>
       )}
-      {gl === 'loading' && <p className="iw-loading">Over the city…</p>}
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Over the city" />
       <MissionCard card={mcard} story={sim.current.story} onClose={closeCard} onAgain={() => startMission(mcard?.id)} onStart={startMission} onAbandon={abandon} />
 
       <InvHud hud={hud} mapRef={mapRef} time={time} cycleTime={cycleTime} help={help} setHelp={setHelp} chip={chip} trav={trav} found={found} cards={CARDS.length} near={near} act={act} toast={toast} radio={radio} take={take} />

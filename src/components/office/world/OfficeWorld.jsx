@@ -21,6 +21,8 @@ import '../../middleearth/towns/bree/bree.css';
 import './world.css';
 import '../../../styles/lazy/office.css';
 import GuideCue from '../../guide/GuideCue';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 const PaperToss = lazy(() => import('../PaperToss'));
 const FactCheck = lazy(() => import('../FactCheck'));
@@ -90,6 +92,7 @@ const ROOM = { bound: 160, motion: true };
 const areaOf = (h) => (inWarehouse(h.x, h.z) || inLot(h.x, h.z) ? 'warehouse' : 'office');
 
 function World({ prog, done, complete, gl, setGl, setPlace, place }) {
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
   const canvas = useRef(null);
@@ -214,7 +217,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         if (dead || !canvas.current) return null;
         return createOfficeWorld(canvas.current, { onLost: () => !dead && setGl('lost') });
       })
-      .then((a) => {
+      .then(async (a) => {
         if (!a) return;
         if (dead) {
           a.dispose();
@@ -223,6 +226,9 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
         api.current = a;
         if (import.meta.env.DEV) window.__OFFICE__ = { api: a, sim: sim.current, complete };
         fit();
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (dead) return;
         setGl('on');
       })
       .catch((e) => {
@@ -924,7 +930,7 @@ function World({ prog, done, complete, gl, setGl, setPlace, place }) {
   return (
     <div ref={box} className="shire-stage dm-stage" data-touch={touch || undefined} data-mode={mode} data-fire={hud.fire || undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="The Dunder Mifflin Scranton office in 3D: the bullpen's desks under fluorescent lights, reception, Michael's glass-fronted office and the conference room, with Jim Halpert walking among his coworkers" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
-      {gl === 'loading' && <p className="shire-loading dm-loading">Clocking in at Dunder Mifflin…</p>}
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Clocking in at Dunder Mifflin" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">

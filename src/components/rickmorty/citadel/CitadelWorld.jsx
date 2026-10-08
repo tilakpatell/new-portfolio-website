@@ -28,6 +28,8 @@ import { useLooks } from '../wardrobe/useLooks';
 import './citadel.css';
 import GuideCue from '../../guide/GuideCue';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // The Citadel of Ricks, the world: walk in through the portal as Rick
 // C-137 and play the five scenes there (Morty Day Care, Simple Rick's,
@@ -126,6 +128,7 @@ export default function CitadelWorld({ onLeave, leaveLabel = 'Back to C-137' }) 
 const ROOM = { bound: 160, motion: true };
 
 function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const trav = useTravellers('citadel', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.3 });
@@ -203,7 +206,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
         if (dead || !canvas.current) return null;
         return createCitadelWorld(canvas.current, { onLost: () => !dead && setGl('lost'), looks: looksRef.current });
       })
-      .then((a) => {
+      .then(async (a) => {
         if (!a) return;
         if (dead) {
           a.dispose();
@@ -214,6 +217,9 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
         // (cue: something for the people to react to, as the world would say it: { type: 'seen', id } …)
         if (import.meta.env.DEV) window.__CITADEL__ = { api: a, sim: sim.current, complete, down: () => liftRef.current?.down(true), up: () => liftRef.current?.up(), cue: (c) => sim.current?.cues.push(c), emote: (id) => sim.current && (sim.current.emote = { id, at: sim.current.t }) }; // for the QA scripts
         fit();
+        // everything on the graphics chip before it's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (dead) return;
         setGl('on');
         // left in Mortytown last time: back down the lift
         if (sim.current.autoDown) {
@@ -1033,7 +1039,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
   return (
     <div ref={box} className="shire-stage citadel-stage" data-touch={touch || undefined} data-mode={mode} data-mood={prog.mood} data-room={inside ? hud.room : undefined}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="The Citadel of Ricks in 3D: a terrace over a city of pale green towers under a great dome, a column of green portal fluid at its middle, crowded with Ricks and Mortys, and Rick C-137 walking through it" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
-      {gl === 'loading' && <p className="shire-loading">Opening a portal to the Citadel…</p>}
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Opening a portal to the Citadel" />
       {townLoading && <p className="shire-loading">Taking the lift down to Mortytown…</p>}
 
       {walking && (
