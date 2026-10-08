@@ -8,7 +8,7 @@
 
 // the women's city: on its own flat to the north, the gate on its south side
 // facing the wasteland the cruiser comes down in
-const GATE = { at: [0, -300], yaw: 0 };
+const GATE = { at: [0, 300], yaw: Math.PI };
 
 export const SITE = {
   place: 'The men’s wasteland',
@@ -58,7 +58,8 @@ export const SITE = {
     },
   },
   weather: [{ kind: 'sand', count: 700 }],
-  land: { at: [0, 0], yaw: Math.PI },
+  // (turned so the two climb out facing north, the gate ahead)
+  land: { at: [0, 0], yaw: -0.5 },
   places: [
     {
       id: 'gate',
