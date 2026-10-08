@@ -24,6 +24,7 @@
 
 import * as THREE from 'three';
 import { houseOn } from '../../../lib/three/house.js';
+import { pool } from '../../../lib/three/pool.js';
 import { createLandMap } from '../../../lib/three/landmap.js';
 import { createLandMaterial } from '../../../lib/three/land.js';
 import { createWaterSurface } from '../../../lib/three/river.js';
@@ -47,41 +48,6 @@ const KIT = 2400; // rock and crate slots each
 const VIEW = 22; // the camera's orbit, standing
 
 const hex = (c) => new THREE.Color(c[0], c[1], c[2]);
-
-// an instanced pool of one shape: take a slot, place it, free it
-function pool(geometry, material, count, name) {
-  const mesh = new THREE.InstancedMesh(geometry, material, count);
-  mesh.name = name;
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  const zero = new THREE.Matrix4().makeScale(0, 0, 0);
-  const free = [];
-  for (let i = count - 1; i >= 0; i--) {
-    free.push(i);
-    mesh.setMatrixAt(i, zero);
-  }
-  const m = new THREE.Matrix4();
-  const p = new THREE.Vector3();
-  const q = new THREE.Quaternion();
-  const s = new THREE.Vector3();
-  return {
-    mesh,
-    take: () => (free.length ? free.pop() : -1),
-    place(i, position, quaternion, scale = 1) {
-      mesh.setMatrixAt(i, m.compose(p.fromArray(position), q.fromArray(quaternion), s.setScalar(scale)));
-      mesh.instanceMatrix.needsUpdate = true;
-    },
-    free(i) {
-      mesh.setMatrixAt(i, zero);
-      mesh.instanceMatrix.needsUpdate = true;
-      free.push(i);
-    },
-    dispose() {
-      geometry.dispose();
-      material.dispose();
-    },
-  };
-}
 
 export function createScene({ renderer, spec, tier = 'high', radius = 6, small = false }) {
   const scene = new THREE.Scene();
