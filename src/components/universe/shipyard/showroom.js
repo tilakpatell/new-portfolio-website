@@ -18,7 +18,7 @@ import { LENGTH, buildShip } from '../shipModels';
 import { paintById } from '../paint';
 import { writeBuild } from './build';
 import { BUILD_SLOTS } from './parts';
-import { FPS, fitDistance, pulseAt, yawFromDrag } from './showroomRules';
+import { FPS, fitDistance, glowCopy, pulseAt, yawFromDrag } from './showroomRules';
 
 const FOV = 30;
 const PULSE_COLOR = new THREE.Color('#7cc8ff');
@@ -98,7 +98,7 @@ export function createShowroom(canvas, { reduced = false } = {}) {
     holder.traverse((o) => {
       if (!o.isMesh || Array.isArray(o.material) || !o.material.emissive) return;
       swaps.push([o, o.material]);
-      o.material = o.material.clone();
+      o.material = glowCopy(o.material);
     });
     focused = { slot, swaps };
   };

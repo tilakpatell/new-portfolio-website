@@ -4,7 +4,7 @@ import { itemFor } from './catalog';
 import { STOCK, STOCK_LOADOUT, partById } from './outfit';
 import { STOCK_BUILD, buildCode } from './shipyard/build';
 import { modulesFor } from './shipyard/parts';
-import { check, diff, fitDraft, itemOfModule, itemOfPart, openDraft, pasteDraft, rollDraft, setHull, setModule, setPart, sellable } from './yardRules';
+import { check, diff, draftKeys, fitDraft, itemOfModule, itemOfPart, openDraft, pasteDraft, rollDraft, setHull, setModule, setPart, sellable } from './yardRules';
 
 const wallet = ({ credits = 0, owned = [], unlocked = [] } = {}) => {
   const e = createEconomy({ achievements: () => unlocked });
@@ -180,5 +180,20 @@ describe('fitDraft', () => {
     const d = setPart(setPart(openDraft(live), 'booster', 'portal'), 'thrusters', 'vector');
     const r = fitDraft('rv', { ...d, loadout: { ...d.loadout, shields: 'fastcharge' } }, diff({ ...d, loadout: { ...d.loadout, shields: 'fastcharge' } }, live), { saved: {}, unlocked: ['showmewhatyougot', 'grounded', 'captain'] });
     expect(r).toMatchObject({ ok: false, why: 'power' });
+  });
+});
+
+describe('draftKeys', () => {
+  it('names every non-stock part, paint and module a draft holds, owned or not', () => {
+    const wing = modulesFor('wings').find((m) => m.id !== STOCK_BUILD.wings && m.id !== 'none');
+    const d = setModule(setPart(setPart(openDraft(live), 'booster', 'srb'), 'paint', 'portal'), 'wings', wing.id);
+    expect(draftKeys(d).sort()).toEqual([itemOfModule('wings', wing.id).key, itemOfPart('booster', 'srb').key, itemOfPart('paint', 'portal').key].sort());
+    expect(draftKeys(openDraft(live))).toEqual([]);
+  });
+
+  it('kept from sale: an owned part staged on the draft isn’t sellable', () => {
+    const e = wallet({ owned: [srb.key, rcs.key] });
+    const d = setPart(openDraft(live), 'booster', 'srb');
+    expect(sellable({ loadouts: {}, hulls: {}, garage: {}, keep: draftKeys(d) }, e).map((s) => s.item.key)).toEqual([rcs.key]);
   });
 });

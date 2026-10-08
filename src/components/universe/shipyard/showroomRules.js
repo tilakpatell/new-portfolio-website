@@ -19,3 +19,13 @@ export function fitDistance(aspect, length, fov) {
 export const pulseAt = (t) => 0.5 - 0.5 * Math.cos((2 * Math.PI * t) / PULSE);
 
 export const yawFromDrag = (dx) => dx * TURN;
+
+// A copy of a part's material for the pulse to light: three's clone leaves
+// out the livery's shader hook (livery.js paints in onBeforeCompile), which
+// would show the part in the factory's colours while it's pointed at.
+export function glowCopy(material) {
+  const c = material.clone();
+  c.onBeforeCompile = material.onBeforeCompile;
+  c.customProgramCacheKey = material.customProgramCacheKey;
+  return c;
+}

@@ -8,7 +8,7 @@ import { readout } from '../outfit';
 import { castOfCrew } from '../../rickmorty/wardrobe/looks';
 import { ownedModules } from '../shop';
 import { STOCK_BUILD, buildCode } from './build';
-import { pasteDraft, sellable } from '../yardRules';
+import { draftKeys, pasteDraft, sellable } from '../yardRules';
 import { createShowroom } from './showroom';
 import { useYard } from './useYard';
 import YardCatalogue from './YardCatalogue';
@@ -58,7 +58,8 @@ export default function Shipyard({ open, onOpen, enabled = true, ship, shipName 
         e.preventDefault();
         e.stopPropagation();
         onOpen(false);
-      } else if (e.key.toLowerCase() === 'h' && !typing) {
+      } else if (e.key.toLowerCase() === 'h' && !typing && (open || document.querySelector('.universe-hangar-btn'))) {
+        // (only while the corner button's there: not on foot, nor without the 3D map)
         const other = document.querySelector('[aria-modal="true"]');
         if (other && !panel.current?.contains(other)) return;
         e.preventDefault();
@@ -141,7 +142,7 @@ export default function Shipyard({ open, onOpen, enabled = true, ship, shipName 
   };
   const wallet = economy?.record();
   // (what's owned and fitted nowhere: the wallet's version re-renders this on a sale)
-  const sell = sellable({ ...saves, keep: [...toBuyKeys] }, economy);
+  const sell = sellable({ ...saves, keep: draftKeys(draft) }, economy);
   const crew = crewById(ship);
 
   // (on the body: the page's route is a stacking context of its own, and the

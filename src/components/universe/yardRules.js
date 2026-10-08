@@ -167,3 +167,20 @@ export function fitDraft(kind, draft, changes, { saved = {}, unlocked = [] } = {
   for (const c of parts) keep[c.slot] = c.to;
   return { ok: true, loadout, saved: keep };
 }
+
+// The catalogue keys of everything a draft holds that isn't stock, owned or
+// not: kept from the Sell list while it's staged (selling one would only
+// put it back on the bill at full price).
+export function draftKeys(draft) {
+  const out = [];
+  for (const slot of SLOTS) {
+    const item = (draft.loadout[slot] ?? STOCK) !== STOCK ? itemOfPart(slot, draft.loadout[slot]) : null;
+    if (item && !item.stock) out.push(item.key);
+  }
+  if (draft.build)
+    for (const slot of BUILD_SLOTS) {
+      const item = itemOfModule(slot, draft.build[slot]);
+      if (item && !item.stock) out.push(item.key);
+    }
+  return out;
+}
