@@ -7,7 +7,10 @@
 // X-wing. Textures are painted once on a canvas at start; the trench's detail
 // is a few instanced meshes; lasers, bolts and engines glow through bloom.
 // The X-wing is the site owner's Meshy model once it loads; until then (or
-// if it never does) one built from simple shapes, the same size.
+// if it never does) one built from simple shapes, the same size. The TIEs
+// fly as ./ties.js says a pilot would (facing you as they close, banking,
+// rolling off a near miss, their guns flashing as they fire), and Vader's
+// TIE Advanced comes in over you with his wingmen, and spins away at the end.
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -17,6 +20,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { gen3dUrl } from '../../lib/three/gen3d';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { TRENCH, portZ } from './trench';
+import { CAMERA_BACK, createTieLife, vaderFlight } from './ties';
 import { precompile, precompilePasses, quiet } from '../../lib/three/renderer';
 import { paintGasGiant, paintPlating, starSprite } from './plating';
 import { pixelRatio } from '../../lib/device';
@@ -26,7 +30,7 @@ import { sharpen } from '../../lib/three/textures';
 
 const LENGTH = 340; // how much station to build, in units
 const SHIP_AHEAD = 0.55; // the X-wing sits this far ahead of the simulation's z
-const CAM_BACK = 1.45;
+const CAM_BACK = CAMERA_BACK;
 
 function rng(seed) {
   let a = seed >>> 0 || 1;
@@ -219,6 +223,13 @@ function tieParts() {
     pylon: new THREE.CylinderGeometry(0.02, 0.034, 0.2, 12).rotateZ(Math.PI / 2),
     collar: new THREE.TorusGeometry(0.036, 0.009, 8, 18).rotateY(Math.PI / 2),
     hatch: new THREE.CylinderGeometry(0.035, 0.04, 0.03, 16).rotateX(Math.PI / 2),
+    gun: new THREE.SphereGeometry(0.016, 10, 8),
+    gunGlow: new THREE.MeshBasicMaterial({ color: hot(0x7dff5a, 3.4), toneMapped: false }),
+    // Vader's TIE Advanced: its longer hull, and the wings bent in top and bottom
+    rearHull: new THREE.CylinderGeometry(0.06, 0.085, 0.24, 16).rotateX(Math.PI / 2),
+    bentPanel: new THREE.BoxGeometry(0.012, 0.2, 0.4),
+    midPanel: new THREE.BoxGeometry(0.012, 0.16, 0.4),
+    spar: new THREE.BoxGeometry(0.02, 0.16, 0.02),
     hull: new THREE.MeshStandardMaterial({ color: 0xaab1ba, metalness: 0.6, roughness: 0.32 }),
     frame: new THREE.MeshStandardMaterial({ color: 0x8f97a1, metalness: 0.65, roughness: 0.35 }),
     solar: new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, metalness: 0.3, roughness: 0.45, side: THREE.DoubleSide }),
@@ -243,6 +254,14 @@ function buildTie(P) {
   const hatch = new THREE.Mesh(P.hatch, P.frame);
   hatch.position.z = -0.095;
   g.add(hatch);
+  // its two guns under the window, which flash as it fires (./ties.js)
+  g.userData.guns = [-1, 1].map((side) => {
+    const gun = new THREE.Mesh(P.gun, P.gunGlow);
+    gun.position.set(side * 0.032, -0.066, 0.085);
+    gun.visible = false;
+    g.add(gun);
+    return gun;
+  });
   for (const side of [-1, 1]) {
     const pylon = new THREE.Mesh(P.pylon, P.hull);
     pylon.position.x = side * 0.18;
@@ -267,6 +286,44 @@ function buildTie(P) {
       spoke.rotation.x = -Math.atan2(y, z);
       wing.add(spoke);
     });
+    g.add(wing);
+  }
+  return g;
+}
+
+// Vader's TIE Advanced x1, front (the window) towards +Z: the ball cockpit,
+// its longer hull behind, and the wings bent in toward it top and bottom,
+// a solar panel each part, a spar down the middle of each.
+function buildTieAdvanced(P) {
+  const g = new THREE.Group();
+  const ball = new THREE.Mesh(P.ball, P.hull);
+  ball.scale.setScalar(1.08);
+  g.add(ball);
+  const rear = new THREE.Mesh(P.rearHull, P.hull);
+  rear.position.z = -0.13;
+  g.add(rear);
+  const bezel = new THREE.Mesh(P.bezel, P.hull);
+  bezel.position.z = 0.095;
+  g.add(bezel);
+  const glass = new THREE.Mesh(P.glass, P.darkGlass);
+  glass.position.z = 0.112;
+  g.add(glass);
+  const FOLD = 0.55; // how far the outer halves bend in
+  for (const side of [-1, 1]) {
+    const pylon = new THREE.Mesh(P.pylon, P.hull);
+    pylon.position.x = side * 0.18;
+    if (side < 0) pylon.rotation.y = Math.PI;
+    g.add(pylon);
+    const wing = new THREE.Group();
+    wing.position.x = side * 0.29;
+    wing.add(new THREE.Mesh(P.midPanel, P.solar));
+    wing.add(new THREE.Mesh(P.spar, P.frame));
+    for (const up of [-1, 1]) {
+      const half = new THREE.Mesh(P.bentPanel, P.solar);
+      half.rotation.z = side * up * FOLD;
+      half.position.set(-side * Math.sin(FOLD) * 0.1, up * (0.08 + Math.cos(FOLD) * 0.1), 0);
+      wing.add(half);
+    }
     g.add(wing);
   }
   return g;
@@ -504,10 +561,24 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
   const ties = Array.from({ length: 12 }, () => {
     const t = buildTie(tieParts_);
     t.scale.setScalar(1.25);
+    t.rotation.order = 'YXZ'; // (turned to face, then pitched, then rolled)
     t.visible = false;
     scene.add(t);
     return t;
   });
+  // Vader and his two wingmen, seen as he joins and as he goes (./ties.js)
+  const vaderShip = buildTieAdvanced(tieParts_);
+  const wingmen = [buildTie(tieParts_), buildTie(tieParts_)];
+  for (const m of [vaderShip, ...wingmen]) {
+    m.scale.setScalar(1.3);
+    m.rotation.order = 'YXZ';
+    m.visible = false;
+    scene.add(m);
+  }
+  let tieLife = createTieLife();
+  let run = null; // the run drawn last, and its time then
+  let runT = 0;
+  let joinedAt = null; // when Vader joined it
 
   // ── what flies: lasers, bolts, torpedoes, explosions ──
   const laserGeo = new THREE.BoxGeometry(0.014, 0.014, 1.1);
@@ -778,16 +849,44 @@ export function createTrench3D(canvas, { onLost, onSlow } = {}) {
     xw.tipMat.color.copy(firing ? hot(0xff4030, 5) : hot(0xff4030, 0.4));
     xw.glowMat.color.setRGB(1.9 + Math.sin(t * 30) * 0.25, 0.85, 0.55);
 
-    // TIE fighters
+    // the run's time since the last frame (none for a new run, or one paused)
+    if (g !== run) {
+      run = g;
+      runT = t;
+      joinedAt = null;
+      tieLife = createTieLife();
+    }
+    const dt = Math.max(0, Math.min(0.1, t - runT));
+    runT = t;
+
+    // TIE fighters: their windows turned to you as they close, banking into
+    // their weave, rolling off a near miss, their guns flashing as they fire
     let ti = 0;
     for (const tie of g.ties ?? []) {
       if (!tie.alive || ti >= ties.length) continue;
       const m = ties[ti++];
       m.visible = true;
       m.position.set(tie.x, tie.y, -tie.z);
-      m.rotation.set(0, 0, Math.cos(tie.phase ?? 0) * 0.35); // window towards the camera
+      const life = tieLife.step(tie, g, g.lasers ?? [], dt);
+      m.rotation.set(life.pitch, life.yaw, life.roll + life.jink);
+      for (const gun of m.userData.guns) {
+        gun.visible = life.flash > 0;
+        gun.scale.setScalar(0.6 + life.flash * 0.8);
+      }
     }
     for (; ti < ties.length; ti++) ties[ti].visible = false;
+
+    // Vader: in over you as he joins, and away, spinning, when Han clears him
+    if (g.vader?.on && joinedAt == null) joinedAt = t;
+    const flight = vaderFlight(g.vader, joinedAt == null ? -1 : t - joinedAt, g);
+    const hidden = g.status === 'won' || Boolean(g.win?.boom);
+    [flight.vader, ...flight.wings].forEach((f, i) => {
+      const m = i ? wingmen[i - 1] : vaderShip;
+      m.visible = f.visible && !hidden;
+      if (!m.visible) return;
+      m.position.set(f.x, f.y, -f.z);
+      m.rotation.set(f.spin * 0.35, Math.PI, f.roll + f.spin); // (flying on down the trench, the way you go)
+    });
 
     // the course
     if (built === g) {

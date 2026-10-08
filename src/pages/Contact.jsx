@@ -25,7 +25,7 @@ function CopyEmail() {
     }
   };
   return (
-    <button type="button" className="btn btn-ghost btn-sm" onClick={copy}>
+    <button type="button" className="btn btn-ghost btn-sm" data-tour="contact-copy" onClick={copy}>
       {copied ? <RiCheckLine className="h-4 w-4 text-accent" aria-hidden="true" /> : <RiFileCopyLine className="h-4 w-4" aria-hidden="true" />}
       <span aria-live="polite">{copied ? 'Copied' : 'Copy address'}</span>
     </button>
@@ -87,7 +87,7 @@ function MessageForm() {
   return (
     <form onSubmit={submit} noValidate className="card memo-form grid gap-5 p-6 sm:p-8">
       <div className="memo-top">
-        <p className="memo-head">Dunder Mifflin Paper Company · Interoffice memo</p>
+        <p className="memo-head" data-tour="contact-form">Dunder Mifflin Paper Company · Interoffice memo</p>
         <p className="mt-3 text-sm text-ink">
           <span className="font-semibold">To:</span> Tilak Patel
         </p>

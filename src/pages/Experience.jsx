@@ -35,7 +35,7 @@ function TrackSwitch({ className = '', align = 'center' }) {
   return (
     <div className={`flex flex-wrap items-center gap-2 ${justify} ${className}`}>
       <span className="text-sm text-muted">Highlight</span>
-      <div className={`seg ${justify}`} role="group" aria-label="Highlight roles">
+      <div className={`seg ${justify}`} data-tour="experience-track" role="group" aria-label="Highlight roles">
         {TRACKS.map((t) => (
           <button key={t.id} type="button" aria-pressed={track === t.id} onClick={() => setTrack(t.id)}>
             {t.label}
@@ -84,7 +84,7 @@ function CurrentRole({ role, onCrawl }) {
           <div className="hero-logo-card">
             {role.id === 'aws' ? <AwsLogoAnimated className="block h-auto w-full" /> : <CompanyLogo id={role.id} className="h-full w-full border-0" />}
           </div>
-          <PageTitle id={`${role.id}-title`} className="display hero-in mt-8 text-[clamp(2.4rem,1.3rem+4.4vw,5.2rem)]" style={{ '--d': '120ms' }}>
+          <PageTitle id={`${role.id}-title`} data-tour="experience-roles" className="display hero-in mt-8 text-[clamp(2.4rem,1.3rem+4.4vw,5.2rem)]" style={{ '--d': '120ms' }}>
             {role.company}
           </PageTitle>
           <p className="stretch-semi hero-in mt-4 max-w-3xl text-[clamp(1.2rem,1rem+0.8vw,1.65rem)] font-semibold leading-snug text-ink" style={{ '--d': '200ms' }}>

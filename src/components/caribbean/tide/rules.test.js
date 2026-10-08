@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARM, CHAPTERS, ISLES, SHIPS, STEP_BOUND, TIDE, UPS, bearing, choose, fire, fitted, newGame, progress, shipStep, step, wrap } from './rules';
+import { ARM, CHAPTERS, ISLES, SHIPS, STEP_BOUND, TIDE, UPS, bearing, choose, fire, fitted, newGame, progress, shipStep, stationOf, step, wrap } from './rules';
 import { readStep, writeStep } from '../../middleearth/towns/travellers';
 import { autopilot } from './pilot';
 
@@ -207,6 +207,74 @@ describe('the navy', () => {
     expect(g.events.some((e) => e.type === 'aim')).toBe(true);
     expect(g.events.some((e) => e.type === 'broadside' && e.owner === 'e')).toBe(true);
     expect(g.p.hp).toBeLessThan(g.p.max);
+  });
+  // the navy alone with you, still, on an open stretch of sea
+  const squadron = () => {
+    const g = calm();
+    g.ships.length = 0;
+    Object.assign(g.p, { x: 0, y: 0, a: 0, v: 0 });
+    g.input.sail = 0;
+    return g;
+  };
+  it('sails as a squadron: two take you from either side, and turn together', () => {
+    const g = squadron();
+    const a = foe(g, 'navy', -200, 0);
+    const b = foe(g, 'navy', -200, 60);
+    a.side = 1;
+    b.side = 1;
+    expect(stationOf(g, a)).toBe(1);
+    expect(stationOf(g, b)).toBe(-1);
+    a.side = -1; // the lead goes about: the other with her
+    expect(stationOf(g, b)).toBe(1);
+    // one on her own fights from her own side
+    b.hp = 0;
+    b.sunk = 0.5;
+    b.side = 1;
+    a.side = 1;
+    expect(stationOf(g, a)).toBe(1);
+  });
+  it('lays one broadside at a time, and the next a moment after', () => {
+    const g = squadron();
+    const a = foe(g, 'navy', -30, 100);
+    const b = foe(g, 'navy', 30, 100);
+    for (const s of [a, b]) {
+      s.reload = [0, 0];
+      s.a = Math.PI; // heading west, so north (where you are) is to starboard
+    }
+    const aiming = [];
+    const fired = [];
+    run(g, 6, () => {
+      aiming.push([a, b].filter((s) => s.aim).length);
+      for (const e of g.events) if (e.type === 'broadside' && e.owner === 'e') fired.push(g.t);
+      g.events.length = 0;
+    });
+    expect(Math.max(...aiming)).toBe(1);
+    expect(fired.length).toBeGreaterThanOrEqual(2);
+    for (let i = 1; i < fired.length; i++) expect(fired[i] - fired[i - 1]).toBeGreaterThan(1.5);
+  });
+  it('never fires blind: not through an island, nor with a friend in the way', () => {
+    // an island between
+    const g = squadron();
+    const isle = ISLES[4];
+    Object.assign(g.p, { x: isle.x, y: isle.y - isle.r - 25, a: 0 });
+    const s = foe(g, 'navy', isle.x, isle.y + isle.r + 25, Math.PI);
+    s.reload = [0, 0];
+    run(g, 3);
+    expect(g.events.some((e) => e.type === 'aim')).toBe(false);
+    // and with nothing between, the same ship opens fire
+    const h = squadron();
+    const t = foe(h, 'navy', 0, 110, Math.PI);
+    t.reload = [0, 0];
+    run(h, 3);
+    expect(h.events.some((e) => e.type === 'aim')).toBe(true);
+    // a friend on the line between
+    const f = squadron();
+    const far = foe(f, 'navy', 0, 130, Math.PI);
+    const mid = foe(f, 'sloop', 0, 65, 0);
+    far.reload = [0, 0];
+    mid.reload = [99, 99];
+    run(f, 3);
+    expect(f.events.some((e) => e.type === 'aim' && e.id === far.id)).toBe(false);
   });
   it('keeps off the islands', () => {
     const g = newGame({ seed: 11 });

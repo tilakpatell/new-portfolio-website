@@ -1,0 +1,17 @@
+/* The tours on the guide's "The site" tab (GuidePanel.jsx): a row each, the
+   time beside the button, the chapters folded under it. */
+.guide-tours { display: grid; gap: 0.6rem; margin: 0.75rem 0 0; padding: 0; list-style: none; }
+.guide-tours > li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.6rem; }
+.guide-tour-time { color: var(--muted); font-size: 0.8125rem; }
+.guide-chapters { flex-basis: 100%; }
+.guide-chapters > summary { width: fit-content; color: var(--muted); font-size: 0.8125rem; cursor: pointer; }
+.guide-chapters > summary:hover { color: var(--text); }
+.guide-chapters ol { display: grid; gap: 0.2rem; margin: 0.35rem 0 0.2rem; padding-left: 1.4rem; font-size: 0.875rem; }
+.guide-chapter { color: var(--accent-text, var(--accent)); text-align: left; text-underline-offset: 2px; }
+.guide-chapter:hover { text-decoration: underline; }
+/* (three tabs now share the head with the close button: a tab's name stays
+   on one line, and a narrow phone tightens them rather than wrapping) */
+.guide-tabs > [role='tab'] { white-space: nowrap; }
+@media (max-width: 420px) {
+  .guide-tabs > [role='tab'] { padding: 0 0.6rem; font-size: 0.8125rem; }
+}

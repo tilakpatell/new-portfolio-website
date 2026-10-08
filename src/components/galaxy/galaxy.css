@@ -22,6 +22,7 @@
 }
 .galaxy-label[data-kind='planet'] { font-size: 0.8rem; text-transform: uppercase; }
 .galaxy-label[data-kind='station'] { color: #ffd9a0; --swatch: #ffd9a0; }
+.galaxy-label[data-kind='place'] { color: #a9c4ff; --swatch: #a9c4ff; font-size: 0.68rem; opacity: 0.85; }
 .galaxy-label[data-here] { color: var(--swatch); background: rgb(3 4 10 / 0.6); }
 
 /* the other systems' stars: their names as the nose comes near (under the
@@ -246,6 +247,7 @@
 }
 .galaxy-here button:hover:not(:disabled) { background: rgb(255 255 255 / 0.05); }
 .galaxy-here button:disabled { color: var(--accent-text); }
+.galaxy-out li[data-found] button { color: #a9c4ff; }
 .universe-back.inline { display: inline; margin: 0; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
 
 /* the galaxy map: a holotable's blue over the stars */

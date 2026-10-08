@@ -250,13 +250,20 @@ export function clearOf(p, solids, gap = 2) {
 // and below; `ahead` of you (an ambush, across your way, where you see them
 // coming: `lead` further along, where you'll be by the time they have the
 // pulse drive down, ship.js's holdReach); out of `portal`s opening ahead of
-// you; or one after another out of a hangar (`from`: { x, y, z }). Never
-// inside anything solid.
-export function entryPoint(ship, i, n, { portal = false, from = null, ahead = false, lead = 0, rand = Math.random, solids = [] } = {}) {
+// you; one after another out of a hangar (`from`: { x, y, z }); or waiting
+// round a point (`at`: { x, y, z }, the node you're coming off a lane at,
+// or where you've stopped: never in the lane itself). Never inside anything
+// solid.
+export function entryPoint(ship, i, n, { portal = false, from = null, ahead = false, lead = 0, at = null, rand = Math.random, solids = [] } = {}) {
   const fx = -Math.sin(ship.heading);
   const fz = -Math.cos(ship.heading);
   let p;
-  if (from) p = { x: from.x + (rand() - 0.5) * 3, y: from.y - i * 0.6, z: from.z + (rand() - 0.5) * 3 };
+  if (at) {
+    // (round it, evenly, a little above and below)
+    const a = (i / Math.max(1, n)) * Math.PI * 2 + rand() * 0.4;
+    const d = 14 + rand() * 8;
+    p = { x: at.x + Math.cos(a) * d, y: at.y + (rand() - 0.5) * 6, z: at.z + Math.sin(a) * d };
+  } else if (from) p = { x: from.x + (rand() - 0.5) * 3, y: from.y - i * 0.6, z: from.z + (rand() - 0.5) * 3 };
   else if (ahead) {
     const d = 38 + i * 4 + lead;
     const side = (i - (n - 1) / 2) * 5;
@@ -571,7 +578,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
     // a pack of hunters after you (or after `prey`: { at: { x, y, z }, dir(out),
     // alive() }, something else, e.g. a freighter in distress). Returns the
     // hunters (each one's `pos` is where it came in).
-    pack(faction, ship, { prey = null, size, ace, from = null, ahead = false, lead = 0, interdict = false, heat = 0, first = false } = {}) {
+    pack(faction, ship, { prey = null, size, ace, from = null, ahead = false, lead = 0, at = null, interdict = false, heat = 0, first = false } = {}) {
       const f = factions[faction];
       if (!f || !ship) return [];
       const kinds = packPlan(f, { size, ace, heat, first, rand });
@@ -582,7 +589,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
       const fz = -Math.cos(ship.heading);
       kinds.forEach((kind, i) => {
         const type = KINDS[kind];
-        const pos = entryPoint(ship, i, n, { portal: f.portal && !from && !ahead, from, ahead, lead, rand, solids: around });
+        const pos = entryPoint(ship, i, n, { portal: f.portal && !from && !ahead && !at, from, ahead, lead, at, rand, solids: around });
         const v = type.speed * (ahead ? -0.8 : 0.8); // (an ambush comes at you; the rest come up behind you)
         const h = {
           id: nextId++,

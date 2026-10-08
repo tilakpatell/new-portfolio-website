@@ -137,6 +137,10 @@ export function buildLife(state) {
   }
   const legQ = new THREE.Quaternion();
   const AX = new THREE.Vector3(1, 0, 0);
+  // each walker's last place and the way they're drawn facing
+  const was = new Float32Array(Math.max(1, n) * 2);
+  const facing = new Float32Array(Math.max(1, n));
+  const seen = new Uint8Array(Math.max(1, n));
 
   let lastNight = -1;
   return {
@@ -166,12 +170,32 @@ export function buildLife(state) {
         lastNight = night;
         lightMat.color.setScalar(0.35 + night * 3.2);
       }
-      // the people
+      // the people: each facing the way they're going (worked out from how
+      // they moved since the last frame, so a walk back to the pavement
+      // faces back to it, not along the street), turned round to it the way
+      // the cars are, not snapped
       const count = n;
       for (let i = 0; i < count; i++) {
         const w = st.walkers[i];
         const [x, z] = walkerAt(w);
-        const heading = w.flee > 0 ? Math.atan2(w.fx, w.fz) : w.axis === 'x' ? (w.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : w.dir > 0 ? 0 : Math.PI;
+        const along = w.flee > 0 ? Math.atan2(w.fx, w.fz) : w.axis === 'x' ? (w.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : w.dir > 0 ? 0 : Math.PI;
+        const px = was[i * 2];
+        const pz = was[i * 2 + 1];
+        const step = Math.hypot(x - px, z - pz);
+        let want = along;
+        if (step > 4 || !seen[i]) facing[i] = along; // (put somewhere new: straight round)
+        else if (step > 1e-4 && dt > 0) {
+          // mostly how they moved, the street's way breaking the tie when they barely did
+          const k = Math.min(1, step / (dt * 0.6));
+          const mx = Math.sin(along) * (1 - k) + ((x - px) / step) * k;
+          const mz = Math.cos(along) * (1 - k) + ((z - pz) / step) * k;
+          want = Math.atan2(mx, mz);
+        }
+        seen[i] = 1;
+        was[i * 2] = x;
+        was[i * 2 + 1] = z;
+        facing[i] += Math.atan2(Math.sin(want - facing[i]), Math.cos(want - facing[i])) * Math.min(1, dt * (w.flee > 0 ? 10 : 6));
+        const heading = facing[i];
         Q.setFromAxisAngle(UP, heading);
         M4.compose(P.set(x, 0, z), Q, S);
         torso.setMatrixAt(i, M4);

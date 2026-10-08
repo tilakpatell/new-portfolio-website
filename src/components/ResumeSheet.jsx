@@ -51,7 +51,7 @@ export default function ResumeSheet({ active = [], onToggle, preview = false }) 
 
       <section className="resume-section">
         <H className="resume-h">Technical skills</H>
-        <dl className="resume-skills">
+        <dl className="resume-skills" data-tour={preview ? undefined : 'resume-skills'}>
           {r.skills.map((g) => (
             <div key={g.id}>
               <dt>{g.label}:</dt>{' '}
