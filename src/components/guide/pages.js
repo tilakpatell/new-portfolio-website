@@ -494,12 +494,23 @@ export const PAGES = {
           ['Esc', 'Back to the cruiser and up to space'],
         ],
       },
+      {
+        label: 'On a ride',
+        rows: [
+          ['W S', 'Throttle, and back'],
+          ['A D', 'Steer'],
+          ['Shift', 'Boost'],
+          ['Space', 'Climb (the glider: let go and it sinks)'],
+          ['E', 'Get off'],
+        ],
+      },
     ],
     touch: [{ rows: [...WALK_TOUCH, ['Tap', 'Jump, fire and act, on their buttons']] }],
     tips: [
       ['The way out', 'Where the cruiser set you down, E at it takes off, back out to space by the planet. On a planet you walked into, the portal you came in by, just behind you, does it.'],
       ['The compass', 'The places to find are on the bar at the top, with how far: walk up to one and it’s found, and kept for next time.'],
       ['Run', 'Some of the people here come for you. Caught, you’re back where you came in.'],
+      ['Rides', 'Where the cruiser set down there’s something to ride: the rock sled on Gazorpazorp. E at it gets on; a hover rides over water as well as sand.'],
       ['A minute', 'On Planet Squanch and the Purge Planet, once it goes wrong, get back through the portal inside a minute.'],
       ['The list', 'On a planet you walked into, what you do counts on Dimension C-137’s list of things to do too.'],
     ],
