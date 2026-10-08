@@ -21,8 +21,13 @@
 //     placer's part contract; `local` is the part's place in the model, its
 //     node's transform included: the import's meshopt keeps each model's
 //     geometry in -1…1 under a move and a scale, so geometry alone draws a
-//     tree a seventh of its size; a rig's are as its file has them, a
-//     skinned mesh placed by its bones, for its own mixer, never a pool)
+//     tree a seventh of its size. A part that bends is the exception: its
+//     geometry is the kit's own copy in metres, its node's transform baked
+//     in and its local the identity, as the wind measures a vertex's height
+//     before any matrix (foliage.js), and in -1…1 the lower half of a tree
+//     would never bend and its top bend a fiftieth of what it should. A
+//     rig's are as its file has them, a skinned mesh placed by its bones,
+//     for its own mixer, never a pool)
 //   kitMaterial(def, { house, wind }) → a new material for a manifest entry
 //   createPool(kit, name, { bands, cap, shadows, puff, lod1, wait }) → {
 //     set(key, items), free(key), shift(dx, dz), update(camera, dt),
@@ -34,11 +39,13 @@
 // manifest lists one) and the colour of the first file to carry its name.
 // Whatever the manifest says bends in the wind does, bark and leaves alike,
 // scaled by the model's own weight a vertex (three's loader names a GLB's
-// _WIND `_wind`; a mesh that wears a bending material without one gets one
-// of ones, so it sways by its height alone and doesn't stand frozen). Leaves
-// are cut out at 0.3, two-sided, lit as one crown (foliage.js's `faceless`),
-// their maps brought under the device's ceiling and then given mip levels
-// that keep their coverage (textures.js), or a far crown goes bald.
+// _WIND `_wind`; a part that wears a bending material without one has its
+// copy given one of ones, so it sways by its height alone and doesn't stand
+// frozen; the file's own geometry, the page's model cache's, is never
+// changed). Leaves are cut out at 0.3, two-sided, lit as one crown
+// (foliage.js's `faceless`), their maps brought under the device's ceiling
+// and then given mip levels that keep their coverage (textures.js), or a
+// far crown goes bald.
 
 import * as THREE from 'three';
 import { budget } from '../budgets';
@@ -84,12 +91,26 @@ function dress(m, def, src) {
   m.needsUpdate = true;
 }
 
-// A weight of ones for a geometry the file gave none. The files' geometry
-// is the page's model cache's (lib/three/gltf), shared by every kit of a
-// pack, so a weight filled in is counted by the kits holding it and taken
-// off when the last of them is disposed of.
-const ones = (geometry) => new THREE.BufferAttribute(new Uint8Array(geometry.attributes.position.count).fill(255), 1, true);
-const FILLED = new WeakMap(); // a weight of ones → how many kits hold it
+// An attribute as plain floats (the files' are quantised shorts and bytes,
+// interleaved).
+function floats(a) {
+  const out = new THREE.BufferAttribute(new Float32Array(a.count * a.itemSize), a.itemSize);
+  for (let i = 0; i < a.count; i++) for (let c = 0; c < a.itemSize; c++) out.setComponent(i, c, a.getComponent(i, c));
+  return out;
+}
+
+// A bending part's geometry in metres: a copy of the file's (which is the
+// page's model cache's, lib/three/gltf, shared by every kit of a pack, and
+// so never changed), its positions, normals and tangents as floats with
+// `local` applied (the normals turned by its normal matrix), every other
+// attribute copied, and a weight of ones where the file gave none.
+function bake(geometry, local) {
+  const g = geometry.clone();
+  for (const name of ['position', 'normal', 'tangent']) if (g.attributes[name]) g.setAttribute(name, floats(geometry.attributes[name]));
+  g.applyMatrix4(local);
+  if (!g.attributes[WEIGHT]) g.setAttribute(WEIGHT, new THREE.BufferAttribute(new Uint8Array(g.attributes.position.count).fill(255), 1, true));
+  return g;
+}
 
 function fetchManifest(url) {
   return fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`kit: couldn't load ${url} (${r.status})`))));
@@ -101,7 +122,7 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
   let gone = false;
   let warned = false;
   const files = new Map(); // url → Promise<{ scene, roots }>
-  const held = new Map(); // a filled weight this kit holds → its geometry
+  const baked = new Map(); // a file's geometry → [{ local, geometry }]: the kit's copies of it in metres
   const mats = new Map(); // name → the kit's material
   const dressed = new Set();
   const models = new Map(); // name → Promise<model>
@@ -148,8 +169,7 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
   }
 
   // A loaded file taken in: its materials dressed (each name once, from the
-  // first file to carry it), its bending meshes given a weight where they
-  // lack one, its models found by the names the file gave them.
+  // first file to carry it), its models found by the names the file gave them.
   function adopt(scene) {
     scene.traverse((o) => {
       if (!o.isMesh) return;
@@ -160,17 +180,6 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
         dressed.add(name);
         dress(m, def, o.material);
         if (def.leaf && m.map) cover(m);
-      }
-      const g = o.geometry;
-      let w = g.attributes[WEIGHT];
-      if (def.wind && !w) {
-        w = ones(g);
-        g.setAttribute(WEIGHT, w);
-        FILLED.set(w, 0);
-      }
-      if (w && FILLED.has(w) && !held.has(w)) {
-        FILLED.set(w, FILLED.get(w) + 1);
-        held.set(w, g);
       }
     });
     const roots = new Map();
@@ -192,15 +201,29 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
     return files.get(url);
   }
 
+  // A file's geometry at `local` in metres, baked once a kit (a model asked
+  // for again, or a mesh two nodes share at one place, gets the same copy).
+  function inMetres(geometry, local) {
+    const list = baked.get(geometry) ?? baked.set(geometry, []).get(geometry);
+    let hit = list.find((b) => b.local.equals(local));
+    if (!hit) list.push((hit = { local, geometry: bake(geometry, local) }));
+    return hit.geometry;
+  }
+
   // Every mesh under a model's node, each at its place in the model: its
-  // matrix relative to the file's root.
+  // matrix relative to the file's root, or, for a part that bends (and isn't
+  // skinned), that baked into the kit's copy of its geometry.
   function partsOf(node, scene) {
     scene.updateMatrixWorld(true);
     const inv = scene.matrixWorld.clone().invert();
     const parts = [];
     node.traverse((o) => {
       if (!o.isMesh) return;
-      parts.push({ geometry: o.geometry, material: material(o.material.name), local: new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld), part: o.geometry.userData?.part ?? 'main' });
+      const part = o.geometry.userData?.part ?? 'main';
+      const m = material(o.material.name);
+      const local = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+      if (index.materials[o.material.name]?.wind && !o.isSkinnedMesh) parts.push({ geometry: inMetres(o.geometry, local), material: m, local: new THREE.Matrix4(), part });
+      else parts.push({ geometry: o.geometry, material: m, local, part });
     });
     return parts;
   }
@@ -212,6 +235,7 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
         const row = info(name);
         if (!row) throw new Error(`kit ${pack}: no model ${name} in its manifest`);
         const { scene, roots } = await fileOf(row.file);
+        if (gone) throw new Error(`kit ${pack}: disposed of while ${name} loaded`);
         const node = roots.get(name + suffix);
         if (!node) throw new Error(`kit ${pack}: ${row.file} has no ${suffix ? `LOD1 of ${name}` : name}`);
         return make(partsOf(node, scene), row);
@@ -229,21 +253,14 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
     material,
     model: (name) => find(models, name, '', (parts, row) => ({ parts, radius: row.radius, height: row.height, kind: row.kind, tones: row.tones ?? null })),
     lod1: (name) => find(lods, name, '.lod1', (parts) => parts),
-    // What the kit made, freed: its materials, and the weights it filled in
-    // that no other kit still holds. The files' geometry and maps are the
-    // loader's (the page's model cache), left as they are.
+    // What the kit made, freed: its materials and its copies in metres. The
+    // files' geometry and maps are the loader's (the page's model cache),
+    // left as they are.
     dispose() {
       gone = true;
       for (const m of mats.values()) m.dispose();
-      for (const [w, g] of held) {
-        const n = FILLED.get(w) - 1;
-        if (n > 0) FILLED.set(w, n);
-        else {
-          FILLED.delete(w);
-          if (g.attributes[WEIGHT] === w) g.deleteAttribute(WEIGHT);
-        }
-      }
-      for (const c of [files, held, mats, dressed, models, lods]) c.clear();
+      for (const list of baked.values()) for (const b of list) b.geometry.dispose();
+      for (const c of [files, baked, mats, dressed, models, lods]) c.clear();
     },
   };
 }
@@ -286,7 +303,8 @@ const itemOf = ({ x = 0, y = 0, z = 0, yaw = 0, scale = 1 }) => ({ x, y, z, c: M
 // level to start, grown by half again whenever the items outnumber it
 // (geometry and materials shared; never shrunk). Only the full level casts
 // shadows, and only with `shadows`. The parts load in the background
-// (`ready`); items set before then are drawn once they're in. Wants the
+// (`ready`); items set before then are drawn once they're in, and a model
+// that won't load draws nothing, said once (`ready` rejects). Wants the
 // kit's manifest in, and refuses a rigged model: a pool draws still props.
 export function createPool(kit, name, { bands = null, cap = 256, shadows = true, puff = null, lod1 = null, wait: start = Math.random() * EVERY } = {}) {
   const row = kit.info(name);
@@ -429,15 +447,19 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
     },
   };
 
-  // (a LOD1 that won't load: the full parts stand in, rather than nothing drawn)
+  // (a LOD1 that won't load: the full parts stand in, rather than nothing
+  // drawn, said once they're in; a full model that won't load: said once,
+  // and the pool draws nothing)
+  let lodError = null;
   const lodParts = withLod1
     ? kit.lod1(name).catch((e) => {
-        console.warn(`createPool: ${name}'s LOD1 won't load (${e.message}); its full parts stand in`);
+        lodError = e;
         return null;
       })
     : null;
   pool.ready = Promise.all([kit.model(name), lodParts]).then(([full, lod]) => {
     if (gone) return pool;
+    if (lodError) console.warn(`createPool: ${name}'s LOD1 won't load (${lodError.message}); its full parts stand in`);
     const far = lod ?? full.parts;
     parts[0] = full.parts;
     parts[1] = far;
@@ -446,6 +468,8 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
     write();
     return pool;
   });
-  pool.ready.catch(() => {});
+  pool.ready.catch((e) => {
+    if (!gone) console.warn(`createPool: ${name} won't load (${e?.message ?? e}); its pool draws nothing`);
+  });
   return pool;
 }

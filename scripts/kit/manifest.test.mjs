@@ -52,6 +52,24 @@ describe('a pack’s manifest', () => {
     expect(b.rig).toBeUndefined();
   });
 
+  it('takes a tree’s trunk from its bark alone, and a model with no bark’s from all of it', () => {
+    // (a bark post 0.2 across the middle under a crown, and a leaf card 4 m wide at 0.3 m, under the 8 % line of 10 m)
+    const bark = [-0.1, 0, -0.1, 0.1, 0, 0.1, -0.1, 9, -0.1, 0.1, 9, 0.1];
+    const card = [-2, 0.3, 0, 2, 0.3, 0, -2, 0.5, 0, 2, 0.5, 0];
+    const crown = [-3, 7, 0, 3, 10, 0];
+    const positions = new Float32Array([...bark, ...card, ...crown]);
+    const tree = { ...birch('Birch_1', 10), positions, bark: new Float32Array(bark) };
+    const fern = { name: 'Fern_1', positions, parts: [{ part: 'leaves', material: 'Leaves_Birch', tris: 4, tris1: 2 }] };
+    const m = buildManifest('tiny', [
+      { ...tiny()[0], models: [tree] },
+      { ...tiny()[0], family: 'fern', file: 'fern.glb', models: [fern] },
+    ]);
+    expect(m.models.Birch_1.trunk).toBeCloseTo(Math.SQRT2 * 0.1, 3);
+    expect(m.models.Birch_1.height).toBe(10);
+    expect(m.models.Birch_1.radius).toBeCloseTo(Math.hypot(6, 0.2) / 2, 3);
+    expect(m.models.Fern_1.trunk).toBeCloseTo(2, 3);
+  });
+
   it('gives a tree its leaf map’s two tones, linear and a darker then a lighter', () => {
     const { tones } = buildManifest('tiny', tiny()).models.Birch_1;
     expect(tones).toHaveLength(2);
@@ -130,19 +148,19 @@ describe('the kit’s one order of names', () => {
 });
 
 describe('checking a manifest against its files', () => {
-  const MB = 1048576;
+  const MiB = 1048576;
   it('is clean when every file is there and within its budget', () => {
     const m = buildManifest('tiny', tiny());
-    expect(checkManifest(m, { 'birch.glb': 0.4 * MB })).toEqual([]);
+    expect(checkManifest(m, { 'birch.glb': 0.4 * MiB })).toEqual([]);
   });
 
-  it('flags a family file over 1.5 MB, a tree over 15,000 triangles, a tree’s LOD1 over 40 % and a missing file', () => {
+  it('flags a family file over 1.5 MiB, a tree over 15,000 triangles, a tree’s LOD1 over 40 % and a missing file', () => {
     const m = buildManifest('tiny', tiny());
-    expect(checkManifest(m, { 'birch.glb': 1.6 * MB })).toEqual([expect.stringMatching(/birch\.glb.*1\.6 MB.*1\.5 MB/)]);
+    expect(checkManifest(m, { 'birch.glb': 1.6 * MiB })).toEqual([expect.stringMatching(/birch\.glb.*1\.6 MiB.*1\.5 MiB/)]);
     m.models.Birch_1.tris = 16000;
     m.models.Birch_1.tris1 = 3000;
     m.models.Birch_2.tris1 = m.models.Birch_2.tris / 2;
-    const errors = checkManifest(m, { 'birch.glb': MB });
+    const errors = checkManifest(m, { 'birch.glb': MiB });
     expect(errors).toHaveLength(2);
     expect(errors[0]).toMatch(/Birch_1.*16000.*15000/);
     expect(errors[1]).toMatch(/Birch_2.*LOD1.*50 %/);
@@ -162,7 +180,7 @@ describe('checking a manifest against its files', () => {
     const m = buildManifest('tiny', tiny());
     delete m.licence;
     m.source = '';
-    expect(checkManifest(m, { 'birch.glb': MB })).toEqual([expect.stringMatching(/licence/), expect.stringMatching(/source/)]);
+    expect(checkManifest(m, { 'birch.glb': MiB })).toEqual([expect.stringMatching(/licence/), expect.stringMatching(/source/)]);
   });
 });
 
@@ -245,6 +263,46 @@ describe('a family too heavy for one file', () => {
     } finally {
       rmSync(whole, { recursive: true, force: true });
       rmSync(split, { recursive: true, force: true });
+    }
+  }, 60000);
+});
+
+describe('a tree with a leaf card below its 8 % line', () => {
+  it('is given its bark’s trunk by the import, not the card’s width; its height and footprint are the whole tree’s', async () => {
+    const { Document, NodeIO } = await import('@gltf-transform/core');
+    const { ALL_EXTENSIONS } = await import('@gltf-transform/extensions');
+    const { MeshoptDecoder } = await import('meshoptimizer');
+    await MeshoptDecoder.ready;
+    const [from, out] = [mkdtempSync(join(tmpdir(), 'kit-low-')), mkdtempSync(join(tmpdir(), 'kit-low-out-'))];
+    try {
+      const doc = new Document();
+      const buffer = doc.createBuffer();
+      const prim = (material, positions, indices) =>
+        doc
+          .createPrimitive()
+          .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(new Float32Array(positions)).setBuffer(buffer))
+          .setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint16Array(indices)).setBuffer(buffer))
+          .setMaterial(doc.createMaterial(material));
+      // the bark a post 0.2 across, 9 m tall
+      const post = [];
+      for (const y of [0, 9]) post.push(-0.1, y, -0.1, 0.1, y, -0.1, 0.1, y, 0.1, -0.1, y, 0.1);
+      const sides = [0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7, 4, 5, 6, 4, 6, 7];
+      // the leaves two cards: one 4 m wide at 0.3-0.5 m (under 8 % of 10 m), one in the crown up to 10 m
+      const cards = [-2, 0.3, 0, 2, 0.3, 0, 2, 0.5, 0, -2, 0.5, 0, -3, 7, 0, 3, 7, 0, 3, 10, 0, -3, 10, 0];
+      const quads = [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7];
+      const mesh = doc.createMesh('Birch_7').addPrimitive(prim('Bark_Birch', post, sides)).addPrimitive(prim('Leaves_Birch', cards, quads));
+      doc.createScene().addChild(doc.createNode('Birch_7').setMesh(mesh));
+      const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
+      await io.write(join(from, 'Birch_7.glb'), doc);
+
+      const m = await importPack({ pack: 'low', from, out, log: () => {} });
+      expect(m.models.Birch_7).toMatchObject({ kind: 'tree', parts: ['bark', 'leaves'] });
+      expect(m.models.Birch_7.trunk).toBeCloseTo(Math.SQRT2 * 0.1, 2);
+      expect(m.models.Birch_7.height).toBeCloseTo(10, 2);
+      expect(m.models.Birch_7.radius).toBeCloseTo(Math.hypot(6, 0.2) / 2, 2);
+    } finally {
+      rmSync(from, { recursive: true, force: true });
+      rmSync(out, { recursive: true, force: true });
     }
   }, 60000);
 });

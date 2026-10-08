@@ -77,25 +77,99 @@ describe('loadKit: models and materials', () => {
     expect((await kit.model('Fern_1')).tones).toBeNull();
   });
 
-  it('carries the model node’s dequantising transform in every part’s local', async () => {
-    const { kit } = await kitOf();
+  it('bakes a bending part’s node transform into a geometry of its own, in metres, its local the identity', async () => {
+    const { kit, load } = await kitOf();
     const { parts } = await kit.model('Birch_1');
-    for (const p of parts) {
-      const t = new THREE.Vector3();
-      const s = new THREE.Vector3();
-      p.local.decompose(t, new THREE.Quaternion(), s);
-      expect(t.x).toBeCloseTo(0.211, 3);
-      expect(t.y).toBeCloseTo(6.432, 3);
-      expect(t.z).toBeCloseTo(-0.439, 3);
-      expect(s.x).toBeCloseTo(6.861, 3);
+    const file = load.scenes['/kit/naturemega/birch.glb'];
+    const top = (g) => (g.computeBoundingBox(), g.boundingBox.max.y);
+    const near = (got, want) => expect(Math.abs(got - want) / want).toBeLessThan(0.02);
+    for (const [i, p] of parts.entries()) {
+      expect(p.local.equals(new THREE.Matrix4())).toBe(true);
+      expect(p.geometry.attributes.position.array).toBeInstanceOf(Float32Array);
+      // (the tree's top where the manifest has it, not the quantised 1)
+      near(top(p.geometry), MANIFEST.models.Birch_1.height);
+      // the file's own geometry left as the loader gave it
+      const src = file.getObjectByName(`Birch_1_${i + 1}`).geometry;
+      expect(p.geometry).not.toBe(src);
+      expect(top(src)).toBeCloseTo(1, 6);
+      expect(p.geometry.attributes.uv.count).toBe(src.attributes.uv.count);
+      expect(p.geometry.userData.part).toBe(src.userData.part);
     }
-    // the top of the geometry (y = 1 in its quantised units) is the tree's top
-    expect(new THREE.Vector3(0, 1, 0).applyMatrix4(parts[0].local).y).toBeCloseTo(MANIFEST.models.Birch_1.height, 3);
-    // the LOD1 at its own node's; a model of one primitive (its node a Mesh) at its own
+    // the LOD1 at its own node's; a model of one primitive (its node a Mesh) too
     const lod = await kit.lod1('Birch_1');
-    expect(new THREE.Vector3().setFromMatrixScale(lod[1].local).x).toBeCloseTo(6.899, 3);
+    expect(lod[1].local.equals(new THREE.Matrix4())).toBe(true);
+    near(top(lod[1].geometry), 6.471 + 6.899);
     const fern = await kit.model('Fern_1');
-    expect(new THREE.Vector3(0, 1, 0).applyMatrix4(fern.parts[0].local).y).toBeCloseTo(MANIFEST.models.Fern_1.height, 3);
+    expect(fern.parts[0].local.equals(new THREE.Matrix4())).toBe(true);
+    near(top(fern.parts[0].geometry), MANIFEST.models.Fern_1.height);
+  });
+
+  it('keeps a part that doesn’t bend as it was: the file’s geometry, its node’s transform in its local', async () => {
+    const { kit, load } = await kitOf();
+    const [rock] = (await kit.model('Rock_1')).parts;
+    expect(rock.geometry).toBe(load.scenes['/kit/naturemega/rock.glb'].getObjectByName('Rock_1').geometry);
+    const t = new THREE.Vector3();
+    const s = new THREE.Vector3();
+    rock.local.decompose(t, new THREE.Quaternion(), s);
+    expect([t.y, s.x]).toEqual([expect.closeTo(0.45, 6), expect.closeTo(0.6, 6)]);
+    expect(new THREE.Vector3(0, 1, 0).applyMatrix4(rock.local).y).toBeCloseTo(MANIFEST.models.Rock_1.height, 3);
+  });
+
+  it('bends a crown in metres: the shader’s sums at a crown vertex give the whole bend, where the file’s geometry gave next to none', async () => {
+    const { kit, load } = await kitOf();
+    const crown = (await kit.model('Birch_1')).parts[1].geometry;
+    const src = load.scenes['/kit/naturemega/birch.glb'].getObjectByName('Birch_1_2').geometry;
+    // (foliage.js windShader, before the instance matrix: wH = clamp(y / height), wBend = wH² × weight)
+    const bend = (g, i) => {
+      const h = Math.min(1, Math.max(0, g.attributes.position.getY(i) / WIND.tree.height));
+      return h * h * g.attributes._wind.getX(i);
+    };
+    const y = Array.from({ length: crown.attributes.position.count }, (_, i) => crown.attributes.position.getY(i));
+    const top = y.indexOf(Math.max(...y));
+    expect(y[top]).toBeCloseTo(MANIFEST.models.Birch_1.height, 2);
+    expect(bend(crown, top)).toBeCloseTo(1, 3);
+    // (the file's geometry, as the pools drew it before: its node's ×6.9 came after the bend, (1/7)²)
+    expect(bend(src, top)).toBeLessThan(0.03);
+  });
+
+  it('bakes positions and normals as the loader gives them from the files: normalised shorts and bytes, interleaved', async () => {
+    const plain = fakeLoad();
+    // (each a view of its own, padded to four bytes a vertex as meshopt's are)
+    const packed = (a, Type, max, stride) => {
+      const data = new THREE.InterleavedBuffer(new Type(a.count * stride), stride);
+      for (let i = 0; i < a.count; i++) for (let c = 0; c < 3; c++) data.array[i * stride + c] = Math.round(a.getComponent(i, c) * max);
+      return new THREE.InterleavedBufferAttribute(data, 3, 0, true);
+    };
+    const quantised = async (url) => {
+      const got = await plain(url);
+      const g = got.scene.getObjectByName('Birch_1_2')?.geometry;
+      if (g) {
+        g.setAttribute('position', packed(g.attributes.position, Int16Array, 32767, 4));
+        g.setAttribute('normal', packed(g.attributes.normal, Int8Array, 127, 4));
+      }
+      return got;
+    };
+    const { kit } = await kitOf({ load: quantised });
+    const crown = (await kit.model('Birch_1')).parts[1].geometry;
+    expect(crown.attributes.position.isInterleavedBufferAttribute).toBeFalsy();
+    expect(crown.attributes.position.array).toBeInstanceOf(Float32Array);
+    crown.computeBoundingBox();
+    expect(crown.boundingBox.max.y).toBeCloseTo(MANIFEST.models.Birch_1.height, 3);
+    expect(new THREE.Vector3().fromBufferAttribute(crown.attributes.normal, 0).toArray()).toEqual([0, 0, 1].map((v) => expect.closeTo(v, 5)));
+  });
+
+  it('turns a bending part’s normals with its node', async () => {
+    const plain = fakeLoad();
+    const turned = async (url) => {
+      const got = await plain(url);
+      got.scene.getObjectByName('Birch_1').rotation.y = Math.PI / 2;
+      return got;
+    };
+    const { kit } = await kitOf({ load: turned });
+    const { parts } = await kit.model('Birch_1');
+    const n = new THREE.Vector3().fromBufferAttribute(parts[0].geometry.attributes.normal, 0);
+    // ((0, 0, 1) a quarter turn about up)
+    expect(n.toArray()).toEqual([1, 0, 0].map((v) => expect.closeTo(v, 5)));
   });
 
   it('reads a part’s place from the file’s root, wherever a shared scene was put', async () => {
@@ -108,7 +182,18 @@ describe('loadKit: models and materials', () => {
     };
     const { kit } = await kitOf({ load: moved });
     const { parts } = await kit.model('Birch_1');
-    expect(new THREE.Vector3().setFromMatrixPosition(parts[0].local).x).toBeCloseTo(0.211, 3);
+    const box = parts[0].geometry.boundingBox ?? (parts[0].geometry.computeBoundingBox(), parts[0].geometry.boundingBox);
+    expect(box.getCenter(new THREE.Vector3()).x).toBeCloseTo(0.211, 3);
+    expect(new THREE.Vector3().setFromMatrixPosition((await kit.model('Rock_1')).parts[0].local).x).toBeCloseTo(0, 6);
+  });
+
+  it('bakes each geometry once a kit, so two pools of a model draw one copy', async () => {
+    const { kit } = await kitOf();
+    const a = createPool(kit, 'Birch_1', { bands: HIGH, lod1: true });
+    const b = createPool(kit, 'Birch_1', { bands: HIGH, lod1: true });
+    await Promise.all([a.ready, b.ready]);
+    expect(meshesAt(a, 0).map((m) => m.geometry)).toEqual(meshesAt(b, 0).map((m) => m.geometry));
+    expect(meshesAt(a, 0)[0].geometry).toBe((await kit.model('Birch_1')).parts[0].geometry);
   });
 
   it('gives LOD1 parts in the same materials, and no LOD1 for a rig', async () => {
@@ -123,13 +208,15 @@ describe('loadKit: models and materials', () => {
   });
 
   it('fills a missing wind weight with ones, and keeps one a file has', async () => {
-    const { kit } = await kitOf();
+    const { kit, load } = await kitOf();
     const b1 = await kit.model('Birch_1');
     const b2 = await kit.model('Birch_2');
     const filled = b2.parts[1].geometry.attributes._wind;
     expect(filled.count).toBe(b2.parts[1].geometry.attributes.position.count);
     for (let i = 0; i < filled.count; i++) expect(filled.getX(i)).toBe(1);
     expect(b1.parts[1].geometry.attributes._wind.getX(0)).toBeCloseTo(36 / 255, 6);
+    // (on the kit's own copy: the file's geometry is never given one)
+    expect(load.scenes['/kit/naturemega/birch.glb'].getObjectByName('Birch_2_2').geometry.attributes._wind).toBeUndefined();
     // every geometry a weighted material wears has the weight
     for (const name of ['Birch_1', 'Birch_2', 'Birch_3', 'Fern_1', 'Rock_1']) {
       for (const p of [...(await kit.model(name)).parts, ...(await kit.lod1(name))]) {
@@ -232,27 +319,26 @@ describe('loadKit: models and materials', () => {
     expect(parts).toHaveLength(1);
   });
 
-  it('frees only what it built when disposed of: its materials and the weights it filled in', async () => {
-    const { kit } = await kitOf();
+  it('frees only what it built when disposed of: its materials and the geometry it baked', async () => {
+    const { kit, load } = await kitOf();
     const b1 = await kit.model('Birch_1');
     const b2 = await kit.model('Birch_2');
+    const rock = await kit.model('Rock_1');
     const mine = vi.fn();
+    const baked = vi.fn();
     const files = vi.fn();
-    for (const p of [...b1.parts, ...b2.parts]) {
-      p.material.addEventListener('dispose', mine);
-      p.geometry.addEventListener('dispose', files);
-    }
+    for (const p of [...b1.parts, ...b2.parts, ...rock.parts]) p.material.addEventListener('dispose', mine);
+    for (const p of [...b1.parts, ...b2.parts]) p.geometry.addEventListener('dispose', baked);
+    for (const url of ['/kit/naturemega/birch.glb', '/kit/naturemega/rock.glb']) load.scenes[url].traverse((o) => o.geometry?.addEventListener('dispose', files));
     b1.parts[1].material.map.addEventListener('dispose', files);
     b1.parts[0].material.normalMap.addEventListener('dispose', files);
-    const own = b1.parts[1].geometry.attributes._wind;
     kit.dispose();
-    expect(mine).toHaveBeenCalledTimes(2); // (the kit's bark and leaves)
-    expect(files).not.toHaveBeenCalled(); // (the page's model cache owns those)
-    expect(b2.parts[1].geometry.attributes._wind).toBeUndefined();
-    expect(b1.parts[1].geometry.attributes._wind).toBe(own);
+    expect(mine).toHaveBeenCalledTimes(3); // (the kit's bark, leaves and stone)
+    expect(baked).toHaveBeenCalledTimes(4); // (each birch's bark and crown, in metres)
+    expect(files).not.toHaveBeenCalled(); // (the page's model cache owns those, the rock's geometry with them)
   });
 
-  it('shares a cached file with another kit of the pack: its maps covered once, its filled weights kept till the last kit goes', async () => {
+  it('shares a cached file with another kit of the pack: its maps covered once, its geometry never changed', async () => {
     const plain = fakeLoad();
     const cache = new Map();
     const load = (url) => {
@@ -264,17 +350,22 @@ describe('loadKit: models and materials', () => {
     const b = (await kitOf({ load })).kit;
     const pa = (await a.model('Birch_2')).parts;
     const pb = (await b.model('Birch_2')).parts;
-    expect(pb[1].geometry).toBe(pa[1].geometry);
     const leaf = a.material('Leaves_Birch').map;
     expect(b.material('Leaves_Birch').map).toBe(leaf);
     expect(b.material('Leaves_Birch')).not.toBe(a.material('Leaves_Birch'));
     expect(coverageTexture.mock.calls.filter(([t]) => t === leaf)).toHaveLength(1);
     expect(leaf.userData.covered).toBe(true);
-    const filled = pa[1].geometry.attributes._wind;
+    // (each kit's crown its own, weight and all: one kit gone takes nothing of the other's)
+    expect(pb[1].geometry).not.toBe(pa[1].geometry);
+    const freed = vi.fn();
+    pb[1].geometry.addEventListener('dispose', freed);
     a.dispose();
-    expect(pb[1].geometry.attributes._wind).toBe(filled);
+    expect(freed).not.toHaveBeenCalled();
+    expect(pb[1].geometry.attributes._wind.getX(0)).toBe(1);
+    const src = (await cache.get('/kit/naturemega/birch.glb')).scene.getObjectByName('Birch_2_2').geometry;
+    expect(src.attributes._wind).toBeUndefined();
     b.dispose();
-    expect(pb[1].geometry.attributes._wind).toBeUndefined();
+    expect(freed).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -419,12 +510,18 @@ describe('createPool', () => {
       mesh.getMatrixAt(0, got);
       got.elements.forEach((v, k) => expect(v, `element ${k}`).toBeCloseTo(want.elements[k], 4));
     });
-    // scale 1 when an item doesn't say
+    // scale 1 when an item doesn't say (a birch's size is in its geometry; a
+    // rock's, which doesn't bend, still in its part's local)
     pool.set('one', [{ x: 0, y: 0, z: 0, yaw: 0 }]);
     pool.update(camAt(0, 0), 0);
     const m = new THREE.Matrix4();
     meshesAt(pool, 0)[0].getMatrixAt(0, m);
-    expect(new THREE.Vector3().setFromMatrixScale(m).x).toBeCloseTo(6.861, 3);
+    expect(new THREE.Vector3().setFromMatrixScale(m).x).toBeCloseTo(1, 6);
+    const rock = await poolOf('Rock_1');
+    rock.set('one', [{ x: 0, y: 0, z: 0, yaw: 0 }]);
+    rock.update(camAt(0, 0), 0);
+    meshesAt(rock, 0)[0].getMatrixAt(0, m);
+    expect(new THREE.Vector3().setFromMatrixScale(m).x).toBeCloseTo(0.6, 6);
   });
 
   it('frees a key from every level in the same call', async () => {
@@ -521,7 +618,7 @@ describe('createPool', () => {
     pool.update(camAt(-990, 0), 0.1);
     expect(pool.stats.sorts).toBe(sorts);
     expect(pool.stats.levels).toEqual([0, 1, 0]);
-    expect(where(meshesAt(pool, 1)[0], 0).x).toBeCloseTo(-925 + 0.244, 2);
+    expect(where(meshesAt(pool, 1)[0], 0).x).toBeCloseTo(-925, 2);
     // (and the half second comes round as it would have)
     pool.update(camAt(-990, 0), 0.31);
     expect(pool.stats.sorts).toBe(sorts + 1);
@@ -560,10 +657,28 @@ describe('createPool', () => {
     const full = (await kit.model('Birch_1')).parts;
     for (const l of [1, 2]) expect(meshesAt(pool, l).map((m) => m.geometry)).toEqual(full.map((p) => p.geometry));
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0][0]).toMatch(/Birch_1/);
+    expect(warn.mock.calls[0][0]).toMatch(/Birch_1's LOD1 won't load.*full parts stand in/);
     threeRings(pool);
     expect(pool.stats.levels).toEqual([10, 10, 10]);
     for (const m of pool.group.children) expect(m.count).toBe(10);
+  });
+
+  it('says once, naming the model, when its full model won’t load, and never that its full parts stand in', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const manifest = { ...MANIFEST, models: { ...MANIFEST.models, Lost_1: { ...MANIFEST.models.Birch_1, file: 'lost.glb' } } };
+    ({ kit } = await kitOf({ manifest }));
+    const pool = createPool(kit, 'Lost_1', { bands: HIGH, lod1: true });
+    await expect(pool.ready).rejects.toThrow(/lost\.glb/);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toMatch(/Lost_1/);
+    expect(warn.mock.calls[0][0]).not.toMatch(/stand in/);
+    // (and a pool disposed of before its parts came says nothing)
+    const gone = createPool(kit, 'Lost_1', { bands: HIGH, lod1: true });
+    gone.dispose();
+    await expect(gone.ready).rejects.toThrow();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 
   it('holds a band past its edge a little (hysteresis 0.1)', async () => {

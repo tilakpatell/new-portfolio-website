@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkPack, orphans } from './kit-check.mjs';
+import { BUDGET, PACK_BUDGET } from './kit/manifest.mjs';
 
 // a pack of two models in one family file, credited as the import writes it
 const manifest = (pack = 'tiny') => ({
@@ -56,6 +57,26 @@ describe('checking a kit pack’s folder', () => {
       expect.stringMatching(/^tiny: Tree_1.*tree\.glb.*missing/),
       expect.stringMatching(/^tiny: rock-2\.glb is no model's file/),
     ]);
+  });
+
+  it('holds the nature megakit to its budget in all (PACK_BUDGET), and a pack with none to nothing', () => {
+    // nine family files, each under a file's 1.5 MiB, together just over (or at) the megakit's 12 MiB
+    const pack = (name, bytes) => {
+      const m = manifest(name);
+      const files = { 'index.json': '' };
+      m.models = {};
+      for (let i = 1; i <= 9; i++) {
+        m.models[`Rock_${i}`] = { family: `rock${i}`, file: `rock${i}.glb`, tris: 10, tris1: 4, kind: 'rock' };
+        files[`rock${i}.glb`] = bytes;
+      }
+      files['index.json'] = JSON.stringify(m);
+      return folder(name, files);
+    };
+    const over = Math.ceil(PACK_BUDGET.naturemega / 9) + 1;
+    expect(over).toBeLessThan(BUDGET.file);
+    expect(checkPack(pack('naturemega', over)).errors).toEqual([expect.stringMatching(/^naturemega: 12\.00 MiB of GLBs in all, over 12 MiB$/)]);
+    expect(checkPack(pack('naturemega', Math.floor(PACK_BUDGET.naturemega / 9))).errors).toEqual([]);
+    expect(checkPack(pack('space', over)).errors).toEqual([]);
   });
 
   it('flags a folder with no manifest, or one that is not JSON', () => {

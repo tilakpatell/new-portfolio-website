@@ -1,12 +1,13 @@
 // Every kit pack as committed (public/kit/<pack>/, written by
 // scripts/kit/import.mjs) held to the kit's rules: its manifest's credit
 // said, every model's file there, each file and tree within BUDGET
-// (checkManifest, scripts/kit/manifest.mjs, whose numbers these are), and no
-// GLB in the folder that no model is in (a file left from an older import,
-// which an install would never fetch but the site would still serve). Run
-// after an import: `node scripts/kit-check.mjs` prints each pack's models,
-// files and size, then anything wrong, and exits 1 if anything is. The
-// manual is scripts/kit/README.md.
+// (checkManifest, scripts/kit/manifest.mjs, whose numbers these are), the
+// pack's GLBs in all within its PACK_BUDGET where it has one (the nature
+// megakit's 12 MiB), and no GLB in the folder that no model is in (a file
+// left from an older import, which an install would never fetch but the
+// site would still serve). Run after an import: `node scripts/kit-check.mjs`
+// prints each pack's models, files and size, then anything wrong, and exits
+// 1 if anything is. The manual is scripts/kit/README.md.
 //
 //   orphans(manifest, names: string[]) → string[]   (the GLBs among names no model's file is)
 //   checkPack(dir) → { pack, models, files: { [glb]: bytes }, index: bytes, errors: string[] }
@@ -14,7 +15,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BUDGET, byName, checkManifest } from './kit/manifest.mjs';
+import { BUDGET, PACK_BUDGET, byName, checkManifest } from './kit/manifest.mjs';
 
 const MIB = 1048576;
 const isGlb = (f) => f.toLowerCase().endsWith('.glb');
@@ -40,6 +41,8 @@ export function checkPack(dir) {
     return { ...result, errors: [`${pack}: index.json is not JSON (${e.message})`] };
   }
   if (!manifest.models || typeof manifest.models !== 'object') return { ...result, errors: [`${pack}: index.json has no models`] };
+  const total = Object.values(files).reduce((n, b) => n + b, 0);
+  const cap = PACK_BUDGET[pack];
   return {
     ...result,
     models: Object.keys(manifest.models).length,
@@ -48,6 +51,7 @@ export function checkPack(dir) {
       ...(manifest.pack === pack ? [] : [`${pack}: its manifest says it is ${JSON.stringify(manifest.pack)}`]),
       ...checkManifest(manifest, files).map((e) => `${pack}: ${e}`),
       ...orphans(manifest, names).map((f) => `${pack}: ${f} is no model's file`),
+      ...(cap != null && total > cap ? [`${pack}: ${(total / MIB).toFixed(2)} MiB of GLBs in all, over ${cap / MIB} MiB`] : []),
     ],
   };
 }
@@ -66,7 +70,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const bytes = sizes.reduce((n, [, b]) => n + b, 0);
     const [big, most] = sizes.reduce((a, b) => (b[1] > a[1] ? b : a), ['-', 0]);
     console.log(
-      `${p.pack.padEnd(12)} ${String(p.models).padStart(4)} models in ${String(sizes.length).padStart(3)} files  ${mib(bytes).padStart(6)} MiB` +
+      `${p.pack.padEnd(12)} ${String(p.models).padStart(4)} models in ${String(sizes.length).padStart(3)} files  ${mib(bytes).padStart(6)}${PACK_BUDGET[p.pack] ? ` of ${PACK_BUDGET[p.pack] / MIB}` : ''} MiB` +
         `  (largest ${big} ${mib(most)} of ${mib(BUDGET.file)} MiB; manifest ${Math.round(p.index / 1024)} KiB)`,
     );
   }

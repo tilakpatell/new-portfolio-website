@@ -22,8 +22,9 @@
          wind; on the right, lib/three/kit's pools of the named models, a row
          in the house's look and a row without. Every shader is checked as it
          is made (renderer.debug.checkShaderErrors); once drawn, window.__done
-         holds the programs three made, any that failed, and the wind weight
-         each kit program reads. Dev only: the dev server serves it, the build
+         holds the programs three made, any that failed, the wind weight
+         each kit program reads, and `moved`: the % of each view's top half
+         that a second more of wind changed. Dev only: the dev server serves it, the build
          never sees it.
          ?pack=<pack>&scatter=<Name>:<n>,…&pools=<Name>,…&w=960&h=640 -->
     <script type="module">
@@ -146,7 +147,26 @@
           const p = renderer.properties.get(o.material).currentProgram;
           if (p && !weighted.has(p)) weighted.set(p, { material: o.material.name, key, weight: gl.getAttribLocation(p.program, '_wind') >= 0, ok: !p.diagnostics || p.diagnostics.runnable });
         });
+        // (the wind moving them: the top half of each view, where the crowns
+        // are, read, a second of wind drawn, read again; the share of its
+        // pixels that changed, the scatter's then the pools')
+        const grab = () => {
+          const px = new Uint8Array(W * 2 * H * 4);
+          gl.readPixels(0, 0, W * 2, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
+          return px;
+        };
+        const before = grab();
+        galaxy.tick(1);
+        draw(left, 0);
+        draw(right, W);
+        const after = grab();
+        const moved = [0, W].map((x0) => {
+          let n = 0;
+          for (let y = H >> 1; y < H; y++) for (let x = x0, i = (y * W * 2 + x) * 4; x < x0 + W; x++, i += 4) n += Math.abs(after[i] - before[i]) + Math.abs(after[i + 1] - before[i + 1]) + Math.abs(after[i + 2] - before[i + 2]) > 12;
+          return Number(((100 * n) / (W * (H - (H >> 1)))).toFixed(3));
+        });
         window.__done = {
+          moved,
           programs: programs.length,
           failed,
           weighted: [...weighted.values()],

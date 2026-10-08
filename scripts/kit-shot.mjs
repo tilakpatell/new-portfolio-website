@@ -12,7 +12,9 @@
 //                                       result (the page's), errors, console, args }
 // The scatter's picture is <out>/scatter.png, the pools' <out>/pools.png. A
 // shot with rows asked for that drew no kit program in the wind fails too:
-// nothing was checked.
+// nothing was checked; and so does one where a second of wind moved no
+// pixel of either view's top half, where the crowns are (`moved`, the % of
+// each that changed).
 
 import { chromium } from 'playwright-core';
 import sharp from 'sharp';
@@ -57,7 +59,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   console.log(JSON.stringify({ ...shot.result, errors: shot.errors, console: shot.console }, null, 1));
   const asked = [shot.args.scatter, shot.args.pools].some((list) => list.split(',').filter(Boolean).length);
   const weighted = shot.result.weighted ?? [];
-  const bad = shot.errors.length || shot.result.error || shot.result.failed?.length || weighted.some((p) => !p.ok || !p.weight) || (asked && !weighted.length);
-  console.log(bad ? 'kit shot: FAILED' : `kit shot: ${join(out, 'scatter.png')}, ${join(out, 'pools.png')}; ${shot.result.programs} programs, none failed, ${weighted.length} in the wind by their weight`);
+  // (and a second of wind moved some of the crowns: % of each view's top half)
+  const still = asked && !(shot.result.moved ?? []).some((p) => p > 0);
+  const bad = shot.errors.length || shot.result.error || shot.result.failed?.length || weighted.some((p) => !p.ok || !p.weight) || (asked && !weighted.length) || still;
+  console.log(bad ? 'kit shot: FAILED' : `kit shot: ${join(out, 'scatter.png')}, ${join(out, 'pools.png')}; ${shot.result.programs} programs, none failed, ${weighted.length} in the wind by their weight; a second of wind moved ${shot.result.moved.join(' % and ')} %`);
   process.exit(bad ? 1 : 0);
 }

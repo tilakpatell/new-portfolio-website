@@ -14,7 +14,7 @@
 //   thinCards(positions: Float32Array, indices: Uint32Array, keep, seed)
 //     → { positions: Float32Array, indices: Uint32Array, map: Uint32Array }
 //   windFromColor(color0: Float32Array, stride: 3 | 4) → Uint8Array
-//   boundsOf(positions, { trunkFraction = 0.08 }) → { radius, height, trunk }
+//   boundsOf(positions, { trunkFraction = 0.08, trunk = positions }) → { radius, height, trunk }
 //   tonesOf(rgba: Uint8Array, w, h) → [[r, g, b], [r, g, b]]   (linear, 0..1)
 
 // A seeded random, so a crown thins the same way every import: mulberry32,
@@ -147,8 +147,11 @@ export function windFromColor(color0, stride) {
 // A model's size for the manifest: `radius` half the diagonal of its XZ
 // footprint, `height` its highest y, and `trunk` how far the vertices below
 // trunkFraction × height reach across from their own middle (the far band
-// draws the trunk as a cylinder that thick).
-export function boundsOf(positions, { trunkFraction = 0.08 } = {}) {
+// draws the trunk as a cylinder that thick, and a placer makes it solid).
+// The trunk is measured over `trunk`'s positions (a tree's bark: a leaf card
+// that hangs below the line is not its trunk), the line and the rest over
+// all of them.
+export function boundsOf(positions, { trunkFraction = 0.08, trunk: under = positions } = {}) {
   const n = Math.floor(positions.length / 3);
   if (!n) return { radius: 0, height: 0, trunk: 0 };
   let [x0, x1, z0, z1, height] = [Infinity, -Infinity, Infinity, -Infinity, -Infinity];
@@ -159,18 +162,19 @@ export function boundsOf(positions, { trunkFraction = 0.08 } = {}) {
   const radius = Math.hypot(x1 - x0, z1 - z0) / 2;
 
   const cut = trunkFraction * height;
+  const m = Math.floor(under.length / 3);
   let [a0, a1, b0, b1] = [Infinity, -Infinity, Infinity, -Infinity];
-  for (let i = 0; i < n; i++) {
-    if (positions[i * 3 + 1] >= cut) continue;
-    const [x, z] = [positions[i * 3], positions[i * 3 + 2]];
+  for (let i = 0; i < m; i++) {
+    if (under[i * 3 + 1] >= cut) continue;
+    const [x, z] = [under[i * 3], under[i * 3 + 2]];
     [a0, a1, b0, b1] = [Math.min(a0, x), Math.max(a1, x), Math.min(b0, z), Math.max(b1, z)];
   }
   if (a0 === Infinity) return { radius, height, trunk: 0 };
   const [cx, cz] = [(a0 + a1) / 2, (b0 + b1) / 2];
   let trunk = 0;
-  for (let i = 0; i < n; i++) {
-    if (positions[i * 3 + 1] >= cut) continue;
-    trunk = Math.max(trunk, Math.hypot(positions[i * 3] - cx, positions[i * 3 + 2] - cz));
+  for (let i = 0; i < m; i++) {
+    if (under[i * 3 + 1] >= cut) continue;
+    trunk = Math.max(trunk, Math.hypot(under[i * 3] - cx, under[i * 3 + 2] - cz));
   }
   return { radius, height, trunk };
 }

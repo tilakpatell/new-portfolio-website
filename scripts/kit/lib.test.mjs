@@ -318,6 +318,20 @@ describe('a model’s bounds', () => {
     expect(boundsOf(off, {}).trunk).toBeCloseTo(0.2, 5);
   });
 
+  it('measures the trunk from the positions it is given (a tree’s bark), under the whole model’s 8 % line', () => {
+    // (a leaf card 3 m across at 0.2 m, under the 8 % line of a tree 4 m tall)
+    const card = [-1.5, 0.2, 0, 1.5, 0.2, 0, -1.5, 0.25, 0.1, 1.5, 0.25, 0.1];
+    const bark = new Float32Array([...ring(0.2, 0).flat(), ...ring(0.2, 2).flat()]);
+    const all = new Float32Array([...tree(), ...card]);
+    expect(boundsOf(all).trunk).toBeGreaterThan(1.4);
+    const b = boundsOf(all, { trunk: bark });
+    expect(b.trunk).toBeCloseTo(0.2, 5);
+    // (its height and footprint still the whole model's; the line too: the bark alone is 2 m tall, its 8 % 0.16)
+    expect(b.height).toBeCloseTo(4, 6);
+    expect(b.radius).toBeCloseTo(Math.hypot(3, 2) / 2, 5);
+    expect(boundsOf(all, { trunk: new Float32Array([...bark, 0, 0.3, 0.9]) }).trunk).toBeCloseTo(0.55, 5);
+  });
+
   it('is nothing for nothing', () => {
     expect(boundsOf(new Float32Array(0), {})).toEqual({ radius: 0, height: 0, trunk: 0 });
   });

@@ -19,7 +19,7 @@
 // 0.3 and two-sided; everything else is opaque. Textures go to WebP q82 by role
 // (bark and solid colour 1024, normals 1024, leaves 512 with their alpha, a
 // palette atlas lossless at its own size). Then dedup, prune, meshopt. A
-// family over 1.5 MB goes into `<family>.glb`, `<family>-2.glb` … in model
+// family over 1.5 MiB goes into `<family>.glb`, `<family>-2.glb` … in model
 // order, each as full as fits; only a model over it on its own has its bark
 // colour halved, in every family that wears that bark.
 //
@@ -70,7 +70,7 @@ const LOD = { ratio: 0.25, error: 0.05, keep: 0.4 };
 const CROWNED = new Set(['tree', 'bush']);
 // meshopt as the other imports have it, but normals in a byte a component
 // (half a degree, under a Lambert): a family is mostly its geometry, and
-// that is a sixth of it (the nature megakit 12.8 → 11.0 MB)
+// that is a sixth of it (the nature megakit 12.8 → 11.0 MiB)
 const MESHOPT = { level: 'medium', quantizeNormal: 8 };
 
 const hash = (bytes) => (bytes ? createHash('sha1').update(bytes).digest('hex') : '');
@@ -281,12 +281,12 @@ function addLod1(doc, scene, model) {
 }
 
 // Every vertex of a model where it stands (its nodes' transforms applied),
-// for its footprint.
-function positionsOf(node) {
+// for its footprint; or only its parts that `keep` says (its bark, for its trunk).
+function positionsOf(node, keep = () => true) {
   const out = [];
   for (const n of subtree(node)) {
     const m = n.getWorldMatrix();
-    for (const prim of n.getMesh()?.listPrimitives() ?? []) {
+    for (const prim of (n.getMesh()?.listPrimitives() ?? []).filter(keep)) {
       const pos = prim.getAttribute('POSITION');
       const v = [];
       for (let i = 0; i < pos.getCount(); i++) {
@@ -350,6 +350,7 @@ async function buildFile(io, group, defs, source, halve) {
     models.push({
       name: model.name,
       positions: positionsOf(model.node),
+      bark: positionsOf(model.node, (p) => p.getExtras().part === 'bark'),
       parts: prims.map((p, i) => ({ part: p.getExtras().part, material: p.getMaterial().getName(), tris: trisOf(p), tris1: model.rigged ? undefined : tris1[i] })),
       ...(model.rigged ? { rig: rigOf(doc) } : {}),
     });
@@ -467,7 +468,7 @@ export async function importPack({ pack, from, out, families = [], log = console
     const tris = b.models.reduce((n, m) => n + m.parts.reduce((k, p) => k + p.tris, 0), 0);
     const tris1 = b.models.reduce((n, m) => n + m.parts.reduce((k, p) => k + (p.tris1 ?? 0), 0), 0);
     const lod = b.models.some((m) => !m.rig) ? String(tris1) : '-';
-    log(`${b.file.padEnd(34)} ${String(b.models.length).padStart(3)} models  ${String(tris).padStart(7)} → ${lod.padStart(6)} tris  ${(b.bytes.byteLength / 1048576).toFixed(2)} MB`);
+    log(`${b.file.padEnd(34)} ${String(b.models.length).padStart(3)} models  ${String(tris).padStart(7)} → ${lod.padStart(6)} tris  ${(b.bytes.byteLength / 1048576).toFixed(2)} MiB`);
     return { family: b.group.family, file: b.file, models: b.models, materials };
   });
   const halved = [...halve].filter((n) => written.some((b) => b.bark.includes(n))).sort(byName);
@@ -501,7 +502,7 @@ export async function importPack({ pack, from, out, families = [], log = console
     if (existsSync(join(out, file))) sizes[file] = (await stat(join(out, file))).size;
   }
   const total = Object.values(sizes).reduce((a, b) => a + b, 0);
-  log(`${Object.keys(manifest.models).length} models in ${Object.keys(sizes).length} files, ${(total / 1048576).toFixed(2)} MB → ${out}`);
+  log(`${Object.keys(manifest.models).length} models in ${Object.keys(sizes).length} files, ${(total / 1048576).toFixed(2)} MiB → ${out}`);
   for (const e of checkManifest(manifest, sizes)) log(`  over budget: ${e}`);
   return manifest;
 }

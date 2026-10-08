@@ -118,9 +118,11 @@ describe('a kit model, by name', () => {
     Birch_1: { file: 'birch.glb', radius: 30, height: 13, trunk: 0.25, kind: 'tree' },
     Shrub_1: { file: 'shrub.glb', radius: 1, height: 1, kind: 'plant' },
     Broken_1: { file: 'broken.glb', radius: 1, height: 1, kind: 'plant' },
+    // (and a rig, whose parts would load: a farm animal)
+    Cow_1: { file: 'cow.glb', radius: 1, height: 1.5, kind: 'character', rig: { bones: 28, clips: { Idle: 6.25 } } },
   };
   const fakeKit = () => {
-    const full = { Fern_1: [part('Leaves'), part('Fronds', 1)], Birch_1: [part('Bark'), part('Leaves_Birch', 6)], Shrub_1: [part('Leaves')], Broken_1: [{ ...part('Leaves'), local: null }] };
+    const full = { Fern_1: [part('Leaves'), part('Fronds', 1)], Birch_1: [part('Bark'), part('Leaves_Birch', 6)], Shrub_1: [part('Leaves')], Broken_1: [{ ...part('Leaves'), local: null }], Cow_1: [part('Brown')] };
     const low = { Fern_1: [part('Leaves')], Birch_1: [part('Bark')] };
     return {
       manifest: Promise.resolve({ models: ROWS }),
@@ -293,6 +295,26 @@ describe('a kit model, by name', () => {
     await placer.scatter('nothingatall', items(2), { model: 'kit:naturemega/Nothing_1' });
     expect(instanced(placer)).toHaveLength(1);
     expect(warn.mock.calls[1][0]).toMatch(/nothing stands in/);
+  });
+
+  it('refuses a rigged kit model, put or scattered, its build standing in, and says so once a model', async () => {
+    const warn = quiet();
+    const { kit, world, placer } = setup();
+    const o = await placer.put({ kind: 'lamp', model: 'kit:naturemega/Cow_1', at: [3, 4] });
+    expect(o.parent).toBe(placer.group);
+    expect(o.position.toArray()).toEqual([3, 0, 4]);
+    expect(world.solids.circle.mock.calls[0][2]).toBeCloseTo(0.2);
+    await placer.put({ kind: 'lamp', model: 'kit:naturemega/Cow_1', at: [6, 4] });
+    await placer.scatter('rock', items(3), { model: 'kit:naturemega/Cow_1' });
+    const meshes = instanced(placer);
+    expect(meshes).toHaveLength(1);
+    expect(meshes[0].count).toBe(3);
+    expect(kit.model).not.toHaveBeenCalledWith('Cow_1');
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toMatch(/Cow_1.*rigged.*its build stands in/);
+    // (once a model: one more, of a kind with no build, stands nothing in and says nothing more)
+    expect(await placer.put({ kind: 'nothingatall', model: 'kit:naturemega/Cow_1', at: [0, 0] })).toBe(null);
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 
   it('scatters a kind with no kit model as it always has', async () => {

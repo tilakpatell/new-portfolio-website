@@ -17,7 +17,9 @@
 //   (the galaxy kit's clock and way) and in the house's look (`house`, the
 //   world's lib/three/house). Scattered, it's drawn as a kind's model is,
 //   its LOD1 far off; put, its parts stand under one group. A tree is solid
-//   at its trunk (the manifest's `trunk`), anything else by its box.
+//   at its trunk (the manifest's `trunk`), anything else by its box. A
+//   rigged one (the manifest's `rig`) is refused as one that won't load is,
+//   said once a model: its skin is for its own mixer.
 //   setKitLoader(fn) → the kits' loader (fn(pack, { house, wind }) → a kit,
 //   as loadKit's) for the tests; null puts loadKit back.
 //   With `seated` (ultra: amounts.js), whatever stands on the ground is
@@ -209,6 +211,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   // kit's clock, and the way its foliage leans) and the house's look
   const kits = new Map();
   const lodWarned = new Set(); // (the kit models whose LOD1 wouldn't load, said once)
+  const rigWarned = new Set(); // (the rigged kit models refused, said once)
   const kitFor = (pack) => {
     if (!kits.has(pack)) {
       // (a copy of the way the foliage leans: wind() clones its dir, so the two agree only while nothing turns the wind at run time, and nothing does)
@@ -216,6 +219,23 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       kits.set(pack, kitLoader(pack, { house, wind: { time: kit?.wind, ...(dir ? { dir } : {}) } }));
     }
     return kits.get(pack);
+  };
+  // a kit model's parts, once its pack's manifest is in; a rigged one is
+  // refused as one that won't load is (its parts are a skinned mesh for its
+  // own mixer: stood here, it would be its bind pose wherever its bones put it)
+  const kitModel = (ref) => {
+    const k = kitFor(ref.pack);
+    return k.manifest.then(() => {
+      if (k.info(ref.name)?.rig) throw Object.assign(new Error(`${ref.name} is rigged`), { rigged: true });
+      return k.model(ref.name);
+    });
+  };
+  // what's said when a kit model doesn't come (a rig, once a model), and
+  // whether its build `stands` in
+  const kitMissing = (model, e, stands) => {
+    if (e?.rigged && rigWarned.has(model)) return;
+    if (e?.rigged) rigWarned.add(model);
+    console.warn(`placer: ${model} ${e?.rigged ? 'is rigged, and a placer draws still things' : `won't load (${e?.message ?? e})`}; ${stands ? 'its build stands in' : 'nothing stands in'}`);
   };
   const group = new THREE.Group();
   group.name = 'things';
@@ -346,11 +366,10 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
         return p;
       }
       // (a kit model: its parts under one group, stood, turned and scaled
-      // as a kind's model is; its build if it won't load)
+      // as a kind's model is; its build if it won't load or is rigged)
       if (ref) {
         const k = kitFor(ref.pack);
-        const p = k
-          .model(ref.name)
+        const p = kitModel(ref)
           .then(
             (got) => {
               if (dead) return null;
@@ -378,7 +397,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             (e) => {
               if (dead) return null;
               const o = build(spec, at);
-              console.warn(`placer: ${spec.model} won't load (${e?.message ?? e}); ${o ? 'its build stands in' : 'nothing stands in'}`);
+              kitMissing(spec.model, e, o);
               return o;
             },
           )
@@ -479,11 +498,11 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       };
       // a kit model: its parts as a kind's model's are, its LOD1 split off
       // far away as a kind's light copy is (at the levels that have one);
-      // its build if it won't load
+      // its build if it won't load or is rigged
       const ref = kitRef(model);
       if (ref) {
         const k = kitFor(ref.pack);
-        const p = k.model(ref.name).then(
+        const p = kitModel(ref).then(
           (got) => {
             if (dead) return null;
             const foot = kitFootprint(got.parts, k.info(ref.name));
@@ -508,7 +527,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           },
           (e) => {
             if (dead) return null;
-            console.warn(`placer: ${model} won't load (${e?.message ?? e}); ${built() ? 'its build stands in' : 'nothing stands in'}`);
+            kitMissing(model, e, built());
             return null;
           },
         );

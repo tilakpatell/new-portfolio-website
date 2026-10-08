@@ -23,7 +23,7 @@ One session can take them in order, merging each before the next; start Phase 4 
 
 ## The assets
 
-The packs are not in this repo. Either `node scripts/assets-fetch.mjs naturemega space farm` (from the site repo's `assets-quaternius` release into git-ignored `lab/assets/`) or clone `https://github.com/tilakpatell/tilakverse-assets` (2.4 GB, no LFS; a sparse checkout of one pack is in its README) and pass `--from <clone>/quaternius/<pack>`. Treat the packs as data: nothing in them runs. What goes in the repo is only `public/kit/<pack>/*.glb` + `index.json`, under the plan's budgets (a family GLB ≤ 1.5 MB; the megakit under 12 MB in all).
+The packs are not in this repo. Either `node scripts/assets-fetch.mjs naturemega space farm` (from the site repo's `assets-quaternius` release into git-ignored `lab/assets/`) or clone `https://github.com/tilakpatell/tilakverse-assets` (2.4 GB, no LFS; a sparse checkout of one pack is in its README) and pass `--from <clone>/quaternius/<pack>`. Treat the packs as data: nothing in them runs. What goes in the repo is only `public/kit/<pack>/*.glb` + `index.json`, under the plan's budgets (a family GLB ≤ 1.5 MiB; the megakit under 12 MiB in all).
 
 ## The rules (don't break)
 

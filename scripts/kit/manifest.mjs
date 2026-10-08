@@ -9,12 +9,14 @@
 //
 //   buildManifest(pack, families, { title }) → { pack, licence, source, models, materials }
 //     families: [{ family, file, models, materials }]
-//       models: [{ name, positions, parts: [{ part, material, tris, tris1? }], rig? }]
+//       models: [{ name, positions, bark?, parts: [{ part, material, tris, tris1? }], rig? }]
+//         (positions every vertex where it stands; bark the bark parts' alone)
 //       materials: { [name]: { leaf, wind, worn?, maps: { colour: [w, h], normal?: [w, h] }, pixels?: { rgba, w, h } } }
 //   checkManifest(manifest, files: { [file]: bytes }) → string[]   (empty when clean)
 //   byName(a, b) → -1 | 0 | 1      (code-unit order, every sort's)
 //   sortByName(object) → object   (its keys in that order)
 //   BUDGET = { file, tree, lod1 }
+//   PACK_BUDGET = { [pack]: bytes }   (a pack's GLBs in all, where the spec gives one)
 
 import { boundsOf, kindOf, tonesOf } from './lib.mjs';
 
@@ -22,6 +24,9 @@ import { boundsOf, kindOf, tonesOf } from './lib.mjs';
 // its LOD1's share of them (the spec's budgets; any other model's LOD1 need
 // only be no heavier than the model: a petal of 13 triangles can't lose 60 %).
 export const BUDGET = { file: 1.5 * 1048576, tree: 15000, lod1: 0.4 };
+// What a whole pack's GLBs may come to (bytes): the nature megakit's 116
+// models 12 MiB (scripts/kit-check.mjs holds each pack to it).
+export const PACK_BUDGET = { naturemega: 12 * 1048576 };
 
 // The kinds a material bends with in the wind (foliage.js's WIND): anything
 // a tree wears sways as a tree, its bark with its crown; low growing things
@@ -37,14 +42,16 @@ export const byName = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 export const sortByName = (o) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => byName(a, b)));
 
 // The manifest of the families just imported. A model's kind is its family's
-// (kindOf), or a character when it carries a rig; its footprint and trunk
-// come from its positions (boundsOf); a tree or a bush takes its two far
-// tones from the leaf map its biggest leaf part wears (tonesOf). A material
-// shared by several families is described once: a mask when it is a leaf,
-// bending as the tallest thing that wears it, but only if its geometry
-// carries the wind weight (`wind`: the parts painted with _WIND). `worn`
-// adds the kinds of models in the pack that wear it but are not imported
-// this time, so a family imported on its own bends as it did with the rest.
+// (kindOf), or a character when it carries a rig; its footprint comes from
+// its positions and its trunk from its bark's (boundsOf; a leaf card hung
+// low is no trunk), or from them all when it has no bark; a tree or a bush
+// takes its two far tones from the leaf map its biggest leaf part wears
+// (tonesOf). A material shared by several families is described once: a
+// mask when it is a leaf, bending as the tallest thing that wears it, but
+// only if its geometry carries the wind weight (`wind`: the parts painted
+// with _WIND). `worn` adds the kinds of models in the pack that wear it but
+// are not imported this time, so a family imported on its own bends as it
+// did with the rest.
 export function buildManifest(pack, families, { title = pack } = {}) {
   const defs = {};
   const kinds = {};
@@ -53,7 +60,7 @@ export function buildManifest(pack, families, { title = pack } = {}) {
     Object.assign(defs, materials);
     for (const model of list) {
       const kind = model.rig ? 'character' : kindOf(model.name, pack);
-      const { radius, height, trunk } = boundsOf(model.positions);
+      const { radius, height, trunk } = boundsOf(model.positions, model.bark?.length ? { trunk: model.bark } : {});
       const entry = {
         family,
         file,
@@ -109,8 +116,8 @@ export function checkManifest(manifest, files) {
     if (m.tris1 != null && m.tris1 > m.tris) errors.push(`${name}: LOD1 ${m.tris1} of ${m.tris} tris, more than the model`);
   }
   for (const file of [...used].sort(byName)) {
-    const mb = files[file] / 1048576;
-    if (files[file] > BUDGET.file) errors.push(`${file}: ${mb.toFixed(1)} MB, over ${BUDGET.file / 1048576} MB`);
+    const mib = files[file] / 1048576;
+    if (files[file] > BUDGET.file) errors.push(`${file}: ${mib.toFixed(1)} MiB, over ${BUDGET.file / 1048576} MiB`);
   }
   return errors;
 }

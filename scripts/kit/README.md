@@ -34,8 +34,9 @@ npx vitest run scripts/kit scripts/kit-check.test.mjs      # the pure half, the 
 - **Check.** The import ends with `checkManifest` (`manifest.mjs`) over what
   it wrote and prints anything over budget. `node scripts/kit-check.mjs`
   runs it over every pack in `public/kit/`, flags any GLB in a pack's folder
-  that no model is in (a part left from an older import), prints each
-  pack's models, files and MiB, and exits 1 on anything wrong.
+  that no model is in (a part left from an older import) and a pack over
+  its budget in all (`PACK_BUDGET`: the nature megakit's 12 MiB), prints
+  each pack's models, files and MiB, and exits 1 on anything wrong.
 - **Credit.** Every manifest carries `licence: 'CC0-1.0'` and `source`
   (`Quaternius, <pack> (https://quaternius.com)`); `npm run credits` reads
   them (`kits()` in `scripts/credits.mjs`) into one line of CREDITS.md's
@@ -62,7 +63,7 @@ rewritten three ways:
   `renameClips`), so the manifest and the runtime's mixer know them so.
 - **Without the loader's notes.** FBXLoader keeps `originalName` and
   `transformData` on every node, which GLTFExporter writes as extras and
-  nothing reads after; they were 130 KB of the farm's 1.05 MB, and go
+  nothing reads after; they were 130 KiB of the farm's 1.05 MiB, and go
   (`dropLoaderNotes`; any other extra stays).
 
 The import then files each animal as a rigged model, `<name>.glb`. The
@@ -108,7 +109,7 @@ maps: one colour per name, `Brown`, `Brown_2` … by how many models wear it.
   `Atlas_2` … `Atlas_5` by how many models wear it.
 - Then `dedup`, `prune`, and meshopt (`medium`, normals in a byte a
   component; a rig's clips resampled first).
-- A family over 1.5 MB goes into `<family>.glb`, `<family>-2.glb` … in model
+- A family over 1.5 MiB goes into `<family>.glb`, `<family>-2.glb` … in model
   order, each as full as fits; the manifest's `file` says which holds a
   model, and the materials keep their names in each.
 
@@ -118,7 +119,7 @@ Choices the plan didn't make, and why:
   bark, hundreds of UV islands, stops at 79-96 % and no tree's LOD1 makes 40 %;
   with it every part reaches the quarter at 0.1-0.4 % error.
 - **Normals in 8 bits**, not meshopt `medium`'s 10: a family is mostly its
-  geometry, and at 10 bits the megakit came to 12.8 MB, over its 12.
+  geometry, and at 10 bits the megakit came to 12.8 MiB, over its 12.
 - **Five space atlases, five materials**: the pack's files embed atlases up
   to 97 levels off its `Atlas.png` where they are sampled, so each is kept,
   and named apart because the kit shares a material by its name.
@@ -140,7 +141,8 @@ Choices the plan didn't make, and why:
       parts: ['bark', 'leaves'],        // each primitive's extras.part, in order
       tris: 6378, tris1: 1822,          // full and LOD1 (null for a rig)
       radius: 4.587, height: 13.293,    // half the footprint's diagonal; the top (m)
-      trunk: 0.208,                     // how far the lowest 8 % reaches across (the far band's trunk)
+      trunk: 0.208,                     // how far its bark below 8 % of its height reaches across (a model
+                                        // with no bark: all of it); the far band's trunk, a placer's solid
       kind: 'tree',                     // lib.mjs kindOf, or 'character' for a rig
       tones: [[r, g, b], [r, g, b]],    // a tree's or a bush's leaf map, linear, ±12 % (the far band's puffs)
       rig: { bones: 43, clips: { Idle: 1, Walk: 1 } },   // a rigged model's (seconds)
@@ -163,18 +165,18 @@ when its geometry carries no `_WIND`.
 
 | What | Budget |
 | --- | --- |
-| A family file | 1.5 MB (a family over it is split into numbered files; only a model over it on its own has its bark colour halved to 512, in every family that wears that bark, and `maps.colour` says so) |
+| A family file | 1.5 MiB (a family over it is split into numbered files; only a model over it on its own has its bark colour halved to 512, in every family that wears that bark, and `maps.colour` says so) |
 | A tree | 15,000 triangles |
 | A tree's LOD1 | 40 % of its triangles (any other model's LOD1: no more than the model) |
-| The nature megakit | 12 MB for its 116 models |
+| The nature megakit | 12 MiB for its 116 models, in all (`PACK_BUDGET`; `kit-check` holds it) |
 
 ## What the packs came to (2026-10-08)
 
-The nature megakit: 116 models in 20 files, **11.23 MB** (the manifest 40 KB).
+The nature megakit: 116 models in 20 files, **11.23 MiB** (the manifest 39 KiB).
 The cherry blossoms are in two files, the first three and the last two; no
 bark is halved. `checkManifest` is clean on all three packs.
 
-| File | Models | Triangles | LOD1 | KB |
+| File | Models | Triangles | LOD1 | KiB |
 | --- | ---: | ---: | ---: | ---: |
 | birch.glb | 5 | 29,734 | 8,649 | 1,158 |
 | bush.glb | 6 | 10,256 | 3,404 | 444 |
@@ -197,11 +199,11 @@ bark is halved. `checkManifest` is clean on all three packs.
 | tallthick.glb | 5 | 37,587 | 11,038 | 1,194 |
 | twistedtree.glb | 5 | 48,491 | 14,082 | 1,500 |
 
-The space kit: 92 models in 31 files, **4.77 MB** (the manifest 30 KB). Each
-rigged model is its own file: the astronauts 420-428 KB (18 clips each), the
-large enemy 337 KB, the mechs 183-199 KB, the small enemies 44-54 KB.
+The space kit: 92 models in 31 files, **4.77 MiB** (the manifest 29 KiB). Each
+rigged model is its own file: the astronauts 420-428 KiB (18 clips each), the
+large enemy 337 KiB, the mechs 183-199 KiB, the small enemies 44-54 KiB.
 
-| File | Models | Triangles | LOD1 | KB |
+| File | Models | Triangles | LOD1 | KiB |
 | --- | ---: | ---: | ---: | ---: |
 | base.glb | 1 | 2,790 | 696 | 39 |
 | building.glb | 1 | 2,940 | 733 | 38 |
@@ -227,11 +229,11 @@ Some small models' LOD1s save little (five petals of 13-30 triangles keep
 nearly all of them; three flowers, two plants and a pebble of 48-293, and
 one space grass, 42-79 %): none is a tree, and none is heavier than its model.
 
-The farm animals: 7 models in 7 files, **0.88 MB** (the manifest 4 KB),
+The farm animals: 7 models in 7 files, **0.88 MiB** (the manifest 4 KiB),
 each a rig with its clips (seconds) and no LOD1; 12 flat-colour materials,
 no textures.
 
-| File | Bones | Triangles | Clips | KB |
+| File | Bones | Triangles | Clips | KiB |
 | --- | ---: | ---: | --- | ---: |
 | cow.glb | 28 | 796 | WalkSlow 2.083, Death 1.25, Jump 1.708, Idle 6.25, Walk 3.333, Run 1.417 | 211 |
 | horse.glb | 28 | 690 | WalkSlow 2, Death 1.083, Jump 1.5, Idle 6.25, Walk 2.667, Run 0.833 | 193 |
