@@ -1048,6 +1048,15 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
+  "deathstar/obiwan": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11c33-9e0b-713e-8592-b4d9a54d385a",
+    "name": "Obi-Wan as the first film has him, generated for this site with Meshy AI and rigged from jedi3",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
   "cockpit/walt": {
     "source": "https://www.meshy.ai",
     "id": "01a111f8-ed5f-73f6-b299-8c48642a2ee5",
@@ -4188,15 +4197,6 @@
     "source": "https://www.meshy.ai",
     "id": "01a1188c-8ebd-70c0-ae5d-ae554d56d299",
     "name": "the keelboat on the Charon River, generated for this site with Meshy AI (scripts/meshy-galaxy-buildings-nevarro.mjs, from a description of how it looks)",
-    "authors": [
-      "Tilak Patel, with Meshy AI"
-    ],
-    "license": "Meshy paid-plan output, owned by the site owner"
-  },
-  "deathstar/obiwan": {
-    "source": "https://www.meshy.ai",
-    "id": "01a11c33-9e0b-713e-8592-b4d9a54d385a",
-    "name": "obiwan, generated for this site with Meshy AI",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
