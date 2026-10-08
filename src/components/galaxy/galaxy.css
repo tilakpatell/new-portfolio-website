@@ -605,12 +605,14 @@
 /* (over a bright planet in a light page the glass needs more body to read) */
 @media (prefers-color-scheme: light) { .galaxy-warhud-line, .galaxy-warhud-stage { background: rgb(2 6 16 / 0.84); } }
 /* (on a phone the band between the nav and the crew's line, .galaxy-page
-   .universe-comms at nav-h + 56px, is shared with the map button: the HUD
-   keeps to its right, both rows in the band) */
+   .universe-comms at nav-h + 56px, is the map button's, and beside it the
+   stage's words were cut to nothing: the HUD goes under the crew's line,
+   the whole width, as the Citadel siege's does) */
 @media (max-width: 767px) {
-  .galaxy-warhud { top: calc(var(--nav-h, 68px) + 4px); right: 16px; left: auto; align-items: flex-end; max-width: calc(100% - 9rem); transform: none; font-size: 0.66rem; }
-  .galaxy-warhud-stage { font-size: 0.6rem; }
-  .galaxy-warhud-bar { width: 1.6rem; }
+  .galaxy-warhud { top: calc(var(--nav-h, 68px) + 150px); font-size: 0.68rem; }
+  .galaxy-warhud-stage { font-size: 0.62rem; }
+  .galaxy-warhud-bar { width: 1.7rem; }
+  .galaxy-battleend { top: max(34%, calc(var(--nav-h, 68px) + 200px)); }
 }
 
 /* the battle's end (BattleEnd.jsx): Victory or Defeat a few seconds, why, and your part
