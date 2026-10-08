@@ -108,8 +108,18 @@ function scaled(p, by) {
   for (let o = p; o && !d; o = Object.getPrototypeOf(o)) d = Object.getOwnPropertyDescriptor(o, 'value');
   let held = d && 'value' in d ? d.value : undefined;
   const read = d?.get ? () => d.get.call(p) : () => held;
-  const write = d?.set ? (v) => d.set.call(p, v) : (v) => (held = v);
-  Object.defineProperty(p, 'value', { configurable: true, get: read, set: (v) => write(v * by) });
+  const write = d?.set
+    ? (v) => d.set.call(p, v)
+    : (v) => {
+        held = v;
+      };
+  Object.defineProperty(p, 'value', {
+    configurable: true,
+    get: read,
+    set(v) {
+      write(v * by);
+    },
+  });
   for (const m of ['setValueAtTime', 'linearRampToValueAtTime', 'exponentialRampToValueAtTime', 'setTargetAtTime']) {
     const f = p[m];
     if (typeof f === 'function') p[m] = (v, ...rest) => f.call(p, v * by, ...rest);
