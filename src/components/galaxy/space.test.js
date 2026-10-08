@@ -97,6 +97,18 @@ describe('makeSpace', () => {
       }
     }
   });
+  it('climbs out of a grown world’s air at speed, not twelve seconds at the boost', () => {
+    const hoth = { id: 'planet', at: [0, 0, 0], r: 137.5, reach: 288.75, goal: true, planet: true };
+    const s = makeSpace([hoth]);
+    // just over its surface, the drive's down; it counts from there, not from its reach
+    expect(s.openness(0, 0, hoth.r + 2)).toBe(0);
+    expect(s.openness(0, 0, hoth.reach - 10)).toBeGreaterThan(0.5);
+    let ship = { ...spawn(null, { x: 0, y: 0, z: 150, heading: Math.PI }), speed: SHIP.boost }; // (nose straight out)
+    let t = 0;
+    for (; t < 12 && Math.hypot(ship.x, ship.y, ship.z) < hoth.reach; t += 1 / 60) ship = step(ship, { throttle: 1, boost: true }, 1 / 60, s.solids, s).ship;
+    expect(t).toBeLessThan(4.5);
+    expect(ship.speed).toBeGreaterThan(40);
+  });
   it('knows its goals', () => {
     expect(Object.keys(space.goals).sort()).toEqual(['deathstar', 'planet']);
   });

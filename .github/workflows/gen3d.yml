@@ -37,7 +37,7 @@ on:
         required: false
         type: string
       options:
-        description: 'More, as key: value two spaces apart (tex: 2048  seed: 7  engine: hunyuan  faithful: no  bake: no  fresh: yes)'
+        description: 'More, as key: value two spaces apart (tex: 2048  seed: 7  engine: hunyuan  faithful: no  bake: no  fresh: yes  ultra: yes)'
         required: false
         type: string
   issues:
