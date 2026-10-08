@@ -64,6 +64,7 @@ describe('population', () => {
     const id = made[0].id;
     p.died(id);
     expect(p.soldiers.has(id)).toBe(false);
+    expect(p.isDead(id)).toBe(true);
     let dropped = [];
     for (let i = 0; i < 80; i++) dropped.push(...p.update({ x: -2000, z: 0, heading: [-1, 0] }).drop);
     expect(dropped.length).toBeGreaterThan(0);

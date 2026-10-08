@@ -21,12 +21,14 @@ import * as THREE from 'three';
 import { anyFigure } from '../actors';
 import { DEATH, fallen, healthBar, markMaterials } from '../activity';
 import { HOSTILE_BODY, createPosture, fallOf, hostileBody, whereHit } from '../hostiles';
-import { groundAt } from '../walker';
+import { groundAt, pushOut } from '../walker';
+import { rigRagdoll } from '../../../../lib/three/ragdollPhysics';
 import { ARMS } from './troops';
 import { createGunplay } from '../../../universe/gunplay';
 import { budgetClock, createAnimBudget } from '../../../../lib/three/animBudget';
 import { POP } from './population';
 
+export const RAGDOLLS = 4; // falling as ragdolls at once, at most (a fifth takes its clip)
 export const GROUND_BODY = {
   ...HOSTILE_BODY,
   patrol: { base: null },
@@ -70,6 +72,13 @@ export function createPool({ make }) {
       e.gone = true;
       if (e.fig) shelve(e.kind, e.fig);
     },
+    // (forgotten, not shelved: a figure a ragdoll has had is the caller's to let go of)
+    drop(id) {
+      const e = held.get(id);
+      held.delete(id);
+      if (e) e.gone = true;
+      return e?.fig ?? null;
+    },
     free: (kind) => free.get(kind)?.length ?? 0,
     made: () => made,
     // every figure there is, held or free (to let go of at the end)
@@ -96,6 +105,25 @@ export function createFigures({ parent, world, warm = (o) => Promise.resolve(o),
   let making = false;
   let dead = false;
   let n = 0;
+  let ragdolls = 0; // (falling as ragdolls now)
+  // what a ragdoll lands on: the ground under it, and the sides of what's solid
+  const collide = (p, r) => {
+    let on = false;
+    const g = groundAt(world, p.x, p.z, p.y + 0.5);
+    if (p.y < g + r) {
+      p.y = g + r;
+      on = true;
+    }
+    for (const sol of world.solids?.near?.(p.x, p.z, r + 0.5) ?? []) {
+      if (sol.top != null && p.y > sol.top + r) continue;
+      const q = pushOut(sol, p.x, p.z, r);
+      if (q) {
+        p.x += q[0];
+        p.z += q[1];
+      }
+    }
+    return on;
+  };
 
   const attach = (t, fig) => {
     t.fig = fig;
@@ -183,7 +211,10 @@ export function createFigures({ parent, world, warm = (o) => Promise.resolve(o),
         t.fig.model.quaternion.identity();
       }
       t.holder.removeFromParent();
-      pool.give(id);
+      if (t.rag) {
+        if (!t.rag.settled) ragdolls--;
+        pool.drop(id)?.dispose?.();
+      } else pool.give(id);
     },
     get: (id) => records.get(id),
     all: () => records.values(),
@@ -296,9 +327,21 @@ export function createFigures({ parent, world, warm = (o) => Promise.resolve(o),
         }),
       );
     },
-    fell(t, { push = null, from = null } = {}) {
+    // ragdoll: whether it may fall as one (near, a tier that can, few falling); speed: how hard it was hit
+    fell(t, { push = null, from = null, ragdoll = false, speed = 4 } = {}) {
       if (t.down) return;
       t.down = 0.001;
+      const hips = ragdoll && ragdolls < RAGDOLLS && t.fig?.anim ? t.fig.model.getObjectByName('Hips') : null;
+      if (hips?.isBone) {
+        const bones = {};
+        t.fig.model.traverse((o) => o.isBone && (bones[o.name] = o));
+        t.fig.stop?.(0, 'upper');
+        t.holder.updateMatrixWorld(true);
+        const dir = fallOf({ push, from, at: t.soldier.b, yaw: t.soldier.b.yaw });
+        const v = t.soldier.vel ?? [0, 0];
+        t.rag = rigRagdoll(bones, { collide, push: { x: dir.x, y: 0, z: dir.z }, speed, velocity: { x: v[0] ?? 0, y: 0, z: v[1] ?? 0 } });
+        ragdolls++;
+      }
       t.death = {
         dir: fallOf({ push, from, at: t.soldier.b, yaw: t.soldier.b.yaw }),
         force: 0.3,
@@ -314,6 +357,22 @@ export function createFigures({ parent, world, warm = (o) => Promise.resolve(o),
       const d = t.death;
       const fig = t.fig;
       t.down += dt;
+      if (t.rag) {
+        // falling the way it was hit, onto the ground it stood on; settled, its pose frozen, lying, then into the ground
+        if (t.bar) t.bar.sprite.visible = false;
+        if (t.mark) t.mark.visible = false;
+        if (!t.rag.settled) {
+          t.rag.step(dt);
+          if (t.rag.settled) {
+            ragdolls--;
+            d.settledAt = t.down;
+          }
+          return false;
+        }
+        const since = t.down - d.settledAt;
+        if (since > DEATH.lie) t.holder.position.y -= (DEATH.deep / DEATH.sink) * dt;
+        return since > DEATH.lie + DEATH.sink;
+      }
       if (!d.started) {
         d.started = true;
         if (t.bar) t.bar.sprite.visible = false;

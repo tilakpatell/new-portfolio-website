@@ -11,7 +11,7 @@
 //   yaw, home, beat?, turf, squad }
 // createPopulation({ site, turfs, effects, tier, seed, rand, standable }) →
 //   { update({ x, z, heading }) → { make: Soldier[], drop: id[] }, soldiers,
-//   died(id), move(id, x, z), cellOf(x, z) → key, reinforce(key, specs),
+//   died(id), isDead(id), move(id, x, z), cellOf(x, z) → key, reinforce(key, specs),
 //   waiting() → the specs in loaded cells not made (the cap's) }
 
 import { createChunkGrid } from '../../../../runtime/chunkGrid';
@@ -158,6 +158,7 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
       dead.add(id);
       soldiers.delete(id);
     },
+    isDead: (id) => dead.has(id),
     reinforce(key, list) {
       for (const s of list) if (!specs.has(s.id) && !dead.has(s.id)) place({ ...s, at: [...s.at] });
       cell(key);

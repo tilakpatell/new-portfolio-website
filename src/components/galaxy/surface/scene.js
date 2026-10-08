@@ -379,7 +379,7 @@ export async function create(canvas, ctx) {
   // (a battle fills the air with bolts: room for them)
   const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
   // the ground war: who holds which turf, and its soldiers, made round you as you go (ground/)
-  const groundWar = createGround({ parent: scene, world, site, effects: mission ? null : ctx.effects, tier, kit, warm, blaster, standable: (p) => standable(site, p), seesThrough: (a, b) => lineClear(world.solids, a, b) });
+  const groundWar = createGround({ parent: scene, world, site, effects: mission ? null : ctx.effects, tier, kit, warm, blaster, sparks: (at, c) => fx.sparks(new V(...at), UP, c, 8), standable: (p) => standable(site, p), seesThrough: (a, b) => lineClear(world.solids, a, b) });
   // what a shot does round the gun and where it lands (universe/gunfx.js),
   // and a light that flares with each muzzle flash: in the scene from the
   // start and dark between shots, so the count of lights never changes and
@@ -1694,6 +1694,7 @@ export async function create(canvas, ctx) {
       return;
     }
     const hit = blaster.fire(from, scatter(camDir, w), shootable(), boltOf(me()), w.range);
+    groundWar.passed(from, hit.at); // (a soldier it went close by keeps its head down, and has a grudge)
     activity.heard({ x: from.x, z: from.z }, { x: from.x + camDir.x * 40, z: from.z + camDir.z * 40 }); // (the enemies hear it, and one it's aimed near knows)
     heardBy(from, { x: from.x + camDir.x * 40, z: from.z + camDir.z * 40 }); // (and the people about: actors.js's)
     struck(hit, undefined, { how: w.kind, push: camDir });
@@ -2145,6 +2146,7 @@ export async function create(canvas, ctx) {
     let hit = null;
     for (let i = 0; i < n; i++) {
       const h = blaster.fire(o.from, scatter(o.dir, w), shootable(), hot ? '#ffffff' : boltOf(p), w.range, r.muzzle);
+      groundWar.passed(o.from, h.at);
       struck(h, Math.max(1, Math.round((w.damage + (hot ? 1 : 0)) / (n > 1 ? 2 : 1))), { how: w.kind, push: o.dir });
       hit ??= h;
     }
@@ -2872,6 +2874,7 @@ export async function create(canvas, ctx) {
     }
     for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor })) questEvent(ev);
     const groundShots = groundWar.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { mate: other().st, camera });
+    for (const e of groundWar.news()) if (e.text) emit({ type: 'war', what: e.type, side: e.side, text: e.text }); // (the ground war's news, for the HUD's toast)
     if (state.phase === 'walk' || state.phase === 'ride')
       for (const s of [...activity.shooters(dt, me().st, state.t), ...groundShots]) {
         // a duellist's Force: you're shoved away from it, off your feet
@@ -3094,7 +3097,7 @@ export async function create(canvas, ctx) {
       land: landAt,
       landing,
       groundWar,
-      put: (x, z) => putAt(me().st, x, z), // (you, set down somewhere: the ground war's QA)
+      put: (x, z) => (state.phase === 'landing' || state.phase === 'out' ? (state.phase = 'walk') : null, putAt(me().st, x, z)), // (you, set down somewhere, out of the ship: the ground war's QA)
       you: () => ({ x: me().st.x, z: me().st.z, health: state.health, phase: state.phase }),
       view(from, at) {
         qaView = from ? { from: [from[0], world.heightAt(from[0], from[2]) + from[1], from[2]], at: [at[0], world.heightAt(at[0], at[2]) + at[1], at[2]] } : null;

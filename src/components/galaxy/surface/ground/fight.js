@@ -12,6 +12,7 @@
 //   firingAt?, you? }], seesThrough(a, b), tokens (lib/ai/squad's), squads? }
 // senseAll(s, world, dt); threatOf(s, world) → { id, x, z, vel, side,
 //   visible, seenAt } | null; aimError(s, target, dist, { first, now });
+// grudge(s, squads, now, at?) (at: where you shot from: they know it);
 // fightStep(s, world, dt, rand) → { x, z, yaw, mode, moving, aim, fire,
 //   suppressive, guessed, target }; squadsOf(soldiers, { reach, war }) →
 //   { update(dt), died(id), of(id), membersOf(id), postureOf(id),
@@ -29,6 +30,7 @@ export const FACING = Math.PI / 7.2; // 25°: no shot till it faces its target t
 export const SUPPRESS = { near: 2, for: 1.5 };
 export const LOST = 2; // seconds after losing sight it may send one burst at the last place
 export const SENSE = 0.1; // seconds between a soldier's looks round
+export const OUT_OF_REACH = 10; // seconds a soldier lets be a target its leash won't reach
 export const ENGAGED = 20; // seconds a fight stretches the leash after the last sight
 const WALK = 0.42; // of its run, on a beat or going home
 
@@ -74,7 +76,10 @@ export function threatOf(s, world) {
     if (!bel || bel.confidence < 1) continue;
     const d = Math.hypot(bel.at.x - s.b.x, bel.at.z - s.b.z);
     let score = -d;
-    if (b.firingAt && mates.has(b.firingAt)) score += 1000;
+    const shooting = b.firingAt && mates.has(b.firingAt);
+    // (one out of its reach that isn't shooting at it: let be a while)
+    if (!shooting && s.ignore?.id === b.id && s.ignore.until > world.t) continue;
+    if (shooting) score += 1000;
     if (bel.visible) score += 5;
     if (b.id === s.target) score += 8;
     if (score > bestScore) {
@@ -105,10 +110,18 @@ export const suppress = (s, now) => {
   s.suppressed = now + SUPPRESS.for;
 };
 
-export function grudge(s, squads, now) {
+// at: where you were when you shot (they know it, as if they'd heard it)
+export function grudge(s, squads, now, at = null) {
   const ids = squads?.membersOf ? squads.membersOf(s.id) : [s.id];
-  for (const m of squads?.soldiersOf ? squads.soldiersOf(ids) : [s]) m.grudge = now + GRUDGE;
-  s.grudge = now + GRUDGE;
+  const all = new Set([s, ...(squads?.soldiersOf ? squads.soldiersOf(ids) : [])]);
+  for (const m of all) {
+    m.grudge = now + GRUDGE;
+    if (!at) continue;
+    m.me ??= { pos: P(m.b.x, m.b.z), dir: null, beliefs: {}, now: 0 };
+    const b = m.me.beliefs.you;
+    if (b?.visible) continue;
+    m.me.beliefs.you = { id: 'you', at: P(at.x, at.z), vel: { x: 0, y: 0, z: 0 }, seenAt: m.me.now ?? 0, heardAt: m.me.now ?? 0, confidence: 1, visible: false, timer: b?.timer ?? 0, kind: 'you', faction: null, hostile: true };
+  }
 }
 
 // with nobody to fight: the beat, or the post
@@ -168,12 +181,22 @@ export function fightStep(s, world, dt, rand = Math.random) {
   const allies = world.bodies.filter((b) => b.side === s.side && b.id !== s.id && Math.abs(b.x - s.b.x) < 30 && Math.abs(b.z - s.b.z) < 30);
   const you = { x: threat.x, z: threat.z, vel: threat.vel };
   let out = hostileStep(head, { you, allies, seesThrough: world.seesThrough ?? null, tokens, who: s.id, options }, dt, rand);
+  // (known of, not seen by its head: it turns to where it is)
+  if (!head.belief) out = { ...out, yaw: turnToward(s.b.yaw, Math.atan2(threat.x - s.b.x, threat.z - s.b.z), 3 * dt), mode: out.mode === 'wander' ? 'look' : out.mode };
   const d = Math.hypot(threat.x - s.b.x, threat.z - s.b.z);
   const home = (x, z) => Math.hypot(x - s.home[0], z - s.home[1]) <= reach;
   // close to range: seen beyond it, it walks in (never past the stretched leash)
-  if (d > t.range && posture !== 'retreat') {
+  if (d > t.range) {
     const w = walkTo(s.b, { x: threat.x, z: threat.z }, t.speed * 0.7, dt);
-    out = home(w.x, w.z) ? { ...out, x: w.x, z: w.z, yaw: w.yaw, moving: w.moving, mode: 'advance' } : { ...out, x: s.b.x, z: s.b.z, yaw: w.yaw, moving: 0, mode: 'advance' };
+    // (out of its reach, or out of range with its squad's nerve gone)
+    if (posture === 'retreat' || !home(w.x, w.z)) {
+      // out of its reach: it lets that one be a while, and goes back about its business
+      s.ignore = { id: threat.id, until: now + OUT_OF_REACH };
+      s.target = null;
+      world.tokens?.release('shot', s.id, target);
+      return { ...about(s, dt), aim: null, fire: false, suppressive: false, guessed: false, target: null };
+    }
+    out = { ...out, x: w.x, z: w.z, yaw: w.yaw, moving: w.moving, mode: 'advance' };
   } else if (posture === 'retreat' && !['back', 'cover'].includes(out.mode)) {
     // (nowhere to hide: it gives ground, facing what it's backing from)
     const ax = s.b.x - threat.x;
