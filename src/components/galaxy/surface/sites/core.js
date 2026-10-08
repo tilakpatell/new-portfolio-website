@@ -308,6 +308,9 @@ export const SITES = {
       { kind: 'grove', at: [-60, 120], opts: { n: 8, r: 20, seed: 26 } },
     ],
     scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qclover', n: 150, within: [4, 100], scale: [0.8, 1.6], solid: false },
+      { kind: 'qgrass', n: 200, within: [4, 120], scale: [0.8, 1.5], solid: false },
       { kind: 'nabootree', n: 80, within: [50, 600], scale: [0.7, 1.4], flat: 0.9 },
       { kind: 'rock', n: 50, within: [40, 560], scale: [0.6, 2.4], opts: { color: '#8e8a78', sharp: 0.3 } },
     ],
@@ -329,7 +332,7 @@ export const SITES = {
       { kind: 'villager', n: 6, at: [-250, 260], spread: 40, roam: 24, speed: 1.0, name: 'Theed citizen', says: ['The Queen will speak from the palace steps at noon.', 'Have you seen the falls from the plaza? The whole city hums with them.', 'Our Senator Palpatine is from Theed, you know. Such a kind, patient man.', 'They say the Gungans and the Queen are friends now. Imagine that.'] },
       { kind: 'rebel', n: 3, at: [-245, 255], spread: 12, roam: 10, speed: 1.1, name: 'Palace guard', says: ['The palace is open to visitors today. Stay on the paths.', 'Royal Naboo Security Forces. Keep moving, please.'] },
       { kind: 'rebel', n: 1, at: [-292, 200], roam: 8, speed: 1.1, name: 'Captain Panaka', says: ['Your Highness, we have a problem: the Federation has landed its army.', 'We’ll take the hangar first. Then the throne room.', 'Our people are dying. We must act.'] },
-      { kind: 'pilot', n: 3, at: [-300, 188], spread: 14, roam: 10, speed: 1.2, name: 'Bravo Squadron pilot', says: ['We’re going after the droid control ship. Who’s with us?', 'Bravo Flight, fly with me!', 'There was a kid in one of the fighters. He blew the control ship from the inside!'] },
+      { kind: 'rebelpilot', n: 3, at: [-300, 188], spread: 14, roam: 10, speed: 1.2, name: 'Bravo Squadron pilot', says: ['We’re going after the droid control ship. Who’s with us?', 'Bravo Flight, fly with me!', 'There was a kid in one of the fighters. He blew the control ship from the inside!'] },
       { kind: 'droid', n: 1, at: [-296, 176], roam: 6, speed: 0.7, name: 'R2-D2', says: ['(A proud whistle. It was the only droid to get the Queen’s ship through the blockade.)', '(A cheeky beep, and a look at the N-1’s astromech socket.)'] },
       { kind: 'quigon', n: 1, at: [60, 170], roam: 10, speed: 0.9, name: 'Qui-Gon Jinn', says: ['There’s always a bigger fish.', 'The ability to speak does not make you intelligent.', 'Feel, don’t think. Use your instincts.'] },
       { kind: 'villager', n: 1, at: [366, 336], roam: 5, speed: 0.8, name: 'Padmé', says: ['When I was in the Legislative Youth Program, we came here for school retreat. We’d swim to that island every day.', 'I love the water. We’d lie on the sand and let the sun dry us.', 'It’s so peaceful here.'] },
