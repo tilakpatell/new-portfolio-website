@@ -76,6 +76,7 @@ import { gltfStats } from '../../lib/three/gltfCache';
 import { STEPS } from '../../lib/three/pace';
 import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
+import { followRatio } from './drawnAt';
 import { houseOn } from '../../lib/three/house';
 import { SHIP, autopilot, forward, spawn, step } from '../universe/ship';
 import { REAIM_MS, parkBehind, pilotSpace, reached } from '../universe/pilotGoal';
@@ -381,7 +382,7 @@ export async function create(canvas, ctx) {
   const flying = () => Boolean(state.ship);
 
   // ── The system you're in ──
-  let ratioSeen = renderer.getPixelRatio(); // the pixel ratio the sky and the skylanes were last sized for
+  const followDrawn = followRatio(post, (r) => (sky.setRatio(r), state.world?.setRatio(r))); // (the ratio the points are sized by: ./drawnAt.js)
   let detail = 1; // how finely the planets are drawn (0…1), as the world was last told
   let capDetail = false; // set when the scene is told to give up quality: the planets at their coarsest
   let env = null;
@@ -406,7 +407,7 @@ export async function create(canvas, ctx) {
     state.world = null;
     state.sys = sys;
     sky.setSystem(sys);
-    const world = buildSystem(sys, { models, bolts, flashes, small, ratio: ratioSeen });
+    const world = buildSystem(sys, { models, bolts, flashes, small, ratio: post.ratio });
     world.setDetail(detail);
     scene.add(world.group);
     state.world = world;
@@ -1306,8 +1307,8 @@ export async function create(canvas, ctx) {
       const f = forward(state.ship.heading);
       input.overdrive = state.space.overdriveAt(state.ship.x, state.ship.y, state.ship.z, [f[0], 0, f[1]]);
     }
-    // (under the Interdictor's hold the sublight drive stays shut: the boost is the boost)
-    const { ship: stepped, events } = step(state.ship, state.held ? { ...input, interdicted: true } : input, dt, state.space.solids, state.space);
+    // (under the Interdictor's hold, or a battle's gravity wells still up, the sublight drive stays shut: the boost is the boost)
+    const { ship: stepped, events } = step(state.ship, state.held || war?.interdicted ? { ...input, interdicted: true } : input, dt, state.space.solids, state.space);
     let ship = stepped;
     // the tractor beam (Alderaan's Death Star): drawn in, and harder the nearer
     const tr = state.world.tractor;
@@ -1538,7 +1539,7 @@ export async function create(canvas, ctx) {
     let busy = pieces ? pieces.update(dt, t, camera) : false;
     if (interdictor) busy = interdictor.update(dt, t) || busy;
     if (war) {
-      const w = war.update(dt, t, camera, live);
+      const w = war.update(dt, t, camera, live, { shield: state.shield, down: Boolean(state.crash) });
       if (w.hurt && live) hurt(w.hurt);
       // (a set piece's hold on the ship: kept inside a tunnel, slowed to fly it, caught in a reactor's blast)
       if (live && state.ship && !state.crash) {
@@ -1833,14 +1834,10 @@ export async function create(canvas, ctx) {
       if (lastNow) longest = Math.max(longest, now - lastNow);
       lastNow = now;
     }
-    // what's sized by the pixel ratio (the runtime's quality changes it) follows it,
-    // and the planets' detail follows the sharpness
-    const ratio = gfx.ratio;
-    if (ratio !== ratioSeen) {
-      ratioSeen = ratio;
-      sky.setRatio(ratio);
-      state.world?.setRatio(ratio);
-    }
+    // what's sized in screen pixels follows the ratio the scene is drawn at
+    // (the runtime's quality softens it: ./drawnAt.js), and the planets'
+    // detail follows the sharpness
+    followDrawn();
     const wanted = capDetail ? 0 : post.sharpness;
     if (Math.abs(wanted - detail) >= 0.05) {
       detail = wanted;
@@ -1965,7 +1962,7 @@ export async function create(canvas, ctx) {
     // the speed: dust streaming past, the picture rushing out from the ship
     const dustWant = !reduced && flying() && !inTunnel ? 0.35 + 0.65 * clamp01(Math.abs(state.ship.speed) / SHIP.cruise) : 0;
     dustAmount += (dustWant - dustAmount) * clamp01(dt * 3);
-    dust.update(camera.position, dustAmount, gfx.ratio);
+    dust.update(camera.position, dustAmount, post.ratio);
     if (!reduced && flying() && (state.streak > 0.001 || spool)) {
       const k = Math.max(state.streak, state.jump?.phase === 'spool' ? clamp01(state.jump.age / JUMP.spool) : 0);
       if (state.view === 'cockpit') post.rush(k * 0.8, 0.5, 0.5);
@@ -2343,10 +2340,12 @@ export async function create(canvas, ctx) {
       if (!alive() || disposed) return;
       await prepareScene({ renderer, roots: [scene], scene, camera, target: post.target, render: () => post.render(64, 64), onProgress, alive: () => alive() && !disposed });
     },
+    // the war's battle here as warfront.js has it (WarHud.jsx, BattleEnd.jsx), or null
+    warInfo: () => war?.info ?? null,
     resize(w, h) {
       size.w = Math.max(1, w);
       size.h = Math.max(1, h);
-      sky.setRatio(gfx.ratio);
+      followDrawn();
       measure();
     },
     render,
@@ -2377,12 +2376,14 @@ export async function create(canvas, ctx) {
       state.shown = on;
       if (!on) engine?.set({ speed: 0, on: false });
     },
-    // the runtime's quality: the sharpness is its own; at the floor (past
-    // its last step), the glow and the grade go
+    // the runtime's quality: drawn softer through the post chain, a step at
+    // a time, over a canvas that keeps its size (module.js's sharpness 'own': no
+    // resize, so no cleared frame and the HUD stays crisp); at the floor
+    // (past its last step), the glow and the grade go
     lowerQuality(level = STEPS.length) {
       // (each step the passes less sharp; the canvas keeps its size: module.js's `sharpness`)
       post.sharpness = STEPS[Math.min(level, STEPS.length - 1)];
-      sky.setRatio(gfx.ratio);
+      followDrawn();
       if (level < STEPS.length) return;
       post.lite();
       capDetail = true;

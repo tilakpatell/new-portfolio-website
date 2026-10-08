@@ -479,7 +479,7 @@ export default function Galaxy() {
         suggested={suggested}
         onSwear={onSwear}
       />
-      {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} oath={oath} suggested={suggested} onSwear={onSwear} onTheatre={onTheatre} />}
+      {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} oath={oath} oaths={oathKept.oaths} suggested={suggested} onSwear={onSwear} onTheatre={onTheatre} />}
       {intro && (
         <GalaxyIntro
           onDone={() => {

@@ -5,6 +5,7 @@ export const PACK = {
   src: ['src/components/deathstar/inside', 'src/pages/DeathStarInside.jsx'], // where its source is (files or folders, repo-relative): pack-check scans these
   urls: [
     '/models/universe/falcon.glb',
+    '/models/galaxy/surface/lambda.glb',
     '/models/galaxy/crew/luke.glb',
     '/models/galaxy/crew/han.glb',
     '/models/galaxy/crew/leia.glb',
@@ -20,6 +21,16 @@ export const PACK = {
     '/models/galaxy/surface/mousedroid.glb',
     '/models/galaxy/surface/r2d2.glb',
     '/models/galaxy/surface/r5.glb',
+    // what the windows show (scene/views.js): the fleet at Endor, the stations from outside
+    '/models/galaxy/lod/moncal.glb',
+    '/models/galaxy/lod/destroyer.glb',
+    '/models/galaxy/lod/executor.glb',
+    '/models/galaxy/lod/xwing.glb',
+    '/models/galaxy/lod/tie.glb',
+    '/models/universe/death-star.glb',
+    '/models/universe/death-star.hq.glb',
+    '/models/galaxy/deathstar2.glb',
+    '/models/galaxy/deathstar2.hq.glb',
   ], // single files
   globs: ['/games/meshy/clips-*.glb', '/models/galaxy/troops/clip-*.glb'], // folders: `*` within a folder, `**` any depth
 };

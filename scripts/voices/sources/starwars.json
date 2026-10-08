@@ -282,19 +282,7 @@
   },
   "youngboba": {
     "show": "star-wars",
-    "quotes": [
-      "Dad, there's a Jedi",
-      "Get him, Dad"
-    ],
-    "search": [
-      "Attack of the Clones young Boba Fett Kamino scene",
-      "Attack of the Clones Boba Fett Daniel Logan Slave I scene"
-    ],
-    "avoid": [
-      "lego",
-      "reaction",
-      "book of boba fett"
-    ]
+    "design": "a ten-year-old boy with a light New Zealand accent, eager and proud of his father, quick and bright"
   },
   "bobafett": {
     "show": "star-wars",
@@ -380,16 +368,7 @@
   },
   "baze": {
     "show": "star-wars",
-    "quotes": [
-      "The strongest stars have hearts of kyber"
-    ],
-    "search": [
-      "Rogue One Baze Malbus Chirrut scene"
-    ],
-    "avoid": [
-      "lego",
-      "reaction"
-    ]
+    "design": "a gruff middle-aged man with a deep Mandarin-accented voice, blunt and protective, unhurried"
   },
   "mando": {
     "show": "star-wars",
@@ -492,17 +471,7 @@
   },
   "bossnass": {
     "show": "star-wars",
-    "quotes": [
-      "Wesa no care-n about da Naboo"
-    ],
-    "search": [
-      "Phantom Menace Boss Nass Otoh Gunga scene",
-      "Phantom Menace Boss Nass Padme alliance scene"
-    ],
-    "avoid": [
-      "lego",
-      "reaction"
-    ]
+    "design": "a huge booming Gungan leader, deep jowly voice that rumbles and wobbles, pompous and slow, thick Gungan accent"
   },
   "tarpals": {
     "show": "star-wars",
@@ -568,18 +537,7 @@
   },
   "lamasu": {
     "show": "star-wars",
-    "quotes": [
-      "I trust you are going to stay for a while"
-    ],
-    "search": [
-      "Attack of the Clones Lama Su Obi-Wan clone army scene",
-      "Attack of the Clones Kamino cloning facility tour scene"
-    ],
-    "avoid": [
-      "lego",
-      "reaction",
-      "bad batch"
-    ]
+    "design": "a tall serene alien prime minister, soft high polite voice, calm and precise, very unhurried"
   },
   "kaminoan": {
     "show": "star-wars",

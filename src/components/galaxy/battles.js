@@ -21,10 +21,11 @@
 // it, for the fighters to keep out of and the line to be laid clear of.
 // layBattle(sys, battle, { now, tier }) → createBattle's options for the
 // battle gcw.js has on there (its sides by team: battleAt's `sides`), with
-// its `kind`.
+// its `kind`, and no ticket end (`tickets: false`).
 
 import { WARS as UNIVERSE_WARS } from '../universe/wars';
 import { WIDTH, createBattle, perSide } from '../universe/battle';
+import { widthOf } from '../universe/battleKit';
 import { cloneTemplates, remnantTemplates } from './battlesWars';
 import { seeded, warInfo } from './gcw';
 import { SIDES } from './sides';
@@ -187,6 +188,13 @@ const GCW_TEMPLATES = {
     fighters: { light: FIGHTERS.rebel, dark: FIGHTERS.empire },
     ace: { light: { kind: 'ghost', name: 'The Ghost (Hera Syndulla)', hp: 30 } },
   },
+  // where A New Hope opens: the Devastator runs down the Tantive IV over Tatooine
+  tatooine: {
+    name: 'The Battle of Tatooine',
+    light: { flagship: ship('moncal'), escorts: [ship('corvette', 'Tantive IV'), ship('corvette'), ship('nebulon'), ship('hammerhead')] },
+    dark: { flagship: ship('destroyer', 'Devastator'), escorts: [ship('destroyer'), ship('lightcruiser'), ship('gozanti'), ship('gozanti')] },
+    fighters: { light: FIGHTERS.rebel, dark: FIGHTERS.empire },
+  },
   coruscant: {
     name: 'The Battle of Coruscant',
     light: { flagship: ship('moncal', 'Home One', 26), escorts: [ship('moncal'), ship('moncal'), ship('nebulon'), ship('hammerhead'), ship('corvette'), ship('corvette')] },
@@ -249,6 +257,44 @@ const sideOf = (base, line, fighters, escorts = line.escorts) => ({
 
 // a battle of the old shape (no `sides`): the Rebellion's and the Empire's
 const sidesOf = (battle) => battle.sides ?? ['rebel', 'empire'];
+
+// the runners' way through the battle laid at `at` along `axis` (by
+// team: whose they are), as points: an evacuation's (the defender's) off
+// the planet, out through the middle of the fight, past the end of the
+// attacker's line and on to the jump beyond it; a blockade's (the
+// attacker's) from behind its own line, across the fight, through the gap
+// between the defender's flagship and its first escort, and down to the
+// planet. `side`: which flank (±1) an evacuation breaks out by.
+function runnerRoute({ war, attacker, team, at, axis, lines, radius, objectivesOn, R, side }) {
+  const field = createBattle({ war, attacker, at, axis, perSide: 0, lines, radius, objectivesOn });
+  const C = v(...at);
+  const A = v(axis[0], 0, axis[1]);
+  const S = v(A.z, 0, -A.x); // (across the lines)
+  const lineOf = (k) => v(C.x - A.x * lines * (k === 0 ? 1 : -1), C.y, C.z - A.z * lines * (k === 0 ? 1 : -1));
+  const add = (p, d, n) => v(p.x + d.x * n, p.y + d.y * n, p.z + d.z * n);
+  const cl = len(C) || 1;
+  const planet = v((C.x / cl) * (R + 4), (C.y / cl) * (R + 4), (C.z / cl) * (R + 4));
+  const out = (p) => [p.x, p.y, p.z].map((x) => +x.toFixed(3));
+  if (team !== attacker) {
+    // the attacker's line: how far it reaches on the side they break out by
+    const caps = field.capitals.filter((c) => c.team === attacker);
+    const half = Math.max(...caps.map((c) => side * ((c.pos.x - C.x) * S.x + (c.pos.z - C.z) * S.z) + widthOf(c) / 2));
+    const theirs = lineOf(attacker);
+    const u = v((theirs.x - C.x) / lines, 0, (theirs.z - C.z) / lines);
+    const middle = add(C, S, side * lines * 0.3);
+    const flank = add(theirs, S, side * (half + 15));
+    const jump = add(add(add(C, u, radius * 1.2), S, side * (half + 30)), v(0, 1, 0), 20);
+    return [planet, middle, flank, jump].map(out);
+  }
+  // the defender's flagship and its first escort, and the gap between them
+  const flag = field.capitals.find((c) => c.team !== attacker && c.role === 'flagship');
+  const next = field.capitals.find((c) => c.team !== attacker && c.role === 'escort') ?? flag;
+  const toNext = Math.sign((next.pos.x - flag.pos.x) * S.x + (next.pos.z - flag.pos.z) * S.z) || 1;
+  const gap = add(v(flag.pos.x, (flag.pos.y + next.pos.y) / 2, flag.pos.z), S, toNext * (widthOf(flag) / 2 + 3));
+  const own = lineOf(attacker);
+  const behind = add(own, v((own.x - C.x) / lines, 0, (own.z - C.z) / lines), 30);
+  return [behind, gap, planet].map(out);
+}
 
 export function layBattle(sys, battle, { now = battle.start, tier = 'high' } = {}) {
   const warId = battle.war ?? 'gcw';
@@ -317,29 +363,17 @@ export function layBattle(sys, battle, { now = battle.start, tier = 'high' } = {
     const dist = R + radius * 2 + biggest;
     chosen = { at: [base.x * dist, base.y * dist, base.z * dist], axis: [1, 0] };
   }
-  // the runners that decide an evacuation (the defender's, off the planet
-  // for the jump past their own line) or a blockade (the attacker's, from
-  // their line through the other's to the planet)
+  // the runners that decide an evacuation or a blockade, on a way through
+  // the fight that takes them past the line they have to get by (it ran
+  // beside the fight before, and they all got away untouched)
   let runners = null;
   if (kind.runners) {
     const team = kind.runners.side === 'defender' ? defender : attacker;
     const stance = SIDES[sides[team]].stance;
-    const C = v(...chosen.at);
-    const A = v(chosen.axis[0], 0, chosen.axis[1]);
-    const lineAt = (k) => {
-      const dir = k === 0 ? 1 : -1;
-      return v(C.x - A.x * lines * dir, C.y, C.z - A.z * lines * dir);
-    };
-    const cl = len(C) || 1;
-    const planet = v((C.x / cl) * (R + 4), (C.y / cl) * (R + 4), (C.z / cl) * (R + 4));
-    const own = lineAt(team);
-    const away = v(own.x - C.x, own.y - C.y, own.z - C.z);
-    const al = len(away) || 1;
-    const beyond = v(own.x + (away.x / al) * 160, own.y + 50, own.z + (away.z / al) * 160);
-    const [from, to] = kind.runners.side === 'defender' ? [planet, beyond] : [own, planet];
     const r = kind.runners;
     const k = r.kind[stance];
-    runners = { team, kind: k, size: SIZE[k], hp: r.hp, count: r.count, need: r.need, every: r.every, speed: r.speed, from: [from.x, from.y, from.z].map((x) => +x.toFixed(3)), to: [to.x, to.y, to.z].map((x) => +x.toFixed(3)), spread: 10 };
+    const route = runnerRoute({ war, attacker, team, at: chosen.at, axis: chosen.axis, lines, radius, objectivesOn, R, side: rand() < 0.5 ? 1 : -1 });
+    runners = { team, kind: k, size: SIZE[k], hp: r.hp, count: r.count, need: r.need, every: r.every, speed: r.speed, route, from: route[0], to: route.at(-1), spread: 10 };
   }
   return {
     war,
@@ -354,8 +388,13 @@ export function layBattle(sys, battle, { now = battle.start, tier = 'high' } = {
     elapsed: Math.max(0, Math.round((now - battle.start) / 1000)),
     perSide: kind.line ? perSide(tier) : Math.round(perSide(tier) * 1.5),
     seed: battle.seed,
+    // (the planet, for what a plan puts on it: an ion cannon)
+    planet: { at: [0, 0, 0], r: R },
     objectivesOn,
     ace,
     runners,
+    // (fought to its clock or its objectives: a ticket end drained the
+    // attacker in a couple of minutes, decided in each pilot's own sim)
+    tickets: false,
   };
 }

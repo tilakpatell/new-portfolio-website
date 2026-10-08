@@ -12,17 +12,18 @@ describe('what a link to the station asks for', () => {
     expect(fromSearch('?side=imperial&hero=leia').hero).toBeNull();
   });
 
-  it('drops what it doesn’t know, and a station not built yet', () => {
-    expect(fromSearch('?station=ds2&side=sith&mode=fly&at=')).toEqual({ station: null, side: null, mode: null, hero: null, at: null });
+  it('drops what it doesn’t know, and keeps the second station now it is built', () => {
+    expect(fromSearch('?station=ds3&side=sith&mode=fly&at=')).toEqual({ station: null, side: null, mode: null, hero: null, at: null });
+    expect(fromSearch('?station=ds2').station).toBe('ds2');
     expect(fromSearch('')).toEqual({ station: null, side: null, mode: null, hero: null, at: null });
   });
 });
 
 describe('the start screen’s choices', () => {
-  it('opens the first Death Star and shows the second as coming', () => {
+  it('opens both Death Stars', () => {
     expect(STATION_CHOICES.map((s) => [s.id, s.open])).toEqual([
       ['ds1', true],
-      ['ds2', false],
+      ['ds2', true],
     ]);
   });
 

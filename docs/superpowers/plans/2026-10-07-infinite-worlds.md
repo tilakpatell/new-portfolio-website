@@ -276,6 +276,8 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 ## Phase 5: Landing on the Expanse
 
+> Tasks 5.2 and 5.3 are superseded by the natural-worlds plan's Phase 3 (`docs/superpowers/plans/2026-10-08-natural-worlds.md`: `src/components/expanse/surface/`, built on `src/lib/land` and `src/lib/physics`); Task 5.1 maps the Expanse's planet types onto `landSpec`'s types (`temperate`, `desert`, `ice`, `ocean`, `volcanic`).
+
 ### Task 5.1: `planetSpec`
 
 **Files:**

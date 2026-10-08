@@ -5,7 +5,8 @@
 // `anim`, for a model kept rigged, names its clips: { idle, walk, run }.)
 export const MODELS = {
   // a moisture vaporator, the tall pole of a Tatooine farm
-  vaporator: { uid: 'acf6211d84eb4a46bb38c9a321771826', as: 'the moisture vaporators', metres: 5, along: 'y', yaw: 0, up: 'y', tris: 3000, tex: 512, recolor: [{ material: 'vaporator', to: '#b2aba0', amount: 1 }] },
+  // (ultra: four times the cut, from a 34,981-triangle download; its maps are 1024s)
+  vaporator: { uid: 'acf6211d84eb4a46bb38c9a321771826', as: 'the moisture vaporators', metres: 5, along: 'y', yaw: 0, up: 'y', tris: 3000, tex: 512, recolor: [{ material: 'vaporator', to: '#b2aba0', amount: 1 }], ultra: { tris: 12000, tex: 1024 } },
   // Luke's X-34 landspeeder
   landspeeder: { uid: '3adfdc41c67f4731910800404ba97b4e', as: "Luke's landspeeder", metres: 3.4, along: 'z', yaw: 0, up: 'y', tris: 16000, tex: 1024 },
   jawa: { uid: '08124df6beef4ca18b2d24a25f5fd6bf', as: 'the Jawas', metres: 1, along: 'y', yaw: 0, up: 'y', tris: 8000, tex: 512 },

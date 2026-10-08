@@ -25,10 +25,20 @@
 //     events: { type: 'room', from, to } | { type: 'door', what: 'open' | 'close' | 'seal' |
 //       'unseal' | 'denied', door } | { type: 'lift', what: 'leave' | 'arrive', id, from, to }
 //       | { type: 'helmet', on } | the walker’s 'land', 'fell' and 'respawn'
+//     and the rest of the station’s: { type: 'say', who, name, text } | 'shot' | 'hit' | 'hurt' | 'impact'
+//       | 'deflect' | 'swing' | 'vented' | 'down' | 'alert' { section, level } | 'scene' { id } | 'music'
+//       | 'achievement' { id } | 'storyEnd' | 'roar' | 'choked' | 'broke' | the eggs’ own events
 //   drain(g) → events          what happened since the last drain
 //   teleport(g, where, x?, z?, yaw?) → bool   you to a room (its middle unless told) or a named spot
 //   promptOf(g) → null | { text, use }   what E does where you stand (`use: true`), or a notice
 //     with no key: a door that won’t open for you, a lift on its way
+//
+// Everyone else aboard is the crew (brains.js): the garrison each room
+// keeps (play/garrison.js) and whoever the story brings. Each step runs, in
+// order: the doors, you, the crew, the bolts (play/battle.js), the alarm,
+// the disguise, the story (play/plot.js) and the eggs; E and the lines you
+// pick go through play/act.js. Far-off people sleep where they stand until
+// you come within three doors of them, or a fight wakes them.
 //
 // A lift is its cars, one a stop, each a room of its own on its level.
 // Use in a car rides it to the lift’s next stop (round to the first from
@@ -39,9 +49,20 @@
 // out stays on the landing they were on.
 
 import { seeded } from '../../../../lib/seeded';
+import { createAlarm, levelOf, lockdowns, raise, stepAlarm } from './alarm';
+import { addPerson, createCrew, stepCrew } from './brains';
+import { createCombat, fire } from './combat';
+import { doubtStep, disguised, FRESH } from './disguise';
 import { clearDoorway, createDoors, passable, stepDoors } from './doors';
-import { buildLayout } from './layout';
+import { eggsOn } from './eggs';
+import { furnish } from './furnish';
+import { CAST } from './cast';
+import { buildLayout, offTags } from './layout';
+import { createNav } from './nav';
+import { act, battle, garrison, plot } from './play';
+import { ESCORT } from './story';
 import { STATIONS } from './stations';
+import { WHO } from './talk';
 import { createBody, stepBody } from './walker';
 
 export const STEP = 1 / 30;
@@ -55,7 +76,9 @@ const EPS = 1e-9;
 const HEROES = ['luke', 'han', 'leia', 'obiwan'];
 // what each comes aboard with: Han his own pistol; Luke and Leia a trooper’s
 // rifle, as they had it aboard; Obi-Wan a lightsaber, which isn’t a gun
-const GUNS = { luke: 'e11', han: 'dl44', leia: 'e11', obiwan: null, stormtrooper: 'e11' };
+const GUNS = { luke: 'e11', han: 'dl44', leia: 'e11', obiwan: null, stormtrooper: 'e11', dstrooper: 'e11' };
+// the game’s own flags, which a story’s checkpoint keeps: the freighter’s ramp is down from the start
+const KEEP = ['ramp'];
 // what a door that won’t open says, by its lock
 const REFUSALS = { 'side:imperial': 'Imperial personnel only', scomp: 'Locked from the station’s computer', code: 'Locked with a code', flag: 'Sealed' };
 
@@ -79,32 +102,69 @@ export function newGame({ station = 'ds1', side = 'rebel', mode = 'story', hero,
   const id = station in STATIONS ? station : 'ds1';
   const layout = layoutOf(id);
   const own = side === 'imperial' ? 'imperial' : 'rebel';
-  const who = own === 'imperial' ? 'stormtrooper' : HEROES.includes(hero) ? hero : 'luke';
+  const who = own === 'imperial' ? (id === 'ds2' ? 'dstrooper' : 'stormtrooper') : HEROES.includes(hero) ? hero : 'luke';
   const armour = own === 'imperial';
   const start = layout.station.starts[own];
   const body = createBody({ x: start.x, y: layout.floorAt(start.room, start.x, start.z) ?? layout.rooms.get(start.room).y, z: start.z, yaw: start.yaw ?? 0, room: start.room });
-  const you = Object.assign(body, { side: own, hero: who, hp: 100, gun: GUNS[who], heat: 0, armour, helmet: armour, pitch: 0 });
+  const you = Object.assign(body, { id: 'you', side: own, hero: who, hp: 100, max: 100, gun: who in GUNS ? GUNS[who] : 'e11', blade: who === 'obiwan' ? 'blue' : null, heat: 0, armour, helmet: armour, pitch: 0, doubt: FRESH });
+  const rand = seeded(seed);
+  const nav = createNav(layout);
   const g = {
     station: id,
     side: own,
     mode: mode === 'roam' ? 'roam' : 'story',
     layout,
+    nav,
     doors: createDoors(layout),
     you,
     bodies: [],
     // the freighter’s ramp is down from the start, so the hold’s hatch opens
-    flags: new Set(['ramp']),
+    flags: new Set(KEEP),
+    keep: KEEP,
     seen: new Set(),
     lift: null,
     time: 0,
     events: [],
-    rand: seeded(seed),
-    // the story step the save picks this side’s story up at
-    story: save?.[id]?.story?.[own] ?? null,
+    rand,
+    combat: createCombat(),
+    alarm: createAlarm(layout.station),
+    items: new Set(),
+    eggs: new Set(save?.[id]?.eggs ?? []),
+    doubt: FRESH,
+    talk: null,
+    scene: null,
+    furnished: new Map(),
+    plot: null,
   };
+  g.solidsOf = (room) => furnishedOf(g, room).solids;
+  g.crew = createCrew({ rand, layout, nav, solidsOf: g.solidsOf });
+  g.teleport = (where, x, z, yaw) => teleport(g, where, x, z, yaw);
   for (const room of save?.[id]?.seen ?? []) if (layout.rooms.has(room)) g.seen.add(room);
   g.seen.add(you.room);
+  // the story’s own people where it brings them; the garrison everywhere else
+  const story = g.mode === 'story' ? plot.startPlot : null;
+  for (const p of garrison(layout, { side: own, skip: g.mode === 'story' ? storyRooms(g) : new Set() })) addPerson(g.crew, p);
+  story?.(g, save?.[id]?.story?.[own] ?? null);
   return g;
+}
+
+// what a room has standing in it, worked out once
+function furnishedOf(g, room) {
+  if (!g.furnished.has(room)) {
+    const r = g.layout.rooms.get(room);
+    g.furnished.set(room, r ? furnish(r, g.layout.station) : { solids: [], props: [], spots: [] });
+  }
+  return g.furnished.get(room);
+}
+
+// the rooms a side’s story brings people into, which the garrison leaves to it
+function storyRooms(g) {
+  const out = new Set();
+  const spots = g.layout.station.spots ?? {};
+  for (const s of Object.values(plot.storySteps(g))) {
+    for (const e of [...(s.start ?? []), ...(s.end ?? [])]) if (e.spawn && spots[e.spawn.spot]) out.add(spots[e.spawn.spot].room);
+  }
+  return out;
 }
 
 export function drain(g) {
@@ -213,42 +273,227 @@ function arrive(g, bodies) {
 
 // ── a step ──
 
+const NEAR = 3; // doors from you within which people are awake
+const SPOT = 1.6; // metres from a named spot that count as at it
+const FORCE_GAP = 3; // seconds between uses of the Force
+const TRICK = "These aren’t the droids you’re looking for.";
+const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+const pos = (b) => ({ x: b.x, y: b.y, z: b.z });
+const nameOf = (kind) => WHO[kind] ?? CAST[kind]?.name ?? kind;
+
+// the rooms within NEAR doors of a room, worked out once for each
+function nearRooms(g, from) {
+  g.nearby ??= new Map();
+  if (!g.nearby.has(from)) {
+    const seen = new Set([from]);
+    let edge = [from];
+    for (let k = 0; k < NEAR; k++) {
+      const next = [];
+      for (const id of edge) {
+        for (const d of g.layout.rooms.get(id)?.doors ?? []) {
+          const door = g.layout.doors.get(d);
+          const other = door.a === id ? door.b : door.a;
+          if (!seen.has(other)) seen.add(other), next.push(other);
+        }
+      }
+      edge = next;
+    }
+    g.nearby.set(from, seen);
+  }
+  return g.nearby.get(from);
+}
+
+const BUSY = new Set(['fight', 'search', 'flee', 'scripted']);
+const awake = (g, p) => !p.hidden && (BUSY.has(p.mode) || p.tag?.startsWith('with:') || nearRooms(g, g.you.room).has(p.room));
+
+function currentStep(g) {
+  if (!g.plot || g.plot.done) return null;
+  return g.plot.story.steps.find((s) => s.id === g.plot.progress.step) ?? null;
+}
+
+// lying low: crouched and still through a story’s hide or still step, nobody sees you
+function hidden(g, input) {
+  const s = currentStep(g);
+  return Boolean(s && (s.type === 'hide' || s.type === 'still') && input.crouch && g.still > 0.2);
+}
+
+function roar(g, stims) {
+  const chewie = g.crew.people.find((p) => p.kind === 'chewie' && p.hp > 0 && flat(p, g.you) < 12);
+  const at = pos(chewie ?? g.you);
+  stims.push({ type: 'roar', at });
+  g.events.push({ type: 'roar', at });
+}
+
+// a Jedi’s Force: guards close by talked round, or a noise down the corridor to draw them off
+function force(g, input, stims) {
+  const you = g.you;
+  if (you.hero !== 'obiwan' && !g.items.has('saber')) return;
+  if (g.time - (g.forcedAt ?? -Infinity) < FORCE_GAP) return;
+  g.forcedAt = g.time;
+  const near = g.crew.people.filter((p) => p.hp > 0 && p.side === 'imperial' && flat(p, you) < 4).sort((a, b) => flat(a, you) - flat(b, you)).slice(0, 2);
+  if (near.length) {
+    for (const p of near) stims.push({ type: 'trick', id: p.id, s: 8, line: TRICK });
+    g.events.push({ type: 'trick', count: near.length });
+    g.events.push({ type: 'say', who: you.hero, name: nameOf(you.hero), text: TRICK });
+    return;
+  }
+  const yaw = Number.isFinite(input.yaw) ? input.yaw : you.yaw;
+  const at = { x: you.x + Math.sin(yaw) * 10, y: you.y, z: you.z - Math.cos(yaw) * 10 };
+  stims.push({ type: 'noise', at, heard: true });
+  g.events.push({ type: 'noise', at });
+}
+
+function disguise(g, input, watched, moved, dt) {
+  const you = g.you;
+  if (!disguised(you)) return;
+  const room = g.layout.rooms.get(you.room);
+  const chewie = g.crew.people.some((p) => p.kind === 'chewie' && p.hp > 0 && flat(p, you) < 6);
+  const ctx = {
+    armour: you.armour,
+    helmet: you.helmet,
+    running: Boolean(input.run) && moved > 0.05,
+    shooting: Boolean(g.fired),
+    restricted: Boolean(room?.restricted),
+    escorting: chewie,
+    ordered: g.flags.has('transfer'),
+    officerAt: watched?.officerAt ?? null,
+    watchers: watched?.watchers ?? 0,
+    tk: g.flags.has('tk421') ? 421 : undefined,
+  };
+  const blownBefore = g.doubt >= 1;
+  const r = doubtStep(g.doubt, ctx, dt);
+  g.doubt = r.doubt;
+  you.doubt = r.doubt;
+  if (r.says) g.events.push({ type: 'say', who: 'officer', name: nameOf('officer'), text: r.says.text, key: r.says.key });
+  if (r.blown && !blownBefore) {
+    if (room) raise(g.alarm, room.section, 'seen', pos(you), g.time);
+    g.events.push({ type: 'blown' });
+    plot.feedPlot(g, { type: 'caught' });
+  }
+}
+
+// where you are, told to the story: a new room, a named spot reached, how long you have kept still
+function storyEvents(g, was) {
+  if (!g.plot || g.plot.done) return;
+  const you = g.you;
+  const near = g.crew.people.filter((p) => p.hp > 0 && flat(p, you) <= ESCORT);
+  const withYou = [...new Set(near.flatMap((p) => [p.kind, p.tag, p.tag?.startsWith('with:') ? p.tag.slice(5) : null].filter(Boolean)))];
+  let spot = null;
+  for (const [name, s] of Object.entries(g.layout.station.spots ?? {})) {
+    if (s.room === you.room && flat(s, you) <= SPOT && (!spot || flat(s, you) < flat(g.layout.station.spots[spot], you))) spot = name;
+  }
+  if (you.room !== was.room || spot !== g.atSpot) {
+    g.atSpot = spot;
+    plot.feedPlot(g, { type: 'at', room: you.room, spot, with: withYou });
+  }
+  if (g.still > 0) plot.feedPlot(g, { type: 'still', seconds: g.still });
+}
+
 export function step(g, input = {}, dt = STEP) {
   const { you, layout, doors } = g;
   g.time += dt;
+  g.fired = false;
+  const mark = g.events.length;
   face(you, input, dt);
   if (input.helmet && you.armour) {
     you.helmet = !you.helmet;
     g.events.push({ type: 'helmet', on: you.helmet });
   }
-  if (input.use && !g.lift) {
+  // E and the number keys: a line picked, someone talked to, a thing used, a lift called
+  if (Number.isInteger(input.choice) && g.talk) act.chooseHere(g, input.choice);
+  else if (input.use && !act.useHere(g) && !g.lift) {
     const ride = rideFrom(g);
     if (ride) {
       g.lift = { ...ride, t: 0 };
       g.events.push({ type: 'lift', what: 'leave', ...ride });
     }
   }
+  act.openStoryTalk(g);
 
-  const bodies = [you, ...g.bodies];
+  // a floor a story draws back (the chasm’s bridge) answers to open() as `floor:<tag>`
+  const off = offTags(layout, g.flags);
+  const open = (id) => (id.startsWith('floor:') ? off.has(id.slice(6)) : passable(doors, id));
+  const people = g.crew.people.filter((p) => p.hp > 0);
+  const bodies = [you, ...g.bodies, ...people];
   const held = holdCars(g, bodies);
   // the people aboard are the Empire’s unless they say; a Rebel in armour and helmet passes for one
   const near = bodies.map((b) => ({ x: b.x, y: b.y, z: b.z, side: b.side ?? 'imperial', disguised: Boolean(b.armour && b.helmet) }));
-  for (const e of stepDoors(doors, layout, dt, { near, flags: g.flags })) {
+  for (const e of stepDoors(doors, layout, dt, { near, flags: g.flags, lockdown: lockdowns(g.alarm) })) {
     // (a car holding its doors for a ride refuses nobody)
     if (!(e.type === 'denied' && held.has(e.door))) g.events.push({ type: 'door', what: e.type, door: e.door });
   }
   clearDoorway(doors, layout, bodies);
 
-  const open = (id) => passable(doors, id);
-  for (const e of stepBody(you, { dir: input.dir, run: input.run, jump: input.jump, crouch: input.crouch }, dt, { layout, open })) {
+  // you, standing still while a talk is open
+  const was = { x: you.x, z: you.z, room: you.room };
+  const walk = g.talk ? {} : { dir: input.dir, run: input.run, jump: input.jump, crouch: input.crouch };
+  for (const e of stepBody(you, walk, dt, { layout, open, solids: g.solidsOf(you.room) })) {
     g.events.push(e);
     if (e.type === 'room') g.seen.add(e.to);
   }
+  const moved = Math.hypot(you.x - was.x, you.z - was.z);
+  g.still = moved < 0.01 ? (g.still ?? 0) + dt : 0;
+  if (!g.talk) battle.fireYou(g, input);
+
+  // the crew
+  const stims = [];
+  if (input.run && moved > 0.05) stims.push({ type: 'steps', at: pos(you), from: 'you' });
+  if (input.roar) roar(g, stims);
+  if (input.alt) force(g, input, stims);
+  let watched = null;
+  const seenBy = hidden(g, input) ? null : you;
+  // through a hide or a still, those with you lie low as well
+  const lying = ['hide', 'still'].includes(currentStep(g)?.type);
+  for (const p of g.crew.people) if (p.tag?.startsWith('with:')) p.hidden = lying;
+  for (const e of stepCrew(g.crew, dt, { you: seenBy, alarm: g.alarm, doors, combat: g.combat, flags: g.flags, now: g.time, open, stims, awake: (p) => awake(g, p) })) {
+    if (e.type === 'call') raise(g.alarm, e.section, e.how, e.at, g.time);
+    else if (e.type === 'shoot') {
+      if (fire(g.combat, e, g.rand)) g.events.push({ type: 'shot', by: e.owner, weapon: e.weapon, at: e.from });
+    } else if (e.type === 'say') g.events.push({ type: 'say', who: e.kind, name: nameOf(e.kind), text: e.text, id: e.id, key: e.key });
+    else if (e.type === 'challenge') watched = e;
+    else {
+      g.events.push(e);
+      if (e.type === 'died') plot.feedPlot(g, { type: 'killed', kind: e.kind, tag: e.tag });
+      if (e.type === 'saw' && e.target === 'you' && currentStep(g)?.type === 'hide') plot.feedPlot(g, { type: 'caught' });
+    }
+  }
+
+  battle.stepBattle(g, dt, open, { guard: Boolean(you.blade && input.aim) });
+
+  for (const e of stepAlarm(g.alarm, dt, g.time)) {
+    if (e.type === 'intercom') g.events.push({ type: 'say', who: 'intercom', name: 'Intercom', text: e.text, key: e.key });
+    else g.events.push({ type: 'alert', section: e.section, level: e.level });
+  }
+  disguise(g, input, watched, moved, dt);
+
+  storyEvents(g, was);
+  plot.stepPlot(g, dt);
 
   if (g.lift) {
     g.lift.t += dt;
     if (g.lift.t >= RIDE - EPS) arrive(g, bodies);
   }
+
+  // every event of the step handed to the eggs, which may find one
+  for (let i = mark; i < g.events.length; i++) {
+    for (const egg of eggsOn(g.eggs, g.events[i], g)) {
+      g.events.push({ type: 'achievement', id: `ds-${egg}` });
+      g.events.push({ type: 'egg', id: egg });
+    }
+  }
+}
+
+// the section you stand in and how alarmed it is, for the HUD
+export function alertOf(g) {
+  const room = g.layout.rooms.get(g.you.room);
+  if (!room) return null;
+  return { section: room.section, name: g.layout.station.sections[room.section] ?? room.section, level: levelOf(g.alarm, room.section) ?? 'calm' };
+}
+
+// what the HUD shows as the objective: the story’s step, or nothing in free roam
+export function objectiveOf(g) {
+  const s = currentStep(g);
+  return s ? s.text : g.plot?.done ? 'The story is over. The station is yours to walk.' : null;
 }
 
 // ── what E does here ──
@@ -267,6 +512,7 @@ function refusal(g) {
 
 export function promptOf(g) {
   const { you, layout } = g;
+  if (g.talk) return null;
   if (g.lift && (g.lift.from === you.room || g.lift.to === you.room)) {
     return { text: `On the way to ${layout.station.sections[layout.rooms.get(g.lift.to).section] ?? 'the next level'}`, use: false };
   }
@@ -276,6 +522,8 @@ export function promptOf(g) {
     const way = b.y < a.y ? ' down' : b.y > a.y ? ' up' : '';
     return { text: `take the lift${way} to ${layout.station.sections[b.section] ?? b.name}`, use: true };
   }
+  const here = act.useText(act.reachable(g));
+  if (here) return { text: here, use: true };
   const no = refusal(g);
   return no ? { text: no, use: false } : null;
 }

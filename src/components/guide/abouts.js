@@ -24,5 +24,6 @@ export const ABOUT = {
   '/dot-matrix/64': 'A Super Mario 64 tribute: Peach’s castle and Bob-omb Ridge, rebuilt in the browser. Triple jump, throw King Bob-omb, find Power Stars.',
   '/dot-matrix/minecraft': 'A Minecraft tribute built here: an endless world of blocks, made from a seed. Dig, build, craft, and see out the night.',
   '/earth': 'The Earth right now, from orbit. Pick a place, fly there in a little plane and get your passport stamped.',
+  '/universe/expanse': 'A planet made from its seed: hills, rivers that run down to lakes and the sea, grass and trees. Drive a little car over it, as far as you like.',
   '/music': 'A sandstone courtyard at dusk: pick a raga, play the sitar, harmonium and tabla over the tanpura, and record the room.',
 };

@@ -1,5 +1,7 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { createTrack, leafPlaces } from './index';
+import { createTrack, leafPlaces, roomsOf } from './index';
+import { createPeople } from './people';
 
 const STEP = 1 / 30;
 const slide = { kind: 'slide', w: 2, h: 2.6 };
@@ -79,5 +81,44 @@ describe('where a body is drawn between the game’s steps', () => {
     track.push(0, { x: 0, y: 0, z: 0, yaw: 3.1 });
     track.push(STEP, { x: 0, y: 0, z: 0, yaw: -3.1 });
     expect(Math.abs(track.at(0.5).yaw)).toBeCloseTo(Math.PI, 2);
+  });
+});
+
+describe('what the people are told of the rooms', () => {
+  const streamOf = (...ids) => ({ built: new Map(ids.map((id) => [id, { group: { visible: true } }])) });
+
+  it('has a room drawn while the stream shows it, and standing from when it is built until it is freed', () => {
+    const stream = streamOf('corr327');
+    const rooms = roomsOf(stream);
+    expect([rooms.shown('corr327'), rooms.built('corr327')]).toEqual([true, true]);
+    stream.built.get('corr327').group.visible = false;
+    expect([rooms.shown('corr327'), rooms.built('corr327')]).toEqual([false, true]);
+    stream.built.delete('corr327');
+    expect([rooms.shown('corr327'), rooms.built('corr327')]).toEqual([false, false]);
+    expect([rooms.shown('aa23'), rooms.built('aa23')]).toEqual([false, false]);
+  });
+
+  it('keeps a body while a door is shut on its room, and lets it go once the stream frees the room', () => {
+    const scene = new THREE.Scene();
+    const people = createPeople(scene, { mat: () => new THREE.MeshStandardMaterial() }, { tier: 'low' });
+    const stream = streamOf('corr327');
+    const rooms = Object.assign(roomsOf(stream), { dt: STEP });
+    const crew = { people: new Map([['chewie', { id: 'chewie', kind: 'chewie', x: 4, y: 0, z: 0, yaw: 0, room: 'corr327', hp: 0, mode: 'dead', anim: 'die', aim: null }]]) };
+    const eye = { x: 0, y: 1.6, z: 0 };
+    const bodies = () => scene.children.filter((o) => o.name === 'person-chewie');
+    people.sync(crew, 1, eye, rooms);
+    const [body] = bodies();
+    expect(body.visible).toBe(true);
+    stream.built.get('corr327').group.visible = false;
+    people.sync(crew, 1, eye, rooms);
+    expect(bodies()).toEqual([body]);
+    expect(body.visible).toBe(false);
+    stream.built.get('corr327').group.visible = true;
+    people.sync(crew, 1, eye, rooms);
+    expect(body.visible).toBe(true);
+    stream.built.delete('corr327');
+    people.sync(crew, 1, eye, rooms);
+    expect(bodies()).toEqual([]);
+    people.dispose();
   });
 });
