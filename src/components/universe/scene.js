@@ -794,8 +794,13 @@ export async function create(canvas, ctx) {
   // arriving, a loaded model, the cockpit
   // (drawn into the passes' buffer while they're on, so made for it)
   // (one pass for what can be drawn in one, renderer.js's singlePass, first:
-  // that's part of the shader made)
-  const warm = (root, cam = camera, target = scene) => precompile(renderer, singlePass(root), cam, target, post.on ? post.composer.readBuffer : undefined);
+  // that's part of the shader made; and for the map, the house look, which
+  // house.follow puts on everything in it within half a second: put on
+  // after, it made each of these shaders again)
+  const warm = (root, cam = camera, target = scene) => {
+    if (target === scene) house.adopt(root);
+    return precompile(renderer, singlePass(root), cam, target, post.on ? post.composer.readBuffer : undefined);
+  };
   fleet.prepare = (o) => warm(o); // (the fleet's models too: none is made before the first frame)
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)

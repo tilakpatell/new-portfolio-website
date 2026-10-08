@@ -65,6 +65,25 @@ const PLANETS = {
   purge: () => import('./rmmoons.js'),
 };
 export const furnished = (id) => Boolean(PLANETS[id]);
+// `promise`, waited for no longer than `ms` (then undefined); never rejects
+export const within = (promise, ms) =>
+  new Promise((resolve) => {
+    const t = setTimeout(resolve, ms);
+    Promise.resolve(promise).then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      () => {
+        clearTimeout(t);
+        resolve(undefined);
+      },
+    );
+  });
+// how long the things wait for the kit's scans, on the way down (the
+// descent's 3.4 s): long enough for the page's own copies, or a quick
+// fetch; past it they're made without, and wear them when they come
+const KIT_WAIT = 1500;
 // (a thing that won't build is just missing; in development, say so)
 const oops = (what) => (err) => {
   if (import.meta.env?.DEV) console.warn(`landing: ${what}`, err);
@@ -322,8 +341,10 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     if (entry.solid !== false) for (const x of mats) solids.push({ n: x.spot.n, r: x.r * METRE });
   };
 
-  const ready = (PLANETS[id]?.() ?? Promise.resolve({}))
-    .then(async (planet) => {
+  // (the planet's builders, and the kit's scans on before anything's made
+  // of it: a shader made before they're on is made again once they are)
+  const ready = Promise.all([PLANETS[id]?.() ?? Promise.resolve({}), within(kit.ready, KIT_WAIT)])
+    .then(async ([planet]) => {
       if (dead) return;
       planet.prepare?.(kit);
       // (every thing, on any device: they're few, and the landmarks are the
