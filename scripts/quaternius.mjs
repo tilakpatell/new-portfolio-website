@@ -114,8 +114,8 @@ export const KITS = {
   'nature/mushrooms': {
     pack: 'naturemega',
     models: {
-      Mushroom_Common: { file: 'Mushroom_Common.gltf', kind: 'plant', metres: { tall: 0.3 }, tris: 600 },
-      Mushroom_RedCap: { file: 'Mushroom_RedCap.gltf', kind: 'plant', metres: { tall: 0.35 }, tris: 600 },
+      Mushroom_Common: { file: 'Mushroom_Common.gltf', kind: 'plant', metres: { tall: 0.3 }, tris: 320 },
+      Mushroom_RedCap: { file: 'Mushroom_RedCap.gltf', kind: 'plant', metres: { tall: 0.35 }, tris: 320 },
     },
   },
   // the furniture pack's OBJs name no colours (every MTL is grey): its
