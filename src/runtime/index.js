@@ -18,7 +18,7 @@ import { createWorkerPool, poolSize } from './workers';
 import { readOverride } from './backend';
 import './runtime.css';
 
-export { useWorld } from './useWorld';
+export { usePrepareProgress, useWorld } from './useWorld';
 export { default as WorldHost } from './WorldHost';
 export { fromScene } from './module';
 export { localSaves, worldStore };

@@ -74,6 +74,47 @@ describe('createRuntime', () => {
     expect(rt.current.module).toBe(mod); // the very object the page mounted, so useWorld can tell its own
   });
 
+  it("waits for a world's prepare before showing it, and tells its progress", async () => {
+    const { rt } = make();
+    let finish;
+    const seen = [];
+    rt.events.on('prepare', (e) => seen.push([e.module, e.value, e.step]));
+    const world = fakeWorld({
+      prepare: vi.fn((report) => {
+        report(0.5, 'shaders');
+        return new Promise((r) => (finish = r));
+      }),
+    });
+    const p = rt.mount({ id: 'p', create: () => world }, {}, fakeHost());
+    await settled();
+    expect(world.prepare).toHaveBeenCalled();
+    expect(rt.status).toBe('loading');
+    finish();
+    await p;
+    expect(rt.status).toBe('ready');
+    expect(seen).toEqual([
+      ['p', 0.5, 'shaders'],
+      ['p', 1, 'first draw'],
+    ]);
+  });
+
+  it('drops a world still preparing when something newer is mounted', async () => {
+    const { rt } = make();
+    let alive = null;
+    const first = fakeWorld({
+      prepare: vi.fn((report, opts) => {
+        alive = opts.alive;
+        return new Promise(() => {});
+      }),
+    });
+    rt.mount({ id: 'old', create: () => first }, {}, fakeHost());
+    await settled();
+    const second = fakeWorld();
+    await rt.mount({ id: 'new', create: () => second }, {}, fakeHost());
+    expect(alive()).toBe(false);
+    expect(rt.current.world).toBe(second);
+  });
+
   it('a module with a label makes the canvas a picture', async () => {
     const { rt } = make();
     const canvas = { remove: vi.fn(), parentNode: null, attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; } };

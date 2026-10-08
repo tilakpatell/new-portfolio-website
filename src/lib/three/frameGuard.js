@@ -247,14 +247,15 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
         }
       }
     }
-    if (!dev || !gating) return realDraw.call(this, cam, scn, geometry, material, object, group);
+    if (!dev) return realDraw.call(this, cam, scn, geometry, material, object, group);
     // (development: a shader three made in the middle of this draw, named,
     // so what still slips past the guard can be found where it comes from)
     const had = renderer.info?.programs?.length ?? 0;
     const out = realDraw.call(this, cam, scn, geometry, material, object, group);
     if ((renderer.info?.programs?.length ?? 0) > had && told < 40) {
       told += 1;
-      console.warn(`[frameGuard] shader compiled mid-frame: ${material.type}${material.name ? ` "${material.name}"` : ''} on ${object?.type ?? '?'}${object?.name ? ` "${object.name}"` : ''}${object?.parent?.name ? ` in "${object.parent.name}"` : ''}`);
+      const pass = !gating ? 'off-frame' : scn === null ? 'shadow' : 'frame';
+      console.warn(`[frameGuard] shader compiled mid-frame (${pass}): ${material.type}${material.name ? ` "${material.name}"` : ''} on ${object?.type ?? '?'}${object?.name ? ` "${object.name}"` : ''}${object?.parent?.name ? ` in "${object.parent.name}"` : ''}`);
     }
     return out;
   };
