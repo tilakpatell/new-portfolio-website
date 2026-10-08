@@ -589,24 +589,33 @@
 .galaxy-areas li[data-yours] { color: #fff; }
 .galaxy-war { display: grid; gap: 0.5rem; margin-top: 0.9rem; }
 /* the war's line over the galaxy (WarHud.jsx): the battle here in a pill, and
-   under it while you're in it the stage it's at and its objectives' bars */
+   under it while you're in it the stage it's at, with a short bar for each of
+   its objectives; two rows, clear of the crew's line (.universe-comms) below */
 .galaxy-warhud { position: absolute; top: 4.6rem; left: 50%; z-index: 3; display: grid; justify-items: center; gap: 0.25rem; width: max-content; max-width: calc(100% - 2rem); margin: 0; transform: translateX(-50%); color: #fff; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; pointer-events: none; }
-.galaxy-warhud p { max-width: 100%; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.galaxy-warhud-line { padding: 0.3rem 0.8rem; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--side) 55%, transparent); background: rgb(2 6 16 / 0.72); }
-.galaxy-warhud-stage { padding: 0.15rem 0.65rem; border-radius: 999px; background: rgb(2 6 16 / 0.62); color: rgb(217 243 255 / 0.88); font-size: 0.66rem; }
+.galaxy-warhud p { max-width: 100%; margin: 0; white-space: nowrap; }
+.galaxy-warhud-line { overflow: hidden; padding: 0.3rem 0.8rem; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--side) 55%, transparent); background: rgb(2 6 16 / 0.72); text-overflow: ellipsis; }
+.galaxy-warhud-stage { display: flex; align-items: center; gap: 0.6rem; padding: 0.15rem 0.65rem; border-radius: 999px; background: rgb(2 6 16 / 0.62); color: rgb(217 243 255 / 0.88); font-size: 0.66rem; }
+.galaxy-warhud-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .galaxy-warhud-next { color: rgb(255 214 150 / 0.92); }
-.galaxy-warhud-bars { display: grid; gap: 0.22rem; width: min(17rem, 100%); margin: 0; padding: 0.32rem 0.6rem; border-radius: 0.55rem; background: rgb(2 6 16 / 0.62); list-style: none; }
-.galaxy-warhud-bars li { display: grid; grid-template-columns: minmax(0, 1fr) 5.5rem; align-items: center; gap: 0.55rem; color: rgb(217 243 255 / 0.88); font-size: 0.62rem; }
-.galaxy-warhud-bars li[data-down] { color: rgb(217 243 255 / 0.45); text-decoration: line-through; }
-.galaxy-warhud-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.galaxy-warhud-bar { position: relative; height: 0.3rem; overflow: hidden; border-radius: 999px; background: rgb(255 255 255 / 0.16); }
+.galaxy-warhud-bars { display: flex; flex: none; gap: 0.25rem; }
+.galaxy-warhud-bar { position: relative; width: 2.2rem; height: 0.32rem; overflow: hidden; border-radius: 999px; background: rgb(255 255 255 / 0.18); }
 .galaxy-warhud-bar::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--side); transform: scaleX(var(--k, 1)); transform-origin: left; }
+.galaxy-warhud-bar[data-down] { background: rgb(255 255 255 / 0.08); }
 @media (prefers-reduced-motion: no-preference) { .galaxy-warhud-bar::after { transition: transform 0.6s ease-out; } }
 /* (over a bright planet in a light page the glass needs more body to read) */
-@media (prefers-color-scheme: light) { .galaxy-warhud-line, .galaxy-warhud-stage, .galaxy-warhud-bars { background: rgb(2 6 16 / 0.84); } }
+@media (prefers-color-scheme: light) { .galaxy-warhud-line, .galaxy-warhud-stage { background: rgb(2 6 16 / 0.84); } }
+/* (on a phone the band between the nav and the crew's line, .galaxy-page
+   .universe-comms at nav-h + 56px, is shared with the map button: the HUD
+   keeps to its right, both rows in the band) */
+@media (max-width: 767px) {
+  .galaxy-warhud { top: calc(var(--nav-h, 68px) + 4px); right: 16px; left: auto; justify-items: end; max-width: calc(100% - 9rem); transform: none; font-size: 0.66rem; }
+  .galaxy-warhud-stage { font-size: 0.6rem; }
+  .galaxy-warhud-bar { width: 1.6rem; }
+}
 
-/* the battle's end (BattleEnd.jsx): Victory or Defeat a few seconds, why, and your part */
-.galaxy-battleend { --tone: #9fb0d0; position: absolute; top: 22%; left: 50%; z-index: 4; width: min(22rem, calc(100% - 2rem)); padding: 0.9rem 1.1rem 1rem; transform: translateX(-50%); border-radius: 0.8rem; border: 1px solid color-mix(in srgb, var(--tone) 60%, transparent); background: rgb(2 6 16 / 0.84); box-shadow: 0 0 2.4rem color-mix(in srgb, var(--tone) 22%, transparent); color: #fff; text-align: center; pointer-events: none; }
+/* the battle's end (BattleEnd.jsx): Victory or Defeat a few seconds, why, and your part
+   (under the crew's line, which says its own word on it) */
+.galaxy-battleend { --tone: #9fb0d0; position: absolute; top: max(30%, calc(var(--nav-h, 68px) + 150px)); left: 50%; z-index: 4; width: min(22rem, calc(100% - 2rem)); padding: 0.9rem 1.1rem 1rem; transform: translateX(-50%); border-radius: 0.8rem; border: 1px solid color-mix(in srgb, var(--tone) 60%, transparent); background: rgb(2 6 16 / 0.84); box-shadow: 0 0 2.4rem color-mix(in srgb, var(--tone) 22%, transparent); color: #fff; text-align: center; pointer-events: none; }
 .galaxy-battleend[data-tone='won'] { --tone: #ffd36b; }
 .galaxy-battleend[data-tone='lost'] { --tone: #ff7a6b; }
 .galaxy-battleend-title { margin: 0; color: var(--tone); font-family: var(--font-mono); font-size: clamp(1.5rem, 7vw, 2.2rem); font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }

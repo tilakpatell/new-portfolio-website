@@ -145,7 +145,7 @@ export function yoursLine(yours) {
   if (yours?.kills) parts.push(`${yours.kills} ${yours.kills === 1 ? 'kill' : 'kills'}`);
   if (yours?.objectives) parts.push(`${yours.objectives} ${yours.objectives === 1 ? 'objective' : 'objectives'}`);
   if (yours?.intercepts) parts.push(`${yours.intercepts} ${yours.intercepts === 1 ? 'intercept' : 'intercepts'}`);
-  return parts.length ? parts.join(' · ') : 'You weren’t in among it';
+  return parts.length ? parts.join(' · ') : 'Nothing of theirs down this time';
 }
 
 export function afterLine(info, sysName, now) {
