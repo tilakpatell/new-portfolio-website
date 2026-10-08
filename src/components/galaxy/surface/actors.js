@@ -56,7 +56,7 @@ import { SURFACE_MODELS, surfaceUrl } from './catalog';
 import { buildFigure } from './figures';
 import { crewFigure } from './crew';
 import { PROPS } from './props';
-import { cloneModel, loadGlb } from './placer';
+import { cloneModel, loadGlb, squared } from './placer';
 import { rng } from './noise';
 import { groundAt, lineClear, turnToward } from './walker';
 import { hear, mannerOf, pickWant, placesOf, relate } from './needs';
@@ -262,7 +262,7 @@ export async function modelFigure(kind) {
   if (!SURFACE_MODELS[kind]) return null;
   const n = made.get(kind) ?? 0;
   made.set(kind, n + 1);
-  const gltf = await loadGlb(surfaceUrl(kind));
+  const gltf = squared(await loadGlb(surfaceUrl(kind)), kind);
   if (!gltf) return null;
   const row = SURFACE_MODELS[kind];
   return modelFigureOf(cloneModel(gltf), { animations: gltf.animations, anim: row.anim, seed: seedOf(kind, n), clipSpeed: row.clipSpeed ?? null, machine: Boolean(row.machine) });
