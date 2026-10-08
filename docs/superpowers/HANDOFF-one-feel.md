@@ -60,7 +60,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 1B | | | | |
 | 1C | | | | |
 | 1D | | | | |
-| 1E | | | | |
+| 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | PR_TBD | |
 | 2A | | | | |
 | 2B | | | | |
 | 2C | | | | |
@@ -71,3 +71,6 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 ## Findings (for the owner and the next lane)
 
 - (a lane writes here what it found and could not do in its files: a shared change it needs, a spec decision it questions, a world that will not take a piece and why)
+- **1E, for 2A–2F:** `collidersOf(model).bodies` gives descs relative to the model’s root; a world that stands the model somewhere adds that place to each body’s `position` and `rotation` (`fromModel.js`’s `colliderIn` composes a collider into its body’s frame). A `physical` node is hidden, so a body that is also the visible mesh vanishes: model the shapes beside the look. three.js’s loader strips `.` from node names (`cuboid.001` loads as `cuboid001`), which the prefix rules allow for.
+- **1E, for the landings’ owner:** a model’s physical nodes become one landing body (the first’s type, every collider, the masses summed): `landings/physics.js` sets its own friction, restitution and damping, so a node’s `userData.friction` and `restitution` are not used there yet, and a `kinematic` node stands fixed. `landings/models.js` sizes a model by `Box3.setFromObject`, which counts hidden objects: a physical mesh larger than the look would shrink the look a little (the web cut strips the meshes of the shapes sized by scale, so only a body’s own mesh, a hull or a trimesh can).
+- **1E, for the owner:** `scripts/gen3d/README.md` and `docs/README.md`’s `assets/` row don’t yet mention `--check-colliders` and `docs/assets/colliders.md` (outside the lane’s files).
