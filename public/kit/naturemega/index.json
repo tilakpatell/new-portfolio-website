@@ -365,7 +365,7 @@
     },
     "CherryBlossom_4": {
       "family": "cherryblossom",
-      "file": "cherryblossom.glb",
+      "file": "cherryblossom-2.glb",
       "parts": [
         "bark",
         "leaves"
@@ -391,7 +391,7 @@
     },
     "CherryBlossom_5": {
       "family": "cherryblossom",
-      "file": "cherryblossom.glb",
+      "file": "cherryblossom-2.glb",
       "parts": [
         "bark",
         "leaves"
@@ -2077,7 +2077,7 @@
       "leaf": false,
       "wind": "tree",
       "maps": {
-        "colour": "512x512",
+        "colour": "1024x1024",
         "normal": "1024x1024"
       }
     },
