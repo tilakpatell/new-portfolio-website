@@ -213,6 +213,9 @@ export const SITE = {
     { kind: 'lamp', at: [16, -30], opts: { h: 5, light: '#ffe0a0' } },
   ],
   scatter: [
+    // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+    { kind: 'qfern', n: 80, within: [8, 120], scale: [0.8, 1.5], solid: false },
+    { kind: 'qclover', n: 120, within: [4, 80], scale: [0.8, 1.6], solid: false },
     // the tall trees, vines hanging from them, then the built ones between
     // (the jungle's own trees close in all round, their umbrella crowns a
     // roof overhead, as the film's are: built here, in the world's own
@@ -248,7 +251,7 @@ export const SITE = {
     { kind: 'rebeltech', n: 2, at: [6, -12], spread: 8, roam: 8, speed: 0.9, needs: ['work', 'rest'], name: 'Rebel technician', says: ['Proton torpedoes loaded. Both of them.', 'She’s old, but she flies.', 'Don’t stand under the ramp.'] },
     { kind: 'astromech', n: 1, at: [20, -26], roam: 5, speed: 0.6, name: 'Astromech', says: ['(A low, grumbling whistle: the Y-wing’s deflector is shot again.)'] },
     { kind: 'rebel', n: 6, at: [0, -112], spread: 18, roam: 12, speed: 1.1, name: 'Rebel trooper', says: ['They got the plans out! The princess brought them herself.', 'The Death Star’s coming round the planet. Thirty minutes, they say.', 'Massassi built this place. Who they were, nobody knows.', 'May the Force be with you.'] },
-    { kind: 'pilot', n: 4, at: [0, -222], level: 9, spread: 8, roam: 6, speed: 1.0, name: 'X-wing pilot', says: ['Red Five standing by.', 'Look at the size of that thing!', 'Stay on target… stay on target…', 'I used to bullseye womp rats in my T-16 back home. They’re not much bigger than two metres.'] },
+    { kind: 'rebelpilot', n: 4, at: [0, -222], level: 9, spread: 8, roam: 6, speed: 1.0, name: 'X-wing pilot', says: ['Red Five standing by.', 'Look at the size of that thing!', 'Stay on target… stay on target…', 'I used to bullseye womp rats in my T-16 back home. They’re not much bigger than two metres.'] },
     { kind: 'droid', n: 3, at: [0, -216], level: 9, spread: 8, roam: 6, speed: 0.6, name: 'Astromech', says: ['(A brisk, busy whistle.)', '(It plugs into a fuel line and beeps happily.)'] },
     { kind: 'c3po', n: 1, at: [0, -225.5], level: 9, still: true, face: 3.4, name: 'C-3PO', says: { when: { done: ['scramble'] }, lines: ['Oh, I do hope Artoo comes back in one piece.', 'You wouldn’t want my life to get boring, would you?'], else: ['Hang on tight, Artoo. You’ve got to come back.', 'You wouldn’t want my life to get boring, would you?', 'Oh, I do hope they know what they’re doing.'] } },
     { kind: 'rebel', n: 1, at: [-200, -120], still: true, face: 0.3, name: 'Rebel sentry', says: { when: { rank: 2 }, lines: ['(He straightens up.) Sir. All quiet up here. Just the jungle, and Yavin.', '(He lowers his macrobinoculars.) Ship coming in. It’s the Falcon!'], else: ['(He lowers his macrobinoculars.) Ship coming in. It’s the Falcon!', 'All quiet up here. Just the jungle, and Yavin.'] } },
@@ -276,10 +279,10 @@ export const SITE = {
       },
       life: [
         { kind: 'rebel', id: 'dodonna', at: [-4, -6.6], still: true, face: 0, name: 'General Dodonna', named: true, quest: ['briefing', 'remotes'], says: { when: { done: ['briefing'] }, lines: ['The battle station will be in range in thirty minutes.', 'Man your ships. And may the Force be with you.'], else: ['The battle station is heavily shielded and carries a firepower greater than half the star fleet.', 'Its defences are designed around a direct, large-scale assault. A small one-man fighter should be able to penetrate the outer defence.', 'The battle station will be in range in thirty minutes.'] } },
-        { kind: 'pilot', id: 'goldleader', at: [-3, -1], still: true, face: Math.PI, name: 'Gold Leader', named: true, says: ['Pardon me for asking, sir, but what good are snubfighters going to be against that?'] },
-        { kind: 'pilot', id: 'wedge', at: [4, 0.6], still: true, face: Math.PI, name: 'Wedge Antilles', named: true, says: { when: { hero: 'luke' }, lines: ['That’s impossible, even for a computer.', 'Look at the size of that thing.'], else: ['Look at the size of that thing.', 'You’re flying with us? Then stay on my wing.'] } },
-        { kind: 'pilot', id: 'biggs', at: [6.5, 0.6], still: true, face: Math.PI, name: 'Biggs Darklighter', named: true, says: ['It’s not impossible. I used to bullseye womp rats in my T-16 back home, they’re not much bigger than two metres.', 'Luke! I told you I’d make it someday.'] },
-        { kind: 'pilot', n: 8, at: [0, 3.8], spread: 7, still: true, face: Math.PI, name: 'Rebel pilot', says: ['(He listens, and says nothing. Thirty minutes.)', 'Stay on target. That’s all I’m thinking. Stay on target.'] },
+        { kind: 'rebelpilot', id: 'goldleader', at: [-3, -1], still: true, face: Math.PI, name: 'Gold Leader', named: true, says: ['Pardon me for asking, sir, but what good are snubfighters going to be against that?'] },
+        { kind: 'rebelpilot', id: 'wedge', at: [4, 0.6], still: true, face: Math.PI, name: 'Wedge Antilles', named: true, says: { when: { hero: 'luke' }, lines: ['That’s impossible, even for a computer.', 'Look at the size of that thing.'], else: ['Look at the size of that thing.', 'You’re flying with us? Then stay on my wing.'] } },
+        { kind: 'rebelpilot', id: 'biggs', at: [6.5, 0.6], still: true, face: Math.PI, name: 'Biggs Darklighter', named: true, says: ['It’s not impossible. I used to bullseye womp rats in my T-16 back home, they’re not much bigger than two metres.', 'Luke! I told you I’d make it someday.'] },
+        { kind: 'rebelpilot', n: 8, at: [0, 3.8], spread: 7, still: true, face: Math.PI, name: 'Rebel pilot', says: ['(He listens, and says nothing. Thirty minutes.)', 'Stay on target. That’s all I’m thinking. Stay on target.'] },
         { kind: 'rebel', n: 3, at: [-9, -4], spread: 2, roam: 2, speed: 0.6, name: 'Rebel officer', says: ['The plans are being analysed now.', 'An approach down the trench. A two-metre port. Nobody’s laughing.'] },
         { kind: 'c3po', at: [9, -6], still: true, face: -2.2, name: 'C-3PO', says: ['Oh, Artoo. I do hope they know what they’re doing.'] },
       ],

@@ -78,5 +78,5 @@ export function routeTo(g, target) {
     } else next = { ...lift(g, p.room, p.x, p.z), kind: 'lift' };
     break;
   }
-  return { next: next ?? { x: target.x, y: target.y, z: target.z, room: target.room, kind: 'goal' }, goal: target, metres };
+  return { next: next ?? { x: target.x, y: target.y, z: target.z, room: target.room, kind: 'goal' }, goal: target, metres, points: way.map((p) => ({ x: p.x, z: p.z, room: p.room })) };
 }

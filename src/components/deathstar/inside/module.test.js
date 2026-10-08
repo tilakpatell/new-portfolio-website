@@ -314,7 +314,7 @@ describe('aboard the Death Star, the menus', () => {
     expect(rt.store.get(SAVE).settings.view).toBe('first');
     world.set({ subtitles: false, view: 'sideways' });
     world.step(1 / 60, snap());
-    expect(last(rt, 'ui').settings).toEqual({ view: 'first', sound: true, subtitles: false, guide: true });
+    expect(last(rt, 'ui').settings).toEqual({ view: 'first', sound: true, subtitles: false, guide: true, tips: true });
   });
 
   it('quits to the start screen, offering the last game’s choices', async () => {

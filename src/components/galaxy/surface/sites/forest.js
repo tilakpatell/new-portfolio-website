@@ -270,6 +270,9 @@ export const SITES = {
       { kind: 'lightshafts', at: [-90, 60], opts: { ...ENDOR_SUN, n: 8, spread: 46, seed: 9 } },
     ],
     scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qfern', n: 120, within: [5, 60], scale: [0.7, 1.4], solid: false },
+      { kind: 'qmushroom', n: 30, within: [6, 60], scale: [0.6, 1.3], solid: false },
       // (the stand close set, as a redwood grove is: trunks in every
       // direction, the nearest ring thickest so the clearing you land in
       // reads as one, and the far ones carrying the forest to the hills)
@@ -562,6 +565,8 @@ export const SITES = {
       { kind: 'wroshyrgreat', at: [330, -260], yaw: 3.6, scale: 0.9, sink: 2, solid: { r: 25 } },
     ],
     scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qfern', n: 100, within: [8, 120], scale: [0.8, 1.5], solid: false },
       { kind: 'wroshyr', n: 110, within: [50, 640], scale: [0.7, 1.4], opts: { seed: 1, leaf: '#354832', bark: '#50554e' } },
       { kind: 'wroshyr', n: 70, within: [640, 1400], scale: [1.0, 1.8], solid: false, opts: { seed: 2, lo: true, leaf: '#354832', bark: '#50554e' } },
       { kind: 'karst', n: 30, within: [200, 900], scale: [7, 16], stretch: [1.0, 1.8], dry: false, opts: { seed: 3 } },
@@ -757,6 +762,9 @@ export const SITES = {
     // them, kept off the places (Yoda's hut, the X-wing, the cave, the camp)
     things: grove(31, 46, 30, 190, ['dagocypress', 'dagocypress', 'dagoroots'], [0.7, 1.25]).filter(({ at: [x, z] }) => [[-90, 60, 30], [40, 74, 34], [-70, -120, 30], [100, -60, 32], [-26, -46, 24], [130, 110, 30], [0, 0, 26]].every(([px, pz, r]) => Math.hypot(x - px, z - pz) > r)),
     scatter: [
+      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
+      { kind: 'qfern', n: 100, within: [5, 80], scale: [0.7, 1.4], solid: false },
+      { kind: 'qmushroom', n: 30, within: [6, 80], scale: [0.6, 1.4], solid: false },
       // great cypresses on their roots, mangrove roots standing in the bog
       // (the great trees few and far, shapes in the mist; the gnarled ones
       // close in all round, crowded, as the film's are)
