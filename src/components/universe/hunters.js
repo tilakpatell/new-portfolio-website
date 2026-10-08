@@ -92,6 +92,13 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     h.view = null;
     shown.delete(h);
   };
+  // one flying its built stand-in, its model come since: the model takes over
+  // where it is (the stand-in is not wanted again, so it goes, not to the pool)
+  const swap = (h) => {
+    h.view.group.removeFromParent();
+    drop(h.view);
+    h.view = take(h.kind);
+  };
   const look = new THREE.Vector3();
   const answer = (r) => {
     if (!r) return null;
@@ -118,6 +125,9 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     // at (the scene opens a portal or flashes a jump at each)
     pack(faction, ship, opts = {}) {
       const members = hunt.pack(faction, ship, { ...opts, prey: preyOf(opts.prey ?? null) });
+      // (their models, the ones that are models and not here yet: nothing else
+      // asks for a hunter's, and a kind flies as its built one until it comes)
+      fleet.want?.([...new Set(members.map((h) => h.kind))]);
       for (const h of members) {
         h.view = take(h.kind);
         shown.add(h);
@@ -135,6 +145,8 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
       // the ones that have gone (flown off, or shot down by someone else)
       for (const h of shown) if (!h.alive) give(h);
       for (const h of hunt.live) {
+        // (the moment its model is here, as the galaxy's slots swap theirs: galaxy/models.js)
+        if (h.view && !h.view.model && fleet.loaded(h.kind)) swap(h);
         const g = h.view?.group;
         if (!g) continue;
         g.position.set(h.pos.x, h.pos.y, h.pos.z);
