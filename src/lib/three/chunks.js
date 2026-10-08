@@ -34,70 +34,68 @@ function boxDist(px, pz, ix, iz, size) {
 }
 
 export function createChunks({ size, near, far, cells, build, prepare, ahead = size, budget = 1 }) {
-  const fixed = Array.isArray(cells) ? cells.slice() : null;
+  const fixed = Array.isArray(cells) ? cells.map((key) => ({ key, ...parseKey(key) })) : null;
   // key -> { key, ix, iz, state, handle, shown, dist, failedAt, tries, gone }
   // state: 'idle' (known, nothing made), 'busy', 'ready', 'failed'
   const held = new Map();
   let tick = 0;
   let inFlight = 0;
   let all = false;
+  let preparing = false;
   let disposed = false;
-  const running = new Set();
 
   const cellFor = (key) => {
     let c = held.get(key);
     if (!c) {
       const { ix, iz } = parseKey(key);
-      c = { key, ix, iz, state: 'idle', handle: null, shown: false, dist: Infinity, failedAt: 0, tries: 0, gone: false };
+      c = { key, ix, iz, state: 'idle', handle: null, shown: false, dist: Infinity, failedAt: 0, tries: 0, gone: false, promise: null };
       held.set(key, c);
     }
     return c;
   };
 
+  const safeDispose = (handle) => {
+    try { handle?.dispose?.(); } catch { /* a handle that won't dispose is still forgotten */ }
+  };
+
+  // Let a cell go. A cell still being made is not touched here: the step
+  // that holds its handle sees `gone` and disposes it, once, when it's done.
   const release = (c) => {
     c.gone = true;
     held.delete(c.key);
-    if (c.handle) {
-      try { c.handle.dispose?.(); } catch { /* a cell that won't dispose is still forgotten */ }
-      c.handle = null;
-    }
+    if (c.state !== 'busy') safeDispose(c.handle);
+    c.handle = null;
   };
 
   // build then prepare one cell; a throw or rejection marks it failed
   async function step(c) {
     c.state = 'busy';
-    inFlight++;
     let handle = null;
+    let kept = false;
     try {
       handle = await build(c.key, (c.ix + 0.5) * size, (c.iz + 0.5) * size);
-      c.handle = handle;
-      await prepare(handle, c.key);
-      if (c.gone) return;
-      c.state = 'ready';
-      c.shown = c.dist <= near;
-    } catch {
-      if (handle && !c.gone) {
-        try { handle.dispose?.(); } catch { /* ignore */ }
-      }
+      if (!c.gone) await prepare(handle, c.key);
       if (!c.gone) {
-        c.handle = null;
+        c.handle = handle;
+        c.state = 'ready';
+        c.shown = c.dist <= near;
+        kept = true;
+      }
+    } catch {
+      if (!c.gone) {
         c.state = 'failed';
         c.failedAt = tick;
         c.tries++;
       }
     } finally {
-      inFlight--;
-      // let go of a cell that was left behind or disposed while it was made
-      if (c.gone && handle) {
-        try { handle.dispose?.(); } catch { /* ignore */ }
-      }
+      if (!kept) safeDispose(handle);
     }
   }
 
   const start = (c) => {
-    const p = step(c);
-    running.add(p);
-    p.finally(() => running.delete(p));
+    inFlight++;
+    const p = step(c).finally(() => { inFlight--; });
+    c.promise = p;
     return p;
   };
 
@@ -126,21 +124,20 @@ export function createChunks({ size, near, far, cells, build, prepare, ahead = s
     const dist = (ix, iz) => Math.min(boxDist(px, pz, ix, iz, size), boxDist(ax, az, ix, iz, size));
 
     // what the cells held so far should do
-    for (const c of [...held.values()]) {
+    for (const c of held.values()) {
       c.dist = dist(c.ix, c.iz);
-      if (!all && c.dist > 2 * far) { release(c); continue; }
+      if (!all && !preparing && c.dist > 2 * far) { release(c); continue; }
       if (c.state === 'ready') {
         c.shown = c.dist <= near || (c.shown && c.dist <= far);
       }
     }
-    if (all) return;
+    if (all || preparing) return;
 
     // the nearest wanted cell that still needs making
     if (inFlight >= budget) return;
     let best = null;
     let bestD = Infinity;
-    const consider = (key) => {
-      const { ix, iz } = parseKey(key);
+    const consider = ({ key, ix, iz }) => {
       const d = dist(ix, iz);
       if (d > near || d >= bestD) return;
       const c = held.get(key);
@@ -152,31 +149,39 @@ export function createChunks({ size, near, far, cells, build, prepare, ahead = s
       bestD = d;
     };
     if (fixed) fixed.forEach(consider);
-    else keysAround([{ x: px, z: pz }, { x: ax, z: az }]).forEach(consider);
+    else keysAround([{ x: px, z: pz }, { x: ax, z: az }]).forEach((key) => consider({ key, ...parseKey(key) }));
     if (best === null) return;
     const c = cellFor(best);
     c.dist = bestD;
     start(c);
   }
 
+  // Builds and prepares every listed cell. While it runs update() leaves
+  // the cells alone. A cell that fails here is skipped and not retried
+  // afterwards: once everything has been prepared, update() only decides
+  // what's drawn.
   async function prepareAll(onProgress, alive = () => true) {
     if (!fixed) throw new Error('prepareAll needs a list of cells');
-    // wait out a step an update already started
-    await Promise.all([...running]);
-    const total = fixed.length;
-    let done = 0;
-    if (total === 0) onProgress?.(1);
-    for (const key of fixed) {
-      if (disposed || !alive()) return;
-      const c = cellFor(key);
-      if (c.state !== 'ready') {
-        c.tries = 0;
-        await start(c);
+    preparing = true;
+    try {
+      const total = fixed.length;
+      let done = 0;
+      if (total === 0) onProgress?.(1);
+      for (const { key } of fixed) {
+        if (disposed || !alive()) return;
+        const c = cellFor(key);
+        if (c.state === 'busy') await c.promise;
+        else if (c.state !== 'ready') {
+          c.tries = 0;
+          await start(c);
+        }
+        done++;
+        onProgress?.(done / total);
       }
-      done++;
-      onProgress?.(done / total);
+      if (!disposed && alive()) all = true;
+    } finally {
+      preparing = false;
     }
-    if (!disposed && alive()) all = true;
   }
 
   const visible = (key) => {
@@ -186,7 +191,7 @@ export function createChunks({ size, near, far, cells, build, prepare, ahead = s
 
   function dispose() {
     disposed = true;
-    for (const c of [...held.values()]) release(c);
+    for (const c of held.values()) release(c);
   }
 
   // the keys of the cells that are built and prepared

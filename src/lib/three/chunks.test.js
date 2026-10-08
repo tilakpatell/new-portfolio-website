@@ -269,4 +269,57 @@ describe('dispose', () => {
     expect(o.build.mock.calls.length).toBe(n);
     expect(c.visible('0,0')).toBe(false);
   });
+
+  it('disposes a handle once when let go during prepare', async () => {
+    let release;
+    let calls = 0;
+    const { c } = make({
+      build: vi.fn(() => ({ dispose: () => { if (++calls > 1) throw new Error('twice'); } })),
+      prepare: () => new Promise((r) => { release = r; }),
+    });
+    c.update({ x: 5, z: 5 }, { x: 0, z: 0 });
+    await flush();
+    c.dispose();
+    release();
+    await flush();
+    expect(calls).toBe(1);
+  });
+
+  it('skips prepare and disposes when let go during build', async () => {
+    let release;
+    const disposed = [];
+    const prepare = vi.fn(async () => {});
+    const { c } = make({
+      build: () => new Promise((r) => { release = () => r({ dispose: () => disposed.push(1) }); }),
+      prepare,
+    });
+    c.update({ x: 5, z: 5 }, { x: 0, z: 0 });
+    c.dispose();
+    release();
+    await flush();
+    expect(prepare).not.toHaveBeenCalled();
+    expect(disposed).toEqual([1]);
+  });
+});
+
+describe('prepareAll against update', () => {
+  it('update neither builds nor lets go while it runs, and waits for a busy cell', async () => {
+    let release;
+    let first = true;
+    const { c, o, disposed } = make({
+      cells: ['0,0', '1,0'],
+      prepare: vi.fn(() => (first ? ((first = false), new Promise((r) => { release = r; })) : Promise.resolve())),
+    });
+    c.update({ x: 5, z: 5 }, { x: 0, z: 0 }); // starts 0,0
+    await flush();
+    const p = c.prepareAll(() => {}, () => true);
+    await flush();
+    c.update({ x: 5000, z: 5 }, { x: 0, z: 0 });
+    expect(disposed).toEqual([]);
+    expect(o.build).toHaveBeenCalledTimes(1);
+    release();
+    await p;
+    expect(o.build).toHaveBeenCalledTimes(2); // 0,0 not built twice
+    expect(disposed).toEqual([]);
+  });
 });
