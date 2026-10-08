@@ -85,6 +85,14 @@
 @keyframes ship-power-on { to { transform: scale(1.14); } }
 @keyframes ship-power-full { 50% { box-shadow: 0 0 18px color-mix(in srgb, var(--power) 70%, transparent), inset 0 0 10px color-mix(in srgb, var(--power) 35%, transparent); } }
 
+/* a short window (a laptop's, 1366 by 768, leaves about 657 of it): the
+   column has no room left under the deflectors before the flight settings'
+   button, which would sit over the G tile and take its clicks, so the tiles
+   go beside the deflectors instead (beside the button they'd meet the
+   first-flight hint along the bottom) */
+@media (pointer: fine) and (max-height: 700px) {
+  .ship-powers { top: calc(50% + var(--nav-h, 68px) / 2 + 92px); left: 120px; }
+}
 /* a touch screen: round buttons above View, clear of Fire, Boost and the climbs */
 @media (pointer: coarse) {
   .ship-powers { left: auto; top: auto; right: calc(var(--panel-w, 0px) + 200px); bottom: 104px; flex-direction: row-reverse; }
