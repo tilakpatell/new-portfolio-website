@@ -34,7 +34,8 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { createKit } from '../../galaxy/surface/kit';
+import { LOOKS, createKit, loadScan, scanOf } from '../../galaxy/surface/kit';
+import { loadGltf } from '../../../lib/three/gltf';
 import { rng } from '../../galaxy/surface/noise';
 import { METRE, facingAlong, place, solidsOn, vec } from '../foot';
 import { SCATTER_MAX, scatterSpots, seedOf } from './landings';
@@ -85,6 +86,25 @@ export const within = (promise, ms) =>
       },
     );
   });
+// every model a landing may stand about (its biomes' too), each once
+export const modelUrls = (landing) => [...new Set([landing?.models, ...(landing?.biomes ?? []).map((b) => b.models)].flatMap((m) => Object.values(m ?? {}).map((spec) => spec.url)))];
+
+// What landing on `id` will want, fetched while the ship's still on its way
+// (from the moment it's landable: scene.js), so none of it is fetched, or
+// parsed, on the way down: the builders' file, the models (parsed once for
+// the page: lib/three/gltf), the people's file where anyone stands about,
+// and the kit's scans (loaded once for the page: lib/three/core). Nothing's
+// built or drawn; each planet is asked for once.
+const asked = new Set();
+export function prefetch(id, landing, { renderer = null } = {}) {
+  if (!PLANETS[id] || asked.has(id)) return;
+  asked.add(id);
+  PLANETS[id]().catch(() => asked.delete(id));
+  for (const url of modelUrls(landing)) loadGltf(url, { renderer });
+  if ([landing, ...(landing?.biomes ?? [])].some((l) => l?.things?.some((t) => t.kind === 'figure'))) import('./people.js').catch(() => {});
+  for (const role of Object.keys(LOOKS)) if (scanOf(role)) loadScan(role);
+}
+
 // how long the things wait for the kit's scans, on the way down (the
 // descent's 3.4 s): long enough for the page's own copies, or a quick
 // fetch; past it they're made without, and wear them when they come

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { within } from './furnish';
+import { modelUrls, within } from './furnish';
 
 describe('within', () => {
   it("is what the promise gives, when it's in time", async () => {
@@ -15,5 +15,20 @@ describe('within', () => {
 
   it("never rejects: a promise that fails is waited for as one that's in", async () => {
     await expect(within(Promise.reject(new Error('no scans')), 50)).resolves.toBeUndefined();
+  });
+});
+
+describe('modelUrls', () => {
+  it("is every model a landing may stand about, its biomes' too, each once", () => {
+    const landing = {
+      models: { rv: { url: '/models/rv.glb' }, car: { url: '/models/car.glb' } },
+      biomes: [{ id: 'city', models: { car: { url: '/models/car.glb' }, sign: { url: '/models/sign.glb' } } }, { id: 'sands' }],
+    };
+    expect(modelUrls(landing)).toEqual(['/models/rv.glb', '/models/car.glb', '/models/sign.glb']);
+  });
+
+  it('is none for a landing with no models', () => {
+    expect(modelUrls({ things: [] })).toEqual([]);
+    expect(modelUrls(null)).toEqual([]);
   });
 });

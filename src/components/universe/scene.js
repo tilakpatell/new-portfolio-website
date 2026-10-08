@@ -4719,6 +4719,8 @@ export async function create(canvas, ctx) {
     if (landable !== state.landable) {
       state.landable = landable;
       emit({ type: 'landable', id: landable });
+      // (and what coming down there will want, fetched while you're still flying)
+      if (landable) foot.prefetch(landable, state.kind);
     }
     placeAlt();
     map.rotation.y = state.yaw;

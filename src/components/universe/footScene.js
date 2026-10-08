@@ -39,7 +39,7 @@
 // RV on Breaking Bad's, the Smiths' street on C-137's), and the place's name
 // comes up as you land (an 'arrive' event).
 //
-// createFoot({ map, emit, reduced, small, planetOf, renderer, prepare }) → { phase, begin(...),
+// createFoot({ map, emit, reduced, small, planetOf, renderer, prepare }) → { phase, prefetch(id, kind), begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
 //   board(), look(dx, dy), first(), aimPoint(), info(), crew(),
 //   guests(list), end(), dispose() }
@@ -76,7 +76,7 @@ import { landingOf } from './landings/landings';
 import { biomeAt, fromLatLon, latLonOf, readableMap, sampleMap, towardLand, uvOf } from './landings/biomes';
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
-import { furnish, furnished, within } from './landings/furnish';
+import { furnish, furnished, prefetch as prefetchLanding, within } from './landings/furnish';
 import { createLamps } from './landings/lamps';
 import { AIR, ENTRY, entryPath, entrySpot, fxAt } from './entry';
 import { createReentry } from './reentry';
@@ -3144,6 +3144,15 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       return S.id;
     },
     begin,
+    // somewhere to come down on `id` (the ship's at it), in a `kind` of
+    // ship: what landing there will want, fetched and made ready while it's
+    // still flying, its landing's (landings/furnish.js) and its crew's
+    prefetch(id, kind) {
+      const u = byId(id);
+      if (!u || u.kind === 'core' || u.portal) return;
+      if (!u.plated && furnished(id)) prefetchLanding(id, landingOf(id), { renderer });
+      warmParty(kind);
+    },
     update,
     view,
     // how much of a landing's day sky shows, and its sun's way (the map's
