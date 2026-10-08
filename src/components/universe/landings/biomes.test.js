@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { LANDINGS } from './landings';
 import { STYLES } from './ground';
 import { vec } from '../foot';
-import { biomeAt, classify, fromLatLon, latLonOf, readableMap, towardLand, uvOf, viewOf } from './biomes';
+import { biomeAt, classify, fromLatLon, landOn, latLonOf, readableMap, towardLand, uvOf, viewOf } from './biomes';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -202,6 +202,41 @@ describe('the landing as it is on its biome', () => {
     const me = LANDINGS.middleearth;
     expect(viewOf(me, null)).toBe(me);
     expect(viewOf(null, biomeAt(me, rgb('#3a3030')))).toBe(null);
+  });
+});
+
+describe('where a landing comes down, and on what', () => {
+  // Middle-earth, sea west of u 0.5 and the Shire's green east of it
+  const me = LANDINGS.middleearth;
+  const look = ([u]) => rgb(u < 0.5 ? '#2a4a8a' : '#5a8a3a');
+  const onEquator = (u) => fromLatLon(0, u * 360 - 180);
+
+  it('walks from the sea on to land, and reads the biome there', () => {
+    const n = onEquator(0.49);
+    const down = landOn(me, n, look);
+    expect(uvOf(down.n)[0]).toBeGreaterThanOrEqual(0.5);
+    expect(down.biome).toMatchObject({ id: 'shire', sea: false, title: me.title });
+    expect(down.biome.at).toEqual(latLonOf(down.n));
+  });
+
+  it("stays over the sea where it mayn't walk (beside a friend, or put there)", () => {
+    const n = onEquator(0.49);
+    const down = landOn(me, n, look, { walk: false });
+    expect(down.n).toBe(n);
+    expect(down.biome.id).toBe('sea');
+  });
+
+  it('stays where it is on land, and on a landing with no sea', () => {
+    const n = onEquator(0.7);
+    expect(landOn(me, n, look)).toMatchObject({ n, biome: { id: 'shire' } });
+    const office = LANDINGS.office;
+    expect(landOn(office, onEquator(0.2), look)).toMatchObject({ biome: { id: 'default' } });
+  });
+
+  it('reads no biome where the map can’t be read', () => {
+    const n = onEquator(0.7);
+    expect(landOn(me, n, () => null)).toEqual({ n, biome: null });
+    expect(landOn(me, n, null)).toEqual({ n, biome: null });
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AIR, ENTRY, LANDABLE, airTop, entering, entryPath, entrySpot, fxAt, velocityOf } from './entry';
+import { AIR, ENTRY, LANDABLE, airTop, entering, entryAhead, entryPath, entrySpot, fxAt, velocityOf } from './entry';
 import { PLANETS, SHIP, headingTo, spawn, step } from './ship';
 import { NOSE, fromAngles, rotate } from './orient';
 import { flat, vec } from './foot';
@@ -125,6 +125,78 @@ describe('entering', () => {
       const s = flying(add(p.at, OUT, p.r * AIR - 0.05), scale(OUT, -1), SHIP.cruise);
       expect(entering(s), p.id).toBe(null);
     }
+  });
+});
+
+describe('entryAhead', () => {
+  // (the ship moved on along its way by t seconds)
+  const after = (s, t) => {
+    const v = velocityOf(s);
+    return { ...s, x: s.x + v[0] * t, y: s.y + v[1] * t, z: s.z + v[2] * t };
+  };
+
+  it('is what entering() says once the ship gets there, holding its course', () => {
+    const rand = seeded(11);
+    let seen = 0;
+    for (const p of LANDABLE) {
+      for (let i = 0; i < 12; i++) {
+        const n = randUnit(rand);
+        // (out past the air, headed in at a slant, at cruise or at an approach's 9)
+        const aim = unit(add(scale(n, -1), randUnit(rand), 0.6));
+        const s = flying(add(p.at, n, airTop(p) + 0.5 + rand() * 5), aim, i % 2 ? SHIP.cruise : 9);
+        const a = entryAhead(s, p, 10);
+        if (!a) continue;
+        seen++;
+        expect(a.t, p.id).toBeGreaterThan(0);
+        const e = entering(after(s, a.t * (1 + 1e-6)), [p]);
+        expect(e, `${p.id} #${i}`).not.toBe(null);
+        expect(a.kind).toBe(e.kind);
+        expect(a.id).toBe(e.id);
+        for (let k = 0; k < 3; k++) {
+          expect(a.n[k]).toBeCloseTo(e.n[k], 5);
+          expect(a.vel[k]).toBeCloseTo(e.vel[k], 9);
+        }
+        expect(a.h).toBeCloseTo(e.h, 4);
+        expect(a.speed).toBeCloseTo(e.speed, 9);
+        expect(a.sink).toBeCloseTo(e.sink, 4);
+        // (and not a moment sooner)
+        expect(entering(after(s, a.t * (1 - 1e-6)), [p])).toBe(null);
+      }
+    }
+    expect(seen).toBeGreaterThan(LANDABLE.length * 6);
+  });
+
+  it('says how long till then', () => {
+    const p = first;
+    const s = flying(add(p.at, OUT, airTop(p) + 3), scale(OUT, -1), SHIP.cruise);
+    expect(entryAhead(s, p).t).toBeCloseTo(3 / SHIP.cruise, 9);
+    expect(entryAhead(s, p)).toMatchObject({ id: p.id, kind: 'enter' });
+  });
+
+  it("is null heading away, passing by, skimming in, getting there too late, or in the air already", () => {
+    const p = first;
+    const out = add(p.at, OUT, airTop(p) + 1);
+    expect(entryAhead(flying(out, OUT, SHIP.cruise), p)).toBe(null);
+    // (on a tangent past the air, and along its top)
+    const along = flat([0, 1, 0], OUT);
+    expect(entryAhead(flying(out, along, SHIP.cruise), p)).toBe(null);
+    expect(entryAhead(flying(add(p.at, OUT, airTop(p)), along, SHIP.cruise), p)).toBe(null);
+    // (only grazing it: in, but sinking slower than ENTRY.sink, as entering() won't take; a little steeper, it would)
+    const top = add(p.at, OUT, airTop(p) + 1e-4);
+    const graze = flying(top, unit(add(along, OUT, -(ENTRY.sink * 0.8) / SHIP.cruise)), SHIP.cruise);
+    expect(entryAhead(graze, p)).toBe(null);
+    expect(entering(after(graze, 0.01), [p])).toBe(null);
+    expect(entryAhead(flying(top, unit(add(along, OUT, -(ENTRY.sink * 1.5) / SHIP.cruise)), SHIP.cruise), p)).toMatchObject({ kind: 'enter' });
+    // (straight in, but 3 s away with 2 to look)
+    expect(entryAhead(flying(add(p.at, OUT, airTop(p) + SHIP.cruise * 3), scale(OUT, -1), SHIP.cruise), p, 2)).toBe(null);
+    expect(entryAhead(flying(add(p.at, OUT, airTop(p) + SHIP.cruise * 3), scale(OUT, -1), SHIP.cruise), p, 4)).not.toBe(null);
+    // (already inside, and sitting still outside)
+    expect(entryAhead(inAir(p, OUT, scale(OUT, -1), SHIP.cruise), p)).toBe(null);
+    expect(entryAhead(flying(out, scale(OUT, -1), 0), p)).toBe(null);
+  });
+
+  it('calls it hot at the boost, as entering() does', () => {
+    for (const p of LANDABLE) expect(entryAhead(flying(add(p.at, OUT, airTop(p) + 1), scale(OUT, -1), SHIP.boost), p), p.id).toMatchObject({ id: p.id, kind: 'hot' });
   });
 });
 

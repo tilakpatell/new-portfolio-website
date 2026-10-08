@@ -50,7 +50,8 @@
 // shots knock what they hit, what's knocked stops at the landing's fixed
 // things and the parked ship, and a hard knock is heard ('impact').
 //
-// createFoot({ map, emit, reduced, small, planetOf, renderer, prepare }) → { phase, prefetch(id, kind), begin(...),
+// createFoot({ map, emit, reduced, small, planetOf, renderer, prepare }) → { phase, prefetch(id, kind),
+//   prefetchAt(id, { light, near, entry }), begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
 //   board(), look(dx, dy), first(), aimPoint(), info(), crew(),
 //   guests(list), end(), dispose() }
@@ -84,7 +85,7 @@ import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
 import { landingOf } from './landings/landings';
-import { biomeAt, fromLatLon, latLonOf, readableMap, sampleMap, towardLand, uvOf, viewOf } from './landings/biomes';
+import { fromLatLon, landOn, readableMap, sampleMap, viewOf } from './landings/biomes';
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
 import { furnish, furnished, prefetch as prefetchLanding, within } from './landings/furnish';
@@ -2017,25 +2018,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         const fn = turned(toBody.clone().transpose(), want);
         S.spot = { n: fn, f: facingAlong(fn, fwd3) };
       }
-      const fromBody = toBody.clone().transpose();
-      const look = lookOf(planet, id);
-      if (look) {
-        let nb = turned(toBody, (near ?? S.spot).n);
-        // (isSea by colour and by place: Tortuga reads sea on the map's
-        // copy but is land; and the walk goes as far out as the planet's
-        // sea says, the Caribbean's being mostly open water)
-        const sea = own.biomes.find((b) => b.sea);
-        if (!near && !forced && sea) {
-          const moved = towardLand(nb, look, (rgb, p) => !rgb || biomeAt(own, rgb, latLonOf(p)).sea, { track: turned(toBody, S.spot.f), steps: sea.reach });
-          if (moved !== nb) {
-            nb = moved;
-            const mn = turned(fromBody, moved);
-            S.spot = { n: mn, f: facingAlong(mn, S.spot.f) };
-          }
-        }
-        const rgb = look(uvOf(nb));
-        if (rgb) S.biome = { ...biomeAt(own, rgb, latLonOf(nb)), at: latLonOf(nb) };
+      const nb = turned(toBody, (near ?? S.spot).n);
+      const down = landOn(own, nb, lookOf(planet, id), { track: turned(toBody, S.spot.f), walk: !near && !forced });
+      if (down.n !== nb) {
+        const mn = turned(toBody.clone().transpose(), down.n);
+        S.spot = { n: mn, f: facingAlong(mn, S.spot.f) };
       }
+      S.biome = down.biome;
     }
     const { n } = S.spot;
     // a long way round the planet from where the ship is: it flies round over
@@ -3307,6 +3296,33 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         if (bodiesHere() && looseOn(landing)) preloadPhysics().catch(() => {});
       }
       warmParty(kind);
+    },
+    // the ship's about to fly into `id`'s air (`entry`: entry.js's
+    // entryAhead, what entering() will say as it does): the part of it
+    // it'll come down on, foreseen as begin will find it (from `light`, or
+    // beside a friend already down, `near`), and that biome's models
+    // fetched (landings/furnish.js), and the physics engine where it has
+    // anything loose. A guess (the planet turns a little before it's
+    // there, and the ship may yet turn away): begin fetches where it does
+    // come down at once, whatever was guessed
+    prefetchAt(id, { light, near = null, entry }) {
+      const u = byId(id);
+      const planet = planetOf[id];
+      if (!u || !planet || u.plated || u.trench || !furnished(id) || !bodiesHere()) return;
+      const own = landingOf(id);
+      if (!own) return;
+      let view = own;
+      if (own.biomes) {
+        const spot = near ?? entrySpot({ n: entry.n, track: entry.vel, light, speed: entry.speed, R: u.size });
+        map.updateMatrixWorld();
+        const toBody = bodyTurn(planet);
+        // (?spot= in development: where begin will put it)
+        const forced = near ? null : forcedSpot();
+        const nb = forced ? fromLatLon(...forced) : turned(toBody, spot.n);
+        view = viewOf(own, landOn(own, nb, lookOf(planet, id), { track: turned(toBody, spot.f), walk: !near && !forced }).biome);
+      }
+      prefetchLanding(id, own, { renderer, view });
+      if (looseOn(view)) preloadPhysics().catch(() => {});
     },
     update,
     view,

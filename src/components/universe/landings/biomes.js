@@ -3,8 +3,8 @@
 // planet's landing (landings.js) may list `biomes`, read off the colour of
 // the planet's own map under the spot: the first whose test holds is the
 // place, the last (no test) the fallback, which is the landing as it was.
-// Pure rules, tested in Node; footScene.js samples the map and furnishes
-// the place (viewOf).
+// Pure rules, tested in Node; footScene.js samples the map (landOn) and
+// furnishes the place (viewOf).
 //
 //   biomes  [{ id, match?(c, at), near?: [lat, lon, deg], sea?, title?,
 //            sub?, ground?, sky?, things?, models?, scatter? }]
@@ -117,6 +117,24 @@ export function towardLand(n, sample, isSea, { track = null, steps = 24, stride 
     }
   }
   return n;
+}
+
+// Where a landing coming down at `n` (a unit vector in the body's frame)
+// comes down, and the biome there: over the sea (where it may `walk`), on
+// to the nearest land first, the way it was heading (`track`) at each
+// reach. `look(uv)` is the map's colour there ([r, g, b], or null). { n, the
+// same `n` where it hasn't moved, and biome: biomeAt's with `at` ([lat,
+// lon]), or null where the map can't be read }. footScene.js comes down
+// by it, and guesses by it where a ship's about to (its prefetchAt)
+export function landOn(landing, n, look, { track = null, walk = true } = {}) {
+  if (!look) return { n, biome: null };
+  // (isSea by colour and by place: Tortuga reads sea on the map's copy but
+  // is land; and the walk goes as far out as the planet's sea says, the
+  // Caribbean's being mostly open water)
+  const sea = walk ? landing.biomes?.find((b) => b.sea) : null;
+  const to = sea ? towardLand(n, look, (rgb, p) => !rgb || biomeAt(landing, rgb, latLonOf(p)).sea, { track, steps: sea.reach }) : n;
+  const rgb = look(uvOf(to));
+  return { n: to, biome: rgb ? { ...biomeAt(landing, rgb, latLonOf(to)), at: latLonOf(to) } : null };
 }
 
 // The first of these textures whose picture a canvas can read back: one
