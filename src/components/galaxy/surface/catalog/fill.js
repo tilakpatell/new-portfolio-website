@@ -8,7 +8,7 @@
 // model kept rigged, names its clips: { idle, walk, run }.)
 export const MODELS = {
   eopie: { uid: '029de9e7d0264119bbc4cbff45b8ed04', as: 'the eopies', metres: 2.5, yaw: 0, tris: 8000, tex: 512 },
-  ronto: { uid: 'abf77799b3334497a320cda4380c9741', as: 'the rontos', metres: 4.2, yaw: 0, tris: 10000, tex: 512 },
+  ronto: { uid: 'abf77799b3334497a320cda4380c9741', turn: 1.042, as: 'the rontos', metres: 4.2, yaw: 0, tris: 10000, tex: 512 },
   // a Sullustan, for the cantina's crowd
   sullustan: { uid: '0fae75387d2c4396858d568b9fbb19ab', as: 'the Sullustans', metres: 1.6, yaw: 0, tris: 8000, tex: 512 },
   // an A-A5 speeder truck, the farms' haulier
