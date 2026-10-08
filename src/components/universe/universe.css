@@ -1224,6 +1224,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-setting-row input[type='checkbox']:checked::after { translate: 16px 0; background: var(--engine, #e8eefc); }
 .universe-setting-row input[type='checkbox']:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 2px; }
 .universe-seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
+.universe-seg-4 { grid-template-columns: repeat(4, 1fr); }
 .universe-seg button { min-height: 34px; color: var(--muted); font-size: 0.78rem; transition: background-color 0.15s, color 0.15s; }
 .universe-seg button + button { border-left: 1px solid rgb(255 255 255 / 0.2); }
 .universe-seg button:hover { color: var(--text); }

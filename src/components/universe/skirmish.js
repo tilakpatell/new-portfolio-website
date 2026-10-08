@@ -28,7 +28,7 @@
 // (hyperlanes.js's NODES, a ramp or a beacon), so it's seen from far off and
 // a lane takes you to it.
 
-import { FACTIONS, HUNTER_KINDS, clearOf, createHunt } from './hunterRules';
+import { FACTIONS, HUNTER_KINDS, clearOf, createHunt, hasTrait } from './hunterRules';
 import { sweptHit } from './targeting';
 import { createWing } from './wingRules';
 import { PACE, SOLIDS } from './ship';
@@ -88,8 +88,20 @@ export function placeAt(node, solids = SOLIDS) {
   return best?.p ?? clearOf({ x, y: y + PLACE_OFF, z }, solids, PLACE_GAP);
 }
 
+// (someone else's fight is with the line fighters: the kinds made to fight
+// you, the medics, missile boats, rammers and snipers, stay out of it, or
+// the freighter's escort never has a chance)
+const FOR_YOU = ['medic', 'missile', 'rammer', 'sniper'];
+const lineOnly = (factions, kinds) =>
+  Object.fromEntries(
+    Object.entries(factions).map(([id, f]) => {
+      const keep = f.kinds.filter(([k]) => !FOR_YOU.some((t) => kinds[k] && hasTrait(kinds[k], t)));
+      return [id, keep.length && keep.length < f.kinds.length ? { ...f, kinds: keep } : f];
+    }),
+  );
+
 export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds = HUNTER_KINDS, solids = [] } = {}) {
-  const hunt = createHunt({ rand, factions, kinds, solids, lasers: 20, firstId: 1e6, nerve: false }); // (numbered apart from your own hunters: the lock follows a number; and fought to the end: the freighter is their quarry, not you)
+  const hunt = createHunt({ rand, factions: lineOnly(factions, kinds), kinds, solids, lasers: 20, firstId: 1e6, nerve: false }); // (numbered apart from your own hunters: the lock follows a number; and fought to the end: the freighter is their quarry, not you)
   const wing = createWing({ rand, bolts: 12, solids });
   const shots = Array.from({ length: 10 }, () => ({ on: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, faction: null }));
   // the freighter, as the hunt sees "you": where it is and the way it goes

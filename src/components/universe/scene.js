@@ -116,6 +116,8 @@ import { REAIM_MS, parkBehind, pilotId, pilotSpace, reached } from './pilotGoal'
 import { laneAim, laneFrame, lanePlan, rideLine } from './lanePilot';
 import { createLaneLook } from './laneLook';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
+import { ION } from './hunterRules';
+import { difficultyOf } from './difficulty';
 import { AHEAD_OF, crewAt, factionsOf, kindsOf, pick as pickFaction, sideAt, sideFor, sideOf, wingOf } from './sides';
 import { TROOPS } from './foot';
 import { GLB, createFleet } from './glbFleet';
@@ -867,7 +869,10 @@ export async function create(canvas, ctx) {
   // flying; anywhere else the crew's own
   const sideHere = () => sideAt(state.kind, state.ship ? sectorOf(state.ship.x, state.ship.y, state.ship.z) : 'main');
   const FACTIONS_ALL = factionsOf(null);
+  // how hard the fight is (the flight setting: difficulty.js), now
+  const diff = () => difficultyOf(controls().difficulty);
   const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines }); // (every side's: another pilot's hunters, whoever they are)
+  if (hunters) hunters.difficulty = diff;
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
   const farFights = createFarFights(map); // (and seen from afar, as flickering light: farFights.js)
@@ -3029,11 +3034,24 @@ export async function create(canvas, ctx) {
         emit({ type: 'interdicted', faction: e.faction });
       }
     } else if (e.type === 'laser') {
-      hurt(e.damage);
+      hurt(e.damage * diff().damage);
       state.hitBy = e.by ?? null; // (the wing goes for the one that hit you last)
-      // (a bomb's burst shakes the ship as a laser doesn't)
-      if (e.bomb && !reduced) state.shake = Math.max(state.shake, 0.5);
+      // (a bomb's burst shakes the ship as a laser doesn't, nor a missile's, nor a rammer's)
+      if ((e.bomb || e.missile || e.ram) && !reduced) state.shake = Math.max(state.shake, e.ram ? 0.8 : 0.5);
+      // an ion bolt holds the boost and the pulse drive down a moment
+      if (e.ion) {
+        state.ionUntil = state.clock + ION.slow;
+        if (!reduced) state.static = Math.max(state.static, 0.6);
+        state.note = { text: 'Ion hit: drives down', until: wall() + 2 };
+      }
     } else if (e.type === 'shot') emit(e);
+    else if (e.type === 'missile') {
+      // a missile after you: the HUD says so (once a few seconds)
+      if (state.clock - (state.missileSaid ?? -1e9) > 4) {
+        state.missileSaid = state.clock;
+        state.note = { text: 'Missile inbound: break hard, or outrun it', until: wall() + 2.5 };
+      }
+    } else if (e.type === 'rammed') burn(new THREE.Vector3(e.at.x, e.at.y, e.at.z), e.size * 2.2);
     else if (e.type === 'spotlit') {
       // pinned in a spotlight: the HUD whites out a moment, and the lock with it
       state.static = Math.max(state.static, 1.5);
@@ -3607,7 +3625,7 @@ export async function create(canvas, ctx) {
     }
     if (live) {
       // shields come back once you've been out of trouble a while
-      if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
+      if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen * diff().regen);
       if (state.shield > 70) state.lowSaid = false;
       state.heat = Math.max(0, state.heat - dt / 45);
       if (hunters) {
@@ -3615,7 +3633,7 @@ export async function create(canvas, ctx) {
         const sunNow = litBy.key && litBy.key.strength > 1.2 ? LIT_STARS.find((st) => st.id === litBy.key.id) : null;
         const where = { sun: Boolean(sunNow && canEclipse({ eye: [live.x, live.y, live.z], sun: sunNow })), station: Boolean(state.at && byId(state.at)?.kind === 'core'), gate: state.at === 'starwars' };
         const zone = state.ride ? 'lane' : zoneOf(live, { regionAt, laneAt: noLane }); // (in a carriageway but not riding it, nothing of the lane's can happen: it needs the ride)
-        const id = director.update(dt, { zone, hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: Boolean(state.ambush) || hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted });
+        const id = director.update(dt, { zone, hurt: state.hurtNow ?? 0, side: withWhere(sideHere(), where), heat: state.heat, busy: Boolean(state.ambush) || hunters.active || pieces.destroyerHere || Boolean(remover) || leviathans.holds(live) || meteors.count > 0 || mines.count > 0 || Boolean(escort) || Boolean(eclipse) || state.view === 'map' || Boolean(props.charting) || Boolean(state.held) || Boolean(front?.near), travelling: travelling(live), calm: state.shield < 50, wanted: standing.wanted, pace: diff().pace });
         state.hurtNow = 0;
         if (id) happen(playAs(id, zone), live, id);
         // the ambush at your off-ramp: sprung as you come off there (laneEvents.js)
@@ -4022,6 +4040,11 @@ export async function create(canvas, ctx) {
     const pack = state.interdicted ? clamp((state.clock - state.interdictAt) / INTERDICT_IN, 0, 1) : 0;
     const fight = front ? front.holdAt(state.ship.x, state.ship.y, state.ship.z, noseOf(state.ship)) : 0;
     input.interdicted = Math.max(pack * pack * (3 - 2 * pack), fight);
+    // an ion hit: no boost and no pulse drive till it wears off
+    if (state.clock < (state.ionUntil ?? -1)) {
+      input.boost = false;
+      input.interdicted = 1;
+    }
     if (state.keys.fire || state.fireBtn) fire(); // (the trigger held: at the guns' own pace)
     const before = state.ship;
     // on a hyperlane, or getting on or off one (lanePilot.js): the ride poses the ship in place of ship.js's step
