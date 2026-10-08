@@ -65,8 +65,10 @@ A world's HUD is built from the kit in `src/runtime/hud/` (`index.js` lists the 
 - **Numbers through refs.** A frame loop writes the HUD's numbers into the elements it holds, not into React state.
 - **The keys are written once**, in `src/components/guide/pages.js`; a world's Controls opens the guide.
 - **Touch.** The kit's Stick (116/46, radial, a dead zone) and TouchButton (76 for one main action, 64, 52); the right column keeps the guide's corner.
+- **One key cap.** A HUD's key is the house cap in `src/index.css` (`:where(.hud kbd, kbd.hud-prompt-key, kbd.hud-cap)`): a world sets its ink by colour and its face through `--hud-key-face`, `--hud-key-weight`, `--hud-key-border` and `--hud-key-radius`, never a `kbd` rule of its own.
+- **Buttons in the frame take a tap.** The frame is `pointer-events: none`; a world card put inside it turns them back on.
 
-`hud-kit` in the measure counts the worlds whose HUD imports nothing from the kit; it only goes down.
+`hud-kit` in the measure counts the worlds whose HUD imports nothing from the kit (its folder, or its own page); it only goes down. At 1: the Death Star, whose trench run is a game inside a scrolling page.
 
 ## Never
 
