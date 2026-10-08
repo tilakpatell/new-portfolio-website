@@ -349,6 +349,8 @@ describe('the set pieces in the battle every pilot shares', () => {
       shared: (k) => fight.value(k),
       mine: (k, dmg) => battle.you.team === battle.attacker && fight.add(k, dmg),
       mineAs: (team, k, dmg) => team === battle.you.team && fight.add(k, dmg),
+      clock: () => clock.t,
+      losses: () => state().losses,
       objective: (oid) => {
         const st = state();
         const o = st.objectives.find((x) => x.id === oid);
@@ -396,6 +398,22 @@ describe('the set pieces in the battle every pilot shares', () => {
     step(e, k.battle, 2);
     expect(k.world.war.station).toHaveBeenCalledWith('deathstar2', false);
     expect(k.battle.over).toBeNull();
+    e.dispose();
+  });
+
+  it('Endor: the superlaser fires on the shared clock, at the cruisers the plan loses, when it loses them', () => {
+    const k = shared('endor', 'rebel', 'empire', 0);
+    const shots = k.plan.losses.filter((l) => l.by === 'superlaser');
+    expect(shots.length).toBeGreaterThan(2);
+    for (const l of shots) expect(l.team).toBe(0);
+    const e = createEndor(k.ctx);
+    // (not on a timer of its own from when you came: a long while at ten seconds in, and nothing)
+    step(e, k.battle, 100, null, 0.5);
+    expect(k.events).not.toContain('gcw-superlaser');
+    const first = shots[0];
+    k.clock.t = first.at - 1;
+    step(e, k.battle, 0.2);
+    expect(k.events).toContain('gcw-superlaser');
     e.dispose();
   });
 

@@ -168,7 +168,7 @@ describe('planOf', () => {
         expect(on.some((o) => o.ship === l.index && l.team === plan.defender)).toBe(false);
         const objective = laid.objectivesOn === 'interdictor' ? laid.war.sides[plan.defender].capitals.findIndex((c) => c.kind === 'interdictor') : 0;
         expect(l.team === plan.defender && l.index === objective).toBe(false);
-        expect(cap.name ?? null).toBeNull();
+        if (!l.by) expect(cap.name ?? null).toBeNull();
         lost += 1;
       }
     }
