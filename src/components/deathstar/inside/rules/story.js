@@ -12,10 +12,10 @@
 // you were to stay hidden, run out of time) and the story goes back to
 // the start of its beat, with the beat’s people taken away to be spawned
 // afresh and the state put back as the beat found it. A saved story picks
-// up the same way, so nobody is ever restored half way through a scene.
+// up the same way, so nobody is ever restored halfway through a scene.
 //
 //   TYPES                                  every kind of step
-//   SCENES                                 the scenes a story may play (scene/cinematics.js draws them)
+//   SCENES                                 the scenes a story may play (Task 3.5’s scene/cinematics.js draws them)
 //   MOODS                                  the music a story may ask for (scene/sounds.js plays them)
 //   chain(begin, beats) → steps            each beat a list of steps; every step gets its beat’s
 //     checkpoint, the state `begin` becomes through every effect and arrival before the beat
