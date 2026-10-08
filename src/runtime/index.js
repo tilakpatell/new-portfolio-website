@@ -60,7 +60,8 @@ export function runtime() {
     // (`invalidate`: the frame guard asks for a frame when what it held back is ready)
     makeBackend: (kind, opts) => browser().then((m) => m.makeBackend(kind, { ...opts, invalidate: () => instance?.invalidate() })),
     input: createInput(),
-    // (down only: each step resizes the canvas, lib/three/pace's `climb`)
+    // (down only: each step resizes the canvas, lib/three/pace's `climb`; the
+    // least ratio is the budget row's own, quality.js's `minRatio`)
     quality: createQuality({ dpr: win?.devicePixelRatio || 1, pace: createPace({ climb: false }) }),
     saves: localSaves(),
     store: worldStore(),
@@ -70,6 +71,8 @@ export function runtime() {
     gpu: Boolean(win?.navigator?.gpu),
     override: readOverride(win?.location.search ?? '', win?.location.hash ?? '', stored),
     visible: () => !(typeof document !== 'undefined' && document.hidden) && !covered(),
+    // (?calibrate=off: the QA scripts measure at the sharpest step, not a chip's own)
+    calibrate: !/[?&]calibrate=off\b/.test(`${win?.location.search ?? ''}&${win?.location.hash ?? ''}`),
   });
   // a world's install (install.js): the same one the gate and /worlds use
   instance.install = installer();

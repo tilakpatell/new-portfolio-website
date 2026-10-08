@@ -930,6 +930,10 @@ html[data-mode='dark'] .saber-progress[data-kind='pixels'] .blade { height: 6px;
 }
 .guide-btn[aria-expanded='true'] { background: var(--btn-bg); color: var(--btn-ink); border-color: transparent; }
 html[data-menu] .guide-btn, .crawl ~ .guide-btn { visibility: hidden; }
+/* a game in the page being played (the game sets html[data-playing] to its
+   name while it runs, and clears it when paused, over or gone): its touch
+   buttons sit in the ?'s corner, so the ? steps aside until the game stops */
+:root[data-playing] .guide-btn { visibility: hidden; pointer-events: none; }
 .guide-panel { position: fixed; right: 16px; bottom: calc(74px + env(safe-area-inset-bottom)); z-index: var(--z-dialog); display: flex; flex-direction: column; width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 140px); padding: 0; background: var(--surface); box-shadow: var(--shadow-dialog); outline: none; overflow: hidden; }
 .guide-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 0.9rem 0.75rem 1.1rem; border-bottom: 1px solid var(--border); }
 .guide-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1.1rem 1.25rem 1.25rem; }

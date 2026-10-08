@@ -6,7 +6,7 @@ import unittest
 
 import numpy as np
 
-from pick import FEELINGS, closest_feeling, feel_distance, feel_target, choose, excluded, identify, normal, pure, spoken, quoted, refine, segment_score, stretches, take_score, too_long, uncensor, usable, utterances, video_id, windows
+from pick import FEELINGS, centre, dominant, closest_feeling, feel_distance, feel_target, choose, excluded, identify, normal, pure, spoken, quoted, refine, segment_score, stretches, take_score, too_long, uncensor, usable, utterances, video_id, windows
 
 
 def words(text, start=0.0, each=0.3, pauses=None):
@@ -248,6 +248,28 @@ class TestFeeling(unittest.TestCase):
         rows = [{"avd": (0.4, 0.5, 0.5), "id": "calm"}, {"avd": (0.85, 0.85, 0.3), "id": "yell"}]
         target = feel_target("angry", 3, self.mean, self.spread)
         self.assertEqual(closest_feeling(rows, target, self.spread)["id"], "yell")
+
+
+class TestDominant(unittest.TestCase):
+    def unit(self, *xs):
+        v = np.asarray(xs, dtype=np.float32)
+        return v / np.linalg.norm(v)
+
+    def test_the_voice_most_heard_in_their_own_scenes(self):
+        andy = [(self.unit(1, 0.05 * i, 0), 3.0) for i in range(5)]
+        dwight = [(self.unit(0, 1, 0.05 * i), 3.0) for i in range(2)]
+        got = dominant(andy + dwight, {})
+        self.assertEqual(len(got), 5)
+        self.assertGreater(float(centre(got) @ self.unit(1, 0, 0)), 0.95)
+
+    def test_not_someone_already_known(self):
+        michael = [(self.unit(1, 0.05 * i, 0), 3.0) for i in range(6)]
+        andy = [(self.unit(0, 0, 1 + 0.05 * i), 3.0) for i in range(3)]
+        got = dominant(michael + andy, {"michael": self.unit(1, 0, 0)})
+        self.assertGreater(float(centre(got) @ self.unit(0, 0, 1)), 0.95)
+
+    def test_nothing_when_no_one_speaks_enough(self):
+        self.assertEqual(dominant([(self.unit(1, 0, 0), 2.0)], {}), [])
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ import { saveStart } from '../lib/view';
 import { useView } from '../components/ViewSwitch';
 import { portalSound } from '../components/universe/sounds';
 import { jumpEvent } from '../components/jumps/styles';
+import { jumpOut } from '../components/jumps/jumpOut';
 import UniverseMap from '../components/universe/UniverseMap';
 import UniversePanel from '../components/universe/UniversePanel';
 import Comms from '../components/universe/Comms';
@@ -31,6 +32,9 @@ import EarnNote from '../components/universe/EarnNote';
 import { useEarn } from '../components/universe/useEarn';
 import { goodStanding } from '../components/universe/economy';
 import { createPayLedger } from '../components/universe/earnRules';
+import { pocketOf, registerPocket } from '../components/expanse/pocket';
+import { createRegistry } from '../components/worlds/registry';
+import { worldStore } from '../runtime';
 
 const PORTAL = '#97ce4c';
 // the phone out past the belt (universe/phone.js): its lock screen, fetched
@@ -42,6 +46,13 @@ const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put awa
 // (the page you go into knows you came from the map, so its way out can be
 // back to space: the Citadel's)
 const FROM_MAP = { state: { from: 'universe' } };
+
+// The galaxy's page and its scene, fetched once its gate is picked or
+// flown into, so the jump into it isn't waiting on them (App.jsx loads the
+// page lazily, and the page its scene), as galaxy/travel.js fetches a
+// world's surface on the way down to it.
+let galaxyFetched = null;
+const prefetchGalaxy = () => (galaxyFetched ??= Promise.all([import('./Galaxy'), import('../components/galaxy/scene')]).catch(() => (galaxyFetched = null)));
 
 // The universe map: every fandom on the site is a planet, and you travel
 // between them, flying a ship of your choice (remembered between visits,
@@ -58,7 +69,15 @@ const FROM_MAP = { state: { from: 'universe' } };
 // there (nav.js: hyperspeed, super speed or cruise; kept between visits),
 // which is how picking a place anywhere else on the page goes too.
 export default function Universe({ ask = false }) {
-  const atRoot = useLocation().pathname === '/';
+  const { pathname, search } = useLocation();
+  const atRoot = pathname === '/';
+  // a pocket universe (/universe?seed=marble): the Expanse past the rim made
+  // from its own seed, and kept on /worlds (expanse/pocket.js)
+  const pocketWord = pocketOf(search).word;
+  const pocket = useMemo(() => pocketOf(`?seed=${encodeURIComponent(pocketWord)}`), [pocketWord]);
+  useEffect(() => {
+    if (pocket.pocket) registerPocket(createRegistry(worldStore()), pocket).catch(() => {});
+  }, [pocket]);
   useDocumentTitle(atRoot ? null : 'The universe'); // the front door keeps the site's own title
   const navigate = useNavigate();
   const param = useParams().id;
@@ -145,7 +164,14 @@ export default function Universe({ ask = false }) {
     local.set(PANEL_KEY, on ? 'tucked' : 'open');
   };
   const timer = useRef(0);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const trip = useRef(null); // a jump out (jumps/jumpOut.js): this page gone first, its dark coming late changes nothing
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current);
+      trip.current?.cancel();
+    },
+    [],
+  );
   // a trip on through the gate: to a star system picked on the nav map, the
   // ship flies to the gate, and when it parks there the page goes on in
   const onward = useRef(null); // { via, to }
@@ -234,6 +260,11 @@ export default function Universe({ ask = false }) {
     },
     [navigate],
   );
+  // the Star Wars gate picked: the galaxy behind it fetched while you fly there
+  const toGalaxy = Boolean(universe?.to?.startsWith('/galaxy'));
+  useEffect(() => {
+    if (toGalaxy) prefetchGalaxy();
+  }, [toGalaxy]);
 
   const pickShip = (id) => {
     audioContext(); // inside the press, so the engine can start
@@ -253,12 +284,19 @@ export default function Universe({ ask = false }) {
       return;
     }
     audioContext(); // inside the press, so the way out can sound
-    if (plan.mode === 'jump') window.dispatchEvent(jumpEvent(crew?.jump));
-    else {
-      if (plan.mode === 'portal') portalSound();
-      map.current.dive(u.id);
-    }
     setLeaving({ id: u.id, mode: plan.mode });
+    if (plan.mode === 'jump') {
+      // the page changes under the jump's dark. Into the galaxy, its page
+      // and scene are fetched now, and the jump's tunnel is held from the
+      // change until the galaxy has drawn, so it clears onto the galaxy,
+      // not its loading line
+      const galaxy = Boolean(to?.startsWith('/galaxy'));
+      if (galaxy) prefetchGalaxy();
+      trip.current = jumpOut({ style: crew?.jump, to, navigate: (page) => navigate(page, FROM_MAP), hold: galaxy, delay: plan.delay });
+      return;
+    }
+    if (plan.mode === 'portal') portalSound();
+    map.current.dive(u.id);
     timer.current = setTimeout(() => navigate(to, FROM_MAP), plan.delay);
   };
   const enter = () => go(universe);
@@ -473,6 +511,8 @@ export default function Universe({ ask = false }) {
         {universe ? `${universe.label}: selected` : ''}
       </p>
       <UniverseMap
+        key={pocket.word}
+        universe={pocket.universe}
         selected={selected}
         onSelect={select}
         onOpen={(id) => go(byId(id))}
@@ -501,6 +541,11 @@ export default function Universe({ ask = false }) {
         onCrash={crashInto}
         startAt={wonder}
       />
+      {pocket.pocket && !leaving && (
+        <p className="universe-pocket" role="status">
+          Pocket universe · {pocket.name}
+        </p>
+      )}
       {touring && !leaving && (
         <div className="universe-tour" role="status">
           <span>

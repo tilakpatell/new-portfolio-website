@@ -96,7 +96,7 @@ const HELP = [
   BLANK,
   L('  Also: whoami · date · ls · cat · echo · history · neofetch · restart (the site, from the beginning) · exit', 'dim'),
   L('  Classified: order66 · vader · yoda · lightsaber · deathstar · force · aurebesh', 'dim'),
-  L('  Worlds: worlds · galaxy · deathstar · moria · avengers · scranton · cybertron · albuquerque · c137 · dotmatrix · earth · music', 'dim'),
+  L('  Worlds: worlds · galaxy · deathstar · aboard · moria · avengers · scranton · cybertron · albuquerque · c137 · dotmatrix · earth · music', 'dim'),
   L('  Languages: language · aurebesh · cybertronian · runes · english (back to English)', 'dim'),
   L('  Off duty: music · sitar · tabla · rollout · megatron · schwifty · say my name · snap · twss · bears · parkour · peace · hyperspace · themes', 'dim'),
 ];
@@ -441,6 +441,15 @@ export default function Terminal() {
         setTimeout(() => navigate('/deathstar'), 500);
         return [L('  Retrieving the Death Star plans…', 'ok')];
       },
+      // aboard both battle stations, room by room (pages/DeathStarInside.jsx)
+      aboard: () => {
+        setTimeout(() => navigate('/deathstar/inside'), 500);
+        return [L('  Caught in a tractor beam. Docking Bay 327…', 'ok')];
+      },
+      board: () => {
+        setTimeout(() => navigate('/deathstar/inside'), 500);
+        return [L('  Caught in a tractor beam. Docking Bay 327…', 'ok')];
+      },
       universe: () => [
         BLANK,
         L(`  THE UNIVERSE MAP: ${DESTINATIONS.length} places`, 'head'),
@@ -506,6 +515,7 @@ export default function Terminal() {
         L('  WORLDS', 'head'),
         L(`  ${pad('galaxy', 13)}Star Wars: a galaxy far, far away, eighteen systems to fly and jump between (try galaxy hoth)`),
         L(`  ${pad('deathstar', 13)}Star Wars: the superlaser, the readout, the trench run`),
+        L(`  ${pad('aboard', 13)}Star Wars: inside both Death Stars, room by room, either side, story or free roam`),
         L(`  ${pad('moria', 13)}The Lord of the Rings: the Doors of Durin, the road, the Bridge, Mordor, the Ring`),
         L(`  ${pad('avengers', 13)}Marvel: the Avengers compound building by building, the Tesseract, Thanos`),
         L(`  ${pad('scranton', 13)}The Office: the floor plan, Kevin mode, Dwight's fact check, the Dundies`),

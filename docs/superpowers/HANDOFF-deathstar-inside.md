@@ -1,34 +1,38 @@
 # Hand-off: aboard the Death Star
 
-The explorable interior of both Death Stars at `/deathstar/inside`, and HD exteriors for both stations. Branch `claude/deathstar-inside`. The owner asked for it to be merged to main once done (a PR, green CI, a merge commit).
+The explorable interior of both Death Stars at `/deathstar/inside`, and HD exteriors for both stations. Branch `claude/deathstar-inside`, merged to main in stable checkpoints (a PR from `claude/deathstar-stable`, green CI, a merge commit): #564, #628, #650 and the one after them.
 
 - Design: `docs/superpowers/specs/2026-10-07-deathstar-inside-design.md`
 - Plan: `docs/superpowers/plans/2026-10-07-deathstar-inside.md` (seven phases; tasks numbered 1.1 to 7.4)
+- Where it all lives: the `src/components/deathstar/inside/` entry in `docs/architecture.md`.
 
 ## Done
 
-- The design and the plan, with both stations’ stories and the Easter eggs step by step.
-- HD exteriors (Tasks 6.1 and 6.2, done early): `public/models/universe/death-star.hq.glb` (4096 maps, a baked plating normal) and N8’s Death Star II as `public/models/galaxy/deathstar2.glb` (2048) and `.hq.glb` (4096), served through `HD_MAPS` in `src/components/galaxy/models.js`. Shots in `docs/superpowers/shots/deathstar-hd/`. Still to do: load the 4096 files on ultra only, not high (about 170 MB and 250 MB of GPU memory), as planet maps already are.
-- Phase 1, in progress: Tasks 1.1 (clips moved to `src/lib/three/clips.js`, `worldAt` longest match), 1.2 (route and registries, placeholder UI), 1.3 (layout and the DS1 graph), 1.4 (walker), 1.5 (doors), 1.6 (paths), 1.8 (the Imperial kit and the first rooms: Bay 327 with the Falcon, Docking Control 327, corridors, the lift), 1.9 (streaming), and parts of 1.10 (camera, figures) are committed. Each task is reviewed and fixed by a workflow before the next stage.
+- Both stations, every room drawn by a builder of its own (`scene/rooms/index.test.js` holds that): the first station’s Bay 327 with the Falcon, Docking Control 327, the corridors and lifts, Detention Block AA-23, the cell bay and cell 2187, the chute and compactor 3263827, the maintenance corridors, the tractor beam’s terminal, the chasm with its telescoping bridge, the TIE bay, the conference room, the overbridge with Alderaan through its window, superlaser fire control, the records archive and Vader’s meditation chamber; the second station’s dock, command centre, Hangar 272, the tower’s antechamber and lift, the throne room with its spoked round window and the shaft in its floor, the reactor shaft, the gallery and the superstructure.
+- The game (`rules/game.js` and `rules/play/`): the garrison in every room, the crew’s minds, bolts and blades for you and them, alarms and the intercom, disguise doubt, talk trees and keypads, the four story runs with checkpoints, companions, Easter eggs and achievements.
+- The scene and the page: people, bolts, sparks, scorches, lightsabers, the windows’ views, the station’s sounds; the HUD with the story’s objective, the section’s security, the disguise meter, hit marks, the damage arc, the talk box and subtitles.
+- HD exteriors: `death-star.hq.glb` and `deathstar2.hq.glb` (4096 maps), loaded on ultra only (`withHq` in `src/components/galaxy/models.js`); the window views use them on ultra too.
+- Ways in: the `/deathstar` page’s “Go aboard”, the terminal’s `aboard` and `board`, and flying into the second Death Star at Endor once its shield is down (its dock, as a Rebel).
+- `scripts/deathstar-check.mjs`: every room of both stations drawn in Chromium, screenshotted and held to the frame budget.
 
-## Left, in order
+## Left
 
-1. Finish Phase 1: Task 1.10 (scene index, player, UI), Task 1.7 (the game and `module.js`), the gate (lint, test, build, health), then Task 1.11 (`scripts/deathstar-check.mjs`, screenshots of each room, fix the look).
-2. Phases 2 to 5 and 7 of the plan; Phase 6’s views, ways in and gen3d issues.
-3. The `/deathstar` page’s “Go aboard” button waits for PR #540 (it holds `src/pages/DeathStar.jsx`).
-4. Open the PR; merge once both CI jobs are green.
+- The final whole-branch review’s deferred minors, if any (the ledger at `.superpowers/sdd/2026-10-07-deathstar-inside/progress.md`, git-ignored, lists them).
+- Alderaan’s tractor beam and Yavin still board the `/deathstar` page (the superlaser and the trench run), as before; the page’s “Go aboard” takes you inside from there.
+- The crew and the surfaces’ droids use the site’s shared rig and models; Chewbacca, the IT-O, the dianoga and the Death Star trooper’s helmet are built in code until gen3d models replace them.
 
 ## Checking it
 
-- `npx vitest run src/components/deathstar/inside` for the rules.
-- `npx vite` and open `/#/deathstar/inside?station=ds1&side=rebel&mode=roam` (once Task 1.7 lands). In development `window.__deathstar` has `teleport(room, x, z)`, `do(name, arg)` and `info()`.
-- Rooms in DS1 so far: `hold` (in the Falcon), `bay327`, `field327`, `ctl327`, `corr327`, the lobbies and `lift1-l2`, `lift1-l5`, `lift1-l6`.
+- `npx vitest run src/components/deathstar/inside` for the rules, the scene’s pure parts and the module.
+- `npx vite --port 5197` and open `/#/deathstar/inside?station=ds1&side=rebel&mode=roam` (or `station=ds2`, `side=imperial`, `mode=story`, `at=<room or spot>`). In development `window.__deathstar` has `g`, `teleport(room, x, z)`, `do(name, arg)` and `info()`.
+- `OUT=<dir> node scripts/deathstar-check.mjs [station:room …]` with the dev server up.
 
 ## Rulings made on the owner’s behalf
 
 - Both stations in one world on `src/runtime`, not galaxy-surface zones (zones lack zone-to-zone doors, walls for enemies and bolts, more than four lamps, and lazy rooms).
 - Third person over the shoulder, with a first-person switch on V.
-- Ways in: the Death Star page, the galaxy (Alderaan’s tractor beam, Endor once its shield is down, Yavin’s TIE bay), the terminal.
+- Ways in: the Death Star page, the terminal and Endor once its shield is down. Alderaan’s tractor beam and Yavin keep boarding the `/deathstar` page, so the superlaser and the trench run stay where players know them.
 - Paths are A* over doors and lifts, straight inside each convex room and bent round furniture; no nav grid.
 - The DS2 hull’s lattice gaps were plated over from N8’s own texture so it reads as the half-built station of the film; credited as such.
 - Nested rooms (`inside: parentId`) let the Falcon’s smuggling hold sit inside Bay 327.
+- The 4096 Death Star maps load on ultra only: about a quarter of a gigabyte of graphics memory between them.

@@ -17,13 +17,15 @@ const fakeBackend = () => ({
 const fakeLoop = () => {
   let fn = null;
   let can = () => true;
+  const ctl = { kick: vi.fn(), stop: vi.fn() };
   return {
     create: (step, opts) => {
       fn = step;
       can = opts?.can ?? can;
-      return { kick: vi.fn(), stop: vi.fn() };
+      return ctl;
     },
     tick: (now) => (can() ? fn(now) : false),
+    ctl,
   };
 };
 const fakeHost = () => ({ prepend: vi.fn(), getBoundingClientRect: () => ({ width: 640, height: 360 }), appendChild: vi.fn() });
@@ -147,6 +149,147 @@ describe('createRuntime', () => {
     expect(first.draw).not.toHaveBeenCalled();
     expect(second.draw).toHaveBeenCalled();
     expect(rt.current.module.id).toBe('quick');
+  });
+
+  it('two mounts while the backend is made share it: one context, and the one kept is the one given the ratio', async () => {
+    const quality = fakeQuality();
+    quality.ratioUnder = vi.fn((cap) => Math.min(cap ?? Infinity, 2));
+    const made = [];
+    const makeBackend = vi.fn(() => {
+      let resolve;
+      const p = new Promise((r) => (resolve = r));
+      made.push({ gfx: fakeBackend(), resolve });
+      return p;
+    });
+    const { rt, loop } = make({ quality, makeBackend });
+    const mod = { id: 'galaxy', ratio: 1.5, create: () => fakeWorld({ wants: () => true }) };
+    // (React's second run of an effect in development mounts the same module again at once)
+    const p1 = rt.mount(mod, {}, fakeHost());
+    const p2 = rt.mount(mod, {}, fakeHost());
+    await flush();
+    expect(makeBackend).toHaveBeenCalledTimes(1);
+    made[0].resolve(made[0].gfx);
+    expect(await p1).toBe(false);
+    expect(await p2).toBe(true);
+    expect(rt.gfx).toBe(made[0].gfx);
+    expect(made[0].gfx.setRatio).toHaveBeenCalledWith(1.5);
+    expect(made[0].gfx.dispose).not.toHaveBeenCalled();
+    loop.tick(16);
+    expect(rt.status).toBe('on');
+  });
+
+  it('a backend of another kind asked for meanwhile wins, whichever arrives first, and the other goes', async () => {
+    const made = {};
+    const makeBackend = vi.fn((kind) => {
+      let resolve;
+      const p = new Promise((r) => (resolve = r));
+      made[kind] = { gfx: { ...fakeBackend(), backend: kind }, resolve };
+      return p;
+    });
+    const { rt } = make({ makeBackend, gpu: true });
+    const p1 = rt.mount({ id: 'old', create: () => fakeWorld() }, {}, fakeHost());
+    const p2 = rt.mount({ id: 'new', shading: 'nodes', create: () => fakeWorld() }, {}, fakeHost());
+    await flush();
+    expect(makeBackend.mock.calls.map((c) => c[0])).toEqual(['webgl', 'webgpu']);
+    made.webgpu.resolve(made.webgpu.gfx);
+    expect(await p2).toBe(true);
+    made.webgl.resolve(made.webgl.gfx);
+    expect(await p1).toBe(false);
+    await flush();
+    expect(rt.gfx).toBe(made.webgpu.gfx);
+    expect(made.webgpu.gfx.setRatio).toHaveBeenCalled();
+    expect(made.webgl.gfx.dispose).toHaveBeenCalled(); // (not left holding a context)
+    expect(made.webgpu.gfx.dispose).not.toHaveBeenCalled();
+  });
+
+  it('a backend that fails to make fails the mount, and the next mount tries again', async () => {
+    let fails = true;
+    const makeBackend = vi.fn(() => (fails ? Promise.reject(new Error('no context')) : fakeBackend()));
+    const { rt } = make({ makeBackend });
+    expect(await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost())).toBe(false);
+    expect(rt.status).toBe('failed');
+    fails = false;
+    expect(await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost())).toBe(true);
+    expect(makeBackend).toHaveBeenCalledTimes(2);
+  });
+
+  it("marks a fresh mount's box until its first frame (its canvas fades in), and a handover's never", async () => {
+    const { rt, loop } = make();
+    const host = { ...fakeHost(), dataset: {} };
+    const p = rt.mount({ id: 'a', create: () => fakeWorld({ wants: () => true, handoff: () => null }) }, {}, host);
+    expect(host.dataset.fresh).toBe('');
+    await p;
+    expect(host.dataset.fresh).toBe(''); // (placed, not yet drawn)
+    loop.tick(16);
+    expect(host.dataset).not.toHaveProperty('fresh');
+    // a handover into another box (the surface's, as the ship lands): no mark, so no dip under its cover
+    const host2 = { ...fakeHost(), dataset: {} };
+    const h = rt.handover({ id: 'b', create: () => fakeWorld({ wants: () => true }) }, {}, host2);
+    expect(host2.dataset).not.toHaveProperty('fresh');
+    await settled();
+    loop.tick(32);
+    await h;
+    loop.tick(48);
+    expect(host2.dataset).not.toHaveProperty('fresh');
+    // a mount that never draws (failed, or left) doesn't leave its box marked
+    const host3 = { ...fakeHost(), dataset: {} };
+    await rt.mount({ id: 'bad', create: () => { throw new Error('no'); } }, {}, host3);
+    expect(host3.dataset).not.toHaveProperty('fresh');
+    const host4 = { ...fakeHost(), dataset: {} };
+    rt.mount({ id: 'slow', create: () => new Promise(() => {}) }, {}, host4);
+    expect(host4.dataset.fresh).toBe('');
+    rt.unmount();
+    expect(host4.dataset).not.toHaveProperty('fresh');
+  });
+
+  it("a box's resize is applied at the start of the next frame, before its draw, and only if the size changed", async () => {
+    const order = [];
+    const gfx = fakeBackend();
+    gfx.setSize = vi.fn((w, h) => {
+      gfx.size.w = w;
+      gfx.size.h = h;
+      order.push(`setSize ${w}x${h}`);
+    });
+    const { rt, loop } = make({ makeBackend: () => gfx });
+    rt.resize(800, 450); // (no world yet: nothing)
+    expect(gfx.setSize).not.toHaveBeenCalled();
+    const world = fakeWorld({ wants: () => true, resize: vi.fn((w, h) => order.push(`resize ${w}x${h}`)), draw: vi.fn(() => order.push('draw')) });
+    await rt.mount({ id: 'a', create: () => world }, {}, fakeHost());
+    expect(order).toEqual(['setSize 640x360', 'resize 640x360']); // (placed at once: it has to be sized before it draws)
+    loop.tick(16);
+    order.length = 0;
+    // from a ResizeObserver, which runs after the frame's drawn: resized
+    // then, the buffer would be shown cleared until the next one
+    rt.resize(800, 450);
+    expect(order).toEqual([]);
+    loop.tick(33);
+    expect(order).toEqual(['setSize 800x450', 'resize 800x450', 'draw']);
+    order.length = 0;
+    rt.resize(800.3, 449.8); // (the same box, rounded: a ResizeObserver's first call repeats it)
+    loop.tick(50);
+    expect(order).toEqual(['draw']);
+    order.length = 0;
+    rt.resize(700, 400);
+    rt.resize(720, 405); // (only the last before a frame counts)
+    loop.tick(66);
+    expect(order).toEqual(['setSize 720x405', 'resize 720x405', 'draw']);
+  });
+
+  it("the last world's box out of sight doesn't keep the next world from drawing", async () => {
+    const { rt, loop } = make();
+    await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost());
+    rt.setVisible(false); // (its box scrolled away)
+    rt.unmount();
+    const next = fakeWorld({ wants: () => true, setVisible: vi.fn() });
+    await rt.mount({ id: 'b', create: () => next }, {}, fakeHost());
+    expect(next.setVisible).toHaveBeenLastCalledWith(true);
+    expect(loop.tick(16)).toBe(true);
+    expect(next.draw).toHaveBeenCalled();
+    expect(rt.status).toBe('on');
+    // and its own box going out of sight still stops it
+    rt.setVisible(false);
+    expect(loop.tick(32)).toBe(false);
+    expect(next.draw).toHaveBeenCalledTimes(1);
   });
 
   it('a frame that throws fails the world', async () => {
@@ -367,6 +510,151 @@ describe('createRuntime', () => {
     expect(world.lowerQuality).toHaveBeenCalledWith(2);
   });
 
+  it('a new quality level is set before the frame is drawn, so the resized buffer is never shown cleared', async () => {
+    const order = [];
+    const quality = fakeQuality();
+    let next = null;
+    quality.frame = vi.fn(() => {
+      const l = next;
+      next = null;
+      return l;
+    });
+    const gfx = fakeBackend();
+    gfx.setRatio = vi.fn(() => order.push('setRatio'));
+    const { rt, loop } = make({ quality, makeBackend: () => gfx });
+    const world = fakeWorld({ wants: () => true, lowerQuality: vi.fn(() => order.push('lowerQuality')), draw: vi.fn(() => order.push('draw')) });
+    await rt.mount({ id: 'a', create: () => world }, {}, fakeHost());
+    loop.tick(16);
+    order.length = 0;
+    next = 1;
+    loop.tick(33);
+    expect(order).toEqual(['setRatio', 'lowerQuality', 'draw']);
+  });
+
+  it('a frame whose draw throws after a level change still fails the world', async () => {
+    const quality = fakeQuality();
+    quality.frame = vi.fn(() => 1);
+    const { rt, loop } = make({ quality });
+    const world = fakeWorld({ lowerQuality: vi.fn(), draw: () => { throw new Error('boom'); } });
+    await rt.mount({ id: 'a', create: () => world }, {}, fakeHost());
+    expect(loop.tick(16)).toBe(false);
+    expect(world.lowerQuality).toHaveBeenCalledWith(1);
+    expect(rt.status).toBe('failed');
+    expect(world.dispose).toHaveBeenCalled();
+  });
+
+  it('each world gives the governor a fresh start: reset and held before its ratio is set, so that ratio is the sharpest', async () => {
+    const order = [];
+    const quality = fakeQuality();
+    let scale = 0.72; // (the last world had it softened)
+    quality.ratioUnder = (cap) => Math.min(cap ?? Infinity, 2) * scale;
+    quality.reset = vi.fn(() => {
+      order.push('reset');
+      scale = 1;
+    });
+    quality.hold = vi.fn((ms) => order.push(`hold ${ms}`));
+    const gfx = fakeBackend();
+    gfx.setRatio = vi.fn((r) => order.push(`setRatio ${r}`));
+    const { rt } = make({ quality, makeBackend: () => gfx });
+    await rt.mount({ id: 'galaxy', ratio: 1.5, create: () => fakeWorld() }, {}, fakeHost());
+    expect(order).toEqual(['reset', 'hold 3000', 'setRatio 1.5']);
+  });
+
+  // This replaced a test that pinned a kick after the new ratio was set
+  // under the old world. The kick only helped a handover begun outside a
+  // frame. A take-off begins inside the surface's own draw, so the build
+  // resumed after that draw, in the same task, with the next frame already
+  // queued, and the resize showed the cleared buffer for a frame. The new
+  // world's fresh start now waits for the cover instead.
+  it("a handover begun inside the old world's draw leaves its canvas alone: the new world's fresh start and ratio come under the cover", async () => {
+    const order = [];
+    const quality = fakeQuality();
+    let scale = 1;
+    quality.ratioUnder = (cap) => Math.min(cap ?? Infinity, 2) * scale;
+    quality.reset = vi.fn(() => {
+      order.push('reset');
+      scale = 1;
+    });
+    quality.hold = vi.fn((ms) => order.push(`hold ${ms}`));
+    const gfx = fakeBackend();
+    gfx.setRatio = vi.fn((r) => order.push(`setRatio ${r}`));
+    gfx.setSize = vi.fn((w, h) => order.push(`setSize ${w}x${h}`));
+    gfx.snapshot = vi.fn(() => {
+      order.push('snapshot');
+      return { set: vi.fn(), remove: vi.fn() };
+    });
+    const { rt, loop } = make({ quality, makeBackend: () => gfx });
+    let board = false;
+    const galaxy = fakeWorld({ wants: () => true, draw: vi.fn(() => order.push('draw galaxy')) });
+    const surface = fakeWorld({
+      wants: () => true,
+      draw: vi.fn(() => {
+        order.push('draw surface');
+        // (taking off: the surface's draw emits 'leaving', and the page hands over there and then)
+        if (board) {
+          board = false;
+          rt.handover({ id: 'galaxy', ratio: 1.5, create: () => galaxy }, {}, fakeHost());
+        }
+      }),
+    });
+    await rt.mount({ id: 'surface', ratio: 1.5, create: () => surface }, {}, fakeHost());
+    loop.tick(0);
+    scale = 0.85; // (it struggled: softened, and its canvas drawn at 1.275)
+    board = true;
+    order.length = 0;
+    loop.tick(16);
+    await settled(); // (the microtasks after the frame: still before the browser paints)
+    expect(order).toEqual(['draw surface']); // nothing written to the canvas it has just drawn
+    loop.tick(33); // the old world's last frame, kept as the cover
+    await settled();
+    loop.tick(50);
+    expect(order).toEqual(['draw surface', 'draw surface', 'snapshot', 'reset', 'hold 3000', 'setRatio 1.5', 'setSize 640x360', 'draw galaxy']);
+  });
+
+  it("the governor isn't fed the old world's frames while the next world is made", async () => {
+    const { rt, loop, quality } = make();
+    await rt.mount({ id: 'old', create: () => fakeWorld({ wants: () => true }) }, {}, fakeHost());
+    loop.tick(0);
+    expect(quality.frame).toHaveBeenCalledTimes(1);
+    let readyNew;
+    const p = rt.handover({ id: 'next', create: () => fakeWorld({ wants: () => true, ready: new Promise((r) => (readyNew = r)) }) }, {}, fakeHost());
+    await flush();
+    loop.tick(100);
+    loop.tick(200); // (the old world drawing on, its frames carrying the new one's making)
+    expect(quality.frame).toHaveBeenCalledTimes(1);
+    readyNew();
+    await settled();
+    loop.tick(300); // (the cover)
+    await p;
+    loop.tick(400); // the new world's first frame: its own from here
+    expect(quality.frame).toHaveBeenCalledTimes(2);
+    expect(quality.frame).toHaveBeenLastCalledWith(400);
+  });
+
+  it('a module that softens through its own post chain keeps its canvas as it is, and is told the level', async () => {
+    const quality = fakeQuality();
+    let scale = 1;
+    quality.ratioUnder = vi.fn((cap, { unscaled = false } = {}) => Math.min(cap ?? Infinity, 2) * (unscaled ? 1 : scale));
+    quality.frame = vi.fn(() => {
+      scale = 0.72;
+      return 2;
+    });
+    const { rt, loop } = make({ quality });
+    const world = fakeWorld({ wants: () => true, lowerQuality: vi.fn() });
+    await rt.mount({ id: 'galaxy', ratio: 1.5, sharpness: 'own', create: () => world }, {}, fakeHost());
+    expect(rt.gfx.setRatio).toHaveBeenLastCalledWith(1.5);
+    loop.tick(16);
+    expect(world.lowerQuality).toHaveBeenCalledWith(2);
+    for (const [r] of rt.gfx.setRatio.mock.calls) expect(r).toBe(1.5); // (never the scaled 1.08)
+    // a module without it is drawn at the scaled ratio, as before
+    const plain = fakeWorld({ wants: () => true, lowerQuality: vi.fn() });
+    scale = 1;
+    await rt.mount({ id: 'surface', ratio: 1.5, create: () => plain }, {}, fakeHost());
+    loop.tick(32);
+    expect(rt.gfx.setRatio).toHaveBeenLastCalledWith(1.5 * 0.72);
+    expect(plain.lowerQuality).toHaveBeenCalledWith(2);
+  });
+
   it("a module's ratio caps the sharpness it's drawn at", async () => {
     const quality = fakeQuality();
     quality.ratioUnder = vi.fn((cap) => Math.min(cap ?? Infinity, 2));
@@ -574,5 +862,32 @@ describe('the quality level changed while a world is up', () => {
     rt.sharpen(1.5);
     expect(quality.setSharpness).toHaveBeenCalledWith(1.5);
     expect(rt.gfx.setRatio).toHaveBeenCalled();
+  });
+});
+
+describe('calibration switched off (the QA scripts: ?calibrate=off)', () => {
+  const tuneSteps = (rt) => {
+    const steps = [];
+    rt.events.on('prepare', (e) => e.step === 'tune' && steps.push(e));
+    return steps;
+  };
+
+  it('calibrates a world on mount by default', async () => {
+    const { rt, quality } = make();
+    quality.setLevel = vi.fn();
+    const steps = tuneSteps(rt);
+    await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost());
+    await settled();
+    expect(steps).toHaveLength(1);
+  });
+
+  it('skips the walk and leaves the world at its sharpest step', async () => {
+    const { rt, quality } = make({ calibrate: false });
+    quality.setLevel = vi.fn();
+    const steps = tuneSteps(rt);
+    await rt.mount({ id: 'a', create: () => fakeWorld() }, {}, fakeHost());
+    await settled();
+    expect(steps).toHaveLength(0);
+    expect(quality.setLevel).not.toHaveBeenCalled();
   });
 });

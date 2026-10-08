@@ -7,7 +7,13 @@
   display: block;
   width: 100%;
   height: 100%;
+  transition: opacity 0.4s var(--ease-out);
 }
+/* a fresh mount's world fades in on its first frame, as a page scene's does
+   (index.css's .scene-canvas): the runtime marks the box data-fresh until it
+   has drawn, and never at a handover, which has the old world's last frame
+   over it instead (Earth's own, slower fade, earth.css, keeps its pace) */
+.world-host[data-fresh] > .world-canvas { opacity: 0; }
 .world-snapshot {
   position: absolute;
   inset: 0;

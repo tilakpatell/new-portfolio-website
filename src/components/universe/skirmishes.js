@@ -14,7 +14,7 @@ import { createFleet } from './glbFleet';
 import { FACTIONS, LASER } from './hunterRules';
 import { createSkirmish } from './skirmish';
 
-// the freighters' sizes (their biggest dimension, as the traffic draws them)
+// the freighters' sizes (their length, as the traffic draws them)
 const CIVIL_SIZE = { transport: 1.8, freighter: 0.7, saucer: 0.45, hauler: 0.9 };
 const BOLT = { xwing: [5.5, 0.6, 0.5], birdperson: [0.7, 5.5, 1.2] };
 
