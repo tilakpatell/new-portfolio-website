@@ -634,7 +634,7 @@ export const PAGES = {
     touch: [{ label: 'Driving', rows: [['Stick', 'Drive and steer'], ['Jump', 'Jump'], ['Boost', 'Hold to go faster'], ['Back', 'Back to dry land']] }],
     tips: [
       ['Water', 'The compass at the top points at the nearest water. Rivers run downhill into lakes and the sea; drive in and the car slows, and after four seconds under it comes back to dry land.'],
-      ['Another planet', 'Every seed is a different planet: change the number at the end of the address. ?type=desert, ice, ocean or volcanic changes its kind.'],
+      ['Another planet', 'Every seed is a different planet: change the number at the end of the address. ?type=forest, desert, ice, ocean or volcanic changes its kind.'],
       ['A controller', 'Works too.'],
     ],
   },

@@ -12,15 +12,24 @@
 //            river's within 1.2 × its width, the sea's where the ground is
 //            below it)
 //   mask     Uint8Array(128 × 128 × 4), texels 0.5 m, row-major from (0, 0):
-//            R paving (0 here: a world's roads write it), G grass, B water
-//            depth / MAX_DEPTH, A the river's flow (0…255 for 0…2π; 0 still)
-//   props    [{ kind, x, y, z, yaw, scale }] in world metres, up to
-//            spec.kit.perCell, by a seeded Poisson disc where the mask allows
+//            R paving (0 here: a world's roads write it), G grass (0.4 of
+//            itself under each crown, painted once the props are placed; a
+//            crown's shade stops at its own cell's edge), B water depth /
+//            MAX_DEPTH, A the river's flow (0…255 for 0…2π; 0 still)
+//   props    [{ kind, name, x, y, z, yaw, scale }] in world metres: the
+//            land's flora (spec.flora, flora.js), each species by its own
+//            seeded Poisson disc, moved by his clumping and thinned to woods
+//            and glades, where the mask, the slope and the water allow; name
+//            the kit model's (a crate has none); scale the galaxy's 0.8 +
+//            0.4 × r^1.6 (a crate's 1). The same on every device: a device's
+//            budget thins them as it draws them, not here
 //
 // Pure: no three.js, no DOM; runs in a worker and in Node.
 //
 //   CELL = 64, N = 65, MASK = 128, MAX_DEPTH = 3
-//   makeCell(spec, cx, cz) → { cx, cz, heights, water, mask, props }
+//   makeCell(spec, cx, cz, { shade = true }) → { cx, cz, heights, water,
+//     mask, props } (shade false: the grass as it was before the crowns, the
+//     props the same)
 //   cellMesh(heights, { step = 1 | 2 }) → { positions, normals, indices } in
 //     the cell's frame (0…64), each quad split (ix + 1, iz)–(ix, iz + 1) (as
 //     Rapier splits its heightfield, and as the galaxy's ground), a
@@ -30,7 +39,7 @@
 //     triangles, in the cell's frame (waterAt NaN when a corner is dry)
 
 import { seeded } from '../seeded.js';
-import { fieldAt } from './layers.js';
+import { fieldAt, noise2 } from './layers.js';
 import { clipRivers, lakeAt, nearestRiverPoint, riversNear } from './rivers.js';
 
 export const CELL = 64;
@@ -42,6 +51,19 @@ const SKIRT = 2;
 const SHORE = 1.5; // no grass this near water
 const BEACH = 1.5; // nor this far above the sea
 const STEEP = 0.55; // nor on slopes steeper (rise over run)
+const BANK = 6; // metres from the water's edge a 'bank' row stands within
+const SPREAD = 0.02; // his clumping noise: a bump every 50 m
+// and where a third channel of it is thin, the woods are: a clumped row keeps
+// a placement as often as smoothstep(THIN) of it there, so trees gather in
+// woods with glades between (his push alone, under the rows' counts and
+// spacings, leaves them as even as a Poisson disc); the meadow's kinds go
+// the other way about, into the glades
+const THIN = [-0.4, 0.2];
+const MEADOW = new Set(['grass', 'flower']);
+const SHADED = 0.4; // the grass under a crown (the galaxy's ground's SHADE.grass)
+// how near another species' placement may stand: trunks, rocks and crates
+// keep apart, the cover keeps off them, and nothing keeps off the cover
+const ROOM = { tree: 2, bush: 1, rock: 2.5, crate: 1 };
 
 const smoothstep = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -134,7 +156,7 @@ const mix = (a, b, c) => {
   return (h ^ (h >>> 15)) | 0;
 };
 
-export function makeCell(spec, cx, cz) {
+export function makeCell(spec, cx, cz, { shade = true } = {}) {
   const x0 = cx * CELL;
   const z0 = cz * CELL;
   const rivers = clipRivers(riversNear(spec, cx, cz), x0, z0, x0 + CELL, z0 + CELL, SHORE + 1);
@@ -175,45 +197,94 @@ export function makeCell(spec, cx, cz) {
         mask[t + 3] = Math.round((((a + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI)) * 255) % 256;
       }
     }
-  cell.props = scatter(spec, cell, x0, z0);
+  cell.props = scatter(spec, cell, rivers, x0, z0, shade);
   return cell;
 }
 
-// the props: a seeded Poisson disc over the cell, each kind where it may stand
-function scatter(spec, cell, x0, z0) {
-  const { perCell, kinds } = spec.kit;
+// the props: each row of the land's flora by its own seeded Poisson disc (a
+// sub-stream a row, every draw made before any test, so an edited row
+// reshuffles no other), moved by his clumping and thinned to woods and
+// glades (pure functions of the world point, so neighbours clump alike),
+// kept where the mask, the slope and the water allow; then the crowns'
+// shade painted into the grass
+function scatter(spec, cell, rivers, x0, z0, shade) {
   const out = [];
-  if (!perCell || !kinds.length) return out;
-  const rand = seeded(mix(spec.seed, cell.cx, cell.cz));
-  const spacing = Math.max(2, CELL / Math.sqrt(perCell * 2));
-  let crates = 0;
-  for (let tries = 0; out.length < perCell && tries < perCell * 4; tries++) {
-    const lx = rand() * CELL;
-    const lz = rand() * CELL;
-    const kind = kinds[Math.floor(rand() * kinds.length)];
-    const yaw = rand() * Math.PI * 2;
-    const r = rand();
-    if (out.some((p) => Math.hypot(p.x - x0 - lx, p.z - z0 - lz) < spacing)) continue;
-    const t = (Math.min(MASK - 1, Math.floor(lz / TEXEL)) * MASK + Math.min(MASK - 1, Math.floor(lx / TEXEL))) * 4;
-    const grass = cell.mask[t + 1] / 255;
-    const wet = cell.mask[t + 2] > 0 || !Number.isNaN(waterAt(cell, lx, lz));
-    const y = heightAt(cell, lx, lz);
-    if (wet || y <= spec.sea) continue;
-    let scale = 1;
-    if (kind === 'tree') {
-      if (grass <= 0.5) continue;
-      scale = 0.8 + 0.5 * r;
-    } else if (kind === 'rock') {
-      // on slopes and banks: where the grass gives out
-      if (grass > 0.6 && r > 0.3) continue;
-      scale = 0.5 + r;
-    } else if (kind === 'crate') {
-      if (crates >= 3 || grass < 0.9) continue;
-      crates++;
-    }
-    out.push({ kind, x: x0 + lx, y, z: z0 + lz, yaw, scale });
-  }
+  const crowns = [];
+  const base = mix(spec.seed, cell.cx, cell.cz);
+  const s = { level: NaN, flow: null, near: Infinity };
+  const slopeAt = (lx, lz) =>
+    Math.hypot(heightAt(cell, lx + TEXEL, lz) - heightAt(cell, lx - TEXEL, lz), heightAt(cell, lx, lz + TEXEL) - heightAt(cell, lx, lz - TEXEL)) / (2 * TEXEL);
+  [spec.flora.species, spec.flora.cover].forEach((list, l) =>
+    list.forEach((f, i) => {
+      const n = f.perCell;
+      if (!n) return;
+      const rand = seeded(mix(base, i, l));
+      const spacing = Math.max(2, CELL / Math.sqrt(n * 2));
+      // (drawn as far past each edge as a clump can pull one in, or the
+      // side a clump pulls toward would stand bare along the cell's edge)
+      const span = CELL + 2 * f.clump;
+      const tries = Math.ceil(n * 4 * (span / CELL) ** 2);
+      const room = ROOM[f.kind] ?? 0;
+      const named = f.names.length > 0;
+      const mine = [];
+      for (let t = 0; mine.length < n && t < tries; t++) {
+        let lx = rand() * span - f.clump;
+        let lz = rand() * span - f.clump;
+        const yaw = rand() * Math.PI * 2;
+        const r = rand();
+        const pick = rand();
+        const keep = rand();
+        if (f.clump) {
+          const wx = (x0 + lx) * SPREAD;
+          const wz = (z0 + lz) * SPREAD;
+          lx += noise2(wx, wz, spec.seed + 7001) * f.clump;
+          lz += noise2(wx, wz, spec.seed + 7002) * f.clump;
+        }
+        if (!(lx >= 0 && lx < CELL && lz >= 0 && lz < CELL)) continue;
+        const x = x0 + lx;
+        const z = z0 + lz;
+        if (f.clump && keep > smoothstep(THIN[0], THIN[1], (MEADOW.has(f.kind) ? -1 : 1) * noise2(x * SPREAD, z * SPREAD, spec.seed + 7003))) continue;
+        if (mine.some((p) => Math.hypot(p.x - x, p.z - z) < spacing)) continue;
+        if (out.some((p) => Math.hypot(p.x - x, p.z - z) < room + (ROOM[p.kind] ?? 0))) continue;
+        const k = (Math.min(MASK - 1, Math.floor(lz / TEXEL)) * MASK + Math.min(MASK - 1, Math.floor(lx / TEXEL))) * 4;
+        if (cell.mask[k + 2] > 0 || !Number.isNaN(waterAt(cell, lx, lz))) continue;
+        const y = heightAt(cell, lx, lz);
+        if (y <= spec.sea) continue;
+        if (f.on === 'grass' && cell.mask[k + 1] / 255 < (f.grass ?? 0.5)) continue;
+        // (the beach is the sea's bank: under the grass, just above the sea)
+        if (f.on === 'bank' && !(y < spec.sea + BEACH || surface(spec, rivers, x, z, y, s).near <= BANK)) continue;
+        const slope = slopeAt(lx, lz);
+        if (slope < f.slope[0] || slope > f.slope[1]) continue;
+        const scale = named ? 0.8 + 0.4 * r ** 1.6 : 1;
+        const p = named ? { kind: f.kind, name: f.names[Math.floor(pick * f.names.length)], x, y, z, yaw, scale } : { kind: f.kind, x, y, z, yaw, scale };
+        mine.push(p);
+        out.push(p);
+        if (f.shade) crowns.push(lx, lz, f.shade * scale);
+      }
+    }),
+  );
+  if (shade) paint(cell.mask, crowns);
   return out;
+}
+
+// each crown's shade into the grass, as the galaxy's ground paints it (0.4
+// of itself under every crown over a texel), clipped at the cell's edge
+function paint(mask, crowns) {
+  for (let c = 0; c < crowns.length; c += 3) {
+    const lx = crowns[c];
+    const lz = crowns[c + 1];
+    const r = crowns[c + 2];
+    const i0 = Math.max(0, Math.floor((lx - r) / TEXEL));
+    const i1 = Math.min(MASK - 1, Math.floor((lx + r) / TEXEL));
+    const j0 = Math.max(0, Math.floor((lz - r) / TEXEL));
+    const j1 = Math.min(MASK - 1, Math.floor((lz + r) / TEXEL));
+    for (let j = j0; j <= j1; j++)
+      for (let i = i0; i <= i1; i++) {
+        if (Math.hypot((i + 0.5) * TEXEL - lx, (j + 0.5) * TEXEL - lz) > r) continue;
+        const t = (j * MASK + i) * 4 + 1;
+        mask[t] = Math.round(mask[t] * SHADED);
+      }
+  }
 }
 
 export function cellMesh(heights, { step = 1 } = {}) {

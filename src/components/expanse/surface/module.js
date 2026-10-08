@@ -19,7 +19,7 @@
 
 import { createPhysics } from '../../../lib/physics/world.js';
 import { addHeightfield } from '../../../lib/physics/heightfield.js';
-import { addProps } from '../../../lib/physics/props.js';
+import { KINDS, addProps } from '../../../lib/physics/props.js';
 import { addCatch } from '../../../lib/physics/catch.js';
 import { addVehicle } from '../../../lib/physics/vehicle.js';
 import { CELL, N, heightAt, makeCell, waterAt } from '../../../lib/land/cell.js';
@@ -111,7 +111,8 @@ export default {
                 scene.rocks.place(i, [p.x, p.y + 0.3 * p.scale, p.z], q, p.scale);
                 v.rocks.push(i);
               }
-            } else {
+            } else if (p.kind === 'crate') {
+              // (the rest of the flora, bushes and the cover, waits for the kit's pools)
               const i = scene.crates.take();
               if (i >= 0) {
                 scene.crates.place(i, [p.x, p.y + 0.5, p.z], q, 1);
@@ -134,11 +135,13 @@ export default {
         solid(key, cell) {
           const [x, , z] = toLocal(cell.cx * CELL, 0, cell.cz * CELL);
           const ground = addHeightfield(physics, { heights: cell.heights, x, z });
-          const list = cell.props.map((p) => ({ ...p, x: p.x - origin[0], y: p.y - origin[1], z: p.z - origin[2] }));
+          // (only what has a body: bushes and the cover have none)
+          const bodied = cell.props.filter((p) => KINDS[p.kind]);
+          const list = bodied.map((p) => ({ ...p, x: p.x - origin[0], y: p.y - origin[1], z: p.z - origin[2] }));
           const bodies = addProps(physics, list);
           // (each crate's body writes into its crate's slot)
           const v = visuals.get(key);
-          const slots = cell.props.map((p) => v?.crates.find(([, c]) => c === p)?.[0] ?? -1);
+          const slots = bodied.map((p) => v?.crates.find(([, c]) => c === p)?.[0] ?? -1);
           solids.set(key, { ground, bodies, list, slots });
         },
         unsolid(key) {
