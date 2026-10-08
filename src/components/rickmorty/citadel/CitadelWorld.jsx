@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
-import { settle } from '../../../lib/settle';
+import { showPrepared } from '../../../lib/prepareWorld';
 import LoadingVeil from '../../worlds/LoadingVeil';
 import { local, useFrameLoop, useInView, useMediaQuery, usePageVisible } from '../../../lib/hooks';
 import { readPad, typing } from '../../games/pad';
@@ -95,8 +95,6 @@ function useSaid(who, text) {
 }
 
 // (`leaveLabel`: what the hangar's way out says; the page knows where it goes)
-const PREPARE_WAIT = 30000; // ms at most the veil waits on the Citadel's prepare
-
 export default function CitadelWorld({ onLeave, leaveLabel = 'Back to C-137' }) {
   const three = use3D();
   const [done, setDone] = useState(() => {
@@ -221,14 +219,10 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
         fit();
         // everything onto the graphics chip behind the veil (Mortytown too,
         // if Rick's going straight back down), then shown (lib/stagePrepare:
-        // bounded, so it never holds the Citadel up for good)
-        setGl('preparing');
-        await settle(
-          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead, { town: Boolean(sim.current.autoDown) }),
-          PREPARE_WAIT,
-        );
+        // PREPARE_WAIT at most, then it's told to stop: lib/prepareWorld)
+        const town = Boolean(sim.current.autoDown);
+        await showPrepared((report, going) => a.prepare?.(report, going, { town }), { setGl, setPrep, alive: () => !dead && api.current === a });
         if (dead || api.current !== a) return;
-        setGl((g) => (g === 'preparing' ? 'on' : g));
         // left in Mortytown last time: back down the lift
         if (sim.current.autoDown) {
           sim.current.autoDown = false;
@@ -698,7 +692,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
     s.t += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
-    const raw = readPad();
+    const raw = gl === 'on' ? readPad() : null; // (nothing pressed behind the veil)
     const before = s.padBefore ?? {};
     s.padBefore = raw ?? {};
     const pad = wardrobeRef.current ? null : raw; // (the wardrobe's open over him: the pad's for it)

@@ -6,7 +6,7 @@ import '@fontsource/luckiest-guy/400.css';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
-import { settle } from '../../../lib/settle';
+import { showPrepared } from '../../../lib/prepareWorld';
 import LoadingVeil from '../../worlds/LoadingVeil';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import GpuGate from '../../games/GpuGate';
@@ -293,8 +293,6 @@ const newSim = (at = START, portal = false) => ({
 
 // `start`: a planet of the universe map's Rick and Morty sector, played on its
 // own (./planetMode.js), its portal home calling `onLeave`; else C-137
-const PREPARE_WAIT = 30000; // ms at most the veil waits on the world's prepare
-
 export default function RmWorld({ start = null, onLeave = null }) {
   const planet = useMemo(() => planetOf(start), [start]);
   const three = use3D();
@@ -1114,18 +1112,13 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         }
         fit();
         // everything onto the graphics chip behind the veil, then shown
-        // (lib/stagePrepare: bounded, so it never holds the world up for good)
-        setGl('preparing');
-        await settle(
-          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead && api.current === a),
-          PREPARE_WAIT,
-        );
+        // (lib/prepareWorld: PREPARE_WAIT at most, then it's told to stop)
+        await showPrepared((report, going) => a.prepare?.(report, going), { setGl, setPrep, alive: () => !dead && api.current === a });
         if (dead || api.current !== a || a.lost) return;
         if (planet) {
           a.fx('portal', { at: planet.back });
           sound('portalHop');
         }
-        setGl((g) => (g === 'preparing' ? 'on' : g));
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -1260,7 +1253,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     const dt = Math.min(0.05, ms / 1000);
     s.t += dt;
     const k = s.keys;
-    const raw = readPad();
+    const raw = gl === 'on' ? readPad() : null; // (nothing pressed behind the veil)
     const before = s.padBefore;
     s.padBefore = raw ?? {};
     const pad = wardrobeRef.current ? null : raw; // (the wardrobe's open over him: the pad's for it)
