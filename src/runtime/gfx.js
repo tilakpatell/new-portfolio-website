@@ -29,10 +29,15 @@ export function makeGfx({ backend, renderer, canvas, compile, upload, post, isLo
       size.h = Math.max(1, Math.round(h));
       renderer.setSize(size.w, size.h, false);
     },
+    // (one resize, and none for the same ratio: a resize waits on the chip)
     setRatio(r) {
+      if (r === ratio && renderer.getPixelRatio?.() === r) return;
       ratio = r;
-      renderer.setPixelRatio(r);
-      renderer.setSize(size.w, size.h, false);
+      if (renderer.setDrawingBufferSize) renderer.setDrawingBufferSize(size.w, size.h, r);
+      else {
+        renderer.setPixelRatio(r);
+        renderer.setSize(size.w, size.h, false);
+      }
     },
     compile,
     upload,

@@ -32,13 +32,14 @@ const [vw, vh, vdpr] = (process.env.VIEW ?? '1470x956@2').match(/(\d+)x(\d+)(?:@
 // uploads) counted and timed per frame, draws and triangles counted, and
 // the browser's long animation frames with the scripts in them.
 function recorder() {
-  const zero = () => ({ links: 0, compiles: 0, glMs: 0, drawMs: 0, tex: 0, texBytes: 0, buf: 0, bufBytes: 0, draws: 0, tris: 0 });
+  const zero = () => ({ links: 0, compiles: 0, glMs: 0, drawMs: 0, tex: 0, texBytes: 0, buf: 0, bufBytes: 0, draws: 0, tris: 0, slow: '' });
   let cur = zero();
-  const frames = []; // [t, links, texUploads, texMB, bufMB, draws, tris, glMs, drawMs]
+  const frames = []; // [t, links, texUploads, texMB, bufMB, draws, tris, glMs, drawMs, slow]
+  const stacks = new Map(); // a slow GL call's callers → ms
   const loaf = [];
   const tick = () => {
     const c = cur;
-    frames.push([performance.now(), c.links, c.tex, c.texBytes / 1048576, c.bufBytes / 1048576, c.draws, c.tris, c.glMs, c.drawMs]);
+    frames.push([performance.now(), c.links, c.tex, c.texBytes / 1048576, c.bufBytes / 1048576, c.draws, c.tris, c.glMs, c.drawMs, c.slow]);
     cur = zero();
     requestAnimationFrame(tick);
   };
@@ -51,7 +52,22 @@ function recorder() {
       try {
         return fn.apply(this, a);
       } finally {
-        cur.glMs += performance.now() - t0;
+        const ms = performance.now() - t0;
+        cur.glMs += ms;
+        // (the slowest call of the frame, named: what a stall waited in)
+        if (ms > 20 && !cur.slow.includes(name)) cur.slow += `${name} ${Math.round(ms)}ms `;
+        // (who asked, for the slow ones: the stack's first frames outside three)
+        if (ms > 20) {
+          const at = (new Error().stack ?? '')
+            .split('\n')
+            .slice(2)
+            .map((l) => l.trim().replace(/^at /, '').replace(/\(?https?:\/\/[^/]+\//, '(').replace(/\?[^:)]*/, ''))
+            .filter((l) => !l.includes('recorder') && !l.includes('three.core') && !l.includes('deps/three.js'))
+            .slice(0, 3)
+            .join(' < ');
+          const key = `${name}: ${at}`;
+          stacks.set(key, (stacks.get(key) ?? 0) + ms);
+        }
         add?.(a);
       }
     };
@@ -162,7 +178,7 @@ function recorder() {
   }
   window.__probe = {
     take() {
-      return { frames, loaf, origin: performance.timeOrigin, heap: performance.memory?.usedJSHeapSize ?? null };
+      return { frames, loaf, origin: performance.timeOrigin, heap: performance.memory?.usedJSHeapSize ?? null, stacks: [...stacks.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8) };
     },
   };
 }
@@ -207,7 +223,7 @@ function phases({ frames, marks, loaf }) {
       .slice(0, 5)
       .map((g) => {
         const lf = loaf.find((l) => g.f[0] >= l.t && g.f[0] <= l.t + l.ms + 20);
-        return { ms: Math.round(g.ms), links: g.f[1], tex: g.f[2], texMB: r1(g.f[3]), bufMB: r1(g.f[4]), glMs: Math.round(g.f[7]), drawMs: Math.round(g.f[8]), scripts: lf?.scripts?.slice(0, 3) ?? [] };
+        return { ms: Math.round(g.ms), links: g.f[1], tex: g.f[2], texMB: r1(g.f[3]), bufMB: r1(g.f[4]), glMs: Math.round(g.f[7]), drawMs: Math.round(g.f[8]), slow: g.f[9], scripts: lf?.scripts?.slice(0, 3) ?? [] };
       });
     const secs = (t1 - t0) / 1000;
     rows.push({
@@ -400,6 +416,8 @@ try {
       set('tp-worlds', JSON.stringify('load'));
       set('tp-tour', 'skipped');
       set('tp-universe-ship', JSON.stringify('xwing'));
+      // (no reading back every shader's log: the built site doesn't, and it waits on each link)
+      window.__tpNoShaderChecks = true;
       window.sessionStorage.setItem('tp-galaxy-intro', '1');
     });
     if (trace) await ctx.addInitScript(() => (window.__probeTrace = true));
@@ -407,6 +425,12 @@ try {
     const page = await ctx.newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
+    // (lib/three/frameGuard names, in development, what still compiles mid-frame)
+    const slips = new Map();
+    page.on('console', (m) => {
+      const t = m.text();
+      if (t.startsWith('[frameGuard]')) slips.set(t, (slips.get(t) ?? 0) + 1);
+    });
     // (marked by the wall clock here, so a page frozen mid-frame can't hold a mark back)
     const marks = [];
     const cdp = profile ? await ctx.newCDPSession(page) : null;
@@ -457,8 +481,17 @@ try {
     for (const r of rows) {
       const bad = r.worst.filter((w) => w.ms > 50);
       if (!bad.length) continue;
-      console.log(`  worst in ${r.phase}: ${bad.map((w) => `${w.ms}ms[links ${w.links}, tex ${w.tex}/${w.texMB}MB, buf ${w.bufMB}MB, gl ${w.glMs}ms${trace ? `, draws ${w.drawMs}ms` : ''}${w.scripts.length ? `; ${w.scripts.map((s) => `${s.fn || '?'}@${s.url.split('/').slice(-2).join('/')} ${s.ms}ms`).join(', ')}` : ''}]`).join('  ')}`);
+      console.log(`  worst in ${r.phase}: ${bad.map((w) => `${w.ms}ms[links ${w.links}, tex ${w.tex}/${w.texMB}MB, buf ${w.bufMB}MB, gl ${w.glMs}ms${w.slow ? ` (${w.slow.trim()})` : ''}${trace ? `, draws ${w.drawMs}ms` : ''}${w.scripts.length ? `; ${w.scripts.map((s) => `${s.fn || '?'}@${s.url.split('/').slice(-2).join('/')} ${s.ms}ms`).join(', ')}` : ''}]`).join('  ')}`);
     }
+    if (process.env.STACKS && data?.stacks?.length) {
+      console.log('  slow GL calls, by caller:');
+      for (const [k, ms] of data.stacks) console.log(`    ${Math.round(ms)}ms ${k}`);
+    }
+    if (slips.size) {
+      console.log('  mid-frame compiles:');
+      for (const [t, n] of [...slips.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12)) console.log(`    ${n}× ${t.slice(13)}`);
+    }
+    report[name].slips = Object.fromEntries(slips);
     await ctx.close();
   }
 } finally {

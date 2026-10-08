@@ -134,30 +134,30 @@ export default function Contact() {
   return (
     <div ref={page} className="relative">
       <RouteLine containerRef={page} />
-      <header className="shell relative z-10 pb-12 pt-[calc(var(--nav-h)+40px)] md:pt-[calc(var(--nav-h)+72px)]">
+      <header className="shell relative z-10 pb-12 pt-[var(--page-top)]">
         <div className="relative">
           <Waypoint top="0.6rem" />
           <p className="eyebrow">Contact</p>
-          <PageTitle className="display mt-6 text-[clamp(3rem,1.6rem+6vw,6.2rem)]">Let’s talk.</PageTitle>
+          <PageTitle className="display display-1 mt-6">Let’s talk.</PageTitle>
           <p className="mt-3 text-sm text-muted">
             <AurebeshLine>Let’s talk.</AurebeshLine>
           </p>
           <p className="lead mt-6 max-w-2xl">
-            Email is the fastest way to reach me about roles, projects, or anything on this site. I’m graduating in{' '}
+            Email is the fastest way to reach me about roles, projects or anything on this site. I’m graduating in{' '}
             {fmtMonth(education.graduation)} with a {education.degree} from {education.school}.
           </p>
         </div>
         <PaperPlane />
       </header>
 
-      <section className="shell relative z-10 pb-28" aria-label="Ways to reach me">
+      <section className="shell section-last relative z-10" aria-label="Ways to reach me">
         <Egg id="hologram" className="egg-corner" />
         <div className="relative grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
           <Waypoint top="1.6rem" />
           <div className="grid content-start gap-4">
             <div className="card p-6">
               <p className="label">Email</p>
-              <a href={`mailto:${profile.email}`} className="stretch-semi mt-3 block break-all text-[clamp(1.25rem,1rem+1vw,1.75rem)] font-semibold text-ink hover:underline hover:decoration-[color:var(--accent)] hover:underline-offset-4">
+              <a href={`mailto:${profile.email}`} className="link-hover stretch-semi mt-3 block break-all text-[clamp(1.25rem,1rem+1vw,1.75rem)] font-semibold text-ink">
                 {profile.email}
               </a>
               <div className="mt-5 flex flex-wrap gap-3">
@@ -178,7 +178,7 @@ export default function Contact() {
               <RiDownloadLine className="h-6 w-6 flex-none text-ink" aria-hidden="true" />
               <span className="flex-1">
                 <span className="label block">Résumé</span>
-                <span className="mt-1 block text-ink">Tilak_Patel_Resume.pdf</span>
+                <span className="mt-1 block text-ink">{profile.resume.filename}</span>
               </span>
             </a>
           </div>

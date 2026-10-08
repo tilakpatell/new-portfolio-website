@@ -52,7 +52,7 @@ export default function Online({ online, ship = null, floating = false }) {
   const here = room.peers.filter((p) => !p.blocked && p.where === online.where).length;
   const asks = room.peers.filter((p) => p.ally === 'got' && !p.blocked).length;
   const label = !on ? 'Multiplayer' : room.status === 'connecting' ? 'Connecting…' : room.status === 'failed' ? 'Couldn’t connect' : `${count} ${count === 1 ? 'pilot' : 'pilots'} online${floating && here ? ` · ${here} here` : ''}`;
-  const short = !on ? 'Online' : room.status === 'online' ? String(count) : room.status === 'failed' ? '!' : '…'; // (a phone's corner is tight)
+  const short = !on ? 'Join' : room.status === 'online' ? String(count) : room.status === 'failed' ? '!' : '…'; // (a phone's corner is tight)
 
   const close = () => setOpen(false);
   const onKeyDown = (e) => {
@@ -159,14 +159,14 @@ function Roster({ online, ship, floating, focus, onClose }) {
   };
   if (record)
     return (
-      <Card title="Online" onClose={onClose}>
+      <Card title="Multiplayer" onClose={onClose}>
         <Suspense fallback={<p className="universe-online-text">Opening the record…</p>}>
           <Record open onClose={() => setRecord(false)} />
         </Suspense>
       </Card>
     );
   return (
-    <Card title="Online" onClose={onClose}>
+    <Card title="Multiplayer" onClose={onClose}>
       {renaming ? (
         <form className="universe-online-rename" onSubmit={rename}>
           <label className="sr-only" htmlFor={id}>
@@ -286,7 +286,7 @@ function Pilot({ p, online, ship, mine, focus }) {
               </button>
             )}
             {p.ally === 'sent' && (
-              <button type="button" className="universe-online-act" onClick={act('end')} title="Asked: click to take it back">
+              <button type="button" className="universe-online-act" onClick={act('end')} title="Asked: click to take it back" aria-label={`Cancel your request to ${p.name}`}>
                 Asked…
               </button>
             )}
@@ -296,12 +296,12 @@ function Pilot({ p, online, ship, mine, focus }) {
                   Accept
                 </button>
                 <button type="button" className="universe-online-act" onClick={act('decline')}>
-                  No
+                  Decline
                 </button>
               </>
             )}
             {p.ally === 'ally' && (
-              <button type="button" className="universe-online-act" onClick={act('end')}>
+              <button type="button" className="universe-online-act" onClick={act('end')} aria-label={`End your alliance with ${p.name}`}>
                 End
               </button>
             )}

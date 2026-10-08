@@ -2,11 +2,9 @@
 // Lothal and Sorgan. (sites/index.js has what a site is.)
 
 import { grove } from './stand';
+import { sky, palette, hostile, troops } from './outerKit';
+import { nevarro } from './nevarro';
 
-const sky = (zenith, horizon, sun, extra = {}) => ({ zenith, horizon, haze: 0.8, hazeColor: horizon, suns: [{ az: 0.6, el: 0.35, color: sun, size: 0.016, glow: 1.1 }], clouds: { cover: 0.3, color: '#ffffff', shade: '#9aa0aa', scale: 0.6, speed: 0.005 }, ...extra });
-const palette = (low, high, rock, accent, extra = {}) => ({ low, high, rock, accent, deep: rock, hLow: -4, hHigh: 14, rockAt: 0.4, accentCover: 0.25, ripple: { strength: 0.02, scale: 3, wind: 0.5 }, grain: 0.5, ...extra });
-const hostile = (range, every, damage) => ({ range, every, damage, spread: 0.06 });
-const troops = (tag, n, at, kind = 'stormtrooper') => ({ kind, n, at, spread: 12, roam: 5, hp: 2, tag, hostile: hostile(42, 2.3, 8) });
 // n spots evenly round a circle of radius r (a turn of `phase` first), each
 // [x, z, yaw] with its front to the middle
 const ring = (n, r, phase = 0) => Array.from({ length: n }, (_, i) => {
@@ -19,69 +17,8 @@ const ring = (n, r, phase = 0) => Array.from({ length: n }, (_, i) => {
 const LOTHAL_SPIRES = [[-31, 4, 0.32], [-9, 35, 0.42], [-48, 46, 0.37], [-68, 14, 0.46], [-108, 32, 0.42], [-114, 69, 0.42], [-161, 68, 0.32], [-181, 37, 0.46], [-218, 53, 0.37], [-231, 88, 0.42], [-271, 71, 0.42], [-276, 34, 0.46]].map(([x, z, scale], i) => ({ kind: 'lothspire', at: [x, z], yaw: i * 1.7, opts: { h: scale * 49, r: scale * 11, seed: i + 1 } }));
 
 export const SITES = {
-  nevarro: {
-    place: 'The lava fields outside Nevarro City',
-    line: 'Black rock, rivers of fire, and a town that runs on bounties.',
-    // (The Mandalorian's Nevarro: black volcanic rock and grey ash under a
-    // cool steel-blue overcast, the haze grey, not brown)
-    sky: sky('#5a6d8e', '#a9b5c3', '#ffe2c0', { clouds: { cover: 0.6, color: '#c9ced4', shade: '#4c5058', scale: 0.6, speed: 0.006 } }),
-    fog: { color: '#9ca6b0', density: 0.0012 },
-    light: { sun: 2.4, sky: '#b4c0d0', ground: '#3a3b40', ambient: 0.72 },
-    ground: { detail: 'ash', detailLook: { color: 0.7, normal: 0.8 }, seed: 21, layers: [{ type: 'swell', scale: 380, height: 10 }, { type: 'hills', scale: 120, height: 8 }, { type: 'mountains', from: 650, to: 3000, height: 480, scale: 1100 }], palette: palette('#26282e', '#36373d', '#1e2226', '#5a5a56', { mark: '#18191c' }) },
-    land: { at: [0, 0], yaw: 0.6 },
-    places: [
-      { id: 'town', name: 'Nevarro City', at: [140, -90], r: 60, flat: { r: 58 }, about: 'The guild’s town: Greef Karga’s cantina, the bounty hunters’ haunt, the Armorer’s forge under the streets.', things: [{ kind: 'nevcantina', at: [0, 0], yaw: 0.3 }, { kind: 'nevarrodome', at: [27, 18], yaw: 0.4, sink: 0.6 }, { kind: 'nevarrodome', at: [-29, 21], yaw: 1.9, scale: 0.85, sink: 0.6 }, { kind: 'nevarrodome', at: [21, -29], yaw: 2.8, scale: 1.15, sink: 0.6 }, { kind: 'nevarrodome', at: [-24, -26], yaw: 0.9, scale: 0.7, sink: 0.6 }, { kind: 'nevarrodome', at: [40, -4], yaw: 3.3, scale: 0.9, sink: 0.6 }, { kind: 'nevarroarch', at: [-40, 25], yaw: -1, sink: 0.2 }, { kind: 'crates', at: [-14, -12] }, { kind: 'stall', at: [12, 14], yaw: 2.4 }, { kind: 'stall', at: [-10, 16], yaw: 0.6 }, { kind: 'lamp', at: [-34, 18] }, { kind: 'lamp', at: [-30, 29] }, ...grove(7, 26, 50, 78, ['lavarock'], [1.2, 4]).filter((t) => Math.hypot(t.at[0] + 40, t.at[1] - 25) > 16)] },
-      { id: 'crest', name: 'The Razor Crest', at: [40, -170], r: 30, flat: { r: 30 }, about: 'Din Djarin’s gunship, older than it looks and patched in more places than it should be.', things: [{ kind: 'razorcrest', at: [0, 0], yaw: 1.2 }] },
-      { id: 'base', name: 'The Imperial base', at: [-260, 160], r: 50, flat: { r: 48 }, about: 'An Imperial Remnant outpost, still running, still guarding something.', things: [{ kind: 'bunker', at: [0, 0], yaw: 2 }, { kind: 'crates', at: [16, 10] }, { kind: 'crates', at: [-12, 14] }, { kind: 'lamp', at: [10, -14] }] },
-      { id: 'lava', name: 'The lava flats', at: [300, 260], r: 50, about: 'A crust of black glass over rivers of fire. Don’t stop walking.', things: grove(41, 14, 4, 40, ['lavarock'], [1.5, 4.5]) },
-    ],
-    // the guild's cargo where you set down, and black lava rock everywhere,
-    // the big ones further out
-    things: [
-      { kind: 'cratecube', at: [14, 10], yaw: 0.4 },
-      { kind: 'cratecube', at: [15.3, 10.5], yaw: 1.1 },
-      { kind: 'barrel', at: [12.5, 12], yaw: 0.2 },
-      { kind: 'empirecrate', at: [-16, -8], yaw: 2.3 },
-      { kind: 'lamp', at: [18, 6] },
-    ],
-    scatter: [
-      { kind: 'lavarock', n: 110, within: [24, 420], scale: [0.35, 1.6], sink: 0.25, solid: 0.6 },
-      { kind: 'lavarock', n: 40, within: [120, 800], scale: [2, 5], sink: 0.6 },
-    ],
-    zones: [
-      {
-        id: 'cantina',
-        name: 'Greef Karga’s cantina',
-        music: 'cantina',
-        door: { at: [143, -80.4], r: 2.6, prompt: 'Go into the cantina' },
-        back: [143.7, -78],
-        inside: { build: 'cantinainside', spawn: [0, 14.6], yaw: Math.PI, exit: { at: [0, 16], r: 1.5 }, bounds: [11.5, 17, 6.6], rooms: [[0, 13.6, 1.6, 3.1, 0, 3.2], [0, 0, 11, 11, 0, 6.6, 'round']], light: { sky: '#8a7a6a', ground: '#201814', ambient: 0.6, fog: '#14100c', density: 0.018 }, lamps: [[0, 3.6, -1, '#ffb070', 34, 16], [0, 3, -8.2, '#9a7dff', 20, 10], [-7, 2.6, 3, '#ff9a50', 16, 12], [7, 2.6, 3, '#ff9a50', 16, 12]] },
-        life: [
-          { kind: 'villager', id: 'greef', at: [-9.9, -0.8], still: true, face: 1.5, name: 'Greef Karga', named: true, quest: 'puck', says: ['I have a job. It pays well. It’s not for everyone.'] },
-          { kind: 'wuher', at: [0, 0.8], still: true, face: 0, name: 'The barkeep', says: ['Guild members only past the bar.'] },
-          { kind: 'aqualish', n: 2, at: [4, 4], spread: 2, roam: 2, speed: 0.5, name: 'Bounty hunter', says: ['Took a puck? So did I. Same one, probably.'] },
-          { kind: 'twilek', at: [-4, 5], still: true, face: 2.4, name: 'A Twi’lek hunter', says: ['Mandalorians. Never take the helmet off.'] },
-        ],
-      },
-    ],
-    life: [
-      { kind: 'dindjarin', id: 'mando', at: [48, -160], still: true, face: 2.4, name: 'The Mandalorian', named: true, quest: 'protect', says: ['This is the Way.', 'I can bring you in warm, or I can bring you in cold.'] },
-      { kind: 'grogu', at: [44, -156], still: true, face: 2.6, name: 'The Child', says: ['(He holds up a tiny hand, and looks very serious about it.)', '(A small coo.)'] },
-      { kind: 'ig11', at: [130, -60], roam: 8, speed: 0.8, name: 'IG-11', named: true, says: ['I am a nurse droid. I am programmed to protect the child.'] },
-      { kind: 'stormtrooper', n: 4, at: [-260, 160], spread: 20, roam: 12, speed: 1.2, name: 'Remnant stormtrooper', says: ['Move along. This area is restricted.'] },
-      { kind: 'villager', n: 4, at: [140, -90], spread: 30, roam: 18, speed: 1, name: 'Nevarro local', says: ['The guild’s back in business. The Empire’s not.'] },
-      { kind: 'r5', n: 1, at: [12, 6], roam: 6, speed: 0.6, name: 'An R5 unit', says: ['(A sulky beep. Somebody stole its restraining bolt. For the bolt.)'] },
-      // (the beasts of burden: blurrgs on the lava fields, a happabore in town)
-      { kind: 'blurrg', n: 2, at: [70, -130], spread: 12, roam: 14, speed: 0.9, r: 1 },
-      { kind: 'happabore', n: 1, at: [178, -108], roam: 8, speed: 0.5, r: 1.8 },
-      { kind: 'aqualish', n: 1, at: [-14, -4], still: true, face: 0.8, name: 'Bounty hunter', says: ['Guild business. Keep walking.', 'Cantina’s in town. Karga’s buying. Karga’s never buying.'] },
-    ],
-    quests: [
-      { id: 'puck', name: 'The bounty puck', giver: 'greef', intro: [['Greef Karga', 'A puck for you: the client wants an asset from the Imperial base. Alive. Questions are extra.']], steps: [{ type: 'reach', at: [-260, 160], r: 40, text: 'Go to the Imperial base' }, { type: 'shoot', tag: 'basetroops', n: 6, text: 'Get past the guards', spawn: troops('basetroops', 6, [-260, 160]) }, { type: 'collect', item: 'asset', n: 1, spots: [[-252, 166]], text: 'Collect the asset' }, { type: 'talk', zone: 'cantina', actor: 'greef', text: 'Take it to Greef Karga' }], done: [['Greef Karga', 'The client is pleased. Here: camtono of beskar. Don’t spend it all at once.']] },
-      { id: 'protect', name: 'This is the Way', giver: 'mando', intro: [['The Mandalorian', 'Death troopers. They’ve tracked the kid here. Help me hold them off.']], steps: [{ type: 'shoot', tag: 'death', n: 5, text: 'Protect the Child from the death troopers', spawn: { ...troops('death', 5, [90, -210], 'deathtrooper'), hostile: { ...hostile(45, 2.6, 7), burst: { n: 3, gap: 0.1 }, strafe: { speed: 2.6, every: 2.2, keep: 14 } } } }], done: [['The Mandalorian', 'This is the Way.']] },
-    ],
-    flyovers: [{ kind: 'tie', n: 2, metres: 7, alt: 90, speed: 100, every: 50 }],
-  },
+  // (Nevarro, rebuilt: sites/nevarro.js)
+  nevarro,
 
   mandalore: {
     place: 'The glassed plains of Mandalore',
@@ -108,7 +45,7 @@ export const SITES = {
     ],
     quests: [
       { id: 'waters', name: 'The Living Waters', giver: 'armorer', intro: [['The Armorer', 'Go down to the Living Waters, under the mines, and you will be redeemed.']], steps: [{ type: 'reach', at: [-200, -180], r: 14, text: 'Go down to the mines' }, { type: 'use', id: 'bathe', at: [-200, -180], r: 8, prompt: 'Recite the Creed', text: 'Bathe in the Living Waters', end: [{ say: [[null, '(The water is cold and very deep. Something huge moves far below you.)']] }, { shake: 0.6 }] }], done: [['The Armorer', 'You are redeemed. This is the Way.']] },
-      { id: 'reclaim', name: 'For Mandalore', giver: 'armorer', steps: [{ type: 'shoot', tag: 'remnant', n: 8, text: 'Drive the Remnant out of Sundari', spawn: troops('remnant', 8, [215, 100]) }], done: [['The Armorer', 'Mandalore is ours again.']] },
+      { id: 'reclaim', name: 'For Mandalore', giver: 'armorer', steps: [{ type: 'shoot', tag: 'remnant', at: [215, 100], n: 8, text: 'Drive the Remnant out of Sundari', spawn: troops('remnant', 8, [215, 100]) }], done: [['The Armorer', 'Mandalore is ours again.']] },
     ],
     flyovers: [{ kind: 'tie', n: 2, metres: 7, alt: 110, speed: 110, every: 60 }],
   },
@@ -143,7 +80,7 @@ export const SITES = {
     ],
     quests: [
       { id: 'starmap', name: 'The star map', giver: 'ahsoka', intro: [['Ahsoka Tano', 'The map to Thrawn is in pieces, hidden in the old temple stones. Find them.']], steps: [{ type: 'collect', item: 'shard', n: 3, spots: [[-150, 240], [-128, 218], [-146, 214]], text: 'Find the pieces of the star map' }, { type: 'use', id: 'map', at: [-140, 230], r: 6, prompt: 'Fit the pieces together', text: 'Open the star map', end: [{ shake: 0.4 }, { say: [[null, '(Points of light fill the air: a route to another galaxy.)']] }] }], done: [['Ahsoka Tano', 'Peridea. So that’s where they went.']] },
-      { id: 'factory', name: 'Shut down the factory', giver: 'ryder', steps: [{ type: 'shoot', tag: 'factory', n: 8, text: 'Clear the Remnant from the factory', spawn: troops('factory', 8, [-220, -200]) }, { type: 'use', id: 'power', at: [-220, -200], r: 6, prompt: 'Shut down the power', text: 'Shut the factory down', end: [{ sound: 'crash' }, { shake: 0.8 }] }], done: [['Governor Azadi', 'No more TIEs from Lothal.']] },
+      { id: 'factory', name: 'Shut down the factory', giver: 'ryder', steps: [{ type: 'shoot', tag: 'factory', at: [-220, -200], n: 8, text: 'Clear the Remnant from the factory', spawn: troops('factory', 8, [-220, -200]) }, { type: 'use', id: 'power', at: [-220, -200], r: 6, prompt: 'Shut down the power', text: 'Shut the factory down', end: [{ sound: 'crash' }, { shake: 0.8 }] }], done: [['Governor Azadi', 'No more TIEs from Lothal.']] },
     ],
     // (the plains' tall grass is the grass field round you: `grass`)
     scatter: [],
@@ -199,7 +136,7 @@ export const SITES = {
       { kind: 'villager', n: 2, at: [14, 10], spread: 5, roam: 8, speed: 0.9, name: 'Krill farmer', says: ['The village is that way, through the trees. Bring your own boots.', 'Krill harvest’s in. The raiders know it too.'] },
     ],
     quests: [
-      { id: 'raiders', name: 'Sanctuary', giver: 'omera', intro: [['Omera', 'Raiders. And they’ve got an Imperial walker. Will you help us?']], steps: [{ type: 'shoot', tag: 'raiders', n: 6, text: 'Drive off the Klatooinian raiders', spawn: { kind: 'aqualish', n: 6, at: [-240, -160], spread: 14, roam: 6, hp: 2, tag: 'raiders', hostile: hostile(42, 2.4, 8) } }, { type: 'shoot', tag: 'walker', n: 1, text: 'Bring down the AT-ST', lines: [[null, '(The trees split. An AT-ST steps out of them.)']], spawn: { kind: 'atst', at: [-220, -140], hp: 16, roam: 10, speed: 1.2, tag: 'walker', hostile: hostile(60, 2, 12) } }], done: [['Omera', 'You could stay, you know. There’s room here.']] },
+      { id: 'raiders', name: 'Sanctuary', giver: 'omera', intro: [['Omera', 'Raiders. And they’ve got an Imperial walker. Will you help us?']], steps: [{ type: 'shoot', tag: 'raiders', at: [-240, -160], n: 6, text: 'Drive off the Klatooinian raiders', spawn: { kind: 'aqualish', n: 6, at: [-240, -160], spread: 14, roam: 6, hp: 2, tag: 'raiders', hostile: hostile(42, 2.4, 8) } }, { type: 'shoot', tag: 'walker', at: [-220, -140], n: 1, text: 'Bring down the AT-ST', lines: [[null, '(The trees split. An AT-ST steps out of them.)']], spawn: { kind: 'atst', at: [-220, -140], hp: 16, roam: 10, speed: 1.2, tag: 'walker', hostile: hostile(60, 2, 12) } }], done: [['Omera', 'You could stay, you know. There’s room here.']] },
     ],
     flyovers: [{ kind: 'freighter', n: 1, metres: 40, alt: 160, speed: 40, every: 90 }],
   },

@@ -130,6 +130,11 @@ export function atmosphereParams(air = {}) {
 
 const setColour = (c, v) => (Array.isArray(v) ? c.setRGB(v[0], v[1], v[2]) : c.set(v));
 
+// How many steps an air is marched in at a detail level, against `base`
+// (what high marches): fewer on a phone, twice at ultra.
+const STEP_SCALE = { low: 0.5, mid: 0.625, high: 1, ultra: 2 };
+export const stepsFor = (level, base = 8) => Math.max(3, Math.round(base * (STEP_SCALE[level] ?? 1)));
+
 export function createAtmosphere({ radius, top = DEFAULTS.top, colour = '#000000', density = DEFAULTS.density, falloff = DEFAULTS.falloff, sunset = DEFAULTS.sunset, glow = DEFAULTS.glow, suns = [], segments = [64, 40], steps = 7, inner = 0.995, flat = false, uniforms = null } = {}) {
   const p = atmosphereParams({ colour, top, falloff, density, glow, sunset });
   const own = {

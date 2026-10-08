@@ -44,7 +44,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 - Test: `src/components/worlds/packs.test.js`
 
 **Interfaces:**
-- Produces: `export const PACK = { id: '/earth', urls: ['/models/earth/...glb'], globs: ['/textures/earth/*'] }` per world; `packs.js`: `export const PACKS = { [to]: PACK }`, `export const packFor = (pathname) => PACK | null` (longest prefix, as `worldAt`).
+- Produces: `export const PACK = { id: '/earth', pages: ['src/pages/Earth.jsx'], src: ['src/components/earth', 'src/pages/Earth.jsx'], urls: ['/models/earth/...glb'], globs: ['/textures/earth/*'] }` per world (`pages`: the page modules whose chunks the build adds; `src`: what the pack check scans; `computed`, optional: folders the source only builds paths in, `${DIR}/${name}.glb`, whose used files the pack lists rather than the whole folder; the file imports nothing, so Node reads it); `packs.js`: `export const PACKS = { [to]: PACK }`, `export const packFor = (pathname) => PACK | null` (longest prefix, as `worldAt`).
 
 - [ ] **Step 1: Failing test** `packs.test.js`: `every WORLD_MB route has a pack with the same id`; `packFor('/dot-matrix/minecraft').id === '/dot-matrix/minecraft'`; `packFor('/about') === null`.
 - [ ] **Step 2: Run** `npx vitest run src/components/worlds/packs.test.js`. Expected: FAIL, module missing.
@@ -57,7 +57,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 **Files:**
 - Create: `scripts/pack-check.mjs`, `scripts/pack-check.test.mjs`
 - Create: `scripts/packs.mjs`, `scripts/packs.test.mjs`
-- Modify: `package.json` scripts: `"build": "vite build && node scripts/packs.mjs"`, `"test"` unchanged (the `.test.mjs` run by the existing vitest config as `scripts/*.test.mjs` are today).
+- Modify: `vite.config.js`: `packs()` from `scripts/packs.mjs` as a build plugin beside `prerender()`, so `vite build` alone writes the packs (the repo's checks run `npx vite build`, not `npm run build`); `package.json` unchanged.
 
 **Interfaces:**
 - `pack-check.mjs`: `export function undeclared(srcDir, pack) → string[]` (asset URLs in source not covered by `urls` or `globs`); CLI exits 1 listing them.
@@ -65,7 +65,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 - [ ] **Step 1: Failing tests**: `undeclared` finds `/models/x.glb` in a fixture source and not one covered by a glob; `buildManifest` on a fixture dist yields `bytes` as the sum and a stable `v` across two runs, a different `v` when one file's bytes change.
 - [ ] **Step 2: Run**, expect FAIL.
-- [ ] **Step 3: Implement** both; glob matching with `path.matchesGlob` (Node 22).
+- [ ] **Step 3: Implement** both; glob matching with a small matcher of its own (`path.matchesGlob` is experimental in Node 22).
 - [ ] **Step 4: Run** tests, then `npx vite build && ls dist/packs`. Expected: one JSON per world plus `index.json`; `node scripts/pack-check.mjs` exits 0 (fix any pack it names).
 - [ ] **Step 5: Commit** `build: pack manifests and the pack check`.
 
@@ -73,12 +73,12 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Create: `public/sw.js`
-- Create: `src/lib/sw.js` (`registerWorker()`: registers `/sw.js` once, `type: 'module'`, no-op in tests and when `navigator.serviceWorker` is absent)
+- Create: `src/lib/sw.js` (`registerWorker()`: registers `/sw.js` once, as a classic worker (module service workers are not in every browser), only for a visitor with a pack installed or installing, unregistered with the last pack; no-op in development and when `navigator.serviceWorker` is absent)
 - Modify: `src/main.jsx`: call `registerWorker()` after render.
 - Test: `src/lib/sw.test.js` (registration is called once with `/sw.js`), `scripts/sw-check.mjs` (Playwright: after install of `/earth`, a reload serves one of its GLBs with `response.fromServiceWorker === true`).
 
 **Interfaces:**
-- Cache names `tp-pack-<slug>-<v>`. The worker reads `caches.keys()` on `fetch`: a request whose URL is in any `tp-pack-*` cache is answered from cache, else `fetch(event.request)`. On `activate`, for each slug keep only the newest `v` listed in `/packs/index.json` (fetched there) and delete the rest. Never handles `wss:`, never handles navigation requests.
+- Cache names `tp-pack-<slug>-<v>`. The worker reads `caches.keys()` on `fetch`: a request whose URL is in any `tp-pack-*` cache is answered from cache, else `fetch(event.request)`. It serves no cache whose `v` is not the one `/packs/index.json` lists (read on wake, at most every five minutes) and deletes nothing (the installer drops an old version once the new one is whole, carrying over the files whose hash held). Never handles `wss:`, never handles navigation requests.
 
 - [ ] **Step 1:** write `sw.test.js`, run, FAIL.
 - [ ] **Step 2:** implement `public/sw.js` and `src/lib/sw.js`.
@@ -89,7 +89,7 @@ One phase is one pull request from one session. Order and parallelism are in the
 
 **Files:**
 - Create: `src/runtime/install.js`, `src/runtime/install.test.js`
-- Modify: `src/runtime/index.js` (expose `install` on `rt`), `src/runtime/browser.js` (the fetch and caches bindings)
+- Modify: `src/runtime/index.js` (expose `install` on `rt`); the fetch and caches bindings are `install.js`'s `installer()` (not `browser.js`, which brings three.js, and the gate needs the installer before any world mounts)
 
 **Interfaces:**
 - `createInstaller({ fetch, caches, storage, concurrency = 4, now }) → { installed(to) → Promise<{ v, bytes } | null>, install(to, { onProgress }) → Promise<{ v, bytes }>, uninstall(to) → Promise<void>, estimate() → Promise<{ used, quota }> }`.
@@ -106,10 +106,11 @@ One phase is one pull request from one session. Order and parallelism are in the
 - Modify: `src/components/worlds/WorldGate.jsx`, `worldgate.css`
 - Create: `src/pages/Worlds.jsx`, `src/components/worlds/InstalledList.jsx`, `installed.css`
 - Modify: `src/App.jsx` (route `/worlds`, lazy), `src/components/Nav.jsx` or `GuidePanel.jsx` (one link, where `WorldSwitcher` lists worlds)
-- Test: `src/components/worlds/WorldGate.test.jsx` (existing tests kept; new: card shows `Install · 184 MB · about 2 min` from a fake `rt.install` and `index.json`; after `install` resolves it shows `Open`; a pack under 8 MB on a desktop shows `Open` at once), `src/pages/Worlds.test.jsx` (lists installed slugs with sizes, Remove calls `uninstall`).
+- Test: `src/components/worlds/WorldGate.test.jsx` (new: card shows `Install · 184 MB · about 2 min` from a fake `rt.install` and `index.json`; after `install` resolves it shows `Open`; a pack under 8 MB on a desktop shows `Open` at once), `src/pages/Worlds.test.jsx` (lists installed slugs with sizes, Remove calls `uninstall`).
 
 **Interfaces:**
-- The time estimate: `minutes = ceil(bytes / (1.5 MB/s))` shown as `about N min`, under 1 as `under a minute`.
+- The time estimate: `minutes = round(bytes / (1.5 MB/s) / 60)` shown as `about N min`, under 1 as `under a minute` (rounded: 184 MB is about 2 min, as the test says).
+- A desktop (the old gate's `ask` false) is not held: a heavy world not installed offers Install in a pill beside the guide button, so the QA scripts and every visitor's way in stay as they were; a light one opens at once.
 - `WorldGate` keeps `WHY` warnings and `Hold3D`; the hold lifts on Open. Keyboard: Install and Open are buttons; progress is `role="progressbar"` with `aria-valuenow`.
 
 - [ ] **Step 1:** failing tests. **Step 2:** FAIL. **Step 3:** implement. **Step 4:** PASS; `node scripts/autopilot-check.mjs --only smoke --skip lint,test,build --routes /worlds,/earth`.

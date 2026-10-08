@@ -1,0 +1,93 @@
+/* The settings panel (components/settings/Settings.jsx): a calm sheet over
+   the page, a dialog on a desktop and a sheet from the bottom on a phone.
+   Loaded with the panel. No backdrop blur: blurring the whole page is slow
+   without a GPU (as the palette). */
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(6, 8, 10, 0.5);
+  animation: fade-in 0.15s ease;
+}
+.settings-sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 460px);
+  max-height: min(86vh, 760px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel, 16px);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.45);
+  animation: settings-in 0.22s var(--ease-out, ease-out);
+}
+@keyframes settings-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+}
+.settings-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 10px 20px; border-bottom: 1px solid var(--border); }
+.settings-head h2 { font-size: 1rem; font-weight: 650; letter-spacing: 0.01em; }
+.settings-close { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 999px; color: var(--muted); font-size: 1.15rem; }
+.settings-close:hover { background: var(--surface-2); color: var(--text); }
+.settings-body { overflow-y: auto; overscroll-behavior: contain; padding: 4px 20px 20px; }
+.settings-body section { padding: 14px 0 6px; }
+.settings-body section + section { border-top: 1px solid var(--border); }
+.settings-body h3 { margin-bottom: 8px; font-size: 0.7rem; font-weight: 650; letter-spacing: var(--eyebrow-tracking, 0.12em); text-transform: uppercase; color: var(--muted); }
+
+.settings-row { padding: 6px 0 10px; }
+.settings-row-title { font-size: 0.9rem; font-weight: 600; }
+.settings-row-hint, .settings-note { margin-top: 2px; font-size: 0.78rem; line-height: 1.45; color: var(--muted); }
+.settings-row-head { margin-bottom: 8px; }
+
+/* a segmented control: the choices in one pill, the chosen one lifted */
+.settings-seg { display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 999px; background: var(--surface-2); }
+.settings-seg-btn { flex: 1 1 auto; min-height: 32px; padding: 0 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 550; color: var(--muted); white-space: nowrap; transition: background 0.15s, color 0.15s; }
+.settings-seg-btn:hover { color: var(--text); }
+.settings-seg-btn:disabled { cursor: not-allowed; opacity: 0.55; }
+.settings-seg-btn[aria-checked='true'] { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14), inset 0 -2px 0 var(--accent); }
+.settings-seg-btn:focus-visible, .settings-close:focus-visible, .settings-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.settings-slider { display: grid; grid-template-columns: 6.5rem 1fr 3.2rem; align-items: center; gap: 10px; padding: 6px 0; font-size: 0.84rem; }
+.settings-slider input { width: 100%; accent-color: var(--accent); }
+.settings-slider input:disabled { opacity: 0.4; }
+.settings-slider output { font-variant-numeric: tabular-nums; text-align: right; color: var(--muted); }
+.settings-row .settings-slider { grid-template-columns: 1fr 3.2rem; }
+.settings-row .settings-slider label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+.settings-reload { margin-top: 8px; font-size: 0.8rem; color: var(--muted); }
+.settings-link { color: var(--accent-text); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+
+.settings-links li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding: 6px 0; font-size: 0.86rem; }
+.settings-links a { font-weight: 600; color: var(--text); }
+.settings-links a:hover { color: var(--accent-text); }
+.settings-links span { font-size: 0.78rem; color: var(--muted); }
+.settings-links kbd, .settings-live b { font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace; }
+.settings-links kbd { padding: 0 5px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.72rem; }
+
+/* the readout: what Auto sees, and what the world that's up costs */
+.settings-facts { display: grid; gap: 4px; font-size: 0.8rem; }
+.settings-facts div { display: grid; grid-template-columns: 9.5rem 1fr; gap: 10px; }
+.settings-facts dt { color: var(--muted); }
+.settings-facts dd { overflow-wrap: anywhere; }
+.settings-live { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 12px; }
+.settings-live span { padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: 0.72rem; color: var(--muted); }
+.settings-live b { display: block; font-size: 1rem; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* a phone: a sheet from the bottom */
+@media (max-width: 640px) {
+  .settings-backdrop { align-items: flex-end; padding: 0; }
+  .settings-sheet { width: 100%; max-height: 88vh; border-radius: 18px 18px 0 0; border-bottom: 0; padding-bottom: env(safe-area-inset-bottom); animation-name: settings-up; }
+  .settings-head::before { content: ''; position: absolute; left: 50%; width: 36px; height: 4px; margin-top: -10px; border-radius: 4px; background: var(--border-strong, var(--border)); transform: translateX(-50%); }
+  .settings-head { position: relative; }
+  .settings-slider { grid-template-columns: 5.5rem 1fr 3rem; }
+  .settings-facts div { grid-template-columns: 8rem 1fr; }
+}
+@keyframes settings-up {
+  from { transform: translateY(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-sheet, .settings-backdrop { animation: none; }
+}

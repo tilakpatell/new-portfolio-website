@@ -9,7 +9,7 @@ export const MODELS = {
   // Luke's X-34 landspeeder
   landspeeder: { uid: '3adfdc41c67f4731910800404ba97b4e', as: "Luke's landspeeder", metres: 3.4, along: 'z', yaw: 0, up: 'y', tris: 16000, tex: 1024 },
   jawa: { uid: '08124df6beef4ca18b2d24a25f5fd6bf', as: 'the Jawas', metres: 1, along: 'y', yaw: 0, up: 'y', tris: 8000, tex: 512 },
-  bantha: { uid: '3581f3a312dc426d87af3031f5198edf', as: 'the banthas', metres: 2.8, along: 'y', yaw: 0, up: 'y', tris: 10000, tex: 512, gain: 1.3, rig: true, anim: { walk: 'Bantha_Walk' } },
+  bantha: { uid: '3581f3a312dc426d87af3031f5198edf', turn: -0.572, as: 'the banthas', metres: 2.8, along: 'y', yaw: 0, up: 'y', tris: 10000, tex: 512, gain: 1.3, rig: true, anim: { walk: 'Bantha_Walk' } },
   // a domed adobe house of Mos Eisley
   adobe: { uid: '66893ef6ad5f434e9db954b1f5496dfc', as: 'the adobe houses', metres: 10, along: 'max', yaw: Math.PI, up: 'y', tris: 35000, tex: 1024, recolor: [{ material: '*', to: '#c3b59f', amount: 1, band: [0.15, 0.52] }] },
   dewback: { uid: 'b84145ed48d143ff8746eda2623b3bd8', as: 'the dewbacks', metres: 4, along: 'max', yaw: 0, up: 'y', tris: 10000, tex: 512 },

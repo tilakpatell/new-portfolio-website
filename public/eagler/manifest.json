@@ -37,6 +37,15 @@
       "file": "worlds/the-plaza-1-12-2.bin",
       "bytes": 2034148,
       "sha256": "29ae49f9e68ea6061b49c5048fb807f3c712374614ae3adb0fc63ed5306f076f"
+    },
+    {
+      "id": "the-plaza-1-8-8",
+      "name": "The Plaza",
+      "client": "1.8.8",
+      "kind": "zip",
+      "file": "worlds/the-plaza-1-8-8.bin",
+      "bytes": 2968892,
+      "sha256": "e186b3a16fb9244e4a8a2a50d7332c0b1a0f26c47ee452b852403bbe08c6ed2a"
     }
   ]
 }

@@ -6,6 +6,8 @@
 
 import * as THREE from 'three';
 import { pixelRatio } from '../../lib/device';
+import { guard } from '../../lib/three/frameGuard';
+import { prepareScene } from '../../lib/three/gpuWork';
 import { precompile as compileFor, quiet } from '../../lib/three/renderer';
 
 // `antialias`: off for a scene that draws through passes of its own (its
@@ -14,6 +16,8 @@ import { precompile as compileFor, quiet } from '../../lib/three/renderer';
 // starts the steps down.
 export function createStage(canvas, { onLost, onSlow, fov = 50, antialias = true, maxRatio = 2, slowMs = 40 } = {}) {
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias, powerPreference: 'high-performance', alpha: false }));
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
@@ -108,7 +112,13 @@ export function createStage(canvas, { onLost, onSlow, fov = 50, antialias = true
   // renderer counts, for checking the scene against its budget
   const info = () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, dpr: ratio, shadows: renderer.shadowMap.enabled });
 
-  api = { renderer, scene, camera, size, resize, project, render, dispose, precompile, info, coarse, draw: null, onResize: null, get lost() { return lost; } };
+  // Everything sent to the graphics chip before it's first seen (lib/three/
+  // gpuWork), with progress for the page's loading screen; a scene with its
+  // own passes says where it draws (api.target) and draws them (api.draw)
+  const prepare = (onProgress, { alive = () => true } = {}) =>
+    prepareScene({ renderer, roots: [scene], scene, camera, target: api.target ?? undefined, render: () => (api.draw ? api.draw(16) : renderer.render(scene, camera)), onProgress, alive: () => alive() && !lost });
+
+  api = { renderer, scene, camera, size, resize, project, render, dispose, precompile, prepare, info, coarse, draw: null, onResize: null, target: undefined, get lost() { return lost; } };
   return api;
 }
 
