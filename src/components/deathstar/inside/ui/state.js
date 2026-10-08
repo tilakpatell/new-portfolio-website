@@ -15,9 +15,13 @@
 //     `use: false` is a notice with no key, such as a door that won’t open (doors open on their own,
 //     so a door is never something to press E at)
 //   gunName(id) → as stamped on the gun: E-11, DL-44, DH-17, A280
+//   bladeName(colour) → 'Lightsaber', or '' without a blade
+//   doubtLine(doubt) → null | { k, label, red }   the disguise meter: how far the garrison doubts
+//     a Rebel in armour (null: no disguise), red from where they would challenge you
 //   layers(status, ui) → { playing, paused, mapOpen, free }   what stands over the station, from the
 //     runtime’s status and the world’s last 'ui' event; `free`: the pointer isn’t the page’s to hold
 
+import { CHALLENGE } from '../rules/disguise';
 import { STATIONS } from '../rules/stations';
 
 export const STATION_CHOICES = [
@@ -87,6 +91,23 @@ export function promptLine(prompt, { touch = false } = {}) {
 const GUNS = { e11: 'E-11', dl44: 'DL-44', dh17: 'DH-17', a280: 'A280' };
 
 export const gunName = (id) => (id ? (GUNS[id] ?? id) : '');
+
+export const bladeName = (colour) => (colour ? 'Lightsaber' : '');
+
+// how the doubt reads, by where it has got to; from CHALLENGE (rules/disguise.js) a trooper stops you
+const DOUBT = [
+  [1, 'Blown'],
+  [CHALLENGE, 'Questioned'],
+  [0.15, 'Noticed'],
+  [0, 'Unnoticed'],
+];
+
+export function doubtLine(doubt) {
+  if (doubt == null || !Number.isFinite(doubt)) return null;
+  const k = Math.max(0, Math.min(1, doubt));
+  const label = DOUBT.find(([from]) => k >= from)[1];
+  return { k, label, red: k >= CHALLENGE };
+}
 
 // The last 'ui' event outlives the world (a lost context keeps it, map open
 // and all), so nothing of a game stands over the station unless it is on:

@@ -165,13 +165,15 @@ describe('the galaxy’s models', () => {
   describe('the Death Stars’ 4096-pixel maps', () => {
     const base = { deathstar: { url: '/models/universe/death-star.glb', nose: 0 }, deathstar2: { url: '/models/galaxy/deathstar2.glb', nose: 0 } };
 
-    it('are what a high or ultra device loads, turned as the lighter cut is', () => {
-      for (const detail of ['high', 'ultra']) {
-        const m = withHq(base, detail);
-        expect(m.deathstar).toEqual({ url: HD_MAPS.deathstar, nose: 0 });
-        expect(m.deathstar2).toEqual({ url: HD_MAPS.deathstar2, nose: 0 });
+    it('are what only an ultra device loads (a quarter of a gigabyte of graphics memory), turned as the lighter cut is', () => {
+      const m = withHq(base, 'ultra');
+      expect(m.deathstar).toEqual({ url: HD_MAPS.deathstar, nose: 0 });
+      expect(m.deathstar2).toEqual({ url: HD_MAPS.deathstar2, nose: 0 });
+      for (const detail of ['high', 'mid', 'low']) {
+        const n = withHq(base, detail);
+        expect(n.deathstar, detail).toEqual(base.deathstar);
+        expect(n.deathstar2, detail).toEqual(base.deathstar2);
       }
-      for (const detail of ['mid', 'low']) expect(withHq(base, detail)).toEqual(base);
     });
 
     it('are in the site, and keep the lighter cut’s far-off copy (the same hull)', () => {

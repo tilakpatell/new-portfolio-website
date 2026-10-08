@@ -177,6 +177,15 @@ describe('buildSystem', () => {
     expect(battle.map((o) => o.r)).toEqual(before);
     w.dispose();
   });
+  it('takes you aboard the second Death Star, at its dock, when you fly into it past its shield', () => {
+    const endor = buildSystem(systemById('endor'), { ...kit(), small: false });
+    const ds = endor.solids.find((o) => o.id === 'deathstar2');
+    const shell = endor.solids.find((o) => o.id === 'ds2-shield');
+    expect(ds.board).toBe('/deathstar/inside?station=ds2&side=rebel&at=dock');
+    // (the shield’s shell stands round it, so only with the shield down is the station itself reached)
+    expect(shell.r).toBeGreaterThan(ds.r);
+    endor.dispose();
+  });
   it('lets the war hold the second Death Star’s shield, blow a station, and drop Scarif’s shield, and puts it all back', () => {
     const endor = buildSystem(systemById('endor'), { ...kit(), small: false });
     const shell = endor.solids.find((o) => o.id === 'ds2-shield');

@@ -56,6 +56,9 @@ export default function Inside({ mode = 'page', onExit }) {
   const [hud, setHud] = useState(null);
   const [say, setSay] = useState(null);
   const sayTimer = useRef(null);
+  const [hurt, setHurt] = useState(null);
+  const [hit, setHit] = useState(0);
+  const hurts = useRef(0);
   const props = useMemo(() => ({ ...asked, small: touch }), [asked, touch]);
 
   const onEvent = useCallback(
@@ -63,6 +66,8 @@ export default function Inside({ mode = 'page', onExit }) {
       if (e.type === 'ui') setUi(e);
       else if (e.type === 'hud') setHud(e);
       else if (e.type === 'achievement') unlock(e.id);
+      else if (e.type === 'hurt') setHurt({ angle: e.angle ?? null, key: (hurts.current += 1) });
+      else if (e.type === 'hit') setHit((n) => n + 1);
       else if (e.type === 'say') {
         setSay({ who: e.who ?? null, text: e.text });
         clearTimeout(sayTimer.current);
@@ -192,6 +197,8 @@ export default function Inside({ mode = 'page', onExit }) {
             ui={ui}
             hud={hud}
             say={playing ? subtitle : null}
+            hurt={hurt}
+            hit={hit}
             touch={touch}
             playing={playing}
             onMap={() => api()?.map?.(true)}

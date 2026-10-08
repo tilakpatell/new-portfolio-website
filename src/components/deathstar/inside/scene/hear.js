@@ -4,12 +4,16 @@
 // where it struck; the klaxon and the music follow the alarm of the
 // section you are in, and the hum the kind of room you walk into. Pure.
 //
-//   heardOf(event, g) → [[name, ...args]]   sounds[name](...args) for each, in order
+//   heardOf(event, g) → [[name, ...args]]   sounds[name](...args) for each, in order; a place the
+//     event doesn’t give is left undefined, which sounds.js hears at the listener
 
 const DOOR_EAR = 1.2; // metres up a door’s middle is heard from
 const UP = new Set(['alert', 'lockdown', 'hunt']);
 
-const point = (e) => ({ x: e.x, y: e.y, z: e.z });
+// where a thing happened, or undefined (heard at your own ear) when the event gives nowhere real:
+// a non-finite place would throw in the audio graph and stop the frame
+const finite = (p) => (p && Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z) ? p : undefined);
+const point = (e) => finite({ x: e.x, y: e.y, z: e.z });
 
 export function heardOf(e, g) {
   switch (e.type) {
@@ -21,7 +25,7 @@ export function heardOf(e, g) {
     case 'lift':
       return [['lift', e.what === 'leave']];
     case 'shot':
-      return [['blaster', e.weapon, e.at]];
+      return [['blaster', e.weapon, finite(e.at)]];
     case 'impact':
       return [['hit', point(e)]];
     case 'hit':

@@ -115,9 +115,11 @@ export const HQ = {
   destroyer: { url: '/models/galaxy/hq/destroyer.glb', nose: 0 },
   nebulon: { url: '/models/galaxy/hq/nebulon.glb', nose: 0 },
 };
-// And the Death Stars' 4096-pixel maps (scripts/deathstar-hd.mjs), loaded on
-// the same desktops: the same hulls as the 2048 cuts, so each keeps its own
-// far-off copy (and the first Death Star none: the world draws its sphere).
+// And the Death Stars' 4096-pixel maps (scripts/deathstar-hd.mjs), loaded
+// only on the strongest graphics (ultra), as the planets' biggest maps are:
+// the two take about a quarter of a gigabyte of graphics memory between
+// them. The same hulls as the 2048 cuts, so each keeps its own far-off copy
+// (and the first Death Star none: the world draws its sphere).
 export const HD_MAPS = {
   deathstar: '/models/universe/death-star.hq.glb',
   deathstar2: '/models/galaxy/deathstar2.hq.glb',
@@ -128,7 +130,7 @@ export const withHq = (models, detail) =>
     ? {
         ...models,
         ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: d.url, nose: d.nose, hq: true }])),
-        ...Object.fromEntries(Object.entries(HD_MAPS).filter(([k]) => models[k]).map(([k, url]) => [k, { ...models[k], url }])),
+        ...(detail === 'ultra' ? Object.fromEntries(Object.entries(HD_MAPS).filter(([k]) => models[k]).map(([k, url]) => [k, { ...models[k], url }])) : {}),
       }
     : models;
 Object.assign(MODELS, withHq(MODELS, device().detail));

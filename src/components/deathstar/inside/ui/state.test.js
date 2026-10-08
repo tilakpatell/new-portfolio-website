@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STATION_CHOICES, gunName, heroesFor, fromSearch, layers, promptLine, sectionName, security } from './state';
+import { STATION_CHOICES, bladeName, doubtLine, gunName, heroesFor, fromSearch, layers, promptLine, sectionName, security } from './state';
 
 describe('what a link to the station asks for', () => {
   it('reads the station, the side, story or free roam and where to stand from the address', () => {
@@ -66,6 +66,22 @@ describe('the HUD’s words', () => {
     expect(gunName('dh17')).toBe('DH-17');
     expect(gunName('a280')).toBe('A280');
     expect(gunName(null)).toBe('');
+  });
+});
+
+describe('the fight’s and the disguise’s words', () => {
+  it('names a blade by its colour, and nothing without one', () => {
+    expect(bladeName('green')).toBe('Lightsaber');
+    expect(bladeName('red')).toBe('Lightsaber');
+    expect(bladeName(null)).toBe('');
+  });
+
+  it('shows no disguise meter without a disguise, and reddens it once the garrison would challenge you', () => {
+    expect(doubtLine(null)).toBeNull();
+    expect(doubtLine(0)).toEqual({ k: 0, label: 'Unnoticed', red: false });
+    expect(doubtLine(0.3)).toEqual({ k: 0.3, label: 'Noticed', red: false });
+    expect(doubtLine(0.5)).toEqual({ k: 0.5, label: 'Questioned', red: true });
+    expect(doubtLine(1)).toEqual({ k: 1, label: 'Blown', red: true });
   });
 });
 
