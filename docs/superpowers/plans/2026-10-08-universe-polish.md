@@ -68,8 +68,8 @@
 ### Task A3: Engines under the ship
 
 **Files:**
-- Modify: `src/components/universe/engines.js`, `engines.test.js`
-- Read first: `engines.js` whole; `shipModels.js`'s `ENGINES`, `LENGTH`
+- Modify: `src/components/universe/engines.js`, `engines.test.js`; and `trail.js` (the hero's long plume is a trail, not an `engines.js` glow: an optional `cap` it takes from `engines.js`'s `capPlume`, the galaxy's trails untouched) with `scene.js`'s one `createTrail` call for the hero
+- Read first: `engines.js` whole; `trail.js`; `shipModels.js`'s `ENGINES`, `LENGTH`
 
 **Interfaces:**
 - Produces: `ENGINE_CAP = { length: 0.6, luminance: 0.8 }` exported; `plumeLength(throttle, boost, length) → number ≤ length × 0.6`; the plume's peak colour scaled so its luminance ≤ 0.8 × a lit hull's (take 1.0 as the hull's lit luminance in HDR units; the engine's hot centre today passes the bloom threshold 1.7: it no longer does; the bloom still catches the shots and the suns).

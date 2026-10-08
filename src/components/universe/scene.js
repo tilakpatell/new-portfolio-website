@@ -161,7 +161,7 @@ import { createSkirmishes } from './skirmishes';
 import { createBelt, createDust } from './belt';
 import { createTrail } from './trail';
 import { BUILT, ENGINES, LENGTH, SHIP_MODELS, buildShip } from './shipModels';
-import { HERO_ENGINES, createEngines } from './engines';
+import { HERO_ENGINES, capPlume, createEngines } from './engines';
 import { paintById } from './paint';
 import { FASTEST, PARTS, PARTS_SLOTS, STOCK, STOCK_LOADOUT, readLoadout, statsOf } from './outfit';
 import { createNpcs } from './npcs';
@@ -535,7 +535,8 @@ export async function create(canvas, ctx) {
     const look = PLUME[kind] ?? PLUME.falcon;
     streak.setTint(plumeColor());
     plumes = engines.map((at) => {
-      const trail = createTrail(look);
+      // (under the ship: no longer than 0.6 of it, no brighter than its lit side)
+      const trail = createTrail(capPlume(look));
       trail.setColors(plumeColor(), look.core);
       map.add(trail.mesh);
       return { trail, at: new THREE.Vector3(...at) };
