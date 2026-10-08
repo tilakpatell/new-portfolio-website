@@ -176,6 +176,17 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
       local.set(LAYERS_KEY, next);
       return next;
     });
+  // the films' panel: shut by a pick, an era chip, Escape inside it, or a press anywhere outside it
+  const films = useRef(null);
+  const shutFilms = () => films.current && (films.current.open = false);
+  useEffect(() => {
+    const away = (e) => {
+      const el = films.current;
+      if (el?.open && !el.contains(e.target)) el.open = false;
+    };
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, []);
   const canvas = useRef(null);
   const box = useRef(null);
   const mv = useMapView(box);
@@ -338,17 +349,28 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
         </header>
 
         <div className="holomap-eras" role="group" aria-label="Era">
-          <button type="button" aria-pressed={era === 'all' && !film} onClick={() => (setEra('all'), setFilm(null))}>
+          <button type="button" aria-pressed={era === 'all' && !film} onClick={() => (setEra('all'), setFilm(null), shutFilms())}>
             Every era
           </button>
           {ERAS.map((e) => (
-            <button key={e.id} type="button" aria-pressed={era === e.id && !film} style={{ '--era': e.color }} onClick={() => (setEra(e.id), setFilm(null))} title={e.about}>
+            <button key={e.id} type="button" aria-pressed={era === e.id && !film} style={{ '--era': e.color }} onClick={() => (setEra(e.id), setFilm(null), shutFilms())} title={e.about}>
               {e.name} <span>{e.span}</span>
             </button>
           ))}
           {/* the films, folded into a chip (a film lights its own world, and the war of its era) */}
-          <details className="holomap-filmpick" data-active={film || undefined} style={film ? { '--era': eraById(FILMS[film].era).color } : undefined}>
-            <summary>{film ? filmShort(film) : 'Films'}</summary>
+          <details
+            ref={films}
+            className="holomap-filmpick"
+            data-active={film || undefined}
+            style={film ? { '--era': eraById(FILMS[film].era).color } : undefined}
+            onKeyDown={(e) => {
+              if (e.key !== 'Escape' || !e.currentTarget.open) return;
+              e.preventDefault(); // (the page's Escape would shut the whole map)
+              shutFilms();
+              e.currentTarget.querySelector('summary').focus();
+            }}
+          >
+            <summary title={film ? filmLabel(film) : undefined}>{film ? `Films: ${filmShort(film)}` : 'Films'}</summary>
             <div className="holomap-films" role="group" aria-label="Film">
               {FILM_ORDER.map((id) => (
                 <button
@@ -356,7 +378,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                   type="button"
                   aria-pressed={film === id}
                   style={{ '--era': eraById(FILMS[id].era).color }}
-                  onClick={(e) => (setFilm(film === id ? null : id), (e.currentTarget.closest('details').open = false))}
+                  onClick={() => (setFilm(film === id ? null : id), shutFilms())}
                   title={`${filmLabel(id)} · ${yearLabel(FILMS[id].year)}`}
                 >
                   {filmShort(id)} <span>{filmLabel(id)}</span>

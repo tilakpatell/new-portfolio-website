@@ -62,11 +62,11 @@
    fought ──
    (all of these are drawn on the dot, which galaxy.css makes the 14 px square the system's button is, so they
    stay on it wherever its name goes; the ring, the badge and the cut and decisive marks are the Fronts layer's,
-   gone with it: HoloMap.jsx's data-fronts) */
-.holomap-map[data-fronts] .holomap-systems li[data-held] .holomap-dot { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held); }
-.holomap-map[data-fronts] .holomap-systems li:is([data-front], [data-attack]) .holomap-dot { box-shadow: none; animation: holomap-contest 1.6s ease-in-out infinite; }
-.holomap-map[data-fronts] .holomap-systems li[data-attack] .holomap-dot { animation-duration: 0.9s; }
-.holomap-map[data-fronts] .holomap-systems li:is([data-front], [data-attack]) .holomap-dot::before,
+   gone with it: HoloMap.jsx's data-fronts, in :where() so the rules keep the order their specificity gave them) */
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-held] .holomap-dot { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held); }
+:where(.holomap-map[data-fronts]) .holomap-systems li:is([data-front], [data-attack]) .holomap-dot { box-shadow: none; animation: holomap-contest 1.6s ease-in-out infinite; }
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-attack] .holomap-dot { animation-duration: 0.9s; }
+:where(.holomap-map[data-fronts]) .holomap-systems li:is([data-front], [data-attack]) .holomap-dot::before,
 .holomap-key-ring::before {
   content: '';
   position: absolute;
@@ -76,7 +76,7 @@
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
   mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
 }
-.holomap-map[data-fronts] .holomap-systems li:is([data-front], [data-attack]) .holomap-dot::after,
+:where(.holomap-map[data-fronts]) .holomap-systems li:is([data-front], [data-attack]) .holomap-dot::after,
 .holomap-key-ring::after {
   content: '+';
   position: absolute;
@@ -92,34 +92,34 @@
   font: 800 0.7rem/11px var(--font-mono);
   text-align: center;
 }
-.holomap-map[data-fronts] .holomap-systems li[data-attack] .holomap-dot::after { content: '−'; }
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-attack] .holomap-dot::after { content: '−'; }
 /* (where it's crowded under a ring, over it, or beside it away from the name: warMap.js's badgeOf) */
-.holomap-map[data-fronts] .holomap-systems li[data-badge='above'] .holomap-dot::after { top: auto; bottom: calc(100% + 1px); }
-.holomap-map[data-fronts] .holomap-systems li[data-badge='side'] .holomap-dot::after { top: 50%; left: auto; right: calc(100% + 1px); translate: 0 -50%; }
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-badge='above'] .holomap-dot::after { top: auto; bottom: calc(100% + 1px); }
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-badge='side'] .holomap-dot::after { top: 50%; left: auto; right: calc(100% + 1px); translate: 0 -50%; }
 /* (away from its name, which labelPlace.js put where HoloMap.jsx's data-place says: the right, unless it's left of the dot) */
-.holomap-map[data-fronts] .holomap-systems li[data-badge='side']:is([data-place='l'], [data-place='tl'], [data-place='bl']) .holomap-dot::after { right: auto; left: calc(100% + 1px); }
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-badge='side']:is([data-place='l'], [data-place='tl'], [data-place='bl']) .holomap-dot::after { right: auto; left: calc(100% + 1px); }
 @keyframes holomap-contest { 50% { box-shadow: 0 0 10px 4px color-mix(in srgb, var(--by) 50%, transparent); } }
-.holomap-map[data-fronts] .holomap-systems li[data-decisive] .holomap-dot { outline: 1.5px solid var(--by); outline-offset: 9px; }
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-decisive] .holomap-dot { outline: 1.5px solid var(--by); outline-offset: 9px; }
 /* cut off from supply (holding less well, and not mending): the holder's ring dashed, where nobody's fighting
    over it (fought over, its ring's the fight's, and its button's words say it's cut off) */
-.holomap-map[data-fronts] .holomap-systems li[data-cut]:not([data-front], [data-attack]) .holomap-dot { box-shadow: none; }
-.holomap-map[data-fronts] .holomap-systems li[data-cut]:not([data-front], [data-attack]) .holomap-dot::before,
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-cut]:not([data-front], [data-attack]) .holomap-dot { box-shadow: none; }
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-cut]:not([data-front], [data-attack]) .holomap-dot::before,
 .holomap-key-cut::before { content: ''; position: absolute; inset: -4px; border: 2px dashed var(--held); border-radius: 50%; }
 /* you are here, on a war's system: a white ring outside its war ring, beside it rather than instead (galaxy.css's
    white ring lost to the war's, so with the pulse still for prefers-reduced-motion nothing marked where you were) */
-.holomap-map[data-fronts] .holomap-systems li[data-held] .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held), 0 0 0 5.5px #020611, 0 0 0 7px #fff; }
-.holomap-map[data-fronts] .holomap-systems li:is([data-front], [data-attack], [data-cut]) .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 6.5px #020611, 0 0 0 8px #fff; }
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-held] .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 2px #020611, 0 0 0 4px var(--held), 0 0 0 5.5px #020611, 0 0 0 7px #fff; }
+:where(.holomap-map[data-fronts]) .holomap-systems li:is([data-front], [data-attack], [data-cut]) .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 6.5px #020611, 0 0 0 8px #fff; }
 .holomap-you { position: absolute; left: 50%; top: -11px; width: 5px; height: 5px; translate: -50% 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px #020611; }
-.holomap-map[data-fronts] .holomap-systems li[data-badge='above'] .holomap-you { top: auto; bottom: -11px; }
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-badge='above'] .holomap-you { top: auto; bottom: -11px; }
 /* a name above or below its dot (HoloMap.jsx's data-place, labelPlace.js's t and b) would sit on the marks there:
    the + or − goes to the dot's other side, and the you-fought dot to the other side from the name; where the
    badge has that side, the you-fought dot goes beside the dot */
-.holomap-map[data-fronts] .holomap-systems li[data-place='b']:is([data-badge='below'], [data-badge='above']) .holomap-dot::after { top: auto; bottom: calc(100% + 1px); }
-.holomap-map[data-fronts] .holomap-systems li[data-place='t']:is([data-badge='below'], [data-badge='above']) .holomap-dot::after { top: calc(100% + 1px); bottom: auto; }
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-place='b']:is([data-badge='below'], [data-badge='above']) .holomap-dot::after { top: auto; bottom: calc(100% + 1px); }
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-place='t']:is([data-badge='below'], [data-badge='above']) .holomap-dot::after { top: calc(100% + 1px); bottom: auto; }
 .holomap-systems li[data-place='b'] .holomap-you { top: -11px; bottom: auto; }
 .holomap-systems li[data-place='t'] .holomap-you { top: auto; bottom: -11px; }
-.holomap-map[data-fronts] .holomap-systems li[data-place='b']:is([data-front], [data-attack]):is([data-badge='below'], [data-badge='above']) .holomap-you,
-.holomap-map[data-fronts] .holomap-systems li[data-place='t']:is([data-front], [data-attack]):is([data-badge='below'], [data-badge='above']) .holomap-you { top: 50%; bottom: auto; left: calc(100% + 6px); translate: 0 -50%; }
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-place='b']:is([data-front], [data-attack]):is([data-badge='below'], [data-badge='above']) .holomap-you,
+:where(.holomap-map[data-fronts]) .holomap-systems li[data-place='t']:is([data-front], [data-attack]):is([data-badge='below'], [data-badge='above']) .holomap-you { top: 50%; bottom: auto; left: calc(100% + 6px); translate: 0 -50%; }
 .holomap-star { margin-left: 0.25rem; color: #ffd36a; font-weight: 700; text-shadow: 0 0 6px #000; }
 .holomap-fight { margin-left: 0.2rem; color: #ffb347; font-weight: 700; text-shadow: 0 0 6px #000; }
 
@@ -149,13 +149,14 @@
 .holomap-layers-set button { padding: 0.2rem 0.55rem; border: 1px solid rgb(127 214 255 / 0.25); border-radius: 999px; background: rgb(2 8 20 / 0.86); color: rgb(217 243 255 / 0.7); font-size: 0.72rem; }
 .holomap-layers-set button[aria-pressed='true'] { border-color: rgb(127 214 255 / 0.7); color: #fff; }
 @container holomap-map (max-width: 560px) {
-  .holomap-layers { top: auto; right: auto; left: 10px; bottom: 48px; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 6px; }
+  .holomap-layers { top: auto; right: auto; left: 12px; bottom: 48px; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 4px; max-width: none; }
   .holomap-map:has(.holomap-legend[data-open]) .holomap-layers { display: none; }
   .holomap-layers-toggle { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 32px; padding: 0.25rem 0.7rem; border: 1px solid rgb(127 214 255 / 0.3); border-radius: 8px; background: rgb(2 8 20 / 0.82); color: #bfeaff; font: 0.7rem var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; }
   .holomap-layers-toggle:hover { background: rgb(14 36 64 / 0.9); }
+  .holomap-layers-set button { padding-block: 0.18rem; }
   .holomap-layers-toggle svg { width: 15px; height: 15px; }
   .holomap-layers:not([data-open]) .holomap-layers-set { display: none; }
-  .holomap-layers-set { justify-content: flex-start; max-width: calc(100cqw - 74px); padding: 6px; border: 1px solid rgb(127 214 255 / 0.25); border-radius: 10px; background: rgb(2 8 20 / 0.93); backdrop-filter: blur(4px); }
+  .holomap-layers-set { justify-content: flex-start; max-width: calc(100cqw - 74px); gap: 3px; padding: 3px; border: 1px solid rgb(127 214 255 / 0.25); border-radius: 10px; background: rgb(2 8 20 / 0.93); backdrop-filter: blur(4px); }
 }
 
 /* ── The key, shut till it's asked for ── */
@@ -188,21 +189,22 @@
   .holomap-strip-share { display: none; }
   .holomap-strip-n { font-size: 0.7rem; }
   .holomap-legend { left: 8px; bottom: 8px; }
+  .holomap-layers { left: 8px; bottom: 46px; }
   .holomap-legend-panel { max-height: calc(100cqw - 56px); }
   /* (the rings tighter: at 390 px Mustafar's star and swords ran into Nevarro's ring, and the south's rings together) */
-  .holomap-map[data-fronts] .holomap-systems li[data-held] .holomap-dot { box-shadow: 0 0 0 1.5px #020611, 0 0 0 3px var(--held); }
-  .holomap-map[data-fronts] .holomap-systems li:is([data-front], [data-attack]) .holomap-dot,
-  .holomap-map[data-fronts] .holomap-systems li[data-cut]:not([data-front], [data-attack]) .holomap-dot { box-shadow: none; }
-  .holomap-map[data-fronts] .holomap-systems li:is([data-front], [data-attack]) .holomap-dot::before { inset: -4.5px; }
-  .holomap-map[data-fronts] .holomap-systems li[data-cut]:not([data-front], [data-attack]) .holomap-dot::before { inset: -3px; border-width: 1.5px; }
-  .holomap-map[data-fronts] .holomap-systems li[data-decisive] .holomap-dot { outline-offset: 7px; }
-  .holomap-map[data-fronts] .holomap-systems li[data-held] .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 1.5px #020611, 0 0 0 3px var(--held), 0 0 0 4.5px #020611, 0 0 0 5.5px #fff; }
-  .holomap-map[data-fronts] .holomap-systems li:is([data-front], [data-attack], [data-cut]) .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 5px #020611, 0 0 0 6px #fff; }
+  :where(.holomap-map[data-fronts]) .holomap-systems li[data-held] .holomap-dot { box-shadow: 0 0 0 1.5px #020611, 0 0 0 3px var(--held); }
+  :where(.holomap-map[data-fronts]) .holomap-systems li:is([data-front], [data-attack]) .holomap-dot,
+  :where(.holomap-map[data-fronts]) .holomap-systems li[data-cut]:not([data-front], [data-attack]) .holomap-dot { box-shadow: none; }
+  :where(.holomap-map[data-fronts]) .holomap-systems li:is([data-front], [data-attack]) .holomap-dot::before { inset: -4.5px; }
+  :where(.holomap-map[data-fronts]) .holomap-systems li[data-cut]:not([data-front], [data-attack]) .holomap-dot::before { inset: -3px; border-width: 1.5px; }
+  :where(.holomap-map[data-fronts]) .holomap-systems li[data-decisive] .holomap-dot { outline-offset: 7px; }
+  :where(.holomap-map[data-fronts]) .holomap-systems li[data-held] .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 1.5px #020611, 0 0 0 3px var(--held), 0 0 0 4.5px #020611, 0 0 0 5.5px #fff; }
+  :where(.holomap-map[data-fronts]) .holomap-systems li:is([data-front], [data-attack], [data-cut]) .holomap-system[aria-current='location'] .holomap-dot { box-shadow: 0 0 0 5px #020611, 0 0 0 6px #fff; }
   .holomap-fleets > li { width: 13px; height: 13px; }
   .holomap-fleets .holomap-emblem { width: 8px; height: 8px; }
   .holomap-fleets > li[data-kind='decisive'] { width: 16px; height: 16px; }
   .holomap-fleets > li[data-kind='decisive'] .holomap-emblem { width: 9px; height: 9px; }
-  .holomap-map[data-fronts] .holomap-systems li:is([data-front], [data-attack]) .holomap-dot::after { width: 9px; height: 9px; font-size: 0.7rem; line-height: 9px; }
+  :where(.holomap-map[data-fronts]) .holomap-systems li:is([data-front], [data-attack]) .holomap-dot::after { width: 9px; height: 9px; font-size: 0.7rem; line-height: 9px; }
 }
 
 /* ── The war card, in the side panel ── */
@@ -261,7 +263,7 @@
   .holomap-link[data-state='battle'],
   .holomap-border[data-hot] .holomap-border-line,
   .holomap-op-line,
-  .holomap-map[data-fronts] .holomap-systems li:is([data-front], [data-attack]) .holomap-dot { animation: none; }
+  :where(.holomap-map[data-fronts]) .holomap-systems li:is([data-front], [data-attack]) .holomap-dot { animation: none; }
   .holomap-fleets > li,
   .holomap-strip-bar span { transition: none; }
 }
