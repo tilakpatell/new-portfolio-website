@@ -85,8 +85,8 @@
 
 import { AREAS, DOCTRINE, SIDES, WARS, WAR_IDS, sideOfCode } from './sides';
 import { systemById } from './systems';
-import { GCW, HOURS_PER_STEP, NEIGHBOURS, WAR_SYSTEMS, areaBonusOf, areaHolders, areaOf, hash, oldKey, oldWinKey, opening, pointsKey, pressureOn, seeded, supplyOf, warInfo, winKey, within, worthOf } from './gcwRules';
-import { frontPace, frontsFor, lean, orderOver, orderTarget, originOf, phaseAt, pointsCount, raiderOrder, soft, supplied, targetOf } from './gcwAI';
+import { GCW, HOURS_PER_STEP, NEIGHBOURS, WAR_SYSTEMS, areaHolders, areaOf, hash, oldKey, oldWinKey, opening, pointsKey, seeded, warInfo, winKey, within, worthOf } from './gcwRules';
+import { attackPace, frontPace, frontsFor, lean, orderOver, orderTarget, originOf, phaseAt, pointsCount, raiderOrder, reaches, soft, supplied, targetOf } from './gcwAI';
 
 // (the ground rules are gcwRules.js's; the rest of the galaxy has them from here)
 export { GCW, NEIGHBOURS, WAR_DEFAULT, WAR_SYSTEMS, areaBonusOf, areaOf, hash, opening, pointsKey, pressureOn, seeded, supplyOf, warInfo, winKey, worthOf } from './gcwRules';
@@ -258,7 +258,7 @@ function play(run, s, k, f) {
   const climax = ph === CLIMAX;
   const rates = plan.rates[Math.floor(k / GCW.window)];
   const windowEnd = (Math.floor(k / GCW.window) + 1) * GCW.window;
-  const might = Object.fromEntries(sidesOf(w).map((side) => [side, phase.mult * lean(s.count, side) * (s.shock[side] > k ? GCW.shock : 1)]));
+  const might = Object.fromEntries(sidesOf(w).map((side) => [side, phase.mult * lean(s.count, side, s.opened) * (s.shock[side] > k ? GCW.shock : 1)]));
   // (a side's last stand can't fall before the Climax: nobody wastes an attack or an order on it)
   const holdsOut = new Set(climax ? [] : WAR_SYSTEMS.filter((id) => s.count[owner[id]] <= GCW.lastStand));
 
@@ -270,29 +270,32 @@ function play(run, s, k, f) {
     if (!due && !counter) continue;
     const raid = by === 'hutt';
     const targets = raid ? players : [liberator, 'hutt'];
-    // (not a last stand: it can't fall before the Climax, and an attack thrown at it, even the only one
-    // there is, held the liberator's own front off it for an hour and a half at a time)
-    const border = WAR_SYSTEMS.filter((id) => targets.includes(owner[id]) && !holdsOut.has(id) && !s.attacks.some((a) => a.sys === id) && NEIGHBOURS[id].some((o) => owner[o] === by));
+    const rand = seeded(`gcw-${war}-${n}-${by}-${k}`);
+    const rate = +(within(raid ? GCW.raidRate : GCW.attackRate, rand()) * might[by]).toFixed(1);
+    // (one launched near the campaign's end is over with it: nothing's left to hold out for)
+    const until = Math.min(at(k) + (raid ? GCW.raidFor : GCW.attackFor), at(STEPS));
+    const hours = (until - at(k)) / 3600e3;
+    // Not a last stand: it can't fall before the Climax, and an attack thrown at it, even the only one
+    // there is, held the liberator's own front off it for an hour and a half at a time. Nor a Hutt world
+    // the attack wouldn't take: the Hutts halve any attack, and 14 to 18% of the raider's went at Hutt
+    // worlds and failed, most of them going straight back for what the Hutts had just taken.
+    const border = WAR_SYSTEMS.filter((id) => targets.includes(owner[id]) && !holdsOut.has(id) && !s.attacks.some((a) => a.sys === id) && NEIGHBOURS[id].some((o) => owner[o] === by) && (owner[id] !== 'hutt' || reaches({ id, by, owner, control, rate, hours, holders: s.holders }, GCW.huttReach)));
     const forced = counter && border.includes(counter) ? counter : null;
     if (!forced && !due) continue;
     if (!border.length) {
       s.nextAt[by] = k + GCW.retry;
       continue;
     }
-    const rand = seeded(`gcw-${war}-${n}-${by}-${k}`);
-    const span = raid ? GCW.raidFor : GCW.attackFor;
-    const rate = +(within(raid ? GCW.raidRate : GCW.attackRate, rand()) * might[by]).toFixed(1);
-    const sys = forced ?? targetOf({ by, border, owner, control, rate, hours: span / 3600e3, capitals: w.capitals, lastHit: s.lastHit, k, rand, holders: s.holders, holdsOut });
+    const sys = forced ?? targetOf({ by, border, owner, control, rate, hours, capitals: w.capitals, lastHit: s.lastHit, k, rand, holders: s.holders, holdsOut });
     const origin = originOf(owner, control, sys, by);
-    // (one launched near the campaign's end is over with it: nothing's left to hold out for)
-    s.attacks.push({ sys, by, from: at(k), until: Math.min(at(k) + span, at(STEPS)), rate, origin, counter: Boolean(forced) });
+    s.attacks.push({ sys, by, from: at(k), until, rate, origin, counter: Boolean(forced) });
     event({ type: raid ? 'raid' : 'attack', sys, by, holder: owner[sys], origin, counter: Boolean(forced) });
     s.lastHit[sys] = k;
     if (forced) delete s.counter[by];
     // (the raider's pace is its phase's and its doctrine's, quicker when it's the underdog, slower when it holds most)
     const every = DOCTRINE[by].every ?? 1;
     if (raid) s.nextAt[by] = k + Math.round(RAID_STEPS * every);
-    else s.nextAt[by] = k < ATTACK_STEPS ? ATTACK_STEPS : k + Math.round((phase.every * every) / lean(s.count, by));
+    else s.nextAt[by] = k < ATTACK_STEPS ? ATTACK_STEPS : k + Math.round((phase.every * every) / lean(s.count, by, s.opened));
   }
 
   // the liberator's order (a new one when the last's done, out of time, under someone else's attack, or
@@ -310,7 +313,7 @@ function play(run, s, k, f) {
   s.fronts = frontsFor({ owner, order: plan.order, liberator, busy, rest: s.rest, k, lead: [s.orders[liberator]?.sys, retake], later: holdsOut });
   const attackOf = Object.fromEntries(s.attacks.map((a) => [a.sys, a]));
   s.eff = {};
-  for (const a of s.attacks) s.eff[a.sys] = pressureOn(owner[a.sys], a.rate + supplyOf(a.sys, owner, a.by) + areaBonusOf(a.sys, owner, a.by, s.holders));
+  for (const a of s.attacks) s.eff[a.sys] = attackPace({ id: a.sys, by: a.by, owner, rate: a.rate, holders: s.holders });
   for (const id of s.fronts) {
     if (attackOf[id]) continue;
     let r = rates[id] * might[liberator] + (id === retake ? GCW.counterBonus : 0);

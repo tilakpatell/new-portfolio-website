@@ -13,13 +13,15 @@
 //
 // phaseAt(k) → GCW.phases index; soft(p) → a side's points at a system in a
 // step, as the war counts them; pointsCount(side, holder, battle) → whether
-// they count there at all; lean(count, side) → the underdog's (or the
-// leader's) multiplier; supplied(owner, side, capital) → Set; cutOff(owner,
-// id, capital) → systems cut off by taking id; areaWhole(owner, id, side) →
-// 1 | 0; targetOf(c) → an attack's target; originOf(owner, control, sys, by)
-// → where it comes from; frontsFor(c) → the liberator's fronts; frontPace(c)
-// → a front's %/hour; orderTarget(c) → the liberator's order; raiderOrder(c)
-// → the raider's; orderOver(order, s) → whether it's done or can't be.
+// they count there at all; lean(count, side, opened?) → the underdog's (or
+// the leader's, or the stretched side's) multiplier; supplied(owner, side,
+// capital) → Set; cutOff(owner, id, capital) → systems cut off by taking id;
+// areaWhole(owner, id, side) → 1 | 0; attackPace(c) → an attack's %/hour;
+// reaches(c, reach) → whether it would take a system; targetOf(c) → an
+// attack's target; originOf(owner, control, sys, by) → where it comes from;
+// frontsFor(c) → the liberator's fronts; frontPace(c) → a front's %/hour;
+// orderTarget(c) → the liberator's order; raiderOrder(c) → the raider's;
+// orderOver(order, s) → whether it's done or can't be.
 
 import { DOCTRINE } from './sides';
 import { GCW, NEIGHBOURS, WAR_SYSTEMS, areaBonusOf, areaOf, pressureOn, supplyOf, warInfo, worthOf } from './gcwRules';
@@ -37,10 +39,16 @@ export const soft = (p) => Math.min(GCW.playerCap, Math.min(p, GCW.knee) + Math.
 // (its pilots holding them); anywhere else they move nothing
 export const pointsCount = (side, holder, battle) => battle || side === holder;
 
-// a side down to a few systems fights harder, one holding most of the galaxy eases off
-export function lean(count, side) {
+// a side down to a few systems fights harder, one holding most of the galaxy
+// eases off; and with `opened` (the opening's count), one that's gained
+// GCW.stretch.by systems since is stretched thin, one that's lost as many
+// fights harder for its own
+export function lean(count, side, opened) {
   const share = (count[side] ?? 0) / WAR_SYSTEMS.length;
-  return share < GCW.underdog.below ? GCW.underdog.boost : share > GCW.underdog.above ? GCW.underdog.damp : 1;
+  const base = share < GCW.underdog.below ? GCW.underdog.boost : share > GCW.underdog.above ? GCW.underdog.damp : 1;
+  const st = GCW.stretch;
+  const gained = opened ? (count[side] ?? 0) - (opened[side] ?? 0) : 0;
+  return base * (gained >= st.by ? st.damp : gained <= -st.by ? st.boost : 1);
 }
 
 // a side's systems in supply: those joined through its own to its capital or
@@ -75,6 +83,20 @@ export function cutOff(owner, id, capital) {
 // taking `id` would make its area `side`'s, whole
 export const areaWhole = (owner, id, side) => (WAR_SYSTEMS.every((x) => x === id || areaOf(x) !== areaOf(id) || owner[x] === side) ? 1 : 0);
 
+// whether an attack at `rate` %/hour would take a system's hold in `hours`,
+// or come within `reach` of it (the rest left to its pilots); with nobody
+// playing it's exact (c: { id, by, owner, control, rate, hours, holders? })
+export function reaches({ id, by, owner, control, rate, hours, holders }, reach = W.reach) {
+  return (attackPace({ id, by, owner, rate, holders }) * hours) / 100 >= reach * control[id];
+}
+
+// an attack's %/hour off a system's hold: its rate, with the attacker's
+// supply and an area of its next to it, as the holder feels it, and less at
+// a stronghold
+export function attackPace({ id, by, owner, rate, holders }) {
+  return pressureOn(owner[id], rate + supplyOf(id, owner, by) + areaBonusOf(id, owner, by, holders)) * (worthOf(id) >= GCW.stronghold ? GCW.fortified : 1);
+}
+
 // an attack's target: the border system `by` weighs highest by its doctrine
 // (c: { by, border, owner, control, rate, hours, capitals, lastHit, k, rand,
 // holders? (gcwRules.js's areaHolders, when it's to hand), holdsOut? (the
@@ -86,14 +108,13 @@ export function targetOf({ by, border, owner, control, rate, hours, capitals, la
   let bestU = -Infinity;
   for (const id of border) {
     const holder = owner[id];
-    const fall = (pressureOn(holder, rate + supplyOf(id, owner, by) + areaBonusOf(id, owner, by, holders)) * hours) / 100;
     const u =
       worthOf(id) * d.worth +
       (1 - control[id]) * W.weak * d.weak +
       cutOff(owner, id, capitals[holder]) * d.cut +
       areaWhole(owner, id, by) * W.area * d.area +
       warInfo(id).weight * W.weight +
-      (fall >= W.reach * control[id] && !holdsOut?.has(id) ? W.can : W.cannot) -
+      (reaches({ id, by, owner, control, rate, hours, holders }) && !holdsOut?.has(id) ? W.can : W.cannot) -
       (lastHit[id] > k - W.recentFor ? W.recent : 0) +
       rand() * d.jitter;
     if (u > bestU) (best = id), (bestU = u);

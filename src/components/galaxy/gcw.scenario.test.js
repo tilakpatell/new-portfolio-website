@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { createTally } from '../universe/tally';
-import { GCW, WAR_SYSTEMS, campaignRun, history, pointsKey, runAt, seeded, winKey } from './gcw';
+import { GCW, WAR_SYSTEMS, campaignRun, history, pointsKey, runAt, seeded, winKey, worthOf } from './gcw';
 import { SIDES, WARS, WAR_IDS } from './sides';
 import { CAP, KEYS } from './warState';
 
@@ -17,6 +17,7 @@ const CAMPAIGNS = 20;
 const STEPS = GCW.campaign / GCW.step;
 const CLIMAX = GCW.phases.at(-1).from;
 const atStep = (n, k) => GCW.start + n * GCW.campaign + k * GCW.step;
+const TOTAL_WORTH = WAR_SYSTEMS.reduce((t, id) => t + worthOf(id), 0);
 
 // one campaign, a step at a time: what each step began with, and what came of it
 function campaign(war, n, grind) {
@@ -33,7 +34,7 @@ function campaign(war, n, grind) {
       }
     : () => 0;
   const run = campaignRun(war, n, value);
-  const out = { changes: 0, fewest: Infinity, overAt: null, majorStuck: 0, ordersStuck: 0, orders: 0, steps: 0, attacks: 0, taken: 0, cut: 0 };
+  const out = { changes: 0, fewest: Infinity, overAt: null, majorStuck: 0, ordersStuck: 0, orders: 0, steps: 0, attacks: 0, taken: 0, cut: 0, huttsHeld: 0 };
   let prev = null;
   for (let k = 0; k < STEPS; k++) {
     const s = runAt(run, atStep(n, k));
@@ -52,6 +53,7 @@ function campaign(war, n, grind) {
         if (a.by !== 'hutt' && !s.attacks.some((x) => x.sys === a.sys && x.from === a.from)) {
           out.attacks += 1;
           if (s.owner[a.sys] === a.by) out.taken += 1;
+          else if (prev.owner[a.sys] === 'hutt') out.huttsHeld += 1;
         }
     }
     // stuck: no push to speak of (GCW.stuck) where the major or an order is
@@ -90,10 +92,20 @@ describe.each([
         const taken = runs.reduce((t, c) => t + c.taken, 0);
         expect(taken / attacks, `${war}: attacks that took their system`).toBeGreaterThanOrEqual(0.3);
         expect(taken / attacks).toBeLessThanOrEqual(0.6);
+        // and few are thrown away at Hutt worlds they can't take (14 to 18% were)
+        const wasted = runs.reduce((t, c) => t + c.huttsHeld, 0);
+        expect(wasted / attacks, `${war}: attacks the Hutts held out against`).toBeLessThan(0.1);
         const { liberator } = WARS[war];
         const began = Object.values(WARS[war].opening[liberator]).length;
         const ended = runs.reduce((t, __, n) => t + WAR_SYSTEMS.filter((id) => history(war, n, atStep(n, STEPS) - 1).owner[id] === liberator).length, 0) / CAMPAIGNS;
         expect(Math.abs(ended - began), `${war}: the liberator's systems, began ${began}, ended ${ended}`).toBeLessThanOrEqual(2);
+        // and its share of the galaxy's worth is within a quarter of where it began
+        // (the brief's band: the Remnant War's New Republic went from 70% to 35%)
+        const worth = (owner) => WAR_SYSTEMS.reduce((t, id) => t + (owner[id] === liberator ? worthOf(id) : 0), 0) / TOTAL_WORTH;
+        const opened = worth(Object.fromEntries(WARS[war].opening[liberator].map((id) => [id, liberator])));
+        const share = runs.reduce((t, __, n) => t + worth(history(war, n, atStep(n, STEPS) - 1).owner), 0) / CAMPAIGNS;
+        expect(share / opened, `${war}: the liberator's share of the worth, began ${opened.toFixed(2)}, ended ${share.toFixed(2)}`).toBeGreaterThanOrEqual(0.75);
+        expect(share / opened).toBeLessThanOrEqual(1.25);
         // and being cut off from supply is an encirclement, not the way of things (it was
         // 41 to 56% of every system-step, when supply ran from a side's capital alone)
         const cut = runs.reduce((t, c) => t + c.cut, 0) / runs.reduce((t, c) => t + c.steps * WAR_SYSTEMS.length, 0);

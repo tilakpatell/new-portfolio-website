@@ -223,6 +223,28 @@ describe('history', () => {
       }
     expect(raids).toBeGreaterThan(0);
   });
+  it('sends the raider at a Hutt world only where the attack would take it: left alone, every one does', () => {
+    // (the Hutts halve any attack, and a counter-attack went at once at what
+    // they'd taken, held at 0.7: 14 to 18% of the raider's attacks went at
+    // Hutt worlds and failed, nearly all of them counters or with nothing it
+    // could take anywhere on its border)
+    let taken = 0;
+    for (let n = 0; n < 6; n++)
+      for (const war of WAR_IDS) {
+        const { raider } = WARS[war];
+        const run = campaignRun(war, n, none);
+        for (let k = 1; k < GCW.campaign / GCW.step; k++) {
+          const s = runAt(run, atStep(n, k));
+          if (s.over) break;
+          // (what happened in the step before, whole now)
+          for (const e of s.events.filter((x) => x.k === k - 1 && x.by === raider)) {
+            if (e.type === 'repelled') expect(e.holder, `${war} c${n} ${k - 1} ${e.sys}`).not.toBe('hutt');
+            if (e.type === 'captured' && e.from === 'hutt') taken += 1;
+          }
+        }
+      }
+    expect(taken).toBeGreaterThan(0);
+  });
   it('the Hutts can take a system, and the raider can take a Hutt world', () => {
     let hutts = 0;
     let fromHutts = 0;
@@ -824,7 +846,8 @@ describe('warTable', () => {
         const supply = Object.fromEntries(Object.entries(WARS[war].capitals).map(([side, cap]) => [side, supplied(s.owner, side, cap)]));
         const might = GCW.phases[0].mult * lean(countOf(s.owner), liberator);
         for (const r of t.systems) {
-          if (r.attack) expect(r.effRate, r.id).toBeCloseTo(pressureOn(r.owner, r.attack.rate + supplyOf(r.id, s.owner, r.attack.by) + areaBonusOf(r.id, s.owner, r.attack.by)), 6);
+          // (a stronghold holds out longer: GCW.fortified of the pace)
+          if (r.attack) expect(r.effRate, r.id).toBeCloseTo(pressureOn(r.owner, r.attack.rate + supplyOf(r.id, s.owner, r.attack.by) + areaBonusOf(r.id, s.owner, r.attack.by)) * (worthOf(r.id) >= GCW.stronghold ? GCW.fortified : 1), 6);
           else if (r.front) expect(r.effRate, r.id).toBeCloseTo(frontPace({ id: r.id, owner: s.owner, liberator, rate: r.rate * might, supply }), 6);
           else expect(r.effRate).toBeNull();
         }
