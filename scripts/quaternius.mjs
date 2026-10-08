@@ -248,8 +248,10 @@ export function colliderOf(points, { most = 64 } = {}) {
   };
 }
 
-// The credit for a model of a pack, as public/games/credits.json has them
-export const creditOf = (pack, file) => ({ source: SOURCE, id: file.split('/').pop().replace(/\.\w+$/, ''), name: `${PACKS[pack].name}: ${file.split('/').pop().replace(/\.\w+$/, '')}`, authors: ['Quaternius'], license: 'CC0 1.0' });
+// The credit for a model of a pack, as public/games/credits.json has them;
+// its `use` names the kit it's in (`url`), which is how the credits' audit
+// (scripts/ai-e2e/assets/credits.mjs) finds its file
+export const creditOf = (pack, file, url) => ({ source: SOURCE, id: file.split('/').pop().replace(/\.\w+$/, ''), name: `${PACKS[pack].name}: ${file.split('/').pop().replace(/\.\w+$/, '')}`, authors: ['Quaternius'], license: 'CC0 1.0', use: `In public${url}, a kit of them (scripts/quaternius.mjs)` });
 
 // Colour under a cut-out texture's clear and soft-edged texels, pushed out
 // from its solid ones (rgba: Uint8Array of w × h × 4, its colour changed in
@@ -636,7 +638,7 @@ async function main() {
         collider: { half: c.half, mid: c.mid, hull: c.hull },
         ...(model.body ? { body: model.body } : {}),
       };
-      credits[`quaternius/${name}`] = creditOf(kit.pack, model.file);
+      credits[`quaternius/${name}`] = creditOf(kit.pack, model.file, url);
       rows.push(`${kitName.padEnd(18)} ${name.padEnd(20)} ${String(own.tris).padStart(6)} tris ${own.draws} draw(s) ${manifest[name].metres.map((v) => v.toFixed(2)).join(' × ')} m`);
     }
     rows.push(`${kitName.padEnd(18)} ${'(kit)'.padEnd(20)} ${(sum.bytes / 1024).toFixed(1)} KB, ${sum.textures.map((t) => `${t.name} ${t.width}`).join(', ') || 'no textures'}`);

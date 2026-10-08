@@ -145,7 +145,7 @@ describe('an OBJ, read', () => {
 
 describe('a Quaternius credit', () => {
   it('names the pack, the file and Quaternius, CC0', () => {
-    expect(creditOf('naturemega', 'CommonTree_3.gltf')).toEqual({ source: 'https://quaternius.com', id: 'CommonTree_3', name: 'Stylized Nature MegaKit: CommonTree_3', authors: ['Quaternius'], license: 'CC0 1.0' });
+    expect(creditOf('naturemega', 'CommonTree_3.gltf', '/models/quaternius/nature/trees.glb')).toEqual({ source: 'https://quaternius.com', id: 'CommonTree_3', name: 'Stylized Nature MegaKit: CommonTree_3', authors: ['Quaternius'], license: 'CC0 1.0', use: 'In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)' });
     expect(creditOf('space', 'Items/GLTF/Pickup_Crate.gltf').id).toBe('Pickup_Crate');
   });
 });
@@ -178,6 +178,7 @@ describe('the imported Quaternius models', async () => {
       expect(entry.collider.hull.length).toBeLessThanOrEqual(64);
       expect(Math.abs(entry.metres[1] - entry.collider.half[1] * 2)).toBeLessThan(0.01);
       expect(credits[`quaternius/${name}`]?.license).toBe('CC0 1.0');
+      expect(credits[`quaternius/${name}`]?.use).toContain(`public${entry.url}`);
     });
   }
 

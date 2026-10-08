@@ -4200,7 +4200,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Rock_Medium_2": {
     "source": "https://quaternius.com",
@@ -4209,7 +4210,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Rock_Medium_4": {
     "source": "https://quaternius.com",
@@ -4218,7 +4220,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Rock_Desert_1": {
     "source": "https://quaternius.com",
@@ -4227,7 +4230,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Rock_Desert_2": {
     "source": "https://quaternius.com",
@@ -4236,7 +4240,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Pebble_Round_2": {
     "source": "https://quaternius.com",
@@ -4245,7 +4250,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Pebble_Square_3": {
     "source": "https://quaternius.com",
@@ -4254,7 +4260,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Pebble_Desert": {
     "source": "https://quaternius.com",
@@ -4263,7 +4270,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/CommonTree_3": {
     "source": "https://quaternius.com",
@@ -4272,7 +4280,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/CommonTree_5": {
     "source": "https://quaternius.com",
@@ -4281,7 +4290,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Pine_4": {
     "source": "https://quaternius.com",
@@ -4290,7 +4300,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Pine_5": {
     "source": "https://quaternius.com",
@@ -4299,7 +4310,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Bush_Common_Flowers": {
     "source": "https://quaternius.com",
@@ -4308,7 +4320,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Bush_Long_1": {
     "source": "https://quaternius.com",
@@ -4317,7 +4330,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Flower_1_Single": {
     "source": "https://quaternius.com",
@@ -4326,7 +4340,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/flowers.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Flower_3_Single": {
     "source": "https://quaternius.com",
@@ -4335,7 +4350,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/flowers.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Flower_6": {
     "source": "https://quaternius.com",
@@ -4344,7 +4360,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/flowers.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Fern_2": {
     "source": "https://quaternius.com",
@@ -4353,7 +4370,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/flowers.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Grass_Common_Short": {
     "source": "https://quaternius.com",
@@ -4362,7 +4380,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/grass.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Grass_Wispy_Short": {
     "source": "https://quaternius.com",
@@ -4371,7 +4390,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/grass.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Mushroom_Common": {
     "source": "https://quaternius.com",
@@ -4380,7 +4400,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/mushrooms.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Mushroom_RedCap": {
     "source": "https://quaternius.com",
@@ -4389,7 +4410,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/mushrooms.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Chair": {
     "source": "https://quaternius.com",
@@ -4398,7 +4420,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Stool": {
     "source": "https://quaternius.com",
@@ -4407,7 +4430,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Table": {
     "source": "https://quaternius.com",
@@ -4416,7 +4440,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Vase": {
     "source": "https://quaternius.com",
@@ -4425,7 +4450,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Plant": {
     "source": "https://quaternius.com",
@@ -4434,7 +4460,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Streetlight_Single": {
     "source": "https://quaternius.com",
@@ -4443,7 +4470,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/street.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/TrafficLight": {
     "source": "https://quaternius.com",
@@ -4452,7 +4480,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/street.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Sign_Stop": {
     "source": "https://quaternius.com",
@@ -4461,7 +4490,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/street.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Sign_NoParking": {
     "source": "https://quaternius.com",
@@ -4470,7 +4500,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/street.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Prop_ACUnit": {
     "source": "https://quaternius.com",
@@ -4479,7 +4510,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/city.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Prop_Bollard": {
     "source": "https://quaternius.com",
@@ -4488,7 +4520,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/city.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Prop_Planter_Single": {
     "source": "https://quaternius.com",
@@ -4497,7 +4530,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/city.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Pickup_Crate": {
     "source": "https://quaternius.com",
@@ -4506,7 +4540,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/space.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/Pickup_Jar": {
     "source": "https://quaternius.com",
@@ -4515,7 +4550,8 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/space.glb, a kit of them (scripts/quaternius.mjs)"
   },
   "quaternius/CommonTree_4": {
     "source": "https://quaternius.com",
@@ -4524,6 +4560,7 @@
     "authors": [
       "Quaternius"
     ],
-    "license": "CC0 1.0"
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
   }
 }
