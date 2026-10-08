@@ -52,7 +52,7 @@
 //   blaster, 2 a detonator), heard by whoever's in earshot on the next update
 
 import * as THREE from 'three';
-import { SURFACE_MODELS, surfaceUrl } from './catalog';
+import { SURFACE_MODELS, modelUrlFor } from './catalog';
 import { buildFigure } from './figures';
 import { crewFigure } from './crew';
 import { PROPS } from './props';
@@ -257,15 +257,16 @@ export function approach(b, to, dt, { pace = 1.2, face = null, sidestep = false,
 // A kind's model (catalog/*.js) as a figure that walks: with its own clips
 // where it came rigged (an idle and a walk, or only one of them), or a sway
 // in its step where it didn't; null without a model. Each made is a seed of
-// its own (its kind, and which of them it is).
+// its own (its kind, and which of them it is). `models`: the book the kind
+// is looked up in (the galaxy's, or a page's own).
 const made = new Map(); // kind → how many
-export async function modelFigure(kind) {
-  if (!SURFACE_MODELS[kind]) return null;
+export async function modelFigure(kind, models = SURFACE_MODELS) {
+  if (!models[kind]) return null;
   const n = made.get(kind) ?? 0;
   made.set(kind, n + 1);
-  const gltf = squared(await loadGlb(surfaceUrl(kind)), kind);
+  const gltf = squared(await loadGlb(modelUrlFor(kind, 'high', models)), kind, models);
   if (!gltf) return null;
-  const row = SURFACE_MODELS[kind];
+  const row = models[kind];
   // (a person who came as a statue: legs found in it, skinned and walked; legRig.js)
   if (row.legs && !row.anim) {
     const legged = leggedFigure(gltf.scene, { seed: seedOf(kind, n), legs: row.legs === true ? {} : row.legs });
@@ -451,11 +452,11 @@ function propFigure(kind, spec, kit, i = 0) {
 // figure (figures.js) or a humanoid prop (props/*.js, given the kit); null
 // for a kind that's none of those. `spec.model: false` builds it even where
 // there's a model; i is which of the entry's figures (a crew kind's face).
-export async function anyFigure(kind, spec = {}, kit = null, i = 0) {
+export async function anyFigure(kind, spec = {}, kit = null, i = 0, models = SURFACE_MODELS) {
   if (spec.model === false) return buildFigure(kind) ?? propFigure(kind, spec, kit, i);
   // (a machine on legs its model came without: cut at its joints and walked, its rider up top; walkers.js)
-  const walker = WALKERS[kind] ? await walkerFigure(kind, i).catch(() => null) : null;
-  return walker ?? (await crewFigure(kind, i)) ?? (await modelFigure(kind)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit, i);
+  const walker = WALKERS[kind] ? await walkerFigure(kind, i, models).catch(() => null) : null;
+  return walker ?? (await crewFigure(kind, i)) ?? (await modelFigure(kind, models)) ?? buildFigure(kind) ?? propFigure(kind, spec, kit, i);
 }
 
 // How far off the fog has someone all but gone (97% fog, FogExp2's
@@ -470,7 +471,7 @@ const LEAP = 4; // metres moved between two steps that's no step: put somewhere 
 const EYES = 1.6; // metres: your eyes over your feet, for a head turned to you
 const FLOOR = 4; // metres up or down: someone on another floor isn't greeting you
 
-export function createActors({ parent, world, life = [], wants = [], talk = null, seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null, figure = null }) {
+export function createActors({ parent, world, life = [], wants = [], talk = null, seed = 5, warm = (o) => Promise.resolve(o), small = false, kit = null, fog = () => 0, water = null, figure = null, models = SURFACE_MODELS }) {
   const group = new THREE.Group();
   group.name = 'life';
   parent.add(group);
@@ -490,7 +491,7 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
   let lastYou = null;
   let dead = false;
 
-  const figureOf = figure ?? ((kind, spec, i) => anyFigure(kind, spec, kit, i));
+  const figureOf = figure ?? ((kind, spec, i) => anyFigure(kind, spec, kit, i, models));
   // (has something to say: a list with lines, or a tree)
   const talks = (spec) => (Array.isArray(spec.says) ? spec.says.length > 0 : Boolean(spec.says));
 
