@@ -25,7 +25,9 @@
 // for an alliance newly made). An alliance made is saved; a no or an end,
 // theirs or yours, forgets it. A saved block holds from a pilot's first
 // word (their row is listed, blocked, to be unblocked); a block or an
-// unblock of yours is saved, a flood's mute isn't (it's for the visit).
+// unblock of yours is saved (and a block ends an alliance), while a flood's
+// mute is for the visit: nothing's saved, no alliance ends, they're told
+// nothing.
 //
 // The hunters after you are yours to fly (hunters.js), and the others see
 // them: while someone's in the same place, where they are goes out a few
@@ -181,8 +183,9 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     roster();
   };
 
-  const block = (p, on) => {
-    if (on && p.ally !== 'none') setAlly(p, p.ally === 'got' ? 'decline' : 'end');
+  // (a block ends an alliance; a flood's mute, `muted`, is for the visit: the alliance stands, and they're told nothing)
+  const block = (p, on, muted = false) => {
+    if (on && !muted && p.ally !== 'none') setAlly(p, p.ally === 'got' ? 'decline' : 'end');
     p.blocked = on;
     p.snaps.length = 0;
     p.pose = null;
@@ -204,7 +207,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     if (p.blocked) return null;
     if (p.limit.allow(kind, t)) return p;
     if (p.limit.flooding(t)) {
-      block(p, true);
+      block(p, true, true);
       feed(`Muted ${p.name ?? 'a pilot'}: too many messages`, 'info');
     }
     return null;

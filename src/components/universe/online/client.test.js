@@ -641,6 +641,20 @@ describe('allies that last (allies.js)', () => {
     expect(a.snapshot().away.map((x) => x.id)).toEqual([RICK]);
   });
 
+  it('a flood’s mute is for the visit: a saved alliance is kept, and they’re told nothing', async () => {
+    const { a, b, bus, seen, stores } = await friends({ han: (s) => s.saveAlly(RICK, 'Rick'), rick: (s) => s.saveAlly(HAN, 'Han') });
+    expect(a.peers.get(RICK).ally).toBe('ally');
+    // Rick's ship floods Han's room
+    const pose = bus.room(RICK).makeAction('pose');
+    for (let i = 0; i < 200; i++) pose.send([i, 0, 0, 0, 0, 0, 0, 0, 0, 100]);
+    expect(a.peers.get(RICK).blocked).toBe(true);
+    expect(feeds(seen.a)).toContain('Muted Rick: too many messages');
+    expect(stores.han.isAlly(RICK)).toBe(true);
+    expect(stores.han.isBlocked(RICK)).toBe(false);
+    expect(b.peers.get(HAN).ally).toBe('ally');
+    expect(stores.rick.isAlly(HAN)).toBe(true);
+  });
+
   it('going offline, the saved allies who were here were last seen then', async () => {
     const { a, stores, tick } = await friends({ han: (s) => s.saveAlly(RICK, 'Rick'), rick: (s) => s.saveAlly(HAN, 'Han') });
     tick(3000);
