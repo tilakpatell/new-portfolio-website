@@ -59,7 +59,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 1A | | | | |
 | 1B | | | | |
 | 1C | | | | |
-| 1D | `session_01Y9gSEa16P9tye2wPhYum7h` | `claude/one-feel-panel` | (opening) | |
+| 1D | `session_01Y9gSEa16P9tye2wPhYum7h` | `claude/one-feel-panel` | #702 | |
 | 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 2A | | | | |
 | 2B | | | | |
