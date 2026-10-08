@@ -68,7 +68,8 @@ export const CAST = freeze({
   // the story hands Luke his saber where he draws it (the second station)
   luke: { name: 'Luke Skywalker', model: '/models/galaxy/crew/luke.glb', tall: 1.72, side: 'rebel', gun: 'e11', hp: 100, voice: 'luke', role: 'hero' },
   han: { name: 'Han Solo', model: '/models/galaxy/crew/han.glb', tall: 1.85, side: 'rebel', gun: 'dl44', hp: 100, voice: 'han', role: 'hero' },
-  obiwan: { name: 'Obi-Wan Kenobi', model: '/models/galaxy/crew/obiwan.glb', tall: 1.82, side: 'rebel', blade: { type: 'saber', colour: 0x3f8cff }, hp: 100, voice: 'obiwan', role: 'hero' },
+  // old Ben, as the first film has him (the galaxy’s Obi-Wan is the Clone Wars general)
+  obiwan: { name: 'Obi-Wan Kenobi', model: '/models/deathstar/obiwan.glb', tall: 1.78, side: 'rebel', blade: { type: 'saber', colour: 0x3f8cff }, hp: 100, voice: 'obiwan', role: 'hero' },
   chewie: { name: 'Chewbacca', model: '/models/cockpit/chewie.glb', tall: 2.28, side: 'rebel', hp: 160, role: 'hero' },
   threepio: { name: 'C-3PO', model: '/models/galaxy/surface/c3po.glb', tall: 1.67, side: 'rebel', hp: 40, voice: 'threepio', role: 'hero', speed: 0.6 },
   artoo: { name: 'R2-D2', model: '/models/galaxy/surface/r2d2.glb', tall: 1.09, side: 'rebel', hp: 60, role: 'hero', speed: 0.7 },

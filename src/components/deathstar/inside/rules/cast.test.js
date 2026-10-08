@@ -113,6 +113,11 @@ describe('the cast', () => {
     expect(joints(CAST.chewie.model)).toEqual(joints(CAST.officer.model));
   });
 
+  it('draws Obi-Wan as the first film’s old Ben, rigged on the crew’s own skeleton', () => {
+    expect(CAST.obiwan).toMatchObject({ model: '/models/deathstar/obiwan.glb', tall: 1.78, side: 'rebel', role: 'hero' });
+    expect(joints(CAST.obiwan.model)).toEqual(joints(CAST.officer.model));
+  });
+
   it('builds the IT-O and the dianoga in code, and only them', () => {
     for (const [kind, c] of Object.entries(CAST)) {
       if (BUILT[kind]) expect(c, kind).toMatchObject({ model: null, built: BUILT[kind] });

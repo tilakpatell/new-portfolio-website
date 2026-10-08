@@ -37,7 +37,7 @@ export const PEOPLE = {
   luke: { url: '/models/galaxy/crew/luke.glb', tall: 1.72 },
   han: { url: '/models/galaxy/crew/han.glb', tall: 1.85 },
   leia: { url: '/models/galaxy/crew/leia.glb', tall: 1.5 },
-  obiwan: { url: '/models/galaxy/crew/obiwan.glb', tall: 1.82 },
+  obiwan: { url: '/models/deathstar/obiwan.glb', tall: 1.78 },
   stormtrooper: { url: '/models/galaxy/troops/stormtrooper.glb', tall: 1.83, gloss: true },
 };
 const HEROES = ['luke', 'han', 'leia', 'obiwan'];

@@ -526,6 +526,10 @@ export default {
         get g() {
           return g;
         },
+        // the scene drawn (scene, camera), for the checks to look inside
+        get view() {
+          return view;
+        },
         teleport(where, x, z) {
           const ok = teleport(g, where, x, z);
           if (ok) look.yaw = g.you.yaw;

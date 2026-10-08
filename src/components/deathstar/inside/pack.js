@@ -9,7 +9,7 @@ export const PACK = {
     '/models/galaxy/crew/luke.glb',
     '/models/galaxy/crew/han.glb',
     '/models/galaxy/crew/leia.glb',
-    '/models/galaxy/crew/obiwan.glb',
+    '/models/deathstar/obiwan.glb', // old Ben: Meshy's model, rigged from jedi3 (scripts/rig-transfer.mjs)
     '/models/galaxy/troops/stormtrooper.glb',
     '/models/galaxy/crew/officer.glb',
     '/models/galaxy/crew/palpatine.glb',
