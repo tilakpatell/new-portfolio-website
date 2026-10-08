@@ -308,9 +308,9 @@ export const SITES = {
       { kind: 'grove', at: [-60, 120], opts: { n: 8, r: 20, seed: 26 } },
     ],
     scatter: [
-      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
-      { kind: 'qclover', n: 150, within: [4, 100], scale: [0.8, 1.6], solid: false },
-      { kind: 'qgrass', n: 200, within: [4, 120], scale: [0.8, 1.5], solid: false },
+      // (Quaternius's ground cover, under the built plants: catalog/nature.js)
+      { kind: 'nkclover1', n: 150, within: [4, 100], scale: [0.18, 0.36], solid: false, tint: ['#ffffff', '#d0e0b0'] },
+      { kind: 'nkgrass', n: 200, within: [4, 120], scale: [0.25, 0.47], solid: false, tint: ['#7a903e', '#a9b656'] },
       { kind: 'nabootree', n: 80, within: [50, 600], scale: [0.7, 1.4], flat: 0.9 },
       { kind: 'rock', n: 50, within: [40, 560], scale: [0.6, 2.4], opts: { color: '#8e8a78', sharp: 0.3 } },
       // Quaternius's nature kit (catalog/nature.js): the lake country's
@@ -322,7 +322,7 @@ export const SITES = {
       { kind: 'nkflowers3', n: 80, within: [32, 260], clumps: [12, 7], scale: [0.35, 0.65], solid: false, clear: -4, tint: ['#ffffff', '#d4e6b0'] },
       { kind: 'nkflower7', n: 120, within: [30, 240], clumps: [18, 5], scale: [0.4, 0.75], solid: false, clear: -4, tint: ['#ffffff', '#d4e6b0'] },
       { kind: 'nkbushflowers', n: 50, within: [40, 400], scale: [0.7, 1.3], solid: false, tint: ['#f2f8e0', '#c4d89c'] },
-      { kind: 'nkclover1', n: 120, within: [30, 260], clumps: [20, 4], scale: [0.4, 0.75], solid: false, clear: -4, tint: ['#ffffff', '#d0e0b0'] },
+      { kind: 'nkclover1', n: 120, within: [30, 260], clumps: [20, 4], scale: [0.2, 0.4], solid: false, clear: -4, tint: ['#ffffff', '#d0e0b0'] },
       { kind: 'nkrock1', n: 40, within: [40, 520], scale: [0.4, 0.9], tint: ['#b8b4a0', '#d8d4c0'] },
       { kind: 'nkcherry1', n: 5, within: [28, 46], around: [372, 330], scale: [0.6, 0.8], clear: 0, solid: 0.6 },
       { kind: 'nkcherry4', n: 4, within: [28, 46], around: [372, 330], scale: [0.6, 0.8], clear: 0, solid: 0.6 },

@@ -87,8 +87,8 @@ export const SITES = {
     // and wispy grass the gold of its plains, as in Rebels, boulders and
     // rocks, and little flowers low in the grass
     scatter: [
-      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
-      { kind: 'qgrass', n: 200, within: [4, 120], scale: [0.9, 1.6], solid: false },
+      // (Quaternius's ground cover, under the built plants: catalog/nature.js)
+      { kind: 'nkgrass', n: 200, within: [4, 120], scale: [0.28, 0.51], solid: false, tint: ['#c6ad72', '#ead9a8'] },
       { kind: 'nkwheat', n: 150, within: [40, 560], clumps: [24, 8], scale: [0.7, 1.1], solid: false, tint: ['#c6ad72', '#ead9a8'] },
       { kind: 'nkgrasswispy', n: 150, within: [30, 540], clumps: [24, 7], scale: [0.6, 1], solid: false, tint: ['#b49a62', '#dcc890'] },
       { kind: 'nkrockbig', n: 30, within: [60, 560], scale: [0.6, 1.4], tint: ['#c8b898', '#e0d4b8'] },
@@ -133,9 +133,9 @@ export const SITES = {
       { kind: 'log', at: [12, -14], yaw: 0.8 },
     ],
     scatter: [
-      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
-      { kind: 'qgrass', n: 200, within: [4, 120], scale: [0.8, 1.5], solid: false },
-      { kind: 'qclover', n: 120, within: [4, 90], scale: [0.8, 1.6], solid: false },
+      // (Quaternius's ground cover, under the built plants: catalog/nature.js)
+      { kind: 'nkgrass', n: 200, within: [4, 120], scale: [0.25, 0.47], solid: false, tint: ['#6a6c3c', '#8a864e'] },
+      { kind: 'nkclover1', n: 120, within: [4, 90], scale: [0.18, 0.36], solid: false, tint: ['#c8c8a0', '#e8e8c8'] },
       { kind: 'rock', n: 60, within: [40, 500], scale: [0.6, 2.4], opts: { color: '#6a6a5a' } },
       // (the woods as the episode has them: a wall of dark conifers round
       // the clearings)
