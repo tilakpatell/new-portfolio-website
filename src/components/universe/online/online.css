@@ -194,6 +194,10 @@
 .universe-online-check input { width: 15px; height: 15px; margin: 0; accent-color: var(--accent-text); cursor: pointer; }
 .universe-online-check:hover { color: var(--text); }
 .universe-online-check input:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+/* your key kept in this browser or not (identity.js), and a new one */
+.universe-online-identity { margin-top: 0.9rem; }
+.universe-online-remember { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; color: var(--muted); font-size: 0.78rem; }
+.universe-online-renew { display: block; margin-top: 0.5rem; }
 
 .universe-online-list { display: grid; gap: 0.4rem; margin: 0.8rem 0 0; padding: 0; list-style: none; }
 .universe-online-pilot {
@@ -244,6 +248,7 @@
 @media (pointer: coarse) {
   .universe-online-act { min-height: 40px; }
   .universe-online-pill { min-height: 44px; }
+  .universe-online-identity .universe-online-link { min-height: 44px; }
 }
 
 @media (max-width: 767px) {

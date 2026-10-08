@@ -17,8 +17,11 @@ import './online.css';
 // online, what they fly (and in what paint), their kills, which page they're on (with a button
 // to go there too; out on the universe map, which region, from where they
 // were last seen: rosterWhere.js), and the buttons to ask them to be allies, accept,
-// decline or end an alliance, or block them, and whether live pointers
-// show on pages. What's happening (who came online or came to your page,
+// decline or end an alliance, or block them, whether live pointers
+// show on pages, and whether your key is kept in this browser (identity.js:
+// “Remember me on this browser”, and “New identity”, asked once), or, in a
+// tab opened while another's online on it, that this one flies as a guest.
+// What's happening (who came online or came to your page,
 // alliances, who shot down whom) shows in a short feed above the button.
 // useOnline.js keeps the state. A click on a pilot's tag over the map (a
 // `tp:pilot` event, pilots.js) opens the list on them. Each row says whose
@@ -128,8 +131,8 @@ function Join({ online, onClose }) {
           </button>
         </div>
         <p className="universe-online-fine">
-          Everything goes through public Nostr relays (free servers run by others), so it works from any network and other pilots never see your IP address. Your callsign, ship and
-          moves pass through them as you play; nothing is stored.
+          Everything goes through public Nostr relays (free servers run by others), so it works from any network and other pilots never see your IP address. Your callsign and a key for
+          this browser are kept here, so allies know you next time. Nothing is stored anywhere else.
         </p>
       </form>
     </Card>
@@ -217,11 +220,55 @@ function Roster({ online, ship, floating, focus, onClose }) {
         <input type="checkbox" checked={online.pointers} onChange={(e) => online.showPointers(e.target.checked)} />
         Live pointers on pages, yours and theirs
       </label>
+      {online.guestTab ? <p className="universe-online-fine">You’re online in another tab: this one flies as a guest.</p> : <Identity online={online} />}
       <p className="universe-online-fine">Through public relays: other pilots never see your IP address.</p>
       <button type="button" className="universe-online-link universe-online-leave" onClick={online.goOffline}>
         Go offline
       </button>
     </Card>
+  );
+}
+
+// Your key kept in this browser or not (identity.js), and a new one, asked once
+function Identity({ online }) {
+  const [asking, setAsking] = useState(false);
+  const id = useId();
+  return (
+    <div className="universe-online-identity">
+      <div className="universe-online-remember">
+        <span id={id}>Remember me on this browser</span>
+        <div className="switch" data-size="sm" role="group" aria-labelledby={id}>
+          <button type="button" aria-pressed={online.remember} onClick={() => online.setRemember(true)}>
+            On
+          </button>
+          <button type="button" aria-pressed={!online.remember} onClick={() => online.setRemember(false)}>
+            Off
+          </button>
+        </div>
+      </div>
+      {asking ? (
+        <p className="universe-online-fine">
+          Your allies won’t know you. Start again?{' '}
+          <button
+            type="button"
+            className="universe-online-link"
+            onClick={() => {
+              setAsking(false);
+              online.newIdentity();
+            }}
+          >
+            Start again
+          </button>{' '}
+          <button type="button" className="universe-online-link" onClick={() => setAsking(false)}>
+            Keep this one
+          </button>
+        </p>
+      ) : (
+        <button type="button" className="universe-online-link universe-online-renew" onClick={() => setAsking(true)}>
+          New identity
+        </button>
+      )}
+    </div>
   );
 }
 

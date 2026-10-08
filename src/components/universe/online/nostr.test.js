@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { schnorr } from '@noble/secp256k1';
-import { KIND, checkEvent, hex, joinRoom, signEvent, visitKeys } from './nostr';
+import { KIND, checkEvent, hex, joinAsVisitor, joinRoom, setIdentity, signEvent, visitKeys } from './nostr';
 
 // In-memory relays that behave like the real ones: they check each event's
 // id and signature, answer OK, and pass it on to every matching listener
@@ -133,6 +133,21 @@ describe('joinRoom over Nostr relays', () => {
     await Promise.all([a.ready, b.ready]);
     a.action('hi').send({ n: 'Han' });
     await until(() => b.got.some((m) => m.ns === 'hi' && m.from === a.selfId));
+  });
+
+  it('signs as the pilot’s identity: the visit’s key is whatever identity.js gives', () => {
+    const keys = schnorr.keygen();
+    setIdentity({ keys: () => keys, ready: Promise.resolve(), remember: true, guest: false });
+    try {
+      expect(visitKeys()).toBe(keys);
+      const net = createRelays(URLS);
+      const r = joinAsVisitor({ appId: 'test-app', relays: URLS, WebSocket: net.WebSocket }, 'room-1');
+      rooms.push(r);
+      expect(r.selfId).toBe(hex(keys.publicKey));
+    } finally {
+      setIdentity(null); // (the page's own again, made when next asked)
+    }
+    expect(visitKeys()).not.toBe(keys);
   });
 
   it('rooms on the same relays share one socket to each, and a room that leaves stops listening', async () => {

@@ -16,13 +16,17 @@
 // page, each room a subscription of its own on them (`pool`, the page's
 // for the WebSocket class and relays given, unless one's handed in).
 //
-// Who you are is the key you sign with (made fresh for each visit, and the
-// same in every room you join on it, visitKeys(): the site's own and each
-// world's, so the person walking your Bree is the one in the roster, and a
-// block holds everywhere): every event is signed, the relays check it, and
-// anything that matters (a hello, a hit, being shot down, an alliance,
-// leaving) is checked again here, so no one can speak as another pilot. An event much older than the pilot's
-// others is dropped, so an old one can't be played back later.
+// Who you are is the key you sign with (identity.js's: kept in this browser
+// unless you've said not to, or a key of the tab's own when another tab's
+// already flying on it; the same in every room you join, visitKeys(): the
+// site's own and each world's, so the person walking your Bree is the one in
+// the roster, and a block holds everywhere): every event is signed, the
+// relays check it, and anything that matters (a hello, a hit, being shot
+// down, an alliance, leaving) is checked again here, so no one can speak as
+// another pilot. An event much older than the pilot's others is dropped, so
+// an old one can't be played back later. This module is ready only once the
+// identity's roll-call of the browser's tabs is over (a moment, ROLL_MS at
+// most), so nothing that imports it signs as another tab's pilot.
 //
 // joinRoom({ appId, relays, WebSocket, pool, keys }, roomId) → { selfId, ready (resolves
 // once a relay's listening, rejects if none answer), makeAction(ns) →
@@ -34,7 +38,9 @@
 
 import { schnorr } from '@noble/secp256k1';
 import { KIND, checkEvent, hex, signEvent } from './events';
+import { createIdentity } from './identity';
 import { poolFor } from './pool';
+import { localSaves } from '../../../runtime/local';
 
 export { KIND, checkEvent, eventId, hex, signEvent } from './events';
 // relays that took ten events a second for a minute without dropping any
@@ -51,10 +57,26 @@ const CHEAP = new Set(['pose', 'foot', 'walk', 'cur', 'shot', 'pack']); // trust
 
 const isHex = (s, n) => typeof s === 'string' && s.length === n && /^[0-9a-f]+$/.test(s);
 
-// the visit's key: made the first time a room's joined, then the same for
-// every room till the page goes (a room joined without it makes its own)
-let visit = null;
-export const visitKeys = () => (visit ??= schnorr.keygen());
+// Who signs (identity.js): one for the page, made as this module loads, on
+// the browser's storage and a channel to its other tabs. useOnline.js reads
+// it for the roster's switch and its “New identity”.
+const keygen = (secretKey) => (secretKey ? { secretKey, publicKey: schnorr.getPublicKey(secretKey) } : schnorr.keygen());
+const tabs = () => {
+  try {
+    return typeof window !== 'undefined' && typeof BroadcastChannel === 'function' ? new BroadcastChannel('tp-pilot') : null;
+  } catch {
+    return null;
+  }
+};
+let pilot = null;
+export const identity = () => (pilot ??= createIdentity({ saves: localSaves(), keygen, channel: tabs() }));
+// (a test's own in its place; null: the page's, made afresh when next asked)
+export function setIdentity(next) {
+  pilot = next;
+}
+// the visit's key: the identity's, the same for every room till the page
+// goes (a room joined without it makes its own)
+export const visitKeys = () => identity().keys();
 // a room joined as the visit's one self (what the site's rooms all do)
 export const joinAsVisitor = (opts, roomId) => joinRoom({ ...opts, keys: visitKeys() }, roomId);
 
@@ -262,3 +284,9 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
   setStatus();
   return room;
 }
+
+// Ready once the roll-call's over: a tab already flying on the kept key
+// answers within identity.js's ROLL_MS, and then this one is a guest, so
+// whatever imports this module (the site's link, a world's, a Rush kitchen)
+// joins its rooms on the right key.
+await identity().ready;

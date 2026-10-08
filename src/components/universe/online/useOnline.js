@@ -35,6 +35,12 @@ import { useEconomy } from '../EconomyProvider';
 // page acts on followId and clears it when the trip ends; left alone, it's
 // forgotten after FOLLOW_MS (and on going offline), so a page opened much
 // later doesn't set off after someone.
+//
+// Who you are (identity.js, through nostr.js, loaded once you're online):
+// remember and setRemember(yes) are the roster's “Remember me on this
+// browser”, newIdentity() its “New identity” (a fresh key, and in again on
+// it), and guestTab says this tab flies as a guest, another being online
+// on the kept key.
 
 const ONLINE_KEY = 'tp-universe-online'; // 'on' once you've gone online
 const NAME_KEY = 'tp-universe-callsign';
@@ -105,6 +111,19 @@ export function useOnlineState(where) {
   }, [on]);
   const latest = useRef({ name, kind, loadout, build, looks, where });
   latest.current = { name, kind, loadout, build, looks, where };
+  // who you are, once you've gone online (the module that has it comes with the link)
+  const [me, setMe] = useState(null);
+  const [, setMeChanged] = useState(0); // (bumped when it changes, for a render)
+  useEffect(() => {
+    if (!on || me) return undefined;
+    let gone = false;
+    import('./nostr')
+      .then((m) => !gone && setMe(m.identity()))
+      .catch(() => {});
+    return () => {
+      gone = true;
+    };
+  }, [on, me]);
 
   // gone from the tab a while: out of the room; back: in again
   useEffect(() => {
@@ -212,6 +231,19 @@ export function useOnlineState(where) {
       setPointers(yes);
     },
     rename: keepName,
+    remember: me ? me.remember : true, // your key kept in this browser (identity.js)
+    setRemember(yes) {
+      if (!me) return;
+      me.setRemember(yes);
+      setMeChanged((n) => n + 1);
+    },
+    // a fresh key, and in again on it (your allies won't know you)
+    newIdentity() {
+      if (!me) return;
+      me.renew();
+      setAttempt((a) => a + 1);
+    },
+    guestTab: Boolean(me?.guest), // another tab's online on the kept key: this one's a guest
     follow, // follow(id): fly to them once the ship's in; follow(null) to forget it
     followId: following?.id ?? null,
     ally: (id, what) => client?.ally(id, what),
