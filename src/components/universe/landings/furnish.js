@@ -399,7 +399,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       if (!object) return;
       parts = partsOf(object);
       shared = true;
-      reach = object.userData.footprint * 0.7;
+      reach = entry.reach ?? spec.reach ?? object.userData.footprint * 0.7;
     } else if (planet.SCATTER?.[entry.kind]) {
       const made = planet.SCATTER[entry.kind](kit, entry.opts ?? {});
       parts = made.parts;
