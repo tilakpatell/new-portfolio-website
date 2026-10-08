@@ -59,7 +59,7 @@
 
 @media print {
   .resume-sheet { max-width: none; border: 0; border-radius: 0; box-shadow: none; padding: 0; color: #111; background: #fff; font-size: 10.5pt; }
-  .resume-entry[data-dim], .resume-bullets li[data-dim] { --text: inherit; --text-body: inherit; color: inherit; }
+  .resume-entry[data-dim], .resume-bullets li[data-dim], .resume-entry[data-lit] .resume-bullets li[data-dim] { --text: inherit; --text-body: inherit; color: inherit; }
   .resume-entry[data-lit]::before { display: none; }
   .resume-skill { text-decoration: none; padding: 0; }
   .resume-skill[aria-pressed='true'] { background: none; color: inherit; }

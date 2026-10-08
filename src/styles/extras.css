@@ -851,6 +851,8 @@ html[data-mode='dark'][data-theme='shire'] .display { color: #e9dfb8; }
   --text: #f3f5f8; --text-body: #c9d1dc; --muted: #8b97a8;
   --accent: #e0322f; --accent-text: #ff6f61; --btn-bg: #c8161d; --btn-ink: #ffffff; --saber: #7fdcff; --nav-bg: #05070c;
   --route-plan: #2b3644; --shadow-card: 0 30px 60px -40px rgba(0, 0, 0, 0.9);
+  /* (dark ground: shadows are darkness, as in dark mode) */
+  --shadow-float: 0 18px 40px -20px rgb(0 0 0 / 0.7); --shadow-dialog: 0 24px 50px -24px rgb(0 0 0 / 0.75);
   --hud: #7fdcff;
   color-scheme: dark;
 }
@@ -966,7 +968,10 @@ html[data-menu] .guide-nudge { visibility: hidden; }
 @media (max-width: 639px) {
   .guide-head { gap: 0.5rem; padding-left: 0.75rem; }
   .guide-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .guide-head-tabs { overflow-x: auto; scrollbar-width: none; }
+  /* (room inside the scroller for the focus ring and a thumb's 44px, so it
+     never scrolls up and down) */
+  .guide-head-tabs { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; margin-block: -6px; padding: 6px 3px; }
+  .guide-head-tabs .switch > [role='tab']::after { inset: -6px 0; }
   .guide-tabs.switch > [role='tab'] { height: 32px; padding: 0 0.6rem; font-size: 0.8rem; }
 }
 @media (max-width: 639px) {
@@ -1065,3 +1070,9 @@ html:not([data-mode='dark']):is([data-theme='portal'], [data-theme='morty'], [da
 html.meeseeks-shake main { animation: meeseeks-shake 0.8s cubic-bezier(0.3, 0.7, 0.3, 1); }
 @keyframes meeseeks-shake { 0%, 100% { transform: none; } 15% { transform: translateX(-8px) rotate(-0.6deg); } 30% { transform: translateX(7px) rotate(0.5deg); } 45% { transform: translateX(-5px); } 60% { transform: translateX(4px); } 75% { transform: translateX(-2px); } }
 @media (prefers-reduced-motion: reduce) { html.meeseeks-shake main { animation: none; } }
+
+/* Type on a photograph is white in every theme: a theme's own colour for its
+   display type (the Shire's green, Rick and Morty's inks) is for its pages'
+   ground, and on a dark photograph it disappears. (Unlayered and !important,
+   as the !text-white it replaces was, so the theme rules above can't win.) */
+.on-photo .display { color: #ffffff !important; }
