@@ -123,18 +123,26 @@ export const PROPS = {
     return { object: k.build(parts, { name: 'speederbike' }) };
   },
   // a landing pad: a ring of lights round a disc, `r` across
-  pad(k, { r = 14, color = '#7e7a72', light = '#ffb24a', number = null } = {}) {
-    const parts = [part(cyl(r, r, 0.25, 40), { color, to: 'metal' }), part(cyl(r * 0.92, r * 0.92, 0.27, 40), { color: '#5c5852', to: 'metal' })];
-    for (let i = 0; i < 16; i++) {
-      const a = (i / 16) * PI * 2;
-      parts.push(part(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 8), { at: [cos(a) * r * 0.96, 0.3, sin(a) * r * 0.96], color: new THREE.Color(light).multiplyScalar(3), to: 'glow' }));
-    }
-    // the markings: a cross of strips
-    for (const a of [0, PI / 2]) parts.push(part(new THREE.BoxGeometry(r * 1.1, 0.02, 0.5), { at: [0, 0.28, 0], rot: [0, a, 0], color: '#d8c890', to: 'paint' }));
+  // (shape 'round' or 'square'; marks 'cross', or 'rings': two flat amber
+  // circles, as on Endor's landing platform)
+  pad(k, { r = 14, color = '#7e7a72', light = '#ffb24a', number = null, shape = 'round', marks = 'cross' } = {}) {
+    const square = shape === 'square';
+    const parts = square
+      ? [part(box(2 * r, 0.25, 2 * r), { color, to: 'metal' }), part(box(1.92 * r, 0.27, 1.92 * r), { color: '#5c5852', to: 'metal' })]
+      : [part(cyl(r, r, 0.25, 40), { color, to: 'metal' }), part(cyl(r * 0.92, r * 0.92, 0.27, 40), { color: '#5c5852', to: 'metal' })];
+    const lamp = new THREE.Color(light).multiplyScalar(3);
+    const lights = [];
+    if (square) for (const [sx, sz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (const t of [-0.75, -0.25, 0.25, 0.75]) lights.push([sx ? sx * r * 0.96 : t * r, sz ? sz * r * 0.96 : t * r]);
+    else for (let i = 0; i < 16; i++) lights.push([cos((i / 16) * PI * 2) * r * 0.96, sin((i / 16) * PI * 2) * r * 0.96]);
+    for (const [x, z] of lights) parts.push(part(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 8), { at: [x, 0.3, z], color: lamp, to: 'glow' }));
+    // the markings: a cross of strips, or two rings laid flat
+    if (marks === 'rings')
+      for (const [a, b] of [[0.58, 0.64], [0.17, 0.21]]) parts.push(part(new THREE.RingGeometry(r * a, r * b, 48).rotateX(-PI / 2), { at: [0, 0.285, 0], color: '#e0a030', to: 'paint' }));
+    else for (const a of [0, PI / 2]) parts.push(part(new THREE.BoxGeometry(r * 1.1, 0.02, 0.5), { at: [0, 0.28, 0], rot: [0, a, 0], color: '#d8c890', to: 'paint' }));
     // its number, painted big in its near-left quarter (Scarif's Pad 9),
     // read from the pad's +z edge
     if (number != null) parts.push(...numeral(String(number), r * 0.42, { at: [-r * 0.4, 0.29, r * 0.42], color: '#e8e2d0' }));
-    return { object: k.build(parts, { name: 'pad' }), floors: [{ x: 0, z: 0, r, y: 0.27 }] };
+    return { object: k.build(parts, { name: 'pad' }), floors: [square ? { x: 0, z: 0, hw: r, hd: r, yaw: 0, y: 0.27 } : { x: 0, z: 0, r, y: 0.27 }] };
   },
 
   // a stack of crates

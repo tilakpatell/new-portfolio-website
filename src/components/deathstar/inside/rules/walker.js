@@ -20,7 +20,9 @@
 //   lineClear(layout, open, a, b, solids = []) → bool   nothing solid on the straight line from a to b
 //
 // solids: { box: { x0, x1, z0, z1, y0, y1 } } or { circle: { x, z, r, y0, y1 } }; one whose top is
-// within a step above the feet is stood on, a taller one is walked round. Every floor of a room is
+// within a step above the feet is stood on, a taller one is walked round. A floor with a `tag` (the
+// chasm's bridge) is there only while open(`floor:<tag>`) is false: the game answers it from
+// layout.offTags, so a bridge drawn back is a void. Every floor of a room is
 // solid from just under the room’s lowest floor up to its top, so a stair, a ramp or a landing is a
 // block to walk round from below and to stand on from above (the scene draws them so).
 
@@ -84,7 +86,8 @@ function indexOf(layout) {
     const lo = Math.min(room.y, ...room.floors.map((f) => f.y));
     for (const f of room.floors) {
       const item = f.circle ? { kind: 'circle', x: f.circle.x, z: f.circle.z, r: f.circle.r } : { kind: 'box', x0: f.x0, x1: f.x1, z0: f.z0, z1: f.z1 };
-      put(Object.assign(item, { y0: lo - SLAB, y1: f.y, mark: 0 }), f.x0, f.z0, f.x1, f.z1);
+      // a tagged floor (the chasm's bridge) is there only while open() doesn't call it off by name
+      put(Object.assign(item, { y0: lo - SLAB, y1: f.y, mark: 0 }, f.tag ? { door: `floor:${f.tag}` } : null), f.x0, f.z0, f.x1, f.z1);
     }
     ceilings.push({ room, lo, hi: room.y + room.h });
   }
@@ -179,10 +182,10 @@ const under = (item, x, z) => (item.kind === 'box' ? x >= item.x0 && x <= item.x
 
 // The highest floor or solid top under the centre that is no higher than
 // `reach`; null when there is nothing (a void).
-function support(index, solids, x, z, reach) {
+function support(index, solids, x, z, reach, open) {
   let best = null;
   for (const item of near(index, x, z, x, z, solids)) {
-    if (item.kind === 'seg' || item.y1 > reach || !under(item, x, z)) continue;
+    if (item.kind === 'seg' || item.y1 > reach || !under(item, x, z) || !shutTo(item, open)) continue;
     if (best === null || item.y1 > best) best = item.y1;
   }
   return best;
@@ -258,7 +261,7 @@ function walkAcross(body, input, dt, { layout, index, open, solids }, events) {
     // a squeeze the passes can’t settle is refused rather than pushed through
     if (!resolve(body, index, open, solids)) Object.assign(body, was);
     if (body.ground) {
-      const s = support(index, solids, body.x, body.z, body.y + BODY.step + EPS);
+      const s = support(index, solids, body.x, body.z, body.y + BODY.step + EPS, open);
       if (s !== null && s >= body.y - BODY.step - EPS) body.y = s;
       else {
         body.ground = false;
@@ -281,7 +284,7 @@ function airborne(body, dt, { layout, index, open, solids }, events) {
       body.vy = 0;
     } else body.y = next;
   } else {
-    const s = support(index, solids, body.x, body.z, body.y + BODY.step + EPS);
+    const s = support(index, solids, body.x, body.z, body.y + BODY.step + EPS, open);
     if (s === null || next > s) body.y = next;
     else if (body.safe.y - s > BODY.drop) fall(body, events);
     else {

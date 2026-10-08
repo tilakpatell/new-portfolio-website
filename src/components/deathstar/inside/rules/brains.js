@@ -16,15 +16,18 @@
 // it is given.
 //
 //   createCrew({ rand, layout, nav, solidsOf? }) → crew      { people, byId, fights, clock }
-//     solidsOf(roomId) → the walker’s solids standing in a room (nav reads their footprints)
+//     solidsOf(roomId) → the walker’s solids standing in a room (nav reads their footprints); taken as
+//       fixed for the crew’s life, since the ways the legs remember (routines.js) aren’t kept by it
 //   addPerson(crew, { id, kind, room, x, z, yaw, role, squad?, hostile?, script?, tag?, talk? }) → person
 //     role: { type: 'patrol', spots: [name] } | { type: 'post', spot } | { type: 'work', spot } | { type: 'chat', with }
 //       | { type: 'march', spots } | { type: 'droid' } | { type: 'follow', who } | { type: 'scripted' }
 //       a post or work with no spot keeps the place the person was put; no role is the cast’s own
 //       (scripted for Vader, the Emperor and the Royal Guard, droid for droids, else a post)
 //     hostile: the story’s word on whether they fight you, whatever your disguise
-//   stepCrew(crew, dt, { you, alarm, doors, combat, flags, now, open, stims? }) → events
+//   stepCrew(crew, dt, { you, alarm, doors, combat, flags, now, open, stims?, awake? }) → events
+//     awake(person) → bool: who thinks and moves this step (all when absent); the rest sleep where they are
 //     you: your walker body & { id?, side, armour, helmet, doubt?, hp }; doors: doors.js’s state;
+//     flags: the story’s, whose floors drawn back (layout.offTags) the legs’ ways are worked out under;
 //     open(doorId) → bool, as the walker takes it; combat: its fresh bolts are heard as shots
 //     stims: [{ type: 'steps', at, from } | { type: 'roar', at } | force.js’s { type: 'noise', at, heard }
 //       and { type: 'trick', id, s, line }]
@@ -44,19 +47,21 @@
 //   removePerson(crew, id) → bool                  off the station, handing back what they held
 //   BARKS                                          the garrison’s lines, by when they’re said
 //
-// person: a walker body & { id, kind, side, hp, max, mode, anim, aim, role, squad, hostile, tag, talk, gun, mind }
+// person: a walker body & { id, kind, side, hp, max, mode, anim, aim, role, squad, hostile, tag, talk, gun, mind, hidden? }
+//   hidden: lying low (the game sets it): nobody on the other side sees them
 //   mode: 'routine' | 'wary' | 'fight' | 'search' | 'flee' | 'down' | 'dead' | 'scripted'
 //   anim: 'idle' | 'walk' | 'run' | 'aim' | 'shoot' | 'hit' | 'die' | 'kneel' | 'talk' | 'work' | 'attention'
 //   aim: the point it aims at, or null. The game hurts a person with combat.hurt (setting `hurtBy`,
 //   the shooter’s id, when it knows it): a big hit knocks them down, a small one staggers them,
 //   and none at all left kills them.
 
-import { createSenses, forget, sense, target as surest } from '../../../../lib/ai/perception';
+import { createSenses, forget, sense, share, target as surest } from '../../../../lib/ai/perception';
 import { levelOf } from './alarm';
 import { CAST, perceptionOf } from './cast';
 import { COMBAT, gunOf, WEAPONS } from './combat';
 import { CHALLENGE, disguised } from './disguise';
 import { createFights, FIGHT, fallbackFrom, fightStep, searchOf, searchStep, standOff } from './fight';
+import { offTags } from './layout';
 import { canPass, faceTo, legsOf, placeOf, resetRoutine, routineFor, runRoutine, stepLegs, walkTo } from './routines';
 import { BODY, createBody, lineClear } from './walker';
 
@@ -82,6 +87,7 @@ const SCATTER = 8; // and how much further off they run
 // seconds a fright lasts: a droid’s is soon over; one who ran from a fight stays down while he can see it
 const FLEE_FOR = { roar: 3, fight: 6 };
 const BODY_LOOK = 0.5; // seconds between one person’s looks round for a fallen comrade
+const TOLD = 0.6; // a sighting heard on the squad’s radio is this much as sure as the friend who saw it
 // the levels at which the garrison is up and looking, not standing easy
 const UP = new Set(['alert', 'lockdown', 'hunt']);
 
@@ -148,12 +154,14 @@ export function addPerson(crew, { id, kind, room, x, z, yaw = 0, role, squad = n
 }
 
 function mindOf(crew, p, home) {
-  const senses = perceptionOf(p.kind);
+  // the cast’s senses, never numbers of our own: its sight, cone and far are the eyes; a shot is
+  // heard as far as its `shots`, running steps as far as its `steps`
+  const cast = perceptionOf(p.kind);
   const m = {
     home,
     tree: routineFor(p.role, p.script),
-    senses: createSenses({ sight: { range: senses.sight, cone: senses.cone, far: senses.far }, hearing: { range: senses.shots }, memory: MEMORY, intuition: FIGHT.lose }),
-    hearing: senses,
+    senses: createSenses({ sight: { range: cast.sight, cone: cast.cone, far: cast.far }, hearing: { range: cast.shots }, memory: MEMORY, intuition: FIGHT.lose }),
+    ears: { shots: cast.shots, steps: cast.steps },
     eye: { pos: null, dir: null, beliefs: {}, now: 0 },
     legs: legsOf(p),
     pose: null,
@@ -171,6 +179,7 @@ function mindOf(crew, p, home) {
     flee: null,
     wary: null,
     found: false,
+    heardShot: null, // a shot heard this step, for a calm mind to call in
   };
   m.bb = blackboard(crew, p, m);
   return m;
@@ -245,16 +254,19 @@ export function removePerson(crew, id) {
 
 // ── a step ──
 
-export function stepCrew(crew, dt, { you = null, alarm = null, doors = null, combat = null, flags = new Set(), now, open = () => true, stims = [] } = {}) {
+export function stepCrew(crew, dt, { you = null, alarm = null, doors = null, combat = null, flags = new Set(), now, open = () => true, stims = [], awake = null } = {}) {
   crew.clock = now ?? crew.clock + dt;
   crew.out = [];
   crew.routes = 0;
-  crew.world = { you, alarm, doors, combat, flags, open, dt };
+  // a way remembered with the chasm’s bridge in isn’t one once it is drawn back
+  crew.world = { you, alarm, doors, combat, flags, open, dt, ways: [...offTags(crew.layout, flags)].join(',') };
   const heard = gather(crew, stims);
   const watchers = [];
   for (const p of [...crew.people]) vitals(crew, p);
-  for (const p of crew.people) think(crew, p, heard, watchers);
-  for (const p of crew.people) move(crew, p, dt);
+  // the game lets far-off people sleep: they hold where they are, mind and all, until woken
+  const up = awake ? crew.people.filter((p) => awake(p)) : crew.people;
+  for (const p of up) think(crew, p, heard, watchers);
+  for (const p of up) move(crew, p, dt);
   for (const s of crew.fights.searches.values()) s.update(dt);
   crew.fights.tokens.audit(dt, (id) => crew.byId.get(id)?.mode === 'fight');
   if (watchers.length) crew.out.push(challenge(watchers));
@@ -309,9 +321,13 @@ function die(crew, p) {
   crew.out.push({ type: 'died', id: p.id, kind: p.kind, tag: p.tag, room: p.room, x: p.x, y: p.y, z: p.z });
 }
 
-// Lets go of a shot token and a search claim, leaving the search when the last searcher goes.
+// Lets go of what a mode held: a shot token, a search claim (leaving the search when the last
+// searcher goes), and a shot heard but not yet called in. Only a calm mind calls a shot in, so one
+// heard in a fight, a search or a flight is spent when that mode ends: kept, it would be called in
+// again, long after, by a squad stood down at its posts.
 function release(crew, p) {
   const m = p.mind;
+  m.heardShot = null;
   if (m.fight?.target) crew.fights.tokens.release('shot', p.id, m.fight.target);
   if (m.search) {
     const { section } = m.search;
@@ -353,15 +369,15 @@ function perceive(crew, p, heard, watchers) {
   const targets = [];
   if (p.side !== 'neutral') {
     if (you && !(you.hp <= 0)) targets.push({ id: yid, at: chest(you), kind: you.hero ?? 'you', hostile: hostileToYou(crew, p, you) });
-    for (const q of crew.people) if (q !== p && q.mode !== 'dead' && q.side !== 'neutral' && q.side !== p.side) targets.push({ id: q.id, at: chest(q), kind: q.kind, hostile: true });
+    for (const q of crew.people) if (q !== p && q.mode !== 'dead' && !q.hidden && q.side !== 'neutral' && q.side !== p.side) targets.push({ id: q.id, at: chest(q), kind: q.kind, hostile: true });
   }
   // only an enemy’s shots and steps are worth turning round for
   const stims = m.own.splice(0);
   for (const s of heard) {
     if (s.type !== 'shot' && s.type !== 'steps') continue;
     if (!targets.find((t) => t.id === s.from)?.hostile) continue;
-    stims.push({ at: s.at, from: s.from, radius: s.type === 'shot' ? m.hearing.shots : m.hearing.steps, loudness: s.type === 'shot' ? 1 : 0.5 });
-    if (s.type === 'shot' && flat(p, s.at) <= m.hearing.shots) m.heardShot = s.at;
+    stims.push({ at: s.at, from: s.from, radius: s.type === 'shot' ? m.ears.shots : m.ears.steps, loudness: s.type === 'shot' ? 1 : 0.5 });
+    if (s.type === 'shot' && flat(p, s.at) <= m.ears.shots) m.heardShot = s.at;
   }
   m.eye.pos = eyes(p);
   m.eye.dir = dirOf(p.yaw);
@@ -396,6 +412,7 @@ function think(crew, p, heard, watchers) {
   if (p.mode === 'dead' || p.mode === 'down') return;
   const m = p.mind;
   m.bb.clock = crew.clock;
+  m.bb.ways = crew.world.ways;
   m.legs.want.lock = false;
   if (p.mode === 'scripted') return routine(crew, p);
   const threat = perceive(crew, p, heard, watchers);
@@ -486,7 +503,17 @@ function wary(crew, p, threat, level) {
 function engage(crew, p, threat) {
   setMode(crew, p, 'fight');
   // a beat to bring the rifle up before the first shot
-  p.mind.fight = { target: threat.id, tactic: null, since: crew.clock, think: crew.clock, place: null, burst: 0, next: crew.clock + 0.25 + 0.35 * crew.rand(), knownUntil: -Infinity };
+  p.mind.fight = {
+    target: threat.id,
+    tactic: null,
+    since: crew.clock,
+    think: crew.clock,
+    place: null,
+    burst: 0,
+    next: crew.clock + 0.25 + 0.35 * crew.rand(),
+    knownUntil: -Infinity,
+    toldAt: -Infinity,
+  };
   crew.out.push({ type: 'saw', id: p.id, target: threat.id, at: { ...threat.at }, room: p.room });
   call(crew, p, 'seen', threat.at);
   bark(crew, p, 'seen');
@@ -495,16 +522,21 @@ function engage(crew, p, threat) {
 
 function fight(crew, p, threat) {
   const m = p.mind;
+  // one who can’t see the target hears where it is from any friend in the fight who can
+  const told = threat?.visible ? null : radio(crew, p, threat?.id ?? m.fight?.target);
+  threat = told ?? threat;
   if (!threat) return startSearch(crew, p, m.fight?.at ?? p);
   if (m.fight.target !== threat.id) {
     crew.fights.tokens.release('shot', p.id, m.fight.target);
     m.fight.target = threat.id;
   }
+  if (told) m.fight.toldAt = m.eye.now;
   const unseen = m.eye.now - threat.seenAt;
-  const told = !threat.visible && radio(crew, p, threat);
+  // lost from the last time anyone in the fight saw it, himself or a friend on the radio
+  const lostFor = Math.min(unseen, m.eye.now - m.fight.toldAt);
   m.fight.at = { ...threat.at };
   if (threat.visible) call(crew, p, 'seen', threat.at);
-  const tactic = fightStep(crew.fights, p, threat, m.bb, m.fight, { unseen, lostFor: told ? 0 : unseen, told });
+  const tactic = fightStep(crew.fights, p, threat, m.bb, m.fight, { unseen, lostFor, told: Boolean(told) });
   if (tactic !== 'search') return;
   crew.out.push({ type: 'lost', id: p.id, target: threat.id, at: { ...threat.at } });
   if (crew.rand() < 0.5) bark(crew, p, 'lost');
@@ -512,16 +544,23 @@ function fight(crew, p, threat) {
 }
 
 // The squad’s radio: a friend in the fight who sees the target says where
-// it is, so one in cover knows it is still there and doesn’t go looking.
-function radio(crew, p, threat) {
+// it is. The word is a belief handed on (perception’s share), less sure
+// than the friend’s own sight and never counted as seen, so one in cover
+// keeps the target in mind (it doesn’t fade out while friends see it),
+// looks for a flank and later searches from where it is now, and counts
+// it lost only once the last friend has lost it too. → the belief, or null
+function radio(crew, p, id) {
+  if (id == null) return null;
   for (const q of crew.people) {
     if (q === p || q.mode !== 'fight' || q.side !== p.side) continue;
-    const b = q.mind.eye.beliefs[threat.id];
-    if (!b?.visible) continue;
-    threat.at = { ...b.at };
-    return true;
+    const seen = q.mind.eye.beliefs[id];
+    if (!seen?.visible) continue;
+    const b = share(q.mind.eye, p.mind.eye, id, { fade: TOLD });
+    // a belief of his own, surer than the word passed on, still moves to where he is told it is
+    Object.assign(b, { at: { ...seen.at }, vel: { ...seen.vel } });
+    return b;
   }
-  return false;
+  return null;
 }
 
 function startSearch(crew, p, at) {

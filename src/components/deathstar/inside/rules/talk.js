@@ -43,6 +43,11 @@ export const WHO = Object.freeze({
   motti: 'Admiral Motti',
   librarian: 'Archivist',
   jerjerrod: 'Commander Jerjerrod',
+  emperor: 'The Emperor',
+  shuttle: 'ST 321',
+  controller: 'Shuttle controller',
+  // Vader with his mask off, at the end
+  anakin: 'Anakin Skywalker',
 });
 
 // The garrison talks to you only off duty: a person fighting, searching,

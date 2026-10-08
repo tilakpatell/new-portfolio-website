@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createFighter, facing, GUARD, PARRY, REGEN, resolveClash, saberStep, STROKES } from './saber';
+import { createFighter, facing, GUARD, PARRY, REGEN, REGUARD, resolveClash, saberStep, STROKES } from './saber';
 
 const STEP = 1 / 30;
 const IDLE = { strike: null, guard: false, dodge: false };
@@ -184,6 +184,40 @@ describe('a stroke meeting a guard', () => {
     expect(b.stamina).toBe(0);
   });
 
+  it('can’t be farmed by tapping: a guard raised again within 0.3 s of coming down opens no new parry window', () => {
+    expect(REGUARD).toBe(0.3);
+    const { a, b } = pair();
+    a.hp = b.hp = 1e6;
+    const tally = {};
+    for (let i = 0; i < 10 * 30; i++) {
+      const blows = saberStep(a, { ...IDLE, strike: 'light' }, STEP).filter((e) => e.type === 'blow');
+      // up four steps, down one: a fresh raise every 0.17 s, inside the window each time if it reopened
+      saberStep(b, { ...IDLE, guard: i % 5 !== 4 }, STEP);
+      for (let n = 0; n < blows.length; n++) {
+        const { result } = resolveClash(a, b);
+        tally[result] = (tally[result] ?? 0) + 1;
+      }
+    }
+    expect(tally.parry ?? 0).toBeLessThanOrEqual(1);
+    expect((tally.block ?? 0) + (tally.break ?? 0)).toBeGreaterThan(3);
+  });
+
+  it('opens the window again for a guard raised once it has been down 0.3 s', () => {
+    const { a, b } = pair();
+    hold(b, { guard: true }, 1);
+    hold(b, {}, 0.2);
+    saberStep(b, { ...IDLE, guard: true }, STEP);
+    expect(b.guardT).toBeGreaterThanOrEqual(PARRY);
+    toBlow(a, 'light');
+    expect(resolveClash(a, b).result).toBe('block');
+    const c = pair();
+    hold(c.b, { guard: true }, 1);
+    hold(c.b, {}, REGUARD + STEP);
+    saberStep(c.b, { ...IDLE, guard: true }, STEP);
+    toBlow(c.a, 'light');
+    expect(resolveClash(c.a, c.b).result).toBe('parry');
+  });
+
   it('a guard turned away from the stroke doesn’t count: the blow hits', () => {
     const { a, b } = pair();
     b.yaw = 0;
@@ -231,6 +265,30 @@ describe('a stroke meeting nothing but a body', () => {
   it('meets nothing when the striker isn’t at a blow', () => {
     const { a, b } = pair();
     expect(resolveClash(a, b).result).toBe('none');
+  });
+
+  it('is resolved once against each fighter: asked again later in the same stroke, it meets nothing', () => {
+    const { a, b } = pair();
+    toBlow(a, 'light');
+    expect(resolveClash(a, b).result).toBe('hit');
+    saberStep(a, IDLE, STEP);
+    expect(a.stroke?.hit).toBe(true);
+    expect(resolveClash(a, b)).toEqual({ result: 'none', damage: 0, dead: false });
+    expect(b.hp).toBe(100 - STROKES.light.damage);
+    // the same sweep still catches someone standing beside the first
+    const c = createFighter({ id: 'c', x: 0.5, z: -1.5, yaw: Math.PI, side: 'empire' });
+    expect(resolveClash(a, c).result).toBe('hit');
+    expect(resolveClash(a, c).result).toBe('none');
+  });
+
+  it('spends a blocked blow too, so the guard pays for it once', () => {
+    const { a, b } = pair();
+    b.guard = true;
+    b.guardT = 1;
+    toBlow(a, 'light');
+    expect(resolveClash(a, b).result).toBe('block');
+    expect(resolveClash(a, b).result).toBe('none');
+    expect(b.stamina).toBe(100 - GUARD.block);
   });
 });
 

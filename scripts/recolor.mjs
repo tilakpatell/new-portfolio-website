@@ -11,7 +11,9 @@
 //      where: { hue: [lo, hi] (degrees), sat, val, soft } | 'rest' (only the
 //            texels of that colour, and their own mean aimed at `to`: a
 //            copper dome on a map that's mostly stone; 'rest' is every
-//            texel an earlier rule didn't take) }]
+//            texel an earlier rule didn't take; sat and val are floors),
+//      grey: true (with `where`: its texels greyed first, then aimed at `to`:
+//            moss taken off concrete) }]
 // Rules with `where` on the same material all apply, in order, each taking
 // its texels from what's left; otherwise a material takes its first rule.
 // A map shared with a material no rule matches is copied first, so only the
@@ -121,6 +123,17 @@ async function recolorWhere(tex, factor, rules) {
   const hsv = hsvOf(data);
   const taken = new Float32Array(data.length / 4);
   const ws = rules.map((r) => weightsOf(r.where, hsv, taken));
+  // (a `grey` rule's texels first lose their colour, keeping their light and
+  // shade, so moss comes out stone and not a tinted moss)
+  rules.forEach((r, j) => {
+    if (!r.grey) return;
+    for (let i = 0; i < ws[j].length; i++) {
+      if (!ws[j][i]) continue;
+      const lin = [0, 1, 2].map((c) => toLin(data[i * 4 + c] / 255));
+      const l = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+      for (let c = 0; c < 3; c++) data[i * 4 + c] = Math.round(toSrgb(lin[c] + (l - lin[c]) * ws[j][i]) * 255);
+    }
+  });
   const goals = rules.map((r, j) => {
     const m = weightedMean(data, ws[j]).map((v, c) => v * factor[c]);
     const to = linOf(r.to);

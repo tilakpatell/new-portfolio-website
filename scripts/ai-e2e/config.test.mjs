@@ -12,8 +12,8 @@ describe('the two vitest runs', () => {
   it('keep the AI tiers out of npm test', () => {
     for (const glob of AI_GLOBS) expect(site.test.exclude).toContain(glob);
   });
-  it('give npm run test:ai the contract tests, the fuzz tests, the brains’ scenarios and the galaxy war’s campaigns', () => {
-    expect(ai.test.include).toEqual(['scripts/ai-e2e/**/*.test.mjs', 'src/**/*.fuzz.test.js', 'src/components/universe/npcs/brains/*.scenario.test.js', 'src/components/galaxy/*.scenario.test.js']);
+  it('give npm run test:ai the contract tests, the fuzz tests, the brains’ scenarios, the space battles’ and the galaxy war’s campaigns', () => {
+    expect(ai.test.include).toEqual(['scripts/ai-e2e/**/*.test.mjs', 'src/**/*.fuzz.test.js', 'src/components/universe/npcs/brains/*.scenario.test.js', 'src/components/universe/battle*.scenario.test.js', 'src/components/galaxy/*.scenario.test.js']);
     expect(ai.test.testTimeout).toBe(15000);
     // the contract tests share temporary repositories and the dev-server port
     expect(ai.test.fileParallelism).toBe(false);
