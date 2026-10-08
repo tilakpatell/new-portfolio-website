@@ -55,6 +55,8 @@ const BIG = 3; // kills from one big one that make a big haul (the crew's line f
 const KEEP_EVERY = 2; // seconds between writes of the charge to the session
 const SPARKS = 0.07; // seconds between the magnet's sparks
 const FOCUS_EASE = 0.25; // seconds Force Focus's look takes to come and go
+const CRYSTAL_OUT = 1.8; // how far ahead of the ship's middle Walt's crystal is thrown from
+const CRYSTAL_GROW = 0.1; // seconds it takes to grow to its size
 const NONE = Object.freeze(modsOf(null));
 const PHASE_WORDS = { ready: 'ready', active: 'on', cooling: 'cooling down', charging: 'charging' };
 
@@ -155,7 +157,10 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
       const tgt = known(s.lockTarget) ? s.lockTarget : null;
       const lead = tgt && intercept(ship, speed, tgt.at, tgt.vel);
       if (lead) dir = assist(dir, dirTo(ship, lead), Math.max(controls().assist, 1));
-      run.crystal = { x: ship.x + dir[0] * 0.3, y: ship.y + dir[1] * 0.3, z: ship.z + dir[2] * 0.3, vx: dir[0] * speed, vy: dir[1] * speed, vz: dir[2] * speed, age: 0 };
+      // (thrown from well out ahead of the nose: from the ship's middle it was
+      // just in front of the chase camera, a faceted blue ball over the picture)
+      const out = CRYSTAL_OUT;
+      run.crystal = { x: ship.x + dir[0] * out, y: ship.y + dir[1] * out, z: ship.z + dir[2] * out, vx: dir[0] * speed, vy: dir[1] * speed, vz: dir[2] * speed, age: 0 };
     }
   };
 
@@ -365,7 +370,7 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
     c.z += c.vz * dt;
     const near = [...huntersNow(), ...warNow()].some((t) => apart(t.at, c) < P.near);
     if (near || c.age >= P.fuse) blast({ x: c.x, y: c.y, z: c.z });
-    else fx.crystal(c);
+    else fx.crystal(c, c.age / CRYSTAL_GROW);
   };
 
   // Force Focus's look: the edges pulled apart a little and the light

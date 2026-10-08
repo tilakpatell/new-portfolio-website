@@ -10,7 +10,7 @@
 // portals crash.js's swirl, Force Focus the post's (post.js).
 //
 // createPowerFx(parent) → { torpedoes(list), beam(from, to), magnet(at, k),
-//   crystal(at), shock(at, r), update(dt) → busy, busy, clear(), dispose() }
+//   crystal(at, k), shock(at, r), update(dt) → busy, busy, clear(), dispose() }
 // torpedoes takes [{ x, y, z, vx, vy, vz }] (at most TORPEDOES of them); the
 // others take null to put it away. Points are { x, y, z } in `parent`'s
 // space (the map's, where the ship flies).
@@ -188,12 +188,14 @@ export function createPowerFx(parent) {
       rings.material.color.copy(BLUE).multiplyScalar(0.65 * magnetK);
     },
 
-    crystal(at) {
-      gem.visible = Boolean(at);
-      if (!at) return;
+    // (`k`, 0…1, how far it's grown: it comes out of the hatch small rather
+    // than a bright blue ball over the middle of the picture)
+    crystal(at, k = 1) {
+      gem.visible = Boolean(at) && k > 0;
+      if (!gem.visible) return;
       gem.position.set(at.x, at.y, at.z);
       gem.rotation.set(clock * 5.3, clock * 3.1, clock * 1.7);
-      gem.scale.setScalar(0.16);
+      gem.scale.setScalar(0.16 * Math.min(1, k));
     },
 
     // a shockwave out to `r` from `at`, swelling and fading on its own
