@@ -4,26 +4,33 @@
 // drawn here from the game’s door states, since a room leaves its doorways
 // open in their frames (a sliding door parts sideways into the wall, a
 // blast door drops from above, a hatch swings on its hinge); the player
-// is a rigged figure (figures.js), a stormtrooper whenever in armour; and
-// the camera stands over the shoulder or at the eyes, kept out of the
-// walls (camera.js). The game steps at 30 Hz and a frame falls between
-// two steps, so the player is drawn between where the last two steps put
-// them. Everything is in the house look (lib/three/house.js); bloom is the
-// module’s (rt.gfx.post), so render() draws just the scene through the
-// camera.
+// is a rigged figure (figures.js), a stormtrooper whenever in armour; the
+// people aboard are drawn from the game’s crew (people.js) and the bolts
+// in the air from its combat (fx.js); and the camera stands over the
+// shoulder or at the eyes, kept out of the walls (camera.js). The game
+// steps at 30 Hz and a frame falls between two steps, so the player is
+// drawn between where the last two steps put them. Everything is in the
+// house look (lib/three/house.js); bloom is the module’s (rt.gfx.post), so
+// render() draws just the scene through the camera.
 //
 //   leafPlaces(door, open) → [{ x0, x1, y0, y1, lead, swing? }]   pure: the leaves’ rects still in the
 //     doorway (x along the door from its middle, y up from its floor), `lead` the edge that moves;
 //     a hatch’s one leaf is always whole, turned `swing` radians on its x0 edge
 //   createTrack() → { push(time, body), at(alpha) → { x, y, z, yaw }, speed() }   pure: a body between
 //     its last two steps; a jump of more than 3 m (a lift ride, a teleport) is drawn where it lands
-//   createScene(renderer, { tier, small, station }) → { scene, camera, layout, ready, sync, resize, render, dispose }
+//   roomsOf(stream) → { shown(roomId), built(roomId), dt }   what people.js is told of the rooms: drawn
+//     while the stream shows them, standing from when they are built until the stream frees them (a
+//     body is let go only then, so the two mustn’t be swapped: a door shut on the dead would take them)
+//   createScene(renderer, { tier, small, station }) → { scene, camera, layout, ready, sync, warm, resize, render, dispose }
 //     sync(g, alpha, look?)   once a frame, after the game’s steps: g as rules/game.js keeps it
-//       ({ side, you: body & { room, crouch, hp, gun, armour, hero, pitch? }, doors, time }), alpha
-//       how far the frame is from the last step to the next; look: { yaw, pitch, view, aim } as the
-//       module holds them (the mouse turns the eye every frame, not every step); without it, the
-//       body’s yaw, level, third person
+//       ({ side, you: body & { room, crouch, hp, gun, armour, hero, pitch? }, doors, time, crew?, combat? }),
+//       alpha how far the frame is from the last step to the next; look: { yaw, pitch, view, aim } as
+//       the module holds them (the mouse turns the eye every frame, not every step); without it, the
+//       body’s yaw, level, third person. crew: rules/brains.js’s ({ people }), each person drawn;
+//       combat: rules/combat.js’s ({ bolts }), every bolt in the air given to the effects, then they step
 //     ready: settles once the rooms’ builders are in hand
+//     warm(target?) → Promise   compiles the fight’s effects for where the scene is drawn (the bloom
+//       chain’s buffer, or the screen without one), so the first shot doesn’t stall a frame
 //     resize(w, h), render(), dispose() (puts the renderer’s tone mapping back as it found it)
 
 import * as THREE from 'three';
@@ -33,7 +40,9 @@ import { buildLayout } from '../rules/layout';
 import { STATIONS } from '../rules/stations';
 import { CAMERA, cameraPose, wallHits } from './camera';
 import { loadPerson, playerKind } from './figures';
+import { createFx } from './fx';
 import { createKit } from './kit';
+import { createPeople } from './people';
 import { createStream } from './stream';
 
 const STEP = 1 / 30; // the game’s step (rules/game.js)
@@ -89,6 +98,14 @@ export function createTrack() {
   };
 }
 
+export function roomsOf(stream) {
+  return {
+    shown: (id) => stream.built.get(id)?.group.visible ?? false,
+    built: (id) => stream.built.has(id),
+    dt: 0,
+  };
+}
+
 export function createScene(renderer, { tier = 'high', small = false, station = 'ds1' } = {}) {
   const layout = buildLayout(STATIONS[station] ?? STATIONS.ds1);
   const scene = new THREE.Scene();
@@ -103,6 +120,10 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   const house = houseOn({ renderer, scene, hemi, look: { fog: false } });
   const kit = createKit(renderer, { tier, small });
   const stream = createStream(kit, layout, scene, { renderer, tier, small });
+  const rooms = roomsOf(stream);
+  // (each figure and gun takes the house look as it comes into the scene, before it is first drawn)
+  const people = createPeople(scene, kit, { tier, renderer, adopt: house.adopt });
+  const fx = createFx(scene, { small });
   const leafMat = new THREE.MeshStandardMaterial(LEAF);
   // every leaf’s body and edge, a unit cube scaled to its part
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
@@ -191,7 +212,6 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   }
 
   function syncLeaves(doors) {
-    const shownRoom = (id) => stream.built.get(id)?.group.visible ?? false;
     for (const door of layout.doors.values()) {
       if (door.kind === 'arch') continue;
       const near = stream.built.has(door.a) || stream.built.has(door.b);
@@ -201,7 +221,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
       }
       if (!leaves.has(door.id)) leaves.set(door.id, leavesFor(door));
       const entry = leaves.get(door.id);
-      entry.group.visible = shownRoom(door.a) || shownRoom(door.b);
+      entry.group.visible = rooms.shown(door.a) || rooms.shown(door.b);
       if (entry.group.visible) placeLeaves(door, entry, doors?.[door.id]?.open ?? 0);
     }
   }
@@ -245,6 +265,12 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     }
 
     stream.update(you.room, (id) => (g.doors?.[id]?.open ?? 0) > 0, now, dt, { eye: camera.position, g });
+    // the people after the stream, so they are drawn in the rooms as it now has them; every bolt
+    // in the air given before the effects step (one not given again is gone)
+    rooms.dt = dt;
+    if (g.crew) people.sync(g.crew, alpha, camera.position, rooms);
+    for (const b of g.combat?.bolts ?? []) fx.bolt(b);
+    fx.update(dt);
     // a room just built, the Falcon berthed late, a reflection made again:
     // each brings materials the house look hasn’t met (adopting is once a material)
     if (frames++ % 30 === 0 || stream.built.size !== seenRooms) {
@@ -268,6 +294,8 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     disposed = true;
     person?.dispose();
     person = null;
+    people.dispose();
+    fx.dispose();
     for (const id of [...leaves.keys()]) dropLeaves(id);
     stream.dispose();
     kit.dispose();
@@ -278,5 +306,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     renderer.toneMappingExposure = was.exposure;
   }
 
-  return { scene, camera, layout, ready: stream.ready, sync, resize, render: () => renderer.render(scene, camera), dispose };
+  const warm = (target = null) => fx.warm(renderer, camera, target);
+
+  return { scene, camera, layout, ready: stream.ready, sync, warm, resize, render: () => renderer.render(scene, camera), dispose };
 }

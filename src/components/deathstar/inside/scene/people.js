@@ -21,12 +21,12 @@
 // view). Figures are made only for people within 60 m in a room that
 // stands, nearest first and two a frame, so a crowd coming into view never
 // stalls a frame; anyone past 60 m or in a room that isn’t drawn is
-// hidden, and anyone whose room is freed is let go. A person is drawn between the
-// game’s last two steps, so they move smoothly at any frame rate. A body
-// stays where it fell for as long as the crew keeps it, until its room is
-// freed: hidden while the room stands undrawn (a door shut on it), let go
-// for good once the stream frees the room. One that fell where no room
-// stood is drawn lying there once its room is built.
+// hidden, and anyone whose room is freed is let go. A person is drawn
+// between the game’s last two steps, so they move smoothly at any frame
+// rate. A body stays where it fell for as long as the crew keeps it, until
+// its room is freed: hidden while the room stands undrawn (a door shut on
+// it), let go for good once the stream frees the room. One that fell where
+// no room stood is drawn lying there once its room is built.
 //
 //   LIVE → { ultra, high, mid, low }   how many people animate on each tier;  FAR: 60 m, past which nobody is drawn
 //   liveCount(tier) → n
