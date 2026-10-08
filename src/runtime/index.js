@@ -9,6 +9,7 @@
 
 import { createInput } from './input';
 import { createQuality } from './quality';
+import { createPace } from '../lib/three/pace';
 import { localSaves, worldStore, winOf } from './local';
 import { createAssets } from './assets';
 import { createAudioBus } from './audio';
@@ -46,9 +47,11 @@ export function runtime() {
     gltf: (url) => browser().then((m) => m.forget.gltf(url)),
   };
   instance = createRuntime({
-    makeBackend: (kind, opts) => browser().then((m) => m.makeBackend(kind, opts)),
+    // (`invalidate`: the frame guard asks for a frame when what it held back is ready)
+    makeBackend: (kind, opts) => browser().then((m) => m.makeBackend(kind, { ...opts, invalidate: () => instance?.invalidate() })),
     input: createInput(),
-    quality: createQuality({ dpr: win?.devicePixelRatio || 1 }),
+    // (down only: each step resizes the canvas, lib/three/pace's `climb`)
+    quality: createQuality({ dpr: win?.devicePixelRatio || 1, pace: createPace({ climb: false }) }),
     saves: localSaves(),
     store: worldStore(),
     assets: createAssets({ loaders, forget }),
