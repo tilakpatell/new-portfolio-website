@@ -7,6 +7,8 @@ import { MOONS } from '../../universe/universes';
 import { LAYER_TYPES, REACH } from '../../galaxy/surface/terrain';
 import { spawnProblems, standable } from '../../galaxy/surface/sites/validity';
 import { PLANET_SITES, isBigPlanet, planetMission, planetSite } from '.';
+import { RM_MODELS } from './catalog';
+import { RM_RIDES } from './rides';
 
 const publicFile = (url) => new URL(`../../../../public${url}`, import.meta.url);
 
@@ -76,8 +78,20 @@ describe('Gazorpazorp, bare', () => {
     const gate = site.places.find((p) => p.id === 'gate');
     expect(gate.name).toBe('The women’s gate');
     expect(Math.hypot(...gate.at) + gate.r).toBeLessThan(REACH);
-    const model = site.things_all.find((t) => t.place === 'gate' && t.url);
-    expect(existsSync(publicFile(model.url)), model.url).toBe(true);
+    // (the gate stands as its model, the planets' catalogue's)
+    const gateModel = site.things_all.find((t) => t.place === 'gate' && RM_MODELS[t.kind]);
+    expect(gateModel.kind).toBe('gazorpgate');
+    expect(existsSync(publicFile(RM_MODELS[gateModel.kind].url)), gateModel.kind).toBe(true);
+  });
+
+  it('has the men out in the wasteland, the cast’s rigged Gazorpians, and the rock sled parked by the cruiser', () => {
+    const men = site.life.filter((a) => a.kind === 'gazorpian');
+    expect(men.length).toBeGreaterThan(0);
+    expect(RM_MODELS.gazorpian.rigged).toBe(true);
+    for (const a of men) expect(standable(site, a.at), JSON.stringify(a.at)).toBe(true);
+    const sled = site.rides.find((r) => r.kind === 'rocksled');
+    expect(RM_RIDES[sled.kind]).toBeTruthy();
+    expect(standable(site, sled.at)).toBe(true);
   });
 
   it('is data, with nothing of three.js in it', () => {

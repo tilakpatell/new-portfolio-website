@@ -5,6 +5,7 @@ import { useMediaQuery } from '../../../lib/hooks';
 import { WorldHost, useWorld } from '../../../runtime';
 import module from './module';
 import Hud, { Pause } from './ui/Hud';
+import End from './ui/End';
 import MapPanel from './ui/Map';
 import Marker from './ui/Marker';
 import { placeMarker } from './ui/waymark';
@@ -66,6 +67,8 @@ export default function Inside({ mode = 'page', onExit }) {
   const props = useMemo(() => ({ ...asked, small: touch }), [asked, touch]);
 
   const markerRef = useRef(null);
+  // a story run to its end: its id, for the card, until you walk on or go
+  const [ended, setEnded] = useState(null);
   const onEvent = useCallback(
     (e) => {
       // (every frame: straight onto the element, no render)
@@ -75,6 +78,7 @@ export default function Inside({ mode = 'page', onExit }) {
       else if (e.type === 'achievement') unlock(e.id);
       else if (e.type === 'hurt') setHurt({ angle: e.angle ?? null, key: (hurts.current += 1) });
       else if (e.type === 'hit') setHit((n) => n + 1);
+      else if (e.type === 'story' && e.done) setEnded(e.id ?? null);
       else if (e.type === 'say') {
         setSay({ who: e.who ?? null, text: e.text });
         clearTimeout(sayTimer.current);
@@ -89,7 +93,10 @@ export default function Inside({ mode = 'page', onExit }) {
   const api = useCallback(() => (rt?.current?.module === module ? rt.current.world : null), [rt]);
 
   // (only while the world is on: after a lost context the last 'ui' event still says play, map open)
-  const { playing, paused, mapOpen, free } = layers(status, ui);
+  const shown = layers(status, ui);
+  const { playing, paused, mapOpen } = shown;
+  // (the story's end card frees the pointer too)
+  const free = shown.free || Boolean(ended);
   const freeRef = useRef(free);
   freeRef.current = free;
 
@@ -212,12 +219,27 @@ export default function Inside({ mode = 'page', onExit }) {
             onMap={() => api()?.map?.(true)}
             onPause={() => api()?.pause?.(true)}
             onChoose={(i) => api()?.choose?.(i)}
+            onSet={(set) => api()?.set?.(set)}
           />
         )}
         {showing && ui.mode === 'start' && <Start ui={ui} initial={startFrom(asked, ui)} onStart={begin} onExit={onExit} touch={touch} />}
         {showing && paused && <Pause ui={ui} touch={touch} onResume={resume} onSet={(s) => api()?.set?.(s)} onQuit={() => api()?.quit?.()} onExit={onExit} />}
-        {mapOpen && <MapPanel station={ui.station ?? 'ds1'} seen={ui.map?.seen ?? []} here={hud?.room} at={hud?.at} onClose={closeMap} />}
-        {showing && touch && playing && !mapOpen && !ui.talk && <Touch api={api} />}
+        {mapOpen && <MapPanel station={ui.station ?? 'ds1'} seen={ui.map?.seen ?? []} here={hud?.room} at={hud?.at} route={hud?.route} onClose={closeMap} />}
+        {showing && touch && playing && !mapOpen && !ui.talk && !ended && <Touch api={api} />}
+        {showing && ended && playing && (
+          <End
+            id={ended}
+            onWalk={() => {
+              setEnded(null);
+              lock();
+            }}
+            onAnother={() => {
+              setEnded(null);
+              api()?.quit?.();
+            }}
+            onExit={onExit}
+          />
+        )}
       </WorldHost>
     </div>
   );
