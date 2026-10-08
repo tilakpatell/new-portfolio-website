@@ -23,9 +23,13 @@
 // (BASE=http://127.0.0.1:5188/?quality=low# for a dev server elsewhere)
 // (behind a proxy: HTTPS_PROXY, and BRIDGE=1 NODE_USE_ENV_PROXY=1 if the
 // browser's WebSockets can't get through it)
+// RELAY=fake: no public relays at all, but one faked in here for each
+// (lib/fake-relays.mjs), which every context is attached to, so it runs with
+// no network (CI's Multiplayer job runs it so) and only Alpha and Bravo meet.
 // The relays are public, so anyone else online at the time is counted too:
 // it checks for at least one. Headless Chromium draws in software, slowly.
 import { chromium } from 'playwright-core';
+import { fakeRelays } from './lib/fake-relays.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, dflt) => {
@@ -46,6 +50,7 @@ const BASE = process.env.BASE ?? `http://localhost:${process.env.PORT ?? 5173}/?
 const proxy = process.env.HTTPS_PROXY ? [`--proxy-server=${process.env.HTTPS_PROXY}`, '--proxy-bypass-list=localhost;127.0.0.1'] : [];
 if (process.env.PROXY_CA_SPKI) proxy.push(`--ignore-certificate-errors-spki-list=${process.env.PROXY_CA_SPKI}`, '--disable-http2');
 const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium', args: [...proxy, '--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
+const relays = process.env.RELAY === 'fake' ? fakeRelays() : null;
 
 const errors = [];
 async function visitor(name, ship = null, viewport = { width: 1280, height: 800 }) {
@@ -60,10 +65,12 @@ async function visitor(name, ship = null, viewport = { width: 1280, height: 800 
     window.localStorage.setItem('tp-worlds', JSON.stringify('load'));
     window.sessionStorage.setItem('tp-gl-anyway', 'true');
   }, [name, ship]);
+  // RELAY=fake: the relays faked in here, for every context alike
+  if (relays) await relays.attach(ctx);
   // BRIDGE=1: the relays reached from here (Node, which goes through a proxy
   // with NODE_USE_ENV_PROXY=1) rather than from the browser, for a proxy
   // that won't pass a browser's WebSocket upgrade
-  if (process.env.BRIDGE)
+  else if (process.env.BRIDGE)
     await ctx.routeWebSocket(/^wss:\/\//, (ws) => {
       const up = new WebSocket(ws.url());
       const waiting = [];
