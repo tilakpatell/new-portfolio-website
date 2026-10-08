@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { seeded } from '../../../../lib/seeded';
 import { createAlarm, levelOf, lockdowns, raise, stepAlarm } from './alarm';
-import { createCombat, fire } from './combat';
+import { createCombat, fire, stepCombat } from './combat';
 import { clearDoorway, createDoors, passable, stepDoors } from './doors';
 import { buildLayout, validateStation } from './layout';
 import { createNav } from './nav';
@@ -217,6 +217,32 @@ describe('the crew’s minds', () => {
     expect(of(w, 'lost').length).toBeGreaterThan(0);
     expect(early).toBeNull();
     expect(levelOf(w.alarm, 's')).toBe('wary');
+    expect(squad.map((p) => p.mode)).toEqual(['routine', 'routine', 'routine']);
+  });
+
+  it('stays stood down after a firefight: a shot heard in the fight isn’t called in again once the squad is back at its posts', () => {
+    const you = rebel(-5, 0);
+    const w = world(block(), { you, seed: 4 });
+    const squad = ['post1', 'post2', 'post3'].map((spot, i) =>
+      addPerson(w.crew, { id: `tk${i + 1}`, kind: 'stormtrooper', room: 'hall', ...w.layout.station.spots[spot], role: { type: 'post', spot }, squad: 'block' }),
+    );
+    const aim = seeded(9);
+    const levels = [];
+    simulate(w, 100 * 30, {
+      each: (wd, events, open) => {
+        // your bolts fly (and your gun's gap clears) as the game's would
+        stepCombat(wd.combat, STEP, { layout: wd.layout, open, bodies: [] });
+        // a second and a half shooting down the hall at them, then to ground behind the hatch
+        if (wd.now <= 1.5) fire(wd.combat, { from: { x: you.x + 0.3, y: 1.3, z: you.z }, dir: { x: 1, y: 0, z: 0 }, owner: 'you', side: 'rebel', weapon: 'e11' }, aim);
+        else if (you.room === 'hall') Object.assign(you, { x: -15, z: 0, room: 'vault' });
+        const level = levelOf(wd.alarm, 's');
+        if (levels.at(-1) !== level) levels.push(level);
+      },
+    });
+    expect(of(w, 'call').some((e) => e.how === 'shots' && e.t <= 1.6)).toBe(true);
+    const lastLost = Math.max(...of(w, 'lost').map((e) => e.t));
+    expect(of(w, 'call').filter((e) => e.how === 'shots' && e.t > lastLost)).toEqual([]);
+    expect(levels.slice(levels.indexOf('hunt'))).toEqual(['hunt', 'wary', 'calm']);
     expect(squad.map((p) => p.mode)).toEqual(['routine', 'routine', 'routine']);
   });
 

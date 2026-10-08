@@ -236,7 +236,6 @@ const perInstance = (geo, name, n, size) => {
   geo.setAttribute(name, a);
   return a;
 };
-const near = (a, b) => Math.abs(a - b) < 1e-6;
 const put3 = (arr, i, x, y, z) => {
   arr[i * 3] = x;
   arr[i * 3 + 1] = y;
@@ -313,7 +312,9 @@ export function createFx(scene, { small = false } = {}) {
 
   // ── state, in flat arrays so a fight makes no garbage ──
   const boltSlots = createSlots(N.bolts);
-  const bolts = { id: new Array(N.bolts).fill(null), p: new Float32Array(N.bolts * 3), d: new Float32Array(N.bolts * 3), speed: new Float32Array(N.bolts), lead: new Float32Array(N.bolts), seen: new Uint8Array(N.bolts), fresh: new Uint8Array(N.bolts), green: new Uint8Array(N.bolts) };
+  // (where each bolt was given, in doubles: a float32 copy of a station coordinate, rounded, never
+  // matches the rules’ own again, and would count every bolt far from the origin as moved each frame)
+  const bolts = { id: new Array(N.bolts).fill(null), p: new Float64Array(N.bolts * 3), d: new Float32Array(N.bolts * 3), speed: new Float32Array(N.bolts), lead: new Float32Array(N.bolts), seen: new Uint8Array(N.bolts), fresh: new Uint8Array(N.bolts), green: new Uint8Array(N.bolts) };
   const sparkSlots = createSlots(N.sparks);
   const sparks = { p: new Float32Array(N.sparks * 3), v: new Float32Array(N.sparks * 3), t: new Float32Array(N.sparks), life: new Float32Array(N.sparks) };
   const flashSlots = createSlots(N.flashes);
@@ -385,7 +386,7 @@ export function createFx(scene, { small = false } = {}) {
         i = boltSlots.take();
         bolts.id[i] = b.id;
         bolts.fresh[i] = 1;
-      } else if (!near(bolts.p[i * 3], b.x) || !near(bolts.p[i * 3 + 1], b.y) || !near(bolts.p[i * 3 + 2], b.z)) bolts.fresh[i] = 1;
+      } else if (bolts.p[i * 3] !== b.x || bolts.p[i * 3 + 1] !== b.y || bolts.p[i * 3 + 2] !== b.z) bolts.fresh[i] = 1;
       put3(bolts.p, i, b.x, b.y, b.z);
       const len = Math.hypot(b.dx, b.dy, b.dz) || 1;
       put3(bolts.d, i, b.dx / len, b.dy / len, b.dz / len);

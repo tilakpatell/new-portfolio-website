@@ -11,23 +11,32 @@
 // black helmet, built here too, over the officer’s uniform.
 //
 // Only the tier’s count nearest the camera animate (24 high, 14 mid, 8
-// low); the rest hold their last pose, and anyone past 60 m or in a room
-// that isn’t drawn is hidden. A person is drawn between the game’s last
-// two steps, so they move smoothly at any frame rate. A body stays where it
-// fell for as long as the crew keeps it, until its room is freed.
+// low), a body still going down before anyone else; the rest stand still,
+// posed when first drawn and again whenever the rules have them do
+// something new, played on to where it comes to rest (so a body killed
+// far off lies on the deck, and one that loses its turn mid-fall lands),
+// and anyone past 60 m or in a room that isn’t drawn is hidden. A person
+// is drawn between the game’s last two steps, so they move smoothly at
+// any frame rate. A body stays where it fell for as long as the crew keeps
+// it, until its room is freed: hidden while the room stands undrawn (a
+// door shut on it), let go for good once the stream frees the room.
 //
 //   LIVE → { ultra, high, mid, low }   how many people animate on each tier;  FAR: 60 m, past which nobody is drawn
 //   liveCount(tier) → n
 //   lodPick(items, at, { count, far }, out?) → Map<id, 'live' | 'still' | 'hidden'>   pure
-//     items: [{ id, x, y, z, settled?, shown? }]: settled, a body done falling; shown false, in a room not drawn
+//     items: [{ id, x, y, z, falling?, settled?, shown? }]: falling, a body still going down (live before
+//     anyone nearer); settled, a body done falling; shown false, in a room not drawn
 //   clipFor(person) → { clip, loop, raised }   pure: the figure’s clip for what the rules say it is doing
 //     (null: walking, running or standing on its gait), and whether its gun is up
 //   aimAngles(from, yaw, at) → { yaw, pitch }   pure: the turn (+ right) and tilt (+ up) from facing `yaw` to `at`
 //   createTrack() → { push(body, dt), at(alpha), speed() }   pure: a body between its last two steps;
 //     dt: the frame’s time since the last push
-//   createPeople(scene, kit, { tier, renderer }) → { sync(crew, alpha, cameraAt, shown?), muzzle(id, out), dispose() }
+//   createPeople(scene, kit, { tier, renderer, adopt }) → { sync(crew, alpha, cameraAt, rooms?), muzzle(id, out), dispose() }
+//     adopt(object): handed each figure and gun as it goes into the scene (the house look’s adopt)
 //     crew: { people: Map | [person] } (or the people themselves); alpha: how far the frame is from the
-//     last step to the next; cameraAt: { x, y, z }; shown(roomId) → bool, the rooms drawn (all, without it)
+//     last step to the next; cameraAt: { x, y, z }
+//     rooms: { shown(roomId), built(roomId), dt }: the rooms drawn and the rooms standing, built and not
+//       yet freed (every room, without them), and the frame’s seconds (the clock’s, without it)
 //     muzzle(id, out) → out | null   where the person’s gun’s muzzle is, for a shot’s flare
 
 import * as THREE from 'three';
@@ -67,10 +76,11 @@ export function lodPick(items, at, { count = LIVE.low, far = FAR } = {}, out = n
     const d = Math.hypot(p.x - at.x, p.y - at.y, p.z - at.z);
     if (p.shown === false || !(d <= far)) out.set(p.id, 'hidden');
     else if (p.settled) out.set(p.id, 'still');
-    else near.push([d, p.id]);
+    else near.push([p.falling ? 0 : 1, d, p.id]);
   }
-  near.sort((a, b) => a[0] - b[0]);
-  near.forEach(([, id], i) => out.set(id, i < count ? 'live' : 'still'));
+  // a body going down first, nearest first among each: a fall that loses its turn has to be cut short
+  near.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  near.forEach(([, , id], i) => out.set(id, i < count ? 'live' : 'still'));
   return out;
 }
 
@@ -464,15 +474,20 @@ function buildDianoga(tall, mats) {
 const BUILT = { chewie: buildChewie, ito: buildIto, dianoga: buildDianoga };
 
 // The Death Star trooper’s helmet: a black bowl with its skirt flared at
-// the back and sides, the visor and the jaw guard, sized to the head it
-// sits on (from the head bone to the top of the head).
-function helmetOn(fig, mats) {
+// the back and sides, the visor and the jaw guard. One shape for every
+// trooper (helmetGeometry), each one sized to the head it sits on (from
+// the head bone to the top of the head).
+function helmetGeometry() {
   const geos = [
     new THREE.LatheGeometry([[0, 0.17], [0.07, 0.165], [0.115, 0.14], [0.14, 0.09], [0.145, 0.03], [0.15, -0.02], [0.175, -0.06], [0.168, -0.066], [0.14, -0.03]].map(([x, y]) => new THREE.Vector2(x, y)), 28),
     at(new THREE.BoxGeometry(0.17, 0.07, 0.04), 0, 0.05, -0.135),
     at(new THREE.BoxGeometry(0.11, 0.06, 0.05), 0, -0.04, -0.12),
   ];
-  const helmet = new THREE.Mesh(joined([part(geos[0], 0x0c0c0e), part(geos[1], 0x020203), part(geos[2], 0x141416)]), mats.gloss);
+  return joined([part(geos[0], 0x0c0c0e), part(geos[1], 0x020203), part(geos[2], 0x141416)]);
+}
+
+function helmetOn(fig, geo, mats) {
+  const helmet = new THREE.Mesh(geo, mats.gloss);
   helmet.name = 'helmet';
   const o = fig.object;
   o.updateMatrixWorld(true);
