@@ -45,6 +45,7 @@ import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from './props';
 import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
 import { seatY } from './seat';
+import { sizeFor } from '../../universe/landings/models';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again
 
@@ -79,8 +80,12 @@ export const usesModel = (spec, models = SURFACE_MODELS) => hasModel(spec.kind, 
 // radians about its up: the bantha's lies 33° to its left): turned to face
 // +z and its middle put back over its feet, once, in the loaded file itself,
 // so every copy of it (a thing placed, a herd's beast, a ride) faces the way
-// it walks. Gives the gltf back.
+// it walks. And one from a book whose files aren't in metres (a row with
+// `tall`, `wide` or `long`: the Rick and Morty planets'), brought to that
+// size and stood on y = 0 over its middle, once, as the moons' landings
+// size theirs (landings/models.js's sizeFor). Gives the gltf back.
 export function squared(gltf, kind, models = SURFACE_MODELS) {
+  sized(gltf, models[kind]);
   const turn = models[kind]?.turn;
   const root = gltf?.scene;
   if (!turn || !root || root.userData.squared) return gltf;
@@ -95,6 +100,20 @@ export function squared(gltf, kind, models = SURFACE_MODELS) {
   inner.position.z -= c.z;
   root.userData.squared = true;
   return gltf;
+}
+function sized(gltf, row) {
+  const root = gltf?.scene;
+  if (!root || root.userData.sized || !(row?.tall || row?.wide || row?.long)) return;
+  const inner = new THREE.Group();
+  inner.name = 'sized';
+  for (const c of [...root.children]) inner.add(c);
+  root.add(inner);
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(inner);
+  const k = sizeFor(box.getSize(new THREE.Vector3()), row);
+  inner.scale.setScalar(k);
+  inner.position.set(-((box.min.x + box.max.x) / 2) * k, -box.min.y * k, -((box.min.z + box.max.z) / 2) * k);
+  root.userData.sized = true;
 }
 
 export function loadModel(kind, { models = SURFACE_MODELS, low = false, url = low ? lodUrlFor(kind, models) : modelUrlFor(kind, detailLevel(), models) } = {}) {
@@ -196,6 +215,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   const splits = []; // { full, low (each [{ mesh, src }]), xs, zs, r }: scattered models drawn near and far
   let nearAt = null; // where you were when the casters were last filled
   const updates = [];
+  const follows = []; // (the built things updated with where you are)
   const signals = [];
   const pending = [];
   let dead = false;
@@ -238,7 +258,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
     o.scale.setScalar(spec.scale ?? 1);
     (spec.zone ? rooms : group).add(o);
-    applyBuilt(made, spec, at, world, { updates, signals, object: true });
+    applyBuilt(made, spec, at, world, { updates, follows, signals, object: true });
     // (a built one that wears a model on a moving part of it, once it's
     // loaded: `wear: { url, on(model) }`, the dragonsnake's head)
     if (made.wear)
@@ -445,6 +465,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     },
     update(t, dt, you = null) {
       for (const u of updates) u(t, dt);
+      for (const f of follows) f(t, dt, you);
       if (you && (casters.length || splits.length) && (!nearAt || Math.hypot(you.x - nearAt[0], you.z - nearAt[1]) > NEAR.step)) {
         nearAt = [you.x, you.z];
         for (const c of casters) fillCaster(c, you.x, you.z);
@@ -566,7 +587,8 @@ function radiusOf(gltf) {
 // scaled by spec.scale: its walls (unless spec.solid is false) and the floors
 // you walk on, and, when its own meshes are drawn (`object`), its moving
 // parts (an update each frame, an answer to signals).
-export function applyBuilt(made, spec, at, world, { updates, signals, object }) {
+export function applyBuilt(made, spec, at, world, sinks) {
+  const { updates, signals, object } = sinks;
   const yaw = spec.yaw ?? 0;
   const k = spec.scale ?? 1;
   if (spec.solid !== false) for (const s of made.solids ?? []) addSolid(world, s, at, yaw, k, null);
@@ -580,7 +602,9 @@ export function applyBuilt(made, spec, at, world, { updates, signals, object }) 
     world.floors.push(placed);
   }
   if (!object) return;
-  if (made.update) updates.push(made.update);
+  // (one that `follows` you, a planet's shelling, is told where you are;
+  // the rest have a third word of their own, a creature's pace)
+  if (made.update) (made.follows && sinks.follows ? sinks.follows : updates).push(made.update);
   if (made.signal) signals.push(made.signal);
 }
 

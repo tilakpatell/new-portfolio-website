@@ -10,8 +10,26 @@ import { toggleGuide } from '../../../lib/palette';
 import { Bubble, Exit, Hud, Menu, Objective, Prompt, QuestList, Toast, othersText } from '../../../runtime/hud';
 import { ACCENT, planetMission, planetSite } from '.';
 import { readBests, readDone, readFound, writeBest, writeDone, writeFound } from './saves';
+import { RIDES } from '../../galaxy/surface/rides';
+import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from '../../galaxy/surface/props';
+import { RM_MODELS } from './catalog';
+import { createRmFigures } from './cast';
+import { PROPS as RM_PROPS, SCATTER as RM_SCATTER } from './props';
+import { RM_RIDES } from './rides';
 import '../../galaxy/surface/surface.css';
 import './planets.css';
+
+// The planets' kit laid over the galaxy's books (the scene keeps the
+// galaxy's rocks and lamps, and the planets' own come first where both
+// have a kind), and their people made by the scene's own Meshy cast
+// (./cast.js): one set of books for the page's life.
+const KIT = {
+  models: RM_MODELS,
+  rides: { ...RIDES, ...RM_RIDES },
+  props: { ...GALAXY_PROPS, ...RM_PROPS },
+  scatter: { ...GALAXY_SCATTER, ...RM_SCATTER },
+  figures: (cast) => createRmFigures(cast).figure,
+};
 
 const CLIMB = 700; // ms after the cruiser's away before the page goes back to space (the end of the climb, as the galaxy's)
 
@@ -167,7 +185,7 @@ export default function RmSurface({ id, onLeave }) {
       <h1 className="sr-only">
         {site.name}: {site.place}
       </h1>
-      <SurfaceView site={site} missionSpec={mission} ship="cruiser" loadout={null} found={found} done={done} compass={compass} net={online?.client ?? null} handle={view} onEvent={onEvent} />
+      <SurfaceView site={site} missionSpec={mission} {...KIT} ship="cruiser" loadout={null} found={found} done={done} compass={compass} net={online?.client ?? null} handle={view} onEvent={onEvent} />
 
       {/* the compass: the way to each place, the quest and the cruiser (the scene slides each mark by its data-id) */}
       <div className="surface-compass" ref={compass} aria-hidden="true">

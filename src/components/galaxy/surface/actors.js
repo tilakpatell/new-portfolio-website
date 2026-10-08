@@ -791,7 +791,7 @@ export function createActors({ parent, world, life = [], wants = [], talk = null
     debug: () =>
       actors
         .filter((a) => !a.hidden)
-        .map((a) => ({ kind: a.spec.kind, id: a.spec.id ?? null, at: [+a.b.x.toFixed(1), +a.b.z.toFixed(1)], want: a.b.want?.id ?? null, last: a.b.last, flee: Boolean(a.b.flee), chase: Boolean(a.b.chase), culled: a.culled, use: a.b.use?.want.id ?? null, with: a.mode })),
+        .map((a) => ({ kind: a.spec.kind, id: a.spec.id ?? null, at: [+a.b.x.toFixed(1), +a.b.z.toFixed(1)], want: a.b.want?.id ?? null, last: a.b.last, flee: Boolean(a.b.flee), chase: Boolean(a.b.chase), culled: a.culled, use: a.b.use?.want.id ?? null, with: a.mode, fig: Boolean(a.fig), rigged: Boolean(a.fig?.anim) })),
     // one by its id (a quest's), where it is now
     find(id) {
       return actors.find((a) => a.spec.id === id && !a.hidden) ?? null;

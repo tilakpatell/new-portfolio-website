@@ -2,9 +2,11 @@
 // the north, the women's walled city behind its gate. (The galaxy's
 // sites/index.js has what a site is; this one is made whole by its siteFrom.)
 //
-// Bare for now: the land, the sky, the cruiser's landing and the gate to
-// find. The city's walls, the men's camp, the people, the sled, the quests
-// and the chase come with the planet's own phase.
+// Bare for now: the land, the sky, the cruiser's landing, the gate to find,
+// a band of the men outside it and the rock sled by the cruiser. The city's
+// walls, the men's camp, the rest of the people, the quests and the chase
+// come with the planet's own phase. Its kinds are the planets' kit's
+// (../catalog.js, ../props, ../rides.js), which the page hands the scene.
 
 // the women's city: on its own flat to the north, the gate on its south side
 // facing the wasteland the cruiser comes down in
@@ -75,7 +77,12 @@ export const SITE = {
           ['rick', 'The women’s gate, Morty. Knock nice. They’ve got lasers and opinions.'],
         ],
       },
-      things: [{ kind: 'gazorpgate', url: '/models/c137/rm/gazorpgate.glb', metres: 16, at: [0, 0] }],
+      things: [{ kind: 'gazorpgate', at: [0, 0] }],
     },
   ],
+  // the men: a band of Gazorpians loitering on the flat outside the women's
+  // gate, shut out and shouting at rocks
+  life: [{ kind: 'gazorpian', n: 3, at: [14, 262], spread: 6, roam: 14, speed: 1.1, group: true, name: 'A Gazorpian', says: ['RAAARGH.', '(He throws a rock at a rock.)', '(He beats his chest at you, then at the sky, to be safe.)'] }],
+  // the men's rock sled, parked by the cruiser
+  rides: [{ kind: 'rocksled', at: [16, -10], yaw: 2.2 }],
 };
