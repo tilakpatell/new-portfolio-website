@@ -100,23 +100,7 @@ export function hostileAim(t, you, targets) {
 // DC-15As, the battle droids' E-5s, a Rebel's A280; a blaster pistol for
 // anyone else with a gun (a spawn's own `gun` first). A duellist carries
 // its saber; a brawler, a beast or a target that doesn't fight back, nothing.
-export const ARMS = {
-  tusken: 'sniper',
-  jango: 'westar',
-  greedo: 'blaster',
-  aqualish: 'blaster',
-  scouttrooper: 'blaster',
-  stormtrooper: 'e11',
-  sandtrooper: 'e11',
-  snowtrooper: 'e11',
-  shoretrooper: 'e11',
-  deathtrooper: 'e11',
-  clone: 'dc15',
-  battledroid: 'e5',
-  mercenary: 'rifle',
-  hothtrooper: 'a280',
-  rebel: 'a280',
-};
+export { ARMS }; // (ground/troops.js's: the one table)
 export function armsOf(s) {
   const h = s?.hostile;
   if (!h) return null;
@@ -155,6 +139,7 @@ import { createGunplay } from '../../universe/gunplay';
 import { SHOW_KILLS } from './weaponRules';
 import { bladeInHand, heldBlade } from './heldBlade';
 import { sharpen } from '../../../lib/three/textures';
+import { ARMS } from './ground/troops';
 
 const SHOTS = 3; // enemies firing at you at once, across a world (the rest move)
 const UP = new THREE.Vector3(0, 1, 0);
@@ -233,7 +218,7 @@ const SPECIAL = { remote };
 
 // A health bar over a hostile's head: a sprite with a small canvas, red
 // for what's left, blue over it for a shield, redrawn only when they change
-function healthBar() {
+export function healthBar() {
   const canvas = document.createElement('canvas');
   canvas.width = 64;
   canvas.height = 10;
@@ -272,7 +257,7 @@ function healthBar() {
 
 // The marks over a hostile's head: '?' while it looks for you, '!' when it
 // has you again. One canvas each, shared by every head that shows it.
-function markMaterials() {
+export function markMaterials() {
   const made = {};
   return {
     of(ch) {

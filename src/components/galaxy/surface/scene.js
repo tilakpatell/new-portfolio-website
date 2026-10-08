@@ -116,14 +116,16 @@ import { perkEffects } from '../perks';
 import { ABILITIES, JET, abilitiesOf, jetStep, newJet } from './abilityRules';
 import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
-import { WALK, createSolids, groundAt, lineClear, ride, rider, turnToward, walk, walker } from './walker';
+import { WALK, createSolids, groundAt, lineClear, pushOut, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
 import { endRun, newRun, tickRun, worldOf } from './missions';
 import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
 import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
-import { garrisonAt, garrisonLife } from './garrison';
+import { garrisonLife, garrisonProbe } from './garrison';
+import { createGround, landingFor } from './ground/index';
+import { standable } from './sites/validity';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -366,7 +368,7 @@ export async function create(canvas, ctx) {
   // → (kind, spec, i) → figure | null: the Rick and Morty planets' people);
   // otherwise made when it's first wanted, as it always was
   let cast = ctx.figures ? createMeshyCast(withWardrobe()) : null;
-  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops), ...garrisonAt(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water, models, figure: ctx.figures?.(cast) ?? null });
+  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops), ...garrisonProbe(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water, models, figure: ctx.figures?.(cast) ?? null });
 
   await breathe();
   // ── The places you go into (zones): built high over the world, out of
@@ -396,6 +398,8 @@ export async function create(canvas, ctx) {
   const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound });
   // (a battle fills the air with bolts: room for them)
   const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
+  // the ground war: who holds which turf, and its soldiers, made round you as you go (ground/)
+  const groundWar = createGround({ parent: scene, world, site, effects: mission ? null : ctx.effects, tier, kit, warm, blaster, sparks: (at, c) => fx.sparks(new V(...at), UP, c, 8), standable: (p) => standable(site, p), seesThrough: (a, b) => lineClear(world.solids, a, b) });
   // what a shot does round the gun and where it lands (universe/gunfx.js),
   // and a light that flares with each muzzle flash: in the scene from the
   // start and dark between shots, so the count of lights never changes and
@@ -531,7 +535,10 @@ export async function create(canvas, ctx) {
   // ── Your ship ──
   const shipKind = SHIPS[ctx.ship] ? ctx.ship : 'xwing';
   const S = SHIPS[shipKind];
-  const landAt = site.land.at;
+  // (on the other side's world, out of sight of the garrison's posts: ground/landing.js)
+  const landing = landingFor(site, mission ? null : ctx.effects, { standable: (p) => standable(site, p) && !world.solids.near(p[0], p[1], 9).some((o) => pushOut(o, p[0], p[1], 9)), seesThrough: (a, b) => lineClear(world.solids, a, b), posts: groundWar.posts, height: world.heightAt });
+  groundWar.landed(landing.covert ? landing.at : null);
+  const landAt = landing.at;
   const landY = groundAt(world, landAt[0], landAt[1]);
   const shipHolder = new THREE.Group(); // where it is
   const shipTilt = new THREE.Group(); // how it's tilted, coming down
@@ -1198,7 +1205,7 @@ export async function create(canvas, ctx) {
     if (assaultOn()) return null;
     let best = null;
     let bd = MATE.range;
-    for (const t of activity.targets) {
+    for (const t of [...groundWar.targets, ...activity.targets]) {
       if (!t.hostile || !t.aim || t.spec?.side === 'yours') continue;
       const d = Math.hypot(t.holder.position.x - st.x, t.holder.position.z - st.z);
       if (d < bd) {
@@ -1288,7 +1295,7 @@ export async function create(canvas, ctx) {
     if (!lands) aim.add(new V(-dir.z, 0, dir.x).multiplyScalar((Math.random() < 0.5 ? -1 : 1) * (0.06 + Math.random() * 0.06))).add(new V(0, (Math.random() - 0.3) * 0.05, 0));
     aim.normalize();
     const hit = blaster.fire(r.muzzle, aim, lands ? [foe] : [], bolt, w.range);
-    if (lands && hit.target) activity.hit(hit.target, 1, { push: aim, at: hit.at });
+    if (lands && hit.target) on(hit.target).hit(hit.target, 1, { push: aim, at: hit.at });
   }
   // your shots and blasts (and your mate's, and the hostiles' fire), for the
   // people about to hear them: actors.js's `hear` (they startle and run from it), a blast twice
@@ -1586,17 +1593,18 @@ export async function create(canvas, ctx) {
   const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit: battleSaid, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced }) : null;
   const assaultOn = () => Boolean(assault?.running());
   // what your blaster can hit, and what a hit does: the battle's soldiers while it's on, the quests' targets otherwise
-  const shootable = () => (assaultOn() ? assault.targets : activity.targets);
+  const shootable = () => [...groundWar.targets, ...(assaultOn() ? assault.targets : activity.targets)];
+  const on = (t) => t?.ground ?? activity; // (a ground soldier's own hit, else the quests')
   // a shot that found someone: the weapon's damage (a shield breaks to a
   // blast), the hit marker, the moment's hold on a kill
   const struck = (hit, damage = me().weapon?.damage ?? 1, { breaks = false, how = null, push = null } = {}) => {
     if (!hit.target) return;
     struckLast = { target: hit.target, at: state.t }; // (your mate's foe, while you're at it)
-    if (assaultOn()) assault.hit(hit.target, ASSAULT.yours);
+    if (assaultOn() && !hit.target.ground) assault.hit(hit.target, ASSAULT.yours);
     else {
       const t = hit.target;
       const was = t.hp;
-      activity.hit(t, dealt(damage), { breaks, how, push, at: hit.at }); // (`at`: where it landed, the head or the chest, for its flinch)
+      on(t).hit(t, dealt(damage), { breaks, how, push, at: hit.at }); // (`at`: where it landed, the head or the chest, for its flinch)
       const killed = was > 0 && t.hp <= 0;
       emit({ type: 'hit', kill: killed });
       sounds.combat?.(killed ? 'kill' : 'hit');
@@ -1705,6 +1713,7 @@ export async function create(canvas, ctx) {
       return;
     }
     const hit = blaster.fire(from, scatter(camDir, w), shootable(), boltOf(me()), w.range);
+    groundWar.passed(from, hit.at); // (a soldier it went close by keeps its head down, and has a grudge)
     activity.heard({ x: from.x, z: from.z }, { x: from.x + camDir.x * 40, z: from.z + camDir.z * 40 }); // (the enemies hear it, and one it's aimed near knows)
     heardBy(from, { x: from.x + camDir.x * 40, z: from.z + camDir.z * 40 }); // (and the people about: actors.js's)
     struck(hit, undefined, { how: w.kind, push: camDir });
@@ -1886,10 +1895,10 @@ export async function create(canvas, ctx) {
         const at = forceAt(p.st, { x: q.x, z: q.z }, way, f);
         if (!at.hit) continue;
         any++;
-        activity.knock(t, pushVelocity(p.st, { x: q.x, z: q.z }, at.k, way, f));
-        if (f.damage) activity.hit(t, f.damage);
-        if (kind === 'pull') activity.stagger(t, 1.2);
-        if (a.stagger) activity.stagger(t, a.stagger);
+        on(t).knock(t, pushVelocity(p.st, { x: q.x, z: q.z }, at.k, way, f));
+        if (f.damage) on(t).hit(t, f.damage);
+        if (kind === 'pull') on(t).stagger(t, 1.2);
+        if (a.stagger) on(t).stagger(t, a.stagger);
       }
       // a rush of dust out from you (or in, for a pull)
       const from = new V(p.st.x, p.st.y + 1, p.st.z);
@@ -2004,8 +2013,8 @@ export async function create(canvas, ctx) {
         if (d > spec.radius) continue;
         const k = 1 - d / spec.radius;
         const was = t.hp;
-        activity.hit(t, Math.max(1, Math.round(spec.damage * (0.4 + 0.6 * k))), { breaks: true });
-        activity.knock(t, { vx: ((q.x - at.x) / Math.max(0.3, d)) * 8 * k, vz: ((q.z - at.z) / Math.max(0.3, d)) * 8 * k, vy: 4 * k });
+        on(t).hit(t, Math.max(1, Math.round(spec.damage * (0.4 + 0.6 * k))), { breaks: true });
+        on(t).knock(t, { vx: ((q.x - at.x) / Math.max(0.3, d)) * 8 * k, vz: ((q.z - at.z) / Math.max(0.3, d)) * 8 * k, vy: 4 * k });
         emit({ type: 'hit', kill: was > 0 && t.hp <= 0 });
       }
       const you = me().st;
@@ -2050,7 +2059,7 @@ export async function create(canvas, ctx) {
   function saberHit(t, damage, at, { heavy = false, thrown = false } = {}) {
     // their blade on yours: turned while their guard holds (each turned
     // stroke drains it, a heavy one breaks it and they reel)
-    const turn = thrown ? { parried: false, broke: false } : activity.parry(t, { heavy });
+    const turn = thrown ? { parried: false, broke: false } : on(t).parry(t, { heavy });
     fx.sparks(at, UP, turn.parried ? '#ffffff' : (me().spec.bolt ?? '#ffffff'), turn.parried ? 16 : heavy ? 22 : 10);
     sounds.saber?.('clash');
     if (turn.broke) {
@@ -2066,8 +2075,8 @@ export async function create(canvas, ctx) {
       return;
     }
     const was = t.hp;
-    activity.hit(t, dealt(damage), { breaks: heavy, at });
-    if (heavy) activity.stagger(t, 1.2);
+    on(t).hit(t, dealt(damage), { breaks: heavy, at });
+    if (heavy) on(t).stagger(t, 1.2);
     const killed = was > 0 && t.hp <= 0;
     emit({ type: 'hit', kill: killed });
     sounds.combat?.(killed ? 'kill' : 'hit');
@@ -2156,6 +2165,7 @@ export async function create(canvas, ctx) {
     let hit = null;
     for (let i = 0; i < n; i++) {
       const h = blaster.fire(o.from, scatter(o.dir, w), shootable(), hot ? '#ffffff' : boltOf(p), w.range, r.muzzle);
+      groundWar.passed(o.from, h.at);
       struck(h, Math.max(1, Math.round((w.damage + (hot ? 1 : 0)) / (n > 1 ? 2 : 1))), { how: w.kind, push: o.dir });
       hit ??= h;
     }
@@ -2803,6 +2813,7 @@ export async function create(canvas, ctx) {
         if (state.age > LAND.out) {
           state.phase = 'walk';
           emit({ type: 'phase', phase: 'walk' });
+          if (landing.line) emit({ type: 'say', lines: [{ who: null, text: landing.line }] });
         }
       }
       if (state.phase === 'ride') stepRide(dt);
@@ -2881,8 +2892,10 @@ export async function create(canvas, ctx) {
       questEvent({ type: 'at', x: p.x, z: p.z, riding: state.riding?.kind ?? null });
     }
     for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor })) questEvent(ev);
+    const groundShots = groundWar.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { mate: other().st, camera });
+    for (const e of groundWar.news()) if (e.text) emit({ type: 'war', what: e.type, side: e.side, text: e.text }); // (the ground war's news, for the HUD's toast)
     if (state.phase === 'walk' || state.phase === 'ride')
-      for (const s of activity.shooters(dt, me().st, state.t)) {
+      for (const s of [...activity.shooters(dt, me().st, state.t), ...groundShots]) {
         // a duellist's Force: you're shoved away from it, off your feet
         if (s.force) {
           const p = me().st;
@@ -2902,7 +2915,7 @@ export async function create(canvas, ctx) {
         // at a friend of yours (or by one, at a hostile): a bolt between them, and whoever's hit, hit
         if (s.at && s.victim) {
           if (!s.melee) blaster.tracer(s.from, s.at, s.who?.spec?.side === 'yours' ? '#ffb070' : '#ff4a3d');
-          if (Math.random() < (s.melee ? 0.8 : 0.45)) activity.hit(s.victim, s.damage);
+          if (Math.random() < (s.melee ? 0.8 : 0.45)) on(s.victim).hit(s.victim, s.damage);
           continue;
         }
         const blade = me().saber?.deflecting(s.from) ?? false;
@@ -2912,7 +2925,7 @@ export async function create(canvas, ctx) {
           const p = me().st;
           fx.sparks(new V(p.x, p.y + 1.2, p.z), UP, '#ffffff', 26);
           sounds.combat?.('parry');
-          if (s.who) activity.stagger(s.who, PARRY.stagger);
+          if (s.who) on(s.who).stagger(s.who, PARRY.stagger);
           state.hitstop = Math.max(state.hitstop, 0.12);
           state.shake = Math.min(1, state.shake + 0.3);
           state.blockAt = null;
@@ -3100,7 +3113,11 @@ export async function create(canvas, ctx) {
       // (for the QA scripts: the ground's height, and a view held from one
       // point at another, metres over the ground at each, till view(null))
       heightAt: (x, z) => world.heightAt(x, z),
-      land: site.land.at,
+      land: landAt,
+      landing,
+      groundWar,
+      put: (x, z) => (state.phase === 'landing' || state.phase === 'out' ? (state.phase = 'walk') : null, putAt(me().st, x, z)), // (you, set down somewhere, out of the ship: the ground war's QA)
+      you: () => ({ x: me().st.x, z: me().st.z, health: state.health, phase: state.phase }),
       view(from, at) {
         qaView = from ? { from: [from[0], world.heightAt(from[0], from[2]) + from[1], from[2]], at: [at[0], world.heightAt(at[0], at[2]) + at[1], at[2]] } : null;
       },
@@ -3498,6 +3515,7 @@ export async function create(canvas, ctx) {
       sounds.dispose();
       peers.dispose();
       activity.dispose();
+      groundWar.dispose();
       chase?.dispose();
       assault?.dispose();
       blaster.dispose();

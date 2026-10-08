@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { guard } from './frameGuard';
+import { guard, heldBack } from './frameGuard';
 import { markLinked } from './gpuWork';
 import { fakeGl, fakeRenderer, now } from './gpuFake.fixture';
 import { wear } from './core';
@@ -28,6 +28,21 @@ const setup = (opts = {}) => {
 };
 
 describe('frameGuard', () => {
+  it('heldBack counts what every guard is still readying, and forgets one disposed', async () => {
+    const { r, g, scene } = setup({ linkAfter: 1 });
+    const was = heldBack() - g.pending();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial()));
+    await frames(r, scene);
+    expect(g.pending()).toBeGreaterThan(0);
+    expect(heldBack()).toBe(was + g.pending());
+    await frames(r, scene, 3);
+    expect(heldBack()).toBe(was);
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ color: 1 })));
+    await frames(r, scene);
+    g.dispose();
+    expect(heldBack()).toBe(was);
+  });
+
   it('leaves a never-compiled material out of the frame, and draws it once it has linked', async () => {
     const { r, scene } = setup({ linkAfter: 1 });
     const m = new THREE.MeshStandardMaterial();

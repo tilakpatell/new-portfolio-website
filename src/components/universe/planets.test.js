@@ -14,7 +14,7 @@ describe('the planet maps by detail level', () => {
   it('gives a strong card the standard file for a map that has no -hq', () => {
     expect(mapFile('transformers', 'ultra')).toBe('transformers.webp');
     expect(mapFile('invincible-night', 'ultra')).toBe('invincible-night.webp');
-    // (the sky's glow has nothing finer to give: skyShader.js draws the detail)
+    // (the sky's glow has nothing finer to give: it only lights the map)
     expect(mapFile('sky-glow', 'ultra')).toBe('sky-glow.webp');
     expect(mapFile('sky-glow', 'mid')).toBe('sky-glow-sm.webp');
     expect(mapFile('transformers', 'mid')).toBe('transformers-sm.webp');

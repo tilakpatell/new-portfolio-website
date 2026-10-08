@@ -30,10 +30,9 @@ import { missionOf } from '../components/galaxy/surface/missions';
 import { sideFor, warSideOf } from '../components/galaxy/surface/missions/assault';
 import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../components/galaxy/allegiance';
 import { GCW, campaignAt, scoresAt } from '../components/galaxy/gcw';
-import { warOfSide } from '../components/galaxy/sides';
-import { effectsFor } from '../components/galaxy/warEffects';
-import { addPoints, addWin, mine, warNow, warVersion } from '../components/galaxy/warState';
-import { RANKS, rankOf } from '../components/galaxy/ranks';
+import { SIDES, warOfSide } from '../components/galaxy/sides';
+import { groundEffects } from '../components/galaxy/siteWar';
+import { addPoints, addWin, warNow, warVersion } from '../components/galaxy/warState';
 import ModelCredits from '../components/ModelCredits';
 import EarnNote from '../components/universe/EarnNote';
 import { useEarn } from '../components/universe/useEarn';
@@ -122,14 +121,9 @@ export default function GalaxySurface() {
   // this world (warEffects.js: the troopers you meet are theirs); an assault
   // here is that war's, fought for one of its sides
   const [oathKept, setOathKept] = useState(() => readAllegiance(local.get(SIDE_KEY)));
-  const oath = useMemo(() => currentOath(oathKept), [oathKept]);
   // (and, for the people's talk: the side you swore to, and your rank in it, as a step up its ladder)
-  const effects = useMemo(() => {
-    const e = effectsFor(id, warNow(Date.now(), oath.war), oath);
-    if (!e) return e;
-    const rank = oath.side ? rankOf(oath.side, mine(oath.war).points) : null;
-    return { ...e, side: oath.side ?? null, rank: rank ? (RANKS[oath.side]?.findIndex((r) => r.id === rank.id) ?? 0) : 0 };
-  }, [id, oath]);
+  // (in the ground's war, its film's: siteWar.js)
+  const effects = useMemo(() => groundEffects(id, oathKept, Date.now()), [id, oathKept]);
   const assaultWar = mission?.kind === 'assault' ? warOfSide(warSideOf(mission, 'attack')) : null;
   const sworn = assaultWar ? sideFor(mission, oathKept.oaths[assaultWar]?.side ?? null) : null;
   const onAssaultSide = (k) => {
@@ -320,6 +314,10 @@ export default function GalaxySurface() {
         setToast((t) => ({ title: place.name, text: place.about, n: (t?.n ?? 0) + 1 }));
         later('toast', 7000, () => setToast(null));
         comms.current?.handle({ type: 'event', id: `surface:${e.id}` });
+      } else if (e.type === 'war') {
+        // the ground war's news (ground/director.js): a raid, a post lost or held, a hunt, one line at a time
+        setToast((t) => ({ title: SIDES[e.side]?.short ?? 'The ground war', text: e.text, n: (t?.n ?? 0) + 1 }));
+        later('toast', 5000, () => setToast(null));
       } else if (e.type === 'edge') {
         setToast((t) => ({ title: 'Nothing out there', text: site?.edge ?? 'Just more of the same, as far as you can see. Better turn back.', n: (t?.n ?? 0) + 1 }));
         later('toast', 4000, () => setToast(null));
