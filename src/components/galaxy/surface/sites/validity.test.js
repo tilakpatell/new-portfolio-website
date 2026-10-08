@@ -19,7 +19,7 @@ describe('every world can be played as written', () => {
   for (const [id, m] of Object.entries(ASSAULTS)) {
     it(`the battle on ${id}: every post on dry ground`, () => {
       const site = siteOf(m.system);
-      for (const p of m.posts) expect(standable(site, p.at), p.id).toBe(true);
+      for (const p of m.posts) expect(standable(site, p.at, { wade: p.wade ? 0.8 : 0 }), p.id).toBe(true);
     });
   }
   it('knows the lagoon from the beach (Kashyyyk)', () => {

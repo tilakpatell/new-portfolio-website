@@ -5,7 +5,8 @@
 //   sides      { attack, defend }: { id, name, short, colour, kinds
 //              ([[kind, weight]…]: what their soldiers are) }
 //   posts      [{ id, name, at: [x, z], r, fixed? ('attack' | 'defend': a
-//              side's own, never taken, where it falls back to) }]
+//              side's own, never taken, where it falls back to), wade? (in
+//              wadeable shallows, not on dry ground) }]
 //   phases     [{ name, posts: [ids], tickets }]: the attackers take every
 //              post of one and the next begins, their tickets topped up to it
 //   tickets    { attack, defend } at the start
@@ -296,10 +297,10 @@ export const ASSAULTS = {
     achievement: 'galacticassault',
     sides: { attack: SEPARATISTS, defend: { ...REPUBLIC, name: 'The Republic and the Wookiees', short: 'Republic', kinds: [['clone', 2], ['wookiee', 1]] } },
     posts: [
-      // (on the sand at the waterline: the shallows themselves are under water, and a post wants dry ground)
-      { id: 'shallows', name: 'The droids’ landing', at: [60, 73], r: 22, fixed: 'attack' },
-      { id: 'barricades', name: 'The barricades', at: [50, 58], r: 24 },
-      { id: 'gunline', name: 'The gun line', at: [40, 20], r: 20 },
+      // (out in the shallows, as the droids come in the film: knee-deep, `wade`, and 50 m of beach between them and the barricades)
+      { id: 'shallows', name: 'The droids’ landing', at: [60, 105], r: 14, fixed: 'attack', wade: true },
+      { id: 'barricades', name: 'The barricades', at: [50, 52], r: 18 },
+      { id: 'gunline', name: 'The gun line', at: [40, 12], r: 20 },
       { id: 'command', name: 'The command post', at: [-60, 10], r: 16 },
       { id: 'lift', name: 'Kachirho’s lift', at: [-112, -14], r: 14, fixed: 'defend' },
     ],
@@ -309,7 +310,8 @@ export const ASSAULTS = {
       { name: 'The command post', posts: ['command'], tickets: 60 },
     ],
     tickets: { attack: 100, defend: 150 },
-    forward: 60,
+    // (the beach is only 80 m deep, so a short staging line: the droids' first wave forms up well out of the barricades' post)
+    forward: 28,
     hideLife: ['clone', 'wookiee', 'atrt', 'atap'],
     ends: {
       won: 'Kachirho holds',
