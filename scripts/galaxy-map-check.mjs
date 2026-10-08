@@ -223,7 +223,8 @@ const suite = async (viewport, { full = true } = {}) => {
     say(all ? r.n === total : r.n >= 3, `${when}: ${r.n} of ${total} names on view`);
     say(r.meets.length === 0, `${when}: no two names meet${r.meets.length ? ` (${r.meets.slice(0, 6).join(', ')})` : ''}`);
     say(r.outside.length === 0, `${when}: every name inside the map${r.outside.length ? ` (${r.outside.slice(0, 6).join(', ')})` : ''}`);
-    if (all && !phone) say(r.under.length === 0, `${when}: no name under the strip, layers, key or zoom buttons (on a phone the lower right's too crowded to promise it)${r.under.length ? ` (${r.under.slice(0, 6).join(', ')})` : ''}`);
+    // (not on a phone: the lower right's too crowded to clear the zoom buttons there; Kamino and Geonosis run under them at 390 wide)
+    if (all && !phone) say(r.under.length === 0, `${when}: no name under the strip, layers, key or zoom buttons${r.under.length ? ` (${r.under.slice(0, 6).join(', ')})` : ''}`);
   };
   const phone = viewport.width <= 560;
 
