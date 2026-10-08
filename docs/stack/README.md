@@ -7,7 +7,7 @@ A page not yet written shows as a link that leads nowhere; until it is, the row 
 <!-- census:start -->
 | package | version | page | files |
 | --- | --- | --- | --- |
-| `three` | ^0.186.1 | [three.md](three.md) | 532 |
+| `three` | ^0.186.1 | [three.md](three.md) | 537 |
 | `react` | ^19.3.0 | [react.md](react.md) | 277 |
 | `react-router-dom` | ^7.18.4 | [react.md](react.md) | 82 |
 | `sharp` | ^0.35.5 | [assets-pipeline.md](assets-pipeline.md) | 69 |
