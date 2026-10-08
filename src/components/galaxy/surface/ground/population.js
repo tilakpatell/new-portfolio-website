@@ -26,6 +26,7 @@ export const POP = { ultra: 32, high: 28, mid: 18, low: 10 };
 // (a waiting soldier this much nearer than the furthest made takes its place)
 export const SWAP = 12;
 const PRUNE = 30; // updates between looks for cells to let go of
+const RESORT = 15; // updates (half a second at 30 a second) between sorts of who waits, with nothing changed
 const DRY = 12; // metres a reinforcement is moved to find dry ground, at most
 const KEEP = ['hp', 'grudge', 'suppressed', 'staggerUntil', 'engagedUntil']; // what a soldier let go of keeps till it's made again
 const COVERT = 25; // nobody this near where a covert landing put you
@@ -113,6 +114,10 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
   const soldiers = new Map(); // id → Soldier (made)
   let you = [0, 0];
   let ticks = 0;
+  let sorts = 0;
+  let queue = null; // who waits to be made, nearest first (sorted again on a change, or every RESORT updates)
+  let queuedAt = 0;
+  let yourCell = null;
 
   const cell = (key) => {
     let c = cells.get(key);
@@ -128,6 +133,7 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
     const c = cell(key);
     if (c.built) return;
     c.built = true;
+    changed();
     for (const s of rosterFor(key, turfs, effects, tier, seed, standable, { pad })) if (!specs.has(s.id)) place({ ...s, from: key });
   };
   const move = (id, x, z) => {
@@ -190,8 +196,10 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
   const waiting = () => {
     const out = [];
     for (const key of grid.loaded) for (const id of cells.get(key)?.ids ?? []) if (!soldiers.has(id) && !dead.has(id)) out.push(specs.get(id));
+    sorts++;
     return out.sort((a, b) => far(a) - far(b));
   };
+  const changed = () => (queue = null);
 
   return {
     soldiers,
@@ -204,7 +212,7 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
     },
     isDead: (id) => dead.has(id),
     // (for the tests: how much it's keeping)
-    sizes: () => ({ cells: cells.size, specs: specs.size, dead: dead.size }),
+    sizes: () => ({ cells: cells.size, specs: specs.size, dead: dead.size, sorts }),
     reinforce(key, list) {
       for (const s of list) {
         if (specs.has(s.id) || dead.has(s.id)) continue;
@@ -212,6 +220,7 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
         const at = dry(s.at);
         if (at) place({ ...s, at: [...at] });
       }
+      changed();
       cell(key);
     },
     update({ x, z, heading = null }) {
@@ -231,8 +240,15 @@ export function createPopulation({ site, turfs, effects, tier = 'high', seed = 1
         drop.push(id);
       }
       const made = [];
-      const queue = waiting();
+      const here = cellKey(x, z);
+      if (here !== yourCell || drop.length || ticks - queuedAt >= RESORT) changed();
+      yourCell = here;
+      if (!queue) {
+        queue = waiting();
+        queuedAt = ticks;
+      }
       for (const spec of queue) {
+        if (soldiers.has(spec.id) || dead.has(spec.id)) continue;
         if (soldiers.size >= cap) {
           // the furthest made gives way to one well nearer, if it isn't the one walking in
           let worst = null;

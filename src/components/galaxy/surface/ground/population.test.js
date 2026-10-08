@@ -153,3 +153,13 @@ describe('population: what it keeps', () => {
     expect(n.cells).toBeLessThan((2 * (RADIUS + 1) + 1) ** 2 + 40);
   });
 });
+
+describe('population: the queue', () => {
+  test('who waits to be made is sorted when something changes, or every half second, not every frame', () => {
+    const p = createPopulation({ site: SITE, turfs, effects: F, tier: 'high', seed: 7, rand: seeded(), standable: ok });
+    for (let i = 0; i < 120; i++) p.update({ x: 0, z: 0, heading: null });
+    const before = p.sizes().sorts;
+    for (let i = 0; i < 60; i++) p.update({ x: 0, z: 0, heading: null });
+    expect(p.sizes().sorts - before).toBeLessThanOrEqual(4);
+  });
+});
