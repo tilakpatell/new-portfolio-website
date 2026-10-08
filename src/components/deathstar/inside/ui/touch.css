@@ -1,0 +1,135 @@
+/* Aboard the Death Star's touch controls (ui/Touch.jsx): the stick, the
+   look pad and the buttons, clear of the guide's button in the corner, and
+   where the HUD's words go to stay clear of them. */
+
+.ds-touch {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.ds-touch > * {
+  pointer-events: auto;
+  touch-action: none;
+}
+/* the look pad: the right of the screen (the HUD's panels over it let a drag through) */
+.ds-look {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 38%;
+}
+.ds-stick {
+  position: absolute;
+  left: var(--ds-left);
+  bottom: calc(var(--ds-bottom) + 8px);
+  display: grid;
+  place-items: center;
+  width: 136px;
+  height: 136px;
+  border: 1px solid rgba(221, 226, 232, 0.32);
+  border-radius: 50%;
+  background: rgba(5, 7, 9, 0.42);
+}
+.ds-stick > span {
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--ds-rule-strong);
+  border-radius: 50%;
+  background: rgba(221, 226, 232, 0.2);
+}
+/* clear of the guide's button, which keeps the corner below them */
+.ds-buttons {
+  position: absolute;
+  right: var(--ds-right);
+  bottom: calc(var(--ds-bottom) + 66px);
+  display: grid;
+  grid-template-areas:
+    'aim fire'
+    'use fire'
+    'jump crouch';
+  grid-template-columns: 58px 72px;
+  gap: 8px;
+}
+.ds-tbtn {
+  display: grid;
+  place-items: center;
+  min-height: 52px;
+  border: 1px solid rgba(221, 226, 232, 0.35);
+  border-radius: 2px;
+  background: rgba(5, 7, 9, 0.55);
+  color: var(--ds-ink);
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ds-buttons > :nth-child(1) {
+  grid-area: fire;
+}
+.ds-buttons > :nth-child(2) {
+  grid-area: aim;
+}
+.ds-buttons > :nth-child(3) {
+  grid-area: use;
+}
+.ds-buttons > :nth-child(4) {
+  grid-area: jump;
+}
+.ds-buttons > :nth-child(5) {
+  grid-area: crouch;
+}
+.ds-tbtn:active,
+.ds-tbtn[aria-pressed='true'] {
+  border-color: var(--ds-ink);
+  background: rgba(221, 226, 232, 0.2);
+}
+.ds-tbtn-fire {
+  border-color: rgba(226, 56, 45, 0.6);
+  background: rgba(70, 12, 9, 0.55);
+}
+.ds-tbtn-fire:active {
+  border-color: var(--ds-red);
+  background: rgba(226, 56, 45, 0.4);
+}
+/* on a phone the words sit over the buttons; on its side, low between the stick and the buttons */
+.ds-hud[data-touch] .ds-lines {
+  bottom: calc(var(--ds-bottom) + 262px);
+  width: calc(100% - 2 * var(--ds-pad));
+  min-width: 0;
+}
+@media (min-aspect-ratio: 4/3) {
+  .ds-hud[data-touch] .ds-lines {
+    bottom: calc(var(--ds-bottom) + 8px);
+    width: calc(100% - 2 * var(--ds-pad) - 2 * 250px);
+  }
+}
+.ds-hud[data-touch] .ds-talk {
+  bottom: calc(var(--ds-bottom) + 16px);
+}
+
+@media (max-height: 520px) {
+  /* a phone on its side: the buttons in two short rows, left of the guide's button */
+  .ds-buttons {
+    right: calc(var(--ds-right) + 52px);
+    bottom: var(--ds-bottom);
+    grid-template-areas:
+      'aim use fire'
+      'jump crouch fire';
+    grid-template-columns: 56px 56px 68px;
+  }
+  .ds-tbtn {
+    min-height: 44px;
+  }
+  .ds-stick {
+    bottom: var(--ds-bottom);
+    width: 112px;
+    height: 112px;
+  }
+  .ds-stick > span {
+    width: 46px;
+    height: 46px;
+  }
+}

@@ -112,7 +112,7 @@ import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
 import { houseOn } from '../../lib/three/house';
 import { PLANETS, SHIP, SOLIDS, SPACE, autopilot, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
-import { HYPER, destinationById, driveById, hyperState, legOf, parkFor, riftExit } from './nav';
+import { HYPER, destinationById, driveById, hyperState, legOf, parkFor, riftExit, shortDistance } from './nav';
 import { REAIM_MS, parkBehind, pilotId, pilotSpace, reached } from './pilotGoal';
 import { laneAim, laneFrame, lanePlan, rideLine } from './lanePilot';
 import { createLaneLook } from './laneLook';
@@ -2626,7 +2626,8 @@ export async function create(canvas, ctx) {
     el.toggleAttribute('data-off', off);
     if (r) el.style.setProperty('--r', `${Math.round(r)}px`);
   };
-  const range = (d) => (d < 10 ? d.toFixed(1) : Math.round(d).toString());
+  // (in the nav map's measure, ship-lengths, so the two agree: nav.js)
+  const range = (d) => shortDistance(d);
   // where you're going: the autopilot's goal, the picked place you're not
   // yet at, or, out in deep space with nowhere picked, the nearest wonder
   // ahead (as a waypoint, fainter)

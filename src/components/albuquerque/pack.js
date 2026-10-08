@@ -25,9 +25,15 @@ export const PACK = {
     '/audio/clips/private-domicile.mp3',
     '/audio/clips/cant-keep-getting-away.mp3',
     '/audio/clips/dont-drink-and-drive.mp3',
+    '/models/sketchfab/rv.glb',
+    '/models/sketchfab/esteem.glb',
+    '/models/sketchfab/watertower.glb',
+    '/models/sketchfab/tank.glb',
+    '/models/sketchfab/cactus.glb',
+    '/models/sketchfab/tumbleweed.glb',
+    '/models/sketchfab/bucket.glb',
   ], // single files
   globs: [
-    '/models/sketchfab/*.glb',
     '/models/albuquerque/*.glb',
     '/models/albuquerque/world/*',
     '/models/metherria/*',
@@ -35,4 +41,5 @@ export const PACK = {
     '/albuquerque/shadow/*',
     '/cc0/galaxy/adobe/*',
   ], // folders: `*` within a folder, `**` any depth
+  computed: ['/models/sketchfab'], // folders the source only builds paths in: the files it takes (world/scene.js's SKETCHFAB) are listed above
 };

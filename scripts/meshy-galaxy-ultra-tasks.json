@@ -1,0 +1,26 @@
+{
+  "tipocadome": {
+    "lift": [
+      "01a118aa-371f-714c-8174-37d7b73bebce"
+    ],
+    "ultra": "01a118af-b5b4-75e2-a2c2-26dc74923fcd"
+  },
+  "cloudplaza": {
+    "lift": [
+      "01a118ac-0cea-714b-9fe1-4dd2c58d8e37"
+    ],
+    "ultra": "01a118af-b9cf-7461-b33f-2d1c57762df1"
+  },
+  "wroshyrgreat": {
+    "lift": [
+      "01a118ae-2c8d-77b6-853d-b43cdffbc097"
+    ],
+    "ultra": "01a118bc-c108-72e6-8ad9-dbd379f54bbc"
+  },
+  "ds2sky": {
+    "lift": [
+      "01a118b9-1b95-745a-9415-bf0dfe66631d"
+    ],
+    "ultra": "01a118b9-64e5-737a-8732-76d03ed611ca"
+  }
+}

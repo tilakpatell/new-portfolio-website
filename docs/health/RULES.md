@@ -52,7 +52,7 @@ One house UI: the shell, the classic pages, the universe map and every world's H
 7. **Copy**: British spelling, curly quotes, sentence case, one sentence to a toast, the key first in a prompt (“G Go in · Burger Mart”), no Oxford comma.
 8. **Themes and dark mode**: a shared surface reads the theme's tokens (radius, border, ink), so a square theme squares it and dark mode darkens its shadow; type on a photograph (`.on-photo`) is white in every theme.
 
-The measure's `kbd-styles` counts the CSS rules that draw a key cap outside the house `.kbd` (`src/index.css`); lower is better. It walks `src/**/*.css` itself, leaves out `src/runtime/hud/hud.css` until the world kit's own cap is folded into the house one, and has no budget until both have landed (spec section 8, C1).
+The measure's `kbd-styles` counts the CSS rules that draw a key cap outside the house `.kbd` (`src/index.css`); lower is better. It walks `src/**/*.css` itself (the context lists no CSS) and is budgeted at its value once the house `.kbd` and the world kit's cap were one (spec section 8, C1): it may only fall.
 
 ## The worlds' HUDs
 

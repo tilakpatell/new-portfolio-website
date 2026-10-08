@@ -13,9 +13,10 @@ export const PACK = {
   globs: [
     '/models/music/**',
     '/textures/music/*',
-    '/games/tex/*/arm.webp',
-    '/games/tex/*/color.webp',
-    '/games/tex/*/normal.webp',
+    '/games/tex/music-dunes/*',
+    '/games/tex/music-terrace/*',
+    '/games/tex/music-wall/*',
     '/audio/sitar/*',
   ], // folders: `*` within a folder, `**` any depth
+  computed: ['/games/tex'], // folders the source only builds paths in: the sets it takes (world/scene.js's scan calls) are the globs above
 };
