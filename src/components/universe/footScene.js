@@ -44,10 +44,11 @@
 // Saver on (the engine is 1.7 MB; `small` here is any device short of
 // the high tier, which is most laptops, so it isn't what decides): landings/
 // physics.js has them, the planet pulling them to its middle; the engine
-// loads as the ship comes down, and until it's there (or if it won't
-// load) they stand as solid as ever. You and your mate and the troops
-// shove what you walk into, shots knock what they hit, and a hard knock
-// is heard ('impact').
+// loads as the ship comes down (only for a landing with something loose
+// on it), and until it's there (or if it won't load) they stand as solid
+// as ever. You and your mate and the troops shove what you walk into,
+// shots knock what they hit, what's knocked stops at the landing's fixed
+// things and the parked ship, and a hard knock is heard ('impact').
 //
 // createFoot({ map, emit, reduced, small, planetOf, renderer, warm }) → { phase, begin(...),
 //   update(dt, t, input), view(dt) → camera, fire(), cycle(), swap(),
@@ -88,6 +89,7 @@ import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
 import { furnish, furnished } from './landings/furnish';
 import { createLandingPhysics } from './landings/physics';
+import { bodyOf } from './landings/bodies';
 import { preload as preloadPhysics } from '../../lib/physics/world';
 import { device } from '../../lib/device';
 import { AIR, ENTRY, entryPath, entrySpot, fxAt } from './entry';
@@ -1423,6 +1425,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   let lp = null;
   let physical = false; // (this landing has them at all)
   let fed = 0; // how many of the landing's bodies it has
+  let walled = 0; // how many of the landing's solids are walls in it
+  let shipWalled = false;
   let settled = 0; // (when the far ones were last put to sleep)
   let haze = null;
   let sides = null; // a trench's walls by you
@@ -2027,10 +2031,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (lp) lp.dispose();
     lp = null;
     physical = false;
-    fed = 0;
+    fed = walled = 0;
+    shipWalled = false;
     if (landing && furnished(id)) {
       const anchor = near ? { n: near.n, f: near.f } : S.spot;
-      physical = bodiesHere();
+      physical = bodiesHere() && looseOn(landing);
       const f = furnish({ id, landing, frame: anchor, R: S.R, small, reduced, renderer, warm, physical });
       rocks = { mesh: f.group, solids: f.solids, spots: f.spots, bodies: f.bodies, put: f.put, update: f.update, dispose: f.dispose };
       // (the engine on its way while the ship comes down)
@@ -2240,7 +2245,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   const mateP = () => party?.[1 - S.lead] ?? null;
 
   // (the other pilots' ships down here too)
-  const obstacles = () => [shipObstacle(), ...(rocks?.solids ?? []), ...[...guests.values()].flatMap((g) => (g.ship ? [g.ship] : [])), ...(S.band ? [{ band: S.band }] : [])];
+  // (the landing's loose things not yet bodies, the engine still loading, as solid as the rest)
+  const unfed = () => (rocks?.bodies && fed < rocks.bodies.length ? rocks.bodies.slice(fed).flatMap((b) => b.solids) : []);
+  const obstacles = () => [shipObstacle(), ...(rocks?.solids ?? []), ...unfed(), ...[...guests.values()].flatMap((g) => (g.ship ? [g.ship] : [])), ...(S.band ? [{ band: S.band }] : [])];
 
   const troopsAlive = () => S.troops.filter((t) => t.alive);
 
@@ -2449,6 +2456,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
 
 
   // ── each frame ──
+  // (a landing with anything loose on it: else there's nothing to load the engine for)
+  const looseOn = (landing) => [...(landing.things ?? []), ...(landing.scatter ?? [])].some((t) => bodyOf(t.kind, landing.models?.[t.kind]));
   // (loose things as bodies: anywhere but a phone or Data Saver)
   const bodiesHere = () => {
     try {
@@ -2481,6 +2490,16 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const b = list[fed];
       if (!lp.add({ position: b.position, quaternion: b.quaternion, scale: b.scale, box: b.box, body: b.body, user: b })) rocks.solids.push(...b.solids);
     }
+    // the fixed things (their walk circles, as they arrive) and the parked
+    // ship, as walls: what's knocked stops at them
+    if (walled < rocks.solids.length) {
+      lp.walls(rocks.solids.slice(walled).filter((o) => o.n && o.r));
+      walled = rocks.solids.length;
+    }
+    if (!shipWalled && (S.phase === 'out' || S.phase === 'walk')) {
+      shipWalled = true;
+      lp.walls([shipObstacle()]);
+    }
     const people = [];
     const walking = S.phase === 'out' || S.phase === 'walk' || S.phase === 'board';
     if (walking && S.me) people.push({ key: 'me', at: at(S.me, S.R), up: S.me.n });
@@ -2489,9 +2508,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     lp.people(people, dt);
     lp.step(dt);
     lp.sync((entry, p, q) => rocks.put(entry.user, p, q));
+    // (beyond a bolt's reach, 96 m: nothing out there is still moving)
     if (S.me && S.clock - settled > 1) {
       settled = S.clock;
-      lp.settle(at(S.me, S.R), 60);
+      lp.settle(at(S.me, S.R), 120);
     }
   };
 
@@ -3393,7 +3413,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (lp) lp.dispose();
       lp = null;
       physical = false;
-      fed = 0;
+      fed = walled = 0;
+      shipWalled = false;
       for (const x of [ground, rocks, haze, sides]) {
         if (!x) continue;
         root.remove(x.mesh);

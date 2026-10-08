@@ -63,13 +63,16 @@ for (const id of planets) {
   const phase = await page.evaluate(() => window.__universeDebug.foot.phase);
   if (phase !== 'walk') console.log('    ', id, `crew not out yet (phase ${phase})`);
   await page.waitForFunction(() => window.__universeDebug.foot.physics().engine !== 'loading', null, { timeout: 60000, polling: 500 }).catch(() => {});
+  // (and every loose thing a body: on software GL a frame of the first
+  // landing can take seconds, compiling)
+  await page.waitForFunction(() => { const p = window.__universeDebug.foot.physics(); return p.engine !== 'ready' || p.simulated >= p.bodies; }, null, { timeout: 180000, polling: 1000 }).catch(() => {});
   await page.waitForTimeout(4000);
   const before = await page.evaluate(() => {
     const f = window.__universeDebug.foot;
     const p = f.physics();
-    return { biome: f.biome?.title ?? null, engine: p.engine, bodies: p.bodies, simulated: p.simulated, pushers: p.pushers, kinds: [...new Set(p.kinds)] };
+    return { biome: f.biome?.title ?? null, engine: p.engine, bodies: p.bodies, simulated: p.simulated, pushers: p.pushers, kinds: p.kinds };
   });
-  console.log(`     ${id}:`, JSON.stringify(before));
+  console.log(`     ${id}:`, JSON.stringify({ ...before, kinds: [...new Set(before.kinds)] }));
   if (before.engine !== 'ready') {
     console.log('FAIL', id, `engine ${before.engine}`);
     bad++;

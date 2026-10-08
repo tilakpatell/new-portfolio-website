@@ -35,9 +35,18 @@ describe('shapeFor', () => {
     expect(s.colliders[0].position).toEqual([0, 0.45, 0]);
   });
 
-  it('makes a ball as big as its biggest way', () => {
+  it('makes a ball as big as its biggest way, its foot on the thing’s', () => {
     const s = shapeFor({ shape: 'ball', mass: 0.2 }, box([-0.1, 0, -0.1], [0.1, 0.4, 0.1]));
     expect(s.colliders[0]).toEqual({ shape: 'ball', args: [0.2], position: [0, 0.2, 0] });
+    // (a wide one doesn't reach down into the ground under it)
+    const wide = shapeFor({ shape: 'ball', mass: 0.2 }, box([-0.5, 0, -0.5], [0.5, 0.2, 0.5]), 2);
+    const [r] = wide.colliders[0].args;
+    expect(wide.colliders[0].position[1] - r).toBeCloseTo(0, 9);
+  });
+
+  it('makes the flat lumps boxes, not balls bigger than they are', () => {
+    expect(BODIES.stones.shape).toBe('box');
+    expect(BODIES.rubble.shape).toBe('box');
   });
 
   it('stands a fixed one still, with no mass', () => {

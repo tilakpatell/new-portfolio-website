@@ -24,8 +24,8 @@ export const BODIES = {
   chest: { shape: 'box', mass: 5 },
   // scatter
   tumbleweed: { shape: 'ball', mass: 0.3 },
-  stones: { shape: 'ball', mass: 0.2 },
-  rubble: { shape: 'ball', mass: 0.8 },
+  stones: { shape: 'box', mass: 0.2 },
+  rubble: { shape: 'box', mass: 0.8 },
   bone: { shape: 'box', mass: 0.3 },
   shard: { shape: 'box', mass: 0.3 },
   bolt: { shape: 'cylinder', mass: 0.2 },
@@ -50,6 +50,11 @@ export function shapeFor(body, box, s = 1) {
   let collider;
   if (body.shape === 'box') collider = { shape: 'cuboid', args: half, position: mid };
   else if (body.shape === 'cylinder') collider = { shape: 'cylinder', args: [half[1], Math.max(half[0], half[2])], position: mid };
-  else collider = { shape: 'ball', args: [Math.max(...half)], position: mid };
+  else {
+    // (as big as its biggest way, but its foot on the thing's: a wide one
+    // doesn't reach down into the ground under it)
+    const r = Math.max(...half);
+    collider = { shape: 'ball', args: [r], position: [mid[0], min[1] * s + r, mid[2]] };
+  }
   return body.fixed ? { type: 'fixed', colliders: [collider] } : { type: 'dynamic', colliders: [collider], mass: body.mass * s * s * s };
 }

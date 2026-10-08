@@ -13,14 +13,22 @@
 //
 // createLandingPhysics({ R, metre = METRE, g = 9.81, onHit({ entry, force,
 //   at }) }) → Promise<{ add({ position, quaternion, scale, box (metres,
-//   its own frame), body, awake?, user }) → entry | null, people([{ key,
-//   at, up }], dt), shot(from, to) → { entry, at } | null, step(dt) (from
-//   the frame), sync(write(entry, position, quaternion)) (those that moved),
+//   its own frame), body, awake?, user }) → entry | null, walls([{ n, r }])
+//   (the landing's fixed things, as walk() has them: a circle along the
+//   ground round n, r map units; each a fixed post 3 m tall, so what's
+//   knocked stops at them), people([{ key, at, up }], dt) (before step(dt),
+//   with the same dt), where(key), shot(from, to) → { entry, at } | null,
+//   step(dt), sync(write(entry, position, quaternion)) (those that moved),
 //   settle(at, metres) (the far ones to sleep), pushers, size, dispose() }>
+//
+// The capsules are moved over the time the world will step this frame
+// (whole 1/60 s substeps), not the frame's own time: at 144 Hz most frames
+// step nothing, and a capsule sent at the frame's speed would run ahead of
+// its walker and fling what it meets.
 //   (onHit only for a hit over three times the thing's own weight, and not
 //   again within HIT_GAP s; position and at in map units)
 
-import { createPhysics } from '../../../lib/physics/world';
+import { STEP, createPhysics } from '../../../lib/physics/world';
 import { addPusher } from '../../../lib/physics/pusher';
 import { METRE } from '../foot';
 import { shapeFor } from './bodies';
@@ -29,6 +37,8 @@ const HIT_GAP = 0.25; // seconds between one thing's hits told
 const SHOT = 4; // a bolt's push (N·s), at most
 const SHOT_KICK = 10; // m/s it gives anything light, at most
 const PERSON = { radius: 0.35, half: 0.55 }; // (a capsule 1.8 m tall)
+const SUBSTEPS = 4; // (the world's maxSubsteps)
+const POST = 1.5; // a fixed thing's post: half its height, metres
 
 // the turn taking +y to the unit vector u
 function upTurn(u) {
@@ -98,9 +108,29 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, onHit =
     return entry;
   }
 
-  // the people about: a capsule each, where foot.js has put them
+  // the landing's fixed things: a post each, a body a batch
+  let wallCount = 0;
+  function walls(list) {
+    if (gone || !list?.length) return;
+    const colliders = [];
+    for (const w of list) {
+      const l = Math.hypot(w?.n?.[0], w?.n?.[1], w?.n?.[2]);
+      const r = w?.r / metre;
+      if (!(l > 0) || !(r > 0)) continue;
+      const n = w.n.map((a) => a / l);
+      colliders.push({ shape: 'cylinder', args: [POST, r], position: n.map((a) => a * (Rm + POST - 0.3)), rotation: upTurn(n) });
+    }
+    if (!colliders.length) return;
+    physics.add({ type: 'fixed', group: 'floor', friction: 0.6, colliders });
+    wallCount += colliders.length;
+  }
+  Object.defineProperty(walls, 'count', { get: () => wallCount });
+
+  // the people about: a capsule each, where foot.js has put them, moved
+  // over the substeps the next step(dt) will take
   function people(list, dt = 1 / 60) {
     if (gone) return;
+    const n = Math.min(SUBSTEPS, Math.floor(physics.alpha + (dt > 0 ? dt : 0) / STEP + 1e-9));
     const seen = new Set();
     for (const p of list) {
       if (!p?.at?.every?.(Number.isFinite)) continue;
@@ -112,7 +142,9 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, onHit =
         pusher = addPusher(physics, { ...PERSON, position: centre });
         pushers.set(p.key, pusher);
       }
-      pusher.follow(centre, dt, upTurn(up));
+      // (no substep this frame: it stays where it is, as its walker will be
+      // by the next one)
+      if (n > 0) pusher.follow(centre, n * STEP, upTurn(up));
     }
     for (const [key, pusher] of pushers) {
       if (seen.has(key)) continue;
@@ -149,6 +181,7 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, onHit =
 
   return {
     add,
+    walls,
     people,
     shot,
     step(dt) {
@@ -173,6 +206,11 @@ export async function createLandingPhysics({ R, metre = METRE, g = 9.81, onHit =
     },
     settle(at, metres) {
       if (!gone) physics.sleepOutside(at.map((a) => a / metre), metres);
+    },
+    // (where someone's capsule is: its middle, map units)
+    where(key) {
+      const pusher = pushers.get(key);
+      return pusher ? pusher.position().map((a) => a * metre) : null;
     },
     get pushers() {
       return pushers.size;

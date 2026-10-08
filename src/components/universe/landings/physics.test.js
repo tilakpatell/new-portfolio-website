@@ -99,4 +99,47 @@ describe('createLandingPhysics', () => {
     expect(Math.abs(dist(hits[0].at) - R) / METRE).toBeLessThan(2);
     lp.dispose();
   });
+
+  it('walks at any frame rate without shoving what it stops short of', async () => {
+    for (const hz of [60, 144, 240]) {
+      const lp = await createLandingPhysics({ R });
+      lp.add({ position: onTop(2, 0), quaternion: [0, 0, 0, 1], scale: 1, box: barrel, body: { shape: 'cylinder', mass: 2 } });
+      // (up to the barrel at 1.8 m/s, stopping 0.35 m short of its side: a
+      // capsule 0.35 m round, so it never touches)
+      const stop = 2 - 0.3 - 0.35 - 0.35;
+      const dt = 1 / hz;
+      let worst = 0;
+      for (let t = 0; t < 3; t += dt) {
+        const at = onTop(Math.min(stop, t * 1.8), 0);
+        lp.people([{ key: 'me', at, up }], dt);
+        lp.step(dt);
+        // (its capsule with them: its middle 0.9 m up from where they stand)
+        const c = lp.where('me');
+        const want = at.map((a, i) => a + up[i] * 0.9 * METRE);
+        worst = Math.max(worst, dist(c, want) / METRE);
+      }
+      expect(worst, `${hz} Hz`).toBeLessThan(0.1);
+      const moved = [];
+      lp.sync((x, p) => moved.push(p[0] / METRE - 2));
+      expect(Math.abs(moved[0] ?? 0), `${hz} Hz`).toBeLessThan(0.05);
+      lp.dispose();
+    }
+  });
+
+  it('stops what’s knocked at the fixed things it meets', async () => {
+    const lp = await createLandingPhysics({ R });
+    const e = lp.add({ position: onTop(0, 0), quaternion: [0, 0, 0, 1], scale: 1, box: barrel, body: { shape: 'cylinder', mass: 2 } });
+    // a wall 1 m round, its middle 2.5 m along +x
+    lp.walls([{ n: onTop(2.5, 0).map((a) => a / R), r: 1 * METRE }]);
+    expect(lp.walls.count).toBe(1);
+    e.handle.wake();
+    e.handle.body.setLinvel({ x: 6, y: 0, z: 0 }, true);
+    for (let i = 0; i < 120; i++) lp.step(1 / 60);
+    // (it came to the wall's face, 1.5 m along, and no further: the body's
+    // own place, in metres, since it may be asleep again by now)
+    expect(e.handle.position()[0]).toBeLessThan(1.5 - 0.3 + 0.1);
+    expect(e.handle.position()[0]).toBeGreaterThan(0.5);
+    lp.dispose();
+  });
 });
+
