@@ -188,10 +188,15 @@ export const lodLevels = (size) => [
 
 // the models the hunters fly (universe/glbFleet.js flies them: the galaxy's
 // droids and Imperial TIEs, and its X-wings and interceptors in the cut the
-// battles load, each built until it's here)
+// battles load, each built until it's here). The Y-wing, the A-wing and the
+// TIE bomber are the whole models, not GLB's far-off copies: those are for
+// the universe map, where a fighter is a few pixels long, and they have no
+// normals, so a wingman flying beside you came out in facets. The bounty
+// hunters' ships and the navy's gunboats are their models too, where they
+// were only ever the built ones.
 export const HUNTER_GLB = {
   ...GLB,
-  ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced', 'xwing', 'interceptor'].map((k) => [k, { ...MODELS[k], built: true }])),
+  ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced', 'xwing', 'interceptor', 'ywing', 'awing', 'tiebomber', 'gunboat', 'ig2000', 'houndstooth', 'punishingone'].map((k) => [k, { ...MODELS[k], built: true }])),
   // (the war's other hunters and what their capital ships drop in: the
   // Republic's fighters, Wedge in an X-wing, a Mon Calamari cruiser, a Venator)
   ...Object.fromEntries(['arc170', 'delta7', 'moncal', 'venator'].map((k) => [k, { ...MODELS[k], built: false }])),

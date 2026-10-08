@@ -86,6 +86,20 @@ describe('the galaxy’s models', () => {
     for (const kind of ['vulture', 'trifighter']) expect(HUNTER_GLB[kind].built, kind).toBe(true);
   });
 
+  it('flies the hunters’ and wingmen’s Y-wings, A-wings and TIE bombers as the whole models, not the universe map’s far-off copies', () => {
+    for (const kind of ['ywing', 'awing', 'tiebomber']) {
+      expect(HUNTER_GLB[kind], kind).toEqual({ ...MODELS[kind], built: true });
+      expect(HUNTER_GLB[kind].url, kind).not.toMatch(/\/lod\//);
+    }
+  });
+
+  it('flies the bounty hunters’ ships and the navy’s gunboats as their models, each built until it is here', () => {
+    for (const kind of ['gunboat', 'ig2000', 'houndstooth', 'punishingone']) {
+      expect(HUNTER_GLB[kind], kind).toEqual({ ...MODELS[kind], built: true });
+      expect([...BUILT_KINDS, ...GALAXY_KINDS], kind).toContain(kind); // (its built one, to fly till then)
+    }
+  });
+
   it('stands a built ship in for each of the new ones that has none, and none for one that has', () => {
     expect(STAND_IN).toMatchObject({ tiebomber: 'tie', lightcruiser: 'destroyer', gozanti: 'freighter', providence: 'munificent', ghost: 'freighter' });
     const built = [...BUILT_KINDS, ...GALAXY_KINDS];
