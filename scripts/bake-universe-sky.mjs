@@ -19,8 +19,9 @@
 //   sharp;
 // - has the night's own floor taken off (airglow and the faint stars no
 //   opening can tell apart), so the sky between is black;
-// - is brought to the brightness the scene is lit for, its colour kept: the
-//   core's gold, the lanes' brown, the nebulae's pink.
+// - is brought to the brightness the scene is lit for, with a little more
+//   contrast and colour than the photo's own: the core's gold, the lanes'
+//   brown, the nebulae's pink.
 //
 //   NODE_USE_ENV_PROXY=1 node scripts/bake-universe-sky.mjs
 //
@@ -38,8 +39,10 @@ const OUT = [
   { file: `${DIR}/sky-glow-sm.webp`, width: 2048 },
 ];
 const TURN = 50; // pixels of the 6000 the panorama is turned by, round to where the old sky's band lay
-const GAIN = 0.85; // the band's light, as bright as the scene is lit for
-const SATURATION = 1.15;
+const GAIN = 0.78; // the band's light, as bright as the scene is lit for
+const PIVOT = 0.03; // and its contrast, about the band's own light: the faint
+const CONTRAST = 0.25; // halo and the lanes darker, the star clouds brighter
+const SATURATION = 1.3;
 
 if (!existsSync(SOURCE)) {
   const res = await fetch(SOURCE_URL);
@@ -126,7 +129,8 @@ let bandSum = 0;
 let bandCount = 0;
 for (let i = 0; i < N; i++) {
   const l = lum[i];
-  const k = l > 0 ? (Math.max(0, clean[i] - floor) / l) * GAIN : 0;
+  const lit = Math.max(0, clean[i] - floor) * GAIN;
+  const k = l > 0 ? (lit / l) * (lit / PIVOT) ** CONTRAST : 0;
   const c = [rgb[0][i] * k, rgb[1][i] * k, rgb[2][i] * k];
   const g = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
   for (let j = 0; j < 3; j++) out[i * 3 + j] = Math.round(Math.min(1, Math.max(0, toSrgb(g + (c[j] - g) * SATURATION))) * 65535);
