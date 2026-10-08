@@ -99,4 +99,44 @@ describe('pace', () => {
     expect(changes).toEqual(STEPS.slice(1));
     expect(pace.scale).toBe(STEPS[STEPS.length - 1]);
   });
+
+  describe('ceiling', () => {
+    it('starts at the ceiling and reports its scale', () => {
+      const pace = createPace({ ceiling: 2 });
+      expect(pace.level).toBe(2);
+      expect(pace.scale).toBe(STEPS[2]);
+    });
+
+    it('steps down from the ceiling and goes back up only as far as the ceiling', () => {
+      const pace = createPace({ ceiling: 1 });
+      let { t } = run(pace, 1000, 120, 16.7);
+      const slow = run(pace, t, 25, 33.4);
+      expect(slow.changes).toEqual([STEPS[2]]);
+      const back = run(pace, slow.t, 300, 16.7);
+      expect(back.changes).toEqual([STEPS[1]]);
+      const more = run(pace, back.t, 1800, 16.7); // a long calm never goes above it
+      expect(more.changes).toEqual([]);
+      expect(pace.level).toBe(1);
+    });
+
+    it('can be set later: it moves a sharper level down to it, and leaves a softer one', () => {
+      const pace = createPace();
+      pace.ceiling = 2;
+      expect(pace.ceiling).toBe(2);
+      expect(pace.level).toBe(2);
+      pace.ceiling = 1;
+      expect(pace.level).toBe(2);
+      const { t } = run(pace, 1000, 600, 16.7);
+      expect(pace.level).toBe(1);
+      expect(t).toBeGreaterThan(0);
+    });
+
+    it('clamps to the steps', () => {
+      const pace = createPace();
+      pace.ceiling = 99;
+      expect(pace.level).toBe(STEPS.length - 1);
+      pace.ceiling = -3;
+      expect(pace.ceiling).toBe(0);
+    });
+  });
 });

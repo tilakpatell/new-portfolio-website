@@ -23,17 +23,23 @@
 // from then on, since ultra's textures and geometry turned out to be more
 // than this machine could carry.
 //
-// createPace({ steps, window, missed, settle, wait, longest, floorRuns, onFloor }) →
-//   { frame(now) → the new scale when it changes, else null, scale, level, reset() }
+// `ceiling` is the sharpest level it may use (an index into `steps`; calibration
+// sets it from what this machine measured): it starts there and never goes
+// back up past it. It can be set later, which moves a sharper level down to it.
+//
+// createPace({ steps, window, missed, settle, wait, longest, floorRuns, onFloor, ceiling }) →
+//   { frame(now) → the new scale when it changes, else null, scale, level, ceiling, reset() }
 // `now` is the frame's timestamp (ms); the scale is one of `steps`, sharpest first.
 
 import { strained } from '../detail';
 
 export const STEPS = [1, 0.85, 0.72, 0.6, 0.5];
 
-export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25, settle = 600, wait = 4000, longest = 60000, floorRuns = 5, onFloor = strained } = {}) {
+export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25, settle = 600, wait = 4000, longest = 60000, floorRuns = 5, onFloor = strained, ceiling: first = 0 } = {}) {
+  const clamp = (v) => Math.max(0, Math.min(steps.length - 1, Math.round(v) || 0));
+  let top = clamp(first); // the sharpest level it may use (calibration sets it)
   let stuck = 0; // runs at the last step with frames still late (floorRuns once told)
-  let level = 0;
+  let level = top;
   let last = 0;
   let beat = 1000 / 60; // the display's own, as read from the frames
   const recent = []; // the latest frame times, for reading the beat
@@ -58,6 +64,13 @@ export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25,
     },
     get level() {
       return level;
+    },
+    get ceiling() {
+      return top;
+    },
+    set ceiling(v) {
+      top = clamp(v);
+      if (level < top) level = top;
     },
     reset,
     frame(now) {
@@ -109,7 +122,7 @@ export function createPace({ steps = STEPS, window = 20, missed: tooMany = 0.25,
         return null;
       }
       clean += took;
-      if (level === 0 || clean < hold) return null;
+      if (level <= top || clean < hold) return null;
       level -= 1;
       clean = 0;
       changedAt = upAt = now;
