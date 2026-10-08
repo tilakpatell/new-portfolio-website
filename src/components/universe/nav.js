@@ -36,7 +36,7 @@ export const DRIVES = [
     name: 'Jump',
     verb: 'Jump',
     od: 1,
-    about: 'A jump to lightspeed. You come out parked at it, however far it is. Nothing to see on the way, and the drive needs half a minute to charge again after.',
+    about: 'A jump to lightspeed, the galaxy’s way: the ship comes round onto it, spools up and goes, and you come out parked at it, however far it is. Or put the nose on a far star and press J.',
   },
   {
     id: 'super',
@@ -60,9 +60,10 @@ export const parseDrive = (v) => (DRIVES.some((d) => d.id === v) ? v : 'hyper');
 
 // the jump, in seconds: to the flash, when the ship's moved (the site's jump
 // overlay flashes at 1.15 to 1.3 s, components/Hyperspace.jsx); all of it;
-// and how long till the hyperdrive can go again (30 s since the lanes came:
-// they're the everyday way, the jump the rare one)
-export const HYPER = { flash: 1.2, length: 2.45, recharge: 30 };
+// and how long till the hyperdrive can go again (a few seconds: it's the
+// everyday way across, the galaxy's way; before the jump the ship comes
+// round onto the place, aim.js's JUMP.align at most)
+export const HYPER = { flash: 1.2, length: 2.45, recharge: 5 };
 
 // Whether the hyperdrive can jump now: { ready, wait (seconds), why }.
 // `last` is when it last jumped and `now` the clock (both in seconds), or

@@ -57,6 +57,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const [arrive, setArrive] = useState(null);
   const [controls, setControlsState] = useState(() => readControls(local.get(CONTROLS_KEY)));
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aim, setAim] = useState(null); // (the star the nose is on: the scene's word, aim.js; { id, name })
   const setControls = (c) => {
     const next = readControls(c);
     setControlsState(next);
@@ -112,6 +113,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       onCrash,
       onEvent: (e) => {
         if (e.type === 'launch') setFlown(true);
+        if (e.type === 'aim') setAim(e.id ? { id: e.id, name: e.name } : null);
         if (e.type === 'landable') setLandable(e.id);
         if (e.type === 'phone' && e.what !== 'open') setPhoneNear(e.what === 'near');
         if (e.type === 'foot' && e.id === 'arrive') setArrive({ title: e.title, sub: e.sub, at: Date.now() });
@@ -319,6 +321,13 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-siege-state" />
               </div>
               <p ref={prompt} className="universe-prompt" aria-live="polite" />
+              {/* the star the nose is on, to jump to: J, or this (a touch screen's way) */}
+              {!onFoot && ship && aim && (
+                <button type="button" className="universe-jump" onClick={() => view.current?.travel?.(aim.id, 'hyper')}>
+                  <span className="universe-jump-label">Jump to {aim.name ?? 'it'}</span>
+                  <kbd aria-hidden="true">J</kbd>
+                </button>
+              )}
               {/* Rick's portal gun, in any ship: a portal ahead, to his dimension or home (gunPortal.js) */}
               {!onFoot && ship && (
                 <button type="button" className="universe-portalgun" onPointerDown={(e) => (e.preventDefault(), view.current?.portalGun?.())} onContextMenu={(e) => e.preventDefault()} title="Rick’s portal gun: a portal ahead, to his dimension (or home)">

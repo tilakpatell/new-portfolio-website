@@ -1000,6 +1000,40 @@ body:has(.universe-panel) .guide-btn { display: none; }
   .universe-portalgun-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .universe-portalgun-swirl { width: 30px; height: 30px; }
 }
+/* the star the nose is on (aim.js): a jump to it, for a touch screen (a
+   keyboard has J, which the prompt shows); in the hyperspace jump's blue */
+.universe-jump {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: 150px;
+  translate: calc(-50% - (var(--panel-w) + 24px) / 2) 0;
+  display: none;
+  align-items: center;
+  gap: 0.5em;
+  min-height: 44px;
+  max-width: min(calc(100vw - 32px), calc(100% - var(--panel-w) - 64px));
+  padding: 0.45rem 0.95rem;
+  border: 1px solid rgb(150 205 255 / 0.7);
+  border-radius: 999px;
+  background: rgb(4 10 22 / 0.8);
+  color: #d7ecff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgb(120 190 255 / 0.3);
+}
+.universe-jump-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.universe-jump:active { background: rgb(40 90 160 / 0.6); }
+.universe-jump kbd { border-color: rgb(150 205 255 / 0.5); color: inherit; }
+@media (pointer: coarse) {
+  .universe-jump { display: inline-flex; }
+  .universe-jump kbd { display: none; }
+}
+@media (max-width: 767px) {
+  .universe-jump { bottom: calc(var(--sheet-h) + 156px); translate: -50% 0; }
+}
 .universe-hint {
   /* across the map's open part, clear of the buttons in its corners: it wraps
      rather than running off the left edge (it's longer than a laptop's map) */

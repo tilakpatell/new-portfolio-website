@@ -132,6 +132,8 @@ import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
 import { DEBRIS_DRIFT, SKY_FAR, buildDeepSpace } from './deepspace';
 import { FAR_STARS, createFarStars } from './farStars';
 import { createLandmarks } from './landmarks';
+import { aimFrom, aimTargets, jumpPhase } from './aim';
+import { aligned, steerToward } from '../galaxy/space';
 import { createSectorPortals } from './sectorPortals';
 import { GUN, gunHit, gunTransit } from './gunPortal';
 import { createGunPortal } from './gunPortalFx';
@@ -709,10 +711,30 @@ export async function create(canvas, ctx) {
   // whose name shows: while flying, a place's only where you look (within
   // NAME_CONE of the nose), where it's real, picked or where you're going;
   // on foot, only near or picked; with no ship (or the whole map in view), all
+  // the aim (aim.js): while flying, the star the nose is on (the way the
+  // reticle is from the eye, the ship's nose six units ahead), in this
+  // sector, not the place you're at; the page hears when it changes (its
+  // Jump button), and J jumps to it
+  const aimSight = new THREE.Vector3();
+  const aimNose = [0, 0, 0];
+  const aimAt = () => {
+    const was = state.aim ?? null;
+    const s = state.ship;
+    let id = null;
+    if (s && flying() && !onFoot() && !state.crash && !state.dive && state.view !== 'map' && !props.frozen && !(state.jump && state.jump.phase !== 'align')) {
+      const [nx, ny, nz] = noseOf(s);
+      aimSight.set(s.x + nx * 6, s.y + ny * 6, s.z + nz * 6).sub(camLocal);
+      if (aimSight.lengthSq() > 1e-6) aimSight.normalize().toArray(aimNose);
+      const sector = mapSectorOf(s.x, s.y, s.z);
+      id = aimFrom([camLocal.x, camLocal.y, camLocal.z], aimNose, aimTargets(sector, state.at), was)?.id ?? null;
+    }
+    state.aim = id;
+    if (id !== was) emit({ type: 'aim', id, name: id ? (destinationById(id)?.name ?? null) : null });
+  };
   const NAME_COS = Math.cos(0.14);
   const named = (id, at) => {
     if ((!flying() && !onFoot()) || state.view === 'map') return true;
-    if ((farStars.kOf(id) ?? landmarks.kOf(id) ?? 1) < 1 || id === state.sel || id === state.auto?.id || id === state.jump?.id) return true;
+    if ((farStars.kOf(id) ?? landmarks.kOf(id) ?? 1) < 1 || id === state.sel || id === state.aim || id === state.auto?.id || id === state.jump?.id) return true;
     if (onFoot() || !at) return false;
     const s = state.ship;
     const [nx, ny, nz] = noseOf(s);
@@ -1618,12 +1640,16 @@ export async function create(canvas, ctx) {
     }
     const hyper = drive === 'hyper' ? hyperState({ last: state.hyperAt, now: wall(), interdicted: state.interdicted }) : null;
     if (hyper?.ready) {
-      // the jump: the page plays the site's own over the map, and at its
-      // flash the ship's out at the place (fly())
+      // the jump, the galaxy's way: the ship comes round onto the place
+      // first (fly(): `align`, aim.js), then spools up, the page plays the
+      // site's own jump over the map, and at its flash the ship's out at
+      // the place
       state.auto = null;
-      state.jump = { id, park, at: wall() + HYPER.flash, name: pose?.name ?? null };
-      state.hyperAt = wall();
-      emit({ type: 'jump', id });
+      const dx = park.x - s.x;
+      const dy = park.y - s.y;
+      const dz = park.z - s.z;
+      const l = Math.hypot(dx, dy, dz) || 1;
+      state.jump = { id, park, phase: 'align', age: 0, dir: [dx / l, dy / l, dz / l], at: Infinity, name: pose?.name ?? null };
     } else {
       if (hyper) {
         // (not yet: on super speed instead, and the HUD says why)
@@ -2023,6 +2049,13 @@ export async function create(canvas, ctx) {
 
   const takeover = () => {
     state.lastInput = performance.now();
+    // (the stick calls off a jump that's still coming round onto its place:
+    // the trip's dropped, as the autopilot's is, so a tour ends here)
+    if (state.jump?.phase === 'align' && jumpPhase(state.jump, { aligned: 0, age: 0, input: true }) === 'cancel') {
+      const id = state.jump.id;
+      state.jump = null;
+      emit({ type: 'arrived', id, done: false });
+    }
     if (!state.flown) {
       state.flown = true;
       emit({ type: 'launch' });
@@ -3962,7 +3995,19 @@ export async function create(canvas, ctx) {
       if (mapSectorOf(state.ship.x, state.ship.y, state.ship.z) !== sector) gunThrough();
     }
     let input;
-    if (state.jump && wall() >= state.jump.at) {
+    // coming round onto the jump (aim.js's jumpPhase): pointing true (or
+    // long enough), it spools up and the page plays the jump
+    if (state.jump?.phase === 'align') {
+      const j = state.jump;
+      j.age += dt;
+      if (jumpPhase(j, { aligned: aligned(state.ship, j.dir), age: j.age, input: false }) === 'spool') {
+        j.phase = 'spool';
+        j.at = wall() + HYPER.flash;
+        state.hyperAt = wall();
+        emit({ type: 'jump', id: j.id });
+      }
+    }
+    if (state.jump?.phase === 'spool' && wall() >= state.jump.at) {
       // out of hyperspace, under the jump's flash: parked at the place, the
       // hunters left behind, and a flash and a ring of light (or a portal,
       // for the cruiser) where it comes out
@@ -3991,7 +4036,8 @@ export async function create(canvas, ctx) {
     }
     if (!state.jump && pieces.riftAt && pieces.riftInside(state.ship)) riftThrough();
     if (!state.jump) chasePilot();
-    if (state.jump) input = { throttle: 1, boost: true }; // (spooling up: straight on, flat out)
+    if (state.jump?.phase === 'align') input = { throttle: state.ship.speed > SHIP.cruise ? 0 : 0.35, ...steerToward(state.ship, state.jump.dir) }; // (coming round onto it, easing off to cruise)
+    else if (state.jump) input = { throttle: 1, boost: true }; // (spooling up: straight on, flat out)
     else if (state.auto) {
       const od = state.interdicted ? 1 : (state.auto.od ?? 1);
       // (and the battle's hold on the drive, so it plans its stop for it: front.js holdAt, as it would be coming straight in)
@@ -4422,6 +4468,7 @@ export async function create(canvas, ctx) {
     let text = '';
     let say = null; // (a line someone says to you, { name, line }: nothing for G to do)
     let plain = false; // (a word on the HUD: nothing for G to do either)
+    let cap = 'G'; // (the key the prompt's for)
     const info = onFoot() ? foot.info() : null;
     if (props.frozen) text = '';
     else if (state.note && wall() < state.note.until && !onFoot()) {
@@ -4448,6 +4495,14 @@ export async function create(canvas, ctx) {
       plain = true;
     }
     else if (!onFoot() && state.phoneNear && !state.auto && !state.jump && flying()) text = 'Unlock the phone';
+    else if (!onFoot() && state.jump?.phase === 'align' && flying()) {
+      text = `Coming round to jump · ${destinationById(state.jump.id)?.name ?? state.jump.name ?? ''}`;
+      plain = true;
+    } else if (!onFoot() && state.aim && !state.jump && flying()) {
+      // (the star the nose is on: J jumps to it)
+      text = `Jump · ${destinationById(state.aim)?.name ?? state.aim}`;
+      cap = 'J';
+    }
     if (text === promptWas) return;
     promptWas = text;
     // what they say, in their own voice where it's been made (landings/voicelines.js); walking off stops it
@@ -4458,7 +4513,7 @@ export async function create(canvas, ctx) {
     if (text && !plain && !say) {
       const key = document.createElement('kbd');
       key.className = 'hud-kbd universe-prompt-key';
-      key.textContent = 'G';
+      key.textContent = cap;
       el.replaceChildren(key, document.createTextNode(text));
     } else el.textContent = text;
     el.toggleAttribute('data-on', Boolean(text));
@@ -4873,8 +4928,9 @@ export async function create(canvas, ctx) {
     house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: onFoot() && foot.entry() ? false : (id) => named(id, wonderById(id)?.at) });
     const skySector = mapSectorOf(camLocal.x, camLocal.y, camLocal.z);
-    farStars.update(camera, dt, { focus: state.auto?.id ?? state.jump?.id ?? null, sector: skySector });
+    farStars.update(camera, dt, { focus: state.jump?.id ?? state.aim ?? state.auto?.id ?? null, sector: skySector });
     landmarks.update(camera, t, { sector: skySector, groups: landmarkGroup });
+    aimAt();
     expanse.update({ ship: flying() && !state.dive ? state.ship : null, camera, t, dt });
     sectorPortals.update(t, camera);
     curve.update(t, sectorOf(camLocal.x, camLocal.y, camLocal.z) === 'rickmorty');
@@ -4982,10 +5038,12 @@ export async function create(canvas, ctx) {
       return;
     }
     if (key === 'j') {
-      // hyperspeed to the place picked, if it's not where you are; or the nav map, to pick one
+      // a jump to the star the nose is on (aim.js); else to the place
+      // picked, if it's not where you are; or the nav map, to pick one
       e.preventDefault();
       heard();
-      if (state.sel && state.sel !== state.at) travel(state.sel, 'hyper');
+      const to = state.aim ?? (state.sel && state.sel !== state.at ? state.sel : null);
+      if (to) travel(to, 'hyper');
       else emit({ type: 'map' });
       return;
     }
@@ -5388,6 +5446,8 @@ export async function create(canvas, ctx) {
       ship: state.ship && { ...state.ship },
       at: state.at,
       auto: state.auto?.id ?? null,
+      aim: state.aim ?? null, // (the star the nose is on: aim.js)
+      jump: state.jump && { id: state.jump.id, phase: state.jump.phase, age: state.jump.age },
       view: state.view,
       seat: state.seat,
       cab: cab ? cab.kind : cabWanted ? `loading ${cabWanted}` : null,
