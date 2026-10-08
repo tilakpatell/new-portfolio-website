@@ -56,7 +56,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | lane | session | branch | pull request | merged |
 |---|---|---|---|---|
 | design | the architecting session | `claude/lucid-hawking-78yzz5` | | |
-| 1A | `session_018TPUBuBVbG9Xbm68QY6rAd` | `claude/one-feel-art` | (opening) | |
+| 1A | `session_018TPUBuBVbG9Xbm68QY6rAd` | `claude/one-feel-art` | #701 | |
 | 1B | | | | |
 | 1C | | | | |
 | 1D | | | | |
