@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import SCANS from '../../../../public/cc0/galaxy/index.json';
-import { applyBuilt, clusterSpecs, lodDistance, usesModel, wearModel, withLod } from './placer';
+import { applyBuilt, clusterSpecs, lodDistance, squared, usesModel, wearModel, withLod } from './placer';
 
 const fakeWorld = () => ({ solids: { box: vi.fn(), circle: vi.fn() }, floors: [] });
 const made = () => ({ object: new THREE.Group(), solids: [{ box: [0, 0, 4, 2] }], floors: [{ x: 3, z: 0, y: 1, hw: 2, hd: 2 }], update: () => {}, signal: () => {} });
@@ -104,5 +104,42 @@ describe('a model that wears a core scan', () => {
   it('wears nothing for a role with no scan', async () => {
     const o = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
     expect(await wearModel(o, 'nonsense', { wear: () => {}, load: () => Promise.resolve(null) })).toBe(0);
+  });
+});
+
+describe('a model from a book not in metres', () => {
+  const gltfOf = (w, h, d, at = [0, 0, 0]) => {
+    const scene = new THREE.Group();
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d));
+    mesh.position.set(...at);
+    scene.add(mesh);
+    return { scene };
+  };
+  const boxOf = (o) => {
+    o.updateMatrixWorld(true);
+    return new THREE.Box3().setFromObject(o);
+  };
+
+  it('is brought to its entry’s height, stood on y = 0 over its middle', () => {
+    const gltf = squared(gltfOf(1, 4, 2, [3, 5, -1]), 'gate', { gate: { url: '/g.glb', tall: 2 } });
+    const box = boxOf(gltf.scene);
+    expect(box.max.y - box.min.y).toBeCloseTo(2);
+    expect(box.min.y).toBeCloseTo(0);
+    expect((box.min.x + box.max.x) / 2).toBeCloseTo(0);
+    expect((box.min.z + box.max.z) / 2).toBeCloseTo(0);
+    // (once: the cached file asked for again isn't shrunk again)
+    squared(gltf, 'gate', { gate: { url: '/g.glb', tall: 2 } });
+    expect(boxOf(gltf.scene).max.y).toBeCloseTo(2);
+  });
+
+  it('is brought to its widest or its longest along the ground', () => {
+    expect(boxOf(squared(gltfOf(4, 1, 2), 'cog', { cog: { url: '/c.glb', wide: 2 } }).scene).max.x).toBeCloseTo(1);
+    expect(boxOf(squared(gltfOf(1, 1, 8), 'gate', { gate: { url: '/g.glb', long: 16 } }).scene).max.z).toBeCloseTo(8);
+  });
+
+  it('leaves a galaxy model, which comes in metres, as it came', () => {
+    const gltf = gltfOf(1, 4, 2, [3, 5, -1]);
+    squared(gltf, 'vaporator', { vaporator: { metres: 5 } });
+    expect(boxOf(gltf.scene).max.y).toBeCloseTo(7);
   });
 });

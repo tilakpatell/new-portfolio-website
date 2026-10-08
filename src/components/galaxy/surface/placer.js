@@ -45,6 +45,7 @@ import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from './props';
 import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
 import { seatY } from './seat';
+import { sizeFor } from '../../universe/landings/models';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again
 
@@ -79,8 +80,12 @@ export const usesModel = (spec, models = SURFACE_MODELS) => hasModel(spec.kind, 
 // radians about its up: the bantha's lies 33° to its left): turned to face
 // +z and its middle put back over its feet, once, in the loaded file itself,
 // so every copy of it (a thing placed, a herd's beast, a ride) faces the way
-// it walks. Gives the gltf back.
+// it walks. And one from a book whose files aren't in metres (a row with
+// `tall`, `wide` or `long`: the Rick and Morty planets'), brought to that
+// size and stood on y = 0 over its middle, once, as the moons' landings
+// size theirs (landings/models.js's sizeFor). Gives the gltf back.
 export function squared(gltf, kind, models = SURFACE_MODELS) {
+  sized(gltf, models[kind]);
   const turn = models[kind]?.turn;
   const root = gltf?.scene;
   if (!turn || !root || root.userData.squared) return gltf;
@@ -95,6 +100,20 @@ export function squared(gltf, kind, models = SURFACE_MODELS) {
   inner.position.z -= c.z;
   root.userData.squared = true;
   return gltf;
+}
+function sized(gltf, row) {
+  const root = gltf?.scene;
+  if (!root || root.userData.sized || !(row?.tall || row?.wide || row?.long)) return;
+  const inner = new THREE.Group();
+  inner.name = 'sized';
+  for (const c of [...root.children]) inner.add(c);
+  root.add(inner);
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(inner);
+  const k = sizeFor(box.getSize(new THREE.Vector3()), row);
+  inner.scale.setScalar(k);
+  inner.position.set(-((box.min.x + box.max.x) / 2) * k, -box.min.y * k, -((box.min.z + box.max.z) / 2) * k);
+  root.userData.sized = true;
 }
 
 export function loadModel(kind, { models = SURFACE_MODELS, low = false, url = low ? lodUrlFor(kind, models) : modelUrlFor(kind, detailLevel(), models) } = {}) {
