@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TALLY, createTally, readTally } from '../universe/tally';
-import { GCW, NEIGHBOURS, WAR_SYSTEMS, areaBonusOf, pressureOn, areaOf, battleAt, campaignAt, campaignRun, history, opening, pointsKey, readKey, runAt, scoresAt, seeded, supplyOf, warTable, warTables, winKey, worthOf } from './gcw';
+import { GCW, NEIGHBOURS, WAR_SYSTEMS, areaBonusOf, pressureOn, areaOf, battleAt, campaignAt, campaignResult, campaignRun, history, opening, pointsKey, readKey, runAt, scoresAt, seeded, supplyOf, warTable, warTables, winKey, worthOf } from './gcw';
 import { frontPace, lean, orderOver, supplied } from './gcwAI';
 import { AREAS, DOCTRINE, WARS, WAR_IDS } from './sides';
 import { LANES, systemById } from './systems';
@@ -408,6 +408,8 @@ describe('history', () => {
     }
     const s = history('clone', 0, at(0, 70 * H), all);
     expect(s.over).toBe('republic');
+    // (a war won outright is over: its result's final at once)
+    expect(s.result).toEqual({ winner: 'republic', vp: s.vp, decisive: s.result.decisive, over: 'republic', final: true });
     expect(s.step).toBeGreaterThanOrEqual(GCW.phases.at(-1).from);
     for (const id of WAR_SYSTEMS) expect(s.owner[id]).toBe('republic');
     expect(history('clone', 0, at(0, 70 * H), none).over).toBeNull();
@@ -658,6 +660,11 @@ describe('history', () => {
       expect(Object.values(end.result.vp).reduce((t, x) => t + x, 0)).toBe(TOTAL_WORTH);
       expect(end.result.vp[end.result.winner]).toBe(Math.max(...Object.values(end.result.vp)));
       expect(end.result.decisive).toBe(end.decisive);
+      // (but in its last step it's only who's leading: that step's battles and points still count)
+      expect(end.result.final).toBe(false);
+      expect(history(war, 0, at(0, GCW.campaign - GCW.step - 1), none).result).toBeNull();
+      // and once it's over, the campaign's result is the war at its last moment, final
+      expect(campaignResult(war, 0, none)).toEqual({ ...end.result, n: 0, final: true });
     }
   });
   it('the major order is the liberator’s order, at every step', () => {

@@ -75,8 +75,10 @@
 //   step's major), phase ({ index, name, from, until, next }), nextOp ({ by,
 //   at } | null), orders ({ side: { sys, verb, from, until } | null }), eff
 //   ({ sys: %/hour } for this step's battles), cut ([systems out of supply]),
-//   shaken ({ side: until }), decisive, vp, result } (value(key) → the
-//   tally's value for a key);
+//   shaken ({ side: until }), decisive, vp, result ({ winner, vp, decisive,
+//   over, final }: who leads in the last step, final once the war's won
+//   outright) } (value(key) → the tally's value for a key);
+// campaignResult(war, n, value) → a campaign's result once it's over, with n;
 // campaignRun(war, n, value), runAt(run, ms) → history's, worked on from
 // where the run got to (warState.js keeps one, so a second's table is a
 // step's work, not a campaign's);
@@ -488,7 +490,9 @@ function finish(run, s, last) {
     shaken,
     decisive: s.over ? null : s.decisive,
     vp,
-    result: s.over || step === STEPS - 1 ? { winner: s.over ?? winner, vp, decisive: s.decisive, over: s.over } : null,
+    // (in the last step it's who leads: that step's battles and points still count till the end; a war
+    // won outright is over at once)
+    result: s.over || step === STEPS - 1 ? { winner: s.over ?? winner, vp, decisive: s.decisive, over: s.over, final: Boolean(s.over) } : null,
   };
 }
 
@@ -511,6 +515,9 @@ export function runAt(run, ms, keep = true) {
 }
 
 export const history = (war, n, ms, value = () => 0) => runAt(campaignRun(war, n, value), ms, false);
+
+// a campaign's result once it's over: the war at its last moment, with the tally as it stood
+export const campaignResult = (war, n, value = () => 0) => ({ ...history(war, n, GCW.start + (n + 1) * GCW.campaign - 1, value).result, n, final: true });
 
 // a battle's two sides by team, as the battle engine and the set pieces have
 // them: the light side 0, the dark 1, the Hutts in the place of whichever

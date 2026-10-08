@@ -120,7 +120,8 @@ describe('the war’s news', () => {
           expect(line, JSON.stringify(e)).not.toMatch(/undefined|null|NaN/);
           expect(line.startsWith(e.type)).toBe(false);
         }
-        expect(resultLine(t)).toMatch(/^The .+ won campaign \d+ · /);
+        // (the campaign's last moment: its last step's still on, so it's who leads)
+        expect(resultLine(t)).toMatch(/^The .+ leads? campaign \d+ · /);
         expect(phaseLine(t, end)).toMatch(/^Climax · /);
         for (const side of Object.keys(t.strength)) expect(strengthLine(t, side)).toMatch(/system/);
       }
@@ -145,9 +146,14 @@ describe('the war’s news', () => {
     expect(orderLine(null, NOW)).toBeNull();
   });
   it('the campaign’s result: who won on victory points, by how much, and where it was decided', () => {
-    expect(resultLine({ campaign: 6, result: { winner: 'empire', vp: { rebel: 8, empire: 12, hutt: 3 }, decisive: 'coruscant', over: null } })).toBe('The Empire won campaign 7 · 12–8 on victory points · decisive at Coruscant');
-    expect(resultLine({ campaign: 2, result: { winner: 'republic', vp: { republic: 23, separatists: 0, hutt: 0 }, decisive: 'geonosis', over: 'republic' } })).toBe('The Republic won campaign 3 outright: every system theirs · decisive at Geonosis');
+    // (a result's final once the campaign's over; in its last step it's who leads)
+    expect(resultLine({ campaign: 6, result: { winner: 'empire', vp: { rebel: 8, empire: 12, hutt: 3 }, decisive: 'coruscant', over: null, final: true } })).toBe('The Empire won campaign 7 · 12–8 on victory points · decisive at Coruscant');
+    expect(resultLine({ campaign: 6, result: { winner: 'empire', vp: { rebel: 8, empire: 12, hutt: 3 }, decisive: 'coruscant', over: null, final: false } })).toBe('The Empire leads campaign 7 · 12–8 on victory points · decisive at Coruscant');
+    expect(resultLine({ campaign: 6, result: { winner: 'separatists', vp: { republic: 8, separatists: 12, hutt: 3 }, decisive: null, over: null, final: false } })).toBe('The Separatists lead campaign 7 · 12–8 on victory points');
+    expect(resultLine({ campaign: 2, result: { winner: 'republic', vp: { republic: 23, separatists: 0, hutt: 0 }, decisive: 'geonosis', over: 'republic', final: true } })).toBe('The Republic won campaign 3 outright: every system theirs · decisive at Geonosis');
     expect(resultLine({ campaign: 2, result: null })).toBeNull();
+    // and the campaign before's, kept in this browser for the start of the next (warState.js)
+    expect(resultLine({ campaign: 3, result: null, previous: { n: 2, winner: 'rebel', vp: { rebel: 13, empire: 6, hutt: 4 }, decisive: 'coruscant', over: null, final: true } })).toBe('The Rebellion won campaign 3 · 13–6 on victory points · decisive at Coruscant');
   });
 });
 

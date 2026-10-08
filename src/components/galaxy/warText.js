@@ -15,8 +15,8 @@
 // newest few, newest first; strengthLine(table, side) | null; phaseLine(table,
 // now); campaignLine(table, now) → its phase and its end; soon(ms);
 // nextOpLine(table, now) → the next offensive | null; orderLine(order, now) |
-// null; resultLine(table) → the campaign's result | null; partLine(record) →
-// your part in it (warState.js's mine) | null.
+// null; resultLine(table) → the campaign's result (or the last's) | null;
+// partLine(record) → your part in it (warState.js's mine) | null.
 
 import { BATTLE_KINDS } from './battles';
 import { rankOf } from './ranks';
@@ -151,13 +151,17 @@ export function nextOpLine({ nextOp }, now) {
 
 export const orderLine = (order, now) => (order ? `${VERBS[order.verb] ?? order.verb} ${nameOf(order.sys)} · ${span(order.until - now)} left` : null);
 
+// the campaign's result: who leads in its last step, who won once it's over,
+// or the campaign before's at the start of the next (table.previous, kept in
+// this browser: warState.js)
 export function resultLine(table) {
-  const r = table.result;
+  const r = table.result ?? table.previous ?? null;
   if (!r) return null;
+  const n = (table.result ? table.campaign : r.n) + 1;
   const decisive = r.decisive ? ` · decisive at ${nameOf(r.decisive)}` : '';
-  if (r.over) return `${The(r.winner)} won campaign ${table.campaign + 1} outright: every system theirs${decisive}`;
+  if (r.over) return `${The(r.winner)} won campaign ${n} outright: every system theirs${decisive}`;
   const second = Math.max(...Object.entries(r.vp).filter(([side]) => side !== r.winner).map(([, v]) => v));
-  return `${The(r.winner)} won campaign ${table.campaign + 1} · ${r.vp[r.winner]}–${second} on victory points${decisive}`;
+  return `${The(r.winner)} ${r.final ? 'won' : does(r.winner, 'leads', 'lead')} campaign ${n} · ${r.vp[r.winner]}–${second} on victory points${decisive}`;
 }
 
 // your part in the war this campaign: the system you moved most (a share of
