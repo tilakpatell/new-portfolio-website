@@ -3,7 +3,8 @@
 // (hold, strafe, close, back, cover, flank, look, search), with the gates the
 // ground war adds: no shot without a line, none till it faces the target
 // within 25°, a target seen beyond range closed on, aim that misses more at
-// range, across, suppressed and on a burst's first shot, the squad's nerve
+// range, across, suppressed and on a burst's first shot, a mover in sight
+// led (where it'll be when the bolt gets there), the squad's nerve
 // choosing what it may do, and shot tokens per target. With nobody to fight
 // it walks its beat or holds its post. Pure, tested. The design:
 // docs/superpowers/specs/2026-10-08-ground-factions-design.md, section 6.
@@ -19,6 +20,8 @@
 //   confidenceOf(id), isFlanker(id) }; suppress(s, now); grudge(s, squads, now).
 
 import { belief, createSenses, sense } from '../../../../lib/ai/perception';
+import { lead } from '../../../../lib/combat/accuracy';
+import { BOLT_SPEED } from '../../../../lib/combat/bolt';
 import { confidence, createSquads, frontline, flankers as flankersOf, morale, posture } from '../../../../lib/ai/squad';
 import { hostileStep, turnToward, walkTo } from '../hostiles';
 import { weaponOf } from '../weaponRules';
@@ -254,7 +257,10 @@ export function fightStep(s, world, dt, rand = Math.random) {
       suppressive = true;
     }
   } else if (world.tokens && !threat.visible) world.tokens.release('shot', s.id, target);
-  const aim = suppressive ? { x: s.lost.x, z: s.lost.z } : { x: threat.x, z: threat.z };
+  // (a mover in sight is led: where it'll be when the bolt gets there)
+  const v = threat.visible && !suppressive ? velOf(threat.vel) : null;
+  const led = v ? lead([threat.x, 0, threat.z], [v.x, 0, v.z], [out.x, 0, out.z], BOLT_SPEED) : null;
+  const aim = suppressive ? { x: s.lost.x, z: s.lost.z } : led ? { x: led[0], z: led[2] } : { x: threat.x, z: threat.z };
   return { x: out.x, z: out.z, yaw: out.yaw, mode: out.mode, moving: out.moving, aim, fire, suppressive, guessed: !threat.visible, target };
 }
 

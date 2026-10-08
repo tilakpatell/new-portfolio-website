@@ -47,6 +47,16 @@ describe('the fight', () => {
     expect(fired.length).toBeGreaterThan(0);
     for (const o of fired) expect(angleTo(o, foe)).toBeLessThanOrEqual(FACING + 1e-6);
   });
+  test('a mover in sight is led: aimed where it will be when the bolt arrives', () => {
+    const s = mk('stormtrooper', 'empire', 0, 0, 0); // (facing +z)
+    const foe = { id: 'r', x: 0, z: 30, vel: [2.3, 0], side: 'rebel', kind: 'rebel' };
+    const outs = run([s], worldOf([s]), 3, { extra: () => [foe] }).get(s.id);
+    const fired = outs.filter((o) => o.fire);
+    expect(fired.length).toBeGreaterThan(0);
+    // (30 m at 90 m/s: a third of a second, so 0.77 m ahead of it)
+    for (const o of fired) expect(o.aim.x).toBeCloseTo((2.3 * Math.hypot(o.aim.x, 30 - o.z)) / 90, 1);
+    for (const o of fired) expect(o.aim.x).toBeGreaterThan(0.6);
+  });
   test('a wall between: no fire; lost: one burst at the last place, then none', () => {
     const s = mk('stormtrooper', 'empire', 0, 0, 0);
     const foe = { id: 'r', x: 0, z: 20, vel: [0, 0], side: 'rebel', kind: 'rebel' };
