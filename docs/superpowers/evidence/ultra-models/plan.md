@@ -101,7 +101,7 @@ Turned down or not made:
 |---|---|---|---|---|
 | `MESHY_API_KEY` | 1 | 1 | 0 | reading back the plain lanes' lifts and Theed's picture (free) |
 | `MESHY_API_KEY_ACC_2` | 21 | 21 | 0 | reading back the Bespin lane's lifts (free) |
-| `MESHY_API_KEY_ACC_3` | 3,798 at the first request | <!-- acc3-after --> | <!-- acc3-spent --> | 18 models at 35 (nine of the twenty, the four Bespin-tower and wroshyr re-asks, the Lothal temple, Tipoca's dome, the plaza, the Death Star) and 4 lifts at 3 |
+| `MESHY_API_KEY_ACC_3` | 3,798 at the first request | 3,191 | 607 | 17 models at 35 (Theed, the Citadel, the temple, the mining facility, the Senate, the hive, the Lothal temple, Sundari, the two towers twice, Tipoca's dome, the plaza, the wroshyr twice and the Death Star; a failed task is not charged) and 4 lifts at 3 |
 
 The third account read 3,960 when this session first looked and 3,798 when its first request went in; the 162 credits between were consumed by something outside this session.
 
@@ -134,7 +134,34 @@ The third account read 3,960 when this session first looked and 3,798 when its f
 
 `QUALITY=ultra` and `QUALITY=high` runs of `scripts/galaxy-check.mjs surface` on the worlds the kept kinds stand on, one world after another in one headless Chromium on software GL with `WAIT=20000` (an earlier attempt with three checks running at once, beside the judge sheets' browsers, gave frames of six to sixteen seconds and one world captured before it had drawn, and was thrown away). Frame times mean nothing here; the shots, the counts and the model megabytes do. At ultra each kept kind loads its `.ultra.glb` and nothing swaps to its far copy; at high every file is the one it was.
 
-<!-- galaxy-check table -->
+| world | kept kinds on it | level | draw calls | triangles drawn | errors | shot |
+|---|---|---|---|---|---|---|
+| Hoth | `atat` | ultra | 346 | 1,678,744 | none | [hoth-ultra](hoth-ultra.webp) |
+|  |  | high | 345 | 1,678,743 | none | [hoth-high](hoth-high.webp) |
+| Tatooine | `vaporator` | ultra | 76 | 852,996 | none | [tatooine-ultra](tatooine-ultra.webp) |
+|  |  | high | 76 | 819,247 | none | [tatooine-high](tatooine-high.webp) |
+| Naboo | `theed`, `n1fighter` | ultra | 393 | 2,522,116 | none | [naboo-ultra](naboo-ultra.webp) |
+|  |  | high | 393 | 1,186,406 | none | [naboo-high](naboo-high.webp) |
+| Scarif | `citadel` | ultra | 174 | 2,263,979 | none | [scarif-ultra](scarif-ultra.webp) |
+|  |  | high | 177 | 1,661,939 | none | [scarif-high](scarif-high.webp) |
+| Yavin | `massassi` | ultra | 77 | 1,727,484 | none | [yavin-ultra](yavin-ultra.webp) |
+|  |  | high | 78 | 1,727,485 | none | [yavin-high](yavin-high.webp) |
+| Mustafar | `mining` | ultra | 111 | 1,032,088 | none | [mustafar-ultra](mustafar-ultra.webp) |
+|  |  | high | 110 | 1,032,087 | none | [mustafar-high](mustafar-high.webp) |
+| Coruscant | `senate` | ultra | 221 | 1,433,415 | none | [coruscant-ultra](coruscant-ultra.webp) |
+|  |  | high | 221 | 1,433,415 | none | [coruscant-high](coruscant-high.webp) |
+| Geonosis | `geohive` | ultra | 202 | 1,260,214 | none | [geonosis-ultra](geonosis-ultra.webp) |
+|  |  | high | 202 | 1,029,561 | none | [geonosis-high](geonosis-high.webp) |
+| Mandalore | `sundaridome` | ultra | 87 | 918,773 | none | [mandalore-ultra](mandalore-ultra.webp) |
+|  |  | high | 87 | 918,773 | none | [mandalore-high](mandalore-high.webp) |
+| Bespin | `cloudplaza`, `cloudtower`, `cloudtower2` | ultra | 192 | 1,054,521 | none | [bespin-ultra](bespin-ultra.webp) |
+|  |  | high | 194 | 1,054,665 | none | [bespin-high](bespin-high.webp) |
+| Kamino | `tipocadome` | ultra | 164 | 4,909,225 | none | [kamino-ultra](kamino-ultra.webp) |
+|  |  | high | 163 | 1,304,782 | none | [kamino-high](kamino-high.webp) |
+| Kashyyyk | `wroshyrgreat` | ultra | 140 | 2,059,003 | none | [kashyyyk-ultra](kashyyyk-ultra.webp) |
+|  |  | high | 140 | 1,770,567 | none | [kashyyyk-high](kashyyyk-high.webp) |
+
+The counts are of one frame from the landing spot, so they move only where a kept kind is in that frame: Kamino's domes (48 of them, 120k each at ultra against 26k), Naboo's halls and parked N-1s, Scarif's Citadel, Kashyyyk's wroshyrs, Geonosis's hives and Tatooine's vaporators all show at ultra, and the Kamino shot shows the rounded ultra domes where high shows the flared ones. On Hoth, Yavin, Mustafar, Coruscant, Mandalore and Bespin the landmark is out of the first frame (Bespin's pad looks out into the cloud), so the frame draws the same at both levels; there the run shows only that the world loads at ultra with its entry in place and no error. Every one of the twenty-four runs loaded with no page or console error.
 
 ## What was verified, and how
 
