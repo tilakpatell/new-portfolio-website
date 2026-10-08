@@ -64,9 +64,10 @@ import { CAST } from '../rules/cast';
 import { colliderFor } from './fall';
 import { PEOPLE, loadPerson, motionOf } from './figures';
 import { buildGun, disposeGuns } from './guns';
+import { FAR, LIVE, liveCount, lodPick } from '../../../../lib/three/lodPick';
 
-export const LIVE = Object.freeze({ ultra: 24, high: 24, mid: 14, low: 8 });
-export const FAR = 60;
+// (LIVE, FAR, liveCount, lodPick: lib/three/lodPick.js's, shared with the galaxy's ground)
+export { FAR, LIVE, liveCount, lodPick };
 const STEP = 1 / 30; // the game’s step
 const JUMP = 3; // metres between two steps that are a ride or a teleport, not a stride
 const SETTLE = 1.5 * STEP; // seconds unmoved after which a body has stopped, not paused between steps
@@ -92,25 +93,6 @@ const hashOf = (s) => {
   for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   return h >>> 0;
 };
-
-export function liveCount(tier) {
-  return LIVE[tier] ?? LIVE.low;
-}
-
-export function lodPick(items, at, { count = LIVE.low, far = FAR } = {}, out = new Map()) {
-  out.clear();
-  const near = [];
-  for (const p of items) {
-    const d = Math.hypot(p.x - at.x, p.y - at.y, p.z - at.z);
-    if (p.shown === false || !(d <= far)) out.set(p.id, 'hidden');
-    else if (p.settled) out.set(p.id, 'still');
-    else near.push([p.falling ? 0 : 1, d, p.id]);
-  }
-  // a body going down first, nearest first among each: a fall that loses its turn has to be cut short
-  near.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  near.forEach(([, , id], i) => out.set(id, i < count ? 'live' : 'still'));
-  return out;
-}
 
 // what a pose the rules name looks like, from the clip library: at attention, working a console,
 // talking with their hands, sat, kneeling
