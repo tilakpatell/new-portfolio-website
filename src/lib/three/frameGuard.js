@@ -31,7 +31,9 @@
 // is marked changed twice a frame), unless it's been changed into another
 // shader: a look or a scan put on it late (a new onBeforeCompile, a new
 // program key), or a map put on or taken off. Then it's readied again
-// behind the frame, as if new, rather than made again in the middle of one.
+// behind the frame, as if new, rather than made again in the middle of one;
+// as is one that's been freed (dispose(): its shader with it) and is drawn
+// again.
 //
 // The pictures it waits for are a patch's too (gpuWork's picturesIn: a
 // scan's, the look's), not only the material's own.
@@ -122,7 +124,20 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
     if (ok) markLinked(program);
     return ok;
   };
+  // (one freed, its shader with it, is ready no longer: drawn again, it's
+  // readied again behind the frame, as one never drawn is)
+  const watched = new WeakSet();
+  const forget = (e) => {
+    const m = e.target;
+    state.delete(m);
+    shapes.delete(m);
+    pictures.delete(m);
+  };
   const ready = (m) => {
+    if (!watched.has(m) && m.addEventListener) {
+      watched.add(m);
+      m.addEventListener('dispose', forget);
+    }
     state.set(m, READY);
     shapes.set(m, shapeOf(m));
     queue.delete(m);

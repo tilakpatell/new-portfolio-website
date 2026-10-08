@@ -10,7 +10,7 @@
 //   record what happened. A material changed since its program was made
 //   (marked changed, and with another program key or map: a look put on, a
 //   map taken off) is given a new one, mid-draw if it's drawn first, as
-//   three.js does
+//   three.js does; one freed (dispose()) loses its program, as three's does
 
 export function fakeGl({ signalAfter = 2, fences = true } = {}) {
   const gl = {
@@ -53,6 +53,13 @@ export function fakeRenderer({ gl = fakeGl(), linkAfter = 0 } = {}) {
   };
   // (a program for `m` as it is now, unless the one it has still is)
   const stale = (m, p) => !p.currentProgram || (p.version !== m.version && p.key !== keyOf(m));
+  // (freed, it's forgotten: made again from nothing the next time it's drawn)
+  const watched = new WeakSet();
+  const watch = (m) => {
+    if (watched.has(m) || !m.addEventListener) return;
+    watched.add(m);
+    m.addEventListener('dispose', () => props.delete(m));
+  };
   const r = {
     gl,
     compiled: [],
@@ -84,6 +91,7 @@ export function fakeRenderer({ gl = fakeGl(), linkAfter = 0 } = {}) {
           if (!stale(m, p)) continue;
           let left = linkAfter;
           p.currentProgram = { isReady: () => left-- <= 0 };
+          watch(m);
           p.version = m.version;
           p.key = keyOf(m);
           r.info.programs.push(p.currentProgram);
@@ -103,6 +111,7 @@ export function fakeRenderer({ gl = fakeGl(), linkAfter = 0 } = {}) {
       const p = get(material);
       if (scene !== null && stale(material, p)) {
         p.currentProgram = { isReady: () => true };
+        watch(material);
         r.info.programs.push(p.currentProgram);
         r.compiled.push(material);
       }

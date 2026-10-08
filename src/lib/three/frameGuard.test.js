@@ -157,6 +157,22 @@ describe('frameGuard', () => {
     expect(r.compiled).toEqual([m]);
   });
 
+  it('readies a ready material again, behind the frame, once it has been freed and is drawn again (a kit kept for the page)', async () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    await frames(r, scene, 3);
+    expect(r.draws).toEqual([m]);
+    r.compiled.length = 0;
+    m.dispose();
+    await frames(r, scene);
+    expect(r.draws).toEqual([]);
+    expect(r.compiled).toEqual([m]); // made after the frame, not in it
+    await frames(r, scene, 3);
+    expect(r.draws).toEqual([m]);
+    expect(r.compiled).toEqual([m]);
+  });
+
   it("keeps drawing a ready material marked changed in a way its shader doesn't care about", async () => {
     const { r, scene } = setup();
     const m = new THREE.MeshStandardMaterial();
