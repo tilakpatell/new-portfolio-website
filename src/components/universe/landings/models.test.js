@@ -17,6 +17,17 @@ const kit = () => {
   rock.name = 'Rock_1';
   rock.position.set(-30, 4, 0);
   scene.add(rock);
+  // (and a tree as the Quaternius kit has one: its node scaled to half its
+  // height and lifted by as much, a bark mesh and a leaf mesh in it)
+  const oak = new THREE.Group();
+  oak.name = 'CommonTree_1';
+  oak.position.set(20, 2, 0);
+  oak.scale.setScalar(2);
+  const bark = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1).translate(0, -0.5, 0), new THREE.MeshStandardMaterial({ name: 'Bark_NormalTree' }));
+  const leaves = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), new THREE.MeshStandardMaterial({ name: 'Leaves_NormalTree', side: THREE.DoubleSide, alphaTest: 0.2 }));
+  leaves.material.userData.foliage = true;
+  oak.add(bark, leaves);
+  scene.add(oak);
   return scene;
 };
 // (parsed once, as the loader caches it: a fresh copy a use, unless it's a kit's model)
@@ -24,6 +35,7 @@ let cached = null;
 vi.mock('../../../lib/three/gltf', () => ({ loadGltf: async (url, { fresh } = {}) => ({ scene: fresh ? kit() : (cached ??= kit()) }) }));
 
 const { createModels, foliage, pick, sizeFor, tinted } = await import('./models');
+const { canopyLevel } = await import('./canopy');
 
 const bounds = (o) => {
   o.updateMatrixWorld(true);
@@ -123,5 +135,55 @@ describe('a landing’s models', () => {
     const models = createModels();
     const tree = await models.get({ url: '/models/kit.glb', node: 'Tree_1', tall: 1 });
     expect(tree.getObjectByProperty('isMesh', true).material.userData.foliage).toBeUndefined();
+  });
+
+  it('puts a tree’s leaves in the canopy, its bark left as it was, once', async () => {
+    const models = createModels();
+    const tree = await models.get({ url: '/models/kit.glb', node: 'CommonTree_1', tall: 8 });
+    const mesh = (o, name) => {
+      let got = null;
+      o.traverse((x) => (got ??= x.isMesh && x.material.name === name ? x : null));
+      return got;
+    };
+    const leaf = mesh(tree, 'Leaves_NormalTree');
+    const bark = mesh(tree, 'Bark_NormalTree');
+    // (what the canopy reads, baked into the leaves' geometry: how high up
+    // the tree, from its foot to its top, in the node's own units)
+    expect(leaf.geometry.attributes.aCard.itemSize).toBe(4);
+    const h = leaf.geometry.attributes.aCrown;
+    let lo = 1;
+    let hi = 0;
+    for (let i = 0; i < h.count; i++) {
+      lo = Math.min(lo, h.getX(i));
+      hi = Math.max(hi, h.getX(i));
+    }
+    expect(lo).toBeCloseTo(0.5, 2);
+    expect(hi).toBeCloseTo(1, 2);
+    expect(h.getZ(0)).toBe(1);
+    expect(bark.geometry.attributes.aCard).toBeUndefined();
+    expect(bark.geometry.attributes.aCrown).toBeUndefined();
+    // (its shader the canopy's, keyed by the page's level; the bark's three's own)
+    expect(leaf.material.customProgramCacheKey()).toBe(`foliage|canopy:${canopyLevel()}`);
+    expect(bark.material.onBeforeCompile).toBe(THREE.Material.prototype.onBeforeCompile);
+    const sh = { vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader, uniforms: {} };
+    leaf.material.onBeforeCompile(sh);
+    expect(sh.uniforms.uWindNoise.value.isTexture).toBe(true);
+    expect(sh.uniforms.uCanopyK.value.toArray()).toEqual([0.06, 0.004, 14, 1]);
+    expect(sh.vertexShader).toContain('attribute vec4 aCrown;');
+    // (patched once: the frame guard reads a new hook as a new shader)
+    const hook = leaf.material.onBeforeCompile;
+    const again = await models.get({ url: '/models/kit.glb', node: 'CommonTree_1', tall: 5 });
+    expect(mesh(again, 'Leaves_NormalTree').material.onBeforeCompile).toBe(hook);
+    // (its uniforms kept on it out of sight: a copy of its userData doesn't take them)
+    expect(JSON.stringify(leaf.material.userData)).not.toContain('canopy');
+    expect(leaf.material.userData.canopy.uWindNoise.value.isTexture).toBe(true);
+    // (a tinted copy its own patch, and its own K)
+    const gold = mesh(await models.get({ url: '/models/kit.glb', node: 'CommonTree_1', tall: 8, tint: '#e8cf7a' }), 'Leaves_NormalTree');
+    expect(gold.material).not.toBe(leaf.material);
+    expect(gold.material.onBeforeCompile).not.toBe(hook);
+    const gsh = { vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader, uniforms: {} };
+    gold.material.onBeforeCompile(gsh);
+    expect(gsh.uniforms.uCanopyK).not.toBe(sh.uniforms.uCanopyK);
+    expect(gsh.uniforms.uWindTime).toBe(sh.uniforms.uWindTime);
   });
 });

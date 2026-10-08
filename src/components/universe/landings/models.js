@@ -11,10 +11,15 @@
 // (the landing's rock, its dry grass), one tinted copy of each material a
 // tint for the page's life, like the cache's own.
 //
+// Its leaves, flowers and grass move in the landing's wind and light as
+// Bruno's crowns do (./canopy.js): each such material patched once, as it
+// first comes, and each geometry drawn with one baked with what that reads.
+//
 // createModels({ renderer }) → { get(spec) → Promise<Object3D | null> }
 
 import * as THREE from 'three';
 import { loadGltf } from '../../../lib/three/gltf';
+import { bakeCanopy, canopy, canopyK, canopyLevel, canopyShader, crownMaterial, familyOf } from './canopy';
 
 // the scale that brings a model of `size` (a Vector3) to the spec's size
 export function sizeFor(size, { tall, long, wide } = {}) {
@@ -62,6 +67,12 @@ export function tinted(material, tint) {
 // twigs; its alpha is raised by a quarter a mip level it's read at (Ben
 // Golus's fix for alpha-tested foliage), which keeps about the coverage
 // the full-size map has
+//
+// And in the canopy (./canopy.js): the wind, the two tones, the crown that
+// opens round you, with the canopy's uniforms (and its own K) handed to
+// the shader, and the canopy's kept on it out of sight (a copy, tinted,
+// doesn't take them, and is patched on its own), for its noise to be sent
+// with the landing (lib/three/gpuWork's picturesIn)
 const LIT = THREE.ShaderChunk.normal_fragment_begin.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;');
 const KEPT = `#include <map_fragment>
 #ifdef USE_MAP
@@ -73,13 +84,27 @@ const KEPT = `#include <map_fragment>
 }
 #endif`;
 const lit = new WeakSet();
+let told = false;
 export function foliage(material) {
   if (!material?.userData?.foliage || lit.has(material)) return material;
   lit.add(material);
+  const K = { value: new THREE.Vector4(...canopyK(material)) };
+  const shared = canopy().uniforms;
+  const level = canopyLevel();
   material.onBeforeCompile = (shader) => {
+    if (shader.uniforms) Object.assign(shader.uniforms, shared, { uCanopyK: K });
     shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', KEPT).replace('#include <normal_fragment_begin>', LIT);
+    const out = canopyShader(shader, { level });
+    shader.vertexShader = out.vertexShader;
+    shader.fragmentShader = out.fragmentShader;
+    // (another three.js, its lines moved: said once, in development)
+    if (shader.uniforms && !told && import.meta.env?.DEV && !Object.values(out.swapped).every(Boolean)) {
+      told = true;
+      console.warn('canopy: a foliage shader without the lines it looks for', out.swapped);
+    }
   };
-  material.customProgramCacheKey = () => 'foliage';
+  material.customProgramCacheKey = () => `foliage|canopy:${level}`;
+  Object.defineProperty(material.userData, 'canopy', { value: shared, enumerable: false, configurable: true });
   return material;
 }
 
@@ -87,6 +112,7 @@ export function createModels({ renderer = null } = {}) {
   const box = new THREE.Box3();
   const size = new THREE.Vector3();
   const mid = new THREE.Vector3();
+  const v = new THREE.Vector3();
   return {
     async get(spec) {
       // (a kit's model is copied on its own, not the kit with it)
@@ -100,6 +126,15 @@ export function createModels({ renderer = null } = {}) {
       box.setFromObject(inner);
       box.getSize(size);
       box.getCenter(mid);
+      // (each foliage mesh's geometry baked for the canopy, its foot and
+      // top in its own units: the model's, before it's brought to size)
+      inner.traverse((o) => {
+        const ms = !o.isMesh ? [] : Array.isArray(o.material) ? o.material : [o.material];
+        if (!ms.some((m) => m?.userData?.foliage)) return;
+        const foot = o.worldToLocal(v.set(mid.x, box.min.y, mid.z)).y;
+        const top = o.worldToLocal(v.set(mid.x, box.max.y, mid.z)).y;
+        bakeCanopy(o.geometry, { foot, top, family: familyOf(spec.node ?? ''), crown: ms.some(crownMaterial) });
+      });
       const k = sizeFor(size, spec);
       inner.scale.multiplyScalar(k);
       inner.position.set(-mid.x * k, -box.min.y * k + (spec.y ?? 0), -mid.z * k);
