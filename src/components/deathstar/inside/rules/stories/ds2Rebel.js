@@ -200,7 +200,7 @@ const MASK = [
 ];
 
 const ESCAPE = [
-  { id: 'escape', type: 'reach', text: 'He is gone. Get aboard the shuttle before the reactor goes.', target: { spot: 'escape-shuttle' } },
+  { id: 'escape', type: 'reach', text: 'He is gone. Get aboard the shuttle before the reactor goes.', target: { spot: 'escape-board' } },
   {
     id: 'escape-flight',
     type: 'scene',

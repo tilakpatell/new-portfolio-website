@@ -138,6 +138,29 @@ describe('the station with its people aboard', () => {
     expect(Math.abs(wrap(g.you.yaw - (was + 2.4)))).toBeLessThan(0.3);
   });
 
+  it('lets you stand at every spot a story sends you to: none inside the furniture or off the floor', () => {
+    const missing = [];
+    for (const [station, side] of [['ds1', 'rebel'], ['ds1', 'imperial'], ['ds2', 'rebel'], ['ds2', 'imperial']]) {
+      const g = newGame({ station, side, mode: 'story', hero: 'luke', seed: 3 });
+      for (const step of g.plot.story.steps) {
+        const name = step.target?.spot;
+        if (!name || !['reach', 'escort', 'hide'].includes(step.type)) continue;
+        const s = g.layout.station.spots[name];
+        // somewhere a body can stand within the 1.6 m that counts as there (game.js's SPOT)
+        let ok = false;
+        for (let r = 0; r <= 1.4 && !ok; r += 0.2)
+          for (let i = 0; i < 16 && !ok; i++) {
+            const x = s.x + Math.sin((i / 16) * Math.PI * 2) * r;
+            const z = s.z - Math.cos((i / 16) * Math.PI * 2) * r;
+            const clear = !g.solidsOf(s.room).some((o) => (o.box ? x > o.box.x0 - 0.35 && x < o.box.x1 + 0.35 && z > o.box.z0 - 0.35 && z < o.box.z1 + 0.35 : Math.hypot(x - o.circle.x, z - o.circle.z) < o.circle.r + 0.35));
+            ok = clear && g.layout.floorAt(s.room, x, z) !== null;
+          }
+        if (!ok) missing.push(`${station} ${side}: ${step.id} → ${name}`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
   it('lets far-off people sleep where they stand', () => {
     const g = newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 3 });
     const far = g.crew.people.find((p) => p.room === 'firecontrol');

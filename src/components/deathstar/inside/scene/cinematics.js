@@ -18,7 +18,8 @@
 //       (or 'you'), t seconds in; face: a tag to turn to; fall: let go as a ragdoll pushed { x, y, z }
 //       (up the way they face, +y up); gone: out of the scene for good; hide: out of sight, or back
 //     ship: name 'falcon' | 'lambda'; how 'in' (from out past its spot down onto it) | 'out' (off it
-//       and away) | 'down' (from above onto its pad) | 'up' (off its pad and away)
+//       and away) | 'down' (from above onto its pad) | 'up' (off its pad and away); near: the place
+//       whose ship it is, where there are more than one
 //     flash: { t, at: place, ahead?, colour, size }   a flare of light (and, with size, an explosion)
 //     beam: { t0, t1, at: place, from, to, colour, width }   a shaft of light from and to [right, up, back]
 //       in the place's frame, lit from t0 to t1 seconds in, flickering (the superlaser)
@@ -77,6 +78,8 @@ export const SCENES = {
       { s: 5, at: { spot: 'falcon' }, from: [8, 3, -24], to: [6, 2, -28], lift: 4 },
     ],
     ship: { name: 'falcon', how: 'out' },
+    // (you're aboard, and your crew with you)
+    acts: [{ tag: 'you', t: 0, hide: true }, ...['han', 'chewie', 'leia', 'luke', 'threepio', 'artoo'].map((k) => ({ tag: `with:${k}`, t: 0, hide: true }))],
   },
   // Vader's shuttle sets down in the dock
   arrive2: {
@@ -84,7 +87,7 @@ export const SCENES = {
       { s: 4, at: { spot: 'vader-arrive' }, from: [6, 1.5, 6], to: [4, 1.7, 8], look: { spot: 'dock-ramp' }, lift: 4 },
       { s: 4, at: { spot: 'dock-ramp' }, from: [3, 1.6, 4], to: [2, 1.6, 3] },
     ],
-    ship: { name: 'lambda', how: 'down' },
+    ship: { name: 'lambda', how: 'down', near: { spot: 'dock-ramp' } },
     // (aboard while it comes down: out on the ramp once it is down)
     acts: [
       { tag: 'you', t: 0, hide: true },
@@ -140,8 +143,12 @@ export const SCENES = {
   },
   // out of the dock as the station goes up
   escape2: {
-    shots: [{ s: 8, at: { spot: 'shuttle-ramp' }, from: [8, 2, 10], to: [12, 3, 16], look: { spot: 'escape-shuttle' }, lift: 3 }],
-    ship: { name: 'lambda', how: 'up' },
+    // (from the dock's east side by its open mouth, clear of ST 321 on the next pad, as the
+    // shuttle lifts and goes out past)
+    shots: [{ s: 8, at: { spot: 'escape-shuttle' }, from: [-8, 3, -12], to: [-9, 4, -13], lift: 5 }],
+    ship: { name: 'lambda', how: 'up', near: { spot: 'escape-shuttle' } },
+    // (you're aboard)
+    acts: [{ tag: 'you', t: 0, hide: true }],
     flashes: [
       { t: 1, at: { spot: 'dock-ramp' }, colour: 0xffa040, size: 3 },
       { t: 3.2, at: { spot: 'vader-arrive' }, colour: 0xffd090, size: 4 },
@@ -204,10 +211,35 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
   };
 
   // the ship's holder in the scene, and where it stood, to fly it from or to and put back
-  function shipOf(name) {
+  // A camera where the shot puts it, unless that is in a wall, a ship or the furniture: then
+  // pulled in towards what it looks at until it stands in a room and clear of every solid there
+  function clearOf(g, at, look) {
+    for (let k = 0; k <= 0.85; k += 0.05) {
+      const p = { x: lerp(at.x, look.x, k), y: lerp(at.y, look.y, k), z: lerp(at.z, look.z, k) };
+      const room = layout.roomAt(p.x, p.y, p.z);
+      if (!room) continue;
+      const solid = (g.solidsOf?.(room) ?? []).some((o) =>
+        o.box ? p.x > o.box.x0 - 0.3 && p.x < o.box.x1 + 0.3 && p.z > o.box.z0 - 0.3 && p.z < o.box.z1 + 0.3 && p.y > (o.box.y0 ?? -Infinity) - 0.3 && p.y < (o.box.y1 ?? Infinity) + 0.3 : o.circle && Math.hypot(p.x - o.circle.x, p.z - o.circle.z) < o.circle.r + 0.3,
+      );
+      if (!solid) return p;
+    }
+    return at;
+  }
+
+  // the ship by name, the one nearest the scene's own place when there are more than one (two
+  // Lambdas stand in the second station's dock)
+  function shipOf(name, near) {
     let found = null;
+    let best = Infinity;
+    const p = new THREE.Vector3();
     world.traverse((o) => {
-      if (!found && o.name === name) found = o;
+      if (o.name !== name) return;
+      o.getWorldPosition(p);
+      const d = near ? Math.hypot(p.x - near.x, p.z - near.z) : 0;
+      if (d < best) {
+        best = d;
+        found = o;
+      }
     });
     if (!found) return null;
     found.updateMatrixWorld(true);
@@ -248,9 +280,10 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
     o.updateMatrixWorld(true);
   }
 
-  function begin(id) {
+  function begin(id, g) {
     const spec = SCENES[id];
-    playing = spec ? { id, spec, t: 0, done: new Set(), flashes: new Set(), beams: new Map(), ship: spec.ship ? shipOf(spec.ship.name) : null, lit: null } : null;
+    const near = spec?.ship?.near ? where(spec.ship.near, g) : null;
+    playing = spec ? { id, spec, t: 0, done: new Set(), flashes: new Set(), beams: new Map(), ship: spec.ship ? shipOf(spec.ship.name, near) : null, lit: null } : null;
   }
 
   function end(g) {
@@ -386,7 +419,7 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
       const id = g?.scene?.id ?? null;
       if (playing && playing.id !== id) end(g);
       if (!id) return null;
-      if (!playing) begin(id);
+      if (!playing) begin(id, g);
       if (!playing) return null;
       playing.t = g.scene.t ?? playing.t + dt;
       actsAt(g);
@@ -404,10 +437,10 @@ export function createCinematics({ people, layout, show = null, fx = null, scene
       if (!f) return null;
       const e = ease(k);
       const off = shot.from.map((v, i) => lerp(v, shot.to[i], e));
-      Object.assign(pose.pos, offsetIn(f, off));
       const lf = frameOf(where(shot.look ?? shot.at, g)) ?? f;
       const look = shot.lookAhead ? offsetIn(lf, [0, 0, -shot.lookAhead]) : lf;
       Object.assign(pose.look, { x: look.x, y: look.y + (shot.lift ?? EYE), z: look.z });
+      Object.assign(pose.pos, clearOf(g, offsetIn(f, off), pose.look));
       return pose;
     },
     dispose() {
