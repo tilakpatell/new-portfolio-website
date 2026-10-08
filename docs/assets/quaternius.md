@@ -26,6 +26,8 @@ Two imports take models from the packs, each for its own pages:
 
 About ten of the megakit's models are in both. Both scripts find the packs the same way (`QUATERNIUS`, then the asset repo cloned beside this one), and each keeps only its own credits.
 
+Two branches not yet merged bring the megakit to the galaxy's worlds as well (as of 2026-10-08): the galaxy asset upgrade's Phase 4 (`catalog/quaternius.js`, seven `q*` kinds: ferns, clover, red caps, pebbles, grass, a pine and a dead tree, on Naboo, Endor, Kashyyyk, Dagobah, Yavin 4, Sorgan and Lothal) and the kit worlds (`public/kit/`, `kit:<pack>/<Name>` models, whose Phase 6 plans Yavin 4, Dagobah, Naboo and Sorgan). Six of the seven `q*` models are `nk*` kinds already, on the same worlds. Before adding a world's nature, build on the `nk*` rows there (or move them to `kit:` models once the kit is in) rather than adding a second set beside them: two sets double the ground cover and its triangles.
+
 For the galaxy's:
 
 - `src/components/galaxy/surface/catalog/nature.js` is the one table: each kind's pack file, how it moves in the wind, whether it throws a shadow, a triangle cut, its pictures' size, and the colours of the leaves and grass.
