@@ -63,6 +63,13 @@ export function createWingmen(parent, { fleet = createFleet(), solids = [] } = {
       for (const w of shown.keys()) if (!wing.live.includes(w)) give(w); // (a Map can lose the entry it's on)
       for (const w of wing.live) {
         let model = shown.get(w);
+        // one flying its built stand-in takes the model the moment it's here
+        // (an escort's stay is short: it would otherwise be built all through)
+        if (model && !model.model && fleet.loaded(w.kind)) {
+          model.group.removeFromParent();
+          model.dispose();
+          model = null;
+        }
         if (!model) {
           model = take(w.kind);
           shown.set(w, model);

@@ -51,8 +51,9 @@ import { HOME_RADIUS } from './layout';
 import { SOLIDS, pacedAll, PACE } from './ship';
 import { SIDES, sideFor } from './sides';
 
-// size: its biggest dimension in map units (a TIE's height, Birdperson's
-// wingspan, Meeseeks' height); speed: map units a second; crew: how many
+// size: its length in map units, nose to tail (a traveller who isn't a ship
+// is his biggest side: Birdperson's wingspan, Meeseeks' height; shipFit.js);
+// speed: map units a second; crew: how many
 // fly together; weight: how often it comes up; big: high over the map, one
 // at a time; flyby: whether it comes to you; civil: an ordinary ship (a
 // convoy's, or one in distress)
@@ -180,7 +181,7 @@ export function createTraffic(parent, { small = false, fleet = createFleet(), en
     // a built stand-in waiting in the pool gives way once the model is here
     if (fleet.loaded(kind) && pool[kind]?.length && !pool[kind][pool[kind].length - 1].model) for (const m of pool[kind].splice(0)) drop(m);
     const model = pool[kind]?.pop() ?? fleet.make(kind);
-    model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1); // to its biggest dimension
+    model.fit ??= 1 / Math.max(model.size?.x ?? 1, model.size?.y ?? 1, model.size?.z ?? 1); // (the fleet's says how it's fitted, shipFit.js; a model with none, to its biggest dimension)
     // (its engines, once: lit while it's out, nothing while it's in the pool)
     if (engines && !model.engine) model.engine = engines.add(kind, model.group, { size: model.size });
     return model;

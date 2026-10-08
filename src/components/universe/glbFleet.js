@@ -21,14 +21,17 @@
 // over (`stock`), so the first of a kind to fly doesn't stall a frame being
 // built.
 //
-// createFleet({ prepare(object) → Promise, build(kind) → model, glb }) → { want(kinds), loaded(kind), has(kind), make(kind) → model, stock(kind, model), stocked(kind) → how many, prepare (settable), dispose() }
-// A model is { group, size (its box, its biggest side 1), model (true for a
-// copy of a loaded one), update(t), dispose() }, nose along +z, as
-// buildTraffic's are.
+// createFleet({ prepare(object) → Promise, build(kind) → model, glb, load }) → { want(kinds), loaded(kind), has(kind), make(kind) → model, stock(kind, model), stocked(kind) → how many, prepare (settable), dispose() }
+// A model is { group, size (its box, 1 long in z as buildTraffic's are),
+// fit (what to scale it by, times the size it flies at: 1 for a ship, whose
+// size is its length, or what makes its biggest side 1 for a station, a ship
+// that flies upright or a traveller who isn't a ship: shipFit.js), model
+// (true for a copy of a loaded one), update(t), dispose() }, nose along +z.
 
 import * as THREE from 'three';
 import { cloneScene, loadGLTF } from '../../lib/three/gltfCache';
 import { gen3dUrl } from '../../lib/three/gen3d';
+import { fitScale } from './shipFit';
 import { buildTraffic } from './trafficModels';
 
 // which way each one's nose points as it comes (turned to +z), and whether
@@ -47,14 +50,21 @@ export const GLB = {
 };
 
 // (`build` makes a built one: the universe's own, unless another fleet's
-// builder is given, as the galaxy gives its own, galaxy/fleet.js; and `glb`
-// is which are models, GLB's unless another fleet has more, as the galaxy's
-// hunters are, galaxy/models.js)
-export function createFleet({ prepare = null, build = buildTraffic, glb = GLB } = {}) {
+// builder is given, as the galaxy gives its own, galaxy/fleet.js; `glb` is
+// which are models, GLB's unless another fleet has more, as the galaxy's
+// hunters are, galaxy/models.js; and `load` is the page's one parse of a
+// file, gltfCache.js, unless a test hands in its own)
+export function createFleet({ prepare = null, build = buildTraffic, glb = GLB, load = loadGLTF } = {}) {
   const templates = {};
   const stocked = {}; // kind → built ones made ahead, handed out first
   const loading = new Set();
   let dead = false;
+  // (every model handed out says how it's fitted to its size, so whatever flies
+  // it scales a ship by its length and the rest by their biggest side)
+  const fitted = (kind, m) => {
+    m.fit ??= fitScale(kind, m.size ?? { x: 1, y: 1, z: 1 });
+    return m;
+  };
   return {
     // start loading these (the ones that are models), if they aren't yet
     want(list) {
@@ -64,11 +74,12 @@ export function createFleet({ prepare = null, build = buildTraffic, glb = GLB } 
         loading.add(kind);
         // (the parse is the page's, shared with the galaxy's own models and the planets'
         // models; the roughness clamp and the rest are done on this fleet's copy of it)
-        loadGLTF(def.url)
+        load(def.url)
           .then((gltf) => {
             if (dead || !gltf) return;
             const root = cloneScene(gltf);
-            // centred, nose to +z, its biggest side 1 long
+            // centred, nose to +z, 1 long nose to tail (or 1 at its biggest
+            // side, for the kinds shipFit.js fits that way)
             const turn = new THREE.Group();
             turn.rotation.y = def.nose;
             turn.add(root);
@@ -77,7 +88,8 @@ export function createFleet({ prepare = null, build = buildTraffic, glb = GLB } 
             const holder = new THREE.Group();
             holder.add(turn);
             const size = box.getSize(new THREE.Vector3());
-            holder.scale.setScalar(1 / Math.max(size.x, size.y, size.z));
+            const k = fitScale(kind, size);
+            holder.scale.setScalar(k);
             root.traverse((o) => {
               if (!o.isMesh || !o.material) return;
               const m = o.material;
@@ -90,7 +102,7 @@ export function createFleet({ prepare = null, build = buildTraffic, glb = GLB } 
             });
             const ready = () => {
               if (dead) return;
-              templates[kind] = { holder, size: size.divideScalar(Math.max(size.x, size.y, size.z)) };
+              templates[kind] = { holder, size: size.multiplyScalar(k) };
               // (the model's here: built stand-ins made ahead won't be wanted)
               for (const m of stocked[kind]?.splice(0) ?? []) m.dispose();
             };
@@ -110,7 +122,7 @@ export function createFleet({ prepare = null, build = buildTraffic, glb = GLB } 
         const group = new THREE.Group();
         group.add(t.holder.clone());
         made = { group, size: t.size.clone(), model: true, update() {}, dispose() {} }; // shares its template's geometry and textures
-      } else if (stocked[kind]?.length) return stocked[kind].pop(); // (made ahead, its shaders with it)
+      } else if (stocked[kind]?.length) return fitted(kind, stocked[kind].pop()); // (made ahead, its shaders with it)
       else made = build(kind);
       // out of sight until its shaders are made
       const inner = made.group.children[0];
@@ -120,7 +132,7 @@ export function createFleet({ prepare = null, build = buildTraffic, glb = GLB } 
           inner.visible = true;
         });
       }
-      return made;
+      return fitted(kind, made);
     },
     // a built one made ahead, its shaders made too: the next make(kind) has it
     stock(kind, model) {

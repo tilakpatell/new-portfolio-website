@@ -1007,9 +1007,10 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
-  "meshy/slave-i": {
+  "meshy/slave1": {
     "source": "https://www.meshy.ai",
-    "name": "Slave I, Boba Fett's ship, made for this site with Meshy AI",
+    "id": "01a11b86-adb6-7282-a4f8-45e35850fd18",
+    "name": "Slave I, Boba Fett's ship, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it, over the universe map’s first Meshy one)",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
@@ -3603,6 +3604,51 @@
     "source": "https://www.meshy.ai",
     "id": "01a114e3-ebea-759d-b552-ef35bd93abe3",
     "name": "the Zeta shuttle, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/interdictor": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-91bd-771d-b2c8-4c3078271d9b",
+    "name": "the Interdictor cruiser, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/corvette": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-9697-75f7-9012-e308f6ed4607",
+    "name": "the CR90 corvette the galaxy flies (the universe map keeps cr90.glb, credited apart), generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/interceptor": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-9c13-775c-a2c4-dc7364838732",
+    "name": "the TIE interceptor the galaxy flies (the universe map keeps its own), generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s picture of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/munificent": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-a10e-76f5-a1fc-0efbd38cd7eb",
+    "name": "the Munificent frigate, generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it)",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "meshy/providence": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11b86-a7ce-72c7-9567-3e3fc5de8aad",
+    "name": "the Providence dreadnought (the Invisible Hand), generated for this site with Meshy AI (scripts/meshy-galaxy-library.mjs, from Wookieepedia’s pictures of it)",
     "authors": [
       "Tilak Patel, with Meshy AI"
     ],
