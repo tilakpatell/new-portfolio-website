@@ -120,6 +120,8 @@ async function open(viewport, { mobile = false } = {}) {
   await page.waitForFunction(() => window.__universeDebug?.state?.model, null, { timeout: 300000, polling: 250 });
   await page.waitForTimeout(1500);
   await page.locator('canvas').first().click({ position: { x: 5, y: 5 }, force: true }).catch(() => {});
+  // (H opens it only while its door, the corner button, is on screen)
+  await page.locator('.universe-hangar-btn').waitFor({ timeout: 60000 });
   await page.keyboard.press('h');
   const yard = page.getByRole('dialog', { name: 'Shipyard' });
   await yard.waitFor({ timeout: 60000 });
