@@ -240,6 +240,10 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
     const s = systemById(id);
     if (s && here && (!onView(mv.view, s.pos) || !onView(mv.view, here.pos))) mv.frame([s.pos, here.pos]);
   };
+  // Tab to a system that's off the view brings it into view (a click on one never does: it's already there)
+  const reveal = (sys, e) => {
+    if (e.currentTarget.matches(':focus-visible') && !onView(mv.view, sys.pos)) mv.frame([sys.pos]);
+  };
   // pick a system to plot a course to it, then again to jump; the one you're
   // at shows its own card (no course to plot), and again the war's
   const choose = (id) => {
@@ -351,7 +355,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                   const you = row && fought.has(s.id);
                   return (
                   <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, ...ring }} data-dim={!lit(s) || undefined} data-side={NAME_LEFT.has(s.id) ? 'left' : undefined} data-badge={row ? badges[s.id] : undefined} data-held={row?.owner} data-front={(by && !row.attack) || undefined} data-attack={row?.attack ? '' : undefined} data-major={row?.major || undefined} data-decisive={row?.decisive || undefined} data-cut={row?.cut || undefined} data-fought={you || undefined}>
-                    <button type="button" className="holomap-system" aria-pressed={pick === s.id} aria-current={s.id === current ? 'location' : undefined} onClick={() => choose(s.id)} onDoubleClick={() => s.id !== current && onJump(s.id)} aria-label={row ? systemLabel(row, now, you) : undefined}>
+                    <button type="button" className="holomap-system" aria-pressed={pick === s.id} aria-current={s.id === current ? 'location' : undefined} onFocus={(e) => reveal(s, e)} onClick={() => choose(s.id)} onDoubleClick={() => s.id !== current && onJump(s.id)} aria-label={row ? systemLabel(row, now, you) : undefined}>
                       <span className="holomap-dot" aria-hidden="true">
                         {you && <i className="holomap-you" />}
                       </span>

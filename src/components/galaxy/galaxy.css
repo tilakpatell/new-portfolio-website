@@ -306,6 +306,8 @@
   aspect-ratio: 1;
   border-radius: 12px;
   overflow: hidden;
+  overflow: clip; /* (not hidden: a hidden box can be scrolled, by focus, and the zoomed stage would carry its overlays off with it) */
+  user-select: none; /* (a drag pans; it doesn't select the names and the grid's letters) */
 }
 @supports not (width: 1cqh) {
   .holomap-map { width: min(100%, 64vh); }

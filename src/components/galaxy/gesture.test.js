@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGesture } from './gesture';
+import { DRAG, createGesture } from './gesture';
 
 const R = { left: 0, top: 0, width: 600, height: 600 };
 
@@ -45,6 +45,39 @@ describe('gesture', () => {
     expect(m.pan[0]).toBeCloseTo(31 / 600);
     g.up(1);
     expect(g.takeClick()).toBe(true);
+  });
+  it('a move of exactly DRAG px is a pan; a hair less is still a click', () => {
+    const g = createGesture();
+    g.down(1, 300, 300, R);
+    expect(g.move(1, 300 + DRAG - 0.1, 300, R)).toBeNull();
+    const m = g.move(1, 300 + DRAG, 300, R);
+    expect(m.pan[0]).toBeCloseTo(DRAG / 600);
+    const h = createGesture();
+    h.down(1, 300, 300, R);
+    expect(h.move(1, 300, 300 + DRAG, R).pan[1]).toBeCloseTo(DRAG / 600); // (exactly DRAG, straight down)
+  });
+  it('three fingers: when one lifts, the two left pinch from where they are, not from the old pair', () => {
+    const g = createGesture();
+    g.down(1, 200, 300, R);
+    g.down(2, 400, 300, R);
+    g.down(3, 300, 100, R);
+    expect(g.move(3, 310, 100, R)).toBeNull(); // (three down: nothing to do yet, and no pan from the first press)
+    g.up(1);
+    const m = g.move(2, 410, 300, R);
+    expect(m.zoom).toBeCloseTo(Math.hypot(410 - 310, 300 - 100) / Math.hypot(400 - 310, 300 - 100));
+    expect(m.u).toBeCloseTo((400 + 310) / 2 / 600); // (about the middle of the two left)
+    expect(m.w).toBeCloseTo((300 + 100) / 2 / 600);
+    g.up(2);
+    g.up(3);
+    expect(g.takeClick()).toBe(true);
+  });
+  it('a pointer it never saw going up changes nothing', () => {
+    const g = createGesture();
+    g.down(1, 300, 300, R);
+    g.move(1, 340, 300, R); // (dragging)
+    g.up(9);
+    const m = g.move(1, 350, 300, R);
+    expect(m.pan[0]).toBeCloseTo(10 / 600);
   });
   it('a cancelled press forgets itself', () => {
     const g = createGesture();
