@@ -49,7 +49,7 @@ Follow the spec over the plan, the code over both. Fix the plan's line in your P
 | Phase | Branch | Merged |
 |---|---|---|
 | design | `claude/rm-worlds-design` | this PR |
-| 0: the engine's seams, Gazorpazorp bare | `claude/rm-worlds-p0` | PR #PR0 |
+| 0: the engine's seams, Gazorpazorp bare | `claude/rm-worlds-p0` | #676 |
 
 ## Left
 
