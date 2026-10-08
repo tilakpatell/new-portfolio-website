@@ -76,6 +76,9 @@ const VERT = /* glsl */ `
   varying float vFocus;
   void main() {
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    // (never cut by the far plane: on foot it's at the landing's sky,
+    // footScene's far(), which the stars are well past)
+    gl_Position.z = min(gl_Position.z, gl_Position.w * 0.999999);
     float pulse = 1.0 + aFocus * (0.45 + 0.2 * sin(uTime * 6.0));
     gl_PointSize = aSize * uDpr * pulse;
     vColor = aColor;

@@ -128,6 +128,9 @@ void main() {
   float extent = uFar * tan(aSize * 0.5);
   mv.xy += position.xy * extent;
   gl_Position = aK > 0.0 ? projectionMatrix * mv : vec4(2.0, 2.0, 2.0, 1.0);
+  // (never cut by the far plane: on foot it's at the landing's sky,
+  // footScene's far(), which the landmarks are well past)
+  if (aK > 0.0) gl_Position.z = min(gl_Position.z, gl_Position.w * 0.999999);
 }`;
 
 const FRAG = /* glsl */ `

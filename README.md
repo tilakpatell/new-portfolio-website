@@ -179,20 +179,15 @@ The places are a long way apart, and it feels it, the way the Star Wars galaxy d
 | `V` | Switch between the chase camera and the cockpit view |
 | `O` | Flight settings (steering, aim assist, lock tracking, inverted pitch and more) |
 | `H` | The hangar: paint and parts for the ship you're flying |
-| `G` | On foot: through a door, or back into the ship (to land, fly down into a planet's air) |
 | `M` | The nav map: everywhere on one chart. Pick a place and a drive (hyperspeed, a jump; super speed, 3× the pulse drive; or cruise), with the trip time for each. The galaxy's star systems are on it too (the ship flies to the gate and on through), every place has a link that opens the map right there, and Tour takes you round everything in turn |
 | `J` | Jump to the star your nose is on (its name shows with J), or else the place picked: the ship comes round onto it and goes. Each crew goes its own way: the X-wing and the Falcon to lightspeed, Rick's cruiser through a portal, Walt and Jesse's RV crystallising into Blue Sky and shattering out of it at the other end |
 
-To land on a planet, fly down into its air: the glow round it. Come in at a normal speed and you're taken in, the way the galaxy's worlds come down: the hull burning as it hits the air, the planet's own sky coming up round you, through the clouds, and out over the planet's landing, where the ship sets down and the crew step out. Come in boosting and there's no landing: it's a crash, and the crash takes you into the planet's world as it always has.
-
-On foot, `W` `A` `S` `D` walk, `Shift` runs, `Space` jumps, `F` or a click fires, `X` switches to the other one of your crew and `V` looks out of their eyes.
+To go into a planet's world, fly down into its air: the glow round it. Come in at a normal speed and you're straight into the world itself (fly down into Bird World and you're with Birdperson), with no landing pad on the way. Come in boosting and it's a crash, and the crash takes you into the planet's world as it always has.
 
 </details>
 
 <details>
-<summary><b>Landing, the hangar and the shipyard</b></summary>
-
-Every planet is its own place down there, under its own sky: Middle-earth's is the Shire on the day of the party, Breaking Bad's the desert where the RV cooks, Rick and Morty's the Smiths' street with a portal open on the lawn, Cybertron's plating under Kaon's towers, the Avengers compound with the Quinjet on its pad, the lot out back of Dunder Mifflin, Dot Matrix in four greens with a cartridge for each project, a sandstone courtyard at dusk for the music, an airfield on Earth with a signpost to every place I've been, a Caribbean beach with the Black Pearl at anchor, and the Graysons' city round Omni-Man's crater. People stand about and have a line for you when you come up to them (Gandalf, Saul, Jerry, Dwight, Thor, Jack…), and every landing has a door: walk up to it (Bag End's, the RV, the portal, the Game Boy, the plane…) and `G` takes you into that world's page. The Galactic Federation's squads come over the horizon now and then. On the Death Star you come down beside its trench, on hull plating with blocks and towers standing on it, and can walk up to the rim and look down into the trench run.
+<summary><b>The hangar and the shipyard</b></summary>
 
 The hangar fits each ship out its own way, like a space sim's outfitting screen, and remembers it. Paint jobs are the site's own colour schemes: the six companies' come with the Cartographer achievement, and each fan scheme's with the easter egg that unlocks it. Parts bolt on and change how it flies and fights: strap-on boosters (solid rockets, an afterburner, repulsor pods, portal-fluid tanks), thrusters, twin or fusion guns, plating or fast-charge shields, and fins. Each draws power from the ship's plant and adds mass, so you can't fit the best of everything; the best parts are earned with achievements in the worlds. Other pilots see your paint and parts. The X-wing and the Falcon you fly are other people's models from Sketchfab (CC BY, credited on the map and in [CREDITS.md](CREDITS.md)), brought to web size by `scripts/sketchfab-batch.mjs`; while they load, versions modelled in code (`universe/hulls.js`) stand in.
 
@@ -203,7 +198,7 @@ The hangar's first tab is the shipyard: fly the crew's own ship, or a garage bui
 <details>
 <summary><b>Other pilots, and what happens out there</b></summary>
 
-Other pilots on the site at the same time show up in your sky. You can fly with them, fight hunters together, or shoot each other down. Land on a planet where someone's already down and you come down beside them, and your crews walk about together. Two of the same person (two Ricks, two Walts) meet as that person from another dimension. Off the map, in Middle-earth's towns and on its map, at Avengers HQ, in Albuquerque, on Dot Matrix island, in Dunder Mifflin's office, in the Smiths' street, on the Citadel's concourse and in the music courtyard, everyone else online shows up as a pale ghost from another world (a Frodo, a Spider-Man hologram, a Walt's Aztek, a Jim from another branch, a Morty or a Rick from another dimension, or in the courtyard a floating lamp) with their name over them; nothing passes between you but where each of you is.
+Other pilots on the site at the same time show up in your sky. You can fly with them, fight hunters together, or shoot each other down. Off the map, in Middle-earth's towns and on its map, at Avengers HQ, in Albuquerque, on Dot Matrix island, in Dunder Mifflin's office, in the Smiths' street, on the Citadel's concourse and in the music courtyard, everyone else online shows up as a pale ghost from another world (a Frodo, a Spider-Man hologram, a Walt's Aztek, a Jim from another branch, a Morty or a Rick from another dimension, or in the courtyard a floating lamp) with their name over them; nothing passes between you but where each of you is.
 
 The map is big: the planets are a hundred and more ship-lengths across, the fandoms far out in deep space, and between them the wonders: a ringed gas giant, an ice giant, two other suns with worlds of their own, a black hole, two nebulae, a pulsar, a binary star, a rogue planet with no sun and a wreck field round a white dwarf, with a rim of ice right round the edge of the map. Beside the Rick and Morty planet hangs a green portal: fly into it (or pick anywhere past it on the nav map, and the autopilot takes it on the way) and you come out in the Rick and Morty sector, a stretch of space of its own far past the rim, with the Citadel of Ricks at its heart, ten worlds from the show spread far apart round it (land on one and you're straight into it on foot as Morty; its own portal brings you back out to space), a green-tinged sun of its own, the Federation and the Gromflomites as its traffic and its hunters whoever you fly, and the Central Finite Curve glowing all the way round its edge. The Citadel's own portal takes you home.
 
@@ -349,7 +344,7 @@ Each planet on the map that has a world gets a page of its own, with its own art
 
 ## Credits
 
-This site stands on a lot of other people's work, and I'm grateful for all of it. **[CREDITS.md](CREDITS.md) lists every one**: <!-- counts:start -->262 3D models by 139 artists, 136 free scans, skies and kit pieces, 61 photos and 12 open fonts<!-- counts:end -->, each with its author, licence and where it's used. Each is credited on the page that uses it too.
+This site stands on a lot of other people's work, and I'm grateful for all of it. **[CREDITS.md](CREDITS.md) lists every one**: <!-- counts:start -->262 3D models by 139 artists, 170 free scans, skies and kit pieces, 61 photos and 12 open fonts<!-- counts:end -->, each with its author, licence and where it's used. Each is credited on the page that uses it too.
 
 **Thank you to the 3D artists** whose Sketchfab models fly, walk and stand about in the worlds:
 

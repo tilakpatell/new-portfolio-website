@@ -1,6 +1,8 @@
 // Makes proper models, with Meshy (meshy.ai, the site owner’s account), for
-// the three people aboard the Death Star’s interior
-// (src/components/deathstar/inside) who are still built or dressed in code:
+// the people aboard the Death Star’s interior
+// (src/components/deathstar/inside) who are built or dressed in code, or
+// borrowed from the wrong film (Obi-Wan, made as the first film’s old Ben
+// and rigged from jedi3 by scripts/rig-transfer.mjs, is in):
 // the Death Star trooper (today the officer’s model tinted black under a
 // helmet built in code; the gunner is the same man), the IT-O interrogation
 // droid and the trash compactor’s dianoga (both built in code from spheres,
@@ -34,9 +36,12 @@
 // images and thumbnails go to lab/meshy/deathstar (or
 // MESHY_REVIEW), for looking at, not shipped.
 //
-//   ASSETS[name] → { url, height, poly, tex, rigged, prompt }
+//   ASSETS[name] → { url, height, poly, tex, rigged, prompt, image?, model?, donor? }
 //     url: the URL the interior loads, under public/; height: metres (the rig’s, or the prop’s size);
-//     poly: target triangles; tex: texture size on the site; rigged: on Meshy’s humanoid skeleton
+//     poly: target triangles; tex: texture size on the site; rigged: on Meshy’s humanoid skeleton;
+//     image, model: the text-to-image and image-to-3D engines, when not the best (and dearest) ones;
+//     donor: a rigged crew model whose skeleton and skin weights scripts/rig-transfer.mjs moves onto
+//     this one once it is fetched, in place of Meshy’s rig (old Ben, as jedi3 is an old robed man)
 //   PRICE → { images, models, rig }   credits each step costs an asset
 //   costOf(names, tasks = {}, steps = every paid step) → credits   pure: what those steps still cost
 //     those names, given the tasks file’s ids (a step with a recorded id costs nothing); throws for an
@@ -79,6 +84,13 @@ const PROP =
   'A realistic 3D film prop for a film-quality video game: true-to-life materials, finely detailed and a little worn, no cartoon styling. The whole thing in frame, seen from the front, centred, its front facing the viewer. One only. Plain neutral grey background, no text, no logos, no shadow, no ground.';
 
 export const PRICE = Object.freeze({ images: 9, models: 30, rig: 5 });
+// What the cheaper engines cost a step, for an asset that names one (old Ben
+// was made when the account had 21 credits): Meshy's own price list
+const ENGINE_PRICE = Object.freeze({ 'nano-banana': 3, 'nano-banana-2': 6, 'nano-banana-pro': 9, 'meshy-6-lite': 15, latest: 30 });
+const IMAGE = 'nano-banana-pro';
+const MODEL = 'latest';
+// what one paid step costs one asset, by the engine it names
+const priceOf = (a, step) => (step === 'images' ? ENGINE_PRICE[a.image ?? IMAGE] : step === 'models' ? ENGINE_PRICE[a.model ?? MODEL] : PRICE[step]);
 const PAID = Object.keys(PRICE);
 // the tasks file’s field that holds each paid step’s id
 const FIELD = { images: 'image', models: 'model', rig: 'rig' };
@@ -93,6 +105,22 @@ export const ASSETS = {
     rigged: true,
     prompt:
       'A man in a plain black military uniform: a black high-collared tunic and matching black trousers, a wide black belt with a small plain silver buckle plate, black knee-high boots and black gloves. On his head a glossy black dome helmet covering the top, sides and back of the head, its rim flaring out wide at the back and sides, with a dark visor band across the eyes and the lower face showing beneath it. No insignia.',
+  },
+  // Obi-Wan as the first film has him: an old hermit in a homespun tunic
+  // and a long brown cloak, white-haired and white-bearded. Made on the
+  // cheaper engines (the account was down to 21 credits) and rigged from
+  // jedi3, the crew's old robed man, so he plays every shared clip.
+  obiwan: {
+    url: '/models/deathstar/obiwan.glb',
+    height: 1.78,
+    poly: 20000,
+    tex: 2048,
+    rigged: false,
+    donor: '/models/galaxy/crew/jedi3.glb',
+    image: 'nano-banana',
+    model: 'meshy-6-lite',
+    prompt:
+      'An elderly hermit in his late sixties with a kind, weathered, deeply lined face, bright pale eyes, short swept-back white hair and a short neat white beard and moustache. He wears a layered off-white wrapped cross-over tunic of rough homespun cloth with a wide cream sash at the waist, loose off-white trousers tucked into worn brown leather knee boots, a narrow brown leather belt with two small pouches, and over it all a long coarse heavy dark brown cloak, worn open, its hood down and draped back on his shoulders, its long wide sleeves ending at the wrists so the hands are bare.',
   },
   // (as tall as CAST.ito.tall: buildProp sizes a prop by that either way)
   ito: {
@@ -131,7 +159,7 @@ function owing(name, tasks, steps) {
 
 export function costOf(names, tasks = {}, steps = PAID) {
   let credits = 0;
-  for (const n of names) for (const step of owing(n, tasks, steps)) credits += PRICE[step];
+  for (const n of names) for (const step of owing(n, tasks, steps)) credits += priceOf(ASSETS[n], step);
   return credits;
 }
 
@@ -239,6 +267,13 @@ export async function squeeze(from, to, a) {
   return { tris: triangles(root), hips: root.listNodes().some((n) => n.getName() === 'Hips') };
 }
 
+// A figure Meshy made but didn't rig, rigged on its donor's skeleton
+async function rigged(from, to, a) {
+  const { rigFrom } = await import('./rig-transfer.mjs');
+  const r = await rigFrom(join(PUBLIC, a.donor), from, to, { tex: a.tex });
+  return { tris: r.tris, hips: true };
+}
+
 // ── the steps ──
 
 const steps = {
@@ -248,7 +283,7 @@ const steps = {
       s[n] ??= {};
       if (!s[n].image) {
         const a = ASSETS[n];
-        const { result } = await api('POST', '/v1/text-to-image', { ai_model: 'nano-banana-pro', prompt: `${a.prompt} ${a.rigged ? PERSON : PROP}`, ...(a.rigged ? { pose_mode: 'a-pose' } : {}) });
+        const { result } = await api('POST', '/v1/text-to-image', { ai_model: a.image ?? IMAGE, prompt: `${a.prompt} ${a.rigged || a.donor ? PERSON : PROP}`, ...(a.rigged || a.donor ? { pose_mode: 'a-pose' } : {}) });
         s[n].image = result;
         await save(s);
       }
@@ -267,14 +302,14 @@ const steps = {
         const a = ASSETS[n];
         const { result } = await api('POST', '/v1/image-to-3d', {
           input_task_id: s[n].image,
-          ai_model: 'latest',
+          ai_model: a.model ?? MODEL,
           should_texture: true,
           enable_pbr: false,
           should_remesh: true,
           topology: 'triangle',
           target_polycount: a.poly,
           texture_resolution: '2k',
-          ...(a.rigged ? { pose_mode: 'a-pose' } : {}),
+          ...(a.rigged || a.donor ? { pose_mode: 'a-pose' } : {}),
           target_formats: ['glb'],
           enable_thumbnail: true,
         });
@@ -326,7 +361,9 @@ const steps = {
       const raw = join(tmp, `${n}.glb`);
       const out = join(PUBLIC, a.url);
       await download(url, raw);
-      const { tris, hips } = await squeeze(raw, out, a);
+      // (a figure with a donor keeps Meshy's file as it came, for scripts/rig-transfer.mjs to rig)
+      if (a.donor) await writeFile(join(REVIEW, `${n}-raw.glb`), await readFile(raw));
+      const { tris, hips } = a.donor ? await rigged(raw, out, a) : await squeeze(raw, out, a);
       // (without Meshy’s `Hips` the interior would take him for a prop and play him no clips)
       if (a.rigged && !hips) throw new Error(`${n}: no Hips bone`);
       credits[`deathstar/${n}`] = { source: 'https://www.meshy.ai', id: s[n].model, name: `${n}, generated for this site with Meshy AI`, authors: ['Tilak Patel, with Meshy AI'], license: 'Meshy paid-plan output, owned by the site owner' };
@@ -342,7 +379,7 @@ async function cost(names, s) {
   for (const n of names) {
     const left = owing(n, s, PAID);
     const sum = costOf([n], s);
-    console.log(`cost     ${n.padEnd(10)} ${sum} credits${left.length ? `: ${left.map((step) => `${step} ${PRICE[step]}`).join(', ')}` : ', all made'}`);
+    console.log(`cost     ${n.padEnd(10)} ${sum} credits${left.length ? `: ${left.map((step) => `${step} ${priceOf(ASSETS[n], step)}`).join(', ')}` : ', all made'}`);
   }
   const need = costOf(names, s);
   const have = await balance();

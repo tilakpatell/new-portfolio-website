@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { guard } from './frameGuard';
 import { markLinked } from './gpuWork';
 import { fakeGl, fakeRenderer, now } from './gpuFake.fixture';
+import { wear } from './core';
 
 const picture = () => {
   const t = new THREE.Texture({ width: 64, height: 64 });
@@ -119,6 +120,99 @@ describe('frameGuard', () => {
       await frames(r, scene);
       expect(r.draws).toEqual([m]);
     }
+  });
+
+  it('readies a ready material again, behind the frame, when it changes into another shader (a look put on late)', async () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    await frames(r, scene, 3);
+    expect(r.draws).toEqual([m]);
+    r.compiled.length = 0;
+    // (as lib/three/house's adopt does it)
+    m.onBeforeCompile = () => {};
+    m.customProgramCacheKey = () => '|house';
+    m.needsUpdate = true;
+    await frames(r, scene);
+    expect(r.draws).toEqual([]);
+    expect(r.compiled).toEqual([m]); // made after the frame, not in it
+    await frames(r, scene, 3);
+    expect(r.draws).toEqual([m]);
+    expect(r.compiled).toEqual([m]);
+  });
+
+  it('readies a ready material again when a map is taken off it (a scan worn instead)', async () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshStandardMaterial({ map: picture() });
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    await frames(r, scene, 4);
+    expect(r.draws).toEqual([m]);
+    r.compiled.length = 0;
+    m.map = null;
+    m.needsUpdate = true;
+    await frames(r, scene);
+    expect(r.draws).toEqual([]);
+    await frames(r, scene, 3);
+    expect(r.draws).toEqual([m]);
+    expect(r.compiled).toEqual([m]);
+  });
+
+  it('readies a ready material again, behind the frame, once it has been freed and is drawn again (a kit kept for the page)', async () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    await frames(r, scene, 3);
+    expect(r.draws).toEqual([m]);
+    r.compiled.length = 0;
+    m.dispose();
+    await frames(r, scene);
+    expect(r.draws).toEqual([]);
+    expect(r.compiled).toEqual([m]); // made after the frame, not in it
+    await frames(r, scene, 3);
+    expect(r.draws).toEqual([m]);
+    expect(r.compiled).toEqual([m]);
+  });
+
+  it('lets go of a material freed while it was being readied', async () => {
+    const { r, g, scene } = setup({ linkAfter: 50 });
+    const m = new THREE.MeshStandardMaterial();
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), m);
+    scene.add(mesh);
+    await frames(r, scene);
+    expect(g.pending()).toBeGreaterThan(0);
+    scene.remove(mesh);
+    m.dispose();
+    await frames(r, scene, 2);
+    expect(g.pending()).toBe(0);
+  });
+
+  it("keeps drawing a ready material marked changed in a way its shader doesn't care about", async () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    await frames(r, scene, 3);
+    for (let i = 0; i < 3; i++) {
+      m.color.setHex(0x112233 * (i + 1));
+      m.needsUpdate = true;
+      await frames(r, scene);
+      expect(r.draws).toEqual([m]);
+    }
+  });
+
+  it("sends a scan's pictures (lib/three/core's wear) before drawing what wears it", async () => {
+    const { r, scene } = setup();
+    const m = new THREE.MeshStandardMaterial();
+    const scan = { map: picture(), normalMap: picture() };
+    wear(m, scan);
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), m);
+    scene.add(mesh);
+    r.compile(mesh);
+    markLinked(r.properties.get(m).currentProgram);
+    await frames(r, scene);
+    expect(r.draws).toEqual([]);
+    expect(r.uploads).toEqual(expect.arrayContaining([scan.map, scan.normalMap]));
+    await frames(r, scene, 2);
+    expect(r.draws).toEqual([m]);
   });
 
   it('never holds back a picture redrawn every frame once it is up (a canvas)', async () => {

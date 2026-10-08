@@ -114,3 +114,11 @@ describe('drawn', () => {
     stars.dispose();
   });
 });
+
+describe('on foot', () => {
+  it('is never cut by the far plane (on foot it is the landing sky, well short of the stars)', () => {
+    const stars = createFarStars(new THREE.Group(), { places: [], skyFar: 24000 });
+    expect(stars.points.material.vertexShader).toMatch(/gl_Position\.z = min\(gl_Position\.z, gl_Position\.w \* 0\.999999\)/);
+    stars.dispose();
+  });
+});

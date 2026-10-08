@@ -75,6 +75,7 @@ import { SIDES as WAR_SIDES, WARS, warOfSide } from '../../galaxy/sides';
 import { RANKS } from '../../galaxy/ranks';
 import { NO_FACTIONS } from './relations';
 import { motionPacket, readEmoteWire, readMotion } from '../../../lib/emote';
+import { WEAPONS, byCode } from '../weaponTable';
 
 export { NAME_MAX, cleanName, randomCallsign } from './names';
 
@@ -251,7 +252,8 @@ export function readShot(data, from = null) {
   if (Math.hypot(n[3], n[4], n[5]) > 800) return null;
   // (as far as it could have gone since that pose, on the pulse drive)
   if (from && Math.hypot(n[0] - from.x, n[1] - from.y, n[2] - from.z) > 6 + Math.abs(from.speed ?? 0) * 0.3) return null;
-  const w = Number.isInteger(data[6]) && data[6] >= 0 && data[6] <= 2 ? data[6] : 0;
+  // (a code from the weapon table; a newer peer's or junk is the blaster)
+  const w = Number.isInteger(data[6]) ? WEAPONS[byCode(data[6])].code : 0;
   return { p: n.slice(0, 3), v: n.slice(3), w };
 }
 

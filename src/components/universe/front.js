@@ -142,6 +142,12 @@ export function createFront(map, { side, war: given = null, beacons = null, mode
   glow.scale.setScalar(70);
   beacon.add(glow);
   const label = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, depthWrite: false, transparent: true, sizeAttenuation: false, toneMapped: false }));
+  // (drawn over everything, so never cut by the far plane: on foot it's at
+  // the landing's sky, footScene's far(), which the front is well past)
+  label.material.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace('#include <logdepthbuf_vertex>', '#include <logdepthbuf_vertex>\n\tgl_Position.z = min( gl_Position.z, gl_Position.w * 0.999999 );');
+  };
+  label.material.customProgramCacheKey = () => 'front-label';
   label.center.set(0.5, -0.4);
   label.scale.set(0.3, 0.056, 1);
   label.renderOrder = 9;

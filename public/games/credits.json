@@ -1048,6 +1048,15 @@
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
   },
+  "deathstar/obiwan": {
+    "source": "https://www.meshy.ai",
+    "id": "01a11c33-9e0b-713e-8592-b4d9a54d385a",
+    "name": "Obi-Wan as the first film has him, generated for this site with Meshy AI and rigged from jedi3",
+    "authors": [
+      "Tilak Patel, with Meshy AI"
+    ],
+    "license": "Meshy paid-plan output, owned by the site owner"
+  },
   "cockpit/walt": {
     "source": "https://www.meshy.ai",
     "id": "01a111f8-ed5f-73f6-b299-8c48642a2ee5",
@@ -4192,5 +4201,375 @@
       "Tilak Patel, with Meshy AI"
     ],
     "license": "Meshy paid-plan output, owned by the site owner"
+  },
+  "quaternius/Rock_Medium_1": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Medium_1",
+    "name": "Stylized Nature MegaKit: Rock_Medium_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Rock_Medium_2": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Medium_2",
+    "name": "Stylized Nature MegaKit: Rock_Medium_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Rock_Medium_4": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Medium_4",
+    "name": "Stylized Nature MegaKit: Rock_Medium_4",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Rock_Desert_1": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Medium_1",
+    "name": "Stylized Nature MegaKit: Rock_Medium_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Rock_Desert_2": {
+    "source": "https://quaternius.com",
+    "id": "Rock_Medium_2",
+    "name": "Stylized Nature MegaKit: Rock_Medium_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pebble_Round_2": {
+    "source": "https://quaternius.com",
+    "id": "Pebble_Round_2",
+    "name": "Stylized Nature MegaKit: Pebble_Round_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pebble_Square_3": {
+    "source": "https://quaternius.com",
+    "id": "Pebble_Square_3",
+    "name": "Stylized Nature MegaKit: Pebble_Square_3",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pebble_Desert": {
+    "source": "https://quaternius.com",
+    "id": "Pebble_Round_2",
+    "name": "Stylized Nature MegaKit: Pebble_Round_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/rocks.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/CommonTree_3": {
+    "source": "https://quaternius.com",
+    "id": "CommonTree_3",
+    "name": "Stylized Nature MegaKit: CommonTree_3",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/CommonTree_5": {
+    "source": "https://quaternius.com",
+    "id": "CommonTree_5",
+    "name": "Stylized Nature MegaKit: CommonTree_5",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pine_4": {
+    "source": "https://quaternius.com",
+    "id": "Pine_4",
+    "name": "Stylized Nature MegaKit: Pine_4",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pine_5": {
+    "source": "https://quaternius.com",
+    "id": "Pine_5",
+    "name": "Stylized Nature MegaKit: Pine_5",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Bush_Common_Flowers": {
+    "source": "https://quaternius.com",
+    "id": "Bush_Common_Flowers",
+    "name": "Stylized Nature MegaKit: Bush_Common_Flowers",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Bush_Long_1": {
+    "source": "https://quaternius.com",
+    "id": "Bush_Long_1",
+    "name": "Stylized Nature MegaKit: Bush_Long_1",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Flower_1_Single": {
+    "source": "https://quaternius.com",
+    "id": "Flower_1_Single",
+    "name": "Stylized Nature MegaKit: Flower_1_Single",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/flowers.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Flower_3_Single": {
+    "source": "https://quaternius.com",
+    "id": "Flower_3_Single",
+    "name": "Stylized Nature MegaKit: Flower_3_Single",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/flowers.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Flower_6": {
+    "source": "https://quaternius.com",
+    "id": "Flower_6",
+    "name": "Stylized Nature MegaKit: Flower_6",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/flowers.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Fern_2": {
+    "source": "https://quaternius.com",
+    "id": "Fern_2",
+    "name": "Stylized Nature MegaKit: Fern_2",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/flowers.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Grass_Common_Short": {
+    "source": "https://quaternius.com",
+    "id": "Grass_Common_Short",
+    "name": "Stylized Nature MegaKit: Grass_Common_Short",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/grass.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Grass_Wispy_Short": {
+    "source": "https://quaternius.com",
+    "id": "Grass_Wispy_Short",
+    "name": "Stylized Nature MegaKit: Grass_Wispy_Short",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/grass.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Mushroom_Common": {
+    "source": "https://quaternius.com",
+    "id": "Mushroom_Common",
+    "name": "Stylized Nature MegaKit: Mushroom_Common",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/mushrooms.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Mushroom_RedCap": {
+    "source": "https://quaternius.com",
+    "id": "Mushroom_RedCap",
+    "name": "Stylized Nature MegaKit: Mushroom_RedCap",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/mushrooms.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Chair": {
+    "source": "https://quaternius.com",
+    "id": "Chair",
+    "name": "Furniture Pack: Chair",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Stool": {
+    "source": "https://quaternius.com",
+    "id": "Stool",
+    "name": "Furniture Pack: Stool",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Table": {
+    "source": "https://quaternius.com",
+    "id": "Table",
+    "name": "Furniture Pack: Table",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Vase": {
+    "source": "https://quaternius.com",
+    "id": "Vase",
+    "name": "Furniture Pack: Vase",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Plant": {
+    "source": "https://quaternius.com",
+    "id": "Plant",
+    "name": "Furniture Pack: Plant",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/furniture.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Streetlight_Single": {
+    "source": "https://quaternius.com",
+    "id": "Streetlight_Single",
+    "name": "Street Pack: Streetlight_Single",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/street.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/TrafficLight": {
+    "source": "https://quaternius.com",
+    "id": "TrafficLight",
+    "name": "Street Pack: TrafficLight",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/street.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Sign_Stop": {
+    "source": "https://quaternius.com",
+    "id": "Sign_Stop",
+    "name": "Street Pack: Sign_Stop",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/street.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Sign_NoParking": {
+    "source": "https://quaternius.com",
+    "id": "Sign_NoParking",
+    "name": "Street Pack: Sign_NoParking",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/street.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Prop_ACUnit": {
+    "source": "https://quaternius.com",
+    "id": "Prop_ACUnit",
+    "name": "Downtown City MegaKit: Prop_ACUnit",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/city.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Prop_Bollard": {
+    "source": "https://quaternius.com",
+    "id": "Prop_Bollard",
+    "name": "Downtown City MegaKit: Prop_Bollard",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/city.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Prop_Planter_Single": {
+    "source": "https://quaternius.com",
+    "id": "Prop_Planter_Single",
+    "name": "Downtown City MegaKit: Prop_Planter_Single",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/city.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pickup_Crate": {
+    "source": "https://quaternius.com",
+    "id": "Pickup_Crate",
+    "name": "Ultimate Space Kit: Pickup_Crate",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/space.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/Pickup_Jar": {
+    "source": "https://quaternius.com",
+    "id": "Pickup_Jar",
+    "name": "Ultimate Space Kit: Pickup_Jar",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/props/space.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "quaternius/CommonTree_4": {
+    "source": "https://quaternius.com",
+    "id": "CommonTree_4",
+    "name": "Stylized Nature MegaKit: CommonTree_4",
+    "authors": [
+      "Quaternius"
+    ],
+    "license": "CC0 1.0",
+    "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
   }
 }

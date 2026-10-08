@@ -55,7 +55,7 @@ import { SHIP } from '../ship';
 import { sweptHit } from '../targeting';
 import { hitRadius } from '../hunterRules';
 import { PARKED } from '../foot';
-import { WEAPONS, arsenalOf, fan } from '../weapons';
+import { WEAPONS, arsenalOf, byCode, fan } from '../weapons';
 import { POSITIONS } from '../layout';
 import { byId } from '../universes';
 import { STALE_MS, sample } from './protocol';
@@ -227,13 +227,16 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
   const fireBolt = (s) => {
     const k = partById('guns', s.guns)?.bolt ?? 1; // (a fusion cannon's are bigger)
     const color = boltColor(s.kind, s.paint);
-    if (s.w === WEAPONS.heavy.code) {
-      one(s, s.v, 4, BOLT_LIFE * WEAPONS.heavy.life, arsenalOf(s.kind).heavy);
+    // (drawn by what the weapon is, not which: a code this build has never
+    // heard of is the blaster)
+    const w = WEAPONS[byCode(s.w)];
+    if (w.heavy) {
+      one(s, s.v, 4, BOLT_LIFE * w.life, arsenalOf(s.kind).heavy);
       return;
     }
-    if (s.w === WEAPONS.spread.code) {
+    if (w.count > 1) {
       const speed = Math.hypot(...s.v) || 1;
-      for (const d of fan(s.v.map((x) => x / speed), WEAPONS.spread.count, WEAPONS.spread.cone)) one(s, [d[0] * speed, d[1] * speed, d[2] * speed], k * WEAPONS.spread.scale, BOLT_LIFE * WEAPONS.spread.life, color);
+      for (const d of fan(s.v.map((x) => x / speed), w.count, w.cone)) one(s, [d[0] * speed, d[1] * speed, d[2] * speed], k * w.scale, BOLT_LIFE * w.life, color);
       return;
     }
     one(s, s.v, k, BOLT_LIFE, color);

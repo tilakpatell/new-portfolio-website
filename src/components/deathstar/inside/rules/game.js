@@ -63,7 +63,7 @@ import { act, battle, garrison, plot } from './play';
 import { ESCORT } from './story';
 import { STATIONS } from './stations';
 import { WHO } from './talk';
-import { createBody, stepBody } from './walker';
+import { BODY, createBody, stepBody } from './walker';
 
 export const STEP = 1 / 30;
 const MOST = 4; // steps a frame at most: a tab coming back after seconds doesn’t run the station on for them
@@ -197,8 +197,7 @@ export function teleport(g, where, x, z, yaw) {
   const room = g.layout.rooms.get(id);
   if (!room) return false;
   const you = g.you;
-  const px = x ?? spot?.x ?? room.x;
-  const pz = z ?? spot?.z ?? room.z;
+  const { x: px, z: pz } = standAt(g, id, x ?? spot?.x ?? room.x, z ?? spot?.z ?? room.z);
   const floor = g.layout.floorAt(id, px, pz);
   Object.assign(you, { x: px, y: floor ?? room.y, z: pz, vy: 0, ground: floor !== null });
   const turn = yaw ?? spot?.yaw;
@@ -209,6 +208,27 @@ export function teleport(g, where, x, z, yaw) {
   you.room = id;
   g.seen.add(id);
   return true;
+}
+
+// The nearest place to (x, z) in the room a body can stand: on its floor and
+// clear of its furniture (a room's middle is often its table). Rings out
+// from the point, half a metre at a time; the point itself when nothing
+// near is clear.
+const ROOMY = BODY.r + 0.05;
+function standAt(g, id, x, z) {
+  const solids = g.solidsOf?.(id) ?? [];
+  const clear = (px, pz) =>
+    g.layout.floorAt(id, px, pz) !== null &&
+    !solids.some((s) => (s.box ? px > s.box.x0 - ROOMY && px < s.box.x1 + ROOMY && pz > s.box.z0 - ROOMY && pz < s.box.z1 + ROOMY : s.circle && Math.hypot(px - s.circle.x, pz - s.circle.z) < s.circle.r + ROOMY));
+  if (clear(x, z)) return { x, z };
+  for (let r = 0.5; r <= 8; r += 0.5) {
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const [px, pz] = [x + Math.sin(a) * r, z - Math.cos(a) * r];
+      if (clear(px, pz)) return { x: px, z: pz };
+    }
+  }
+  return { x, z };
 }
 
 // ── lifts ──

@@ -34,6 +34,7 @@ import { STEP, alertOf, drain, newGame, objectiveOf, promptOf, step, teleport, t
 import { SAVE, SAVE_VERSION, blank, clean } from './rules/save';
 import { STATIONS } from './rules/stations';
 import { WHO } from './rules/talk';
+import { routeTo, targetOf } from './rules/route';
 import { heardOf } from './scene/hear';
 
 export const KEYS = {
@@ -66,6 +67,9 @@ const PITCH = 1.2; // radians the head tilts at most up or down
 const PAD_TURN = 3; // radians a second the pad’s right stick turns at full tilt
 const RUN_PUSH = 0.95; // a stick pushed this far runs
 const HUD_EVERY = 0.1; // seconds between 'hud' events at most
+const ROUTE_EVERY = 0.4; // seconds between workings-out of the way to the story's target
+const EDGE = 0.86; // of the half-screen: how far out an off-screen marker sits on its edge
+const THERE = 1.5; // metres from the target that are there: the marker goes
 // The glow round the light strips and grids. Bloom picks what is brighter
 // than the threshold before the house look tone-maps it, and under the
 // station’s lamps the walls and the glossy floor reach about 2 there: a
@@ -305,6 +309,61 @@ export default {
       }
     }
 
+    // ── the way shown: the story's target, and the next door or lift on the way ──
+
+    // Worked out a few times a second (rules/route.js), placed every frame: where on the screen
+    // the next waypoint is (x, y from −1 to 1, y up), or, behind you or off the screen, the edge
+    // it is past and the way round to it (`angle`, from straight up, clockwise). Told as 'marker'
+    // each frame, or null when there is nothing to show, for the page to move without a render.
+    let way = null;
+    let wayAt = ROUTE_EVERY;
+    let marked = null;
+    let spot = null; // (the waypoint as a vector, made from the camera's own the first time)
+    let markedAt = null;
+    function mark() {
+      const show = mode === 'play' && !mapOpen && !g?.talk && save.settings.guide !== false;
+      if (!show || !g) {
+        if (marked !== null) tell('marker', (marked = null));
+        return;
+      }
+      const now = performance.now() / 1000;
+      wayAt += markedAt === null ? ROUTE_EVERY : Math.min(0.25, now - markedAt);
+      markedAt = now;
+      if (wayAt >= ROUTE_EVERY) {
+        wayAt = 0;
+        way = routeTo(g, targetOf(g));
+      }
+      // (nothing to show with no way, nor once you stand at the target)
+      if (!way || (way.next.kind === 'goal' && way.metres < THERE)) {
+        if (marked !== null) tell('marker', (marked = null));
+        return;
+      }
+      const cam = view.camera;
+      if (typeof cam?.updateMatrixWorld !== 'function') return;
+      const n = way.next;
+      cam.updateMatrixWorld();
+      const v = cam.matrixWorldInverse.elements;
+      // (in front of the camera when its view space z is negative)
+      const vz = v[2] * n.x + v[6] * n.y + v[10] * n.z + v[14];
+      const p = (spot ??= cam.position.clone()).set(n.x, n.y, n.z).project(cam);
+      let x = p.x;
+      let y = p.y;
+      const behind = vz > 0;
+      if (behind) {
+        x = -x;
+        y = -y;
+      }
+      const off = behind || Math.abs(x) > EDGE || Math.abs(y) > EDGE;
+      if (off) {
+        const k = EDGE / Math.max(Math.abs(x), Math.abs(y), 1e-6);
+        x *= k;
+        y *= k;
+      }
+      const metres = Math.round(way.metres);
+      marked = { x: round(x), y: round(y), off, angle: off ? round(Math.atan2(x, y)) : null, kind: n.kind, metres, goal: way.goal.what };
+      tell('marker', marked);
+    }
+
     // ── what the game says, told on ──
 
     // a line said, an achievement earned, a hit taken (as a turn from where you face, for the HUD’s
@@ -440,6 +499,8 @@ export default {
           makePost();
         }
         view.sync(g, mode === 'play' ? acc / STEP : 1, { yaw: look.yaw, pitch: look.pitch, view: save.settings.view, aim: aiming });
+        // (after the camera has taken this frame's place)
+        mark();
         // counted over the whole frame (bloom draws several times), for the budget checks
         if (r.info) {
           r.info.autoReset = false;
@@ -478,6 +539,7 @@ export default {
         if (typeof s.sound === 'boolean') save.settings.sound = s.sound;
         if (s.sound === false) silence();
         if (typeof s.subtitles === 'boolean') save.settings.subtitles = s.subtitles;
+        if (typeof s.guide === 'boolean') save.settings.guide = s.guide;
         persist();
       },
       quit() {
@@ -525,6 +587,10 @@ export default {
         world,
         get g() {
           return g;
+        },
+        // the scene drawn (scene, camera), for the checks to look inside
+        get view() {
+          return view;
         },
         teleport(where, x, z) {
           const ok = teleport(g, where, x, z);

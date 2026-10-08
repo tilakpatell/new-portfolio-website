@@ -123,3 +123,11 @@ describe('its shaders', () => {
     lm.dispose();
   });
 });
+
+describe('on foot', () => {
+  it('is never cut by the far plane (on foot it is the landing sky, well short of the landmarks)', () => {
+    const lm = createLandmarks(new THREE.Group(), { skyFar: 24000 });
+    expect(lm.mesh.material.vertexShader).toMatch(/gl_Position\.z = min\(gl_Position\.z, gl_Position\.w \* 0\.999999\)/);
+    lm.dispose();
+  });
+});

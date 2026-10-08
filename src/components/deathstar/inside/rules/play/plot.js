@@ -76,10 +76,42 @@ function companion(g, kind, follow) {
   }
   if (have || !CAST[kind]) return;
   const you = g.you;
-  const k = g.crew.people.filter((p) => p.tag?.startsWith('with:')).length + 1;
-  const [x, z] = [you.x - Math.sin(you.yaw) * 1.4 + Math.cos(you.yaw) * (k % 2 ? 1 : -1) * 0.8 * Math.ceil(k / 2), you.z + Math.cos(you.yaw) * 1.4 + Math.sin(you.yaw) * (k % 2 ? 1 : -1) * 0.8 * Math.ceil(k / 2)];
-  const room = g.layout.floorAt(you.room, x, z) === null ? null : you.room;
-  addPerson(g.crew, { id: `with-${kind}`, kind, room: room ?? you.room, x: room ? x : you.x, z: room ? z : you.z, yaw: you.yaw, role: { type: 'follow', who: 'you' }, hostile: false, tag: `with:${kind}` });
+  const at = besideYou(g) ?? { x: you.x, z: you.z };
+  addPerson(g.crew, { id: `with-${kind}`, kind, room: you.room, x: at.x, z: at.z, yaw: you.yaw, role: { type: 'follow', who: 'you' }, hostile: false, tag: `with:${kind}` });
+}
+
+// Free floor beside you for someone to stand on: rings out from your back and
+// sides (in front is where you look), each place on your room's floor at your
+// level, clear of the room's walls and furniture and a body's width from
+// anyone there already. Null when the room has no such place.
+const RINGS = [1.1, 1.7, 2.3, 2.9];
+const AROUND = 14; // places tried on a ring
+const CLEAR = 0.42; // metres a place keeps from a wall or a solid
+const APART = 0.7; // metres a place keeps from anyone standing there
+function besideYou(g) {
+  const you = g.you;
+  const room = g.layout.rooms.get(you.room);
+  if (!room) return null;
+  const solids = g.solidsOf?.(you.room) ?? [];
+  const others = [you, ...g.crew.people.filter((p) => p.room === you.room && p.mode !== 'dead')];
+  const box = room.box;
+  for (const r of RINGS) {
+    for (let i = 0; i < AROUND; i++) {
+      // from straight behind, out to either side in turn, and round to the front last
+      const turn = Math.PI + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * ((2 * Math.PI) / AROUND);
+      const a = you.yaw + turn;
+      const x = you.x + Math.sin(a) * r;
+      const z = you.z - Math.cos(a) * r;
+      const floor = g.layout.floorAt(you.room, x, z);
+      if (floor === null || Math.abs(floor - you.y) > 0.3) continue;
+      if (box && (x < box.x0 + CLEAR || x > box.x1 - CLEAR || z < box.z0 + CLEAR || z > box.z1 - CLEAR)) continue;
+      if (room.round && Math.hypot(x - room.x, z - room.z) > room.w / 2 - CLEAR) continue;
+      if (solids.some((s) => (s.box ? x > s.box.x0 - CLEAR && x < s.box.x1 + CLEAR && z > s.box.z0 - CLEAR && z < s.box.z1 + CLEAR : s.circle && Math.hypot(x - s.circle.x, z - s.circle.z) < s.circle.r + CLEAR))) continue;
+      if (others.some((o) => Math.hypot(o.x - x, o.z - z) < APART)) continue;
+      return { x, z };
+    }
+  }
+  return null;
 }
 
 function restore(g, cp) {
