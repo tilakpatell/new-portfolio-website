@@ -14,6 +14,6 @@ export const MODELS = {
   qmushroom: { made: 'quaternius', as: 'the mushrooms', metres: 0.25, tris: 4000, tex: 512 },
   qpebble: { made: 'quaternius', as: 'the pebbles', metres: 0.3, along: 'max', tris: 4000, tex: 512 },
   qgrass: { made: 'quaternius', as: 'the tall grass', metres: 0.6, tris: 4000, tex: 512 },
-  qpine: { made: 'quaternius', as: 'the far pines', metres: 42, tris: 4000, tex: 512 },
+  qpine: { made: 'quaternius', as: 'the far pines', metres: 42, tris: 1500, tex: 512, lod: true },
   qdeadtree: { made: 'quaternius', as: 'the dead trees', metres: 14, tris: 4000, tex: 512 },
 };

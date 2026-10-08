@@ -13,12 +13,13 @@ describe('specFor', () => {
       tex: 512,
       tris: 4000,
       foliage: null,
+      lod: null,
       src: 'lab/assets/naturemega/glTF/Fern_1.gltf',
     });
   });
   it('takes another axis, a map size, a budget, a foliage lift and another file', () => {
-    const s = specFor(['naturemega', 'Pebble_Round_1', '--kind', 'qpebble', '--metres', '0.3', '--along', 'max', '--tex', '256', '--tris', '800', '--foliage', 'crown', '--from', 'x/y.gltf']);
-    expect(s).toMatchObject({ along: 'max', tex: 256, tris: 800, foliage: 'crown', src: 'x/y.gltf' });
+    const s = specFor(['naturemega', 'Pebble_Round_1', '--kind', 'qpebble', '--metres', '0.3', '--along', 'max', '--tex', '256', '--tris', '800', '--foliage', 'crown', '--lod', '300', '--from', 'x/y.gltf']);
+    expect(s).toMatchObject({ along: 'max', tex: 256, tris: 800, foliage: 'crown', lod: 300, src: 'x/y.gltf' });
   });
   it('wants a kind and a size', () => {
     expect(() => specFor(['naturemega', 'Fern_1', '--metres', '1'])).toThrow(/--kind/);
