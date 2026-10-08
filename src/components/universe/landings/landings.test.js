@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { MOONS, UNIVERSES } from '../universes';
 import { STYLES } from './ground';
-import { CLEAR, LANDINGS, SCATTER_MAX, landingOf, scatterSpots, seedOf } from './landings';
+import { CLEAR, LANDINGS, SCATTER_MAX, landingOf, scatterSpots, seedOf, tableSet } from './landings';
 import { biomeAt } from './biomes';
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -101,6 +101,19 @@ describe('planet landings', () => {
       const l = at[id];
       const loose = (l.things ?? []).filter((t) => l.models?.[t.kind]?.body && !l.models[t.kind].body.fixed);
       expect(loose.length, id).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('set a table’s chairs round it, pulled out, each facing it', () => {
+    const [table, ...chairs] = tableSet([10, 30], { yaw: 0.4, chairs: 3, out: 1.2 });
+    expect(table).toMatchObject({ kind: 'table', at: [10, 30], yaw: 0.4, face: false });
+    expect(chairs).toHaveLength(3);
+    for (const c of chairs) {
+      const [dx, dz] = [table.at[0] - c.at[0], table.at[1] - c.at[1]];
+      expect(Math.hypot(dx, dz)).toBeCloseTo(1.2);
+      // (its front, +z turned by its yaw as three.js turns it, toward the table)
+      expect(Math.sin(c.yaw) * dx + Math.cos(c.yaw) * dz).toBeCloseTo(1.2);
+      expect(Math.hypot(dx, dz)).toBeGreaterThanOrEqual(table.r + c.r);
     }
   });
 

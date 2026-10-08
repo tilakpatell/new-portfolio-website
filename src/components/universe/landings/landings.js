@@ -91,7 +91,7 @@ const PROP = {
 };
 // a table and its chairs round it, at [x, z] (yaw: the table's turn; each
 // chair faces it, pulled out a little, `out` metres from its middle)
-const tableSet = ([x, z], { yaw = 0, chairs = 4, out = 1.15 } = {}) => [
+export const tableSet = ([x, z], { yaw = 0, chairs = 4, out = 1.15 } = {}) => [
   { kind: 'table', at: [x, z], r: 0.8, face: false, yaw },
   ...Array.from({ length: chairs }, (_, i) => {
     const a = yaw + (i * 2 * Math.PI) / chairs;
@@ -143,8 +143,8 @@ const ME_FOREST = {
   things: [],
   scatter: [
     { kind: 'pine', n: 34, from: 24, to: 110, scale: range(1.1) },
-    { kind: 'pineTall', n: 18, from: 26, to: 110, scale: range(1.1) },
-    { kind: 'oakOld', n: 24, from: 24, to: 110, scale: range(1.1) },
+    { kind: 'pineTall', n: 14, from: 26, to: 110, scale: range(1.1) },
+    { kind: 'oakOld', n: 18, from: 24, to: 110, scale: range(1.1) },
     { kind: 'bush', n: 24, from: 8, to: 90, scale: range(1) },
     { kind: 'fern', n: 50, from: 4, to: 80, scale: range(1), solid: false },
     { kind: 'mushroom', n: 40, from: 4, to: 70, scale: range(1), solid: false },
