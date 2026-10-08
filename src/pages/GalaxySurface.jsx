@@ -31,9 +31,8 @@ import { sideFor, warSideOf } from '../components/galaxy/surface/missions/assaul
 import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../components/galaxy/allegiance';
 import { GCW, campaignAt, scoresAt } from '../components/galaxy/gcw';
 import { warOfSide } from '../components/galaxy/sides';
-import { effectsFor } from '../components/galaxy/warEffects';
-import { addPoints, addWin, mine, warNow, warVersion } from '../components/galaxy/warState';
-import { RANKS, rankOf } from '../components/galaxy/ranks';
+import { groundEffects } from '../components/galaxy/siteWar';
+import { addPoints, addWin, warNow, warVersion } from '../components/galaxy/warState';
 import ModelCredits from '../components/ModelCredits';
 import EarnNote from '../components/universe/EarnNote';
 import { useEarn } from '../components/universe/useEarn';
@@ -122,14 +121,9 @@ export default function GalaxySurface() {
   // this world (warEffects.js: the troopers you meet are theirs); an assault
   // here is that war's, fought for one of its sides
   const [oathKept, setOathKept] = useState(() => readAllegiance(local.get(SIDE_KEY)));
-  const oath = useMemo(() => currentOath(oathKept), [oathKept]);
   // (and, for the people's talk: the side you swore to, and your rank in it, as a step up its ladder)
-  const effects = useMemo(() => {
-    const e = effectsFor(id, warNow(Date.now(), oath.war), oath);
-    if (!e) return e;
-    const rank = oath.side ? rankOf(oath.side, mine(oath.war).points) : null;
-    return { ...e, side: oath.side ?? null, rank: rank ? (RANKS[oath.side]?.findIndex((r) => r.id === rank.id) ?? 0) : 0 };
-  }, [id, oath]);
+  // (in the ground's war, its film's: siteWar.js)
+  const effects = useMemo(() => groundEffects(id, oathKept, Date.now()), [id, oathKept]);
   const assaultWar = mission?.kind === 'assault' ? warOfSide(warSideOf(mission, 'attack')) : null;
   const sworn = assaultWar ? sideFor(mission, oathKept.oaths[assaultWar]?.side ?? null) : null;
   const onAssaultSide = (k) => {
