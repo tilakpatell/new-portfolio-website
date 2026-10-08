@@ -13,7 +13,8 @@
 // that raids, 'hutt': the crews' lines are by stance, lines.js) }.
 // A war: { id, era, name, short, liberator, raider, opening: { side: [war
 // systems] } (whatever the opening doesn't name is the raider's), capitals:
-// { side: war system } (where each power's supply lines run from, gcwAI.js) }.
+// { side: war system } (where each power's supply lines run from, with its
+// strongholds: gcwAI.js) }.
 // DOCTRINE: { side: { worth, weak, cut, area, jitter, every? } }, what each
 // side looks for in a target (gcwAI.js weighs a target by them).
 // sideOfCode(code) → side id | null; warOfSide(side) → war id | null (the

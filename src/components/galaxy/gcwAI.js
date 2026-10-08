@@ -43,15 +43,20 @@ export function lean(count, side) {
   return share < GCW.underdog.below ? GCW.underdog.boost : share > GCW.underdog.above ? GCW.underdog.damp : 1;
 }
 
-// a side's systems joined to its capital through its own (from its
-// worthiest, the first of them in the map's order, if the capital's fallen)
+// a side's systems in supply: those joined through its own to its capital or
+// to one of its strongholds (a system worth GCW.stronghold: a fleet yard, a
+// fortress, stocked for a siege), so only a piece of its territory that's
+// encircled with nothing of worth in it is cut off. Holding neither, its
+// worthiest system (the first of them in the map's order) is where its lines
+// run from. The Hutts are never cut off: their smugglers run through
+// anyone's space, and Nevarro is nowhere near Tatooine.
 export function supplied(owner, side, capital) {
-  let root = owner[capital] === side ? capital : null;
-  if (!root) for (const id of WAR_SYSTEMS) if (owner[id] === side && (!root || worthOf(id) > worthOf(root))) root = id;
-  const seen = new Set();
-  if (!root) return seen;
-  seen.add(root);
-  const todo = [root];
+  const mine = WAR_SYSTEMS.filter((id) => owner[id] === side);
+  if (side === 'hutt') return new Set(mine);
+  const roots = mine.filter((id) => id === capital || worthOf(id) >= GCW.stronghold);
+  if (!roots.length && mine.length) roots.push(mine.reduce((b, id) => (worthOf(id) > worthOf(b) ? id : b)));
+  const seen = new Set(roots);
+  const todo = roots.slice();
   while (todo.length) for (const o of NEIGHBOURS[todo.pop()]) if (owner[o] === side && !seen.has(o)) (seen.add(o), todo.push(o));
   return seen;
 }

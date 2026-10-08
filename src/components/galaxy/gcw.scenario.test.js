@@ -33,7 +33,7 @@ function campaign(war, n, grind) {
       }
     : () => 0;
   const run = campaignRun(war, n, value);
-  const out = { changes: 0, fewest: Infinity, overAt: null, majorStuck: 0, ordersStuck: 0, orders: 0, steps: 0, attacks: 0, taken: 0 };
+  const out = { changes: 0, fewest: Infinity, overAt: null, majorStuck: 0, ordersStuck: 0, orders: 0, steps: 0, attacks: 0, taken: 0, cut: 0 };
   let prev = null;
   for (let k = 0; k < STEPS; k++) {
     const s = runAt(run, atStep(n, k));
@@ -43,6 +43,7 @@ function campaign(war, n, grind) {
       break;
     }
     out.steps += 1;
+    out.cut += s.cut.length;
     if (k < CLIMAX) for (const side of [liberator, raider, 'hutt']) out.fewest = Math.min(out.fewest, WAR_SYSTEMS.filter((id) => s.owner[id] === side).length);
     if (prev) {
       for (const id of WAR_SYSTEMS) if (s.owner[id] !== prev.owner[id]) out.changes += 1;
@@ -93,6 +94,10 @@ describe.each([
         const began = Object.values(WARS[war].opening[liberator]).length;
         const ended = runs.reduce((t, __, n) => t + WAR_SYSTEMS.filter((id) => history(war, n, atStep(n, STEPS) - 1).owner[id] === liberator).length, 0) / CAMPAIGNS;
         expect(Math.abs(ended - began), `${war}: the liberator's systems, began ${began}, ended ${ended}`).toBeLessThanOrEqual(2);
+        // and being cut off from supply is an encirclement, not the way of things (it was
+        // 41 to 56% of every system-step, when supply ran from a side's capital alone)
+        const cut = runs.reduce((t, c) => t + c.cut, 0) / runs.reduce((t, c) => t + c.steps * WAR_SYSTEMS.length, 0);
+        expect(cut, `${war}: the share of system-steps cut off`).toBeLessThanOrEqual(0.25);
       }
     });
 });

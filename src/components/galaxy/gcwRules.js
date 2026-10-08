@@ -31,6 +31,7 @@ export const GCW = {
   strike: 5, // the step of the raider's opening strike (its next is at attackEvery, then its phase's pace)
   defence: 1, // %/hour a front's holder puts back (cut off from its capital, cutDefence of that)
   cutDefence: 0.3,
+  stronghold: 2, // a system worth this much supplies its own piece of territory, as a capital does (gcwAI.js's supplied)
   regen: 4, // %/hour a system nobody's fighting over gets back, if it's in supply
   captured: 0.7, // a system's hold when it's just been taken
   repelled: 0.25, // what an attack held to the end gives back

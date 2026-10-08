@@ -805,6 +805,16 @@ describe('warTable', () => {
       }
     }
   });
+  it('opens each war with nothing cut off but what’s encircled: no more than two systems, and never the Hutts’', () => {
+    // (supply ran from the capital alone, so 7 of the Separatists' 8 systems
+    // opened cut off, and the Hutts' Nevarro in every war. Now what's left is
+    // the Empire's Bespin and Mustafar, ringed by the Rebels' Hoth and the
+    // Hutts' Nevarro, and two of the Remnant's holdouts in the New Republic's
+    // space: none with a stronghold or a way through their own to one)
+    const cut = Object.fromEntries(WAR_IDS.map((war) => [war, history(war, 0, at(0, 0), none).cut]));
+    expect(cut).toEqual({ clone: [], gcw: ['bespin', 'mustafar'], remnant: ['mustafar', 'geonosis'] });
+    for (const war of WAR_IDS) for (const id of cut[war]) expect(NEIGHBOURS[id].every((o) => opening(war).owner[o] !== opening(war).owner[id] || cut[war].includes(o)), `${war} ${id}`).toBe(true);
+  });
   it('gives each battle its effective rate, the one that applies', () => {
     for (const war of WAR_IDS) {
       const { liberator } = WARS[war];

@@ -14,9 +14,10 @@
 // trade routes (systems.js's LANES) and the nearest two, and grouped in areas
 // (sides.js's AREAS). In each a system has an `owner` (the war's liberator,
 // its raider, or the Hutts) and `control`, the owner's hold of it: 1 whole,
-// at 0 it's lost. Each side has a capital, and its systems joined to it
-// through its own are in supply; one cut off holds less well and doesn't
-// mend.
+// at 0 it's lost. Each side has a capital, and its systems joined through its
+// own to it or to a stronghold (a system worth GCW.stronghold) are in supply;
+// one cut off, encircled with nothing of worth, holds less well and doesn't
+// mend. The Hutts are never cut off.
 //
 // A campaign runs GCW.campaign of the wall clock, from a start the same for
 // everyone, then every war starts over from its opening map. It's worked

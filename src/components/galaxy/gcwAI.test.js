@@ -49,22 +49,39 @@ describe('the underdog and the leader', () => {
 });
 
 describe('supply lines', () => {
-  // the Rebellion's Yavin, Kashyyyk and Lothal in a line, and Hoth, alone among the Empire's
-  const owner = map('empire', { yavin: 'rebel', kashyyyk: 'rebel', lothal: 'rebel', hoth: 'rebel' });
-  it('run from a side’s capital through its own systems: one encircled is cut off', () => {
-    expect([...supplied(owner, 'rebel', 'yavin')].sort()).toEqual(['kashyyyk', 'lothal', 'yavin']);
-    expect(supplied(owner, 'hutt', 'tatooine').size).toBe(0);
+  // the Rebellion's Yavin, Kashyyyk and Naboo in a line, and Hoth and Kamino,
+  // each alone among the Empire's. (They ran from the capital alone, and with
+  // these openings that left a side's systems cut off as a rule, not by an
+  // encirclement: 7 of the Separatists' 8 at the Clone Wars' opening, and 41
+  // to 56% of every war's systems, with nobody playing. Now a stronghold, a
+  // system worth GCW.stronghold, supplies its own piece of territory too, so
+  // Hoth's in supply and only Kamino, encircled with nothing of worth, isn't.)
+  const owner = map('empire', { yavin: 'rebel', kashyyyk: 'rebel', naboo: 'rebel', hoth: 'rebel', kamino: 'rebel' });
+  it('run from a side’s capital and its strongholds through its own systems: a piece joined to neither is cut off', () => {
+    expect(GCW.stronghold).toBe(2);
+    expect([...supplied(owner, 'rebel', 'yavin')].sort()).toEqual(['hoth', 'kashyyyk', 'naboo', 'yavin']);
+    // (the Empire holds the rest, all in supply but Bespin, Mustafar and Nevarro, that only Hoth joined to it)
+    const empire = supplied(owner, 'empire', 'coruscant');
+    expect(WAR_SYSTEMS.filter((id) => owner[id] === 'empire' && !empire.has(id)).sort()).toEqual(['bespin', 'mustafar', 'nevarro']);
   });
-  it('run from its worthiest system when the capital’s fallen (the first of the worthiest, in the map’s order)', () => {
-    // (Hoth and Lothal are both worth 2: Hoth comes first, and it's alone)
+  it('never cut off the Hutts: their smugglers run through anyone’s space', () => {
+    expect(supplied(owner, 'hutt', 'tatooine').size).toBe(0);
+    for (const war of Object.keys(WARS)) expect([...supplied(opening(war).owner, 'hutt', 'tatooine')].sort(), war).toEqual(['nevarro', 'tatooine']);
+    expect([...supplied({ ...owner, nevarro: 'hutt' }, 'hutt', 'tatooine')]).toEqual(['nevarro']);
+  });
+  it('run from its worthiest system when it holds neither its capital nor a stronghold (the first of the worthiest, in the map’s order)', () => {
     const lost = { ...owner, yavin: 'empire' };
     expect([...supplied(lost, 'rebel', 'yavin')]).toEqual(['hoth']);
-    expect([...supplied({ ...lost, hoth: 'empire' }, 'rebel', 'yavin')].sort()).toEqual(['kashyyyk', 'lothal']);
+    // (Naboo, Kashyyyk and Kamino are all worth 1: Naboo comes first)
+    expect([...supplied({ ...lost, hoth: 'empire' }, 'rebel', 'yavin')].sort()).toEqual(['kashyyyk', 'naboo']);
   });
-  it('count what taking a system would cut off from its holder’s capital', () => {
+  it('count what taking a system would cut off from its holder’s supply', () => {
     expect(cutOff(owner, 'kashyyyk', 'yavin')).toBe(1);
-    expect(cutOff(owner, 'lothal', 'yavin')).toBe(0);
+    expect(cutOff(owner, 'naboo', 'yavin')).toBe(0);
     expect(cutOff(owner, 'hoth', 'yavin')).toBe(0);
+    expect(cutOff(owner, 'kamino', 'yavin')).toBe(0);
+    // (a stronghold taken takes its piece's supply with it)
+    expect(cutOff({ ...owner, mustafar: 'rebel' }, 'hoth', 'yavin')).toBe(1);
   });
   it('know when taking a system makes its area whole for the taker', () => {
     const area = areaOf('naboo');
