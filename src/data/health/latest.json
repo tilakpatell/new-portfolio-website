@@ -1,6 +1,6 @@
 {
   "date": "2026-10-08",
-  "sha": "ba6ec357",
+  "sha": "fde57fdd",
   "metrics": {
     "big-files": {
       "value": 29,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5836
+          "n": 5740
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -20,12 +20,12 @@
           "n": 3863
         },
         {
-          "file": "src/components/universe/footScene.js",
-          "n": 3619
+          "file": "src/components/galaxy/surface/scene.js",
+          "n": 3519
         },
         {
-          "file": "src/components/galaxy/surface/scene.js",
-          "n": 3538
+          "file": "src/components/universe/footScene.js",
+          "n": 3470
         },
         {
           "file": "src/components/middleearth/towns/doom/props.js",
@@ -48,16 +48,16 @@
           "n": 3163
         },
         {
-          "file": "src/components/universe/crews.js",
-          "n": 3135
-        },
-        {
           "file": "src/components/middleearth/towns/minastirith/props.js",
           "n": 3095
         },
         {
           "file": "src/components/middleearth/towns/edoras/props.js",
           "n": 3086
+        },
+        {
+          "file": "src/components/universe/crews.js",
+          "n": 3062
         },
         {
           "file": "src/components/cockpit/vehicles/rv.js",
@@ -73,15 +73,15 @@
         },
         {
           "file": "src/components/galaxy/scene.js",
-          "n": 2553
+          "n": 2493
         },
         {
           "file": "src/components/middleearth/towns/marshes/props.js",
           "n": 2381
         },
         {
-          "file": "src/components/galaxy/surface/props/forest.js",
-          "n": 2118
+          "file": "src/components/rickmorty/world/RmWorld.jsx",
+          "n": 2292
         },
         {
           "file": "src/components/avengers/world/scene.js",
@@ -92,16 +92,16 @@
           "n": 2078
         },
         {
-          "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 1933
-        },
-        {
-          "file": "src/components/galaxy/surface/props/core.js",
-          "n": 1894
+          "file": "src/components/galaxy/surface/props/forest.js",
+          "n": 2007
         },
         {
           "file": "src/components/middleearth/towns/edoras/folk.js",
           "n": 1817
+        },
+        {
+          "file": "src/components/galaxy/surface/props/core.js",
+          "n": 1812
         },
         {
           "file": "src/lib/sfx.js",
@@ -110,7 +110,7 @@
       ]
     },
     "boundary-breaks": {
-      "value": 443,
+      "value": 355,
       "unit": "imports",
       "label": "imports across a line docs/health/RULES.md draws",
       "detail": [
@@ -382,7 +382,7 @@
       "detail": []
     },
     "kbd-styles": {
-      "value": 70,
+      "value": 68,
       "unit": "rules",
       "label": "Key-cap rules outside the house .kbd",
       "detail": [
@@ -391,11 +391,11 @@
           "n": 7
         },
         {
-          "file": "src/components/universe/universe.css",
-          "n": 6
+          "file": "src/components/galaxy/surface/surface.css",
+          "n": 5
         },
         {
-          "file": "src/components/galaxy/surface/surface.css",
+          "file": "src/components/universe/universe.css",
           "n": 5
         },
         {
@@ -463,10 +463,6 @@
           "n": 1
         },
         {
-          "file": "src/components/deathstar/inside/inside.css",
-          "n": 1
-        },
-        {
           "file": "src/components/games/games.css",
           "n": 1
         },
@@ -485,130 +481,53 @@
         {
           "file": "src/components/middleearth/towns/rivendell/rivendell.css",
           "n": 1
-        }
-      ]
-    },
-    "hud-kit": {
-      "value": 1,
-      "unit": "worlds",
-      "label": "worlds whose HUD is off the HUD kit",
-      "detail": [
+        },
         {
-          "file": "src/components/deathstar",
+          "file": "src/components/music/music.css",
           "n": 1
         }
       ]
     },
-    "stack-pages": {
-      "value": 0,
-      "unit": "packages",
-      "label": "packages with no page in docs/stack",
-      "detail": []
-    },
-    "glsl-sites": {
-      "value": 614,
-      "unit": "sites",
-      "label": "GLSL sites a WebGPU port removes",
+    "hud-kit": {
+      "value": 9,
+      "unit": "worlds",
+      "label": "worlds whose HUD is off the HUD kit",
       "detail": [
         {
-          "file": "src/components/cybertron/world/CybertronBackdrop3D.js",
-          "n": 18
+          "file": "src/components/caribbean",
+          "n": 1
         },
         {
-          "file": "src/components/avengers/world/scene.js",
-          "n": 17
+          "file": "src/components/cybertron",
+          "n": 1
         },
         {
-          "file": "src/components/cybertron/planet3d.js",
-          "n": 17
+          "file": "src/components/deathstar",
+          "n": 1
         },
         {
-          "file": "src/components/albuquerque/world/scene.js",
-          "n": 15
+          "file": "src/components/dotmatrix",
+          "n": 1
         },
         {
-          "file": "src/lib/stage3d.js",
-          "n": 15
+          "file": "src/components/earth",
+          "n": 1
         },
         {
-          "file": "src/components/deathstar/DeathStar3D.js",
-          "n": 14
+          "file": "src/components/galaxy",
+          "n": 1
         },
         {
-          "file": "src/components/middleearth/towns/moria/props.js",
-          "n": 14
+          "file": "src/components/mario64",
+          "n": 1
         },
         {
-          "file": "src/components/cockpit/scene.js",
-          "n": 13
+          "file": "src/components/minecraft",
+          "n": 1
         },
         {
-          "file": "src/components/universe/post.js",
-          "n": 13
-        },
-        {
-          "file": "src/components/avengers/hq/engine.js",
-          "n": 12
-        },
-        {
-          "file": "src/components/deathstar/Trench3D.js",
-          "n": 12
-        },
-        {
-          "file": "src/components/dickansh/scene.js",
-          "n": 12
-        },
-        {
-          "file": "src/components/mario64/looks.js",
-          "n": 12
-        },
-        {
-          "file": "src/components/middleearth/towns/doom/props.js",
-          "n": 12
-        },
-        {
-          "file": "src/components/universe/planetShading.js",
-          "n": 9
-        },
-        {
-          "file": "src/components/travel/globe3d/scene.js",
-          "n": 7
-        },
-        {
-          "file": "src/lib/three/grounding.js",
-          "n": 7
-        },
-        {
-          "file": "src/lib/three/foliage.js",
-          "n": 6
-        },
-        {
-          "file": "src/components/avengers/tesseract/models.js",
-          "n": 5
-        },
-        {
-          "file": "src/components/cockpit/space.js",
-          "n": 5
-        },
-        {
-          "file": "src/components/cockpit/vehicles/cruiser.js",
-          "n": 5
-        },
-        {
-          "file": "src/components/earth/scene.js",
-          "n": 5
-        },
-        {
-          "file": "src/components/galaxy/sky.js",
-          "n": 5
-        },
-        {
-          "file": "src/components/middleearth/towns/amonhen/props.js",
-          "n": 5
-        },
-        {
-          "file": "src/components/middleearth/towns/weathertop/props.js",
-          "n": 5
+          "file": "src/components/music",
+          "n": 1
         }
       ]
     }
