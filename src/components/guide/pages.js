@@ -358,13 +358,13 @@ export const PAGES = {
   '/avengers': {
     about: ABOUT['/avengers'],
     keys: [
-      { label: 'On the ground', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump (at a wall: run up it)'], ['Drag', 'Look round'], ['E / Enter', 'Go in at a door'], ['M', 'The buildings, with Go there'], ['Esc', 'Out of a game']] },
+      { label: 'On the ground', rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump (at a wall: run up it)'], ['Drag', 'Look round'], ['E / Enter', 'Go in at a door'], ['M', 'Things to do: the buildings, with Go there'], ['Esc', 'Out of a game']] },
       { label: 'Swinging', rows: [['hold Space', 'In the air: web a roof edge, tree or mast and swing'], ['Right-click', 'Hold to swing, too'], ['Shift', 'In the air: zip'], ['Q', 'Launch to a perch'], ['T', 'A flip (or a twist, with a direction held)']] },
       { label: 'In the armour', rows: [['W A S D', 'Fly (it leans into its speed)'], ['Space', 'Climb'], ['Shift', 'Come down'], ['E', 'Step out, wherever you are']] },
-      { label: 'Anywhere', rows: [['O', 'Settings']] },
+      { label: 'Anywhere', rows: [['O', 'Settings'], ['P', 'Photo mode: drag the camera round him, [ and ] for the lens']] },
     ],
     touch: [
-      { rows: [['Stick', 'Walk (all the way to run)'], ['Jump', 'Hold in the air to swing'], ['Zip', 'Zip'], ['Perch', 'Launch to a perch'], ['Trick', 'A flip in the air']] },
+      { rows: [['Stick', 'Walk (all the way to run)'], ['Jump', 'Hold in the air to swing (at a wall: run up it)'], ['Zip', 'Zip'], ['Perch', 'Launch to a perch'], ['Trick', 'A flip in the air']] },
       { label: 'In the armour', rows: [['Stick', 'Fly'], ['Up', 'Hold to climb'], ['Down', 'Hold to come down'], ['Step out', 'Out of the armour']] },
     ],
     tips: [
@@ -417,7 +417,7 @@ export const PAGES = {
           ['W A S D / ← ↑ ↓ →', 'Drive'],
           ['hold Space', 'Handbrake: hold it into a turn and the tail swings round'],
           ['E / Enter', 'Go in (or wash the Aztek at A1A)'],
-          ['M', 'Places'],
+          ['M', 'Things to do: the places, as each one opens'],
           ['R', 'Run a delivery'],
           ['T', 'The time of day'],
           ['P', 'Throw a pizza on the roof (at Walt’s house)'],
