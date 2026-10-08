@@ -102,6 +102,14 @@ const smooth = (a, b, x) => {
   return t * t * (3 - 2 * t);
 };
 
+// The universe map's lens (scene.js sets it). The toe is on linear light
+// after exposure, where 0.08 is already 30 % grey on screen: wide, it took
+// rocks and ships in shadow and planets' night sides down to black with the
+// sky. So it takes only what's under about 3 % grey on screen (the black
+// between the stars) and leaves anything lit, however dimly; the contrast
+// stays gentle, since it darkens what's under mid-grey too.
+export const MAP_LENS = { toe: [0.002, 0.012], contrast: 0.1 };
+
 // The toe, as the last pass works it out on a luminance (`hi` 0: off)
 export const toe = (l, lo, hi) => (hi > 0 ? l * smooth(lo, hi, l) : l);
 

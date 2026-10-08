@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { aberrationFor, bloomSize, createPost, edgeWeight, toe } from './post';
+import { MAP_LENS, aberrationFor, bloomSize, createPost, edgeWeight, toe } from './post';
 
 // just enough of a renderer for the composer to be built (nothing is drawn)
 const renderer = () => ({
@@ -174,5 +174,22 @@ describe('the soft edge', () => {
     expect(u.uDefocus.value).toBe(0);
     post.setLevel(1);
     expect(u.uDefocus.value).toBe(1);
+  });
+});
+
+// the map's own lens: the toe takes only the black between the stars. A
+// rock or a ship in shadow, a planet's night side, sit at 0.01 to 0.08
+// linear (10 to 30 % grey on screen) and must come through as drawn
+describe("the map's lens", () => {
+  const [lo, hi] = MAP_LENS.toe;
+  it('blacks out the empty sky', () => {
+    expect(toe(0.001, lo, hi)).toBe(0);
+  });
+  it('leaves a dim lit surface and a night side as they are', () => {
+    for (const l of [0.012, 0.02, 0.05, 0.08]) expect(toe(l, lo, hi)).toBe(l);
+    expect(toe(0.008, lo, hi) / 0.008).toBeGreaterThan(0.6);
+  });
+  it('keeps the contrast gentle', () => {
+    expect(MAP_LENS.contrast).toBeLessThanOrEqual(0.1);
   });
 });
