@@ -1,20 +1,50 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { hitRadius } from '../universe/hunterRules';
+import { BY_SPAN, fitScale } from '../universe/shipFit';
 import { SHIP_MODELS } from '../universe/shipModels';
 import { BUILT_KINDS } from '../universe/trafficModels';
-import { GALAXY_KINDS } from './fleet';
+import { GALAXY_KINDS, buildGalaxyShip } from './fleet';
+import { KINDS } from './hunted';
 import { ARRIVAL, HQ, HUNTER_GLB, LOD_FAR, LOD_NEAR, MODELS, STAND_IN, createModels, lodLevels, lodUrl, modelsAt, withHq } from './models';
 import { SYSTEMS, kindsIn } from './systems';
 
 const at = (path) => new URL(`../../../public${path}`, import.meta.url);
 
-// a GLB's primitives, counted from its JSON chunk
-const primitives = (url) => {
+// a GLB's JSON chunk
+const jsonOf = (url) => {
   const b = readFileSync(url);
-  const json = JSON.parse(b.subarray(20, 20 + b.readUInt32LE(12)).toString('utf8'));
-  return (json.meshes ?? []).reduce((n, m) => n + m.primitives.length, 0);
+  return JSON.parse(b.subarray(20, 20 + b.readUInt32LE(12)).toString('utf8'));
 };
+
+// a GLB's primitives, counted from its JSON chunk
+const primitives = (url) => (jsonOf(url).meshes ?? []).reduce((n, m) => n + m.primitives.length, 0);
+
+// a GLB's box as it comes, from its JSON chunk: each primitive's bounds (its
+// positions' min and max, a quantised one's scaled back) carried through its
+// node's place, the way three's quick Box3 does it (a part turned off the
+// axes comes out a little wide, never narrow)
+const UNIT = { 5120: 127, 5121: 255, 5122: 32767, 5123: 65535 };
+const boxOf = (url) => {
+  const json = jsonOf(url);
+  const box = new THREE.Box3();
+  const local = (n) => (n.matrix ? new THREE.Matrix4().fromArray(n.matrix) : new THREE.Matrix4().compose(new THREE.Vector3(...(n.translation ?? [0, 0, 0])), new THREE.Quaternion(...(n.rotation ?? [0, 0, 0, 1])), new THREE.Vector3(...(n.scale ?? [1, 1, 1]))));
+  const walk = (i, parent) => {
+    const n = json.nodes[i];
+    const m = parent.clone().multiply(local(n));
+    for (const p of n.mesh === undefined ? [] : json.meshes[n.mesh].primitives) {
+      const a = json.accessors[p.attributes.POSITION];
+      const k = a.normalized ? 1 / UNIT[a.componentType] : 1;
+      box.union(new THREE.Box3(new THREE.Vector3(...a.min).multiplyScalar(k), new THREE.Vector3(...a.max).multiplyScalar(k)).applyMatrix4(m));
+    }
+    for (const c of n.children ?? []) walk(c, m);
+  };
+  for (const i of json.scenes[json.scene ?? 0].nodes) walk(i, new THREE.Matrix4());
+  return box;
+};
+// and turned nose to +z, as the models are
+const turnedBox = (def) => boxOf(at(def.url)).applyMatrix4(new THREE.Matrix4().makeRotationY(def.nose ?? 0)).getSize(new THREE.Vector3());
 
 // a model as GLTFLoader gives one: a scene of a box or two (a fighter's wings, say), off centre
 const fakeModel = () => {
@@ -270,6 +300,82 @@ describe('the galaxy’s models', () => {
       expect(slot.real).toBe(true);
       expect(lodIn(slot)).toBeFalsy();
       models.dispose();
+    });
+  });
+
+  describe('fitted by length', () => {
+    beforeEach(canvases);
+    afterEach(() => vi.unstubAllGlobals());
+
+    // a model twice as wide as it is long, off centre
+    const wide = () => {
+      const scene = new THREE.Group();
+      const a = new THREE.Mesh(new THREE.BoxGeometry(4, 1, 2), new THREE.MeshStandardMaterial());
+      a.position.set(3, 0, 1);
+      scene.add(a);
+      return { scene, animations: [] };
+    };
+    const sizeOf = (o) => new THREE.Box3().setFromObject(o, true).getSize(new THREE.Vector3());
+    const levels = async (kind, size) => {
+      const models = createModels({ load: async () => wide() });
+      const slot = models.slot(kind, size);
+      for (let i = 0; i < 5; i++) await settle();
+      slot.holder.updateMatrixWorld(true);
+      return { models, levels: slot.inner.children.find((c) => c.isLOD).levels.map((l) => sizeOf(l.object)) };
+    };
+
+    it('fits a loaded ship by its length, nose to tail, its wings out past it, and its far-off copy the same', async () => {
+      const { models, levels: [full, far] } = await levels('xwing', 0.3);
+      for (const s of [full, far]) {
+        expect(s.z).toBeCloseTo(0.3, 5);
+        expect(s.x).toBeCloseTo(0.6, 5);
+      }
+      models.dispose();
+    });
+
+    it('fits a station by its biggest side, as the world’s solids are', async () => {
+      const { models, levels: [full, far] } = await levels('deathstar2', 10);
+      for (const s of [full, far]) {
+        expect(s.x).toBeCloseTo(10, 5);
+        expect(s.z).toBeCloseTo(5, 5);
+      }
+      models.dispose();
+    });
+
+    it('fits the built stand-ins the same way, so a ship keeps its length when its model comes', () => {
+      const models = createModels({ load: () => new Promise(() => {}) }); // (nothing ever loads)
+      const vulture = models.slot('vulture', 1); // (built wider than it is long)
+      vulture.holder.updateMatrixWorld(true);
+      expect(sizeOf(vulture.holder).z).toBeCloseTo(1, 5);
+      expect(sizeOf(vulture.holder).x).toBeGreaterThan(1.5);
+      const bwing = models.slot('bwing', 1); // (flies upright: its biggest side)
+      bwing.holder.updateMatrixWorld(true);
+      const b = sizeOf(bwing.holder);
+      expect(Math.max(b.x, b.y, b.z)).toBeCloseTo(1, 5);
+      models.dispose();
+    });
+
+    it('turns no ship it fits by length so that it is more than twice as wide or tall as it is long (as a nose turned the wrong way would be)', () => {
+      for (const models of [modelsAt('mid'), modelsAt('high'), HUNTER_GLB]) {
+        for (const [kind, def] of Object.entries(models)) {
+          if (BY_SPAN.has(kind)) continue;
+          const s = turnedBox(def);
+          expect(Math.max(s.x, s.y, s.z) / s.z, `${kind}: ${def.url}`).toBeLessThanOrEqual(2);
+        }
+      }
+    });
+
+    it('keeps every hunter’s hit radius round its widest side, loaded or built', () => {
+      const built = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
+      for (const [kind, type] of Object.entries(KINDS)) {
+        const boxes = HUNTER_GLB[kind] ? [turnedBox(HUNTER_GLB[kind])] : [];
+        if (built.has(kind)) {
+          const m = buildGalaxyShip(kind);
+          boxes.push(m.size.clone());
+          m.dispose();
+        }
+        for (const box of boxes) expect((type.size * fitScale(kind, box) * Math.max(box.x, box.y, box.z)) / 2, kind).toBeLessThanOrEqual(hitRadius(type));
+      }
     });
   });
 });
