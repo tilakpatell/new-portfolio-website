@@ -20,6 +20,7 @@ import { VOICE } from './voicelines';
 import InvHud from './InvHud';
 import MissionCard from './MissionCard';
 import { COMPASS, layoutCompass, objectiveText, titleMode } from './hud';
+import LoadingVeil from '../../worlds/LoadingVeil';
 import './world.css';
 
 // The Graysons' city, the world: fly about it as Invincible. The rules are
@@ -52,6 +53,7 @@ const clock = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0
 const WHAT = { fall: 'Someone’s slipping off a roof', heli: 'A news helicopter’s lost its tail rotor' };
 const TIMES = ['noon', 'dusk', 'night'];
 const MACH = 343;
+const PREPARE_WAIT = 30000; // ms at most the world's prepare holds back its first frame
 // the keys, by where they are on the keyboard
 const CODES = { KeyW: 'fwd', KeyS: 'back', KeyA: 'left', KeyD: 'right', Space: 'up', KeyC: 'down', KeyZ: 'down', ShiftLeft: 'boost', ShiftRight: 'boost', ArrowLeft: 'lookL', ArrowRight: 'lookR', ArrowUp: 'lookU', ArrowDown: 'lookD' };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -153,6 +155,8 @@ function World({ gl, setGl, thinkMark }) {
   // given it (below), and the dev hook sets it, so they can't disagree.
   const [time, setTimeName] = useState(keptTime);
   const [help, setHelp] = useState(false);
+  // how far the world's prepare has got, while it runs (the loading veil)
+  const [prep, setPrep] = useState(null);
   // the title: FLY, MARK. until he's flying, then a chip (./hud.js titleMode)
   const [chip, setChip] = useState(false);
   const [toast, setToast] = useState(null);
@@ -248,7 +252,20 @@ function World({ gl, setGl, thinkMark }) {
         sim.current.world = a.world;
         fit();
         await syncTime();
-        await settle(a.engine.precompile(), 4000);
+        // everything onto the graphics chip before the first frame, behind
+        // the loading veil (the scene's prepare; half a minute at most)
+        if (dead) return;
+        setPrep({ value: 0, step: null });
+        // (cut short at the cap: a prepare still going stops, and says no more)
+        let capped = false;
+        const preparing = () => !dead && !capped;
+        await settle(
+          a.prepare((value, step) => preparing() && setPrep({ value, step }), preparing),
+          PREPARE_WAIT,
+        );
+        capped = true;
+        // (the veil fades on what it last said)
+        if (!dead) setPrep((p) => p && { ...p, done: true });
         if (dead || a.lost) return;
         if (import.meta.env.DEV) {
           // (the QA scripts' handle: the scene's api, but its setTime is the
@@ -1073,7 +1090,8 @@ function World({ gl, setGl, thinkMark }) {
           </div>
         </div>
       )}
-      {gl === 'loading' && <p className="iw-loading">Over the city…</p>}
+      {gl === 'loading' && !prep && <p className="iw-loading">Over the city…</p>}
+      <LoadingVeil shown={Boolean(prep) && !prep.done && gl === 'loading'} progress={prep?.value} step={prep?.step} title="Invincible" line="Over the city…" />
       <MissionCard card={mcard} story={sim.current.story} onClose={closeCard} onAgain={() => startMission(mcard?.id)} onStart={startMission} onAbandon={abandon} />
 
       <InvHud hud={hud} mapRef={mapRef} time={time} cycleTime={cycleTime} help={help} setHelp={setHelp} chip={chip} trav={trav} found={found} cards={CARDS.length} near={near} act={act} toast={toast} radio={radio} take={take} />
