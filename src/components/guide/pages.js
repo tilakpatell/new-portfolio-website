@@ -1,5 +1,6 @@
 import { ABOUT } from './abouts';
 import { GUIDES, guideKeyFor } from './routes';
+import { CYBERTRON_KEYS, CYBERTRON_TOUCH } from './cybertron';
 
 // What the guide says about each page: a line on what it is, its controls
 // (`keys` for a keyboard, `touch` for a phone; each a list of groups, a group
@@ -389,6 +390,8 @@ export const PAGES = {
   '/cybertron': {
     about: ABOUT['/cybertron'],
     keys: [
+      // (the world at the top of the page, its start card's keys: ./cybertron.js)
+      { label: 'The world', rows: CYBERTRON_KEYS },
       {
         label: 'Roll out',
         rows: [
@@ -399,7 +402,10 @@ export const PAGES = {
         ],
       },
     ],
-    touch: [{ label: 'Roll out', rows: [['Drag', 'Steer'], ['Tap', 'The buttons to boost, jump and transform']] }],
+    touch: [
+      { label: 'The world', rows: CYBERTRON_TOUCH },
+      { label: 'Roll out', rows: [['Drag', 'Steer'], ['Tap', 'The buttons to boost, jump and transform']] },
+    ],
     tips: [
       ['Sides', 'Join the Autobots or the Decepticons: the site changes colour with you, and so does who you can transform.'],
       ['Roll out', 'As a vehicle you’re fast and smash debris; as a robot you fight and jump the barricades, but standing up burns energon. Transforming takes half a second: read the road. Clearing an obstacle pays double if you changed at the last moment.'],
@@ -585,10 +591,20 @@ export const PAGES = {
       { label: 'From orbit', rows: [['Drag', 'Turn the globe'], ['Click', 'A place, to fly there'], ['M', 'Down to the globe, or back up']] },
       { label: 'Flying', rows: [['W A S D / ← ↑ ↓ →', 'Turn, climb and descend'], ['Shift / Space', 'Faster'], ['R', 'A barrel roll'], ['Drag', 'Look round'], ['V', 'Cockpit or chase camera'], ['P', 'The passport'], ['N', 'Always day'], ['Esc', 'Take the controls back from the autopilot']] },
     ],
-    touch: [{ rows: [['Drag', 'Turn the globe'], ['Stick', 'Fly'], ['Faster', 'Go faster']] }],
+    touch: [{ rows: [['Drag', 'Turn the globe'], ['Stick', 'Fly'], ['Faster', 'Go faster'], ['Roll', 'A barrel roll']] }],
     tips: [
       ['From orbit', 'The Earth right now: the sun where it is, so the night side is the real night.'],
       ['The passport', 'Fly over a place to stamp it and get its postcard. Fly here sets the autopilot along the great circle; the arrow at the bottom points at the next place.'],
+      ['A controller', 'Works too.'],
+    ],
+  },
+  '/universe/expanse': {
+    about: ABOUT['/universe/expanse'],
+    keys: [{ label: 'Driving', rows: [['W / ↑', 'Drive'], ['S / ↓', 'Brake, then reverse'], ['A D / ← →', 'Steer'], ['Shift', 'Boost'], ['Space', 'Jump'], ['R', 'Back to dry land']] }],
+    touch: [{ label: 'Driving', rows: [['Stick', 'Drive and steer'], ['Jump', 'Jump'], ['Boost', 'Hold to go faster'], ['Back', 'Back to dry land']] }],
+    tips: [
+      ['Water', 'The compass at the top points at the nearest water. Rivers run downhill into lakes and the sea; drive in and the car slows, and after four seconds under it comes back to dry land.'],
+      ['Another planet', 'Every seed is a different planet: change the number at the end of the address. ?type=desert, ice, ocean or volcanic changes its kind.'],
       ['A controller', 'Works too.'],
     ],
   },
