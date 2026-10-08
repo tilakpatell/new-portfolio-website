@@ -3,6 +3,7 @@ import { ACHIEVEMENTS } from '../../../../Achievements';
 import { createAlarm, raise } from '../alarm';
 import { CAST } from '../cast';
 import { WEAPONS } from '../combat';
+import { eggsOn } from '../eggs';
 import { DS1 } from '../stations/ds1';
 import { DS2 } from '../stations/ds2';
 import { MOODS, SCENES, TYPES, checkpointOf, startStory, storyStep } from '../story';
@@ -13,7 +14,7 @@ import { STORIES, storyFor } from './index';
 // station’s stories are checked against its rooms as soon as they come.
 const STATION = { ds1: DS1, ds2: DS2 };
 // the routines a spawned person may be given (rules/brains.js’s role types)
-const ROLES = ['patrol', 'post', 'work', 'chat', 'march', 'droid', 'scripted'];
+const ROLES = ['patrol', 'post', 'work', 'chat', 'march', 'droid', 'follow', 'scripted'];
 const ITEMS = ['armour', 'helmet', 'comlink', 'beacon', 'saber', ...Object.keys(WEAPONS).map((id) => `gun:${id}`)];
 const EFFECTS = ['flag', 'unflag', 'unlock', 'lock', 'spawn', 'despawn', 'alarm', 'say', 'intercom', 'scene', 'hero', 'give', 'take', 'companion', 'to', 'achievement', 'music', 'walls', 'bridge', 'end'];
 
@@ -26,8 +27,10 @@ const eachEffect = (fn) => each((story, step, where) => effectsOf(step).forEach(
 
 // ── the scripts ──
 
-const at = (room, spot = null) => ({ type: 'at', room, spot });
+// `withYou`: who the game says has come with you, for an escort
+const at = (room, spot = null, withYou = undefined) => ({ type: 'at', room, spot, ...(withYou && { with: withYou }) });
 const used = (tag) => ({ type: 'used', tag });
+const dialled = (code) => ({ type: 'dialled', code });
 const killed = (tag, kind = 'stormtrooper') => ({ type: 'killed', kind, tag });
 const done = (id) => ({ type: 'sceneDone', id });
 const wait = (seconds) => Array.from({ length: Math.round(seconds * 30) }, () => ({ type: 'tick', dt: 1 / 30 }));
@@ -104,8 +107,8 @@ const REBEL = [
   at('tractor', 'tractor-ledge'),
   used('tractor-power-1'),
   used('tractor-power-2'),
-  at('lobby5', 'lift5'),
-  at('aa23', 'aa23-desk'),
+  at('lobby5', 'lift5', ['han', 'chewie']),
+  at('aa23', 'aa23-desk', ['chewie', 'han']),
   talk('aa23-officer', 'Prisoner transfer'),
   ...times(3, killed('aa23-guard')),
   killed('aa23-camera-1', 'camera'),
@@ -118,7 +121,7 @@ const REBEL = [
   at('compactor', 'compactor-drop'),
   ...times(9, used('dianoga')),
   talk('threepio-comlink', 'Shut down'),
-  used('compactor-hatch'),
+  dialled('3263827'),
   at('chasm', 'chasm-door'),
   at('chasm', 'chasm-ledge'),
   used('swing'),
@@ -132,8 +135,8 @@ const REBEL = [
 const IMPERIAL = [
   at('bay327', 'ranks'),
   done('tractor'),
-  at('bay327', 'falcon-ramp'),
-  at('bay327', 'scan-crew'),
+  at('bay327', 'falcon-ramp', ['technician', 'scan-crew']),
+  at('bay327', 'scan-crew', ['technician', 'scan-crew']),
   at('bay327', 'vader-bay'),
   ...wait(5),
   at('bay327', 'ctl-door'),
@@ -208,6 +211,8 @@ describe('what the steps name', () => {
         if (need.node) expect(talkNodes(need.talk), where).toContain(need.node);
       }
       if (type === 'choose') expect(choiceTargets(need.talk), where).toContain(need.choice);
+      // a code dialled is the one the station locks the door to, so the door opens to it by itself
+      if (type === 'use' && need?.code != null) expect(STATION[story.station].doors.find((d) => d.id === target.tag)?.lock, where).toBe(`code:${need.code}`);
       if (type === 'scene') {
         expect(SCENES, where).toContain(need?.scene);
         expect(step.start, where).toContainEqual({ scene: need.scene });
@@ -220,6 +225,7 @@ describe('what the steps name', () => {
       const st = STATION[story.station];
       const jumps = new Set((st.jumps ?? []).map((j) => j.id));
       const spawned = new Set();
+      const followers = new Set();
       const given = new Set();
       for (const step of story.steps) {
         const thing = step.target?.tag ?? step.target?.npc;
@@ -227,13 +233,15 @@ describe('what the steps name', () => {
         // the step’s own start has run by the time it is acted on
         for (const e of step.start) {
           if (e.spawn) spawned.add(e.spawn.tag);
+          if (e.spawn?.role === 'follow') followers.add(e.spawn.tag);
           if (e.give) given.add(e.give);
         }
         if (thing && step.type !== 'fight') {
           const known = spawned.has(thing) || thing in st.spots || `${thing}-1` in st.spots || jumps.has(thing) || given.has(thing);
           expect(known, `${where}: ${thing}`).toBe(true);
         }
-        if (step.type === 'escort') expect(step.checkpoint.companions.includes(step.need) || spawned.has(step.need), `${where}: ${step.need}`).toBe(true);
+        // someone walked must keep up with you, to be with you as you arrive
+        if (step.type === 'escort') expect(step.checkpoint.companions.includes(step.need) || followers.has(step.need), `${where}: ${step.need}`).toBe(true);
         for (const e of [...step.start, ...step.end]) if (e.despawn) expect(spawned.has(e.despawn), `${where}: ${e.despawn}`).toBe(true);
         for (const e of step.end) {
           if (e.spawn) spawned.add(e.spawn.tag);
@@ -243,7 +251,7 @@ describe('what the steps name', () => {
     }
   });
 
-  it('fights only people its own beat has brought aboard, as many as it needs at least', () => {
+  it('fights only people its own beat has brought aboard, as many as it needs at least, and no other beat brings', () => {
     for (const story of all) {
       story.steps.forEach((step, i) => {
         if (step.type !== 'fight') return;
@@ -251,6 +259,9 @@ describe('what the steps name', () => {
         const ran = beat.flatMap((s, k) => (k < beat.length - 1 ? [...s.start, ...s.end] : s.start));
         const many = ran.filter((e) => e.spawn?.tag === step.target.tag).length;
         expect(many, `${story.id}/${step.id}`).toBeGreaterThanOrEqual(step.need ?? 1);
+        // the count of them down runs over the whole story, so another beat’s people under the tag would count
+        const others = story.steps.filter((s) => s.checkpoint.step !== step.checkpoint.step).flatMap((s) => [...s.start, ...s.end]);
+        expect(others.filter((e) => e.spawn?.tag === step.target.tag), `${story.id}/${step.id}`).toEqual([]);
       });
     }
   });
@@ -270,7 +281,8 @@ describe('the effects', () => {
     eachEffect((e, story, where) => {
       const st = STATION[story.station];
       for (const door of [e.unlock, e.lock].filter(Boolean)) expect(doors(st).has(door), `${where}: door ${door}`).toBe(true);
-      for (const spot of [e.to, e.spawn?.spot].filter(Boolean)) expect(st.spots[spot], `${where}: spot ${spot}`).toBeDefined();
+      const walks = (e.spawn?.script ?? []).map((s) => s.to);
+      for (const spot of [e.to, e.spawn?.spot, ...walks].filter(Boolean)) expect(st.spots[spot], `${where}: spot ${spot}`).toBeDefined();
       for (const kind of [e.spawn?.kind, e.companion, e.hero].filter(Boolean)) expect(CAST[kind], `${where}: kind ${kind}`).toBeDefined();
       if (e.scene) expect(SCENES, where).toContain(e.scene);
     });
@@ -290,6 +302,8 @@ describe('the effects', () => {
       for (const item of [e.give, e.take].filter(Boolean)) expect(ITEMS, where).toContain(item);
       if (e.music) expect(MOODS, where).toContain(e.music);
       if (e.spawn) expect(ROLES, where).toContain(e.spawn.role);
+      // only a scripted person walks a script (routines.js); anyone else would never take a step of it
+      if (e.spawn?.script) expect(e.spawn.role, where).toBe('scripted');
       // the site’s table: unlock drops an id it doesn’t have without a word
       if (e.achievement) expect(ACHIEVEMENTS[e.achievement], where).toBeDefined();
       if (e.walls) expect(['close', 'open'], where).toContain(e.walls);
@@ -400,6 +414,122 @@ describe('Han’s intercom', () => {
       expect(raised).toEqual(['alert']);
       expect(effects.find((e) => e.alarm).alarm.section).toBe('aa23');
     }
+  });
+});
+
+describe('the ramp guards', () => {
+  const story = STORIES['ds1-rebel'];
+  const scanned = () => playThrough(story, wait(25));
+
+  it('are nowhere until the panel is used, so nobody can shoot them first', () => {
+    const { progress, effects } = scanned();
+    expect(progress.step).toBe('ambush');
+    expect(effects.filter((e) => e.spawn?.tag === 'ambush')).toEqual([]);
+  });
+
+  it('come when it is, from the foot of the ramp, walked up it into the hold to the panel', () => {
+    const { progress, effects } = storyStep(scanned().progress, story, used('ambush-panel'));
+    expect(progress.step).toBe('ambush-down');
+    const guards = effects.filter((e) => e.spawn?.tag === 'ambush').map((e) => e.spawn);
+    expect(guards).toHaveLength(2);
+    for (const g of guards) {
+      expect(DS1.spots[g.spot].room).toBe('bay327');
+      expect(g).toMatchObject({ kind: 'stormtrooper', role: 'scripted' });
+      expect(g.script.map((s) => s.to)).toEqual(['falcon-ramp', 'ambush-panel']);
+      expect(DS1.spots[g.script.at(-1).to].room).toBe('hold');
+    }
+  });
+
+  it('go if Luke dies fighting them, and come again only when the panel is used again', () => {
+    const { progress } = storyStep(scanned().progress, story, used('ambush-panel'));
+    const { progress: after, effects } = storyStep(progress, story, { type: 'died' });
+    expect(after.step).toBe('ambush');
+    expect(effects).toContainEqual({ despawn: 'ambush' });
+    expect(effects.filter((e) => e.spawn)).toEqual([]);
+  });
+});
+
+describe('the control room’s officer and aide', () => {
+  const story = STORIES['ds1-rebel'];
+  const door = REBEL.findIndex((e) => e?.spot === 'ctl-door');
+  const call = talk('ctl-officer', '(Tap');
+
+  it('may be shot one before the gantry’s call, and the fight is won by downing the other', () => {
+    const half = playThrough(story, [...REBEL.slice(0, door + 1), killed('ctl-crew', 'officer'), call]);
+    expect(half.progress).toMatchObject({ step: 'control-fight', down: { 'ctl-crew': 1 } });
+    expect(storyStep(half.progress, story, killed('ctl-crew', 'officer')).progress.step).toBe('scomp');
+  });
+
+  it('may both be down before the call, and then the fight is over as it begins', () => {
+    const { progress, steps, effects } = playThrough(story, [...REBEL.slice(0, door), killed('ctl-crew', 'officer'), killed('ctl-crew', 'officer'), REBEL[door], call]);
+    expect(progress.step).toBe('scomp');
+    expect(steps).not.toContain('control-fight');
+    // its end still runs, so the music comes down from the alert its start raised
+    expect(effects.slice(-2)).toEqual([{ music: 'alert' }, { music: 'calm' }]);
+  });
+});
+
+describe('walking Chewbacca in', () => {
+  const story = STORIES['ds1-rebel'];
+  const lift = REBEL.findIndex((e) => e?.spot === 'lift5');
+  const from = (progress, events) => events.reduce((p, e) => storyStep(p, story, e).progress, progress);
+
+  it('counts an arrival at the lift or the desk only with him alongside', () => {
+    const { progress } = playThrough(story, REBEL.slice(0, lift));
+    expect(progress.step).toBe('transfer');
+    expect(from(progress, [at('lobby5', 'lift5', ['han']), at('lobby5', 'lift5')]).step).toBe('transfer');
+    const down = from(progress, [at('lobby5', 'lift5', ['han', 'chewie'])]);
+    expect(down.step).toBe('transfer-desk');
+    expect(from(down, [at('aa23', 'aa23-desk', ['han'])]).step).toBe('transfer-desk');
+    expect(from(down, [at('aa23', 'aa23-desk', ['chewie'])]).step).toBe('transfer-1138');
+  });
+});
+
+describe('the compactor’s walls', () => {
+  const story = STORIES['ds1-rebel'];
+  const me = { station: 'ds1', side: 'rebel', story: 'ds1-rebel', hero: 'luke', armour: true, helmet: true, flags: new Set() };
+
+  for (const picks of [['Shut down'], ['Where', 'Shut down']]) {
+    it(`stop the clock when Threepio is asked for the mashers off (${picks.join(', then ')}), and the lines after it run out no deadline`, () => {
+      const { progress } = playThrough(story, REBEL.slice(0, REBEL.findIndex((e) => e?.tag === 'dianoga') + 9));
+      expect(progress.step).toBe('compactor-walls');
+      const events = talk('threepio-comlink', ...picks)(me);
+      const asked = events.findIndex((e) => e.type === 'chose' && e.choice === 'mashers');
+      // the line picked with half a second to spare, then Threepio’s last lines clicked through slowly
+      const script = [...wait(39.5), ...events.slice(0, asked + 1), ...wait(5), ...events.slice(asked + 1)];
+      let p = progress;
+      const effects = [];
+      for (const e of script) {
+        const r = storyStep(p, story, e);
+        p = r.progress;
+        effects.push(...r.effects);
+      }
+      expect(p.step).toBe('compactor-hatch');
+      expect(effects.filter((e) => e.checkpoint)).toEqual([]);
+      expect(effects).toContainEqual({ walls: 'open' });
+    });
+  }
+});
+
+describe('the compactor’s hatch', () => {
+  const story = STORIES['ds1-rebel'];
+  const step = story.steps.find((s) => s.id === 'compactor-hatch');
+
+  it('opens to its own code: the story neither unlocks it nor finishes on a press of use', () => {
+    expect(effectsOf(step).filter((e) => 'unlock' in e || 'lock' in e)).toEqual([]);
+    expect(DS1.doors.find((d) => d.id === 'compactor-hatch').lock).toBe('code:3263827');
+    const { progress } = playThrough(story, REBEL.slice(0, REBEL.findIndex((e) => e?.type === 'dialled')));
+    expect(progress.step).toBe('compactor-hatch');
+    let p = progress;
+    for (const e of [used('compactor-hatch'), dialled('3263828')]) p = storyStep(p, story, e).progress;
+    expect(p.step).toBe('compactor-hatch');
+  });
+
+  it('is done on dialling 3263827, the very event that finds the egg', () => {
+    const { progress } = playThrough(story, REBEL.slice(0, REBEL.findIndex((e) => e?.type === 'dialled')));
+    const dial = dialled('3263827');
+    expect(storyStep(progress, story, dial).progress.step).toBe('maint');
+    expect(eggsOn(new Set(), dial)).toEqual(['3263827']);
   });
 });
 

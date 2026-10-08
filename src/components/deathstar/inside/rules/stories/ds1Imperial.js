@@ -8,7 +8,9 @@
 // side; they are scripted, so they fall back down the cell bay and swing
 // across the chasm whatever you hit them with. The things a step acts on
 // stand at the station’s spots of the same name (the control room’s door
-// panel at `ctl-door`, the freighter’s hull at `beacon`).
+// panel at `ctl-door`, the freighter’s hull at `beacon`). The scanning
+// crew follow you (role 'follow') while you walk them, since an escort
+// is done only on an arrival whose `with` names them.
 //
 //   DS1_IMPERIAL → { id, station, side, hero, title, steps }
 
@@ -41,7 +43,7 @@ const SCAN = [
     text: 'Take the scanning crew out to the freighter’s ramp.',
     target: { spot: 'falcon-ramp' },
     need: 'scan-crew',
-    start: [...spawn('technician', 'scan-crew', 'scan-crew', { role: 'scripted' }, 2), say('officer', 'Get the scanning crew aboard. Every compartment of that ship, checked.')],
+    start: [...spawn('technician', 'scan-crew', 'scan-crew', { role: 'follow' }, 2), say('officer', 'Get the scanning crew aboard. Every compartment of that ship, checked.')],
   },
   {
     id: 'scan-back',
@@ -50,6 +52,8 @@ const SCAN = [
     target: { spot: 'scan-crew' },
     need: 'scan-crew',
     start: [say('technician', 'Nothing aboard. No crew, no cargo, not even a warm seat.')],
+    // back at the stair they go up to make their report, and stop following you
+    end: [{ despawn: 'scan-crew' }],
   },
   {
     id: 'scan-vader',

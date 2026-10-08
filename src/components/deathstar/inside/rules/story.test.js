@@ -5,7 +5,7 @@ const BEGIN = { spot: 'a', hero: 'luke', armour: false, helmet: false, companion
 const story = (beats, begin = BEGIN) => ({ id: 'test', station: 'ds1', side: 'rebel', hero: 'luke', title: 'A test', steps: chain(begin, beats) });
 const FINISH = { id: 'finish', type: 'timer', text: 'Wait.', time: 1, end: [{ end: true }] };
 
-const at = (room, spot = null) => ({ type: 'at', room, spot });
+const at = (room, spot = null, withYou = undefined) => ({ type: 'at', room, spot, ...(withYou && { with: withYou }) });
 const tick = (dt) => ({ type: 'tick', dt });
 const killed = (tag, kind = 'stormtrooper') => ({ type: 'killed', kind, tag });
 const used = (tag) => ({ type: 'used', tag });
@@ -102,11 +102,39 @@ describe('each kind of step', () => {
     expect(play(mash, [used('dianoga'), used('dianoga'), used('dianoga')]).progress.step).toBe('finish');
   });
 
+  it('use with a code: done on dialling that code, not on a wrong one or on pressing use at the thing', () => {
+    const s = story([[{ id: 'hatch', type: 'use', text: 'Dial.', target: { tag: 'hatch' }, need: { code: '3263827' } }], [FINISH]]);
+    expect(play(s, [used('hatch'), { type: 'dialled', code: '3263828' }, { type: 'dialled', code: '326382' }]).progress.step).toBe('hatch');
+    expect(play(s, [{ type: 'dialled', code: '3263827' }]).progress.step).toBe('finish');
+    // doors.js takes the code dialled as a number too
+    expect(play(s, [{ type: 'dialled', code: 3263827 }]).progress.step).toBe('finish');
+  });
+
   it('fight: done once as many of its people are down as it needs, counting no one else', () => {
     const s = story([[{ id: 'fight', type: 'fight', text: 'Fight.', target: { tag: 'guard' }, need: 3 }], [FINISH]]);
     const two = play(s, [killed('guard'), killed('other'), killed('guard')]);
-    expect(two.progress).toMatchObject({ step: 'fight', n: 2 });
+    expect(two.progress).toMatchObject({ step: 'fight', down: { guard: 2, other: 1 } });
     expect(play(s, [killed('guard'), killed('guard'), killed('guard')]).progress.step).toBe('finish');
+  });
+
+  it('fight: counts its people put down before it began, each one, and is over as it begins if they all are', () => {
+    // spawned at the start of the beat, as the control room’s officer and aide are, and shot before the call
+    const s = story([
+      [
+        { id: 'door', type: 'reach', text: 'To the door.', target: { spot: 'door' }, start: [...spawn('officer', 'in', 'crew'), ...spawn('officer', 'in', 'crew')] },
+        { id: 'call', type: 'talk', text: 'Answer.', need: { talk: 'ctl-officer' } },
+        { id: 'fight', type: 'fight', text: 'Down them.', target: { tag: 'crew' }, need: 2, end: [{ music: 'calm' }] },
+      ],
+      [FINISH],
+    ]);
+    const call = { type: 'talked', talk: 'ctl-officer', node: 'quiet' };
+    const one = play(s, [killed('crew', 'officer'), at('bay', 'door'), call]);
+    expect(one.progress).toMatchObject({ step: 'fight', down: { crew: 1 } });
+    expect(play(s, [killed('crew', 'officer'), at('bay', 'door'), call, killed('crew', 'officer')]).progress.step).toBe('finish');
+
+    const both = play(s, [at('bay', 'door'), killed('crew', 'officer'), killed('crew', 'officer'), call]);
+    expect(both.steps).toEqual(['door', 'call', 'finish']);
+    expect(both.effects).toEqual([{ music: 'calm' }]);
   });
 
   it('kill: counts each numbered thing once, and one put out of action before the step began', () => {
@@ -170,7 +198,20 @@ describe('each kind of step', () => {
     const s = story([[{ id: 'walk', type: 'escort', text: 'Walk him.', target: { spot: 'lift' }, need: 'chewie' }], [FINISH]]);
     expect(play(s, [killed('guard')]).progress.step).toBe('walk');
     expect(play(s, [killed('pal', 'chewie')]).effects[0]).toHaveProperty('checkpoint');
-    expect(play(s, [at('lobby', 'lift')]).progress.step).toBe('finish');
+    expect(play(s, [at('lobby', 'lift', ['han', 'chewie'])]).progress.step).toBe('finish');
+  });
+
+  it('escort: not done arriving without them, nor on an arrival that doesn’t say who is with you', () => {
+    const s = story([[{ id: 'walk', type: 'escort', text: 'Walk him.', target: { spot: 'lift' }, need: 'chewie' }], [FINISH]]);
+    const alone = play(s, [at('lobby', 'lift', ['han']), at('lobby', 'lift', []), at('lobby', 'lift')]);
+    expect(alone.progress.step).toBe('walk');
+    expect(alone.all.filter((e) => e.checkpoint)).toHaveLength(1);
+    // the one walked may be named by the tag they were spawned with as well as by kind
+    const crew = story([[{ id: 'walk', type: 'escort', text: 'Walk them.', target: { spot: 'ramp' }, need: 'scan-crew' }], [FINISH]]);
+    expect(play(crew, [at('bay', 'ramp', ['technician', 'scan-crew'])]).progress.step).toBe('finish');
+    // a reach heeds nobody
+    const reach = story([[{ id: 'go', type: 'reach', text: 'Go.', target: { spot: 'lift' } }], [FINISH]]);
+    expect(play(reach, [at('lobby', 'lift', [])]).progress.step).toBe('finish');
   });
 });
 
@@ -206,8 +247,10 @@ describe('failing a step', () => {
   });
 
   it('starts the count again, so the fight is won only by downing them all afresh', () => {
+    const failed = play(s, [at('r', 'b'), at('r', 'c'), killed('g'), killed('h', 'officer'), died]);
+    expect(failed.progress).toMatchObject({ step: 'guard', down: {} });
     const again = play(s, [at('r', 'b'), at('r', 'c'), killed('g'), died, at('r', 'c'), killed('g')]);
-    expect(again.progress).toMatchObject({ step: 'fight', n: 1 });
+    expect(again.progress).toMatchObject({ step: 'fight', down: { g: 1 } });
   });
 
   it('is failed by dying on any step, but not by being caught where sneaking isn’t asked', () => {
@@ -236,7 +279,7 @@ describe('failing a step', () => {
     ]);
     const r = play(cams, [killed('cam-1', 'camera'), killed('cam-2', 'camera'), killed('boss', 'officer'), died]);
     expect(r.progress.step).toBe('spawn');
-    expect(r.progress.gone).toEqual(['cam-1', 'cam-2']);
+    expect(r.progress.down).toEqual({ 'cam-1': 1, 'cam-2': 1 });
   });
 });
 
@@ -290,5 +333,11 @@ describe('writing a story', () => {
     expect(two).toEqual([guard, guard]);
     expect(two[0]).not.toBe(two[1]);
     expect(spawn('leia', 'cell', 'leia', { role: 'scripted' })).toEqual([{ spawn: { kind: 'leia', spot: 'cell', role: 'scripted', tag: 'leia' } }]);
+    // a script is each one’s own as well, so walking one never moves the other
+    const walk = [{ to: 'ramp' }, { to: 'panel' }];
+    const pair = spawn('stormtrooper', 'foot', 'ramp', { role: 'scripted', script: walk }, 2);
+    expect(pair[0].spawn.script).toEqual(walk);
+    expect(pair[0].spawn.script).not.toBe(pair[1].spawn.script);
+    expect(pair[0].spawn.script[0]).not.toBe(walk[0]);
   });
 });

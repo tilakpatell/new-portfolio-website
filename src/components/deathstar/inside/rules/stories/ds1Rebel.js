@@ -12,6 +12,15 @@
 // with the talk’s id as their tag, so talk.js offers it to them. Lines are
 // the site’s own but for a few short famous ones.
 //
+// What the game is held to here: the ramp guards are spawned only once
+// the hold’s panel is used, at the foot of the ramp, as scripted people
+// whose spawn `script` (routines.js’s, handed to brains.addPerson) walks
+// them up it, through the hatch the ramp flag holds open, to the panel;
+// so nobody stands outside to be shot first. Chewbacca counts as walked
+// in only when the arrival’s `with` names him. The compactor’s hatch
+// opens to its own code by doors.js, and the step out listens for the
+// `dialled` event the 3263827 egg hears, so the story never opens it.
+//
 //   DS1_REBEL → { id, station, side, hero, title, steps }
 
 import { chain, say, spawn } from '../story';
@@ -38,14 +47,16 @@ const SCAN = [
   },
 ];
 
+// one of the two guards the panel calls, from his own place at the ramp’s foot up into the hold
+const rampGuard = (n) => spawn('stormtrooper', `ambush-trooper-${n}`, 'ambush', { role: 'scripted', squad: 'ramp', script: [{ to: 'falcon-ramp' }, { to: 'ambush-panel' }] });
+
 const AMBUSH = [
   {
     id: 'ambush',
     type: 'use',
     text: 'Bang on the panel by the hatch to bring the ramp guards up.',
     target: { tag: 'ambush-panel' },
-    start: [...spawn('stormtrooper', 'ambush-trooper-1', 'ambush', { squad: 'ramp' }), ...spawn('stormtrooper', 'ambush-trooper-2', 'ambush', { squad: 'ramp' })],
-    end: [say('han', 'You two at the ramp. The scanner’s jammed in here; come and take the other end.')],
+    end: [say('han', 'You two at the ramp. The scanner’s jammed in here; come and take the other end.'), ...rampGuard(1), ...rampGuard(2)],
   },
   {
     id: 'ambush-down',
@@ -245,11 +256,14 @@ const COMPACTOR = [
     fail: [say('han', 'Luke. Luke, where are you?')],
   },
   {
+    // Done on asking for the mashers off (the line that stops the walls in
+    // talk.js), not when the talk closes, so the lines after it never run
+    // the clock out on walls that have already stopped.
     id: 'compactor-walls',
-    type: 'talk',
+    type: 'choose',
     text: 'The walls are closing in. Get Threepio on the comlink.',
     target: { tag: 'comlink' },
-    need: { talk: 'threepio-comlink' },
+    need: { talk: 'threepio-comlink', choice: 'mashers' },
     time: 40,
     start: [{ walls: 'close' }, { music: 'alert' }, say('han', 'The walls are moving. Brace them with anything you can find.')],
     // Threepio has the mashers shut down, and the walls draw back
@@ -257,7 +271,8 @@ const COMPACTOR = [
     // put back as the beat found them, for it to begin again
     fail: [say('leia', 'There’s no room left.'), { walls: 'open' }],
   },
-  { id: 'compactor-hatch', type: 'use', text: 'Dial the compactor’s number, 3263827, on the hatch.', target: { tag: 'compactor-hatch' }, end: [{ unlock: 'compactor-hatch' }] },
+  // the hatch is locked to this code, and opens to it without the story
+  { id: 'compactor-hatch', type: 'use', text: 'Dial the compactor’s number, 3263827, on the hatch.', target: { tag: 'compactor-hatch' }, need: { code: '3263827' } },
 ];
 
 const MAINT = [
