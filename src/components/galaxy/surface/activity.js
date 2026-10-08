@@ -56,7 +56,7 @@ import { buildFigure } from './figures';
 import { modelFigure } from './actors';
 import { crewFigure } from './crew';
 import { PROPS } from './props';
-import { groundAt, turnToward } from './walker';
+import { groundAt, shoreStep, turnToward } from './walker';
 import { stepTarget } from './quests';
 import { rng } from './noise';
 
@@ -800,8 +800,10 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
           t.victim = t.hostile && aim?.victim ? aim.victim : null;
           const seen = t.victim ? { x: aim.x, z: aim.z } : you ? { x: you.x, z: you.z, vel: Number.isFinite(you.vx) ? { x: you.vx, z: you.vz } : null } : null;
           const step = hostileStep(t, { you: t.spec.side === 'yours' && !mark ? null : seen, allies, seesThrough, tokens: t.hostile ? tokens : null, who: t, search: t.hostile ? searchFor(tag) : null, stims }, dt, r);
-          b.x = step.x;
-          b.z = step.z;
+          // (a droid doesn't wade out into the deep water after you: it holds at the shallows)
+          const held = shoreStep(world, b, step.x, step.z);
+          b.x = held ? held[0] : step.x;
+          b.z = held ? held[1] : step.z;
           b.yaw = step.yaw;
           moving = step.moving;
           t.aim = step.aim;

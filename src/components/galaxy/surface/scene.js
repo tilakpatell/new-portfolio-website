@@ -118,7 +118,7 @@ import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
 import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
-import { garrisonAt, garrisonLife, garrisonQuest } from './garrison';
+import { garrisonAt, garrisonLife } from './garrison';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -313,6 +313,8 @@ export async function create(canvas, ctx) {
     floors: [...(site.floors ?? [])],
     reach: site.reach,
     water: wade,
+    // (how deep the water can be before you're turned back: the lagoon on Kashyyyk)
+    wadeMax: wade != null ? site.water.wadeMax : undefined,
   };
   const weather = reduced ? null : createWeather(site, { small });
   if (weather) scene.add(weather.group);
@@ -398,8 +400,8 @@ export async function create(canvas, ctx) {
   const _mateFrom = new V();
   const _hips = new V();
   // (a quest mission's quest is the mission's own, not one of the world's)
-  // (a quest's troopers are the holder's too: garrison.js)
-  const questOf = (id) => garrisonQuest(site.quests.find((q) => q.id === id) ?? (mission?.quest?.id === id ? mission.quest : null), ctx.effects?.troops);
+  // (a quest keeps the enemies it was written with: the garrison dresses the world's people, not its fights)
+  const questOf = (id) => site.quests.find((q) => q.id === id) ?? (mission?.quest?.id === id ? mission.quest : null);
   // who gives each quest, with a mark over them till it's done
   const givers = [];
   const markMat = new THREE.SpriteMaterial({ map: (() => {
