@@ -41,9 +41,10 @@
 import * as THREE from 'three';
 import { houseOn } from '../../../../lib/three/house';
 import { passable } from '../rules/doors';
-import { buildLayout } from '../rules/layout';
+import { buildLayout, offTags } from '../rules/layout';
 import { STATIONS } from '../rules/stations';
 import { CAMERA, cameraPose, wallHits } from './camera';
+import { colliderFor } from './fall';
 import { loadPerson, motionOf, playerKind } from './figures';
 import { createFx } from './fx';
 import { createKit } from './kit';
@@ -149,7 +150,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   const stream = createStream(kit, layout, scene, { renderer, tier, small });
   const rooms = roomsOf(stream);
   // (each figure and gun takes the house look as it comes into the scene, before it is first drawn)
-  const people = createPeople(scene, kit, { tier, renderer, adopt: house.adopt });
+  const people = createPeople(scene, kit, { tier, renderer, adopt: house.adopt, layout });
   const fx = createFx(scene, { small });
   const show = createShow(scene, { renderer, tier, layout, people, fx });
   const leafMat = new THREE.MeshStandardMaterial(LEAF);
@@ -160,6 +161,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   let person = null;
   let wanted = null; // the kind the player should be drawn as
   let downed = false;
+  let downAt = -Infinity;
   let held = CAMERA.back; // how far behind the shoulder the camera stood last frame
   // what the player’s figure plays (playerAct’s), and when it last fired or swung, by the game’s clock
   const played = { base: undefined, upper: undefined, stroke: 0 };
@@ -293,8 +295,16 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
       o.visible = view !== 'first';
       person.hold(you.gun ?? null);
       person.setAim(wrap(yaw - at.yaw), pitch, aim || now - shotAt < SHOT);
-      if ((you.hp ?? 1) <= 0 && !downed) person.play('die');
-      if ((you.hp ?? 1) > 0 && downed) person.play(null);
+      if ((you.hp ?? 1) <= 0 && !downed) {
+        person.play('die');
+        downAt = now;
+      }
+      // down a moment on the fall clip, then a ragdoll on the deck; up again, the clips take over
+      if (downed && !person.fallen && now - downAt > 0.15) person.fall?.({ collide: colliderFor(layout, { room: you.room, at: you, off: offTags(layout, g.flags ?? new Set()), open: (id) => passable(g.doors, id) }), push: { x: -Math.sin(at.yaw), y: 0, z: Math.cos(at.yaw) }, speed: 2 });
+      if ((you.hp ?? 1) > 0 && downed) {
+        person.rise?.();
+        person.play(null);
+      }
       downed = (you.hp ?? 1) <= 0;
       const speed = track.speed();
       const want = playerAct({ crouch: you.crouch, moving: speed > 0.3, aim, gun: you.gun ?? null, blade: you.blade ?? null, shotAgo: now - shotAt, swungAgo: now - swungAt });
@@ -320,6 +330,9 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     // the people after the stream, so they are drawn in the rooms as it now has them; every bolt
     // in the air given before the effects step (one not given again is gone)
     rooms.dt = dt;
+    // (the doors and the bridges as they are, for the dead to fall against)
+    rooms.open = (id) => passable(g.doors, id);
+    rooms.off = offTags(layout, g.flags ?? new Set());
     if (g.crew) people.sync(g.crew, alpha, camera.position, rooms);
     for (const b of g.combat?.bolts ?? []) fx.bolt(b);
     fx.update(dt);

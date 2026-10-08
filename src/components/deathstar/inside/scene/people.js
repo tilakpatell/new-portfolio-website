@@ -46,7 +46,10 @@
 //   createTrack() → { push(body, dt), at(alpha), speed(), velocity(out?), turn() }   pure: a body between
 //     its last two steps; dt: the frame’s time since the last push
 //   motionFrom(track, yaw) → figures.js’s motion   pure: the speed ahead and aside, and the turn
-//   createPeople(scene, kit, { tier, renderer, adopt }) → { sync(crew, alpha, cameraAt, rooms?), hear(events), muzzle(id, out), dispose() }
+//   createPeople(scene, kit, { tier, renderer, adopt, layout }) → { sync(crew, alpha, cameraAt, rooms?), hear(events), muzzle(id, out), dispose() }
+//     layout: the station's (rules/layout.js), for the dead to fall against as ragdolls (without it
+//     they fall on their clips); rooms.open(doorId) and rooms.off (layout.offTags's): its doors and
+//     floors as they are now
 //     adopt(object): handed each figure and gun as it goes into the scene (the house look’s adopt)
 //     crew: { people: Map | [person] } (or the people themselves); alpha: how far the frame is from the
 //     last step to the next; cameraAt: { x, y, z }
@@ -58,6 +61,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { loadGltf } from '../../../../lib/three/gltf';
 import { CAST } from '../rules/cast';
+import { colliderFor } from './fall';
 import { PEOPLE, loadPerson, motionOf } from './figures';
 import { buildGun, disposeGuns } from './guns';
 
@@ -73,6 +77,12 @@ const CHEST = 0.75; // of a person’s height, where a gun is held for aiming
 const HOVER = 1.45; // metres: the IT-O floats at a standing man’s eyes
 const DEEP = 1.0; // the compactor’s water over the floor the dianoga lies on (ds1.js)
 const FALLS = ['die.back', 'die.fwd'];
+// A body shot dead starts down on its fall clip, then goes as a ragdoll: RAG_AFTER seconds in, at
+// SHOT_SPEED m/s at the chest the way the bolt went (a blade's cut a little harder)
+const RAG_AFTER = 0.15;
+const SHOT_SPEED = 2.4;
+const CUT_SPEED = 3.2;
+const SETTLE_MOST = 6; // seconds a still body's fall is played through, at most, when it has no turn
 const HEAD = 1.45; // metres up a body a hit counts as one to the head
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -457,7 +467,7 @@ function buildProp(kind, tall, gltf) {
 
 // ── the people ──
 
-export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt = null } = {}) {
+export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt = null, layout = null } = {}) {
   const count = liveCount(tier);
   const mats = {
     skin: new THREE.MeshStandardMaterial({ name: 'ds-dianoga', vertexColors: true, roughness: 0.6, metalness: 0 }),
@@ -536,8 +546,10 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     it.x = p.x;
     it.y = p.y ?? 0;
     it.z = p.z;
-    it.falling = fall && r.fallFor < FALL;
-    it.settled = p.mode === 'dead' && r.fallFor >= FALL;
+    // (a ragdoll is down once it lies still; a figure built here, once its fall has played)
+    const down = r.fig?.fallen ? r.fig.settled : r.fallFor >= FALL;
+    it.falling = fall && !down;
+    it.settled = p.mode === 'dead' && down;
     it.shown = inView;
     it.p = p;
   }
@@ -565,7 +577,22 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
   // course as they would), far enough to land what it was last given: a
   // fall lies down, a flinch is over and back to standing, and one never
   // yet drawn stands in its pose, not as it was made.
-  function land(r) {
+  // The dead let go as ragdolls against the station (fall.js): pushed the way the bolt or the
+  // blade went, or back from where they faced when nobody saw what hit them
+  function letGo(r, p, yaw, world) {
+    if (!layout || r.fig.fallen || !r.fig.fall) return;
+    const dir = r.hit?.dir ?? { x: -Math.sin(yaw), y: 0, z: Math.cos(yaw) };
+    const v = r.track.velocity({ x: 0, z: 0 });
+    const collide = colliderFor(layout, { room: p.room, at: p, off: world?.off, open: world?.open ?? (() => false) });
+    r.fig.fall({ collide, push: dir, speed: r.hit?.cut ? CUT_SPEED : SHOT_SPEED, velocity: { x: v.x, y: 0, z: v.z } });
+  }
+
+  function land(r, p, yaw, world) {
+    // a body with no turn at moving is laid down at once: its ragdoll played through until it lies still
+    if (r.dead && layout && r.fig.fall) {
+      letGo(r, p, yaw, world);
+      for (let t = 0; t < SETTLE_MOST && r.fig.fallen && !r.fig.settled; t += LAND.step) r.fig.update(LAND.step);
+    }
     for (let t = 0; t < LAND.time; t += LAND.step) r.fig.update(LAND.step, 0);
     // (once more with no time: the gait takes back the weight a finished clip let go of)
     r.fig.update(0, 0);
@@ -589,6 +616,7 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     if (r.dead) {
       // (up again: a checkpoint put them back)
       r.dead = false;
+      fig.rise?.();
       fig.play(null);
       changed = true;
     }
@@ -611,7 +639,7 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     return changed;
   }
 
-  function draw(r, p, pick, alpha, dt) {
+  function draw(r, p, pick, alpha, dt, world) {
     const fig = r.fig;
     const o = fig.object;
     const c = CAST[p.kind];
@@ -637,9 +665,10 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
       const a = aimAngles({ x: at.x, y: at.y + fig.tall * CHEST, z: at.z }, at.yaw, p.aim);
       fig.setAim(a.yaw, a.pitch, want.raised);
     } else fig.setAim(0, 0, want.raised);
-    if (!r.posed || (pick !== 'live' && (changed || (fall && r.fallFor < FALL)))) land(r);
+    if (!r.posed || (pick !== 'live' && (changed || (fall && r.fallFor < FALL && !fig.settled)))) land(r, p, at.yaw, world);
     else if (pick === 'live') {
       if (fall) r.fallFor += dt;
+      if (r.dead && r.fallFor >= RAG_AFTER) letGo(r, p, at.yaw, world);
       fig.update(dt, fall ? 0 : motionFrom(r.track, at.yaw));
     }
   }
@@ -696,7 +725,7 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
       lodPick(items, at, { count }, picks);
       for (const it of items) {
         const r = records.get(it.id);
-        if (r?.fig) draw(r, it.p, picks.get(it.id), alpha, dt);
+        if (r?.fig) draw(r, it.p, picks.get(it.id), alpha, dt, rooms);
       }
     },
 
@@ -705,7 +734,7 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     hear(events) {
       for (const e of events ?? []) {
         if (e.type !== 'hit' || e.target == null || e.target === 'you') continue;
-        const hit = { dir: e.dir ?? null, high: false };
+        const hit = { dir: e.dir ?? null, high: false, cut: e.by === 'blade' };
         const r = records.get(e.target);
         if (r) {
           hit.high = e.y - (r.fig?.object.position.y ?? 0) > HEAD;

@@ -25,13 +25,16 @@
 //     kind: a PEOPLE key, or a model’s path; tall: metres (the kind’s own otherwise); tint: a colour
 //     multiplied into its materials; dye: dye.js’s { color, gain, keep, roughness }
 //     person: { object, kind, tall, hand, bones, play(name, opts), stop(layer, fade), base(name, opts),
-//       look(target | null), setAim(yaw, pitch, raised), hold(gun), update(dt, motion?), dispose() }
+//       look(target | null), setAim(yaw, pitch, raised), hold(gun), fall(opts) → bool, rise(), fallen,
+//       settled, update(dt, motion?), dispose() }
 //     object: feet at its origin, facing −z, so object.rotation.y = −yaw faces yaw
 //     play: a library clip by name (or an ALIAS), on the 'full' body (default) or the 'upper' or
 //       'lower' half; { loop, hold, fade, speed }; null or a walk name stops the full body’s clip
 //     base: a looping state in place of the walk (crouch, sit.idle, a stance; null back to walking)
 //     setAim: the aim’s turn (+ to the right) and tilt (+ up) from where it faces; `raised` false
 //       carries the gun low
+//     fall: let go as a ragdoll (lib/three/ragdollPhysics.js) from the pose it is in, { collide, push,
+//       speed, velocity }; false for a figure that can’t (a stand-in); settled once it lies still
 //     update: motion as motionOf’s, or a speed ahead in m/s; without it, how far the object moved
 
 import * as THREE from 'three';
@@ -39,6 +42,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { createAnimator } from '../../../../lib/three/animator';
 import { RICK_HIPS, borrowClips, faceForward, heading, preload, retarget } from '../../../../lib/three/clipLibrary';
 import { loadGltf } from '../../../../lib/three/gltf';
+import { rigRagdoll } from '../../../../lib/three/ragdollPhysics';
 import { BODY } from '../rules/walker';
 import { dyed } from './dye';
 
@@ -180,6 +184,7 @@ function personOf({ object, kind, tall, hand, anim = null, bones = {}, owned }) 
   const frame = { forward, up: new THREE.Vector3(0, 1, 0) };
   const _q = new THREE.Quaternion();
   let m = motionOf(0);
+  let rag = null; // the ragdoll it fell as, once it has
 
   function pose(dt) {
     const k = 1 - Math.exp(-dt * AIM.chase);
@@ -250,7 +255,31 @@ function personOf({ object, kind, tall, hand, anim = null, bones = {}, owned }) 
       gun = kind ? makeGun(kind, finish) : null;
       if (gun) object.add(gun);
     },
+    // Let go as a ragdoll from the pose it is in: its clips stop, its gun drops,
+    // and from now on update steps the body. collide, push, speed, velocity:
+    // ragdollPhysics.js’s. A figure with no skeleton of ours can’t, and says so.
+    fall({ collide = null, push = { x: 0, y: 0, z: 0 }, speed = 2, velocity = null } = {}) {
+      if (rag || !anim || !bones.Hips) return Boolean(rag);
+      person.hold(null);
+      object.updateMatrixWorld(true);
+      rag = rigRagdoll(bones, { collide, push, speed, velocity });
+      return true;
+    },
+    // (up again, a checkpoint having put them back: the clips take the body back)
+    rise() {
+      rag = null;
+    },
+    get fallen() {
+      return Boolean(rag);
+    },
+    get settled() {
+      return Boolean(rag?.settled);
+    },
     update(dt, motion) {
+      if (rag) {
+        rag.step(dt);
+        return;
+      }
       if (motion === undefined) {
         // (no word from the caller: how far the object moved, and turned, since the last update)
         const moved = Math.hypot(object.position.x - last.x, object.position.z - last.z);
