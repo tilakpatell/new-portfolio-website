@@ -20,7 +20,9 @@
 //     me: { x, y, z, room }; threat: a point at chest height; null when nowhere near is out of its sight
 //   fallbackFrom(layout, me, threat, { seesThrough, canPass }) → { x, y, z, room } | null
 //   flankRoute(nav, me, threat, { canPass, solidsOf }) → route | null   into the threat’s room by
-//     another door than the straight way’s, and not too long a way round; null in the same room
+//     another door than the straight way’s, and not too long a way round; null in the same room.
+//     Both ways are routines.js’s remembered ones: a soldier looks again every second or two, mostly
+//     from where he stood at a target that hasn’t moved, and a way across a bay is dear
 //   standOff(layout, from, threat, metres) → { x, y, z, room } | null   on the line from the threat
 //     towards `from`, `metres` off, kept inside the room; null when the threat is in another room
 //   sectionSpots(layout, section) → [{ x, y, z, room }]   the station’s spots in the section, then
@@ -37,7 +39,7 @@ import { apart, awayFrom, cover, nearTo, pickPlace } from '../../../../lib/ai/sp
 import { createSearch } from '../../../../lib/ai/search';
 import { createTokens } from '../../../../lib/ai/squad';
 import { WEAPONS } from './combat';
-import { route } from './nav';
+import { wayBetween } from './routines';
 
 export const TACTICS = Object.freeze(['hold', 'cover', 'flank', 'advance', 'fallback', 'search']);
 
@@ -148,11 +150,11 @@ const lengthOf = (path) => path.reduce((n, p, i) => (i ? n + flat(path[i - 1], p
 
 export function flankRoute(nav, me, threat, { canPass = () => true, solidsOf } = {}) {
   if (!threat.room || me.room === threat.room) return null;
-  const direct = route(nav, me, threat, { canPass, solidsOf });
+  const direct = wayBetween(nav, me, threat, { canPass, solidsOf });
   // the door the straight way comes in by: the last one on it
   const entry = direct?.findLast((p) => p.door)?.door;
   if (!entry) return null;
-  const other = route(nav, me, threat, { canPass: (id, door) => id !== entry && canPass(id, door), solidsOf });
+  const other = wayBetween(nav, me, threat, { canPass: (id, door) => id !== entry && canPass(id, door), solidsOf });
   if (!other || lengthOf(other) > lengthOf(direct) * AROUND + AROUND_PLUS) return null;
   return other;
 }

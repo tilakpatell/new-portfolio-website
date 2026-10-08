@@ -175,25 +175,29 @@ describe('a Force lightning arc', () => {
   });
 
   it('wanders off the straight line, but no further than its jag allows', () => {
-    const main = run(11).filter((s) => s.w === 1);
-    const worst = Math.max(...main.map((s) => offLine(s.b, from, to)));
     const length = len({ x: to.x - from.x, y: to.y - from.y, z: to.z - from.z });
-    expect(worst).toBeGreaterThan(0.02 * length);
-    expect(worst).toBeLessThanOrEqual(2 * 0.2 * length);
+    for (let seed = 1; seed <= 60; seed++) {
+      const main = run(seed).filter((s) => s.w === 1);
+      const worst = Math.max(...main.map((s) => offLine(s.b, from, to)));
+      expect(worst).toBeGreaterThan(0.02 * length);
+      expect(worst).toBeLessThanOrEqual(2 * 0.2 * length);
+    }
     const straight = run(11, { depth: 4, branches: 0, jag: 0 });
     for (const s of straight) expect(offLine(s.b, from, to)).toBeLessThan(1e-5);
   });
 
-  it('forks into fainter branches, each leaving from a bend in the main arc', () => {
-    const segs = run(5);
-    const main = segs.filter((s) => s.w === 1);
-    const branches = segs.filter((s) => s.w < 1);
-    expect(branches.length).toBe(3 * 4);
-    const bends = main.slice(0, -1).map((s) => s.b);
-    // each branch starts at a bend and runs on unbroken from there
-    for (let i = 0; i < branches.length; i += 4) {
-      expect(bends.some((p) => p.x === branches[i].a.x && p.y === branches[i].a.y && p.z === branches[i].a.z)).toBe(true);
-      for (let k = 1; k < 4; k++) expect(branches[i + k].a).toEqual(branches[i + k - 1].b);
+  it('forks into fainter branches, each leaving from a bend in the main arc (never the hand or the target)', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const segs = run(seed);
+      const main = segs.filter((s) => s.w === 1);
+      const branches = segs.filter((s) => s.w < 1);
+      expect(branches.length).toBe(3 * 4);
+      const bends = main.slice(0, -1).map((s) => s.b);
+      // each branch starts at a bend and runs on unbroken from there
+      for (let i = 0; i < branches.length; i += 4) {
+        expect(bends.some((p) => p.x === branches[i].a.x && p.y === branches[i].a.y && p.z === branches[i].a.z)).toBe(true);
+        for (let k = 1; k < 4; k++) expect(branches[i + k].a).toEqual(branches[i + k - 1].b);
+      }
     }
   });
 
@@ -215,7 +219,7 @@ describe('the sabers', () => {
     h.attach(hand);
     h.on(true);
     sabers.clash(at(), 'parry');
-    sabers.deflect(at(), { x: 0, y: 0, z: 1 });
+    sabers.clash(at(), 'deflect', { x: 0, y: 0, z: 1 });
     sabers.lightning([at(0, 1.4, 0), at(0.3, 1.4, 0)], at(0, 1.2, -5), true);
     sabers.push(at(), { x: 0, y: 0, z: -1 });
     sabers.choke(at(0, 1.5, -4), true);
@@ -311,7 +315,7 @@ describe('the sabers', () => {
 
   it('throw a few sparks where a blade turns a bolt', () => {
     const sabers = createSabers(new THREE.Scene(), { tier: 'mid' });
-    sabers.deflect(at(), { x: 1, y: 0, z: 0 });
+    sabers.clash(at(), 'deflect', { x: 1, y: 0, z: 0 });
     sabers.update(1 / 60);
     expect(sabers.live().sparks).toBeGreaterThan(0);
   });
@@ -331,6 +335,21 @@ describe('the sabers', () => {
     sabers.lightning(hands, at(0, 1.2, -6), false);
     sabers.update(0.5);
     expect(sabers.live().arcs).toBe(0);
+  });
+
+  it('strike lightning anew at once when it is thrown again, at its new target, not where it last burned', () => {
+    const sabers = createSabers(new THREE.Scene(), { tier: 'high' });
+    const sprites = sabers.meshes.find((m) => m.name === 'saber-sprites').geometry;
+    const furthest = () => Math.max(...Array.from({ length: sprites.instanceCount }, (_, i) => sprites.attributes.aAt.getX(i)));
+    const hand = [at(0, 1.4, 0)];
+    sabers.lightning(hand, at(0, 1.2, -6), true);
+    sabers.update(1 / 60);
+    expect(furthest()).toBeLessThan(1);
+    sabers.lightning(hand, at(0, 1.2, -6), false);
+    sabers.update(1 / 60);
+    sabers.lightning(hand, at(6, 1.2, -6), true);
+    sabers.update(1 / 60);
+    expect(furthest()).toBeGreaterThan(5);
   });
 
   it('send a ripple along a push that fades, and keep one at a gripped throat until let go', () => {

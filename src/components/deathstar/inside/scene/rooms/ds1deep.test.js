@@ -4,7 +4,7 @@ import { furnish } from '../../rules/furnish';
 import { DS1 } from '../../rules/stations/ds1';
 import { DS1_DEEP, drawProp } from './ds1deep';
 import { bendOf, spillOf } from './deep/cells';
-import { MASHER, mashersOf, waterOf } from './deep/compactor';
+import { MASHER, mashersOf, waterNormals, waterOf } from './deep/compactor';
 import { boundsOf } from './deep/parts';
 
 const KINDS = ['detention', 'cellbay', 'cell', 'chute', 'compactor', 'maintenance'];
@@ -83,6 +83,28 @@ describe('compactor 3263827', () => {
       expect(p.y).toBeLessThan(water.y);
       expect(p.y + p.h).toBeGreaterThan(water.y);
     }
+  });
+
+  it('ripples its water with a normal map that tiles without a seam, every texel leaning but facing up', () => {
+    const n = 32;
+    const px = waterNormals(n, 7);
+    expect(px).toHaveLength(n * n * 4);
+    const at = (x, y) => [px[(y * n + x) * 4], px[(y * n + x) * 4 + 1], px[(y * n + x) * 4 + 2]];
+    const step = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    let inside = 0;
+    let lean = 0;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const c = at(x, y);
+        expect(c[2]).toBeGreaterThan(160);
+        lean = Math.max(lean, Math.abs(c[0] - 128), Math.abs(c[1] - 128));
+        if (x + 1 < n) inside = Math.max(inside, step(c, at(x + 1, y)));
+      }
+    }
+    expect(lean).toBeGreaterThan(20);
+    // across the wrap, from the last column to the first, no bigger a jump than between any two neighbours
+    for (let y = 0; y < n; y++) expect(step(at(n - 1, y), at(0, y))).toBeLessThanOrEqual(inside + 1);
+    expect([...waterNormals(n, 7)]).toEqual([...px]);
   });
 
   it('closes its two long walls over the water towards each other, leaving less than a body’s width and a bit', () => {

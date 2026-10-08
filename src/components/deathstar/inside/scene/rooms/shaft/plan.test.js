@@ -40,8 +40,8 @@ describe('easing a moving part to where it should be', () => {
 });
 
 describe('the haze that darkens a shaft with depth', () => {
-  it('lays its layers between the top and the bottom, from the top down', () => {
-    const { ys } = hazeLayers({ top: -50, bottom: -110, n: 12, keep: 0.03 });
+  it('lays its layers between the near end and the far one, from the near end on', () => {
+    const { ys } = hazeLayers({ near: -50, far: -110, n: 12, keep: 0.03 });
     expect(ys).toHaveLength(12);
     for (const y of ys) {
       expect(y).toBeLessThan(-50);
@@ -50,15 +50,22 @@ describe('the haze that darkens a shaft with depth', () => {
     for (let i = 1; i < ys.length; i++) expect(ys[i]).toBeLessThan(ys[i - 1]);
   });
 
-  it('lets through only `keep` of what lies under every layer', () => {
+  it('runs upwards as well, for the dark over a ledge', () => {
+    const { ys } = hazeLayers({ near: -42, far: -12, n: 5, keep: 0.1 });
+    for (let i = 1; i < ys.length; i++) expect(ys[i]).toBeGreaterThan(ys[i - 1]);
+    expect(ys[0]).toBeGreaterThan(-42);
+    expect(ys.at(-1)).toBeLessThan(-12);
+  });
+
+  it('lets through only `keep` of what lies past every layer', () => {
     for (const n of [4, 6, 12]) {
-      const { opacity } = hazeLayers({ top: 0, bottom: -60, n, keep: 0.03 });
+      const { opacity } = hazeLayers({ near: 0, far: -60, n, keep: 0.03 });
       expect((1 - opacity) ** n).toBeCloseTo(0.03, 6);
     }
   });
 
-  it('crowds its layers towards the top, so the dark starts soon under the ledge', () => {
-    const { ys } = hazeLayers({ top: 0, bottom: -60, n: 8, keep: 0.05 });
+  it('crowds its layers towards the near end, so the dark starts soon under the ledge', () => {
+    const { ys } = hazeLayers({ near: 0, far: -60, n: 8, keep: 0.05 });
     expect(ys[0] - ys[1]).toBeLessThan(ys[6] - ys[7]);
   });
 });

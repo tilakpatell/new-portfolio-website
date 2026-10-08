@@ -607,9 +607,18 @@ describe('the crew’s minds', () => {
 
   it('works out at most two new ways a step, so a squad setting off at once doesn’t stall the station', () => {
     const w = world(row());
-    const people = [0, 1, 2, 3, 4].map((i) => addPerson(w.crew, { id: `tk${i}`, kind: 'stormtrooper', room: 'west', x: -15 + i * 0.7, z: 1, role: { type: 'march', spots: ['b', 'a'] } }));
+    // each from a metre cell of his own, so none can take a way another worked out
+    const people = [0, 1, 2, 3, 4].map((i) => addPerson(w.crew, { id: `tk${i}`, kind: 'stormtrooper', room: 'west', x: -15.5 + i * 1.1, z: 1, role: { type: 'march', spots: ['b', 'a'] } }));
     const started = [];
     simulate(w, 4, { each: () => started.push(people.filter((p) => p.mind.legs.nav.path).length) });
     expect(started).toEqual([2, 4, 5, 5]);
+  });
+
+  it('sets a squad off together from where they stand: a way one of them worked out is remembered, and costs the rest nothing', () => {
+    const w = world(row());
+    const people = [0, 1, 2, 3, 4].map((i) => addPerson(w.crew, { id: `tk${i}`, kind: 'stormtrooper', room: 'west', x: -14.9 + (i % 3) * 0.4, z: 1.1 + Math.floor(i / 3) * 0.5, role: { type: 'march', spots: ['b', 'a'] } }));
+    const started = [];
+    simulate(w, 2, { each: () => started.push(people.filter((p) => p.mind.legs.nav.path).length) });
+    expect(started).toEqual([5, 5]);
   });
 });

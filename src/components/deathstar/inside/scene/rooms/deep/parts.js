@@ -10,14 +10,19 @@
 //
 //   box(w, h, d, x, y, z, mat), plate(w, h, x, y, z, mat, face), cyl(r0, r1, h, x, y, z, mat, { sides, axis }),
 //   beam(a, b, w, h, mat), at(x, y, z, turn) → Matrix4, place(parts, matrix) → parts
+//   wedge(w, d, h0, h1, x, y, z, mat)   a block whose top slopes from h0 at its −z side to h1 at its +z side
+//   slope(w, len, rise, x, y, z, mat)   a face len long leaning back, rising `rise` towards −z (a console’s)
 //   turnOf(yaw) → the turn that faces a part drawn towards +z along yaw (0 faces −z)
 //   onProp(prop, parts) → parts   drawn about the prop’s foot (x across, +z its front, y up), put where it stands
+//   drawWith(table, prop) → parts   the prop drawn by its kind’s drawer in table ((prop) → local parts), put there
 //   boundsOf(parts) → { x0, x1, y0, y1, z0, z1 }
 //   resolve(parts, own) → parts   a part naming one of the room’s own materials gets it
 //   digitRects(text, h) → { rects: [{ x0, x1, y0, y1 }], w }   seven-segment digits h tall, centred on x 0
 //   stepClose(k, dt, on, { close, open }) → k   0 open to 1 shut: `close` seconds in, `open` back
 //   flagsOf(ctx) → Set   the story’s flags, on the frame (ctx.flags) or its game (ctx.g.flags)
 //   openOf(ctx, doorId) → 0..1   how open the game has a door
+//   hazeMaterial({ color, strength, flat }) → ShaderMaterial   light in the air (or on a floor, flat), added
+//     to what is behind it, brightest at its uv’s v 1 and gone by v 0; uniforms uTime, uStrength
 //   finish(kit, room, parts, { lamps, own, maps, extra, probeAt, renderer, update, dispose }) → the room
 
 import * as THREE from 'three';
@@ -55,6 +60,21 @@ export function beam(a, b, w, h, mat) {
   return { geo: new THREE.BoxGeometry(len, h, w).applyMatrix4(m), mat };
 }
 
+export function wedge(w, d, h0, h1, x, y, z, mat) {
+  const g = new THREE.BoxGeometry(w, 1, d);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, p.getY(i) > 0 ? h0 + ((h1 - h0) * (p.getZ(i) + d / 2)) / d : 0);
+  g.computeVertexNormals();
+  return { geo: g.translate(x, y, z), mat };
+}
+
+// a face w across and len along its slope, centred on x, y, z, leaning back
+// (its far edge `rise` higher than its near one) and facing up and towards +z
+export function slope(w, len, rise, x, y, z, mat) {
+  const tilt = Math.asin(Math.max(-1, Math.min(1, rise / len)));
+  return { geo: new THREE.PlaneGeometry(w, len).rotateX(-Math.PI / 2 + tilt).translate(x, y, z), mat };
+}
+
 export const at = (x, y, z, turn = 0) => new THREE.Matrix4().makeTranslation(x, y, z).multiply(new THREE.Matrix4().makeRotationY(turn));
 
 export function place(parts, m) {
@@ -67,6 +87,11 @@ export function place(parts, m) {
 export const turnOf = (yaw) => Math.PI - yaw;
 
 export const onProp = (prop, parts) => place(parts, at(prop.x, prop.y, prop.z, turnOf(prop.yaw ?? 0)));
+
+export function drawWith(table, prop) {
+  const draw = table[prop.kind];
+  return draw ? onProp(prop, draw(prop)) : [];
+}
 
 export function boundsOf(parts) {
   const b = new THREE.Box3();
@@ -131,6 +156,66 @@ export function flagsOf(ctx) {
 export function openOf(ctx, id) {
   const v = ctx?.g?.doors?.[id]?.open;
   return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0;
+}
+
+// ── light in the air ──
+
+const HAZE_VERT = /* glsl */ `
+varying vec2 vUv;
+varying vec3 vN;
+varying vec3 vV;
+varying vec3 vW;
+void main() {
+  vUv = uv;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  vV = -mv.xyz;
+  vN = normalMatrix * normal;
+  vW = (modelMatrix * vec4(position, 1.0)).xyz;
+  gl_Position = projectionMatrix * mv;
+}`;
+
+// motes drifting in it, and (unless it lies flat) brightest where it is
+// seen through most of its depth, so a cone or a slab has no hard edge
+const HAZE_FRAG = /* glsl */ `
+uniform vec3 uColor;
+uniform float uStrength;
+uniform float uTime;
+uniform float uFlat;
+varying vec2 vUv;
+varying vec3 vN;
+varying vec3 vV;
+varying vec3 vW;
+float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float noise(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash(i), hash(i + vec3(1, 0, 0)), u.x), mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), u.x), u.y),
+             mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), u.x), mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), u.x), u.y), u.z);
+}
+void main() {
+  float face = pow(abs(dot(normalize(vN), normalize(vV))), 1.6);
+  float sides = smoothstep(0.0, 0.3, vUv.x) * smoothstep(0.0, 0.3, 1.0 - vUv.x);
+  float shape = mix(face, sides, uFlat);
+  float along = smoothstep(0.0, 0.85, vUv.y);
+  float motes = 0.7 + 0.3 * noise(vW * 2.5 + vec3(0.0, -uTime * 0.12, uTime * 0.05));
+  float a = uStrength * shape * along * along * motes;
+  gl_FragColor = vec4(uColor * a, a);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`;
+
+export function hazeMaterial({ color = 0xdfe8ff, strength = 0.2, flat = false } = {}) {
+  return new THREE.ShaderMaterial({
+    name: 'ds-haze',
+    uniforms: { uColor: { value: new THREE.Color(color) }, uStrength: { value: strength }, uTime: { value: 0 }, uFlat: { value: flat ? 1 : 0 } },
+    vertexShader: HAZE_VERT,
+    fragmentShader: HAZE_FRAG,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  });
 }
 
 // ── the end of every room ──

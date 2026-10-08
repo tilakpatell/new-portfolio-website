@@ -156,68 +156,6 @@ export function resetRoutine(node, bb) {
   bb.timers = {};
 }
 
-// ── the ways remembered ──
-
-const CELL = 1; // metres: a way is remembered by the cells its ends stand in
-const KEEP = 32; // ways a room remembers, the least lately used forgotten first
-const KNEE = 0.5; // the height a moved end’s leg is checked at, as a step is
-const remembered = new WeakMap(); // nav → room → key → way
-
-const cellOf = (p) => `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`;
-
-// Which way is wanted: the cells, and the doors shut to this walker now (a way past one shut since is no way).
-function wayKey(nav, from, to, canPass) {
-  const shut = [];
-  for (const [id, door] of nav.layout.doors) if (!canPass(id, door)) shut.push(id);
-  return `${cellOf(from)}>${to.room}:${cellOf(to)}|${shut.join(',')}`;
-}
-
-function waysOut(nav, room) {
-  let rooms = remembered.get(nav);
-  if (!rooms) remembered.set(nav, (rooms = new Map()));
-  let ways = rooms.get(room);
-  if (!ways) rooms.set(room, (ways = new Map()));
-  return ways;
-}
-
-// The remembered way with its ends where they are asked from now; its middle legs were clear already.
-const moved = (way, from, to) => [{ ...way[0], x: from.x, z: from.z, room: from.room }, ...way.slice(1, -1).map((p) => ({ ...p })), { ...way.at(-1), x: to.x, z: to.z }];
-
-// A leg is walked in the room of the point it goes to; a ride (from a point marked `lift`) isn’t walked.
-function walkable(layout, solidsOf, a, b) {
-  if (a.lift) return true;
-  const room = layout.rooms.get(b.room);
-  const knee = (p) => ({ x: p.x, y: (layout.floorAt(b.room, p.x, p.z) ?? room.y) + KNEE, z: p.z });
-  return lineClear(layout, () => true, knee(a), knee(b), solidsOf(b.room) ?? []);
-}
-
-export function rememberedWay(nav, from, to, { canPass = () => true, solidsOf = () => [] } = {}) {
-  const ways = waysOut(nav, from.room);
-  const key = wayKey(nav, from, to, canPass);
-  const way = ways.get(key);
-  if (!way) return null;
-  const now = moved(way, from, to);
-  if (!walkable(nav.layout, solidsOf, now[0], now[1]) || !walkable(nav.layout, solidsOf, now.at(-2), now.at(-1))) return null;
-  ways.delete(key);
-  ways.set(key, way);
-  return now;
-}
-
-export function wayBetween(nav, from, to, { canPass = () => true, solidsOf = () => [], fresh = false } = {}) {
-  const known = fresh ? null : rememberedWay(nav, from, to, { canPass, solidsOf });
-  if (known) return known;
-  const way = route(nav, from, to, { canPass, solidsOf });
-  // one point is no way to remember: from and to are the same place
-  if (way?.length > 1) {
-    const ways = waysOut(nav, from.room);
-    const key = wayKey(nav, from, to, canPass);
-    ways.delete(key);
-    ways.set(key, way.map((p) => ({ ...p })));
-    if (ways.size > KEEP) ways.delete(ways.keys().next().value);
-  }
-  return way;
-}
-
 // ── the legs ──
 
 const TURN = 8; // radians a second anyone turns
@@ -309,10 +247,15 @@ export function walkTo(crew, p, where, { run = false, near = ARRIVE, keepUp = fa
   // someone walked towards moves on: the way is worked out again now and then
   const moved = where.who !== undefined && nav.path && flat(nav.path.at(-1), to) > 1.5 && clock - nav.routedAt > 0.5;
   if (nav.key !== key || !nav.path || moved) {
-    if (!where.path && crew.routes >= ROUTES) return 'running';
-    if (!where.path) crew.routes = (crew.routes ?? 0) + 1;
-    const path = where.path ?? route(crew.nav, p, to, { canPass: (id, door) => canPass(crew, p, id, door), solidsOf: crew.solidsOf });
     const stuck = nav.key === key ? nav.stuck : 0;
+    const ask = { canPass: (id, door) => canPass(crew, p, id, door), solidsOf: crew.solidsOf };
+    // a remembered way costs nothing, so it is taken at once; one stuck on is worked out anew
+    let path = where.path ?? (stuck ? null : rememberedWay(crew.nav, p, to, ask));
+    if (!path) {
+      if (crew.routes >= ROUTES) return 'running';
+      crew.routes = (crew.routes ?? 0) + 1;
+      path = wayBetween(crew.nav, p, to, { ...ask, fresh: true });
+    }
     if (!path) {
       legs.nav = { ...idle(), key, failedAt: clock, stuck };
       if (where.wander) legs.wander = null;
@@ -438,4 +381,90 @@ function unstick(crew, p) {
   nav.stuck += 1;
   nav.path = null;
   if (nav.stuck >= GIVE_UP) nav.failedAt = crew.clock;
+}
+
+// ── the ways remembered ──
+
+const CELL = 1; // metres: a way is remembered by the cells its ends stand in
+// metres: an end this near a cell’s edge looks in the cell over it too, since people stop within
+// ARRIVE of a spot, and a spot often stands on a whole metre, where four cells meet
+const EDGE = ARRIVE;
+const KEEP = 32; // ways a room remembers, the least lately used forgotten first
+const KNEE = 0.5; // the height a moved end’s leg is checked at, as a step is
+const remembered = new WeakMap(); // nav → room → key → way
+
+const cellOf = (p) => `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`;
+
+// The cells an end may be remembered in: its own first, then any within EDGE of it.
+function cellsNear(p) {
+  const out = [cellOf(p)];
+  for (const dx of [-EDGE, 0, EDGE]) for (const dz of [-EDGE, 0, EDGE]) {
+    const c = cellOf({ x: p.x + dx, z: p.z + dz });
+    if (!out.includes(c)) out.push(c);
+  }
+  return out;
+}
+
+// The doors shut to this walker now: a way remembered past one shut since is no way, and one round a
+// door shut then is the long way once it opens.
+function shutTo(nav, canPass) {
+  const shut = [];
+  for (const [id, door] of nav.layout.doors) if (!canPass(id, door)) shut.push(id);
+  return shut.join(',');
+}
+
+const wayKey = (from, to, shut) => `${from}>${to}|${shut}`;
+
+function waysOut(nav, room) {
+  let rooms = remembered.get(nav);
+  if (!rooms) remembered.set(nav, (rooms = new Map()));
+  let ways = rooms.get(room);
+  if (!ways) rooms.set(room, (ways = new Map()));
+  return ways;
+}
+
+// The remembered way with its ends where they are asked from now; its middle legs were clear already.
+const moved = (way, from, to) => [{ ...way[0], x: from.x, z: from.z, room: from.room }, ...way.slice(1, -1).map((p) => ({ ...p })), { ...way.at(-1), x: to.x, z: to.z }];
+
+// A leg is walked in the room of the point it goes to; a ride (from a point marked `lift`) isn’t walked.
+function walkable(layout, solidsOf, a, b) {
+  if (a.lift) return true;
+  const room = layout.rooms.get(b.room);
+  const knee = (p) => ({ x: p.x, y: (layout.floorAt(b.room, p.x, p.z) ?? room.y) + KNEE, z: p.z });
+  return lineClear(layout, () => true, knee(a), knee(b), solidsOf(b.room) ?? []);
+}
+
+export function rememberedWay(nav, from, to, { canPass = () => true, solidsOf = () => [] } = {}) {
+  const ways = waysOut(nav, from.room);
+  if (!ways.size) return null;
+  const shut = shutTo(nav, canPass);
+  const ends = cellsNear(to).map((c) => `${to.room}:${c}`);
+  for (const a of cellsNear(from)) {
+    for (const b of ends) {
+      const key = wayKey(a, b, shut);
+      const way = ways.get(key);
+      if (!way) continue;
+      const now = moved(way, from, to);
+      if (!walkable(nav.layout, solidsOf, now[0], now[1]) || !walkable(nav.layout, solidsOf, now.at(-2), now.at(-1))) continue;
+      ways.delete(key);
+      ways.set(key, way);
+      return now;
+    }
+  }
+  return null;
+}
+
+export function wayBetween(nav, from, to, { canPass = () => true, solidsOf = () => [], fresh = false } = {}) {
+  const known = fresh ? null : rememberedWay(nav, from, to, { canPass, solidsOf });
+  if (known) return known;
+  const way = route(nav, from, to, { canPass, solidsOf });
+  // one point is no way to remember: from and to are the same place
+  if (way?.length > 1) {
+    const ways = waysOut(nav, from.room);
+    const key = wayKey(cellOf(from), `${to.room}:${cellOf(to)}`, shutTo(nav, canPass));
+    ways.delete(key);
+    ways.set(key, way.map((p) => ({ ...p })));
+    if (ways.size > KEEP) ways.delete(ways.keys().next().value);
+  }
+  return way;
 }

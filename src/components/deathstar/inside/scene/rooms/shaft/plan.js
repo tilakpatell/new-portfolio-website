@@ -8,8 +8,8 @@
 //
 //   flagOn(ctx, name) → bool   ctx: a room’s update ctx (ctx.flags, or the game’s ctx.g.flags; a Set or a list)
 //   approach(v, target, dt, rate) → v moved towards target by at most rate × dt
-//   hazeLayers({ top, bottom, n, keep }) → { ys, opacity }   n black layers from the top down, crowded
-//     towards the top; together they let `keep` of what lies under them through
+//   hazeLayers({ near, far, n, keep }) → { ys, opacity }   n black layers from near to far (down a shaft or
+//     up it), crowded towards the near end; together they let `keep` of what lies past them through
 //   openEdges(room) → [{ floor, side, a: { x, z }, b: { x, z }, y }]   the stretches of each floor’s edges
 //     with nothing beside them: no wall, no floor within a step (a floor that comes and goes, like the
 //     bridge, doesn’t count); floor is its index in room.floors
@@ -37,10 +37,10 @@ export function approach(v, target, dt, rate) {
   return v + Math.sign(target - v) * step;
 }
 
-// (crowded towards the top by a power, so the first metres under a ledge
-// already go dim while the last layers, far down, are seldom looked through)
-export function hazeLayers({ top, bottom, n, keep }) {
-  const ys = Array.from({ length: n }, (_, i) => top + (bottom - top) * ((i + 0.5) / n) ** 1.5);
+// (crowded towards the near end by a power, so the first metres under a
+// ledge already go dim while the last layers, far down, are seldom looked through)
+export function hazeLayers({ near, far, n, keep }) {
+  const ys = Array.from({ length: n }, (_, i) => near + (far - near) * ((i + 0.5) / n) ** 1.5);
   return { ys, opacity: 1 - keep ** (1 / n) };
 }
 

@@ -3,12 +3,13 @@ import { seeded } from '../../../../lib/seeded';
 import { FAILED, RUNNING } from '../../../../lib/ai/tree';
 import { buildLayout } from './layout';
 import { createNav, route } from './nav';
+import { DS1 } from './stations/ds1';
 import { rememberedWay, ROLES, resetRoutine, routineFor, runRoutine, wayBetween } from './routines';
 
 // nav.route as it is, counted, so a test can tell a way remembered from one worked out anew
 vi.mock('./nav', async (real) => {
   const nav = await real();
-  return { ...nav, route: vi.fn(nav.route) };
+  return { ...nav, route: vi.fn((...args) => nav.route(...args)) };
 });
 
 // A stand-in for the body a routine drives: `go` takes `legs` ticks to get
@@ -245,7 +246,9 @@ const at = (x, z, r = 'hall') => ({ x, z, room: r });
 const doorsOf = (path) => path.filter((p) => p.door).map((p) => p.door);
 
 describe('the ways remembered', () => {
-  beforeEach(() => route.mockClear());
+  beforeEach(() => {
+    route.mockClear();
+  });
 
   it('remembers a way by the cells it starts and ends in, and gives it again with its ends moved to where it is asked from', () => {
     const { nav, solidsOf } = hall();
@@ -261,10 +264,17 @@ describe('the ways remembered', () => {
     expect(route).toHaveBeenCalledTimes(1);
   });
 
+  it('finds a way remembered from just over a cell’s edge, as people stop a little either side of a spot on a whole metre', () => {
+    const { nav, solidsOf } = hall();
+    wayBetween(nav, at(-3.1, -2.1), at(3.1, -2.9), { solidsOf });
+    expect(rememberedWay(nav, at(-2.85, -1.85), at(2.9, -3.2), { solidsOf })).not.toBeNull();
+    expect(route).toHaveBeenCalledTimes(1);
+  });
+
   it('works a way out anew from another cell, to another, or when told to', () => {
     const { nav, solidsOf } = hall();
     wayBetween(nav, at(-3.2, -2.2), at(3.3, -2.3), { solidsOf });
-    expect(rememberedWay(nav, at(-4.2, -2.2), at(3.3, -2.3), { solidsOf })).toBeNull();
+    expect(rememberedWay(nav, at(-4.6, -2.2), at(3.3, -2.3), { solidsOf })).toBeNull();
     expect(rememberedWay(nav, at(-3.2, -2.2), at(3.3, -1.7), { solidsOf })).toBeNull();
     wayBetween(nav, at(-3.2, -2.2), at(3.3, -2.3), { solidsOf, fresh: true });
     expect(route).toHaveBeenCalledTimes(2);
@@ -291,6 +301,18 @@ describe('the ways remembered', () => {
     // the same cell, south of the panel: the remembered first leg would cross it
     expect(rememberedWay(nav, at(-3.5, 0.05), at(-3.5, -3.5), { solidsOf })).toBeNull();
     expect(wayBetween(nav, at(-3.5, 0.05), at(-3.5, -3.5), { solidsOf })).toHaveLength(2);
+  });
+
+  it('takes a way remembered down Docking Control’s stair from a step off where it was first asked, by way of that place', () => {
+    const nav = createNav(buildLayout(DS1));
+    const bay = (x, z) => at(x, z, 'bay327');
+    // from the landing by the control room’s door, down the stair and across the bay
+    const first = wayBetween(nav, bay(21.75, -23.18), bay(-13, 2.5));
+    const again = rememberedWay(nav, bay(21.72, -23.1), bay(-13.1, 2.4));
+    expect(route).toHaveBeenCalledTimes(1);
+    expect(again.slice(0, 2)).toEqual([bay(21.72, -23.1), first[0]]);
+    expect(again.slice(2, -1)).toEqual(first.slice(1, -1));
+    expect(again.at(-1)).toEqual(bay(-13.1, 2.4));
   });
 
   it('keeps only a few ways a room, forgetting the least lately used first', () => {

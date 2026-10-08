@@ -152,24 +152,63 @@ const IMPERIAL = [
   done('escape'),
 ];
 
-const SCRIPTS = { 'ds1-rebel': REBEL, 'ds1-imperial': IMPERIAL };
+// Luke’s way up the tower and down again, the duel won the long way: every
+// line of the Emperor’s heard out before the saber is taken.
+const REBEL2 = [
+  done('arrive2'),
+  at('holding', 'holding-lift', ['vader', 'royalguard', 'guards']),
+  talk('vader-lift', 'I know, Father', 'I know there is good'),
+  done('tower'),
+  talk('throne', 'I came for my father', 'Your overconfidence', 'My friends', '(Look out', '(Take the saber'),
+  killed('duel-vader', 'vader'),
+  at('throne', 'under-stairs'),
+  ...wait(10), // under the stairs while he hunts
+  killed('fury-vader', 'vader'),
+  talk('strike-down', '(Strike him down', '(Look at his', '(Throw'),
+  ...wait(10), // the lightning, guard up
+  done('throw'),
+  at('dock', 'shuttle-ramp', ['vader']),
+  done('mask'),
+  talk('unmasking', 'But you’ll die', '(Lift', 'I’ve got to save'),
+  at('dock', 'escape-shuttle'),
+  done('escape2'),
+];
+
+const IMPERIAL2 = [
+  talk('st321', 'ST 321, who', '(Check', '(Lower'),
+  done('arrive2'),
+  talk('jerjerrod-vader'),
+  at('hangar272', 'ranks272'),
+  { type: 'still', seconds: 40 },
+  at('command', 'firing-switch'),
+  ...wait(8),
+  used('firing-switch'),
+  done('cruiser'),
+  at('dock'),
+  done('escape2'),
+];
+
+const SCRIPTS = { 'ds1-rebel': REBEL, 'ds1-imperial': IMPERIAL, 'ds2-rebel': REBEL2, 'ds2-imperial': IMPERIAL2 };
 
 // ── the tests ──
 
 describe('the stories', () => {
-  it('are both of the first station’s, each found by its station and side', () => {
-    expect(Object.keys(STORIES).sort()).toEqual(['ds1-imperial', 'ds1-rebel']);
-    expect(storyFor('ds1', 'rebel')).toBe(STORIES['ds1-rebel']);
-    expect(storyFor('ds1', 'imperial')).toBe(STORIES['ds1-imperial']);
+  it('are one for each station and side, each found by its station and side', () => {
+    expect(Object.keys(STORIES).sort()).toEqual(['ds1-imperial', 'ds1-rebel', 'ds2-imperial', 'ds2-rebel']);
+    for (const story of all) expect(storyFor(story.station, story.side)).toBe(story);
     expect(storyFor('ds9', 'rebel')).toBeNull();
     expect(STORIES['ds1-rebel']).toMatchObject({ station: 'ds1', side: 'rebel', hero: 'luke', title: 'That’s no moon' });
     expect(STORIES['ds1-imperial']).toMatchObject({ station: 'ds1', side: 'imperial', hero: 'stormtrooper', title: 'Intruder alert' });
+    expect(STORIES['ds2-rebel']).toMatchObject({ station: 'ds2', side: 'rebel', hero: 'luke', title: 'The Emperor’s Tower' });
+    expect(STORIES['ds2-imperial']).toMatchObject({ station: 'ds2', side: 'imperial', hero: 'dstrooper', title: 'Fully armed and operational' });
   });
 
   it('tell their beats in order, each one a checkpoint', () => {
     const beats = (id) => [...new Set(STORIES[id].steps.map((s) => s.checkpoint.step))];
     expect(beats('ds1-rebel')).toEqual(['scan', 'ambush', 'control', 'scomp', 'tractor', 'transfer', 'intercom', 'cell', 'cellbay', 'compactor', 'maint', 'chasm', 'bay']);
     expect(beats('ds1-imperial')).toEqual(['muster', 'scan', 'tk421', 'aa23', 'sweep', 'beacon']);
+    expect(beats('ds2-rebel')).toEqual(['escort', 'lift', 'throne', 'duel', 'lightning', 'carry', 'mask', 'escape']);
+    expect(beats('ds2-imperial')).toEqual(['clearance', 'ranks', 'fire', 'breach']);
   });
 
   for (const story of all) {
@@ -240,8 +279,9 @@ describe('what the steps name', () => {
           const known = spawned.has(thing) || thing in st.spots || `${thing}-1` in st.spots || jumps.has(thing) || given.has(thing);
           expect(known, `${where}: ${thing}`).toBe(true);
         }
-        // someone walked must keep up with you, to be with you as you arrive
-        if (step.type === 'escort') expect(step.checkpoint.companions.includes(step.need) || followers.has(step.need), `${where}: ${step.need}`).toBe(true);
+        // someone walked must keep up with you, to be with you as you arrive (one carried is a companion the step takes up)
+        const takenUp = step.start.some((e) => e.companion === step.need && e.follow);
+        if (step.type === 'escort') expect(step.checkpoint.companions.includes(step.need) || followers.has(step.need) || takenUp, `${where}: ${step.need}`).toBe(true);
         for (const e of [...step.start, ...step.end]) if (e.despawn) expect(spawned.has(e.despawn), `${where}: ${e.despawn}`).toBe(true);
         for (const e of step.end) {
           if (e.spawn) spawned.add(e.spawn.tag);
@@ -316,7 +356,16 @@ describe('the effects', () => {
     const given = (story) => story.steps.flatMap((s) => effectsOf(s).filter((e) => e.achievement).map((e) => [s.id, e.achievement]));
     expect(given(STORIES['ds1-rebel'])).toEqual([['bay-escape', 'ds-ds1-rebel']]);
     expect(given(STORIES['ds1-imperial'])).toEqual([['beacon-escape', 'ds-ds1-imperial']]);
+    expect(given(STORIES['ds2-rebel'])).toEqual([['escape-flight', 'ds-ds2-rebel']]);
+    expect(given(STORIES['ds2-imperial'])).toEqual([['breach-escape', 'ds-ds2-imperial']]);
     for (const story of all) expect(story.steps.at(-1).end.at(-1), story.id).toEqual({ end: true });
+  });
+
+  it('mark a line for the eggs only when an egg listens for it', () => {
+    eachEffect((e, story, where) => {
+      const line = e.intercom?.line ?? e.say?.line;
+      if (line != null) expect(eggsOn(new Set(), { type: 'heard', line }), where).toHaveLength(1);
+    });
   });
 
   it('end a story only after its last step', () => {
