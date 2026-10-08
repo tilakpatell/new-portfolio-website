@@ -80,7 +80,10 @@ if (!exe) stop(2, 'no Chromium (set CHROMIUM=/path/to/chrome)');
 // (WebGL the way the smoke check draws it, so the two agree; WebGPU on
 // the adapter asked for)
 const gl = process.platform === 'darwin' ? ['--use-angle=metal'] : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
-const gpu = ['--enable-unsafe-webgpu', '--enable-features=Vulkan', ...(adapter === 'swiftshader' ? ['--use-webgpu-adapter=swiftshader'] : [])];
+// (--enable-unsafe-webgpu also turns on Blink's experimental WebGPU IDL,
+// whose draft texture-view swizzle is a dictionary where three gives the
+// spec's string, and every frame throws; a visitor's Chrome has it off)
+const gpu = ['--enable-unsafe-webgpu', '--disable-blink-features=WebGPUExperimentalFeatures', '--enable-features=Vulkan', ...(adapter === 'swiftshader' ? ['--use-webgpu-adapter=swiftshader'] : [])];
 const launchArgs = [...gl, ...gpu, '--ignore-gpu-blocklist', '--enable-webgl', '--js-flags=--max-old-space-size=4096'];
 
 // ── a dev server on a checkout ──
@@ -241,7 +244,17 @@ try {
   try {
     for (const legName of ['webgl', 'webgpu']) {
       say(`${legName}:`);
-      const leg = await shoot(browser, server.base, legName);
+      let leg;
+      try {
+        leg = await shoot(browser, server.base, legName);
+      } catch (e) {
+        // (a leg that never came on is a row that fails, not the end of the run)
+        const why = String(e.message ?? e).split('\n')[0];
+        say(`  FAIL ${why}`);
+        report[legName] = { failed: why };
+        for (const view of views) rows.push({ view, leg: legName, backend: '?', note: `failed: ${why}` });
+        continue;
+      }
       const { backend, onWebGPU, shading } = leg.info;
       // (a WebGPU leg that never reached a WebGPU device says nothing about WebGPU)
       const skipped = legName === 'webgpu' && !onWebGPU ? (shading !== 'nodes' ? 'the module is glsl' : leg.info.adapter ? 'WebGPU did not start' : 'no WebGPU adapter') : null;
@@ -276,7 +289,8 @@ try {
   say(`\npictures and report.json: ${OUT}`);
   if (rows.some((r) => r.note === 'no before picture (run with --before first)')) stop(2);
   const gate = rows.filter((r) => r.leg === 'webgl');
-  if (!gate.length || gate.some((r) => !r.pass || r.errors)) stop(1, 'FAIL: the webgl leg is not the same picture');
+  if (rows.some((r) => r.note?.startsWith('failed'))) say('FAIL: a leg never came on');
+  if (!gate.length || gate.some((r) => !r.pass || r.errors) || rows.some((r) => r.note?.startsWith('failed'))) stop(1, 'FAIL: the webgl leg is not the same picture');
   stop(0, 'ok   the webgl leg passes');
 } finally {
   await browser.close();

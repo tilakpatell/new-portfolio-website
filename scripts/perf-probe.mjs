@@ -480,7 +480,9 @@ const chrome = process.env.CHROME ?? `${homedir()}/Library/Caches/ms-playwright/
 const args = process.platform === 'darwin' ? ['--use-angle=metal', '--disable-gpu-vsync', '--disable-frame-rate-limit', '--ignore-gpu-blocklist', '--enable-gpu-rasterization'] : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
 // (WebGPU on: Chromium's own chip on a desktop, SwiftShader's software
 // adapter on a Linux box with no display, whose times are software's)
-if (gpu === 'webgpu') args.push('--enable-unsafe-webgpu', '--enable-features=Vulkan', ...(process.platform === 'linux' && !process.env.DISPLAY ? ['--use-webgpu-adapter=swiftshader'] : []));
+// (and Blink's experimental WebGPU IDL off, as a visitor's Chrome has it:
+// its draft texture-view swizzle throws on three's every frame)
+if (gpu === 'webgpu') args.push('--enable-unsafe-webgpu', '--disable-blink-features=WebGPUExperimentalFeatures', '--enable-features=Vulkan', ...(process.platform === 'linux' && !process.env.DISPLAY ? ['--use-webgpu-adapter=swiftshader'] : []));
 const browser = await chromium.launch({ executablePath: chrome, args });
 const report = {};
 mkdirSync(out, { recursive: true });
