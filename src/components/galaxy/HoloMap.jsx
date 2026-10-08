@@ -49,8 +49,6 @@ import { CORE, ERAS, FILMS, FILM_ORDER, GRID, LANES, REGIONS, RIM, SYSTEMS, UNKN
 
 const SIZE = 21; // the map is GRID squares across, in its own units
 const TAU = Math.PI * 2;
-// where each system's + or − goes on its ring, clear of its neighbours (warMap.js)
-const BADGE = Object.fromEntries(SYSTEMS.map((s) => [s.id, badgeOf(s.id)]));
 const SEEN_KEY = 'tp-gcw-seen';
 const readSeen = () => {
   try {
@@ -162,6 +160,8 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
     return { ...table, byId: Object.fromEntries(table.systems.map((r) => [r.id, r])) };
   }, [now, view]);
   const ops = useMemo(() => opsOf(war), [war]);
+  // (where each system's + or − goes on its ring, clear of its neighbours and the arrows' ends)
+  const badges = useMemo(() => Object.fromEntries(war.systems.map((r) => [r.id, badgeOf(r.id, ops)])), [war, ops]);
   const record = useMemo(() => mine(view, now), [view, now]);
   const fought = useMemo(() => new Set(record.systems.map((x) => x.id)), [record]);
   const pickedWar = picked ? war.byId[picked.id] : null;
@@ -313,7 +313,7 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
                 const ring = row ? { '--held': SIDES[row.owner].colour, ...(by && { '--by': SIDES[by].colour, '--take': 1 - row.control }) } : {};
                 const you = row && fought.has(s.id);
                 return (
-                <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, ...ring }} data-dim={!lit(s) || undefined} data-side={NAME_LEFT.has(s.id) ? 'left' : undefined} data-badge={row ? BADGE[s.id] : undefined} data-held={row?.owner} data-front={(by && !row.attack) || undefined} data-attack={row?.attack ? '' : undefined} data-major={row?.major || undefined} data-decisive={row?.decisive || undefined} data-cut={row?.cut || undefined} data-fought={you || undefined}>
+                <li key={s.id} style={{ left: pct(s.pos[0]), top: pct(s.pos[1]), '--c': s.accent, ...ring }} data-dim={!lit(s) || undefined} data-side={NAME_LEFT.has(s.id) ? 'left' : undefined} data-badge={row ? badges[s.id] : undefined} data-held={row?.owner} data-front={(by && !row.attack) || undefined} data-attack={row?.attack ? '' : undefined} data-major={row?.major || undefined} data-decisive={row?.decisive || undefined} data-cut={row?.cut || undefined} data-fought={you || undefined}>
                   <button type="button" className="holomap-system" aria-pressed={pick === s.id} aria-current={s.id === current ? 'location' : undefined} onClick={() => choose(s.id)} onDoubleClick={() => s.id !== current && onJump(s.id)} aria-label={row ? systemLabel(row, now, you) : undefined}>
                     <span className="holomap-dot" aria-hidden="true">
                       {you && <i className="holomap-you" />}

@@ -11,19 +11,23 @@
 // systems' dots and the names beside them (roomOf), the left on a tie; two
 // along one lane, one each way, bend each to its own left, so they part. It
 // stops clear of both systems' dots; a raid's drawn dotted, the decisive
-// battle doubled (the drawing's warmap.css's).
+// battle doubled (the drawing's warmap.css's). Its fleet's crest goes about
+// as far along it as its side's got, slid to where it's off the other
+// systems and the crests before it.
 //
 // opsOf(table) → [{ id, kind ('front', 'decisive', 'attack', 'counter',
 // 'raid'), by, from, to, progress (0..1, how much of the holder's hold is
 // gone), colour, width, major, d (an SVG path), head (its arrowhead's
-// points), start, tip, token ([x, z]: the fleet) }] for gcw.js's warTable;
+// points), start, tip, along (how far along it the fleet is, 0..1), token
+// ([x, z]: the fleet) }] for gcw.js's warTable;
 // nearestBattle(table, current, side) → { id, seconds } | null;
 // roomOf([x, z], except) → grid squares from the nearest system's dot or
 // name (but the dots of the systems in `except`; below 0 inside a dot);
 // NAME_LEFT, the systems whose names go on the left of their dots;
-// badgeOf(id) → where a fought-over system's + or − goes on its ring:
-// 'below' it where there's room for it, or else wherever has the most of
-// 'above' and the 'side' away from its name.
+// badgeOf(id, ops) → where a fought-over system's + or − goes on its ring:
+// 'below' it where there's room for it (from the systems, and the ends of
+// the arrows in ops), or else wherever has the most of 'above' and the
+// 'side' away from its name.
 
 import { NEIGHBOURS } from './gcwRules';
 import { SIDES, WARS } from './sides';
@@ -56,13 +60,18 @@ export function roomOf([x, z], except = []) {
   return room;
 }
 
-// (a badge's centre, off a system's: just over the edge of its ring; and the
-// room it wants, about its own width)
+// (a badge's centre, off a system's: just over the edge of its ring; the
+// room it wants, about its own width; and how near an arrow's end may come,
+// the end's own width)
 const BADGE_OFF = 0.5;
 const BADGE_ROOM = 0.3;
-export function badgeOf(id) {
+const END = 0.1;
+// with the operations on the map (opsOf's), clear of their arrows' ends too:
+// an arrowhead came in on the + under Coruscant
+export function badgeOf(id, ops = []) {
   const [x, z] = systemById(id).pos;
-  const room = (p) => roomOf(p, [id]);
+  const ends = ops.flatMap((o) => [o.start, o.tip, ...o.head.split(' ').map((p) => p.split(',').map(Number))]);
+  const room = (p) => Math.min(roomOf(p, [id]), ...ends.map((e) => Math.hypot(e[0] - p[0], e[1] - p[1]) - END));
   if (room([x, z + BADGE_OFF]) >= BADGE_ROOM) return 'below';
   const at = { below: [x, z + BADGE_OFF], above: [x, z - BADGE_OFF], side: [NAME_LEFT.has(id) ? x + BADGE_OFF : x - BADGE_OFF, z] };
   return Object.keys(at).reduce((best, k) => (room(at[k]) > room(at[best]) ? k : best));
@@ -104,7 +113,13 @@ function arrowOf(a, b, width, side = 1) {
   const base = [tip[0] - u[0] * long, tip[1] - u[1] * long];
   const head = [tip, [base[0] - u[1] * half, base[1] + u[0] * half], [base[0] + u[1] * half, base[1] - u[0] * half]];
   const at = (t) => [0, 1].map((i) => (1 - t) ** 2 * start[i] + 2 * (1 - t) * t * c[i] + t * t * base[i]);
-  return { d: `M${pt(start)} Q${pt(c)} ${pt(base)}`, head: head.map(([x, z]) => `${round(x)},${round(z)}`).join(' '), start, tip, at };
+  // (and square to it there, a unit long)
+  const across = (t) => {
+    const v = [0, 1].map((i) => 2 * (1 - t) * (c[i] - start[i]) + 2 * t * (base[i] - c[i]));
+    const l = Math.hypot(v[0], v[1]) || 1;
+    return [-v[1] / l, v[0] / l];
+  };
+  return { d: `M${pt(start)} Q${pt(c)} ${pt(base)}`, head: head.map(([x, z]) => `${round(x)},${round(z)}`).join(' '), start, tip, at, across };
 }
 
 // the side of its way an arrow from one system to another has more room on
@@ -116,6 +131,39 @@ function sideFor(from, to, width) {
     return Math.min(...ALONG.map((t) => roomOf(arrow.at(t), [from, to])));
   };
   return roomAlong(-1) > roomAlong(1) ? -1 : 1;
+}
+
+// a fleet's crest, its half-width ring and all (grid squares: 18 px on a desktop's map); the room past
+// that it wants (more's no better); what sliding it a whole arrow's length off where its progress puts
+// it costs, in room, and nudging it a grid square off its arrow's line
+export const CREST = 0.3;
+const ENOUGH = 0.2;
+const SLIDE = 0.5;
+const NUDGE = 0.6;
+const SPAN = [0.2, 0.9]; // how far along its arrow a crest goes, at the least and the most
+const STEPS = 28;
+const OFF = [0, 0.15, -0.15, 0.3, -0.3]; // (off the line: still on it, at a crest's width)
+// where along an arrow its crest goes: near where its progress puts it (`want`), slid to where there's
+// room from the systems (but its own two) and the crests already placed, and nudged off the line if it
+// must be (Kamino's two arrows, to Tatooine and Geonosis, are side by side). The further it slides the
+// more it costs, so as its progress grows it only ever goes on, never back
+function crestOn(arrow, want, except, placed) {
+  let best = { t: want, at: arrow.at(want) };
+  let bestU = -Infinity;
+  for (let i = 0; i <= STEPS; i++) {
+    const t = SPAN[0] + (i * (SPAN[1] - SPAN[0])) / STEPS;
+    const p = arrow.at(t);
+    const n = arrow.across(t);
+    for (const off of OFF) {
+      const q = [p[0] + n[0] * off, p[1] + n[1] * off];
+      // (on another crest's worse than on a name: a name's still read round a crest's edge)
+      let clear = 0;
+      for (const o of placed) clear = Math.min(clear, Math.hypot(q[0] - o[0], q[1] - o[1]) - 2 * CREST);
+      const u = Math.min(roomOf(q, except) - CREST, ENOUGH) + 2 * clear - SLIDE * Math.abs(t - want) - NUDGE * Math.abs(off);
+      if (u > bestU) (best = { t, at: q }), (bestU = u);
+    }
+  }
+  return best;
 }
 
 export function opsOf(table) {
@@ -136,9 +184,12 @@ export function opsOf(table) {
   }
   // (a lane with an arrow each way: each to its own left)
   const twoWay = (p) => plans.some((q) => q.from === p.to && q.to === p.from);
+  const placed = [];
   return plans.map((p) => {
     const arrow = arrowOf(systemById(p.from).pos, systemById(p.to).pos, p.width, twoWay(p) ? 1 : sideFor(p.from, p.to, p.width));
-    return { ...p, d: arrow.d, head: arrow.head, start: arrow.start, tip: arrow.tip, token: arrow.at(0.35 + 0.5 * p.progress) };
+    const crest = crestOn(arrow, 0.35 + 0.5 * p.progress, [p.from, p.to], placed);
+    placed.push(crest.at);
+    return { ...p, d: arrow.d, head: arrow.head, start: arrow.start, tip: arrow.tip, along: round(crest.t), token: crest.at };
   });
 }
 
