@@ -29,14 +29,19 @@ export const WORLD_MB = {
   '/dot-matrix/64': 7, // the castle's and Bob-omb Ridge's texture sets at phone size, two skies, and Mario, the cast and the props (fan-made Sketchfab models, 2 MB)
   '/earth': 2, // NASA's globe at phone size, the stars and the plane
   '/dot-matrix/minecraft': 2, // drawn in code from the pack's tiles: the block strip, the skins and the sky's and HUD's sprites (under a tenth of an MB today)
+  '/universe/expanse': 2, // a planet of the Expanse, driven: the physics engine (Rapier, about 0.6 MB compressed) and the land made from its seed, nothing else to fetch
 };
 
 // The world a path is in: '/middle-earth/moria' is Middle-earth. Some
 // worlds sit inside another's address ('/dot-matrix/64' inside
 // '/dot-matrix'), so the longest match wins: each gets its own download size
 // and its own phone gate, not its parent's.
+// The worlds made from a seed (a planet of the Expanse), not on the map's
+// list but gated as the others: a phone asks before it downloads one.
+export const SEEDED = [{ to: '/universe/expanse', label: 'A planet of the Expanse', from: 'The Expanse' }];
+
 export const worldAt = (pathname) =>
-  WORLDS.filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
+  [...WORLDS, ...SEEDED].filter((w) => pathname === w.to || pathname.startsWith(`${w.to}/`)).reduce((best, w) => (best && best.to.length >= w.to.length ? best : w), null);
 
 // The way out of a world, for the view the visitor is in (the glossary's
 // last row): "Universe map", back to this world's place on the map, or
