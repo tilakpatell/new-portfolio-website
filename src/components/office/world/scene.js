@@ -10,18 +10,24 @@
 
 import * as THREE from 'three';
 import { createStage } from '../../../lib/stage3d';
+import { houseOn } from '../../../lib/three/house';
 import { device } from '../../../lib/device';
 import { createFx } from '../../middleearth/shire/fx';
 import { createGhosts } from '../../middleearth/towns/ghosts';
 import { loadKit } from '../kit';
 import { CAST as STAFF_HEIGHTS, loadPeople } from '../people';
+import { HABITS, createManner } from '../motion';
 import { makeProps } from '../props';
 import { buildSet } from './set';
 import { buildWarehouse } from './warehouse';
 import { buildOutside } from './outside';
 import { buildContactShade } from './ao';
 import { bakeStatic } from './batch';
-import { amblePaths } from './paths';
+import { collidersFor, findPath, seatWay } from './paths';
+import { createOfficeDay, panicAt } from './day';
+import { AMBLERS, TALK_CLIP, officePlaces } from './places';
+import { preload } from '../../../lib/three/clipLibrary';
+import { turn as easeTurn } from '../../../lib/three/gait';
 import { CEILING, CAST, COLLIDERS, DWIGHT_BACK, ERIN_BREAK, FIRE_BIN, PANIC, WALLS, inWarehouse, seatOf, spot } from './layout';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -175,6 +181,9 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   const day = new THREE.DirectionalLight(0xfff4e2, 0.35);
   day.position.set(-6, 5, -10);
   scene.add(hemi, key, key.target, day);
+  // the house look (lib/three/house): the shade under the troffers one colour
+  // from their light, as in every world, under the house tone mapper
+  const house = houseOn({ renderer, scene, sun: key, hemi });
   // the troffers nearest Jim, as lights: each a wide cone straight down
   // from the fixture, so it pools on the desks and the carpet and leaves the
   // ceiling tiles round it alone (a point light there burnt them white)
@@ -193,16 +202,19 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   scene.add(fxRoot);
   const fx = createFx(fxRoot, { scale: tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.35 });
 
-  // ── the people: everyone at their desk as their model comes; Jim on his
-  // feet; the ones who get up for a job, standing copies ──
+  // ── the people: everyone at their desk as their model comes, at it as the
+  // show has them (typing, on the phone, at the crossword); Jim on his
+  // feet; the ones who get up, standing copies on clips (../people.js:
+  // borrowed walks and the clip library's, their feet paced to the ground) ──
   const seated = new Map(); // who → person, in their chair
   const standing = new Map(); // who → person, on their feet (made when needed)
+  const manners = new Map(); // who → how they talk with their hands (../motion.js)
   let jim = null;
   let gone = false;
   const SIT_TYPING = new Set(['dwight', 'oscar', 'angela', 'kelly', 'ryan', 'toby', 'andy', 'erin']);
   const sitDown = (id) => {
     const seat = set.seats.get(id);
-    const p = cast?.person(id, { pose: 'sit', typing: SIT_TYPING.has(id), idle: !SIT_TYPING.has(id), shadows: tier === 'high', keys: id === 'erin' ? 0.4 : 0.49, cull: true });
+    const p = cast?.person(id, { pose: 'sit', typing: SIT_TYPING.has(id), idle: !SIT_TYPING.has(id), habit: SIT_TYPING.has(id) ? null : (HABITS[id] ?? null), shadows: tier === 'high', keys: id === 'erin' ? 0.4 : 0.49, cull: true });
     if (!seat || !p) return;
     p.group.position.copy(seat.chair.position);
     p.group.rotation.y = seat.chair.rotation.y;
@@ -217,23 +229,36 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   };
   const stand = (id) => {
     if (standing.has(id)) return standing.get(id);
-    const p = cast?.person(id, { pose: 'stand', idle: true, shadows: tier === 'high', cull: true });
+    const p = cast?.person(id, { pose: 'stand', idle: true, anim: true, shadows: tier === 'high', cull: true });
     if (!p) return null;
     p.group.visible = false;
     scene.add(p.group);
     standing.set(id, p);
     return p;
   };
+  // a standing copy put away: the chair, a talk or a clip it was in let go of
+  const putAway = (p) => {
+    if (!p?.group.visible) return;
+    p.group.visible = false;
+    p.stand();
+  };
   // Jim first, then everyone else as they come
   const order = ['jim', 'dwight', 'erin', 'michael', 'pam', 'kevin', 'andy', 'stanley', 'phyllis', 'angela', 'oscar', 'creed', 'meredith', 'darryl', 'ryan', 'toby', 'kelly'].filter((id) => STAFF_HEIGHTS[id]);
-  const loading = loadPeople(order, (id, c) => {
-    cast = c;
-    if (gone) return;
-    if (id === 'jim') {
-      jim = c.person('jim', { pose: 'stand', idle: true, shadows: tier === 'high', cull: true });
-      if (jim) scene.add(jim.group);
-    } else sitDown(id);
-  });
+  const loading = loadPeople(
+    order,
+    (id, c) => {
+      cast = c;
+      if (gone) return;
+      if (id === 'jim') {
+        jim = c.person('jim', { pose: 'stand', idle: true, anim: true, shadows: tier === 'high', cull: true });
+        if (jim) scene.add(jim.group);
+      } else sitDown(id);
+    },
+    { clips: true },
+  );
+  // the clips getting up and sitting down take, and talking, fetched now
+  // (the rest as they're first wanted)
+  preload(['sit.exit', 'sit.enter', 'talk', 'wave', 'drink', 'interact']).catch(() => {});
   // wait for Jim at least, a few seconds at most, so the office opens with him in it
   await Promise.race([
     loading,
@@ -249,7 +274,7 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   // them, and they can't touch your jobs, nor you theirs.
   const ghosts = createGhosts({
     make: () => {
-      const p = cast?.person('jim', { pose: 'stand', shadows: false, cull: true });
+      const p = cast?.person('jim', { pose: 'stand', anim: true, shadows: false, cull: true });
       const group = new THREE.Group();
       if (!p) {
         // (Jim's model not to hand: a plain shape of him)
@@ -260,10 +285,20 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
       group.add(p.group);
       // (his mesh and its materials are the cast's, shared with the real Jim:
       // not the ghost's to dispose; only his own skeleton is)
-      return { group, top: 1.9, person: p, shared: true, dispose: () => p.group.traverse((o) => o.skeleton?.dispose()) };
+      return {
+        group,
+        top: 1.9,
+        person: p,
+        shared: true,
+        dispose: () => {
+          p.anim?.dispose();
+          p.group.traverse((o) => o.skeleton?.dispose());
+        },
+      };
     },
     animate: (f, t, p, dt) => {
       if (!f.person) return;
+      // (on clips, its feet paced to where the ghost's taken; else the old stride)
       f.person.walk(p.moving, Math.max(0.6, (p.speed ?? 1.4) / 2.3));
       f.person.update(t, dt);
       f.person.group.position.y = f.person.bob();
@@ -273,17 +308,41 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   });
   scene.add(ghosts.group);
 
-  // the runners in the fire drill: these get up and go
+  // the runners in the fire drill: these get up and go (Stanley at a walk:
+  // he doesn't run for anyone)
   const RUNNERS = ['michael', 'angela', 'kevin', 'oscar', 'andy', 'phyllis', 'stanley', 'dwight'];
-  // the coworkers who get up now and then (layout's AMBLES, their ways
-  // round the desks found once, ./paths.js)
-  const WALK = 1.05; // an office's stroll, m/s
-  const ambles = amblePaths()
-    .filter((a) => a.path)
-    .map((a) => {
-      const len = a.path.reduce((n, p, i) => (i ? n + Math.hypot(p.x - a.path[i - 1].x, p.z - a.path[i - 1].z) : 0), 0);
-      return { ...a, len, walk: len / WALK, back: [...a.path].reverse() };
-    });
+  const runYaw = new Map(); // who → the way they're facing, eased round at each end
+  // the working day (./day.js): who gets up for what, where (./places.js),
+  // and the ways round the desks there, each found the first time it's
+  // wanted and kept (./paths.js)
+  const SEATS_OUT = Object.fromEntries(AMBLERS.map((a) => [a.who, seatOf(a.who)]).filter(([, s]) => s).map(([who, s]) => [who, seatWay(s)]));
+  const ways = new Map();
+  const BOUNDS = { x0: -15, x1: 15, z0: -8.5, z1: 8.5 };
+  const workday = createOfficeDay({
+    seats: SEATS_OUT,
+    places: officePlaces(),
+    people: AMBLERS,
+    seed: 1105,
+    route: (who, place, slot) => {
+      const key = `${who}:${place.id}:${slot}`;
+      if (!ways.has(key)) {
+        const out = SEATS_OUT[who].exit;
+        ways.set(key, findPath(out[out.length - 1], place.spots[slot] ?? place.spots[0], { colliders: collidersFor(seatOf(who)), walls: WALLS, radius: 0.26, bounds: BOUNDS }));
+      }
+      return ways.get(key);
+    },
+  });
+  const was = new Map(); // who → the day's state for them last frame, and their talk
+  const HOLD_DWIGHT = new Set(['dwight']);
+  const CLOSED_MICHAEL = new Set(['michael']); // (Jim's in with him)
+  const lookPoint = V(0, 0, 0);
+  // where someone's head is: on their feet if they're up, else at their desk
+  const headOf = (id, out) => {
+    const p = standing.get(id)?.group.visible ? standing.get(id) : seated.get(id);
+    if (p) return p.headAt(out);
+    const c = CAST.find((x) => x.id === id);
+    return c ? out.set(c.x, 1.25, c.z) : null;
+  };
 
   // ── where to go next: a marker over each, bobbing, and a ring on the floor ──
   const markers = Array.from({ length: 4 }, () => {
@@ -385,100 +444,152 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
 
     // ── who's where ──
     const away = new Set();
+    head.set(h.x, 1.55, h.z);
+    const near = (x, z, r) => Math.hypot(x - h.x, z - h.z) < r;
     // Erin on her break: at the vending machines
     if (s.erinBreak) {
       away.add('erin');
       const e = stand('erin');
       if (e) {
         place(e, ERIN_BREAK.at.x, ERIN_BREAK.at.z, ERIN_BREAK.face, false);
+        e.look(near(ERIN_BREAK.at.x, ERIN_BREAK.at.z, 2.6) ? head : null);
         e.update(t, dt);
       }
-    } else standing.get('erin')?.group && (standing.get('erin').group.visible = false);
-    // Dwight in the men's room, then on his way back
+    } else putAway(standing.get('erin'));
+    // Dwight in the men's room, then on his way back (turning his corners)
     const dw = standing.get('dwight') ?? (s.dwight !== 'desk' ? stand('dwight') : null);
     if (s.dwight === 'away') {
       away.add('dwight');
-      if (dw) dw.group.visible = false;
+      putAway(dw);
+      A.dwYaw = null;
     } else if (s.dwight === 'back') {
       away.add('dwight');
       if (dw) {
         const p = along(DWIGHT_BACK, s.dwightK ?? 0);
-        place(dw, p.x, p.z, p.face, (s.dwightK ?? 0) < 1);
+        const want = p.face + Math.PI / 2;
+        A.dwYaw = A.dwYaw == null ? want : easeTurn(A.dwYaw, want, dt, 8);
+        place(dw, p.x, p.z, A.dwYaw - Math.PI / 2, (s.dwightK ?? 0) < 1);
+        // (and if Jim's near his desk, Dwight's eyes are on him)
+        dw.look(near(p.x, p.z, 4) ? head : null);
         dw.update(t, dt);
       }
-    } else if (dw && !s.fire) dw.group.visible = false;
-    // the fire drill: everyone who can, running about
+    } else if (dw && !s.fire) putAway(dw);
+    // the fire drill: everyone who can, running about, up and down a line
+    // each, slowing to turn at its ends; arms up, waving for help
     if (s.fire) {
       RUNNERS.forEach((id, i) => {
         const p = stand(id);
         if (!p) return;
         away.add(id);
         const [a, b] = PANIC[i % PANIC.length];
-        const len = Math.hypot(b.x - a.x, b.z - a.z);
-        const speed = 2.6 + (i % 3) * 0.5;
-        const cyc = (s.fireT * speed + i * 3.1) / len;
-        const k = cyc % 2 < 1 ? cyc % 1 : 1 - (cyc % 1);
-        const dir = cyc % 2 < 1 ? 1 : -1;
-        const x = a.x + (b.x - a.x) * k + Math.sin(t * 3 + i) * 0.25;
-        const z = a.z + (b.z - a.z) * k + Math.cos(t * 2.6 + i) * 0.25;
-        place(p, x, z, Math.atan2(-(b.z - a.z) * dir, (b.x - a.x) * dir), true, 1.6);
-        if (i % 3 === 0) p.gesture('cheer'); // arms in the air
+        const speed = id === 'stanley' ? 1.4 : 2.6 + (i % 3) * 0.5;
+        const r = panicAt(a, b, { speed, phase: (i * 0.37) % 1, t: s.fireT, side: i >= PANIC.length ? 0.35 : -0.1 });
+        const before = runYaw.get(id);
+        const yaw = before == null ? r.yaw : easeTurn(before, r.yaw, dt, 9);
+        runYaw.set(id, yaw);
+        if (!p.group.visible) {
+          // (out of the chair in a panic)
+          p.stand();
+          p.play('scared', { layer: 'upper' });
+        }
+        p.group.visible = true;
+        p.group.position.set(r.x, 0, r.z);
+        p.group.rotation.y = yaw;
+        p.walk(true, 1.6);
+        p.group.position.y = p.bob();
+        if (i % 3 === 0 && p.anim) {
+          if (p.anim.playing('upper') !== 'wave.help') p.play('wave.help', { layer: 'upper', loop: true });
+        } else if (i % 3 === 0) p.gesture('cheer'); // arms in the air
         p.update(t, dt);
-        s.runners?.push({ x, z });
+        s.runners?.push({ x: r.x, z: r.z });
       });
     } else {
-      for (const id of RUNNERS) {
-        const p = standing.get(id);
-        if (p && !(id === 'dwight' && s.dwight === 'back') && !(id === 'erin' && s.erinBreak)) p.group.visible = false;
-      }
+      runYaw.clear();
+      // (once, as it ends: back at their desks, those of them the day has up shown again by it)
+      if (A.fired) for (const id of RUNNERS) if (!(id === 'dwight' && s.dwight === 'back') && !(id === 'erin' && s.erinBreak)) putAway(standing.get(id));
     }
-    // the amblers: up from the desk, along their way, a moment there, back
-    // and sat down again (not in the fire drill: then everyone runs)
-    if (!s.fire)
-      for (const a of ambles) {
-        const cyc = (t + a.offset) % a.every;
-        const sit = a.every - (a.walk * 2 + a.wait);
-        if (cyc < sit || (s.dwight !== 'desk' && a.who === 'dwight')) {
-          if (standing.get(a.who) && !RUNNERS.includes(a.who)) standing.get(a.who).group.visible = false;
-          continue;
-        }
-        const p = stand(a.who);
-        if (!p) continue;
-        away.add(a.who);
-        const k = cyc - sit;
-        let at;
-        let walking = true;
-        if (k < a.walk) at = along(a.path, k / a.walk);
-        else if (k < a.walk + a.wait) {
-          const end = a.path[a.path.length - 1];
-          at = { x: end.x, z: end.z, face: a.face };
-          walking = false;
-        } else at = along(a.back, (k - a.walk - a.wait) / a.walk);
-        place(p, at.x, at.z, at.face, walking, 0.8);
-        p.look(Math.hypot(at.x - h.x, at.z - h.z) < 2.6 ? head.set(h.x, 1.55, h.z) : null);
-        p.update(t, dt);
-        s.runners?.push({ x: at.x, z: at.z });
-        s.ambling?.push({ id: a.who, x: at.x, z: at.z });
+    A.fired = Boolean(s.fire);
+    // the working day (./day.js): up from the desk, the way round the desks
+    // to the kitchen or the copier or the cooler, a moment there (two there
+    // talk), and back and sat down again; stopping for Jim, and turning to
+    // him when he talks to them. In the fire drill, everyone's at their desk.
+    const dayAt = { jim: { x: h.x, z: h.z }, talkTo: s.talkTo, hold: s.dwight !== 'desk' ? HOLD_DWIGHT : null, closed: s.talkTo === 'michael' ? CLOSED_MICHAEL : null, stop: Boolean(s.fire) };
+    // (the dev hook's skip ahead, a tenth of a second at a time)
+    if (import.meta.env.DEV && s.warp > 0) for (let k = 0; k < Math.min(600, s.warp / 0.1); k++) workday.step(0.1, dayAt);
+    const entries = workday.step(dt, dayAt);
+    const visitors = new Map(); // a sitter → whoever's come to talk to them
+    for (const e of entries) {
+      const before = was.get(e.who) ?? { state: 'seated', talk: false };
+      was.set(e.who, { state: e.state, talk: e.talk });
+      if (e.state === 'seated') {
+        if (before.state !== 'seated' && !(s.fire && RUNNERS.includes(e.who))) putAway(standing.get(e.who));
+        continue;
       }
+      const p = stand(e.who);
+      if (!p) continue;
+      // what changed: up out of the chair, down into it, a clip at a place
+      if (e.state !== before.state) {
+        if (e.state === 'rising') {
+          p.stand();
+          p.rise();
+        } else if (e.state === 'sitting') p.sit();
+        else if (e.state === 'using' && e.clip) p.play(e.clip, { layer: 'full', loop: e.loop, lasts: e.loop ? 30 : null });
+        if (before.state === 'using') p.stop('full');
+      }
+      // shown once it's sat in the chair on clips (a frame or two, for the
+      // clip to begin), and only then is the one at the desk put away
+      const up = e.state !== 'rising' || !p.anim || p.anim.playing('full') === 'sit.exit' || e.age > 0.25;
+      if (!up) {
+        p.update(t, dt);
+        continue;
+      }
+      away.add(e.who);
+      p.group.visible = true;
+      p.group.position.set(e.x, 0, e.z);
+      p.group.rotation.y = e.yaw;
+      // a talk: their own, standing; a listener just looks
+      if (e.talk && !before.talk) p.play(TALK_CLIP[e.who] ?? 'talk', { layer: 'upper', loop: true });
+      else if (!e.talk && before.talk) p.stop('upper');
+      // where the eyes go: Jim, whoever's talking, what the place is for,
+      // or Jim if he's close
+      let at = null;
+      if (e.look === 'jim') at = head;
+      else if (typeof e.look === 'string') at = headOf(e.look, lookPoint);
+      else if (e.look) at = lookPoint.set(e.look.x, 1.1, e.look.z);
+      if (!at && near(e.x, e.z, 2.6)) at = head;
+      p.look(at);
+      if (e.with && e.state === 'using') visitors.set(e.with, e.who);
+      p.update(t, dt);
+      s.runners?.push({ x: e.x, z: e.z });
+      s.ambling?.push({ id: e.who, x: e.x, z: e.z });
+    }
     // the seated: in their chairs unless they're up; heads turning to Jim
-    // when he's close
+    // when he's close, to whoever's come to their desk; their hands going
+    // as they talk, each in their way (../motion.js)
     // (out of view, as of the last frame, they're left as they were; only
     // those near what the camera's on cast shadows)
-    head.set(h.x, 1.55, h.z);
     const shadowsNow = tier === 'high' && t - A.castAt > 0.4;
     if (shadowsNow) A.castAt = t;
     for (const [id, p] of seated) {
       p.group.visible = !away.has(id);
       if (!p.group.visible) continue;
       if (shadowsNow) {
-        const near = Math.hypot(p.seen.center.x - A.focus.x, p.seen.center.z - A.focus.z) < NEAR_SHADOW;
-        for (const m of p.casters) m.castShadow = near;
+        const close = Math.hypot(p.seen.center.x - A.focus.x, p.seen.center.z - A.focus.z) < NEAR_SHADOW;
+        for (const m of p.casters) m.castShadow = close;
       }
-      if (!A.view.intersectsSphere(p.seen) && s.wave !== id) continue;
+      const visitor = visitors.get(id);
+      if (!A.view.intersectsSphere(p.seen) && s.wave !== id && !visitor) continue;
       const c = CAST.find((x) => x.id === id);
       const close = c && Math.hypot(c.x - h.x, c.z - h.z) < 3.2;
-      p.look(close || s.talkTo === id ? head : null);
+      const talking = s.talkTo === id || Boolean(visitor);
+      p.look(s.talkTo === id || (close && !visitor) ? head : visitor ? headOf(visitor, lookPoint) : null);
       if (s.wave === id) p.wave();
+      else {
+        if (!manners.has(id)) manners.set(id, createManner(id));
+        const g = manners.get(id).step(dt, talking);
+        // (Toby at the door: Michael has one thing to say to him)
+        if (g) p.gesture(visitor === 'toby' && id === 'michael' ? 'shake' : g);
+      }
       p.update(t, dt);
     }
 
@@ -623,23 +734,30 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
 
   const fxEvent = (type, at = null) => {
     const p = at ? V(at.x ?? 0, at.y ?? 1.2, at.z ?? 0) : null;
-    if (type === 'pop' && p) fx.pop(p, at.colour ?? 'gold', 20, 1.8);
-    else if (type === 'spill' && p) {
+    if (type === 'pop' && p) {
+      fx.pop(p, at.colour ?? 'gold', 20, 1.8);
+      jim?.play('fist.pump', { layer: 'upper' }); // (a basket: his legs his own)
+    } else if (type === 'spill' && p) {
       set.spill(p);
       fx.puff(V(p.x, 0.3, p.z), V(0, 0.6, 0), 10);
       A.shake = Math.max(A.shake, 0.06);
+      jim?.play('headache', { layer: 'upper' }); // (Kevin's chili, on the carpet)
     } else if (type === 'clearSpills') set.clearSpills();
-    else if (type === 'caught') A.shake = 0.18;
-    else if (type === 'fire') {
+    else if (type === 'caught') {
+      A.shake = 0.18;
+      jim?.glance(camera.position, 1.8); // (caught: his look to the camera)
+    } else if (type === 'fire') {
       fx.pop(V(FIRE_BIN.x, 1, FIRE_BIN.z), 'red', 26, 2);
       A.shake = 0.12;
     } else if (type === 'award') {
       const m = seatOf('michael');
       fx.pop(V(m.x, 1.8, m.z + 0.6), 'gold', 40, 2.4);
       fx.pop(V(m.x, 2, m.z + 0.6), 'white', 20, 2);
+      seated.get('michael')?.gesture('cheer');
     } else if (type === 'jello') {
       const d = seatOf('dwight');
       fx.pop(V(d.x, 1.0, d.z), 'green', 22, 1.5);
+      jim?.glance(camera.position, 1.6); // (the stapler in Jell-O: a look to the camera)
     }
   };
 
@@ -661,10 +779,11 @@ export async function createOfficeWorld(canvas, { onLost } = {}) {
   };
 
   // everything's shaders linked before the first frame
+  house.follow({ adopt: true });
   await stage.precompile();
   // and the people who come later, as they come (they're shown at once;
   // the page's 3D office links theirs the same way)
-  loading.then(() => !gone && stage.precompile());
+  loading.then(() => !gone && (house.follow({ adopt: true }), stage.precompile()));
 
   return {
     scene: import.meta.env.DEV ? scene : null,

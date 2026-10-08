@@ -1,18 +1,23 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RiArrowDownLine, RiArrowRightLine, RiCompass3Line, RiPlayFill, RiRocket2Line, RiSideBarFill, RiSideBarLine } from 'react-icons/ri';
 import { playClip } from '../../lib/clips';
 import { audioContext } from '../../lib/audio';
+import { sayVoiced, voicedSrc, voiceOf } from '../../lib/voiced';
 import { CREWS, crewById } from '../universe/crews';
 import Face from '../universe/Faces';
 import ModelCredits from '../ModelCredits';
 import GuideLink from '../guide/GuideLink';
 import { FILMS, eraById, eraOf, filmLabel, filmsOf, goalsOf, systemById, yearLabel } from './systems';
+import { placesOf } from './places';
+import { Oath, SystemWar } from './WarCard';
+import { useWar } from './useWar';
 
 // Beside the galaxy (a bottom sheet on a phone): the system you're in, as
 // its card: where it is in the galaxy, its era and the films it's in, the
 // moment it's shown at, what it is, a line from the films (with the
-// recording, where there is one), its facts, and its mission (a briefing
+// recording, where there is one, or else the line made in the speaker's
+// voice), its facts, and its mission (a briefing
 // for the game it's going to be, or the way into the one that's here
 // already); what's here to fly to; and the way on (the galaxy map) and out
 // (back to the universe map). With no ship yet, the ships to fly first. Put
@@ -77,7 +82,67 @@ function Mission({ system }) {
   );
 }
 
-export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping, held = null, balked = false }) {
+// the system's place in the war you fight in, and the oath when you're
+// nobody's and there's a battle on (WarCard.jsx)
+function SystemWarCard({ sys, oath, suggested, onSwear }) {
+  const { now, table } = useWar(oath.war);
+  const row = table.systems.find((r) => r.id === sys);
+  if (!row) return null;
+  return (
+    <div className="galaxy-war">
+      <dl className="holomap-stats">
+        <SystemWar row={row} war={oath.war} now={now} side={oath.side} />
+      </dl>
+      {row.battle && !oath.side && <Oath oath={oath} suggested={suggested} onSwear={onSwear} compact />}
+    </div>
+  );
+}
+
+// Whether a line has been made in this voice (found once the manifest's in).
+function useMade(voice, text) {
+  const [made, setMade] = useState(null);
+  useEffect(() => {
+    if (!voice) return undefined;
+    let live = true;
+    voicedSrc(voice, text).then((src) => live && src && setMade(`${voice}|${text}`));
+    return () => {
+      live = false;
+    };
+  }, [voice, text]);
+  return Boolean(voice) && made === `${voice}|${text}`;
+}
+
+// The system's line from the films: the recording, where there is one; or,
+// where there isn't, the line in the speaker's own voice once it's been made
+// (systems.js's quote.voice, lib/voiced.js).
+function Quote({ quote }) {
+  const voice = quote.clip ? null : voiceOf(quote.voice);
+  const made = useMade(voice, quote.text);
+  const play = quote.clip ? () => playClip(quote.clip) : made ? () => sayVoiced(quote.voice, quote.text) : null;
+  return (
+    <figure className="galaxy-quote">
+      <blockquote>“{quote.text}”</blockquote>
+      <figcaption>
+        {quote.by}, <i>{FILMS[quote.film].title}</i>
+        {play && (
+          <button
+            type="button"
+            className="galaxy-play"
+            aria-label={`Play: ${quote.text}`}
+            onClick={() => {
+              audioContext();
+              play();
+            }}
+          >
+            <RiPlayFill className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
+      </figcaption>
+    </figure>
+  );
+}
+
+export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping, held = null, balked = false, oath = null, suggested = null, onSwear, found = [] }) {
   const crew = crewById(ship);
   const panel = useRef(null);
   const refocus = useRef(false);
@@ -92,6 +157,7 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
   }, [tucked]);
   const era = eraById(eraOf(system));
   const goals = goalsOf(system);
+  const places = placesOf(system);
   const toward = jumping ? systemById(jumping.to) : null;
   const short = held ? (systemById(held.to) ?? system) : null; // (where the Interdictor pulled you out short of)
 
@@ -150,6 +216,8 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
         ))}
       </div>
 
+      {oath && <SystemWarCard sys={system.id} oath={oath} suggested={suggested} onSwear={onSwear} />}
+
       <div className="mt-4 flex flex-wrap gap-2">
         {crew && onLand && (
           <button type="button" className="btn btn-primary" onClick={onLand}>
@@ -183,25 +251,7 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
 
       <p className="mt-4 text-sm leading-relaxed">{system.about}</p>
 
-      <figure className="galaxy-quote">
-        <blockquote>“{quote.text}”</blockquote>
-        <figcaption>
-          {quote.by}, <i>{FILMS[quote.film].title}</i>
-          {quote.clip && (
-            <button
-              type="button"
-              className="galaxy-play"
-              aria-label={`Play: ${quote.text}`}
-              onClick={() => {
-                audioContext();
-                playClip(quote.clip);
-              }}
-            >
-              <RiPlayFill className="h-4 w-4" aria-hidden="true" />
-            </button>
-          )}
-        </figcaption>
-      </figure>
+      <Quote quote={quote} />
 
       <dl className="galaxy-facts">
         {system.facts.map(([k, v]) => (
@@ -225,6 +275,26 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
                 </button>
               </li>
             ))}
+          </ul>
+        </section>
+      )}
+
+      {crew && places.length > 0 && (
+        <section className="galaxy-here galaxy-out" aria-label="Out there">
+          <p className="label">
+            Out there <span className="text-muted">· {found.filter((id) => places.some((p) => p.id === id)).length} of {places.length} found</span>
+          </p>
+          <ul>
+            {places.map((p) => {
+              const got = found.includes(p.id);
+              return (
+                <li key={p.id} data-found={got ? '' : undefined}>
+                  <button type="button" onClick={() => onGo(p.id)} disabled={at === p.id}>
+                    <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> {at === p.id ? `At ${(got ? p.name : p.hint).replace(/^(A|An|The) /, (m) => m.toLowerCase())}` : got ? p.name : `${p.hint}, somewhere out there`}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

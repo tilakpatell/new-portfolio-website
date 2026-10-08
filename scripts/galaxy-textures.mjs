@@ -48,6 +48,15 @@ export const ROLES = {
   redsoil: { id: 'red_laterite_soil_stones', keep: 0.2, mean: 0.78 },
   gravel: { id: 'ground_grey', keep: 0.1, mean: 0.8 },
   beach: { id: 'coast_sand_01', keep: 0.15, mean: 0.84 },
+  // the bases' floors (Phase 2): Theed's polished plaza and hangar, and the
+  // tread plate of Echo Base's grates and Tipoca's deck
+  tiles: { id: 'large_floor_tiles_02', keep: 0.15, mean: 0.84 },
+  deck: { id: 'metal_plate', keep: 0.05, mean: 0.8 },
+  // the worlds' own rock, where grey rock face reads wrong: Geonosis's red,
+  // eroded stone (its spires, hives and arena) and Endor's mossy boulders
+  // (the bunker's mound, the forest's rocks and logs)
+  redrock: { id: 'rock_boulder_cracked', keep: 0.3, mean: 0.78 },
+  mossrock: { id: 'mossy_rock', keep: 0.35, mean: 0.72 },
 };
 
 const get = async (url, as = 'json') => {

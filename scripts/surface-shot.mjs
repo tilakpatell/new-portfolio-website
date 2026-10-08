@@ -7,6 +7,8 @@
 //
 //   OUT=lab/shots node scripts/surface-shot.mjs <world> <x,z,dist,deg[,label]> …
 //   QUALITY=low …  (the device tier)
+//   ZONE=<id> …    (inside a zone: its id, the views then in the room's own
+//                  frame, through the dev hook __surfaceDo('zone', id))
 // The clock is held and the random numbers seeded as galaxy-check does, so
 // two runs see the same.
 
@@ -28,6 +30,7 @@ await ctx.addInitScript(() => {
   localStorage.setItem('tp-universe-ship', '"xwing"');
   localStorage.setItem('tp-galaxy-panel', '"tucked"');
   sessionStorage.setItem('tp-galaxy-intro', '1');
+  localStorage.setItem('tp-worlds', JSON.stringify('load')); // (the 3D, without the gate's asking)
   const held = Date.UTC(2026, 9, 5, 12);
   Date.now = () => held;
   let seed = 7;
@@ -51,15 +54,27 @@ console.log('phase', await page.evaluate(() => window.__surface?.()?.phase));
 // (the floor's light baked, if the world has one: a shot before it lands is
 // the world without its shadows; one with no ground runs out the clock)
 await page.waitForFunction(() => Boolean(window.__surfaceScene?.api?.ground?.stats?.baked), null, { timeout: Number(process.env.BAKE_WAIT ?? 150000), polling: 1000 }).catch(() => {});
+const zone = process.env.ZONE ?? null;
+let origin = [0, 0];
+if (zone) {
+  origin = await page.evaluate((id) => {
+    window.__surfaceDo('zone', id);
+    const z = window.__surface().zoneOrigin ?? [0, 0, 0];
+    return [z[0], z[2]];
+  }, zone);
+  await page.waitForTimeout(4000);
+}
 for (const v of views) {
-  const [x, z, dist = 40, deg = 0, label] = v.split(',');
+  const [x0, z0, dist = 40, deg = 0, label] = v.split(',');
+  const x = Number(x0) + origin[0];
+  const z = Number(z0) + origin[1];
   const a = (Number(deg) * Math.PI) / 180;
-  const sx = Number(x) + Math.sin(a) * Number(dist);
-  const sz = Number(z) + Math.cos(a) * Number(dist);
-  const yaw = Math.atan2(Number(x) - sx, Number(z) - sz);
+  const sx = x + Math.sin(a) * Number(dist);
+  const sz = z + Math.cos(a) * Number(dist);
+  const yaw = Math.atan2(x - sx, z - sz);
   await page.evaluate(([sx, sz, yaw]) => window.__surfaceDo('teleport', sx, sz, yaw), [sx, sz, yaw]);
   await page.waitForTimeout(7000);
-  const file = `${out}/${world}-${label ?? `${x}_${z}_${deg}`}-${quality}.png`;
+  const file = `${out}/${world}-${zone ? `${zone}-` : ''}${label ?? `${x0}_${z0}_${deg}`}-${quality}.png`;
   await page.screenshot({ path: file, timeout: 180000 });
   console.log(file);
 }

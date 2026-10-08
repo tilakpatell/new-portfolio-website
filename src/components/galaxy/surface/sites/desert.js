@@ -122,7 +122,7 @@ export const SITES = {
           rv: [['walt', 'A cantina full of smugglers and bounty hunters.'], ['jesse', 'So… basically Albuquerque.']],
         },
         things: [
-          { kind: 'cantina', at: [0, 0], yaw: 0.3 },
+          { kind: 'moscantina', at: [0, 0], yaw: 0.3 },
           { kind: 'dockingbay', at: [-34, 22], yaw: 2.2 },
           { kind: 'adobe', at: [26, 16], opts: { r: 4.5 } },
           { kind: 'adobe', at: [34, -10], opts: { r: 3.6 } },
@@ -204,10 +204,10 @@ export const SITES = {
           falcon: [['han', 'Tuskens. Let’s not stay for dinner.']],
         },
         things: [
-          { kind: 'tent', at: [0, 0], yaw: 0.2 },
-          { kind: 'tent', at: [8, -5], yaw: 1.4 },
-          { kind: 'tent', at: [-7, -7], yaw: 2.5 },
-          { kind: 'tent', at: [4, 9], yaw: 3.6 },
+          { kind: 'tent', at: [0, 0], yaw: 0.2, opts: { style: 'tusken' } },
+          { kind: 'tent', at: [8, -5], yaw: 1.4, opts: { style: 'tusken' } },
+          { kind: 'tent', at: [-7, -7], yaw: 2.5, opts: { style: 'tusken' } },
+          { kind: 'tent', at: [4, 9], yaw: 3.6, opts: { style: 'tusken' } },
           { kind: 'fire', at: [1, -3] },
         ],
       },
@@ -234,7 +234,8 @@ export const SITES = {
           falcon: [['han', 'I can’t see a thing, but I remember it. I really remember it.'], ['chewie', '(A shuddering groan.)']],
           cruiser: [['morty', 'Th-that thing has teeth, Rick! In the sand!'], ['rick', 'A thousand years of digestion, Morty. Kind of aspirational.']],
         },
-        things: [{ kind: 'sarlacc', at: [0, 0], y: 0 }],
+        // (and Jabba's skiff, hanging over its mouth, its plank out over the teeth)
+        things: [{ kind: 'sarlacc', at: [0, 0], y: 0 }, { kind: 'skiff', at: [-12, 6], y: 7, yaw: 0.5, solid: false }],
         pits: [{ at: [0, 0], r: 26, depth: 11, cone: true }],
       },
       {
@@ -251,7 +252,8 @@ export const SITES = {
           cruiser: [['rick', 'A slug with a palace, Morty. That’s the dream.'], ['morty', 'Th-there’s a monster in the basement, Rick! Everybody knows that!']],
         },
         things: [
-          { kind: 'palace', at: [0, 0] },
+          // (the keep's drum front just behind the gate)
+          { kind: 'palace', at: [3.5, -9] },
           // (the gate in front of the keep)
           { kind: 'palacegate', at: [0, 22] },
         ],
@@ -317,24 +319,39 @@ export const SITES = {
       { kind: 'rock', n: 140, within: [30, 560], scale: [0.6, 3.2], opts: { color: '#9e7a56', sharp: 0.5 } },
       { kind: 'stones', n: 260, within: [10, 400], scale: [0.25, 0.7], solid: false, opts: { color: '#a68462' } },
     ],
+    // where the people go (needs.js), and what they do there: Owen round his
+    // vaporators, kneeling to fix each; Mos Eisley's locals at the stalls; the
+    // Tuskens crouched round their fire. (The cantina's bar is its zone's.)
+    wants: [
+      { id: 'vaporator1', kind: 'work', at: [-154, 144], spots: [[-155.5, 144.6]], clip: 'kneel.fix', pause: 8 },
+      { id: 'vaporator2', kind: 'work', at: [-187, 144], spots: [[-185.5, 144.5]], clip: 'kneel.fix', pause: 8 },
+      { id: 'vaporator3', kind: 'work', at: [-148, 162], spots: [[-149.4, 161.2]], clip: 'kneel.fix', pause: 8 },
+      { id: 'vaporator4', kind: 'work', at: [-190, 164], spots: [[-188.7, 163.1]], clip: 'kneel.fix', pause: 8 },
+      { id: 'vaporator5', kind: 'work', at: [-166, 172], spots: [[-166.3, 170.4]], clip: 'kneel.fix', pause: 8 },
+      // (a stall's counter, two at a time in front of it)
+      { id: 'stall1', kind: 'food', at: [312, -210], slots: 2, spots: [[312.5, -212.5], [313.9, -211.7]], clip: 'interact', pause: 7 },
+      { id: 'stall2', kind: 'food', at: [294, -206], slots: 2, spots: [[292.6, -208.1], [294.2, -208.5]], clip: 'interact', pause: 7 },
+      { id: 'stall3', kind: 'food', at: [322, -236], slots: 2, spots: [[324.5, -236.4], [324.3, -234.8]], clip: 'interact', pause: 7 },
+      { id: 'tuskenfire', kind: 'rest', at: [-419, 247], slots: 3, spots: [[-417.5, 247], [-420.5, 247], [-419, 245.5]], base: 'crouch', pause: 14 },
+    ],
     life: [
       // at the landing: a Jawa at its stall, a haulier, an eopie at the trough
-      { kind: 'jawa', n: 2, at: [-16, 24], spread: 3, roam: 3, speed: 0.8, name: 'Jawa trader', says: ['Utinni!', '(It holds up a droid motivator. Slightly used. Very slightly.)', 'M’um m’aloo!'] },
+      { kind: 'jawa', n: 2, at: [-16, 24], spread: 3, roam: 3, speed: 0.8, group: true, name: 'Jawa trader', says: ['Utinni!', '(It holds up a droid motivator. Slightly used. Very slightly.)', 'M’um m’aloo!'] },
       { kind: 'farmer', n: 1, at: [20, -4], roam: 6, speed: 0.8, name: 'Haulier', says: ['Water run to Anchorhead. Two more stops, then the suns are down.', 'Mind the eopie. She spits.', 'That speeder’s not for sale. Everything else is.'] },
       { kind: 'eopie', n: 1, at: [12, 12], roam: 8, speed: 0.5, r: 0.9 },
       { kind: 'mousedroid', n: 1, at: [26, -2], roam: 6, speed: 1.4, r: 0.2, solid: false },
       { kind: 'jawa', n: 7, at: [140, 268], spread: 14, roam: 16, speed: 0.9, name: 'Jawa', says: ['Utinni!', 'Utinni! (It holds up a power converter, and names a price you don’t understand.)', 'M’um m’aloo!', '(It counts your credits, then counts them again.)'] },
       { kind: 'bantha', n: 4, at: [-400, 230], spread: 20, roam: 20, speed: 0.8, r: 1.5 },
-      { kind: 'tusken', id: 'tuskencamp', n: 3, at: [-420, 250], spread: 10, roam: 10, speed: 1.0, name: 'Tusken Raider', says: ['(A long, rising howl, and the gaffi stick held high.)', '(It stares. It doesn’t move. You get the message.)'] },
+      { kind: 'tusken', id: 'tuskencamp', n: 3, at: [-420, 250], spread: 10, roam: 10, speed: 1.0, needs: ['rest'], name: 'Tusken Raider', says: ['(A long, rising howl, and the gaffi stick held high.)', '(It stares. It doesn’t move. You get the message.)'] },
       { kind: 'stormtrooper', n: 4, path: [[290, -200], [330, -230], [300, -270], [262, -236]], speed: 1.4, name: 'Stormtrooper', says: ['Move along.', 'Let me see your identification.', 'How long have you had these droids?', 'These aren’t the droids we’re looking for.'] },
       { kind: 'sandtrooper', n: 2, at: [-60, -320], spread: 8, roam: 12, speed: 1.1, name: 'Sandtrooper', says: ['Look, sir: droids. Someone was in the pod.', 'The tracks go off in this direction.'] },
       { kind: 'dewback', n: 2, at: [-80, -300], spread: 10, roam: 14, speed: 0.7, r: 1.2 },
       { kind: 'sullustan', n: 1, at: [284, -244], roam: 8, speed: 1.0, name: 'A Sullustan pilot', says: ['(A string of chattering Sullustese, and a grin.)', 'Freighter’s in Bay 86. Cargo? Don’t ask.'] },
       { kind: 'ronto', n: 1, at: [330, -250], roam: 10, speed: 0.4, r: 1.3 },
-      { kind: 'villager', n: 5, at: [300, -230], spread: 40, roam: 25, speed: 1.1, name: 'Mos Eisley local', says: ['Watch yourself. This place can be a little rough.', 'Chalmun’s got a band in tonight. No droids, though.', 'If you’re looking for a pilot, try the cantina.', 'Hutt business. Don’t ask.'] },
+      { kind: 'villager', n: 5, at: [300, -230], spread: 40, roam: 25, speed: 1.1, needs: ['food'], name: 'Mos Eisley local', says: ['Watch yourself. This place can be a little rough.', 'Chalmun’s got a band in tonight. No droids, though.', 'If you’re looking for a pilot, try the cantina.', 'Hutt business. Don’t ask.'] },
       { kind: 'droid', n: 1, at: [-160, 140], roam: 10, speed: 0.6, name: 'An R5 unit', says: ['(A cheerful whistle. Its motivator sounds fine… for now.)'] },
       // who has something for you to do
-      { kind: 'farmer', id: 'owen', at: [-158, 160], roam: 6, speed: 0.7, name: 'Owen Lars', named: true, quest: 'converters', says: ['Those vaporators won’t fix themselves.', 'You can waste time with your friends when your chores are done.'] },
+      { kind: 'farmer', id: 'owen', at: [-158, 160], roam: 6, speed: 0.7, needs: ['work'], name: 'Owen Lars', named: true, quest: 'converters', says: ['Those vaporators won’t fix themselves.', 'You can waste time with your friends when your chores are done.'] },
       { kind: 'pilot', id: 'biggs', at: [-14, 336], still: true, face: 2.6, name: 'Biggs Darklighter', named: true, quest: 'womprats', says: ['I’m going to the Academy. Then I’m jumping ship and joining the Rebellion. Don’t tell anyone.', 'Still the best bush pilot in the Outer Rim.'] },
       { kind: 'villager', id: 'camie', at: [-26, 324], still: true, face: 1.2, name: 'Camie', named: true, quest: 'canyonrun', says: ['Biggs did the canyon in under thirty seconds. Bet you can’t.', 'Wormie’s always talking about Beggar’s Canyon.'] },
       { kind: 'villager', n: 2, at: TOSCHE, spread: 10, roam: 8, speed: 0.9, name: 'Anchorhead local', says: ['Did you hear? There was a big battle up there. Rebels, they say.', 'Power converters? Fixer’s got a crate of them somewhere.'] },
@@ -356,8 +373,8 @@ export const SITES = {
         id: 'cantina',
         name: 'the cantina',
         music: 'cantina',
-        door: { at: from(CANTINA, [0, 9.9]), r: 2.6, prompt: 'Go into the cantina' },
-        back: from(CANTINA, [0, 12.5]),
+        door: { at: from(CANTINA, [2.5, 9.9]), r: 2.6, prompt: 'Go into the cantina' },
+        back: from(CANTINA, [2.5, 12.5]),
         inside: {
           build: 'cantinainside',
           spawn: [0, 14.6],
@@ -368,6 +385,9 @@ export const SITES = {
           light: { sky: '#a4805a', ground: '#2a1e16', ambient: 0.65, fog: '#1a120c', density: 0.018 },
           lamps: [[0, 3.6, -1, '#ffb070', 34, 16], [0, 3.0, -8.2, '#7d9cff', 22, 10], [-7, 2.6, 3, '#ff9a50', 16, 12], [7, 2.6, 3, '#ff9a50', 16, 12]],
         },
+        // the bar (props/inside.js's: its counter 3.4 m round [0, −1]): a drink
+        // stood at it, between the stools, facing in
+        wants: [{ id: 'cantinabar', kind: 'food', at: [0, -1], slots: 5, spots: [[1.96, 2.43], [3.95, -1], [1.96, -4.43], [-3.95, -1], [-1.96, -4.43]], clip: 'drink', pause: 10 }],
         life: [
           { kind: 'wuher', id: 'wuher', at: [0, 0.8], still: true, face: 0, name: 'Wuher', named: true, says: ['We don’t serve their kind here!', 'Your droids. They’ll have to wait outside.', '(He slides a glass of something blue down the bar.)', 'No blasters. No trouble.'] },
           { kind: 'bith', id: 'figrin', at: [-2, -9.3], still: true, face: 0, name: 'Figrin D’an', named: true, says: ['(He doesn’t stop playing. He does raise an eyebrow, if a Bith has eyebrows.)', '(A long, wailing note on his kloo horn, just for you.)'] },
@@ -375,13 +395,13 @@ export const SITES = {
           { kind: 'bith', at: [0, -9.3], still: true, face: 0, name: 'One of the Modal Nodes', says: ['(It nods along, eyes closed.)'] },
           { kind: 'bith', at: [1, -9.3], still: true, face: 0, name: 'One of the Modal Nodes', says: ['(It doesn’t miss a beat.)'] },
           { kind: 'bith', at: [2.1, -9.1], still: true, face: -0.2, name: 'The drummer', says: ['(Ba-dum.)'] },
-          { kind: 'greedo', id: 'greedo', ...booth(-1.65), still: true, name: 'Greedo', named: true, quest: 'greedo', says: ['(He watches you over his drink, one hand under the table.)'] },
+          { kind: 'greedo', id: 'greedo', ...booth(-1.65), still: true, sit: true, name: 'Greedo', named: true, quest: 'greedo', says: ['(He watches you over his drink, one hand under the table.)'] },
           { kind: 'kenobi', id: 'ben', ...booth(1.65), still: true, name: 'Ben Kenobi', named: true, quest: 'charter', says: ['These aren’t the droids you’re looking for.', 'You will never find a more wretched hive of scum and villainy. We must be cautious.'] },
           { kind: 'aqualish', at: [-3.4, 2.8], still: true, face: 2.4, name: 'Ponda Baba', named: true, says: ['(Huttese, snarling) He doesn’t like you.', 'I don’t like you either.'] },
           { kind: 'villager', at: [-2.4, 3.6], still: true, face: 2.8, name: 'Dr. Evazan', named: true, says: ['You just watch yourself. We’re wanted men. I have the death sentence on twelve systems.'] },
-          { kind: 'twilek', n: 2, at: [4.5, 4], spread: 2, roam: 2.5, speed: 0.5, name: 'Twi’lek spacer', says: ['Looking for a ship? Try Docking Bay 94.', 'Keep your hand off your blaster in here.'] },
+          { kind: 'twilek', n: 2, at: [4.5, 4], spread: 2, roam: 2.5, speed: 0.5, needs: ['food'], name: 'Twi’lek spacer', says: ['Looking for a ship? Try Docking Bay 94.', 'Keep your hand off your blaster in here.'] },
           { kind: 'villager', ...booth(2.25), still: true, name: 'A smuggler', says: ['(He doesn’t look up from his cards.)'] },
-          { kind: 'aqualish', ...booth(-2.25), still: true, name: 'A bounty hunter', says: ['(It looks you up and down, and decides you aren’t worth it. Yet.)'] },
+          { kind: 'aqualish', ...booth(-2.25), still: true, sit: true, name: 'A bounty hunter', says: ['(It looks you up and down, and decides you aren’t worth it. Yet.)'] },
           { kind: 'jawa', n: 2, at: [-4, 7], spread: 1.5, roam: 2, speed: 0.6, name: 'Jawa', says: ['Utinni!'] },
         ],
       },

@@ -1,0 +1,22 @@
+{
+  "id": 5,
+  "date": "2026-10-07",
+  "title": "Every painted texture takes the device’s anisotropy",
+  "kind": "graphics",
+  "summary": "The site paints 178 of its textures on a canvas: signs, labels, floors, walls, screens. Most were left at the weakest anisotropy, so a painted floor seen at a slant went soft a few metres out however strong the graphics chip. 97 more now take the device’s, 16 on a desktop and 4 on a phone. Nothing to see in these software-rendered pictures; the difference shows on a real graphics chip.",
+  "routes": [
+    "/earth",
+    "/cybertron"
+  ],
+  "pr": 433,
+  "shots": [
+    "/changes/0005-a.webp",
+    "/changes/0005-b.webp"
+  ],
+  "measured": {
+    "js": 11958937,
+    "note": "Painted textures through sharpen: 29 → 126 of 178. Total JS 11679 kB, entry 160 kB, unchanged."
+  },
+  "session": "session_016pYnq331w6Gi6gHxQ3fbS5",
+  "reverted": null
+}

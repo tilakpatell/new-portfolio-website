@@ -16,6 +16,7 @@
 import * as THREE from 'three';
 import { INTERDICTION } from './interdiction';
 import { JUMP, jumpSmear } from '../universe/capitalRules';
+import { sharpen } from '../../lib/three/textures';
 
 const LINGER = 240; // seconds at most it stays, fighters or no
 
@@ -60,6 +61,7 @@ function glowTexture() {
   g.fillStyle = grad;
   g.fillRect(0, 0, 128, 128);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

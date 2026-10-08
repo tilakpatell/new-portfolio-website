@@ -5,7 +5,9 @@ import { edges, readPad, typing } from '../../games/pad';
 import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { local, prefersReducedMotion, useMediaQuery } from '../../../lib/hooks';
+import { sayVoiced } from '../../../lib/voiced';
 import { MortyFace, PickleFace, RickFace } from '../Faces';
+import { ALOUD, BOSS_LINE, COMBO, LOST_LINE, MEESEEKS, OPENER, PURPOSE, SAUCE } from './callouts';
 import { PANIC, choose, dash, newGame, step } from './rules';
 import { autopilot } from './pilot';
 import './portal.css';
@@ -20,6 +22,13 @@ const play = (name) => sfx().then((s) => s[name]?.());
 const playCue = (name) => cue().then((s) => s[name]?.());
 // the show's own lines (lib/clips.js), where it has one for the moment
 const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id));
+// a callout said aloud, if it's somebody talking (./callouts.js): their clip,
+// and any reply once it's done, or their voice where it's been made
+const aloud = (text) => {
+  const a = ALOUD[text];
+  if (a?.clip) clip(a.clip).then((h) => a.then && Promise.resolve(h?.ended).then(() => sayVoiced(a.then.who, a.then.text)));
+  else if (a?.who) sayVoiced(a.who, text);
+};
 const buzz = (ms) => {
   try {
     navigator.vibrate?.(ms);
@@ -34,13 +43,6 @@ const LEVELS = Object.keys(PANIC.levels);
 const HEROES = Object.keys(PANIC.heroes);
 const FACE = { rick: RickFace, morty: MortyFace, pickle: PickleFace };
 const HERO_NOTE = { rick: '4 hearts · quick gun', morty: '5 hearts · quick to recharge', pickle: '3 hearts · fast, hits hard, 3 dashes' };
-const OPENER = { rick: 'Wubba lubba dub dub!', morty: 'Oh geez, here we go', pickle: 'I’m Pickle Riiick!' };
-const BOSS_LINE = { snowball: 'Snowball wants a word', cronenberg: 'That’s a big one, Rick', cromulon: 'SHOW ME WHAT YOU GOT', evilmorty: 'Evil Morty' };
-const LOST_LINE = {
-  rick: 'One Rick down. There are infinitely many more.',
-  morty: 'Aw geez. Aw geez, Rick.',
-  pickle: 'Pickle Rick got pickled.',
-};
 
 const KEYS = {
   up: ['ArrowUp', 'w', 'W'],
@@ -68,6 +70,7 @@ function Game({ soft, fail }) {
   const mouse = useRef({ x: 0, y: 0, inside: false, down: false, moved: 0 });
   const sticks = useRef({ move: null, aim: null });
   const padPrev = useRef(null);
+  const onScreen = useRef(true); // (the game on the page's screen: off it, the loop rests and the keys are the page's)
   const hud = useRef({});
   const said = useRef({});
   const prefs0 = local.get(PREFS, {}) ?? {};
@@ -142,7 +145,10 @@ function Game({ soft, fail }) {
     demo.current = null;
   }, [hero]);
 
-  const say = useCallback((text, tone = 'info') => setCallout({ text, tone, key: Math.random() }), []);
+  const say = useCallback((text, tone = 'info') => {
+    setCallout({ text, tone, key: Math.random() });
+    aloud(text);
+  }, []);
 
   const finish = useCallback(
     (g) => {
@@ -156,6 +162,7 @@ function Game({ soft, fail }) {
       }
       if (won) unlock('peaceamongworlds');
       else if (g.boss?.alive && g.boss.id === 'cromulon') clip('disqualified'); // lost to the Cromulon
+      else aloud(LOST_LINE[g.hero]);
       setUi((u) => ({ ...u, offer: [], result: { won, score: g.score, isBest, prev, dim: g.dim, kills: g.kills, seeds: g.seeds, time: g.t, hero: g.hero } }));
       setPhase(won ? 'won' : 'lost');
       if (won) play('victory');
@@ -198,7 +205,7 @@ function Game({ soft, fail }) {
           case 'heal':
             play('ding');
             setUi((u) => ({ ...u, hp: g.p.hp }));
-            say(e.plumbus ? 'The plumbus heals you' : 'Szechuan sauce!', 'good');
+            say(e.plumbus ? 'The plumbus heals you' : SAUCE, 'good');
             break;
           case 'seed':
             seeded = true;
@@ -249,18 +256,18 @@ function Game({ soft, fail }) {
             setUi((u) => ({ ...u, dim: e.dim, wave: 0, dashes: g.p.dashes }));
             break;
           case 'combo':
-            say(e.n >= 24 ? 'Wubba lubba dub dub!' : `${e.n} in a row · ×${e.mult}`, 'good');
+            say(e.n >= 24 ? COMBO : `${e.n} in a row · ×${e.mult}`, 'good');
             break;
           case 'meeseeks':
             if (!said.current.meeseeks) {
               said.current.meeseeks = true;
-              say('I’m Mr. Meeseeks! Look at me!', 'good');
+              say(MEESEEKS, 'good');
             }
             break;
           case 'block':
             if (!said.current.butter) {
               said.current.butter = true;
-              say('What is my purpose? You stop shots.', 'good');
+              say(PURPOSE, 'good');
             }
             break;
           default:
@@ -318,11 +325,10 @@ function Game({ soft, fail }) {
     if (phase === 'loading') return undefined;
     let raf = 0;
     let last = 0;
-    let visible = true;
     const io = typeof IntersectionObserver !== 'undefined'
       ? new IntersectionObserver(([e]) => {
-          visible = e.isIntersecting;
-          if (!visible) pause(true);
+          onScreen.current = e.isIntersecting;
+          if (!e.isIntersecting) pause(true);
         })
       : null;
     io?.observe(wrap.current);
@@ -330,7 +336,7 @@ function Game({ soft, fail }) {
       raf = requestAnimationFrame(loop);
       const ms = last ? Math.min(100, now - last) : 16;
       last = now;
-      if (!visible || document.hidden || !gl.current) return;
+      if (!onScreen.current || document.hidden || !gl.current) return;
       const running = phaseRef.current === 'running';
       let g = game.current;
       if (running && g) {
@@ -450,11 +456,12 @@ function Game({ soft, fail }) {
     };
   }, [phase, hero, calm, fail, pause, pick]);
 
-  // ── keys, anywhere on the page while a game is on ──
+  // ── keys, anywhere on the page while a game is on and on screen (P scrolled
+  // off it is the page's: C-137's portal gun, say, not the game unpaused) ──
   useEffect(() => {
     if (phase !== 'running' && phase !== 'paused') return undefined;
     const down = (e) => {
-      if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!onScreen.current || typing(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
       const g = game.current;
       if (!g) return;
       if (is('pause', e.key)) {

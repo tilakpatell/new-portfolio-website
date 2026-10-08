@@ -3,7 +3,11 @@
 // they are (or one of them riding what they're riding), eased toward each
 // new place as it comes in so they don't jump, with the pilot's callsign
 // over the one they're playing. Anyone who's taken off, gone to another
-// world or gone quiet goes.
+// world or gone quiet goes. A newer pilot's message says how each of them
+// moves (protocol.js's `motion`: their clips paced to it, as yours are, so
+// their feet don't skate) and what the lead's doing (an `emote`, timed from
+// when it came in and played once: lib/emote.js); an older pilot's, without
+// them, walks as it always did.
 //
 // createPeers({ parent, placer, getCast }) → { update(net, siteId, dt),
 // dispose() }
@@ -14,11 +18,14 @@ import { HEROES, heroSpec } from '../heroes';
 import { readLooks } from '../../rickmorty/wardrobe/looks';
 import { METRE } from '../../universe/foot';
 import { RIDES } from './rides';
+import { SEATS, poseRider } from './riders';
 import { buildFigure } from './figures';
 import { modelFigure } from './actors';
 import { createGunplay } from '../../universe/gunplay';
 import { createSaber } from './saber';
 import { HILTS } from '../heroes';
+import { sharpen } from '../../../lib/three/textures';
+import { applyEmote, heardEmote, readEmote } from '../../../lib/emote';
 
 const CREW_MODELS = { artoo: 'r2d2' }; // (scene.js's)
 
@@ -42,6 +49,7 @@ function nameTag(text) {
   g.textBaseline = 'middle';
   g.fillText(text, 128, 33);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthWrite: false, transparent: true }));
   s.scale.set(2.2, 0.55, 1);
@@ -74,11 +82,12 @@ export function createPeers({ parent, placer, getCast }) {
         inner.add(fig.model);
         holder.add(inner);
         w.fig = fig;
+        w.own = Boolean(own);
         // their gun, in the hand (up as far as they say theirs is); a saber lit as theirs is
         if (w.gun && !own) {
           holder.updateMatrixWorld(true);
           w.gp = createGunplay(fig, fig.gun ?? w.gun, { unit: 1, who: fig.built ? 'built' : who });
-          if (w.gun === 'saber' && w.gp) w.saber = createSaber(w.gp, { color: arms?.color || spec.saber?.color || '#4aa8ff', hilt: HILTS.find((h) => h.id === spec.saber?.hilt?.id) ?? spec.saber?.hilt ?? null, stance: arms?.stance ?? spec.saber?.stance ?? 'single', parent: group });
+          if (w.gun === 'saber' && w.gp) w.saber = createSaber(w.gp, { color: arms?.color || spec.saber?.color || '#4aa8ff', hilt: HILTS.find((h) => h.id === spec.saber?.hilt?.id) ?? spec.saber?.hilt ?? null, stance: arms?.stance ?? spec.saber?.stance ?? 'single', parent: group, fig });
         }
       })();
     return w;
@@ -107,6 +116,16 @@ export function createPeers({ parent, placer, getCast }) {
     if (spec?.figure) {
       r.fig = buildFigure(spec.figure);
       if (r.fig) holder.add(r.fig.model);
+      // (its catalogue model once it's here, as yours is: the seat's measured on it)
+      modelFigure(spec.figure)
+        .then((m) => {
+          if (!m || dead || !holder.parent) return;
+          if (r.fig) holder.remove(r.fig.model);
+          r.fig?.dispose?.();
+          holder.add(m.model);
+          r.fig = m;
+        })
+        .catch(() => {});
     } else
       placer.put({ kind, at: [0, 0], abs: true, solid: false }).then((o) => {
         if (!o || dead || !holder.parent) return;
@@ -163,7 +182,23 @@ export function createPeers({ parent, placer, getCast }) {
           ease(wk.st, s, dt);
           wk.holder.position.set(wk.st.x, wk.st.y, wk.st.z);
           wk.holder.rotation.y = wk.st.yaw;
-          wk.fig?.update(dt, i === 0 && w.ride ? 0 : Math.min(1, Math.abs(wk.st.speed) / 7.4));
+          const going = i === 0 && w.ride ? 0 : Math.min(1, Math.abs(wk.st.speed) / 7.4);
+          // (how they say they're moving, in metres a second, to locomotion.js
+          // in the map's units as yours goes; an older pilot's, a rider's, or
+          // a droid's own model: the old pace)
+          const m = s.motion && !(i === 0 && w.ride) && !wk.own ? { speed: s.motion.speed * METRE, side: s.motion.side * METRE, turn: s.motion.turn, air: 0 } : null;
+          if (m) wk.fig?.update(dt, going, m);
+          else wk.fig?.update(dt, going);
+          if (!(i === 0 && w.ride)) wk.saber?.stand(dt, now / 1000, going); // (the body under their blade)
+          if (m && wk.fig?.after) {
+            wk.holder.updateMatrixWorld(true);
+            wk.fig.after(dt, m, { forward: fwd.set(Math.sin(wk.st.yaw), 0, Math.cos(wk.st.yaw)), up: UP });
+            const drop = wk.fig.loco?.drop ?? 0;
+            if (drop > 1e-7) wk.holder.position.y -= drop / METRE;
+          }
+          // what they're doing: an emote, timed from when its message came in, played once (none riding)
+          wk.emote = heardEmote(s.emote ?? null, w.at / 1000, wk.emote);
+          wk.shown = applyEmote(wk.fig, i === 0 && w.ride ? null : readEmote(wk, now / 1000), wk.shown);
           if (wk.gp) {
             const riding = i === 0 && Boolean(w.ride);
             wk.gp.gun.visible = !riding;
@@ -203,6 +238,19 @@ export function createPeers({ parent, placer, getCast }) {
           e.ride.fig?.update(dt, Math.min(1, Math.abs(lead.st.speed) / 6));
           const [sx, sy, sz] = spec.seat;
           lead.holder.position.set(x + sx * Math.cos(yaw) + sz * Math.sin(yaw), y + sy - 0.55, z - sx * Math.sin(yaw) + sz * Math.cos(yaw));
+          // sat in it as you are (riders.js): its sat clip, then the hips on
+          // its seat and the hands and feet on its controls
+          if (lead.fig && lead.seat !== e.ride.kind) {
+            lead.seat = e.ride.kind;
+            lead.fig.base?.(spec.hover > 0 || spec.fly ? 'drive' : 'sit')?.catch?.(() => {});
+          }
+          if (SEATS[e.ride.kind] && lead.fig) {
+            e.ride.holder.updateMatrixWorld(true);
+            poseRider(lead.fig, lead.holder, e.ride.holder.matrixWorld, SEATS[e.ride.kind]);
+          }
+        } else if (lead?.seat) {
+          lead.seat = null;
+          lead.fig?.base?.(null)?.catch?.(() => {});
         }
         if (lead) e.tag.position.set(lead.st.x, lead.st.y + 2.45, lead.st.z);
       }

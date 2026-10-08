@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GALAXY_SIDES, ROAM_EVENTS, galaxySide } from './roamRules';
+import { GCW, warTable } from './gcw';
+import { effectsFor } from './warEffects';
 import { SYSTEMS, systemById } from './systems';
 import { KINDS, NAMES } from './hunted';
 import { canHave, EVENTS } from '../universe/director';
@@ -45,7 +47,7 @@ describe('galaxySide', () => {
   });
 
   it('lets the director bring only what each side can have, of the events the galaxy plays', () => {
-    expect(Object.keys(ROAM_EVENTS)).toEqual(['hunt', 'destroyer', 'bounty']);
+    expect(Object.keys(ROAM_EVENTS)).toEqual(['hunt', 'destroyer', 'bounty', 'escort']);
     const can = (side) => Object.entries(EVENTS).filter(([, e]) => canHave(side, e)).map(([id]) => id);
     expect(can(GALAXY_SIDES.empire)).toEqual(expect.arrayContaining(['hunt', 'destroyer', 'bounty', 'distress', 'convoy', 'leviathan', 'meteors']));
     expect(can(GALAXY_SIDES.empire)).not.toContain('council');
@@ -70,5 +72,64 @@ describe('galaxySide', () => {
         if (f.ace) expect(KINDS[f.ace], `${id} ace`).toBeTruthy();
       }
     }
+  });
+});
+
+describe('galaxySide, by who holds the system in the war', () => {
+  const MS = GCW.start + 30 * 60e3;
+  const fx = (war, id, owner, side, turncoat = false) => {
+    const t = warTable(war, MS);
+    const table = { ...t, systems: t.systems.map((r) => (r.id === id ? { ...r, owner, front: false, attack: null } : r)) };
+    return effectsFor(id, table, { war, side, sworn: 1, turncoat });
+  };
+  const can = (side) => Object.entries({ ...EVENTS, ...ROAM_EVENTS }).filter(([, e]) => canHave(side, e)).map(([id]) => id);
+  it('without effects, as it always was', () => {
+    expect(galaxySide(systemById('hoth'), null)).toBe(galaxySide(systemById('hoth')));
+  });
+  it('a Rebel system with a Rebel pilot has no hunt and no Star Destroyer, an escort, and still the bounty hunters', () => {
+    const side = galaxySide(systemById('hoth'), fx('gcw', 'hoth', 'rebel', 'rebel'));
+    expect(pick(side, 'hunt', seeded())).toBeNull();
+    expect(can(side)).toEqual(expect.arrayContaining(['bounty', 'escort']));
+    expect(can(side)).not.toContain('hunt');
+    expect(can(side)).not.toContain('destroyer');
+    expect(side.escort).toEqual(['xwing', 'awing', 'ywing']);
+  });
+  it('with an Imperial pilot the Rebellion hunts, and drops in a Mon Calamari cruiser', () => {
+    const side = galaxySide(systemById('hoth'), fx('gcw', 'hoth', 'rebel', 'empire'));
+    expect(pick(side, 'hunt', seeded())).toBe('rebellion');
+    expect(pick(side, 'capital')).toBe('rebelnavy');
+    expect(side.capitalShip).toBe('moncal');
+    expect(can(side)).toContain('destroyer');
+    expect(can(side)).not.toContain('escort');
+  });
+  it('the Republic hunts with ARC-170s and a Venator, the Separatists with droids', () => {
+    const rep = galaxySide(systemById('kamino'), fx('clone', 'kamino', 'republic', 'separatists'));
+    expect(pick(rep, 'hunt', seeded())).toBe('republic');
+    expect(rep.capitalShip).toBe('venator');
+    expect(pick(galaxySide(systemById('kamino'), fx('clone', 'kamino', 'separatists', 'republic')), 'hunt', seeded())).toBe('separatists');
+  });
+  it('a separatist world’s droids come for you whoever holds it, your side or not', () => {
+    const side = galaxySide(systemById('geonosis'), fx('gcw', 'geonosis', 'rebel', 'rebel'));
+    expect(pick(side, 'hunt', seeded())).toBe('separatists');
+    expect(can(side)).toContain('escort');
+  });
+  it('Hutt space hunts nobody, but the bounty hunters come twice as keen', () => {
+    const side = galaxySide(systemById('tatooine'), fx('gcw', 'tatooine', 'hutt', 'rebel'));
+    expect(can(side)).not.toContain('hunt');
+    expect(can(side)).toContain('bounty');
+    expect(side.factions.fett.weight).toBe(2 * GALAXY_SIDES.empire.factions.fett.weight);
+  });
+  it('a deserter is hunted, and the bounty hunters are keener', () => {
+    const side = galaxySide(systemById('hoth'), fx('gcw', 'hoth', 'rebel', 'empire', true));
+    expect(pick(side, 'hunt', seeded())).toBe('rebellion');
+    expect(side.factions.fett.weight).toBe(2);
+  });
+  it('every side’s capital ship and escorts can be drawn', () => {
+    for (const owner of ['rebel', 'empire', 'republic', 'separatists', 'newrepublic', 'remnant', 'hutt'])
+      for (const side of [owner === 'hutt' ? 'rebel' : owner, null]) {
+        const s = galaxySide(systemById('hoth'), fx(owner === 'republic' || owner === 'separatists' ? 'clone' : owner === 'newrepublic' || owner === 'remnant' ? 'remnant' : 'gcw', 'hoth', owner, side));
+        if (s.capitalShip) expect(Boolean(HUNTER_GLB[s.capitalShip]) || BUILT.has(s.capitalShip), `${owner} ${s.capitalShip}`).toBe(true);
+        for (const [id, f] of Object.entries(s.factions)) for (const [kind] of f.kinds) expect(Boolean(HUNTER_GLB[KINDS[kind]?.model ?? kind]) || BUILT.has(KINDS[kind]?.model ?? kind), `${owner} ${id} ${kind}`).toBe(true);
+      }
   });
 });

@@ -30,7 +30,7 @@ export const SITES = {
     ground: { detail: 'ash', detailLook: { color: 0.7, normal: 0.8 }, seed: 21, layers: [{ type: 'swell', scale: 380, height: 10 }, { type: 'hills', scale: 120, height: 8 }, { type: 'mountains', from: 650, to: 3000, height: 480, scale: 1100 }], palette: palette('#26282e', '#36373d', '#1e2226', '#5a5a56', { mark: '#18191c' }) },
     land: { at: [0, 0], yaw: 0.6 },
     places: [
-      { id: 'town', name: 'Nevarro City', at: [140, -90], r: 60, flat: { r: 58 }, about: 'The guild’s town: Greef Karga’s cantina, the bounty hunters’ haunt, the Armorer’s forge under the streets.', things: [{ kind: 'cantina', at: [0, 0], yaw: 0.3 }, { kind: 'nevarrodome', at: [27, 18], yaw: 0.4, sink: 0.3 }, { kind: 'nevarrodome', at: [-29, 21], yaw: 1.9, scale: 0.85, sink: 0.3 }, { kind: 'nevarrodome', at: [21, -29], yaw: 2.8, scale: 1.15, sink: 0.3 }, { kind: 'nevarrodome', at: [-24, -26], yaw: 0.9, scale: 0.7, sink: 0.3 }, { kind: 'nevarrodome', at: [40, -4], yaw: 3.3, scale: 0.9, sink: 0.3 }, { kind: 'nevarroarch', at: [-40, 25], yaw: -1, sink: 0.2 }, { kind: 'crates', at: [-14, -12] }, { kind: 'stall', at: [12, 14], yaw: 2.4 }, { kind: 'stall', at: [-10, 16], yaw: 0.6 }, { kind: 'lamp', at: [-34, 18] }, { kind: 'lamp', at: [-30, 29] }, ...grove(7, 26, 50, 78, ['lavarock'], [1.2, 4]).filter((t) => Math.hypot(t.at[0] + 40, t.at[1] - 25) > 16)] },
+      { id: 'town', name: 'Nevarro City', at: [140, -90], r: 60, flat: { r: 58 }, about: 'The guild’s town: Greef Karga’s cantina, the bounty hunters’ haunt, the Armorer’s forge under the streets.', things: [{ kind: 'nevcantina', at: [0, 0], yaw: 0.3 }, { kind: 'nevarrodome', at: [27, 18], yaw: 0.4, sink: 0.6 }, { kind: 'nevarrodome', at: [-29, 21], yaw: 1.9, scale: 0.85, sink: 0.6 }, { kind: 'nevarrodome', at: [21, -29], yaw: 2.8, scale: 1.15, sink: 0.6 }, { kind: 'nevarrodome', at: [-24, -26], yaw: 0.9, scale: 0.7, sink: 0.6 }, { kind: 'nevarrodome', at: [40, -4], yaw: 3.3, scale: 0.9, sink: 0.6 }, { kind: 'nevarroarch', at: [-40, 25], yaw: -1, sink: 0.2 }, { kind: 'crates', at: [-14, -12] }, { kind: 'stall', at: [12, 14], yaw: 2.4 }, { kind: 'stall', at: [-10, 16], yaw: 0.6 }, { kind: 'lamp', at: [-34, 18] }, { kind: 'lamp', at: [-30, 29] }, ...grove(7, 26, 50, 78, ['lavarock'], [1.2, 4]).filter((t) => Math.hypot(t.at[0] + 40, t.at[1] - 25) > 16)] },
       { id: 'crest', name: 'The Razor Crest', at: [40, -170], r: 30, flat: { r: 30 }, about: 'Din Djarin’s gunship, older than it looks and patched in more places than it should be.', things: [{ kind: 'razorcrest', at: [0, 0], yaw: 1.2 }] },
       { id: 'base', name: 'The Imperial base', at: [-260, 160], r: 50, flat: { r: 48 }, about: 'An Imperial Remnant outpost, still running, still guarding something.', things: [{ kind: 'bunker', at: [0, 0], yaw: 2 }, { kind: 'crates', at: [16, 10] }, { kind: 'crates', at: [-12, 14] }, { kind: 'lamp', at: [10, -14] }] },
       { id: 'lava', name: 'The lava flats', at: [300, 260], r: 50, about: 'A crust of black glass over rivers of fire. Don’t stop walking.', things: grove(41, 14, 4, 40, ['lavarock'], [1.5, 4.5]) },
@@ -71,6 +71,9 @@ export const SITES = {
       { kind: 'stormtrooper', n: 4, at: [-260, 160], spread: 20, roam: 12, speed: 1.2, name: 'Remnant stormtrooper', says: ['Move along. This area is restricted.'] },
       { kind: 'villager', n: 4, at: [140, -90], spread: 30, roam: 18, speed: 1, name: 'Nevarro local', says: ['The guild’s back in business. The Empire’s not.'] },
       { kind: 'r5', n: 1, at: [12, 6], roam: 6, speed: 0.6, name: 'An R5 unit', says: ['(A sulky beep. Somebody stole its restraining bolt. For the bolt.)'] },
+      // (the beasts of burden: blurrgs on the lava fields, a happabore in town)
+      { kind: 'blurrg', n: 2, at: [70, -130], spread: 12, roam: 14, speed: 0.9, r: 1 },
+      { kind: 'happabore', n: 1, at: [178, -108], roam: 8, speed: 0.5, r: 1.8 },
       { kind: 'aqualish', n: 1, at: [-14, -4], still: true, face: 0.8, name: 'Bounty hunter', says: ['Guild business. Keep walking.', 'Cantina’s in town. Karga’s buying. Karga’s never buying.'] },
     ],
     quests: [
@@ -124,7 +127,7 @@ export const SITES = {
     places: [
       { id: 'capital', name: 'Capital City', at: [260, -60], r: 60, flat: { r: 56 }, about: 'Lothal’s capital: stone towers, and an Imperial factory where the farms used to be.', things: [{ kind: 'lothdome', at: [0, 4], yaw: 3.4, sink: 0.2 }, { kind: 'lothdome', at: [27, 18], yaw: 4.2, scale: 0.85, sink: 0.2 }, { kind: 'lothdome', at: [-26, 16], yaw: 2.4, scale: 0.9, sink: 0.2 }, { kind: 'lothdome', at: [20, -24], yaw: 5.4, scale: 0.75, sink: 0.2 }, { kind: 'crates', at: [8, -16] }, { kind: 'crates', at: [-10, -12], yaw: 0.7 }] },
       { id: 'factory', name: 'The Imperial factory', at: [-220, -200], r: 50, flat: { r: 46 }, about: 'Where the TIEs are built. The grass doesn’t grow back round it.', things: [{ kind: 'bunker', at: [0, 0], yaw: 1 }, { kind: 'crates', at: [14, 8] }] },
-      { id: 'tower', name: 'The old Imperial tower', at: [-320, 60], r: 40, flat: { r: 30 }, about: 'A comms tower the Empire left behind on the plains. Sabine Wren lives in it now, and paints it.', things: [{ kind: 'lookout', at: [0, 0], yaw: 0.3 }, { kind: 'crates', at: [10, -8] }] },
+      { id: 'tower', name: 'The old Imperial tower', at: [-320, 60], r: 40, flat: { r: 30 }, about: 'A comms tower the Empire left behind on the plains. Sabine Wren lives in it now, and paints it.', things: [{ kind: 'lothtower', at: [0, 0], yaw: 0.3, solid: { r: 3.2 } }, { kind: 'crates', at: [10, -8] }] },
       { id: 'spires', name: 'The Jedi temple', at: [-140, 230], r: 50, flat: { r: 34 }, about: 'A great cone of banded stone in the grass, older than the Empire, older than the Republic. The way in only opens to the Force.', things: [{ kind: 'lothtemple', at: [0, -12], yaw: 0.4, sink: 1 }, { kind: 'lothtemple', at: [30, 6], yaw: 2, scale: 0.26, sink: 0.5 }, { kind: 'lothtemple', at: [-28, 2], yaw: 4, scale: 0.32, sink: 0.5 }, { kind: 'lothtemple', at: [-20, -40], yaw: 1, scale: 0.22, sink: 0.5 }, { kind: 'lothtemple', at: [24, -38], yaw: 3, scale: 0.18, sink: 0.5 }] },
     ],
     life: [
@@ -133,6 +136,9 @@ export const SITES = {
       { kind: 'stormtrooper', n: 4, at: [-220, -200], spread: 18, roam: 12, speed: 1.2, name: 'Remnant stormtrooper', says: ['Back away from the factory.'] },
       { kind: 'villager', n: 5, at: [260, -60], spread: 30, roam: 15, speed: 1, name: 'Lothal farmer', says: ['The loth-wolves came back. That has to mean something.'] },
       { kind: 'farmer', n: 1, at: [-14, 12], roam: 6, speed: 0.8, name: 'Haulier', says: ['Grain for Capital City. Half of it goes to the garrison, whether we like it or not.', 'Watch the spires. The wolves den there.'] },
+      // (the plains' own: loth-cats about the capital, and the wolves by the spires)
+      { kind: 'lothcat', n: 3, at: [222, -24], spread: 16, roam: 10, speed: 1.2, r: 0.3 },
+      { kind: 'lothwolf', n: 2, at: [-150, 110], spread: 10, roam: 24, speed: 1.6, r: 0.9 },
       { kind: 'astromech', n: 1, at: [-10, 18], roam: 5, speed: 0.6, name: 'Astromech', says: ['(A grumpy, clipped beep. It would rather be fixing a ship.)'] },
     ],
     quests: [

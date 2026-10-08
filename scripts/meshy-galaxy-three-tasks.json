@@ -1,0 +1,38 @@
+{
+  "cloudtower": {
+    "lift": [
+      "01a1169c-af64-772e-a386-0f9d0852544b"
+    ],
+    "model": "01a116a5-3543-74ca-bf8e-d913c89adea9"
+  },
+  "cloudtower2": {
+    "lift": [
+      "01a1169d-2a01-73c8-bd7c-d484cdce34c6"
+    ],
+    "model": "01a116a5-39b1-730e-a0e5-0dc3c790d657"
+  },
+  "cloudplaza": {
+    "lift": [
+      "01a1169d-d95e-7200-83ae-91d479b73222"
+    ],
+    "model": "01a116a5-3cdf-710d-93be-c9e81aa64ab3"
+  },
+  "dexdiner": {
+    "lift": [
+      "01a1169f-7fb1-76bf-ba9c-5ec48797c73c"
+    ],
+    "model": "01a116a5-3fd5-768e-b972-6f68b1f51c65"
+  },
+  "club": {
+    "lift": [
+      "01a116a0-99b2-7661-9b1c-b2c876906245"
+    ],
+    "model": "01a116a5-4366-72ae-9b1e-ba716f09a5f5"
+  },
+  "republica": {
+    "lift": [
+      "01a116a2-aa79-75b6-9ab6-7c6e607c7689"
+    ],
+    "model": "01a116a5-468d-764d-a19c-5f59797bd7e4"
+  }
+}

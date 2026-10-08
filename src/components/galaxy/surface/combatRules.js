@@ -152,8 +152,8 @@ export function dodgeStep(k) {
   return { d: DODGE.dist * (1 - (1 - x) * (1 - x)), safe: x * DODGE.dur <= DODGE.safe };
 }
 
-export function forceAt(me, t, kind = 'push') {
-  const f = FORCE[kind];
+// (`f` is the push's own numbers where it isn't the Force's: a roar, say)
+export function forceAt(me, t, kind = 'push', f = FORCE[kind]) {
   const dx = t.x - me.x;
   const dz = t.z - me.z;
   const d = Math.hypot(dx, dz);
@@ -162,8 +162,7 @@ export function forceAt(me, t, kind = 'push') {
   return { hit: true, k: 1 - (d / f.range) * 0.6 };
 }
 
-export function pushVelocity(me, t, k, kind = 'push') {
-  const f = FORCE[kind];
+export function pushVelocity(me, t, k, kind = 'push', f = FORCE[kind]) {
   const dx = t.x - me.x;
   const dz = t.z - me.z;
   const d = Math.hypot(dx, dz) || 1e-6;

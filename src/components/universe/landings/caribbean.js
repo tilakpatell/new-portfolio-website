@@ -8,9 +8,10 @@
 import * as THREE from 'three';
 import { box, cyl, part } from '../../galaxy/surface/kit';
 import { PROPS as GENERIC } from '../../galaxy/surface/props/generic';
+import { rng } from '../../galaxy/surface/noise';
 import { METRE } from '../foot';
 
-const { PI } = Math;
+const { PI, cos, sin } = Math;
 
 export const PROPS = {
   // the sea: from a shoreline `shore` metres ahead out past the horizon,
@@ -131,5 +132,16 @@ export const SCATTER = {
   shells(k) {
     const g = new THREE.SphereGeometry(0.06, 8, 5, 0, PI * 2, 0, PI / 2).scale(1, 0.5, 1.3);
     return { parts: [{ geometry: k.geometry([part(g, { color: '#f2e6d8', to: 'stone' })]), material: k.mats.stone }], radius: null, tints: ['#f2e6d8', '#e8c8b8', '#d8b890', '#f6f0e8'] };
+  },
+  // coral heads left out on the reef flat by the tide: brain coral's domes
+  // and staghorn's branches
+  coral(k, { seed = 4 } = {}) {
+    const rand = rng(seed);
+    const parts = [part(new THREE.SphereGeometry(0.35, 10, 6, 0, PI * 2, 0, PI / 2), { scale: [1, 0.7, 1], color: '#e8b89a', to: 'stone' })];
+    for (let i = 0; i < 5; i++) {
+      const a = rand() * PI * 2;
+      parts.push(part(new THREE.CylinderGeometry(0.03, 0.05, 0.5, 5).translate(0, 0.25, 0), { at: [cos(a) * 0.3, 0.1, sin(a) * 0.3], rot: [cos(a) * 0.6, 0, sin(a) * 0.6], color: '#d88a7a', to: 'stone' }));
+    }
+    return { parts: [{ geometry: k.geometry(parts), material: k.mats.stone }], radius: null, tints: ['#e8b89a', '#d8a0b0', '#c8c08a', '#f0d0b8'] };
   },
 };

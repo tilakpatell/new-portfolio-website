@@ -8,11 +8,14 @@
 // passed in, so this runs in Node: index.js wires the real ones.
 //
 // createRuntime({ makeBackend, loop, input, quality, saves, assets, audio,
-//   events, now, gpu, override, visible }) → rt
-// rt: { gfx, input, quality, saves, assets, audio, events, host, status,
+//   workers, origin, events, now, gpu, override, visible }) → rt
+// rt: { gfx, input, quality, saves, assets, audio, workers, origin, events, host, status,
 //   current, loading, on(fn), invalidate(), resize(w, h), setVisible(on), lost(),
 //   mount(module, props, host) → shown, handover(module, props, host, { fade, held, after }) → shown,
 //   adopt(module, host), unmount(), dispose() }
+// A world with an `anchor()` (the player's world position) has the floating
+// origin moved after it before each step; a shift is the event 'origin'
+// { shift }, for the world to re-anchor its objects and camera that frame.
 // (`shown`: true once the module's world is the one drawing; false when it
 // failed, or something newer was asked for meanwhile)
 
@@ -20,6 +23,7 @@ import { createLoop } from '../lib/three/loop';
 import { settle } from '../lib/settle';
 import { pickBackend } from './backend';
 import { createHandover } from './handover';
+import { createOrigin } from './origin';
 import { validateModule, validateWorld } from './module';
 
 const READY_WAIT = 4000; // ms at most a world's `ready` holds back its first frame
@@ -48,7 +52,7 @@ export function createEvents() {
   };
 }
 
-export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input, quality, saves = null, assets, audio, events = createEvents(), gpu = false, override = null, visible = () => true }) {
+export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input, quality, saves = null, store = null, assets, audio, workers = null, origin = createOrigin(), events = createEvents(), gpu = false, override = null, visible = () => true }) {
   let gfx = null;
   let kind = null; // the backend asked for
   let lostWebGPU = false;
@@ -81,6 +85,11 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     last = t;
     const { world } = current;
     try {
+      const at = world.anchor?.();
+      if (at) {
+        const shift = origin.check(at);
+        if (shift) events.emit('origin', { shift });
+      }
       const snapshot = input.sample(t);
       world.step?.(dt, snapshot, t);
       world.draw({ dt, now: t, renderer: gfx.renderer, quality });
@@ -98,7 +107,10 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     }
     const level = quality.frame(t);
     if (level !== null) {
-      gfx.setRatio(ratioFor(current.module));
+      // (a module that draws through passes of its own sets its own
+      // sharpness inside them, `sharpness: 'own'`: the canvas keeps its size,
+      // whose every change waits on the graphics chip)
+      if (current.module.sharpness !== 'own') gfx.setRatio(ratioFor(current.module));
       world.lowerQuality?.(level);
     }
     if (status === 'ready') setStatus('on');
@@ -175,7 +187,12 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
   };
 
   // the sharpness to draw a module at: the quality's, under the module's own cap
-  const ratioFor = (mod) => (quality.ratioUnder ? quality.ratioUnder(mod?.ratio) : quality.ratio);
+  // (a module with its own sharpness, `sharpness: 'own'`, gets the canvas
+  // at its full ratio: the pace's steps are its passes' to draw at)
+  const ratioFor = (mod) => {
+    const r = quality.ratioUnder ? quality.ratioUnder(mod?.ratio) : quality.ratio;
+    return mod?.sharpness === 'own' && quality.scale > 0 ? r / quality.scale : r;
+  };
 
   const backendFor = async (module) => {
     const want = pickBackend({ gpu, shading: module.shading, override, lost: lostWebGPU });
@@ -210,6 +227,23 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       }
       world.update?.(props);
     }
+    // everything sent to the graphics chip before it's shown (lib/three/
+    // gpuWork's prepareScene), a slice a frame, while the page shows its
+    // loading screen or the old world goes on drawing (a handover's flight
+    // is its loading screen); its progress goes out as 'prepare' events
+    if (world.prepare) {
+      const report = (value, step) => events.emit('prepare', { module: module.id, value, step });
+      try {
+        await world.prepare(report, { alive: () => token === seq });
+      } catch (err) {
+        if (dev) console.warn(`[${module.id}] prepare failed`, err);
+      }
+      if (token !== seq) {
+        world.dispose();
+        return null;
+      }
+      report(1, 'first draw');
+    }
     return world;
   };
   const place = (world, host, mod) => {
@@ -233,6 +267,9 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
   const begin = (module, world, host, props) => {
     input.attach({ win: typeof window !== 'undefined' ? window : host, host });
     current = { module, world, host, props };
+    origin.reset();
+    // (the pace's step so far, for a world that draws at it itself)
+    if (module.sharpness === 'own' && quality.level > 0) world.lowerQuality?.(quality.level);
     world.setVisible?.(shown);
     last = 0;
     setStatus('ready');
@@ -246,8 +283,11 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     input,
     quality,
     saves,
+    store,
     assets,
     audio,
+    workers,
+    origin,
     events,
     host: null,
     get status() {
@@ -322,7 +362,10 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     // changes after. `after`: a promise the old world's last moment waits
     // on once the new one is made (a dive flown to its end while the next
     // world was built behind it), AFTER_MAX at most.
-    async handover(module, props = {}, host, { fade = 600, held = false, after = null } = {}) {
+    // `onBuilt`: called once the new world is made and prepared, before
+    // `after` is waited on (a landing waits for this to start its dive, so
+    // the dive flies with nothing left to load)
+    async handover(module, props = {}, host, { fade = 600, held = false, after = null, onBuilt = null } = {}) {
       if (!current) return this.mount(module, { ...props, from: null }, host);
       const mod = validateModule(module);
       const token = ++seq;
@@ -341,6 +384,11 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       try {
         const world = await build(mod, { ...props, from }, host, token);
         if (!world) return false;
+        try {
+          onBuilt?.();
+        } catch (err) {
+          if (dev) console.warn(`[${mod.id}] onBuilt failed`, err);
+        }
         if (after) {
           await settle(after, AFTER_MAX);
           if (token !== seq) {
@@ -412,6 +460,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
       this.unmount();
       gfx?.dispose();
       gfx = null;
+      workers?.dispose?.();
     },
   };
   return rt;

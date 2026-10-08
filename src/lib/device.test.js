@@ -113,7 +113,15 @@ describe('budgets', () => {
     // (no window under test: the screen's ratio is 1)
     expect(pixelRatio(2, 'ultra')).toBe(1.5);
     expect(pixelRatio(1, 'ultra')).toBe(1);
-    expect(pixelRatio(2, 'high')).toBe(1);
+  });
+
+  it('supersamples a high-tier desktop a quarter over a plain monitor, as Active Theory does', () => {
+    // (no window under test: the screen's ratio is 1)
+    expect(pixelRatio(2, 'high')).toBe(1.25);
+    expect(pixelRatio(1, 'high')).toBe(1);
+    // phones and weak devices draw at the screen's own pixels at most
+    expect(pixelRatio(2, 'mid')).toBe(1);
+    expect(pixelRatio(2, 'low')).toBe(1);
   });
 });
 

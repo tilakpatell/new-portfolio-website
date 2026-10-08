@@ -20,7 +20,11 @@
 //   side), scale, y (over the ground), sink (into it), abs (y is the height
 //   itself, not over the ground), solid (false: walk through it; or { r } /
 //   { box: [hw, hd] } in place of its own), model (false: its build, even
-//   where there's a model), opts (for a built one), zone (it's a room's) }
+//   where there's a model), opts (for a built one), zone (it's a room's),
+//   url (a model from elsewhere on the site, in place of the kind's: the
+//   universe's Death Star over Scarif's sea; scaled to `metres` along its
+//   longest side), fog (false: drawn clear of the fog, for something hung
+//   in the sky far past where the fog would hide it) }
 
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -29,8 +33,10 @@ import { sharpenMaterial } from '../../../lib/three/textures';
 import { detailLevel } from '../../../lib/detail';
 import { SURFACE_MODELS, surfaceLodUrl, surfaceUrl } from './catalog';
 import { withDetail } from './detail';
-import { loadScan, scanOf } from './kit';
+import { LOOKS, loadScan, scanOf } from './kit';
+import { wear as wearCore } from '../../../lib/three/core';
 import { PROPS, SCATTER } from './props';
+import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again
@@ -59,10 +65,32 @@ export const usesModel = (spec) => hasModel(spec.kind) && spec.model !== false &
 // A kind's model, and (its catalogue entry's `detail`: a scan's role) the
 // scan laid over it up close (detail.js), on every tier but the lowest;
 // resolves to the gltf, or null when it won't load
+// A model whose file came in turned off its nose (a catalogue row's `turn`,
+// radians about its up: the bantha's lies 33° to its left): turned to face
+// +z and its middle put back over its feet, once, in the loaded file itself,
+// so every copy of it (a thing placed, a herd's beast, a ride) faces the way
+// it walks. Gives the gltf back.
+export function squared(gltf, kind) {
+  const turn = SURFACE_MODELS[kind]?.turn;
+  const root = gltf?.scene;
+  if (!turn || !root || root.userData.squared) return gltf;
+  const inner = new THREE.Group();
+  inner.name = 'squared';
+  for (const c of [...root.children]) inner.add(c);
+  inner.rotation.y = turn;
+  root.add(inner);
+  root.updateMatrixWorld(true);
+  const c = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3());
+  inner.position.x -= c.x;
+  inner.position.z -= c.z;
+  root.userData.squared = true;
+  return gltf;
+}
+
 export function loadModel(kind, url = surfaceUrl(kind)) {
   const role = SURFACE_MODELS[kind]?.detail;
   const scan = role && detailLevel() !== 'low' ? loadScan(role) : null;
-  return Promise.all([loadGlb(url), scan]).then(([gltf, got]) => {
+  return Promise.all([loadGlb(url).then((g) => (url === surfaceUrl(kind) ? squared(g, kind) : g)), scan]).then(([gltf, got]) => {
     // (a model whose own finish reads wrong in the world: `look`, its
     // materials' metalness, roughness, ambient occlusion and reflections set)
     const look = SURFACE_MODELS[kind]?.look;
@@ -129,6 +157,23 @@ function addSolid(world, s, at, yaw, scale, top) {
   }
 }
 
+// A loaded model laid over with a core role's scan (a thing's `wear: 'stone'`,
+// for a model whose own pictures are mush): the scan on each of its lit
+// materials, in the world at the scan's size; how many took it
+const LIT_MODEL = (m) => Boolean(m && (m.isMeshStandardMaterial || m.isMeshLambertMaterial || m.isMeshPhongMaterial));
+export async function wearModel(object, role, { wear = wearCore, load = loadScan } = {}) {
+  const size = scanOf(role);
+  if (!size) return 0;
+  const scan = await load(role).catch(() => null);
+  if (!scan?.map) return 0;
+  const seen = new Set();
+  object.traverse((o) => {
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (LIT_MODEL(m) && !seen.has(m)) seen.add(m);
+  });
+  for (const m of seen) wear(m, scan, { metres: size.metres ?? 2, strength: LOOKS[role]?.strength ?? 0.55, normal: LOOKS[role]?.normal ?? 0.8, mean: size.mean ?? 0.8 });
+  return seen.size;
+}
+
 export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null }) {
   const group = new THREE.Group();
   group.name = 'things';
@@ -173,6 +218,12 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     o.scale.setScalar(spec.scale ?? 1);
     (spec.zone ? rooms : group).add(o);
     applyBuilt(made, spec, at, world, { updates, signals, object: true });
+    // (a built one that wears a model on a moving part of it, once it's
+    // loaded: `wear: { url, on(model) }`, the dragonsnake's head)
+    if (made.wear)
+      loadGlb(made.wear.url)
+        .then((gltf) => !dead && gltf && made.wear.on(cloneModel(gltf)))
+        .catch(() => {});
     return o;
   };
   // a built one's walls and floors only, under its model (its meshes thrown
@@ -213,6 +264,33 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       const cluster = !spec.zone && spec.model !== false && SURFACE_MODELS[spec.kind]?.cluster;
       if (cluster) return Promise.all(clusterSpecs(spec, cluster).map((m) => this.put(m))).then(() => null);
       const at = spot(spec);
+      // (a model from elsewhere on the site, by its url: stood at `at`, its
+      // longest side `metres`; its build if it won't load)
+      if (spec.url) {
+        const p = loadGlb(spec.url)
+          .then((gltf) => {
+            if (dead) return null;
+            if (!gltf) return build(spec, at);
+            const o = cloneModel(gltf);
+            const box = new THREE.Box3().setFromObject(o);
+            const size = box.getSize(new THREE.Vector3());
+            const k = (spec.metres ?? Math.max(size.x, size.y, size.z)) / Math.max(size.x, size.y, size.z);
+            const c = box.getCenter(new THREE.Vector3());
+            const inner = new THREE.Group();
+            inner.add(o);
+            o.position.set(-c.x * k, (spec.centred ? -c.y : -box.min.y) * k, -c.z * k);
+            o.scale.setScalar(k);
+            inner.position.set(...at);
+            inner.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
+            (spec.zone ? rooms : group).add(inner);
+            if (spec.fog === false) unfogged(inner);
+            if (spec.solid !== false) footprint(inner, spec, at);
+            return warm(inner).then(() => inner);
+          })
+          .catch(() => null);
+        pending.push(p);
+        return p;
+      }
       if (usesModel(spec)) {
         const p = loadModel(spec.kind)
           .then((gltf) => {
@@ -224,10 +302,15 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             o.scale.setScalar(spec.scale ?? 1);
             const holder = spec.zone ? rooms : group;
             holder.add(o);
+            if (spec.fog === false) unfogged(o);
             const entry = SURFACE_MODELS[spec.kind];
             if (entry.solids === 'built') builtSolids(spec, at);
             else footprint(o, spec, at);
-            if (!entry.lod) return warm(o).then(() => o);
+            // (worn before its shaders are made, so they're made once)
+            const worn = spec.wear ? wearModel(o, spec.wear) : Promise.resolve();
+            // (a tower: its windows lit in the shader, props/windows.js)
+            if (spec.windows) o.traverse((m) => m.isMesh && [].concat(m.material).forEach((mat) => mat.isMeshStandardMaterial && litWindows(mat, { seed: 5, density: 0.5, cell: [4, 5] })));
+            if (!entry.lod) return worn.then(() => warm(o)).then(() => o);
             // far off, its light model (fetched after the full one: the
             // first view doesn't wait for it)
             const lod = withLod(o, null, radiusOf(gltf) * (spec.scale ?? 1));
@@ -238,7 +321,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
               addLowLevel(lod, l, radiusOf(gltf) * (spec.scale ?? 1));
               warm(l);
             });
-            return warm(o).then(() => lod);
+            return worn.then(() => warm(o)).then(() => lod);
           })
           .catch(() => null);
         pending.push(p);
@@ -379,6 +462,22 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   }
 }
 
+// something hung in the sky, far past where the fog would swallow it: its
+// materials drawn clear of it (the copies share a model's materials, so
+// every copy of that model on this page is; only sky things are placed so)
+function unfogged(o) {
+  o.traverse((m) => {
+    if (!m.isMesh) return;
+    for (const mat of Array.isArray(m.material) ? m.material : [m.material]) {
+      if (!mat.fog) continue;
+      mat.fog = false;
+      mat.needsUpdate = true;
+    }
+    m.castShadow = false;
+    m.receiveShadow = false;
+  });
+}
+
 // A cluster's members (a catalogue entry's `cluster`: [kind, x, z, yaw, y]
 // in its own frame, metres) as things to put: where the cluster stands,
 // turned by its yaw and scaled by its scale
@@ -436,7 +535,11 @@ export function applyBuilt(made, spec, at, world, { updates, signals, object }) 
   const c = Math.cos(yaw);
   const sn = Math.sin(yaw);
   for (const f of made.floors ?? []) {
-    world.floors.push({ ...f, x: at[0] + (f.x * c + f.z * sn) * k, z: at[2] + (-f.x * sn + f.z * c) * k, y: at[1] + f.y * k, r: f.r != null ? f.r * k : undefined, hw: f.hw != null ? f.hw * k : undefined, hd: f.hd != null ? f.hd * k : undefined, yaw: f.r != null ? undefined : (f.yaw ?? 0) + yaw });
+    const placed = { ...f, x: at[0] + (f.x * c + f.z * sn) * k, z: at[2] + (-f.x * sn + f.z * c) * k, y: at[1] + f.y * k, r: f.r != null ? f.r * k : undefined, hw: f.hw != null ? f.hw * k : undefined, hd: f.hd != null ? f.hd * k : undefined, yaw: f.r != null ? undefined : (f.yaw ?? 0) + yaw };
+    // (one that `moves`, a platform the builder lowers in its update: its
+    // height read from the builder's own floor, live)
+    if (f.moves) Object.defineProperty(placed, 'y', { get: () => at[1] + f.y * k, enumerable: true });
+    world.floors.push(placed);
   }
   if (!object) return;
   if (made.update) updates.push(made.update);

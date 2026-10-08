@@ -13,7 +13,10 @@ import { parseSystem, systemById } from '../components/galaxy/systems';
 import { galaxyCrew } from '../components/galaxy/lines';
 import { LANDABLE, siteOf } from '../components/galaxy/surface/sites';
 import { surfaceUrl } from '../components/galaxy/surface/catalog';
+import { CREW, filesOf } from '../components/galaxy/surface/crewList';
 import { surfaceCrew } from '../components/galaxy/surface/lines';
+import { voiceFor } from '../components/galaxy/surface/voicelines';
+import { sayVoiced, stopVoiced } from '../lib/voiced';
 import SurfaceView from '../components/galaxy/surface/SurfaceView';
 import surfaceModule from '../components/galaxy/surface/module';
 import galaxyModule from '../components/galaxy/module';
@@ -22,12 +25,23 @@ import { runtime } from '../runtime';
 import ChaseHud from '../components/galaxy/surface/ChaseHud';
 import AssaultHud from '../components/galaxy/surface/AssaultHud';
 import HeroPanel from '../components/galaxy/surface/HeroPanel';
-import { HERO_KEY, heroById, heroSpec, readHero, writeHero } from '../components/galaxy/heroes';
+import { HERO_KEY, heroById, heroSpec, loadoutLine, readHero, writeHero } from '../components/galaxy/heroes';
 import { missionOf } from '../components/galaxy/surface/missions';
+import { sideFor, warSideOf } from '../components/galaxy/surface/missions/assault';
+import { SIDE_KEY, current as currentOath, readAllegiance, swear } from '../components/galaxy/allegiance';
+import { GCW, campaignAt } from '../components/galaxy/gcw';
+import { warOfSide } from '../components/galaxy/sides';
+import { effectsFor } from '../components/galaxy/warEffects';
+import { addPoints, addWin, mine, warNow, warVersion } from '../components/galaxy/warState';
+import { RANKS, rankOf } from '../components/galaxy/ranks';
 import ModelCredits from '../components/ModelCredits';
+import EarnNote from '../components/universe/EarnNote';
+import { useEarn } from '../components/universe/useEarn';
+import { createCarry, createPayLedger } from '../components/universe/earnRules';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { openGuide } from '../lib/palette';
+import { EMOTES, wheelAngle } from '../lib/emote';
 import '../components/universe/universe.css';
 import '../components/galaxy/galaxy.css';
 import '../components/galaxy/surface/surface.css';
@@ -35,6 +49,9 @@ import '../components/galaxy/surface/surface.css';
 const LANDED_KEY = 'tp-galaxy-landed'; // the worlds you've set foot on
 const CLIMB = 3400; // ms of the climb out seen before space takes over: the ship lifting, then shooting up under the sky's glare (surface.css .surface-exit rises from 2.5 s to here)
 export const MISSIONS_KEY = 'tp-galaxy-missions'; // { 'system/id': { t, stars } }: your best at each mission played down on a world
+
+// the emote wheel's slices, by name (lib/emote.js's EMOTES, clockwise from the top)
+const EMOTE_NAME = { wave: 'Wave', cheer: 'Cheer', dance: 'Dance', taunt: 'Taunt', sit: 'Sit' };
 
 const readBests = () => {
   const all = local.get(MISSIONS_KEY);
@@ -85,6 +102,11 @@ export default function GalaxySurface() {
   // who you play as down here (heroes.js), kept across worlds
   const [hero, setHero] = useState(() => readHero(local.get(HERO_KEY), parseShip(local.get(SHIP_KEY)) ?? 'xwing'));
   const [picking, setPicking] = useState(false);
+  // (what's on in the world: the scene says so as a pick goes on, its
+  // 'hero' event; a pick whose figure wouldn't load goes back to this)
+  const heroNow = useRef(hero);
+  heroNow.current = hero;
+  const worn = useRef(hero);
   const pickHero = (next) => {
     setHero(next);
     local.set(HERO_KEY, writeHero(next));
@@ -92,6 +114,37 @@ export default function GalaxySurface() {
   };
   const crew = crewById(ship);
   const { unlocked, unlock } = useAchievements();
+  // the galaxy's war (allegiance.js): the side you swore to, and who holds
+  // this world (warEffects.js: the troopers you meet are theirs); an assault
+  // here is that war's, fought for one of its sides
+  const [oathKept, setOathKept] = useState(() => readAllegiance(local.get(SIDE_KEY)));
+  const oath = useMemo(() => currentOath(oathKept), [oathKept]);
+  // (and, for the people's talk: the side you swore to, and your rank in it, as a step up its ladder)
+  const effects = useMemo(() => {
+    const e = effectsFor(id, warNow(Date.now(), oath.war), oath);
+    if (!e) return e;
+    const rank = oath.side ? rankOf(oath.side, mine(oath.war).points) : null;
+    return { ...e, side: oath.side ?? null, rank: rank ? (RANKS[oath.side]?.findIndex((r) => r.id === rank.id) ?? 0) : 0 };
+  }, [id, oath]);
+  const assaultWar = mission?.kind === 'assault' ? warOfSide(warSideOf(mission, 'attack')) : null;
+  const sworn = assaultWar ? sideFor(mission, oathKept.oaths[assaultWar]?.side ?? null) : null;
+  const onAssaultSide = (k) => {
+    const side = warSideOf(mission, k);
+    if (warOfSide(side)) {
+      const next = swear(oathKept, side);
+      if (next !== oathKept) {
+        setOathKept(next);
+        local.set(SIDE_KEY, next);
+        window.dispatchEvent(new Event('tp:oath')); // (your hello says it: useOnline.js)
+        unlock('gcwSworn');
+        if (currentOath(next).turncoat) unlock('gcwTurncoat');
+      }
+    }
+    view.current?.input?.('side', k);
+  };
+  // the ground battle's result, counted in the war once: the posts your side
+  // took while you were up, and the battle if you won it
+  const posted = useRef(false);
   const build = useMemo(() => (ship && readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]);
   const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked, build), [ship, unlocked, build]);
   // online: the other pilots down here with you
@@ -104,10 +157,23 @@ export default function GalaxySurface() {
   const [phase, setPhase] = useState('landing');
   const [prompt, setPrompt] = useState(null);
   const [here, setHere] = useState(null);
-  const [talk, setTalk] = useState(null); // { who, text, n }
+  const [talk, setTalk] = useState(null); // { who, text, voice?, n }
   const [toast, setToast] = useState(null); // { title, text, n }
   const [leaving, setLeaving] = useState(false);
   const [done, setDone] = useState(() => readDone()[id] ?? []); // the quests done here
+  // the wallet (economy.js): a place found and a quest done pay, the first
+  // time only (what was found or done before this visit is paid for already)
+  const { pay, note: earned } = useEarn({ client: online.client });
+  const [paid] = useState(() => createPayLedger([...found.map((x) => `found:${x}`), ...done.map((x) => `quest:${x}`)]));
+  const payOnce = useCallback(
+    (key, what) => {
+      if (paid.once(key)) pay(what, 1, 'galaxy');
+    },
+    [paid, pay],
+  );
+  // (an assault's points come in fractions: the wallet pays whole ones, the
+  // rest carried to the next, as the war front in the sky does)
+  const [warCarry] = useState(createCarry);
   const [quest, setQuest] = useState(null); // { id, name, text, left, shoot }
   const [list, setList] = useState(false); // the things-to-do list, open
   const [health, setHealth] = useState(100);
@@ -118,6 +184,11 @@ export default function GalaxySurface() {
   const [hitMark, setHitMark] = useState(null); // { n, kill }
   const [hurtFlash, setHurtFlash] = useState(0);
   const [parryNote, setParryNote] = useState(0);
+  // the emote wheel, as the scene says it is (its 'emote' event: open, the
+  // slice pointed at, the last struck, the one on); a phone has no keys to show
+  const [emote, setEmote] = useState(null);
+  const wheelOpen = useRef(false);
+  const [coarse] = useState(() => (typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false));
   const lastHealth = useRef(100);
   const lines = useRef([]); // what's to be said, in turn
   const view = useRef({ live: false });
@@ -130,6 +201,29 @@ export default function GalaxySurface() {
     clearTimeout(timers.current[key]);
     timers.current[key] = setTimeout(fn, ms);
   };
+  // the line that's up goes (or the next comes) once it's been up long
+  // enough to read; said aloud, once it's been said too
+  const talkNext = useRef(null); // { at, fn }
+  const holdTalk = (ms, fn) => {
+    talkNext.current = { at: Date.now() + ms, fn };
+    clearTimeout(timers.current.talk);
+    timers.current.talk = setTimeout(fn, ms);
+  };
+  // each line in its speaker's own voice, where it's been made (lib/voiced.js;
+  // voicelines.js says who sounds like whom): a new line stops the last
+  useEffect(() => {
+    if (!talk) return undefined;
+    let on = true;
+    sayVoiced(talk.voice ?? voiceFor(talk.who), talk.text).then((h) => {
+      const t = talkNext.current;
+      const said = h && h.length * 1000 + 600;
+      if (on && said && t && Date.now() + said > t.at) holdTalk(said, t.fn);
+    });
+    return () => {
+      on = false;
+      stopVoiced();
+    };
+  }, [talk]);
   const [looks] = useLooks(); // (how the cruiser's Rick and Morty come out, for the credits)
   const talkCrew = useMemo(() => (crew && site ? surfaceCrew(galaxyCrew(crew), site) : null), [crew, site]);
 
@@ -206,11 +300,12 @@ export default function GalaxySurface() {
       } else if (e.type === 'prompt') setPrompt(e.text);
       else if (e.type === 'here') setHere(e.id);
       else if (e.type === 'talk') {
-        setTalk((t) => ({ who: e.who, text: e.text, n: (t?.n ?? 0) + 1 }));
-        later('talk', 3500 + e.text.length * 45, () => setTalk(null));
+        setTalk((t) => ({ who: e.who, text: e.text, voice: e.voice ?? null, n: (t?.n ?? 0) + 1 }));
+        holdTalk(3500 + e.text.length * 45, () => setTalk(null));
       } else if (e.type === 'found') {
         const place = site?.places.find((p) => p.id === e.id);
         if (!place) return;
+        payOnce(`found:${e.id}`, 'found');
         setFound((was) => {
           if (was.includes(e.id)) return was;
           const next = [...was, e.id];
@@ -238,7 +333,7 @@ export default function GalaxySurface() {
             return;
           }
           setTalk((t) => ({ who: l.who, text: l.text, n: (t?.n ?? 0) + 1 }));
-          later('talk', 2600 + l.text.length * 42, next);
+          holdTalk(2600 + l.text.length * 42, next);
         };
         if (wasEmpty) next();
       } else if (e.type === 'quest') setQuest(e.id ? e : null);
@@ -246,6 +341,7 @@ export default function GalaxySurface() {
         // (a quest mission's own quest: its card says how it went)
       } else if (e.type === 'questDone') {
         const q = site?.quests.find((x) => x.id === e.id);
+        payOnce(`quest:${e.id}`, 'questDone');
         setDone((was) => {
           if (was.includes(e.id)) return was;
           const next = [...was, e.id];
@@ -266,6 +362,10 @@ export default function GalaxySurface() {
         lastHealth.current = e.value;
         setHealth(e.value);
       } else if (e.type === 'combat') setCombat(e);
+      else if (e.type === 'emote') {
+        wheelOpen.current = Boolean(e.open);
+        setEmote(e);
+      }
       else if (e.type === 'hit') {
         setHitMark((m) => ({ n: (m?.n ?? 0) + 1, kill: e.kill }));
         later('hitmark', 260, () => setHitMark(null));
@@ -291,6 +391,7 @@ export default function GalaxySurface() {
         setAiming(true);
         later('aim', 3000, () => setAiming(false));
       } else if (e.type === 'leave') goUp();
+      else if (e.type === 'go') navigate(e.to);
       else if (e.type === 'bump') comms.current?.handle({ type: 'bump', hard: e.hard });
       else if (e.type === 'mission') {
         for (const f of chaseFeed.current) f(e.view);
@@ -301,6 +402,22 @@ export default function GalaxySurface() {
           setChase(v);
         }
         const ev = e.event;
+        if (mission?.kind === 'assault' && v?.result && !posted.current) {
+          posted.current = true;
+          const side = warSideOf(mission, v.result.side);
+          if (warOfSide(side)) {
+            const now = Date.now();
+            const step = campaignAt(now).step;
+            const points = (v.result.posts?.[v.result.side] ?? 0) * GCW.points.objective;
+            const before = warVersion();
+            addPoints(side, id, step, points, now);
+            const whole = warVersion() !== before ? warCarry.add(points) : 0; // (not counted: nothing to pay)
+            if (whole) pay('warPoints', whole, 'galaxy');
+            const was = warVersion();
+            if (v.result.won) addWin(side, id, step, now);
+            if (warVersion() !== was) pay('warWin', 1, 'galaxy'); // (a battle's win counts once)
+          }
+        } else if (mission?.kind === 'assault' && v && !v.result) posted.current = false;
         if (ev?.type === 'won' && mission && v?.result) {
           const run = { t: v.result.t, stars: v.result.stars };
           const was = bestRef.current;
@@ -315,9 +432,21 @@ export default function GalaxySurface() {
           setToast((t) => ({ title: 'Thrown off', text: 'Back on the bike in a moment. The trees don’t move.', n: (t?.n ?? 0) + 1 }));
           later('toast', 2500, () => setToast(null));
         }
+      } else if (e.type === 'hero') {
+        // a pick on in the world, or one that wouldn't load (back to what was on)
+        const now = heroNow.current;
+        if (e.ok && writeHero(now) === writeHero(worn.current)) return; // (what was on, back on)
+        if (e.ok) worn.current = now;
+        else {
+          setHero(worn.current);
+          local.set(HERO_KEY, writeHero(worn.current));
+        }
+        const name = (h) => heroById(h.id)?.name ?? '';
+        setToast((t) => (e.ok ? { title: name(now), text: loadoutLine(now), kind: 'equipped', n: (t?.n ?? 0) + 1 } : { title: name(now), text: `Didn’t load. Still ${name(worn.current)}: try again in a moment.`, kind: 'failed', n: (t?.n ?? 0) + 1 }));
+        later('toast', 3200, () => setToast(null));
       }
     },
-    [site, id, unlock, mission, missionKey, flyOut, goUp],
+    [site, id, unlock, mission, missionKey, flyOut, goUp, navigate, pay, payOnce, warCarry],
   );
   const track = (qid) => {
     view.current?.input?.('track', qid);
@@ -325,11 +454,16 @@ export default function GalaxySurface() {
   };
 
   // H (or ?, the site's own key) for the controls, in the site's guide; Q
-  // for the list of things to do, Escape shuts it
+  // for the list of things to do, Escape shuts it; with the emote wheel
+  // open (B held), 1 to 5 strike one
   useEffect(() => {
     const onKey = (e) => {
       const tag = e.target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (wheelOpen.current && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && e.key >= '1' && e.key <= String(EMOTES.length) && e.key.length === 1) {
+        view.current?.input?.('emote', Number(e.key) - 1);
+        return;
+      }
       if (e.key === 'h' || e.key === 'H') openGuide();
       if (e.key === 'q' || e.key === 'Q') setList((l) => !l);
       if (e.key === 'Escape') setList(false);
@@ -338,8 +472,9 @@ export default function GalaxySurface() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // the models on this world, for their credits, what the cruiser's crew carry out, and Luke, who walks out of the X-wing (kept, so the credits aren't drawn again with every change of the page)
-  const kinds = useMemo(() => (site ? [...[...site.things_all, ...site.scatter, ...site.life, ...site.rides].map((t) => surfaceUrl(t.kind)), ...(ship === 'cruiser' ? wornFiles(looks) : []), ...(ship === 'xwing' ? ['/models/galaxy/crew/luke.glb'] : []), ...(heroById(hero.id)?.src.url ? [heroById(hero.id).src.url] : [])] : []), [site, ship, looks, hero.id]);
+  // the models on this world, for their credits (a person's crew figure as
+  // well as its catalogue model: a duellist of the same kind uses the latter), what the cruiser's crew carry out, and Luke, who walks out of the X-wing (kept, so the credits aren't drawn again with every change of the page)
+  const kinds = useMemo(() => (site ? [...[...site.things_all, ...site.scatter, ...site.rides].map((t) => surfaceUrl(t.kind)), ...site.life.flatMap((t) => [surfaceUrl(t.kind), ...(CREW[t.kind] ? filesOf(CREW[t.kind]) : [])]), ...(ship === 'cruiser' ? wornFiles(looks) : []), ...(ship === 'xwing' ? ['/models/galaxy/crew/luke.glb'] : []), ...(heroById(hero.id)?.src.url ? [heroById(hero.id).src.url] : [])] : []), [site, ship, looks, hero.id]);
   if (!site) return <Navigate to={id ? `/galaxy/${id}` : '/galaxy'} replace />;
   const place = site.places.find((p) => p.id === here);
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
@@ -349,7 +484,7 @@ export default function GalaxySurface() {
       <h1 className="sr-only">
         {sys.name}: {site.place}
       </h1>
-      <SurfaceView key={`${mission?.id ?? 'explore'}:${hero.id}:${hero.color}:${hero.hilt}:${hero.stance}:${hero.gun}:${(hero.mods ?? []).join()}:${(hero.perks ?? []).join()}`} system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} />
+      <SurfaceView system={id} mission={mission?.id ?? null} ship={ship} hero={hero} loadout={loadout} build={build} found={found} done={done} compass={compass} net={online.client} handle={view} onEvent={onEvent} effects={effects} />
 
       {/* where you are, and how much of it you've found */}
       <div className="surface-where">
@@ -391,7 +526,7 @@ export default function GalaxySurface() {
 
       {/* the quest you're on, and the things to do here */}
       {mission && mission.kind !== 'assault' && <ChaseHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onAgain={() => view.current?.input?.('restart')} onBack={takeOff} />}
-      {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={(id) => view.current?.input?.('side', id)} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
+      {mission?.kind === 'assault' && <AssaultHud view={chase} feed={chaseFeed} mission={mission} best={best} fresh={fresh} onSide={onAssaultSide} sworn={sworn} onDeploy={(id) => view.current?.input?.('deploy', id)} onAgain={() => view.current?.input?.('restart')} onBack={goUp} />}
 
       {phase !== 'landing' && site.quests.length > 0 && !((mission?.kind === 'chase' || mission?.kind === 'assault') && chase && !chase.result) && (
         <div className={quest ? 'surface-quest surface-quest-on' : 'surface-quest'}>
@@ -462,9 +597,10 @@ export default function GalaxySurface() {
           )}
           <ul className="surface-powers">
             {[
-              ['G', combat.saber ? 'Push' : 'Detonator', 'power'],
-              ['V', combat.saber ? 'Pull' : 'Overcharge', 'second'],
+              ['G', combat.powers?.power ?? (combat.saber ? 'Push' : 'Detonator'), 'power'],
+              ['V', combat.powers?.second ?? (combat.saber ? 'Pull' : 'Overcharge'), 'second'],
               ['X', 'Dodge', 'dodge'],
+              ['B', 'Emote', 'emote'],
             ].map(([key, name, slot]) => {
               const left = combat.cool?.[slot] ?? 0;
               const full = combat.cools?.[slot] ?? 1;
@@ -472,7 +608,7 @@ export default function GalaxySurface() {
                 <li key={slot} className={left > 0 ? 'surface-power is-cooling' : 'surface-power'} style={{ '--k': left > 0 ? left / full : 0 }}>
                   <kbd>{key}</kbd>
                   <span>{name}</span>
-                  {left > 0.05 && <small>{left.toFixed(left < 10 ? 1 : 0)}</small>}
+                  {left > 0.05 && !(slot === 'power' && combat.powers?.hold) && <small>{left.toFixed(left < 10 ? 1 : 0)}</small>}
                 </li>
               );
             })}
@@ -487,6 +623,23 @@ export default function GalaxySurface() {
       )}
       {hurtFlash > 0 && <div key={`hurt-${hurtFlash}`} className="surface-hurt" aria-hidden="true" />}
       {(((aiming || quest?.shoot) && phase === 'walk') || (mission?.kind === 'chase' && chase && !chase.result && phase === 'ride') || (mission?.kind === 'assault' && chase?.phase === 'run' && chase.you?.up && phase === 'walk')) && <span className="surface-crosshair" aria-hidden="true" />}
+      {/* the emote wheel (B held, or the Emote button on a phone): the five
+          round the middle of the view, clockwise from the top, the one pointed
+          at lit; let go over it, or click or tap it, or its number */}
+      {emote?.open && phase === 'walk' && !leaving && (
+        <div className="surface-wheel" role="menu" aria-label="Emotes">
+          <p className="surface-wheel-mid">{coarse ? 'Slide to one' : 'Let go of B over one'}</p>
+          {EMOTES.map((eid, i) => {
+            const a = wheelAngle(i);
+            return (
+              <button key={eid} type="button" role="menuitem" className="surface-wheel-slice" data-on={emote.hover === eid || undefined} data-last={emote.last === eid || undefined} style={{ '--sx': Math.sin(a).toFixed(3), '--sy': (-Math.cos(a)).toFixed(3) }} onClick={() => view.current?.input?.('emote', eid)}>
+                <span>{EMOTE_NAME[eid]}</span>
+                {!coarse && <kbd>{i + 1}</kbd>}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="surface-door" aria-hidden="true" style={{ opacity: fade }} />
       {prompt && phase !== 'landing' && phase !== 'leaving' && (
         <p className="surface-prompt" role="status">
@@ -498,8 +651,9 @@ export default function GalaxySurface() {
           <b>{talk.who}</b> {talk.text}
         </p>
       )}
+      <EarnNote note={earned} />
       {toast && (
-        <div key={`toast-${toast.n}`} className="surface-toast" data-done={toast.done ? '' : undefined} role="status">
+        <div key={`toast-${toast.n}`} className="surface-toast" data-done={toast.done ? '' : undefined} data-kind={toast.kind} role="status">
           <p className="surface-toast-title">{toast.title}</p>
           <p className="surface-toast-text">{toast.text}</p>
         </div>
@@ -517,7 +671,10 @@ export default function GalaxySurface() {
         <button type="button" className="surface-help-btn" onClick={openGuide} aria-keyshortcuts="H">
           Controls
         </button>
-        <button type="button" className="surface-help-btn" onClick={() => setPicking((p) => !p)} aria-expanded={picking} title="Who you play as, and your lightsaber">
+        <button type="button" className="surface-help-btn" onClick={() => setPicking((p) => !p)} aria-expanded={picking} aria-haspopup="dialog" aria-label={`Loadout: ${heroById(hero.id)?.name ?? heroSpec(hero).name}`} title="Who you play as, and what's in your hand">
+          <span className="surface-help-k" aria-hidden="true">
+            Loadout
+          </span>
           {heroSpec(hero).name}
         </button>
         <button type="button" className="surface-help-btn" onClick={takeOff}>

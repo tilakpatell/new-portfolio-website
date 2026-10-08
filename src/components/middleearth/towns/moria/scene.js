@@ -16,6 +16,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
@@ -32,6 +34,8 @@ import { makeFolk } from '../bree/props';
 import { createMoriaKit } from './props';
 import { CAST, CHAMBER, COMPANY, FLIGHT, FORK, GATE, GATE_ROCKS, HALL, HALL_COLLIDERS, HALL_WALLS, LAKE_Y, PASSAGE, SHAFT, TOMB, WELL, gateHeight, hallHeight } from './layout';
 import { PLANK, TUMBLE } from './rules';
+import { sharpen } from '../../../../lib/three/textures';
+import { attend, castDo, fight, followDrawn, releaseCast, tickCast, upgrade } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -88,6 +92,10 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
   const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 520, bloom: { strength: 0.85, radius: 0.6, threshold: 0.78 }, onLost });
   stage.grade({ contrast: 0.16, saturation: 0.8, vignette: 0.38, grain: 0.02, shadow: [0.0, 0.01, 0.03], high: [0.02, 0.01, 0.0] });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; the moods move it
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0x0a0e18, 30, 160);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.3;
@@ -104,10 +112,13 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
   const sky = makeSky(480);
   scene.add(sky.dome);
   const water = { uniforms: { uSky: { value: new THREE.Color() }, uDeep: { value: new THREE.Color() }, uSun: { value: V(0, 1, 0) }, uSunColor: { value: new THREE.Color() }, uGlints: { value: 1 } } };
-  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, moods: MOODS });
+  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water, stage, house: houseLook, moods: MOODS });
 
   const kit = createMoriaKit(renderer);
   const mats = kit.mats;
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(mats, rolesFor(mats), { strength: 0.3, normal: 0.6, keep: true });
   const zones = { gate: new THREE.Group(), halls: new THREE.Group(), flight: new THREE.Group() };
   for (const [k, g] of Object.entries(zones)) {
     g.position.copy(AT[k]);
@@ -276,6 +287,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     x.fillStyle = grad;
     x.fillRect(0, 0, 64, 64);
     const tex = new THREE.CanvasTexture(c);
+    sharpen(tex);
     const list = [];
     for (let i = 0; i < Math.round(18 * Math.max(0.5, many)); i++) {
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: 0x9aaccc, transparent: true, opacity: 0.12 + (i % 4) * 0.03, depthWrite: false, fog: true }));
@@ -464,6 +476,10 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     const g = kit.goblin(i + 1);
     g.group.visible = false;
     zones.halls.add(g.group);
+    // on the cast once its model's here (../../cast3d.js): the Moria goblin,
+    // as tall as this one, its own body hidden (and kept, should it not come)
+    const tall = new THREE.Box3().setFromObject(g.group).getSize(V()).y * 0.92;
+    upgrade(g, 'goblin', { role: 'folk', hide: [...g.group.children], top: tall, seed: i + 1 });
     return g;
   });
 
@@ -508,6 +524,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
 
     // ── the place's light ──
     sky.dome.visible = zone === 'gate';
+    // (under the mountain the fog is the dark's own, not the sky's)
+    houseLook.set({ fogMix: zone === 'gate' ? 1 : 0 });
     if (zone === 'gate') {
       scene.background = null;
     } else {
@@ -521,7 +539,9 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       // grey light from high shafts, once he's risked it
       sun.color.set(0x9aaabb);
       sun.intensity = zone === 'halls' ? A.lit * 0.55 : 0;
-      renderer.toneMappingExposure = 1.4;
+      renderer.toneMappingExposure = 1.4 * houseLook.exposure;
+      // (full light under the mountain is these lights', not the day's)
+      houseLook.light({ sun, hemi });
     }
     A.lit += ((s.lit ? 1 : 0) - A.lit) * Math.min(1, dt * (s.revealing ? 0.6 : 2));
     hall.lightFrom?.(A.lit);
@@ -546,6 +566,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       wpos('flight', sAt, flightY(sAt) + air, f ? f.lat : 0, frodo.group.position);
       frodo.group.rotation.set(0, 0, 0);
       pose(frodo, t, { moving: true, speed: 1.5 });
+      // (on the cast: knees up over the gaps)
+      castDo(frodo, { air, upper: null });
       frodo.group.visible = s.mode === 'flight' || s.mode === 'bridge';
       if (s.mode === 'bridge') {
         wpos('flight', FLIGHT.end - 2, 0, -0.5, frodo.group.position);
@@ -558,6 +580,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
       if (s.held) frodo.body.rotation.z = -0.5;
       else frodo.body.rotation.z = 0;
+      // (on the cast: struggling in the troll's grip)
+      castDo(frodo, { air: 0, upper: s.held ? 'scared' : null });
       // out on the plank: tipping as the balance goes, arms out to keep it
       if (s.mode === 'plank' && s.plank) {
         const lean = s.plank.lean;
@@ -583,8 +607,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       if (!on) continue;
       const y = c.zone === 'gate' ? gateHeight(c.x, c.z) : hallHeight(c.x);
       p.group.position.set(c.x, y, c.z);
-      const near = Math.hypot(h.x - c.x, h.z - c.z) < 5;
-      turnTo(p, near ? Math.atan2(-(h.z - c.z), h.x - c.x) : c.face, dt);
+      // they turn to Frodo as he comes by: on the cast the head first, a greeting the first time
+      attend(p, h, c.face, dt, { who: frodo });
       pose(p, t + c.x, { moving: false, talk: s.talk === c.id ? 1 : 0 });
     }
     // the Fellowship behind you, in the halls and on the flight
@@ -594,13 +618,28 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       p.group.visible = Boolean(at);
       if (!at) return;
       if (at.zone === 'flight') {
+        p.drawn = null;
         wpos('flight', at.s, flightY(at.s), at.lat ?? 0, p.group.position);
         p.group.rotation.y = at.face ?? 0;
-      } else {
+      } else if (at.fight) {
+        p.drawn = null;
         wpos(at.zone, at.x, at.zone === 'halls' ? hallHeight(at.x) : gateHeight(at.x, at.z), at.z, p.group.position);
-        turnTo(p, at.face, dt, 6);
+        // on the cast: in the fight, at the goblin come for them (a toy turns and raises an arm)
+        const near = goblins.filter((g) => g.group.visible);
+        const foe = near.length ? near[i % near.length] : null;
+        if (p.cast?.ready && foe) fight(p, foe, dt, { at: wpos('halls', foe.group.position.x, 0, foe.group.position.z, tmp2) });
+        else turnTo(p, at.face, dt, 6);
+      } else {
+        // off the conga line: each to its place at its own pace, apart from the rest
+        if (p.drawnIn !== at.zone) p.drawn = null; // (a new zone is a new place: there at once)
+        p.drawnIn = at.zone;
+        const d = followDrawn(p, at, dt, { others: [...COMPANY.map((o) => company[o]).filter((o) => o !== p && o.group.visible), { x: h.x, z: h.z }] });
+        wpos(at.zone, d.x, at.zone === 'halls' ? hallHeight(d.x) : gateHeight(d.x, d.z), d.z, p.group.position);
+        p.group.rotation.y = d.face;
       }
-      pose(p, t + i, { moving: Boolean(at.moving), speed: at.zone === 'flight' ? 1.5 : 1, wave: at.fight ? 0.6 : 0 });
+      // on the bridge: Gandalf stands against it, staff up; the rest look back at him
+      castDo(p, { full: id === 'gandalf' && s.mode === 'bridge' ? 'cast.idle' : null, ...(at.fight ? {} : { look: s.mode === 'bridge' ? (id === 'gandalf' ? balrog.group : company.gandalf.group) : null }) });
+      pose(p, t + i, { moving: Boolean(at.moving), speed: at.zone === 'flight' ? 1.5 : 1, wave: at.fight && !p.cast?.ready ? 0.6 : 0 });
     });
     // Gandalf's staff: the only light in the dark, till he risks more
     if (zone !== 'gate' && company.gandalf.group.visible) {
@@ -653,12 +692,27 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       troll.group.position.set(tw.x, 0, tw.z);
       turnTo(troll, tw.face, dt, 8);
       const hunting = tw.mode === 'alert' || tw.mode === 'chase';
-      troll.animate?.(t, { walking: tw.mode !== 'patrol' || tw.wait <= 0, swing: s.swing ?? 0, roar: hunting ? 1 : 0 });
+      // its walk from where it's put; it roars once taking up the hunt, and
+      // chasing, its club comes down as it gets to you (props.js)
+      troll.animate?.(t, { swing: s.swing ?? 0, roar: hunting ? 1 : 0, reach: tw.mode === 'chase' ? Math.hypot(h.x - tw.x, h.z - tw.z) : Infinity });
     }
     goblins.forEach((g, i) => {
       const on = zone === 'halls' && Boolean(s.troll);
       g.group.visible = on;
       if (!on) return;
+      // on the cast: each goblin at one of the company, circling, striking (../../cast3d.js)
+      const fighters = COMPANY.filter((id) => company[id].group.visible && s.company?.[id]?.fight).map((id) => company[id]);
+      if (g.cast?.ready && fighters.length) {
+        const foe = fighters[i % fighters.length];
+        const fx = foe.group.position.x - AT.halls.x;
+        const fz = foe.group.position.z - AT.halls.z;
+        const a = i * 2.4 + Math.sin(t * 0.35 + i * 1.7) * 0.7;
+        const d = followDrawn(g, { x: fx + Math.cos(a) * 1.25, z: fz - Math.sin(a) * 1.25 }, dt, { others: goblins.filter((o) => o !== g && o.drawn), spacing: 0.7, snap: 40 });
+        g.group.position.set(d.x, 0, d.z);
+        fight(g, foe, dt, { at: { x: fx, z: fz }, every: [1.4, 2.8] });
+        return;
+      }
+      g.drawn = null;
       // fighting along the chamber's walls
       const a = (i / goblins.length) * TAU + t * 0.08;
       g.group.position.set(CHAMBER.x + Math.cos(a) * 6.4, 0, CHAMBER.z + Math.sin(a) * 5);
@@ -776,6 +830,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
     sun.target.position.copy(camera.position);
     for (const g of grounds) g.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -804,6 +860,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
   const grounds = [
     groundTown({ renderer, scene, terrain: gateLand, outdoors: zones.gate, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x1e2026, clip: true }),
   ];
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts
@@ -826,6 +884,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       for (const g of grounds) g.dispose();
       ghosts.dispose();
       disposeTree(scene);
+      releaseCast(scene);
       stage.dispose();
     },
   };

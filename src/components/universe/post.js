@@ -85,8 +85,9 @@ export function bloomSize(w, h, { small = false, cap = 640 } = {}) {
 }
 
 // how far red and blue read apart at the frame's edge: none on a low tier,
-// a touch at rest, more in the boost's rush and a hit
-export const aberrationFor = ({ rush = 0, hit = 0, tier = 'high' } = {}) => (tier === 'low' ? 0 : 0.0015 + 0.0045 * rush + 0.0025 * hit);
+// a hair at rest (more and the sky's stars out toward the edges had
+// coloured fringes, softening them), more in the boost's rush and a hit
+export const aberrationFor = ({ rush = 0, hit = 0, tier = 'high' } = {}) => (tier === 'low' ? 0 : 0.0006 + 0.0054 * rush + 0.0034 * hit);
 
 // NaN and infinity both have every exponent bit set; tested on the bits,
 // since a compiler allowed fast maths may drop isnan(). The boolean mix()

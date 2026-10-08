@@ -16,12 +16,20 @@ import { createStage, disposeTree } from '../../../lib/stage3d';
 import { bake, dotTexture, farTree } from '../towns/bake';
 import { createGhosts } from '../towns/ghosts';
 import { budget, device } from '../../../lib/device';
+import { createHouse } from '../../../lib/three/house';
+import { dress } from '../../../lib/three/core';
+import { debugOn, debugPanel } from '../../../lib/debugPanel';
 import { pose } from '../mapFigures';
 import { createShireKit } from './props';
 import { loadDoorLeaf } from './models';
-import { instances, makeFlowers, makeGrass, makeTerrain, makeWater, swaying } from './ground';
+import { instances, makeFlowers, makeTerrain, makeWater, shireGroundMap } from './ground';
+import { createGrass } from '../../../lib/three/grass';
+import { createWind } from '../../../lib/three/wind';
+import { floorShadow } from '../../../lib/three/grounding';
 import { FIGURE, groundTown } from '../towns/grounded';
-import { makeAtmosphere, makeSky } from './sky';
+import { MOODS, makeAtmosphere, makeSky } from './sky';
+import { SHIRE_CORE } from './dress';
+import { shireTuning } from './tune';
 import { createFx } from './fx';
 import { calm, dance, makePerson, sit } from './people';
 import { INSIDE, buildInside } from './inside';
@@ -43,7 +51,6 @@ import {
   MILL,
   MUSHROOMS,
   PARTY_TREE,
-  PASTURE,
   PAVILION,
   POND,
   RIDER,
@@ -59,10 +66,13 @@ import {
   height,
   hisAt,
   inWater,
+  newFlock,
   riderAt,
   seeded,
   spoonLeft,
+  stepFlock,
 } from './rules';
+import { attend, castDo, releaseCast, tickCast } from '../cast3d';
 
 const val = (x, ...args) => (typeof x === 'function' ? x(...args) : x);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -79,6 +89,11 @@ export function createShireWorld(canvas, { onLost } = {}) {
   stage.grade({ contrast: 0.1, saturation: 1.1, vignette: 0.22, grain: 0.012, shadow: [0.0, 0.01, 0.03], high: [0.03, 0.015, 0] });
   const { scene, camera, renderer } = stage;
   renderer.info.autoReset = false; // counted over the whole frame, every pass
+  // the house look (lib/three/house): one shadow colour and a fog that is
+  // the sky, on everything, under the house tone mapper; the moods in
+  // ./sky.js move it with the time of day
+  const house = createHouse();
+  renderer.toneMapping = house.toneMapping;
   scene.fog = new THREE.Fog(0xe8dcb8, 46, 210);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.55 : 0.28;
 
@@ -104,16 +119,28 @@ export function createShireWorld(canvas, { onLost } = {}) {
   scene.add(sky.dome);
   const water = makeWater();
   outdoors.add(water.group);
-  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: water.material, stage });
+  const atmosphere = makeAtmosphere({ sky, sun, hemi, fog: scene.fog, water: water.material, stage, house });
 
   // ── the ground ──
-  const terrain = makeTerrain(renderer, { seg: tier === 'high' ? 220 : tier === 'mid' ? 160 : 110 });
+  // (one map of its colour, its grass and its height: the ground, the grass
+  // and the light it bounces up onto everything low all read it)
+  const groundMap = shireGroundMap({ size: tier === 'high' ? 512 : tier === 'mid' ? 384 : 256 });
+  house.ground(groundMap);
+  const terrain = makeTerrain(renderer, { seg: tier === 'high' ? 220 : tier === 'mid' ? 160 : 110, map: groundMap });
   outdoors.add(terrain);
-  const wind = { uWind: { value: 0 } };
-  outdoors.add(makeGrass(Math.round(21000 * many), wind));
+  // one wind for the grass, the flowers and the oaks' crowns (lib/three/wind),
+  // and Bruno's grass: a triangle a blade, the ground's own colour, in a
+  // patch that goes wherever you look (lib/three/grass)
+  const wind = createWind({ strength: 0.45, angle: 0.6 * Math.PI });
+  const grass = createGrass({ ground: groundMap, wind, side: tier === 'high' ? 280 : tier === 'mid' ? 200 : 120, size: 44 });
+  outdoors.add(grass.mesh);
 
   const kit = createShireKit(renderer);
   const mats = kit.mats ?? {};
+  // the site's core kit of surfaces on the Shire's stone, wood, plaster,
+  // bark and turf (lib/three/core): their own painted pictures folded into
+  // their colours, the same scanned grain at the same scale as every world
+  dress(mats, SHIRE_CORE, { strength: 0.4, normal: 0.8 });
   const fallback = (colour) => new THREE.MeshStandardMaterial({ color: colour, roughness: 0.9 });
   const flowerGeo = val(kit.flower);
   if (flowerGeo) outdoors.add(makeFlowers(flowerGeo, mats.flower ?? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }), Math.round(1400 * many), wind));
@@ -142,6 +169,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
         built.geometry?.dispose();
       }
       leaf.position.set(doorModel.userData.leaf.x, 0, doorModel.userData.leaf.z);
+      house.adopt(leaf);
       doorModel.add(leaf);
     });
   const benchAt = bagEnd.bench ? bagEnd.bench.clone().applyMatrix4(bagEnd.group.matrixWorld) : V(BAG_END.x + 4.4, height(BAG_END.x + 4.4, BAG_END.z + 5.4) + 0.45, BAG_END.z + 5.4);
@@ -211,7 +239,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     rim.push({ x, z, s: 0.9 + rand() * 0.8, kind: Math.floor(rand() * 3), turn: rand() * 6.28 });
     i += 1;
   }
-  if (mats.crown) swaying(mats.crown, wind, 0.004);
+  if (mats.crown) wind.sway(mats.crown, { strength: 0.5, height: 6 });
   oaks.forEach((oak, k) => {
     const list = TREES.filter((t) => t.kind % oaks.length === k).map((t) => ({ x: t.x, z: t.z, y: height(t.x, t.z) - 0.1, s: t.s, turn: t.turn }));
     if (!list.length) return;
@@ -358,8 +386,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
   }
 
   // ── the animals ──
-  const dogs = DOG_ROUNDS.map(() => {
-    const d = kit.dog();
+  const dogs = DOG_ROUNDS.map((_, i) => {
+    const d = kit.dog({ seed: i + 1 });
     outdoors.add(d.group);
     return d;
   });
@@ -372,13 +400,13 @@ export function createShireWorld(canvas, { onLost } = {}) {
   });
   const sheep = [];
   for (let i = 0; i < Math.round(6 * Math.max(0.5, many)); i++) {
-    const s = kit.sheep();
-    const a = rand() * 6.28;
-    s.at = { x: PASTURE.x + Math.cos(a) * PASTURE.r * 0.6 * rand(), z: PASTURE.z + Math.sin(a) * PASTURE.r * 0.6 * rand(), face: rand() * 6.28, walk: 0, t: rand() * 5 };
+    const s = kit.sheep({ seed: i + 1 });
     s.free = true;
     outdoors.add(s.group);
     sheep.push(s);
   }
+  // where they go is the rules' (seeded, the same every visit): the scene only draws them
+  const flock = newFlock(sheep.length, 7);
   const rider = kit.blackRider();
   rider.group.visible = false;
   outdoors.add(rider.group);
@@ -438,6 +466,12 @@ export function createShireWorld(canvas, { onLost } = {}) {
   const RINGS_CAM = { at: new THREE.Vector3(), look: new THREE.Vector3() };
   const ringPoint = (u, v, out = new THREE.Vector3()) => out.set(frodoPipe.x - u, frodoPipe.y + v - 0.5, frodoPipe.z + RINGS.depth);
 
+  // the lens: narrower while walking (a diorama to frame, not a horizon to
+  // fill), the camera further back so Frodo keeps his size; the set pieces
+  // (the smoke rings, the fireworks, the hollow, Bag End) keep their 50°
+  const lens = { walk: 38, wide: 50 };
+  const lensBack = () => Math.tan((lens.wide * Math.PI) / 360) / Math.tan((lens.walk * Math.PI) / 360);
+
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, cam: { at: V(0, 6, 8), look: V(0, 1, 0) }, mode: 'walk', last: null, smoke: 0, dogHop: [0, 0, 0], sniff: 0 };
   const tmp = new THREE.Vector3();
@@ -449,7 +483,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     const dt = Math.min(0.05 * fast, ms / 1000);
     A.t += dt;
     const t = A.t;
-    wind.uWind.value = t;
+    wind.update(dt);
     water.material.uniforms.uTime.value = t;
     sky.uniforms.uTime.value = t;
 
@@ -470,6 +504,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
     sky.uniforms.uGrey.value = A.wraith * 0.85;
     sky.uniforms.uEye.value = A.wraith * (0.4 + 0.6 * (s.gaze ?? 0));
     stage.grade({ saturation: 1.1 - A.wraith * 0.95, contrast: 0.1 + A.wraith * 0.18, vignette: 0.22 + A.wraith * 0.45 + (s.rider?.phase === 'sniff' ? 0.2 : 0), shadow: [A.wraith * 0.03, 0.01 + A.wraith * 0.03, 0.03 + A.wraith * 0.06] });
+    // (the Ring's grey fog is its own colour, not the sky's)
+    house.set({ fogMix: 1 - A.wraith * 0.8 });
     if (A.wraith > 0.01) {
       scene.fog.near *= 1 - A.wraith * 0.7;
       scene.fog.far *= 1 - A.wraith * 0.55;
@@ -495,6 +531,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
       pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
       if (s.mode === 'rider' && s.rider?.phase === 'sniff' && s.hidden) frodo.body.position.y = frodo.baseY - 0.18; // crouched
     }
+    // (on the cast: crouched in the hollow on its knees, not sunk into the ground)
+    castDo(frodo, { crouch: s.mode === 'rider' && s.rider?.phase === 'sniff' && Boolean(s.hidden) });
     frodoPipe.copy(frodo.group.position).add(tmp.set(0, 1.08, 0.32));
     ghosts.update(s.travellers ?? [], t, dt, { ringOn: Boolean(s.wearing) });
 
@@ -504,12 +542,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
       const on = !c.when || c.when === (A.night > 0.5 ? 'night' : 'day');
       p.group.visible = on && s.mode !== 'inside';
       if (!p.group.visible) continue;
-      const near = Math.hypot(h.x - c.x, h.z - c.z) < 5;
-      // they turn to Frodo as he comes by
-      const want = near ? Math.atan2(-(h.z - c.z), h.x - c.x) : p.home.face;
-      let d = want - p.group.rotation.y;
-      d = Math.atan2(Math.sin(d), Math.cos(d));
-      p.group.rotation.y += d * Math.min(1, dt * 4);
+      // they turn to Frodo as he comes by: on the cast the head first, a greeting the first time
+      attend(p, h, p.home.face, dt, { who: frodo });
       if ((c.id === 'merry' || c.id === 'pippin') && A.night > 0.5 && s.mode !== 'show') dance(p, t, c.id === 'merry' ? 0 : 1.7);
       else {
         calm(p);
@@ -524,7 +558,12 @@ export function createShireWorld(canvas, { onLost } = {}) {
       gandalf.group.position.copy(gSpot.p);
       if (gSpot.sit) gandalf.group.position.y -= 0.12;
       const near = Math.hypot(h.x - gSpot.p.x, h.z - gSpot.p.z) < 6 && s.mode === 'walk';
-      faceTo(gandalf.group, near ? Math.atan2(-(h.z - gSpot.p.z), h.x - gSpot.p.x) : gSpot.face);
+      if (gandalf.cast?.ready) {
+        // on the cast: sat on the bench by day, his head (not the bench) turned to Frodo
+        faceTo(gandalf.group, gSpot.face);
+        castDo(gandalf, { look: near || s.talk === 'gandalf' ? frodo : null });
+      } else faceTo(gandalf.group, near ? Math.atan2(-(h.z - gSpot.p.z), h.x - gSpot.p.x) : gSpot.face);
+      if (gandalf.cast?.ready) sit(gandalf, Boolean(gSpot.sit));
       pose(gandalf, t, { moving: false, talk: s.talk === 'gandalf' ? 1 : 0 });
     }
     guests.forEach((g, i) => {
@@ -534,6 +573,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
         calm(g);
         pose(g, t + i, { moving: false });
       }
+      // (on the cast, a guest's eyes follow Frodo through the party)
+      castDo(g, { look: Math.hypot(h.x - g.group.position.x, h.z - g.group.position.z) < 6 ? frodo : null });
     });
 
     // the people and animals far off aren't drawn
@@ -554,13 +595,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
       A.dogHop[i] = Math.max(0, A.dogHop[i] - dt * 3);
       dog.group.position.set(d.x, height(d.x, d.z) + Math.sin(A.dogHop[i] * Math.PI) * 0.35, d.z);
       faceTo(dog.group, d.face);
-      const moving = d.mode === 'chase' || d.mode === 'back' || (d.mode === 'patrol' && d.wait <= 0);
-      const k = d.mode === 'chase' ? 18 : 10;
-      dog.legs?.forEach((leg, j) => {
-        leg.rotation.z = moving ? Math.sin(t * k + (j % 2 ? Math.PI : 0) + (j > 1 ? 0.6 : 0)) * 0.6 : 0;
-      });
-      if (dog.tail) dog.tail.rotation.y = Math.sin(t * (d.mode === 'chase' ? 20 : 8)) * 0.5;
-      if (dog.head) dog.head.rotation.y = d.mode === 'patrol' ? d.look : 0;
+      // its legs from the ground it covers, its head, ears and tail from its mode (props.js)
+      dog.animate?.(t, { mode: d.mode, look: d.look ?? 0 });
       const cone = cones[i];
       cone.visible = dogsNear && s.mode === 'walk' && d.mode !== 'back';
       cone.position.set(d.x, height(d.x, d.z) + 0.06, d.z);
@@ -595,33 +631,19 @@ export function createShireWorld(canvas, { onLost } = {}) {
       let d = want - lobelia.group.rotation.y;
       d = Math.atan2(Math.sin(d), Math.cos(d));
       lobelia.group.rotation.y += d * Math.min(1, dt * (lb.moving ? 10 : 4));
-      // talking, she shakes her umbrella at you
+      // talking, she shakes her umbrella at you (on the cast: a scolding, a wagging finger)
       pose(lobelia, t, { moving: lb.moving, speed: 0.85, wave: s.talk === 'lobelia' ? 0.5 : 0, talk: s.talk === 'lobelia' ? 1 : 0 });
+      castDo(lobelia, { upper: s.talk === 'lobelia' ? 'talk.angry' : null, look: near || s.talk === 'lobelia' ? frodo : null });
     }
 
-    // sheep, grazing and wandering
-    for (const sh of sheep) {
-      const a = sh.at;
-      a.t -= dt;
-      if (a.t <= 0) {
-        a.walk = Math.random() < 0.4 ? 1.5 + Math.random() * 2 : 0;
-        a.face += (Math.random() - 0.5) * 2;
-        a.t = 2 + Math.random() * 4;
-      }
-      if (a.walk > 0) {
-        a.walk -= dt;
-        const nx = a.x + Math.cos(a.face) * dt * 0.7;
-        const nz = a.z - Math.sin(a.face) * dt * 0.7;
-        if (Math.hypot(nx - PASTURE.x, nz - PASTURE.z) < PASTURE.r) {
-          a.x = nx;
-          a.z = nz;
-        } else a.face += Math.PI * 0.6;
-      }
+    // sheep, grazing and wandering, and trotting off from Frodo when he's on foot among them
+    stepFlock(flock, dt, { near: s.mode === 'walk' ? [h] : [] });
+    sheep.forEach((sh, i) => {
+      const a = flock.sheep[i];
       sh.group.position.set(a.x, height(a.x, a.z), a.z);
       faceTo(sh.group, a.face);
-      sh.legs?.forEach((leg, j) => (leg.rotation.z = a.walk > 0 ? Math.sin(t * 9 + (j % 2) * Math.PI) * 0.4 : 0));
-      if (sh.head) sh.head.rotation.z = a.walk > 0 ? 0 : -0.5 + Math.sin(t * 2 + a.x) * 0.1; // grazing
-    }
+      sh.animate?.(t, { graze: a.speed < 0.02 && !a.shy });
+    });
 
     // the mill wheel turns
     if (mill.wheel) mill.wheel.rotation.z -= dt * 0.6;
@@ -633,9 +655,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
       const p = riderAt(r.s);
       rider.group.position.set(p.x, groundY(p.x, p.z), p.z);
       faceTo(rider.group, p.face);
-      const moving = r.phase !== 'sniff';
-      rider.horse?.legs?.forEach((leg, j) => (leg.rotation.z = moving ? Math.sin(t * 9 + [0, 0.5, Math.PI, Math.PI + 0.5][j]) * 0.5 : Math.sin(t * 1.5 + j) * 0.05));
-      if (rider.horse?.neck) rider.horse.neck.rotation.z = r.phase === 'sniff' ? -0.25 + Math.sin(t * 1.3) * 0.08 : Math.sin(t * 9) * 0.05;
+      // the horse's legs from the ground it covers; at the hollow its head goes down (props.js)
+      rider.animate?.(t, { sniff: r.phase === 'sniff' ? 1 : 0 });
       if (rider.rider?.body) {
         // leaning out over the hollow, sniffing
         const lean = r.phase === 'sniff' ? 1 : 0;
@@ -692,6 +713,7 @@ export function createShireWorld(canvas, { onLost } = {}) {
     // ── the camera ──
     let camAt;
     let camLook;
+    let follow = false;
     outdoors.visible = s.mode !== 'inside';
     inside.group.visible = s.mode === 'inside';
     if (s.mode === 'inside') {
@@ -701,6 +723,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
       camLook = c.look;
       sun.intensity *= 0.1;
       hemi.intensity *= 0.25;
+      // (full light in Bag End is the fire's, a couple of metres off)
+      house.uniforms.uLookRef.value.setRGB(1.0, 0.72, 0.45);
     } else if (s.mode === 'rings') {
       // out in front of the bench, looking back at the two of them, with the
       // rings coming towards you
@@ -720,7 +744,8 @@ export function createShireWorld(canvas, { onLost } = {}) {
     } else {
       const yaw = s.camYaw ?? 0;
       const pitch = s.camPitch ?? 0.36;
-      const dist = s.camDist ?? 6.4;
+      const dist = (s.camDist ?? 6.4) * lensBack();
+      follow = true;
       look.set(h.x, hy + 1.15, h.z);
       camAt = tmp.set(h.x + Math.sin(yaw) * Math.cos(pitch) * dist, hy + 1.15 + Math.sin(pitch) * dist, h.z + Math.cos(yaw) * Math.cos(pitch) * dist);
       // in front of anything it would be inside (a mound, a wall, a hedge),
@@ -741,6 +766,11 @@ export function createShireWorld(canvas, { onLost } = {}) {
     A.cam.at.lerp(camAt, ease);
     A.cam.look.lerp(camLook, ease);
     camera.position.copy(A.cam.at);
+    const fov = camera.fov + ((follow ? lens.walk : lens.wide) - camera.fov) * ease;
+    if (Math.abs(fov - camera.fov) > 1e-3) {
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+    }
     if (A.shake > 0) {
       camera.position.x += (Math.random() - 0.5) * A.shake;
       camera.position.y += (Math.random() - 0.5) * A.shake;
@@ -748,11 +778,17 @@ export function createShireWorld(canvas, { onLost } = {}) {
     }
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
+    // the grass's patch a little ahead of the eye, where the view lands
+    camera.getWorldDirection(tmp2).setY(0);
+    if (tmp2.lengthSq() < 1e-6) tmp2.set(0, 0, -1);
+    grass.update(tmp.copy(camera.position).addScaledVector(tmp2.normalize(), 13));
     // the sun's shadows follow where you are
     const focus = s.mode === 'inside' ? INSIDE : s.mode === 'show' ? tmp2.set(20, 0, -14) : frodo.group.position;
     sun.target.position.copy(focus);
     sun.position.copy(focus).addScaledVector(sunDir, 70);
     ground.update();
+    // the people on the cast (../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms);
   };
@@ -827,11 +863,23 @@ export function createShireWorld(canvas, { onLost } = {}) {
   };
 
   // ── the floor's light, baked when the Shire is first drawn outdoors ──
-  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees] });
+  // (its bounce off: the house look's, from the ground map, is the bounce)
+  // (the grass out of the bake: drawn from above it would wrap round the
+  // bake's own camera; it reads the baked shade instead, as the floor does)
+  const ground = groundTown({ renderer, scene, terrain, outdoors, sun, height: groundY, people: movers, skip: [sky.dome, ghosts.group, water.group, grass.mesh], tier, radius: WORLD.radius + 10, shade: 0x2c3018, matcap: [rimTrees], bounce: false });
+  floorShadow(grass.material, ground.mask);
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  house.adopt(scene);
+
+  // ?debug: the look, the grass, the wind and the lens on sliders (lib/debugPanel)
+  const panel = debugOn() ? debugPanel({ title: 'The Shire', groups: shireTuning({ house, grass, wind, lens, moods: MOODS }) }) : null;
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
+    house: import.meta.env.DEV ? house : null, // for the QA scripts
+    grass: import.meta.env.DEV ? grass : null, // for the QA scripts
+    wind: import.meta.env.DEV ? wind : null, // for the QA scripts
     render,
     fx: fxEvent,
     aim,
@@ -847,8 +895,13 @@ export function createShireWorld(canvas, { onLost } = {}) {
     },
     dispose() {
       gone = true;
+      panel?.dispose();
       ground.dispose();
+      grass.dispose();
+      wind.dispose();
+      groundMap.dispose();
       ghosts.dispose();
+      releaseCast(scene);
       stage.dispose();
     },
   };

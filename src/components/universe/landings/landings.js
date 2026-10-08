@@ -31,6 +31,11 @@
 //   scatter     [{ kind, n, from, to, scale: [a, b], opts?, solid? }]: many
 //               of a kind, drawn instanced, `from` to `to` metres out, clear
 //               of the things and the ship (solid: false to walk through)
+//   biomes      the parts of the planet you can come down on, read off the
+//               colour of its map under the spot (./biomes.js): each its
+//               own name, ground, sky (haze: the air along its horizon),
+//               things and scatter, the planet's own where it leaves one
+//               out; the last is the fallback, the landing as above
 //
 // A kind is one of `models`, or a builder in the planet's file (its PROPS
 // for things, SCATTER or PROPS for scatter).
@@ -43,6 +48,46 @@ export const SCATTER_MAX = 900;
 
 const sz = 0.6; // (a scatter scale range's spread, as a share of its base)
 const range = (k) => [k * (1 - sz / 2), k * (1 + sz / 2)];
+// (a biome's test on its map colour, biomes.js's classify: h degrees, s and l 0…1)
+const hue = (c, a, b) => c.h >= a && c.h <= b;
+// (and on where it is: inside an ellipse round [lat, lon] on the map, its
+// half-axes a and b degrees, the a axis turned `deg` from east toward north)
+const oval = ([la, lo], [lat, lon], a, b, deg = 0) => {
+  const t = (deg * Math.PI) / 180;
+  const x = lo - lon;
+  const y = la - lat;
+  return ((x * Math.cos(t) + y * Math.sin(t)) / a) ** 2 + ((y * Math.cos(t) - x * Math.sin(t)) / b) ** 2 < 1;
+};
+// Tortuga as the Caribbean's bake lays it (scripts/planets/caribbean.mjs):
+// the island (real about [20.05, −72.79]) centred at [19.99, 8.63] on the
+// globe (its Cayona mark, [20.04, −72.79], at [19.945, 8.639]), about 1.5°
+// long and tilted 11° down to the east. An ellipse along it, 0.78° by 0.3°:
+// all of the island and its harbour in, Hispaniola's north coast (0.24–0.29°
+// across the channel) out
+const TORTUGA = [19.99, 8.63];
+const onTortuga = (at) => {
+  if (!at) return false;
+  const y = at[0] - TORTUGA[0];
+  const x = (at[1] - TORTUGA[1]) * Math.cos((TORTUGA[0] * Math.PI) / 180);
+  const t = (-11 * Math.PI) / 180;
+  return ((x * Math.cos(t) + y * Math.sin(t)) / 0.78) ** 2 + ((y * Math.cos(t) - x * Math.sin(t)) / 0.3) ** 2 <= 1;
+};
+// Middle-earth's woods: its forest biome, found by colour and (Lothlórien,
+// whose gold canopy reads as grass from orbit) by place
+const ME_FOREST = {
+  title: 'The old forest',
+  sub: 'Middle-earth · under the eaves, where the trees are older than the Shire',
+  ground: { style: 'grass', colors: ['#26381c', '#34481f', '#4a3a26'] },
+  sky: { zenith: '#557a8a', horizon: '#a8b49a', sun: '#f0e6c0' },
+  things: [],
+  scatter: [
+    { kind: 'oak', n: 30, from: 24, to: 110, scale: range(1.2), opts: { which: 0 } },
+    { kind: 'oak', n: 30, from: 24, to: 110, scale: range(1.2), opts: { which: 1 } },
+    { kind: 'oak', n: 30, from: 26, to: 110, scale: range(1.2), opts: { which: 2 } },
+    { kind: 'mushroom', n: 60, from: 4, to: 70, scale: range(1), solid: false },
+    { kind: 'tufts', n: 160, from: 3, to: 70, scale: range(0.8), solid: false },
+  ],
+};
 
 export const LANDINGS = {
   middleearth: {
@@ -78,6 +123,76 @@ export const LANDINGS = {
       { kind: 'flowers', n: 260, from: 5, to: 80, scale: range(1), solid: false },
       { kind: 'mushroom', n: 26, from: 6, to: 60, scale: range(1), solid: false },
       { kind: 'tufts', n: 320, from: 3, to: 70, scale: range(1), solid: false },
+    ],
+    // Tolkien's map (scripts/planets/middleearth.mjs): the Belegaer and the
+    // inland seas; Mordor's black plain; Mirkwood's, Fangorn's and the Old
+    // Forest's dark woods; the Misty, White and Grey Mountains, rock and
+    // snow; Harad's sands; and the green of Eriador, Rohan and Gondor, the
+    // Shire's. Measured against the bake's own geography rasterized onto the
+    // map's 256 × 128 copy (forest precision 46% → 92%, Mordor 76% → 85%):
+    // the woods and Mordor are bounded by where the map has them, as the
+    // bake lays a conifer belt round 50–58° N and dark rock on the far side
+    biomes: [
+      { id: 'sea', sea: true, match: (c) => hue(c, 185, 255) && c.s > 0.12 && c.l < 0.6 },
+      {
+        id: 'mordor',
+        // (inside its walls only: dark rock and dark coasts elsewhere aren't Mordor)
+        match: (c, at) => c.l < 0.3 && (c.s < 0.12 || c.h < 60 || c.h > 300) && (!at || (at[0] > 3 && at[0] < 28 && at[1] > 15 && at[1] < 47)),
+        title: 'Mordor',
+        sub: 'Middle-earth · the plateau of Gorgoroth, under Orodruin',
+        ground: { style: 'sand', colors: ['#3a3330', '#4a403a', '#241e1c'] },
+        sky: { zenith: '#3a2420', horizon: '#8a3a20', sun: '#ff6a30', haze: '#a8401c' },
+        things: [
+          { kind: 'orodruin', at: [-80, 320], r: 90, face: false, solid: false },
+          { kind: 'baradDur', at: [230, 330], r: 26, face: false, yaw: -0.9, solid: false },
+          { kind: 'fissure', at: [-26, 24], r: 3, face: false, yaw: 0.4 },
+          { kind: 'fissure', at: [32, -20], r: 3, face: false, yaw: 2.2, opts: { seed: 5 } },
+        ],
+        scatter: [
+          { kind: 'rock', n: 60, from: 24, to: 110, scale: range(2.2), opts: { color: '#2c2522', sharp: 0.8, seed: 4 } },
+          { kind: 'stones', n: 200, from: 4, to: 80, scale: range(0.6), solid: false, opts: { color: '#3a302c' } },
+          { kind: 'embers', n: 60, from: 6, to: 90, scale: range(1), solid: false },
+        ],
+      },
+      // (Lothlórien's gold canopy reads as grass from orbit: by place)
+      { id: 'forest', near: [36.9, 3.4, 1.6], ...ME_FOREST },
+      {
+        id: 'forest',
+        // (only where the map has woods: not the far side, nor the conifer
+        // belt the bake lays north of 50 degrees, but for Mirkwood's north)
+        match: (c, at) => ((c.l < 0.26 && hue(c, 95, 140)) || (c.l < 0.22 && hue(c, 60, 140))) && (!at || (at[0] > -28 && at[0] < 61 && at[1] > -40 && at[1] < 60 && (at[0] < 50 || (at[1] > 9 && at[1] < 33)))),
+        ...ME_FOREST,
+      },
+      {
+        id: 'mountains',
+        // (and the polar ice's pale edge)
+        match: (c) => (c.s < 0.15 && c.l >= 0.35 && !(hue(c, 90, 170) && c.s > 0.08)) || c.l > 0.8 || (c.l > 0.55 && hue(c, 180, 260)),
+        title: 'The mountains',
+        sub: 'Middle-earth · high on a pass, the snow above',
+        ground: { style: 'sand', colors: ['#7c7872', '#8e8a84', '#eef0f2'] },
+        sky: { zenith: '#3f72c0', horizon: '#dfe6ee', sun: '#fff8ea' },
+        things: [],
+        scatter: [
+          { kind: 'rock', n: 70, from: 24, to: 110, scale: range(2.4), opts: { color: '#7a766f', sharp: 0.7, seed: 6 } },
+          { kind: 'rock', n: 40, from: 24, to: 110, scale: range(1.4), opts: { color: '#e8ecf0', sharp: 0.3, seed: 8 } },
+          { kind: 'stones', n: 160, from: 4, to: 80, scale: range(0.6), solid: false, opts: { color: '#6e6a64' } },
+        ],
+      },
+      {
+        id: 'harad',
+        match: (c, at) => hue(c, 20, 60) && c.s > 0.15 && c.l > 0.42 && (!at || (at[0] < 10 && at[1] > -20 && at[1] < 90)),
+        title: 'Harad',
+        sub: 'Middle-earth · the sands of the Haradrim, far south of Gondor',
+        ground: { style: 'sand', colors: ['#d8b880', '#c8a468', '#9a7848'] },
+        sky: { zenith: '#3f78c8', horizon: '#f2dcb0', sun: '#fff2d0' },
+        things: [],
+        scatter: [
+          { kind: 'rock', n: 30, from: 24, to: 110, scale: range(1.6), opts: { color: '#a88a60', seed: 3 } },
+          { kind: 'stones', n: 140, from: 4, to: 80, scale: range(0.5), solid: false, opts: { color: '#8a6e4c' } },
+          { kind: 'scrub', n: 60, from: 5, to: 90, scale: range(0.8), solid: false },
+        ],
+      },
+      { id: 'shire' },
     ],
   },
 
@@ -117,6 +232,92 @@ export const LANDINGS = {
       { kind: 'stones', n: 160, from: 4, to: 70, scale: range(0.5), solid: false, opts: { color: '#8a6a4e' } },
       { kind: 'scrub', n: 120, from: 5, to: 90, scale: range(1), solid: false },
     ],
+    // New Mexico (scripts/planets/breakingbad.mjs: the state ~100° tall on
+    // the globe, a km 0.174°): Albuquerque by place, its grid as the bake
+    // paints it (1.6× round the Big I: 30–43° N, ±5° of lon 0); White
+    // Sands' gypsum by colour inside the dunes' oval (8° S 5° E); the
+    // malpais' black lava, El Malpais by colour (29° N 24° W) and the
+    // Carrizozo flow by place (under a pixel wide in the map's copy); the
+    // ranges' rock, pine and snow (snow only up north, where the San Juans
+    // and Sangres are); the high desert. Each fitted to the bake's own
+    // shapes (breakingbad-geo.mjs) on the map's 256 × 128 copy
+    biomes: [
+      {
+        id: 'city',
+        match: (c, at) => !!at && oval(at, [36.5, -0.1], 4.4, 6),
+        title: 'Albuquerque',
+        sub: 'Breaking Bad · a lot off Central Avenue, by Los Pollos Hermanos',
+        ground: { style: 'asphalt', colors: ['#5a5a58', '#6a6966', '#e8e2c8'] },
+        sky: { zenith: '#2f74cc', horizon: '#f0dcbc', sun: '#fff6dc' },
+        models: {
+          pollos: { url: '/models/albuquerque/world/pollos.glb', wide: 22 },
+          carwash: { url: '/models/albuquerque/world/carwash.glb', wide: 20 },
+          suv: { url: '/models/albuquerque/world/suv.glb', long: 5 },
+        },
+        things: [
+          { kind: 'pollos', at: [0, 52], r: 14, door: { label: 'Los Pollos Hermanos', reach: 9 } },
+          { kind: 'carwash', at: [-48, 26], r: 13, yaw: 0.3 },
+          { kind: 'figure', at: [6, 34], r: 0.4, say: { name: 'Gus', line: 'I hide in plain sight, same as you.' }, opts: { url: '/models/albuquerque/gus.glb', tall: 1.85 } },
+          { kind: 'car', at: [24, 30], r: 2.6, face: false, yaw: 1.6 },
+          { kind: 'suv', at: [30, 22], r: 2.6, face: false, yaw: 1.5 },
+        ],
+        scatter: [{ kind: 'stones', n: 60, from: 4, to: 60, scale: range(0.4), solid: false, opts: { color: '#8a8478' } }],
+      },
+      {
+        id: 'sands',
+        match: (c, at) => c.l > 0.72 && c.s < 0.5 && (!at || oval(at, [-8, 4.95], 4.3, 2.3, -78.5)),
+        title: 'White Sands',
+        sub: 'Breaking Bad · the gypsum dunes, south toward Alamogordo',
+        ground: { style: 'sand', colors: ['#f4f1ea', '#e6e0d2', '#cfc4ae'] },
+        sky: { zenith: '#2466cc', horizon: '#e6eef6', sun: '#ffffff' },
+        things: [
+          { kind: 'rv', at: [-28, 16], r: 5, face: false, yaw: -1.2, door: { label: 'the RV', reach: 7 } },
+          { kind: 'figure', at: [-34, 24], r: 0.4, say: { name: 'Jesse', line: 'Yeah, science!' }, opts: { url: '/models/albuquerque/jesse.glb', tall: 1.75 } },
+        ],
+        scatter: [
+          { kind: 'dune', n: 26, from: 30, to: 110, scale: range(1), solid: false },
+          { kind: 'scrub', n: 40, from: 5, to: 90, scale: range(0.8), solid: false },
+          { kind: 'tumbleweed', n: 6, from: 10, to: 60, scale: range(1), solid: false },
+        ],
+      },
+      {
+        id: 'malpais',
+        match: (c, at) => (c.l < 0.3 && c.s < 0.18 && (!at || (at[0] > 26 && at[0] < 33 && at[1] > -27 && at[1] < -21.6))) || (!!at && oval(at, [7.76, 9.94], 5.1, 0.5, 73.8)),
+        title: 'The malpais',
+        sub: 'Breaking Bad · the black lava flows, El Malpais and the Valley of Fires',
+        ground: { style: 'sand', colors: ['#3b3430', '#524640', '#5a2e22'] },
+        sky: { zenith: '#2a6ccc', horizon: '#ecdcc4', sun: '#fff4d8' },
+        things: [
+          { kind: 'rv', at: [-28, 16], r: 5, face: false, yaw: -1.2, door: { label: 'the RV', reach: 7 } },
+          { kind: 'cook', at: [-22, 22.5], r: 1.6 },
+        ],
+        scatter: [
+          { kind: 'rock', n: 90, from: 24, to: 110, scale: range(1.8), opts: { color: '#3b3430', sharp: 0.9, seed: 9 } },
+          { kind: 'stones', n: 200, from: 4, to: 80, scale: range(0.6), solid: false, opts: { color: '#2e2826' } },
+          { kind: 'scrub', n: 50, from: 5, to: 90, scale: range(0.8), solid: false },
+        ],
+      },
+      {
+        id: 'mountains',
+        match: (c, at) => (c.l < 0.45 && c.s < 0.4 && (c.h < 120 || c.h >= 300)) || ((c.s < 0.15 || c.l > 0.8) && (!at || at[0] > 34)),
+        title: 'The mountains',
+        sub: 'Breaking Bad · up among the juniper and the granite, the valley far below',
+        ground: { style: 'sand', colors: ['#8a7a68', '#74675a', '#b8a890'] },
+        sky: { zenith: '#2a6ccc', horizon: '#e6dccb', sun: '#fff6dc' },
+        things: [
+          { kind: 'car', at: [-26, 22], r: 2.6, face: false, yaw: 0.9, door: { label: 'the Aztek, back down to the city', reach: 4 } },
+          { kind: 'mesa', at: [-10, 90], r: 22, face: false, opts: { seed: 9, h: 40, r: 22 } },
+          { kind: 'mesa', at: [80, 40], r: 20, face: false, yaw: 1.1, opts: { seed: 3, h: 34, r: 20 } },
+        ],
+        scatter: [
+          { kind: 'rock', n: 80, from: 24, to: 110, scale: range(2), opts: { color: '#7a6a5a', sharp: 0.7, seed: 5 } },
+          { kind: 'juniper', n: 40, from: 24, to: 110, scale: range(1) },
+          { kind: 'stones', n: 160, from: 4, to: 70, scale: range(0.5), solid: false, opts: { color: '#6a5c4e' } },
+          { kind: 'scrub', n: 60, from: 5, to: 90, scale: range(1), solid: false },
+        ],
+      },
+      { id: 'desert' },
+    ],
   },
 
   rickmorty: {
@@ -150,6 +351,27 @@ export const LANDINGS = {
       { kind: 'tree', n: 18, from: 30, to: 100, scale: range(1) },
       { kind: 'bush', n: 40, from: 22, to: 90, scale: range(1) },
       { kind: 'plumbus', n: 4, from: 12, to: 40, scale: range(1), solid: false },
+    ],
+    // the show's world (scripts/planets/rickmorty.mjs): its purple and pink
+    // hills, out past town; the rest is the Smiths' street
+    biomes: [
+      {
+        id: 'hills',
+        match: (c) => hue(c, 250, 350) && c.s > 0.25,
+        title: 'The purple hills',
+        sub: 'Rick and Morty · out past town, where the portal came out',
+        ground: { style: 'grass', colors: ['#7a4aa8', '#9a6ac8', '#e88ac0'] },
+        sky: { zenith: '#3f9be0', horizon: '#e8d8fb', sun: '#fff6d8' },
+        things: [
+          { kind: 'portal', at: [-20, 14], r: 1.6, door: { label: 'the portal', reach: 3 } },
+          { kind: 'figure', at: [-14, 22], r: 0.4, say: { name: 'Rick', line: 'Wubba lubba dub dub!' }, opts: { meshy: 'rick', tall: 1.85 } },
+        ],
+        scatter: [
+          { kind: 'bush', n: 50, from: 22, to: 100, scale: range(1.2), opts: { color: '#c86ab8' } },
+          { kind: 'plumbus', n: 6, from: 12, to: 50, scale: range(1), solid: false },
+        ],
+      },
+      { id: 'street' },
     ],
   },
 
@@ -299,6 +521,21 @@ export const LANDINGS = {
       { kind: 'tree', n: 24, from: 26, to: 110, scale: range(1) },
       { kind: 'flowers', n: 300, from: 3, to: 80, scale: range(1), solid: false },
     ],
+    // Earth: the sea (on to the nearest land), the ice caps, and land
+    biomes: [
+      { id: 'sea', sea: true, match: (c) => hue(c, 200, 250) && c.s > 0.3 && c.l < 0.5 },
+      {
+        id: 'ice',
+        match: (c) => c.l > 0.78 && (c.s < 0.15 || (hue(c, 180, 260) && c.s < 0.5)),
+        title: 'The ice',
+        sub: 'Travel · as far as anyone goes, and not been yet',
+        ground: { style: 'sand', colors: ['#eef2f6', '#dfe6ee', '#b8c4d0'] },
+        sky: { zenith: '#3a6cb8', horizon: '#e8f0f8', sun: '#fffaf0' },
+        things: [{ kind: 'signpost', at: [-14, 20], r: 0.6 }],
+        scatter: [],
+      },
+      { id: 'land' },
+    ],
   },
   caribbean: {
     title: 'A Caribbean island',
@@ -325,6 +562,53 @@ export const LANDINGS = {
       { kind: 'palm', n: 14, from: 24, to: 90, scale: range(1) },
       { kind: 'shells', n: 120, from: 3, to: 34, scale: range(1), solid: false },
     ],
+    // the Caribbean (scripts/planets/caribbean.mjs): Tortuga where the bake
+    // lays it (onTortuga, by place: too small for the 256 × 128 copy, whose
+    // cells there read sea), the banks' and coasts' turquoise shallows, the
+    // sea (every blue to teal the reef doesn't take: on to the nearest land,
+    // 64 strides out, as most of this globe is open sea), and an island's beach
+    biomes: [
+      {
+        id: 'tortuga',
+        match: (c, at) => onTortuga(at),
+        title: 'Tortuga',
+        sub: 'Pirates of the Caribbean · the port, the Faithful Bride’s lamps lit',
+        ground: { style: 'sand', colors: ['#b49a70', '#9a8260', '#6a5640'] },
+        models: { port: { url: '/games/caribbean/port.glb', wide: 44 } },
+        things: [
+          { kind: 'sea', at: [0, 109], r: 0, face: false, strip: [130, 75], opts: { shore: -75, deep: 150 } },
+          { kind: 'pearl', at: [-30, 92], r: 0, face: false, yaw: 1.2, solid: false },
+          { kind: 'port', at: [34, 52], r: 22, yaw: -0.5 },
+          { kind: 'rowboat', at: [-16, 26], r: 2.2, face: false, yaw: 0.3, door: { label: 'the rowboat, out to the Pearl', reach: 4 } },
+          { kind: 'figure', at: [-8, 24], r: 0.4, say: { name: 'Jack', line: 'If every town in the world were like this one, no man would ever feel unwanted.' }, opts: { url: '/games/caribbean/jack.glb', tall: 1.78 } },
+          { kind: 'cargo', at: [-30, 30], r: 1.6, opts: { seed: 3 } },
+          { kind: 'cargo', at: [12, 24], r: 1.6, opts: { seed: 7 } },
+          { kind: 'fire', at: [-26, 6], r: 1 },
+        ],
+        scatter: [{ kind: 'shells', n: 40, from: 3, to: 30, scale: range(1), solid: false }],
+      },
+      {
+        id: 'reef',
+        match: (c) => hue(c, 160, 195) && c.l >= 0.46 && c.s >= 0.3,
+        title: 'A reef flat',
+        sub: 'Pirates of the Caribbean · the shallows at low tide, the Pearl standing off',
+        ground: { style: 'sand', colors: ['#e0d4a8', '#d0c294', '#5fbcb4'] },
+        sky: { zenith: '#2a8ad8', horizon: '#d2f4f4', sun: '#fff8e0' },
+        things: [
+          { kind: 'sea', at: [0, 90], r: 0, face: false, strip: [130, 60], opts: { shore: -60, deep: 120 } },
+          { kind: 'pearl', at: [-14, 82], r: 0, face: false, yaw: 1.2, solid: false },
+          { kind: 'rowboat', at: [-16, 26], r: 2.2, face: false, yaw: 0.3, door: { label: 'the rowboat, out to the Pearl', reach: 4 } },
+          { kind: 'figure', at: [-10, 22], r: 0.4, say: { name: 'Jack', line: 'Not all treasure is silver and gold, mate.' }, opts: { url: '/games/caribbean/jack.glb', tall: 1.78 } },
+          { kind: 'chest', at: [18, 20], r: 0.8 },
+        ],
+        scatter: [
+          { kind: 'shells', n: 260, from: 3, to: 60, scale: range(1), solid: false },
+          { kind: 'coral', n: 90, from: 6, to: 60, scale: range(1), solid: false },
+        ],
+      },
+      { id: 'sea', sea: true, reach: 64, match: (c) => hue(c, 165, 260) },
+      { id: 'beach' },
+    ],
   },
   invincible: {
     title: 'The Graysons’ city',
@@ -343,6 +627,262 @@ export const LANDINGS = {
       { kind: 'rubble', n: 160, from: 4, to: 60, scale: range(1.2), solid: false },
       { kind: 'glass', n: 120, from: 3, to: 50, scale: range(1), solid: false },
     ],
+    // the war-worn world (scripts/build-invincible-planet.mjs): its pale
+    // rust plateaus, out of town; the dark old sea beds, the city
+    biomes: [
+      {
+        id: 'badlands',
+        match: (c) => c.l > 0.55,
+        title: 'The badlands',
+        sub: 'Invincible · miles out of town, where the fight threw them',
+        ground: { style: 'sand', colors: ['#c8865a', '#b07048', '#6a3a2a'] },
+        sky: { zenith: '#3a5fa0', horizon: '#f0b07a', sun: '#ffd8a8' },
+        things: [
+          { kind: 'crater', at: [-8, 36], r: 11, door: { label: 'the city', reach: 13 } },
+          { kind: 'figure', at: [6, 30], r: 0.4, say: { name: 'Mark', line: 'I’d still have you, Dad.' }, opts: { url: '/models/invincible/mark.glb', tall: 1.78 } },
+          { kind: 'crater', at: [44, 60], r: 14, opts: { r: 12, seed: 8 } },
+          { kind: 'wreck', at: [20, 24], r: 2.4, face: false, yaw: 0.7 },
+        ],
+        scatter: [
+          { kind: 'rubble', n: 120, from: 4, to: 80, scale: range(1.4), solid: false },
+          { kind: 'rock', n: 50, from: 24, to: 110, scale: range(1.8), opts: { color: '#8a4a30', sharp: 0.6, seed: 2 } },
+        ],
+      },
+      { id: 'city' },
+    ],
+  },
+  // ── the Rick and Morty system's moons, round the Citadel (universes.js's MOONS; ./rmmoons.js) ──
+  gazorpazorp: {
+    title: 'Gazorpazorp',
+    sub: 'Rick and Morty · the men’s desert, the women’s gate',
+    ground: { style: 'sand', colors: ['#c85a3a', '#e08a5a', '#8a3a2a'] },
+    sky: { zenith: '#4a1a4a', horizon: '#f2b070', sun: '#ffd8a0' },
+    models: {
+      gate: { url: '/models/c137/rm/gazorpgate.glb', tall: 9 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'Gazorpazorp, through the portal', reach: 3 } },
+      { kind: 'gate', at: [0, 52], r: 5 },
+      { kind: 'figure', at: [0, 44], r: 0.4, say: { name: 'Mar-Sha', line: 'A boy. From the sky. We make an exception for a Morty.' }, opts: { meshy: 'marsha', tall: 2.3 } },
+      { kind: 'figure', at: [22, 30], r: 0.5, say: { name: 'A Gazorpian', line: 'RAAARGH. (He throws a rock at a rock.)' }, opts: { meshy: 'gazorpian', tall: 2.8 } },
+      { kind: 'figure', at: [26, 26], r: 0.5, opts: { meshy: 'gazorpian', tall: 2.8 } },
+      { kind: 'figure', at: [-14, 34], r: 0.4, say: { name: 'Morty Jr.', line: 'Dad? You’re back? I wrote a book about you. It isn’t kind.' }, opts: { meshy: 'mortyjr', tall: 2.0 } },
+      { kind: 'rock', at: [16, 44], r: 2.6, face: false, opts: { seed: 3, size: 2.4 } },
+      { kind: 'rock', at: [-26, 24], r: 3, face: false, opts: { seed: 7, size: 3 } },
+    ],
+    scatter: [
+      { kind: 'rock', n: 60, from: 24, to: 110, scale: range(1), opts: { color: '#8a3a2a' } },
+      { kind: 'bone', n: 30, from: 20, to: 80, scale: range(1), solid: false },
+    ],
+  },
+  squanch: {
+    title: 'Planet Squanch',
+    sub: 'Rick and Morty · Squanchy’s planet, red grass and cat trees',
+    ground: { style: 'grass', colors: ['#b83a3a', '#d85a4a', '#7a2a2a'] },
+    sky: { zenith: '#2a8a9a', horizon: '#f2d8b8', sun: '#fff0d8' },
+    models: {
+      house: { url: '/models/c137/rm/squanchy-house.glb', tall: 9 },
+      guest: { url: '/models/c137/rm/magdalian-a.glb', tall: 1.55 },
+      guest2: { url: '/models/c137/rm/magdalian-c.glb', tall: 1.6 },
+      suckulent: { url: '/models/c137/rm/suckulent.glb', tall: 2.2 },
+      smallsuckulent: { url: '/models/c137/rm/sm/suckulent.glb', tall: 1.6 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'Planet Squanch, through the portal', reach: 3 } },
+      { kind: 'house', at: [-16, 50], r: 4 },
+      { kind: 'figure', at: [-8, 36], r: 0.4, say: { name: 'Squanchy', line: 'You squanch what you squanch, Morty. Welcome to my squanch.' }, opts: { meshy: 'squanchy', tall: 1.15 } },
+      { kind: 'figure', at: [10, 40], r: 0.4, say: { name: 'Birdperson', line: 'Morty. You have come a long way. It is good to see a friend.' }, opts: { meshy: 'birdperson', tall: 2.0 } },
+      { kind: 'guest', at: [4, 30], r: 0.4 },
+      { kind: 'guest2', at: [16, 32], r: 0.4 },
+      { kind: 'suckulent', at: [24, 44], r: 1.2, yaw: 0.8 },
+      { kind: 'suckulent', at: [-28, 30], r: 1.2, yaw: -1.4 },
+    ],
+    scatter: [
+      { kind: 'cattree', n: 10, from: 40, to: 120, scale: range(1) },
+      { kind: 'smallsuckulent', n: 14, from: 26, to: 100, scale: range(0.8) },
+    ],
+  },
+  birdworld: {
+    title: 'Bird World',
+    sub: 'Rick and Morty · Birdperson’s home, the nest on the rocks',
+    ground: { style: 'grass', colors: ['#4a8a3a', '#6aa84a', '#8a6a3a'] },
+    sky: { zenith: '#3a7ad8', horizon: '#d8f0f8', sun: '#fff8e8' },
+    models: {
+      nest: { url: '/models/c137/rm/birdperson-house.glb', tall: 14 },
+      perch: { url: '/models/c137/rm/birdperch.glb', tall: 6 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'Bird World, through the portal', reach: 3 } },
+      { kind: 'nest', at: [0, 56], r: 7 },
+      { kind: 'figure', at: [-4, 40], r: 0.4, say: { name: 'Phoenixperson', line: '(A hum of servos. He looks at you for a long time, and does not fire.)' }, opts: { meshy: 'phoenixperson', tall: 2.05 } },
+      { kind: 'figure', at: [12, 36], r: 0.4, say: { name: 'Unity', line: 'We are all of us. Welcome to Bird World, Morty. The locals are a little quiet.' }, opts: { meshy: 'unity', tall: 1.75 } },
+      { kind: 'perch', at: [20, 46], r: 2 },
+      { kind: 'perch', at: [-22, 44], r: 2 },
+      { kind: 'rock', at: [26, 30], r: 3, face: false, opts: { seed: 11, size: 3, color: '#6a6a60' } },
+    ],
+    scatter: [
+      { kind: 'rock', n: 40, from: 26, to: 110, scale: range(1), opts: { color: '#6a6a60' } },
+      { kind: 'feather', n: 50, from: 10, to: 70, scale: range(1), solid: false },
+    ],
+  },
+  gearworld: {
+    title: 'Gear World',
+    sub: 'Rick and Morty · everything here is a gear, and so is everyone',
+    ground: { style: 'plating', colors: ['#b88a3a', '#d8aa5a', '#6a4a2a'] },
+    sky: { zenith: '#5a4a2a', horizon: '#d8b070', sun: '#ffe8b0' },
+    models: {
+      gearperson: { url: '/models/c137/rm/gearperson-a.glb', tall: 1.8 },
+      gearperson2: { url: '/models/c137/rm/gearperson-b.glb', tall: 1.8 },
+      monument: { url: '/models/c137/rm/gearbig.glb', tall: 12 },
+      cog: { url: '/models/c137/rm/gearcog.glb', wide: 5 },
+      smallcog: { url: '/models/c137/rm/sm/gearcog.glb', wide: 1.8 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'Gear World, through the portal', reach: 3 } },
+      { kind: 'figure', at: [2, 38], r: 0.4, say: { name: 'Gearhead', line: 'Rick! Oh. Not Rick. Everyone’s best friend, Gearhead. Welcome to Gear World.' }, opts: { meshy: 'gearhead', tall: 1.8 } },
+      { kind: 'gearperson', at: [-12, 34], r: 0.4 },
+      { kind: 'gearperson2', at: [14, 30], r: 0.4 },
+      { kind: 'monument', at: [0, 56], r: 5 },
+      { kind: 'cog', at: [24, 40], r: 2.4, yaw: 0.3 },
+      { kind: 'cog', at: [-26, 28], r: 2.4, yaw: 1.1 },
+    ],
+    scatter: [
+      { kind: 'smallcog', n: 20, from: 24, to: 110, scale: range(1) },
+      { kind: 'bolt', n: 60, from: 10, to: 80, scale: range(1), solid: false },
+    ],
+  },
+  pluto: {
+    title: 'Pluto',
+    sub: 'Rick and Morty · it’s a planet, and its king will tell you so',
+    ground: { style: 'sand', colors: ['#a8b4c8', '#d0dae8', '#6a7488'] },
+    sky: { zenith: '#0a0e1e', horizon: '#3a4a6a', sun: '#f0f4ff', space: 0.7 },
+    models: {
+      plutonian: { url: '/models/c137/rm/plutonian-a.glb', tall: 1.35 },
+      plutonian2: { url: '/models/c137/rm/plutonian-b.glb', tall: 1.35 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'Pluto, through the portal', reach: 3 } },
+      { kind: 'figure', at: [0, 44], r: 0.4, say: { name: 'King Flippy Nips', line: 'Pluto is a planet! Say it with me, boy. Say it with the whole court.' }, opts: { meshy: 'flippynips', tall: 1.5 } },
+      { kind: 'figure', at: [18, 36], r: 0.4, say: { name: 'Scroopy Noopers', line: 'Pluto is shrinking. The plutonium mines. Nobody listens to Scroopy.' }, opts: { meshy: 'scroopy', tall: 1.4 } },
+      { kind: 'plutonian', at: [-10, 38], r: 0.4 },
+      { kind: 'plutonian2', at: [-16, 42], r: 0.4 },
+      { kind: 'plutonian', at: [8, 50], r: 0.4 },
+      { kind: 'rock', at: [26, 30], r: 3, face: false, opts: { seed: 13, size: 3, color: '#8a94a8' } },
+    ],
+    scatter: [{ kind: 'rock', n: 50, from: 24, to: 110, scale: range(1), opts: { color: '#8a94a8' } }],
+  },
+  snakeplanet: {
+    title: 'Snake Planet',
+    sub: 'Rick and Morty · the snakes have a space programme, and you’re on their planet',
+    ground: { style: 'grass', colors: ['#5a8a3a', '#7ab84a', '#3a5a2a'] },
+    sky: { zenith: '#2a6a5a', horizon: '#d8f0b8', sun: '#fff8d0' },
+    models: {
+      rocket: { url: '/models/c137/rm/snakerocket.glb', tall: 12 },
+      astronaut: { url: '/models/c137/rm/snakeastronaut.glb', tall: 1.2 },
+      snake: { url: '/models/c137/rm/snake-a.glb', tall: 0.9 },
+      snake2: { url: '/models/c137/rm/snake-b.glb', tall: 0.9 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'Snake Planet, through the portal', reach: 3 } },
+      { kind: 'rocket', at: [0, 56], r: 3.5 },
+      { kind: 'astronaut', at: [6, 46], r: 0.5 },
+      { kind: 'astronaut', at: [-5, 47], r: 0.5 },
+      { kind: 'snake', at: [-12, 34], r: 0.5 },
+      { kind: 'snake2', at: [14, 32], r: 0.5 },
+      { kind: 'snake', at: [22, 44], r: 0.5 },
+      { kind: 'rock', at: [-26, 30], r: 3, face: false, opts: { seed: 17, size: 3, color: '#5a5a40' } },
+    ],
+    scatter: [{ kind: 'rock', n: 40, from: 26, to: 110, scale: range(1), opts: { color: '#5a5a40' } }],
+  },
+  nuptia: {
+    title: 'Nuptia 4',
+    sub: 'Rick and Morty · couples’ counselling, where what you see in each other comes to life',
+    ground: { style: 'tiles', colors: ['#d8a8c8', '#f0d0e4', '#8a5a7a'] },
+    sky: { zenith: '#6a2a6a', horizon: '#ffd8ec', sun: '#fff0f8' },
+    models: {
+      machine: { url: '/models/c137/rm/nuptiamachine.glb', tall: 2.2 },
+      mytholog: { url: '/models/c137/rm/mytholog.glb', tall: 2.4 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'Nuptia 4, through the portal', reach: 3 } },
+      { kind: 'figure', at: [0, 40], r: 0.4, say: { name: 'Glexo Slim Slom', line: 'Welcome to Nuptia 4. We ask every couple one question: what do you see when you look at each other? Then we show them.' }, opts: { meshy: 'glexo', tall: 1.85 } },
+      { kind: 'machine', at: [8, 46], r: 1.6 },
+      { kind: 'machine', at: [-8, 46], r: 1.6 },
+      { kind: 'mytholog', at: [24, 56], r: 1.4 },
+      { kind: 'mytholog', at: [-26, 52], r: 1.4 },
+    ],
+    scatter: [{ kind: 'rock', n: 30, from: 30, to: 110, scale: range(1), opts: { color: '#8a5a7a' } }],
+  },
+  resort: {
+    title: 'Immortality Field Resort',
+    sub: 'Rick and Morty · inside the field nothing can hurt you; the Whirly Dirly goes outside it',
+    ground: { style: 'sand', colors: ['#e8d8a0', '#f4e8c0', '#b8a070'] },
+    sky: { zenith: '#3a9ad8', horizon: '#e0f8ff', sun: '#fffbe8' },
+    models: {
+      guest: { url: '/models/c137/rm/resortguest-a.glb', tall: 1.7 },
+      guest2: { url: '/models/c137/rm/resortguest-b.glb', tall: 1.95 },
+      dirly: { url: '/models/c137/rm/dirlycar.glb', tall: 2.2 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'the Immortality Field Resort, through the portal', reach: 3 } },
+      { kind: 'figure', at: [0, 40], r: 0.4, say: { name: 'Risotto Groupon', line: 'Welcome to the Immortality Field Resort. Inside the field, nothing can hurt you. Outside it, everything can.' }, opts: { meshy: 'risotto', tall: 1.9 } },
+      { kind: 'dirly', at: [16, 50], r: 2.4 },
+      { kind: 'guest', at: [-8, 34], r: 0.4 },
+      { kind: 'guest2', at: [10, 32], r: 0.4 },
+      { kind: 'guest', at: [-18, 44], r: 0.4 },
+      { kind: 'guest2', at: [24, 38], r: 0.4 },
+    ],
+    scatter: [{ kind: 'rock', n: 24, from: 34, to: 110, scale: range(1), opts: { color: '#b8a070' } }],
+  },
+  cronenberg: {
+    title: 'Cronenberg World',
+    sub: 'Rick and Morty · the Earth they left behind, and the Smiths who stayed',
+    ground: { style: 'grass', colors: ['#6a7a3a', '#8a9a4a', '#5a4a3a'] },
+    sky: { zenith: '#3a2a3a', horizon: '#c8a08a', sun: '#ffc8a0' },
+    models: {
+      house: { url: '/models/c137/rm/cronhouse.glb', tall: 8.6 },
+      car: { url: '/models/c137/rm/croncar.glb', tall: 1.6 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'Cronenberg World, through the portal', reach: 3 } },
+      { kind: 'house', at: [-12, 56], r: 11 },
+      { kind: 'car', at: [18, 40], r: 2.8, face: false, yaw: 0.6 },
+      { kind: 'figure', at: [-6, 38], r: 0.4, say: { name: 'Beth', line: 'Morty? You look… the same. How are you the same?' }, opts: { meshy: 'beth', tall: 1.68 } },
+      { kind: 'figure', at: [-12, 36], r: 0.4, say: { name: 'Jerry', line: 'We lived, Morty. No Rick, no portal gun, just us and a lot of spears. I’ve never been happier.' }, opts: { meshy: 'jerry', tall: 1.78 } },
+      { kind: 'figure', at: [-1, 35], r: 0.4, say: { name: 'Summer', line: 'I have a spear now. It’s fine. Everything’s fine.' }, opts: { meshy: 'summer', tall: 1.6 } },
+      { kind: 'figure', at: [16, 28], r: 0.6, opts: { meshy: 'cronenberg', tall: 1.45 } },
+      { kind: 'figure', at: [26, 50], r: 0.6, opts: { meshy: 'cronenberg', tall: 1.45 } },
+      { kind: 'figure', at: [32, 64], r: 1.6, say: { name: 'A Cronenberg', line: '(It gurgles at you from somewhere in the middle of itself.)' }, opts: { meshy: 'bigcronenberg', tall: 3.9 } },
+    ],
+    scatter: [{ kind: 'rock', n: 40, from: 26, to: 110, scale: range(1), opts: { color: '#6a5a4a' } }],
+  },
+  purge: {
+    title: 'The Purge Planet',
+    sub: 'Rick and Morty · a quiet farming village of cat people, one night a year',
+    ground: { style: 'sand', colors: ['#b8945a', '#d8b878', '#7a5a3a'] },
+    sky: { zenith: '#1c2350', horizon: '#f2a070', sun: '#ffd2a0' },
+    models: {
+      cabin: { url: '/models/c137/rm/purgecottage.glb', tall: 6 },
+      barn: { url: '/models/c137/rm/purgebarn.glb', tall: 9.5 },
+      bell: { url: '/models/c137/rm/purgesiren.glb', tall: 7 },
+      well: { url: '/models/c137/rm/purgewell.glb', tall: 2.8 },
+      villager: { url: '/models/c137/rm/magdalian-a.glb', tall: 1.55 },
+      villager2: { url: '/models/c137/rm/magdalian-b.glb', tall: 1.55 },
+      villager3: { url: '/models/c137/rm/magdalian-c.glb', tall: 1.6 },
+    },
+    things: [
+      { kind: 'portal', at: [-20, 17], r: 1.6, door: { label: 'the Purge Planet, through the portal', reach: 3 } },
+      { kind: 'figure', at: [2, 38], r: 0.4, say: { name: 'Arthricia', line: 'You’re not from here. Tonight’s the purge, and anything goes. If the bell rings, run for your portal.' }, opts: { meshy: 'arthricia', tall: 1.6 } },
+      { kind: 'bell', at: [-14, 32], r: 2 },
+      { kind: 'well', at: [8, 32], r: 1.6 },
+      { kind: 'cabin', at: [-26, 46], r: 5 },
+      { kind: 'cabin', at: [24, 48], r: 5 },
+      { kind: 'barn', at: [0, 64], r: 7 },
+      { kind: 'villager', at: [-6, 42], r: 0.4 },
+      { kind: 'villager2', at: [12, 40], r: 0.4 },
+      { kind: 'villager3', at: [16, 56], r: 0.4 },
+    ],
+    scatter: [{ kind: 'rock', n: 30, from: 30, to: 110, scale: range(1), opts: { color: '#8a6a4a' } }],
   },
 };
 

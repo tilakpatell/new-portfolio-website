@@ -9,7 +9,8 @@
 //     won't load: never a person in shapes (the plan's rule).
 //
 // stage(kit, id, opts) → { R, d, A, cx, cz, P(dx, dz) (a spot in the world
-// from the place's middle), figure(kind, at), people(), done(light, update) }
+// from the place's middle), figure(kind, at), people(), done(light, update),
+// hunt(on), calm() } (and the NPC behaviour below: anyone placed with `ai`)
 
 import * as THREE from 'three';
 import { makeSky } from '../sky';
@@ -17,6 +18,8 @@ import { BOX, ceilings, makeRoom, tiledPaint, wallLine } from '../interiors/shel
 import { at, speckle } from '../kit';
 import { RIGGED } from '../../portal/meshyCast';
 import { destinationById } from './destinations';
+import { createNpcs } from '../npc';
+import { attend } from '../living';
 
 // a speckled paint for a floor or the ground
 export const specks = (base, specks, seed = 7, n = 1600, size = 2) => (g, w, h) => speckle(g, w, h, { base, specks, n, size, seed });
@@ -67,7 +70,8 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
   const load = (kinds) => {
     const key = kinds.join(',');
     if (!fetched.has(key)) {
-      const clips = kinds.some((k) => RIGGED.has(k)) ? ['idle', 'walk'] : [];
+      // (the run too: a place's hunters run at Morty)
+      const clips = kinds.some((k) => RIGGED.has(k)) ? ['idle', 'walk', 'run'] : [];
       fetched.set(
         key,
         kit.need(kinds, { clips }).catch(() => null),
@@ -75,20 +79,33 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
     }
     return fetched.get(key);
   };
+  // ── the people who do something (../npc.js): the place's brains ──
+  const N = createNpcs({ id, area: A, solids: d.solids, words: { caught: d.caught, spotted: d.spotted } });
+
   // one of the cast at (x, z) facing `face`, `h` tall (its own height if not
   // given), gone once `until` is done and till `after` is (`when(state)`, if
-  // given, says instead); null if it won't load
-  const make = (kind, { x, z, face = 0, h = null, y = 0, until = null, after = null, when = null, onPlace = null }) => {
+  // given, says instead); with `ai`, someone who does something (above);
+  // `person`: one of the place's people, who turns their head to Morty as he
+  // comes up and talks with their hands when he talks to them (../living.js's
+  // attend); null if it won't load
+  const make = (kind, { x, z, face = 0, h = null, y = 0, until = null, after = null, when = null, onPlace = null, ai = null, id = kind, who = null, person = false }) => {
     const c = kit.cast?.make?.(kind);
     if (!c) return null;
     if (h) c.group.scale.setScalar(h / c.height);
     c.group.position.set(x, y, z);
     c.group.rotation.y = face + Math.PI / 2;
     R.group.add(c.group);
+    const n = ai ? N.add(c, { x, z, y, face, ai, id, who }) : null;
+    const b = person ? {} : null;
     R.tick((t, dt, state) => {
       const done = state?.done ?? [];
       c.group.visible = when ? when(state) : (!until || !done.includes(until)) && (!after || done.includes(after));
-      if (c.group.visible) c.update?.(t, 0, 0);
+      if (!c.group.visible) return;
+      if (n) N.step(n, t, dt, state);
+      else {
+        c.update?.(t, 0, 0, { dt });
+        if (b) attend(c, b, id, t, state, { y, near: 3 });
+      }
     });
     onPlace?.(c);
     return c;
@@ -97,10 +114,11 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
   // things to place once their models are in: [kind, at] pairs (`at.onPlace(c)`: told when it's stood)
   const figure = (kind, spot) => placed.push([kind, spot]);
   // the place's people and its crowd, from ./destinations.js (`extras`:
-  // what the crowd stands with, as `when` for a crowd that runs off)
-  const people = ({ extras = {} } = {}) => {
-    for (const p of d.people) figure(p.who ?? p.id, { x: p.x, z: p.z, face: p.face, until: p.until, after: p.after });
-    for (const e of d.extras) figure(e.kind, { x: e.x, z: e.z, face: e.face, ...extras });
+  // what the crowd stands with, as `when` for a crowd that runs off; `who`:
+  // more for a person by id, say a `when` of their own)
+  const people = ({ extras = {}, who = {} } = {}) => {
+    for (const p of d.people) figure(p.who ?? p.id, { x: p.x, z: p.z, y: p.y ?? 0, face: p.face, until: p.until, after: p.after, ai: p.ai ?? null, id: p.id, who: d.say[p.id]?.who ?? null, person: true, ...(who[p.id] ?? {}) });
+    for (const [i, e] of d.extras.entries()) figure(e.kind, { x: e.x, z: e.z, y: e.y ?? 0, face: e.face, h: e.h ?? null, ai: e.ai ?? null, id: `${e.kind}-${i}`, ...extras });
   };
 
   const done = (light, update) => {
@@ -119,8 +137,12 @@ export function stage(kit, id, { ground, groundTile = 4, floor, floorTile = 2, w
           for (const [k, spot] of placed) make(k, spot);
         }),
       );
+    // (every place settles when Morty leaves it: its hunters go home. A
+    // builder adds its own actions to these. `npcs`: where everyone is, for
+    // the QA scripts; `fire`: Morty's shot in a duel.)
+    area.actions = { calm: N.calm, npcs: N.list, fire: N.fire };
     return area;
   };
+  return { R, d, A, cx, cz, P, figure, people, done, hunt: N.hunt, npcs: N.npcs, calm: N.calm };
 
-  return { R, d, A, cx, cz, P, figure, people, done };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FLY, newHero, speedOf, stepHero } from './flight';
-import { SPAWN, WORLD, buildWorld, groundAt } from './map';
+import { BRIDGES, RIVER, SPAWN, WATER_Y, WORLD, buildWorld, groundAt } from './map';
 
 const W = buildWorld();
 const still = { fwd: 0, side: 0, up: 0, down: 0, boost: false, run: false, jump: false, look: [0, 0, -1] };
@@ -107,6 +107,80 @@ describe('hitting things', () => {
     const out = fly({ ...newHero({ x: WORLD.half - 100, y: WORLD.ceiling - 50, z: 0, face: Math.PI / 2 }), mode: 'air' }, { ...still, boost: true, look: [0.7, 0.7, 0] }, 5).h;
     expect(out.p[0]).toBeLessThanOrEqual(WORLD.half);
     expect(out.p[1]).toBeLessThanOrEqual(WORLD.ceiling);
+  });
+});
+
+describe('the water', () => {
+  // over the middle of the river, between the bridges at z = −1160 and −440
+  const MID = (RIVER.x0 + RIVER.x1) / 2;
+  const diving = (y, z, dir, speed) => ({ ...newHero({ x: MID, y, z, face: 0 }), mode: 'air', v: dir.map((c) => c * speed), spd: speed, dir });
+  // fly, noting how low his feet went
+  const watch = (h, input, t) => {
+    let low = Infinity;
+    const { h: end, ev } = fly(h, (hh) => ((low = Math.min(low, hh.p[1])), input), t);
+    return { h: end, ev, low: Math.min(low, end.p[1]) };
+  };
+  const kinds = (ev, type) => ev.filter((e) => e.type === type);
+  it('stops a dive into the river at 250 m/s at the surface, with one splash', () => {
+    const { h, ev, low } = watch(diving(60, -800, [0, -1, 0], 250), { ...still, boost: true, look: [0, -1, 0] }, 3);
+    expect(kinds(ev, 'splash')).toHaveLength(1);
+    expect(kinds(ev, 'splash')[0].speed).toBeGreaterThan(200);
+    expect(kinds(ev, 'splash')[0].at[1]).toBeCloseTo(WATER_Y, 6);
+    expect(kinds(ev, 'slam')).toHaveLength(0); // no crater in the water
+    expect(kinds(ev, 'impact')).toHaveLength(0);
+    expect(low).toBeGreaterThanOrEqual(WATER_Y - 1e-6);
+    expect(h.p[1]).toBeCloseTo(WATER_Y, 6);
+    expect(speedOf(h)).toBeLessThan(1);
+    expect(h.mode).toBe('air'); // (he can't stand on it)
+  });
+  it('splashes once on a shallow dive flat out, then skims the surface', () => {
+    const dir = [0, -0.5, -Math.sqrt(0.75)]; // 30° down, north up the river
+    const { h, ev, low } = watch(diving(40, -700, dir, 250), { ...still, boost: true, look: dir }, 2);
+    expect(kinds(ev, 'splash')).toHaveLength(1);
+    expect(kinds(ev, 'slam')).toHaveLength(0);
+    expect(kinds(ev, 'impact')).toHaveLength(0);
+    expect(low).toBeGreaterThanOrEqual(WATER_Y - 1e-6);
+    expect(h.p[1]).toBeCloseTo(WATER_Y, 6);
+    expect(h.p[2]).toBeGreaterThan(BRIDGES[0] + 30); // short of the next bridge
+  });
+  it('comes down softly onto it with a small splash, and hangs there', () => {
+    const start = { ...newHero({ x: MID, y: WATER_Y + 3, z: -800, face: 0 }), mode: 'air' };
+    const { h, ev, low } = watch(start, { ...still, down: 1 }, 2);
+    expect(kinds(ev, 'splash')).toHaveLength(1);
+    expect(kinds(ev, 'splash')[0].speed).toBeLessThan(FLY.slam);
+    expect(kinds(ev, 'land')).toHaveLength(0);
+    expect(low).toBeGreaterThanOrEqual(WATER_Y - 1e-6);
+    expect(h.p[1]).toBeCloseTo(WATER_Y, 6);
+    expect(h.mode).toBe('air');
+  });
+  it('slams onto a bridge over it, not into the water', () => {
+    const { h, ev } = watch(diving(60, BRIDGES[1], [0, -1, 0], 100), { ...still, boost: true, look: [0, -1, 0] }, 1);
+    expect(kinds(ev, 'slam')).toHaveLength(1);
+    expect(kinds(ev, 'splash')).toHaveLength(0);
+    expect(h.mode).toBe('ground');
+    expect(h.p[1]).toBeCloseTo(0.4, 6);
+  });
+});
+
+describe('the top of the sky', () => {
+  const at = (y, extra = {}) => ({ ...newHero({ x: -240, y, z: -880, face: 0 }), mode: 'air', ...extra });
+  const exits = (h, input, t) => fly(h, input, t).ev.filter((e) => e.type === 'exit');
+  it('lets him out from a standstill against it', () => {
+    expect(exits(at(WORLD.ceiling), { ...still, up: 1 }, 1)).toHaveLength(1);
+    expect(exits(at(WORLD.ceiling), { ...still, boost: true, look: [0, Math.sin(Math.PI / 3), -0.5] }, 1)).toHaveLength(1);
+  });
+  it('lets him out climbing gently into it', () => {
+    const look = [0, Math.sin(0.35), -Math.cos(0.35)]; // 20° up
+    expect(exits(at(WORLD.ceiling - 50), { ...still, fwd: 1, look }, 8)).toHaveLength(1);
+  });
+  it('keeps him in, flying level along it', () => {
+    const level = at(WORLD.ceiling, { v: [0, 0, -40], spd: 40, dir: [0, 0, -1] });
+    expect(exits(level, { ...still, fwd: 1, look: [0, 0, -1] }, 2)).toHaveLength(0);
+  });
+  it('lets him straight back out after coming down from space', () => {
+    // as ./orbit.js's outOfSpace leaves him: under the top, coming down, the last exit still noted
+    const back = at(WORLD.ceiling - 300, { v: [0, -40, 0], spd: 40, dir: [0, -1, 0], exited: true });
+    expect(exits(back, { ...still, boost: true, look: [0, 1, 0] }, 5)).toHaveLength(1);
   });
 });
 

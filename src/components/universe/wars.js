@@ -22,6 +22,10 @@
 // round, as spheres along its length ([z, radius], shares of its length;
 // the galaxy's set pieces fly round the same ones).
 
+import { paced } from './ship';
+import { POSITIONS } from './layout';
+import { SPREAD } from './scale';
+
 const rebels = {
   id: 'rebels',
   name: 'Rebel Alliance',
@@ -138,13 +142,23 @@ const cartel = {
   ],
 };
 
-// seven sectors in a line from `from` to `to`, named in order from the
-// first side's home to the second's
-const line = (from, to, names) =>
-  names.map(([id, name], i) => {
+// seven sectors in a line from `a` to `b`, named in order from the first
+// side's home to the second's. The numbers are where the lines were before
+// the spread (scale.js's SPREAD), beside their planets; the line moves as far
+// as its planet, `by`, moved (the planet's place now, less where it
+// was: x and z by SPREAD, its height by half), so a war is still fought
+// round its own world and keeps its length
+const moved = (id, p) => {
+  const [x, y, z] = POSITIONS[id];
+  return [p[0] + x - x / SPREAD, p[1] + y - y / (SPREAD / 2), p[2] + z - z / SPREAD];
+};
+const line = (a, b, names, by) => {
+  const [from, to] = [moved(by, a), moved(by, b)];
+  return names.map(([id, name], i) => {
     const k = i / (names.length - 1);
     return { id, name, at: from.map((v, j) => Math.round(v + (to[j] - v) * k)) };
   });
+};
 
 export const WARS = {
   starwars: {
@@ -165,6 +179,7 @@ export const WARS = {
         ['mustafar', 'Mustafar'],
         ['coruscant', 'Coruscant'],
       ],
+      'starwars',
     ),
     battleName: (s) => `Battle of ${s.name}`,
   },
@@ -173,32 +188,37 @@ export const WARS = {
     name: 'The War for the Multiverse',
     ready: true,
     sides: [council, federation],
-    // at its real places on the map: from just off the Citadel (deep.js's) to
-    // the sky over Earth C-137 (the Rick and Morty world), which the
-    // Federation took, as it did in the show
+    // in the main map's deep space (the Citadel and the show's worlds are
+    // through the portal, in a sector of their own: layout.js), from the
+    // Council's picket out in the dark to the sky over Earth C-137 (the Rick
+    // and Morty world), which the Federation took, as it did in the show
     sectors: line(
       [1216, -135, -4464],
       [-288, -135, -3916],
       [
-        ['citadel', 'The Citadel'],
-        ['birdworld', 'Bird World'],
-        ['gazorpazorp', 'Gazorpazorp'],
-        ['squanch', 'Planet Squanch'],
+        ['picket', 'The Council’s picket'],
+        ['blips', 'Blips and Chitz'],
+        ['anatomy', 'Anatomy Park'],
+        ['froopy', 'Froopyland'],
         ['unity', 'Unity’s world'],
         ['gromflom', 'Gromflom Prime'],
         ['c137', 'Earth C-137'],
       ],
+      'rickmorty',
     ),
     battleName: (s) => `The fight over ${s.name}`,
   },
   breakingbad: {
     id: 'breakingbad',
     name: 'The Cartel War',
-    ready: false, // (its flagships come with their models: PR E)
+    ready: true,
     sides: [gus, cartel],
+    // at its real places on the map: from Los Pollos just off Albuquerque
+    // (the Breaking Bad world) out, away from home, past the border to Don
+    // Eladio's hacienda, clear of the Twins and the Maw
     sectors: line(
-      [6300, 120, -400],
-      [6300, 120, 1200],
+      [4250, 235, -700],
+      [5800, 120, 300],
       [
         ['pollos', 'Los Pollos Hermanos'],
         ['superlab', 'The Superlab'],
@@ -208,6 +228,7 @@ export const WARS = {
         ['juarez', 'Ciudad Juárez'],
         ['hacienda', 'Don Eladio’s hacienda'],
       ],
+      'breakingbad',
     ),
     battleName: (s) => `The showdown at ${s.name}`,
   },
@@ -221,7 +242,8 @@ export const warFor = (sideId) => (sideId && Object.hasOwn(WARS, sideId) ? WARS[
 // three]), range (how far it opens fire), cone (radians: how near its nose
 // must be), damage (a bolt's), and for a bomber its torpedoes (seconds
 // between runs' shots: `reload`)
-const F = (o) => ({ accel: o.speed * 0.8, burst: [0.12, 0.7], range: 14, cone: 0.1, damage: 1, ...o });
+// (at the ship's pace: ship.js's PACE)
+const F = (o) => paced({ accel: o.speed * 0.8, burst: [0.12, 0.7], range: 14, cone: 0.1, damage: 1, ...o });
 export const FIGHTERS = {
   // Star Wars
   xwing: F({ size: 0.36, speed: 20, turn: 2.3, hp: 5 }),
@@ -233,6 +255,14 @@ export const FIGHTERS = {
   tiebomber: F({ size: 0.38, speed: 15, turn: 1.7, hp: 9, reload: 1.2 }),
   uwing: F({ size: 0.5, speed: 17, turn: 1.9, hp: 8 }),
   tieadvanced: F({ size: 0.32, speed: 23, turn: 3, hp: 8, burst: [0.1, 0.5] }),
+  // (and the galaxy's other wars': the Clone Wars' droids and clones, the
+  // Hutts' Weequay skiffs, the Ghost with Hera at the controls)
+  vulture: F({ size: 0.3, speed: 21, turn: 2.6, hp: 3, reload: 1.4 }),
+  trifighter: F({ size: 0.32, speed: 25, turn: 2.9, hp: 5, burst: [0.1, 0.55] }),
+  arc170: F({ size: 0.46, speed: 18, turn: 2.1, hp: 8, reload: 1.3 }),
+  delta7: F({ size: 0.3, speed: 25, turn: 3, hp: 5, burst: [0.1, 0.55] }),
+  skiff: F({ size: 0.4, speed: 18, turn: 2.2, hp: 5, reload: 1.5 }),
+  ghost: F({ size: 0.8, speed: 17, turn: 1.8, hp: 14, burst: [0.1, 0.5] }),
   // Rick and Morty
   councilship: F({ size: 0.42, speed: 21, turn: 2.4, hp: 6 }),
   meeseeks: F({ size: 0.34, speed: 24, turn: 2.9, hp: 4, burst: [0.1, 0.6] }),
@@ -260,6 +290,12 @@ export const NAMES = {
   tiebomber: 'TIE bomber',
   uwing: 'U-wing',
   tieadvanced: 'TIE Advanced',
+  vulture: 'Vulture droid',
+  trifighter: 'Droid tri-fighter',
+  arc170: 'ARC-170',
+  delta7: 'Jedi starfighter',
+  skiff: 'Weequay skiff',
+  ghost: 'The Ghost',
   councilship: 'Council cruiser',
   meeseeks: 'Meeseeks ship',
   gearship: 'Gear ship',
@@ -318,6 +354,57 @@ export const SUBSYSTEMS = {
     [0, 0.06, -0.395],
     [0, -0.035, -0.12],
   ),
+  // the Interdictor: its shield generators the two gravity-well domes on its
+  // back nearest the bridge tower, the bridge in the tower's face, the
+  // reactor's bulb under the hull (an interdiction's objectives: battles.js)
+  interdictor: flagship(
+    [
+      [-0.12, 0.11, -0.12],
+      [0.12, 0.11, -0.12],
+    ],
+    [0, 0.17, -0.31],
+    [0, -0.12, -0.16],
+  ),
+  // the Venator: the domes on its two bridge towers, the bridge in the
+  // starboard tower's face, the reactor under its hull amidships
+  venator: flagship(
+    [
+      [-0.07, 0.15, -0.34],
+      [0.07, 0.15, -0.34],
+    ],
+    [0.06, 0.13, -0.27],
+    [0, -0.11, -0.1],
+  ),
+  // the Providence (the Invisible Hand): its sensor domes either side of the
+  // bridge tower aft, the bridge at the tower's face, the reactor astern
+  providence: flagship(
+    [
+      [-0.06, 0.13, -0.3],
+      [0.06, 0.13, -0.3],
+    ],
+    [0, 0.12, -0.22],
+    [0, -0.1, -0.3],
+  ),
+  // the Lucrehulk: its shield generators out on the ring either side, the
+  // bridge atop the core sphere, the reactor under it
+  lucrehulk: flagship(
+    [
+      [-0.33, 0.04, 0],
+      [0.33, 0.04, 0],
+    ],
+    [0, 0.25, 0.04],
+    [0, -0.25, 0],
+  ),
+  // a Hutt kajidic's Gozanti: its shield projectors aft either side, the
+  // bridge in the nose, the reactor under the engines
+  gozanti: flagship(
+    [
+      [-0.15, 0.11, -0.26],
+      [0.15, 0.11, -0.26],
+    ],
+    [0, 0.1, 0.43],
+    [0, -0.15, -0.36],
+  ),
   // the Council's dreadnought (scripts/meshy-war.mjs, in the Citadel's look):
   // its two teal shield domes either side of the spire, the glass dome bridge
   // up front, the reactor under the engines (its spire stands tall of the
@@ -331,31 +418,38 @@ export const SUBSYSTEMS = {
     [0, -0.14, -0.38],
   ),
   // the Federation's battleship, as the show drew it: its shield generators
-  // in the engine pods either side, the bridge behind the glass up front, the
-  // reactor in the great dome at its back
+  // in the engine pods either side, the bridge at the glass along the top up
+  // front, the reactor atop the great dome at its back
   fedbattleship: flagship(
     [
       [-0.31, -0.05, 0.14],
       [0.31, -0.05, 0.14],
     ],
-    [0, 0.08, 0.22],
-    [0, 0.12, -0.3],
+    [0, 0.19, 0.17],
+    [0, 0.28, -0.3],
   ),
+  // Gus's superlab barge (scripts/meshy-war.mjs): its shield generators the
+  // two domes on the deckhouse's roof, fore and aft, the bridge at the
+  // deckhouse's front, the reactor in the stern among the thrusters
   superlab: flagship(
     [
-      [-0.12, 0.16, -0.2],
-      [0.12, 0.16, -0.2],
+      [0, 0.11, 0.215],
+      [0, 0.11, -0.205],
     ],
-    [0, 0.18, 0.28],
-    [0, -0.1, -0.3],
+    [0, 0.08, 0.38],
+    [0, -0.03, -0.5],
   ),
+  // Don Eladio's flying hacienda, its thrusters in the rock either side:
+  // its shield generators in the domes of the two back towers, the bridge
+  // in the main house over the front door, the reactor at the foot of the
+  // rock it stands on
   hacienda: flagship(
     [
-      [-0.14, 0.18, -0.18],
-      [0.14, 0.18, -0.18],
+      [-0.37, 0.34, -0.29],
+      [0.37, 0.34, -0.29],
     ],
-    [0, 0.22, 0.12],
-    [0, -0.12, -0.28],
+    [0, 0.28, 0.34],
+    [0, -0.37, 0],
   ),
 };
 
@@ -372,16 +466,21 @@ export const TURRETS = {
   corvette: [...flanks(0.08, 0.05, [-0.2, 0.2])],
   lightcruiser: [...flanks(0.1, 0.05, [-0.2, 0.1])],
   gozanti: [...flanks(0.1, 0.06, [-0.15, 0.15])],
+  venator: [...flanks(0.16, 0.05, [-0.3, -0.12, 0.06, 0.22]), [0, 0.1, -0.2]],
+  acclamator: [...flanks(0.2, 0.06, [-0.2, 0.05])],
+  munificent: [...flanks(0.06, 0.1, [-0.25, 0.25])],
+  providence: [...flanks(0.09, 0.06, [-0.25, 0, 0.25])],
+  lucrehulk: [...flanks(0.4, 0.05, [-0.2, 0.2]), [0, 0.06, 0.42], [0, 0.06, -0.42]],
   councildread: [...flanks(0.1, -0.08, [-0.25, -0.05, 0.15])],
   fedbattleship: [...flanks(0.28, 0.12, [-0.2, 0.05]), [0, 0.28, -0.15]],
   gearship: [...flanks(0.12, 0.05, [-0.15, 0.15])],
   saucer: [...flanks(0.2, 0.05, [0])],
   federation: [...flanks(0.12, 0.05, [-0.15, 0.15])],
   hauler: [...flanks(0.12, 0.05, [-0.1, 0.1])],
-  superlab: [...flanks(0.14, 0.06, [-0.25, -0.05, 0.15])],
+  superlab: [...flanks(0.125, 0.035, [-0.2, 0.02, 0.24]), [0, 0.095, 0]],
   madrigal: [...flanks(0.12, 0.05, [-0.15, 0.15])],
   pestvan: [...flanks(0.12, 0.05, [-0.1, 0.1])],
-  hacienda: [...flanks(0.16, 0.06, [-0.25, -0.05, 0.15])],
+  hacienda: [...flanks(0.43, 0.33, [-0.33, 0.33]), ...flanks(0.38, 0.3, [0])],
   pollostruck: [...flanks(0.12, 0.05, [-0.1, 0.1])],
   pickup: [...flanks(0.12, 0.05, [-0.1, 0.1])],
 };
@@ -393,6 +492,8 @@ export const HULLS = {
   venator: [[-0.4, 0.085], [-0.22, 0.08], [-0.04, 0.07], [0.14, 0.055], [0.32, 0.035]],
   acclamator: [[-0.36, 0.11], [-0.12, 0.1], [0.12, 0.08], [0.34, 0.05]],
   munificent: [[-0.36, 0.08], [-0.12, 0.08], [0.12, 0.08], [0.36, 0.1]],
+  providence: [[-0.38, 0.09], [-0.14, 0.09], [0.1, 0.08], [0.34, 0.06]],
+  lucrehulk: [[-0.38, 0.1], [-0.15, 0.18], [0, 0.22], [0.15, 0.18], [0.38, 0.1]],
   moncal: [[-0.38, 0.12], [-0.14, 0.13], [0.1, 0.12], [0.34, 0.09]],
   nebulon: [[-0.38, 0.07], [-0.1, 0.05], [0.18, 0.08], [0.38, 0.07]],
   corvette: [[-0.36, 0.1], [-0.1, 0.06], [0.14, 0.06], [0.36, 0.12]],
@@ -402,15 +503,15 @@ export const HULLS = {
   lightcruiser: [[-0.36, 0.1], [-0.12, 0.09], [0.12, 0.07], [0.36, 0.05]],
   gozanti: [[-0.36, 0.12], [-0.12, 0.13], [0.12, 0.12], [0.36, 0.1]],
   councildread: [[-0.38, 0.12], [-0.15, 0.13], [0.1, 0.08], [0.32, 0.04]],
-  fedbattleship: [[-0.28, 0.3], [0, 0.3], [0.24, 0.22], [0.42, 0.08]],
+  fedbattleship: [[-0.27, 0.26], [0.02, 0.2], [0.22, 0.18], [0.42, 0.07]],
   gearship: [[-0.3, 0.16], [0, 0.18], [0.3, 0.16]],
   saucer: [[-0.2, 0.3], [0.2, 0.3]],
   federation: [[-0.36, 0.12], [-0.12, 0.12], [0.12, 0.11], [0.36, 0.08]],
   hauler: [[-0.34, 0.16], [0, 0.17], [0.34, 0.15]],
-  superlab: [[-0.36, 0.15], [-0.12, 0.16], [0.12, 0.15], [0.36, 0.12]],
+  superlab: [[-0.42, 0.09], [-0.27, 0.11], [-0.09, 0.11], [0.09, 0.11], [0.27, 0.1], [0.42, 0.08]],
   madrigal: [[-0.34, 0.15], [0, 0.16], [0.34, 0.14]],
   pestvan: [[-0.34, 0.16], [0, 0.17], [0.34, 0.15]],
-  hacienda: [[-0.36, 0.16], [-0.12, 0.17], [0.12, 0.16], [0.36, 0.12]],
+  hacienda: [[-0.18, 0.23], [0, 0.3], [0.18, 0.23]],
   pollostruck: [[-0.34, 0.16], [0, 0.17], [0.34, 0.15]],
   pickup: [[-0.34, 0.16], [0, 0.17], [0.34, 0.15]],
 };

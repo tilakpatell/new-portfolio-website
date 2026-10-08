@@ -16,6 +16,7 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree, hot } from '../../../../lib/stage3d';
+import { houseOn } from '../../../../lib/three/house';
 import { budget, device } from '../../../../lib/device';
 import { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -23,6 +24,7 @@ import { InkPass, toon } from '../../portal/toon';
 import { at, batch, hipRoof, kitMaterials, paint, rng, speckle } from '../kit';
 import { makeSky } from '../sky';
 import { TUNING, ageOf, beatWindow, inBand } from './rules';
+import { sharpen } from '../../../../lib/three/textures';
 
 const { kid: KID, football: FOOTBALL, carpet: CARPET, cancer: CANCER } = TUNING;
 const SWING = 0.62; // how far the tire swings either way at the end of its rope (radians)
@@ -1745,6 +1747,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     boardCanvas.width = 512;
     boardCanvas.height = 256;
     const boardTex = new THREE.CanvasTexture(boardCanvas);
+    sharpen(boardTex);
     boardTex.colorSpace = THREE.SRGBColorSpace;
     owned.push(boardTex);
     const board = new THREE.Mesh(new THREE.PlaneGeometry(13, 6.5), new THREE.MeshBasicMaterial({ map: boardTex, color: new THREE.Color(1, 1, 1).multiplyScalar(1.25) }));
@@ -2769,6 +2772,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     ecg.width = 256;
     ecg.height = 160;
     const ecgTex = new THREE.CanvasTexture(ecg);
+    sharpen(ecgTex);
     ecgTex.colorSpace = THREE.SRGBColorSpace;
     owned.push(ecgTex);
     const screen = new THREE.Mesh(G.plane, new THREE.MeshBasicMaterial({ map: ecgTex, color: new THREE.Color(1, 1, 1).multiplyScalar(1.6) }));
@@ -2975,6 +2979,10 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
 
   // compile every stage's shaders now, so switching stages never stalls
   for (const k of VIGNETTES) V[k].group.visible = V[k].over.visible = true;
+  // the house look (lib/three/house), as in the rest of C-137: the shade one
+  // colour from each stage's sky light, under the Neutral exposure the
+  // stages were tuned under; their own fog kept
+  const house = houseOn({ renderer, scene, sun, hemi, keepExposure: true, look: { fog: false } });
   await stage.precompile();
   try {
     renderer.compile(over, camera);
@@ -3029,6 +3037,7 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     sc.updateProjectionMatrix();
     sky.dome.visible = Boolean(L.sky);
     if (L.sky) sky.setLook(L.sky);
+    house.follow();
     scene.background = L.sky ? null : background.set(L.bg ?? 0x101010);
     scene.fog.color.set(L.fog[0]);
     scene.fog.near = L.fog[1];

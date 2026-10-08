@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { stepGaze } from '../../shire/rules';
 import { Bubble, Convo, QuestList, Stick, Travellers } from '../TownHud';
@@ -11,9 +12,10 @@ import { keyDown, keyUp, moveOf, ownButton } from '../keys';
 import { drawMap } from '../map';
 import { nearest } from '../story';
 import { newTalk, talkNode, talkOn } from '../talk';
+import { sayInTurn } from '../voice';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { BRIDGE, COLLIDERS, COMPANIONS, COURT, GATE, GORGE, HOUSE, HOUSE_DOOR, PATHS, SPOTS, WALLS, WORLD, blocked, castFor, riverX, spot, validAt } from './layout';
-import { CONVOS, QUESTS, SEAL, SPEAKERS, rivendellProgress } from './story';
+import { ARGUMENT, CONVOS, QUESTS, RIDDLE_SAYS, SAYS, SEAL, SPEAKERS, rivendellProgress } from './story';
 import { RIDDLE, SHARDS, SIDE, answer, asked, closeHand, followAt, gathered, join, lead, newCouncil, newParty, newReach, newRiddles, newShards, placed, speak, stepCouncil, stepReach, stepRiddles, tapShard } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
@@ -44,15 +46,6 @@ const PROMPT = {
 const walker = makeWalker({ radius: WORLD.radius, colliders: COLLIDERS, walls: WALLS, blocked });
 const MAP_SCALE = 150 / (WORLD.radius * 2 + 6);
 const CONVO_TITLE = { awake: 'The house of Elrond', narsil: 'The hall of Narsil', council: 'The Council of Elrond', axe: 'The Council of Elrond', fellowship: 'The Council of Elrond', bilbo: 'Bilbo’s pavilion', sorry: 'Bilbo’s pavilion', gate: 'The south gate' };
-// the argument, line by line, as it rises
-const ARGUMENT = [
-  ['Boromir', '“And if we fail, what then? What happens when Sauron takes back what is his?”'],
-  ['Gimli', '“I will be dead before I see the Ring in the hands of an Elf!”'],
-  ['Legolas', 'The Elves are on their feet, shouting back in Elvish.'],
-  ['Gimli', '“Never trust an Elf!”'],
-  ['Gandalf', '“Do you not understand that while we bicker amongst ourselves, Sauron’s power grows? None can escape it!”'],
-  ['The Ring', 'In the Ring on its plinth, fire. A voice under the voices: Ash nazg durbatulûk…'],
-];
 // the shards' lengths, as drawn in the puzzle: the hilt first
 const SHARD_W = [1.5, 1.1, 0.9, 1.2, 0.8, 1];
 
@@ -149,7 +142,24 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const [list, setList] = useState(false);
   const lines = useRef({});
   const bubbleRef = useRef(null);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js), or
+  // says `line`, where only that much of it is theirs
+  const say = useCallback((text, bad = false, who = null, line = text) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, line);
+  }, []);
+  useEffect(() => stopVoiced, []);
+  // Bilbo at his fire: a toast he speaks in, and once he's said it, the
+  // riddle that's up, read out (./voicelines.js)
+  const bilboSays = useCallback(
+    (text, bad = false) => {
+      say(text, bad);
+      const g = sim.current.riddles;
+      const q = g?.state === 'ask' ? asked(g) : null;
+      sayInTurn([text, q?.q].filter(Boolean).map((t) => ({ who: 'bilbo', text: t })));
+    },
+    [say],
+  );
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -288,7 +298,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         s.mode = 'riddles';
         s.riddles = newRiddles(Math.floor(Math.random() * 1e6) + 1);
         sounds().then((x) => x.chime?.(1));
-        say('Bilbo lights a fresh candle. “Riddles, my lad! Answer before it burns down, mind.”');
+        bilboSays(RIDDLE_SAYS.start);
       } else if (id === 'gate') {
         if (p.finished) return onLeave?.();
         startTalk('gate', 'leaving');
@@ -297,14 +307,14 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         if (join(s.party, id)) {
           api.current?.fx('joined');
           sounds().then((x) => x.chime(s.party.joined.length));
-          say(c.joins);
+          say(c.joins, false, c.look);
           if (gathered(s.party, COMPANIONS)) later(() => say('All nine. The Fellowship is gathered. Lead them to the south gate.'), 2600);
         }
       }
       setList(false);
       return undefined;
     },
-    [onLeave, startTalk, say, later],
+    [onLeave, startTalk, say, bilboSays, later],
   );
 
   // a reply picked, or on to the next line
@@ -371,12 +381,12 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     if (r === 'wait') say('Elrond lifts a hand towards you, without looking: wait. Hear them out.');
     else if (r === 'unheard') {
       sounds().then((x) => x.voices(0.6));
-      say('“I will take it!” No one hears you over the shouting. Again, louder!', true);
+      say(SAYS.unheard.text, true, SAYS.unheard.who);
     } else if (r === 'heard') {
       s.stood = true;
       api.current?.fx('heard');
       sounds().then((x) => x.hush());
-      say('“I will take it! I will take it.” The court goes silent, every face turned to you. “I will take the Ring to Mordor. Though… I do not know the way.”');
+      say(SAYS.heard.text, false, SAYS.heard.who);
       later(() => sim.current?.mode === 'council' && startTalk('fellowship'), 4200);
     }
   }, [say, later, startTalk]);
@@ -386,7 +396,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     if (s.mode !== 'bilbo' || !s.reach || s.talk) return;
     const r = closeHand(s.reach);
     if (r === 'early') {
-      say('You snatch it away, and Bilbo flinches as if you’d struck him. “I only wanted to hold it…” Wait for the moment.', true);
+      say(SAYS.early.text, true, SAYS.early.who);
       later(() => sim.current?.reach && (sim.current.reach = newReach(Math.floor(Math.random() * 1000) + 1)), 2200);
     } else if (r === 'won') {
       sounds().then((x) => x.gasp());
@@ -403,7 +413,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       if (r === 'solved') {
         api.current?.fx('solved');
         complete('narsil');
-        say('Laid back as they were. Aragorn sets the hilt down gently. “The Council meets at the court, over the gorge.”');
+        say(SAYS.narsil.text, false, SAYS.narsil.who);
         later(() => {
           const ss = sim.current;
           if (ss?.mode !== 'narsil') return;
@@ -420,6 +430,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const leaveRiddles = useCallback(() => {
     const s = sim.current;
     if (s.mode !== 'riddles') return;
+    if (s.riddles?.state === 'ask') stopVoiced(); // Bilbo, mid-riddle
     s.riddles = null;
     outside({ x: spot('bilbo').x + 0.8, z: spot('bilbo').z, face: 0 });
   }, [outside]);
@@ -432,14 +443,14 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         winSide();
         api.current?.fx('joined');
         sounds().then((x) => x.chime?.(5));
-        say('“Well! You’d have beaten Gollum in half the time,” says Bilbo, and laughs till he coughs. “Don’t tell him I said so.”');
+        bilboSays(RIDDLE_SAYS.beaten);
         later(() => sim.current?.riddles === g && leaveRiddles(), 4200);
       } else if (g.state === 'lost') {
-        say('“Ha! Two against you, and the game’s mine,” says Bilbo. “Another candle?”', true);
+        bilboSays(RIDDLE_SAYS.mine, true);
         later(() => sim.current?.riddles === g && leaveRiddles(), 3400);
       }
     },
-    [winSide, say, later, leaveRiddles],
+    [winSide, bilboSays, later, leaveRiddles],
   );
   const doRiddle = useCallback(
     (i) => {
@@ -451,15 +462,15 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       if (!r) return;
       if (r === 'right') {
         sounds().then((x) => x.chime?.(Math.min(5, g.right)));
-        say(['“Right you are!”', '“Hm! Quite right.”', '“Bless me, you know that one.”', '“Right again!”', '“Right!”'][(g.right - 1) % 5]);
+        bilboSays(RIDDLE_SAYS.right[(g.right - 1) % RIDDLE_SAYS.right.length]);
       } else {
         sounds().then((x) => x.clink?.(false));
-        say(`“No, no! ${q.a[0]}.”`, true);
+        bilboSays(`“No, no! ${q.a[0]}.”`, true);
       }
       riddleOver(g);
       setHud((h) => ({ ...h, riddles: { at: g.at, right: g.right, wrong: g.wrong, state: g.state, candle: g.candle } }));
     },
-    [say, riddleOver],
+    [bilboSays, riddleOver],
   );
 
   const doAct = useCallback(() => {
@@ -618,9 +629,9 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       // the argument, line by line
       const due = Math.floor(Math.max(0, s.council.heat - 0.32) / 0.08);
       if (s.council.axed && !s.talk && due > s.argued && s.argued < ARGUMENT.length) {
-        const [who, line] = ARGUMENT[s.argued];
+        const { name, voice, line } = ARGUMENT[s.argued];
         s.argued += 1;
-        say(`${who}: ${line}`, who === 'The Ring');
+        say(`${name}: ${line}`, name === 'The Ring', voice, line);
         sounds().then((x) => x.voices(s.council?.heat ?? 0.5));
       }
     }
@@ -643,7 +654,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       for (const e of stepRiddles(g, dt)) {
         if (e.type === 'out') {
           sounds().then((x) => x.clink?.(false));
-          say('The candle gutters out. “Time’s up!” says Bilbo, and lights another.', true);
+          bilboSays(RIDDLE_SAYS.out, true);
         }
       }
       riddleOver(g);
@@ -792,28 +803,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     }
     drag.current = null;
   };
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   // the list's "go there"
   const travel = (q) => {
@@ -881,13 +871,13 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         </p>
       )}
 
-      {bubble && walking && <Bubble ref={bubbleRef} name={bubble.name} line={bubble.line} />}
+      {bubble && walking && <Bubble ref={bubbleRef} who={bubble.id} name={bubble.name} line={bubble.line} />}
 
       {here && walking && (
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -972,7 +962,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         </div>
       )}
 
-      {walking && touch && <Stick onStick={onStick} />}
+      {walking && touch && <Stick onMove={onStick} />}
 
       {list && (
         <QuestList

@@ -3,9 +3,11 @@ import { useAchievements } from '../../Achievements';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../lib/voiced';
+import { useVoiced } from '../../../lib/useVoiced';
 import { readPad, typing } from '../../games/pad';
 import { keyDown, keyUp, moveOf, ownButton } from '../towns/keys';
-import { Travellers } from '../towns/TownHud';
+import { Bubble, QuestList, Stick, Travellers } from '../towns/TownHud';
 import { useTravellers } from '../towns/useTravellers';
 import {
   CAST,
@@ -14,6 +16,7 @@ import {
   GANDALF_LINES,
   HOLLOW,
   HUNT,
+  INSIDE_TEXT,
   LOBELIA,
   LOBELIA_LEN,
   LOBELIA_LINES,
@@ -23,8 +26,10 @@ import {
   RIDER_RETRY,
   RINGS,
   ROADS,
+  SAYS,
   SHOW,
   SIDE,
+  SPOKEN,
   SPOONS,
   SPOON_SPOTS,
   SPOTS,
@@ -75,8 +80,6 @@ const AT = 'tp-shire-at';
 const ACH = { maggot: 'mushrooms', rings: 'smokerings', party: 'fireworks', ring: 'secretsafe', rider: 'getoffroad' };
 const sounds = () => import('./sounds');
 const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id)).catch(() => null);
-// the lines the site has the films' own recordings of (lib/clips)
-const SPOKEN = { 'A wizard is never late, Frodo Baggins. Nor is he early. He arrives precisely when he means to.': 'wizardLate', 'What about second breakfast?': 'secondBreakfast', 'We’ve had one, yes. What about second breakfast?': 'secondBreakfast' };
 const sfx = () => import('../../../lib/sfx');
 const PROMPT = {
   rings: { name: 'The bench at Bag End', act: 'Sit with Gandalf' },
@@ -84,12 +87,6 @@ const PROMPT = {
   ring: { name: 'Bag End', act: 'Go in' },
   leave: { name: 'The East Road', act: 'On to Bree' },
   spoons: { name: 'Lobelia Sackville-Baggins', act: 'Race her for Bilbo’s spoons' },
-};
-const INSIDE_TEXT = {
-  envelope: { say: 'Bilbo has gone. On the mantelpiece is an envelope with your name on it.', act: 'Open it' },
-  fire: { say: 'A plain gold ring. Gandalf says, “Throw it in the fire.”', act: 'Throw it in the fire' },
-  letters: { say: 'Letters in a fiery script come up round the band, and Gandalf goes very still.', act: 'Take it out with the tongs' },
-  safe: { say: 'Gandalf: “Keep it secret. Keep it safe.”', act: null },
 };
 
 export default function ShireWorld({ onLeave }) {
@@ -159,7 +156,12 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const [list, setList] = useState(false);
   const lines = useRef({});
   const bubbleRef = useRef(null);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
+  const say = useCallback((text, bad = false, who = null) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, text);
+  }, []);
+  useEffect(() => stopVoiced, []);
   // timers for what comes a moment after an event; cleared if the world goes
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
@@ -254,7 +256,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       if (id === 'spoons') {
         s.spoons = newSpoons();
         sounds().then((x) => x.spoon());
-        say('“Bilbo’s hidden the good silver about Hobbiton, I know he has,” says Lobelia, and off she goes. Beat her to the spoons: two to a pocket, up to Bag End’s gate. Five home wins.');
+        say(SAYS.spoons.text, false, SAYS.spoons.who);
         setList(false);
         return undefined;
       }
@@ -544,7 +546,8 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         if (e.type === 'through') {
           a.fx('through', s.aim);
           sounds().then((x) => x.chime(e.hits));
-          say(['Through! Gandalf chuckles.', 'Through again! “Well, Frodo Baggins!”', ''][e.hits - 1] || 'Three!');
+          if (e.hits === 2) say(SAYS.through.text, false, SAYS.through.who);
+          else say(e.hits === 1 ? 'Through! Gandalf chuckles.' : 'Three!');
         } else if (e.type === 'won') {
           complete('rings');
           say('Three through his. Gandalf blows a little smoke ship that sails through yours.');
@@ -598,7 +601,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           say('Five of Bilbo’s spoons safe home. Lobelia sniffs, and says she never cared for them anyway.');
         } else if (e.type === 'lost') {
           s.spoons = null;
-          say('Two spoons in Lobelia’s bag, and that’s that. “Finders keepers,” she says. Ask her again, and she’ll “find” them back.', true);
+          say(SAYS.finders.text, true, SAYS.finders.who);
         }
       }
     }
@@ -636,7 +639,9 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         lines.current[talk] = n + 1;
         const line = pool[n % pool.length];
         setBubble({ id: talk, name: c ? c.name : lob ? 'Lobelia Sackville-Baggins' : 'Gandalf', line });
+        // the films' own recording, or the speaker's made voice (./voicelines.js)
         if (SPOKEN[line]) clip(SPOKEN[line]);
+        else sayVoiced(talk, line);
       } else setBubble(null);
     }
 
@@ -760,28 +765,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   };
 
   // the touch stick: drag from where you put your thumb
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   const travel = (q) => {
     const s = sim.current;
@@ -795,6 +779,8 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const here = hud.near ? PROMPT[hud.near] : null;
   const mode = hud.mode;
   const walking = mode === 'walk' || mode === 'rider';
+  const inside = mode === 'inside' ? INSIDE_TEXT[hud.step] : null;
+  useVoiced(inside?.who, inside?.who && inside.say); // Gandalf's words, in his voice (./voicelines.js)
   const count = done.length;
   const objective =
     mode === 'rider'
@@ -852,19 +838,14 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       )}
 
       {bubble && walking && (
-        <div ref={bubbleRef} className="shire-bubble" aria-live="polite">
-          <div>
-            <b>{bubble.name}</b>
-            <span>{bubble.line}</span>
-          </div>
-        </div>
+        <Bubble ref={bubbleRef} name={bubble.name} line={bubble.line} />
       )}
 
       {here && walking && (
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -953,69 +934,27 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       {mode === 'inside' && (
         <div className="shire-panel shire-panel-inside">
           <p className="shire-panel-title">Bag End</p>
-          <p className="shire-panel-say">{INSIDE_TEXT[hud.step]?.say}</p>
-          {INSIDE_TEXT[hud.step]?.act && (
+          <p className="shire-panel-say">{inside?.say}</p>
+          {inside?.act && (
             <button type="button" className="btn btn-primary btn-sm" disabled={!hud.ready} onClick={() => act()}>
-              {INSIDE_TEXT[hud.step].act}
+              {inside.act}
             </button>
           )}
         </div>
       )}
 
-      {walking && touch && (
-        <div className="shire-hud shire-hud-bottom">
-          <div className="shire-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} onLostPointerCapture={onStick} aria-hidden="true">
-            <span />
-          </div>
-        </div>
-      )}
+      {walking && touch && <Stick onMove={onStick} />}
 
       {list && (
-        <div className="shire-list" role="dialog" aria-label="Things to do in Hobbiton">
-          <div className="shire-list-head">
-            <p>Things to do</p>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setList(false)}>
-              Close
-            </button>
-          </div>
-          <ul>
-            {prog.quests.map((q) => (
-              <li key={q.id} data-done={q.done || undefined} data-open={q.open || undefined} data-next={q.id === prog.next || undefined}>
-                <span className="shire-seal" aria-hidden="true">
-                  {q.done ? '✓' : ''}
-                </span>
-                <div>
-                  <p className="shire-list-name">{q.name}</p>
-                  <p className="shire-list-sub">{q.open ? `${q.where}. ${q.blurb}` : q.locked}</p>
-                </div>
-                {q.open && !hud.spoons && (q.id !== 'rings' || prog.sky === 'day') && (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => travel(q)}>
-                    Go there
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-          <p className="shire-list-side">On the side</p>
-          <ul>
-            <li data-done={side || undefined} data-open data-side>
-              <span className="shire-seal" aria-hidden="true">
-                {side ? '✓' : ''}
-              </span>
-              <div>
-                <p className="shire-list-name">{SIDE.name}</p>
-                <p className="shire-list-sub">
-                  {SIDE.where}. {SIDE.blurb}
-                </p>
-              </div>
-              {!hud.spoons && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => travel(SIDE)}>
-                  Go there
-                </button>
-              )}
-            </li>
-          </ul>
-        </div>
+        <QuestList
+          title="Things to do in Hobbiton"
+          quests={prog.quests}
+          next={prog.next}
+          side={[{ ...SIDE, done: side }]}
+          onClose={() => setList(false)}
+          onGo={travel}
+          canGo={(q) => !hud.spoons && (q.id === SIDE.id || (q.open && (q.id !== 'rings' || prog.sky === 'day')))}
+        />
       )}
     </div>
   );

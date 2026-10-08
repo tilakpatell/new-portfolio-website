@@ -8,12 +8,19 @@ import { TRENCH, boundsAt, endRun, fireTorpedo, newRun, portZ, stepRun, toggleCo
 import { capturePointer } from '../../lib/pointer';
 import { use3D } from '../../lib/gpu';
 import { settle } from '../../lib/settle';
+import { sayVoiced } from '../../lib/voiced';
+import { speakerOf } from './voicelines';
 import '../../styles/lazy/deathstar.css';
 
 const sfx = () => import('../../lib/sfx');
-// the films' own lines, where the run says one the site has a recording of
+// the films' own lines, where the run says one the site has a recording of;
+// the rest in the speaker's own voice, where it's been made (lib/voiced.js)
 const SAID = { trench: 'stayOnTarget', vader: 'forceIsStrong' };
-const say = (key) => SAID[key] && import('../../lib/clips').then((c) => c.playClip(SAID[key]));
+const say = (key, text) => {
+  if (SAID[key]) return import('../../lib/clips').then((c) => c.playClip(SAID[key]));
+  const who = speakerOf(text);
+  return who ? sayVoiced(who, text) : null;
+};
 // The HUD writes in the site's language when language mode is on.
 const hudFamily = () => {
   const script = SCRIPTS[document.documentElement.dataset.script];
@@ -303,7 +310,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
             break;
           case 'away':
             unlock('trench');
-            onWin?.();
+            onWin?.({ force: e.force }); // (with the Force, Han has nothing to say down here: the page says it)
             message = e.text;
             changed = true;
             break;
@@ -313,11 +320,12 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
           case 'vader':
           case 'han':
             play('flyby');
-            say(e.type);
+            say(e.type, e.text);
             message = e.text;
             break;
           case 'r2':
             play('beeps');
+            say(e.type, e.text);
             message = e.text;
             changed = true;
             break;
@@ -325,7 +333,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
             changed = true;
             break;
           case 'say':
-            say(e.key);
+            say(e.key, e.text);
             message = e.text;
             changed = true;
             break;
@@ -336,6 +344,7 @@ export default function TrenchRun({ onWin, clock = null, over = null }) {
             break;
           case 'won':
           case 'lost': {
+            if (e.type === 'won') say(e.type, e.text); // (Han's, with the computer on)
             message = e.text;
             changed = true;
             const prev = best[g.level] ?? 0;

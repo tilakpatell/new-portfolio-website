@@ -8,6 +8,8 @@ import { UNIVERSES } from './universes';
 import { ORDER, keyStep } from './layout';
 import MiniMap from './MiniMap';
 import GuideCue from '../guide/GuideCue';
+import { askBrief } from '../tour/brief';
+import LoadingVeil from '../worlds/LoadingVeil';
 
 // The map: the 3D scene (scene.js and planets.js, through useScene) with the
 // planets' names as buttons over it. React renders the names once; the
@@ -50,6 +52,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const [footHint, setFootHint] = useState(false);
   // the place's name as you come down on a planet (landings.js)
   const [arrive, setArrive] = useState(null);
+  const [ride, setRide] = useState(null); // (on a hyperlane: the scene's word, lanePilot.js's rideLine)
   const [controls, setControlsState] = useState(() => readControls(local.get(CONTROLS_KEY)));
   const [settingsOpen, setSettingsOpen] = useState(false);
   const setControls = (c) => {
@@ -74,7 +77,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   );
   const events = useRef(onEvent);
   events.current = onEvent;
-  const { wrap, on, meant, view } = useScene(load, {
+  const { wrap, on, meant, view, status, progress } = useScene(load, {
     id: 'universe',
     near: '0px',
     props: {
@@ -104,6 +107,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
       onCrash,
       onEvent: (e) => {
         if (e.type === 'launch') setFlown(true);
+        if (e.type === 'ride') setRide(e.on ? e.line : null);
         if (e.type === 'landable') setLandable(e.id);
         if (e.type === 'phone' && e.what !== 'open') setPhoneNear(e.what === 'near');
         if (e.type === 'foot' && e.id === 'arrive') setArrive({ title: e.title, sub: e.sub, at: Date.now() });
@@ -124,6 +128,10 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     setFlown(false);
     setOnFoot(false);
   }, [ship]);
+  // the first flight's basics (components/tour), as the ship's under you
+  useEffect(() => {
+    if (ship && on) askBrief('/universe/fly');
+  }, [ship, on]);
   useEffect(() => {
     if (!arrive) return undefined;
     const t = setTimeout(() => setArrive(null), 6500);
@@ -193,11 +201,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     <div ref={wrap} className="universe-map" data-ship={ship || undefined} data-foot={onFoot || undefined}>
       {meant ? (
         <>
-          {!on && (
-            <p className="universe-loading" role="status">
-              Charting the universe…
-            </p>
-          )}
+          {/* (until the map is drawing: everything sent to the graphics chip first, so it flies smoothly from its first frame) */}
+          <LoadingVeil className="universe-loading" shown={!on} progress={status === 'preparing' ? progress.value : 0} step={status === 'preparing' ? progress.step : 'load'} title="Charting the universe" />
           <ul className="universe-labels" aria-label="Universes" onKeyDown={onKeyDown}>
             {UNIVERSES.map((u) => (
               <li key={u.id}>
@@ -261,6 +266,18 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-threat" />
                 <span className="universe-threat" />
                 <span className="universe-threat" />
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
                 <span className="universe-lead" />
                 <span className="universe-nav">
                   <i />
@@ -268,7 +285,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   <b className="universe-nav-dist" />
                 </span>
               </div>
-              <div ref={arms} className="universe-arms" aria-hidden="true">
+              <div ref={arms} className="universe-arms" aria-hidden="true" data-ride={ride ? '' : undefined}>
                 <span className="universe-arms-name" />
                 <span className="universe-arms-rack">
                   <i className="universe-arms-pip" />
@@ -285,6 +302,39 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                 <span className="universe-siege-state" />
               </div>
               <p ref={prompt} className="universe-prompt" aria-live="polite" />
+              {/* on a hyperlane, in place of the gun line: the tier and the lane, the
+                  node it's coming to and how soon, and the way off (or, at a junction,
+                  the way on); the keys are a keyboard's, so a touch screen doesn't show them,
+                  and the seconds (new twice a second) aren't read out, so a screen reader
+                  hears the line as it changes lane, not every tick of the count */}
+              {ride && (
+                <p className="universe-lane" role="status" data-tier={ride.tier}>
+                  <span className="universe-lane-head">
+                    <span className="universe-lane-tier">{ride.tier}</span>
+                    <b className="universe-lane-name">{ride.name}</b>
+                  </span>
+                  <span className="universe-lane-next">
+                    {ride.next} · <span className="universe-lane-eta" aria-hidden="true">{Math.max(0, Math.round(ride.eta))} s</span>
+                    <span className="universe-lane-keys">
+                      {' '}
+                      · Hold <kbd>S</kbd> to drop out
+                      {ride.junction && (
+                        <>
+                          , hold <kbd>W</kbd> to carry on
+                        </>
+                      )}
+                    </span>
+                  </span>
+                </p>
+              )}
+              {/* Rick's portal gun, in any ship: a portal ahead, to his dimension or home (gunPortal.js) */}
+              {!onFoot && ship && (
+                <button type="button" className="universe-portalgun" onPointerDown={(e) => (e.preventDefault(), view.current?.portalGun?.())} onContextMenu={(e) => e.preventDefault()} title="Rick’s portal gun: a portal ahead, to his dimension (or home)">
+                  <i className="universe-portalgun-swirl" aria-hidden="true" />
+                  <span className="universe-portalgun-label">Portal</span>
+                  <kbd aria-hidden="true">P</kbd>
+                </button>
+              )}
               {/* (hidden until the crew are down on a planet with a world: the scene says when, and what it's called) */}
               <button ref={enterBtn} type="button" className="universe-wayin" hidden onClick={() => view.current?.enter?.()}>
                 <span className="universe-wayin-label" />
@@ -363,7 +413,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
               {!flown && !onFoot && (
                 <p className="universe-hint universe-hint-fly">
                   <span className="universe-hint-keys">
-                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>R</kbd> weapons, <kbd>T</kbd> target, <kbd>V</kbd> cockpit, fly down into a planet’s air to land, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer (loop right over), <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>R</kbd> weapons, <kbd>T</kbd> target, <kbd>P</kbd> portal gun, <kbd>V</kbd> cockpit, fly down into a planet’s air to land, <kbd>H</kbd> hangar, <kbd>O</kbd> settings
                     <GuideCue />
                   </span>
                   <span className="universe-hint-touch">Drag anywhere to fly, the arrows to pull the nose up and down, hold Boost to go fast and Fire to shoot, View for the cockpit, and fly down into a planet’s air to land on it<GuideCue touch /></span>

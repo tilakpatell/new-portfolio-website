@@ -26,7 +26,7 @@ export const CREWS = [
       rick: { name: 'Rick', color: '#a8dcf0', voice: 'rick' },
       morty: { name: 'Morty', color: '#f5d33f', voice: 'morty' },
       meeseeks: { name: 'Mr. Meeseeks', color: '#7cc8ec', voice: 'morty' },
-      birdperson: { name: 'Birdperson', color: '#c98b52', voice: null },
+      birdperson: { name: 'Birdperson', color: '#c98b52', voice: 'birdperson' }, // (no blips: his own voice, where it's made)
     },
     // the Citadel's siege (siege.js): its shield, a generator going, the
     // core shrugging off the lasers, the whole thing going up, and back
@@ -305,6 +305,9 @@ export const CREWS = [
           ['comms', 'This isn’t over, Rick. It’s never over. I’ll see you soon.'],
           ['rick', 'She’ll be back, Morty. Tougher. They always come back tougher. It’s a whole thing.'],
         ],
+        bait: [['morty', 'Rick, she’s slowing down, why is she— oh no, oh no, she’s BEHIND us!'], ['rick', 'Yeah, Morty, that’s called a bait. I invented it.']],
+        search: [['comms', 'You can’t hide from the Federation forever, Rick.'], ['morty', 'She lost us! Keep the planet between us, Rick!']],
+        found: [['comms', 'There you are, Rick.'], ['rick', 'Aaand she found us. Great. Morty, hold onto something.']],
         leaving: [['morty', 'She’s gone, Rick. Are… are you okay?'], ['rick', 'I’m always okay, Morty. Shut up.']],
       },
       // Federation customs, pulling you over (an inspector: cut your engines and it scans you)
@@ -381,6 +384,8 @@ export const CREWS = [
           ['comms', 'Let’s call it a draw. For now.'],
           ['rick', 'He’ll be back, Morty. He always plans to be back.'],
         ],
+        search: [['comms', 'Lost me? I don’t get lost, Rick. I get patient.'], ['morty', 'He can’t see us, Rick. Keep it that way!']],
+        found: [['comms', 'There you are.'], ['rick', 'Yeah, yeah, he’s back, Morty. Guns.']],
       },
     },
     interdicted: [
@@ -592,6 +597,35 @@ export const CREWS = [
         ['morty', 'Rick! Rocks! A lot of rocks!'],
         ['rick', 'Meteor stream, Morty. Shoot the big ones, dodge the rest, don’t cry about it.'],
       ],
+      // a minefield across the way (minefield.js), and a ship to see to the
+      // next place with pirates after it (escort.js): asked, the pirates
+      // coming, there, and lost
+      minefield: [
+        ['morty', 'Rick! Those are mines! Space mines, Rick!'],
+        ['rick', 'Gromflomite minefield, Morty. Shoot a hole or thread the needle. Just don’t bump anything.'],
+      ],
+      // a moon across the sun (eclipse.js), the light going and coming back
+      eclipse: [
+        ['morty', 'Rick, it’s getting dark. Something’s in front of the sun!'],
+        ['rick', 'Eclipse, Morty. A moon. Rocks blocking other, bigger, on-fire rocks. Don’t stare at it.'],
+      ],
+      escort: [
+        ['comms', 'Hey, uh, you in the cruiser? Could you see us to the next stop? Gromflomites have been following us.'],
+        ['morty', 'Rick, we should help them.'],
+        ['rick', 'Fine. Escort duty, Morty. The most boring way there is to get shot at.'],
+      ],
+      escortPirates: [
+        ['morty', 'Rick, here they come! They’re going for the saucer!'],
+        ['rick', 'So keep them off it, Morty. If it blows up we did all this flying for nothing.'],
+      ],
+      escorted: [
+        ['comms', 'We made it! Thank you, thank you, squanch you!'],
+        ['rick', 'Yeah, yeah. Tip your escort.'],
+      ],
+      escortLost: [
+        ['morty', 'Oh no. Oh geez, Rick, they got them.'],
+        ['rick', 'Yeah. Sometimes you lose one, Morty. Let’s go.'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (the Cromulon), a shot into it
       flare: [
@@ -606,6 +640,22 @@ export const CREWS = [
         ['morty', 'Where are we, Rick? Where did it put us?'],
         ['rick', 'Somewhere else, Morty. That’s what rifts do. Check the map if you care.'],
       ],
+      // Rick's portal gun out of the cruiser (P: gunPortal.js), on his
+      // dimension from home or on home from there, and coming out of it
+      portalgun: {
+        out: [
+          ['morty', 'Rick, wh-why are you pointing the portal gun out the window? We’re driving!'],
+          ['rick', 'Scenic route, Morty. My dimension. Fly into the green thing before it closes.'],
+        ],
+        home: [['rick', 'Seen enough? Portal home, Morty. Fly through it, it doesn’t wait.']],
+      },
+      gunThrough: {
+        rickmorty: [
+          ['morty', 'Whoa… Rick, where are we? Is that planet moving?'],
+          ['rick', 'Everything here moves, Morty. The Central Finite Curve: every world where I’m the smartest man in it. That’s the Citadel past it. Don’t touch anything.'],
+        ],
+        main: [['morty', 'Oh, thank God. Home. Well, home-home. You know what I mean.']],
+      },
       leviathan: [
         ['comms', 'SHOW ME WHAT YOU GOT!'],
         ['morty', 'Oh no. Oh no, Rick, it’s a Cromulon!'],
@@ -637,6 +687,18 @@ export const CREWS = [
       citadel: [
         ['morty', 'The Citadel of Ricks!'],
         ['rick', 'A whole city of me, Morty. Worst place in the multiverse.'],
+      ],
+      rmportal: [
+        ['morty', 'Rick, there’s a portal just… hanging out here in space!'],
+        ['rick', 'That’s the back door to the Curve, Morty. Fly in, we come out at the Citadel. Try not to make eye contact with anyone who looks like me.'],
+      ],
+      'rmportal-back': [
+        ['morty', 'Is that the way home?'],
+        ['rick', 'Home-ish, Morty. Our dimension’s side of the map. Close enough.'],
+      ],
+      curvesun: [
+        ['morty', 'Rick, wh-why does this sun look kinda green?'],
+        ['rick', 'Everything in the Curve’s a little off, Morty. We built it that way. Well, they did. Me. Other me.'],
       ],
       maw: [
         ['morty', 'Rick, why’s the light all bendy?'],
@@ -997,6 +1059,9 @@ export const CREWS = [
           ['comms', 'Enough. You will come to me, young Skywalker. It is your destiny.'],
           ['luke', 'He’s breaking off! Artoo, I don’t think he’s done with us.'],
         ],
+        bait: [['luke', 'He’s slowing down… he’s letting me pass him! Artoo, break—'], ['r2', '[a shriek: he’s behind you]']],
+        search: [['comms', 'You cannot hide forever, Skywalker.'], ['luke', 'He’s lost us behind the moon. Keep it between us, Artoo.']],
+        found: [['comms', 'There you are.'], ['luke', 'He’s found us! Hold on!']],
         leaving: [['r2', '[a long, relieved whistle]'], ['luke', 'He’ll be back. I know it.']],
       },
       // Imperial customs, pulling you over (an inspector: cut your engines and it scans you)
@@ -1260,6 +1325,30 @@ export const CREWS = [
         ['r2', '[Meteor stream ahead. Recommend evasive action.]'],
         ['luke', 'I see them, Artoo. Just like Beggar’s Canyon.'],
       ],
+      minefield: [
+        ['r2', '[an urgent string of beeps]'],
+        ['luke', 'A minefield. Artoo, mark the gaps. I’ll shoot us a way through.'],
+      ],
+      eclipse: [
+        ['luke', 'Artoo, the light’s going. A moon’s crossing the sun.'],
+        ['r2', '[a low, wondering whistle]'],
+      ],
+      escort: [
+        ['comms', 'Red Five, this is the transport Sundari Dawn. We’re carrying medical supplies for the fleet. Can you see us to the next system?'],
+        ['luke', 'Copy, Sundari Dawn. Stay on my wing.'],
+      ],
+      escortPirates: [
+        ['r2', '[a frantic warble]'],
+        ['luke', 'Pirates, closing on the transport. I’m going in.'],
+      ],
+      escorted: [
+        ['comms', 'We’re clear to make the jump. Thank you, Red Five. May the Force be with you.'],
+        ['luke', 'And with you. Safe journey.'],
+      ],
+      escortLost: [
+        ['luke', 'No! We lost the transport.'],
+        ['r2', '[a long, low whistle]'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil), a shot into it
       flare: [
@@ -1274,6 +1363,21 @@ export const CREWS = [
         ['luke', 'Artoo, where are we?'],
         ['r2', '[Recalculating. Somewhere new. Nav computer updated.]'],
       ],
+      // a portal gun of Rick's, left in the cockpit (P: gunPortal.js)
+      portalgun: {
+        out: [
+          ['luke', 'Artoo, what is this? It was under the seat. A blaster that shoots… doors?'],
+          ['r2', '[An alarmed warble: a portal is forming ahead. It leads to another dimension.]'],
+        ],
+        home: [['luke', 'That’s enough of this place. The green door home, Artoo.']],
+      },
+      gunThrough: {
+        rickmorty: [
+          ['luke', 'Artoo… that planet’s moving. The whole thing. And look at that station.'],
+          ['r2', '[A worried trill: sensors say the Central Finite Curve. Many Ricks. Proceed with caution.]'],
+        ],
+        main: [['luke', 'We’re back. Artoo, remind me never to touch that thing again.']],
+      },
       leviathan: [
         ['luke', 'Artoo, look at the size of them. Purrgil. I’ve only heard stories.'],
         ['r2', '[Purrgil pod. Hold your course. Let them pass.]'],
@@ -1297,6 +1401,18 @@ export const CREWS = [
       citadel: [
         ['luke', 'A whole city out here, full of… the same old man?'],
         ['r2', '[a confused warble]'],
+      ],
+      rmportal: [
+        ['luke', 'A green whirlpool, just hanging in space. Artoo, is that a hyperspace lane?'],
+        ['r2', '[a doubtful warble]'],
+      ],
+      'rmportal-back': [
+        ['luke', 'The green swirl again. That should take us back the way we came.'],
+        ['r2', '[a hopeful whistle]'],
+      ],
+      curvesun: [
+        ['luke', 'This star’s light is… greener than Tatooine’s twins.'],
+        ['r2', '[an unimpressed beep]'],
       ],
       maw: [
         ['luke', 'A black hole. Keep us well clear, Artoo.'],
@@ -1630,6 +1746,9 @@ export const CREWS = [
           ['comms', 'Another time, Captain. We will meet again. Count on it.'],
           ['han', 'He’s running. Vader’s running! Chewie, remember this moment.'],
         ],
+        bait: [['han', 'He’s stalling! Chewie, he WANTS us to overshoot—'], ['chewie', '[a roar, too late]']],
+        search: [['comms', 'Running does not become you, Captain Solo.'], ['han', 'He’s lost us. Keep that moon between us, pal.']],
+        found: [['comms', 'There you are.'], ['han', 'He’s on us again. Of course he is.']],
         leaving: [['chewie', '[a long, relieved moan]'], ['han', 'Yeah. Me too, pal.']],
       },
       // Imperial customs, pulling you over (an inspector: cut your engines and it scans you)
@@ -1893,6 +2012,33 @@ export const CREWS = [
         ['chewie', '[A roar: rocks ahead!]'],
         ['han', 'I see them. Never tell me the odds, Chewie.'],
       ],
+      minefield: [
+        ['chewie', '[an alarmed roar]'],
+        ['han', 'Mines. Somebody went to a lot of trouble. Hold on, Chewie, I’m threading it.'],
+      ],
+      eclipse: [
+        ['han', 'Huh. Eclipse. Moon right across the sun.'],
+        ['chewie', '[a quiet, impressed rumble]'],
+        ['han', 'Yeah, it’s pretty. Don’t get sentimental on me.'],
+      ],
+      escort: [
+        ['comms', 'Falcon, this is the freighter Kessa Run. Pirates on our tail. We’ll pay you to see us to the next port.'],
+        ['han', 'Now you’re talking.'],
+        ['chewie', '[a pleased grunt]'],
+      ],
+      escortPirates: [
+        ['han', 'Here they come. Chewie, keep ’em off that freighter, that’s our money!'],
+        ['chewie', '[a battle roar]'],
+      ],
+      escorted: [
+        ['comms', 'We made it. Sending the credits now, Falcon. Thanks.'],
+        ['han', 'Pleasure doing business.'],
+      ],
+      escortLost: [
+        ['han', 'We lost ’em. There goes the fee.'],
+        ['chewie', '[a mournful moan]'],
+        ['han', 'Yeah, I know. Them too.'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil), a shot into it
       flare: [
@@ -1908,6 +2054,24 @@ export const CREWS = [
         ['han', 'See? Told you. We’re… somewhere.'],
         ['chewie', '[A long, unimpressed groan.]'],
       ],
+      // a portal gun of Rick's, won in a card game (P: gunPortal.js)
+      portalgun: {
+        out: [
+          ['han', 'Won this off some old guy in a sabacc game. Says it opens a shortcut. Let’s find out.'],
+          ['chewie', '[A worried howl: that is not a blaster.]'],
+        ],
+        home: [['han', 'All right, sightseeing’s over. Door home. Punch it, Chewie.']],
+      },
+      gunThrough: {
+        rickmorty: [
+          ['chewie', '[A bewildered growl: where are we?]'],
+          ['han', 'Never seen this sector. Never seen a planet do that, either. I don’t like it.'],
+        ],
+        main: [
+          ['han', 'Home. See? I know exactly what I’m doing.'],
+          ['chewie', '[A sceptical rumble.]'],
+        ],
+      },
       leviathan: [
         ['chewie', '[An awed howl: purrgil!]'],
         ['han', 'Purrgil. Easy, Chewie. They jump to lightspeed on their own. Let’s not give them a reason.'],
@@ -1923,6 +2087,9 @@ export const CREWS = [
         ['han', 'Yeah. I see them. Ships don’t end up like that by accident, Chewie.'],
       ],
       citadel: [['han', 'A station full of the same crazy old guy. I’ve seen worse cantinas.']],
+      rmportal: [['han', 'Green swirly thing. I’ve flown through worse. Probably.']],
+      'rmportal-back': [['han', 'There’s our way out. Chewie, punch it.']],
+      curvesun: [['han', 'Green sun. Whatever this place is, it isn’t on any of my charts.']],
       maw: [['han', 'Black hole. Even the Falcon can’t outrun that.']],
       aurelia: [['han', 'Big planet. Probably full of smugglers.']],
       glacia: [['han', 'I’ve had enough ice planets for one lifetime.']],
@@ -2291,6 +2458,9 @@ export const CREWS = [
           ['jesse', 'He’s bailing! Yo, he’s bailing!'],
           ['walt', 'He’ll be back. Angrier. They always are.'],
         ],
+        bait: [['jesse', 'Yo, he’s slowing down! Mr. White, go past— no, wait, DON’T—'], ['walt', 'He’s behind us. Jesse, hold on.']],
+        search: [['comms', 'HEISENBERG! Where you at, Heisenberg? You can’t hide from Tuco!'], ['jesse', 'He lost us. Stay behind the rock, yo. Stay behind the rock.']],
+        found: [['comms', 'THERE you are!'], ['walt', 'He’s seen us. Jesse. Jesse!']],
         leaving: [['jesse', 'He’s gone. Oh man. Oh man, Mr. White.'], ['walt', 'Breathe, Jesse.']],
       },
       // Hank, pulling you over (an inspector: cut your engines and he scans you)
@@ -2579,6 +2749,31 @@ export const CREWS = [
         ['jesse', 'Yo, Mr. White, rocks! Big ones!'],
         ['walt', 'A meteor stream, Jesse. Shoot what you can’t steer round.'],
       ],
+      minefield: [
+        ['jesse', 'Yo, Mr. White, are those mines? Who puts mines in space?'],
+        ['walt', 'Someone who doesn’t want to be followed. Shoot them, Jesse, or go round.'],
+      ],
+      eclipse: [
+        ['jesse', 'Yo, the sun’s going out. Mr. White, the sun’s going out!'],
+        ['walt', 'It’s an eclipse, Jesse. A moon is passing in front of it. Totality lasts a few seconds. Just watch.'],
+      ],
+      escort: [
+        ['comms', 'This is a Madrigal freighter. Our shipment has to reach the next stop, and Jack’s boys know about it. Can you ride along?'],
+        ['walt', 'We’ll see it there.'],
+        ['jesse', 'Since when do we do security?'],
+      ],
+      escortPirates: [
+        ['jesse', 'Mr. White, they’re on the freighter!'],
+        ['walt', 'Then get them off it.'],
+      ],
+      escorted: [
+        ['comms', 'Shipment’s through. Madrigal appreciates your discretion.'],
+        ['walt', 'Tell no one.'],
+      ],
+      escortLost: [
+        ['jesse', 'They got the freighter, man.'],
+        ['walt', 'Then we were never here.'],
+      ],
       // the director's other happenings: a star flaring, a rift (and going
       // through one), something enormous passing (purrgil or a Cromulon), a shot into it
       flare: [
@@ -2593,6 +2788,21 @@ export const CREWS = [
         ['jesse', 'Where are we, Mr. White?'],
         ['walt', 'Somewhere else, Jesse. Check the map.'],
       ],
+      // a portal gun of Rick's, left in the RV (P: gunPortal.js)
+      portalgun: {
+        out: [
+          ['jesse', 'Yo, Mr. White, there’s a green sci-fi gun in the glovebox. Some old dude with spiky hair left it at the car wash.'],
+          ['walt', 'Then point it ahead of us, Jesse. Carefully. Let’s see what it does.'],
+        ],
+        home: [['walt', 'We’ve seen enough. Open it again, Jesse. We’re going home.']],
+      },
+      gunThrough: {
+        rickmorty: [
+          ['jesse', 'Yo, yo, yo… where are we? That planet is moving, Mr. White!'],
+          ['walt', 'Another dimension, Jesse. Stay in the RV. Touch nothing.'],
+        ],
+        main: [['jesse', 'Okay. Okay, we’re back. I’m never touching that gun again, yo.']],
+      },
       leviathan: {
         bear: [
           ['jesse', 'Mr. White… it’s the bear. The pink bear. The one with the eye.'],
@@ -2632,6 +2842,18 @@ export const CREWS = [
       citadel: [
         ['jesse', 'A whole city of the same old dude?'],
         ['walt', 'Imagine their supply chain.'],
+      ],
+      rmportal: [
+        ['jesse', 'Mr. White, there’s a big green hole in the sky.'],
+        ['walt', 'Then we go through it, Jesse. Carefully.'],
+      ],
+      'rmportal-back': [
+        ['jesse', 'Is that the green hole home?'],
+        ['walt', 'Back to our side of things. Yes.'],
+      ],
+      curvesun: [
+        ['jesse', 'Yo, the sun is green. Like, actually green.'],
+        ['walt', 'A different spectrum entirely. Different chemistry, Jesse.'],
       ],
       maw: [
         ['walt', 'A black hole, Jesse. Not even light gets out.'],

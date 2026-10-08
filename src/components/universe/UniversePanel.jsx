@@ -11,6 +11,7 @@ import { paintById } from './paint';
 import { next, prev } from './layout';
 import { byId } from './universes';
 import Face from './Faces';
+import { useTouring } from '../tour/useTouring';
 import ModelCredits from '../ModelCredits';
 
 // Beside the map (a bottom sheet on a phone). With nothing selected: the
@@ -22,9 +23,24 @@ import ModelCredits from '../ModelCredits';
 // sees it change size and moves the planets into the space it leaves.
 // `onNav` opens the nav map (NavMap.jsx): everywhere, and how to get there.
 
+// A moon of the Rick and Morty sector's own card: a place from the show,
+// and going in takes you into it (not the crew's card, whose portal gun toy
+// and way to C-137 aren't the way into this one).
+function MoonCard({ moon }) {
+  return (
+    <li className="fun-card">
+      <div className="flex flex-1 flex-col p-5 sm:p-6">
+        <h3 className="stretch-semi text-xl font-semibold text-ink">{moon.label}</h3>
+        <p className="mt-1 text-sm text-muted">Rick and Morty</p>
+        <p className="mt-3 text-[0.95rem] leading-relaxed text-body">A planet from the show. Land on it and you’re straight into it, on foot as Morty, with something to do there; its own portal brings you back out to space.</p>
+      </div>
+    </li>
+  );
+}
+
 function Ships({ ship, onShip }) {
   return (
-    <div className="universe-ships" role="group" aria-label="Pick a ship">
+    <div className="universe-ships" data-tour="ships" role="group" aria-label="Pick a ship">
       {CREWS.map((c) => (
         <button key={c.id} type="button" className="universe-ship" aria-pressed={ship === c.id} onClick={() => onShip(c.id)}>
           <span className="universe-ship-faces" aria-hidden="true">
@@ -118,7 +134,10 @@ function Exits({ onClassic }) {
   );
 }
 
-export default function UniversePanel({ universe, wonder = null, onFly = null, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onClassic, tucked = false, onTuck, onNav }) {
+export default function UniversePanel({ universe, wonder = null, onFly = null, onSelect, onEnter, onWhole, leaving, ship, loadout, onShip, onHangar, onClassic, tucked: tuckedAsked = false, onTuck, onNav }) {
+  // (out of hiding while a tour runs: its stops are on it)
+  const touring = useTouring();
+  const tucked = tuckedAsked && !touring;
   const [changing, setChanging] = useState(false);
   const crew = crewById(ship);
   // a press on hide or show unmounts the button pressed: the focus goes on
@@ -137,7 +156,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
 
   if (tucked) {
     return (
-      <aside ref={panel} className="universe-panel" aria-label={universe ? universe.label : 'About the map'} data-tucked="">
+      <aside ref={panel} className="universe-panel" data-tour="panel" aria-label={universe ? universe.label : 'About the map'} data-tucked="">
         <button type="button" className="universe-untuck" onClick={() => toggle(false)} aria-expanded="false">
           <span className="eyebrow truncate" style={universe ? { color: universe.accent } : undefined}>
             {universe ? universe.label : 'The universe'}
@@ -154,14 +173,14 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
   // a wonder, from a link out to it (/universe/aurelia): what it is, and the way there
   if (!universe && wonder) {
     return (
-      <aside ref={panel} className="universe-panel" aria-label={wonder.name}>
+      <aside ref={panel} className="universe-panel" data-tour="panel" aria-label={wonder.name}>
         {onTuck && <Tuck onTuck={toggle} />}
         <div className="universe-links flex flex-wrap items-center gap-x-4 gap-y-1">
           <button type="button" className="universe-back" onClick={onWhole}>
             <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
           </button>
           {onNav && (
-            <button type="button" className="universe-back" onClick={onNav}>
+            <button type="button" className="universe-back" data-tour="navmap" onClick={onNav}>
               <RiCompass3Line className="h-3.5 w-3.5" aria-hidden="true" /> Nav map
             </button>
           )}
@@ -186,12 +205,12 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
 
   if (!universe) {
     return (
-      <aside ref={panel} className="universe-panel" aria-label="About the map">
+      <aside ref={panel} className="universe-panel" data-tour="panel" aria-label="About the map">
         {onTuck && <Tuck onTuck={toggle} />}
         <p className="eyebrow">The universe</p>
         <h2 className="universe-title">My whole site, as a universe</h2>
         {onNav && (
-          <button type="button" className="btn btn-ghost btn-sm universe-nav-open mt-4" onClick={onNav}>
+          <button type="button" className="btn btn-ghost btn-sm universe-nav-open mt-4" data-tour="navmap" onClick={onNav}>
             <RiCompass3Line className="h-4 w-4" aria-hidden="true" /> Open the nav map
           </button>
         )}
@@ -218,7 +237,7 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
           </>
         ) : (
           <>
-            <p className="mt-3 text-sm leading-relaxed">
+            <p className="mt-3 text-sm leading-relaxed" data-tour="ships">
               You’re flying {crew.ship.replace(/^(The|An) /, (m) => m.toLowerCase())} with {crew.label}. Fly close to a station or a planet to see what’s there, or pick one by name and the ship takes
               you.
             </p>
@@ -277,19 +296,20 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
       </aside>
     );
   }
-  const Card = CARDS[universe.id] ?? STATION_CARDS[universe.id];
+  // (a moon of the Rick and Morty sector has a card of its own: MoonCard)
+  const Card = universe.kind === 'moon' ? MoonCard : (CARDS[universe.id] ?? STATION_CARDS[universe.id] ?? null);
   const core = universe.kind === 'core';
   const before = byId(prev(universe.id));
   const after = byId(next(universe.id));
   return (
-    <aside ref={panel} className="universe-panel" aria-label={universe.label}>
+    <aside ref={panel} className="universe-panel" data-tour="panel" aria-label={universe.label}>
       {onTuck && <Tuck onTuck={toggle} />}
       <div className="universe-links flex flex-wrap items-center gap-x-4 gap-y-1">
         <button type="button" className="universe-back" onClick={onWhole}>
           <RiArrowGoBackLine className="h-3.5 w-3.5" aria-hidden="true" /> The whole map
         </button>
         {onNav && (
-          <button type="button" className="universe-back" onClick={onNav}>
+          <button type="button" className="universe-back" data-tour="navmap" onClick={onNav}>
             <RiCompass3Line className="h-3.5 w-3.5" aria-hidden="true" /> Nav map
           </button>
         )}
@@ -308,9 +328,11 @@ export default function UniversePanel({ universe, wonder = null, onFly = null, o
       <button type="button" className="btn btn-primary universe-enter mt-4" onClick={onEnter} disabled={leaving}>
         {crew ? (universe.go ?? (core ? 'Dock at' : 'Land on')) : 'Go to'} {universe.place} <RiArrowRightLine className="h-4 w-4" aria-hidden="true" />
       </button>
-      <ul className="universe-card mt-4" key={universe.id}>
-        <Card />
-      </ul>
+      {Card && (
+        <ul className="universe-card mt-4" key={universe.id}>
+          <Card moon={universe} />
+        </ul>
+      )}
       <Exits onClassic={onClassic} />
     </aside>
   );

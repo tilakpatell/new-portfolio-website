@@ -52,6 +52,7 @@ export function makeHdMario(template) {
   return {
     root,
     figure: fig,
+    leg: fig.hipHeight, // (for ../motion.js's stride)
     hands: [fig.bones.handL, fig.bones.handR],
     apply(p) {
       hips.rotation.set(p.joints.hips[0], p.joints.hips[1], p.joints.hips[2]);

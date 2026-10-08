@@ -1,15 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, KINDS, chartAt, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, findDestination, goalOf, parkFor, parseDrive, riftExit, riftSpot, tourFrom, tripTime, TOUR_IDS } from './nav';
-import { GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, inTrench, orbiting, spawn, startAt, step } from './ship';
-import { ORDER } from './layout';
+import { CHART_VIEWS, DESTINATIONS, DRIVES, HYPER, KINDS, TRANSIT, chartAt, legOf, portalBetween, tourIdsIn, viewFor, chartHeading, destinationById, distanceTo, findDestinations, formatDistance, formatTime, hyperState, onChart, findDestination, goalOf, parkFor, parseDrive, riftExit, riftSpot, tourFrom, tripTime, TOUR_IDS } from './nav';
+import { GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, inTrench, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { ORDER, SECTORS, sectorOf } from './layout';
+import { portalHit, transit } from './portals';
 import { WONDERS } from './deep';
 import { MAW } from './maw';
-import { byId } from './universes';
+import { byId, MOONS } from './universes';
 import { sunFor } from './lighting';
 
 const inside = (s) => SOLIDS.some((p) => Math.hypot(s.x - p.at[0], s.y - p.at[1], s.z - p.at[2]) < (inTrench(p, s.x, s.y, s.z) ? p.band.floor : p.r) + SHIP.radius - 1e-6);
-const worlds = ORDER.filter((id) => byId(id).kind !== 'core');
+const worlds = [...ORDER.filter((id) => byId(id).kind !== 'core'), ...MOONS.map((m) => m.id)];
 const stations = ORDER.filter((id) => byId(id).kind === 'core');
+// (a place in the Rick and Morty sector is flown to from the Citadel: the
+// main map's edge turns the ship back long before it; the portal comes next)
+const inMain = (id) => destinationById(id).sector === 'main';
+const RM = SECTORS.rickmorty.origin;
+const startFor = (id) => (inMain(id) ? spawn('home') : { ...spawn(null), ...parkAt(id === 'citadel' ? 'curvesun' : 'citadel', [RM[0], RM[2] + 500]), speed: 0 });
 
 // flown there by the autopilot on `od` of overdrive: how long it took, the
 // top speed, and anything it hit or went into on the way
@@ -81,10 +87,29 @@ describe('where there is to go', () => {
 });
 
 describe('the drives', () => {
-  it('keeps the drive picked, and falls back to super speed for anything else', () => {
+  it('keeps the drive picked, and falls back to the lanes for anything else', () => {
     for (const d of DRIVES) expect(parseDrive(d.id)).toBe(d.id);
-    expect(parseDrive(undefined)).toBe('super');
-    expect(parseDrive('warp')).toBe('super');
+    expect(parseDrive(undefined)).toBe('lanes');
+    expect(parseDrive('warp')).toBe('lanes');
+    expect(parseDrive('nonsense')).toBe('lanes');
+  });
+
+  it('has the lanes first, the everyday way, and the hyperdrive slow to charge', () => {
+    expect(DRIVES[0]).toMatchObject({ id: 'lanes', name: 'Hyperlanes', verb: 'Take the lanes', about: 'The autopilot takes the lanes, riding with the traffic. You fly the whole way and can pull out any time.' });
+    expect(HYPER.recharge).toBe(30);
+  });
+
+  it('times a trip by the lanes from the route, quicker than super speed out to the furthest world', () => {
+    const from = spawn(null);
+    const far = worlds.filter(inMain).reduce((a, b) => (Math.hypot(...destinationById(a).at) > Math.hypot(...destinationById(b).at) ? a : b));
+    const lanes = tripTime(from, far, 'lanes');
+    expect(lanes).toBeLessThan(40);
+    expect(lanes).toBeLessThan(tripTime(from, far, 'super'));
+    // (Review Focus 4: a hop between two home stations is the autopilot of today's: the same time as super speed)
+    const home = { ...spawn('home'), speed: 0 };
+    expect(tripTime(home, 'projects', 'lanes')).toBe(tripTime(home, 'projects', 'super'));
+    // and through the portal: by the lanes to it, on from the far end at super speed
+    expect(tripTime(from, MOONS[0].id, 'lanes')).toBeGreaterThan(0);
   });
 
   it('lets the hyperdrive jump once it has charged, and never while interdicted', () => {
@@ -96,20 +121,20 @@ describe('the drives', () => {
 
   it('gets to every world on super speed in well under the time cruising takes, without touching anything', () => {
     for (const id of worlds) {
-      const cruise = fly(spawn('home'), id, 1);
-      const quick = fly(spawn('home'), id, OVERDRIVE);
+      const cruise = fly(startFor(id), id, 1);
+      const quick = fly(startFor(id), id, OVERDRIVE);
       expect(quick.done, id).toBe(true);
       expect(quick.hits, id).toBe(0);
       expect(orbiting(quick.s, null), id).toBe(id);
       expect(quick.t, id).toBeLessThan(cruise.t * 0.65);
-      expect(quick.t, id).toBeLessThan(15);
-      if (id !== 'starwars') expect(quick.top, id).toBeGreaterThan(SHIP.pulse * 2); // (well past the pulse drive; the gate's close to home)
+      expect(quick.t, id).toBeLessThan(40); // (34 s to the Caribbean, the furthest, since the spread: scale.js's SPREAD; under 20 before)
+      if (id !== 'starwars') expect(quick.top, id).toBeGreaterThan(SHIP.pulse * (inMain(id) ? 2 : 1)); // (well past the pulse drive; the gate's close to home, and the sector's first worlds to the Citadel)
     }
   });
 
   it('flies out to every wonder on super speed, and from world to world all the way round, without touching anything', () => {
     for (const w of WONDERS.filter((w) => w.id !== MAW.id)) {
-      const r = fly(spawn('home'), w.id, OVERDRIVE);
+      const r = fly(startFor(w.id), w.id, OVERDRIVE);
       expect(r.done, w.id).toBe(true);
       expect(r.hits, w.id).toBe(0);
     }
@@ -131,7 +156,7 @@ describe('the drives', () => {
     // flying out at super speed, then let go of the autopilot (no overdrive)
     let s = spawn('home');
     const park = parkFor('invincible', [s.x, s.z]);
-    for (let t = 0; t < 4; t += 1 / 60) s = step(s, autopilot(s, 'invincible', park, undefined, OVERDRIVE).input, 1 / 60).ship;
+    for (let t = 0; t < 7; t += 1 / 60) s = step(s, autopilot(s, 'invincible', park, undefined, OVERDRIVE).input, 1 / 60).ship;
     expect(s.speed).toBeGreaterThan(SHIP.pulse * 2);
     for (let t = 0; t < 2; t += 1 / 60) s = step(s, { throttle: 1, boost: true }, 1 / 60).ship;
     expect(s.speed).toBeLessThanOrEqual(SHIP.pulse + 1);
@@ -159,7 +184,8 @@ describe('the drives', () => {
 describe('the chart', () => {
   it('puts the sun in the middle and everything on it, further out the further away', () => {
     expect(chartAt(0, 0)).toEqual([0.5, 0.5]);
-    for (const d of DESTINATIONS) expect(onChart(chartAt(d.at[0], d.at[2])), d.id).toBe(true);
+    for (const d of DESTINATIONS.filter((x) => x.sector === 'main')) expect(onChart(chartAt(d.at[0], d.at[2])), d.id).toBe(true);
+    for (const d of DESTINATIONS) expect(sectorOf(...d.at), d.id).toBe(d.sector);
     const r = (id) => {
       const d = destinationById(id);
       const [u, v] = chartAt(d.at[0], d.at[2]);
@@ -237,6 +263,15 @@ describe('a rift', () => {
     expect(seen.has('aurelia')).toBe(true);
     expect(seen.has('home')).toBe(true);
   });
+
+  it('takes you somewhere you haven’t been, while there is somewhere left', () => {
+    const all = [...new Set(Array.from({ length: 4000 }, (_, i) => riftExit(null, () => (i + 0.5) / 4000)))];
+    expect(all.length).toBeGreaterThan(5);
+    const [left, ...been] = all;
+    for (let i = 0; i < 50; i++) expect(riftExit(been[0], () => i / 50, 'main', new Set(been))).toBe(left);
+    // (been everywhere: anywhere but here)
+    for (let i = 0; i < 50; i++) expect(riftExit(been[0], () => i / 50, 'main', new Set(all))).not.toBe(been[0]);
+  });
 });
 
 describe('the galaxy’s systems, through the gate', () => {
@@ -290,7 +325,10 @@ describe('the grand tour', () => {
     const s = spawn(null);
     const tour = tourFrom(s);
     expect(new Set(tour).size).toBe(tour.length);
-    expect(tour.sort()).toEqual([...TOUR_IDS].sort());
+    // (the places in its own sector: the Rick and Morty sector's are through the portal)
+    expect(tour.sort()).toEqual(tourIdsIn('main').sort());
+    expect(tourIdsIn('main').length + tourIdsIn('rickmorty').length).toBe(TOUR_IDS.length);
+    expect(tourIdsIn('rickmorty')).toContain('citadel');
     const first = tourFrom(s)[0];
     const nearest = TOUR_IDS.reduce((a, b) => (distanceTo(s, a) <= distanceTo(s, b) ? a : b));
     expect(first).toBe(nearest);
@@ -313,5 +351,81 @@ describe('coming out of a jump', () => {
       const k = parkFor(id, behind);
       expect((k.x - g.at[0]) * s[0] + (k.z - g.at[2]) * s[2], id).toBeGreaterThanOrEqual(-1e-6);
     }
+  });
+});
+
+describe('across the sectors', () => {
+  const home = () => spawn('home');
+  it('goes to a place in the other sector through the portal between them', () => {
+    expect(portalBetween('main', 'rickmorty').id).toBe('rmportal');
+    expect(portalBetween('rickmorty', 'main').id).toBe('rmportal-back');
+    expect(portalBetween('main', 'main')).toBeNull();
+    expect(legOf(home(), 'gazorpazorp')).toBe('rmportal');
+    expect(legOf(home(), 'citadel')).toBe('rmportal');
+    expect(legOf(home(), 'marvel')).toBe('marvel');
+    expect(legOf(home(), 'sys:hoth')).toBe('starwars'); // (a system: its gate, in this sector)
+    const there = startFor('gazorpazorp');
+    expect(legOf(there, 'gazorpazorp')).toBe('gazorpazorp');
+    expect(legOf(there, 'marvel')).toBe('rmportal-back');
+    expect(legOf(there, 'home')).toBe('rmportal-back');
+  });
+
+  it('a pilot goal in the other sector goes by the portal', () => {
+    // (where they are says which sector: their pose, not a place on the map)
+    const inCurve = { x: RM[0] + 300, y: 2, z: RM[2] + 120, heading: 0 };
+    const atHome = { x: 40, y: 2, z: 300, heading: 1 };
+    expect(legOf(home(), 'pilot:ab12', inCurve)).toBe('rmportal');
+    expect(legOf(home(), 'pilot:ab12', atHome)).toBe('pilot:ab12');
+    const there = startFor('gazorpazorp');
+    expect(legOf(there, 'pilot:ab12', atHome)).toBe('rmportal-back');
+    expect(legOf(there, 'pilot:ab12', inCurve)).toBe('pilot:ab12');
+    // with no pose, nowhere to route by: the goal as it is
+    expect(legOf(home(), 'pilot:ab12', null)).toBe('pilot:ab12');
+  });
+
+  it('counts the way through the portal in the distance and the trip time', () => {
+    for (const id of ['gazorpazorp', 'citadel', 'curvesun']) {
+      const d = distanceTo(home(), id);
+      expect(Number.isFinite(d), id).toBe(true);
+      expect(d, id).toBeLessThan(20000); // (nothing like the 40000 straight across)
+      for (const drive of ['hyper', 'super']) {
+        const t = tripTime(home(), id, drive);
+        expect(t, `${id} by ${drive}`).not.toBeNull();
+        expect(t, `${id} by ${drive}`).toBeGreaterThan(TRANSIT);
+      }
+    }
+    expect(tripTime(home(), 'gazorpazorp', 'super')).toBeLessThan(40);
+    expect(tripTime(startFor('gazorpazorp'), 'marvel', 'super')).not.toBeNull();
+  });
+
+  it('flies from the home system through the portal to Gazorpazorp, and lands there', () => {
+    let s = home();
+    const first = legOf(s, 'gazorpazorp');
+    let park = parkFor(first, [s.x, s.z]);
+    let through = null;
+    let t = 0;
+    for (; t < 60 && !through; t += 1 / 60) {
+      const next = step(s, autopilot(s, first, park, undefined, OVERDRIVE).input, 1 / 60).ship;
+      through = portalHit(s, next);
+      s = next;
+    }
+    expect(through).toBe('rmportal');
+    s = transit(s, through).ship;
+    expect(sectorOf(s.x, s.y, s.z)).toBe('rickmorty');
+    const r = fly(s, 'gazorpazorp', OVERDRIVE);
+    expect(r.done).toBe(true);
+    expect(r.hits).toBe(0);
+    expect(orbiting(r.s, null)).toBe('gazorpazorp');
+    expect(t + r.t).toBeLessThan(40);
+  });
+
+  it('charts the Rick and Morty sector round its own middle', () => {
+    expect(viewFor('main')).toBe('all');
+    expect(viewFor('rickmorty')).toBe('rickmorty');
+    const v = CHART_VIEWS.rickmorty;
+    expect(chartAt(...[SECTORS.rickmorty.origin[0], SECTORS.rickmorty.origin[2]], v)).toEqual([0.5, 0.5]);
+    for (const d of DESTINATIONS.filter((x) => x.sector === 'rickmorty')) expect(onChart(chartAt(d.at[0], d.at[2], v)), d.id).toBe(true);
+    // (the main map's places are far off it)
+    expect(onChart(chartAt(0, 0, v))).toBe(false);
   });
 });

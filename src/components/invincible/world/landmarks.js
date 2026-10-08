@@ -6,7 +6,8 @@
 // the high school (brick, a portico, the flag, the field's goalposts and
 // bleachers), Burger Mart on the strip (its sign up on a pylon, a
 // drive-thru), and the Graysons' front porch, mailbox and Mom's car.
-// Each is merged by material, so the lot is a handful of draws.
+// Each is merged by material, so the lot is a handful of draws. Over the
+// five places, a beacon each, to find them by from across the city.
 
 import * as THREE from 'three';
 import { PartBuilder, canvasTexture } from '../../avengers/hq/kit/shapes';
@@ -15,6 +16,102 @@ import { SKIN, towerField, towerMaterial } from './facade';
 
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const cyl = (r0, r1, h, s = 16) => new THREE.CylinderGeometry(r0, r1, h, s);
+
+// The five places' beacons: a thin upright light over each, `h` metres
+// tall, or `clear` metres over the tallest tower within `round` metres of it
+// if that's taller (downtown stands 360 m high round the hall), to find them
+// by from 3 km off. Each is one quad turned about its own upright to face
+// the camera, `w` metres across but never under `px` pixels (a light a few
+// metres across is under a pixel at 3 km), white down the middle and the
+// compass's yellow at its edges, even up to `fade` of its height and then
+// fading to nothing at the top, and gone within `near` metres (so at the
+// door it isn't a wall of light in his face). Faint by day (`day`), bright
+// at night (`night`). No light, no shadow: five quads in one draw, added
+// to what's behind.
+export const BEACON = { h: 400, clear: 150, round: 300, w: 3, px: 4, fade: 0.55, near: [80, 260], core: 0xfff4d6, edge: 0xffd23a, day: 0.6, night: 2.2 };
+
+const BEACON_VS = /* glsl */ `
+attribute vec3 aCorner; // (across, up, and the beacon's height)
+uniform float uW, uPx;
+varying vec2 vC;
+varying float vD;
+void main() {
+  vec3 base = (modelMatrix * vec4(position, 1.0)).xyz;
+  // how far off the upright is at its nearest, and how wide that makes it
+  vec3 axis = vec3(base.x, clamp(cameraPosition.y, base.y, base.y + aCorner.z), base.z);
+  float d = length(cameraPosition - axis);
+  float w = max(uW, d * uPx);
+  vec2 to = cameraPosition.xz - base.xz;
+  vec2 side = length(to) > 1e-3 ? normalize(vec2(-to.y, to.x)) : vec2(1.0, 0.0);
+  vec3 p = base + vec3(side.x * aCorner.x * w * 0.5, aCorner.y * aCorner.z, side.y * aCorner.x * w * 0.5);
+  vC = aCorner.xy;
+  vD = d;
+  gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+}`;
+const BEACON_FS = /* glsl */ `
+uniform vec3 uCore, uEdge;
+uniform float uK, uFade;
+uniform vec2 uNear;
+varying vec2 vC;
+varying float vD;
+void main() {
+  float across = 1.0 - abs(vC.x);
+  vec3 c = mix(uEdge, uCore, across * across);
+  float k = across * (1.0 - smoothstep(uFade, 1.0, vC.y)) * smoothstep(uNear.x, uNear.y, vD);
+  gl_FragColor = vec4(c * k * uK, 1.0);
+}`;
+
+// The beacons over `places` ([{ x, z }]), standing on the town's ground,
+// clear of `buildings` ([{ x, z, h, top }]) round them.
+function beacons(places, buildings) {
+  const pos = [];
+  const corner = [];
+  const index = [];
+  places.forEach((p, i) => {
+    let tall = 0;
+    for (const b of buildings) if (Math.hypot(b.x - p.x, b.z - p.z) < BEACON.round) tall = Math.max(tall, b.h + (b.top?.h ?? 0));
+    const h = Math.max(BEACON.h, tall + BEACON.clear);
+    for (const [cx, cy] of [
+      [-1, 0],
+      [1, 0],
+      [1, 1],
+      [-1, 1],
+    ]) {
+      pos.push(p.x, 0, p.z);
+      corner.push(cx, cy, h);
+    }
+    const o = i * 4;
+    index.push(o, o + 1, o + 2, o, o + 2, o + 3);
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('aCorner', new THREE.Float32BufferAttribute(corner, 3));
+  geo.setIndex(index);
+  const uniforms = {
+    uW: { value: BEACON.w },
+    uFade: { value: BEACON.fade },
+    uPx: { value: 0 },
+    uK: { value: BEACON.day },
+    uNear: { value: new THREE.Vector2(...BEACON.near) },
+    uCore: { value: new THREE.Color(BEACON.core) },
+    uEdge: { value: new THREE.Color(BEACON.edge) },
+  };
+  const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: BEACON_VS, fragmentShader: BEACON_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.name = 'beacons';
+  // (the shader puts the quads where they are: the bases alone would cull them)
+  mesh.frustumCulled = false;
+  mesh.userData.noBake = true;
+  // metres a pixel spans, a metre off, times the fewest pixels across: from
+  // the camera and the canvas it's drawn into, as it's drawn
+  const size = new THREE.Vector2();
+  mesh.onBeforeRender = (renderer, scene, camera) => {
+    renderer.getDrawingBufferSize(size);
+    const half = camera.isPerspectiveCamera ? Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / (camera.zoom || 1) : 0.6;
+    uniforms.uPx.value = ((2 * half) / Math.max(1, size.y)) * BEACON.px;
+  };
+  return { mesh, uniforms };
+}
 
 // lettering on a sign: dark on light or the other way, in the show's face
 function sign(text, { w = 1024, h = 160, bg = '#0e1a33', fg = '#ffd23a', font = 'Bebas Neue', size = 0.78, stroke = null } = {}) {
@@ -281,11 +378,15 @@ export async function buildLandmarks(world, uniforms) {
   group.add(b.build(mats));
   const glows = [];
   group.traverse((o) => o.userData.glows && glows.push(o));
+  // the beacons (BEACON; see-through, so the floor's bake leaves them out)
+  const lights = beacons(world.places, world.buildings);
+  group.add(lights.mesh);
   return {
     group,
     setNight(k) {
       mats.lamp.color.copy(hot(0xfff1c8, 0.6 + 2 * k));
       for (const o of glows) for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m.emissiveMap) m.emissiveIntensity = k * 0.9;
+      lights.uniforms.uK.value = BEACON.day + (BEACON.night - BEACON.day) * k;
     },
   };
 }

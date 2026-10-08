@@ -68,6 +68,17 @@ describe('the parts', () => {
     expect(partsUnlockedBy('onestand').map((p) => p.id)).toEqual(['fusion']);
   });
 
+  it('borrow only the look of a part of their own slot that has one of its own', () => {
+    const borrowers = PARTS.filter((p) => p.look);
+    expect(borrowers.map((p) => p.id).sort()).toEqual(['council', 'incom', 'vamonos']);
+    for (const p of borrowers) {
+      const from = partById(p.slot, p.look);
+      expect(from.id, p.id).toBe(p.look);
+      expect(from.id, p.id).not.toBe(STOCK);
+      expect(from.look, p.id).toBeUndefined();
+    }
+  });
+
   it('believe only ids they have, slot by slot', () => {
     expect(parsePart('booster', 'srb')).toBe('srb');
     expect(parsePart('guns', 'srb')).toBeNull();

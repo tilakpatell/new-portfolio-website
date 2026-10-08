@@ -51,16 +51,130 @@ truth where this disagrees with it.
 - Not done: the final whole-branch review (the owner ran out of usage).
   Read the diff once.
 
+## Done: Phase 1 polish
+
+- `surface/floats.js` (pure, tested): `floatPose` (a boat's height, pitch
+  and roll from the water under its bow, stern and sides), `diveAt` (an
+  aiwha's glide and its dive through the surface once a cycle), `sprayAt`
+  (how much spray a wave throws off a leg).
+- `water.js`: spray off `site.water.legs` (Kamino: the pad's column and
+  20 stilts), `splash(x, z, k)`, one Points draw; `far`, `farMix` and
+  `sky` per sea keep Scarif turquoise to the horizon.
+- Kamino's aiwhas dive into the sea and out (`dive` on a life spec),
+  splashing each way. The bongo on Lake Paonga rides the swell (`float`
+  on a thing). The camera stays 0.6 m over the wave under it.
+- Checked in Chromium on SwiftShader (so no frame times): Scarif's far
+  water stays turquoise; Kamino's spray pool fills (260 drops on the
+  small tier); the bongo rolls; no page errors.
+
+## Done: Scarif, Endor and Geonosis, a look and a war pass (2026-10-07)
+
+- **The Death Stars over the worlds**: Scarif's is the universe's own model
+  (`/models/universe/death-star.glb`, placed by `url` with the placer's new
+  `url` and `fog: false` specs, 3 km across over the eastern sea); Endor's
+  is N8's half-built *Death Star II* from Sketchfab (`catalog/forest.js`
+  `ds2sky`, 3.3 MB, credited), placed clear of the fog with its bite to the
+  forest, in place of the built sphere: hung 2.7 km out and 1.2 km up at
+  twice its size (1.3 km across, a hand's width over the treetops ahead
+  and to the right of the landing, where the trunks part), above the
+  far mountains' skyline, its ambient occlusion eased and its reflections
+  up so it reads pale against the sky. The debug `teleport` takes a
+  pitch now, for the shots of what's in the sky.
+- **Two scans more** (`scripts/galaxy-textures.mjs`, Poly Haven CC0):
+  `redrock` (`rock_boulder_cracked`) on Geonosis's spires, hives, foundry,
+  hangar, boulders and stones, and over the arena and hive models up close
+  (`detail`); `mossrock` (`mossy_rock`) on Endor's boulders and stones. The
+  Imperial bunker and the Citadel wear the concrete scan up close.
+- **A bug**: Mustafar's black `spire` builder shadowed Geonosis's red one
+  in the scatter kinds (`props/index.js` merges edge.js after core.js), so
+  Geonosis's spires were Mustafar's. Mustafar's is `blackspire` now.
+- **Denser worlds**: Scarif 600 palms (with a light copy past 60 m,
+  `palm.lod1.glb`, made with `makeLod` at `over: 0`), more scrub, ferns and
+  stones, thicker dune grass; Endor mossy boulders, stones, bushes and
+  toadstools under the ferns, more logs, and the stand close set (1,010
+  redwoods and 160 spruces where there were 600 trees: the full redwoods
+  from 60 m (the glade you land in) to 280 m, thickest near, the light
+  `lo` ones past the fog's reach to 640 m and beyond); Geonosis more
+  spires and stones.
+- **Endor's ground folded**: the floor rises and falls now (swell 22 m,
+  hills 14 m, ridges 8 m, where it was 14 and 7 and read as a plain), the
+  village, the bunker, the generator and the war's posts on their own
+  level ground (the places' flats; `index.test.js` checks every post).
+- **Looks**: Geonosis's fog thinned (0.0009 → 0.00055) so the hives and
+  the core ships read to the horizon; the sky's gas giants (Endor's) get
+  storms and eddies in their bands; Endor's spruces lose their flat dark
+  cone for a slimmer, many-sided heart under more sprays; the shield
+  generator is rebuilt (apron, blast walls, the crest over the door, lit
+  strips, a ribbed dish with a lit rim on a braced tower).
+- **Things to do**: Endor's *Quiet in the ferns* (the scouts' camp),
+  *The Ewoks' war* (Paploo's stones, the walker led back to the log trap)
+  and *An older code* (the platform's clearance codes); Scarif's *Walkers
+  on the beach* (Sefla's charges under a walker) and *Rogue One, calling*
+  (Bodhi's comm patched through from Pad Nine); Geonosis's *Count Dooku*
+  (through the droidekas to a red-bladed duellist at his hangar) and *The
+  nearest starship* (Yoda's beacon on a core ship). All in
+  `sites/quests.js`, their givers in the sites' life.
+- **The walkers and the arena, re-imported** (`scripts/sketchfab-surface.mjs`):
+  the AT-AT kept rigged with its `Walk` clip at 2K maps (Quiznos323's), so
+  the walkers on Hoth's plain and Scarif's beach are the model walking its
+  own walk, not the built one (Scarif's cargo walkers are its taller
+  cousins; the model stands in, named *Imperial walker*); the AT-TE is
+  R3negadeAidan's rigged one with its `Action` walk, and Geonosis's
+  walking AT-TEs wear it; the arena came in at 256-pixel maps and is at 2K
+  now, 60k triangles, with a lighter light copy (its maps 512); the LAAT at
+  2K. `rig: true` models have no light copy (the LOD script doesn't keep a
+  skin), so `atat.lod1.glb` and `atte.lod1.glb` are gone.
+- **The war**: `HANDOFF-galactic-assault.md` (Scarif's and Endor's
+  battles, squads, cover, suppression, waves).
+
+## Phase 2, bases: under way
+
+The plan is `docs/superpowers/plans/2026-10-07-galaxy-phase2-bases.md`.
+
+- Done, Task 1: the scanned roles `tiles` (Poly Haven
+  `large_floor_tiles_02`, 1 m slabs) and `deck` (`metal_plate`, a tread
+  plate).
+- Done, Task 2: `surface/decals.js`, with insignia (Rebel, Imperial,
+  Republic) and scorches as flat geometry.
+- Done, Task 3: Echo Base's corridors, a zone behind the hangar's
+  back-left door. The rooms are in `sites/echoLayout.js` (pure, tested);
+  `props/echo.js` draws them:
+  - ice walls with steel arches every 4 m;
+  - the command centre: the holo-table, the tactical screen under the
+    starbird, Rieekan and Toryn Farr;
+  - the medical centre's bacta tank;
+  - the cavern, with tauntauns.
+  Dev: `__surfaceDo('zone', 'echo')`.
+- Done, Task 4: the Theed Hangar's blast door to the generator, the
+  controllers' room over it, pilasters, a polished floor and four more
+  N-1s; the plaza in polished slabs.
+- Done, Task 5: Kamino's static discharge towers. Two stand on the pad's
+  rim and four out among the domes; lightning strikes them about every
+  8–13 s (`surface/storm.js`, pure and tested). The pads' decks are in
+  tread plate.
+- Done, Task 6: Scarif's Pad 9 has its number painted on, and Yavin's
+  hangar has its own floor, `hangarfloor`, laid 0.57 m over the ground,
+  just above the temple model's own floor (measured by a ray in the page).
+  The bunkers and the temple are models, so a decal on their code builds
+  never shows.
+- Done, Task 7: the owner said to use Meshy where needed, so the v-150 is a
+  Meshy model, `v150`, lifted out of a still of it firing, 33 credits
+  (`scripts/meshy-galaxy-buildings-bases.mjs`). It is sunk and tipped
+  toward its aim; the built `ioncannon` (`shell: false`) is only its shot.
+- Left:
+  - spray seen from Kamino's deck;
+  - a Citadel vault door;
+  - Echo Base's trench lines. The lane file
+    (`scripts/meshy-galaxy-buildings-bases.mjs`) takes more kinds.
+- Checking, without walking: render from a free camera through the page's
+  renderer (`window.__surfaceScene`), offset from a named object. The
+  session's `.probe-cam.mjs` did this; `scripts/sea-shot.mjs` is the
+  committed one for seas.
+
 ## Next, in order (the spec's phases)
 
-1. **Phase 1 polish:**
-   - Kamino's deck is high, so its storm reads mostly from afar. Add spray
-     at the platform legs.
-   - Scarif's turquoise could be more saturated far out (the Fresnel takes
-     the pale horizon).
-   - Float things on `water.height`: Kamino's aiwhas surfacing, a bongo on
-     Lake Paonga.
-   - Keep the camera out of the water.
+1. **Phase 1 polish:** done (see below). Left: a bongo that dives to
+   Otoh Gunga, and spray seen from the deck (the pad hides its own column).
 2. **Phase 2, bases:**
    - Echo Base: its glacier mouth, its ice corridors with supports, Outpost
      Beta's ion cannon.

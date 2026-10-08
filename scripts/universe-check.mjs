@@ -5,6 +5,7 @@
 //   node scripts/universe-check.mjs [--quality high|mid|low|all] [--poses a,b]
 //     [--out lab/universe/<tier>] [--baseline] [--url http://127.0.0.1:5173] [--chromium /path]
 //     [--frames 20] (how many frames are timed: fewer in a container that draws in software, where a frame takes seconds)
+//     [--near off] (without the planets' near maps and finer spheres, nearMaps.js: what they cost, measured on one tree)
 //
 // It starts the dev server (the poses are a DEV hook, `window.__universe().pose`,
 // which a production build leaves out) unless --url names one, opens
@@ -27,7 +28,7 @@ import { chromium } from 'playwright-core';
 import sharp from 'sharp';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const POSES = ['overview', 'falcon-sun', 'middleearth-limb', 'rickmorty', 'gaming', 'caribbean', 'belt', 'maw', 'landing-middleearth', 'station'];
+const POSES = ['overview', 'falcon-sun', 'middleearth-limb', 'rickmorty', 'gaming', 'caribbean', 'middleearth', 'breakingbad', 'office', 'belt', 'maw', 'landing-middleearth', 'station', 'far-rim', 'lane-ride'];
 const TIERS = ['high', 'mid', 'low'];
 
 const args = {};
@@ -146,13 +147,14 @@ for (const tier of tiers) {
   // scene of its own): each pose gets a fresh page, the same start
   for (const name of poses) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
-    await ctx.addInitScript((q) => {
+    await ctx.addInitScript(([q, near]) => {
       window.localStorage.setItem('tp-intro', '1');
       window.localStorage.setItem('tp-start', '"universe"');
       window.localStorage.setItem('tp-quality', q);
       window.localStorage.setItem('tp-universe-ship', '"falcon"');
       window.__tpKeepFrames = true;
-    }, tier);
+      if (near === 'off') window.localStorage.setItem('tp-near', 'off');
+    }, [tier, args.near]);
     const page = await ctx.newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e.message ?? e)));
@@ -162,6 +164,8 @@ for (const tier of tiers) {
       await page.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship && window.__universeDebug?.state?.model, null, { timeout: 300000, polling: 250 });
       await page.waitForTimeout(2000);
       await page.evaluate((n) => window.__universe().pose(n), name);
+      // (a planet pose: its near maps given a moment to land, unless they're off)
+      if (args.near !== 'off') await page.waitForFunction(() => (window.__universe().near ?? []).length > 0, null, { timeout: 15000, polling: 250 }).catch(() => {});
       // the grain moves frame to frame; the shots and their metrics shouldn't (post.js: checkpoint 1)
       await page.evaluate(() => window.__universeDebug.post?.grain?.(0));
       const numbers = await page.evaluate(async (n) => {

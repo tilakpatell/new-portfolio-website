@@ -17,7 +17,7 @@
 
 import { seeded } from '../../../lib/seeded';
 import { makeWalker, pushOut } from '../../middleearth/towns/walker';
-import { DESTINATIONS, GARAGE_BACK } from './dimensions/destinations';
+import { DESTINATIONS, GARAGE_BACK, isPlanet } from './dimensions/destinations';
 
 export { behindYaw, cameraMove } from '../../middleearth/towns/walker';
 
@@ -186,8 +186,9 @@ export const LINKS = [
   { id: 'garage-kitchen', area: 'garage', x: -296.85, z: 100.2, r: 0.9, kind: 'door', to: 'house', label: 'The kitchen', arrive: { x: -309.4, z: 1.1, face: 0 } },
   { id: 'stairs-up', area: 'house', x: -295.1, z: 2.6, r: 0.9, kind: 'stairs', to: 'upstairs', label: 'Upstairs', arrive: { x: -303, z: 402, face: FACE_N } },
   { id: 'stairs-down', area: 'upstairs', x: -303, z: 403.4, r: 0.9, kind: 'stairs', to: 'house', label: 'Downstairs', arrive: { x: -296.9, z: 0.6, face: FACE_N } },
-  // (the portal swirls on the garage's west wall, past the end of the bench)
-  { id: 'garage-portal', area: 'garage', x: -303, z: 101.4, r: 1.4, kind: 'portal', to: 'annex', label: 'Through the portal', arrive: { x: 400, z: 9, face: FACE_N } },
+  // (the portal swirls on the garage's west wall, past the end of the bench;
+  // its reach stops short of the portal gun's spot beside it, so the gun can be dialled)
+  { id: 'garage-portal', area: 'garage', x: -303, z: 101.4, r: 1.1, kind: 'portal', to: 'annex', label: 'Through the portal', arrive: { x: 400, z: 9, face: FACE_N } },
   { id: 'annex-portal', area: 'annex', x: 400, z: 13, r: 1.4, kind: 'portal', to: 'garage', label: 'Back to the garage', arrive: { x: -301.2, z: 101.4, face: 0 } },
   // down the hatch to the foot of the ladder, and up it to beside the hatch
   { id: 'garage-hatch', area: 'garage', x: HATCH.x, z: HATCH.z, r: 0.9, kind: 'hatch', to: 'basement', label: 'Down the hatch', arrive: into('basement') },
@@ -599,6 +600,13 @@ export const PEOPLE = [
   { id: 'agent1', who: 'fedagent', area: 'street', x: -34.5, z: -6.2, face: S },
   { id: 'agent2', who: 'fedagent', area: 'street', x: DINER.x - 2, z: -6.4, face: S },
   { id: 'agent3', who: 'fedagent', area: 'street', x: 38.5, z: 6.2, face: Math.PI / 2 },
+  // the street's walkers (../npc.js, through visitors.js): Jessica and Brad
+  // along the near sidewalk, Mr. Goldenfold on his way to the school, Ethan
+  // outside Shoney's. They roam, so they're not in the way.
+  { id: 'jessica-walk', who: 'jessica', area: 'street', x: -18, z: -5.8, face: 0, roams: true, ai: { wander: [[-18, -5.8], [24, -5.8], [24, -6.6], [-18, -6.6]], speed: 0.9, pause: 2, bark: { r: 4, every: 18, lines: ['Hi, Morty.', 'Oh, hey, Morty. Brad’s around somewhere.', 'Did you do the thing for Goldenfold’s class? Me neither.'] } } },
+  { id: 'brad-walk', who: 'brad', area: 'street', x: -14, z: -6.6, face: 0, roams: true, ai: { wander: [[-14, -6.6], [28, -6.6], [28, -5.8], [-14, -5.8]], speed: 0.9, pause: 2.5, bark: { r: 4, every: 20, lines: ['Sup, Morty.', 'Jessica’s with me, Morty. Just so you know.'] } } },
+  { id: 'goldenfold-walk', who: 'goldenfold', area: 'street', x: 12, z: 6.6, face: 0, roams: true, ai: { wander: [[12, 6.6], [40, 6.6], [40, 5.8], [12, 5.8]], speed: 0.7, pause: 3, bark: { r: 4, every: 18, lines: ['Morty! Pop quiz on Monday. Don’t tell anyone I told you.', 'Have you seen Mrs. Pancakes? No? Good. Neither have I.'] } } },
+  { id: 'ethan-walk', who: 'ethan', area: 'street', x: DINER.x + 6, z: 6.6, face: Math.PI, roams: true, ai: { wander: [[DINER.x + 6, 6.6], [DINER.x - 10, 6.6], [DINER.x - 10, 5.8], [DINER.x + 6, 5.8]], speed: 0.8, pause: 3, bark: { r: 4, every: 22, lines: ['Hey, Morty. Summer around?', 'They do a breakfast here. The agent gets one every day.'] } } },
   // the Oval Office: the President behind the desk, a general either side of it
   { id: 'ovalpresident', who: 'president', area: 'oval', x: -300, z: 695.5, face: S },
   { id: 'general1', who: 'general', area: 'oval', x: -303.2, z: 696.8, face: S },
@@ -665,7 +673,8 @@ const slab = (id, x0, x1, z0, z1) => box(id, (x0 + x1) / 2, (z0 + z1) / 2, x1 - 
 const circle = (id, x, z, r) => ({ id, kind: 'circle', x, z, r });
 const furnished = (area) => [
   ...FURNITURE.filter((f) => f.area === area).map((f) => box(f.id, f.x, f.z, f.w, f.d, f.turn, f.h)),
-  ...PEOPLE.filter((p) => p.area === area && !p.sits && !p.holo).map((p) => circle(p.id, p.x, p.z, PERSON)),
+  // (someone who roams, stage.js's NPC behaviour, is nowhere in particular: not in the way)
+  ...PEOPLE.filter((p) => p.area === area && !p.sits && !p.holo && !p.roams).map((p) => circle(p.id, p.x, p.z, PERSON)),
 ];
 // the President's motorcade: the limo and the two beside it, in the way till he's met
 export const MOTORCADE = [box('limo', LIMO.x, LIMO.z, LIMO.w, LIMO.d, LIMO.turn), ...PEOPLE.filter((p) => p.until === 'president').map((p) => circle(p.id, p.x, p.z, PERSON))];
@@ -681,7 +690,7 @@ export const COLLIDERS = {
     ...TREES.map((t, i) => circle(`tree${i}`, t.x, t.z, trunk(t))),
     ...DECOR.map(decorCollider),
     ...VEHICLES.map((v) => box(v.id, v.x, v.z, v.w, v.d, v.turn)),
-    ...PEOPLE.filter((p) => p.area === 'street' && !p.until).map((p) => circle(p.id, p.x, p.z, PERSON)),
+    ...PEOPLE.filter((p) => p.area === 'street' && !p.until && !p.roams).map((p) => circle(p.id, p.x, p.z, PERSON)),
   ],
   annex: [box('arcade', ARCADE.x, ARCADE.z, ARCADE.w, ARCADE.d)],
   // outside, south-west of the entry
@@ -697,7 +706,7 @@ export const COLLIDERS = {
   diner: furnished('diner'),
   wong: furnished('wong'),
   // each destination's buildings and fittings, and its people
-  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, [...d.solids.map((o) => (o.r ? circle(o.id, o.x, o.z, o.r) : box(o.id, o.x, o.z, o.w, o.d))), ...d.people.map((o) => circle(o.id, o.x, o.z, PERSON)), ...d.extras.map((o, n) => circle(`${d.id}-extra-${n}`, o.x, o.z, PERSON))]])),
+  ...Object.fromEntries(DESTINATIONS.map((d) => [d.id, [...d.solids.map((o) => (o.r ? circle(o.id, o.x, o.z, o.r) : box(o.id, o.x, o.z, o.w, o.d))), ...d.people.filter((o) => !o.roams).map((o) => circle(o.id, o.x, o.z, PERSON)), ...d.extras.map((o, n) => circle(`${d.id}-extra-${n}`, o.x, o.z, PERSON))]])),
 };
 // Walls: the street's fences, the house's inner walls and the low banister up
 // the stairs' open side, and the balcony's low railing on its south edge. A
@@ -959,7 +968,7 @@ const onSomething = (x, z, motorcade) =>
   TREES.some((t) => Math.hypot(x - t.x, z - t.z) < CRUISER.radius + trunk(t)) ||
   DECOR.some((d) => Math.hypot(x - d.x, z - d.z) < CRUISER.radius + (d.w ? Math.hypot(d.w, d.d) / 2 : d.r)) ||
   DOORSTEPS.some((p) => Math.hypot(x - p.x, z - p.z) < DOORSTEP) ||
-  PEOPLE.some((p) => p.area === 'street' && (motorcade || !p.until) && Math.hypot(x - p.x, z - p.z) < CRUISER.radius + PERSON + 0.3) ||
+  PEOPLE.some((p) => p.area === 'street' && !p.roams && (motorcade || !p.until) && Math.hypot(x - p.x, z - p.z) < CRUISER.radius + PERSON + 0.3) ||
   (motorcade && Math.hypot(x - LIMO.x, z - LIMO.z) < CRUISER.radius + Math.hypot(LIMO.w, LIMO.d) / 2);
 // (`motorcade`: the President's limo and people are in the street, and in the way)
 export const canLand = (c, { motorcade = false } = {}) => Math.abs(c.speed) < 3 && inArea('street', c.x, c.z) && under(c.x, c.z).length === 0 && !inYard(c.x, c.z) && !onSomething(c.x, c.z, motorcade);
@@ -1005,7 +1014,7 @@ export const TASKS = [
   { id: 'president', name: 'Meet the President', hint: 'The President’s limo is parked outside the Smith house, and he wants Rick.' },
   { id: 'oval', name: 'Visit the Oval Office', hint: 'Take the President’s portal by the garage door in Rick’s garage.' },
   { id: 'diner', name: 'Have breakfast at Shoney’s', hint: 'A Federation agent is waiting in a booth at Shoney’s, up the street from the Smiths’.' },
-  { id: 'portal', name: 'Go through the portal', hint: 'Step through the portal on the west wall of Rick’s garage.' },
+  { id: 'portal', name: 'Go through the portal', hint: 'The portal gun is on Rick’s bench in the garage (or its button up top, from anywhere): dial a dimension, then step through the portal on the west wall.' },
   { id: 'basement', name: 'Find Rick’s secret lab', hint: 'There’s a hatch in the garage floor.' },
   { id: 'mindblowers', name: 'Watch Morty’s Mind Blowers', hint: 'Through the door in Rick’s clone lab, sit in the chair.' },
   { id: 'roy', name: 'Play Roy', hint: 'Find Blips and Chitz on the other side of the portal, and put the headset on at the Roy cabinet.' },
@@ -1032,11 +1041,19 @@ export const MEMORIES = [
 ];
 export const MEMORY_COLORS = { blue: '#52d6ff', purple: '#b47cff', red: '#ff4d5e', pink: '#ff8fd0' };
 
+// the planets' things to do, done on the planets themselves (landed on from the universe map)
+export const PLANET_TASKS = new Set(DESTINATIONS.filter((d) => isPlanet(d.id)).flatMap((d) => d.tasks.map((t) => t.id)));
+
 // What's done and what's next. `done` is the ids finished, in any order.
-export function progress(done = []) {
+// `skip` (ids, or a Set) is passed over when picking what's next, but still
+// counts: C-137 skips PLANET_TASKS.
+export function progress(done = [], { skip = [] } = {}) {
+  const passed = new Set(skip);
   const finished = TASKS.filter((t) => done.includes(t.id));
-  const next = TASKS.find((t) => !done.includes(t.id)) ?? null;
-  return { done: finished.map((t) => t.id), count: finished.length, total: TASKS.length, next, objective: next ? next.hint : 'Everything’s done. Wubba lubba dub dub.' };
+  const left = TASKS.filter((t) => !done.includes(t.id));
+  const next = left.find((t) => !passed.has(t.id)) ?? null;
+  const rest = left.every((t) => PLANET_TASKS.has(t.id)) ? 'Everything here’s done. The rest are on the planets in the Rick and Morty sector of the universe map.' : 'Everything here’s done.';
+  return { done: finished.map((t) => t.id), count: finished.length, total: TASKS.length, next, objective: next ? next.hint : left.length ? rest : 'Everything’s done. Wubba lubba dub dub.' };
 }
 
 // ── the pop quiz ──

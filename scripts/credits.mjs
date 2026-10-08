@@ -70,6 +70,9 @@ for (const [, kind, name, from, url, by] of (await read('public/hq/CREDITS.md'))
   const where = name.trim().startsWith('m64-') ? 'Super Mario 64' : 'Avengers HQ';
   cc0.push({ name: `${name.trim()} (${kind.toLowerCase()}, ${where})`, source: url, by: by.trim(), from });
 }
+// textures shared alike, and textures used with their owners' permission (the Minecraft tribute's): by name, owner and use
+const shareAlike = Object.values(await json('public/games/credits.json')).filter((a) => /BY-SA/.test(a.license));
+const permittedTextures = Object.values(await json('public/games/credits.json')).filter((a) => /permission/i.test(a.license));
 const site = (url) => (/polyhaven/.test(url) ? 'Poly Haven' : /ambientcg/.test(url) ? 'ambientCG' : /kenney/.test(url) ? 'Kenney' : new URL(url).hostname);
 const cc0Unique = [...new Map(cc0.map((a) => [`${a.source}|${a.name}`, a])).values()];
 const kenney = cc0Unique.filter((a) => site(a.source) === 'Kenney');
@@ -107,6 +110,8 @@ md.push(
   '',
   '- [3D models from Sketchfab](#3d-models-from-sketchfab)',
   ...(permitted.length ? ['- [Models used with permission](#models-used-with-permission)'] : []),
+  ...(shareAlike.length ? ['- [Textures shared alike](#textures-shared-alike)'] : []),
+  ...(permittedTextures.length ? ['- [Textures used with permission](#textures-used-with-permission)'] : []),
   '- [Scans, skies and kits (CC0)](#scans-skies-and-kits-cc0)',
   '- [Photos](#photos)',
   '- [Fonts](#fonts)',
@@ -131,6 +136,16 @@ for (const [id, label] of WORLDS) {
 if (permitted.length) {
   md.push('## Models used with permission', '', `${permitted[0].permission}`, '', '| Model | Author | On the site |', '| --- | --- | --- |');
   for (const m of permitted.sort((a, b) => a.title.localeCompare(b.title))) md.push(`| ${link(m.title, m.source)} | ${link(m.author, m.authorUrl)} | ${cell(m.as)} |`);
+  md.push('');
+}
+if (permittedTextures.length) {
+  md.push('## Textures used with permission', '', 'Not the site’s, and not free to reuse: shown here by their owners’ leave.', '', '| Textures | By | On the site |', '| --- | --- | --- |');
+  for (const a of permittedTextures) md.push(`| ${link(a.name, a.source)} | ${cell(a.authors.join(', '))} | ${cell(a.use)} |`);
+  md.push('');
+}
+if (shareAlike.length) {
+  md.push('## Textures shared alike', '', 'Used under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/); what the site builds from them is shared under the same licence.', '', '| Texture pack | By | On the site |', '| --- | --- | --- |');
+  for (const a of shareAlike) md.push(`| ${link(a.name, a.source)} | ${cell(a.authors.join(', '))} | ${cell(a.use)} |`);
   md.push('');
 }
 md.push(

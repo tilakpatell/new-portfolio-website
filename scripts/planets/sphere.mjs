@@ -267,12 +267,39 @@ export function blur(field, w, h, radius) {
 const OUT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, '$1')), '../../public/textures/universe');
 
 // Float data (0…1, `channels` a texel) to a WebP at each size asked for,
-// e.g. save(rgb, 4096, 2048, 3, 'middleearth', [[2048, '-hq'], [1024, ''], [512, '-sm']]).
+// e.g. save(rgb, 4096, 2048, 3, 'middleearth', [[4096, '-xl'], [2048, '-hq'], [1024, ''], [512, '-sm']]).
+// The `-xl` size (a colour map at 4096, worn near on ultra) is a KTX2
+// instead (UASTC through scripts/ktx2.mjs, flipped for three's UVs, sRGB):
+// a quarter of the graphics memory a 4096 WebP takes once decoded. With
+// PLANETS_XL=only in the environment just the -xl files are written (the
+// rest left as they are); with PLANETS_XL=skip, all but them (a quick look).
+const XL_MAX = 6 * 1024 * 1024; // (an -xl past this is too much download for one map)
 export async function save(data, w, h, channels, name, sizes, { quality = 86, alphaQuality = 90 } = {}) {
   fs.mkdirSync(OUT, { recursive: true });
   const buf = Buffer.alloc(w * h * channels);
   for (let i = 0; i < buf.length; i++) buf[i] = Math.round(clamp(data[i]) * 255);
   for (const [width, suffix] of sizes) {
+    if (process.env.PLANETS_XL === 'only' && suffix !== '-xl') continue;
+    if (process.env.PLANETS_XL === 'skip' && suffix === '-xl') continue;
+    if (suffix === '-xl') {
+      const png = await sharp(buf, { raw: { width: w, height: h, channels } })
+        .resize(width, Math.round((width * h) / w), { kernel: 'lanczos3' })
+        .png()
+        .toBuffer();
+      // (under XL_MAX: harder rate-distortion first, the small lossy kind last)
+      const { encodeImage } = await import('../ktx2.mjs');
+      let ktx2 = null;
+      let how = '';
+      for (const [opts, label] of [[{ rdo: 1 }, 'UASTC'], [{ rdo: 3 }, 'UASTC rdo 3'], [{ rdo: 6 }, 'UASTC rdo 6'], [{ etc1s: true }, 'ETC1S']]) {
+        ({ ktx2 } = await encodeImage(png, { role: 'color', flipY: true, ...opts }));
+        how = label;
+        if (ktx2.byteLength <= XL_MAX) break;
+      }
+      const file = path.join(OUT, `${name}${suffix}.ktx2`);
+      fs.writeFileSync(file, ktx2);
+      console.log(`  ${path.basename(file)}  ${(ktx2.byteLength / 1024).toFixed(0)} KB (${how})`);
+      continue;
+    }
     const file = path.join(OUT, `${name}${suffix}.webp`);
     await sharp(buf, { raw: { width: w, height: h, channels } })
       .resize(width, Math.round((width * h) / w), { kernel: 'lanczos3' })

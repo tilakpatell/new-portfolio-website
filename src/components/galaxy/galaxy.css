@@ -3,7 +3,7 @@
 
 .galaxy-page[data-leaving='fade'] .universe-fade { opacity: 1; transition: opacity 0.6s ease-in; }
 /* flown into the planet: the crash, then the screen washes out in the system's colour on the way down to its surface */
-.galaxy-page[data-leaving='crash'] .universe-fade { opacity: 1; transition: opacity 0.6s cubic-bezier(0.55, 0, 1, 0.45); }
+.galaxy-page[data-leaving='crash'] .universe-fade { opacity: 1; transition: opacity 0.6s var(--ease-in); }
 .galaxy-page:is([data-jumping='spool'], [data-jumping='tunnel']) .universe-labels { opacity: 0; transition-duration: 0.2s; }
 
 /* the galaxy on the world runtime: its box, and the one canvas moved into it */
@@ -22,6 +22,7 @@
 }
 .galaxy-label[data-kind='planet'] { font-size: 0.8rem; text-transform: uppercase; }
 .galaxy-label[data-kind='station'] { color: #ffd9a0; --swatch: #ffd9a0; }
+.galaxy-label[data-kind='place'] { color: #a9c4ff; --swatch: #a9c4ff; font-size: 0.68rem; opacity: 0.85; }
 .galaxy-label[data-here] { color: var(--swatch); background: rgb(3 4 10 / 0.6); }
 
 /* the other systems' stars: their names as the nose comes near (under the
@@ -246,6 +247,7 @@
 }
 .galaxy-here button:hover:not(:disabled) { background: rgb(255 255 255 / 0.05); }
 .galaxy-here button:disabled { color: var(--accent-text); }
+.galaxy-out li[data-found] button { color: #a9c4ff; }
 .universe-back.inline { display: inline; margin: 0; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
 
 /* the galaxy map: a holotable's blue over the stars */
@@ -327,7 +329,7 @@
 .holomap-region-name { fill: rgb(191 234 255 / 0.5); font-family: var(--font-mono); font-size: 0.26px; letter-spacing: 0.06px; text-anchor: middle; text-transform: uppercase; }
 .holomap-unknown-name { fill: rgb(191 234 255 / 0.35); }
 .holomap-lane { fill: none; stroke: rgb(255 210 120 / 0.35); stroke-width: 0.045; stroke-linejoin: round; }
-.holomap-course { stroke: #fff; stroke-width: 0.06; stroke-dasharray: 0.18 0.12; animation: holomap-dash 1s linear infinite; }
+.holomap-course { fill: none; stroke: #fff; stroke-linejoin: round; stroke-width: 0.06; stroke-dasharray: 0.18 0.12; animation: holomap-dash 1s linear infinite; }
 @keyframes holomap-dash { to { stroke-dashoffset: -0.6; } }
 .holomap-axis { position: absolute; pointer-events: none; color: rgb(127 214 255 / 0.45); font-family: var(--font-mono); font-size: 9px; }
 .holomap-axis span { position: absolute; translate: -50% -50%; }
@@ -570,3 +572,22 @@
   .holomap-systems li[data-front] .holomap-dot,
   .holomap-systems li[data-attack] .holomap-dot { animation: none; }
 }
+
+/* the galaxy's wars: the war you fight in, the oath, the areas (WarCard.jsx), and the battle on in a line (WarHud.jsx) */
+.galaxy-oath { display: grid; gap: 0.45rem; }
+.galaxy-oath-wars,
+.galaxy-oath-sides { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.galaxy-oath-wars button,
+.galaxy-oath-sides button { padding: 0.32rem 0.6rem; border-radius: 999px; border: 1px solid rgb(217 243 255 / 0.22); background: rgb(255 255 255 / 0.04); color: #d9f3ff; font-size: 0.74rem; }
+.galaxy-oath-wars button[aria-pressed='true'] { border-color: #ffb347; background: rgb(255 179 71 / 0.16); color: #fff; }
+.galaxy-oath-sides button { border-color: color-mix(in srgb, var(--side, #7fd6ff) 45%, transparent); }
+.galaxy-oath-sides button[data-suggested] { box-shadow: 0 0 0 1px var(--side, #7fd6ff); }
+.galaxy-oath-sides button[aria-pressed='true'] { background: color-mix(in srgb, var(--side, #7fd6ff) 26%, transparent); color: #fff; font-weight: 600; }
+.galaxy-oath-wars button:focus-visible,
+.galaxy-oath-sides button:focus-visible { outline: 2px solid #7fd6ff; outline-offset: 2px; }
+.galaxy-oath-n { margin: 0; color: rgb(217 243 255 / 0.7); font-size: 0.72rem; }
+.galaxy-areas { display: grid; gap: 0.2rem; margin: 0; padding: 0; list-style: none; font-size: 0.72rem; color: rgb(217 243 255 / 0.7); }
+.galaxy-areas li { display: flex; justify-content: space-between; gap: 0.5rem; }
+.galaxy-areas li[data-yours] { color: #fff; }
+.galaxy-war { display: grid; gap: 0.5rem; margin-top: 0.9rem; }
+.galaxy-warhud { position: absolute; top: 4.6rem; left: 50%; z-index: 3; max-width: calc(100% - 2rem); margin: 0; padding: 0.3rem 0.8rem; transform: translateX(-50%); border-radius: 999px; border: 1px solid color-mix(in srgb, var(--side) 55%, transparent); background: rgb(2 6 16 / 0.72); color: #fff; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }

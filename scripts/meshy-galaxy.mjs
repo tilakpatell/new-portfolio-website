@@ -28,9 +28,10 @@
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, flatten, getBounds, meshopt, prune, textureCompress, transformMesh } from '@gltf-transform/functions';
-import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
+import { dedup, flatten, getBounds, meshopt, prune, simplify, textureCompress, transformMesh, unweld, weld } from '@gltf-transform/functions';
+import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import sharp from 'sharp';
+import { mul4, unskinned } from './lib/surface-model.mjs';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -40,6 +41,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'models', 'galaxy', 'crew');
 const REVIEW = process.env.MESHY_REVIEW ?? join(ROOT, 'lab', 'meshy', 'galaxy');
 const TASKS = join(ROOT, 'scripts', 'meshy-galaxy-tasks.json');
+const CREDITS = join(ROOT, 'src', 'data', 'modelCredits.json');
 const API = 'https://api.meshy.ai/openapi';
 
 const LOOK = 'Semi-realistic 3D video-game character, realistic proportions, clean readable shapes.';
@@ -53,7 +55,10 @@ const CREATURE = `${LOOK} Full body, three-quarter front view, the whole creatur
 // how they look, never by name: the image step turns names down, and the
 // model step has turned down a concept that looked too much like a film's own
 // (scripts/meshy-cockpit.mjs).
-// uid: a Sketchfab model to rig instead of generating one (see `bake`)
+// uid: a Sketchfab model to rig instead of generating one (see `bake`); yaw:
+// a turn about the vertical for one that comes facing sideways; sheet: its
+// materials laid on one sheet before rigging (oneSheet); tex: its maps' size
+// on the site; tris: the most triangles it keeps (MOST)
 export const ASSETS = {
   luke: {
     uid: '84d5ed9497b5435b9a804f956ff74927',
@@ -113,13 +118,83 @@ export const ASSETS = {
     prompt:
       'An armoured bounty hunter in a dented olive-green full-face helmet with a T-shaped black visor and a small rangefinder stalk on one side, a grey flight suit, olive-green chest armour, a big dull red armour plate on the right shoulder (and plain olive-green forearm gauntlets), a small jetpack on the back, a ragged brown cape over one shoulder.',
   },
+  // the three worlds' people (docs/superpowers/specs/2026-10-07-three-worlds-design.md)
+  // (Lando, Lobot and the Ugnaughts were made in the galaxy library's lane,
+  // with the worlds' other people further down: one entry each)
+  wingguard: {
+    height: 1.8,
+    prompt:
+      'A city security guard in a smart dark navy-blue double-breasted uniform tunic with gold buttons, matching navy trousers with a thin stripe, a dark navy peaked cap, black boots, a wide black belt with a holster and a dark blue cape hanging from the shoulders.',
+  },
+  dex: {
+    height: 1.9,
+    long: 2.2,
+    still: true,
+    prompt:
+      'A huge fat four-armed alien diner cook, a bulky green-grey wrinkled body with a big belly, a wide toad-like face with a broad mouth, small eyes and a thick neck, four thick arms, a white cook\'s apron over a grubby white sleeveless shirt, standing behind a counter wiping it with a cloth.',
+  },
   bith: {
     height: 1.8,
     prompt:
       'A tall thin alien jazz musician with an enormous oversized bulbous bald domed pinkish-tan head, much bigger than a human head, big glossy black eyes, no nose, heavy fleshy folds of wrinkled skin hanging at the cheeks and jaw, long thin fingers, wearing a black high-collared suit.',
   },
+  // the worlds' people still built in code, made here from words (as Han
+  // was): each described by how they look, never by name
+  tusken: { height: 1.9, prompt: 'A desert nomad raider wrapped head to toe in layered sand-coloured cloth wrappings and bandages, a face mask with two round dark metal goggle eyes and a short metal breathing grille over the mouth, two small horn-like tubes on the head wraps, leather bandoliers and pouches across the chest, rough brown cloth robes to the shins, wrapped boots.' },
+  lando: { height: 1.78, prompt: 'A suave dashing man in his thirties with dark brown skin and a neat moustache, short black hair, a pale blue high-collared shirt with a gold waist sash, dark navy trousers, a long flowing dark blue cape lined with pale yellow fabric over his shoulders, black boots.' },
+  twilek: { height: 1.7, prompt: 'An alien woman with smooth light green skin, no hair, and two long thick tapering head-tails growing from the back of her head and hanging down past her shoulders, a dark brown leather spacer jacket over a sleeveless grey top, dark trousers and boots.' },
+  ugnaught: { height: 1.05, prompt: 'A short stocky pig-nosed humanoid alien worker, pinkish wrinkled skin, a big upturned snout, bushy white side whiskers and a white beard, small dark eyes, faded blue denim work overalls with a tool belt, heavy boots.' },
+  rebel: { height: 1.78, prompt: 'A rebel soldier in a khaki-tan uniform shirt and trousers, a grey padded vest, a dull grey round helmet with a short brim and ear flaps, a utility belt with pouches and an empty holster, black boots, clean-shaven.' },
+  // (jedi and quigon: the first concepts were turned down at the model step
+  // as too like the films' own, so softer, as Mando and Old Ben were)
+  jedi: { soft: true, height: 1.75, prompt: 'An older knight-monk woman with dark brown skin and close-cropped grey hair, a calm lined face, layered cream tunics under a long open dark brown hooded robe with the hood down, a brown leather belt with pouches and a silver cylindrical hilt hanging at the hip, tall brown boots.' },
+  // (a second face for the temple's knights, who were all the first)
+  jedi2: { soft: true, height: 1.8, prompt: 'A young knight-monk man in his twenties with light olive skin, short dark curly hair and a short trimmed dark beard, a thin braid behind one ear, layered pale grey and off-white tunics under a long open charcoal-brown hooded robe with the hood down, a dark brown leather belt with pouches and a silver cylindrical hilt hanging at the hip, tall dark boots.' },
+  // (and a third, older, so no two neighbours share a face)
+  jedi3: { soft: true, height: 1.78, prompt: 'An older knight-monk man in his sixties with weathered tan skin, a bald head with a white fringe and a long neat white beard, deep-set kind eyes, layered sand-coloured and light brown tunics with a wide wrapped sash under a long open dark olive-brown hooded robe with the hood down, a brown leather belt with pouches and a silver cylindrical hilt hanging at the hip, worn brown boots.' },
+  senateguard: { height: 1.85, prompt: 'A ceremonial palace guard in long flowing deep royal-blue robes with a stiff high collar, a smooth glossy blue helmet with a narrow dark visor slit and a tall crest ridge on top, a long blue cape, blue gloves.' },
+  lobot: { height: 1.75, prompt: 'A bald man with pale skin, a slim curved silver cybernetic band wrapped round the back of his head from ear to ear with small lights on it, a grey-blue high-collared tunic with a dark belt, grey trousers, black boots.' },
+  neimoidian: { height: 1.9, prompt: 'A tall alien trade official with mottled grey-green skin, large red-orange eyes, a flat noseless face with a wide thin mouth, an ornate tall mitre-shaped headdress, long layered maroon and dark brown embroidered robes to the floor.' },
+  bibfortuna: { height: 1.8, prompt: 'A pale thin alien majordomo with chalk-white wrinkled skin, small sharp pointed teeth, red-rimmed eyes, two long thick head-tails wrapped round his neck like a scarf, long dark brown and black flowing robes with a medallion on his chest, long clawed fingernails.' },
+  aqualish: { height: 1.8, prompt: 'A tough alien thug with a walrus-like face, two downward-curving tusks from the mouth, small round black eyes, leathery brown skin and shaggy dark hair, a long dark green coat over a tunic, belt, boots.' },
+  wuher: { height: 1.78, prompt: 'A grumpy heavyset bartender with short dark hair and stubble, a stained off-white collarless shirt with rolled-up sleeves under a brown leather apron, dark trousers, boots.' },
+  mustafarian: { height: 2.0, prompt: 'A tall thin alien lava miner in a heavy insulated armoured suit of bronze and dark grey plates, a long-snouted insect-like head with a breathing mask and large dark eyes, thick gloves and heavy boots.' },
+  // and the galaxy's who's who that nobody had made
+  quigon: { soft: true, height: 1.93, prompt: 'A tall noble knight-monk in his fifties with long brown hair tied back and a short beard, layered tan and cream tunics, a long dark brown hooded robe with the hood down, a wide brown leather belt with a silver cylindrical hilt at the hip, tall boots.' },
+  hondo: { height: 1.78, prompt: 'A flamboyant space pirate captain with leathery, deeply wrinkled tan alien skin and a wide grin, flight goggles pushed up on his forehead over a red headscarf, a long brown leather coat over a vest and sash, a belt with many pouches, boots.' },
+  ackbar: { height: 1.8, prompt: 'An alien fleet admiral with a large salmon-pink bulbous fish-like head, huge round orange eyes on the sides of the head, small tendrils below the mouth, a white high-collared admiral uniform tunic with a small rank badge, dark trousers, boots.' },
+  // (the first officer came out of the model step with no arms, its hands
+  // floating by its hips: made again)
+  officer: { height: 1.8, prompt: 'A military officer with short neat hair in a crisp olive-grey high-collared double-breasted tunic with a small coloured rank badge plate on the chest, a matching flat-topped cap with a visor, a black belt, olive-grey jodhpur trousers and tall polished black boots.' },
+  dooku: { height: 1.93, prompt: 'A tall elderly aristocratic swordsman with swept-back white hair and a neat short white beard, a dark brown high-collared tunic, a long black cape fastened with a silver chain clasp, dark trousers, tall black boots, a curved silver hilt at the hip.' },
+  // The worlds' named people and the films' faces, from Sketchfab (each
+  // author's mesh and maps, rigged here onto the crew's skeleton), for the
+  // kinds the worlds built in code (crew.js) and for heroes to come:
+  // Obi-Wan on Mustafar, Jango on Kamino, Shaak Ti, the Mandalorian, and
+  // the rest of the galaxy's who's who. (Anakin, Krennic, Cassian, Chirrut
+  // and Mace came out of the rigger broken, their arms-down poses bound to
+  // their sides: they stand still instead, galaxy/surface/catalog/library.js.)
+  obiwan: { uid: '416a8f0c9c1742ee8fd71274d27bc305', height: 1.82, as: 'Obi-Wan Kenobi', sheet: true, tex: 2048 },
+  jango: { uid: '4ce40f867ff84df6bab5a3e060cb5e69', height: 1.83, as: 'Jango Fett' },
+  shaakti: { uid: '7af69133613e4035939b1bcc42a5d652', height: 1.88, as: 'Shaak Ti' },
+  // (the Meshy one, above, was turned down at the model step: this is
+  // somebody's model of him instead)
+  dindjarin: { uid: '65383411ba6f4a56aac823d5d014df20', height: 1.85, as: 'the Mandalorian' },
+  maul: { uid: '102ed10dfcd441029b4586bf4c88ec20', height: 1.75, as: 'Darth Maul' },
+  palpatine: { uid: '8f6f188ba2ee4708aa277789c830cbb8', height: 1.73, as: 'Darth Sidious' },
+  rex: { uid: '18a73ab03ac84cf49015559c522a2965', height: 1.83, as: 'Captain Rex' },
+  bokatan: { uid: 'c1e33e1c34304b879a1c2fdb5ee4c8cd', height: 1.7, as: 'Bo-Katan Kryze' },
+  vader: { uid: '62a4273131f949ed9559721f7fb9cf14', height: 2.02, as: 'Darth Vader' },
+  fennec: { uid: 'bdf5d6140fde4c6bb8f265680bf8231f', height: 1.7, as: 'Fennec Shand' },
+  caradune: { uid: '67940dad3a484fddb4d6d1127d233460', height: 1.78, as: 'Cara Dune' },
+  greef: { uid: '6cc95642575445aca67733c4bffa2559', height: 1.85, as: 'Greef Karga' },
+  rodian: { uid: 'ba7389be15774e7786b50d9ff839f51f', height: 1.7, as: 'the Rodians' },
+  inquisitor: { uid: 'c3af0bd197f348c4a4819a45e78faa53', height: 1.85, as: 'the Inquisitors' },
+  tiepilot: { uid: '33a466f49ff3496c8f76d3f4cb845e30', height: 1.8, as: 'the TIE pilots' },
 };
 const POLY = 16000;
+// the most triangles a figure keeps (`tris` to change it)
+const MOST = 30000;
 const TEX = 1024;
 
 const key = process.env.MESHY_API_KEY;
@@ -159,6 +234,7 @@ async function getIO() {
   if (!io) {
     await MeshoptEncoder.ready;
     await MeshoptDecoder.ready;
+    await MeshoptSimplifier.ready;
     io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
   }
   return io;
@@ -188,7 +264,14 @@ async function squeeze(from, to, a) {
     }
     scene.addChild(holder);
   }
-  await doc.transform(dedup(), prune(), textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [TEX, TEX] }), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+  await doc.transform(dedup(), prune());
+  // (a figure from somebody's high-poly sculpt is brought down to a crowd's
+  // budget: the simplifier only rewrites the indices, so the skin holds)
+  let before = 0;
+  for (const m of root.listMeshes()) for (const p of m.listPrimitives()) before += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
+  const most = a.tris ?? MOST;
+  if (before > most) await doc.transform(weld(), simplify({ simplifier: MeshoptSimplifier, ratio: most / before, error: 0.002 }), prune());
+  await doc.transform(textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [a.tex ?? TEX, a.tex ?? TEX] }), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
   let tris = 0;
   for (const m of root.listMeshes()) for (const p of m.listPrimitives()) tris += (p.getIndices()?.getCount() ?? p.getAttribute('POSITION').getCount()) / 3;
   await mkdir(dirname(to), { recursive: true });
@@ -198,6 +281,106 @@ async function squeeze(from, to, a) {
 }
 
 // the named ones that are made from a prompt, or from a Sketchfab model
+// Meshy's rigger keeps one material and bakes the others onto it its own
+// way, which can come out wrong (a face painted from the coat's map): a
+// figure marked `sheet` has its materials laid on one sheet first, each
+// colour map in a square of its own and its parts' UVs moved into that
+// square (a flat material is a square of its colour).
+async function oneSheet(doc, cell = TEX) {
+  const root = doc.getRoot();
+  await doc.transform(unweld());
+  const prims = root.listMeshes().flatMap((m) => m.listPrimitives());
+  const mats = [...new Set(prims.map((p) => p.getMaterial()).filter(Boolean))];
+  if (mats.length < 2) return;
+  const cols = Math.ceil(Math.sqrt(mats.length));
+  const rows = Math.ceil(mats.length / cols);
+  const tiles = [];
+  // (a map a few texels wide is a palette its UVs pick colours from, which
+  // doesn't survive being stretched to a square: it's flat, its average)
+  const flat = new Set();
+  for (const [i, m] of mats.entries()) {
+    const tex = m.getBaseColorTexture();
+    const [r, g, b] = m.getBaseColorFactor();
+    let img = tex ? sharp(Buffer.from(tex.getImage())) : null;
+    if (tex && Math.max(...tex.getSize()) < 64) {
+      // (averaged from the pixels as they show on white: stats() reads the
+      // map before the flatten, so a see-through palette would come out black)
+      const { data, info } = await img.flatten({ background: '#ffffff' }).toColourspace('srgb').raw().toBuffer({ resolveWithObject: true });
+      const [cr, cg, cb] = [0, 1, 2].map((c) => {
+        let sum = 0;
+        for (let k = c; k < data.length; k += info.channels) sum += data[k];
+        return Math.round(sum / (data.length / info.channels));
+      });
+      img = sharp({ create: { width: cell, height: cell, channels: 3, background: { r: cr, g: cg, b: cb } } });
+      flat.add(m);
+    } else img = img ? img.resize(cell, cell, { fit: 'fill' }) : sharp({ create: { width: cell, height: cell, channels: 3, background: '#ffffff' } });
+    // (a grey map made colour first: linear wants a band a factor; what
+    // was see-through, a lace cape's holes, is white)
+    const rgb = await img.flatten({ background: '#ffffff' }).toColourspace('srgb').png().toBuffer();
+    tiles.push({ input: await sharp(rgb).linear([r, g, b], [0, 0, 0]).png().toBuffer(), left: (i % cols) * cell, top: Math.floor(i / cols) * cell });
+  }
+  const image = await sharp({ create: { width: cols * cell, height: rows * cell, channels: 3, background: '#808080' } }).composite(tiles).png().toBuffer();
+  const material = doc.createMaterial('sheet').setBaseColorTexture(doc.createTexture('sheet').setImage(image).setMimeType('image/png')).setMetallicFactor(0).setRoughnessFactor(0.8);
+  // (a texel in from each square's edge, so a mip level doesn't mix squares)
+  const pad = 2 / cell;
+  for (const prim of prims) {
+    const i = mats.indexOf(prim.getMaterial());
+    if (i < 0) continue;
+    const uv = mats[i].getBaseColorTexture() && !flat.has(mats[i]) ? prim.getAttribute('TEXCOORD_0') : null;
+    const count = prim.getAttribute('POSITION').getCount();
+    const out = new Float32Array(count * 2);
+    // (a triangle laid out a whole map over, at 1…2 say, a mirrored half,
+    // is brought back to 0…1, each triangle on its own: the parts are
+    // unwelded first; what's left past the edge is clamped)
+    const tri = [[], [], []];
+    // (a flat part's UVs spread over its square by where its corners are:
+    // the rigger drops a part whose corners all share one UV)
+    const pos = prim.getAttribute('POSITION');
+    const lo = pos.getMin([]);
+    const hi = pos.getMax([]);
+    const spread = (k) => {
+      const p = pos.getElement(k, []);
+      return [0.1 + (0.8 * (p[0] - lo[0])) / (hi[0] - lo[0] || 1), 0.1 + (0.8 * (p[1] - lo[1])) / (hi[1] - lo[1] || 1)];
+    };
+    for (let k = 0; k < count; k += 3) {
+      for (let c = 0; c < 3; c++) tri[c] = uv ? uv.getElement(k + c, []) : spread(k + c);
+      const shift = [0, 1].map((j) => Math.floor(Math.min(tri[0][j], tri[1][j], tri[2][j]) + 1e-4));
+      for (let c = 0; c < 3; c++) {
+        const [u, v] = tri[c].map((x, j) => pad + Math.min(1, Math.max(0, x - shift[j])) * (1 - 2 * pad));
+        out[(k + c) * 2] = ((i % cols) + u) / cols;
+        out[(k + c) * 2 + 1] = (Math.floor(i / cols) + v) / rows;
+      }
+    }
+    prim.setAttribute('TEXCOORD_0', doc.createAccessor().setType('VEC2').setArray(out).setBuffer(root.listBuffers()[0]));
+    prim.setMaterial(material);
+  }
+  await doc.transform(weld());
+}
+
+// who made a Sketchfab figure, from its public page, for
+// src/data/modelCredits.json (as `crew-<name>`)
+const LICENCES = { by: 'CC-BY-4.0', 'by-sa': 'CC-BY-SA-4.0', 'by-nc': 'CC-BY-NC-4.0', 'by-nc-sa': 'CC-BY-NC-SA-4.0' };
+async function credit(n, a) {
+  const r = await fetch(`https://api.sketchfab.com/v3/models/${a.uid}`);
+  if (!r.ok) throw new Error(`${n}: sketchfab ${r.status}`);
+  const m = await r.json();
+  const license = LICENCES[m.license?.slug];
+  if (!license) throw new Error(`${n}: its licence (${m.license?.label}) isn't one the site can use`);
+  return {
+    title: m.name,
+    author: m.user.displayName || m.user.username,
+    authorUrl: m.user.profileUrl,
+    license,
+    licenseUrl: m.license.url,
+    source: m.viewerUrl,
+    where: 'galaxy-surface',
+    as: `${a.as ?? n}, walking on the worlds`,
+    file: `/models/galaxy/crew/${n}.glb`,
+    also: ['galaxy'],
+    note: "The author's mesh and textures, rigged on a humanoid skeleton with Meshy (meshy.ai) so it can walk.",
+  };
+}
+
 const made = (names) => names.filter((n) => !ASSETS[n].uid);
 const fromSketchfab = (names) => names.filter((n) => ASSETS[n].uid);
 
@@ -275,21 +458,38 @@ const steps = {
       if (!token) throw new Error('Set SKETCHFAB_API_TOKEN in the environment.');
       const raw = join(REVIEW, 'in', `${n}-sketchfab.glb`);
       if (!existsSync(raw)) {
-        const info = await fetch(`https://api.sketchfab.com/v3/models/${ASSETS[n].uid}/download`, { headers: { Authorization: `Token ${token}` } });
-        if (!info.ok) throw new Error(`${n}: sketchfab download ${info.status}`);
-        await download((await info.json()).glb.url, raw);
+        // (the download API is rate-limited: a 429 is waited out, a minute at a time)
+        for (let tries = 0; ; tries++) {
+          const info = await fetch(`https://api.sketchfab.com/v3/models/${ASSETS[n].uid}/download`, { headers: { Authorization: `Token ${token}` } });
+          if (info.ok) {
+            await download((await info.json()).glb.url, raw);
+            break;
+          }
+          if (info.status !== 429 || tries >= 8) throw new Error(`${n}: sketchfab download ${info.status}`);
+          console.log(`${n}: rate-limited, waiting a minute`);
+          await sleep(60000);
+        }
       }
       const io = await getIO();
       const doc = await io.read(raw);
+      // (a figure that came rigged is baked as its bones hold it, the way the
+      // galaxy's ships are; lines and points go)
+      for (const mesh of doc.getRoot().listMeshes()) for (const prim of mesh.listPrimitives()) if (prim.getMode() !== 4) prim.dispose();
       // (Sketchfab's own -90 degree turn about x, and any others, into the vertices)
-      await doc.transform(flatten());
+      await doc.transform(unskinned(), flatten());
       for (const node of doc.getRoot().listNodes()) {
         const mesh = node.getMesh();
         if (!mesh) continue;
-        transformMesh(mesh, node.getWorldMatrix());
+        // (turned by `yaw` about the vertical, for one that comes facing sideways)
+        const y = ASSETS[n].yaw ?? 0;
+        const turn = [Math.cos(y), 0, -Math.sin(y), 0, 0, 1, 0, 0, Math.sin(y), 0, Math.cos(y), 0, 0, 0, 0, 1];
+        transformMesh(mesh, y ? mul4(turn, node.getWorldMatrix()) : node.getWorldMatrix());
         node.setMatrix([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
       }
-      await doc.transform(prune(), dedup(), textureCompress({ encoder: sharp, targetFormat: 'jpeg', resize: [TEX, TEX], quality: 92 }));
+      if (ASSETS[n].sheet) await oneSheet(doc);
+      // (only the first UV set: the rigger can read a second one instead)
+      for (const mesh of doc.getRoot().listMeshes()) for (const prim of mesh.listPrimitives()) for (const name of prim.listSemantics()) if (/^TEXCOORD_[1-9]/.test(name)) prim.setAttribute(name, null);
+      await doc.transform(prune(), dedup(), textureCompress({ encoder: sharp, targetFormat: 'jpeg', resize: [2 * TEX, 2 * TEX], quality: 92 }));
       const b = getBounds(doc.getRoot().listScenes()[0]);
       const out = join(REVIEW, 'in', `${n}.glb`);
       await mkdir(dirname(out), { recursive: true });
@@ -317,6 +517,7 @@ const steps = {
   },
   async fetch(names, s) {
     const tmp = join(REVIEW, 'raw');
+    const credits = JSON.parse(await readFile(CREDITS, 'utf8'));
     for (const n of names) {
       const a = ASSETS[n];
       let url;
@@ -332,10 +533,14 @@ const steps = {
       await download(url, raw);
       const { tris, size, bones } = await squeeze(raw, out, a);
       if (!a.still && !bones) throw new Error(`${n}: no Hips bone`);
+      // (a figure credited already keeps its entry: Luke's and Leia's were written by hand)
+      if (a.uid && !credits[`crew-${n}`]) credits[`crew-${n}`] = await credit(n, a);
       const mb = (await stat(out)).size / 1e6;
       console.log(`fetch    ${n.padEnd(10)} ${mb.toFixed(2)} MB, ${tris} triangles, ${size ? `${size.map((v) => v.toFixed(2)).join(' × ')} m` : `${a.height} m, rigged`}`);
     }
     await rm(tmp, { recursive: true, force: true });
+    const sorted = Object.fromEntries(Object.keys(credits).sort().map((k) => [k, credits[k]]));
+    await writeFile(CREDITS, `${JSON.stringify(sorted, null, 2)}\n`);
   },
 };
 

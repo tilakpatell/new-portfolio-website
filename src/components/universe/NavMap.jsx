@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiEyeLine, RiFlashlightFill, RiLinkM, RiRocket2Fill, RiRouteLine, RiSearchLine, RiSpeedUpFill } from 'react-icons/ri';
-import { CHART_VIEWS, DESTINATIONS, DRIVES, KINDS, chartAt, chartHeading, chartRadius, destinationById, distanceTo, driveById, findDestinations, formatDistance, formatTime, goalOf, onChart, speedWord, tripTime } from './nav';
-import { BELT, HOME_RADIUS, SUN } from './layout';
+import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiEyeLine, RiFlashlightFill, RiLinkM, RiRoadMapFill, RiRocket2Fill, RiRouteLine, RiSearchLine, RiSpeedUpFill } from 'react-icons/ri';
+import { CHART_VIEWS, DESTINATIONS, DRIVES, KINDS, chartAt, chartHeading, chartRadius, destinationById, distanceTo, driveById, findDestinations, formatDistance, formatTime, goalOf, onChart, portalBetween, speedWord, tripTime, viewFor } from './nav';
+import { BELT, HOME_RADIUS, SECTORS, SUN, sectorOf } from './layout';
 import { EDGE } from './ship';
+import { LANES, routeTo } from './hyperlanes';
+import { bezier } from './lanes';
 import './navmap.css';
 
 // The nav map: the whole universe from straight above, the way the galaxy's
@@ -12,14 +14,20 @@ import './navmap.css';
 // online, and the course to wherever's picked. Pick a place (on the chart,
 // or from the list: filter it, or search it by name), then a drive, each
 // with how long it'd take from here, run on the ship's own physics (nav.js):
+//   Hyperlanes   the autopilot on the lanes (hyperlanes.js), riding with the traffic
 //   Hyperspeed   a jump to lightspeed, out parked at it
 //   Super speed  the autopilot on 3× the pulse drive
 //   Cruise       the pulse drive as it comes
 // and go. The drive picked is kept, and it's how picking a place anywhere
 // on the map goes too. A world or a station can be gone straight into, too.
 // With no ship, the camera takes you to a station or a world (the trip
-// times need a ship). The whole universe on a square-root scale (the home
-// system opens up, the far worlds still fit), or the home system alone.
+// times need a ship). The whole universe on a root scale (the home system
+// opens up, the far worlds still fit), its hyperlanes drawn by tier (the
+// express brightest) and the route by them plotted over them, or the home
+// system alone; or
+// the Rick and Morty sector, round its own middle (it opens on the sector the
+// ship's in). A place in the other sector is gone to through the portal
+// between them, and its course is drawn to that portal.
 //
 // Drawn into <body> over everything, as a dialog: a canvas of stars under
 // an SVG of the rings, the wonders and the course, with a button per place
@@ -27,10 +35,16 @@ import './navmap.css';
 // the scene's (scene.js), read a few times a second while it's open.
 
 const V = 1000; // the SVG's units across
-const ICONS = { hyper: RiFlashlightFill, super: RiSpeedUpFill, cruise: RiRocket2Fill };
+const ICONS = { lanes: RiRoadMapFill, hyper: RiFlashlightFill, super: RiSpeedUpFill, cruise: RiRocket2Fill };
 // names that'd sit on a neighbour's (on the universe chart): under their dot instead
 const UNDER = new Set(['maw', 'glacia']);
 const WHY = { interdicted: 'Interdicted: hunters are holding the drive down', charging: 'Charging' };
+// the far fights (farFights.js) the scene says are on, on this chart: [{ id, x, z, label, xy }]
+const fightsOn = (now, sector, P) =>
+  (Array.isArray(now?.farFights) ? now.farFights : [])
+    .filter((f) => Number.isFinite(f?.x) && Number.isFinite(f?.z) && sectorOf(f.x, 0, f.z) === sector)
+    .map((f) => ({ ...f, xy: P([f.x, 0, f.z]) }))
+    .filter((f) => onChart([f.xy[0] / V, f.xy[1] / V]));
 
 function paintStars(canvas) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -63,11 +77,14 @@ function paintStars(canvas) {
 // how big a thing `reach` across, `d` out from the middle, looks on the chart (SVG units)
 const sizeOn = (d, reach, view) => ((chartRadius(d + reach, view) - chartRadius(Math.max(0, d - reach), view)) / 2) * V;
 
+// which sector the ship's in (the main map's, with no ship)
+const sectorAt = (ship) => (ship ? sectorOf(ship.x, ship.y ?? 0, ship.z) : 'main');
+
 export default function NavMap({ where, drive, onDrive, selected = null, live = false, onTravel, onEnter, onWhole, onTour, onClose }) {
-  const [view, setView] = useState('all');
+  const [now, setNow] = useState(() => where?.() ?? null);
+  const [view, setView] = useState(() => viewFor(sectorAt(now?.ship)));
   const [kind, setKind] = useState('all');
   const [query, setQuery] = useState('');
-  const [now, setNow] = useState(() => where?.() ?? null);
   // (what the page has picked, unless that's where the ship is already)
   const [pick, setPick] = useState(() => (selected && destinationById(selected) && selected !== now?.at ? selected : null));
   const [times, setTimes] = useState({});
@@ -76,6 +93,12 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
   const close = useRef(null);
   const search = useRef(null);
   const chart = CHART_VIEWS[view];
+  const sector = chart.sector;
+  const shipSector = sectorAt(now?.ship);
+  // (how far out from the chart's middle)
+  const out = (at3) => Math.hypot(at3[0] - chart.origin[0], at3[2] - chart.origin[2]);
+  // where a course to a place is drawn to on this chart: the place, or the portal on the way to it
+  const toward = (d) => (d.sector === sector ? d.at : (portalBetween(sector, d.sector)?.at ?? null));
   const picked = pick ? destinationById(pick) : null;
   const flying = Boolean(now?.ship);
   const shown = useMemo(() => new Set(findDestinations(kind, query).map((d) => d.id)), [kind, query]);
@@ -170,16 +193,26 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
 
   const P = (at3) => chartAt(at3[0], at3[2], chart).map((v) => v * V);
   const pct = ([u, v]) => ({ left: `${(u / V) * 100}%`, top: `${(v / V) * 100}%` });
-  const shipAt = now?.ship ? P([now.ship.x, 0, now.ship.z]) : null;
+  const shipAt = now?.ship && shipSector === sector ? P([now.ship.x, 0, now.ship.z]) : null;
   const goingTo = now?.going ? destinationById(now.going.id) : null;
   const course = picked && !at(picked.id) ? picked : goingTo;
+  const courseAt = course ? toward(course) : null;
   const homeR = chartRadius(HOME_RADIUS, chart) * V;
+  // the hyperlanes, each a line of 12 chart points along it (the main
+  // sector's chart: none run anywhere else), and the route by them to the
+  // place picked or being gone to, on the lanes drive
+  // (each render: 47 lanes and a Dijkstra over 36 nodes, well under a millisecond)
+  const lanes = view === 'all' ? LANES.map((l) => ({ id: l.id, tier: l.tier, points: Array.from({ length: 13 }, (_, i) => P(bezier(l.pts, i / 12)).join(',')).join(' ') })) : [];
+  const routeDrive = goingTo && course === goingTo ? now.going.drive : drive;
+  const route = view === 'all' && course && routeDrive === 'lanes' && now?.ship ? routeTo(now.ship, goalOf(course.id)) : null;
+  const routeLine = route ? route.legs.flatMap((leg) => (leg.kind === 'fly' ? [leg.from, leg.to] : Array.from({ length: 13 }, (_, i) => bezier(leg.way === 'out' ? leg.lane.pts : [...leg.lane.pts].reverse(), i / 12)))).map((p) => P(p).join(',')).join(' ') : null;
 
   const verb = (d) => {
     if (!d) return '';
     if (!flying) return d.kind === 'wonder' ? 'Pick a ship to fly out to it' : d.via ? `Show me the gate` : `Show me ${d.name}`;
     if (now?.foot) return 'Back in the ship first (G)';
     if (at(d.id)) return d.via ? `Through the gate to ${d.name}` : `You’re at ${d.name}`;
+    if (d.sector !== shipSector) return `${driveById(fallsBack ? 'super' : drive).verb} through the portal to ${d.name}`;
     return d.via ? `${driveById(fallsBack ? 'super' : drive).verb} to the gate, then ${d.name}` : `${driveById(fallsBack ? 'super' : drive).verb} to ${d.name}`;
   };
   // a link to a place (a universe, a wonder) that opens the map there
@@ -251,7 +284,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   e.preventDefault();
                   setPick(list[0].id);
                   if (list[0].kind === 'station' && view !== 'home') setView('home');
-                  if (list[0].kind !== 'station' && view === 'home') setView('all');
+                  else if (list[0].kind !== 'station') setView(viewFor(list[0].sector));
                 }
               }}
             />
@@ -275,13 +308,13 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                 </radialGradient>
               </defs>
               {/* range rings, and the edge of the map */}
-              {view === 'all' ? (
+              {view !== 'home' ? (
                 <>
-                  {[1000, 2000, 3000, 4000, 5000, 6000].map((r) => (
+                  {[1000, 2000, 3000, 4000, 5000, 6000].filter((r) => r < SECTORS[sector].edge).map((r) => (
                     <circle key={r} cx={V / 2} cy={V / 2} r={chartRadius(r, chart) * V} className="navmap-ring" />
                   ))}
-                  <circle cx={V / 2} cy={V / 2} r={chartRadius(EDGE, chart) * V} className="navmap-edge" />
-                  <circle cx={V / 2} cy={V / 2} r={homeR} className="navmap-home-ring" />
+                  <circle cx={V / 2} cy={V / 2} r={chartRadius(sector === 'main' ? EDGE : SECTORS[sector].edge, chart) * V} className="navmap-edge" />
+                  {sector === 'main' && <circle cx={V / 2} cy={V / 2} r={homeR} className="navmap-home-ring" />}
                 </>
               ) : (
                 <>
@@ -289,12 +322,12 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   <circle cx={V / 2} cy={V / 2} r={homeR} className="navmap-edge" />
                 </>
               )}
-              <circle cx={V / 2} cy={V / 2} r={Math.max(9, chartRadius(SUN.r, chart) * V * 1.8)} fill="url(#navmap-sun)" />
+              {sector === 'main' && <circle cx={V / 2} cy={V / 2} r={Math.max(9, chartRadius(SUN.r, chart) * V * 1.8)} fill="url(#navmap-sun)" />}
               {/* the wonders, as they are */}
-              {view === 'all' &&
-                DESTINATIONS.filter((d) => d.kind === 'wonder').map((d) => {
+              {view !== 'home' &&
+                DESTINATIONS.filter((d) => d.kind === 'wonder' && d.sector === sector).map((d) => {
                   const [x, y] = P(d.at);
-                  const r = Math.max(6, sizeOn(Math.hypot(d.at[0], d.at[2]), d.reach, chart));
+                  const r = Math.max(6, sizeOn(out(d.at), d.reach, chart));
                   const dim = !shown.has(d.id);
                   if (d.type === 'Nebula') return <circle key={d.id} cx={x} cy={y} r={r} fill="url(#navmap-cloud)" style={{ color: d.color }} opacity={dim ? 0.35 : 1} />;
                   if (d.type === 'Black hole')
@@ -306,6 +339,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                       </g>
                     );
                   if (d.type === 'Star') return <circle key={d.id} cx={x} cy={y} r={r} className="navmap-system" style={{ color: d.color }} opacity={dim ? 0.35 : 1} />;
+                  if (d.type === 'Portal') return <circle key={d.id} cx={x} cy={y} r={Math.max(9, r)} className="navmap-portal" style={{ color: d.color }} opacity={dim ? 0.35 : 1} />;
                   return null;
                 })}
               {/* the crew's war (front.js): its sectors in a line, each in the colour of the side
@@ -320,15 +354,32 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   <circle cx={P(now.front.at)[0]} cy={P(now.front.at)[1]} r="14" className="navmap-war-front" />
                 </g>
               )}
-              {/* the course: where it's going (and how), or to the place picked */}
-              {shipAt && course && (
-                <line x1={shipAt[0]} y1={shipAt[1]} x2={P(course.at)[0]} y2={P(course.at)[1]} className="navmap-course" data-drive={goingTo && course === goingTo ? now.going.drive : 'plot'} />
+              {/* the hyperlanes, by tier */}
+              {lanes.length > 0 && (
+                <g className="navmap-lanes">
+                  {lanes.map((l) => (
+                    <polyline key={l.id} points={l.points} className="navmap-lane" data-tier={l.tier} />
+                  ))}
+                </g>
+              )}
+              {/* the course: where it's going (and how), or to the place picked; by the lanes, along them */}
+              {shipAt && routeLine && <polyline points={routeLine} className="navmap-course navmap-route" data-drive={goingTo && course === goingTo ? 'lanes' : 'plot'} />}
+              {shipAt && courseAt && !routeLine && (
+                <line x1={shipAt[0]} y1={shipAt[1]} x2={P(courseAt)[0]} y2={P(courseAt)[1]} className="navmap-course" data-drive={goingTo && course === goingTo ? now.going.drive : 'plot'} />
               )}
               {/* the other pilots online */}
               {(now?.pilots ?? []).map((p) => {
+                if (sectorOf(p.x, 0, p.z) !== sector) return null;
                 const [x, y] = P([p.x, 0, p.z]);
                 return onChart([x / V, y / V]) ? <rect key={p.id} x={x - 4} y={y - 4} width="8" height="8" className="navmap-pilot" transform={`rotate(45 ${x} ${y})`} /> : null;
               })}
+              {/* someone's fight out on the lanes (farFights.js), seen from afar: a burst, named in the list over the chart */}
+              {fightsOn(now, sector, P).map((f) => (
+                <g key={f.id} transform={`translate(${f.xy[0]} ${f.xy[1]})`} className="navmap-fight">
+                  <circle r="9" className="navmap-fight-ring" />
+                  <path d="M-4 -4 L4 4 M4 -4 L-4 4" />
+                </g>
+              ))}
               {/* you */}
               {shipAt && onChart([shipAt[0] / V, shipAt[1] / V]) && (
                 <g transform={`translate(${shipAt[0]} ${shipAt[1]}) rotate(${chartHeading(now.ship.heading)})`} className="navmap-ship">
@@ -349,6 +400,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
               {DESTINATIONS.map((d) => {
                 if (view === 'all' && d.kind === 'station') return null;
                 if (d.kind === 'system') return null; // (the galaxy's systems all sit at the gate: the list has them)
+                if (d.sector !== sector) return null; // (the other sector's: on its own chart)
                 const xy = P(d.at);
                 if (!onChart([xy[0] / V, xy[1] / V])) return null;
                 return (
@@ -376,10 +428,24 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   </button>
                 </li>
               )}
+              {/* the far fights' names: under their bursts (a fight at a ramp sits by its place, whose name is to the right) */}
+              {fightsOn(now, sector, P).map((f) => (
+                <li key={f.id} style={{ ...pct(f.xy), '--c': '#ff8a5c' }} data-kind="fight">
+                  <span className="navmap-place navmap-fightname">
+                    <span className="navmap-name">{f.label}</span>
+                  </span>
+                </li>
+              ))}
             </ul>
             {view === 'home' && (
               <button type="button" className="navmap-out" onClick={() => setView('all')}>
                 <RiArrowLeftLine className="h-3.5 w-3.5" aria-hidden="true" /> Out to the whole universe
+              </button>
+            )}
+            {/* in the Rick and Morty sector: the way home */}
+            {view === 'rickmorty' && (
+              <button type="button" className="navmap-out" onClick={() => (canFly && shipSector === 'rickmorty' ? onTravel('rmportal-back', drive) : setView('all'))}>
+                <RiArrowLeftLine className="h-3.5 w-3.5" aria-hidden="true" /> {canFly && shipSector === 'rickmorty' ? 'Back through the portal' : 'Back to the main map'}
               </button>
             )}
           </div>
@@ -416,7 +482,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                   <button key={d.id} type="button" role="radio" aria-checked={drive === d.id} className="navmap-drive" data-drive={d.id} onClick={() => onDrive(d.id)} title={d.about}>
                     <Icon className="navmap-drive-icon" aria-hidden="true" />
                     <span className="navmap-drive-name">{d.name}</span>
-                    <span className="navmap-drive-time">{t === undefined ? (d.id === 'hyper' ? 'Jump' : d.id === 'super' ? '3×' : '1×') : t === null ? '—' : formatTime(t)}</span>
+                    <span className="navmap-drive-time">{t === undefined ? (d.id === 'hyper' ? 'Jump' : d.id === 'lanes' ? 'Lanes' : d.id === 'super' ? '3×' : '1×') : t === null ? '—' : formatTime(t)}</span>
                   </button>
                 );
               })}
@@ -472,7 +538,7 @@ export default function NavMap({ where, drive, onDrive, selected = null, live = 
                           onClick={() => {
                             setPick(d.id);
                             if (d.kind === 'station' && view !== 'home') setView('home');
-                            if (d.kind !== 'station' && view === 'home') setView('all');
+                            else if (d.kind !== 'station') setView(viewFor(d.sector));
                           }}
                           style={{ '--c': d.color }}
                           aria-current={at(d.id) ? 'location' : undefined}

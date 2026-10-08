@@ -18,6 +18,19 @@
 // - 'tail': the quick ones (an interceptor, Vader, a Rick) sometimes stay on
 //   you after a pass instead, sitting behind you and firing for a few
 //   seconds, till you turn on them or shake them off.
+// A pack hunts as one (lib/ai/squad): its attack runs are tokens (so many
+// of a pack on a run at once, one on your tail at a time), and a hunter
+// that's waiting for one does something with the wait: swings wide to your
+// blind side to come in from behind (a flank, said once: event 'flank'),
+// or sits off ahead across the way you're going (a blocker), or holds its
+// station, weighed by how fast you're going and where it already is
+// (lib/ai/utility). It has nerve: a pack that's lost most of itself breaks
+// off together (event 'escaped' with why 'broke'). And it knows you only as
+// it perceives you (lib/ai/perception): sent after you, it knows where you
+// are; a planet between you hides you, it keeps the truth a couple of
+// seconds (intuition), then chases its guess of you, which drifts the way
+// you were going and fades, and a pack that has lost you altogether gives
+// up. Its shots go to the guess, and a laser stops at a planet as before.
 // They fly like fighters: each turns its nose at its own rate (a little
 // quicker than yours at the fight's speed, less at its top: turnRateAt) and
 // slows into a hard turn (it arcs round; it doesn't stop and come back),
@@ -39,7 +52,7 @@
 // when you loop. Shoot them down, or outrun them: far enough away for long
 // enough and they give up and peel away.
 //
-// createHunt({ rand, factions, kinds, solids, lasers }) → { pack(faction, ship, opts) → hunters,
+// createHunt({ rand, factions, kinds, solids, lasers, nerve }) → { pack(faction, ship, opts) → hunters,
 //   update(dt, ship) → events, hit(from, to, damage) → hit or null,
 //   damage(id, n) → hit or null, clear(), live, lasers, targets, count,
 //   active, packs, wire() }
@@ -47,11 +60,17 @@
 // alive, view (the drawing's to use) }; pos, vel and prev are { x, y, z }.
 // `solids` is ship.js's ([{ at: [x, y, z], r }]) or a function giving them.
 // Events: { type: 'hunted', faction, kinds, prey, interdict }, { type:
-// 'shot', faction } (one fired at you), { type: 'laser', damage, from, bomb }
-// (and hit), { type: 'spotlit', faction, id } (a spotlight on you), { type: 'escaped', faction }, { type: 'cleared', faction, rescued }.
+// 'shot', faction } (one fired at you), { type: 'laser', damage, from, bomb, by }
+// (and hit: `by` the hunter's id), { type: 'spotlit', faction, id } (a spotlight on you),
+// { type: 'flank', faction, id } (one swinging round behind you), { type: 'escaped', faction,
+// why: 'lost' | 'broke' }, { type: 'cleared', faction, rescued }.
 
 import { intercept, nose, sweptHit } from './targeting';
 import { factionsOf, kindsOf, namesOf } from './sides';
+import { PACE } from './ship';
+import { belief, createSenses, sense } from '../../lib/ai/perception';
+import { confidence, createTokens } from '../../lib/ai/squad';
+import { consider, pick } from '../../lib/ai/utility';
 
 // who hunts for whom (sides.js: each side's factions, which kinds come and
 // how often each, their ace, their lasers' colour), what each kind is
@@ -99,7 +118,8 @@ export const traitsOf = (type) => (type.traits ? (type.trait && !type.traits.inc
 export const hasTrait = (type, t) => type.trait === t || Boolean(type.traits?.includes(t));
 export const HOLDOFF = { near: 8.75, reach: 1.4 }; // map units it keeps off; of FIGHT.range it fires from
 export const SNIPER = { near: 15, reach: 2.2, sights: 0.97, lead: 1, spread: 0.25, damage: 20 };
-export const MISSILE = { speed: 22, life: 4.5, seek: 3, sees: 0.26, damage: 24, burst: 0.5, range: 26, sights: 0.75, every: [4.5, 7.5] }; // sees: the cosine it still sees you inside (about 75°)
+// (a missile's speed at the ship's pace: a little over your boost, so it closes, slowly)
+export const MISSILE = { speed: 22 * PACE, life: 4.5 / PACE, seek: 3, sees: 0.26, damage: 24, burst: 0.5, range: 26, sights: 0.75, every: [4.5, 7.5] }; // sees: the cosine it still sees you inside (about 75°)
 export const ION = { damage: 5, slow: 2.5 };
 export const RAM = { damage: 28, reach: 0.6 };
 export const MEDIC = { every: 2.5, reach: 20 };
@@ -135,7 +155,7 @@ export const FIGHT = {
   tailBack: 5, // how far behind you one on your tail sits
   tailFor: [3.5, 6], // seconds it stays there
   tailSpread: 2, // how much wider its shots scatter from there (it's close)
-  tailAbove: 4, // your speed, under which there's no tail to sit on
+  tailAbove: 4 * PACE, // your speed, under which there's no tail to sit on
   apart: 1.5, // map units the pack keep between them
   clear: 1.2, // and from anything solid, past its surface
   ahead: 1, // seconds ahead they look for something in the way
@@ -145,7 +165,7 @@ export const FIGHT = {
   flinch: 0.3, // how often one that's hit (and not down) breaks off its run
   far: 140, // solids further than this from you aren't looked at
   match: 1.15, // of your speed, in the fight (and FIGHT.margin on top)
-  margin: 2.5, // map units a second over yours
+  margin: 2.5 * PACE, // map units a second over yours
   floor: 0.42, // of its top speed, the least it flies the fight at
   engageAt: 18, // inside this far from you it's wholly at the fight's speed
   closeFrom: 34, // past this it closes flat out (between, in between)
@@ -158,8 +178,8 @@ const between = (rand, a, b) => a + rand() * (b - a);
 
 // How quick a kind's nose is, in radians a second, at the fight's speed (a
 // little quicker than yours at cruise, which is why you can't just out-turn
-// one)
-export const turnRate = (type) => type.turn ?? 1.7 + type.accel / 16;
+// one; its acceleration as it was tuned, before ship.js's PACE)
+export const turnRate = (type) => type.turn ?? 1.7 + type.accel / PACE / 16;
 
 // and at `speed`: all of it up to the floor of the fight's speed, FIGHT.stiff
 // of it gone by its top (the quick pass is a straight one)
@@ -186,6 +206,22 @@ export const hitRadius = (type) => type.size * 0.9 + 0.12;
 
 // How many of a pack of `n` may be on an attack run at once
 export const slotsFor = (n) => (n >= 5 ? 3 : Math.min(n, 2));
+// What a hunter perceives: all round (sensors), a long way, sure of you in
+// half a second, hearing a shot from further; the truth kept a couple of
+// seconds after a planet hides you, then a guess that fades over a while
+export const HUNTER_SENSES = createSenses({ sight: { range: 400, cone: -1, far: 0.5 }, hearing: { range: 300 }, memory: 8, intuition: 2.5 });
+// Its nerve: a pack of at least NERVE.pack that's lost most of itself (the
+// ratio of what's left of it to what it's lost and what you're worth:
+// lib/ai/squad's confidence, binned) breaks off together
+export const NERVE = { pack: 3, you: 0.4, every: 1 };
+// The roles a hunter waiting for a run may take (its station): holding
+// off to one side ahead of you, swinging round behind you to come in from
+// your blind side, or sitting out across the way you're going
+export const ROLES = [
+  { id: 'wait', weight: 0.3, considerations: [] },
+  { id: 'flank', weight: 1.2, considerations: [(c) => consider(c.yourSpeed, [3 * PACE, 16 * PACE]), (c) => (c.behind ? 1 : 0.6), (c) => (c.holdoff ? 0 : 1)] },
+  { id: 'block', weight: 1.0, considerations: [(c) => consider(c.yourSpeed, [8 * PACE, 30 * PACE]), (c) => consider(c.alive, [2, 4]), (c) => (c.holdoff ? 0 : 1)] },
+];
 
 // The way you're really going, in the map's space: along your nose at your
 // speed, climbing or falling as the ship says it is (ship.js's vy has the
@@ -203,8 +239,9 @@ export function shipVelocity(s, out = [0, 0, 0]) {
 // More come, and the ace more often, the more trouble you've been making
 // (`heat`: what you've shot down lately); the first pack of a visit is a
 // small one with no ace. `size` and `ace`, given, are taken as they are.
-// `more`: that many more (or fewer) than it would be, never under one, and
-// never more of a pack of one (a bounty hunter comes alone).
+// `kinds`: exactly who comes; `more`: that many more (or fewer) than it
+// would be, never under one, and never more of a pack of one (a bounty
+// hunter comes alone).
 export function packPlan(f, { size, ace, heat = 0, first = false, rand = Math.random, kinds: given = null, more = 0 } = {}) {
   if (given?.length) return [...given];
   const [lo, hi] = f.size;
@@ -252,15 +289,24 @@ export function clearOf(p, solids, gap = 2) {
 
 // Where the `i`th of `n` comes in: behind you, spread out, a little above
 // and below; `ahead` of you (an ambush, across your way, where you see them
-// coming); out of `portal`s opening ahead of you; or one after another out
-// of a hangar (`from`: { x, y, z }). Never inside anything solid.
-export function entryPoint(ship, i, n, { portal = false, from = null, ahead = false, rand = Math.random, solids = [] } = {}) {
+// coming: `lead` further along, where you'll be by the time they have the
+// pulse drive down, ship.js's holdReach); out of `portal`s opening ahead of
+// you; one after another out of a hangar (`from`: { x, y, z }); or waiting
+// round a point (`at`: { x, y, z }, the node you're coming off a lane at,
+// or where you've stopped: never in the lane itself). Never inside anything
+// solid.
+export function entryPoint(ship, i, n, { portal = false, from = null, ahead = false, lead = 0, at = null, rand = Math.random, solids = [] } = {}) {
   const fx = -Math.sin(ship.heading);
   const fz = -Math.cos(ship.heading);
   let p;
-  if (from) p = { x: from.x + (rand() - 0.5) * 3, y: from.y - i * 0.6, z: from.z + (rand() - 0.5) * 3 };
+  if (at) {
+    // (round it, evenly, a little above and below)
+    const a = (i / Math.max(1, n)) * Math.PI * 2 + rand() * 0.4;
+    const d = 14 + rand() * 8;
+    p = { x: at.x + Math.cos(a) * d, y: at.y + (rand() - 0.5) * 6, z: at.z + Math.sin(a) * d };
+  } else if (from) p = { x: from.x + (rand() - 0.5) * 3, y: from.y - i * 0.6, z: from.z + (rand() - 0.5) * 3 };
   else if (ahead) {
-    const d = 38 + i * 4;
+    const d = 38 + i * 4 + lead;
     const side = (i - (n - 1) / 2) * 5;
     p = { x: ship.x + fx * d - fz * side, y: ship.y + (rand() - 0.5) * 6, z: ship.z + fz * d + fx * side };
   } else if (portal) {
@@ -342,12 +388,15 @@ export function blocked(a, b, solids) {
 
 // (`factions` and `kinds` are these, unless another map brings its own: the
 // galaxy's Separatists and the Imperial remnant, galaxy/hunted.js)
-export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KINDS = HUNTER_KINDS, solids = [], lasers: laserCount = 28, firstId = 1 } = {}) {
+// (`nerve: false` for a hunt whose quarry isn't you: a skirmish's, fought to the end)
+export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KINDS = HUNTER_KINDS, solids = [], lasers: laserCount = 28, firstId = 1, nerve = true } = {}) {
   const allSolids = typeof solids === 'function' ? solids : () => solids;
   const live = []; // hunters in flight
   const packs = []; // { faction, members, lost, said, … }
   let nextId = firstId; // each hunter's own number, for the lock to follow (another hunt, a skirmish's, numbers its own from elsewhere)
-  const lasers = Array.from({ length: laserCount }, () => ({ on: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, at: null, faction: null, bomb: false, r: null, damage: null, seek: 0, missile: false, ion: false }));
+  const lasers = Array.from({ length: laserCount }, () => ({ on: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, at: null, faction: null, bomb: false, r: null, damage: null, by: null, seek: 0, missile: false, ion: false }));
+  const yourVelObj = { x: 0, y: 0, z: 0 }; // (for the senses)
+  const estVel = [0, 0, 0];
   const events = [];
   const later = []; // what happened between frames (an ace hurt into its next stage), told on the next
   const targets = []; // what the guns can lock on to (reused)
@@ -371,12 +420,14 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
 
   // a new station for one swinging out: off along the way the target's
   // pointing now (`look`), to the hunter's side, a little above or below
-  const restation = (h, look) => {
+  const restation = (h, look, role = 'wait') => {
     h.mode = 'set';
     h.clock = 0;
-    // (one that holds off takes its station further out: its run is all range)
-    const out = (10 + rand() * 6) * (hasTrait(h.type, 'sniper') ? 2.4 : hasTrait(h.type, 'holdoff') ? 1.7 : 1);
-    const wide = (3 + rand() * 5) * h.side;
+    h.role = role;
+    // (one that holds off takes its station further out: its run is all
+    // range; a flanker's is behind you, to the side; a blocker's well ahead)
+    const out = role === 'flank' ? -(8 + rand() * 6) : role === 'block' ? FIGHT.closeFrom : (10 + rand() * 6) * (hasTrait(h.type, 'sniper') ? 2.4 : hasTrait(h.type, 'holdoff') ? 1.7 : 1);
+    const wide = (role === 'flank' ? 6 + rand() * 4 : role === 'block' ? 1 + rand() * 2 : 3 + rand() * 5) * h.side;
     const high = (rand() - 0.5) * 3;
     // level, across the way it's pointing (anything pointing straight up has no across: x will do)
     let sx = -look[2];
@@ -394,9 +445,10 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
     h.off[2] = look[2] * out + sz * wide;
   };
   const release = (h) => {
-    if (!h.slot) return;
+    h.pack.tokens.release('run', h.id);
+    h.pack.tokens.release('tail', h.id);
     h.slot = false;
-    h.pack.attacking = Math.max(0, h.pack.attacking - 1);
+    h.pack.attacking = h.pack.tokens.count('run');
   };
   const remove = (h) => {
     release(h);
@@ -433,7 +485,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
       stage(h);
       if (hasTrait(h.type, 'flicker')) h.hidden = FLICKER;
       // now and then it breaks off the run it was on, the other way (the
-      // rest of the time it takes the hit and comes on; a rammer never)
+      // rest of the time it takes the hit and comes on)
       if (h.mode !== 'set' && !hasTrait(h.type, 'rammer') && rand() < (h.skill?.flinch ?? FIGHT.flinch)) {
         release(h);
         h.side = -h.side;
@@ -565,6 +617,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
     m.ion = ion;
     m.r = missile ? MISSILE.burst : bomb ? BOMB.burst : null;
     m.damage = missile ? MISSILE.damage : bomb ? BOMB.damage : ion ? ION.damage : (type.damage ?? (sniper ? SNIPER.damage : null));
+    m.by = h.id;
     if (!toPrey) events.push({ type: missile ? 'missile' : 'shot', faction: h.pack.faction, id: h.id });
   };
 
@@ -577,8 +630,9 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
     // hunters (each one's `pos` is where it came in).
     // `skill`: the tier they fly at (SKILLS; none: as their kinds always
     // have), their ace (or a bounty hunter) a tier better and never under a
-    // veteran; `kinds`: exactly who comes, in place of the faction's pick
-    pack(faction, ship, { prey = null, size, ace, from = null, ahead = false, interdict = false, heat = 0, first = false, skill = null, kinds: given = null, more = 0 } = {}) {
+    // veteran; `kinds`: exactly who comes, in place of the faction's pick;
+    // `more`: that many more of them (packPlan)
+    pack(faction, ship, { prey = null, size, ace, from = null, ahead = false, lead = 0, at = null, interdict = false, heat = 0, first = false, skill = null, kinds: given = null, more = 0 } = {}) {
       const f = factions[faction];
       if (!f || !ship) return [];
       const kinds = packPlan(f, { size, ace, heat, first, rand, kinds: given?.filter((k) => KINDS[k]), more });
@@ -589,14 +643,15 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         const best = kind === f.ace || f.role === 'bounty' || KINDS[kind].stages ? Math.max(tier + 1, TIER_ORDER.indexOf('veteran')) : tier;
         return SKILLS[TIER_ORDER[Math.min(TIER_ORDER.length - 1, best)]];
       };
-      const pack = { faction, members: [], lost: 0, fade: 0, prey, wasPrey: Boolean(prey), kinds, interdict, attacking: 0, slots: slotsFor(n) + (tier >= 0 ? SKILLS[skill].slots : 0), gone: false, angry: false, said: false, provoked: false, skill: tier >= 0 ? skill : null };
+      const runs = slotsFor(n) + (tier >= 0 ? SKILLS[skill].slots : 0);
+      const pack = { faction, skill: tier >= 0 ? skill : null, members: [], lost: 0, fade: 0, prey, wasPrey: Boolean(prey), kinds, interdict, attacking: 0, slots: runs, tokens: createTokens({ pools: { run: runs, tail: 1 }, timeout: 30 }), n0: n, nerve: 'neutral', nerveAt: 0, gone: false, angry: false, said: false, provoked: false };
       const around = allSolids();
       const fx = -Math.sin(ship.heading);
       const fz = -Math.cos(ship.heading);
       kinds.forEach((kind, i) => {
         const type = KINDS[kind];
         const hs = skillOf(kind);
-        const pos = entryPoint(ship, i, n, { portal: f.portal && !from && !ahead, from, ahead, rand, solids: around });
+        const pos = entryPoint(ship, i, n, { portal: f.portal && !from && !ahead && !at, from, ahead, lead, at, rand, solids: around });
         const v = type.speed * (ahead ? -0.8 : 0.8); // (an ambush comes at you; the rest come up behind you)
         const h = {
           id: nextId++,
@@ -629,6 +684,12 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
           grow: f.portal ? 0 : 1,
           alive: true,
           view: null,
+          role: 'wait',
+          flanked: false, // (has said it's flanking)
+          // what it knows of you: sent after you, it knows where you are
+          me: { pos, dir: null, beliefs: { you: { id: 'you', at: { x: ship.x, y: ship.y, z: ship.z }, vel: { x: 0, y: 0, z: 0 }, seenAt: 0, heardAt: -Infinity, confidence: 1, visible: true, timer: 1, kind: null, hostile: true } }, now: 0 },
+          belief: null,
+          seesYou: true,
         };
         restation(h, [fx, 0, fz]);
         h.target = { id: h.id, at: h.pos, vel: h.vel, size: type.size, kind, hp: h.hp, hpMax: type.hp, faction, threat: 0 };
@@ -661,6 +722,9 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         known = true;
         yourNose = nose(ship);
         shipVelocity(ship, yourVel);
+        yourVelObj.x = yourVel[0];
+        yourVelObj.y = yourVel[1];
+        yourVelObj.z = yourVel[2];
       }
       const yourSpeed = Math.sqrt(yourVel[0] * yourVel[0] + yourVel[1] * yourVel[1] + yourVel[2] * yourVel[2]);
 
@@ -689,14 +753,27 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
           pack.said = true;
           events.push({ type: 'hunted', faction: pack.faction, kinds: pack.kinds, prey: pack.wasPrey, interdict: Boolean(pack.interdict) });
         }
-        // too far away for long enough: they give up
-        pack.lost = nearest > LOSE.far ? pack.lost + dt : 0;
-        if ((pack.lost > LOSE.after || !ship || (pack.prey === null && pack.wasPrey && !pack.angry)) && !pack.gone) {
+        // too far away for long enough (or lost altogether: nobody left in
+        // it has any idea where you are), and they give up; and a pack
+        // that's lost most of itself loses its nerve and breaks off together
+        const blind = ship && !pack.prey && pack.members.every((h) => !h.alive || !h.belief);
+        pack.lost = nearest > LOSE.far || blind ? pack.lost + dt : 0;
+        let broke = false;
+        if (nerve && ship && !pack.gone && !pack.prey && pack.n0 >= NERVE.pack && (pack.nerveAt += dt) >= NERVE.every) {
+          pack.nerveAt = 0;
+          const members = pack.members.filter((h) => h.alive).map((h) => ({ id: h.id, at: h.pos, side: 'pack', alive: true, hp: h.hp / h.type.hp }));
+          const { level } = confidence({ members: members.map((m) => m.id) }, members, [{ id: 'you', at: you, side: 'you', alive: true }], { value: (u) => (u.id === 'you' ? pack.n0 * NERVE.you : u.hp), losses: pack.n0 - members.length });
+          pack.nerve = level;
+          broke = level === 'panicked';
+        }
+        if ((pack.lost > LOSE.after || !ship || broke || (pack.prey === null && pack.wasPrey && !pack.angry)) && !pack.gone) {
           pack.gone = true;
           pack.fade = 0;
           for (const h of pack.members) release(h);
-          if (ship && !pack.wasPrey) events.push({ type: 'escaped', faction: pack.faction });
+          if (ship && !pack.wasPrey) events.push({ type: 'escaped', faction: pack.faction, why: broke ? 'broke' : 'lost' });
         }
+        pack.tokens.audit(dt, (id) => pack.members.some((h) => h.id === id && h.alive));
+        pack.attacking = pack.tokens.count('run');
       }
 
       survey(Boolean(ship));
@@ -713,8 +790,22 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         h.prev.z = pos.z;
         const gone = pack.gone;
         const onPrey = !gone && pack.prey && !pack.angry;
-        const c = onPrey ? pack.prey.at : ship && !gone ? you : null;
-        const cVel = onPrey ? zero : yourVel;
+        // what it knows of you this frame: the truth while it sees you (or
+        // for a moment after), its guess while it doesn't
+        if (ship) {
+          sense(HUNTER_SENSES, h.me, { targets: [{ id: 'you', at: you, vel: yourVelObj, hostile: true }] }, dt, { seesThrough: (a, b) => !blocked(a, b, cover) });
+          h.belief = belief(h.me, 'you');
+          h.seesYou = Boolean(h.belief?.visible);
+        }
+        const sure = h.seesYou || (h.belief && h.me.now - h.belief.seenAt <= HUNTER_SENSES.intuition);
+        const est = h.belief && !sure ? h.belief.at : you;
+        if (h.belief && !sure) {
+          estVel[0] = h.belief.vel.x;
+          estVel[1] = h.belief.vel.y;
+          estVel[2] = h.belief.vel.z;
+        }
+        const c = onPrey ? pack.prey.at : ship && !gone ? est : null;
+        const cVel = onPrey ? zero : sure ? yourVel : estVel;
         let speed = type.speed;
         const s0 = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
         let fightPace = type.speed;
@@ -757,18 +848,26 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
               h.clock = 0;
               h.closed = false;
             } else if (d < FIGHT.station || h.clock > FIGHT.setFor) {
-              if (pack.attacking < pack.slots) {
+              if (pack.tokens.claim('run', h.id)) {
                 // its turn: in it comes
-                pack.attacking += 1;
+                pack.attacking = pack.tokens.count('run');
                 h.slot = true;
                 h.mode = 'run';
                 h.clock = 0;
                 h.closed = false;
                 h.lit = false;
               } else {
-                // the others are on theirs: round to the other side, and wait
+                // the others are on theirs: something to do with the wait,
+                // weighed (a flank, a block, or round to the other side)
                 h.side = -h.side;
-                restation(h, L);
+                const behind = gap > 1e-4 && -(L[0] * tx + L[1] * ty + L[2] * tz) / gap < -0.3;
+                const alive = pack.members.filter((o) => o.alive).length;
+                const role = onPrey ? 'wait' : (pick(ROLES, { yourSpeed, behind, alive, holdoff: keepOff > 0 }, { current: h.role, momentum: 0.2, rand, spread: 0.2 })?.id ?? 'wait');
+                if (role === 'flank' && !h.flanked) {
+                  h.flanked = true;
+                  events.push({ type: 'flank', faction: pack.faction, id: h.id });
+                }
+                restation(h, L, role);
               }
             }
           }
@@ -808,8 +907,8 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
             } else if (held || h.bombed || gap < FIGHT.pass || (gap < FIGHT.past && h.closed && onNose < (h.clock > 1 ? 0.3 : 0)) || h.clock > FIGHT.runFor) {
               h.bombed = false;
               const tail = h.skill ? Math.min(0.9, (type.tail ?? 0) * h.skill.tail) : type.tail;
-              if (!held && !has('bomber') && !onPrey && h.closed && tail && yourSpeed > FIGHT.tailAbove && gap < FIGHT.past && rand() < tail) {
-                // (this one stays on you)
+              if (!held && !has('bomber') && !onPrey && h.closed && tail && yourSpeed > FIGHT.tailAbove && gap < FIGHT.past && rand() < tail && pack.tokens.claim('tail', h.id)) {
+                // (this one stays on you: one at a time)
                 h.mode = 'tail';
                 h.clock = 0;
                 h.tailFor = between(rand, FIGHT.tailFor[0], FIGHT.tailFor[1]);
@@ -859,13 +958,17 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
           }
           // a pilot you've lined up on breaks off its line a moment (the
           // better it is, the sooner): across the way you're looking down
-          if (h.skill?.jink && !onPrey && !ram) {
+          if (h.skill?.jink && !onPrey && !ram && ship) {
+            const rx = pos.x - you.x;
+            const ry = pos.y - you.y;
+            const rz = pos.z - you.z;
+            const rd = Math.sqrt(rx * rx + ry * ry + rz * rz);
             if (h.jink > 0) {
               h.jink -= dt;
               want[0] += h.jinkDir[0] * speed * JINK.push;
               want[1] += h.jinkDir[1] * speed * JINK.push;
               want[2] += h.jinkDir[2] * speed * JINK.push;
-            } else if ((h.jinkCool -= dt) <= 0 && gap < JINK.range && gap > 1e-3 && -(yourNose[0] * tx + yourNose[1] * ty + yourNose[2] * tz) / gap > JINK.cone && rand() < h.skill.jink * JINK.rate * dt) {
+            } else if ((h.jinkCool -= dt) <= 0 && rd < JINK.range && rd > 1e-3 && (yourNose[0] * rx + yourNose[1] * ry + yourNose[2] * rz) / rd > JINK.cone && rand() < h.skill.jink * JINK.rate * dt) {
               h.jink = between(rand, JINK.for[0], JINK.for[1]);
               h.jinkCool = h.jink + between(rand, JINK.cool[0], JINK.cool[1]);
               h.jinks += 1;
@@ -873,10 +976,10 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
               const ux = rand() - 0.5;
               const uy = (rand() - 0.5) * 0.6;
               const uz = rand() - 0.5;
-              const along = (ux * tx + uy * ty + uz * tz) / (gap * gap);
-              let jx = ux - tx * along;
-              let jy = uy - ty * along;
-              let jz = uz - tz * along;
+              const along = (ux * rx + uy * ry + uz * rz) / (rd * rd);
+              let jx = ux - rx * along;
+              let jy = uy - ry * along;
+              let jz = uz - rz * along;
               const jl = Math.sqrt(jx * jx + jy * jy + jz * jz) || 1;
               jx /= jl;
               jy /= jl;
@@ -949,8 +1052,8 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         }
         // a rammer that reaches you bursts on you (the whole way each of
         // you went this frame: closing at speed, it would be past you)
-        if (ram && c && !onPrey && sweptHit(h.prev, pos, youPrev, you, RAM.reach + type.size) !== null) {
-          events.push({ type: 'laser', damage: type.ram ?? RAM.damage, from: { x: pos.x, y: pos.y, z: pos.z }, bomb: false, ram: true });
+        if (ram && c && !onPrey && ship && sweptHit(h.prev, pos, youPrev, you, RAM.reach + type.size) !== null) {
+          events.push({ type: 'laser', damage: type.ram ?? RAM.damage, from: { x: pos.x, y: pos.y, z: pos.z }, bomb: false, ram: true, by: h.id });
           events.push({ type: 'rammed', id: h.id, kind: h.kind, faction: pack.faction, at: { x: pos.x, y: pos.y, z: pos.z }, size: type.size });
           remove(h);
           continue;
@@ -1049,7 +1152,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         }
         if (ship && m.at === 'you' && sweptHit(aim, m, youPrev, you, m.r ?? SHIP_R) !== null) {
           m.on = false;
-          const e = { type: 'laser', damage: m.damage ?? LASER.damage, from: { x: m.x, y: m.y, z: m.z }, bomb: m.bomb };
+          const e = { type: 'laser', damage: m.damage ?? LASER.damage, from: { x: m.x, y: m.y, z: m.z }, bomb: m.bomb, by: m.by };
           if (m.missile) e.missile = true;
           if (m.ion) e.ion = true;
           events.push(e);
@@ -1129,7 +1232,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
     },
     // for checking from a browser
     get packs() {
-      return packs.map((p) => ({ faction: p.faction, skill: p.skill, gone: Boolean(p.gone), prey: Boolean(p.prey), attacking: p.attacking, alive: p.members.filter((h) => h.alive).map((h) => h.kind), modes: p.members.filter((h) => h.alive).map((h) => h.mode) }));
+      return packs.map((p) => ({ faction: p.faction, skill: p.skill, gone: Boolean(p.gone), prey: Boolean(p.prey), attacking: p.tokens.count('run'), nerve: p.nerve, alive: p.members.filter((h) => h.alive).map((h) => h.kind), modes: p.members.filter((h) => h.alive).map((h) => h.mode), roles: p.members.filter((h) => h.alive).map((h) => h.role), sees: p.members.filter((h) => h.alive).map((h) => h.seesYou) }));
     },
     // the ones still in the fight, for the other pilots to see (and help
     // with): [id, kind, x, y, z, vx, vy, vz, hits left] each (protocol.js's

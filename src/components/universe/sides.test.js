@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AHEAD_OF, SIDES, allKinds, factionsOf, kindsOf, namesOf, pick, sideFor, sideOf, squadKinds, wingOf } from './sides';
+import { AHEAD_OF, SECTOR_SIDES, SIDES, allKinds, crewAt, factionsOf, kindsOf, namesOf, pick, sideAt, sideFor, sideOf, squadKinds, wingOf } from './sides';
+import { SECTORS } from './layout';
 import { CREWS } from './crews';
 import { TROOPS } from './foot';
 import { BUILT_KINDS } from './trafficModels';
@@ -125,5 +126,26 @@ describe('the sides', () => {
     for (const s of Object.values(SIDES)) for (const id of Object.keys(s.factions)) expect(factionsOf(null)[id]).toBe(s.factions[id]);
     expect(AHEAD_OF(SIDES.starwars).tie).toBeGreaterThan(0);
     expect(AHEAD_OF(null)).toEqual({});
+  });
+});
+
+describe('whose space it is', () => {
+  it('gives the Rick and Morty sector to the Rick and Morty side, whoever flies there, and the main map to the crew’s own', () => {
+    for (const s of Object.values(SIDES)) {
+      for (const crew of s.crews) {
+        expect(sideAt(crew, 'main'), crew).toBe(s);
+        expect(sideAt(crew), crew).toBe(s);
+        expect(crewAt(crew, 'main')).toBe(crew);
+        expect(sideAt(crew, 'rickmorty'), crew).toBe(SIDES.rickmorty);
+        expect(sideFor(crewAt(crew, 'rickmorty')), crew).toBe(SIDES.rickmorty);
+      }
+    }
+    // (Rick's own crew stays itself there)
+    expect(crewAt('cruiser', 'rickmorty')).toBe('cruiser');
+    for (const [sector, side] of Object.entries(SECTOR_SIDES)) {
+      expect(SECTORS[sector], sector).toBeTruthy();
+      expect(SIDES[side], side).toBeTruthy();
+    }
+    expect(sideAt(null, 'main')).toBeNull();
   });
 });

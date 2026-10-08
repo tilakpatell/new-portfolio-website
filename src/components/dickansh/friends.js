@@ -7,6 +7,7 @@
 // build({ tribute }) → { group, pickables, pose(), setPhotos([{ url, caption, w, h }]), update(dt, t), dispose }
 
 import * as THREE from 'three';
+import { sharpen } from '../../lib/three/textures';
 
 export const FRIENDS_AT = new THREE.Vector3(0, 13, 0);
 const RING = 7.2;
@@ -59,8 +60,7 @@ function face({ image = null, w = 1, h = 1, text = '', caption = '' }) {
   g.textAlign = 'center';
   g.fillText(caption, 320, 700, 560);
   const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  sharpen(tex, { color: true });
   return tex;
 }
 

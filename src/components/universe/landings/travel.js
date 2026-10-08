@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { box, cyl, part } from '../../galaxy/surface/kit';
 import { canopyGeometry } from '../../avengers/compound/models';
 import { HOME, PLACES, distanceKm } from '../../../data/places';
+import { sharpen } from '../../../lib/three/textures';
 
 const { PI, sin, cos, atan2 } = Math;
 const rad = (d) => (d * PI) / 180;
@@ -44,6 +45,7 @@ function atlas(signs) {
     x.textAlign = 'left';
   });
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }

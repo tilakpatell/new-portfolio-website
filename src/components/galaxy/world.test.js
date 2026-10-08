@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { SYSTEMS, goalsOf, kindsIn, systemById } from './systems';
+import { placesOf } from './places';
 import { makeSpace } from './space';
 import { buildSystem } from './world';
 import { LASER } from './fx';
@@ -31,7 +32,7 @@ describe('buildSystem', () => {
   it('builds every system with its planet and its goals, the ones the map names', () => {
     for (const sys of SYSTEMS) {
       const w = buildSystem(sys, { ...kit(), small: false });
-      expect(w.goals.map((g) => g.id).sort(), sys.id).toEqual(goalsOf(sys).map((g) => g.id).sort());
+      expect(w.goals.map((g) => g.id).sort(), sys.id).toEqual([...goalsOf(sys), ...placesOf(sys)].map((g) => g.id).sort());
       const planet = w.solids.find((o) => o.id === 'planet');
       expect(planet, sys.id).toBeTruthy();
       if (sys.body) expect(planet.r).toBe(sys.body.r);
@@ -92,7 +93,9 @@ describe('buildSystem', () => {
     for (const sys of SYSTEMS) {
       const w = buildSystem(sys, { ...kit(), small: false });
       const space = makeSpace(w.solids);
-      expect(Object.keys(space.goals).length).toBe(goalsOf(sys).length);
+      expect(Object.keys(space.goals).length).toBe(goalsOf(sys).length + placesOf(sys).length);
+      // (and super speed opens out there, past the places' band)
+      expect(Math.max(...[0, 1, 2, 3, 4, 5].map((i) => space.overdriveAt(Math.cos(i) * 2300, 0, Math.sin(i) * 2300)))).toBeGreaterThan(1.5);
       w.dispose();
     }
   });
@@ -135,6 +138,45 @@ describe('buildSystem', () => {
     }
   });
 
+  it('parks only its holder’s fleet: a Rebel-held Mustafar shows no Imperial fleet, but a garrison of the Rebellion’s', () => {
+    const k = kit();
+    const sys = systemById('mustafar');
+    const w = buildSystem(sys, { ...k, small: false });
+    const fleet = w.solids.filter((o) => /^fleet-/.test(o.id));
+    const before = fleet.map((o) => o.r);
+    expect(fleet.length).toBeGreaterThan(0);
+    w.setEffects({ fleet: 'rebel', heat: 0 });
+    expect(fleet.every((o) => o.r === 0)).toBe(true);
+    const garrison = w.solids.filter((o) => /^garrison-/.test(o.id));
+    expect(garrison.length).toBeGreaterThan(0);
+    expect(w.garrison.map((g) => g.kind).sort()).toEqual(['corvette', 'nebulon']);
+    // the Empire's again: its own fleet back, the garrison gone
+    w.setEffects({ fleet: 'empire', heat: 0 });
+    expect(fleet.map((o) => o.r)).toEqual(before);
+    expect(w.solids.some((o) => /^garrison-/.test(o.id))).toBe(false);
+    expect(w.garrison).toEqual([]);
+    w.dispose();
+  });
+  it('shows its standing battle only while it’s fought over, and the war’s quiet still wins', () => {
+    const k = kit();
+    const w = buildSystem(systemById('endor'), { ...k, small: false });
+    const battle = w.solids.filter((o) => /^battle-/.test(o.id));
+    const before = battle.map((o) => o.r);
+    w.setEffects({ fleet: 'empire', heat: 0 });
+    expect(battle.every((o) => o.r === 0)).toBe(true);
+    k.bolts.fire.mockClear();
+    for (let i = 0; i < 20; i++) w.update(T0 + i, 1, camera, null);
+    expect(k.bolts.fire).not.toHaveBeenCalled();
+    w.setEffects({ fleet: 'empire', heat: 1 });
+    expect(battle.map((o) => o.r)).toEqual(before);
+    w.quiet(true);
+    expect(battle.every((o) => o.r === 0)).toBe(true);
+    w.quiet(false);
+    expect(battle.map((o) => o.r)).toEqual(before);
+    w.setEffects(null);
+    expect(battle.map((o) => o.r)).toEqual(before);
+    w.dispose();
+  });
   it('lets the war hold the second Death Star’s shield, blow a station, and drop Scarif’s shield, and puts it all back', () => {
     const endor = buildSystem(systemById('endor'), { ...kit(), small: false });
     const shell = endor.solids.find((o) => o.id === 'ds2-shield');

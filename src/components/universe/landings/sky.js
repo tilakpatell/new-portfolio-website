@@ -107,6 +107,10 @@ export function createSky(sky = {}, haze = '#8ab4ff', { air = null } = {}) {
       if (up) mat.uniforms.uUp.value.copy(up);
       if (sun) mat.uniforms.uSunDir.value.copy(sun);
       if (day !== undefined) mat.uniforms.uDay.value = day;
+      // (in full day, with no space showing through, it hides what's beyond
+      // it: else the stars and the Milky Way's glow, drawn after it, show
+      // through a dark sky like Mordor's)
+      mat.depthWrite = mat.uniforms.uDay.value > 0.99 && !(space > 0);
       // the colours for how high the sun is (worked out again only as it moves)
       if (air && sun) {
         const e = Math.max(-0.3, mat.uniforms.uUp.value.dot(mat.uniforms.uSunDir.value));

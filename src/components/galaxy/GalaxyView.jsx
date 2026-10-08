@@ -5,8 +5,11 @@ import galaxyModule from './module';
 import { CONTROLS_KEY, readControls } from '../universe/controls';
 import FlightSettings from '../universe/FlightSettings';
 import { SYSTEMS, goalsOf, lightYears, systemById } from './systems';
+import { placesOf } from './places';
 import '../universe/universe.css';
 import GuideCue from '../guide/GuideCue';
+import WarHud from './WarHud';
+import LoadingVeil from '../worlds/LoadingVeil';
 
 // The galaxy's 3D view (scene.js, a world module on the world runtime:
 // ./module.js) and everything over it:
@@ -16,10 +19,11 @@ import GuideCue from '../guide/GuideCue';
 // jump to it, the other pilots' callsigns, the targeting HUD and the stick ring
 // (the universe map's own, UniverseMap.jsx's classes, the scene moves them),
 // your shields, the touch buttons, the flight settings and a line on how to
-// fly until you do. While the 3D loads the box says so; without 3D, a note
+// fly until you do, and the war's battle on here in a line (WarHud.jsx).
+// While the 3D loads the box says so; without 3D, a note
 // that the galaxy needs it, and the panel and the map still work.
 
-export default function GalaxyView({ system, here, handle, ship, loadout, build = null, net = null, frozen, onEvent, onArrive, onAt, onBoard, onCrash, onMap }) {
+export default function GalaxyView({ system, here, handle, ship, loadout, build = null, net = null, frozen, onEvent, onArrive, onAt, onBoard, onCrash, onMap, oath = null, found = [] }) {
   const labels = useRef({});
   const stars = useRef({});
   const [aim, setAim] = useState(null); // the star the nose is on
@@ -39,7 +43,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   const events = useRef(onEvent);
   events.current = onEvent;
   const reduced = useReducedMotion();
-  const { host, on, meant, rt } = useWorld(galaxyModule, {
+  const { host, on, meant, rt, progress } = useWorld(galaxyModule, {
     props: {
       system,
       reduced,
@@ -55,6 +59,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       net,
       tags,
       frozen,
+      allegiance: oath,
       onArrive,
       onAt,
       onBoard,
@@ -79,6 +84,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       live: on,
       jump: (id) => view.current?.jump?.(id) ?? false,
       goTo: (id) => view.current?.goTo?.(id) ?? false,
+      flyTo: (id) => view.current?.flyTo?.(id) ?? false, // (another pilot here: the roster's “Fly to”)
       escape: () => view.current?.escape?.() ?? false,
       dive: () => view.current?.dive?.() ?? false,
       host: () => host.current,
@@ -88,7 +94,8 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   // the names of what's here, in the system the scene's in (`here`; `system`
   // is the one wanted, which a jump is on its way to)
   const hereSys = systemById(here) ?? systemById('tatooine');
-  const goals = goalsOf(hereSys);
+  // (and the places to find out in the open: by what they are till found, then by name)
+  const goals = [...goalsOf(hereSys), ...placesOf(hereSys).map((p) => ({ id: p.id, kind: 'place', name: found.includes(p.id) ? p.name : p.hint }))];
   const others = SYSTEMS.filter((s) => s !== hereSys);
   const aimed = aim && aim !== hereSys.id ? systemById(aim) : null;
   const jump = (id) => view.current?.jump?.(id);
@@ -108,11 +115,8 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
     <WorldHost world={{ host }} className="universe-map galaxy-map" data-ship={ship || undefined}>
       {meant ? (
         <>
-          {!on && (
-            <p className="universe-loading" role="status">
-              Plotting a course to a galaxy far, far away…
-            </p>
-          )}
+          <LoadingVeil className="universe-loading" shown={!on} progress={progress.value} step={progress.step} title="Plotting a course to a galaxy far, far away" />
+          {on && oath && <WarHud sys={here} oath={oath} />}
           <ul className="universe-labels galaxy-labels" aria-label="In this system">
             {goals.map((g) => (
               <li key={g.id}>
@@ -182,6 +186,18 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
                 <span className="universe-threat" />
                 <span className="universe-threat" />
                 <span className="universe-threat" />
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
+                <span className="universe-mate">
+                  <b className="universe-mate-name" />
+                </span>
                 <span className="universe-lead" />
                 <span className="universe-nav">
                   <i />

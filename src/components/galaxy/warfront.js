@@ -1,18 +1,23 @@
-// The Galactic Civil War's battle in the system you're in, flown in (gcw.js
-// says what's on where; battles.js lays it out at the planet; universe/
-// battle.js fights it; universe/battleScene.js draws it). Not a game you
-// start: the war's on, on the clock every pilot shares, and if there's a
-// battle in this system when you drop in (or one starts while you're here)
-// it's there in front of you, and you're in it, on the Rebellion's side. The
-// crew calls it out (crews.js's battle lines); the system's own fleets stand
-// aside while it's on (world.js's quiet).
+// The galaxy's war's battle in the system you're in, flown in (gcw.js says
+// what's on where; battles.js lays it out at the planet; universe/battle.js
+// fights it; universe/battleScene.js draws it). Not a game you start: the
+// war you fight in (allegiance.js's theatre) is on, on the clock every pilot
+// shares, and if there's a battle in this system when you drop in (or one
+// starts while you're here) it's there in front of you, and you're in it on
+// the side you swore to; unsworn, you're in nobody's sights and score
+// nothing, and the crew asks you which it's to be. The crew calls it out
+// (crews.js's battle lines, each with the side, the war and the system); the
+// system's own fleets stand aside while it's on (world.js's quiet).
 //
 // Shared: the damage every pilot here does to its objectives is a tally
 // (universe/tally.js, its epoch the battle's id) sent to the others in the
 // system (the client's `fight`), so a shield generator one pilot takes down
 // goes down for all of them; and what you did counts in the war (warState.js:
 // points for each objective and fighter you take down, the battle won once
-// for everyone in it), sent to everyone online (`war`).
+// for everyone in it), sent to everyone online (`war`). What you did counts
+// for your side: the attacker's objectives are only the attacker's to take
+// (a defender's shots at their own flagship are nobody's business), and a
+// defender scores the attacker's fighters down, a bomber as an intercept.
 //
 // And the set pieces (warpieces/: Endor's shield generator, superlaser and
 // reactor run, Hoth's ion cannon and transports, Scarif's ram onto the gate,
@@ -21,18 +26,23 @@
 // caught in a blast) goes back to the scene in what update returns.
 //
 // createWarFront(scene, { models, small, reduced, tier, emit, makeScene,
-//   now }) → { enter(sys, world), update(dt, t, camera, live) → { busy, hurt,
+//   now, allegiance }) → { enter(sys, world), update(dt, t, camera, live) → { busy, hurt,
 //   ship?, speedCap?, kill? },
 //   hit(from, to, damage), targets, solids, setNet(client), onNet(e), battle,
 //   info, win(team), dispose() }
-// `live`: the ship ({ x, y, z }) while it's flying, or null. `solids`: the
+// `allegiance()` → { war, side } (allegiance.js's current). `live`: the ship ({ x, y, z }) while it's flying, or null. `solids`: the
 // capital ships' hulls, for the ship to bump into (ship.js's, like the
 // world's), changed when a battle starts or ends (onSolids is told).
+// What you score is paid for too: { type: 'earn', what: 'warPoints' | 'warWin',
+// n, side: 'galaxy' } to emit (universe/economy.js's EARN keys).
 
 import { createBattle } from '../universe/battle';
 import { createBattleScene } from '../universe/battleScene';
+import { createCarry } from '../universe/earnRules';
 import { createTally } from '../universe/tally';
-import { GCW, battleAt, campaignAt, history, seeded } from './gcw';
+import { GCW, battleAt, campaignAt, history, seeded, teamsOf } from './gcw';
+import { teamFor } from './allegiance';
+import { DEFAULT_WAR, WARS, otherSide, warOfSide } from './sides';
 import { layBattle } from './battles';
 import { piecesFor } from './warpieces';
 import { addPoints, addWin, receiveWar, warMessage, warTally, warVersion } from './warState';
@@ -45,9 +55,9 @@ export const FRONT = {
   warAgain: 30, // and every this often anyway
   near: 1.5, // within this many of its radii, you're in it
 };
-const REBELS = 0;
+const UNSWORN = Object.freeze({ war: DEFAULT_WAR, side: null });
 
-export function createWarFront(scene, { models, small = false, reduced = false, tier = 'high', emit = () => {}, makeScene = createBattleScene, now = () => Date.now(), onSolids = () => {} } = {}) {
+export function createWarFront(scene, { models, small = false, reduced = false, tier = 'high', emit = () => {}, makeScene = createBattleScene, now = () => Date.now(), onSolids = () => {}, allegiance = () => UNSWORN } = {}) {
   const draw = makeScene(scene, { models, small, reduced, metres: FRONT.metres });
   let sys = null;
   let world = null;
@@ -58,6 +68,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   let joined = false; // in among it (said once a battle)
   let tookPart = false; // you were in it at some point (a win's yours too)
   let ended = false; // its end's been counted
+  let team = null; // your side's in it (allegiance.js's teamFor), or nobody's
+  let asked = false; // (unsworn: which side, asked once a battle)
   let state = null; // gcw.js's history, worked out once a step (or when the war's tally changes)
   let stateKey = '';
   let solids = [];
@@ -74,7 +86,25 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   let warSent = -1e9;
   let clock = 0;
 
-  const say = (sub) => emit({ type: 'event', id: 'battle', sub });
+  const side = () => allegiance()?.side ?? null;
+  // (with the side the battle's against, from yours: the other of its two, or its defender while you're nobody's)
+  const against = () => (!on ? null : side() ? (on.sides?.find((x) => x !== side()) ?? null) : (on.defender ?? null));
+  const say = (sub) => emit({ type: 'event', id: 'battle', sub, side: side(), against: against(), war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR, sys: sys?.id ?? null });
+  // the attacker's objectives count only when you're the attacker
+  const attacking = () => team !== null && team === on?.attackerTeam;
+  // and the wallet's pay for them (universe/economy.js's warPoints, per
+  // point): the scene's page earns it. A fighter is a tenth of a point, so
+  // the fractions are kept till they make a whole one (earnRules.js).
+  const carry = createCarry();
+  const score = (n, ms = now()) => {
+    if (team === null || !sys || !on) return;
+    const v = warVersion();
+    addPoints(side(), sys.id, on.step, n, ms);
+    warDirty = true;
+    if (warVersion() === v) return; // (not counted: nothing to pay)
+    const whole = carry.add(n);
+    if (whole) emit({ type: 'earn', what: 'warPoints', n: whole, side: 'galaxy' });
+  };
   // a set piece's line (the galaxy's own: lines.js), not again within a while
   const sayEvent = (id) => {
     const at = battle?.clock ?? 0;
@@ -111,15 +141,12 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     },
     shared: (key) => fight.value(key),
     mine: (key, damage) => {
+      if (!attacking()) return;
       fight.add(key, damage);
       fightDirty = true;
     },
     event: (id) => sayEvent(id),
-    points: (n) => {
-      if (!sys || !on) return;
-      addPoints(sys.id, on.step, n, now());
-      warDirty = true;
-    },
+    points: (n) => score(n),
     tookPart: () => tookPart,
     // a capital ship's hull, there to bump into or not (a run's way in through it)
     setHull: (id, there) => {
@@ -174,6 +201,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
     joined = false;
     tookPart = false;
     ended = false;
+    team = null;
+    asked = false;
     world?.quiet?.(false);
     if (solids.length) {
       solids = [];
@@ -191,27 +220,35 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       // what the other pilots here did to an objective (the tally's, less your own share of it)
       shared: (id) => Math.max(0, fight.value(id) - fight.mine(id)),
       onMine: (id, damage) => {
+        if (!attacking()) return;
         fight.add(id, damage);
         fightDirty = true;
       },
     });
-    battle.setYou(REBELS);
+    team = teamFor(side(), b);
+    battle.setYou(team);
     draw.show(battle, laid.war);
     shown = true;
     world?.quiet?.(true);
     solids = hulls();
     onSolids(solids);
-    pieces = piecesFor(sys.id).map((make) => make(ctx));
+    // (the set pieces are the films' own, the Civil War's)
+    pieces = b.war === 'gcw' ? piecesFor(sys.id).map((make) => make(ctx)) : [];
     say('front');
+    if (team === null) {
+      asked = true;
+      say('ask');
+    }
   };
 
   // the war as it stands (a step's worth at a time, or when what the players did changes)
   const warState = (ms) => {
     const c = campaignAt(ms);
-    const key = `${c.n}:${c.step}:${warVersion()}`;
+    const war = allegiance()?.war ?? DEFAULT_WAR;
+    const key = `${war}:${c.n}:${c.step}:${warVersion()}`;
     if (key !== stateKey) {
       const t = warTally(ms);
-      state = history(c.n, ms, (k) => t.value(k));
+      state = history(war, c.n, ms, (k) => t.value(k));
       stateKey = key;
     }
     return state;
@@ -225,7 +262,10 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       fightSent = clock;
       fightDirty = false;
     }
-    if (warDirty ? clock - warSent > FRONT.warEvery : clock - warSent > FRONT.warAgain && warTally(now()).keys().length) {
+    // (the war goes a page at a time: soon again while someone's owed the
+    // rest of it; and once anyway, so the others know to tell you it)
+    const war = warTally(now());
+    if (warDirty || war.owing() ? clock - warSent > FRONT.warEvery : clock - warSent > FRONT.warAgain && (war.keys().length || warSent < 0)) {
       net.war?.(warMessage(now()));
       warSent = clock;
       warDirty = false;
@@ -254,13 +294,19 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         if (b?.fighting) start(b, ms);
       }
       if (!battle) return { busy: false, hurt: 0 };
+      // sworn (or sworn again) while it's on: in it on that side
+      const now2 = teamFor(side(), on);
+      if (now2 !== team) {
+        team = now2;
+        battle.setYou(team);
+      }
       let hurt = 0;
       const events = battle.update(dt, live ? { x: live.x, y: live.y, z: live.z, alive: true } : null);
       if (live) {
         const d = Math.hypot(live.x - laid.at[0], live.y - laid.at[1], live.z - laid.at[2]);
         if (d < laid.radius * FRONT.near) {
           tookPart = true;
-          if (!joined && !battle.over) {
+          if (!joined && !battle.over && team !== null) {
             joined = true;
             say('join');
           }
@@ -268,30 +314,38 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       }
       for (const e of events) {
         if (e.type === 'hurt') hurt += e.damage;
-        else if (e.type === 'down' && e.mine) {
-          addPoints(sys.id, on.step, GCW.points.kill, ms);
-          warDirty = true;
+        else if (e.type === 'down' && e.mine && team !== null && e.team !== team) {
+          if (e.ace) {
+            score(GCW.points.ace, ms);
+            say('ace');
+          } else if (e.role === 'bomber' && !attacking()) {
+            score(GCW.points.intercept, ms);
+            say('intercept');
+          } else score(GCW.points.kill, ms);
+        } else if (e.type === 'runner' && e.mine && team !== null && e.team !== team) {
+          score(GCW.points.intercept, ms);
+          say('intercept');
         } else if (e.type === 'sub') {
-          if (e.mine) {
-            addPoints(sys.id, on.step, GCW.points.objective, ms);
-            warDirty = true;
-          }
+          if (e.mine && attacking()) score(GCW.points.objective, ms);
           if (tookPart && e.kind === 'bridge') say('bridge');
           else if (tookPart && e.kind === 'reactor') say('reactor');
         } else if (e.type === 'turret' && e.mine) {
-          addPoints(sys.id, on.step, GCW.points.turret, ms);
-          warDirty = true;
+          if (battle.capitals.find((c) => c.id === e.cap)?.team !== team) score(GCW.points.turret, ms);
         } else if (e.type === 'shield' && tookPart) say('gens');
         else if (e.type === 'capital') {
           // a capital ship gone: its hull's not there to hit any more
           for (const o of solids) if (o.cap.id === e.id) o.r = o.reach = 0;
         } else if (e.type === 'over' && !ended) {
           ended = true;
-          if (e.winner === REBELS && tookPart) {
-            addWin(sys.id, on.step, ms);
-            warDirty = true;
+          if (tookPart && team !== null) {
+            if (e.winner === team) {
+              const v = warVersion();
+              addWin(side(), sys.id, on.step, ms);
+              warDirty = true;
+              if (warVersion() !== v) emit({ type: 'earn', what: 'warWin', n: 1, side: 'galaxy' }); // (the first time it's counted)
+            }
+            say(e.winner === team ? 'won' : 'lost');
           }
-          if (tookPart) say(e.winner === REBELS ? 'won' : 'lost');
         }
       }
       // the set pieces
@@ -305,7 +359,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
         if (r.kill) res.kill = true;
         marks.push(...p.markers(live));
       }
-      draw.update(dt, t, camera, camera?.position ?? { x: 0, y: 0, z: 0 }, events, REBELS, marks);
+      draw.update(dt, t, camera, camera?.position ?? { x: 0, y: 0, z: 0 }, events, team, marks);
       return res;
     },
 
@@ -335,7 +389,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       const t = warTally(now());
       // (mine: what you've done in the war this campaign, in points)
       const mine = +t.keys().reduce((sum, k) => sum + (k.startsWith('win:') ? 0 : t.mine(k)), 0).toFixed(2);
-      return { sys: sys?.id ?? null, on, laid: laid ? { at: laid.at, axis: laid.axis, lines: laid.lines, radius: laid.radius, name: laid.war.name, attacker: laid.attacker } : null, battle: battle?.info ?? null, joined, tookPart, mine };
+      return { sys: sys?.id ?? null, on, laid: laid ? { at: laid.at, axis: laid.axis, lines: laid.lines, radius: laid.radius, name: laid.war.name, attacker: laid.attacker, kind: laid.kind, objectivesOn: laid.objectivesOn } : null, battle: battle?.info ?? null, joined, tookPart, mine, team, asked, side: side(), war: on?.war ?? allegiance()?.war ?? DEFAULT_WAR };
     },
 
     setNet(client) {
@@ -347,17 +401,24 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       else if (e.type === 'fight' && battle && e.msg.e === fight.epoch) fight.receive(e.from, e.msg);
     },
 
-    // (dev hooks: end the battle now, `team` the winner; a battle here now,
-    // whatever the war says, `attacker` 'rebel' or 'empire', for the checks)
-    win(team) {
-      battle?.end?.(team);
+    // (dev hooks: end the battle now, `winner` the team that wins; a battle
+    // here now, whatever the war says, `attacker` a side of the war you fight
+    // in (its liberator, unless it's said) or the Hutts, and `kind` a kind of
+    // battle (battles.js's BATTLE_KINDS) or the system's own, for the checks)
+    win(winner) {
+      battle?.end?.(winner);
     },
-    force(attacker = 'rebel') {
+    force(attacker, kind = null) {
       if (!sys) return;
       const ms = now();
+      const war = warOfSide(attacker) ?? allegiance()?.war ?? DEFAULT_WAR;
+      const w = WARS[war];
+      const by = attacker === 'hutt' || warOfSide(attacker) ? attacker : w.liberator;
+      const defender = by === 'hutt' ? w.liberator : otherSide(by);
+      const sides = teamsOf(by, defender);
       stop();
       forced = true;
-      start({ id: `dev.${sys.id}.${Math.floor(ms / 1000)}`, sys: sys.id, step: campaignAt(ms).step, seed: Math.floor(ms / 1000), attacker, start: ms, fightEnd: ms + GCW.fight, end: ms + GCW.step, fighting: true }, ms);
+      start({ id: `dev.${war}.${sys.id}.${Math.floor(ms / 1000)}`, war, sys: sys.id, step: campaignAt(ms).step, seed: Math.floor(ms / 1000), attacker: by, defender, sides, attackerTeam: sides.indexOf(by), ...(kind ? { kind } : {}), start: ms, fightEnd: ms + GCW.fight, end: ms + GCW.step, fighting: true }, ms);
     },
     get pieces() {
       return pieces;

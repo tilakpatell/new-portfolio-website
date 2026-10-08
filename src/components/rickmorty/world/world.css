@@ -69,6 +69,7 @@
   text-shadow: 2px 2px 0 var(--rm-ink), -2px 2px 0 var(--rm-ink), 2px -2px 0 var(--rm-ink), -2px -2px 0 var(--rm-ink), 0 2.5px 0 var(--rm-ink), 2.5px 0 0 var(--rm-ink), 0 -2.5px 0 var(--rm-ink), -2.5px 0 0 var(--rm-ink), 0 6px 0 var(--rm-ink);
 }
 .rm-title-num { color: var(--rm-lime); }
+.rm-title[data-planet] { white-space: normal; text-wrap: balance; } /* (a planet's name can run to four words) */
 .rm-objective { display: flex; align-items: flex-start; gap: 0.55rem; margin: 0; padding: 0.55rem 0.8rem; border: 2px solid var(--rm-ink); border-radius: 12px; background: var(--rm-glass); color: #fff; font: 600 clamp(0.82rem, 0.76rem + 0.22vw, 0.95rem)/1.4 var(--font-sans); box-shadow: 0 3px 0 rgba(27, 20, 36, 0.55); }
 .rm-flightstats { display: flex; gap: 0.4rem; margin: 0; }
 .rm-flightstats span { padding: 0.3rem 0.6rem; border: 2px solid var(--rm-ink); border-radius: 10px; background: var(--rm-glass); font: 600 0.78rem/1.2 var(--font-sans); }
@@ -200,6 +201,7 @@
 [data-done] > .rm-tick { border-color: var(--rm-ink); background: var(--rm-lime); }
 .rm-list-name { margin: 0; font: 700 0.9rem/1.3 var(--font-sans); }
 .rm-list-sub { margin: 0.15rem 0 0; color: #c9c2d6; font-size: 0.8rem; line-height: 1.4; }
+.rm-list-rest { margin: 0.5rem 0 0; padding: 0.5rem 0.55rem 0; border-top: 1px solid rgba(255, 255, 255, 0.15); color: #c9c2d6; font-size: 0.8rem; line-height: 1.4; } /* (on a planet: the rest, counted with C-137's) */
 .rm-list-back { display: inline-flex; align-items: center; gap: 0.4rem; align-self: flex-start; margin-top: 0.6rem; padding: 0.4rem 0.2rem; color: #e6e0f0; font: 600 0.82rem/1 var(--font-sans); text-decoration: none; }
 .rm-list-back:hover { color: var(--rm-lime); }
 
@@ -269,6 +271,7 @@
 .rm-cards li[data-place='school'] { background: linear-gradient(160deg, #a5503a, #74321f); }
 .rm-cards li[data-place='garage'] { background: linear-gradient(160deg, #5a4030, #2f2018); }
 .rm-cards li[data-place='arcade'] { background: radial-gradient(circle at 85% 15%, rgba(255, 122, 200, 0.45), transparent 45%), linear-gradient(160deg, #4a2a78, #23123f); }
+.rm-cards li[data-place='planet'] { grid-column: 1 / -1; background: radial-gradient(circle at 88% 12%, rgba(201, 255, 90, 0.35), transparent 45%), linear-gradient(160deg, #2c5a46, #142a22); }
 .rm-card-name { margin: 0; color: #fff; font: 400 clamp(1.35rem, 1.1rem + 0.8vw, 1.7rem)/1.05 'Luckiest Guy', var(--font-sans); letter-spacing: 0.03em; text-shadow: 0 2px 0 var(--rm-ink); }
 .rm-card-blurb { margin: 0; max-width: 46ch; color: rgba(255, 255, 255, 0.86); font-size: 0.92rem; line-height: 1.5; }
 .rm-card-acts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: auto; padding-top: 0.4rem; }
@@ -289,7 +292,7 @@
   .rm-hud-bottom { padding-right: calc(16px + 42px + 0.6rem + env(safe-area-inset-right)); }
   .rm-prompt { bottom: calc(132px + var(--rm-pad-b)); }
   .rm-hint { bottom: calc(138px + var(--rm-pad-b)); font-size: 0.76rem; }
-  .rm-toast { top: 15.5rem; }
+  .rm-toast { top: 18.5rem; } /* (under the chip column: the map, things to do, the wardrobe, the portal gun, others online) */
   .rm-place-head .rm-btn kbd { display: none; }
   .rm-quiz-options { grid-template-columns: 1fr; }
   .rm-cards { grid-template-columns: 1fr; }
@@ -391,3 +394,70 @@
   font-size: 0.75rem;
   opacity: 0.6;
 }
+
+/* ── a duel's hearts, and the clock of a place left in a hurry (RmWorld's HUD) ── */
+.rm-fight {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(12, 10, 20, 0.78);
+  color: #f6f2ff;
+  font: 600 13px/1.3 var(--rm-font, system-ui, sans-serif);
+  pointer-events: none;
+}
+.rm-fight-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rm-fight-row b {
+  min-width: 76px;
+  font-weight: 700;
+}
+.rm-fight-hearts {
+  letter-spacing: 2px;
+  color: #ff5a6a;
+}
+.rm-fight-hearts span[data-off] {
+  color: rgba(255, 255, 255, 0.22);
+}
+.rm-fight-hint {
+  font-size: 11px;
+  opacity: 0.75;
+}
+.rm-clock {
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: rgba(60, 10, 10, 0.8);
+  color: #ffe0a0;
+  font: 700 14px/1.3 var(--rm-font, system-ui, sans-serif);
+  pointer-events: none;
+}
+.rm-clock[data-late] {
+  animation: rm-clock-blink 0.5s steps(2) infinite;
+}
+@keyframes rm-clock-blink {
+  to {
+    background: rgba(160, 20, 20, 0.9);
+  }
+}
+
+/* the fire button beside the jump, on touch, while a fight's on */
+.rm-lift .rm-fire {
+  margin-top: 10px;
+  background: rgba(200, 40, 40, 0.85);
+  color: #fff;
+  font-size: 22px;
+}
+
+/* the emote wheel (B held, or its button on a touch screen): five round the middle of the view */
+.rm-wheel { position: absolute; left: 50%; top: 50%; z-index: 5; width: 0; height: 0; }
+.rm-wheel-mid { position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 92px; height: 92px; padding: 0.4rem; border: 2px solid var(--rm-ink); border-radius: 50%; background: var(--rm-glass); color: rgba(255, 255, 255, 0.78); font: 600 0.7rem/1.25 var(--font-sans); text-align: center; box-shadow: 0 3px 0 rgba(27, 20, 36, 0.6); transform: translate(-50%, -50%); cursor: pointer; animation: rm-wheel-in 0.14s ease-out both; }
+.rm-wheel-item { position: absolute; left: 0; top: 0; display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; padding: 0 0.85rem; border: 2px solid var(--rm-ink); border-radius: 999px; background: var(--rm-paper); color: var(--rm-ink); font: 400 1rem/1 'Luckiest Guy', var(--font-sans); letter-spacing: 0.03em; white-space: nowrap; box-shadow: 0 3px 0 var(--rm-ink); transform: translate(-50%, -50%) translate(var(--x), var(--y)); cursor: pointer; transition: background-color 0.1s ease, transform 0.1s ease; animation: rm-wheel-in 0.14s ease-out both; }
+.rm-wheel-item kbd { padding: 0.1rem 0.32rem; border: 1.5px solid var(--rm-ink); border-radius: 5px; font: 700 0.7rem/1 var(--font-mono); }
+.rm-wheel-item[data-on], .rm-wheel-item:hover { background: var(--rm-lime); }
+.rm-wheel-item:focus-visible, .rm-wheel-mid:focus-visible { outline: 3px solid var(--rm-gold); outline-offset: 2px; }
+@keyframes rm-wheel-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .rm-wheel-item, .rm-wheel-mid { animation: none; transition: none; } }

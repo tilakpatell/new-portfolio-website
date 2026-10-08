@@ -42,7 +42,8 @@ const API = 'https://api.sketchfab.com/v3/models';
 // (Tried and left built: the Hammerhead corvette, 8ca35cee5f614c289a1ff069556fef98,
 // a generated model that doesn't read as one; the second Death Star,
 // 17ccca0dbb6b4e338fa999202f9e6685, a cage of plating all round rather than
-// the half-built one; the Munificent, 966265e37e61433b919ba640a12a33f5, whose
+// the half-built one, till scripts/deathstar-hd.mjs filled its hull: it's
+// that script's now, as deathstar2; the Munificent, 966265e37e61433b919ba640a12a33f5, whose
 // paint is tiled maps that don't survive, leaving it near black; Naboo's royal
 // starship, f72431e7a97e4bf994dd8b1f3f288d7c, whose maps are black.)
 export const MODELS = {
@@ -83,6 +84,19 @@ export const MODELS = {
   // (Home One's close-up cut was tried and left: the same model as moncal's, it
   // came out plainer than the 40k one in the battle, whose panel maps read better)
   nebulonhq: { uid: '19b1b0126f8248c28ce38863413c30b8', tris: 100000, tex: 2048, out: 'hq/nebulon', as: 'the Nebulon-B frigates, close up' },
+  // the ones still built in code (fleetRebels.js, fleetExtras.js and the
+  // universe's fleetStarwars.js) that somebody had already made: the
+  // Outrider's YT-2400, the Xg-1 gunboat and the GR-75 by Daniel Andersson
+  // again, Bespin's cloud cars and city, IG-88's ship and the Interdictor
+  // (Cloud City,
+  // 8e708a2749484750ae9aeab27f579d37, was tried and left: an untextured
+  // low-poly saucer on a stalk, plainer than the built one)
+  freighter: { uid: 'ccd2749df33641fba7a5326500abdbfb', tris: 20000, tex: 1024, as: 'the YT-2400 freighters' },
+  gunboat: { uid: 'b07306d348a44991ae7d0bbcff95fe90', tris: 14000, tex: 1024, as: 'the Xg-1 assault gunboats' },
+  transport: { uid: '071b158d02c044ee9b431aeb28b85b6a', tris: 20000, tex: 1024, as: 'the GR-75 transports' },
+  cloudcar: { uid: '9bc20239f9c34ed1baacb9a49ba9377d', tris: 10000, tex: 512, as: 'Bespin’s cloud cars' },
+  ig2000: { uid: '527958c20fdb4d4d9f3e858db62e6139', tris: 14000, tex: 1024, as: 'IG-88’s IG-2000' },
+  interdictor: { uid: '452cab004f024c01969b2111fbdd55b8', tris: 40000, tex: 1024, as: 'the Interdictor cruisers' },
 };
 
 const token = process.env.SKETCHFAB_API_TOKEN;

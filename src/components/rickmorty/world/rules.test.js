@@ -189,7 +189,8 @@ const walk = (m, move, seconds, area = 'street', opts) => {
 
 // the built-in world, without the multiverse's destinations (./dimensions/destinations.test.js has those)
 const DEST = new Set(DESTINATIONS.map((d) => d.id));
-const builtIn = (list) => list.filter((o) => !DEST.has(o.area));
+// (the rooms' own cast: not a destination's, and not the street's walkers, who roam and have no hotspot)
+const builtIn = (list) => list.filter((o) => !DEST.has(o.area) && !o.roams);
 
 describe('C-137: the areas', () => {
   it('finds each area from its centre, and nothing between them', () => {
@@ -1426,7 +1427,7 @@ describe('C-137: the things to touch', () => {
   it('lets Morty walk from the way in to the way out of every room', () => {
     for (const id of ROOM_IDS) expect(canWalk(id, link(WAY_IN[id]).arrive, link(WAY_OUT[id]), link(WAY_OUT[id]).r), id).toBe(true);
     expect(canWalk('garage', link('annex-portal').arrive, link('garage-exit'), 0.9)).toBe(true);
-    expect(canWalk('garage', link('garage-door').arrive, link('garage-portal'), 1.4)).toBe(true);
+    expect(canWalk('garage', link('garage-door').arrive, link('garage-portal'), link('garage-portal').r)).toBe(true);
     // the garage's kitchen door, in from the kitchen and back
     expect(canWalk('garage', link('kitchen-garage').arrive, link('garage-exit'), 0.9)).toBe(true);
     expect(canWalk('garage', link('garage-door').arrive, link('garage-kitchen'), 0.9)).toBe(true);
@@ -1633,8 +1634,15 @@ describe('C-137: the President, the Federation, the Oval Office and Shoney’s',
     }
     expect(MOTORCADE.map((c) => c.id)).toEqual(['limo', 'president', 'secretservice']);
     // gone once he's met: not there, not in the way, nothing to talk to
-    expect(peopleIn('street', []).map((p) => p.id)).toEqual(['president', 'secretservice', 'agent1', 'agent2', 'agent3']);
-    expect(peopleIn('street', ['president']).map((p) => p.id)).toEqual(['agent1', 'agent2', 'agent3']);
+    const standing = (done) => peopleIn('street', done).filter((p) => !p.roams).map((p) => p.id);
+    expect(standing([])).toEqual(['president', 'secretservice', 'agent1', 'agent2', 'agent3']);
+    expect(standing(['president'])).toEqual(['agent1', 'agent2', 'agent3']);
+    // the walkers roam the sidewalks, and are never in the way
+    for (const p of peopleIn('street', []).filter((p) => p.roams)) {
+      expect(p.ai?.wander?.length, p.id).toBeGreaterThan(1);
+      for (const [, z] of p.ai.wander) expect(Math.abs(z) > ROAD.w / 2 && Math.abs(z) < ROAD.w / 2 + ROAD.sidewalk, `${p.id} on the sidewalk`).toBe(true);
+      expect(solidIn('street', {}).some((c) => c.id === p.id), p.id).toBe(false);
+    }
     expect(present(person('president'))).toBe(true);
     const s = spot('president');
     expect(nearHotspot('street', s.x, s.z, []).id).toBe('president');
@@ -1767,8 +1775,8 @@ describe('C-137: the people', () => {
   it('makes each who stands a small round thing in the way, clear of the furniture, and Jerry none', () => {
     for (const p of PEOPLE) {
       const c = collidersIn(p.area, { motorcade: true }).find((o) => o.id === p.id);
-      // (and a hologram, Diane, is in nobody's way)
-      if (p.sits || p.holo) {
+      // (and a hologram, Diane, is in nobody's way; nor is anyone who roams, the street's walkers)
+      if (p.sits || p.holo || p.roams) {
         expect(c, p.id).toBeUndefined();
         continue;
       }

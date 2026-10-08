@@ -48,6 +48,11 @@ import * as THREE from 'three';
 import { gltfLoader } from '../../lib/three/gltf';
 import { sharpen } from '../../lib/three/textures';
 import { MESHY, createMeshyCast } from '../rickmorty/portal/meshyCast';
+import { NO_CALLS, animatorCalls, seedOf } from '../../lib/three/figureCalls';
+import { preload } from '../../lib/three/clipLibrary';
+import { createAnimator } from '../../lib/three/animator';
+import { breathe, createGait, sway } from '../../lib/three/gait';
+import { seeded } from '../../lib/seeded';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { RICK_HIPS, borrowClips, faceForward, heading as headingOf, retarget } from '../rickmorty/portal/clips';
 import { EVERYONE, LOOK_KEY, defaultLook, readLooks, writeLook } from '../rickmorty/wardrobe/looks';
@@ -56,7 +61,9 @@ import { local } from '../../lib/hooks';
 import { smoothNormals } from '../cockpit/crew';
 import { GUNS, buildGun, createGunplay } from './gunplay';
 import { createGunFx } from './gunfx';
-import { createLocomotion, fallTurn } from './locomotion';
+import { fallTurn } from './locomotion';
+import { followMove, mateDown, mateHit, mateStand, readWalkerExtras, walkerExtras } from './footLife';
+import { applyEmote, createEmoteWheel, heardEmote, keepEmote, readEmote, readEmoteWire } from '../../lib/emote';
 import { createPortalFx, meshyJoints } from '../../lib/three/portalFx';
 import { createGadgetFx } from '../../lib/three/gadgetFx';
 import { frameFrom, spring } from '../../lib/three/ik';
@@ -66,6 +73,7 @@ import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
 import { landingOf } from './landings/landings';
+import { biomeAt, fromLatLon, latLonOf, readableMap, sampleMap, towardLand, uvOf } from './landings/biomes';
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
 import { furnish, furnished } from './landings/furnish';
@@ -129,26 +137,28 @@ const getLoader = () => gltfLoader();
 // (Rick’s clips, for every Meshy figure without its own, are borrowed as
 // the wardrobe’s cast borrows them: rickmorty/portal/clips.js)
 
-// idle, walking and running by how fast (move 0…1)
-function blend(act, move) {
-  const run = smooth(0.55, 0.9, move);
-  const idle = 1 - smooth(0.04, 0.3, move);
-  const w = Math.max(0, 1 - run - idle);
-  act.idle?.setEffectiveWeight(idle);
-  act.walk?.setEffectiveWeight(w);
-  act.run?.setEffectiveWeight(run);
-  const pace = 0.8 + move * 0.4;
-  if (act.walk) act.walk.timeScale = pace;
-  if (act.run) act.run.timeScale = pace;
-}
+// each figure's seed: its name and which of that name it is, so two of a
+// kind (a squad's troopers, two pilots' Walts) never breathe or step together
+const seeds = new Map(); // name → how many
+const seedFor = (name) => {
+  const n = seeds.get(name) ?? 0;
+  seeds.set(name, n + 1);
+  return seedOf(name, n);
+};
 
 // a rigged figure: { model (feet on y = 0, facing +z, `tall` metres in map
 // units), bones, update(dt, move, motion?), after(dt, motion, frame), loco,
-// dispose }. With `motion` (locomotion.js: how fast it's going which way,
-// turning, in the air, hit, going down) its clips are paced to the ground
-// and posed on top by `after`, once it's placed; without, they play at the
-// old pace (the galaxy's worlds, until they hand it over too).
-function rigged(model, clips, tall, owned) {
+// mixer, act, anim, play, stop, base, look, react, dispose }, on an animator
+// of its own (lib/three/animator.js). With `motion` (locomotion.js: how fast
+// it's going which way, turning, in the air, hit, going down) its clips are
+// paced to the ground and posed on top by `after`, once it's placed;
+// without, they play at the old pace (the galaxy's worlds, until they hand
+// it over too). play, base, look and react are the animator's
+// (lib/three/figureCalls.js's animatorCalls: the clip library's clips, on
+// the Meshy skeleton these all stand on). `key`: the figure's template (its file, for
+// the library's copies), `seed`: its clocks; `up` (in the space its hips
+// turn in) and `hipsY`, for the library's clips made for it.
+function rigged(model, clips, tall, owned, { seed = seedFor('rigged'), key = null, up = null, hipsY = null } = {}) {
   const bones = {};
   model.traverse((o) => {
     if (o.isBone) bones[o.name] = o;
@@ -163,31 +173,30 @@ function rigged(model, clips, tall, owned) {
   const k = (tall * METRE) / Math.max(height, 1e-6);
   model.scale.multiplyScalar(k);
   model.position.y -= (top != null ? toes : box.min.y) * k;
-  const mixer = new THREE.AnimationMixer(model);
-  const act = {};
-  for (const [name, clip] of Object.entries(clips)) {
-    if (!clip) continue;
-    const a = mixer.clipAction(clip);
-    a.play();
-    a.setEffectiveWeight(name === 'idle' ? 1 : 0);
-    a.time = Math.random() * clip.duration;
-    act[name] = a;
-  }
-  const loco = createLocomotion({ model, bones }, { mixer, act, root: model, unit: METRE });
+  const own = Object.fromEntries(Object.entries(clips).filter(([, clip]) => clip));
+  const anim = createAnimator(model, { clips: own, bones, hipsY, up, unit: METRE, seed, key: key == null ? null : `${key}:${tall}` });
+  const act = Object.fromEntries(['idle', 'walk', 'run'].filter((n) => anim.actions[n]).map((n) => [n, anim.actions[n]]));
+  const calls = animatorCalls(anim, { model, seed, own: Object.keys(own), act });
   return {
     model,
     bones,
-    loco,
-    mixer,
+    loco: anim.loco,
+    mixer: anim.mixer,
     act,
+    anim,
     update(dt, move, motion) {
-      if (motion) loco.update(dt, { move, ...motion });
-      else blend(act, move);
-      mixer.update(dt);
+      calls.tick(dt, motion ? Math.hypot(motion.speed ?? 0, motion.side ?? 0) > 0.05 * METRE : move > 0.05);
+      anim.locomote(motion ? { move, ...motion } : { move });
+      anim.update(dt);
     },
-    after: (dt, motion, frame) => loco.after(dt, motion, frame),
+    after: (dt, motion, frame) => anim.after(dt, motion, frame),
+    play: calls.play,
+    stop: calls.stop,
+    base: calls.base,
+    look: calls.look,
+    react: calls.react,
     dispose() {
-      mixer.stopAllAction();
+      anim.dispose();
       for (const o of owned) o?.dispose?.();
     },
   };
@@ -199,16 +208,19 @@ function rigged(model, clips, tall, owned) {
 const WEARS = new Set(EVERYONE);
 const lookFor = (who, looks) => (WEARS.has(who) ? readLooks(looks ?? local.get(LOOK_KEY))[who] : null);
 const HAND_GUNS = { portalgun: 'portal', laserpistol: 'laser' }; // the wardrobe's hand gear that's a gun on foot
+const SCARED = new Set(['morty', 'jesse']); // the ones who jump at a squad, or at a double of themselves
 async function loadModel(spec, cast, looks = null) {
   if (spec.src.meshy) {
     const look = lookFor(spec.src.meshy, looks);
+    // (the cast's figure reads its motion in metres: it's told how tall it stands)
+    const opts = { tall: spec.tall, seed: seedFor(spec.id ?? spec.src.meshy) };
     let c = null;
     if (look) {
       const asset = bodyAsset(look);
       if (asset !== spec.src.meshy) await cast.load(null, [asset]).catch(() => {});
-      c = cast.make(bodyKind(look));
+      c = cast.make(bodyKind(look), 0, opts);
     }
-    c ??= cast.make(spec.src.meshy);
+    c ??= cast.make(spec.src.meshy, 0, opts);
     if (!c) return null;
     // (on foot they carry a gun of their own, gunplay.js's: the look's
     // portal gun or laser pistol is that gun, held and fired; anything else
@@ -217,39 +229,53 @@ async function loadModel(spec, cast, looks = null) {
     const undress = look ? dress(c, spec.gun ? { ...look, gear: { ...look.gear, hand: 'none' } } : look) : () => {};
     // the cast stands c.height tall in its own units: to metres, in map units
     c.group.scale.setScalar((spec.tall * METRE) / c.height);
+    const k = c.group.scale.x; // (the cast's units, in the map's)
     const bones = {};
     c.group.traverse((o) => {
       if (o.isBone) bones[o.name] = o;
     });
-    const loco = c.mixer ? createLocomotion({ model: c.group, bones }, { mixer: c.mixer, act: c.act, root: c.group, unit: METRE }) : null;
+    // The cast's own animator (one a figure: never a second over its
+    // mixer), its motion's speeds in the cast's units and its crouch's drop
+    // back in the map's.
+    const anim = c.anim ?? null;
+    const inCast = (m) => m && { ...m, speed: (m.speed ?? 0) / k, side: (m.side ?? 0) / k };
     return {
       model: c.group,
       bones,
-      loco,
+      loco: anim && {
+        get drop() {
+          return anim.loco.drop * k;
+        },
+        rig: anim.loco.rig,
+        strides: anim.loco.strides,
+      },
       mixer: c.mixer ?? null,
       act: c.act ?? null,
+      anim,
       update(dt, move, motion) {
-        if (!c.mixer) return;
-        if (motion) loco.update(dt, { move, ...motion });
-        else blend(c.act, move);
-        c.mixer.update(dt);
+        c.update(0, move, 0, { dt, motion: inCast(motion), after: false });
       },
-      after: (dt, motion, frame) => loco?.after(dt, motion, frame),
+      after: (dt, motion, frame) => c.after(dt, motion, frame),
+      play: c.play,
+      stop: c.stop,
+      base: c.base,
+      look: c.look,
+      react: c.react,
       gun,
       dispose: undress,
     };
   }
   if (spec.src.url) {
     const [gltf, clips] = await Promise.all([getLoader().loadAsync(spec.src.url), borrowClips()]);
-    return rigScene(gltf.scene, clips, spec.tall);
+    return rigScene(gltf.scene, clips, spec.tall, { seed: seedFor(spec.id ?? spec.src.url), key: spec.src.url });
   }
   return built(spec);
 }
 
 // A loaded Meshy figure (its scene, or a copy of one: `shared`, whose
 // geometry and materials are the original's to free) rigged with Rick's
-// clips, turned to walk the way it faces
-function rigScene(model, clips, tall, { shared = false } = {}) {
+// clips, turned to walk the way it faces; `seed` and `key` as rigged's
+function rigScene(model, clips, tall, { shared = false, seed, key = null } = {}) {
   {
     const owned = [];
     model.traverse((o) => {
@@ -269,13 +295,40 @@ function rigScene(model, clips, tall, { shared = false } = {}) {
     const hips = model.getObjectByName('Hips');
     const hipsY = hips?.position.y ?? RICK_HIPS;
     const own = { idle: retarget(clips.idle, hipsY), walk: retarget(clips.walk, hipsY), run: retarget(clips.run, hipsY) };
-    if (hips?.parent && own.walk) {
-      const up = new V(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+    // (up, in the space the hips turn in: the library's clips are turned about it to face ahead too)
+    const up = hips?.parent ? new V(0, 1, 0).applyQuaternion(hips.parent.getWorldQuaternion(new THREE.Quaternion()).invert()) : null;
+    if (up && own.walk) {
       const ahead = headingOf(own.walk, up);
       if (ahead != null) for (const n of ['idle', 'run']) if (own[n]) faceForward(own[n], up, ahead);
     }
-    return rigged(model, own, tall, owned);
+    // (the hips' height at rest goes with it, for clips laid over these: galaxy/surface/saberBody.js)
+    return Object.assign(rigged(model, own, tall, owned, { seed, key, up, hipsY: hips ? hipsY : null }), { hipsY: hips ? hipsY : null });
   }
+}
+
+// One figure per file, the rest copies of it: a battle's dozen troopers
+// share one stormtrooper's geometry and maps (and the library's clips made
+// for it), as the landings' troops share theirs. The first is rigged to
+// keep the materials and smooth the normals; it's never drawn, and stays
+// for the next world that wants one. (galaxy/surface/crew.js)
+const sharedModels = new Map(); // url → Promise<{ scene, clips } | null>
+export async function loadSharedFigure(url, tall, { seed } = {}) {
+  if (!sharedModels.has(url))
+    sharedModels.set(
+      url,
+      Promise.all([getLoader().loadAsync(url), borrowClips()]).then(
+        ([gltf, clips]) => {
+          rigScene(gltf.scene, clips, 1);
+          return { scene: gltf.scene, clips };
+        },
+        () => {
+          sharedModels.delete(url); // (a failed fetch is tried again next time)
+          return null;
+        },
+      ),
+    );
+  const tpl = await sharedModels.get(url);
+  return tpl ? rigScene(cloneSkinned(tpl.scene), tpl.clips, tall, { shared: true, seed, key: url }) : null;
 }
 
 // Walt and Jesse: the site’s own figures, loaded as anyone’s is (above),
@@ -306,6 +359,22 @@ async function loadParty(spec, cast, looks = null) {
 // or built here ({ built }); a kind with none is the cast's own kind
 export const troopLook = (kind) => Object.values(SIDES).find((s) => s.troops[kind]?.figure)?.troops[kind].figure ?? { meshy: kind };
 
+// A troop going down, in its own frame (react.js's `down`: +z ahead, +x its
+// left): the way the shot that dropped it was going (back, as pushOf has
+// it, when none did: your going down), and how hard. A bowcaster's bolt,
+// twice a blaster's, throws it back off its feet (die.blown); a blaster's
+// drops it forward or back by the way it went (die.fwd, die.back).
+export function troopFall(tr, damage = 1) {
+  const d = tr.knock ?? vec.scale(tr.f, -1);
+  return { dir: { x: -vec.dot(d, rightOf(tr)), z: vec.dot(d, tr.f) }, force: Math.min(1, Math.max(0, damage) / 2) };
+}
+// where a bolt at `p` (the planet's space) took a standing troop: its head
+// (the top fifth of it) or its chest
+export const troopHitWhere = (tr, p, R) => (vec.dot(vec.add(p, at(tr, R), -1), tr.n) > TROOPS[tr.kind].tall * 0.8 ? 'head' : 'chest');
+// the clips a troop's body reacts with, fetched as the walk begins so the
+// first hit and the first fall aren't late
+const TROOP_CLIPS = ['hit.chest', 'hit.head', 'die.fwd', 'die.back', 'die.blown'];
+
 // how each built person is dressed: Luke in his flight suit, Han in his
 // shirt and vest, the Empire's troopers in white armour over black (a
 // scout's mostly black), Jack's crew in flannel and jeans and a cap.
@@ -320,8 +389,20 @@ const LOOKS = {
 };
 
 const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0, ...extra });
+// (a built figure has no clips to play or head to turn: its calls do nothing)
+const UNPLAYED = { anim: null, play: NO_CALLS.play, stop: NO_CALLS.stop, base: NO_CALLS.base, look: NO_CALLS.look, react: NO_CALLS.react };
+// how fast a built figure's going over the ground, in metres a second: its
+// motion's (map units), else what `move` says of a run; + ahead, − back
+const metresOf = (move, motion) => (motion ? Math.hypot(motion.speed ?? 0, motion.side ?? 0) * ((motion.speed ?? 0) < 0 ? -1 : 1) : move * FOOT.run) / METRE;
+
+// Built from shapes, walking by the ground it covers (gait.js: the legs,
+// Artoo's rock, never on the clock, so none marches on the spot or skates),
+// breathing while it stands, each in its own time (its seed: its name and
+// which it is)
 function built(spec) {
   const owned = [];
+  const seed = seedFor(spec.id ?? spec.src.built);
+  const r = seeded(seed);
   const mat = (c, extra) => {
     const m = std(c, extra);
     owned.push(m);
@@ -360,12 +441,13 @@ function built(spec) {
     body.position.y = 0.72;
     model.add(body);
     model.scale.setScalar(s / 0.95);
-    let t = 0;
+    let t = r() * 20; // (each one somewhere of its own in its drift)
     return {
       model,
       bones: {},
       hand: null,
       built: true,
+      ...UNPLAYED,
       update(dt) {
         t += dt;
         body.position.y = 0.72 + Math.sin(t * 1.6) * 0.03; // (hanging, never still)
@@ -412,14 +494,18 @@ function built(spec) {
     }
     model.add(body);
     model.scale.setScalar(s / 0.98);
-    let t = 0;
+    let t = r() * 20;
+    // (a rock from foot to foot every half metre he rolls)
+    const gait = createGait({ stride: 0.5, cadence: [2, 4], seed });
     return {
       model,
       bones: {},
       hand: null,
-      update(dt, move) {
+      ...UNPLAYED,
+      update(dt, move, motion) {
         t += dt;
-        body.rotation.z = Math.sin(t * 9) * 0.05 * move; // he rocks as he rolls
+        const g = gait.step(dt, metresOf(move, motion));
+        body.rotation.z = Math.sin(g.phase) * 0.05 * g.amount; // he rocks as he rolls
         dome.rotation.y = Math.sin(t * 0.7) * 0.9;
       },
       dispose() {
@@ -526,22 +612,33 @@ function built(spec) {
   }
   model.scale.setScalar(s / 1.1);
   const bones = { Hips: model, Spine: spine, Head: headG, RightArm: arms[0].shoulder, RightForeArm: arms[0].elbow, RightHand: arms[0].wrist, LeftArm: arms[1].shoulder, LeftForeArm: arms[1].elbow, LeftHand: arms[1].wrist };
-  let phase = 0;
+  // A stride of three quarters its height, its legs swung just far enough
+  // that the foot that's down goes back under it as fast as it goes over
+  // the ground (a leg `leg` metres long swung ±amp covers 2·leg·sin(amp) a
+  // step, two steps a stride), so its feet never skate
+  const leg = (0.52 / 1.1) * spec.tall;
+  const stride = 0.75 * spec.tall;
+  const amp = Math.asin(Math.min(0.9, stride / (4 * leg)));
+  const gait = createGait({ stride, cadence: [1.4, 2.4], seed });
+  let t = r() * 20;
   return {
     model,
     bones,
     built: true,
+    ...UNPLAYED,
     // the right hand
     hand: arms[0].hand,
-    update(dt, move) {
-      phase += dt * (3 + move * 7);
-      const swing = Math.sin(phase) * (0.15 + move * 0.55) * Math.min(1, move * 6);
+    update(dt, move, motion) {
+      t += dt;
+      const g = gait.step(dt, metresOf(move, motion));
+      const swing = Math.sin(g.phase) * amp * g.amount;
+      const bend = 0.5 + 0.4 * g.run;
       // (every turn set whole, each frame: gunplay.js and locomotion.js turn
       // these groups too, and a turn left over would add up)
       legs[0].hip.rotation.set(swing, 0, 0);
       legs[1].hip.rotation.set(-swing, 0, 0);
-      legs[0].knee.rotation.set(Math.max(0, -Math.sin(phase + 0.6)) * move * 0.9, 0, 0);
-      legs[1].knee.rotation.set(Math.max(0, Math.sin(phase + 0.6)) * move * 0.9, 0, 0);
+      legs[0].knee.rotation.set(Math.max(0, -Math.sin(g.phase + 0.6)) * bend * g.amount, 0, 0);
+      legs[1].knee.rotation.set(Math.max(0, Math.sin(g.phase + 0.6)) * bend * g.amount, 0, 0);
       spine.rotation.set(0, 0, 0);
       headG.rotation.set(0, 0, 0);
       // the arms swing against the legs (gunplay.js brings the gun arm up over this)
@@ -551,7 +648,8 @@ function built(spec) {
       arms[1].elbow.rotation.set(-0.25, 0, 0);
       arms[0].wrist.rotation.set(0, 0, 0);
       arms[1].wrist.rotation.set(0, 0, 0);
-      torso.position.y = 0.72 - WAIST + Math.abs(Math.sin(phase)) * 0.012 * move;
+      // up over each foot as it walks; a breath as it stands
+      torso.position.y = 0.72 - WAIST + sway(g.phase, g.amount).bob * 0.012 + breathe(t, seed) * 0.004 * (1 - g.amount);
     },
     dispose() {
       for (const o of owned) o.dispose();
@@ -1296,7 +1394,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   map.add(root);
   let cast = null;
   let party = null; // [lead, mate] once loaded: { spec, fig, group, gun, w }
-  let troopFigs = new Map(); // id → { fig, group }
+  let troopFigs = new Map(); // id → troopFig's { body, anim, group, gp, … }
   const troopModels = new Map(); // a troop's model's url → { ready: { scene, clips } once loaded } (copied for each one)
   // (what a loaded scene's made of, freed when the walk's over)
   const freeScene = (scene) =>
@@ -1414,6 +1512,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     x.fillStyle = g;
     x.fillRect(0, 0, 64, 64);
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
@@ -1491,6 +1590,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     cleared: true,
     cool: 0,
     mateCool: 1,
+    mateSt: {}, // the mate's health and hurt (footLife.js's mateHit: it can be hit, and goes down a while)
+    mateKnock: null, // which way the last shot that hit the mate was going
+    follow: {}, // the mate's pace toward you (footLife.js's followMove)
+    emote: null, // { id, at }: what you're doing off the wheel (lib/emote.js)
+    wheelHeld: false, // Z down
+    emoteAt: null, // when the wheel last did something, for the HUD's word
+    acted: false, // something you did this frame (a shot, a gadget), which cuts an emote
     aim: 0, // the gun up, 1 fading to 0 after a shot
     mateAim: 0,
     mateTarget: null, // the trooper the mate's gun is on
@@ -1551,6 +1657,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     const sideTroops = Object.keys(sideFor(kind)?.troops ?? SIDES.rickmorty.troops);
     const needCast = [...new Set([...specs.filter((s) => s.src.meshy).map((s) => s.src.meshy), ...sideTroops.map((k) => troopLook(k).meshy).filter(Boolean).map((k) => MESHY[k]?.a ?? k)])]; // (the cast loads by asset: a Morty clone is Morty's)
     const castReady = cast.load(null, needCast).catch(() => {});
+    preload(TROOP_CLIPS).catch(() => {});
     // (and the ones that are models of their own, Albuquerque's: loaded once, copied for each)
     for (const k of sideTroops) {
       const url = troopLook(k).url;
@@ -1586,39 +1693,56 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
 
   // the troops' guns (sides.js: the Gromflomites' carbine, the cop's and the DEA's pistol; the gazorpian has hands)
   const troopGun = (t) => sideFor(S.kind)?.troops[t.kind]?.gun ?? SIDES.rickmorty.troops[t.kind]?.gun ?? null;
+  // A troop's figure, on an animator as everyone else's is: the cast's
+  // (told how tall it stands, so its motion's read in metres), a copy of a
+  // model of its own (rigScene's), or one built. `body` answers the calls
+  // (play, react, stop, look; a built one's do nothing); `anim` is there
+  // when it's rigged.
   const troopFig = (t) => {
     let got = troopFigs.get(t.id);
     if (got) return got;
     const look = troopLook(t.kind);
+    const tall = TROOPS[t.kind].tall / METRE; // (metres)
+    const seed = seedFor(t.kind);
     const tpl = look.url ? troopModels.get(look.url)?.ready : null;
-    const c = tpl ? null : look.meshy ? cast?.make(look.meshy) : null;
+    const c = tpl ? null : look.meshy ? (cast?.make(look.meshy, 0, { tall, seed }) ?? null) : null;
     const group = new THREE.Group();
     let fig = null;
     let b = null;
-    let loco = null;
     let own = null;
     if (tpl) {
-      // a copy of Albuquerque's model, sharing what it's made of
-      own = rigScene(cloneSkinned(tpl.scene), tpl.clips, TROOPS[t.kind].tall / METRE, { shared: true });
+      // a copy of Albuquerque's model, sharing what it's made of (and the library's clips made for it)
+      own = rigScene(cloneSkinned(tpl.scene), tpl.clips, tall, { shared: true, seed, key: look.url });
       fig = own;
-      loco = own.loco;
       group.add(own.model);
     } else if (c) {
       c.group.scale.setScalar(TROOPS[t.kind].tall / c.height);
       fig = { model: c.group };
-      if (c.mixer) loco = createLocomotion(fig, { mixer: c.mixer, act: c.act, root: c.group, unit: METRE }); // (measured before it's placed)
       group.add(c.group);
     } else {
       // built: the side's look for it (a stormtrooper, a probe), or a stand-in until its model's here
-      b = built({ tall: TROOPS[t.kind].tall / METRE, src: { built: look.built ?? 'han' } });
+      b = built({ tall, src: { built: look.built ?? 'han' } });
       group.add(b.model);
       fig = b;
     }
     root.add(group);
     const gp = troopGun(t) ? createGunplay(fig, troopGun(t), { unit: METRE, who: b ? 'built' : null }) : null;
-    got = { c: c ?? (own && { mixer: own.mixer }), b, group, gp, loco, own, prevF: null };
+    // (k: the cast's units in the map's, for its motion's speeds)
+    got = { c, b, own, body: c ?? own ?? b, anim: c?.anim ?? own?.anim ?? null, k: c ? c.group.scale.x : 1, group, gp, prevF: null, death: null, blow: 1 };
     troopFigs.set(t.id, got);
     return got;
+  };
+  // a troop's body a frame on (motion in the map's units, as yours is), and
+  // once it's placed the bones over its clips
+  const stepTroop = (got, dt, move, hit, motion, frame) => {
+    if (got.c) got.c.update(0, move, hit, { dt, motion: { ...motion, speed: (motion.speed ?? 0) / got.k, side: (motion.side ?? 0) / got.k }, after: false });
+    else if (got.own) got.own.update(dt, move, motion);
+    else {
+      got.b?.update(dt, move);
+      return;
+    }
+    got.group.updateMatrixWorld(true);
+    (got.c ?? got.own).after(dt, motion, frame);
   };
   const dropTroop = (id) => {
     const got = troopFigs.get(id);
@@ -1627,7 +1751,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     root.remove(got.group);
     got.gp?.dispose();
     got.b?.dispose();
-    got.own?.mixer.stopAllAction();
+    got.own?.dispose(); // (a copy's: its animator; what it's made of is the original's)
+    got.c?.anim?.dispose();
     troopFigs.delete(id);
   };
 
@@ -1639,6 +1764,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     return Math.atan2(vec.dot(vec.cross(was, w.f), w.n), vec.dot(was, w.f)) / dt;
   };
   // the way along the ground a shot pushed someone (their back, if nothing did)
+  // how far down you are (0 up … 1 flat): the knees go and over onto your
+  // back, then up again at the end of the down phase
+  const myDown = () => (S.phase === 'down' ? Math.min(1, S.t / 0.95) * (1 - smooth(LAND.fall - 0.7, LAND.fall, S.t)) : 0);
   const pushOf = (w, knock) => {
     const d = knock ? vec.add(knock, w.n, -vec.dot(knock, w.n)) : vec.scale(w.f, -1);
     return new V(...(vec.len(d) > 1e-6 ? vec.unit(d) : vec.scale(w.f, -1)));
@@ -1650,6 +1778,57 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   // (bones are in the world: back into the map's space, and the other way)
   const toMap = (v) => v.applyMatrix4(invMap);
   const dirToWorld = (v) => v.transformDirection(map.matrixWorld);
+  // a planet's turn, from the map's space to its body's own (the frame its
+  // colour map is laid in): rotation only, any scale normalised away
+  // (the map's matrix as it is: update() brings it up to date each frame first)
+  const bodyTurn = (planet, out = new THREE.Matrix3()) => {
+    planet.body.updateWorldMatrix(true, false);
+    const m4 = new THREE.Matrix4().copy(map.matrixWorld).invert().multiply(planet.body.matrixWorld);
+    out.setFromMatrix4(m4);
+    const e = out.elements;
+    for (let c = 0; c < 3; c++) {
+      const l = Math.hypot(e[c * 3], e[c * 3 + 1], e[c * 3 + 2]) || 1;
+      e[c * 3] /= l;
+      e[c * 3 + 1] /= l;
+      e[c * 3 + 2] /= l;
+    }
+    return out.transpose();
+  };
+  const turned = (m3, v) => arr(new V(...v).applyMatrix3(m3));
+  // the colour of a planet's own map at a uv ([r, g, b], or null): from the
+  // map it was built with (planetMaps.js's far file, a webp at every level),
+  // kept here before nearMaps.js can swap its near set in (on ultra the -xl
+  // KTX2, which can't be read back), so a landing reads the same file
+  // whether or not the near set has arrived (createFoot comes after the
+  // planets are built and before the first near.update: scene.js); else
+  // the map it's drawn with; else its -sm file, fetched the first time and
+  // read from the next landing on
+  const farMap = Object.fromEntries(Object.entries(planetOf ?? {}).map(([id, p]) => [id, readableMap(p.body?.material?.map)]));
+  const spare = {};
+  const lookOf = (planet, id) => {
+    for (const tex of [farMap[id], readableMap(planet.body?.material?.map)]) {
+      if (!tex) continue;
+      const look = (uv) => sampleMap(tex.image, uv, { flip: tex.flipY === false });
+      if (look([0.5, 0.5])) return look;
+    }
+    if (spare[id] === undefined) {
+      spare[id] = null;
+      fetch(`/textures/universe/${id === 'travel' ? 'earth' : id}-sm.webp`)
+        .then((r) => r.blob())
+        .then((b) => createImageBitmap(b))
+        .then((img) => (spare[id] = (uv) => sampleMap(img, uv)))
+        .catch(() => {});
+    }
+    return spare[id];
+  };
+  // (development: ?spot=lat,lon forces where a landing comes down, in
+  // degrees on the planet's own map, longitude 0 its middle: landings/biomes.js)
+  const forcedSpot = () => {
+    if (!import.meta.env.DEV || typeof location === 'undefined') return null;
+    const q = new URLSearchParams(location.search).get('spot') ?? new URLSearchParams(location.hash.split('?')[1] ?? '').get('spot');
+    const ll = q?.split(',').map(Number);
+    return ll?.length === 2 && ll.every(Number.isFinite) ? ll : null;
+  };
   // the gun hand, in the map's space (for a figure holding nothing)
   const handAt = (p, out) => {
     const hand = p.fig.bones?.RightHand ?? p.fig.hand ?? null;
@@ -1734,6 +1913,45 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // (flown in through the air: ahead of where it went in, on its way)
     const ahead = entry && !S.band ? entrySpot({ n: entry.n, track: entry.vel, light, speed: entry.speed, R: S.R }) : null;
     S.spot = near ? beside(near, kind) : S.band ? byTrench(n0, S.band, S.R, clear + 12 * METRE) : (ahead ?? { n: n0, f: facingAlong(n0, fwd3) });
+    // the part of the planet it's come down on (landings/biomes.js), read
+    // off the planet's own map under the spot (a friend's, beside them, so
+    // the two of you see the same place); over the sea, on to the nearest land
+    const own = u.plated ? null : landingOf(id);
+    S.biome = null;
+    if (own?.biomes && !S.band) {
+      map.updateMatrixWorld();
+      let toBody = bodyTurn(planet);
+      const forced = near ? null : forcedSpot();
+      if (forced) {
+        // (the planet turned about its axis, before it's held, so the spot
+        // comes round under the sun: in the day, to see it by)
+        const want = fromLatLon(...forced);
+        const was = turned(toBody, light ? vec.unit([...light]) : S.spot.n);
+        planet.body.rotation.y += Math.atan2(was[0], was[2]) - Math.atan2(want[0], want[2]);
+        toBody = bodyTurn(planet);
+        const fn = turned(toBody.clone().transpose(), want);
+        S.spot = { n: fn, f: facingAlong(fn, fwd3) };
+      }
+      const fromBody = toBody.clone().transpose();
+      const look = lookOf(planet, id);
+      if (look) {
+        let nb = turned(toBody, (near ?? S.spot).n);
+        // (isSea by colour and by place: Tortuga reads sea on the map's
+        // copy but is land; and the walk goes as far out as the planet's
+        // sea says, the Caribbean's being mostly open water)
+        const sea = own.biomes.find((b) => b.sea);
+        if (!near && !forced && sea) {
+          const moved = towardLand(nb, look, (rgb, p) => !rgb || biomeAt(own, rgb, latLonOf(p)).sea, { track: turned(toBody, S.spot.f), steps: sea.reach });
+          if (moved !== nb) {
+            nb = moved;
+            const mn = turned(fromBody, moved);
+            S.spot = { n: mn, f: facingAlong(mn, S.spot.f) };
+          }
+        }
+        const rgb = look(uvOf(nb));
+        if (rgb) S.biome = { ...biomeAt(own, rgb, latLonOf(nb)), at: latLonOf(nb) };
+      }
+    }
     const { n } = S.spot;
     // a long way round the planet from where the ship is: it flies round over
     // the surface to get there, rather than through the planet (an entry's
@@ -1782,8 +2000,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // the ground, the rocks and the air (a station's hull, its blocks and
     // none; and a trench's walls); or the planet's own landing: its ground,
     // its sky and its things, laid out from where the first ship down here
-    // came down (a friend's, if you're coming down beside them)
-    const landing = u.plated ? null : landingOf(id);
+    // came down (a friend's, if you're coming down beside them), as the
+    // part of it you've come down on has them
+    const landing = own && S.biome ? { ...own, ...(({ title, sub, ground, sky, things, scatter, models }) => ({ title, sub, ground, sky, things, scatter, models }))(S.biome) } : own;
     ground = createGround(planet, u, S.R, S.band, landing?.ground);
     ground.follow(n);
     root.add(ground.mesh);
@@ -1801,7 +2020,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       ground.mesh.visible = rocks.mesh.visible = false;
     }
     // (the sky from the planet's own air, where it has one: landings/sky.js)
-    haze = u.airless ? null : landing?.sky ? createSky(landing.sky, u.rim ?? u.swatch ?? '#8ab4ff', { air: u.air ?? null }) : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
+    // (a biome may bring its own air along the horizon: Mordor's fumes)
+    haze = u.airless ? null : landing?.sky ? createSky(landing.sky, landing.sky.haze ?? u.rim ?? u.swatch ?? '#8ab4ff', { air: u.air ?? null }) : createHaze(u.rim ?? u.swatch ?? '#8ab4ff');
     if (haze) root.add(haze.mesh);
     // (flown in, dark to start with: the entry starts in the middle of a
     // frame, before day() has had its say, and that frame's drawn too)
@@ -2022,6 +2242,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     x.textBaseline = 'middle';
     x.fillText(text, 384, 49, 740);
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   };
@@ -2121,6 +2342,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
           wk.label = tagFor(i === 0 ? `${who} · ${g.name ?? 'a pilot'}` : who, g.ally ? '#8dff9a' : wk.alt ? `hsl(${Math.round(g.dim.hue * 360)}, 90%, 72%)` : '#ffffff');
           root.add(wk.label);
         }
+        // (a new word from them: when it came, for an emote timed from then)
+        if (wk.to !== to) wk.toAt = S.clock;
         wk.to = to;
       });
       // your crew have something to say about who's turned up (once you're out)
@@ -2129,6 +2352,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         g.said = true;
         const alt = g.walkers.find((wk) => wk?.alt);
         emit({ type: 'foot', id: alt ? 'alt' : 'friend', who: (alt ?? first).who, name: g.name });
+        // (your mate waves them over, or starts at a double of itself)
+        const m = mateP();
+        if (m && S.mateSt.downAt == null) {
+          if (alt && SCARED.has(m.spec.id)) m.fig.react?.('gunfire');
+          else m.fig.play?.('wave', { layer: 'upper' })?.catch?.(() => {});
+        }
       }
     }
   };
@@ -2151,8 +2380,19 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         wk.group.visible = show;
         if (show) {
           stand(wk.group, w);
-          const frame = { forward: dirToWorld(new V(...w.f)), up: dirToWorld(new V(...w.n)) };
-          const motion = { speed: w.speed ?? 0, side: w.side ?? 0, turn: turnRate(wk, w, dt), air: (w.h ?? 0) / METRE };
+          // what their body's doing, as they said: a flinch, a fall (over the
+          // way they face), an emote timed from when their word came in and
+          // played once (footLife.js's readWalkerExtras, lib/emote.js)
+          const x = readWalkerExtras(to);
+          const n = new V(...w.n);
+          if (x.down > 0) {
+            wk.group.quaternion.premultiply(fallTurn(x.down, pushOf(w, null), n));
+            wk.group.position.addScaledVector(n, wk.spec.tall * METRE * 0.05 * smooth(0.5, 1, x.down));
+          }
+          wk.emote = heardEmote(readEmoteWire(x.emote), wk.toAt ?? S.clock, wk.emote ?? null);
+          wk.shown = applyEmote(wk.fig, readEmote(wk, S.clock), wk.shown ?? null);
+          const frame = { forward: dirToWorld(new V(...w.f)), up: dirToWorld(n.clone()) };
+          const motion = { speed: w.speed ?? 0, side: w.side ?? 0, turn: turnRate(wk, w, dt), air: (w.h ?? 0) / METRE, hurt: x.hurt, down: x.down, knock: 0.5 };
           wk.fig.update(dt, Math.min(1, Math.abs(w.speed) / FOOT.run + Math.abs(w.side) / FOOT.run), motion);
           wk.group.updateMatrixWorld(true);
           wk.fig.after?.(dt, motion, frame);
@@ -2168,7 +2408,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       });
     }
   };
-  const walker = (w, p, aim) => (w && p ? { who: p.spec.id, n: w.n, f: w.f, h: w.h ?? 0, speed: w.speed ?? 0, side: w.side ?? 0, aim } : null);
+  // (and what the body's doing, beside where it is: your emote, a flinch, a fall: footLife.js's walkerExtras)
+  const walker = (w, p, aim, extras = {}) => (w && p ? { who: p.spec.id, n: w.n, f: w.f, h: w.h ?? 0, speed: w.speed ?? 0, side: w.side ?? 0, aim, ...walkerExtras(extras) } : null);
 
 
   // ── each frame ──
@@ -2181,21 +2422,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // the ground's map follows the planet's held turn
     const planet = planetOf[S.id];
     if (ground && planet?.body) {
-      planet.body.updateWorldMatrix(true, false);
-      const m4 = new THREE.Matrix4().copy(invMap).multiply(planet.body.matrixWorld);
-      const m3 = new THREE.Matrix3().setFromMatrix4(m4);
-      // (rotation only: normalise away any scale, then invert, from map to body)
-      const e = m3.elements;
-      for (let c = 0; c < 3; c++) {
-        const l = Math.hypot(e[c * 3], e[c * 3 + 1], e[c * 3 + 2]) || 1;
-        e[c * 3] /= l;
-        e[c * 3 + 1] /= l;
-        e[c * 3 + 2] /= l;
-      }
-      ground.sync(m3.transpose());
+      ground.sync(bodyTurn(planet));
     }
     ground?.tick(S.clock);
-    rocks?.update?.(S.clock, dt);
+    // (the landing's things, told where your head is: the people there turn to you)
+    rocks?.update?.(S.clock, dt, S.me && S.phase === 'walk' ? { me: root.localToWorld(new V(...vec.add(at(S.me, S.R), S.me.n, 1.6 * METRE))) } : null);
 
     if (S.phase === 'land' && S.entry) {
       stepEntry(dt);
@@ -2221,6 +2452,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     } else if (S.phase === 'walk') {
       walkFrame(dt, input);
     } else if (S.phase === 'down') {
+      // (nobody marches while you're down, so the fallen's clocks run here)
+      for (const o of S.troops) if (!o.alive) o.dead += dt;
       if (S.t > LAND.fall) {
         // back on your feet by the ship
         S.me = { ...doorSpot(1), id: 'me' };
@@ -2250,7 +2483,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     }
     // the figures where the people are
     if (party && S.phase !== 'land' && S.phase !== 'lift') drawPeople(dt);
-    drawTroops(dt, t);
+    drawTroops(dt);
     guestsFrame(dt);
     moveBolts(dt);
     fx.update(dt);
@@ -2268,8 +2501,50 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     return true;
   };
 
+  // ── your body: emotes and reactions ──
+  // Hold Z for the wheel (lib/emote.js's: wave, cheer, dance, taunt, sit),
+  // 1 to 5 picks one while it's open, let go for the last; a tap does the
+  // last again. An emote lasts its clip (a wave goes on as you walk, the
+  // rest stop when you move), and anything you do cuts it, as it cuts a
+  // reaction of yours (a flinch, a cheer)
+  const emotes = createEmoteWheel();
+  let emoteShown = null;
+  let emoteFig = null; // (whose figure it's on: a swap leaves it with them)
+  let wheelSaid = { open: false, hover: null, last: emotes.last, on: null };
+  const startEmote = (id) => {
+    if (S.phase !== 'walk' || !id) return false;
+    cutReaction();
+    S.emote = { id, at: S.clock };
+    S.emoteAt = S.clock;
+    return true;
+  };
+  const endEmote = () => {
+    S.emote = null;
+    emoteShown = applyEmote(emoteFig, null, emoteShown);
+  };
+  const stepBody = (input) => {
+    const moving = Math.abs(input.move ?? 0) > 0.1 || Math.abs(input.strafe ?? 0) > 0.1 || Boolean(input.jump);
+    const acted = S.acted;
+    S.acted = false;
+    if (S.wheelHeld || emotes.open) emotes.tick(S.clock);
+    const r = S.reacting;
+    if (r && (acted || (r.layer === 'full' && moving) || S.clock > r.until)) cutReaction();
+    S.emote = keepEmote(S.emote, S.clock, { moving, acted });
+    const me = meP();
+    if (emoteFig !== me?.fig && emoteShown) endEmote();
+    emoteFig = me?.fig ?? null;
+    emoteShown = applyEmote(emoteFig, S.emote ? readEmote({ emote: S.emote }, S.clock) : null, emoteShown);
+    const on = S.emote?.id ?? null;
+    const w = wheelSaid;
+    if (w.open !== emotes.open || w.hover !== emotes.hover || w.last !== emotes.last || w.on !== on) {
+      wheelSaid = { open: emotes.open, hover: emotes.hover, last: emotes.last, on };
+      emit({ type: 'foot', id: 'emote', ...wheelSaid });
+    }
+  };
+
   const walkFrame = (dt, input) => {
     const me = meP();
+    stepBody(input);
     // you: walking, turning, running, jumping
     S.me = walk(S.me, { move: input.move, strafe: input.strafe, turn: input.turn, run: input.run, jump: input.jump }, dt, S.R, obstacles());
     // the lock: the nearest trooper round the way you face (kept while it's still there)
@@ -2281,22 +2556,29 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const mate = mateP();
       const near = alive.length ? alive.reduce((a, b) => (apart(S.mate, a, S.R) < apart(S.mate, b, S.R) ? a : b)) : null;
       const behind = offset(S.me, -1.4 * METRE, (S.lead ? -1 : 1) * 1.3 * METRE, S.R);
-      const gap = apart(S.mate, behind, S.R);
+      // (sets off once you're a stride ahead, slows in to arrive, stops a
+      // half metre off, so it neither overshoots and comes back nor shuffles
+      // at the edge: footLife.js's followMove; down, it stays where it fell)
+      const gap = apart(S.mate, behind, S.R) / METRE;
+      S.mateSt = mateStand(S.mateSt, S.clock, dt);
+      const down = S.mateSt.downAt != null;
+      const pace = followMove(gap, S.follow);
+      S.follow = pace.st;
       let turn = 0;
-      let move = 0;
-      let run = false;
-      if (gap > 0.6 * METRE) {
+      let move = down ? 0 : pace.move;
+      const run = !down && (pace.run || (move > 0 && Math.abs(S.me.speed) > FOOT.walk * 1.2));
+      if (move > 0) {
         turn = turnToward(S.mate, vec.add(behind.n, S.mate.n, -1), 4);
-        move = Math.abs(turn) < 0.8 ? 1 : 0.3;
-        run = gap > 4 * METRE || Math.abs(S.me.speed) > FOOT.walk * 1.2;
-      } else if (near && apart(S.mate, near, S.R) < 30 * METRE) turn = turnToward(S.mate, vec.add(near.n, S.mate.n, -1), 4);
+        if (Math.abs(turn) >= 0.8) move = Math.min(move, 0.3);
+      } else if (down) turn = 0;
+      else if (near && apart(S.mate, near, S.R) < 30 * METRE) turn = turnToward(S.mate, vec.add(near.n, S.mate.n, -1), 4);
       else turn = turnToward(S.mate, S.me.f, 2);
       S.mate = walk(S.mate, { move, turn, run }, dt, S.R, obstacles());
       S.mateCool -= dt;
-      // the one they're on: gun up at it while it's near enough, a shot now and then
-      S.mateTarget = near && apart(S.mate, near, S.R) < 30 * METRE ? near : null;
+      // the one they're on: gun up at it while it's near enough, a shot now and then (not while down)
+      S.mateTarget = !down && near && apart(S.mate, near, S.R) < 30 * METRE ? near : null;
       if (S.mateTarget && mate?.spec.gun) S.mateAim = 1;
-      if (near && mate?.spec.gun && S.mateCool <= 0 && apart(S.mate, near, S.R) < 26 * METRE && (mate.gp?.aim ?? 1) > 0.6) {
+      if (!down && near && mate?.spec.gun && S.mateCool <= 0 && apart(S.mate, near, S.R) < 26 * METRE && (mate.gp?.aim ?? 1) > 0.6) {
         S.mateCool = 0.9 + rand() * 0.9;
         shoot(mate, near, 'mate', damageOf(mate), 0.06);
         emit({ type: 'fire', soft: true, gun: gunOf(mate) });
@@ -2313,6 +2595,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       // (who most of them are, for the crew's word on it: a squad of Mortys isn't a squad of bugs)
       const most = fresh.reduce((m, t) => ((m[t.kind] = (m[t.kind] ?? 0) + 1), m), {});
       emit({ type: 'foot', id: 'squad', who: Object.keys(most).sort((a, b) => most[b] - most[a])[0] });
+      // (the nervous ones jump at the sight: react.js's gunfire, a scared)
+      const m = mateP();
+      if (m && SCARED.has(m.spec.id) && S.mateSt.downAt == null) m.fig.react?.('gunfire', { target: at(fresh[0], S.R) });
     }
     const targets = [{ id: 'me', n: S.me.n, h: S.me.h }, ...(S.mate ? [{ id: 'mate', n: S.mate.n, h: S.mate.h }] : [])];
     const r = march(S.troops, targets, dt, S.R, rand, obstacles());
@@ -2337,7 +2622,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.bolts.push({ b, mesh, color: TROOP_BOLT, flown: 0 });
       emit({ type: 'shot' });
     }
-    for (const h of r.hits) if (h.target === 'me') hurt(h.damage);
+    for (const h of r.hits) {
+      if (h.target === 'me') hurt(h.damage);
+      else if (h.target === 'mate') hurtMate(h.damage);
+    }
     // a probe droid that's had you in sight a while calls them in: a squad of the side's others
     for (const c of r.calls) {
       const kinds = squadKinds(sideFor(S.kind) ?? SIDES.rickmorty, S.squads + 1).filter((k) => !TROOPS[k].calls);
@@ -2349,6 +2637,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.cleared = true;
       S.nextSquad = S.clock + 30 + rand() * 25;
       emit({ type: 'foot', id: 'cleared' });
+      // the two of you, on the last one down (react.js's win: a cheer, a
+      // taunt; yours cut by whatever you do next, as an emote is)
+      if (S.squads > 0) {
+        reactMe('win');
+        if (S.mateSt.downAt == null) mateP()?.fig.react?.('win');
+      }
     }
     // health comes back once out of trouble a while
     if (S.clock - S.hitAt > 4 && S.health < FOOT.health) S.health = Math.min(FOOT.health, S.health + FOOT.heal * dt);
@@ -2359,16 +2653,46 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     if (me && !me.spec.gun) S.aim = 0;
   };
 
+  // A reaction of yours (react.js's table, through your figure: a flinch, a
+  // cheer), noted so the next thing you do cuts it, as the galaxy's does
+  const LASTS = { hit: 0.6, win: 5 }; // seconds: the longest each can be before nothing's left to cut
+  const reactMe = (event, opts = {}) => {
+    const me = meP();
+    const r = me?.fig.react?.(event, { moving: Math.abs(S.me?.speed ?? 0) > 0.2 * METRE, ...opts }) ?? null;
+    if (r) S.reacting = { who: me, clip: r.clip, layer: r.layer, until: S.clock + (LASTS[event] ?? 2) };
+    return r;
+  };
+  const cutReaction = () => {
+    const c = S.reacting;
+    S.reacting = null;
+    const a = c?.who.fig?.anim;
+    if (!a || S.clock > c.until) return;
+    if (!a.playing || a.playing(c.layer) === c.clip) c.who.fig.stop?.(0.15, c.layer);
+  };
+  // the mate hit: health off and a flinch (the chest or the head); out of
+  // health, down a while where it is, then up again whole (footLife.js)
+  const hurtMate = (damage, knock = null) => {
+    if (S.phase !== 'walk' || !S.mate) return;
+    const was = S.mateSt.downAt;
+    S.mateSt = mateHit(S.mateSt, damage, S.clock);
+    if (knock) S.mateKnock = knock;
+    const m = mateP();
+    if (S.mateSt.downAt != null && was == null) emit({ type: 'foot', id: 'matedown', who: m?.spec.id ?? null });
+    else if (S.mateSt.downAt == null) m?.fig.react?.('hit', { where: rand() < 0.3 ? 'head' : 'chest', moving: Math.abs(S.mate.speed) > 0.2 * METRE });
+  };
   const hurt = (damage, knock = null) => {
     if (S.phase !== 'walk') return;
     S.knock = knock;
     S.health = Math.max(0, S.health - damage);
     S.hitAt = S.clock;
     emit({ type: 'foot', id: 'hurt', damage });
+    if (S.health > 0) reactMe('hit', { where: rand() < 0.3 ? 'head' : 'chest' });
     if (S.health <= 0) {
       S.phase = 'down';
       S.t = 0;
-      S.troops = S.troops.map((o) => ({ ...o, alive: false, dead: 2.5 })); // they go, their job done
+      // they go, their job done: down at the knees and over, as a shot one
+      // goes (the down phase below runs their fall), not flat at once
+      S.troops = S.troops.map((o) => (o.alive ? { ...o, alive: false, dead: 0 } : o));
       S.cleared = true;
       S.nextSquad = S.clock + 20;
       emit({ type: 'foot', id: 'down' });
@@ -2411,15 +2735,19 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
             t.hp -= o.b.damage;
             t.hitAt = S.clock;
             t.knock = vec.unit(o.b.v); // which way the shot pushed them
+            // (how hard, for the fall it's in: drawTroops)
+            const got = troopFigs.get(t.id);
+            if (got) got.blow = o.b.damage;
             if (t.hp <= 0) {
               t.alive = false;
               t.dead = 0;
               t.fallSide = rand() < 0.5 ? -1 : 1;
               t.how = GADGETS.includes(o.gun) ? o.gun : null; // (Rick's guns' kills: through a portal, frozen, shrunk: drawTroops)
               emit({ type: 'foot', id: 'kill', kind: t.kind, by: o.b.owner, how: t.how });
-            }
+            } else got?.body.react('hit', { where: troopHitWhere(t, o.b.p, S.R), moving: true }); // (on their upper half: they keep coming)
           }
         } else if (r.hit === 'me') hurt(o.b.damage, vec.unit(o.b.v));
+        else if (r.hit === 'mate') hurtMate(o.b.damage, vec.unit(o.b.v));
         continue;
       }
       o.mesh.position.set(...o.b.p);
@@ -2449,14 +2777,14 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const frame = { forward: dirToWorld(new V(...w.f)), up: dirToWorld(n.clone()) };
       const mine = i === S.lead;
       // knocked down: the knees go and over onto their back, then up again
-      let down = 0;
-      if (mine && S.phase === 'down') {
-        down = Math.min(1, S.t / 0.95) * (1 - smooth(LAND.fall - 0.7, LAND.fall, S.t));
-        p.group.quaternion.premultiply(fallTurn(down, pushOf(w, S.knock), n));
+      // (the mate the same way, where a shot put it: footLife.js's mateDown)
+      const down = mine ? myDown() : mateDown(S.mateSt, S.clock);
+      if (down > 0) {
+        p.group.quaternion.premultiply(fallTurn(down, pushOf(w, mine ? S.knock : S.mateKnock), n));
         p.group.position.addScaledVector(n, p.spec.tall * METRE * 0.05 * smooth(0.5, 1, down));
       }
       const move = Math.min(1, Math.abs(w.speed) / FOOT.run + Math.abs(w.side) / FOOT.run);
-      const hurt = mine ? Math.max(0, 1 - (S.clock - S.hitAt) / 0.35) : 0;
+      const hurt = Math.max(0, 1 - (S.clock - (mine ? S.hitAt : (S.mateSt.hitAt ?? -1e9))) / 0.35);
       const motion = { speed: w.speed, side: w.side, turn: turnRate(p, w, dt), air: (w.h ?? 0) / METRE, hurt, knock: 0.5, down };
       p.fig.update(dt, move, motion);
       p.group.updateMatrixWorld(true);
@@ -2477,7 +2805,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     });
   };
 
-  const drawTroops = (dt, t) => {
+  const STOOD = { speed: 0, side: 0, turn: 0 };
+  const CLIP_WAIT = 0.4; // seconds a fall's clip has to begin before they go over without it
+  const drawTroops = (dt) => {
     for (const key of [...blobs.keys()]) if (key.startsWith('troop') && !S.troops.find((o) => `troop${o.id}` === key)) dropShadow(key);
     for (const tr of S.troops) {
       const got = troopFig(tr);
@@ -2506,18 +2836,37 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       shadow(`troop${tr.id}`, tr, (TROOPS[tr.kind].tall / METRE) * 0.5).visible = tr.alive || tr.dead < 2.4;
       const frame = { forward: dirToWorld(new V(...tr.f)), up: dirToWorld(n.clone()) };
       if (!tr.alive) {
-        // down they go: the knees, then over the way the shot pushed them,
-        // the gun out of their hand, and into the ground after a while
+        // down they go: a rigged one on its own clip, by the way the shot
+        // pushed them and how hard (react.js's `down`: die.fwd, die.back,
+        // die.blown); anyone else (or one whose clip never came) at the
+        // knees, then over that way about their feet. The gun out of their
+        // hand, and into the ground after a while.
         const k = Math.min(1, tr.dead / 0.95);
         const tall = TROOPS[tr.kind].tall;
-        got.group.quaternion.premultiply(fallTurn(k, pushOf(tr, tr.knock), n));
-        got.group.position.addScaledVector(n, tall * 0.05 * smooth(0.5, 1, k) - smooth(2.4, 4, tr.dead) * tall * 0.5);
-        if (got.loco) {
-          got.loco.update(dt, { move: 0, down: k });
-          got.c.mixer.update(dt);
-          got.group.updateMatrixWorld(true);
-          got.loco.after(dt, { down: k }, frame);
-        } else got.c?.update?.(t, 0, 0);
+        let d = got.death;
+        if (!d) {
+          d = got.death = { clip: null, tipAt: 0 };
+          if (got.anim) {
+            // (whatever its upper half was doing let go, its head on nothing)
+            got.body.stop(0.15, 'upper');
+            got.body.look(null);
+            d.clip = got.body.react('down', troopFall(tr, got.blow))?.clip ?? null;
+          }
+        }
+        if (d.clip && tr.dead > CLIP_WAIT && got.anim.playing('full') !== d.clip) {
+          d.clip = null;
+          d.tipAt = tr.dead;
+          got.body.stop(0.1, 'full');
+        }
+        if (d.clip) {
+          got.group.position.addScaledVector(n, -smooth(2.4, 4, tr.dead) * tall * 0.5);
+          stepTroop(got, dt, 0, 0, STOOD, frame);
+        } else {
+          const kk = Math.min(1, (tr.dead - d.tipAt) / 0.95);
+          got.group.quaternion.premultiply(fallTurn(kk, pushOf(tr, tr.knock), n));
+          got.group.position.addScaledVector(n, tall * 0.05 * smooth(0.5, 1, kk) - smooth(2.4, 4, tr.dead) * tall * 0.5);
+          if (got.c || got.own) stepTroop(got, dt, 0, 0, { down: kk }, frame);
+        }
         if (got.gp && !got.dropped && k > 0.3) {
           got.dropped = true;
           const g = got.gp.drop();
@@ -2525,16 +2874,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         }
         continue;
       }
-      const move = Math.min(1, Math.abs(tr.speed) / (TROOPS[tr.kind].speed * 1.2) + Math.abs(tr.side) / FOOT.run);
+      // (against a runner's pace, as yours is: by their own top speed a
+      // trooper's march read as a run)
+      const move = Math.min(1, Math.abs(tr.speed) / FOOT.run + Math.abs(tr.side) / FOOT.run);
       const hit = tr.hitAt ? Math.max(0, 1 - (S.clock - tr.hitAt) / 0.35) : 0;
       const motion = { speed: tr.speed, side: tr.side, turn: turnRate(got, tr, dt), hurt: hit, knock: tr.knock ? Math.sign(vec.dot(tr.knock, rightOf(tr))) || 1 : 0.4 };
-      if (got.loco) {
-        got.loco.update(dt, { move, ...motion });
-        got.c.mixer.update(dt);
-        got.group.updateMatrixWorld(true);
-        got.loco.after(dt, motion, frame);
-      } else if (got.c) got.c.update(t, move, hit);
-      else got.b?.update(dt, move);
+      stepTroop(got, dt, move, hit, motion, frame);
       if (got.gp) {
         // its gun up at whichever of you is nearer, as the rules say
         got.group.updateMatrixWorld(true);
@@ -2712,6 +3057,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     get spots() {
       return import.meta.env.DEV ? (rocks?.spots ?? []) : null;
     },
+    // (development: the part of the planet you came down on and where,
+    // [lat, lon] on its map, as ?spot= takes it: scripts/landing-check.mjs)
+    get biome() {
+      return import.meta.env.DEV && S.biome ? { id: S.biome.id, title: S.biome.title, at: S.biome.at } : null;
+    },
     get id() {
       return S.id;
     },
@@ -2751,6 +3101,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         }
       }
       shoot(me, target, 'me', damageOf(me), 0, mark);
+      S.acted = true;
       S.aim = 1;
       if (!reduced) S.cam.kick.v += GUNS[gunOf(me)]?.kick.up ?? 1.5;
       return gunOf(me);
@@ -2763,7 +3114,22 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       me.gp.dispose();
       me.gp = createGunplay(me.fig, next, { unit: METRE, who: me.fig.built ? 'built' : me.spec.id });
       S.gadgetAt = S.clock;
+      S.acted = true;
       return next;
+    },
+    // Z: the emote wheel, down (held, it opens), up (let go: the one pointed
+    // at, or a tap's last), or a pick by its number while it's open (1 to 5)
+    emote(what, n = null) {
+      if (S.phase !== 'walk') return false;
+      if (what === 'down') {
+        S.wheelHeld = true;
+        emotes.down(S.clock);
+      } else if (what === 'up') {
+        S.wheelHeld = false;
+        return startEmote(emotes.up(S.clock));
+      }
+      else if (what === 'pick') return startEmote(emotes.choose(typeof n === 'number' ? n - 1 : n));
+      return false;
     },
     // T: the next trooper round
     cycle() {
@@ -2828,6 +3194,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         troops: troopsAlive().map((o) => ({ id: o.id, at: chest(o, TROOPS[o.kind].tall) })),
         first: S.cam.first,
         near: spot && { label: spot.label, say: spot.say },
+        // the emote wheel: open (its slices, the one pointed at), what you're doing, the last, and for a moment after
+        emote: { open: emotes.open, hover: emotes.hover, on: S.emote?.id ?? null, last: emotes.last, fresh: S.emoteAt != null && S.clock - S.emoteAt < 2.2 },
         // Rick's gadget in hand, and its name on the HUD for a moment after B
         gadget: me && GADGETS.includes(me.spec.gun) ? { kind: gunOf(me), name: GADGET_NAMES[gunOf(me)], fresh: S.gadgetAt != null && S.clock - S.gadgetAt < 1.8 } : null,
       };
@@ -2842,8 +3210,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         planet: S.id,
         kind: S.kind,
         ship: S.spot,
-        lead: out ? walker(S.me, meP(), S.aim) : null,
-        mate: out ? walker(S.mate, mateP(), S.mateAim) : null,
+        lead: out ? walker(S.me, meP(), S.aim, { emote: S.emote, t: S.clock, hitAt: S.hitAt, down: myDown() }) : null,
+        mate: out ? walker(S.mate, mateP(), S.mateAim, { t: S.clock, hitAt: S.mateSt.hitAt ?? -Infinity, down: mateDown(S.mateSt, S.clock) }) : null,
       };
     },
     guests: setGuests,

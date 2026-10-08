@@ -7,14 +7,29 @@
 // spiral that grows with their order, a thousand and more map units apart, each at
 // its own height: getting between them is a journey (ship.js's pulse
 // drive), and a fight (hunters.js). deep.js keeps them clear of its wonders.
+//
+// The map has sectors: the main one (all of the above, round the origin)
+// and the Rick and Morty sector, a region of space of its own far past the
+// main map's rim (SECTORS.rickmorty.origin), with the Citadel at its middle
+// (deep.js) and the show's worlds (universes.js's MOONS) on a spiral of its
+// own round it, a thousand and more units apart. Everything stays on plain
+// map coordinates (a sector's body is its origin plus where it sits in it),
+// so flight, landings and the autopilot work the same anywhere; what's
+// per-sector is the edge the ship's turned back at (ship.js) and the chart.
 
-import { UNIVERSES, byId } from './universes';
-import { HOME_SPREAD } from './scale';
+import { MOONS, UNIVERSES, byId } from './universes';
+import { HOME_SPREAD, SPREAD } from './scale';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
-const FIRST = 2000; // how far out the nearest fandom is
-const STEP = 330; // and how much further each one after it
-const HEIGHT = 560; // how far above or below the disc they go
+// (all three by scale.js's SPREAD; the height by half of it, so the disc
+// stays a disc and the highest world stays under deep space's ceiling)
+const FIRST = 2000 * SPREAD; // how far out the nearest fandom is
+const STEP = 330 * SPREAD; // and how much further each one after it
+const HEIGHT = (560 * SPREAD) / 2; // how far above or below the disc they go
+// (and the Rick and Morty sector's worlds round its middle, the same way)
+const SECTOR_FIRST = 900;
+const SECTOR_STEP = 450;
+const SECTOR_HEIGHT = 300;
 // the home system's sizes grow together by scale.js's HOME_SPREAD (the
 // stations themselves by HOME_SCALE, universes.js); the sun and the ring
 // round it more: the sun bigger than any world (r 47 to 59), and the ring
@@ -23,6 +38,29 @@ const HEIGHT = 560; // how far above or below the disc they go
 export const RING = 140; // the stations' ring
 
 export const ORDER = UNIVERSES.map((u) => u.id);
+
+// The sectors: where each one's middle is, and how far out from it the ship
+// is turned back. Anything further than SECTOR_SPLIT down -z is the Rick and
+// Morty sector's (the main map's edge is 36,000 out, the sector's 6,000 round
+// its origin, 48,000 down: the line runs halfway between the two edges). The
+// sector keeps its own layout (it's a pocket universe reached by portal);
+// only its origin moved out with the main map's spread.
+export const SECTORS = {
+  main: { id: 'main', origin: [0, 0, 0], edge: 9000 * SPREAD, name: 'Deep space' },
+  rickmorty: { id: 'rickmorty', origin: [0, 0, -48000], edge: 6000, name: 'The Central Finite Curve' },
+};
+const SECTOR_SPLIT = (-SECTORS.main.edge + SECTORS.rickmorty.origin[2] + SECTORS.rickmorty.edge) / 2;
+export const sectorOf = (x, y, z) => (z < SECTOR_SPLIT ? 'rickmorty' : 'main');
+// a point given in a sector's own frame, in the map's
+export const inSector = (sector, [x, y, z]) => {
+  const o = SECTORS[sector].origin;
+  return [o[0] + x, o[1] + y, o[2] + z];
+};
+// how far (x, z) is out from its sector's middle, level, and that sector
+export function sectorOut(x, z) {
+  const sec = SECTORS[sectorOf(x, 0, z)];
+  return { sec, out: Math.hypot(x - sec.origin[0], z - sec.origin[2]) };
+}
 
 // the sun in the middle: something to fly round, not somewhere to go
 export const SUN = { at: [0, 0, 0], r: 75 };
@@ -34,10 +72,10 @@ export const HOME_RADIUS = 230 * HOME_SPREAD;
 // the rim: a wide, thin ring of ice rocks right round the outside of the
 // map, out past every world and wonder and short of the edge (belt.js draws
 // it as a second belt; nothing's solid out there)
-export const RIM = { inner: 8000, outer: 8600, height: 60 };
+export const RIM = { inner: 8000 * SPREAD, outer: 8600 * SPREAD, height: 60 };
 
 // how far a universe's moons, rings and orbiting things reach from its centre
-export const REACH = Object.fromEntries(UNIVERSES.map((u) => [u.id, u.size * (u.reach ?? (u.kind === 'core' ? 2.0 : 1.9))]));
+export const REACH = Object.fromEntries([...UNIVERSES, ...MOONS].map((u) => [u.id, u.size * (u.reach ?? (u.kind === 'core' ? 2.0 : 1.9))]));
 
 const core = UNIVERSES.filter((u) => u.kind === 'core');
 const fandoms = UNIVERSES.filter((u) => u.kind !== 'core');
@@ -51,10 +89,25 @@ export const POSITIONS = Object.fromEntries([
     const a = i * GOLDEN + 0.32;
     return [u.id, [r * Math.cos(a), HEIGHT * Math.sin(i * 2.4 + 1), r * Math.sin(a)]];
   }),
+  // the Rick and Morty sector's worlds, on its own spiral round the Citadel
+  ...MOONS.map((m, i) => {
+    const r = SECTOR_FIRST + SECTOR_STEP * i;
+    const a = i * GOLDEN + 0.9;
+    return [m.id, inSector(m.sector, [r * Math.cos(a), SECTOR_HEIGHT * Math.sin(i * 2.4 + 1), r * Math.sin(a)])];
+  }),
 ]);
+// everything the ship can set down on or dock at: the map's order, then the moons
+export const BODIES = [...ORDER, ...MOONS.map((m) => m.id)];
 
-// how far out the furthest fandom reaches
+// which sector each body is in
+export const SECTOR_OF = Object.fromEntries(BODIES.map((id) => [id, byId(id).sector ?? 'main']));
+
+// how far out the furthest fandom reaches (the main sector's: the mini-map's scale)
 export const MAP_RADIUS = Math.max(...ORDER.map((id) => Math.hypot(POSITIONS[id][0], POSITIONS[id][2]) + REACH[id]));
+// and each sector's, round its own middle (the chart's scale in it)
+export const SECTOR_RADIUS = Object.fromEntries(
+  Object.values(SECTORS).map((sec) => [sec.id, sec.id === 'main' ? MAP_RADIUS : Math.max(...BODIES.filter((id) => SECTOR_OF[id] === sec.id).map((id) => Math.hypot(POSITIONS[id][0] - sec.origin[0], POSITIONS[id][2] - sec.origin[2]) + REACH[id]))]),
+);
 
 const step = (id, by) => {
   const i = ORDER.indexOf(id);
@@ -67,9 +120,10 @@ export const prev = (id) => step(id, -1);
 // A route param to a universe id, or null (the overview) for anything else.
 export const parseId = (param) => (typeof param === 'string' && byId(param) ? param : null);
 
-// The next universe after `id` that has a world page of its own.
+// The next universe after `id` that has a world page of its own (after a
+// moon of the Rick and Morty sector, the one after its crew's).
 export function nextWorld(id) {
-  let at = id;
+  let at = byId(id)?.crew ?? id;
   for (let n = 0; n < ORDER.length; n++) {
     at = next(at);
     if (byId(at).world) return byId(at);

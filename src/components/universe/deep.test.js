@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { DEEP, DEEP_SOLIDS, STARS, WONDERS, beyondOf, binaryAt, moveBinaries, nearestStar, openness, parseWonder, planetAt, reachOf, wonderById } from './deep';
+import { DEEP, DEEP_SOLIDS, PLACES, STARS, WONDERS, beyondOf, binaryAt, moveBinaries, nearestStar, openness, parseWonder, planetAt, reachOf, wonderById } from './deep';
 import { GOALS } from './ship';
-import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
-import { byId } from './universes';
+import { HOME_RADIUS, ORDER, POSITIONS, REACH, SECTORS, SECTOR_OF, inSector, sectorOf } from './layout';
+import { MOONS, byId } from './universes';
 
 describe('deep space', () => {
   it('puts every wonder well out past the home system and inside the edge, within the ceiling', () => {
     for (const w of WONDERS) {
-      const r = Math.hypot(w.at[0], w.at[2]);
-      expect(r - reachOf(w), w.id).toBeGreaterThan(DEEP.open + 40);
-      expect(r + reachOf(w), w.id).toBeLessThan(DEEP.edge - 20);
+      const sec = SECTORS[sectorOf(...w.at)];
+      expect(sec.id, w.id).toBe(w.sector ?? 'main');
+      const r = Math.hypot(w.at[0] - sec.origin[0], w.at[2] - sec.origin[2]);
+      if (sec.id === 'main') expect(r - reachOf(w), w.id).toBeGreaterThan(DEEP.open + 40);
+      expect(r + reachOf(w), w.id).toBeLessThan(sec.edge - 20);
       expect(Math.abs(w.at[1]) + (w.kind === 'nebula' ? 0 : w.r), w.id).toBeLessThan(DEEP.ceiling); // (a nebula's middle: it's thin at its edges)
     }
   });
@@ -39,11 +41,23 @@ describe('deep space', () => {
       [0, -15, 0],
     ])
       expect(solidAt(at(x, y, z)), `${x},${y},${z}`).toBe(true);
-    // between its arms, out past the great dome: open space
+    // the great dome itself, to its rim
+    for (const [x, y, z] of [
+      [0, 4, 0],
+      [11, 0.5, 0],
+      [0, 0.5, -11],
+      [0, -6, 0],
+    ])
+      expect(solidAt(at(x, y, z)), `${x},${y},${z}`).toBe(true);
+    // between its arms, out past the great dome, and just over and past the
+    // dome as it's drawn: open space (no wall of thin air round it)
     for (const [x, y, z] of [
       [17, 0, -17],
       [-17, 0, 17],
       [12, -24, 12],
+      [0, 8.5, 0],
+      [14.5, 0, -3],
+      [10, 4.5, 10],
     ])
       expect(solidAt(at(x, y, z)), `${x},${y},${z}`).toBe(false);
     // and crashing into any of it is crashing into the Citadel
@@ -162,7 +176,7 @@ describe('deep space', () => {
     expect(reachOf(wonderById('graveyard'))).toBe(wonderById('graveyard').field);
     expect(DEEP_SOLIDS.filter((s) => s.id.startsWith('graveyard'))).toHaveLength(1);
     // and none of them is a star a flare comes from
-    expect(STARS.map((s) => s.id)).toEqual(['sun', 'ember', 'halcyon']);
+    expect(STARS.map((s) => s.id)).toEqual(['sun', 'ember', 'halcyon', 'curvesun']);
   });
 
   it('reads a wonder from a link, and nothing else', () => {
@@ -172,10 +186,64 @@ describe('deep space', () => {
   });
 
   it('knows its stars, and which is nearest', () => {
-    expect(STARS.map((s) => s.id)).toEqual(['sun', 'ember', 'halcyon']);
+    expect(STARS.map((s) => s.id)).toEqual(['sun', 'ember', 'halcyon', 'curvesun']);
     expect(nearestStar(10, 0, 0).star.id).toBe('sun');
     const ember = WONDERS.find((w) => w.id === 'ember');
     expect(nearestStar(ember.at[0] + 200, ember.at[1], ember.at[2]).star.id).toBe('ember');
     expect(nearestStar(ember.at[0] + 200, ember.at[1], ember.at[2]).dist).toBeCloseTo(200, 3);
+  });
+
+  it('has the Rick and Morty sector: the Citadel at its middle, its worlds far apart round it, clear of its parts and each other', () => {
+    const citadel = WONDERS.find((w) => w.id === 'citadel');
+    expect(citadel.at).toEqual(inSector('rickmorty', [0, 0, 0]));
+    const parts = DEEP_SOLIDS.filter((s) => s.id.startsWith('citadel'));
+    for (const p of parts) expect(sectorOf(...p.at), p.id).toBe('rickmorty');
+    expect(MOONS.length).toBe(10);
+    for (const m of MOONS) {
+      const at = POSITIONS[m.id];
+      expect(SECTOR_OF[m.id], m.id).toBe('rickmorty');
+      expect(sectorOf(...at), m.id).toBe('rickmorty');
+      const d = Math.hypot(at[0] - citadel.at[0], at[1] - citadel.at[1], at[2] - citadel.at[2]);
+      // (beacons on the horizon from the Citadel, never neighbours; well inside the sector's edge)
+      expect(d, m.id).toBeGreaterThan(800);
+      expect(d + REACH[m.id], m.id).toBeLessThan(SECTORS.rickmorty.edge - 200);
+      expect(Math.abs(at[1]) + REACH[m.id], m.id).toBeLessThan(DEEP.ceiling);
+      for (const p of parts) expect(Math.hypot(at[0] - p.at[0], at[1] - p.at[1], at[2] - p.at[2]), `${m.id} and ${p.id}`).toBeGreaterThan(p.r + REACH[m.id] + 40);
+      for (const o of MOONS) if (o !== m) expect(Math.hypot(...[0, 1, 2].map((i) => at[i] - POSITIONS[o.id][i])), `${m.id} and ${o.id}`).toBeGreaterThan(1000);
+      for (const w of WONDERS) if (w.id !== 'citadel') expect(Math.hypot(...[0, 1, 2].map((i) => at[i] - w.at[i])), `${m.id} and ${w.id}`).toBeGreaterThan(reachOf(w) + REACH[m.id] + 400);
+      expect(byId(m.id).kind).toBe('moon');
+      // (a place: the drive is shut right at it)
+      expect(openness(at[0] + REACH[m.id] + 10, at[1], at[2]), m.id).toBe(0);
+    }
+    // and nothing of the main map's is in it
+    for (const id of ORDER) expect(SECTOR_OF[id], id).toBe('main');
+  });
+
+  it('lights the sector from a sun of its own', () => {
+    const o = SECTORS.rickmorty.origin;
+    expect(nearestStar(o[0], o[1], o[2]).star.id).toBe('curvesun');
+    expect(nearestStar(o[0], o[1], o[2]).dist).toBeLessThan(SECTORS.rickmorty.edge);
+  });
+});
+
+describe('deep space, spread (scale.js’s SPREAD)', () => {
+  const main = WONDERS.filter((w) => !w.sector);
+  it('puts every main-sector wonder between 8,000 and 30,000 out', () => {
+    for (const w of main) {
+      const r = Math.hypot(w.at[0], w.at[2]);
+      expect(r, w.id).toBeGreaterThan(8000);
+      expect(r, w.id).toBeLessThan(30000);
+    }
+  });
+
+  it('keeps every wonder further than 1.5 of its reach from any other place', () => {
+    // (a portal sits beside its own planet: its door, not a neighbour)
+    for (const w of main.filter((x) => x.kind !== 'portal')) {
+      for (const p of PLACES) {
+        if (p.id === w.id || p.kind === 'station' || p.kind === 'portal' || SECTOR_OF[p.id] === 'rickmorty' || p.at[2] < -40000) continue;
+        const d = Math.hypot(...w.at.map((v, i) => v - p.at[i]));
+        expect(d, `${w.id} and ${p.id}`).toBeGreaterThan(1.5 * reachOf(w));
+      }
+    }
   });
 });

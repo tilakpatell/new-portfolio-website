@@ -19,10 +19,22 @@
 // { x, y, z, yaw, mode } (the Federation's patrol ship, as ./ship.js flies it),
 // and in Total Rickall sight (the line Morty aims along, ./interiors/rickall.js's
 // sight(): the camera goes on it, `back` behind its start, as that file's
-// view() has it) and rickall ({ game, aim, hide }, for the house to draw) }.
+// view() has it) and rickall ({ game, aim, hide }, for the house to draw),
+// talk ({ id, n, hold, x, z }: Morty's word to someone, while it plays; his
+// head turns to them, and theirs to him) and emote (lib/emote.js's readEmote
+// of his: played on him once) }.
+//
+// Morty's body: his feet paced to the ground he covers, tucked up in a jump
+// (./living.js's stepMotion, locomotion.js), a glance about now and then
+// while he stands, a reaction asked with layer 'auto' on his upper half while
+// he moves, and a short one on his whole body cut as soon as he moves (so
+// control never waits on a clip). The others online play the emotes they
+// strike, their feet paced by the motion they send (an older client's
+// without it walk as they always did).
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../lib/stage3d';
+import { createHouse, shadowFor } from '../../../lib/three/house';
 import { budget, device } from '../../../lib/device';
 import { createPace } from '../../../lib/three/pace';
 import { InkPass, toon, toonify } from '../portal/toon';
@@ -44,6 +56,8 @@ import { buildMindBlowers } from './interiors/mindblowers';
 import { buildOval } from './interiors/oval';
 import { buildDiner } from './interiors/diner';
 import { gltfLoader } from '../../../lib/three/gltf';
+import { applyEmote } from '../../../lib/emote';
+import { EYES as EYE_H, createGlance, stepMotion } from './living';
 
 export { kitMaterials };
 
@@ -86,6 +100,29 @@ export const LAZY = {
   pluto: () => import('./dimensions/pluto').then((m) => m.buildPluto),
   gearworld: () => import('./dimensions/gearworld').then((m) => m.buildGearworld),
   vindicators: () => import('./dimensions/vindicators').then((m) => m.buildVindicators),
+  simulation: () => import('./dimensions/simulation').then((m) => m.buildSimulation),
+  storytrain: () => import('./dimensions/storytrain').then((m) => m.buildStorytrain),
+  fortress: () => import('./dimensions/fortress').then((m) => m.buildFortress),
+  froopyland: () => import('./dimensions/froopyland').then((m) => m.buildFroopyland),
+  nimbus: () => import('./dimensions/nimbus').then((m) => m.buildNimbus),
+  gromflomites: () => import('./dimensions/gromflomites').then((m) => m.buildGromflomites),
+  heistcon: () => import('./dimensions/heistcon').then((m) => m.buildHeistcon),
+  snakeplanet: () => import('./dimensions/snakeplanet').then((m) => m.buildSnakeplanet),
+  nuptia: () => import('./dimensions/nuptia').then((m) => m.buildNuptia),
+  gloopynoops: () => import('./dimensions/gloopynoops').then((m) => m.buildGloopynoops),
+  resort: () => import('./dimensions/resort').then((m) => m.buildResort),
+  schwifty: () => import('./dimensions/schwifty').then((m) => m.buildSchwifty),
+  evilrick: () => import('./dimensions/evilrick').then((m) => m.buildEvilrick),
+  cronenberg: () => import('./dimensions/cronenberg').then((m) => m.buildCronenberg),
+  blooddome: () => import('./dimensions/blooddome').then((m) => m.buildBlooddome),
+  prison: () => import('./dimensions/prison').then((m) => m.buildPrison),
+  cablestudio: () => import('./dimensions/cable').then((m) => m.buildCable),
+  dream: () => import('./dimensions/dream').then((m) => m.buildDream),
+  agency: () => import('./dimensions/agency').then((m) => m.buildAgency),
+  meeseeksgolf: () => import('./dimensions/meeseeks').then((m) => m.buildMeeseeks),
+  vat: () => import('./dimensions/vat').then((m) => m.buildVat),
+  dim35c: () => import('./dimensions/dim35c').then((m) => m.buildDim35c),
+  frundles: () => import('./dimensions/frundles').then((m) => m.buildFrundles),
 };
 
 // The cruiser's headlights, which are its eyes (the saucer's, in the hull's
@@ -106,6 +143,8 @@ const SWING = [0.5, 1, 1.5, 2, 2.6];
 const ROOM_LIGHT = { sun: [0xfff1dc, 0.7], hemi: [0xfff4e6, 0x8a7a68, 1.7], fog: null, background: 0x15110d };
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+// Morty's short reactions on his whole body, cut once he moves
+const CUT_ON_MOVE = new Set(['cheer', 'happy', 'scared', 'hit', 'taunt', 'shoot', 'wave', 'dance', 'drink']);
 const V = new THREE.Vector3();
 const TMP = new THREE.Vector3();
 
@@ -116,8 +155,14 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const fit = budget();
   const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.3, far: 1000, exposure: 1.05, bloom: { strength: 0.55, radius: 0.45, threshold: 1.15 }, onLost });
   const { renderer, scene, camera } = stage;
-  // a tone map that keeps the show's flat bright colours bright
+  // a tone map that keeps the show's flat bright colours bright (the house
+  // tone mapper: the exposure was tuned under it, so the house's own
+  // ACES-matching lift isn't taken)
   renderer.toneMapping = THREE.NeutralToneMapping;
+  // the house look (lib/three/house): one shadow colour on everything, from
+  // each area's sky light, and fog the colour of the sky where there's fog
+  const house = createHouse();
+  house.sky({ low: STREET_SKY.low, high: STREET_SKY.top, below: 1, sunDir: SUN_DIR });
   stage.grade({ contrast: 0.06, saturation: 1.12, vignette: 0.12, grain: 0.008, shadow: [0, 0.004, 0.012], high: [0.012, 0.008, 0] });
   renderer.info.autoReset = false; // counted over the whole frame, every pass
   const big = Math.min(window.screen?.width ?? 1280, window.screen?.height ?? 800) >= 700;
@@ -151,13 +196,15 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     return p;
   };
   // each of the cast loaded once, however many builders ask, at the same time
-  // or not (the clips of the first ask for a name are the ones it gets)
-  const asked = new Map();
+  // or not; every ask's clips reach the cast, which adds those a figure
+  // hasn't got yet to the one it has (an ask asked before is the same load)
+  const asked = new Map(); // name and clips → the load
   const need = (names, { clips = ['idle', 'walk', 'run'] } = {}) =>
     Promise.all(
       names.map((n) => {
-        if (!asked.has(n)) asked.set(n, track(cast.load(null, [n], { clips })));
-        return asked.get(n);
+        const key = `${n}:${[...clips].sort().join(',')}`;
+        if (!asked.has(key)) asked.set(key, track(cast.load(null, [n], { clips })));
+        return asked.get(key);
       }),
     );
   const [loaded] = await Promise.all([
@@ -203,6 +250,10 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   scene.add(morty.group);
   let undress = dress(morty, look);
   const mortyShadow = fx.blob(0.55);
+  // Morty's body between frames: his last step and his frame (for his feet),
+  // his glance about, the emote on him, whether his head's on something,
+  // whether he's moving
+  const mb = { prev: null, frame: { forward: new THREE.Vector3(0, 0, 1), up: new THREE.Vector3(0, 1, 0) }, glance: createGlance({ seed: 137 }), shown: null, looking: false, moving: false };
 
   // others online in the street (RmWorld's useTravellers), as the Middle-earth
   // towns and the Avengers compound show theirs: each a Morty from another
@@ -222,7 +273,15 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       // (a Meshy Morty's mesh and materials are the cast's: not the ghost's to dispose)
       return c ? { group, top: MORTY_H, morty: c, shared: true, dispose: () => c.mixer?.stopAllAction() } : { group, top: MORTY_H, morty: fig };
     },
-    animate: (f, t, p) => f.morty.update?.(t, clamp((p.speed ?? (p.moving ? MORTY.walk : 0)) / MORTY.run, 0, 1), 0),
+    animate: (f, t, p, dt) => {
+      // (paced by the motion they send, in their figure's units; an older client's by their speed, as ever)
+      const move = clamp(((p.motion?.speed ?? p.speed) ?? (p.moving ? MORTY.walk : 0)) / MORTY.run, 0, 1);
+      const k = f.morty.group?.scale.x || 1;
+      if (p.motion) f.morty.update?.(t, move, 0, { dt, motion: { speed: p.motion.speed / k, side: p.motion.side / k, turn: p.motion.turn } });
+      else f.morty.update?.(t, move, 0);
+      // the emote they've struck, played once (none from an older client)
+      f.shown = applyEmote(f.morty, p.emote, f.shown);
+    },
     tag: 0.34,
     halo: 0.9,
   });
@@ -244,7 +303,8 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     if (!p) return null;
     p.group.scale.setScalar((CREW.morty[0] * K) / p.height);
     p.group.position.set(CREW.rick[1] * K, CREW.y * K, CREW.z * K);
-    for (const [n, a] of Object.entries(p.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
+    // (sat through his animator: his own sat clip, breathing as he flies)
+    p.base?.('sit');
     hull.add(p.group);
     p.undress = dress(p, l);
     return p;
@@ -369,6 +429,13 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       fog.far = 2e4;
     }
     scene.background = L.background != null ? new THREE.Color(L.background) : null;
+    // the house look follows the area's light (and takes on whatever's
+    // been built or brought in since: patched once each)
+    const sky = id === 'street' ? STREET_SKY : OUTDOOR.includes(id) ? ANNEX_SKY : null;
+    if (sky) house.sky({ low: sky.low, high: sky.top, below: 1 });
+    house.light({ sun, hemi });
+    house.set({ shadow: shadowFor({ hemiSky: hemi.color.getHex(), hemi: hemi.intensity }), fogMix: L.fog && sky ? 1 : 0 });
+    house.adopt(scene);
     for (const m of fx.marks.values()) m.visible = m.userData.area === id;
     shown = id;
     return true;
@@ -462,9 +529,31 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     eyeY = groundY + standY;
     ghosts.update(state.travellers ?? [], t, dt);
     morty.group.visible = !state.flying;
-    morty.group.position.set(m.x, mortyY, m.z);
+    const mk = morty.group.scale.x || 1; // (his figure's units to the world's)
+    // (lowered for the crouch his landing's put him in: locomotion bends his knees, this keeps his feet down)
+    morty.group.position.set(m.x, mortyY - (morty.anim?.loco.drop ?? 0) * mk, m.z);
     morty.group.rotation.y = (m.face ?? 0) + Math.PI / 2;
-    morty.update?.(t, clamp((m.speed ?? 0) / MORTY.run, 0, 1), 0);
+    // his feet by the ground he covers (put somewhere new, none), tucked up off the ground in a jump
+    const was = mb.prev;
+    mb.prev = { x: m.x, z: m.z, yaw: morty.group.rotation.y };
+    const motion = jump || state.flying ? stepMotion(null, mb.prev, dt) : stepMotion(was, mb.prev, dt, { scale: mk });
+    motion.air = Math.max(0, (m.y ?? 0) - stand);
+    mb.moving = Math.hypot(motion.speed, motion.side) * mk > 0.5;
+    mb.frame.forward.set(Math.sin(mb.prev.yaw), 0, Math.cos(mb.prev.yaw));
+    // (a short reaction on his whole body is cut once he moves: he's never held up by a clip)
+    if (mb.moving && CUT_ON_MOVE.has(morty.anim?.playing('full'))) morty.stop?.(0.15);
+    morty.update?.(t, clamp((m.speed ?? 0) / MORTY.run, 0, 1), 0, { dt, motion, frame: mb.frame });
+    // what he's struck from the wheel, once; nothing up in the cruiser
+    mb.shown = applyEmote(morty, state.flying ? null : (state.emote ?? null), mb.shown);
+    // his head: on whom he's talking to, else, stood about, a glance off to one side now and then
+    const glance = mb.glance.step(dt, !state.flying && !state.sight && !state.talk && !state.emote && !mb.moving && !motion.air);
+    let look = null;
+    if (state.talk && !state.flying) look = V.set(state.talk.x, mortyY + EYE_H, state.talk.z);
+    else if (glance != null) look = V.set(m.x + Math.sin(mb.prev.yaw + glance) * 4, mortyY + EYE_H, m.z + Math.cos(mb.prev.yaw + glance) * 4);
+    if (look || mb.looking) {
+      morty.look?.(look);
+      mb.looking = Boolean(look);
+    }
     mortyShadow.visible = morty.group.visible;
     mortyShadow.position.set(m.x, groundY + stand + 0.02, m.z);
 
@@ -481,7 +570,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       eyes.update(t, dt, state.flying ? null : m, Math.abs(c.speed ?? 0) / CRUISER.top);
       if (pilot) {
         pilot.group.visible = !!state.flying;
-        pilot.mixer?.update(dt);
+        pilot.update?.(t, 0, 0, { dt });
       }
       glowMat.opacity = 0.7 + Math.sin(t * 19) * 0.15;
       for (let i = 0; i < glows.length; i++) {
@@ -651,6 +740,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       floorLight?.track(fresh.group, [0.9, 0.9], { contact: mortyShadow });
       morty = fresh;
       undress = dress(morty, l);
+      Object.assign(mb, { prev: null, shown: null, looking: false });
     }
     if (pilot) {
       pilot.undress?.();
@@ -661,6 +751,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
 
   const api = {
     ground: import.meta.env.DEV ? floorLight : null, // for the QA scripts
+    house: import.meta.env.DEV ? house : null, // for the QA scripts
     render,
     resize,
     fx: fxEvent,
@@ -675,6 +766,10 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       if (TMP.z > 1) return null;
       return { x: ((TMP.x + 1) / 2) * stage.size.w, y: ((1 - TMP.y) / 2) * stage.size.h };
     },
+    // one of the shared clips on Morty (meshyCast.js's play): a cheer, a hit, a
+    // shot; layer 'auto' is his upper half while he moves (his legs keep
+    // walking), his whole body while he stands
+    play: (clip, opts) => morty.play?.(clip, opts?.layer === 'auto' ? { ...opts, layer: mb.moving ? 'upper' : 'full' } : opts) ?? Promise.resolve(false),
     // an area builder's own action, if it has one (the arcade's setBoard(best)); nothing otherwise
     act(area, name, ...args) {
       const actions = areas[area]?.actions;

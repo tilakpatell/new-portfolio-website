@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RiCheckLine, RiFileCopyLine, RiGitPullRequestLine, RiArrowRightUpLine } from 'react-icons/ri';
+import { RiGitPullRequestLine, RiArrowRightUpLine } from 'react-icons/ri';
 import RouteLine from '../components/RouteLine';
-import { Waypoint } from '../components/ui';
+import { CopyButton, Waypoint } from '../components/ui';
 import { CHANGES, KINDS, KIND_ORDER, fmtDay, isBefore, pad, prUrl, revertPhrase, tally } from '../data/changes';
 import { useDocumentTitle } from '../lib/hooks';
 import { AurebeshLine } from '../components/Wordmark';
@@ -10,25 +10,6 @@ import { AurebeshLine } from '../components/Wordmark';
 // The ship's log: every change the autopilot has made to the site, newest
 // first, with a picture of it and the words to say to take it out again.
 // Plain and light: no 3D, every image lazy with its size set.
-
-function Copy({ text, label = 'Copy' }) {
-  const [done, setDone] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setDone(true);
-      setTimeout(() => setDone(false), 2000);
-    } catch {
-      /* no clipboard: the words are on the page to select */
-    }
-  };
-  return (
-    <button type="button" className="btn btn-ghost btn-sm" onClick={copy}>
-      {done ? <RiCheckLine className="h-4 w-4 text-accent" aria-hidden="true" /> : <RiFileCopyLine className="h-4 w-4" aria-hidden="true" />}
-      <span aria-live="polite">{done ? 'Copied' : label}</span>
-    </button>
-  );
-}
 
 function Entry({ c }) {
   const gone = Boolean(c.reverted);
@@ -78,7 +59,7 @@ function Entry({ c }) {
         <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-5 text-sm">
           <span className="text-muted">Don’t like it? Tell a Claude session:</span>
           <code className="mono rounded-chip border border-line-strong bg-[var(--bg-deep)] px-2.5 py-1 text-ink">{revertPhrase(c)}</code>
-          <Copy text={revertPhrase(c)} />
+          <CopyButton text={revertPhrase(c)} />
         </div>
       )}
     </article>
@@ -101,7 +82,7 @@ export default function Changes() {
         <div className="relative">
           <Waypoint top="0.6rem" />
           <p className="eyebrow">The ship’s log</p>
-          <h1 className="display mt-6 text-[clamp(3rem,1.6rem+6vw,6.2rem)]">What’s changed.</h1>
+          <h1 className="display mt-6 text-[clamp(3rem,1.6rem+6vw,6.2rem)]" data-tour="changes-log">What’s changed.</h1>
           <p className="mt-3 text-sm text-muted">
             <AurebeshLine>What’s changed.</AurebeshLine>
           </p>

@@ -23,8 +23,11 @@ import { createLibrary } from '../../../lib/cc0';
 import { disposeTree } from '../../../lib/stage3d';
 import { megaGeometry } from '../rollout/kaon';
 import { pixelRatio } from '../../../lib/device';
+import { houseOn } from '../../../lib/three/house';
+import { guard } from '../../../lib/three/frameGuard';
 import { precompile, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 import { gltfLoader } from '../../../lib/three/gltf';
+import { sharpen } from '../../../lib/three/textures';
 
 const GROUND = -90; // the deck the towers stand on, deep in the haze
 const HALL = { x: 0, z: -1150 }; // the Hall of Records, at the end of the boulevard
@@ -786,6 +789,8 @@ const LOOK = [
 
 export async function createCybertronBackdrop(canvas, { side = 0, dark = true, calm = false, onLost } = {}) {
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, depth: true }));
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.info.autoReset = false;
@@ -1147,6 +1152,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     g.fillStyle = grad;
     g.fillRect(0, 0, 128, 128);
     const t = new THREE.CanvasTexture(c);
+    sharpen(t);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
@@ -1325,6 +1331,11 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
   const key = new THREE.DirectionalLight(0xffffff, 1);
   const rim = new THREE.DirectionalLight(0xffffff, 1);
   scene.add(hemi, key, key.target, rim, rim.target);
+  // the house look (lib/three/house) on the statues, the Hall and the
+  // citadel: the shade one colour from the sky light, under the house tone
+  // mapper (its exposure on top of each palette's, which were set under ACES;
+  // the city's own shaders and its fog left as they are)
+  const house = houseOn({ renderer, scene, sun: key, hemi, look: { fog: false } });
 
   // ── the light, blended from the four palettes
   const live = { side, dark: dark ? 1 : 0 };
@@ -1377,7 +1388,8 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
     rim.position.copy(pick('rimDir')).multiplyScalar(1000);
     beacon.material.color.copy(pick('beacon'));
     bloom.strength = pick('bloom');
-    renderer.toneMappingExposure = pick('exposure');
+    renderer.toneMappingExposure = pick('exposure') * house.exposure;
+    house.follow();
     // Iacon's Hall goes and Kaon's citadel comes, panel by panel; spikes grow
     const s = live.side;
     U.uSide.value = s;
@@ -1507,6 +1519,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
 
   light();
   place();
+  house.follow({ adopt: true });
   // every shader (the city's, into the composer's buffer, and the passes')
   // linked in the background before the first frame, so drawing it doesn't stop the page
   await Promise.all([precompile(renderer, scene, camera, scene, composer.readBuffer), precompilePasses(renderer, composer, camera)]);

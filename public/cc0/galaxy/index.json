@@ -217,5 +217,54 @@
     "metres": 15,
     "mean": 0.84,
     "arm": true
+  },
+  "tiles": {
+    "source": "https://polyhaven.com/a/large_floor_tiles_02",
+    "id": "large_floor_tiles_02",
+    "name": "Large Floor Tiles 02",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "metres": 3,
+    "mean": 0.84,
+    "arm": true
+  },
+  "deck": {
+    "source": "https://polyhaven.com/a/metal_plate",
+    "id": "metal_plate",
+    "name": "Metal Plate",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "metres": 0.5,
+    "mean": 0.8,
+    "arm": true
+  },
+  "redrock": {
+    "source": "https://polyhaven.com/a/rock_boulder_cracked",
+    "id": "rock_boulder_cracked",
+    "name": "Rock Boulder Cracked",
+    "authors": [
+      "Dario Barresi",
+      "Dimitrios Savva"
+    ],
+    "license": "CC0 1.0",
+    "metres": 1.3899999856948853,
+    "mean": 0.78,
+    "arm": true
+  },
+  "mossrock": {
+    "source": "https://polyhaven.com/a/mossy_rock",
+    "id": "mossy_rock",
+    "name": "Mossy Rock",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0 1.0",
+    "metres": 3,
+    "mean": 0.72,
+    "arm": true
   }
 }

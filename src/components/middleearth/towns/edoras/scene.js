@@ -15,12 +15,14 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
 import { EMBER, FIRE, SMOKE, createParticles } from '../../kit';
 import { sit } from '../../shire/people';
-import { makeSky } from '../../shire/sky';
+import { lookFrom, makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { makeTerrain } from '../ground';
 import { FIGURE, groundTown } from '../grounded';
@@ -30,6 +32,7 @@ import { createEdorasKit } from './props';
 import { createEdorasFolk } from './folk';
 import { BRAWL } from './rules';
 import { DAIS, DOOR_GUARDS, DOORS, FEAST, FLOWERS, GANDALF, GATE, GRAVE, GRIMA, HAMA, MEDUSELD, ROAD, THRONE, WATCH, clearView, faceTo, groundAt, hillHeight, inHall } from './layout';
+import { castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 // where each place is drawn
@@ -101,6 +104,10 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   const tier = dev.tier;
   const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 6000, bloom: { strength: 0.6, radius: 0.5, threshold: 0.86 }, onLost });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; it follows the moods below
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0xbcc4c4, 220, 2600);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.35;
@@ -118,6 +125,9 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   scene.add(sky.dome);
 
   const kit = createEdorasKit(renderer, { tier });
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(kit.mats ?? {}, rolesFor(kit.mats ?? {}), { strength: 0.3, normal: 0.6, keep: true });
   const folk = createEdorasFolk(renderer, { tier });
   const zones = { hill: new THREE.Group(), hall: new THREE.Group() };
   for (const [k, g] of Object.entries(zones)) {
@@ -137,6 +147,8 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   zones.hill.add(peaks.group);
   const townLamps = town.lamps.map((p) => p.clone().add(AT.hill));
   const peakFires = peaks.fires.map((p) => p.clone().add(AT.hill));
+  // where the cast's eyes go at the barrows: Théodred's mound
+  const GRAVE_EYE = wpos('hill', GRAVE.x, groundAt(GRAVE.x, GRAVE.z) + 0.4, GRAVE.z - 2);
   // ── the hall ──
   const hall = kit.hall();
   zones.hall.add(hall.group);
@@ -170,16 +182,23 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   gimli.arms[1].add(tankards[0]);
   gimliBare.arms[1].add(tankards[0].clone());
   legolas.arms[1].add(tankards[1]);
-  for (const t of [tankards[0], tankards[1], gimliBare.arms[1].children.at(-1)]) {
+  const bareTankard = gimliBare.arms[1].children.at(-1);
+  for (const t of [tankards[0], tankards[1], bareTankard]) {
     t.position.set(0.06, -0.38, 0.04);
     t.visible = false;
   }
+  // on the cast (../../cast3d.js) the tankards go to their hands
+  gimli.cast?.hold(tankards[0]);
+  gimliBare.cast?.hold(bareTankard);
+  legolas.cast?.hold(tankards[1]);
   const bunch = folk.flowerBunch();
   bunch.position.set(0.05, -0.36, 0.05);
   bunch.visible = false;
   gimli.arms[0].add(bunch);
   const bunch2 = bunch.clone();
   gimliBare.arms[0].add(bunch2);
+  gimli.cast?.hold(bunch, 'LeftHand');
+  gimliBare.cast?.hold(bunch2, 'LeftHand');
   const snowmane = folk.theodenHorse();
   snowmane.group.visible = false;
   scene.add(snowmane.group);
@@ -269,6 +288,8 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     f.body.rotation.set(0, 0, 0);
     sit(f, false);
     if (f.blob) f.blob.visible = true;
+    // (on the cast: what each does here is set after, frame by frame)
+    castDo(f, { base: null, full: null, upper: null, look: null, seat: null });
   };
   const hideAll = () => {
     for (const f of [gimli, gimliBare, legolas, aragorn, gandalf, kingOld, king, grima, eowyn, hama, ...men, ...feasters]) f.group.visible = false;
@@ -325,7 +346,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     scene.fog.color.copy(cur.fog);
     scene.fog.near = cur.fogNear;
     scene.fog.far = cur.fogFar;
-    renderer.toneMappingExposure = cur.exposure;
+    lookFrom(houseLook, { sky, sun, hemi, fog: scene.fog, renderer, exposure: cur.exposure });
     const night = moodKey === 'night' ? 1 : moodKey === 'evening' ? 0.4 : 0;
     // (the gold reflects a daytime sky: dim it after dark, and indoors)
     A.day += ((moodKey === 'hall' ? 0.35 : 1 - night * 0.8) - A.day) * ease;
@@ -333,7 +354,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     hideAll();
     A.flash = Math.max(0, A.flash - dt * 1.5);
     A.bashT = Math.max(0, A.bashT - dt * 4);
-    for (const tk of [...tankards, gimliBare.arms[1].children.at(-1)]) tk.visible = false;
+    for (const tk of [...tankards, bareTankard]) tk.visible = false;
     bunch.visible = bunch2.visible = (s.carrying ?? 0) > 0;
     // the picked flowers are gone from the barrows
     barrows.flowers.forEach((f, i) => (f.visible = !s.picked?.includes(i)));
@@ -345,9 +366,13 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       if (s.next === 'weapons' || s.finished || s.next === 'flowers') {
         stand(hama, 'hill', HAMA.x, HAMA.z, s.talking === 'door' ? faceTo(HAMA.x, HAMA.z, h.x, h.z) : HAMA.face);
         pose(hama, t, { talk: s.speaker === 'hama' ? 1 : 0 });
+        // (on the cast: the doorward and the guards watch you come up)
+        const near = h && Math.hypot(h.x - HAMA.x, h.z - HAMA.z) < 9;
+        castDo(hama, { look: s.talking === 'door' || near ? me : null });
         for (const g of doorGuards) {
           stand(g.f, 'hill', g.x, g.z, g.face);
           pose(g.f, t + g.z, {});
+          castDo(g.f, { look: near ? me : null });
         }
       }
       // the companions, with you at the doors
@@ -356,6 +381,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
         stand(aragorn, 'hill', DOORS.x + 3.4, 1.4, Math.PI);
         stand(legolas, 'hill', DOORS.x + 4.4, -2.6, Math.PI);
         for (const f of [gandalf, aragorn, legolas]) pose(f, t + f.group.position.z, { talk: s.speaker === 'gandalf' && f === gandalf ? 1 : 0 });
+        for (const f of [gandalf, aragorn, legolas]) castDo(f, { look: hama });
       }
       // at the barrows: the king and Éowyn by Théodred's
       if (s.next === 'flowers') {
@@ -363,6 +389,9 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
         stand(eowyn, 'hill', GRAVE.x - 3.2, GRAVE.z + 0.6, faceTo(GRAVE.x - 3.2, GRAVE.z + 0.6, GRAVE.x, GRAVE.z - 3));
         stand(gandalf, 'hill', GRAVE.x - 4.2, GRAVE.z + 2.8, faceTo(GRAVE.x - 4.2, GRAVE.z + 2.8, GRAVE.x, GRAVE.z));
         for (const f of [king, eowyn, gandalf]) pose(f, t + f.group.position.x, { talk: s.speaker === 'theoden' && f === king ? 1 : s.speaker === 'gandalf' && f === gandalf ? 1 : 0 });
+        // (on the cast: the king and his niece with their eyes on Théodred's mound)
+        castDo(king, { look: GRAVE_EYE });
+        castDo(eowyn, { look: GRAVE_EYE });
         // the flowers to pick glimmer
         FLOWERS.forEach((f, i) => {
           if (s.picked?.includes(i)) return;
@@ -380,6 +409,8 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
         const b = s.watch?.look ?? 0;
         stand(me, 'hill', WATCH.x, WATCH.z, b);
         pose(me, t, { talk: s.speaker === 'gimli' ? 1 : 0 });
+        // (on the cast: his eyes on the beacon once it's lit)
+        if (s.watch?.lit != null && peakFires[s.watch.lit]) castDo(me, { look: peakFires[s.watch.lit] });
         if (s.talking === 'lit') {
           stand(aragorn, 'hill', WATCH.x - 1.6, WATCH.z + 1.4, b);
           pose(aragorn, t, { talk: s.speaker === 'aragorn' ? 1 : 0 });
@@ -443,11 +474,19 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
         pose(grima, t, { talk: s.speaker === 'grima' ? 1 : 0 });
         stand(eowyn, 'hall', -2.4, -17.6, -Math.PI / 2, DAIS.h);
         pose(eowyn, t + 2, {});
+        // on the cast: Wormtongue at the king's ear, wringing his hands; the king slumped, dozing
+        castDo(grima, { upper: s.speaker === 'grima' ? 'talk.passion' : 'scheme', look: s.speaker === 'grima' ? me : k });
+        castDo(k, { base: 'sit.doze' });
+        castDo(eowyn, { look: k });
       }
       // Gandalf at his work, and his light
       if (s.next === 'king') {
         stand(gandalf, 'hall', GANDALF.x, GANDALF.z, GANDALF.face);
         pose(gandalf, t, { talk: s.speaker === 'gandalf' ? 1 : 0 });
+        // (on the cast: the staff up and the spell held on the king; the others at the ready)
+        castDo(gandalf, { upper: s.mode === 'brawl' || s.talking === 'freed' ? 'cast.idle' : null, look: k });
+        castDo(aragorn, { full: brawl ? 'stance' : null });
+        castDo(legolas, { full: brawl ? 'stance' : null });
         if (s.mode === 'brawl' || s.talking === 'freed') {
           gandalf.arms[1].rotation.x = -2.2 - Math.sin(t * 2) * 0.15;
           const w = brawl?.work ?? 1;
@@ -456,7 +495,9 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
         }
         stand(aragorn, 'hall', -3.6, -12.6, Math.PI / 2);
         stand(legolas, 'hall', 3.4, -13.4, Math.PI / 2);
-        pose(aragorn, t, { wave: brawl ? 0.3 : 0 });
+        castDo(aragorn, { full: brawl ? 'stance' : null });
+        castDo(legolas, { full: brawl ? 'stance' : null });
+        pose(aragorn, t, { wave: brawl && !aragorn.cast?.ready ? 0.3 : 0 });
         pose(legolas, t + 1, {});
       }
       // Wormtongue's men
@@ -465,6 +506,8 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
           const f = men[i % men.length];
           stand(f, 'hall', m.x, m.z, faceTo(m.x, m.z, GANDALF.x, GANDALF.z));
           pose(f, t + i, { moving: m.state === 'come', speed: 1.1 });
+          castDo(f, { look: gandalf });
+          // (on the cast, knocked: a flinch first, then down by his own fall: ./folk.js knock)
           if (m.state === 'down') knock(f, Math.min(1, (BRAWL.down - m.downT) * 4));
         });
       }
@@ -477,6 +520,8 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
           f.body.position.y = f.baseY - 0.25;
           pose(f, t + i, { talk: Math.sin(t * 2 + i) > 0.6 ? 1 : 0 });
           sit(f, true);
+          // (on the cast: sat as low as the toy, now and then a drink)
+          castDo(f, { seat: f.baseY - 0.25, upper: Math.sin(t * 0.5 + i * 1.7) > 0.7 ? 'sit.drink' : null });
         });
         stand(legolas, 'hall', FEAST.legolas.x, FEAST.legolas.z, FEAST.legolas.face);
         pose(legolas, t, { talk: s.speaker === 'legolas' ? 1 : 0 });
@@ -485,8 +530,12 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
         const gim = s.talking === 'down' ? FEAST.gimli : FEAST.gimli;
         stand(me, 'hall', gim.x, gim.z, gim.face);
         pose(me, t, { talk: s.speaker === 'gimli' ? 1 : 0 });
-        const tk = me === gimli ? tankards[0] : gimliBare.arms[1].children.at(-1);
+        const tk = me === gimli ? tankards[0] : bareTankard;
         tk.visible = true;
+        // on the cast: both drinking, eye to eye; Gimli under the table at the last, by his own fall
+        const drinking = Boolean(d) && !(s.talking === 'down' || d?.state === 'down');
+        castDo(me, { upper: drinking ? 'drink' : null, look: legolas, down: s.talking === 'down' || d?.state === 'down', flinch: null, fall: 'fall', rise: null });
+        castDo(legolas, { upper: 'drink', look: me });
         // the tankard swinging up to his lips and away
         const kk = d ? (d.k + 1) / 2 : 0.2;
         me.arms[1].rotation.x = -0.4 - kk * 2.2;
@@ -506,6 +555,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
           stand(me, 'hall', h.x, h.z, h.face);
           pose(me, t, { moving: (h.speed ?? 0) > 0.3, speed: Math.min(1.4, (h.speed ?? 0) / 3.2), talk: s.speaker === 'gimli' ? 1 : 0 });
           if (A.bashT > 0) me.arms[1].rotation.x = -2.4 * A.bashT;
+          castDo(me, { down: false });
         }
       }
       // the hearth, and the lamps
@@ -665,6 +715,8 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       high: moodKey === 'hall' || moodKey === 'evening' ? [0.03, 0.015, 0] : [0, 0, 0],
     });
     ground.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -672,6 +724,9 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   const fxEvent = (type) => {
     if (type === 'bash') {
       A.bashT = 1;
+      // (on the cast: a dwarf's blow)
+      castPlay(gimli, 'uppercut', { layer: 'upper', fade: 0.06 });
+      castPlay(gimliBare, 'cross', { layer: 'upper', fade: 0.06 });
       A.shake = Math.max(A.shake, 0.05);
     } else if (type === 'reach') A.flash = 1;
     else if (type === 'thunder') {
@@ -683,6 +738,8 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
 
   // ── the floor's light, baked when the town is first drawn ──
   const ground = groundTown({ renderer, scene, terrain, outdoors: zones.hill, sun, height: groundAt, people: movers, skip: [sky.dome, ghosts.group, flames.mesh, embers.mesh, smoke.mesh, dust.mesh, light.mesh], tier, centre: [-12, 0], radius: 115, shade: 0x3a2e1e });
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
@@ -701,6 +758,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
       ground.dispose();
       ghosts.dispose();
       disposeTree(scene);
+      releaseCast(scene);
       stage.dispose();
     },
   };

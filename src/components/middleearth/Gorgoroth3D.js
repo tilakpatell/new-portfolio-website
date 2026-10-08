@@ -10,10 +10,12 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { canvasTexture, createStage, hot } from '../../lib/stage3d';
 import { createModels } from '../../lib/models';
+import { houseOn } from '../../lib/three/house';
 import { fbm, makeCanvas, makeNoise, ridge, smooth, tiled } from '../../lib/paint';
 import { rng } from '../../lib/texture';
 import { WALK } from './walk';
 import { EMBER, FIRE, SMOKE, createParticles, lavaMaterial, makeHobbit, makeOrc, skyDome, stoneTextures } from './kit';
+import { castDo, releaseCast, tickCast, upgrade } from './cast3d';
 
 // the drawing's x (see walk.js) to the scene's: the road runs along x
 const X = (svg) => (svg - 265) / 10;
@@ -400,6 +402,12 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
   phialLight.position.set(0.3, 0.7, 0.3);
   frodo.group.add(phialLight);
   scene.add(frodo.group, sam.group);
+  // Frodo and Sam on the cast once their models are here (./cast3d.js): the
+  // cloaked cones hidden (the Ring's glow and the Phial kept), and shown
+  // again as the pair of rocks they make when they hide under the cloaks
+  const cloaked = (h) => h.body.children.filter((o) => o.isMesh && o !== ringGlow && o !== phial);
+  upgrade(frodo, 'frodo', { role: 'lead', hide: cloaked(frodo), top: 1.0, seed: 1 });
+  upgrade(sam, 'sam', { role: 'lead', hide: cloaked(sam), top: 0.98, seed: 2 });
   const green = [new THREE.Color(0x4b5a3a), new THREE.Color(0x5a6a44)];
   const grey = new THREE.Color(0x3b2e29);
 
@@ -456,6 +464,11 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
     Object.assign(S, n);
   };
   const fx = () => {};
+
+  // the house look (lib/three/house), as in Middle-earth's towns: the house
+  // tone mapper, the shade one colour from the ash sky's light, under the mountain's glow; its own fog kept
+  const house = houseOn({ renderer, scene, sun: glow, hemi, look: { fog: false } });
+  let houseFrames = 0;
 
   const render = (ms = 16) => {
     const dt = Math.min(0.05, ms / 1000);
@@ -516,6 +529,21 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
     frodo.body.rotation.z = -0.08 * (1 - A.hide) - weight * 0.32;
     frodo.group.scale.set(1, crouch * (S.carried ? 0.9 : 1), 1);
     sam.group.scale.set(1, S.carried ? 1 : crouch, 1);
+    // on the cast: crouching by the knees, not squashed; under the cloaks
+    // the rocks they were; Frodo bowed by the Ring's weight, carried on
+    // Sam's back at the last
+    for (const h of [frodo, sam]) {
+      if (!h.cast?.ready) continue;
+      const rock = A.hide > 0.6 && !S.carried;
+      h.cast.showToy(rock);
+      if (!rock) h.group.scale.set(1, 1, 1);
+    }
+    if (frodo.cast?.ready && S.carried) frodo.group.rotation.z = -0.3;
+    // (the cast's own steps rise and fall: not bobbed again on top)
+    if (frodo.cast?.ready && !S.carried) frodo.group.position.y = 0;
+    if (sam.cast?.ready) sam.group.position.y = 0;
+    castDo(frodo, { crouch: A.hide > 0.05 && !S.carried, base: S.carried ? 'sit' : null, upper: !S.carried && weight > 0.5 ? 'walk.injured' : null });
+    castDo(sam, { crouch: A.hide > 0.05 && !S.carried, upper: S.carried ? 'walk.carry' : null });
     // under the cloaks they are another pair of rocks
     frodo.cloth.color.copy(green[0]).lerp(grey, A.hide * 0.85);
     sam.cloth.color.copy(green[1]).lerp(grey, A.hide * 0.85);
@@ -607,6 +635,10 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
     glow.target.position.set(cam.x + 12, 0, 0);
     glow.position.set(cam.x + 12 + 30, 22, -16);
 
+    // (what's come in since, taken on now and then)
+    house.follow({ adopt: houseFrames++ % 60 === 0 });
+    // the hobbits on the cast (./cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     stage.render(ms);
   };
 
@@ -618,6 +650,7 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
     dispose() {
       alive = false;
       models.dispose();
+      releaseCast(scene);
       stage.dispose();
     },
     stage,

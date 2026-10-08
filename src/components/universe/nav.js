@@ -17,23 +17,33 @@
 // Picking a place anywhere on the map (its name, the panel, the nav map)
 // goes by the drive picked.
 
-import { EDGE, GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, forward, parkAt, step } from './ship';
+import { EDGE, GOALS, OVERDRIVE, SHIP, SOLIDS, autopilot, forward, headingTo, parkAt, step } from './ship';
+import { PORTALS, portalById, portalHit, transit } from './portals';
 import { MAW, parkNear } from './maw';
 import { WONDERS, reachOf } from './deep';
-import { HOME_RADIUS, ORDER, POSITIONS, REACH } from './layout';
-import { byId } from './universes';
+import { HOME_RADIUS, ORDER, POSITIONS, REACH, SECTORS, sectorOf } from './layout';
+import { laneAim, laneFrame, lanePlan } from './lanePilot';
+import { MOONS, byId } from './universes';
 import { LENGTH } from './scale';
+import { pilotId } from './pilotGoal';
 import { SYSTEM_MARKS, SYSTEM_NAMES } from '../galaxy/names';
 
 export const DRIVE_KEY = 'tp-universe-drive';
 
 export const DRIVES = [
   {
+    id: 'lanes',
+    name: 'Hyperlanes',
+    verb: 'Take the lanes',
+    od: OVERDRIVE, // (where there's no lane worth taking, a hop at a place: super speed, as the autopilot of today)
+    about: 'The autopilot takes the lanes, riding with the traffic. You fly the whole way and can pull out any time.',
+  },
+  {
     id: 'hyper',
     name: 'Hyperspeed',
     verb: 'Jump',
     od: 1,
-    about: 'A jump to lightspeed. You come out parked at it, however far it is. Nothing to see on the way, and the hyperdrive needs a few seconds to charge again after.',
+    about: 'A jump to lightspeed. You come out parked at it, however far it is. Nothing to see on the way, and the hyperdrive needs half a minute to charge again after.',
   },
   {
     id: 'super',
@@ -50,14 +60,16 @@ export const DRIVES = [
     about: 'The pulse drive as it comes. The scenic route, with time for the crew to talk on the way.',
   },
 ];
-export const driveById = (id) => DRIVES.find((d) => d.id === id) ?? DRIVES[1];
-// a stored drive, or super speed (quick, and still a flight)
-export const parseDrive = (v) => (DRIVES.some((d) => d.id === v) ? v : 'super');
+export const driveById = (id) => DRIVES.find((d) => d.id === id) ?? DRIVES[0];
+// a stored drive, or the lanes (the everyday way since the map spread out:
+// quick, with the traffic, and still a flight)
+export const parseDrive = (v) => (DRIVES.some((d) => d.id === v) ? v : 'lanes');
 
 // the jump, in seconds: to the flash, when the ship's moved (the site's jump
 // overlay flashes at 1.15 to 1.3 s, components/Hyperspace.jsx); all of it;
-// and how long till the hyperdrive can go again
-export const HYPER = { flash: 1.2, length: 2.45, recharge: 10 };
+// and how long till the hyperdrive can go again (30 s since the lanes came:
+// they're the everyday way, the jump the rare one)
+export const HYPER = { flash: 1.2, length: 2.45, recharge: 30 };
 
 // Whether the hyperdrive can jump now: { ready, wait (seconds), why }.
 // `last` is when it last jumped and `now` the clock (both in seconds), or
@@ -69,16 +81,19 @@ export function hyperState({ last = null, now = 0, interdicted = false } = {}) {
 }
 
 // What each wonder is, in a line (they have no page: the crews have their say as you pass)
-const WONDER_KIND = { 'gas-giant': 'Gas giant', 'ice-giant': 'Ice giant', star: 'Star', 'black-hole': 'Black hole', nebula: 'Nebula', citadel: 'Space station', pulsar: 'Pulsar', binary: 'Binary star', rogue: 'Rogue planet', graveyard: 'Wreck field' };
+const WONDER_KIND = { portal: 'Portal', 'gas-giant': 'Gas giant', 'ice-giant': 'Ice giant', star: 'Star', 'black-hole': 'Black hole', nebula: 'Nebula', citadel: 'Space station', pulsar: 'Pulsar', binary: 'Binary star', rogue: 'Rogue planet', graveyard: 'Wreck field' };
 const WONDER_ABOUT = {
   aurelia: 'A ringed gas giant, bigger than any world on the map. Its rings go a long way out.',
   glacia: 'An ice giant: cold, blue and very quiet.',
   ember: 'An orange sun with two planets of its own, a rock and an ocean world.',
   halcyon: 'A blue sun, hot and young, with a rock and a gas giant round it.',
   maw: 'A black hole. The nav computer stops you at the edge of its pull: past that it has you, and on its far side is a friend’s universe.',
-  veil: 'A nebula, purple and rose. Not solid: fly right into it. Slow going inside.',
-  cradle: 'A green and gold nebula. Not solid: fly right into it. Slow going inside.',
-  citadel: 'The Citadel of Ricks. Fly into it too fast and you’re inside its world.',
+  veil: 'A nebula, purple and rose. Not solid: fly right through it on the pulse drive.',
+  cradle: 'A green and gold nebula. Not solid: fly right through it on the pulse drive.',
+  citadel: 'The Citadel of Ricks, at the middle of its own sector of space. Fly into it too fast and you’re inside its world.',
+  curvesun: 'The Rick and Morty sector’s own sun, a little green: everything in the Curve is a little off.',
+  rmportal: 'A green portal beside the Rick and Morty planet. Fly into it and you come out by the Citadel, in a sector of space of its own.',
+  'rmportal-back': 'The portal home, beside the Citadel. Fly into it and you come out by the Rick and Morty planet.',
   lantern: 'A pulsar: a dead star the size of a city, spinning, two beams of light sweeping round it. Nobody goes near.',
   twins: 'Two suns, one gold and one white, close enough to share a bridge of burning gas.',
   wanderer: 'A rogue planet with no sun of its own: dark, ice-crusted, lit only by its auroras and a thin ring of ice. Far out, below the disc.',
@@ -109,6 +124,18 @@ export const DESTINATIONS = [
       to: u.to,
     };
   }),
+  // the Rick and Morty sector's worlds, round the Citadel
+  ...MOONS.map((m) => ({
+    id: m.id,
+    name: m.label,
+    kind: 'world',
+    type: 'Rick and Morty',
+    at: POSITIONS[m.id],
+    reach: REACH[m.id],
+    color: m.swatch,
+    about: `${m.label}, a planet from Rick and Morty, out in the Citadel's own sector of space. Land on it and you're straight into it, on foot as Morty, with something to do there; its own portal brings you back out to space.`,
+    to: m.to,
+  })),
   ...WONDERS.map((w) => ({
     id: w.id,
     name: w.name,
@@ -132,11 +159,31 @@ export const DESTINATIONS = [
     to: `/galaxy/${id}`,
     via: 'starwars',
   })),
-];
+].map((d) => ({ ...d, sector: sectorOf(...d.at) })); // (which sector of the map it's in: layout.js)
 const BY_ID = new Map(DESTINATIONS.map((d) => [d.id, d])); // (a Map: a word from a visitor is never a prototype's key here)
 export const destinationById = (id) => BY_ID.get(id) ?? null;
 // the place on this map a trip to `id` really goes to: a system's gate, else itself
 export const goalOf = (id) => BY_ID.get(id)?.via ?? id;
+
+// The sectors (layout.js): a place in another sector than the ship's is
+// gone to through the portal between them (portals.js), then on from its far
+// end. portalBetween(from, to) → the portal in `from` that opens on `to`, or
+// null; legOf(ship, id) → where the trip to `id` goes first: that portal, or
+// the place itself (its gate, for a star system) when it's in the ship's sector.
+// (Another pilot, `pilot:<id>` (pilotGoal.js), is in whichever sector their
+// `pose` says: legOf(ship, id, pose))
+export const sectorOfGoal = (id) => {
+  const g = GOALS[goalOf(id)];
+  return g ? sectorOf(...g.at) : null;
+};
+export const portalBetween = (from, to) => PORTALS.find((p) => sectorOf(...p.at) === from && p.leadsTo.sector === to) ?? null;
+export function legOf(ship, id, pose = null) {
+  const goal = goalOf(id);
+  const there = pilotId(goal) ? (pose ? sectorOf(pose.x, pose.y ?? 0, pose.z) : null) : sectorOfGoal(goal);
+  if (!ship || !there) return goal;
+  const here = sectorOf(ship.x, ship.y ?? 0, ship.z);
+  return here === there ? goal : (portalBetween(here, there)?.id ?? goal);
+}
 
 export const KINDS = [
   { id: 'all', name: 'Everywhere' },
@@ -167,9 +214,10 @@ export function findDestination(query = '') {
 
 // the grand tour: every station, world and wonder (the systems are the
 // galaxy's own), from wherever the ship is, nearest first and on from each
-// to its nearest left
+// to its nearest left (by default, the places in the sector it's in)
 export const TOUR_IDS = DESTINATIONS.filter((d) => d.kind !== 'system').map((d) => d.id);
-export function tourFrom(ship, ids = TOUR_IDS) {
+export const tourIdsIn = (sector) => TOUR_IDS.filter((id) => BY_ID.get(id).sector === sector);
+export function tourFrom(ship, ids = tourIdsIn(sectorOf(ship.x, ship.y ?? 0, ship.z))) {
   const left = new Set(ids);
   const order = [];
   let at = { x: ship.x, y: ship.y ?? 0, z: ship.z };
@@ -191,16 +239,23 @@ export function tourFrom(ship, ids = TOUR_IDS) {
 export function parkFor(id, from) {
   id = goalOf(id);
   if (id === MAW.id) return parkNear(from);
+  // (a portal: right into its middle, so the ship goes through: portals.js)
+  const portal = portalById(id);
+  if (portal) return { x: portal.at[0], y: portal.at[1], z: portal.at[2], heading: headingTo(portal.at[0] - from[0], portal.at[2] - from[1]) };
   return parkAt(id, from);
 }
 
 // Where a rift (director.js) comes out: any place or wonder on the map but
 // the one you're at (`fromId`, or null for nowhere) and the Maw (nobody's
 // thrown into a black hole), never a part of one (the Citadel's domes)
-const RIFT_EXITS = Object.keys(GOALS).filter((id) => id !== MAW.id && !id.includes('-'));
-export function riftExit(fromId = null, rand = Math.random) {
-  const exits = RIFT_EXITS.filter((id) => id !== fromId);
-  return exits[Math.min(exits.length - 1, Math.floor(rand() * exits.length))];
+// (and never a portal, and never out of the sector it opened in: `sector`,
+// layout.js; somewhere you haven't been, from `saw`, while there's anywhere left)
+const RIFT_EXITS = Object.keys(GOALS).filter((id) => id !== MAW.id && !id.includes('-') && !portalById(id));
+export function riftExit(fromId = null, rand = Math.random, sector = 'main', saw = null) {
+  const exits = RIFT_EXITS.filter((id) => id !== fromId && sectorOf(...GOALS[id].at) === sector);
+  const fresh = saw ? exits.filter((id) => !saw.has(id)) : exits;
+  const pool = fresh.length ? fresh : exits;
+  return pool[Math.min(pool.length - 1, Math.floor(rand() * pool.length))];
 }
 
 // Where a rift opens: ahead of the ship and off to one side, at its height,
@@ -230,9 +285,16 @@ export function riftSpot(ship, rand = Math.random) {
 
 // how far it is from (x, y, z) to a place: to its parking spot's side of
 // it, in map units (the edge of what's there, not its middle)
+// (in another sector: to the portal, and on from its far end)
 export function distanceTo(ship, id) {
   const d = destinationById(goalOf(id));
   if (!d || !ship) return null;
+  const leg = legOf(ship, id);
+  if (leg !== d.id) {
+    const p = portalById(leg);
+    const out = portalById(p.leadsTo.exit);
+    return Math.hypot(ship.x - p.at[0], (ship.y ?? 0) - p.at[1], ship.z - p.at[2]) + distanceTo({ x: out.at[0], y: out.at[1], z: out.at[2] }, id);
+  }
   const c = Math.hypot(ship.x - d.at[0], (ship.y ?? 0) - d.at[1], ship.z - d.at[2]);
   return Math.max(0, c - d.reach);
 }
@@ -240,9 +302,69 @@ export function distanceTo(ship, id) {
 // How long the trip takes on a drive, in seconds: the jump, or the
 // autopilot flown there on the ship's own physics (without hunters, who'd
 // slow it); null if it can't get there (or isn't somewhere to go)
+// (in another sector: into the portal, through, and on from the far end; a
+// jump goes to the portal, and the hyperdrive's charging by the far side, so
+// on from there at super speed)
+// (by the lanes: flown as the scene flies it, lanePilot.js, to the ramp, on,
+// riding and in; or at super speed where there's no lane worth taking; and
+// to the portal by the lanes, then on from the far end at super speed)
+export const TRANSIT = 0.6; // seconds through a portal (the flash)
+function laneTrip(ship, id, limit, dt) {
+  let auto = lanePlan(ship, id, parkFor(id, [ship.x, ship.z]));
+  if (!auto) return null;
+  let s = { ...ship };
+  let ride = null;
+  for (let t = 0; t < limit; t += dt) {
+    let input = { throttle: 0 };
+    if (!ride) {
+      const aim = laneAim(auto);
+      const a = autopilot(s, aim?.id ?? auto.id, aim?.park ?? auto.park, aim?.space, 1);
+      if (a.done && !aim) return t;
+      input = a.input;
+    }
+    const lane = laneFrame({ ride, auto, ship: s }, input, dt, { canEnter: Boolean(auto.route) });
+    if (lane) [ride, auto] = [lane.ride, lane.auto];
+    s = lane?.ship ?? step(s, input, dt).ship;
+  }
+  return null;
+}
 export function tripTime(ship, id, drive = 'super', { limit = 150, dt = 1 / 30 } = {}) {
   id = goalOf(id);
   if (!ship || !GOALS[id]) return null;
+  const leg = legOf(ship, id);
+  if (drive === 'lanes') {
+    const by = laneTrip(ship, leg, limit, dt);
+    if (by === null) return tripTime(ship, id, 'super', { limit, dt });
+    if (leg === id) return by;
+    const p = portalById(leg);
+    const out = transit({ ...ship, x: p.at[0], y: p.at[1], z: p.at[2], speed: 0 }, leg)?.ship;
+    const rest = out && tripTime(out, id, 'super', { limit, dt });
+    return rest === null || rest === undefined ? null : by + TRANSIT + rest;
+  }
+  if (leg !== id) {
+    let first;
+    let out;
+    if (drive === 'hyper') {
+      first = HYPER.length;
+      const p = portalById(leg);
+      out = transit({ ...ship, x: p.at[0], y: p.at[1], z: p.at[2], speed: 0 }, leg)?.ship;
+    } else {
+      const park = parkFor(leg, [ship.x, ship.z]);
+      const od = driveById(drive).od;
+      let s = { ...ship };
+      for (let t = 0; t < limit && !out; t += dt) {
+        const next = step(s, autopilot(s, leg, park, undefined, od).input, dt).ship;
+        if (portalHit(s, next) === leg) {
+          first = t + dt;
+          out = transit(next, leg).ship;
+        }
+        s = next;
+      }
+    }
+    if (!out) return null;
+    const rest = tripTime(out, id, drive === 'hyper' ? 'super' : drive, { limit, dt });
+    return rest === null ? null : first + TRANSIT + rest;
+  }
   if (drive === 'hyper') return HYPER.length;
   const park = parkFor(id, [ship.x, ship.z]);
   if (!park) return null;
@@ -276,19 +398,28 @@ export function formatDistance(units) {
 
 // ── The chart ──
 // Seen from straight above, north (−z) up. Two views: the whole universe,
-// out to the edge of the map, on a square-root scale (so the home system
-// opens up and the far worlds still fit), and the home system alone, to
-// scale. chartAt gives where (x, z) is on it, 0…1 across and down.
+// out to the edge of the map, on a root scale (so the home system opens up
+// and the far worlds still fit: since the spread, scale.js's SPREAD, a 0.375
+// power, which keeps the home system as big on it as the square root did on
+// the map a quarter the size), and the home system alone, to scale. chartAt gives where (x, z) is on it, 0…1 across and down.
+// (and a third, the Rick and Morty sector, round its own middle: each view's
+// `sector`, and its `origin`, the point at its middle)
 export const CHART_VIEWS = {
-  all: { id: 'all', name: 'Universe', r: EDGE, scale: 'sqrt' },
-  home: { id: 'home', name: 'Home system', r: HOME_RADIUS * 1.15, scale: 'linear' },
+  all: { id: 'all', name: 'Universe', r: EDGE, scale: 'root', power: 0.375, sector: 'main', origin: [0, 0, 0] },
+  home: { id: 'home', name: 'Home system', r: HOME_RADIUS * 1.15, scale: 'linear', sector: 'main', origin: [0, 0, 0] },
+  rickmorty: { id: 'rickmorty', name: 'The Curve', r: SECTORS.rickmorty.edge, scale: 'root', power: 0.5, sector: 'rickmorty', origin: SECTORS.rickmorty.origin },
 };
+// the chart a sector opens on
+export const viewFor = (sector) => (sector === 'rickmorty' ? 'rickmorty' : 'all');
 const MARGIN = 0.47; // the chart's radius, of its width (a little room round the edge)
 export function chartRadius(r, view = CHART_VIEWS.all) {
   const k = Math.max(0, r) / view.r;
-  return (view.scale === 'sqrt' ? Math.sqrt(k) : k) * MARGIN;
+  return (view.scale === 'root' ? k ** view.power : k) * MARGIN;
 }
 export function chartAt(x, z, view = CHART_VIEWS.all) {
+  const o = view.origin ?? [0, 0, 0];
+  x -= o[0];
+  z -= o[2];
   const r = Math.hypot(x, z);
   if (r < 1e-9) return [0.5, 0.5];
   const k = chartRadius(r, view) / r;

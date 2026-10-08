@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BUILT_KINDS } from '../universe/trafficModels';
 import { GALAXY_KINDS } from './fleet';
-import { HQ, HUNTER_GLB, LOD_FAR, LOD_NEAR, MODELS, STAND_IN, createModels, lodLevels, lodUrl, withHq } from './models';
+import { HD_MAPS, HQ, HUNTER_GLB, LOD_FAR, LOD_NEAR, MODELS, STAND_IN, createModels, lodLevels, lodUrl, withHq } from './models';
 import { SYSTEMS, kindsIn } from './systems';
 
 const at = (path) => new URL(`../../../public${path}`, import.meta.url);
@@ -64,12 +64,12 @@ describe('the galaxy’s models', () => {
     }
   });
 
-  it('flies the universe wars’ flagships Meshy made from the shows, each standing in as a ship of its side till it loads', () => {
-    for (const kind of ['councildread', 'fedbattleship']) {
+  it('flies the universe wars’ flagships Meshy made for them, each standing in as a ship of its side till it loads', () => {
+    for (const kind of ['councildread', 'fedbattleship', 'superlab', 'hacienda']) {
       expect(MODELS[kind]?.url, kind).toBe(`/models/universe/war/${kind}.glb`);
       expect([...BUILT_KINDS, ...GALAXY_KINDS], kind).toContain(STAND_IN[kind]);
     }
-    expect(STAND_IN).toMatchObject({ councildread: 'councilship', fedbattleship: 'fedcruiser' });
+    expect(STAND_IN).toMatchObject({ councildread: 'councilship', fedbattleship: 'fedcruiser', superlab: 'madrigal', hacienda: 'lowrider' });
   });
 
   it('gives every loaded kind with no built version a stand-in that is built', () => {
@@ -159,6 +159,26 @@ describe('the galaxy’s models', () => {
         expect(existsSync(at(lodUrl(kind, m))), kind).toBe(true);
         expect(primitives(at(lodUrl(kind, m))), kind).toBe(1);
       }
+    });
+  });
+
+  describe('the Death Stars’ 4096-pixel maps', () => {
+    const base = { deathstar: { url: '/models/universe/death-star.glb', nose: 0 }, deathstar2: { url: '/models/galaxy/deathstar2.glb', nose: 0 } };
+
+    it('are what a high or ultra device loads, turned as the lighter cut is', () => {
+      for (const detail of ['high', 'ultra']) {
+        const m = withHq(base, detail);
+        expect(m.deathstar).toEqual({ url: HD_MAPS.deathstar, nose: 0 });
+        expect(m.deathstar2).toEqual({ url: HD_MAPS.deathstar2, nose: 0 });
+      }
+      for (const detail of ['mid', 'low']) expect(withHq(base, detail)).toEqual(base);
+    });
+
+    it('are in the site, and keep the lighter cut’s far-off copy (the same hull)', () => {
+      for (const url of Object.values(HD_MAPS)) expect(existsSync(at(url)), url).toBe(true);
+      const m = withHq(base, 'high');
+      expect(lodUrl('deathstar2', m)).toBe('/models/galaxy/lod/deathstar2.glb');
+      expect(lodUrl('deathstar', m)).toBe(null);
     });
   });
 

@@ -10,20 +10,31 @@ import { useAchievements } from '../components/Achievements';
 import Comms from '../components/universe/Comms';
 import Online from '../components/universe/online/Online';
 import { useOnline } from '../components/universe/online/useOnline';
+import EarnNote from '../components/universe/EarnNote';
+import { useEarn } from '../components/universe/useEarn';
 import { FIRST, parseSystem, systemById } from '../components/galaxy/systems';
 import { canLand } from '../components/galaxy/surface/sites';
 import galaxyModule from '../components/galaxy/module';
 import surfaceModule from '../components/galaxy/surface/module';
 import { prefetchSurface, surfaceProps } from '../components/galaxy/travel';
-import { runtime } from '../runtime';
+import { runtime, usePrepareProgress } from '../runtime';
+import LoadingVeil from '../components/worlds/LoadingVeil';
 import { galaxyCrew } from '../components/galaxy/lines';
+import { battleSay } from '../components/galaxy/warVoice';
+import { effectsFor } from '../components/galaxy/warEffects';
+import { mine, onWar, warNow } from '../components/galaxy/warState';
+import { SIDE_KEY, current as currentOath, readAllegiance, setTheatre, suggestSide, swear } from '../components/galaxy/allegiance';
+import { HERO_KEY, readHero } from '../components/galaxy/heroes';
+import { RANKS, rankOf } from '../components/galaxy/ranks';
 import GalaxyView from '../components/galaxy/GalaxyView';
 import GalaxyPanel from '../components/galaxy/GalaxyPanel';
 import { holdJump } from '../components/hyperspace3d/timeline';
 import HoloMap from '../components/galaxy/HoloMap';
+import { readFound } from '../components/galaxy/places';
 import GalaxyIntro from '../components/galaxy/GalaxyIntro';
 import '../components/galaxy/galaxy.css';
 
+const FOUND_KEY = 'tp-galaxy-found'; // the places found out in the open, per system (places.js; the scene writes it)
 const LAST_KEY = 'tp-galaxy-system'; // the system you were last in
 const PANEL_KEY = 'tp-galaxy-panel'; // 'tucked' once the panel's been put away
 const INTRO_KEY = 'tp-galaxy-intro'; // (session) the "long time ago" seen this visit
@@ -51,21 +62,103 @@ export default function Galaxy() {
   const sys = systemById(current);
   useDocumentTitle(`${sys.name} · A galaxy far, far away`);
   const reduced = useReducedMotion();
-  const view = useRef({ live: false, jump: () => false, goTo: () => false, escape: () => false, dive: () => false, host: () => null });
+  const view = useRef({ live: false, jump: () => false, goTo: () => false, flyTo: () => false, escape: () => false, dive: () => false, host: () => null });
   const comms = useRef(null);
   const [ship, setShip] = useState(() => parseShip(local.get(SHIP_KEY)));
   const crew = crewById(ship);
   const online = useOnline();
   const { setKind, setLoadout, setBuild: tellBuild } = online;
   useEffect(() => setKind(ship), [setKind, ship]);
+  // flying to another pilot in this system (the roster's “Fly to”, or its
+  // “Go” from another page: useOnline's follow): once the ship's in and
+  // they're flying here in sight, the autopilot takes it to them (the
+  // scene's flyTo). Tried till it goes; the trip's end, or the follow's
+  // own minute, forgets it. The HUD's line says how it ended: the name is
+  // React's text, never markup
+  const { followId, follow } = online;
+  const followRef = useRef(null); // the pilot whose trip is under way
+  const [pilotNote, setPilotNote] = useState(null);
+  const noteTimer = useRef(0);
+  useEffect(() => () => clearTimeout(noteTimer.current), []);
+  const notePilot = useCallback((text) => {
+    clearTimeout(noteTimer.current);
+    setPilotNote(text);
+    noteTimer.current = setTimeout(() => setPilotNote(null), 3500);
+  }, []);
+  useEffect(() => {
+    if (!followId || !ship) return undefined;
+    const go = () => {
+      if (followRef.current === followId) return true;
+      if (!view.current.live || !view.current.flyTo(followId)) return false;
+      followRef.current = followId;
+      return true;
+    };
+    if (go()) return undefined;
+    const t = setInterval(() => go() && clearInterval(t), 500);
+    return () => clearInterval(t);
+  }, [followId, ship]);
+  useEffect(() => {
+    if (!followId) followRef.current = null;
+  }, [followId]);
+  // the wallet (economy.js): the war's points and wins pay into it, and an alliance made
+  const { pay, note: earned } = useEarn({ client: online.client });
   // the ship as it's fitted in the universe map's hangar: its paint and parts
   const { unlocked, unlock } = useAchievements();
+  // the oath (allegiance.js): which war you fight in and the side you swore
+  // to in it, kept for the campaign; the scene, the holotable and the panel
+  // all read it
+  const [oathKept, setOathKept] = useState(() => readAllegiance(local.get(SIDE_KEY)));
+  const oath = useMemo(() => currentOath(oathKept), [oathKept]);
+  const keepOath = useCallback((next) => {
+    setOathKept(next);
+    local.set(SIDE_KEY, next);
+    window.dispatchEvent(new Event('tp:oath')); // (your hello says it: useOnline.js)
+  }, []);
+  const onSwear = useCallback(
+    (side) => {
+      const next = swear(oathKept, side);
+      if (next === oathKept) return;
+      keepOath(next);
+      unlock('gcwSworn');
+      if (currentOath(next).turncoat) unlock('gcwTurncoat');
+    },
+    [oathKept, keepOath, unlock],
+  );
+  const onTheatre = useCallback((war) => keepOath(setTheatre(oathKept, war)), [oathKept, keepOath]);
+  const suggested = useMemo(() => suggestSide({ crew: ship, hero: readHero(local.get(HERO_KEY), ship ?? 'xwing').id }, oath.war), [ship, oath.war]);
+  // (for the checks: swear and pick the war from a browser)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return undefined;
+    window.__galaxyOath = { swear: onSwear, theatre: onTheatre, get: () => oath };
+    return () => delete window.__galaxyOath;
+  }, [onSwear, onTheatre, oath]);
+  // the war's achievements: a system you fought for turned your side's, the top rank
+  const owners = useRef(null);
+  useEffect(() => {
+    const check = () => {
+      if (!oath.side) return;
+      const now = Date.now();
+      const table = warNow(now, oath.war);
+      const record = mine(oath.war, now);
+      if (rankOf(oath.side, record.points)?.id === RANKS[oath.side].at(-1).id) unlock('gcwAdmiral');
+      const was = owners.current;
+      owners.current = Object.fromEntries(table.systems.map((r) => [r.id, r.owner]));
+      if (was && record.systems.some((x) => was[x.id] && was[x.id] !== oath.side && owners.current[x.id] === oath.side)) unlock('gcwLiberator');
+    };
+    check();
+    const id = setInterval(check, 5000);
+    const off = onWar(check);
+    return () => (clearInterval(id), off());
+  }, [oath.side, oath.war, unlock]);
   // and the hull it flies: stock, or its garage build from the hangar's shipyard
   const build = useMemo(() => (ship && readHulls(local.get(HULL_KEY), CREWS.map((c) => c.id))[ship]) || null, [ship]);
   const loadout = useMemo(() => loadoutOf(readLoadouts(local.get(LOADOUT_KEY), CREWS.map((c) => c.id)), ship, unlocked, build), [ship, unlocked, build]);
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
   const [at, setAt] = useState(null); // what in the system you're at (its planet, the Death Star…)
+  // the places found out in the open here (places.js; the scene keeps the store, and says when one's new)
+  const [founds, setFounds] = useState(() => readFound(local.get(FOUND_KEY)));
+  const found = founds[current] ?? [];
   const [mapOpen, setMapOpen] = useState(false);
   const [jumping, setJumping] = useState(null); // { to, phase } while a jump's on
   const [held, setHeld] = useState(null); // { to } while an Interdictor's gravity well holds you (galaxy/interdiction.js)
@@ -153,6 +246,7 @@ export default function Galaxy() {
     return () => void (alive.current = false);
   }, []);
   const dove = useRef(null); // resolves the dive's end
+  const landing = usePrepareProgress(surfaceModule); // (the surface's prepare, for Land's loading screen)
   const land = useCallback(
     (id) => {
       if (!canLand(id) || leaving) return;
@@ -160,15 +254,24 @@ export default function Galaxy() {
       prefetchSurface();
       const to = `/galaxy/${id}/surface`;
       const host = view.current.live ? view.current.host?.() : null;
-      if (!host || !view.current.dive()) {
+      if (!host) {
         leave(to, { land: true });
         return;
       }
-      setLeaving({ to, land: true, dive: true });
+      // the surface made and sent to the graphics chip first, behind the
+      // landing's loading screen, with the ship holding where it is; then the
+      // dive, which has nothing left to load (built behind it, the dive
+      // stopped for a second or more)
+      setLeaving({ to, prep: true });
       const after = new Promise((r) => (dove.current = r));
-      timer.current = setTimeout(() => dove.current?.(), DIVE_MAX); // (a dive that never ends still lands)
+      const onBuilt = () => {
+        if (!alive.current) return;
+        setLeaving({ to, land: true, dive: true });
+        if (!view.current.dive()) dove.current?.(); // (a dive it can't make: straight down)
+        timer.current = setTimeout(() => dove.current?.(), DIVE_MAX); // (a dive that never ends still lands)
+      };
       runtime()
-        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced }), host, { fade: 900, held: true, after })
+        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced, effects: effectsFor(id, warNow(Date.now(), oath.war), oath) }), host, { fade: 900, held: true, after, onBuilt })
         .catch(() => false)
         .then(() => after)
         .then(() => {
@@ -176,7 +279,7 @@ export default function Galaxy() {
           navigate(to); // (not handed over: the page makes its own)
         });
     },
-    [leave, leaving, navigate, ship, loadout, build, online.client, reduced],
+    [leave, leaving, navigate, ship, loadout, build, online.client, reduced, oath],
   );
   // near a planet you can land on: the surface's code, and its page's, come ahead
   useEffect(() => {
@@ -200,6 +303,17 @@ export default function Galaxy() {
   // what the scene says: to the comms, and to the page
   const onEvent = useCallback(
     (e) => {
+      if (e.type === 'earn') {
+        pay(e.what, e.n, e.side ?? 'galaxy');
+        return;
+      }
+      // a trip to a pilot over: with them, gone, or given up; the follow's done
+      if ((e.type === 'arrived' || e.type === 'lost') && typeof e.id === 'string' && e.id.startsWith('pilot:')) {
+        if (e.type === 'lost') notePilot(`${e.name ?? 'They'} ${e.name ? 'has' : 'have'} gone`);
+        else if (e.done) notePilot(`With ${e.name ?? 'them'}`);
+        if (followRef.current && e.id === `pilot:${followRef.current}`) follow(null);
+        return;
+      }
       if (e.type === 'dove') {
         dove.current?.();
         dove.current = null;
@@ -236,6 +350,10 @@ export default function Galaxy() {
         return;
       }
       // clear of the Interdictor's well: the drive's back (a crash ends the hold too, but earns nothing)
+      if (e.type === 'find') {
+        setFounds(readFound(local.get(FOUND_KEY)));
+        return;
+      }
       if (e.type === 'wellclear') {
         setHeld(null);
         setBalked(false);
@@ -252,6 +370,14 @@ export default function Galaxy() {
         comms.current?.handle({ type: 'event', id: 'boarded' });
         return;
       }
+      // a moment of the war's battle: the commander on the comms, then the crew (warVoice.js)
+      if (e.type === 'event' && e.id === 'battle') {
+        const record = mine(e.war);
+        if (e.sub === 'won' && record.major) unlock('gcwMajor');
+        const lines = battleSay(e, crew?.id, record);
+        if (lines.length) comms.current?.handle({ type: 'lines', lines });
+        return;
+      }
       if (e.type === 'action') {
         const s = systemById(current);
         if (e.id === 'deathstar') leave('/deathstar');
@@ -261,7 +387,7 @@ export default function Galaxy() {
       }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock],
+    [current, leave, navigate, land, unlock, crew, pay, notePilot, follow],
   );
   const onArrive = useCallback(
     (id) => {
@@ -302,7 +428,7 @@ export default function Galaxy() {
   // (every system's colour is light, readable on the dark page: so dark on a button)
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
   return (
-    <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving ? (leaving.land ? 'land' : leaving.crash ? 'crash' : 'fade') : undefined} data-jumping={jumping?.phase} data-held={held ? '' : undefined}>
+    <div className="dark-scope universe-page galaxy-page" style={accent} data-tucked={tucked ? '' : undefined} data-card="" data-leaving={leaving && !leaving.prep ? (leaving.land ? 'land' : leaving.crash ? 'crash' : 'fade') : undefined} data-jumping={jumping?.phase} data-held={held ? '' : undefined}>
       <h1 className="sr-only">A galaxy far, far away: {sys.name}</h1>
       <p className="sr-only" aria-live="polite">
         {jumping ? `Jumping to ${systemById(jumping.to)?.name ?? 'lightspeed'}` : held ? `Interdicted short of ${systemById(held.to)?.name ?? sys.name}: an Imperial Interdictor's gravity well holds you` : `In the ${sys.system ?? sys.name} system`}
@@ -319,11 +445,19 @@ export default function Galaxy() {
         onEvent={onEvent}
         onArrive={onArrive}
         onAt={setAt}
+        found={found}
         onBoard={onBoard}
         onCrash={onCrash}
         onMap={() => setMapOpen(true)}
+        oath={oath}
       />
       {crew && <Comms control={comms} crew={galaxyCrew(crew)} reduced={reduced} />}
+      <EarnNote note={earned} />
+      {pilotNote && !leaving && (
+        <p className="universe-prompt galaxy-note" data-on="" data-plain="" role="status">
+          {pilotNote}
+        </p>
+      )}
       {!leaving && <Online online={online} ship={ship} />}
       <GalaxyPanel
         system={sys}
@@ -333,6 +467,7 @@ export default function Galaxy() {
         onMap={() => setMapOpen(true)}
         onGo={(id) => view.current.goTo(id)}
         onLeave={() => leave('/universe/starwars', { jump: true })}
+        found={found}
         onBoard={(path) => leave(path)}
         onLand={canLand(sys.id) ? () => land(sys.id) : null}
         tucked={tucked}
@@ -340,8 +475,11 @@ export default function Galaxy() {
         jumping={jumping}
         held={held}
         balked={balked}
+        oath={oath}
+        suggested={suggested}
+        onSwear={onSwear}
       />
-      {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} />}
+      {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} oath={oath} suggested={suggested} onSwear={onSwear} onTheatre={onTheatre} />}
       {intro && (
         <GalaxyIntro
           onDone={() => {
@@ -360,6 +498,8 @@ export default function Galaxy() {
         </button>
       )}
       {exit && <div className="galaxy-exit" aria-hidden="true" />}
+      {/* (the surface getting ready before the dive: Land's loading screen) */}
+      <LoadingVeil shown={Boolean(leaving?.prep)} progress={landing.value} step={landing.step} title={`Preparing to land on ${sys.name}`} />
       {leaving?.land && <div className="galaxy-entry" aria-hidden="true" />}
       {leaving?.dive && (
         <p className="galaxy-entry-note" role="status">

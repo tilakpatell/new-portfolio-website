@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../lib/voiced';
 import { readPad, typing } from '../../games/pad';
 import { Stick } from '../towns/TownHud';
 import { keyDown, keyUp } from '../towns/keys';
@@ -11,6 +12,7 @@ import { cleanCode, makeCode } from './protocol';
 import { movePlayer, newPlayer, newRush, starsFor, starsOf, stepRush } from './rules';
 import { COLOURS, NAMES } from './cast';
 import { sound } from './sounds';
+import { HOST_VOICE } from './voicelines';
 import '../shire/shire.css';
 import './rush.css';
 import '../../../styles/lazy/middleearth.css';
@@ -90,7 +92,6 @@ function Kitchen({ level, live, invite }) {
   const sim = useRef(null);
   if (!sim.current) sim.current = { s: newRush(level, { players: 1 }), me: 0, phase: 'lobby', keys: new Set(), work: new Set(), stick: { x: 0, y: 0 }, grabs: [], dash: false, padBefore: {}, count: 0, tickAt: 11, lines: 0, t: 0, touchWork: false, sess: null, shown: {}, joinedAt: 0 };
   const hudKey = useRef('');
-  const stickAt = useRef(null);
   // the loop reads the phase from sim (set at once), the page from state
   const go = useCallback((p) => {
     sim.current.phase = p;
@@ -131,7 +132,15 @@ function Kitchen({ level, live, invite }) {
   // out of any room when the kitchen goes
   useEffect(() => () => sim.current.sess?.leave(), []);
 
-  const say = useCallback((text) => setLine({ text, at: Date.now() }), []);
+  // the host's line, and in their own voice where it's been made (./voicelines.js)
+  const say = useCallback(
+    (text) => {
+      setLine({ text, at: Date.now() });
+      sayVoiced(HOST_VOICE[level.host], text);
+    },
+    [level],
+  );
+  useEffect(() => stopVoiced, []);
   useEffect(() => {
     if (!line) return undefined;
     const t = setTimeout(() => setLine(null), 3600);
@@ -433,29 +442,7 @@ function Kitchen({ level, live, invite }) {
   }, live && gl === 'on');
 
   // the touch controls
-  const onStick = (e) => {
-    const s = sim.current;
-    const st = stickAt.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stickAt.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-      return;
-    }
-    if (!st || st.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stickAt.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - st.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - st.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
 
   const copy = () => {
     const link = inviteLink(level, room.code);
@@ -668,7 +655,7 @@ function Kitchen({ level, live, invite }) {
 
       {playing && touch && (
         <>
-          <Stick onStick={onStick} />
+          <Stick onMove={onStick} />
           <div className="rush-buttons">
             <button
               type="button"

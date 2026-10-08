@@ -6,7 +6,7 @@
 // pilot coming down beside a friend is handed the friend's frame.
 //
 // furnish({ id, landing, frame, R, small, reduced, renderer, warm }) →
-//   { group, solids, spots, update(t, dt), ready, dispose() }
+//   { group, solids, spots, update(t, dt, ctx?), ready, dispose() }
 //   group  in the planet's space (footScene's root: its middle at the origin)
 //   solids grows as things arrive ([{ n, r }])
 //   spots  grows too: where something answers you, the things with a door
@@ -47,6 +47,17 @@ const PLANETS = {
   travel: () => import('./travel.js'),
   caribbean: () => import('./caribbean.js'),
   invincible: () => import('./invincible.js'),
+  // the Rick and Morty sector's worlds, round the Citadel (universes.js's MOONS), one file between them
+  gazorpazorp: () => import('./rmmoons.js'),
+  squanch: () => import('./rmmoons.js'),
+  birdworld: () => import('./rmmoons.js'),
+  gearworld: () => import('./rmmoons.js'),
+  pluto: () => import('./rmmoons.js'),
+  snakeplanet: () => import('./rmmoons.js'),
+  nuptia: () => import('./rmmoons.js'),
+  resort: () => import('./rmmoons.js'),
+  cronenberg: () => import('./rmmoons.js'),
+  purge: () => import('./rmmoons.js'),
 };
 export const furnished = (id) => Boolean(PLANETS[id]);
 // (a thing that won't build is just missing; in development, say so)
@@ -326,8 +337,9 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     solids,
     spots,
     ready,
-    update(t, dt) {
-      for (const u of updates) u(t, dt);
+    // (ctx: what the things may answer to; { me }: the player's head, in the world)
+    update(t, dt, ctx = null) {
+      for (const u of updates) u(t, dt, ctx);
     },
     dispose() {
       dead = true;

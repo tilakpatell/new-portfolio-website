@@ -10,7 +10,9 @@ import * as THREE from 'three';
 import { box, cyl, dome, part, ring, rod, upright } from '../kit';
 import { canvasTexture, loft, trap8, turned } from '../../../universe/trafficKit';
 import { rng } from '../noise';
+import { litWindows } from './windows';
 import { canopy } from './forest';
+import { boltPath, strikeAt } from '../storm';
 
 const { PI, cos, sin, abs } = Math;
 const lit = (c, k = 2.5) => new THREE.Color(c).multiplyScalar(k);
@@ -92,8 +94,8 @@ function whiten(k, object) {
 
 // ── Naboo ──
 
-const STONE = '#e8dbbe';
-const TRIM = '#d4c4a0';
+const STONE = '#dcc0a6';
+const TRIM = '#c8aa8e';
 const VERDIGRIS = '#5c9a82';
 const COLUMN = '#f3ecdc';
 
@@ -148,6 +150,16 @@ function n1Parts(H = 1.25) {
   }
   return parts;
 }
+
+// the towers' body: the kit's paint, with its windows lit in the shader
+// (windows.js), one material for every tower in the world
+const towerMat = (k) => {
+  if (!k.mats.tower) {
+    k.mats.tower = k.own(k.mats.paint.clone());
+    litWindows(k.mats.tower, { seed: 11, density: 0.55, cell: [3, 4] });
+  }
+  return 'tower';
+};
 
 export const PROPS = {
   // A Theed building, 40 m: cream stone, colonnades, a green dome. A hall,
@@ -240,7 +252,7 @@ export const PROPS = {
     arch(parts, 0, 2.2, 11.2, 0, 7, 14, '#3a3024');
     return {
       object: k.build(parts, { name: 'theedpalace', shadows: true }),
-      solids: [{ circle: [0, -6, 21] }, { box: [-40, -8, 24, 16, 0] }, { box: [40, -8, 24, 16, 0] }, { box: [-62, -8, 8, 8, 0] }, { box: [62, -8, 8, 8, 0] }, { box: [0, 16, 19, 6, 0] }],
+      solids: [{ circle: [0, -6, 21] }, { box: [-40, -8, 24, 16, 0] }, { box: [40, -8, 24, 16, 0] }, { box: [-62, -8, 8, 8, 0] }, { box: [62, -8, 8, 8, 0] }, { box: [0, 16, 19, 6, 0] }, { box: [0, 34, 62, 12.5, 0] }, { box: [0, -36, 62, 11, 0] }],
     };
   },
 
@@ -310,8 +322,11 @@ export const PROPS = {
     return { object: k.build(parts, { name: 'royalship' }), solids: [{ box: [0, 0, 10, 30, 0] }, { box: [0, -14, 15, 8, 0] }] };
   },
 
-  // the Theed Royal Space Port's hangar: stone outside, its great door
-  // open, the floor polished, strip lights under the roof
+  // the Theed Hangar, on one side of the palace: stone outside, its great
+  // door open, the floor polished, strip lights under the roof. Wookieepedia:
+  // a heavy blast-proof door at its back to the city's plasma generator, a
+  // blast-proof roof, and over the hangar the air traffic controllers' room
+  // (its windows high on the back wall, a gallery in front of them)
   hangar(k, { w = 70, d = 48, h = 22 } = {}) {
     const parts = [];
     const fw = (w - 40) / 2;
@@ -325,10 +340,23 @@ export const PROPS = {
     parts.push(part(box(40, 6, 3.4), { at: [0, h - 6, d / 2 - 1.7], color: STONE, to: 'stone' }));
     parts.push(part(ring(20, 0.7, 40).rotateX(PI / 2), { at: [0, h - 6, d / 2 + 0.1], scale: [1, 0.3, 1], color: TRIM, to: 'stone' }));
     parts.push(part(box(w + 2, 1.4, d + 2), { at: [0, h, 0], color: TRIM, to: 'stone' }));
-    parts.push(part(box(w - 6, 0.12, d - 4), { at: [0, 0, 0], color: '#8a8478', to: 'metal' }));
+    parts.push(part(box(w - 6, 0.12, d - 4), { at: [0, 0, 0], color: '#b8b2a4', to: 'tiles' }));
     for (let i = 0; i < 5; i++) parts.push(part(box(w - 10, 0.2, 0.5), { at: [0, h - 0.4, -d / 2 + 6 + i * 9], color: lit('#fff2d0', 2.2), to: 'glow' }));
     // its floor markings, and the bay doors' tracks
     for (const x of [-12, 12]) parts.push(part(box(0.5, 0.02, d - 6), { at: [x, 0.13, 0], color: '#e8c838', to: 'paint' }));
+    // pilasters down the walls inside, green-capped
+    for (let z = -d / 2 + 6; z < d / 2 - 6; z += 8)
+      for (const sx of [-1, 1]) parts.push(part(box(1.2, h - 1, 0.9), { at: [sx * (w / 2 - 3.4), 0, z], color: COLUMN, to: 'stone' }), part(box(1.6, 0.8, 1.2), { at: [sx * (w / 2 - 3.4), h - 1.8, z], color: VERDIGRIS, to: 'paint' }));
+    // the blast door to the generator, shut: grey plate in bands, in a deep frame
+    const back = -d / 2 + 3;
+    parts.push(part(box(14, 11, 0.8), { at: [0, 0, back + 0.4], color: '#5a5e62', to: 'metal' }));
+    for (let i = 0; i < 6; i++) parts.push(part(box(13.4, 0.35, 0.2), { at: [0, 1 + i * 1.8, back + 0.9], color: '#44484c', to: 'metal' }));
+    parts.push(part(box(0.25, 10.6, 0.25), { at: [0, 0, back + 0.95], color: '#2a2c2e', to: 'dark' }));
+    for (const sx of [-1, 1]) parts.push(part(box(1.4, 12.2, 1.6), { at: [sx * 7.6, 0, back + 0.6], color: TRIM, to: 'stone' }));
+    parts.push(part(box(16.6, 1.4, 1.6), { at: [0, 11.2, back + 0.6], color: TRIM, to: 'stone' }));
+    // the controllers' room over it: a row of lit windows, the gallery
+    parts.push(part(box(30, 0.5, 2.6), { at: [0, 13.6, back + 1.3], color: '#d8ccb0', to: 'stone' }), part(box(30, 1.1, 0.12), { at: [0, 14.1, back + 2.55], color: '#b8c2c8', to: 'metal' }));
+    for (let i = 0; i < 6; i++) parts.push(part(box(3.6, 3.4, 0.12), { at: [-12.5 + i * 5, 15.4, back + 0.05], color: lit('#cfe6ff', 1.3), to: 'glow' }));
     return {
       object: k.build(parts, { name: 'hangar' }),
       solids: [{ box: [0, -d / 2 + 1.5, w / 2, 1.5, 0] }, { box: [-(w / 2 - 1.5), 0, 1.5, d / 2, 0] }, { box: [w / 2 - 1.5, 0, 1.5, d / 2, 0] }, { box: [-(w / 2 - fw / 2), d / 2 - 1.7, fw / 2, 1.7, 0] }, { box: [w / 2 - fw / 2, d / 2 - 1.7, fw / 2, 1.7, 0] }],
@@ -337,9 +365,12 @@ export const PROPS = {
 
   // a paved plaza, cream flagstones in a grid, a fountain in its middle
   plaza(k, { w = 60, d = 40, fountain = true } = {}) {
-    const parts = [part(box(w, 0.3, d), { color: '#ddd1b6', to: 'stone' })];
-    for (let x = -w / 2 + 5; x < w / 2; x += 5) parts.push(part(box(0.18, 0.02, d - 0.4), { at: [x, 0.3, 0], color: '#bfb194', to: 'stone' }));
-    for (let z = -d / 2 + 5; z < d / 2; z += 5) parts.push(part(box(w - 0.4, 0.02, 0.18), { at: [0, 0.3, z], color: '#bfb194', to: 'stone' }));
+    // (polished slabs, a metre each: the scan's own joints; a darker band
+    // every 6 m, and a kerb round the edge)
+    const parts = [part(box(w, 0.3, d), { color: '#e2d8c2', to: 'tiles' })];
+    for (let x = -w / 2 + 6; x < w / 2 - 1; x += 6) parts.push(part(box(0.3, 0.02, d - 0.4), { at: [x, 0.3, 0], color: '#bcae90', to: 'stone' }));
+    for (let z = -d / 2 + 6; z < d / 2 - 1; z += 6) parts.push(part(box(w - 0.4, 0.02, 0.3), { at: [0, 0.3, z], color: '#bcae90', to: 'stone' }));
+    for (const sx of [-1, 1]) parts.push(part(box(0.8, 0.45, d), { at: [sx * (w / 2 - 0.4), 0, 0], color: '#cfc2a2', to: 'stone' }), part(box(w, 0.45, 0.8), { at: [0, 0, sx * (d / 2 - 0.4)], color: '#cfc2a2', to: 'stone' }));
     const solids = [];
     if (fountain) {
       parts.push(part(cyl(5, 5, 0.9, 32), { at: [0, 0.3, 0], color: '#cfc2a2', to: 'stone' }), part(cyl(4.4, 4.4, 0.92, 32), { at: [0, 0.3, 0], color: '#5e9aa4', to: 'glass' }));
@@ -708,6 +739,7 @@ export const PROPS = {
   skyscraper(k, { style = 0, h = 200, w = 24, seed = 1 } = {}) {
     const r = rng(seed + style * 31);
     const BODY = ['#8c8780', '#a09a8e', '#77767a', '#938a7e'][style % 4];
+    const TOWER = towerMat(k);
     const parts = [];
     const windows = (cx, cz, ww, dd, y0, y1, every = 7) => {
       for (let y = y0 + 4; y < y1 - 2; y += every) {
@@ -722,7 +754,7 @@ export const PROPS = {
       const tiers = [[w, h * 0.55], [w * 0.74, h * 0.28], [w * 0.5, h * 0.17]];
       let y = 0;
       for (const [tw, th] of tiers) {
-        parts.push(part(box(tw, th, tw), { at: [0, y, 0], color: BODY, to: 'paint' }));
+        parts.push(part(box(tw, th, tw), { at: [0, y, 0], color: BODY, to: TOWER }));
         parts.push(part(box(tw + 1.2, 1.2, tw + 1.2), { at: [0, y + th - 1.2, 0], color: '#5a5650', to: 'metal' }));
         windows(0, 0, tw, tw, y, y + th);
         y += th;
@@ -731,26 +763,31 @@ export const PROPS = {
       parts.push(part(cyl(1.2, 0.2, 24, 8), { at: [0, top, 0], color: '#6a6660', to: 'metal' }));
       top += 24;
     } else if (style === 1) {
-      parts.push(part(cyl(w * 0.5, w * 0.42, h * 0.9, 20), { color: BODY, to: 'paint' }));
+      parts.push(part(cyl(w * 0.5, w * 0.42, h * 0.9, 20), { color: BODY, to: TOWER }));
       for (let y = 10; y < h * 0.9; y += 9) parts.push(part(cyl(w * 0.5 + 0.4, w * 0.5 + 0.4, 1.2, 20), { at: [0, y, 0], color: r() < 0.7 ? lit('#ffd49a', 1.6 + r()) : '#5a5650', to: r() < 0.7 ? 'glow' : 'metal' }));
-      parts.push(part(cyl(w * 0.42, w * 0.95, h * 0.06, 24), { at: [0, h * 0.9, 0], color: BODY, to: 'paint' }));
+      parts.push(part(cyl(w * 0.42, w * 0.95, h * 0.06, 24), { at: [0, h * 0.9, 0], color: BODY, to: TOWER }));
       parts.push(part(cyl(w * 0.95, w * 0.8, h * 0.04, 24), { at: [0, h * 0.96, 0], color: '#6a6660', to: 'metal' }));
       top = h;
     } else if (style === 2) {
-      parts.push(part(box(w * 1.3, h, w * 0.5), { color: BODY, to: 'paint' }));
-      parts.push(part(box(w * 0.5, h * 0.12, w * 0.5), { at: [w * 0.4, h, 0], rot: [0, 0, 0.5], color: BODY, to: 'paint' }));
+      parts.push(part(box(w * 1.3, h, w * 0.5), { color: BODY, to: TOWER }));
+      parts.push(part(box(w * 0.5, h * 0.12, w * 0.5), { at: [w * 0.4, h, 0], rot: [0, 0, 0.5], color: BODY, to: TOWER }));
       windows(0, 0, w * 1.3, w * 0.5, 0, h, 6);
       for (const x of [-w * 0.66, w * 0.66]) parts.push(part(box(1.2, h, w * 0.56), { at: [x, 0, 0], color: '#5a5650', to: 'metal' }));
       top = h + h * 0.06;
     } else {
-      parts.push(part(cyl(w * 0.62, w * 0.42, h * 0.85, 8), { color: BODY, to: 'paint' }));
+      parts.push(part(cyl(w * 0.62, w * 0.42, h * 0.85, 8), { color: BODY, to: TOWER }));
       windows(0, 0, w * 0.75, w * 0.75, 0, h * 0.85, 8);
       parts.push(part(cyl(w * 0.42, w * 0.6, h * 0.05, 8), { at: [0, h * 0.85, 0], color: '#6a6660', to: 'metal' }));
-      parts.push(part(cyl(w * 0.5, w * 0.08, h * 0.15, 8), { at: [0, h * 0.9, 0], color: BODY, to: 'paint' }));
+      parts.push(part(cyl(w * 0.5, w * 0.08, h * 0.15, 8), { at: [0, h * 0.9, 0], color: BODY, to: TOWER }));
       top = h * 1.05;
     }
-    parts.push(part(new THREE.SphereGeometry(1, 8, 6), { at: [0, top + 1, 0], color: lit('#ff3a2a', 3), to: 'glow' }));
-    return { object: k.build(parts, { name: 'skyscraper', shadows: false }), solids: [{ circle: [0, 0, w * 0.55] }] };
+    const object = k.build(parts, { name: 'skyscraper', shadows: false });
+    // (the warning light at the top, blinking)
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(1.1, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff3a2a').multiplyScalar(3), toneMapped: false }));
+    beacon.position.y = top + 1;
+    object.add(beacon);
+    const phase = r() * 6;
+    return { object, solids: [{ circle: [0, 0, w * 0.55] }], update: (t) => (beacon.visible = sin(t * 5.2 + phase) > 0.2) };
   },
 
   // the column of city under a platform or a plaza, `depth` down into the
@@ -873,6 +910,8 @@ export const PROPS = {
 
   // a great statue on its pedestal (the Senate's founders, the Temple's
   // Jedi of old), the pedestal's column down to the city, `drop` metres
+  // (style 'jedi': the Processional Way's, the audit lane's model where it
+  // loads; this one where it won't)
   statue(k, { h = 22, drop = 0 } = {}) {
     const S = '#c4b89c';
     const parts = [
@@ -1040,6 +1079,14 @@ export const PROPS = {
     lanes.forEach((l, i) => ships.setColorAt(i, c.set(COLORS[i % COLORS.length])));
     const object = new THREE.Group();
     object.add(ships, lights);
+    // (the lane itself, glowing: a ribbon a side, one tone each way, the
+    // skylanes of the film's sunsets seen from afar)
+    for (const [dx, tone] of [[-gap / 2, '#ffd9a0'], [gap / 2, '#8fd0ff']]) {
+      const ribbon = new THREE.Mesh(new THREE.PlaneGeometry(0.6, len).rotateX(-PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(tone).multiplyScalar(1.6), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
+      ribbon.position.set(dx, -1.2, 0);
+      ribbon.frustumCulled = false;
+      object.add(ribbon);
+    }
     const M = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const qBack = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), PI);
@@ -1132,7 +1179,8 @@ export const PROPS = {
   // over the sea, its landing lights round the rim
   kpad(k, { r: R = 28, depth = 28 } = {}) {
     const parts = [
-      part(cyl(R, R, 0.7, 48), { at: [0, -0.4, 0], color: '#d8dde2', to: 'paint' }),
+      // (its deck a tread plate, white, the wet catching the light)
+      part(cyl(R, R, 0.7, 48), { at: [0, -0.4, 0], color: '#e2e6ea', to: 'deck' }),
       part(ring(R * 0.7, 0.35, 40), { at: [0, 0.32, 0], color: '#9aa4ae', to: 'paint' }),
       part(cyl(R * 0.3, R * 0.9, 5, 32), { at: [0, -5.4, 0], color: '#b8c0c8', to: 'paint' }),
       part(cyl(R * 0.22, R * 0.26, depth, 20), { at: [0, -depth, 0], color: '#a8b0b8', to: 'paint' }),
@@ -1157,6 +1205,42 @@ export const PROPS = {
     parts.push(part(new THREE.SphereGeometry(2.6, 16, 8, 0, PI * 2, 0, PI * 0.35), { at: [0, 20, 1.6], rot: [-1.2, 0, 0], color: '#dfe4e8', to: 'paint' }));
     parts.push(part(new THREE.SphereGeometry(0.6, 10, 8), { at: [0, 26.6, 0], color: lit('#ff3a2a', 3.5), to: 'glow' }));
     return { object: k.build(parts, { name: 'kmast' }), solids: [{ circle: [0, 0, 2.4] }] };
+  },
+
+  // a static discharge tower (Wookieepedia: Tipoca City has "several static
+  // discharge towers to secure the city during electrical storms"): a
+  // slender white mast in rings, a collector ball at its tip, a red beacon;
+  // now and then the storm's lightning comes down onto it (storm.js says
+  // when, and the bolt's path)
+  kdischarge(k, { h = 16, seed = 1, every = 11 } = {}) {
+    const parts = [
+      part(cyl(1.6, 1.9, 1.2, 16), { color: '#c8ced4', to: 'paint' }),
+      part(cyl(0.55, 0.9, h - 1.2, 14), { at: [0, 1.2, 0], color: '#e4e8ec', to: 'paint' }),
+      part(new THREE.SphereGeometry(1.1, 16, 12), { at: [0, h + 0.6, 0], color: '#9aa4ae', to: 'metal' }),
+      part(cyl(0.12, 0.05, 2.4, 6), { at: [0, h + 1.6, 0], color: '#5a6066', to: 'metal' }),
+      part(new THREE.SphereGeometry(0.3, 8, 6), { at: [0, h - 1.4, 0.75], color: lit('#ff3a2a', 3.5), to: 'glow' }),
+    ];
+    for (let y = 3; y < h - 1; y += Math.max(3, h / 6)) parts.push(part(ring(0.95 - (y / h) * 0.3, 0.12, 16), { at: [0, y, 0], color: '#9aa4ae', to: 'metal' }));
+    const object = k.build(parts, { name: 'kdischarge' });
+    // the bolt, from the cloud to the tip, and the flare round the ball
+    const tip = [0, h + 3.8, 0];
+    const path = boltPath([0, h + 150, 0], tip, seed);
+    const boltParts = [];
+    for (let i = 1; i < path.length; i++) boltParts.push(rod(path[i - 1], path[i], 0.35, 0.35, { color: lit('#d8e8ff', 4), to: 'glow' }, 5));
+    boltParts.push(part(new THREE.SphereGeometry(2.4, 12, 8), { at: [0, h + 0.8, 0], color: lit('#cfe0ff', 3), to: 'glow' }));
+    const bolt = k.build(boltParts, { name: 'kdischarge-bolt', shadows: false });
+    bolt.visible = false;
+    object.add(bolt);
+    return {
+      object,
+      solids: [{ circle: [0, 0, 1.9] }],
+      update(t) {
+        const v = strikeAt(t, { seed, every });
+        bolt.visible = v > 0.3;
+        // (a different way down each time)
+        if (bolt.visible) bolt.rotation.y = Math.floor(t / every) * 2.39;
+      },
+    };
   },
 
   // Slave I, Jango Fett's Firespray, standing on its tail as it lands:
@@ -1456,9 +1540,9 @@ export const PROPS = {
     for (let i = 0; i < n; i++) {
       const t = i / n;
       const rr = h * 0.16 * (1 - t * 0.8);
-      parts.push(part(lump(seed * 13 + i, 0.18), { at: [(r() - 0.5) * rr * 0.3, h * t + rr * 0.4, (r() - 0.5) * rr * 0.3], scale: [rr * 2.2, (h / n) * 1.9, rr * 2.2], color: vary('#a8663e', r, 0.08), to: 'stone' }));
+      parts.push(part(lump(seed * 13 + i, 0.18), { at: [(r() - 0.5) * rr * 0.3, h * t + rr * 0.4, (r() - 0.5) * rr * 0.3], scale: [rr * 2.2, (h / n) * 1.9, rr * 2.2], color: vary('#a8663e', r, 0.08), to: 'redrock' }));
     }
-    parts.push(part(new THREE.ConeGeometry(h * 0.04, h * 0.2, 7), { at: [0, h * 1.0, 0], color: '#9a5a36', to: 'stone' }));
+    parts.push(part(new THREE.ConeGeometry(h * 0.04, h * 0.2, 7), { at: [0, h * 1.0, 0], color: '#9a5a36', to: 'redrock' }));
     if (lights)
       for (let i = 0; i < 6; i++) {
         const t = 0.15 + r() * 0.7;
@@ -1478,7 +1562,7 @@ export const PROPS = {
       const a = (i / 6) * PI * 2;
       const d = i ? 14 : 0;
       const s = i ? 18 + r() * 8 : 30;
-      parts.push(part(lump(70 + i, 0.2), { at: [sin(a) * d, s * 0.35, cos(a) * d - 8], scale: [s * 1.3, s * 1.2, s * 1.1], color: vary('#9a5a36', r, 0.08), to: 'stone' }));
+      parts.push(part(lump(70 + i, 0.2), { at: [sin(a) * d, s * 0.35, cos(a) * d - 8], scale: [s * 1.3, s * 1.2, s * 1.1], color: vary('#9a5a36', r, 0.08), to: 'redrock' }));
     }
     for (const [x, h] of [[-8, 52], [6, 44]]) {
       parts.push(part(cyl(2.8, 2.2, h, 12), { at: [x, 0, -16], color: '#5a3a2a', to: 'metal' }));
@@ -1487,7 +1571,7 @@ export const PROPS = {
     // the furnace mouths
     for (const [x, y, w] of [[-9, 0, 10], [10, 0, 8], [0, 12, 7]]) {
       parts.push(part(new THREE.SphereGeometry(w * 0.5, 12, 8), { at: [x, y + w * 0.35, 15 - y * 0.5], scale: [1, 0.9, 0.6], color: lit('#ff8a2a', 2.8), to: 'glow' }));
-      parts.push(part(new THREE.TorusGeometry(w * 0.52, w * 0.12, 6, 14, PI), { at: [x, y + w * 0.35, 15.6 - y * 0.5], color: '#5a3422', to: 'stone' }));
+      parts.push(part(new THREE.TorusGeometry(w * 0.52, w * 0.12, 6, 14, PI), { at: [x, y + w * 0.35, 15.6 - y * 0.5], color: '#5a3422', to: 'redrock' }));
     }
     // the gantries and the conveyor out of it, and its crates of parts
     for (const s of [-1, 1]) {
@@ -1538,7 +1622,7 @@ export const PROPS = {
   geohangar(k) {
     const r = rng(53);
     const parts = [];
-    for (let i = 0; i < 5; i++) parts.push(part(lump(90 + i, 0.18), { at: [(i - 2) * 7, 10 + i * 6, -14 - (i % 2) * 4], scale: [22 - i * 2.4, 26 + i * 6, 18], color: vary('#9e6038', r, 0.08), to: 'stone' }));
+    for (let i = 0; i < 5; i++) parts.push(part(lump(90 + i, 0.18), { at: [(i - 2) * 7, 10 + i * 6, -14 - (i % 2) * 4], scale: [22 - i * 2.4, 26 + i * 6, 18], color: vary('#9e6038', r, 0.08), to: 'redrock' }));
     parts.push(part(new THREE.CylinderGeometry(9, 9, 2, 20, 1, false, 0, PI).rotateZ(PI / 2).rotateY(PI / 2), { at: [0, 0, -4], scale: [1, 1.1, 1], color: '#140c08', to: 'dark' }));
     parts.push(part(box(18, 10, 2), { at: [0, 0, -5], color: '#140c08', to: 'dark' }));
     parts.push(part(cyl(16, 16, 0.4, 28), { at: [0, 0, 12], color: '#7a5a42', to: 'metal' }));
@@ -1597,6 +1681,28 @@ export const PROPS = {
     return {
       object,
       solids: [{ box: [0, -6, 7, 4.5, 0] }, { circle: [0, 3, 2] }],
+      update(t) {
+        holo.rotation.y = t * 0.4;
+      },
+    };
+  },
+
+  // the command post's holotable on its own, the battle turning over it in
+  // blue light (in front of the audit lane's model of the command post,
+  // which has no table)
+  holotable(k) {
+    const parts = [
+      part(cyl(1.8, 2.0, 1.1, 18), { color: '#5a5c58', to: 'metal' }),
+      part(cyl(1.7, 1.7, 0.06, 18), { at: [0, 1.12, 0], color: lit('#6ac8ff', 2), to: 'glow' }),
+    ];
+    const object = k.build(parts, { name: 'holotable' });
+    const holo = new THREE.Mesh(k.own(new THREE.SphereGeometry(1.4, 14, 8, 0, PI * 2, 0, PI / 2)), k.own(new THREE.MeshBasicMaterial({ color: lit('#6ac8ff', 1.6), wireframe: true, transparent: true, opacity: 0.6, toneMapped: false })));
+    holo.position.set(0, 1.4, 0);
+    holo.scale.set(1, 0.6, 1);
+    object.add(holo);
+    return {
+      object,
+      solids: [{ circle: [0, 0, 2] }],
       update(t) {
         holo.rotation.y = t * 0.4;
       },
@@ -1673,16 +1779,17 @@ export const SCATTER = {
     };
   },
   // a hive spire, small, by the hundred across Geonosis's plains
+  // (Geonosis's red rock, wearing the redrock scan)
   spire(k, { seed = 2, color = '#a8663e' } = {}) {
     const r = rng(seed);
     const list = [];
     for (let i = 0; i < 5; i++) {
       const t = i / 5;
       const rr = 4 * (1 - t * 0.78);
-      list.push(part(lump(seed * 17 + i, 0.2, 10, 7), { at: [(r() - 0.5) * 1.2, 30 * t + rr * 0.3, (r() - 0.5) * 1.2], scale: [rr * 2, 12, rr * 2], color: vary(color, r, 0.08), to: 'stone' }));
+      list.push(part(lump(seed * 17 + i, 0.2, 10, 7), { at: [(r() - 0.5) * 1.2, 30 * t + rr * 0.3, (r() - 0.5) * 1.2], scale: [rr * 2, 12, rr * 2], color: vary(color, r, 0.08), to: 'redrock' }));
     }
-    list.push(part(new THREE.ConeGeometry(1, 7, 6), { at: [0, 31, 0], color, to: 'stone' }));
-    return { parts: [{ geometry: k.geometry(list), material: k.mats.stone }], radius: 3.4 };
+    list.push(part(new THREE.ConeGeometry(1, 7, 6), { at: [0, 31, 0], color, to: 'redrock' }));
+    return { parts: [{ geometry: k.geometry(list), material: k.mats.redrock }], radius: 3.4 };
   },
   // a storm buoy off Tipoca City: a float, a mast, its light
   buoy(k) {

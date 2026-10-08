@@ -145,4 +145,10 @@ export const CRUMB_SAYS = {
   best: (secs) => `Your best: brushed clean in ${secs} seconds.`,
 };
 
+// the toasts someone speaks in (../voice.js)
+export const SAYS = {
+  stood: { who: 'sam', text: 'You’re on your feet and walking down to the road, towards the green light. Sam drags you down behind the rocks. “Mr. Frodo!” Again: keep your eyes off it.' },
+  passed: { who: 'gollum', text: 'The host has gone by, west, to war. Gollum: “This way, master. Up the stairs.”' },
+};
+
 export const SPEAKERS = { gollum: 'Gollum', sam: 'Samwise Gamgee', frodo: 'Frodo', galadriel: 'Galadriel', narrator: '' };

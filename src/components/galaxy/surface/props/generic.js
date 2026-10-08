@@ -7,6 +7,26 @@ import { loft, trap8 } from '../../../universe/trafficKit';
 
 const { PI, cos, sin } = Math;
 
+// a number painted flat, in strokes (seven segments a digit), `h` tall,
+// read from its +z side (its top toward -z): parts for a builder
+const SEGMENTS = { 0: 'abcdef', 1: 'bc', 2: 'abdeg', 3: 'abcdg', 4: 'bcfg', 5: 'acdfg', 6: 'acdefg', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg' };
+function numeral(text, h, { at = [0, 0, 0], color = '#ffffff' } = {}) {
+  const w = h * 0.55;
+  const t = h * 0.12;
+  const out = [];
+  // (each segment: its middle, across the digit and up it, and which way it runs)
+  const seg = { a: [0, h / 2, 'x'], b: [w / 2, h / 4, 'z'], c: [w / 2, -h / 4, 'z'], d: [0, -h / 2, 'x'], e: [-w / 2, -h / 4, 'z'], f: [-w / 2, h / 4, 'z'], g: [0, 0, 'x'] };
+  [...text].forEach((ch, i) => {
+    const ox = at[0] + i * (w + t * 2.5);
+    for (const s of SEGMENTS[ch] ?? '') {
+      const [x, up, run] = seg[s];
+      const g = run === 'x' ? new THREE.BoxGeometry(w, 0.02, t) : new THREE.BoxGeometry(t, 0.02, h / 2);
+      out.push(part(g, { at: [ox + x, at[1], at[2] - up], color, to: 'paint' }));
+    }
+  });
+  return out;
+}
+
 export const PROPS = {
 
   // an AT-AT: the body on its four long legs, the head out front on its
@@ -103,7 +123,7 @@ export const PROPS = {
     return { object: k.build(parts, { name: 'speederbike' }) };
   },
   // a landing pad: a ring of lights round a disc, `r` across
-  pad(k, { r = 14, color = '#7e7a72', light = '#ffb24a' } = {}) {
+  pad(k, { r = 14, color = '#7e7a72', light = '#ffb24a', number = null } = {}) {
     const parts = [part(cyl(r, r, 0.25, 40), { color, to: 'metal' }), part(cyl(r * 0.92, r * 0.92, 0.27, 40), { color: '#5c5852', to: 'metal' })];
     for (let i = 0; i < 16; i++) {
       const a = (i / 16) * PI * 2;
@@ -111,6 +131,9 @@ export const PROPS = {
     }
     // the markings: a cross of strips
     for (const a of [0, PI / 2]) parts.push(part(new THREE.BoxGeometry(r * 1.1, 0.02, 0.5), { at: [0, 0.28, 0], rot: [0, a, 0], color: '#d8c890', to: 'paint' }));
+    // its number, painted big in its near-left quarter (Scarif's Pad 9),
+    // read from the pad's +z edge
+    if (number != null) parts.push(...numeral(String(number), r * 0.42, { at: [-r * 0.4, 0.29, r * 0.42], color: '#e8e2d0' }));
     return { object: k.build(parts, { name: 'pad' }), floors: [{ x: 0, z: 0, r, y: 0.27 }] };
   },
 
@@ -165,13 +188,15 @@ export const PROPS = {
 // geometries, with the material each is drawn with, and how wide its
 // footprint is at scale 1 (null: you walk through it).
 export const SCATTER = {
-  rock(k, { seed = 1, color = '#8a7a66', sharp = 0.4 } = {}) {
+  // (`to`: the scan it wears, where a world's rock isn't grey rock face:
+  // Geonosis's redrock, Endor's mossrock)
+  rock(k, { seed = 1, color = '#8a7a66', sharp = 0.4, to = 'rock' } = {}) {
     const g = rockGeometry(seed, { sharp, detail: 1 });
-    return { parts: [{ geometry: k.geometry([part(g, { color, to: 'rock' })]), material: k.mats.rock }], radius: 0.42 };
+    return { parts: [{ geometry: k.geometry([part(g, { color, to })]), material: k.mats[to] ?? k.mats.rock }], radius: 0.42 };
   },
   // pebbles and small stones you walk over
-  stones(k, { seed = 2, color = '#7a6c5c' } = {}) {
+  stones(k, { seed = 2, color = '#7a6c5c', to = 'rock' } = {}) {
     const g = rockGeometry(seed, { sharp: 0.2, detail: 0, flat: 0.4 });
-    return { parts: [{ geometry: k.geometry([part(g, { color, to: 'rock' })]), material: k.mats.rock }], radius: null };
+    return { parts: [{ geometry: k.geometry([part(g, { color, to })]), material: k.mats[to] ?? k.mats.rock }], radius: null };
   },
 };

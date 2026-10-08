@@ -8,11 +8,15 @@ import * as THREE from 'three';
 import { canvasTexture, createStage, hot } from '../../../lib/stage3d';
 import { createLibrary } from '../../../lib/cc0';
 import { createModels } from '../../../lib/models';
+import { houseOn } from '../../../lib/three/house';
 import { buildWorld, sharedSurfaces } from './world';
 import { BOSS_LOOK, BREAKDOWN, KNOCKOUT, SENTRY, buildBoss, buildBumblebee, buildCar, buildJet, buildOptimus, buildVehicon, materials } from './models';
 import { createRollOutCast } from './meshyCast';
 import { chevronSprite, fireSprite, glowSprite, paintEnergon, paintInsignia, paintPanels, paintRim, paintTread, ringSprite, smokeSprite } from './paint';
-import { ROLL, bodyOf, stagesFor } from './rules';
+import { ROLL, armed, bodyOf, stagesFor } from './rules';
+import { localMotion } from '../game/bodies';
+import { createBossBody } from './bossBody';
+import { turn as easeTurn } from '../../../lib/three/gait';
 
 const stageIds = (side) => stagesFor(side).map((s) => s.id);
 // each bot's optics, and the jets that fly at you: Decepticon seekers, or
@@ -203,6 +207,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
   const setBot = (who) => {
     if (playerBot === who && player) return;
     if (player) {
+      player.rig.dispose?.();
       scene.remove(player.group);
       player.group.traverse((o) => !o.userData.shared && o.geometry?.dispose());
     }
@@ -412,6 +417,22 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
   progress(0.55, 'Laying the road');
   world = await worldFor(stageIds(ROLL.bots[bot]?.side)[0]);
   world.attach(scene, stage);
+  // the house look (lib/three/house): the house tone mapper on each stage's
+  // own exposure (set under ACES), the shade one colour from the stage's
+  // light and its HDRI. The look reads the stage's sun and sky light
+  // through these two, copied from whichever stage is on; each stage keeps
+  // its own fog and sky.
+  const lookSun = { color: new THREE.Color(), intensity: 0 };
+  const lookSky = { color: new THREE.Color(), intensity: 0 };
+  const lightsOf = (w) => {
+    lookSun.color.copy(w.sun.color);
+    lookSun.intensity = w.sun.intensity;
+    lookSky.color.copy(w.hemi.color);
+    lookSky.intensity = w.hemi.intensity;
+  };
+  lightsOf(world);
+  const house = houseOn({ renderer, scene, sun: lookSun, hemi: lookSky, env: { get texture() { return scene.environment; }, intensity: () => scene.environmentIntensity }, look: { fog: false } });
+  let houseFrames = 0;
   progress(0.9, 'Warming up');
   // by stage id: the Autobots' third stage is Kaon, the Decepticons' Iacon
   const want = (id) => {
@@ -432,6 +453,10 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     world.dispose(scene);
     world = w;
     world.attach(scene, stage);
+    // (its exposure is set under ACES: the house's on top; its materials taken on)
+    renderer.toneMappingExposure *= house.exposure;
+    lightsOf(world);
+    house.adopt(scene);
     pending = null;
     // the new world's shaders link in the background; the stage holds its last frame till then
     stage.precompile();
@@ -442,6 +467,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
   const buildBossModel = (kind) => {
     if (boss?.kind === kind) return boss;
     if (boss) {
+      boss.rig?.dispose?.();
       scene.remove(boss.group);
       boss.group.traverse((o) => !o.userData.shared && o.geometry?.dispose()); // its materials include shared ones
     }
@@ -450,6 +476,7 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
       : (cast.boss(kind) ?? buildBoss(M, kind, tex));
     boss = { kind, ...m };
     scene.add(boss.group);
+    house.adopt(boss.group);
     stage.precompile(boss.group); // its shaders link before it's drawn (the stage holds a frame or two)
     return boss;
   };
@@ -461,6 +488,13 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
   const seenFx = new WeakSet();
   const seenShots = new WeakSet();
   let time = 0;
+  // what your robot's body last saw, to tell what's changed (the run's
+  // events are drained before a frame's drawn): the run and the rig it was,
+  // your shields, whether you'd lost, the outro, when the gun arm was last
+  // asked up, where you were across the road (the boss's is bossBody.js's)
+  const was = { g: null, rig: null, shields: null, status: null, outro: 0, armAt: -1, x: 0, side: 0 };
+  const playerLook = new THREE.Vector3();
+  const bossLook = new THREE.Vector3();
   let prevMorphT = -1;
   let smokeAcc = 0;
 
@@ -509,10 +543,48 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     const P = player;
     const body = bodyOf(g);
     const steer = g.tx - g.x;
-    P.rig.animate(g.morph, g.z * 0.55, -g.z / 0.36, g.grounded ? 1 : 0.2);
     P.group.position.set(g.x, Math.max(-6, g.y), Z);
     const robot = g.morph;
     P.group.rotation.set(g.grounded ? 0 : -g.vy * 0.025 * (1 - robot), -steer * 0.06, steer * (0.03 - robot * 0.07));
+    // the robot's feet on the road it covers, its legs still in the air (a
+    // Meshy robot's own run, paced by its stride; the shapes' swing by the phase)
+    if (was.g !== g || was.rig !== P.rig) {
+      // a run begun again (or another bot): up off the road, nothing held
+      if (was.rig === P.rig) {
+        P.rig.stop?.('full');
+        P.rig.stop?.('upper');
+      }
+      Object.assign(was, { g, rig: P.rig, shields: g.shields, status: g.status, outro: g.outro, armAt: -1, x: g.x, side: 0 });
+    }
+    // (across the road as it changes lanes: to its right is +x, facing down the road)
+    if (dt > 0) was.side += ((g.x - was.x) / dt - was.side) * (1 - Math.exp(-dt * 10));
+    was.x = g.x;
+    const onFeet = g.grounded && g.status === 'running';
+    P.rig.animate(g.morph, g.z * 0.55, -g.z / 0.36, g.grounded ? 1 : 0.2, { dt, move: 1, speed: onFeet ? g.speed : 0, side: onFeet ? was.side : 0, air: g.grounded ? 0 : Math.max(0.05, g.y) });
+    if (P.rig.clips && robot > 0.5) {
+      const running = g.status === 'running';
+      // hit: thrown back a moment, the legs still going; the boss beaten:
+      // a fist up as the road runs on
+      if (g.shields < was.shields && running) P.rig.play('hit', { layer: 'upper' });
+      else if (g.outro > 0 && !(was.outro > 0) && running) P.rig.play('cheer', { layer: 'upper' });
+      // the gun arm up while it fires (it always does, on its feet), and
+      // back up once a hit or a cheer is done (not asked again every frame
+      // if the clip can't be had)
+      const up = armed(g) && running;
+      const on = P.rig.playing('upper');
+      if (up && !on && time - was.armAt > 0.5) {
+        was.armAt = time;
+        P.rig.play('aim.pistol', { layer: 'upper', loop: true });
+      } else if (!up && on === 'aim.pistol') P.rig.stop('upper');
+      // down: over on its back, and stays there
+      if (g.status === 'lost' && was.status !== 'lost') {
+        P.rig.stop('upper');
+        P.rig.play('fall', { hold: true });
+      }
+    }
+    was.shields = g.shields;
+    was.status = g.status;
+    was.outro = g.outro;
     P.group.visible = g.status !== 'lost' || Math.floor(time * 10) % 2 === 0;
     // flicker while you can't be hurt; glow with the shard
     const inv = g.invuln > 0 ? 0.25 + 0.25 * Math.sin(time * 30) : 0;
@@ -679,10 +751,38 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
         const it = vehicons.get(e);
         if (!it) continue;
         const k = e.state === 'pass' ? 0 : e.state === 'turn' ? Math.min(1, e.t / 0.7) : 1;
-        it.rig.animate(k, time * 6, -e.z / 0.33, e.state === 'stand' ? 0.25 : 0);
+        // (what this one was doing last frame: a pooled body may be another Vehicon's now)
+        const b = it.body?.ent === e ? it.body : (it.body = { ent: e, x: e.x, z: e.z, vx: 0, vz: 0, cool: e.cool, flash: e.flash ?? 0, state: e.state, yaw: 0, phase: 0, amount: 0 });
+        if (dt > 0) {
+          const ease = 1 - Math.exp(-dt * 8);
+          b.vx += ((e.x - b.x) / dt - b.vx) * ease;
+          b.vz += (-(e.z - b.z) / dt - b.vz) * ease;
+        }
+        b.x = e.x;
+        b.z = e.z;
         it.obj.position.set(e.x, 0, -e.z);
-        // stands up facing you
-        it.obj.rotation.y = k * Math.PI;
+        // stands up facing you, and keeps turning (slowly: a robot that size)
+        // to wherever you are on the road
+        const face = Math.PI + Math.atan2(Math.sin(Math.atan2(e.x - g.x, g.z - e.z) - Math.PI), Math.cos(Math.atan2(e.x - g.x, g.z - e.z) - Math.PI));
+        b.yaw = easeTurn(b.yaw, k * face, dt, 3);
+        it.obj.rotation.y = b.yaw;
+        // its feet as it edges into your lane: a step to the side, not a slide
+        const standing = e.state === 'stand';
+        const m = localMotion(standing ? b.vx : 0, standing ? b.vz : 0, b.yaw + Math.PI);
+        const pace = Math.hypot(m.speed, m.side);
+        b.phase += pace * dt * 2.6;
+        b.amount += ((standing && pace > 0.15 ? 0.25 : 0) - b.amount) * (1 - Math.exp(-dt * 6));
+        it.rig.animate(k, b.phase, -e.z / 0.33, b.amount, { dt, move: Math.min(0.5, pace / 2.5), speed: m.speed, side: m.side });
+        if (it.rig.clips && k > 0.5) {
+          it.rig.look(standing ? playerLook.set(g.x, Math.max(0, g.y) + 1.6, -g.z) : null);
+          // up on its feet: every other one squares up to you first
+          if (b.state === 'turn' && standing && Math.floor(Math.abs(e.x * 3.7 + e.z)) % 2 === 0) it.rig.play('taunt', { layer: 'upper' });
+          if (e.cool > b.cool + 0.05) it.rig.play('shoot', { layer: 'upper' }); // (a shot: its cooldown just went back up)
+          else if ((e.flash ?? 0) > b.flash + 0.3) it.rig.play('hit', { layer: 'upper' });
+        }
+        b.cool = e.cool;
+        b.flash = e.flash ?? 0;
+        b.state = e.state;
         const flash = e.flash ?? 0;
         for (const m of it.mats) m.emissive?.setRGB(flash * 1.2, flash * 0.4, flash * 0.3);
         // headlights or visor
@@ -780,9 +880,24 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
         m.group.rotation.set(0.1, Math.PI, Math.sin(B.t * 1.3) * 0.35);
         m.flame.color.copy(hot(0x8fc8ff, 2.4 + Math.random()));
       } else {
+        // its body from the run's state (bossBody.js): backward at the
+        // road's pace, a taunt as it comes out, the cannon arm up at you
+        // through a charge and a kick each shot, thrown back and dazed when
+        // its charge breaks, over on its back when it's beaten
+        m.mind ??= createBossBody({ taunt: m.taunt });
+        const body = m.mind.step(dt, B, g);
+        const clipped = Boolean(m.rig.clips);
         m.group.position.set(B.x, B.alive ? 0 : -B.dying * 1.5, bz);
-        m.group.rotation.set(B.alive ? 0 : Math.min(0.6, B.dying * 0.4), 0, 0);
-        m.rig.animate(1, time * 4.5, 0, 0.6);
+        // (one on clips goes over on them; one of shapes tips back as it always did)
+        m.group.rotation.set(B.alive || clipped ? 0 : Math.min(0.6, B.dying * 0.4), 0, 0);
+        if (clipped) {
+          for (const layer of body.stop) m.rig.stop(layer);
+          for (const p of body.plays) m.rig.play(p.name, { layer: p.layer, loop: p.loop, hold: p.hold });
+          bossLook.set(g.x, Math.max(0, g.y) + 1.6, Z);
+          m.rig.look(body.look ? bossLook : null);
+          m.rig.aim(body.aim, bossLook);
+        }
+        m.rig.animate(1, body.phase, 0, 0.6, { dt, ...body.motion });
         // charging the cannon or the optic
         const charging = B.attack && (B.attack.charge ?? 0) > B.attack.t;
         const look = BOSS_LOOK[B.kind] ?? BOSS_LOOK.megatron;
@@ -858,6 +973,8 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
     fire.mat.uniforms.scale.value = scale;
     smoke.mat.uniforms.scale.value = scale;
 
+    lightsOf(world);
+    house.follow({ adopt: houseFrames++ % 60 === 0 });
     stage.render(ms);
   }
 

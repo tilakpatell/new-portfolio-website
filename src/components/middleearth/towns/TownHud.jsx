@@ -1,95 +1,40 @@
 import { forwardRef } from 'react';
+import { audioContext } from '../../../lib/audio';
 import { useVoiced } from '../../../lib/useVoiced';
+import { Bubble as KitBubble, Exit, QuestList as KitQuestList, Stick as KitStick } from '../../../runtime/hud';
+import { nodeVoice, personVoice } from './talk';
 import '../../../styles/lazy/middleearth.css';
 
-// The HUD parts a walkable town shares (the Shire's look: its shire-*
-// classes, ../shire/shire.css): the list of things to do, a speech bubble,
-// a conversation, and the touch stick. The corner map is ./map.js.
+// The HUD parts a walkable town shares, the HUD kit's (src/runtime/hud) in
+// the Shire's look (its shire-* classes and variables, ../shire/shire.css,
+// re-tinted by each town): the list of things to do, a speech bubble, a
+// conversation, the touch stick and the other travellers. The corner map is
+// ./map.js.
 
-// The list of things to do: each with its seal, where it is, and a way there.
-// Under them, anything a town has on the side (`side`: the same shape, with
-// `done`), which the story never waits on; or a town's own list of them
-// (./SideList.jsx), as children.
-export function QuestList({ title, quests, next, onClose, onGo, canGo = () => false, side = [], children = null }) {
-  return (
-    <div className="shire-list" role="dialog" aria-label={title}>
-      <div className="shire-list-head">
-        <p>Things to do</p>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-          Close
-        </button>
-      </div>
-      <ul>
-        {quests.map((q) => (
-          <li key={q.id} data-done={q.done || undefined} data-open={q.open || undefined} data-next={q.id === next || undefined}>
-            <span className="shire-seal" aria-hidden="true">
-              {q.done ? '✓' : ''}
-            </span>
-            <div>
-              <p className="shire-list-name">{q.name}</p>
-              <p className="shire-list-sub">{q.open ? `${q.where}. ${q.blurb}` : q.locked}</p>
-            </div>
-            {canGo(q) && (
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => onGo(q)}>
-                Go there
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
-      {children}
-      {side.length > 0 && (
-        <>
-          <p className="shire-list-side">On the side</p>
-          <ul>
-            {side.map((q) => (
-              <li key={q.id} data-done={q.done || undefined} data-open data-side>
-                <span className="shire-seal" aria-hidden="true">
-                  {q.done ? '✓' : ''}
-                </span>
-                <div>
-                  <p className="shire-list-name">{q.name}</p>
-                  <p className="shire-list-sub">
-                    {q.where}. {q.blurb}
-                  </p>
-                </div>
-                {canGo(q) && (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => onGo(q)}>
-                    Go there
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </div>
-  );
+// The list of things to do (the HUD kit's, in the Shire's look: its
+// shire-list skin) and, under it, anything a town has on the side or a
+// town's own list of them (./SideList.jsx), as children. `title` is the
+// town's name for it, which a screen reader hears; the heading says
+// "Things to do" in every town. It hangs under the map and the chips, as
+// many as there are (measured).
+export function QuestList({ title, ...rest }) {
+  return <KitQuestList className="shire-list" label={title} under=".shire-side" {...rest} />;
 }
 
-// Who's talking, over their head.
-export const Bubble = forwardRef(function Bubble({ name, line }, ref) {
-  return (
-    <div ref={ref} className="shire-bubble" aria-live="polite">
-      <div>
-        <b>{name}</b>
-        <span>{line}</span>
-      </div>
-    </div>
-  );
+// Who's talking, over their head, and in their own voice where it's been
+// made (`who`: their id in the town's CAST; ./voicelines.js): the kit's
+// bubble in the Shire's look.
+export const Bubble = forwardRef(function Bubble({ who = null, name, line }, ref) {
+  return <KitBubble ref={ref} className="shire-bubble" voice={personVoice(who)} name={name} line={line} />;
 });
 
 // A conversation: who says it, what they say, and the replies to pick (with
 // their number keys), or a button to go on; and, given onLeave, a way out
 // of it (Esc).
 export function Convo({ title, name, node, onPick, onNext, onLeave = null, touch, className = '' }) {
-  useVoiced(node?.who, node?.say); // in the speaker's own voice, where it's been made (lib/voiced.js)
+  useVoiced(nodeVoice(node), node?.say); // in the speaker's own voice, where it's been made (lib/voiced.js)
   if (!node) return null;
-  const leave = onLeave && (
-    <button type="button" className="btn btn-ghost btn-sm" onClick={onLeave}>
-      Leave {!touch && <kbd>Esc</kbd>}
-    </button>
-  );
+  const leave = onLeave && <Exit onLeave={onLeave} touch={touch} />;
   return (
     <div className={`shire-panel town-convo ${className}`} role="dialog" aria-label={title}>
       <p className="shire-panel-title">{name}</p>
@@ -119,13 +64,13 @@ export function Convo({ title, name, node, onPick, onNext, onLeave = null, touch
   );
 }
 
-// The touch stick: drag from where you put your thumb.
-export function Stick({ onStick }) {
+// The touch stick: drag from where you put your thumb (the kit's, a little
+// longer a throw than the default, as the towns' always was). `onMove(x, y)`
+// is the town's; the first touch wakes the sound (iOS wants it there).
+export function Stick({ onMove }) {
   return (
     <div className="shire-hud shire-hud-bottom">
-      <div className="shire-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} onLostPointerCapture={onStick} aria-hidden="true">
-        <span />
-      </div>
+      <KitStick className="shire-stick" onMove={onMove} onStart={audioContext} reach={46} />
     </div>
   );
 }

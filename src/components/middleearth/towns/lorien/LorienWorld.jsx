@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { Bubble, Convo, QuestList, Stick, Travellers } from '../TownHud';
 import { SideList } from '../SideList';
@@ -14,7 +15,7 @@ import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { followAt, lead as leadParty, newParty } from '../rivendell/rules';
 import { AMBUSH, BOARDS, BUTTS, COLLIDERS, LANDING, LEAD, MIRROR, RANGE, SPOTS, START, STAIR, TABLE, TREE, WALLS, castFor, moodFor, validAt } from './layout';
-import { ARCHERY, CONVOS, NOT_FOR, QUESTS, SEAL, SIDE, SPEAKERS, THANKS, lorienProgress } from './story';
+import { ARCHERY, CONVOS, NOT_FOR, QUESTS, SAYS, SEAL, SIDE, SPEAKERS, THANKS, lorienProgress } from './story';
 import { BOW, GIFTS, MIRROR_PULL, RIVER, aimOf, allGiven, eyeOn, eyeSoon, giveGift, newBoat, newGifts, newLead, newPull, newRange, stepBoat, stepLead, stepPull, stepRange, takeGift, tiredOf, turnAim } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
@@ -126,7 +127,13 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   const lines = useRef({});
   const bubbleRef = useRef(null);
   const sightRef = useRef(null);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js), or
+  // says `line`, where only that much of it is theirs
+  const say = useCallback((text, bad = false, who = null, line = text) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, line);
+  }, []);
+  useEffect(() => stopVoiced, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -238,11 +245,13 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     say('Down the river. Steer round the rocks (A and D), and dig in with the paddle (W).', true);
   }, [say]);
 
-  // Legolas's targets: stand at the mark with a bow
+  // Legolas's targets: stand at the mark with a bow (and what he says
+  // there, in his voice: ./voicelines.js)
   const rangeSay = useCallback((text) => {
     const s = sim.current;
     s.said = text;
     s.saidAt = s.t;
+    sayVoiced('legolas', text);
   }, []);
   const startRange = useCallback(() => {
     const s = sim.current;
@@ -380,9 +389,9 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     if (r === 'right') {
       api.current?.fx('gift', c.id);
       sounds().then((x) => x.chime(2));
-      say(THANKS[c.look], false);
+      say(THANKS[c.look], false, c.look);
       if (allGiven(s.gifts)) later(() => sim.current?.mode === 'walk' && startTalk('phial'), 2600);
-    } else if (r === 'wrong') say(NOT_FOR[c.look] ?? 'Not for them.', true);
+    } else if (r === 'wrong') say(NOT_FOR[c.look] ?? 'Not for them.', true, NOT_FOR[c.look] ? c.look : null);
   }, [later, say, startTalk]);
 
   const doAct = useCallback(() => {
@@ -511,7 +520,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         else if (e.type === 'there') {
           complete('haldir');
           sounds().then((x) => x.chime(3));
-          say('“Caras Galadhon. The heart of Elvendom on earth. Realm of the Lord Celeborn and of Galadriel, Lady of Light.” Up the stair round the great tree.', false);
+          say(SAYS.caras.text, false, SAYS.caras.who, SAYS.caras.line);
           later(() => {
             const ss = sim.current;
             if (ss) ss.lead = null;
@@ -538,7 +547,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         } else if (e.type === 'touched') {
           s.busy = true;
           a.fx('touched');
-          say('The Ring swings down on its chain, nearly into the water. Galadriel: “Do not touch the water!” You pull back. Look again, and hold fast when the Eye looks.', true);
+          say(SAYS.touched.text, true, SAYS.touched.who);
           later(() => sim.current?.mode === 'mirror' && startPull(), 2200);
         } else if (e.type === 'done') {
           s.busy = true;
@@ -556,7 +565,8 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         if (e.type === 'hit') {
           a.fx('hit');
           sounds().then((x) => x.bump());
-          say(s.boat.hits === 1 ? 'The boat grinds over a rock, and ships water. Sam bails.' : 'Another! Sam: “Mr. Frodo, I can’t swim!”', true);
+          if (s.boat.hits === 1) say('The boat grinds over a rock, and ships water. Sam bails.', true);
+          else say(SAYS.swim.text, true, SAYS.swim.who);
         } else if (e.type === 'swamped') {
           s.busy = true;
           say('Too much water in the boat. Aragorn brings you in to the bank to tip it out. Again: steer clear of the rocks.', true);
@@ -753,28 +763,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     if (drag.current?.bow) s.drawHold = false;
     drag.current = null;
   };
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 46));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 46));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
+  const onStick = (x, y) => (sim.current.stick = { x, y });
   // a button held down: steering, climbing, holding back
   const hold = (name, v) => ({
     onPointerDown: (e) => {
@@ -845,12 +834,12 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           {toast.text}
         </p>
       )}
-      {bubble && walking && <Bubble ref={bubbleRef} name={bubble.name} line={bubble.line} />}
+      {bubble && walking && <Bubble ref={bubbleRef} who={bubble.id} name={bubble.name} line={bubble.line} />}
       {here && walking && (
         <div className="shire-door">
           <p className="shire-door-name">{here.name}</p>
           <button type="button" className="btn btn-primary" onClick={() => enter(hud.near)}>
-            {here.act} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} {here.act}
           </button>
         </div>
       )}
@@ -858,7 +847,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         <div className="shire-door">
           <p className="shire-door-name">{hud.giveTo}</p>
           <button type="button" className="btn btn-primary" onClick={give}>
-            Give {carrying.name.replace(/,.*$/, '')} {!touch && <kbd>E</kbd>}
+            {!touch && <kbd className="key-first">E</kbd>} Give {carrying.name.replace(/,.*$/, '')}
           </button>
         </div>
       )}
@@ -1023,7 +1012,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           </div>
         </div>
       )}
-      {walking && touch && <Stick onStick={onStick} />}
+      {walking && touch && <Stick onMove={onStick} />}
       {list && (
         <QuestList title="Things to do in Lothlórien" quests={prog.quests} next={prog.next} onClose={() => setList(false)} onGo={travel} canGo={(q) => q.open && !q.done && q.id !== 'haldir' && sim.current.mode === 'walk' && !sim.current.lead}>
           <SideList tasks={[sideTask]} onGo={goSide} canGo={(t) => t.open && sim.current.mode === 'walk' && !sim.current.lead && !sim.current.gifts?.carrying} />

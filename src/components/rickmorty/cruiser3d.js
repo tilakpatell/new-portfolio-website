@@ -5,7 +5,9 @@
 // inked like Portal panic, on a small see-through canvas that the page moves
 // about. Here it only turns: pose() points the nose the way it's flying
 // (swinging round through facing you as it swoops from one side to the
-// other), dips it as it drops, banks it and rolls it into a portal.
+// other), dips it as it drops, banks it and rolls it into a portal. The
+// crew sit on their animators (base 'sit'): Rick takes a pull on his flask
+// now and then over the wheel, and Morty throws his hands up when it dives.
 // Loaded only where 3D is on; null if anything won't start.
 
 import * as THREE from 'three';
@@ -16,6 +18,8 @@ import { LOOK_KEY, readLooks } from './wardrobe/looks';
 import { bodyAsset, bodyKind, dress, withWardrobe } from './wardrobe/wear';
 import { pixelRatio } from '../../lib/device';
 import { precompile, quiet, releaseContext } from '../../lib/three/renderer';
+import { sharpen } from '../../lib/three/textures';
+import { seeded } from '../../lib/seeded';
 
 const INK = 0x1b1424;
 // (the saucer's measurements are shared with the C-137 world, which draws it bigger: scale them by its height over TALL)
@@ -28,6 +32,33 @@ export const GLASS = 0.69; // the share of the saucer's height where the hull st
 export const CREW = { rick: [1.1, 0.27], morty: [0.92, -0.29], z: 0.05, y: 0.82 };
 // the backs of the two exhaust cans
 export const CANS = [[0.87, 1.0, -1.3], [-0.87, 1.0, -1.3]];
+// Rick's flask, every so often (s); a dive steep enough to frighten Morty
+// (how far down the nose is, 0…1), and not again for a while (s)
+const FLASK = [14, 34];
+const DIVE = { on: 0.6, off: 0.35, rest: 3 };
+
+// The crew's own life, sat in their seats: each frame, `crew` stepped on
+// its animator; Rick's flask on his upper half between FLASK's seconds;
+// Morty's fright on his when a dive starts (dive: 0…1). Returns the next
+// state ({ flaskIn, diving, scaredAt }).
+export function crewLife({ rick, morty }, st, t, dt, dive = 0, rand = Math.random) {
+  const next = { ...st };
+  if (rick?.play) {
+    next.flaskIn = (st.flaskIn ?? FLASK[0] * rand()) - dt;
+    if (next.flaskIn <= 0) {
+      rick.play('drink', { layer: 'upper' });
+      next.flaskIn = FLASK[0] + (FLASK[1] - FLASK[0]) * rand();
+    }
+  }
+  if (dive >= DIVE.on && !st.diving) {
+    next.diving = true;
+    if (morty?.play && t - (st.scaredAt ?? -Infinity) >= DIVE.rest) {
+      morty.play('scared', { layer: 'upper' });
+      next.scaredAt = t;
+    }
+  } else if (dive <= DIVE.off) next.diving = false;
+  return next;
+}
 
 // The saucer's dome as glass: everything above the rim (GLASS of the way up
 // each mesh, in its own units) see-through face-on and thicker towards its
@@ -86,6 +117,7 @@ function glowTexture() {
   x.fillStyle = g;
   x.fillRect(0, 0, 64, 64);
   const t = new THREE.CanvasTexture(c);
+  sharpen(t);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -122,7 +154,12 @@ export async function buildCruiser({ ink = 1, looks = readLooks(local.get(LOOK_K
     const [tall, x] = CREW[kind];
     c.group.scale.setScalar(tall / c.height);
     c.group.position.set(x, CREW.y, CREW.z);
-    for (const [n, a] of Object.entries(c.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
+    // sat in his seat on his own sat clip, there at once (his animator's base)
+    // (and posed so now, for a page that never moves its clock: reduced motion's)
+    if (c.base) {
+      c.base('sit', { fade: 0 });
+      c.update(0, 0, 0, { dt: 0.1 });
+    } else for (const [n, a] of Object.entries(c.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
     const undress = dress(c, look);
     c.group.traverse((o) => (o.userData.noPaint = true)); // (a paint job on the universe map's cruiser is the hull's, not theirs)
     const inkMat = inkHull(c.group, 0.026 * ink, { color: INK });
@@ -141,6 +178,9 @@ export async function buildCruiser({ ink = 1, looks = readLooks(local.get(LOOK_K
   const crew = () => Object.values(seats).filter(Boolean).map((s) => s.c);
   let seatedOn = true;
   let gone = false;
+  let life = {}; // (crewLife's: the flask's clock, the last fright)
+  let lastT = null;
+  const rand = seeded(0xf1a5);
   let latest = looks; // (the newest looks asked for: an older ask still loading gives way)
   // the dome is glass: everything above the rim, in the mesh's own units
   const glassY = glassDome(body);
@@ -190,10 +230,17 @@ export async function buildCruiser({ ink = 1, looks = readLooks(local.get(LOOK_K
         if (seats[kind]) seats[kind].c.group.visible = seatedOn;
       }
     },
-    update(t) {
+    // t: seconds; dive: how steeply it's going down (0…1), for Morty's nerves
+    update(t, { dive = 0 } = {}) {
+      const dt = lastT == null ? 0 : Math.min(0.1, Math.max(0, t - lastT));
+      lastT = t;
+      if (seatedOn) life = crewLife({ rick: seats.rick?.c, morty: seats.morty?.c }, life, t, dt, dive, rand);
       for (const c of crew()) {
-        c.mixer?.update(c.last == null ? 0 : Math.min(0.1, Math.max(0, t - c.last)));
-        c.last = t;
+        if (c.anim) c.update(t, 0, 0);
+        else {
+          c.mixer?.update(c.last == null ? 0 : Math.min(0.1, Math.max(0, t - c.last)));
+          c.last = t;
+        }
       }
       glowMat.opacity = 0.75 + Math.sin(t * 19) * 0.15;
       glows.forEach((g, i) => g.scale.setScalar(0.7 + Math.sin(t * 13 + i * 2) * 0.06));
@@ -236,6 +283,7 @@ export async function createCruiser3D(canvas) {
     return null;
   }
   const ship = cruiser.group;
+  let dive = 0; // (pose's v, for the crew)
   scene.add(ship);
 
   const fit = () => {
@@ -258,13 +306,14 @@ export async function createCruiser3D(canvas) {
     // h: how much it's heading right (-1 left … 1 right), v: down (0 … 1),
     // bank and roll in radians
     pose({ h = 1, v = 0, bank = 0, roll = 0 }) {
+      dive = v; // (how steeply it's going down: Morty's nerves)
       // the nose's angle from screen-right round towards you: always a little
       // towards you, so you see who's flying
       const a = 0.4 + ((1 - h) / 2) * (Math.PI - 0.8);
       ship.rotation.set(v * 0.26, Math.PI / 2 - a, bank + roll);
     },
     render(t) {
-      cruiser.update(t);
+      cruiser.update(t, { dive });
       renderer.render(scene, camera);
     },
     fit,

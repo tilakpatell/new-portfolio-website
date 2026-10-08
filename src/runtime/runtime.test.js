@@ -74,6 +74,47 @@ describe('createRuntime', () => {
     expect(rt.current.module).toBe(mod); // the very object the page mounted, so useWorld can tell its own
   });
 
+  it("waits for a world's prepare before showing it, and tells its progress", async () => {
+    const { rt } = make();
+    let finish;
+    const seen = [];
+    rt.events.on('prepare', (e) => seen.push([e.module, e.value, e.step]));
+    const world = fakeWorld({
+      prepare: vi.fn((report) => {
+        report(0.5, 'shaders');
+        return new Promise((r) => (finish = r));
+      }),
+    });
+    const p = rt.mount({ id: 'p', create: () => world }, {}, fakeHost());
+    await settled();
+    expect(world.prepare).toHaveBeenCalled();
+    expect(rt.status).toBe('loading');
+    finish();
+    await p;
+    expect(rt.status).toBe('ready');
+    expect(seen).toEqual([
+      ['p', 0.5, 'shaders'],
+      ['p', 1, 'first draw'],
+    ]);
+  });
+
+  it('drops a world still preparing when something newer is mounted', async () => {
+    const { rt } = make();
+    let alive = null;
+    const first = fakeWorld({
+      prepare: vi.fn((report, opts) => {
+        alive = opts.alive;
+        return new Promise(() => {});
+      }),
+    });
+    rt.mount({ id: 'old', create: () => first }, {}, fakeHost());
+    await settled();
+    const second = fakeWorld();
+    await rt.mount({ id: 'new', create: () => second }, {}, fakeHost());
+    expect(alive()).toBe(false);
+    expect(rt.current.world).toBe(second);
+  });
+
   it('a module with a label makes the canvas a picture', async () => {
     const { rt } = make();
     const canvas = { remove: vi.fn(), parentNode: null, attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, removeAttribute(k) { delete this.attrs[k]; } };
@@ -434,5 +475,38 @@ describe('createRuntime', () => {
     off();
     rt.events.emit('hud', { km: 2 });
     expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('a world with an anchor moves the floating origin before its step, and the shift is an origin event', async () => {
+    const { rt, loop } = make();
+    const seen = [];
+    rt.events.on('origin', (e) => seen.push(e));
+    let pos = [10, 0, 10];
+    const order = [];
+    const world = fakeWorld({ anchor: () => pos, step: vi.fn(() => order.push(rt.origin.at[0])), wants: () => true });
+    await rt.mount({ id: 'far', create: () => world }, {}, fakeHost());
+    loop.tick(16);
+    expect(seen).toEqual([]);
+    pos = [rt.origin.cell + 1, 0, 0];
+    loop.tick(32);
+    expect(seen).toEqual([{ shift: [rt.origin.cell, 0, 0] }]);
+    expect(order).toEqual([0, rt.origin.cell]); // (moved before the step that frame)
+  });
+
+  it('a new world starts at a zero origin; one without an anchor never moves it', async () => {
+    const { rt, loop } = make();
+    const world = fakeWorld({ anchor: () => [3 * rt.origin.cell, 0, 0], wants: () => true });
+    await rt.mount({ id: 'far', create: () => world }, {}, fakeHost());
+    loop.tick(16);
+    expect(rt.origin.at[0]).toBe(3 * rt.origin.cell);
+    await rt.mount({ id: 'near', create: () => fakeWorld({ wants: () => true }) }, {}, fakeHost());
+    expect(rt.origin.at).toEqual([0, 0, 0]);
+    loop.tick(32);
+    expect(rt.origin.at).toEqual([0, 0, 0]);
+  });
+
+  it('carries the worker pool it is given', () => {
+    const workers = { request: vi.fn() };
+    expect(make({ workers }).rt.workers).toBe(workers);
   });
 });

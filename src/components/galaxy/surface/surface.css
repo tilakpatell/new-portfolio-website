@@ -174,7 +174,7 @@
   border-radius: 8px;
   background: var(--glass);
   backdrop-filter: blur(10px);
-  animation: surface-found 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
+  animation: surface-found 0.5s var(--ease-smooth);
 }
 .surface-toast-title { margin: 0; font-size: 1.02rem; font-weight: 650; }
 .surface-toast-title::before { content: 'Found · '; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); vertical-align: 0.12em; }
@@ -216,6 +216,7 @@
   cursor: pointer;
 }
 .surface-help-btn:hover { border-color: var(--accent); color: var(--accent); }
+.surface-help-k { margin-right: 0.3em; color: rgba(242, 239, 232, 0.6); }
 /* the models' credits, under the corner's buttons */
 .surface-corner { flex-wrap: wrap; justify-content: flex-end; max-width: min(380px, calc(100vw - 32px)); }
 .surface-credits-corner { flex-basis: 100%; font-size: 0.7rem; line-height: 1.5; color: rgba(242, 239, 232, 0.6); text-align: right; }
@@ -236,7 +237,7 @@
     radial-gradient(ellipse 60% 45% at 50% 50%, rgb(255 246 230 / 0.95), transparent 70%),
     radial-gradient(ellipse 120% 90% at 50% 55%, rgb(255 140 60 / 0.8), rgb(255 80 30 / 0.4) 45%, transparent 75%),
     #fff6e8;
-  animation: surface-entry 1.6s cubic-bezier(0.2, 0.6, 0.3, 1) forwards;
+  animation: surface-entry 1.6s var(--ease-smooth) forwards;
 }
 @keyframes surface-entry {
   0% { opacity: 1; }
@@ -326,6 +327,7 @@
   .surface-where { top: calc(var(--nav-h, 64px) + 6px); }
   .surface-corner { top: calc(var(--nav-h, 64px) + 6px); }
   .surface-help-btn { padding: 0.35rem 0.6rem; font-size: 0.72rem; }
+  .surface-help-k { display: none; }
   .surface-toast { top: auto; bottom: calc(170px + env(safe-area-inset-bottom, 0px)); right: 16px; }
   .surface-prompt { bottom: calc(168px + env(safe-area-inset-bottom, 0px)); }
   .surface-talk { bottom: calc(210px + env(safe-area-inset-bottom, 0px)); }
@@ -454,6 +456,9 @@
 .surface-mark-quest i { background: #ffd36a; height: 13px; }
 .surface-mark-quest b { color: #ffd36a !important; font-size: 0.85rem !important; }
 .surface-toast[data-done] .surface-toast-title::before { content: 'Done · '; }
+.surface-toast[data-kind='equipped'] .surface-toast-title::before { content: 'Equipped · '; }
+.surface-toast[data-kind='failed'] { border-top-color: #ff6a5a; }
+.surface-toast[data-kind='failed'] .surface-toast-title::before { content: 'Not loaded · '; color: #ff8a7a; }
 .surface-btn-fire { border-color: #ff6a5a; color: #ffb0a0; }
 
 @media (max-width: 640px) {
@@ -536,7 +541,7 @@
   background: var(--glass);
   backdrop-filter: blur(14px);
   text-align: center;
-  animation: surface-found 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
+  animation: surface-found 0.5s var(--ease-smooth);
 }
 .chase-result[data-won] { border-top-color: var(--accent); }
 .chase-result-kicker { margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
@@ -571,7 +576,7 @@
   background: var(--glass);
   backdrop-filter: blur(14px);
   text-align: center;
-  animation: surface-found 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
+  animation: surface-found 0.5s var(--ease-smooth);
 }
 .assault-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; }
 .assault-side {
@@ -587,6 +592,7 @@
   text-align: left;
   transition: background 0.15s, transform 0.15s;
 }
+.assault-side[data-sworn] { box-shadow: 0 0 0 2px var(--side); }
 .assault-side:hover, .assault-side:focus-visible { background: color-mix(in srgb, var(--side) 22%, rgba(0, 0, 0, 0.35)); transform: translateY(-2px); }
 .assault-side b { font-size: 1rem; font-weight: 650; line-height: 1.25; }
 .assault-side span { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--side); }
@@ -698,33 +704,75 @@
   .assault-ring p, .assault-feed li, .assault-card { animation: none; }
 }
 
-/* who you play as, and your lightsaber (HeroPanel.jsx) */
-.surface-heroes { top: calc(var(--nav-h, 64px) + 56px); max-height: calc(100svh - var(--nav-h, 64px) - 100px); }
-.surface-hero-cards, .surface-hilts { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.4rem; }
-.surface-hero-cards { grid-template-columns: repeat(2, 1fr); }
-.surface-hero, .surface-hilt {
+/* who you play as, and what's in your hand (HeroPanel.jsx): the tabs at the
+   top and Equip at the bottom stay put, the list between them scrolls. (Each
+   rule under .surface-heroes, over .surface-list's own for its spans, lists
+   and buttons.) */
+.surface-list.surface-heroes {
+  top: calc(var(--nav-h, 64px) + 56px);
+  display: flex;
+  flex-direction: column;
+  width: min(400px, calc(100vw - 32px));
+  max-height: calc(100svh - var(--nav-h, 64px) - 140px);
+  padding: 0;
+  overflow: hidden;
+}
+.surface-heroes-head { flex: none; padding: 0.85rem 1rem 0.65rem; border-bottom: 1px solid var(--line); }
+.surface-heroes-head .surface-list-title { margin: 0 0 0.55rem; }
+.surface-heroes-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0.1rem 1rem 0.9rem; }
+.surface-heroes .surface-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; margin: 0; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255, 255, 255, 0.03); }
+.surface-heroes .surface-tabs button {
+  display: block;
   width: 100%;
+  min-height: 34px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: rgba(242, 239, 232, 0.7);
+}
+.surface-heroes .surface-tabs button[aria-selected='true'] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.surface-heroes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.surface-heroes .surface-hero-cards, .surface-heroes .surface-hilts { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.45rem; }
+.surface-heroes .surface-hero-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.surface-heroes .surface-hero, .surface-heroes .surface-hilt {
+  width: 100%;
+  height: 100%;
   display: grid;
-  gap: 0.15rem;
-  padding: 0.55rem 0.65rem;
+  align-content: start;
+  gap: 0.25rem;
+  padding: 0.6rem 0.7rem;
   text-align: left;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.04);
   color: inherit;
   cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
 }
-.surface-hero:hover, .surface-hilt:hover { border-color: rgba(255, 255, 255, 0.4); }
-.surface-hero.is-picked, .surface-hilt.is-picked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.surface-hero-name { font-weight: 700; font-size: 0.82rem; }
-.surface-hero-arm { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
-.surface-hero-blurb { font-size: 0.72rem; line-height: 1.35; color: rgba(242, 239, 232, 0.7); }
-.surface-saber { margin-top: 0.8rem; }
-.surface-swatches { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+.surface-heroes .surface-hero.is-picked, .surface-heroes .surface-hilt.is-picked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+.surface-heroes .surface-hero-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.4rem; }
+.surface-heroes .surface-hero-name { font-size: 0.84rem; font-weight: 700; line-height: 1.25; color: #f2efe8; }
+.surface-heroes .surface-hero-on { flex: none; padding: 0.1rem 0.35rem; border-radius: 4px; background: var(--accent); color: #03040a; font-size: 0.6rem; font-weight: 700; line-height: 1.2; letter-spacing: 0.08em; text-transform: uppercase; }
+.surface-heroes .surface-hero-arm { font-size: 0.72rem; font-weight: 600; line-height: 1.3; color: var(--accent); }
+.surface-heroes .surface-hero-powers { display: flex; flex-wrap: wrap; gap: 0.2rem 0.6rem; font-size: 0.7rem; line-height: 1.4; color: rgba(242, 239, 232, 0.85); }
+.surface-heroes .surface-hero-powers span { font-size: inherit; color: inherit; white-space: nowrap; }
+.surface-heroes kbd { display: inline-grid; place-items: center; min-width: 1.35em; height: 1.35em; margin-right: 0.15rem; padding: 0 0.2rem; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 3px; font: 600 0.62rem/1 inherit; color: #f2efe8; }
+.surface-heroes .surface-hero-blurb { font-size: 0.72rem; line-height: 1.4; color: rgba(242, 239, 232, 0.68); }
+.surface-heroes .surface-hero-lean { display: flex; align-items: baseline; gap: 0.35rem; font-size: 0.66rem; line-height: 1.3; color: rgba(242, 239, 232, 0.6); }
+.surface-heroes .surface-hero-lean::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: #6ab8ff; transform: translateY(-1px); }
+.surface-heroes .surface-hero-lean[data-lean='dark']::before { background: #ff5a4a; }
+.surface-saber { margin-top: 0.4rem; }
+.surface-heroes-body .surface-list-title { margin: 0.9rem 0 0.45rem; }
+.surface-swatches { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
 .surface-list .surface-swatch {
   display: block;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   border-radius: 50%;
   border: 2px solid transparent;
@@ -732,12 +780,30 @@
   box-shadow: 0 0 10px color-mix(in srgb, var(--blade) 70%, transparent);
   cursor: pointer;
 }
-.surface-list .surface-swatch.is-picked { border-color: #fff; }
-.surface-hero-keys { margin: 0.7rem 0 0; font-size: 0.72rem; line-height: 1.4; color: rgba(242, 239, 232, 0.7); }
-.surface-hero-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.9rem; }
-.surface-list .surface-hero-actions button { width: auto; display: inline-block; }
-.surface-hero-play { border-color: var(--accent); color: var(--accent); }
-.surface-hero-play:disabled { opacity: 0.45; cursor: default; }
+.surface-list .surface-swatch.is-picked { border-color: #fff; box-shadow: 0 0 0 2px rgba(6, 8, 14, 0.9), 0 0 14px var(--blade); }
+.surface-heroes .surface-hero-keys { margin: 0.8rem 0 0; font-size: 0.72rem; line-height: 1.45; color: rgba(242, 239, 232, 0.65); }
+.surface-heroes .surface-hero-actions {
+  flex: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid var(--line);
+  background: rgba(12, 14, 22, 0.94);
+}
+.surface-heroes .surface-hero-summary { display: grid; min-width: 0; margin: 0; line-height: 1.3; }
+.surface-heroes .surface-hero-summary b { overflow: hidden; font-size: 0.8rem; white-space: nowrap; text-overflow: ellipsis; }
+.surface-heroes .surface-hero-summary span { overflow: hidden; font-size: 0.68rem; line-height: 1.35; white-space: nowrap; text-overflow: ellipsis; color: rgba(242, 239, 232, 0.65); }
+.surface-heroes .surface-hero-actions button { display: inline-block; width: auto; min-height: 36px; padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.78rem; font-weight: 600; text-align: center; }
+.surface-heroes .surface-hero-play:not(:disabled) { border-color: var(--accent); background: var(--accent); color: #03040a; }
+.surface-heroes .surface-hero-play:not(:disabled):hover { filter: brightness(1.12); }
+.surface-heroes .surface-hero-play:disabled { opacity: 0.5; cursor: default; }
+@media (max-width: 420px) {
+  .surface-heroes .surface-hero-actions { grid-template-columns: 1fr 1fr; }
+  .surface-heroes .surface-hero-summary { grid-column: 1 / -1; }
+}
 .surface-btn-throw { border-color: #9fd0ff; color: #cfe6ff; }
 .surface-btn-block { border-color: #ffe08a; color: #ffeec0; }
 .surface-buttons-saber { grid-template-columns: repeat(3, 60px); }
@@ -834,11 +900,74 @@
 .surface-btn-power { border-color: #c8b4ff; color: #e6dcff; }
 .surface-btn-dodge { border-color: #b8ffd0; color: #dafff0; }
 .surface-btn-aim.is-on { background: rgba(255, 255, 255, 0.25); }
-/* the hero panel's tabs, weapons and mods */
-.surface-tabs { display: flex; gap: 4px; margin: 0 0 0.7rem; padding: 0; list-style: none; }
-.surface-list .surface-tabs button { width: auto; display: inline-block; padding: 0.3rem 0.7rem; border-radius: 999px; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; }
-.surface-list .surface-tabs button[aria-selected='true'] { border-color: var(--accent); color: var(--accent); }
-.surface-weapon-side { margin: 0.7rem 0 0.3rem; font-size: 0.66rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(242, 239, 232, 0.6); }
-.surface-stats { display: flex; gap: 0.5rem; margin-top: 0.2rem; font-size: 0.64rem; color: rgba(242, 239, 232, 0.65); }
-.surface-stats i { font-style: normal; }
-.surface-mods { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+.surface-btn-emote { border-color: #ffd36a; color: #fff0c4; }
+/* the emote wheel (B held; the Emote button on a phone): the five round the
+   middle of the view, as C-137's and the Citadel's are, in this page's dark
+   glass, the one pointed at lit in the world's colour */
+.surface-wheel { --wheel-r: 118px; position: absolute; z-index: 3; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+.surface-wheel::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--wheel-r) * -1.3);
+  top: calc(var(--wheel-r) * -1.3);
+  width: calc(var(--wheel-r) * 2.6);
+  height: calc(var(--wheel-r) * 2.6);
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: radial-gradient(closest-side, rgba(6, 8, 14, 0.5), rgba(6, 8, 14, 0.14) 70%, transparent);
+  animation: surface-wheel-in 0.14s ease-out both;
+}
+.surface-wheel-mid {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 96px;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(242, 239, 232, 0.72);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+.surface-wheel-slice {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--glass);
+  color: #f2efe8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translate(-50%, -50%) translate(calc(var(--sx) * var(--wheel-r)), calc(var(--sy) * var(--wheel-r)));
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: background-color 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease;
+  animation: surface-wheel-in 0.14s ease-out both;
+}
+.surface-wheel-slice kbd { font: inherit; font-weight: 700; font-size: 0.68rem; color: var(--accent); }
+.surface-wheel-slice[data-last] { border-color: rgba(255, 255, 255, 0.34); }
+.surface-wheel-slice[data-on],
+.surface-wheel-slice:hover,
+.surface-wheel-slice:focus-visible { border-color: var(--accent); background: rgba(255, 255, 255, 0.16); box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgba(255, 255, 255, 0.16); outline: none; }
+@keyframes surface-wheel-in { from { opacity: 0; } }
+@media (max-width: 420px) { .surface-wheel { --wheel-r: 100px; } }
+@media (prefers-reduced-motion: reduce) { .surface-wheel::before, .surface-wheel-slice { animation: none; transition: none; } }
+/* the hero panel's weapons and mods */
+.surface-weapon-side { margin: 0.9rem 0 0.4rem; font-size: 0.66rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(242, 239, 232, 0.6); }
+.surface-heroes .surface-stats { display: flex; flex-wrap: wrap; gap: 0.15rem 0.6rem; margin-top: 0.2rem; font-size: 0.66rem; font-variant-numeric: tabular-nums; color: rgba(242, 239, 232, 0.65); }
+.surface-heroes .surface-stats i { font-style: normal; }
+.surface-heroes .surface-mods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem; }

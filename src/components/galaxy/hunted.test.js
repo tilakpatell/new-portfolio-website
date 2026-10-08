@@ -31,4 +31,13 @@ describe('the galaxy’s hunters', () => {
       for (const k of Object.keys(kinds)) expect(BUILT.has(k), `${f} ${k}`).toBe(true);
     }
   });
+
+  it('has the Rebellion, the Republic and the New Republic to hunt you, and their navies’ launches', () => {
+    for (const id of ['rebellion', 'rebelnavy', 'republic', 'republicnavy', 'newrepublic']) expect(FACTIONS[id], id).toBeTruthy();
+    expect(FACTIONS.rebellion.kinds.map(([k]) => k)).toEqual(['xwing', 'awing', 'ywing']);
+    expect(FACTIONS.rebellion.ace).toBe('redleader');
+    expect(NAMES.redleader).toBe('Wedge Antilles');
+    expect(KINDS.redleader.hp).toBe(KINDS.tieadvanced.hp);
+    expect(FACTIONS.republic.kinds.map(([k]) => k)).toContain('arc170');
+  });
 });

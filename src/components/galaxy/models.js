@@ -58,9 +58,44 @@ export const MODELS = {
   n1: { url: '/models/galaxy/n1.glb', nose: 0 },
   nubian: { url: '/models/galaxy/nubian.glb', nose: 0 },
   razorcrest: { url: '/models/galaxy/surface/razorcrest.glb', nose: 0 }, // (the one the surfaces fly)
-  // the universe map's wars' flagships (scripts/meshy-war.mjs, from the shows' own pictures)
+  // the ones that were built in code till somebody's model was found
+  // (scripts/sketchfab-galaxy.mjs): the YT-2400, the Xg-1, the GR-75,
+  // Bespin's cloud cars, the IG-2000, the Interdictor and the second Death
+  // Star (Cloud City stays built: world.js's solids and landing fit its disc)
+  freighter: { url: '/models/galaxy/freighter.glb', nose: 0 },
+  gunboat: { url: '/models/galaxy/gunboat.glb', nose: 0 },
+  transport: { url: '/models/galaxy/transport.glb', nose: 0 },
+  cloudcar: { url: '/models/galaxy/cloudcar.glb', nose: -Math.PI / 2 },
+  ig2000: { url: '/models/galaxy/ig2000.glb', nose: 0 },
+  interdictor: { url: '/models/galaxy/interdictor.glb', nose: 0 },
+  deathstar2: { url: '/models/galaxy/deathstar2.glb', nose: 0 }, // (N8's since, scripts/deathstar-hd.mjs: dish to +z)
+  // and the ones made with Meshy from Wookieepedia's picture of each
+  // (scripts/meshy-galaxy-library.mjs), every one come nose to -x: the
+  // Hound's Tooth, the Punishing One, the Hammerhead and the Gauntlet,
+  // which were built in code; and the Twilight, the Scimitar, the TIE
+  // Defender, the TIE Striker, the V-wing, the Eta-2, the Hyena, the
+  // Sentinel, the Zeta, the Fang and the Naboo yacht, for the systems to fly
+  houndstooth: { url: '/models/galaxy/houndstooth.glb', nose: Math.PI / 2 },
+  punishingone: { url: '/models/galaxy/punishingone.glb', nose: Math.PI / 2 },
+  hammerhead: { url: '/models/galaxy/hammerhead.glb', nose: Math.PI / 2 },
+  gauntlet: { url: '/models/galaxy/gauntlet.glb', nose: Math.PI / 2 },
+  twilight: { url: '/models/galaxy/twilight.glb', nose: Math.PI / 2 },
+  scimitar: { url: '/models/galaxy/scimitar.glb', nose: Math.PI / 2 },
+  tiedefender: { url: '/models/galaxy/tiedefender.glb', nose: Math.PI / 2 },
+  tiestriker: { url: '/models/galaxy/tiestriker.glb', nose: Math.PI / 2 },
+  vwing: { url: '/models/galaxy/vwing.glb', nose: Math.PI / 2 },
+  eta2: { url: '/models/galaxy/eta2.glb', nose: Math.PI / 2 },
+  hyena: { url: '/models/galaxy/hyena.glb', nose: Math.PI / 2 },
+  sentinel: { url: '/models/galaxy/sentinel.glb', nose: Math.PI / 2 },
+  zeta: { url: '/models/galaxy/zeta.glb', nose: Math.PI / 2 },
+  fang: { url: '/models/galaxy/fang.glb', nose: Math.PI / 2 },
+  naboocruiser: { url: '/models/galaxy/naboocruiser.glb', nose: Math.PI / 2 },
+  // the universe map's wars' flagships (scripts/meshy-war.mjs: Rick and
+  // Morty's from the show's own pictures, Breaking Bad's from words)
   councildread: { url: '/models/universe/war/councildread.glb', nose: Math.PI / 2 },
   fedbattleship: { url: '/models/universe/war/fedbattleship.glb', nose: 0 },
+  superlab: { url: '/models/universe/war/superlab.glb', nose: Math.PI / 2 },
+  hacienda: { url: '/models/universe/war/hacienda.glb', nose: 0 }, // (its thrusters either side)
 };
 // the ones made again here at full quality (scripts/gen3d, remade from these
 // models' own renders): kind → the made model's name, loaded in this device's cut
@@ -80,10 +115,21 @@ export const HQ = {
   destroyer: { url: '/models/galaxy/hq/destroyer.glb', nose: 0 },
   nebulon: { url: '/models/galaxy/hq/nebulon.glb', nose: 0 },
 };
+// And the Death Stars' 4096-pixel maps (scripts/deathstar-hd.mjs), loaded on
+// the same desktops: the same hulls as the 2048 cuts, so each keeps its own
+// far-off copy (and the first Death Star none: the world draws its sphere).
+export const HD_MAPS = {
+  deathstar: '/models/universe/death-star.hq.glb',
+  deathstar2: '/models/galaxy/deathstar2.hq.glb',
+};
 const HQ_DETAILS = new Set(['high', 'ultra']);
 export const withHq = (models, detail) =>
   HQ_DETAILS.has(detail)
-    ? { ...models, ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: d.url, nose: d.nose, hq: true }])) }
+    ? {
+        ...models,
+        ...Object.fromEntries(Object.entries(HQ).filter(([k]) => models[k]).map(([k, d]) => [k, { url: d.url, nose: d.nose, hq: true }])),
+        ...Object.fromEntries(Object.entries(HD_MAPS).filter(([k]) => models[k]).map(([k, url]) => [k, { ...models[k], url }])),
+      }
     : models;
 Object.assign(MODELS, withHq(MODELS, device().detail));
 
@@ -94,7 +140,8 @@ const BUILT = new Set([...BUILT_KINDS, ...GALAXY_KINDS]);
 // Venator as a Star Destroyer, Slave I and the Falcon as a freighter, the TIE
 // bomber as a TIE, Gideon's cruiser as a Star Destroyer, the Gozanti and the
 // Ghost as freighters, the Invisible Hand as a Munificent, the wars'
-// flagships as a cruiser of their side. The Death Star has
+// flagships as a ship of their side (the superlab as a Madrigal freighter,
+// the hacienda as the cartel's lowrider). The Death Star has
 // none here: the world puts a sphere of its own in its place.
 export const STAND_IN = {
   venator: 'destroyer',
@@ -107,6 +154,20 @@ export const STAND_IN = {
   ghost: 'freighter',
   councildread: 'councilship',
   fedbattleship: 'fedcruiser',
+  superlab: 'madrigal',
+  hacienda: 'lowrider',
+  // the Meshy-made library ships: each as the nearest built one of its kind
+  twilight: 'freighter',
+  scimitar: 'shuttle',
+  tiedefender: 'tie',
+  tiestriker: 'tie',
+  vwing: 'delta7',
+  eta2: 'delta7',
+  hyena: 'vulture',
+  sentinel: 'shuttle',
+  zeta: 'shuttle',
+  fang: 'awing',
+  naboocruiser: 'nubian',
 };
 
 // Far off, a ship is its LOD (scripts/galaxy-lod.mjs: one mesh of a few
@@ -128,6 +189,10 @@ export const lodLevels = (size) => [
 export const HUNTER_GLB = {
   ...GLB,
   ...Object.fromEntries(['vulture', 'trifighter', 'tie', 'tieadvanced'].map((k) => [k, { ...MODELS[k], built: true }])),
+  // (the war's other hunters and what their capital ships drop in: the
+  // Republic's fighters, Wedge in an X-wing, a Mon Calamari cruiser, a Venator)
+  ...Object.fromEntries(['arc170', 'delta7', 'moncal', 'venator'].map((k) => [k, { ...MODELS[k], built: false }])),
+  redleader: { ...GLB.xwing, built: false },
 };
 
 // a model's materials tuned to the scene's light: engines and lights hot

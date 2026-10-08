@@ -23,15 +23,20 @@
 // 'away', at, heading } (the freighter, on its way after it's won, jumps).
 // A skirmish that drags on (SKIRMISH.longest) ends with the freighter
 // jumping away.
+//
+// placeAt(node, solids) → { x, y, z }: where one goes at a node of the lanes
+// (hyperlanes.js's NODES, a ramp or a beacon), so it's seen from far off and
+// a lane takes you to it.
 
-import { FACTIONS, HUNTER_KINDS, createHunt } from './hunterRules';
+import { FACTIONS, HUNTER_KINDS, clearOf, createHunt, hasTrait } from './hunterRules';
 import { sweptHit } from './targeting';
 import { createWing } from './wingRules';
+import { PACE, SOLIDS } from './ship';
 
 export const SKIRMISH = {
   circle: 0.12, // radians a second the freighter turns, going round
-  speed: 2.6, // its speed
-  away: 8, // and on its way, once it's over
+  speed: 2.6 * PACE, // its speed (at the ship's pace)
+  away: 8 * PACE, // and on its way, once it's over
   hp: 16, // laser hits the freighter takes
   pack: [3, 4], // hunters on it
   escort: 2, // its escort
@@ -52,8 +57,51 @@ export const SKIRMISH = {
 
 const between = (rand, [a, b]) => a + rand() * (b - a);
 
+// A skirmish at a node sits PLACE_OFF above it (or below, or to a side,
+// should that be in something), out of the ramp ring and the lanes coming
+// in level to it, and PLACE_GAP clear of anything solid (the freighter goes
+// round in a ring some 26 across, and jumps away if it comes within
+// SKIRMISH.clear of one). Never more than PLACE_NEAR from the node.
+const PLACE_OFF = 90;
+const PLACE_GAP = 40;
+const PLACE_NEAR = 200;
+const PLACE_WAYS = [
+  [0, 1, 0],
+  [0, -1, 0],
+  [1, 0, 0],
+  [-1, 0, 0],
+  [0, 0, 1],
+  [0, 0, -1],
+];
+
+export function placeAt(node, solids = SOLIDS) {
+  const [x, y, z] = node.at;
+  let best = null;
+  for (const [i, j, k] of PLACE_WAYS) {
+    const p = clearOf({ x: x + i * PLACE_OFF, y: y + j * PLACE_OFF, z: z + k * PLACE_OFF }, solids, PLACE_GAP);
+    const d = Math.hypot(p.x - x, p.y - y, p.z - z);
+    const clear = solids.every((o) => Math.hypot(p.x - o.at[0], p.y - o.at[1], p.z - o.at[2]) > o.r + SKIRMISH.clear);
+    if (clear && d <= PLACE_NEAR) return p;
+    // (none both near and clear: the nearest of the clear ones)
+    if (clear && (!best || d < best.d)) best = { p, d };
+  }
+  return best?.p ?? clearOf({ x, y: y + PLACE_OFF, z }, solids, PLACE_GAP);
+}
+
+// (someone else's fight is with the line fighters: the kinds made to fight
+// you, the medics, missile boats, rammers and snipers, stay out of it, or
+// the freighter's escort never has a chance)
+const FOR_YOU = ['medic', 'missile', 'rammer', 'sniper'];
+const lineOnly = (factions, kinds) =>
+  Object.fromEntries(
+    Object.entries(factions).map(([id, f]) => {
+      const keep = f.kinds.filter(([k]) => !FOR_YOU.some((t) => kinds[k] && hasTrait(kinds[k], t)));
+      return [id, keep.length && keep.length < f.kinds.length ? { ...f, kinds: keep } : f];
+    }),
+  );
+
 export function createSkirmish({ rand = Math.random, factions = FACTIONS, kinds = HUNTER_KINDS, solids = [] } = {}) {
-  const hunt = createHunt({ rand, factions, kinds, solids, lasers: 20, firstId: 1e6 }); // (numbered apart from your own hunters: the lock follows a number)
+  const hunt = createHunt({ rand, factions: lineOnly(factions, kinds), kinds, solids, lasers: 20, firstId: 1e6, nerve: false }); // (numbered apart from your own hunters: the lock follows a number; and fought to the end: the freighter is their quarry, not you)
   const wing = createWing({ rand, bolts: 12, solids });
   const shots = Array.from({ length: 10 }, () => ({ on: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, faction: null }));
   // the freighter, as the hunt sees "you": where it is and the way it goes

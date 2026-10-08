@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PACE, SHIP } from './ship';
 import { FACTIONS, FIGHT, HOLDOFF, HUNTER_KINDS, ION, LASER, MISSILE, RAM, SKILLS, SNIPER, TRAITS, createHunt, hasTrait, traitsOf } from './hunterRules';
 
 // the pilots' skill, and the kinds that fight their own new ways
@@ -24,7 +25,7 @@ const solo = (over, { size = [1, 3] } = {}) => ({
   factions: { odd: { kinds: [['odd', 1]], laser: [1, 1, 1], size } },
 });
 // a fight flown frame by frame: each(hunt, ship, events, t)
-function run({ seed = 7, seconds = 60, size = 2, over = {}, skill, fly = (s) => ({ ...s, speed: 5.5 }), each, faction = 'odd', kinds, factions } = {}) {
+function run({ seed = 7, seconds = 60, size = 2, over = {}, skill, fly = (s) => ({ ...s, speed: SHIP.cruise }), each, faction = 'odd', kinds, factions } = {}) {
   const k = kinds ? { kinds, factions } : solo(over);
   const hunt = createHunt({ rand: seeded(seed), kinds: k.kinds, factions: k.factions });
   let s = start();
@@ -75,7 +76,7 @@ describe('a pilot’s skill', () => {
       let shots = 0;
       let hits = 0;
       for (const seed of [3, 5, 7, 9, 11, 13]) {
-        const seen = run({ seed, seconds: 50, size: 3, skill, fly: (s, t) => ({ ...s, speed: 8, heading: s.heading + Math.sin(t * 0.7) * 0.012 }) });
+        const seen = run({ seed, seconds: 50, size: 3, skill, fly: (s, t) => ({ ...s, speed: 8 * PACE, heading: s.heading + Math.sin(t * 0.7) * 0.012 }) });
         shots += seen.shots;
         hits += seen.hits;
       }
@@ -92,7 +93,7 @@ describe('a pilot’s skill', () => {
     // you chase the nearest of them, turning your nose on to it as quick as a ship can
     const chase = (s, t, hunt) => {
       const h = hunt.live[0];
-      if (!h) return { ...s, speed: 8 };
+      if (!h) return { ...s, speed: 8 * PACE };
       const dx = h.pos.x - s.x;
       const dy = h.pos.y - s.y;
       const dz = h.pos.z - s.z;
@@ -102,7 +103,7 @@ describe('a pilot’s skill', () => {
       while (dh > Math.PI) dh -= 2 * Math.PI;
       while (dh < -Math.PI) dh += 2 * Math.PI;
       const max = 2.2 * DT;
-      return { ...s, speed: 8, heading: s.heading + Math.max(-max, Math.min(max, dh)), pitch: s.pitch + Math.max(-max, Math.min(max, wantP - s.pitch)) };
+      return { ...s, speed: 8 * PACE, heading: s.heading + Math.max(-max, Math.min(max, dh)), pitch: s.pitch + Math.max(-max, Math.min(max, wantP - s.pitch)) };
     };
     // and fire a bolt down your nose whenever it's lined up: how many land
     const lined = (skill) => {
@@ -236,9 +237,9 @@ describe('the new ways to fight', () => {
     expect(shoot(false)).toHaveLength(0);
     expect(shoot(true)).toEqual([expect.objectContaining({ damage: MISSILE.damage, missile: true })]);
     // fired straight after you as you run flat out, from far enough: it burns out
-    expect(shoot(true, { ship: start({ z: -40, speed: 20 }), at: { x: 0, y: 0, z: 0 }, v: [0, 0, -1] })).toHaveLength(0);
+    expect(shoot(true, { ship: start({ z: -40, speed: SHIP.boost }), at: { x: 0, y: 0, z: 0 }, v: [0, 0, -1] })).toHaveLength(0);
     // and from close, it gets you
-    expect(shoot(true, { ship: start({ z: -8, speed: 20 }), at: { x: 0, y: 0, z: 0 }, v: [0, 0, -1] })).toHaveLength(1);
+    expect(shoot(true, { ship: start({ z: -8, speed: SHIP.boost }), at: { x: 0, y: 0, z: 0 }, v: [0, 0, -1] })).toHaveLength(1);
   });
 
   it('has an ion gun slow you instead of hurting much', () => {
@@ -251,10 +252,10 @@ describe('the new ways to fight', () => {
   it('has a rammer come straight in and burst on you, never firing, and gone after', () => {
     let gone = false;
     const seen = run({
-      over: { trait: 'rammer', speed: 24, accel: 22 },
+      over: { trait: 'rammer', speed: 24 * PACE, accel: 22 * PACE },
       size: 1,
       seconds: 30,
-      fly: (s) => ({ ...s, speed: 5.5 }),
+      fly: (s) => ({ ...s, speed: SHIP.cruise }),
       each: (hunt) => {
         if (!hunt.live.length) gone = true;
       },
@@ -288,7 +289,7 @@ describe('the new ways to fight', () => {
     const patched = [];
     let s = start();
     for (let t = 0; t < 30; t += DT) {
-      s = move({ ...s, speed: 5.5 });
+      s = move({ ...s, speed: SHIP.cruise });
       for (const e of h2.update(DT, s)) if (e.type === 'patched') patched.push(e);
     }
     expect(patched.length).toBeGreaterThan(1);
@@ -305,7 +306,7 @@ describe('the new ways to fight', () => {
     const seen = run({
       over: { trait: 'sniper', fire: [1.6, 2.4] },
       seconds: 60,
-      fly: (s) => ({ ...s, speed: 4 }),
+      fly: (s) => ({ ...s, speed: 4 * PACE }),
       each: (hunt, s, events) => {
         for (const h of hunt.live) nearest = Math.min(nearest, apart(h.pos, s));
         if (events.some((e) => e.type === 'shot') && hunt.live.some((h) => apart(h.pos, s) > FIGHT.range * 1.2)) farShot = true;

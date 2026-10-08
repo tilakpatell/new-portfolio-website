@@ -19,6 +19,7 @@ const HALF = CELL / 2;
 const FAR = 420; // cars further than this from the camera are moved (it's all a street-level camera sees)
 const NEAR_WALK = 300;
 const GAP = 7;
+const REVERSE = 4; // how fast a car backs away from a fight (m/s)
 
 // the street lines near a value (they're at 80k + 40)
 const lineNear = (v) => Math.round((v - HALF) / CELL) * CELL + HALF;
@@ -98,6 +99,12 @@ function plan(c, r) {
   return { ...o, at, s: c.axis === 'x' ? c.line + LANE * c.dir : c.line - LANE * c.dir };
 }
 
+// A car off the street (a Mauler's picked it up): it's gone from where it
+// was, and back in the traffic out of sight on the next step.
+export function takeCar(prev, id) {
+  return { ...prev, cars: prev.cars.map((c) => (c.id === id ? { ...c, gone: true } : c)) };
+}
+
 export function stepTraffic(prev, dt, { cx = 0, cz = 0, yaw = null, scare = [] } = {}) {
   const st = { ...prev, cars: prev.cars.map((c) => ({ ...c })), walkers: prev.walkers.map((w) => ({ ...w })) };
   const r = st.r;
@@ -115,12 +122,29 @@ export function stepTraffic(prev, dt, { cx = 0, cz = 0, yaw = null, scare = [] }
     for (let i = 0; i < list.length; i++) list[i].ahead = i + 1 < list.length ? (list[i + 1].s - list[i].s) * list[i].dir : Infinity;
   }
   for (const c of st.cars) {
+    // one a Mauler took (./foes.js): another like it comes on out of sight
+    if (c.gone) {
+      const at = placeOnStreet(r, cx, cz, FAR * 0.55, FAR * 0.97, 40, yaw);
+      if (at) Object.assign(c, at, { dir: r() < 0.5 ? 1 : -1, speed: c.cruise * 0.7, turn: null, wait: 0, back: 0, gone: false });
+      delete c.ahead;
+      continue;
+    }
     const [x, z] = carAt(c);
-    if (scare.some((q) => Math.hypot(x - q.x, z - q.z) < q.r)) c.wait = 3;
+    for (const q of scare) {
+      if (Math.hypot(x - q.x, z - q.z) >= q.r) continue;
+      c.wait = 3;
+      // (a fight: not just stopped, backing away from it)
+      if (q.reverse) c.back = 3;
+    }
     let want = c.cruise;
     if (c.wait > 0) {
       c.wait -= dt;
       want = 0;
+    }
+    if (c.back > 0) {
+      c.back -= dt;
+      c.speed = 0;
+      c.s -= c.dir * REVERSE * dt;
     }
     // slow for the car ahead, stop short of it
     if (c.ahead < GAP + c.speed * 0.8) want = Math.min(want, Math.max(0, (c.ahead - GAP) * 1.2));

@@ -1,0 +1,32 @@
+name: desktop doctor
+
+# Is the desktop ready to make gen3d and voices jobs? Runs
+# scripts/desktop/doctor.mjs on the self-hosted runner, so it sees exactly
+# what a job sees (its PATH, its .env, outside the Claude app). Run it from
+# the Actions tab or `gh workflow run desktop-doctor.yml`, then read the log
+# or the run's summary. A red run means something a job needs is missing.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  doctor:
+    runs-on: [self-hosted, gpu]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+      - name: Check the desktop
+        shell: powershell
+        run: |
+          node scripts/desktop/doctor.mjs | Tee-Object -Variable report
+          $code = $LASTEXITCODE
+          "``````" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          $report | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          "``````" | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
+          exit $code

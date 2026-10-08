@@ -4,8 +4,10 @@ import { useAchievements } from '../Achievements';
 import { audioContext } from '../../lib/audio';
 import { useMediaQuery } from '../../lib/hooks';
 import { capturePointer } from '../../lib/pointer';
+import { useVoiced } from '../../lib/useVoiced';
 import { WorldHost, useWorld } from '../../runtime';
 import module from './module';
+import { VOICE } from './voicelines';
 import './mario64.css';
 
 // The Mario 64 tribute, on the page or over the island: the world module
@@ -67,6 +69,8 @@ export default function Mario64({ mode = 'page', onExit = null }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   const { unlock } = useAchievements();
   const [ui, setUi] = useState({ mode: 'loading' });
+  // Toad, the king and Peach's note in their own voices, where they've been made (lib/voiced.js), with the sound on
+  useVoiced(VOICE[ui.dialog?.title], ui.mode === 'dialog' && ui.sound !== false ? ui.dialog?.text : null);
   const [hud, setHud] = useState(null);
   const [fade, setFade] = useState(false);
   const [help, setHelp] = useState(false);

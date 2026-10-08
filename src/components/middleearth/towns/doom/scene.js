@@ -13,13 +13,15 @@
 
 import * as THREE from 'three';
 import { createStage, disposeTree } from '../../../../lib/stage3d';
+import { createHouse } from '../../../../lib/three/house';
+import { dress, rolesFor } from '../../../../lib/three/core';
 import { device } from '../../../../lib/device';
 import { fbm, makeNoise, smooth } from '../../../../lib/paint';
 import { pose } from '../../mapFigures';
 import { createParticles } from '../../kit';
 import { instances } from '../../shire/ground';
 import { LOOKS, sit } from '../../shire/people';
-import { makeSky } from '../../shire/sky';
+import { lookFrom, makeSky } from '../../shire/sky';
 import { createFx } from '../../shire/fx';
 import { makeTerrain } from '../ground';
 import { FIGURE, groundTown } from '../grounded';
@@ -28,6 +30,7 @@ import { createGhosts } from '../ghosts';
 import { createDoomKit } from './props';
 import { BARAD, CAMP, CROSS, CROSS_START, DOOM, EDGE, EYE_AT, FOOT, MARCH_LEN, REFUGE, ROCKS, alongMarch, groundHeight } from './layout';
 import { BURSTS, CARRY, EYE, FLIGHT } from './rules';
+import { castDo, castPlay, releaseCast, tickCast, upgrade } from '../../cast3d';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -87,6 +90,10 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   const tier = dev.tier;
   const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 4200, bloom: { strength: 0.8, radius: 0.6, threshold: 0.8 }, onLost });
   const { scene, camera, renderer } = stage;
+  // the house look (lib/three/house): one shadow colour and the sky's fog
+  // on everything, under the house tone mapper; it follows the moods below
+  const houseLook = createHouse();
+  renderer.toneMapping = houseLook.toneMapping;
   renderer.info.autoReset = false;
   scene.fog = new THREE.Fog(0x3a1a10, 80, 1100);
   const many = tier === 'high' ? 1 : tier === 'mid' ? 0.6 : 0.35;
@@ -107,6 +114,9 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   scene.add(sky.dome);
 
   const kit = createDoomKit(renderer);
+  // the site's core kit of surfaces on its stone, wood, bark, plaster and
+  // iron (lib/three/core), by their names
+  dress(kit.mats ?? {}, rolesFor(kit.mats ?? {}), { strength: 0.3, normal: 0.6, keep: true });
   const mats = kit.mats ?? {};
   const world = new THREE.Group();
   const naur = new THREE.Group();
@@ -210,6 +220,8 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   world.add(column);
   const slaver = kit.orc(7, { slaver: true });
   world.add(slaver.group);
+  // on the cast once its model's here (../../cast3d.js): an orc, as tall as this one
+  upgrade(slaver, 'orc', { hide: [...slaver.group.children], top: new THREE.Box3().setFromObject(slaver.group).getSize(V()).y * 0.95, seed: 7 });
 
   // the eagles
   const gwaihir = kit.eagle();
@@ -303,6 +315,8 @@ export function createDoomWorld(canvas, { onLost } = {}) {
     if (f.arms?.[0]) f.arms[0].rotation.x = 0;
     if (f.arms?.[1]) f.arms[1].rotation.x = 0;
     if (f.blob) f.blob.visible = true;
+    // (on the cast: what each does here is set after, frame by frame)
+    castDo(f, { base: null, full: null, upper: null, look: null, crouch: false });
   };
   const faceOf = (dx, dz) => Math.atan2(-dz, dx);
 
@@ -353,7 +367,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
     scene.fog.color.copy(cur.fog);
     scene.fog.near = cur.fogNear;
     scene.fog.far = cur.fogFar;
-    renderer.toneMappingExposure = cur.exposure;
+    lookFrom(houseLook, { sky, sun, hemi, fog: scene.fog, renderer, exposure: cur.exposure });
 
     // everyone hidden, then placed
     frodo.group.visible = false;
@@ -428,7 +442,8 @@ export function createDoomWorld(canvas, { onLost } = {}) {
       slaver.group.position.set(sx, groundHeight(sx, sz), sz);
       slaver.group.rotation.y = -a;
       A.lash = Math.max(0, A.lash - dt * 2);
-      slaver.animate?.(t, { marching: Boolean(marching), lash: A.lash });
+      castDo(slaver, { look: marching ? frodo : null });
+      if (!slaver.cast?.ready) slaver.animate?.(t, { marching: Boolean(marching), lash: A.lash });
     }
 
     // ── Frodo and Sam ──
@@ -447,6 +462,9 @@ export function createDoomWorld(canvas, { onLost } = {}) {
         stand(sam, nx + EDGE.x - 0.25, NAUR.y, NAUR.z, 0);
         sit(sam, true);
         if (sam.arms?.[1]) sam.arms[1].rotation.x = -0.6 - g.arm * 1.4;
+        // on the cast: Frodo's arm up for Sam's hand, Sam down on his knees reaching for it
+        castDo(frodo, { upper: 'wave.help', look: sam });
+        castDo(sam, { full: 'kneel.fix', look: frodo });
         lead = sam;
       } else if (s.talking === 'done') {
         // up again, the two of you on the spur
@@ -454,6 +472,9 @@ export function createDoomWorld(canvas, { onLost } = {}) {
         sit(frodo, true);
         stand(sam, nx + EDGE.x - 2, NAUR.y, NAUR.z - 0.2, 0.3);
         sit(sam, true);
+        // (on the cast: both watching it go)
+        castDo(frodo, { look: ring.group });
+        castDo(sam, { look: ring.group });
         // the Ring in the fire, melting
         A.ringK = Math.max(0, A.ringK - dt * (line === 'gone' ? 0.12 : 0.6));
         ring.group.visible = A.ringK > 0.02;
@@ -465,7 +486,9 @@ export function createDoomWorld(canvas, { onLost } = {}) {
         stand(frodo, nx + EDGE.x - 0.4, NAUR.y, NAUR.z, gone ? Math.PI : 0);
         frodo.group.visible = !gone;
         stand(sam, nx + 2.5, NAUR.y, NAUR.z, 0);
-        if (s.speaker === 'sam') pose(sam, t, { moving: false, wave: 0.5 });
+        // (on the cast: Sam pleading with his hands, not waving)
+        if (s.speaker === 'sam') pose(sam, t, sam.cast?.ready ? { moving: false, talk: 1 } : { moving: false, wave: 0.5 });
+        castDo(sam, { upper: s.speaker === 'sam' ? 'talk.passion' : null, look: frodo });
         // the Ring in his hand, held out over the fire
         if (!gone) {
           ring.group.visible = true;
@@ -473,6 +496,8 @@ export function createDoomWorld(canvas, { onLost } = {}) {
           ring.group.position.set(nx + EDGE.x + 0.05, NAUR.y + 0.85, NAUR.z + 0.15);
           ring.set?.(0.7 + Math.sin(t * 3) * 0.2);
           if (frodo.arms?.[1]) frodo.arms[1].rotation.x = -1.4;
+          // (on the cast: the Ring held out over the fire, his eyes on it)
+          castDo(frodo, { upper: 'aim.pistol', look: ring.group });
           A.ringK = 1;
         }
         // Gollum, dancing at the edge with it, then gone over
@@ -536,6 +561,9 @@ export function createDoomWorld(canvas, { onLost } = {}) {
         // Frodo on his back
         stand(frodo, p.x - Math.cos(face) * 0.28, p.y + 0.42, p.z + Math.sin(face) * 0.28, face);
         sit(frodo, true);
+        // on the cast: Sam bent under the weight, Frodo's arms over his shoulders
+        castDo(sam, { upper: 'walk.carry' });
+        castDo(frodo, { upper: 'push' });
         if (frodo.blob) frodo.blob.visible = false;
         if (frodo.arms?.[0]) frodo.arms[0].rotation.x = -1.2;
         if (frodo.arms?.[1]) frodo.arms[1].rotation.x = 1.2;
@@ -574,6 +602,8 @@ export function createDoomWorld(canvas, { onLost } = {}) {
         gwaihir.animate?.(t, { flap: 0.8, glide: 0.2, reach: 1 });
         stand(frodo, p.x, p.y - 3.1, p.z, Math.atan2(-FLY_DIR.z, FLY_DIR.x));
         if (frodo.blob) frodo.blob.visible = false;
+        // (on the cast: carried, limp, in the talons)
+        castDo(frodo, { base: 'sleep' });
         const q = flyAt(Math.max(0, fs - 10), lat + 7, tmp2);
         landroval.group.visible = true;
         landroval.group.position.copy(q).add(V(0, 2 + Math.sin(t * 1.3 + 1) * 0.6, 0));
@@ -581,6 +611,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
         landroval.animate?.(t + 1, { flap: 0.85, glide: 0.2, reach: 1 });
         stand(sam, q.x, q.y - 1.1, q.z, Math.atan2(-FLY_DIR.z, FLY_DIR.x));
         if (sam.blob) sam.blob.visible = false;
+        castDo(sam, { base: 'sleep' });
         // the fountains of fire ahead
         for (const b of BURSTS) {
           const ahead = b.s - fs;
@@ -599,7 +630,10 @@ export function createDoomWorld(canvas, { onLost } = {}) {
       // at the foot, Frodo down
       stand(frodo, FOOT.x, groundHeight(FOOT.x, FOOT.z), FOOT.z, 0);
       sit(frodo, true);
-      frodo.group.rotation.z = 0.9;
+      // (on the cast: down on his back by his own pose, then up to sitting as he remembers; a toy is tipped)
+      const cast = frodo.cast?.ready;
+      frodo.group.rotation.z = cast ? 0 : 0.9;
+      castDo(frodo, { base: s.mode === 'remember' && A.shire > 0.5 ? 'sit' : 'lie', look: sam });
       // (Sam a step off, so the two of them read apart)
       stand(sam, FOOT.x - 1.5, groundHeight(FOOT.x - 1.5, FOOT.z + 1.1), FOOT.z + 1.1, -0.7);
       sit(sam, true);
@@ -611,7 +645,8 @@ export function createDoomWorld(canvas, { onLost } = {}) {
         lights.unshift([V(FOOT.x - 0.4, groundHeight(FOOT.x, FOOT.z) + 1.2, FOOT.z + 0.6), shireCol, 1.5 + A.shire * 9 + Math.sin(t * 2) * 0.3, 6 + A.shire * 6]);
         pose(sam, t, { moving: false, talk: s.speaker === 'sam' ? 1 : 0 });
         sit(sam, true); // (pose straightens the legs; he stays sitting)
-        frodo.group.rotation.z = 0.9 - A.shire * 0.5;
+        castDo(sam, { look: frodo });
+        frodo.group.rotation.z = cast ? 0 : 0.9 - A.shire * 0.5;
       }
     } else if (s.talking === 'column' || s.talking === 'halt' || (s.mode === 'walk' && !s.search && s.next === 'column')) {
       // by the road, the column behind
@@ -636,7 +671,9 @@ export function createDoomWorld(canvas, { onLost } = {}) {
       const y = zone === 'slope' && !s.search ? roadAt(0.82, tmp3).y : groundHeight(x, z);
       stand(frodo, x, y, z, face);
       pose(frodo, t, { moving: h.speed > 0.3, speed: h.running ? 1.45 : 1 });
-      if (s.hidden) frodo.group.position.y -= 0.25;
+      // (on the cast he crouches by bending his knees; a toy is sunk)
+      if (s.hidden && !frodo.cast?.ready) frodo.group.position.y -= 0.25;
+      castDo(frodo, { crouch: Boolean(s.hidden) });
       // Sam at your heels
       const sx = x - Math.cos(face) * 1.3 + Math.sin(face) * 0.5;
       const sz = z + Math.sin(face) * 1.3 + Math.cos(face) * 0.5;
@@ -772,6 +809,8 @@ export function createDoomWorld(canvas, { onLost } = {}) {
     const seen = s.search?.seen ?? 0;
     stage.grade({ saturation: 0.95 - seen * 0.4, contrast: 0.12 + seen * 0.15, vignette: 0.3 + seen * 0.4, grain: 0.02, shadow: [0.03, 0.01, 0.0], high: [0.06 + seen * 0.1, 0.02, 0] });
     for (const g of grounds) g.update();
+    // the people on the cast (../../cast3d.js), drawn for this frame
+    tickCast(scene, camera, dt);
     renderer.info.reset();
     stage.render(ms / fast);
   };
@@ -779,11 +818,17 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   const fxEvent = (type) => {
     if (type === 'lash') {
       A.lash = 1;
+      castPlay(slaver, 'cross', { layer: 'upper', fade: 0.06 });
       A.shake = Math.max(A.shake, 0.1);
     } else if (type === 'found') A.shake = 0.3;
     else if (type === 'tremor') A.shake = Math.max(A.shake, 0.3);
-    else if (type === 'stumble') A.shake = Math.max(A.shake, 0.2);
-    else if (type === 'caught') A.shake = 0.15;
+    else if (type === 'stumble') {
+      A.shake = Math.max(A.shake, 0.2);
+      castPlay(sam, 'hit.waist', { layer: 'upper', fade: 0.08 }); // (on the cast: he staggers under Frodo)
+    } else if (type === 'caught') {
+      A.shake = 0.15;
+      castPlay(frodo, 'scared', { layer: 'upper' });
+    }
     else if (type === 'erupt') A.shake = 0.5;
     else if (type === 'recall') fx.pop(tmp2.copy(frodo.group.position).add(V(-0.3, 1.1, 0.3)), 'gold', 10, 0.6);
     else if (type === 'hit') {
@@ -796,6 +841,8 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   const grounds = [
     groundTown({ renderer, scene, terrain: plainLand, outdoors: world, sun, height: null, people: movers, skip: [sky.dome, ghosts.group], tier, radius: null, shade: 0x2a1a14, clip: true }),
   ];
+  // (last, over the floor light's own tints: one shadow colour everywhere)
+  houseLook.adopt(scene);
 
   return {
     ground: import.meta.env.DEV ? grounds[0] : null, // for the QA scripts
@@ -818,6 +865,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
       for (const g of grounds) g.dispose();
       ghosts.dispose();
       disposeTree(scene);
+      releaseCast(scene);
       stage.dispose();
     },
   };

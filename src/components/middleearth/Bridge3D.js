@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createStage, hot } from '../../lib/stage3d';
+import { houseOn } from '../../lib/three/house';
 import { fbm, makeNoise, mix } from '../../lib/paint';
 import { DUEL } from './duel';
 import { EMBER, FIRE, LIGHT, SMOKE, createParticles, lavaMaterial, makeBalrog, makeGandalf, skyDome, stoneTextures } from './kit';
@@ -98,7 +99,8 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
   stage.grade({ contrast: 0.2, saturation: 1.08, vignette: 0.42, shadow: [0.01, 0.004, 0], high: [0.03, 0.012, 0] });
 
   // ── the light: fire from below, a cold key from above, the two figures' own ──
-  scene.add(new THREE.HemisphereLight(0x2a3550, 0xff6a22, 0.5));
+  const hemi = new THREE.HemisphereLight(0x2a3550, 0xff6a22, 0.5);
+  scene.add(hemi);
   const under = new THREE.DirectionalLight(0xff6a22, 0.7);
   under.position.set(3, -30, 16);
   scene.add(under);
@@ -368,6 +370,11 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
     } else if (name === 'miss') A.glow = Math.max(A.glow, 0.3);
   };
 
+  // the house look (lib/three/house), as in Middle-earth's towns: the house
+  // tone mapper, the shade one colour from the cold light from above; its own fog kept
+  const house = houseOn({ renderer, scene, sun: key, hemi, look: { fog: false } });
+  let houseFrames = 0;
+
   const render = (ms = 16) => {
     const dt = Math.min(0.05, ms / 1000);
     A.t += dt;
@@ -410,14 +417,14 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
       }
     }
     B.position.set(bx, by, 0);
-    const stride = bx * 1.25;
     const flail = A.fall > 0.35 ? 0.5 + 0.5 * Math.sin(t * 9) : 0;
-    balrog.animate({ t, stride, moving: A.moving, spread: A.spread, raise: Math.max(A.raise, flail), lash: A.lashPose, roar: Math.max(A.roar, flail * 0.6), flare: A.flare });
+    // (its walk is its own: read from where it's put, ./kit.js)
+    balrog.animate({ t, spread: A.spread, raise: Math.max(A.raise, flail), lash: A.lashPose, roar: Math.max(A.roar, flail * 0.6), flare: A.flare });
     B.updateMatrixWorld(true);
     balrog.hand.getWorldPosition(hand);
     if (B.visible) {
-      // each footfall
-      const step = Math.floor(stride / Math.PI + 0.5);
+      // each footfall, as a foot comes down
+      const step = balrog.steps ?? 0;
       if (step !== A.step) {
         A.step = step;
         if (A.moving > 0.5) {
@@ -561,6 +568,8 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
     }
     camera.lookAt(cam.x, ty, 0);
 
+    // (what's come in since, taken on now and then)
+    house.follow({ adopt: houseFrames++ % 60 === 0 });
     stage.render(ms);
   };
 
