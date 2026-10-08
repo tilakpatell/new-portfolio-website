@@ -486,6 +486,7 @@ export function createKit({ seed = 11, scans = true, wind: blow = null, load = l
   // metalness kept: no picture of them goes on); on a moving thing's twin,
   // by its UVs with the scan's roughness and metal.
   let dead = false;
+  let kept = false; // (keep(): the stand-ins stay, whatever comes)
   const wearOn = (m, scan) => {
     const look = LOOKS[m.userData.role];
     const size = scanOf(m.userData.role);
@@ -512,7 +513,7 @@ export function createKit({ seed = 11, scans = true, wind: blow = null, load = l
   const roles = Object.keys(LOOKS).filter((role) => SCANS[role]);
   const ready = scans
     ? Promise.all(roles.map((role) => load(role).then((scan) => [role, scan]))).then((list) => {
-        if (dead) return;
+        if (dead || kept) return;
         const by = Object.fromEntries(list);
         for (const m of owned) if (m.isMeshStandardMaterial && m.userData.role) (m.userData.twin ? dress : wearOn)(m, by[m.userData.role]);
       })
@@ -564,6 +565,12 @@ export function createKit({ seed = 11, scans = true, wind: blow = null, load = l
         group.add(mesh);
       }
       return group;
+    },
+    // the stand-ins kept: scans that come from now on aren't worn (on a
+    // world already shown, every material in it would go into another
+    // shader at once; the next kit has them from the page's)
+    keep() {
+      kept = true;
     },
     dispose() {
       dead = true;

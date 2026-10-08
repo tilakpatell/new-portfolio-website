@@ -88,7 +88,7 @@ import { biomeAt, fromLatLon, latLonOf, readableMap, sampleMap, towardLand, uvOf
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
 import { furnish, furnished, prefetch as prefetchLanding, within } from './landings/furnish';
-import { createLamps } from './landings/lamps';
+import { LAMPS, createLamps } from './landings/lamps';
 import { createLandingPhysics } from './landings/physics';
 import { bodyOf } from './landings/bodies';
 import { preload as preloadPhysics } from '../../lib/physics/world';
@@ -1514,8 +1514,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   }
   // and, for the same reason, the lights of a landing's things (a portal's
   // glow, music's lamps, Mordor's fires) shown through a few kept in the
-  // map from the start, dark but for the ones nearest you (landings/lamps.js)
-  const lamps = createLamps(map);
+  // map from the start, dark but for the ones nearest you (landings/lamps.js).
+  // Every lit shader on the map pays for them, all the time: a phone keeps
+  // one, the nearest
+  const lamps = createLamps(map, { n: small ? 1 : LAMPS });
   const lampAt = new V();
   const groundN = new V();
   const fx = createGunFx({
@@ -1632,6 +1634,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     band: null, // a trench round its middle: { half (its rim), home, arc, deep (how far down the trench run's rim is) }
     hideBody: 0, // how low the camera's to be for the planet's own model to go (0: it stays)
     bodyShown: true,
+    bodyMask: 1, // (a planet's: the layers its sphere's drawn on, put back as it goes up)
+    bodyAll: false, // (a station's: all of it goes, not just its sphere)
     // the people
     lead: 0, // which of the party you play
     me: null,
@@ -2139,10 +2143,15 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // as before: the frame guard draws them as soon as they're ready.) A
     // thing that's very slow to come (a model on a slow line) isn't waited
     // for past LAND.ready: what's in is shown, and it comes as it may.
+    // (the ground, the sky and the trench's sides readied first, at once,
+    // not after the things: flown in, the ground's hidden till the clouds
+    // part, 2.8 s in, which the things may well not be in by)
     const these = rocks;
     const mine = () => rocks === these;
+    const early = prepare ? Promise.resolve(prepare([ground.mesh, haze?.mesh, sides?.mesh].filter(Boolean), mine)).catch(() => {}) : null;
     within(these.built, LAND.ready * 1000)
-      .then(() => (mine() && prepare ? prepare([ground.mesh, haze?.mesh, these.mesh, sides?.mesh].filter(Boolean), mine) : null))
+      .then(() => early)
+      .then(() => (mine() && prepare ? prepare([these.mesh], mine) : null))
       .catch(() => {})
       .then(() => {
         if (!mine()) return;
@@ -2154,8 +2163,13 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // patch reaches past the horizon: under it, it's only drawn for nothing.
     // On a planet, past it all round wherever you are on the patch, which is
     // laid again once you're 0.3 of its radius from its middle, the camera
-    // a few metres behind you: 0.65 of its radius. A station's as it was.)
+    // a few metres behind you: 0.65 of its radius. A station's as it was.
+    // On a planet only its sphere goes, by its layers, which three tests an
+    // object at a time: what's put on it, the serpents round Snake Planet,
+    // the gaming world's blocks, stays.)
     S.bodyShown = planet.body?.visible ?? true;
+    S.bodyMask = planet.body?.layers.mask ?? 1;
+    S.bodyAll = Boolean(u.plated);
     S.hideBody = u.plated ? (0.8 * HULL_PATCH.radius) ** 2 / (2 * S.R) : (0.65 * PATCH.radius) ** 2 / (2 * S.R);
     root.position.copy(S.c);
     root.visible = true;
@@ -3234,7 +3248,11 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     placeViewGun(dt);
     // the planet's own model: not while the camera's down by the ground
     const body = planetOf[S.id]?.body;
-    if (body && S.hideBody) body.visible = S.bodyShown && S.cam.pos.distanceTo(S.c) - S.R > S.hideBody;
+    if (body && S.hideBody) {
+      const up = S.cam.pos.distanceTo(S.c) - S.R > S.hideBody;
+      if (S.bodyAll) body.visible = S.bodyShown && up;
+      else body.layers.mask = up ? S.bodyMask : 0;
+    }
     // the air: round the camera, by day
     if (haze) {
       haze.mesh.position.copy(S.cam.pos).sub(S.c);
@@ -3274,6 +3292,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     prefetch(id, kind) {
       const u = byId(id);
       if (!u || u.kind === 'core' || u.portal) return;
+      // (not on a phone, nor saving data: there it's fetched as it lands,
+      // as it always was)
+      if (!bodiesHere()) return;
       const landing = u.plated ? null : landingOf(id);
       if (landing && furnished(id)) {
         prefetchLanding(id, landing, { renderer });
@@ -3508,7 +3529,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.entry = null;
       S.sky = 1;
       reentry.stop();
-      if (planet?.body && S.hideBody) planet.body.visible = S.bodyShown;
+      if (planet?.body && S.hideBody) {
+        if (S.bodyAll) planet.body.visible = S.bodyShown;
+        else planet.body.layers.mask = S.bodyMask;
+      }
       S.hideBody = 0;
       S.band = null;
       for (const p of party ?? []) {

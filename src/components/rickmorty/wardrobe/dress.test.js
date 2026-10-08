@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { BODIES, EVERYONE, SWATCHES, swatchById } from './looks';
-import { KEYS, MAX_REGIONS, addZones, dressColors, recolor, regionUniforms, zoneOf } from './dress';
+import { KEYS, MAX_REGIONS, addZones, cloneShaded, dressColors, recolor, regionUniforms, zoneOf } from './dress';
 
 describe('zones', () => {
   it('sorts the Meshy skeleton’s bones into head, torso and arms, legs and feet', () => {
@@ -150,5 +150,19 @@ describe('a dressed figure', () => {
     expect(s.fragmentShader).toContain('rgOn');
     expect(s.uniforms.rimColor).toBeDefined();
     expect(mesh.material.customProgramCacheKey()).toContain('rim');
+  });
+});
+
+describe('a material copied with its shaders', () => {
+  it('keeps the marks of what’s in them, so they aren’t put in twice', () => {
+    const m = new THREE.MeshStandardMaterial();
+    const house = { uLook: { value: 1 } };
+    Object.defineProperty(m.userData, 'house', { value: house, enumerable: false, configurable: true });
+    m.onBeforeCompile = () => {};
+    const copy = cloneShaded(m);
+    expect(copy.onBeforeCompile).toBe(m.onBeforeCompile);
+    expect(copy.userData.house).toBe(house);
+    expect(Object.keys(copy.userData)).not.toContain('house');
+    expect(cloneShaded(new THREE.MeshStandardMaterial()).userData.house).toBeUndefined();
   });
 });

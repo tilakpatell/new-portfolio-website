@@ -42,6 +42,19 @@ describe('the kit', () => {
     kit.dispose();
   });
 
+  it('keeps its stand-ins, kept, when the scans come after', async () => {
+    const tex = new THREE.Texture();
+    const coming = [];
+    const kit = createKit({ seed: 1, load: () => new Promise((resolve) => coming.push(() => resolve({ map: tex, normalMap: tex }))) });
+    const map = kit.mats.stone.map;
+    kit.keep();
+    for (const arrive of coming) arrive();
+    await kit.ready;
+    expect(kit.mats.stone.map).toBe(map);
+    expect(kit.mats.stone.userData.core).toBeUndefined();
+    kit.dispose();
+  });
+
   it('gives a moving thing twins dressed by their own UVs, so the grain goes with it', async () => {
     const tex = new THREE.Texture();
     const kit = createKit({ seed: 1, load: () => Promise.resolve({ map: tex, normalMap: tex }) });

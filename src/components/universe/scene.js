@@ -219,6 +219,7 @@ const PLUME = {
 const IDLE = 40000; // ms sitting still before the crew get bored
 const PARTS_CHANGED = (a, b) => PARTS_SLOTS.some((slot) => a[slot] !== b[slot]);
 const SAFE = 3; // seconds after coming back when other pilots' shots don't count
+const PREFETCH_AFTER = 2.5; // seconds at a planet you could land on before what landing there wants is fetched (not as you fly past)
 // the cockpit view: the intro's cockpits, built on demand; the eye sits a
 // little ahead of the ship's middle and above it (map units); the lens is
 // the intro's, framed for a wide horizontal view, kept within sane vertical limits
@@ -1103,6 +1104,7 @@ export async function create(canvas, ctx) {
     pullSaid: false,
     camFrom: null, // { pos, quat, start, dur }: the camera easing over from where it was (onto your feet, or back behind the ship)
     landable: null, // the planet you could land on and step out onto, where you are
+    landableFor: 0, // (how long it's been that: seconds)
   };
   const t0 = performance.now();
   let engine = null;
@@ -4747,9 +4749,15 @@ export async function create(canvas, ctx) {
     const landable = flying() && !onFoot() && !state.crash && !state.dive && state.at && byId(state.at)?.kind !== 'core' && !byId(state.at)?.portal ? state.at : null; // (not a station, nor the gate into the galaxy)
     if (landable !== state.landable) {
       state.landable = landable;
+      state.landableFor = 0;
       emit({ type: 'landable', id: landable });
-      // (and what coming down there will want, fetched while you're still flying)
-      if (landable) foot.prefetch(landable, state.kind);
+    }
+    // (and what coming down there will want, fetched while you're still
+    // flying: once you've stayed a moment, not as you fly past)
+    if (landable) {
+      const was = state.landableFor;
+      state.landableFor += dt;
+      if (was < PREFETCH_AFTER && state.landableFor >= PREFETCH_AFTER) foot.prefetch(landable, state.kind);
     }
     placeAlt();
     map.rotation.y = state.yaw;

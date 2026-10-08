@@ -463,8 +463,15 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
 
   // (the planet's builders, and the kit's scans on before anything's made
   // of it: a shader made before they're on is made again once they are)
+  // Scans that aren't in by then aren't worn here at all: they'd come once
+  // the landing's readied, maybe shown, and put everything made of the kit
+  // into another shader together (lib/three/frameGuard holds each back
+  // till it's readied again: the place would blink out)
+  let worn = false;
+  kit.ready.then(() => (worn = true)).catch(() => {});
   const ready = Promise.all([PLANETS[id]?.() ?? Promise.resolve({}), within(kit.ready, KIT_WAIT)])
     .then(async ([planet]) => {
+      if (!worn) kit.keep?.();
       if (dead) return;
       planet.prepare?.(kit);
       // (every thing, on any device: they're few, and the landmarks are the

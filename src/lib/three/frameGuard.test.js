@@ -173,6 +173,19 @@ describe('frameGuard', () => {
     expect(r.compiled).toEqual([m]);
   });
 
+  it('lets go of a material freed while it was being readied', async () => {
+    const { r, g, scene } = setup({ linkAfter: 50 });
+    const m = new THREE.MeshStandardMaterial();
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), m);
+    scene.add(mesh);
+    await frames(r, scene);
+    expect(g.pending()).toBeGreaterThan(0);
+    scene.remove(mesh);
+    m.dispose();
+    await frames(r, scene, 2);
+    expect(g.pending()).toBe(0);
+  });
+
   it("keeps drawing a ready material marked changed in a way its shader doesn't care about", async () => {
     const { r, scene } = setup();
     const m = new THREE.MeshStandardMaterial();

@@ -132,18 +132,26 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
     state.delete(m);
     shapes.delete(m);
     pictures.delete(m);
+    // (and one freed mid-way leaves the work too: its program gone, it'd
+    // never be seen to link, and a fence would be set every frame for it)
+    queue.delete(m);
+    linking.delete(m);
   };
-  const ready = (m) => {
+  const watch = (m) => {
     if (!watched.has(m) && m.addEventListener) {
       watched.add(m);
       m.addEventListener('dispose', forget);
     }
+  };
+  const ready = (m) => {
+    watch(m);
     state.set(m, READY);
     shapes.set(m, shapeOf(m));
     queue.delete(m);
     linking.delete(m);
   };
   const hold = (m, object) => {
+    watch(m);
     state.set(m, QUEUED);
     queue.set(m, object);
   };
