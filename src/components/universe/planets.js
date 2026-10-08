@@ -47,7 +47,7 @@ export { celShade, ditherShade, styleFor, variants } from './planetShading';
 
 // ── Textures ── (planetMaps.js: the maps, their files, and what a planet wears near)
 
-export { MAP_NAMES, loadTextures, mapFile, mapsOf, nearSet } from './planetMaps';
+export { MAP_NAMES, farFile, loadTextures, mapFile, mapsOf, nearSet } from './planetMaps';
 
 // ── Shared pieces ──
 

@@ -34,6 +34,7 @@ import sharp from 'sharp';
 import { existsSync, statSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { SKY_TURN } from '../src/components/universe/starCatalog.js';
+import { encodeImage } from './ktx2.mjs';
 
 const DIR = 'public/textures/universe';
 const SOURCE_URL = 'https://cdn.eso.org/images/original/eso0932a.tif';
@@ -42,6 +43,10 @@ const OUT = [
   { file: `${DIR}/sky-glow.webp`, width: 4096 },
   { file: `${DIR}/sky-glow-sm.webp`, width: 2048 },
 ];
+// and on a strong card the photo's own 6000, as KTX2 (UASTC, mipmapped: it
+// stays compressed on the chip, 24 MB against the 4096 WebP's 43 MB raw;
+// planetMaps.js's `far`)
+const XL = `${DIR}/sky-glow-xl.ktx2`;
 const GAIN = 0.78; // the band's light, as bright as the scene is lit for
 const PIVOT = 0.03; // and its contrast, about the band's own light: the faint
 const CONTRAST = 0.25; // halo and the lanes darker, the star clouds brighter
@@ -204,4 +209,14 @@ for (const { file, width } of OUT) {
     .webp({ quality: 97, smartSubsample: true, effort: 6, preset: 'photo' })
     .toFile(file);
   console.log(`${file}: ${width}x${width / 2}, ${Math.round(statSync(file).size / 1024)} KB`);
+}
+{
+  const png = await sharp(out, { raw: { width: W, height: H, channels: 3 } })
+    .toColourspace('srgb')
+    .png()
+    .toBuffer();
+  // (flipped: a KTX2 isn't turned as it's uploaded, as a WebP is)
+  const { ktx2 } = await encodeImage(png, { role: 'color', flipY: true });
+  await writeFile(XL, ktx2);
+  console.log(`${XL}: ${W}x${H}, ${Math.round(ktx2.length / 1024)} KB`);
 }

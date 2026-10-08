@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { MAP_NAMES, mapFile } from './planets';
+import { MAP_NAMES, farFile, mapFile } from './planets';
 
 describe('the planet maps by detail level', () => {
   it('gives a strong card the -hq set, a desktop the standard file, and a phone or a weak device the -sm half', () => {
@@ -14,10 +14,16 @@ describe('the planet maps by detail level', () => {
   it('gives a strong card the standard file for a map that has no -hq', () => {
     expect(mapFile('transformers', 'ultra')).toBe('transformers.webp');
     expect(mapFile('invincible-night', 'ultra')).toBe('invincible-night.webp');
-    // (the sky's glow has nothing finer to give: skyShader.js draws the detail)
-    expect(mapFile('sky-glow', 'ultra')).toBe('sky-glow.webp');
+    expect(mapFile('sky-glow', 'ultra', { xl: false })).toBe('sky-glow.webp');
     expect(mapFile('sky-glow', 'mid')).toBe('sky-glow-sm.webp');
     expect(mapFile('transformers', 'mid')).toBe('transformers-sm.webp');
+  });
+  it('gives a strong card the sky at the photo’s own 6000, compressed; everything else as far as it was', () => {
+    expect(farFile('sky-glow', 'ultra')).toBe('sky-glow-xl.ktx2');
+    expect(farFile('sky-glow', 'high')).toBe('sky-glow.webp');
+    expect(farFile('sky-glow', 'mid')).toBe('sky-glow-sm.webp');
+    // (a planet's -xl is only ever worn near, nearMaps.js)
+    expect(farFile('middleearth', 'ultra')).toBe('middleearth-hq.webp');
   });
   it('is the standard file when no level is given', () => {
     expect(mapFile('marvel')).toBe('marvel.webp');

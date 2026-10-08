@@ -2,7 +2,7 @@
 // The universe map measured at fixed poses (src/components/universe/poses.js),
 // so a visual change has a before and an after of the same pictures:
 //
-//   node scripts/universe-check.mjs [--quality high|mid|low|all] [--poses a,b]
+//   node scripts/universe-check.mjs [--quality ultra|high|mid|low|all] [--poses a,b]
 //     [--out lab/universe/<tier>] [--baseline] [--url http://127.0.0.1:5173] [--chromium /path]
 //     [--frames 20] (how many frames are timed: fewer in a container that draws in software, where a frame takes seconds)
 //     [--near off] (without the planets' near maps and finer spheres, nearMaps.js: what they cost, measured on one tree)
@@ -29,7 +29,7 @@ import sharp from 'sharp';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const POSES = ['overview', 'falcon-sun', 'middleearth-limb', 'rickmorty', 'gaming', 'caribbean', 'middleearth', 'breakingbad', 'office', 'belt', 'maw', 'landing-middleearth', 'station', 'far-rim', 'lane-ride'];
-const TIERS = ['high', 'mid', 'low'];
+const TIERS = ['high', 'mid', 'low']; // ('all'; ultra, the high tier on a strong card, only when named)
 
 const args = {};
 const argv = process.argv.slice(2);
@@ -44,7 +44,7 @@ const list = (s) => (typeof s === 'string' ? s.split(',').map((x) => x.trim()).f
 const tiers = !args.quality || args.quality === 'all' ? TIERS : list(args.quality);
 const poses = list(args.poses).length ? list(args.poses) : POSES;
 const FRAMES = Math.max(3, Number(args.frames) || 20);
-for (const t of tiers) if (!TIERS.includes(t)) throw new Error(`no tier ${t} (high, mid, low or all)`);
+for (const t of tiers) if (![...TIERS, 'ultra'].includes(t)) throw new Error(`no tier ${t} (ultra, high, mid, low or all)`);
 for (const p of poses) if (!POSES.includes(p)) throw new Error(`no pose ${p} (${POSES.join(', ')})`);
 const outFor = (tier) => (args.baseline ? join(ROOT, 'lab/universe/baseline', tier) : args.out && tiers.length === 1 ? join(ROOT, args.out) : join(ROOT, 'lab/universe', tier));
 

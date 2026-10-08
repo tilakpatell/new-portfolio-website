@@ -24,8 +24,10 @@ const BASE = '/textures/universe/';
 // Invincible's by their own scripts (Invincible's relief with an -hq;
 // Cybertron's is 2048 on high and up, 1024 below).
 // The universe map's own sky is 'sky-glow', the Milky Way's light only,
-// baked from the 8K sky by scripts/bake-universe-sky.mjs (skyShader.js
-// draws its stars); 'sky' itself, with its stars, is the Earth's.
+// baked from ESO's photograph by scripts/bake-universe-sky.mjs (starField.js
+// draws its stars), and the one map whose -xl (the photo's own 6000, KTX2)
+// is worn far as well as near (`far`: it's always the whole sky); 'sky'
+// itself, with its stars, is the Earth's.
 const map = (names, opts) => names.map((n) => [n, opts]);
 const MAPS = Object.fromEntries([
   ...map(['music', 'middleearth', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty'], { sm: true, hq: true, xl: true, colour: true }),
@@ -33,7 +35,8 @@ const MAPS = Object.fromEntries([
   ...map(['middleearth-normal', 'office-normal', 'breakingbad-normal', 'caribbean-clouds', 'earth-clouds'], { sm: true, hq: true, colour: false }),
   ...map(['caribbean-normal', 'invincible-normal'], { sm: false, hq: true, colour: false }),
   ...map(['transformers-normal'], { sm: true, hq: false, colour: false }),
-  ...map(['middleearth-night', 'breakingbad-night', 'transformers', 'invincible', 'invincible-night', 'sky-glow'], { sm: true, hq: false, colour: true }),
+  ...map(['middleearth-night', 'breakingbad-night', 'transformers', 'invincible', 'invincible-night'], { sm: true, hq: false, colour: true }),
+  ...map(['sky-glow'], { sm: true, hq: false, xl: true, far: true, colour: true }),
   ...map(['breakingbad-clouds', 'invincible-clouds'], { sm: true, hq: false, colour: false }),
   ...map(['middleearth-glow', 'caribbean-night', 'rickmorty-glow', 'invincible-glow', 'plates', 'hull'], { sm: false, hq: false, colour: true }),
   ...map(['plates-normal', 'plates-rough', 'hull-normal', 'hull-rough', 'paper-normal', 'transformers-glow-sm', 'middleearth-rough', 'office-rough', 'breakingbad-rough', 'caribbean-rough', 'earth-rough', 'rickmorty-rough', 'invincible-rough'], { sm: false, hq: false, colour: false }),
@@ -60,6 +63,10 @@ export function mapFile(name, level = 'high', { xl: big = true } = {}) {
 // each): the list is empty until they're baked on the owner's machine and
 // published with the site, and nothing asks for one that isn't listed.
 export const K8 = new Set(K8_BAKED);
+
+// The file a map is worn far at: its -xl too on a strong card if it's `far`
+// (the sky), else as mapFile has it without (a planet's -xl is worn near only)
+export const farFile = (name, level) => mapFile(name, level, { xl: Boolean(MAPS[name]?.far) });
 
 // A planet's own maps: those named for it ('middleearth', 'middleearth-normal'…;
 // Earth's world is 'travel', its maps 'earth').
@@ -108,7 +115,7 @@ export async function loadTextures({ small = false, level = small ? 'mid' : deta
   };
   await Promise.all(
     Object.entries(MAPS).map(([name, { colour }]) => {
-      const file = mapFile(name, level, { xl: false });
+      const file = farFile(name, level);
       const standard = mapFile(name, 'high');
       return get(name, file, colour, file !== standard ? standard : null);
     }),
