@@ -4,15 +4,25 @@
 // progress is how much of that hold is gone, and an attacked system's is how
 // much is left.
 //
-// progressOf(row) → 0..1; standing(row, now) → a line; heldColour(side);
+// progressOf(row) → 0..1; standing(row, now) → a line; systemLabel(row, now,
+// you) → its button's words on the holotable; heldColour(side);
+// whose(side, the = 'The') → 'The Rebellion’s', 'the Separatists’';
 // areaLines(areas, side) → [{ id, name, text, yours }]; recordLine(side,
 // record) → your rank and record (warState.js's mine) | null; oathOf(war,
 // current, suggested) → the war's two sides for the oath's buttons;
 // battleLine(row, now, side) → a system's battle, its kind for your part in it.
+// And the war's news, from the table (gcw.js's warTable): ago(ms); newsLine(e)
+// → one of its events; eventLine(e, now) → and when; feedOf(events, n) → the
+// newest few, newest first; strengthLine(table, side) | null; phaseLine(table,
+// now); campaignLine(table, now) → its phase and its end; soon(ms);
+// nextOpLine(table, now) → the next offensive | null; orderLine(order, now) |
+// null; resultLine(table) → the campaign's result (or the last's) | null;
+// partLine(record) → your part in it (warState.js's mine) | null.
 
 import { BATTLE_KINDS } from './battles';
 import { rankOf } from './ranks';
 import { AREAS, SIDES, WARS } from './sides';
+import { systemById } from './systems';
 
 // how long, as the war table says it: 4:05, 1h 12m, 2d 3h
 export const span = (ms) => {
@@ -26,20 +36,32 @@ const rateOf = (r) => `${r > 0 ? '+' : r < 0 ? '−' : '±'}${Math.abs(r).toFixe
 
 export const progressOf = (row) => (row.attack ? row.control : 1 - row.control);
 
+// a side's verb, for one or many (the Separatists and the Hutts are many: the
+// names that end in an s); and whose, theirs with the ’ alone
+const does = (side, one, many) => (SIDES[side].short.endsWith('s') ? many : one);
+const own = (name) => (name.endsWith('s') ? `${name}’` : `${name}’s`);
+export const whose = (side, the = 'The') => own(`${the} ${SIDES[side].short}`);
+
 export function standing(row, now) {
   if (row.attack) {
-    const by = row.attack.by === 'hutt' ? 'The Hutts raid' : `The ${SIDES[row.attack.by].short} attacks`;
+    const by = row.attack.by === 'hutt' ? 'The Hutts raid' : `The ${SIDES[row.attack.by].short} ${does(row.attack.by, 'attacks', 'attack')}`;
     return `${by}: ${pctOf(row.control)} held, ${span(row.attack.until - now)} to hold out`;
   }
-  if (row.front) return `${pctOf(progressOf(row))} liberated · ${rateOf(row.rate)}`;
-  if (row.owner === 'hutt') return 'Hutt space';
-  return `Held by the ${SIDES[row.owner].short}`;
+  // whose it is (and cut off from its supply lines: it holds less well, and doesn't mend)
+  const held = `${row.owner === 'hutt' ? 'Hutt space' : `Held by the ${SIDES[row.owner].short}`}${row.cut ? ', cut off from supply' : ''}`;
+  if (row.front) return `${held} · ${pctOf(progressOf(row))} liberated · ${rateOf(row.effRate ?? row.rate)}`;
+  return held;
 }
+
+// a system's button on the holotable, in words: all its marks on the map say
+// (the drawing's only a picture of this)
+export const systemLabel = (row, now, you) =>
+  `${row.name}: ${standing(row, now)}${row.major ? ', the major order' : ''}${row.decisive ? ', the decisive battle' : ''}${row.battle?.fighting ? ', a battle on' : ''}${you ? ', you fought here' : ''}`;
 
 export const heldColour = (side) => SIDES[side]?.colour;
 
-const theSide = (side) => (side === 'hutt' ? 'Hutt space' : `The ${SIDES[side].short}’s`);
-const ofThe = (side) => (side === 'hutt' ? 'the Hutts’' : `the ${SIDES[side].short}’s`);
+const theSide = (side) => (side === 'hutt' ? 'Hutt space' : whose(side));
+const ofThe = (side) => whose(side, 'the');
 
 export function areaLines(areas, side) {
   return AREAS.filter((a) => areas[a.id]).map((a) => {
@@ -68,4 +90,92 @@ export function battleLine(row, now, side) {
   const role = side && side === b.attacker ? 'attack' : side && side === b.defender ? 'defend' : null;
   if (!b.fighting) return `${kind.name}: regrouping, the next in ${span(b.end - now)}`;
   return `${role ? kind.text[role] : kind.name} · ${span(b.fightEnd - now)} left`;
+}
+
+// ── The war's news ──
+
+const nameOf = (id) => systemById(id)?.name ?? id;
+const The = (side) => (side === 'hutt' ? 'The Hutts' : `The ${SIDES[side].short}`);
+const the = (side) => (side === 'hutt' ? 'the Hutts' : `the ${SIDES[side].short}`);
+const PHASE_NEWS = { Opening: 'The campaign opens', Escalation: 'The war escalates', Decisive: 'The decisive phase', Climax: 'The climax' };
+const PHASE_NEXT = { Escalation: 'escalation', Decisive: 'the decisive phase', Climax: 'the climax' };
+const VERBS = { liberate: 'Liberate', hold: 'Hold', take: 'Take' };
+
+// how long ago, as the news says it: just now, 12m ago, 2h ago, 2d ago
+export function ago(ms) {
+  const m = Math.floor(Math.max(0, ms) / 60e3);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  return h < 48 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
+}
+
+export function newsLine(e) {
+  const from = e.origin ? ` from ${nameOf(e.origin)}` : '';
+  if (e.type === 'captured') return `${nameOf(e.sys)} fell to ${the(e.by)}`;
+  if (e.type === 'capital') return `${nameOf(e.sys)}, ${whose(e.from, 'the')} capital, fell to ${the(e.by)}`;
+  if (e.type === 'attack') return `${The(e.by)} ${e.counter ? does(e.by, 'strikes back at', 'strike back at') : does(e.by, 'attacks', 'attack')} ${nameOf(e.sys)}${from}`;
+  if (e.type === 'raid') return `${The(e.by)} raid ${nameOf(e.sys)}${from}`;
+  if (e.type === 'repelled') return `${The(e.holder)} held ${nameOf(e.sys)}`;
+  if (e.type === 'area') return `${The(e.by)} ${does(e.by, 'holds', 'hold')} all of ${AREAS.find((a) => a.id === e.area)?.name.replace(/^The /, 'the ') ?? e.area}`;
+  if (e.type === 'lastStand') return `${whose(e.by)} last stand, at ${nameOf(e.sys)}`;
+  if (e.type === 'phase') return e.phase === 'Climax' && e.sys ? `The climax: the decisive battle, at ${nameOf(e.sys)}` : (PHASE_NEWS[e.phase] ?? e.phase);
+  return e.type;
+}
+export const eventLine = (e, now) => `${newsLine(e)} · ${ago(now - e.at)}`;
+
+// the newest few things that happened, newest first (a capital's fall is told
+// once, as a capital's: gcw.js tells it as a capture too)
+export function feedOf(events, n = 6) {
+  const list = events ?? [];
+  const capitals = new Set(list.filter((e) => e.type === 'capital').map((e) => `${e.k}:${e.sys}`));
+  return list
+    .filter((e) => !(e.type === 'captured' && capitals.has(`${e.k}:${e.sys}`)))
+    .slice(-n)
+    .reverse();
+}
+
+export function strengthLine(table, side) {
+  const r = table.strength?.[side];
+  if (!r) return null;
+  const trend = r.trend6h > 0 ? ` · ▲${r.trend6h} in 6h` : r.trend6h < 0 ? ` · ▼${-r.trend6h} in 6h` : '';
+  return `${r.systems} ${r.systems === 1 ? 'system' : 'systems'} · ${pctOf(r.share)} of the galaxy’s worth${trend}`;
+}
+
+export const phaseLine = ({ phase }, now) => `${phase.name} · ${phase.next ? `${PHASE_NEXT[phase.next] ?? phase.next} in ${span(phase.until - now)}` : `${span(phase.until - now)} to the end`}`;
+
+export const campaignLine = (table, now) => (table.phase.next ? `${phaseLine(table, now)} · campaign ends in ${span(table.ends - now)}` : phaseLine(table, now));
+
+// how soon, to the minute: under a minute, 47m, 1h 12m, 2d 3h
+export const soon = (ms) => (ms < 60e3 ? 'under a minute' : ms < 3600e3 ? `${Math.ceil(ms / 60e3)}m` : span(ms));
+
+const OFFENSIVE = { republic: 'Republic', separatists: 'Separatist', rebel: 'Rebel', empire: 'Imperial', newrepublic: 'New Republic', remnant: 'Remnant' };
+export function nextOpLine({ nextOp }, now) {
+  if (!nextOp) return null;
+  const what = nextOp.by === 'hutt' ? 'Hutt raid' : `${OFFENSIVE[nextOp.by] ?? SIDES[nextOp.by].short} offensive`;
+  return `Next ${what} ${nextOp.at > now ? `in ${soon(nextOp.at - now)}` : 'any moment'}`;
+}
+
+export const orderLine = (order, now) => (order ? `${VERBS[order.verb] ?? order.verb} ${nameOf(order.sys)} · ${span(order.until - now)} left` : null);
+
+// the campaign's result: who leads in its last step, who won once it's over,
+// or the campaign before's at the start of the next (table.previous, kept in
+// this browser: warState.js)
+export function resultLine(table) {
+  const r = table.result ?? table.previous ?? null;
+  if (!r) return null;
+  const n = (table.result ? table.campaign : r.n) + 1;
+  const decisive = r.decisive ? ` · decisive at ${nameOf(r.decisive)}` : '';
+  if (r.over) return `${The(r.winner)} won campaign ${n} outright: every system theirs${decisive}`;
+  const second = Math.max(...Object.entries(r.vp).filter(([side]) => side !== r.winner).map(([, v]) => v));
+  return `${The(r.winner)} ${r.final ? 'won' : does(r.winner, 'leads', 'lead')} campaign ${n} · ${r.vp[r.winner]}–${second} on victory points${decisive}`;
+}
+
+// your part in the war this campaign: the system you moved most (a share of
+// its hold, warState.js's `moved`), and how many you moved at all
+export function partLine(record) {
+  const moved = (record?.systems ?? []).filter((x) => Math.round((x.moved ?? 0) * 100) > 0).sort((a, b) => b.moved - a.moved);
+  if (!moved.length) return null;
+  const all = moved.length > 1 ? ` · ${moved.length} systems in all` : '';
+  return `You moved ${nameOf(moved[0].id)} ${pctOf(moved[0].moved)} this campaign${all}`;
 }
