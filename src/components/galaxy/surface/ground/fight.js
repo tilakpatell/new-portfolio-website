@@ -14,8 +14,8 @@
 //   visible, seenAt } | null; aimError(s, target, dist, { first, now });
 // fightStep(s, world, dt, rand) → { x, z, yaw, mode, moving, aim, fire,
 //   suppressive, guessed, target }; squadsOf(soldiers, { reach, war }) →
-//   { update(dt), of(id), membersOf(id), postureOf(id), confidenceOf(id),
-//   isFlanker(id) }; suppress(s, now); grudge(s, squads, now).
+//   { update(dt), died(id), of(id), membersOf(id), postureOf(id),
+//   confidenceOf(id), isFlanker(id) }; suppress(s, now); grudge(s, squads, now).
 
 import { belief, createSenses, sense } from '../../../../lib/ai/perception';
 import { confidence, createSquads, frontline, flankers as flankersOf, morale, posture } from '../../../../lib/ai/squad';
@@ -209,6 +209,7 @@ export function squadsOf(soldiers, { reach = 18, war = 'gcw', near = 80 } = {}) 
   const list = () => (soldiers instanceof Map ? [...soldiers.values()] : soldiers);
   const sq = createSquads({ reach });
   const state = new Map(); // squad id → { level, losses, flank: Set, leader, known: Set }
+  const fallen = new Set(); // (down, and gone from the list: died(id))
   const byId = () => new Map(list().map((s) => [s.id, s]));
   const at = (s) => ({ x: s.b.x, y: 0, z: s.b.z });
   const api = {
@@ -221,10 +222,13 @@ export function squadsOf(soldiers, { reach = 18, war = 'gcw', near = 80 } = {}) 
         const st = state.get(squad.id) ?? { level: 'neutral', losses: 0, flank: new Set(), leader: squad.members[0], known: new Set() };
         state.set(squad.id, st);
         // the members lost since (they were in it, and are down now)
-        for (const id of st.known) if (ids.get(id) && ids.get(id).alive === false) {
-          st.losses += 1;
-          st.known.delete(id);
-          if (id === st.leader) st.leaderDown = true;
+        for (const id of st.known) {
+          const gone = fallen.has(id) || ids.get(id)?.alive === false;
+          if (gone) {
+            st.losses += 1;
+            if (id === st.leader) st.leaderDown = true;
+          }
+          if (gone || !ids.get(id)) st.known.delete(id);
         }
         for (const id of squad.members) st.known.add(id);
         st.losses *= Math.pow(0.5, dt / 60); // (losses fade over a minute or two)
@@ -244,6 +248,7 @@ export function squadsOf(soldiers, { reach = 18, war = 'gcw', near = 80 } = {}) 
         }
       }
     },
+    died: (id) => fallen.add(id),
     of: (id) => sq.of(id),
     membersOf: (id) => sq.of(id)?.members ?? [id],
     soldiersOf: (ids) => {

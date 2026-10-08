@@ -177,6 +177,8 @@ for (const id of list.split(',')) {
               p50: pick(0.5),
               p95: pick(0.95),
               ratio: renderer.getPixelRatio(),
+              // (the ground war's update, smoothed: ground/groundScene.js's ms)
+              ground: surface && window.__surfaceScene.groundWar ? +window.__surfaceScene.groundWar.ms.toFixed(2) : null,
             });
           }
         };
@@ -187,7 +189,7 @@ for (const id of list.split(',')) {
   const name = `${mode}-${id}-${quality}`;
   await page.screenshot({ path: `${out}/${name}.png`, timeout: 120000 });
   results.push({ id, loaded: +loaded.toFixed(1), ...stats, glbMB: +(glbBytes / 1e6).toFixed(1), errors: errors.slice(0, 5) });
-  console.log(`${id.padEnd(10)} calls ${String(stats.calls).padStart(4)}  tris ${String(stats.triangles).padStart(7)}  geo ${String(stats.geometries).padStart(4)}  tex ${String(stats.textures).padStart(3)}  prog ${String(stats.programs).padStart(3)}  frame p50 ${stats.p50} p95 ${stats.p95} ms  load ${loaded.toFixed(1)} s${errors.length ? `  errors ${errors.length}` : ''}`);
+  console.log(`${id.padEnd(10)} calls ${String(stats.calls).padStart(4)}  tris ${String(stats.triangles).padStart(7)}  geo ${String(stats.geometries).padStart(4)}  tex ${String(stats.textures).padStart(3)}  prog ${String(stats.programs).padStart(3)}  frame p50 ${stats.p50} p95 ${stats.p95} ms${stats.ground != null ? `  ground ${stats.ground} ms` : ''}  load ${loaded.toFixed(1)} s${errors.length ? `  errors ${errors.length}` : ''}`);
   await ctx.close();
 }
 await browser.close();

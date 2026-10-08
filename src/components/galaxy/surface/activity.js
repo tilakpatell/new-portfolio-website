@@ -218,7 +218,7 @@ const SPECIAL = { remote };
 
 // A health bar over a hostile's head: a sprite with a small canvas, red
 // for what's left, blue over it for a shield, redrawn only when they change
-function healthBar() {
+export function healthBar() {
   const canvas = document.createElement('canvas');
   canvas.width = 64;
   canvas.height = 10;
@@ -257,7 +257,7 @@ function healthBar() {
 
 // The marks over a hostile's head: '?' while it looks for you, '!' when it
 // has you again. One canvas each, shared by every head that shows it.
-function markMaterials() {
+export function markMaterials() {
   const made = {};
   return {
     of(ch) {

@@ -290,7 +290,7 @@ export function hostileStep(t, world, dt, r = Math.random) {
 //   HOSTILE_BODY: lib/ai/body's MODE_BODY with the hostiles' own modes
 //   createPosture({ seed }) → what a figure's body carries from frame to
 //     frame (one each; seed: where in its sweep its head starts)
-//   hostileBody(posture, step, dt, { t, firing }) → { motion, look, base,
+//   hostileBody(posture, step, dt, { t, firing, table }) → { motion, look, base,
 //     action, scan, aim (0 or 1: the gun down or up), mark ('?' | '!' |
 //     null), alert (it has just seen you) }
 //     step: hostileStep's, plus `belief` (its belief of you, t.belief) and
@@ -329,9 +329,9 @@ const AGAIN = 3; // seconds out of its sight before it starts at you again (so a
 
 export const createPosture = ({ seed = 0 } = {}) => ({ prev: null, still: 0, seenAt: -Infinity, startAt: -Infinity, phase: seeded(seed)() * Math.PI * 2 });
 
-export function hostileBody(posture, step, dt, { t = 0, firing = false } = {}) {
+export function hostileBody(posture, step, dt, { t = 0, firing = false, table = HOSTILE_BODY } = {}) {
   const prev = posture.prev;
-  const body = bodyFrom(prev, { ...step, fire: firing }, dt, { table: HOSTILE_BODY });
+  const body = bodyFrom(prev, { ...step, fire: firing }, dt, { table });
   posture.prev = { x: step.x, z: step.z, yaw: step.yaw };
   const motion = body.motion;
   let speed = Math.hypot(motion.speed, motion.side);

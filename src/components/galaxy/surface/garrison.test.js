@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FIGURES } from './figures';
 import { OWNERS } from '../warEffects';
-import { TROOP_NAMES, garrisonAt, garrisonLife, garrisonLines, troopKind } from './garrison';
+import { TROOP_NAMES, garrisonLife, garrisonLines, garrisonProbe, troopKind } from './garrison';
 
 describe('the garrison on the ground', () => {
   it('an Imperial trooper kind maps to the Rebellion’s on a Rebel world, and back', () => {
@@ -38,29 +38,17 @@ describe('the garrison on the ground', () => {
   });
 });
 
-describe('who meets you at the landing', () => {
+describe('the search party', () => {
   const site = { id: 'yavin', land: { at: [10, -20] }, life: [] };
-  it('gives the holder’s troops round the landing, on paths and at posts, and a search party where the holder isn’t the world’s own', () => {
-    const own = garrisonAt(site, { owner: 'rebel', troops: 'rebel' }, 'rebel');
-    const count = (list) => list.reduce((n, a) => n + (a.n ?? 1), 0);
-    expect(count(own)).toBeGreaterThanOrEqual(6);
-    expect(count(own)).toBeLessThanOrEqual(10);
-    for (const a of own) {
-      expect(a.kind).toBe('rebel');
-      expect(a.garrison).toBe(true);
-      const at = a.at ?? a.path[0];
-      expect(Math.hypot(at[0] - 10, at[1] + 20)).toBeLessThan(80);
-    }
-    expect(own.some((a) => a.path)).toBe(true);
-    expect(own.some((a) => a.still)).toBe(true);
-    expect(own.some((a) => a.kind === 'probe')).toBe(false);
-    const taken = garrisonAt(site, { owner: 'empire', troops: 'stormtrooper' }, 'rebel');
-    expect(count(taken.filter((a) => a.kind === 'stormtrooper'))).toBeGreaterThanOrEqual(6);
-    expect(taken.filter((a) => a.kind === 'probe').length).toBe(1);
-  });
-  it('nobody without a holder, and nobody from the Hutts but their enforcers', () => {
-    expect(garrisonAt(site, null, 'rebel')).toEqual([]);
-    expect(garrisonAt(site, { owner: 'hutt', troops: 'mercenary' }, 'rebel').every((a) => a.kind === 'mercenary')).toBe(true);
+  it('a probe droid where the Empire holds a world that isn’t its own, and nowhere else', () => {
+    const probe = garrisonProbe(site, { owner: 'empire', troops: 'stormtrooper' }, 'rebel');
+    expect(probe).toHaveLength(1);
+    expect(probe[0]).toMatchObject({ kind: 'probe', garrison: true });
+    expect(Math.hypot(probe[0].at[0] - 10, probe[0].at[1] + 20)).toBeLessThan(80);
+    expect(garrisonProbe(site, { owner: 'remnant', troops: 'stormtrooper' }, 'rebel')).toHaveLength(1);
+    expect(garrisonProbe(site, { owner: 'empire', troops: 'stormtrooper' }, 'empire')).toEqual([]);
+    expect(garrisonProbe(site, { owner: 'rebel', troops: 'rebel' }, 'empire')).toEqual([]);
+    expect(garrisonProbe(site, null, 'rebel')).toEqual([]);
   });
 });
 
@@ -81,13 +69,6 @@ describe('the garrison knows your side', () => {
     expect(garrisonLines('ally', 0)).toContain('Good to have you back.');
     expect(garrisonLines('ally', 3)).toContain('General.');
     expect(garrisonLines('neutral', 5)).toEqual(['Move along.']);
-  });
-  it('the landing party speaks by your standing', () => {
-    const site = { id: 'hoth', land: { at: [0, 0] }, life: [] };
-    const own = garrisonAt(site, { owner: 'rebel', troops: 'rebel', side: 'rebel', war: 'gcw', rank: 4 }, 'rebel');
-    expect(own.find((a) => a.path).says).toContain('General.');
-    const unsworn = garrisonAt(site, { owner: 'rebel', troops: 'rebel', side: null, war: 'gcw', rank: 0 }, 'rebel');
-    expect(unsworn.find((a) => a.path).says).toEqual(['Move along.']);
   });
 });
 
