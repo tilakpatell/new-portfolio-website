@@ -6,7 +6,7 @@
 // in its way and nothing fast tunnels through anything thin.
 //
 // createBolts({ pool = 48 }) → { fire(spec) → bolt, step(dt, world) →
-// events[], live() → bolt[] }.
+// events[], live() → bolt[], clear() }.
 // spec: { from, dir, speed = 90, range = 120, owner, side ('you' | 'them' |
 // 'none', or a faction), damage, colour, deflect = false, ghost = false, tag }
 // (plain [x, y, z] arrays; `tag` is the caller's, carried untouched; a
@@ -209,6 +209,11 @@ export function createBolts({ pool = 48 } = {}) {
 
     live() {
       return slots.filter((b) => b.alive);
+    },
+
+    // (all of them gone at once: the walk's over)
+    clear() {
+      for (const b of slots) b.alive = false;
     },
   };
 }

@@ -173,6 +173,13 @@ describe('the pool', () => {
     expect(bolts.live()).toEqual(expect.arrayContaining([c, d, e]));
   });
 
+  it('clears every bolt in the air at once', () => {
+    const bolts = createBolts();
+    bolts.fire({ from: [0, 1, 0], dir: [1, 0, 0] });
+    bolts.clear();
+    expect(bolts.live()).toHaveLength(0);
+  });
+
   it('keeps what the caller tagged a shot with', () => {
     const bolts = createBolts();
     const b = bolts.fire({ from: [0, 1, 0], dir: [1, 0, 0], tag: { weapon: 'dl44' } });
