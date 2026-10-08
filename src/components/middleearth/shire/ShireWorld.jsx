@@ -67,6 +67,8 @@ import { SWATCH } from './fx';
 import './shire.css';
 import '../../../styles/lazy/middleearth.css';
 import GuideCue from '../../guide/GuideCue';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // Hobbiton, the world: walk about the Shire as Frodo on the day of Bilbo's
 // party, and do what hobbits do there. The rules are in ./rules.js, the
@@ -136,6 +138,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   const canvas = useRef(null);
   const map = useRef(null);
   const api = useRef(null);
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const sim = useRef(null);
   if (!sim.current) {
     const kept = local.get(AT, null);
@@ -199,7 +202,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         if (dead || !canvas.current) return null;
         return createShireWorld(canvas.current, { onLost: () => !dead && setGl('lost') });
       })
-      .then((a) => {
+      .then(async (a) => {
         if (!a) return;
         if (dead) {
           a.dispose();
@@ -208,7 +211,9 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         api.current = a;
         if (import.meta.env.DEV) window.__SHIRE__ = { api: a, sim: sim.current, complete }; // for the QA scripts
         fit();
-        setGl('on');
+        // everything on the graphics chip before Hobbiton's shown, behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
+        if (!dead) setGl('on');
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -816,7 +821,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
   return (
     <div ref={box} className="shire-stage" data-touch={touch || undefined} data-mode={mode} data-wearing={hud.wearing || undefined} data-sky={prog.sky}>
       <canvas ref={canvas} className="shire-canvas" data-on={gl === 'on' || undefined} aria-label="Hobbiton in 3D: the Hill and Bag End, the Party Field, the pond and the mill, and Frodo on the lane" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} />
-      {gl === 'loading' && <p className="shire-loading">Walking into Hobbiton…</p>}
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Walking into Hobbiton" />
 
       {walking && (
         <div className="shire-hud shire-hud-top">
