@@ -688,3 +688,64 @@
     transition: none;
   }
 }
+
+/* The way shown (ui/Marker.jsx): a thin diamond over the next door, lift or
+   the story's target, its distance under it in the HUD's small capitals;
+   on the screen's edge, an arrow round to it. Placed from the world each
+   frame, so no transition on where it is. */
+.ds-marker {
+  position: absolute;
+  z-index: 4;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.ds-marker[hidden] {
+  display: none;
+}
+.ds-marker-dot {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--ds-ink);
+  transform: rotate(45deg);
+  box-shadow: 0 0 8px rgba(221, 226, 232, 0.45);
+}
+.ds-marker[data-kind='goal'] .ds-marker-dot {
+  border-color: #f2d36b;
+  box-shadow: 0 0 10px rgba(242, 211, 107, 0.55);
+}
+.ds-marker-text {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.ds-marker-arrow {
+  display: none;
+  position: absolute;
+  left: -6px;
+  top: -24px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 9px solid var(--ds-ink);
+  transform-origin: 6px 24px;
+  transform: rotate(var(--turn, 0rad));
+}
+.ds-marker[data-off='true'] .ds-marker-arrow {
+  display: block;
+}
+.ds-marker[data-off='true'] .ds-marker-text {
+  top: 14px;
+}
