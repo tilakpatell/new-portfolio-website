@@ -25,7 +25,9 @@ import rv from './battleCrews/rv';
 
 export const BATTLE_KEYS = ['ask', 'front', 'join', 'gens', 'bridge', 'reactor', 'won', 'lost', 'turncoat', 'ace', 'escort', 'deserter', 'intercept', 'runners', 'gate', 'interdictor', 'blockade'];
 export const HUTT_KEYS = ['front', 'won', 'lost'];
-// (each in the war its moment is from: battleAt[sys].war)
+// (each in the war its moment is from: battleAt[sys].war; only the systems
+// the crews have their own lines for, so not siteWar.js's SITE_WAR, which
+// stages every world you can land on)
 export const PLACES = { endor: 'gcw', hoth: 'gcw', scarif: 'gcw', yavin: 'gcw', bespin: 'gcw', coruscant: 'clone', naboo: 'clone', lothal: 'remnant' };
 
 export const BATTLE_LINES = { cruiser, xwing, falcon, rv };

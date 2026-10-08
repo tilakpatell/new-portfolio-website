@@ -12,7 +12,7 @@
 //   { side, sworn, turncoat } } }
 // readAllegiance(raw, { now }) → a good one (raw a JSON string, an object or
 //   nothing); writeAllegiance(a) → string; current(a) → { war, side, sworn,
-//   turncoat }; swear(a, side, now) → a' (and its war the theatre);
+//   turncoat }; oathIn(a, war) → the same for any war; swear(a, side, now) → a' (and its war the theatre);
 //   setTheatre(a, war) → a'; suggestSide({ crew, hero }, war) → side | null;
 //   teamFor(side, battle) → 0 | 1 | null.
 
@@ -49,6 +49,10 @@ export function readAllegiance(raw, { now = Date.now() } = {}) {
 export const writeAllegiance = (a) => JSON.stringify(a);
 
 export const current = (a) => ({ ...unsworn(a.war), ...(a.oaths[a.war] ?? {}), war: a.war });
+
+// your oath in one war, whichever war you fight in: a world is staged in its
+// own film's war (siteWar.js), and an oath sworn in another is nothing there
+export const oathIn = (a, war) => ({ ...unsworn(war), ...(a.oaths[war] ?? {}), war });
 
 export function swear(a, side, now = Date.now()) {
   const war = warOfSide(side);
