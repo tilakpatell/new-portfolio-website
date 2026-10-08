@@ -431,7 +431,11 @@ describe('the battle every pilot shares (the director)', () => {
     expect(k.front.battle.over).toMatchObject({ winner: 0 });
     const losers = k.front.battle.capitals.filter((c) => c.team === 1 && c.alive && c.dying <= 0);
     expect(losers.length).toBeGreaterThan(0);
-    for (let i = 0; i < (losers.length * 3 + 2) * 10; i++) k.front.update(0.1, 0, camera, null);
+    // (the shared clock running on with the frames: it's what the jump-outs are timed on)
+    for (let i = 0; i < (losers.length * 3 + 2) * 10; i++) {
+      k.at(k.ms + 100);
+      k.front.update(0.1, 0, camera, null);
+    }
     for (const c of losers) {
       expect(c.jumped, c.kind).toBe(true);
       for (const o of k.front.solids.filter((x) => x.cap === c)) expect(o.r).toBe(0);

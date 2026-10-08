@@ -132,6 +132,20 @@ describe('jumping out', () => {
     expect(b.capitals.filter((c) => c.team === 0).every((c) => c.alive)).toBe(true);
   });
 
+  it('with the clock every pilot shares (the galaxy’s), jumps out on it, not on its own steps: a slow screen sees the fleet go when the rest do', () => {
+    const shared = { t: 100 };
+    const b = make({ tactics: { clock: () => shared.t } });
+    run(b, 0.1);
+    b.end(0, 'flagship');
+    const losers = b.capitals.filter((c) => c.team === 1 && c.alive && c.dying <= 0);
+    // (a frame now and then, the shared clock running on regardless)
+    for (let i = 0; i < 4; i++) {
+      shared.t += FLEET.jumpEvery;
+      b.update(step, null);
+    }
+    expect(b.capitals.filter((c) => c.team === 1 && c.jumped).length).toBe(Math.min(4, losers.length));
+  });
+
   it('shows a pilot arriving after the end the losing fleet already gone', () => {
     const b = make();
     run(b, 0.1);

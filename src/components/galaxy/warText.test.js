@@ -124,7 +124,8 @@ describe('the battle you’re in, in words (WarHud, BattleEnd)', () => {
     expect(resultTitle({ winner: 0 }, null)).toBe('Battle over');
     expect(yoursLine({ kills: 3, objectives: 1, intercepts: 0, points: 13.3 })).toBe('3 kills · 1 objective');
     expect(yoursLine({ kills: 1, objectives: 0, intercepts: 2, points: 2.1 })).toBe('1 kill · 2 intercepts');
-    expect(yoursLine({ kills: 0, objectives: 0, intercepts: 0, points: 0 })).toBe('You weren’t in among it');
+    // (nothing down, whether you were in among it or not: the points say if you were there for a win)
+    expect(yoursLine({ kills: 0, objectives: 0, intercepts: 0, points: 10 })).toBe('Nothing of theirs down this time');
   });
   it('after an early end, the line over the galaxy: who won here, and when the next one’s on', () => {
     const ended = fight({ result: { winner: 1, why: 'flagship', at: 400, ago: 2, yours: { kills: 0, objectives: 0, intercepts: 0, points: 0 } } });

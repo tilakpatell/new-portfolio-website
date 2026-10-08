@@ -53,6 +53,7 @@ export function createFleet(k, { push = FLEET.push, onMove = null, clock = null 
   const focus = [null, null];
   let chosen = -1; // the last FLEET.every the focus was chosen in
   let gone = 0; // ships of the losing fleet jumped out since it ended
+  let overAt = null; // when it ended, on the clock (the shared one, in the galaxy)
 
   // FLEET.share of each ship's batteries are on the focus (three in five, in turn down its length)
   for (const cap of b.capitals) cap.turrets.forEach((tu, i) => (tu.focus = i % 5 < 5 * FLEET.share));
@@ -103,13 +104,17 @@ export function createFleet(k, { push = FLEET.push, onMove = null, clock = null 
       for (const team of [0, 1]) if (n !== chosen || !focus[team] || !up(focus[team])) focus[team] = choose(team);
       chosen = n;
       if (b.over) {
-        // the losing fleet out, a ship every few seconds from the end
-        const due = Math.floor((b.since ?? 0) / FLEET.jumpEvery + 1e-9);
-        const late = (b.since ?? 0) > FLEET.jumpEvery * 2;
+        // the losing fleet out, a ship every few seconds from the end (on the
+        // shared clock, in the galaxy: a slow screen steps its battle slower
+        // than the clock runs, and would see the fleet go after everyone else)
+        overAt ??= now() - (b.since ?? 0);
+        const since = clock ? now() - overAt : (b.since ?? 0);
+        const due = Math.floor(since / FLEET.jumpEvery + 1e-9);
         for (const cap of b.capitals) {
           if (gone >= due) break;
           if (cap.team === b.over.winner || !up(cap)) continue;
-          jump(cap, out, late);
+          // (one that went more than a few seconds before you'd have seen it: no flash)
+          jump(cap, out, since - (gone + 1) * FLEET.jumpEvery > FLEET.jumpEvery);
           gone += 1;
         }
         return;

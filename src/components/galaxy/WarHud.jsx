@@ -12,8 +12,10 @@ import { useWar } from './useWar';
 //
 // Under it, while you're in the battle here (`front()`: warfront.js's info,
 // the battle every pilot here shares), the stage it's at and what's next on
-// its clock, and a thin bar for each of the stage's objectives (three at
-// most), their hp the director's. A battle decided early keeps its window
+// its clock, and at its end a thin bar for each of the stage's objectives
+// (three at most, named on hover and to a screen reader; the markers in the
+// battle name them too), their hp the director's. Two rows, so it keeps
+// clear of the crew's line under it. A battle decided early keeps its window
 // (gcw.js's twelve minutes): the line says who won here, and when the next
 // battle's on, till it is.
 export default function WarHud({ sys, oath, front = null }) {
@@ -37,19 +39,18 @@ export default function WarHud({ sys, oath, front = null }) {
       <p className="galaxy-warhud-line">{line}</p>
       {stage && (
         <p className="galaxy-warhud-stage">
-          {stage}
-          {next && <span className="galaxy-warhud-next"> · {next}</span>}
+          <span className="galaxy-warhud-text">
+            {stage}
+            {next && <span className="galaxy-warhud-next"> · {next}</span>}
+          </span>
+          {bars.length > 0 && (
+            <span className="galaxy-warhud-bars" role="list" aria-label="Objectives">
+              {bars.map((o) => (
+                <span key={o.id} role="listitem" className="galaxy-warhud-bar" data-down={o.down || undefined} style={{ '--k': o.k }} title={o.name} aria-label={`${o.name}: ${Math.round(o.k * 100)}% left`} />
+              ))}
+            </span>
+          )}
         </p>
-      )}
-      {bars.length > 0 && (
-        <ul className="galaxy-warhud-bars" aria-label="Objectives">
-          {bars.map((o) => (
-            <li key={o.id} data-down={o.down || undefined}>
-              <span className="galaxy-warhud-name">{o.name}</span>
-              <span className="galaxy-warhud-bar" style={{ '--k': o.k }} aria-label={`${Math.round(o.k * 100)}% left`} />
-            </li>
-          ))}
-        </ul>
       )}
     </div>
   );
