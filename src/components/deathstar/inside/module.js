@@ -273,6 +273,8 @@ export default {
         prompt: mode === 'play' && !mapOpen ? promptOf(g) : null,
         talk: mode === 'play' && g.talk ? { who: speaker(g.talk.who), line: g.talk.say ?? null, choices: [...(g.talk.choices ?? [])] } : null,
         map: { open: mode === 'play' && mapOpen, seen: play ? [...g.seen] : [...save[g.station].seen] },
+        // a story's scene playing: the HUD steps back to letterbox it
+        scene: play ? (g.scene?.id ?? null) : null,
         settings: { ...save.settings },
         saved: Object.fromEntries(Object.keys(STATIONS).map((id) => [id, { rebel: Boolean(save[id]?.story.rebel), imperial: Boolean(save[id]?.story.imperial) }])),
       };

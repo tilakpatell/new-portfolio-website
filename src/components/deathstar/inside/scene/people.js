@@ -48,7 +48,8 @@
 //   motionFrom(track, yaw) → figures.js’s motion   pure: the speed ahead and aside, and the turn
 //   blocks(at, tall, camera, focus) → bool   pure: whether a body at `at` stands between the camera
 //     and the point it looks at you by (your chest), or has the camera inside it
-//   createPeople(scene, kit, { tier, renderer, adopt, layout }) → { sync(crew, alpha, cameraAt, rooms?), hear(events), handOf(id), muzzle(id, out), dispose() }
+//   createPeople(scene, kit, { tier, renderer, adopt, layout }) → { sync(crew, alpha, cameraAt, rooms?), hear(events), figure(id), stage(id, how | null), handOf(id),
+//     muzzle(id, out), dispose() }
 //     layout: the station's (rules/layout.js), for the dead to fall against as ragdolls (without it
 //     they fall on their clips); rooms.open(doorId) and rooms.off (layout.offTags's): its doors and
 //     floors as they are now; rooms.camera and rooms.focus (your chest): anyone between them is faded,
@@ -681,7 +682,9 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     }
     const at = r.track.at(alpha);
     o.position.set(at.x, at.y, at.z);
-    o.rotation.y = -at.yaw;
+    o.rotation.y = -(r.staged?.yaw ?? at.yaw);
+    // (a scene can take someone out of it: Ben, gone in the duel)
+    if (r.staged?.hidden) o.visible = false;
     // faded while it stands between the camera and you, eased in and out
     // (and a friend just ahead of you in the view: an enemy there is the one you need to see)
     const friend = c && world?.side && (c.side === world.side || c.side === 'neutral');
@@ -773,6 +776,16 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
         } else pendingHits.set(e.target, hit);
       }
       if (pendingHits.size > 64) pendingHits.clear();
+    },
+
+    // someone’s figure, while they have one (cinematics.js plays a scene’s clips on it)
+    figure(id) {
+      return records.get(id)?.fig ?? null;
+    },
+    // a scene’s say over how someone is drawn, kept until it lets them go: { yaw, hidden }
+    stage(id, how) {
+      const r = records.get(id);
+      if (r) r.staged = how ? { ...r.staged, ...how } : null;
     },
 
     // the bone of someone’s right hand, for what they hold in it (a sabre), while they are drawn

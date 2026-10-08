@@ -206,6 +206,8 @@ export function createShow(scene, { renderer, tier = 'high', layout, people, fx 
   return {
     hear,
     sync,
+    // the Emperor's lightning from a point (or his two hands) to another, for a scene (cinematics.js)
+    lightning: (from, to, on = true) => sabers.lightning(from, to, on),
     warm: (r, camera, target = null) => sabers.warm(r, camera, target),
     dispose() {
       for (const id of [...blades.keys()]) dropBlade(id);
