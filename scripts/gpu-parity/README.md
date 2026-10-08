@@ -14,7 +14,7 @@ Options: `--view a,b` (the world's named views; none means the world as it opens
 
 Shoot `--before` with the same `--view` list as the branch run. The pictures and `report.json` go to `scripts/gpu-parity/out/<route>/` (gitignored): `<view>-before.png`, `<view>-webgl.png`, `<view>-webgpu.png`. A port's pull request commits the three for each view under `docs/superpowers/parity/<world>/`.
 
-Exit codes: 0 the webgl leg passes, 1 it doesn't, 2 it couldn't run (no Chromium, no before pictures).
+Exit codes: 0 the webgl leg passes, 1 it doesn't, 2 it couldn't run (no Chromium, no before pictures). A webgpu leg that fails is printed as FAIL but doesn't set the exit code: the webgl leg gates.
 
 ## What it does
 
@@ -47,7 +47,12 @@ For each view and leg against `before`, over RGB (alpha left out):
 
 `--adapter swiftshader` asks Chromium for its software WebGPU adapter (`--enable-unsafe-webgpu --use-webgpu-adapter=swiftshader --enable-features=Vulkan`). `system` leaves the choice to Chromium: a desktop's own chip. `auto` (the default) picks swiftshader on Linux without a display and system elsewhere.
 
-In the cloud container (no GPU) Chromium 1194 finds the SwiftShader adapter (`google/swiftshader`) and makes a device, so the webgpu leg runs there in software. Its pictures count, but its frame times don't: the owner's desktop runs the perf probe's WebGPU leg on a real chip. A secure context is needed: `navigator.gpu` is missing on `about:blank`.
+In the cloud container (no GPU), Chromium 1194 finds the SwiftShader adapter (`google/swiftshader`) and makes a device, but it doesn't keep it. Dawn reports “A valid external Instance reference no longer exists” and the device is lost, even under a bare `WebGPURenderer` cube. So the webgpu leg fails there, says so, and doesn't gate. The owner’s desktop runs it on a real chip, and the perf probe’s WebGPU leg too.
+
+Two more things about Chromium here:
+
+- A secure context is needed: `navigator.gpu` is missing on `about:blank`.
+- `--enable-unsafe-webgpu` also turns on Blink’s experimental WebGPU IDL, whose draft texture-view `swizzle` is a dictionary where three 0.186 passes the spec’s string. Every frame then throws, so the scripts pass `--disable-blink-features=WebGPUExperimentalFeatures`, as a visitor’s Chrome has it.
 
 WebGL draws through ANGLE on SwiftShader on Linux (as `autopilot-check.mjs` does) and on Metal on a Mac. The `before` and branch legs always draw the same way.
 
