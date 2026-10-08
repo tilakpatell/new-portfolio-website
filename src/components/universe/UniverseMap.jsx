@@ -9,6 +9,7 @@ import { ORDER, keyStep } from './layout';
 import MiniMap from './MiniMap';
 import GuideCue from '../guide/GuideCue';
 import { askBrief } from '../tour/brief';
+import LoadingVeil from '../worlds/LoadingVeil';
 
 // The map: the 3D scene (scene.js and planets.js, through useScene) with the
 // planets' names as buttons over it. React renders the names once; the
@@ -25,7 +26,10 @@ import { askBrief } from '../tour/brief';
 // the hangar (Hangar.jsx: the ship's paint job and parts, which the page
 // keeps) and a line on how to fly until you do. While the
 // 3D loads the box says so (3D first: never the flat map in the meantime);
-// if 3D is off, fails or is lost, the flat MiniMap takes the box. Online,
+// if 3D is off, fails or is lost, the flat MiniMap takes the box. While the
+// scene gets everything onto the graphics chip before its first frame
+// (scene.js's prepare), the loading veil (worlds/LoadingVeil.jsx) covers the
+// map, under the page's panel and the front door's choice, which stay usable. Online,
 // the other pilots' callsigns ride over their ships (the scene moves them).
 // The map button (and M) opens the nav map (the page's: NavMap.jsx); `drive`
 // is the one picked there, how the ship goes anywhere it's sent, and
@@ -76,7 +80,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   );
   const events = useRef(onEvent);
   events.current = onEvent;
-  const { wrap, on, meant, view } = useScene(load, {
+  const { wrap, on, meant, view, status, progress } = useScene(load, {
     id: 'universe',
     near: '0px',
     props: {
@@ -200,11 +204,12 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
     <div ref={wrap} className="universe-map" data-ship={ship || undefined} data-foot={onFoot || undefined}>
       {meant ? (
         <>
-          {!on && (
+          {!on && status !== 'preparing' && (
             <p className="universe-loading" role="status">
               Charting the universe…
             </p>
           )}
+          <LoadingVeil shown={status === 'preparing'} progress={progress.value} step={progress.step} title="The universe" line="Charting the universe…" />
           <ul className="universe-labels" aria-label="Universes" onKeyDown={onKeyDown}>
             {UNIVERSES.map((u) => (
               <li key={u.id}>

@@ -95,7 +95,8 @@ import { plan as cockpitPlan } from '../cockpit/timeline';
 import { freeKit } from '../cockpit/kit';
 import { audioContext } from '../../lib/audio';
 import { takeArrival } from '../../lib/arrival';
-import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, revealAll, singlePass, texturesUnder, uploadTexture, uploadTextures } from '../../lib/three/renderer';
+import { clamp01, createRenderer, disposeTree, easeOut, precompile, precompilePasses, singlePass, uploadTextures } from '../../lib/three/renderer';
+import { compileSlices, nextFrame, prepareScene } from '../../lib/three/gpuWork';
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
 import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
@@ -852,7 +853,13 @@ export async function create(canvas, ctx) {
   // (one pass for what can be drawn in one, renderer.js's singlePass, first:
   // that's part of the shader made)
   const warm = (root, cam = camera, target = scene) => precompile(renderer, singlePass(root), cam, target, post.on ? post.composer.readBuffer : undefined);
-  fleet.prepare = (o) => warm(o); // (the fleet's models too: none is made before the first frame)
+  // (the fleet's models too: none is made before the first frame. In the
+  // house look first, as they will be once they fly in the scene, so the
+  // shaders made are the ones drawn)
+  fleet.prepare = (o) => {
+    house.adopt(o);
+    return warm(o);
+  };
   // who comes after you, what the director sets going, and its set pieces
   // (none of it with reduced motion)
   // whose space the ship's in (sides.js sideAt): the Rick and Morty sector's
@@ -1725,8 +1732,14 @@ export async function create(canvas, ctx) {
     freeKit();
     cab = null;
   };
-  const buildCab = async (kind) => {
-    if (!kind || !CABS[kind] || cabWanted === kind || cab?.kind === kind) return;
+  // (the build under way, for the map's prepare to wait on)
+  let cabJob = null;
+  const buildCab = (kind) => {
+    if (!kind || !CABS[kind] || cabWanted === kind || cab?.kind === kind) return cabJob;
+    cabJob = makeCab(kind);
+    return cabJob;
+  };
+  const makeCab = async (kind) => {
     cabWanted = kind;
     try {
       const mod = await CABS[kind]();
@@ -1983,20 +1996,23 @@ export async function create(canvas, ctx) {
   const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 60));
   const stockedFor = new Set();
   let warmed = false; // (none made ahead before the map's own shaders are)
+  // one more of the ones `side` meets made ahead, if any are still to make
+  // (false once they're all there)
+  const stockOne = (side) => {
+    const job = Object.entries(AHEAD_OF(side)).find(([k, n]) => fleet.stocked(k) < n && !fleet.loaded(k));
+    if (!job) return false;
+    const model = buildTraffic(job[0]);
+    singlePass(model.group); // (as the ones made with the map were: the same shaders)
+    fleet.stock(job[0], model);
+    return true;
+  };
   const stockUp = () => {
     if (reduced || !warmed) return;
     const side = sideHere();
     if (!side || stockedFor.has(side.id)) return;
     stockedFor.add(side.id);
-    const want = Object.entries(AHEAD_OF(side));
     const next = () => {
-      if (disposed) return;
-      const job = want.find(([k, n]) => fleet.stocked(k) < n && !fleet.loaded(k));
-      if (!job) return;
-      const model = buildTraffic(job[0]);
-      singlePass(model.group); // (as the ones made with the map were: the same shaders)
-      fleet.stock(job[0], model);
-      idle(next);
+      if (!disposed && stockOne(side)) idle(next);
     };
     idle(next);
   };
@@ -5211,6 +5227,11 @@ export async function create(canvas, ctx) {
     spares.add(burst.mesh);
   }
   map.add(spares);
+  // the house look on everything now, the spares too, before its shaders are
+  // made: taken on in the first frame instead, it changed every lit
+  // material's shader just after they'd all been made, and they were all
+  // made again in that frame (docs/research/2026-10-07-frame-hitches.md)
+  house.follow({ adopt: true });
   const ready = Promise.all([warm(scene), post.composer ? precompilePasses(renderer, post.composer, camera) : null]).then(() => {
     // made: out of the scene (so nothing walks them each frame), and the
     // ships on to the fleet, ready to fly (the first of each kind isn't
@@ -5342,38 +5363,109 @@ export async function create(canvas, ctx) {
     });
   }
 
-  // Everything drawn once while the intro covers the page (lib/three/
-  // useScene asks, while the page is idle), hidden things too, so the first
-  // frame at the launch's flash doesn't stop for it: the pictures first, a
-  // few at a time (`timeLeft()`, the ms the page can spare now: a click on
-  // the welcome never waits on them), then one draw for the meshes and the
-  // rest. False until it's done.
-  let warming = null; // the pictures still to send ahead
-  const warmUp = (timeLeft = () => Infinity) => {
-    warming ??= texturesUnder(scene);
-    while (warming.length) {
-      uploadTexture(renderer, warming.pop());
-      if (timeLeft() <= 4) break;
+  // Everything onto the graphics chip before the first frame, behind the
+  // page's loading veil (lib/three/useScene runs it after `ready`, whether
+  // the intro covers the page or not: a visitor coming back, or back from a
+  // world, gets it too). First the pools: the ships the crew's side can meet
+  // fetched (their models, a few seconds at most: one that comes later is
+  // readied as it comes, and the frame guard holds back anything still
+  // unready) and the built ones made ahead. Then lib/three/gpuWork's
+  // prepareScene over the map and those ships: their pictures sent a few at
+  // a time, their shaders compiled, and a draw of everything (the frames'
+  // own way, passes and all, but small: the passes' buffers 64 across, one
+  // pixel of the canvas; the first real frame sizes the buffers back up).
+  // Then the cockpit, if that's where you ride. Its shaders are made against
+  // the buffer the frames draw into, as `warm` makes them. On a low tier
+  // (software WebGL, a budget phone), where the graphics chip's work is the
+  // processor's and its memory is short, only the shaders are seen through:
+  // pictures go up as they're first seen there, as before.
+  const POOL_WAIT = 4000; // ms at most the models hold up the prepare
+  const READY_HOLD = 8000; // ms at most it waits on `ready` (the pools are stocked then)
+  const within = (promise, ms) => new Promise((done) => {
+    const timer = setTimeout(done, ms);
+    Promise.resolve(promise)
+      .catch(() => {})
+      .then(() => {
+        clearTimeout(timer);
+        done();
+      });
+  });
+  // every kind of ship a side's space has in it: its hunters and aces, its
+  // traffic, its wing, what the director sends and what's made ahead
+  const meets = (side) =>
+    side
+      ? [
+          ...Object.values(side.factions).flatMap((f) => [...f.kinds.map(([k]) => k), f.ace]),
+          ...(side.traffic ?? []),
+          ...(side.civil ?? []),
+          ...Object.keys(side.allies ?? {}),
+          ...(side.pieces ?? []),
+          side.capitalShip,
+          ...Object.keys(AHEAD_OF(side)),
+        ].filter(Boolean)
+      : [];
+  const prepare = async (onProgress, alive = () => true) => {
+    const going = () => alive() && !disposed;
+    const say = (f, step) => onProgress?.(f, step);
+    const target = post.on ? post.composer.readBuffer : null;
+    say(0, 'Readying the ships');
+    await within(ready, READY_HOLD);
+    if (!going()) return;
+    const sides = reduced ? [] : [...new Set([sideHere(), sideFor(state.kind)].filter(Boolean))];
+    if (tier !== 'low') await within(fleet.want([...new Set(sides.flatMap(meets))]), POOL_WAIT);
+    if (!going()) return;
+    // (a few frames' work: one made a frame)
+    for (const side of sides) {
+      stockedFor.add(side.id);
+      while (going() && stockOne(side)) await nextFrame();
     }
-    if (warming.length) return false;
-    warming = null;
-    // (the frames' own way, passes and all, so it's their shaders that are
-    // made, but small: the passes' buffers 64 across, and one pixel of the
-    // canvas. It's what's sent that counts, not the picture; the first real
-    // frame sizes the buffers back up.)
-    const undo = revealAll(scene);
+    if (!going()) return;
+    const ships = fleet.roots();
+    for (const root of ships) house.adopt(root);
+    const roots = [scene, ...ships];
+    // the frames draw into the passes' buffer, and a shader is made for
+    // where it draws
+    renderer.setRenderTarget(target);
     try {
-      renderer.setScissor(0, 0, 1, 1);
-      renderer.setScissorTest(true);
-      post.render(64, 64);
-    } catch (err) {
-      if (import.meta.env.DEV) console.warn('[universe] warm-up failed', err);
+      if (tier === 'low') {
+        await compileSlices(renderer, roots, camera, scene, { alive: going, onStep: (i, n) => say(0.1 + (0.9 * i) / n, 'shaders') });
+        return;
+      }
+      const cabbing = state.seat === 'cockpit' && Boolean(state.kind && CABS[state.kind]);
+      const share = cabbing ? 0.75 : 0.9;
+      await prepareScene({
+        renderer,
+        roots,
+        scene,
+        camera,
+        alive: going,
+        onProgress: (f, step) => say(0.1 + share * f, step),
+        render: () => {
+          post.render(64, 64);
+          renderer.setRenderTarget(target);
+        },
+      });
+      if (!cabbing || !going()) return;
+      // the cockpit: built by now, or soon (a few seconds at most)
+      await within(buildCab(state.kind), POOL_WAIT);
+      if (!cab || !going()) return;
+      await prepareScene({
+        renderer,
+        roots: [cabScene],
+        scene: cabScene,
+        camera: camIn,
+        alive: going,
+        onProgress: (f, step) => say(0.1 + share + (0.9 - share) * f, step),
+      });
     } finally {
-      undo();
-      renderer.setScissorTest(false);
-      renderer.setRenderTarget(null);
+      try {
+        renderer.setScissorTest(false);
+        renderer.setRenderTarget(null);
+      } catch {
+        // (gone with its renderer)
+      }
+      if (going()) say(1, 'first draw');
     }
-    return true;
   };
 
   return {
@@ -5388,11 +5480,8 @@ export async function create(canvas, ctx) {
       watchPanel();
     },
     render,
-    // drawn once behind the intro (above); not on a low tier (software
-    // WebGL, a budget phone), where the graphics chip's work is the
-    // processor's and its memory is short: things go up as they're first
-    // seen there, as before
-    warmUp: tier === 'low' ? undefined : warmUp,
+    // everything onto the graphics chip behind the loading veil (above)
+    prepare,
     update(next) {
       const picked = props.selected ?? null; // (the page's pick, as it last said)
       props = next;

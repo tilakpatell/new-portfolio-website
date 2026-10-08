@@ -87,6 +87,9 @@
 }
 .universe-flat .minimap { max-width: 900px; }
 .universe-loading { color: var(--muted); font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.04em; }
+/* the loading veil while the scene prepares (LoadingVeil.jsx): over the map,
+   but under the panel, the leaving fades and the front door's choice */
+.universe-map > .loading-veil { z-index: 1; }
 
 /* the planets' names, moved by the scene */
 .universe-labels {
