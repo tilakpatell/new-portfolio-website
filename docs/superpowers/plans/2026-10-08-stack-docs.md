@@ -103,7 +103,7 @@ Branch `claude/stack-docs-p1` from `origin/claude/tender-hopper-y738gr` (it carr
 - [ ] **Step 1: Fixture.** `glsl.js`: `new ShaderMaterial()`, `m.onBeforeCompile = f`, and a comment `// an EffectComposer here would count`; `glsl.test.js`: `new ShaderMaterial()`; `src/runtime/exempt.js`: `new ShaderMaterial()`.
 - [ ] **Step 2: Write the failing test**: `value` 2, `detail` `[{ file: 'src/world/glsl.js', n: 2 }]`.
 - [ ] **Step 3:** FAIL; implement (the regex `\b(RawShaderMaterial|…)\b` over `uncomment(text)`; `RawShaderMaterial` and `ShaderMaterial` both match `RawShaderMaterial` only once: match the alternation, don’t count twice); PASS.
-- [ ] **Step 4:** `node scripts/health.mjs --only glsl-sites` on the repo: expect about 700 (the spec measured 711 before exemptions and uncommenting). Write that value as the budget. Check `hud-kit`’s test still passes (the fixture tree gained files under `src/runtime/`, which `hud-kit` ignores, and `big-files`, `todo-notes`, `lint-disables` counts are unchanged: the new fixture files have none of what they count).
+- [ ] **Step 4:** `node scripts/health.mjs --only glsl-sites` on the repo: expect fewer than the spec’s 711, which counted before exemptions and uncommenting (616 on 2026-10-08). Write that value as the budget. Check `hud-kit`’s test still passes (the fixture tree gained files under `src/runtime/`, which `hud-kit` ignores, and `big-files`, `todo-notes`, `lint-disables` counts are unchanged: the new fixture files have none of what they count).
 - [ ] **Step 5:** `node scripts/health.mjs --check --skip build` green. Commit: `git commit -m "glsl-sites: the GLSL a WebGPU port removes, counted and ratcheted"`.
 
 ### Task 5: The pages’ own test

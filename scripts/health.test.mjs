@@ -13,6 +13,7 @@ import todoNotes from './health/todo-notes.mjs';
 import hudKit from './health/hud-kit.mjs';
 import kbdStyles, { capRules } from './health/kbd-styles.mjs';
 import stackPages from './health/stack-pages.mjs';
+import glslSites, { EXEMPT, NAMES, sites } from './health/glsl-sites.mjs';
 import { check, describe as words, ratchet } from './health/ratchet.mjs';
 
 const TREE = fileURLToPath(new URL('./health/fixtures/tree/', import.meta.url));
@@ -66,6 +67,19 @@ describe('the stack pages, on a fixture tree', () => {
     const dir = await mkdtemp(join(tmpdir(), 'stack-pages-'));
     await writeFile(join(dir, 'package.json'), JSON.stringify({ dependencies: { a: '1' }, devDependencies: { b: '1' } }));
     expect((await stackPages(await makeContext(dir))).value).toBe(2);
+  });
+});
+
+describe('the GLSL sites, on a fixture tree', () => {
+  it('counts the names a WebGPU port removes, comments, tests and the exempt infrastructure left out', async () => {
+    const m = await glslSites(ctx);
+    expect(m.value).toBe(2);
+    expect(m.detail).toEqual([{ file: 'src/world/glsl.js', n: 2 }]);
+  });
+  it('reads RawShaderMaterial as one site, not two, and agrees with the WebGPU design’s exempt list', () => {
+    expect(NAMES).toContain('RawShaderMaterial');
+    expect(sites('new RawShaderMaterial(); new ShaderMaterial(); myShaderMaterialish; x.RenderPass')).toBe(3);
+    expect(EXEMPT).toEqual(['src/lib/three/frameGuard.js', 'src/lib/three/renderer.js', 'src/lib/three/gpuWork.js', 'src/runtime/']);
   });
 });
 
