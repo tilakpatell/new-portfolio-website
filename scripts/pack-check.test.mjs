@@ -23,6 +23,7 @@ describe('the pack check', () => {
 
   it('covers a folder named by its prefix', () => {
     expect(covered('/textures/w/', { globs: ['/textures/w/*'] })).toBe(true);
+    expect(covered('/textures/w', { globs: ['/textures/w/*'] })).toBe(true);
   });
 
   it('names what a pack lists that is not there', () => {

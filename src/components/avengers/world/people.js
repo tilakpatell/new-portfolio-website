@@ -3,7 +3,8 @@
 // idle, walk and run (and Cap's jump), in place, so the world moves them.
 //
 // loadPerson(url) → a template, loaded once; person(template) → a copy to
-// place: { root, play(name, opts), update(dt), bone(name), height, dispose }.
+// place: { root, play(name, opts), add(clip), finished(name), update(dt),
+// bone(name), height, dispose }.
 // clipsFor(model, clips) plays clips on any model whose bones they name, and
 // loadClips(url) loads clips alone (Spider-Man's moves, for his model).
 
@@ -39,24 +40,41 @@ export function loadPerson(url) {
 }
 
 // Clips to play on a model (anything whose bones the clips name): play(name,
-// { speed, loop, from }) crosses over from the clip playing; `speed` its pace,
-// `loop` false to play it once and hold the last frame, `from` where to start.
+// { speed, loop, from, fade, again }) crosses over from the clip playing;
+// `speed` its pace, `loop` false to play it once and hold the last frame,
+// `from` where to start, `fade` how long the cross takes (else the set's),
+// `again` a one-shot that's played through to play once more from the top.
 // From one of the `sync` clips to another (the gaits, whose steps start on
 // the same foot) it picks up at the same point of the stride, so the feet
 // don't scramble; a looping clip taken back before it has faded out goes on
-// from where it was, rather than start over.
+// from where it was, rather than start over. add(clip) takes one made for
+// the model later (./borrow.js's), unless it has its own of that name;
+// finished(name) says whether a one-shot has played through.
 export function clipsFor(model, clips, { fade = 0.22, sync = ['walk', 'run'] } = {}) {
   const mixer = new THREE.AnimationMixer(model);
   const actions = {};
   for (const clip of clips) actions[clip.name] = mixer.clipAction(clip);
   let current = null;
+  const over = (a) => Boolean(a) && a.loop === THREE.LoopOnce && a.time >= a.getClip().duration - 1e-4;
+  const fadeFor = fade;
   return {
     actions,
-    play(name, { speed = 1, loop = true, from = 0 } = {}) {
+    add(clip) {
+      if (clip?.name && !actions[clip.name]) actions[clip.name] = mixer.clipAction(clip);
+    },
+    finished: (name) => over(actions[name]),
+    play(name, { speed = 1, loop = true, from = 0, fade = fadeFor, again = false } = {}) {
       const a = actions[name];
       if (!a) return false;
       a.timeScale = speed;
-      if (current === a) return true;
+      if (current === a) {
+        if (again && !loop && over(a)) {
+          a.reset();
+          a.setEffectiveWeight(1);
+          a.play();
+        }
+        return true;
+      }
       const stride = current && sync.includes(name) && sync.includes(current.getClip().name) ? (current.time / current.getClip().duration) % 1 : null;
       const fading = loop && a.isRunning() && a.getEffectiveWeight() > 0.01;
       if (!fading) a.reset();
@@ -109,6 +127,8 @@ export function person(template, opts) {
     actions: clips.actions,
     height: box.max.y - box.min.y,
     play: clips.play,
+    add: clips.add,
+    finished: clips.finished,
     get playing() {
       return clips.playing;
     },

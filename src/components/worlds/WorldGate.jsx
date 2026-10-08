@@ -4,6 +4,7 @@ import { RiCloseLine, RiDownloadCloud2Line } from 'react-icons/ri';
 import { gpu, Hold3D } from '../../lib/gpu';
 import { device, storageFree, worldCheck } from '../../lib/device';
 import { local, storage } from '../../lib/hooks';
+import { byPath } from '../universe/universes';
 import { WORLD_MB, worldAt } from './worlds';
 import { cardState, sizeText, usePack } from './usePack';
 import { InstallCard, InstallPill } from './InstallCard';
@@ -48,6 +49,9 @@ export default function WorldGate({ pathname, children }) {
   const world = worldAt(pathname);
   const to = world?.to ?? null;
   const mb = to ? WORLD_MB[to] ?? 1 : 0;
+  // (a Rick and Morty planet, /c-137/<moon>, is C-137's world but goes by its own name)
+  const moon = byPath(pathname);
+  const name = moon?.kind === 'moon' ? moon.place : world?.label;
   // the check: at once from what the browser says (so nothing starts
   // downloading first), then again once it says how much room is left
   const [check, setCheck] = useState(() => (to ? worldCheck(mb, look()) : { ask: false }));
@@ -92,7 +96,7 @@ export default function WorldGate({ pathname, children }) {
     storage.set(offerKey(to), 'no');
     setOffer(false);
   };
-  const hold = useMemo(() => (held ? { held: true, load: () => load(), mb, name: world?.label } : null), [held, load, mb, world?.label]);
+  const hold = useMemo(() => (held ? { held: true, load: () => load(), mb, name } : null), [held, load, mb, name]);
 
   // outside <main>, so it sits over the page's own fixed buttons
   let prompt = null;
@@ -103,7 +107,7 @@ export default function WorldGate({ pathname, children }) {
       </button>
     );
   } else if (held && p.pack) {
-    prompt = <InstallCard name={world.label} why={WHY[check.why] ?? WHY.phone} state={state} pack={p.pack} progress={p.progress} error={p.error} onInstall={p.install} onOpen={() => load()} onLight={light} onAlways={() => load(true)} />;
+    prompt = <InstallCard name={name} why={WHY[check.why] ?? WHY.phone} state={state} pack={p.pack} progress={p.progress} error={p.error} onInstall={p.install} onOpen={() => load()} onLight={light} onAlways={() => load(true)} />;
   } else if (held) {
     prompt = (
       <aside className="world-gate" role="dialog" aria-modal="false" aria-labelledby="world-gate-title">
@@ -111,7 +115,7 @@ export default function WorldGate({ pathname, children }) {
           <RiCloseLine aria-hidden="true" />
         </button>
         <p id="world-gate-title" className="world-gate-title">
-          <RiDownloadCloud2Line aria-hidden="true" /> {world.label} is built in 3D
+          <RiDownloadCloud2Line aria-hidden="true" /> {name} is built in 3D
         </p>
         <p className="world-gate-text">
           About {mb} MB of models and textures. {WHY[check.why] ?? WHY.phone} Until then you’re seeing the light version.

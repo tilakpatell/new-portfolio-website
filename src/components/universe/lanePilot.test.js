@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { laneAim, laneFrame, lanePlan, rideInput, rideLine } from './lanePilot';
-import { nodeById, routeTo, carriageway } from './hyperlanes';
+import { LANES, nodeById, routeTo, carriageway } from './hyperlanes';
+import { poseOf, step as rideStep } from './ride';
 import { tangent } from './lanes';
 import { SHIP, autopilot, orbiting, parkAt, spawn, step } from './ship';
 import { HOME_RADIUS, ORDER, POSITIONS } from './layout';
@@ -122,6 +123,22 @@ describe('the autopilot on the lanes (lanePilot.js)', () => {
     expect(line.tier).toBe('trunk');
     expect(line.next.length).toBeGreaterThan(2);
     expect(line.eta).toBeCloseTo((0.5 * leg.lane.length) / 1500, 6);
+  });
+
+  it('says hold W at a junction only where ride.js would carry straight on with the throttle forward', () => {
+    let yes = 0;
+    for (const lane of LANES) {
+      for (const way of ['out', 'in']) {
+        const ride = { lane, way, s: 1 - 1e-9, off: [0, 0], speed: 1500, from: 1500, age: 10, back: 0, strain: 0, bank: 0 };
+        const r = rideStep(ride, { ...homeEdge(), ...poseOf(ride) }, { throttle: 1 }, 1 / 60);
+        const on = r.out === null && r.ride.lane !== lane;
+        expect(rideLine(ride).junction, `${lane.id} ${way}`).toBe(on);
+        if (on) yes++;
+      }
+    }
+    // (some lanes carry on and some don't, so the hint isn't always or never)
+    expect(yes).toBeGreaterThan(0);
+    expect(yes).toBeLessThan(LANES.length * 2);
   });
 
   it('lets go of a ride when the ship’s been moved off it: through a portal, a respawn, a pose', () => {

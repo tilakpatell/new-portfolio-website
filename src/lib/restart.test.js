@@ -11,11 +11,11 @@ const storage = (entries) => {
 };
 
 describe('starting the site over', () => {
-  it('forgets the intro, the front door choice, the cockpit, the ship and the tour', () => {
-    const s = storage({ 'tp-intro': '1', 'tp-start': '"home"', 'tp-cockpit': '"xwing"', 'tp-universe-ship': '"cruiser"', 'tp-tour': '"done"' });
+  it('forgets the intro, the front door choice, the cockpit, the ship, the tour and the pages shown', () => {
+    const s = storage({ 'tp-intro': '1', 'tp-start': '"home"', 'tp-cockpit': '"xwing"', 'tp-universe-ship': '"cruiser"', 'tp-tour': '"done"', 'tp-visited-ever': '["/home"]' });
     forgetVisit(s);
     expect(s.keys()).toEqual([]);
-    expect(VISIT_KEYS).toEqual(expect.arrayContaining(['tp-intro', 'tp-start', 'tp-cockpit', 'tp-universe-ship', 'tp-tour']));
+    expect(VISIT_KEYS).toEqual(expect.arrayContaining(['tp-intro', 'tp-start', 'tp-cockpit', 'tp-universe-ship', 'tp-tour', 'tp-visited-ever']));
   });
 
   it('keeps what was unlocked and set', () => {

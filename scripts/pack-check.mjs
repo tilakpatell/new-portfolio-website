@@ -38,8 +38,9 @@ export function assetRefs(text) {
 // trailing folder slash) standing for a file name
 export function covered(ref, pack) {
   if (pack.urls?.includes(ref)) return true;
-  const sample = (ref.endsWith('/') ? `${ref}x` : ref).replace(/\*/g, 'x');
-  return (pack.globs ?? []).some((g) => globRe(g).test(sample));
+  // (a folder may be named without its slash: '/models/x' as a base for '/models/x/<name>')
+  const samples = (ref.endsWith('/') ? [`${ref}x`] : [ref, `${ref}/x`]).map((r) => r.replace(/\*/g, 'x'));
+  return (pack.globs ?? []).some((g) => samples.some((x) => globRe(g).test(x)));
 }
 
 const filesIn = (path) => {

@@ -1,11 +1,12 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { PACKS, packFor } from './packs';
-import { WORLD_MB } from './worlds';
+import { WORLD_MB, WORLDS } from './worlds';
 
 describe('the packs', () => {
   it('are one per world, under its address', () => {
-    for (const to of Object.keys(WORLD_MB)) expect(PACKS[to]?.id, to).toBe(to);
+    // (a world, not the map's own size, which WORLD_MB keeps for the tour)
+    for (const to of Object.keys(WORLD_MB).filter((t) => WORLDS.some((w) => w.to === t))) expect(PACKS[to]?.id, to).toBe(to);
   });
 
   it('are found from any address inside a world, the closest one winning', () => {

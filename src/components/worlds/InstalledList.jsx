@@ -12,9 +12,9 @@ export default function InstalledList({ rows, onInstall, onRemove }) {
   return (
     <div className="installed">
       <section aria-labelledby="installed-on">
-        <h2 id="installed-on" className="title">
+        <h3 id="installed-on" className="label">
           On this device
-        </h2>
+        </h3>
         {on.length ? (
           <ul className="installed-list">
             {on.map((r) => (
@@ -44,9 +44,9 @@ export default function InstalledList({ rows, onInstall, onRemove }) {
       </section>
       {off.length > 0 && (
         <section aria-labelledby="installed-off" className="mt-10">
-          <h2 id="installed-off" className="title">
+          <h3 id="installed-off" className="label">
             Ready to install
-          </h2>
+          </h3>
           <ul className="installed-list">
             {off.map((r) => (
               <li key={r.to} className="installed-row" data-world={r.to}>

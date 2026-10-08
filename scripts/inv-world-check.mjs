@@ -76,17 +76,27 @@ const SHOTS = {
   thragg: { space: 'thragg', back: 18 },
   dusk: { p: [-300, 160, 700], mode: 'air', yaw: Math.PI * 0.9, pitch: -0.1, time: 'dusk' },
   night: { p: [-300, 160, 700], mode: 'air', yaw: Math.PI * 0.9, pitch: -0.1, time: 'night' },
-  // where the missions will be (stubs for now: they frame the places, nothing is started)
-  bank: { p: [0, 8, 26], mode: 'air', yaw: 1.9, pitch: -0.08 }, // the plaza's east side, where the bank goes
-  chase: { p: [320, 30, -120], mode: 'air', yaw: -Math.PI / 2, pitch: -0.3 }, // west along a downtown street
-  seismic: { place: 'school', foes: ['seismic', 1, 'place'], at: 'foe', back: 16 }, // Doc Seismic over the school, Mark 16 m off him with the school behind
-  maulers: { p: [40, 3, 40], mode: 'air', yaw: Math.PI, pitch: -0.04, foes: ['mauler', 2, [40, 0, 26]] }, // the Mauler twins on the street past the bank, coming at him
+  // The missions (./missions.js), each started through the dev hook (`api.mission`) and driven
+  // by `drive` to the step the shot wants, then by `finish` to its end (`api.feed` takes the
+  // events the way the world would send them: a landing, a knock-out, a catch, the clock):
+  // ['go', p, face, mode] puts Mark there; ['step', i] waits for the step; ['car'] for the
+  // getaway; ['foes', n] for that many standing; ['near', what, back, up, side] puts Mark `back` m
+  // from the car or the marker (and `side` m to the right of the line), looking at it; ['land', speed] feeds a landing on the car;
+  // ['feed', event] one event; ['ticks', s] the clock on by s seconds; ['wait', ms]; ['fast', k]
+  // runs the clock k times faster (software rendering is slow); ['rescue'] waits for someone to save;
+  // ['gates'] flies him through the race's gates in order; ['start'] starts the mission there rather
+  // than before the first op (the chase's car pulls out from wherever he is).
+  bank: { mission: 'ep2', drive: [['go', [36, 0, 14], 1.0, 'ground']], pitch: 0.06, finish: [['go', [50, 0, 0], 1.57, 'ground'], ['step', 1], ['car'], ['land', 25], ['step', 2], ['feed', { type: 'ko', kind: 'mauler' }], ['feed', { type: 'ko', kind: 'mauler' }]] }, // the bank from the pavement, its marker over the door
+  chase: { mission: 'chase', drive: [['go', [-200, 20, -120], 0, 'air'], ['start'], ['car'], ['wait', 2500], ['near', 'car', 26, 7, 5]], finish: [['land', 10]] }, // the stolen car running the grid, Mark over the street behind it
+  seismic: { mission: 'ep3', drive: [['go', [-2610, 6, -372], Math.PI, 'air'], ['step', 1], ['foes', 1], ['fast', 8], ['rescue'], ['fast', 1], ['near', 'marker', 14, 3]], finish: [['feed', { type: 'caught' }], ['feed', { type: 'caught' }], ['feed', { type: 'caught' }], ['feed', { type: 'caught' }], ['feed', { type: 'ko', kind: 'seismic' }]] }, // Doc Seismic over the school, a student at the roof's edge
+  maulers: { mission: 'ep2', drive: [['go', [50, 0, 0], 1.57, 'ground'], ['step', 1], ['car'], ['land', 25], ['step', 2], ['wait', 1500], ['near', 'car', 16, 2, 4]], finish: [['feed', { type: 'ko', kind: 'mauler' }], ['feed', { type: 'ko', kind: 'mauler' }]] }, // the Mauler twins at the stopped truck
   eveescort: { follow: 'eve', back: 10, side: 8, turn: 0 }, // she's off his left, as when she escorts him
   // the rings under way, Dad 50 m behind him and 20 m up (the camera turned round to them both)
   dadlesson: { p: [-2033, 22, 255], mode: 'air', yaw: 1.96, look: 1.96 + Math.PI, pitch: 0.3, dad: 'lesson' },
   porchdusk: { place: 'home', back: 10, up: 1, side: 3, time: 'dusk', dad: 'porch' }, // Dad home, beside Mom
-  gdasiege: { p: [1290, 90, -395], mode: 'air', yaw: 1.42, pitch: -0.22 }, // from over the east bank, the hangar left of him
-  photo: { p: [24, 3, 27], mode: 'air', yaw: -2.4, pitch: 0.22 }, // the hall from the plaza's corner
+  gdasiege: { mission: 'ep6', drive: [['go', [1608, 5, -372], Math.PI, 'air'], ['foes', 2], ['wait', 3000], ['near', 'marker', 30, 9]], pitch: -0.2, finish: [['ticks', 91], ['step', 1], ...Array.from({ length: 6 }, () => ['feed', { type: 'ko', kind: 'mauler' }])] }, // the hangar held, the Maulers coming up the river bank
+  photo: { mission: 'photo1', drive: [['go', [24, 3, 27], -2.4, 'air']], pitch: 0.22, finish: [['feed', { type: 'use', id: 'photo' }]] }, // the hall from the plaza's corner, the photo's frame ahead
+  everace: { mission: 'everace', drive: [['go', [-200, 60, -120], Math.PI, 'air'], ['near', 'marker', 30, 4]], finish: [['gates']] }, // Eve's first gate over a downtown crossing
 };
 const args = process.argv.slice(2);
 const metrics = args.includes('--metrics');
@@ -131,6 +141,65 @@ async function boxed(png, file, { rect, at }) {
   await sharp(png).composite([{ input: Buffer.from(svg) }]).toFile(file);
 }
 
+// the missions' driver (see SHOTS): `id` to start one (null to go on with the one under way)
+await page.evaluate(() => {
+  window.__INV_DRIVE__ = async (id, ops, s = {}, freeze = false) => {
+    const { api, sim } = window.__INVWORLD__;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const until = async (f, ms = 20000) => {
+      for (let t = 0; t < ms && !f(); t += 200) await sleep(200);
+      return f();
+    };
+    const standing = () => sim.foes.foes.filter((e) => e.state !== 'ko' && e.state !== 'down').length;
+    const place = (p, face, mode = 'air') => {
+      sim.h = { ...sim.h, p: [...p], v: [0, 0, 0], spd: 0, mode, crouch: 0, stun: 0, face };
+      sim.yaw = face;
+      sim.pitch = s.pitch ?? 0.05;
+      sim.dragAt = 1e9;
+    };
+    sim.speedup = 1;
+    const start = () => {
+      api.mission(id);
+      sim.swing = null; // (the title card's camera swing, off: the shot frames things itself)
+    };
+    if (id && !ops?.some((op) => op[0] === 'start')) start();
+    for (const op of ops ?? []) {
+      const [k, a, b, c, d = 0] = op;
+      if (k === 'start') start();
+      else if (k === 'go') place(a, b, c);
+      else if (k === 'wait') await sleep(a);
+      else if (k === 'step') await until(() => !sim.mission || sim.mission.step >= a);
+      else if (k === 'car') await until(() => Boolean(sim.getaway));
+      else if (k === 'foes') await until(() => standing() >= a);
+      else if (k === 'fast') sim.speedup = a;
+      else if (k === 'rescue') await until(() => Boolean(sim.quests.rescue), 60000);
+      else if (k === 'gates') {
+        for (const g of sim.gates?.list ?? []) {
+          place(g, sim.h.face, 'air');
+          const f0 = sim.frame;
+          await until(() => sim.frame >= f0 + 2);
+        }
+      }
+      else if (k === 'near') {
+        // (a few frames first: the HUD's marker is a frame or two behind the rules)
+        const f0 = sim.frame;
+        await until(() => sim.frame >= f0 + 3);
+        const at = a === 'car' ? sim.getaway?.p : sim.marker?.p;
+        if (!at) continue;
+        const face = sim.getaway && a === 'car' ? sim.getaway.yaw : Math.atan2(at[0] - sim.h.p[0], at[2] - sim.h.p[2]);
+        place([at[0] - Math.sin(face) * b - Math.cos(face) * d, at[1] + (c ?? 0), at[2] - Math.cos(face) * b + Math.sin(face) * d], face, 'air');
+      } else if (k === 'land') {
+        const at = sim.getaway?.p ?? sim.h.p;
+        place([at[0], at[1], at[2]], sim.h.face, 'ground');
+        await until(() => Boolean(sim.mission?.seen?.car)); // (a frame first: the mission sees the car where it is)
+        api.feed({ type: 'land', speed: a, p: [...(sim.getaway?.p ?? at)] });
+      } else if (k === 'feed') api.feed(a);
+      else if (k === 'ticks') for (let t = 0; t < a; t += 0.05) api.feed({ type: 'tick', dt: 0.05 });
+    }
+    // (held still for the shot: the clock stops, so nothing drives off or knocks him about)
+    if (freeze) sim.speedup = 0;
+  };
+});
 await page.waitForTimeout(3000); // (a few frames first, so everyone's somewhere)
 for (const [name, s] of Object.entries(SHOTS)) {
   if (want.length && !want.includes(name)) continue;
@@ -159,6 +228,8 @@ for (const [name, s] of Object.entries(SHOTS)) {
       sim.yaw = Math.PI / 2 - 0.15;
       sim.pitch = 0.12;
       sim.dragAt = 1e9;
+    } else if (s.mission) {
+      await window.__INV_DRIVE__(s.mission, s.drive, s, true);
     } else if (s.space) {
       // up through the top of the sky, if he isn't out there already
       if (api.zone !== 'space') {
@@ -276,6 +347,22 @@ for (const [name, s] of Object.entries(SHOTS)) {
   const png = await page.screenshot({ path: `${out}/inv-${name}.png`, timeout: 180000 });
   const info = await page.evaluate(() => window.__INVWORLD__.api.info());
   console.log(name, 'calls', info.calls, 'tris', info.triangles, 'tier', info.tier);
+  if (s.mission) {
+    // (where the shot found him and the step's marker, for reading the shot)
+    const w = await page.evaluate(() => {
+      const { sim } = window.__INVWORLD__;
+      return { at: sim.h.p.map((v) => Math.round(v)), marker: sim.marker?.p?.map((v) => Math.round(v)) ?? null, step: sim.mission?.step ?? null, goal: document.querySelector('.iw-goal')?.textContent ?? '' };
+    });
+    console.log(name, `mission ${s.mission} step ${w.step} at [${w.at}] marker [${w.marker}] “${w.goal}”`);
+    // on to its end, and say so (the story kept says which are done and in what time)
+    const r = await page.evaluate(async (s) => {
+      await window.__INV_DRIVE__(null, s.finish, s);
+      for (let i = 0; i < 20 && window.__INVWORLD__.sim.mission; i++) await new Promise((r) => setTimeout(r, 250));
+      const story = window.__INVWORLD__.api.story();
+      return { done: story.done.includes(s.mission), best: story.best[s.mission] ?? null, left: window.__INVWORLD__.sim.mission?.step ?? null };
+    }, s);
+    console.log(name, `mission ${s.mission}`, r.done ? (r.best ? `done in ${r.best.toFixed(1)} s` : 'done') : `not done (step ${r.left})`);
+  }
   if (metrics) {
     // where he is on the canvas: the middle of him (sim.h.p is his feet), through the scene's camera
     const at = await page.evaluate(() => {

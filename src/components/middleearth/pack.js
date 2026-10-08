@@ -26,5 +26,5 @@ export const PACK = {
     '/audio/clips/you-bow-to-no-one.mp3',
     '/audio/clips/lotr-theme.mp3',
   ], // single files
-  globs: ['/models/sketchfab/*.glb', '/cc0/galaxy/**'], // folders: `*` within a folder, `**` any depth
+  globs: ['/models/sketchfab/*.glb', '/cc0/galaxy/**', '/models/middleearth/cast/*'], // folders: `*` within a folder, `**` any depth
 };

@@ -25,6 +25,7 @@ import { HOME_RADIUS, ORDER, POSITIONS, REACH, SECTORS, sectorOf } from './layou
 import { laneAim, laneFrame, lanePlan } from './lanePilot';
 import { MOONS, byId } from './universes';
 import { LENGTH } from './scale';
+import { pilotId } from './pilotGoal';
 import { SYSTEM_MARKS, SYSTEM_NAMES } from '../galaxy/names';
 
 export const DRIVE_KEY = 'tp-universe-drive';
@@ -132,7 +133,7 @@ export const DESTINATIONS = [
     at: POSITIONS[m.id],
     reach: REACH[m.id],
     color: m.swatch,
-    about: `${m.label}, a planet from Rick and Morty, out in the Citadel's own sector of space. The portal gun on the C-137 page dials it too.`,
+    about: `${m.label}, a planet from Rick and Morty, out in the Citadel's own sector of space. Land on it and you're straight into it, on foot as Morty, with something to do there; its own portal brings you back out to space.`,
     to: m.to,
   })),
   ...WONDERS.map((w) => ({
@@ -168,15 +169,17 @@ export const goalOf = (id) => BY_ID.get(id)?.via ?? id;
 // gone to through the portal between them (portals.js), then on from its far
 // end. portalBetween(from, to) → the portal in `from` that opens on `to`, or
 // null; legOf(ship, id) → where the trip to `id` goes first: that portal, or
-// the place itself (its gate, for a star system) when it's in the ship's sector
+// the place itself (its gate, for a star system) when it's in the ship's sector.
+// (Another pilot, `pilot:<id>` (pilotGoal.js), is in whichever sector their
+// `pose` says: legOf(ship, id, pose))
 export const sectorOfGoal = (id) => {
   const g = GOALS[goalOf(id)];
   return g ? sectorOf(...g.at) : null;
 };
 export const portalBetween = (from, to) => PORTALS.find((p) => sectorOf(...p.at) === from && p.leadsTo.sector === to) ?? null;
-export function legOf(ship, id) {
+export function legOf(ship, id, pose = null) {
   const goal = goalOf(id);
-  const there = sectorOfGoal(goal);
+  const there = pilotId(goal) ? (pose ? sectorOf(pose.x, pose.y ?? 0, pose.z) : null) : sectorOfGoal(goal);
   if (!ship || !there) return goal;
   const here = sectorOf(ship.x, ship.y ?? 0, ship.z);
   return here === there ? goal : (portalBetween(here, there)?.id ?? goal);
