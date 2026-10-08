@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { RiArrowDownLine, RiArrowLeftLine, RiArrowUpLine, RiCheckLine, RiCloseLine, RiEmotionLaughLine, RiListCheck2, RiShirtLine, RiTyphoonLine } from 'react-icons/ri';
 import { EMOTES, wheelAngle } from '../../../lib/emote';
+import { Stick, TouchButton } from '../../../runtime/hud';
 import GuideCue from '../../guide/GuideCue';
 import Wardrobe from '../wardrobe/Wardrobe';
 import { DIAL } from './dimensions/destinations';
@@ -18,8 +19,11 @@ import { Title, Toast } from './WorldCards';
 // fades and the loading veil, and everything the HUD reads and does): the
 // title and what to do on the left, the map and the chips on the right, the
 // toasts and captions, the prompt, Total Rickall's crosshair and cards, the
-// hints, the thumbs on touch (or the way back on a keyboard), and the list.
+// hints, the thumbs on touch (the way back under the title there, at the
+// foot on a keyboard), and the list.
 // Moved out of RmWorld.jsx as it was, so that file has room to breathe.
+// The stick and the held buttons are the HUD kit's (src/runtime/hud), in
+// C-137's own look; the spacing is the kit's tokens (./world.css).
 
 const EMOTE_NAME = { wave: 'Wave', cheer: 'Cheer', dance: 'Dance', taunt: 'Taunt', sit: 'Sit' };
 
@@ -55,7 +59,7 @@ export default function RmHud({
   chip,
   listBox,
   recall,
-  stickEl,
+  onStickStart,
   stopRickall,
   onToggleList,
   onWardrobe,
@@ -79,9 +83,34 @@ export default function RmHud({
   onFire,
   closeList,
 }) {
+  // Where the top row ends (the taller of the title's column and the map's),
+  // measured, for what hangs under it on a phone (./world.css --rm-under):
+  // the toast and the cruiser's caption sit just under it however tall the
+  // objective or the chips make it, never over them.
+  const top = useRef(null);
+  useLayoutEffect(() => {
+    const row = top.current;
+    const stage = row?.parentElement;
+    if (!stage) return undefined;
+    const fit = () => {
+      const from = stage.getBoundingClientRect().top;
+      const bottom = Math.max(0, ...Array.from(row.children, (n) => n.getBoundingClientRect().bottom - from));
+      stage.style.setProperty('--rm-under', `${Math.round(bottom)}px`);
+    };
+    fit();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
+    ro?.observe(stage);
+    for (const n of row.children) ro?.observe(n);
+    return () => ro?.disconnect();
+  }, []);
+  const way = (
+    <RouterLink to={back.to} replace={back.replace} className="rm-back">
+      <RiArrowLeftLine aria-hidden="true" /> {back.label}
+    </RouterLink>
+  );
   return (
     <>
-      <div className="rm-hud rm-hud-top">
+      <div ref={top} className="rm-hud rm-hud-top">
         <div ref={brand} className="rm-brand">
           <Title name={planet?.name} />
           {game ? (
@@ -140,6 +169,8 @@ export default function RmHud({
               </span>
             </p>
           )}
+          {/* (on touch the stick has the way back's corner: it's under what to do instead) */}
+          {touch && way}
         </div>
         <div className="rm-side">
           <figure className="rm-map">
@@ -208,7 +239,7 @@ export default function RmHud({
           <p className="rm-prompt-name">{here.name}</p>
           {!touch && (
             <button type="button" className="rm-btn" onClick={act}>
-              {here.verb} <kbd>E</kbd>
+              <kbd className="key-first">E</kbd> {here.verb}
             </button>
           )}
         </div>
@@ -230,10 +261,10 @@ export default function RmHud({
           {!touch && (
             <div className="rm-prompt-acts">
               <button type="button" className="rm-btn rm-btn-ghost" onClick={tellRickall}>
-                Remember <kbd>E</kbd>
+                <kbd className="key-first">E</kbd> Remember
               </button>
               <button type="button" className="rm-btn rm-btn-shoot" onClick={shootRickall}>
-                Shoot <kbd>F</kbd>
+                <kbd className="key-first">F</kbd> Shoot
               </button>
             </div>
           )}
@@ -290,44 +321,40 @@ export default function RmHud({
       <div className="rm-hud rm-hud-bottom">
         {touch ? (
           <>
-            <div ref={stickEl} className="rm-stick" onPointerDown={onStick} onPointerMove={onStick} onPointerUp={onStick} onPointerCancel={onStick} onLostPointerCapture={onStick} aria-hidden="true">
-              <span />
-            </div>
+            <Stick className="rm-stick" onMove={onStick} onStart={onStickStart} reach={46} />
             <div className="rm-pad">
               {!hud.flying && (
                 <div className="rm-lift">
-                  <button type="button" aria-label="Jump" onPointerDown={onJump} onContextMenu={(e) => e.preventDefault()}>
+                  <TouchButton aria-label="Jump" onPress={onJump}>
                     <RiArrowUpLine aria-hidden="true" />
-                  </button>
+                  </TouchButton>
                   {!game && (
                     <button type="button" className="rm-emote-btn" aria-label="Emote" aria-haspopup="menu" aria-expanded={touchWheel} onClick={onToggleWheel} onContextMenu={(e) => e.preventDefault()}>
                       <RiEmotionLaughLine aria-hidden="true" />
                     </button>
                   )}
                   {duel && (
-                    <button
-                      type="button"
+                    <TouchButton
                       className="rm-fire"
                       aria-label="Fire"
-                      onPointerDown={(e) => {
+                      onPress={(e) => {
                         e.preventDefault();
                         onFire();
                       }}
-                      onContextMenu={(e) => e.preventDefault()}
                     >
                       ✦
-                    </button>
+                    </TouchButton>
                   )}
                 </div>
               )}
               {hud.flying && (
                 <div className="rm-lift">
-                  <button type="button" aria-label="Climb" onPointerDown={onLift(1)} onPointerUp={onLift(0)} onPointerCancel={onLift(0)} onLostPointerCapture={onLift(0)} onContextMenu={(e) => e.preventDefault()}>
+                  <TouchButton aria-label="Climb" onPress={() => onLift(1)} onRelease={() => onLift(0)}>
                     <RiArrowUpLine aria-hidden="true" />
-                  </button>
-                  <button type="button" aria-label="Drop" onPointerDown={onLift(-1)} onPointerUp={onLift(0)} onPointerCancel={onLift(0)} onLostPointerCapture={onLift(0)} onContextMenu={(e) => e.preventDefault()}>
+                  </TouchButton>
+                  <TouchButton aria-label="Drop" onPress={() => onLift(-1)} onRelease={() => onLift(0)}>
                     <RiArrowDownLine aria-hidden="true" />
-                  </button>
+                  </TouchButton>
                 </div>
               )}
               {game ? (
@@ -347,9 +374,7 @@ export default function RmHud({
             </div>
           </>
         ) : (
-          <RouterLink to={back.to} replace={back.replace} className="rm-back">
-            <RiArrowLeftLine aria-hidden="true" /> {back.label}
-          </RouterLink>
+          way
         )}
       </div>
 

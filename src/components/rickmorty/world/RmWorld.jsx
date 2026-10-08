@@ -1496,14 +1496,15 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   }, live);
 
   // something open over the world: let go of the stick and the up and down buttons
-  const stickEl = useRef(null);
   useEffect(() => {
     if (!open) return;
     const s = sim.current;
     s.stick = { x: 0, y: 0 };
     s.lift = 0;
-    stickEl.current?.style.setProperty('--sx', '0px');
-    stickEl.current?.style.setProperty('--sy', '0px');
+    // (the kit's stick, in RmHud: its knob back to the middle)
+    const knob = canvas.current?.parentElement?.querySelector('.hud-stick');
+    knob?.style.removeProperty('--sx');
+    knob?.style.removeProperty('--sy');
   }, [open]);
 
   // ── the pointer: drag the view round (and in Total Rickall, up and down
@@ -1536,42 +1537,21 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     if (e.type === 'pointerup' && s.rickall && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < CLICK.px && performance.now() - d.at < CLICK.ms) fns.current.shoot();
   };
 
-  // the touch stick: drag from where the thumb goes down
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      audioContext();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'lostpointercapture') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = clamp1((e.clientX - stick.current.x) / 46);
-    const dy = clamp1((e.clientY - stick.current.y) / 46);
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
+  // the touch stick (the kit's, in RmHud): drag from where the thumb goes
+  // down; the sound wakes on the touch itself, as iOS wants
+  const onStick = (x, y) => {
+    sim.current.stick = { x, y };
   };
-  // up and down, held, while flying
-  const onJump = (e) => {
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+  const onStickStart = () => audioContext();
+  const onJump = () => {
     sim.current.jump = true;
     audioContext();
   };
-  const onLift = (dir) => (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-      s.lift = dir;
-      audioContext();
-    } else s.lift = 0;
+  // up and down, held, while flying (the kit's button lets go once, on the
+  // lift, a lost touch or the window going)
+  const onLift = (dir) => {
+    sim.current.lift = dir;
+    if (dir) audioContext();
   };
 
   // (the garage portal says where it's dialled; a planet's own portal is the way back to space)
@@ -1634,7 +1614,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         chip={chip}
         listBox={listBox}
         recall={recall}
-        stickEl={stickEl}
+        onStickStart={onStickStart}
         stopRickall={stopRickall}
         onToggleList={() => setList((v) => !v)}
         onWardrobe={() => setWardrobe(true)}
