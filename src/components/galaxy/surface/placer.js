@@ -42,6 +42,7 @@ import { PROPS, SCATTER } from './props';
 import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
 import { seatY } from './seat';
+import { natureLook, natureTick } from './nature';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again
 
@@ -96,6 +97,9 @@ export function loadModel(kind, url = modelUrlFor(kind, detailLevel())) {
   const role = SURFACE_MODELS[kind]?.detail;
   const scan = role && detailLevel() !== 'low' ? loadScan(role) : null;
   return Promise.all([loadGlb(url).then((g) => (url !== surfaceLodUrl(kind) ? squared(g, kind) : g)), scan]).then(([gltf, got]) => {
+    // (the nature kit's: its materials shared by name, lit as leaves, in
+    // the page's wind: nature.js)
+    if (gltf && SURFACE_MODELS[kind]?.cc0) natureLook(gltf, SURFACE_MODELS[kind]);
     // (a model whose own finish reads wrong in the world: `look`, its
     // materials' metalness, roughness, ambient occlusion and reflections set)
     const look = SURFACE_MODELS[kind]?.look;
@@ -403,7 +407,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           root.updateMatrixWorld(true);
           const parts = [];
           root.traverse((o) => {
-            if (o.isMesh && !o.isSkinnedMesh) parts.push({ geometry: o.geometry, material: o.material, local: o.matrixWorld.clone() });
+            if (o.isMesh && !o.isSkinnedMesh) parts.push({ geometry: o.geometry, material: o.material, local: o.matrixWorld.clone(), shadow: SURFACE_MODELS[kind].shadow });
           });
           const box = new THREE.Box3().setFromObject(root);
           const size = box.getSize(new THREE.Vector3());
@@ -440,6 +444,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     },
     update(t, dt, you = null) {
       for (const u of updates) u(t, dt);
+      natureTick(kit, you);
       if (you && (casters.length || splits.length) && (!nearAt || Math.hypot(you.x - nearAt[0], you.z - nearAt[1]) > NEAR.step)) {
         nearAt = [you.x, you.z];
         for (const c of casters) fillCaster(c, you.x, you.z);

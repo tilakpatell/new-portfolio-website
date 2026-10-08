@@ -23,6 +23,8 @@ describe('the kit', () => {
       expect(u.uWindDir.value.y, name).toBeCloseTo(1, 5);
     }
     expect(kit.mats.stone.userData.wind).toBeUndefined();
+    // (the way it blows, for the models that sway in it too: surface/nature.js)
+    expect(kit.windAngle).toBe(Math.PI / 2);
     kit.dispose();
   });
 

@@ -499,6 +499,9 @@ export function createKit({ seed = 11, scans = true, wind: blow = null, load = l
     ready,
     // the wind's clock, shared with whatever else moves in it (the grass)
     wind: windTime,
+    // (and the way it blows, radians, or null: for the models that sway in
+    // it too, surface/nature.js)
+    windAngle: blow?.angle ?? null,
     // a thing that moves onto the twins (its scans by its UVs, going with
     // it); how many meshes changed
     moving(root) {

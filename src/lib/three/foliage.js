@@ -162,6 +162,8 @@ export function faceless(material) {
 export const WIND = {
   tree: { height: 7, strength: 0.16, trunkHz: 0.45, leafHz: 2.6, leaf: 0.025 },
   shrub: { height: 1.3, strength: 0.05, trunkHz: 0.8, leafHz: 3.4, leaf: 0.012 },
+  // (a clump of grass: short, stiff at the root, its tips quick)
+  grass: { height: 1.1, strength: 0.07, trunkHz: 0.9, leafHz: 3.8, leaf: 0.018 },
 };
 
 // The rewrite, as pure strings: after three's begin_vertex, the vertex moved
