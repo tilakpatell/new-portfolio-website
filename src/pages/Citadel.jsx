@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import WorldSwitcher from '../components/worlds/WorldSwitcher';
 import { useDocumentTitle } from '../lib/hooks';
 import '@fontsource/orbitron/600.css';
@@ -9,23 +9,28 @@ const CitadelWorld = lazy(() => import('../components/rickmorty/citadel/CitadelW
 
 // The Citadel of Ricks, inside: the walkable concourse and its five scenes
 // (../components/rickmorty/citadel/), reached from the C-137 page, the
-// command palette, or by flying into the Citadel on the universe map.
+// command palette, or by flying into the Citadel on the universe map. The
+// way out goes back where you came from: to space beside it if that was the
+// map (Universe.jsx says so in the router's state), else to C-137, and the
+// page says which it's part of.
 export default function Citadel() {
   useDocumentTitle('The Citadel of Ricks');
   const navigate = useNavigate();
+  const fromMap = useLocation().state?.from === 'universe';
+  const out = fromMap ? '/universe/citadel' : '/c-137';
   return (
     <div className="relative">
       <div className="pt-[var(--nav-h)]">
         <Suspense fallback={<div className="shire-stage" aria-hidden="true" />}>
-          <CitadelWorld onLeave={() => navigate('/c-137')} />
+          <CitadelWorld onLeave={() => navigate(out)} leaveLabel={fromMap ? 'Back to space' : 'Back to C-137'} />
         </Suspense>
       </div>
       <section className="shell relative z-10 py-10 md:py-14" aria-label="About the Citadel">
-        <p className="eyebrow">Dimension C-137</p>
+        <p className="eyebrow">{fromMap ? 'The Rick and Morty sector' : 'Dimension C-137'}</p>
         <p className="lead mt-3 max-w-[62ch]">A city of Ricks, hidden where no Rick can find it, except all of them. Round up the day care’s Mortys, stack wafers at Simple Rick’s, face the Council, vote in the election, and get out before Candidate Morty’s Cop Ricks find you.</p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link to="/c-137" className="btn btn-primary">
-            Back to Dimension C-137
+          <Link to={out} className="btn btn-primary">
+            {fromMap ? 'Back to space' : 'Back to Dimension C-137'}
           </Link>
           <Link to="/" className="btn btn-ghost">
             Back to the site

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { dialKey } from './dialKey';
 
-// The portal gun's dial, opened at its stand in Rick's garage: every place
-// the garage portal can open on, the one it's set to marked. Arrows to move,
-// Enter (or a click) to dial, Esc to close. (The Vindicators' ship asks
+// The portal gun's dial, opened at its stand in Rick's garage (or from
+// anywhere in C-137 with P, or the HUD's chip): every place the garage portal
+// can open on, the one it's set to marked. Arrows to move, Enter (or a click)
+// to dial, Esc to close. (The Vindicators' ship asks
 // Rick's rooms in it too: `title`, `lead` (the room's question), `foot`.)
 export default function DimensionDial({ open, items, value, onPick, onClose, title = 'Pick a dimension', lead = null, foot = '↑ ↓ to turn the dial, Enter to set it, Esc to put the gun down', label = 'The portal gun’s dial' }) {
   const [i, setI] = useState(0);
@@ -13,11 +15,13 @@ export default function DimensionDial({ open, items, value, onPick, onClose, tit
   useEffect(() => {
     if (!open) return undefined;
     const key = (e) => {
-      if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') setI((n) => (n + 1) % items.length);
-      else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') setI((n) => (n - 1 + items.length) % items.length);
-      else if (e.key === 'Enter' || e.key === 'e' || e.key === 'E') onPick(items[i].id);
-      else if (e.key === 'Escape') onClose();
-      else return;
+      // (./dialKey.js: a pick or a close is a press, not a key held down; the arrows repeat)
+      const k = dialKey(e);
+      if (!k) return;
+      if (k === 'down') setI((n) => (n + 1) % items.length);
+      else if (k === 'up') setI((n) => (n - 1 + items.length) % items.length);
+      else if (k === 'pick') onPick(items[i].id);
+      else if (k === 'close') onClose();
       e.preventDefault();
       e.stopPropagation();
     };

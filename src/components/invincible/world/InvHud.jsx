@@ -79,7 +79,9 @@ export default function InvHud({ hud, mapRef, time, cycleTime, help, setHelp, ch
             <dt>J · F · click</dt>
             <dd>Punch (a little way off, he lunges)</dd>
             <dt>E</dt>
-            <dd>At a place: go in (Cecil, at the GDA, has a job)</dd>
+            <dd>At a place: go in (Cecil’s board, at the GDA, has the season)</dd>
+            <dt>Q</dt>
+            <dd>Call a mission off</dd>
             <dt>T</dt>
             <dd>Noon, dusk, night</dd>
             <dt>Up, up</dt>

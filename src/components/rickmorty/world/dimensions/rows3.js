@@ -93,7 +93,7 @@ export const ROWS = [
       { id: 'post-b', dx: -8, dz: 4, r: 0.3 },
       { id: 'rubble', dx: 22, dz: -16, r: 2.4 },
     ],
-    tasks: [{ id: 'cronenberg', name: 'Visit the Smiths who stayed', hint: 'Dial Cronenberg World on the portal gun, take the shovel, and talk to Beth at the house. The Cronenbergs come for anything that moves.' }],
+    tasks: [{ id: 'cronenberg', name: 'Visit the Smiths who stayed', hint: 'Land on Cronenberg World in the Rick and Morty sector, take the shovel, and talk to Beth at the house. The Cronenbergs come for anything that moves.' }],
     say: {
       cbeth: { who: 'Beth', text: '“You have the shovel. Good. There’s always something to bury.” She looks at you for a long time. “Our Morty would be your age. Go home, Morty. Whichever one it is.”' },
       cjerry: { who: 'Jerry', text: '“We lived, Morty. No Rick, no portal gun, just us and a lot of spears. I’ve never been happier. Don’t tell your mother I said that.”' },

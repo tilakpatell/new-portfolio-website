@@ -56,6 +56,7 @@
 .iw-goal { position: absolute; left: 50%; top: calc(max(calc(clamp(0.75rem, 2vw, 1.25rem) + 2.45rem), var(--iw-under, 0px)) + 52px); z-index: 2; transform: translateX(-50%); max-width: min(30rem, 80vw); margin: 0; padding: 0.4rem 0.75rem; border: 2px solid #000; border-radius: 6px; background: var(--iw-yellow); color: #111; font: 700 0.82rem/1.25 var(--font-sans); box-shadow: 3px 3px 0 #000; }
 .iw-goal:not([data-on='1']) { display: none; }
 .iw-goal[data-purple='1'] { background: #8a2fd0; color: #fff; }
+.iw-goal[data-mission='1'] { background: var(--mc, var(--iw-yellow)); color: #fff; }
 .iw-goal[data-red='1'] { background: #ff3b30; color: #fff; animation: iw-pulse 1s ease-in-out infinite; }
 @keyframes iw-pulse { 50% { transform: translateX(-50%) scale(1.03); } }
 /* the time of day, and one Menu for the rest */
@@ -92,6 +93,29 @@
 .iw-card span { font: 400 clamp(4rem, 2rem + 12vw, 11rem)/0.8 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.02em; color: var(--iw-yellow); transform: scaleY(1.35); text-shadow: 6px 6px 0 #0b3f86; animation: iw-card-word 2.6s ease-in both; }
 @keyframes iw-card { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes iw-card-word { 0% { transform: scaleY(1.35) scale(0.9); } 60% { transform: scaleY(1.35) scale(1.04); } 100% { transform: scaleY(1.35) scale(1.25); } }
+
+/* a mission's cards (./MissionCard.jsx): the episode's title card in its
+   colour as one starts, gone in 2.5 s; a panel for the end, a failure, the
+   question before abandoning one, and Cecil's board */
+.iw-mcard { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 0.6rem; background: var(--mc, #1d8fd6); pointer-events: none; animation: iw-card 2.5s ease-in both; }
+.iw-mcard-ep { font: 700 clamp(0.75rem, 0.6rem + 0.6vw, 1rem)/1.2 var(--font-sans); letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255, 255, 255, 0.92); animation: iw-pop 0.3s ease-out both; }
+.iw-mcard-title { max-width: 90vw; font: 400 clamp(3rem, 1.4rem + 8vw, 8rem)/0.85 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.02em; text-align: center; color: var(--iw-yellow); transform: scaleY(1.3); text-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35); animation: iw-card-word 2.5s ease-in both; }
+.iw-panel { position: absolute; left: 50%; top: 50%; z-index: 4; display: grid; gap: 0.5rem; width: min(26rem, calc(100% - 1.5rem)); padding: 1rem 1.1rem 1.1rem; border: 2px solid #000; border-radius: 10px; background: var(--iw-glass-hi); color: var(--iw-ink); box-shadow: 5px 5px 0 var(--mc, var(--iw-yellow)); transform: translate(-50%, -50%); font: 500 0.86rem/1.4 var(--font-sans); animation: iw-pop 0.18s ease-out both; }
+.iw-panel-big { margin: 0; font: 400 clamp(2.4rem, 1.6rem + 3vw, 4rem)/0.9 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.02em; color: var(--iw-yellow); font-variant-numeric: tabular-nums; }
+.iw-panel-sub { margin: 0; color: #b9c6dc; }
+.iw-panel-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.4rem; }
+.iw-panel kbd, .iw-board kbd { margin-left: 0.4em; padding: 0.05rem 0.35rem; border: 1px solid currentColor; border-radius: 4px; font: 600 0.68rem/1.2 var(--font-mono); opacity: 0.75; }
+.iw-btn-quiet { background: var(--iw-glass-hi); color: var(--iw-ink); box-shadow: 3px 3px 0 var(--iw-yellow); }
+.iw-board { width: min(30rem, calc(100% - 1.5rem)); }
+.iw-board ol { display: grid; gap: 0.3rem; margin: 0.3rem 0 0; padding: 0; list-style: none; }
+.iw-board li { display: grid; grid-template-columns: 2.2rem 1fr auto; align-items: center; gap: 0.6rem; padding: 0.45rem 0.6rem; border-radius: 6px; border-left: 5px solid var(--mc, var(--iw-yellow)); background: rgba(255, 255, 255, 0.05); opacity: 0.55; }
+.iw-board li[data-done], .iw-board li[data-next] { opacity: 1; }
+.iw-board li[data-next] { background: rgba(255, 210, 58, 0.14); }
+.iw-board li b { font: 400 1.5rem/1 'Bebas Neue', Impact, sans-serif; color: var(--iw-yellow); }
+.iw-board li span { display: grid; }
+.iw-board li small { color: #b9c6dc; font-size: 0.74rem; }
+.iw-board li[data-done] small::before { content: '✓ '; color: var(--iw-yellow); }
+.iw-board .iw-btn { padding: 0.35rem 0.65rem; }
 
 /* out of the air, or back into it: a flash */
 .iw-flash { position: absolute; inset: 0; z-index: 3; pointer-events: none; animation: iw-flash 0.9s ease-out both; }
@@ -156,4 +180,4 @@
 .iw-cards-list b { font: 400 1.4rem/1 'Bebas Neue', Impact, sans-serif; letter-spacing: 0.03em; color: var(--ink); }
 .iw-cards-list span { font-size: 0.88rem; color: var(--body); }
 
-@media (prefers-reduced-motion: reduce) { .iw-lines { animation: none; } .iw-flash { animation-duration: 0.01s; } }
+@media (prefers-reduced-motion: reduce) { .iw-lines { animation: none; } .iw-flash { animation-duration: 0.01s; } .iw-mcard-title, .iw-mcard-ep, .iw-panel { animation: none; } }
