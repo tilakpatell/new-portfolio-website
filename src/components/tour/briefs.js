@@ -531,7 +531,7 @@ export const BRIEFS = {
       text: 'Pull up at a place and go in. Hank’s SUV is the flashing dot: don’t race past him, or carry near him.',
       keys: [
         ['E / Enter', 'Go in'],
-        ['M', 'Places'],
+        ['M', 'Things to do'],
         ['R', 'Run a delivery'],
       ],
     },
