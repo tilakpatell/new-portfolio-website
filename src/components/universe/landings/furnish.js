@@ -89,6 +89,25 @@ export const within = (promise, ms) =>
 // every model a landing may stand about (its biomes' too), each once
 export const modelUrls = (landing) => [...new Set([landing?.models, ...(landing?.biomes ?? []).map((b) => b.models)].flatMap((m) => Object.values(m ?? {}).map((spec) => spec.url)))];
 
+// A scatter's spots (scatterSpots': metres from the landing's middle) in
+// cells, each drawn as instances of its own with bounds of its own, so
+// what's behind you isn't drawn (one instanced mesh round the whole ring
+// was always in view, half of it at your back): the spots within `inner`
+// of the middle together, the rest by the way they lie from it, in
+// `sectors` slices. Each cell its spots' indices, in the order they were
+// laid; an empty one left out. Nothing's moved.
+export function cellsOf(spots, { sectors = 8, inner = 20 } = {}) {
+  if (sectors <= 1) return spots.length ? [spots.map((_, i) => i)] : [];
+  const cells = Array.from({ length: sectors + 1 }, () => []);
+  spots.forEach((p, i) => {
+    if (Math.hypot(p.x, p.z) < inner) return cells[sectors].push(i);
+    const a = (Math.atan2(p.x, p.z) + Math.PI * 2) % (Math.PI * 2);
+    cells[Math.min(sectors - 1, Math.floor(a / ((Math.PI * 2) / sectors)))].push(i);
+  });
+  // (the middle's first, as the spots nearest are)
+  return [cells[sectors], ...cells.slice(0, sectors)].filter((c) => c.length);
+}
+
 // What landing on `id` will want, fetched while the ship's still on its way
 // (from the moment it's landable: scene.js), so none of it is fetched, or
 // parsed, on the way down: the builders' file, the models (parsed once for
@@ -109,6 +128,9 @@ export function prefetch(id, landing, { renderer = null } = {}) {
 // descent's 3.4 s): long enough for the page's own copies, or a quick
 // fetch; past it they're made without, and wear them when they come
 const KIT_WAIT = 1500;
+// a scatter's cells (cellsOf), for a kind of more than so many triangles in all
+const CELLS = { sectors: 8, inner: 20 };
+const SPLIT_TRIS = 20000;
 // (a thing that won't build is just missing; in development, say so)
 const oops = (what) => (err) => {
   if (import.meta.env?.DEV) console.warn(`landing: ${what}`, err);
@@ -353,19 +375,27 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       const spot = place(frame, p.x, p.z, R, p.yaw);
       return { spot, m: standMatrix(spot, R, 0, METRE * p.s), r: reach * p.s };
     });
-    const meshes = parts.map((part) => {
-      const mesh = new THREE.InstancedMesh(part.geometry, part.material, mats.length);
-      mats.forEach((x, i) => mesh.setMatrixAt(i, part.local ? M.copy(x.m).multiply(part.local) : x.m));
-      mesh.instanceMatrix.needsUpdate = true;
-      // (each its own colour, from the builder's: where its material takes one)
-      if (tints) mats.forEach((x, i) => mesh.setColorAt(i, tint.set(tints[(i * 7 + 3) % tints.length])));
-      mesh.computeBoundingSphere();
-      return mesh;
-    });
+    // (in cells, each with bounds of its own, so what's behind you isn't
+    // drawn: a kind of few or small things stays whole, its instances drawn
+    // in one go costing less than a draw for each cell)
+    const tris = parts.reduce((sum, part) => sum + (part.geometry.index?.count ?? part.geometry.attributes.position.count) / 3, 0) * mats.length;
+    const cells = cellsOf(items, tris >= SPLIT_TRIS ? CELLS : { sectors: 1 }).map((ids) =>
+      parts.map((part) => {
+        const mesh = new THREE.InstancedMesh(part.geometry, part.material, ids.length);
+        ids.forEach((i, j) => {
+          mesh.setMatrixAt(j, part.local ? M.copy(mats[i].m).multiply(part.local) : mats[i].m);
+          // (each its own colour, from the builder's: where its material takes one)
+          if (tints) mesh.setColorAt(j, tint.set(tints[(i * 7 + 3) % tints.length]));
+        });
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.computeBoundingSphere();
+        return mesh;
+      }),
+    );
     const holder = new THREE.Group();
     holder.name = `scatter-${entry.kind}`;
     holder.userData.shared = shared;
-    holder.add(...meshes);
+    holder.add(...cells.flat());
     if (!add(holder)) return;
     if (entry.solid !== false) for (const x of mats) addSolid({ n: x.spot.n, r: x.r * METRE });
   };
