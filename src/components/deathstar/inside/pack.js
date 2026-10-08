@@ -9,7 +9,7 @@ export const PACK = {
     '/models/galaxy/crew/luke.glb',
     '/models/galaxy/crew/han.glb',
     '/models/galaxy/crew/leia.glb',
-    '/models/galaxy/crew/obiwan.glb',
+    '/models/deathstar/obiwan.glb', // old Ben: Meshy's model, rigged from jedi3 (scripts/rig-transfer.mjs)
     '/models/galaxy/troops/stormtrooper.glb',
     '/models/galaxy/crew/officer.glb',
     '/models/galaxy/crew/palpatine.glb',
@@ -17,7 +17,7 @@ export const PACK = {
     '/models/galaxy/crew/tiepilot.glb',
     '/models/galaxy/crew/vader.glb',
     '/models/cockpit/chewie.glb', // Chewbacca: the cockpit's Meshy model, rigged as the crew are
-    '/models/galaxy/surface/c3po.glb',
+    '/models/deathstar/c3po.glb', // C-3PO, rigged again on the crew's skeleton
     '/models/galaxy/surface/gonk.glb',
     '/models/galaxy/surface/mousedroid.glb',
     '/models/galaxy/surface/r2d2.glb',

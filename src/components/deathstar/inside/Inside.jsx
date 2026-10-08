@@ -6,6 +6,8 @@ import { WorldHost, useWorld } from '../../../runtime';
 import module from './module';
 import Hud, { Pause } from './ui/Hud';
 import MapPanel from './ui/Map';
+import Marker from './ui/Marker';
+import { placeMarker } from './ui/waymark';
 import Start from './ui/Start';
 import Touch from './ui/Touch';
 import { fromSearch, layers } from './ui/state';
@@ -39,6 +41,8 @@ import './inside.css';
 //   'hit' { target }   a hit you landed
 //   'story' { id, done }   the story ran to its end
 //   'achievement' { id }
+//   'marker' { x, y, off, angle, kind, metres, goal } | null   each frame: where on the screen the way
+//     to the story's target goes next (ui/Marker.jsx); null when there is none to show
 // What the page asks of the world:
 //   start({ station, side, hero, mode, fresh }), pause(on), set({ view | sound | subtitles }),
 //   quit() (back to the start screen), map(open), choose(i), look(dx, dy) (pixels),
@@ -61,9 +65,12 @@ export default function Inside({ mode = 'page', onExit }) {
   const hurts = useRef(0);
   const props = useMemo(() => ({ ...asked, small: touch }), [asked, touch]);
 
+  const markerRef = useRef(null);
   const onEvent = useCallback(
     (e) => {
-      if (e.type === 'ui') setUi(e);
+      // (every frame: straight onto the element, no render)
+      if (e.type === 'marker') placeMarker(markerRef.current, e.x === undefined ? null : e);
+      else if (e.type === 'ui') setUi(e);
       else if (e.type === 'hud') setHud(e);
       else if (e.type === 'achievement') unlock(e.id);
       else if (e.type === 'hurt') setHurt({ angle: e.angle ?? null, key: (hurts.current += 1) });
@@ -191,6 +198,7 @@ export default function Inside({ mode = 'page', onExit }) {
           </div>
         )}
 
+        {showing && playing && <Marker markerRef={markerRef} />}
         {/* (up from the first moment, over the docking cover, so the tour's marks are there whenever it comes) */}
         {status !== 'failed' && status !== 'lost' && (
           <Hud

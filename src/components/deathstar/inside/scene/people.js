@@ -33,12 +33,23 @@
 //   lodPick(items, at, { count, far }, out?) → Map<id, 'live' | 'still' | 'hidden'>   pure
 //     items: [{ id, x, y, z, falling?, settled?, shown? }]: falling, a body still going down (live before
 //     anyone nearer); settled, a body done falling; shown false, in a room not drawn
-//   clipFor(person) → { clip, loop, raised }   pure: the figure’s clip for what the rules say it is doing
-//     (null: walking, running or standing on its gait), and whether its gun is up
+//   actOf(person, { blade, armed }) → { base, full, upper, raised, dead }   pure: what the figure plays
+//     for what the rules say the person is doing: a base state in place of the walk (a stance, a
+//     console, talk, a seat, a kneel; null: walking, running or standing on its gait), a whole-body
+//     one-shot (a flinch), an upper-body loop (aiming, shooting), whether its gun is up, and death
+//   hitClip(dir, yaw, high) → clip   pure: the flinch for a hit from `dir` (the way the bolt went) on
+//     someone facing `yaw`: the chest or the head from in front, a shoulder from the side, doubled up
+//     from behind
+//   fallClip(dir, yaw, id) → clip   pure: back from a hit in front, forward from one behind; with no
+//     hit known, the same one for the same person every time
 //   aimAngles(from, yaw, at) → { yaw, pitch }   pure: the turn (+ right) and tilt (+ up) from facing `yaw` to `at`
-//   createTrack() → { push(body, dt), at(alpha), speed() }   pure: a body between its last two steps;
-//     dt: the frame’s time since the last push
-//   createPeople(scene, kit, { tier, renderer, adopt }) → { sync(crew, alpha, cameraAt, rooms?), muzzle(id, out), dispose() }
+//   createTrack() → { push(body, dt), at(alpha), speed(), velocity(out?), turn() }   pure: a body between
+//     its last two steps; dt: the frame’s time since the last push
+//   motionFrom(track, yaw) → figures.js’s motion   pure: the speed ahead and aside, and the turn
+//   createPeople(scene, kit, { tier, renderer, adopt, layout }) → { sync(crew, alpha, cameraAt, rooms?), hear(events), muzzle(id, out), dispose() }
+//     layout: the station's (rules/layout.js), for the dead to fall against as ragdolls (without it
+//     they fall on their clips); rooms.open(doorId) and rooms.off (layout.offTags's): its doors and
+//     floors as they are now
 //     adopt(object): handed each figure and gun as it goes into the scene (the house look’s adopt)
 //     crew: { people: Map | [person] } (or the people themselves); alpha: how far the frame is from the
 //     last step to the next; cameraAt: { x, y, z }
@@ -50,7 +61,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { loadGltf } from '../../../../lib/three/gltf';
 import { CAST } from '../rules/cast';
-import { PEOPLE, loadPerson } from './figures';
+import { colliderFor } from './fall';
+import { PEOPLE, loadPerson, motionOf } from './figures';
 import { buildGun, disposeGuns } from './guns';
 
 export const LIVE = Object.freeze({ ultra: 24, high: 24, mid: 14, low: 8 });
@@ -64,7 +76,14 @@ const MAKE = 2; // figures made a frame at most
 const CHEST = 0.75; // of a person’s height, where a gun is held for aiming
 const HOVER = 1.45; // metres: the IT-O floats at a standing man’s eyes
 const DEEP = 1.0; // the compactor’s water over the floor the dianoga lies on (ds1.js)
-const FALLS = ['die', 'dieFwd'];
+const FALLS = ['die.back', 'die.fwd'];
+// A body shot dead starts down on its fall clip, then goes as a ragdoll: RAG_AFTER seconds in, at
+// SHOT_SPEED m/s at the chest the way the bolt went (a blade's cut a little harder)
+const RAG_AFTER = 0.15;
+const SHOT_SPEED = 2.4;
+const CUT_SPEED = 3.2;
+const SETTLE_MOST = 6; // seconds a still body's fall is played through, at most, when it has no turn
+const HEAD = 1.45; // metres up a body a hit counts as one to the head
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -93,15 +112,38 @@ export function lodPick(items, at, { count = LIVE.low, far = FAR } = {}, out = n
   return out;
 }
 
-export function clipFor(p) {
+// what a pose the rules name looks like, from the clip library: at attention, working a console,
+// talking with their hands, sat, kneeling
+const POSES = { attention: 'idle.calm', work: 'counter.idle', talk: 'talk', sit: 'sit.idle', kneel: 'kneel' };
+
+export function actOf(p, { blade = false, armed = true } = {}) {
   const raised = p.mode === 'fight' || p.mode === 'search' || p.anim === 'aim' || p.anim === 'shoot';
+  if (p.mode === 'dead') return { base: null, full: null, upper: null, raised: false, dead: true };
+  // knocked down: thrown back, then on one knee until they are up
+  if (p.mode === 'down') return { base: 'kneel', full: p.anim === 'hit' ? 'hit.knock' : null, upper: null, raised: false, dead: false };
+  const moving = p.anim === 'walk' || p.anim === 'run';
+  const base = moving ? null : (POSES[p.anim] ?? (blade && raised ? 'stance' : null));
+  const full = p.anim === 'hit' ? 'hit' : null;
+  // a gun up is held out at the aim, the legs still walking under it
+  const upper = armed && !blade && raised ? (p.anim === 'shoot' ? 'shoot.pistol' : 'aim.pistol') : null;
+  return { base, full, upper, raised, dead: false };
+}
+
+// along: + the bolt went the way they face (a hit from behind); across: + it went to their right (from their left)
+const sides = (dir, yaw) => ({ along: dir.x * Math.sin(yaw) - dir.z * Math.cos(yaw), across: dir.x * Math.cos(yaw) + dir.z * Math.sin(yaw) });
+
+export function hitClip(dir, yaw, high = false) {
+  if (!dir) return 'hit.trooper';
+  const { along, across } = sides(dir, yaw);
+  if (along < -0.5) return high ? 'hit.head' : 'hit.chest';
+  if (along > 0.5) return 'hit.stomach';
+  return across > 0 ? 'hit.shoulder.l' : 'hit.shoulder.r';
+}
+
+export function fallClip(dir, yaw, id = '') {
   // the same person falls the same way however often they are drawn
-  if (p.mode === 'dead') return { clip: FALLS[hashOf(p.id) % FALLS.length], loop: false, raised: false };
-  if (p.mode === 'down') return { clip: 'dieBlown', loop: false, raised: false };
-  if (p.anim === 'shoot') return { clip: 'shoot', loop: true, raised: true };
-  if (p.anim === 'hit') return { clip: 'hit', loop: false, raised };
-  if (p.anim === 'kneel') return { clip: 'kneel', loop: true, raised };
-  return { clip: null, loop: false, raised };
+  if (!dir) return FALLS[hashOf(id) % FALLS.length];
+  return sides(dir, yaw).along > 0 ? 'die.fwd' : 'die.back';
 }
 
 export function aimAngles(from, yaw, at) {
@@ -135,7 +177,18 @@ export function createTrack() {
       return Object.assign(out, { x: prev.x + (cur.x - prev.x) * a, y: prev.y + (cur.y - prev.y) * a, z: prev.z + (cur.z - prev.z) * a, yaw: prev.yaw + wrap(cur.yaw - prev.yaw) * a });
     },
     speed: () => Math.hypot(cur.x - prev.x, cur.z - prev.z) / gap,
+    // the way it is going (m/s, in the world) and how fast it turns (rad/s, + towards +x)
+    velocity: (o = { x: 0, z: 0 }) => Object.assign(o, { x: (cur.x - prev.x) / gap, z: (cur.z - prev.z) / gap }),
+    turn: () => wrap(cur.yaw - prev.yaw) / gap,
   };
+}
+
+// The animator’s motion for a body the track has between two steps: its speed ahead and to its
+// right of where it faces, and its turn (+ to the left, as locomotion has it)
+const _vel = { x: 0, z: 0 };
+export function motionFrom(track, yaw) {
+  const v = track.velocity(_vel);
+  return motionOf(v.x * Math.sin(yaw) - v.z * Math.cos(yaw), v.x * Math.cos(yaw) + v.z * Math.sin(yaw), -track.turn());
 }
 
 // ── built in code ──
@@ -188,10 +241,15 @@ function builtFigure(kind, tall, { object, body, owned, tips = true, pose }) {
     kind,
     tall,
     built: true,
-    play(name) {
-      s.falling = name === 'die' || name === 'dieFwd' || name === 'dieBlown';
-      if (name === 'hit' || name === 'shot') s.hit = 1;
+    play(name, { layer = 'full' } = {}) {
+      if (layer !== 'full') return;
+      s.falling = typeof name === 'string' && name.startsWith('die');
+      if (typeof name === 'string' && (name.startsWith('hit') || name === 'shot')) s.hit = 1;
     },
+    // (nothing built here sits, crouches, works a console or turns its head)
+    base() {},
+    stop() {},
+    look() {},
     setAim(yaw, pitch) {
       Object.assign(s, { yaw: clamp(yaw || 0, -1.2, 1.2), pitch: clamp(pitch || 0, -0.9, 0.9) });
     },
@@ -409,9 +467,7 @@ function buildProp(kind, tall, gltf) {
 
 // ── the people ──
 
-const falls = (clip) => clip === 'dieBlown' || FALLS.includes(clip);
-
-export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt = null } = {}) {
+export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt = null, layout = null } = {}) {
   const count = liveCount(tier);
   const mats = {
     skin: new THREE.MeshStandardMaterial({ name: 'ds-dianoga', vertexColors: true, roughness: 0.6, metalness: 0 }),
@@ -428,6 +484,7 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
   let listed = 0;
   const wanted = []; // [distance, person, in view] for people near who have no figure yet
   const picks = new Map();
+  const pendingHits = new Map(); // id → a hit heard before the figure was made
   let frame = 0;
   let last = null;
   let disposed = false;
@@ -441,7 +498,7 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
       const copy = await loadGltf(c.model, { renderer, fresh: true });
       return buildProp(kind, c.tall, copy);
     }
-    const fig = await loadPerson(PEOPLE[kind] || !c ? kind : c.model, { tall: c?.tall, tint: c?.tint ?? null, renderer });
+    const fig = await loadPerson(PEOPLE[kind] || !c ? kind : c.model, { tall: c?.tall, tint: c?.tint ?? null, dye: c?.dye ?? null, renderer });
     fig.object.name = `person-${kind}`;
     if (c?.helmet === 'dstrooper' && !disposed) helmetOn(fig, (helmetShape ??= helmetGeometry()), mats);
     return fig;
@@ -457,7 +514,9 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
   }
 
   function follow(p) {
-    const r = { id: p.id, kind: p.kind, fig: null, track: createTrack(), clip: undefined, gun: undefined, blaster: null, fallFor: 0, posed: false, seen: frame };
+    // base, full, upper: what the figure was last asked to play (actOf’s); dead: its fall begun;
+    // hit: the last hit it took ({ dir, high }), for the flinch and the fall
+    const r = { id: p.id, kind: p.kind, fig: null, track: createTrack(), base: undefined, full: undefined, upper: undefined, dead: false, hit: pendingHits.get(p.id) ?? null, gun: undefined, blaster: null, fallFor: 0, posed: false, seen: frame };
     records.set(p.id, r);
     const c = CAST[p.kind];
     if (c?.built) place(r, BUILT[c.built](c.tall, mats, kit));
@@ -487,8 +546,10 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     it.x = p.x;
     it.y = p.y ?? 0;
     it.z = p.z;
-    it.falling = fall && r.fallFor < FALL;
-    it.settled = p.mode === 'dead' && r.fallFor >= FALL;
+    // (a ragdoll is down once it lies still; a figure built here, once its fall has played)
+    const down = r.fig?.fallen ? r.fig.settled : r.fallFor >= FALL;
+    it.falling = fall && !down;
+    it.settled = p.mode === 'dead' && down;
     it.shown = inView;
     it.p = p;
   }
@@ -516,19 +577,75 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
   // course as they would), far enough to land what it was last given: a
   // fall lies down, a flinch is over and back to standing, and one never
   // yet drawn stands in its pose, not as it was made.
-  function land(r) {
+  // The dead let go as ragdolls against the station (fall.js): pushed the way the bolt or the
+  // blade went, or back from where they faced when nobody saw what hit them
+  function letGo(r, p, yaw, world) {
+    if (!layout || r.fig.fallen || !r.fig.fall) return;
+    const dir = r.hit?.dir ?? { x: -Math.sin(yaw), y: 0, z: Math.cos(yaw) };
+    const v = r.track.velocity({ x: 0, z: 0 });
+    const collide = colliderFor(layout, { room: p.room, at: p, off: world?.off, open: world?.open ?? (() => false) });
+    r.fig.fall({ collide, push: dir, speed: r.hit?.cut ? CUT_SPEED : SHOT_SPEED, velocity: { x: v.x, y: 0, z: v.z } });
+  }
+
+  function land(r, p, yaw, world) {
+    // a body with no turn at moving is laid down at once: its ragdoll played through until it lies still
+    if (r.dead && layout && r.fig.fall) {
+      letGo(r, p, yaw, world);
+      for (let t = 0; t < SETTLE_MOST && r.fig.fallen && !r.fig.settled; t += LAND.step) r.fig.update(LAND.step);
+    }
     for (let t = 0; t < LAND.time; t += LAND.step) r.fig.update(LAND.step, 0);
     // (once more with no time: the gait takes back the weight a finished clip let go of)
     r.fig.update(0, 0);
     r.posed = true;
-    if (falls(r.clip)) r.fallFor = FALL;
+    if (r.dead) r.fallFor = FALL;
   }
 
-  function draw(r, p, pick, alpha, dt) {
+  // What the rules have the person doing, asked of the figure where it has changed; whether anything was
+  function act(r, want, yaw) {
+    const fig = r.fig;
+    if (want.dead) {
+      if (r.dead) return false;
+      r.dead = true;
+      fig.stop('upper');
+      fig.base(null);
+      fig.play(fallClip(r.hit?.dir, yaw, r.id));
+      r.base = r.full = r.upper = null;
+      return true;
+    }
+    let changed = false;
+    if (r.dead) {
+      // (up again: a checkpoint put them back)
+      r.dead = false;
+      fig.rise?.();
+      fig.play(null);
+      changed = true;
+    }
+    if (want.base !== r.base) {
+      fig.base(want.base);
+      r.base = want.base;
+      changed = true;
+    }
+    if (want.full !== r.full) {
+      if (want.full) fig.play(want.full === 'hit' ? hitClip(r.hit?.dir, yaw, r.hit?.high) : want.full);
+      r.full = want.full;
+      changed = true;
+    }
+    if (want.upper !== r.upper) {
+      if (want.upper) fig.play(want.upper, { layer: 'upper', loop: true });
+      else fig.stop('upper');
+      r.upper = want.upper;
+      changed = true;
+    }
+    return changed;
+  }
+
+  function draw(r, p, pick, alpha, dt, world) {
     const fig = r.fig;
     const o = fig.object;
-    const want = clipFor(p);
-    const fall = falls(want.clip);
+    const c = CAST[p.kind];
+    const gun = p.gun !== undefined ? p.gun : (c?.gun ?? null);
+    const want = actOf(p, { blade: c?.blade?.type === 'saber', armed: gun != null });
+    const fall = want.dead || p.mode === 'down';
     if (!fall) r.fallFor = 0;
     o.visible = pick !== 'hidden';
     if (!o.visible) {
@@ -540,23 +657,19 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     const at = r.track.at(alpha);
     o.position.set(at.x, at.y, at.z);
     o.rotation.y = -at.yaw;
-    // one fall into another (knocked down, then dead) carries on falling, not standing to fall again
-    const changed = want.clip !== r.clip && !(fall && falls(r.clip));
-    if (changed) {
-      fig.play(want.clip, { loop: want.loop });
-      if (fall) r.fallFor = 0;
-    }
-    r.clip = want.clip;
-    const gun = p.gun !== undefined ? p.gun : (CAST[p.kind]?.gun ?? null);
+    const wasDead = r.dead;
+    const changed = act(r, want, at.yaw);
+    if (r.dead && !wasDead) r.fallFor = 0;
     if (gun !== r.gun) arm(r, gun);
     if (p.aim) {
       const a = aimAngles({ x: at.x, y: at.y + fig.tall * CHEST, z: at.z }, at.yaw, p.aim);
       fig.setAim(a.yaw, a.pitch, want.raised);
     } else fig.setAim(0, 0, want.raised);
-    if (!r.posed || (pick !== 'live' && (changed || (fall && r.fallFor < FALL)))) land(r);
+    if (!r.posed || (pick !== 'live' && (changed || (fall && r.fallFor < FALL && !fig.settled)))) land(r, p, at.yaw, world);
     else if (pick === 'live') {
       if (fall) r.fallFor += dt;
-      fig.update(dt, r.track.speed());
+      if (r.dead && r.fallFor >= RAG_AFTER) letGo(r, p, at.yaw, world);
+      fig.update(dt, fall ? 0 : motionFrom(r.track, at.yaw));
     }
   }
 
@@ -612,8 +725,23 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
       lodPick(items, at, { count }, picks);
       for (const it of items) {
         const r = records.get(it.id);
-        if (r?.fig) draw(r, it.p, picks.get(it.id), alpha, dt);
+        if (r?.fig) draw(r, it.p, picks.get(it.id), alpha, dt, rooms);
       }
+    },
+
+    // the game’s events since the last frame: who was hit, from which way and how high, for the
+    // flinch and the fall (one not drawn yet keeps it until it is)
+    hear(events) {
+      for (const e of events ?? []) {
+        if (e.type !== 'hit' || e.target == null || e.target === 'you') continue;
+        const hit = { dir: e.dir ?? null, high: false, cut: e.by === 'blade' };
+        const r = records.get(e.target);
+        if (r) {
+          hit.high = e.y - (r.fig?.object.position.y ?? 0) > HEAD;
+          r.hit = hit;
+        } else pendingHits.set(e.target, hit);
+      }
+      if (pendingHits.size > 64) pendingHits.clear();
     },
 
     muzzle(id, out = new THREE.Vector3()) {
