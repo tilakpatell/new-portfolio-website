@@ -3,9 +3,11 @@ import * as THREE from 'three';
 import { budget } from '../budgets';
 import { detailLevel, modelTexCap } from '../detail';
 import { WIND } from './foliage';
+import { createHouse } from './house';
 import { createPool, kitMaterial, loadKit } from './kit';
 import { BROWN, MANIFEST, fakeLoad } from './kit.fixture';
 import { coverageTexture, fitTexture } from './textures';
+import { createWind } from './wind';
 
 // (the real functions, watched: which maps they're handed, and in what order)
 vi.mock('./textures', async (importOriginal) => {
@@ -437,8 +439,10 @@ describe('loadKit: the leaf maps’ coverage mips', () => {
 
 describe('createPool', () => {
   let kit;
+  // (a kit that makes no puffs, so a pool's far band is its LOD1's, as
+  // these tests have it; the puffs' own tests below make a kit that does)
   beforeEach(async () => {
-    ({ kit } = await kitOf());
+    ({ kit } = await kitOf({ puffs: false }));
   });
 
   async function poolOf(name = 'Birch_1', opts = {}) {
@@ -491,6 +495,127 @@ describe('createPool', () => {
     expect(p.x).toBeCloseTo(300, 3);
     expect(p.y).toBeCloseTo(0, 4);
     expect(p.z).toBeCloseTo(0, 4);
+  });
+
+  // Each level's instances as [{ at, x, y, z }]: where each is, and its
+  // matrix's columns (x, up and +Z: the turn and the size together).
+  const columns = (pool, level) =>
+    meshesAt(pool, level).map((m) =>
+      Array.from({ length: m.count }, (_, i) => {
+        const e = m.instanceMatrix.array.subarray(i * 16, i * 16 + 16);
+        return { at: new THREE.Vector3(e[12], e[13], e[14]), x: new THREE.Vector3(e[0], e[1], e[2]), y: new THREE.Vector3(e[4], e[5], e[6]), z: new THREE.Vector3(e[8], e[9], e[10]) };
+      }),
+    );
+
+  // every puff instance's +Z toward `cam` across the ground, turned about up only, its size kept
+  const facing = (pool, cam) => {
+    const [list] = columns(pool, 2);
+    expect(list.length).toBeGreaterThan(0);
+    for (const { at, x, y, z } of list) {
+      const to = new THREE.Vector3(cam.x - at.x, 0, cam.z - at.z).normalize();
+      expect(z.clone().normalize().dot(to)).toBeGreaterThan(0.99);
+      expect(z.y).toBeCloseTo(0, 6);
+      expect(x.y).toBeCloseTo(0, 6);
+      expect(y.x).toBeCloseTo(0, 6);
+      expect(y.z).toBeCloseTo(0, 6);
+      expect(z.length()).toBeCloseTo(y.y, 5);
+      expect(x.length()).toBeCloseTo(y.y, 5);
+    }
+  };
+
+  it('turns the puff’s instances to face the camera at each sort, about up only, the nearer levels keeping their own turn', async () => {
+    ({ kit } = await kitOf()); // (the kit's puffs on: a puff handed over still wins)
+    const puff = { geometry: new THREE.BufferGeometry(), material: new THREE.MeshLambertMaterial() };
+    const pool = await poolOf('Birch_1', { puff });
+    expect(meshesAt(pool, 2).map((m) => m.geometry)).toEqual([puff.geometry]);
+    const items = [...ring(6, 10, 100, 0), ...ring(6, 100, 100, 0), ...ring(6, 300, 100, 0)].map((it, i) => ({ ...it, yaw: it.yaw + 0.4, scale: 1 + (i % 3) * 0.25 }));
+    pool.set('a', items);
+    const cam = new THREE.PerspectiveCamera();
+    cam.position.set(100, 0, 0);
+    pool.update(cam, 0);
+    expect(pool.stats.levels).toEqual([6, 6, 6]);
+    facing(pool, cam.position);
+    // (the full and LOD1 levels: each item's own yaw and size, whatever the camera)
+    for (const level of [0, 1])
+      for (const list of columns(pool, level))
+        list.forEach(({ z, y }, i) => {
+          const { yaw, scale } = items[level * 6 + i];
+          expect(z.x).toBeCloseTo(Math.sin(yaw) * scale, 5);
+          expect(z.z).toBeCloseTo(Math.cos(yaw) * scale, 5);
+          expect(y.y).toBeCloseTo(scale, 6);
+        });
+    // the camera goes round: the next sort turns them after it
+    cam.position.set(-150, 0, 260);
+    pool.update(cam, 0.5);
+    facing(pool, cam.position);
+    // a shift moves the items and the camera they face together
+    pool.shift(-1000, 0);
+    facing(pool, { x: cam.position.x - 1000, z: cam.position.z });
+  });
+
+  it('keeps an item’s own turn at level 2 when the LOD1 stands in there', async () => {
+    const pool = await poolOf();
+    pool.set('a', ring(6, 300, 100, 0));
+    const cam = new THREE.PerspectiveCamera();
+    cam.position.set(100, 0, 0);
+    pool.update(cam, 0);
+    const want = ring(6, 300, 100, 0);
+    for (const list of columns(pool, 2)) list.forEach(({ z }, i) => expect(z.x).toBeCloseTo(Math.sin(want[i].yaw), 5));
+  });
+
+  it('makes its own puff for a model with tones (a kit’s puffs are on unless it says), one a model a kit; one without tones keeps its LOD1', async () => {
+    const own = (await kitOf()).kit;
+    const pool = createPool(own, 'Birch_1', { bands: HIGH, lod1: true, wait: 0.5 });
+    await pool.ready;
+    const [m, ...more] = meshesAt(pool, 2);
+    expect(more).toHaveLength(0);
+    expect(m.geometry.attributes.puffTrunk).toBeDefined();
+    expect(m.material.customProgramCacheKey()).toContain('puff');
+    expect(own.puff('Birch_1')).toEqual({ geometry: m.geometry, material: m.material });
+    // (a second pool of the model draws the same one)
+    const again = createPool(own, 'Birch_1', { bands: HIGH, lod1: true, wait: 0.5 });
+    await again.ready;
+    expect(meshesAt(again, 2)[0].geometry).toBe(m.geometry);
+    expect(meshesAt(again, 2)[0].material).toBe(m.material);
+    // (and it's drawn: the far ring at level 2)
+    threeRings(pool);
+    expect(m.count).toBe(10);
+    // a model without tones: its LOD1 at level 2, as before
+    const fern = createPool(own, 'Fern_1', { bands: HIGH, lod1: true, wait: 0.5 });
+    await fern.ready;
+    expect(meshesAt(fern, 2).map((f) => f.geometry)).toEqual((await own.lod1('Fern_1')).map((p) => p.geometry));
+    expect(own.puff('Fern_1')).toBeNull();
+    // the kit's to free: the pools gone leave it, the kit gone frees it
+    const freed = vi.fn();
+    m.geometry.addEventListener('dispose', freed);
+    m.material.addEventListener('dispose', freed);
+    pool.dispose();
+    again.dispose();
+    expect(freed).not.toHaveBeenCalled();
+    own.dispose();
+    expect(freed).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the LOD1 at level 2 in a kit told `puffs: false`; a kit’s puff wears its house and its puffs’ wind, fitted to the manifest', async () => {
+    const plain = await poolOf('Birch_1');
+    expect(meshesAt(plain, 2)[0].geometry.attributes.puffTrunk).toBeUndefined();
+    expect(kit.puff('Birch_1')).toBeNull();
+    const house = createHouse();
+    const wind = createWind();
+    const dressed = (await kitOf({ house, puffWind: wind })).kit;
+    const pool = createPool(dressed, 'Birch_1', { bands: HIGH, wait: 0.5 });
+    await pool.ready;
+    const [m] = meshesAt(pool, 2);
+    expect(m.material.userData.house).toBe(house.uniforms);
+    const sh = { uniforms: {}, vertexShader: THREE.ShaderChunk.meshlambert_vert, fragmentShader: THREE.ShaderChunk.meshlambert_frag };
+    m.material.onBeforeCompile(sh, null);
+    expect(sh.uniforms.uWindNoise).toBe(wind.uniforms.uWindNoise);
+    expect(sh.uniforms.uPuffA.value.toArray()).toEqual(MANIFEST.models.Birch_1.tones[0].map((v) => expect.closeTo(v, 6)));
+    expect(sh.fragmentShader).toContain('if (vPuffTrunk < 0.5)');
+    m.geometry.computeBoundingBox();
+    expect(m.geometry.boundingBox.max.y).toBeCloseTo(MANIFEST.models.Birch_1.height, 2);
+    expect(m.castShadow).toBe(false);
+    wind.dispose();
   });
 
   it('keeps the full model in the LOD1 band where the level has no LOD1 (ultra)', async () => {
@@ -652,7 +777,7 @@ describe('createPool', () => {
       got.scene.remove(got.scene.getObjectByName('Birch_1lod1'));
       return got;
     };
-    ({ kit } = await kitOf({ load }));
+    ({ kit } = await kitOf({ load, puffs: false }));
     const pool = await poolOf();
     const full = (await kit.model('Birch_1')).parts;
     for (const l of [1, 2]) expect(meshesAt(pool, l).map((m) => m.geometry)).toEqual(full.map((p) => p.geometry));

@@ -13,9 +13,13 @@
 //   createLeaves({ count, wind, floorAt, half = 20, colours }) → { mesh,
 //     state, update(dt, focus, car), shift(sx, sz), dispose() }
 //
-// `count` by tier: low 64, mid 128, high 256, ultra 512.
+// `count` the device level's budget unless given (lib/budgets' `leaves`:
+// low none, mid 256, high 1024, ultra 2048; the Expanse gives its own by
+// tier). None makes no mesh (`mesh` null), and its calls do nothing.
 
 import * as THREE from 'three';
+import { budget } from '../budgets';
+import { detailLevel } from '../detail';
 import { seeded } from '../seeded';
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
@@ -97,8 +101,9 @@ export function stepLeaves(s, dt, { focus, half, wind, car = null, floorAt }) {
   }
 }
 
-export function createLeaves({ count = 256, wind, floorAt, half = 20, colours = [0x95513a, 0xf56a3a], seed = 1 } = {}) {
+export function createLeaves({ count = budget(detailLevel()).leaves, wind, floorAt, half = 20, colours = [0x95513a, 0xf56a3a], seed = 1 } = {}) {
   const state = makeLeaves(count, { half, seed });
+  if (!count) return { mesh: null, state, update() {}, shift() {}, dispose() {} };
   // his skewed quad, 0.25 × (0.5…1)
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-0.15, 0, -0.1, 0.15, 0, -0.15, 0.15, 0, 0.1, -0.15, 0, 0.15]), 3));
