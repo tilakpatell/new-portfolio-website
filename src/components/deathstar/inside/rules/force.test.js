@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { seeded } from '../../../../lib/seeded';
 import { canUse, createForce, emperorMind, forceStep, POWERS, stopForce, TAUNTS, useForce, vaderMind } from './force';
-import { createFighter } from './saber';
+import { createFighter, resolveClash, saberStep, STROKES } from './saber';
 
 const STEP = 1 / 30;
 
@@ -54,6 +54,18 @@ describe('push', () => {
     expect(ahead.speed).toBeGreaterThan(0);
     expect(inside.every((t) => t.stagger > 0 && !t.guard)).toBe(true);
     expect(outside.every((t) => t.stagger === 0)).toBe(true);
+  });
+
+  it('cuts short the stroke of someone it throws, so he lands no blow while thrown', () => {
+    const t = at('t', 2);
+    saberStep(t, { strike: 'light' }, STEP);
+    t.dodge = 0.2;
+    useForce(createForce('luke'), 'push', caster('luke'), [t]);
+    expect(t.stroke).toBe(null);
+    expect(t.dodge).toBe(0);
+    const events = [];
+    for (let i = 0; i < 30; i++) events.push(...saberStep(t, { strike: null }, STEP));
+    expect(events.some((e) => e.type === 'blow')).toBe(false);
   });
 
   it('throws the near harder than the far', () => {
@@ -266,10 +278,22 @@ describe('Vader’s mind', () => {
     return { state: { me, force: createForce('vader'), last: null }, foe };
   };
 
-  it('guards when the foe’s stroke is coming', () => {
-    const { state, foe } = duel();
-    foe.stroke = { kind: 'heavy', t: 0.1, hit: false };
-    expect(vaderMind(state, foe, seeded(1))).toMatchObject({ guard: true, strike: null });
+  it('guards a stroke a beat after it starts, and keeps the guard up through its blow', () => {
+    for (let s = 1; s < 30; s++) {
+      const { state, foe } = duel();
+      const rand = seeded(s);
+      foe.stroke = { kind: 'light', t: STEP, hit: false };
+      expect(vaderMind(state, foe, rand).guard).toBe(false);
+      const guards = [];
+      for (; foe.stroke.t < STROKES.light.s; foe.stroke.t += STEP) {
+        foe.stroke.hit = foe.stroke.t >= STROKES.light.at;
+        guards.push(vaderMind(state, foe, rand).guard);
+      }
+      // once up, it stays up to the stroke’s end, the blow’s step included
+      const first = guards.indexOf(true);
+      expect(first).toBeGreaterThan(-1);
+      expect(guards.slice(first).every(Boolean)).toBe(true);
+    }
   });
 
   it('brings a heavy stroke down on a held guard', () => {
@@ -299,6 +323,22 @@ describe('Vader’s mind', () => {
     expect(vaderMind(state, foe, seeded(1))).toMatchObject({ move: 'in', force: null });
   });
 
+  it('never stands off just outside his reach, where a heavy can still poke at him', () => {
+    for (const d of [2.3, 2.4, 2.5, 2.7, 3.0]) {
+      const { state, foe } = duel();
+      foe.z = -d;
+      state.force.cool.choke = 5;
+      const rand = seeded(Math.round(d * 10));
+      const chosen = new Set();
+      for (let i = 0; i < 150; i++) {
+        const input = vaderMind(state, foe, rand);
+        expect(input.move === 'in' || input.strike === 'heavy').toBe(true);
+        chosen.add(input.strike ?? input.move);
+      }
+      if (d > STROKES.heavy.reach) expect(chosen).toEqual(new Set(['in']));
+    }
+  });
+
   it('does nothing new while staggered or mid-stroke', () => {
     const { state, foe } = duel();
     state.me.stagger = 0.4;
@@ -318,6 +358,56 @@ describe('Vader’s mind', () => {
     const b = vaderMind({ ...state }, foe, seeded(7));
     expect(a).toEqual(b);
   });
+});
+
+describe('a duel with Vader', () => {
+  // the hooks lint takes any use… call inside a named helper for a React hook
+  const cast = useForce;
+
+  // The player at 2 m strikes `kind` whenever free and Vader answers by
+  // his mind, for 30 s. `blowFirst`: the caller resolves the player’s blow
+  // straight after the player’s step; otherwise after Vader’s mind and
+  // step. Returns what the player’s blows did to Vader.
+  function fight(kind, blowFirst, seed) {
+    const rand = seeded(seed);
+    const vader = createFighter({ id: 'vader', x: 0, z: 0, yaw: 0, side: 'empire', hp: 1e6 });
+    const luke = createFighter({ id: 'luke', x: 0, z: -2, yaw: Math.PI, side: 'rebel', hp: 1e6 });
+    const state = { me: vader, force: createForce('vader'), last: null };
+    const tally = {};
+    for (let i = 0; i < 30 * 30; i++) {
+      const blows = saberStep(luke, { strike: kind, guard: false, dodge: false }, STEP).filter((e) => e.type === 'blow');
+      const land = () => {
+        for (let n = 0; n < blows.length; n++) {
+          const { result } = resolveClash(luke, vader);
+          tally[result] = (tally[result] ?? 0) + 1;
+        }
+      };
+      if (blowFirst) land();
+      forceStep(state.force, vader, [luke], STEP);
+      const input = vaderMind(state, luke, rand);
+      if (input.force) cast(state.force, input.force, vader, [luke]);
+      const own = saberStep(vader, input, STEP);
+      if (!blowFirst) land();
+      if (own.some((e) => e.type === 'blow')) resolveClash(vader, luke);
+    }
+    return tally;
+  }
+
+  for (const kind of ['light', 'heavy']) {
+    for (const blowFirst of [true, false]) {
+      it(`neither always parries nor is always hit by ${kind} strokes, with the blow resolved ${blowFirst ? 'before' : 'after'} his turn`, () => {
+        const tally = fight(kind, blowFirst, 11);
+        const landed = Object.values(tally).reduce((n, k) => n + k, 0);
+        expect(landed).toBeGreaterThan(10);
+        // he times some guards right, and some strokes still beat him: a
+        // light by catching him late, a heavy by that or by cracking a guard held too long
+        expect(tally.parry ?? 0).toBeGreaterThan(0);
+        expect(tally.parry).toBeLessThan(landed);
+        expect((tally.hit ?? 0) + (kind === 'heavy' ? (tally.break ?? 0) : 0)).toBeGreaterThan(0);
+        expect(tally.hit ?? 0).toBeLessThan(landed);
+      });
+    }
+  }
 });
 
 describe('the Emperor’s mind', () => {

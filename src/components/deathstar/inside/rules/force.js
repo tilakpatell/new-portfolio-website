@@ -218,8 +218,9 @@ const VADER = [
 // He reads a stroke a beat after it starts and means his guard to come up
 // just before its blow lands, inside the parry window; how well he judges
 // that is his rand, so he parries most, is caught by some, and meets a few
-// with a guard up too long to parry. react: s before he can answer at all;
-// slop: s his timing is out by, either way.
+// with a guard up too long to parry. react: s before he can answer at all
+// (never sooner, however he judges it); slop: s his timing is out by,
+// either way.
 const READ = { react: 0.1, slop: 0.12 };
 
 // The moment (stroke.t) Vader answers the foe’s stroke, drawn once a stroke.
@@ -232,7 +233,7 @@ function read(state, foe, rand) {
   }
   if (!state.read || s.t < state.read.t || s.kind !== state.read.kind) {
     const k = STROKES[s.kind];
-    state.read = { kind: s.kind, at: Math.max(READ.react, k.at - PARRY / 2) + (rand() * 2 - 1) * READ.slop };
+    state.read = { kind: s.kind, at: Math.max(READ.react, k.at - PARRY / 2 + (rand() * 2 - 1) * READ.slop) };
   }
   state.read.t = s.t;
   return state.read;

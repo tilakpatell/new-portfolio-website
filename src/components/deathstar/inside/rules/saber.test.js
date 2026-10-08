@@ -81,6 +81,17 @@ describe('strokes', () => {
   });
 });
 
+describe('a fighter knocked off balance', () => {
+  it('loses the stroke it was in, so it lands no blow while it reels', () => {
+    const f = createFighter({ id: 'f', x: 0, z: 0, yaw: 0 });
+    saberStep(f, { ...IDLE, strike: 'heavy' }, STEP);
+    f.stagger = 0.3;
+    const events = hold(f, {}, STROKES.heavy.s);
+    expect(events.some((e) => e.type === 'blow')).toBe(false);
+    expect(f.stroke).toBe(null);
+  });
+});
+
 describe('stamina', () => {
   it('comes back 20 a second at rest, 8 behind a guard, none mid-stroke, and never past 100', () => {
     const f = createFighter({ id: 'f', x: 0, z: 0, yaw: 0 });
