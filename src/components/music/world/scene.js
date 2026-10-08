@@ -753,8 +753,8 @@ export async function createMusicWorld(el, { onLost } = {}) {
     await settle(passes, 4000);
     if (!going()) return;
     house.follow({ adopt: true });
-    renderer.setRenderTarget(stage.composer.readBuffer);
     try {
+      renderer.setRenderTarget(stage.composer.readBuffer);
       await prepareScene({
         renderer,
         roots: [scene],
