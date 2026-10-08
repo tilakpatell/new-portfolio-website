@@ -26,6 +26,15 @@ describe('the pack check', () => {
     expect(covered('/textures/w', { globs: ['/textures/w/*'] })).toBe(true);
   });
 
+  it('takes a computed folder as declared, the files it uses listed', () => {
+    const pack = { id: '/w', urls: ['/models/w/plane.glb'], computed: ['/models/w'] };
+    expect(covered('/models/w/*.glb', pack)).toBe(true);
+    expect(covered('/models/w', pack)).toBe(true);
+    expect(covered('/models/wx/a.glb', pack)).toBe(false);
+    expect(missing(pack, join(FIX, 'site'))).toEqual([]);
+    expect(missing({ computed: ['/models/w'] }, join(FIX, 'site'))).toEqual(['/models/w']);
+  });
+
   it('names what a pack lists that is not there', () => {
     expect(missing({ urls: ['/models/w/plane.glb', '/models/w/gone.glb'], globs: ['/models/w/*', '/hq/none/*'] }, join(FIX, 'site'))).toEqual(['/models/w/gone.glb', '/hq/none/*']);
   });

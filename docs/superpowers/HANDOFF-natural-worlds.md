@@ -44,6 +44,10 @@ Follow the spec over the plan, the code over both. Fix the plan's line in your P
 | Phase | Session | Branch | Merged |
 |---|---|---|---|
 | design | the architecting session | `claude/natural-worlds-design` | (carried by Phase 1's PR) |
-| 1 | the Phase 1 session | `claude/natural-worlds-p1` | this PR: `src/lib/land`, `src/lib/physics`, `scripts/land-preview.mjs`; previews in `docs/superpowers/previews/` |
+| 1 | the Phase 1 session | `claude/natural-worlds-p1` | #622: `src/lib/land`, `src/lib/physics`, `scripts/land-preview.mjs`; previews in `docs/superpowers/previews/` |
+| 2 | the same session | `claude/natural-worlds-p2` | this PR: `landmap`, `land`, `tracks`, `river`, `puffs`, `leaves`, `windLines`, `view` in `src/lib/three`; `grass.js` takes `ground.glsl` and `tracks` |
 
 Phase 1's findings the next phases rely on: Rapier's heightfield is our row-major heights transposed (rows along z) and splits each quad `(ix + 1, iz)–(ix, iz + 1)`, so `cellMesh` and `heightAt` split that way too; `@dimforge/rapier3d-compat@0.21.0` loads in Node and bundles in Vite as a dynamic import; the car holds near `5.5` m/s with `overflowGain 25`; rivers fill and spill lakes (`rivers.js`'s header).
+
+Phase 2's notes for Phase 3: every new shader compiled and drew in headless Chromium (software WebGL: 15 programs, no error) from a scratch page that built them all at once; nothing on the site uses them yet. `createLeaves` takes `floorAt(x, z) → { y, water }` from the world's cells, not the land map. Each piece that follows the view has a `shift(sx, sz)` for the floating origin (tracks' `track().shift`, leaves, wind lines, view); the land map has `offset(x, z)`. The tracks' up-the-picture is −z: check it the first time the grass flattens under a wheel.
+

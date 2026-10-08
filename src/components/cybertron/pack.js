@@ -20,12 +20,18 @@ export const PACK = {
     '/audio/clips/soundwave-superior.mp3',
     '/audio/clips/so-unwise.mp3',
     '/audio/clips/die.mp3',
+    '/textures/universe/transformers.webp',
+    '/textures/universe/transformers-sm.webp',
+    '/textures/universe/transformers-normal.webp',
+    '/textures/universe/transformers-glow.webp',
+    '/models/meshy/optimus-prime.glb',
+    '/models/meshy/megatron.glb',
+    '/games/hdri/jasper.hdr',
+    '/games/hdri/kaon.hdr',
+    '/games/hdri/mission.hdr',
   ], // single files
   globs: [
     '/models/cybertron/*.glb',
-    '/models/meshy/*.glb',
-    '/textures/universe/*',
-    '/games/hdri/*.hdr',
     '/games/meshy/rollout**',
     '/games/sky/*',
     '/games/models/*',
@@ -44,4 +50,5 @@ export const PACK = {
     '/games/tex/plate-road/*',
     '/games/tex/sidewalk/*',
   ], // folders: `*` within a folder, `**` any depth
+  computed: ['/textures/universe', '/models/meshy', '/games/hdri'], // folders the source only builds paths in: the files it takes are listed above
 };
