@@ -438,7 +438,7 @@ export const BRIEFS = {
       text: 'Go in at a building and win its game: its stone hangs over the door. The Space Stone opens a portal over the helipad.',
       keys: [
         ['E / Enter', 'Go in at a door'],
-        ['M', 'The buildings, with Go there'],
+        ['M', 'Things to do: the buildings, with Go there'],
       ],
     },
     help('the compound'),
