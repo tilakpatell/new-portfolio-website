@@ -8,6 +8,7 @@ import cycles from './health/cycles.mjs';
 import { graph, resolve, uncomment } from './health/graph.mjs';
 import lintDisables from './health/lint-disables.mjs';
 import todoNotes from './health/todo-notes.mjs';
+import hudKit from './health/hud-kit.mjs';
 import { check, describe as words, ratchet } from './health/ratchet.mjs';
 
 const TREE = fileURLToPath(new URL('./health/fixtures/tree/', import.meta.url));
@@ -33,6 +34,19 @@ describe('the measure, on a fixture tree', () => {
     const m = await todoNotes(ctx);
     expect(m.value).toBe(2);
     expect(m.detail).toEqual([{ file: 'src/world/small.js', n: 2 }]);
+  });
+});
+
+describe('the HUD kit, on a fixture tree', () => {
+  it('counts the worlds whose HUD imports nothing from the kit', async () => {
+    const hud = await makeContext(fileURLToPath(new URL('./health/fixtures/hud/', import.meta.url)));
+    const m = await hudKit(hud, ['alpha', 'beta', 'missing']);
+    expect(m.value).toBe(1);
+    expect(m.detail).toEqual([{ file: 'src/components/beta', n: 1 }]);
+  });
+  it('counts a world on the kit through the towns’ shared HUD', async () => {
+    const hud = await makeContext(fileURLToPath(new URL('./health/fixtures/hud/', import.meta.url)));
+    expect((await hudKit(hud, ['gamma'])).value).toBe(0);
   });
 });
 
