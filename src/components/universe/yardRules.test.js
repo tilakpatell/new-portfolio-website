@@ -4,7 +4,7 @@ import { itemFor } from './catalog';
 import { STOCK, STOCK_LOADOUT, partById } from './outfit';
 import { STOCK_BUILD, buildCode } from './shipyard/build';
 import { modulesFor } from './shipyard/parts';
-import { check, diff, itemOfModule, itemOfPart, openDraft, pasteDraft, rollDraft, setHull, setModule, setPart, sellable } from './yardRules';
+import { check, diff, fitDraft, itemOfModule, itemOfPart, openDraft, pasteDraft, rollDraft, setHull, setModule, setPart, sellable } from './yardRules';
 
 const wallet = ({ credits = 0, owned = [], unlocked = [] } = {}) => {
   const e = createEconomy({ achievements: () => unlocked });
@@ -161,5 +161,24 @@ describe('sellable', () => {
     expect(itemOfPart('booster', 'srb')).toBe(itemFor('part', 'booster', 'srb'));
     expect(itemOfPart('paint', 'portal')).toBe(itemFor('paint', 'paint', 'portal'));
     expect(itemOfModule('wings', STOCK_BUILD.wings).stock).toBe(true);
+  });
+});
+
+describe('fitDraft', () => {
+  it('fits every part change in diff’s order, and keeps the saved loadout’s others', () => {
+    const from = { build: null, loadout: { ...STOCK_LOADOUT, booster: 'portal' } };
+    const d = setPart(setPart(openDraft(from), 'booster', STOCK), 'shields', 'fastcharge');
+    const saved = { ...STOCK_LOADOUT, booster: 'portal', fins: 'fins' };
+    const r = fitDraft('rv', d, diff(d, from), { saved, unlocked: ['showmewhatyougot', 'captain'] });
+    expect(r.ok).toBe(true);
+    expect(r.loadout.booster).toBe(STOCK);
+    expect(r.loadout.shields).toBe('fastcharge');
+    expect(r.saved).toEqual({ ...saved, booster: STOCK, shields: 'fastcharge' });
+  });
+
+  it('refuses the lot when a fit won’t go on (another tab took the plant)', () => {
+    const d = setPart(setPart(openDraft(live), 'booster', 'portal'), 'thrusters', 'vector');
+    const r = fitDraft('rv', { ...d, loadout: { ...d.loadout, shields: 'fastcharge' } }, diff({ ...d, loadout: { ...d.loadout, shields: 'fastcharge' } }, live), { saved: {}, unlocked: ['showmewhatyougot', 'grounded', 'captain'] });
+    expect(r).toMatchObject({ ok: false, why: 'power' });
   });
 });

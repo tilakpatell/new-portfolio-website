@@ -3,7 +3,7 @@
 // how far a drag turns the ship.
 
 export const FPS = 30; // (the yard's a still life: no need to draw faster)
-const MARGIN = 1.35; // (room round the ship, so a wing or a booster isn't cut)
+const MARGIN = 1.8; // (room round the ship, so a wing or a booster isn't cut as it turns)
 const PULSE = 1.2; // seconds a pulse takes, up and back
 const TURN = 0.012; // radians a pixel of drag turns it
 

@@ -15,7 +15,7 @@
 
 import { CATALOG, itemFor, needText } from './catalog';
 import { migrateOwned, refundOf } from './economy';
-import { SLOTS, STOCK, isOpen, parsePart, partById, statsOf } from './outfit';
+import { SLOTS, STOCK, equip, isOpen, parsePart, partById, statsOf } from './outfit';
 import { STOCK_BUILD, parseBuildCode, rollBuild } from './shipyard/build';
 import { BUILD_SLOTS, isModuleOpen, moduleById } from './shipyard/parts';
 
@@ -143,4 +143,27 @@ export function sellable({ loadouts = {}, hulls = {}, garage = {}, keep = [] } =
     out.push({ item, refund: refundOf(item) });
   }
   return out;
+}
+
+// Fitting a checked-out draft: each part change in diff's order on the
+// loadout flown, through outfit.js's equip (which refuses a part that's
+// locked or that the plant can't run), on the draft's build. → { ok: true,
+// loadout (flown), saved (what to keep: `saved` with each change in, so a
+// part a smaller plant took off still comes back on a bigger one) } or
+// { ok: false, why, slot }: the first refusal, and nothing's to be kept.
+export function fitDraft(kind, draft, changes, { saved = {}, unlocked = [] } = {}) {
+  let loadout = { ...draft.loadout };
+  for (const slot of SLOTS) loadout[slot] = STOCK; // (from bare, so only what equip allows goes on)
+  const keep = { ...saved };
+  const parts = changes.filter((c) => !c.module);
+  // what isn't changing goes on first, then the changes in their order
+  const order = [...SLOTS.filter((slot) => !parts.some((c) => c.slot === slot)).map((slot) => ({ slot, to: draft.loadout[slot] ?? STOCK })), ...parts];
+  for (const { slot, to } of order) {
+    if (to === STOCK) continue;
+    const r = equip(kind, loadout, slot, to, unlocked, draft.build);
+    if (!r.ok) return { ok: false, why: r.reason, slot };
+    loadout = r.loadout;
+  }
+  for (const c of parts) keep[c.slot] = c.to;
+  return { ok: true, loadout, saved: keep };
 }
