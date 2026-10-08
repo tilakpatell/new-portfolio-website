@@ -29,23 +29,19 @@ The two audits' 134 findings were unverified when this started. Each was checked
 
 ## What is left
 
+Done since the five slices, in the follow-ups pull request: L17 and F26 (the cockpit's Welcome: TPM first, "Skip the intro"), L18 ("Home" on the 404 and the error page), F19 (the HUD's distances in the nav map's measure), F35 (the landing line under the desktop keymap), F61 (a station sign's second line read with its label), the heritage zoom's duplicate focus ring, and `kbd-styles` budgeted at 68 now that the world kit's cap is the house one. The tour's copy is now under the words test too (stream B, #621).
+
 - **Handed to other streams** (verified list, section 2):
   - S5 and M1: the tour card's padding and entrance, streams A/B.
   - L21: the world gate X's label, stream D.
-  - L17 and F26: the cockpit's Welcome, "a technical program manager and software engineer" and "Skip the intro". No stream owns `cockpit/`.
-  - L18: `NotFound.jsx`, "Home".
-- **The tour's copy:** `src/components/tour/briefs.js` ("Escape") and `steps.js` ("plain pages", "colour scheme") are skipped by the words test (`ELSEWHERE`) until streams A/B take them.
-- **`kbd-styles`:** 67 rules on main before the universe slice; budget it at its value once stream D folds `src/runtime/hud/hud.css`'s cap into the house one, and take the cockpit's (7) and the galaxy surface's (5) next.
+  - The galaxy panel's "Plot a course" (stream D, `src/components/galaxy/`), which should read `universe/words.js`'s nav map name.
+- **`kbd-styles`:** 68 rules, budgeted; the cockpit's (7) and the galaxy surface's (5) are the next to fold.
 - **Not done, kept as findings:**
-  - F19: one distance unit on the HUD.
   - F42: full row tokens for the HUD's bottoms (the collisions are fixed with the existing calcs).
   - F34: the brief and the hint reading `guide/keys.js`, and the tour offer waiting for the flying brief, which is stream A's.
-  - D16 and D18: the rest of the focus-ring and transition restatements; only the shell's own are done.
-  - The galaxy panel's "Plot a course" (stream D, `src/components/galaxy/`), which should read `universe/words.js`'s nav map name.
-  - The nav map's "fandom"-free empty state is done, but its views' names ("Universe / Home system / The Curve") stay.
-- **Cheap follow-ups noted by the reviews:**
-  - An ally diamond on the nav map's chart (needs the scene to pass `ally` with the chart's pilots).
-  - The station sign's second line as the label's `aria-description` (F61).
+  - D16 and D18 in the worlds' stylesheets (`deathstar.css`, `music.css` and others): their focus rings and transitions restate the shell's; the shell's own are done.
+  - F53 and the chart's ambers: the nav map's style, the owner's call.
+  - An ally diamond on the nav map's chart (needs the scene to pass `ally` with the chart's pilots, and a mark in `navmap.css`).
 
 ## Where things are
 
