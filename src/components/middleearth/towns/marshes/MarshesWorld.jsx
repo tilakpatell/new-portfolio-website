@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import LoadingVeil from '../../../worlds/LoadingVeil';
-import { settle } from '../../../../lib/settle';
+import { showPrepared } from '../../../../lib/prepareWorld';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -58,8 +58,6 @@ const PROMPT = {
   bed: { name: 'Sam, asleep', act: 'Lie down' },
   pool: { name: 'Sméagol’s safe way', act: 'Follow Sméagol' },
 };
-
-const PREPARE_WAIT = 30000; // ms at most the veil waits on the town's prepare
 
 export default function MarshesWorld({ onLeave }) {
   const three = use3D();
@@ -173,12 +171,8 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         if (import.meta.env.DEV) window.__MARSHES__ = { api: a, sim: sim.current, complete };
         fit();
         // everything onto the graphics chip behind the veil, then shown
-        // (lib/stagePrepare: bounded, so it never holds the town up for good)
-        setGl('preparing');
-        settle(
-          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
-          PREPARE_WAIT,
-        ).then(() => !dead && setGl((g) => (g === 'preparing' ? 'on' : g)));
+        // (lib/prepareWorld: PREPARE_WAIT at most, then it's told to stop)
+        showPrepared((report, going) => a.prepare?.(report, going), { setGl, setPrep, alive: () => !dead });
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -480,7 +474,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     s.stepT += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
-    const pad = readPad();
+    const pad = gl === 'on' ? readPad() : null; // (nothing pressed behind the veil)
     const before = s.padBefore ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
     s.padBefore = pad ?? {};

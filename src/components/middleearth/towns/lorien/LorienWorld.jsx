@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import LoadingVeil from '../../../worlds/LoadingVeil';
-import { settle } from '../../../../lib/settle';
+import { showPrepared } from '../../../../lib/prepareWorld';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -64,8 +64,6 @@ function windOn(r) {
   const turn = Math.atan2(-r.wind.z, r.wind.x) - r.yaw;
   return { turn, word: k < BOW.wind * 0.4 ? 'light' : k < BOW.wind * 0.75 ? 'fresh' : 'strong' };
 }
-
-const PREPARE_WAIT = 30000; // ms at most the veil waits on the town's prepare
 
 export default function LorienWorld({ onLeave }) {
   const three = use3D();
@@ -183,12 +181,8 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         if (import.meta.env.DEV) window.__LORIEN__ = { api: a, sim: sim.current, complete };
         fit();
         // everything onto the graphics chip behind the veil, then shown
-        // (lib/stagePrepare: bounded, so it never holds the town up for good)
-        setGl('preparing');
-        settle(
-          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
-          PREPARE_WAIT,
-        ).then(() => !dead && setGl((g) => (g === 'preparing' ? 'on' : g)));
+        // (lib/prepareWorld: PREPARE_WAIT at most, then it's told to stop)
+        showPrepared((report, going) => a.prepare?.(report, going), { setGl, setPrep, alive: () => !dead });
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -490,7 +484,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
     s.stepT += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
-    const pad = readPad();
+    const pad = gl === 'on' ? readPad() : null; // (nothing pressed behind the veil)
     const before = s.padBefore ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
     s.padBefore = pad ?? {};

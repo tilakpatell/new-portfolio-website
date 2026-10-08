@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import LoadingVeil from '../../../worlds/LoadingVeil';
-import { settle } from '../../../../lib/settle';
+import { showPrepared } from '../../../../lib/prepareWorld';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -49,8 +49,6 @@ const PROMPT = {
 const walker = makeWalker({ radius: WORLD.radius, colliders: COLLIDERS, walls: WALLS });
 const MAP_SCALE = 150 / (WORLD.radius * 2 + 6);
 const CONVO_TITLE = { amonsul: 'On the summit', supper: 'In the dell', athelas: 'At the foot of the hill', arwen: 'At the foot of the hill', ford: 'The Ford of Bruinen' };
-
-const PREPARE_WAIT = 30000; // ms at most the veil waits on the town's prepare
 
 export default function WeathertopWorld({ onLeave }) {
   const three = use3D();
@@ -207,12 +205,8 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         if (import.meta.env.DEV) window.__WEATHERTOP__ = { api: a, sim: sim.current, complete }; // for the QA scripts
         fit();
         // everything onto the graphics chip behind the veil, then shown
-        // (lib/stagePrepare: bounded, so it never holds the town up for good)
-        setGl('preparing');
-        settle(
-          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
-          PREPARE_WAIT,
-        ).then(() => !dead && setGl((g) => (g === 'preparing' ? 'on' : g)));
+        // (lib/prepareWorld: PREPARE_WAIT at most, then it's told to stop)
+        showPrepared((report, going) => a.prepare?.(report, going), { setGl, setPrep, alive: () => !dead });
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -585,7 +579,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     s.stepT += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
-    const pad = readPad();
+    const pad = gl === 'on' ? readPad() : null; // (nothing pressed behind the veil)
     const before = s.padBefore ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
     s.padBefore = pad ?? {};

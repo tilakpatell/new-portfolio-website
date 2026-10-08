@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import LoadingVeil from '../../../worlds/LoadingVeil';
-import { settle } from '../../../../lib/settle';
+import { showPrepared } from '../../../../lib/prepareWorld';
 import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
@@ -50,8 +50,6 @@ const MAP_SCALE = 150 / (WORLD.radius * 2 + 6);
 const CONVO_TITLE = { awake: 'The house of Elrond', narsil: 'The hall of Narsil', council: 'The Council of Elrond', axe: 'The Council of Elrond', fellowship: 'The Council of Elrond', bilbo: 'Bilbo’s pavilion', sorry: 'Bilbo’s pavilion', gate: 'The south gate' };
 // the shards' lengths, as drawn in the puzzle: the hilt first
 const SHARD_W = [1.5, 1.1, 0.9, 1.2, 0.8, 1];
-
-const PREPARE_WAIT = 30000; // ms at most the veil waits on the town's prepare
 
 export default function RivendellWorld({ onLeave }) {
   const three = use3D();
@@ -210,12 +208,8 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
         if (import.meta.env.DEV) window.__RIVENDELL__ = { api: a, sim: sim.current, complete }; // for the QA scripts
         fit();
         // everything onto the graphics chip behind the veil, then shown
-        // (lib/stagePrepare: bounded, so it never holds the town up for good)
-        setGl('preparing');
-        settle(
-          a.prepare?.((value, step) => !dead && setPrep({ value, step }), () => !dead),
-          PREPARE_WAIT,
-        ).then(() => !dead && setGl((g) => (g === 'preparing' ? 'on' : g)));
+        // (lib/prepareWorld: PREPARE_WAIT at most, then it's told to stop)
+        showPrepared((report, going) => a.prepare?.(report, going), { setGl, setPrep, alive: () => !dead });
       })
       .catch((e) => {
         if (import.meta.env.DEV) console.error(e);
@@ -574,7 +568,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
     s.stepT += dt;
     const k = s.keys;
     const held = (name) => k.has(name);
-    const pad = readPad();
+    const pad = gl === 'on' ? readPad() : null; // (nothing pressed behind the veil)
     const before = s.padBefore ?? {};
     const pressed = (b) => pad?.[b] && !before[b];
     s.padBefore = pad ?? {};
