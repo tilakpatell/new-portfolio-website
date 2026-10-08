@@ -2,7 +2,7 @@
    the woods, grey when the Ring is on, with the panels for the Ring, the
    Seat, the Uruk-hai and Sam in the water. */
 
-.amonhen-world { --shire-glass: rgba(18, 22, 16, 0.76); --shire-glass-hi: rgba(20, 24, 18, 0.92); }
+.amonhen-world { --shire-glass: rgba(18, 22, 16, 0.78); --shire-glass-hi: rgba(20, 24, 18, 0.92); }
 .amonhen-stage { background: linear-gradient(180deg, #7a9ab8 0%, #e8d8a8 56%, #4a5a2a 60%, #1e2414 100%); }
 .amonhen-stage[data-ring] { background: linear-gradient(180deg, #3a3a40 0%, #8a8a88 56%, #3a3a36 60%, #141414 100%); }
 .amonhen-stage .shire-loading { color: #2a2a14; }

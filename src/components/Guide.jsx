@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { RiCloseLine, RiQuestionLine } from 'react-icons/ri';
+import { IconGuide } from './icons';
+import { CloseButton } from './ui';
 import { guideMeta } from './guide/routes';
 import { BRIEFED } from './tour/brief';
 import { local } from '../lib/hooks';
@@ -19,6 +20,7 @@ const typing = (t) => t instanceof HTMLElement && (t.isContentEditable || /^(INP
 export default function Guide() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState(null); // the tab it was asked to open on, if any
   const button = useRef(null);
   const meta = guideMeta(pathname);
 
@@ -48,8 +50,10 @@ export default function Guide() {
 
   useEffect(() => {
     const onKey = (e) => {
-      // (the tour, running, has the keys: components/tour)
-      if (typing(e.target) || 'touring' in document.documentElement.dataset) return;
+      // (the tour, running, has the keys: components/tour; but a stop that
+      // says "press ?" lets it through, and ends itself as it does)
+      const touring = document.documentElement.dataset.touring;
+      if (typing(e.target) || (touring != null && touring !== 'release')) return;
       if (e.key === '?') {
         e.preventDefault();
         setOpen((o) => !o);
@@ -61,7 +65,11 @@ export default function Guide() {
         refocusRef.current();
       }
     };
-    const onOpen = () => setOpen(true);
+    const onOpen = (e) => {
+      if (e.detail?.toggle) return setOpen((o) => !o);
+      setTab(e.detail?.tab ?? null);
+      setOpen(true);
+    };
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('tp:guide', onOpen);
     return () => {
@@ -70,6 +78,10 @@ export default function Guide() {
     };
   }, []);
   useEffect(() => setOpen(false), [pathname]);
+  // (asked for a tab once; the next opening is on this page's)
+  useEffect(() => {
+    if (!open) setTab(null);
+  }, [open]);
 
   // The note, the first time on a page with controls: once the page is
   // uncovered and nothing's asking a question over it. It goes after a while,
@@ -151,24 +163,22 @@ export default function Guide() {
         aria-label={meta ? `Guide: controls and tips for ${meta.title}` : 'Guide: how this site works'}
         title="Guide (?)"
       >
-        <RiQuestionLine className="h-5 w-5" aria-hidden="true" />
+        <IconGuide className="h-5 w-5" aria-hidden="true" />
       </button>
       {nudge && !open && meta && (
-        <div className="guide-nudge" role="status">
+        <div className="guide-nudge notice" role="status">
           <button type="button" className="guide-nudge-open" onClick={() => setOpen(true)}>
             <span className="guide-nudge-kicker">New here?</span>
             <span>
-              The controls for {meta.title} are in the guide. Press <kbd className="guide-kbd">?</kbd> any time.
+              The controls for {meta.title} are in the guide. Press <kbd className="kbd">?</kbd> any time.
             </span>
           </button>
-          <button type="button" className="guide-nudge-close" onClick={() => setNudge(false)} aria-label="Dismiss">
-            <RiCloseLine className="h-4 w-4" aria-hidden="true" />
-          </button>
+          <CloseButton onClick={() => setNudge(false)} />
         </div>
       )}
       {open && (
         <Suspense fallback={null}>
-          <GuidePanel pathname={pathname} close={close} onLeave={() => setOpen(false)} />
+          <GuidePanel key={tab ?? 'page'} pathname={pathname} initialTab={tab} close={close} onLeave={() => setOpen(false)} />
         </Suspense>
       )}
     </>

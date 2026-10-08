@@ -2,11 +2,12 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { local, useDocumentTitle, useReducedMotion } from '../lib/hooks';
 import { audioContext } from '../lib/audio';
-import { RM_DIAL_KEY, byId, dialFor } from '../components/universe/universes';
+import { byId } from '../components/universe/universes';
 import { parseId } from '../components/universe/layout';
 import { beyondPlan, crashPlan, enterPlan } from '../components/universe/flight';
 import { beyondOf, parseWonder } from '../components/universe/deep';
 import { DRIVE_KEY, destinationById, distanceTo, parseDrive, tourFrom } from '../components/universe/nav';
+import { FLY_PAST } from '../components/universe/words';
 import { CREWS, SHIP_KEY, crewById, parseShip } from '../components/universe/crews';
 import { LOADOUT_KEY, droppedParts, equip, fitInto, loadoutOf, readLoadouts } from '../components/universe/outfit';
 import { GARAGE_KEY, HULL_KEY, readHulls } from '../components/universe/shipyard/build';
@@ -38,6 +39,9 @@ const PhoneOverlay = lazy(() => import('../components/dickansh/PhoneOverlay'));
 const SAFFRON = '#ff9a2a';
 const PHONE_MS = 700;
 const PANEL_KEY = 'tp-universe-panel'; // 'tucked' once the panel's been put away
+// (the page you go into knows you came from the map, so its way out can be
+// back to space: the Citadel's)
+const FROM_MAP = { state: { from: 'universe' } };
 
 // The universe map: every fandom on the site is a planet, and you travel
 // between them, flying a ship of your choice (remembered between visits,
@@ -156,6 +160,33 @@ export default function Universe({ ask = false }) {
   }, []);
   useEffect(() => () => clearTimeout(tour.current?.timer), []);
 
+  // flying to another pilot (the roster's “Fly to”, or its “Go” from
+  // another page: useOnline's follow): once the ship's in and they're
+  // flying here in sight, the autopilot takes it to them (scene.js's
+  // `pilot:<id>`, by the drive picked). Tried till it goes; the trip's end
+  // (there, gone, or the stick taken back) or the follow's own minute
+  // forgets it
+  const { followId, follow } = online;
+  const followRef = useRef(null); // the pilot whose trip is under way
+  useEffect(() => {
+    if (!followId || !ship) return undefined;
+    const go = () => {
+      if (followRef.current === followId) return true;
+      if (!map.current.live || !map.current.travel(`pilot:${followId}`, driveRef.current)) return false;
+      followRef.current = followId;
+      stopTour();
+      onward.current = null;
+      setCharting(false);
+      return true;
+    };
+    if (go()) return undefined;
+    const t = setInterval(() => go() && clearInterval(t), 500);
+    return () => clearInterval(t);
+  }, [followId, ship, stopTour]);
+  useEffect(() => {
+    if (!followId) followRef.current = null;
+  }, [followId]);
+
   // out of the cockpit's launch (App's intro, or ⌘K's replay): flying the
   // ship it was, with no question first. Sat down in the cockpit with no
   // ship yet (a first visit), that one's made under it as you sit there
@@ -186,7 +217,23 @@ export default function Universe({ ask = false }) {
     };
   }, []);
 
-  const select = useCallback((id) => navigate(id ? `/universe/${id}` : '/universe', { replace: true }), [navigate]);
+  // (not once the page is on its way out: the scene's last word as it's torn
+  // down, or a key pressed on the way, mustn't pull the address back to the
+  // map from the page it's leaving for)
+  const gone = useRef(false);
+  useEffect(() => {
+    gone.current = false;
+    return () => {
+      gone.current = true;
+    };
+  }, []);
+  const select = useCallback(
+    (id) => {
+      if (gone.current) return;
+      navigate(id ? `/universe/${id}` : '/universe', { replace: true });
+    },
+    [navigate],
+  );
 
   const pickShip = (id) => {
     audioContext(); // inside the press, so the engine can start
@@ -194,26 +241,15 @@ export default function Universe({ ask = false }) {
     local.set(SHIP_KEY, id);
   };
 
-  // (into a Rick and Morty world: Rick's garage, the gun dialled back to it, universes.js)
-  const dialBack = (u) => {
-    const id = dialFor(u);
-    if (!id) return;
-    try {
-      window.localStorage.setItem(RM_DIAL_KEY, id);
-    } catch {
-      /* (private mode: the dial's where it was) */
-    }
-  };
   // into a place: the selected one (Enter, E), or a station whose sign was
   // clicked (`to`: somewhere inside it to go on to, a star system through the gate)
   const go = (u, to = u?.to) => {
     if (!u || leaving) return;
-    dialBack(u);
     setCharting(false);
     stopTour();
     const plan = enterPlan(u, { reduced, three: map.current.live, ship });
     if (plan.mode === 'now') {
-      navigate(to);
+      navigate(to, FROM_MAP);
       return;
     }
     audioContext(); // inside the press, so the way out can sound
@@ -223,7 +259,7 @@ export default function Universe({ ask = false }) {
       map.current.dive(u.id);
     }
     setLeaving({ id: u.id, mode: plan.mode });
-    timer.current = setTimeout(() => navigate(to), plan.delay);
+    timer.current = setTimeout(() => navigate(to, FROM_MAP), plan.delay);
   };
   const enter = () => go(universe);
   // the phone unlocked: the Dickansh and Deekbeggers Universe (its page keeps
@@ -267,10 +303,9 @@ export default function Universe({ ask = false }) {
     const u = byId(id);
     const plan = crashPlan(u, { reduced });
     if (!plan) return false;
-    if (!page) dialBack(u);
     setLeaving({ id: u.id, mode: plan.mode });
     // (a wonder with a page of its own, the Citadel, goes there)
-    timer.current = setTimeout(() => navigate(page ?? u.crashTo ?? u.to), plan.delay);
+    timer.current = setTimeout(() => navigate(page ?? u.crashTo ?? u.to, FROM_MAP), plan.delay);
     return true;
   };
 
@@ -295,7 +330,11 @@ export default function Universe({ ask = false }) {
       pay(e.what, e.n, e.side);
       return;
     }
+    // (the hello says what you are to the others: useOnline.js reads it again)
+    if (e.type === 'event' && e.id === 'standing') window.dispatchEvent(new Event('tp:standing'));
     if (e.type === 'event' && e.id === 'standing' && goodStanding(e.sub) && stood.once(`${e.side}:${e.sub}`)) pay('standingUp', 1, e.side);
+    // a trip to a pilot over (with them, gone, or the stick taken back): the follow's done
+    if ((e.type === 'arrived' || e.type === 'jumped' || e.type === 'lost') && followRef.current && e.id === `pilot:${followRef.current}`) follow(null);
     // a trip ended: on through the gate, or the tour's next leg
     if (e.type === 'arrived' || e.type === 'jumped') {
       const done = e.type === 'jumped' || e.done;
@@ -465,7 +504,7 @@ export default function Universe({ ask = false }) {
       {touring && !leaving && (
         <div className="universe-tour" role="status">
           <span>
-            Touring, {touring.i + 1} of {touring.n}: next {touring.next}
+            {FLY_PAST.pill(touring.i + 1, touring.n, touring.next)}
           </span>
           <button type="button" onClick={stopTour}>
             Stop <kbd>Esc</kbd>

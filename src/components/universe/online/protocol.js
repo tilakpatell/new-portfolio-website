@@ -19,9 +19,14 @@
 //           (outfit.js), b: its garage build (shipyard/build.js's ids) or
 //           none, l: [Rick's look, Morty's] (wardrobe/looks.js's ids) or
 //           none, lb: [Walt’s look, Jesse’s] or none, c: kills, w: where
-//           on the site }  on joining, and on any change
+//           on the site, lv: level (economy.js's, 1 to 11), f: factions
+//           { s: side (sides.js), st: { law, civil, outlaw } standing.js's
+//           level names, w: war, o: the side sworn to in it (galaxy/sides.js),
+//           r: rank on that side (galaxy/ranks.js) } or none; a build older
+//           than these sends neither: level 1, nobody's }  on joining, and on any change
 //   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields]  ten times a second while flying
-//         (flags: hidden, boosting, and safe: just back, your hits don't count)
+//         (flags: hidden, boosting, safe: just back, your hits don't count, and
+//         riding a hyperlane, for the streak the others far off see)
 //   shot  [x, y, z, vx, vy, vz, w?]                      a bolt fired (for drawing it); w: the
 //                                                       weapon (weapons.js's code), 0 if left off
 //   hit   { d: damage }                                  to the pilot a bolt of yours hit (up to
@@ -59,6 +64,12 @@ import { KINDS as HUNTERS } from '../../galaxy/hunted';
 import { fromAngles, slerp, toAngles } from '../orient';
 import { cleanWhere } from './where';
 import { cleanName } from './names';
+import { LEVELS as XP_LEVELS } from '../economy';
+import { SIDES } from '../sides';
+import { AXES, LEVELS as STANDING_LEVELS } from '../standing';
+import { SIDES as WAR_SIDES, WARS, warOfSide } from '../../galaxy/sides';
+import { RANKS } from '../../galaxy/ranks';
+import { NO_FACTIONS } from './relations';
 import { motionPacket, readEmoteWire, readMotion } from '../../../lib/emote';
 
 export { NAME_MAX, cleanName, randomCallsign } from './names';
@@ -87,7 +98,13 @@ export const GUARD = {
 // how many of each message one pilot may send: [a second, at most at once]
 export const RATES = { pose: [20, 30], foot: [20, 30], walk: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], siege: [2, 6], war: [0.5, 3], fight: [2, 6], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2], pack: [8, 12], hhit: [10, 12] }; // (the X-wing fires 8 a second)
 export const FLOOD = { denied: 60, window: 5000 }; // turned away this often in this long: muted
-export const FLAG = { hidden: 1, boost: 2, safe: 4 };
+export const FLAG = { hidden: 1, boost: 2, safe: 4, lane: 8 };
+// how far out a pilot can be, level, and how fast they can go: the universe
+// spread four times wider (scale.js's SPREAD: places reach 36,000 out, the
+// Rick and Morty sector sits at z −48,000) and its express lanes run at
+// 4,000 a second (hyperlanes.js), so a little past both
+export const FAR = 60000;
+export const FAST = 5000;
 
 const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -99,7 +116,31 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // null, the stock ship)
 export function readHello(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
-  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), build: readBuildWire(data.b), looks: readLooksWire(data), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
+  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), build: readBuildWire(data.b), looks: readLooksWire(data), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w), level: Math.floor(num(data.lv, 1, XP_LEVELS.length) ?? 1), factions: readFactions(data.f) };
+}
+
+// A pilot's factions (relations.js's shape), for a hello's `f`: only what
+// there is to say goes, and nothing at all for nobody's
+export function writeFactions({ side = null, standing = null, war = null, oath = null, rank = null } = {}) {
+  const st = side && standing ? Object.fromEntries(AXES.filter((a) => standing[a]).map((a) => [a, standing[a]])) : null;
+  const out = { ...(side ? { s: side } : {}), ...(st && Object.keys(st).length ? { st } : {}), ...(war ? { w: war } : {}), ...(oath ? { o: oath } : {}), ...(rank ? { r: rank } : {}) };
+  return Object.keys(out).length ? out : null;
+}
+
+// a hello's `f` as it came in: each field an id from the lists we have, or
+// null (a rank only on the side sworn to, an oath only to a side of the war
+// named, a standing only with a side to have it with)
+const named = (v, list) => (typeof v === 'string' && Object.hasOwn(list, v) ? v : null);
+const standingName = (axis, v) => (typeof v === 'string' && STANDING_LEVELS[axis].some(([, name]) => name === v) ? v : null);
+function readFactions(f) {
+  if (!f || typeof f !== 'object' || Array.isArray(f)) return { ...NO_FACTIONS };
+  const side = named(f.s, SIDES);
+  const standing = side && f.st && typeof f.st === 'object' && !Array.isArray(f.st) ? Object.fromEntries(AXES.map((a) => [a, standingName(a, f.st[a])])) : null;
+  const war = named(f.w, WARS);
+  const sworn = named(f.o, WAR_SIDES);
+  const oath = sworn && warOfSide(sworn) && (!war || warOfSide(sworn) === war) ? sworn : null;
+  const rank = oath && typeof f.r === 'string' && RANKS[oath]?.some((r) => r.id === f.r) ? f.r : null;
+  return { side, standing, war, oath, rank };
 }
 
 // Each cast’s pair of looks under a key of its own (Rick and Morty’s under
@@ -149,12 +190,13 @@ export function writePose(s, flags = 0, shield = 100) {
 }
 
 // a pose as it came in: { x, y, z, heading, pitch, bank, speed, vy, hidden,
-// boost, safe, shield }, or null if it isn't one (out past deep space's edge, it's clamped)
+// boost, safe, lane, shield }, or null if it isn't one (out past deep space's
+// edge, it's clamped; an older pilot's never has the lane bit, so reads not riding)
 export function readPose(data) {
   if (!Array.isArray(data) || data.length < 9) return null;
-  const x = num(data[0], -7500, 7500);
+  const x = num(data[0], -FAR, FAR);
   const y = num(data[1], -1300, 1300);
-  const z = num(data[2], -7500, 7500);
+  const z = num(data[2], -FAR, FAR);
   const heading = num(data[3], -100, 100);
   if (x === null || y === null || z === null || heading === null) return null;
   const flags = Math.floor(num(data[8], 0, 255) ?? 0);
@@ -165,11 +207,12 @@ export function readPose(data) {
     heading: wrap(heading),
     pitch: num(data[4], -1.6, 1.6) ?? 0,
     bank: wrap(num(data[5], -4, 4) ?? 0), // (all the way round: upside down is ±π)
-    speed: num(data[6], -600, 600) ?? 0,
+    speed: num(data[6], -FAST, FAST) ?? 0,
     vy: num(data[7], -300, 300) ?? 0,
     hidden: Boolean(flags & FLAG.hidden),
     boost: Boolean(flags & FLAG.boost),
     safe: Boolean(flags & FLAG.safe),
+    lane: Boolean(flags & FLAG.lane),
     shield: num(data[9], 0, 100) ?? 100,
   };
 }
@@ -184,7 +227,8 @@ export const writeShot = (p, v, w = 0) => {
 // to start near where the pilot was last seen (`from`, a pose, if known)
 export function readShot(data, from = null) {
   if (!Array.isArray(data) || data.length < 6) return null;
-  const n = data.slice(0, 6).map((v) => num(v, -7500, 7500));
+  // (anywhere in the universe; its speed's checked just below)
+  const n = data.slice(0, 6).map((v, i) => (i < 3 ? num(v, -FAR, FAR) : num(v, -7500, 7500)));
   if (n.some((v) => v === null)) return null;
   if (Math.hypot(n[3], n[4], n[5]) > 800) return null;
   // (as far as it could have gone since that pose, on the pulse drive)
@@ -216,9 +260,9 @@ export function readPack(data) {
     if (!Array.isArray(h) || h.length < 9) continue;
     const id = num(h[0], 1, 1e9);
     const kind = typeof h[1] === 'string' && Object.hasOwn(HUNTERS, h[1]) ? h[1] : null;
-    const x = num(h[2], -7500, 7500);
+    const x = num(h[2], -FAR, FAR);
     const y = num(h[3], -1300, 1300);
-    const z = num(h[4], -7500, 7500);
+    const z = num(h[4], -FAR, FAR);
     if (id === null || !Number.isInteger(id) || !kind || x === null || y === null || z === null || out.some((o) => o.id === id)) continue;
     out.push({ id, kind, x, y, z, vx: num(h[5], -80, 80) ?? 0, vy: num(h[6], -80, 80) ?? 0, vz: num(h[7], -80, 80) ?? 0, hp: Math.max(1, Math.floor(num(h[8], 1, 99) ?? 1)) });
   }
@@ -489,6 +533,7 @@ export function sample(snaps, now, delay = 140) {
       hidden: b.hidden,
       boost: b.boost,
       safe: b.safe,
+      lane: b.lane,
       shield: b.shield,
     };
   }

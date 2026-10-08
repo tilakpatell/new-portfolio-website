@@ -14,12 +14,16 @@ import TourHost from './components/tour/TourHost';
 // fetches the 3D jump ahead of time (the intro's, and three.js once a page has it)
 import './components/hyperspace3d/load';
 import { audioContext } from './lib/audio';
-import { prefersReducedMotion } from './lib/hooks';
+import { local, prefersReducedMotion } from './lib/hooks';
+import { VISITED_KEY, addVisited } from './lib/visited';
+import { isPaletteKey } from './lib/palette';
+import { guideKeyFor } from './components/guide/routes';
 import { introPlaying } from './lib/stale';
 import { jumpStyle } from './components/jumps/styles';
 import WorldGate from './components/worlds/WorldGate';
 import Ambience from './components/ambience/Ambience';
 import { categoryAt, isFeedMove } from './components/feed/feed';
+import SettingsHost from './components/settings/SettingsHost';
 
 // Feed.jsx, named in full: feed.js sits beside it, and a case-blind disk
 // (Windows, macOS) would pick that
@@ -41,12 +45,14 @@ const Cybertron = lazy(() => import('./pages/Cybertron'));
 const Albuquerque = lazy(() => import('./pages/Albuquerque'));
 const RickMorty = lazy(() => import('./pages/RickMorty'));
 const Citadel = lazy(() => import('./pages/Citadel'));
+const RmPlanet = lazy(() => import('./pages/RmPlanet'));
 const DotMatrix = lazy(() => import('./pages/DotMatrix'));
 const Mario64 = lazy(() => import('./pages/Mario64'));
 const Minecraft = lazy(() => import('./pages/Minecraft'));
 const Earth = lazy(() => import('./pages/Earth'));
 const Front = lazy(() => import('./pages/Front'));
 const Changes = lazy(() => import('./pages/Changes'));
+const Worlds = lazy(() => import('./pages/Worlds'));
 const Dickansh = lazy(() => import('./pages/Dickansh'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const CommandPalette = lazy(() => import('./components/CommandPalette'));
@@ -78,6 +84,16 @@ function ScrollToTop() {
   // a page's music and lines stop when you leave it
   useEffect(() => {
     if (!now.current.feed) import('./lib/clips').then((c) => c.stopPageClips());
+  }, [pathname]);
+  // every page shown, the feed's included, for the guide's checklist: the
+  // page, and its guide's key when that's another (a place in a world ticks
+  // the world's things; a project still ticks its own)
+  useEffect(() => {
+    // ('/' is the front door, which may be the map or send you to /home: not a visit to the map)
+    const key = pathname === '/' ? null : guideKeyFor(pathname);
+    let list = addVisited(local.get(VISITED_KEY, []), pathname);
+    if (key && key !== pathname) list = addVisited(list, key);
+    local.set(VISITED_KEY, list);
   }, [pathname]);
   return null;
 }
@@ -248,7 +264,7 @@ function PaletteHost() {
   const close = useCallback(() => setOpen(false), []);
   useEffect(() => {
     const onKey = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      if (isPaletteKey(e)) {
         e.preventDefault();
         setOpen((o) => !o);
       }
@@ -325,7 +341,7 @@ function Shell() {
       <main id="main" tabIndex={-1} className="relative z-10 outline-none">
         {/* (every feed page shares a page key, so it's the path that lets the nav's links clear an error) */}
         <ErrorBoundary resetKey={pathname}>
-          <Suspense fallback={<div className="min-h-[100svh]" />}>
+          <Suspense fallback={<div className="min-h-[100svh]" data-fallback />}>
             <div key={page} className="page-enter">
               {/* a world on a phone (or with Data Saver, or short of space) asks before it downloads its 3D */}
               <WorldGate pathname={pathname}>
@@ -355,12 +371,14 @@ function Shell() {
                 <Route path="/albuquerque" element={<Albuquerque />} />
                 <Route path="/c-137" element={<RickMorty />} />
                 <Route path="/c-137/citadel" element={<Citadel />} />
+                <Route path="/c-137/:planet" element={<RmPlanet />} />
                 <Route path="/dot-matrix" element={<DotMatrix />} />
                 <Route path="/dot-matrix/64" element={<Mario64 />} />
                 <Route path="/dot-matrix/minecraft" element={<Minecraft />} />
                 <Route path="/earth" element={<Earth />} />
                 <Route path="/universe/:id?" element={<Front />} />
                 <Route path="/changes" element={<Changes />} />
+                <Route path="/worlds" element={<Worlds />} />
                 <Route path="/dickansh" element={<Dickansh />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
@@ -375,6 +393,7 @@ function Shell() {
       <TourHost />
       <Lightspeed />
       <PaletteHost />
+      <SettingsHost />
       <ErrorBoundary fallback={<IntroGone />}>
         <IntroJump />
       </ErrorBoundary>

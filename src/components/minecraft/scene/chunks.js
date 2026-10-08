@@ -8,20 +8,11 @@
 // They share one index buffer that draws every quad as two triangles, and
 // three culls each column against the frustum by a sphere round the
 // heights it has, never computed from the vertices.
-//
-// workerClient wraps the worker in rules/jobs.js's client.
 
 import * as THREE from 'three';
 import { STRIDE } from '../rules/mesher.js';
-import { makeClient } from '../rules/jobs.js';
 
 const PASSES = ['opaque', 'cutout', 'water'];
-
-export function workerClient(worker) {
-  const client = makeClient((msg, transfer) => worker.postMessage(msg, transfer ?? []));
-  worker.onmessage = (e) => client.receive(e.data);
-  return client;
-}
 
 export function createChunks(scene, { materials }) {
   const group = new THREE.Group();

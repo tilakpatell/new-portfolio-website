@@ -150,6 +150,10 @@ export const GALAXY_LINES = {
         ['morty', 'Rick! A giant triangle just came out of nowhere!'],
         ['rick', 'Star Destroyer, Morty. A mile of Imperial overcompensation. Keep your head down.'],
       ],
+      find: [
+        ['morty', 'Rick, there’s something out here! Way out past the planet!'],
+        ['rick', 'Mark it, Morty. Nobody comes this far out unless they’re hiding something, or they’re it.'],
+      ],
       wellclear: [
         ['rick', 'Well’s gone, Morty. Hyperdrive’s back. Let’s not get counted again.'],
         ['morty', 'C-can we take the slow way for a bit?'],
@@ -408,6 +412,10 @@ export const GALAXY_LINES = {
         ['r2', '[a frantic warble]'],
         ['luke', 'Star Destroyer, coming out of lightspeed right on top of us!'],
       ],
+      find: [
+        ['luke', 'Artoo, log this position. Nobody’s been out here in years.'],
+        ['r2', '[a low, curious whistle]'],
+      ],
       wellclear: [
         ['luke', 'We’re clear of the well. The hyperdrive’s back!'],
         ['r2', '[a relieved whistle: he’s plotting a quieter route]'],
@@ -641,6 +649,10 @@ export const GALAXY_LINES = {
       destroyer: [
         ['han', 'Came out of lightspeed way too close. Somebody’s admiral is in trouble.'],
         ['chewie', '[a nervous growl]'],
+      ],
+      find: [
+        ['han', 'Well, look at that. Told you there’d be something worth finding out here.'],
+        ['chewie', '[a pleased rumble]'],
       ],
       wellclear: [
         ['han', 'Out of the well. Hyperdrive’s back. Told you she could do it.'],
@@ -876,6 +888,10 @@ export const GALAXY_LINES = {
       destroyer: [
         ['jesse', 'Yo, a giant triangle just showed up out of nowhere!'],
         ['walt', 'A Star Destroyer, Jesse. The DEA of this galaxy. Don’t speed.'],
+      ],
+      find: [
+        ['jesse', 'Yo, Mr White, what even is that?'],
+        ['walt', 'Something nobody else has found, Jesse. Write it down.'],
       ],
       wellclear: [
         ['walt', 'We’re clear of the well, Jesse. The drive will take.'],

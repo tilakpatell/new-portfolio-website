@@ -154,6 +154,7 @@ export function newGame({ seed = 1, level = 'normal' } = {}) {
     ships: [],
     reserve: [], // sails still to come over the horizon this chapter
     volleys: [],
+    salvo: { by: null, wait: 0 }, // the navy's broadside token: the ship laying her guns, and the pause after
     balls: [],
     zones: [],
     arms: [],
@@ -572,6 +573,44 @@ export function course(g, s, want) {
   return Math.atan2(vy, vx);
 }
 
+// The navy fights as a squadron. Two or more under way take you from either
+// side, as the first of them chooses, and go about when she does (one on her
+// own fights from the side she likes); one ship lays her guns at a time, and
+// the next not until a moment after a broadside (an attack token, as
+// DOOM's demons share theirs: lib/ai/squad.js); and none fires blind: not
+// across an island, nor with a friend on the line.
+const SALVO_GAP = 1.2; // seconds after one broadside before another ship lays her guns
+
+// the side ship `s` wants the player on: her own, or her place in the squadron's
+export function stationOf(g, s) {
+  const line = g.ships.filter((o) => !o.sunk && !o.flee && !o.gone && !(o.under > 0.5) && o.kind !== 'ghost');
+  const i = line.indexOf(s);
+  if (i <= 0) return s.side;
+  return i % 2 ? -line[0].side : line[0].side;
+}
+
+// whether a ball from `s` would get to mark `m`: no island across the line
+// (the fort, while it stands, is shot over), no friend on it short of the mark
+function clearShot(g, s, m) {
+  const dx = m.x - s.x;
+  const dy = m.y - s.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const across = (x, y, r) => {
+    const px = x - s.x;
+    const py = y - s.y;
+    const t = px * ux + py * uy;
+    return t > 0 && t < len - (m.r ?? 0) * 0.5 && Math.abs(-px * uy + py * ux) < r;
+  };
+  for (const isle of ISLES) {
+    if (isle.kind === 'fort' && g.fort && g.fort.hp > 0) continue;
+    if (across(isle.x, isle.y, isle.r * 0.8)) return false;
+  }
+  for (const o of g.ships) if (o !== s && !o.sunk && !(o.under > 0.5) && !o.gone && across(o.x, o.y, o.r)) return false;
+  return true;
+}
+
 function navy(g, s, dt) {
   const p = g.p;
   const dx = p.x - s.x;
@@ -583,13 +622,14 @@ function navy(g, s, dt) {
     s.side = -s.side;
     s.flip = 10 + g.rand() * 10;
   }
+  const side = stationOf(g, s);
   let want;
   let canvas = 1;
   if (s.flee) want = Math.atan2(s.y, s.x);
-  else if (d > TIDE.range * 0.8) want = to + s.side * 0.3; // close, a little off the bow
+  else if (d > TIDE.range * 0.8) want = to + side * 0.3; // close, a little off the bow
   else {
     // run alongside, with the player on the side the guns are; open out if too near
-    want = to + s.side * (Math.PI / 2 + (d < 62 ? 0.45 : -0.12));
+    want = to + side * (Math.PI / 2 + (d < 62 ? 0.45 : -0.12));
     if (d < 90) canvas = 0.7;
   }
   sail(g, s, clamp(wrap(course(g, s, want) - s.a) * 2.2, -1, 1), canvas, dt);
@@ -599,23 +639,29 @@ function navy(g, s, dt) {
   }
   if (g.over || p.sunk) return;
   // the guns: whichever side the player is on, once it's loaded and bears
+  const salvo = (g.salvo ??= { by: null, wait: 0 });
   if (s.aim) {
     s.aim.t -= dt;
     if (s.aim.t <= 0) {
       const at = sight(s, s.aim.side, TIDE.range, [{ x: p.x, y: p.y, r: p.r, vx: Math.cos(p.a) * p.v, vy: Math.sin(p.a) * p.v }]);
-      if (at) {
+      if (at && clearShot(g, s, at.m)) {
         broadside(g, s, s.aim.side, { owner: 'e', guns: s.guns, dmg: s.dmg, range: TIDE.range, at, err: (g.rand() - 0.5) * 2 * g.L.aim, hot: s.kind === 'ghost' });
         g.events.push({ type: 'broadside', side: s.aim.side, owner: 'e', x: s.x, y: s.y });
-      } else s.reload[s.aim.side < 0 ? 0 : 1] = 0.8; // lost the bearing: hold fire a moment
+      } else s.reload[s.aim.side < 0 ? 0 : 1] = 0.8; // lost the bearing, or the line: hold fire a moment
       s.aim = null;
+      salvo.by = null;
+      salvo.wait = SALVO_GAP;
     }
     return;
   }
+  // (another ship laying her guns, or one just fired: wait)
+  if ((salvo.by != null && salvo.by !== s.id) || salvo.wait > 0) return;
   for (const side of [-1, 1]) {
     if (s.reload[side < 0 ? 0 : 1] > 0) continue;
     const at = sight(s, side, TIDE.range * 0.95, [{ x: p.x, y: p.y, r: p.r, vx: 0, vy: 0 }]);
-    if (!at) continue;
+    if (!at || !clearShot(g, s, at.m)) continue;
     s.aim = { side, t: 1 };
+    salvo.by = s.id;
     g.events.push({ type: 'aim', id: s.id, side, x: s.x, y: s.y });
     break;
   }
@@ -973,7 +1019,11 @@ export function step(g, dt) {
     if (g.ups.carpenter && g.quiet > 5 && p.hp < p.max) p.hp = Math.min(p.max, p.hp + 2.2 * d);
   }
 
-  // them
+  // them (the squadron's broadside token: its pause run down, and let go
+  // by a ship that's no longer laying her guns)
+  const salvo = (g.salvo ??= { by: null, wait: 0 });
+  salvo.wait = Math.max(0, salvo.wait - d);
+  if (salvo.by != null && !g.ships.some((o) => o.id === salvo.by && o.aim && !o.sunk && !o.gone)) salvo.by = null;
   for (let i = g.ships.length - 1; i >= 0; i--) {
     const s = g.ships[i];
     s.hit = Math.max(0, s.hit - d);

@@ -236,6 +236,11 @@ export const CREWS = [
     },
     // hunters after you (hunters.js), by who they are
     hunted: {
+      // the police, sent when you're wanted (wanted.js)
+      fedpolice: [
+        ['morty', 'Rick, Federation police! Like, actual space cops!'],
+        ['rick', 'They’ve got stun guns and missiles, Morty. Don’t let them pin the drive.'],
+      ],
       phoenix: [
         ['rick', 'Phoenixperson. Great. The Federation turned my best friend into a drone with a grudge.'],
         ['morty', 'Can we talk to him, Rick?'],
@@ -475,6 +480,14 @@ export const CREWS = [
       },
       // a patrol going past has reported you (traffic.js's spotted)
       spotted: [['morty', 'Rick, that patrol just saw us! They’re calling it in!'], ['rick', 'Snitches, Morty. The galaxy’s full of snitches. Get ready.']],
+      // the law on us (wanted.js): by stars, searching, and lost
+      wanted: {
+        any: [['morty', 'Rick, we’re wanted! There’s a price on us!'], ['rick', 'Welcome to my whole life, Morty.']],
+        3: [['morty', 'Three stars, Rick! They’re sending wardens!'], ['rick', 'And they’ll pin the drive. Shoot the medic first, Morty. Always the medic.']],
+        5: [['morty', 'Five stars! The whole Federation’s coming!'], ['rick', 'Good. Saves me looking for them.']],
+        search: [['rick', 'They lost us. Stay out of sight, Morty. Behind something big. Don’t breathe.']],
+        lost: [['morty', 'They’re gone! We lost them!'], ['rick', 'The bounty didn’t go anywhere, Morty. Somebody’s gonna come collect.']],
+      },
       // an ace hurt into its next stage (hunterRules.js's stages), by who
       stage: {
         evilmortyship: [['comms', 'You’re good, Rick. Fine. Let’s see how you do against a hundred of me.'], ['morty', 'Rick, he’s falling back! And… those are MORE Mortys!']],
@@ -996,6 +1009,11 @@ export const CREWS = [
       ],
     },
     hunted: {
+      // the ISB, sent when you're wanted (wanted.js)
+      isb: [
+        ['r2', '[ISB patrol, closing: an enforcer with ion cannons among them]'],
+        ['luke', 'Imperial Security. Don’t let the ion fire touch us, Artoo.'],
+      ],
       fett: [
         ['r2', '[A Firespray on an attack run. Boba Fett.]'],
         ['luke', 'A bounty hunter. Stay with me, Artoo. He only has to miss once.'],
@@ -1215,6 +1233,13 @@ export const CREWS = [
       },
       // a patrol going past has reported you (traffic.js's spotted)
       spotted: [['r2', '[an alarmed shriek: that patrol’s seen us]'], ['luke', 'They’re calling it in. Here they come, Artoo.']],
+      wanted: {
+        any: [['r2', '[a warbling alarm: we’re flagged]'], ['luke', 'The Empire’s marked us. ISB patrols, Artoo. Keep your eyes open.']],
+        3: [['luke', 'Interceptors with ion cannons. If they hit us we lose the drive.'], ['r2', '[a worried whistle]']],
+        5: [['r2', '[a long, falling shriek]'], ['luke', 'Everything they’ve got. Stay with me, Artoo.']],
+        search: [['luke', 'They’ve lost sight of us. Stay low, put the moon between us.']],
+        lost: [['luke', 'We lost them.'], ['r2', '[a relieved burble, then a warning beep: the bounty’s still on us]']],
+      },
       // an ace hurt into its next stage (hunterRules.js's stages), by who
       stage: {
         tieadvanced: [['comms', 'Impressive. Now you will see what a Sith can do.'], ['luke', 'He’s faster! Artoo, he’s so much faster!']],
@@ -1686,6 +1711,11 @@ export const CREWS = [
       ],
     },
     hunted: {
+      // the ISB, sent when you're wanted (wanted.js)
+      isb: [
+        ['han', 'ISB. Wonderful. Chewie, watch the ones with the ion cannons.'],
+        ['chewie', '[a snarl]'],
+      ],
       fett: [
         ['han', 'Fett. Of course it’s Fett. Chewie, punch it!'],
         ['chewie', '[A furious roar.]'],
@@ -1905,6 +1935,13 @@ export const CREWS = [
       },
       // a patrol going past has reported you (traffic.js's spotted)
       spotted: [['han', 'That patrol made us. They’re calling it in.'], ['chewie', '[a growl]'], ['han', 'I know, I know. Guns.']],
+      wanted: {
+        any: [['han', 'Great. Now there’s a price on us. Again.'], ['chewie', '[an unhappy rumble]']],
+        3: [['han', 'Gunboats with missiles. Chewie, when I say break, break.'], ['chewie', '[a roar]']],
+        5: [['han', 'That’s the whole Imperial Security Bureau.'], ['chewie', '[a howl]'], ['han', 'Yeah. I’ve always wanted to be popular.']],
+        search: [['han', 'They’ve lost us. Kill the running lights and sit tight.']],
+        lost: [['han', 'Told you. Nobody catches the Falcon.'], ['chewie', '[a growl]'], ['han', 'The bounty? Sure, that’s still there. We’ll pay it. Eventually.']],
+      },
       // an ace hurt into its next stage (hunterRules.js's stages), by who
       stage: {
         tieadvanced: [['comms', 'Impressive. Now you will see what a Sith can do.'], ['han', 'He just got faster. How does he just get faster?!']],
@@ -2387,6 +2424,11 @@ export const CREWS = [
     // hunted by Albuquerque (sides.js): the DEA, the cartel, Gus's trucks,
     // the Cousins; and by whoever else is out here, met online
     hunted: {
+      // APD and the DEA's tactical team, sent when you're wanted (wanted.js)
+      apd: [
+        ['jesse', 'Cops, Mr. White! Like, all the cops!'],
+        ['walt', 'The ones with tasers will kill the engine. Keep them off us.'],
+      ],
       dea: [
         ['jesse', 'Mr. White! DEA! Those are DEA trucks, yo!'],
         ['walt', 'I can see that, Jesse. Lose them. Calmly.'],
@@ -2640,6 +2682,13 @@ export const CREWS = [
       },
       // a patrol going past has reported you (traffic.js's spotted)
       spotted: [['jesse', 'Yo, that DEA car just saw us! They’re calling it in!'], ['walt', 'Then we have about a minute. Use it.']],
+      wanted: {
+        any: [['jesse', 'Mr. White, we’re wanted, yo! Like, actually wanted!'], ['walt', 'Then we act like professionals, Jesse.']],
+        3: [['jesse', 'SWAT, Mr. White! They got rockets!'], ['walt', 'Take out the support van. Without it they fall apart.']],
+        5: [['jesse', 'It’s everybody! APD, DEA, everybody!'], ['walt', 'Then they know who we are. Good.']],
+        search: [['walt', 'They’ve lost us. Stay out of sight and say nothing.']],
+        lost: [['jesse', 'We lost ’em! Yeah, science!'], ['walt', 'The bounty stays, Jesse. Somebody will come for it. Pay it off when we land.']],
+      },
       // an ace hurt into its next stage (hunterRules.js's stages), by who
       stage: {
         suvace: [['comms', 'All units, all units, I need backup NOW! It’s the RV!'], ['walt', 'Hank’s pulling back and calling it in. Jesse, this just got worse.']],

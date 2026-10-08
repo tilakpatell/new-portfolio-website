@@ -112,7 +112,7 @@
   right: max(var(--gutter-r), calc((100% - 1280px) / 2 + var(--gutter-r)));
   bottom: 14%;
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.82);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }

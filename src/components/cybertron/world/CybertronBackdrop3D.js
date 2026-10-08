@@ -24,6 +24,7 @@ import { disposeTree } from '../../../lib/stage3d';
 import { megaGeometry } from '../rollout/kaon';
 import { pixelRatio } from '../../../lib/device';
 import { houseOn } from '../../../lib/three/house';
+import { guard } from '../../../lib/three/frameGuard';
 import { precompile, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 import { gltfLoader } from '../../../lib/three/gltf';
 import { sharpen } from '../../../lib/three/textures';
@@ -788,6 +789,8 @@ const LOOK = [
 
 export async function createCybertronBackdrop(canvas, { side = 0, dark = true, calm = false, onLost } = {}) {
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false, depth: true }));
+  // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
+  guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.info.autoReset = false;

@@ -115,6 +115,7 @@ export function blockKind(i, j) {
   if (cx + LOT > RIVER.x0 - 15 && cx - LOT < RIVER.x1 + 15) return null;
   if (i === 0 && j === 0) return 'plaza';
   if (i === 20 && j === -5) return 'gda';
+  if (i === 1 && j === 0) return 'bank'; // the bank, east of the plaza across the street
   if (i >= -4 && i <= -2 && j >= -13 && j <= -9) return 'park'; // the city's big park, north of downtown
   if (i >= 4 && i <= 6 && j >= 18 && j <= 21) return 'park'; // the waterfront park
   const r = hash2(i, j, 1);
@@ -182,6 +183,13 @@ export function buildWorld(seed = 11) {
           if (Math.abs(x - cx) < 4 || Math.abs(z - cz) < 4) continue; // the paths
           trees.push([x, z, 3 + r() * 3, 0]);
         }
+        continue;
+      }
+      if (kind === 'bank') {
+        // the bank: on the block's west half, its door on the pavement facing the hall
+        const bank = { id: 'bank', x: cx - 12, z: cz, w: 24, d: 24, h: 12 };
+        landmarks.push(bank);
+        box({ x0: bank.x - bank.w / 2, x1: bank.x + bank.w / 2, z0: bank.z - bank.d / 2, z1: bank.z + bank.d / 2, y1: bank.h, landmark: 'bank' });
         continue;
       }
       if (kind !== 'built') continue;

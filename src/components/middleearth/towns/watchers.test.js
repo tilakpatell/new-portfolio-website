@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { makeWalker } from './walker';
-import { newWatchers, stepWatchers, watcherSees } from './watchers';
+import { newWatchers, stepWatchers, watchPose, watcherSees } from './watchers';
 
 const OPTS = { sight: 8, cone: 0.6, smell: 1.6, hear: 2.5, ringSight: 30, alert: 0.5, chase: 4, patrol: 1.5, giveUp: 8, leash: 12, catch: 0.8, look: 1.2 };
 const hobbit = (x, z, o = {}) => ({ x, z, face: 0, speed: 0, running: false, ...o });
@@ -167,6 +167,23 @@ describe('a watch on the toolkit', () => {
     expect(['10,0', '10,10', '0,0']).toContain(distinct[1]);
   });
 
+  it('searches on the town’s own random when it gives one (opts.rand), so a seeded town searches the same way', () => {
+    const ws = newWatchers([[[0, 0], [10, 0], [10, 10]]]);
+    Object.assign(ws.list[0], { mode: 'chase', t: 0 });
+    const you = (t) => (t < 0.5 ? hobbit(6, 0) : t < 2.5 ? hobbit(6, 20) : gone);
+    const world = (t) => ({ walls: t > 0.5 ? [[4, -6, 4, 6]] : [] });
+    let drawn = 0;
+    const rand = () => {
+      drawn += 1;
+      return 0.5;
+    };
+    const ev = [];
+    for (let t = 0; t < 30; t += 1 / 30) ev.push(...stepWatchers(ws, you(t), 1 / 30, { ...SLOW, search: 4, rand }, world(t)));
+    expect(ev.map((e) => e.type)).toContain('searching');
+    expect(ws.list[0].mode).not.toBe('search');
+    expect(drawn).toBeGreaterThan(0);
+  });
+
   it('two watchers split the search, and one that sees you again gives chase', () => {
     const ws = newWatchers([[[0, 0], [10, 0]], [[0, 4], [10, 4], [10, 14]]]);
     for (const w of ws.list) Object.assign(w, { mode: 'chase', t: 0 });
@@ -189,5 +206,36 @@ describe('a watch on the toolkit', () => {
     ws.list[0].wait = 0;
     const ev = run(ws, hobbit(-20, 0), 0.3, SLOW, { colliders: [house], ring: true });
     expect(ev[0]?.type).toBe('seen');
+  });
+});
+
+describe('how a watch looks on a body', () => {
+  it('looks about at its corners, walks over searching, stands looking round', () => {
+    expect(watchPose({ mode: 'patrol', wait: 1 })).toMatchObject({ head: 'about', upper: null });
+    expect(watchPose({ mode: 'patrol', wait: 0 })).toMatchObject({ head: 'ahead', upper: null });
+    expect(watchPose({ mode: 'suspicious', looked: 0 }).upper).toBe('walk.search');
+    expect(watchPose({ mode: 'suspicious', looked: 0.5 }).upper).toBe('look.around');
+    expect(watchPose({ mode: 'search', goal: [1, 2] }).upper).toBe('walk.search');
+    expect(watchPose({ mode: 'search', goal: null }).upper).toBe('look.around');
+  });
+  it('stares at you once it has you, shouts once on seeing you and strikes once on catching you, never through the chase', () => {
+    expect(watchPose({ mode: 'alert' }, 'patrol')).toEqual({ head: 'you', upper: null, enter: 'alert' });
+    expect(watchPose({ mode: 'alert' }, 'alert').enter).toBeNull();
+    expect(watchPose({ mode: 'chase' }, 'alert')).toEqual({ head: 'you', upper: null, enter: null });
+    expect(watchPose({ mode: 'caught' }, 'chase').enter).toBe('caught');
+    expect(watchPose({ mode: 'caught' }, 'caught').enter).toBeNull();
+  });
+  it('is only drawn: a watch steps the same whether or not it is looked at', () => {
+    const run = (draw) => {
+      const ws = newWatchers([[[0, 0], [6, 0], [6, 6]]], { spots: [[3, 3]] });
+      const out = [];
+      for (let i = 0; i < 600; i++) {
+        const h = { x: 4 + Math.sin(i / 40) * 3, z: 2, running: i % 90 < 20 };
+        out.push(...stepWatchers(ws, h, 1 / 30, { ...OPTS, far: 0.6, suspicious: 0.4 }).map((e) => e.type));
+        if (draw) for (const w of ws.list) watchPose(w, 'patrol');
+      }
+      return [out, ws.list.map((w) => [w.mode, w.x.toFixed(6), w.z.toFixed(6)])];
+    };
+    expect(run(true)).toEqual(run(false));
   });
 });

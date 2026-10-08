@@ -5,7 +5,9 @@ import { useTheme } from '../theme/ThemeProvider';
 import { FAN_THEMES, THEMES, THEME_ORDER } from '../theme/themes';
 import { partsUnlockedBy } from './universe/outfit';
 import { paintsFor } from './universe/paint';
+import { useTouring } from './tour/useTouring';
 import Gif from './Gif';
+import { worldAt } from './worlds/worlds';
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const ACHIEVEMENTS = {
@@ -14,6 +16,8 @@ export const ACHIEVEMENTS = {
   order66: { name: 'Contingency', desc: 'Executed Order 66' },
   konami: { name: 'Cheat code', desc: 'Entered the Konami code' },
   tour: { name: 'Shown around', desc: 'Took the tour of the site' },
+  tourRecruiter: { name: 'Shown the work', desc: 'Took the hiring tour' },
+  tourPlayer: { name: 'Shown the ropes', desc: 'Took the player’s tour' },
   deathstar: { name: 'Fully operational', desc: 'Found the Death Star plans' },
   'ds-aboard': { name: 'Boarding party', desc: 'Came aboard the Death Star' },
   // Aboard the Death Star (deathstar/inside): its twenty Easter eggs, worded as its rules/eggs.js words them so the toast says what the egg says
@@ -228,6 +232,10 @@ export const ACHIEVEMENTS = {
   rescue: { name: 'That actually helped', desc: 'Caught someone falling over the city and set them down' },
   mimic: { name: 'A fraction of our power', desc: 'Flew alongside an airliner over the Graysons’ city' },
   flaxans: { name: 'Back through the portal', desc: 'Knocked every Flaxan out of the sky over the river in the Graysons’ city' },
+  maulers: { name: 'The bank job', desc: 'Stopped the Mauler twins’ bank job downtown in the Graysons’ city' },
+  seismic: { name: 'Who you calling ugly?', desc: 'Caught every student Doc Seismic shook off the school roof, and put him down' },
+  gda: { name: 'You look kinda dead', desc: 'Held the GDA’s hangar against the Mauler clones' },
+  season: { name: 'We need to talk', desc: 'Flew the whole first season of the Graysons’ city, and went home to talk' },
   karman: { name: 'Neil Armstrong, eat your heart out', desc: 'Flew up out of the air over the Graysons’ city, into space' },
   moonwalk: { name: 'One small step', desc: 'Landed on the Moon as Invincible' },
   redplanet: { name: 'A long way from home', desc: 'Landed on Mars as Invincible' },
@@ -285,8 +293,8 @@ const PAGES = ['/', '/experience', '/projects', '/travel', '/contact', '/termina
 const newThemes = (themeId) => {
   const egg = FAN_THEMES.find((f) => f.id === themeId)?.achievement;
   const names = FAN_THEMES.filter((f) => f.achievement === egg).map((f) => THEMES[f.id].company);
-  if (names.length < 2) return `New theme: ${names[0] ?? THEMES[themeId].company}.`;
-  return `New themes: ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
+  if (names.length < 2) return `New colours: ${names[0] ?? THEMES[themeId].company}.`;
+  return `New colours: ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}.`;
 };
 // "New in the hangar: …": the paint jobs and ship parts an achievement opens
 // on the universe map (universe/outfit.js), or null.
@@ -347,7 +355,9 @@ export function AchievementProvider({ children }) {
     if (THEME_ORDER.every((t) => seen.has(t))) unlock('cartographer');
   }, [seen, unlock]);
 
-  const toast = queue[0];
+  // (a toast waits while a tour runs: it'd sit over the tour's card)
+  const touring = useTouring();
+  const toast = touring ? null : queue[0];
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setQueue((q) => q.slice(1)), toast.gif ? 7000 : 3800);
@@ -355,6 +365,10 @@ export function AchievementProvider({ children }) {
   }, [toast]);
 
   const value = useMemo(() => ({ unlock, notify, unlocked }), [unlock, notify, unlocked]);
+  // In a world the HUD's foot is the prompt, the thumbs and the instruments:
+  // the toast goes top centre, under the nav, instead (the worlds' own
+  // toasts sit lower, under their top row).
+  const inWorld = Boolean(worldAt(pathname));
   const themeId = toast?.kind.startsWith('theme:') ? toast.kind.slice(6) : null;
 
   return (
@@ -362,12 +376,12 @@ export function AchievementProvider({ children }) {
       {children}
       {/* taps pass through the toast to whatever is under it, except on its own controls */}
       {/* in language mode the toast reads plainly, and sits above the Back to English pill */}
-      <div className="toast-host pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex justify-center px-4 [&_.toast_a]:pointer-events-auto [&_.toast_button]:pointer-events-auto" aria-live="polite">
+      <div className={`toast-host pointer-events-none fixed inset-x-0 ${inWorld ? 'top-[calc(var(--nav-h)+0.75rem)]' : 'bottom-5'} z-[var(--z-sheet)] flex justify-center px-4 [&_.toast_a]:pointer-events-auto [&_.toast_button]:pointer-events-auto`} aria-live="polite" data-in-world={inWorld || undefined}>
         {toast && (
           <div
             key={toast.key}
-            className="toast ab-keep card flex max-w-md items-center gap-3 px-4 py-3 shadow-2xl shadow-black/40"
-            style={{ background: 'var(--surface-2)', animationDuration: toast.gif ? '7s' : '3.8s' }}
+            className="toast notice ab-keep flex max-w-md items-center gap-3 px-4 py-3"
+            style={{ animationDuration: toast.gif ? '7s' : '3.8s' }}
           >
             {toast.kind !== 'note' && (
               <span className="grid h-9 w-9 flex-none place-items-center rounded-full border border-line-strong">
@@ -378,7 +392,7 @@ export function AchievementProvider({ children }) {
               {toast.kind !== 'note' && <p className="label">Achievement unlocked</p>}
               <p className="font-semibold text-ink">{toast.title}</p>
               {toast.desc && <p className="text-sm text-muted">{toast.desc}</p>}
-              {themeId && <p className="mt-1 text-sm text-body">{newThemes(themeId)} Pick from the site colors.</p>}
+              {themeId && <p className="mt-1 text-sm text-body">{newThemes(themeId)} Pick from the site colours.</p>}
               {toast.hangar && <p className="mt-1 text-sm text-body">{toast.hangar}</p>}
               {toast.gif && <Gif name={toast.gif} eager />}
             </div>

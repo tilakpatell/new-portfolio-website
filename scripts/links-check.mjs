@@ -79,9 +79,9 @@ const click = (page, sel) =>
   const page = await open('/universe', 'super');
   await click(page, '.universe-navmap-btn');
   await page.waitForSelector('.navmap', { timeout: 60000 });
-  const hasTour = await page.evaluate(() => Boolean([...document.querySelectorAll('.navmap-tool')].find((b) => b.textContent.includes('Tour'))));
-  check(hasTour, 'the nav map offers the tour');
-  await page.evaluate(() => [...document.querySelectorAll('.navmap-tool')].find((b) => b.textContent.includes('Tour'))?.click());
+  const hasTour = await page.evaluate(() => Boolean([...document.querySelectorAll('.navmap-tool')].find((b) => b.textContent.includes('Fly past'))));
+  check(hasTour, 'the nav map offers to fly past everything');
+  await page.evaluate(() => [...document.querySelectorAll('.navmap-tool')].find((b) => b.textContent.includes('Fly past'))?.click());
   await page.waitForSelector('.universe-tour', { timeout: 30000 }).catch(() => {});
   const pill = await page.evaluate(() => document.querySelector('.universe-tour')?.textContent ?? '');
   check(pill.includes('1 of'), `the tour's pill: “${pill.trim()}”`);
