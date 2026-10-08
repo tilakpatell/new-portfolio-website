@@ -20,7 +20,7 @@ The owner's answers, 8 October 2026:
 
 ## 1. Stance and grip (`warEffects.js`)
 
-`effectsFor` gains two fields, both pure and tested.
+`effectsFor` gains three fields, `stance`, `grip` and `tier`, all pure and tested.
 
 **`stance`**: how the holder's fleet treats you.
 
@@ -161,7 +161,7 @@ It also covers the drop-in's `capital` moments in the galaxy, so Rick doesn't ca
 
 ## 10. Testing
 
-- **`warEffects.test.js`:** stance for each oath and owner (Hutts wary, deserters enemy); grip and tier for a blockade, a stronghold, a cut-off front, a raw control between bands; `KEYS` grows by the two fields.
+- **`warEffects.test.js`:** stance for each oath and owner (Hutts wary, deserters enemy); grip and tier for a blockade, a stronghold, a cut-off front, a raw control between bands; `KEYS` grows by the three fields.
 - **`garrisonRules.test.js`:**
   - `postOf` against `TURRETS` and `HULLS`;
   - each state's way in and out, for each stance and tier;
