@@ -124,23 +124,6 @@ export const ION = { damage: 5, slow: 2.5 };
 export const RAM = { damage: 28, reach: 0.6 };
 export const MEDIC = { every: 2.5, reach: 20 };
 export const FLICKER = 2;
-// How good a pilot is (a pack's `skill`, difficulty.js's tiers): of its
-// kind's lead and scatter, of the time between its shots and before its
-// first, how readily it breaks off its line when you line up on it (`jink`,
-// JINK), how often a hit makes it break off its run, more of the pack on a
-// run at once, and how much likelier to sit on your tail. A pack sent with
-// no skill flies as its kinds always have.
-export const SKILLS = {
-  rookie: { lead: 0.75, spread: 1.4, fire: 1.3, react: 1.4, jink: 0.1, flinch: 0.45, slots: 0, tail: 0.6 },
-  regular: { lead: 1, spread: 1, fire: 1, react: 1, jink: 0.3, flinch: 0.3, slots: 0, tail: 1 },
-  veteran: { lead: 1.2, spread: 0.72, fire: 0.85, react: 0.75, jink: 0.55, flinch: 0.15, slots: 1, tail: 1.35 },
-  elite: { lead: 1.38, spread: 0.5, fire: 0.7, react: 0.55, jink: 0.8, flinch: 0.06, slots: 1, tail: 1.7 },
-};
-const TIER_ORDER = Object.keys(SKILLS);
-// lined up on: your nose within `cone` (the cosine: about 10°) of it, inside
-// `range`; it breaks `rate`×jink times a second of that, for a moment, then
-// can't again for a moment
-export const JINK = { range: 26, cone: 0.985, rate: 2.5, for: [0.45, 0.8], cool: [0.8, 1.5], push: 1.6 };
 export const LOSE = { far: 48, after: 5 }; // they give up once you're this far away for this long
 export const SHIP_R = 0.2; // how close a laser must pass you to hit
 export const FIGHT = {
@@ -203,6 +186,24 @@ export function fightSpeed(type, yourSpeed, gap) {
 // its size: the guns are forgiving). Here, and for the hunters after
 // another pilot (online/pilots.js), so a shot counts the same either way
 export const hitRadius = (type) => type.size * 0.9 + 0.12;
+
+// How good a pilot is (a pack's `skill`, difficulty.js's tiers): of its
+// kind's lead and scatter, of the time between its shots and before its
+// first, how readily it breaks off its line when you line up on it (`jink`,
+// JINK), how often a hit makes it break off its run, more of the pack on a
+// run at once, and how much likelier to sit on your tail. A pack sent with
+// no skill flies as its kinds always have.
+export const SKILLS = {
+  rookie: { lead: 0.75, spread: 1.4, fire: 1.3, react: 1.4, jink: 0.1, flinch: 0.45, slots: 0, tail: 0.6 },
+  regular: { lead: 1, spread: 1, fire: 1, react: 1, jink: 0.3, flinch: 0.3, slots: 0, tail: 1 },
+  veteran: { lead: 1.2, spread: 0.72, fire: 0.85, react: 0.75, jink: 0.55, flinch: 0.15, slots: 1, tail: 1.35 },
+  elite: { lead: 1.38, spread: 0.5, fire: 0.7, react: 0.55, jink: 0.8, flinch: 0.06, slots: 1, tail: 1.7 },
+};
+const TIER_ORDER = Object.keys(SKILLS);
+// lined up on: your nose within `cone` (the cosine: about 10°) of it, inside
+// `range`; it breaks `rate`×jink times a second of that, for a moment, then
+// can't again for a moment
+export const JINK = { range: 26, cone: 0.985, rate: 2.5, for: [0.45, 0.8], cool: [0.8, 1.5], push: 1.6 };
 
 // How many of a pack of `n` may be on an attack run at once
 export const slotsFor = (n) => (n >= 5 ? 3 : Math.min(n, 2));
@@ -1051,6 +1052,13 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
           if (!ship || (pack.fade > 2 && dx * dx + dy * dy + dz * dz > 110 * 110) || pack.fade > 30) remove(h);
           continue;
         }
+        // a rammer that reaches you bursts on you (the whole way each of
+        // you went this frame: closing at speed, it would be past you)
+        if (ram && c && !onPrey && ship && sweptHit(h.prev, pos, youPrev, you, RAM.reach + type.size) !== null) {
+          events.push({ type: 'laser', damage: type.ram ?? RAM.damage, from: { x: pos.x, y: pos.y, z: pos.z }, bomb: false, ram: true, by: h.id });
+          events.push({ type: 'rammed', id: h.id, kind: h.kind, faction: pack.faction, at: { x: pos.x, y: pos.y, z: pos.z }, size: type.size });
+          remove(h); // (and it fires nothing, below: it has no guns)
+        }
         // a medic patches up the worst hurt of its pack near it, a hit at a time
         if (has('medic') && (h.patchCool -= dt) <= 0) {
           h.patchCool = MEDIC.every;
@@ -1100,13 +1108,6 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
               if (has('bomber') && h.mode === 'run') h.bombed = true; // (its bomb's away: it breaks off)
             }
           }
-        }
-        // a rammer that reaches you bursts on you (the whole way each of
-        // you went this frame: closing at speed, it would be past you)
-        if (ram && c && !onPrey && ship && sweptHit(h.prev, pos, youPrev, you, RAM.reach + type.size) !== null) {
-          events.push({ type: 'laser', damage: type.ram ?? RAM.damage, from: { x: pos.x, y: pos.y, z: pos.z }, bomb: false, ram: true, by: h.id });
-          events.push({ type: 'rammed', id: h.id, kind: h.kind, faction: pack.faction, at: { x: pos.x, y: pos.y, z: pos.z }, size: type.size });
-          remove(h);
         }
       }
 

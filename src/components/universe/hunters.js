@@ -46,21 +46,18 @@
 // Everything is in `parent`'s space (the map's).
 
 import * as THREE from 'three';
+import { packSkill } from './difficulty';
 import { createFleet } from './glbFleet';
 import { FACTIONS, HUNTER_KINDS, LASER, NAMES, createHunt } from './hunterRules';
-import { packSkill } from './difficulty';
 
 export { FACTIONS, HUNTER_KINDS, NAMES };
 
 // (`factions` and `kinds` are these, unless another map brings its own: the
 // galaxy's Separatists and the Imperial remnant, galaxy/hunted.js)
-// `difficulty`, given: a function giving difficulty.js's numbers now (the
-// setting can change mid-flight): every pack sent flies at its skill (a tier
-// better now and then, the hotter it is) and comes its size more, unless
-// the pack's own `skill` or `more` says otherwise
-export function createHunters(parent, { small = false, fleet = createFleet(), factions = FACTIONS, kinds = HUNTER_KINDS, solids = [], engines = null, difficulty = null } = {}) {
+export function createHunters(parent, { small = false, fleet = createFleet(), factions = FACTIONS, kinds = HUNTER_KINDS, solids = [], engines = null } = {}) {
   const hunt = createHunt({ factions, kinds, solids, lasers: small ? 16 : 28 });
   const pool = {}; // kind → models not in use
+  let difficulty = null; // (set: the `difficulty` below)
   const shown = new Set(); // the hunters with a model out
   const laserGeo = new THREE.CylinderGeometry(0.009, 0.009, LASER.length, 5).rotateX(Math.PI / 2);
   const laserMats = Object.fromEntries(
@@ -125,6 +122,17 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     // a pack of hunters after you (or after `prey`: an Object3D, something
     // else, e.g. a freighter in distress). Returns the points they came in
     // at (the scene opens a portal or flashes a jump at each)
+    // how hard the fight is, set: a function giving difficulty.js's numbers
+    // now (the setting can change mid-flight): every pack sent flies at its
+    // skill (a tier better now and then, the hotter it is) and comes its
+    // size more, unless the pack's own `skill` or `more` says otherwise
+    get difficulty() {
+      return difficulty;
+    },
+    set difficulty(fn) {
+      difficulty = fn ?? null;
+    },
+
     pack(faction, ship, opts = {}) {
       const d = difficulty?.() ?? null;
       const skill = opts.skill !== undefined ? opts.skill : d ? packSkill(d.skill, { heat: opts.heat ?? 0, promote: d.promote }) : null;

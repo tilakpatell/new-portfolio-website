@@ -871,7 +871,8 @@ export async function create(canvas, ctx) {
   const FACTIONS_ALL = factionsOf(null);
   // how hard the fight is (the flight setting: difficulty.js), now
   const diff = () => difficultyOf(controls().difficulty);
-  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines, difficulty: diff }); // (every side's: another pilot's hunters, whoever they are)
+  const hunters = reduced ? null : createHunters(map, { small, fleet, solids: SOLIDS, factions: FACTIONS_ALL, kinds: kindsOf(null), engines }); // (every side's: another pilot's hunters, whoever they are)
+  if (hunters) hunters.difficulty = diff;
   const wingmen = hunters ? createWingmen(map, { fleet, solids: SOLIDS }) : null; // (friends in a long fight)
   const skirmishes = hunters ? createSkirmishes(map, { fleet, solids: SOLIDS }) : null; // (someone else's fight, out ahead)
   const farFights = createFarFights(map); // (and seen from afar, as flickering light: farFights.js)
