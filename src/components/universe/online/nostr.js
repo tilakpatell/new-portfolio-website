@@ -23,8 +23,14 @@
 // the roster, and a block holds everywhere): every event is signed, the
 // relays check it, and anything that matters (a hello, a hit, being shot
 // down, an alliance, leaving) is checked again here, so no one can speak as
-// another pilot. An event much older than the pilot's others is dropped, so
-// an old one can't be played back later. This module is ready only once the
+// another pilot. A key lasts, so a pilot's words from a past visit are
+// still theirs, and mustn't be played back as new: an event much older than
+// the pilot's others is dropped, and so is one from a pilot first heard
+// whose time is further than SKEW_S from your clock. Each room's events
+// carry a tag of the visit's own ('visit'), and a goodbye (signed ahead, so
+// it can go out as the page closes) is believed only when its tag is the
+// one the pilot's other words, checked, carry now: one recorded on a past
+// visit removes nobody. This module is ready only once the
 // identity's roll-call of the browser's tabs is over (a moment, ROLL_MS at
 // most), so nothing that imports it signs as another tab's pilot.
 //
@@ -49,6 +55,11 @@ export const RELAYS = ['nostr-01.uid.ovh', 'relay.mostro.network', 'bucket.corac
 export const FLUSH_MS = 100; // a bundle at most this often
 const READY_MS = 12000; // no relay listening by now: couldn't connect
 const STALE_S = 30; // an event this much older than the pilot's others is a replay
+// A pilot first heard: their clock may be this far from yours, no further.
+// Clocks set from the network agree to within seconds; five minutes leaves
+// room for one kept by hand, and turns away a word from a past visit (minutes
+// to days old) played back before anything of theirs from this one.
+const SKEW_S = 300;
 const QUIET_MS = 60000; // a pilot not heard from this long is forgotten (they'll be met again)
 const CONTENT_MAX = 16000; // characters of content taken from an event
 const QUEUE_MAX = 64; // messages waiting, at most
@@ -127,9 +138,14 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
   const { secretKey, publicKey } = keys;
   const self = hex(publicKey);
   const topic = `${appId}/${roomId}`;
-  const tags = [['x', topic]];
+  // (this visit's own tag on everything sent: a goodbye's good only for the visit it was signed in)
+  const visit = hex(globalThis.crypto.getRandomValues(new Uint8Array(8)));
+  const tags = [
+    ['x', topic],
+    ['visit', visit],
+  ];
   const actions = {};
-  const known = new Map(); // pilot → { heard (ms), skew (s, their clock against yours), chain }
+  const known = new Map(); // pilot → { heard (ms), skew (s, their clock against yours), chain, met, visit (theirs now, from a word whose signature checked out) }
   const seen = new Map(); // event id → ms (taken once, from whichever relay's first)
   let queue = [];
   let timer = 0;
@@ -141,16 +157,20 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
   const nowS = () => Math.floor(Date.now() / 1000);
 
   // a message in from a pilot (p, what's known of them): who's new, who's
-  // leaving, then the room's actions
-  const take = (ev, msgs, p) => {
+  // leaving, then the room's actions. `theirs`: the visit the event's tag
+  // names (null for an older client's, which has none), when its signature
+  // was checked; undefined when it wasn't
+  const take = (ev, msgs, p, theirs) => {
     const id = ev.pubkey;
     if (msgs.length === 1 && msgs[0][0] === '@bye') {
-      if (known.get(id) === p && p.met) {
+      // (only the goodbye of the visit they're on: one from a past visit, played back, is nothing)
+      if (known.get(id) === p && p.met && theirs !== undefined && theirs === p.visit) {
         known.delete(id);
         room.onPeerLeave?.(id);
       }
       return;
     }
+    if (theirs !== undefined) p.visit = theirs;
     if (!known.has(id)) known.set(id, p); // (forgotten while this was checked)
     if (!p.met) {
       p.met = true;
@@ -178,20 +198,27 @@ export function joinRoom({ appId, relays = RELAYS, WebSocket = globalThis.WebSoc
     msgs = msgs.filter((m) => Array.isArray(m) && typeof m[0] === 'string' && m[0].length <= 16);
     if (!msgs.length) return;
     seen.set(ev.id, Date.now());
-    let p = known.get(ev.pubkey);
-    if (!p) known.set(ev.pubkey, (p = { heard: Date.now(), skew: nowS() - ev.created_at, chain: Promise.resolve(), met: false }));
     const leaving = msgs.length === 1 && msgs[0][0] === '@bye';
-    // (a goodbye's signed ahead of time, so it may be old)
+    let p = known.get(ev.pubkey);
+    if (!p) {
+      // someone not heard from: a goodbye of theirs is nothing, and a word
+      // further from now than SKEW_S is an old one of theirs played back
+      // (their key lasts, so a past visit's words are still theirs)
+      if (leaving || Math.abs(nowS() - ev.created_at) > SKEW_S) return;
+      known.set(ev.pubkey, (p = { heard: Date.now(), skew: nowS() - ev.created_at, chain: Promise.resolve(), met: false, visit: undefined }));
+    }
+    // (a goodbye's signed ahead of time, so it may be old: its visit tag says whether it's this visit's)
     if (!leaving && nowS() - ev.created_at - p.skew > STALE_S) return;
     p.heard = Date.now();
     const check = msgs.some((m) => !cheap.has(m[0]));
+    const tagged = ev.tags.find((t) => Array.isArray(t) && t[0] === 'visit' && typeof t[1] === 'string' && t[1].length <= 32);
     // in order, per pilot (a check takes a moment)
     p.chain = p.chain.then(async () => {
       if (check && !(await checkAway(ev))) {
         seen.delete(ev.id); // (a forged copy mustn't keep the real one out)
         return;
       }
-      if (!left) take(ev, msgs, p);
+      if (!left) take(ev, msgs, p, check ? (tagged?.[1] ?? null) : undefined);
     });
   };
 

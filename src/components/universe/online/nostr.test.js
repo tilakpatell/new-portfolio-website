@@ -105,18 +105,22 @@ describe('joinRoom over Nostr relays', () => {
     expect(b.got.filter((m) => m.ns === 'hi')).toEqual([{ ns: 'hi', data: { n: 'Han' }, from: a.selfId }]);
   });
 
-  it('sends real Nostr events: an ephemeral kind, tagged with the room, signed', async () => {
+  it('sends real Nostr events: an ephemeral kind, tagged with the room and the visit, signed', async () => {
     const net = createRelays(URLS);
     const a = join(net);
     await a.ready;
     a.action('hi').send({ n: 'Han' });
     await until(() => net.relays[URLS[0]].log.some((ev) => ev.content.includes('"hi"'))); // (bundled with the word that you're here)
+    const visits = new Set();
     for (const ev of net.relays[URLS[0]].log) {
       expect(ev.kind).toBe(KIND);
       expect(ev.pubkey).toBe(a.selfId);
-      expect(ev.tags).toEqual([['x', 'test-app/room-1']]);
+      expect(ev.tags[0]).toEqual(['x', 'test-app/room-1']);
+      expect(ev.tags[1][0]).toBe('visit');
+      visits.add(ev.tags[1][1]);
       expect(await checkEvent(ev)).toBe(true);
     }
+    expect(visits.size).toBe(1); // (the same visit on all of them)
   });
 
   it('signs with the key it is handed: one for the visit, the same in every room', async () => {
@@ -218,6 +222,52 @@ describe('joinRoom over Nostr relays', () => {
     await until(() => b.got.some((m) => m.data.n === 'Now'));
     await settle();
     expect(b.got.map((m) => m.data.n)).toEqual(['Now']);
+  });
+
+  it('an event from a past visit, played back first, is dropped', async () => {
+    const net = createRelays(URLS);
+    const b = join(net);
+    await b.ready;
+    // (a pilot whose key lasts: what they said a day ago, captured, played back before anything of theirs today)
+    const { secretKey, publicKey } = schnorr.keygen();
+    const x = hex(publicKey);
+    const tags = [['x', 'test-app/room-1']];
+    const t = Math.floor(Date.now() / 1000);
+    net.inject(URLS[0], await signEvent(secretKey, x, { tags, content: JSON.stringify([['hi', { n: 'Yesterday' }]]), created_at: t - 86400 }));
+    net.inject(URLS[0], await signEvent(secretKey, x, { tags, content: JSON.stringify([['hi', { n: 'Yesterday again' }]]), created_at: t - 86390 }));
+    await settle();
+    expect(b.got).toEqual([]);
+    expect(b.joined).toEqual([]);
+    // and what they say today is taken
+    net.inject(URLS[0], await signEvent(secretKey, x, { tags, content: JSON.stringify([['hi', { n: 'Today' }]]), created_at: t }));
+    await until(() => b.got.some((m) => m.data.n === 'Today'));
+    expect(b.got.map((m) => m.data.n)).toEqual(['Today']);
+  });
+
+  it('a goodbye from a past visit doesn’t remove a pilot who’s here', async () => {
+    const net = createRelays(URLS);
+    const keys = schnorr.keygen(); // (a key that lasts: the same pilot, visit after visit)
+    const first = joinRoom({ appId: 'test-app', relays: URLS, WebSocket: net.WebSocket, keys }, 'room-1');
+    rooms.push(first);
+    await first.ready;
+    await settle(); // (the goodbye's signed ahead)
+    await first.leave();
+    const isBye = (ev) => ev.pubkey === first.selfId && ev.content.includes('@bye');
+    await until(() => net.relays[URLS[0]].log.some(isBye)); // (the relay checks it first)
+    const goodbye = net.relays[URLS[0]].log.find(isBye);
+    // the next visit, on the same key, met by someone who wasn't there for the first
+    const c = join(net);
+    const again = joinRoom({ appId: 'test-app', relays: URLS, WebSocket: net.WebSocket, keys }, 'room-1');
+    rooms.push(again);
+    await until(() => c.joined.includes(again.selfId));
+    await settle();
+    net.inject(URLS[0], goodbye); // (the old goodbye, played back)
+    await settle();
+    expect(c.left).toEqual([]);
+    // and this visit's own goodbye still does
+    await settle();
+    await again.leave();
+    await until(() => c.left.includes(again.selfId));
   });
 
   it('says when a pilot leaves', async () => {
