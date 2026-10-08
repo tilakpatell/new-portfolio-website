@@ -424,6 +424,8 @@
   color: inherit; /* (the site's muted grey is lost on the dark panel) */
   opacity: 0.75;
 }
+/* (the guide's keys, the house cap, tinted to the panel through its tokens) */
+.m64-controls { --border-strong: rgba(255, 255, 255, 0.45); --surface-2: rgba(255, 255, 255, 0.12); --text: #fff; }
 .m64-controls-pad {
   margin: 0;
   font-family: system-ui, sans-serif;

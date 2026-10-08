@@ -1,6 +1,7 @@
 import { ABOUT } from './abouts';
 import { GUIDES, guideKeyFor } from './routes';
 import { CYBERTRON_KEYS, CYBERTRON_TOUCH } from './cybertron';
+import { TRIBUTE_KEYS, TRIBUTE_PAD, TRIBUTE_TOUCH } from './mario64';
 
 // What the guide says about each page: a line on what it is, its controls
 // (`keys` for a keyboard, `touch` for a phone; each a list of groups, a group
@@ -528,20 +529,12 @@ export const PAGES = {
       },
       {
         label: 'The fan tribute',
-        rows: [
-          ['W A S D / ← ↑ ↓ →', 'Run (Mario goes the way you push, from the camera)'],
-          ['Space / K', 'Jump (A): again on landing for a double, a third for the triple'],
-          ['J / F', 'Punch, pick up, throw, dive (B); talk and read'],
-          ['Shift', 'Crouch (Z): with a jump, a backflip or a long jump; in the air, a ground pound'],
-          ['Q E / drag', 'Turn the camera'],
-          ['R / wheel', 'The camera’s distance'],
-          ['Esc / P', 'Pause'],
-        ],
+        rows: TRIBUTE_KEYS, // (the pause screen's too: ./mario64.js)
       },
     ],
     touch: [
       { label: 'The N64 (your own ROM)', rows: [['On-screen pad', 'The emulator’s own N64 controller']] },
-      { label: 'The fan tribute', rows: [['Stick', 'Run'], ['A', 'Jump'], ['B', 'Punch, pick up, talk'], ['Z', 'Crouch, ground pound'], ['Drag', 'Turn the camera']] },
+      { label: 'The fan tribute', rows: TRIBUTE_TOUCH },
     ],
     tips: [
       ['The N64', 'It plays a real N64 game: give it your own Super Mario 64 ROM (.z64, .n64 or .v64) and it boots in the browser. The file stays on your device, kept for next time until you forget it. A controller works; the emulator’s menu along its bottom edge has its controls, save states and full screen.'],
@@ -551,8 +544,7 @@ export const PAGES = {
       ['Health', 'Eight wedges. A coin gives one back, and fifty coins are a life. Under water the meter is your air: come up before it runs out.'],
       ['Bob-omb Ridge', 'King Bob-omb is on the summit: get behind him, pick him up and throw him. Eight red coins make a star. Pound the Chain Chomp’s post three times.'],
       ['The look', 'On the title and the pause menu: Modern, Ultra or the N64’s own.'],
-      // (the tribute's pause screen shows this line under its keys, by this name)
-      ['A controller', 'In the tribute, the left stick runs, A jumps, B or X punches, either trigger crouches (Z), the right stick or the bumpers turn the camera, Y sets its distance and Start pauses.'],
+      ['A controller', TRIBUTE_PAD],
     ],
   },
   '/dot-matrix/minecraft': {

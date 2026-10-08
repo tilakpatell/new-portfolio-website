@@ -8,7 +8,7 @@ import { WorldHost, useWorld } from '../../runtime';
 import { Exit, Stick, TouchButton } from '../../runtime/hud';
 import GuideCue from '../guide/GuideCue';
 import { KeyTable } from '../guide/KeyTable';
-import { PAGES } from '../guide/pages';
+import { TRIBUTE_KEYS, TRIBUTE_PAD, TRIBUTE_TOUCH } from '../guide/mario64';
 import module from './module';
 import { VOICE } from './voicelines';
 import './mario64.css';
@@ -27,11 +27,11 @@ const LOOKS = [
   ['n64', 'N64'],
 ];
 // The pause screen's Controls are the guide's own rows for the tribute
-// (guide/pages.js, '/dot-matrix/64'), so the keys are written once: the
-// keyboard's, or the touch pad's on a phone, and the controller's line.
-const GUIDE = PAGES['/dot-matrix/64'];
-const tributeRows = (touch) => (touch ? GUIDE.touch : GUIDE.keys).find((g) => g.label === 'The fan tribute')?.rows ?? [];
-const PAD_LINE = GUIDE.tips.find(([name]) => name === 'A controller')?.[1];
+// (guide/mario64.js, read by the guide's /dot-matrix/64 page too), so the
+// keys are written once: the keyboard's, or the touch pad's on a phone, and
+// the controller's line.
+const tributeRows = (touch) => (touch ? TRIBUTE_TOUCH : TRIBUTE_KEYS);
+const PAD_LINE = TRIBUTE_PAD;
 
 function Meter({ health, air }) {
   const value = air != null ? air : health;
