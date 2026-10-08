@@ -122,7 +122,7 @@ export const LANES = [
 // pieces     the set pieces (setpieces.js reads them; sizes in map units, the ship is 0.26 long)
 //            (the planet's grown to be wider than its biggest ship's long: fit.js, as SYSTEMS is made)
 // faction    who hunts you here (galaxy/hunted.js), or null for nobody
-// war        { worth: 1 | 2 | 3, weight: 1 | 2 | 4, kind, area }: what it is to
+// war        { worth: 1 | 2 | 3, weight: 1 | 2 | 3 | 4, kind, area }: what it is to
 //            the galaxy's wars (gcw.js: the order of the fronts, how often a
 //            raider picks it), the battle fought there (battles.js's
 //            BATTLE_KINDS) and the area of the war it's in (sides.js's AREAS)
@@ -638,7 +638,7 @@ const AS_SET = [
       { type: 'patrol', kind: 'vulture', count: 5, at: [80, 30, -60], radius: 30, height: 6, speed: 0.3, size: 0.26 },
     ],
     faction: 'separatists',
-    war: { worth: 1, weight: 1, kind: 'blockade', area: 'core' },
+    war: { worth: 1, weight: 3, kind: 'blockade', area: 'core' },
     traffic: ['arc170', 'freighter'],
     game: {
       id: 'kashyyyk',
@@ -649,6 +649,8 @@ const AS_SET = [
       pitch: 'The droid army is coming across the lagoon. Hold the beach at Kachirho against tanks and spider droids alongside the clones and the Wookiees.',
       how: 'Skim the lagoon, sink the droid boats and tanks before they land, and watch the clones. Something’s not right about them.',
       status: 'soon',
+      // (and the ground battle, on the same world)
+      also: [{ id: 'assault', title: 'The Battle of Kashyyyk', text: 'A galactic assault on the shore at Kachirho: the droid army wades out of the lagoon for the barricades, the gun line and the command post, and the clones and Wookiees hold each as long as they can. Fight for either side.', to: '/galaxy/kashyyyk/surface?mission=assault', go: 'Fight it now' }],
     },
   },
   {

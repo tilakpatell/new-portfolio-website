@@ -696,6 +696,14 @@ describe('the three worlds’ battles', () => {
     expect(ASSAULTS.coruscant.sides.attack.id).toBe('separatists');
     expect(ASSAULTS.bespin.sides.attack.id).toBe('rebels');
   });
+  it('Kashyyyk: the droids come for the beach, the gun line and Kachirho', () => {
+    const m = ASSAULTS.kashyyyk;
+    expect(m.sides.attack.id).toBe('separatists');
+    expect(m.sides.defend.kinds.map(([k]) => k)).toEqual(expect.arrayContaining(['clone', 'wookiee']));
+    expect(m.phases.map((p) => p.posts.length).every((n) => n > 0)).toBe(true);
+    const b = newBattle(m, { n: 6, seed: 3 });
+    expect(b.posts.find((p) => p.fixed === 'attack')).toBeTruthy();
+  });
 });
 
 describe('the soldiers’ bodies: what the drawing reads (soldierBody, BATTLE_BODY)', () => {
