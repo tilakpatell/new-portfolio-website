@@ -2,7 +2,9 @@
 
 The owner's Quaternius packs, bought or downloaded on 2026-10-08, kept as the GitHub release [`assets-quaternius`](https://github.com/tilakpatell/tilakpatell.com/releases/tag/assets-quaternius) instead of in the repo. Together the archives come to about 1.5 GB, and most of each pack is source files (`.blend`, FBX, OBJ, engine projects) the site never serves. Every pack is CC0 1.0 (public domain): the GLBs can be served on the site, and credit is optional. When a pack's models go into a world, list them in `scripts/credits.mjs`'s CC0 kits so CREDITS.md names Quaternius.
 
-Fetch a pack into `lab/assets/<pack>/` (git-ignored):
+Unpacked, exactly as downloaded (Blender sources, FBX, glTF, textures, engine exports), the same packs are in their own repo, [tilakpatell/tilakverse-assets](https://github.com/tilakpatell/tilakverse-assets): clone it whole (about 2.2 GB), or one pack with a sparse checkout (its README shows how). It's public, so a session on any machine or account can get it.
+
+Or fetch a pack's zip from the release into `lab/assets/<pack>/` (git-ignored):
 
 ```
 node scripts/assets-fetch.mjs list
