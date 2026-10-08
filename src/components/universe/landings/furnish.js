@@ -5,13 +5,21 @@
 // planet's own seed, so it's the same for every pilot who lands there; a
 // pilot coming down beside a friend is handed the friend's frame.
 //
-// furnish({ id, landing, frame, R, small, reduced, renderer, warm }) →
-//   { group, solids, spots, update(t, dt, ctx?), ready, dispose() }
+// furnish({ id, landing, frame, R, small, reduced, renderer, warm,
+//   physical }) → { group, solids, spots, bodies, put(entry, position,
+//   quaternion), update(t, dt, ctx?), ready, dispose() }
 //   group  in the planet's space (footScene's root: its middle at the origin)
 //   solids grows as things arrive ([{ n, r }])
 //   spots  grows too: where something answers you, the things with a door
 //          (G there opens the planet's page) or a line to say ([{ n, r,
 //          label?, say? }], r how near you have to be, map units)
+//   bodies with `physical`, what can be knocked about (./bodies.js names
+//          which), growing as they arrive: [{ object | meshes + index +
+//          locals, position, quaternion, scale, box (metres, its own
+//          frame), body, solids }]; their circles are in each one's own
+//          solids, not in `solids`, so the walk goes into them (and shoves
+//          them, ./physics.js) instead of round them; put() stands one
+//          where its body has gone
 //   ready  a promise, once everything that's coming has come
 //
 // The landing's door has a beacon over it (./beacon.js: the way into the
@@ -32,6 +40,7 @@ import { SCATTER_MAX, scatterSpots, seedOf } from './landings';
 import { createModels } from './models';
 import { beaconOf } from './wayin';
 import { createBeacon } from './beacon';
+import { bodyOf } from './bodies';
 import { byId } from '../universes';
 
 // each planet's builders, loaded when you land there
@@ -72,6 +81,7 @@ const P = new THREE.Vector3();
 const Q = new THREE.Quaternion();
 const S = new THREE.Vector3();
 const M = new THREE.Matrix4();
+const X4 = new THREE.Matrix4();
 const tint = new THREE.Color();
 
 // stood at `spot` ({ n, f }) on a sphere of radius R, `sink` into it (map
@@ -183,6 +193,30 @@ export function mergeStatic(object) {
   return object;
 }
 
+// a thing's own box (metres, its own frame: before it's stood anywhere)
+function ownBox(object) {
+  const was = object.matrix.clone();
+  object.matrix.identity();
+  object.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(object);
+  object.matrix.copy(was);
+  object.updateMatrixWorld(true);
+  return box.isEmpty() ? null : { min: box.min.toArray(), max: box.max.toArray() };
+}
+
+// the box round a scatter kind's parts, in the kind's own frame
+function partsBox(parts) {
+  const box = new THREE.Box3();
+  const one = new THREE.Box3();
+  for (const part of parts) {
+    if (!part.geometry.boundingBox) part.geometry.computeBoundingBox();
+    one.copy(part.geometry.boundingBox);
+    if (part.local) one.applyMatrix4(part.local);
+    box.union(one);
+  }
+  return box.isEmpty() ? null : { min: box.min.toArray(), max: box.max.toArray() };
+}
+
 // a built thing's meshes as instancing parts (scattering a built kind, or a model)
 function partsOf(object) {
   const out = [];
@@ -194,10 +228,11 @@ function partsOf(object) {
   return out;
 }
 
-export function furnish({ id, landing, frame, R, small = false, reduced = false, renderer = null, warm = null }) {
+export function furnish({ id, landing, frame, R, small = false, reduced = false, renderer = null, warm = null, physical = false }) {
   const group = new THREE.Group();
   group.name = `landing-${id}`;
   const solids = [];
+  const bodies = [];
   const spots = [];
   const updates = [];
   let dead = false;
@@ -252,10 +287,17 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     const o = made.object;
     scaleLights(o, METRE);
     o.matrixAutoUpdate = false;
+    // (one that can be knocked about: its own box, before it's stood)
+    const body = physical ? bodyOf(t.kind, spec) : null;
+    const box = body ? ownBox(o) : null;
     standMatrix(spot, R, sinkFor(t.r ?? 0), METRE, o.matrix);
     o.matrixWorldNeedsUpdate = true;
     if (!(await add(o))) return;
-    if (t.solid !== false) solids.push(...solidsOn(spot, made.solids, R));
+    const circles = t.solid !== false ? solidsOn(spot, made.solids, R) : [];
+    if (box) {
+      o.matrix.decompose(P, Q, S);
+      bodies.push({ object: o, position: P.toArray(), quaternion: Q.toArray(), scale: 1, box, body, solids: circles });
+    } else solids.push(...circles);
     if (made.update) updates.push(made.update);
     // a door (at a spot of its own on it, in its frame), or something to say
     if (t.door || t.say) {
@@ -295,8 +337,11 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     if (!items.length) return;
     const mats = items.map((p) => {
       const spot = place(frame, p.x, p.z, R, p.yaw);
-      return { spot, m: standMatrix(spot, R, 0, METRE * p.s), r: reach * p.s };
+      return { spot, m: standMatrix(spot, R, 0, METRE * p.s), r: reach * p.s, s: p.s };
     });
+    // (a kind that can be knocked about: a body an instance)
+    const body = physical ? bodyOf(entry.kind, spec) : null;
+    const box = body ? partsBox(parts) : null;
     const meshes = parts.map((part) => {
       const mesh = new THREE.InstancedMesh(part.geometry, part.material, mats.length);
       mats.forEach((x, i) => mesh.setMatrixAt(i, part.local ? M.copy(x.m).multiply(part.local) : x.m));
@@ -310,8 +355,19 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     holder.name = `scatter-${entry.kind}`;
     holder.userData.shared = shared;
     holder.add(...meshes);
+    // (its instances go where they're knocked: no bounds to cull them by)
+    if (box) for (const mesh of meshes) mesh.frustumCulled = false;
     if (!(await add(holder))) return;
-    if (entry.solid !== false) for (const x of mats) solids.push({ n: x.spot.n, r: x.r * METRE });
+    const locals = parts.map((part) => part.local ?? null);
+    mats.forEach((x, i) => {
+      const circles = entry.solid !== false ? [{ n: x.spot.n, r: x.r * METRE }] : [];
+      if (!box) {
+        solids.push(...circles);
+        return;
+      }
+      x.m.decompose(P, Q, S);
+      bodies.push({ meshes, index: i, locals, position: P.toArray(), quaternion: Q.toArray(), scale: x.s, box, body, solids: circles });
+    });
   };
 
   const ready = (PLANETS[id]?.() ?? Promise.resolve({}))
@@ -332,10 +388,29 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
     })
     .catch(oops(id));
 
+  // a body's thing (or instance) stood where its body has gone
+  const put = (b, position, quaternion) => {
+    P.fromArray(position);
+    Q.fromArray(quaternion);
+    if (b.object) {
+      b.object.matrix.compose(P, Q, S.setScalar(METRE * b.scale));
+      b.object.matrixWorldNeedsUpdate = true;
+      return;
+    }
+    M.compose(P, Q, S.setScalar(METRE * b.scale));
+    b.meshes.forEach((mesh, j) => {
+      const local = b.locals[j];
+      mesh.setMatrixAt(b.index, local ? X4.copy(M).multiply(local) : M);
+      mesh.instanceMatrix.needsUpdate = true;
+    });
+  };
+
   return {
     group,
     solids,
     spots,
+    bodies,
+    put,
     ready,
     // (ctx: what the things may answer to; { me }: the player's head, in the world)
     update(t, dt, ctx = null) {
@@ -349,6 +424,7 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
       updates.length = 0;
       solids.length = 0;
       spots.length = 0;
+      bodies.length = 0;
     },
   };
 }
