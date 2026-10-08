@@ -3,26 +3,23 @@
 // in its buffers stay small however far out it is; the group is moved to
 // where the sector is relative to the floating origin (reanchor). Each
 // star is a small bright sphere in its own colour; from further off than
-// farPlaces.js's FAR_REAL it's a speck on the sky instead, every star and
+// where farStars.js has it real, it's a star on the sky instead, every star and
 // wonder of the sector in one Points, one draw. A system's planets are
 // built (galaxy/bodies.js, a look for each type) only when the camera comes
 // within PLANET_NEAR of it, the nearest system's alone, and let go again
 // past PLANET_NEAR × 1.3. The wonders are cheap: a nebula a cloud of soft
 // additive puffs, a pulsar a small bright sphere, a derelict or a rogue
-// world a small dark one. The sector's hyperlanes, if it's handed any, are
-// laneRibbons.js's ribbons. No textures.
+// world a small dark one. No textures.
 //
 // PLANET_NEAR, TYPE_LOOK: { [planet type]: LOOKS id }
-// createSector(sector, { lanes = [], tier = 'mid', reduced = false, skyFar = SKY_FAR, build = buildBody })
+// createSector(sector, { tier = 'mid', skyFar = SKY_FAR, build = buildBody })
 //   → { group, sector, update(t, dt, camera), reanchor(at), dispose(), count() }
-//   lanes: hyperlanes.js-shaped, in map coordinates. The caller puts the
-//   group under a root at `at` and calls reanchor(at) whenever `at` moves.
+//   The caller puts the group under a root at `at` and calls reanchor(at) whenever `at` moves.
 
 import * as THREE from 'three';
 import { buildBody } from '../../galaxy/bodies';
 import { SKY_FAR } from '../../universe/deepspace';
-import { createFarPlaces } from '../../universe/farPlaces';
-import { createLaneRibbons } from '../../universe/laneRibbons';
+import { createFarStars } from '../../universe/farStars';
 import { rngOf } from '../gen/seed';
 
 export const PLANET_NEAR = 9000; // a system's planets are built inside this
@@ -114,7 +111,7 @@ function nebula(w, made) {
   return points;
 }
 
-export function createSector(sector, { lanes = [], tier = 'mid', reduced = false, skyFar = SKY_FAR, build = buildBody } = {}) {
+export function createSector(sector, { tier = 'mid', skyFar = SKY_FAR, build = buildBody } = {}) {
   const o = sector.origin;
   const local = (p) => [p[0] - o[0], p[1] - o[1], p[2] - o[2]];
   const group = new THREE.Group();
@@ -161,19 +158,13 @@ export function createSector(sector, { lanes = [], tier = 'mid', reduced = false
   });
 
   // every star and wonder as a speck, from far off
-  const far = createFarPlaces(group, {
+  const far = createFarStars(group, {
     places: [
       ...sector.systems.map((s, i) => ({ id: s.id, at: local(s.at), r: s.star.size, color: s.star.color, group: stars[i] })),
       ...sector.wonders.map((w, i) => ({ id: w.id, at: local(w.at), r: w.size * 0.4, color: (WONDER[w.kind] ?? WONDER.rogue).color, group: wonders[i] })),
     ],
     skyFar,
   });
-
-  // the lanes (their ids made the sector's own: hyperlanes.js caches a
-  // carriageway by its lane's id, and these points are this sector's frame)
-  const ribbons = lanes.length
-    ? createLaneRibbons(group, { lanes: lanes.map((l) => ({ ...l, id: `${l.id}@${sector.id}`, pts: l.pts.map(local) })), reduced })
-    : null;
 
   // the planets of the system the camera's nearest, while it's near
   let near = null; // { i, bodies }
@@ -222,7 +213,6 @@ export function createSector(sector, { lanes = [], tier = 'mid', reduced = false
       }
       for (const b of near?.bodies ?? []) b.update(t, camera);
       far.update(camera, dt);
-      ribbons?.update(t, camera);
     },
     reanchor(at) {
       group.position.set(o[0] - at[0], o[1] - at[1], o[2] - at[2]);
@@ -230,7 +220,6 @@ export function createSector(sector, { lanes = [], tier = 'mid', reduced = false
     dispose() {
       letGo();
       far.dispose();
-      ribbons?.dispose();
       group.clear();
       for (const m of made) m.dispose();
       group.removeFromParent();

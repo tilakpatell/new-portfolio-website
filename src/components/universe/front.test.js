@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { BEACONS, ZONE, createFront, frontAt, zoneOf } from './front';
-import { NODES } from './hyperlanes';
+import { NODES } from './waypoints';
 import { SIDES } from './sides';
 import { WARS } from './wars';
 import { contested } from './war';

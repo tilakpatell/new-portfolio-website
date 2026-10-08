@@ -2,9 +2,9 @@
 // the same sector every time, built alone, nothing stored. Up to two dozen
 // star systems, each with its planets, who holds it, how busy and how
 // dangerous it is; a few wonders between them; and a beacon in the middle
-// of each side, where the hyperlanes to the next sector come in. Sector
-// (0, 0) is the authored map: it has no generated systems, and its beacons
-// are the home system's four (hyperlanes.js's). Further out the names get
+// of each side, facing the next sector. Sector (0, 0) is the authored map:
+// it has no generated systems, and its beacons are the home system's four
+// (waypoints.js's). Further out the names get
 // stranger, the space less held and the hazards worse. Pure (no three.js).
 // Sides: n is -z, s +z, e +x, w -x. Everything is in plain map coordinates.
 //
@@ -63,8 +63,8 @@ const weighted = (rng, list, w = (x) => x.weight) => {
   return list[list.length - 1];
 };
 
-// the home system's four beacons, as hyperlanes.js makes them (s is the
-// one the ship starts at, 'home'); not imported, hyperlanes.js is busy
+// the home system's four beacons, as waypoints.js makes them (s is the
+// one the ship starts at, 'home'); not imported, waypoints.js is busy
 const HOME_OUT = Math.hypot(REGIONS[0].hub[0], REGIONS[0].hub[2]);
 const homeAt = (a) => [
   Math.sin(a) * HOME_OUT,

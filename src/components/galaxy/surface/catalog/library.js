@@ -22,11 +22,11 @@ export const MODELS = {
   royalship: { uid: 'f631077977754b5591298ecfa201380b', as: 'the Naboo royal starship', metres: 76, along: 'max', yaw: 0, tris: 20000, tex: 1024 },
   // the films' faces who stand where the worlds put them (their arms-down
   // poses didn't take Meshy's rig: scripts/meshy-galaxy.mjs)
-  anakin: { uid: 'afde81fe035b4e0aa8d1b3b96c9fd7ff', as: 'Anakin Skywalker', metres: 1.85, yaw: 0, tris: 20000, tex: 1024 },
-  krennic: { uid: '59c66eb5d470436f9d29d5720c9b402a', as: 'Director Krennic', metres: 1.79, yaw: Math.PI / 2, tris: 8000, tex: 1024 },
-  cassian: { uid: '1ef27f2978d442e39eac1e62cf28e226', as: 'Cassian Andor', metres: 1.78, yaw: 0, tris: 8000, tex: 1024 },
+  anakin: { uid: 'afde81fe035b4e0aa8d1b3b96c9fd7ff', legs: { crotch: 0.32 }, as: 'Anakin Skywalker', metres: 1.85, yaw: 0, tris: 20000, tex: 1024 },
+  krennic: { uid: '59c66eb5d470436f9d29d5720c9b402a', legs: { crotch: 0.47 }, as: 'Director Krennic', metres: 1.79, yaw: Math.PI / 2, tris: 8000, tex: 1024 },
+  cassian: { uid: '1ef27f2978d442e39eac1e62cf28e226', legs: { crotch: 0.46 }, as: 'Cassian Andor', metres: 1.78, yaw: 0, tris: 8000, tex: 1024 },
   chirrut: { uid: '9340db8a8aab4091886d25a187b956fa', as: 'Chirrut Îmwe', metres: 1.75, yaw: 0.35, tris: 6000, tex: 1024 },
-  mace: { uid: 'ba2eaba7ff6b45c89c1b2c4919e46880', as: 'Mace Windu', metres: 1.88, yaw: 0.6, tris: 8000, tex: 1024 },
+  mace: { uid: 'ba2eaba7ff6b45c89c1b2c4919e46880', legs: { crotch: 0.3 }, as: 'Mace Windu', metres: 1.88, yaw: 0.6, tris: 8000, tex: 1024 },
   // ── for the worlds to come ──
   juggernaut: { uid: '4e331a37fe614fc783f0dcbcb77310cb', as: 'the clone turbo tanks', metres: 49, along: 'max', yaw: 0, tris: 16000, tex: 1024 },
   padme: { uid: '35e48eeb21f54d7e8a20e72f86753311', as: 'Padmé Amidala', metres: 1.65, yaw: 0, tris: 12000, tex: 1024 },

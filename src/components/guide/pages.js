@@ -118,7 +118,7 @@ export const PAGES = {
     ],
     tips: [
       ['Pick a ship', 'Rick and Morty’s cruiser, Luke and Artoo’s X-wing, Han and Chewie’s Falcon or Walt and Jesse’s RV. Each crew has a word about every place. No ship? Pick a place and the camera flies there.'],
-      ['Getting about', 'The worlds are far apart. Boost in the open and the pulse drive takes over; it drops back near a place. Or open the nav map (M) and let the ship take you: by the hyperlanes (riding with the traffic; hold S to drop out), a jump, super speed or cruise. Star systems are on it too: pick one and the ship flies through the gate. Fly past everything visits every place, nearest first; Esc stops it.'],
+      ['Getting about', 'The worlds are far apart. Boost in the open and the pulse drive takes over; it drops back near a place. Or put the nose on a far star and press J to jump to it, or open the nav map (M) and let the ship take you: a jump, super speed or cruise. Star systems are on it too: pick one and the ship flies through the gate. Fly past everything visits every place, nearest first; Esc stops it.'],
       ['Links', 'Every place has a link that opens the map there (/universe/aurelia, say): Copy a link here on the nav map. The terminal’s fly <place> and ⌘K’s Fly to do the same.'],
       ['Deep space', 'Between the worlds are the wonders: a ringed gas giant, an ice giant, two other suns with their own worlds, a black hole, two nebulae, the Citadel of Ricks, a pulsar, a binary star, a rogue planet and a wreck field round a white dwarf, with a rim of ice round the edge of the map. The crew have a word about each.'],
       ['Mind the planets', 'Fly down into a planet’s air and you’re straight into its world; come in boosting and you crash into it. Brush a station and you bounce off.'],
@@ -479,14 +479,29 @@ export const PAGES = {
   },
   // a Rick and Morty planet, landed on from the universe map (/c-137/<id>)
   '/c-137/planet': {
-    about: 'A planet from the show, landed on from the universe map: you’re in it on foot, as Morty, with something to do.',
-    keys: [{ rows: [['W A S D / ← ↑ ↓ →', 'Walk'], ['Shift', 'Run'], ['Space', 'Jump'], ['Drag', 'Look round'], ['E', 'Talk, take, look: whatever the prompt says'], ['M', 'Things to do']] }],
-    touch: [{ rows: [...WALK_TOUCH, ['Tap', 'Jump and act, on their buttons']] }],
+    about: 'A planet from the show, landed on from the universe map. Gazorpazorp is a whole world: the cruiser sets down and you climb out as Rick, Morty beside you. The others you walk into as Morty, through a portal, with something to do.',
+    keys: [
+      {
+        rows: [
+          ['W A S D / ← ↑ ↓ →', 'Walk'],
+          ['Shift', 'Run'],
+          ['Space', 'Jump'],
+          ['Drag', 'Look round'],
+          ['E', 'Talk, take, ride, get in the cruiser: whatever the prompt says'],
+          ['F', 'Fire the portal gun (on a planet the cruiser landed on)'],
+          ['M', 'Things to do'],
+          ['B', 'Hold for the emote wheel'],
+          ['Esc', 'Back to the cruiser and up to space'],
+        ],
+      },
+    ],
+    touch: [{ rows: [...WALK_TOUCH, ['Tap', 'Jump, fire and act, on their buttons']] }],
     tips: [
-      ['The way out', 'The portal you came in by, just behind you, takes you back out to space, by the planet.'],
-      ['Run', 'Some of the people here come for you: the map shows them red. Caught, you’re back where you came in.'],
+      ['The way out', 'Where the cruiser set you down, E at it takes off, back out to space by the planet. On a planet you walked into, the portal you came in by, just behind you, does it.'],
+      ['The compass', 'The places to find are on the bar at the top, with how far: walk up to one and it’s found, and kept for next time.'],
+      ['Run', 'Some of the people here come for you. Caught, you’re back where you came in.'],
       ['A minute', 'On Planet Squanch and the Purge Planet, once it goes wrong, get back through the portal inside a minute.'],
-      ['The list', 'What you do here counts on Dimension C-137’s list of things to do too.'],
+      ['The list', 'On a planet you walked into, what you do counts on Dimension C-137’s list of things to do too.'],
     ],
   },
   '/c-137/citadel': {

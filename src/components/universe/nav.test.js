@@ -87,29 +87,17 @@ describe('where there is to go', () => {
 });
 
 describe('the drives', () => {
-  it('keeps the drive picked, and falls back to the lanes for anything else', () => {
+  it('keeps the drive picked, and falls back to the jump for anything else (a stored lanes drive among them)', () => {
     for (const d of DRIVES) expect(parseDrive(d.id)).toBe(d.id);
-    expect(parseDrive(undefined)).toBe('lanes');
-    expect(parseDrive('warp')).toBe('lanes');
-    expect(parseDrive('nonsense')).toBe('lanes');
+    expect(parseDrive(undefined)).toBe('hyper');
+    expect(parseDrive('lanes')).toBe('hyper');
+    expect(parseDrive('warp')).toBe('hyper');
+    expect(parseDrive('cruise')).toBe('cruise');
   });
 
-  it('has the lanes first, the everyday way, and the hyperdrive slow to charge', () => {
-    expect(DRIVES[0]).toMatchObject({ id: 'lanes', name: 'Hyperlanes', verb: 'Take the lanes', about: 'The autopilot takes the lanes, riding with the traffic. You fly the whole way and can pull out any time.' });
-    expect(HYPER.recharge).toBe(30);
-  });
-
-  it('times a trip by the lanes from the route, quicker than super speed out to the furthest world', () => {
-    const from = spawn(null);
-    const far = worlds.filter(inMain).reduce((a, b) => (Math.hypot(...destinationById(a).at) > Math.hypot(...destinationById(b).at) ? a : b));
-    const lanes = tripTime(from, far, 'lanes');
-    expect(lanes).toBeLessThan(40);
-    expect(lanes).toBeLessThan(tripTime(from, far, 'super'));
-    // (Review Focus 4: a hop between two home stations is the autopilot of today's: the same time as super speed)
-    const home = { ...spawn('home'), speed: 0 };
-    expect(tripTime(home, 'projects', 'lanes')).toBe(tripTime(home, 'projects', 'super'));
-    // and through the portal: by the lanes to it, on from the far end at super speed
-    expect(tripTime(from, MOONS[0].id, 'lanes')).toBeGreaterThan(0);
+  it('has the jump first, the everyday way, then super speed and cruise', () => {
+    expect(DRIVES.map((d) => d.id)).toEqual(['hyper', 'super', 'cruise']);
+    expect(DRIVES[0]).toMatchObject({ id: 'hyper', name: 'Jump', verb: 'Jump' });
   });
 
   it('lets the hyperdrive jump once it has charged, and never while interdicted', () => {

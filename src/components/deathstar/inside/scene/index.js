@@ -44,6 +44,7 @@ import { passable } from '../rules/doors';
 import { buildLayout, offTags } from '../rules/layout';
 import { STATIONS } from '../rules/stations';
 import { CAMERA, cameraPose, wallHits } from './camera';
+import { createCinematics } from './cinematics';
 import { colliderFor } from './fall';
 import { loadPerson, motionOf, playerKind } from './figures';
 import { createFx } from './fx';
@@ -114,6 +115,7 @@ export function createTrack() {
 }
 
 const SHOT = 0.35; // seconds the player’s figure fires for after a shot
+const AHEAD = 2.6; // metres past you in the view a friend standing in it is faded
 const STROKE = 0.55; // seconds a blade’s stroke plays for after a swing
 const STROKES = ['sword.a', 'sword.b', 'sword.c']; // the strokes, in turn
 const CROUCH_PACE = 1.0; // metres a second the crouch walk covers at its own speed
@@ -153,6 +155,8 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   const people = createPeople(scene, kit, { tier, renderer, adopt: house.adopt, layout });
   const fx = createFx(scene, { small });
   const show = createShow(scene, { renderer, tier, layout, people, fx });
+  // (the stories' scenes: `person` is the player's figure as it is when one plays)
+  const cine = createCinematics({ people, layout, show, fx, scene, you: () => person });
   const leafMat = new THREE.MeshStandardMaterial(LEAF);
   // every leaf’s body and edge, a unit cube scaled to its part
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
@@ -285,14 +289,20 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     held = view === 'first' ? 0 : pose.dist;
     camera.position.set(pose.pos.x, pose.pos.y, pose.pos.z);
     camera.lookAt(pose.look.x, pose.look.y, pose.look.z);
+    // a story's scene takes the camera for its shots
+    const shot = cine.sync(g, dt);
+    if (shot) {
+      camera.position.set(shot.pos.x, shot.pos.y, shot.pos.z);
+      camera.lookAt(shot.look.x, shot.look.y, shot.look.z);
+    }
 
     becomes(playerKind({ side: g.side ?? you.side, hero: you.hero, armour: you.armour }));
     if (person) {
       const o = person.object;
       o.position.set(at.x, at.y, at.z);
       o.rotation.y = -at.yaw;
-      // (in first person the eye is inside the head)
-      o.visible = view !== 'first';
+      // (in first person the eye is inside the head; a scene's camera sees you)
+      o.visible = view !== 'first' || Boolean(shot);
       person.hold(you.gun ?? null);
       person.setAim(wrap(yaw - at.yaw), pitch, aim || now - shotAt < SHOT);
       if ((you.hp ?? 1) <= 0 && !downed) {
@@ -333,10 +343,15 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     // (the doors and the bridges as they are, for the dead to fall against)
     rooms.open = (id) => passable(g.doors, id);
     rooms.off = offTags(layout, g.flags ?? new Set());
+    // (and the camera and your chest, so anyone between them is faded out of the way; none in first person)
+    rooms.camera = view === 'first' && !shot ? null : camera.position;
+    rooms.focus = { x: at.x, y: at.y + (you.crouch ? 0.9 : 1.3), z: at.z };
+    rooms.ahead = { x: at.x + Math.sin(yaw) * AHEAD, y: rooms.focus.y, z: at.z - Math.cos(yaw) * AHEAD };
+    rooms.side = g.side ?? you.side;
     if (g.crew) people.sync(g.crew, alpha, camera.position, rooms);
     for (const b of g.combat?.bolts ?? []) fx.bolt(b);
     fx.update(dt);
-    show.sync({ g, at, yaw, crouch: you.crouch, rooms, dt, t: now });
+    show.sync({ g, at, yaw, crouch: you.crouch, rooms, dt, t: now, hand: person && person.object.visible && !person.fallen ? person.hand : null });
     // a room just built, the Falcon berthed late, a reflection made again:
     // each brings materials the house look hasn’t met (adopting is once a material)
     if (frames++ % 30 === 0 || stream.built.size !== seenRooms) {
@@ -360,6 +375,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     disposed = true;
     person?.dispose();
     person = null;
+    cine.dispose();
     people.dispose();
     show.dispose();
     fx.dispose();

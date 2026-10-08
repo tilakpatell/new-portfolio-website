@@ -244,7 +244,7 @@ export async function create(canvas, ctx) {
   house = houseOn({ renderer, scene, sun: keys[0], ambient, toneMap: false, look: { fog: false } });
   let houseFrames = 0;
 
-  const sky = createSky({ small, renderer });
+  const sky = createSky({ small, level: device().detail, renderer });
   scene.add(sky.group);
   // ships jumping in and out along the lanes, streaks in the sky (skyStreaks.js): none on a low tier, nor with reduced motion
   const skyStreaks = tier === 'low' || reduced ? null : createSkyStreaks({ renderer });

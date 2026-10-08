@@ -1,0 +1,330 @@
+{
+ "route": "#/galaxy/nevarro/surface",
+ "rows": [
+  {
+   "id": 0,
+   "name": "Cape_LP_Armor_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.1102230246251565e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 1,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 88.97322633113937,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9637349813710897,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 2,
+   "name": "GLTF_created_1",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0.9815250859320417,
+   "bind": false,
+   "act": {
+    "clip": "Take 001",
+    "phase": 0.9046033672057092,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 3,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 88.97322633113939,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9637349813710897,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 4,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 88.95708883541695,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.3838417446240784,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 5,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 88.98649776028088,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5627981189172716,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 6,
+   "name": "life",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 7,
+   "name": "Shoes_Msh_MD_Shoes_Mat_0",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.3038693746652,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.7107352991588414,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 8,
+   "name": "Shoes_Msh_MD_Shoes_Mat_0",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.40857378117836,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.64424490602687,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 9,
+   "name": "life-inside",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 87.99719521969692,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9471190029289573,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 10,
+   "name": "life-inside",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 88.97322633113939,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9637349813710897,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 11,
+   "name": "life-inside",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 88.95708883541695,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.3838417446240784,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 12,
+   "name": "life-inside",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 83.99537749838306,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.23703846032731227,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 13,
+   "name": "figure",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 84.9989863007908,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9155734234955162,
+    "loop": true,
+    "weight": 1
+   }
+  }
+ ],
+ "over": [],
+ "bind": [
+  {
+   "id": 0,
+   "name": "Cape_LP_Armor_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.1102230246251565e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 6,
+   "name": "life",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  }
+ ],
+ "locked": {
+  "count": 5,
+  "groups": [
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     4,
+     11
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     1,
+     3,
+     10
+    ]
+   }
+  ]
+ },
+ "spread": [
+  {
+   "clip": "Armature|Idle|baselayer",
+   "n": 11,
+   "r": 0.18424908825053368
+  }
+ ],
+ "time": {
+  "dt": [
+   0,
+   0.1,
+   0.07260000000009313,
+   0.013399999999906868,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.016800000000279397,
+   0.016,
+   0.1,
+   0.1
+  ],
+  "from": "wall",
+  "total": 1.6188000000002798
+ },
+ "fail": false
+}
