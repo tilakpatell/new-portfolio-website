@@ -149,12 +149,14 @@ export function addPerson(crew, { id, kind, room, x, z, yaw = 0, role, squad = n
 }
 
 function mindOf(crew, p, home) {
-  const senses = perceptionOf(p.kind);
+  // the cast’s senses, never numbers of our own: its sight, cone and far are the eyes; a shot is
+  // heard as far as its `shots`, running steps as far as its `steps`
+  const cast = perceptionOf(p.kind);
   const m = {
     home,
     tree: routineFor(p.role, p.script),
-    senses: createSenses({ sight: { range: senses.sight, cone: senses.cone, far: senses.far }, hearing: { range: senses.shots }, memory: MEMORY, intuition: FIGHT.lose }),
-    hearing: senses,
+    senses: createSenses({ sight: { range: cast.sight, cone: cast.cone, far: cast.far }, hearing: { range: cast.shots }, memory: MEMORY, intuition: FIGHT.lose }),
+    ears: { shots: cast.shots, steps: cast.steps },
     eye: { pos: null, dir: null, beliefs: {}, now: 0 },
     legs: legsOf(p),
     pose: null,
@@ -366,8 +368,8 @@ function perceive(crew, p, heard, watchers) {
   for (const s of heard) {
     if (s.type !== 'shot' && s.type !== 'steps') continue;
     if (!targets.find((t) => t.id === s.from)?.hostile) continue;
-    stims.push({ at: s.at, from: s.from, radius: s.type === 'shot' ? m.hearing.shots : m.hearing.steps, loudness: s.type === 'shot' ? 1 : 0.5 });
-    if (s.type === 'shot' && flat(p, s.at) <= m.hearing.shots) m.heardShot = s.at;
+    stims.push({ at: s.at, from: s.from, radius: s.type === 'shot' ? m.ears.shots : m.ears.steps, loudness: s.type === 'shot' ? 1 : 0.5 });
+    if (s.type === 'shot' && flat(p, s.at) <= m.ears.shots) m.heardShot = s.at;
   }
   m.eye.pos = eyes(p);
   m.eye.dir = dirOf(p.yaw);

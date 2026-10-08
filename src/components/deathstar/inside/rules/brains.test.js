@@ -8,6 +8,7 @@ import { createNav } from './nav';
 import { DS1 } from './stations/ds1';
 import { lineClear } from './walker';
 import { addPerson, assign, createCrew, direct, removePerson, stepCrew } from './brains';
+import { perceptionOf } from './cast';
 
 const STEP = 1 / 30;
 
@@ -475,6 +476,35 @@ describe('the crew’s minds', () => {
     };
     expect(run(true)).toBe('fight');
     expect(run(false)).toBe('routine');
+  });
+
+  it('sees as far as the cast says: an officer makes you out at 24 m, a trooper doesn’t', () => {
+    expect(perceptionOf('stormtrooper').sight).toBeLessThan(24);
+    expect(perceptionOf('officer').sight).toBeGreaterThan(24);
+    const at24 = (kind) => {
+      const w = world(hall(), { you: rebel(12, 0) });
+      const p = addPerson(w.crew, { id: 'p', kind, room: 'hall', x: -12, z: 0, yaw: Math.PI / 2, role: { type: 'post' } });
+      simulate(w, 3 * 30);
+      return p.mode;
+    };
+    expect(at24('officer')).toBe('fight');
+    expect(at24('stormtrooper')).toBe('routine');
+  });
+
+  it('hears running steps as far as the cast says, and no further', () => {
+    const { steps } = perceptionOf('stormtrooper');
+    const behind = (metres) => {
+      const you = rebel(-3 + metres, 0);
+      const w = world(hall(), { you });
+      const p = addPerson(w.crew, { id: 'tk', kind: 'stormtrooper', room: 'hall', x: -3, z: 0, yaw: -Math.PI / 2, role: { type: 'post' } });
+      for (let k = 0; k < 30; k++) {
+        w.stims.push({ type: 'steps', at: { x: you.x, y: 0, z: you.z }, from: 'you' });
+        simulate(w, 1);
+      }
+      return p.mode;
+    };
+    expect(behind(steps - 0.5)).not.toBe('routine');
+    expect(behind(steps + 0.5)).toBe('routine');
   });
 
   it('calls in a fallen comrade once, and goes to him', () => {
