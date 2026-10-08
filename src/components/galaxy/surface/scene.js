@@ -3200,10 +3200,10 @@ export async function create(canvas, ctx) {
     if (!on()) return;
     // the things' cells, each one's loads in and its pictures sent (before
     // the bake: it sees them all)
-    await thingCells.prepareAll((f) => onProgress?.(f, 'pictures'), on);
+    await thingCells.prepareAll((f) => onProgress?.(f * 0.3, 'pictures'), on);
     if (!on()) return;
     if (lit && !lit.stats.started) {
-      onProgress?.(0, 'bake');
+      onProgress?.(0.3, 'bake');
       sun.target.position.set(landAt[0], world.heightAt(landAt[0], landAt[1]) ?? 0, landAt[1]);
       sun.position.copy(sun.target.position).addScaledVector(sunDir, 300);
       await settleWithin(lit.bake(), 20000);
@@ -3211,7 +3211,7 @@ export async function create(canvas, ctx) {
     }
     if (post.composer) await precompilePasses(renderer, post.composer, camera);
     if (!on()) return;
-    await prepareScene({ renderer, roots: [scene], scene, camera, target: post.target, render: () => post.render(64, 64), onProgress, alive: on });
+    await prepareScene({ renderer, roots: [scene], scene, camera, target: post.target, render: () => post.render(64, 64), onProgress: (f, label) => onProgress?.(0.3 + f * 0.7, label), alive: on });
   };
 
   return {

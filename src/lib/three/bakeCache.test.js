@@ -42,6 +42,19 @@ describe('bakeKey', () => {
     expect(bakeKey({ ...base(), casters: [caster(0.002)] })).toBe(k);
     expect(bakeKey({ ...base(), sun: new THREE.Vector3(0.301, 0.8, 0.2) })).toBe(k);
   });
+  it('changes with an instanced mesh\'s count and instance placement', () => {
+    const inst = (xs) => {
+      const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial(), xs.length);
+      xs.forEach((x, i) => m.setMatrixAt(i, new THREE.Matrix4().makeTranslation(x, 0, 0)));
+      const g = new THREE.Group();
+      g.add(m);
+      return g;
+    };
+    const k = (xs) => bakeKey({ ...base(), casters: [inst(xs)] });
+    expect(k([0, 1])).toBe(k([0, 1]));
+    expect(k([0, 1])).not.toBe(k([0, 1, 2]));
+    expect(k([0, 1])).not.toBe(k([0, 5]));
+  });
   it('is null without a world', () => {
     expect(bakeKey({ ...base(), world: undefined })).toBeNull();
   });

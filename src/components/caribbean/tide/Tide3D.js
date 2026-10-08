@@ -892,32 +892,38 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
   const twins = [];
   const prepare = async (onReport, { alive = () => true } = {}) => {
     const on = () => alive() && !disposed && !stage.lost && !stage.disposed;
-    onReport?.(0, 'load');
-    await settle(laterJob, 8000);
-    if (!on()) return;
-    placeIsles();
-    const sources = [...models.values()].map((m) => m.root);
-    if (!twins.length)
-      for (const root of sources) {
-        const twin = cloneSkinned(root);
-        twin.traverse((o) => {
-          if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map((m) => m.clone()) : o.material.clone();
-        });
-        house.adopt(twin);
-        twins.push(twin);
-      }
-    await settle(stage.precompile(null), 8000);
-    if (!on()) return;
-    await prepareScene({
-      renderer,
-      roots: [scene, ...sources, ...twins],
-      scene,
-      camera,
-      target: soft ? null : stage.composer.readBuffer,
-      render: () => stage.render(0),
-      onProgress: onReport,
-      alive: on,
-    });
+    // (a failure here must not fail the whole game: the world stands, its
+    // shaders made as it's drawn)
+    try {
+      onReport?.(0, 'load');
+      await settle(laterJob, 8000);
+      if (!on()) return;
+      placeIsles();
+      const sources = [...models.values()].map((m) => m.root);
+      if (!twins.length)
+        for (const root of sources) {
+          const twin = cloneSkinned(root);
+          twin.traverse((o) => {
+            if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map((m) => m.clone()) : o.material.clone();
+          });
+          house.adopt(twin);
+          twins.push(twin);
+        }
+      await settle(stage.precompile(null), 8000);
+      if (!on()) return;
+      await prepareScene({
+        renderer,
+        roots: [scene, ...sources, ...twins],
+        scene,
+        camera,
+        target: soft ? null : stage.composer.readBuffer,
+        render: () => stage.render(0),
+        onProgress: onReport,
+        alive: on,
+      });
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn('Tide: prepare failed', err);
+    }
   };
 
   return {

@@ -224,7 +224,9 @@ export function createNearGrid({ items = [], prepare = async () => {}, onReady =
         const promise = new Promise((r) => (resolve = r));
         idle = { promise, resolve };
       }
-      await Promise.race([idle.promise, wait(left)]);
+      let timer;
+      await Promise.race([idle.promise, new Promise((r) => (timer = setTimeout(r, left)))]);
+      clearTimeout(timer);
     }
   }
 

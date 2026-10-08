@@ -644,6 +644,7 @@ export async function bakeFloorTexture(renderer, scene, { area, floor = [], cast
     // the world before this one may still be drawing a dive meanwhile. A
     // context gone meanwhile, or a caller that's left, gives up on the bake,
     // as a failure does: the world stands without it.)
+    // (the fence waits at most for one queued frame)
     await fence(renderer);
     if (signal?.aborted || lost(renderer)) return null;
     const pixels = new Uint8Array(size * size * 4);

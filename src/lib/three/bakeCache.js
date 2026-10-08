@@ -13,6 +13,8 @@ const STORE = 'masks';
 export const BAKE_VERSION = 1;
 // the most masks kept; the oldest go first
 const KEEP = 24;
+// the most bytes of masks kept, as well; the oldest go first
+const KEEP_BYTES = 32 * 1024 * 1024;
 // how long a lookup may hold the bake up before it's given up on
 export const LOOKUP_MS = 400;
 
@@ -27,6 +29,7 @@ function fnv(str) {
 }
 
 const r = (n, step) => Math.round(n / step) * step;
+const nums = (a, step = 0.01) => (a ? Array.from(a, (v) => r(v, step).toFixed(2)).join(',') : '');
 
 // What stands in the way of the light: each mesh's whole world matrix (to a
 // hundredth, so a turn or a scale counts as well as a move), its vertex count,
@@ -47,13 +50,14 @@ function describeCasters(casters) {
       // (hidden, it isn't drawn into the bake: one shown later is another mask)
       let shown = true;
       for (let x = o; x && shown; x = x.parent) shown = x.visible !== false;
-      parts.push(`${n}[${box}]@${m}${shown ? '' : ':hidden'}`);
+      // (an instanced mesh is its count and where each instance stands)
+      const inst = o.isInstancedMesh ? `*${o.count}#${fnv(nums(o.instanceMatrix?.array))}` : '';
+      parts.push(`${n}[${box}]@${m}${inst}${shown ? '' : ':hidden'}`);
     });
   }
   return parts;
 }
 
-const nums = (a, step = 0.01) => (a ? Array.from(a, (v) => r(v, step).toFixed(2)).join(',') : '');
 
 // The key for a bake, or null where the bake can't be told apart from
 // another (no world or sun named): then nothing is cached. `area`, `range`
@@ -177,12 +181,17 @@ export async function putBake(key, { width, height, data } = {}) {
       cur.onsuccess = () => {
         const c = cur.result;
         if (c) {
-          seen.push({ k: c.key, at: c.value?.at ?? 0 });
+          seen.push({ k: c.key, at: c.value?.at ?? 0, bytes: c.value?.data?.byteLength ?? 0 });
           c.continue();
           return;
         }
         seen.sort((x, y) => y.at - x.at);
-        for (const old of seen.slice(KEEP)) store.delete(old.k);
+        // (newest first; the one just put always stays)
+        let bytes = 0;
+        seen.forEach((e, i) => {
+          bytes += e.bytes;
+          if (i > 0 && (i >= KEEP || bytes > KEEP_BYTES)) store.delete(e.k);
+        });
       };
       tx.oncomplete = () => {
         ok = true;
