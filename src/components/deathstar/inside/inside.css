@@ -688,3 +688,161 @@
     transition: none;
   }
 }
+
+/* The way shown (ui/Marker.jsx): a thin diamond over the next door, lift or
+   the story's target, its distance under it in the HUD's small capitals;
+   on the screen's edge, an arrow round to it. Placed from the world each
+   frame, so no transition on where it is. */
+.ds-marker {
+  position: absolute;
+  z-index: 4;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.ds-marker[hidden] {
+  display: none;
+}
+.ds-marker-dot {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--ds-ink);
+  transform: rotate(45deg);
+  box-shadow: 0 0 8px rgba(221, 226, 232, 0.45);
+}
+.ds-marker[data-kind='goal'] .ds-marker-dot {
+  border-color: #f2d36b;
+  box-shadow: 0 0 10px rgba(242, 211, 107, 0.55);
+}
+.ds-marker-text {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds-ink);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+.ds-marker-arrow {
+  display: none;
+  position: absolute;
+  left: -6px;
+  top: -24px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 9px solid var(--ds-ink);
+  transform-origin: 6px 24px;
+  transform: rotate(var(--turn, 0rad));
+}
+.ds-marker[data-off='true'] .ds-marker-arrow {
+  display: block;
+}
+.ds-marker[data-off='true'] .ds-marker-text {
+  top: 14px;
+}
+
+/* The first game's tips (Hud.jsx): the few keys that matter, bottom left
+   over the health panel (clear of the marker on the screen's edges), until
+   you have them. */
+.ds-tips {
+  position: absolute;
+  left: var(--ds-left);
+  bottom: calc(var(--ds-bottom) + 84px);
+  max-width: 280px;
+  padding: 12px 14px;
+  pointer-events: auto;
+}
+.ds-tips ul {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ds-dim);
+}
+.ds-tips li .kbd,
+.ds-tip-key {
+  margin-right: 4px;
+  color: var(--ds-ink);
+}
+.ds-tips-way {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--ds-ink);
+}
+.ds-tips-diamond {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid #f2d36b;
+  transform: rotate(45deg);
+}
+
+/* A story's scene (scene/cinematics.js): black bars top and bottom, and the
+   HUD's panels out of the way; the objective and the subtitles stay. */
+.ds-letterbox::before,
+.ds-letterbox::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 11%;
+  background: #000;
+  z-index: 3;
+  animation: ds-bars 0.5s ease-out both;
+}
+.ds-letterbox::before {
+  top: 0;
+}
+.ds-letterbox::after {
+  bottom: 0;
+}
+@keyframes ds-bars {
+  from {
+    transform: scaleY(0);
+  }
+}
+.ds-hud[data-scene] .ds-vitals,
+.ds-hud[data-scene] .ds-where,
+.ds-hud[data-scene] .ds-reticle,
+.ds-hud[data-scene] .ds-tips {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-letterbox::before,
+  .ds-letterbox::after {
+    animation: none;
+  }
+}
+
+/* a story's end (ui/End.jsx) */
+.ds-end-title {
+  color: var(--ds-ink);
+  margin: 4px 0 6px;
+  font-size: clamp(22px, 3.2vw, 34px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ds-end-line {
+  margin: 0 0 14px;
+  color: var(--ds-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}

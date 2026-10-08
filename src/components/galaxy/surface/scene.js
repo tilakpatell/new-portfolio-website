@@ -31,7 +31,12 @@
 // (src/runtime's fromScene): create(canvas, ctx) draws with the runtime's
 // renderer (ctx.rt.gfx: the runtime sizes it and sets its sharpness) and
 // returns { ready, resize, render, update, setVisible, input, dispose }.
-// Props: system (the world's id), ship (the crew's ship: xwing, falcon…),
+// Props: system (the world's id), or site (one already made whole:
+// sites/index.js's siteFrom) and missionSpec (a mission object) in place of
+// looking them up by system and `mission`; models, rides, props, scatter (a
+// page's own books, catalog's and props' and rides' shapes) and figures
+// (cast → (kind, spec, i) → figure | null, asked before the galaxy's
+// figures) for a world outside the galaxy; ship (the crew's ship: xwing, falcon…),
 // loadout (its paint), onEvent(e), compass (a ref: the compass bar, its
 // marks by data-id), found (the places already found, by id), net (the
 // online client, universe/online/client.js: your crew goes out to the
@@ -70,7 +75,7 @@ import { createMeshyCast } from '../../rickmorty/portal/meshyCast';
 import { withWardrobe } from '../../rickmorty/wardrobe/wear';
 import { buildGalaxyShip } from '../fleet';
 import { audioContext } from '../../../lib/audio';
-import { siteOf } from './sites';
+import { SURFACE_MODELS } from './catalog';
 import { heightGrid, makeHeight } from './terrain';
 import { createMarks, groundMaterial, groundMesh } from './ground';
 import { createSky } from './sky';
@@ -89,10 +94,10 @@ import { createWind } from '../../../lib/three/wind';
 import { createGroundMap } from '../../../lib/three/groundmap';
 import { groundPainter, mapAreaOf } from './groundPaint';
 import { floorShadow } from '../../../lib/three/grounding';
-import { PROPS, SCATTER } from './props';
+import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from './props';
 import { createPlacer } from './placer';
 import { createActors, modelFigure } from './actors';
-import { RIDES } from './rides';
+import { RIDES as GALAXY_RIDES } from './rides';
 import { SEATS, poseRider } from './riders';
 import { createPeers } from './peers';
 import { createSounds } from './sounds';
@@ -111,14 +116,16 @@ import { perkEffects } from '../perks';
 import { ABILITIES, JET, abilitiesOf, jetStep, newJet } from './abilityRules';
 import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, stepText } from './quests';
 import { buildFigure } from './figures';
-import { WALK, createSolids, groundAt, lineClear, ride, rider, turnToward, walk, walker } from './walker';
+import { WALK, createSolids, groundAt, lineClear, pushOut, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
-import { endRun, missionOf, newRun, tickRun } from './missions';
+import { endRun, newRun, tickRun, worldOf } from './missions';
 import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
 import { RULES as ASSAULT } from './missions/assault';
 import { groundWorld } from '../../../lib/three/groundwork';
-import { garrisonAt, garrisonLife } from './garrison';
+import { garrisonLife, garrisonProbe } from './garrison';
+import { createGround, landingFor } from './ground/index';
+import { standable } from './sites/validity';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -168,10 +175,20 @@ export async function create(canvas, ctx) {
   // how much it draws: the level's row of the budget table (amounts.js)
   const level = detailLevel();
   const amounts = amountsFor({ level, small });
-  const site = siteOf(ctx.system);
+  // the site: one handed in already made whole (a page's own book: the Rick
+  // and Morty planets), or the galaxy's for the system; and a mission played
+  // down here (missions/: handed in, or the system's by id), you starting in
+  // it, not landing, its own sky laid over the site's while it runs
+  const { site, mission } = worldOf(ctx);
   if (!site) throw new Error(`no surface for ${ctx.system}`);
-  // a mission played down here (missions/): you start in it, not landing
-  const mission = ctx.mission ? missionOf(ctx.system, ctx.mission) : null;
+  // the models kinds are looked up in: the galaxy's, with a page's own book
+  // laid over it (the Rick and Morty planets'), never written into it
+  const models = ctx.models ? { ...SURFACE_MODELS, ...ctx.models } : SURFACE_MODELS;
+  // (and its rides and its built things: the galaxy's, or a page's own whole
+  // book of them, the galaxy's merged in by the page)
+  const RIDES = ctx.rides ?? GALAXY_RIDES;
+  const PROPS = ctx.props ?? GALAXY_PROPS;
+  const SCATTER = ctx.scatter ?? GALAXY_SCATTER;
   const emit = (e) => props.onEvent?.(e);
 
   // ── The renderer, the camera, the light ──
@@ -300,7 +317,7 @@ export async function create(canvas, ctx) {
   gmat.uniforms.uMarks.value = marks.texture;
   const ground = groundMesh(grid, gmat.material);
   if (!site.noGround) scene.add(ground);
-  const water = site.water ? createWater(site, sunDir, site.sky.suns?.[0]?.color ?? '#ffffff', { heightAt: site.noGround ? null : grid.heightAt, small, id: ctx.system, rings: amounts.rings, depthN: amounts.depthN, foam: amounts.splat }) : null;
+  const water = site.water ? createWater(site, sunDir, site.sky.suns?.[0]?.color ?? '#ffffff', { heightAt: site.noGround ? null : grid.heightAt, small, id: site.id, rings: amounts.rings, depthN: amounts.depthN, foam: amounts.splat }) : null;
   if (water) {
     scene.add(water.mesh);
     if (water.glow) scene.add(water.glow);
@@ -329,7 +346,7 @@ export async function create(canvas, ctx) {
   // (the scatter casts its shadow only near you: near.js; a kit model it's
   // given is in the house's look from the start)
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
-  const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null, seated: amounts.seat, house });
+  const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null, seated: amounts.seat, house, models, props: PROPS, scatter: SCATTER });
   // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
   const floaters = [];
   for (const t of site.things_all) {
@@ -347,7 +364,12 @@ export async function create(canvas, ctx) {
   // ?debug: the look, the grass and the wind on sliders, copied out as the
   // site's own blocks (lib/debugPanel, tune.js)
   const panel = debugOn() ? debugPanel({ title: site.id, groups: surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), code: siteCode }) : null;
-  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops), ...garrisonAt(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water });
+  // the Meshy cast (the cruiser's two, the peers'): made here, before the
+  // people, where a page's figure maker draws on it too (ctx.figures(cast)
+  // → (kind, spec, i) → figure | null: the Rick and Morty planets' people);
+  // otherwise made when it's first wanted, as it always was
+  let cast = ctx.figures ? createMeshyCast(withWardrobe()) : null;
+  const life = createActors({ parent: scene, world, life: [...garrisonLife(site.life, ctx.effects?.troops), ...garrisonProbe(site, ctx.effects, systemById(site.id)?.faction ?? null)], wants: site.wants, talk: () => ({ era: PLACES[site.id] ?? null, owner: ctx.effects?.owner ?? null, side: ctx.effects?.side ?? null, hero: ctx.hero?.id ?? ctx.hero ?? null, done: state.done, rank: ctx.effects?.rank ?? 0 }), seed: (site.ground.seed ?? 1) + 7, warm, small, kit, fog: () => scene.fog.density, water, models, figure: ctx.figures?.(cast) ?? null });
 
   await breathe();
   // ── The places you go into (zones): built high over the world, out of
@@ -377,6 +399,8 @@ export async function create(canvas, ctx) {
   const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound });
   // (a battle fills the air with bolts: room for them)
   const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
+  // the ground war: who holds which turf, and its soldiers, made round you as you go (ground/)
+  const groundWar = createGround({ parent: scene, world, site, effects: mission ? null : ctx.effects, tier, kit, warm, blaster, sparks: (at, c) => fx.sparks(new V(...at), UP, c, 8), standable: (p) => standable(site, p), seesThrough: (a, b) => lineClear(world.solids, a, b) });
   // what a shot does round the gun and where it lands (universe/gunfx.js),
   // and a light that flares with each muzzle flash: in the scene from the
   // start and dark between shots, so the count of lights never changes and
@@ -441,7 +465,7 @@ export async function create(canvas, ctx) {
         }
         // its catalogue model in place of the build once it's here (the
         // herd grazing round it is that model: the ridden one should match)
-        modelFigure(spec.figure)
+        modelFigure(spec.figure, models)
           .then((model) => {
             if (!model || !holder.parent) return;
             if (ridee.fig) holder.remove(ridee.fig.model);
@@ -512,7 +536,10 @@ export async function create(canvas, ctx) {
   // ── Your ship ──
   const shipKind = SHIPS[ctx.ship] ? ctx.ship : 'xwing';
   const S = SHIPS[shipKind];
-  const landAt = site.land.at;
+  // (on the other side's world, out of sight of the garrison's posts: ground/landing.js)
+  const landing = landingFor(site, mission ? null : ctx.effects, { standable: (p) => standable(site, p) && !world.solids.near(p[0], p[1], 9).some((o) => pushOut(o, p[0], p[1], 9)), seesThrough: (a, b) => lineClear(world.solids, a, b), posts: groundWar.posts, height: world.heightAt });
+  groundWar.landed(landing.covert ? landing.at : null);
+  const landAt = landing.at;
   const landY = groundAt(world, landAt[0], landAt[1]);
   const shipHolder = new THREE.Group(); // where it is
   const shipTilt = new THREE.Group(); // how it's tilted, coming down
@@ -603,7 +630,6 @@ export async function create(canvas, ctx) {
     { spec: party[1], st: mate, holder: new THREE.Group(), fig: null, fitting: 0 },
   ];
   let lead = 0; // which of them you are
-  let cast = null;
   for (const p of people) {
     p.holder.visible = false;
     scene.add(p.holder);
@@ -752,7 +778,7 @@ export async function create(canvas, ctx) {
   let strode = 0;
 
   // ── The other pilots down here (online) ──
-  const peers = createPeers({ parent: scene, placer, getCast: () => (cast ??= createMeshyCast(withWardrobe())) });
+  const peers = createPeers({ parent: scene, placer, rides: RIDES, models, getCast: () => (cast ??= createMeshyCast(withWardrobe())) });
 
   await breathe();
   // ── State ──
@@ -1180,7 +1206,7 @@ export async function create(canvas, ctx) {
     if (assaultOn()) return null;
     let best = null;
     let bd = MATE.range;
-    for (const t of activity.targets) {
+    for (const t of [...groundWar.targets, ...activity.targets]) {
       if (!t.hostile || !t.aim || t.spec?.side === 'yours') continue;
       const d = Math.hypot(t.holder.position.x - st.x, t.holder.position.z - st.z);
       if (d < bd) {
@@ -1270,7 +1296,7 @@ export async function create(canvas, ctx) {
     if (!lands) aim.add(new V(-dir.z, 0, dir.x).multiplyScalar((Math.random() < 0.5 ? -1 : 1) * (0.06 + Math.random() * 0.06))).add(new V(0, (Math.random() - 0.3) * 0.05, 0));
     aim.normalize();
     const hit = blaster.fire(r.muzzle, aim, lands ? [foe] : [], bolt, w.range);
-    if (lands && hit.target) activity.hit(hit.target, 1, { push: aim, at: hit.at });
+    if (lands && hit.target) on(hit.target).hit(hit.target, 1, { push: aim, at: hit.at });
   }
   // your shots and blasts (and your mate's, and the hostiles' fire), for the
   // people about to hear them: actors.js's `hear` (they startle and run from it), a blast twice
@@ -1551,7 +1577,7 @@ export async function create(canvas, ctx) {
   }
 
   // ── A chase (missions/chase.js): the scouts, drawn and run here ──
-  const chase = mission?.kind === 'chase' ? createChaseMission({ parent: scene, world, placer, blaster, mission, emit, say, sounds }) : null;
+  const chase = mission?.kind === 'chase' ? createChaseMission({ parent: scene, world, placer, blaster, mission, emit, say, sounds, rides: RIDES }) : null;
   // (on from the start, before the trees are in and it's begun, until it's
   // won or lost: no getting off the bike before then)
   const chaseOn = () => Boolean(chase && !chase.view()?.result);
@@ -1568,17 +1594,18 @@ export async function create(canvas, ctx) {
   const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit: battleSaid, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced }) : null;
   const assaultOn = () => Boolean(assault?.running());
   // what your blaster can hit, and what a hit does: the battle's soldiers while it's on, the quests' targets otherwise
-  const shootable = () => (assaultOn() ? assault.targets : activity.targets);
+  const shootable = () => [...groundWar.targets, ...(assaultOn() ? assault.targets : activity.targets)];
+  const on = (t) => t?.ground ?? activity; // (a ground soldier's own hit, else the quests')
   // a shot that found someone: the weapon's damage (a shield breaks to a
   // blast), the hit marker, the moment's hold on a kill
   const struck = (hit, damage = me().weapon?.damage ?? 1, { breaks = false, how = null, push = null } = {}) => {
     if (!hit.target) return;
     struckLast = { target: hit.target, at: state.t }; // (your mate's foe, while you're at it)
-    if (assaultOn()) assault.hit(hit.target, ASSAULT.yours);
+    if (assaultOn() && !hit.target.ground) assault.hit(hit.target, ASSAULT.yours);
     else {
       const t = hit.target;
       const was = t.hp;
-      activity.hit(t, dealt(damage), { breaks, how, push, at: hit.at }); // (`at`: where it landed, the head or the chest, for its flinch)
+      on(t).hit(t, dealt(damage), { breaks, how, push, at: hit.at }); // (`at`: where it landed, the head or the chest, for its flinch)
       const killed = was > 0 && t.hp <= 0;
       emit({ type: 'hit', kill: killed });
       sounds.combat?.(killed ? 'kill' : 'hit');
@@ -1687,6 +1714,7 @@ export async function create(canvas, ctx) {
       return;
     }
     const hit = blaster.fire(from, scatter(camDir, w), shootable(), boltOf(me()), w.range);
+    groundWar.passed(from, hit.at); // (a soldier it went close by keeps its head down, and has a grudge)
     activity.heard({ x: from.x, z: from.z }, { x: from.x + camDir.x * 40, z: from.z + camDir.z * 40 }); // (the enemies hear it, and one it's aimed near knows)
     heardBy(from, { x: from.x + camDir.x * 40, z: from.z + camDir.z * 40 }); // (and the people about: actors.js's)
     struck(hit, undefined, { how: w.kind, push: camDir });
@@ -1868,10 +1896,10 @@ export async function create(canvas, ctx) {
         const at = forceAt(p.st, { x: q.x, z: q.z }, way, f);
         if (!at.hit) continue;
         any++;
-        activity.knock(t, pushVelocity(p.st, { x: q.x, z: q.z }, at.k, way, f));
-        if (f.damage) activity.hit(t, f.damage);
-        if (kind === 'pull') activity.stagger(t, 1.2);
-        if (a.stagger) activity.stagger(t, a.stagger);
+        on(t).knock(t, pushVelocity(p.st, { x: q.x, z: q.z }, at.k, way, f));
+        if (f.damage) on(t).hit(t, f.damage);
+        if (kind === 'pull') on(t).stagger(t, 1.2);
+        if (a.stagger) on(t).stagger(t, a.stagger);
       }
       // a rush of dust out from you (or in, for a pull)
       const from = new V(p.st.x, p.st.y + 1, p.st.z);
@@ -1986,8 +2014,8 @@ export async function create(canvas, ctx) {
         if (d > spec.radius) continue;
         const k = 1 - d / spec.radius;
         const was = t.hp;
-        activity.hit(t, Math.max(1, Math.round(spec.damage * (0.4 + 0.6 * k))), { breaks: true });
-        activity.knock(t, { vx: ((q.x - at.x) / Math.max(0.3, d)) * 8 * k, vz: ((q.z - at.z) / Math.max(0.3, d)) * 8 * k, vy: 4 * k });
+        on(t).hit(t, Math.max(1, Math.round(spec.damage * (0.4 + 0.6 * k))), { breaks: true });
+        on(t).knock(t, { vx: ((q.x - at.x) / Math.max(0.3, d)) * 8 * k, vz: ((q.z - at.z) / Math.max(0.3, d)) * 8 * k, vy: 4 * k });
         emit({ type: 'hit', kill: was > 0 && t.hp <= 0 });
       }
       const you = me().st;
@@ -2032,7 +2060,7 @@ export async function create(canvas, ctx) {
   function saberHit(t, damage, at, { heavy = false, thrown = false } = {}) {
     // their blade on yours: turned while their guard holds (each turned
     // stroke drains it, a heavy one breaks it and they reel)
-    const turn = thrown ? { parried: false, broke: false } : activity.parry(t, { heavy });
+    const turn = thrown ? { parried: false, broke: false } : on(t).parry(t, { heavy });
     fx.sparks(at, UP, turn.parried ? '#ffffff' : (me().spec.bolt ?? '#ffffff'), turn.parried ? 16 : heavy ? 22 : 10);
     sounds.saber?.('clash');
     if (turn.broke) {
@@ -2048,8 +2076,8 @@ export async function create(canvas, ctx) {
       return;
     }
     const was = t.hp;
-    activity.hit(t, dealt(damage), { breaks: heavy, at });
-    if (heavy) activity.stagger(t, 1.2);
+    on(t).hit(t, dealt(damage), { breaks: heavy, at });
+    if (heavy) on(t).stagger(t, 1.2);
     const killed = was > 0 && t.hp <= 0;
     emit({ type: 'hit', kill: killed });
     sounds.combat?.(killed ? 'kill' : 'hit');
@@ -2138,6 +2166,7 @@ export async function create(canvas, ctx) {
     let hit = null;
     for (let i = 0; i < n; i++) {
       const h = blaster.fire(o.from, scatter(o.dir, w), shootable(), hot ? '#ffffff' : boltOf(p), w.range, r.muzzle);
+      groundWar.passed(o.from, h.at);
       struck(h, Math.max(1, Math.round((w.damage + (hot ? 1 : 0)) / (n > 1 ? 2 : 1))), { how: w.kind, push: o.dir });
       hit ??= h;
     }
@@ -2785,6 +2814,7 @@ export async function create(canvas, ctx) {
         if (state.age > LAND.out) {
           state.phase = 'walk';
           emit({ type: 'phase', phase: 'walk' });
+          if (landing.line) emit({ type: 'say', lines: [{ who: null, text: landing.line }] });
         }
       }
       if (state.phase === 'ride') stepRide(dt);
@@ -2863,8 +2893,10 @@ export async function create(canvas, ctx) {
       questEvent({ type: 'at', x: p.x, z: p.z, riding: state.riding?.kind ?? null });
     }
     for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor })) questEvent(ev);
+    const groundShots = groundWar.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { mate: other().st, camera });
+    for (const e of groundWar.news()) if (e.text) emit({ type: 'war', what: e.type, side: e.side, text: e.text }); // (the ground war's news, for the HUD's toast)
     if (state.phase === 'walk' || state.phase === 'ride')
-      for (const s of activity.shooters(dt, me().st, state.t)) {
+      for (const s of [...activity.shooters(dt, me().st, state.t), ...groundShots]) {
         // a duellist's Force: you're shoved away from it, off your feet
         if (s.force) {
           const p = me().st;
@@ -2884,7 +2916,7 @@ export async function create(canvas, ctx) {
         // at a friend of yours (or by one, at a hostile): a bolt between them, and whoever's hit, hit
         if (s.at && s.victim) {
           if (!s.melee) blaster.tracer(s.from, s.at, s.who?.spec?.side === 'yours' ? '#ffb070' : '#ff4a3d');
-          if (Math.random() < (s.melee ? 0.8 : 0.45)) activity.hit(s.victim, s.damage);
+          if (Math.random() < (s.melee ? 0.8 : 0.45)) on(s.victim).hit(s.victim, s.damage);
           continue;
         }
         const blade = me().saber?.deflecting(s.from) ?? false;
@@ -2894,7 +2926,7 @@ export async function create(canvas, ctx) {
           const p = me().st;
           fx.sparks(new V(p.x, p.y + 1.2, p.z), UP, '#ffffff', 26);
           sounds.combat?.('parry');
-          if (s.who) activity.stagger(s.who, PARRY.stagger);
+          if (s.who) on(s.who).stagger(s.who, PARRY.stagger);
           state.hitstop = Math.max(state.hitstop, 0.12);
           state.shake = Math.min(1, state.shake + 0.3);
           state.blockAt = null;
@@ -3082,7 +3114,11 @@ export async function create(canvas, ctx) {
       // (for the QA scripts: the ground's height, and a view held from one
       // point at another, metres over the ground at each, till view(null))
       heightAt: (x, z) => world.heightAt(x, z),
-      land: site.land.at,
+      land: landAt,
+      landing,
+      groundWar,
+      put: (x, z) => (state.phase === 'landing' || state.phase === 'out' ? (state.phase = 'walk') : null, putAt(me().st, x, z)), // (you, set down somewhere, out of the ship: the ground war's QA)
+      you: () => ({ x: me().st.x, z: me().st.z, health: state.health, phase: state.phase }),
       view(from, at) {
         qaView = from ? { from: [from[0], world.heightAt(from[0], from[2]) + from[1], from[2]], at: [at[0], world.heightAt(at[0], at[2]) + at[1], at[2]] } : null;
       },
@@ -3454,7 +3490,7 @@ export async function create(canvas, ctx) {
       ctx.invalidate();
     },
     // (for tests: where you are, what's going on)
-    debug: () => ({ ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug() }),
+    debug: () => ({ sky: { zenith: '#' + sky.uniforms.uZenith.value.getHexString(), horizon: '#' + sky.uniforms.uHorizon.value.getHexString() }, site: site.id, ship: { at: shipHolder.position.toArray().map((v) => +v.toFixed(1)), y: +ship.group.position.y.toFixed(2), box: [+shipBox.w.toFixed(1), +shipBox.l.toFixed(1)], visible: ship.group.visible }, ms: state.ms, frames: state.frames, t: +state.t.toFixed(1), phase: state.phase, you: { ...me().st }, here: state.here, found: [...state.found], prompt: state.prompt, riding: state.riding?.kind ?? null, rideY: state.riding ? +state.riding.state.y.toFixed(2) : null, quest: state.quest, zone: state.zone?.id ?? null, zoneOrigin: state.zone?.origin ?? null, health: state.health, off: state.off, mission: chase?.view() ?? assault?.view() ?? run, who: me().spec.id, saber: me().saber ? { lit: me().saber.lit, busy: me().saber.busy, thrown: me().saber.thrown, stance: me().saber.stance.name, color: me().spec.saber?.color ?? null } : null, mate: other().spec.id, mods: me().spec.mods ?? [], guard: Math.round(state.guard.value), heat: +state.heat.value.toFixed(2), locked: state.heat.locked, lock: state.lock?.spec.kind ?? null, lockGuard: state.lock?.guard ?? null, lockHp: state.lock?.hp ?? null, lockStagger: state.lock ? +state.lock.stagger.toFixed(1) : null, weapon: me().weapon?.name ?? null, dodging: Boolean(state.dodge), bombs: state.bombs.length, powers: abilitiesOf(me().spec), jet: +state.jet.fuel.toFixed(2), sprinting: state.t < state.sprint, fight: activity.debug(), people: life.debug(), rides: rides.map((x) => ({ kind: x.kind, at: [+x.state.x.toFixed(1), +x.state.z.toFixed(1)], built: Boolean(x.fig || x.body?.children.length) })) }),
     dispose() {
       disposed = true;
       lit?.dispose();
@@ -3480,6 +3516,7 @@ export async function create(canvas, ctx) {
       sounds.dispose();
       peers.dispose();
       activity.dispose();
+      groundWar.dispose();
       chase?.dispose();
       assault?.dispose();
       blaster.dispose();

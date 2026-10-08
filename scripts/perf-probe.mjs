@@ -12,7 +12,11 @@
 // to drive (Playwright's own on a Mac, on Metal, uncapped: no vsync, no
 // frame-rate limit, so a frame's time is what it cost). VIEW is the window
 // (default 1470x956@2, a 13" laptop's retina screen), QUALITY pins the
-// device tier (?quality=), OUT is where the JSON report goes. Each journey
+// device tier (?quality=), GPU picks the backend a 'nodes' world draws on
+// (?gpu=webgl|webgpu: a port's frame-time table is two runs of the same
+// journey; a 'glsl' world is on the classic renderer either way, and each
+// journey's report names the backend it was actually drawn on), OUT is
+// where the JSON report goes. Each journey
 // prints a table: a row per phase (load, idle, move...), with the frame
 // times' spread, the hitches (frames over 50 and 100 ms), and what the
 // worst frames were spent on.
@@ -25,6 +29,7 @@ const profile = Boolean(process.env.PROFILE);
 const trace = Boolean(process.env.TRACE);
 const out = process.env.OUT ?? '.';
 const quality = process.env.QUALITY ?? '';
+const gpu = ['webgl', 'webgpu'].includes(process.env.GPU) ? process.env.GPU : null;
 const [vw, vh, vdpr] = (process.env.VIEW ?? '1470x956@2').match(/(\d+)x(\d+)(?:@([\d.]+))?/).slice(1).map(Number);
 
 // ── what's recorded in the page ──
@@ -34,12 +39,14 @@ const [vw, vh, vdpr] = (process.env.VIEW ?? '1470x956@2').match(/(\d+)x(\d+)(?:@
 function recorder() {
   const zero = () => ({ links: 0, compiles: 0, glMs: 0, drawMs: 0, tex: 0, texBytes: 0, buf: 0, bufBytes: 0, draws: 0, tris: 0, slow: '' });
   let cur = zero();
-  const frames = []; // [t, links, texUploads, texMB, bufMB, draws, tris, glMs, drawMs, slow]
+  // (mid: the shaders three made in the middle of a frame so far, as the
+  // frame guard counts them in development: lib/three/frameGuard.js)
+  const frames = []; // [t, links, texUploads, texMB, bufMB, draws, tris, glMs, drawMs, slow, mid]
   const stacks = new Map(); // a slow GL call's callers → ms
   const loaf = [];
   const tick = () => {
     const c = cur;
-    frames.push([performance.now(), c.links, c.tex, c.texBytes / 1048576, c.bufBytes / 1048576, c.draws, c.tris, c.glMs, c.drawMs, c.slow]);
+    frames.push([performance.now(), c.links, c.tex, c.texBytes / 1048576, c.bufBytes / 1048576, c.draws, c.tris, c.glMs, c.drawMs, c.slow, window.__tpGuardSlips ?? 0]);
     cur = zero();
     requestAnimationFrame(tick);
   };
@@ -213,6 +220,7 @@ function phases({ frames, marks, loaf }) {
     const [name, t0] = marks[i];
     const t1 = marks[i + 1][1];
     const fs = frames.filter((f) => f[0] > t0 && f[0] <= t1);
+    const before = frames.filter((f) => f[0] <= t0).at(-1);
     const gaps = [];
     for (let k = 1; k < fs.length; k++) gaps.push({ ms: fs[k][0] - fs[k - 1][0], f: fs[k] });
     const ms = gaps.map((g) => g.ms).sort((a, b) => a - b);
@@ -238,6 +246,7 @@ function phases({ frames, marks, loaf }) {
       over50: ms.filter((m) => m > 50).length,
       over100: ms.filter((m) => m > 100).length,
       links: sum(1),
+      mid: fs.length ? fs[fs.length - 1][10] - (before?.[10] ?? 0) : 0,
       texMB: r1(sum(3)),
       bufMB: r1(sum(4)),
       draws: Math.round(sum(5) / Math.max(1, fs.length)),
@@ -339,7 +348,76 @@ const JOURNEYS = {
     await wait(page, 6000);
     mark('end');
   },
+  // down onto a planet of the universe map and out on foot (footScene.js):
+  // set down from just off it by the dev hook, as scripts/landing-check.mjs
+  // does, the crew out, a walk, then back to the ship, in and up, and a
+  // while in space after. LAND names the planets (music's, with its lamps,
+  // and Middle-earth's, unless told), one after another on the one page.
+  async landing(page, mark) {
+    const ids = (process.env.LAND ?? 'music,middleearth').split(',').filter(Boolean);
+    mark('load');
+    await page.goto(`${this.base}/${this.q}#/universe`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship, null, { timeout: 240000 });
+    mark('settle');
+    await wait(page, 4000);
+    for (const id of ids) {
+      // just off the planet, on its sunny side, still
+      const ok = await page.evaluate((id) => {
+        const d = window.__universeDebug;
+        const p = d.planets.find((x) => x.id === id);
+        if (!p) return false;
+        const c = p.group.position;
+        const r = p.radius ?? 18;
+        d.state.ship = { ...d.state.ship, x: c.x + r * 1.25, y: c.y + r * 0.3, z: c.z + r * 0.25, speed: 0, vy: 0 };
+        return true;
+      }, id);
+      if (!ok) throw new Error(`no planet ${id}`);
+      await wait(page, 2500);
+      mark(`land:${id}`);
+      if (!(await page.evaluate((id) => window.__universeDebug.startFoot({ id }), id))) throw new Error(`couldn't land on ${id}`);
+      await page.waitForFunction(() => window.__universeDebug.foot.phase === 'walk', null, { timeout: 300000, polling: 200 });
+      mark(`walk:${id}`);
+      await hold(page, 'KeyW', 4000);
+      await hold(page, 'KeyA', 1500);
+      await hold(page, 'KeyW', 3000);
+      // (back by the ship, the dev hook's way, and in)
+      mark(`lift:${id}`);
+      await page.evaluate(() => {
+        const f = window.__universeDebug.foot;
+        const S = f.debug;
+        S.me = { ...S.me, n: S.spot.n };
+        return f.board();
+      });
+      await page.waitForFunction(() => !window.__universeDebug.foot.phase, null, { timeout: 300000, polling: 200 });
+      mark(`space:${id}`);
+      await wait(page, 6000);
+    }
+    mark('end');
+  },
   surface: worldPage('/galaxy/tatooine/surface', { ready: (p) => p.waitForFunction(() => document.querySelector('.surface-page')?.dataset.phase === 'walk' || document.querySelector('.surface-page')?.dataset.phase === 'landing', null, { timeout: 240000 }) }),
+  // a big planet of the Rick and Morty sector on the surface engine
+  // (rickmorty/planets/): the landing, then a walk toward the first place.
+  // RM_PLANET names another (the Purge Planet's night mission is the most
+  // on screen, `purge?mission=night`, once that planet has it).
+  async rmPlanet(page, mark) {
+    const route = process.env.RM_PLANET ?? 'gazorpazorp';
+    const phase = () => page.evaluate(() => document.querySelector('.surface-page')?.dataset.phase ?? null);
+    mark('load');
+    await page.goto(`${this.base}/${this.q}#/c-137/${route}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => ['landing', 'walk'].includes(document.querySelector('.surface-page')?.dataset.phase), null, { timeout: 240000 });
+    mark('settle');
+    await wait(page, 4000);
+    // (the landing skipped, as a player who's seen it would)
+    for (let i = 0; i < 40 && (await phase()) === 'landing'; i++) {
+      await page.keyboard.press('Space');
+      await wait(page, 1000);
+    }
+    await page.waitForFunction(() => document.querySelector('.surface-page')?.dataset.phase === 'walk', null, { timeout: 300000 });
+    mark('walk');
+    await page.mouse.click(vw / 2, vh / 2).catch(() => {});
+    await hold(page, 'KeyW', 10000);
+    mark('end');
+  },
   avengers: worldPage('/avengers'),
   shire: worldPage('/middle-earth/shire'),
   abq: worldPage('/albuquerque'),
@@ -423,6 +501,11 @@ if (!base) {
 }
 const chrome = process.env.CHROME ?? `${homedir()}/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`;
 const args = process.platform === 'darwin' ? ['--use-angle=metal', '--disable-gpu-vsync', '--disable-frame-rate-limit', '--ignore-gpu-blocklist', '--enable-gpu-rasterization'] : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
+// (WebGPU on: Chromium's own chip on a desktop, SwiftShader's software
+// adapter on a Linux box with no display, whose times are software's)
+// (and Blink's experimental WebGPU IDL off, as a visitor's Chrome has it:
+// its draft texture-view swizzle throws on three's every frame)
+if (gpu === 'webgpu') args.push('--enable-unsafe-webgpu', '--disable-blink-features=WebGPUExperimentalFeatures', '--enable-features=Vulkan', ...(process.platform === 'linux' && !process.env.DISPLAY ? ['--use-webgpu-adapter=swiftshader'] : []));
 const browser = await chromium.launch({ executablePath: chrome, args });
 const report = {};
 mkdirSync(out, { recursive: true });
@@ -474,7 +557,7 @@ try {
       await cdp.send('Profiler.enable');
       await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
     }
-    const h = { base, q: quality ? `?quality=${quality}` : '' };
+    const h = { base, q: `?${[quality && `quality=${quality}`, gpu && `gpu=${gpu}`].filter(Boolean).join('&')}`.replace(/^\?$/, '') };
     const t0 = Date.now();
     let failed = null;
     try {
@@ -484,6 +567,8 @@ try {
       failed = String(err).split('\n')[0];
       mark('end');
     }
+    // (the backend the world was drawn on: rt.gfx's kind, and whether three found a WebGPU device under it)
+    const drawnOn = await page.evaluate(() => (window.__RUNTIME__?.gfx ? `${window.__RUNTIME__.gfx.backend}${window.__RUNTIME__.gfx.renderer?.backend?.isWebGPUBackend ? ' (WebGPU device)' : ''}` : null)).catch(() => null);
     const data = await page.evaluate(() => window.__probe?.take()).catch(() => null);
     const rows = data ? phases({ ...data, marks: marks.map(([n, t]) => [n, t - data.origin]) }) : [];
     const ready = data && marks.find((m) => m[0] === 'settle');
@@ -491,12 +576,13 @@ try {
       await new Promise((r) => setTimeout(r, 300));
       for (const [phase, p] of profiles) console.log(`  cpu in ${phase}: ${hot(p)}`);
     }
-    report[name] = { rows, errors, failed, secs: Math.round((Date.now() - t0) / 1000), readyS: ready ? r1((ready[1] - data.origin) / 1000) : null, heapMB: data?.heap ? Math.round(data.heap / 1048576) : null };
-    console.log(`\n== ${name}${failed ? `  (stopped: ${failed})` : ''}  ready ${report[name].readyS}s  total ${report[name].secs}s  heap ${report[name].heapMB} MB${errors.length ? `  errors ${errors.length}` : ''}`);
-    console.log('phase      secs  fps    p50   p95   p99   max  >50 >100 links texMB bufMB draws ktris');
+    report[name] = { backend: gpu ?? 'default', drawnOn, rows, errors, failed, secs: Math.round((Date.now() - t0) / 1000), readyS: ready ? r1((ready[1] - data.origin) / 1000) : null, heapMB: data?.heap ? Math.round(data.heap / 1048576) : null };
+    console.log(`\n== ${name}${failed ? `  (stopped: ${failed})` : ''}  on ${drawnOn ?? '?'}  ready ${report[name].readyS}s  total ${report[name].secs}s  heap ${report[name].heapMB} MB${errors.length ? `  errors ${errors.length}` : ''}`);
+    const pw = Math.max(9, ...rows.map((r) => r.phase.length));
+    console.log(`${'phase'.padEnd(pw)}  secs  fps    p50   p95   p99   max  >50 >100 links   mid texMB bufMB draws ktris`);
     for (const r of rows) {
       console.log(
-        [r.phase.padEnd(9), String(r.secs).padStart(5), String(r.fps).padStart(5), String(r.p50).padStart(6), String(r.p95).padStart(5), String(r.p99).padStart(5), String(r.max).padStart(5), String(r.over50).padStart(4), String(r.over100).padStart(4), String(r.links).padStart(5), String(r.texMB).padStart(5), String(r.bufMB).padStart(5), String(r.draws).padStart(5), String(r.ktris).padStart(5)].join(' '),
+        [r.phase.padEnd(pw), String(r.secs).padStart(5), String(r.fps).padStart(5), String(r.p50).padStart(6), String(r.p95).padStart(5), String(r.p99).padStart(5), String(r.max).padStart(5), String(r.over50).padStart(4), String(r.over100).padStart(4), String(r.links).padStart(5), String(r.mid).padStart(5), String(r.texMB).padStart(5), String(r.bufMB).padStart(5), String(r.draws).padStart(5), String(r.ktris).padStart(5)].join(' '),
       );
     }
     for (const r of rows) {
@@ -516,7 +602,7 @@ try {
     await ctx.close();
   }
 } finally {
-  writeFileSync(`${out}/perf-probe.json`, JSON.stringify({ view: { vw, vh, vdpr }, quality, report }, null, 1));
+  writeFileSync(`${out}/perf-probe.json`, JSON.stringify({ view: { vw, vh, vdpr }, quality, gpu: gpu ?? 'default', report }, null, 1));
   await browser.close();
   await server?.close();
 }

@@ -6,11 +6,14 @@
 // kinds (rocks by the hundred, palms, huts) are drawn instanced: one draw
 // for all of them.
 //
-// createPlacer({ parent, kit, world, warm, house }) → { put(spec),
+// createPlacer({ parent, kit, world, warm, house, models }) → { put(spec),
 // scatter(kind, items, opts), update(t, dt, you), signal(name, on) (to the
 // built things that move when something happens: a trapdoor, a gate),
 // setZone(inZone), ready (a promise: everything asked for so far is in),
 // dispose() }
+//   `models`: the book of models kinds are looked up in (catalog's
+//   SURFACE_MODELS unless a page hands in its own); `props`, `scatter`:
+//   the builds (props/'s PROPS and SCATTER unless a page hands in its own).
 //   A thing or a scatter row whose `model` is 'kit:<pack>/<Name>' is that
 //   kit model (lib/three/kit: public/kit/<pack>/), in place of its kind's:
 //   each pack loaded once a placer, its leaves and bark in the world's wind
@@ -49,25 +52,32 @@ import { loadKit } from '../../../lib/three/kit';
 import { sharpenMaterial } from '../../../lib/three/textures';
 import { budget } from '../../../lib/budgets';
 import { detailLevel } from '../../../lib/detail';
-import { SURFACE_MODELS, modelUrlFor, surfaceLodUrl, wantsLod } from './catalog';
+import { SURFACE_MODELS, lodUrlFor, modelUrlFor, wantsLod } from './catalog';
 import { withDetail } from './detail';
 import { LOOKS, loadScan, scanOf } from './kit';
 import { wear as wearCore } from '../../../lib/three/core';
-import { PROPS, SCATTER } from './props';
+import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from './props';
 import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
 import { seatY } from './seat';
+import { sizeFor } from '../../universe/landings/models';
+import { dropTransmission } from '../../../lib/three/glass';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again
 
 const getLoader = () => gltfLoader();
 const cache = new Map(); // url → promise of the gltf (shared by every world, while the page is up)
+// (every model a world has comes through here: things put and scattered,
+// rides, people, their glass made plain see-through glass once, as it's
+// parsed: lib/three/glass. A shuttle's canopy, a ramp's lamp or a pilot's
+// visor with transmission had three draw the whole world twice a frame.)
 export function loadGlb(url) {
   if (!cache.has(url))
     cache.set(
       url,
       getLoader()
         .loadAsync(url)
+        .then((gltf) => (dropTransmission(gltf.scene), gltf))
         .catch(() => {
           cache.delete(url);
           return null;
@@ -75,7 +85,7 @@ export function loadGlb(url) {
     );
   return cache.get(url);
 }
-export const hasModel = (kind) => Boolean(SURFACE_MODELS[kind]);
+export const hasModel = (kind, models = SURFACE_MODELS) => Boolean(models[kind]);
 // a `model: 'kit:<pack>/<Name>'`'s pack and name (null for anything else)
 const KIT_REF = /^kit:([a-z0-9-]+)\/(\S+)$/i;
 const kitRef = (model) => {
@@ -89,21 +99,28 @@ export function setKitLoader(fn) {
 // whether a placed thing is drawn as a model: a kit model it names, or its
 // kind's, where there is one, it wasn't asked to be built (model: false),
 // and (an entry with `styles`) it's one of the styles the model is of
-// (Theed's halls, not its towers)
-export const usesModel = (spec) =>
-  Boolean(kitRef(spec.model)) || (hasModel(spec.kind) && spec.model !== false && (!SURFACE_MODELS[spec.kind].styles || SURFACE_MODELS[spec.kind].styles.includes(spec.opts?.style)));
+// (Theed's halls, not its towers), in `models` (the galaxy's, or a page's
+// own book)
+export const usesModel = (spec, models = SURFACE_MODELS) =>
+  Boolean(kitRef(spec.model)) || (hasModel(spec.kind, models) && spec.model !== false && (!models[spec.kind].styles || models[spec.kind].styles.includes(spec.opts?.style)));
 
 // A kind's model, and (its catalogue entry's `detail`: a scan's role) the
 // scan laid over it up close (detail.js), on every tier but the lowest;
 // resolves to the gltf, or null when it won't load. At ultra, a kind with an
-// ultra cut loads that (catalog's modelUrlFor).
+// ultra cut loads that (catalog's modelUrlFor). `low`: the url is its light
+// cut, which came in square and is left as it is; `models`: the book the
+// kind is looked up in (the galaxy's, or a page's own).
 // A model whose file came in turned off its nose (a catalogue row's `turn`,
 // radians about its up: the bantha's lies 33° to its left): turned to face
 // +z and its middle put back over its feet, once, in the loaded file itself,
 // so every copy of it (a thing placed, a herd's beast, a ride) faces the way
-// it walks. Gives the gltf back.
-export function squared(gltf, kind) {
-  const turn = SURFACE_MODELS[kind]?.turn;
+// it walks. And one from a book whose files aren't in metres (a row with
+// `tall`, `wide` or `long`: the Rick and Morty planets'), brought to that
+// size and stood on y = 0 over its middle, once, as the moons' landings
+// size theirs (landings/models.js's sizeFor). Gives the gltf back.
+export function squared(gltf, kind, models = SURFACE_MODELS) {
+  sized(gltf, models[kind]);
+  const turn = models[kind]?.turn;
   const root = gltf?.scene;
   if (!turn || !root || root.userData.squared) return gltf;
   const inner = new THREE.Group();
@@ -118,14 +135,28 @@ export function squared(gltf, kind) {
   root.userData.squared = true;
   return gltf;
 }
+function sized(gltf, row) {
+  const root = gltf?.scene;
+  if (!root || root.userData.sized || !(row?.tall || row?.wide || row?.long)) return;
+  const inner = new THREE.Group();
+  inner.name = 'sized';
+  for (const c of [...root.children]) inner.add(c);
+  root.add(inner);
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(inner);
+  const k = sizeFor(box.getSize(new THREE.Vector3()), row);
+  inner.scale.setScalar(k);
+  inner.position.set(-((box.min.x + box.max.x) / 2) * k, -box.min.y * k, -((box.min.z + box.max.z) / 2) * k);
+  root.userData.sized = true;
+}
 
-export function loadModel(kind, url = modelUrlFor(kind, detailLevel())) {
-  const role = SURFACE_MODELS[kind]?.detail;
+export function loadModel(kind, { models = SURFACE_MODELS, low = false, url = low ? lodUrlFor(kind, models) : modelUrlFor(kind, detailLevel(), models) } = {}) {
+  const role = models[kind]?.detail;
   const scan = role && detailLevel() !== 'low' ? loadScan(role) : null;
-  return Promise.all([loadGlb(url).then((g) => (url !== surfaceLodUrl(kind) ? squared(g, kind) : g)), scan]).then(([gltf, got]) => {
+  return Promise.all([loadGlb(url).then((g) => (low ? g : squared(g, kind, models))), scan]).then(([gltf, got]) => {
     // (a model whose own finish reads wrong in the world: `look`, its
     // materials' metalness, roughness, ambient occlusion and reflections set)
-    const look = SURFACE_MODELS[kind]?.look;
+    const look = models[kind]?.look;
     if (gltf && look && !gltf.scene.userData.looked) {
       gltf.scene.traverse((o) => {
         if (o.isMesh) for (const m of [o.material].flat()) for (const [k, v] of Object.entries(look)) if (k in m) m[k] = v;
@@ -133,7 +164,7 @@ export function loadModel(kind, url = modelUrlFor(kind, detailLevel())) {
       gltf.scene.userData.looked = true;
     }
     // (a model that comes bare, its colour given here: `tint`)
-    const tint = SURFACE_MODELS[kind]?.tint;
+    const tint = models[kind]?.tint;
     if (gltf && tint && !gltf.scene.userData.tinted) {
       const c = new THREE.Color(tint);
       gltf.scene.traverse((o) => {
@@ -145,7 +176,7 @@ export function loadModel(kind, url = modelUrlFor(kind, detailLevel())) {
       // (the scan's real size, and the brightness its detail map is centred on)
       const { metres = 2, mean = 0.8 } = scanOf(role) ?? {};
       gltf.scene.traverse((o) => {
-        if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) withDetail(m, got, { metres, mean, ...SURFACE_MODELS[kind].detailLook });
+        if (o.isMesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) withDetail(m, got, { metres, mean, ...models[kind].detailLook });
       });
       gltf.scene.userData.detailed = true;
     }
@@ -206,7 +237,7 @@ export async function wearModel(object, role, { wear = wearCore, load = loadScan
   return seen.size;
 }
 
-export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null, seated = false, house = null }) {
+export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null, seated = false, house = null, models = SURFACE_MODELS, props: PROPS = GALAXY_PROPS, scatter: SCATTER = GALAXY_SCATTER }) {
   // the kits named so far, by pack: each in the world's wind (the galaxy
   // kit's clock, and the way its foliage leans) and the house's look
   const kits = new Map();
@@ -248,6 +279,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   const splits = []; // { full, low (each [{ mesh, src }]), xs, zs, r }: scattered models drawn near and far
   let nearAt = null; // where you were when the casters were last filled
   const updates = [];
+  const follows = []; // (the built things updated with where you are)
   const signals = [];
   const pending = [];
   let dead = false;
@@ -290,7 +322,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     o.rotation.set(spec.pitch ?? 0, spec.yaw ?? 0, spec.roll ?? 0, 'YXZ');
     o.scale.setScalar(spec.scale ?? 1);
     (spec.zone ? rooms : group).add(o);
-    applyBuilt(made, spec, at, world, { updates, signals, object: true });
+    applyBuilt(made, spec, at, world, { updates, follows, signals, object: true });
     // (a built one that wears a model on a moving part of it, once it's
     // loaded: `wear: { url, on(model) }`, the dragonsnake's head)
     if (made.wear)
@@ -335,7 +367,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     put(spec) {
       // (a cluster: its members put each in its place, turned with it)
       const ref = kitRef(spec.model);
-      const cluster = !spec.zone && spec.model !== false && !ref && SURFACE_MODELS[spec.kind]?.cluster;
+      const cluster = !spec.zone && spec.model !== false && !ref && models[spec.kind]?.cluster;
       if (cluster) return Promise.all(clusterSpecs(spec, cluster).map((m) => this.put(m))).then(() => null);
       const at = spot(spec);
       // (a model from elsewhere on the site, by its url: stood at `at`, its
@@ -405,8 +437,8 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
         pending.push(p);
         return p;
       }
-      if (usesModel(spec)) {
-        const p = loadModel(spec.kind)
+      if (usesModel(spec, models)) {
+        const p = loadModel(spec.kind, { models })
           .then((gltf) => {
             if (dead) return null;
             if (!gltf) return build(spec, at);
@@ -423,19 +455,19 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
             const holder = spec.zone ? rooms : group;
             holder.add(o);
             if (spec.fog === false) unfogged(o);
-            const entry = SURFACE_MODELS[spec.kind];
+            const entry = models[spec.kind];
             if (entry.solids === 'built') builtSolids(spec, at);
             else footprint(o, spec, at);
             // (worn before its shaders are made, so they're made once)
             const worn = spec.wear ? wearModel(o, spec.wear) : Promise.resolve();
             // (a tower: its windows lit in the shader, props/windows.js)
             if (spec.windows) o.traverse((m) => m.isMesh && [].concat(m.material).forEach((mat) => mat.isMeshStandardMaterial && litWindows(mat, { seed: 5, density: 0.5, cell: [4, 5] })));
-            if (!wantsLod(spec.kind, detailLevel())) return worn.then(() => warm(o)).then(() => o);
+            if (!wantsLod(spec.kind, detailLevel(), models)) return worn.then(() => warm(o)).then(() => o);
             // far off, its light model (fetched after the full one: the
             // first view doesn't wait for it)
             const lod = withLod(o, null, radiusOf(gltf) * (spec.scale ?? 1));
             holder.add(lod);
-            loadModel(spec.kind, surfaceLodUrl(spec.kind)).then((low) => {
+            loadModel(spec.kind, { models, low: true }).then((low) => {
               if (dead || !low) return;
               const l = cloneModel(low);
               addLowLevel(lod, l, radiusOf(gltf) * (spec.scale ?? 1));
@@ -534,8 +566,8 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
         pending.push(p);
         return p;
       }
-      if (model && hasModel(kind)) {
-        const p = loadModel(kind).then((gltf) => {
+      if (model && hasModel(kind, models)) {
+        const p = loadModel(kind, { models }).then((gltf) => {
           if (dead) return null;
           if (!gltf) {
             const made = SCATTER[kind]?.(kit, opts);
@@ -554,8 +586,8 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           // far off, its light copy: the items past lodDistance drawn with it
           // instead (split again as you walk, with the shadow stand-ins);
           // never at ultra, which draws the full model at every distance
-          if (wantsLod(kind, detailLevel()))
-            loadModel(kind, surfaceLodUrl(kind)).then((lowGltf) => {
+          if (wantsLod(kind, detailLevel(), models))
+            loadModel(kind, { models, low: true }).then((lowGltf) => {
               if (dead || !lowGltf) return;
               const lowRoot = prepared(lowGltf);
               lowRoot.updateMatrixWorld(true);
@@ -582,6 +614,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     },
     update(t, dt, you = null) {
       for (const u of updates) u(t, dt);
+      for (const f of follows) f(t, dt, you);
       if (you && (casters.length || splits.length) && (!nearAt || Math.hypot(you.x - nearAt[0], you.z - nearAt[1]) > NEAR.step)) {
         nearAt = [you.x, you.z];
         for (const c of casters) fillCaster(c, you.x, you.z);
@@ -723,7 +756,8 @@ function radiusOf(gltf) {
 // scaled by spec.scale: its walls (unless spec.solid is false) and the floors
 // you walk on, and, when its own meshes are drawn (`object`), its moving
 // parts (an update each frame, an answer to signals).
-export function applyBuilt(made, spec, at, world, { updates, signals, object }) {
+export function applyBuilt(made, spec, at, world, sinks) {
+  const { updates, signals, object } = sinks;
   const yaw = spec.yaw ?? 0;
   const k = spec.scale ?? 1;
   if (spec.solid !== false) for (const s of made.solids ?? []) addSolid(world, s, at, yaw, k, null);
@@ -737,7 +771,9 @@ export function applyBuilt(made, spec, at, world, { updates, signals, object }) 
     world.floors.push(placed);
   }
   if (!object) return;
-  if (made.update) updates.push(made.update);
+  // (one that `follows` you, a planet's shelling, is told where you are;
+  // the rest have a third word of their own, a creature's pace)
+  if (made.update) (made.follows && sinks.follows ? sinks.follows : updates).push(made.update);
   if (made.signal) signals.push(made.signal);
 }
 

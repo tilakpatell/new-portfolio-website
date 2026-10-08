@@ -648,7 +648,9 @@ function say(crew, p, key, text) {
   crew.out.push({ type: 'say', id: p.id, kind: p.kind, key, text: text ?? null });
 }
 
+// (the garrison's lines, said by the garrison: a Rebel who fights or runs says none of them)
 function bark(crew, p, when) {
+  if (p.side !== 'imperial') return;
   const lines = BARKS[when];
   say(crew, p, when, lines[Math.floor(crew.rand() * lines.length)]);
 }

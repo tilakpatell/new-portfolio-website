@@ -210,3 +210,11 @@ describe('a hostile’s body in the world', () => {
     s.dispose();
   });
 });
+
+describe('one table of troops', () => {
+  it('the arms are ground/troops.js’s', async () => {
+    const { ARMS } = await import('./activity');
+    const troops = await import('./ground/troops');
+    expect(ARMS).toBe(troops.ARMS);
+  });
+});

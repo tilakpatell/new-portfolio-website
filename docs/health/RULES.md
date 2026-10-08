@@ -35,6 +35,10 @@ A game's rules live in a pure `rules.js` with tests; a scene file composes and d
 
 `x.js` has `x.test.js`. A test runs under a second and touches no network. A fixture lives in a `fixtures/` folder beside the test.
 
+## A dependency has a page
+
+Every package in `package.json` has a row in `docs/stack/README.md` and a page under `docs/stack/` made from `_template.md`, written before the package is first imported. The measure’s `stack-pages` counts the packages with no row and is budgeted at 0, so a new dependency fails CI until it has one. `node scripts/stack-census.mjs --write` rewrites the index’s counts; `docs/stack/stack.test.js` fails when a page names a file that no longer exists.
+
 ## A repair changes no pixel
 
 The steward's recipe for a split or a move: shoot the route before (`scripts/autopilot-check.mjs --before`), move the code, keep every export name, run the same route's check after, compare the two screenshots. A changed pixel means the repair is wrong, whatever the numbers say.

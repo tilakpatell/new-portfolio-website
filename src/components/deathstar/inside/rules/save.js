@@ -7,7 +7,7 @@
 // Pure.
 //
 //   SAVE, SAVE_VERSION
-//   blank() → { settings: { view: 'third' | 'first', sound, subtitles },
+//   blank() → { settings: { view: 'third' | 'first', sound, subtitles, guide, tips },
 //               ds1: { story: { rebel: step, imperial: step }, seen: [roomId], eggs: [eggId] }, ds2: { … } }
 //     step: the id of the story step to pick up at, or null when that story isn’t under way
 //   clean(old) → blank()’s shape, with whatever of `old` fits it (old may be anything, wrapped
@@ -27,7 +27,7 @@ const MOST = 400;
 
 const station = () => ({ story: { rebel: null, imperial: null }, seen: [], eggs: [] });
 
-export const blank = () => ({ settings: { view: 'third', sound: true, subtitles: true }, ds1: station(), ds2: station() });
+export const blank = () => ({ settings: { view: 'third', sound: true, subtitles: true, guide: true, tips: true }, ds1: station(), ds2: station() });
 
 const isObject = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 const isName = (v) => typeof v === 'string' && NAME.test(v);
@@ -41,6 +41,8 @@ export function clean(old) {
   if (VIEWS.includes(settings.view)) s.settings.view = settings.view;
   if (typeof settings.sound === 'boolean') s.settings.sound = settings.sound;
   if (typeof settings.subtitles === 'boolean') s.settings.subtitles = settings.subtitles;
+  if (typeof settings.guide === 'boolean') s.settings.guide = settings.guide;
+  if (typeof settings.tips === 'boolean') s.settings.tips = settings.tips;
   for (const id of STATIONS) {
     const was = data[id];
     if (!isObject(was)) continue;

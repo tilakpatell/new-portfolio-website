@@ -334,6 +334,41 @@ export const densityOf = (role, fallback) => (SCANS[role]?.metres ? 1 / SCANS[ro
 // a role's scan's size in metres, and the brightness its detail map is centred on
 export const scanOf = (role) => SCANS[role] ?? null;
 
+// The kit's own pictures, painted once a seed for the page: the canvases
+// and their mip levels made by hand (keepCoverage) were a few hundred
+// milliseconds of every landing, the same each time. Each kit has its own
+// copies of them, on the same paint (and in three the same picture on the
+// graphics chip), so what one does to its own is its own and its dispose
+// frees only those. `draws`: how many of the seed's numbers the plates
+// took, dealt out again for a kit made from the paint, so its builders get
+// the numbers they always did. The last few seeds asked for are kept.
+const PAINTED = new Map(); // seed → { pictures, draws }
+const PAINTED_KEPT = 4;
+function paintedFor(seed, r) {
+  let got = PAINTED.get(seed);
+  if (got) {
+    PAINTED.delete(seed);
+    for (let i = 0; i < got.draws; i++) r();
+  } else {
+    let draws = 0;
+    const counted = () => {
+      draws += 1;
+      return r();
+    };
+    const grime = grimeTexture(seed);
+    grime.wrapS = grime.wrapT = THREE.RepeatWrapping;
+    grime.colorSpace = THREE.SRGBColorSpace;
+    const plates = panelTexture(counted, { min: 10, base: 222, spread: 16, seam: 0.55, detail: 0.35 });
+    plates.wrapS = plates.wrapT = THREE.RepeatWrapping;
+    plates.colorSpace = THREE.SRGBColorSpace;
+    const pictures = { grime, plates, needles: needleTexture(seed), foliage: leafTexture(seed + 1), fronds: frondTexture(seed + 2), broadleaf: broadLeafTexture(seed + 3), strands: strandTexture(seed + 4) };
+    got = { pictures, draws };
+  }
+  PAINTED.set(seed, got);
+  if (PAINTED.size > PAINTED_KEPT) PAINTED.delete(PAINTED.keys().next().value);
+  return Object.fromEntries(Object.entries(got.pictures).map(([k, t]) => [k, t.clone()]));
+}
+
 export function createKit({ seed = 11, scans = true, wind: blow = null, load = loadScan } = {}) {
   const owned = [];
   const own = (x) => {
@@ -341,12 +376,9 @@ export function createKit({ seed = 11, scans = true, wind: blow = null, load = l
     return x;
   };
   const r = rng(seed);
-  const grime = own(grimeTexture(seed));
-  grime.wrapS = grime.wrapT = THREE.RepeatWrapping;
-  grime.colorSpace = THREE.SRGBColorSpace;
-  const plates = own(panelTexture(r, { min: 10, base: 222, spread: 16, seam: 0.55, detail: 0.35 }));
-  plates.wrapS = plates.wrapT = THREE.RepeatWrapping;
-  plates.colorSpace = THREE.SRGBColorSpace;
+  const pic = paintedFor(seed, r);
+  const grime = own(pic.grime);
+  const plates = own(pic.plates);
   const std = (o, density, role = null) => {
     const m = own(new THREE.MeshStandardMaterial({ vertexColors: true, ...o }));
     m.userData.density = role ? densityOf(role, density) : density;
@@ -371,16 +403,16 @@ export function createKit({ seed = 11, scans = true, wind: blow = null, load = l
     // (foliage cards: needles on twigs, cut out of the light behind them)
     // (cut out by alpha to coverage, where the frame is multisampled: soft
     // edges, and leaves that don't thin away in the smaller mip levels)
-    needles: std({ roughness: 0.85, side: THREE.DoubleSide, map: own(needleTexture(seed)), alphaTest: 0.3, alphaToCoverage: true }, 1),
-    foliage: std({ roughness: 0.75, side: THREE.DoubleSide, map: own(leafTexture(seed + 1)), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    needles: std({ roughness: 0.85, side: THREE.DoubleSide, map: own(pic.needles), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    foliage: std({ roughness: 0.75, side: THREE.DoubleSide, map: own(pic.foliage), alphaTest: 0.3, alphaToCoverage: true }, 1),
     // (ferns' and palms' fronds, and the jungles' big leaves, on cards)
-    fronds: std({ roughness: 0.8, side: THREE.DoubleSide, map: own(frondTexture(seed + 2)), alphaTest: 0.3, alphaToCoverage: true }, 1),
-    broadleaf: std({ roughness: 0.7, side: THREE.DoubleSide, map: own(broadLeafTexture(seed + 3)), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    fronds: std({ roughness: 0.8, side: THREE.DoubleSide, map: own(pic.fronds), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    broadleaf: std({ roughness: 0.7, side: THREE.DoubleSide, map: own(pic.broadleaf), alphaTest: 0.3, alphaToCoverage: true }, 1),
     // (the smooth solid middle of a crown the leaf cards sit on, so the
     // light doesn't pour through it)
     crown: std({ roughness: 0.85 }, 1),
     // (moss and vines hanging; a reed's or a grass's blades, two-sided)
-    strands: std({ roughness: 0.9, side: THREE.DoubleSide, map: own(strandTexture(seed + 4)), alphaTest: 0.3, alphaToCoverage: true }, 1),
+    strands: std({ roughness: 0.9, side: THREE.DoubleSide, map: own(pic.strands), alphaTest: 0.3, alphaToCoverage: true }, 1),
     blades: std({ roughness: 0.85, side: THREE.DoubleSide }, 1),
     dark: std({ roughness: 0.55, metalness: 0.2 }, 1),
     glass: own(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.55 })),
@@ -423,6 +455,7 @@ export function createKit({ seed = 11, scans = true, wind: blow = null, load = l
   // metalness kept: no picture of them goes on); on a moving thing's twin,
   // by its UVs with the scan's roughness and metal.
   let dead = false;
+  let kept = false; // (keep(): the stand-ins stay, whatever comes)
   const wearOn = (m, scan) => {
     const look = LOOKS[m.userData.role];
     const size = scanOf(m.userData.role);
@@ -449,7 +482,7 @@ export function createKit({ seed = 11, scans = true, wind: blow = null, load = l
   const roles = Object.keys(LOOKS).filter((role) => SCANS[role]);
   const ready = scans
     ? Promise.all(roles.map((role) => load(role).then((scan) => [role, scan]))).then((list) => {
-        if (dead) return;
+        if (dead || kept) return;
         const by = Object.fromEntries(list);
         for (const m of owned) if (m.isMeshStandardMaterial && m.userData.role) (m.userData.twin ? dress : wearOn)(m, by[m.userData.role]);
       })
@@ -501,6 +534,12 @@ export function createKit({ seed = 11, scans = true, wind: blow = null, load = l
         group.add(mesh);
       }
       return group;
+    },
+    // the stand-ins kept: scans that come from now on aren't worn (on a
+    // world already shown, every material in it would go into another
+    // shader at once; the next kit has them from the page's)
+    keep() {
+      kept = true;
     },
     dispose() {
       dead = true;

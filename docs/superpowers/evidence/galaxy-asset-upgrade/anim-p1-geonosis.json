@@ -1,0 +1,1533 @@
+{
+ "route": "#/galaxy/geonosis/surface",
+ "rows": [
+  {
+   "id": 0,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.1102230246251565e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 1,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 2,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 3,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 4,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 5,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 5.551115123125783e-17,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 6,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 5.551115123125783e-17,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 7,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 8,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.1102230246251565e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 9,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 86.46334214591212,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.16655368707142773,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 10,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 88.99256182676238,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.43886874197050935,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 11,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 12,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 13,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 14,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.7755575615628914e-17,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 15,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 16,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 17,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 18,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 19,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 20,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 21,
+   "name": "bdfff6fcbd8c45dab5804c69a6798824fbx",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 201.19140258126376,
+   "bind": false,
+   "act": {
+    "clip": "mixamo.com",
+    "phase": 0.5739318116102368,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 22,
+   "name": "M_body002_Material002_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 23,
+   "name": "M_body002_Material002_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 24,
+   "name": "M_body002_Material002_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 25,
+   "name": "M_body002_Material002_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 26,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.49600861743896,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2764210198074579,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 27,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.61331566845939,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5631773110944777,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 28,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.45227300161079,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5273194632027298,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 29,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.14028766641076,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.4439533283002674,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 30,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.49600861743893,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2764210198074579,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 31,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.61331566845938,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5631773110944777,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 32,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.45227300161078,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5273194632027298,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 33,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.14028766641076,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.4439533283002674,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 34,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.48824014845496,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.05516555975191287,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 35,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.87827509926025,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.8865891520399599,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 36,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.43772945410313,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.3800761066377163,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 37,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.48694280986037,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.04881134629249573,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 38,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.46098587165093,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.24422733043320485,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 39,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.68587211817854,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.4069231576286257,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 40,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.49600861743895,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2764210198074579,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 41,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.61331566845942,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5631773110944777,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 42,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.45227300161079,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5273194632027298,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 43,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.49600861743895,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2764210198074579,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 44,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.6133156684594,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5631773110944777,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 45,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.45227300161078,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5273194632027298,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 46,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.14028766641076,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.4439533283002674,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 47,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.48824014845499,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.05516555975191287,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 48,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.87827509926026,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.8865891520399599,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 49,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.43772945410313,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.3800761066377163,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 50,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.48694280986037,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.04881134629249573,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 51,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.4609858716509,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.24422733043320485,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 52,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.68587211817854,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.4069231576286257,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 53,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.49600861743899,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2764210198074579,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 54,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.6133156684594,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5631773110944777,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 55,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.45227300161078,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5273194632027298,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 56,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.14028766641074,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.4439533283002674,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 57,
+   "name": "life",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 96.41665698910354,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.3026276791933924,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 58,
+   "name": "life",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 59,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.49600861743893,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2764210198074579,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 60,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.6133156684594,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5631773110944777,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 61,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.49600861743896,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2764210198074579,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 62,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.49600861743899,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2764210198074579,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 63,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 91.49600861743895,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.2764210198074579,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 64,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": true,
+   "dev": 90.6133156684594,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5631773110944777,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 65,
+   "name": "override_texture",
+   "by": "toe",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 90.45227300161078,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.5273194632027298,
+    "loop": true,
+    "weight": 1
+   }
+  },
+  {
+   "id": 66,
+   "name": "figure",
+   "by": "toe",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 1,
+   "inView": false,
+   "dev": 84.9989863007908,
+   "bind": false,
+   "act": {
+    "clip": "Armature|Idle|baselayer",
+    "phase": 0.9155734234955162,
+    "loop": true,
+    "weight": 1
+   }
+  }
+ ],
+ "over": [],
+ "bind": [
+  {
+   "id": 0,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.1102230246251565e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 1,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 2,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 3,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 4,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 5,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 5.551115123125783e-17,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 6,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 5.551115123125783e-17,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 7,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 8,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 1.1102230246251565e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 11,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 12,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 13,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 14,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.7755575615628914e-17,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 15,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 16,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": null,
+   "left": null,
+   "right": null,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 17,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 18,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 19,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 20,
+   "name": "Char_Geonosian_LOD0_Material_1_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 22,
+   "name": "M_body002_Material002_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 23,
+   "name": "M_body002_Material002_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 24,
+   "name": "M_body002_Material002_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 25,
+   "name": "M_body002_Material002_0",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 2.220446049250313e-16,
+   "bind": true,
+   "act": null
+  },
+  {
+   "id": 58,
+   "name": "life",
+   "by": "foot",
+   "drift": 0,
+   "left": 0,
+   "right": 0,
+   "shown": 20,
+   "inView": false,
+   "dev": 0,
+   "bind": true,
+   "act": null
+  }
+ ],
+ "locked": {
+  "count": 38,
+  "groups": [
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     37,
+     50
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     34,
+     47
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     38,
+     51
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     26,
+     30,
+     40,
+     43,
+     53,
+     59,
+     61,
+     62,
+     63
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     36,
+     49
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     39,
+     52
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     29,
+     33,
+     46,
+     56
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     28,
+     32,
+     42,
+     45,
+     55,
+     65
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     27,
+     31,
+     41,
+     44,
+     54,
+     60,
+     64
+    ]
+   },
+   {
+    "clip": "Armature|Idle|baselayer",
+    "ids": [
+     35,
+     48
+    ]
+   }
+  ]
+ },
+ "spread": [
+  {
+   "clip": "Armature|Idle|baselayer",
+   "n": 42,
+   "r": 0.4717945532447546
+  }
+ ],
+ "time": {
+  "dt": [
+   0,
+   0.1,
+   0.020100000000093134,
+   0.014300000000279397,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.1,
+   0.019300000000279396,
+   0.015399999999906868,
+   0.1,
+   0.1
+  ],
+  "from": "wall",
+  "total": 1.569100000000559
+ },
+ "fail": false
+}

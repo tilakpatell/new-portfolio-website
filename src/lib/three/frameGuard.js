@@ -28,16 +28,31 @@
 // their own size, or with one material over everything, and what's left out
 // of those is wrong for good, not for a frame), and a material once it's
 // ready, whatever three does to it after (a transparent, double-sided one
-// is marked changed twice a frame).
+// is marked changed twice a frame), unless it's been changed into another
+// shader: a look or a scan put on it late (a new onBeforeCompile, a new
+// program key), or a map put on or taken off. Then it's readied again
+// behind the frame, as if new, rather than made again in the middle of one;
+// as is one that's been freed (dispose(): its shader with it) and is drawn
+// again.
+//
+// The pictures it waits for are a patch's too (gpuWork's picturesIn: a
+// scan's, the look's), not only the material's own.
 //
 // guard(renderer, { uploadMB, compileMs, frame, invalidate }) → { enabled,
 //   invalidate, adopt(scene, fn) → undo, pending(), dispose() }, one per renderer (asked again, the same).
 // In development, a frame in which three still compiled a shader mid-draw
 // says so in the console, so what's still slipping through can be found.
+// heldBack() → what every live guard is still readying, the sum of their
+// pending(); in development it's window.__tpGuardPending too, for the
+// scripts that shoot a world (scripts/gpu-parity.mjs) to know it's all on
+// screen.
 
-import { fence, knownLinked, markLinked, nextFrame, textureBytes, uploaded } from './gpuWork';
+import { fence, knownLinked, markLinked, nextFrame, picturesIn, textureBytes, uploaded } from './gpuWork';
 
 const guards = new WeakMap();
+// (heldBack's, as weak references: a WeakMap can't be counted, and a guard
+// is seldom disposed, so a renderer let go mustn't be kept for this)
+const live = new Set();
 const READY = 1;
 const QUEUED = 2;
 const MB = 1048576;
@@ -52,6 +67,17 @@ const batchRoot = (list) => ({
   traverseVisible() {},
 });
 
+// what of a material decides which shader it's drawn with, as far as a
+// world changes it after it's first drawn: its patches and which maps it has
+const MAPS = ['map', 'normalMap', 'emissiveMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'alphaMap', 'lightMap', 'bumpMap', 'displacementMap', 'envMap', 'specularMap', 'gradientMap', 'matcap', 'clearcoatMap', 'clearcoatNormalMap', 'transmissionMap', 'sheenColorMap', 'iridescenceMap', 'anisotropyMap'];
+const mapsOf = (m) => {
+  let bits = 0;
+  for (let i = 0; i < MAPS.length; i++) if (m[MAPS[i]]) bits |= 1 << i;
+  return bits;
+};
+const shapeOf = (m) => ({ v: m.version, before: m.onBeforeCompile, key: m.customProgramCacheKey, maps: mapsOf(m) });
+const sameShape = (a, m) => a.before === m.onBeforeCompile && a.key === m.customProgramCacheKey && a.maps === mapsOf(m);
+
 const inScene = (object, scene) => {
   let o = object;
   while (o.parent) o = o.parent;
@@ -61,7 +87,8 @@ const inScene = (object, scene) => {
 export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame, invalidate = null } = {}) {
   if (guards.has(renderer)) return guards.get(renderer);
   const state = new WeakMap(); // material → READY | QUEUED
-  const pictures = new WeakMap(); // material → the pictures it holds
+  const shapes = new WeakMap(); // a ready material → what its shader was made for (shapeOf)
+  const pictures = new WeakMap(); // material → { v: its version, list: the pictures it holds }
   const queue = new Map(); // material → an object it was to be drawn on
   const linking = new Set(); // compiled, waiting to link
   const adopters = new WeakMap(); // scene → its look, put on what's late into it
@@ -82,15 +109,14 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
       return {};
     }
   };
+  // (looked at again once it's been marked changed: a scan worn brings its own)
   const picturesOf = (m) => {
-    let list = pictures.get(m);
-    if (!list) {
-      list = [];
-      for (const v of Object.values(m)) if (v?.isTexture) list.push(v);
-      if (m.uniforms) for (const u of Object.values(m.uniforms)) if (u?.value?.isTexture) list.push(u.value);
-      pictures.set(m, list);
+    let got = pictures.get(m);
+    if (!got || got.v !== m.version) {
+      got = { v: m.version, list: picturesIn(m) };
+      pictures.set(m, got);
     }
-    return list;
+    return got.list;
   };
   const picturesUp = (m) => picturesOf(m).every((t) => uploaded(renderer, t));
   const linked = (m) => {
@@ -105,10 +131,36 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
     if (ok) markLinked(program);
     return ok;
   };
-  const ready = (m) => {
-    state.set(m, READY);
+  // (one freed, its shader with it, is ready no longer: drawn again, it's
+  // readied again behind the frame, as one never drawn is)
+  const watched = new WeakSet();
+  const forget = (e) => {
+    const m = e.target;
+    state.delete(m);
+    shapes.delete(m);
+    pictures.delete(m);
+    // (and one freed mid-way leaves the work too: its program gone, it'd
+    // never be seen to link, and a fence would be set every frame for it)
     queue.delete(m);
     linking.delete(m);
+  };
+  const watch = (m) => {
+    if (!watched.has(m) && m.addEventListener) {
+      watched.add(m);
+      m.addEventListener('dispose', forget);
+    }
+  };
+  const ready = (m) => {
+    watch(m);
+    state.set(m, READY);
+    shapes.set(m, shapeOf(m));
+    queue.delete(m);
+    linking.delete(m);
+  };
+  const hold = (m, object) => {
+    watch(m);
+    state.set(m, QUEUED);
+    queue.set(m, object);
   };
 
   const g = {
@@ -128,6 +180,7 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
       queue.clear();
       linking.clear();
       guards.delete(renderer);
+      live.delete(ref);
     },
   };
 
@@ -236,15 +289,21 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
   renderer.renderBufferDirect = function (cam, scn, geometry, material, object, group) {
     if (gating && scn?.isScene && material) {
       const s = state.get(material);
-      if (s !== READY) {
-        if (s === undefined && knownLinked(props(material).currentProgram) && picturesUp(material)) state.set(material, READY);
-        else {
-          if (s === undefined) {
-            state.set(material, QUEUED);
-            queue.set(material, object);
+      if (s === READY) {
+        // (marked changed since it was readied: into another shader, it's
+        // readied again behind the frame; anything else, drawn as it is)
+        const was = shapes.get(material);
+        if (was && was.v !== material.version) {
+          if (sameShape(was, material)) was.v = material.version;
+          else {
+            hold(material, object);
+            return undefined;
           }
-          return undefined;
         }
+      } else if (s === undefined && knownLinked(props(material).currentProgram) && picturesUp(material)) ready(material);
+      else {
+        if (s === undefined) hold(material, object);
+        return undefined;
       }
     }
     if (!dev) return realDraw.call(this, cam, scn, geometry, material, object, group);
@@ -280,6 +339,8 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
       if (queue.size || linking.size) schedule();
       if (dev && g.enabled) {
         const made = (renderer.info?.programs?.length ?? 0) - before;
+        // (every one counted, for scripts/perf-probe.mjs, however few are said)
+        if (made > 0 && typeof window !== 'undefined') window.__tpGuardSlips = (window.__tpGuardSlips ?? 0) + made;
         if (made > 0 && told < 40) {
           told += 1;
           console.warn(`[frameGuard] ${made} shader(s) compiled in a ${Math.round(clock() - t0)} ms frame`);
@@ -290,8 +351,21 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
   };
 
   guards.set(renderer, g);
+  const ref = new WeakRef(g);
+  live.add(ref);
   return g;
 }
+
+export const heldBack = () => {
+  let n = 0;
+  for (const ref of live) {
+    const g = ref.deref();
+    if (g) n += g.pending();
+    else live.delete(ref);
+  }
+  return n;
+};
+if (import.meta.env?.DEV && typeof window !== 'undefined') window.__tpGuardPending = heldBack;
 
 // The guard on `renderer`, if it has one.
 export const guardOf = (renderer) => guards.get(renderer) ?? null;

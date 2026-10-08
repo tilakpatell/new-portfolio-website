@@ -1,6 +1,6 @@
 # Quaternius packs (CC0)
 
-The owner's Quaternius packs, bought or downloaded on 2026-10-08, kept as the GitHub release [`assets-quaternius`](https://github.com/tilakpatell/tilakpatell.com/releases/tag/assets-quaternius) instead of in the repo. Together the archives come to about 1.5 GB, and most of each pack is source files (`.blend`, FBX, OBJ, engine projects) the site never serves. Every pack is CC0 1.0 (public domain): the GLBs can be served on the site, and credit is optional. An imported pack's manifest (`public/kit/<pack>/index.json`) carries its licence and source, and `npm run credits` (`scripts/credits.mjs`) reads every manifest to name Quaternius, each pack and its model count in CREDITS.md's CC0 section.
+The owner's Quaternius packs, bought or downloaded on 2026-10-08, kept as the GitHub release [`assets-quaternius`](https://github.com/tilakpatell/tilakpatell.com/releases/tag/assets-quaternius) instead of in the repo. Together the archives come to about 1.5 GB, and most of each pack is source files (`.blend`, FBX, OBJ, engine projects) the site never serves. Every pack is CC0 1.0 (public domain): the GLBs can be served on the site, and credit is optional. A pack imported as the worlds' kit carries its licence and source in its manifest (`public/kit/<pack>/index.json`), and `npm run credits` (`scripts/credits.mjs`) reads every manifest to name Quaternius, each pack and its model count in CREDITS.md's CC0 section. Models brought into a world's landing by `scripts/quaternius.mjs` have their credits in `public/games/credits.json` (as `quaternius/<model>`), which `scripts/credits.mjs` lists under Quaternius in CREDITS.md too.
 
 Unpacked, exactly as downloaded (Blender sources, FBX, glTF, textures, engine exports), the same packs are in their own repo, [tilakpatell/tilakverse-assets](https://github.com/tilakpatell/tilakverse-assets): clone it whole (about 2.2 GB), or one pack with a sparse checkout (its README shows how). It's public, so a session on any machine or account can get it.
 
@@ -12,6 +12,12 @@ node scripts/assets-fetch.mjs ual2 city
 ```
 
 Then a model pack goes in as the worlds' kit with `node scripts/kit/import.mjs <pack>`: one GLB a family, each model with its LOD1, compressed (meshopt, WebP), and a manifest, into `public/kit/<pack>/`. A pack that comes as FBX only (`farm`, `street`, `furniture`) is turned into GLBs first by `node scripts/kit/fbx.mjs <pack>`. `node scripts/kit-check.mjs` then holds every pack to its budgets. The manual is [`scripts/kit/README.md`](../../scripts/kit/README.md). The two animation libraries (`ual1`, `ual2`) go through `scripts/ual-bake.mjs` instead.
+
+Anything else a world uses goes into `public/models/…`, compressed (meshopt, WebP), as the other import scripts do (`scripts/sketchfab-import.mjs`, `scripts/kenney.mjs`). The planet landings' trees, rocks, flowers and street furniture come in through `scripts/quaternius.mjs`: a GLB a family of models under `public/models/quaternius/`, a node a model, with a manifest of each one's size, triangles, collider and body, and its credit:
+
+```
+QUATERNIUS=/path/to/tilakverse-assets/quaternius npm run quaternius [nature/trees …]
+```
 
 ## What's in each
 
@@ -28,3 +34,21 @@ Then a model pack goes in as the worlds' kit with `node scripts/kit/import.mjs <
 | `naturemega` | Stylized Nature MegaKit (source, 718 MB) | five of each tree (birch, cherry blossom, pine, giant pine, twisted, dead, common), bushes, ferns, clover, flowers, grasses, wheat, mushrooms, rocks, rock paths, pebbles | the same worlds' ground cover and paths |
 
 The toy-like, low-poly style of the city, space and nature kits suits the stylized worlds (Middle-earth, the Rick and Morty dimensions, Dot Matrix) more than the photo-real ones. For Albuquerque and Invincible, the modular city and street kits work as layout and filler, under the site's own baked look (`lib/three/house.js`).
+
+## From the assets repo, without the release zips
+
+A session with git but no release zip takes a pack's folder as the assets repo keeps it (unzipped): a sparse checkout into `lab/assets/.repo/` once, linked as `lab/assets/<pack>/`. The MegaKit's glTF files are then in `lab/assets/naturemega/glTF/`.
+
+```
+node scripts/assets-fetch.mjs --repo naturemega
+```
+
+## The Star Wars originals (not CC0)
+
+The assets repo's [`sketchfab-star-wars`](https://github.com/tilakpatell/tilakverse-assets/releases/tag/sketchfab-star-wars) release keeps six Sketchfab models as downloaded, each split into 8 MB parts (`<file>.part-aa`, `-ab`, …) beside a `SHA256SUMS`: leoxx300's B1 battle droid (CC BY 4.0, 53 unnamed joints, no clips), Quiznos323's AT-AT (CC BY-NC-SA 4.0; the same model `catalog/ice.js` already uses) in 4K and 1K maps, a TIE fighter and two Venators (CC BY 4.0; the galaxy already has its own). The fetch joins whatever parts are there, in order, and checks the result against the sums:
+
+```
+node scripts/assets-fetch.mjs starwars b1      (into lab/assets/starwars/b1-battle-droid.glb)
+```
+
+Each model's credit (title, author, licence, source) is in `PACKS.starwars.models` in `scripts/assets-fetch.mjs`, so an import can write `src/data/modelCredits.json` without Sketchfab's API. Shrink one with `scripts/sketchfab-import.mjs` before it goes into `public/models/`, and credit it there.

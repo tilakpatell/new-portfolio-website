@@ -21,7 +21,7 @@ import { runtime, usePrepareProgress } from '../runtime';
 import LoadingVeil from '../components/worlds/LoadingVeil';
 import { galaxyCrew } from '../components/galaxy/lines';
 import { battleSay } from '../components/galaxy/warVoice';
-import { effectsFor } from '../components/galaxy/warEffects';
+import { groundEffects } from '../components/galaxy/siteWar';
 import { mine, onWar, warNow } from '../components/galaxy/warState';
 import { SIDE_KEY, current as currentOath, readAllegiance, setTheatre, suggestSide, swear } from '../components/galaxy/allegiance';
 import { HERO_KEY, readHero } from '../components/galaxy/heroes';
@@ -271,7 +271,7 @@ export default function Galaxy() {
         timer.current = setTimeout(() => dove.current?.(), DIVE_MAX); // (a dive that never ends still lands)
       };
       runtime()
-        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced, effects: effectsFor(id, warNow(Date.now(), oath.war), oath) }), host, { fade: 900, held: true, after, onBuilt })
+        .handover(surfaceModule, surfaceProps(id, { ship, loadout, build, net: online.client, reduced, effects: groundEffects(id, oathKept, Date.now()) }), host, { fade: 900, held: true, after, onBuilt })
         .catch(() => false)
         .then(() => after)
         .then(() => {
@@ -279,7 +279,7 @@ export default function Galaxy() {
           navigate(to); // (not handed over: the page makes its own)
         });
     },
-    [leave, leaving, navigate, ship, loadout, build, online.client, reduced, oath],
+    [leave, leaving, navigate, ship, loadout, build, online.client, reduced, oathKept],
   );
   // near a planet you can land on: the surface's code, and its page's, come ahead
   useEffect(() => {

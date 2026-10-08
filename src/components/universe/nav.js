@@ -3,7 +3,8 @@
 // Pure (no React, no three.js), so it's tested in Node; NavMap.jsx draws it
 // and scene.js flies it.
 //
-// Three drives, picked on the nav map and kept between visits:
+// Three drives, picked on the nav map and kept between visits (the
+// hyperlanes went: the jump is the everyday way, the galaxy's way):
 //   hyper   Hyperspeed. A jump to lightspeed: the site's own jump plays over
 //           the map (or the crew's own way across it, Rick's portal or the
 //           RV's Blue Sky: components/jumps), and the ship comes out parked
@@ -22,7 +23,6 @@ import { PORTALS, portalById, portalHit, transit } from './portals';
 import { MAW, parkNear } from './maw';
 import { WONDERS, reachOf } from './deep';
 import { HOME_RADIUS, ORDER, POSITIONS, REACH, SECTORS, mapSectorOf, sectorOf } from './layout';
-import { laneAim, laneFrame, lanePlan } from './lanePilot';
 import { MOONS, byId } from './universes';
 import { LENGTH } from './scale';
 import { pilotId } from './pilotGoal';
@@ -32,18 +32,11 @@ export const DRIVE_KEY = 'tp-universe-drive';
 
 export const DRIVES = [
   {
-    id: 'lanes',
-    name: 'Hyperlanes',
-    verb: 'Take the lanes',
-    od: OVERDRIVE, // (where there's no lane worth taking, a hop at a place: super speed, as the autopilot of today)
-    about: 'The autopilot takes the lanes, riding with the traffic. You fly the whole way and can pull out any time.',
-  },
-  {
     id: 'hyper',
     name: 'Jump',
     verb: 'Jump',
     od: 1,
-    about: 'A jump to lightspeed. You come out parked at it, however far it is. Nothing to see on the way, and the drive needs half a minute to charge again after.',
+    about: 'A jump to lightspeed, the galaxy’s way: the ship comes round onto it, spools up and goes, and you come out parked at it, however far it is. Or put the nose on a far star and press J.',
   },
   {
     id: 'super',
@@ -61,15 +54,16 @@ export const DRIVES = [
   },
 ];
 export const driveById = (id) => DRIVES.find((d) => d.id === id) ?? DRIVES[0];
-// a stored drive, or the lanes (the everyday way since the map spread out:
-// quick, with the traffic, and still a flight)
-export const parseDrive = (v) => (DRIVES.some((d) => d.id === v) ? v : 'lanes');
+// a stored drive, or the jump (the everyday way; a drive kept from when there
+// were hyperlanes, `lanes`, reads as it too)
+export const parseDrive = (v) => (DRIVES.some((d) => d.id === v) ? v : 'hyper');
 
 // the jump, in seconds: to the flash, when the ship's moved (the site's jump
 // overlay flashes at 1.15 to 1.3 s, components/Hyperspace.jsx); all of it;
-// and how long till the hyperdrive can go again (30 s since the lanes came:
-// they're the everyday way, the jump the rare one)
-export const HYPER = { flash: 1.2, length: 2.45, recharge: 30 };
+// and how long till the hyperdrive can go again (a few seconds: it's the
+// everyday way across, the galaxy's way; before the jump the ship comes
+// round onto the place, aim.js's JUMP.align at most)
+export const HYPER = { flash: 1.2, length: 2.45, recharge: 5 };
 
 // Whether the hyperdrive can jump now: { ready, wait (seconds), why }.
 // `last` is when it last jumped and `now` the clock (both in seconds), or
@@ -305,42 +299,11 @@ export function distanceTo(ship, id) {
 // (in another sector: into the portal, through, and on from the far end; a
 // jump goes to the portal, and the hyperdrive's charging by the far side, so
 // on from there at super speed)
-// (by the lanes: flown as the scene flies it, lanePilot.js, to the ramp, on,
-// riding and in; or at super speed where there's no lane worth taking; and
-// to the portal by the lanes, then on from the far end at super speed)
 export const TRANSIT = 0.6; // seconds through a portal (the flash)
-function laneTrip(ship, id, limit, dt) {
-  let auto = lanePlan(ship, id, parkFor(id, [ship.x, ship.z]));
-  if (!auto) return null;
-  let s = { ...ship };
-  let ride = null;
-  for (let t = 0; t < limit; t += dt) {
-    let input = { throttle: 0 };
-    if (!ride) {
-      const aim = laneAim(auto);
-      const a = autopilot(s, aim?.id ?? auto.id, aim?.park ?? auto.park, aim?.space, 1);
-      if (a.done && !aim) return t;
-      input = a.input;
-    }
-    const lane = laneFrame({ ride, auto, ship: s }, input, dt, { canEnter: Boolean(auto.route) });
-    if (lane) [ride, auto] = [lane.ride, lane.auto];
-    s = lane?.ship ?? step(s, input, dt).ship;
-  }
-  return null;
-}
 export function tripTime(ship, id, drive = 'super', { limit = 150, dt = 1 / 30 } = {}) {
   id = goalOf(id);
   if (!ship || !GOALS[id]) return null;
   const leg = legOf(ship, id);
-  if (drive === 'lanes') {
-    const by = laneTrip(ship, leg, limit, dt);
-    if (by === null) return tripTime(ship, id, 'super', { limit, dt });
-    if (leg === id) return by;
-    const p = portalById(leg);
-    const out = transit({ ...ship, x: p.at[0], y: p.at[1], z: p.at[2], speed: 0 }, leg)?.ship;
-    const rest = out && tripTime(out, id, 'super', { limit, dt });
-    return rest === null || rest === undefined ? null : by + TRANSIT + rest;
-  }
   if (leg !== id) {
     let first;
     let out;

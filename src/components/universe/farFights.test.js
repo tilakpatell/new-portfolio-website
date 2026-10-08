@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { FAR, MIN_ANGLE, SKY, createFarFights, fightLabel, impostorFor, isFar, pickFightNode, skyPlace } from './farFights';
-import { NODES } from './hyperlanes';
+import { NODES } from './waypoints';
 import { REGIONS, regionAt } from './regions';
 import { POSITIONS } from './layout';
 

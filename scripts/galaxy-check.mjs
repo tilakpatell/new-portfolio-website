@@ -8,6 +8,7 @@
 //   OUT=/tmp/shots node scripts/galaxy-check.mjs space endor,coruscant
 //   OUT=/tmp/shots node scripts/galaxy-check.mjs surface tatooine,hoth
 //   QUALITY=mid … (the device tier: ?quality=), SHIP=falcon …, JSON=1 …
+//   OATH='{"since":1,"war":"gcw","oaths":{"gcw":{"side":"rebel","sworn":1}}}' … (sworn, at the held clock's campaign)
 //   ANGLE=d3d11 … (draw on the graphics chip, not in software)
 //   BUDGET=1 … (or BUDGET=path/to/baseline.json): each world held to its
 //     quality level's row of the budget table (src/lib/budgets.js, the
@@ -47,6 +48,7 @@ const [mode = 'space', list = 'tatooine'] = process.argv.slice(2);
 const out = process.env.OUT ?? '.';
 const quality = process.env.QUALITY ?? 'high';
 const ship = process.env.SHIP ?? 'xwing';
+const oath = process.env.OATH ?? null; // (allegiance.js's saved oath, as JSON: the side you land as)
 const base = process.env.BASE ?? 'http://127.0.0.1:5188';
 const settle = Number(process.env.WAIT ?? 9000);
 const chrome = process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -60,14 +62,15 @@ const browser = await chromium.launch({ executablePath: chrome, args: ['--use-gl
 const results = [];
 for (const id of list.split(',')) {
   const ctx = await browser.newContext({ viewport });
-  await ctx.addInitScript((s) => {
+  await ctx.addInitScript(({ ship: s, oath }) => {
     window.localStorage.setItem('tp-intro', '1');
     window.localStorage.setItem('tp-start', '"universe"');
     window.localStorage.setItem('tp-universe-ship', JSON.stringify(s));
     window.localStorage.setItem('tp-galaxy-panel', JSON.stringify('tucked'));
     window.sessionStorage.setItem('tp-galaxy-intro', '1');
     window.localStorage.setItem('tp-worlds', JSON.stringify('load')); // (the 3D, without the gate's asking: a software GL is slow, and that's the point)
-  }, ship);
+    if (oath) window.localStorage.setItem('tp-gcw-side', oath);
+  }, { ship, oath });
   if (!process.env.LIVE) {
     await ctx.addInitScript(() => {
       let a = 0x2f6b9c1d;
@@ -174,6 +177,8 @@ for (const id of list.split(',')) {
               p50: pick(0.5),
               p95: pick(0.95),
               ratio: renderer.getPixelRatio(),
+              // (the ground war's update, smoothed: ground/groundScene.js's ms)
+              ground: surface && window.__surfaceScene.groundWar ? +window.__surfaceScene.groundWar.ms.toFixed(2) : null,
             });
           }
         };
@@ -184,7 +189,7 @@ for (const id of list.split(',')) {
   const name = `${mode}-${id}-${quality}`;
   await page.screenshot({ path: `${out}/${name}.png`, timeout: 120000 });
   results.push({ id, loaded: +loaded.toFixed(1), ...stats, glbMB: +(glbBytes / 1e6).toFixed(1), errors: errors.slice(0, 5) });
-  console.log(`${id.padEnd(10)} calls ${String(stats.calls).padStart(4)}  tris ${String(stats.triangles).padStart(7)}  geo ${String(stats.geometries).padStart(4)}  tex ${String(stats.textures).padStart(3)}  prog ${String(stats.programs).padStart(3)}  frame p50 ${stats.p50} p95 ${stats.p95} ms  load ${loaded.toFixed(1)} s${errors.length ? `  errors ${errors.length}` : ''}`);
+  console.log(`${id.padEnd(10)} calls ${String(stats.calls).padStart(4)}  tris ${String(stats.triangles).padStart(7)}  geo ${String(stats.geometries).padStart(4)}  tex ${String(stats.textures).padStart(3)}  prog ${String(stats.programs).padStart(3)}  frame p50 ${stats.p50} p95 ${stats.p95} ms${stats.ground != null ? `  ground ${stats.ground} ms` : ''}  load ${loaded.toFixed(1)} s${errors.length ? `  errors ${errors.length}` : ''}`);
   await ctx.close();
 }
 await browser.close();

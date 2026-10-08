@@ -1,6 +1,6 @@
 # Credits
 
-[tilakpatell.com](https://tilakpatell.com) is built on a lot of other people's work: 260 3D models from 137 artists on Sketchfab, 136 free scans, skies and kit pieces, 61 photos, open fonts and public data. Thank you, all of you.
+[tilakpatell.com](https://tilakpatell.com) is built on a lot of other people's work: 261 3D models from 137 artists on Sketchfab, 178 free scans, skies and kit pieces, 61 photos, open fonts and public data. Thank you, all of you.
 
 > **Made something here and I've missed you, got your name wrong, or you'd like it taken down?** Message me at [tilakny@gmail.com](mailto:tilakny@gmail.com) or [LinkedIn](https://www.linkedin.com/in/tilakpatell) and I'll fix it straight away, or open a pull request.
 
@@ -90,6 +90,7 @@ Each one is its artist's, used under the Creative Commons licence it's published
 | [Birch tree](https://sketchfab.com/3d-models/birch-tree-aa842dffd9654d33b8b91170ce83c172) | [evolveduk](https://sketchfab.com/evolveduk) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | the birches of Sorgan |
 | [Bo Katan Kryze](https://sketchfab.com/3d-models/bo-katan-kryze-c1e33e1c34304b879a1c2fdb5ee4c8cd) | [ThisIsntAPerson](https://sketchfab.com/ThisIsntAPerson) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | Bo-Katan Kryze, walking on the worlds |
 | [C-3PO Weight Shift](https://sketchfab.com/3d-models/c-3po-weight-shift-19b9099bf348488bb781677de04ba0c0) | [Telkar5](https://sketchfab.com/Telkar5) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | C-3PO |
+| [C-3PO Weight Shift](https://sketchfab.com/3d-models/c-3po-weight-shift-19b9099bf348488bb781677de04ba0c0) | [Telkar5](https://sketchfab.com/Telkar5) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | C-3PO aboard the Death Star, rigged again on the crew’s skeleton so he walks, sits and falls as they do |
 | [Captain Rex](https://sketchfab.com/3d-models/captain-rex-18a73ab03ac84cf49015559c522a2965) | [Anakin](https://sketchfab.com/Vikttor.Smolentsiev) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | Captain Rex, walking on the worlds |
 | [Cara Dune Mandalorian](https://sketchfab.com/3d-models/cara-dune-mandalorian-67940dad3a484fddb4d6d1127d233460) | [Star guardian](https://sketchfab.com/ProjectorElka) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | Cara Dune, walking on the worlds |
 | [Cassian Andor](https://sketchfab.com/3d-models/cassian-andor-1ef27f2978d442e39eac1e62cf28e226) | [Mind Mulch for The Masses](https://sketchfab.com/mindmulchforthemasses) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | Cassian Andor |
@@ -347,7 +348,7 @@ Not the site’s, and not free to reuse: shown here by their owners’ leave.
 
 ## Scans, skies and kits (CC0)
 
-Public domain, so no credit is needed, but they deserve it. From [Poly Haven](https://polyhaven.com) (Amal Kumar, Charlotte Baglioni, Dario Barresi, Dimitrios Savva, Greg Zaal, GurJas Studios, James Ray Cock, Jarod Guest, Jenelle van Heerden, John Hutcheson, Jorge Camacho, Josh Dean, Kless Gyzen, MP, Rico Cilliers, Rob Tuytel, Sergej Majboroda, UM JOORIN, Ulan Cabanilla, Yann Kervran, eye-candy.xyz), [ambientCG](https://ambientcg.com) and [Kenney](https://kenney.nl), whose kits make up *Portal panic* and more (38 pieces). The lists by game are in [`public/games/credits.json`](public/games/credits.json), [`public/hq/CREDITS.md`](public/hq/CREDITS.md) and [`public/cc0/README.md`](public/cc0/README.md).
+Public domain, so no credit is needed, but they deserve it. From [Poly Haven](https://polyhaven.com) (Amal Kumar, Charlotte Baglioni, Dario Barresi, Dimitrios Savva, Greg Zaal, GurJas Studios, James Ray Cock, Jarod Guest, Jenelle van Heerden, John Hutcheson, Jorge Camacho, Josh Dean, Kless Gyzen, MP, Rico Cilliers, Rob Tuytel, Sergej Majboroda, UM JOORIN, Ulan Cabanilla, Yann Kervran, eye-candy.xyz), [ambientCG](https://ambientcg.com), [Kenney](https://kenney.nl), whose kits make up *Portal panic* and more (38 pieces), and [Quaternius](https://quaternius.com), whose trees, rocks, flowers and street furniture stand about the planets you land on (42 pieces). The lists by game are in [`public/games/credits.json`](public/games/credits.json), [`public/hq/CREDITS.md`](public/hq/CREDITS.md) and [`public/cc0/README.md`](public/cc0/README.md).
 
 **Kits:** [Quaternius](https://quaternius.com)'s *Farm Animals* (7 models), *Stylized Nature MegaKit* (116 models) and *Ultimate Space Kit* (92 models), under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/): trees, plants, rocks, space props and farm animals for the worlds, in [`public/kit`](public/kit) (brought in by [`scripts/kit/import.mjs`](scripts/kit/README.md)).
 

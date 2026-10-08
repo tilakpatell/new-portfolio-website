@@ -28,7 +28,7 @@
 //         (sec: out in the Expanse, its sector, 'E:sx,sz', and x and z then
 //         from that sector's middle; without it, the authored map's, as ever)
 //         (flags: hidden, boosting, safe: just back, your hits don't count, and
-//         riding a hyperlane, for the streak the others far off see)
+//         lane, from when there were hyperlanes: read by nothing now)
 //   shot  [x, y, z, vx, vy, vz, w?]                      a bolt fired (for drawing it); w: the
 //                                                       weapon (weapons.js's code), 0 if left off
 //   hit   { d: damage }                                  to the pilot a bolt of yours hit (up to
@@ -75,6 +75,7 @@ import { SIDES as WAR_SIDES, WARS, warOfSide } from '../../galaxy/sides';
 import { RANKS } from '../../galaxy/ranks';
 import { NO_FACTIONS } from './relations';
 import { motionPacket, readEmoteWire, readMotion } from '../../../lib/emote';
+import { WEAPONS, byCode } from '../weaponTable';
 
 export { NAME_MAX, cleanName, randomCallsign } from './names';
 
@@ -105,8 +106,8 @@ export const FLOOD = { denied: 60, window: 5000 }; // turned away this often in 
 export const FLAG = { hidden: 1, boost: 2, safe: 4, lane: 8 };
 // how far out a pilot can be, level, and how fast they can go: the universe
 // spread four times wider (scale.js's SPREAD: places reach 36,000 out, the
-// Rick and Morty sector sits at z −48,000) and its express lanes run at
-// 4,000 a second (hyperlanes.js), so a little past both
+// Rick and Morty sector sits at z −48,000) and the fastest ever ran at
+// 4,000 a second, so a little past both
 export const FAR = 60000;
 export const FAST = 5000;
 
@@ -251,7 +252,8 @@ export function readShot(data, from = null) {
   if (Math.hypot(n[3], n[4], n[5]) > 800) return null;
   // (as far as it could have gone since that pose, on the pulse drive)
   if (from && Math.hypot(n[0] - from.x, n[1] - from.y, n[2] - from.z) > 6 + Math.abs(from.speed ?? 0) * 0.3) return null;
-  const w = Number.isInteger(data[6]) && data[6] >= 0 && data[6] <= 2 ? data[6] : 0;
+  // (a code from the weapon table; a newer peer's or junk is the blaster)
+  const w = Number.isInteger(data[6]) ? WEAPONS[byCode(data[6])].code : 0;
   return { p: n.slice(0, 3), v: n.slice(3), w };
 }
 
