@@ -413,7 +413,7 @@ export const PAGES = {
           ['W A S D / ← ↑ ↓ →', 'Drive'],
           ['hold Space', 'Handbrake: hold it into a turn and the tail swings round'],
           ['E / Enter', 'Go in (or wash the Aztek at A1A)'],
-          ['M', 'Places'],
+          ['M', 'Things to do: the places, as each one opens'],
           ['R', 'Run a delivery'],
           ['T', 'The time of day'],
           ['P', 'Throw a pizza on the roof (at Walt’s house)'],

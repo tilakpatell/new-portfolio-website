@@ -44,9 +44,13 @@ function baseMap() {
   base = c;
   return c;
 }
-export function drawMap(c, car, hank, prog, blue = [], run = null, others = [], traffic = []) {
+// `box`: the canvas fitted to the screen (runtime/hud fitCanvas, in 150
+// units), or null before it is (its 150 × 150 attributes, drawn as they are)
+export function drawMap(c, box, car, hank, prog, blue = [], run = null, others = [], traffic = []) {
   const g = c?.getContext('2d');
   if (!g) return;
+  const s = box?.s ?? c.width / 150;
+  g.setTransform(s, 0, 0, s, 0, 0);
   const at = (x, z) => [75 + (x - car.x) * K, 75 + (z - car.z) * K];
   // anything off the map's edge is drawn on its rim
   const rim = (x, z) => {

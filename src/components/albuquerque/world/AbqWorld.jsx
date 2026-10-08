@@ -4,6 +4,7 @@ import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
 import { readPad, typing } from '../../games/pad';
+import { fitCanvas } from '../../../runtime/hud';
 import Pollos from '../Pollos';
 import { rankFor } from '../metherria/rules';
 import { CAREER, readCareer } from './career';
@@ -261,6 +262,20 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     };
   }, [api, setGl, announce]);
 
+  // the map's canvas: as many pixels as the screen has under it (sharp on a
+  // 2× screen, and at a phone's smaller map), fitted when its box changes,
+  // never a frame; ./map.js draws in its own 150 units at any size
+  const mapBox = useRef(null);
+  useEffect(() => {
+    const c = map.current;
+    if (!c) return undefined;
+    const fit = () => (mapBox.current = fitCanvas(c, 150));
+    fit();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(fit) : null;
+    ro?.observe(c);
+    return () => ro?.disconnect();
+  }, []);
+
   // the signs and markers follow what's open
   useEffect(() => {
     api.current?.setPlaces(prog);
@@ -327,7 +342,11 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
         setTuning((v) => !v);
         setList(false);
       }
-      if (key === 'Escape') setTuning(false);
+      // (Esc closes either panel: the Menu, when it's open, takes its own Esc first)
+      if (key === 'Escape') {
+        setTuning(false);
+        setList(false);
+      }
       if (key === 'e' && !a.near) a.washCar();
     };
     const up = (e) => s.keys.delete(keyOf(e));
@@ -486,49 +505,27 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
       hudKey.current = key;
       setHud({ near: at?.id ?? null, heat: Math.round(s.heat * 10) / 10, hankNear: Boolean(s.hankNear), moved: s.moved, wash, run: s.run ? { name: s.run.name, left: s.run.left, away } : null });
     }
-    if (++s.frame % 4 === 0) drawMap(map.current, s.car, hank, progRef.current, s.blue, s.run, s.others, s.traffic);
+    if (++s.frame % 4 === 0) drawMap(map.current, mapBox.current, s.car, hank, progRef.current, s.blue, s.run, s.others, s.traffic);
   }, live);
 
-  // the touch stick: drag from where you put your thumb
-  const stick = useRef(null);
-  const onStick = (e) => {
-    const s = sim.current;
-    if (e.type === 'pointerdown') {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      stick.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+  // the thumbs, on a phone: the kit's stick (read from where the thumb went
+  // down), which wakes the engine on its first touch, and the handbrake under
+  // the other thumb, on while it's held (lit while it is)
+  const onStick = (x, y) => (sim.current.stick = { x, y });
+  const wake = () => (audioContext(), startSound());
+  const handBtn = useRef(null);
+  const hand = {
+    onPress: (e) => {
       audioContext();
+      sim.current.hand = true;
       startSound();
-    }
-    if (!stick.current || stick.current.id !== e.pointerId) return;
-    if (e.type === 'pointerup' || e.type === 'pointercancel') {
-      stick.current = null;
-      s.stick = { x: 0, y: 0 };
-      e.currentTarget.style.setProperty('--sx', '0px');
-      e.currentTarget.style.setProperty('--sy', '0px');
-      return;
-    }
-    const dx = Math.max(-1, Math.min(1, (e.clientX - stick.current.x) / 50));
-    const dy = Math.max(-1, Math.min(1, (e.clientY - stick.current.y) / 50));
-    s.stick = { x: dx, y: dy };
-    e.currentTarget.style.setProperty('--sx', `${dx * 26}px`);
-    e.currentTarget.style.setProperty('--sy', `${dy * 26}px`);
-  };
-  // the handbrake, under the other thumb: on while it's held
-  const onHand = (e) => {
-    const down = e.type === 'pointerdown';
-    if (down) {
-      audioContext();
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId); // (a thumb that slides off it is still holding it)
-      } catch {
-        /* no such pointer any more */
-      }
-    }
-    sim.current.hand = down;
-    if (down) {
-      startSound();
+      handBtn.current = e.currentTarget;
       e.currentTarget.dataset.on = '';
-    } else delete e.currentTarget.dataset.on;
+    },
+    onRelease: () => {
+      sim.current.hand = false;
+      delete handBtn.current?.dataset.on;
+    },
   };
 
   const here = near ? prog.places.find((p) => p.id === near) : null;
@@ -549,7 +546,7 @@ function World({ api, prog, snap, inside, enter, gl, setGl, announce, toast, set
     <div ref={box} className="abq-world-stage" data-touch={touch || undefined}>
       <canvas ref={canvas} className="abq-world-canvas" data-on={gl === 'on' || undefined} aria-label="Albuquerque from above Walt’s Aztek: the desert, the Sandias, and the roads into town" role="img" />
       {gl === 'loading' && <p className="abq-world-loading">Driving into Albuquerque…</p>}
-      <AbqHud touch={touch} gl={gl} prog={prog} snap={snap} rank={rank} blue={blue} speedo={speedo} map={map} trav={trav} hud={hud} toast={toast} here={here} inside={inside} enter={enter} throwPizza={throwPizza} washCar={washCar} runDelivery={runDelivery} nextTime={nextTime} clock={clock} tuning={tuning} setTuning={setTuning} list={list} setList={setList} onStick={onStick} onHand={onHand} driving={driving} changeDriving={changeDriving} travel={travel} />
+      <AbqHud touch={touch} gl={gl} prog={prog} snap={snap} rank={rank} blue={blue} speedo={speedo} map={map} trav={trav} hud={hud} toast={toast} here={here} inside={inside} enter={enter} throwPizza={throwPizza} washCar={washCar} runDelivery={runDelivery} nextTime={nextTime} clock={clock} tuning={tuning} setTuning={setTuning} list={list} setList={setList} onStick={onStick} wake={wake} hand={hand} driving={driving} changeDriving={changeDriving} travel={travel} />
     </div>
   );
 }
