@@ -193,7 +193,9 @@ for (const tier of tiers) {
         }
         const sorted = [...times].sort((a, b) => a - b);
         const r1 = (v) => Number(v.toFixed(1));
-        return { calls, triangles, frameMs: r1(times.reduce((s, v) => s + v, 0) / times.length), frameMsMedian: r1(sorted[Math.floor(n / 2)]), memory: { ...renderer.info.memory } };
+        // the ship's box on screen (scene.js's DEV hook, where it has one)
+        const shipPx = u.shipPx?.() ?? null;
+        return { calls, triangles, shipPx, frameMs: r1(times.reduce((s, v) => s + v, 0) / times.length), frameMsMedian: r1(sorted[Math.floor(n / 2)]), memory: { ...renderer.info.memory } };
       }, FRAMES);
       // the picture alone: the page's bar, panel and HUD hidden (they'd be
       // half the shot, and in its metrics), the map's own canvas (the
@@ -217,7 +219,7 @@ for (const tier of tiers) {
       await writeFile(join(out, `${name}.webp`), await sharp(png).webp({ quality: 88 }).toBuffer());
       report.poses[name] = { ...numbers, metrics, errors: [...new Set(errors)].slice(0, 5) };
       if (metrics.dominantColorShare > 0.98) fail(`${tier} ${name}: the canvas is blank (${metrics.dominantColorShare} one colour)`);
-      console.log(`ok   ${tier.padEnd(4)} ${name.padEnd(20)} calls ${String(numbers.calls).padStart(4)}  tris ${String(numbers.triangles).padStart(8)}  ${String(numbers.frameMs).padStart(6)} ms  entropy ${metrics.colorEntropyBits}  edges ${metrics.edgeDensity}  contrast ${metrics.luminance.contrast}  (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
+      console.log(`ok   ${tier.padEnd(4)} ${name.padEnd(20)} calls ${String(numbers.calls).padStart(4)}  tris ${String(numbers.triangles).padStart(8)}  ${String(numbers.frameMs).padStart(6)} ms  entropy ${metrics.colorEntropyBits}  edges ${metrics.edgeDensity}  contrast ${metrics.luminance.contrast}${numbers.shipPx ? `  ship ${numbers.shipPx.w} × ${numbers.shipPx.h} px` : ''}  (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
     } catch (e) {
       report.poses[name] = { error: String(e.message ?? e).split('\n')[0], errors: [...new Set(errors)].slice(0, 5) };
       fail(`${tier} ${name}: ${report.poses[name].error}`);
