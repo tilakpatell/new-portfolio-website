@@ -99,6 +99,12 @@ function plan(c, r) {
   return { ...o, at, s: c.axis === 'x' ? c.line + LANE * c.dir : c.line - LANE * c.dir };
 }
 
+// A car off the street (a Mauler's picked it up): it's gone from where it
+// was, and back in the traffic out of sight on the next step.
+export function takeCar(prev, id) {
+  return { ...prev, cars: prev.cars.map((c) => (c.id === id ? { ...c, gone: true } : c)) };
+}
+
 export function stepTraffic(prev, dt, { cx = 0, cz = 0, yaw = null, scare = [] } = {}) {
   const st = { ...prev, cars: prev.cars.map((c) => ({ ...c })), walkers: prev.walkers.map((w) => ({ ...w })) };
   const r = st.r;
@@ -116,6 +122,13 @@ export function stepTraffic(prev, dt, { cx = 0, cz = 0, yaw = null, scare = [] }
     for (let i = 0; i < list.length; i++) list[i].ahead = i + 1 < list.length ? (list[i + 1].s - list[i].s) * list[i].dir : Infinity;
   }
   for (const c of st.cars) {
+    // one a Mauler took (./foes.js): another like it comes on out of sight
+    if (c.gone) {
+      const at = placeOnStreet(r, cx, cz, FAR * 0.55, FAR * 0.97, 40, yaw);
+      if (at) Object.assign(c, at, { dir: r() < 0.5 ? 1 : -1, speed: c.cruise * 0.7, turn: null, wait: 0, back: 0, gone: false });
+      delete c.ahead;
+      continue;
+    }
     const [x, z] = carAt(c);
     for (const q of scare) {
       if (Math.hypot(x - q.x, z - q.z) >= q.r) continue;

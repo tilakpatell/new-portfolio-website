@@ -54,7 +54,7 @@ export function createEvents() {
   };
 }
 
-export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input, quality, saves = null, assets, audio, events = createEvents(), gpu = false, override = null, visible = () => true }) {
+export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input, quality, saves = null, store = null, assets, audio, events = createEvents(), gpu = false, override = null, visible = () => true }) {
   let gfx = null;
   let kind = null; // the backend asked for
   let lostWebGPU = false;
@@ -252,6 +252,7 @@ export function createRuntime({ makeBackend, loop: makeLoop = createLoop, input,
     input,
     quality,
     saves,
+    store,
     assets,
     audio,
     events,

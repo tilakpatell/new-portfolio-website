@@ -19,9 +19,14 @@
 //           (outfit.js), b: its garage build (shipyard/build.js's ids) or
 //           none, l: [Rick's look, Morty's] (wardrobe/looks.js's ids) or
 //           none, lb: [Walt’s look, Jesse’s] or none, c: kills, w: where
-//           on the site }  on joining, and on any change
+//           on the site, lv: level (economy.js's, 1 to 11), f: factions
+//           { s: side (sides.js), st: { law, civil, outlaw } standing.js's
+//           level names, w: war, o: the side sworn to in it (galaxy/sides.js),
+//           r: rank on that side (galaxy/ranks.js) } or none; a build older
+//           than these sends neither: level 1, nobody's }  on joining, and on any change
 //   pose  [x, y, z, heading, pitch, bank, speed, vy, flags, shields]  ten times a second while flying
-//         (flags: hidden, boosting, and safe: just back, your hits don't count)
+//         (flags: hidden, boosting, safe: just back, your hits don't count, and
+//         riding a hyperlane, for the streak the others far off see)
 //   shot  [x, y, z, vx, vy, vz, w?]                      a bolt fired (for drawing it); w: the
 //                                                       weapon (weapons.js's code), 0 if left off
 //   hit   { d: damage }                                  to the pilot a bolt of yours hit (up to
@@ -59,6 +64,13 @@ import { KINDS as HUNTERS } from '../../galaxy/hunted';
 import { fromAngles, slerp, toAngles } from '../orient';
 import { cleanWhere } from './where';
 import { cleanName } from './names';
+import { LEVELS as XP_LEVELS } from '../economy';
+import { SIDES } from '../sides';
+import { AXES, LEVELS as STANDING_LEVELS } from '../standing';
+import { SIDES as WAR_SIDES, WARS, warOfSide } from '../../galaxy/sides';
+import { RANKS } from '../../galaxy/ranks';
+import { NO_FACTIONS } from './relations';
+import { motionPacket, readEmoteWire, readMotion } from '../../../lib/emote';
 
 export { NAME_MAX, cleanName, randomCallsign } from './names';
 
@@ -86,7 +98,13 @@ export const GUARD = {
 // how many of each message one pilot may send: [a second, at most at once]
 export const RATES = { pose: [20, 30], foot: [20, 30], walk: [20, 30], cur: [25, 40], shot: [10, 12], hit: [10, 12], siege: [2, 6], war: [0.5, 3], fight: [2, 6], hi: [1, 4], ally: [0.5, 3], down: [0.4, 2], pack: [8, 12], hhit: [10, 12] }; // (the X-wing fires 8 a second)
 export const FLOOD = { denied: 60, window: 5000 }; // turned away this often in this long: muted
-export const FLAG = { hidden: 1, boost: 2, safe: 4 };
+export const FLAG = { hidden: 1, boost: 2, safe: 4, lane: 8 };
+// how far out a pilot can be, level, and how fast they can go: the universe
+// spread four times wider (scale.js's SPREAD: places reach 36,000 out, the
+// Rick and Morty sector sits at z −48,000) and its express lanes run at
+// 4,000 a second (hyperlanes.js), so a little past both
+export const FAR = 60000;
+export const FAST = 5000;
 
 const num = (v, lo, hi) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
@@ -98,7 +116,31 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // null, the stock ship)
 export function readHello(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
-  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), build: readBuildWire(data.b), looks: readLooksWire(data), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w) };
+  return { name: cleanName(data.n) ?? 'Pilot', kind: parseShip(data.k), loadout: readOutfit(data.o, data.p), build: readBuildWire(data.b), looks: readLooksWire(data), kills: Math.floor(num(data.c, 0, 9999) ?? 0), where: cleanWhere(data.w), level: Math.floor(num(data.lv, 1, XP_LEVELS.length) ?? 1), factions: readFactions(data.f) };
+}
+
+// A pilot's factions (relations.js's shape), for a hello's `f`: only what
+// there is to say goes, and nothing at all for nobody's
+export function writeFactions({ side = null, standing = null, war = null, oath = null, rank = null } = {}) {
+  const st = side && standing ? Object.fromEntries(AXES.filter((a) => standing[a]).map((a) => [a, standing[a]])) : null;
+  const out = { ...(side ? { s: side } : {}), ...(st && Object.keys(st).length ? { st } : {}), ...(war ? { w: war } : {}), ...(oath ? { o: oath } : {}), ...(rank ? { r: rank } : {}) };
+  return Object.keys(out).length ? out : null;
+}
+
+// a hello's `f` as it came in: each field an id from the lists we have, or
+// null (a rank only on the side sworn to, an oath only to a side of the war
+// named, a standing only with a side to have it with)
+const named = (v, list) => (typeof v === 'string' && Object.hasOwn(list, v) ? v : null);
+const standingName = (axis, v) => (typeof v === 'string' && STANDING_LEVELS[axis].some(([, name]) => name === v) ? v : null);
+function readFactions(f) {
+  if (!f || typeof f !== 'object' || Array.isArray(f)) return { ...NO_FACTIONS };
+  const side = named(f.s, SIDES);
+  const standing = side && f.st && typeof f.st === 'object' && !Array.isArray(f.st) ? Object.fromEntries(AXES.map((a) => [a, standingName(a, f.st[a])])) : null;
+  const war = named(f.w, WARS);
+  const sworn = named(f.o, WAR_SIDES);
+  const oath = sworn && warOfSide(sworn) && (!war || warOfSide(sworn) === war) ? sworn : null;
+  const rank = oath && typeof f.r === 'string' && RANKS[oath]?.some((r) => r.id === f.r) ? f.r : null;
+  return { side, standing, war, oath, rank };
 }
 
 // Each cast’s pair of looks under a key of its own (Rick and Morty’s under
@@ -148,12 +190,13 @@ export function writePose(s, flags = 0, shield = 100) {
 }
 
 // a pose as it came in: { x, y, z, heading, pitch, bank, speed, vy, hidden,
-// boost, safe, shield }, or null if it isn't one (out past deep space's edge, it's clamped)
+// boost, safe, lane, shield }, or null if it isn't one (out past deep space's
+// edge, it's clamped; an older pilot's never has the lane bit, so reads not riding)
 export function readPose(data) {
   if (!Array.isArray(data) || data.length < 9) return null;
-  const x = num(data[0], -7500, 7500);
+  const x = num(data[0], -FAR, FAR);
   const y = num(data[1], -1300, 1300);
-  const z = num(data[2], -7500, 7500);
+  const z = num(data[2], -FAR, FAR);
   const heading = num(data[3], -100, 100);
   if (x === null || y === null || z === null || heading === null) return null;
   const flags = Math.floor(num(data[8], 0, 255) ?? 0);
@@ -164,11 +207,12 @@ export function readPose(data) {
     heading: wrap(heading),
     pitch: num(data[4], -1.6, 1.6) ?? 0,
     bank: wrap(num(data[5], -4, 4) ?? 0), // (all the way round: upside down is ±π)
-    speed: num(data[6], -600, 600) ?? 0,
+    speed: num(data[6], -FAST, FAST) ?? 0,
     vy: num(data[7], -300, 300) ?? 0,
     hidden: Boolean(flags & FLAG.hidden),
     boost: Boolean(flags & FLAG.boost),
     safe: Boolean(flags & FLAG.safe),
+    lane: Boolean(flags & FLAG.lane),
     shield: num(data[9], 0, 100) ?? 100,
   };
 }
@@ -183,7 +227,8 @@ export const writeShot = (p, v, w = 0) => {
 // to start near where the pilot was last seen (`from`, a pose, if known)
 export function readShot(data, from = null) {
   if (!Array.isArray(data) || data.length < 6) return null;
-  const n = data.slice(0, 6).map((v) => num(v, -7500, 7500));
+  // (anywhere in the universe; its speed's checked just below)
+  const n = data.slice(0, 6).map((v, i) => (i < 3 ? num(v, -FAR, FAR) : num(v, -7500, 7500)));
   if (n.some((v) => v === null)) return null;
   if (Math.hypot(n[3], n[4], n[5]) > 800) return null;
   // (as far as it could have gone since that pose, on the pulse drive)
@@ -215,9 +260,9 @@ export function readPack(data) {
     if (!Array.isArray(h) || h.length < 9) continue;
     const id = num(h[0], 1, 1e9);
     const kind = typeof h[1] === 'string' && Object.hasOwn(HUNTERS, h[1]) ? h[1] : null;
-    const x = num(h[2], -7500, 7500);
+    const x = num(h[2], -FAR, FAR);
     const y = num(h[3], -1300, 1300);
-    const z = num(h[4], -7500, 7500);
+    const z = num(h[4], -FAR, FAR);
     if (id === null || !Number.isInteger(id) || !kind || x === null || y === null || z === null || out.some((o) => o.id === id)) continue;
     out.push({ id, kind, x, y, z, vx: num(h[5], -80, 80) ?? 0, vy: num(h[6], -80, 80) ?? 0, vz: num(h[7], -80, 80) ?? 0, hp: Math.max(1, Math.floor(num(h[8], 1, 99) ?? 1)) });
   }
@@ -250,7 +295,9 @@ export function hunterHitCounts(peer, at, now) {
 export const FOOT_MS = 100; // how often it goes out, while they're down
 export const WALKERS = ['rick', 'morty', 'walt', 'jesse', 'chewie', 'han', 'luke', 'artoo', 'leia', 'ahsoka', 'bobafett']; // footScene.js's PARTY, and galaxy/heroes.js's heroes
 const r5 = (v) => Math.round((v || 0) * 1e5) / 1e5;
-const writeWalker = (w) => (w ? [w.who, ...w.n.map(r5), ...w.f.map(r5), r5(w.h), r5(w.speed), r5(w.side), Math.round((w.aim || 0) * 100) / 100] : null);
+// (then what the body's doing, which an older reader stops before: the
+// emote [id, seconds on] or 0, the flinch and the fall, 0…1: footLife.js's)
+const writeWalker = (w) => (w ? [w.who, ...w.n.map(r5), ...w.f.map(r5), r5(w.h), r5(w.speed), r5(w.side), Math.round((w.aim || 0) * 100) / 100, Array.isArray(w.e) ? [String(w.e[0]).slice(0, 16), r2(w.e[1])] : 0, r2(w.hurt || 0), r2(w.down || 0)] : null);
 
 // what goes out while down: { planet, kind, ship: { n, f }, lead, mate }
 // (each walker { who, n, f, h, speed, side, aim }), or null once back in
@@ -286,6 +333,10 @@ const readWalker = (data) => {
     speed: num(data[8], -FOOT.run * 1.5, FOOT.run * 1.5) ?? 0,
     side: num(data[9], -FOOT.side * 1.5, FOOT.side * 1.5) ?? 0,
     aim: num(data[10], 0, 1) ?? 0,
+    // (an older client's packet stops at the aim: none of these)
+    e: Array.isArray(data[11]) && typeof data[11][0] === 'string' && num(data[11][1], 0, 600) != null ? [data[11][0], num(data[11][1], 0, 600)] : null,
+    hurt: num(data[12], 0, 1) ?? 0,
+    down: num(data[13], 0, 1) ?? 0,
   };
 };
 
@@ -307,11 +358,14 @@ export function readFoot(data) {
 
 // ── Down on a world in the galaxy (galaxy/surface/scene.js) ──
 // where a pilot's crew are, in that world's own metres: { world, kind,
-// lead, mate, ride }, each walker [who, x, y, z, yaw, speed, aim, arms],
-// ride the kind they're on (or null); or null once they've taken off
-// again. `arms` (newer pilots; older readers stop before it) is what's in
-// the hand: [gun kind, lit (a saber: 0 | 1), blade colour (#rrggbb), stance,
-// swinging (0 | 1)]
+// lead, mate, ride }, each walker [who, x, y, z, yaw, speed, aim, arms,
+// emote, motion], ride the kind they're on (or null); or null once
+// they've taken off again. `arms` (newer pilots; older readers stop before
+// it) is what's in the hand: [gun kind, lit (a saber: 0 | 1), blade colour
+// (#rrggbb), stance, swinging (0 | 1)]; `emote` and `motion` (newer still,
+// and only when there's one: lib/emote.js's emotePacket and motionPacket)
+// what they're doing ([id, seconds on]) and how they're moving ([speed,
+// side, turn] in metres and radians a second), so their feet keep pace
 export const WALK_MS = 100;
 const RIDES_SEEN = ['landspeeder', 'speederbike', 'tauntaun', 'kaadu', 'bantha']; // galaxy/surface/rides.js's
 const r2 = (v) => Math.round((v || 0) * 100) / 100;
@@ -319,7 +373,16 @@ const r2 = (v) => Math.round((v || 0) * 100) / 100;
 export const ARMS_GUNS = ['blaster', 'laser', 'portal', 'revolver', 'pistol', 'bowcaster', 'rifle', 'coppistol', 'saber', 'a280', 'dlt19', 'ee3', 'westar', 'shotgun', 'sniper', 'smg']; // universe/gunplay.js's GUNS
 const STANCES_SEEN = ['single', 'double', 'dual', 'heavy']; // galaxy/surface/combatRules.js's
 const writeArms = (a) => (a && ARMS_GUNS.includes(a.gun) ? [a.gun, a.lit ? 1 : 0, typeof a.color === 'string' ? a.color.slice(0, 7) : '', STANCES_SEEN.includes(a.stance) ? a.stance : 'single', a.swing ? 1 : 0] : null);
-const writeStroller = (w) => (w ? [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed), Math.round((w.aim || 0) * 100) / 100, ...(w.arms ? [writeArms(w.arms)] : [])] : null);
+const writeStroller = (w) => {
+  if (!w) return null;
+  const out = [w.who, r2(w.x), r2(w.y), r2(w.z), r2(wrap(w.yaw || 0)), r2(w.speed), Math.round((w.aim || 0) * 100) / 100];
+  // (what goes out checked as what comes in is; the arms' place kept, empty, ahead of them)
+  const e = readEmoteWire(w.emote);
+  const m = motionPacket(w.motion);
+  if (w.arms || e || m) out.push(writeArms(w.arms));
+  if (e || m) out.push(e ? [e.id, e.age] : null, m);
+  return out;
+};
 const readArms = (a) => {
   if (!Array.isArray(a) || !ARMS_GUNS.includes(a[0])) return null;
   return { gun: a[0], lit: a[1] === 1, color: typeof a[2] === 'string' && /^#[0-9a-fA-F]{6}$/.test(a[2]) ? a[2] : '#4aa8ff', stance: STANCES_SEEN.includes(a[3]) ? a[3] : 'single', swing: a[4] === 1 };
@@ -333,7 +396,9 @@ const readStroller = (data) => {
   const [x, y, z] = [num(data[1], -10000, 10000), num(data[2], -3000, 3000), num(data[3], -10000, 10000)];
   const yaw = num(data[4], -7, 7);
   if (x === null || y === null || z === null || yaw === null) return null;
-  return { who: data[0], x, y, z, yaw: wrap(yaw), speed: num(data[5], -80, 80) ?? 0, aim: num(data[6], 0, 1) ?? 0, arms: readArms(data[7]) };
+  const e = readEmoteWire(data[8]);
+  const m = readMotion(data[9]);
+  return { who: data[0], x, y, z, yaw: wrap(yaw), speed: num(data[5], -80, 80) ?? 0, aim: num(data[6], 0, 1) ?? 0, arms: readArms(data[7]), ...(e ? { emote: e } : {}), ...(m ? { motion: m } : {}) };
 };
 // a crew down on a world as it came in: { world, kind, lead, mate, ride },
 // { off: true } (back in their ship), or null if it isn't one
@@ -468,6 +533,7 @@ export function sample(snaps, now, delay = 140) {
       hidden: b.hidden,
       boost: b.boost,
       safe: b.safe,
+      lane: b.lane,
       shield: b.shield,
     };
   }

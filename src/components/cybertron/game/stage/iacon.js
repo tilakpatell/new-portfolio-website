@@ -14,6 +14,7 @@
 
 import * as THREE from 'three';
 import { makeFigure, makeThing } from '../bots';
+import { watcher } from './living';
 import { buildSkyline, drum, hash, makeFires, makeSky, makeStrips, merged, platedMaterial, slab, tower } from './common';
 import { sharpen } from '../../../../lib/three/textures';
 
@@ -365,12 +366,14 @@ export async function buildStage(area, { tier = 'high' } = {}) {
   const roofs = area.solids.filter((s) => s.tag === 'tower');
   const perch = roofs.sort((a, b) => Math.hypot(a.x - 70, a.z - 300) - Math.hypot(b.x - 70, b.z - 300))[0];
   let soundwave = null;
+  let watch = null;
   if (perch)
-    makeFigure('soundwave-foc').then((f) => {
+    makeFigure('soundwave-foc', { seed: 7 }).then((f) => {
       f.group.position.set(perch.x, perch.top, perch.z);
       f.group.rotation.y = Math.atan2(0 - perch.x, 250 - perch.z);
       group.add(f.group);
       soundwave = f;
+      watch = watcher(f, { seed: 1 });
     });
 
   // the fires: the gate, and wherever the fighting has been
@@ -435,7 +438,7 @@ export async function buildStage(area, { tier = 'high' } = {}) {
         jet.position.set(Math.cos(a) * 360, 140 + Math.sin(a * 3) * 20, Math.sin(a) * 360);
         jet.rotation.set(0, -a, -0.5);
       }
-      soundwave?.update(1 / 60);
+      watch?.(t, dt ?? 1 / 60, sim);
     },
     dispose() {
       group.traverse((o) => {

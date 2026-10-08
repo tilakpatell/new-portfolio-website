@@ -18,8 +18,11 @@
 
 import * as THREE from 'three';
 import { NOISE_GLSL } from './sun';
+import { SPREAD } from './scale';
 
-// seven dying stars, out between the places (supernova.test.js keeps them clear)
+// seven dying stars, out between the places (supernova.test.js keeps them
+// clear), spread with them across the disc (scale.js's SPREAD: the numbers
+// are where they were before)
 export const SUPERNOVA_SITES = [
   [-3855, -650, -2950],
   [5425, -360, 450],
@@ -28,7 +31,7 @@ export const SUPERNOVA_SITES = [
   [-5120, 255, -750],
   [7600, 300, 2400],
   [-2600, -800, -7000],
-];
+].map(([x, y, z]) => [x * SPREAD, y, z * SPREAD]);
 
 // the stages, in seconds from the start
 const BRIGHTEN = 1.6; // the star swelling

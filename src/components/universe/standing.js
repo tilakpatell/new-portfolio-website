@@ -59,6 +59,15 @@ export const LEVELS = {
   outlaw: [[3, 'friend']],
 };
 
+// Who a standing is with, side by side (sides.js's ids), as words: the law
+// (the side's `law`), the ordinary ships, the pirates (the side's distress
+// pirates). The hangar's locks and the roster's lines say it this way.
+export const WHO = {
+  starwars: { law: 'the Empire', civil: 'the galaxy’s spacers', outlaw: 'the Weequay pirates' },
+  rickmorty: { law: 'the Federation', civil: 'the people of C-137', outlaw: 'the Gromflomite raiders' },
+  breakingbad: { law: 'the DEA', civil: 'the people of Albuquerque', outlaw: 'Uncle Jack’s crew' },
+};
+
 const clamp = (v) => (v < -RANGE ? -RANGE : v > RANGE ? RANGE : v);
 // the level a value is at: the furthest threshold passed on its side of nought, or null
 export function levelOf(axis, value) {

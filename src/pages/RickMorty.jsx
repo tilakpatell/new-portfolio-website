@@ -8,7 +8,7 @@ import PlumbusFactory from '../components/rickmorty/PlumbusFactory';
 import PortalHero from '../components/rickmorty/PortalHero';
 import RmWorld from '../components/rickmorty/world/RmWorld';
 import { DIMENSIONS } from '../components/rickmorty/dimensions';
-import { DIAL, writeDial } from '../components/rickmorty/world/dimensions/destinations';
+import { isPlanet } from '../components/rickmorty/world/dimensions/destinations';
 import PortalPanic from '../components/rickmorty/portal/PortalPanic';
 import { BethFace, JerryFace, MortyFace, RickFace, SummerFace } from '../components/rickmorty/Faces';
 import '../components/rickmorty/rickmorty.css';
@@ -57,6 +57,21 @@ const BOARD = [
   ['showMe', 'Show me what you got'],
 ];
 
+// What a look through the page's portal gun is, and how to get there for real:
+// a planet's on the universe map, the Citadel's a page of its own, C-137's
+// here, and anywhere else is on the dial of Rick's gun in the world above.
+function LookNote({ d }) {
+  if (isPlanet(d.id))
+    return (
+      <>
+        That’s only a look. {d.name} is a planet on the universe map, out in the Rick and Morty sector: <Link className="underline underline-offset-2" to={`/universe/${d.id}`}>land on it</Link> and you’re in it.
+      </>
+    );
+  if (d.id === 'citadel') return 'That’s only a look. Enter the Citadel to walk it.';
+  if (d.id === 'c137') return 'That’s only a look: you’re in C-137 already.';
+  return 'That’s only a look. To go, dial it on Rick’s portal gun in the world at the top of the page.';
+}
+
 // Dimension C-137: the Smiths' neighbourhood to walk about in 3D first, then
 // fire the portal gun into other dimensions, play Portal panic, press the
 // Meeseeks box, flip through interdimensional cable, see how a plumbus is
@@ -67,8 +82,6 @@ export default function RickMorty() {
   const { notify } = useAchievements();
   const [dim, setDim] = useState(0);
   const [fired, setFired] = useState(0);
-  // and where it leaves the garage portal set, in the world below
-  const [dialled, setDialled] = useState(null);
   const d = DIMENSIONS[dim];
 
   const fire = () => {
@@ -79,9 +92,6 @@ export default function RickMorty() {
     });
     setDim((i) => (i + 1 + Math.floor(Math.random() * (DIMENSIONS.length - 1))) % DIMENSIONS.length);
     setFired((n) => n + 1);
-    const to = DIAL[1 + Math.floor(Math.random() * (DIAL.length - 1))];
-    writeDial(to.id);
-    setDialled(to.name);
   };
   const play = (name) => {
     audioContext();
@@ -128,9 +138,10 @@ export default function RickMorty() {
               Back to the site
             </Link>
           </div>
-          {dialled && (
+          {/* (this one only shows a dimension: how to get to it depends on where it is) */}
+          {fired > 0 && (
             <p className="mt-3 text-sm opacity-80" aria-live="polite">
-              Dialled to {dialled}. The portal’s in Rick’s garage, down the page.
+              <LookNote d={d} />
             </p>
           )}
           <WorldSwitcher className="mt-10" />

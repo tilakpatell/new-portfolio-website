@@ -14,9 +14,11 @@ export const CAST = [
   { id: 'hank', name: 'Hank Schrader', role: 'DEA', text: 'Walt’s brother-in-law, DEA agent, and a serious collector of minerals.', action: 'See the collection', done: 'They’re minerals.', said: true },
 ];
 
-// Saul, in his office in the world (world/places.jsx), when you've bought
-// something off him: the superlab gets a line of its own.
+// Saul, in his office in the world (world/places.jsx): his pitch as you come
+// in (the quote's his), and when you've bought something off him: the
+// superlab gets a line of its own.
 export const SAUL = {
+  pitch: '“You’ve got cash, I’ve got solutions.” Spend what you’ve cooked: every one of these carries into the next shift.',
   superlab: 'Done. The superlab’s under the laundry at the east end of Central. Don’t ask how.',
   bought: (name) => `${name}: done. S’all good, man.`,
 };

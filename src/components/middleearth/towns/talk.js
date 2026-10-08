@@ -15,6 +15,11 @@ export function personVoice(id) {
   return who && !SILENT.has(who) ? who : null;
 }
 
+// Whose voice a conversation's line is said in: whoever says it, or its
+// `voice` where the words in it are someone else's (the narrator, quoting
+// Gollum; the Voice of Saruman, who is Saruman).
+export const nodeVoice = (node) => node?.voice ?? node?.who ?? null;
+
 export const talkNode = (convo, talk) => convo.nodes[talk.at] ?? null;
 
 // On from where the talk is: by the choice picked, or to what comes next.

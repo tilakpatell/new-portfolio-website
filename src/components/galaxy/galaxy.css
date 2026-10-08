@@ -22,6 +22,7 @@
 }
 .galaxy-label[data-kind='planet'] { font-size: 0.8rem; text-transform: uppercase; }
 .galaxy-label[data-kind='station'] { color: #ffd9a0; --swatch: #ffd9a0; }
+.galaxy-label[data-kind='place'] { color: #a9c4ff; --swatch: #a9c4ff; font-size: 0.68rem; opacity: 0.85; }
 .galaxy-label[data-here] { color: var(--swatch); background: rgb(3 4 10 / 0.6); }
 
 /* the other systems' stars: their names as the nose comes near (under the
@@ -246,6 +247,7 @@
 }
 .galaxy-here button:hover:not(:disabled) { background: rgb(255 255 255 / 0.05); }
 .galaxy-here button:disabled { color: var(--accent-text); }
+.galaxy-out li[data-found] button { color: #a9c4ff; }
 .universe-back.inline { display: inline; margin: 0; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
 
 /* the galaxy map: a holotable's blue over the stars */
@@ -327,7 +329,7 @@
 .holomap-region-name { fill: rgb(191 234 255 / 0.5); font-family: var(--font-mono); font-size: 0.26px; letter-spacing: 0.06px; text-anchor: middle; text-transform: uppercase; }
 .holomap-unknown-name { fill: rgb(191 234 255 / 0.35); }
 .holomap-lane { fill: none; stroke: rgb(255 210 120 / 0.35); stroke-width: 0.045; stroke-linejoin: round; }
-.holomap-course { stroke: #fff; stroke-width: 0.06; stroke-dasharray: 0.18 0.12; animation: holomap-dash 1s linear infinite; }
+.holomap-course { fill: none; stroke: #fff; stroke-linejoin: round; stroke-width: 0.06; stroke-dasharray: 0.18 0.12; animation: holomap-dash 1s linear infinite; }
 @keyframes holomap-dash { to { stroke-dashoffset: -0.6; } }
 .holomap-axis { position: absolute; pointer-events: none; color: rgb(127 214 255 / 0.45); font-family: var(--font-mono); font-size: 9px; }
 .holomap-axis span { position: absolute; translate: -50% -50%; }

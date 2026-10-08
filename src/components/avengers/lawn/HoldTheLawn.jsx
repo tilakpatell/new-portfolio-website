@@ -10,7 +10,7 @@ import { audioContext } from '../../../lib/audio';
 import { capturePointer } from '../../../lib/pointer';
 import { useSays } from '../hq/useSays';
 import { LAWN, LIFT, WAVES, callLightning, liftInput, newLawn, recallHammer, setMove, skipLift, startLawn, stepLawn, throwHammer } from './rules';
-import { LINES } from './lines';
+import { LINES, READY, SAYS, SPOKEN } from './lines';
 import './lawn.css';
 import '../../../styles/lazy/avengers.css';
 
@@ -33,8 +33,8 @@ const media = (q) => (typeof window !== 'undefined' ? window.matchMedia?.(q) : n
 const narrow = media('(max-width: 760px)');
 // a mouse and keyboard; lawn.css hides the touch buttons for these
 const fine = media('(hover: hover) and (pointer: fine)');
-// what Thor says as each wave comes in (./lines.js), in his own voice where it's been made (lib/voiced.js)
-const VOICED = new Set(LINES);
+// what Thor says as each wave comes in and as it goes (./lines.js), in his own voice where it's been made (lib/voiced.js)
+const VOICED = new Set(SPOKEN);
 
 // The most urgent thing to throw at, for keyboard play.
 function urgent(g) {
@@ -172,11 +172,11 @@ export default function HoldTheLawn({ fallback }) {
               setLifted(true);
               local.set(LIFTED, true);
             }
-            important = { message: e.skipped ? LINES[0] : 'Worthy. The sky answers.' };
+            important = { message: e.skipped ? LINES[0] : SAYS.lifted };
             break;
           case 'drop':
             play('knock');
-            important = { message: 'It slips back into the crater. Hold on, and keep the needle in the green.' };
+            important = { message: SAYS.drop };
             break;
           case 'wave':
             play('drum');
@@ -204,7 +204,7 @@ export default function HoldTheLawn({ fallback }) {
             play('clang');
             if (!f.taught.has('block')) {
               f.taught.add('block');
-              important = { message: 'The shield turned it. Throw past it, then call the hammer back through its back.' };
+              important = { message: SAYS.block };
             }
             break;
           case 'fire':
@@ -219,14 +219,14 @@ export default function HoldTheLawn({ fallback }) {
             f.hurt = 1;
             if (e.by === 'bolt' && !f.taught.has('bolt')) {
               f.taught.add('bolt');
-              important = { message: 'With the hammer out, bolts get through. Call it back, or step aside.' };
+              important = { message: SAYS.bolt };
             }
             break;
           case 'breach':
             play('warn');
             if (!f.taught.has('breach')) {
               f.taught.add('breach');
-              important = { message: 'One got past the line. Don’t let them reach the terrace.' };
+              important = { message: SAYS.breach };
             }
             break;
           case 'lightning':
@@ -235,7 +235,7 @@ export default function HoldTheLawn({ fallback }) {
             break;
           case 'ready':
             play('sizzle');
-            important = { message: `Lightning ready. ${fine?.matches ? 'E, or right-click,' : 'The bolt button'} brings it down: on the hammer if it’s out, else where you aim.` };
+            important = { message: READY(fine?.matches) };
             break;
           case 'roar':
             play('roar');

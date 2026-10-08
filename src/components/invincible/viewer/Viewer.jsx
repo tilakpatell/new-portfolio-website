@@ -34,12 +34,21 @@ const FILES = [
     note: 'Do not engage. Do not let Mark engage. (Mark will engage.)',
   },
 ];
+// the poses, then the footage: each one's own motion-captured clips
+// (scripts/meshy-invincible.mjs's CLIPS.hero), played on the turntable
 const POSE_NAMES = [
   ['stand', 'Standing'],
   ['hover', 'Hovering'],
   ['fly', 'Flying'],
   ['punch', 'Punching'],
   ['windup', 'Winding up'],
+  ['clip:walk', 'Walking'],
+  ['clip:run', 'Running'],
+  ['clip:punch', 'Combination'],
+  ['clip:hit', 'Taking a hit'],
+  ['clip:land', 'Landing'],
+  ['clip:wave', 'Waving'],
+  ['clip:cheer', 'Cheering'],
 ];
 
 // One of the three at a time, on a turntable: drag to turn him, pick a pose.

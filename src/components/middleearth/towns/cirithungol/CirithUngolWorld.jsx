@@ -3,6 +3,7 @@ import { useAchievements } from '../../../Achievements';
 import { audioContext } from '../../../../lib/audio';
 import { use3D } from '../../../../lib/gpu';
 import { local, useFrameLoop, useInView, useMediaQuery } from '../../../../lib/hooks';
+import { sayVoiced, stopVoiced } from '../../../../lib/voiced';
 import { readPad, typing } from '../../../games/pad';
 import { Convo, QuestList, Stick, Travellers } from '../TownHud';
 import { useTravellers } from '../useTravellers';
@@ -13,7 +14,7 @@ import { newTalk, talkNode, talkOn } from '../talk';
 import { behindYaw, cameraMove, makeWalker, newWalker } from '../walker';
 import { newWatchers, stepWatchers } from '../watchers';
 import { LAIR_IN, LAIR_OUT, ORC_ROUNDS, SHELOB_ROUNDS, SHELOB_START, TOWER_COLLIDERS, TOWER_DOOR, TOWER_IN, TOWER_WALLS, lairBlocked, validAt } from './layout';
-import { CONVOS, CRUMB_SAYS, QUESTS, SEAL, SIDE, SPEAKERS, cirithProgress } from './story';
+import { CONVOS, CRUMB_SAYS, QUESTS, SAYS, SEAL, SIDE, SPEAKERS, cirithProgress } from './story';
 import { CRUMBS, DUEL, MORGUL, ORCS, PHIAL, SHELOB, STAIRS, brush, crumbling, crumbsLeft, dodge, moveHand, newClimb, newCrumbs, newDuel, newMorgul, newPhial, onLedge, recoils, stab, stepClimb, stepCrumbs, stepDuel, stepMorgul, stepPhial } from './rules';
 import '../../shire/shire.css';
 import '../bree/bree.css';
@@ -103,7 +104,12 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
   const hudKey = useRef('');
   const [toast, setToast] = useState(null);
   const [list, setList] = useState(false);
-  const say = useCallback((text, bad = false) => setToast({ text, bad, at: Date.now() }), []);
+  // a toast; and `who`, whose words are in it, says them (lib/voiced.js)
+  const say = useCallback((text, bad = false, who = null) => {
+    setToast({ text, bad, at: Date.now() });
+    if (who) sayVoiced(who, text);
+  }, []);
+  useEffect(() => stopVoiced, []);
   const timers = useRef(new Set());
   const later = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -492,7 +498,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
         } else if (e.type === 'stood') {
           s.busy = true;
           a.fx('stood');
-          say('You’re on your feet and walking down to the road, towards the green light. Sam drags you down behind the rocks. “Mr. Frodo!” Again: keep your eyes off it.', true);
+          say(SAYS.stood.text, true, SAYS.stood.who);
           later(() => sim.current?.mode === 'morgul' && startMorgul(), 2400);
         } else if (e.type === 'passed') {
           complete('morgul');
@@ -500,7 +506,7 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           s.zone = 'stairs';
           s.mode = 'walk';
           s.air?.place('stairs');
-          say('The host has gone by, west, to war. Gollum: “This way, master. Up the stairs.”', false);
+          say(SAYS.passed.text, false, SAYS.passed.who);
         }
       }
     }
@@ -618,9 +624,11 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave }) {
           a.fx('stir');
           sounds().then((x) => x.murmur());
           s.said = CRUMB_SAYS.stir[e.i % CRUMB_SAYS.stir.length];
+          if (s.said.includes('“')) sayVoiced('frodo', s.said); // talking in his sleep (./voicelines.js)
         } else if (e.type === 'woke') {
           sounds().then((x) => x.murmur());
           s.said = CRUMB_SAYS.woke;
+          sayVoiced('gollum', s.said);
           recordGo({ won: false, score: null });
         }
       }

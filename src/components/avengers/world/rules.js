@@ -694,15 +694,22 @@ function collide3(py, x, y, z) {
 // super-hero's, and a spider's jump (about a metre and three quarters)
 export const HERO = { walk: 2.8, run: 9.5, accel: 15, turn: 11, jump: 8.4, gravity: 21, air: 0.35 };
 
+// His walk clip covers 1.5 m a second and his run 5.08 (manifest.json's
+// spiderman.speeds), and a clip played much faster or slower than its own
+// pace looks it, its feet sliding: so the walk plays at most 2.4 times its
+// pace and the run at least 0.55 of its own (`rates`), and the change from
+// one to the other comes between those, up to a run past 3.45 m a second
+// and back to a walk under 3.05 (his plain walk, 2.8, is always a walk).
+export const GAIT = { walk: 1.5, run: 5.08, up: 3.45, down: 3.05, rates: { walk: [0.35, 2.4], run: [0.55, 2.4] } };
+
 // Which of his clips for how fast he's going, given the one playing: each
 // change a little past the line it's at, so speeding up or easing off across
 // it doesn't flick from one clip to the other and back every frame
 export function gaitFor(playing, speed) {
-  const line = (HERO.walk + HERO.run) / 2.2;
   if (speed < (playing === 'idle' ? 0.5 : 0.3)) return 'idle';
-  if (playing === 'run') return speed < line - 0.5 ? 'walk' : 'run';
-  if (playing === 'walk') return speed > line + 0.5 ? 'run' : 'walk';
-  return speed < line ? 'walk' : 'run';
+  if (playing === 'run') return speed < GAIT.down ? 'walk' : 'run';
+  if (playing === 'walk') return speed > GAIT.up ? 'run' : 'walk';
+  return speed < (GAIT.up + GAIT.down) / 2 ? 'walk' : 'run';
 }
 
 // ── swinging, and climbing ──

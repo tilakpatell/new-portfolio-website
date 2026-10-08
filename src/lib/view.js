@@ -1,4 +1,4 @@
-import { UNIVERSES, byId } from '../components/universe/universes';
+import { MOONS, UNIVERSES, byId } from '../components/universe/universes';
 
 // The two ways to look round the site: the universe (the map, where every
 // page is a place to fly to) and the classic site (the pages as pages). The
@@ -24,9 +24,11 @@ const under = (pathname, to) => pathname === to || pathname.startsWith(`${to}/`)
 
 // The place on the map a page belongs to: its station, or its world's planet
 // (however deep in it you are). The classic travel page is the travel planet.
+// The Rick and Morty sector's planets come first: their worlds are under
+// C-137's path (/c-137/squanch), but they're out in their own sector.
 function placeFor(pathname) {
   if (under(pathname, '/travel')) return byId('travel');
-  return UNIVERSES.find((u) => under(pathname, u.to) || u.pages?.some((p) => under(pathname, p.to)));
+  return MOONS.find((m) => under(pathname, m.to)) ?? UNIVERSES.find((u) => under(pathname, u.to) || u.pages?.some((p) => under(pathname, p.to)));
 }
 
 // Where the universe button goes from a page: its place on the map, picked.
