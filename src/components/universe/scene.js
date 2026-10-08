@@ -102,7 +102,7 @@ import { calibrate, calibrationKey, recall, remember } from '../../lib/three/cal
 import { settle as settleWithin } from '../../lib/settle';
 import { device } from '../../lib/device';
 import { createPace } from '../../lib/three/pace';
-import { DIVE_MS, FOV, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
+import { CHASE, DIVE_MS, FOV, chaseDist, cover, cameraFrom, focusPose, overviewPose, poseAt, startFlight, worldPos } from './flight';
 import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SECTOR_OF, SUN, inExpanse, mapSectorOf, sectorOf } from './layout';
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
@@ -618,6 +618,11 @@ export async function create(canvas, ctx) {
   let env = spaceEnvironment(renderer, T['sky-glow']);
   scene.environment = env.texture;
   const post = createPost(renderer, scene, camera, { small });
+  // the map's lens (post.js; the galaxy keeps its picture): a floor under
+  // the sky, a little more contrast, and the corners soft but on a low tier
+  post.setToe(0.02, 0.08);
+  post.contrast(0.18);
+  post.defocus(tier === 'low' ? 0 : 1);
 
   // the sky: the Star Wars galaxy's (galaxy/sky.js), its disc and dust,
   // its core and nebulae, as Kashyyyk sees it (the core a third of the way
@@ -1282,10 +1287,10 @@ export async function create(canvas, ctx) {
     camR.set(1, 0, 0).applyQuaternion(camQ);
     const [bx, by, bz] = state.bias;
     const target = new THREE.Vector3(s.x + bx, s.y + by, s.z + bz)
-      .addScaledVector(camF, 0.4)
-      .addScaledVector(camU, 0.06)
+      .addScaledVector(camF, CHASE.ahead)
+      .addScaledVector(camU, CHASE.up)
       .addScaledVector(camR, (s.lean || 0) * 0.45);
-    return { target, quat: camQ.clone().multiply(TILT), dist: 1.7 + Math.min(Math.abs(s.speed) / SHIP.boost, 1.5) * 0.9 + state.streak * 0.7 };
+    return { target, quat: camQ.clone().multiply(TILT), dist: chaseDist({ speed: s.speed, boost: SHIP.boost, streak: state.streak }) };
   };
 
   // From the pilot's seat: the eye a little ahead of the ship's middle and
@@ -5547,6 +5552,25 @@ export async function create(canvas, ctx) {
       pose: holdPose,
       soon: (id) => director.soon(id), // (the director's next, from the checks)
       frames, // (resolves after n more frames, each one drawn)
+      // the ship's box on screen, in CSS px (the chase camera's framing,
+      // measured: flight.js's CHASE); null with no ship or behind the camera
+      shipPx: () => {
+        const g = state.model?.group;
+        if (!g) return null;
+        camera.updateMatrixWorld();
+        const box = new THREE.Box3().setFromObject(g);
+        const p = new THREE.Vector3();
+        let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+        for (let i = 0; i < 8; i++) {
+          p.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).project(camera);
+          if (p.z > 1) return null;
+          x0 = Math.min(x0, p.x);
+          x1 = Math.max(x1, p.x);
+          y0 = Math.min(y0, p.y);
+          y1 = Math.max(y1, p.y);
+        }
+        return { w: Math.round(((x1 - x0) / 2) * size.w), h: Math.round(((y1 - y0) / 2) * size.h), box: [((x0 + 1) / 2) * size.w, ((1 - y1) / 2) * size.h, ((x1 + 1) / 2) * size.w, ((1 - y0) / 2) * size.h].map(Math.round) };
+      },
       // a blast `ahead` units in front of your ship, `size` across (to see one at a pose)
       blast: (size = 0.6, ahead = 1.5) => {
         const sh = state.ship;

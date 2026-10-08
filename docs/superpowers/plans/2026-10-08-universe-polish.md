@@ -155,7 +155,7 @@
 - Modify: `src/components/universe/flight.js` (`export const CHASE = { ahead: 0.15, up: 0.1, dist: 1.1, speed: 0.6, streak: 0.5 }`, `shipWidthOf({ length, fov, dist, aspect }) → 0..1`), `flight.test.js`, `src/components/universe/scene.js:1277-1288` (`chaseView` reads `CHASE`), a DEV hook `__universe().shipPx() → { w, h }` beside the existing `pose` and `frames` hooks
 - Read first: `scene.js`'s `chaseView` (lines 1277–1288), `cockpitView` and `mapPose` (which do not change), the `__universe` DEV object (grep `__universe`)
 
-- [ ] **Step 1: Tests**: `shipWidthOf({ length: 0.26, fov: 34, dist: CHASE.dist + CHASE.ahead, aspect: 16 / 9 })` between 0.20 and 0.25; at `dist + speed + ahead` (the boost) ≥ 0.14; `cameraFrom` unchanged (its existing tests).
+- [ ] **Step 1: Tests**: `shipWidthOf({ length: 0.26, fov: 34, dist: chaseDepth(chaseDist({})), aspect: 16 / 9 })` between 0.20 and 0.25, at rest and at cruise; at the boost (`chaseDist({ speed: boost, boost })`) ≥ 0.14; `cameraFrom` unchanged (its existing tests). (The ship sits `ahead` nearer the camera than the target, not further: `chaseDepth(dist) = dist − ahead·cos(tilt) + up·sin(tilt)`.)
 - [ ] **Step 2:** FAIL; implement; PASS. In the dev server at `falcon-sun`: `__universe().shipPx().w / 1280` within the range. `git diff` shows `cockpitView` and `mapPose` untouched (quote it in the PR).
 - [ ] **Step 3:** Commit: `git commit -m "The ship fills a fifth of the frame: the chase camera closer and a little higher, its numbers in one place"`.
 

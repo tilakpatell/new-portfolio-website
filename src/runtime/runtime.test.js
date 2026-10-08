@@ -482,13 +482,26 @@ describe('createRuntime', () => {
     expect(rt.status).toBe('ready');
   });
 
-  it('a webgpu loss comes back on webgl', async () => {
+  it('a nodes module without a gpu mounts on nodes-webgl', async () => {
+    const { rt, makeBackend } = make({ gpu: false });
+    await rt.mount({ id: 'n', shading: 'nodes', create: () => fakeWorld() }, {}, fakeHost());
+    expect(makeBackend.mock.calls[0][0]).toBe('nodes-webgl'); // (never the classic renderer: it can't draw nodes)
+    expect(rt.status).toBe('ready');
+  });
+
+  it('a webgpu loss comes back on nodes-webgl, and a loss there stays there', async () => {
     const { rt, makeBackend } = make({ gpu: true });
     await rt.mount({ id: 'n', shading: 'nodes', create: () => fakeWorld() }, {}, fakeHost());
     expect(makeBackend.mock.calls[0][0]).toBe('webgpu');
     makeBackend.mock.calls[0][1].onLost();
     await rt.mount({ id: 'n', shading: 'nodes', create: () => fakeWorld() }, {}, fakeHost());
-    expect(makeBackend.mock.calls[1][0]).toBe('webgl');
+    expect(makeBackend.mock.calls[1][0]).toBe('nodes-webgl');
+    makeBackend.mock.calls[1][1].onLost();
+    await rt.mount({ id: 'n', shading: 'nodes', create: () => fakeWorld() }, {}, fakeHost());
+    expect(makeBackend.mock.calls[2][0]).toBe('nodes-webgl');
+    // and a glsl world after all that is on the classic renderer, as ever
+    await rt.mount({ id: 'g', create: () => fakeWorld() }, {}, fakeHost());
+    expect(makeBackend.mock.calls[3][0]).toBe('webgl');
   });
 
   it('a create that throws fails the mount', async () => {

@@ -23,9 +23,9 @@ const BASE = '/textures/universe/';
 // scripts/build-universe-textures.py (--hq for the -hq set); Cybertron's and
 // Invincible's by their own scripts (Invincible's relief with an -hq;
 // Cybertron's is 2048 on high and up, 1024 below).
-// The universe map's own sky is 'sky-glow', the Milky Way's light only,
-// baked from the 8K sky by scripts/bake-universe-sky.mjs (skyShader.js
-// draws its stars); 'sky' itself, with its stars, is the Earth's.
+// 'sky-glow' is the Milky Way's light only, baked from the 8K sky by
+// scripts/bake-universe-sky.mjs; the map lights with it and draws
+// galaxy/sky.js's sky. 'sky' itself, with its stars, is the Earth's.
 const map = (names, opts) => names.map((n) => [n, opts]);
 const MAPS = Object.fromEntries([
   ...map(['music', 'middleearth', 'marvel', 'breakingbad', 'caribbean', 'office', 'rickmorty'], { sm: true, hq: true, xl: true, colour: true }),
