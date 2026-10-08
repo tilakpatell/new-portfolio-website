@@ -6,7 +6,7 @@
 
 **Architecture:** Pure, tested modules (`mapView.js`, `labelPlace.js`, `radar.js`, `pickups.js`) hold the rules; React components (`HoloMap.jsx`, `FlightCluster.jsx`) render plain markup; `galaxy/scene.js` writes per-frame numbers into that markup through refs, as it does for the reticle and lock today. Three PRs: map (Tasks 1–7), flight HUD (8–12), pickups and hangar (13–17).
 
-**Tech Stack:** React 18, three.js, Vite, Vitest (+ Testing Library), plain CSS, `@gltf-transform/*` for the pickup model.
+**Tech Stack:** React 18, three.js, Vite, Vitest (Node environment: no jsdom; components only through `renderToStaticMarkup`), plain CSS, `@gltf-transform/*` for the pickup model.
 
 **Spec:** `docs/superpowers/specs/2026-10-08-galaxy-map-flight-ui-design.md`
 
@@ -315,107 +315,172 @@ git commit -m "The galaxy map's names placed round their dots so none covers ano
 
 ### Task 3: the map zooms and pans
 
+The repo's tests run in Node (no jsdom, no Testing Library: components are checked with `renderToStaticMarkup` or not at all). So the pointer logic is a pure machine (`gesture.js`), tested; the hook that wires it to the DOM is thin and checked in the browser (Task 7).
+
 **Files:**
+- Create: `src/components/galaxy/gesture.js` (the press, drag and pinch rules, pure)
+- Test: `src/components/galaxy/gesture.test.js`
+- Create: `src/components/galaxy/useMapView.js` (the hook: the machine on the box's pointer events, the wheel, the view state)
 - Modify: `src/components/galaxy/HoloMap.jsx` (the `.holomap-map` block, ~lines 256–341; `paintGalaxy`, ~65–116; the canvas effect, ~189–197)
-- Create: `src/components/galaxy/useMapView.js` (the pointer, wheel, pinch and key handling as a hook)
 - Modify: `src/components/galaxy/galaxy.css` (the `.holomap-map` rules, ~296–345)
-- Test: `src/components/galaxy/useMapView.test.jsx`
 
 **Interfaces:**
 - Consumes: Task 1's `FIT`, `zoomAt`, `panBy`, `frameUnits`, `onView`.
-- Produces: `useMapView(boxRef)` → `{ view, setView, zoom(factor), zoomIn(), zoomOut(), fit(), frame(points), handlers, dragged }`, where `handlers` are `{ onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onClickCapture }` for the box, the wheel listener is added natively (`{ passive: false }`), and `dragged()` is true while the last press moved 5 px or more. The stage gets `--k`, `--vx`, `--vy`.
+- Produces: `DRAG = 5`; `createGesture()` → `{ down(id, x, y, rect), move(id, x, y, rect) → null | { pan: [du, dw] } | { zoom: f, u, w }, up(id), cancel(id), takeClick() → boolean, get dragging }` where `rect` is `{ left, top, width, height }` (the box's client rect) and `du, dw, u, w` are fractions of the box. `useMapView(boxRef)` → `{ view, setView, zoom(factor), zoomIn(), zoomOut(), fit(), frame(points), handlers }`, where `handlers` are `{ onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onClickCapture }` for the box, and the wheel listener is added natively (`{ passive: false }`). The stage gets `--k`, `--vx`, `--vy`.
 
 - [ ] **Step 1: Write the failing test**
 
-```jsx
+```js
 import { describe, expect, it } from 'vitest';
-import { act, render, fireEvent } from '@testing-library/react';
-import { useRef } from 'react';
-import { useMapView } from './useMapView';
+import { createGesture } from './gesture';
 
-function Probe({ onReady }) {
-  const box = useRef(null);
-  const mv = useMapView(box);
-  onReady(mv);
-  return (
-    <div ref={box} data-testid="box" style={{ width: 600, height: 600 }} {...mv.handlers}>
-      <button type="button" data-testid="sys" onClick={() => (window.__picked = (window.__picked ?? 0) + 1)}>Hoth</button>
-    </div>
-  );
-}
+const R = { left: 0, top: 0, width: 600, height: 600 };
 
-const sized = (el) => (el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 600, height: 600, right: 600, bottom: 600, x: 0, y: 0 }));
-
-describe('useMapView', () => {
-  it('zooms in and fits back', () => {
-    let mv;
-    const { getByTestId } = render(<Probe onReady={(m) => (mv = m)} />);
-    sized(getByTestId('box'));
-    act(() => mv.zoom(2));
-    expect(mv.view.k).toBe(2);
-    act(() => mv.fit());
-    expect(mv.view).toEqual({ k: 1, x: 0, y: 0 });
+describe('gesture', () => {
+  it('a drag pans by the share of the box it moved, and swallows the click it ends with', () => {
+    const g = createGesture();
+    g.down(1, 300, 300, R);
+    expect(g.move(1, 303, 300, R)).toBeNull(); // (under DRAG: still a click)
+    const m = g.move(1, 360, 300, R);
+    expect(m.pan[0]).toBeCloseTo(60 / 600);
+    expect(m.pan[1]).toBeCloseTo(0);
+    g.up(1);
+    expect(g.takeClick()).toBe(true);
+    expect(g.takeClick()).toBe(false);
   });
-  it('a drag pans and does not click what it ends on', () => {
-    let mv;
-    window.__picked = 0;
-    const { getByTestId } = render(<Probe onReady={(m) => (mv = m)} />);
-    const box = getByTestId('box');
-    sized(box);
-    act(() => mv.zoom(2));
-    const before = mv.view.x;
-    fireEvent.pointerDown(box, { pointerId: 1, clientX: 300, clientY: 300, button: 0 });
-    fireEvent.pointerMove(box, { pointerId: 1, clientX: 360, clientY: 300 });
-    fireEvent.pointerUp(box, { pointerId: 1, clientX: 360, clientY: 300 });
-    fireEvent.click(getByTestId('sys'));
-    expect(mv.view.x).toBeGreaterThan(before);
-    expect(window.__picked).toBe(0);
+  it('a press that barely moves is a click', () => {
+    const g = createGesture();
+    g.down(1, 300, 300, R);
+    expect(g.move(1, 302, 301, R)).toBeNull();
+    g.up(1);
+    expect(g.takeClick()).toBe(false);
   });
-  it('a press that barely moves still clicks', () => {
-    window.__picked = 0;
-    const { getByTestId } = render(<Probe onReady={() => {}} />);
-    const box = getByTestId('box');
-    sized(box);
-    fireEvent.pointerDown(box, { pointerId: 1, clientX: 300, clientY: 300, button: 0 });
-    fireEvent.pointerMove(box, { pointerId: 1, clientX: 302, clientY: 301 });
-    fireEvent.pointerUp(box, { pointerId: 1, clientX: 302, clientY: 301 });
-    fireEvent.click(getByTestId('sys'));
-    expect(window.__picked).toBe(1);
+  it('two fingers pinch about their middle', () => {
+    const g = createGesture();
+    g.down(1, 200, 300, R);
+    g.down(2, 400, 300, R);
+    const m = g.move(2, 500, 300, R);
+    expect(m.zoom).toBeCloseTo(300 / 200);
+    expect(m.u).toBeCloseTo(0.5);
+    expect(m.w).toBeCloseTo(0.5);
+    g.up(2);
+    g.up(1);
+    expect(g.takeClick()).toBe(true); // (a pinch never picks a system)
+  });
+  it('a cancelled press forgets itself', () => {
+    const g = createGesture();
+    g.down(1, 300, 300, R);
+    g.cancel(1);
+    expect(g.move(1, 400, 300, R)).toBeNull();
   });
 });
 ```
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `npx vitest run src/components/galaxy/useMapView.test.jsx`
+Run: `npx vitest run src/components/galaxy/gesture.test.js`
 Expected: FAIL, import not resolved.
 
-- [ ] **Step 3: Write the hook**
+- [ ] **Step 3: Write `gesture.js`**
+
+```js
+// The galaxy map's hands (useMapView.js): a press that moves less than
+// DRAG px is a click on what's under it; one that moves more is a pan (by
+// the share of the box it moved) and the click it ends in is swallowed;
+// two fingers are a pinch, zoomed by how far apart they've gone, about
+// where they started between them. Pure: the hook feeds it pointer events.
+export const DRAG = 5;
+
+export function createGesture() {
+  const ptrs = new Map(); // id → { x, y }
+  let press = null; // { x, y }
+  let pinch = null; // { d, u, w }
+  let dragging = false;
+  let swallow = false;
+  return {
+    down(id, x, y, rect) {
+      ptrs.set(id, { x, y });
+      if (ptrs.size === 1) {
+        press = { x, y };
+        dragging = false;
+        swallow = false;
+      } else if (ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()];
+        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, u: ((a.x + b.x) / 2 - rect.left) / rect.width, w: ((a.y + b.y) / 2 - rect.top) / rect.height };
+        swallow = true;
+      }
+    },
+    move(id, x, y, rect) {
+      const p = ptrs.get(id);
+      if (!p) return null;
+      const dx = x - p.x;
+      const dy = y - p.y;
+      p.x = x;
+      p.y = y;
+      if (pinch && ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        const f = d / pinch.d;
+        pinch.d = d;
+        return { zoom: f, u: pinch.u, w: pinch.w };
+      }
+      if (!press) return null;
+      if (!dragging && Math.hypot(x - press.x, y - press.y) < DRAG) return null;
+      if (!dragging) {
+        dragging = true;
+        swallow = true;
+        // (the first move past DRAG pans by all of it, from the press)
+        return { pan: [(x - press.x) / rect.width, (y - press.y) / rect.height] };
+      }
+      return { pan: [dx / rect.width, dy / rect.height] };
+    },
+    up(id) {
+      ptrs.delete(id);
+      if (ptrs.size < 2) pinch = null;
+      if (!ptrs.size) press = null;
+    },
+    cancel(id) {
+      ptrs.delete(id);
+      pinch = null;
+      press = null;
+      dragging = false;
+    },
+    takeClick() {
+      const s = swallow;
+      swallow = false;
+      return s;
+    },
+    get dragging() {
+      return dragging;
+    },
+  };
+}
+```
+
+Check the first test against this: the move to 303 returns null (3 px); the move to 360 is the first past DRAG and pans by all 60 px from the press: `60 / 600`. That's what it asserts.
+
+- [ ] **Step 4: Run the test**
+
+Run: `npx vitest run src/components/galaxy/gesture.test.js`
+Expected: PASS (4 tests).
+
+- [ ] **Step 4b: Write the hook** (`useMapView.js`; no unit test: the browser check in Task 7 drives it)
 
 ```js
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FIT, frameUnits, panBy, zoomAt } from './mapView';
+import { createGesture } from './gesture';
 
-// The galaxy map's hands on its view (mapView.js): the wheel or a trackpad
-// zooms about the pointer, a drag pans (a press that moves less than DRAG
-// px is still a click on what's under it; one that moves more is not), two
-// fingers pinch, and the page's buttons and keys zoom about the middle.
-const DRAG = 5;
+// The galaxy map's view (mapView.js) and the hands on it (gesture.js): the
+// wheel or a trackpad zooms about the pointer, a drag pans, two fingers
+// pinch, and the page's buttons and keys zoom about the middle.
 const STEP = 1.5; // (a button's or a key's zoom)
 
 export function useMapView(boxRef) {
   const [view, setView] = useState(FIT);
-  const live = useRef(view);
-  live.current = view;
-  const ptrs = useRef(new Map()); // pointerId → { x, y }
-  const press = useRef(null); // { x, y, moved }
-  const pinch = useRef(null); // { d, u, w }
-  const wasDrag = useRef(false);
+  const gesture = useRef(null);
+  gesture.current ??= createGesture();
   const rect = () => boxRef.current?.getBoundingClientRect() ?? { left: 0, top: 0, width: 1, height: 1 };
-  const frac = (e) => {
-    const r = rect();
-    return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height];
-  };
 
   const zoom = useCallback((f, u = 0.5, w = 0.5) => setView((v) => zoomAt(v, f, u, w)), []);
   const fit = useCallback(() => setView(FIT), []);
@@ -426,84 +491,42 @@ export function useMapView(boxRef) {
     if (!el) return undefined;
     const onWheel = (e) => {
       e.preventDefault();
-      const [u, w] = frac(e);
-      // (a trackpad's small steps zoom a little; a wheel's notch, STEP's worth)
-      const f = Math.exp(-Math.max(-60, Math.min(60, e.deltaY)) * 0.0068);
-      setView((v) => zoomAt(v, f, u, w));
+      const r = el.getBoundingClientRect();
+      const f = Math.exp(-Math.max(-60, Math.min(60, e.deltaY)) * 0.0068); // (a trackpad's small steps a little; a wheel's notch, about STEP)
+      setView((v) => zoomAt(v, f, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [boxRef]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [boxRef]);
 
+  const apply = (m) => {
+    if (!m) return;
+    if (m.pan) setView((v) => panBy(v, m.pan[0], m.pan[1]));
+    else setView((v) => zoomAt(v, m.zoom, m.u, m.w));
+  };
   const handlers = {
     onPointerDown: (e) => {
-      if (e.button !== 0 && e.pointerType === 'mouse') return;
-      ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (ptrs.current.size === 1) {
-        press.current = { x: e.clientX, y: e.clientY, moved: 0 };
-        wasDrag.current = false;
-      } else if (ptrs.current.size === 2) {
-        const [a, b] = [...ptrs.current.values()];
-        const r = rect();
-        pinch.current = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, u: ((a.x + b.x) / 2 - r.left) / r.width, w: ((a.y + b.y) / 2 - r.top) / r.height };
-        wasDrag.current = true;
-      }
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      gesture.current.down(e.pointerId, e.clientX, e.clientY, rect());
     },
     onPointerMove: (e) => {
-      const p = ptrs.current.get(e.pointerId);
-      if (!p) return;
-      const dx = e.clientX - p.x;
-      const dy = e.clientY - p.y;
-      p.x = e.clientX;
-      p.y = e.clientY;
-      if (pinch.current && ptrs.current.size === 2) {
-        const [a, b] = [...ptrs.current.values()];
-        const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
-        const f = d / pinch.current.d;
-        pinch.current.d = d;
-        setView((v) => zoomAt(v, f, pinch.current.u, pinch.current.w));
-        return;
-      }
-      const s = press.current;
-      if (!s) return;
-      s.moved = Math.max(s.moved, Math.hypot(e.clientX - s.x, e.clientY - s.y));
-      if (s.moved < DRAG) return;
-      if (!wasDrag.current) {
-        wasDrag.current = true;
-        e.currentTarget.setPointerCapture?.(e.pointerId);
-      }
-      const r = rect();
-      setView((v) => panBy(v, dx / r.width, dy / r.height));
+      const was = gesture.current.dragging;
+      apply(gesture.current.move(e.pointerId, e.clientX, e.clientY, rect()));
+      if (!was && gesture.current.dragging) e.currentTarget.setPointerCapture?.(e.pointerId);
     },
-    onPointerUp: (e) => {
-      ptrs.current.delete(e.pointerId);
-      if (ptrs.current.size < 2) pinch.current = null;
-      if (!ptrs.current.size) press.current = null;
-    },
-    onPointerCancel: (e) => {
-      ptrs.current.delete(e.pointerId);
-      pinch.current = null;
-      press.current = null;
-    },
+    onPointerUp: (e) => gesture.current.up(e.pointerId),
+    onPointerCancel: (e) => gesture.current.cancel(e.pointerId),
     // (a drag that ends over a system doesn't pick it)
     onClickCapture: (e) => {
-      if (!wasDrag.current) return;
-      wasDrag.current = false;
+      if (!gesture.current.takeClick()) return;
       e.preventDefault();
       e.stopPropagation();
     },
   };
 
-  return { view, setView, zoom: (f) => zoom(f), zoomIn: () => zoom(STEP), zoomOut: () => zoom(1 / STEP), fit, frame, handlers, dragged: () => wasDrag.current };
+  return { view, setView, zoom, zoomIn: () => zoom(STEP), zoomOut: () => zoom(1 / STEP), fit, frame, handlers };
 }
 ```
-
-Note: the test's second case asserts `mv.view.x > before` after a rightward drag: `panBy` with a positive `dx` raises `x` (the map moves right with the pointer). If the drag starts at `x = 0`, clamp keeps it at 0, which is why the test zooms first.
-
-- [ ] **Step 4: Run the test**
-
-Run: `npx vitest run src/components/galaxy/useMapView.test.jsx`
-Expected: PASS (3 tests).
 
 - [ ] **Step 5: Wire it into `HoloMap.jsx`**
 
@@ -582,7 +605,7 @@ Expected: no lint errors; all galaxy tests pass.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/components/galaxy/useMapView.js src/components/galaxy/useMapView.test.jsx src/components/galaxy/HoloMap.jsx src/components/galaxy/galaxy.css
+git add src/components/galaxy/gesture.js src/components/galaxy/gesture.test.js src/components/galaxy/useMapView.js src/components/galaxy/HoloMap.jsx src/components/galaxy/galaxy.css
 git commit -m "The galaxy map zooms and pans: wheel, drag, pinch, buttons; a pick off the view frames its course" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
@@ -861,91 +884,117 @@ git commit -m "The galaxy map's layers can be switched off, the era chips pick t
 - Modify: `src/components/galaxy/WarLegend.jsx` (grouped entries)
 - Modify: `src/components/galaxy/galaxy.css`
 - Modify: `src/components/guide/pages.js` (the `/galaxy` keys)
-- Test: `src/components/galaxy/HoloMap.test.jsx` (new)
+- Create: `src/components/galaxy/mapKeys.js` (the map's keys and its find, pure)
+- Test: `src/components/galaxy/mapKeys.test.js`
 
 **Interfaces:**
 - Consumes: `onClose`, `onJump` (HoloMap's props), `mv` (Task 3).
-- Produces: HoloMap handles its own keys: `m` and `Escape` → `onClose()`; `Enter`/`j` (focus not in the search field or on a button that takes Enter) with a pick away from here → `onJump(pick)`; `/` → focus the search; `+`/`=` zoom in, `-` zoom out, `0` fit.
-- HoloMap gains an optional `onCourse(id | null)` prop, called whenever the pick changes (Task 11 uses it).
+- Produces: `mapKeyAction({ key, meta, ctrl, alt }, { typing, canJump })` → `'close' | 'find' | 'jump' | 'zoomIn' | 'zoomOut' | 'fit' | null` (`m` and `Escape` close, Escape even while typing; `/` finds; `j` jumps when `canJump`; `+`/`=` in, `-`/`_` out, `0` fit; nothing with a modifier, nothing else while typing); `findSystems(q, systems, n = 6)` → the systems whose name contains `q` (case-insensitive, trimmed), those starting with it first, at most `n`.
+- HoloMap handles its own keys through `mapKeyAction`, and gains an optional `onCourse(id | null)` prop, called whenever the pick changes (Task 11 uses it).
 
 - [ ] **Step 1: Write the failing test**
 
-```jsx
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import HoloMap from './HoloMap';
+```js
+import { describe, expect, it } from 'vitest';
+import { SYSTEMS } from './systems';
+import { findSystems, mapKeyAction } from './mapKeys';
 
-const open = (props = {}) =>
-  render(
-    <MemoryRouter>
-      <HoloMap current="tatooine" online={null} onJump={props.onJump ?? vi.fn()} onClose={props.onClose ?? vi.fn()} onLeave={vi.fn()} onCourse={props.onCourse} />
-    </MemoryRouter>,
-  );
+const k = (key, o = {}) => ({ key, meta: false, ctrl: false, alt: false, ...o });
 
-describe('HoloMap', () => {
-  it('closes on M and on Escape', () => {
-    const onClose = vi.fn();
-    open({ onClose });
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'm' });
-    fireEvent.keyDown(document.body, { key: 'Escape' });
-    expect(onClose).toHaveBeenCalledTimes(2);
+describe('mapKeys', () => {
+  it('closes on M and Escape, Escape even while typing', () => {
+    expect(mapKeyAction(k('m'), { typing: false, canJump: false })).toBe('close');
+    expect(mapKeyAction(k('M'), { typing: false, canJump: false })).toBe('close');
+    expect(mapKeyAction(k('Escape'), { typing: true, canJump: false })).toBe('close');
+    expect(mapKeyAction(k('m'), { typing: true, canJump: false })).toBeNull();
   });
-  it('finds a system and plots a course to it, then J jumps', () => {
-    const onJump = vi.fn();
-    const onCourse = vi.fn();
-    open({ onJump, onCourse });
-    const find = screen.getByRole('searchbox', { name: /find a system/i });
-    fireEvent.change(find, { target: { value: 'endo' } });
-    fireEvent.keyDown(find, { key: 'Enter' });
-    expect(onCourse).toHaveBeenLastCalledWith('endor');
-    fireEvent.keyDown(document.body, { key: 'j' });
-    expect(onJump).toHaveBeenCalledWith('endor');
+  it('jumps only with a course to jump to', () => {
+    expect(mapKeyAction(k('j'), { typing: false, canJump: true })).toBe('jump');
+    expect(mapKeyAction(k('j'), { typing: false, canJump: false })).toBeNull();
   });
-  it('shows you where you are', () => {
-    open();
-    expect(screen.getAllByText('YOU').length).toBeGreaterThan(0);
+  it('finds and zooms, and leaves modified keys alone', () => {
+    expect(mapKeyAction(k('/'), { typing: false, canJump: false })).toBe('find');
+    expect(mapKeyAction(k('+'), { typing: false })).toBe('zoomIn');
+    expect(mapKeyAction(k('='), { typing: false })).toBe('zoomIn');
+    expect(mapKeyAction(k('-'), { typing: false })).toBe('zoomOut');
+    expect(mapKeyAction(k('0'), { typing: false })).toBe('fit');
+    expect(mapKeyAction(k('m', { meta: true }), { typing: false })).toBeNull();
+    expect(mapKeyAction(k('+'), { typing: true })).toBeNull();
+  });
+  it('finds systems by name, the ones that start with it first', () => {
+    expect(findSystems('endo', SYSTEMS).map((s) => s.id)).toEqual(['endor']);
+    expect(findSystems('  ', SYSTEMS)).toEqual([]);
+    const ho = findSystems('o', SYSTEMS, 3);
+    expect(ho.length).toBeLessThanOrEqual(3);
+    const t = findSystems('t', SYSTEMS);
+    const firstNonStart = t.findIndex((s) => !s.name.toLowerCase().startsWith('t'));
+    const lastStart = t.map((s) => s.name.toLowerCase().startsWith('t')).lastIndexOf(true);
+    if (firstNonStart !== -1) expect(lastStart).toBeLessThan(firstNonStart);
   });
 });
 ```
 
-If `HoloMap` needs more of the page (war state from `warState.js` reads `localStorage`), the test runs in jsdom with an empty store: that's the defaults. If a provider is needed (online), pass `online={null}` as above.
+(`endor` must be the system id for Endor: check `grep -n "id: 'endor'" src/components/galaxy/systems.js`, and use the real id if it differs.)
 
 - [ ] **Step 2: Run it to see it fail**
 
-Run: `npx vitest run src/components/galaxy/HoloMap.test.jsx`
-Expected: FAIL (no searchbox, M doesn't close).
+Run: `npx vitest run src/components/galaxy/mapKeys.test.js`
+Expected: FAIL, import not resolved.
 
-- [ ] **Step 3: Keys**
+- [ ] **Step 3: `mapKeys.js`, and the keys in HoloMap**
+
+```js
+// The galaxy map's own keys (HoloMap.jsx) and its find: M or Escape
+// closes it (Escape even from the find field), / goes to the find field, J
+// jumps to the course, + − 0 zoom; the rest is the page's or the field's.
+export function mapKeyAction({ key, meta, ctrl, alt }, { typing = false, canJump = false } = {}) {
+  if (meta || ctrl || alt) return null;
+  const k = key.length === 1 ? key.toLowerCase() : key;
+  if (k === 'Escape') return 'close';
+  if (typing) return null;
+  if (k === 'm') return 'close';
+  if (k === '/') return 'find';
+  if (k === 'j') return canJump ? 'jump' : null;
+  if (k === '+' || k === '=') return 'zoomIn';
+  if (k === '-' || k === '_') return 'zoomOut';
+  if (k === '0') return 'fit';
+  return null;
+}
+
+export function findSystems(q, systems, n = 6) {
+  const t = q.trim().toLowerCase();
+  if (!t) return [];
+  const hits = systems.filter((s) => s.name.toLowerCase().includes(t));
+  const starts = (s) => s.name.toLowerCase().startsWith(t);
+  return [...hits.filter(starts), ...hits.filter((s) => !starts(s))].slice(0, n);
+}
+```
+
+In `HoloMap.jsx`:
 
 ```js
 const find = useRef(null);
 useEffect(() => {
   const onKey = (e) => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
     const el = e.target;
     const typing = el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
-    const k = e.key.toLowerCase();
-    if (k === 'escape' || (k === 'm' && !typing)) {
-      e.preventDefault();
-      e.stopPropagation();
-      onClose();
-    } else if (typing) {
-      return;
-    } else if (k === '/') {
-      e.preventDefault();
-      find.current?.focus();
-    } else if (k === 'j' && picked && picked.id !== current) {
-      e.preventDefault();
-      onJump(picked.id);
-    } else if (k === '+' || k === '=') mv.zoomIn();
-    else if (k === '-' || k === '_') mv.zoomOut();
-    else if (k === '0') mv.fit();
+    const act = mapKeyAction({ key: e.key, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey }, { typing, canJump: Boolean(picked && picked.id !== current) });
+    if (!act) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (act === 'close') onClose();
+    else if (act === 'find') find.current?.focus();
+    else if (act === 'jump') onJump(picked.id);
+    else if (act === 'zoomIn') mv.zoomIn();
+    else if (act === 'zoomOut') mv.zoomOut();
+    else mv.fit();
   };
   window.addEventListener('keydown', onKey, true);
   return () => window.removeEventListener('keydown', onKey, true);
 }, [picked, current, onClose, onJump]); // eslint-disable-line react-hooks/exhaustive-deps
 ```
+
+(`Enter` on a focused system button still picks/jumps through the button's own click, as today.)
 
 Then find where the page closes the map on Escape (`src/pages/Galaxy.jsx`, ~406–426, per the code map) and remove that duplicate so one Escape closes it once (the map now owns it). Keep the page's M (opening) as is. `onCourse`: `useEffect(() => onCourse?.(pick && pick !== current ? pick : null), [pick, current]); // eslint-disable-line react-hooks/exhaustive-deps`.
 
@@ -953,7 +1002,7 @@ Then find where the page closes the map on Escape (`src/pages/Galaxy.jsx`, ~406�
 
 ```jsx
 const [q, setQ] = useState('');
-const matches = q.trim() ? SYSTEMS.filter((s) => s.name.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 6) : [];
+const matches = findSystems(q, SYSTEMS);
 const go = (s) => (setQ(''), choose(s.id), mv.frame([s.pos, here.pos]));
 <div className="holomap-find">
   <input ref={find} type="search" aria-label="Find a system" placeholder="Find a system  /" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && matches[0]) { e.preventDefault(); go(matches[0]); } }} />
@@ -1032,6 +1081,7 @@ In `src/components/guide/pages.js`, the `/galaxy` keys gain `['M (on the map)', 
 - [ ] **Step 10: Run tests and lint**
 
 Run: `npx vitest run src/components/galaxy src/components/guide && npx eslint src/components/galaxy src/components/guide src/pages/Galaxy.jsx`
+The M-closes, find-and-J and YOU-tag behaviour in the real page is checked by Task 7's browser script.
 Expected: pass.
 
 - [ ] **Step 11: Commit**
@@ -1052,6 +1102,9 @@ It opens `${BASE}/#/galaxy`, sets localStorage `tp-3d=on`, `tp-intro=1`, `tp-sou
 - measures every `.holomap-name` rect and fails if any two intersect, or any is outside `.holomap-map`;
 - fails if any text in `.holomap` has a computed font-size under 11.2 px (`[...document.querySelectorAll('.holomap *')].filter(el => el.childNodes[0]?.nodeType === 3 && el.checkVisibility() && parseFloat(getComputedStyle(el).fontSize) < 11.2)`), except SVG `text` (its size is checked by its rendered height `getBoundingClientRect().height >= 10`);
 - screenshots the map whole, zoomed in twice over Hoth (`page.mouse.wheel` at Hoth's dot), and after a find of "Endor";
+- types "endo" into the find field, presses Enter, and fails unless Endor's system button is `aria-pressed="true"` and on view; then presses `j` and fails unless `window.__galaxy().jump` is set (re-open the map first for the next check);
+- fails unless a `.holomap-youtag` is visible on the current system;
+- drags from one system's dot to another's (mouse down, 60 px of moves, up) with the map zoomed in and fails if the pick changed;
 - presses `m` and fails if `.holomap` is still there.
 It prints one line per check and exits 1 on any failure.
 
@@ -1214,7 +1267,7 @@ git commit -m "The flight radar's rules: nose up, out of range on the rim, above
 **Files:**
 - Create: `src/components/galaxy/FlightCluster.jsx`
 - Create: `src/components/galaxy/flight.css`
-- Create: `src/components/galaxy/cluster.js` (the scene's writer for the cluster: `createCluster()` → `{ place(root, view) }`, pure DOM writes, testable in jsdom)
+- Create: `src/components/galaxy/cluster.js` (the scene's writer for the cluster: `createCluster()` → `{ place(root, view) }`; it only calls `querySelector`, `textContent`, `style.setProperty` and `toggleAttribute`, so the Node tests drive it with stand-in elements)
 - Test: `src/components/galaxy/cluster.test.js`
 - Modify: `src/components/galaxy/GalaxyView.jsx` (mount the cluster; the old `.universe-shield` and the standalone `PowerBar` go into it)
 - Modify: `src/components/universe/PowerBar.jsx` (a `placement` prop: `'cluster'` adds `data-place="cluster"`)
@@ -1233,11 +1286,21 @@ git commit -m "The flight radar's rules: nose up, out of range on the rim, above
 import { describe, expect, it } from 'vitest';
 import { createCluster } from './cluster';
 
+// (the tests run in Node: a stand-in for each element, with the calls cluster.js makes)
+const el = () => {
+  const attrs = new Set();
+  const vars = new Map();
+  return {
+    textContent: '',
+    style: { setProperty: (k, v) => vars.set(k, v), getPropertyValue: (k) => vars.get(k) ?? '' },
+    toggleAttribute: (n, on) => (on ? attrs.add(n) : attrs.delete(n)),
+    hasAttribute: (n) => attrs.has(n),
+  };
+};
+const PARTS = ['.fc-shield', '.fc-shield-n', '.fc-speed', '.fc-speed-n', '.fc-kills-n', '.fc-target', '.fc-target-name', '.fc-target-dist', '.fc-target-hp'];
 const dom = () => {
-  const root = document.createElement('div');
-  root.innerHTML = `<span class="fc-shield"></span><b class="fc-shield-n"></b><span class="fc-speed"></span><b class="fc-speed-n"></b><b class="fc-kills-n"></b>
-    <div class="fc-target"><b class="fc-target-name"></b><b class="fc-target-dist"></b><span class="fc-target-hp"></span></div>`;
-  return root;
+  const parts = Object.fromEntries(PARTS.map((s) => [s, el()]));
+  return { ...el(), querySelector: (s) => parts[s] ?? null };
 };
 const v = (o = {}) => ({ on: true, shield: 82, low: false, speed: 6, top: 12, boosting: false, kills: 3, lock: null, ...o });
 
@@ -1637,7 +1700,7 @@ git commit -m "The flight cluster's radar: the fight round you nose up, allies, 
 - Modify: `src/components/galaxy/scene.js` (the nav goal for the course)
 - Create: `src/components/galaxy/KeysCard.jsx`
 - Modify: `src/components/galaxy/flight.css`
-- Test: `src/components/galaxy/KeysCard.test.jsx`
+- Test: `src/components/galaxy/KeysCard.test.jsx` (Node: `renderToStaticMarkup`, as `WarHud.test.jsx` does)
 
 **Interfaces:**
 - Consumes: Task 6's `onCourse`.
@@ -1646,22 +1709,19 @@ git commit -m "The flight cluster's radar: the fight round you nose up, allies, 
 - [ ] **Step 1: Write the failing test**
 
 ```jsx
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { renderToStaticMarkup } from 'react-dom/server';
 import KeysCard from './KeysCard';
 
 describe('KeysCard', () => {
-  it('lists the keys in three groups and closes', () => {
-    const onClose = vi.fn();
-    render(<KeysCard open onClose={onClose} />);
-    for (const h of ['Fly', 'Fight', 'Travel']) expect(screen.getByRole('heading', { name: h })).toBeTruthy();
-    expect(screen.getAllByText('J').length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole('button', { name: /close/i }));
-    expect(onClose).toHaveBeenCalled();
+  it('lists the keys in three groups, with a close button', () => {
+    const html = renderToStaticMarkup(<KeysCard open onClose={() => {}} />);
+    for (const h of ['Fly', 'Fight', 'Travel']) expect(html).toContain(`<h3>${h}</h3>`);
+    expect(html).toContain('<kbd class="hud-cap">J</kbd>');
+    expect(html).toContain('aria-label="Close the keys"');
   });
   it('is nothing when shut', () => {
-    const { container } = render(<KeysCard open={false} onClose={() => {}} />);
-    expect(container.firstChild).toBeNull();
+    expect(renderToStaticMarkup(<KeysCard open={false} onClose={() => {}} />)).toBe('');
   });
 });
 ```
@@ -2159,22 +2219,19 @@ git commit -m "The galaxy's pickups' model: Quaternius's Ultimate Space Kit pick
 - Consumes: Task 13's `createPickups`, `PICKUPS`; Task 14's GLB; Task 9's `cluster`, `props.buffs`.
 - Produces: `createPickupFx(scene, { load, reduced })` → `{ sync(list, t), dispose() }` (one instanced-or-cloned mesh per live pickup, hidden while none; spins 1.2 rad/s and bobs 0.15 u at 1.4 Hz unless reduced; blinks its last `blink` seconds at 4 Hz unless reduced; a soft additive glow sprite in its kind's colour); `powers.pickup()` → `gain('pickup')` and `hasten(st, 5)`, saying `ready` when either made a power ready; `cluster.buffs(root, buffs)` writes `.fc-buffs` children.
 
-- [ ] **Step 1: Chips test** (append to `cluster.test.js`)
+- [ ] **Step 1: Chips test** (append to `cluster.test.js`; Node, so the chips' words are a pure function and the DOM writer is checked in Task 17's browser run)
 
 ```js
-it('writes a chip per effect, with its time', () => {
-  const root = document.createElement('div');
-  const c = createCluster();
-  c.buffs(root, [{ kind: 'rapid', name: 'Rapid fire', left: 6, of: 12, points: null }]);
-  expect(root.children.length).toBe(1);
-  expect(root.firstChild.dataset.kind).toBe('rapid');
-  expect(root.firstChild.style.getPropertyValue('--v')).toBe('0.5');
-  c.buffs(root, []);
-  expect(root.children.length).toBe(0);
+import { buffChips } from './cluster';
+
+it('says each effect as a chip: its share left and its time', () => {
+  expect(buffChips([{ kind: 'rapid', name: 'Rapid fire', left: 6, of: 12, points: null }])).toEqual([{ kind: 'rapid', name: 'Rapid fire', v: '0.5', text: '6s' }]);
+  expect(buffChips([{ kind: 'bubble', name: 'Bubble shield', left: 3.2, of: 15, points: 41 }])[0].text).toBe('41');
+  expect(buffChips([])).toEqual([]);
 });
 ```
 
-Implement `buffs(root, list)` in `cluster.js`: keep a `Map` kind → element; create `<span class="fc-buff" data-kind=…><b>name</b><i>6s</i></span>` for new kinds, remove gone ones, set `--v` to `Math.round((left / of) * 50) / 50` and the `<i>` to `${Math.ceil(left)}s` (or `${points}` for the bubble), writing only on change.
+Implement in `cluster.js`: `export const buffChips = (list) => list.map((b) => ({ kind: b.kind, name: b.name, v: String(Math.round((b.left / b.of) * 50) / 50), text: b.points !== null && b.points !== undefined ? String(Math.ceil(b.points)) : `${Math.ceil(b.left)}s` }));` and, on the object `createCluster()` returns, `buffs(root, list)`: for `buffChips(list)`, keep a `Map` kind → element made with `root.ownerDocument.createElement('span')` (class `fc-buff`, `data-kind`, a `<b>` with the name and an `<i>` with the text), remove the ones no longer listed, and write `--v` and the `<i>`'s text only when they change; return at once when `root` is null.
 
 CSS in `flight.css`:
 
@@ -2251,49 +2308,54 @@ git commit -m "Pickups in the galaxy: dropped by kills, drawn spinning, flown th
 
 **Files:**
 - Create: `src/components/universe/useShipOutfit.js`
-- Test: `src/components/universe/useShipOutfit.test.jsx`
+- Test: `src/components/universe/useShipOutfit.test.js` (Node: the hook's two state changes are pure functions, tested; the hook is a thin `useState` + `local.set` over them)
 - Modify: `src/pages/Universe.jsx:105-157` (use the hook; same behaviour)
 - Modify: `src/pages/Galaxy.jsx:154-157` (use the hook; mount `Hangar`)
-- Modify: `src/components/galaxy/GalaxyView.jsx` (a Hangar button slot beside the flight settings, or pass the page's `Hangar` through a `hangar` render prop)
+- Modify: `src/components/galaxy/GalaxyView.jsx` (a `hangar` element prop rendered beside the flight settings)
 - Modify: `src/components/guide/pages.js` (`['H', 'The hangar: parts, paint and the shipyard']` in `/galaxy`'s keys)
 
 **Interfaces:**
-- Produces: `useShipOutfit(ship, unlocked)` → `{ loadouts, loadout, build, garage, dropped, fit(slot, id) → equip result, setBuild(b) }` with exactly the logic now in `Universe.jsx` (the same keys: `LOADOUT_KEY`, `HULL_KEY`, `GARAGE_KEY`; read where `Universe.jsx` imports `HULL_KEY`, `GARAGE_KEY` and `readHulls` from).
+- Produces: in `useShipOutfit.js`, `fitShip({ loadouts, ship, loadout, slot, id, unlocked, build })` → `{ r, next }` (`r` is `equip`'s result; `next` the new loadouts when `r.ok`, else `null`) and `buildShip({ hulls, garage, ship, b })` → `{ hulls, garage }` (the garage only changes for a non-null build) — exactly the logic now inline in `Universe.jsx` — and `useShipOutfit(ship, unlocked)` → `{ loadouts, loadout, build, garage, dropped, fit(slot, id) → r, setBuild(b) }`, which keeps the same storage keys (`LOADOUT_KEY`, `HULL_KEY`, `GARAGE_KEY`; read where `Universe.jsx` imports `HULL_KEY`, `GARAGE_KEY` and `readHulls` from).
 
 - [ ] **Step 1: Write the failing test**
 
-```jsx
-import { describe, expect, it, beforeEach } from 'vitest';
-import { act, renderHook } from '@testing-library/react';
-import { useShipOutfit } from './useShipOutfit';
-import { LOADOUT_KEY, partsFor, STOCK } from './outfit';
+```js
+import { describe, expect, it } from 'vitest';
+import { buildShip, fitShip } from './useShipOutfit';
+import { STOCK_LOADOUT, isOpen, partsFor, STOCK } from './outfit';
 
 describe('useShipOutfit', () => {
-  beforeEach(() => window.localStorage.clear());
-  it('fits a part and keeps it where the universe map reads it', () => {
-    const { result } = renderHook(() => useShipOutfit('xwing', []));
-    const part = partsFor('guns').find((p) => p.id !== STOCK && !p.achievement);
+  it('fits the cheapest open guns part onto the ship it is for, keeping the others', () => {
+    const part = partsFor('guns').filter((p) => p.id !== STOCK && isOpen(p, [])).sort((a, b) => a.power - b.power)[0];
     expect(part).toBeTruthy();
-    let r;
-    act(() => (r = result.current.fit('guns', part.id)));
-    if (!r.ok) return; // (a part the X-wing's plant can't run: the test then says nothing; pick a cheaper one if this returns)
-    expect(result.current.loadout.guns).toBe(part.id);
-    const saved = JSON.parse(window.localStorage.getItem(LOADOUT_KEY));
-    expect(saved.xwing.guns).toBe(part.id);
+    const loadouts = { xwing: { ...STOCK_LOADOUT }, falcon: { ...STOCK_LOADOUT, paint: 'x' } };
+    const { r, next } = fitShip({ loadouts, ship: 'xwing', loadout: { ...STOCK_LOADOUT }, slot: 'guns', id: part.id, unlocked: [], build: null });
+    expect(r.ok).toBe(true);
+    expect(next.xwing.guns).toBe(part.id);
+    expect(next.falcon).toBe(loadouts.falcon);
   });
-  it('sets a build and keeps it in the garage', () => {
-    const { result } = renderHook(() => useShipOutfit('falcon', []));
-    act(() => result.current.setBuild(null));
-    expect(result.current.build).toBeNull();
+  it('a part that will not go on changes nothing', () => {
+    const { r, next } = fitShip({ loadouts: {}, ship: 'xwing', loadout: { ...STOCK_LOADOUT }, slot: 'guns', id: 'no-such-part', unlocked: [], build: null });
+    expect(r.ok).toBe(false);
+    expect(next).toBeNull();
+  });
+  it('a build goes on the ship and into its garage; stock leaves the garage as it was', () => {
+    const b = { hull: 'h1' };
+    const one = buildShip({ hulls: {}, garage: {}, ship: 'falcon', b });
+    expect(one.hulls.falcon).toBe(b);
+    expect(one.garage.falcon).toBe(b);
+    const two = buildShip({ hulls: one.hulls, garage: one.garage, ship: 'falcon', b: null });
+    expect(two.hulls.falcon).toBeNull();
+    expect(two.garage.falcon).toBe(b);
   });
 });
 ```
 
-Check how `local.set` serialises (`src/lib/hooks.js`): if it prefixes keys or wraps values, read through `local.get(LOADOUT_KEY)` instead of `localStorage` directly. Make the first test deterministic: pick the cheapest unlocked, non-stock `guns` part by `power` (`partsFor('guns').filter(...).sort((a, b) => a.power - b.power)[0]`) and drop the early return.
+(If `equip` with an unknown id returns `ok: true` with stock, assert what it really does for a refused part instead: read `equip` in `outfit.js:245` and pick a part the X-wing's plant can't power — the most `power` one with a small `PLANT.xwing` — for the refusal case. If a build needs a real shape for `buildShip`, it doesn't: the function only stores it.)
 
 - [ ] **Step 2: Run it to see it fail** → FAIL.
 
-- [ ] **Step 3: Write the hook** by moving `Universe.jsx`'s lines 108–157 (the `loadouts`/`hulls`/`garage` state, `setBuild`, `loadout`, `dropped`, `fit`) into it verbatim, parameterised by `ship` and `unlocked`, returning the object above. Then in `Universe.jsx` replace those lines with `const { loadouts, loadout, build, garage, dropped, fit, setBuild } = useShipOutfit(ship, unlocked);` and keep the two `useEffect`s that tell the online client (`setLoadout`, `tellBuild`) in the page.
+- [ ] **Step 3: Write the hook** by moving `Universe.jsx`'s lines 108–157 (the `loadouts`/`hulls`/`garage` state, `setBuild`, `loadout`, `dropped`, `fit`) into `useShipOutfit.js`, with the two state changes pulled out as `fitShip` and `buildShip` (the hook calls them, then `setState` and `local.set` with what they return), parameterised by `ship` and `unlocked`, returning the object above. Then in `Universe.jsx` replace those lines with `const { loadouts, loadout, build, garage, dropped, fit, setBuild } = useShipOutfit(ship, unlocked);` and keep the two `useEffect`s that tell the online client (`setLoadout`, `tellBuild`) in the page.
 
 - [ ] **Step 4: Run the universe tests**
 
