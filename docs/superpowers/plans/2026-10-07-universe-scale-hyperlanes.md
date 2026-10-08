@@ -130,18 +130,18 @@ Branch `claude/universe-lane-traffic` from `origin/main`.
 - Produces: `countFor(lane) -> n` (`ceil(length / TIERS[tier].density)` a carriageway), `slotOf(lane, way, i) -> { off: [u, v], v: 0.9…1.1, phase: 0…1, kind }` (deterministic by a hash of `lane.id`, `way`, `i`; `off` within `R × 0.7`; `kind` from `sides.js`’s everyday traffic of the side that holds the region of `lane.from`, convoys on trunks (`column: true`, 4 to 7), the side’s capital on the express), `flowAt(lane, way, t, dead = new Set()) -> [{ i, s, off, kind, speed }]` with `s = (phase + v * speed * t / length) mod 1`, a dead `i` left out until its next wrap (`wrapsOf(i, t)` counts them: dead is `{ i, wraps }`), `kill(dead, lane, way, i, t)`.
 - Consumes: Lane A’s `LANES`, `TIERS`, `R`, `carriageway`; `sides.js`.
 
-- [ ] **Step 1: Write the failing tests:** `flowAt` at `t = 0` and `t = 1000` give the same count; a ship’s `s` advances by `speed × dt / length`; two pilots (two calls) agree exactly; a killed ship is absent at `t + 0.1` and present again only after its wrap (Review Focus 5); `off` never beyond `R × 0.7`.
-- [ ] **Step 2: Run and fail. Step 3: Implement. Step 4: Run green. Commit.**
+- [x] **Step 1: Write the failing tests:** `flowAt` at `t = 0` and `t = 1000` give the same count; a ship’s `s` advances by `speed × dt / length`; two pilots (two calls) agree exactly; a killed ship is absent at `t + 0.1` and present again only after its wrap (Review Focus 5); `off` never beyond `R × 0.7`.
+- [x] **Step 2: Run and fail. Step 3: Implement. Step 4: Run green. Commit.**
 
 ### Task 2: streaks and ribbons (`laneStreaks.js`, `laneRibbons.js`)
 
 **Files:** Create `laneStreaks.js`, `laneRibbons.js`; modify `scene.js` (create and `update(t, camera)` a frame).
 
 **Interfaces:**
-- Produces: `createLaneStreaks(scene, { lanes, flow, level }) -> { update(t, camera, dead), dispose() }`: one `InstancedMesh` of quads, each stretched along its tangent by `clamp(speed / 300, 1, 8)` units, additive, `depthWrite: false`, the shader clamping the on-screen length to at least 1.5 px; `low` draws every second ship, `small` every fourth. `createLaneRibbons(scene, { lanes, level }) -> { update(t), dispose() }`: one `LineSegments` (or a thin ribbon mesh) for all carriageways, 48 segments a lane, additive, brightness by tier (express 0.9, trunk 0.6, local 0.35), a dash pattern moving at the tier’s speed in the shader, fading past 20,000 from the camera.
+- Produces: `createLaneStreaks(scene, { lanes, flow, level }) -> { update(t, camera, dead), dispose() }`: one `InstancedMesh` of quads, each stretched along its tangent by `clamp(speed / 300, 1, 8)` units, additive, `depthWrite: false`, the shader clamping the on-screen length to at least 1.5 px; `low` draws every second ship, `small` every fourth. `createLaneRibbons(scene, { lanes, level }) -> { update(t), dispose() }`: one `LineSegments` (or a thin ribbon mesh) for all carriageways, 48 segments a lane, additive, brightness by tier (express 0.9, trunk 0.6, local 0.35), a dash pattern moving at half the tier’s speed in the shader (the spec says why), fading past 20,000 from the camera.
 - Consumes: Task 1; Lane A’s `LANES`, `carriageway`, `bezier`, `tangent`.
 
-- [ ] **Step 1:** no pure logic beyond Task 1; **write a smoke test** that `createLaneStreaks` with a stub scene makes one mesh with `count` equal to the sum of `countFor` (vitest with three’s pure classes, as `traffic.test.js` does). **Step 2: Implement. Step 3:** in the browser from `far-rim` the lanes read as threads of moving light; `renderer.info` before and after at `overview` within budget. **Commit.**
+- [x] **Step 1:** no pure logic beyond Task 1; **write a smoke test** that `createLaneStreaks` with a stub scene makes one mesh with `count` equal to the sum of `countFor` (vitest with three’s pure classes, as `traffic.test.js` does). **Step 2: Implement. Step 3:** in the browser from `far-rim` the lanes read as threads of moving light; `renderer.info` before and after at `overview` within budget. **Commit.**
 
 ### Task 3: near traffic in the lanes (`laneTraffic.js`)
 
@@ -150,17 +150,17 @@ Branch `claude/universe-lane-traffic` from `origin/main`.
 **Interfaces:**
 - Produces: `RESOLVE = 12`, `NEAR = 400`; pure `nearest(flow, ship, n, near) -> [{ lane, way, i, s, dist }]`; `createLaneTraffic(parent, { models: trafficModels, fleet: glbFleet, small }) -> { update(dt, t, ship, flowAt, dead) -> events, hit(bolt) -> { kind, at, size } | null, dispose() }`: a pool of `RESOLVE` models reassigned to the nearest flow ships, posed by `carriageway` and `off`, nose along the tangent, scaled from the streak over 0.4 s; a hit calls `kill` and pops as `traffic.js` does; `events: [{ type: 'kill', kind }]`.
 
-- [ ] **Step 1: Write the failing tests** for `nearest` (sorted, capped, within `near`). **Step 2: Fail. Step 3: Implement. Step 4:** in the browser, ride a trunk: freighters and fighters ride beside you, shootable; `low` has none. **Commit.**
+- [x] **Step 1: Write the failing tests** for `nearest` (sorted, capped, within `near`). **Step 2: Fail. Step 3: Implement. Step 4:** in the browser, ride a trunk: freighters and fighters ride beside you, shootable; `low` has none. **Commit.**
 
 ### Task 4: the ride’s look
 
 **Files:** Move `src/components/galaxy/speedLines.js` to `src/lib/three/speedLines.js` (the galaxy path re-exports it); modify `scene.js` (speed lines on while riding, `stretch` by `ride.speed / SHIP.pulse` clamped 0…1; the FOV widening scaled by the same), `UniverseMap.jsx` (the lane line styled: name and tier chip, next node and time, the drop hint, the heat bar hidden), `guide/pages.js` (the rows: “S (hold) drop out of a lane”, “W (hold) carry on through a junction”), `galaxy/speedLines.test.js` if one exists (path).
 
-- [ ] **Step 1:** `guide/pages.test.js` runs green with the rows. **Step 2: Implement. Step 3:** browser: a ride streaks the stars and the lane ribbon streams past; `npx eslint .`; `npx vitest run src/components/galaxy src/components/universe src/components/guide`. **Commit.**
+- [x] **Step 1:** `guide/pages.test.js` runs green with the rows. **Step 2: Implement. Step 3:** browser: a ride streaks the stars and the lane ribbon streams past; `npx eslint .`; `npx vitest run src/components/galaxy src/components/universe src/components/guide`. **Commit.**
 
 ### Task 5: evidence and the hand-off
 
-- [ ] `scripts/universe-check.mjs` at `far-rim`, `lane-ride`, `overview` on the three tiers, numbers in the PR against the budgets; a screenshot each. `docs/architecture.md`: a paragraph on `laneFlow.js`, `laneStreaks.js`, `laneRibbons.js`, `laneTraffic.js`. `HANDOFF-universe-scale.md` updated. Merge on green.
+- [x] `scripts/universe-check.mjs` at `far-rim`, `lane-ride`, `overview` on the three tiers, numbers in the PR against the budgets; a screenshot each. `docs/architecture.md`: a paragraph on `laneFlow.js`, `laneStreaks.js`, `laneRibbons.js`, `laneTraffic.js`. `HANDOFF-universe-scale.md` updated. Merge on green.
 
 ---
 
