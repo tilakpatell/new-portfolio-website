@@ -17,7 +17,9 @@
 //     → { mesh, material, uniforms, update(centre), set(opts), dispose() }
 //   bladeLayout({ side, size, seed }) → { centres, rand }            (pure)
 //   grassGeometry({ side, size, seed }) → BufferGeometry             (pure)
-//   grassShader(shader) → { vertexShader, fragmentShader, swapped }  (pure)
+//   grassShader(shader, { ground }) → { vertexShader, fragmentShader, swapped }  (pure;
+//     `ground` the GLSL that gives groundHeight/groundColour/groundGrass:
+//     a ground map's (groundmap.js, the default) or a planet's land map's)
 //
 // `side` blades a side (Bruno's is 280: 78,400 blades), over a patch `size`
 // metres across. The material is a Lambert: hand it to the world's house
@@ -60,7 +62,7 @@ export function grassGeometry({ side = 280, size = 40, seed = 7 } = {}) {
   return g;
 }
 
-const PARS_VS = /* glsl */ `
+const parsVs = (ground) => /* glsl */ `
 attribute vec3 aBlade;
 uniform vec2 uGrassCentre;
 uniform float uGrassSize;
@@ -68,7 +70,7 @@ uniform float uGrassHeight;
 uniform float uGrassWidth;
 varying vec3 vGrassColour;
 varying float vGrassTip;
-${GROUND_GLSL}
+${ground}
 ${WIND_GLSL}
 `;
 
@@ -102,11 +104,11 @@ varying vec3 vGrassColour;
 varying float vGrassTip;
 `;
 
-export function grassShader({ vertexShader, fragmentShader }) {
+export function grassShader({ vertexShader, fragmentShader }, { ground = GROUND_GLSL } = {}) {
   const ok = vertexShader.includes('#include <begin_vertex>') && vertexShader.includes('#include <beginnormal_vertex>') && fragmentShader.includes('#include <color_fragment>') && fragmentShader.includes('#include <opaque_fragment>');
   if (!ok) return { vertexShader, fragmentShader, swapped: false };
   const vs = vertexShader
-    .replace('#include <common>', `#include <common>\n${PARS_VS}`)
+    .replace('#include <common>', `#include <common>\n${parsVs(ground)}`)
     .replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);\n#ifdef USE_TANGENT\nvec3 objectTangent = vec3(1.0, 0.0, 0.0);\n#endif')
     .replace('#include <begin_vertex>', BLADE_VS);
   const fs = fragmentShader
@@ -128,7 +130,7 @@ export function createGrass({ ground, wind, side = 280, size = 40, height = 0.55
   const material = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
   material.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, ground.uniforms, wind.uniforms, uniforms);
-    const out = grassShader(sh);
+    const out = grassShader(sh, { ground: ground.glsl ?? GROUND_GLSL });
     sh.vertexShader = out.vertexShader;
     sh.fragmentShader = out.fragmentShader;
   };

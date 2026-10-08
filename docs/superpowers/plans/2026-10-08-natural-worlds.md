@@ -117,11 +117,11 @@ One session may do all three in order, merging each before the next; or one sess
 
 ### Task 2.1: `src/lib/three/landmap.js` and `land.js`
 
-**Files:** Create `landmap.js`, `landmap.test.js`, `land.js`, `land.test.js`. Modify `src/lib/three/grass.js` only to accept a `ground.glsl` that defines `groundHeight/groundColour/groundGrass` from the land map (if `createGrass` already takes `ground.glsl` and `ground.uniforms` generically, no change; the test says which).
+**Files:** Create `landmap.js`, `landmap.test.js`, `land.js`, `land.test.js`. Modify `src/lib/three/grass.js` only to accept a `ground.glsl` that defines `groundHeight/groundColour/groundGrass` from the land map (it took `ground.uniforms` but baked in `GROUND_GLSL`; `grassShader(shader, { ground })` now takes the GLSL, the ground map's by default).
 
 **Interfaces (produces):**
 - `createLandMap({ radius, palette }) → { masks: DataArrayTexture, waters: DataArrayTexture, uniforms, glsl: LAND_GLSL, set(cx, cz, cell), drop(cx, cz), centre(cx, cz), slotOf(cx, cz), ground: { glsl, uniforms } (what createGrass takes), dispose() }`. Slots `(2r + 1)²`; `centre` moves the window (slots are `((cx − c.x) mod (2r+1), …)`, so a shift re-keys nothing).
-- `LAND_GLSL`: `vec4 landMask(vec2 xz)`, `float landWater(vec2 xz)` (NaN-free: `-1e9` where none), `float landHeight(vec2 xz)` (from the heights layer: add a third array of 65² half-floats), `vec3 landColour(vec4 mask, float slope)` (gradient `dirt → shallow → deep` over `1 − B` at stops `0.1, 0.3, 0.9`, grass by `G`, sand in the beach band, rock over slope `0.55`), and `groundHeight/groundColour/groundGrass` aliases for the grass.
+- `LAND_GLSL`: `vec4 landMask(vec2 xz)`, `float landWater(vec2 xz)` (NaN-free: `-1e9` where none), `float landHeight(vec2 xz)` (from the heights layer: add a third array of 65² half-floats), `vec3 landColour(vec4 mask, float slope, float h)` (the height for the beach band; gradient `dirt → shallow → deep` over `1 − B` at stops `0.1, 0.3, 0.9`, grass by `G`, sand in the beach band, rock over slope `0.55`), and `groundHeight/groundColour/groundGrass` aliases for the grass.
 - `createLandMaterial({ map, tracks = null }) → MeshLambertMaterial` with `landShader(shader, { tracks }) → { vertexShader, fragmentShader, swapped }` (pure): colour from `landColour(landMask(xz), slope)`, `G × (1 − tracksAt(xz).r)` when `tracks`.
 
 - [ ] Tests: `set` then `slotOf` round-trips for 9 cells and `drop` frees a slot; `centre` by `+1` keeps the 8 still-in-range cells' slots; `landShader` on a stub Lambert swaps `#include <color_fragment>` and contains `landColour(`; with `tracks` it contains `tracksAt(`; without, not; `createGrass({ ground: map.ground })` builds (a smoke in Node with the stub shader).
