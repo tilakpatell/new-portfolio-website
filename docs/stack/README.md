@@ -2,7 +2,7 @@
 
 One page per library, engine or framework the site is built on, and this index of every package in `package.json`: its version, the page it belongs to, and how many files under `src/` and `scripts/` import it (tests left out). To add a dependency, give it a row in `PAGES` in `scripts/stack-census.mjs` and a page made from `_template.md`, then run `node scripts/stack-census.mjs --write`; the measure’s `stack-pages` fails until the package has a row here.
 
-A page not yet written shows as a link that leads nowhere; until it is, the row is still the package’s place. `three/webgpu` and `three/tsl` ship inside `three` and so have no row; their page is [webgpu-tsl.md](webgpu-tsl.md).
+`three/webgpu` and `three/tsl` ship inside `three` and so have no row; their page is [webgpu-tsl.md](webgpu-tsl.md).
 
 <!-- census:start -->
 | package | version | page | files |
@@ -38,8 +38,8 @@ A page not yet written shows as a link that leads nowhere; until it is, the row 
 | `watlas` | ^1.0.1 | [assets-pipeline.md](assets-pipeline.md) | 1 |
 | `@eslint/js` | ^9.39.5 | [build.md](build.md) | 0 |
 | `@fontsource/noto-sans-runic` | ^5.3.0 | [fonts.md](fonts.md) | 0 |
-| `@types/react` | ^19.3.0 | [assets-pipeline.md](assets-pipeline.md) | 0 |
-| `@types/react-dom` | ^19.3.0 | [assets-pipeline.md](assets-pipeline.md) | 0 |
+| `@types/react` | ^19.3.0 | [react.md](react.md) | 0 |
+| `@types/react-dom` | ^19.3.0 | [react.md](react.md) | 0 |
 | `@vitejs/plugin-react` | ^6.1.2 | [build.md](build.md) | 0 |
 | `autoprefixer` | ^10.4.20 | [build.md](build.md) | 0 |
 | `basisu` | ^1.16.3 | [assets-pipeline.md](assets-pipeline.md) | 0 |
@@ -54,7 +54,7 @@ A page not yet written shows as a link that leads nowhere; until it is, the row 
 | `tailwindcss` | ^3.4.17 | [build.md](build.md) | 0 |
 | `vitest` | ^5.0.3 | [testing.md](testing.md) | 0 |
 | `world-atlas` | ^2.0.2 | [assets-pipeline.md](assets-pipeline.md) | 0 |
-| `yaml` | ^2.8.3 | [assets-pipeline.md](assets-pipeline.md) | 0 |
+| `yaml` | ^2.8.3 | [testing.md](testing.md) | 0 |
 <!-- census:end -->
 
 The table between the markers is written by `scripts/stack-census.mjs`; don’t edit it by hand. A package with no importing file here is still used: the test runner (tests are left out of the count), a command-line tool, a font read from CSS, a set of types, or a plugin a root config file loads.
