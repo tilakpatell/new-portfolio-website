@@ -4,7 +4,7 @@
 // the planet's own map under the spot: the first whose test holds is the
 // place, the last (no test) the fallback, which is the landing as it was.
 // Pure rules, tested in Node; footScene.js samples the map and furnishes
-// the place.
+// the place (viewOf).
 //
 //   biomes  [{ id, match?(c, at), near?: [lat, lon, deg], sea?, title?,
 //            sub?, ground?, sky?, things?, models?, scatter? }]
@@ -90,6 +90,10 @@ export function biomeAt(landing, rgb, at = null) {
     models: b.models ? { ...own.models, ...b.models } : own.models,
   };
 }
+
+// the landing as it is on `biome` (biomeAt's): what furnish, the prefetch
+// and the leaves get; with no biome, the landing itself
+export const viewOf = (landing, biome) => (landing && biome ? { ...landing, biome: biome.id, title: biome.title, sub: biome.sub, ground: biome.ground, sky: biome.sky, things: biome.things, scatter: biome.scatter, models: biome.models, leaves: biome.leaves, wind: biome.wind } : landing);
 
 // A spot over the sea, moved to the nearest land: out along the great
 // circle the way it was heading (`track`, any direction along the ground

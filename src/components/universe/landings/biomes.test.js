@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { LANDINGS } from './landings';
 import { STYLES } from './ground';
 import { vec } from '../foot';
-import { biomeAt, classify, fromLatLon, latLonOf, readableMap, towardLand, uvOf } from './biomes';
+import { biomeAt, classify, fromLatLon, latLonOf, readableMap, towardLand, uvOf, viewOf } from './biomes';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
@@ -178,6 +178,30 @@ describe('a spot over the sea moves on to land', () => {
     const own = LANDINGS.caribbean;
     const off = fromLatLon(19.99, 8.63);
     expect(towardLand(off, () => rgb('#0a5089'), (c, p) => biomeAt(own, c, latLonOf(p)).sea)).toEqual(off);
+  });
+});
+
+describe('the landing as it is on its biome', () => {
+  it('is the landing with the biome’s fields, as begin merged them, and which biome it is', () => {
+    const me = LANDINGS.middleearth;
+    const mordor = biomeAt(me, rgb('#3a3030'));
+    const v = viewOf(me, mordor);
+    // (the old inline merge, footScene.js's begin)
+    const old = { ...me, ...(({ title, sub, ground, sky, things, scatter, models }) => ({ title, sub, ground, sky, things, scatter, models }))(mordor) };
+    for (const k of ['title', 'sub', 'ground', 'sky', 'things', 'scatter', 'models']) expect(v[k], k).toBe(old[k]);
+    expect(v.biome).toBe('mordor');
+    expect(v.biomes).toBe(me.biomes);
+    expect(v.title).toBe('Mordor');
+    // (the Shire, the fallback: the landing's own fields)
+    const shire = viewOf(me, biomeAt(me, rgb('#5a8a3a')));
+    expect(shire.biome).toBe('shire');
+    for (const k of ['title', 'ground', 'sky', 'things', 'scatter', 'models']) expect(shire[k], k).toBe(me[k]);
+  });
+
+  it('is the landing itself with no biome', () => {
+    const me = LANDINGS.middleearth;
+    expect(viewOf(me, null)).toBe(me);
+    expect(viewOf(null, biomeAt(me, rgb('#3a3030')))).toBe(null);
   });
 });
 

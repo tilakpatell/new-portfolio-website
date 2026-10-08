@@ -53,6 +53,7 @@ import { beaconOf } from './wayin';
 import { createBeacon } from './beacon';
 import { keepDark } from './lamps';
 import { bodyOf } from './bodies';
+import { biomeAt } from './biomes';
 import { byId } from '../universes';
 
 // each planet's builders, loaded when you land there
@@ -98,6 +99,19 @@ export const within = (promise, ms) =>
   });
 // every model a landing may stand about (its biomes' too), each once
 export const modelUrls = (landing) => [...new Set([landing?.models, ...(landing?.biomes ?? []).map((b) => b.models)].flatMap((m) => Object.values(m ?? {}).map((spec) => spec.url)))];
+// the models a view's own kinds name (its things' and its scatter's), each once
+export const kindUrls = (view) => [...new Set([...(view?.things ?? []), ...(view?.scatter ?? [])].map((t) => view.models?.[t.kind]?.url).filter(Boolean))];
+// the models no kind of any of a landing's views names: a builder asks for
+// them by name (kit.specs: the Pearl, the gauntlet, the music room's
+// instruments), so every view has them
+export function builderUrls(landing) {
+  const views = [landing, ...(landing?.biomes ?? []).map((b) => biomeAt({ ...landing, biomes: [b] }, [0, 0, 0]))];
+  const named = new Set(views.flatMap(kindUrls));
+  return modelUrls(landing).filter((u) => !named.has(u));
+}
+// what landing on `view` (biomes.js's viewOf: the landing as it is on one
+// of its biomes; the landing's own by default) stands about
+export const viewUrls = (landing, view = landing) => [...new Set([...kindUrls(view), ...builderUrls(landing)])];
 
 // A scatter's spots (scatterSpots': metres from the landing's middle) in
 // cells, each drawn as instances of its own with bounds of its own, so
@@ -119,19 +133,30 @@ export function cellsOf(spots, { sectors = 8, inner = 20 } = {}) {
 }
 
 // What landing on `id` will want, fetched while the ship's still on its way
-// (from the moment it's landable: scene.js), so none of it is fetched, or
-// parsed, on the way down: the builders' file, the models (parsed once for
-// the page: lib/three/gltf), the people's file where anyone stands about,
-// and the kit's scans (loaded once for the page: lib/three/core). Nothing's
-// built or drawn; each planet is asked for once.
-const asked = new Set();
-export function prefetch(id, landing, { renderer = null } = {}) {
-  if (!PLANETS[id] || asked.has(id)) return;
-  asked.add(id);
-  PLANETS[id]().catch(() => asked.delete(id));
-  for (const url of modelUrls(landing)) loadGltf(url, { renderer });
-  if ([landing, ...(landing?.biomes ?? [])].some((l) => l?.things?.some((t) => t.kind === 'figure'))) import('./people.js').catch(() => {});
-  for (const role of Object.keys(LOOKS)) if (scanOf(role)) loadScan(role);
+// (once it's stayed a moment where it could land, and again as it flies
+// into the air: scene.js), so none of it is fetched, or parsed, on the way
+// down: the builders' file and the kit's scans (loaded once for the page:
+// lib/three/core), once a planet; and the models of the `view` it's coming
+// down on (parsed once for the page: lib/three/gltf), and the people's file
+// where anyone stands about there, once a view. Its own by default, the
+// fallback biome (the Shire, the desert, the beach) that most landings
+// are: the other biomes' models are fetched only once they're foreseen
+// (footScene.js's prefetchAt) or come down on (furnish, below). Nothing's
+// built or drawn.
+const asked = new Set(); // id: the builders' file and the scans
+const viewed = new Set(); // `${id}|${biome}`: a view's models
+export function prefetch(id, landing, { renderer = null, view = landing } = {}) {
+  if (!PLANETS[id]) return;
+  if (!asked.has(id)) {
+    asked.add(id);
+    PLANETS[id]().catch(() => asked.delete(id));
+    for (const role of Object.keys(LOOKS)) if (scanOf(role)) loadScan(role);
+  }
+  const key = `${id}|${view?.biome ?? 'own'}`;
+  if (viewed.has(key)) return;
+  viewed.add(key);
+  for (const url of viewUrls(landing, view)) loadGltf(url, { renderer });
+  if (view?.things?.some((t) => t.kind === 'figure')) import('./people.js').catch(() => {});
 }
 
 // how long the things wait for the kit's scans, on the way down (the
@@ -323,6 +348,9 @@ export function furnish({ id, landing, frame, R, small = false, reduced = false,
   const specs = landing.models ?? {};
   // (specs: the landing's models, for a builder that stands one on something of its own)
   Object.assign(kit, { renderer, models, specs, Rm: R / METRE, bend: (object) => bend(object, R / METRE), merge: mergeStatic });
+  // (its own kinds' models on their way now, not once the builders' file
+  // and the scans are in: the same downloads models.get asks for below)
+  for (const url of kindUrls(landing)) loadGltf(url, { renderer });
   // the curve of the ground under something r metres across: how far to sink it so its edges don't float
   const sinkFor = (r) => (0.25 * (r * METRE) ** 2) / R;
   const add = (object) => {

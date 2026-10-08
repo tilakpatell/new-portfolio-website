@@ -84,7 +84,7 @@ import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
 import { landingOf } from './landings/landings';
-import { biomeAt, fromLatLon, latLonOf, readableMap, sampleMap, towardLand, uvOf } from './landings/biomes';
+import { biomeAt, fromLatLon, latLonOf, readableMap, sampleMap, towardLand, uvOf, viewOf } from './landings/biomes';
 import { styleOf } from './landings/ground';
 import { createSky } from './landings/sky';
 import { furnish, furnished, prefetch as prefetchLanding, within } from './landings/furnish';
@@ -2087,7 +2087,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     // its sky and its things, laid out from where the first ship down here
     // came down (a friend's, if you're coming down beside them), as the
     // part of it you've come down on has them
-    const landing = own && S.biome ? { ...own, ...(({ title, sub, ground, sky, things, scatter, models }) => ({ title, sub, ground, sky, things, scatter, models }))(S.biome) } : own;
+    const landing = viewOf(own, S.biome);
     ground = createGround(planet, u, S.R, S.band, landing?.ground);
     ground.follow(n);
     root.add(ground.mesh);
@@ -3289,8 +3289,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     begin,
     // somewhere to come down on `id` (the ship's at it), in a `kind` of
     // ship: what landing there will want, fetched and made ready while it's
-    // still flying, its landing's (landings/furnish.js), its crew's, and
-    // the physics engine where it has anything loose on it
+    // still flying, its landing's (landings/furnish.js: its own, the
+    // fallback biome most landings are), its crew's, and the physics
+    // engine where it has anything loose on it
     prefetch(id, kind) {
       const u = byId(id);
       if (!u || u.kind === 'core' || u.portal) return;
@@ -3298,6 +3299,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       // as it always was)
       if (!bodiesHere()) return;
       const landing = u.plated ? null : landingOf(id);
+      // (and its map read once, so even a first landing finds its biome:
+      // the -sm file fetched now where nothing drawn can be read back)
+      if (landing?.biomes && planetOf[id]) lookOf(planetOf[id], id);
       if (landing && furnished(id)) {
         prefetchLanding(id, landing, { renderer });
         if (bodiesHere() && looseOn(landing)) preloadPhysics().catch(() => {});
