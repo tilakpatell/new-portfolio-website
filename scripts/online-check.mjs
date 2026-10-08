@@ -25,9 +25,10 @@
 // browser's WebSockets can't get through it)
 // RELAY=fake: no public relays at all, but one faked in here for each
 // (lib/fake-relays.mjs), which every context is attached to, so it runs with
-// no network (CI's Multiplayer job runs it so) and only Alpha and Bravo meet.
-// The relays are public, so anyone else online at the time is counted too:
-// it checks for at least one. Headless Chromium draws in software, slowly.
+// no network (CI's Multiplayer job runs it so) and only Alpha and Bravo meet:
+// each must see exactly one other pilot. On the public relays anyone else
+// online at the time is counted too: there it checks for at least one.
+// Headless Chromium draws in software, slowly.
 import { chromium } from 'playwright-core';
 import { fakeRelays } from './lib/fake-relays.mjs';
 
@@ -177,6 +178,15 @@ if (universe) {
     for (const p of [a, b]) await p.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship, null, { timeout: 180000 });
     await waitFor(() => a.evaluate(() => [...(window.__universeDebug.net()?.peers.values() ?? [])].some((p) => p.name === 'Bravo' && p.snaps.length)), 120000, 'Alpha hears Bravo on the map');
     console.log('ok   Alpha hears Bravo on the map');
+    // (on the fake relay there's nobody else: each sees exactly one other pilot)
+    if (relays) {
+      const named = (p) => p.evaluate(() => [...(window.__universeDebug.net()?.peers.values() ?? [])].filter((q) => q.name).map((q) => q.name));
+      const seen = await waitFor(async () => {
+        const [x, y] = [await named(a), await named(b)];
+        return x.length && y.length ? [x, y] : null;
+      }, 60000, 'each sees the other');
+      check(seen[0].join() === 'Bravo' && seen[1].join() === 'Alpha', `exactly one other pilot each: Alpha sees ${JSON.stringify(seen[0])}, Bravo ${JSON.stringify(seen[1])}`);
+    }
     await placeBravo(300);
     const far = await waitFor(async () => {
       await placeBravo(300);
@@ -263,6 +273,8 @@ for (const w of universe ? [] : worlds) {
     }, 150000, `${w}: each sees the other`);
     const pointers = await a.locator('.presence-pilot').count();
     console.log(`ok   ${w}: chips ${n.join(' / ')}, page pointers drawn: ${pointers}`);
+    // (on the fake relay there's nobody else: exactly one each)
+    if (relays) check(n[0] === 1 && n[1] === 1, `${w}: exactly one other traveller each (${n.join(' / ')})`);
     if (pointers) {
       failed++;
       console.log(`FAIL ${w}: page pointers over the world`);
