@@ -218,6 +218,8 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   type="button"
                   className="universe-label"
                   data-station={u.kind === 'core' || undefined}
+                  // (a station's big sign says a second line the button doesn't: read it too)
+                  aria-description={u.sign?.[1]}
                   style={{ '--swatch': u.swatch }}
                   aria-pressed={selected === u.id}
                   tabIndex={u.id === focusable ? 0 : -1}
