@@ -13,6 +13,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { budget, pixelRatio } from './device';
+import { debugOn, debugPanel } from './debugPanel';
 import { guard } from './three/frameGuard';
 import { prepareScene } from './three/gpuWork';
 import { precompile as compileFor, precompilePasses, quiet, releaseContext } from './three/renderer';
@@ -80,6 +81,40 @@ export function disposeTree(root) {
 // most for software rendering. The watchdog below steps it down from there.
 export function stageRatio({ soft = false, tier } = {}) {
   return pixelRatio(soft ? 1 : 1.75, tier);
+}
+
+// The stage's own values for the tuning panel (lib/debugPanel): the bloom,
+// which every stage has, read and written on its pass live.
+export const stageBloomGroups = (pass) => [
+  {
+    name: 'bloom',
+    items: [
+      { key: 'threshold', type: 'range', min: 0, max: 2, get: () => pass.threshold, set: (v) => (pass.threshold = v) },
+      { key: 'strength', type: 'range', min: 0, max: 2, get: () => pass.strength, set: (v) => (pass.strength = v) },
+      { key: 'radius', type: 'range', min: 0, max: 1, get: () => pass.radius, set: (v) => (pass.radius = v) },
+    ],
+  },
+];
+
+// stage.tune(groups): behind ?debug, the one panel with the stage's bloom
+// first and the game's groups after, titled (and its values kept for the
+// tab) by the page it's on: the canvas's nearest [data-route], else the
+// document's title. Without ?debug nothing is made. (`on`, `panel` and
+// `title` are for the tests.)
+export function stageTune({ bloomPass, on = debugOn, panel: makePanel = debugPanel, title = () => null } = {}) {
+  let panel = null;
+  return {
+    tune(groups = []) {
+      if (!on()) return;
+      const name = title() || 'stage';
+      panel ??= makePanel({ title: name });
+      panel.open([...stageBloomGroups(bloomPass), ...groups], { title: name, id: name });
+    },
+    close() {
+      panel?.dispose();
+      panel = null;
+    },
+  };
 }
 
 // Steps down when frames run long: sharpness first, then shadows, then
@@ -208,10 +243,13 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
     watch(ms);
   };
 
+  const tuning = stageTune({ bloomPass, title: () => canvas.closest?.('[data-route]')?.dataset.route || (typeof document !== 'undefined' ? document.title : null) });
+
   let disposed = false;
   const dispose = () => {
     if (disposed) return;
     disposed = true;
+    tuning.close();
     canvas.removeEventListener('webglcontextlost', onContextLost);
     disposeTree(scene);
     if (scene.environment?.isTexture) scene.environment.dispose();
@@ -272,6 +310,7 @@ export function createStage(canvas, { soft = false, bloom = { strength: 0.65, ra
     dispose,
     precompile,
     setLevel,
+    tune: tuning.tune,
     get size() {
       return size;
     },
