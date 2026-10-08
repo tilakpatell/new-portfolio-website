@@ -169,7 +169,7 @@ export const LANDINGS = {
       daisies: flowers('Flower_1_Single', { tall: 0.38 }),
       poppies: flowers('Flower_6', { wide: 0.5 }),
       mushroom: mushrooms('Mushroom_RedCap', { tall: 0.28 }),
-      tufts: grass('Grass_Common_Short', { tall: 0.5 }),
+      tufts: grass('Grass_Common_Short', { tall: 0.65 }),
     },
     things: [
       { kind: 'bagEnd', at: [-30, 30], r: 10, door: { label: 'Bag End', at: [0, 6.5], reach: 3 } },
