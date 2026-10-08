@@ -42,7 +42,7 @@ import { PROPS, SCATTER } from './props';
 import { litWindows } from './props/windows';
 import { nearInstances, splitNear, zoneVisibility } from './near';
 import { seatY } from './seat';
-import { natureLook, natureTick } from './nature';
+import { isTintable, natureLook, natureTick } from './nature';
 
 const NEAR = { r: 70, max: 512, step: 8 }; // metres (the shadow box's corner, ±42 m, and the shadows long trees throw into it); instances; metres walked before they're found again
 
@@ -365,6 +365,8 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       });
       const xs = Float32Array.from(mats, (x) => x.at[0]);
       const zs = Float32Array.from(mats, (x) => x.at[2]);
+      // (each item's colour, where the scatter has a colour pair: scene.js)
+      const tints = items.some((it) => it.tint) ? Float32Array.from(items.flatMap((it) => it.tint ?? [1, 1, 1])) : null;
       // each part an instanced mesh of every item (its matrices kept, `src`,
       // for the near shadow stand-ins and the near/far split to copy from)
       const instanceParts = (parts) =>
@@ -376,8 +378,9 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
           mesh.computeBoundingSphere();
           group.add(mesh);
           const src = mesh.instanceMatrix.array.slice();
+          const col = tintInstances(mesh, tints);
           if (shadowOnly && p.shadow !== false) casters.push({ mesh: casterFor(p, Math.min(NEAR.max, mats.length)), src, xs, zs });
-          return { mesh, src };
+          return { mesh, src, col };
         });
       // (each item seated by the footprint it turns out to have: `seatR`,
       // its radius at scale 1)
@@ -495,8 +498,8 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
   // light copy's
   function fillSplit(sp, x, z) {
     const { near, far } = splitNear(sp.xs, sp.zs, x, z, sp.r);
-    for (const f of sp.full) copyInstances(f.mesh, f.src, near);
-    for (const l of sp.low) copyInstances(l.mesh, l.src, far);
+    for (const f of sp.full) copyInstances(f.mesh, f.src, near, f.col);
+    for (const l of sp.low) copyInstances(l.mesh, l.src, far, l.col);
   }
 }
 
@@ -585,11 +588,27 @@ export function applyBuilt(made, spec, at, world, { updates, signals, object }) 
 }
 
 // the instances `which` of an instanced mesh, from its kept matrices `src`
-function copyInstances(mesh, src, which) {
+// (and its kept colours, `colours`, where it has them: a tint stays with
+// its plant as the near and far meshes trade instances)
+export function copyInstances(mesh, src, which, colours = null) {
   const dst = mesh.instanceMatrix.array;
   for (let k = 0; k < which.length; k++) dst.set(src.subarray(which[k] * 16, which[k] * 16 + 16), k * 16);
   mesh.count = which.length;
   mesh.instanceMatrix.needsUpdate = true;
+  if (colours && mesh.instanceColor) {
+    const c = mesh.instanceColor.array;
+    for (let k = 0; k < which.length; k++) c.set(colours.subarray(which[k] * 3, which[k] * 3 + 3), k * 3);
+    mesh.instanceColor.needsUpdate = true;
+  }
+}
+
+// a scatter's colours (r, g, b an item) on an instanced part whose material
+// takes a tint (nature.js: leaves, plants, grass; never bark or petals);
+// gives back the colours it kept, or null
+export function tintInstances(mesh, tints) {
+  if (!tints || !isTintable(Array.isArray(mesh.material) ? mesh.material[0] : mesh.material)) return null;
+  mesh.instanceColor = new THREE.InstancedBufferAttribute(tints.slice(), 3);
+  return tints;
 }
 
 // a built prop's meshes as instancing parts (for scattering a built kind)

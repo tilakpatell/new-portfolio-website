@@ -113,6 +113,7 @@ import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, 
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, lineClear, ride, rider, turnToward, walk, walker } from './walker';
 import { rng } from './noise';
+import { spotMaker, tintOf, trailItems } from './layout';
 import { endRun, missionOf, newRun, tickRun } from './missions';
 import { createChaseMission } from './missions/chaseScene';
 import { createAssaultMission } from './missions/assaultScene';
@@ -264,21 +265,28 @@ export async function create(canvas, ctx) {
   // ground map is painted with the trees' crowns over it)
   const r = rng(site.ground.seed ?? 1);
   const avoid = [...site.places.map((p) => ({ at: p.at, r: p.flat?.r ?? p.r * 0.6 })), { at: site.land.at, r: 30 }];
-  const scattered = site.scatter.map((s) => {
+  // (an entry's spots from layout.js: its ring, round the origin or a
+  // place (`around`), or in patches (`clumps`); a trail's stones along its
+  // `path`; and its colour pair, `tint`, drawn from numbers of its own, so a
+  // tint never moves what comes after it)
+  const scattered = site.scatter.map((s, i) => {
     const items = [];
-    const [r0, r1] = s.within ?? [20, site.reach];
-    let tries = 0;
-    while (items.length < Math.round(s.n * amounts.scatter) && tries++ < s.n * 20 * Math.max(1, amounts.scatter)) {
-      const a = r() * Math.PI * 2;
-      const d = Math.sqrt(r0 * r0 + r() * (r1 * r1 - r0 * r0));
-      const x = Math.cos(a) * d;
-      const z = Math.sin(a) * d;
-      if (avoid.some((v) => Math.hypot(x - v.at[0], z - v.at[1]) < v.r + (s.clear ?? 4))) continue;
-      if (s.flat && grid.normalAt(x, z)[1] < s.flat) continue;
-      if (wade != null && s.dry !== false && grid.heightAt(x, z) < wade + (s.above ?? 0.2)) continue;
-      const [lo, hi] = s.scale ?? [1, 1];
-      items.push({ at: [x, z], yaw: r() * Math.PI * 2, scale: lo + (hi - lo) * r() ** 1.6, sink: s.sink ?? 0.1, stretch: s.stretch ? s.stretch[0] + r() * (s.stretch[1] - s.stretch[0]) : 1 });
+    const own = rng((site.ground.seed ?? 1) * 31 + i);
+    const ok = (x, z) => !(s.flat && grid.normalAt(x, z)[1] < s.flat) && !(wade != null && s.dry !== false && grid.heightAt(x, z) < wade + (s.above ?? 0.2));
+    const [lo, hi] = s.scale ?? [1, 1];
+    if (s.path) {
+      for (const it of trailItems(s.path, { spacing: s.spacing, jitter: s.jitter, rand: own })) if (ok(...it.at)) items.push({ ...it, scale: lo + (hi - lo) * own(), sink: s.sink ?? 0.03 });
+    } else {
+      const next = spotMaker(s, r, site.reach);
+      let tries = 0;
+      while (items.length < Math.round(s.n * amounts.scatter) && tries++ < s.n * 20 * Math.max(1, amounts.scatter)) {
+        const [x, z] = next();
+        if (avoid.some((v) => Math.hypot(x - v.at[0], z - v.at[1]) < v.r + (s.clear ?? 4))) continue;
+        if (!ok(x, z)) continue;
+        items.push({ at: [x, z], yaw: r() * Math.PI * 2, scale: lo + (hi - lo) * r() ** 1.6, sink: s.sink ?? 0.1, stretch: s.stretch ? s.stretch[0] + r() * (s.stretch[1] - s.stretch[0]) : 1 });
+      }
     }
+    if (s.tint) for (const it of items) it.tint = tintOf(s.tint, own());
     return { s, items };
   });
   // the ground as data (lib/three/groundmap): its colour and its grass

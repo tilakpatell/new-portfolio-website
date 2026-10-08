@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import SCANS from '../../../../public/cc0/galaxy/index.json';
-import { applyBuilt, clusterSpecs, lodDistance, usesModel, wearModel, withLod } from './placer';
+import { applyBuilt, clusterSpecs, copyInstances, lodDistance, tintInstances, usesModel, wearModel, withLod } from './placer';
 
 const fakeWorld = () => ({ solids: { box: vi.fn(), circle: vi.fn() }, floors: [] });
 const made = () => ({ object: new THREE.Group(), solids: [{ box: [0, 0, 4, 2] }], floors: [{ x: 3, z: 0, y: 1, hw: 2, hd: 2 }], update: () => {}, signal: () => {} });
@@ -104,5 +104,43 @@ describe('a model that wears a core scan', () => {
   it('wears nothing for a role with no scan', async () => {
     const o = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
     expect(await wearModel(o, 'nonsense', { wear: () => {}, load: () => Promise.resolve(null) })).toBe(0);
+  });
+});
+
+describe('the near and far split', () => {
+  it('copies the colours with the matrices, so a tint stays on its plant', () => {
+    const mesh = new THREE.InstancedMesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial(), 3);
+    mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(9), 3);
+    const src = new Float32Array(48).map((_, i) => i);
+    const colours = Float32Array.from([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+    copyInstances(mesh, src, [2, 0], colours);
+    expect(mesh.count).toBe(2);
+    expect([...mesh.instanceColor.array.slice(0, 6)]).toEqual([0, 0, 1, 1, 0, 0]);
+    expect(mesh.instanceMatrix.array[0]).toBe(32);
+    expect(mesh.instanceMatrix.array[16]).toBe(0);
+  });
+
+  it('copies only the matrices where there are no colours', () => {
+    const mesh = new THREE.InstancedMesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial(), 2);
+    copyInstances(mesh, new Float32Array(32).map((_, i) => i), [1]);
+    expect(mesh.count).toBe(1);
+    expect(mesh.instanceColor).toBe(null);
+    expect(mesh.instanceMatrix.array[0]).toBe(16);
+  });
+});
+
+describe('tints on a scatter', () => {
+  it('colours the instances of the parts that take a tint, and leaves the rest', () => {
+    const tintable = new THREE.MeshStandardMaterial();
+    tintable.userData.tintable = true;
+    const plain = new THREE.MeshStandardMaterial();
+    const tints = Float32Array.from([0.5, 0.6, 0.7, 1, 1, 1]);
+    const a = new THREE.InstancedMesh(new THREE.BufferGeometry(), tintable, 2);
+    const b = new THREE.InstancedMesh(new THREE.BufferGeometry(), plain, 2);
+    expect(tintInstances(a, tints)).toBe(tints);
+    expect([...a.instanceColor.array]).toEqual([...tints]);
+    expect(tintInstances(b, tints)).toBe(null);
+    expect(b.instanceColor).toBe(null);
+    expect(tintInstances(a, null)).toBe(null);
   });
 });
