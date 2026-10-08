@@ -3,7 +3,7 @@
 // the Rick and Morty sector the Curve's sun), drawn on the sky in their true
 // direction at skyFar (deepspace.js's SKY_FAR), so they read from anywhere
 // on the map. Each is drawn at least so big across (`least`: the Maw 4°, a
-// nebula 14°, a star's glare 1.5°, the Lantern 1°), and as it grows past
+// nebula 14°, a star's glare 4°, the Lantern 2.5°), and as it grows past
 // that on the way in, at its true size; past where it's real (`real`: where
 // its true size meets the least, for the Maw and the nebulae; forty of its
 // radii for a star; twenty of its reach for the Lantern) it's all landmark
@@ -36,7 +36,7 @@ import { SUN } from './layout';
 import { TILT } from './maw';
 
 const deg = (d) => (d * Math.PI) / 180;
-const LEAST = { hole: deg(4), nebula: deg(14), star: deg(1.5), pulsar: deg(1) };
+const LEAST = { hole: deg(4), nebula: deg(14), star: deg(4), pulsar: deg(2.5) };
 const KIND = { star: 0, hole: 1, nebula: 2, pulsar: 3 };
 const STAR_REAL = 40; // a star is real within this many of its radii
 const PULSAR_REAL = 20; // the Lantern within this many of its reach
@@ -141,14 +141,15 @@ varying vec3 vCol1;
 varying float vK;
 varying float vCell;
 varying vec3 vAxis;
-// a sun (galaxy/sky.js's): a white-hot disc in a glare, with faint rays
+// a big sun, from far off (galaxy/sky.js's, made to carry across the map):
+// a white-hot disc in a wide glare of its colour, with long faint rays
 vec3 sunOf(vec2 uv, vec3 col) {
   float r = length(uv);
-  float disc = smoothstep(0.075, 0.06, r);
-  float glow = exp(-r * 9.0) * 0.9 + exp(-r * 3.2) * 0.22;
+  float disc = smoothstep(0.06, 0.045, r);
+  float glow = exp(-r * 6.0) * 1.1 + exp(-r * 2.2) * 0.32;
   float a = atan(uv.y, uv.x);
-  float rays = pow(abs(cos(a * 3.0)), 60.0) * exp(-r * 4.0) * 0.35 + pow(abs(cos(a * 2.0 + 0.6)), 90.0) * exp(-r * 5.0) * 0.25;
-  return (col * (glow + rays) + vec3(6.0) * disc) * smoothstep(1.0, 0.7, r);
+  float rays = pow(abs(cos(a * 3.0)), 40.0) * exp(-r * 2.6) * 0.5 + pow(abs(cos(a * 2.0 + 0.6)), 70.0) * exp(-r * 3.0) * 0.32;
+  return (col * 1.6 * (glow + rays) + vec3(6.0) * disc) * smoothstep(1.0, 0.65, r);
 }
 void main() {
   vec2 uv = vUv;
@@ -215,15 +216,15 @@ void main() {
   vec2 q = vec2(fbm(s), fbm(s + vec2(5.2, 1.3))) - 0.5;
   vec2 w = s + q * 2.4;
   float gas = fbm(w);
-  float rr = length(p + q * 0.25);
-  float m = exp(-rr * rr * 2.6) * (1.0 - smoothstep(0.7, 0.98, length(p)));
-  float body = smoothstep(0.32, 0.85, gas * (0.55 + 0.9 * m)) * m;
+  float rr = length(p + q * 0.3);
+  float m = exp(-rr * rr * 1.3) * (1.0 - smoothstep(0.78, 1.0, length(p)));
+  float body = smoothstep(0.22, 0.8, gas * (0.6 + 0.8 * m)) * m;
   float mixc = fbm(w * 1.7 + 3.1);
   vec3 col = mix(c0, c1, smoothstep(0.35, 0.65, mixc));
   col = mix(col, c2, smoothstep(0.6, 0.85, fbm(w * 2.3 + 8.0)) * 0.6);
   col = mix(col, vec3(dot(col, vec3(0.45))), body * body * 0.35);
   float dust = smoothstep(0.55, 0.78, fbm(w * 3.1 + vec2(11.0, 4.0))) * m;
-  vec3 light = col * body * 0.42 * (1.0 - dust * 0.85) + c0 * m * 0.02;
+  vec3 light = col * body * 0.75 * (1.0 - dust * 0.8) + c0 * m * 0.05;
   // a few young stars in the thick of it
   vec2 g = floor(vUv * vec2(512.0, 256.0));
   float st = step(0.9985, hash2(g + cell * 91.0)) * body;

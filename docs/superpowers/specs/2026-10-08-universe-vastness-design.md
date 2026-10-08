@@ -58,9 +58,9 @@ Every bake uniform keeps today's value for every system and for Kashyyyk's borro
 |---|---|---|---|
 | The Maw | a black shadow, the accretion disk tipped as `maw.js`'s `TILT` has it, white-blue inside to red out, the near side brighter, the far side bent over the top, a thin photon ring | 4° | where its true disk is 4° (about 14,300) |
 | The Veil, the Cradle | a cloud painted once into a texture (warped noise, 1024 on `high` and up, 512 below) in its own colours, dark dust lanes across it, young stars in it | 14° | where it's 14° (the Veil about 5,700, the Cradle 4,900) |
-| Ember, Halcyon, the curve's sun, the home sun | the galaxy's sun: a white-hot disc, a wide glare in its colour and faint rays | 1.5° glare | 40 of its radii |
-| The Twins | two of those, each where `binaryAt` has it now | 1.5° each | 40 of its radii |
-| The Lantern | a blue-white point in a glare, two beams sweeping round | 1° | 20 of its reach |
+| Ember, Halcyon, the curve's sun, the home sun | the galaxy's sun: a white-hot disc, a wide glare in its colour and faint rays | 4° glare (1.5° in the first draft: a dot from across the map, raised after the shots) | 40 of its radii |
+| The Twins | two of those, each where `binaryAt` has it now | 4° each | 40 of its radii |
+| The Lantern | a blue-white point in a glare, two beams sweeping round | 2.5° | 20 of its reach |
 
 A landmark is drawn at `max(true size, least size)`. Past where it's real it is all landmark and the real thing is hidden (its group, as `farPlaces` hid them); inside, the real thing; over a fifth either side of the line they crossfade. The least sizes are where the true size meets them, so nothing pops. In the Rick and Morty sector the curve's sun is the only landmark.
 
