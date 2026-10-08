@@ -15,8 +15,8 @@
 //
 // And the stars' light on its edges: a rim on the edges that face the light
 // that isn't the key (lighting.js's fill), so the ship stands off the dark on
-// its unlit side. The light is graphic, not photographic (SHIP_PROFILE.light:
-// key 1, fill a quarter, rim a half): the hull takes a quarter of the fill
+// its unlit side. The light is the hull's own (SHIP_PROFILE.light: key 1,
+// fill 0.6, rim a half): the hull takes 0.6 of the fill
 // (the fill is found in three's light loop by its direction, the rim's, so
 // the order the scene adds its lights in doesn't matter; the lights
 // themselves are untouched), and the rim is half the fill's colour and half

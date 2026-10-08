@@ -79,8 +79,8 @@ describe('the hero ships’ finish', () => {
     expect(trim.envMapIntensity).toBe(1.3);
   });
 
-  it('the ship profile’s light is graphic: key 1, fill a quarter, rim a half', () => {
-    expect(SHIP_PROFILE.light).toEqual({ key: 1, fill: 0.25, rim: 0.5 });
+  it('the ship profile’s light: key 1, fill 0.6 (so a ship’s shadow side still reads), rim a half', () => {
+    expect(SHIP_PROFILE.light).toEqual({ key: 1, fill: 0.6, rim: 0.5 });
   });
 
   it('keeps a single metalness for things not named metal, as before', () => {

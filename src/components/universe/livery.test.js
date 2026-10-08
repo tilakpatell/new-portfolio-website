@@ -73,12 +73,12 @@ describe('the hull’s light ratio', () => {
     expect(shader.uniforms.uRimColour.value.toArray()).toEqual(fill);
   });
 
-  it('the rim is half strength and the fill a quarter, the fill found by its direction', () => {
+  it('the rim is half strength and the fill 0.6, the fill found by its direction', () => {
     const m = new THREE.MeshStandardMaterial();
     createLivery().apply(new THREE.Mesh(new THREE.BoxGeometry(), m), FIT);
     const shader = compiled(m);
     expect(shader.uniforms.uRimStrength.value).toBe(0.5);
-    expect(shader.uniforms.uFillScale.value).toBe(0.25);
+    expect(shader.uniforms.uFillScale.value).toBe(0.6);
     // the scale goes on the light the rim comes from, as its info is read
     // in the loop, which is left for other hooks to find
     expect(shader.fragmentShader).toMatch(/#include <lights_pars_begin>[\s\S]*il\.color \*= uFillScale[\s\S]*#define getDirectionalLightInfo/);
