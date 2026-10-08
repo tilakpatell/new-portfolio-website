@@ -574,6 +574,9 @@ export function tableOf(war, ms, s) {
     strength: s.strength,
     decisive: s.decisive,
     result: s.result,
+    // (the campaign before's result, at the start of the next: only a browser that was there knows it,
+    // so warState.js's warNow fills it in)
+    previous: null,
     systems: WAR_SYSTEMS.map((id) => {
       const attack = s.attacks.find((a) => a.sys === id) ?? null;
       const front = s.fronts.includes(id);

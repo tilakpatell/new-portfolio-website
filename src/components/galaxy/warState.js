@@ -21,18 +21,23 @@
 // addPoints(side, sys, step, points), addWin(side, sys, step) (nothing for
 // nobody's side, or the Hutts'); receiveWar(peer, msg) → whether it learnt
 // anything; warMessage(); onWar(fn) → off (told when it changes);
-// warNow(now, war) → gcw.js's warTable for now; mine(war, now) → { points,
+// warNow(now, war) → gcw.js's warTable for now, and `previous`, the campaign
+// before's result for the first RECAP of the next (as this browser knew
+// it), or null; mine(war, now) → { points,
 // wins, battles, systems: [{ id, wins, losses, moved }], major }: your own
 // record in a war this campaign (ranks.js names you by its points; moved is
 // how much of a system's hold you moved), gone over once for each change to
 // the tally.
 
 import { TALLY, createTally } from '../universe/tally';
-import { GCW, campaignAt, campaignRun, pointsKey, readKey, runAt, tableOf, winKey } from './gcw';
+import { GCW, WAR_SYSTEMS, campaignAt, campaignResult, campaignRun, pointsKey, readKey, runAt, tableOf, winKey } from './gcw';
 import { soft } from './gcwAI';
-import { DEFAULT_WAR, warOfSide } from './sides';
+import { DEFAULT_WAR, SIDES, WAR_IDS, warOfSide } from './sides';
 
 const KEY = 'tp-gcw';
+const LAST_KEY = 'tp-gcw-last';
+// how long into a campaign the one before's result is shown (the war table's `previous`)
+export const RECAP = 12 * 3600e3;
 export const CAP = 60; // the most one pilot can have done at one system in one step (four objectives, a sky full of fighters)
 // the keys a campaign keeps, at most: a room of pilots, each in a battle every step of it, and winning it
 export const KEYS = TALLY.pilots * 2 * (GCW.campaign / GCW.step);
@@ -68,15 +73,61 @@ const changed = () => {
   }, 1500);
 };
 
-export function warTally(now = Date.now()) {
-  const { epoch } = campaignAt(now);
-  if (!tally || tally.epoch !== epoch) {
-    // (a new id, unless the save has the campaign's: its shares were told under that one)
-    tally = createTally(epoch, { keys: KEYS, cap: CAP, id: newId() });
+// The campaign before's result in each war, as this browser knew it: worked
+// out once, when a campaign's tally gives way to the next one's (the page
+// open across the change, or back with the last one's kept in tp-gcw), and
+// kept in tp-gcw-last. Pilots online only ever tell each other the campaign
+// that's on, so a newcomer can't know how the last one ended, and gets none.
+let last = null; // { n, wars: { war: campaignResult } }
+function keepLast(n, t) {
+  last = { n, wars: Object.fromEntries(WAR_IDS.map((war) => [war, campaignResult(war, n, (k) => t.value(k))])) };
+  try {
+    store()?.setItem(LAST_KEY, JSON.stringify(last));
+  } catch {
+    // (private browsing: kept for this page only)
+  }
+}
+// (what's read back is checked: anything else in tp-gcw-last is nothing)
+const isResult = (r, n) => r && r.n === n && r.final === true && SIDES[r.winner] && r.vp && Object.values(r.vp).every(Number.isFinite) && (r.decisive === null || WAR_SYSTEMS.includes(r.decisive));
+function previousOf(war, now) {
+  const c = campaignAt(now);
+  if (c.n < 1 || now - c.start >= RECAP) return null;
+  if (last?.n !== c.n - 1) {
     try {
-      tally.load(JSON.parse(store()?.getItem(KEY) ?? 'null'));
+      last = JSON.parse(store()?.getItem(LAST_KEY) ?? 'null');
+    } catch {
+      last = null;
+    }
+  }
+  const r = last?.n === c.n - 1 ? last.wars?.[war] : null;
+  return isResult(r, c.n - 1) ? r : null;
+}
+
+export function warTally(now = Date.now()) {
+  const { epoch, n } = campaignAt(now);
+  if (!tally || tally.epoch !== epoch) {
+    let saved = null;
+    try {
+      saved = JSON.parse(store()?.getItem(KEY) ?? 'null');
     } catch {
       // (nothing kept, or nothing readable: a fresh campaign)
+    }
+    // the campaign before's, if this page or the save was there for it
+    const before = `c${n - 1}`;
+    let was = tally?.epoch === before ? tally : null;
+    if (!was && saved?.e === before) {
+      was = createTally(before, { keys: KEYS, cap: CAP });
+      was.load(saved);
+    }
+    if (was) keepLast(n - 1, was);
+    // (a new id, unless the save has the campaign's: its shares were told under that one)
+    tally = createTally(epoch, { keys: KEYS, cap: CAP, id: newId() });
+    tally.load(saved);
+    // (kept at once, even with nothing in it: back after the campaign's over, this browser knows it was here)
+    try {
+      store()?.setItem(KEY, JSON.stringify(tally.save()));
+    } catch {
+      // (private browsing: the war's still shared, just not kept)
     }
     version += 1;
   }
@@ -129,7 +180,7 @@ export function warNow(now = Date.now(), war = DEFAULT_WAR) {
   warTally(now);
   const second = Math.floor(now / 1000);
   const c = cached[war];
-  if (!c || c.second !== second || c.version !== version) cached[war] = { second, version, table: tableOf(war, now, stateNow(war, now)) };
+  if (!c || c.second !== second || c.version !== version) cached[war] = { second, version, table: { ...tableOf(war, now, stateNow(war, now)), previous: previousOf(war, now) } };
   return cached[war].table;
 }
 
@@ -187,6 +238,7 @@ export function mine(war, now = Date.now()) {
 // (for the tests: forget the page's war)
 export function resetWar() {
   tally = null;
+  last = null;
   cached = {};
   runs = {};
   records = {};

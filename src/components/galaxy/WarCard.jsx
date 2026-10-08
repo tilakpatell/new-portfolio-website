@@ -12,8 +12,8 @@ import { jumpSeconds, systemById } from './systems';
 // shows: the oath to one of its two sides (the one sworn pressed, the one
 // your crew or hero would pick outlined) and your rank, record and part in
 // it, and a way to fight in it if it isn't your war already; then its phase
-// and the next offensive, the campaign's result once it's in, each side's
-// order and its deadline, the nearest battle to join, what's happened (what's
+// and the next offensive, the campaign's result once it's in (or the one
+// before's, early in the next), each side's order and its deadline, the nearest battle to join, what's happened (what's
 // new since you last looked marked), the battles on now, and who holds each
 // area. And, for one system, its place in the war with the battle on there
 // and the ground battle to fight it on. The words are warText.js's; the page
@@ -50,6 +50,8 @@ export default function WarCard({ table, now, oath, viewOath, suggested, record,
   const yours = table.war === oath.war;
   const side = viewOath.side;
   const result = resultLine(table);
+  // (who leads in the last step, who won once it's over, or the campaign before's at the start of the next)
+  const outcome = table.result ?? table.previous ?? null;
   const next = nextOpLine(table, now);
   const part = partLine(record);
   const near = yours ? nearestBattle(table, current, side) : null;
@@ -76,8 +78,8 @@ export default function WarCard({ table, now, oath, viewOath, suggested, record,
         {next && <p className="holomap-campaign-next">{next}</p>}
       </div>
       {result && (
-        <div className="holomap-result" role="status" style={{ '--side': SIDES[table.result.winner].colour }}>
-          <Emblem side={table.result.winner} />
+        <div className="holomap-result" role="status" data-previous={!table.result || undefined} style={{ '--side': SIDES[outcome.winner].colour }}>
+          <Emblem side={outcome.winner} />
           <p>{result}</p>
         </div>
       )}

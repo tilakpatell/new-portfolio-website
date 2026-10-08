@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TALLY, createTally, readTally } from '../universe/tally';
 import * as gcw from './gcw';
-import { GCW, WAR_SYSTEMS, campaignAt, history, pointsKey, seeded, warTable, winKey } from './gcw';
+import { GCW, WAR_SYSTEMS, campaignAt, campaignResult, history, pointsKey, seeded, warTable, winKey } from './gcw';
 import { soft } from './gcwAI';
-import { CAP, addPoints, addWin, mine, onWar, receiveWar, resetWar, warMessage, warNow, warTally } from './warState';
+import { CAP, RECAP, addPoints, addWin, mine, onWar, receiveWar, resetWar, warMessage, warNow, warTally } from './warState';
 
 // (gcw.js as it is, but counting the campaigns worked through from the start)
 vi.mock('./gcw', async (original) => {
@@ -133,6 +133,46 @@ describe('a reload', () => {
     expect(warMessage(NOW).i).toBe(before.i);
     // (and the next campaign, a pilot new to it)
     expect(warMessage(NOW + GCW.campaign).i).not.toBe(before.i);
+  });
+});
+
+describe('the campaign before', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+  const NEXT = GCW.start + GCW.campaign;
+  // (the Rebellion's pilots at the Civil War's every front in its first day: a result of their making)
+  const fight = () => {
+    for (let k = 0; k < 120; k++) for (const id of history('gcw', 0, GCW.start + k * GCW.step).fronts) addPoints('rebel', id, k, 40, GCW.start + k * GCW.step);
+  };
+  it('is kept, as this browser knew it, for the first RECAP of the next', () => {
+    fight();
+    const t = warTally(NOW);
+    const result = campaignResult('gcw', 0, (k) => t.value(k));
+    expect(result).not.toEqual(campaignResult('gcw', 0));
+    expect(warNow(NOW, 'gcw').previous).toBeNull();
+    expect(warNow(NEXT + 60e3, 'gcw').previous).toEqual(result);
+    expect(warNow(NEXT + RECAP - 1000, 'clone').previous).toEqual(campaignResult('clone', 0));
+    expect(warNow(NEXT + RECAP, 'gcw').previous).toBeNull();
+  });
+  it('comes back after a reload, and from a tally kept from the campaign before', () => {
+    vi.useFakeTimers();
+    const kept = new Map();
+    vi.stubGlobal('window', { localStorage: { getItem: (k) => kept.get(k) ?? null, setItem: (k, v) => kept.set(k, String(v)) } });
+    fight();
+    const result = campaignResult('gcw', 0, (k) => warTally(NOW).value(k));
+    vi.advanceTimersByTime(2000); // (kept)
+    // back the next day: the campaign before's tally is still in tp-gcw
+    resetWar();
+    expect(warNow(NEXT + 3600e3, 'gcw').previous).toEqual(result);
+    // and reloaded again: the result's in tp-gcw-last now, the tally gone
+    resetWar();
+    expect(JSON.parse(kept.get('tp-gcw')).e).toBe('c1');
+    expect(warNow(NEXT + 2 * 3600e3, 'gcw').previous).toEqual(result);
+  });
+  it('isn’t known to a browser that knew nothing of it', () => {
+    expect(warNow(NEXT + 60e3, 'gcw').previous).toBeNull();
   });
 });
 

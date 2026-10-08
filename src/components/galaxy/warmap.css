@@ -178,6 +178,9 @@
 .holomap-result { display: grid; grid-template-columns: 26px minmax(0, 1fr); align-items: center; gap: 0.6rem; padding: 0.6rem 0.7rem; border-radius: 8px; background: color-mix(in srgb, var(--side) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--side) 55%, transparent); color: var(--side); }
 .holomap-result .holomap-emblem { width: 26px; height: 26px; }
 .holomap-result p { margin: 0; color: #fff; font-size: 0.84rem; font-weight: 600; line-height: 1.35; }
+/* the campaign before's, at the start of the next: quieter than one that's on */
+.holomap-result[data-previous] { background: color-mix(in srgb, var(--side) 7%, transparent); }
+.holomap-result[data-previous] p { font-weight: 500; color: #dfe6f3; }
 .holomap-orders { display: grid; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
 .holomap-order { display: grid; gap: 0.25rem; width: 100%; padding: 0.55rem 0.65rem; border-radius: 8px; background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px rgb(217 243 255 / 0.18); color: #fff; text-align: left; }
 .holomap-orders li[data-yours] .holomap-order { background: rgb(255 211 106 / 0.08); box-shadow: inset 0 0 0 1px rgb(255 211 106 / 0.45); }
