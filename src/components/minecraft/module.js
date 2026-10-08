@@ -384,9 +384,11 @@ export default {
       },
       step(dt, snap) {
         load();
-        // (a development view held: the chunks still come in, nothing moves)
+        // (a development view held: the chunks still come in, and the page is
+        // told how many, so its 'Building terrain' screen goes; nothing moves)
         if (held) {
           remesh();
+          report(dt);
           return;
         }
         const p = g.player;
