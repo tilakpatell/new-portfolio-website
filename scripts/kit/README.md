@@ -58,7 +58,8 @@ npx vitest run scripts/kit                                 # the pure half and t
   (three's GLTFLoader names it `_wind`). Every other `COLOR_0` is dropped.
 - A leaf material is `MASK` at 0.3 and two-sided, whatever the source had
   (some crowns are `BLEND`, some bark `MASK`); everything else is opaque.
-- Textures are WebP q82 by role: bark colour 1024 (512 when halved, below),
+- Textures are WebP q82 by role: bark colour 1024 (512 only for a model too
+  heavy on its own, below),
   normals 1024, leaf maps 512 with their alpha, other colour maps 1024 (never
   enlarged). The space kit's palette atlases stay at their own size,
   lossless. Its 92 files embed five different atlases (a 32² palette in 80,
@@ -68,6 +69,20 @@ npx vitest run scripts/kit                                 # the pure half and t
   `Atlas_2` … `Atlas_5` by how many models wear it.
 - Then `dedup`, `prune`, and meshopt (`medium`, normals in a byte a
   component; a rig's clips resampled first).
+- A family over 1.5 MB goes into `<family>.glb`, `<family>-2.glb` … in model
+  order, each as full as fits; the manifest's `file` says which holds a
+  model, and the materials keep their names in each.
+
+Three choices the plan didn't make, and why:
+
+- **Simplify crosses UV seams** (meshopt's `Permissive`): without it the
+  bark, hundreds of UV islands, stops at 79-96 % and no tree's LOD1 makes 40 %;
+  with it every part reaches the quarter at 0.1-0.4 % error.
+- **Normals in 8 bits**, not meshopt `medium`'s 10: a family is mostly its
+  geometry, and at 10 bits the megakit came to 12.8 MB, over its 12.
+- **Five space atlases, five materials**: the pack's files embed atlases up
+  to 97 levels off its `Atlas.png` where they are sampled, so each is kept,
+  and named apart because the kit shares a material by its name.
 
 ## The manifest
 
@@ -103,24 +118,25 @@ when its geometry carries no `_WIND`.
 
 | What | Budget |
 | --- | --- |
-| A family file | 1.5 MB (over it, its bark colour is halved to 512, in every family that wears that bark, and `maps.colour` says so) |
+| A family file | 1.5 MB (a family over it is split into numbered files; only a model over it on its own has its bark colour halved to 512, in every family that wears that bark, and `maps.colour` says so) |
 | A tree | 15,000 triangles |
-| A LOD1 | 40 % of its model's triangles |
+| A tree's LOD1 | 40 % of its triangles (any other model's LOD1: no more than the model) |
 | The nature megakit | 12 MB for its 116 models |
 
 ## What the packs came to (2026-10-08)
 
-The nature megakit: 116 models in 19 files, **11.02 MB** (the manifest 40 KB).
-`Bark_NormalTree` is halved, because `cherryblossom.glb` is over (it stays
-over: a family is its geometry, its maps are under 120 KB).
+The nature megakit: 116 models in 20 files, **11.23 MB** (the manifest 40 KB).
+The cherry blossoms are in two files, the first three and the last two; no
+bark is halved. `checkManifest` is clean on both packs.
 
 | File | Models | Triangles | LOD1 | KB |
 | --- | ---: | ---: | ---: | ---: |
 | birch.glb | 5 | 29,734 | 8,649 | 1,158 |
 | bush.glb | 6 | 10,256 | 3,404 | 444 |
-| cherryblossom.glb | 5 | 65,768 | 19,076 | 1,968 (over) |
+| cherryblossom.glb | 3 | 40,787 | 11,916 | 1,316 |
+| cherryblossom-2.glb | 2 | 24,981 | 7,160 | 794 |
 | clover.glb | 2 | 994 | 238 | 73 |
-| commontree.glb | 5 | 22,666 | 6,735 | 739 |
+| commontree.glb | 5 | 22,666 | 6,735 | 770 |
 | deadtree.glb | 5 | 29,878 | 7,432 | 851 |
 | fern.glb | 2 | 468 | 125 | 69 |
 | flower.glb | 12 | 7,879 | 2,196 | 297 |
@@ -129,7 +145,7 @@ over: a family is its geometry, its maps are under 120 KB).
 | mushroom.glb | 4 | 6,440 | 1,609 | 179 |
 | pebble.glb | 11 | 1,047 | 268 | 116 |
 | petal.glb | 6 | 159 | 102 | 61 |
-| pine.glb | 5 | 17,575 | 4,993 | 533 |
+| pine.glb | 5 | 17,575 | 4,993 | 563 |
 | plant.glb | 10 | 3,370 | 921 | 149 |
 | rock.glb | 6 | 5,188 | 1,294 | 157 |
 | rockpath.glb | 10 | 14,839 | 3,700 | 479 |
@@ -162,10 +178,9 @@ large enemy 337 KB, the mechs 183-199 KB, the small enemies 44-54 KB.
 | stairs.glb | 1 | 256 | 70 | 8 |
 | tree.glb | 18 | 42,138 | 10,526 | 482 |
 
-Over the LOD1 budget, and left so: models too small to lose 60 % within the
-error (five petals of 13-30 triangles; three flowers, two plants and a
-pebble of 48-293; one space grass of 96), and one bush whose 432 cards thin
-to 173, a card over 40 %.
+Some small models' LOD1s save little (five petals of 13-30 triangles keep
+nearly all of them; three flowers, two plants and a pebble of 48-293, and
+one space grass, 42-79 %): none is a tree, and none is heavier than its model.
 
 ## Later
 

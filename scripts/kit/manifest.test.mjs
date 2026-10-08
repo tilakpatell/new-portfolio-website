@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildManifest, checkManifest } from './manifest.mjs';
+import { importPack } from './import.mjs';
 
 // The tiny fixture's shape (scripts/fixtures/kit/tiny/): two birches of one
 // family, each a bark part and a leaf part of four triangles, sharing two
@@ -127,7 +128,7 @@ describe('checking a manifest against its files', () => {
     expect(checkManifest(m, { 'birch.glb': 0.4 * MB })).toEqual([]);
   });
 
-  it('flags a family file over 1.5 MB, a tree over 15,000 triangles, a LOD1 over 40 % and a missing file', () => {
+  it('flags a family file over 1.5 MB, a tree over 15,000 triangles, a tree’s LOD1 over 40 % and a missing file', () => {
     const m = buildManifest('tiny', tiny());
     expect(checkManifest(m, { 'birch.glb': 1.6 * MB })).toEqual([expect.stringMatching(/birch\.glb.*1\.6 MB.*1\.5 MB/)]);
     m.models.Birch_1.tris = 16000;
@@ -138,6 +139,15 @@ describe('checking a manifest against its files', () => {
     expect(errors[0]).toMatch(/Birch_1.*16000.*15000/);
     expect(errors[1]).toMatch(/Birch_2.*LOD1.*50 %/);
     expect(checkManifest(m, {})).toContainEqual(expect.stringMatching(/Birch_1.*birch\.glb.*missing/));
+  });
+
+  it('holds only a tree’s LOD1 to 40 %, and any other LOD1 to no more than its model', () => {
+    const model = (name, tris, tris1) => ({ name, positions: new Float32Array([0, 0, 0, 1, 1, 1]), parts: [{ part: 'leaves', material: 'Flowers', tris, tris1 }] });
+    const m = buildManifest('x', [
+      { family: 'petal', file: 'petal.glb', models: [model('Petal_1', 10, 9), model('Petal_2', 10, 11)], materials: { Flowers: { leaf: true, wind: false, maps: { colour: [4, 4] } } } },
+    ]);
+    expect(checkManifest(m, { 'petal.glb': 1000 })).toEqual([expect.stringMatching(/Petal_2.*LOD1 11 of 10.*more than/)]);
+    // (a tree at 50 % is flagged: the test above)
   });
 
   it('wants the licence and the source said', () => {
@@ -195,6 +205,38 @@ describe('the import, run on the tiny fixture', () => {
       expect(manifest.materials.Bark_Birch).toEqual({ alpha: 'opaque', leaf: false, wind: 'tree', maps: { colour: '8x8' } });
     } finally {
       rmSync(out, { recursive: true, force: true });
+    }
+  }, 60000);
+});
+
+describe('a family too heavy for one file', () => {
+  it('goes into <family>.glb, <family>-2.glb … in model order, each under the cap, its materials named as before', async () => {
+    const from = join(import.meta.dirname, '..', 'fixtures', 'kit', 'tiny');
+    const [whole, split] = [mkdtempSync(join(tmpdir(), 'kit-whole-')), mkdtempSync(join(tmpdir(), 'kit-split-'))];
+    try {
+      const one = await importPack({ pack: 'tiny', from, out: whole, log: () => {} });
+      const size = statSync(join(whole, 'birch.glb')).size;
+      expect(new Set(Object.values(one.models).map((m) => m.file))).toEqual(new Set(['birch.glb']));
+
+      // a cap the two birches together are over, and each alone under
+      const m = await importPack({ pack: 'tiny', from, out: split, log: () => {}, cap: size - 1 });
+      expect([m.models.Birch_1.file, m.models.Birch_2.file]).toEqual(['birch.glb', 'birch-2.glb']);
+      expect(m.models.Birch_2.family).toBe('birch');
+      expect(readdirSync(split).sort()).toEqual(['birch-2.glb', 'birch.glb', 'index.json']);
+      for (const f of ['birch.glb', 'birch-2.glb']) expect(statSync(join(split, f)).size).toBeLessThan(size);
+      expect(m.materials).toEqual(one.materials);
+
+      const { NodeIO } = await import('@gltf-transform/core');
+      const { ALL_EXTENSIONS } = await import('@gltf-transform/extensions');
+      const { MeshoptDecoder } = await import('meshoptimizer');
+      await MeshoptDecoder.ready;
+      const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
+      const second = (await io.read(join(split, 'birch-2.glb'))).getRoot();
+      expect(second.listMeshes().map((x) => x.getName()).sort()).toEqual(['Birch_2', 'Birch_2.lod1']);
+      expect(second.listMaterials().map((x) => x.getName()).sort()).toEqual(['Bark_Birch', 'Leaves_Birch']);
+    } finally {
+      rmSync(whole, { recursive: true, force: true });
+      rmSync(split, { recursive: true, force: true });
     }
   }, 60000);
 });

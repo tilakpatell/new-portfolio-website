@@ -18,7 +18,8 @@
 import { boundsOf, kindOf, tonesOf } from './lib.mjs';
 
 // What a kit file may cost: a family GLB's bytes, a tree's triangles, and
-// its LOD1's share of them.
+// its LOD1's share of them (the spec's budgets; any other model's LOD1 need
+// only be no heavier than the model: a petal of 13 triangles can't lose 60 %).
 export const BUDGET = { file: 1.5 * 1048576, tree: 15000, lod1: 0.4 };
 
 // The kinds a material bends with in the wind (foliage.js's WIND): anything
@@ -88,7 +89,7 @@ export function buildManifest(pack, families, { title = pack } = {}) {
 
 // What is wrong with a manifest and the files beside it: the credit unsaid,
 // a model whose file is missing, a file over budget, a tree too heavy, a
-// LOD1 that saves too little.
+// tree's LOD1 that saves too little, any LOD1 heavier than its model.
 export function checkManifest(manifest, files) {
   const errors = [];
   if (manifest.licence !== 'CC0-1.0') errors.push(`${manifest.pack}: the licence is not CC0-1.0`);
@@ -98,9 +99,10 @@ export function checkManifest(manifest, files) {
     if (!(m.file in files)) errors.push(`${name}: its file ${m.file} is missing`);
     else used.add(m.file);
     if (m.kind === 'tree' && m.tris > BUDGET.tree) errors.push(`${name}: a tree of ${m.tris} tris, over ${BUDGET.tree}`);
-    if (m.tris1 != null && m.tris1 > BUDGET.lod1 * m.tris) {
+    if (m.kind === 'tree' && m.tris1 != null && m.tris1 > BUDGET.lod1 * m.tris) {
       errors.push(`${name}: LOD1 ${m.tris1} of ${m.tris} tris (${Math.round((100 * m.tris1) / m.tris)} %), over ${100 * BUDGET.lod1} %`);
     }
+    if (m.tris1 != null && m.tris1 > m.tris) errors.push(`${name}: LOD1 ${m.tris1} of ${m.tris} tris, more than the model`);
   }
   for (const file of [...used].sort()) {
     const mb = files[file] / 1048576;

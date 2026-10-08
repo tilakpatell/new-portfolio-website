@@ -18,12 +18,13 @@
 // leaves or flowers, or one cut out by its map's alpha) is MASK at 0.3 and
 // two-sided; everything else is opaque. Textures go to WebP q82 by role
 // (bark and solid colour 1024, normals 1024, leaves 512 with their alpha, a
-// palette atlas lossless at its own size); a family file over 1.5 MB has its
-// bark colour halved, in every family that wears that bark. Then dedup,
-// prune, meshopt.
+// palette atlas lossless at its own size). Then dedup, prune, meshopt. A
+// family over 1.5 MB goes into `<family>.glb`, `<family>-2.glb` … in model
+// order, each as full as fits; only a model over it on its own has its bark
+// colour halved, in every family that wears that bark.
 //
 //   SOURCES[pack] → { dirs, ext?, title, wind?, atlas? }
-//   importPack({ pack, from, out, families, log, dry }) → manifest
+//   importPack({ pack, from, out, families, log, dry, cap }) → manifest   (cap: a file's bytes, BUDGET.file)
 
 import { Document, Logger, NodeIO, PropertyType } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -32,7 +33,7 @@ import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer
 import sharp from 'sharp';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync } from 'node:fs';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { familyOf, kindOf, thinCards, windFromColor } from './lib.mjs';
@@ -385,6 +386,32 @@ async function buildFile(io, group, defs, source, halve) {
   return { bytes: await io.writeBinary(doc), models, maps, bark };
 }
 
+// A group's files: the whole family in one when it fits under `cap`, else
+// split in model order, each file as full as fits (`<family>.glb`,
+// `<family>-2.glb` …). Materials keep their names across the files; the kit
+// shares them by name.
+async function filesOf(io, group, defs, source, halve, cap) {
+  const build = (models) => buildFile(io, { ...group, models }, defs, source, halve);
+  const whole = await build(group.models);
+  if (whole.bytes.byteLength <= cap || group.models.length === 1) return [{ ...whole, file: group.file, count: group.models.length }];
+  const out = [];
+  let held = [];
+  let last = null;
+  for (const m of group.models) {
+    const next = await build([...held, m]);
+    if (held.length && next.bytes.byteLength > cap) {
+      out.push({ ...last, count: held.length });
+      held = [m];
+      last = await build(held);
+    } else {
+      held.push(m);
+      last = next;
+    }
+  }
+  out.push({ ...last, count: held.length });
+  return out.map((b, i) => ({ ...b, file: i ? `${group.family}-${i + 1}.glb` : group.file }));
+}
+
 // The pack's models gathered into files: one a family, or one a rigged model.
 function groupsOf(models, families) {
   const groups = new Map();
@@ -398,7 +425,7 @@ function groupsOf(models, families) {
   return [...groups.values()].sort((a, b) => a.file.localeCompare(b.file));
 }
 
-export async function importPack({ pack, from, out, families = [], log = console.log, dry = false }) {
+export async function importPack({ pack, from, out, families = [], log = console.log, dry = false, cap = BUDGET.file }) {
   if (!SOURCES[pack] && !from) throw new Error(`no pack "${pack}" (one of ${Object.keys(SOURCES).join(', ')}, or any name with --from <dir>)`);
   // (a pack not in SOURCES is read from --from itself, as the megakit is)
   const source = { pack, ...(SOURCES[pack] ?? { dirs: [''], title: pack, wind: true }) };
@@ -415,31 +442,32 @@ export async function importPack({ pack, from, out, families = [], log = console
   const groups = groupsOf(models, families);
   if (!groups.length) throw new Error(`no family ${families.join(', ')} in ${pack}`);
 
-  // build every file; any over budget halves its bark, and every file that
-  // wears a halved bark is built again so the bark is the same in each (a
-  // partial import starts from the bark the manifest already has halved)
+  // build every group's files; a family over the cap is split. Only a model
+  // over it on its own has its bark colour halved, and then every group that
+  // wears that bark is built again so the bark is the same in each (a
+  // partial import starts from the bark the manifest already has halved).
   const index = join(out, 'index.json');
   const old = families.length && existsSync(index) ? JSON.parse(await readFile(index, 'utf8')) : null;
   const halve = new Set(Object.entries(old?.materials ?? {}).flatMap(([name, m]) => (m.maps.colour && parseInt(m.maps.colour) <= SIZE.halved ? [name] : [])));
-  const built = new Map();
+  const built = new Map(); // group file → { files, halved }
   let pending = groups;
   while (pending.length) {
-    for (const g of pending) built.set(g.file, { ...(await buildFile(io, g, defs, source, halve)), halved: new Set(halve) });
-    for (const b of built.values()) if (b.bytes.byteLength > BUDGET.file) b.bark.forEach((n) => halve.add(n));
-    pending = groups.filter((g) => built.get(g.file).bark.some((n) => halve.has(n) && !built.get(g.file).halved.has(n)));
+    for (const g of pending) built.set(g.file, { files: await filesOf(io, g, defs, source, halve, cap), halved: new Set(halve) });
+    for (const { files: list } of built.values()) for (const b of list) if (b.count === 1 && b.bytes.byteLength > cap) b.bark.forEach((n) => halve.add(n));
+    pending = groups.filter((g) => built.get(g.file).files.some((b) => b.bark.some((n) => halve.has(n) && !built.get(g.file).halved.has(n))));
   }
 
-  const entries = groups.map((g) => {
-    const b = built.get(g.file);
+  const written = groups.flatMap((g) => built.get(g.file).files.map((b) => ({ ...b, group: g })));
+  const entries = written.map((b) => {
     const materials = {};
     for (const [name, wh] of Object.entries(b.maps)) materials[name] = { ...defs[name], maps: wh };
     const tris = b.models.reduce((n, m) => n + m.parts.reduce((k, p) => k + p.tris, 0), 0);
     const tris1 = b.models.reduce((n, m) => n + m.parts.reduce((k, p) => k + (p.tris1 ?? 0), 0), 0);
-    const lod = g.models.some((m) => !m.rigged) ? String(tris1) : '-';
-    log(`${g.file.padEnd(34)} ${String(g.models.length).padStart(3)} models  ${String(tris).padStart(7)} → ${lod.padStart(6)} tris  ${(b.bytes.byteLength / 1048576).toFixed(2)} MB`);
-    return { family: g.family, file: g.file, models: b.models, materials };
+    const lod = b.models.some((m) => !m.rig) ? String(tris1) : '-';
+    log(`${b.file.padEnd(34)} ${String(b.models.length).padStart(3)} models  ${String(tris).padStart(7)} → ${lod.padStart(6)} tris  ${(b.bytes.byteLength / 1048576).toFixed(2)} MB`);
+    return { family: b.group.family, file: b.file, models: b.models, materials };
   });
-  const halved = [...halve].filter((n) => [...built.values()].some((b) => b.bark.includes(n))).sort();
+  const halved = [...halve].filter((n) => written.some((b) => b.bark.includes(n))).sort();
   if (halved.length) log(`bark colour halved to ${SIZE.halved}: ${halved.join(', ')}`);
   let manifest = buildManifest(pack, entries, { title: source.title });
 
@@ -451,7 +479,12 @@ export async function importPack({ pack, from, out, families = [], log = console
   }
 
   await mkdir(out, { recursive: true });
-  for (const [file, b] of built) await writeFile(join(out, file), b.bytes);
+  for (const b of written) await writeFile(join(out, b.file), b.bytes);
+  // (a family split before and not now, or into fewer, leaves no stale part)
+  const parts = new Set(written.map((b) => b.file));
+  for (const f of readdirSync(out)) {
+    if (groups.some((g) => new RegExp(`^${g.family}-\\d+\\.glb$`).test(f)) && !parts.has(f)) await rm(join(out, f));
+  }
   // a partial import keeps the other families' entries
   if (old) {
     const files = new Set(groups.map((g) => g.file));
