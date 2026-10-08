@@ -58,7 +58,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | design | the architecting session | `claude/lucid-hawking-78yzz5` | | |
 | 1A | | | | |
 | 1B | session_0125kUpviRHiF3dVxbGM3odg | `claude/one-feel-hits` | #699 | |
-| 1C | | | | |
+| 1C | session_01ALnkhhCHveAZqkCSpnBLq2 | `claude/one-feel-car` | #700, closed at the owner’s word: the Expanse car game is removed (`claude/remove-expanse`); the pure pieces stay on the branch for Phase 2 | no |
 | 1D | | | | |
 | 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 2A | | | | |
@@ -69,6 +69,8 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2F | | | | |
 
 ## Findings (for the owner and the next lane)
+
+- **Change of course** (the spec’s section of that name): the Expanse is removed; Phase 2 is game feel first, every game, then the look.
 
 - (a lane writes here what it found and could not do in its files: a shared change it needs, a spec decision it questions, a world that will not take a piece and why)
 - 1B: `wireImpacts` takes an extra `up(at)` (the dust’s rise; a planet’s up is not +y), and works in whatever units `toWorld` gives: the landings pass metres and scale the dust’s mesh by `METRE`. A world in metres passes neither.

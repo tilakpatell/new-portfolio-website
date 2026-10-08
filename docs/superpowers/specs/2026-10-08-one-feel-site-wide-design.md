@@ -187,6 +187,15 @@ Phase 2 (every world), each lane applying all six pieces to its worlds by the ro
 
 The handoff `docs/superpowers/HANDOFF-one-feel.md` carries the status table; each lane fills its row before it stops.
 
+## Change of course (2026-10-08, evening)
+
+While Phase 1 ran, the owner told the car lane: the Expanse car game is not wanted (“I don’t care about the car”), what he wants is how polished Bruno’s *game mechanics* feel, on *his* games, all of them. So:
+
+- The Expanse surface (`src/components/expanse/surface/`, `/universe/expanse/:seed`) is removed by that lane (`claude/remove-expanse`); lane 1C’s pull request #700 is closed. Its pure pieces (`lib/vehicleFeel.js`, `lib/three/vehicleBody.js`, `lib/physics/carTuning.js`) stay on the branch `claude/one-feel-car` for a Phase 2 lane that gives a vehicle of its own (the Aztek, Optimus’s truck, the galaxy’s speeders, C-137’s ship) the same springs; nothing else of that lane lands.
+- Every mention of the Expanse in the roster, the goals and Phase 2’s lane 2C is void; lane 2C keeps the map, the landings and the foot scene.
+- **Phase 2 is game feel first.** Each lane works its games in this order and stops at the look only when the feel is done: every action answered (a hit gives a sound sized by its force, a puff, a small shake and, for a heavy one, a few frames of hitstop: pieces 3 and `lib/three/feel.js`’s `hitstop`); things react physically (props scatter when struck, asleep until then; secondary motion from springs, never a fixed sine); input forgiving (controls ease in and out; a jump has coyote time and a buffered press; nothing sticky or dropped); the camera calm (eased, leading the player, never snapping; a shake decays); nothing dead-ends (a respawn is quick, every action works the first time). Then piece 1 and 2 (art, tone, bloom), then 5 (the panel), then 6 where a GLB meets Rapier.
+- The six pieces, the interfaces and the tests stand as written; only their order and the Expanse change.
+
 ## Decisions
 
 - **Neutral, not ACES or AgX.** The first round chose it and 14 worlds are tuned to it; the brief allows either choice made everywhere. The page scenes keep “none, colours as final”, the brief’s other allowed choice, because their colours come from the page’s theme (`lib/three/theme.js`) and were authored to be shown exactly.

@@ -257,6 +257,10 @@ Owns: `src/lib/physics/fromModel.js`, `src/lib/physics/fromModel.test.js`, `src/
 
 Each lane applies the six pieces to every world in its row of the spec’s roster, in this order per world, and commits per world. The interfaces are Phase 1’s (above). A lane with many worlds may split into two pull requests at a world boundary.
 
+### Change of course (read before Phase 2)
+
+The spec’s “Change of course” applies: the Expanse is removed and lane 1C is closed. In the per-world checklist below, do **Step 4 (hits) and a new Step 4b (feel) first**, then Step 5 where a vehicle remains, then Steps 1 to 3, 6 and 7. Step 4b, per game: `feel.hitstop` on a heavy hit (over gain 0.6, 40 to 80 ms); every input eased (`1 − exp(−k·dt)`, never a per-frame lerp); a jump with coyote time (0.1 s) and a buffered press (0.12 s) where the game has one; the camera eased and leading; a respawn under a second; each of these a pure rule with a test where the game’s `rules.js` holds its movement. Lane 2C drops the Expanse. A Phase 2 lane that gives a vehicle the springs cherry-picks `src/lib/vehicleFeel.js`, `src/lib/three/vehicleBody.js` and their tests from `origin/claude/one-feel-car` (the closed PR #700) rather than writing them again.
+
 ### The per-world checklist (one task a world)
 
 - [ ] **Step 1: `look.js`.** Write `src/components/<world>/look.js` per the spec §1 and the roster’s art; remove the folder from `looks.test.js`’s `EXPECTED_MISSING`. Run `npx vitest run src/components/worlds/looks.test.js` → PASS for this folder.
