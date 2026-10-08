@@ -6,7 +6,7 @@ import { isDone, todoFor } from '../../data/todo';
 import { GUIDES } from './routes';
 import { local } from '../../lib/hooks';
 import { VISITED_KEY, storedKey } from '../../lib/visited';
-import { worldAt } from '../worlds/worlds';
+import { WORLDS, worldAt } from '../worlds/worlds';
 import { TOUR_KEY, openTour, readProgress } from '../../lib/tour';
 import './todo.css';
 
@@ -69,7 +69,7 @@ export default function TodoList({ pathname, onGo }) {
         </p>
       </div>
       {groups(rows).map(([area, rs]) => {
-        const world = worldAt(area);
+        const world = WORLDS.find((w) => w.to === area); // (exactly: Mario 64 is its own, not Dot Matrix's)
         return (
           <section key={area} className="todo-group" aria-label={GUIDES[area].title}>
             <p className="guide-group">

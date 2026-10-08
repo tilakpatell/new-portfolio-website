@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { VISITED_CAP, VISITED_KEY, addVisited, hasVisited } from './visited';
+import { SHELL_KEYS, VISITED_CAP, VISITED_KEY, addVisited, hasVisited, storedKey } from './visited';
 
 describe('the pages the site has shown you', () => {
   it('keeps its list under its own key', () => {
@@ -45,5 +45,41 @@ describe('the pages the site has shown you', () => {
     expect(hasVisited(list, '/gal')).toBe(false);
     expect(hasVisited(list, '/contact')).toBe(false);
     expect(hasVisited(null, '/home')).toBe(false);
+  });
+});
+
+describe('what a shell key holds', () => {
+  const stub = (local, session) => {
+    const store = (m) => ({
+      getItem: (k) => (k in m ? m[k] : null),
+    });
+    globalThis.window = { localStorage: store(local), sessionStorage: store(session) };
+  };
+
+  it('reads kept-across-visits first, then this visit’s', () => {
+    stub({ 'tp-eggs': '["reactor"]' }, { 'tp-eggs': '["other"]', 'tp-theme-pin': '"jedi"' });
+    expect(storedKey('tp-eggs')).toEqual(['reactor']);
+    expect(storedKey('tp-theme-pin')).toBe('jedi');
+    expect(storedKey('tp-sound')).toBeNull();
+  });
+
+  it('gives back a value that isn’t JSON as it is, and nothing when storage is out of reach', () => {
+    stub({ 'tp-mode': 'dark' }, {});
+    expect(storedKey('tp-mode')).toBe('dark');
+    globalThis.window = {
+      get localStorage() {
+        throw new Error('denied');
+      },
+      get sessionStorage() {
+        throw new Error('denied');
+      },
+    };
+    expect(storedKey('tp-mode')).toBeNull();
+    delete globalThis.window;
+  });
+
+  it('names only keys the shell writes', () => {
+    for (const k of SHELL_KEYS) expect(k).toMatch(/^tp-[a-z-]+$/);
+    expect(SHELL_KEYS).not.toContain('tp-tour');
   });
 });

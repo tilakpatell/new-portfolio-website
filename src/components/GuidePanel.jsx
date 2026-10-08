@@ -5,8 +5,9 @@ import { SHORTCUTS, SITE, guideFor } from './guide/pages';
 import { KeyTable, Keys } from './guide/KeyTable';
 import { shortcutLabel } from '../lib/palette';
 import { local } from '../lib/hooks';
-import { AUDIENCES, TOUR_KEY, TOUR_NAMES, TOUR_TIMES, openTour, planFor, readProgress, tourFor, unfinished } from '../lib/tour';
-import { TOURS } from './tour/steps';
+import { AUDIENCES, TOUR_KEY, TOUR_NAMES, TOUR_TIMES, openTour, readProgress, tourFor, unfinished } from '../lib/tour';
+import * as steps from './tour/steps';
+import { planOf } from './tour/plan';
 import { briefKeyFor, openBrief } from './tour/brief';
 import './guide/tours.css';
 
@@ -94,15 +95,16 @@ function Tours({ pathname, onGo }) {
     openTour(detail);
   };
   const view = tourFor(pathname);
-  const left = unfinished(readProgress(local.get(TOUR_KEY, null)));
-  const plan = (a) => planFor(TOURS, a, view, pathname);
-  const shown = AUDIENCES.filter((a) => TOURS[a]?.length);
-  const at = left && TOURS[left.audience]?.length ? plan(left.audience) : null;
+  const kept = readProgress(local.get(TOUR_KEY, null));
+  const left = unfinished(kept);
+  const plan = (a) => planOf(steps, a, view, pathname);
+  const shown = AUDIENCES.filter((a) => steps.TOURS[a]?.length);
+  const at = left && steps.TOURS[left.audience]?.length ? plan(left.audience) : null;
   const n = at ? at.findIndex((c) => c.id === left.chapter) + 1 : 0;
   return (
     <section className="mt-3" aria-label="Tours">
       {n > 0 && (
-        <button type="button" className="btn btn-primary btn-sm" onClick={take(left)}>
+        <button type="button" className="btn btn-primary btn-sm" onClick={take({ ...left, stop: kept.stop })}>
           <RiRefreshLine className="h-4 w-4" aria-hidden="true" /> Carry on {TOUR_NAMES[left.audience].replace(/^The/, 'the')} (chapter {n} of {at.length})
         </button>
       )}

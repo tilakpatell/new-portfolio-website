@@ -291,6 +291,7 @@ describe('a tour’s plan', () => {
     const phone = planFor(tours, 'recruiter', 'classic', '/home', { coarse: true });
     expect(phone.map((c) => c.id)).toEqual(['shell', 'home', 'projects', 'hood-log', 'hood-term', 'end']);
     expect(phone.at(-1).path).toBe('/terminal');
+    expect(startAt(phone, { chapter: 'hood' })).toEqual({ c: 3, stop: undefined });
   });
 
   it('folds two tours together by chapter id, the shared end card as it is', () => {

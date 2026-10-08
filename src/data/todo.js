@@ -370,7 +370,7 @@ export const THINGS_TO_DO = [
     seconds: 30,
     phone: true,
     blurb: 'Four crews’ ships, or one you build from a seed. H opens the hangar: paint and parts on a power budget.',
-    done: { key: 'tp-universe-ship' },
+    done: null, // (the cockpit writes the ship you fly on every launch: no honest tick)
   },
   {
     id: 'go-online',

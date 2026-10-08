@@ -125,6 +125,8 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
   // screen, the ship you fly, what a place downloads
   const ctx = { key: shortcutLabel(), touch, ship: local.get('tp-universe-ship', null), mb: WORLD_MB };
   const release = Boolean(step?.release?.length) && !waiting;
+  // html[data-touring]: 'release' only where ? goes through (the guide takes ? on that word alone), 'keys' where only the palette's does
+  const touringAs = !release ? '' : step.release.includes('?') ? 'release' : 'keys';
 
   const seenBrief = () => chapter?.brief && onBriefSeen(chapter.brief);
   const finish = (how) => {
@@ -192,7 +194,14 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
       path: target.path,
       feedTo: categoryAt(here.current)?.to,
     });
-    const loading = () => Boolean(document.querySelector('.feed-page[data-active] .feed-loading'));
+    // the page's code still coming: the route's own (no page under #main yet,
+    // or one held hidden while its code loads) or, on the feed, its page's
+    const loading = () => {
+      const page = document.querySelector('#main .page-enter');
+      if (!page || getComputedStyle(page).display === 'none') return true;
+      if (!categoryAt(target.path)) return false;
+      return !document.querySelector('.feed-page[data-active]') || Boolean(document.querySelector('.feed-page[data-active] .feed-loading'));
+    };
     if (!chapterReady({ ...at(), clear: true, loading: false })) onNavigate(target.path);
     let off = false;
     const ready = () => (chapterReady({ ...at(), clear: clear(), loading: loading() }) ? 'ready' : null);
@@ -223,7 +232,12 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
     waitUntil(() => (has(step.at) ? 'ready' : null), {
       ...timers,
       cancelled: () => off,
-    }).then(() => !off && setLate(false));
+    }).then(() => {
+      if (off) return;
+      setLate(false);
+      // (Next was disabled while it waited, which dropped the focus)
+      requestAnimationFrame(() => next.current?.focus({ preventScroll: true }));
+    });
     return () => {
       off = true;
     };
@@ -241,8 +255,8 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
   useEffect(() => {
     const html = document.documentElement;
     if (!('touring' in html.dataset)) return undefined;
-    html.dataset.touring = release ? 'release' : '';
-    if (!release) return undefined;
+    html.dataset.touring = touringAs;
+    if (!touringAs) return undefined;
     const btn = document.querySelector('.guide-btn');
     const was = btn?.inert;
     if (btn) btn.inert = false;
@@ -250,10 +264,11 @@ export default function Tour({ list, chapters, start, kind = 'tour', pathname, o
     return () => {
       clearInterval(watch);
       setOver(false);
-      if (btn && was) btn.inert = true;
+      // (only while the tour's still up: ending, it has already freed the page)
+      if (btn && was && 'touring' in html.dataset) btn.inert = true;
       if ('touring' in html.dataset) html.dataset.touring = '';
     };
-  }, [release]);
+  }, [touringAs]);
 
   // The keys, before the page's own (captured, and stopped there): the
   // arrows, Enter and Escape drive the tour, Tab stays in the card, and no
