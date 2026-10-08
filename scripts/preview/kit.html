@@ -20,13 +20,18 @@
          the left, the galaxy placer's scatter of `kit:<pack>/<Name>` rows on
          a flat world under a sun, in the house's look and the galaxy kit's
          wind; on the right, lib/three/kit's pools of the named models, a row
-         in the house's look and a row without. Every shader is checked as it
-         is made (renderer.debug.checkShaderErrors); once drawn, window.__done
-         holds the programs three made, any that failed, the wind weight
-         each kit program reads, and `moved`: the % of each view's top half
-         that a second more of wind changed. Dev only: the dev server serves it, the build
+         in the house's look and a row without, and `far`'s model in its
+         puff band (its pools' bands drawn in to 40/80 m, so its puffs stand
+         130-140 m off, in the gap between the two looks: the house's left,
+         plain right), turned to the camera, in a createWind wind. Every
+         shader is checked as it is made (renderer.debug.checkShaderErrors);
+         once drawn, window.__done holds the programs three made, any that
+         failed, the wind weight each kit program reads, each puff drawn
+         (`puffed`: its program's key, whether it ran and reads the trunk's
+         flag), and `moved`: the % of each view's top half that a second
+         more of wind changed. Dev only: the dev server serves it, the build
          never sees it.
-         ?pack=<pack>&scatter=<Name>:<n>,…&pools=<Name>,…&w=960&h=640 -->
+         ?pack=<pack>&scatter=<Name>:<n>,…&pools=<Name>,…&far=<Name>:<n>&w=960&h=640 -->
     <script type="module">
       import * as THREE from 'three';
 
@@ -42,6 +47,7 @@
           return { name, n: Number(n) };
         });
       const pooled = (q.get('pools') ?? '').split(',').filter(Boolean);
+      const [farName = '', farN = '2'] = (q.get('far') ?? '').split(':');
       // (the same field every time: a small seeded random)
       let seed = 7;
       const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
@@ -51,6 +57,7 @@
         const { createKit } = await import('/src/components/galaxy/surface/kit.js');
         const { createPool, loadKit } = await import('/src/lib/three/kit.js');
         const { createHouse } = await import('/src/lib/three/house.js');
+        const { createWind } = await import('/src/lib/three/wind.js');
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
         renderer.debug.checkShaderErrors = true;
@@ -97,12 +104,15 @@
         left.lookAt(0, 3, -12);
 
         // right: the pools, each model a row of keyed items, in the house's
-        // look (x 140) and out of it (x 180)
+        // look (x 140) and out of it (x 180), and the far model's puffs
+        // (the puffs' own wind, a createWind)
+        const puffWind = createWind({ strength: 0.6 });
         const kits = [
-          { x: 140, kit: loadKit(pack, { house, wind: { time: galaxy.wind } }) },
-          { x: 180, kit: loadKit(pack, { wind: { time: galaxy.wind } }) },
+          { x: 140, kit: loadKit(pack, { house, wind: { time: galaxy.wind }, puffWind }) },
+          { x: 180, kit: loadKit(pack, { wind: { time: galaxy.wind }, puffWind }) },
         ];
         const pools = [];
+        const fars = [];
         for (const { x, kit } of kits) {
           await kit.manifest;
           pooled.forEach((name, row) => {
@@ -112,6 +122,14 @@
             scene.add(pool.group);
             pools.push(pool);
           });
+          if (farName) {
+            const pool = createPool(kit, farName, { bands: [40, 80] });
+            const side = x < 160 ? -1 : 1;
+            pool.set('far', Array.from({ length: Number(farN) }, (_, i) => ({ x: 161.5 + side * (2.5 + i * 5), z: -100 - (i % 2) * 8, yaw: rand() * 6.28 })));
+            scene.add(pool.group);
+            pools.push(pool);
+            fars.push(pool);
+          }
         }
         const right = new THREE.PerspectiveCamera(55, W / H, 0.1, 1000);
         right.position.set(160, 9, 32);
@@ -128,6 +146,7 @@
         };
         for (let f = 0; f < 30; f++) {
           galaxy.tick(1 / 30);
+          puffWind.update(1 / 30);
           for (const p of pools) p.update(right, 1 / 30);
           draw(left, 0);
           draw(right, W);
@@ -157,6 +176,7 @@
         };
         const before = grab();
         galaxy.tick(1);
+        puffWind.update(1);
         draw(left, 0);
         draw(right, W);
         const after = grab();
@@ -165,8 +185,18 @@
           for (let y = H >> 1; y < H; y++) for (let x = x0, i = (y * W * 2 + x) * 4; x < x0 + W; x++, i += 4) n += Math.abs(after[i] - before[i]) + Math.abs(after[i + 1] - before[i + 1]) + Math.abs(after[i + 2] - before[i + 2]) > 12;
           return Number(((100 * n) / (W * (H - (H >> 1)))).toFixed(3));
         });
+        // (each puff drawn: its program's key, whether it ran, and whether it
+        // reads the trunk's flag)
+        const puffed = [];
+        for (const p of fars)
+          for (const m of p.group.children) {
+            if (m.userData.level !== 2 || !m.count) continue;
+            const prog = renderer.properties.get(m.material).currentProgram;
+            puffed.push({ name: m.name, count: m.count, key: m.material.customProgramCacheKey?.() ?? '', trunk: Boolean(m.geometry.attributes.puffTrunk), ok: Boolean(prog) && (!prog.diagnostics || prog.diagnostics.runnable), flag: prog ? gl.getAttribLocation(prog.program, 'puffTrunk') >= 0 : false });
+          }
         window.__done = {
           moved,
+          puffed,
           programs: programs.length,
           failed,
           weighted: [...weighted.values()],

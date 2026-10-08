@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
+import { resetDevice } from '../device';
 import { createLeaves, makeLeaves, stepLeaves } from './leaves';
 import { createWind } from './wind';
 
@@ -40,6 +41,46 @@ describe('createLeaves', () => {
     expect(leaves.mesh.count).toBe(32);
     leaves.update(1 / 60, { x: 0, z: 0 }, null);
     leaves.dispose();
+    wind.dispose();
+  });
+});
+
+describe('createLeaves by the budget', () => {
+  // (the device's level picked by hand, as ?quality= picks it)
+  const at = (quality) => {
+    vi.stubGlobal('window', { location: { search: `?quality=${quality}`, hash: '' }, localStorage: { getItem: () => null } });
+    resetDevice();
+  };
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetDevice();
+  });
+  const floorAt = () => ({ y: 0, water: false });
+
+  it('makes none at low: no mesh, and its calls do nothing', () => {
+    at('low');
+    const wind = createWind();
+    const leaves = createLeaves({ wind, floorAt });
+    expect(leaves.mesh).toBeNull();
+    expect(leaves.state.count).toBe(0);
+    leaves.update(1 / 60, { x: 0, z: 0 }, null);
+    leaves.shift(10, -10);
+    leaves.dispose();
+    wind.dispose();
+  });
+
+  it('makes the level’s count (high 1024) unless given one', () => {
+    at('high');
+    const wind = createWind();
+    const leaves = createLeaves({ wind, floorAt });
+    expect(leaves.mesh).toBeInstanceOf(THREE.InstancedMesh);
+    expect(leaves.mesh.count).toBe(1024);
+    expect(leaves.state.count).toBe(1024);
+    leaves.dispose();
+    at('low');
+    const given = createLeaves({ count: 64, wind, floorAt });
+    expect(given.mesh.count).toBe(64);
+    given.dispose();
     wind.dispose();
   });
 });
