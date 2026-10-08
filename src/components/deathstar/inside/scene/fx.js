@@ -1,16 +1,16 @@
 // What a fight looks like aboard: the blaster bolts (a white-hot capsule
-// about 0.9 m long in a red glow, red for both sides as every hand blaster
-// in the films is; green only for the station’s turbolasers and its
-// superlaser), the sparks off whatever a bolt strikes, the scorch it
-// leaves on the wall (glowing as it cools), the flare at the muzzle, smoke,
-// and explosions. Everything is pooled and made here at the start (four
-// draws at most however hot the fight: the bolts’ cores, every glow and
-// spark and flash as one set of sprites, every puff of fire and smoke as
-// another, the scorches, and nothing for an empty pool), and its shaders
-// can be compiled before the first shot (`warm`), so nothing is allocated
-// or compiled mid-fight. One PointLight, kept in the scene at intensity 0
-// so the room’s shaders never change when it lights, is the muzzle flare
-// and an explosion’s flash; whichever is brighter has it.
+// about 0.9 m long in a red glow: red for every side’s blasters, as every
+// hand blaster in the films is, and green only for the station’s own
+// turbolasers and its superlaser), the sparks off whatever a bolt strikes,
+// the scorch it leaves on the wall (glowing as it cools), the flare at the
+// muzzle, smoke, and explosions. Everything is pooled and made here at the
+// start (four draws at most however hot the fight: the bolts’ cores, every
+// glow and spark and flash as one set of sprites, every puff of fire and
+// smoke as another, the scorches, and nothing for an empty pool), and its
+// shaders can be compiled before the first shot (`warm`), so nothing is
+// allocated or compiled mid-fight. One PointLight, kept in the scene at
+// intensity 0 so the room’s shaders never change when it lights, is the
+// muzzle flare and an explosion’s flash; whichever is brighter has it.
 //
 // Bolts are drawn as the rules have them: call bolt(b) for every bolt in
 // the air each frame (combat.js’s `combat.bolts`), before update(dt); one

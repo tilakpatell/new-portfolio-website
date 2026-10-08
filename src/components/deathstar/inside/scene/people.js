@@ -569,7 +569,7 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     eye: new THREE.MeshStandardMaterial({ name: 'ds-eye', vertexColors: true, roughness: 0.15, metalness: 0 }),
     gloss: new THREE.MeshStandardMaterial({ name: 'ds-gloss', vertexColors: true, roughness: 0.22, metalness: 0.3 }),
   };
-  let helmet = null; // the Death Star troopers’ one helmet shape, made for the first of them
+  let helmetShape = null; // the Death Star troopers’ one helmet shape, made for the first of them
   const records = new Map(); // id → { id, kind, fig, track, clip, gun, blaster, fallFor, posed, seen }
   // bodies by id, each with the frame the crew last listed it in: `lying`, seen dead in a room that
   // stood (so let go when that room is freed); `cleared`, let go, and never drawn again
@@ -594,7 +594,7 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     }
     const fig = await loadPerson(PEOPLE[kind] || !c ? kind : c.model, { tall: c?.tall, tint: c?.tint ?? null, renderer });
     fig.object.name = `person-${kind}`;
-    if (c?.helmet === 'dstrooper' && !disposed) helmetOn(fig, (helmet ??= helmetGeometry()), mats);
+    if (c?.helmet === 'dstrooper' && !disposed) helmetOn(fig, (helmetShape ??= helmetGeometry()), mats);
     return fig;
   }
 
@@ -629,7 +629,14 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
     const it = items[listed] ?? (items[listed] = {});
     listed++;
     const fall = p.mode === 'dead' || p.mode === 'down';
-    Object.assign(it, { id: p.id, x: p.x, y: p.y ?? 0, z: p.z, falling: fall && r.fallFor < FALL, settled: p.mode === 'dead' && r.fallFor >= FALL, shown: inView, p });
+    it.id = p.id;
+    it.x = p.x;
+    it.y = p.y ?? 0;
+    it.z = p.z;
+    it.falling = fall && r.fallFor < FALL;
+    it.settled = p.mode === 'dead' && r.fallFor >= FALL;
+    it.shown = inView;
+    it.p = p;
   }
 
   // the gun in a person’s hands: the shared rig’s figures hold their own
@@ -746,7 +753,8 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
       // figures for the nearest of those near without one, a couple a frame, so a crowd never stalls one
       wanted.sort((a, b) => a[0] - b[0]);
       for (let i = 0; i < Math.min(MAKE, wanted.length); i++) see(follow(wanted[i][1]), wanted[i][1], wanted[i][2], dt);
-      for (const r of [...records.values()]) if (r.seen !== frame) drop(r);
+      // (a Map walked while it is deleted from carries on with what is left)
+      for (const r of records.values()) if (r.seen !== frame) drop(r);
       for (const book of [lying, cleared]) for (const [id, seen] of book) if (seen !== frame) book.delete(id);
       items.length = listed;
       lodPick(items, at, { count }, picks);
@@ -768,7 +776,7 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
       disposed = true;
       for (const r of [...records.values()]) drop(r);
       for (const m of Object.values(mats)) m.dispose();
-      helmet?.dispose();
+      helmetShape?.dispose();
       disposeGuns();
       lying.clear();
       cleared.clear();

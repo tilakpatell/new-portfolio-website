@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FAR, LIVE, aimAngles, clipFor, createPeople, createTrack, liveCount, lodPick } from './people';
 
 const STEP = 1 / 30;
@@ -130,7 +130,22 @@ describe('a person drawn between the game’s steps', () => {
 });
 
 describe('the people aboard, drawn', () => {
-  afterEach(() => vi.restoreAllMocks());
+  // Node can’t fetch a model’s relative URL at all, and three’s FileLoader, thrown by it mid-request,
+  // leaves any later load of the same file waiting for ever: every model is answered as a browser
+  // would answer a missing one, so each figure stands in as a capsule however often its file is asked for
+  beforeEach(() => {
+    const Real = globalThis.Request;
+    vi.stubGlobal('Request', class extends Real {
+      constructor(url, init) {
+        super(new URL(url, 'http://localhost/'), init);
+      }
+    });
+    vi.stubGlobal('fetch', async () => new Response(null, { status: 404 }));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   const crewOf = (...people) => ({ people: new Map(people.map((p) => [p.id, p])) });
   const shown = (scene, name) => {
@@ -309,7 +324,7 @@ describe('the people aboard, drawn', () => {
     await vi.waitFor(() => {
       syncs(people, crew, 1);
       expect(shown(scene, 'helmet')).toHaveLength(2);
-    }, { timeout: 8000 });
+    });
     const [a, b] = shown(scene, 'helmet');
     expect(a.geometry).toBe(b.geometry);
     let freed = false;
