@@ -23,7 +23,7 @@
 //
 // createEconomy({ saves, achievements, standingOf, rankOf, later, cancel })
 //   → { credits, xp, level, owned, spent, earned, earn(what, n, { side }),
-//   canBuy(item), buy(item), owns(id), grant(ids), record(), on(fn) → off,
+//   canBuy(item), buy(item), spend(n), owns(id), grant(ids), record(), on(fn) → off,
 //   flush() }
 // deedToEarn(deed) → an EARN key or null; earnNote(earned) → { text, level }
 // or null; goodStanding(level) → boolean
@@ -328,6 +328,15 @@ export function createEconomy({
       credits -= item.price;
       spent += item.price;
       owned.add(idOf(item));
+      changed();
+      return true;
+    },
+    // credits spent on something that isn't kept (a bounty paid off,
+    // wanted.js): whole credits, and only what you have
+    spend(n) {
+      if (!Number.isInteger(n) || n <= 0 || n > credits) return false;
+      credits -= n;
+      spent += n;
       changed();
       return true;
     },

@@ -110,6 +110,12 @@ describe('the sides', () => {
       expect(side.factions[side.capital]?.role, `${side.id} capital`).toBe('capital');
     }
     expect(SIDES.breakingbad.has('roadblock')).toBe(true);
+    // the police, for wanted.js: a faction of their own, and a kind of theirs for every unit
+    for (const s of Object.values(SIDES)) {
+      const f = s.factions[s.police.faction];
+      expect(f?.role, s.id).toBe('police');
+      for (const u of ['cop', 'enforcer', 'heavy', 'medic']) expect(f.kinds.map(([k]) => k), `${s.id} ${u}`).toContain(s.police.units[u]);
+    }
     for (const s of Object.values(SIDES)) for (const need of ['hunt', 'bounty', 'pirates', 'leviathan']) expect(s.has(need), `${s.id} ${need}`).toBe(true);
   });
 
