@@ -11,14 +11,20 @@ import { BPM, FIGURE, HUMS, chatterOf, createSounds, doorFor, gunFor, heard, hum
 // whether a sound was made and whether everything made was stopped.
 function fakeAudio() {
   const made = [];
-  const param = (value = 0) => ({
-    value,
-    setValueAtTime() {},
-    linearRampToValueAtTime() {},
-    exponentialRampToValueAtTime() {},
-    setTargetAtTime() {},
-    cancelScheduledValues() {},
-  });
+  // what is scheduled on a param, as [time, value, tau]: a tau glides towards
+  // the value from that time; a ramp is taken as a step at its end
+  const param = (value = 0) => {
+    const p = {
+      value,
+      events: [],
+      setValueAtTime: (v, t) => p.events.push([t, v, 0]),
+      linearRampToValueAtTime: (v, t) => p.events.push([t, v, 0]),
+      exponentialRampToValueAtTime: (v, t) => p.events.push([t, v, 0]),
+      setTargetAtTime: (v, t, tau) => p.events.push([t, v, tau]),
+      cancelScheduledValues: (t) => (p.events = p.events.filter(([at]) => at < t)),
+    };
+    return p;
+  };
   const node = (kind) => {
     const n = {
       kind,
@@ -65,6 +71,37 @@ function fakeAudio() {
   const running = (at = Infinity) => sources().filter((n) => n.stopped === undefined || n.stopped > at);
   return { ctx, made, sources, running, bus: node('bus') };
 }
+
+// a param’s value at time `t`, from what was scheduled on it
+function valueAt(p, t) {
+  const due = p.events.filter(([at]) => at <= t).sort((x, y) => x[0] - y[0]);
+  let v = p.value;
+  due.forEach(([at, to, tau], i) => {
+    const until = i + 1 < due.length ? due[i + 1][0] : t;
+    v = tau ? to + (v - to) * Math.exp(-(until - at) / tau) : to;
+  });
+  return v;
+}
+
+// how loud what reaches node `n` is at time `t`: the gains on the way to the bus, by the loudest way
+const heardAt = (a, n, t) => (n === a.bus ? 1 : Math.max(0, ...n.outs.map((o) => valueAt(n.gain, t) * heardAt(a, o, t))));
+
+// every node `n` feeds, on the way to the bus
+const downstream = (n, seen = new Set()) => {
+  for (const o of n.outs) if (!seen.has(o)) downstream(o, seen.add(o));
+  return seen;
+};
+
+// the nodes that were there before `play` and that what it made feeds straight into
+const into = (a, play) => {
+  const from = a.made.length;
+  play();
+  const fresh = new Set(a.made.slice(from));
+  return new Set([...fresh].flatMap((n) => n.outs).filter((n) => !fresh.has(n)));
+};
+
+// lib/sfx’s one hall for the context: the convolver that isn’t the station’s own (that feeds the bus)
+const hallOf = (a) => a.made.find((n) => n.kind === 'Convolver' && !n.outs.includes(a.bus));
 
 const near = { x: 0, y: 1.6, z: 0, yaw: 0 };
 
@@ -434,5 +471,73 @@ describe('createSounds', () => {
     s.step('deck');
     s.update(near);
     expect(a.sources().length).toBe(after);
+  });
+});
+
+// lib/sfx’s blast, clang, saber and beeps ring through one hall per context,
+// and that hall joins every destination any of them is ever given.
+describe('lib/sfx’s reverb', () => {
+  const spot = (x, z) => ({ x, y: 1.6, z });
+
+  it('rings into a few sinks of its own, never into a voice the station’s other sounds are placed through', () => {
+    const a = fakeAudio();
+    const s = createSounds(a.bus, a.ctx);
+    s.update(near);
+    for (let i = 0; i < 40; i++) {
+      s.step('deck', spot(i % 7, -(i % 5)));
+      if (i % 3 === 0) s.blaster('dl44', spot(4 - i, -6));
+      if (i % 5 === 0) s.door('blast', spot(i % 9, 3));
+      if (i % 4 === 0) s.hit(spot(-2, i % 6));
+    }
+    s.saber(true);
+    s.say('artoo', '(Beeps.)');
+    const rung = new Set(hallOf(a).outs);
+    expect(rung.size).toBeGreaterThan(0);
+    expect(rung.size).toBeLessThanOrEqual(3);
+    const placed = new Set();
+    for (let i = 0; i < 40; i++) for (const n of into(a, () => s.step('grate', spot(-i, i % 3)))) placed.add(n);
+    for (const sink of rung) for (const n of [sink, ...downstream(sink)]) expect(placed.has(n)).toBe(false);
+  });
+
+  it('keeps a far door’s ring as quiet as a door that far off, however loud what rang before it', () => {
+    const a = fakeAudio();
+    const s = createSounds(a.bus, a.ctx);
+    s.update(near);
+    s.blaster('dl44', spot(1, -2));
+    s.door('blast', spot(0, -3));
+    s.saber(true);
+    a.ctx.currentTime = 6;
+    s.update(near);
+    s.door('blast', spot(0, -30));
+    const total = [...new Set(hallOf(a).outs)].reduce((sum, n) => sum + heardAt(a, n, 6.01), 0);
+    expect(total).toBeGreaterThan(0);
+    expect(total).toBeLessThan(heard(spot(0, -30), near).gain);
+  });
+
+  it('leaves nothing turned up once everything has rung', () => {
+    const a = fakeAudio();
+    const s = createSounds(a.bus, a.ctx);
+    s.update(near);
+    for (let i = 0; i < 20; i++) {
+      s.blaster(i % 2 ? 'dl44' : 'a280', spot(i - 10, -4));
+      s.door('blast', spot(10 - i, 2));
+    }
+    s.say('artoo', '(Beeps.)');
+    const later = 10;
+    const total = [...new Set(hallOf(a).outs)].reduce((sum, n) => sum + heardAt(a, n, later), 0);
+    expect(total).toBeLessThan(0.01);
+  });
+
+  it('rings nothing through it for a blast door too far off to carry its clang, though the door is still heard', () => {
+    const a = fakeAudio();
+    const s = createSounds(a.bus, a.ctx);
+    s.update(near);
+    s.door('blast', spot(0, -3));
+    const hall = hallOf(a);
+    const before = a.made.length;
+    const sources = a.sources().length;
+    s.door('blast', spot(0, -45));
+    expect(a.sources().length).toBeGreaterThan(sources);
+    expect(a.made.slice(before).some((n) => n.outs.includes(hall))).toBe(false);
   });
 });

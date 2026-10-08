@@ -218,6 +218,8 @@ export function ticks(t0, period, from, to) {
 // ── the sounds themselves ──
 const AHEAD = 0.25; // seconds scheduled ahead each update, so a slow frame doesn’t leave a gap
 const POOL = 16; // placed voices, reused in turn
+const SINKS = 3; // placed voices for lib/sfx’s ringing sounds alone (see `pool` below)
+const RINGS = 0.05; // the quietest one of those is worth its ring at
 
 const QUIET = Object.freeze({
   hum() {},
@@ -275,11 +277,20 @@ export function createSounds(bus, ctx, { rand = Math.random } = {}) {
   })();
   room.connect(send).connect(verb).connect(bus);
 
-  // A small pool of placed voices (gain, then the low-pass of distance, then
-  // the pan), taken in turn. lib/sfx joins its shared hall to whatever it is
-  // given, so handing it the same few voices keeps that hall’s outputs few.
-  const voices = [];
-  let turn = 0;
+  // Placed voices (gain, then the low-pass of distance, then the pan), each
+  // pool taken in turn. lib/sfx’s blast, clang, saber and beeps ring through
+  // one hall per context, and it joins every destination any of them is
+  // given: handed the station’s voices, every voice that once carried one
+  // would carry every later ring at its own stale gain and pan. So those four
+  // get a few sinks of their own, placed for the call and let down to silence
+  // once it has sounded (the room’s reverb carries the ring on from there),
+  // and a call too quiet to be worth its ring isn’t made.
+  const pool = (size) => {
+    const voices = [];
+    let turn = 0;
+    const take = () => (voices[turn++ % size] ??= makeVoice());
+    return { voices, take };
+  };
   const makeVoice = () => {
     const input = ctx.createGain();
     const body = ctx.createGain();
@@ -295,19 +306,30 @@ export function createSounds(bus, ctx, { rand = Math.random } = {}) {
     param.cancelScheduledValues(t);
     param.setValueAtTime(value, t);
   };
-  // a voice placed for a sound at `at` heard by `who`, or null if it wouldn’t be heard
-  const place = (at, level = 1, who = ear) => {
+  const voices = pool(POOL);
+  const sinks = pool(SINKS);
+  // a voice from `from` placed for a sound at `at` heard by `who`, or null if it wouldn’t be heard over `least`
+  const place = (at, level = 1, who = ear, from = voices, least = 0.01) => {
     if (!live) return null;
     const h = heard(at, who);
-    if (h.gain * level < 0.01) return null;
-    const v = (voices[turn % POOL] ??= makeVoice());
-    turn += 1;
+    if (h.gain * level < least) return null;
+    const v = from.take();
     const t = now();
-    set(v.input.gain, h.gain * level, t);
+    v.level = h.gain * level;
+    set(v.input.gain, v.level, t);
     set(v.cut.frequency, h.cut, t);
     if (v.pan) set(v.pan.pan, h.pan, t);
     set(v.body.gain, 1, t);
     return v;
+  };
+  // one of lib/sfx’s ringing sounds, played into a sink placed for `at`;
+  // `play(dest)` gives how long until it has sounded, and the sink holds till then
+  const rung = (play, at, level, who = ear) => {
+    const k = place(at, level, who, sinks, RINGS);
+    if (!k) return;
+    const end = now() + (play(k.input) || 0);
+    k.input.gain.setValueAtTime(k.level, end);
+    k.input.gain.setTargetAtTime(0, end, 0.4);
   };
 
   const env = (param, t, points) => {
@@ -506,10 +528,7 @@ export function createSounds(bus, ctx, { rand = Math.random } = {}) {
       puff(v.input, t, { f: 3200, to: 900, q: 1.4, gain: p.hiss, attack: 0.02, length: p.length * 0.8 });
       if (p.thud) tone(v.input, t + p.length, { f: 90, to: 50, gain: p.thud, length: 0.12 });
       if (p.rumble) puff(v.input, t, { color: 'brown', type: 'lowpass', f: 220, gain: 0.25 * p.rumble, attack: 0.2, length: p.length });
-      if (p.clang) {
-        set(v.body.gain, p.clang, t);
-        clang(ctx, v.body, p.length * 0.9);
-      }
+      if (p.clang) rung((dest) => p.length * 0.9 + clang(ctx, dest, p.length * 0.9), at, p.gain * p.clang);
       if (p.clunk) {
         tone(v.input, t, { type: 'square', f: 150, to: 70, gain: 0.06 * p.clunk, attack: 0.002, length: 0.1 });
         puff(v.input, t, { type: 'lowpass', f: 900, gain: 0.15 * p.clunk, attack: 0.002, length: 0.08 });
@@ -554,10 +573,7 @@ export function createSounds(bus, ctx, { rand = Math.random } = {}) {
       if (!v) return;
       laser(ctx, v.input);
       puff(v.input, now(), { type: 'bandpass', f: g.crack, q: 0.9, gain: 0.12, attack: 0.002, length: 0.06 });
-      if (g.body) {
-        set(v.body.gain, g.body, now());
-        blast(ctx, v.body);
-      }
+      if (g.body) rung((dest) => blast(ctx, dest), at, g.gain * g.body, listener ?? ear);
     },
     hit(at) {
       const v = place(at, 0.7);
@@ -572,8 +588,7 @@ export function createSounds(bus, ctx, { rand = Math.random } = {}) {
       if (!live || Boolean(on) === Boolean(blade)) return;
       const t = now();
       if (on) {
-        const v = place(null, 0.8);
-        ignite(ctx, v.input, 0, kind);
+        rung((dest) => ignite(ctx, dest, 0, kind), null, 0.8);
         // the steady hum takes over as lib/sfx’s ignition fades
         const sith = kind === 'sith';
         blade = { out: ctx.createGain(), srcs: [] };
@@ -615,8 +630,8 @@ export function createSounds(bus, ctx, { rand = Math.random } = {}) {
       if (!live) return Promise.resolve(null);
       const chatter = chatterOf(who);
       const t = now();
-      const v = chatter && place(null, 1);
-      if (chatter === 'beeps') beeps(ctx, v.input);
+      if (chatter === 'beeps') rung((dest) => beeps(ctx, dest), null, 1);
+      const v = chatter && chatter !== 'beeps' && place(null, 1);
       if (chatter === 'honk') for (const at of [0, 0.32]) tone(filter(v.input, 'lowpass', 500), t + at, { type: 'square', f: 82, gain: 0.08, attack: 0.01, length: 0.24 });
       if (chatter === 'comm') {
         // the helmet’s comm keying on: a click and a breath of static
@@ -680,8 +695,8 @@ export function createSounds(bus, ctx, { rand = Math.random } = {}) {
       // Once the releases have died away, the room, the score and the voices
       // let go of what they feed: the bus stays the runtime’s (and may carry
       // the next station’s sounds), and lib/sfx’s hall, which lives as long
-      // as the context, keeps hold of every voice it was handed.
-      const outs = [room, verb, score?.out, ...voices.map((v) => v.input)];
+      // as the context, keeps hold of the sinks it was handed, now leading nowhere.
+      const outs = [room, verb, score?.out, ...[...voices.voices, ...sinks.voices].map((v) => v.input)];
       setTimeout(() => {
         for (const n of outs) {
           try {
