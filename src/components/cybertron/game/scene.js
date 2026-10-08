@@ -642,11 +642,12 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     const standIns = new THREE.Group();
     standIns.visible = false;
     const made = [];
+    let over = false; // (the wait's up: one arriving now is let go)
     const fetching = Promise.all(
       kinds.map((k) =>
         makeFigure(k, { shadows: false })
           .then((f) => {
-            if (!going()) return f.dispose();
+            if (over || !going()) return f.dispose();
             made.push(f);
             standIns.add(f.group);
           })
@@ -654,6 +655,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       ),
     );
     await settle(fetching, MODELS_WAIT);
+    over = true;
     if (!going()) {
       for (const f of made) f.dispose();
       return;
