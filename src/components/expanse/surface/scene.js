@@ -42,6 +42,7 @@ const LEAVES = { ultra: 512, high: 256, mid: 128, low: 64 };
 const SHADOW = { ultra: 2048, high: 2048, mid: 1024, low: 0 };
 const TREES = { ultra: 1600, high: 1200, mid: 700, low: 400 };
 const KIT = 2400; // rock and crate slots each
+const VIEW = 22; // the camera's orbit, standing
 
 const hex = (c) => new THREE.Color(c[0], c[1], c[2]);
 
@@ -107,7 +108,8 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
   const tracks = createTracks();
   const landMaterial = createLandMaterial({ map, tracks });
   const water = createWaterSurface({ map, wind, tier });
-  const view = createChaseView({ camera, small, tier });
+  // (his orbit runs 15 to 30 m: at 15 the buggy fills the screen, so a little out)
+  const view = createChaseView({ camera, small, tier, radius: VIEW });
   const grass = createGrass({ ground: map.ground, wind, tracks, side: GRASS[tier] ?? 160, size: Math.round(view.area.radius * 2) });
   const puffs = createPuffs({ species: { a: 0xb4b536, b: 0xd8cf3b, bark: 0x6b4a32 }, count: TREES[tier] ?? 700, wind, facing: camera.position.clone().setFromSphericalCoords(1, 0.31 * Math.PI, Math.PI / 4).toArray(), sun: sunDir.toArray() });
   const rocks = pool(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: hex(p.rock) }), KIT, 'rocks');
