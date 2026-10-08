@@ -47,8 +47,21 @@ for (const id of planets) {
     continue;
   }
   await page.waitForTimeout(2500);
-  await page.evaluate(() => window.__universeDebug.startFoot());
+  // (named, and tried for a while: on software GL the ship's model and the
+  // landable planet can take a good few seconds to be there)
+  let landed = false;
+  for (let k = 0; k < 45 && !landed; k++) {
+    landed = await page.evaluate((id) => window.__universeDebug.startFoot({ id }), id);
+    if (!landed) await page.waitForTimeout(2000);
+  }
+  if (!landed) {
+    console.log('FAIL', id, 'the ship would not set down');
+    bad++;
+    continue;
+  }
   await page.waitForFunction(() => window.__universeDebug.foot.phase === 'walk', null, { timeout: WALK_MS, polling: 500 }).catch(() => {});
+  const phase = await page.evaluate(() => window.__universeDebug.foot.phase);
+  if (phase !== 'walk') console.log('    ', id, `crew not out yet (phase ${phase})`);
   await page.waitForFunction(() => window.__universeDebug.foot.physics().engine !== 'loading', null, { timeout: 60000, polling: 500 }).catch(() => {});
   await page.waitForTimeout(4000);
   const before = await page.evaluate(() => {
