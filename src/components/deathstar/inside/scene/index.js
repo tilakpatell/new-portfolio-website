@@ -342,7 +342,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     if (g.crew) people.sync(g.crew, alpha, camera.position, rooms);
     for (const b of g.combat?.bolts ?? []) fx.bolt(b);
     fx.update(dt);
-    show.sync({ g, at, yaw, crouch: you.crouch, rooms, dt, t: now });
+    show.sync({ g, at, yaw, crouch: you.crouch, rooms, dt, t: now, hand: person && person.object.visible && !person.fallen ? person.hand : null });
     // a room just built, the Falcon berthed late, a reflection made again:
     // each brings materials the house look hasn’t met (adopting is once a material)
     if (frames++ % 30 === 0 || stream.built.size !== seenRooms) {

@@ -48,7 +48,7 @@
 //   motionFrom(track, yaw) → figures.js’s motion   pure: the speed ahead and aside, and the turn
 //   blocks(at, tall, camera, focus) → bool   pure: whether a body at `at` stands between the camera
 //     and the point it looks at you by (your chest), or has the camera inside it
-//   createPeople(scene, kit, { tier, renderer, adopt, layout }) → { sync(crew, alpha, cameraAt, rooms?), hear(events), muzzle(id, out), dispose() }
+//   createPeople(scene, kit, { tier, renderer, adopt, layout }) → { sync(crew, alpha, cameraAt, rooms?), hear(events), handOf(id), muzzle(id, out), dispose() }
 //     layout: the station's (rules/layout.js), for the dead to fall against as ragdolls (without it
 //     they fall on their clips); rooms.open(doorId) and rooms.off (layout.offTags's): its doors and
 //     floors as they are now; rooms.camera and rooms.focus (your chest): anyone between them is faded,
@@ -773,6 +773,12 @@ export function createPeople(scene, kit, { tier = 'high', renderer = null, adopt
         } else pendingHits.set(e.target, hit);
       }
       if (pendingHits.size > 64) pendingHits.clear();
+    },
+
+    // the bone of someone’s right hand, for what they hold in it (a sabre), while they are drawn
+    handOf(id) {
+      const r = records.get(id);
+      return r?.fig?.object.visible && !r.fig.fallen ? (r.fig.hand ?? null) : null;
     },
 
     muzzle(id, out = new THREE.Vector3()) {
