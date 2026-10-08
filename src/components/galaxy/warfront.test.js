@@ -332,6 +332,14 @@ describe('the battle every pilot shares (the director)', () => {
     expect(late.front.info.shared.runners).toEqual(probe.front.info.shared.runners);
   });
 
+  it('flies its fighters with tactics (battleTactics.js): each side in flights of three of a kind', () => {
+    const k = at('rebel', MS);
+    for (const team of [0, 1]) {
+      const own = k.front.battle.fighters.filter((f) => f.team === team && !f.ace);
+      for (let i = 0; i + 2 < own.length; i += 3) expect(new Set(own.slice(i, i + 3).map((f) => f.kind)).size).toBe(1);
+    }
+  });
+
   it('fights the battle’s own plan: drawn for it from its kind’s menu, the same for every pilot', () => {
     const a = at('rebel', MS);
     const b = at('empire', MS);

@@ -293,6 +293,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       rand: seeded(b.id),
       plan: director.plan,
       director: { state: shared },
+      // (its fighters flown with tactics: committed to what they're after, in flights, strafing when there's nothing to dogfight)
+      tactics: true,
       // (the plan's aces, launched at their time: battleStages.js)
       ace: Object.fromEntries(aces.map((a) => [a.team, { kind: a.kind, name: a.name, hp: a.hp }])),
       // your shot on an objective (the attacker's to take), on one of the
