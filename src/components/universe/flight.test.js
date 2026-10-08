@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ORDER, REACH } from './layout';
-import { beyondPlan, cover, crashPlan, enterPlan, focusPose, overviewPose, poseAt, project, startFlight, worldPos } from './flight';
+import { beyondPlan, CHASE, chaseDepth, chaseDist, cover, crashPlan, enterPlan, focusPose, FOV, overviewPose, poseAt, project, shipWidthOf, startFlight, worldPos } from './flight';
 import { byId } from './universes';
 
 const gap = (a, b) => Math.hypot(a.target[0] - b.target[0], a.target[1] - b.target[1], a.target[2] - b.target[2]) + Math.abs(Math.log(a.dist / b.dist)) + Math.abs(a.pitch - b.pitch);
@@ -116,5 +116,34 @@ describe('the black hole', () => {
   it('goes on through to its far side once the fall and the crew’s last words have had their time, or at once without motion', () => {
     expect(beyondPlan({ reduced: false })).toEqual({ mode: 'beyond', delay: 4000 });
     expect(beyondPlan({ reduced: true })).toEqual({ mode: 'beyond', delay: 0 });
+  });
+});
+
+describe('the chase camera', () => {
+  const LENGTH = 0.26;
+  const at = (k) => shipWidthOf({ length: LENGTH, fov: FOV, dist: chaseDepth(chaseDist({ speed: k * 12, boost: 12 })), aspect: 16 / 9 });
+
+  it('holds the ship at a fifth to a quarter of a 16 : 9 frame’s width, at rest and at cruise', () => {
+    expect(at(0)).toBeGreaterThanOrEqual(0.2);
+    expect(at(0)).toBeLessThanOrEqual(0.25);
+    expect(at(3.3 / 12)).toBeGreaterThanOrEqual(0.2);
+    expect(at(3.3 / 12)).toBeLessThanOrEqual(0.25);
+  });
+
+  it('keeps it at a seventh or more boosting', () => {
+    expect(at(1)).toBeGreaterThanOrEqual(0.14);
+    expect(at(1)).toBeLessThan(at(0));
+  });
+
+  it('pulls back with the speed and the streak, the speed’s share capped', () => {
+    expect(chaseDist({})).toBe(CHASE.dist);
+    expect(chaseDist({ speed: 12, boost: 12 })).toBeCloseTo(CHASE.dist + CHASE.speed, 9);
+    expect(chaseDist({ speed: 1e4, boost: 12 })).toBeCloseTo(CHASE.dist + 1.5 * CHASE.speed, 9);
+    expect(chaseDist({ streak: 1 })).toBeCloseTo(CHASE.dist + CHASE.streak, 9);
+  });
+
+  it('takes the ship nearer than the target: ahead of it, the depth is less than the distance', () => {
+    expect(chaseDepth(2)).toBeLessThan(2);
+    expect(shipWidthOf({ length: 1, fov: 90, dist: 1, aspect: 1 })).toBeCloseTo(0.5, 9);
   });
 });
