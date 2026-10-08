@@ -11,6 +11,11 @@
 //     the wind's time and, here, along the river's flow (the mask's A);
 //   - alpha the larger, so between bank and shore the ground shows through.
 //
+// His solid water is white, lit; on his small map that is a few pools, on
+// an open sea it is the whole screen, one flat colour: ours is the land's
+// own depth gradient there (his floor's turquoise to deep blue, which his
+// shallows show through anyway), white in the bands.
+//
 // On high and ultra the shallows are the opaque frame blurred (his fake
 // refraction): the world draws its opaque pass into a texture first and
 // hands it over (setOpaque); 9 taps of radius 0.01 of the screen in place of
@@ -69,7 +74,10 @@ const PARS_FS = /* glsl */ `
 varying vec3 vWaterWorld;
 ${LAND_GLSL}
 ${WIND_GLSL}
-float waterAlpha(vec2 xz) {
+// his mask: the shore past B 0.17 and the ripple bands in the shallows;
+// the colour is what the water shows where it is solid: the land's own depth
+// gradient (his floor's turquoise to deep blue), white in the bands
+float waterAlpha(vec2 xz, out vec3 colour) {
   vec4 m = landMask(xz);
   float b = m.b;
   // his shore: solid past 0.17
@@ -83,6 +91,7 @@ float waterAlpha(vec2 xz) {
   float noise = texture2D(uWindNoise, (xz - along * uWindTime * 2.0 + band / 0.345) * 0.1).r - 0.5;
   float ripples = fract(base) - (1.3 - 1.3 * b) + noise;
   ripples = step(-0.4, ripples) * step(0.001, b);
+  colour = mix(landColour(vec4(0.0, 0.0, max(b, 0.2), 0.0), 0.0, -1e4), vec3(1.0), ripples * (1.0 - shore * 0.6));
   return max(shore, ripples);
 }
 `;
@@ -110,7 +119,7 @@ if (uBlur > 0.5 && waterA < 0.5) {
     : '';
   const fs = fragmentShader
     .replace('#include <common>', `#include <common>\n${PARS_FS}${blur ? BLUR_PARS : ''}`)
-    .replace('#include <color_fragment>', '#include <color_fragment>\nfloat waterA = waterAlpha(vWaterWorld.xz);\ndiffuseColor.a *= waterA;')
+    .replace('#include <color_fragment>', '#include <color_fragment>\nvec3 waterC;\nfloat waterA = waterAlpha(vWaterWorld.xz, waterC);\ndiffuseColor.rgb *= waterC;\ndiffuseColor.a *= waterA;')
     .replace('#include <opaque_fragment>', `${shallows}\n#include <opaque_fragment>`);
   return { vertexShader: vs, fragmentShader: fs, swapped: true };
 }

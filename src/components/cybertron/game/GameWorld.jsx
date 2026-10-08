@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { use3D } from '../../../lib/gpu';
 import { audioContext } from '../../../lib/audio';
 import { local, useInView, useMediaQuery } from '../../../lib/hooks';
@@ -11,6 +12,11 @@ import { createSounds } from './sounds';
 import { useVoiced } from '../../../lib/useVoiced';
 import LoadingVeil from '../../worlds/LoadingVeil';
 import { throttled } from '../../worlds/loadingSteps';
+import { Exit, Menu, Prompt, Stick, Toast, TouchButton } from '../../../runtime/hud';
+import { wayOut } from '../../worlds/worlds';
+import { Keys } from '../../guide/KeyTable';
+import GuideCue from '../../guide/GuideCue';
+import { CYBERTRON_KEYS } from '../../guide/cybertron';
 import './game.css';
 
 // Cybertron, the world: Iacon at war, and Team Prime's base and Jasper on
@@ -59,6 +65,7 @@ const sideOf = (areaId) => (AREAS[areaId]?.side === 'decepticon' ? 'decepticon' 
 
 function World({ gl, setGl, side }) {
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+  const { pathname } = useLocation();
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.2 });
   const canvas = useRef(null);
   const api = useRef(null);
@@ -93,6 +100,15 @@ function World({ gl, setGl, side }) {
   const [fade, setFade] = useState(null); // a bridge crossed: its colour while the next place loads
   const [list, setList] = useState(false);
   const crossing = useRef(false);
+
+  // the missions close on Esc too, as every panel does (playing, Esc also
+  // lets go: the list is a glance, not a place)
+  useEffect(() => {
+    if (!list) return undefined;
+    const esc = (e) => e.key === 'Escape' && setList(false);
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [list]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -398,18 +414,15 @@ function World({ gl, setGl, side }) {
   const bearing = hud.target ? Math.atan2(hud.target.x - hud.px, hud.target.z - hud.pz) : null;
   const rel = bearing === null ? 0 : Math.atan2(Math.sin(bearing - (loop.current?.yaw ?? hud.yaw)), Math.cos(bearing - (loop.current?.yaw ?? hud.yaw)));
   const dist = hud.target ? Math.round(Math.hypot(hud.target.x - hud.px, hud.target.z - hud.pz)) : 0;
-  const prompt = hud.near ? (hud.near.type === 'talk' ? `E  Talk to ${hud.near.label}` : hud.near.type === 'shift' ? `Q  Transform to talk to ${hud.near.label}` : `E  ${hud.near.label}`) : null;
+  // (the key first, as every prompt; Q where the talk needs the robot)
+  const prompt = hud.near ? (hud.near.type === 'talk' ? { k: 'E', verb: `Talk to ${hud.near.label}` } : hud.near.type === 'shift' ? { k: 'Q', verb: `Transform to talk to ${hud.near.label}` } : { k: 'E', verb: hud.near.label }) : null;
 
-  // a phone's thumbs: a stick on the left, looking on the right
-  const stickRef = useRef(null);
-  const onStick = (e) => {
-    const r = stickRef.current.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * 2 - 1;
-    const y = ((e.clientY - r.top) / r.height) * 2 - 1;
-    const l = Math.max(1, Math.hypot(x, y));
-    ctl.current.stick = { x: x / l, y: y / l };
-  };
+  // a phone's thumbs: the kit's stick on the left (Optimus's knobless ring),
+  // looking on the right, the buttons under the right thumb
+  const onStick = (x, y) => (ctl.current.stick = { x, y });
   const lookRef = useRef(null);
+  const press = (flag) => ({ onPress: () => (ctl.current[flag] = true) });
+  const hold = (flag) => ({ onPress: () => (ctl.current[flag] = true), onRelease: () => (ctl.current[flag] = false) });
 
   return (
     <section ref={box} className="cyw" data-playing={playing ? '' : undefined} aria-label={`Cybertron: walk and drive as ${SIDES[playingSide].name}`}>
@@ -419,7 +432,10 @@ function World({ gl, setGl, side }) {
         <div className="cyw-start">
           <p className="cyw-kicker">{hud.area}</p>
           <h2 className="cyw-title">{SIDES[playingSide].title}</h2>
-          <p className="cyw-lede">{SIDES[playingSide].lede}</p>
+          <p className="cyw-lede">
+            {SIDES[playingSide].lede}
+            <GuideCue touch={touch} />
+          </p>
           <div className="cyw-sides" role="group" aria-label="Who you play">
             {Object.entries(SIDES).map(([id, s]) => (
               <button key={id} type="button" className="cyw-side" data-side={id} aria-pressed={playingSide === id} onClick={() => playingSide !== id && cross(s.area, 'start')}>
@@ -431,16 +447,16 @@ function World({ gl, setGl, side }) {
             {touch ? 'Play' : 'Click to play'}
           </button>
           {!touch && (
+            // (the guide's rows for the world, drawn as its key caps: written once, guide/cybertron.js)
             <dl className="cyw-keys">
-              <div><dt>W A S D</dt><dd>Walk / drive</dd></div>
-              <div><dt>Mouse</dt><dd>Look and aim</dd></div>
-              <div><dt>Click / F</dt><dd>Fire</dd></div>
-              <div><dt>Q</dt><dd>Transform</dd></div>
-              <div><dt>Shift</dt><dd>Run / boost</dd></div>
-              <div><dt>Space</dt><dd>Jump</dd></div>
-              <div><dt>E</dt><dd>Talk, use bridges</dd></div>
-              <div><dt>M</dt><dd>Missions</dd></div>
-              <div><dt>Esc</dt><dd>Let go</dd></div>
+              {CYBERTRON_KEYS.map(([keys, does]) => (
+                <div key={keys}>
+                  <dt>
+                    <Keys keys={keys} />
+                  </dt>
+                  <dd>{does}</dd>
+                </div>
+              ))}
             </dl>
           )}
           <p className="cyw-progress">
@@ -476,8 +492,13 @@ function World({ gl, setGl, side }) {
               </span>
             </div>
           )}
-          <div className="cyw-stats">
-            <span className="cyw-energon" title="Energon">◆ {hud.energon}</span>
+          {/* top right: the one Menu, a way out while the world has the whole screen, the energon (on a phone, stacked the other way up, so the Menu opens under them all) */}
+          <div className="cyw-tools">
+            <Menu className="cyw-menu" todo={{ label: 'Missions', done: hud.done, total: hud.total, onOpen: () => setList(true) }} way={wayOut(pathname)} />
+            {playing && touch && <Exit className="cyw-leave" onLeave={stopPlaying} touch />}
+            <div className="cyw-stats">
+              <span className="cyw-energon" title="Energon">◆ {hud.energon}</span>
+            </div>
           </div>
           <div className="cyw-bars">
             <div className="cyw-bar" aria-label="Health">
@@ -502,36 +523,35 @@ function World({ gl, setGl, side }) {
           )}
           {playing && hud.mode === 'robot' && <span ref={crossEl} className="cyw-cross" aria-hidden="true" />}
           <div ref={hurtEl} className="cyw-hurt" aria-hidden="true" />
-          {playing && prompt && <p className="cyw-prompt">{prompt}</p>}
+          {playing && prompt && <Prompt className="cyw-prompt" k={prompt.k} verb={prompt.verb} touch={touch} />}
           {hud.talk && (
             <div className="cyw-talk">
               <p className="cyw-talk-name">{hud.talk.name}</p>
               <p>{hud.talk.line}</p>
             </div>
           )}
-          {toast && (
-            <div className="cyw-toast" key={toast.title}>
-              <p className="cyw-toast-title">{toast.title}</p>
-              <p>{toast.text}</p>
-            </div>
-          )}
-          {list && <Missions sim={sim.current} onClose={() => setList(false)} />}
+          <Toast
+            className={toast?.long ? 'cyw-toast cyw-toast-long' : 'cyw-toast'}
+            toast={
+              toast && {
+                key: toast.title,
+                text: (
+                  <>
+                    <span className="cyw-toast-title">{toast.title}</span>
+                    <span>{toast.text}</span>
+                  </>
+                ),
+              }
+            }
+          />
+          {list && <Missions sim={sim.current} touch={touch} onClose={() => setList(false)} />}
           {hud.down && <div className="cyw-down">Down</div>}
         </div>
       )}
       {fade && <div className={`cyw-fade cyw-fade-${fade}`} aria-hidden="true" />}
       {gl === 'on' && playing && touch && (
         <div className="cyw-touch">
-          <div
-            ref={stickRef}
-            className="cyw-stick"
-            onPointerDown={(e) => {
-              e.currentTarget.setPointerCapture(e.pointerId);
-              onStick(e);
-            }}
-            onPointerMove={(e) => e.buttons && onStick(e)}
-            onPointerUp={() => (ctl.current.stick = { x: 0, y: 0 })}
-          />
+          <Stick className="cyw-stick" onMove={onStick} label="Walk or drive" />
           <div
             ref={lookRef}
             className="cyw-lookpad"
@@ -551,24 +571,21 @@ function World({ gl, setGl, side }) {
             onPointerUp={() => (ctl.current.touchLook = null)}
           />
           <div className="cyw-buttons">
-            <button type="button" onPointerDown={() => (ctl.current.touchFire = true)} onPointerUp={() => (ctl.current.touchFire = false)}>
+            <TouchButton className="cyw-fire" {...hold('touchFire')}>
               Fire
-            </button>
-            <button type="button" onClick={() => (ctl.current.touchShift = true)}>
+            </TouchButton>
+            <TouchButton size={52} className="cyw-transform" {...press('touchShift')}>
               Transform
-            </button>
-            <button type="button" onClick={() => (ctl.current.touchJump = true)}>
+            </TouchButton>
+            <TouchButton size={52} className="cyw-jump" {...press('touchJump')}>
               Jump
-            </button>
-            <button type="button" onClick={() => (ctl.current.touchUse = true)}>
+            </TouchButton>
+            <TouchButton size={52} className="cyw-use" {...press('touchUse')}>
               Use
-            </button>
-            <button type="button" onPointerDown={() => (ctl.current.touchRun = true)} onPointerUp={() => (ctl.current.touchRun = false)}>
+            </TouchButton>
+            <TouchButton size={52} className="cyw-boost-btn" {...hold('touchRun')}>
               Boost
-            </button>
-            <button type="button" onClick={stopPlaying}>
-              Stop
-            </button>
+            </TouchButton>
           </div>
         </div>
       )}
@@ -577,11 +594,18 @@ function World({ gl, setGl, side }) {
 }
 
 // M: every mission, where it's played and whether it's done
-function Missions({ sim, onClose }) {
+function Missions({ sim, touch, onClose }) {
   const all = Object.values(AREAS).flatMap((a) => a.missions.map((m) => ({ ...m, place: AREAS[m.area ?? a.id].name })));
   return (
     <div className="cyw-list" role="dialog" aria-label="Missions">
-      <p className="cyw-list-title">Missions</p>
+      <div className="cyw-list-head">
+        <p className="cyw-list-title">Missions</p>
+        {/* (M shuts it as it opened it: the key beside the ×, not in the word) */}
+        <button type="button" className="cyw-list-close" onClick={onClose} aria-label="Close the missions" aria-keyshortcuts="M Escape">
+          {!touch && <kbd className="hud-cap">M</kbd>}
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
       <ul>
         {all.map((m) => (
           <li key={m.id} data-state={sim.missions.done.includes(m.id) ? 'done' : sim.missions.active === m.id ? 'active' : 'open'}>
@@ -590,9 +614,6 @@ function Missions({ sim, onClose }) {
           </li>
         ))}
       </ul>
-      <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
-        Close (M)
-      </button>
     </div>
   );
 }
