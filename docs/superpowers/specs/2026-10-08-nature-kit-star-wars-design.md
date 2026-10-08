@@ -32,7 +32,7 @@ node scripts/quaternius-nature.mjs [--from <megakit glTF dir>] [kind …]
 
 `--from` defaults to the asset repo's clone (`$TMPDIR/tilakverse-assets/quaternius/stylized-nature-megakit/glTF`), then `lab/assets/naturemega/…/glTF` (`scripts/assets-fetch.mjs naturemega`). For each pick in its table (`kind → source file`), it:
 
-1. reads the glTF, keeps the one mesh, stands it on y = 0 centred on its footprint;
+1. reads the glTF, keeps the one mesh, stands it on y = 0 with x and z as the pack has them (the foot of the trunk at the origin, where the placer puts its solid);
 2. **turns the vertex masks into light:** each material family's mask remapped to a grey multiplier (grass and plants: darker at the root, as ambient occlusion; bark: a little darker at the foot; leaves: dropped, they're all 1). The grey keeps the instance tint (below) as the colour;
 3. **fixes the alpha:** leaves and flowers MASK at cutoff 0.35 (the cherry's BLEND too: no sorting), bark and rocks OPAQUE and single-sided;
 4. **shrinks the pictures:** WebP, bark and its normal map 512², leaf cards and sheets 512², grass 256², rocks 512², all by `textureCompress`;
@@ -52,7 +52,7 @@ A group of its own. Each entry: `{ cc0: 'quaternius', from: 'Birch_1', as, metre
 
 `natureLook(gltf, entry)`, called once per loaded file from `placer.loadModel` (one line, beside `look` and `tint`):
 
-- **Shared by name, page-wide.** Each material is swapped for the first one of its name (`Leaves`, `Bark_Birch` …), its own textures freed. A planet with ten plant kinds uploads `Leaves` and `Flowers` once and links one shader for them. The whole kit is about 14 textures.
+- **Shared by name, page-wide.** Each material is swapped for the first one of its name (`Leaves`, `Bark_Birch` …), its own textures freed. A planet with ten plant kinds uploads `Leaves` and `Flowers` once and links one shader for them. A world uses at most 14 of the kit's textures.
 - **Leaves lit as leaves:** `wrapLighting` and `faceless` on the leaf, flower and grass materials, `alphaToCoverage` on their cut-outs.
 - **One wind:** `wind()` with `sway`'s numbers (a new `grass` row in `foliage.js` `WIND`: height 1.2, stiff root, quick tips), all on one page clock, `NATURE.time`, which the placer sets from the kit's clock each frame (so reduced motion, which stops `kit.tick`, stops these too) and whose direction it sets from the world's wind.
 - **Pushed aside:** a second vertex rewrite on the shrub and grass materials, `pushShader`: within `uPushR` (1.6 m) of `uPush` (you), each vertex is moved away from you by its height squared, so ferns, flowers and grass part as you walk through and spring back. `placer.update(t, dt, you)` sets `uPush`. Pure string rewrite, tested like `windShader`.
@@ -84,8 +84,8 @@ Kashyyyk, Hoth, Tatooine, Mustafar, Geonosis, Bespin, Coruscant, Kamino, Mandalo
 
 ### Budgets
 
-- Per world added, at high: at most 350k triangles drawn (the full models near, light copies far), at most 30 draw calls (each kind is one or two parts; shadow casters near only).
-- Textures: shared by name, so at most 14 live textures for the whole kit.
+- Per world added, at high: at most 500k triangles drawn (the full models near, light copies far), at most 30 draw calls (each kind is one or two parts; shadow casters near only).
+- Textures: shared by name, so at most 14 live textures on a world from the kit (22 across all of it).
 - Download: at most 6 MB for a world's nature kinds (each GLB under 600 KB; trees with their LOD).
 - `lowerQuality` and low tier keep working as they do: the scatter count already scales.
 
