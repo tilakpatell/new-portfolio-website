@@ -301,6 +301,8 @@ export async function create(canvas, ctx) {
     floors: [...(site.floors ?? [])],
     reach: site.reach,
     water: wade,
+    // (how deep the water can be before you're turned back: the lagoon on Kashyyyk)
+    wadeMax: wade != null ? site.water.wadeMax : undefined,
   };
   const weather = reduced ? null : createWeather(site, { small });
   if (weather) scene.add(weather.group);
