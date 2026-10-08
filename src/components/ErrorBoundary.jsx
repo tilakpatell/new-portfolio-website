@@ -44,7 +44,7 @@ export default class ErrorBoundary extends Component {
               Reload page
             </button>
             <a className="btn btn-ghost" href="#/">
-              Go to home
+              Home
             </a>
           </div>
         </div>
