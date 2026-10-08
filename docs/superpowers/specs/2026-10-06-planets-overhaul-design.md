@@ -130,14 +130,12 @@ A model is accepted only if all hold:
 
 ## Performance budget (per world)
 
-Measured by `scripts/galaxy-check.mjs surface <world>` at high quality,
-after the settle wait, at the landing:
-
-- Draw calls and triangles: no more than the baseline +10%, and never over
-  600 calls or 2.5M triangles.
-- Model download for the world (sum of its GLBs, LOD1s included): ≤ 40 MB.
-- No world's frame time is more than 10% worse than baseline on the same
-  machine (software GL, so only the comparison means anything).
+The numbers that were here (600 calls, 2.5M triangles, 40 MB at high) are
+replaced by the per-level budget table in
+[the quality modes design](2026-10-07-quality-modes-design.md) §2
+(`src/lib/budgets.js`, read by `scripts/galaxy-check.mjs` for the level it
+runs at, against that level's `lab/baseline/surface-<level>.json`). A world
+is still held to its level's baseline +10% under the row's ceiling.
 
 Repeated landmarks (Theed's halls ×13, Tipoca ×22, Coruscant's towers ×18,
 Geonosis's spires ×14) must stay cheap. They share geometry, use the LOD1

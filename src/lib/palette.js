@@ -17,3 +17,7 @@ export const isPaletteKey = (e) => Boolean(e && (e.metaKey || e.ctrlKey) && !e.a
 
 export const shortcutLabel = () =>
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘K' : 'Ctrl K';
+
+// Opens the settings panel (components/settings) from anywhere: the gear in
+// the nav, ⌘K's "Settings", a world's own panel.
+export const openSettings = () => window.dispatchEvent(new Event('tp:settings'));

@@ -767,6 +767,9 @@ html[data-mode='dark'] .nav-bar { box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.
 .nav-link.is-active { color: var(--text); background: var(--surface-2); }
 .nav-icon { color: var(--muted); }
 .nav-icon:hover { color: var(--text); background: var(--surface-2); }
+/* the settings gear beside the colours: a small turn on hover */
+.settings-gear svg { transition: transform 0.4s var(--ease-out, ease-out); }
+.settings-gear:hover svg { transform: rotate(60deg); }
 /* On a touch screen the bar's small buttons reach 44px tall and 40 wide
    without being drawn bigger: the bar is 52px, and its pills are its look. */
 @media (pointer: coarse) {
@@ -1008,6 +1011,17 @@ html[data-mode='dark'] .aws-logo .aws-letters { fill: #ffffff; }
      it just shows, for as long as it's up */
   .toast { animation: none !important; }
 }
+/* the same, chosen in the settings panel (Motion: Reduced) */
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-motion='reduced'] .reveal:not([data-in='true']) { opacity: 1; transform: none; }
+html[data-motion='reduced'] .toast { animation: none !important; }
 
 /* A page scene's first frame fades in over whatever it replaces instead of
    popping (lib/three/useScene marks the box data-gl="on" once a frame has

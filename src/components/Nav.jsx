@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink, useLocation, useNavigationType } from 'react-router-dom';
-import { RiCheckLine, RiCloseLine, RiGithubFill, RiLinkedinBoxFill, RiLockLine, RiMenuLine, RiMoonClearLine, RiRestartLine, RiSearchLine, RiSunLine, RiTerminalBoxLine } from 'react-icons/ri';
-import { openPalette, shortcutLabel } from '../lib/palette';
+import { RiCheckLine, RiCloseLine, RiGithubFill, RiLinkedinBoxFill, RiLockLine, RiMenuLine, RiMoonClearLine, RiRestartLine, RiSearchLine, RiSettings3Line, RiSunLine, RiTerminalBoxLine } from 'react-icons/ri';
+import { openPalette, openSettings, shortcutLabel } from '../lib/palette';
 import { jumpTo } from '../lib/anchors';
 import { profile } from '../data/profile';
 import { useAchievements } from './Achievements';
@@ -415,8 +415,11 @@ export default function Nav() {
             <RiSearchLine className="h-[18px] w-[18px]" aria-hidden="true" />
             {!gone('kbd') && <kbd className="kbd hidden lg:inline-grid" data-size="sm">{shortcutLabel()}</kbd>}
           </button>
-          <div className="hidden lg:block" data-tour="colours">
+          <div className="hidden items-center lg:flex" data-tour="colours">
             <ThemePicker nameless={gone('colorName')} />
+            <button type="button" className={`${iconBtn} settings-gear`} onClick={openSettings} aria-label="Settings: quality, sound and this device" title="Settings">
+              <RiSettings3Line className="h-[18px] w-[18px]" aria-hidden="true" />
+            </button>
           </div>
           {!gone('social') && (
             <>
@@ -486,6 +489,16 @@ export default function Nav() {
               }}
             >
               <RiSearchLine className="h-4 w-4" aria-hidden="true" /> Search
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                setOpen(false);
+                openSettings();
+              }}
+            >
+              <RiSettings3Line className="h-4 w-4" aria-hidden="true" /> Settings
             </button>
             <button type="button" className="btn btn-ghost" onClick={restartSite}>
               <RiRestartLine className="h-4 w-4" aria-hidden="true" /> Start over
