@@ -1,4 +1,5 @@
 /* ─── The universe map ───────────────────────────────────────────────────── */
+@import './hud.css';
 
 /* The flat map: Home's teaser and the 3D-off map */
 .minimap { position: relative; width: 100%; aspect-ratio: 2 / 1; }
@@ -74,7 +75,7 @@
 
 /* the open part of the page, for what isn't the scene */
 .universe-flat,
-.universe-loading {
+.loading-veil.universe-loading {
   position: absolute;
   top: var(--nav-h);
   left: 0;
@@ -86,7 +87,6 @@
   padding: 1.5rem;
 }
 .universe-flat .minimap { max-width: 900px; }
-.universe-loading { color: var(--muted); font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.04em; }
 
 /* the planets' names, moved by the scene */
 .universe-labels {
@@ -111,9 +111,12 @@
   min-height: 32px;
   padding: 0 10px;
   border-radius: 999px;
-  color: var(--muted);
+  /* over a nebula or a lit planet: the nav map's shadow under the ink, as
+     its own names have (navmap.css .navmap-name) */
+  color: color-mix(in srgb, var(--text) 85%, transparent);
+  text-shadow: 0 0 6px #000, 0 0 2px #000;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   letter-spacing: 0.02em;
   white-space: nowrap;
   pointer-events: auto;
@@ -205,12 +208,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
   gap: 0.35rem;
   min-height: 32px;
   margin: -0.4rem 0 0.5rem;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  transition: color 0.2s;
 }
-.universe-back:hover { color: var(--text); }
 .universe-back { text-align: left; }
 .universe-back.universe-guide-all { margin: 0.6rem 0 0; }
 .universe-credit { margin: 1.5rem 0 0; color: var(--muted); font-size: 0.7rem; line-height: 1.5; }
@@ -344,7 +342,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 /* the weapon readout (weapons.js): its name, the heavy rounds left, the keys */
 .universe-arms {
   position: absolute;
-  left: 16px;
+  left: var(--hud-edge);
   top: calc(50% + var(--nav-h, 68px) / 2 + 132px);
   display: grid;
   gap: 5px;
@@ -383,13 +381,15 @@ body:has(.universe-panel) .guide-btn { display: none; }
   transform: scaleX(var(--fill, 0));
 }
 .universe-arms-pip[data-full]::after { transform: none; }
-.universe-arms-keys { color: rgb(255 255 255 / 0.5); font-size: 0.55rem; }
-.universe-arms-keys kbd { font: inherit; padding: 0 3px; border: 1px solid rgb(255 255 255 / 0.25); border-radius: 3px; }
+.universe-arms-keys { color: rgb(255 255 255 / 0.5); font-size: 0.62rem; }
+.universe-arms-keys kbd { min-width: 0; padding: 0 3px; font-size: 0.62rem; }
 /* the Citadel's siege (siege.js), while you're near it */
 .universe-siege {
   position: absolute;
   left: 50%;
-  top: calc(var(--nav-h, 68px) + 76px); /* under the crew's line (.universe-comms), which sits at the top */
+  /* under the crew's line (its height from Comms.jsx), and the fly-past pill
+     when that's up too */
+  top: calc(var(--nav-h, 68px) + 20px + var(--comms-h, 0px));
   display: grid;
   gap: 2px;
   max-width: min(440px, calc(100% - var(--panel-w, 0px) - 40px));
@@ -406,6 +406,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
   opacity: 0;
   transition: opacity 0.3s;
 }
+@media (min-width: 768px) { .universe-page:has(> .universe-tour) .universe-siege { margin-top: 48px; } }
 .universe-siege[data-on] { opacity: 1; }
 .universe-siege b { color: #5dffb0; font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; }
 .universe-siege[data-phase='core'] { border-color: rgb(255 140 70 / 0.5); }
@@ -427,7 +428,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
   background: rgb(3 4 10 / 0.55);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.7rem; /* (the floor for a button's own name) */
   touch-action: none;
   user-select: none;
 }
@@ -435,7 +436,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 /* the shields: a slim bar under the height gauge, while there's trouble */
 .universe-shield {
   position: absolute;
-  left: 16px;
+  left: var(--hud-edge);
   top: calc(50% + var(--nav-h, 68px) / 2 + 92px);
   display: grid;
   gap: 4px;
@@ -471,6 +472,42 @@ body:has(.universe-panel) .guide-btn { display: none; }
 }
 .universe-shield[data-low] .universe-shield-bar > span { background: linear-gradient(90deg, #ff4a3d, #ff9a5c); box-shadow: 0 0 8px rgb(255 90 60 / 0.7); animation: universe-shield-blink 0.6s steps(2) infinite; }
 @keyframes universe-shield-blink { 50% { opacity: 0.45; } }
+/* the law (wanted.js): its stars, what it's doing, and the bounty on you;
+   up under the comms, where a glance finds it */
+.universe-wanted {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--nav-h, 68px) + 100px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 999px;
+  background: rgb(3 4 10 / 0.55);
+  color: rgb(255 255 255 / 0.85);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  translate: -50% 0;
+  transition: opacity 0.3s;
+}
+.universe-wanted[data-on] { opacity: 1; }
+.universe-wanted-stars { display: flex; gap: 3px; }
+.universe-wanted-stars i {
+  width: 11px;
+  height: 11px;
+  background: rgb(255 255 255 / 0.22);
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.universe-wanted-stars i[data-lit] { background: #ffc94a; filter: drop-shadow(0 0 4px rgb(255 190 60 / 0.8)); }
+.universe-wanted[data-search] .universe-wanted-stars i[data-lit] { animation: universe-shield-blink 0.9s steps(2) infinite; }
+.universe-wanted-bounty { color: #ffc94a; font-weight: 600; }
+.universe-wanted-bounty:empty { display: none; }
 /* the targeting HUD: the gun line out along the nose, the lock's brackets
    round a hunter (with its name and range under), the pip where a shot
    would meet it, and the nav bracket round wherever you're going; the scene
@@ -481,19 +518,24 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-tour {
   position: absolute;
   z-index: 3;
-  left: 50%;
-  top: 92px;
-  transform: translateX(-50%);
+  /* under the crew's line (Comms.jsx writes its height), centred on the map's
+     open part as the line is */
+  left: 16px;
+  right: calc(var(--panel-w) + 40px);
+  top: calc(var(--nav-h) + 20px + var(--comms-h, 0px));
+  width: max-content;
+  max-width: calc(100% - var(--panel-w) - 56px);
+  margin-inline: auto;
   display: inline-flex;
   align-items: center;
   gap: 12px;
   padding: 8px 10px 8px 14px;
   border-radius: 999px;
-  background: rgb(6 10 22 / 0.78);
+  /* (no blur over the live map, as the panel: a darker glass instead) */
+  background: rgb(6 10 22 / 0.9);
   border: 1px solid rgb(159 216 255 / 0.25);
   color: #dfe8f6;
   font: 500 12px/1.2 var(--font-mono);
-  backdrop-filter: blur(6px);
   pointer-events: auto;
 }
 .universe-tour button {
@@ -507,9 +549,12 @@ body:has(.universe-panel) .guide-btn { display: none; }
   border: 0;
   cursor: pointer;
 }
-.universe-tour kbd { font: inherit; opacity: 0.7; }
+.universe-tour kbd { margin-left: 0.25em; }
 @media (max-width: 767px) {
-  .universe-tour { top: auto; bottom: 120px; max-width: calc(100% - 32px); }
+  /* over the sheet, a row above the prompt */
+  /* over the sheet, above the thumbs' cluster and the hint (which reach
+     s+204), with both edges set so it can be as wide as the screen allows */
+  .universe-tour { left: 16px; right: 16px; top: auto; bottom: calc(var(--sheet-h) + 212px); max-width: calc(100% - 32px); }
 }
 
 .universe-hud {
@@ -769,7 +814,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
   background: rgb(3 4 10 / 0.55);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.7rem; /* (the floor for a button's own name) */
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
@@ -791,7 +836,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
   background: rgb(3 4 10 / 0.55);
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.7rem; /* (the floor for a button's own name) */
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
@@ -816,23 +861,10 @@ body:has(.universe-panel) .guide-btn { display: none; }
   transition: opacity 0.25s;
 }
 .universe-prompt[data-on] { opacity: 1; }
-.universe-prompt::before {
-  content: 'G';
-  display: inline-block;
-  min-width: 1.5em;
-  margin-right: 0.5em;
-  padding: 0 0.35em;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  line-height: 1.5;
-  text-align: center;
-}
-@media (pointer: coarse) { .universe-prompt::before { content: none; } }
-.universe-prompt[data-say]::before { content: none; }
-/* (a word on the HUD, or the ship on its way down: no key to press) */
-.universe-prompt[data-plain]::before { content: none; }
+/* the key first, a real <kbd> the scene writes in (scene.js), so a screen
+   reader hears it; a touch screen has no key to press */
+.universe-prompt-key { margin-right: 0.5em; }
+@media (pointer: coarse) { .universe-prompt-key { display: none; } }
 .universe-prompt[data-say] { font-style: italic; }
 /* the way into the world you're down on (landings/wayin.js): there the
    whole time the crew are out, over the line that says what G does */
@@ -858,21 +890,13 @@ body:has(.universe-panel) .guide-btn { display: none; }
   letter-spacing: 0.02em;
   white-space: nowrap;
   cursor: pointer;
-  animation: universe-wayin-in 0.4s ease both, universe-wayin-glow 2.6s ease-in-out 0.4s infinite;
+  animation: universe-wayin-in 0.4s ease both, universe-wayin-glow 2.6s ease-in-out 0.4s 3; /* (three breaths, then still) */
 }
 .universe-wayin[hidden] { display: none; }
 .universe-wayin:hover,
 .universe-wayin:focus-visible { background: color-mix(in srgb, var(--accent, #7fe3ff) 24%, rgb(3 4 10 / 0.86)); }
 .universe-wayin:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-.universe-wayin-key {
-  padding: 0.1em 0.45em;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 400;
-  color: var(--text-muted, rgb(255 255 255 / 0.75));
-}
+.universe-wayin-key { font-weight: 400; color: rgb(255 255 255 / 0.75); }
 @media (pointer: coarse) { .universe-wayin-key { display: none; } .universe-wayin { padding-right: 1.1rem; } }
 @keyframes universe-wayin-in { from { opacity: 0; transform: translateY(8px); } }
 @keyframes universe-wayin-glow { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent, #7fe3ff) 0%, transparent), 0 6px 22px rgb(0 0 0 / 0.45); } }
@@ -916,7 +940,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
   .universe-arrive { animation: none; }
 }
 
-/* Rick's portal gun, in the cruiser (P): a lime pill with the swirl on it */
+/* Rick's portal gun, in every ship (P): a lime pill with the swirl on it */
 .universe-portalgun {
   position: absolute;
   z-index: 1;
@@ -940,14 +964,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 }
 .universe-portalgun:hover { box-shadow: 0 0 22px rgb(125 255 154 / 0.5); }
 .universe-portalgun:active { background: rgb(60 140 40 / 0.5); }
-.universe-portalgun kbd {
-  padding: 0 0.35em;
-  border: 1px solid rgb(151 206 76 / 0.5);
-  border-radius: 5px;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  line-height: 1.5;
-}
+.universe-portalgun kbd { border-color: rgb(151 206 76 / 0.5); color: inherit; }
 .universe-portalgun-swirl {
   width: 1.5em;
   height: 1.5em;
@@ -981,26 +998,15 @@ body:has(.universe-panel) .guide-btn { display: none; }
   margin: 0 auto;
   padding: 0.5rem 0.95rem;
   border-radius: 14px;
-  background: rgb(3 4 10 / 0.7);
+  /* glass dark enough to read over a bright planet (spec 5.1, rule 5) */
+  background: rgb(3 4 10 / 0.85);
   color: var(--muted);
   font-size: 0.78rem;
   line-height: 1.75;
   text-align: center;
   pointer-events: none;
 }
-.universe-hint kbd,
-.universe-keys kbd {
-  display: inline-block;
-  min-width: 1.5em;
-  padding: 0 0.35em;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  line-height: 1.5;
-  text-align: center;
-}
+/* (the hint's key caps are hud.css's .hud-kbd) */
 .universe-hint-touch,
 .universe-keys-touch { display: none; }
 /* the first flying hint says what the open panel's keys already do: on a
@@ -1028,18 +1034,6 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-keymap > div { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
 .universe-keymap dt { display: flex; flex: none; gap: 3px; }
 .universe-keymap dd { margin: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.universe-keymap kbd {
-  display: inline-block;
-  min-width: 1.5em;
-  padding: 0 0.35em;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  line-height: 1.6;
-  text-align: center;
-}
 .universe-keymap-touch { display: none; margin-bottom: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
 @media (pointer: coarse) {
   .universe-keymap { display: none; }
@@ -1109,7 +1103,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-settings-btn {
   position: absolute;
   z-index: 2;
-  left: 16px;
+  left: var(--hud-edge);
   bottom: 68px;
   display: grid;
   place-items: center;
@@ -1127,7 +1121,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-settings {
   position: absolute;
   z-index: 3;
-  left: 16px;
+  left: var(--hud-edge);
   bottom: 122px;
   width: min(312px, calc(100% - 32px));
   max-height: calc(100% - var(--nav-h, 68px) - 154px);
@@ -1136,11 +1130,6 @@ body:has(.universe-panel) .guide-btn { display: none; }
   display: grid;
   gap: 0.85rem;
   padding: 0.9rem 1rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--engine, #e8eefc) 35%, transparent);
-  border-radius: 14px;
-  background: rgb(6 8 16 / 0.93); /* (no blur: see .universe-panel) */
-  color: var(--text);
-  box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
 }
 @media (prefers-reduced-motion: no-preference) {
   .universe-settings { animation: universe-line 0.2s ease-out; }
@@ -1153,12 +1142,10 @@ body:has(.universe-panel) .guide-btn { display: none; }
   width: 32px;
   height: 32px;
   margin: -6px -8px -6px 0;
-  border-radius: 8px;
   color: var(--muted);
 }
 .universe-settings-close:hover { color: var(--text); background: rgb(255 255 255 / 0.08); }
 .universe-settings-close:focus-visible,
-.universe-seg button:focus-visible,
 .universe-settings-reset:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
 .universe-setting { display: grid; gap: 0.3rem; margin: 0; padding: 0; border: 0; min-width: 0; }
 .universe-setting-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
@@ -1224,12 +1211,10 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-setting-row input[type='checkbox']:checked { border-color: var(--engine, #e8eefc); background: color-mix(in srgb, var(--engine, #e8eefc) 30%, transparent); }
 .universe-setting-row input[type='checkbox']:checked::after { translate: 16px 0; background: var(--engine, #e8eefc); }
 .universe-setting-row input[type='checkbox']:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 2px; }
-.universe-seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
-.universe-seg button { min-height: 34px; color: var(--muted); font-size: 0.78rem; transition: background-color 0.15s, color 0.15s; }
+.universe-seg { grid-template-columns: repeat(3, 1fr); }
+.universe-seg-4 { grid-template-columns: repeat(4, 1fr); }
 .universe-seg button + button { border-left: 1px solid rgb(255 255 255 / 0.2); }
-.universe-seg button:hover { color: var(--text); }
-.universe-seg button[aria-pressed='true'] { background: color-mix(in srgb, var(--engine, #e8eefc) 22%, transparent); color: var(--text); }
-.universe-settings-reset { justify-self: start; padding: 0.2rem 0; color: var(--muted); font-size: 0.75rem; text-decoration: underline; text-underline-offset: 3px; }
+.universe-settings-reset { justify-self: start; padding: 0.2rem 0; text-decoration: underline; }
 .universe-settings-reset:hover { color: var(--text); }
 
 /* what's fitted, in the panel */
@@ -1241,7 +1226,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-hangar-btn {
   position: absolute;
   z-index: 2;
-  left: 68px;
+  left: calc(var(--hud-edge) + 52px);
   bottom: 68px;
   display: grid;
   place-items: center;
@@ -1261,7 +1246,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-navmap-btn {
   position: absolute;
   z-index: 2;
-  left: 16px;
+  left: var(--hud-edge);
   bottom: 68px;
   display: grid;
   place-items: center;
@@ -1273,14 +1258,14 @@ body:has(.universe-panel) .guide-btn { display: none; }
   color: #cfe9ff;
   transition: border-color 0.15s, background-color 0.15s;
 }
-.universe-navmap-btn[data-ship] { left: 120px; }
+.universe-navmap-btn[data-ship] { left: calc(var(--hud-edge) + 104px); }
 .universe-navmap-btn:hover { border-color: #9fd8ff; background: rgb(159 216 255 / 0.1); }
 .universe-navmap-btn:focus-visible { outline: 2px solid #9fd8ff; outline-offset: 2px; }
 .universe-page[data-leaving] .universe-navmap-btn { display: none; }
 .universe-hangar {
   position: absolute;
   z-index: 3;
-  left: 16px;
+  left: var(--hud-edge);
   bottom: 122px;
   width: min(372px, calc(100% - 32px));
   max-height: calc(100% - var(--nav-h, 68px) - 154px);
@@ -1290,11 +1275,6 @@ body:has(.universe-panel) .guide-btn { display: none; }
   flex-direction: column;
   gap: 0.75rem;
   padding: 0.9rem 1rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--engine, #e8eefc) 35%, transparent);
-  border-radius: 14px;
-  background: rgb(6 8 16 / 0.94);
-  color: var(--text);
-  box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
 }
 /* (a row keeps its height and the sheet scrolls instead: as a grid held to
    a short sheet, a phone's, it squeezed the slot tabs, clipped by their
@@ -1312,14 +1292,11 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-hangar-cells { display: flex; gap: 3px; }
 .universe-hangar-cells i { flex: 1; height: 8px; border-radius: 2px; background: rgb(255 255 255 / 0.12); }
 .universe-hangar-cells i[data-on] { background: var(--engine, #e8eefc); box-shadow: 0 0 6px color-mix(in srgb, var(--engine, #e8eefc) 60%, transparent); }
-.universe-hangar-power[data-full] .universe-hangar-num { color: #ffb35c; }
-.universe-hangar-slots { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
-.universe-hangar-slots button { min-height: 32px; color: var(--muted); font-size: 0.76rem; transition: background-color 0.15s, color 0.15s; }
+.universe-hangar-power[data-full] .universe-hangar-num { color: var(--hud-warn); }
+.universe-hangar-slots { grid-template-columns: repeat(4, 1fr); }
 .universe-hangar-slots button:not(:nth-child(4n + 1)) { border-left: 1px solid rgb(255 255 255 / 0.2); }
 .universe-hangar-slots button:nth-child(n + 5) { border-top: 1px solid rgb(255 255 255 / 0.2); }
 .universe-hangar-slots button:disabled { opacity: 0.4; }
-.universe-hangar-slots button:hover { color: var(--text); }
-.universe-hangar-slots button[aria-pressed='true'] { background: color-mix(in srgb, var(--engine, #e8eefc) 22%, transparent); color: var(--text); }
 .universe-hangar-paints { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 6px; }
 .universe-hangar-paint { display: grid; place-items: center; aspect-ratio: 1; border-radius: 50%; }
 .universe-hangar-swatch {
@@ -1353,21 +1330,19 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-hangar-part-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
 .universe-hangar-part-name { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.82rem; font-weight: 500; }
 .universe-hangar-part-cost { flex: none; color: var(--muted); font-family: var(--font-mono); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
-.universe-hangar-part[data-short] .universe-hangar-part-cost { color: #ffb35c; }
+.universe-hangar-part[data-short] .universe-hangar-part-cost { color: var(--hud-warn); }
 .universe-hangar-part-does { color: var(--muted); font-size: 0.72rem; line-height: 1.35; }
 .universe-hangar-paint:focus-visible,
-.universe-hangar-part:focus-visible,
-.universe-hangar-slots button:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
+.universe-hangar-part:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
 /* the cruiser's crew: to the wardrobe */
 .universe-hangar-crew { justify-self: start; min-height: 32px; padding: 0 0.8rem; border: 1px solid rgb(255 255 255 / 0.24); border-radius: 999px; color: var(--text); font-size: 0.76rem; font-weight: 600; transition: border-color 0.15s, background-color 0.15s; }
 .universe-hangar-crew:hover { border-color: #97ce4c; background: rgb(151 206 76 / 0.14); }
 .universe-hangar-crew:focus-visible { outline: 2px solid var(--engine, #e8eefc); outline-offset: 1px; }
 /* the shipyard: the hull switch, the roll, the code, a row of modules a slot */
 .universe-yard { display: grid; gap: 0.6rem; }
-.universe-yard-hull { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid rgb(255 255 255 / 0.2); border-radius: 8px; overflow: hidden; }
-.universe-yard-hull button { min-height: 34px; color: var(--muted); font-size: 0.8rem; font-weight: 500; transition: background-color 0.15s, color 0.15s; }
+.universe-yard-hull { grid-template-columns: 1fr 1fr; }
+.universe-yard-hull button { font-weight: 500; }
 .universe-yard-hull button + button { border-left: 1px solid rgb(255 255 255 / 0.2); }
-.universe-yard-hull button[aria-pressed='true'] { background: color-mix(in srgb, var(--engine, #e8eefc) 22%, transparent); color: var(--text); }
 .universe-yard-blurb { margin: 0; color: var(--muted); font-size: 0.76rem; line-height: 1.45; }
 .universe-yard-tools { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; }
 .universe-yard-roll { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 34px; padding: 0 0.85rem; border: 1px solid var(--engine, #e8eefc); border-radius: 8px; color: var(--text); font-size: 0.8rem; font-weight: 600; background: color-mix(in srgb, var(--engine, #e8eefc) 16%, transparent); transition: background-color 0.15s; }
@@ -1384,7 +1359,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-yard-mods { display: flex; flex-wrap: wrap; gap: 5px; }
 .universe-yard-mod { display: inline-flex; align-items: center; gap: 0.3rem; min-height: 30px; padding: 0 0.65rem; border: 1px solid rgb(255 255 255 / 0.16); border-radius: 999px; color: var(--text); font-size: 0.76rem; transition: border-color 0.15s, background-color 0.15s; }
 .universe-yard-cost { color: var(--muted); font-family: var(--font-mono); font-size: 0.64rem; font-variant-numeric: tabular-nums; }
-.universe-hangar-dropped { margin: 0; padding: 0.45rem 0.6rem; border: 1px solid rgb(255 179 92 / 0.45); border-radius: 8px; background: rgb(255 179 92 / 0.1); color: #ffd3a1; font-size: 0.74rem; line-height: 1.35; }
+.universe-hangar-dropped { margin: 0; padding: 0.45rem 0.6rem; border: 1px solid rgb(255 179 92 / 0.45); font-size: 0.74rem; line-height: 1.35; }
 .universe-yard-mod:hover { border-color: rgb(255 255 255 / 0.36); background: rgb(255 255 255 / 0.05); }
 .universe-yard-mod[aria-pressed='true'] { border-color: var(--engine, #e8eefc); background: color-mix(in srgb, var(--engine, #e8eefc) 18%, transparent); }
 .universe-yard-mod[aria-disabled] { opacity: 0.55; }
@@ -1420,7 +1395,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-price { display: inline-flex; align-items: center; justify-self: start; gap: 0.35rem; max-width: 100%; padding: 0.1rem 0.5rem; border: 1px solid rgb(255 255 255 / 0.16); border-radius: 999px; color: var(--muted); font-size: 0.68rem; line-height: 1.4; font-variant-numeric: tabular-nums; }
 .universe-price[data-kind='owned'] { border-color: rgb(110 231 160 / 0.4); color: #6ee7a0; }
 .universe-price[data-kind='buy'] { border-color: var(--engine, #e8eefc); color: var(--text); background: color-mix(in srgb, var(--engine, #e8eefc) 14%, transparent); font-weight: 600; }
-.universe-price[data-kind='short'] { color: #ffb35c; }
+.universe-price[data-kind='short'] { color: var(--hud-warn); }
 .universe-price-was { color: var(--muted); opacity: 0.6; }
 .universe-yard-mod .universe-price { padding: 0 0.4rem; font-size: 0.62rem; }
 .universe-yard-mod[data-kind='short'],
@@ -1428,7 +1403,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 /* (a paint you've yet to buy: a small coin on its swatch) */
 .universe-hangar-paint { position: relative; }
 .universe-hangar-paint:is([data-kind='buy'], [data-kind='short'])::after { content: '¢'; position: absolute; right: -2px; bottom: -2px; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: rgb(6 8 16); color: var(--engine, #e8eefc); font-size: 0.6rem; font-weight: 700; box-shadow: 0 0 0 1px rgb(255 255 255 / 0.25); }
-.universe-hangar-paint[data-kind='short']::after { color: #ffb35c; }
+.universe-hangar-paint[data-kind='short']::after { color: var(--hud-warn); }
 .universe-hangar-change[data-up] { color: #6ee7a0; }
 .universe-hangar-change[data-down] { color: #ff7a6b; }
 
@@ -1444,12 +1419,12 @@ body:has(.universe-panel) .guide-btn { display: none; }
     border-radius: var(--r-card) var(--r-card) 0 0;
   }
   .universe-flat,
-  .universe-loading { right: 0; bottom: var(--sheet-h); }
-  .universe-boost { right: 16px; bottom: calc(var(--sheet-h) + 16px); }
+  .loading-veil.universe-loading { right: 0; bottom: var(--sheet-h); }
+  .universe-boost { right: var(--hud-edge); bottom: calc(var(--sheet-h) + 16px); }
   .universe-fire { right: 104px; bottom: calc(var(--sheet-h) + 22px); }
   .universe-weapon { right: 110px; bottom: calc(var(--sheet-h) + 96px); }
   /* (above the settings and hangar buttons, which reach 110px over the sheet: halfway down the map it sat under them) */
-  .universe-arms { left: 10px; top: auto; bottom: calc(var(--sheet-h) + 120px); width: 110px; }
+  .universe-arms { left: var(--hud-edge); top: auto; bottom: calc(var(--sheet-h) + 120px); width: 110px; }
   .universe-siege { translate: -50% 0; max-width: calc(100% - 32px); }
   .universe-view { right: 184px; bottom: calc(var(--sheet-h) + 27px); }
   .universe-out { right: 248px; bottom: calc(var(--sheet-h) + 27px); }
@@ -1460,24 +1435,28 @@ body:has(.universe-panel) .guide-btn { display: none; }
   .universe-lock-name,
   .universe-lock-dist,
   .universe-nav-name,
-  .universe-nav-dist { font-size: 0.55rem; }
+  .universe-nav-dist { font-size: 0.62rem; }
   .universe-climbs { right: 26px; bottom: calc(var(--sheet-h) + 104px); }
   .universe-alt { left: 12px; top: calc(var(--nav-h, 68px) + (100% - var(--nav-h, 68px) - var(--sheet-h)) / 2); height: 120px; margin-top: -60px; }
   .universe-alt-mark { translate: 0 calc(var(--alt, 0) * -60px); }
-  .universe-shield { left: 10px; top: auto; bottom: calc(var(--sheet-h) + 160px); width: 76px; }
+  /* (over the weapon readout, in the left column: on the hint's bottom edge
+     it sat under it, and beside the readout it met the Weapon button) */
+  .universe-shield { left: var(--hud-edge); top: auto; bottom: calc(var(--sheet-h) + 156px); width: 76px; }
   /* (wrapped, above the buttons, clear of the settings button on the left and
      the climb and dive ones on the right) */
   .universe-arrive { left: 16px; right: 16px; top: calc(var(--nav-h, 68px) + 24px); translate: none; max-width: none; }
   /* above the whole cluster of buttons (the weapon one reaches 150px over
      the sheet, the settings and hangar ones 110px), and clear of the climb
      and dive buttons on the right: at 92px it sat over the weapon button */
-  .universe-hint { left: 12px; right: 90px; bottom: calc(var(--sheet-h) + 160px); max-width: none; translate: none; padding: 0.4rem 0.7rem; border-radius: 12px; white-space: normal; font-size: 0.72rem; line-height: 1.4; }
-  .universe-settings-btn { left: 12px; bottom: calc(var(--sheet-h) + 66px); }
-  .universe-settings { left: 12px; bottom: calc(var(--sheet-h) + 120px); width: min(312px, calc(100% - 24px)); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 136px); }
-  .universe-hangar-btn { left: 62px; bottom: calc(var(--sheet-h) + 66px); }
-  .universe-navmap-btn { left: 12px; bottom: calc(var(--sheet-h) + 66px); }
-  .universe-navmap-btn[data-ship] { left: 112px; }
-  .universe-hangar { left: 12px; bottom: calc(var(--sheet-h) + 120px); width: calc(100% - 24px); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 136px); }
+  .universe-hint { left: var(--hud-edge); right: 90px; bottom: calc(var(--sheet-h) + 160px); max-width: none; translate: none; padding: 0.4rem 0.7rem; border-radius: 12px; white-space: normal; font-size: 0.78rem; line-height: 1.4; }
+  /* on foot, above the way in (s+156) rather than on it */
+  .universe-hint:not(.universe-hint-fly) { bottom: calc(var(--sheet-h) + 212px); }
+  .universe-settings-btn { left: var(--hud-edge); bottom: calc(var(--sheet-h) + 66px); }
+  .universe-settings { left: var(--hud-edge); bottom: calc(var(--sheet-h) + 120px); width: min(312px, calc(100% - 24px)); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 136px); }
+  .universe-hangar-btn { left: calc(var(--hud-edge) + 50px); bottom: calc(var(--sheet-h) + 66px); }
+  .universe-navmap-btn { left: var(--hud-edge); bottom: calc(var(--sheet-h) + 66px); }
+  .universe-navmap-btn[data-ship] { left: calc(var(--hud-edge) + 100px); }
+  .universe-hangar { left: var(--hud-edge); bottom: calc(var(--sheet-h) + 120px); width: calc(100% - 24px); max-height: calc(100% - var(--sheet-h) - var(--nav-h, 68px) - 136px); }
   .universe-hangar-stat { grid-template-columns: 7rem 1fr; }
   .universe-comms { right: 16px; left: 16px; }
   /* the bar keeps clear of the guide's button in the corner */
@@ -1574,7 +1553,7 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-lane[data-tier='trunk'] .universe-lane-tier { border-color: #7cc4ff; background: rgb(124 196 255 / 0.16); color: #cdeaff; }
 .universe-lane[data-tier='express'] .universe-lane-tier { border-color: #ffe08a; background: #ffe08a; color: #1a1405; box-shadow: 0 0 10px rgb(255 224 138 / 0.55); }
 .universe-lane-eta { display: inline-block; min-width: 4ch; color: #e3eeff; font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: left; }
-.universe-lane kbd { padding: 0 0.3rem; border: 1px solid rgb(255 255 255 / 0.35); border-radius: 4px; color: #e3eeff; font-family: var(--font-mono); font-size: 0.68rem; }
+.universe-lane kbd { border-color: rgb(255 255 255 / 0.35); color: #e3eeff; }
 /* (the gun line steps aside while riding: the guns are no use in a lane) */
 .universe-arms[data-ride] { opacity: 0; }
 @media (pointer: coarse) { .universe-lane-keys { display: none; } }

@@ -38,7 +38,7 @@
 // a group, for the scene to send the law after you.
 //
 // createTraffic(parent, { small, engines }) → { setCrew(id), update(dt, t, ship, { fight, feared, wanted }) → events,
-//   hit(from, to) → hit or null, convoy(ship, side), distress(ship, side) → the one in
+//   hit(from, to) → hit or null, near(p, r) → ships, convoy(ship, side), distress(ship, side) → the one in
 //   distress (an Object3D) or null, clear(), dispose() }
 // Points are in `parent`'s space (the map's). `engines` (engines.js), when
 // given, lights each ship's engines, brighter as it runs from a fight.
@@ -420,6 +420,26 @@ export function createTraffic(parent, { small = false, fleet = createFleet(), en
     // ground in a frame than a fighter is wide, so it's the whole stretch that
     // counts): the ship it hit, if any ({ kind, at, size }), which is gone.
     // A little forgiving: a near miss counts
+    // the ships within `r` of `p` ({ x, y, z }): the witnesses to what you
+    // just did (wanted.js), [{ ref (the ship: the same one frame to frame,
+    // gone from the list once it's shot down or flown off), kind, civil,
+    // law (one of the law's or the police's own) }]
+    near(p, r) {
+      const out = [];
+      const side = sideFor(crew);
+      const lawKinds = side ? [side.law, side.police?.faction].flatMap((f) => side.factions[f]?.kinds.map(([k]) => side.kinds[k]?.model ?? k) ?? []) : [];
+      for (const g of live) {
+        if ((g.grow ?? 1) < HIDDEN) continue;
+        for (const m of g.members) {
+          if (!m.alive) continue;
+          const q = m.model.group.position;
+          if ((q.x - p.x) ** 2 + (q.y - p.y) ** 2 + (q.z - p.z) ** 2 > r * r) continue;
+          out.push({ ref: m, kind: m.kind, civil: Boolean(TYPES[m.kind]?.civil), law: lawKinds.includes(m.kind) });
+        }
+      }
+      return out;
+    },
+
     hit(from, to) {
       const sx = to.x - from.x;
       const sy = to.y - from.y;

@@ -1,0 +1,13 @@
+/* ─── The worlds on this device (/worlds, InstalledList.jsx) ─── */
+.installed-list { margin-top: 1rem; display: grid; gap: 0.6rem; }
+.installed-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; padding: 0.85rem 1rem; border: 1px solid var(--border); border-radius: 12px; }
+.installed-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; min-width: 0; }
+.installed-name a { font-weight: 600; color: var(--text); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--border); }
+.installed-name a:hover { text-decoration-color: currentColor; }
+.installed-size { font: 500 0.8rem/1.3 var(--font-mono); color: var(--muted); }
+.installed-note { font-size: 0.8rem; color: var(--muted); }
+.installed-actions { display: flex; gap: 0.5rem; }
+.installed-row .install-bar-wrap { flex-basis: 100%; }
+.installed-row .install-bar { background: var(--border); }
+.installed-row .install-bar-text { color: var(--muted); }
+.installed-empty { margin-top: 0.75rem; max-width: 40rem; color: var(--muted); }

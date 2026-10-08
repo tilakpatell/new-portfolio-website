@@ -1,23 +1,25 @@
 // The sky out past everything: the Milky Way all the way round, sharp
 // however close the camera's narrow view brings it.
 //
-// The Milky Way is a photo, and the camera's 34° view magnifies it three to
-// eight times over: drawn as it was, its JPEG blocks and its baked-in stars
-// showed as soft squares, the one thing on screen that looked low-res next
-// to the planets. So the photo gives only the light and colour of the band
-// (planets.js's 'sky-glow': the stars taken out and the blocks blurred away,
-// scripts/bake-universe-sky.mjs), looked up by direction (no seam where the
-// longitude wraps, no pinch at the poles; `soften`, mip levels it can be
-// blurred further, if wanted); everything fine is drawn here, at the
-// screen's own resolution:
-// - star clouds and dust lanes: the band's light broken up much finer than
-//   the photo has it, the way a long exposure shows it (a tiling cloud
-//   texture, read on three sides of the sphere at three scales), only where
-//   the band is;
+// The Milky Way is a photo (ESO's all-sky panorama), and the camera's 34°
+// view magnifies it three to eight times over: drawn as it was, its baked-in
+// stars showed as soft blobs, the one thing on screen that looked low-res
+// next to the planets. So the photo gives only the light and colour of the
+// band (planets.js's 'sky-glow': the stars taken out, its own dust lanes,
+// star clouds and nebulae kept, scripts/bake-universe-sky.mjs), looked up by
+// direction (no seam where the longitude wraps, no pinch at the poles;
+// `soften`, mip levels it can be blurred further, if wanted); everything
+// fine is drawn here, at the screen's own resolution:
+// - grain in the star clouds: the band's light broken up finer than the
+//   photo's texels, the way a long exposure shows it (a tiling cloud
+//   texture, read on three sides of the sphere at two fine scales; the
+//   photo's own lanes and clouds are the larger ones), only where the band
+//   is;
 // - stars: `layers` layers of them (three on a desktop), each a grid on the
 //   sphere with a star in some of its cells, drawn as a soft point a pixel
 //   or so across at any zoom: faint ones crowding in along the band, more
-//   scattered everywhere, and a few bright ones, each its own temperature.
+//   scattered everywhere, and a few bright ones, each its own temperature
+//   (most white or warm, some orange, a few blue-white, as the sky has them).
 //
 // createSky(map, { layers, soften }) → a THREE.Mesh, a sphere SKY_RADIUS
 // round, seen from inside (the scene keeps it on the camera and turns it
@@ -89,8 +91,10 @@ vec3 stars(vec3 d, float n, float odds, float bright, float px) {
     float m = bright * (0.03 + 0.97 * pow(h.y, 8.0));
     float sigma = px * (0.55 + 0.45 * h.y * h.y);
     float g = exp(-dot(e, e) / (2.0 * sigma * sigma));
-    // temperature: orange through white to blue-white
-    vec3 tint = h.z < 0.5 ? mix(vec3(1.0, 0.72, 0.5), vec3(1.0, 0.96, 0.9), h.z * 2.0) : mix(vec3(1.0, 0.96, 0.9), vec3(0.72, 0.82, 1.0), h.z * 2.0 - 1.0);
+    // temperature: some orange, most warm white to white, a few blue-white
+    vec3 tint = h.z < 0.25 ? mix(vec3(1.0, 0.68, 0.45), vec3(1.0, 0.9, 0.78), h.z * 4.0)
+      : h.z < 0.85 ? mix(vec3(1.0, 0.9, 0.78), vec3(1.0, 0.98, 0.96), (h.z - 0.25) / 0.6)
+      : mix(vec3(0.9, 0.94, 1.0), vec3(0.7, 0.8, 1.0), (h.z - 0.85) / 0.15);
     sum += tint * m * g;
   }
   return sum;
@@ -101,10 +105,11 @@ void main() {
   vec3 base = photo(d);
   float lum = dot(base, vec3(0.2126, 0.7152, 0.0722));
   float band = smoothstep(0.004, 0.09, lum);
-  // the band broken up: brighter knots of stars, darker lanes of dust
-  vec2 fine = cloud(d, 6.0) * 0.45 + cloud(d, 19.0) * 0.35 + cloud(d, 61.0) * 0.2;
-  float knots = 0.45 + 1.25 * fine.r;
-  float lanes = 1.0 - 0.55 * smoothstep(0.62, 0.92, fine.g);
+  // the band's grain, finer than the photo's texels: knots of stars, wisps
+  // of dust (the photo has the larger lanes and clouds itself)
+  vec2 fine = cloud(d, 19.0) * 0.55 + cloud(d, 61.0) * 0.45;
+  float knots = 0.7 + 0.6 * fine.r;
+  float lanes = 1.0 - 0.3 * smoothstep(0.62, 0.92, fine.g);
   vec3 col = base * mix(1.0, knots * lanes, band * uDetail);
   // the stars, sized to a pixel here, however far the view's zoomed
   float px = max(length(dFdx(d)), length(dFdy(d)));

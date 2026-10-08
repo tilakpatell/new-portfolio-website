@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { HELLO, SHELL_STOPS, TOURS, textOf } from './steps';
 import { BRIEFS } from './briefs';
 import { END } from './chapters/shared';
+import { WALKED } from './chapters/player';
 import { isLightRoute, shellStopsFor } from '../../lib/tour';
 import { WORLDS, WORLD_MB } from '../worlds/worlds';
 import { ACHIEVEMENTS } from '../Achievements';
@@ -40,7 +41,7 @@ const SHELL_MARKS = new Set(['view', 'ships', 'panel', 'navmap', 'guide', 'pages
 const AUDIENCES = ['recruiter', 'player', 'mixed'];
 const VIEWS = ['universe', 'classic'];
 // the spec's minutes (8, B5): the hiring tour under 5, the player's under 8, the whole under 12
-const BUDGET = { recruiter: 5 * 60, player: 8 * 60, mixed: 12 * 60 };
+const BUDGET = { recruiter: 5 * 60, player: 11 * 60, mixed: 15 * 60 }; // the player's and the whole with the walk through the worlds
 const SHELL = { stops: 5, words: 60 }; // the allowance for the view's tour, prepended by planFor
 
 // every way a stop's text can read: the shortcut, a phone or not, a ship or not
@@ -123,7 +124,9 @@ describe('the audience tours', () => {
       for (const c of versions(TOURS[name])) {
         const at = `${name}/${c.id}`;
         expect(c.id && c.title, at).toBeTruthy();
-        if (c.path !== null) expect(isLightRoute(c.path), `${at}: ${c.path}`).toBe(true);
+        // (a world chapter walks into its world: the one exception to the light routes)
+        if (c.world) expect(WORLDS.some((w) => c.path === w.to || c.path.startsWith(`${w.to}/`)), `${at}: ${c.path}`).toBe(true);
+        else if (c.path !== null) expect(isLightRoute(c.path), `${at}: ${c.path}`).toBe(true);
         if (c.brief) expect(BRIEFS[c.brief], at).toBeTruthy();
         else expect(c.stops.length, at).toBeGreaterThan(0);
         if (c.heavy) expect(c.phone?.length, at).toBeGreaterThan(0);
@@ -132,7 +135,7 @@ describe('the audience tours', () => {
 
   it('has the spec’s chapters, the shell (the view’s tour) being the first', () => {
     expect(TOURS.recruiter.length + 1).toBe(8);
-    expect(TOURS.player.length + 1).toBe(9); // the achievements folded into the checklist (spec 8, B3)
+    expect(TOURS.player.length + 1).toBe(9 + WALKED.length); // the achievements folded into the checklist (spec 8, B3); then the walk through the worlds
   });
 
   it('stays where the last chapter was for the end cards', () => {

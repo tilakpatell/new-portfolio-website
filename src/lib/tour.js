@@ -88,6 +88,9 @@ export const samePage = (pathname, path) => pathname === path || (FEED_PAGE.test
 // tour offers those with a button and ends there.
 export const LIGHT_ROUTES = /^\/(home|experience|projects(\/[^/]+)?|resume|contact|travel|terminal|changes|universe)$/;
 export const isLightRoute = (pathname) => LIGHT_ROUTES.test(pathname ?? '');
+// A chapter marked `world` is the exception: the player's tour walks into a
+// world (its `path`) and waits for it, its download gate included, since a
+// phone takes the whole tour too; a world kept light is toured as it is.
 
 // The universe's on the map; the classic site's everywhere else, since the
 // nav, the guide and the switch it shows are on every page.
@@ -196,13 +199,20 @@ export const resolveChapter = (stops, has, keep = false) =>
 export const WAIT_MS = 8000;
 
 // Asks `check` each tick until it answers, `timeout` passes, or the wait is
-// called off. The clock and the ticks come in, so a test needs none.
+// called off. A check that answers 'hold' (a world asking whether to download
+// its 3D: the visitor's to answer, however long they take) keeps waiting and
+// starts the clock again. The clock and the ticks come in, so a test needs
+// none.
 export function waitUntil(check, { tick, now, timeout = WAIT_MS, cancelled = () => false }) {
-  const from = now();
+  let from = now();
   return new Promise((resolve) => {
     const step = () => {
       if (cancelled()) return resolve('cancelled');
       const got = check(now() - from);
+      if (got === 'hold') {
+        from = now();
+        return tick(step);
+      }
       if (got) return resolve(got);
       if (now() - from >= timeout) return resolve('timeout');
       tick(step);

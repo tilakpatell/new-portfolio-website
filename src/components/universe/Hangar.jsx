@@ -188,6 +188,7 @@ export default function Hangar({ ship, shipName, loadout, build = null, lastBuil
         aria-controls={id}
         aria-label="Hangar: paint and parts"
         title="Hangar: paint and parts (H)"
+        aria-keyshortcuts="H"
         onClick={() => onOpen(!open)}
       >
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">

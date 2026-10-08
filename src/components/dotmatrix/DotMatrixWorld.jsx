@@ -577,7 +577,7 @@ function World({ gl, setGl }) {
 
   return (
     <div ref={box}>
-      <div ref={stage} className="dm-stage" data-palette={palette} data-on={gl === 'on' || undefined}>
+      <div ref={stage} className="dm-stage" data-tour="cartridges" data-palette={palette} data-on={gl === 'on' || undefined}>
         <canvas ref={canvas} className="dm-canvas" data-on={gl === 'on' || undefined} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} aria-label="Dot Matrix island, in 3D. Walk with the arrow keys or WASD, jump with Space, talk, read and play with X, turn the camera with Q and E, zoom with the wheel or + and -." role="img" />
         <div className="dm-lcd" aria-hidden="true" />
         <div className="dm-names" aria-hidden="true">

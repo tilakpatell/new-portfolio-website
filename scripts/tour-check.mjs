@@ -61,7 +61,7 @@ const shotsDir = typeof args.shots === 'string' ? join('/tmp/tour-check', args.s
 if (args.shots === true) console.log('note: --shots takes a name (--shots tours-0007)');
 
 const MAX_STOPS = 120;
-const STOP_WAIT = 9000; // for a stop to show (lit, or a card in the middle that isn't waiting)
+const STOP_WAIT = 25000; // for a stop to show (lit, or a card in the middle that isn't waiting): a world's page takes a while to come
 const MOVE_WAIT = 3000; // for Next to move it on
 const STEADY = 500; // a stop counts once its card has held still this long (a page change re-renders it in steps)
 const STEADY_CENTRE = 3000; // longer for a card in the middle: a target far down the page is scrolled to first
@@ -154,7 +154,9 @@ const readStop = () => {
     lit: Boolean(r && r.width >= 1 && r.height >= 1),
     side: card.dataset.side ?? '',
     shown: getComputedStyle(card).visibility !== 'hidden',
-    waiting: /One moment/i.test(card.textContent),
+    waiting: tour.dataset.waiting !== undefined,
+    // a world asking whether to download its 3D (the tour holds for the answer)
+    gate: Boolean(document.querySelector('.world-gate')),
     done: /^Done\b/.test(next),
     // a stop that lets keys through to try them (spec 8, A4)
     release: document.documentElement.dataset.touring === 'release',
@@ -206,12 +208,18 @@ async function tryRelease(page, n, s) {
 // a page change the card is redrawn in steps (the count first, then the
 // stop), and a key pressed in between would skip a stop
 async function steady(page, ms) {
-  const end = Date.now() + ms;
+  let end = Date.now() + ms;
   let last = null;
   let since = 0;
   for (;;) {
     const s = await stopNow(page);
     if (s.gone) return s;
+    // a world's gate: answered "keep it light" (software WebGL asks on a
+    // laptop too), as a phone would; the tour then tours the light version
+    if (s.gate) {
+      await page.$eval('.world-gate-x', (b) => b.click()).catch(() => {});
+      end = Date.now() + ms;
+    }
     if (!last || s.sig !== last.sig || !ready(s)) since = Date.now();
     last = s;
     if (ready(s) && Date.now() - since >= (s.lit ? STEADY : STEADY_CENTRE)) return s;

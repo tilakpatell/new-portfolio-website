@@ -2,7 +2,6 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { audioContext } from '../../../lib/audio';
 import { use3D } from '../../../lib/gpu';
 import { local, prefersReducedMotion, useFrameLoop, useInView, useMediaQuery } from '../../../lib/hooks';
-import { settle } from '../../../lib/settle';
 import { readPad, typing } from '../../games/pad';
 import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
@@ -17,6 +16,8 @@ import { fitCanvas } from '../../../runtime/hud';
 import { clock, stoneFor, stoneLine } from './labels';
 import { useVoiced } from '../../../lib/useVoiced';
 import { sayVoiced } from '../../../lib/voiced';
+import LoadingVeil from '../../worlds/LoadingVeil';
+import { throttled } from '../../worlds/loadingSteps';
 
 // The Avengers compound, the world: walk about the compound as Spider-Man,
 // and go into the buildings to play their games. Anyone else online here
@@ -104,6 +105,7 @@ export default function CompoundWorld({ onPortal }) {
 const ROOM = { bound: 260, motion: true };
 
 function World({ api, prog, inside, enter, portal, gl, setGl }) {
+  const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
   // other players online here, as holograms (middleearth/towns/useTravellers)
   const trav = useTravellers('avengers', gl === 'on', ROOM);
@@ -226,8 +228,9 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         }
         api.current = a;
         fit();
-        // its shaders linked in the background before the first frame
-        await settle(a.engine.precompile(), 4000);
+        // everything on the graphics chip before it's shown (its shaders, its
+        // pictures, one draw), behind the loading screen
+        await a.prepare?.(throttled(setPrep), { alive: () => !dead });
         if (dead || a.lost) return;
         if (import.meta.env.DEV) window.__HQWORLD__ = { api: a, sim: sim.current, enter }; // for the QA scripts
         setGl('on');
@@ -620,6 +623,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     <div ref={box} className="cw-stage" data-touch={touch || undefined} data-photo={photo ? '' : undefined}>
       <canvas ref={canvas} className="cw-canvas" data-on={gl === 'on' || undefined} aria-label="The Avengers compound in 3D: the hangar, the main building and its glass wing, the training center, the lab and the range, and Spider-Man on the lawn" role="img" onPointerDown={onPointer} onPointerMove={onPointer} onPointerUp={onPointer} onPointerCancel={onPointer} onContextMenu={(e) => e.preventDefault()} onWheel={(e) => sim.current.photo && changePhoto({ dist: sim.current.photo.dist * (e.deltaY > 0 ? 1.1 : 1 / 1.1) })} />
       <div ref={speedRef} className="cw-speed" aria-hidden="true" />
+      <LoadingVeil shown={gl === 'loading'} progress={prep.value} step={prep.step} title="Flying in to the compound" />
       <CompoundHud touch={touch} gl={gl} prog={prog} hud={hud} sim={sim} enter={enter} portal={portal} trav={trav} list={list} setList={setList} tuning={tuning} setTuning={setTuning} photo={photo} photoMode={photoMode} changePhoto={changePhoto} onSavePhoto={() => savePhoto(api.current, canvas.current, sim.current, progRef.current)} settings={settings} changeSettings={changeSettings} tourMsg={tourMsg} pack={pack} trick={trick} styleRef={styleRef} tourRef={tourRef} map={map} bubble={bubble} bubbleRef={bubbleRef} tourBest={tourBest} styleBest={styleBest} found={found} toTour={toTour} travel={travel} onStick={onStick} />
     </div>
   );

@@ -11,4 +11,5 @@ import { fromScene } from '../../runtime/module';
 export default fromScene('galaxy', (canvas, ctx) => import('./scene').then((m) => m.create(canvas, ctx)), {
   mb: 8, // (WORLD_MB['/galaxy']: the galaxy and its worlds' surfaces)
   ratio: 1.5,
+  sharpness: 'own', // (the pace's steps are the post's: lowerQuality)
 });

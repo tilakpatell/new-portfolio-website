@@ -42,7 +42,6 @@ export default function CompoundHud({ touch, gl, prog, hud, sim, enter, portal, 
   };
   return (
     <>
-      {gl === 'loading' && <p className="cw-loading">Flying in to the compound…</p>}
 
       <Hud
         className="cw-hud"

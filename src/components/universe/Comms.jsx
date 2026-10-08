@@ -291,6 +291,20 @@ export default function Comms({ crew, reduced, control }) {
 
   const speaker = line?.speaker ?? null;
   useMouth(box, Boolean(speaker) && line.who !== 'comms', reduced);
+  // the line's height, for what sits under it at the top of the map (the
+  // fly-past pill, the siege banner: universe.css), so a two-line message
+  // pushes them down instead of covering them
+  useEffect(() => {
+    const el = box.current;
+    const page = el?.parentElement;
+    if (!el || !page || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => page.style.setProperty('--comms-h', `${Math.round(el.offsetHeight)}px`));
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      page.style.removeProperty('--comms-h');
+    };
+  }, []);
   return (
     <div ref={box} className="universe-comms" aria-live="polite" data-motion={reduced ? undefined : ''}>
       {speaker && (

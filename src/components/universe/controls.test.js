@@ -8,6 +8,12 @@ describe('the flying settings', () => {
     expect(readControls({ turn: 'fast', invert: 'yes', dragUp: 'sideways', ad: 'strafe' })).toEqual(DEFAULTS);
   });
 
+  it('keep a difficulty, normal as it comes and for anything unknown', () => {
+    expect(DEFAULTS.difficulty).toBe('normal');
+    expect(readControls({ difficulty: 'outlaw' }).difficulty).toBe('outlaw');
+    expect(readControls({ difficulty: 'impossible' }).difficulty).toBe('normal');
+  });
+
   it('keep what was set, inside each slider’s range', () => {
     const c = readControls({ turn: 1.4, pitch: 99, roll: 1.5, level: 0, drag: -3, assist: 0, camera: 1.2, invert: true, dragUp: 'speed', ad: 'turn' });
     expect(c.turn).toBe(1.4);
