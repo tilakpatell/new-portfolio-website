@@ -66,10 +66,10 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 1F | session_01PvQ31jMR87beSHxh7Bgt2v | `claude/feel-kit` | | |
 | 2A | session_01HPFczeNhvDuaFuXnrzZj9H | `claude/feel-middleearth`, `claude/feel-middleearth-look` | Tier 1: #728 (Tier 2: none in the roster); the look: #732 | yes, both |
-| 2B | session_01DVpcS5r4qygJHh2VUkxKoP | `claude/feel-starwars` | Tier 1: #729; Tier 2 with the inside’s Tier 1: #747; Tier 3 (the surface sites’ loose crates and barrels): TIER3 | Tier 1, Tier 2 yes |
-| 2C | | | | |
-| 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: #740 | Tiers 1 and 2 |
-| 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733 | |
+| 2B | session_01DVpcS5r4qygJHh2VUkxKoP | `claude/feel-starwars` | Tier 1: #729; Tier 2 with the inside’s Tier 1: #747; Tier 3 (the surface sites’ loose crates and barrels): TIER3 | Tiers 1 and 2 |
+| 2C | session_019CkxR28H7ZKjm6tPbKEyns | `claude/feel-universe` | Tier 1: #741 | |
+| 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: #740; Tier 3 Iacon: #745 | Tiers 1, 2 and 3 Albuquerque |
+| 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733; Tier 2: #738; the look (opening) | Tiers 1 and 2 |
 | 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1); #734 (Tier 2); the look | #731, #734 yes |
 
 ## Findings (for the owner and the next lane)
@@ -125,5 +125,11 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **2E, where the audit missed one:** Invincible’s `orbit.js` (on the Moon and Mars) dropped a jump pressed in the step’s later slices, as `flight.js` did; it takes the same press now.
 - **2E, for the owner:** R in Invincible took a radio call already; it still does, first, and lets go of the water only when no call waits. The compound’s fov punch was not held under reduced motion; on the feel it is.
 - **2E, for the owner:** `node scripts/autopilot-check.mjs --routes /caribbean` fails on `main` with “no canvas: the 3D never started”: without a graphics chip the tide asks for hardware acceleration and waits on “Play anyway”, so the headless check never sees a canvas there.
+- **2C, for the owner and 2B:** `lib/physics/world.js` tells a hit’s force a kilogram (`magnitude / m`), while Rapier’s `hitThreshold` is the whole contact force in newtons: a world that gates in newtons and hears per kilogram mixes the two. The landings now gate at `mass × threshold` (the law’s threshold a kilogram) with the law’s gap the one throttle (`landings/physics.js` takes `threshold`). The panel’s threshold below 15 can’t hear quieter knocks than the gate set at the landing’s start.
+- **2C, for 2B:** `universe/controls.js`’s `stickInput` has a dead zone now (`DEAD` 0.1 of the stick, each way, rescaled), so the galaxy map’s drag stick has it too; and `ship.js`’s bump carries `speed`, `force` (`speed × SHIP.mass`, 50: full on the law just under a crash), `at` and `normal`, which `universe/Comms.jsx` thuds by on both maps. The galaxy map’s own shake (`galaxy/scene.js`) is still its own: 2B’s.
+- **2C, for the combat lanes:** nothing of theirs edited; the foot’s jump went through `foot.js`’s `walk()` only (a `createJump()` press beside it), and `footScene.js`’s knock wiring moved to `landings/knocks.js`.
+- **2C, left for a later round:** the landing’s dust in the biome’s ground colour, and the dust in `prepare`’s warm-up (1B’s two findings).
 - **2D, for 2B, 2E (Tier 3):** `src/lib/three/knockables.js` is made (with Albuquerque’s street props): `createKnockables({ physics, kinds, impacts, parent, count })` places `{ kind, x, y, z, yaw }` as sleeping `lib/physics/props.js` bodies, one instanced draw a kind, each hit through `impacts.onHit(force, at, kind)`; `knockablesWanted(device())` says whether to load Rapier (a high tier, not a phone, not Data Saver); with `physics` null the props stand, drawn. A world’s own kinds go in `kinds` (`{ mass, lift, colliders, shape: 'box' | 'cylinder' | 'cone', size, colour }`). `albuquerque/world/roadside.js` is the pattern: a floor, the nearby buildings as fixed boxes, the player a kinematic `addPusher` following the rules, `physics.step(dt)` then `sync()` a frame.
 
+- **2E, the look:** the HQ games, the compound, Invincible’s city, Think, Mark!, the viewer and the tide each have a `look.js` (scanned, the house tone) and their scenes read the bloom from it, keeping the numbers each was lit by; the HQ engine’s default bloom is the house’s `BLOOM`, which no HQ game draws with today. Three thresholds stay under white with their why (the city 0.92, Think, Mark! and the viewer 0.9): lifting their glows with `hot()` wants a real GPU to judge by. The HQ games’ own scenes (`avengers/lawn/` and the rest) are not in `LOOK_FOLDERS`, so their bloom literals stand.
+- **2E, not done:** the plan’s Step 4 for this lane (every HQ game’s `feel.trauma` sites through `wireImpacts` with the dust) is left: the hits already sound by force and shake by the feel, and a thud on top of each game’s own sound would play twice. A lane that takes it on swaps the sound rather than adding one.

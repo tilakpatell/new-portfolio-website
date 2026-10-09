@@ -91,6 +91,7 @@ export const SHIP = {
   hover: 1.5, // map units a second the autopilot can nudge it up or down, parking
   ceiling: 100, // how far above or below the disc it can go (the big ships' lanes start at 105; the sun's 75 across leaves room to fly over it)
   crash: 2.4, // flying into something faster than this is a crash, not a bump
+  mass: 50, // a bump's force is its speed times this: full on the hit law (lib/impact.js) just under a crash
   approach: 9, // its cruise coming in to a world to land, throttle all the way (approachAt): under what a landing allows, entry.js's ENTRY.fast
 };
 // How fast everything else flies for the ship's speeds: the hunters, the
@@ -114,6 +115,15 @@ export const pacedAll = (table) => Object.fromEntries(Object.entries(table).map(
 // held to what any fit flies with: [least, most] of each. A heavy hull's
 // slower cruise counts as much as a fast one's. The hangar's read-out shows
 // these too (tuned), so what it says is what it flies.
+// How loud a crash sounds (Comms.jsx's crashSound), 0…1, by how fast it went
+// in: just over a bump is a little under half, at the boost and over is all
+// of it. A crash with no speed (shot down, the sun) is as loud as it ever was.
+export function crashLoud(speed) {
+  if (!Number.isFinite(speed)) return 1;
+  const k = (speed - SHIP.crash) / (SHIP.boost - SHIP.crash);
+  return Math.min(1, Math.max(0, 0.45 + 0.55 * k));
+}
+
 export const TUNE = { boost: [1, 1.6], cruise: [0.9, 1.2], accel: [1, 1.8], agility: [0.6, 1.4], level: [1, 1.8] };
 export const tuned = (tune) => Object.fromEntries(Object.entries(TUNE).map(([k, [lo, hi]]) => [k, clamp(tune?.[k] ?? 1, lo, hi)]));
 // super speed: how many times the pulse drive's speed, at most
@@ -385,7 +395,7 @@ export function holdReach(s, { ramp = 2, solids = SOLIDS, space = SPACE, dt = 1 
 }
 
 // One step of `dt` seconds. Returns the new ship and what happened on the
-// way: { type: 'bump', id, hard }, { type: 'crash', id, at: [x, y, z],
+// way: { type: 'bump', id, hard, speed, force, at, normal }, { type: 'crash', id, at: [x, y, z],
 // normal: [x, y, z], speed, swallowed? } (into something too fast, or into
 // something that swallows at any speed: the scene plays it out) and
 // { type: 'edge' } (at the edge, the ceiling or the floor).
@@ -578,7 +588,7 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
     if (into > 0) {
       // too fast is a crash (the scene plays it out); otherwise a bump
       if (into > SHIP.crash) events.push({ type: 'crash', id: p.id, at: [x, y, z], normal: [nx, ny, nz], speed: into });
-      else events.push({ type: 'bump', id: p.id, hard: into > SHIP.crash * 0.55 });
+      else events.push({ type: 'bump', id: p.id, hard: into > SHIP.crash * 0.55, speed: into, force: into * SHIP.mass, at: [x, y, z], normal: [nx, ny, nz] });
       // a little bounce back: what it had toward the planet, the other way
       // and smaller (what's left of the ship's speed that it can still fly)
       v += 1.3 * into * ahead;

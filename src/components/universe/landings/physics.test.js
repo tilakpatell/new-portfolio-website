@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { METRE } from '../foot';
+import { createImpacts } from '../../../lib/impact';
 import { createLandingPhysics } from './physics';
 
 // a moon (universes.js: 0.4 × 21 map units across its middle), and a barrel
@@ -92,13 +93,58 @@ describe('createLandingPhysics', () => {
     // (a barrel dropped a metre and a half onto the ground)
     const top = onTop();
     lp.add({ position: [top[0], top[1] + 1.5 * METRE, top[2]], quaternion: [0, 0, 0, 1], scale: 1, box: barrel, body: { shape: 'cylinder', mass: 2 }, awake: true });
-    run(lp, 90);
+    // the hit law's one throttle (lib/impact.js: once a thing within its gap), on the steps' clock
+    let t = 0;
+    const law = createImpacts({ now: () => t });
+    const told = [];
+    let seen = 0;
+    run(lp, 90, () => {
+      t += 1 / 60;
+      for (; seen < hits.length; seen++) {
+        const r = law.hit(hits[seen].force, hits[seen].at, hits[seen].entry);
+        if (r) told.push(r);
+      }
+    });
     expect(hits.length).toBeGreaterThan(0);
-    expect(hits.length).toBeLessThan(6); // (once a landing, not once a frame)
-    expect(hits[0].force).toBeGreaterThan(0);
+    expect(told.length).toBeGreaterThan(0);
+    expect(told.length).toBeLessThan(6); // (once a landing, not once a frame)
+    // (a contact is told over the law's own threshold, a kilogram)
+    expect(hits[0].force).toBeGreaterThan(15);
     expect(hits[0].entry.handle).toBeTruthy();
     expect(Math.abs(dist(hits[0].at) - R) / METRE).toBeLessThan(2);
     lp.dispose();
+  });
+
+  it('tells nothing of a heavy thing lying there, however heavy', async () => {
+    // (lying there it pushes on the ground with its weight, g a kilogram: not a knock)
+    for (const mass of [0.1, 2, 5, 40]) {
+      const hits = [];
+      const lp = await createLandingPhysics({ R, onHit: (force) => hits.push(force) });
+      lp.add({ position: onTop(), quaternion: [0, 0, 0, 1], scale: 1, box: barrel, body: { shape: 'cylinder', mass }, awake: true });
+      run(lp, 120);
+      expect(hits, `${mass} kg`).toEqual([]);
+      lp.dispose();
+    }
+  });
+
+  it('tells a light thing’s knock as a heavy one’s, a kilogram, over the law’s threshold', async () => {
+    const top = onTop();
+    const first = async (mass, threshold) => {
+      const hits = [];
+      const lp = await createLandingPhysics({ R, threshold, onHit: (force) => hits.push(force) });
+      lp.add({ position: [top[0], top[1] + 1.5 * METRE, top[2]], quaternion: [0, 0, 0, 1], scale: 1, box: barrel, body: { shape: 'cylinder', mass }, awake: true });
+      run(lp, 90);
+      lp.dispose();
+      return hits;
+    };
+    // (a diya, 0.1 kg, and a chest, 5 kg, each dropped a metre and a half: the same knock to the law)
+    const diya = await first(0.1, 15);
+    const chest = await first(5, 15);
+    expect(diya.length).toBeGreaterThan(0);
+    expect(chest.length).toBeGreaterThan(0);
+    expect(Math.max(...diya) / Math.max(...chest)).toBeCloseTo(1, 1);
+    // a lower threshold on the panel hears quieter knocks
+    expect((await first(2, 1)).length).toBeGreaterThan((await first(2, 60)).length);
   });
 
   it('walks at any frame rate without shoving what it stops short of', async () => {
