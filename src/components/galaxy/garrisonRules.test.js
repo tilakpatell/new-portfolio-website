@@ -144,6 +144,61 @@ describe('the garrison mind', () => {
     expect(h.state).toBe('calm');
   });
 
+  it('your shots are heard behind the planet', () => {
+    const hidden = world({ you: you(80), seesThrough: () => false });
+    const g = mind();
+    expect(run(g, 1, hidden)).toEqual([]);
+    g.provoke('hull');
+    // it hears where the shot came from: a wave goes up after you, the guns hold (they can't see you), and it doesn't stand down
+    const ev = run(g, 8, hidden);
+    expect(says(ev)).toEqual(['scramble']);
+    about(first(ev, 'scramble'), 0);
+    expect(of(ev, 'volley')).toHaveLength(0);
+    expect(of(ev, 'recall')).toHaveLength(0);
+    expect(g.state).toBe('fight');
+    // shooting on keeps them on you
+    const kept = [];
+    for (let i = 0; i < 6; i++) {
+      g.provoke('hit');
+      kept.push(...run(g, 5, hidden));
+    }
+    expect(of(kept, 'recall')).toHaveLength(0);
+    expect(g.state).toBe('fight');
+    // gone quiet, it loses you and stands down
+    const quiet = run(g, 20, hidden);
+    expect(of(quiet, 'recall')).toHaveLength(1);
+    expect(says(quiet)).toEqual(['standdown']);
+    expect(g.state).toBe('calm');
+  });
+
+  it('nothing while you’re in the tunnel, crashed or landed', () => {
+    // warned, then landed three seconds in: no scramble and no grudge, and no thanks either
+    const g = mind();
+    const ev = run(g, 23, (t) => world({ stance: 'wary', you: t < 3 ? you(80) : null }));
+    expect(says(ev)).toEqual(['warn']);
+    expect(of(ev, 'scramble')).toHaveLength(0);
+    expect(g.state).toBe('calm');
+    expect(g.info.grudge).toBe(0);
+    // back, and warned afresh, with the whole countdown
+    const back = run(g, 1, world({ stance: 'wary', you: you(80) }));
+    expect(says(back)).toEqual(['warn']);
+    expect(back.find((e) => e.sub === 'warn').secs).toBe(GARRISON.countdown);
+    // an enemy challenged inside the scramble ring, then gone: no scramble
+    const h = mind();
+    const gone = run(h, 5, (t) => world({ you: t < 0.1 ? you(90) : null }));
+    expect(says(gone)).toEqual(['challenge']);
+    expect(of(gone, 'scramble')).toHaveLength(0);
+    expect(h.state).toBe('calm');
+    // a shot of yours landing once you've gone: the grudge and the alarm, but not a word till you're back
+    const s = mind();
+    s.step(DT, world({ stance: 'wary', you: null }));
+    s.provoke('hit');
+    expect(s.state).toBe('calm');
+    expect(run(s, 7, world({ stance: 'wary', you: null }))).toEqual([]);
+    expect(s.info.grudge).toBeGreaterThan(GARRISON.grudge - 8);
+    expect(says(run(s, 1, world({ stance: 'wary', you: you(80) })))).toEqual(['challenge']);
+  });
+
   it('a post that goes takes what it saw with it', () => {
     const g = mind();
     run(g, 0.5, world({ you: you(130) }));

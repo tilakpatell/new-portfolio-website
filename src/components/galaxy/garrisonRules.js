@@ -10,22 +10,24 @@
 //
 // Every post perceives (lib/ai/perception, all round, out past its warn
 // ring), and the planet blocks its sight (the scene's `seesThrough`); losing
-// you, it holds your course for its intuition, then fades. Its rings grow
-// with its size and the holder's grip (`ringsOf`): fire, scramble, warn,
-// leash. The mind is calm until a post is sure of you inside its warn ring.
-// An enemy is challenged, and scrambled at as soon as you're inside the
-// scramble ring (with no challenge at all, while it remembers trouble); an
-// unsworn pilot is warned, and fought only for lingering past the
-// countdown, or for shooting. Nothing hails, scrambles or fires for a grace
-// after you jump in, go down or come back. Fighting, it launches waves from
+// you, it holds your course for its intuition, then fades. A shot of yours
+// that lands on one of theirs (`provoke`) is heard where you fired it from,
+// even behind the planet, so a pilot fighting it unseen is still fought. Its
+// rings grow with its size and the holder's grip (`ringsOf`): fire,
+// scramble, warn, leash. The mind is calm until a post is sure of you inside
+// its warn ring. An enemy is challenged, and scrambled at as soon as you're
+// inside the scramble ring (with no challenge at all, while it remembers
+// trouble); an unsworn pilot is warned, and fought only for lingering past
+// the countdown, or for shooting. Nothing hails, scrambles or fires for a
+// grace after you jump in, go down or come back, or while you're gone (the
+// tunnel, a crash, a landing: `you` null). Fighting, it launches waves from
 // a reserve that refills slowly, fires a volley from each post that can see
-// you inside its fire ring (never through its own fighters), and stands
-// down once you've been out past every leash ring for a while. The bolts
-// are its own: it flies them, and a hit is decided here, swept over the
-// frame, never drawn and hoped. The aim brackets: it leads you and misses
-// by less the longer you hold a line, and turning hard puts it back. Your
-// own side's fleet shoots what chases you instead, and sends a flight out
-// to meet you.
+// you inside its fire ring (never through its own fighters), and stands down
+// once you've been out past every leash ring for a while. The bolts are its
+// own: it flies them, and a hit is decided here, swept over the frame, never
+// drawn and hoped. The aim brackets: it leads you and misses by less the
+// longer you hold a line, and turning hard puts it back. Your own side's
+// fleet shoots what chases you instead, and sends a flight out to meet you.
 //
 // postOf({ id, kind, side, size, at, yaw }, out?) → { id, kind, side, size, at, yaw,
 //   carrier, hangar, batteries: [{ x, y, z }], spheres: [{ c, r }] }, refreshing `out` in place
@@ -192,12 +194,19 @@ export function createGarrison({ rand = Math.random, small = false } = {}) {
   let opened = false; // the first volley of the fight said so
   let covered = false; // the first covering volley of the visit said so
   let called = false;
+  let heard = false; // a shot of yours landed since the last step
+  let here = false; // you were about at the last step
   let lead = null; // the post nearest you, by what it believes
   let frame = 0;
 
-  // what perception is handed: you, or nobody
+  // what perception is handed: you, or nobody; and your shot, heard where
+  // you fired it from (a stim, as the surface's hostiles hear you), out to
+  // the posts' hearing
   const youT = { id: 'you', at: { x: 0, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }, hostile: true };
-  const seeing = { targets: [youT] };
+  const shot = { type: 'shot', at: { x: 0, y: 0, z: 0 }, radius: GARRISON.senses.hearing.range, from: 'you', loudness: 1 };
+  const shots = [shot];
+  const hush = [];
+  const seeing = { targets: [youT], stims: hush };
   const blind = { targets: [] };
   const how = { seesThrough: null };
   // where you were at the last step (and so this step's start), and your velocity then
@@ -270,8 +279,9 @@ export function createGarrison({ rand = Math.random, small = false } = {}) {
     known = true;
   }
 
-  // every post looks for you; a post gone takes its mind with it
-  function perceive(posts, you, w, tier, dt) {
+  // every post looks for you (and listens, when a shot of yours has
+  // landed); a post gone takes its mind with it
+  function perceive(posts, you, w, tier, dt, loud) {
     how.seesThrough = w.seesThrough ?? null;
     if (you) {
       youT.at.x = you.x;
@@ -280,6 +290,10 @@ export function createGarrison({ rand = Math.random, small = false } = {}) {
       youT.vel.x = you.vx ?? 0;
       youT.vel.y = you.vy ?? 0;
       youT.vel.z = you.vz ?? 0;
+      shot.at.x = you.x;
+      shot.at.y = you.y;
+      shot.at.z = you.z;
+      seeing.stims = loud ? shots : hush;
     }
     lead = posts[0] ?? null;
     let near = Infinity;
@@ -449,8 +463,13 @@ export function createGarrison({ rand = Math.random, small = false } = {}) {
 
   // hailing: an enemy is scrambled at, after the challenge, once you're
   // inside the scramble ring; an unsworn pilot has the countdown, and is
-  // thanked for leaving
-  function hail(dt, hostile) {
+  // thanked for leaving. You gone (the tunnel, a crash, a landing), it lets
+  // the hail go without a word: what it still believes of you is no reason
+  function hail(dt, hostile, you) {
+    if (!you) {
+      calm();
+      return;
+    }
     if (!anyIn('warn')) {
       calm();
       if (!hostile) say('clear', lead);
@@ -474,10 +493,13 @@ export function createGarrison({ rand = Math.random, small = false } = {}) {
     pending.length = 0;
     const help = called; // (a call is acted on at this step or not at all)
     called = false;
+    const loud = heard; // (and a shot heard at this step, or not at all)
+    heard = false;
     frame += 1;
     const tier = tierOf(w.tier);
     const posts = w.posts ?? [];
     const you = w.you ?? null;
+    here = Boolean(you);
     stance = w.stance ?? null;
 
     // the clocks
@@ -500,7 +522,7 @@ export function createGarrison({ rand = Math.random, small = false } = {}) {
       bolts.length = 0;
       return events;
     }
-    perceive(posts, you, w, tier, dt);
+    perceive(posts, you, w, tier, dt, loud);
     fly(dt, w, you);
     if (!posts.length || !stance) {
       if (state !== 'calm') standDown();
@@ -535,17 +557,21 @@ export function createGarrison({ rand = Math.random, small = false } = {}) {
         else say('warn', seen, events, countdown);
       }
     }
-    if (state === 'hail') hail(dt, hostile);
+    if (state === 'hail') hail(dt, hostile, you);
     if (state === 'fight') engage(dt, w, tier, posts, you);
     return events;
   }
 
   return {
     step,
-    // a shot of yours landed on one of theirs (a fighter hit or downed, or a hull)
+    // a shot of yours landed on one of theirs (a fighter hit or downed, or a
+    // hull): remembered, and heard at the next step; but it says nothing of
+    // it while you're gone
     provoke(how) {
       alarm = Math.min(1, alarm + (GARRISON.alarmBy[how] ?? 0));
       grudge = GARRISON.grudge;
+      if (!here) return;
+      heard = true;
       if (state !== 'fight' && (stance === 'enemy' || stance === 'wary')) fight('scramble', lead, pending);
     },
     // one of their packs out here asks for help (acted on at the next step)
@@ -559,6 +585,7 @@ export function createGarrison({ rand = Math.random, small = false } = {}) {
       bolts.length = 0;
       pending.length = 0;
       called = false;
+      heard = false;
       known = false;
       track = 0;
       grace = GARRISON.grace;
