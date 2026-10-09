@@ -8,7 +8,8 @@
 // near, its LOD1 further off, a far stand-in (the puff) to twice that,
 // nothing beyond. (docs/superpowers/specs/2026-10-08-kit-worlds-design.md, 2)
 //
-//   loadKit(pack, { load, base, house, wind, manifest }) → {
+//   loadKit(pack, { load, base, house, wind, manifest, puffs = true,
+//     puffWind }) → {
 //     pack, manifest: Promise (<base>/<pack>/index.json, fetched unless
 //       the option hands it over),
 //     info(name) → the model's manifest row (null for one it hasn't; throws
@@ -16,6 +17,13 @@
 //     model(name) → Promise<{ parts, radius, height, kind, tones }>,
 //     lod1(name) → Promise<parts>,
 //     material(name) → the pack's one material of that name,
+//     puff(name) → { geometry, material } | null: the model's far stand-in
+//       (lib/three/puffs' puffFor, made once a kit from the manifest's
+//       tones, radius, height and trunk, in the kit's house and `puffWind`,
+//       createWind's, its cards scattered from a hash of the model's name, so
+//       two models of a family differ in silhouette), null for a model
+//       without tones, with `puffs` false, or once the kit is disposed of (a
+//       pool then draws its LOD1 there, as for a model without tones),
 //     dispose() }
 //     parts: [{ geometry, material, local: Matrix4, part }] (the galaxy
 //     placer's part contract; `local` is the part's place in the model, its
@@ -46,13 +54,21 @@
 // (foliage.js's `faceless`), their maps brought under the device's ceiling
 // and then given mip levels that keep their coverage (textures.js), or a
 // far crown goes bald.
+//
+// A pool's far band is the model's puff, its crown of cards and its trunk
+// in one draw, where the kit makes one (a tree or a bush the import gave
+// tones), its instances turned to face the camera about up at every
+// re-sort (they are cards; the trunk stands); the LOD1 again where it
+// doesn't, each item at its own turn.
 
 import * as THREE from 'three';
 import { budget } from '../budgets';
 import { detailLevel, modelTexCap } from '../detail';
+import { hashSeed } from '../land/spec';
 import { faceless, wind as windOn } from './foliage';
 import { loadGltf } from './gltf';
 import { lodBand } from './lod';
+import { puffFor } from './puffs';
 import { coverageTexture, fitTexture } from './textures';
 
 const CUT = 0.3; // a leaf map's alpha cut
@@ -116,7 +132,7 @@ function fetchManifest(url) {
   return fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`kit: couldn't load ${url} (${r.status})`))));
 }
 
-export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wind = null, manifest = null } = {}) {
+export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wind = null, manifest = null, puffs = true, puffWind = null } = {}) {
   const root = `${base}/${pack}`;
   let index = null; // the manifest, once in
   let gone = false;
@@ -127,6 +143,7 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
   const dressed = new Set();
   const models = new Map(); // name → Promise<model>
   const lods = new Map(); // name → Promise<parts>
+  const puffed = new Map(); // name → its puff, or null
 
   const ready = Promise.resolve(manifest ?? fetchManifest(`${root}/index.json`)).then((m) => (index = m));
   ready.catch(() => {});
@@ -253,14 +270,27 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
     material,
     model: (name) => find(models, name, '', (parts, row) => ({ parts, radius: row.radius, height: row.height, kind: row.kind, tones: row.tones ?? null })),
     lod1: (name) => find(lods, name, '.lod1', (parts) => parts),
-    // What the kit made, freed: its materials and its copies in metres. The
-    // files' geometry and maps are the loader's (the page's model cache),
-    // left as they are.
+    puff(name) {
+      if (gone) return null; // (a puff made now would have no kit to free it)
+      if (!puffed.has(name)) {
+        const row = info(name);
+        // (seeded by the model's name, so its far crowns differ from another's)
+        puffed.set(name, puffs && row?.tones && !row.rig ? puffFor(row.tones, { radius: row.radius, height: row.height, trunk: row.trunk, wind: puffWind, seed: hashSeed(name), house }) : null);
+      }
+      return puffed.get(name);
+    },
+    // What the kit made, freed: its materials, its copies in metres and its
+    // puffs. The files' geometry and maps are the loader's (the page's model
+    // cache), left as they are.
     dispose() {
       gone = true;
       for (const m of mats.values()) m.dispose();
       for (const list of baked.values()) for (const b of list) b.geometry.dispose();
-      for (const c of [files, baked, mats, dressed, models, lods]) c.clear();
+      for (const p of puffed.values()) {
+        p?.geometry.dispose();
+        p?.material.dispose();
+      }
+      for (const c of [files, baked, mats, dressed, models, lods, puffed]) c.clear();
     },
   };
 }
@@ -269,9 +299,10 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
 
 // An item's place written straight into an instance's 16 floats: its move,
 // its turn about up and its size (column-major, as three's), times the
-// part's own matrix `b`.
-function place(out, o, it, b) {
-  const { x, y, z, c, s, k } = it;
+// part's own matrix `b`; `c`, `s` (the turn's cosine and sine times the
+// size) another turn than the item's own, the puff's to the camera.
+function place(out, o, it, b, c = it.c, s = it.s) {
+  const { x, y, z, k } = it;
   for (let j = 0; j < 16; j += 4) {
     const b0 = b[j];
     const b1 = b[j + 1];
@@ -288,7 +319,11 @@ const itemOf = ({ x = 0, y = 0, z = 0, yaw = 0, scale = 1 }) => ({ x, y, z, c: M
 
 // A pool of one model: an InstancedMesh a part a level (0 the full parts,
 // 1 the LOD1's, 2 the `puff` ({ geometry, material }, in the model's own
-// frame) or, till there is one, the LOD1's again), all in `group`. `bands`
+// frame, its cards facing +Z; the kit's own, kit.puff(name), unless one is
+// handed over) or, where there is none, the LOD1's again), all in `group`.
+// A puff's instances are turned about up to face the camera the last sort
+// was from, each sort (and each free and shift, which write them again);
+// every other level's keep their item's turn. `bands`
 // [near, mid] in metres, across the ground: full within near, LOD1 to mid,
 // the puff to twice mid, nothing beyond (lib/budgets' row for the device's
 // level unless given, as is `lod1`: false keeps the full parts where the
@@ -310,6 +345,7 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
   const row = kit.info(name);
   if (!row) throw new Error(`createPool: kit ${kit.pack} has no model ${name}`);
   if (row.rig) throw new Error(`createPool: ${name} is rigged, and a pool draws still props`);
+  const far = puff ?? kit.puff?.(name) ?? null;
   const level = budget(detailLevel());
   const [near, mid] = bands ?? [level.near, level.mid];
   const edges = [near, mid, 2 * mid];
@@ -352,7 +388,19 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
         if (l < 0 || l > 2) continue;
         const at = n[l]++ * 16;
         const ps = parts[l];
-        if (ps) for (let i = 0; i < ps.length; i++) place(meshes[l][i].instanceMatrix.array, at, it, ps[i].local.elements);
+        if (!ps) continue;
+        // (a puff turned to the camera across the ground: its +Z, (s, 0, c), toward it)
+        let { c, s } = it;
+        if (l === 2 && far) {
+          const dx = last.x - it.x;
+          const dz = last.z - it.z;
+          const d = Math.hypot(dx, dz);
+          if (d > 1e-6 && d < Infinity) {
+            c = (dz / d) * it.k;
+            s = (dx / d) * it.k;
+          }
+        }
+        for (let i = 0; i < ps.length; i++) place(meshes[l][i].instanceMatrix.array, at, it, ps[i].local.elements, c, s);
       }
     }
     for (let l = 0; l < 3; l++) {
@@ -460,10 +508,10 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
   pool.ready = Promise.all([kit.model(name), lodParts]).then(([full, lod]) => {
     if (gone) return pool;
     if (lodError) console.warn(`createPool: ${name}'s LOD1 won't load (${lodError.message}); its full parts stand in`);
-    const far = lod ?? full.parts;
+    const lod1Parts = lod ?? full.parts;
     parts[0] = full.parts;
-    parts[1] = far;
-    parts[2] = puff ? [{ geometry: puff.geometry, material: puff.material, local: new THREE.Matrix4() }] : far;
+    parts[1] = lod1Parts;
+    parts[2] = far ? [{ geometry: far.geometry, material: far.material, local: new THREE.Matrix4() }] : lod1Parts;
     meshes = parts.map((list, l) => list.map((p, i) => make(l, p, i)));
     write();
     return pool;

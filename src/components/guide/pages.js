@@ -628,16 +628,6 @@ export const PAGES = {
       ['A controller', 'Works too.'],
     ],
   },
-  '/universe/expanse': {
-    about: ABOUT['/universe/expanse'],
-    keys: [{ label: 'Driving', rows: [['W / ↑', 'Drive'], ['S / ↓', 'Brake, then reverse'], ['A D / ← →', 'Steer'], ['Shift', 'Boost'], ['Space', 'Jump'], ['R', 'Back to dry land']] }],
-    touch: [{ label: 'Driving', rows: [['Stick', 'Drive and steer'], ['Jump', 'Jump'], ['Boost', 'Hold to go faster'], ['Back', 'Back to dry land']] }],
-    tips: [
-      ['Water', 'The compass at the top points at the nearest water. Rivers run downhill into lakes and the sea; drive in and the car slows, and after four seconds under it comes back to dry land.'],
-      ['Another planet', 'Every seed is a different planet: change the number at the end of the address. ?type=desert, ice, ocean or volcanic changes its kind.'],
-      ['A controller', 'Works too.'],
-    ],
-  },
   '/music': {
     about: ABOUT['/music'],
     keys: [{ label: 'The courtyard', rows: [['W A S D', 'Walk'], ['← →', 'Turn'], ['Drag', 'Look round'], ['E', 'Play the instrument you’re by']] }, { label: 'The sitar', rows: [['hold Space', 'A chikari roll']] }],

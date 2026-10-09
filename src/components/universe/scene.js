@@ -107,7 +107,7 @@ import { BELT, BODIES, ORDER, POSITIONS, REACH, RIM, RING, SECTORS, SECTOR_OF, S
 import { HOME_SPREAD } from './scale';
 import { buildPlanet, loadModel, loadModels, loadTextures } from './planets';
 import { buildSun } from './sun';
-import { aberrationFor, createPost, spaceEnvironment } from './post';
+import { MAP_LENS, aberrationFor, createPost, spaceEnvironment } from './post';
 import { grainFor } from '../../lib/three/noise';
 import { createFlare, flareWeight, occluded } from '../../lib/three/flare';
 import { exposureFor, sunShareOf } from '../../lib/three/exposure';
@@ -620,8 +620,8 @@ export async function create(canvas, ctx) {
   const post = createPost(renderer, scene, camera, { small });
   // the map's lens (post.js; the galaxy keeps its picture): a floor under
   // the sky, a little more contrast, and the corners soft but on a low tier
-  post.setToe(0.02, 0.08);
-  post.contrast(0.18);
+  post.setToe(...MAP_LENS.toe);
+  post.contrast(MAP_LENS.contrast);
   post.defocus(tier === 'low' ? 0 : 1);
 
   // the sky: the Star Wars galaxy's (galaxy/sky.js), its disc and dust,

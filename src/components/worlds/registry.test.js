@@ -15,7 +15,6 @@ describe('the world registry', () => {
     expect(worldId('minecraft', 7)).toBe('minecraft:7');
     expect(worldUrl({ kind: 'minecraft', seed: 7 })).toBe('/dot-matrix/minecraft?world=7');
     expect(worldUrl({ kind: 'pocket', seed: 'marble' })).toBe('/universe?seed=marble');
-    expect(worldUrl({ kind: 'planet', seed: 'k9' })).toBe('/universe/expanse/k9');
     expect(worldUrl({ kind: 'minecraft', seed: 'a b' })).toBe('/dot-matrix/minecraft?world=a%20b');
   });
 
@@ -30,6 +29,14 @@ describe('the world registry', () => {
     const list = await reg.list();
     expect(list.map((w) => w.name)).toEqual(['One', 'Two']);
     expect(list[0].size).toBe(120);
+  });
+
+  it('lists no row of a kind it no longer has (the driven planets)', async () => {
+    const { store, reg } = make();
+    await reg.add({ kind: 'minecraft', seed: 1, name: 'One' });
+    await store.set('worlds', 'planet:7', { id: 'planet:7', kind: 'planet', seed: '7', name: 'Planet 7', played: 5000 });
+    expect((await reg.list()).map((w) => w.id)).toEqual(['minecraft:1']);
+    await expect(reg.add({ kind: 'planet', seed: '7' })).rejects.toThrow('not a world');
   });
 
   it('adding a world it has returns that one unchanged', async () => {
