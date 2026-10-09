@@ -28,6 +28,10 @@ import { ENEMY_KINDS, FORMS, ROBOT, TRANSFORM } from './rules';
 import { createFoeBody, createPersonBody, hashSeed, localMotion } from './bodies';
 import { groundWorld } from '../../../lib/three/groundwork';
 import { houseOn } from '../../../lib/three/house';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { wireImpacts } from '../../../lib/three/impacts';
+import { createDust } from '../../../lib/three/dust';
+import { createImpacts, impactGroups } from '../../../lib/impact';
 
 const STAGES = {
   iacon: () => import('./stage/iacon'),
@@ -93,7 +97,25 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   let people = new Map(); // id → figure (and its mind: bodies.js's createPersonBody)
   const foes = new Map(); // id → { figure, boomed }
   const matrixModel = { object: null, loading: null }; // (the Matrix, once a mission puts it down)
-  let shake = 0;
+  // the shake (lib/three/feel: still under reduced motion, and the hitstop
+  // GameWorld steps by). The old jolts were metres: a boss going up, 2.4, was
+  // ±1.2 m; `jolt(k)` gives each its old size at its peak, and the feel's
+  // square makes the small ones smaller on the way down
+  const JOLT = 2.4;
+  const feel = createFeel({ offset: JOLT / 2, baseFov: CAM.robot.fov });
+  feel.set({ decay: 2.5 });
+  const jolt = (k) => feel.trauma(Math.sqrt(Math.min(1, k / JOLT)));
+  // a bump or a landing: a thud by how hard, from where, and a puff there
+  const knockDust = createDust({ count: 64, colour: 0x9aa3ad, size: 1.4 });
+  scene.add(knockDust.mesh);
+  const knockRules = createImpacts();
+  const ear = new THREE.Vector3();
+  const knocks = wireImpacts({
+    rules: knockRules,
+    dust: knockDust,
+    shake: (k) => jolt(k * 4),
+    listener: () => ({ position: camera.position.toArray(), forward: camera.getWorldDirection(ear).toArray() }),
+  });
   // the hero's light: a soft key from over the camera's shoulder, so the
   // one you play reads against a city at night, as a third-person game lights him
   const heroLight = tier === 'low' ? null : new THREE.PointLight('#e6eeff', 0, 46, 1.4);
@@ -376,11 +398,9 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       heroLight.intensity = sim.area.look?.hero ?? 260;
     }
     // (a jolt: hits taken, rams, Decepticons going up close by)
-    if (shake > 0.001) {
-      camera.position.x += (Math.random() - 0.5) * shake;
-      camera.position.y += (Math.random() - 0.5) * shake;
-      shake *= Math.exp(-dt * 9);
-    }
+    knocks.update(dt);
+    feel.setBaseFov(cam.fov);
+    feel.update(dt, camera);
     if (Math.abs(camera.fov - cam.fov) > 0.01) {
       camera.fov = cam.fov;
       camera.updateProjectionMatrix();
@@ -633,14 +653,19 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
           if (foe) foe.hit = { x: e.x, z: e.z };
         } else if (e.type === 'hitMe') {
           effects.hit(e.x, e.y, e.z, false);
-          shake = Math.max(shake, 0.6);
+          jolt(0.6);
           happened.hitMe = { x: e.x, z: e.z };
         } else if (e.type === 'enemyFire') {
           const foe = foes.get(e.id);
           if (foe) foe.fired = true;
         } else if (e.type === 'complete') happened.won = true;
-        else if (e.type === 'ram') shake = Math.max(shake, 1.6);
-        else if (e.type === 'kill') shake = Math.max(shake, e.boss ? 2.4 : 0.5);
+        else if (e.type === 'ram') {
+          jolt(1.6);
+          feel.hitstop(90);
+        } else if (e.type === 'kill') {
+          jolt(e.boss ? 2.4 : 0.5);
+          feel.hitstop(e.boss ? 90 : 60);
+        }
         else if (e.type === 'fire' && e.mode === 'robot') {
           for (const sh of e.shots) effects.spark(sh.x, sh.y, sh.z); // the muzzle's flash
           happened.fired = true;
@@ -659,6 +684,13 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       house.adopt(scene);
       return precompile(renderer, scene, camera);
     },
+    // the hitstop's clock (GameWorld steps the game by feel.step) and the knocks
+    feel,
+    knock(force, at) {
+      knocks.onHit(force, at);
+    },
+    // the feel's numbers, for the ?debug panel
+    tune: () => [...feelGroups(feel), ...impactGroups(knockRules)],
     // the gun's muzzle as the robot holds it now (for where his shots start)
     muzzle: () => (player.robot?.group.visible && player.robot.muzzle?.(muzzleAt) ? [muzzleAt.x, muzzleAt.y, muzzleAt.z] : null),
     info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, area: areaId }),
@@ -672,6 +704,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       }
       player.robot?.dispose();
       effects.dispose();
+      knocks.dispose();
       beaconGeo.dispose();
       beaconMat.dispose();
       gateGeo.dispose();
