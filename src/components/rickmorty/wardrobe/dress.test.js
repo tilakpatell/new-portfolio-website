@@ -87,6 +87,23 @@ describe('regions', () => {
     expect(rm.fragmentShader).not.toContain('rgLower');
   });
 
+  it('reads a zone’s bit only for a zone there is, so a sample past a triangle’s edge is never NaN', () => {
+    // (multisampled, an edge pixel's shader runs at its centre, off the
+    // triangle: a blended zone goes on past its corners, far under 0 on a
+    // sliver, exp2 of it is 0, and the bit read is NaN, which the bloom
+    // spreads over the whole frame: the Citadel's one black frame)
+    const compile = (m) => {
+      const s = { uniforms: {}, vertexShader: 'void main() {\n}', fragmentShader: 'void main() {\n#include <map_fragment>\n}' };
+      m.onBeforeCompile(s, null);
+      return s.fragmentShader;
+    };
+    for (const body of ['rick', 'jesse']) {
+      const fs = compile(recolor(new THREE.MeshToonMaterial(), body, {}));
+      expect(fs, body).toMatch(/\(known \? mod\(floor\(rgZones\[i\] \/ exp2\(zone\)\), 2\.0\) : 0\.0\)/);
+      expect(fs, body).toContain(`bool known = zone >= 0.0 && zone <= ${zoneOf('LeftHand')}.0;`);
+    }
+  });
+
   it('ends Mr. White’s jacket at his waist, where the hips start moving him', () => {
     const u = regionUniforms('mrwhite', {});
     const at = (r) => u.lower[u.order.indexOf(r)];
