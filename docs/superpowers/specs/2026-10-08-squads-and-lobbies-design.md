@@ -179,7 +179,9 @@ over events `hello`, `state`, `bye`, `tick`, and the local `invite`,
   the leader on record, or from a member on record with a higher epoch
   once the old leader has been quiet for 6 s. Two claims at one epoch: the
   lower seat wins. A leader who comes back finds a higher epoch and is a
-  member again.
+  member again; so is one that has heard a member's higher epoch for 6 s
+  (its word was lost, or its page stalled, and the squad went on without
+  it), so two leaders always come to one.
 - *Turning out.* The leader may turn a member out; their id goes in `x`
   for the squad's life.
 
@@ -259,6 +261,25 @@ over events `hello`, `state`, `bye`, `tick`, and the local `invite`,
 
 Keys are chosen in the plan against each scene's bindings (the map already
 uses G, E, P, M, J, V, F, R, T, Q and 1 to 3) and go in the guide.
+
+**Trust.** The `sid` is the squad's only secret, and anyone who has held it
+(a link passed on, a pilot turned out) can be in its room. Such a pilot can
+ask in, and is seated while a seat is free unless turned out or blocked by
+the leader; can read every squad line, since the key that seals them is
+made from the `sid` (a pilot turned out still holds it); and can answer a
+pilot asking in with a word of their own. Against that: nobody outside the
+seats is believed or heard, so a pilot turned out, or never seated, moves
+nothing, and their pings, phrases and lines are dropped; a member's claim
+to lead is believed only when it keeps every seat heard lately and turns
+none of them out, and then only once the leader has been quiet 6 s (or, by
+the leader, once it has heard the claim for 6 s); a pilot asking in holds a
+refusal only if nothing seats them within 15 s, and one asked in from the
+roster hears only the inviter's squad. A pilot a false word seats stays
+with whoever seated them while they stay; once they go, the pilot finds the
+squad or is told it has gone, and can use the link again. So the page
+promises no privacy from anyone the link reached, a pilot turned out
+included: “sealed” keeps the relays out, nothing more, and to talk without
+someone for good the squad starts again with a new link.
 
 ### Part 3: lobbies and private games (PR 3)
 
