@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { thud } from './sfx';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { hit, play, thud } from './sfx';
+
+// what play() and hit() find when they ask for the site’s context
+const site = vi.hoisted(() => ({ ctx: null, out: null }));
+vi.mock('./audio', () => ({ audioContext: () => site.ctx, output: () => site.out }));
 
 // A Web Audio context that only remembers (the shape of the Death Star
 // inside’s sounds.test.js): every node it makes, what each is joined to, and
@@ -36,7 +40,7 @@ function fakeAudio() {
         n.stopped = at;
       },
     };
-    for (const p of ['gain', 'frequency', 'Q', 'detune', 'positionX', 'positionY', 'positionZ']) n[p] = param(p === 'gain' ? 1 : 0);
+    for (const p of ['gain', 'frequency', 'Q', 'detune', 'playbackRate', 'positionX', 'positionY', 'positionZ']) n[p] = param(p === 'gain' || p === 'playbackRate' ? 1 : 0);
     made.push(n);
     return n;
   };
@@ -119,5 +123,86 @@ describe('thud', () => {
     a.play({ gain: 1, at: [10, 0, 0] });
     expect(a.of('Panner')).toHaveLength(0);
     for (const g of a.of('Gain')) expect(g.outs).toEqual([a.out]);
+  });
+});
+
+describe('play and hit', () => {
+  let a;
+  let clock = 0;
+  beforeEach(() => {
+    a = fakeAudio();
+    site.ctx = a.ctx;
+    site.out = a.out;
+    // every call a second apart, past every throttle
+    vi.spyOn(performance, 'now').mockImplementation(() => (clock += 1000));
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    site.ctx = site.out = null;
+  });
+
+  // the loudest any gain node reaches, through any trim in front of the output
+  const loudest = (made) => {
+    const level = (n) => (n.kind === 'Gain' ? n.gain.value : 1);
+    const reach = (n) => (n === a.out ? 1 : n.outs.length ? level(n) * Math.max(...n.outs.map(reach)) : 0);
+    return Math.max(...made.filter((n) => n.kind === 'Gain' && n.gain.events.length).map((n) => a.peak(n.gain) * reach(n.outs[0] ?? a.out)));
+  };
+  const fresh = () => {
+    a = fakeAudio();
+    site.ctx = a.ctx;
+    site.out = a.out;
+    return a;
+  };
+
+  it('plays a sound by name, as it always has', () => {
+    expect(play('thunk')).toBeGreaterThan(0);
+    expect(a.of('Oscillator')).toHaveLength(1);
+    expect(play('nothing such')).toBe(0);
+  });
+
+  it('plays at half the gain when asked', () => {
+    play('thunk');
+    const whole = loudest(a.made);
+    fresh();
+    play('thunk', { gain: 0.5 });
+    expect(loudest(a.made)).toBeCloseTo(whole / 2, 9);
+  });
+
+  it('makes nothing at all at gain 0, and clamps a gain over 1', () => {
+    expect(play('thunk', { gain: 0 })).toBe(0);
+    expect(a.made.filter((n) => n.kind !== 'destination' && n.kind !== 'out')).toHaveLength(0);
+    play('thunk');
+    const whole = loudest(a.made);
+    fresh();
+    play('thunk', { gain: 3 });
+    expect(loudest(a.made)).toBeCloseTo(whole, 9);
+  });
+
+  it('doubles every oscillator’s frequency at pitch 2, and a buffer’s rate', () => {
+    play('thunk');
+    const low = a.of('Oscillator')[0].frequency.events.map(([, v]) => v);
+    expect(a.of('BufferSource')[0].playbackRate.value).toBe(1);
+    fresh();
+    play('thunk', { pitch: 2 });
+    expect(a.of('Oscillator')[0].frequency.events.map(([, v]) => v)).toEqual(low.map((v) => v * 2));
+    expect(a.of('BufferSource')[0].playbackRate.value).toBe(2);
+  });
+
+  it('plays nothing for a tap under the law’s threshold, and says so', () => {
+    expect(hit('thunk', 10)).toBe(false);
+    expect(a.of('Oscillator')).toHaveLength(0);
+  });
+
+  it('plays a full hit at gain 1', () => {
+    play('thunk');
+    const whole = loudest(a.made);
+    fresh();
+    expect(hit('thunk', 120)).toBe(true);
+    expect(loudest(a.made)).toBeCloseTo(whole, 9);
+  });
+
+  it('keeps the old hit sound under the same name', () => {
+    expect(hit()).toBeGreaterThan(0);
+    expect(a.of('Oscillator').length + a.of('BufferSource').length).toBeGreaterThan(0);
   });
 });
