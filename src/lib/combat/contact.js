@@ -7,6 +7,9 @@
 // sweptSpheres(a0, a1, b0, b1, r) → how far through the frame (0 to 1) two
 //   spheres moving at once came within `r` of each other, or null. Points
 //   are { x, y, z } or [x, y, z].
+// touchAt(a0, a1, b0, b1, r) → the same test, answering the moment they
+//   first came within `r` (0 when they already were), not the nearest: where
+//   two ships met, so the push and the closing speed are read there.
 // closingSpeed(vYou, vThem, normal) → how fast the two close along `normal`
 //   (pointing from them toward you), 0 when they part.
 // contact(into, size) → { kind: 'glance' | 'ram', damage, punch, keep }:
@@ -56,6 +59,24 @@ export function sweptSpheres(a0, a1, b0, b1, r) {
   const py = ry + dy * k;
   const pz = rz + dz * k;
   return px * px + py * py + pz * pz <= r * r ? k : null;
+}
+
+export function touchAt(a0, a1, b0, b1, r) {
+  const rx = X(a0) - X(b0);
+  const ry = Y(a0) - Y(b0);
+  const rz = Z(a0) - Z(b0);
+  const c = rx * rx + ry * ry + rz * rz - r * r;
+  if (c <= 0) return 0;
+  const dx = X(a1) - X(b1) - rx;
+  const dy = Y(a1) - Y(b1) - ry;
+  const dz = Z(a1) - Z(b1) - rz;
+  const a = dx * dx + dy * dy + dz * dz;
+  if (a < 1e-12) return null;
+  const b = rx * dx + ry * dy + rz * dz; // half the linear term
+  const disc = b * b - a * c;
+  if (disc < 0) return null;
+  const k = (-b - Math.sqrt(disc)) / a;
+  return k >= 0 && k <= 1 ? k : null;
 }
 
 export function closingSpeed(vYou, vThem, normal) {

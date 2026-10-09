@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONTACT, bodyRadius, closingSpeed, contact, sweptSpheres } from './contact';
+import { CONTACT, bodyRadius, closingSpeed, contact, sweptSpheres, touchAt } from './contact';
 
 describe('contact', () => {
   it('is a glance under soft and a ram from it', () => {
@@ -43,5 +43,23 @@ describe('sweptSpheres', () => {
   });
   it('counts two that close head on faster than a frame', () => {
     expect(sweptSpheres([0, 0, 0], [0, 0, -1], [0, 0.1, -1.2], [0, 0.1, -0.1], 0.3)).not.toBeNull();
+  });
+});
+
+describe('touchAt', () => {
+  it('is the moment two spheres first touch, not the moment they are nearest', () => {
+    // head on: you from z 0 to −1, it still at −0.5, touching within 0.3: first at z −0.2
+    expect(touchAt([0, 0, 0], [0, 0, -1], [0, 0, -0.5], [0, 0, -0.5], 0.3)).toBeCloseTo(0.2, 6);
+    expect(sweptSpheres([0, 0, 0], [0, 0, -1], [0, 0, -0.5], [0, 0, -0.5], 0.3)).toBeCloseTo(0.5, 6);
+  });
+  it('is 0 when they already touch, and null when they never do', () => {
+    expect(touchAt({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 }, { x: 0, y: 0, z: 0.1 }, { x: 0, y: 0, z: 0.1 }, 0.3)).toBe(0);
+    expect(touchAt([0, 0, 0], [0, 0, -1], [0, 0, -0.4], [0, 2, -0.4], 0.3)).toBeNull();
+    expect(touchAt([0, 0, 0], [0, 0, -1], [0, 0, -2], [0, 0, -2], 0.3)).toBeNull(); // not reached this frame
+    expect(touchAt([0, 0, 0], [0, 0, 0], [0, 0, -2], [0, 0, -2], 0.3)).toBeNull(); // neither moved
+  });
+  it('agrees with sweptSpheres on whether they met', () => {
+    expect(touchAt([0, 0, 0], [0, 0, -1], [-0.5, 0, -0.5], [0.5, 0, -0.5], 0.3)).not.toBeNull();
+    expect(touchAt([0, 0, 0], [0, 0, -1], [0, 0.1, -1.2], [0, 0.1, -0.1], 0.3)).not.toBeNull();
   });
 });
