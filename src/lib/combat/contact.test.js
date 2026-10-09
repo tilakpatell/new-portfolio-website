@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONTACT, bodyRadius, closingSpeed, contact, sweptSpheres, touchAt } from './contact';
+import { CONTACT, bodyRadius, closingSpeed, contact, keptSpeed, sweptSpheres, touchAt } from './contact';
 
 describe('contact', () => {
   it('is a glance under soft and a ram from it', () => {
@@ -61,5 +61,20 @@ describe('touchAt', () => {
   it('agrees with sweptSpheres on whether they met', () => {
     expect(touchAt([0, 0, 0], [0, 0, -1], [-0.5, 0, -0.5], [0.5, 0, -0.5], 0.3)).not.toBeNull();
     expect(touchAt([0, 0, 0], [0, 0, -1], [0, 0.1, -1.2], [0, 0.1, -0.1], 0.3)).not.toBeNull();
+  });
+});
+
+describe('keptSpeed', () => {
+  it('keeps its share of your speed, either way you fly', () => {
+    expect(keptSpeed(6, CONTACT.slow, 12)).toBeCloseTo(1.8, 6);
+    expect(keptSpeed(-6, CONTACT.glance, 12)).toBeCloseTo(-5.1, 6);
+  });
+  it('past the boost, throws you back no further than the boost (as a rock does)', () => {
+    expect(keptSpeed(20, CONTACT.slow, 12)).toBe(12);
+    expect(keptSpeed(300, CONTACT.slow, 12)).toBeCloseTo(90, 6);
+  });
+  it('never speeds you up', () => {
+    expect(keptSpeed(0, CONTACT.slow, 12)).toBe(0);
+    expect(keptSpeed(12, CONTACT.slow, 12)).toBeCloseTo(3.6, 6);
   });
 });

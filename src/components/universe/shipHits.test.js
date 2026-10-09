@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CONTACT } from '../../lib/combat/contact';
-import { createShipHits } from './shipHits';
+import { createShipHits, ramNote, solidsWith } from './shipHits';
 
 // your ship flies along −z (heading 0): `from` z to `to` z at `speed`
 const way = (from, to, speed = 6) => [
@@ -83,11 +83,35 @@ describe('the ship contact collector', () => {
     expect(Math.hypot(h.normal.x, h.normal.y, h.normal.z)).toBeCloseTo(1, 6);
     expect(h.normal.x).toBeLessThan(0); // it is to your right, so the push is to your left
     expect(h.normal.z).toBeGreaterThan(0); // and back the way you came
+    // where your ship is put to be touching it where it is now
+    const d = Math.hypot(h.touch.x - 0.2, h.touch.y, h.touch.z + 0.5);
+    expect(d).toBeCloseTo(r, 6);
   });
 
   it('skips a source that is missing or answers nothing', () => {
     const b = body('b', -0.5);
     const hits = createShipHits({ sources: [null, () => null, () => [b]] });
     expect(hits.sweep(...way(0, -1), 1 / 60, 0).body).toBe(b);
+  });
+});
+
+describe('the frame’s solids', () => {
+  const base = [{ id: 'home', at: [0, 0, 0], r: 5 }];
+  it('is the map’s own when no big ship is near, the same list', () => {
+    expect(solidsWith(base, [], null, undefined)).toBe(base);
+  });
+  it('adds the big ships near you after the map’s', () => {
+    const sd = { id: 'cap:hull:0', at: [1, 2, 3], r: 4, ship: true };
+    expect(solidsWith(base, [sd], [])).toEqual([...base, sd]);
+  });
+});
+
+describe('the note a ram leaves', () => {
+  it('names what you hit and what it took off your shields, a or an as English has it', () => {
+    expect(ramNote('TIE fighter', 14.2)).toBe('Hit a TIE fighter: shields −14');
+    expect(ramNote('X-wing', 9.6)).toBe('Hit an X-wing: shields −10');
+    expect(ramNote('interceptor', 7)).toBe('Hit an interceptor: shields −7');
+    expect(ramNote('Imperial shuttle', 7)).toBe('Hit an Imperial shuttle: shields −7');
+    expect(ramNote('freighter', 16)).toBe('Hit a freighter: shields −16');
   });
 });

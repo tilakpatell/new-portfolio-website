@@ -18,9 +18,10 @@
 //   of its size when left out. `hit` is the system's own way of taking a
 //   ram's hits, the path a shot takes; the scene calls it, never the sweep
 //   (`before` and `after` for the systems that test a segment).
-// hit: { body, k, at, place, normal, into, outcome } — `at` where you met on
-//   your way, `place` where the other was then, `normal` the unit way from
-//   it toward you, `into` the closing speed (from the velocities, never the
+// hit: { body, k, at, place, touch, normal, into, outcome } — `at` where you
+//   met on your way, `place` where the other was then, `touch` where your
+//   ship goes to be just touching it where it is now, `normal` the unit way
+//   from it toward you, `into` the closing speed (from the velocities, never the
 //   way over dt), `outcome` the law's contact(into, size); a friend is
 //   always a glance.
 //
@@ -29,6 +30,12 @@
 // passed), each tested with the law's touchAt (sweptSpheres's test, read
 // at the moment the two first touched), the earliest along the way wins, one hit a frame at most, and a
 // ship just met is not met again for `cool` seconds.
+//
+// solidsWith(base, ...lists) → the frame's solids for ship.js's step: the
+//   map's own (`base`, the same list when nothing's added) and the big ships'
+//   (too big to move: a bump or a crash, as a planet).
+// ramNote(name, damage) → the HUD's word on a ram ("Hit a TIE fighter:
+//   shields −14").
 
 import { CONTACT, bodyRadius, closingSpeed, contact, touchAt } from '../../lib/combat/contact';
 import { shipVelocity } from './hunterRules';
@@ -98,13 +105,28 @@ export function createShipHits({ sources = [], cool = CONTACT.cool, radius = SHI
     const vThem = best.vel ?? (best.prev && dt > 0
       ? { x: (best.at.x - best.prev.x) / dt, y: (best.at.y - best.prev.y) / dt, z: (best.at.z - best.prev.z) / dt }
       : { x: 0, y: 0, z: 0 });
+    const gap = (best.r ?? bodyRadius(best.size)) + radius;
+    const touch = { x: best.at.x + nx * gap, y: best.at.y + ny * gap, z: best.at.z + nz * gap };
     const into = closingSpeed({ x: vYou[0], y: vYou[1], z: vYou[2] }, vThem, normal);
     const outcome = best.side === 'friend' ? { ...GLANCE } : contact(into, best.size);
 
     if (met.size >= KEEP) for (const [old, when] of met) if (now - when >= cool) met.delete(old);
     met.set(best.key, now);
-    return { body: best, k, at, place, normal, into, outcome };
+    return { body: best, k, at, place, touch, normal, into, outcome };
   }
 
   return { sweep, sources };
+}
+
+export function solidsWith(base, ...lists) {
+  let out = base;
+  for (const l of lists) if (l?.length) out = out === base ? [...base, ...l] : out.concat(l);
+  return out;
+}
+
+// "an" before a vowel's sound: a vowel (but a U-wing's "you"), or a capital
+// said as a letter that starts with one (an X-wing, an F-class)
+const an = (name) => !/^U-/.test(name) && (/^[aeiou]/i.test(name) || /^[FHLMNRSX](?=[-\s\d]|[A-Z])/.test(name));
+export function ramNote(name, damage) {
+  return `Hit ${an(name) ? 'an' : 'a'} ${name}: shields −${Math.round(damage)}`;
 }

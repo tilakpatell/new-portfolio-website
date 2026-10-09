@@ -16,6 +16,9 @@
 //   under `soft` a glance (no harm, most of your speed kept); else a ram
 //   (shields lost by the other ship's size and the closing speed, capped;
 //   `punch` hits on the other ship; `keep` the share of your speed kept).
+// keptSpeed(speed, keep, boost) → your speed after it: `keep` of it, but
+//   from past the boost no lower than the boost (a rock's rule), and never
+//   faster than you were; the sign kept.
 //
 // A ship too big to move (a capital, a battleship) is not a body for this
 // law: it is a solid, and ship.js's step bumps or crashes you on it as on a
@@ -95,4 +98,10 @@ export function contact(into, size) {
     punch: Math.min(CONTACT.punchMost, 1 + Math.floor(past / CONTACT.punchEvery)),
     keep: CONTACT.slow,
   };
+}
+
+export function keptSpeed(speed, keep, boost) {
+  const s = Math.abs(speed);
+  const kept = s > boost ? Math.max(boost, s * keep) : s * keep;
+  return Math.sign(speed) * kept;
 }
