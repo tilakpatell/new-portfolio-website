@@ -15,6 +15,7 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import { createStage } from '../../../lib/stage3d';
 import { houseOn } from '../../../lib/three/house';
 import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { houseGroups } from '../../../lib/three/houseTuning';
 import { SUN, createSea, loadSky } from './sea';
 import { DECAL, createBalls, createDecals, createFoam, createParticles } from './fx';
 import { ARM, CHAPTERS, ISLES, SHIPS, TIDE, bearing, fitted } from './rules';
@@ -351,7 +352,7 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
   // reduced motion (the page's calm is the same setting the feel reads).
   const feel = createFeel({ seed: 31, baseFov: 50, offset: 1.1 });
   feel.set({ decay: 1.3, roll: 0.035 });
-  stage.tune(feelGroups(feel));
+  stage.tune([...houseGroups(house, { exposure: { get: () => renderer.toneMappingExposure, set: (v) => (renderer.toneMappingExposure = v) } }), ...feelGroups(feel)]);
   const spray = (x, y, z, n, power, size = 1) => {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.283;
