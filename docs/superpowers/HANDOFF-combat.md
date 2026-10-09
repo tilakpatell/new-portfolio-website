@@ -65,6 +65,7 @@ The design is `docs/superpowers/specs/2026-10-08-combat-revamp-design.md`, the p
 - **The throw** still flies its own path (`throwAt`), not through `bolt.js`'s step with the world's solids.
 - **The hit-stop on a parry** (120 ms) and the clash sound on `clash` are Lane D's, with the duellists.
 - **Trackpad, phone, a mouse by hand**: not tried by hand. Headless only.
+- **The block's three inputs**: none was pressed headless. The block was driven through `saber.block(on)` in `saber.test.js` (held, released, and a one-frame tap shown for the parry window) and the bolt turned through Lane B's step there; C goes through `stepSaber`'s `state.keys.block` as before, the right button waits on Lane A's `onButton(2)`, and the Block touch button sets `state.buttons.block` as before. The parry window inside and outside is `combatRules.test.js`'s `parried` test.
 
 ### How to check it
 
