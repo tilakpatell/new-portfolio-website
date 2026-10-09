@@ -240,11 +240,13 @@ export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LO
   let passesDone = false;
   const render = (ms = 16) => {
     if (lost || disposed || warming) return;
+    // (before the draw: a step that resizes the canvas clears it, and one
+    // after the draw left that frame on screen black)
+    watch(ms);
     gradePass.uniforms.uTime.value += ms / 1000;
     // software rendering draws straight to the canvas: every full-screen pass costs
     if (soft) renderer.render(scene, camera);
     else composer.render();
-    watch(ms);
   };
 
   const tuning = stageTune({ bloomPass, title: () => canvas.closest?.('[data-route]')?.dataset.route || (typeof document !== 'undefined' ? document.title : null) });
