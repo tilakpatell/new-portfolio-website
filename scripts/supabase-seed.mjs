@@ -5,10 +5,12 @@
 //
 // Where the planets come from: lane A's src/lib/land/flight/planetSpec.js
 // (PLANETS, and planetSpecOf(id).pois) when it is in the tree, else
-// scripts/fixtures/planets.json, which carries the same 50 ids (the 8
-// authored, then 42 Expanse planets as makeSector lists them). The fixture's
-// authored rows have placeholder types and seeds until planetSpec.js lands;
-// seed.sql upserts, so applying it again then corrects them.
+// scripts/fixtures/planets.json, which carries the same 50 ids in the
+// roster's order (docs/research/2026-10-09-planet-geographies.md: 37 named
+// worlds, then 13 Expanse planets as makeSector lists them) and Echo Base
+// alone. The fixture's named rows have placeholder types and seeds until
+// planetSpec.js lands; seed.sql upserts, so the owner re-runs this script
+// and applies seed.sql again after lane A merges, and the rows are corrected.
 //
 //   node scripts/supabase-seed.mjs             # write supabase/seed.sql
 //   node scripts/supabase-seed.mjs --fixture   # rebuild scripts/fixtures/planets.json from makeSector
@@ -22,14 +24,31 @@ const SPEC = 'src/lib/land/flight/planetSpec.js';
 const FIXTURE = 'scripts/fixtures/planets.json';
 const OUT = 'supabase/seed.sql';
 
-export const AUTHORED = ['hoth', 'tatooine', 'endor', 'yavin', 'bespin', 'mustafar', 'kamino', 'dagobah'];
+// the roster's named worlds in its order (docs/research/2026-10-09-planet-geographies.md,
+// "The roster"): the galaxy's 17, the Rick and Morty sector's 10, the
+// universe map's 10 fandom planets; names and types are placeholders until
+// planetSpec.js gives its own
+const NAMED = [
+  ['tatooine', 'Tatooine', 'desert'], ['hoth', 'Hoth', 'ice'], ['endor', 'Endor', 'forest'], ['yavin', 'Yavin 4', 'forest'],
+  ['bespin', 'Bespin', 'gas'], ['dagobah', 'Dagobah', 'swamp'], ['mustafar', 'Mustafar', 'lava'], ['coruscant', 'Coruscant', 'city'],
+  ['naboo', 'Naboo', 'temperate'], ['kashyyyk', 'Kashyyyk', 'forest'], ['kamino', 'Kamino', 'ocean'], ['geonosis', 'Geonosis', 'desert'],
+  ['scarif', 'Scarif', 'ocean'], ['nevarro', 'Nevarro', 'lava'], ['mandalore', 'Mandalore', 'desert'], ['lothal', 'Lothal', 'temperate'],
+  ['sorgan', 'Sorgan', 'forest'],
+  ['gazorpazorp', 'Gazorpazorp', 'desert'], ['squanch', 'Squanch', 'stylised'], ['birdworld', 'Bird World', 'stylised'],
+  ['gearworld', 'Gear World', 'stylised'], ['pluto', 'Pluto', 'ice'], ['snakeplanet', 'Snake Planet', 'temperate'],
+  ['nuptia', 'Nuptia 4', 'stylised'], ['resort', 'Immortality Field Resort', 'stylised'], ['cronenberg', 'Cronenberg World', 'temperate'],
+  ['purge', 'Purge Planet', 'temperate'],
+  ['cybertron', 'Cybertron', 'metal'], ['middle-earth', 'Middle-earth', 'temperate'], ['caribbean', 'The Caribbean', 'ocean'],
+  ['albuquerque', 'Albuquerque', 'desert'], ['scranton', 'Scranton', 'temperate'], ['avengers', 'Avengers Compound', 'temperate'],
+  ['invincible', 'Invincible', 'temperate'], ['c-137', 'Earth C-137', 'temperate'], ['earth', 'Earth', 'temperate'],
+  ['dot-matrix', 'Dot Matrix', 'stylised'],
+];
+export const AUTHORED = NAMED.map(([id]) => id);
 // the order the plan gives: sectors round home, until 42 are listed
 const SECTORS = [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1]];
 // the migration's check on planets.id
 export const ID = /^[A-Za-z0-9:_,-]{1,64}$/;
 
-// placeholder looks for the authored planets until planetSpec.js says
-const AUTHORED_TYPES = { hoth: 'ice', tatooine: 'desert', endor: 'forest', yavin: 'jungle', bespin: 'gas', mustafar: 'lava', kamino: 'ocean', dagobah: 'swamp' };
 // the spec's hoth example: Echo Base levelled within r, the land easing in over
 // edge; nothing is built anywhere the land is not its own (r + edge)
 const ECHO_BASE = { id: 'hoth:echo-base', planetId: 'hoth', name: 'Echo Base', x: 1200, z: -800, r: 220 + 160 };
@@ -95,10 +114,10 @@ async function buildFixture() {
   try {
     const { makeSector } = await load('/src/components/expanse/gen/sector.js');
     const { UNIVERSE, hash64 } = await load('/src/components/expanse/gen/seed.js');
-    const planets = AUTHORED.map((id) => ({
+    const planets = NAMED.map(([id, name, type]) => ({
       id,
-      name: id[0].toUpperCase() + id.slice(1),
-      type: AUTHORED_TYPES[id],
+      name,
+      type,
       seed: id === 'hoth' ? String(0x48f1a2c3) : String(hash64('planet', id)),
     }));
     for (const [sx, sz] of SECTORS)

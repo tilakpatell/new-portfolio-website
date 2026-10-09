@@ -1,16 +1,16 @@
 {
   "planets": [
     {
-      "id": "hoth",
-      "name": "Hoth",
-      "type": "ice",
-      "seed": "1223795395"
-    },
-    {
       "id": "tatooine",
       "name": "Tatooine",
       "type": "desert",
       "seed": "8647508281676935542"
+    },
+    {
+      "id": "hoth",
+      "name": "Hoth",
+      "type": "ice",
+      "seed": "1223795395"
     },
     {
       "id": "endor",
@@ -20,8 +20,8 @@
     },
     {
       "id": "yavin",
-      "name": "Yavin",
-      "type": "jungle",
+      "name": "Yavin 4",
+      "type": "forest",
       "seed": "1927579065696738100"
     },
     {
@@ -31,10 +31,34 @@
       "seed": "5485698255689101500"
     },
     {
+      "id": "dagobah",
+      "name": "Dagobah",
+      "type": "swamp",
+      "seed": "1702958522028571207"
+    },
+    {
       "id": "mustafar",
       "name": "Mustafar",
       "type": "lava",
       "seed": "1127027023069150644"
+    },
+    {
+      "id": "coruscant",
+      "name": "Coruscant",
+      "type": "city",
+      "seed": "13422630211582984297"
+    },
+    {
+      "id": "naboo",
+      "name": "Naboo",
+      "type": "temperate",
+      "seed": "13265591532015992144"
+    },
+    {
+      "id": "kashyyyk",
+      "name": "Kashyyyk",
+      "type": "forest",
+      "seed": "1526000029368774964"
     },
     {
       "id": "kamino",
@@ -43,10 +67,160 @@
       "seed": "16829253035778520168"
     },
     {
-      "id": "dagobah",
-      "name": "Dagobah",
-      "type": "swamp",
-      "seed": "1702958522028571207"
+      "id": "geonosis",
+      "name": "Geonosis",
+      "type": "desert",
+      "seed": "7091074928947837158"
+    },
+    {
+      "id": "scarif",
+      "name": "Scarif",
+      "type": "ocean",
+      "seed": "6853207733044931143"
+    },
+    {
+      "id": "nevarro",
+      "name": "Nevarro",
+      "type": "lava",
+      "seed": "13487258476707400418"
+    },
+    {
+      "id": "mandalore",
+      "name": "Mandalore",
+      "type": "desert",
+      "seed": "13075852038549019104"
+    },
+    {
+      "id": "lothal",
+      "name": "Lothal",
+      "type": "temperate",
+      "seed": "5339334118646393569"
+    },
+    {
+      "id": "sorgan",
+      "name": "Sorgan",
+      "type": "forest",
+      "seed": "16486895930758120779"
+    },
+    {
+      "id": "gazorpazorp",
+      "name": "Gazorpazorp",
+      "type": "desert",
+      "seed": "2431803148514356742"
+    },
+    {
+      "id": "squanch",
+      "name": "Squanch",
+      "type": "stylised",
+      "seed": "9590996167492738644"
+    },
+    {
+      "id": "birdworld",
+      "name": "Bird World",
+      "type": "stylised",
+      "seed": "13643440753565578034"
+    },
+    {
+      "id": "gearworld",
+      "name": "Gear World",
+      "type": "stylised",
+      "seed": "7139150669210096398"
+    },
+    {
+      "id": "pluto",
+      "name": "Pluto",
+      "type": "ice",
+      "seed": "11588391963419968745"
+    },
+    {
+      "id": "snakeplanet",
+      "name": "Snake Planet",
+      "type": "temperate",
+      "seed": "9125054182730542529"
+    },
+    {
+      "id": "nuptia",
+      "name": "Nuptia 4",
+      "type": "stylised",
+      "seed": "1523212486951103434"
+    },
+    {
+      "id": "resort",
+      "name": "Immortality Field Resort",
+      "type": "stylised",
+      "seed": "7590726331716762136"
+    },
+    {
+      "id": "cronenberg",
+      "name": "Cronenberg World",
+      "type": "temperate",
+      "seed": "3701917680389589232"
+    },
+    {
+      "id": "purge",
+      "name": "Purge Planet",
+      "type": "temperate",
+      "seed": "9565460683774068840"
+    },
+    {
+      "id": "cybertron",
+      "name": "Cybertron",
+      "type": "metal",
+      "seed": "16057552536471276517"
+    },
+    {
+      "id": "middle-earth",
+      "name": "Middle-earth",
+      "type": "temperate",
+      "seed": "18187206293295419981"
+    },
+    {
+      "id": "caribbean",
+      "name": "The Caribbean",
+      "type": "ocean",
+      "seed": "11984462318207453812"
+    },
+    {
+      "id": "albuquerque",
+      "name": "Albuquerque",
+      "type": "desert",
+      "seed": "10048810785060841797"
+    },
+    {
+      "id": "scranton",
+      "name": "Scranton",
+      "type": "temperate",
+      "seed": "2812984397735158369"
+    },
+    {
+      "id": "avengers",
+      "name": "Avengers Compound",
+      "type": "temperate",
+      "seed": "18296028802821282410"
+    },
+    {
+      "id": "invincible",
+      "name": "Invincible",
+      "type": "temperate",
+      "seed": "17049026213794180600"
+    },
+    {
+      "id": "c-137",
+      "name": "Earth C-137",
+      "type": "temperate",
+      "seed": "16337440380819003650"
+    },
+    {
+      "id": "earth",
+      "name": "Earth",
+      "type": "temperate",
+      "seed": "6709468555492038659"
+    },
+    {
+      "id": "dot-matrix",
+      "name": "Dot Matrix",
+      "type": "stylised",
+      "seed": "11991176794051770286"
     },
     {
       "id": "E:1,0:0:0",
@@ -125,180 +299,6 @@
       "name": "Niathia",
       "type": "rock",
       "seed": "9427998713908529229"
-    },
-    {
-      "id": "E:1,0:2:3",
-      "name": "Lesela",
-      "type": "ringed",
-      "seed": "9427997614396901018"
-    },
-    {
-      "id": "E:1,0:2:4",
-      "name": "Mipheselun",
-      "type": "lava",
-      "seed": "9427992116838759963"
-    },
-    {
-      "id": "E:1,0:2:5",
-      "name": "Cusnul",
-      "type": "ice",
-      "seed": "9427991017327131752"
-    },
-    {
-      "id": "E:1,0:3:0",
-      "name": "Riamseliacim",
-      "type": "rock",
-      "seed": "15974992389582672884"
-    },
-    {
-      "id": "E:1,0:3:1",
-      "name": "Seraeala",
-      "type": "rock",
-      "seed": "15974993489094301095"
-    },
-    {
-      "id": "E:1,0:3:2",
-      "name": "Siapho",
-      "type": "forest",
-      "seed": "15974994588605929306"
-    },
-    {
-      "id": "E:1,0:4:0",
-      "name": "Alissede",
-      "type": "forest",
-      "seed": "16154647539614666734"
-    },
-    {
-      "id": "E:1,0:4:1",
-      "name": "Viarae",
-      "type": "rock",
-      "seed": "16154648639126294945"
-    },
-    {
-      "id": "E:1,0:4:2",
-      "name": "Pheniamnal",
-      "type": "ocean",
-      "seed": "16154645340591410312"
-    },
-    {
-      "id": "E:1,0:4:3",
-      "name": "Rapho",
-      "type": "gas",
-      "seed": "16154646440103038523"
-    },
-    {
-      "id": "E:1,0:4:4",
-      "name": "Tasthu",
-      "type": "gas",
-      "seed": "16154651937661179578"
-    },
-    {
-      "id": "E:1,0:4:5",
-      "name": "Niaselabe",
-      "type": "ice",
-      "seed": "16154653037172807789"
-    },
-    {
-      "id": "E:1,0:5:0",
-      "name": "Thisax",
-      "type": "ocean",
-      "seed": "12669389782091427312"
-    },
-    {
-      "id": "E:1,0:5:1",
-      "name": "Liaclel",
-      "type": "desert",
-      "seed": "12669390881603055523"
-    },
-    {
-      "id": "E:1,0:5:2",
-      "name": "Seluserasera",
-      "type": "lava",
-      "seed": "12669391981114683734"
-    },
-    {
-      "id": "E:1,0:5:3",
-      "name": "Rothaesalal",
-      "type": "desert",
-      "seed": "12669393080626311945"
-    },
-    {
-      "id": "E:1,0:5:4",
-      "name": "Cuvaemi",
-      "type": "ringed",
-      "seed": "12669394180137940156"
-    },
-    {
-      "id": "E:1,0:5:5",
-      "name": "Aluxlo",
-      "type": "ringed",
-      "seed": "12669395279649568367"
-    },
-    {
-      "id": "E:1,0:6:0",
-      "name": "Vaeselil",
-      "type": "desert",
-      "seed": "11249089252094924317"
-    },
-    {
-      "id": "E:1,0:6:1",
-      "name": "Diserum",
-      "type": "gas",
-      "seed": "11249088152583296106"
-    },
-    {
-      "id": "E:1,0:6:2",
-      "name": "Themvi",
-      "type": "ocean",
-      "seed": "11249087053071667895"
-    },
-    {
-      "id": "E:1,0:6:3",
-      "name": "Tiame",
-      "type": "gas",
-      "seed": "11249085953560039684"
-    },
-    {
-      "id": "E:1,0:6:4",
-      "name": "Leina",
-      "type": "ice",
-      "seed": "11249084854048411473"
-    },
-    {
-      "id": "E:1,0:6:5",
-      "name": "Seraclibe",
-      "type": "rock",
-      "seed": "11249083754536783262"
-    },
-    {
-      "id": "E:1,0:7:0",
-      "name": "Sedavu",
-      "type": "forest",
-      "seed": "3908632022139464156"
-    },
-    {
-      "id": "E:1,0:7:1",
-      "name": "Cacia",
-      "type": "gas",
-      "seed": "3908633121651092367"
-    },
-    {
-      "id": "E:1,0:7:2",
-      "name": "Siasaeda",
-      "type": "rock",
-      "seed": "3908634221162720578"
-    },
-    {
-      "id": "E:1,0:7:3",
-      "name": "Diasur",
-      "type": "rock",
-      "seed": "3908635320674348789"
-    },
-    {
-      "id": "E:1,0:7:4",
-      "name": "Vorselia",
-      "type": "lava",
-      "seed": "3908627624092951312"
     }
   ],
   "pois": [

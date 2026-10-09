@@ -14,7 +14,7 @@ The schema in `migrations/` is the one source of truth for what players build on
 
 ## The seed
 
-`seed.sql` is written by `node scripts/supabase-seed.mjs`, never by hand: the 50 planets a thing may be built on and the places on them where nothing may be (Echo Base on `hoth`, its `r` the flat's `r + edge`). It reads lane A's `src/lib/land/flight/planetSpec.js` when that is in the tree, else `scripts/fixtures/planets.json` (the same ids; `--fixture` rebuilds it from the Expanse's `makeSector`). It upserts, so applying it again after the list changes is safe.
+`seed.sql` is written by `node scripts/supabase-seed.mjs`, never by hand: the 50 planets a thing may be built on, in the roster's order (`docs/research/2026-10-09-planet-geographies.md`), and the places on them where nothing may be (each POI's `r` in the table is its `r + edge`, the whole eased band; Echo Base on `hoth` alone until lane A lands). It reads lane A's `src/lib/land/flight/planetSpec.js` when that is in the tree, else `scripts/fixtures/planets.json` (the same ids; `--fixture` rebuilds it from the Expanse's `makeSector`). It upserts, so applying it again after the list changes is safe. After lane A merges (`planetSpec.js` on main), the owner runs `node scripts/supabase-seed.mjs` and applies the new `seed.sql` in the SQL editor: the named planets' placeholder types and seeds are replaced by lane A's, and each world's POIs are added.
 
 ## Rules
 

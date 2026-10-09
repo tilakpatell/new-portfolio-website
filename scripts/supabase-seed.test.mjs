@@ -7,13 +7,24 @@ const seed = readFileSync(new URL('../supabase/seed.sql', import.meta.url), 'utf
 const migration = readFileSync(new URL('../supabase/migrations/20261009000000_world_entities.sql', import.meta.url), 'utf8');
 
 describe('the planets seeded', () => {
-  it('are fifty, the authored eight first, each an id the table takes', () => {
+  it('are fifty, the 37 named worlds first in the roster’s order, then 13 of the Expanse, each an id the table takes', () => {
     const ids = fixture.planets.map((p) => p.id);
     expect(ids).toHaveLength(50);
     expect(new Set(ids).size).toBe(50);
-    expect(ids.slice(0, 8)).toEqual(AUTHORED);
-    expect(ids.slice(8).every((id) => /^E:-?\d+,-?\d+:\d+:\d+$/.test(id))).toBe(true);
+    expect(AUTHORED).toHaveLength(37);
+    expect(ids.slice(0, 37)).toEqual(AUTHORED);
+    expect(AUTHORED.slice(0, 2)).toEqual(['tatooine', 'hoth']);
+    expect(AUTHORED).toEqual(expect.arrayContaining(['middle-earth', 'c-137', 'dot-matrix', 'gazorpazorp', 'sorgan']));
+    expect(ids.slice(37).every((id) => /^E:-?\d+,-?\d+:\d+:\d+$/.test(id))).toBe(true);
     for (const id of ids) expect(id).toMatch(ID);
+  });
+
+  it('put every POI on a planet the seed lists, in seed.sql as in the fixture', () => {
+    const planetIds = new Set([...seed.matchAll(/insert into public\.planets \(id, name, type, seed\) values \('([^']+)'/g)].map((m) => m[1]));
+    expect(planetIds.size).toBe(50);
+    const poiPlanets = [...seed.matchAll(/insert into public\.pois \(id, planet_id, name, x, z, r\) values \('[^']+', '([^']+)'/g)].map((m) => m[1]);
+    expect(poiPlanets.length).toBeGreaterThan(0);
+    for (const id of poiPlanets) expect(planetIds.has(id)).toBe(true);
   });
 
   it('check ids the way the migration does', () => {
