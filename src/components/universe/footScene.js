@@ -92,8 +92,10 @@ import { createGadgetFx } from '../../lib/three/gadgetFx';
 import { frameFrom, spring } from '../../lib/three/ik';
 import { createDust } from '../../lib/three/dust';
 import { createKnocks } from './landings/knocks';
+import { createSquash } from './squash';
 import { impactGroups } from '../../lib/impact';
 import { pressGroups } from '../../lib/press';
+import { springGroups } from '../../lib/spring';
 import { SIDES, sideFor, squadKinds } from './sides';
 import { ASSIST, friction } from '../../lib/combat/aim';
 import { footAim } from './footAim';
@@ -2889,13 +2891,17 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   };
 
   const jumpKey = createJump();
+  // a landing's squash (squash.js): yours, by how fast you came down; none with reduced motion
+  const squash = createSquash();
   const walkFrame = (dt, input) => {
     const me = meP();
     stepBody(input);
     // you: walking, turning, running, jumping (the jump a press, lib/press.js's createPress through
     // foot.js's createJump: once a key-down, and a hair early still lands)
     jumpKey.hold(input.jump);
+    const fell = (S.me.h ?? 0) > 0 ? -(S.me.vh ?? 0) : 0;
     S.me = walk(S.me, { move: input.move, strafe: input.strafe, turn: input.turn, run: input.run, jump: jumpKey.press }, dt, S.R, obstacles());
+    if (fell > 0 && !(S.me.h > 0) && !reduced) squash.land(fell / METRE);
     // (down from a jump of any height: the leaves under you thrown out)
     if (S.me.h > 0) S.airH = Math.max(S.airH, S.me.h);
     else {
@@ -3147,6 +3153,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       p.w = w;
       p.group.visible = show && !(i === S.lead && S.cam.first);
       stand(p.group, w);
+      if (i === S.lead) {
+        // (about the feet: the figure's own origin; its scale as built, times the squash)
+        const [sx, sy, sz] = squash.step(dt);
+        p.built ??= p.group.scale.clone();
+        p.group.scale.set(p.built.x * sx, p.built.y * sy, p.built.z * sz);
+      }
       shadow(`party${i}`, w, p.spec.tall * 0.55).visible = show;
       const n = new V(...w.n);
       const frame = { forward: dirToWorld(new V(...w.f)), up: dirToWorld(n.clone()) };
@@ -3602,8 +3614,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.cam.first = !S.cam.first;
       return S.cam.first;
     },
-    // the ?debug panel's groups (lib/debugPanel): the knocks' law and the jump's press
-    tune: () => [...impactGroups(knocks.rules), ...pressGroups(jumpKey.press)],
+    // the ?debug panel's groups (lib/debugPanel): the knocks' law, the jump's press and the landing's squash
+    tune: () => [...impactGroups(knocks.rules), ...pressGroups(jumpKey.press), ...springGroups(squash.spring, 'landing squash')],
     // a door you're at (a landing's: G there goes into the planet's page): { id, label } or null
     door() {
       const s = S.phase === 'walk' ? nearSpot() : null;

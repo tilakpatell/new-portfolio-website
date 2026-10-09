@@ -58,19 +58,19 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 
 | lane | session | branch | pull request | merged |
 |---|---|---|---|---|
-| design | the architecting session | `claude/lucid-hawking-78yzz5` | | |
+| design | the architecting session | `claude/lucid-hawking-78yzz5` | the docs; #760 (main’s health repair, so the lanes could merge) | yes |
 | 1A | session_018TPUBuBVbG9Xbm68QY6rAd | `claude/one-feel-art` | #701 | yes |
 | 1B | session_0125kUpviRHiF3dVxbGM3odg | `claude/one-feel-hits` | #699 | yes |
 | 1C | session_01ALnkhhCHveAZqkCSpnBLq2 | `claude/one-feel-car` | #700, closed at the owner’s word: the Expanse car game is removed (#705); the pure pieces stay on the branch and lane 1F carries them over | no |
 | 1D | session_01Y9gSEa16P9tye2wPhYum7h | `claude/one-feel-panel` | #702 | yes |
-| 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
-| 1F | session_01PvQ31jMR87beSHxh7Bgt2v | `claude/feel-kit` | | |
+| 1E | session_01RjXvbwnRgbChu8gMUUMi8B | `claude/one-feel-colliders` | #698 | yes |
+| 1F | session_01PvQ31jMR87beSHxh7Bgt2v | `claude/feel-kit` | #724 | yes |
 | 2A | session_01HPFczeNhvDuaFuXnrzZj9H | `claude/feel-middleearth`, `claude/feel-middleearth-look` | Tier 1: #728 (Tier 2: none in the roster); the look: #732 | yes, both |
-| 2B | session_01DVpcS5r4qygJHh2VUkxKoP | `claude/feel-starwars` | Tier 1: #729 (the surface, the map, the trench); Tier 2 with the inside’s Tier 1: #747 | Tier 1 yes |
-| 2C | session_019CkxR28H7ZKjm6tPbKEyns | `claude/feel-universe` | Tier 1: #741 | |
-| 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: #740; Tier 3 Iacon: #745 | Tiers 1, 2 and 3 Albuquerque |
-| 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733; Tier 2: #738; the look (opening) | Tiers 1 and 2 |
-| 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1); #734 (Tier 2); the look | #731, #734 yes |
+| 2B | session_01DVpcS5r4qygJHh2VUkxKoP | `claude/feel-starwars`, `claude/feel-starwars-look` | Tier 1: #729; Tier 2 with the inside’s Tier 1: #747; Tier 3 (the surface sites’ loose crates and barrels): #754; the look (five folders; the cockpit waits, see Findings): #761 | yes, all four |
+| 2C | session_019CkxR28H7ZKjm6tPbKEyns | `claude/feel-universe` | Tier 1: #741; Tier 2: #762; the look: #764 | yes, all three |
+| 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: #740; Tier 3 Iacon: #745; the look: #748 | yes, all five |
+| 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733; Tier 2: #738; the look: #750; Tier 3 (the compound’s lawn): #759 | yes, all four |
+| 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1); #734 (Tier 2); the look: #743 | yes, all three |
 
 ## Findings (for the owner and the next lane)
 
@@ -105,6 +105,9 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **1D, for the galaxy surfaces (2B):** `galaxy/surface/scene.js` still makes its own panel from `tune.js` (it is outside 1D’s files); moving it onto `tune()` through the module makes it the one panel the runtime opens and closes. Until then it is the only panel on that route (the galaxy’s module has no `tune()`), so nothing doubles.
 - **1D, for 1A:** `lib/stage3d.js` has `stageBloomGroups(pass)` for the stage’s bloom group, since `lib/three/bloom.js` is 1A’s; once `bloomGroups(pass)` lands, `stageTune` can take it in its place (the same shape: `threshold`, `strength`, `radius`).
 - **2B, for the owner:** the Death Star inside’s Tier 1 (a `hurt` voice in its own `sounds.js`, heard by the hit law on the damage; a hit of 25+ jolts the view and holds 70 ms; its shake, #694’s tremor included, on one feel held still under reduced motion; coyote time and a buffer in `rules/walker.js`) rode Tier 2’s pull request, since #694 was still open when Tier 1 went up.
+- **2B, for the owner:** the surface’s loose crates and barrels (`galaxy/surface/knocks.js`) stand beside each site’s stacks rather than replacing them: the stacks are the placer’s models and the walker’s solids (`placer.js`, `solids.js`, the sites: the combat lanes’ and #669’s), so turning a stack itself into knockables is a change for whoever owns those. Headless SwiftShader never brings a surface up at `?quality=high` (the only tier that loads Rapier), so the scatter is checked in Node against the real engine (`knocks.test.js`), not in a browser.
+- **2B, the looks:** `galaxy` (own, tone none: universe/post.js tone-maps and grades, and its bloom is its own), `galaxy/surface` (scanned, the same lens), `deathstar` (own; the ACES lines were only starting values, houseOn mapped both scenes Neutral already; each scene’s bloom in `BLOOMS`), `deathstar/inside` (scanned, house, its bloom 2.2 over white) and `hyperspace3d` (own, tone none, colours as final) each have a look.js; no picture changed.
+- **2B, for the owner:** the cockpit (`cockpit/`) stays in `EXPECTED_MISSING`: each vehicle draws under its own tone (ACES for the X-wing, the Falcon and the RV; none for the cruiser, `cockpit/vehicles/*`), so neither `house` nor `none` is true of it without changing the home page’s hero, which wants a real GPU’s eye before and after.
 - **2B, for 2C:** the ship’s lean (the roster’s Tier 2 for 2B) is `universe/ship.js`, the shared flight model, which is 2C’s; 2B left it.
 - **2B, for 2C:** `universe/ship.js`’s `bump` event says only `hard`; the galaxy map guesses its speed from that (`galaxy/mapFeel.js`’s `knockForce`, which reads `e.into` first). Carrying `into` on the bump (as the crash carries `speed`) makes the map’s bump thud exactly as hard as it was; the universe map would want the same.
 - **2B, for 2C:** `galaxy/mapFeel.js`’s `deadZone(dx, dy, full)` is the drag stick’s dead zone (a tenth of the throw, rescaled); `universe/scene.js`’s stick wants the same, and it could go down to `lib/` once two worlds use it.
@@ -129,6 +132,8 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **2C, for the combat lanes:** nothing of theirs edited; the foot’s jump went through `foot.js`’s `walk()` only (a `createJump()` press beside it), and `footScene.js`’s knock wiring moved to `landings/knocks.js`.
 - **2C, left for a later round:** the landing’s dust in the biome’s ground colour, and the dust in `prepare`’s warm-up (1B’s two findings).
 - **2D, for 2B, 2E (Tier 3):** `src/lib/three/knockables.js` is made (with Albuquerque’s street props): `createKnockables({ physics, kinds, impacts, parent, count })` places `{ kind, x, y, z, yaw }` as sleeping `lib/physics/props.js` bodies, one instanced draw a kind, each hit through `impacts.onHit(force, at, kind)`; `knockablesWanted(device())` says whether to load Rapier (a high tier, not a phone, not Data Saver); with `physics` null the props stand, drawn. A world’s own kinds go in `kinds` (`{ mass, lift, colliders, shape: 'box' | 'cylinder' | 'cone', size, colour }`). `albuquerque/world/roadside.js` is the pattern: a floor, the nearby buildings as fixed boxes, the player a kinematic `addPusher` following the rules, `physics.step(dt)` then `sync()` a frame.
+- **2D, for the owner:** four scenes in the lane still draw under their own ACES, as their looks say: the office’s tour and toss (`office/stage3d.js`) and Cybertron’s planet and transformation (`cybertron/planet3d.js`, `transform3d.js`). The Cybertron backdrop’s bloom (0.92) and Roll out’s (0.9) are under white, with their why. Moving any of them changes its picture, which wants shots of each section (they are sections of `/scranton` and `/cybertron`, below the fold: the smoke check doesn’t see them).
+- **2D:** the smoke check’s shots need `--settle 60000` in the sandbox for Albuquerque and Cybertron to draw (the default catches their loading veils), and `--quality high` to load the knockables’ engine.
 
 - **2E, the look:** the HQ games, the compound, Invincible’s city, Think, Mark!, the viewer and the tide each have a `look.js` (scanned, the house tone) and their scenes read the bloom from it, keeping the numbers each was lit by; the HQ engine’s default bloom is the house’s `BLOOM`, which no HQ game draws with today. Three thresholds stay under white with their why (the city 0.92, Think, Mark! and the viewer 0.9): lifting their glows with `hot()` wants a real GPU to judge by. The HQ games’ own scenes (`avengers/lawn/` and the rest) are not in `LOOK_FOLDERS`, so their bloom literals stand.
 - **2E, not done:** the plan’s Step 4 for this lane (every HQ game’s `feel.trauma` sites through `wireImpacts` with the dust) is left: the hits already sound by force and shake by the feel, and a thud on top of each game’s own sound would play twice. A lane that takes it on swaps the sound rather than adding one.

@@ -6,6 +6,7 @@ import Objective from './Objective';
 import PlayersChip from './PlayersChip';
 import QuestList from './QuestList';
 import Toast from './Toast';
+import { VoicesItem } from './Menu';
 
 const text = (el) => renderToStaticMarkup(el).replace(/<[^>]+>/g, '');
 
@@ -15,6 +16,11 @@ describe('the prompt', () => {
   });
   it('shows no key on touch, where it’s the button', () => {
     expect(text(<Prompt k="E" verb="Go in" thing="Burger Mart" touch />)).toBe('Go in · Burger Mart');
+  });
+  it('says what it promises in data-prompt, key first, on touch too', () => {
+    expect(renderToStaticMarkup(<Prompt k="E" verb="Talk" thing="Gandalf" />)).toMatch(/<button[^>]*data-prompt="E Talk · Gandalf"/);
+    expect(renderToStaticMarkup(<Prompt k="E" verb="Talk" thing="Gandalf" touch />)).toContain('data-prompt="E Talk · Gandalf"');
+    expect(renderToStaticMarkup(<Prompt k="X" verb="Read" />)).toContain('data-prompt="X Read"');
   });
   it('is a real button, and can’t be pressed while closed', () => {
     const html = renderToStaticMarkup(<Prompt verb="Go in" thing="Los Pollos" sub="Opens at noon" closed />);
@@ -69,5 +75,14 @@ describe('a toast', () => {
   it('is a status, red when bad, and nothing without words', () => {
     expect(renderToStaticMarkup(<Toast toast={{ key: 1, text: 'Saved', bad: true }} />)).toBe('<p class="hud-toast" role="status" data-bad="true">Saved</p>');
     expect(renderToStaticMarkup(<Toast toast={null} />)).toBe('');
+  });
+});
+
+describe('the voices switch in the Menu', () => {
+  it('says whether anyone speaks, and stays open when pressed', () => {
+    const html = renderToStaticMarkup(<VoicesItem />);
+    expect(text(<VoicesItem />)).toBe('Voices on');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain('data-keep');
   });
 });
