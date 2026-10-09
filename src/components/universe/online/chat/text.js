@@ -25,15 +25,18 @@ export const CHAT = { everyone: true, squadMax: 200, everyoneMax: 160, log: 50, 
 export const PHRASES = ['Hello', 'Follow me', 'On my way', 'Need help', 'Attack my target', 'Cover me', 'Regroup', 'Nice shot', 'Thanks', 'Sorry', 'Yes', 'No', 'Watch out', 'Truce?', 'Let’s go', 'Good game'];
 export const phrase = (i) => (Number.isInteger(i) && i >= 0 && i < PHRASES.length ? PHRASES[i] : null);
 
-// (a part of a name: letters and digits in any script, and dashes)
-const PART = '[\\p{L}\\p{N}][\\p{L}\\p{N}-]*';
+// (a part of a name: letters and digits in any script, dashes, and the
+// joiners names.js leaves between letters, as Persian's are)
+const PART = '[\\p{L}\\p{N}][\\p{L}\\p{N}\\u200d\\u200c-]*';
 // (a dot between them, bare or with space before it: 'example . com', not 'Hello. How')
 const DOT = '(?:\\.|\\s+\\.\\s*)';
+// (the last part: 2 to 24 letters, a joiner between two of them if it likes)
+const END = '\\p{L}(?:[\\u200c\\u200d]?\\p{L}){1,23}(?![\\p{L}\\p{N}\\u200d\\u200c-])';
 const LINK = new RegExp(
   [
     '[a-z][a-z0-9+.-]*:\\/\\/\\S*', // a scheme and ://, and the rest of it
     'www\\.\\S*',
-    `(?:${PART}${DOT})+\\p{L}{2,24}(?![\\p{L}\\p{N}-])(?:[/:?#]\\S*)?`, // a dotted name, with any path after it
+    `(?:${PART}${DOT})+${END}(?:[/:?#]\\S*)?`, // a dotted name, with any path after it
   ].join('|'),
   'giu',
 );

@@ -40,11 +40,24 @@ export function randomCallsign(rand = Math.random) {
 }
 
 // Text without the characters that could flip it, or what's round it, or hide
-// in it: control characters, the zero-width ones and the direction overrides
-// (a name's taken out here, and a line of chat's: chat/text.js)
+// in it: control characters, the zero-width ones, the direction marks and
+// overrides (the Arabic letter mark among them), and the tag characters
+// (which spell out ASCII no one sees); a joiner (ZWNJ, ZWJ) only where it
+// joins, between two characters past ASCII (an emoji sequence, Persian or
+// Indic), and one at most; and a character's combining marks three at most
+// (a pile of them runs over the lines round it), with nothing hidden between
+// them. A name's taken out here, and a line of chat's (chat/text.js).
 // eslint-disable-next-line no-control-regex
-const UNSEEN = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g;
-export const stripControls = (s) => s.replace(UNSEEN, '');
+const UNSEEN = /[\u0000-\u001f\u007f-\u009f\u061c\u200b\u200e\u200f\u2028-\u202e\u2060-\u206f\ufeff\u{e0000}-\u{e007f}]/gu;
+const JOINERS = /[\u200c\u200d]+/g;
+const PILE = /\p{M}(?:\p{Cf}*\p{M})+/gu;
+// (past ASCII: with the controls out, all that's left of ASCII is ' ' to '~')
+const wide = (c) => c !== undefined && c > '~';
+export const stripControls = (s) =>
+  s
+    .replace(UNSEEN, '')
+    .replace(JOINERS, (run, at, all) => (wide(all[at - 1]) && wide(all[at + run.length]) ? run[0] : ''))
+    .replace(PILE, (run) => run.match(/\p{M}/gu).slice(0, 3).join(''));
 
 // A name as it may be shown: no control or direction-override characters
 // (which could flip the text round it), spaces collapsed, NAME_MAX

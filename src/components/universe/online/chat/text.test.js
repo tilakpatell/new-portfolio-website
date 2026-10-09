@@ -44,6 +44,17 @@ describe('what may be said', () => {
     expect(cleanText('sh​1t', 200)).toBe('•••');
   });
 
+  it('keeps the joiners that join, and still finds a link or a word split by one', () => {
+    const [ZWNJ, ZWJ] = ['\u200c', '\u200d'];
+    for (const fine of ['gg 👩‍🚀', `می${ZWNJ}خواهم بیایم`]) expect(cleanText(fine, 200)).toBe(fine);
+    expect(cleanText(`exam${ZWJ}ple.com`, 200)).toBe('[link]');
+    expect(cleanText(`پارسی${ZWNJ}نامه.ایران`, 200)).toBe('[link]');
+    expect(cleanText(`نامه.ای${ZWNJ}ران ok`, 200)).toBe('[link] ok');
+    expect(cleanText(`you sh${ZWJ}1t`, 200)).toBe('you •••');
+    // and a pile of marks is three at most
+    expect(cleanText('Z\u0351\u0352\u0353\u0354o', 200)).toBe('Z\u0351\u0352\u0353o');
+  });
+
   it('collapses spaces and trims', () => {
     expect(cleanText('  hello \n\t  there  ', 200)).toBe('hello there');
   });
