@@ -132,7 +132,7 @@ The design is `docs/superpowers/specs/2026-10-08-combat-revamp-design.md`, the p
 - **The universe's lock-on** is still the old auto-lock (T cycles, a tap locks): no Lock button there, and the camera isn't turned onto it. The universe's touch fire snaps (its cone is touch's on a phone).
 - **The universe's third-person reticle is now in the middle**: the camera's ray dips toward the ground ahead, so a trooper far off needs a little pitch up to be under it. That's the honest aim (the old reticle was drawn at chest height 14 m out while the shot went to the lock).
 - **The duel's lock-on turns Morty, not the camera.** A trooper-style camera lock in a duel would be the next step.
-- **A phone wasn't tried by hand**: the Lock buttons and the snaps were checked in headless Chromium at a phone's size (`--phone`), with tests for the rules. On the Total Rickall phone shot the guide's "?" button sits over the Shoot button's edge; this lane didn't change either.
+- **A phone wasn't tried by hand.** Rick and Morty's Lock button was seen in headless Chromium at a phone's size; the galaxy surface never finished loading there in 25 minutes of software rendering (main's `--phone` shot is as dark), so the galaxy's Lock button and the snaps are checked by their tests only. On the Total Rickall phone shot the guide's "?" button sits over the Shoot button's edge; this lane didn't change either.
 - Open PRs #734 (C-137's landing squash: `RmWorld.jsx`, `scene.js`) and #729 (the galaxy surface's feel: `scene.js`) touch files this lane edited, in other lines.
 
 ### Checking it
