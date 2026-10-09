@@ -6,7 +6,8 @@
 //     under way; the flight settings and the yard are never open together; a jump that begins with the yard open shuts it and
 //     goes on (and buff time and a pickup's age stand still while it's open), the doors (the button, the panel's link) are gone while it's on and back after, and Escape closes the yard there
 //   fit: twin-linked cannons staged and applied change the ship in flight (__galaxyDebug.state.stats's cadence), are kept under
-//     the universe map's own storage keys, and say so (the page's note); the secondary line says it fires on the universe map only
+//     the universe map's own storage keys, and say so (the page's note); the secondary line says it fires on the universe map only;
+//     a Quad picked on the Engines tab tunes the X-wing (its acceleration in flight) with the hull still stock, kept under the tune's key
 // Shots are in OUT/hangar-*.png.
 import { check, out } from '../galaxy-map-check/lib.mjs';
 import { open, settle } from './lib.mjs';
@@ -90,6 +91,21 @@ export async function hangar() {
     const note = await G(() => document.querySelector('.universe-earn, .universe-earn-note, [data-earn]')?.textContent ?? '');
     say(note === '' || /Fitted|Bought/.test(note), `and says so (${note || 'the note’s gone already'})`);
     await page.screenshot({ path: `${out}/hangar-fitted.png` });
+
+    // a module on the crew's own ship is tuning: the hull stays stock, and the galaxy's ship flies on its numbers
+    await G(() => window.__galaxyDebug.economy.earn('killAce', 6));
+    await press(page, 'h');
+    await page.getByRole('tab', { name: 'Engines' }).click();
+    await page.locator('.yard-row', { hasText: 'Quad' }).click();
+    await settle(page, 300);
+    await page.locator('.yard-apply').click();
+    await settle(page, 900);
+    const tuned = await G(() => ({ stats: { ...window.__galaxyDebug.state.stats }, build: window.__galaxyDebug.state.build, tune: JSON.parse(localStorage.getItem('tp-universe-tune') ?? 'null'), hull: JSON.parse(localStorage.getItem('tp-universe-hull') ?? 'null') }));
+    say(tuned.stats.accel > after.accel && !tuned.build, `a Quad tuned onto the X-wing quickens it, on its own hull (acceleration ${after.accel} → ${tuned.stats.accel})`);
+    const keptTune = tuned.tune?.data ?? tuned.tune;
+    const keptHull = tuned.hull?.data ?? tuned.hull;
+    say(keptTune?.xwing?.engines === 'quad' && !keptHull?.xwing, `and it's kept under the tune's own key, with no garage hull (${JSON.stringify(keptTune?.xwing ?? null)})`);
+    await page.screenshot({ path: `${out}/hangar-tuned.png` });
 
     // H and Escape, and the one-at-a-time rule
     await press(page, 'h');

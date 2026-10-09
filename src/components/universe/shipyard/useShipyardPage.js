@@ -1,25 +1,27 @@
 // What a page needs to put the Shipyard (Shipyard.jsx) over its map: the
-// loadouts, hulls and garage builds kept between visits (LOADOUT_KEY,
-// HULL_KEY and GARAGE_KEY, which every map that flies the ship reads), the
+// loadouts, hulls, garage builds and tunes kept between visits (LOADOUT_KEY,
+// HULL_KEY, GARAGE_KEY and TUNE_KEY, which every map that flies the ship reads), the
 // ship as it's fitted, the yard's door and its note, and what an Apply or a
 // sale does. The universe map and the galaxy both use it, so a fit made in
 // either is on the ship in the other. The changes of state are pure
 // functions (tested in Node); the hook is those, with the page's React
 // state, its wallet and the browser's storage.
 //
-// useShipyardPage({ ship, unlocked }) → { loadouts, loadout, build, hulls,
-//   garage, dropped, setBuild(b), yard, setYard, applyDraft({ diff, toBuy,
-//   draft }) → { ok, text, live } | { ok: false, why, text }, sellPart(item),
-//   yardNote ({ text, n } | null, for EarnNote), live, yardSaves }
+// useShipyardPage({ ship, unlocked }) → { loadouts, loadout, build, tune,
+//   hulls, garage, dropped, setBuild(b), setTune(t), yard, setYard,
+//   applyDraft({ diff, toBuy, draft }) → { ok, text, live } | { ok: false,
+//   why, text }, sellPart(item), yardNote ({ text, n } | null, for
+//   EarnNote), live ({ build, loadout, tune }), yardSaves }
 // (the pure changes of state are yardPage.js's)
 
 import { useEffect, useMemo, useState } from 'react';
 import { local } from '../../../lib/hooks';
 import { useEconomy } from '../EconomyProvider';
 import { droppedParts, loadoutOf } from '../outfit';
-import { applyYardDraft, keepBuild, keepLoadouts, readSaves } from './yardPage';
+import { applyYardDraft, keepBuild, keepLoadouts, keepTune, readSaves } from './yardPage';
 
 const NOTE_MS = 3200;
+const NO_TUNE = Object.freeze({}); // (one object for no tune, so what depends on it isn't rebuilt)
 
 export function useShipyardPage({ ship, unlocked = [] }) {
   const [loadouts, setLoadouts] = useState(() => readSaves().loadouts);
@@ -33,7 +35,13 @@ export function useShipyardPage({ ship, unlocked = [] }) {
     setHulls(next.hulls);
     if (b) setGarage(next.garage);
   };
-  const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked, build), [loadouts, ship, unlocked, build]);
+  // the crew's own ship, tuned: modules on the stock hull (flown only while it is the hull), kept for each crew
+  const [tunes, setTunes] = useState(() => readSaves().tune);
+  const tune = (ship && tunes[ship]) || NO_TUNE;
+  const setTune = (t) => {
+    if (ship) setTunes(keepTune(local, tunes, ship, t));
+  };
+  const loadout = useMemo(() => loadoutOf(loadouts, ship, unlocked, build, tune), [loadouts, ship, unlocked, build, tune]);
   const dropped = useMemo(() => (ship ? droppedParts(loadouts[ship], loadout) : []), [loadouts, ship, loadout]); // (what the plant can't run)
 
   const [yard, setYard] = useState(false);
@@ -46,9 +54,10 @@ export function useShipyardPage({ ship, unlocked = [] }) {
     return () => clearTimeout(t);
   }, [yardNote]);
   const applyDraft = (draft) => {
-    const r = applyYardDraft({ ship, economy, loadouts, unlocked }, draft);
+    const r = applyYardDraft({ ship, economy, loadouts, tunes, unlocked }, draft);
     if (!r.result.ok) return r.result;
     if (r.build !== undefined) setBuild(r.build);
+    if (r.tune !== undefined) setTune(r.tune);
     setLoadouts(r.loadouts);
     keepLoadouts(local, r.loadouts);
     sayYard(r.result.text);
@@ -59,7 +68,7 @@ export function useShipyardPage({ ship, unlocked = [] }) {
     if (back) sayYard(`Sold the ${item.name} for ${back.toLocaleString('en-GB')} ¢.`);
     return back;
   };
-  const live = useMemo(() => ({ build, loadout }), [build, loadout]);
-  const yardSaves = useMemo(() => ({ loadouts, hulls, garage }), [loadouts, hulls, garage]);
-  return { loadouts, loadout, build, hulls, garage, dropped, setBuild, yard, setYard, applyDraft, sellPart, yardNote, live, yardSaves };
+  const live = useMemo(() => ({ build, loadout, tune }), [build, loadout, tune]);
+  const yardSaves = useMemo(() => ({ loadouts, hulls, garage, tune: tunes }), [loadouts, hulls, garage, tunes]);
+  return { loadouts, loadout, build, tune, hulls, garage, dropped, setBuild, setTune, yard, setYard, applyDraft, sellPart, yardNote, live, yardSaves };
 }
