@@ -43,7 +43,6 @@ export const OWN_SHAKE = [
   { file: 'galaxy/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
   { file: 'galaxy/surface/scene.js', pattern: /\(r\(\) - 0\.5\) \* state\.shake/ },
   { file: 'deathstar/Trench3D.js', pattern: /shakeV\.set\(\(Math\.random\(\) - 0\.5\) \* k/ },
-  { file: 'caribbean/tide/Tide3D.js', pattern: /const s = trauma \* trauma/ },
   { file: 'office/world/scene.js', pattern: RANDOM },
   { file: 'cybertron/rollout/RollOut3D.js', pattern: RANDOM },
   { file: 'middleearth/shire/scene.js', pattern: RANDOM },
