@@ -95,6 +95,27 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   const warInfo = useCallback(() => (rt?.current?.module === galaxyModule ? (rt.current.world.scene?.warInfo?.() ?? null) : null), [rt]);
   useEffect(() => setFlown(false), [ship]);
 
+  // The cluster's height on the map (--fc-h), for what sits over it (the jump button, the keys card): it grows when the row wraps in a
+  // narrow window. Layout, not a HUD number: the browser tells it when it changes. (On a touch screen the row has no box of its own: 0.)
+  useEffect(() => {
+    const root = cluster.current;
+    const map = root?.parentElement;
+    if (!root || !map || typeof ResizeObserver !== 'function') return undefined;
+    const row = root.querySelector('.fc-row');
+    const fit = () => {
+      const h = row.offsetHeight + (buffs.current?.offsetHeight ? buffs.current.offsetHeight + 6 : 0);
+      map.style.setProperty('--fc-h', `${h}px`);
+    };
+    const watch = new ResizeObserver(fit);
+    watch.observe(row);
+    if (buffs.current) watch.observe(buffs.current);
+    fit();
+    return () => {
+      watch.disconnect();
+      map.style.removeProperty('--fc-h');
+    };
+  }, [ship, on]);
+
   // The universe map's jump in holds its tunnel for the galaxy
   // (hyperspace3d/timeline.js's handJump): let go once the galaxy has drawn,
   // or as soon as it won't, or while it's frozen (./jumpIn.js says when; the
@@ -136,6 +157,8 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   const goals = [...goalsOf(hereSys), ...placesOf(hereSys).map((p) => ({ id: p.id, kind: 'place', name: found.includes(p.id) ? p.name : p.hint }))];
   const others = SYSTEMS.filter((s) => s !== hereSys);
   const aimed = aim && aim !== hereSys.id ? systemById(aim) : null;
+  // (the course plotted on the map, if it's not where you are: a touch screen has no J for it, so a button, while no star's under the nose)
+  const courseSys = course && course !== hereSys.id ? systemById(course) : null;
   const jump = (id) => view.current?.jump?.(id);
   const onPower = (slot) => view.current?.power?.(slot);
   // (the card is open over the first flight, and from its chip after; the chip shuts it either way)
@@ -268,13 +291,22 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
                   Jump to {aimed.name}
                 </button>
               )}
+              {!aimed && courseSys && (
+                <button type="button" className="galaxy-jumpbtn" data-course="" onClick={() => jump(courseSys.id)} style={{ '--star': courseSys.accent }}>
+                  Jump to {courseSys.name}
+                </button>
+              )}
               <FlightSettings controls={controls} onChange={setControls} open={settingsOpen} onOpen={openSettings} />
               <button type="button" className="galaxy-keysbtn" onClick={toggleKeys} aria-expanded={showKeys}>
                 Keys
               </button>
               <KeysCard open={showKeys} onClose={closeKeys} />
               {!flown && (
-                <p className="universe-hint galaxy-hint-touch">
+                <p className="universe-hint galaxy-hint">
+                  <span className="universe-hint-keys">
+                    <kbd>W</kbd> <kbd>S</kbd> throttle, <kbd>A</kbd> <kbd>D</kbd> roll, arrows to steer, <kbd>Space</kbd> boost, hold <kbd>F</kbd> to fire, <kbd>G</kbd> your crew’s power and <kbd>X</kbd> the big one once it’s charged, <kbd>V</kbd> cockpit. The named stars are other systems: put the nose on one and <kbd>J</kbd> to jump, or <kbd>M</kbd> for the galaxy map
+                    <GuideCue />
+                  </span>
                   <span className="universe-hint-touch">Drag to fly, hold Boost and Fire, tap your crew’s power; point at a star and tap Jump to go to lightspeed<GuideCue touch /></span>
                 </p>
               )}

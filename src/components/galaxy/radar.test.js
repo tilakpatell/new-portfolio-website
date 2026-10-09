@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { forward } from '../universe/ship';
-import { RANGE, radarPoints, rangeFor } from './radar';
+import { RANGE, createRadar, radarPoints, rangeFor, rangeFrom } from './radar';
 
 const ship = { x: 0, y: 0, z: 0, heading: 0 };
 // forward(h) is the ship's nose as [x, z]: ahead is where it points, whatever the convention
@@ -48,5 +48,33 @@ describe('radar', () => {
     expect(rangeFor(ship, [{ at: ahead(30) }])).toBe(RANGE.fight);
     expect(rangeFor(ship, [{ at: ahead(90) }])).toBe(RANGE.cruise);
     expect(rangeFor(ship, [])).toBe(RANGE.cruise);
+  });
+  it('keeps the dogfight range till the nearest hostile is well clear', () => {
+    expect(rangeFor(ship, [{ at: ahead(50) }], RANGE.fight)).toBe(RANGE.fight);
+    expect(rangeFor(ship, [{ at: ahead(50) }], RANGE.cruise)).toBe(RANGE.cruise);
+    expect(rangeFor(ship, [{ at: ahead(60) }], RANGE.fight)).toBe(RANGE.cruise);
+    expect(rangeFrom(55, RANGE.fight)).toBe(RANGE.fight);
+    expect(rangeFrom(Infinity, RANGE.fight)).toBe(RANGE.cruise);
+  });
+  it('reuses its records tick to tick', () => {
+    const radar = createRadar();
+    radar.start(ship);
+    radar.add('a', 'hostile', ahead(30));
+    radar.add('b', 'ally', [fx * 10, 0, fz * 10]);
+    const first = radar.points(radar.range);
+    const rec = first[0];
+    expect(first.n).toBe(2);
+    expect(radar.range).toBe(RANGE.fight);
+    radar.start(ship);
+    radar.add('a', 'hostile', ahead(50));
+    const second = radar.points(radar.range);
+    expect(second).toBe(first);
+    expect(second[0]).toBe(rec);
+    expect(second.n).toBe(1);
+    // (50 off, having been closer: still the dogfight's range)
+    expect(radar.range).toBe(RANGE.fight);
+    radar.start(ship);
+    radar.add('a', 'hostile', ahead(70));
+    expect(radar.range).toBe(RANGE.cruise);
   });
 });

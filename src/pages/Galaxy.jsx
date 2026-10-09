@@ -308,13 +308,16 @@ export default function Galaxy() {
   };
   useEffect(() => letGo, []);
 
-  // a course plotted on the map, or J with one: away you go
+  // a course plotted on the map, or J with one: away you go. The scene may refuse (an Interdictor's hold, a crash, a dive: it says why
+  // itself, and the map and the course stay as they are); only with no scene to ask is the system's page opened
   const jumpTo = useCallback(
     (id) => {
+      audioContext();
+      if (view.current.live) {
+        if (!view.current.jump(id)) return;
+      } else navigate(`/galaxy/${id}`, { replace: true });
       setMapOpen(false);
       setCourse(null);
-      audioContext();
-      if (!view.current.jump(id)) navigate(`/galaxy/${id}`, { replace: true });
     },
     [navigate],
   );
@@ -356,6 +359,7 @@ export default function Galaxy() {
           balk.current = setTimeout(() => setBalked(false), 3000);
           return;
         }
+        if (e.phase === 'align') setCourse(null); // (a jump's begun, to the course or not: the plotted course is spent)
         setJumping(e.phase === 'cancel' || e.phase === 'out' ? null : { to: e.to, phase: e.phase });
         if (e.phase === 'spool') {
           letGo();

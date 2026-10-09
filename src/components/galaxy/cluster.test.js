@@ -43,16 +43,19 @@ describe('flight cluster', () => {
   it('writes the target, and clears it', () => {
     const root = dom();
     const c = createCluster();
-    c.place(root, v({ lock: { name: 'TIE Interceptor', dist: '14', hp: 0.5 } }));
+    c.place(root, v({ lock: { name: 'TIE Interceptor', dist: 14.2, hp: 0.5 } }));
     expect(root.querySelector('.fc-target').hasAttribute('data-on')).toBe(true);
     expect(root.querySelector('.fc-target-name').textContent).toBe('TIE Interceptor');
+    expect(root.querySelector('.fc-target-dist').textContent).toBe('14');
+    expect(root.querySelector('.fc-target-hp').style.getPropertyValue('--v')).toBe('0.5');
     expect(root.querySelector('.fc-target-hp').hasAttribute('data-on')).toBe(true);
     c.place(root, v());
     expect(root.querySelector('.fc-target').hasAttribute('data-on')).toBe(false);
   });
   it('shows no hull bar for a one-hit fighter', () => {
     const root = dom();
-    createCluster().place(root, v({ lock: { name: 'TIE Fighter', dist: '9', hp: null } }));
+    createCluster().place(root, v({ lock: { name: 'TIE Fighter', dist: 9.26, hp: null } }));
+    expect(root.querySelector('.fc-target-dist').textContent).toBe('9.3');
     expect(root.querySelector('.fc-target').hasAttribute('data-on')).toBe(true);
     expect(root.querySelector('.fc-target-hp').hasAttribute('data-on')).toBe(false);
   });

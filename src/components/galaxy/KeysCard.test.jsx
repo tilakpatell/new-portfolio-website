@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import KeysCard from './KeysCard';
+import { GROUPS } from './keyRows';
+import { PAGES } from '../guide/pages';
+import { keyTokens } from '../guide/keys';
 
 describe('KeysCard', () => {
   it('lists the keys in three groups, with a close button', () => {
@@ -14,5 +17,15 @@ describe('KeysCard', () => {
   });
   it('is nothing when shut', () => {
     expect(renderToStaticMarkup(<KeysCard open={false} onClose={() => {}} />)).toBe('');
+  });
+  it('has only keys the guide lists for the galaxy', () => {
+    // (the guide, pages.js, is where the keys are written out; the card is a few of them)
+    const guide = new Set();
+    for (const group of PAGES['/galaxy'].keys) for (const [keys] of group.rows) for (const t of keyTokens(keys)) if (t.key) guide.add(t.key.toUpperCase());
+    const missing = [];
+    for (const [, rows] of GROUPS)
+      for (const [keys] of rows)
+        for (const k of keys.split(' ')) if (!guide.has(k === 'Arrows' ? '←' : k.toUpperCase())) missing.push(k);
+    expect(missing).toEqual([]);
   });
 });

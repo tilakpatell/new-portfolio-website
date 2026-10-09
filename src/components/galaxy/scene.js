@@ -113,7 +113,7 @@ import { createInterdictor } from './interdictor';
 import { createWarFront } from './warfront';
 import { createGalaxyPowers } from './powers';
 import { createCluster } from './cluster';
-import { radarPoints, rangeFor } from './radar';
+import { createRadar } from './radar';
 import { drawRadar } from './radarDraw';
 import { chargeFor } from '../universe/shipPowers';
 import { effectsFor } from './warEffects';
@@ -1719,47 +1719,55 @@ export async function create(canvas, ctx) {
   // ── The HUD (the page's markup, the universe map's classes) ──
   // the flight cluster's numbers (cluster.js writes them where the page put its markup)
   const range = (d) => (d < 10 ? d.toFixed(1) : Math.round(d).toString());
+  // (the one record and the one lock it carries, filled each frame: cluster.js compares what's in them)
+  const clusterLock = { name: '', dist: 0, hp: null };
+  const clusterNow = { on: false, shield: 100, low: false, speed: 0, top: 1, boosting: false, kills: 0, lock: null };
   const placeShield = () => {
     const root = props.cluster?.current;
     if (!root) return;
-    const on = flying() && !state.crash && !(state.jump && state.jump.phase !== 'align') && !props.frozen;
+    const v = clusterNow;
+    v.on = flying() && !state.crash && !(state.jump && state.jump.phase !== 'align') && !props.frozen;
     const s = state.ship;
-    const t = on ? state.lockTarget : null;
-    cluster.place(root, {
-      on,
-      shield: state.shield,
-      low: state.shield < 35,
-      speed: s?.speed ?? 0,
-      top: SHIP.boost * clamp(state.stats.boost ?? 1, TUNE.boost[0], TUNE.boost[1]),
-      boosting: Boolean(state.keys.boost || state.boostBtn) && (s?.speed ?? 0) > SHIP.cruise,
-      kills: state.kills,
-      lock: t && { name: t.name ?? NAMES[t.kind] ?? SHIP_INFO[t.kind]?.name ?? t.kind, dist: range(apart(t.at.x, t.at.y, t.at.z, s.x, s.y, s.z)), hp: (t.hpMax ?? 1) > 1 ? t.hp / t.hpMax : null },
-    });
+    const t = v.on ? state.lockTarget : null;
+    v.shield = state.shield;
+    v.low = state.shield < 35;
+    v.speed = s?.speed ?? 0;
+    v.top = SHIP.boost * clamp(state.stats.boost ?? 1, TUNE.boost[0], TUNE.boost[1]);
+    v.boosting = Boolean(state.keys.boost || state.boostBtn) && v.speed > SHIP.cruise;
+    v.kills = state.kills;
+    if (t) {
+      clusterLock.name = t.name ?? NAMES[t.kind] ?? SHIP_INFO[t.kind]?.name ?? t.kind;
+      clusterLock.dist = apart(t.at.x, t.at.y, t.at.z, s.x, s.y, s.z);
+      clusterLock.hp = (t.hpMax ?? 1) > 1 ? t.hp / t.hpMax : null;
+    }
+    v.lock = t ? clusterLock : null;
+    cluster.place(root, v);
   };
-  // the radar: its contacts gathered and drawn, at most 20 times a second
-  const contacts = [];
+  // the radar: its contacts gathered and drawn, at most 20 times a second (radar.js keeps its records: nothing's made per tick)
+  const radar = createRadar();
   let radarAt = 0;
+  let radarLock = null; // (the lock's id this tick)
+  const addHostile = (c) => radar.add(c.id, c.threat ? 'threat' : 'hostile', c.at, c.id === radarLock);
+  const addAlly = (c) => radar.add(c.id, 'ally', c.at);
   const placeRadar = () => {
     const cv = props.radar?.current;
     if (!cv || !flying() || state.crash || props.frozen || (state.jump && state.jump.phase !== 'align')) return;
     if (state.clock - radarAt < 0.05) return;
     radarAt = state.clock;
-    const s = state.ship;
-    const lockId = state.lockTarget?.id;
-    contacts.length = 0;
-    const hostile = (c) => contacts.push({ id: c.id, kind: c.threat ? 'threat' : 'hostile', at: c.at, lock: c.id === lockId });
-    for (const c of hunters?.targets ?? NO_TARGETS) hostile(c);
-    for (const c of war?.targets ?? NO_TARGETS) hostile(c);
+    radarLock = state.lockTarget?.id ?? null;
+    radar.start(state.ship);
+    for (const c of hunters?.targets ?? NO_TARGETS) addHostile(c);
+    for (const c of war?.targets ?? NO_TARGETS) addHostile(c);
     if (pilots.count) {
-      for (const c of pilots.targets) if (c.threat) hostile(c);
-      for (const c of pilots.mates) contacts.push({ id: c.id, kind: 'ally', at: c.at });
+      for (const c of pilots.targets) if (c.threat) addHostile(c);
+      for (const c of pilots.mates) addAlly(c);
     }
-    if (wingmen?.active) for (const c of wingmen.bodies) contacts.push({ id: c.key, kind: 'ally', at: c.at });
+    if (wingmen?.active) for (const w of wingmen.ships) if (w.alive) radar.add(w.id, 'ally', w.pos);
     const b = war?.battle;
-    if (b && b.you?.team !== null && !b.over) for (const f of b.fighters) if (f.alive && f.team === b.you.team) contacts.push({ id: f.id, kind: 'ally', at: f.seen ?? f.pos });
-    if (state.navGoal) contacts.push({ id: 'nav', kind: 'goal', at: state.navGoal });
-    const range = rangeFor(s, contacts.filter((c) => c.kind === 'hostile' || c.kind === 'threat'));
-    drawRadar(cv, radarPoints(s, contacts, range), { range, dpr: Math.min(2, window.devicePixelRatio || 1) });
+    if (b && b.you?.team !== null && !b.over) for (const f of b.fighters) if (f.alive && f.team === b.you.team) radar.add(f.id, 'ally', f.seen ?? f.pos);
+    if (state.navGoal) radar.add('nav', 'goal', state.navGoal);
+    const range = radar.range;
+    drawRadar(cv, radar.points(range), { range, dpr: Math.min(2, window.devicePixelRatio || 1) });
   };
   const placeStick = () => {
     const el = props.stick?.current;
@@ -1812,6 +1820,19 @@ export async function create(canvas, ctx) {
     el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
     el.toggleAttribute('data-off', off);
     if (r) el.style.setProperty('--r', `${Math.round(r)}px`);
+  };
+  // The HUD's goal for the plotted course: its name, light-years and bearing, worked out when the course or the system changes (the key),
+  // its `at` moved with the ship each frame. "· J" only where there's a key to press.
+  const courseKeep = { key: '', goal: null };
+  const finePointer = () => typeof matchMedia !== 'function' || matchMedia('(pointer: fine)').matches;
+  const courseGoal = (id) => {
+    const key = `${id}>${state.sys?.id}`;
+    if (courseKeep.key !== key) {
+      const to = systemById(id);
+      courseKeep.key = key;
+      courseKeep.goal = to && state.sys ? { at: [0, 0, 0], dir: courseTo(state.sys, to), name: `Course: ${to.name}${finePointer() ? ' · J' : ''}`, dist: `${lightYears(state.sys, to).toLocaleString('en-US')} ly`, reach: 0, way: true } : null;
+    }
+    return courseKeep.goal;
   };
   const threatList = [];
   const mateList = [];
@@ -1907,10 +1928,12 @@ export async function create(canvas, ctx) {
     }
     // (else the course plotted on the galaxy map: the way to jump, as the jump's own bearing, till J goes)
     else if (on && props.course && props.course !== state.sys?.id) {
-      const to = systemById(props.course);
-      if (to && state.sys) {
-        const d = courseTo(state.sys, to);
-        goal = { at: [s.x + d[0] * 2000, s.y + d[1] * 2000, s.z + d[2] * 2000], name: `Course: ${to.name} · J`, dist: `${lightYears(state.sys, to).toLocaleString('en-US')} ly`, reach: 0, way: true };
+      const g = courseGoal(props.course);
+      if (g) {
+        g.at[0] = s.x + g.dir[0] * 2000;
+        g.at[1] = s.y + g.dir[1] * 2000;
+        g.at[2] = s.z + g.dir[2] * 2000;
+        goal = g;
       }
     }
     state.navGoal = goal ? goal.at : null;
@@ -1943,6 +1966,8 @@ export async function create(canvas, ctx) {
       const at = pilots.at(e.id);
       if (at) pops.hit({ point: at, normal: new THREE.Vector3(0, 1, 0), radius: 0.55 });
       if (e.by && e.by === net?.selfId) {
+        state.kills += 1;
+        state.killMark = 1;
         emit({ type: 'kill', kind: 'pilot' });
         pay('killPilot');
         if (!reduced) state.shake = Math.max(state.shake, 0.2);

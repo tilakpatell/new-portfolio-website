@@ -1,13 +1,10 @@
 import { RiCloseLine } from 'react-icons/ri';
+import { GROUPS } from './keyRows';
 
-// The galaxy's flying keys in one small card (the guide, pages.js, has them
-// all in words): until you first fly, and again from the Keys chip. A
-// desktop's: a touch screen has its buttons, and flight.css hides this there.
-const GROUPS = [
-  ['Fly', [['W S', 'Throttle'], ['A D', 'Roll'], ['Arrows', 'Steer'], ['Space', 'Boost'], ['V', 'Cockpit']]],
-  ['Fight', [['F', 'Fire (hold)'], ['T Q', 'Next, last target'], ['G', 'Crew power'], ['X', 'The big one']]],
-  ['Travel', [['J', 'Jump to the star ahead, or the course'], ['M', 'Galaxy map'], ['E', 'Land']]],
-];
+// The galaxy's flying keys in one small card (keyRows.js: a few of the
+// guide's, pages.js, which has them all in words): until you first fly, and
+// again from the Keys chip. A desktop's: a touch screen has its buttons, and
+// flight.css hides this there.
 
 export default function KeysCard({ open, onClose }) {
   if (!open) return null;

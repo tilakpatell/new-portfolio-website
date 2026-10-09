@@ -5,26 +5,50 @@
 // white ring; a tick above or below a dot for a contact over or under you;
 // the range in the lower part, between the rings (the canvas is clipped to
 // its round border, which took a corner's number).
+//
+// It's drawn ~20 times a second, so what doesn't change is worked out once
+// per canvas: its size (again when it's resized or the pixel ratio changes),
+// its font and the range's text.
 const INK = { hostile: '#ff5a4a', threat: '#ff3b2f', ally: '#6dff9a', goal: '#ffd36a', pickup: '#6fe7ff' };
+const RINGS = [0.5, 1];
+const looks = new WeakMap(); // canvas → { size, dpr, font, label, range, dirty }
 
-export function drawRadar(canvas, points, { range, dpr = 1 } = {}) {
+const lookOf = (canvas, dpr) => {
+  let k = looks.get(canvas);
+  if (!k) {
+    // (12 px: nothing a player reads is under 0.7 rem)
+    k = { size: 0, dpr: 0, font: `600 12px ${getComputedStyle(canvas).fontFamily || 'monospace'}`, label: '', range: NaN, dirty: true };
+    looks.set(canvas, k);
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => (k.dirty = true)).observe(canvas);
+  }
+  if (k.dirty || k.dpr !== dpr) {
+    k.dirty = false;
+    k.dpr = dpr;
+    k.size = canvas.clientWidth || 132;
+    const px = Math.round(k.size * dpr);
+    if (canvas.width !== px) {
+      canvas.width = px;
+      canvas.height = px;
+    }
+  }
+  return k;
+};
+
+// `points`: radar.js's (a list it keeps, longer than what's in use: `points.n` of them are)
+export function drawRadar(canvas, points, { range, dpr = 1, n = points.n ?? points.length } = {}) {
   const g = canvas.getContext('2d');
   if (!g) return;
-  const size = canvas.clientWidth || 132;
-  const px = Math.round(size * dpr);
-  if (canvas.width !== px) {
-    canvas.width = px;
-    canvas.height = px;
-  }
+  const look = lookOf(canvas, dpr);
+  const size = look.size;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, size, size);
   const c = size / 2;
   const r = c - 6;
   g.strokeStyle = 'rgba(127,214,255,0.28)';
   g.lineWidth = 1;
-  for (const k of [0.5, 1]) {
+  for (let i = 0; i < RINGS.length; i++) {
     g.beginPath();
-    g.arc(c, c, r * k, 0, Math.PI * 2);
+    g.arc(c, c, r * RINGS[i], 0, Math.PI * 2);
     g.stroke();
   }
   g.fillStyle = 'rgba(127,214,255,0.08)';
@@ -40,7 +64,8 @@ export function drawRadar(canvas, points, { range, dpr = 1 } = {}) {
   g.lineTo(c + 3.5, c + 4);
   g.closePath();
   g.fill();
-  for (const p of points) {
+  for (let i = 0; i < n; i++) {
+    const p = points[i];
     const x = c + p.x * r;
     const y = c - p.y * r;
     const big = p.kind === 'threat' ? 3.6 : 2.6;
@@ -61,8 +86,11 @@ export function drawRadar(canvas, points, { range, dpr = 1 } = {}) {
   }
   g.globalAlpha = 1;
   g.fillStyle = 'rgba(217,243,255,0.9)';
-  // (12 px: nothing a player reads is under 0.7 rem)
-  g.font = `600 12px ${getComputedStyle(canvas).fontFamily || 'monospace'}`;
+  g.font = look.font;
   g.textAlign = 'center';
-  g.fillText(String(range), c, c + r * 0.75 + 4);
+  if (look.range !== range) {
+    look.range = range;
+    look.label = String(range);
+  }
+  g.fillText(look.label, c, c + r * 0.75 + 4);
 }

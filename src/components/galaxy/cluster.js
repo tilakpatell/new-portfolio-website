@@ -2,7 +2,19 @@
 // galaxy/scene.js every frame: the deflectors, the speed against the
 // boost's top, the kills this flight and the target, each written only
 // when what it shows has changed (the HUD kit's rule: numbers through refs
-// in the frame loop, never React's state).
+// in the frame loop, never React's state). Called every frame, so it makes
+// nothing per call: what's compared is a number (the text is made only when
+// it's written), and the writers are made once.
+const text = (el, s) => (el.textContent = s);
+const num = (el, v) => (el.textContent = String(v));
+const shieldPct = (el, v) => (el.textContent = `${v}%`);
+const speedText = (el, v) => (el.textContent = `SPD ${v}`);
+const dist = (el, v) => (el.textContent = v < 10 ? v.toFixed(1) : String(v)); // (the target's distance: a tenth up close, else whole units)
+const bar = (per) => (el, v) => el.style.setProperty('--v', String(v / per));
+const flag = (name) => (el, on) => el.toggleAttribute(name, on);
+const WRITE = { on: flag('data-on'), low: flag('data-low'), boost: flag('data-boost'), shield: bar(100), speed: bar(50), hull: bar(50), hullOn: flag('data-on'), targetOn: flag('data-on') };
+
+// `v`: { on, shield (0–100), low, speed, top, boosting, kills, lock: null | { name, dist (units), hp (0–1 or null) } }
 export function createCluster() {
   let els = { root: null };
   const was = new Map();
@@ -11,9 +23,6 @@ export function createCluster() {
     was.set(key, value);
     write(el, value);
   };
-  const text = (el, s) => (el.textContent = s);
-  const prop = (el, s) => el.style.setProperty('--v', s);
-  const flag = (name) => (el, on) => el.toggleAttribute(name, on);
   return {
     place(root, v) {
       if (root !== els.root) {
@@ -22,24 +31,25 @@ export function createCluster() {
         was.clear();
       }
       if (!root) return;
-      put(root, 'on', Boolean(v.on), flag('data-on'));
+      put(root, 'on', Boolean(v.on), WRITE.on);
       if (!v.on) return;
-      const sh = Math.max(0, Math.min(100, v.shield));
-      put(els.shield, 'sh', String(Math.round(sh) / 100), prop);
-      put(els.shield, 'low', Boolean(v.low), flag('data-low'));
-      put(els.shieldN, 'shn', `${Math.round(sh)}%`, text);
+      const sh = Math.round(Math.max(0, Math.min(100, v.shield)));
+      put(els.shield, 'sh', sh, WRITE.shield);
+      put(els.shield, 'low', Boolean(v.low), WRITE.low);
+      put(els.shieldN, 'shn', sh, shieldPct);
       const k = v.top > 0 ? Math.min(1, Math.abs(v.speed) / v.top) : 0;
-      put(els.speed, 'sp', String(Math.round(k * 50) / 50), prop);
-      put(els.speed, 'boost', Boolean(v.boosting), flag('data-boost'));
-      put(els.speedN, 'spn', `SPD ${Math.round(Math.abs(v.speed) * 10)}`, text);
-      put(els.kills, 'kills', String(v.kills), text);
+      put(els.speed, 'sp', Math.round(k * 50), WRITE.speed);
+      put(els.speed, 'boost', Boolean(v.boosting), WRITE.boost);
+      put(els.speedN, 'spn', Math.round(Math.abs(v.speed) * 10), speedText);
+      put(els.kills, 'kills', v.kills, num);
       const t = v.lock;
-      put(els.target, 'ton', Boolean(t), flag('data-on'));
+      put(els.target, 'ton', Boolean(t), WRITE.targetOn);
       if (!t) return;
       put(els.tName, 'tn', t.name, text);
-      put(els.tDist, 'td', t.dist, text);
-      put(els.tHp, 'thon', t.hp !== null && t.hp !== undefined, flag('data-on'));
-      if (t.hp !== null && t.hp !== undefined) put(els.tHp, 'thp', String(Math.round(t.hp * 50) / 50), prop);
+      put(els.tDist, 'td', t.dist < 10 ? Math.round(t.dist * 10) / 10 : Math.round(t.dist), dist);
+      const tough = t.hp !== null && t.hp !== undefined;
+      put(els.tHp, 'thon', tough, WRITE.hullOn);
+      if (tough) put(els.tHp, 'thp', Math.round(t.hp * 50), WRITE.hull);
     },
   };
 }
