@@ -2,7 +2,9 @@
    under the deflectors; round buttons beside the others on a touch screen.
    Each has a ring that runs down while the power's on and fills again as it
    cools down or the big one charges (--k: 0 full, 1 empty, written by the
-   scene), in the crew's own colour. */
+   scene), in the crew's own colour. In the flight cluster (data-place) on a
+   desktop the tiles are wider, with a word under each (Ready, On 3s, 12s,
+   Charging 40%, or why a press was refused). */
 .ship-powers {
   --power: var(--accent, #7fd6ff);
   position: absolute;
@@ -60,7 +62,9 @@
    kbd.hud-cap), in this tile's ink; the corner is the wrapper's, so the
    tile draws no cap of its own */
 .ship-power-key { position: absolute; left: 5px; top: 4px; color: rgb(255 255 255 / 0.75); line-height: 1; }
-.ship-power small { position: absolute; right: 5px; top: 4px; color: rgb(255 255 255 / 0.8); font-size: 0.5rem; font-variant-numeric: tabular-nums; }
+.ship-power small { position: absolute; right: 5px; top: 4px; color: rgb(255 255 255 / 0.8); font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+/* (the state's word is the cluster's: shown there, below) */
+.ship-power-state { display: none; }
 .ship-power:focus-visible { outline: 2px solid var(--power); outline-offset: 2px; }
 /* on: the tile lit in the crew's colour */
 .ship-power[data-phase='active'] { background: color-mix(in srgb, var(--power) 30%, rgb(3 4 10 / 0.7)); }
@@ -85,13 +89,29 @@
 @media (pointer: fine) and (max-height: 700px) {
   .ship-powers { top: calc(50% + var(--nav-h, 68px) / 2 + 92px); left: 120px; }
 }
-/* a touch screen: round buttons above View, clear of Fire, Boost and the climbs */
+/* in the flight cluster (FlightCluster.jsx), on a desktop: in the row with the
+   radar and the other blocks, a word under each. These win over the column
+   rules above (and the short window's) by their selector. */
+@media (pointer: fine) and (min-width: 768px) {
+  .ship-powers[data-place='cluster'] { position: static; top: auto; left: auto; }
+  .ship-powers[data-place='cluster'] .ship-power { width: 84px; height: 64px; grid-template-rows: 24px auto auto; }
+  .ship-powers[data-place='cluster'] .ship-power-name { font-size: 0.7rem; letter-spacing: 0.04em; }
+  .ship-powers[data-place='cluster'] .ship-power-state { display: block; font-size: 0.7rem; font-variant-numeric: tabular-nums; color: rgb(255 255 255 / 0.9); }
+  .ship-powers[data-place='cluster'] .ship-power small { display: none; }
+  .ship-power[data-denied] { box-shadow: 0 0 0 2px #ff6a5c; }
+}
+@media (pointer: fine) and (min-width: 768px) and (max-height: 700px) {
+  .ship-powers[data-place='cluster'] .ship-power { width: 64px; height: 52px; }
+  .ship-powers[data-place='cluster'] .ship-power-name { display: none; }
+}
+/* a touch screen: round buttons above View, clear of Fire, Boost and the climbs
+   (their names are the icon's and the label's: no room at 0.7rem in a round button) */
 @media (pointer: coarse) {
   .ship-powers { left: auto; top: auto; right: calc(var(--panel-w, 0px) + 200px); bottom: 104px; flex-direction: row-reverse; }
   .ship-power { width: 58px; height: 58px; border-radius: 50%; grid-template-rows: 24px auto; padding-top: 7px; }
   .ship-power-key { display: none; }
-  .ship-power-name { font-size: 0.44rem; letter-spacing: 0.02em; }
-  .ship-power small { right: 50%; top: auto; bottom: -15px; translate: 50% 0; text-shadow: 0 1px 4px rgb(0 0 0 / 0.9); }
+  .ship-power-name { display: none; }
+  .ship-power small { right: 50%; top: auto; bottom: -15px; translate: 50% 0; font-size: 0.7rem; text-shadow: 0 1px 4px rgb(0 0 0 / 0.9); }
 }
 /* a phone: over the sheet, left of the climbs, above Fire and View */
 @media (max-width: 767px) {

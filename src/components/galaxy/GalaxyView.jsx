@@ -13,7 +13,7 @@ import { letsJumpGo } from './jumpIn';
 import WarHud from './WarHud';
 import LoadingVeil from '../worlds/LoadingVeil';
 import BattleEnd from './BattleEnd';
-import PowerBar from '../universe/PowerBar';
+import FlightCluster from './FlightCluster';
 
 // The galaxy's 3D view (scene.js, a world module on the world runtime:
 // ./module.js) and everything over it:
@@ -22,7 +22,8 @@ import PowerBar from '../universe/PowerBar';
 // them (a click jumps you there) and, with the nose on one, the button to
 // jump to it, the other pilots' callsigns, the targeting HUD and the stick ring
 // (the universe map's own, UniverseMap.jsx's classes, the scene moves them),
-// your shields, the touch buttons, the flight settings and a line on how to
+// the flight cluster (FlightCluster.jsx: radar, deflectors, speed, kills,
+// target and the crew's powers), the touch buttons, the flight settings and a line on how to
 // fly until you do, and the war's battle on here in a line (WarHud.jsx) with
 // its end card when it's decided (BattleEnd.jsx).
 // While the 3D loads the box says so; without 3D, a note
@@ -34,8 +35,10 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   const [aim, setAim] = useState(null); // the star the nose is on
   const tags = useRef(null);
   const stick = useRef(null);
-  const shield = useRef(null);
-  const powers = useRef(null); // (the crew's ship powers' bar: the scene writes it)
+  const cluster = useRef(null); // (the flight cluster: deflectors, speed, kills, the target; the scene writes it)
+  const radar = useRef(null); // (its radar's canvas)
+  const buffs = useRef(null); // (and the row of effects over it)
+  const powers = useRef(null); // (the crew's ship powers' bar, inside it: the scene writes that too)
   const hud = useRef(null);
   const [flown, setFlown] = useState(false);
   const [controls, setControlsState] = useState(() => readControls(local.get(CONTROLS_KEY)));
@@ -60,7 +63,9 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
       labels,
       stars,
       stick,
-      shield,
+      cluster,
+      radar,
+      buffs,
       powers,
       hud,
       net,
@@ -129,6 +134,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
   const others = SYSTEMS.filter((s) => s !== hereSys);
   const aimed = aim && aim !== hereSys.id ? systemById(aim) : null;
   const jump = (id) => view.current?.jump?.(id);
+  const onPower = (slot) => view.current?.power?.(slot);
 
   const hold = (down) => (e) => (e.preventDefault(), view.current?.boost?.(down));
   const trigger = (down) => (e) => (e.preventDefault(), view.current?.fire?.(down));
@@ -197,13 +203,7 @@ export default function GalaxyView({ system, here, handle, ship, loadout, build 
               <div ref={stick} className="universe-stick" aria-hidden="true">
                 <span />
               </div>
-              <div ref={shield} className="universe-shield" aria-hidden="true">
-                <span className="universe-shield-label">Deflectors</span>
-                <span className="universe-shield-bar">
-                  <span />
-                </span>
-              </div>
-              <PowerBar ship={ship} reduced={reduced} barRef={powers} onPress={(slot) => view.current?.power?.(slot)} />
+              <FlightCluster rootRef={cluster} ship={ship} reduced={reduced} powersRef={powers} onPower={onPower} radarRef={radar} buffsRef={buffs} />
               <div ref={hud} className="universe-hud" aria-hidden="true">
                 <span className="universe-reticle" />
                 <span className="universe-lock">

@@ -6,8 +6,10 @@ import './powers.css';
 // while it's on and fills as it cools down or the big one charges, with the
 // seconds (or the charge) in its corner. The scene writes the phase, the
 // ring and the seconds as they change (galaxy/powers.js's place); a tap or
-// a click uses it, as G and X do. Nothing with motion reduced (there's
-// nothing to use them on then) or without a ship.
+// a click uses it, as G and X do. In the flight cluster (`placement`, on a
+// desktop) a word under each says where it stands, and why a press was
+// refused. Nothing with motion reduced (there's nothing to use them on then)
+// or without a ship.
 
 const SLOTS = ['primary', 'ultimate'];
 
@@ -57,11 +59,11 @@ const ICONS = {
   ),
 };
 
-export default function PowerBar({ ship, reduced, barRef, onPress }) {
+export default function PowerBar({ ship, reduced, barRef, onPress, placement = null }) {
   const own = powersOf(ship);
   if (reduced || !own) return null;
   return (
-    <div ref={barRef} className="ship-powers" data-ship={ship} role="group" aria-label="Ship powers">
+    <div ref={barRef} className="ship-powers" data-ship={ship} data-place={placement || undefined} role="group" aria-label="Ship powers">
       {SLOTS.map((slot) => {
         const id = own[slot];
         const p = POWERS[id];
@@ -85,6 +87,7 @@ export default function PowerBar({ ship, reduced, barRef, onPress }) {
               {ICONS[id]}
             </svg>
             <span className="ship-power-name">{p.short}</span>
+            <span className="ship-power-state" aria-hidden="true" />
             <span className="ship-power-key">
               <kbd className="hud-cap">{key}</kbd>
             </span>

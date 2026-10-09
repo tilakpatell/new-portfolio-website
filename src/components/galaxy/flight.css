@@ -1,0 +1,94 @@
+/* The flight cluster (FlightCluster.jsx): bottom centre of the space left of
+   the panel, over the 3D. Its blocks are glass at 0.8 (text over 3D reads on
+   it), nothing in it is under 0.7rem, and the scene writes its numbers
+   (cluster.js, radarDraw.js). The crew's power tiles are in it (powers.css's
+   data-place="cluster"); on a touch screen they stay round buttons beside
+   Fire and View, and the cluster keeps to the left column, clear of them. */
+.fc {
+  --fc-glass: rgb(3 6 14 / 0.8);
+  --fc-line: rgb(127 214 255 / 0.28);
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: calc(var(--hud-pad-b, 12px) + 10px);
+  translate: calc(-50% - (var(--panel-w, 0px) + 24px) / 2) 0;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  max-width: calc(100% - var(--panel-w, 0px) - 40px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  color: #e8f4ff;
+  font-family: var(--font-mono);
+}
+.fc[data-on] { opacity: 1; }
+.fc-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: center; gap: 8px; }
+.fc-glass { display: grid; gap: 4px; min-width: 170px; padding: 8px 10px; border: 1px solid var(--fc-line); border-radius: 12px; background: var(--fc-glass); }
+.fc-line { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.fc-label { color: rgb(217 243 255 / 0.85); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; }
+.fc b { font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.fc-bar { position: relative; display: block; height: 6px; overflow: hidden; border-radius: 4px; background: rgb(255 255 255 / 0.1); }
+.fc-bar > span { position: absolute; inset: 0; transform-origin: left; scale: var(--v, 0) 1; transition: scale 0.15s; }
+.fc-shield > span { background: linear-gradient(90deg, #4fd2ff, #9ef3ff); box-shadow: 0 0 8px rgb(120 220 255 / 0.6); }
+.fc-shield[data-low] > span { background: linear-gradient(90deg, #ff4a3d, #ff9a5c); }
+@media (prefers-reduced-motion: no-preference) {
+  .fc-shield[data-low] > span { animation: fc-blink 0.6s steps(2) infinite; }
+}
+@keyframes fc-blink { 50% { opacity: 0.45; } }
+.fc-speed > span { background: linear-gradient(90deg, #ffd36a, #fff2c4); }
+.fc-speed[data-boost] > span { background: linear-gradient(90deg, #ff9a3d, #ffe08a); box-shadow: 0 0 10px rgb(255 170 60 / 0.7); }
+.fc-target { min-width: 190px; }
+.fc-target-name { overflow: hidden; max-width: 200px; text-overflow: ellipsis; white-space: nowrap; }
+.fc-target-hp > span { background: linear-gradient(90deg, #ff5a4a, #ffb08a); }
+.fc-target-hp:not([data-on]) { visibility: hidden; }
+.fc-keys { color: rgb(217 243 255 / 0.85); font-size: 0.7rem; }
+/* (no target: the label, and the way to get one) */
+.fc-target:not([data-on]) > :not(.fc-none):not(.fc-label) { display: none; }
+.fc-target[data-on] .fc-none { display: none; }
+.fc-none { color: rgb(217 243 255 / 0.85); font-size: 0.74rem; }
+.fc-radar { width: 132px; height: 132px; border: 1px solid var(--fc-line); border-radius: 50%; background: radial-gradient(circle, rgb(10 30 50 / 0.82), rgb(3 6 14 / 0.86)); }
+/* (the pickups' effects, over the row: PR 3 fills it) */
+.fc-buffs { display: flex; gap: 6px; }
+.fc-buffs:empty { display: none; }
+/* the jump button, when the nose is on a star, sits over the cluster */
+.galaxy-page .galaxy-jumpbtn { bottom: calc(var(--hud-pad-b, 12px) + 168px); }
+
+/* the reticle's kill flash: a white X through the ring for a third of a second (the scene sets data-kill) */
+.universe-reticle[data-kill] {
+  scale: 1.7;
+  border-color: #fff;
+  background: linear-gradient(45deg, transparent 44%, #fff 44% 56%, transparent 56%), linear-gradient(-45deg, transparent 44%, #fff 44% 56%, transparent 56%);
+  box-shadow: 0 0 14px rgb(255 255 255 / 0.8);
+}
+
+@media (max-height: 700px), (max-width: 1100px) {
+  .fc-glass { min-width: 140px; padding: 6px 8px; }
+  .fc-radar { width: 104px; height: 104px; }
+  .fc-keys { display: none; }
+}
+@media (min-width: 768px) and (max-height: 700px) {
+  .galaxy-page .galaxy-jumpbtn { bottom: calc(var(--hud-pad-b, 12px) + 138px); }
+}
+
+/* a touch screen, or a phone's width: the cluster is the whole map's box (it
+   takes no clicks) so the power tiles, which keep their own place as round
+   buttons beside Fire and View on the right, are placed against the map as
+   they are without it; the radar and the ship's block keep to the left
+   column, over the flight settings' button (which has the bottom corner),
+   the ship's over the radar since the open part of the map is narrow there */
+@media (pointer: coarse), (max-width: 767px) {
+  .fc { inset: 0; translate: none; max-width: none; display: block; }
+  .fc-row { display: contents; }
+  .fc-target, .fc-speed, .fc-speed-n { display: none; }
+  .fc-radar, .fc-ship { position: absolute; left: var(--hud-edge, 12px); }
+  .fc-radar { bottom: 120px; width: 96px; height: 96px; }
+  .fc-ship { bottom: 222px; width: 124px; min-width: 0; padding: 6px; }
+  .fc-label { letter-spacing: 0.06em; }
+}
+@media (max-width: 767px) {
+  .fc-radar { bottom: calc(var(--sheet-h, 0px) + 120px); }
+  .fc-ship { bottom: calc(var(--sheet-h, 0px) + 222px); }
+  /* (the first-flight line goes over the cluster, not under it) */
+  .galaxy-page .universe-hint { bottom: calc(var(--sheet-h, 0px) + 290px); }
+}

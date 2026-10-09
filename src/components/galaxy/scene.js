@@ -83,7 +83,7 @@ import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
 import { followRatio } from './drawnAt';
 import { houseOn } from '../../lib/three/house';
-import { SHIP, autopilot, forward, spawn, step } from '../universe/ship';
+import { SHIP, TUNE, autopilot, forward, spawn, step } from '../universe/ship';
 import { REAIM_MS, parkBehind, pilotSpace, reached } from '../universe/pilotGoal';
 import { createHunters } from '../universe/hunters';
 import { createShipHits, solidsWith } from '../universe/shipHits';
@@ -112,6 +112,7 @@ import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, 
 import { createInterdictor } from './interdictor';
 import { createWarFront } from './warfront';
 import { createGalaxyPowers } from './powers';
+import { createCluster } from './cluster';
 import { chargeFor } from '../universe/shipPowers';
 import { effectsFor } from './warEffects';
 import { warNow } from './warState';
@@ -359,6 +360,8 @@ export async function create(canvas, ctx) {
     hurt: 0,
     lowSaid: false,
     heat: 0,
+    kills: 0, // this flight's, for the cluster
+    killMark: 0, // the reticle's kill flash, 1 → 0
     jump: null, // { to, from, phase, age, dir, dur }
     aim: null, // { id, angle }: the star the nose is on, if it's on one
     courseSaid: false,
@@ -399,6 +402,7 @@ export async function create(canvas, ctx) {
   // the crew's ship powers (powers.js), played out with the scene's own pieces
   // (made before the first frame's shaders are, so its look is made with them)
   const powers = createGalaxyPowers({ parent: scene, reduced, hunters, war, bolts, flashes, crashFx, pops, post, state, emit, controls, strike: (...a) => strike(...a), scored: (...a) => scored(...a), teleport: (pose) => teleport(pose) });
+  const cluster = createCluster(); // (the flight cluster's writer: placeShield)
 
   // ── The system you're in ──
   const followDrawn = followRatio(post, (r) => (sky.setRatio(r), state.world?.setRatio(r))); // (the ratio the points are sized by: ./drawnAt.js)
@@ -550,6 +554,7 @@ export async function create(canvas, ctx) {
     state.kind = kind;
     powers.setCrew(kind);
     if (!same) {
+      state.kills = 0; // (a new ship, a new flight)
       dropCab();
       cabWanted = null;
       if (kind && state.seat === 'cockpit') buildCab(kind);
@@ -940,6 +945,8 @@ export async function create(canvas, ctx) {
       emit(by ? { type: 'kill', kind: hit.kind, by } : { type: 'kill', kind: hit.kind });
       if (src === 'hunters') pay(hunterEarn(FACTIONS, hit));
       state.heat += 1;
+      state.kills += 1;
+      state.killMark = 1;
       if (!reduced) state.shake = Math.max(state.shake, 0.2);
       if (!by) feel.hitstop(HITSTOP.kill);
     }
@@ -970,6 +977,8 @@ export async function create(canvas, ctx) {
       net?.hunterHit(ph.id, ph.hunter, punch);
       powers.gain(ph.down ? 'kill' : 'hit', `pilots:${ph.id}:${ph.hunter}`);
       if (ph.down) {
+        state.kills += 1;
+        state.killMark = 1;
         emit({ type: 'kill', kind: ph.kind });
         if (state.helped.once(`${ph.id}:${ph.hunter}`)) pay('hunterHelped'); // (one shot off someone else's tail)
         if (!reduced) state.shake = Math.max(state.shake, 0.2);
@@ -1704,18 +1713,24 @@ export async function create(canvas, ctx) {
   };
 
   // ── The HUD (the page's markup, the universe map's classes) ──
-  let shieldOn = false;
+  // the flight cluster's numbers (cluster.js writes them where the page put its markup)
+  const range = (d) => (d < 10 ? d.toFixed(1) : Math.round(d).toString());
   const placeShield = () => {
-    const el = props.shield?.current;
-    if (!el) return;
-    const on = flying() && !state.crash && !state.jump && !props.frozen && Boolean(hunters?.active || state.shield < 99.5 || state.pull > 0);
-    if (on !== shieldOn) {
-      shieldOn = on;
-      el.toggleAttribute('data-on', on);
-    }
-    if (!on) return;
-    el.style.setProperty('--shield', (state.shield / 100).toFixed(3));
-    el.toggleAttribute('data-low', state.shield < 35);
+    const root = props.cluster?.current;
+    if (!root) return;
+    const on = flying() && !state.crash && !(state.jump && state.jump.phase !== 'align') && !props.frozen;
+    const s = state.ship;
+    const t = on ? state.lockTarget : null;
+    cluster.place(root, {
+      on,
+      shield: state.shield,
+      low: state.shield < 35,
+      speed: s?.speed ?? 0,
+      top: SHIP.boost * clamp(state.stats.boost ?? 1, TUNE.boost[0], TUNE.boost[1]),
+      boosting: Boolean(state.keys.boost || state.boostBtn) && (s?.speed ?? 0) > SHIP.cruise,
+      kills: state.kills,
+      lock: t && { name: t.name ?? NAMES[t.kind] ?? SHIP_INFO[t.kind]?.name ?? t.kind, dist: range(apart(t.at.x, t.at.y, t.at.z, s.x, s.y, s.z)), hp: (t.hpMax ?? 1) > 1 ? t.hp / t.hpMax : null },
+    });
   };
   const placeStick = () => {
     const el = props.stick?.current;
@@ -1769,7 +1784,6 @@ export async function create(canvas, ctx) {
     el.toggleAttribute('data-off', off);
     if (r) el.style.setProperty('--r', `${Math.round(r)}px`);
   };
-  const range = (d) => (d < 10 ? d.toFixed(1) : Math.round(d).toString());
   const threatList = [];
   const mateList = [];
   const placeHud = () => {
@@ -1785,6 +1799,7 @@ export async function create(canvas, ctx) {
       h.reticle.style.transform = `translate3d(${hudAt.x.toFixed(1)}px, ${hudAt.y.toFixed(1)}px, 0)`;
       h.reticle.toggleAttribute('data-hot', state.hot);
       h.reticle.toggleAttribute('data-hit', state.hitMark > 0);
+      h.reticle.toggleAttribute('data-kill', state.killMark > 0);
     }
     const tgt = on ? state.lockTarget : null;
     setOn(h, h.lock, Boolean(tgt));
@@ -2085,6 +2100,7 @@ export async function create(canvas, ctx) {
       speedLines.set({ stretch: fast * 0.18, speed: fast * 80 });
     } else speedLines.set({ stretch: 0, speed: 0 }); // (none through a jump: the site's own is over the scene)
     if (state.hitMark > 0) state.hitMark = Math.max(0, state.hitMark - dt * 4);
+    if (state.killMark > 0) state.killMark = Math.max(0, state.killMark - dt / 0.35);
     // the other pilots in this system
     if (net) {
       const s = flying() ? state.ship : null;
