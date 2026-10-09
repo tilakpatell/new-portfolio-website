@@ -68,7 +68,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2A | session_01HPFczeNhvDuaFuXnrzZj9H | `claude/feel-middleearth` | Tier 1: #728 | |
 | 2B | | | | |
 | 2C | | | | |
-| 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: (opening) | Tier 1 |
+| 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735 | Tier 1 |
 | 2E | | | | |
 | 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1) | |
 
