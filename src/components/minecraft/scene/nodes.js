@@ -24,7 +24,7 @@
 
 import * as THREE from 'three';
 import { MeshBasicNodeMaterial, PointsNodeMaterial } from 'three/webgpu';
-import { Discard, Fn, If, abs, attribute, cameraPosition, dot, float, floor, fract, int, length, min, mix, mod, normalize, positionLocal, positionWorld, screenDPR, select, smoothstep, texture, uniform, uniformArray, uv, varying, vec2, vec3, vec4 } from 'three/tsl';
+import { Discard, Fn, If, abs, attribute, cameraPosition, dot, float, floor, fract, int, length, min, mix, mod, normalize, positionLocal, positionWorld, round, screenDPR, select, smoothstep, texture, uniform, uniformArray, uv, varying, vec2, vec3, vec4 } from 'three/tsl';
 import { frameAt } from '../pack/atlas.js';
 
 // The one block material, in three passes: opaque, cutout (a texel is there
@@ -57,6 +57,12 @@ export const TINT_COLOURS = {
 const CELL = 12; // the clouds' cell, in blocks (sky.js's)
 const v4 = ([r, g, b]) => new THREE.Vector4(r / 255, g / 255, b / 255, 1);
 
+// A texture array's layer, rounded as GLSL's texture(sampler2DArray, …)
+// rounds it: the node renderer makes it an integer by cutting it off, and
+// a layer carried through a varying arrives as 6.9999 as often as 7, so
+// whole tiles came from the one before.
+const layerOf = (z) => round(z);
+
 const made = (Kind, opts, colorNode) => {
   const material = new Kind(opts);
   material.colorNode = colorNode;
@@ -71,8 +77,6 @@ export function blockMaterial({ array, pass, colours = {} }) {
   const u = {
     atlas: texture(array),
     sun: uniform(1), // the sun's brightness for the light, 0.2 at night to 1 (rules/time.js)
-    // (as vec4s: a vec3 array's elements are padded to four in the
-    // uniform buffer, and a tint read from one came out of the next)
     tints: uniformArray([[255, 255, 255], c.grass, c.foliage, c.water, c.birch, c.spruce].map(v4), 'vec4'),
     anim: uniformArray([0, 1, 2, 3].map(() => new THREE.Vector4(-1, 0, 0, 0)), 'vec4'), // the strip's layer, the frame's, the next's, the blend
     fogColour: uniform(new THREE.Vector3(0.75, 0.85, 1)),
@@ -123,8 +127,8 @@ export function blockMaterial({ array, pass, colours = {} }) {
   const vDist = varying(length(positionWorld.xz.sub(cameraPosition.xz)), 'vDist');
 
   const colour = Fn(() => {
-    const here = u.atlas.sample(vUv.xy).depth(vUv.z);
-    const tex = select(vBlend.greaterThan(0), mix(here, u.atlas.sample(vUv.xy).depth(vNext), vBlend), here).toVar();
+    const here = u.atlas.sample(vUv.xy).depth(layerOf(vUv.z));
+    const tex = select(vBlend.greaterThan(0), mix(here, u.atlas.sample(vUv.xy).depth(layerOf(vNext)), vBlend), here).toVar();
     if (pass === 'cutout') {
       If(tex.a.lessThan(0.5), () => {
         Discard();
@@ -211,7 +215,7 @@ export function dropMaterial(atlas) {
   const vUv = varying(vec3(uv().x, uv().y.oneMinus(), attribute('layer', 'float')), 'vUv');
   const vTint = varying(attribute('tint', 'vec3'), 'vTint');
   const colour = Fn(() => {
-    const tex = u.atlas.sample(vUv.xy).depth(vUv.z).toVar();
+    const tex = u.atlas.sample(vUv.xy).depth(layerOf(vUv.z)).toVar();
     If(tex.a.lessThan(0.5), () => {
       Discard();
     });
@@ -227,7 +231,7 @@ export function dropMaterial(atlas) {
 export function crackMaterial({ array, layer = 0 }) {
   const u = { atlas: texture(array), layer: uniform(layer) };
   const colour = Fn(() => {
-    const tex = u.atlas.sample(vec2(uv().x, uv().y.oneMinus())).depth(u.layer).toVar();
+    const tex = u.atlas.sample(vec2(uv().x, uv().y.oneMinus())).depth(layerOf(u.layer)).toVar();
     If(tex.a.lessThan(0.1), () => {
       Discard();
     });
