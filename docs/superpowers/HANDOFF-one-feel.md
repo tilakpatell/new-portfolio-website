@@ -69,7 +69,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2B | session_01DVpcS5r4qygJHh2VUkxKoP | `claude/feel-starwars` | Tier 1: #729 (the surface, the map, the trench); Tier 2 with the inside’s Tier 1: #747 | Tier 1 yes |
 | 2C | session_019CkxR28H7ZKjm6tPbKEyns | `claude/feel-universe` | Tier 1: #741 | |
 | 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: #740; Tier 3 Iacon: #745 | Tiers 1, 2 and 3 Albuquerque |
-| 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733; Tier 2: #738; the look (opening) | Tiers 1 and 2 |
+| 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733; Tier 2: #738; the look: #750; Tier 3 not started | Tiers 1 and 2, the look |
 | 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1); #734 (Tier 2); the look | #731, #734 yes |
 
 ## Findings (for the owner and the next lane)
