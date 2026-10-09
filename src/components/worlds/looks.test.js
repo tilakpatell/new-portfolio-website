@@ -15,12 +15,7 @@ const EXPECTED_MISSING = [
   'universe',
   'universe/landings',
   'universe/shipyard',
-  'galaxy',
-  'galaxy/surface', // (its look.js is the house’s look from a site’s sky, with no LOOK yet)
-  'deathstar',
-  'deathstar/inside',
   'cockpit',
-  'hyperspace3d',
 ];
 
 const looks = import.meta.glob('../**/look.js');
