@@ -130,6 +130,7 @@ import { groundWorld } from '../../../lib/three/groundwork';
 import { garrisonLife, garrisonProbe } from './garrison';
 import { createGround, landingFor } from './ground/index';
 import { standable } from './sites/validity';
+import { floraTint } from './flora';
 
 const V = THREE.Vector3;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -310,7 +311,10 @@ export async function create(canvas, ctx) {
   const pieces = groundPieces(site);
   let groundMap = null;
   if (pieces.map) {
-    const shade = scattered.flatMap(({ s, items }) => (SCATTER[s.kind]?.canopy ? items.map((it) => ({ at: it.at, r: SCATTER[s.kind].canopy * it.scale })) : []));
+    const shade = scattered.flatMap(({ s, items }) => {
+      const canopy = s.canopy ?? SCATTER[s.kind]?.canopy; // (a kit tree's row says its own: flora.js)
+      return canopy ? items.map((it) => ({ at: it.at, r: canopy * it.scale })) : [];
+    });
     const painter = groundPainter(site, grid, { shade });
     const mapSize = amounts.map;
     groundMap = createGroundMap({ area: mapAreaOf(), size: mapSize, heightSize: mapSize / 2, paint: painter.paint, height: painter.height });
@@ -350,14 +354,14 @@ export async function create(canvas, ctx) {
   // (the scatter casts its shadow only near you: near.js; a kit model it's
   // given is in the house's look from the start)
   const shadowPhase = sun.castShadow ? createShadowPhase(scene, sun) : null;
-  const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null, seated: amounts.seat, house, models, props: PROPS, scatter: SCATTER });
+  const placer = createPlacer({ parent: scene, kit, world, warm, shadowOnly: shadowPhase?.only ?? null, seated: amounts.seat, house, kitTint: floraTint(site), models, props: PROPS, scatter: SCATTER });
   // (things that float, a bongo on Lake Paonga, ride the waves: floats.js)
   const floaters = [];
   for (const t of site.things_all) {
     const put = placer.put(t);
     if (t.float && water?.height) put.then((o) => o && floaters.push({ o, x: o.position.x, z: o.position.z, yaw: t.yaw ?? 0, float: t.float }));
   }
-  for (const { s, items } of scattered) placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true });
+  for (const { s, items } of scattered) placer.scatter(s.kind, items, { opts: s.opts, solid: s.solid ?? true, model: s.model ?? true, shadow: s.shadow !== false });
   // the grass round you (lib/three/grass, Bruno's: a triangle a blade, one
   // draw, the patch going with you), standing on the ground map and its
   // colour, where the site grows it

@@ -9,7 +9,7 @@
 // nothing beyond. (docs/superpowers/specs/2026-10-08-kit-worlds-design.md, 2)
 //
 //   loadKit(pack, { load, base, house, wind, manifest, puffs = true,
-//     puffWind }) → {
+//     puffWind, tint }) → {
 //     pack, manifest: Promise (<base>/<pack>/index.json, fetched unless
 //       the option hands it over),
 //     info(name) → the model's manifest row (null for one it hasn't; throws
@@ -36,7 +36,14 @@
 //     would never bend and its top bend a fiftieth of what it should. A
 //     rig's are as its file has them, a skinned mesh placed by its bones,
 //     for its own mixer, never a pool)
-//   kitMaterial(def, { house, wind }) → a new material for a manifest entry
+//   kitMaterial(def, { house, wind, tint }) → a new material for a manifest entry
+//     tint: a colour ('#rrggbb' or a number) for a material by its manifest
+//     name, a world's palette by data (Mustafar's rock black, a jungle's
+//     mossed): it stands in for the file's colour, so the map is multiplied
+//     by it once, and a leaf's alpha is its map's as before. Or
+//     { recolour: colour }: the map's light and shade in that colour in
+//     place of its own hue (lib/three/recolour: Lothal's grass straw, a
+//     jungle's twisted trees green where the kit painted them red)
 //   createPool(kit, name, { bands, cap, shadows, puff, lod1, wait }) → {
 //     set(key, items), free(key), shift(dx, dz), update(camera, dt),
 //     stats: { total, levels: [full, lod1, puff], sorts }, group, ready, dispose() }
@@ -69,6 +76,7 @@ import { faceless, wind as windOn } from './foliage';
 import { loadGltf } from './gltf';
 import { lodBand } from './lod';
 import { puffFor } from './puffs';
+import { REF, measureMap, recolour } from './recolour';
 import { coverageTexture, fitTexture } from './textures';
 
 const CUT = 0.3; // a leaf map's alpha cut
@@ -82,10 +90,12 @@ const MOVE = 20; // or metres of camera travel
 // the house's (or a plain Lambert), a leaf's cut out and two-sided and lit
 // by its crown's normals, and in the wind if `def.wind` says how ('tree',
 // 'shrub'), on `wind.time` (and `wind.dir`). Its maps come from a file
-// (loadKit).
-export function kitMaterial(def = {}, { house = null, wind = null } = {}) {
+// (loadKit). `tint`, when given, is its colour.
+export function kitMaterial(def = {}, { house = null, wind = null, tint = null } = {}) {
   const opts = def.leaf ? { alphaTest: CUT, side: THREE.DoubleSide } : {};
   const m = house ? house.material(opts) : new THREE.MeshLambertMaterial(opts);
+  if (tint?.recolour != null) recolour(m, tint.recolour);
+  else if (tint != null) m.color.set(tint);
   if (def.leaf) faceless(m);
   if (def.wind) windOn(m, { kind: def.wind, weight: WEIGHT, time: wind?.time, ...(wind?.dir ? { dir: wind.dir } : {}) });
   return m;
@@ -132,7 +142,7 @@ function fetchManifest(url) {
   return fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`kit: couldn't load ${url} (${r.status})`))));
 }
 
-export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wind = null, manifest = null, puffs = true, puffWind = null } = {}) {
+export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wind = null, manifest = null, puffs = true, puffWind = null, tint = null } = {}) {
   const root = `${base}/${pack}`;
   let index = null; // the manifest, once in
   let gone = false;
@@ -159,7 +169,7 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
     if (!m) {
       const def = index.materials?.[name];
       if (!def) throw new Error(`kit ${pack}: no material ${name} in its manifest`);
-      m = kitMaterial(def, { house, wind });
+      m = kitMaterial(def, { house, wind, tint: tint?.[name] ?? null });
       m.name = name;
       mats.set(name, m);
     }
@@ -196,6 +206,12 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
       if (!dressed.has(name)) {
         dressed.add(name);
         dress(m, def, o.material);
+        // (after the file's colour, in its place: multiplied twice, a
+        // tint would come out darker than the world asked; a recolour
+        // reads the map's light over its mean, measured now it's in)
+        const t = tint?.[name];
+        if (t?.recolour != null) m.userData.recolour.uRecolourRef.value = measureMap(m.map) ?? REF;
+        else if (t != null) m.color.set(t);
         if (def.leaf && m.map) cover(m);
       }
     });

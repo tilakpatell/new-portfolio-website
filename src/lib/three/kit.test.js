@@ -62,6 +62,39 @@ describe('loadKit: models and materials', () => {
     expect(kit.material('Bark_Birch')).toBeInstanceOf(THREE.MeshLambertMaterial);
   });
 
+  it('tints a material by its manifest name, once a kit, and leaves the rest as dressed', async () => {
+    const { kit } = await kitOf({ tint: { Leaves_Birch: '#b8a860' } });
+    const { parts } = await kit.model('Birch_1');
+    const leaves = parts.find((p) => p.material.name === 'Leaves_Birch').material;
+    const bark = parts.find((p) => p.material.name === 'Bark_Birch').material;
+    expect(leaves.color.getHexString()).toBe('b8a860');
+    // (the fixture's bark is a standard material's own white: untouched)
+    expect(bark.color.getHexString()).toBe('ffffff');
+    // (the map stays: the tint multiplies it)
+    expect(leaves.map).toBeTruthy();
+    // (a material asked for before any file is in is tinted too)
+    const early = await kitOf({ tint: { Rocks: 0x2a2624 } });
+    expect(early.kit.material('Rocks').color.getHex()).toBe(0x2a2624);
+  });
+
+  it('recolours a material asked to be, in the house’s look and the wind, its map kept', async () => {
+    const house = createHouse();
+    const { kit } = await kitOf({ house, tint: { Leaves_Birch: { recolour: '#4a6a32' } } });
+    const { parts } = await kit.model('Birch_1');
+    const leaves = parts.find((p) => p.material.name === 'Leaves_Birch').material;
+    expect(leaves.userData.recolour.uRecolour.value.getHexString()).toBe('4a6a32');
+    expect(leaves.map).toBeTruthy();
+    // (its program: the house's and the recolour's both, the colour after the map is read)
+    const sh = { uniforms: {}, vertexShader: THREE.ShaderLib.lambert.vertexShader, fragmentShader: THREE.ShaderLib.lambert.fragmentShader };
+    leaves.onBeforeCompile(sh, {});
+    expect(sh.uniforms.uRecolour).toBeTruthy();
+    expect(sh.uniforms.uLookShadow).toBeTruthy();
+    expect(sh.fragmentShader).toContain('uRecolour * clamp(');
+    // (a plain tint is a multiplier, as before; the bark is neither)
+    const bark = parts.find((p) => p.material.name === 'Bark_Birch').material;
+    expect(bark.userData.recolour).toBeUndefined();
+  });
+
   it('loads each file once, from <base>/<pack>/<file>', async () => {
     const { kit, load } = await kitOf();
     await Promise.all([kit.model('Birch_1'), kit.model('Birch_2'), kit.lod1('Birch_1'), kit.model('Birch_1')]);

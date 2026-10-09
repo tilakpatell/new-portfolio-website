@@ -59,7 +59,10 @@ export const SITES = {
     light: { sun: 3, sky: '#c4d0ee', ground: '#a8915e', ambient: 0.75 },
     ground: { detail: 'grass', detailLook: { color: 0.7, normal: 0.6 }, seed: 45, layers: [{ type: 'swell', scale: 460, height: 8 }, { type: 'hills', scale: 160, height: 10 }, { type: 'mountains', from: 700, to: 3000, height: 360, scale: 1300 }], palette: palette('#a48a58', '#bba775', '#7a7268', '#b39a7e', { mark: '#6e5a3a', accentCover: 0.18 }) },
     // the prairie: waist-high straw, olive in drifts, rolling in the wind
-    grass: { h: [0.8, 1.3], w: 0.15, root: '#86704a', mid: '#c6ad72', tip: '#ead9a8', dry: '#b0a26c', cover: 0.93, scale: 150, wind: 1.0, patch: 1.15, flower: { color: '#f2e6bc', share: 0.02 } },
+    grass: { h: [0.8, 1.3], w: 0.15, root: '#86704a', mid: '#c6ad72', tip: '#ead9a8', dry: '#b0a26c', cover: 0.93, scale: 150, wind: 1.0, patch: 1.15 },
+    // the kit's cover in it (flora.js), straw and cream like the grass: no
+    // trees, as the prairie's spires stand alone
+    flora: { biome: 'plains', trees: false, tint: { Grass: { recolour: '#c6ad72' }, Leaves: { recolour: '#a99a5e' }, Leaves_TwistedTree: { recolour: '#9a8c52' }, Leaves_NormalTree: { recolour: '#a49658' }, Flowers: '#f2e6bc' } },
     land: { at: [0, 0], yaw: 1 },
     places: [
       { id: 'capital', name: 'Capital City', at: [260, -60], r: 60, flat: { r: 56 }, about: 'Lothal’s capital: stone towers, and an Imperial factory where the farms used to be.', things: [{ kind: 'lothdome', at: [0, 4], yaw: 3.4, sink: 0.2 }, { kind: 'lothdome', at: [27, 18], yaw: 4.2, scale: 0.85, sink: 0.2 }, { kind: 'lothdome', at: [-26, 16], yaw: 2.4, scale: 0.9, sink: 0.2 }, { kind: 'lothdome', at: [20, -24], yaw: 5.4, scale: 0.75, sink: 0.2 }, { kind: 'crates', at: [8, -16] }, { kind: 'crates', at: [-10, -12], yaw: 0.7 }] },
@@ -82,11 +85,8 @@ export const SITES = {
       { id: 'starmap', name: 'The star map', giver: 'ahsoka', intro: [['Ahsoka Tano', 'The map to Thrawn is in pieces, hidden in the old temple stones. Find them.']], steps: [{ type: 'collect', item: 'shard', n: 3, spots: [[-150, 240], [-128, 218], [-146, 214]], text: 'Find the pieces of the star map' }, { type: 'use', id: 'map', at: [-140, 230], r: 6, prompt: 'Fit the pieces together', text: 'Open the star map', end: [{ shake: 0.4 }, { say: [[null, '(Points of light fill the air: a route to another galaxy.)']] }] }], done: [['Ahsoka Tano', 'Peridea. So that’s where they went.']] },
       { id: 'factory', name: 'Shut down the factory', giver: 'ryder', steps: [{ type: 'shoot', tag: 'factory', at: [-220, -200], n: 8, text: 'Clear the Remnant from the factory', spawn: troops('factory', 8, [-220, -200]) }, { type: 'use', id: 'power', at: [-220, -200], r: 6, prompt: 'Shut down the power', text: 'Shut the factory down', end: [{ sound: 'crash' }, { shake: 0.8 }] }], done: [['Governor Azadi', 'No more TIEs from Lothal.']] },
     ],
-    // (the plains' tall grass is the grass field round you: `grass`)
-    scatter: [
-      // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
-      { kind: 'qgrass', n: 200, within: [4, 120], scale: [0.9, 1.6], solid: false },
-    ],
+    // (the plains' tall grass is the grass field round you: `grass`; its
+    // cover is the flora's)
     rides: [{ kind: 'speederbike', at: [12, -10], yaw: -1.2 }],
     // a haulier's truck at the landing, its load beside it
     things: [
