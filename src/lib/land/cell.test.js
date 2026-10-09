@@ -227,27 +227,53 @@ describe('the cell', () => {
     expect(Math.max(...counts)).toBeGreaterThanOrEqual(2 * mean);
   });
 
-  it('shades the grass under a crown, and nothing else, after placing (the props the same either way)', () => {
+  it('shades the grass under a crown softly, and nothing else, after placing (the props the same either way)', () => {
     let crowns = 0;
+    let trunks = 0;
+    let rims = 0;
     for (let cx = 0; cx < 3; cx++) {
       const before = makeCell(spec, cx, 0, { shade: false });
       const after = makeCell(spec, cx, 0);
       expect(after.props).toEqual(before.props);
+      // each crown in the cell's frame: [lx, lz, its radius]
+      const shades = after.props.filter((p) => rowOf(spec, p).shade).map((p) => [p.x - cx * CELL, p.z, rowOf(spec, p).shade * p.scale]);
       // (counted, not asserted texel by texel: 65,536 of them)
       let wrong = 0;
-      for (let t = 0; t < MASK * MASK * 4; t += 4)
-        if (after.mask[t] !== 0 || after.mask[t + 1] > before.mask[t + 1] || after.mask[t + 2] !== before.mask[t + 2] || after.mask[t + 3] !== before.mask[t + 3]) wrong++;
+      let deep = 0;
+      let hard = 0;
+      for (let j = 0; j < MASK; j++)
+        for (let i = 0; i < MASK; i++) {
+          const t = (j * MASK + i) * 4;
+          const [g0, g] = [before.mask[t + 1], after.mask[t + 1]];
+          if (after.mask[t] !== 0 || g > g0 || after.mask[t + 2] !== before.mask[t + 2] || after.mask[t + 3] !== before.mask[t + 3]) wrong++;
+          // (no texel under a crown below 0.75 of its unshaded grass, to the byte)
+          if (g < 0.75 * g0 - 0.5) deep++;
+          // under one crown alone: about 0.75 of itself at the trunk, easing
+          // to all of itself at the crown's edge (no disc with a hard rim)
+          const over = shades.map(([x, z, r]) => Math.hypot((i + 0.5) / 2 - x, (j + 0.5) / 2 - z) / r).filter((u) => u <= 1);
+          if (over.length !== 1 || g0 < 100) continue;
+          if (over[0] < 0.1) {
+            trunks++;
+            if (g > 0.76 * g0 + 0.5) hard++;
+          } else if (over[0] > 0.9) {
+            rims++;
+            if (g < 0.98 * g0 - 0.5) hard++;
+          }
+        }
       expect(wrong).toBe(0);
+      expect(deep).toBe(0);
+      expect(hard).toBe(0);
       for (const p of after.props) {
         if (!rowOf(spec, p).shade) continue;
         crowns++;
         const t = texel(p.x - cx * CELL, p.z);
+        // (darker under a tree than before)
         expect(after.mask[t + 1]).toBeLessThan(before.mask[t + 1]);
-        // (as the galaxy's ground: the grass at most 0.4 of itself under a crown)
-        expect(after.mask[t + 1]).toBeLessThanOrEqual(Math.round(before.mask[t + 1] * 0.4));
       }
     }
     expect(crowns).toBeGreaterThan(0);
+    expect(trunks).toBeGreaterThan(0);
+    expect(rims).toBeGreaterThan(0);
   });
 
   it('with no rivers, is dry above the sea and has no trees under it', () => {

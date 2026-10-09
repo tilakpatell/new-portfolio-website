@@ -12,9 +12,11 @@
 //            river's within 1.2 × its width, the sea's where the ground is
 //            below it)
 //   mask     Uint8Array(128 × 128 × 4), texels 0.5 m, row-major from (0, 0):
-//            R paving (0 here: a world's roads write it), G grass (0.4 of
-//            itself under each crown, painted once the props are placed; a
-//            crown's shade stops at its own cell's edge), B water depth /
+//            R paving (0 here: a world's roads write it), G grass (under a
+//            crown 0.75 of itself at the trunk, easing to all of itself at
+//            the crown's edge, the darkest crown's where they overlap;
+//            painted once the props are placed; a crown's shade stops at its
+//            own cell's edge), B water depth /
 //            MAX_DEPTH, A the river's flow (0…255 for 0…2π; 0 still)
 //   props    [{ kind, name, x, y, z, yaw, scale }] in world metres: the
 //            land's flora (spec.flora, flora.js), each species by its own
@@ -60,7 +62,10 @@ const SPREAD = 0.02; // his clumping noise: a bump every 50 m
 // the other way about, into the glades
 const THIN = [-0.4, 0.2];
 const MEADOW = new Set(['grass', 'flower']);
-const SHADED = 0.4; // the grass under a crown (the galaxy's ground's SHADE.grass)
+// what the grass keeps of itself under a trunk, all of itself by the crown's
+// edge (the galaxy's ground's hard 0.4 disc, SHADE.grass, read here as a
+// bald patch round every lone tree)
+const SHADED = 0.75;
 // how near another species' placement may stand: trunks, rocks and crates
 // keep apart, the cover keeps off them, and nothing keeps off the cover
 const ROOM = { tree: 2, bush: 1, rock: 2.5, crate: 1 };
@@ -270,9 +275,13 @@ function scatter(spec, cell, rivers, x0, z0, shade) {
   return out;
 }
 
-// each crown's shade into the grass, as the galaxy's ground paints it (0.4
-// of itself under every crown over a texel), clipped at the cell's edge
+// each crown's shade into the grass: SHADED of itself under the trunk,
+// easing (smoothstep) to all of itself at the crown's edge, the darkest
+// crown's where crowns overlap (so never under SHADED), clipped at the
+// cell's edge
 function paint(mask, crowns) {
+  if (!crowns.length) return;
+  const keep = new Float32Array(MASK * MASK).fill(1); // what each texel keeps of its grass
   for (let c = 0; c < crowns.length; c += 3) {
     const lx = crowns[c];
     const lz = crowns[c + 1];
@@ -283,11 +292,13 @@ function paint(mask, crowns) {
     const j1 = Math.min(MASK - 1, Math.floor((lz + r) / TEXEL));
     for (let j = j0; j <= j1; j++)
       for (let i = i0; i <= i1; i++) {
-        if (Math.hypot((i + 0.5) * TEXEL - lx, (j + 0.5) * TEXEL - lz) > r) continue;
-        const t = (j * MASK + i) * 4 + 1;
-        mask[t] = Math.round(mask[t] * SHADED);
+        const d = Math.hypot((i + 0.5) * TEXEL - lx, (j + 0.5) * TEXEL - lz);
+        if (d > r) continue;
+        const k = SHADED + (1 - SHADED) * smoothstep(0, r, d);
+        if (k < keep[j * MASK + i]) keep[j * MASK + i] = k;
       }
   }
+  for (let t = 0; t < MASK * MASK; t++) if (keep[t] < 1) mask[t * 4 + 1] = Math.round(mask[t * 4 + 1] * keep[t]);
 }
 
 export function cellMesh(heights, { step = 1 } = {}) {
