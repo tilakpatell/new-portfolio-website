@@ -70,7 +70,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2C | | | | |
 | 2D | | | | |
 | 2E | | | | |
-| 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | Tier 1 (this) | |
+| 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1) | |
 
 ## Findings (for the owner and the next lane)
 
