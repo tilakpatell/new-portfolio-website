@@ -310,8 +310,12 @@ export async function create(canvas, { onLost, onSlow } = {}) {
         case 'land':
           vfx.smoke(V(e.at), { size: 2.5, count: 6, life: 1.4, color: 0x8a8580, to: 0xb8b2aa, rise: 0.6, opacity: 0.5, spread: 1.5 });
           feel.trauma(e.type === 'street' ? 0.45 : 0.2);
-          // down on the street the hard way: a stumble before he runs on
-          if (e.type === 'street') W.hurt = 0.55;
+          // down on the street the hard way: a stumble before he runs on,
+          // and the game stops a beat as he hits (the loop's timeScale)
+          if (e.type === 'street') {
+            W.hurt = 0.55;
+            feel.hitstop(70);
+          }
           break;
         case 'wall':
           vfx.debris(V(e.at), { count: 5, speed: 4, size: 0.18, life: 1.5 });

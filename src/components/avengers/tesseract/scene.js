@@ -880,11 +880,14 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
             vfx.flash(at, { color: BLUE, intensity: 90, distance: 26, life: 0.6 });
             vfx.ring(at.clone().setY(groundAt(e.x) + 0.2), { color: BLUE, from: 0.5, to: 9, life: 0.6 });
             feel.trauma(0.55);
+            feel.hitstop(70);
           } else if (e.what === 'jet') {
             vfx.explode(at, { scale: 1.6 });
             vfx.debris(at, { count: 20, speed: 10, size: 0.2, color: 0x3a3e44 });
             feel.trauma(0.85);
             feel.punch(5);
+            // a crash stops the game a beat (the loop's timeScale), the camera and the fire don't
+            feel.hitstop(90);
           }
           break;
         }

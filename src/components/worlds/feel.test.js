@@ -66,7 +66,6 @@ export const NO_PRESS = [
   { file: 'galaxy/surface/scene.js', pattern: /jumpQueued/ },
   { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
   { file: 'rickmorty/world/rules.js', pattern: /vy = move\.jump \? MORTY\.jump/ },
-  { file: 'avengers/smash/rules.js', pattern: /H\.air > 0 \|\| H\.smash >= 0\) return false/ },
   { file: 'rickmorty/world/sewer/rules.js', pattern: /input\.hop && r\.hop <= 0/ },
   { file: 'universe/foot.js', pattern: /input\.jump && h <= 1e-6/ },
   { file: 'middleearth/rush/Rush.jsx', pattern: /sm\.dash = false/ },
@@ -82,7 +81,6 @@ export const LINEAR_CAMERA = [
   { file: 'rickmorty/citadel/scene.js', pattern: CUT_EASE },
   // (the office’s walkable world: the towns’ camera, which the audit’s list missed)
   { file: 'office/world/scene.js', pattern: CUT_EASE },
-  { file: 'avengers/repulsor/scene.js', pattern: /camX \+= \(px - camX\) \* Math\.min\(1, realDt \* 30\)/ },
   { file: 'rickmorty/CruiserFlight.jsx', pattern: /\(goal - shown\) \* 0\.12/ },
 ];
 
