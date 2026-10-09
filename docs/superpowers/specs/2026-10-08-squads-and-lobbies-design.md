@@ -207,7 +207,10 @@ or elections: one document, totally ordered by its stamp.
   squad isn't locked.
 - *Away and gone.* A member not there for 10 s is away (their seat held,
   shown dimmed); not there for 45 s, or a `bye`, and the leader frees the
-  seat. A reload with a kept key comes back to the same seat.
+  seat. A reload with a kept key comes back to the same seat. While the
+  squad is locked no seat is freed for being away (a locked squad keeps
+  its pilots till they leave or are turned out), so a pilot who was only
+  out of reach is never locked out.
 - *Two halves.* A squad cut in two carries on as two, each with the first
   of its seats leading. When they hear each other again, the newer
   document is taken by everyone who has its writer as a member; a leader
