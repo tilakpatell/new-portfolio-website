@@ -1,7 +1,7 @@
 // Kamino's storm on Tipoca City's static discharge towers (Wookieepedia:
 // "several static discharge towers to secure the city during electrical
 // storms"): when lightning strikes a tower, how bright the bolt is, and the
-// bolt's jagged path down from the cloud. Pure: props/core.js's
+// bolt's jagged path down from the cloud. Pure: props/core/kamino.js's
 // `kdischarge` draws it.
 
 import { hash2 } from './noise';

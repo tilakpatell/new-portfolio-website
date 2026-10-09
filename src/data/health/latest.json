@@ -1,6 +1,6 @@
 {
   "date": "2026-10-09",
-  "sha": "2c568f1e",
+  "sha": "9f042f8e",
   "metrics": {
     "big-files": {
       "value": 29,
@@ -9,7 +9,7 @@
       "detail": [
         {
           "file": "src/components/universe/scene.js",
-          "n": 5892
+          "n": 5897
         },
         {
           "file": "src/components/middleearth/towns/moria/props.js",
@@ -45,7 +45,7 @@
         },
         {
           "file": "src/components/rickmorty/world/roy/scene.js",
-          "n": 3163
+          "n": 3164
         },
         {
           "file": "src/components/universe/crews.js",
@@ -80,32 +80,32 @@
           "n": 2381
         },
         {
+          "file": "src/components/avengers/world/scene.js",
+          "n": 2123
+        },
+        {
           "file": "src/components/galaxy/surface/props/forest.js",
           "n": 2118
         },
         {
-          "file": "src/components/avengers/world/scene.js",
-          "n": 2110
-        },
-        {
           "file": "src/components/avengers/world/rules.js",
-          "n": 2078
+          "n": 2101
         },
         {
           "file": "src/lib/sfx.js",
-          "n": 2000
+          "n": 2077
         },
         {
           "file": "src/components/rickmorty/world/RmWorld.jsx",
-          "n": 1969
-        },
-        {
-          "file": "src/components/galaxy/surface/props/core.js",
-          "n": 1894
+          "n": 1988
         },
         {
           "file": "src/components/middleearth/towns/edoras/folk.js",
           "n": 1817
+        },
+        {
+          "file": "src/components/dotmatrix/scene.js",
+          "n": 1656
         }
       ]
     },

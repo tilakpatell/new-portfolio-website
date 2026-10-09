@@ -16,7 +16,7 @@ const groundOf = (site) => {
 };
 
 // What stands over the water on a floor of its own, which the height field
-// knows nothing about: Kamino's landing pads, round decks on stilts (props/core.js
+// knows nothing about: Kamino's landing pads, round decks on stilts (props/core/kamino.js
 // kpad, r its opts.r, 28 when it says nothing). The thing's y is the deck.
 const FLOOR_KINDS = { kpad: (t) => t.opts?.r ?? 28 };
 
