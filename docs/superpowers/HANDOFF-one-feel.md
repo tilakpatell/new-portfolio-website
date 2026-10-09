@@ -58,19 +58,19 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 
 | lane | session | branch | pull request | merged |
 |---|---|---|---|---|
-| design | the architecting session | `claude/lucid-hawking-78yzz5` | | |
+| design | the architecting session | `claude/lucid-hawking-78yzz5` | the docs; #760 (main’s health repair, so the lanes could merge) | yes |
 | 1A | session_018TPUBuBVbG9Xbm68QY6rAd | `claude/one-feel-art` | #701 | yes |
 | 1B | session_0125kUpviRHiF3dVxbGM3odg | `claude/one-feel-hits` | #699 | yes |
 | 1C | session_01ALnkhhCHveAZqkCSpnBLq2 | `claude/one-feel-car` | #700, closed at the owner’s word: the Expanse car game is removed (#705); the pure pieces stay on the branch and lane 1F carries them over | no |
 | 1D | session_01Y9gSEa16P9tye2wPhYum7h | `claude/one-feel-panel` | #702 | yes |
-| 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
-| 1F | session_01PvQ31jMR87beSHxh7Bgt2v | `claude/feel-kit` | | |
+| 1E | session_01RjXvbwnRgbChu8gMUUMi8B | `claude/one-feel-colliders` | #698 | yes |
+| 1F | session_01PvQ31jMR87beSHxh7Bgt2v | `claude/feel-kit` | #724 | yes |
 | 2A | session_01HPFczeNhvDuaFuXnrzZj9H | `claude/feel-middleearth`, `claude/feel-middleearth-look` | Tier 1: #728 (Tier 2: none in the roster); the look: #732 | yes, both |
-| 2B | session_01DVpcS5r4qygJHh2VUkxKoP | `claude/feel-starwars`, `claude/feel-starwars-look` | Tier 1: #729; Tier 2 with the inside’s Tier 1: #747; Tier 3 (the surface sites’ loose crates and barrels): #754; the look (five folders; the cockpit waits, see Findings): #761 | Tiers 1, 2 and 3, and the look with #761 |
-| 2C | session_019CkxR28H7ZKjm6tPbKEyns | `claude/feel-universe` | Tier 1: #741; Tier 2: #762; the look: #764 | Tiers 1 and 2 |
+| 2B | session_01DVpcS5r4qygJHh2VUkxKoP | `claude/feel-starwars`, `claude/feel-starwars-look` | Tier 1: #729; Tier 2 with the inside’s Tier 1: #747; Tier 3 (the surface sites’ loose crates and barrels): #754; the look (five folders; the cockpit waits, see Findings): #761 | yes, all four |
+| 2C | session_019CkxR28H7ZKjm6tPbKEyns | `claude/feel-universe` | Tier 1: #741; Tier 2: #762; the look: #764 | yes, all three |
 | 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: #740; Tier 3 Iacon: #745; the look: #748 | yes, all five |
-| 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733; Tier 2: #738; the look (opening) | Tiers 1 and 2 |
-| 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1); #734 (Tier 2); the look | #731, #734 yes |
+| 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733; Tier 2: #738; the look: #750; Tier 3 (the compound’s lawn): #759 | yes, all four |
+| 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1); #734 (Tier 2); the look: #743 | yes, all three |
 
 ## Findings (for the owner and the next lane)
 
