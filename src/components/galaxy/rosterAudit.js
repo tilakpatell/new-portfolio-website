@@ -14,13 +14,14 @@
 // your wing), hunters:<faction> (who hunts for it, its navy, the droids'
 // leftovers, the bounty hunters and pirates: anyone's), interdiction (the
 // pack an Interdictor launches), ace:remnant (the Remnant's planned ace),
+// outofwar:<system> (who hunts and drops in where no war's holder is),
 // scenery:<system> (every piece the war shows, for each of its holders).
 
 import { allowed, runnerOf } from './roster';
 import { BATTLE_KINDS, HUTTS, templateFor } from './battles';
 import { WAR_SYSTEMS } from './gcw';
 import { OWNERS, effectsFor, piecesShown } from './warEffects';
-import { ESCORTS, ROLES } from './roamRules';
+import { ESCORTS, ROLES, galaxySide } from './roamRules';
 import { FACTIONS } from './hunted';
 import { interdictionFor } from './interdiction';
 import { GIDEON } from './battlePlans';
@@ -102,6 +103,12 @@ export function auditRoster() {
     add(war, pack ?? 'nobody', 'interdiction', pack ? 'interdictor' : 'none', true);
     if (pack) for (const k of factionKinds(pack)) add(war, pack, 'interdiction', k);
     if (war === 'remnant') add(war, 'remnant', 'ace:remnant', GIDEON.kind);
+    // a system out of the war: its own faction's hunters and drop-in, if that's in this war
+    for (const sys of SYSTEMS.filter((s) => !WAR_SYSTEMS.includes(s.id))) {
+      const g = galaxySide(sys, null, war);
+      const ships = [g.capitalShip, ...Object.values(g.factions).filter((f) => f.role === 'hunt' || f.role === 'capital').flatMap((f) => f.kinds.map(([k]) => k))].filter(Boolean);
+      for (const k of ships) add(war, '*', `outofwar:${sys.id}`, k, sides.some((sd) => allowed(k, war, sd)));
+    }
     // the systems' scenery, for each of the war's holders
     const flyers = [...sides, 'hutt', null];
     for (const sys of SYSTEMS)

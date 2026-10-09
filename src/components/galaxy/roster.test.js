@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LOOKS, RUNNERS, SHIPS, allowed, lookOf, rosterOf, runnerOf } from './roster';
+import { LOOKS, RUNNERS, SHIPS, allowed, battleKindIn, lookOf, rosterOf, runnerOf } from './roster';
 import { SIDES, WARS, WAR_IDS } from './sides';
 
 describe('the roster', () => {
@@ -44,5 +44,14 @@ describe('the roster', () => {
   });
   it('gives every fighter class a gun list', () => {
     for (const [k, s] of Object.entries(SHIPS)) if (['fighter', 'interceptor', 'bomber'].includes(s.class)) expect(s.guns?.length, k).toBeGreaterThan(0);
+  });
+});
+
+describe('a battle of its kind in each war', () => {
+  it('fights an interdiction as a siege where the raider has no Interdictor', () => {
+    expect(battleKindIn('interdiction', 'clone')).toBe('siege');
+    expect(battleKindIn('interdiction', 'gcw')).toBe('interdiction');
+    expect(battleKindIn('interdiction', 'remnant')).toBe('interdiction');
+    expect(battleKindIn('blockade', 'clone')).toBe('blockade');
   });
 });

@@ -28,8 +28,8 @@ import { WIDTH, createBattle, perSide } from '../universe/battle';
 import { widthOf } from '../universe/battleKit';
 import { cloneTemplates, remnantTemplates } from './battlesWars';
 import { seeded, warInfo } from './gcw';
-import { SIDES, WARS } from './sides';
-import { lookOf, rosterOf, runnerOf } from './roster';
+import { SIDES } from './sides';
+import { battleKindIn, lookOf, runnerOf } from './roster';
 import { systemById } from './systems';
 
 const M = 53.3; // metres to a map unit (the Star Destroyer's 1,600 m is 30)
@@ -305,8 +305,7 @@ export function layBattle(sys, battle, { now = battle.start, tier = 'high' } = {
   const t = templateFor(sys.id, warId);
   // (the system's kind, unless the battle's a forced one of another: warfront.js's dev hook)
   // (and an interdiction needs an Interdictor: a war whose raider has none, the Clone Wars, fights it as a siege)
-  const asked = BATTLE_KINDS[battle.kind] ?? BATTLE_KINDS[kindFor(sys.id)];
-  const kind = asked.id === 'interdiction' && !rosterOf(warId, WARS[warId]?.raider, 'capital').includes('interdictor') ? BATTLE_KINDS.siege : asked;
+  const kind = BATTLE_KINDS[battleKindIn((BATTLE_KINDS[battle.kind] ?? BATTLE_KINDS[kindFor(sys.id)]).id, warId)];
   const sides = sidesOf(battle);
   const attacker = battle.attackerTeam ?? (battle.sides ? sides.indexOf(battle.attacker) : battle.attacker === 'rebel' ? 0 : 1);
   const defender = 1 - attacker;

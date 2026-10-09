@@ -128,6 +128,7 @@ import { buildSystem } from './world';
 import { AHEAD, FACTIONS, KINDS, NAMES } from './hunted';
 import { createPayLedger, hunterEarn } from '../universe/earnRules';
 import { createRoam } from './roam';
+import { bountyFor } from './roamRules';
 import { pick as pickFaction } from '../universe/sides';
 import { createSkyStreaks } from './skyStreaks';
 import { laneLinks } from './skyTraffic';
@@ -1668,7 +1669,7 @@ export async function create(canvas, ctx) {
   // the director's events, played out (the universe map's `happen`, for
   // what the galaxy plays so far: roamRules.js's ROAM_EVENTS)
   const happen = (id, ship) => {
-    const side = roam.side(state.sys, state.effects);
+    const side = roam.side(state.sys, state.effects, props.allegiance?.war ?? DEFAULT_WAR);
     if (!side || !hunters) return;
     const ambush = travelling(ship) ? { ahead: true } : {};
     const strength = { heat: state.heat, first: hunts === 0 };
@@ -1691,14 +1692,12 @@ export async function create(canvas, ctx) {
       wingmen.join(side.escort[Math.floor(Math.random() * side.escort.length)], ship, 2);
       emit({ type: 'hunted', faction: 'escort', ace: null });
     } else if (id === 'bounty') {
-      // one hunter, tough and quick: Boba Fett in Slave I (its model, once
-      // it's here: Vader stands in till then), IG-88, Bossk or Dengar
-      const who = pickFaction(side, 'bounty');
+      // one hunter, tough and quick: Boba Fett in Slave I, IG-88, Bossk or Dengar
+      // (while Slave I's on its way, another of them: roamRules.js's bountyFor)
+      if (!fleet.loaded('slave1')) fleet.want(['slave1']);
+      const who = bountyFor(pickFaction(side, 'bounty'), (k) => fleet.loaded(k), Object.keys(side.factions).filter((id) => side.factions[id].role === 'bounty'));
       if (!who) return;
-      if (who === 'fett' && !fleet.loaded('slave1')) {
-        fleet.want(['slave1']);
-        hunters.pack('empire', ship, { size: 1, ace: true, ...ambush });
-      } else hunters.pack(who, ship, { size: 1, ace: false, ...ambush });
+      hunters.pack(who, ship, { size: 1, ace: false, ...ambush });
     }
   };
   // a pickup taken (pickups.js's step says what it gave): the deflectors back, the power cell's charge, the page told for its note
@@ -1752,7 +1751,7 @@ export async function create(canvas, ctx) {
       if (hunters && state.flown) {
         const busyHere = hunters.active || Boolean(pieces?.destroyerHere) || Boolean(state.held) || Boolean(war?.battle) || state.view === 'map';
         const fx = effectsNow();
-        const id = roam.update(dt, { sys: state.sys, effects: fx, heat: state.heat + (fx?.heat ?? 0), busy: busyHere, travelling: travelling(live), calm: state.shield < 50 });
+        const id = roam.update(dt, { sys: state.sys, effects: fx, war: props.allegiance?.war ?? DEFAULT_WAR, heat: state.heat + (fx?.heat ?? 0), busy: busyHere, travelling: travelling(live), calm: state.shield < 50 });
         if (id) happen(id, live);
       }
       // the Interdictor's hold: its TIEs launch a moment after it's here, and

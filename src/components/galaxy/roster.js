@@ -25,8 +25,12 @@
 // allowed(kind, war, side) → whether that side flies it in that war (an
 //   unknown kind: no); rosterOf(war, side, cls) → its kinds of that class;
 // RUNNERS / runnerOf(battleKind, side): who runs an evacuation or a
-//   blockade, by side; LOOKS / lookOf(side): { laser, turbo } (RGB, hot
+//   blockade, by side; battleKindIn(kind, war) → the kind of battle a
+//   system's is in that war (an interdiction needs an Interdictor: a war
+//   whose raider has none, the Clone Wars, fights it as a siege); LOOKS / lookOf(side): { laser, turbo } (RGB, hot
 //   enough to bloom: the fighters' bolts and the batteries').
+
+import { WARS } from './sides';
 
 const C = ['clone'];
 const G = ['gcw'];
@@ -107,6 +111,8 @@ export const RUNNERS = {
   blockade: { republic: 'corvette', rebel: 'corvette', newrepublic: 'corvette', separatists: 'coreship', empire: 'gozanti', remnant: 'gozanti', hutt: 'gozanti' },
 };
 export const runnerOf = (battleKind, side) => RUNNERS[battleKind]?.[side] ?? null;
+
+export const battleKindIn = (kind, war) => (kind === 'interdiction' && !rosterOf(war, WARS[war]?.raider, 'capital').includes('interdictor') ? 'siege' : kind);
 
 // each side's bolts: its fighters' (laser) and its batteries' (turbo). The
 // Rebellion's and the Empire's are the universe map's own (universe/wars.js);

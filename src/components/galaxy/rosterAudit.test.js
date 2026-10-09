@@ -13,7 +13,7 @@ describe('the roster audit', () => {
   it('walks every source of every war', () => {
     const rows = auditRoster();
     const sources = new Set(rows.map((r) => r.source.split(':')[0]));
-    for (const s of ['template', 'hutts', 'runners', 'owners', 'roles', 'hunters', 'interdiction', 'ace', 'scenery']) expect(sources.has(s), s).toBe(true);
+    for (const s of ['template', 'hutts', 'runners', 'owners', 'roles', 'hunters', 'interdiction', 'ace', 'outofwar', 'scenery']) expect(sources.has(s), s).toBe(true);
     for (const war of ['clone', 'gcw', 'remnant']) expect(rows.some((r) => r.war === war), war).toBe(true);
   });
   it('finds no ship flown in the wrong war or by the wrong side', () => {
