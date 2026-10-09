@@ -15,6 +15,8 @@
 // box its `ally` (its index in g.allies as it happened), and a boss's says
 // `boss`.
 
+import { createCooldownPress } from '../../../lib/press';
+
 export const PANIC = {
   step: 1 / 120,
   arena: 15.5,
@@ -150,6 +152,7 @@ export function newGame({ seed = 1, hero = 'rick', level = 'normal' } = {}) {
     calm: 1.6, // a moment before the first wave
     p: { x: 0, y: 0, vx: 0, vy: 0, r: h.r, hp, max: hp, inv: 0, cool: 0, aim: { x: 0, y: -1 }, dashes: h.dashes, recharge: 0, dashT: 0, dashVx: 0, dashVy: 0 },
     input: { mx: 0, my: 0, ax: 0, ay: 0, aiming: false, fire: false },
+    dashPress: createCooldownPress(),
     enemies: [],
     shots: [],
     bolts: [],
@@ -262,11 +265,17 @@ export function aimAt(g) {
 }
 
 // The portal dash: a short jump the way you're moving (or aiming), through
-// anything but walls, untouchable for a moment.
+// anything but walls, untouchable for a moment. Pressed while one's going or
+// with no charge, it waits a moment (lib/press.js's createCooldownPress, its
+// buffer) and fires as the last one ends or a charge comes back: step() asks.
+const canDash = (g) => (g.status === 'play' || g.status === 'travel') && g.p.dashes >= 1 && !(g.p.dashT > 0);
 export function dash(g) {
   const p = g.p;
   if (g.status !== 'play' && g.status !== 'travel') return false;
-  if (p.dashes < 1 || p.dashT > 0) return false;
+  if (!canDash(g)) {
+    g.dashPress?.press();
+    return false;
+  }
   let dx = g.input.mx;
   let dy = g.input.my;
   if (len(dx, dy) < 0.2) [dx, dy] = [p.aim.x, p.aim.y];
@@ -1047,5 +1056,10 @@ export function step(g, dt) {
   while (g.acc >= PANIC.step - 1e-9 && (g.status === 'play' || g.status === 'travel')) {
     g.acc -= PANIC.step;
     stepOnce(g, PANIC.step);
+    // a dash pressed a moment before it could go, now it can
+    if (g.dashPress) {
+      g.dashPress.ready(canDash(g), PANIC.step);
+      if (g.dashPress.take()) dash(g);
+    }
   }
 }

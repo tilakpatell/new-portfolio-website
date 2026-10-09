@@ -5,7 +5,8 @@
 // fixed dt by ./Sewer.jsx and drawn by ./scene.js; tested in Node.
 //
 //   newRun(seed) → run
-//   stepRun(run, input, dt) → run   input: { left, right, hop, fire } presses since the last step
+//   stepRun(run, input, dt, { press }) → run   input: { left, right, hop, fire } presses since the last step;
+//     `press`, the hop's buffer (lib/press.js's createCooldownPress)
 //   laneX(lane) → metres across the drain
 
 export const TUNING = Object.freeze({
@@ -41,13 +42,19 @@ export function newRun(seed = 1) {
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-export function stepRun(prev, input = {}, dt = 1 / 60) {
+export function stepRun(prev, input = {}, dt = 1 / 60, { press = null } = {}) {
   if (prev.phase !== 'run') return { ...prev, events: [] };
   const r = { ...prev, items: prev.items.map((o) => ({ ...o })), events: [] };
   r.t += dt;
   // the lane, one press one lane; a hop if his wheels are down
   r.lane = clamp(r.lane + (input.right ? 1 : 0) - (input.left ? 1 : 0), 0, TUNING.lanes - 1);
-  if (input.hop && r.hop <= 0 && r.stun <= 0) {
+  // a hop pressed a moment before his wheels come down (or the stun ends)
+  // waits for them, with a press (lib/press.js's createCooldownPress); without
+  // one, a press in the air is this step's alone
+  const ready = r.hop <= 0 && r.stun <= 0;
+  if (press && input.hop) press.press();
+  press?.ready(ready, dt);
+  if (press ? press.take() : input.hop && ready) {
     r.hop = TUNING.air;
     r.events.push({ type: 'hop' });
   }
