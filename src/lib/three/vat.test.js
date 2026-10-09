@@ -85,6 +85,30 @@ describe('which frame an instance shows', () => {
     }
   });
 
+  it('stays inside the clip worked in the shader’s float32, however far down the texture', () => {
+    // (start + m in float32 rounds up to start + length for a large start: the frame is worked from m)
+    const f32 = Math.fround;
+    for (const [start, length] of [[200, 1], [1000, 24], [16000, 24], [4093, 3]]) {
+      const under = [length - 1e-4, length - 1e-6, f32(length * 0.99999), length * (1 - 2 ** -24)];
+      for (const m of under) {
+        for (const [time, speed] of [[0, 1], [1e3, 1], [123.456, 1.3]]) {
+          const phase = m / 24;
+          const { f0, f1, t } = vatFrame([start, length, phase, speed], time, 24, f32);
+          expect(f0).toBeGreaterThanOrEqual(start);
+          expect(f0).toBeLessThanOrEqual(start + length - 1);
+          expect(f1).toBeGreaterThanOrEqual(start);
+          expect(f1).toBeLessThanOrEqual(start + length - 1);
+          expect(t).toBeGreaterThanOrEqual(0);
+          expect(t).toBeLessThan(1);
+          expect(Number.isInteger(f0) && Number.isInteger(f1)).toBe(true);
+        }
+      }
+    }
+    // (and phase just under a held pose's length gives that one row)
+    expect(vatFrame([200, 1, 0.9999999 / 24, 1], 0, 24, f32)).toMatchObject({ f0: 200, f1: 200 });
+    expect(vatFrame([1000, 24, (24 - 1e-5) / 24, 1], 0, 24, f32)).toMatchObject({ f0: 1023, f1: 1000 });
+  });
+
   it('runs at speed × fps', () => {
     expect(vatFrame([0, 48, 0, 2], 0.5, 24)).toEqual({ f0: 24, f1: 25, t: 0 });
   });
@@ -180,7 +204,10 @@ describe('the shader', () => {
   it('wraps its frame with the same mod as vatFrame', () => {
     const vs = vatShader(LAMBERT).vertexShader;
     expect(vs).toContain('mod((uVatTime * aAnim.w + aAnim.z) * uVatFps, aAnim.y)');
-    expect(vs).toContain('mod(vatF0 - aAnim.x + 1.0, aAnim.y)');
+    expect(vs).toContain('float vatI = min(floor(vatM), aAnim.y - 1.0);');
+    expect(vs).toContain('float vatF0 = aAnim.x + vatI;');
+    expect(vs).toContain('mod(vatI + 1.0, aAnim.y)');
+    expect(vs).toContain('float vatT = vatM - floor(vatM);');
   });
 
   it('skins a Standard and a depth pass the same way', () => {

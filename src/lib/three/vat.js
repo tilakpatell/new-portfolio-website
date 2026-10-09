@@ -29,7 +29,8 @@
 //   vatTexel(layout, bone, frame) → the first of the bone's three texels
 //   packSkinMatrix(m: Float32Array(16), out, texel)   its rows 0–2 into out at texel × 4
 //   vatSample(data, layout, bone, frame) → Float32Array(16)   packSkinMatrix's inverse
-//   vatFrame([start, length, phase, speed], time, fps) → { f0, f1, t }
+//   vatFrame([start, length, phase, speed], time, fps, round?) → { f0, f1, t }
+//     (round: Math.fround to work it in the shader's float32)
 //   skinVertex(pos, joints, weights, matricesByBone) → [x, y, z]   (CPU skinning)
 //   toHalf(f) → uint16, fromHalf(h) → number          IEEE half floats, rounded to even,
 //     held to ±65504 past the range (no infinity in a matrix)
@@ -86,16 +87,19 @@ export function vatSample(data, layout, bone, frame) {
   return m;
 }
 
-// (GLSL's mod: x − y × floor(x / y), never negative for a positive y)
-const mod = (x, y) => x - y * Math.floor(x / y);
+// (GLSL's mod: x − y × floor(x / y), never negative for a positive y; `r` rounds each step,
+// Math.fround to work it as the shader does, in float32)
+const mod = (x, y, r) => r(x - r(y * Math.floor(r(x / y))));
+const exact = (x) => x;
 
-export function vatFrame([start, length, phase, speed], time, fps) {
-  let m = mod((time * speed + phase) * fps, length);
+// (the frame within the clip is worked from m alone, before start is added: start + m in
+// float32 can round up to start + length, a row past the clip)
+export function vatFrame([start, length, phase, speed], time, fps, r = exact) {
+  let m = mod(r(r(r(time * speed) + phase) * fps), length, r);
   // (a hair under nought rounds up to the length itself: that is the clip's start again)
   if (m >= length) m = 0;
-  const f = start + m;
-  const f0 = Math.floor(f);
-  return { f0, f1: start + mod(f0 - start + 1, length), t: f - f0 };
+  const i = Math.min(Math.floor(m), length - 1);
+  return { f0: r(start + i), f1: r(start + mod(r(i + 1), length, r)), t: r(m - Math.floor(m)) };
 }
 
 export function skinVertex(pos, joints, weights, matricesByBone) {
@@ -178,10 +182,10 @@ mat4 vatBlend(float bone, float f0, float f1, float t) {
 const SKINBASE_VS = /* glsl */ `
 float vatM = mod((uVatTime * aAnim.w + aAnim.z) * uVatFps, aAnim.y);
 vatM = vatM >= aAnim.y ? 0.0 : vatM;
-float vatF = aAnim.x + vatM;
-float vatF0 = floor(vatF);
-float vatF1 = aAnim.x + mod(vatF0 - aAnim.x + 1.0, aAnim.y);
-float vatT = vatF - vatF0;
+float vatI = min(floor(vatM), aAnim.y - 1.0);
+float vatF0 = aAnim.x + vatI;
+float vatF1 = aAnim.x + mod(vatI + 1.0, aAnim.y);
+float vatT = vatM - floor(vatM);
 mat4 vatSkinMatrix = skinWeight.x * vatBlend(skinIndex.x, vatF0, vatF1, vatT)
   + skinWeight.y * vatBlend(skinIndex.y, vatF0, vatF1, vatT)
   + skinWeight.z * vatBlend(skinIndex.z, vatF0, vatF1, vatT)
