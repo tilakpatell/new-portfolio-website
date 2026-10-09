@@ -171,9 +171,10 @@ function doorY(rooms, door) {
 
 // One stretch of wall from p to q, cut into the doorway and whatever
 // wall stands over and under it when the door is lower than the room.
-function pushPiece(walls, room, p, q, y0, y1, door) {
+// (the wall over a doorway says whose it is, `over`, so one taller than a man can stoop under it)
+function pushPiece(walls, room, p, q, y0, y1, door, over) {
   if (Math.hypot(q.x - p.x, q.z - p.z) < TINY || y1 - y0 < TINY) return;
-  walls.push({ x0: p.x, z0: p.z, x1: q.x, z1: q.z, y0, y1, room: room.id, ...(door ? { door: door.id } : {}) });
+  walls.push({ x0: p.x, z0: p.z, x1: q.x, z1: q.z, y0, y1, room: room.id, ...(door ? { door: door.id } : {}), ...(over ? { over: over.id } : {}) });
 }
 
 function pushDoorway(walls, room, p, q, door, lo, hi) {
@@ -181,7 +182,7 @@ function pushDoorway(walls, room, p, q, door, lo, hi) {
   const foot = Math.max(lo, door.y);
   pushPiece(walls, room, p, q, lo, foot);
   pushPiece(walls, room, p, q, foot, top, door);
-  pushPiece(walls, room, p, q, top, hi);
+  pushPiece(walls, room, p, q, top, hi, null, door);
 }
 
 function boxWalls(walls, room, doors) {

@@ -631,17 +631,20 @@ describe('the crew’s minds', () => {
     expect(w.crew.routes).toBe(0);
     const routed = () => [tk1, tk2].map((p) => p.mind.legs.nav.routedAt === w.now);
     expect(routed()).toEqual([false, true]);
-    // the bridge drawn back
+    // the bridge drawn back: each works his way out again, and finds there is none across the void
     w.flags = new Set();
     simulate(w, 1);
-    expect(w.crew.routes).toBe(1);
-    expect(routed()).toEqual([true, true]);
+    expect(w.crew.routes).toBe(2);
+    expect([tk1, tk2].map((p) => p.mind.legs.nav.path)).toEqual([null, null]);
     const tk3 = march('tk3', -5.3, 0.5);
     w.flags = new Set(['bridge']);
     simulate(w, 1);
-    // the bridge run out again: the first way, remembered while it was, for all three
+    // the bridge run out again: the newcomer takes the first way, remembered while it was, at no cost,
+    // and the two who found none take it up once they try again
     expect(w.crew.routes).toBe(0);
-    expect([...routed(), tk3.mind.legs.nav.routedAt === w.now]).toEqual([true, true, true]);
+    expect(tk3.mind.legs.nav.routedAt).toBe(w.now);
+    simulate(w, 4 * 30);
+    expect([tk1, tk2, tk3].every((p) => p.mind.legs.nav.path || p.x > 2)).toBe(true);
   });
 
   it('sets a squad off together from where they stand: a way one of them worked out is remembered, and costs the rest nothing', () => {

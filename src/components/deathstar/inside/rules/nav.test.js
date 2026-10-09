@@ -102,6 +102,48 @@ describe('routes through doors', () => {
     ]);
   });
 
+  // (the control room's door and the corridor's are in the bay's one back wall, 12 m apart)
+  it('steps a pace out of a door before walking on to another door in the same wall, never along the wall itself', () => {
+    const corridor = { room: 'corr327', x: 10, z: -32 };
+    for (const [a, b] of [
+      [desk, corridor],
+      [corridor, desk],
+    ]) {
+      const path = route(nav, a, b);
+      expect(doorsOf(path)).toContain('bay327-ctl');
+      for (let i = 1; i < path.length; i++) {
+        const [p, q] = [path[i - 1], path[i]];
+        if (q.room !== 'bay327' || Math.hypot(q.x - p.x, q.z - p.z) < 1) continue;
+        // the middle of every leg across the bay keeps off the back wall at z −24
+        expect(Math.abs((p.z + q.z) / 2 + 24), `${JSON.stringify(p)} → ${JSON.stringify(q)}`).toBeGreaterThan(0.5);
+      }
+    }
+  });
+
+  // (the gantry's door is in its far wall, where a box's own floor ends, at the top of its stair)
+  it('climbs the gantry stair and goes through its door on to the chasm’s upper ledge', () => {
+    const path = route(nav, { room: 'maint', x: 9.9, z: -110 }, { room: 'chasm', x: 33.7, z: -102.8 });
+    expect(path).not.toBeNull();
+    expect(doorsOf(path)).toEqual(expect.arrayContaining(['maint2-gantry', 'gantry-chasm']));
+  });
+
+  // (the chasm's bridge is a tagged floor, there only while the story's flag runs it out)
+  it('takes the chasm’s bridge only while it is out, and with it drawn back goes round by the lifts', () => {
+    const near = { room: 'chasm', x: 27.2, z: -99.6 };
+    const far = { room: 'chasmway', x: 50.7, z: -99.6 };
+    const length = (w) => w.reduce((m, p, i) => (i ? m + Math.hypot(p.x - w[i - 1].x, p.z - w[i - 1].z) : 0), 0);
+    const over = route(nav, near, far);
+    expect(length(over)).toBeLessThan(30);
+    const round = route(nav, near, far, { off: new Set(['bridge']) });
+    // (never a leg out over the void where the bridge was)
+    for (let i = 1; i < (round?.length ?? 0); i++) {
+      const [p, q] = [round[i - 1], round[i]];
+      if (q.room !== 'chasm' || p.lift) continue;
+      for (let k = 0.1; k < 1; k += 0.1) expect(layout.floorAt('chasm', p.x + (q.x - p.x) * k, p.z + (q.z - p.z) * k, new Set(['bridge'])), `${JSON.stringify(p)} → ${JSON.stringify(q)}`).not.toBeNull();
+    }
+    expect(round === null || length(round) > 40).toBe(true);
+  });
+
   it('has no route to the control room when its only door is refused', () => {
     expect(route(nav, deck, desk, { canPass: (id) => id !== 'bay327-ctl' })).toBeNull();
   });
@@ -113,7 +155,8 @@ describe('routes through doors', () => {
     expect(doorsOf(route(n, from, to))).toEqual(['we']);
     const round = route(n, from, to, { canPass: (id) => id !== 'we' });
     expect(doorsOf(round)).toEqual(['wn', 'en']);
-    expect(round.map((p) => p.room)).toEqual(['west', 'west', 'north', 'east']);
+    // (the two doors are in the north room's one wall: the way meets each square, from a pace out)
+    expect(round.map((p) => p.room)).toEqual(['west', 'west', 'north', 'north', 'north', 'east']);
   });
 
   it('gives a single point when the start and the end are the same place in one room', () => {
@@ -219,6 +262,21 @@ describe('routes round solids', () => {
     const path = route(n, { room: 'hall', x: -3, z: 0.2 }, { room: 'hall', x: 3, z: 0 }, { solidsOf: () => [{ circle: pillar }] });
     expect(path.length).toBeGreaterThan(2);
     expect(closest(path, (p) => toCircle(pillar, p))).toBeGreaterThan(0.39);
+  });
+
+  // (a body stands nearer a solid than a way keeps clear: by its corner, a little out along both sides)
+  it('finds a way from beside a box’s corner, nearer it than 0.4 m straight off but out of it on one side by more', () => {
+    const crate = { x0: 0, x1: 4, z0: 0, z1: 4 };
+    const n = navOf(station([room('hall', 0, 0, 20, 20)]));
+    for (const from of [
+      { room: 'hall', x: -0.3, z: 4.1 },
+      { room: 'hall', x: 4.25, z: -0.15 },
+      { room: 'hall', x: -0.12, z: -0.35 },
+    ]) {
+      const path = route(n, from, { room: 'hall', x: 8, z: 8 }, { solidsOf: () => [{ box: crate }] });
+      expect(path, JSON.stringify(from)).not.toBeNull();
+      expect(path.at(-1)).toMatchObject({ x: 8, z: 8 });
+    }
   });
 
   it('passes a solid against a wall on its open side', () => {

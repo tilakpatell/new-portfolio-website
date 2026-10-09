@@ -21,6 +21,16 @@ describe('what a person is seen doing', () => {
     expect(actOf(tk({ mode: 'fight', anim: 'aim' }), { armed: false }).upper).toBeNull();
   });
 
+  it('cuts a duellist’s strokes in turn, light and heavy, holds its guard and reaches out with the Force', () => {
+    const vader = (more) => person('v', 'vader', 0, 0, more);
+    expect(actOf(vader({ anim: 'strike', strokes: 1 })).full).toBe('sword.light.b');
+    expect(actOf(vader({ anim: 'strike', strokes: 2 })).full).toBe('sword.light.c');
+    expect(actOf(vader({ anim: 'heavy', strokes: 3 })).full).toBe('sword.heavy.a');
+    expect(actOf(vader({ anim: 'guard' })).base).toBe('stance');
+    expect(actOf(vader({ anim: 'cast' })).full).toBe('cast');
+    expect(actOf(person('e', 'emperor', 0, 0, { anim: 'lightning' })).base).toBe('cast.double');
+  });
+
   it('sits on the floor, lies there, and limps along held up, as the rules pose it', () => {
     expect(actOf(tk({ anim: 'ground' })).base).toBe('sit.ground');
     expect(actOf(tk({ anim: 'lie' })).base).toBe('lie');

@@ -5,6 +5,8 @@ import { GAP } from '../breach';
 import { STEP, alertOf, drain, newGame, objectiveOf, promptOf, step, teleport } from '../game';
 import { BODY } from '../walker';
 import { feedPlot, startPlot } from './plot';
+import { autoInput } from './autoplay';
+import { toStep } from './beats';
 
 const STILL = { dir: { x: 0, z: 0 }, yaw: 0, pitch: 0 };
 function play(g, input, seconds, each) {
@@ -290,6 +292,17 @@ describe('the second station’s end, the Rebel’s', () => {
   });
 });
 
+describe('a scene', () => {
+  it('has nobody shot while it plays, since it has the keys', () => {
+    const g = newGame({ station: 'ds1', side: 'rebel', mode: 'roam', seed: 3 });
+    const trooper = g.crew.people.find((p) => p.kind === 'stormtrooper');
+    teleport(g, trooper.room, trooper.x + Math.sin(trooper.yaw) * 4, trooper.z - Math.cos(trooper.yaw) * 4, trooper.yaw + Math.PI);
+    g.scene = { id: 'tractor', t: 0 };
+    play(g, STILL, 6);
+    expect(g.you.hp).toBe(g.you.max ?? 100);
+  });
+});
+
 describe('where the story puts you', () => {
   it('brings those with you along: Han and Chewie back in Docking Control with Luke, at his side at once', () => {
     const g = newGame({ station: 'ds1', side: 'rebel', mode: 'story', seed: 5 });
@@ -325,6 +338,67 @@ describe('where the story puts you', () => {
     play(g, { ...STILL, yaw: g.you.yaw }, 5);
     const far = g.layout.station.spots['chasm-far'];
     expect(Math.hypot(g.you.x - far.x, g.you.z - far.z)).toBeLessThan(1);
-    for (const p of g.crew.people.filter((q) => q.tag?.startsWith('with:'))) expect(Math.hypot(p.x - g.you.x, p.z - g.you.z), p.tag).toBeLessThan(3.5);
+    // (on the far side with you, though she may have stepped back into its corridor to fire across at the squad)
+    for (const p of g.crew.people.filter((q) => q.tag?.startsWith('with:'))) expect(p.x, p.tag).toBeGreaterThan(far.x - 3);
+  });
+});
+
+describe('Vader’s prisoner on the second station', () => {
+  it('walks Luke through the dock among the garrison with no alarm, and Vader and his guards stay with him', () => {
+    const g = toStep('ds2', 'rebel', 'escort-walk');
+    const mem = {};
+    const events = play(g, (gg) => autoInput(gg, mem), 25);
+    expect(of(events, 'saw').filter((e) => e.target === 'you')).toEqual([]);
+    expect(Object.values(g.alarm.sections).every((s) => !s.level || s.level === 'calm')).toBe(true);
+    for (const p of g.crew.people.filter((q) => q.tag === 'vader' || q.tag === 'guards')) expect(p.mode, p.tag).not.toBe('flee');
+  });
+});
+
+describe('your prisoner on the first station', () => {
+  it('follows you through the Imperial-only blast door from the bay, as you walk him in your armour', () => {
+    const g = toStep('ds1', 'rebel', 'transfer');
+    const chewie = () => g.crew.people.find((q) => q.tag === 'with:chewie');
+    expect(chewie()).toBeTruthy();
+    // (you at the corridor's far end, past the door, standing there)
+    teleport(g, 'corr327', 10, -36);
+    play(g, { ...STILL, yaw: g.you.yaw }, 30);
+    expect(chewie().room).toBe('corr327');
+    expect(Math.hypot(chewie().x - g.you.x, chewie().z - g.you.z)).toBeLessThan(4);
+  });
+
+  it('is let by by the garrison, and starts nothing with them: no alarm, nobody flees or fights', () => {
+    const g = toStep('ds1', 'rebel', 'transfer');
+    teleport(g, 'corr327', 10, -36);
+    const events = play(g, { ...STILL, yaw: g.you.yaw }, 30);
+    expect(of(events, 'fled').filter((e) => e.kind === 'chewie')).toEqual([]);
+    expect(Object.values(g.alarm.sections).every((s) => s.level === 'calm')).toBe(true);
+    expect(g.crew.people.filter((q) => q.mode === 'fight')).toEqual([]);
+  });
+});
+
+describe('AA-23’s cameras', () => {
+  it('break when shot, and the story counts the two', () => {
+    const g = toStep('ds1', 'rebel', 'transfer-cameras');
+    teleport(g, 'aa23');
+    const mem = {};
+    for (let t = 0; t < 30 && g.plot.progress.step === 'transfer-cameras'; t += STEP) {
+      step(g, autoInput(g, mem));
+      drain(g);
+      g.you.hp = 100;
+    }
+    expect(g.broken).toEqual(new Set(['aa23-camera-1', 'aa23-camera-2']));
+    expect(g.plot.progress.step).not.toBe('transfer-cameras');
+  });
+});
+
+describe('the Emperor on his throne', () => {
+  it('sits in it while Luke is brought before him, not stood out behind it', () => {
+    const g = newGame({ station: 'ds2', side: 'rebel', mode: 'story', seed: 5, hero: 'luke' });
+    startPlot(g, 'throne');
+    const seat = g.layout.station.spots['throne-seat'];
+    for (let k = 0; k < 60; k++) step(g, { dir: { x: 0, z: 0 }, yaw: g.you.yaw, pitch: 0 });
+    const e = g.crew.people.find((p) => p.kind === 'emperor');
+    expect(Math.hypot(e.x - seat.x, e.z - seat.z)).toBeLessThan(0.1);
+    expect(e.anim).toBe('sit');
   });
 });
