@@ -78,6 +78,8 @@
   .fc-buff[data-kind='rapid']::before { content: 'Rapid'; }
   .fc-buff[data-kind='bubble']::before { content: 'Bubble'; }
   .galaxy-pickup-note { left: 50%; bottom: calc(var(--sheet-h, 0px) + 300px); max-width: calc(100% - 32px); }
+  /* (and no room in the corner for the Shipyard's button: its door is the panel's "Open the shipyard", H is for a keyboard) */
+  .galaxy-map .universe-hangar-btn { display: none; }
 }
 /* the jump button, when the nose is on a star, sits over the cluster, in the middle of the same space: above the cluster's own height
    (--fc-h, measured by GalaxyView: the row wraps in a narrow window). A touch screen keeps its own place (galaxy.css). With the course
