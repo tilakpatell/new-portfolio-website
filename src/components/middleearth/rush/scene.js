@@ -346,7 +346,8 @@ export function createRushScene(canvas, level, { onLost } = {}) {
   let last = 0;
   // the house look (lib/three/house), as in Middle-earth's towns: the house
   // tone mapper, the shade one colour from the kitchen's sky light; its own fog kept
-  const house = houseOn({ renderer, scene, sun: sun, hemi, look: { fog: false } });
+  // (the stage starts at the house's exposure already: lifting it again would wash the kitchen out)
+  const house = houseOn({ renderer, scene, sun: sun, hemi, keepExposure: true, look: { fog: false } });
   let houseFrames = 0;
 
   const render = (view, ms = 16) => {
