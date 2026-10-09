@@ -96,6 +96,8 @@ describe('effectsFor', () => {
   };
   it('grip reads the holder’s hold of the system', () => {
     expect(gripAt({ control: 1, kind: 'blockade', worth: 1 })).toEqual({ grip: 1, tier: 'fortress' });
+    // under the clamp, so the blockade’s own 0.25 is what makes it a fortress (0.6, held, without)
+    expect(gripAt({ control: 0.62, kind: 'blockade' })).toEqual({ grip: 0.9, tier: 'fortress' });
     expect(gripAt({ control: 0.75, worth: 2 })).toEqual({ grip: 0.9, tier: 'fortress' });
     expect(gripAt({ control: 0.7, kind: 'assault', worth: 1 })).toEqual({ grip: 0.7, tier: 'held' });
     expect(gripAt({ control: 0.6, cut: true, front: true })).toEqual({ grip: 0.2, tier: 'thin' });
