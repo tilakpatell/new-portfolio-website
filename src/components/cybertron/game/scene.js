@@ -32,6 +32,8 @@ import { createFeel, feelGroups } from '../../../lib/three/feel';
 import { wireImpacts } from '../../../lib/three/impacts';
 import { createDust } from '../../../lib/three/dust';
 import { createImpacts, impactGroups } from '../../../lib/impact';
+import { createVehicleFeel, feelGroups as rideFeelGroups } from '../../../lib/vehicleFeel';
+import { createSpring, springGroups } from '../../../lib/spring';
 
 const STAGES = {
   iacon: () => import('./stage/iacon'),
@@ -105,6 +107,20 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
   const feel = createFeel({ offset: JOLT / 2, baseFov: CAM.robot.fov });
   feel.set({ decay: 2.5 });
   const jolt = (k) => feel.trauma(Math.sqrt(Math.min(1, k / JOLT)));
+  // the truck's weight (lib/vehicleFeel), eased rather than set: its old
+  // lean (a slide's 0.01 a m/s, the wheel's 0.05 at speed, to ±0.08) and
+  // squat (the throttle's 0.02, to ±0.04), and a squash for a bump or a
+  // landing; the robot's landing squash a spring kicked by how hard he
+  // came down. Both scale a form about its feet from its own size.
+  const rideFeel = createVehicleFeel({ rollPer: 0.01, rollMax: 0.08, pitchPer: 0.02, pitchMax: 0.04, squashPerLanding: 0.006, squashPerHit: 0.1 });
+  const landing = createSpring({ k: 120, c: 8, max: 0.3 });
+  const sized = new WeakMap(); // a form → its own scale
+  const squashed = (o, s) => {
+    if (!sized.has(o)) sized.set(o, o.scale.clone());
+    const k = sized.get(o);
+    o.scale.set(k.x * (1 + s / 2), k.y * (1 - s), k.z * (1 + s / 2));
+  };
+  const jolts = { landed: 0, hit: 0 };
   // a bump or a landing: a thud by how hard, from where, and a puff there
   const knockDust = createDust({ count: 64, colour: 0x9aa3ad, size: 1.4 });
   scene.add(knockDust.mesh);
@@ -478,9 +494,15 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
     const ride = clips ? player.robot?.group : player.vehicle;
     if (ride && p.mode === 'vehicle' && !player.change) {
       // the truck (or the tank) leans into a slide and squats as it pulls away
-      ride.rotation.z = Math.max(-0.08, Math.min(0.08, -p.slide * 0.01 - p.steer * Math.min(1, Math.abs(p.speed) / 30) * 0.05));
-      ride.rotation.x = Math.max(-0.04, Math.min(0.04, -(view.throttle ?? 0) * 0.02));
+      const lean = rideFeel.step({ lateralAccel: p.slide + p.steer * Math.min(1, Math.abs(p.speed) / 30) * 5, forwardAccel: view.throttle ?? 0, landed: jolts.landed, hit: jolts.hit }, dt);
+      ride.rotation.z = lean.roll;
+      ride.rotation.x = lean.pitch;
+      squashed(ride, lean.squash);
     } else if (clips && player.robot) player.robot.group.rotation.set(0, 0, 0);
+    jolts.landed = jolts.hit = 0;
+    // his landing, on its spring (the truck has its own, above)
+    const down = landing.step(dt);
+    if (player.robot && p.mode === 'robot' && !player.change) squashed(player.robot.group, down);
     // the people of the place: looking round at him as he comes, turning
     // on their feet once he's well round, greeting him, talking with their
     // hands while their lines play, a fist up when a mission's done
@@ -662,7 +684,11 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
         else if (e.type === 'ram') {
           jolt(1.6);
           feel.hitstop(90);
-        } else if (e.type === 'kill') {
+        } else if (e.type === 'land') {
+          if (e.mode !== 'vehicle') landing.kick(e.speed * 0.05);
+          else jolts.landed = Math.max(jolts.landed, e.speed);
+        } else if (e.type === 'bump') jolts.hit = Math.max(jolts.hit, Math.min(1, e.speed / 24));
+        else if (e.type === 'kill') {
           jolt(e.boss ? 2.4 : 0.5);
           feel.hitstop(e.boss ? 90 : 60);
         }
@@ -690,7 +716,7 @@ export async function createGame(canvas, { tier = 'high', onLost } = {}) {
       knocks.onHit(force, at);
     },
     // the feel's numbers, for the ?debug panel
-    tune: () => [...feelGroups(feel), ...impactGroups(knockRules)],
+    tune: () => [...feelGroups(feel), ...impactGroups(knockRules), ...rideFeelGroups(rideFeel), ...springGroups(landing, 'landing')],
     // the gun's muzzle as the robot holds it now (for where his shots start)
     muzzle: () => (player.robot?.group.visible && player.robot.muzzle?.(muzzleAt) ? [muzzleAt.x, muzzleAt.y, muzzleAt.z] : null),
     info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, area: areaId }),
