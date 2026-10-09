@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Starts from `main` after lane B merges. Touches the loaders named above, `scripts/assets-upload.mjs`, `scripts/packs.mjs`, `public/sw.js`, `src/lib/sw.js`, `src/runtime/install.js`, `.env.example`, `deploy.yml` (`VITE_ASSET_BASE` from a repository variable, not a secret: it is a public URL), `docs/stack/supabase.md`.
-- The service-role key is read by the upload script from `SUPABASE_SERVICE_ROLE_KEY` in the owner's shell only; the script refuses to run inside CI (`process.env.CI`), and a test asserts the repo and workflows contain no `sb_secret_` or `service_role` string.
+- The service-role key is read by the upload script from `SUPABASE_SERVICE_ROLE_KEY` in the owner's shell only; the script refuses to run inside CI (`process.env.CI`), and a test asserts the repo and workflows contain neither the secret key's prefix nor the service role's claim name (`scripts/assets-upload.test.mjs` spells both).
 - Paths are content-addressed: `<hash12>/<path>`; `Cache-Control: public, max-age=31536000, immutable` on every upload; a changed file is a new path, never an overwrite; old paths are pruned by the script's `--prune` after a deploy is confirmed, never automatically.
 - What goes remote is a list in `scripts/assets-upload.mjs` (`REMOTE = ['public/hq/models', 'public/hq/tex', 'public/cc0/galaxy', 'public/models/gen3d', 'public/kit']` to start); everything under 64 KB stays local whatever the list says; the total remote set and the local remainder are printed and written in the PR.
 - Without `VITE_ASSET_BASE`, or when a remote fetch fails, the loader falls back to the local path once and remembers the failure for the visit (`assetBase.js`'s `markDown()`), so a visitor with the bucket blocked sees the site as before; a test covers both.
@@ -39,7 +39,7 @@
 **Interfaces:**
 - Produces: `hashOf(buffer) → hash12`; `planUpload(files, manifest) → { upload: [], keep: [], prune: [] }` (pure); the script: `node scripts/assets-upload.mjs [--dry] [--prune]` reads `REMOTE`, hashes, uploads what the bucket lacks with `cacheControl: '31536000'` and `upsert: false`, writes the manifest `{ "<path>": { "hash": "...", "bytes": n } }`, prints totals; refuses under `CI`.
 
-- [ ] Tests: `planUpload` uploads only new hashes and prunes only unreferenced ones; the script refuses under `CI`; the manifest round-trips; no `sb_secret_`/`service_role` in the repo (a grep test over tracked files and `.github`).
+- [ ] Tests: `planUpload` uploads only new hashes and prunes only unreferenced ones; the script refuses under `CI`; the manifest round-trips; neither the secret key's prefix nor the service role's claim name in the repo (a grep test over tracked files and `.github`; the plan says this in words, or it would fail its own test).
 - [ ] Write; PASS; **Commit** `An upload script for the heavy assets, by content hash`.
 
 ### Task 2: The resolver and the loaders
