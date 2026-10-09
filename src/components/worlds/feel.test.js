@@ -42,7 +42,6 @@ export const OWN_SHAKE = [
   { file: 'galaxy/surface/scene.js', pattern: /\(r\(\) - 0\.5\) \* state\.shake/ },
   { file: 'deathstar/Trench3D.js', pattern: /shakeV\.set\(\(Math\.random\(\) - 0\.5\) \* k/ },
   { file: 'caribbean/tide/Tide3D.js', pattern: /const s = trauma \* trauma/ },
-  { file: 'cybertron/rollout/RollOut3D.js', pattern: RANDOM },
   { file: 'middleearth/shire/scene.js', pattern: RANDOM },
   ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: RANDOM })),
   { file: 'rickmorty/citadel/scene.js', pattern: RANDOM },
