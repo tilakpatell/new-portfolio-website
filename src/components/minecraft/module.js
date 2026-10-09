@@ -18,8 +18,9 @@
 // The world adds: look(dx, dy), press(name, down) (forward…, jump, sneak,
 // attack, use), stick(x, y), scroll(dir), select(slot), click(where) on a
 // screen, closeScreen(), icon(item) → a picture's URL, start(), pause(on),
-// newWorld(seed), toTitle(), and `game`, `scene`, `debug` for the checks;
-// in development, view(name) and settled() for the parity check (VIEWS).
+// newWorld(seed), toTitle(), tune() (the ?debug panel's groups), and `game`,
+// `scene`, `debug` for the checks; in development, view(name) and settled()
+// for the parity check (VIEWS). The sim's events are heard (./sounds.js).
 
 import * as THREE from 'three';
 import { BLOCKS, byName } from './rules/blocks.js';
@@ -34,6 +35,7 @@ import { WORKER, createStream } from './stream.js';
 import { createStore } from '../../runtime/store.js';
 import { createRegistry } from '../worlds/registry.js';
 import { holdWorld, keepWorld, openWorld, randomSeed } from './worlds.js';
+import { createSounds } from './sounds.js';
 
 export { SAVE, SAVE_VERSION };
 
@@ -132,6 +134,7 @@ export default {
     const tier = rt.quality?.tier ?? 'high';
     let distance = distanceFor(tier, 0);
     let g = null;
+    const sounds = createSounds(); // what the sim's events sound like (./sounds.js)
     let mode = 'title';
     let held = false; // a development view, held still (VIEWS)
     let screen = null;
@@ -316,6 +319,8 @@ export default {
       get game() {
         return g;
       },
+      // behind ?debug: the sounds' levels (the game's own numbers stay the game's)
+      tune: () => sounds.groups(),
       scene,
       debug: {
         teleport(x, y, z) {
@@ -425,7 +430,10 @@ export default {
               touch.pressed.clear();
             }
           }
-          for (const e of drain(g)) {
+          const happened = drain(g);
+          // (heard: the steps, the blocks, a hurt, a splash; ./sounds.js)
+          sounds.hear(happened, g.player);
+          for (const e of happened) {
             if (e.type === 'open' && mode === 'play') {
               if (e.what === 'table') openScreen(3);
               else openContainer(e.what, e);
