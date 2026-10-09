@@ -20,7 +20,12 @@
 //   (a hand turned palm-up or thumb-up, where inward alone would settle
 //   it) takes the skin's side first, where vertices stand out past the
 //   edge of the fingers (as grip.js's handShape finds the thumb), and the
-//   sum only when no side does. (gunplay leaves `skin` off: its guns are
+//   sum only when no side does. With `skin`, too, the fingers are the axis
+//   the hand's middle lies out along from its bone (at the wrist), where
+//   it's clearly one, not the longest spread: a Meshy hand's skin, the
+//   thumb out, is as wide across the knuckles as it is long, and the
+//   spread put a staff down the forearm or the fingers on most of
+//   Middle-earth's twenty-nine. (gunplay leaves `skin` off: its guns are
 //   as they were.)
 // handPoints(root, hand) → [[x, y, z]…]: the vertices skinned to `hand`, in
 //   its space as the figure stands now (gunplay measures in the bind pose)
@@ -93,6 +98,7 @@ const BEND = 1.2; // the most the wrist bends for an upright carry (rad)
 const TWIST = 1.4; // the most the forearm twists for it (rad)
 const RADIUS = 0.016; // a grip's radius, for the curl (m)
 const FORE = 0.25; // the forearm fallback: the palm this share of the forearm past the wrist
+const OUT = 1.5; // the hand's middle this much further out along one of its bone's axes than any other: that's the fingers' way
 const ACROSS = 0.35; // a thumb line nearer square to forward than this (cos) is the skin's to settle
 
 const ANIMATOR = ['play', 'playing', 'weight', 'stop']; // what a still carry needs of fig.anim
@@ -164,14 +170,26 @@ function thumbSide(points, along, across) {
 export function handFrame(points, axes, body, left = false) {
   const f = palmFrame(points);
   const world = (v) => new V().addScaledVector(axes.x, v.x).addScaledVector(axes.y, v.y).addScaledVector(axes.z, v.z);
-  let across = f.across;
-  // the two shorter axes close: the palm faces in or out, not forward or back
-  const [thin, mid] = [0, 1, 2].sort((i, j) => f.spread[i] - f.spread[j]);
-  if (f.spread[mid] < f.spread[thin] * 1.35) {
-    const lateral = (i) => Math.abs(world(new V().setComponent(i, 1)).dot(body.inward));
-    if (lateral(mid) > lateral(thin)) across = new V().setComponent(thin, 1);
+  const unit = (i) => new V().setComponent(i, 1);
+  const index = (v) => [0, 1, 2].find((i) => v.getComponent(i) !== 0);
+  // the fingers: the longest spread; with the skin, the axis the hand's
+  // middle lies out along from its bone (the bone's at the wrist), where
+  // that's clearly one: a Meshy hand's skin, the thumb out, is as wide
+  // across the knuckles as it runs out the fingers, or wider
+  let out = index(f.along);
+  if (body.skin) {
+    const m = f.mean.map(Math.abs);
+    const [first, second] = [0, 1, 2].sort((i, j) => m[j] - m[i]);
+    if (m[first] > OUT * m[second]) out = first;
   }
-  const along = f.along.clone();
+  const [thin, mid] = out === index(f.along) ? [index(f.normal), index(f.across)] : [0, 1, 2].filter((i) => i !== out).sort((i, j) => f.spread[i] - f.spread[j]);
+  let across = unit(mid);
+  // the two shorter axes close: the palm faces in or out, not forward or back
+  if (f.spread[mid] < f.spread[thin] * 1.35) {
+    const lateral = (i) => Math.abs(world(unit(i)).dot(body.inward));
+    if (lateral(mid) > lateral(thin)) across = unit(thin);
+  }
+  const along = unit(out);
   if (along.dot(new V(...f.mean)) < 0) along.negate(); // out past the wrist
   const thumb = across.clone();
   // (a thumb line that runs well forward or back: forward says which, as

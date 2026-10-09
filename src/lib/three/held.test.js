@@ -95,6 +95,23 @@ describe('the grip frame, from the hand’s own skin', () => {
     expect(L.normal.dot(R.normal)).toBeLessThan(-0.95); // (the same bone axes, the palm the mirror)
   });
 
+  it('a stubby hand, wider across than it runs out (a Meshy hand’s skin, the thumb out): the fingers still out from the wrist', () => {
+    const rig = withHands(meshyRig(), { wide: true });
+    for (const [bone, left] of [
+      [rig.bones.RightHand, false],
+      [rig.bones.LeftHand, true],
+    ]) {
+      const F = gripFrame(rig.model, bone, { left });
+      expect(F.along.angleTo(new V(0, 1, 0))).toBeLessThan(10 * DEG); // out the fingers, not across the knuckles
+      expect(F.thumb.z).toBeGreaterThan(0.95); // across the knuckles, toward the nub
+      expect(Math.abs(F.normal.x)).toBeGreaterThan(0.95); // out of the plate
+    }
+    // (handFrame without the skin, as gunplay calls it, keeps the longest spread)
+    const pts = handPoints(rig.model, rig.bones.RightHand);
+    const axes = { x: new V(1, 0, 0), y: new V(0, 1, 0), z: new V(0, 0, 1) };
+    expect(Math.abs(handFrame(pts, axes, { forward: new V(0, 0, 1), inward: new V(1, 0, 0) }).along.z)).toBeGreaterThan(0.95);
+  });
+
   it('is the same whatever the figure is doing when it’s asked', () => {
     const f = make();
     const at = gripFrame(f.rig.model, f.rig.bones.RightHand);

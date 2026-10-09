@@ -143,8 +143,10 @@ export function swingClip(rig, name, dur, swing, { hips = null } = {}) {
 }
 
 // the vertices of one hand, in its bone's space (cm): the plate, then the
-// thumb nub (a tenth of them)
-function handCloud(verts) {
+// thumb nub (a tenth of them). wide: a stubby hand, the plate as wide
+// across the knuckles as it runs out the fingers and more (as a Meshy
+// hand's skin is, the thumb out), so its longest spread is across
+function handCloud(verts, wide = false) {
   const nub = Math.max(2, Math.round(verts * 0.1));
   const plate = verts - nub;
   const pts = [];
@@ -153,13 +155,14 @@ function handCloud(verts) {
     const a = i % rows;
     const b = Math.floor(i / rows);
     const cols = Math.max(1, Math.ceil(plate / rows));
-    pts.push([b % 2 ? 0.5 : -0.5, 1 + (8 * a) / (rows - 1), cols > 1 ? -1.5 + (3 * (b % cols)) / (cols - 1) : 0]);
+    const [len, half] = wide ? [3, 4] : [8, 1.5];
+    pts.push([b % 2 ? 0.5 : -0.5, 1 + (len * a) / (rows - 1), cols > 1 ? -half + (2 * half * (b % cols)) / (cols - 1) : 0]);
   }
-  for (let i = 0; i < nub; i++) pts.push([0, 1 + (2 * i) / Math.max(1, nub - 1), 2]);
+  for (let i = 0; i < nub; i++) pts.push([0, 1 + (2 * i) / Math.max(1, nub - 1), wide ? 5 : 2]);
   return pts;
 }
 
-export function withHands(rig, { verts = 60 } = {}) {
+export function withHands(rig, { verts = 60, wide = false } = {}) {
   const { model, bones } = rig;
   model.updateMatrixWorld(true);
   const list = Object.values(bones);
@@ -171,7 +174,7 @@ export function withHands(rig, { verts = 60 } = {}) {
     const b = bones[name];
     if (!b) continue;
     const i = list.indexOf(b);
-    for (const p of handCloud(verts)) {
+    for (const p of handCloud(verts, wide)) {
       v.set(...p).applyMatrix4(b.matrixWorld);
       pos.push(v.x, v.y, v.z);
       idx.push(i, 0, 0, 0);
