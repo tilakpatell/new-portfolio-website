@@ -451,6 +451,8 @@ export default {
         return g;
       },
       ready: view.ready,
+      // the ?debug panel's groups: the feel's numbers (runtime/debug.js)
+      tune: () => view.tune?.() ?? [],
       resize(w, h) {
         size.w = w;
         size.h = h;
@@ -473,7 +475,8 @@ export default {
             look.yaw += pad.rx * PAD_TURN * dt;
             look.pitch = clamp(look.pitch - pad.ry * PAD_TURN * dt, -PITCH, PITCH);
           }
-          const { ticks, left } = ticksFor(dt, acc);
+          // (a hit's hitstop slows the steps: the scene's feel says by how much, once a frame)
+          const { ticks, left } = ticksFor(dt * (view.timeScale?.(dt) ?? 1), acc);
           acc = left;
           if (ticks) {
             const input = mapOpen ? still() : intent(snap);
