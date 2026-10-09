@@ -64,6 +64,7 @@ import { createFeel, feelGroups } from '../../../lib/three/feel';
 import { wireImpacts } from '../../../lib/three/impacts';
 import { createImpacts, impactGroups } from '../../../lib/impact';
 import { createSpring, springGroups } from '../../../lib/spring';
+import { BLOOMS } from './look';
 
 export { kitMaterials };
 
@@ -160,7 +161,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const dev = device();
   const tier = dev.tier;
   const fit = budget();
-  const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.3, far: 1000, exposure: 1.05, bloom: { strength: 0.55, radius: 0.45, threshold: 1.15 }, onLost });
+  const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.3, far: 1000, exposure: 1.05, bloom: BLOOMS.street, onLost });
   // the shake (lib/three/feel: trauma², still under reduced motion) and the
   // knocks (a hard landing, the cruiser's bump) by the hit law, a thud where
   // it was, heard from the camera
@@ -185,10 +186,9 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     },
   });
   const { renderer, scene, camera } = stage;
-  // a tone map that keeps the show's flat bright colours bright (the house
-  // tone mapper: the exposure was tuned under it, so the house's own
-  // ACES-matching lift isn't taken)
-  renderer.toneMapping = THREE.NeutralToneMapping;
+  // (the house tone mapper, the stage's own, keeps the show's flat bright
+  // colours bright: the exposure was tuned under it, so the house's own
+  // ACES-matching lift isn't taken; ./look.js)
   // the house look (lib/three/house): one shadow colour on everything, from
   // each area's sky light, and fog the colour of the sky where there's fog
   const house = createHouse();

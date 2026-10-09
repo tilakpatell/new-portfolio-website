@@ -29,11 +29,10 @@
 // (`guard`, for lib/combat/bolt.js's step), one beside it isn't.
 //
 //   createSaber(gp, { color, hilt, stance, parent, sound, fig, clips }) →
-//     { light(on), swing(now, { heavy, dir, lock, lunge, clip }), block(on), throw(now, dir),
+//     { light(on), swing(now, { heavy, dir, lock, lunge, clip }), cancel(), block(on), throw(now, dir),
 //       stand(dt, now, move), update(dt, now, { forward, up, me, targets, hit }),
-//       guard(id, side) (the raised blade for the bolts' step: { id, base,
-//       tip, r, side } | null), deflecting(from) (a swipe from there meets
-//       the raised blade), lit, busy, swinging (the stroke: { name (the
+//       guard(id, side) (the raised blade for the bolts' step, and what
+//       meets a duellist's contact: { id, base, tip, r, side } | null), lit, busy, swinging (the stroke: { name (the
 //       clip's), clip, t0, speed, contact, damage, heavy, … } or null), thrown, charge (0…1 while F is
 //       held), setCharge(k), blades (lib/combat/blade.js's, the main first),
 //       dispose() }
@@ -52,7 +51,7 @@ import { createTrail } from '../../../lib/three/combat/trail';
 import { frameFrom, reach, rotateWorld, setWorldQuaternion } from '../../../lib/three/ik';
 import { capsuleOf } from './blaster';
 import { BLOCK_CLIP, DIRS, HEAVY, PARRY, STRIKE, rootScale, stanceOf, strokeFor } from './combatRules';
-import { SABER, deflects, throwAt } from './saberRules';
+import { SABER, throwAt } from './saberRules';
 
 const V = THREE.Vector3;
 const _a = new V();
@@ -486,6 +485,15 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       st.charge = 0;
       return st.swing;
     },
+    // a stroke dropped where it is, its clip let go: a duellist whose mark is
+    // gone (duel.js, Review Focus 5), or you, parried
+    cancel() {
+      const sw = st.swing;
+      if (!sw) return;
+      st.last = { ...sw, endedAt: st.now };
+      st.swing = null;
+      if (sw.walk) fig?.stop?.(0.2, 'full');
+    },
     block(on) {
       if (on && !st.blocking) {
         this.light(true);
@@ -513,10 +521,6 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       st.swing = null;
       sound?.('throw');
       return true;
-    },
-    // whether a bolt from `from` ([x, y, z]) would meet the raised blade
-    deflecting(from) {
-      return st.blocking && st.lit > 0.5 && st.me ? deflects(st.me, from, SABER.block.cone * (st_.block > 1 ? 1.2 : 1)) : false;
     },
     // after the figure's clips, before what poses over them: how much it's
     // going (0…1, as the figure's update has it), for the next stroke
