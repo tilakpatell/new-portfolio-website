@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import * as ai from './index';
-import { createGreeter as fromCast } from '../../components/middleearth/castRules';
 import { createGreeter, onTalk, talkTarget } from './talk';
 
 const you = { x: 0, z: 0 };
@@ -110,8 +109,7 @@ describe('createGreeter', () => {
     expect(g(NaN)).toBe(false);
   });
 
-  it('is the one castRules re-exports, and the toolkit names it', () => {
-    expect(fromCast).toBe(createGreeter);
+  it('is named by the toolkit, with the rest', () => {
     expect(ai.talk.talkTarget).toBe(talkTarget);
     expect(ai.talkTarget).toBe(talkTarget);
     expect(ai.onTalk).toBe(onTalk);

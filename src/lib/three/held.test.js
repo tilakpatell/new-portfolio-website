@@ -83,11 +83,10 @@ describe('the grip frame, from the hand’s own skin', () => {
     expect(gripFrame(rig.model, rig.bones.RightHand)).toBe(null);
   });
 
-  it('handPoints and handFrame are gunplay’s, here', async () => {
-    const gun = await import('../../components/universe/gunplay');
-    expect(gun.handFrame).toBe(handFrame);
+  it('handPoints reads the hand’s vertices as the figure stands', () => {
     const { rig } = make();
     expect(handPoints(rig.model, rig.bones.RightHand).length).toBe(60);
+    expect(handFrame).toBeTypeOf('function');
   });
 });
 

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { meshyRig, MESHY_BONES } from '../src/lib/three/meshyRig.fixture.js';
-import { analyse, atBindPose, BIND_EPS, browserPath, figureName, inView, LIMIT, lockstep, mul4, pageScript, parseArgs, phaseSpread, routeOf, skinDeviation, report, toeDrift, toesOf, worldTimes } from './anim-check.mjs';
+import { analyse, atBindPose, BIND_EPS, browserPath, figureName, heldPageScript, heldTalkLines, heldVerdict, inView, LIMIT, lockstep, mul4, pageScript, parseArgs, phaseSpread, routeOf, sampleHeld, skinDeviation, report, swingOf, TALK_WITHIN, talkVerdict, toeDrift, toesOf, worldTimes } from './anim-check.mjs';
 
 // a toe's track, `fps` samples a second for `seconds`: at(t) → [x, y, z] or null (hidden)
 const track = (seconds, fps, at) => {
@@ -341,5 +341,100 @@ describe('the page’s half, on three.js’s own objects', () => {
     renderer.render(new THREE.Scene(), new THREE.PerspectiveCamera());
     expect(draw).toHaveBeenCalledTimes(1);
     expect(globalThis.__threeScenes).toHaveLength(1);
+  });
+});
+
+describe('--held: the things in hand', () => {
+  const Q = (a) => [Math.sin(a / 2), 0, 0, Math.cos(a / 2)]; // a turn of `a` about x
+  const frame = (o) => ({ id: 'a', kind: 'staff', carry: {}, grip: 0.005, axis: 0.05, up: 0.1, arm: Q(0), moving: false, ...o });
+
+  it('passes a thing in the palm on its line, and names what’s wrong with one that isn’t', () => {
+    expect(heldVerdict([frame(), frame({ grip: 0.02 })]).ok).toBe(true);
+    const far = heldVerdict([frame(), frame({ grip: 0.045 })]);
+    expect(far.ok).toBe(false);
+    expect(far.worst.grip).toBeCloseTo(0.045, 6);
+    expect(far.items[0].why[0]).toMatch(/grip 4\.5 cm/);
+    expect(heldVerdict([frame({ axis: (20 * Math.PI) / 180 })]).items[0].why[0]).toMatch(/axis 20°/);
+    // (in a world of centimetres, 2 is 2 cm)
+    expect(heldVerdict([frame({ grip: 2 })], { scale: 100 }).ok).toBe(true);
+    expect(heldVerdict([]).ok).toBe(true);
+  });
+
+  it('a still carry’s arm may swing only a little while walking; standing it’s not counted', () => {
+    const still = { still: true };
+    const walk = (amp) => [0, 1, 2, 3, 4, 5].map((i) => frame({ carry: still, moving: true, arm: Q(amp * Math.sin(i)) }));
+    expect(swingOf([Q(-0.3), Q(0.3)])).toBeCloseTo(0.3, 6);
+    expect(heldVerdict(walk(0.1)).ok).toBe(true);
+    const swung = heldVerdict(walk(0.4));
+    expect(swung.ok).toBe(false);
+    expect(swung.worst.swing).toBeGreaterThan(0.25);
+    expect(heldVerdict(walk(0.4).map((f) => ({ ...f, moving: false }))).ok).toBe(true);
+  });
+
+  it('an upright carry’s top within 25° of up; another kind’s top isn’t asked', () => {
+    const tilt = (deg) => frame({ carry: { upright: true }, up: (deg * Math.PI) / 180 });
+    expect(heldVerdict([tilt(20)]).ok).toBe(true);
+    expect(heldVerdict([tilt(30)]).ok).toBe(false);
+    expect(heldVerdict([frame({ up: 2 })]).ok).toBe(true);
+  });
+
+  it('reads a held thing’s grip and axis off the scene, as held.js put it', async () => {
+    const { holdItem } = await import('../src/lib/three/held.js');
+    const { withHands } = await import('../src/lib/three/meshyRig.fixture.js');
+    const rig = withHands(meshyRig());
+    const scene = new THREE.Scene();
+    scene.add(rig.model);
+    const staff = new THREE.Group();
+    const grip = new THREE.Object3D();
+    grip.name = 'grip';
+    grip.position.y = 0.3;
+    staff.add(grip);
+    holdItem({ model: rig.model }, staff, 'staff');
+    scene.updateMatrixWorld(true);
+    const [s] = sampleHeld([scene]);
+    expect(s.kind).toBe('staff');
+    expect(s.grip).toBeLessThan(1e-6);
+    expect(s.axis).toBeLessThan(1e-3);
+    expect(s.arm).toHaveLength(4);
+    staff.position.x += 5; // (in hand units: 5 cm)
+    scene.updateMatrixWorld(true);
+    expect(sampleHeld([scene])[0].grip).toBeCloseTo(0.05, 3);
+    staff.visible = false;
+    expect(sampleHeld([scene])).toEqual([]);
+  });
+
+  it('its page script runs as a script', () => {
+    new Function(heldPageScript())();
+    expect(typeof globalThis.__animHeld.start).toBe('function');
+    globalThis.__animHeld.start();
+    expect(globalThis.__animHeld.stop()).toEqual([]);
+  });
+});
+
+describe('--talk: E and the body’s answer', () => {
+  it('passes a prompt that promises the talk and a reaction within half a second', () => {
+    const frames = [
+      { t: 0.1, upper: null, look: true },
+      { t: 0.2, upper: 'talk', look: true },
+    ];
+    expect(talkVerdict({ prompt: 'E Talk · Gandalf', frames })).toEqual({ ok: true, at: 0.2, why: null });
+    expect(TALK_WITHIN).toBe(0.5);
+  });
+
+  it('fails no prompt, a prompt for something else, and an answer too late or without a look', () => {
+    const on = [{ t: 0.2, upper: 'talk', look: true }];
+    expect(talkVerdict({ prompt: null, frames: on }).why).toBe('no prompt');
+    expect(talkVerdict({ prompt: 'E Go in · Door', frames: on }).why).toMatch(/E Go in/);
+    expect(talkVerdict({ prompt: 'E Talk · Sam', frames: [{ t: 0.7, upper: 'talk', look: true }] }).ok).toBe(false);
+    expect(talkVerdict({ prompt: 'E Talk · Sam', frames: [{ t: 0.2, upper: 'talk', look: false }] }).ok).toBe(false);
+  });
+
+  it('takes --held and --talk, and reports a route without talkers as skipped', () => {
+    expect(parseArgs(['--held', '--talk'], {})).toMatchObject({ held: true, talk: true });
+    expect(parseArgs([], {})).toMatchObject({ held: false, talk: false });
+    expect(heldTalkLines(null, { skipped: 'no hooks' })).toEqual(['talk: skipped (no hooks)']);
+    const lines = heldTalkLines(heldVerdict([{ id: 'a', kind: 'staff', carry: {}, grip: 0.05, axis: 0, up: 0, arm: null, moving: false }]), { talkers: [{ name: 'Sam', ok: true, at: 0.2 }] });
+    expect(lines[1]).toMatch(/^ {2}OVER staff/);
+    expect(lines.at(-1)).toBe('  ok   Sam: answered in 0.20 s');
   });
 });
