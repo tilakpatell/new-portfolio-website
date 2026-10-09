@@ -14,6 +14,7 @@ import { houseOn } from '../../../lib/three/house';
 import { guard } from '../../../lib/three/frameGuard';
 import { prepareScene } from '../../../lib/three/gpuWork';
 import { stageTune } from '../../../lib/stage3d';
+import { LOOK } from './look';
 import { device } from '../../../lib/device';
 import { fitRatio, maxSide, precompile as compileFor, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 
@@ -40,7 +41,7 @@ export function createEngine(canvas, opts = {}) {
   const {
     exposure = 1,
     toneMapping = THREE.NeutralToneMapping,
-    bloom = { strength: 0.55, radius: 0.5, threshold: 0.92 },
+    bloom = LOOK.bloom,
     fov = 60,
     near = 0.05,
     far = 600,
