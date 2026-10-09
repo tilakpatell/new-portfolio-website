@@ -47,7 +47,7 @@ Start A, B and C together. D starts when the three are on `main`.
 | Lane | Done | Left | Checking it |
 |---|---|---|---|
 | A | nothing yet | the plan from Task 1 | `node scripts/autopilot-check.mjs --only smoke --skip lint,test,build --routes /fly/hoth`; `node scripts/perf-probe.mjs --routes /fly/hoth` |
-| B | the schema file `supabase/migrations/20261009000000_world_entities.sql`, `supabase/README.md`, `.env.example`, the decision entry | the plan from Task 1; the schema applied to the project | `node scripts/supabase-check.mjs` |
+| B | PR #782: `src/lib/durable/` (client, entities, loader), `scripts/supabase-seed.mjs`, `scripts/supabase-check.mjs`, three migrations applied to the owner's project, six live checks `ok`; the robustness pass (retries, realtime resubscribe, 401 re-sign-in) asked for on 2026-10-09 | CI green and out of draft; `CELL` to read `NET_CELL` once lane C is on main (lane D closes it); the seed re-run after lane A merges | `node scripts/supabase-check.mjs` |
 | C | nothing yet | the plan from Task 1 | `npx vitest run src/components/universe/online src/lib/net`; `node scripts/online-check.mjs` |
 | D | nothing yet | after A, B, C | `node scripts/online-check.mjs --fly` |
 
