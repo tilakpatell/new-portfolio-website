@@ -419,21 +419,17 @@ export default function Galaxy() {
     if (!view.current.jump(id)) navigate(`/galaxy/${id}`, { replace: true });
   };
 
-  // Escape: shut the map, stop coming round for a jump or flying itself
+  // Escape: stop coming round for a jump or flying itself (the map has its own
+  // Escape, HoloMap.jsx: it takes the key first, and a dialog open stands this down)
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented || leaving) return;
-      if (mapOpen) {
-        e.preventDefault();
-        setMapOpen(false);
-        return;
-      }
       if (document.querySelector('[aria-modal="true"]')) return;
       if (view.current.escape()) e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [mapOpen, leaving]);
+  }, [leaving]);
 
   // (every system's colour is light, readable on the dark page: so dark on a button)
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
