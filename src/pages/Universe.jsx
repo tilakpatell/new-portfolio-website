@@ -106,7 +106,7 @@ export default function Universe({ ask = false }) {
   // paint job and parts it flies with, while they're still earned
   const { unlocked, unlock } = useAchievements();
   // (the loadouts, hulls and garage builds, the Shipyard's door and what Apply and a sale do: shipyard/useShipyardPage.js, which the galaxy uses too)
-  const { loadout, build, garage, dropped, yard, setYard, applyDraft, sellPart, yardNote, live, yardSaves } = useShipyardPage({ ship, unlocked });
+  const { loadout, build, tune, garage, dropped, yard, setYard, applyDraft, sellPart, yardNote, live, yardSaves } = useShipyardPage({ ship, unlocked });
   useEffect(() => setLoadout(loadout), [setLoadout, loadout]);
   useEffect(() => tellBuild?.(build), [tellBuild, build]);
   // the wardrobe, from the shipyard: how the cruiser’s Rick and Morty look,
@@ -493,6 +493,7 @@ export default function Universe({ ask = false }) {
         ship={ship}
         loadout={loadout}
         build={build}
+        tune={tune}
         canFit={Boolean(ship)}
         hangar={yard}
         onHangar={setYard}
