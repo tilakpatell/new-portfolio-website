@@ -46,6 +46,7 @@ import { LIFE, createCastLife } from './castLife';
 import { createCastBody, createLook, poseKit } from './castBody';
 import { centredClips } from './borrow';
 import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, GAIT, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, SUIT, TRICK, V, aimWeb, camRoom, findPerch, floorAt, gaitFor, nearestEdge, photoView, samplePath, swingArc, swingPose, treeHeight } from './rules';
+import { LOOK } from './look';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -397,7 +398,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // (the glow only for what's past lit paint: a white wall full in the sun
   // comes to about 1.3, and at the old 1.2 the training center's front was a
   // slab of light; the glows, the lintels and the beams are well over)
-  const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: { strength: 0.36, radius: 0.5, threshold: 1.55, knee: 0.9 }, onLost });
+  const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: LOOK.bloom, onLost });
   const { scene, sun, camera, renderer } = engine;
   const small = engine.small;
   const sets = ['grass', 'forest-floor', 'concrete-floor', 'concrete-worn', 'corrugated', 'rock', 'asphalt', 'leather', 'carbon', 'painted-metal', 'planks'];
