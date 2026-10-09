@@ -70,7 +70,6 @@ export const NO_PRESS = [
   { file: 'avengers/world/rules.js', pattern: /function stepGround\(h, \{[^}]*\bjump\b/ },
   { file: 'galaxy/surface/scene.js', pattern: /jumpQueued/ },
   { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
-  { file: 'rickmorty/world/rules.js', pattern: /vy = move\.jump \? MORTY\.jump/ },
   { file: 'avengers/smash/rules.js', pattern: /H\.air > 0 \|\| H\.smash >= 0\) return false/ },
   { file: 'rickmorty/world/sewer/rules.js', pattern: /input\.hop && r\.hop <= 0/ },
   { file: 'universe/foot.js', pattern: /input\.jump && h <= 1e-6/ },
@@ -156,10 +155,11 @@ describe('the feel ratchet', () => {
     });
   }
 
-  it('holds the audit’s counts', () => {
-    expect(OWN_SHAKE.map((e) => e.file).filter((f) => !f.includes('/towns/'))).toHaveLength(16);
-    expect(DEAD_HITSTOP).toHaveLength(3);
-    expect(NO_PRESS).toHaveLength(11);
-    expect(UNANSWERED).toHaveLength(5);
+  // (at most: each lane that fixes a file takes it off, and the lists only shrink)
+  it('holds no more than the audit’s counts', () => {
+    expect(OWN_SHAKE.map((e) => e.file).filter((f) => !f.includes('/towns/')).length).toBeLessThanOrEqual(16);
+    expect(DEAD_HITSTOP.length).toBeLessThanOrEqual(3);
+    expect(NO_PRESS.length).toBeLessThanOrEqual(11);
+    expect(UNANSWERED.length).toBeLessThanOrEqual(5);
   });
 });
