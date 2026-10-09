@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Starts from `main` after lanes A, B and C are merged; touches `src/components/expanse/flight/` and `scripts/online-check.mjs` only, plus a paragraph of docs.
+- Starts from `main` after lanes A, B and C are merged; touches `src/components/expanse/flight/`, `scripts/online-check.mjs`, `src/lib/durable/entities.js` (`CELL` from `NET_CELL`, `terrainVersion`), one migration, plus a paragraph of docs.
 - The key to build is `B`, to take down your own `X`; the prompt is key first (“B Build turret”); one toast a sentence; British spelling, curly quotes.
 - Rates and tags are `flightProtocol.js`'s; the loader's `radius` is 1 unless the measurement in Task 5 says 2.
 - No model names in code, docs or commits. Commits end with the harness's attribution lines.
@@ -77,6 +77,14 @@
 - [ ] **Step 1: Failing test**: picks the nearest in range, never its owner, fires at the rate, turns no faster than `turn` a second.
 - [ ] **Step 2:** FAIL. **Step 3:** Write. **Step 4:** PASS.
 - [ ] **Step 5:** Each client runs every turret it holds against the ships it sees (its own included); a bolt at your own ship is your hit (the universe's shield path); your bolt on a turret → `loader.damage(id, 8)`, the bar on its tag; hp 0 → the slot frees. **Commit** `Turrets fire, and wear down through the database`.
+
+### Task 4b: The terrain version guard
+
+**Files:**
+- Create: `supabase/migrations/20261009000300_terrain_version.sql` (`alter table public.planets add column terrain_version integer not null default 1; alter table public.world_entities add column terrain_version integer not null default 1;`), Modify: `src/lib/durable/entities.js` (`terrainVersion` on the entity and the row), `structures.js`, `src/lib/land/flight/planetSpec.js` (`TERRAIN_VERSION = 1`, bumped by hand whenever `planetTables.js` changes a world's ground; a test hashes the tables and fails when the hash changes without the version), `scripts/supabase-seed.mjs` (writes each planet's version)
+
+- [ ] **Step 1: Failing test**: an entity whose `terrainVersion` is older than the spec's is re-grounded on load (`y` set to `heightUnder(x, z)` + its kind's standing height) and drawn there; one with the current version is drawn at its stored `y`; `place` sends the current version.
+- [ ] **Step 2:** FAIL. **Step 3:** Write. **Step 4:** PASS. **Step 5: Commit** `A built thing stays on the ground when the ground changes`.
 
 ### Task 5: The two-browser check and the measurement
 

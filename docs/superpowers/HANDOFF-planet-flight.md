@@ -15,8 +15,12 @@ Four lanes, one pull request each, three of them in parallel. Read these first, 
 | B | durable world (Supabase) | `2026-10-09-durable-world.md` | `claude/durable-world` | main | nothing in code; the project's schema is applied by the owner or by `supabase db push` with a login |
 | C | spatial channels (Nostr) | `2026-10-09-spatial-channels.md` | `claude/spatial-channels` | main | nothing |
 | D | shared world | `2026-10-09-shared-world-integration.md` | `claude/shared-world` | main after A, B, C | A, B, C merged |
+| E | landmarks and kit clutter | `2026-10-09-landmarks.md` | `claude/planet-landmarks` | main after A | A merged |
+| F | the planet map | `2026-10-09-planet-map.md` | `claude/planet-map` | main after A | A merged |
+| G | planet life (air, animals, people, hostiles) | `2026-10-09-planet-life.md` | `claude/planet-life` | main after A | A merged |
+| H | occurrences and events | `2026-10-09-occurrences.md` | `claude/planet-occurrences` | main after D, G | D, G merged |
 
-Start A, B and C together. D starts when the three are on `main`.
+Start A, B and C together. D, E, F and G start when A is on `main` (D also needs B and C). H starts when D and G are on `main`. E, F and G touch the same `scene.js` and `FlightHud.jsx`: each adds its own module and one call site, merges `origin/main` before its last push, and keeps the other lanes' calls.
 
 ## The Supabase project
 
@@ -41,6 +45,10 @@ Start A, B and C together. D starts when the three are on `main`.
 - **B**: `npm run build` with and without the env; the loader's tests green against the fake; `scripts/supabase-check.mjs` prints six `ok` lines against the project once the schema is applied (or the PR says it could not be applied and why).
 - **C**: a room joined with `cells` sends `#g` in its REQ and re-asks on a cell change; a room joined without is byte-for-byte what it was; `scripts/online-check.mjs` passes as before.
 - **D**: two browsers on `/fly/hoth` see each other's ships only within a cell of each other, a turret built in one is in the other within a second and after a reload of both, and a turret shot to nothing leaves both.
+- **E**: Echo Base has its doors and generator, Mos Eisley its blocks, Cloud City its towers; trees and rocks are the kit's; each planet's download is measured.
+- **F**: a minimap in the HUD and `M` opens the planet map with POIs, pilots, built things and a waypoint; nothing stored.
+- **G**: Hoth has tauntaun herds and snowspeeder patrols, Coruscant three lanes of traffic, Dagobah only bogwings, Mandalore's glass nothing; a patrol scrambles at you over a garrison; the probe holds 33 ms with Coruscant's lanes full.
+- **H**: a blizzard on Hoth that both browsers see, the Purge at sundown, an eruption on Mustafar, wrecks with salvage and camps that fire.
 
 ## Status
 
@@ -50,6 +58,10 @@ Start A, B and C together. D starts when the three are on `main`.
 | B | PR #782, out of draft, CI green, mergeable: `src/lib/durable/` (client, entities, loader with retries, re-sign-in and realtime resubscribe), `scripts/supabase-seed.mjs` (the 50-planet roster, idempotent), `scripts/supabase-check.mjs`, three migrations applied to the owner's project, six live checks `ok` | merge (the owner's); apply `seed.sql` once after lane A merges (old Expanse rows are deleted by hand); `CELL` to read `NET_CELL` (lane D) | `node scripts/supabase-check.mjs` |
 | C | PR #783, out of draft, CI green: `src/lib/net/cells.js`, `refresh()` on a pool subscription, `cells` in `joinRoom` (the `g` tag out, `#g` in, re-asked on change), `flightProtocol.js`; a test that `CELL === NET_CELL` whenever `src/lib/durable/entities.js` is present | merge (the owner's); lane D makes `entities.js` import `NET_CELL` | `npx vitest run src/components/universe/online src/lib/net`; `node scripts/online-check.mjs` |
 | D | nothing yet | after A, B, C | `node scripts/online-check.mjs --fly` |
+| E | nothing yet | after A: the plan from Task 1 | `node scripts/perf-probe.mjs --routes /fly/hoth` over Echo Base |
+| F | nothing yet | after A: the plan from Task 1 | smoke `/fly/hoth --phone` with the map open |
+| G | nothing yet | after A: the plan from Task 1 | `node scripts/perf-probe.mjs --routes /fly/coruscant` |
+| H | nothing yet | after D, G: the plan from Task 1 | `node scripts/online-check.mjs --fly` (one storm, two browsers) |
 
 ## When something in the plan is wrong
 
