@@ -5,6 +5,7 @@ import { prefersReducedMotion } from '../../lib/hooks';
 import { opened } from './opening';
 import { SHEET } from './mapData';
 import { FLIGHT_MS, TITLE } from './mapFlight.js';
+import { waitOf } from './mapCover.js';
 import { mapFont, paintMap } from './mapPaint.js';
 import '../../styles/lazy/middleearth.css';
 
@@ -22,7 +23,10 @@ import '../../styles/lazy/middleearth.css';
 // `api` is a ref the hub keeps, to ask where places are on the screen
 // (`api.current.project(x, y)`): it is the flat sheet’s until the WebGL one
 // shows, then the WebGL one’s. `onFrame` is called after every frame drawn,
-// so the hub can move its markers with the camera.
+// so the hub can move its markers with the camera. `covers` is a selector for
+// what the page lays opaque over the map, across its width (a chapter's town
+// on its stage): while it hides most of the screen, the WebGL map is drawn
+// less often (./mapCover.js).
 
 // how long the opening holds, without a flight, for someone who has asked
 // for less motion (without a graphics chip it lasts the title’s time)
@@ -142,14 +146,14 @@ const forced = () => {
   }
 };
 
-export default function MapBackdrop({ spot = null, zoom = null, hover = null, mordor = false, dark = false, hub = false, opening = false, onOpened, api: outer, onFrame }) {
+export default function MapBackdrop({ spot = null, zoom = null, hover = null, mordor = false, dark = false, hub = false, opening = false, covers = null, onOpened, api: outer, onFrame }) {
   const three = use3D();
   const gl = three.on && (!three.info.software || forced());
   const flatCanvas = useRef(null);
   const glCanvas = useRef(null);
   const api = useRef(null);
   const state = useRef({});
-  state.current = { spot, zoom, hover, mordor, dark, hub, opening };
+  state.current = { spot, zoom, hover, mordor, dark, hub, opening, covers };
   const lean = useRef([0, 0]);
   const done = useRef(onOpened);
   done.current = onOpened;
@@ -213,6 +217,19 @@ export default function MapBackdrop({ spot = null, zoom = null, hover = null, mo
       const v = viewOf(state.current, lean.current);
       both().forEach((a) => a.setView(v));
     };
+    // how long the WebGL map may wait between frames, for how much of the
+    // screen what the page lays over it hides (only what spans the width)
+    const wait = () => {
+      const c = flatCanvas.current;
+      const page = c?.parentElement?.parentElement;
+      if (!page) return 0;
+      const spans = [];
+      for (const el of page.querySelectorAll(state.current.covers)) {
+        const r = el.getBoundingClientRect();
+        if (r.left <= 0 && r.right >= c.clientWidth) spans.push([r.top, r.bottom]);
+      }
+      return waitOf(c.clientHeight, spans);
+    };
     // draw while the camera is on its way, then stop until something changes
     const loop = (now) => {
       raf = 0;
@@ -233,7 +250,7 @@ export default function MapBackdrop({ spot = null, zoom = null, hover = null, mo
           deep.flight(null);
           flying = false;
         }
-        if (deep.render(ms, s.opening && !flying ? 0.3 : 1)) {
+        if (deep.render(ms, s.opening && !flying ? 0.3 : 1, s.covers ? wait : null)) {
           drew = true;
           if (!shown) {
             shown = true;
