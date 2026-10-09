@@ -83,7 +83,7 @@ import { FOV } from '../universe/flight';
 import { createPost } from '../universe/post';
 import { followRatio } from './drawnAt';
 import { houseOn } from '../../lib/three/house';
-import { SHIP, autopilot, forward, spawn, step } from '../universe/ship';
+import { SHIP, TUNE, autopilot, forward, spawn, step } from '../universe/ship';
 import { REAIM_MS, parkBehind, pilotSpace, reached } from '../universe/pilotGoal';
 import { createHunters } from '../universe/hunters';
 import { createShipHits, solidsWith } from '../universe/shipHits';
@@ -112,6 +112,9 @@ import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, 
 import { createInterdictor } from './interdictor';
 import { createWarFront } from './warfront';
 import { createGalaxyPowers } from './powers';
+import { createCluster } from './cluster';
+import { createRadar } from './radar';
+import { drawRadar } from './radarDraw';
 import { chargeFor } from '../universe/shipPowers';
 import { effectsFor } from './warEffects';
 import { warNow } from './warState';
@@ -359,6 +362,9 @@ export async function create(canvas, ctx) {
     hurt: 0,
     lowSaid: false,
     heat: 0,
+    kills: 0, // this flight's, for the cluster
+    navGoal: null, // where the way to go is, for the radar (placeHud's)
+    killMark: 0, // the reticle's kill flash, 1 → 0
     jump: null, // { to, from, phase, age, dir, dur }
     aim: null, // { id, angle }: the star the nose is on, if it's on one
     courseSaid: false,
@@ -399,6 +405,7 @@ export async function create(canvas, ctx) {
   // the crew's ship powers (powers.js), played out with the scene's own pieces
   // (made before the first frame's shaders are, so its look is made with them)
   const powers = createGalaxyPowers({ parent: scene, reduced, hunters, war, bolts, flashes, crashFx, pops, post, state, emit, controls, strike: (...a) => strike(...a), scored: (...a) => scored(...a), teleport: (pose) => teleport(pose) });
+  const cluster = createCluster(); // (the flight cluster's writer: placeShield)
 
   // ── The system you're in ──
   const followDrawn = followRatio(post, (r) => (sky.setRatio(r), state.world?.setRatio(r))); // (the ratio the points are sized by: ./drawnAt.js)
@@ -550,6 +557,7 @@ export async function create(canvas, ctx) {
     state.kind = kind;
     powers.setCrew(kind);
     if (!same) {
+      state.kills = 0; // (a new ship, a new flight)
       dropCab();
       cabWanted = null;
       if (kind && state.seat === 'cockpit') buildCab(kind);
@@ -940,6 +948,8 @@ export async function create(canvas, ctx) {
       emit(by ? { type: 'kill', kind: hit.kind, by } : { type: 'kill', kind: hit.kind });
       if (src === 'hunters') pay(hunterEarn(FACTIONS, hit));
       state.heat += 1;
+      state.kills += 1;
+      state.killMark = 1;
       if (!reduced) state.shake = Math.max(state.shake, 0.2);
       if (!by) feel.hitstop(HITSTOP.kill);
     }
@@ -970,6 +980,8 @@ export async function create(canvas, ctx) {
       net?.hunterHit(ph.id, ph.hunter, punch);
       powers.gain(ph.down ? 'kill' : 'hit', `pilots:${ph.id}:${ph.hunter}`);
       if (ph.down) {
+        state.kills += 1;
+        state.killMark = 1;
         emit({ type: 'kill', kind: ph.kind });
         if (state.helped.once(`${ph.id}:${ph.hunter}`)) pay('hunterHelped'); // (one shot off someone else's tail)
         if (!reduced) state.shake = Math.max(state.shake, 0.2);
@@ -1699,23 +1711,63 @@ export async function create(canvas, ctx) {
     }
     post.hit(state.hurt);
     placeShield();
+    placeRadar();
     powers.place(props.powers?.current ?? null, flying() && !state.crash && !state.dive && !props.frozen && !state.jump);
     return busy || Boolean(hunters?.count);
   };
 
   // ── The HUD (the page's markup, the universe map's classes) ──
-  let shieldOn = false;
+  // the flight cluster's numbers (cluster.js writes them where the page put its markup)
+  const range = (d) => (d < 10 ? d.toFixed(1) : Math.round(d).toString());
+  // (the one record and the one lock it carries, filled each frame: cluster.js compares what's in them)
+  const clusterLock = { name: '', dist: 0, hp: null };
+  const clusterNow = { on: false, shield: 100, low: false, speed: 0, top: 1, boosting: false, kills: 0, lock: null };
   const placeShield = () => {
-    const el = props.shield?.current;
-    if (!el) return;
-    const on = flying() && !state.crash && !state.jump && !props.frozen && Boolean(hunters?.active || state.shield < 99.5 || state.pull > 0);
-    if (on !== shieldOn) {
-      shieldOn = on;
-      el.toggleAttribute('data-on', on);
+    const root = props.cluster?.current;
+    if (!root) return;
+    const v = clusterNow;
+    v.on = flying() && !state.crash && !(state.jump && state.jump.phase !== 'align') && !props.frozen;
+    const s = state.ship;
+    const t = v.on ? state.lockTarget : null;
+    v.shield = state.shield;
+    v.low = state.shield < 35;
+    v.speed = s?.speed ?? 0;
+    v.top = SHIP.boost * clamp(state.stats.boost ?? 1, TUNE.boost[0], TUNE.boost[1]);
+    v.boosting = Boolean(state.keys.boost || state.boostBtn) && v.speed > SHIP.cruise;
+    v.kills = state.kills;
+    if (t) {
+      clusterLock.name = t.name ?? NAMES[t.kind] ?? SHIP_INFO[t.kind]?.name ?? t.kind;
+      clusterLock.dist = apart(t.at.x, t.at.y, t.at.z, s.x, s.y, s.z);
+      clusterLock.hp = (t.hpMax ?? 1) > 1 ? t.hp / t.hpMax : null;
     }
-    if (!on) return;
-    el.style.setProperty('--shield', (state.shield / 100).toFixed(3));
-    el.toggleAttribute('data-low', state.shield < 35);
+    v.lock = t ? clusterLock : null;
+    cluster.place(root, v);
+  };
+  // the radar: its contacts gathered and drawn, at most 20 times a second (radar.js keeps its records: nothing's made per tick)
+  const radar = createRadar();
+  let radarAt = 0;
+  let radarLock = null; // (the lock's id this tick)
+  const addHostile = (c) => radar.add(c.id, c.threat ? 'threat' : 'hostile', c.at, c.id === radarLock);
+  const addAlly = (c) => radar.add(c.id, 'ally', c.at);
+  const placeRadar = () => {
+    const cv = props.radar?.current;
+    if (!cv || !flying() || state.crash || props.frozen || (state.jump && state.jump.phase !== 'align')) return;
+    if (state.clock - radarAt < 0.05) return;
+    radarAt = state.clock;
+    radarLock = state.lockTarget?.id ?? null;
+    radar.start(state.ship);
+    for (const c of hunters?.targets ?? NO_TARGETS) addHostile(c);
+    for (const c of war?.targets ?? NO_TARGETS) addHostile(c);
+    if (pilots.count) {
+      for (const c of pilots.targets) if (c.threat) addHostile(c);
+      for (const c of pilots.mates) addAlly(c);
+    }
+    if (wingmen?.active) for (const w of wingmen.ships) if (w.alive) radar.add(w.id, 'ally', w.pos);
+    const b = war?.battle;
+    if (b && b.you?.team !== null && !b.over) for (const f of b.fighters) if (f.alive && f.team === b.you.team) radar.add(f.id, 'ally', f.seen ?? f.pos);
+    if (state.navGoal) radar.add('nav', 'goal', state.navGoal);
+    const range = radar.range;
+    drawRadar(cv, radar.points(range), { range, dpr: Math.min(2, window.devicePixelRatio || 1) });
   };
   const placeStick = () => {
     const el = props.stick?.current;
@@ -1769,7 +1821,19 @@ export async function create(canvas, ctx) {
     el.toggleAttribute('data-off', off);
     if (r) el.style.setProperty('--r', `${Math.round(r)}px`);
   };
-  const range = (d) => (d < 10 ? d.toFixed(1) : Math.round(d).toString());
+  // The HUD's goal for the plotted course: its name, light-years and bearing, worked out when the course or the system changes (the key),
+  // its `at` moved with the ship each frame. "· J" only where there's a key to press.
+  const courseKeep = { key: '', goal: null };
+  const finePointer = () => typeof matchMedia !== 'function' || matchMedia('(pointer: fine)').matches;
+  const courseGoal = (id) => {
+    const key = `${id}>${state.sys?.id}`;
+    if (courseKeep.key !== key) {
+      const to = systemById(id);
+      courseKeep.key = key;
+      courseKeep.goal = to && state.sys ? { at: [0, 0, 0], dir: courseTo(state.sys, to), name: `Course: ${to.name}${finePointer() ? ' · J' : ''}`, dist: `${lightYears(state.sys, to).toLocaleString('en-US')} ly`, reach: 0, way: true } : null;
+    }
+    return courseKeep.goal;
+  };
   const threatList = [];
   const mateList = [];
   const placeHud = () => {
@@ -1785,6 +1849,7 @@ export async function create(canvas, ctx) {
       h.reticle.style.transform = `translate3d(${hudAt.x.toFixed(1)}px, ${hudAt.y.toFixed(1)}px, 0)`;
       h.reticle.toggleAttribute('data-hot', state.hot);
       h.reticle.toggleAttribute('data-hit', state.hitMark > 0);
+      h.reticle.toggleAttribute('data-kill', state.killMark > 0);
     }
     const tgt = on ? state.lockTarget : null;
     setOn(h, h.lock, Boolean(tgt));
@@ -1861,6 +1926,17 @@ export async function create(canvas, ctx) {
       const g = (state.auto.space ?? state.space).goals[state.auto.id];
       if (g) goal = { at: g.at, name: g.name ?? state.auto.name ?? '', dist: range(apart(g.at[0], g.at[1], g.at[2], s.x, s.y, s.z)), reach: g.reach ?? g.r, way: false };
     }
+    // (else the course plotted on the galaxy map: the way to jump, as the jump's own bearing, till J goes)
+    else if (on && props.course && props.course !== state.sys?.id) {
+      const g = courseGoal(props.course);
+      if (g) {
+        g.at[0] = s.x + g.dir[0] * 2000;
+        g.at[1] = s.y + g.dir[1] * 2000;
+        g.at[2] = s.z + g.dir[2] * 2000;
+        goal = g;
+      }
+    }
+    state.navGoal = goal ? goal.at : null;
     setOn(h, h.nav, Boolean(goal));
     if (goal) {
       toScreen(goal.at[0], goal.at[1], goal.at[2], hudAt);
@@ -1890,6 +1966,8 @@ export async function create(canvas, ctx) {
       const at = pilots.at(e.id);
       if (at) pops.hit({ point: at, normal: new THREE.Vector3(0, 1, 0), radius: 0.55 });
       if (e.by && e.by === net?.selfId) {
+        state.kills += 1;
+        state.killMark = 1;
         emit({ type: 'kill', kind: 'pilot' });
         pay('killPilot');
         if (!reduced) state.shake = Math.max(state.shake, 0.2);
@@ -2085,6 +2163,7 @@ export async function create(canvas, ctx) {
       speedLines.set({ stretch: fast * 0.18, speed: fast * 80 });
     } else speedLines.set({ stretch: 0, speed: 0 }); // (none through a jump: the site's own is over the scene)
     if (state.hitMark > 0) state.hitMark = Math.max(0, state.hitMark - dt * 4);
+    if (state.killMark > 0) state.killMark = Math.max(0, state.killMark - dt / 0.35);
     // the other pilots in this system
     if (net) {
       const s = flying() ? state.ship : null;
@@ -2136,6 +2215,7 @@ export async function create(canvas, ctx) {
   const held = new Set(); // the flight keys down now
   const onKeyDown = (e) => {
     if (!flying() || props.frozen || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (typeof e.key !== 'string') return; // (an autofill's keydown has none)
     const el = e.target;
     const key = e.key.toLowerCase();
     if (!keyFlies(el, key)) return;
@@ -2143,7 +2223,7 @@ export async function create(canvas, ctx) {
     const onControl = el instanceof HTMLElement && el !== document.body && el.closest('button, a, [role="button"], [tabindex]:not([tabindex="-1"])');
     if (key === 'm') {
       e.preventDefault();
-      emit({ type: 'map' });
+      if (!e.repeat) emit({ type: 'map' }); // (a held M closed the map once; its repeats mustn't open it again)
       return;
     }
     if (key === 'j') {
@@ -2199,6 +2279,7 @@ export async function create(canvas, ctx) {
   // (two keys to one control, Space and Shift to the boost: letting go of
   // one mustn't let go of the other's hold)
   const onKeyUp = (e) => {
+    if (typeof e.key !== 'string') return;
     const key = e.key.toLowerCase();
     held.delete(key);
     const k = KEYS[key];

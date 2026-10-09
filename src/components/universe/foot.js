@@ -26,6 +26,7 @@
 
 import { FIRST, lead, scatter } from '../../lib/combat/accuracy';
 import { segCapsule } from '../../lib/combat/bolt';
+import { createPress } from '../../lib/press';
 
 export const METRE = 0.027; // map units (the ship's 0.26 long is about an RV's ten metres)
 
@@ -261,7 +262,13 @@ export function walk(w, input, dt, R, obstacles = []) {
   // up and down: a jump, and back to the ground
   let h = w.h ?? 0;
   let vh = w.vh ?? 0;
-  if (input.jump && h <= 1e-6) vh = FOOT.jump;
+  // (a press, createJump's: one a key-down, held a buffer's while in the air
+  // and spent on landing, with the coyote time lib/press.js gives; or, for
+  // the walkers the scene moves itself, a plain yes)
+  const grounded = h <= 1e-6;
+  const jump = input.jump;
+  if (typeof jump?.take === 'function') jump.ground(grounded, dt);
+  if (grounded && (typeof jump?.take === 'function' ? jump.take() : jump)) vh = FOOT.jump;
   vh -= FOOT.gravity * dt;
   h += vh * dt;
   if (h <= 0) {
@@ -269,6 +276,26 @@ export function walk(w, input, dt, R, obstacles = []) {
     vh = 0;
   }
   return { ...w, n, f, h, vh, speed, side };
+}
+
+// Your jump key as a press (lib/press.js): `hold(down)` every frame with
+// whether the key's down, and walk() given `press` as its jump. A key held
+// down jumps once, not again on every landing; a press a hair before
+// landing jumps as the feet touch.
+export function createJump(opts) {
+  const press = createPress(opts);
+  let held = false;
+  return {
+    press,
+    hold(down) {
+      if (down && !held) press.press();
+      held = Boolean(down);
+    },
+    reset() {
+      held = false;
+      press.reset();
+    },
+  };
 }
 
 // Turning someone to face somewhere: the turn input (−1…1) that brings them round

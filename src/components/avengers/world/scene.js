@@ -26,6 +26,10 @@ import { logoTexture, scatter, trees } from '../hq/kit/world';
 import { createVfx } from '../hq/vfx';
 import { createFeel, feelGroups } from '../hq/feel';
 import { createSpring, springGroups } from '../../../lib/spring';
+import { device } from '../../../lib/device';
+import { createDust } from '../../../lib/three/dust';
+import { wireImpacts } from '../../../lib/three/impacts';
+import { createLawnProps } from './lawnProps';
 import { carGeometries, carMaterials, meterBox } from '../smash/models';
 import { buildShield } from '../ricochet/models';
 import { buildCape, buildMjolnir, buildPortal, craterTexture } from '../lawn/models';
@@ -46,6 +50,7 @@ import { LIFE, createCastLife } from './castLife';
 import { createCastBody, createLook, poseKit } from './castBody';
 import { centredClips } from './borrow';
 import { ARMOUR, BUILDINGS, CAST, CLERESTORY, CRATER, GAIT, HERO, LAMPS, LAWN_TREES, MASTS, MAST_H, PARKED_CARS, PARKED_JET, PLACES, PLANTERS, PORTAL, ROADS_W, ROAD_HALF, ROOF_LIGHTS, S, SUIT, TRICK, V, aimWeb, camRoom, findPerch, floorAt, gaitFor, nearestEdge, photoView, samplePath, swingArc, swingPose, treeHeight } from './rules';
+import { LOOK } from './look';
 
 const SC = { s: S, v: V };
 // a plan point (x east, y south, z up, in units) in the world
@@ -397,7 +402,7 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
   // (the glow only for what's past lit paint: a white wall full in the sun
   // comes to about 1.3, and at the old 1.2 the training center's front was a
   // slab of light; the glows, the lintels and the beams are well over)
-  const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: { strength: 0.36, radius: 0.5, threshold: 1.55, knee: 0.9 }, onLost });
+  const engine = createEngine(canvas, { exposure: 1, fov: 52, near: 0.15, far: 2400, bloom: LOOK.bloom, onLost });
   const { scene, sun, camera, renderer } = engine;
   const small = engine.small;
   const sets = ['grass', 'forest-floor', 'concrete-floor', 'concrete-worn', 'corrugated', 'rock', 'asphalt', 'leather', 'carbon', 'painted-metal', 'planks'];
@@ -1799,6 +1804,9 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     waterN.offset.set(clock * 0.006, clock * 0.009);
     placeJet(clock + 6, dt);
     placeHero(s.hero, dt, s.say);
+    // the lawn's props, moved by the engine where it's loaded, and their knocks heard
+    lawnProps?.step(dt, s.hero);
+    knocks.update(dt);
     placePeople(s, dt);
     ghosts.update(s.travellers ?? [], clock, dt);
     placeMarkers(s);
@@ -2090,6 +2098,20 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
     auto: true,
   });
 
+
+  // ── things to knock over (the game-feel design's Tier 3): slaloms of
+  // cones, crates and a barrel on the lawn (./lawnProps.js), each knock a
+  // thud by how hard, from where it was (lib/three/impacts), a puff of the
+  // lawn's dust there and a nudge of the feel ──
+  const knockDust = createDust({ count: 48, colour: 0xb8b4a4, size: 0.9 });
+  scene.add(knockDust.mesh);
+  const ear = new THREE.Vector3();
+  const knocks = wireImpacts({
+    dust: knockDust,
+    shake: feel.trauma,
+    listener: () => ({ position: camera.position.toArray(), forward: camera.getWorldDirection(ear).toArray() }),
+  });
+  const lawnProps = await createLawnProps({ parent: scene, dev: device(), impacts: knocks }).catch(() => null);
   return {
     engine,
     ground: import.meta.env.DEV ? ground : null, // for the QA scripts
@@ -2121,6 +2143,8 @@ export async function createCompoundWorld(canvas, { onLost, calm = false } = {})
       moves?.dispose();
       spidey?.dispose();
       swing.dispose();
+      lawnProps?.dispose();
+      knocks.dispose();
       flags.dispose();
       grass?.dispose();
       rings.dispose();

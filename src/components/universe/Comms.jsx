@@ -8,6 +8,8 @@ import { retold } from './callers';
 import { alarmSound, arrivalSound, boomSound, boostSound, bumpSound, crashSound, drySound, enemyFireSound, fallSound, fireSound, flareSound, flybySound, gadgetSound, gunSound, hitSound, impactSound, interdictSound, jumpSound, launchSound, popSound, portalSound, powerSound, respawnSound, riftSound, shieldSound, speak, switchSound } from './sounds';
 import Face from './Faces';
 import { WEAPONS } from './weaponTable';
+import { thud } from '../../lib/sfx';
+import { createImpacts } from '../../lib/impact';
 
 // The ship's comms: what the crew says as you fly, one line at a time with
 // the speaker's face and voice (their own recording where the line has one,
@@ -28,6 +30,9 @@ import { WEAPONS } from './weaponTable';
 // just sound.
 // The page hands events over through `control.current.handle(event)`, or an
 // exchange of its own making as `{ type: 'lines', lines, urgent }`.
+
+// a bump's thud by how hard it was (the event's force, ship.js), on the hit law (lib/impact.js)
+const BUMPS = createImpacts();
 
 const GAP = { boost: 25000, bump: 12000, edge: 20000, crash: 15000, pulled: 20000, traffic: 18000, kill: 9000, hit: 14000, hunted: 8000, shielded: 15000, deflect: 10000, dry: 8000, closed: 6000, power: 15000, refuse: 8000 }; // ms before the same kind of line again
 
@@ -81,12 +86,14 @@ export default function Comms({ crew, reduced, control }) {
       const least = clip ? 1200 + text.length * 32 : 1500 + text.length * 42; // time to read it
       const started = performance.now();
       // their own voice: the recording, or the line made in their voice (a
-      // caller on the radio's: speakers.js)
-      let h = clip ? await playClip(clip, { voice: true }) : null;
+      // caller on the radio's: speakers.js), when nobody else is talking
+      // (lib/speech.js: it waits its turn, and isn't said if it waits too long)
+      const aloud = { voice: true, mode: 'queue', tag: 'comms' };
+      let h = clip ? await playClip(clip, aloud) : null;
       const voice = voiceOf(speaker.voiced ?? who);
       if (!h && voice) {
         const src = await voicedSrc(voice, text);
-        if (src && alive.current) h = await playFile(src, { voice: true });
+        if (src && alive.current) h = await playFile(src, aloud);
       }
       if (h) {
         // the line stays up while it plays
@@ -150,6 +157,8 @@ export default function Comms({ crew, reduced, control }) {
           if (e.first || often('boost', now)) say(linesFor(crew, 'boost'));
         } else if (e.type === 'bump') {
           if (soundOnce('bump', 500, now)) bumpSound();
+          const r = e.force > 0 ? BUMPS.hit(e.force, e.id ?? 'bump') : null;
+          if (r) thud({ gain: r.gain, pitch: r.pitch });
           if (e.hard && often('bump', now)) say(linesFor(crew, 'bump'), { urgent: true });
         } else if (e.type === 'pulled') {
           // the black hole has hold of you (and you can still get out)
@@ -160,7 +169,7 @@ export default function Comms({ crew, reduced, control }) {
           fallSound();
           say(linesFor(crew, 'swallowed'), { urgent: true });
         } else if (e.type === 'crash') {
-          crashSound();
+          crashSound(e.loud ?? 1); // (louder the faster it went in: ship.js's crashLoud)
           if (e.id === 'sun' && !said.current.has('sun')) {
             // straight into the sun: once a visit
             said.current.add('sun');

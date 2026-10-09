@@ -8,8 +8,9 @@
 // functions: the scene drives the engine each frame and the comms box calls
 // the rest.
 
-import { audioContext, loadBuffer, output, voiceOutput } from '../../lib/audio';
+import { audioContext, loadBuffer, output, voiceOutput, voicesOn } from '../../lib/audio';
 import { playClip } from '../../lib/clips';
+import { speech } from '../../lib/speech';
 
 let noiseBuf = null;
 function noise(ac) {
@@ -127,12 +128,13 @@ const VOICES = {
   hank: { type: 'sawtooth', f: 98, spread: 0.2, syl: 0.08, gain: 0.05, filter: 800 },
 };
 
-// Someone says a line. Returns about how long it takes, in ms.
+// Someone says a line. Returns about how long it takes, in ms. Not over
+// someone else's voice (lib/speech.js), and not with the voices off.
 export function speak(voice, text) {
   const ac = audioContext();
   const out = ac ? voiceOutput() : null; // through the voice tap, so the speaker's mouth moves with it
   const words = text.replace(/\[|\]/g, '').split(/\s+/).filter(Boolean).length;
-  if (!ac || !out) return 600 + words * 260;
+  if (!ac || !out || speech.busy() || !voicesOn()) return 600 + words * 260;
   const t = ac.currentTime + 0.02;
   if (voice === 'r2') {
     // Artoo: a run of whistles and chirps
@@ -149,7 +151,7 @@ export function speak(voice, text) {
   if (voice === 'chewie') {
     // Chewie himself: a laugh when it's a laugh, a roar the rest of the time
     const laugh = /laugh/i.test(text);
-    playClip(laugh ? 'chewieLaugh' : 'chewieRoar', { voice: true }).then((h) => h || growl(ac, out, t));
+    playClip(laugh ? 'chewieLaugh' : 'chewieRoar', { voice: true }).then((h) => h || speech.busy() || growl(ac, out, t));
     return laugh ? 2700 : 1700;
   }
   const v = VOICES[voice];
@@ -347,10 +349,12 @@ export function fireSound(kind) {
 }
 
 // Into a planet too fast: a deep boom, the blast and the bits coming down
-export function crashSound() {
+// k: how loud, 0…1 (ship.js's crashLoud, by the speed it went in at); 1 as it always was
+export function crashSound(k = 1) {
   const ac = audioContext();
   const out = ac ? output() : null;
-  if (!ac || !out) return;
+  if (!ac || !out || !(k > 0)) return;
+  const v = Math.min(1, k);
   const t = ac.currentTime + 0.01;
   const o = ac.createOscillator();
   o.type = 'sine';
@@ -358,19 +362,19 @@ export function crashSound() {
   o.frequency.exponentialRampToValueAtTime(32, t + 1.1);
   const g = ac.createGain();
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.5 * v, t + 0.02);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
   o.connect(g).connect(out);
   o.start(t);
   o.stop(t + 1.4);
-  whoosh(1.4, 1600, 90, 0.32);
+  whoosh(1.4, 1600, 90, 0.32 * v);
   tones(
     [
       [180, 0.05, 0.12],
       [120, 0.2, 0.1],
       [210, 0.38, 0.08],
     ],
-    { type: 'square', gain: 0.03 },
+    { type: 'square', gain: 0.03 * v },
   );
 }
 
