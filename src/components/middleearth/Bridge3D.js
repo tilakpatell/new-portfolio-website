@@ -13,6 +13,7 @@ import { houseOn } from '../../lib/three/house';
 import { fbm, makeNoise, mix } from '../../lib/paint';
 import { DUEL } from './duel';
 import { EMBER, FIRE, LIGHT, SMOKE, createParticles, lavaMaterial, makeBalrog, makeGandalf, skyDome, stoneTextures } from './kit';
+import { createShake } from './feel';
 
 // the drawing's x (see duel.js) to the scene's
 const X = (svg) => (svg - 320) / 20;
@@ -270,6 +271,8 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
 
   // ── what is going on ──
   const S = { phase: 'idle', x: DUEL.start, whip: null, grey: 'standing', broken: null };
+  // one shake, the site's (./feel.js), with the bridge's own numbers: trauma² × 0.7, fading 1.8 a second
+  const shake = createShake({ calm: reduced, offset: 0.7, decay: 1.8, title: 'The bridge' });
   const A = { t: 0, moving: 0, spread: 0.22, raise: 0, lash: 0, lashPose: 0, roar: 0, flare: 0.5, fall: -1, fallen: false, gFall: -1, gDrop: -1, gapX: 0, glow: 0, slam: -1, hurt: 0, shake: 0, dome: 0, ring: -1, step: 0, sweet: 0, ember: 0, smoke: 0 };
   let cam = null;
   const v = new THREE.Vector3();
@@ -349,6 +352,7 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
     gandalf.staff.getWorldPosition(tip);
     tip.y += 1.06;
     if (name === 'block') {
+      shake.hitstop(60); // the staff turns the whip: the duel holds a moment
       A.glow = 1;
       A.dome = 1;
       A.shake = Math.max(A.shake, 0.18);
@@ -364,6 +368,7 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
       A.glow = 0.7;
       A.shake = Math.max(A.shake, 0.25);
     } else if (name === 'lash') {
+      shake.hitstop(70); // the whip lands
       A.hurt = 1;
       A.shake = Math.max(A.shake, 0.45);
       burst(fire, v.set(HOME, deckY(HOME) + 1.2, 0), 26, 3, 0.9, 0.5);
@@ -392,7 +397,6 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
     A.flare = ease(A.flare, S.phase === 'idle' ? 0.5 : S.phase === 'drums' ? 0.72 : S.phase === 'lost' ? 1.7 : 1.05, 2);
     A.glow = Math.max(0, A.glow - dt * 2.2);
     A.hurt = Math.max(0, A.hurt - dt * 1.5);
-    A.shake = Math.max(0, A.shake - dt * 1.8);
     A.sweet = ease(A.sweet, fighting ? 1 : 0, 4);
     sweetMat.opacity = A.sweet * (0.55 + 0.25 * Math.sin(t * 3.2));
 
@@ -562,10 +566,11 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
     const ty = 2.3 + cam.d * 0.04 + cam.y;
     camera.position.set(cam.x + dir.x * cam.d, ty + dir.y * cam.d, dir.z * cam.d);
     if (!reduced) {
-      const q = A.shake * A.shake * 0.7;
-      camera.position.x += Math.sin(t * 0.23) * 0.4 + Math.sin(t * 61) * q;
-      camera.position.y += Math.sin(t * 0.31) * 0.22 + Math.sin(t * 47 + 1) * q;
+      camera.position.x += Math.sin(t * 0.23) * 0.4;
+      camera.position.y += Math.sin(t * 0.31) * 0.22;
     }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(cam.x, ty, 0);
 
     // (what's come in since, taken on now and then)
@@ -578,7 +583,11 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
     fx,
     render,
     resize: stage.resize,
-    dispose: stage.dispose,
+    timeScale: shake.feel.timeScale, // how much of a frame the duel runs: less for a moment in a hitstop
+    dispose() {
+      shake.dispose();
+      stage.dispose();
+    },
     stage,
     get lost() {
       return stage.lost;
