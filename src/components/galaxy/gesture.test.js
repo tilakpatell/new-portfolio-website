@@ -85,4 +85,18 @@ describe('gesture', () => {
     g.cancel(1);
     expect(g.move(1, 400, 300, R)).toBeNull();
   });
+  it('knows whether a pointer is down, so a passing mouse needs no measuring', () => {
+    const g = createGesture();
+    expect(g.active).toBe(false);
+    g.down(1, 300, 300, R);
+    expect(g.active).toBe(true);
+    g.down(2, 340, 300, R);
+    g.up(1);
+    expect(g.active).toBe(true);
+    g.up(2);
+    expect(g.active).toBe(false);
+    g.down(3, 10, 10, R);
+    g.cancel(3);
+    expect(g.active).toBe(false);
+  });
 });

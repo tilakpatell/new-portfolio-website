@@ -17,8 +17,8 @@
 //
 // opsOf(table) → [{ id, kind ('front', 'decisive', 'attack', 'counter',
 // 'raid'), by, from, to, progress (0..1, how much of the holder's hold is
-// gone), colour, width, major, d (an SVG path), head (its arrowhead's
-// points), start, tip, along (how far along it the fleet is, 0..1), token
+// gone), colour, width, major, d (an SVG path), line (the path as drawn:
+// d, on under the arrowhead), head (its arrowhead's points), start, tip, along (how far along it the fleet is, 0..1), token
 // ([x, z]: the fleet) }] for gcw.js's warTable;
 // nearestBattle(table, current, side) → { id, seconds } | null;
 // roomOf([x, z], except) → grid squares from the nearest system's dot or
@@ -122,7 +122,11 @@ function arrowOf(a, b, width, side = 1) {
     const l = Math.hypot(v[0], v[1]) || 1;
     return [-v[1] / l, v[0] / l];
   };
-  return { d: `M${pt(start)} Q${pt(c)} ${pt(base)}`, head: head.map(([x, z]) => `${round(x)},${round(z)}`).join(' '), start, tip, at, across };
+  // (and a line on to the head's last fifth, under it: the head is drawn the same size on screen at any zoom, about its tip,
+  // so zoomed in it's shorter than the line that stops at its base, and this fills the gap)
+  const under = [base[0] + (tip[0] - base[0]) * 0.8, base[1] + (tip[1] - base[1]) * 0.8];
+  const d = `M${pt(start)} Q${pt(c)} ${pt(base)}`;
+  return { d, line: `${d} L${pt(under)}`, head: head.map(([x, z]) => `${round(x)},${round(z)}`).join(' '), start, tip, at, across };
 }
 
 // the side of its way an arrow from one system to another has more room on
@@ -192,7 +196,7 @@ export function opsOf(table) {
     const arrow = arrowOf(systemById(p.from).pos, systemById(p.to).pos, p.width, twoWay(p) ? 1 : sideFor(p.from, p.to, p.width));
     const crest = crestOn(arrow, 0.35 + 0.5 * p.progress, [p.from, p.to], placed);
     placed.push(crest.at);
-    return { ...p, d: arrow.d, head: arrow.head, start: arrow.start, tip: arrow.tip, along: round(crest.t), token: crest.at };
+    return { ...p, d: arrow.d, line: arrow.line, head: arrow.head, start: arrow.start, tip: arrow.tip, along: round(crest.t), token: crest.at };
   });
 }
 

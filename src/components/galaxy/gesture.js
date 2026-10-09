@@ -79,5 +79,9 @@ export function createGesture() {
     get dragging() {
       return dragging;
     },
+    // (whether a pointer is down: the hook reads the box's rect only then, not on every move of a mouse that's just passing)
+    get active() {
+      return ptrs.size > 0;
+    },
   };
 }

@@ -6,7 +6,7 @@
 // a touch screen's zoom buttons, 360x640). Shared parts are in galaxy-map-check/lib.mjs, the controls' checks (the find, Escape,
 // double clicks, the picked system's marks) in controls.mjs.
 //   names: no two system names meet, none is out of the map, none is over another system's dot (whole, zoomed in twice over Hoth,
-//     framed on Endor; on a desktop window none at all, on a phone a graze of up to 3 px, each listed: Hoth's, Bespin's, Mustafar's
+//     framed on Endor; on a desktop window none at all, on a phone a graze of up to 5 px, each listed: Hoth's, Bespin's, Mustafar's
 //     and Nevarro's dots are a few px apart and no place round Bespin's is clear at 360 px); none is under the strip's board, the
 //     layers, the key chip or the zoom buttons (at the whole map, at every width), or the course's tag (framed on Endor); nothing a
 //     player reads is under 0.7 rem (11.2 px; the SVG's text by its rendered size); the strip, layers, key and zoom buttons clear

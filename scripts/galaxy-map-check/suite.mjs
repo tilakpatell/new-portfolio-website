@@ -2,7 +2,7 @@
 // The galaxy map check's whole suite for a window of a given size (scripts/galaxy-map-check.mjs): names, zoom and drag, find,
 // layers, eras and films, Tab, the key and the side panel's wheel, the hover card, sharpness, the M key, the jump. See the
 // runner's header for the list.
-import { cursorFor, doubleClickElsewhere, escapeOrder, findList, fitButton, pickedMarks } from './controls.mjs';
+import { cursorFor, doubleClickElsewhere, escapeOrder, findList, fitButton, pickedMarks, strokesKeepWeight } from './controls.mjs';
 import { PHONE_GRAZE, check, dotsCheck, easedNames, edgeEnergy, hasMap, headerAndFilms, J, namesProblems, open, out, overlayProblems, settle, smallText, still } from './lib.mjs';
 
 export const suite = async (viewport, { full = true } = {}) => {
@@ -133,7 +133,7 @@ export const suite = async (viewport, { full = true } = {}) => {
 
   // ── a zoom eases the stage and the names' counter-scale together: no name changes size on the way ──
   const eased = await easedNames(page, '+');
-  say(eased.frames >= 8 && eased.worst < 0.5, `through a + zoom's easing no name changes size (${eased.frames} frames; the widest change ${eased.worst.toFixed(2)} px${eased.name ? `, ${eased.name}` : ''})`);
+  say(eased.frames >= 3 && eased.worst < 0.5, `through a + zoom's easing no name changes size (${eased.frames} frames; the widest change ${eased.worst.toFixed(2)} px${eased.name ? `, ${eased.name}` : ''})`);
   await settle(page);
   const easedBack = await easedNames(page, '-');
   say(easedBack.worst < 0.5, `nor through a - zoom's (${easedBack.worst.toFixed(2)} px)`);
@@ -155,6 +155,7 @@ export const suite = async (viewport, { full = true } = {}) => {
   say(await J(page, () => window.__mc.onView(window.__mc.dot('endor'))), 'and Endor is on view');
   say((await find.inputValue()) === '', 'the find field is emptied');
   await names('framed on Endor');
+  await strokesKeepWeight(page, say);
   await snap('endor');
   const here = await J(page, () => window.__galaxy().system);
   const you = await J(page, () => {

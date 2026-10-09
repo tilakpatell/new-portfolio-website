@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import Emblem from './Emblem';
 import { SIDES, WARS } from './sides';
 import { GRID, systemById } from './systems';
@@ -12,13 +13,14 @@ import { CELLS, bordersOf, clashOf, linksOf } from './territory';
 //   colour, contested dashed, fought along moving), the borders where two
 //   powers meet (moving where they're fighting), and each operation an arrow
 //   from where its fleets come from (a raid dotted, the decisive battle
-//   doubled).
+//   doubled), its head kept the size it has at the whole map, about its tip.
 // - Fleets, over all of it: each operation's side's crest on its arrow,
 //   closing in as its side gains (HTML, so it stays a crest's size however
 //   small the map is).
 // All of it's a picture of what the systems' buttons say in words, so it's
 // hidden from screen readers; its motion stops for prefers-reduced-motion
-// (warmap.css).
+// (warmap.css). Each is a memo: it changes with the war, not with the zoom
+// or the pan.
 
 const pct = (v) => `${(v / GRID.cols) * 100}%`;
 const at = (id) => systemById(id).pos;
@@ -26,7 +28,7 @@ const CELL_D = Object.fromEntries(CELLS.map((c) => [c.id, c.poly.map(([x, z], i)
 
 const contested = (r, liberator) => Boolean(r.attack || (r.front && r.owner !== liberator));
 
-export function Territory({ table }) {
+export const Territory = memo(function Territory({ table }) {
   const { liberator, raider } = WARS[table.war];
   return (
     <g className="holomap-territory">
@@ -47,9 +49,9 @@ export function Territory({ table }) {
         ))}
     </g>
   );
-}
+});
 
-export function WarLines({ table, ops }) {
+export const WarLines = memo(function WarLines({ table, ops }) {
   const owner = Object.fromEntries(table.systems.map((r) => [r.id, r.owner]));
   const borders = bordersOf(owner, { hot: clashOf(table) });
   return (
@@ -65,22 +67,22 @@ export function WarLines({ table, ops }) {
         </g>
       ))}
       {ops.map((op) => (
-        <g key={op.id} className="holomap-op" data-kind={op.kind} data-major={op.major || undefined} style={{ '--by': op.colour }}>
+        <g key={op.id} className="holomap-op" data-kind={op.kind} data-major={op.major || undefined} style={{ '--by': op.colour, '--w': op.width }}>
           {op.kind === 'decisive' && (
             <>
-              <path d={op.d} className="holomap-op-outer" strokeWidth={op.width * 3.4} />
-              <path d={op.d} className="holomap-op-inner" strokeWidth={op.width * 1.5} />
+              <path d={op.line} className="holomap-op-outer" />
+              <path d={op.line} className="holomap-op-inner" />
             </>
           )}
-          <path d={op.d} className="holomap-op-line" strokeWidth={op.kind === 'decisive' ? op.width * 0.7 : op.width} />
-          <polygon points={op.head} className="holomap-op-head" />
+          <path d={op.line} className="holomap-op-line" />
+          <polygon points={op.head} className="holomap-op-head" style={{ transformOrigin: `${op.tip[0]}px ${op.tip[1]}px` }} />
         </g>
       ))}
     </g>
   );
-}
+});
 
-export function Fleets({ ops }) {
+export const Fleets = memo(function Fleets({ ops }) {
   return (
     <ul className="holomap-fleets" aria-hidden="true">
       {ops.map((op) => (
@@ -90,4 +92,4 @@ export function Fleets({ ops }) {
       ))}
     </ul>
   );
-}
+});

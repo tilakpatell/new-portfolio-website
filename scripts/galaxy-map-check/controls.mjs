@@ -135,3 +135,19 @@ export const fitButton = async (page, say) => {
   });
   say(r.k === 1 && r.aria === 'true' && !r.disabled && r.focus, `the whole-galaxy button, pressed, is aria-disabled and not disabled, and keeps the focus (k ${r.k}, aria-disabled ${r.aria}, disabled ${r.disabled}, focused ${r.focus})`);
 };
+
+// the SVG's lines keep their weight at any zoom: a stroke's width in the SVG's units times k (the stage scales the units) is its
+// width at the whole map (the course's glow 0.32, a lane 0.045), and a dash is its whole-map length over k the same way
+export const strokesKeepWeight = async (page, say) => {
+  const r = await J(page, () => {
+    const k = window.__mc.view().k;
+    const width = (sel) => {
+      const el = document.querySelector(sel);
+      return el ? parseFloat(getComputedStyle(el).strokeWidth) * k : null;
+    };
+    const dash = parseFloat(getComputedStyle(document.querySelector('.holomap-course')).strokeDasharray) * k;
+    return { k, glow: width('.holomap-course-glow'), course: width('.holomap-course'), lane: width('.holomap-lane'), dash };
+  });
+  const near = (v, want) => v !== null && Math.abs(v - want) < want * 0.03;
+  say(r.k > 1.2 && near(r.glow, 0.32) && near(r.course, 0.085) && near(r.lane, 0.045) && near(r.dash, 0.18), `at k=${r.k.toFixed(2)} the course's glow, its line, a lane and its dashes weigh what they do at the whole map (x k: ${r.glow?.toFixed(3)} of 0.32, ${r.course?.toFixed(3)} of 0.085, ${r.lane?.toFixed(3)} of 0.045, dash ${r.dash.toFixed(3)} of 0.18)`);
+};

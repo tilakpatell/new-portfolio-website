@@ -18,6 +18,8 @@ import { CORE, edgeAt } from './systems';
 export const REGION_FONT = 11.5;
 const ANGLES = [-90, -112, -68, -132, -48, -150]; // (degrees round the core, north is −90: the names apart)
 const GLYPH = 0.62; // (a mono letter's width in em, near enough; the names are in capitals)
+export const LETTER_SPACING = 0.18; // (em between the letters of a name along a ring: HoloMap.jsx sets it; the Unknown Regions' has none)
+const RING_GLYPH = GLYPH + LETTER_SPACING; // (a letter along a ring with the space after it)
 const EDGE = 18; // (px the Unknown Regions' name keeps off the map's edge: clear of the grid's row numbers)
 
 export const regionAngle = (i) => (ANGLES[(i - 1) % ANGLES.length] * Math.PI) / 180;
@@ -30,8 +32,8 @@ export function regionNamesShown(regions, unitPx, angleFor = regionAngle, fontPx
     const a = angleFor(i);
     const here = edgeAt(r.r, a) * unitPx;
     const gap = here - edgeAt(regions[i - 1].r, a) * unitPx;
-    // (the name lies along the ring, so it wants the ring's width; and a name's height and a half from the ring inside)
-    if (here >= 0.9 * r.name.length * fontPx * GLYPH && gap >= 1.4 * fontPx) shown.add(r.id);
+    // (the name lies along the ring, so it wants the ring's width, its letters spaced; and a name's height and a half from the ring inside)
+    if (here >= 0.9 * r.name.length * fontPx * RING_GLYPH && gap >= 1.4 * fontPx) shown.add(r.id);
   });
   return shown;
 }

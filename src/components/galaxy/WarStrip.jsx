@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import Emblem from './Emblem';
 import { SIDES, WARS } from './sides';
 import { strengthLine } from './warText';
@@ -7,8 +8,9 @@ import { strengthLine } from './warText';
 // marked, the one you fight in, which changes from the war card, WarCard.jsx),
 // and each of its powers' systems, share of the galaxy's worth and which way
 // it's gone in six hours (gcw.js's strength), with a bar of the three: the
-// liberator, the Hutts between, the raider.
-export default function WarStrip({ table, fighting }) {
+// liberator, the Hutts between, the raider. A memo: it changes with the war,
+// not with the zoom or the pan.
+const WarStrip = memo(function WarStrip({ table, fighting }) {
   const w = WARS[table.war];
   const sides = [w.liberator, 'hutt', w.raider];
   const strength = table.strength ?? {};
@@ -54,4 +56,6 @@ export default function WarStrip({ table, fighting }) {
       </div>
     </div>
   );
-}
+});
+
+export default WarStrip;

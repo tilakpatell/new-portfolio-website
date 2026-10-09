@@ -8,33 +8,36 @@
 
 /* ── Territory: each system's cell, brighter the firmer its holder's hold,
    hatched in the attacker's colour where it's fought over ── */
-.holomap-cell { fill: var(--held); fill-opacity: calc(0.06 + 0.14 * var(--hold, 1)); stroke: var(--held); stroke-opacity: 0.3; stroke-width: 0.03; stroke-linejoin: round; }
+.holomap-cell { fill: var(--held); fill-opacity: calc(0.06 + 0.14 * var(--hold, 1)); stroke: var(--held); stroke-opacity: 0.3; stroke-width: calc(0.03 * var(--u)); stroke-linejoin: round; }
 .holomap-cell-hatch { opacity: 0.32; }
 
 /* ── The war's lanes: held in the holder's colour, contested dashed,
    fought along throbbing ── */
-.holomap-link { stroke-width: 0.04; stroke-linecap: round; }
+.holomap-link { stroke-width: calc(0.04 * var(--u)); stroke-linecap: round; }
 .holomap-link[data-state='own'] { stroke: var(--held); stroke-opacity: 0.32; }
-.holomap-link[data-state='contested'] { stroke: #fff; stroke-opacity: 0.3; stroke-dasharray: 0.12 0.11; }
-.holomap-link[data-state='battle'] { stroke: #ffb347; stroke-opacity: 0.5; stroke-width: 0.04; stroke-dasharray: 0.2 0.11; animation: holomap-throb 1.6s ease-in-out infinite; }
+.holomap-link[data-state='contested'] { stroke: #fff; stroke-opacity: 0.3; stroke-dasharray: calc(0.12 * var(--u)) calc(0.11 * var(--u)); }
+.holomap-link[data-state='battle'] { stroke: #ffb347; stroke-opacity: 0.5; stroke-dasharray: calc(0.2 * var(--u)) calc(0.11 * var(--u)); animation: holomap-throb 1.6s ease-in-out infinite; }
 @keyframes holomap-throb { 50% { stroke-opacity: 0.2; } }
 
 /* ── Where two powers meet: a white line with a glow, dashed and moving
    (amber) where they're fighting ── */
-.holomap-border-glow { stroke: #fff; stroke-opacity: 0.13; stroke-width: 0.2; stroke-linecap: round; }
-.holomap-border-line { stroke: #f2fbff; stroke-opacity: 0.8; stroke-width: 0.045; stroke-linecap: round; }
+.holomap-border-glow { stroke: #fff; stroke-opacity: 0.13; stroke-width: calc(0.2 * var(--u)); stroke-linecap: round; }
+.holomap-border-line { stroke: #f2fbff; stroke-opacity: 0.8; stroke-width: calc(0.045 * var(--u)); stroke-linecap: round; }
 .holomap-border[data-hot] .holomap-border-glow { stroke: #ffb347; stroke-opacity: 0.3; }
-.holomap-border[data-hot] .holomap-border-line { stroke: #ffe2b0; stroke-dasharray: 0.13 0.1; animation: holomap-flow 1s linear infinite; }
+.holomap-border[data-hot] .holomap-border-line { stroke: #ffe2b0; stroke-dasharray: calc(0.13 * var(--u)) calc(0.1 * var(--u)); animation: holomap-flow 1s linear infinite; }
 
 /* ── Offensives: an arrow flowing from where the fleets come from; a raid
    dotted; the decisive battle doubled. (Every dash pattern repeats in 0.46
-   or half that, so the flow loops without a jump.) ── */
-.holomap-op-line { fill: none; stroke: var(--by); stroke-linecap: round; stroke-dasharray: 0.3 0.16; animation: holomap-flow 1.1s linear infinite; }
-.holomap-op[data-kind='raid'] .holomap-op-line { stroke-dasharray: 0.001 0.229; }
-.holomap-op-outer { fill: none; stroke: var(--by); stroke-opacity: 0.9; }
-.holomap-op-inner { fill: none; stroke: #020611; }
-.holomap-op-head { fill: var(--by); stroke: #020611; stroke-width: 0.03; stroke-linejoin: round; }
-@keyframes holomap-flow { to { stroke-dashoffset: -0.46; } }
+   or half that, so the flow loops without a jump; --u, galaxy.css, keeps the
+   widths and the dashes the same on screen at any zoom, and an arrow's own
+   width is --w, set on it, in grid squares.) ── */
+.holomap-op-line { fill: none; stroke: var(--by); stroke-linecap: round; stroke-width: calc(var(--w) * var(--u)); stroke-dasharray: calc(0.3 * var(--u)) calc(0.16 * var(--u)); animation: holomap-flow 1.1s linear infinite; }
+.holomap-op[data-kind='decisive'] .holomap-op-line { stroke-width: calc(var(--w) * 0.7 * var(--u)); }
+.holomap-op[data-kind='raid'] .holomap-op-line { stroke-dasharray: calc(0.001 * var(--u)) calc(0.229 * var(--u)); }
+.holomap-op-outer { fill: none; stroke: var(--by); stroke-opacity: 0.9; stroke-width: calc(var(--w) * 3.4 * var(--u)); }
+.holomap-op-inner { fill: none; stroke: #020611; stroke-width: calc(var(--w) * 1.5 * var(--u)); }
+.holomap-op-head { fill: var(--by); stroke: #020611; stroke-width: calc(0.03 * var(--u)); stroke-linejoin: round; transform: scale(calc(1 / var(--k, 1))); } /* (about its tip: set on it, WarLayers.jsx) */
+@keyframes holomap-flow { to { stroke-dashoffset: calc(-0.46 * var(--u)); } }
 
 /* ── Fleets: a side's crest on its arrow, closing in ── */
 .holomap-fleets { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; pointer-events: none; }

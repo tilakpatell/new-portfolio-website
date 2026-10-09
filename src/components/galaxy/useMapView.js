@@ -55,6 +55,7 @@ export function useMapView(boxRef) {
       gesture.current.down(e.pointerId, e.clientX, e.clientY, rect());
     },
     onPointerMove: (e) => {
+      if (!gesture.current.active) return; // (a mouse passing over the map: nothing to pan, and the box isn't measured for it)
       const was = gesture.current.dragging;
       apply(gesture.current.move(e.pointerId, e.clientX, e.clientY, rect()));
       if (!was && gesture.current.dragging) e.currentTarget.setPointerCapture?.(e.pointerId);

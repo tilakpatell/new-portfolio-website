@@ -101,6 +101,11 @@ describe('the operations on the map', () => {
       expect(op.from).toBe('endor');
       expect(op.d).toMatch(/^M-?[\d.]+ -?[\d.]+ Q-?[\d.]+ -?[\d.]+ -?[\d.]+ -?[\d.]+$/);
       expect(op.head.split(' ')).toHaveLength(3);
+      // (the line drawn goes on from d, under the head: to a point nearer the tip than the head's base)
+      expect(op.line.startsWith(`${op.d} L`)).toBe(true);
+      const [bx, bz] = op.head.split(' ').slice(1).map((q) => q.split(',').map(Number)).reduce((m, q) => [m[0] + q[0] / 2, m[1] + q[1] / 2], [0, 0]);
+      const [ex, ez] = op.line.split(' L')[1].split(' ').map(Number);
+      expect(Math.hypot(ex - op.tip[0], ez - op.tip[1])).toBeLessThan(Math.hypot(bx - op.tip[0], bz - op.tip[1]));
       expect(dist(op.tip, posOf('sorgan'))).toBeCloseTo(0.42, 6);
       expect(dist(op.start, posOf('endor'))).toBeCloseTo(0.42, 6);
     }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CORE, REGIONS } from './systems';
-import { REGION_FONT, regionAngle, regionNamesShown, unknownNameX } from './regionNames';
+import { CORE, REGIONS, edgeAt } from './systems';
+import { LETTER_SPACING, REGION_FONT, regionAngle, regionNamesShown, unknownNameX } from './regionNames';
 
 const unit = (box, k = 1) => (box * k) / 21; // (screen px per map unit, as HoloMap.jsx has it)
 const ids = (box, k) => REGIONS.slice(1).map((r) => r.id).filter((id) => regionNamesShown(REGIONS, unit(box, k)).has(id));
@@ -20,6 +20,15 @@ describe('regionNames: which of the regions’ names have room', () => {
         was = now;
       }
     }
+  });
+  it('counts the space between the letters of a name along its ring: a letter is 0.62 em and 0.18 more', () => {
+    expect(LETTER_SPACING).toBe(0.18);
+    // the outer ring's name, at the width it needs (0.9 of its letters', each 0.8 em), shows just above it and not just under
+    const i = REGIONS.findIndex((r) => r.id === 'outer');
+    const r = REGIONS[i];
+    const px = (0.9 * r.name.length * REGION_FONT * 0.8) / edgeAt(r.r, regionAngle(i));
+    expect(regionNamesShown(REGIONS, px * 1.02).has('outer')).toBe(true);
+    expect(regionNamesShown(REGIONS, px * 0.98).has('outer')).toBe(false);
   });
   it('shows no names where the map has no size', () => {
     expect(regionNamesShown(REGIONS, 0).size).toBe(0);

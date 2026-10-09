@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { RiCloseLine, RiInformationLine } from 'react-icons/ri';
 import Emblem from './Emblem';
 import { SIDES, WARS } from './sides';
@@ -15,7 +16,7 @@ const Mark = ({ children }) => (
   </svg>
 );
 
-export default function WarLegend({ war, open = false, onToggle }) {
+const WarLegend = memo(function WarLegend({ war, open = false, onToggle }) {
   const w = WARS[war];
   const lib = SIDES[w.liberator];
   const raid = SIDES[w.raider];
@@ -167,4 +168,6 @@ export default function WarLegend({ war, open = false, onToggle }) {
       </div>
     </div>
   );
-}
+});
+
+export default WarLegend;

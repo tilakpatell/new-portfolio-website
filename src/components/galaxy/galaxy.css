@@ -397,6 +397,10 @@
 .holomap-body { container-type: size; }
 .holomap-canvas,
 .holomap-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* The SVG's lines keep their weight as the stage zooms: a stroke is in the SVG's units, which the stage scales by k, so each width
+   and dash is its number times --u, one unit over k (the line's own number is its weight at the whole map; at k=4 a course
+   glow would be 44 px wide otherwise). The shapes (the territory, the arrowheads) are meant to grow with the map */
+.holomap-svg { --u: calc(1px / var(--k, 1)); }
 .holomap-canvas { display: block; }
 .holomap-map::after {
   content: '';
@@ -405,19 +409,19 @@
   pointer-events: none;
   background: repeating-linear-gradient(0deg, rgb(127 214 255 / 0.035) 0 1px, transparent 1px 3px);
 }
-.holomap-grid { stroke: rgb(127 214 255 / 0.07); stroke-width: 0.02; }
-.holomap-region { fill: none; stroke: rgb(127 214 255 / 0.28); stroke-width: 0.035; stroke-dasharray: 0.12 0.1; }
+.holomap-grid { stroke: rgb(127 214 255 / 0.07); stroke-width: calc(0.02 * var(--u)); }
+.holomap-region { fill: none; stroke: rgb(127 214 255 / 0.28); stroke-width: calc(0.035 * var(--u)); stroke-dasharray: calc(0.12 * var(--u)) calc(0.1 * var(--u)); }
 .holomap-region[data-id='deep'] { stroke: rgb(255 214 150 / 0.45); stroke-dasharray: none; }
 .holomap-region[data-id='outer'] { stroke: rgb(127 214 255 / 0.4); stroke-dasharray: none; }
-.holomap-unknown { fill: rgb(0 0 0 / 0.45); stroke: rgb(127 214 255 / 0.15); stroke-width: 0.03; }
+.holomap-unknown { fill: rgb(0 0 0 / 0.45); stroke: rgb(127 214 255 / 0.15); stroke-width: calc(0.03 * var(--u)); }
 /* (the size and spacing are set in HoloMap.jsx, from the box's: 11.5 px on screen at any zoom) */
 .holomap-region-name { fill: rgb(191 234 255 / 0.62); font-family: var(--font-mono); text-anchor: middle; text-transform: uppercase; }
 .holomap-unknown-name { fill: rgb(191 234 255 / 0.45); }
 /* (dim: the war's own lanes, warmap.css, go over them) */
-.holomap-lane { fill: none; stroke: rgb(255 210 120 / 0.18); stroke-width: 0.045; stroke-linejoin: round; }
-.holomap-course { fill: none; stroke: #fff; stroke-linejoin: round; stroke-width: 0.085; stroke-dasharray: 0.18 0.12; animation: holomap-dash 1s linear infinite; }
-@keyframes holomap-dash { to { stroke-dashoffset: -0.6; } }
-.holomap-course-glow { fill: none; stroke: var(--accent); stroke-width: 0.32; stroke-opacity: 0.28; stroke-linejoin: round; filter: blur(0.06px); }
+.holomap-lane { fill: none; stroke: rgb(255 210 120 / 0.18); stroke-width: calc(0.045 * var(--u)); stroke-linejoin: round; }
+.holomap-course { fill: none; stroke: #fff; stroke-linejoin: round; stroke-width: calc(0.085 * var(--u)); stroke-dasharray: calc(0.18 * var(--u)) calc(0.12 * var(--u)); animation: holomap-dash 1s linear infinite; }
+@keyframes holomap-dash { to { stroke-dashoffset: calc(-0.6 * var(--u)); } }
+.holomap-course-glow { fill: none; stroke: var(--accent); stroke-width: calc(0.32 * var(--u)); stroke-opacity: 0.28; stroke-linejoin: round; filter: blur(calc(0.06 * var(--u))); }
 /* the course's tag and a system's hover card are in the stage, which is scaled by k: each is scaled by 1/k to keep its size, and its offset is
    worked out so it stays the same on screen (a translate is in the element's own px, which the stage then scales by k, hence the divisions) */
 .holomap-course-tag { position: absolute; z-index: 2; translate: -50% calc(-50% - 90% / var(--k, 1)); scale: calc(1 / var(--k, 1)); padding: 0.15rem 0.45rem; border: 1px solid var(--accent); border-radius: 999px; background: rgb(2 6 16 / 0.9); color: #fff; font-family: var(--font-mono); font-size: 0.72rem; white-space: nowrap; pointer-events: none; }
