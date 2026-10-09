@@ -23,12 +23,14 @@ import './shipyard.css';
 // Every change is staged on a draft (useYard.js, yardRules.js) and nothing
 // is bought or fitted until Apply, which pays for the lot in one checkout
 // and fits it, or does nothing at all. H or the corner button opens it;
-// Escape closes it, keeping the draft. The design:
+// Escape closes it, keeping the draft. A page may say a word of its own over
+// the secondary and ordnance lines (`hint`: the galaxy's, that they fire on
+// the universe map only). The design:
 // docs/superpowers/specs/2026-10-08-shipyard-overhaul-design.md, Part 3.
 
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export default function Shipyard({ open, onOpen, enabled = true, ship, shipName = '', live, lastBuild = null, saves, dropped = null, onApply, onSell, onCrew = null, returnTo = '.universe-hangar-btn' }) {
+export default function Shipyard({ open, onOpen, enabled = true, ship, shipName = '', live, lastBuild = null, saves, dropped = null, onApply, onSell, onCrew = null, returnTo = '.universe-hangar-btn', hint = null }) {
   const id = useId();
   const panel = useRef(null);
   const canvas = useRef(null);
@@ -186,6 +188,11 @@ export default function Shipyard({ open, onOpen, enabled = true, ship, shipName 
             </div>
           ) : (
             <canvas ref={canvas} className="yard-canvas" tabIndex={0} aria-label={`${shipName}, as staged: drag or use the arrow keys to turn it`} />
+          )}
+          {hint && ['secondary', 'ordnance'].includes(looking?.slot ?? slot) && (
+            <p className="yard-hint" role="note">
+              {hint}
+            </p>
           )}
           <p className="yard-caption">
             {crew?.label ?? ''} · {draft.build ? `Garage build ${buildCode(draft.build)}` : 'Stock hull'}

@@ -181,9 +181,10 @@ describe('what the stories and eggs use', () => {
   }
 
   it('hangs a camera tagged for the story over each of AA-23’s camera spots', () => {
-    const cams = ds1.made.get('aa23').props.filter((p) => p.tag === 'cameras');
+    const cams = ds1.made.get('aa23').props.filter((p) => p.kind === 'camera');
     expect(cams).toHaveLength(2);
-    for (const name of ['aa23-camera-1', 'aa23-camera-2']) expect(cams.some((c) => c.x === DS1.spots[name].x && c.z === DS1.spots[name].z), name).toBe(true);
+    // (each tagged by its spot's name: a bolt breaks what its tag names, and the story counts the two)
+    for (const name of ['aa23-camera-1', 'aa23-camera-2']) expect(cams.some((c) => c.tag === name && c.x === DS1.spots[name].x && c.z === DS1.spots[name].z), name).toBe(true);
     for (const c of cams) expect(c.y).toBeGreaterThan(DS1.rooms.find((r) => r.id === 'aa23').y + 2);
   });
 

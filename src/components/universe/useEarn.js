@@ -36,8 +36,10 @@ export function useEarn({ client = null } = {}) {
     for (const got of queue.attach(economy)) show(got);
     if (!import.meta.env.DEV) return undefined;
     // (in development, for checking from a browser: put on the scene's hook,
-    // which the wallet often beats up, so wait for it)
-    const hook = () => window.__universeDebug && !window.__universeDebug.economy && (window.__universeDebug.economy = economy);
+    // the universe map's or the galaxy's, which the wallet often beats up, so wait for it)
+    const hook = () => {
+      for (const d of [window.__universeDebug, window.__galaxyDebug]) if (d && !d.economy) d.economy = economy;
+    };
     hook();
     const every = setInterval(hook, 500);
     return () => clearInterval(every);

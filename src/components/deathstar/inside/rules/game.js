@@ -60,7 +60,7 @@ import { furnish } from './furnish';
 import { CAST } from './cast';
 import { buildLayout, offTags } from './layout';
 import { createNav } from './nav';
-import { act, battle, garrison, plot } from './play';
+import { act, battle, duel, garrison, plot } from './play';
 import { ESCORT } from './story';
 import { STATIONS } from './stations';
 import { WHO } from './talk';
@@ -181,6 +181,8 @@ export function drain(g) {
 // behind turns rather than flicks.
 function face(you, input, dt) {
   if (Number.isFinite(input.pitch)) you.pitch = input.pitch;
+  // (where the camera looks, which E reaches along: act.js)
+  if (Number.isFinite(input.yaw)) you.look = wrap(input.yaw);
   if ((input.aim || input.fire) && Number.isFinite(input.yaw)) {
     you.yaw = wrap(input.yaw);
     return;
@@ -211,6 +213,8 @@ export function teleport(g, where, x, z, yaw) {
   const room = g.layout.rooms.get(id);
   if (!room) return false;
   const you = g.you;
+  // (out of any seat: wherever you are put, you stand there)
+  you.seat = null;
   const { x: px, z: pz } = standAt(g, id, x ?? spot?.x ?? room.x, z ?? spot?.z ?? room.z);
   const floor = g.layout.floorAt(id, px, pz);
   Object.assign(you, { x: px, y: floor ?? room.y, z: pz, vy: 0, ground: floor !== null });
@@ -416,11 +420,28 @@ function storyEvents(g, was) {
   for (const [name, s] of Object.entries(g.layout.station.spots ?? {})) {
     if (s.room === you.room && flat(s, you) <= SPOT && (!spot || flat(s, you) < flat(g.layout.station.spots[spot], you))) spot = name;
   }
-  if (you.room !== was.room || spot !== g.atSpot) {
+  // told on arriving, and again while you wait there as whoever is with you changes (an escort
+  // done once the one you walk with comes up, though you came first)
+  const company = withYou.join(' ');
+  if (you.room !== was.room || spot !== g.atSpot || (spot && company !== g.atWith)) {
     g.atSpot = spot;
+    g.atWith = company;
     plot.feedPlot(g, { type: 'at', room: you.room, spot, with: withYou });
   }
   if (g.still > 0) plot.feedPlot(g, { type: 'still', seconds: g.still });
+}
+
+// Sat down (act.js): held in the seat, facing the way it faces. A key that walks, aims or fires
+// stands you up in front of it, and so do a hurt, a scene, a lift and the Emperor's grip.
+function seated(g, input) {
+  const { you } = g;
+  const s = you.seat;
+  const d = input.dir;
+  if ((d && Math.hypot(d.x, d.z) > 0.1) || input.jump || input.aim || input.fire || you.hp < s.hp || g.scene || g.lift || duel.gripped(g)) {
+    act.standUp(g);
+    return;
+  }
+  Object.assign(you, { x: s.x, y: s.y, z: s.z, yaw: s.yaw, vy: 0, ground: true });
 }
 
 // While a story's scene plays you watch it: no walking, shooting, using or talking; the look stays yours
@@ -433,6 +454,7 @@ export function step(g, input = {}, dt = STEP) {
   g.fired = false;
   const mark = g.events.length;
   face(you, input, dt);
+  if (you.seat) seated(g, input);
   if (input.helmet && you.armour) {
     you.helmet = !you.helmet;
     g.events.push({ type: 'helmet', on: you.helmet });
@@ -455,7 +477,9 @@ export function step(g, input = {}, dt = STEP) {
   const bodies = [you, ...g.bodies, ...people];
   const held = holdCars(g, bodies);
   // the people aboard are the Empire’s unless they say; a Rebel in armour and helmet passes for one
-  const near = bodies.map((b) => ({ x: b.x, y: b.y, z: b.z, side: b.side ?? 'imperial', disguised: Boolean(b.armour && b.helmet) }));
+  // (one who walks with you opens what you may open: your prisoner through the doors your armour does)
+  const yours = you.side === 'imperial' || Boolean(you.armour && you.helmet);
+  const near = bodies.map((b) => ({ x: b.x, y: b.y, z: b.z, side: b.side ?? 'imperial', disguised: Boolean(b.armour && b.helmet) || (yours && Boolean(b.tag?.startsWith('with:'))) }));
   for (const e of stepDoors(doors, layout, dt, { near, flags: g.flags, lockdown: lockdowns(g.alarm) })) {
     // (a car holding its doors for a ride refuses nobody)
     if (!(e.type === 'denied' && held.has(e.door))) g.events.push({ type: 'door', what: e.type, door: e.door });
@@ -464,12 +488,15 @@ export function step(g, input = {}, dt = STEP) {
 
   // you, standing still while a talk is open
   const was = { x: you.x, z: you.z, room: you.room };
-  // (holding your father up, you walk)
+  // (holding your father up, you walk; in a grip, nothing; thrown by a push, you go the way it threw you)
   // (the jump's buffer and coyote time are walker.js's: the press is passed on as it came)
-  const walk = g.talk ? {} : plot.held(g, { dir: input.dir, run: input.run, jump: input.jump, crouch: input.crouch });
-  for (const e of stepBody(you, walk, dt, { layout, open, solids: g.solidsOf(you.room) })) {
-    g.events.push(e);
-    if (e.type === 'room') g.seen.add(e.to);
+  const walk = g.talk || duel.gripped(g) ? {} : plot.held(g, { dir: input.dir, run: input.run, jump: input.jump, crouch: input.crouch });
+  const shove = duel.shoveOf(g, dt);
+  for (const w of you.seat ? [] : shove ? [walk, { dir: shove, run: true }] : [walk]) {
+    for (const e of stepBody(you, w, dt, { layout, open, solids: g.solidsOf(you.room) })) {
+      g.events.push(e);
+      if (e.type === 'room') g.seen.add(e.to);
+    }
   }
   const moved = Math.hypot(you.x - was.x, you.z - was.z);
   g.still = moved < 0.01 ? (g.still ?? 0) + dt : 0;
@@ -485,7 +512,7 @@ export function step(g, input = {}, dt = STEP) {
   // through a hide or a still, those with you lie low as well
   const lying = ['hide', 'still'].includes(currentStep(g)?.type);
   for (const p of g.crew.people) if (p.tag?.startsWith('with:')) p.hidden = lying;
-  for (const e of stepCrew(g.crew, dt, { you: seenBy, alarm: g.alarm, doors, combat: g.combat, flags: g.flags, now: g.time, open, stims, awake: (p) => awake(g, p) })) {
+  for (const e of stepCrew(g.crew, dt, { you: seenBy, alarm: g.alarm, doors, combat: g.combat, flags: g.flags, now: g.time, open, stims, awake: (p) => awake(g, p), talking: g.talk?.npc ?? null })) {
     if (e.type === 'call') raise(g.alarm, e.section, e.how, e.at, g.time);
     else if (e.type === 'shoot') {
       if (fire(g.combat, e, g.rand)) g.events.push({ type: 'shot', by: e.owner, weapon: e.weapon, at: e.from });
@@ -500,6 +527,8 @@ export function step(g, input = {}, dt = STEP) {
 
   plot.holdUp(g, moved);
   battle.stepBattle(g, dt, open, { guard: Boolean(you.blade && input.aim) });
+  // (the jump key dodges a blade; its buffer and coyote time are the walker's, not the duel's)
+  if (!g.talk && !g.scene) duel.duelStep(g, { ...input, dodge: input.jump }, dt);
   const quake = stepBreach(g, dt);
   if (quake) g.events.push(quake);
 
@@ -548,6 +577,8 @@ function refusal(g) {
     if (!s?.denied || s.want || Math.hypot(you.x - door.x, you.z - door.z) > REACH || Math.abs(you.y - door.y) > door.h) continue;
     if (s.sealed) return 'Sealed';
     const lock = door.lock ?? '';
+    // (in free roam a Rebel's way through is the station's own computer: say where it is)
+    if (lock === 'side:imperial' && !g.plot && g.layout.station.spots?.scomp) return 'Imperial personnel only: a scomp link would open it';
     return REFUSALS[lock] ?? REFUSALS[lock.split(':')[0]] ?? 'Shut fast';
   }
   return null;

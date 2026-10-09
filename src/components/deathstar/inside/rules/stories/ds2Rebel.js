@@ -39,7 +39,9 @@
 import { chain, say, spawn } from '../story';
 
 // Down the ramp of Vader’s shuttle, with nothing in his hands.
-const BEGIN = { spot: 'dock-ramp', hero: 'luke', armour: false, helmet: false, companions: [], flags: [], gun: null };
+// (he is Vader's prisoner from the first: the garrison lets him walk, and only those the story sets
+// on him fight him)
+const BEGIN = { spot: 'dock-ramp', hero: 'luke', armour: false, helmet: false, companions: [], flags: ['prisoner'], gun: null };
 
 const bring = (kind, spot, tag, opts, n) => [{ despawn: tag }, ...spawn(kind, spot, tag, opts, n)];
 
@@ -52,7 +54,8 @@ const ESCORT = [
     type: 'scene',
     text: 'Vader’s shuttle sets down in the dock with you aboard.',
     need: { scene: 'arrive2' },
-    start: [{ music: 'quiet' }, ...spawn('vader', 'vader-arrive', 'vader', { role: 'follow' }), ...spawn('royalguard', 'dock-ramp', 'guards', { role: 'follow' }, 2), { scene: 'arrive2' }],
+    // (Vader walks his prisoner to the lift, and his guards keep close behind)
+    start: [{ music: 'quiet' }, ...spawn('vader', 'vader-arrive', 'vader', { role: 'lead', to: 'holding-lift' }), ...spawn('royalguard', 'dock-ramp', 'guards', { role: 'follow' }, 2), { scene: 'arrive2' }],
   },
   {
     id: 'escort-walk',
@@ -82,13 +85,16 @@ const LIFT = [
   },
 ];
 
+// the Emperor on his throne, watching (he stands for the lightning)
+const SEATED = { role: 'scripted', script: [{ anim: 'sit' }] };
+
 const THRONE = [
   {
     id: 'throne',
     type: 'talk',
     text: 'Before the throne. The Emperor speaks, and your saber lies on the armrest at his side.',
     need: { talk: 'throne' },
-    start: [...bring('emperor', 'throne-seat', 'emperor', { role: 'scripted' }), ...bring('vader', 'under-stairs', 'vader', { role: 'scripted' })],
+    start: [...bring('emperor', 'throne-seat', 'emperor', SEATED), ...bring('vader', 'under-stairs', 'vader', { role: 'scripted' })],
   },
 ];
 
@@ -101,7 +107,7 @@ const DUEL = [
     start: [
       { give: 'saber' },
       { music: 'alert' },
-      ...bring('emperor', 'throne-seat', 'emperor', { role: 'scripted' }),
+      ...bring('emperor', 'throne-seat', 'emperor', SEATED),
       { despawn: 'vader' },
       ...spawn('vader', 'throne-armrest', 'duel-vader', { role: 'scripted', hostile: true }),
       say('vader', 'Obi-Wan has taught you well.'),
