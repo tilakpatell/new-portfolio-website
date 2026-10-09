@@ -93,6 +93,7 @@ async function main() {
     const box = { planet_id: 'hoth', min_x: ox - 100, max_x: ox + 200, min_z: oz - 100, max_z: oz + 100 };
     const { data, error } = await c.rpc('get_entities_in_bounding_box', box);
     must(!error, error?.message);
+    three();
     const ids = new Set(data.map((r) => r.id));
     must(placed.every((e) => ids.has(e.id)), `found ${data.length}, not the three`);
     const big = await c.rpc('get_entities_in_bounding_box', { ...box, max_x: box.min_x + 9000 });
@@ -105,7 +106,11 @@ async function main() {
     must(/point of interest/.test(errors.at(-1)?.error?.message ?? ''), errors.at(-1)?.error?.message ?? 'no error');
   });
 
+  // the last two act on what was placed: with nothing placed they say so, not a TypeError
+  const three = () => must(placed.length === 3, 'nothing to act on: the place step failed');
+
   await step('damaged one to nothing, and it is gone', async () => {
+    three();
     let hp = placed[0]?.hp ?? 100;
     for (let i = 0; i < 10 && hp > 0; i++) {
       hp = await loader.damage(placed[0].id, 30);
@@ -117,6 +122,7 @@ async function main() {
   });
 
   await step('another visitor cannot remove them; their owner can', async () => {
+    three();
     const other = make(project.url, project.key);
     const id = await signIn(other);
     must(id, 'the second visitor could not sign in');
