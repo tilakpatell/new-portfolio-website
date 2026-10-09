@@ -88,6 +88,10 @@ import { createHouse } from '../../../lib/three/house';
 import { adoptLater, exposureOf, groundPieces, lookOf } from './look';
 import { surfaceTuning, siteCode } from './tune';
 import { debugOn, debugPanel } from '../../../lib/debugPanel';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { createPress, pressGroups } from '../../../lib/press';
+import { rideFov } from './rides';
+import { downAt } from './respawn';
 import { createGrass } from '../../../lib/three/grass';
 import { amountsFor } from './amounts';
 import { createWind } from '../../../lib/three/wind';
@@ -368,7 +372,11 @@ export async function create(canvas, ctx) {
   if (grass) scene.add(grass.mesh);
   // ?debug: the look, the grass and the wind on sliders, copied out as the
   // site's own blocks (lib/debugPanel, tune.js)
-  const panel = debugOn() ? debugPanel({ title: site.id, groups: surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), code: siteCode }) : null;
+  // the feel: every knock's shake (state.shake, drained into it each frame:
+  // trauma², held still under reduced motion), and the jump's press
+  const feel = createFeel({ calm: reduced, offset: 0.3 });
+  const jumpPress = createPress();
+  const panel = debugOn() ? debugPanel({ title: site.id, groups: [...surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), ...feelGroups(feel), ...pressGroups(jumpPress)], code: siteCode }) : null;
   // the Meshy cast (the cruiser's two, the peers'): made here, before the
   // people, where a page's figure maker draws on it too (ctx.figures(cast)
   // → (kind, spec, i) → figure | null: the Rick and Morty planets' people);
@@ -796,7 +804,8 @@ export async function create(canvas, ctx) {
     keys: {},
     stick: { x: 0, y: 0 },
     buttons: { run: false },
-    jumpQueued: false,
+    // the jump: a moment early or a moment off an edge still lands (lib/press.js)
+    jumpPress,
     actQueued: false,
     throwQueued: false,
     dodgeQueued: false,
@@ -949,7 +958,7 @@ export async function create(canvas, ctx) {
     if (down && !e.repeat) {
       sounds.start();
       if (state.phase === 'landing') skipLanding();
-      if (k === 'jump') state.jumpQueued = true;
+      if (k === 'jump') state.jumpPress.press();
       if (k === 'act') state.actQueued = true;
       if (k === 'fire') state.fireQueued = true;
       if (k === 'throw') state.throwQueued = true;
@@ -2268,8 +2277,11 @@ export async function create(canvas, ctx) {
     }
     const p = me().st;
     const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
-    if (step?.respawn) putAt(p, step.respawn[0], step.respawn[1]);
-    else if (!state.zone) putAt(p, spawnAt[0], spawnAt[1]);
+    // (inside a zone too: at its door in, not where you fell; respawn.js)
+    const [dx, dz, dyaw] = downAt({ step, zone: state.zone, spawn: spawnAt });
+    putAt(p, dx, dz, dyaw ?? undefined);
+    if (dyaw != null) state.cam.yaw = dyaw;
+    camInit = false;
   }
 
   // ── Each frame ──
@@ -2344,7 +2356,7 @@ export async function create(canvas, ctx) {
     state.safe = safe;
     // (a sprint: abilityRules.js's, the walk and the run both quicker)
     const rules = state.t < state.sprint ? { ...WALK, walk: WALK.walk * ABILITIES.sprint.speed, run: WALK.run * ABILITIES.sprint.speed } : WALK;
-    const o = walk(p, state.dodge ? { x: 0, y: 0, run: false, heading: inp.heading, jump: false } : { ...inp, jump: state.jumpQueued }, dt, world, rules);
+    const o = walk(p, state.dodge ? { x: 0, y: 0, run: false, heading: inp.heading, jump: false } : { ...inp, jump: state.jumpPress }, dt, world, rules);
     stepJet(dt);
     life.shove(p, WALK.radius);
     // (and out of whatever's parked: a speeder, a tauntaun)
@@ -2426,11 +2438,11 @@ export async function create(canvas, ctx) {
     const x = state.riding;
     const inp = chase?.stalled() ? { x: 0, y: 0, run: false } : input();
     // (a flyer climbs while jump is held, not only on the press)
-    const o = ride(x.state, { ...inp, x: inp.x, y: inp.y, jump: state.jumpQueued || (Boolean(x.spec.fly) && Boolean(state.keys.jump)) }, dt, world, x.spec);
+    const o = ride(x.state, { ...inp, x: inp.x, y: inp.y, jump: x.spec.fly ? Boolean(state.keys.jump) : state.jumpPress }, dt, world, x.spec);
     if (o.hit > 20 && chaseOn()) chase.knocked();
     if (o.hit > 6) {
       state.shake = Math.min(1, o.hit / 20);
-      emit({ type: 'bump', hard: o.hit > 14 });
+      emit({ type: 'bump', hard: o.hit > 14, speed: o.hit });
     }
     // you, on it
     const p = me().st;
@@ -2636,7 +2648,7 @@ export async function create(canvas, ctx) {
     const adsWant = state.ads && !riding && state.phase === 'walk' && !me().saber ? 1 : 0;
     state.adsK += (adsWant - state.adsK) * (1 - Math.exp(-dt * 10));
     const zoom = me().weapon?.zoom ?? 1.4;
-    const fov = baseFov / (1 + (zoom - 1) * state.adsK);
+    const fov = rideFov(baseFov, riding ? state.riding.state.speed : 0, riding ? state.riding.spec : null, { calm: reduced }) / (1 + (zoom - 1) * state.adsK);
     if (Math.abs(camera.fov - fov) > 0.01) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -2682,13 +2694,13 @@ export async function create(canvas, ctx) {
     camPos.lerp(want, 1 - Math.exp(-dt * (riding ? 9 : 12)));
     camLook.lerp(focus, 1 - Math.exp(-dt * 14));
     camera.position.copy(camPos);
-    if (state.shake > 0) {
-      camera.position.x += (r() - 0.5) * state.shake * 0.4;
-      camera.position.y += (r() - 0.5) * state.shake * 0.4;
-      state.shake = Math.max(0, state.shake - dt * 2.5);
-    }
     camera.lookAt(camLook);
     if (Math.abs(state.kick.x) > 1e-4) camera.rotateX(state.kick.x * 0.04); // your own shot's kick
+    // every knock this frame, as trauma (the k each had is its trauma)
+    if (state.shake > 0) feel.trauma(state.shake);
+    state.shake = 0;
+    feel.setBaseFov(fov);
+    feel.update(dt, camera);
   }
 
   // watching the ship come in (or go), from beside where it lands
@@ -2809,13 +2821,15 @@ export async function create(canvas, ctx) {
       dt *= 0.12;
     }
     state.t += dt;
+    // the jump's clock: whether you stood (or your ride did) as this step began
+    state.jumpPress.ground(state.phase === 'ride' ? Boolean(state.riding?.state.grounded) : state.phase === 'walk' && me().st.grounded, dt);
     const t = state.t;
     // what you're doing this frame, for your body: going somewhere, or
     // anything else (either cuts a reaction of yours, and most emotes)
     // (pressed this frame, or held: firing on, a block up, down the sights)
     const steer = input();
     const moving = Math.hypot(steer.x, steer.y) > 0.1;
-    const pressed = Boolean(state.jumpQueued || state.actQueued || state.fireQueued || state.dodgeQueued || state.powerQueued || state.secondQueued || state.throwQueued || state.swingQueued);
+    const pressed = Boolean(state.jumpPress.pending || state.actQueued || state.fireQueued || state.dodgeQueued || state.powerQueued || state.secondQueued || state.throwQueued || state.swingQueued);
     const held = Boolean(state.keys.fire || state.buttons.fire || state.keys.block || state.buttons.block || state.keys.power || state.buttons.power || state.ads);
     stepBody(moving, pressed, held);
 
@@ -2998,7 +3012,6 @@ export async function create(canvas, ctx) {
       m.sprite.visible = Boolean(on);
       if (on) m.sprite.position.set(a.b.x, a.holder.position.y + (a.fig.tall ?? 1.8) * (a.spec.scale ?? 1) + 0.6 + Math.sin(state.t * 3) * 0.08, a.b.z);
     }
-    state.jumpQueued = false;
     state.actQueued = false;
     place(dt);
     shot();
@@ -3280,7 +3293,7 @@ export async function create(canvas, ctx) {
       press(name) {
         sounds.start();
         if (state.phase === 'landing') skipLanding();
-        if (name === 'jump') state.jumpQueued = true;
+        if (name === 'jump') state.jumpPress.press();
         if (name === 'act') state.actQueued = true;
         if (name === 'run') state.buttons.run = true;
         if (name === 'fire') state.buttons.fire = true;
