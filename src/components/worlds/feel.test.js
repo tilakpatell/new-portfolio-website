@@ -70,7 +70,6 @@ export const NO_PRESS = [
   { file: 'avengers/smash/rules.js', pattern: /H\.air > 0 \|\| H\.smash >= 0\) return false/ },
   { file: 'rickmorty/world/sewer/rules.js', pattern: /input\.hop && r\.hop <= 0/ },
   { file: 'universe/foot.js', pattern: /input\.jump && h <= 1e-6/ },
-  { file: 'middleearth/rush/Rush.jsx', pattern: /sm\.dash = false/ },
   { file: 'rickmorty/portal/rules.js', pattern: /p\.dashes < 1 \|\| p\.dashT > 0\) return false/ },
 ];
 
