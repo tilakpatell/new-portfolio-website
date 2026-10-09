@@ -15,8 +15,13 @@ Four lanes, one pull request each, three of them in parallel. Read these first, 
 | B | durable world (Supabase) | `2026-10-09-durable-world.md` | `claude/durable-world` | main | nothing in code; the project's schema is applied by the owner or by `supabase db push` with a login |
 | C | spatial channels (Nostr) | `2026-10-09-spatial-channels.md` | `claude/spatial-channels` | main | nothing |
 | D | shared world | `2026-10-09-shared-world-integration.md` | `claude/shared-world` | main after A, B, C | A, B, C merged |
+| E | landmarks and kit clutter | `2026-10-09-landmarks.md` | `claude/planet-landmarks` | main after A | A merged |
+| F | the planet map | `2026-10-09-planet-map.md` | `claude/planet-map` | main after A | A merged |
+| G | planet life (air, animals, people, hostiles) | `2026-10-09-planet-life.md` | `claude/planet-life` | main after A | A merged |
+| H | occurrences and events | `2026-10-09-occurrences.md` | `claude/planet-occurrences` | main after D, G | D, G merged |
+| I | asset hosting on Supabase Storage | `2026-10-09-asset-hosting.md` | `claude/asset-hosting` | main after B | B merged |
 
-Start A, B and C together. D starts when the three are on `main`.
+Start A, B and C together. D, E, F and G start when A is on `main` (D also needs B and C). H starts when D and G are on `main`. E, F and G touch the same `scene.js` and `FlightHud.jsx`: each adds its own module and one call site, merges `origin/main` before its last push, and keeps the other lanes' calls.
 
 ## The Supabase project
 
@@ -41,15 +46,25 @@ Start A, B and C together. D starts when the three are on `main`.
 - **B**: `npm run build` with and without the env; the loader's tests green against the fake; `scripts/supabase-check.mjs` prints six `ok` lines against the project once the schema is applied (or the PR says it could not be applied and why).
 - **C**: a room joined with `cells` sends `#g` in its REQ and re-asks on a cell change; a room joined without is byte-for-byte what it was; `scripts/online-check.mjs` passes as before.
 - **D**: two browsers on `/fly/hoth` see each other's ships only within a cell of each other, a turret built in one is in the other within a second and after a reload of both, and a turret shot to nothing leaves both.
+- **E**: Echo Base has its doors and generator, Mos Eisley its blocks, Cloud City its towers; trees and rocks are the kit's; each planet's download is measured.
+- **F**: a minimap in the HUD and `M` opens the planet map with POIs, pilots, built things and a waypoint; nothing stored.
+- **G**: Hoth has tauntaun herds and snowspeeder patrols, Coruscant three lanes of traffic, Dagobah only bogwings, Mandalore's glass nothing; a patrol scrambles at you over a garrison; the probe holds 33 ms with Coruscant's lanes full.
+- **I**: the heavy models and scans load from the bucket by hash with a year's cache, the site plays unchanged with the bucket unset or blocked, an installed world caches the remote files, and the PR says how many megabytes moved.
+- **H**: a blizzard on Hoth that both browsers see, the Purge at sundown, an eruption on Mustafar, wrecks with salvage and camps that fire.
 
 ## Status
 
 | Lane | Done | Left | Checking it |
 |---|---|---|---|
 | A | Tasks 1 to 9 in #784 (`claude/flight-terrain`): `/fly/:planet` over streamed leaves, three to five biomes a planet type (`lib/land/flight/tables.js`), a bad answer or a dead worker never a hole, `lib/land/flats.js` (the surface pixel for pixel), `fastnoise-lite` with its page, fifty planets in `planetSpec.js`'s `PLANETS` (Expanse ids lowered: `e:sx,sz:i:j`) | its merge; on a GPU, the perf probe's worst frame (here, SwiftShader: 524 ms of software raster, the flight's own work 9.3 ms at most) | `node scripts/autopilot-check.mjs --only smoke --skip lint,test,build --routes /fly/hoth,/galaxy/hoth/surface`; `node scripts/perf-probe.mjs fly` |
-| B | the schema file `supabase/migrations/20261009000000_world_entities.sql`, `supabase/README.md`, `.env.example`, the decision entry | the plan from Task 1; the schema applied to the project | `node scripts/supabase-check.mjs` |
-| C | nothing yet | the plan from Task 1 | `npx vitest run src/components/universe/online src/lib/net`; `node scripts/online-check.mjs` |
+| B | PR #782, out of draft, CI green, mergeable: `src/lib/durable/` (client, entities, loader with retries, re-sign-in and realtime resubscribe), `scripts/supabase-seed.mjs` (the 50-planet roster, idempotent), `scripts/supabase-check.mjs`, three migrations applied to the owner's project, six live checks `ok` | merge (the owner's); apply `seed.sql` once after lane A merges (old Expanse rows are deleted by hand); `CELL` to read `NET_CELL` (lane D) | `node scripts/supabase-check.mjs` |
+| C | PR #783, out of draft, CI green: `src/lib/net/cells.js`, `refresh()` on a pool subscription, `cells` in `joinRoom` (the `g` tag out, `#g` in, re-asked on change), `flightProtocol.js`; a test that `CELL === NET_CELL` whenever `src/lib/durable/entities.js` is present | merge (the owner's); lane D makes `entities.js` import `NET_CELL` | `npx vitest run src/components/universe/online src/lib/net`; `node scripts/online-check.mjs` |
 | D | nothing yet | after A, B, C | `node scripts/online-check.mjs --fly` |
+| E | nothing yet | after A: the plan from Task 1 | `node scripts/perf-probe.mjs --routes /fly/hoth` over Echo Base |
+| F | nothing yet | after A: the plan from Task 1 | smoke `/fly/hoth --phone` with the map open |
+| G | nothing yet | after A: the plan from Task 1 | `node scripts/perf-probe.mjs --routes /fly/coruscant` |
+| H | nothing yet | after D, G: the plan from Task 1 | `node scripts/online-check.mjs --fly` (one storm, two browsers) |
+| I | nothing yet | after B: the plan from Task 1 | `node scripts/sw-check.mjs`; a build with and without `VITE_ASSET_BASE` |
 
 ## When something in the plan is wrong
 
