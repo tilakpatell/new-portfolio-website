@@ -102,7 +102,7 @@ import { SIZE as PILOT_SIZE, createPilots } from '../universe/online/pilots';
 import { GUARD } from '../universe/online/protocol';
 import { paintById } from '../universe/paint';
 import { FASTEST, STOCK_LOADOUT, readLoadout, statsOf } from '../universe/outfit';
-import { readBuildWire, writeBuild } from '../universe/shipyard/build';
+import { readBuildWire, readTune, tuneKey, writeBuild } from '../universe/shipyard/build';
 import { SHIP_INFO, buildGalaxyShip } from './fleet';
 import { ARRIVAL, HUNTER_GLB, createModels } from './models';
 import { createSky } from './sky';
@@ -376,6 +376,7 @@ export async function create(canvas, ctx) {
     courseSaid: false,
     loadout: readLoadout(ctx.loadout ?? STOCK_LOADOUT), // what's fitted in the hangar
     build: null, // the garage build flown in place of the stock hull (universe/shipyard), or null
+    tune: {}, // the crew's own ship tuned with modules ({ slot: module id }); applies while the hull is the stock one
     stats: statsOf(null, STOCK_LOADOUT), // and what it does to how it flies
     lock: null,
     lockTarget: null,
@@ -529,7 +530,7 @@ export async function create(canvas, ctx) {
     boltMat.color.set(coat().bolt ?? BOLT_COLOR[state.kind] ?? '#ff4a3d').multiplyScalar(4); // hot enough to bloom
   };
   const refit = () => {
-    state.stats = statsOf(state.kind, state.loadout, state.build);
+    state.stats = statsOf(state.kind, state.loadout, state.build, state.tune);
     if (state.kind && state.model) state.model.outfit?.(state.loadout);
   };
   const setLoadout = (raw) => {
@@ -550,6 +551,15 @@ export async function create(canvas, ctx) {
     if (sameBuild(raw)) return;
     state.build = raw ? readBuildWire(writeBuild(raw)) : null;
     if (state.kind) setShip(state.kind, true);
+  };
+
+  // The tune on the crew's own ship (shipyard/build.js's): only its numbers
+  // change, so the ship is not built again.
+  const setTune = (raw) => {
+    const next = readTune(raw);
+    if (tuneKey(next) === tuneKey(state.tune)) return;
+    state.tune = next;
+    state.stats = statsOf(state.kind, state.loadout, state.build, state.tune);
   };
 
   // (force: the same crew, built again: its garage build changed)
@@ -2653,10 +2663,12 @@ export async function create(canvas, ctx) {
       if ((next.ship ?? null) !== state.kind) {
         state.loadout = readLoadout(next.loadout ?? STOCK_LOADOUT); // (a new ship comes fitted as it was left)
         state.build = sameBuild(next.build) ? state.build : readBuildWire(next.build ? writeBuild(next.build) : null); // (and on the hull it was left on)
+        state.tune = readTune(next.tune); // (and tuned as it was)
       }
       setShip(next.ship ?? null);
       setBuild(next.build ?? null);
       setLoadout(next.loadout);
+      setTune(next.tune);
       setNet(next.net);
       // the page asking for another system (a link, the URL): jump there, but
       // only when it asks anew (asking.js)
