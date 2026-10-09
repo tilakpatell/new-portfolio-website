@@ -24,47 +24,59 @@
 // passed over after a further liveMs, and the next after another, so a pilot
 // who has lost the squad, an older client or a reload that kept nothing,
 // can't hold it up.) A leader's goodbye counts as leaderQuietMs of quiet.
-// A word is believed from the leader on record; from a member on record with
-// the next epoch once the leader on record has been quiet liveMs (a later
-// epoch only once they've been quiet twice leaderQuietMs: the next one
-// missed); and at the same epoch from a lower seat than the leader believed,
-// within liveMs of that epoch's start (two claims at once: the lower seat
-// wins, so a member who jumps the queue loses it to the next seat). Nobody
-// outside the seats is believed, and a leader who has been heard all along
-// can't be talked out of the lead: a leader believes a higher epoch only when
-// just back (resumed after a reload, or a gap in its own ticks: a tab asleep,
-// the relays out of reach), and is then a member again. A member just back
-// believes one too, whatever has moved on while it was away; and being back,
-// it gives the leader a fresh leaderQuietMs, so it doesn't claim the lead for
-// having heard nothing while asleep.
+// A word is believed from the leader on record; and from a member on record
+// whose word outranks the leader's (a higher epoch; at the same epoch, the
+// lower seat, each in its own word, then the lower id), when it's fair: it
+// keeps every seat of yours that's been heard lately, you among them, and
+// turns out none of yours (so a word from a squad that went its own way can
+// move yours on, but can't shed anyone). A member believes such a word at
+// once while its epoch is new (two claims at once: the lower seat wins), or
+// once the leader on record has been quiet liveMs (or said goodbye). A leader
+// believes it once it has heard it for liveMs and it's still coming: it was
+// cut off (its word lost, its page stalled), and the squad went on without
+// it, so two leaders always come to one. Just back (the room online again,
+// a reload resumed, or a gap in its own ticks), anyone believes a higher
+// epoch from a member at once, whatever moved on while they were away; and
+// being back, a member gives the leader a fresh leaderQuietMs, so it doesn't
+// claim the lead for having heard nothing. A leader with seats free seats any
+// pilot it hears who isn't out, the other side of a split too, which is how
+// their words come to count. Nobody outside the seats is believed; a leader
+// left alone that hears another leader in its room for liveMs has lost its
+// squad ('quiet'). No epoch is taken by a jump to within EPOCH_ROOM of the
+// most a word may carry, so the lead can always be handed on.
 //
-// Joining. A pilot asking in takes the first word heard. Turned out, or the
-// squad full, and that's the answer at once; nothing heard within JOIN_MS
-// and the squad has gone ('quiet': “That squad has gone.”); heard but not
-// seated in that time, and it's 'refused' (a block of the leader's, most
-// likely). What a squad keeps through a reload is its word: resume() reads it
-// back as any word is read, the pilot just back.
+// Joining. A pilot asking in believes a word that seats it, from whoever
+// leads it; one that turns it away (out, full) or doesn't seat it is an
+// answer that holds only if nothing seats it by JOIN_MS ('out', 'full' or
+// 'refused'; with no word at all, 'quiet': “That squad has gone.”). Asked in
+// from the roster (`via`, the inviter), it hears only words from the inviter
+// or that seat the inviter. What a squad keeps through a reload is its word:
+// resume() reads it back as any word is read, and the room's being online
+// marks the pilot back.
 //
-// newSquad(sid, me, now) → a squad you lead; joining(sid, me, now) → one
+// newSquad(sid, me, now) → a squad you lead; joining(sid, me, now, via) → one
 // you're asking into; resume(sid, me, wire, now) → one you were in, from its
 // word as you kept it. squadStep(state, event, now) → { state, send: [[ns,
 // data]] }, for { type: 'hello', from, card, blocked }, { type: 'state',
-// from, wire }, { type: 'bye', from }, { type: 'tick' } (every second), and
-// your own { type: 'leave' }, { type: 'kick', id }, { type: 'rally', rally:
-// { w, p: { x, y, z, sec? } | null } | null }, { type: 'open', open },
-// { type: 'lobby', lobby } (null only, till PR 3's readLobby), { type:
-// 'instance', instance }. view(state, now) → { sid, leader, mine (your seat,
-// or null), members: [{ id, seat, name, kind, where, shield, level, ready,
-// away, leader }], open, rally, lobby, instance, gone, why ('left', 'out',
-// 'full', 'quiet', 'refused' or null) }. readState(wire) → the word, or null
-// if any of it is junk; readCard(data) → { name, kind, where, shield, level,
-// ready } or null; writeCard(card) → a hello's data.
+// from, wire }, { type: 'bye', from }, { type: 'tick' } (often: squad.js's
+// are twice a second), { type: 'back' } (the room online), and your own
+// { type: 'leave' }, { type: 'kick', id }, { type: 'rally', rally: { w, p:
+// { x, y, z, sec? } | null } | null }, { type: 'open', open }, { type:
+// 'lobby', lobby } (null only, till PR 3's readLobby), { type: 'instance',
+// instance }. view(state, now) → { sid, leader, mine (your seat, or null),
+// members: [{ id, seat, name, kind, where, shield, level, ready, away, leader
+// }], open, rally, lobby, instance, gone, why ('left', 'out', 'full',
+// 'quiet', 'refused' or null) }. readState(wire) → the word, or null if any
+// of it is junk; readCard(data) → { name, kind, where, shield, level, ready }
+// or null; writeCard(card) → a hello's data.
 //
 // State: { sid, me, epoch, version, leader, members: [id], out: [id], open,
 // rally, lobby, instance, cards: Map(id → { …card, at }), leaderAt (the
 // leader's word last heard), joinedAt (asking in since), epochAt (this
 // epoch's start), backAt (last back from away), tickAt, stAt (your word last
-// sent, leading), gone }.
+// sent, leading), via (asked in by), answer (asking in: what you were told),
+// rivals: Map(id → { since, last }) (leading: another leader's word heard),
+// gone }.
 
 import { cleanName } from '../names';
 import { cleanWhere } from '../where';
@@ -76,6 +88,8 @@ export const SQUAD = { size: 4, stateMs: 2000, helloMs: 3000, seekMs: 1500, away
 export const JOIN_MS = 15000; // asking in: no word of the squad by now, and it's gone
 const OUT_MAX = 32; // pilots turned out, kept at most (the oldest let go past that)
 const COUNT_MAX = 1e9; // an epoch or a version, at most
+const EPOCH_ROOM = 1000; // no jump to an epoch closer than this to COUNT_MAX: handovers left, one at a time
+const TOP = COUNT_MAX - EPOCH_ROOM;
 const STRANGERS = 8; // cards kept of pilots who aren't seated, at most
 const ID = /^[0-9a-f]{64}$/; // a pilot's id: their key, 64 hex digits
 const INSTANCE = /^[0-9a-f]{10}$/; // invite.js's instanceOf
@@ -132,48 +146,49 @@ export function readState(w) {
 
 // ── the squad ──
 
-const base = (sid, me, now) => ({ sid, me, epoch: 0, version: 0, leader: null, members: [], out: [], open: false, rally: null, lobby: null, instance: null, cards: new Map(), leaderAt: now, joinedAt: now, epochAt: -Infinity, backAt: -Infinity, tickAt: now, stAt: -Infinity, gone: null });
+const base = (sid, me, now) => ({ sid, me, epoch: 0, version: 0, leader: null, members: [], out: [], open: false, rally: null, lobby: null, instance: null, cards: new Map(), leaderAt: now, joinedAt: now, epochAt: -Infinity, backAt: -Infinity, tickAt: now, stAt: -Infinity, via: null, answer: null, rivals: new Map(), gone: null });
 export const newSquad = (sid, me, now) => ({ ...base(sid, me, now), epoch: 1, leader: me, members: [me], epochAt: now });
-export const joining = (sid, me, now) => base(sid, me, now);
+export const joining = (sid, me, now, via = null) => ({ ...base(sid, me, now), via: isId(via) ? via : null });
 
 export function resume(sid, me, wire, now) {
   const w = readState(wire);
   if (!w) return joining(sid, me, now);
-  // (everyone in it as good as heard just now: a held seat isn't freed before its pilot can say hello)
+  // (everyone in it as good as heard just now: a held seat isn't freed before
+  // its pilot can say hello; the room's being online marks you back)
   const cards = new Map(w.members.filter((id) => id !== me).map((id) => [id, { ...NO_CARD, at: now }]));
-  const s = { ...base(sid, me, now), ...w, cards, backAt: now };
+  const s = { ...base(sid, me, now), ...w, cards };
   return w.out.includes(me) ? { ...s, gone: 'out' } : s;
 }
 
 const seated = (s) => s.members.includes(s.me);
 const leads = (s) => s.leader === s.me && seated(s);
 const heardAt = (s, id, now) => (id === s.me ? now : (s.cards.get(id)?.at ?? -Infinity));
+const live = (s, id, now) => now - heardAt(s, id, now) <= SQUAD.liveMs;
 const same = (s) => ({ state: s, send: NONE });
 // your word out now, leading (and its clock started again)
 const say = (s, now) => ({ state: { ...s, stAt: now }, send: [['st', writeState(s)]] });
 // a change of yours, leading: a new version, out at once
 const change = (s, patch, now) => say({ ...s, ...patch, version: s.version + 1 }, now);
 
-// Should this word (read, from its leader) be believed?
-function believe(s, w, now) {
-  const from = w.leader;
-  // asking in, knowing nothing: the first word heard is the squad's
-  if (s.leader === null && !seated(s)) return true;
-  if (from === s.leader) return w.epoch > s.epoch || (w.epoch === s.epoch && w.version >= s.version);
-  if (!s.members.includes(from)) return false;
-  if (w.epoch > s.epoch) {
-    // just back: whatever moved on while you were away
-    if (now - s.backAt <= SQUAD.liveMs) return true;
-    // a leader heard all along isn't talked out of the lead
-    if (s.leader === s.me) return false;
-    // the leader quiet liveMs (or gone): the next epoch, and a later one only
-    // once they've been quiet a good while (the next one missed), so nobody
-    // jumps the queue with a big number: the lower seat's claim wins it
-    const quiet = now - s.leaderAt;
-    return quiet >= SQUAD.liveMs && (w.epoch === s.epoch + 1 || quiet >= 2 * SQUAD.leaderQuietMs);
-  }
-  // two claims at one epoch: the lower seat, while the epoch's new
-  return s.leader !== null && w.epoch === s.epoch && now - s.epochAt <= SQUAD.liveMs && s.members.indexOf(from) < s.members.indexOf(s.leader);
+// Does this word's leader outrank the one you follow? A higher epoch; at the
+// same epoch the lower seat, each in its own word (a split's two lists may
+// differ), and then the lower id.
+function outranks(w, s) {
+  if (w.epoch !== s.epoch) return w.epoch > s.epoch;
+  const theirs = w.members.indexOf(w.leader);
+  const ours = s.members.indexOf(s.leader);
+  return theirs < ours || (theirs === ours && w.leader < s.leader);
+}
+// Is it fair, from someone who isn't the leader on record: does it keep every
+// seat of yours heard lately (you among them), and turn out none of yours?
+const fair = (s, w, now) => s.members.every((id) => !live(s, id, now) || w.members.includes(id)) && !w.out.some((id) => s.members.includes(id));
+
+// another leader's word, heard while you lead: true once it's been coming for
+// liveMs (the gaps no longer than liveMs), with the tally kept
+function heardLong(s, from, now) {
+  const was = s.rivals.get(from);
+  const since = was && now - was.last <= SQUAD.liveMs ? was.since : now;
+  return { long: now - since >= SQUAD.liveMs, rivals: new Map(s.rivals).set(from, { since, last: now }) };
 }
 
 // a word believed: it's the squad now
@@ -182,13 +197,27 @@ function adopt(s, w, now) {
   const cards = new Map(s.cards);
   // (a seat new to you: as good as heard now, till its pilot's hello comes)
   for (const id of w.members) if (id !== s.me && !cards.has(id)) cards.set(id, { ...NO_CARD, at: now });
-  const next = { ...s, ...w, cards, leaderAt: now, epochAt: w.epoch === s.epoch ? s.epochAt : now };
+  const next = { ...s, ...w, cards, leaderAt: now, epochAt: w.epoch === s.epoch ? s.epochAt : now, answer: null, rivals: new Map() };
   if (w.out.includes(s.me)) return { ...next, gone: 'out' };
   if (w.members.includes(s.me)) return next;
   if (w.members.length >= SQUAD.size) return { ...next, gone: 'full' };
   // (not seated, or not any longer: asking again, from now)
   return was ? { ...next, joinedAt: now } : next;
 }
+
+// asking in, with nothing believed yet: a word that seats you is the squad;
+// any other is an answer that holds only if nothing seats you in time. Asked
+// in from the roster, only the inviter's squad is heard.
+function asking(s, w, now) {
+  if (s.via && w.leader !== s.via && !w.members.includes(s.via)) return same(s);
+  if (w.members.includes(s.me)) return same(adopt(s, w, now));
+  return same({ ...s, answer: w.out.includes(s.me) ? 'out' : w.members.length >= SQUAD.size ? 'full' : 'refused' });
+}
+
+// back from away (the room online, or a gap in the ticks): everyone as good as
+// heard now, the leader given a fresh while, and any higher epoch believed for
+// liveMs
+const back = (s, now) => ({ ...s, cards: new Map([...s.cards].map(([id, c]) => [id, { ...c, at: now }])), backAt: now, leaderAt: now, tickAt: now, joinedAt: seated(s) ? s.joinedAt : now });
 
 function hello(s, { from, card, blocked = false }, now) {
   if (!isId(from) || !card) return same(s);
@@ -200,8 +229,32 @@ function hello(s, { from, card, blocked = false }, now) {
 
 function heard(s, { from, wire }, now) {
   const w = from === s.me ? null : readState(wire);
-  if (!w || w.leader !== from || !believe(s, w, now)) return same(s);
-  return same(adopt(s, w, now));
+  // (a jump close to the top isn't taken: the lead must stay handable)
+  if (!w || w.leader !== from || (w.epoch > TOP && w.epoch > s.epoch + 1)) return same(s);
+  if (s.leader === null && !seated(s)) return asking(s, w, now);
+  if (from === s.leader) return w.epoch > s.epoch || (w.epoch === s.epoch && w.version >= s.version) ? same(adopt(s, w, now)) : same(s);
+  if (!s.members.includes(from)) {
+    // nobody outside the seats is believed; left alone, hearing another
+    // leader in your room for liveMs, you've lost your squad
+    if (!leads(s) || s.members.length > 1) return same(s);
+    const { long, rivals } = heardLong(s, from, now);
+    return same({ ...s, rivals, gone: long ? 'quiet' : null });
+  }
+  // just back: whatever moved on while you were away
+  if (w.epoch > s.epoch && now - s.backAt <= SQUAD.liveMs) return same(adopt(s, w, now));
+  if (!fair(s, w, now)) return same(s);
+  // the leader's said goodbye: a member taking over
+  if (s.leader === null) return w.epoch > s.epoch ? same(adopt(s, w, now)) : same(s);
+  if (!outranks(w, s)) return same(s);
+  // two claims at one epoch, while it's new: the lower seat, at once
+  if (w.epoch === s.epoch && now - s.epochAt <= SQUAD.liveMs) return same(adopt(s, w, now));
+  // leading: once it has been coming for liveMs (you were cut off, and the squad went on)
+  if (leads(s)) {
+    const { long, rivals } = heardLong(s, from, now);
+    return same(long ? adopt(s, w, now) : { ...s, rivals });
+  }
+  // a member: once the leader on record has been quiet liveMs
+  return same(now - s.leaderAt >= SQUAD.liveMs ? adopt(s, w, now) : s);
 }
 
 function bye(s, { from }, now) {
@@ -227,17 +280,15 @@ function prune(s, now) {
 }
 
 function tick(s, now) {
-  let next = s;
-  // a gap in the ticks (a tab asleep, the relays out of reach): just back,
-  // with everyone as good as heard now and the leader given a fresh while
-  if (now - s.tickAt >= SQUAD.leaderQuietMs) {
-    const cards = new Map([...s.cards].map(([id, c]) => [id, { ...c, at: now }]));
-    next = { ...s, cards, backAt: now, leaderAt: now, joinedAt: seated(s) ? s.joinedAt : now };
-  }
+  // a gap in the ticks (a tab asleep, the relays out of reach): just back
+  let next = now - s.tickAt >= SQUAD.leaderQuietMs ? back(s, now) : s;
   next = prune({ ...next, tickAt: now }, now);
+  // (another leader's word no longer coming: forgotten)
+  if ([...next.rivals.values()].some((r) => now - r.last > SQUAD.liveMs)) next = { ...next, rivals: new Map([...next.rivals].filter(([, r]) => now - r.last <= SQUAD.liveMs)) };
   if (!seated(next)) {
     if (now - next.joinedAt < JOIN_MS) return same(next);
-    return same({ ...next, gone: next.leader === null ? 'quiet' : 'refused' });
+    // (asking in: what you were told, if anything; else the squad has gone)
+    return same({ ...next, gone: next.answer ?? (next.leader === null ? 'quiet' : 'refused') });
   }
   if (leads(next)) {
     const kept = next.members.filter((id) => now - heardAt(next, id, now) < SQUAD.goneMs);
@@ -258,6 +309,7 @@ function local(s, e, now) {
     if (e.id === s.me || !s.members.includes(e.id)) return same(s);
     const cards = new Map(s.cards);
     cards.delete(e.id);
+    // (past OUT_MAX turned out, the first of them may ask in again: a squad that's turned out 32 is a rare one)
     return change({ ...s, cards }, { members: s.members.filter((id) => id !== e.id), out: [...s.out.filter((id) => id !== e.id), e.id].slice(-OUT_MAX) }, now);
   }
   if (e.type === 'rally') {
@@ -285,6 +337,8 @@ export function squadStep(state, event, now) {
       return bye(state, event, now);
     case 'tick':
       return tick(state, now);
+    case 'back':
+      return same(back(state, now));
     default:
       return local(state, event, now);
   }

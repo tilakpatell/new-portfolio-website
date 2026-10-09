@@ -14,25 +14,33 @@ const word = (patch = {}) => ({ e: 1, v: 0, l: L, m: [L, A], x: [], o: 0, r: nul
 // steps' send) the others hear at once, unless either is `away` (asleep, or
 // reloading) or the pair is `deaf` ('from>to'); every second each pilot not
 // away ticks, and every helloMs says hello, unless it's `still` (says hello
-// but never ticks: a pilot who's lost the squad).
+// but never ticks: a pilot who's lost the squad). A `stalled` pilot's page has
+// frozen: it neither ticks nor says anything, and what's said to it waits
+// till it wakes. broadcast() is a word from anyone, one of the crew or a
+// client of someone's own.
 function crew(states) {
   const pilots = new Map(states.map((s) => [s.me, s]));
   const away = new Set();
   const deaf = new Set();
   const still = new Set();
+  const stalled = new Map(); // id → what came in while frozen, in order
   const said = [];
   let t = 0;
   const hears = (from, to) => to !== from && !away.has(to) && !away.has(from) && !deaf.has(`${from}>${to}`);
-  const run = (id, event) => {
+  const deliver = (to, event) => (stalled.has(to) ? stalled.get(to).push(event) : run(to, event));
+  const broadcast = (from, ns, data) => {
+    for (const to of [...pilots.keys()]) if (hears(from, to)) deliver(to, ns === 'st' ? { type: 'state', from, wire: data } : { type: ns, from });
+  };
+  function run(id, event) {
     const { state, send } = squadStep(pilots.get(id), event, t);
     pilots.set(id, state);
     for (const [ns, data] of send) {
       said.push({ from: id, ns, data, t });
-      for (const to of [...pilots.keys()]) if (hears(id, to)) run(to, ns === 'st' ? { type: 'state', from: id, wire: data } : { type: ns, from: id });
+      broadcast(id, ns, data);
     }
-  };
+  }
   const greet = (id) => {
-    for (const to of [...pilots.keys()]) if (hears(id, to)) run(to, hello(id));
+    for (const to of [...pilots.keys()]) if (hears(id, to)) deliver(to, hello(id));
   };
   return {
     get t() {
@@ -43,17 +51,32 @@ function crew(states) {
     // (those here who think they lead)
     leaders: () => [...pilots.values()].filter((s) => s.leader === s.me && !s.gone && !away.has(s.me)).map((s) => s.me),
     put: (s) => pilots.set(s.me, s),
+    // back from a reload with what the page kept, its room online
+    resume(id, kept) {
+      pilots.set(id, resume(SID, id, kept, t));
+      run(id, { type: 'back' });
+    },
+    remove: (id) => pilots.delete(id),
+    stall: (id) => stalled.set(id, []),
+    // the page unfreezes: what came in is heard, in order, then it ticks
+    wake(id) {
+      const waiting = stalled.get(id) ?? [];
+      stalled.delete(id);
+      for (const e of waiting) run(id, e);
+      run(id, { type: 'tick' });
+    },
     away,
     deaf,
     still,
     said,
     run,
     greet,
+    broadcast,
     pass(ms) {
       for (const end = t + ms; t < end; ) {
         t += 1000;
-        for (const id of [...pilots.keys()]) if (!away.has(id) && !still.has(id)) run(id, { type: 'tick' });
-        if (t % SQUAD.helloMs === 0) for (const id of [...pilots.keys()]) if (!away.has(id)) greet(id);
+        for (const id of [...pilots.keys()]) if (!away.has(id) && !still.has(id) && !stalled.has(id)) run(id, { type: 'tick' });
+        if (t % SQUAD.helloMs === 0) for (const id of [...pilots.keys()]) if (!away.has(id) && !stalled.has(id)) greet(id);
       }
     },
   };
@@ -63,6 +86,14 @@ function formed(...ids) {
   const c = crew([newSquad(SID, ids[0], 0), ...ids.slice(1).map((id) => joining(SID, id, 0))]);
   for (const id of ids) c.greet(id);
   return c;
+}
+// each of these follows `leader`, and all list the same seats
+function agree(c, leader, ids) {
+  const seats = c.view(ids[0]).members.map((m) => m.id);
+  for (const id of ids) {
+    expect(c.view(id), id).toMatchObject({ leader, gone: false });
+    expect(c.view(id).members.map((m) => m.id), id).toEqual(seats);
+  }
 }
 
 describe('the squad’s rules', () => {
@@ -88,8 +119,10 @@ describe('the squad’s rules', () => {
     c.put(joining(SID, D, c.t));
     c.greet(D);
     expect(c.state(L).members).toEqual([L, A, B, C]);
-    // the squad's word says it's full: that's an answer
-    c.pass(2000);
+    // the squad's word says it's full: the answer, once nothing has seated them in time
+    c.pass(14000);
+    expect(c.view(D)).toMatchObject({ mine: null, gone: false });
+    c.pass(1000);
     expect(c.view(D)).toMatchObject({ mine: null, gone: true, why: 'full' });
   });
 
@@ -104,7 +137,7 @@ describe('the squad’s rules', () => {
     c.put(joining(SID, A, c.t));
     c.greet(A);
     expect(c.state(L).members).toEqual([L, B]);
-    c.pass(2000);
+    c.pass(15000);
     expect(c.view(A)).toMatchObject({ gone: true, why: 'out' });
     // nor is a pilot the leader has blocked
     expect(squadStep(c.state(L), hello(C, { blocked: true }), c.t).state.members).toEqual([L, B]);
@@ -230,7 +263,7 @@ describe('the squad’s rules', () => {
     expect(c.leaders()).toEqual([A]);
   });
 
-  it('a member can’t take the squad from a leader who’s live', () => {
+  it('a member’s word doesn’t move a live leader at once, nor a settled epoch', () => {
     const c = formed(L, A, B);
     c.pass(4000);
     const grab = word({ e: 9, v: 0, l: A, m: [L, A, B] });
@@ -247,19 +280,96 @@ describe('the squad’s rules', () => {
     d.pass(7000);
     d.run(B, { type: 'state', from: L, wire: word({ e: 2, v: 0, l: L, m: [L, A, B] }) });
     expect(d.state(B)).toMatchObject({ leader: A, epoch: 2 });
-    // nor by jumping the queue once the leader's quiet: only the next epoch is
-    // believed, and the next seat's claim to it wins
-    const q = formed(L, A, B, C);
-    q.pass(2000);
-    q.away.add(L);
-    q.pass(6000);
-    const claim = (e) => word({ e, v: 0, l: C, m: [L, A, B, C] });
-    q.run(B, { type: 'state', from: C, wire: claim(9) });
-    expect(q.state(B)).toMatchObject({ leader: L, epoch: 1 });
-    q.run(B, { type: 'state', from: C, wire: claim(2) });
-    expect(q.state(B)).toMatchObject({ leader: C, epoch: 2 });
-    q.pass(2000); // (seat 1 takes the lead at 8 s)
-    expect(q.state(B)).toMatchObject({ leader: A, epoch: 2 });
+  });
+
+  it('a leader whose word was lost while it ticked on gives way once it has heard the new one 6 s', () => {
+    // (its word lost about 8 s: the relays slowing it, or one path down)
+    const c = formed(L, A, B);
+    c.pass(2000);
+    c.deaf.add(`${L}>${A}`);
+    c.deaf.add(`${L}>${B}`);
+    c.pass(10000);
+    expect(c.leaders().sort()).toEqual([L, A].sort());
+    c.deaf.clear();
+    c.pass(6000);
+    expect(c.leaders()).toEqual([A]);
+    agree(c, A, [L, A, B]);
+    c.pass(30000);
+    expect(c.leaders()).toEqual([A]);
+    agree(c, A, [L, A, B]);
+  });
+
+  it('a leader back from a reload whose relays take 7 s to answer follows the one who took the lead', () => {
+    const c = formed(L, A, B);
+    c.pass(3000);
+    const kept = writeState(c.state(L));
+    c.away.add(L);
+    c.pass(9000);
+    expect(c.state(A)).toMatchObject({ leader: A, epoch: 2 });
+    // the page is back with what it kept, its relays not answering yet
+    c.put(resume(SID, L, kept, c.t));
+    c.pass(7000);
+    c.away.delete(L);
+    c.run(L, { type: 'back' }); // (the room online at last, and ticking at once: 7 s, no gap that marks it back)
+    c.run(L, { type: 'tick' });
+    c.pass(4000);
+    expect(c.leaders()).toEqual([A]);
+    agree(c, A, [L, A, B]);
+  });
+
+  it('a leader whose page froze for 7 s, under the 8 that mark it away, gives way to the one who took the lead meanwhile', () => {
+    const c = formed(L, A, B);
+    c.pass(5000); // (L's word went at 4 s; the tick at 5 s said nothing)
+    c.stall(L);
+    c.pass(7000);
+    expect(c.state(A)).toMatchObject({ leader: A, epoch: 2 });
+    c.wake(L);
+    expect(c.state(L)).toMatchObject({ leader: L, epoch: 1 });
+    c.pass(8000);
+    expect(c.leaders()).toEqual([A]);
+    agree(c, A, [L, A, B]);
+  });
+
+  it('a member claiming the lead while the leader is live ends with one leader, never two', () => {
+    const c = formed(L, A, B, C);
+    c.pass(4000);
+    // C's client is someone's own from now on: it claims the lead, again and again
+    c.remove(C);
+    const grab = word({ e: 2, v: 0, l: C, m: [L, A, B, C] });
+    for (let i = 0; i < 10; i++) {
+      c.broadcast(C, 'st', grab);
+      c.greet(C);
+      c.pass(2000);
+    }
+    agree(c, C, [L, A, B]);
+    expect(c.leaders()).toEqual([]);
+    // it goes quiet: the next seat takes the lead, and one leads again
+    c.pass(20000);
+    expect(c.leaders()).toEqual([L]);
+    agree(c, L, [L, A, B]);
+    // a claim that would shed a seat that's live, or turn one out, gets nowhere
+    for (const unfair of [word({ e: 2, l: C, m: [L, C, B] }), word({ e: 2, l: C, m: [L, B, C], x: [A] })]) {
+      const d = formed(L, A, B, C);
+      d.pass(4000);
+      d.remove(C);
+      for (let i = 0; i < 10; i++) {
+        d.broadcast(C, 'st', unfair);
+        d.greet(C);
+        d.pass(2000);
+      }
+      expect(d.leaders()).toEqual([L]);
+      agree(d, L, [L, A, B]);
+    }
+    // nor does anyone outside the seats, however long they keep at it
+    const e = formed(L, A, B, C);
+    e.pass(4000);
+    for (let i = 0; i < 10; i++) {
+      e.broadcast(X, 'st', word({ e: 9, l: X, m: [X, L, A, B] }));
+      e.greet(X);
+      e.pass(2000);
+    }
+    expect(e.leaders()).toEqual([L]);
+    agree(e, L, [L, A, B, C]);
   });
 
   it('both gone, both back: one leader', () => {
@@ -271,8 +381,8 @@ describe('the squad’s rules', () => {
     c.away.add(A);
     c.pass(4000);
     c.away.clear();
-    c.put(resume(SID, L, kept[L], c.t));
-    c.put(resume(SID, A, kept[A], c.t));
+    c.resume(L, kept[L]);
+    c.resume(A, kept[A]);
     c.pass(20000);
     expect(c.leaders()).toEqual([L]);
     for (const id of [L, A, B]) expect(c.view(id)).toMatchObject({ leader: L, members: [{ id: L }, { id: A }, { id: B }] });
@@ -286,8 +396,8 @@ describe('the squad’s rules', () => {
     d.pass(12000);
     expect(d.state(B)).toMatchObject({ leader: B, epoch: 2 });
     d.away.clear();
-    d.put(resume(SID, L, kept2[L], d.t));
-    d.put(resume(SID, A, kept2[A], d.t));
+    d.resume(L, kept2[L]);
+    d.resume(A, kept2[A]);
     d.pass(6000);
     expect(d.leaders()).toEqual([B]); // (nobody's left leading a squad of ghosts)
     for (const id of [L, A, B]) expect(d.view(id)).toMatchObject({ leader: B, members: [{ id: L, away: false }, { id: A, away: false }, { id: B }] });
@@ -300,8 +410,8 @@ describe('the squad’s rules', () => {
     e.away.add(A);
     e.pass(5000);
     e.away.clear();
-    e.put(resume(SID, L, kept3[L], e.t));
-    e.put(resume(SID, A, kept3[A], e.t));
+    e.resume(L, kept3[L]);
+    e.resume(A, kept3[A]);
     e.pass(20000);
     expect(e.leaders()).toEqual([L]);
     expect(e.view(A)).toMatchObject({ mine: 1, leader: L, gone: false });
@@ -326,10 +436,98 @@ describe('the squad’s rules', () => {
     const before = c.state(A);
     expect(squadStep(before, { type: 'state', from: X, wire: word({ e: 5, l: X, m: [X, A] }) }, c.t).state).toBe(before);
     // nor from someone turned out, nor a word in a leader's name from someone else
-    c.run(L, { type: 'kick', id: A });
-    const b = squadStep(joining(SID, B, c.t), { type: 'state', from: L, wire: writeState(c.state(L)) }, c.t).state;
-    expect(squadStep(b, { type: 'state', from: A, wire: word({ e: 7, l: A, m: [A, B] }) }, c.t).state).toBe(b);
-    expect(squadStep(b, { type: 'state', from: A, wire: word({ e: 7, l: L, m: [L, B] }) }, c.t).state).toBe(b);
+    const d = formed(L, A, B);
+    d.run(L, { type: 'kick', id: A });
+    const b = d.state(B);
+    expect(squadStep(b, { type: 'state', from: A, wire: word({ e: 7, l: A, m: [A, B] }) }, d.t).state).toBe(b);
+    expect(squadStep(b, { type: 'state', from: A, wire: word({ e: 7, l: L, m: [L, B] }) }, d.t).state).toBe(b);
+  });
+
+  it('a phantom’s “out” doesn’t turn a joiner away when the leader seats them', () => {
+    // (X holds the sid, and answers anyone asking in)
+    const c = formed(L, A);
+    c.pass(2000);
+    c.put(joining(SID, B, c.t));
+    c.broadcast(X, 'st', word({ e: 7, l: X, m: [X], x: [B] }));
+    c.broadcast(X, 'st', word({ e: 7, l: X, m: [X, C, D, A] }));
+    expect(c.view(B)).toMatchObject({ gone: false, mine: null, leader: null });
+    c.greet(B);
+    expect(c.view(B)).toMatchObject({ gone: false, mine: 2, leader: L });
+    // and from then on it's nobody's word
+    c.broadcast(X, 'st', word({ e: 8, l: X, m: [X, B], x: [L] }));
+    c.pass(20000);
+    agree(c, L, [L, A, B]);
+    // with nothing to seat them, the last answer holds once the time's up
+    const d = formed(L, A, B, C);
+    d.put(joining(SID, D, d.t));
+    d.broadcast(X, 'st', word({ e: 7, l: X, m: [X], x: [D] }));
+    d.greet(D);
+    d.pass(15000);
+    expect(d.view(D)).toMatchObject({ gone: true, why: 'full' });
+  });
+
+  it('an invite’s joiner believes only the inviter’s squad', () => {
+    const c = formed(L, A);
+    c.pass(2000);
+    c.put(joining(SID, B, c.t, A)); // (asked in from the roster by A, a member)
+    c.broadcast(X, 'st', word({ e: 7, l: X, m: [X, B] }));
+    expect(c.view(B)).toMatchObject({ mine: null, leader: null });
+    c.greet(B);
+    expect(c.view(B)).toMatchObject({ mine: 2, leader: L });
+    // asked in by the leader: the leader's word
+    const d = formed(L, A);
+    d.put(joining(SID, B, d.t, L));
+    d.broadcast(X, 'st', word({ e: 7, l: X, m: [X, B] }));
+    expect(d.view(B)).toMatchObject({ mine: null, leader: null });
+    d.greet(B);
+    expect(d.view(B)).toMatchObject({ mine: 2, leader: L });
+  });
+
+  it('a pilot a phantom seated comes to the squad once the phantom’s gone, and one leads', () => {
+    const c = formed(L, A);
+    c.pass(2000);
+    c.put(joining(SID, B, c.t));
+    c.broadcast(X, 'st', word({ e: 7, l: X, m: [X, B] })); // (first, and it seats B)
+    expect(c.view(B)).toMatchObject({ leader: X, mine: 1 });
+    // X goes; B takes its lead, seats those it hears, and the two squads become one
+    c.pass(60000);
+    expect(c.leaders()).toHaveLength(1);
+    agree(c, c.leaders()[0], [L, A, B]);
+    expect(c.view(L).members.map((m) => m.id)).toEqual(expect.arrayContaining([L, A, B]));
+  });
+
+  it('a leader left alone, hearing another leader in its room for 6 s, says its squad has gone', () => {
+    // (one a phantom seated, whose phantom left, while the real squad carries on
+    // in the same room, its leader turned out where it was)
+    const real = word({ e: 3, l: L, m: [L, A, B] });
+    let s = newSquad(SID, B, 0);
+    for (let t = 1000; t <= 6000; t += 1000) {
+      s = squadStep(s, { type: 'tick' }, t).state;
+      if (t % 2000 === 0) s = squadStep(s, { type: 'state', from: L, wire: real }, t).state;
+    }
+    expect(view(s, 6000)).toMatchObject({ gone: false, leader: B });
+    for (let t = 7000; t <= 8000; t += 1000) {
+      s = squadStep(s, { type: 'tick' }, t).state;
+      if (t % 2000 === 0) s = squadStep(s, { type: 'state', from: L, wire: real }, t).state;
+    }
+    expect(view(s, 8000)).toMatchObject({ gone: true, why: 'quiet' }); // (the page: “That squad has gone.”)
+    // one with a squad of its own isn't moved by a stranger's word, however long
+    const other = formed(B, C);
+    for (let i = 0; i < 10; i++) {
+      other.broadcast(L, 'st', real);
+      other.pass(2000);
+    }
+    agree(other, B, [B, C]);
+  });
+
+  it('an epoch close to the top isn’t taken by a jump, so the lead can always be handed on', () => {
+    const top = 1e9 - 1000;
+    const a = squadStep(joining(SID, A, 0), { type: 'state', from: L, wire: word() }, 100).state;
+    expect(squadStep(a, { type: 'state', from: L, wire: word({ e: top + 1 }) }, 200).state).toBe(a);
+    const high = squadStep(a, { type: 'state', from: L, wire: word({ e: top }) }, 300).state;
+    expect(high.epoch).toBe(top);
+    // from there, one at a time, to the most a word carries
+    expect(squadStep(high, { type: 'state', from: L, wire: word({ e: top + 1 }) }, 400).state.epoch).toBe(top + 1);
   });
 
   it('a state with five members, an unknown field type, or an out list over 32 is dropped whole', () => {
@@ -361,9 +559,11 @@ describe('the squad’s rules', () => {
     expect(view(s, 14000)).toMatchObject({ gone: false, mine: null });
     s = squadStep(s, { type: 'tick' }, 15000).state;
     expect(view(s, 15000)).toMatchObject({ gone: true, why: 'quiet' }); // (“That squad has gone.”)
-    // one that hears the squad isn't
-    const h = squadStep(joining(SID, A, 0), { type: 'state', from: L, wire: word({ m: [L] }) }, 5000).state;
-    expect(view(h, 5000)).toMatchObject({ gone: false, leader: L, mine: null });
+    // one that hears the squad but isn't seated has that answer by then
+    let h = squadStep(joining(SID, A, 0), { type: 'state', from: L, wire: word({ m: [L] }) }, 5000).state;
+    expect(view(h, 5000)).toMatchObject({ gone: false, leader: null, mine: null });
+    for (let t = 6000; t <= 15000; t += 1000) h = squadStep(h, { type: 'tick' }, t).state;
+    expect(view(h, 15000)).toMatchObject({ gone: true, why: 'refused' });
   });
 
   it('the leader’s changes go out to everyone, and nobody else’s', () => {
