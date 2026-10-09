@@ -61,6 +61,7 @@ import { createVehicleFeel, feelGroups as carFeelGroups } from '../../../lib/veh
 import { attachVehicleBody } from '../../../lib/three/vehicleBody';
 import { wireImpacts } from '../../../lib/three/impacts';
 import { createDust } from '../../../lib/three/dust';
+import { createStreetProps } from './roadside';
 import { createImpacts, impactGroups } from '../../../lib/impact';
 import { GRADE } from '../../../lib/stage3d';
 import { createGhosts } from '../../middleearth/towns/ghosts';
@@ -1042,7 +1043,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     rules: knockRules,
     dust: knockDust,
     listener: () => ({ position: camera.position.toArray(), forward: camera.getWorldDirection(ear).toArray() }),
-    toWorld: (at) => [at.x, surfaceHeight(at.x, at.z) + 0.6, at.z],
+    toWorld: (at) => (Array.isArray(at) ? at : [at.x, surfaceHeight(at.x, at.z) + 0.6, at.z]),
   });
   let fov = 58;
   let idle = 0; // seconds parked, before the camera wanders off round the car
@@ -1340,6 +1341,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
     }
     // the shake, after the camera's placed (the fov is ours: the feel only keeps it)
     knocks.update(dt);
+    roadside?.step(dt, c);
     feel.setBaseFov(camera.fov);
     if (!peek) feel.update(dt, camera);
     // the sun (or the moon) shines from where it is
@@ -1364,6 +1366,8 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
   // delivery's drop, the unlock beam, the car wash's water) built now, while
   // the page is still loading, not as a stall the first time dark falls
   // (everything built so far in the house look, before the shaders are)
+  // cones, bins and crates along Central, for the Aztek to send flying (./roadside.js)
+  const roadside = await createStreetProps({ parent: scene, dev, impacts: knocks }).catch(() => null);
   house.adopt(scene);
   {
     const later = [night.object, drop, beamMesh, water];
@@ -1467,6 +1471,7 @@ export async function createAbqWorld(canvas, { onLost, onSlow } = {}) {
       gone = true;
       for (const off of undress) off();
       people?.dispose();
+      roadside?.dispose();
       knocks.dispose();
       ghosts.dispose();
       for (const o of owned) o.dispose?.();
