@@ -25,9 +25,11 @@
 // who has lost the squad, an older client or a reload that kept nothing,
 // can't hold it up.) A leader's goodbye counts as leaderQuietMs of quiet.
 // A word is believed from the leader on record; from a member on record with
-// a higher epoch once the leader on record has been quiet liveMs; and at the
-// same epoch from a lower seat than the leader believed, within liveMs of
-// that epoch's start (two claims at once: the lower seat wins). Nobody
+// the next epoch once the leader on record has been quiet liveMs (a later
+// epoch only once they've been quiet twice leaderQuietMs: the next one
+// missed); and at the same epoch from a lower seat than the leader believed,
+// within liveMs of that epoch's start (two claims at once: the lower seat
+// wins, so a member who jumps the queue loses it to the next seat). Nobody
 // outside the seats is believed, and a leader who has been heard all along
 // can't be talked out of the lead: a leader believes a higher epoch only when
 // just back (resumed after a reload, or a gap in its own ticks: a tab asleep,
@@ -155,21 +157,23 @@ const change = (s, patch, now) => say({ ...s, ...patch, version: s.version + 1 }
 // Should this word (read, from its leader) be believed?
 function believe(s, w, now) {
   const from = w.leader;
-  if (s.leader === null) {
-    // asking in, knowing nothing: the first word heard is the squad's
-    if (!seated(s)) return true;
-    // the leader's said goodbye: a member taking over
-    return s.members.includes(from) && w.epoch > s.epoch;
-  }
+  // asking in, knowing nothing: the first word heard is the squad's
+  if (s.leader === null && !seated(s)) return true;
   if (from === s.leader) return w.epoch > s.epoch || (w.epoch === s.epoch && w.version >= s.version);
   if (!s.members.includes(from)) return false;
   if (w.epoch > s.epoch) {
     // just back: whatever moved on while you were away
     if (now - s.backAt <= SQUAD.liveMs) return true;
-    return s.leader !== s.me && now - s.leaderAt >= SQUAD.liveMs;
+    // a leader heard all along isn't talked out of the lead
+    if (s.leader === s.me) return false;
+    // the leader quiet liveMs (or gone): the next epoch, and a later one only
+    // once they've been quiet a good while (the next one missed), so nobody
+    // jumps the queue with a big number: the lower seat's claim wins it
+    const quiet = now - s.leaderAt;
+    return quiet >= SQUAD.liveMs && (w.epoch === s.epoch + 1 || quiet >= 2 * SQUAD.leaderQuietMs);
   }
   // two claims at one epoch: the lower seat, while the epoch's new
-  return w.epoch === s.epoch && now - s.epochAt <= SQUAD.liveMs && s.members.indexOf(from) < s.members.indexOf(s.leader);
+  return s.leader !== null && w.epoch === s.epoch && now - s.epochAt <= SQUAD.liveMs && s.members.indexOf(from) < s.members.indexOf(s.leader);
 }
 
 // a word believed: it's the squad now

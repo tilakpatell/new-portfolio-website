@@ -247,6 +247,19 @@ describe('the squad’s rules', () => {
     d.pass(7000);
     d.run(B, { type: 'state', from: L, wire: word({ e: 2, v: 0, l: L, m: [L, A, B] }) });
     expect(d.state(B)).toMatchObject({ leader: A, epoch: 2 });
+    // nor by jumping the queue once the leader's quiet: only the next epoch is
+    // believed, and the next seat's claim to it wins
+    const q = formed(L, A, B, C);
+    q.pass(2000);
+    q.away.add(L);
+    q.pass(6000);
+    const claim = (e) => word({ e, v: 0, l: C, m: [L, A, B, C] });
+    q.run(B, { type: 'state', from: C, wire: claim(9) });
+    expect(q.state(B)).toMatchObject({ leader: L, epoch: 1 });
+    q.run(B, { type: 'state', from: C, wire: claim(2) });
+    expect(q.state(B)).toMatchObject({ leader: C, epoch: 2 });
+    q.pass(2000); // (seat 1 takes the lead at 8 s)
+    expect(q.state(B)).toMatchObject({ leader: A, epoch: 2 });
   });
 
   it('both gone, both back: one leader', () => {
