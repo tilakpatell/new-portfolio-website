@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { aimDir, capsuleOf, groundSolids, lookFriction } from './aimShot';
+import { aimDir, capsuleOf, lookFriction } from './aimShot';
+import { createSolids } from './walker';
 import { ASSIST } from '../../../lib/combat/aim';
 
 const flat = { heightAt: () => 0 };
@@ -27,9 +28,20 @@ describe('aimShot', () => {
   });
 
   it('the ground in the way is where it goes', () => {
-    expect(groundSolids(hill)([0, 2, 0], [0, 2, 30]).at[2]).toBeCloseTo(11, 0);
-    const d = aimDir({ cam, dir: fwd, from: muzzle, targets: [trooper(0, 20)], world: hill, cone: null });
-    expect(d[1]).toBeLessThan(0.3);
+    // (a bank rising 10 m out, in front of the trooper at 20: the nearer aim
+    // turns the muzzle, off to the left, in more)
+    const open = aimDir({ cam, dir: fwd, from: muzzle, targets: [trooper(0, 20)], world: flat, cone: null });
+    const banked = aimDir({ cam, dir: fwd, from: muzzle, targets: [trooper(0, 20)], world: hill, cone: null });
+    expect(banked[0]).toBeGreaterThan(open[0] * 1.5);
+  });
+
+  it('a wall in the way is where it goes, as for a bolt (solids.js)', () => {
+    const walled = { heightAt: () => 0, solids: createSolids(), floors: [] };
+    walled.solids.box(0, 10, 4, 0.5);
+    const open = aimDir({ cam, dir: fwd, from: muzzle, targets: [trooper(0, 20)], world: flat, cone: null });
+    const blocked = aimDir({ cam, dir: fwd, from: muzzle, targets: [trooper(0, 20)], world: walled, cone: null });
+    // (the muzzle's off to the left: aiming at the nearer wall turns it in more)
+    expect(blocked[0]).toBeGreaterThan(open[0] * 1.5);
   });
 
   it('a target that is down or gone is not aimed at', () => {

@@ -1,23 +1,24 @@
 // Where your shot goes on a galaxy surface (lib/combat/aim.js on this
 // world's things), beside scene.js, which is past its size. The camera's
-// ray through the crosshair finds the aim point: the first target or the
-// ground, bent a little toward a target by the input's assist cone; the
+// ray through the crosshair finds the aim point: the first target or
+// solid, bent a little toward a target by the input's assist cone; the
 // bolt then flies from the muzzle to that point, so what the crosshair is
 // on is what's hit, even with the gun off to the side of the camera.
 //
 //   aimDir({ cam, dir, from, targets, world, cone, range }) → [x, y, z]
 //     the unit direction from `from` (the muzzle's side of the figure) to
-//     the aim point; `cam` the camera's place and `dir` its forward ({ x, y,
-//     z }s), `targets` the shootables (activity.js's: a holder, a figure's
-//     height), `cone` aim.js's ASSIST row.
+//     the aim point; `cam` the camera's place and `dir` its forward ({ x,
+//     y, z }s), `targets` the shootables (activity.js's: a holder, a
+//     figure's height), `world` the surface's (heightAt, solids), `cone`
+//     aim.js's ASSIST row.
 //   lookFriction({ cam, dir, targets, cone }) → 1, or less over a target.
 //
-// The ground is the only solid it knows until the bolts learn the world's
-// walls (the combat plan's Lane B: `world.solids`), when that replaces
-// groundSolids here.
+// What stops the aim is what stops a bolt (./solids.js's boltSolids: the
+// walls and props you walk into, and the ground), so the crosshair on a
+// trooper behind a wall aims at the wall.
 
 import { aimPoint, assist, friction } from '../../../lib/combat/aim';
-import { groundAt } from './walker';
+import { boltSolids } from './solids';
 
 const arr = (v) => [v.x, v.y, v.z];
 
@@ -31,23 +32,6 @@ export function capsuleOf(t) {
 }
 const live = (targets) => targets.filter((t) => t?.holder && !(t.hp <= 0) && !t.down && t.holder.visible !== false).map(capsuleOf);
 
-// The ground as aim.js's `solids`: where the segment first goes under it,
-// in metre steps (blaster.js steps the same ground at 1.5 m).
-export const groundSolids = (world) => (a, b) => {
-  const dx = b[0] - a[0];
-  const dy = b[1] - a[1];
-  const dz = b[2] - a[2];
-  const len = Math.hypot(dx, dy, dz);
-  for (let s = 0; s <= len; s += 1) {
-    const k = len > 0 ? s / len : 0;
-    const x = a[0] + dx * k;
-    const y = a[1] + dy * k;
-    const z = a[2] + dz * k;
-    if (y < groundAt(world, x, z, y)) return { at: [x, y, z], normal: [0, 1, 0] };
-  }
-  return null;
-};
-
 // The ray starts level with the figure, not at the camera: what's between
 // the camera and your back is never aimed at, and `min` counts from you.
 function rayFrom(cam, dir, from) {
@@ -60,7 +44,7 @@ function rayFrom(cam, dir, from) {
 export function aimDir({ cam, dir, from, targets, world, cone, range = 90 }) {
   const ray = rayFrom(cam, dir, from);
   const caps = live(targets);
-  const solids = groundSolids(world);
+  const solids = boltSolids(world);
   const bent = cone ? assist(ray.dir, ray.from, caps, cone) : ray.dir;
   const { at } = aimPoint({ from: ray.from, dir: bent }, solids, caps, { max: range });
   const v = [at[0] - from.x, at[1] - from.y, at[2] - from.z];
