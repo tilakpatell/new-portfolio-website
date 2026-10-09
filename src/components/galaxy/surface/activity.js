@@ -708,6 +708,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
       t.burst = null;
       flinched(t);
     },
+    // the hostiles' rigs (hostileBodies.js's), for the hurtbox sheet
+    rigs: () => targets.filter((t) => t.hb && !t.down).map((t) => t.hb.rig),
     // after the physics step: each body read back into its figure's walk, and its holder with it
     sync() {
       for (const t of targets) {

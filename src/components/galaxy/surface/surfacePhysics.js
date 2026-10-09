@@ -15,7 +15,7 @@
 //
 //   createSurfacePhysics(world, { reach = world.reach ?? 160, spacing = 2, tier, budget }) → Promise<sp>
 //     world: scene.js's { heightAt, normalAt, solids (walker's createSolids), floors, reach }
-//   sp: { world, phys, q, qb (the bolts' queries, 96 rays a frame), SIGHT, step(dt), seesThrough(a, b) → bool, addSolid(s) → Body, byTag (Map tag → [Body]),
+//   sp: { world, phys, q, qb (the bolts' queries, 96 rays a frame), SIGHT, last (the substeps the last step took), step(dt), seesThrough(a, b) → bool, addSolid(s) → Body, byTag (Map tag → [Body]),
 //     toggle(tag, on), dispose() }
 //   budgetFor(tier) → { rays, sweeps, overlaps }
 
@@ -141,7 +141,8 @@ export async function createSurfacePhysics(world, { reach = world.reach ?? 160, 
     step(dt) {
       q.frame();
       qb.frame();
-      return phys.step(dt);
+      this.last = phys.step(dt);
+      return this.last;
     },
     toggle(tag, on) {
       for (const body of byTag.get(tag) ?? []) body.enable(on);

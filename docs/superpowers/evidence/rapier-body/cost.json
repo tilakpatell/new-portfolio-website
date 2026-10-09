@@ -1,0 +1,31 @@
+{
+  "figures": 20,
+  "frames": 600,
+  "msPerFrame": {
+    "step": 1.615,
+    "ofWhichMoves": 1.07,
+    "queries": 0.302,
+    "hurtboxes": 0.156,
+    "all": 2.074
+  },
+  "queriesLastFrame": {
+    "rays": {
+      "used": 24,
+      "refused": 0,
+      "cap": 24
+    },
+    "sweeps": {
+      "used": 8,
+      "refused": 4,
+      "cap": 8
+    },
+    "overlaps": {
+      "used": 0,
+      "refused": 0,
+      "cap": 4
+    }
+  },
+  "bodies": 104,
+  "colliders": 304,
+  "regionsAFigure": 10
+}

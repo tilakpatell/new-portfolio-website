@@ -1,0 +1,82 @@
+{
+  "world": "endor",
+  "quest": "bunker",
+  "quality": "mid",
+  "rigs": 6,
+  "figures": [
+    {
+      "tag": "bunkertroops",
+      "mind": "patrol",
+      "at": [
+        252.5,
+        -39.8
+      ],
+      "rigged": true
+    },
+    {
+      "tag": "bunkertroops",
+      "mind": "patrol",
+      "at": [
+        244.3,
+        -36.2
+      ],
+      "rigged": true
+    },
+    {
+      "tag": "bunkertroops",
+      "mind": "patrol",
+      "at": [
+        249.8,
+        -36.1
+      ],
+      "rigged": true
+    },
+    {
+      "tag": "bunkertroops",
+      "mind": "patrol",
+      "at": [
+        246.3,
+        -36
+      ],
+      "rigged": true
+    },
+    {
+      "tag": "bunkertroops",
+      "mind": "patrol",
+      "at": [
+        250.1,
+        -30.6
+      ],
+      "rigged": true
+    },
+    {
+      "tag": "bunkertroops",
+      "mind": "patrol",
+      "at": [
+        248.1,
+        -32.8
+      ],
+      "rigged": true
+    }
+  ],
+  "physics": {
+    "rays": {
+      "used": 4,
+      "refused": 0,
+      "cap": 16
+    },
+    "sweeps": {
+      "used": 0,
+      "refused": 0,
+      "cap": 6
+    },
+    "bolts": {
+      "used": 0,
+      "refused": 0,
+      "cap": 96
+    },
+    "bodies": 1200,
+    "substeps": 3
+  },
+  "errors": []
+}

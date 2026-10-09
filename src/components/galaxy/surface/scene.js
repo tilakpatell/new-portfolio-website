@@ -86,7 +86,7 @@ import { createWeather } from './weather';
 import { createKit } from './kit';
 import { createHouse } from '../../../lib/three/house';
 import { adoptLater, exposureOf, groundPieces, lookOf } from './look';
-import { surfaceTuning, siteCode } from './tune';
+import { physicsGroups, surfaceTuning, siteCode } from './tune';
 import { debugOn, debugPanel } from '../../../lib/debugPanel';
 import { createFeel, feelGroups } from '../../../lib/three/feel';
 import { createPress, pressGroups } from '../../../lib/press';
@@ -190,9 +190,8 @@ export async function create(canvas, ctx) {
   let props = ctx;
   let disposed = false;
   const tier = device().tier;
-  // the bodies on Rapier (surfacePhysics.js, playerBody.js); `?body=walker` keeps the old walker for comparison
-  const oldBody = typeof location !== 'undefined' && new URLSearchParams(location.search).get('body') === 'walker';
-  if (!oldBody) preloadPhysics().catch(() => {});
+  // the bodies on Rapier (surfacePhysics.js, playerBody.js, hostileBodies.js): the engine warmed while the rest loads
+  preloadPhysics().catch(() => {});
   const small = tier !== 'high' || Math.min(window.innerWidth, window.innerHeight) < 600;
   // how much it draws: the level's row of the budget table (amounts.js)
   const level = detailLevel();
@@ -360,7 +359,7 @@ export async function create(canvas, ctx) {
   };
   // the bodies' world (surfacePhysics.js): the ground and the solids as Rapier sees them, for
   // the player's body, the hostiles' and every line of sight (a failed load, offline, keeps the walker)
-  const sp = oldBody ? null : await createSurfacePhysics(world, { tier }).catch((err) => (console.warn('surface physics:', err), null));
+  const sp = await createSurfacePhysics(world, { tier }).catch((err) => (console.warn('surface physics:', err), null));
   const weather = reduced ? null : createWeather(site, { small });
   if (weather) scene.add(weather.group);
 
@@ -397,7 +396,7 @@ export async function create(canvas, ctx) {
   const jumpPress = createPress();
   // your landing's squat, on a spring (squash.js)
   const squash = createSquash({ calm: reduced });
-  const panel = debugOn() ? debugPanel({ title: site.id, groups: [...surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), ...feelGroups(feel), ...pressGroups(jumpPress)], code: siteCode }) : null;
+  const panel = debugOn() ? debugPanel({ title: site.id, groups: [...surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), ...feelGroups(feel), ...pressGroups(jumpPress), ...physicsGroups(sp)], code: siteCode }) : null;
   // the Meshy cast (the cruiser's two, the peers'): made here, before the
   // people, where a page's figure maker draws on it too (ctx.figures(cast)
   // → (kind, spec, i) → figure | null: the Rick and Morty planets' people);
@@ -3228,6 +3227,18 @@ export async function create(canvas, ctx) {
       groundWar,
       put: (x, z) => (state.phase === 'landing' || state.phase === 'out' ? (state.phase = 'walk') : null, putAt(me().st, x, z)), // (you, set down somewhere, out of the ship: the ground war's QA)
       you: () => ({ x: me().st.x, z: me().st.z, health: state.health, phase: state.phase }),
+      // the bodies on Rapier, for the QA scripts: the queries' counters, the figures' minds, and the
+      // hurtboxes drawn as wire over every hostile (hurtboxes(true)), off again (false)
+      physics: () => (sp ? { rays: sp.q.stats().rays, sweeps: sp.q.stats().sweeps, bolts: sp.qb.stats().rays, bodies: sp.phys.world.bodies.len(), substeps: sp.last ?? 0, figures: activity.debug().map((t) => ({ tag: t.tag, mind: t.mind, at: t.at, rigged: t.body.rigged })) } : null),
+      hurtboxes: (on) => activity.rigs().map((rig) => rig.debug(on ? scene : null)).length,
+      // a quest begun by its id (or the site's first with something to shoot), for the QA scripts: its hostiles come out
+      quest: (id = null) => {
+        const ids = (site.life ?? []).flatMap((a) => questsOf(a));
+        const spawns = (x) => questOf(x)?.steps?.[0]?.spawn; // (its figures out at once)
+        const q = questOf(id ?? ids.find(spawns) ?? ids.find((x) => questOf(x)?.steps?.some((st) => st.spawn)) ?? ids[0]) ?? null;
+        if (q && !state.quest) beginQuest(q);
+        return q?.id ?? null;
+      },
       // (a stroke now, as the button makes one, for the QA scripts: { heavy, dir, lock } as saber.js takes them)
       swing: (o = {}) => me().saber?.swing(state.t, { lock: state.lock, ...o }) ?? null,
       view(from, at) {

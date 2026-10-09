@@ -73,3 +73,28 @@ export function siteCode(values) {
   if (v.wind) lines.unshift(`// ground.wind: ${round(v.wind.angle)}`);
   return lines.join('\n');
 }
+
+// What the physics world costs this frame, read live (?debug): the queries
+// spent and refused against their budgets, the bolts' rays, the bodies, the
+// substeps the last step took. Read-only: a counter's slider is its value.
+export function physicsGroups(sp) {
+  if (!sp) return [];
+  const counter = (key, label, max, get) => ({ key, label, type: 'range', min: 0, max, step: 1, get, set() {} });
+  const stat = (kind, of = () => sp.q.stats()) => `${of()[kind].used}/${of()[kind].cap}${of()[kind].refused ? ` (${of()[kind].refused} refused)` : ''}`;
+  return [
+    {
+      name: 'physics',
+      items: [
+        counter('rays', 'rays a frame', 200, () => sp.q.stats().rays.used),
+        counter('raysRefused', 'rays refused', 200, () => sp.q.stats().rays.refused),
+        counter('sweeps', 'sweeps a frame', 50, () => sp.q.stats().sweeps.used),
+        counter('overlaps', 'overlaps a frame', 50, () => sp.q.stats().overlaps.used),
+        counter('boltRays', "the bolts' rays", 200, () => sp.qb.stats().rays.used),
+        counter('bodies', 'bodies', 2000, () => sp.phys.world.bodies.len()),
+        counter('colliders', 'colliders', 4000, () => sp.phys.world.colliders.len()),
+        counter('substeps', 'substeps a frame', 4, () => sp.last ?? 0),
+      ],
+      note: () => `rays ${stat('rays')}, sweeps ${stat('sweeps')}, overlaps ${stat('overlaps')}`,
+    },
+  ];
+}

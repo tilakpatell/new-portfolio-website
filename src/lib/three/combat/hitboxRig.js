@@ -101,7 +101,7 @@ export function createHitboxRig(root, hurtboxes = null, { regions = REGIONS, tal
       if (!parent) return null;
       const group = new THREE.Group();
       group.name = 'hurtboxes';
-      const material = new THREE.MeshBasicMaterial({ color: 0xff4060, wireframe: true, depthTest: false, transparent: true, opacity: 0.8 });
+      const material = new THREE.MeshBasicMaterial({ color: 0xff4060, wireframe: true, depthTest: false, transparent: true, opacity: 0.8, fog: false });
       const meshes = new Map();
       const rows = single ? [['whole', null, null, Math.max(0.4, tall * 0.25)]] : kept;
       for (const [region, , , r] of rows) {
