@@ -37,6 +37,7 @@ import { BODIES, altitudeOf } from './orbit';
 import { castMaterial, loadCast, personFor, setCastRim } from './people';
 import { buildSpace } from './space';
 import { groundWorld } from '../../../lib/three/groundwork';
+import { LOOK as ART } from './look';
 
 const FOV = 64;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -293,7 +294,7 @@ function createCourse(scene) {
 }
 
 export async function createInvWorld(canvas, { onLost, onSlow, calm = false } = {}) {
-  const engine = createEngine(canvas, { exposure: 1, fov: FOV, near: 0.3, far: 26000, bloom: { strength: 0.5, radius: 0.5, threshold: 0.92 }, onLost, onSlow });
+  const engine = createEngine(canvas, { exposure: 1, fov: FOV, near: 0.3, far: 26000, bloom: ART.bloom, onLost, onSlow });
   const { scene, camera } = engine;
   const small = engine.small;
   const world = buildWorld();

@@ -15,6 +15,7 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import { createStage } from '../../../lib/stage3d';
 import { houseOn } from '../../../lib/three/house';
 import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { houseGroups } from '../../../lib/three/houseTuning';
 import { SUN, createSea, loadSky } from './sea';
 import { DECAL, createBalls, createDecals, createFoam, createParticles } from './fx';
 import { ARM, CHAPTERS, ISLES, SHIPS, TIDE, bearing, fitted } from './rules';
@@ -23,6 +24,7 @@ import { createGhosts } from '../../middleearth/towns/ghosts';
 import { WHEEL_AHEAD, createCaptain, makeWheel } from './captain';
 import { createArm } from './arm';
 import { bendArm } from './bend';
+import { LOOK } from './look';
 
 const BASE = '/games/caribbean';
 const FIRST = ['pearl', 'navy', 'jack']; // what a game can't start without
@@ -49,7 +51,7 @@ const lerp = (a, b, k) => a + (b - a) * k;
 
 export async function createTide3D(canvas, { soft = false, alive = () => true, onLost, onProgress } = {}) {
   onProgress?.(0.05, 'Raising the sky');
-  const stage = createStage(canvas, { soft, shadows: true, fov: 50, near: 1, far: 9000, exposure: 0.92, bloom: { strength: 0.24, radius: 0.5, threshold: 1 }, onLost });
+  const stage = createStage(canvas, { soft, shadows: true, fov: 50, near: 1, far: 9000, exposure: 0.92, bloom: LOOK.bloom, onLost });
   const { scene, camera, renderer } = stage;
   stage.grade({ contrast: 0.16, saturation: 1.08, vignette: 0.26, shadow: [0.0, 0.012, 0.02], high: [0.03, 0.012, 0.0] });
 
@@ -350,7 +352,7 @@ export async function createTide3D(canvas, { soft = false, alive = () => true, o
   // reduced motion (the page's calm is the same setting the feel reads).
   const feel = createFeel({ seed: 31, baseFov: 50, offset: 1.1 });
   feel.set({ decay: 1.3, roll: 0.035 });
-  stage.tune(feelGroups(feel));
+  stage.tune([...houseGroups(house, { exposure: { get: () => renderer.toneMappingExposure, set: (v) => (renderer.toneMappingExposure = v) } }), ...feelGroups(feel)]);
   const spray = (x, y, z, n, power, size = 1) => {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.283;
