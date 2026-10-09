@@ -6,7 +6,8 @@
 // Rebel's red, Birdperson's green, Saul's gold).
 //
 // createWingmen(parent, { fleet, solids }) → { join(kind, ship, n), update(dt, t,
-//   ship, targets) → { hits, events }, active, clear(), dispose() }
+//   ship, targets) → { hits, events }, active, clear(), dispose(), bodies
+//   (shipHits.js's: friends, to bounce off, never hurt) }
 // Everything is in `parent`'s space (the map's).
 
 import * as THREE from 'three';
@@ -100,6 +101,9 @@ export function createWingmen(parent, { fleet = createFleet(), solids = [] } = {
     },
     get leaving() {
       return wing.leaving;
+    },
+    get bodies() {
+      return wing.live.filter((w) => w.alive).map((w) => ({ key: `w:${w.id}`, id: w.id, kind: w.kind, at: w.pos, prev: w.prev, vel: w.vel, size: w.type.size, side: 'friend', hit: () => null }));
     },
     // for checking from a browser
     get live() {
