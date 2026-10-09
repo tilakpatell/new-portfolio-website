@@ -29,7 +29,7 @@ export const WORLD_MB = {
   '/dot-matrix/64': 7, // the castle's and Bob-omb Ridge's texture sets at phone size, two skies, and Mario, the cast and the props (fan-made Sketchfab models, 2 MB)
   '/earth': 2, // NASA's globe at phone size, the stars and the plane
   '/dot-matrix/minecraft': 2, // drawn in code from the pack's tiles: the block strip, the skins and the sky's and HUD's sprites (under a tenth of an MB today)
-  '/universe/expanse': 2, // a planet of the Expanse, driven: the physics engine (Rapier, about 0.6 MB compressed) and the land made from its seed, nothing else to fetch
+  '/universe/expanse': 16, // a planet of the Expanse, driven: its whole install (its pack, 15.4 MB built): the nature kit's manifest and the family files its lands' flora draws (8.0 MB, expanse/pack.js), the physics engine (Rapier, 4.1 MB), three.js and the page's code (3.3 MB); the land itself is made from its seed
 };
 
 // The world a path is in: '/middle-earth/moria' is Middle-earth. Some
