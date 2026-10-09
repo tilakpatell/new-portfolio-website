@@ -31,19 +31,12 @@ function walk(at = '') {
   return out;
 }
 
-// a camera nudged by Math.random() times a shake
-const RANDOM = /Math\.random\(\) - 0\.5\) \* [\w.]*shake/;
-
 export const OWN_SHAKE = [
-  { file: 'albuquerque/world/scene.js', pattern: RANDOM },
-  { file: 'cybertron/game/scene.js', pattern: RANDOM },
   { file: 'universe/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
   { file: 'galaxy/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
   { file: 'galaxy/surface/scene.js', pattern: /\(r\(\) - 0\.5\) \* state\.shake/ },
   { file: 'deathstar/Trench3D.js', pattern: /shakeV\.set\(\(Math\.random\(\) - 0\.5\) \* k/ },
   { file: 'caribbean/tide/Tide3D.js', pattern: /const s = trauma \* trauma/ },
-  { file: 'office/world/scene.js', pattern: RANDOM },
-  { file: 'cybertron/rollout/RollOut3D.js', pattern: RANDOM },
 ];
 
 export const DEAD_HITSTOP = [
@@ -56,7 +49,6 @@ export const DEAD_HITSTOP = [
 // each without createPress or createCooldownPress in the same file
 export const NO_PRESS = [
   { file: 'invincible/world/flight.js', pattern: /\{ \.\.\.input, jump: false \}/ },
-  { file: 'cybertron/game/rules.js', pattern: /input\.jump && p\.mode === 'robot' && p\.grounded/ },
   { file: 'avengers/world/rules.js', pattern: /function stepGround\(h, \{[^}]*\bjump\b/ },
   { file: 'galaxy/surface/scene.js', pattern: /jumpQueued/ },
   { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
@@ -68,14 +60,10 @@ export const NO_PRESS = [
 const CUT_EASE = /= jump\b[^;]*\? 1 : Math\.min\(1, dt \* \(/;
 
 export const LINEAR_CAMERA = [
-  // (the office’s walkable world: the towns’ camera, which the audit’s list missed)
-  { file: 'office/world/scene.js', pattern: CUT_EASE },
   { file: 'avengers/repulsor/scene.js', pattern: /camX \+= \(px - camX\) \* Math\.min\(1, realDt \* 30\)/ },
 ];
 
 export const UNANSWERED = [
-  { file: 'cybertron/game/GameWorld.jsx', lacks: /'bump'/ },
-  { file: 'albuquerque/world/AbqWorld.jsx', lacks: /\b(thud|onHit|hit)\(/ },
   { file: 'universe/Comms.jsx', lacks: /\b(thud|onHit)\(/ },
   { file: 'deathstar/inside/scene/hear.js', lacks: /case 'hurt'/ },
 ];
