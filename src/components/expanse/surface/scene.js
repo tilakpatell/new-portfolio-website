@@ -1,29 +1,47 @@
 // What the Expanse surface draws, on the runtime's renderer: the cells'
 // ground (lib/three/land.js over the land map), their water (river.js),
-// the grass (grass.js, flattened by the tracks), the trees (puffs.js), the
-// rocks and crates, the falling leaves, the wind lines, the wheel tracks,
-// one sun with its shadow camera on the view's area, a two-colour sky that
-// is also the house look's fog, and the buggy. The module (./module.js)
-// says what comes and goes; this only builds and draws it.
+// the grass (grass.js, flattened by the tracks), their flora (the nature
+// kit's trees, bushes, rocks and cover, through its pools: lib/three/kit),
+// the crates, the falling leaves, the wind lines, the wheel tracks, one sun
+// with its shadow camera on the view's area, a two-colour sky that is also
+// the house look's fog, and the buggy. The module (./module.js) says what
+// comes and goes; this only builds and draws it.
 //
 // The land is in world metres inside one group placed at minus the floating
 // origin, so an origin shift moves one transform; everything that follows
 // the view (grass, leaves, wind lines, tracks, the camera) is in the
-// scene's own frame and is shifted by `shift`.
+// scene's own frame and is shifted by `shift`. The kit's pools are in the
+// land, their items in world metres, so a shift moves them with it and
+// none of their own (doing both would move them twice); they band their
+// items by the camera's place in world metres, one object kept for it.
+//
+// A cell's named props go to the pool of their model (one a model, made the
+// first time a cell has one, under the cell's key), as many as the level's
+// share of the budget's props (`kept`: a hash of the prop, so the cells stay
+// the same on every device and the thinning is the draw's). Trees, bushes
+// and rocks take the level's bands; the cover (plants, flowers, grass tufts,
+// mushrooms, pebbles, stepping stones) four tenths of them. The flora wants
+// the kit's manifest in (`ready`); without it the land draws none.
 //
 // draw: the tracks into their target; on high and ultra the opaque frame
 // into a half-size target (the water hidden) for the water's shallows; then
 // the frame. lowerQuality drops the water's blur, then the shadows, then
-// half the trees.
+// draws every pool's levels nearer by a quarter.
 //
-//   createScene({ renderer, spec, tier, radius }) → { scene, camera, view,
-//     map, water, grass, puffs, tracks, buggy, land (the group), build(key,
-//     cell, mesh, step), remesh(key, mesh), unbuild(key), crates, rocks,
-//     setOrigin([x, y, z]), shift([sx, sy, sz]), follow(focus, speed, dt),
-//     draw(), resize(w, h), lowerQuality(level), dispose() }
+//   createScene({ renderer, spec, tier, radius, small, kit (loadKit's
+//     options over the scene's: a test's `load` and `manifest`) }) → { scene,
+//     camera, view, map, water, grass, tracks, buggy, land (the group), kit,
+//     pools (name → pool), ready, info(name) → the manifest's row | null,
+//     drawn(cell, i), build(key, cell, mesh, step), remesh(key, mesh),
+//     unbuild(key, cell), crates, setOrigin([x, y, z]), shift([sx, sy, sz]),
+//     follow(focus, speed, dt), draw(), resize(w, h), lowerQuality(level),
+//     dispose() }
+//   kept(cx, cz, i, share) → whether a cell's prop i is drawn at that share
 
 import * as THREE from 'three';
+import { budget } from '../../../lib/budgets.js';
 import { houseOn } from '../../../lib/three/house.js';
+import { createPool, loadKit } from '../../../lib/three/kit.js';
 import { pool } from '../../../lib/three/pool.js';
 import { createLandMap } from '../../../lib/three/landmap.js';
 import { createLandMaterial } from '../../../lib/three/land.js';
@@ -31,7 +49,6 @@ import { createWaterSurface } from '../../../lib/three/river.js';
 import { createGrass } from '../../../lib/three/grass.js';
 import { createWind } from '../../../lib/three/wind.js';
 import { createTracks } from '../../../lib/three/tracks.js';
-import { createPuffs } from '../../../lib/three/puffs.js';
 import { createLeaves } from '../../../lib/three/leaves.js';
 import { createWindLines } from '../../../lib/three/windLines.js';
 import { createChaseView } from '../../../lib/three/view.js';
@@ -39,15 +56,28 @@ import { createBuggy } from './buggy.js';
 
 const CELL = 64;
 const GRASS = { ultra: 280, high: 220, mid: 160, low: 110 };
-const LEAVES = { ultra: 512, high: 256, mid: 128, low: 64 };
 const SHADOW = { ultra: 2048, high: 2048, mid: 1024, low: 0 };
-const TREES = { ultra: 1600, high: 1200, mid: 700, low: 400 };
-const KIT = 2400; // rock and crate slots each
+const CRATES = 2400; // crate slots
 const VIEW = 22; // the camera's orbit, standing
+const COVER = new Set(['plant', 'flower', 'grass', 'mushroom', 'pebble', 'path']);
+const COVER_BANDS = 0.4; // the cover's bands, a share of the trees'
+const THIN = 0.75; // every pool's bands at lowerQuality's third step
 
 const hex = (c) => new THREE.Color(c[0], c[1], c[2]);
 
-export function createScene({ renderer, spec, tier = 'high', radius = 6, small = false }) {
+// Whether a cell's prop i is drawn at a level's share of the props (the
+// budget's column): a hash of the cell and the prop, in [0, 1), under the
+// share (everything at 1 and more), so it's the same props every time.
+export function kept(cx, cz, i, share) {
+  if (share >= 1) return true;
+  let h = Math.imul(cx | 0, 0x27d4eb2d) ^ Math.imul(cz | 0, 0x165667b1) ^ Math.imul((i | 0) + 1, 0x9e3779b1);
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296 < share;
+}
+
+export function createScene({ renderer, spec, tier = 'high', radius = 6, small = false, kit: kitOptions = {} }) {
+  const limits = budget(tier);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(25, 16 / 9, 0.5, 4000);
   const p = spec.palette;
@@ -77,22 +107,21 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
   // (his orbit runs 15 to 30 m: at 15 the buggy fills the screen, so a little out)
   const view = createChaseView({ camera, small, tier, radius: VIEW });
   const grass = createGrass({ ground: map.ground, wind, tracks, side: GRASS[tier] ?? 160, size: Math.round(view.area.radius * 2) });
-  const puffs = createPuffs({ species: { a: 0xb4b536, b: 0xd8cf3b, bark: 0x6b4a32 }, count: TREES[tier] ?? 700, wind, facing: camera.position.clone().setFromSphericalCoords(1, 0.31 * Math.PI, Math.PI / 4).toArray(), sun: sunDir.toArray() });
-  const rocks = pool(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: hex(p.rock) }), KIT, 'rocks');
-  const crates = pool(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xb98a4e }), KIT, 'crates');
+  const crates = pool(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xb98a4e }), CRATES, 'crates');
   const buggy = createBuggy({ palette: { body: 0xd8572a, cab: 0xf2e6c9, dark: 0x2a2a2a } });
 
   // the land, in world metres, at minus the origin
   const land = new THREE.Group();
   land.name = 'land';
-  land.add(water.group, puffs.crowns, puffs.trunks, rocks.mesh, crates.mesh);
+  land.add(water.group, crates.mesh);
   const groundMeshes = new Map();
   scene.add(land, grass.mesh, buggy.group);
-  // (the leaves' floor is the module's to give: the cells are its)
+  // (the leaves' floor is the module's to give: the cells are its; none fall on low)
   let floorAt = () => ({ y: 0, water: false });
-  const leaves = createLeaves({ count: LEAVES[tier] ?? 128, wind, floorAt: (x, z) => floorAt(x, z) });
+  const leaves = createLeaves({ count: limits.leaves, wind, floorAt: (x, z) => floorAt(x, z) });
   const lines = createWindLines({ wind });
-  scene.add(leaves.mesh, lines.group);
+  if (leaves.mesh) scene.add(leaves.mesh);
+  scene.add(lines.group);
 
   // the house look over everything, the cells' shared material included
   const stand = new THREE.Mesh(new THREE.BufferGeometry(), landMaterial);
@@ -104,7 +133,58 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   }
   const house = houseOn({ renderer, scene, sun, hemi, look: { fogLow: skyLow.getHex(), fogHigh: skyHigh.getHex() } });
-  // (the water's own see-through and the trees' cut-outs keep three's light: the look is for the opaque)
+  // (the water's own see-through keeps three's light: the look is for the opaque)
+
+  // the nature kit: its materials the house's, bending on the wind's clock,
+  // its far crowns (the puffs) in the wind too
+  const kit = loadKit('naturemega', { house, wind: { time: wind.uniforms.uWindTime, dir: wind.uniforms.uWindDir.value }, puffWind: wind, ...kitOptions });
+  const pools = new Map(); // a model's name → its pool
+  const holds = new Map(); // a cell's key → the names of the pools holding it
+  let manifest = false; // in
+  let thin = 1; // the bands' share, after lowerQuality
+  let gone = false;
+  const ready = kit.manifest.then(
+    () => {
+      manifest = !gone;
+    },
+    (e) => console.warn(`expanse: the nature kit's manifest won't load (${e?.message ?? e}); the land draws no flora`),
+  );
+  // (the camera's place in world metres, for the pools' bands)
+  const eye = { position: { x: 0, z: 0 } };
+
+  const bandsOf = (kind) => {
+    const k = (COVER.has(kind) ? COVER_BANDS : 1) * thin;
+    return [limits.near * k, limits.mid * k];
+  };
+  function poolOf(name) {
+    let got = pools.get(name);
+    if (!got) {
+      got = createPool(kit, name, { bands: bandsOf(kit.info(name).kind), lod1: limits.lod1 });
+      land.add(got.group);
+      pools.set(name, got);
+    }
+    return got;
+  }
+  // whether a cell's prop i is drawn: a named one through its pool, at the level's share
+  function drawn(cell, i) {
+    const name = cell.props[i].name;
+    return !name || (manifest && Boolean(kit.info(name)) && kept(cell.cx, cell.cz, i, limits.props));
+  }
+  // a cell's flora into the pools under its key, a model at a time
+  function plant(key, cell) {
+    unplant(key);
+    if (!manifest) return;
+    const by = new Map();
+    cell.props.forEach((prop, i) => {
+      if (prop.name && drawn(cell, i)) (by.get(prop.name) ?? by.set(prop.name, []).get(prop.name)).push(prop);
+    });
+    for (const [name, items] of by) poolOf(name).set(key, items);
+    holds.set(key, [...by.keys()]);
+  }
+  function unplant(key) {
+    for (const name of holds.get(key) ?? []) pools.get(name)?.free(key);
+    holds.delete(key);
+  }
 
   // the opaque frame, half size, for the water's shallows on high and ultra
   let opaque = water.blur ? new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType }) : null;
@@ -127,17 +207,20 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
     map,
     water,
     grass,
-    puffs,
     tracks,
     buggy,
     land,
-    rocks,
+    kit,
+    pools,
+    ready,
     crates,
     wind,
     leaves,
     lines,
     house,
     sun,
+    info: (name) => (manifest ? kit.info(name) : null),
+    drawn,
     build(key, cell, mesh) {
       const g = new THREE.Mesh(geometryOf(mesh), landMaterial);
       g.position.set(cell.cx * CELL, 0, cell.cz * CELL);
@@ -147,6 +230,7 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
       groundMeshes.set(key, g);
       map.set(cell.cx, cell.cz, cell);
       water.set(cell.cx, cell.cz, cell);
+      plant(key, cell);
     },
     remesh(key, mesh) {
       const g = groundMeshes.get(key);
@@ -161,6 +245,7 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
         g.geometry.dispose();
         groundMeshes.delete(key);
       }
+      unplant(key);
       if (cell) {
         map.drop(cell.cx, cell.cz);
         water.drop(cell.cx, cell.cz);
@@ -172,7 +257,8 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
       land.position.set(-origin[0], -origin[1], -origin[2]);
       map.offset(origin[0], origin[2]);
     },
-    // a floating-origin shift: what follows the view moves with it
+    // a floating-origin shift: what follows the view moves with it (the
+    // pools are the land's, and move with it)
     shift([sx, , sz]) {
       api.setOrigin([origin[0] + sx, origin[1], origin[2] + sz]);
       view.shift(sx, sz);
@@ -182,10 +268,13 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
     setFloor(fn) {
       floorAt = fn;
     },
-    // a frame's following: the camera, the sun's shadow box, the fog, the
-    // grass's patch and the map's window
+    // a frame's following: the camera, the pools' bands, the sun's shadow
+    // box, the fog, the grass's patch and the map's window
     follow(focus, speed, dt, car = null) {
       view.update(dt, focus, speed);
+      eye.position.x = camera.position.x + origin[0];
+      eye.position.z = camera.position.z + origin[2];
+      for (const got of pools.values()) got.update(eye, dt);
       wind.update(dt);
       const [ax, az] = view.area.centre;
       const r = view.area.radius;
@@ -227,23 +316,32 @@ export function createScene({ renderer, spec, tier = 'high', radius = 6, small =
     resize(w, h) {
       view.resize(w, h);
     },
-    // drop the water's blur, then the shadows, then half the trees
+    // drop the water's blur, then the shadows, then every pool's levels a
+    // quarter nearer (once)
     lowerQuality(level) {
       if (level >= 1 && blur) {
         blur = false;
         water.setOpaque(null);
       }
       if (level >= 2 && sun.castShadow) sun.castShadow = false;
-      if (level >= 3) puffs.crowns.count = Math.ceil(puffs.crowns.instanceMatrix.count / 2);
+      if (level >= 3 && thin === 1) {
+        thin = THIN;
+        for (const [name, got] of pools) got.setBands(bandsOf(kit.info(name).kind));
+      }
     },
     dispose() {
+      // (the pools first, then the kit whose materials they drew with)
+      gone = true;
+      manifest = false;
+      for (const got of pools.values()) got.dispose();
+      pools.clear();
+      holds.clear();
+      kit.dispose();
       for (const key of [...groundMeshes.keys()]) api.unbuild(key);
       stand.geometry.dispose();
       landMaterial.dispose();
       water.dispose();
       grass.dispose();
-      puffs.dispose();
-      rocks.dispose();
       crates.dispose();
       buggy.dispose();
       leaves.dispose();

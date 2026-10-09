@@ -39,6 +39,7 @@
 //   kitMaterial(def, { house, wind }) → a new material for a manifest entry
 //   createPool(kit, name, { bands, cap, shadows, puff, lod1, wait }) → {
 //     set(key, items), free(key), shift(dx, dz), update(camera, dt),
+//     setBands([near, mid]), bands ([near, mid] now),
 //     stats: { total, levels: [full, lod1, puff], sorts }, group, ready, dispose() }
 //     items: [{ x, y, z, yaw, scale = 1 }]
 //
@@ -328,7 +329,9 @@ const itemOf = ({ x = 0, y = 0, z = 0, yaw = 0, scale = 1 }) => ({ x, y, z, c: M
 // the puff to twice mid, nothing beyond (lib/budgets' row for the device's
 // level unless given, as is `lod1`: false keeps the full parts where the
 // LOD1's would be, as ultra does, and so does a model whose LOD1 won't
-// load, said once). Items are re-sorted into levels every half second (from
+// load, said once). `setBands` gives it new ones (a world stepping its
+// quality down), its items sorted into them at the next update; `bands`
+// reads them. Items are re-sorted into levels every half second (from
 // a point in it picked at random, `wait` to pick it: pools made together
 // don't all sort on one frame) or 20 m of the camera's travel, or at the
 // next update after a set or a free. A free (or a set to nothing) takes its
@@ -470,6 +473,15 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
       last.x += dx;
       last.z += dz;
       write();
+    },
+    get bands() {
+      return [edges[0], edges[1]];
+    },
+    setBands([n, m]) {
+      edges[0] = n;
+      edges[1] = m;
+      edges[2] = 2 * m;
+      dirty = true;
     },
     update(camera, dt = 0) {
       if (gone) return;

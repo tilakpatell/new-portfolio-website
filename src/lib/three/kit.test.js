@@ -839,6 +839,23 @@ describe('createPool', () => {
     expect(pool.stats.levels).toEqual([0, 1, 0]);
   });
 
+  it('takes new bands (a world stepping its quality down), its items sorted into them at the next update', async () => {
+    const pool = await poolOf();
+    expect(pool.bands).toEqual(HIGH);
+    pool.set('a', [60, 200, 400].map((x) => ({ x, y: 0, z: 0, yaw: 0 })));
+    pool.update(camAt(0, 0), 0);
+    expect(pool.stats.levels).toEqual([1, 1, 1]);
+    const sorts = pool.stats.sorts;
+    pool.setBands([52.5, 165]);
+    expect(pool.bands).toEqual([52.5, 165]);
+    expect(pool.stats.levels).toEqual([1, 1, 1]); // (till it next looks)
+    pool.update(camAt(0, 0), 0);
+    expect(pool.stats.sorts).toBe(sorts + 1);
+    // (60 m now its LOD1's, 200 the puff's, 400 past twice 165: nothing)
+    expect(pool.stats.levels).toEqual([0, 1, 1]);
+    expect(pool.stats.total).toBe(3);
+  });
+
   it('draws nothing past twice the LOD1 band', async () => {
     const pool = await poolOf();
     pool.set('far', ring(5, 2 * HIGH[1] * 1.1));

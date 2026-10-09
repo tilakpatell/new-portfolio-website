@@ -2,8 +2,10 @@
 // worlds design (docs/superpowers/specs/2026-10-08-natural-worlds-design.md
 // §4). A seed and a type make the land (lib/land); its 64 m cells stream in
 // round the car through the runtime's worker pool (./stream.js, ./worker.js),
-// drawn by ./scene.js; the ones round the car are solid (a heightfield each
-// and their props, lib/physics); the car is Bruno Simon's on Rapier
+// drawn by ./scene.js (their flora through the nature kit's pools); the ones
+// round the car are solid (a heightfield each and their props that have a
+// body and are drawn, a kit tree's trunk and a kit rock's ball sized by the
+// kit's manifest, lib/physics); the car is Bruno Simon's on Rapier
 // (lib/physics/vehicle.js), driven by ./rules.js's respawn and drowning; the
 // floating origin (rt.origin) keeps the numbers small however far it goes.
 //
@@ -16,6 +18,8 @@
 //           seed, kind, cells } (ten times a second at most)
 //   'respawn' {}
 // Dev hook: window.__EXPANSE__ = { vehicle, physics, stream, scene, at() }.
+// Props: seed, type, name, small, and for a test `createPhysics` and `kit`
+// (loadKit's options: a `load` and the `manifest`).
 
 import { createPhysics } from '../../../lib/physics/world.js';
 import { addHeightfield } from '../../../lib/physics/heightfield.js';
@@ -46,8 +50,17 @@ export const PHYSICS_RADIUS = 1;
 const JUMP = 0.1; // seconds the springs stay high for a jump
 const HUD_EVERY = 0.1;
 const WATER_EVERY = 1; // seconds between looks for the nearest water
+const ROCK_BALL = 0.6; // a kit rock's ball, a share of its reach
 
 const quatYaw = (q) => Math.atan2(2 * (q[3] * q[1] + q[0] * q[2]), 1 - 2 * (q[1] * q[1] + q[2] * q[2]));
+
+// a kit model's collider at the prop's size, from its manifest row: a
+// tree's trunk and height, a rock's ball (anything else the kind's own)
+function sizeOf(p, row) {
+  if (p.kind === 'tree' && row?.trunk > 0 && row.height > 0) return { radius: row.trunk * p.scale, height: row.height * p.scale };
+  if (p.kind === 'rock' && row?.radius > 0) return { radius: ROCK_BALL * row.radius * p.scale };
+  return null;
+}
 
 export default {
   id: 'expanse-surface',
@@ -73,8 +86,10 @@ export default {
     const toLocal = (x, y, z) => [x - origin[0], y - origin[1], z - origin[2]];
 
     const physics = await (props.createPhysics ?? createPhysics)({ gravity: spec.gravity, lost: (p) => p[1] < -500 });
-    const scene = createScene({ renderer, spec, tier, radius, small: props.small });
+    const scene = createScene({ renderer, spec, tier, radius, small: props.small, kit: props.kit });
     scene.setOrigin(origin);
+    // (the kit's manifest in before the first cell: the flora's pools and the colliders' sizes read it)
+    await scene.ready;
     const vehicle = addVehicle(physics);
     const slab = addCatch(physics);
 
@@ -85,7 +100,7 @@ export default {
     vehicle.moveTo(...toLocal(spawn.x, spawn.y, spawn.z), spawn.yaw);
 
     const solids = new Map(); // key → { ground: Body, props }
-    const visuals = new Map(); // key → { trees: [slot], rocks: [slot], crates: [slot] }
+    const visuals = new Map(); // key → { cell, crates: [[slot, prop]] }
     const stream = createStream({
       workers: rt.workers,
       seed,
@@ -94,30 +109,16 @@ export default {
       physicsRadius: PHYSICS_RADIUS,
       sink: {
         build(key, cell, mesh, step) {
+          // (the ground, the water and the flora: the scene's)
           scene.build(key, cell, mesh, step);
-          const v = { cell, trees: [], rocks: [], crates: [] };
+          // the crates, the physics toy, in their own pool
+          const v = { cell, crates: [] };
           for (const p of cell.props) {
-            const half = p.yaw / 2;
-            const q = [0, Math.sin(half), 0, Math.cos(half)];
-            if (p.kind === 'tree') {
-              const i = scene.puffs.take();
-              if (i >= 0) {
-                scene.puffs.set(i, p.x, p.y, p.z, p.scale, p.yaw);
-                v.trees.push(i);
-              }
-            } else if (p.kind === 'rock') {
-              const i = scene.rocks.take();
-              if (i >= 0) {
-                scene.rocks.place(i, [p.x, p.y + 0.3 * p.scale, p.z], q, p.scale);
-                v.rocks.push(i);
-              }
-            } else if (p.kind === 'crate') {
-              // (the rest of the flora, bushes and the cover, waits for the kit's pools)
-              const i = scene.crates.take();
-              if (i >= 0) {
-                scene.crates.place(i, [p.x, p.y + 0.5, p.z], q, 1);
-                v.crates.push([i, p]);
-              }
+            if (p.kind !== 'crate') continue;
+            const i = scene.crates.take();
+            if (i >= 0) {
+              scene.crates.place(i, [p.x, p.y + 0.5, p.z], [0, Math.sin(p.yaw / 2), 0, Math.cos(p.yaw / 2)], 1);
+              v.crates.push([i, p]);
             }
           }
           visuals.set(key, v);
@@ -127,17 +128,16 @@ export default {
           const v = visuals.get(key);
           scene.unbuild(key, v?.cell);
           if (!v) return;
-          for (const i of v.trees) scene.puffs.free(i);
-          for (const i of v.rocks) scene.rocks.free(i);
           for (const [i] of v.crates) scene.crates.free(i);
           visuals.delete(key);
         },
         solid(key, cell) {
           const [x, , z] = toLocal(cell.cx * CELL, 0, cell.cz * CELL);
           const ground = addHeightfield(physics, { heights: cell.heights, x, z });
-          // (only what has a body: bushes and the cover have none)
-          const bodied = cell.props.filter((p) => KINDS[p.kind]);
-          const list = bodied.map((p) => ({ ...p, x: p.x - origin[0], y: p.y - origin[1], z: p.z - origin[2] }));
+          // (only what has a body and is drawn: bushes and the cover have
+          // none, nor a tree or a rock the level's share leaves out)
+          const bodied = cell.props.filter((p, i) => KINDS[p.kind] && scene.drawn(cell, i));
+          const list = bodied.map((p) => ({ ...p, ...sizeOf(p, p.name ? scene.info(p.name) : null), x: p.x - origin[0], y: p.y - origin[1], z: p.z - origin[2] }));
           const bodies = addProps(physics, list);
           // (each crate's body writes into its crate's slot)
           const v = visuals.get(key);
