@@ -2127,7 +2127,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (physical) {
         const mine = rocks;
         preloadPhysics().catch(() => {});
-        createLandingPhysics({ R: S.R, onHit: heard })
+        // (its floor capped round where it's laid out, so what's knocked
+        // there sleeps again)
+        createLandingPhysics({ R: S.R, onHit: heard, spot: anchor.n })
           .then((made) => {
             if (rocks !== mine) made.dispose();
             else lp = made;
@@ -2999,8 +3001,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       const mine = o.b.owner !== 'troop';
       // (through a crown: a few of its leaves shaken loose, once)
       if (!o.shook) o.shook = leaves.shake(o.b.p, o.b.v);
-      // (a loose thing in its way this frame stops it, and is knocked; by
-      // the ground, the leaves round it thrown)
+      // (a thing in its way this frame stops it: a loose one is knocked, a
+      // fixed one only stops it; by the ground, the leaves round it thrown)
       const knocked = lp ? lp.shot(o.b.p, vec.add(o.b.p, o.b.v, dt)) : null;
       if (knocked && vec.len(knocked.at) - S.R < METRE) leaves.blast(knocked.at, 1.5, 12);
       const r = knocked ? { bolt: { ...o.b, p: knocked.at }, hit: 'prop' } : flyBolt(o.b, dt, S.R, people.filter((p) => (mine ? typeof p.id === 'number' : typeof p.id === 'string')));
@@ -3613,8 +3615,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         simulated: lp ? lp.size : 0,
         pushers: lp ? lp.pushers : 0,
         kinds: list.map((b) => b.object?.name || b.meshes?.[0]?.parent?.name || '?'),
-        // (the loose ones, lightest first: what a shot moves furthest)
-        loose: list.flatMap((b, i) => (b.body.fixed ? [] : [i])).sort((a, b) => (list[a].body.mass ?? 0) - (list[b].body.mass ?? 0)),
+        // (the loose ones, lightest first, at the size each stands: what a
+        // shot moves furthest)
+        loose: list.flatMap((b, i) => (b.body.fixed ? [] : [i])).sort((a, b) => (list[a].body.mass ?? 0) * list[a].scale ** 3 - (list[b].body.mass ?? 0) * list[b].scale ** 3),
         drawn: (i) => (list[i] ? drawn(list[i]) : null),
         bodyAt: (i) => list[i] && { position: list[i].position, quaternion: list[i].quaternion, scale: list[i].scale, box: list[i].box, body: list[i].body },
         knock(i) {

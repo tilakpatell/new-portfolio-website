@@ -1,19 +1,23 @@
 /* global window */
 // A browser check of the landings' loose things (universe/landings/
 // physics.js): lands on each planet as scripts/landing-check.mjs does,
-// waits for the crew to be out and the engine to be in, then knocks each
-// of the first few loose things with a shot and says whether it moved
-// where it's drawn. With the dev server up (npx vite --port 5173):
+// waits for the crew to be out and the engine to be in, then knocks the
+// lightest two loose things and the heaviest two with a shot (passing over
+// one whose shot meets something else first) and says how far each moved
+// where it's drawn, once it's still. With the dev server up (npx vite
+// --port 5173):
 //   node scripts/props-check.mjs [planet ...] [--allow-empty]
 // Exit code 1 if a planet's engine never came (or is off on a desktop), it
 // came down where there's nothing loose (unless --allow-empty: it says
-// which biome), or a knocked thing didn't move.
+// which biome), or a knocked thing didn't move between 0.3 and 25 m (a
+// crate slides, a pebble isn't sent out of sight).
 import { chromium } from 'playwright-core';
 
 const args = process.argv.slice(2);
 const allowEmpty = args.includes('--allow-empty');
 const named = args.filter((a) => !a.startsWith('--'));
-const planets = named.length ? named : ['middleearth', 'breakingbad'];
+// (Marvel's crates at 8 kg and a table at 14; the office's AC units at 25)
+const planets = named.length ? named : ['middleearth', 'breakingbad', 'marvel', 'office'];
 const URL = `http://localhost:${process.env.PORT ?? 5173}/?quality=mid#/universe`;
 const WALK_MS = Number(process.env.WALK_MS ?? 240000);
 const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
@@ -23,6 +27,13 @@ await ctx.addInitScript(() => {
   window.localStorage.setItem('tp-intro', '1');
   window.localStorage.setItem('tp-start', '"universe"');
   window.localStorage.setItem('tp-universe-ship', JSON.stringify('falcon'));
+  // (frames drawn, to tell a thing at rest from a page that drew nothing)
+  window.__frames = 0;
+  const tick = () => {
+    window.__frames++;
+    window.requestAnimationFrame(tick);
+  };
+  window.requestAnimationFrame(tick);
 });
 const page = await ctx.newPage();
 page.on('pageerror', (e) => errors.push(String(e)));
@@ -82,17 +93,52 @@ for (const id of planets) {
     bad++;
   }
   if (before.bodies && !before.simulated) console.log('    ', id, 'first body:', JSON.stringify(await page.evaluate(() => window.__universeDebug.foot.physics().bodyAt(0))));
-  // (the lightest loose ones: a fixed lamp post doesn't move when it's
-  // shot, and a bolt barely slides a crate)
-  for (const i of before.loose.slice(0, 4)) {
-    const was = await page.evaluate((i) => window.__universeDebug.foot.physics().drawn(i), i);
-    const hit = await page.evaluate((i) => Boolean(window.__universeDebug.foot.physics().knock(i)), i);
-    await page.waitForTimeout(2500);
-    const now = await page.evaluate((i) => window.__universeDebug.foot.physics().drawn(i), i);
-    const moved = Math.hypot(now[0] - was[0], now[1] - was[1], now[2] - was[2]) / 0.027;
-    const good = hit && moved > 0.05;
-    if (!good) bad++;
-    console.log(good ? 'ok  ' : 'FAIL', id, `#${i} ${before.kinds[i] ?? ''}: hit ${hit}, moved ${moved.toFixed(2)} m`);
+  // (the lightest two loose ones and the heaviest two, by the mass they
+  // stand at: a fixed lamp post doesn't move when it's shot, and a bolt's
+  // knock falls off with mass, so the heaviest are the ones it might not
+  // shift; one whose shot meets something else first, a neighbour or a
+  // fixed thing, is passed over for the next)
+  const tried = new Set();
+  for (const order of [before.loose, [...before.loose].reverse()]) {
+    let knocked = 0;
+    for (const i of order) {
+      if (knocked >= 2) break;
+      if (tried.has(i)) continue;
+      tried.add(i);
+      const was = await page.evaluate((i) => window.__universeDebug.foot.physics().drawn(i), i);
+      const met = await page.evaluate((i) => {
+        const p = window.__universeDebug.foot.physics();
+        const hit = p.knock(i);
+        if (!hit) return null;
+        const u = hit.entry.user;
+        if (u.position === p.bodyAt(i).position) return { self: true };
+        return { self: false, kind: u.object?.name || u.meshes?.[0]?.parent?.name || '?', fixed: Boolean(u.body.fixed) };
+      }, i);
+      if (met && !met.self) {
+        console.log('skip', id, `#${i} ${before.kinds[i] ?? ''}: the shot met ${met.fixed ? 'a fixed' : 'a loose'} ${met.kind} first`);
+        continue;
+      }
+      knocked++;
+      const hit = Boolean(met);
+      // (watched till it's still: on software GL a frame can take most of
+      // a second and the engine steps at most four 1/60 s a frame, so a
+      // knock plays out several times slower than it would; still is twice
+      // not moved over a few frames)
+      let now = was;
+      let seen = await page.evaluate(() => window.__frames);
+      for (let k = 0, still = 0; k < 40 && still < 2; k++) {
+        await page.waitForTimeout(k ? 1000 : 2500);
+        const [at, frames] = await page.evaluate((i) => [window.__universeDebug.foot.physics().drawn(i), window.__frames], i);
+        if (frames - seen < 4) continue;
+        still = Math.hypot(at[0] - now[0], at[1] - now[1], at[2] - now[2]) / 0.027 < 0.005 ? still + 1 : 0;
+        now = at;
+        seen = frames;
+      }
+      const moved = Math.hypot(now[0] - was[0], now[1] - was[1], now[2] - was[2]) / 0.027;
+      const good = hit && moved >= 0.3 && moved <= 25;
+      if (!good) bad++;
+      console.log(good ? 'ok  ' : 'FAIL', id, `#${i} ${before.kinds[i] ?? ''}: hit ${hit}, moved ${moved.toFixed(2)} m`);
+    }
   }
   await page.evaluate(() => window.__universeDebug.foot.end());
   await page.waitForTimeout(1500);
