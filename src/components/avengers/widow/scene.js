@@ -14,7 +14,7 @@ import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { mixPose, snapPose } from '../hq/kit/blend';
 import { canvasTexture } from '../hq/kit/shapes';
 import { createVfx } from '../hq/vfx';
-import { createFeel } from '../hq/feel';
+import { createFeel, feelGroups } from '../hq/feel';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { BITE, CAMERA, DIRS, VISION, angleOf, camAngle, cell, intent, laserOn, solid, visibleTiles, visionPolygon } from './rules';
 import { BLUE, CUT_H, RED, T, WALL_H, backdropTexture, buildCamera, buildExit, buildFile, buildTable, buildWalls, caseGeometry, deskGeometry, emitterGeometry, facilityMaterials, floorDecal, glassGeometry, rackGeometry, terminalGeometry, toWorld } from './models';
@@ -477,6 +477,8 @@ export async function create(canvas, { onLost, onSlow, tier } = {}) {
 
   const vfx = createVfx(scene, { calm, ground: 0.04, maxDebris: 40 });
   const feel = createFeel({ seed: 7, calm, baseFov: FOV, offset: 0.06 });
+  // ?debug: the feel's numbers on the one panel (hq/engine's tune)
+  engine.tune(feelGroups(feel), 'widow');
   const coneColor = new THREE.Color();
   const tmpColor = new THREE.Color();
   const v3 = new THREE.Vector3();

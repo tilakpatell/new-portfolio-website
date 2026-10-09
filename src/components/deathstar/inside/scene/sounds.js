@@ -25,6 +25,8 @@
 //     alarm(level)                    the klaxon for an alarm.js level; calm and wary are quiet
 //     blaster(weapon, at?, listener?) a shot, through lib/sfx’s laser, with its blast under the heavy guns
 //     hit(at?)                        a bolt striking
+//     hurt(gain, pitch?)              you, hit: a dull thump in the chest, at your ear, as loud as the hit
+//     quake(at?, size)                the station shaking (size 0…1), and a panel bursting at `at`
 //     saber(on, kind?)                light ('jedi' | 'sith') or put away your blade; it hums while lit
 //     clash(at?)                      blade on blade
 //     step(surface, at?)              a footfall on 'deck' | 'grate' | 'wet' (surfaceOf gives a room’s)
@@ -228,6 +230,8 @@ const QUIET = Object.freeze({
   alarm() {},
   blaster() {},
   hit() {},
+  hurt() {},
+  quake() {},
   saber() {},
   clash() {},
   step() {},
@@ -575,6 +579,15 @@ export function createSounds(bus, ctx, { rand = Math.random } = {}) {
       puff(v.input, now(), { type: 'bandpass', f: g.crack, q: 0.9, gain: 0.12, attack: 0.002, length: 0.06 });
       if (g.body) rung((dest) => blast(ctx, dest), at, g.gain * g.body, listener ?? ear);
     },
+    quake(at, size = 1) {
+      // the rumble is under your feet wherever you stand; the panel bursting is where it is
+      const v = place(undefined, 0.9 * size);
+      if (!v) return;
+      const t = now();
+      puff(v.input, t, { color: 'brown', type: 'lowpass', f: 160, gain: 0.5 * size, attack: 0.08, length: 1.4 });
+      tone(v.input, t, { f: 55, to: 32, gain: 0.12 * size, attack: 0.02, length: 0.9 });
+      if (at) rung((dest) => blast(ctx, dest), at, 0.8 * size);
+    },
     hit(at) {
       const v = place(at, 0.7);
       if (!v) return;
@@ -583,6 +596,14 @@ export function createSounds(bus, ctx, { rand = Math.random } = {}) {
       tone(v.input, t, { type: 'sawtooth', f: 600, to: 120, gain: 0.05, attack: 0.002, length: 0.12 });
       set(v.body.gain, 0.35, t);
       thump(ctx, v.body);
+    },
+    hurt(gain = 1, pitch = 1) {
+      // (at the ear: no place, so a hit on you is never dulled or panned)
+      const v = place(undefined, 0.9 * Math.min(1, Math.max(0, gain)));
+      if (!v) return;
+      const t = now();
+      tone(v.input, t, { f: 110 * pitch, to: 46 * pitch, gain: 0.3, attack: 0.003, length: 0.3 });
+      puff(v.input, t, { color: 'brown', type: 'lowpass', f: 600 * pitch, gain: 0.35, attack: 0.002, length: 0.16 });
     },
     saber(on, kind = 'jedi') {
       if (!live || Boolean(on) === Boolean(blade)) return;

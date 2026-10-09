@@ -83,14 +83,12 @@ const WHEEL_R = 112; // the wheel's reach on screen (px): the pointer this far o
 // A line in its speaker's voice while it's up (lib/voiced.js), as useVoiced
 // says it, except that its going stops only its own line: the bubbles and
 // the toasts come and go on their own clocks, so neither cuts the other off
-// (a new line still stops the last).
+// (each waits its turn: lib/speech.js).
 function useSaid(who, text) {
   useEffect(() => {
     if (!who || !text) return undefined;
     const said = sayVoiced(who, text);
-    return () => {
-      said.then((h) => h?.stop());
-    };
+    return () => said.stop();
   }, [who, text]);
 }
 
@@ -213,6 +211,7 @@ function World({ prog, done, complete, gl, setGl, onLeave, leaveLabel }) {
           return;
         }
         api.current = a;
+        a.tune?.(); // (behind ?debug: the shake's numbers)
         a.setLooks?.(looksRef.current); // (a look picked while it loaded)
         // (cue: something for the people to react to, as the world would say it: { type: 'seen', id } …)
         if (import.meta.env.DEV) window.__CITADEL__ = { api: a, sim: sim.current, complete, down: () => liftRef.current?.down(true), up: () => liftRef.current?.up(), cue: (c) => sim.current?.cues.push(c), emote: (id) => sim.current && (sim.current.emote = { id, at: sim.current.t }) }; // for the QA scripts

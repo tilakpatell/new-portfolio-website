@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JUMP, SNAP, jumpTime, laneGraph, routeBetween, viaLanes } from './routes';
+import { JUMP, SNAP, jumpTime, laneGraph, routeBetween, routeMid, viaLanes } from './routes';
 import { LANES, SYSTEMS, systemById } from './systems';
 
 const len = (pts) => pts.slice(1).reduce((d, p, i) => d + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0);
@@ -118,5 +118,29 @@ describe('viaLanes', () => {
   });
   it('names every lane a route can take, never its id', () => {
     for (const a of SYSTEMS) for (const b of SYSTEMS) if (a !== b) expect(viaLanes(routeBetween(a.id, b.id))).not.toMatch(/-/);
+  });
+});
+
+describe('routeMid', () => {
+  it('is the point half the way along the course, not the middle point of its list', () => {
+    expect(routeMid({ pts: [[0, 0], [4, 0]] })).toEqual([2, 0]);
+    // an L of 3 then 1: half of 4 is 2, which is 2 along its long leg
+    const [x, z] = routeMid({ pts: [[0, 0], [3, 0], [3, 1]] });
+    expect(x).toBeCloseTo(2, 9);
+    expect(z).toBeCloseTo(0, 9);
+  });
+  it('lies on the real courses, and never past their ends', () => {
+    for (const [a, b] of [['coruscant', 'tatooine'], ['yavin', 'coruscant'], ['dagobah', 'hoth']]) {
+      const r = routeBetween(a, b);
+      const m = routeMid(r);
+      expect(m.every(Number.isFinite)).toBe(true);
+      // (the halves are as long as each other: the point splits the course at its middle)
+      const i = r.pts.findIndex((p, j) => j > 0 && len(r.pts.slice(0, j + 1)) >= r.squares / 2 - 1e-9);
+      const first = [...r.pts.slice(0, i), m];
+      expect(len(first)).toBeCloseTo(r.squares / 2, 6);
+    }
+  });
+  it('is the one point of a course that goes nowhere', () => {
+    expect(routeMid({ pts: [[5, 5]] })).toEqual([5, 5]);
   });
 });

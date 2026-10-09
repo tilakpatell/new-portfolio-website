@@ -20,6 +20,7 @@ import { pixelRatio } from '../../lib/device';
 import { precompile, quiet, releaseContext } from '../../lib/three/renderer';
 import { sharpen } from '../../lib/three/textures';
 import { seeded } from '../../lib/seeded';
+import { domeOf, fitScale } from './seatFit';
 
 const INK = 0x1b1424;
 // (the saucer's measurements are shared with the C-137 world, which draws it bigger: scale them by its height over TALL)
@@ -27,9 +28,13 @@ export const TALL = 1.7; // the saucer's height, in the scene's units (it's 2.7 
 const SPAN = 2.4; // half the canvas's width, in the same units
 export const GLASS = 0.69; // the share of the saucer's height where the hull stops and the dome starts
 // how tall Rick and Morty would stand, and where they sit: across (Rick on
-// the right as you look at the nose, as in the show), forward, and the
-// height of their feet, sat (the saucer's units, nose +z)
-export const CREW = { rick: [1.1, 0.27], morty: [0.92, -0.29], z: 0.05, y: 0.82 };
+// the right as you look at the nose, as in the show; their heads over it),
+// forward, the height of their feet, sat, and of their hips on the seats
+// (the saucer's units, nose +z)
+export const CREW = { rick: [1.1, 0.22], morty: [0.92, -0.22], z: 0.05, y: 0.82, hips: 1.09 };
+// how far inside the glass every bit of them stays, sat (the saucer's units):
+// the width of their ink, and room for Rick's flask and Morty's fright
+const SEAT_ROOM = 0.05;
 // the backs of the two exhaust cans
 export const CANS = [[0.87, 1.0, -1.3], [-0.87, 1.0, -1.3]];
 // Rick's flask, every so often (s); a dive steep enough to frighten Morty
@@ -105,6 +110,122 @@ export function glassDome(body) {
   return glassY;
 }
 
+// The glass's points (above the rim, GLASS of the way up each mesh, as
+// glassDome has it) in `frame`'s own space, for seatFit's dome.
+function glassPoints(body, frame) {
+  frame.updateMatrixWorld(true);
+  const into = frame.matrixWorld.clone().invert();
+  const m = new THREE.Matrix4();
+  const v = new THREE.Vector3();
+  const pts = [];
+  body.traverse((o) => {
+    if (!o.isMesh) return;
+    o.geometry.computeBoundingBox();
+    const { min, max } = o.geometry.boundingBox;
+    const rim = min.y + (max.y - min.y) * GLASS;
+    m.multiplyMatrices(into, o.matrixWorld);
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      if (v.y < rim) continue;
+      v.applyMatrix4(m);
+      pts.push(v.x, v.y, v.z);
+    }
+  });
+  return pts;
+}
+
+// Every third point of a mesh as it's posed, into `into`'s frame, pushed
+// onto `out` ([x, y, z, …]). A skinned mesh is skinned here as its shader
+// does it, with each bone's matrix made once a pose (three's
+// getVertexPosition makes them again for every point: too slow for
+// thousands, eight poses over).
+const _m = new THREE.Matrix4();
+const _p = new THREE.Vector3();
+function posedPoints(o, into, out, every = 3) {
+  const pos = o.geometry.attributes.position;
+  if (!o.isSkinnedMesh) {
+    _m.multiplyMatrices(into, o.matrixWorld);
+    for (let i = 0; i < pos.count; i += every) {
+      _p.fromBufferAttribute(pos, i).applyMatrix4(_m);
+      out.push(_p.x, _p.y, _p.z);
+    }
+    return;
+  }
+  o.skeleton.update();
+  const { boneMatrices, bones } = o.skeleton;
+  // into × the mesh × its bind inverse × each bone × its bind
+  const lead = new THREE.Matrix4().multiplyMatrices(into, o.matrixWorld).multiply(o.bindMatrixInverse);
+  const mats = bones.map((_, j) => new THREE.Matrix4().fromArray(boneMatrices, j * 16).premultiply(lead).multiply(o.bindMatrix).elements);
+  const idx = o.geometry.attributes.skinIndex;
+  const wt = o.geometry.attributes.skinWeight;
+  for (let i = 0; i < pos.count; i += every) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    let [sx, sy, sz] = [0, 0, 0];
+    for (let k = 0; k < 4; k++) {
+      const w = wt.getComponent(i, k);
+      if (w === 0) continue;
+      const e = mats[idx.getComponent(i, k)];
+      sx += w * (e[0] * x + e[4] * y + e[8] * z + e[12]);
+      sy += w * (e[1] * x + e[5] * y + e[9] * z + e[13]);
+      sz += w * (e[2] * x + e[6] * y + e[10] * z + e[14]);
+    }
+    out.push(sx, sy, sz);
+  }
+}
+
+// A figure sat on his seat in `frame` (his group's parent, the hull): his
+// hips on it (CREW.hips high, whatever his size: a figure placed by his
+// feet sits as high as his legs are long) and his head over its `x` (a sat
+// clip leans him off it). Returns how far he'd have to shrink about his
+// hips for every bit of him (hair, hat, gear), all the way through his sat
+// clip (SEAT_POSES of it: Morty hunches, a Councillor sits up), to stay
+// SEAT_ROOM inside the dome (1: he fits as he is), and where he is:
+// { fit, at (his hips), pos, scale }.
+const SEAT_POSES = 8;
+function sitUnder(c, x, dome, frame) {
+  frame.updateMatrixWorld(true);
+  const into = frame.matrixWorld.clone().invert();
+  const where = (name) => c.group.getObjectByName(name)?.getWorldPosition(new THREE.Vector3()).applyMatrix4(into) ?? null;
+  const hips = where('Hips');
+  const head = where('Head');
+  const pts = [];
+  const pose = () => {
+    frame.updateMatrixWorld(true);
+    c.group.traverse((o) => {
+      if (!o.isMesh || o.userData.ink) return;
+      posedPoints(o, into, pts);
+    });
+  };
+  // his sat clip at SEAT_POSES times through it, and back where it was
+  const mixer = c.anim?.mixer ?? c.mixer;
+  const sat = Object.values(c.anim?.actions ?? c.act ?? {}).find((a) => a.getEffectiveWeight() > 0.5);
+  if (mixer && sat) {
+    const was = sat.time;
+    for (let i = 0; i < SEAT_POSES; i++) {
+      sat.time = (i / SEAT_POSES) * sat.getClip().duration;
+      mixer.update(0);
+      pose();
+    }
+    sat.time = was;
+    mixer.update(0);
+  } else pose();
+  let from = head?.x;
+  if (from == null && pts.length) {
+    let [x0, x1] = [Infinity, -Infinity];
+    for (let i = 0; i < pts.length; i += 3) [x0, x1] = [Math.min(x0, pts[i]), Math.max(x1, pts[i])];
+    from = (x0 + x1) / 2;
+  }
+  const move = new THREE.Vector3(from == null ? 0 : x - from, hips ? CREW.hips - hips.y : 0, 0);
+  c.group.position.add(move);
+  for (let i = 0; i < pts.length; i += 3) [pts[i], pts[i + 1]] = [pts[i] + move.x, pts[i + 1] + move.y];
+  const at = hips ? hips.add(move) : c.group.position.clone();
+  const fit = pts.length ? fitScale(pts, at.toArray(), dome, { margin: SEAT_ROOM }) : 1;
+  return { fit, at, pos: c.group.position.clone(), scale: c.group.scale.x };
+}
+
 // a soft round glow, for the thruster
 function glowTexture() {
   const c = document.createElement('canvas');
@@ -129,9 +250,13 @@ function glowTexture() {
 // cruiser. `ink` scales the outline's width, which is in the scene's units:
 // a scene that draws the cruiser smaller passes its scale. update(t) breathes
 // the crew and flickers the glow. Null if the saucer won't load.
+// `crewInk`: the width of Rick and Morty's own line, in the saucer's units:
+// as thick as this page's little canvas wants, and thinner where the
+// cruiser's drawn big (the universe map's), or it's wider than a finger or
+// the tip of a spike of Rick's hair and inks them over.
 // `looks`: the wardrobe's (wardrobe/looks.js), as kept if none are given:
 // Rick and Morty in their seats as you've dressed them.
-export async function buildCruiser({ ink = 1, looks = readLooks(local.get(LOOK_KEY)) } = {}) {
+export async function buildCruiser({ ink = 1, crewInk = 0.026, looks = readLooks(local.get(LOOK_KEY)) } = {}) {
   const cast = createMeshyCast(withWardrobe());
   // the walk only to turn the seated clip to face ahead (see meshyCast)
   const have = new Set(['saucer', 'rick', 'morty', bodyAsset(looks.rick), bodyAsset(looks.morty)]); // (the models loaded: a cast loads one again if asked)
@@ -145,39 +270,68 @@ export async function buildCruiser({ ink = 1, looks = readLooks(local.get(LOOK_K
   const hull = new THREE.Group();
   hull.position.y = -TALL / 2;
   hull.add(body);
+  // the glass they sit under, in the hull's frame
+  const dome = domeOf(glassPoints(body, hull));
   // Rick at the wheel, Morty beside him, sat looking ahead, as the wardrobe
-  // has them: each { c (the figure), look, off (takes his look and ink off) }
+  // has them: each { c (the figure), look, fit (sitUnder's, once he's sat),
+  // off (takes his look and ink off) }
   const seats = {};
+  let seatedOn = true;
+  let gone = false;
+  // the two shrunk alike, as little as the one who'd come through the
+  // glass needs, so Rick stays a head taller than Morty (each about his
+  // hips); shown once both are sat
+  const share = () => {
+    const sat = Object.values(seats).filter(Boolean);
+    const ready = sat.every((s) => s.fit);
+    const k = Math.min(1, ...sat.filter((s) => s.fit).map((s) => s.fit.fit));
+    for (const { c, fit } of sat) {
+      if (fit) {
+        c.group.scale.setScalar(fit.scale * k);
+        c.group.position.copy(fit.pos).sub(fit.at).multiplyScalar(k).add(fit.at);
+      }
+      c.group.visible = seatedOn && ready;
+    }
+  };
   const seat = (kind, look) => {
     const c = cast.make(bodyKind(look)) ?? cast.make(kind);
     if (!c) return null;
     const [tall, x] = CREW[kind];
     c.group.scale.setScalar(tall / c.height);
     c.group.position.set(x, CREW.y, CREW.z);
-    // sat in his seat on his own sat clip, there at once (his animator's base)
-    // (and posed so now, for a page that never moves its clock: reduced motion's)
-    if (c.base) {
-      c.base('sit', { fade: 0 });
-      c.update(0, 0, 0, { dt: 0.1 });
-    } else for (const [n, a] of Object.entries(c.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
     const undress = dress(c, look);
     c.group.traverse((o) => (o.userData.noPaint = true)); // (a paint job on the universe map's cruiser is the hull's, not theirs)
-    const inkMat = inkHull(c.group, 0.026 * ink, { color: INK });
+    const inkMat = inkHull(c.group, crewInk * ink, { color: INK });
     hull.add(c.group);
-    return {
+    c.group.visible = false; // (till he's sat)
+    const s = {
       c,
       look,
+      fit: null,
       off() {
         undress();
         inkMat.dispose();
         c.group.removeFromParent();
       },
     };
+    // sat in his seat on his own sat clip, there at once (his animator's
+    // base; a body that borrows its sat clip from the library has it a
+    // moment later), then fitted under the glass, his hat and gear on
+    // (and posed so now, for a page that never moves its clock: reduced motion's)
+    let sitting = null;
+    if (c.base) {
+      sitting = c.base('sit', { fade: 0 });
+      c.update(0, 0, 0, { dt: 0.1 });
+    } else for (const [n, a] of Object.entries(c.act ?? {})) a.setEffectiveWeight(n === 'sit' ? 1 : 0);
+    Promise.resolve(sitting).then(() => {
+      if (gone || seats[kind] !== s) return;
+      s.fit = sitUnder(c, x, dome, hull);
+      share();
+    });
+    return s;
   };
   for (const kind of ['rick', 'morty']) seats[kind] = seat(kind, looks[kind]);
   const crew = () => Object.values(seats).filter(Boolean).map((s) => s.c);
-  let seatedOn = true;
-  let gone = false;
   let life = {}; // (crewLife's: the flask's clock, the last fright)
   let lastT = null;
   const rand = seeded(0xf1a5);
@@ -208,7 +362,7 @@ export async function buildCruiser({ ink = 1, looks = readLooks(local.get(LOOK_K
     // Rick and Morty in their seats (false: they've got out)
     seated(on) {
       seatedOn = on;
-      for (const c of crew()) c.group.visible = on;
+      share();
     },
     // the wardrobe's new looks: whoever's changed is sat down again in his,
     // the cruiser and the other one as they are (a new body's model loaded
@@ -226,8 +380,8 @@ export async function buildCruiser({ ink = 1, looks = readLooks(local.get(LOOK_K
         }
         if (gone || next !== latest) return;
         was?.off();
-        seats[kind] = seat(kind, look);
-        if (seats[kind]) seats[kind].c.group.visible = seatedOn;
+        seats[kind] = seat(kind, look); // (both shrunk again once he's sat: a bigger hat may need it)
+        share();
       }
     },
     // t: seconds; dive: how steeply it's going down (0…1), for Morty's nerves

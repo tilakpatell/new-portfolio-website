@@ -6,7 +6,8 @@ import { readPad, typing } from '../../games/pad';
 import { keyDown, keyUp, moveOf } from '../../middleearth/towns/keys';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { SOUL_HALVES, earnedStones, hasEarned } from '../hq/stones';
-import { ARMOUR, HERO_R, PACKS, PLACES, START, SUIT, TOUR, behindYaw, cameraMove, floorAt, lapAt, linesFor, nearCast, newPhoto, readPhoto, nearPack, nearPlace, newHero, newTour, outside, placeById, progress, readLap, readSettings, recordLap, stepHero, stepTour, underPortal, walkable } from './rules';
+import { createImpacts } from '../../../lib/impact';
+import { ARMOUR, HERO_R, PACKS, PLACES, START, SUIT, TOUR, behindYaw, cameraMove, floorAt, lapAt, linesFor, nearCast, newPhoto, readPhoto, nearPack, nearPlace, newHero, newTour, outside, placeById, progress, readLap, readSettings, recordLap, jumpPress, stepHero, stepTour, underPortal, walkable } from './rules';
 import { useAchievements } from '../../Achievements';
 import './world.css';
 import '../../../styles/lazy/avengers.css';
@@ -29,8 +30,16 @@ import { throttled } from '../../worlds/loadingSteps';
 
 const Place = lazy(() => import('./Place'));
 const CompoundMap = lazy(() => import('../Compound'));
-const clip = (id) => import('../../../lib/clips').then((c) => c.playClip(id)).catch(() => null);
+const clip = (id, o) => import('../../../lib/clips').then((c) => c.playClip(id, o)).catch(() => null);
 const sfx = (name) => import('../../../lib/sfx').then((s) => s[name]?.()).catch(() => null);
+// a landing's thunk by how hard (lib/impact.js's law, from where it used to
+// start to a fall off the main building's roof), over a floor so every one
+// it played is still heard
+const LANDING = createImpacts({ threshold: 14, full: 34, gap: 0.08 });
+const thunkBy = (impact) => {
+  const r = LANDING.hit(impact, 'land');
+  if (r) import('../../../lib/sfx').then((s) => s.play('thunk', { gain: 0.35 + 0.65 * r.gain, pitch: r.pitch })).catch(() => null);
+};
 const AT = 'tp-hq-world-at';
 const TOUR_BEST = 'tp-hq-swing-tour';
 const TOUR_LAP = 'tp-hq-swing-lap'; // the best lap's recording, raced as a ghost
@@ -136,7 +145,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     const ky = Number.isFinite(kept?.y) ? kept.y : 0;
     const ok = kept && Number.isFinite(kept.x) && Number.isFinite(kept.z) && floorAt(kept.x, kept.z, ky) === ky && walkable(kept.x, kept.z, HERO_R, ky);
     const h = newHero(ok ? { ...kept, y: ky } : START);
-    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, say: null, frame: 0, moved: false, t: 0, jump: false, zip: false, perch: false, trick: false, suit: false, photo: null, armour: false, touchDown: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound(), lap: readLap(local.get(TOUR_LAP, null)), rec: null };
+    sim.current = { h, keys: new Set(), stick: { x: 0, y: 0 }, yaw: behindYaw(h.face), pitch: 0.2, dragAt: -1e9, near: null, portal: false, talk: null, say: null, frame: 0, moved: false, t: 0, jump: false, press: jumpPress(), zip: false, perch: false, trick: false, suit: false, photo: null, armour: false, touchDown: false, mouseWeb: false, touchWeb: false, padBefore: null, tour: newTour(Number.isFinite(local.get(TOUR_BEST, null)) ? local.get(TOUR_BEST, null) : null), found: readFound(), lap: readLap(local.get(TOUR_LAP, null)), rec: null };
   }
   const progRef = useRef(prog);
   progRef.current = prog;
@@ -399,7 +408,9 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
     // button, or a pad's A or right trigger)
     const web = k.has('space') || s.mouseWeb || s.touchWeb || Boolean(pad?.rt || (pad?.a && !s.near && !s.portal) || pad?.b);
     const p0 = [s.h.x, s.h.y + 1, s.h.z];
-    s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, jump: s.jump, web, zip: s.zip, perch: s.perch, trick: s.trick, suit: s.suit, assist: set.assist }, dt);
+    // the jump through its press (./rules.js): a moment early or late still goes
+    if (s.jump) s.press.press();
+    s.h = stepHero(s.h, { x: mv.x, z: mv.z, run, press: s.press, web, zip: s.zip, perch: s.perch, trick: s.trick, suit: s.suit, assist: set.assist }, dt);
     // the swing tour: the rings, in order, against the clock
     const [tour, tev] = stepTour(s.tour, p0, [s.h.x, s.h.y + 1, s.h.z], dt);
     s.tour = tour;
@@ -475,7 +486,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         showTrick('Bailed', 0, 'cw-bail');
       } else if (e.type === 'suitup') sfx('repulsor');
       else if (e.type === 'suitoff') sfx('repulse');
-      else if (e.type === 'land' && e.impact > 14) sfx('thunk');
+      else if (e.type === 'land' && e.impact > 14) thunkBy(e.impact);
       if (e.type !== 'jump' && e.type !== 'release') a.fx(e.type, { ...e, vx: s.h.vx, vy: s.h.vy, vz: s.h.vz });
     }
     if (Math.hypot(mv.x, mv.z) > 0.1 || s.h.mode !== 'ground') s.moved = true;
@@ -512,7 +523,7 @@ function World({ api, prog, inside, enter, portal, gl, setGl }) {
         setBubble({ id: talk, name: person.name, line });
         // (and the line to the drawing, for the gesture they say it with)
         s.say = { id: talk, line };
-        if (SPOKEN[line]) clip(SPOKEN[line]);
+        if (SPOKEN[line]) clip(SPOKEN[line], { voice: true }); // (a voice, on the floor: lib/speech.js)
       } else {
         setBubble(null);
         s.say = null;

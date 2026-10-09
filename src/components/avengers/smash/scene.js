@@ -10,7 +10,7 @@ import { loadModel, pbr, preload } from '../hq/assets';
 import { buildHumanoid, poseHumanoid } from '../hq/kit/humanoid';
 import { instanced } from '../hq/kit/instanced';
 import { createVfx } from '../hq/vfx';
-import { createFeel } from '../hq/feel';
+import { createFeel, feelGroups } from '../hq/feel';
 import { prefersReducedMotion } from '../../../lib/hooks';
 import { buildChariot, buildPortal } from '../lawn/models';
 import { CHARIOT, KINDS, LANE, RUN } from './rules';
@@ -287,6 +287,8 @@ export async function create(canvas, { onLost, onSlow, meshy } = {}) {
 
   const vfx = createVfx(scene, { calm, ground: 0.02, maxSparks: 1400, maxPuffs: 320, debrisMaterial: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.2 }) });
   const feel = createFeel({ seed: 5, calm, baseFov: FOV, offset: 0.14 });
+  // ?debug: the feel's numbers on the one panel (hq/engine's tune)
+  engine.tune(feelGroups(feel), 'smash');
 
   // ── per frame ──
   const m4 = new THREE.Matrix4();

@@ -38,3 +38,44 @@ export function heroOf(kind, build, models) {
   if (models[kind]) return { glb: models[kind] };
   return kind === 'cruiser' ? { cruiser: true } : null;
 }
+
+// The fling (the game-feel design's one item for the showroom): a drag let
+// go while it's moving keeps the ship turning, slowing as a turntable on a
+// bearing would, and a new grab stops it. The drag's speed is eased over its
+// last few moves, so one jittery event doesn't throw it; a drag held still
+// before it's let go (FLING.still) stays put. Radians a second.
+//
+//   createFling() → { track(dYaw, dt), release(since) → v, coast(dt) → dYaw,
+//     grab(), moving }
+export const FLING = { decay: 2.5, min: 0.05, max: 6, still: 0.08, ease: 20 };
+
+export function createFling() {
+  let seen = 0; // the drag's speed, eased
+  let v = 0; // the coast's
+  return {
+    track(dYaw, dt) {
+      if (!(dt > 0) || !Number.isFinite(dYaw)) return;
+      seen += (dYaw / dt - seen) * (1 - Math.exp(-FLING.ease * dt));
+    },
+    release(since = 0) {
+      const at = since > FLING.still ? 0 : Math.max(-FLING.max, Math.min(FLING.max, seen));
+      seen = 0;
+      v = Math.abs(at) < FLING.min ? 0 : at;
+      return v;
+    },
+    coast(dt) {
+      if (!v || !(dt > 0)) return 0;
+      const d = v * dt;
+      v *= Math.exp(-FLING.decay * dt);
+      if (Math.abs(v) < FLING.min) v = 0;
+      return d;
+    },
+    grab() {
+      seen = 0;
+      v = 0;
+    },
+    get moving() {
+      return v !== 0;
+    },
+  };
+}

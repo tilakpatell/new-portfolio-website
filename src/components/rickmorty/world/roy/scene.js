@@ -11,7 +11,7 @@
 // last frame (and the same object again when nothing has stepped).
 //
 // createRoyScene(canvas, { onLost, calm }) resolves to { render(life, ms),
-// resize(w, h), dispose(), lost, info() }. `calm` (prefers-reduced-motion by
+// resize(w, h), dispose(), lost, info(), tune() }. `calm` (prefers-reduced-motion by
 // default) leaves out the camera shake.
 
 import * as THREE from 'three';
@@ -25,6 +25,8 @@ import { at, batch, hipRoof, kitMaterials, paint, rng, speckle } from '../kit';
 import { makeSky } from '../sky';
 import { TUNING, ageOf, beatWindow, inBand } from './rules';
 import { sharpen } from '../../../../lib/three/textures';
+import { createFeel, feelGroups } from '../../../../lib/three/feel';
+import { BLOOMS } from '../look';
 
 const { kid: KID, football: FOOTBALL, carpet: CARPET, cancer: CANCER } = TUNING;
 const SWING = 0.62; // how far the tire swings either way at the end of its rope (radians)
@@ -889,10 +891,9 @@ function lookFor(i) {
 export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) {
   const fit = budget();
   const tier = device().tier;
-  const stage = createStage(canvas, { shadows: true, fov: 50, near: 0.1, far: 520, exposure: 1, bloom: { strength: 0.5, radius: 0.42, threshold: 1.05 }, onLost });
+  const stage = createStage(canvas, { shadows: true, fov: 50, near: 0.1, far: 520, exposure: 1, bloom: BLOOMS.roy, onLost });
   const { renderer, scene, camera } = stage;
-  // a tone map that keeps the show's flat bright colours bright
-  renderer.toneMapping = THREE.NeutralToneMapping;
+  // (the stage's Neutral keeps the show's flat bright colours bright: ../look.js)
   stage.grade({ contrast: 0.06, saturation: 1.1, vignette: 0.16, grain: 0.01, shadow: [0, 0.004, 0.012], high: [0.012, 0.008, 0] });
   renderer.info.autoReset = false; // counted over the whole frame, every pass
   const big = Math.min(window.screen?.width ?? 1280, window.screen?.height ?? 800) >= 700;
@@ -2992,10 +2993,12 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
   for (const k of VIGNETTES) V[k].group.visible = V[k].over.visible = false;
 
   // ── the camera: eased toward each stage's shot, with a shake for the knocks ──
-  let trauma = 0;
-  function shake(k) {
-    if (!calm) trauma = Math.min(1, trauma + k);
-  }
+  // (the site's one shake, lib/three/feel: trauma², with Roy's numbers, its
+  // decay of 1.6 a second, 0.28 off-centre and 0.05 of roll at the most;
+  // still under `calm`)
+  const feel = createFeel({ calm, offset: 0.28 });
+  feel.set({ decay: 1.6, roll: 0.05 });
+  const shake = (k) => feel.trauma(k);
   let aspect = 16 / 9;
   const fovFor = (base) => {
     if (aspect >= 1.25) return base;
@@ -3104,19 +3107,15 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     camAt.lerp(framed(v.cam), k);
     camLook.lerp(v.cam.look, k);
     camera.position.copy(camAt);
-    trauma = Math.max(0, trauma - dt * 1.6);
-    if (trauma > 0) {
-      const s = trauma * trauma;
-      camera.position.x += Math.sin(time * 47) * 0.28 * s;
-      camera.position.y += Math.sin(time * 39 + 1.3) * 0.22 * s;
-    }
     camera.lookAt(camLook);
-    if (trauma > 0) camera.rotateZ(Math.sin(time * 31) * 0.05 * trauma * trauma);
     const fov = fovFor(v.cam.fov);
     if (Math.abs(camera.fov - fov) > 0.01) {
       camera.fov += (fov - camera.fov) * k;
       camera.updateProjectionMatrix();
     }
+    // the shake on top of the shot (the fov is the shot's own: the feel's base follows it)
+    feel.setBaseFov(camera.fov);
+    feel.update(dt, camera);
     sky.update(time, camera);
     confetti.update(dt, camera);
     dust.update(dt, camera);
@@ -3155,6 +3154,8 @@ export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) 
     resize,
     dispose,
     info,
+    // behind ?debug: the stage's bloom and the shake's numbers
+    tune: () => stage.tune(feelGroups(feel)),
     get lost() {
       return stage.lost;
     },

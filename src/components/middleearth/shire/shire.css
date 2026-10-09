@@ -63,6 +63,9 @@
 .shire-tempt { position: absolute; left: 50%; top: clamp(7rem, 22%, 10rem); width: min(22rem, calc(100% - 2rem)); transform: translateX(-50%); border-color: rgba(255, 140, 40, 0.6); animation: shire-tempt 1.1s ease-in-out infinite alternate; }
 .shire-tempt .shire-meter-bar span { background: linear-gradient(90deg, #f0c040, #ff4a1a); }
 
+/* caught or found: dark for a moment while he's put back, not a cut */
+.shire-fade { position: absolute; inset: 0; z-index: 1; background: #05070a; opacity: 0; pointer-events: none; transition: opacity 0.26s ease; }
+.shire-fade[data-on] { opacity: 1; }
 .shire-toast { position: absolute; top: clamp(8.6rem, 24%, 11.5rem); left: 50%; z-index: 3; max-width: min(32rem, calc(100% - 2rem)); margin: 0; padding: 0.7rem 1rem; border-left: 4px solid var(--shire-gold); border-radius: 8px; background: var(--shire-glass-hi); color: var(--shire-ink); font: 500 0.95rem/1.4 var(--font-sans); text-align: center; transform: translateX(-50%); animation: shire-toast 4.2s ease both; pointer-events: none; }
 .shire-toast[data-bad] { border-left-color: #ff7a5a; }
 .shire-stage[data-mode='show'] .shire-toast, .shire-stage[data-mode='rings'] .shire-toast, .shire-stage[data-mode='inside'] .shire-toast { top: 3.6rem; }

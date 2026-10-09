@@ -47,7 +47,8 @@ const CLEARANCE = [
     need: { scene: 'arrive2' },
     start: [
       ...spawn('jerjerrod', 'vader-arrive', 'arrival', { role: 'scripted' }),
-      ...spawn('vader', 'dock-ramp', 'arrival', { role: 'scripted' }),
+      // (under his own tag, so the scene keeps him aboard till the shuttle is down)
+      ...spawn('vader', 'dock-ramp', 'vader', { role: 'scripted' }),
       ...spawn('dstrooper', 'vader-arrive', 'arrival', {}, 4),
       { scene: 'arrive2' },
     ],
@@ -57,7 +58,7 @@ const CLEARANCE = [
     type: 'talk',
     text: 'Commander Jerjerrod meets Lord Vader at the foot of the ramp.',
     need: { talk: 'jerjerrod-vader' },
-    end: [{ despawn: 'arrival' }],
+    end: [{ despawn: 'arrival' }, { despawn: 'vader' }],
   },
   {
     id: 'clearance-hangar',

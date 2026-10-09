@@ -60,6 +60,9 @@ const CRYSTAL_OUT = 1.8; // how far ahead of the ship's middle Walt's crystal is
 const CRYSTAL_GROW = 0.1; // seconds it takes to grow to its size
 const NONE = Object.freeze(modsOf(null));
 const PHASE_WORDS = { ready: 'ready', active: 'on', cooling: 'cooling down', charging: 'charging' };
+// why a press was refused, in a word for the cluster's tile, kept 2 s (DENIED_FOR, in ms)
+const WHY_WORDS = { held: 'Held', solid: 'No room', shield: 'Shielded', empty: 'Nobody near', cooling: 'Cooling', charging: 'Charging', active: 'On', none: '' };
+const DENIED_FOR = 2000;
 
 const apart = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 const ahead = (s, d) => {
@@ -394,9 +397,11 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
   };
 
   let bar = { root: null };
+  let denied = null; // { slot, why, until }: the last refusal, while the tile still says why
   return {
     setCrew(kind) {
       if ((st?.crew ?? null) === (kind ?? null)) return;
+      denied = null;
       clearRun();
       const kept = session.get();
       st = fx && kind ? createPowers(kind, { charge: readKept(kept, kind), cool: readCooling(kept, kind, Date.now()) }) : null;
@@ -441,6 +446,7 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
     },
     deny(slot, id, why) {
       say('denied', slot, id, { why });
+      denied = { slot, why, until: performance.now() + DENIED_FOR };
       return { ok: false, why };
     },
 
@@ -527,7 +533,8 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
     place(root, on) {
       if (root !== bar.root) {
         const q = (slot) => root?.querySelector(`[data-slot="${slot}"]`) ?? null;
-        bar = { root, on: null, slots: Object.fromEntries(SLOTS.map((slot) => [slot, q(slot)])), small: Object.fromEntries(SLOTS.map((slot) => [slot, q(slot)?.querySelector('small') ?? null])), sig: {} };
+        const part = (slot, sel) => q(slot)?.querySelector(sel) ?? null;
+        bar = { root, on: null, slots: Object.fromEntries(SLOTS.map((slot) => [slot, q(slot)])), small: Object.fromEntries(SLOTS.map((slot) => [slot, part(slot, 'small')])), state: Object.fromEntries(SLOTS.map((slot) => [slot, part(slot, '.ship-power-state')])), sig: {} };
       }
       if (!root) return;
       const shown = Boolean(on && st);
@@ -543,12 +550,17 @@ export function createGalaxyPowers({ parent, reduced, hunters, war, bolts, flash
         const x = v[slot];
         const k = Math.round(x.k * 50) / 50;
         const text = x.phase === 'active' || x.phase === 'cooling' ? `${x.left}s` : x.phase === 'charging' ? `${Math.floor(x.charge * 100)}%` : '';
-        const sig = `${x.phase}|${k}|${text}`;
+        // (the cluster's word: a refusal's reason for a couple of seconds, else where the power stands)
+        const no = denied && denied.slot === slot && performance.now() < denied.until ? (WHY_WORDS[denied.why] ?? '') : '';
+        const words = no || (x.phase === 'active' ? `On ${x.left}s` : x.phase === 'cooling' ? `${x.left}s` : x.phase === 'charging' ? `${Math.floor(x.charge * 100)}%` : 'Ready');
+        const sig = `${x.phase}|${k}|${text}|${no}`;
         if (bar.sig[slot] === sig) continue;
         const phaseWas = bar.sig[slot]?.split('|')[0];
         bar.sig[slot] = sig;
         el.style.setProperty('--k', String(k));
         if (bar.small[slot]) bar.small[slot].textContent = text;
+        if (bar.state[slot]) bar.state[slot].textContent = words;
+        el.toggleAttribute('data-denied', Boolean(no));
         if (phaseWas !== x.phase) {
           el.dataset.phase = x.phase;
           el.setAttribute('aria-label', `${x.name} (${x.key}): ${PHASE_WORDS[x.phase]}`);

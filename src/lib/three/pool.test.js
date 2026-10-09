@@ -31,4 +31,26 @@ describe('pool', () => {
     expect(s.setFromMatrixScale(m).length()).toBe(0);
     p.dispose();
   });
+
+  it('is never culled, so a slot placed after its first draw is drawn where it went', () => {
+    const p = pool(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial(), 4, 'crates');
+    expect(p.mesh.frustumCulled).toBe(false);
+    // (a frustum looking only at the slot, far from the free slots at the origin)
+    const camera = new THREE.PerspectiveCamera(30, 1, 1, 50);
+    camera.position.set(100, 2, 10);
+    camera.lookAt(100, 2, 0);
+    camera.updateMatrixWorld();
+    const frustum = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    // (three's own test: an object culled only when frustumCulled and outside it)
+    const drawn = () => !p.mesh.frustumCulled || frustum.intersectsObject(p.mesh);
+    expect(drawn()).toBe(true);
+    const i = p.take();
+    p.place(i, [100, 2, 0], [0, 0, 0, 1], 1);
+    expect(drawn()).toBe(true);
+    const m = new THREE.Matrix4();
+    p.mesh.getMatrixAt(i, m);
+    expect(new THREE.Vector3().setFromMatrixPosition(m).toArray()).toEqual([100, 2, 0]);
+    expect(frustum.containsPoint(new THREE.Vector3(100, 2, 0))).toBe(true);
+    p.dispose();
+  });
 });

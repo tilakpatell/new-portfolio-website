@@ -28,7 +28,8 @@
 //   hit(from, to, damage) → { id, at, size } (a pilot) or { id, hunter, kind,
 //   at, size, down } (one of the hunters after pilot `id`), targets, mates
 //   (your allies in view: { id, name, at }, for the HUD's markers at the
-//   edge), count, chart, at(id), pose(id), dispose() }
+//   edge), count, chart, at(id), pose(id), dispose(), bodies (shipHits.js's:
+//   the pilots flying, and the hunters after them) }
 // view: { project(x, y, z, out) (to the canvas: out.x, out.y in px and
 // out.z, the depth), tags (the element the tags go in), locked (the pilot
 // the guns are locked on, whose name the lock shows instead; footOn, the
@@ -67,7 +68,7 @@ import { RANKS } from '../../galaxy/ranks';
 import { gltfLoader } from '../../../lib/three/gltf';
 
 const MODELS = { ...SHIP_MODELS, cruiser: '/games/meshy/saucer.glb' }; // (the cruiser the C-137 planet flies; your own is the page's, crew aboard)
-const SIZE = 0.3; // across, for the guns and for hits
+export const SIZE = 0.3; // across, for the guns, for hits and for a ram (contact.js's size)
 const HIT_R = 0.22; // how close a bolt must pass to hit
 const BOLTS = 24;
 const BOLT_LIFE = 1.1;
@@ -244,6 +245,18 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
 
   const spot = { x: 0, y: 0, z: 0 };
   let live = 0;
+  // one of the hunters after another pilot hit, worth `damage`: the hit, for
+  // the scene to tell its pilot (one that should be down is off the sky)
+  const hurtGhost = (ghost, damage) => {
+    ghost.hurt += damage;
+    ghost.hitAt = clock;
+    const down = ghost.told - ghost.hurt <= 0;
+    if (down) {
+      ghost.goneUntil = clock + GONE_MS;
+      ghost.model.group.visible = false;
+    }
+    return { id: ghost.owner, hunter: ghost.hunter, kind: ghost.kind, at: ghost.at.clone(), size: ghost.type.size, down };
+  };
 
   return {
     // where everyone is now; their tags; their shots on their way
@@ -500,14 +513,24 @@ export function createPilots(parent, { T = {}, colors = {}, here = UNIVERSE, fle
         }
       }
       if (!ghost) return hit;
-      ghost.hurt += damage;
-      ghost.hitAt = clock;
-      const down = ghost.told - ghost.hurt <= 0;
-      if (down) {
-        ghost.goneUntil = clock + GONE_MS;
-        ghost.model.group.visible = false;
+      return hurtGhost(ghost, damage);
+    },
+
+    // everyone here as shipHits.js's bodies: the pilots flying (not parked,
+    // their crew out; a ram on one is told to them, client.js's ram, and
+    // they take it off their own shields) and the hunters after them (a ram
+    // on one is a shot's hit)
+    get bodies() {
+      const out = [];
+      for (const [id, sh] of ships) {
+        if (!sh.shown || sh.parked) continue;
+        out.push({ key: `p:${id}`, id, kind: sh.kind, at: sh.at, prev: sh.prev, vel: sh.vel, size: SIZE, side: sh.ally ? 'friend' : 'pilot', hit: () => null });
       }
-      return { id: ghost.owner, hunter: ghost.hunter, kind: ghost.kind, at: ghost.at.clone(), size: ghost.type.size, down };
+      for (const g of ghosts.values()) {
+        if (clock < g.goneUntil) continue;
+        out.push({ key: `g:${g.owner}:${g.hunter}`, id: g.hunter, kind: g.kind, at: g.at, prev: g.prev, vel: g.vel, size: g.type.size, side: 'foe', hit: (punch) => hurtGhost(g, punch) });
+      }
+      return out;
     },
 
     // what the guns can lock on to: everyone in view who isn't an ally (or

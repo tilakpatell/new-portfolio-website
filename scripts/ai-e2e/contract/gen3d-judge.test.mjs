@@ -1,7 +1,11 @@
 // Tier 1: the judge's loop. A miss is made again once with the next seed;
 // a second miss ships with its verdict, as the README says; --no-judge
-// asks nothing. The judge is the fake, answering from a script.
-import { readFileSync } from 'node:fs';
+// asks nothing; a Qwen that never answers leaves the model unjudged, not
+// failed. The judge is the fake, answering from a script, or a llama-server
+// stand-in that hangs.
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { FIXTURES, sandbox } from './repo.mjs';
@@ -36,5 +40,26 @@ describe('the judge’s loop (subprocesses, up to 10 s)', () => {
     expect(box.judged()).toEqual([]);
     expect(seeds(box)).toEqual(['1']);
     expect(result(box).verdict).toBeUndefined();
+  });
+
+  it('ships the model unjudged when Qwen3-VL never answers (its verdict is only a note)', async () => {
+    // a llama-server that says it's up and then never replies, as one sharing the GPU with a voices batch did
+    const server = createServer((req, res) => (req.url === '/health' ? res.end('{"status":"ok"}') : undefined));
+    await new Promise((r) => server.listen(0, '127.0.0.1', r));
+    const local = mkdtempSync(join(tmpdir(), 'ai-e2e-llamacpp-'));
+    for (const d of ['bin', 'models']) mkdirSync(join(local, 'llamacpp', d), { recursive: true });
+    for (const f of ['bin/llama-server.exe', 'models/Qwen3-VL-8B-Instruct-Q8_0.gguf', 'models/mmproj-F16.gguf']) writeFileSync(join(local, 'llamacpp', f), '');
+    try {
+      const box = sandbox();
+      const r = await box.make(ARGS, { GEN3D_JUDGE: 'qwen', LOCALAPPDATA: local, VLM_PORT: String(server.address().port), VLM_TIMEOUT_MS: '300' });
+      expect(r.status, r.err).toBe(0);
+      expect(seeds(box)).toEqual(['1']);
+      expect(result(box)).toMatchObject({ seed: 1, cuts: { hq: {}, mid: {}, lo: {} } });
+      expect(result(box).verdict).toBeUndefined();
+      expect(readFileSync(join(box.cache, 'xw', 'make.log'), 'utf8')).toMatch(/no verdict: Qwen3-VL failed/);
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
   });
 });

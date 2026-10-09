@@ -9,6 +9,8 @@ import { canvasTexture, createStage, hot } from '../../../lib/stage3d';
 import { createLibrary } from '../../../lib/cc0';
 import { createModels } from '../../../lib/models';
 import { houseOn } from '../../../lib/three/house';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { LOOK } from './look';
 import { buildWorld, sharedSurfaces } from './world';
 import { BOSS_LOOK, BREAKDOWN, KNOCKOUT, SENTRY, buildBoss, buildBumblebee, buildCar, buildJet, buildOptimus, buildVehicon, materials } from './models';
 import { createRollOutCast } from './meshyCast';
@@ -149,7 +151,7 @@ class Assign {
 }
 
 export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', alive = () => true, onLost, onSlow, onProgress } = {}) {
-  const stage = createStage(canvas, { soft, shadows: true, bloom: { strength: 0.6, radius: 0.5, threshold: 0.9 }, fov: 62, near: 0.1, far: 900, onLost, onSlow });
+  const stage = createStage(canvas, { soft, shadows: true, bloom: LOOK.bloom, fov: 62, near: 0.1, far: 900, onLost, onSlow });
   const { renderer, scene, camera } = stage;
   const big = !soft && renderer.capabilities.maxTextureSize >= 4096 && !(window.matchMedia?.('(pointer: coarse)').matches ?? false);
   const lib = createLibrary(renderer);
@@ -521,6 +523,12 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
   // the position in the world of a point inside the player's model
   const worldOf = (obj, x, y, z) => tmp.set(x, y, z).applyMatrix4(obj.matrixWorld);
 
+  // the shake (lib/three/feel), from the rules' g.shake as it rises: a hit
+  // is 1, ±0.25 m as it was, gone at the rules' own 2.5 a second
+  const feel = createFeel({ offset: 0.25, baseFov: 62 });
+  feel.set({ decay: 2.5 });
+  stage.tune(feelGroups(feel));
+  let lastShake = 0;
   function render(g, ms = 16, { calm = false } = {}) {
     if (stage.lost) return;
     const dt = Math.min(0.05, Math.max(0, ms / 1000));
@@ -957,15 +965,13 @@ export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', a
       camera.fov = cam.fov;
       camera.updateProjectionMatrix();
     }
-    let sx = 0;
-    let sy = 0;
-    if (!calm && g.shake > 0) {
-      sx = (Math.random() - 0.5) * g.shake * 0.5;
-      sy = (Math.random() - 0.5) * g.shake * 0.4;
-    }
-    camera.position.set(cam.x * (1 - portrait * 0.4) + sx, cam.y + sy + portrait * 1.6, Z + 7.4 + (g.boss ? 1.5 : 0) + robot * 0.6 + portrait * 2.5);
+    if (g.shake > lastShake + 1e-6) feel.trauma(g.shake - lastShake);
+    lastShake = g.shake;
+    camera.position.set(cam.x * (1 - portrait * 0.4), cam.y + portrait * 1.6, Z + 7.4 + (g.boss ? 1.5 : 0) + robot * 0.6 + portrait * 2.5);
     camera.lookAt(g.x * 0.6, cam.lookY, Z - 14);
     camera.rotateZ(-steer * 0.018);
+    feel.setBaseFov(camera.fov);
+    if (!calm) feel.update(dt, camera);
 
     // particle size follows the viewport
     const scale = stage.size.h / (2 * Math.tan((camera.fov * Math.PI) / 360));

@@ -65,7 +65,7 @@ const FLASK_H = 0.27; // the liquid can rise to the neck
 export function createMetherria3D(canvas, { onLost, onSlow } = {}) {
   const renderer = quiet(new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  // (the house tone mapper: houseOn, below, before the first frame)
   renderer.toneMappingExposure = 1.1;
   renderer.localClippingEnabled = true;
   renderer.shadowMap.enabled = true;

@@ -7,6 +7,7 @@
 //
 // The world is in metres: x east, z south (the plan's y), y up.
 
+import { createPress } from '../../../lib/press';
 import { BERM, BRIDGE, CRES, CRES_FOOT, GATE, HANGAR, LAB, LAWN, PROW, RIVER, ROADS, STALLS, TRAINING, TREES, arcPt, inPoly } from '../compound/plan';
 
 // A plan unit is about four metres from the air; on foot the compound is
@@ -472,6 +473,48 @@ export const FLAGS = [
   [49, 91.4],
 ].map(([x, y]) => ({ x: x * S, z: y * S }));
 
+// ── things to knock over (the game-feel design’s Tier 3) ──
+
+// Out on the lawn near where you start: a few sets of a slalom of five
+// cones, and behind it two crates and a barrel, each where there's room
+// (clear of the buildings, the drives, the lamps, benches and planters, and
+// everything clearOfThings keeps clear). Data only: ./lawnProps.js puts
+// them through lib/three/knockables, light bodies where the computer can
+// afford the engine and standing still where it can't. { kind, x, y, z, yaw }
+const PROP_CLEAR = 1.2;
+const propRoom = (x, z) =>
+  openAt(x, z, 2) &&
+  clearOfThings(x, z, 1) &&
+  roadGap(x, z) > ROAD_HALF + PROP_CLEAR &&
+  ![...LAMPS, ...BENCHES, ...PLANTERS].some((o) => Math.hypot(o.x - x, o.z - z) < 2 + PROP_CLEAR) &&
+  Math.hypot(START.x - x, START.z - z) > 6;
+function propSet(x, z, a) {
+  const ax = Math.cos(a);
+  const az = Math.sin(a);
+  // across the way out from the start, 1.6 m apart; the rest 3 m behind
+  const at = (along, back) => ({ x: x - az * along + ax * back, z: z + ax * along + az * back });
+  return [
+    ...[-2, -1, 0, 1, 2].map((k) => ({ kind: 'cone', ...at(k * 1.6, 0), yaw: k * 0.4 })),
+    { kind: 'crate', ...at(-0.6, 3), yaw: 0.2 },
+    { kind: 'crate', ...at(0.4, 3.1), yaw: -0.3 },
+    { kind: 'barrel', ...at(1.6, 3), yaw: 0 },
+  ].map((p) => ({ ...p, y: 0 }));
+}
+export const LAWN_PROPS = (() => {
+  const sets = [];
+  for (let r = 12; r <= 70 && sets.length < 3; r += 4) {
+    for (let i = 0; i < 24 && sets.length < 3; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      const x = START.x + Math.cos(a) * r;
+      const z = START.z + Math.sin(a) * r;
+      if (sets.some((s) => Math.hypot(s[2].x - x, s[2].z - z) < 25)) continue;
+      const set = propSet(x, z, a);
+      if (set.every((p) => propRoom(p.x, p.z))) sets.push(set);
+    }
+  }
+  return sets.flat();
+})();
+
 // ── bumping into things ──
 
 // Everything round the hero bumps into, besides the buildings.
@@ -858,7 +901,16 @@ export const newHero = (at = START) => ({
 // world (the camera does that, cameraMove): { x, z } up to length 1, `run`,
 // `jump` (a press, not a hold), `web` (the jump button, held), `zip` and
 // `perch` (presses), and `assist` (the settings' swing assist, 1 as it comes).
-export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, web = false, zip = false, perch = false, trick = false, suit = false, assist = 1 } = {}, dt) {
+// The jump's press (lib/press.js): the handler keeps one, calls press() on
+// the button's edge and hands it to stepHero as `press` (for `jump`).
+// Pressed a moment before he lands (on the ground, a wall or a perch) it
+// goes as he lands; a moment after he walks off a roof's edge it's still a
+// jump. Roll out's numbers, rounded (the game-feel design).
+export const JUMP = { buffer: 0.12, coyote: 0.1 };
+export const jumpPress = () => createPress(JUMP);
+const FOOTED = new Set(['ground', 'wall', 'perch']);
+
+export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump: jumped = false, press = null, web = false, zip = false, perch = false, trick = false, suit = false, assist = 1 } = {}, dt) {
   const h = { ...h0, web: h0.web ? { ...h0.web } : null, ev: [] };
   h.mode ??= h.y > 0 ? 'air' : 'ground';
   h.stuck = Math.max(0, (h.stuck ?? 0) - dt);
@@ -870,6 +922,19 @@ export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, 
   h.zips ??= SWING.zip.charges;
   const len = Math.hypot(mx, mz);
   const k = len > 1 ? 1 / len : 1;
+  let jump = jumped;
+  // (off an edge on foot: falling, with no web or wall's momentum)
+  const walkedOff = h.mode === 'air' && !h.fly && !h.web && !h.glide;
+  if (press) {
+    press.ground(FOOTED.has(h.mode), dt);
+    jump = (FOOTED.has(h.mode) || walkedOff) && press.take();
+  }
+  if (press && jump && h.mode === 'air') {
+    // the coyote jump: as from the ground, a moment late
+    h.vy = HERO.jump;
+    h.ev.push({ type: 'jump' });
+    jump = false;
+  }
   const i = { mx: mx * k, mz: mz * k, len: Math.min(1, len), run, jump, web, zip, assist };
   h.perchT = Math.max(0, (h.perchT ?? 0) - dt);
   h.trickGap = Math.max(0, (h.trickGap ?? 0) - dt);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFactions, writeFoot, writeLooksWire, writePack, writePose, writeShot } from './protocol';
+import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readAlly, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readRam, readShot, ramCounts, RAM_MAX, sample, writeCursor, writeFactions, writeFoot, writeLooksWire, writePack, writePose, writeShot } from './protocol';
 import { STOCK_LOADOUT, writeOutfit } from '../outfit';
+import { CONTACT } from '../../../lib/combat/contact';
 import { STOCK_BUILD, writeBuild } from '../shipyard/build';
 import { defaultLook, readLook, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
 
@@ -310,6 +311,36 @@ describe('shots', () => {
   });
 });
 
+describe('rams', () => {
+  it('reads the closing speed, capped, and nothing else', () => {
+    expect(readRam({ v: 8 })).toBe(8);
+    expect(readRam({ v: 1e9 })).toBe(RAM_MAX);
+    expect(readRam({ v: -3 })).toBe(0);
+    expect(readRam({ v: 'fast' })).toBeNull();
+    expect(readRam(null)).toBeNull();
+  });
+  const me = { x: 0, y: 0, z: 0, speed: 6 };
+  const peer = (o = {}) => ({ ally: 'none', blocked: false, ramAt: -Infinity, pose: { x: 0.5, y: 0, z: 0, speed: 6 }, ...o });
+  it('counts a ram from a pilot last seen touching you, as hard as both your speeds allow', () => {
+    expect(ramCounts(peer(), me, 9, 1000)).toBe(9);
+    expect(ramCounts(peer(), me, 500, 1000)).toBe(12); // (6 and 6: no harder)
+  });
+  it('gives the touch more room the faster you both go', () => {
+    const off = (speed) => peer({ pose: { x: 4, y: 0, z: 0, speed } });
+    expect(ramCounts(off(0), { ...me, speed: 0 }, 2, 1000)).toBeNull();
+    expect(ramCounts(off(6), me, 2, 1000)).toBe(2); // (1.5 + 12 × 0.35 = 5.7)
+  });
+  it('ignores allies, the blocked, one not seen, one far off, and one too soon after the last', () => {
+    expect(ramCounts(peer({ ally: 'ally' }), me, 8, 1000)).toBeNull();
+    expect(ramCounts(peer({ blocked: true }), me, 8, 1000)).toBeNull();
+    expect(ramCounts(peer({ pose: null }), me, 8, 1000)).toBeNull();
+    expect(ramCounts(peer({ pose: { x: 40, y: 0, z: 0, speed: 6 } }), me, 8, 1000)).toBeNull();
+    expect(ramCounts(peer({ ramAt: 900 }), me, 8, 1000)).toBeNull();
+    expect(ramCounts(peer({ ramAt: 900 }), me, 8, 900 + CONTACT.cool * 1000)).toBe(8);
+    expect(ramCounts(peer(), null, 8, 1000)).toBeNull();
+  });
+});
+
 describe('hits', () => {
   it('caps the damage', () => {
     expect(readHit({ d: 999 })).toBe(DAMAGE_MAX);
@@ -478,6 +509,17 @@ describe('allyStep', () => {
     expect(allyStep('none', 'accept')).toEqual({ state: 'none', send: null });
     expect(allyStep('none', { in: 'bogus' })).toEqual({ state: 'none', send: null });
     expect(allyStep(undefined, 'end')).toEqual({ state: 'none', send: null });
+  });
+});
+
+describe('readAlly', () => {
+  it('reads each word of an alliance, and keeps the k of an ask from a pilot who has you saved', () => {
+    for (const t of ['ask', 'yes', 'no', 'end']) expect(readAlly({ t })).toEqual({ t, k: 0 });
+    expect(readAlly({ t: 'ask', k: 1 })).toEqual({ t: 'ask', k: 1 });
+  });
+  it('turns away what isn’t one, and a k that isn’t 1 is none', () => {
+    for (const junk of [null, undefined, 'ask', ['ask'], {}, { t: 'bogus' }, { t: 'ASK' }, { t: ['ask'] }]) expect(readAlly(junk)).toBeNull();
+    for (const k of [2, '1', true, -1, 0.5, null]) expect(readAlly({ t: 'ask', k })).toEqual({ t: 'ask', k: 0 });
   });
 });
 
