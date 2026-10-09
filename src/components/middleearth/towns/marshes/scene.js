@@ -32,6 +32,8 @@ import { BED, BOULDERS, EMYN, GATE_AT, ISLAND, LIGHTS, LOOKOUT, MARSH_PATH, MARS
 import { CREEP, FELL, ROPE, WAY } from './rules';
 import { castDo, castPlay, drawWatcher, releaseCast, tickCast, upgrade } from '../../cast3d';
 import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -80,7 +82,7 @@ const GATE_SKY = { top: 0x1a1210, horizon: 0x8a4a2a, fog: 0x4a3a30 };
 export function createMarshesWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 1400, bloom: { strength: 0.7, radius: 0.6, threshold: 0.8 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 1400, bloom: BLOOMS.marshes, onLost });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
   // on everything, under the house tone mapper; the moods move it
@@ -392,7 +394,8 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, night: 0, dawn: 0, first: true, rain: 0, mist: 0, ash: 0, open: 0, flash: 0, drawn: 0, fellAt: null };
-  const shake = createShake({ title: 'The Dead Marshes' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   const HITSTOP = { knock: 60, pounce: 70 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();

@@ -60,6 +60,8 @@ import {
 import { attend, castDo, releaseCast, tickCast } from '../../cast3d';
 import { turn } from '../../../../lib/three/gait';
 import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const faceTo = (obj, face) => {
@@ -122,7 +124,7 @@ const growable = (x, z) => {
 export function createBreeWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 420, bloom: { strength: 0.62, radius: 0.5, threshold: 0.86 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 420, bloom: BLOOMS.bree, onLost });
   stage.grade({ contrast: 0.12, saturation: 0.86, vignette: 0.3, grain: 0.016, shadow: [0.0, 0.012, 0.035], high: [0.03, 0.018, 0.0] });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
@@ -443,7 +445,8 @@ export function createBreeWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, peep: 0, cam: { at: V(0, 6, 8), look: V(0, 1, 0) }, mode: 'walk', smashed: false, smoke: 0, flame: 0, near: [] };
-  const shake = createShake({ title: 'Bree' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   const tmp = new THREE.Vector3();
   const tmp2 = new THREE.Vector3();
   const look = new THREE.Vector3();

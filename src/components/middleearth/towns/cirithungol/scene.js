@@ -34,6 +34,8 @@ import { BRAWL, BRIDGE, CITY_YAW, COURT, HIDE, LAIR_OUT, MORGUL_ROAD, PASS, TOWE
 import { CRUMBS, PHIAL, STAIRS, cloakLift } from './rules';
 import { castDo, castPlay, drawWatcher, fight, releaseCast, tickCast, upgrade } from '../../cast3d';
 import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -141,7 +143,7 @@ const stairFace = (s) => {
 export function createCirithUngolWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 2000, bloom: { strength: 0.8, radius: 0.6, threshold: 0.8 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 2000, bloom: BLOOMS.cirithungol, onLost });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
   // on everything, under the house tone mapper; it follows the moods below
@@ -368,7 +370,8 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   for (const k of NUMBERS) cur[k] = MOODS.vale[k];
   const sunDir = V(...MOODS.vale.sun).normalize();
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, first: true, beam: 0, stab: 0, dodge: 0, hit: 0, embers: 0, dust: 0, fov: 52, mood: '', near: 0 };
-  const shake = createShake({ title: 'Cirith Ungol' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   const HITSTOP = { hit: 70, stab: 80 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
