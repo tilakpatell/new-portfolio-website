@@ -44,15 +44,15 @@
 // The pictures it waits for are a patch's too (gpuWork's picturesIn: a
 // scan's, the look's), not only the material's own.
 //
-// A renderer's first frame can be drawn whole (`firstWhole`): nothing held
-// back, three compiling what it hasn't as it draws, for a world not prepared
-// before it's seen (lib/stage3d's prepare), which would otherwise come up as
-// its sky alone and fill in over the next second, a few materials a frame.
-// A warm draw (gpuWork's warmDraw, a prepare's draw of everything behind
-// the loading screen) is always drawn whole: it's there to send everything,
-// and what it held back would be left out of the first frames seen. What
-// three drew ungated is known to have linked (that draw linked it), so the
-// frames after it, gated, draw it at once.
+// A warm draw (gpuWork's warmDraw: a prepare's draw of everything behind
+// the loading screen, or lib/stage3d's before the first frame of a world
+// that isn't prepared) is always drawn whole: it's there to send
+// everything, and what it held back would be left out of the first frames
+// seen, a world up as its sky alone and filling in a few materials a frame.
+// A renderer's first frame can be drawn whole too (`firstWhole`: the
+// Cybertron backdrop's, whose shaders are made ahead but not its pictures).
+// What three drew ungated is known to have linked (that draw linked it), so
+// the frames after it, gated, draw it at once.
 //
 // guard(renderer, { uploadMB, compileMs, frame, invalidate, frames(target), firstWhole }) → { enabled,
 //   invalidate, adopt(scene, fn) → undo, pending(), dispose() }, one per renderer (asked again, the same).
