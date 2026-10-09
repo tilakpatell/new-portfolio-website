@@ -57,6 +57,10 @@ export const kindFor = (side, rand = Math.random) => {
   return kinds.length ? kinds[Math.floor(rand() * kinds.length) % kinds.length] : null;
 };
 
+// a kind in a world's own uniform (a site's `uniforms`: Hoth's Empire in
+// snow armour, its Rebels in parkas); the kind itself where it has none
+export const dressOf = (kind, uniforms) => uniforms?.[kind] ?? kind;
+
 // ── the old tables, one place ──
 // what a quest's hostile carries in its hand, by kind (universe/gunplay.js's GUNS: activity.js)
 export const ARMS = {

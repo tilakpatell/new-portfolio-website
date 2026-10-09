@@ -7,6 +7,7 @@
 // for a kind there's no figure of.
 
 import * as THREE from 'three';
+import { markBuilt } from './cast';
 
 const { PI, sin, abs, max } = Math;
 
@@ -703,9 +704,9 @@ function small(spec) {
 
 export function buildFigure(kind) {
   const p = PEOPLE[kind];
-  if (p) return p.creature === 'hutt' ? hutt(p) : p.creature ? small(p) : person(p);
+  if (p) return markBuilt(p.creature === 'hutt' ? hutt(p) : p.creature ? small(p) : person(p));
   const b = BEASTS[kind];
-  if (b) return beast(b);
+  if (b) return markBuilt(beast(b));
   return null;
 }
 
