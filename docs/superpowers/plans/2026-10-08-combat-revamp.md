@@ -285,17 +285,19 @@ test('a solid at 0 m (the muzzle inside a wall) ends the bolt at the muzzle with
 **Files:**
 - Modify: `universe/footScene.js` (`fire()`: `aimPoint` from the camera's ray, `assist` by `coneFor`, the lock only bends within the cone; the view-model's mark = the same `at`; the reticle = `Reticle` with `locked` from the lock).
 
-- [ ] Test (pure part): a lock 20° off the reticle on a mouse does not take the shot; on touch within 12° it does. `autopilot-check` on a universe planet. Commit.
+- [x] Test (pure part): a lock 20° off the reticle on a mouse does not take the shot; on touch within 12° it does. `autopilot-check` on a universe planet. Commit.
 
 ### Task E2: Rick and Morty
 
-- [ ] Total Rickall (`rickall.js`): `shoot()` fires a bolt through `createBolts` with the room's furniture as `solids` (the interior's colliders); `aimAt` keeps the cylinders as bodies. The duel dimension (`duel.js`): `fire()` through the same with the arena's walls. Tests updated. `autopilot-check --routes '#/c-137'`. Commit.
+- [x] Total Rickall (`rickall.js`): `shoot()` fires a bolt through `createBolts` with the room's furniture as `solids` (the interior's colliders); `aimAt` keeps the cylinders as bodies. The duel dimension (`duel.js`): `fire()` through the same with the arena's walls. Tests updated. `autopilot-check --routes '#/c-137'`. Commit.
 
 ### Task E3: touch
 
-- [ ] `SurfaceView.jsx` and `RmHud.jsx`: a Lock `TouchButton`; the fire button's tap snaps inside `ASSIST.touch` when `snap`; the look pad's drag scaled by `friction`. On a coarse pointer the lock-on is on by default within 14 m. `autopilot-check --phone` on both. Commit.
+- [x] `SurfaceView.jsx` and `RmHud.jsx`: a Lock `TouchButton`; the fire button's tap snaps inside `ASSIST.touch` when `snap`; the look pad's drag scaled by `friction`. On a coarse pointer the lock-on is on by default within 14 m. `autopilot-check --phone` on both. Commit.
 
 ### Task E4: handoff and PR.
+
+- [x] The handoff's Lane E section; the PR, merged on green.
 
 ## Lane G: the motion spike
 
