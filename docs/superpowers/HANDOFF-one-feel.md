@@ -67,7 +67,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 1F | session_01PvQ31jMR87beSHxh7Bgt2v | `claude/feel-kit` | | |
 | 2A | session_01HPFczeNhvDuaFuXnrzZj9H | `claude/feel-middleearth`, `claude/feel-middleearth-look` | Tier 1: #728 (Tier 2: none in the roster); the look: #732 | yes, both |
 | 2B | session_01DVpcS5r4qygJHh2VUkxKoP | `claude/feel-starwars`, `claude/feel-starwars-look` | Tier 1: #729; Tier 2 with the inside’s Tier 1: #747; Tier 3 (the surface sites’ loose crates and barrels): #754; the look (five folders; the cockpit waits, see Findings): #761 | Tiers 1, 2 and 3, and the look with #761 |
-| 2C | session_019CkxR28H7ZKjm6tPbKEyns | `claude/feel-universe` | Tier 1: #741; Tier 2: #762 | Tier 1 |
+| 2C | session_019CkxR28H7ZKjm6tPbKEyns | `claude/feel-universe` | Tier 1: #741; Tier 2: #762; the look | Tiers 1 and 2 |
 | 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: #740; Tier 3 Iacon: #745; the look: #748 | yes, all five |
 | 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733; Tier 2: #738; the look (opening) | Tiers 1 and 2 |
 | 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1); #734 (Tier 2); the look | #731, #734 yes |
