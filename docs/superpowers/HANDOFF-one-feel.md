@@ -65,7 +65,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 1D | session_01Y9gSEa16P9tye2wPhYum7h | `claude/one-feel-panel` | #702 | yes |
 | 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 1F | session_01PvQ31jMR87beSHxh7Bgt2v | `claude/feel-kit` | | |
-| 2A | session_01HPFczeNhvDuaFuXnrzZj9H | `claude/feel-middleearth`, `claude/feel-middleearth-look` | Tier 1: #728 (Tier 2: none in the roster); the look: (opening) | Tier 1 yes |
+| 2A | session_01HPFczeNhvDuaFuXnrzZj9H | `claude/feel-middleearth`, `claude/feel-middleearth-look` | Tier 1: #728 (Tier 2: none in the roster); the look: #732 | Tier 1 yes |
 | 2B | | | | |
 | 2C | | | | |
 | 2D | | | | |
