@@ -32,6 +32,8 @@ import { createRivendellKit } from './props';
 import { BRIDGE, CAST, COLLIDERS, COLONNADE, COMPANIONS, COURT, FALLS, GATE, GORGE, HOUSE, INSIDE, LAMPS, PAVILION, SEATS, SPOTS, TREES, WORLD, boxDist, height, padY, pathAmount, riverX } from './layout';
 import { attend, castDo, castPlay, followDrawn, releaseCast, tickCast } from '../../cast3d';
 import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -106,7 +108,7 @@ const growable = (x, z) => pathAmount(x, z) < 0.05 && steep(x, z) < 0.6 && Math.
 export function createRivendellWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 620, bloom: { strength: 0.55, radius: 0.55, threshold: 0.86 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.1, far: 620, bloom: BLOOMS.rivendell, onLost });
   stage.grade({ contrast: 0.08, saturation: 1.02, vignette: 0.24, grain: 0.012, shadow: [0.02, 0.01, 0.02], high: [0.04, 0.025, 0.0] });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
@@ -414,7 +416,8 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, cam: { at: V(0, 20, 50), look: V(0, 4, 0) }, mode: 'walk', leaf: 0, axe: -9, axeTimer: 0, eye: 0 };
-  const shake = createShake({ title: 'Rivendell' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   const HITSTOP = { axe: 60 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
