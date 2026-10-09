@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EDGE } from './space';
-import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace, nextWindow, pickDue, readCount } from './interdiction';
+import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace, interdictorSolids, nextWindow, pickDue, readCount } from './interdiction';
 
 // a store over a string, as sessionStorage is
 const memory = (s = null) => {
@@ -162,5 +162,18 @@ describe('the hold', () => {
     expect(holdLifts({ since: 0, now: hold + 1, pack: 'here', inWell: true })).toBe('time');
     // a pack that never came (the ship crashed, say) still lets go in time
     expect(holdLifts({ since: 0, now: hold + 1, pack: 'coming', inWell: true })).toBe('time');
+  });
+});
+
+describe('the Interdictor as a solid', () => {
+  it('is one sphere where it is once it’s here, so flying into it is a bump or a crash', () => {
+    const [s] = interdictorSolids('here', [1, 2, 3]);
+    expect(s).toMatchObject({ id: 'interdictor', at: [1, 2, 3], ship: true });
+    expect(s.r).toBeCloseTo(INTERDICTION.size * 0.3, 6);
+    expect(s.reach).toBe(s.r);
+  });
+  it('is nothing while it jumps in or out, or when it’s gone', () => {
+    for (const state of ['in', 'out', null]) expect(interdictorSolids(state, [1, 2, 3]), String(state)).toEqual([]);
+    expect(interdictorSolids('here', null)).toEqual([]);
   });
 });

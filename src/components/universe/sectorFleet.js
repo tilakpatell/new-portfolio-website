@@ -7,9 +7,11 @@
 // - the Council of Ricks' dreadnought, patrolling round the Citadel, the
 //   way the Council's ships keep it.
 //
-// They're scenery: nothing hits them and they don't fight (the sector's
+// They're scenery: no shot hits them and they don't fight (the sector's
 // hunters are sides.js's). sectorShips(t) → [{ id, kind, at: [x, y, z],
 // heading, size }] at time t (seconds); heading as ship.js's (0 is −z).
+// sectorSolids(t) → each as one of ship.js's solids, so flying into one is a
+// planet's bump or crash (too big to move: lib/combat/contact.js).
 
 import { inSector } from './layout';
 import { wonderById } from './deep';
@@ -54,4 +56,10 @@ export function sectorShips(t = 0) {
   // (going round anticlockwise seen from above: its nose along the way round)
   const heading = Math.atan2(-(-Math.sin(a)), -Math.cos(a));
   return [...fleet, { id: PATROL.id, kind: PATROL.kind, size: PATROL.size, heading, at: [x, c[1] + PATROL.height, z] }];
+}
+
+// one sphere at each one's middle, SOLID of its length across
+const SOLID = 0.16;
+export function sectorSolids(t = 0) {
+  return sectorShips(t).map((s) => ({ id: s.id, at: s.at, r: s.size * SOLID, reach: s.size * SOLID, ship: true }));
 }

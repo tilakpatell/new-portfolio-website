@@ -86,6 +86,8 @@ import { houseOn } from '../../lib/three/house';
 import { SHIP, autopilot, forward, spawn, step } from '../universe/ship';
 import { REAIM_MS, parkBehind, pilotSpace, reached } from '../universe/pilotGoal';
 import { createHunters } from '../universe/hunters';
+import { createShipHits, solidsWith } from '../universe/shipHits';
+import { keptSpeed } from '../../lib/combat/contact';
 import { createFleet } from '../universe/glbFleet';
 import { createSetPieces } from '../universe/setpieces';
 import { createCrash } from '../universe/crash';
@@ -382,6 +384,9 @@ export async function create(canvas, ctx) {
   let net = null;
   let netOff = null;
   const pilots = createPilots(scene, { colors: BOLT_COLOR, here: () => (state.sys ? `/galaxy/${state.sys.id}` : '/galaxy'), fleet: reduced ? null : fleet, kinds: KINDS });
+  // every other small ship, to fly into (shipHits.js; the battle's hulls are solids already)
+  const shipHits = createShipHits({ sources: [() => hunters?.bodies, () => wingmen?.bodies, () => pilots.bodies, () => war?.bodies] });
+  let solidsNow = []; // (the frame's, handed to step: the system's and the big ships moving through it, shipHits.js's solidsWith)
 
   const emit = (e) => props.onEvent?.(e);
   // a kill worth paying for (economy.js's EARN): the page earns it into the
@@ -954,7 +959,11 @@ export async function create(canvas, ctx) {
     if (wh) return scored(wh, { src: 'war', normal, by });
     if (!atPilots) return null;
     const ph = pilots.hit(from, to, punch);
-    if (!ph) return null;
+    return ph ? pilotShot(ph, punch, normal) : null;
+  };
+  // a hit on another pilot or one of the hunters after them (a shot's, or a
+  // ram's: shipsHit), played: they're told
+  const pilotShot = (ph, punch, normal) => {
     landed(ph, normal);
     state.hitMark = 1;
     if (ph.hunter) {
@@ -964,7 +973,7 @@ export async function create(canvas, ctx) {
         emit({ type: 'kill', kind: ph.kind });
         if (state.helped.once(`${ph.id}:${ph.hunter}`)) pay('hunterHelped'); // (one shot off someone else's tail)
         if (!reduced) state.shake = Math.max(state.shake, 0.2);
-        if (!by) feel.hitstop(HITSTOP.kill);
+        feel.hitstop(HITSTOP.kill); // (never a power's: those don't reach the pilots)
       }
     } else net?.hit(ph.id);
     return ph;
@@ -992,7 +1001,7 @@ export async function create(canvas, ctx) {
   const startCrash = (e) => {
     powers.cancel();
     const s = state.ship;
-    const solid = state.space.solids.find((o) => o.id === e.id);
+    const solid = solidsNow.find((o) => o.id === e.id) ?? state.space.solids.find((o) => o.id === e.id);
     const center = new THREE.Vector3(...(solid?.at ?? [s.x, s.y, s.z]));
     const from = new THREE.Vector3(s.x, s.y, s.z);
     const normal = from.clone().sub(center).normalize();
@@ -1011,6 +1020,7 @@ export async function create(canvas, ctx) {
       impact: false,
       back: false,
       planet: Boolean(solid?.planet),
+      kind: solid?.ship ? 'ship' : undefined, // (into a big ship: the crew's crash line)
       speed: e.speed,
     };
     state.auto = null;
@@ -1046,6 +1056,36 @@ export async function create(canvas, ctx) {
     }
     if (state.shield <= 0) startDestroyed(by);
   };
+  // The ship's way this frame swept against every other small ship
+  // (shipHits.js; the big ones are solids, in the step): a glance pushes it
+  // off with a soft bump, a ram takes the shields (not just back from a
+  // crash) and the other ship takes the hit as from a shot (scored, pilotShot)
+  const shipsHit = (from, to, dt) => {
+    const h = shipHits.sweep(from, to, dt, state.clock);
+    if (!h) return;
+    const { body, outcome } = h;
+    state.ship = { ...state.ship, x: h.touch.x, y: h.touch.y, z: h.touch.z, speed: keptSpeed(state.ship.speed, outcome.keep, SHIP.boost) };
+    const bump = { type: 'bump', id: body.kind, hard: outcome.kind !== 'glance', into: h.into };
+    if (outcome.kind === 'glance') {
+      if (!reduced) state.shake = Math.max(state.shake, 0.25);
+      emit({ ...bump, force: knockForce(bump, SHIP.crash) });
+      return;
+    }
+    pops.hit({ point: new THREE.Vector3(h.at.x, h.at.y, h.at.z), normal: popDir.set(h.normal.x, h.normal.y, h.normal.z), radius: 0.3 });
+    if (state.clock >= state.safeUntil) hurt(outcome.damage);
+    if (!state.ship || state.crash) return; // (that was the last of the shields)
+    if (!reduced) {
+      state.shake = Math.max(state.shake, 0.9);
+      state.kick = Math.max(state.kick, 0.6);
+    }
+    state.flare = Math.max(state.flare, 1.6);
+    emit({ ...bump, force: knockForce(bump, SHIP.crash) });
+    const r = body.hit(outcome.punch, from, to);
+    if (!r) return;
+    const normal = popDir.set(h.normal.x, h.normal.y, h.normal.z);
+    if (body.key.startsWith('g:')) pilotShot(r, outcome.punch, normal);
+    else scored(r, { src: body.key.startsWith('f:') ? 'war' : 'hunters', normal });
+  };
   const crashing = (dt) => {
     const c = state.crash;
     c.age += dt;
@@ -1065,7 +1105,7 @@ export async function create(canvas, ctx) {
       state.shake = reduced ? 0 : 1;
       state.flare = reduced ? 1 : 2;
       feel.hitstop(HITSTOP.crash);
-      if (!c.shot) emit({ type: 'crash', id: c.id, force: knockForce({ type: 'crash', speed: c.speed }, SHIP.crash) });
+      if (!c.shot) emit({ type: 'crash', id: c.id, kind: c.kind, force: knockForce({ type: 'crash', speed: c.speed }, SHIP.crash) });
       if (c.board) {
         c.through = true;
         props.onBoard?.(c.board);
@@ -1361,7 +1401,9 @@ export async function create(canvas, ctx) {
       input.overdrive = state.space.overdriveAt(state.ship.x, state.ship.y, state.ship.z, [f[0], 0, f[1]]);
     }
     // (under the Interdictor's hold, or a battle's gravity wells still up, the sublight drive stays shut: the boost is the boost)
-    const { ship: stepped, events } = step(state.ship, state.held || war?.interdicted ? { ...input, interdicted: true } : input, dt, state.space.solids, state.space);
+    const before = state.ship;
+    solidsNow = solidsWith(state.space.solids, pieces?.solids, interdictor?.solids);
+    const { ship: stepped, events } = step(state.ship, state.held || war?.interdicted ? { ...input, interdicted: true } : input, dt, solidsNow, state.space);
     let ship = powers.afterStep(stepped, dt); // (Han's corkscrew: its sidestep)
     // the tractor beam (Alderaan's Death Star): drawn in, and harder the nearer
     const tr = state.world.tractor;
@@ -1426,6 +1468,9 @@ export async function create(canvas, ctx) {
       else if (e.type !== 'crash') emit(e);
       else if (!state.crash) startCrash(e);
     }
+    if (state.crash) return true;
+    // into another ship (shipHits.js): a glance, or a ram; a ghost (a power's) goes through
+    if (!state.dive && !powers.mods.ghost) shipsHit(before, state.ship, dt);
     if (state.crash) return true;
 
     const boosting = input.boost && input.throttle > 0 && ship.speed > SHIP.cruise * 0.7;
@@ -2091,6 +2136,7 @@ export async function create(canvas, ctx) {
   const held = new Set(); // the flight keys down now
   const onKeyDown = (e) => {
     if (!flying() || props.frozen || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (typeof e.key !== 'string') return; // (an autofill's keydown has none)
     const el = e.target;
     const key = e.key.toLowerCase();
     if (!keyFlies(el, key)) return;
@@ -2098,7 +2144,7 @@ export async function create(canvas, ctx) {
     const onControl = el instanceof HTMLElement && el !== document.body && el.closest('button, a, [role="button"], [tabindex]:not([tabindex="-1"])');
     if (key === 'm') {
       e.preventDefault();
-      emit({ type: 'map' });
+      if (!e.repeat) emit({ type: 'map' }); // (a held M closed the map once; its repeats mustn't open it again)
       return;
     }
     if (key === 'j') {
@@ -2154,6 +2200,7 @@ export async function create(canvas, ctx) {
   // (two keys to one control, Space and Shift to the boost: letting go of
   // one mustn't let go of the other's hold)
   const onKeyUp = (e) => {
+    if (typeof e.key !== 'string') return;
     const key = e.key.toLowerCase();
     held.delete(key);
     const k = KEYS[key];
@@ -2393,7 +2440,20 @@ export async function create(canvas, ctx) {
       state.shake = 0;
       ctx.invalidate();
     };
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, flyTo, net: () => net, pin, interdiction, finds, interdictor, war, wingmen, effects: () => state.effects, skyStreaks: () => skyStreaks, happen: (id) => state.ship && happen(id, state.ship), powers, power: (slot) => power(slot), charge: () => powers.fill() };
+    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, flyTo, net: () => net, pin, interdiction, finds, interdictor, war, wingmen, effects: () => state.effects, skyStreaks: () => skyStreaks, happen: (id) => state.ship && happen(id, state.ship), powers, power: (slot) => power(slot), charge: () => powers.fill(), ram: (gap = 6, kind = null) => {
+      // one of the system's hunters (or `kind`) put `gap` dead ahead at your height, coming at you, for checking a ram from a browser
+      const s = state.ship;
+      if (!s || !hunters) return null;
+      const faction = Object.keys(FACTIONS)[0];
+      hunters.pack(faction, s, { size: 1, ace: false, ...(kind ? { kinds: [kind] } : {}) });
+      const b = hunters.bodies.at(-1);
+      if (!b) return null;
+      const [fx, fz] = forward(s.heading);
+      Object.assign(b.at, { x: s.x + fx * gap, y: s.y, z: s.z + fz * gap });
+      Object.assign(b.prev, b.at);
+      Object.assign(b.vel, { x: -fx * 8, y: 0, z: -fz * 8 });
+      return b.key;
+    } };
     window.__gltfStats = gltfStats; // { requests, parses }: the models asked for, and the files fetched and parsed for them
   }
 

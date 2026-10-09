@@ -21,12 +21,6 @@ const EXPECTED_MISSING = [
   'deathstar/inside',
   'cockpit',
   'hyperspace3d',
-  'avengers/world',
-  'avengers/hq',
-  'invincible/world',
-  'invincible/thinkmark',
-  'invincible/viewer',
-  'caribbean/tide',
 ];
 
 const looks = import.meta.glob('../**/look.js');
