@@ -66,7 +66,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 1F | session_01PvQ31jMR87beSHxh7Bgt2v | `claude/feel-kit` | | |
 | 2A | | | | |
-| 2B | session_01DVpcS5r4qygJHh2VUkxKoP | `claude/feel-starwars` | Tier 1 (the surface, the map, the trench; the inside waits on #694) | |
+| 2B | session_01DVpcS5r4qygJHh2VUkxKoP | `claude/feel-starwars` | #729 Tier 1 (the surface, the map, the trench; the inside waits on #694) | |
 | 2C | | | | |
 | 2D | | | | |
 | 2E | | | | |
