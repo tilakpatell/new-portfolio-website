@@ -10,14 +10,14 @@
 //     the aim point; `cam` the camera's place and `dir` its forward ({ x,
 //     y, z }s), `targets` the shootables (activity.js's: a holder, a
 //     figure's height), `world` the surface's (heightAt, solids), `cone`
-//     aim.js's ASSIST row.
+//     aim.js's ASSIST row (touch's snaps all the way, aim.js's snapped).
 //   lookFriction({ cam, dir, targets, cone }) → 1, or less over a target.
 //
 // What stops the aim is what stops a bolt (./solids.js's boltSolids: the
 // walls and props you walk into, and the ground), so the crosshair on a
 // trooper behind a wall aims at the wall.
 
-import { aimPoint, assist, friction } from '../../../lib/combat/aim';
+import { aimPoint, assist, friction, snapped } from '../../../lib/combat/aim';
 import { boltSolids } from './solids';
 
 const arr = (v) => [v.x, v.y, v.z];
@@ -45,7 +45,8 @@ export function aimDir({ cam, dir, from, targets, world, cone, range = 90 }) {
   const ray = rayFrom(cam, dir, from);
   const caps = live(targets);
   const solids = boltSolids(world);
-  const bent = cone ? assist(ray.dir, ray.from, caps, cone) : ray.dir;
+  // (touch's cone snaps: a tap of the fire button goes onto whoever's in it)
+  const bent = cone ? assist(ray.dir, ray.from, caps, snapped(cone)) : ray.dir;
   const { at } = aimPoint({ from: ray.from, dir: bent }, solids, caps, { max: range });
   const v = [at[0] - from.x, at[1] - from.y, at[2] - from.z];
   const l = Math.hypot(v[0], v[1], v[2]) || 1;

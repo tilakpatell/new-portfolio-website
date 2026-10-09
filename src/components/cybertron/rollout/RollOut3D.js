@@ -10,6 +10,7 @@ import { createLibrary } from '../../../lib/cc0';
 import { createModels } from '../../../lib/models';
 import { houseOn } from '../../../lib/three/house';
 import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { LOOK } from './look';
 import { buildWorld, sharedSurfaces } from './world';
 import { BOSS_LOOK, BREAKDOWN, KNOCKOUT, SENTRY, buildBoss, buildBumblebee, buildCar, buildJet, buildOptimus, buildVehicon, materials } from './models';
 import { createRollOutCast } from './meshyCast';
@@ -150,7 +151,7 @@ class Assign {
 }
 
 export async function createRollOut3D(canvas, { soft = false, bot = 'optimus', alive = () => true, onLost, onSlow, onProgress } = {}) {
-  const stage = createStage(canvas, { soft, shadows: true, bloom: { strength: 0.6, radius: 0.5, threshold: 0.9 }, fov: 62, near: 0.1, far: 900, onLost, onSlow });
+  const stage = createStage(canvas, { soft, shadows: true, bloom: LOOK.bloom, fov: 62, near: 0.1, far: 900, onLost, onSlow });
   const { renderer, scene, camera } = stage;
   const big = !soft && renderer.capabilities.maxTextureSize >= 4096 && !(window.matchMedia?.('(pointer: coarse)').matches ?? false);
   const lib = createLibrary(renderer);

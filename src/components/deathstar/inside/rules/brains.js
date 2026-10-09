@@ -23,9 +23,11 @@
 //       | { type: 'march', spots } | { type: 'droid' } | { type: 'follow', who } | { type: 'scripted' }
 //       a post or work with no spot keeps the place the person was put; no role is the cast’s own
 //       (scripted for Vader, the Emperor and the Royal Guard, droid for droids, else a post)
-//     hostile: the story’s word on whether they fight you, whatever your disguise
-//   stepCrew(crew, dt, { you, alarm, doors, combat, flags, now, open, stims?, awake? }) → events
+//     hostile: the story’s word on whether they fight you, whatever your disguise (and while the flag
+//       `prisoner` is set, nobody of the Empire’s fights you unless the story says so)
+//   stepCrew(crew, dt, { you, alarm, doors, combat, flags, now, open, stims?, awake?, talking? }) → events
 //     awake(person) → bool: who thinks and moves this step (all when absent); the rest sleep where they are
+//     talking: the id of the one you talk to, who stops and turns to you while you do
 //     you: your walker body & { id?, side, armour, helmet, doubt?, hp }; doors: doors.js’s state;
 //     flags: the story’s, whose floors drawn back (layout.offTags) the legs’ ways are worked out under;
 //     open(doorId) → bool, as the walker takes it; combat: its fresh bolts are heard as shots
@@ -254,12 +256,12 @@ export function removePerson(crew, id) {
 
 // ── a step ──
 
-export function stepCrew(crew, dt, { you = null, alarm = null, doors = null, combat = null, flags = new Set(), now, open = () => true, stims = [], awake = null } = {}) {
+export function stepCrew(crew, dt, { you = null, alarm = null, doors = null, combat = null, flags = new Set(), now, open = () => true, stims = [], awake = null, talking = null } = {}) {
   crew.clock = now ?? crew.clock + dt;
   crew.out = [];
   crew.routes = 0;
   // a way remembered with the chasm’s bridge in isn’t one once it is drawn back
-  crew.world = { you, alarm, doors, combat, flags, open, dt, ways: [...offTags(crew.layout, flags)].join(',') };
+  crew.world = { you, alarm, doors, combat, flags, open, dt, talking, ways: [...offTags(crew.layout, flags)].join(',') };
   const heard = gather(crew, stims);
   const watchers = [];
   for (const p of [...crew.people]) vitals(crew, p);
@@ -300,7 +302,8 @@ function vitals(crew, p) {
   const m = p.mind;
   if (!(p.hp > 0)) return die(crew, p);
   if (p.hp < m.lastHp && p.mode !== 'scripted') {
-    if (m.lastHp - p.hp >= COMBAT.knock) {
+    // (a boss reels from a blow, but nothing short of the story puts him down)
+    if (m.lastHp - p.hp >= COMBAT.knock && CAST[p.kind].role !== 'boss') {
       release(crew, p);
       Object.assign(p, { mode: 'down', aim: null });
       m.downUntil = crew.clock + DOWN;
@@ -357,6 +360,8 @@ function setMode(crew, p, mode) {
 function hostileToYou(crew, p, you) {
   if (p.side === 'neutral' || crew.clock < p.mind.trickedUntil) return false;
   if (p.hostile != null) return p.hostile;
+  // Vader's prisoner (the story's flag `prisoner`) is his business: the garrison lets him walk
+  if (crew.world.flags?.has('prisoner') && p.side === 'imperial') return false;
   // a Rebel in armour and helmet passes for one of the garrison until the doubt blows it
   const passes = you.side === 'imperial' || (disguised(you) && Boolean(you.helmet) && !(you.doubt >= 1));
   return (passes ? 'imperial' : you.side) !== p.side;
@@ -369,7 +374,13 @@ function perceive(crew, p, heard, watchers) {
   const targets = [];
   if (p.side !== 'neutral') {
     if (you && !(you.hp <= 0)) targets.push({ id: yid, at: chest(you), kind: you.hero ?? 'you', hostile: hostileToYou(crew, p, you) });
-    for (const q of crew.people) if (q !== p && q.mode !== 'dead' && !q.hidden && q.side !== 'neutral' && q.side !== p.side) targets.push({ id: q.id, at: chest(q), kind: q.kind, hostile: true });
+    for (const q of crew.people) {
+      if (q === p || q.mode === 'dead' || q.hidden || q.side === 'neutral' || q.side === p.side) continue;
+      // your companions and the garrison see each other as you and the garrison do: a prisoner you
+      // walk in your armour is let by, and your friends start no fight you haven't
+      const hostile = !you ? true : q.tag?.startsWith('with:') ? hostileToYou(crew, p, you) : p.tag?.startsWith('with:') ? hostileToYou(crew, q, you) : true;
+      targets.push({ id: q.id, at: chest(q), kind: q.kind, hostile });
+    }
   }
   // only an enemy’s shots and steps are worth turning round for
   const stims = m.own.splice(0);
@@ -414,7 +425,8 @@ function think(crew, p, heard, watchers) {
   m.bb.clock = crew.clock;
   m.bb.ways = crew.world.ways;
   m.legs.want.lock = false;
-  if (p.mode === 'scripted') return routine(crew, p);
+  // one the story sets on you with a blade or the Force fights you, script or none
+  if (p.mode === 'scripted') return p.hostile === true && duels(p) && crew.world.you?.hp > 0 ? duel(crew, p) : routine(crew, p);
   const threat = perceive(crew, p, heard, watchers);
   if (scattered(crew, p, heard) || forced(crew, p, heard)) return;
   if (p.mode === 'fight') return fight(crew, p, threat);
@@ -423,7 +435,9 @@ function think(crew, p, heard, watchers) {
   return calm(crew, p, threat);
 }
 
-const armed = (p) => Boolean(p.gun) && CAST[p.kind].role !== 'droid';
+// those who fight with a blade or the Force (rules/play/duel.js runs the fight; here they only walk it)
+export const duels = (p) => Boolean(CAST[p.kind]?.blade) || p.kind === 'emperor';
+const armed = (p) => (Boolean(p.gun) && CAST[p.kind].role !== 'droid') || duels(p);
 const sectionOf = (crew, p) => crew.layout.rooms.get(p.room)?.section;
 const placeAt = (crew, at) => {
   const room = crew.layout.roomAt(at.x, at.y ?? 0, at.z);
@@ -435,6 +449,13 @@ function calm(crew, p, threat) {
   const m = p.mind;
   const you = crew.world.you;
   if (threat?.visible && threat.confidence >= 1) return armed(p) ? engage(crew, p, threat) : frighten(crew, p, threat.at, 'fight');
+  // the one you talk to stops where they are and turns to you while you talk (one sat down stays sat)
+  if (you && crew.world.talking === p.id) {
+    m.legs.want.yaw = yawTo(p, you);
+    m.legs.want.lock = true;
+    if (m.pose !== 'sit') m.pose = 'talk';
+    return;
+  }
   // a watcher who doubts you enough stops what he is doing to look you over
   const watched = m.eye.beliefs[youId(you)];
   if (watched?.visible && !watched.hostile && (you.doubt ?? 0) >= CHALLENGE && p.side === 'imperial') {
@@ -520,8 +541,26 @@ function engage(crew, p, threat) {
   fight(crew, p, threat);
 }
 
+// A blade or Force fighter's part of a fight: duel.js says each step (p.mind.duel) whether to close
+// in on you or stand, and what it is doing; this walks it and turns it to you.
+function duel(crew, p) {
+  const m = p.mind;
+  const you = crew.world.you;
+  const d = m.duel ?? { move: 'in' };
+  const near = d.near ?? 1.6;
+  m.legs.want.yaw = yawTo(p, you);
+  m.legs.want.lock = true;
+  if (d.move === 'in' && flat(p, you) > near) m.bb.go({ who: youId(you) }, { run: true, near });
+  m.pose = d.anim ?? 'idle';
+}
+
 function fight(crew, p, threat) {
   const m = p.mind;
+  if (duels(p)) {
+    // (a duellist who has lost you looks for you as a soldier does)
+    if (!threat?.visible && m.eye.now - (threat?.seenAt ?? -Infinity) > FIGHT.lose) return startSearch(crew, p, threat?.at ?? m.fight?.at ?? p);
+    return duel(crew, p);
+  }
   // one who can’t see the target hears where it is from any friend in the fight who can
   const told = threat?.visible ? null : radio(crew, p, threat?.id ?? m.fight?.target);
   threat = told ?? threat;
@@ -708,5 +747,7 @@ function animOf(crew, p, speed, run, riding) {
   if (clock < m.hitUntil) return 'hit';
   if (clock < m.shotUntil) return 'shoot';
   if (speed > 0.3) return run ? 'run' : 'walk';
+  // a duellist stands as its fight has it: a stroke, a guard, the Force
+  if (m.duel?.anim) return m.duel.anim;
   return riding ? 'idle' : (m.pose ?? 'idle');
 }

@@ -25,10 +25,11 @@ function paths(talk, c, so = []) {
 const tree = (nodes, more = {}) => ({ start: 'a', nodes, ...more });
 
 describe('the conversations', () => {
-  it('are the seventeen the stations and stories need, and every one validates', () => {
+  it('are the twenty-four the stations, the stories and the crew need, and every one validates', () => {
     const ds1 = ['aa23-officer', 'conference', 'ctl-officer', 'droids-trick', 'han-intercom', 'leia-2187', 'librarian', 'technician', 'threepio-comlink', 'trooper-bark'];
     const ds2 = ['jerjerrod', 'jerjerrod-vader', 'st321', 'strike-down', 'throne', 'unmasking', 'vader-lift'];
-    expect(Object.keys(TALKS).sort()).toEqual([...ds1, ...ds2].sort());
+    const crew = ['dstrooper-bark', 'gonk-gonk', 'gunner-bark', 'mouse-squeal', 'officer-bark', 'pilot-bark', 'royalguard-silent'];
+    expect(Object.keys(TALKS).sort()).toEqual([...ds1, ...ds2, ...crew].sort());
     for (const id of ds2) expect(TALKS[id].station, id).toBe('ds2');
     for (const [id, t] of Object.entries(TALKS)) expect([id, validateTalk(t)]).toEqual([id, []]);
   });
@@ -42,6 +43,19 @@ describe('the conversations', () => {
     expect(talk).toMatchObject({ id: 'ctl-officer', who: 'gantry', say: 'TK-421, why aren’t you at your post?', end: false });
     expect(talk.choices.length).toBeGreaterThan(0);
     expect(openTalk('nobody', ctx())).toBeNull();
+  });
+});
+
+describe('the rest of the crew', () => {
+  it('talk to one who passes for their own, and the droids to anyone; the Royal Guards say nothing', () => {
+    const own = ctx({ side: 'imperial' });
+    const rebel = ctx({ side: 'rebel' });
+    for (const kind of ['officer', 'gunner', 'dstrooper', 'tiepilot']) {
+      expect(talkFor({ kind, mode: 'routine' }, own), kind).toMatch(/-bark$/);
+      expect(talkFor({ kind, mode: 'routine' }, rebel), kind).toBeNull();
+    }
+    expect(talkFor({ kind: 'gonk', mode: 'routine' }, rebel)).toBe('gonk-gonk');
+    expect(openTalk('royalguard-silent', own).say).toBe('…');
   });
 });
 

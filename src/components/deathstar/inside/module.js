@@ -36,6 +36,7 @@ import { STATIONS } from './rules/stations';
 import { WHO } from './rules/talk';
 import { routeTo, targetOf } from './rules/route';
 import { heardOf } from './scene/hear';
+import { LOOK } from './look';
 
 export const KEYS = {
   forward: ['KeyW', 'ArrowUp'],
@@ -70,11 +71,9 @@ const HUD_EVERY = 0.1; // seconds between 'hud' events at most
 const ROUTE_EVERY = 0.4; // seconds between workings-out of the way to the story's target
 const EDGE = 0.86; // of the half-screen: how far out an off-screen marker sits on its edge
 const THERE = 1.5; // metres from the target that are there: the marker goes
-// The glow round the light strips and grids. Bloom picks what is brighter
-// than the threshold before the house look tone-maps it, and under the
-// station’s lamps the walls and the glossy floor reach about 2 there: a
-// lower threshold glows the whole corridor into a grey veil.
-const BLOOM = { strength: 0.6, radius: 0.4, threshold: 2.2 };
+// The glow round the light strips and grids: the look’s (./look.js, over
+// white, and why)
+const BLOOM = LOOK.bloom;
 // presses the game takes for the one step after them: kept until a step comes, so a
 // press in a frame too short for a step still counts
 const PRESSES = ['use', 'helmet', 'roar', 'reload', 'jump'];
@@ -451,6 +450,8 @@ export default {
         return g;
       },
       ready: view.ready,
+      // the ?debug panel's groups: the feel's numbers (runtime/debug.js)
+      tune: () => view.tune?.() ?? [],
       resize(w, h) {
         size.w = w;
         size.h = h;
@@ -473,7 +474,8 @@ export default {
             look.yaw += pad.rx * PAD_TURN * dt;
             look.pitch = clamp(look.pitch - pad.ry * PAD_TURN * dt, -PITCH, PITCH);
           }
-          const { ticks, left } = ticksFor(dt, acc);
+          // (a hit's hitstop slows the steps: the scene's feel says by how much, once a frame)
+          const { ticks, left } = ticksFor(dt * (view.timeScale?.(dt) ?? 1), acc);
           acc = left;
           if (ticks) {
             const input = mapOpen ? still() : intent(snap);

@@ -14,6 +14,8 @@ import { fbm, makeNoise, mix } from '../../lib/paint';
 import { DUEL } from './duel';
 import { EMBER, FIRE, LIGHT, SMOKE, createParticles, lavaMaterial, makeBalrog, makeGandalf, skyDome, stoneTextures } from './kit';
 import { createShake } from './feel';
+import { BLOOMS } from './look';
+import { houseGroups } from '../../lib/three/houseTuning';
 
 // the drawing's x (see duel.js) to the scene's
 const X = (svg) => (svg - 320) / 20;
@@ -93,7 +95,7 @@ function createWhip(n = 28) {
 }
 
 export function createBridge3D(canvas, { soft = false, reduced = false, onLost } = {}) {
-  const stage = createStage(canvas, { soft, shadows: true, fov: 38, near: 0.5, far: 800, exposure: 1.15, bloom: { strength: 0.7, radius: 0.55, threshold: 0.9 }, onLost });
+  const stage = createStage(canvas, { soft, shadows: true, fov: 38, near: 0.5, far: 800, exposure: 1.15, bloom: BLOOMS.bridge, onLost });
   const { scene, camera, renderer } = stage;
   scene.fog = new THREE.FogExp2(0x140805, 0.011);
   scene.background = new THREE.Color(0x050302);
@@ -272,7 +274,7 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
   // ── what is going on ──
   const S = { phase: 'idle', x: DUEL.start, whip: null, grey: 'standing', broken: null };
   // one shake, the site's (./feel.js), with the bridge's own numbers: trauma² × 0.7, fading 1.8 a second
-  const shake = createShake({ calm: reduced, offset: 0.7, decay: 1.8, title: 'The bridge' });
+  const shake = createShake({ calm: reduced, offset: 0.7, decay: 1.8 });
   const A = { t: 0, moving: 0, spread: 0.22, raise: 0, lash: 0, lashPose: 0, roar: 0, flare: 0.5, fall: -1, fallen: false, gFall: -1, gDrop: -1, gapX: 0, glow: 0, slam: -1, hurt: 0, shake: 0, dome: 0, ring: -1, step: 0, sweet: 0, ember: 0, smoke: 0 };
   let cam = null;
   const v = new THREE.Vector3();
@@ -378,6 +380,7 @@ export function createBridge3D(canvas, { soft = false, reduced = false, onLost }
   // the house look (lib/three/house), as in Middle-earth's towns: the house
   // tone mapper, the shade one colour from the cold light from above; its own fog kept
   const house = houseOn({ renderer, scene, sun: key, hemi, look: { fog: false } });
+  stage.tune([...houseGroups(house), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   let houseFrames = 0;
 
   const render = (ms = 16) => {

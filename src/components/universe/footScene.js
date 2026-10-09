@@ -82,9 +82,15 @@ import { createPortalFx, meshyJoints } from '../../lib/three/portalFx';
 import { createGadgetFx } from '../../lib/three/gadgetFx';
 import { frameFrom, spring } from '../../lib/three/ik';
 import { createDust } from '../../lib/three/dust';
-import { wireImpacts } from '../../lib/three/impacts';
+import { createKnocks } from './landings/knocks';
+import { createSquash } from './squash';
+import { impactGroups } from '../../lib/impact';
+import { pressGroups } from '../../lib/press';
+import { springGroups } from '../../lib/spring';
 import { SIDES, sideFor, squadKinds } from './sides';
-import { BOLT, FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, byTrench, facingAlong, flat, footBodies, footSolids, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
+import { ASSIST, friction } from '../../lib/combat/aim';
+import { footAim } from './footAim';
+import { BOLT, FOOT, METRE, PARKED, TROOPS, aimAt, apart, at, bearing, byTrench, createJump, facingAlong, flat, footBodies, footSolids, inTrench, landingSpot, march, offset, person, rightOf, squad, turnToward, vec, walk } from './foot';
 import { TRENCH_MODEL, trenchOf } from './deep';
 import { POSITIONS } from './layout';
 import { byId } from './universes';
@@ -1435,7 +1441,7 @@ const blobMat = () => new THREE.MeshBasicMaterial({ map: blobTexture(), transpar
 // (`prepare(roots, alive)`: the map's way of readying a landing before it's
 // shown, its look put on, its pictures sent and its shaders made, a slice at
 // a time; a promise)
-export function createFoot({ map, emit, reduced = false, small = false, planetOf, renderer = null, prepare = null }) {
+export function createFoot({ map, emit, reduced = false, small = false, planetOf, renderer = null, prepare = null, cone = () => ASSIST.mouse }) {
   const root = new THREE.Group(); // at the planet's middle, in the map
   root.name = 'foot';
   root.visible = false;
@@ -1676,7 +1682,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     mateAim: 0,
     mateTarget: null, // the trooper the mate's gun is on
     knock: null, // which way the last shot that hit you was going
-    lock: null, // the trooper the shot goes at
+    lock: null, // the trooper the shot bends to, while it's in the input's cone (footAim.js)
+    aimed: null, // where a shot would go now (footAim's), this frame
+    landed: null, // when your last shot hit someone (S.clock), for the reticle
     cam: { pos: null, look: null, pitch: 0.18, first: false, kick: { x: 0, v: 0 } },
     done: null,
   };
@@ -1946,6 +1954,22 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     return shotAt(p, target).sub(new V(...from)).normalize();
   };
 
+  // where your shot goes now (footAim.js): the camera's ray through the
+  // reticle, bent within the input's cone (`snap` for a tap of the fire
+  // button), stopped by the first trooper or solid; with `slow`, the look's
+  // friction over a trooper. Null with no camera yet.
+  const aimNow = (c = cone()) => {
+    if (!S.me || !S.cam.pos || !S.cam.look) return null;
+    const me = meP();
+    const cam = arr(S.cam.pos.clone().sub(S.c));
+    const dir = arr(S.cam.look.clone().sub(S.cam.pos).normalize());
+    const from = vec.add(at(S.me, S.R), S.me.n, (me?.spec.tall ?? 1.8) * METRE * 0.62);
+    const targets = footBodies({ troops: S.troops, R: S.R });
+    const r = footAim({ cam, dir, from, targets, solids: footSolids(obstacles(), S.R), cone: c, lock: S.lock, range: BOLT.range, min: 1.5 * METRE });
+    r.slow = friction(r.ray.dir, r.ray.from, targets, c);
+    return r;
+  };
+
   // a shot by p at `target` (a trooper, or null for straight ahead): the
   // gun kicks and the bolt leaves its muzzle for the mark
   const shoot = (p, target, owner, damage, jitter = 0, mark = null) => {
@@ -2120,7 +2144,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       if (physical) {
         const mine = rocks;
         preloadPhysics().catch(() => {});
-        createLandingPhysics({ R: S.R, onHit: heard })
+        createLandingPhysics({ R: S.R, threshold: knocks.rules.values().threshold, onHit: heard })
           .then((made) => {
             if (rocks !== mine) made.dispose();
             else lp = made;
@@ -2373,6 +2397,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
   // a turn round (dx) and up or down (dy), radians: a drag's or a locked pointer's
   const turnBy = (dx, dy) => {
     if (!S.me || S.phase !== 'walk') return;
+    // (slower over a trooper with a gun in hand: aim.js's friction)
+    const k = meP()?.spec.gun ? (S.aimed?.slow ?? 1) : 1;
+    dx *= k;
+    dy *= k;
     S.me = { ...S.me, f: vec.unit(rotateAbout(S.me.f, S.me.n, -dx)) };
     S.cam.pitch = Math.min(CAM.pitch[1], Math.max(CAM.pitch[0], S.cam.pitch + dy));
   };
@@ -2593,12 +2621,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       return false;
     }
   };
-  // a hard knock on a loose thing (lib/three/impacts.js): a thud where it
-  // was round your ears, a puff of dust rising off the ground there, and a
-  // nudge of the camera's own kick for a near one. All of it in metres in
-  // the planet's space (the dust's mesh is scaled to the map), so the hit
-  // law's numbers are a barrel's.
-  const knocks = wireImpacts({
+  // a hard knock on a loose thing (landings/knocks.js, lib/three/impacts.js):
+  // a thud where it was round your ears, a puff of dust rising off the
+  // ground there, and a nudge of the camera's own kick for a near one. All
+  // of it in metres in the planet's space (the dust's mesh is scaled to the
+  // map), so the hit law's numbers are a barrel's.
+  const knocks = createKnocks({
     dust: (() => {
       const d = createDust({ count: small ? 96 : 192 });
       d.mesh.scale.setScalar(METRE);
@@ -2608,18 +2636,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     listener: () => (S.me ? { position: at(S.me, S.R).map((a) => a / METRE), forward: S.me.f, up: S.me.n } : null),
     toWorld: (p) => p.map((a) => a / METRE),
     up: (p) => vec.unit(p),
-    shake: (k) => {
-      // (a hit by you, not one over the field; none with reduced motion)
-      const d = knocked && S.me ? vec.len(vec.add(knocked, at(S.me, S.R), -1)) / METRE : Infinity;
-      if (!reduced && d < 12) S.cam.kick.v += k * 6 * (1 - d / 12);
-    },
+    me: () => (S.me ? at(S.me, S.R) : null),
+    metre: METRE,
+    kick: (v) => (S.cam.kick.v += v),
+    reduced,
   });
-  let knocked = null; // (where the hit being told was, map units)
-  const heard = (force, p, entry) => {
-    if (!S.me) return;
-    knocked = p;
-    knocks.onHit(force, p, entry);
-  };
+  const heard = knocks.heard;
   // the landing's bodies, a frame: any new ones in, the people where the
   // walk has them, a step, and what moved stood where it went
   const physicsFrame = (dt) => {
@@ -2799,15 +2821,24 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     }
   };
 
+  const jumpKey = createJump();
+  // a landing's squash (squash.js): yours, by how fast you came down; none with reduced motion
+  const squash = createSquash();
   const walkFrame = (dt, input) => {
     const me = meP();
     stepBody(input);
-    // you: walking, turning, running, jumping
-    S.me = walk(S.me, { move: input.move, strafe: input.strafe, turn: input.turn, run: input.run, jump: input.jump }, dt, S.R, obstacles());
+    // you: walking, turning, running, jumping (the jump a press, lib/press.js's createPress through
+    // foot.js's createJump: once a key-down, and a hair early still lands)
+    jumpKey.hold(input.jump);
+    const fell = (S.me.h ?? 0) > 0 ? -(S.me.vh ?? 0) : 0;
+    S.me = walk(S.me, { move: input.move, strafe: input.strafe, turn: input.turn, run: input.run, jump: jumpKey.press }, dt, S.R, obstacles());
+    if (fell > 0 && !(S.me.h > 0) && !reduced) squash.land(fell / METRE);
     // the lock: the nearest trooper round the way you face (kept while it's still there)
     const alive = troopsAlive();
     if (S.lock && !alive.find((o) => o.id === S.lock)) S.lock = null;
     if (!S.lock) S.lock = aimAt(S.me, alive, S.R, { cone: 0.5 })?.id ?? null;
+    // where a shot would go now: the gun in your hands points there, the reticle rings the lock if it's in the cone
+    S.aimed = aimNow();
     // whoever's with you: follows a step behind, and shoots at what's close
     if (S.mate) {
       const mate = mateP();
@@ -3001,6 +3032,7 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         if (t?.alive) {
           t.hp -= e.bolt.damage;
           t.hitAt = S.clock;
+          if (e.bolt.owner === 'me') S.landed = S.clock; // (the reticle's flash)
           t.knock = [...e.bolt.dir]; // which way the shot pushed them
           // (how hard, for the fall it's in: drawTroops)
           const got = troopFigs.get(t.id);
@@ -3041,6 +3073,12 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       p.w = w;
       p.group.visible = show && !(i === S.lead && S.cam.first);
       stand(p.group, w);
+      if (i === S.lead) {
+        // (about the feet: the figure's own origin; its scale as built, times the squash)
+        const [sx, sy, sz] = squash.step(dt);
+        p.built ??= p.group.scale.clone();
+        p.group.scale.set(p.built.x * sx, p.built.y * sy, p.built.z * sz);
+      }
       shadow(`party${i}`, w, p.spec.tall * 0.55).visible = show;
       const n = new V(...w.n);
       const frame = { forward: dirToWorld(new V(...w.f)), up: dirToWorld(n.clone()) };
@@ -3069,7 +3107,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
         const mine = i === S.lead;
         const target = mine ? S.troops.find((o) => o.id === S.lock && o.alive) : S.mateTarget;
         const aim = mine ? S.aim : S.mateAim;
-        p.gp.set(dt, { aim: down ? 0 : aim, look: target && !down ? Math.max(aim, 0.8) : aim, dir: target ? dirToWorld(shotDir(p, target)) : null, forward: frame.forward, up: frame.up, move });
+        // (yours at the aim point while it's up, where the bolt will go; the lock's only if it's in the cone)
+        const mark = mine && S.aimed && aim > 0.05 ? S.aimed.at : null;
+        const dir = mark ? dirToWorld(new V(...mark).sub(new V(...vec.add(at(p.w, S.R), p.w.n, p.spec.tall * METRE * 0.62))).normalize()) : target && (!mine || S.aimed?.locked) ? dirToWorld(shotDir(p, target)) : null;
+        p.gp.set(dt, { aim: down ? 0 : aim, look: target && !down ? Math.max(aim, 0.8) : aim, dir, forward: frame.forward, up: frame.up, move });
       }
     });
   };
@@ -3199,10 +3240,9 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
     vmF.copy(S.cam.look).sub(S.cam.pos).normalize();
     vmU.copy(S.cam.up).addScaledVector(vmF, -S.cam.up.dot(vmF)).normalize();
     vmR.crossVectors(vmF, vmU).normalize();
-    // what it's pointed at: the lock's chest while there's shooting, else a little low ahead
-    const lock = S.troops.find((o) => o.id === S.lock && o.alive);
+    // what it's pointed at: where the bolt will go while there's shooting (footAim's), else a little low ahead
     const up = Math.min(1, S.aim * 1.4);
-    const mark = lock && up > 0.05 ? new V(...vec.add(at(lock, S.R), lock.n, TROOPS[lock.kind].tall * 0.55)) : pos.clone().addScaledVector(vmF, 20 * METRE).addScaledVector(vmU, -(1 - up) * 6 * METRE).addScaledVector(vmR, -(1 - up) * 2.5 * METRE);
+    const mark = S.aimed && up > 0.05 ? new V(...S.aimed.at) : pos.clone().addScaledVector(vmF, 20 * METRE).addScaledVector(vmU, -(1 - up) * 6 * METRE).addScaledVector(vmR, -(1 - up) * 2.5 * METRE);
     // held: lower and further right at ease, up toward the middle of the view to shoot
     const k = S.cam.kick.x;
     v.bob += dt * (2 + Math.min(1, Math.abs(S.me.speed) / FOOT.run) * 9);
@@ -3379,24 +3419,19 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       haze.mat.uniforms.uDay.value = (haze.set ? k : 0.12 + 0.88 * k) * (1 - smooth(20 * METRE, 300 * METRE, high)) * S.sky;
       haze.set?.({ sun: light });
     },
-    // F: a shot at the lock, or straight ahead; the gun it was (gunplay.js's kind), or false
-    fire() {
+    // F: a shot where the reticle is, bent toward a trooper (the lock first)
+    // within the input's cone and no further (footAim.js); `cone` for this
+    // one shot (a touch tap's, which snaps). The gun it was (gunplay.js's
+    // kind), or false
+    fire({ cone: c = cone() } = {}) {
       if (S.phase !== 'walk' || S.cool > 0) return false;
       const me = meP();
       if (!me?.spec.gun) return false;
       S.cool = me.spec.gun === 'bowcaster' ? 0.55 : 0.28;
-      let target = S.troops.find((o) => o.id === S.lock && o.alive) ?? null;
-      let mark = null;
-      if (S.cam.first && S.cam.pos) {
-        // out of your own eyes, the shot goes where you're looking, unless the lock's near it
-        const look = S.cam.look.clone().sub(S.cam.pos).normalize();
-        const to = target && new V(...vec.add(at(target, S.R), target.n, TROOPS[target.kind].tall * 0.55)).add(S.c).sub(S.cam.pos).normalize();
-        if (!to || to.angleTo(look) > 0.12) {
-          target = null;
-          mark = S.cam.pos.clone().sub(S.c).addScaledVector(look, 40 * METRE);
-        }
-      }
-      shoot(me, target, 'me', damageOf(me), 0, mark);
+      const aimed = aimNow(c);
+      const target = aimed?.target ? S.troops.find((o) => o.id === aimed.target.id && o.alive) ?? null : null;
+      if (aimed) S.aimed = aimed;
+      shoot(me, target, 'me', damageOf(me), 0, aimed ? new V(...aimed.at) : null);
       S.acted = true;
       S.aim = 1;
       if (!reduced) S.cam.kick.v += GUNS[gunOf(me)]?.kick.up ?? 1.5;
@@ -3466,6 +3501,8 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       S.cam.first = !S.cam.first;
       return S.cam.first;
     },
+    // the ?debug panel's groups (lib/debugPanel): the knocks' law, the jump's press and the landing's squash
+    tune: () => [...impactGroups(knocks.rules), ...pressGroups(jumpKey.press), ...springGroups(squash.spring, 'landing squash')],
     // a door you're at (a landing's: G there goes into the planet's page): { id, label } or null
     door() {
       const s = S.phase === 'walk' ? nearSpot() : null;
@@ -3482,6 +3519,10 @@ export function createFoot({ map, emit, reduced = false, small = false, planetOf
       return {
         aim: chest(S.me, (me?.spec.tall ?? 1.8) * METRE).addScaledVector(new V(...S.me.f), 14 * METRE),
         lock: lock && { id: lock.id, kind: lock.kind, at: chest(lock, TROOPS[lock.kind].tall / 1), size: TROOPS[lock.kind].tall, dist: apart(S.me, lock, S.R) / METRE },
+        // the reticle (runtime/hud's): a gun in hand, the lock in the cone (where the shot would go), how long ago your last shot landed (ms)
+        gun: Boolean(me?.spec.gun),
+        locked: Boolean(S.aimed?.locked),
+        landed: S.landed != null ? (S.clock - S.landed) * 1000 : null,
         ship: { at: new V(...S.spot.n).multiplyScalar(S.R + S.rest).add(S.c), dist: apart(S.me, S.spot, S.R) / METRE, near: apart(S.me, S.spot, S.R) <= FOOT.board + 0.26 * (PARKED[S.kind] ?? 1) * 0.6 },
         health: S.health / FOOT.health,
         hurt: Math.max(0, 1 - (S.clock - S.hitAt) / 0.4),

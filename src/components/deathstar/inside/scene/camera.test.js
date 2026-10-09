@@ -132,4 +132,17 @@ describe('the camera’s walls, from the layout', () => {
     expect(hits({ x: 0, y: 2, z: 0 }, { x: 0, y: 4, z: 0 })).toBeCloseTo(1);
     expect(hits({ x: 0, y: 1, z: 0 }, { x: 0, y: -1, z: 0 })).toBeCloseTo(1);
   });
+
+  // a ship on the deck, a console, a pillar: what stands in the room stops the eye as a wall does
+  it('stops at what stands in the room it starts in, a box at its height and a pillar, and passes over a low one', () => {
+    const solids = (id) => (id === 'hall' ? [{ box: { x0: 2, x1: 3, z0: -1, z1: 1, y0: 0, y1: 2 } }, { circle: { x: 0, z: 3, r: 0.5 } }] : []);
+    const hits = wallHits(LAYOUT, () => false, solids);
+    expect(hits({ x: 0, y: 1.5, z: 0 }, { x: 4, y: 1.5, z: 0 })).toBeCloseTo(2);
+    expect(hits({ x: 0, y: 1.5, z: 0 }, { x: 0, y: 1.5, z: 4 })).toBeCloseTo(2.5);
+    // (over the top of the box: a crate is looked over)
+    expect(hits({ x: 0, y: 2.5, z: 0 }, { x: 4, y: 2.5, z: 0 })).toBe(Infinity);
+    // (and the camera behind you, a crate at your back, is pulled in short of it)
+    const pose = cameraPose(body({ yaw: -Math.PI / 2 }), { view: 'third' }, hits);
+    expect(pose.pos.x).toBeLessThan(2 - 0.15);
+  });
 });

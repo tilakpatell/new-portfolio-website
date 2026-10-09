@@ -9,7 +9,7 @@
 // nothing beyond. (docs/superpowers/specs/2026-10-08-kit-worlds-design.md, 2)
 //
 //   loadKit(pack, { load, base, house, wind, manifest, puffs = true,
-//     puffWind }) → {
+//     puffWind, tint }) → {
 //     pack, manifest: Promise (<base>/<pack>/index.json, fetched unless
 //       the option hands it over),
 //     info(name) → the model's manifest row (null for one it hasn't; throws
@@ -36,9 +36,17 @@
 //     would never bend and its top bend a fiftieth of what it should. A
 //     rig's are as its file has them, a skinned mesh placed by its bones,
 //     for its own mixer, never a pool)
-//   kitMaterial(def, { house, wind }) → a new material for a manifest entry
+//   kitMaterial(def, { house, wind, tint }) → a new material for a manifest entry
+//     tint: a colour ('#rrggbb' or a number) for a material by its manifest
+//     name, a world's palette by data (Mustafar's rock black, a jungle's
+//     mossed): it stands in for the file's colour, so the map is multiplied
+//     by it once, and a leaf's alpha is its map's as before. Or
+//     { recolour: colour }: the map's light and shade in that colour in
+//     place of its own hue (lib/three/recolour: Lothal's grass straw, a
+//     jungle's twisted trees green where the kit painted them red)
 //   createPool(kit, name, { bands, cap, shadows, puff, lod1, wait }) → {
 //     set(key, items), free(key), shift(dx, dz), update(camera, dt),
+//     setBands([near, mid]), bands ([near, mid] now),
 //     stats: { total, levels: [full, lod1, puff], sorts }, group, ready, dispose() }
 //     items: [{ x, y, z, yaw, scale = 1 }]
 //
@@ -69,6 +77,7 @@ import { faceless, wind as windOn } from './foliage';
 import { loadGltf } from './gltf';
 import { lodBand } from './lod';
 import { puffFor } from './puffs';
+import { REF, measureMap, recolour } from './recolour';
 import { coverageTexture, fitTexture } from './textures';
 
 const CUT = 0.3; // a leaf map's alpha cut
@@ -82,10 +91,12 @@ const MOVE = 20; // or metres of camera travel
 // the house's (or a plain Lambert), a leaf's cut out and two-sided and lit
 // by its crown's normals, and in the wind if `def.wind` says how ('tree',
 // 'shrub'), on `wind.time` (and `wind.dir`). Its maps come from a file
-// (loadKit).
-export function kitMaterial(def = {}, { house = null, wind = null } = {}) {
+// (loadKit). `tint`, when given, is its colour.
+export function kitMaterial(def = {}, { house = null, wind = null, tint = null } = {}) {
   const opts = def.leaf ? { alphaTest: CUT, side: THREE.DoubleSide } : {};
   const m = house ? house.material(opts) : new THREE.MeshLambertMaterial(opts);
+  if (tint?.recolour != null) recolour(m, tint.recolour);
+  else if (tint != null) m.color.set(tint);
   if (def.leaf) faceless(m);
   if (def.wind) windOn(m, { kind: def.wind, weight: WEIGHT, time: wind?.time, ...(wind?.dir ? { dir: wind.dir } : {}) });
   return m;
@@ -132,7 +143,7 @@ function fetchManifest(url) {
   return fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`kit: couldn't load ${url} (${r.status})`))));
 }
 
-export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wind = null, manifest = null, puffs = true, puffWind = null } = {}) {
+export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wind = null, manifest = null, puffs = true, puffWind = null, tint = null } = {}) {
   const root = `${base}/${pack}`;
   let index = null; // the manifest, once in
   let gone = false;
@@ -159,7 +170,7 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
     if (!m) {
       const def = index.materials?.[name];
       if (!def) throw new Error(`kit ${pack}: no material ${name} in its manifest`);
-      m = kitMaterial(def, { house, wind });
+      m = kitMaterial(def, { house, wind, tint: tint?.[name] ?? null });
       m.name = name;
       mats.set(name, m);
     }
@@ -196,6 +207,12 @@ export function loadKit(pack, { load = loadGltf, base = '/kit', house = null, wi
       if (!dressed.has(name)) {
         dressed.add(name);
         dress(m, def, o.material);
+        // (after the file's colour, in its place: multiplied twice, a
+        // tint would come out darker than the world asked; a recolour
+        // reads the map's light over its mean, measured now it's in)
+        const t = tint?.[name];
+        if (t?.recolour != null) m.userData.recolour.uRecolourRef.value = measureMap(m.map) ?? REF;
+        else if (t != null) m.color.set(t);
         if (def.leaf && m.map) cover(m);
       }
     });
@@ -315,32 +332,39 @@ function place(out, o, it, b, c = it.c, s = it.s) {
   }
 }
 
-const itemOf = ({ x = 0, y = 0, z = 0, yaw = 0, scale = 1 }) => ({ x, y, z, c: Math.cos(yaw) * scale, s: Math.sin(yaw) * scale, k: scale, band: -1 });
+const itemOf = ({ x = 0, y = 0, z = 0, yaw = 0, scale = 1 }) => ({ x, y, z, c: Math.cos(yaw) * scale, s: Math.sin(yaw) * scale, k: scale, band: -1, slot: -1 });
 
 // A pool of one model: an InstancedMesh a part a level (0 the full parts,
 // 1 the LOD1's, 2 the `puff` ({ geometry, material }, in the model's own
 // frame, its cards facing +Z; the kit's own, kit.puff(name), unless one is
 // handed over) or, where there is none, the LOD1's again), all in `group`.
 // A puff's instances are turned about up to face the camera the last sort
-// was from, each sort (and each free and shift, which write them again);
-// every other level's keep their item's turn. `bands`
+// was from, each sort (and each shift, which writes them again; a free
+// moves one already turned); every other level's keep their item's turn. `bands`
 // [near, mid] in metres, across the ground: full within near, LOD1 to mid,
 // the puff to twice mid, nothing beyond (lib/budgets' row for the device's
 // level unless given, as is `lod1`: false keeps the full parts where the
 // LOD1's would be, as ultra does, and so does a model whose LOD1 won't
-// load, said once). Items are re-sorted into levels every half second (from
+// load, said once). `setBands` gives it new ones (a world stepping its
+// quality down), its items sorted into them at the next update; `bands`
+// reads them. Items are re-sorted into levels every half second (from
 // a point in it picked at random, `wait` to pick it: pools made together
 // don't all sort on one frame) or 20 m of the camera's travel, or at the
-// next update after a set or a free. A free (or a set to nothing) takes its
-// items out of every level at once; a shift moves every instance there and
-// then, and the camera position the last sort was from with them, so it
-// re-bands nothing (`stats.sorts` counts the sorts). `cap` instances a
-// level to start, grown by half again whenever the items outnumber it
-// (geometry and materials shared; never shrunk). Only the full level casts
-// shadows, and only with `shadows`. The parts load in the background
-// (`ready`); items set before then are drawn once they're in, and a model
-// that won't load draws nothing, said once (`ready` rejects). Wants the
-// kit's manifest in, and refuses a rigged model: a pool draws still props.
+// next update after a set. A free (or a set to nothing) takes its items out
+// of every level at once, and cheaply: each level's last instance moved into
+// a freed slot, nothing else written and nothing sorted (a set over a key
+// takes its old items out the same way, its new ones drawn from the next
+// update, so no stale instance of a key outlives a free). A shift moves
+// every instance there and then, and the camera position the last sort was
+// from with them, so it re-bands nothing (`stats.sorts` counts the sorts).
+// `cap` instances a level to start, grown by half again whenever the items
+// outnumber it (geometry and materials shared; never shrunk). Only the full
+// level casts shadows, and only with `shadows`; every level takes them,
+// `shadows` or not (ground cover casting none still lies in a tree's
+// shade). The parts load in the background (`ready`); items set before
+// then are drawn once they're in, and a model that won't load draws
+// nothing, said once (`ready` rejects). Wants the kit's manifest in, and
+// refuses a rigged model: a pool draws still props.
 export function createPool(kit, name, { bands = null, cap = 256, shadows = true, puff = null, lod1 = null, wait: start = Math.random() * EVERY } = {}) {
   const row = kit.info(name);
   if (!row) throw new Error(`createPool: kit ${kit.pack} has no model ${name}`);
@@ -356,6 +380,7 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
   const keys = new Map(); // key → its items
   const stats = { total: 0, levels: [0, 0, 0], sorts: 0 };
   const parts = [null, null, null]; // each level's, once in
+  const slots = [[], [], []]; // each level's items in the order they're drawn (an item's `slot` its place there)
   let meshes = [[], [], []];
   let capacity = Math.max(1, Math.ceil(cap));
   const last = { x: Infinity, z: Infinity }; // where the camera was at the last sort
@@ -369,24 +394,44 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
     mesh.count = 0;
     mesh.visible = false;
     mesh.castShadow = shadows && lvl === 0;
-    mesh.receiveShadow = shadows;
+    mesh.receiveShadow = true;
     mesh.name = `${name}:${lvl}:${i}`;
     mesh.userData.level = lvl;
     group.add(mesh);
     return mesh;
   }
 
+  // Each level's count from its slots; a level with nothing in it is hidden,
+  // not drawn empty. The levels in `sent` (a bit a level) were written: sent
+  // to the graphics chip again, their bounds found again when next drawn
+  // (three works them out over the instances drawn), so culling holds. (A
+  // level only made shorter keeps both: what's left is inside its bounds.)
+  function counted(sent = 0b111) {
+    for (let l = 0; l < 3; l++) {
+      const n = slots[l].length;
+      stats.levels[l] = n;
+      for (const m of meshes[l]) {
+        m.count = n;
+        m.visible = n > 0;
+        if (!(sent & (1 << l))) continue;
+        if (n) m.instanceMatrix.needsUpdate = true;
+        m.boundingSphere = null;
+      }
+    }
+  }
+
   // Every item at its band written into its level's meshes, packed from the
-  // front; each level's count. The meshes' bounds are found again when next
-  // drawn (three works them out over the instances drawn), so culling holds;
-  // a level with nothing in it is hidden, not drawn empty.
+  // front, its slot noted.
   function write() {
-    const n = [0, 0, 0];
+    for (const list of slots) list.length = 0;
     for (const list of keys.values()) {
       for (const it of list) {
         const l = it.band;
+        it.slot = -1;
         if (l < 0 || l > 2) continue;
-        const at = n[l]++ * 16;
+        it.slot = slots[l].length;
+        slots[l].push(it);
+        const at = it.slot * 16;
         const ps = parts[l];
         if (!ps) continue;
         // (a puff turned to the camera across the ground: its +Z, (s, 0, c), toward it)
@@ -403,15 +448,29 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
         for (let i = 0; i < ps.length; i++) place(meshes[l][i].instanceMatrix.array, at, it, ps[i].local.elements, c, s);
       }
     }
-    for (let l = 0; l < 3; l++) {
-      stats.levels[l] = n[l];
-      for (const m of meshes[l]) {
-        m.count = n[l];
-        m.visible = n[l] > 0;
-        if (n[l]) m.instanceMatrix.needsUpdate = true;
-        m.boundingSphere = null;
-      }
+    counted();
+  }
+
+  // Items taken out of their slots at once, every level: the level's last
+  // instance moved into each one's place (its matrix as written, a puff's
+  // turn to the camera included), the count one less. Nothing else is
+  // written and nothing sorted, so a free costs its own items, not the pool.
+  function unslot(list) {
+    let sent = 0;
+    for (const it of list) {
+      const l = it.band;
+      const at = slots[l]?.[it.slot] === it ? it.slot : -1;
+      it.slot = -1;
+      if (at < 0) continue;
+      const end = slots[l].length - 1;
+      const moved = slots[l].pop();
+      if (at === end) continue;
+      slots[l][at] = moved;
+      moved.slot = at;
+      for (const m of meshes[l]) m.instanceMatrix.array.copyWithin(at * 16, end * 16, end * 16 + 16);
+      sent |= 1 << l;
     }
+    counted(sent);
   }
 
   function sort(cx, cz) {
@@ -448,8 +507,12 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
     set(key, items = []) {
       const list = Array.from(items, itemOf);
       if (!list.length) return pool.free(key);
-      stats.total += list.length - (keys.get(key)?.length ?? 0);
+      const was = keys.get(key);
+      stats.total += list.length - (was?.length ?? 0);
       keys.set(key, list);
+      // (what the key drew till now out at once, as a free takes it: a free
+      // before the next sort would find only the new items, never drawn)
+      if (was) unslot(was);
       grow();
       dirty = true;
     },
@@ -458,8 +521,7 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
       if (!list) return;
       keys.delete(key);
       stats.total -= list.length;
-      write();
-      dirty = true;
+      unslot(list);
     },
     shift(dx, dz) {
       for (const list of keys.values())
@@ -470,6 +532,15 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
       last.x += dx;
       last.z += dz;
       write();
+    },
+    get bands() {
+      return [edges[0], edges[1]];
+    },
+    setBands([n, m]) {
+      edges[0] = n;
+      edges[1] = m;
+      edges[2] = 2 * m;
+      dirty = true;
     },
     update(camera, dt = 0) {
       if (gone) return;
@@ -490,6 +561,7 @@ export function createPool(kit, name, { bands = null, cap = 256, shadows = true,
         }
       meshes = [[], [], []];
       keys.clear();
+      for (const list of slots) list.length = 0;
       stats.total = 0;
       stats.levels.fill(0);
     },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SHOT, fire, inCone, newDuel, strike } from './duel';
+import { SHOT, aimFor, inCone, land, newDuel, strike } from './duel';
 
 describe('a duel', () => {
   it('lands a shot only on someone in front, within range', () => {
@@ -10,16 +10,20 @@ describe('a duel', () => {
     expect(inCone(me, 0, { x: SHOT.range + 1, z: 0 })).toBe(false);
     expect(inCone(me, 0, { x: -5, z: 0 })).toBe(false);
   });
-  it('takes a point off whoever is hit, and ends at nought', () => {
+  it('aims a shot at someone in the cone, and along his facing otherwise', () => {
+    const me = { x: 0, z: 0 };
+    expect(aimFor(me, 0, { x: 3, z: 1 })).toEqual({ x: 3, z: 1 });
+    expect(aimFor(me, 0, { x: 3, z: 6 })).toBe(null);
+    expect(aimFor(me, 0, { x: SHOT.range + 1, z: 0 })).toBe(null);
+  });
+  it('takes a point off only when a bolt lands, and ends at nought', () => {
     let d = newDuel({ hp: 2, mortyHp: 2 });
-    d = fire(d, { x: 0, z: 0 }, 0, { x: 3, z: 0 });
+    d = land(d);
     expect(d).toMatchObject({ hp: 1, hit: true, down: false, over: false });
-    d = fire(d, { x: 0, z: 0 }, 0, { x: 3, z: 6 });
-    expect(d).toMatchObject({ hp: 1, hit: false });
-    d = fire(d, { x: 0, z: 0 }, 0, { x: 3, z: 0 });
+    d = land(d);
     expect(d).toMatchObject({ hp: 0, down: true, over: true });
     // (nothing lands on a duel that's over)
-    expect(fire(d, { x: 0, z: 0 }, 0, { x: 3, z: 0 }).hit).toBe(false);
+    expect(land(d)).toMatchObject({ hp: 0, hit: false, down: false });
   });
   it('beats Morty after as many strikes as he has points', () => {
     let d = newDuel({ hp: 6, mortyHp: 2 });

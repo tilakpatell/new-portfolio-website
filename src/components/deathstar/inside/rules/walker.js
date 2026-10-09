@@ -40,6 +40,10 @@ export const BODY = Object.freeze({
   step: 0.4,
   // a fall further than this is one nobody walks away from
   drop: 6,
+  // a press that lands: seconds off a ledge a jump still goes (coyote
+  // time), and seconds a jump pressed in the air is kept for the landing
+  coyote: 0.1,
+  buffer: 0.12,
 });
 
 const EPS = 1e-6;
@@ -79,7 +83,7 @@ function indexOf(layout) {
     }
   };
   for (const w of layout.walls) {
-    put({ kind: 'seg', ax: w.x0, az: w.z0, bx: w.x1, bz: w.z1, y0: w.y0, y1: w.y1, door: w.door, mark: 0 }, Math.min(w.x0, w.x1), Math.min(w.z0, w.z1), Math.max(w.x0, w.x1), Math.max(w.z0, w.z1));
+    put({ kind: 'seg', ax: w.x0, az: w.z0, bx: w.x1, bz: w.z1, y0: w.y0, y1: w.y1, door: w.door, over: w.over, mark: 0 }, Math.min(w.x0, w.x1), Math.min(w.z0, w.z1), Math.max(w.x0, w.x1), Math.max(w.z0, w.z1));
   }
   const ceilings = [];
   for (const room of layout.rooms.values()) {
@@ -152,8 +156,14 @@ function push(item, x, z, r) {
 const shutTo = (item, open) => item.door === undefined || !open(item.door);
 
 // Whether an item stands in a body’s way: above what it can step over and
-// below its head. A wall in an open doorway is no wall.
-const inWay = (item, feet, h, open) => item.y1 > feet + BODY.step + EPS && item.y0 < feet + h - EPS && shutTo(item, open);
+// below its head. A wall in an open doorway is no wall, and one taller
+// than a man stoops to a man’s height under the wall over it (Chewbacca
+// and Vader through the control room’s 2 m door); lower than that, a
+// doorway is to be crouched through.
+const inWay = (item, feet, h, open) => {
+  const head = item.over !== undefined && open(item.over) ? Math.min(h, BODY.h) : h;
+  return item.y1 > feet + BODY.step + EPS && item.y0 < feet + head - EPS && shutTo(item, open);
+};
 
 function gather(body, index, solids) {
   const reach = body.r + PAD;
@@ -200,6 +210,8 @@ function overhead(body, index, open, solids) {
   for (const c of index.ceilings) if (y >= c.lo - UNDER && y <= c.hi && c.hi < top && holds(c.room, x, z)) top = c.hi;
   for (const item of gather(body, index, solids)) {
     if (item.y0 <= y + BODY.step + EPS || item.y0 >= top || !shutTo(item, open)) continue;
+    // (one taller than a man, on his feet, stoops under the wall over an open doorway a man's height up)
+    if (item.over !== undefined && open(item.over) && body.ground && body.h > BODY.h + EPS && item.y0 >= y + BODY.h - EPS) continue;
     if (push(item, x, z, body.r)) top = item.y0;
   }
   return top;
@@ -304,13 +316,19 @@ export function stepBody(body, input, dt, { layout, open, solids = [] }) {
   const events = [];
   const world = { layout, index: indexOf(layout), open, solids: solids.map(solidOf) };
   crouchOrStand(body, input.crouch, world.index, open, world.solids);
-  if (input.jump && body.ground && !body.crouch) {
+  // (both clocks on the body, as plain numbers: the rules' state stays data)
+  body.wantJump = input.jump ? BODY.buffer : Math.max(0, (body.wantJump ?? 0) - dt);
+  const footing = body.ground || (body.offGround ?? Infinity) <= BODY.coyote;
+  if (body.wantJump > 0 && footing && !body.crouch) {
     body.vy = BODY.jump;
     body.ground = false;
+    body.wantJump = 0;
+    body.offGround = Infinity; // (no second jump from the same footing)
   }
   walkAcross(body, input, dt, world, events);
   if (!body.ground) airborne(body, dt, world, events);
   if (body.ground) Object.assign(body.safe, { x: body.x, y: body.y, z: body.z, room: body.room });
+  body.offGround = body.ground ? 0 : (body.offGround ?? 0) + dt;
   return events;
 }
 

@@ -3,5 +3,6 @@
 
 export * as act from './act';
 export * as battle from './battle';
+export * as duel from './duel';
 export * as plot from './plot';
 export { garrison } from './garrison';
