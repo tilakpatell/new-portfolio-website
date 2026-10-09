@@ -77,6 +77,9 @@ import { lineHold } from './living';
 import LoadingVeil from '../../worlds/LoadingVeil';
 import { throttled } from '../../worlds/loadingSteps';
 import { createLook } from '../../../runtime/look';
+import { FRICTION, coneFor } from '../../../lib/combat/aim';
+import { createLockOn } from '../../../lib/combat/lockOn';
+import { stepRmLockOn } from './rmLockOn';
 
 // Dimension C-137, the world: walk about the Smiths' street as Morty, go into
 // the house, Rick's garage and Harry Herpson High, fly Rick's space cruiser
@@ -415,6 +418,8 @@ const ROOM = { bound: boundOf(AREAS), motion: true };
 function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast, say, planet, onLeave }) {
   const [prep, setPrep] = useState({ value: 0, step: 'load' }); // (how far it's got sending itself to the graphics chip)
   const touch = useMediaQuery('(hover: none) and (pointer: coarse)');
+  const touchRef = useRef(touch);
+  touchRef.current = touch;
   const trav = useTravellers('c137', gl === 'on', ROOM);
   const [box, inView] = useInView({ rootMargin: '0px', threshold: 0.35 });
   const canvas = useRef(null);
@@ -589,6 +594,22 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   // E for a memory of whoever's in it, F or a click to shoot them, till it
   // ends (a card) or he stops (Esc, or the button).
   const rkRules = useRef(null);
+  // Morty's shots as bolts (./rmShots.js), loaded with Total Rickall's rules or a duel's start: { mod, shots, area }
+  const shots = useRef(null);
+  // the lock-on (./rmLockOn.js): the Lock button and Tab; shown on the button
+  const lockOn = useRef(null);
+  const [locked, setLocked] = useState(false);
+  const toggleLock = useCallback(() => {
+    lockOn.current?.toggle();
+    audioContext();
+  }, []);
+  const loadShots = useCallback(async () => {
+    if (!shots.current) {
+      const mod = await import('./rmShots');
+      shots.current ??= { mod, shots: mod.createShots(), area: null };
+    }
+    return shots.current;
+  }, []);
   const [game, setGame] = useState(null); // what the HUD shows of it: { phase, left, secs, aim, told, end }
   const gameKey = useRef('');
   const recall = useRef(null); // the memory card, moved over whoever it's about each frame
@@ -614,6 +635,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       sound('splat');
       try {
         rkRules.current ??= await import('./interiors/rickall');
+        await loadShots();
         const { newRickall } = rkRules.current;
         let absent = ['morty'];
         let g = null;
@@ -647,7 +669,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         return false;
       }
     },
-    [api, say, stopRickall],
+    [api, say, stopRickall, loadShots],
   );
   // how it ended: a card, and if it's won, the thing to do done
   const endRickall = useCallback(
@@ -662,23 +684,37 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     },
     [complete, unlock],
   );
-  // F, or a click: a shot at whoever's in the sights (a zap at nobody, if nobody is)
+  // F, or a click: a bolt at whoever's in the sights, or down the line to
+  // whatever it meets (./rmShots.js); what it does is landRickall's, when it gets there
   const shootRickall = useCallback(() => {
-    const run = sim.current.rickall;
-    if (run?.phase !== 'on') return;
+    const s = sim.current;
+    const run = s.rickall;
+    if (run?.phase !== 'on' || !shots.current) return;
     audioContext();
     sound('zap');
     // (Morty's arm comes up with the shot, his feet left as they are)
-    sim.current.acted = true;
+    s.acted = true;
     api.current?.play('shoot', { layer: 'upper' });
-    const p = run.aim && run.game.people.find((o) => o.id === run.aim);
-    const hit = p ? rkRules.current.shoot(run.game, p.id) : null;
-    if (!hit) return;
-    api.current?.fx('shot', { x: p.x, y: p.h * 0.6, z: p.z, parasite: p.parasite });
-    if (run.told?.id === p.id) run.told = null;
-    if (hit === 'parasite') sound('splat');
-    else endRickall(run);
-  }, [api, endRickall]);
+    const R = rkRules.current;
+    // (a tap on touch snaps onto someone just off the line: aim.js's cone for the input)
+    const cone = coneFor({ coarse: touchRef.current, mode: looker.current?.mode });
+    shots.current.shots.rickall({ m: s.m, sight: R.sight(s.m, s.yaw, s.pitch), aim: run.aim, game: run.game, solids: shots.current.mod.roomSolids('house'), cone, bodies: shots.current.mod.rickallBodies(run.game, run.hide) });
+  }, [api]);
+  // a bolt of his has hit someone in the crowd
+  const landRickall = useCallback(
+    (id) => {
+      const run = sim.current.rickall;
+      if (run?.phase !== 'on') return;
+      const p = run.game.people.find((o) => o.id === id);
+      const hit = p ? rkRules.current.shoot(run.game, p.id) : null;
+      if (!hit) return;
+      api.current?.fx('shot', { x: p.x, y: p.h * 0.6, z: p.z, parasite: p.parasite });
+      if (run.told?.id === p.id) run.told = null;
+      if (hit === 'parasite') sound('splat');
+      else endRickall(run);
+    },
+    [api, endRickall],
+  );
   // E: what Morty remembers of whoever's in the sights, the next memory of them each time
   const tellRickall = useCallback(() => {
     const run = sim.current.rickall;
@@ -931,7 +967,8 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         sound('alarm');
         say({ kind: 'say', who: SAY[e.who]?.who ?? null, text: e.text ?? 'They’ve seen you.' });
       } else if (name === 'duel') {
-        // the fight's on: the hearts show, and F fires
+        // the fight's on: the hearts show, and F fires (its bolts loaded now)
+        loadShots();
         s.duel = { who: e.who, hp: e.hp, max: e.max, mortyHp: e.mortyHp, mortyMax: e.mortyMax };
         setDuel({ ...s.duel });
         sound('zap');
@@ -967,33 +1004,42 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         } else api.current?.play('hit', { layer: 'auto' });
       }
     },
-    [api, say, complete, later],
+    [api, say, complete, later, loadShots],
   );
-  // Morty's shot in a duel (F): the place says whether it landed
+  // Morty's shot in a duel (F): a bolt at the hunter if he's in the cone
+  // (the place says where), else along his facing; the arena's walls stop
+  // it, and landDuel hears what it did if it gets to him
   const fire = useCallback(() => {
     const s = sim.current;
-    if (!s?.duel || s.fading || s.t - (s.firedAt ?? -1e9) < 0.5) return;
+    if (!s?.duel || s.fading || s.t - (s.firedAt ?? -1e9) < 0.5 || !shots.current) return;
     s.firedAt = s.t;
     s.acted = true;
     // (his arm comes up with the shot; his feet keep doing what they were)
     api.current?.play('shoot', { hold: 0, layer: 'upper' });
     sound('zap');
     const r = api.current?.act(s.area, 'fire', { x: s.m.x, z: s.m.z, face: s.m.face });
-    if (!r) return;
-    s.duel = { ...s.duel, hp: r.hp, max: r.max };
-    setDuel({ ...s.duel });
-    if (r.down) {
-      sound('splat');
-      if (r.task) complete(r.task);
-      if (r.won) later(() => say({ kind: 'say', ...r.won }), 900);
-      later(() => {
-        s.duel = null;
-        setDuel(null);
-      }, 2500);
-    }
-  }, [api, complete, say, later]);
+    shots.current.shots.duel({ m: s.m, at: r?.at ?? null });
+  }, [api]);
+  const landDuel = useCallback(
+    (r) => {
+      const s = sim.current;
+      if (!r || !s?.duel) return;
+      s.duel = { ...s.duel, hp: r.hp, max: r.max };
+      setDuel({ ...s.duel });
+      if (r.down) {
+        sound('splat');
+        if (r.task) complete(r.task);
+        if (r.won) later(() => say({ kind: 'say', ...r.won }), 900);
+        later(() => {
+          s.duel = null;
+          setDuel(null);
+        }, 2500);
+      }
+    },
+    [complete, say, later],
+  );
   const fns = useRef({});
-  fns.current = { act, go, shoot: shootRickall, stop: stopRickall, start: startRickall, end: endRickall, npc, fire, gun: openDial };
+  fns.current = { act, go, shoot: shootRickall, landRickall, stop: stopRickall, start: startRickall, end: endRickall, npc, fire, landDuel, gun: openDial };
 
   // ── the world: made once, kept while something's open over it ──
   useEffect(() => {
@@ -1175,6 +1221,12 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         fns.current.gun();
         return;
       }
+      // Tab, in a fight: the lock-on (./rmLockOn.js), as the Lock button
+      if ((s.duel || s.rickall) && e.key === 'Tab' && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        if (!e.repeat) toggleLock();
+        return;
+      }
       // a duel (Evil Rick's lair): F fires
       if (s.duel && !s.rickall && e.code === 'KeyF' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
@@ -1243,7 +1295,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       wheel.current.cancel();
       s.keys.clear();
     };
-  }, [live, closeList, strike, planet]);
+  }, [live, closeList, strike, planet, toggleLock]);
 
   // ── every frame ──
   useFrameLoop((ms) => {
@@ -1416,6 +1468,16 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
     // Total Rickall: off, if he's somehow out of the house; the clock; the
     // line the camera's put on, how far back along it, and who's too close
     // to it to be seen; and who's in the sights along it
+    // the lock-on: on by itself near a duel's hunter on touch; the camera (or
+    // Morty, in a duel) kept on who it's on
+    lockOn.current ??= createLockOn({ coarse: touchRef.current });
+    const hunter = s.duel ? ((a.act(s.area, 'bodies') || [])[0] ?? null) : null;
+    stepRmLockOn(lockOn.current, s, dt, { R: rkRules.current, hunter });
+    if (lockOn.current.on !== s.lockShown) {
+      s.lockShown = lockOn.current.on;
+      setLocked(s.lockShown);
+    }
+
     let sightLine = null;
     if (s.rickall && (s.area !== 'house' || s.flying)) fns.current.stop();
     const run = s.rickall;
@@ -1428,6 +1490,24 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       run.hide = v.hide;
       run.aim = run.phase === 'on' ? R.aimAt(run.game, sightLine) : null;
       if (run.told && (performance.now() - run.told.at > RECALL_MS || run.game.shot.includes(run.told.id))) run.told = null;
+    }
+
+    // Morty's bolts in flight (./rmShots.js): the room's solids, the crowd
+    // and a duel's hunter as bodies; where each ends, and what it did
+    const sh = shots.current;
+    let boltHits = null;
+    if (sh && sh.area !== s.area) {
+      sh.shots.clear();
+      sh.area = s.area;
+    }
+    if (sh?.shots.live().length) {
+      const bodies = [...(run?.game ? sh.mod.rickallBodies(run.game, run.hide) : []), ...((s.duel && a.act(s.area, 'bodies')) || [])];
+      for (const e of sh.shots.step(dt, { solids: sh.mod.roomSolids(s.area), bodies })) {
+        if (e.type === 'hit' || e.type === 'solid') (boltHits ??= []).push(e.at);
+        if (e.type !== 'hit') continue;
+        if (e.bolt.tag === 'rickall') fns.current.landRickall(e.body.ref.id);
+        else if (e.body.ref === 'duel') fns.current.landDuel(a.act(s.area, 'hit', e.body.id));
+      }
     }
 
     s.emit ??= (name, e) => s.events.push([name, e]);
@@ -1451,6 +1531,8 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           // (Morty's word to someone, while it plays, in the area he said it in; his emote)
           talk: s.talk && s.talk.area === s.area && s.t - s.talk.at < s.talk.hold ? s.talk : null,
           emote: readEmote(s, s.t),
+          bolts: sh ? sh.shots.live() : null,
+          boltHits,
         },
         ms,
       );
@@ -1578,8 +1660,10 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         drag.current = null;
         return;
       }
-      s.yaw -= (e.clientX - d.x) * 0.0065;
-      s.pitch = Math.max(-0.1, Math.min(0.95, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' || s.rickall ? 0.004 : 0)));
+      // (slower over someone in Total Rickall's sights: aim.js's friction)
+      const k = s.rickall?.aim ? FRICTION : 1;
+      s.yaw -= (e.clientX - d.x) * 0.0065 * k;
+      s.pitch = Math.max(-0.1, Math.min(0.95, s.pitch + (e.clientY - d.y) * (e.pointerType === 'mouse' || s.rickall ? 0.004 : 0) * k));
       d.x = e.clientX;
       d.y = e.clientY;
       s.dragAt = s.t;
@@ -1681,6 +1765,8 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         act={act}
         tellRickall={tellRickall}
         shootRickall={shootRickall}
+        locked={locked}
+        onLock={toggleLock}
         startRickall={startRickall}
         onPickEmote={(id) => strike(wheel.current.choose(id))}
         onCloseWheel={() => {

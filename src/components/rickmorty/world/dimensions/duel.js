@@ -6,8 +6,12 @@
 //   newDuel({ hp, mortyHp }) → { hp, max, mortyHp, mortyMax, over }
 //   inCone(from, face, to, range, half) → whether `to` is within `range` of
 //     `from` and within `half` radians of where `from` faces
-//   fire(duel, shooter, face, target, { range, half }) → the duel after a
-//     shot: `hit` says whether it landed, `down` whether that was the last
+//   aimFor(from, face, to, { range, half }) → where Morty's shot goes: at
+//     `to` if it's in the cone (the duel's aim assist), else null (along
+//     his facing). The shot is a bolt (lib/combat/bolt.js, ../rmShots.js)
+//     that the arena's walls stop, so it's decided when it gets there:
+//   land(duel) → the duel after a bolt hits the hunter: `hit`, `down`
+//     whether that was the last
 //   strike(duel) → the duel after a strike on Morty: `beaten` when he's out
 
 export const SHOT = { range: 8, half: 0.45 }; // how far a shot carries, and how wide the aim is (radians either side)
@@ -26,11 +30,14 @@ export function inCone(from, face, to, range = SHOT.range, half = SHOT.half) {
   return Math.abs(diff) <= half;
 }
 
-export function fire(duel, shooter, face, target, opts = {}) {
+export function aimFor(from, face, to, opts = {}) {
+  return inCone(from, face, to, opts.range ?? SHOT.range, opts.half ?? SHOT.half) ? to : null;
+}
+
+export function land(duel) {
   if (duel.over) return { ...duel, hit: false, down: false };
-  const hit = inCone(shooter, face, target, opts.range ?? SHOT.range, opts.half ?? SHOT.half);
-  const hp = hit ? Math.max(0, duel.hp - 1) : duel.hp;
-  return { ...duel, hp, hit, down: hit && hp === 0, over: hp === 0 };
+  const hp = Math.max(0, duel.hp - 1);
+  return { ...duel, hp, hit: true, down: hp === 0, over: hp === 0 };
 }
 
 export function strike(duel) {

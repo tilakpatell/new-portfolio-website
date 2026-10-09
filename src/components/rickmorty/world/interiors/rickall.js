@@ -322,7 +322,7 @@ export function sight(m, yaw, pitch = SIGHT.level) {
 // Ghost in a Jar, Baby Wizard: to look right down at them would be to lose
 // everyone else); anyone taller has to be looked at.
 export const AIM = { r: 0.35, wide: 0.5, reach: 12, small: 1.2, over: 0.6 };
-const aimR = (p) => Math.max(AIM.r, Math.min(AIM.wide, p.r));
+export const aimR = (p) => Math.max(AIM.r, Math.min(AIM.wide, p.r));
 
 // ── the camera ──
 
