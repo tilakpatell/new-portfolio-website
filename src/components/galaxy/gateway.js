@@ -9,9 +9,10 @@
 // into the galaxy (the universe map's scene and page do that: the place is
 // a `portal`, universes.js).
 //
-// buildGateway(r, { small }) → { group, update(t, camera), dispose() }
+// buildGateway(r, { small }) → { group, disc, update(t, camera), dispose() }
 // r: the gate's radius (the place's own, the size the ship flies into); the
-// galaxy behind it is a few times wider.
+// galaxy behind it is a few times wider. `disc` is the galaxy alone, without
+// the gate: all a planets.js place keeps of it when it's a few pixels tall.
 
 import * as THREE from 'three';
 import { SYSTEM_MARKS } from './names';
@@ -220,6 +221,7 @@ export function buildGateway(r, { small = false } = {}) {
   const parentQ = new THREE.Quaternion();
   return {
     group,
+    disc,
     update(t, camera) {
       spin.rotation.y = t * TURN;
       tunnelMat.uniforms.uT.value = t;

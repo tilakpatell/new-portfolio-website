@@ -9,13 +9,23 @@
 // come in, over the last 2,000 before FAR_REAL, the light fades and the
 // real thing takes over. At the drives’ speeds that’s a second or two.
 //
+// It stands in for a place too small to draw as well, however near: a body
+// under six pixels tall isn't drawn (planetLod.js), and its light is all
+// there instead, fading as it grows past that (`small`, how much it's light
+// because it's small, the scene's). A planet hides itself for that
+// (planets.js's setLod); the sun and the wonders this hides, as it does
+// once they're far.
+//
 // The rules (blend, spriteSize, pointsFor and the list of places) are pure
 // and tested; createFarPlaces draws them: one Points for the whole
 // universe, so one draw call, no textures, on every tier.
 //
-// createFarPlaces(parent, { places: [{ id, at, r, color, group }], skyFar })
-//   → { points, update(camera, dt, destinationId), dispose() }
+// createFarPlaces(parent, { places: [{ id, at, r, color, group | hide(on) }], skyFar })
+//   → { points, update(camera, dt, destinationId, small(id) → 0 … 1), dispose() }
 // `at` is in the parent’s space (the map’s), and the points are added to it.
+// Once it's all light a place's `group` is hidden, or, where it hides itself
+// for more than one reason (a planet, planets.js's setFar), its `hide(on)`
+// called, for its distance alone.
 
 import * as THREE from 'three';
 import { WONDERS } from './deep';
@@ -40,8 +50,9 @@ export function blend(dist, { far = FAR_REAL, fade = FADE } = {}) {
 export const spriteSize = (r, dist, skyFar) => (r * skyFar) / Math.max(dist, 1e-6);
 
 // each place as a point of light seen from cam: its direction (unit), its
-// size at skyFar, its colour and how much it’s light rather than itself
-export function pointsFor(places, cam, skyFar = FAR_REAL) {
+// size at skyFar, its colour and how much it’s light rather than itself (by
+// its distance, or as much as `small` says, if more)
+export function pointsFor(places, cam, skyFar = FAR_REAL, small = null) {
   return places.map((p) => {
     const dx = p.at[0] - cam[0];
     const dy = p.at[1] - cam[1];
@@ -49,7 +60,8 @@ export function pointsFor(places, cam, skyFar = FAR_REAL) {
     const dist = Math.hypot(dx, dy, dz);
     // (a camera right on a place: any direction will do, it’s the real thing then)
     const dir = dist > 1e-6 ? [dx / dist, dy / dist, dz / dist] : [0, 0, 1];
-    return { id: p.id, dir, size: spriteSize(p.r, dist, skyFar), color: p.color, k: blend(dist) };
+    const far = blend(dist);
+    return { id: p.id, dir, size: spriteSize(p.r, dist, skyFar), color: p.color, k: small ? Math.max(far, small(p.id) ?? 0) : far, far };
   });
 }
 
@@ -143,18 +155,22 @@ export function createFarPlaces(parent, { places, skyFar }) {
   parent.add(points);
 
   const hidden = places.map(() => false); // (what this has done to each group, so it only ever undoes its own)
+  const show = (p, on) => {
+    if (p.hide) p.hide(!on);
+    else if (p.group) p.group.visible = on;
+  };
   const glow = places.map(() => 1); // the destination's brightening, eased
   const camAt = new THREE.Vector3();
   const cam = [0, 0, 0];
   return {
     points,
-    update(camera, dt = 1 / 60, destinationId = null) {
+    update(camera, dt = 1 / 60, destinationId = null, small = null) {
       parent.updateWorldMatrix(true, false);
       parent.worldToLocal(camera.getWorldPosition(camAt));
       cam[0] = camAt.x;
       cam[1] = camAt.y;
       cam[2] = camAt.z;
-      const pts = pointsFor(places, cam, skyFar);
+      const pts = pointsFor(places, cam, skyFar, small);
       const ease = Math.min(1, dt * 3);
       pts.forEach((p, i) => {
         pos[i * 3] = cam[0] + p.dir[0] * skyFar;
@@ -166,17 +182,17 @@ export function createFarPlaces(parent, { places, skyFar }) {
         col[i * 3 + 1] = base[i].g * glow[i];
         col[i * 3 + 2] = base[i].b * glow[i];
         kk[i] = p.k;
-        // the real thing hidden once it's all light (its lights ride in its group)
-        const hide = p.k >= 1;
-        const g = places[i].group;
-        if (g && hide !== hidden[i]) g.visible = !hide;
+        // the real thing hidden once it's all light (its lights ride in its
+        // group); a place that hides itself is told only of its distance
+        const hide = (places[i].hide ? p.far : p.k) >= 1;
+        if (hide !== hidden[i]) show(places[i], !hide);
         hidden[i] = hide;
       });
       posAttr.needsUpdate = sizeAttr.needsUpdate = colAttr.needsUpdate = kAttr.needsUpdate = true;
     },
     dispose() {
       places.forEach((p, i) => {
-        if (p.group && hidden[i]) p.group.visible = true;
+        if (hidden[i]) show(p, true);
       });
       parent.remove(points);
       geo.dispose();

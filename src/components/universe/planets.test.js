@@ -481,3 +481,233 @@ describe('the sphere, finer near', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('a body drawn for its size on screen (planetLod.js)', () => {
+  const stub = () => {
+    const gradient = { addColorStop() {} };
+    const make = () => {
+      const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+      return canvas;
+    };
+    vi.stubGlobal('document', { createElement: make });
+  };
+  // every map a 1×1 texture named for itself, so every world builds whole
+  const fakeMaps = async () => {
+    const THREE = await import('three');
+    const { MAP_NAMES } = await import('./planets');
+    return Object.fromEntries(
+      MAP_NAMES.map((n) => {
+        const t = new THREE.DataTexture(new Uint8Array(4), 1, 1);
+        t.name = n;
+        return [n, t];
+      }),
+    );
+  };
+  const build = async (id, tier = 'high') => {
+    stub();
+    const { buildPlanet } = await import('./planets');
+    const { byId } = await import('./universes');
+    return buildPlanet(byId(id), await fakeMaps(), { sun: [0, 0, 1], tier });
+  };
+  // drawn: it and everything over it, up to the planet's group, shown
+  const drawn = (o, root) => {
+    for (let a = o; a; a = a.parent) {
+      if (!a.visible) return false;
+      if (a === root) return true;
+    }
+    return true;
+  };
+  const model = async () => {
+    const THREE = await import('three');
+    return new THREE.Mesh(new THREE.BoxGeometry(1, 2, 3), new THREE.MeshBasicMaterial());
+  };
+
+  it('at its halo keeps its body and its halo, and drops its shell, its clouds and every orbit’s holder', async () => {
+    const p = await build('middleearth');
+    let clouds = null;
+    p.group.traverse((o) => (clouds ??= o.isMesh && o.material?.map?.name === 'middleearth-clouds' ? o : null));
+    expect(clouds).not.toBeNull();
+    expect(p.orbits.length).toBeGreaterThan(0);
+    const shell = p.air;
+    expect(shell.material.fragmentShader).toContain('inscatter');
+    p.setLod('halo');
+    expect(p.lod).toBe('halo');
+    expect(p.group.visible).toBe(true);
+    expect(p.body.visible).toBe(true);
+    expect(clouds.visible).toBe(false);
+    for (const o of p.orbits) expect(o.holder.visible).toBe(false);
+    // the halo in the shell's place
+    expect(shell.visible).toBe(false);
+    expect(p.air.visible).toBe(true);
+    expect(p.air.material.fragmentShader).not.toContain('inscatter');
+    // and all of it back
+    p.setLod('full');
+    expect(clouds.visible).toBe(true);
+    for (const o of p.orbits) expect(o.holder.visible).toBe(true);
+    expect(p.air).toBe(shell);
+    expect(shell.visible).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it('hidden under 6 px, models and all, and back without mounting them again', async () => {
+    // (the Game Boy world: a model on its orbit, Mario on its pole, the plant on its ground; and the sitar's)
+    for (const [id, spots] of [
+      ['gaming', [undefined, 'mario', 'plant']],
+      ['music', [undefined]],
+    ]) {
+      const p = await build(id);
+      const models = [];
+      for (const spot of spots) {
+        const m = await model();
+        expect(p.mount(m, spot), `${id} ${spot}`).toBe(true);
+        models.push(m);
+      }
+      // (each model sits in fit()'s holder, in its slot)
+      const slots = models.map((m) => m.parent.parent);
+      const counts = slots.map((s) => s.children.length);
+      p.setLod('hidden');
+      expect(p.group.visible, id).toBe(false);
+      for (const m of models) expect(drawn(m, p.group)).toBe(false);
+      p.setLod('full');
+      expect(p.group.visible, id).toBe(true);
+      expect(slots.map((s) => s.children.length), id).toEqual(counts);
+      for (const m of models) expect(drawn(m, p.group), id).toBe(true);
+      // (and the same through the halo on the way)
+      p.setLod('halo');
+      for (const m of models) expect(drawn(m, p.group)).toBe(false);
+      p.setLod('hidden');
+      p.setLod('halo');
+      p.setLod('full');
+      expect(slots.map((s) => s.children.length), id).toEqual(counts);
+      for (const m of models) expect(drawn(m, p.group), id).toBe(true);
+    }
+    vi.unstubAllGlobals();
+  });
+
+  it('a model that arrives while it is at its halo stays hidden till it is drawn in full', async () => {
+    const p = await build('gaming');
+    p.setLod('halo');
+    const m = await model();
+    p.mount(m);
+    expect(drawn(m, p.group)).toBe(false);
+    p.setLod('full');
+    expect(drawn(m, p.group)).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it('puts back only what it hid: the pace’s choice of air, and anything hidden by its own owner, stay theirs', async () => {
+    const p = await build('middleearth');
+    const shell = p.air;
+    let clouds = null;
+    p.group.traverse((o) => (clouds ??= o.isMesh && o.material?.map?.name === 'middleearth-clouds' ? o : null));
+    // the pace has swapped the shell for the halo: back in full, still the halo
+    p.setLevel(3);
+    const halo = p.air;
+    p.setLod('halo');
+    p.setLod('full');
+    expect(shell.visible).toBe(false);
+    expect(halo.visible).toBe(true);
+    expect(p.air).toBe(halo);
+    // the pace brings the shell back while it's at its halo: not drawn till it's in full again
+    p.setLod('halo');
+    p.setLevel(0);
+    expect(shell.visible).toBe(false);
+    expect(halo.visible).toBe(true);
+    p.setLod('full');
+    expect(shell.visible).toBe(true);
+    expect(halo.visible).toBe(false);
+    // a thing its owner had hidden comes back hidden
+    clouds.visible = false;
+    p.setLod('halo');
+    p.setLod('full');
+    expect(clouds.visible).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it('runs none of its own motion at its halo, its orbits and its models’ sway included, and catches up in full', async () => {
+    const p = await build('gaming');
+    const m = await model();
+    p.mount(m);
+    const sway = m.parent; // (fit()'s holder, which mount turns)
+    const pivot = p.orbits[0].pivot;
+    p.update(1, null, true);
+    const [turn1, orbit1] = [sway.rotation.y, pivot.rotation.y];
+    p.setLod('halo');
+    p.update(5, null, true);
+    expect(sway.rotation.y).toBe(turn1);
+    expect(pivot.rotation.y).toBe(orbit1);
+    p.setLod('full');
+    p.update(5, null, true);
+    expect(sway.rotation.y).not.toBe(turn1);
+    expect(pivot.rotation.y).not.toBe(orbit1);
+    vi.unstubAllGlobals();
+  });
+
+  it('takes its level from its size on screen each update, held a tenth past each threshold', async () => {
+    const p = await build('music');
+    p.update(1, null, true);
+    expect(p.lod).toBe('full'); // (no size given: as it was)
+    p.update(1, null, true, 10);
+    expect(p.lod).toBe('halo');
+    p.update(1, null, true, 25);
+    expect(p.lod).toBe('halo');
+    p.update(1, null, true, 27);
+    expect(p.lod).toBe('full');
+    p.update(1, null, true, 5);
+    expect(p.lod).toBe('hidden');
+    expect(p.group.visible).toBe(false);
+    p.update(1, null, true, 6.3);
+    expect(p.lod).toBe('hidden');
+    p.update(1, null, true, 7);
+    expect(p.lod).toBe('halo');
+    expect(p.group.visible).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it('is hidden for farPlaces’ reason or its own, and shown only when neither holds', async () => {
+    const p = await build('caribbean');
+    p.setFar(true);
+    expect(p.group.visible).toBe(false);
+    p.setLod('halo');
+    p.setLod('full');
+    expect(p.group.visible).toBe(false);
+    p.setLod('hidden');
+    p.setFar(false);
+    expect(p.group.visible).toBe(false);
+    p.setLod('full');
+    expect(p.group.visible).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it('a station never goes below its halo, and keeps its hull and its sign there', async () => {
+    const p = await build('home');
+    const hull = p.body.parent.children.filter((o) => o !== p.body);
+    expect(hull.length).toBeGreaterThan(0);
+    p.setLod('hidden');
+    expect(p.lod).toBe('halo');
+    expect(p.group.visible).toBe(true);
+    expect(p.sign.visible).toBe(true);
+    for (const o of hull) expect(drawn(o, p.group)).toBe(true);
+    p.update(1, null, true, 2);
+    expect(p.lod).toBe('halo');
+    vi.unstubAllGlobals();
+  });
+
+  it('the Star Wars gate keeps its galaxy at its halo, and drops the gate', async () => {
+    const p = await build('starwars');
+    const points = [];
+    const rings = [];
+    p.group.traverse((o) => {
+      if (o.isPoints) points.push(o);
+      if (o.geometry?.type === 'TorusGeometry') rings.push(o);
+    });
+    expect(points.length).toBeGreaterThan(0);
+    expect(rings.length).toBeGreaterThan(0);
+    p.setLod('halo');
+    for (const o of points) expect(drawn(o, p.group)).toBe(true);
+    for (const o of rings) expect(drawn(o, p.group)).toBe(false);
+    p.setLod('full');
+    for (const o of rings) expect(drawn(o, p.group)).toBe(true);
+    vi.unstubAllGlobals();
+  });
+});

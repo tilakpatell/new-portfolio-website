@@ -162,6 +162,9 @@ for (const tier of tiers) {
     try {
       await page.goto(`${base}/?quality=${tier}#/universe`, { waitUntil: 'domcontentloaded', timeout: 180000 });
       await page.waitForFunction(() => typeof window.__universe === 'function' && window.__universe().ship && window.__universeDebug?.state?.model, null, { timeout: 300000, polling: 250 });
+      // (and the loading veil down, data-gl="on": until then the frames are
+      // the shaders' warm-up, and a shot is the veil; minutes in software GL)
+      await page.waitForFunction(() => document.querySelector('.universe-map[data-gl="on"]'), null, { timeout: 900000, polling: 250 });
       await page.waitForTimeout(2000);
       await page.evaluate((n) => window.__universe().pose(n), name);
       // (a planet pose: its near maps given a moment to land, unless they're off)

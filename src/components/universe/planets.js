@@ -24,7 +24,10 @@
 //   right after the first frame)
 // mapFile(name, level) → the file for a planet map at lib/detail's level
 // mapsOf(id), nearSet(id, level) → a planet's maps, and { later, std, near }: the sets it wears after the first frame and near (nearMaps.js)
-// buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera), setState, mount, swapMaps(T2 | null), nearSet(level, { small }), nearGeometry(on, level) }
+// buildPlanet(u, T, { sun, tier, key }) → { id, radius, group, sun, air, setAir, update(t, camera, live, px), setState, mount, swapMaps(T2 | null), nearSet(level, { small }), nearGeometry(on, level), lod, setLod(lod), setFar(on), orbits }
+// (what it draws for its size on screen, planetLod.js: `lod`, 'full' |
+// 'halo' | 'hidden', from the px `update` is given, or set; `setFar`:
+// farPlaces.js's light has it, past FAR_REAL)
 // (a builder that reads a map's pixels, not just wears it, sets `p.onMaps(T2)`
 // to read them from the first real map a swap puts on: Cybertron's war fronts)
 
@@ -46,6 +49,7 @@ import { keyHook } from '../../lib/three/keySun';
 import { isStandIn, mapSwapper, mapsOf, nearSet } from './planetMaps';
 import { LIGHT, RIM, airGlow, ditherShade, groundHooks, halo, styleFor } from './planetShading';
 import { SPECS, buildFromSpec } from './planetSpecs';
+import { lodOf, segOf } from './planetLod';
 
 // (the planets' shading, moved out to keep this file under the size the
 // health check allows: planetShading.js; its exports are this file's as before)
@@ -257,6 +261,8 @@ const EXTRAS = {
     const gate = buildGateway(r, { small: T.small });
     p.group.add(gate.group);
     p.tick.push((t, camera) => gate.update(t, camera));
+    // (a few pixels tall, it's the galaxy that shows: kept at its halo, the gate not)
+    p.keep = [gate.disc];
 
     // a Republic attack cruiser further out (the site owner's Meshy model,
     // when it comes; its nose is −x, so a quarter turn points it the way the
@@ -1074,7 +1080,7 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
   // sunFor, turned with the map by the scene each frame): one vector its
   // air, its rim and its night side all read; the old fixed key without one
   const sunW = sun ? (sun.isVector3 ? sun : new THREE.Vector3(...sun)) : LIGHT;
-  const seg = T.small ? [44, 28] : [64, 40]; // a phone's screen needs fewer
+  const seg = segOf(tier, T.small); // (a phone's screen needs fewer: planetLod.js)
   const group = new THREE.Group();
   const spinner = new THREE.Group(); // what turns about the planet's axis
   group.add(spinner);
@@ -1132,12 +1138,10 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
   const rimGlow = () => p.body.material?.userData?.air;
   if (shell && rimGlow()) rimGlow().uRimStrength.value = 0;
   const centre = new THREE.Vector3();
-  // a station's big sign, over it
+  // a station's big sign, over it (turned to face you even at its halo, below)
   const sign = u.sign ? bigSign(u) : null;
-  if (sign) {
-    group.add(sign);
-    p.tick.push(facing(sign));
-  }
+  const faceSign = sign ? facing(sign) : null;
+  if (sign) group.add(sign);
   // its near maps (nearMaps.js) in place of its own (planetMaps.js)
   const swap = mapSwapper(group, T, mapsOf(u.id));
   const swapMaps = (T2) => {
@@ -1150,6 +1154,60 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
   let level = 0; // the pace's step
   let selected = false;
   let t0 = 0;
+
+  // What it draws for its size on screen (planetLod.js): 'full'; under 24
+  // px its halo, its body and its halo only (the halo in the shell's place,
+  // and none of its own motion); under 6, 'hidden', nothing (farPlaces.js's
+  // light instead); a station never below its halo, where it keeps its hull
+  // and its sign. What the halo hides it keeps a list of and shows again
+  // only those, so what the pace or the foot scene hid stays theirs to show;
+  // and the air is the pace's choice (setAir) and the halo's together.
+  let lod = 'full';
+  let far = false; // (farPlaces': past FAR_REAL, its light instead)
+  let shellWanted = Boolean(shell); // (the pace's: the real air, or the old halo)
+  const dropped = [];
+  // what the halo leaves out: all that's on it but its body, its air, a
+  // station's hull (on the spinner) and sign, and what its builder says is
+  // its own look (p.keep: the gate's galaxy); its orbits' holders too, so a
+  // model mounted on one meanwhile is hidden with it
+  const extras = () => {
+    const keep = new Set([spinner, haloMesh, shell?.mesh, sign, ...(p.keep ?? [])]);
+    const over = (o) => p.keep?.some((k) => {
+      for (let a = k.parent; a; a = a.parent) if (a === o) return true;
+      return false;
+    });
+    const out = [...body.children, ...p.orbits.map((o) => o.holder)];
+    const walk = (o) => {
+      for (const c of o.children) if (!keep.has(c)) (over(c) ? walk(c) : out.push(c));
+    };
+    walk(group);
+    return out;
+  };
+  const showAir = () => {
+    if (!shell) return;
+    const on = shellWanted && lod === 'full';
+    shell.mesh.visible = on;
+    haloMesh.visible = !on;
+    air = on ? shell.mesh : haloMesh;
+    const g = rimGlow();
+    if (g) g.uRimStrength.value = on ? 0 : RIM.idle * 0.8;
+  };
+  const showGroup = () => (group.visible = !(far || lod === 'hidden'));
+  const setLod = (want) => {
+    const next = core && want === 'hidden' ? 'halo' : want;
+    if (next === lod) return;
+    const was = lod;
+    lod = next;
+    if (was === 'full') {
+      for (const o of extras()) {
+        if (!o.visible) continue;
+        o.visible = false;
+        dropped.push(o);
+      }
+    } else if (next === 'full') for (const o of dropped.splice(0)) o.visible = true;
+    if (was === 'full' || next === 'full') showAir();
+    showGroup();
+  };
 
   return {
     id: u.id,
@@ -1165,6 +1223,18 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
     get air() {
       return air;
     },
+    // what it draws for its size: 'full' | 'halo' | 'hidden' (above)
+    get lod() {
+      return lod;
+    },
+    setLod,
+    // farPlaces.js: past FAR_REAL its light is all there, and it isn't drawn
+    setFar(on) {
+      far = on;
+      showGroup();
+    },
+    // (what its models ride: { plane, pivot, holder } each)
+    orbits: p.orbits,
     // how far off the camera is, in the planet's radii (the scene, for the
     // nearest two: the ground's detail comes up from three)
     near(d) {
@@ -1189,14 +1259,10 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
       if (p.keyColour) p.keyColour.copy(colour).multiplyScalar(1 / Math.max(colour.r, colour.g, colour.b, 1e-3));
     },
     // the real air or the old halo (the pace's last steps): 'shell' | 'halo'
+    // (and the halo whatever this says while it's a few pixels tall: setLod)
     setAir(which) {
-      if (!shell) return;
-      const on = which === 'shell';
-      shell.mesh.visible = on;
-      haloMesh.visible = !on;
-      air = on ? shell.mesh : haloMesh;
-      const g = rimGlow();
-      if (g) g.uRimStrength.value = on ? 0 : RIM.idle * 0.8;
+      shellWanted = which === 'shell';
+      showAir();
     },
     sun: sunW,
     // held still (true) while the crew walk about on it, and turning on
@@ -1214,16 +1280,22 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
       sign.scale.setScalar(on ? 1.08 : 1);
       sign.material.color.setScalar(on ? 1.35 : 1);
     },
-    // (`live`: it's in view and big enough to see, so its own motion, which
-    // can be a lot, is worth working out; all of it goes by `t`, so it's
-    // where it should be the moment it's back in view)
-    update(t, camera, live = true) {
+    // (`live`: it's in view, so its own motion, which can be a lot, is worth
+    // working out, if it's drawn in full; all of it goes by `t`, so it's
+    // where it should be the moment it's back. `px`: how tall it is on
+    // screen, which sets what it draws, held a tenth past each threshold;
+    // none given, as it was)
+    update(t, camera, live = true, px = undefined) {
+      if (px !== undefined) setLod(lodOf(px, lod));
       t0 = t;
       body.rotation.y = held ?? turn0 + t * spin;
       // (the air's march is about the planet's middle, in the world: it moves with the map)
       if (shell?.mesh.visible) shell.update(group.getWorldPosition(centre));
       // (where the clouds have turned to over the ground: on the ground, or turning on their own)
       if (ground && cloudMesh) ground.uCloudTurn.value = (cloudMesh.rotation.y - (cloudMesh.parent === body ? 0 : body.rotation.y)) / (Math.PI * 2);
+      if (lod === 'hidden') return;
+      if (live) faceSign?.(t, camera);
+      if (lod !== 'full') return;
       for (const o of p.orbits) o.set(t);
       if (live) for (const fn of p.tick) fn(t, camera);
     },

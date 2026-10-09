@@ -1,5 +1,6 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { FAR_PLACES, FAR_REAL, blend, pointsFor, spriteSize } from './farPlaces';
+import { FAR_PLACES, FAR_REAL, blend, createFarPlaces, pointsFor, spriteSize } from './farPlaces';
 import { WONDERS } from './deep';
 import { MOONS, UNIVERSES } from './universes';
 
@@ -54,5 +55,76 @@ describe('far places as light', () => {
       expect(p.r, p.id).toBeGreaterThan(0);
       expect(p.at, p.id).toHaveLength(3);
     }
+  });
+
+  it('stands in for a place too small to draw, however near it is (planetLod.js)', () => {
+    const places = [
+      { id: 'a', at: [0, 3000, 4000], r: 50, color: '#00ff00' },
+      { id: 'b', at: [0, 0, 6000], r: 50, color: '#0000ff' },
+    ];
+    const small = (id) => (id === 'a' ? 1 : id === 'b' ? 0.4 : 0);
+    const pts = pointsFor(places, [0, 0, 0], FAR_REAL, small);
+    expect(pts[0].k).toBe(1);
+    expect(pts[1].k).toBe(0.4);
+    // (its size the place's own angle, as ever)
+    expect(pts[0].size).toBeCloseTo(spriteSize(50, 5000, FAR_REAL), 9);
+    // and past FAR_REAL it's light whatever it's told
+    expect(pointsFor([{ id: 'c', at: [30000, 0, 0], r: 50, color: '#ffffff' }], [0, 0, 0], FAR_REAL, () => 0)[0].k).toBe(1);
+  });
+
+  it('lights the point of a small place and leaves its hiding to it; hides a far one by its own hand or its group', () => {
+    const parent = new THREE.Group();
+    const camera = new THREE.PerspectiveCamera(60, 16 / 9, 1, 1e6);
+    camera.updateMatrixWorld(true);
+    const calls = [];
+    const group = new THREE.Group();
+    const places = [
+      { id: 'near', at: [0, 0, -5000], r: 50, color: '#00ff00', hide: (on) => calls.push(['near', on]) },
+      { id: 'far', at: [0, 0, -30000], r: 50, color: '#0000ff', hide: (on) => calls.push(['far', on]) },
+      { id: 'grouped', at: [30000, 0, 0], r: 50, color: '#ff0000', group },
+    ];
+    const far = createFarPlaces(parent, { places, skyFar: 24000 });
+    const k = far.points.geometry.getAttribute('aK');
+    far.update(camera, 1 / 60, null, (id) => (id === 'near' ? 1 : 0));
+    expect(k.array[0]).toBe(1); // (its light all there, though it's near)
+    expect(k.array[1]).toBe(1);
+    expect(calls).toEqual([['far', true]]); // (the near one's hiding is its own: planets.js's setLod)
+    expect(group.visible).toBe(false);
+    // the small one grown: its light goes; the far one come in: shown again, once
+    places[1].at = [0, 0, -3000];
+    places[2].at = [3000, 0, 0];
+    far.update(camera, 1 / 60, null, () => 0);
+    far.update(camera, 1 / 60, null, () => 0);
+    expect(k.array[0]).toBe(0);
+    expect(calls).toEqual([
+      ['far', true],
+      ['far', false],
+    ]);
+    expect(group.visible).toBe(true);
+    // (and on dispose, what it hid is shown)
+    places[1].at = [0, 0, -30000];
+    far.update(camera, 1 / 60);
+    far.dispose();
+    expect(calls.at(-1)).toEqual(['far', false]);
+  });
+
+  it('hides a group it alone hides (the sun, a wonder) once it is too small to draw, however near', () => {
+    const parent = new THREE.Group();
+    const camera = new THREE.PerspectiveCamera(60, 16 / 9, 1, 1e6);
+    camera.updateMatrixWorld(true);
+    const group = new THREE.Group();
+    const far = createFarPlaces(parent, { places: [{ id: 'sun', at: [0, 0, -16000], r: 75, color: '#ffcf6a', group }], skyFar: 24000 });
+    const k = far.points.geometry.getAttribute('aK');
+    far.update(camera, 1 / 60, null, () => 1);
+    expect(k.array[0]).toBe(1);
+    expect(group.visible).toBe(false);
+    // (fading out under it, drawn again)
+    far.update(camera, 1 / 60, null, () => 0.6);
+    expect(k.array[0]).toBeCloseTo(0.6, 6);
+    expect(group.visible).toBe(true);
+    far.update(camera, 1 / 60, null, () => 0);
+    expect(k.array[0]).toBe(0);
+    expect(group.visible).toBe(true);
+    far.dispose();
   });
 });

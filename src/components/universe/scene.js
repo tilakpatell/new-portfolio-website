@@ -134,6 +134,7 @@ import { createMines } from './mines';
 import { ESCORT, escortHull, escortPlan, escortTo } from './escort';
 import { DEBRIS_DRIFT, SKY_FAR, buildDeepSpace } from './deepspace';
 import { FAR_PLACES, createFarPlaces } from './farPlaces';
+import { lodOf, pxOf, standIn } from './planetLod';
 import { createSectorPortals } from './sectorPortals';
 import { GUN, gunHit, gunTransit } from './gunPortal';
 import { createGunPortal } from './gunPortalFx';
@@ -719,7 +720,18 @@ export async function create(canvas, ctx) {
       if (inExpanse(id)) state.note = { text: `The Expanse · ${id}`, until: wall() + 3 };
     },
   });
-  const farPlaces = createFarPlaces(map, { places: FAR_PLACES.map((p) => ({ ...p, group: planetOf[p.id]?.group ?? deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })), skyFar: SKY_FAR });
+  // (a planet hides itself, for that and for being too small to draw: planets.js's setFar, setLod)
+  const farPlaces = createFarPlaces(map, {
+    places: FAR_PLACES.map((p) => (planetOf[p.id] ? { ...p, hide: (on) => planetOf[p.id].setFar(on) } : { ...p, group: deep.groupOf(p.id) ?? (p.id === 'sun' ? sun.group : null) })),
+    skyFar: SKY_FAR,
+  });
+  // how much of each place farPlaces' light stands in for, it being too
+  // small to draw (planetLod.js's standIn): a planet's set as it's updated,
+  // below; the sun's and the wonders' (`lit`, which farPlaces hides) each
+  // frame from the map's own space, by the size of their light
+  const asLight = new Map();
+  const lightFor = (id) => asLight.get(id) ?? 0;
+  const lit = FAR_PLACES.filter((p) => !planetOf[p.id]).map((p) => ({ id: p.id, at: new THREE.Vector3(...p.at), r: p.r, lod: 'full' }));
   // each planet's maps by how near it is (nearMaps.js), on every device:
   // what it was stood in for, in the background once the first frame's
   // drawn; its standard set within twelve radii; its near set and finer
@@ -4643,18 +4655,23 @@ export async function create(canvas, ctx) {
     c.g += Math.max(-k, Math.min(k, to.g - c.g));
     c.b += Math.max(-k, Math.min(k, to.b - c.b));
   };
-  const nearest = planets.map((p) => ({ p, d: 0 }));
+  const nearest = planets.map((p, i) => ({ p, i, d: 0 }));
+  let litFrames = 0; // (which quarter of the far planets' turn it is)
   const lights = (dt) => {
-    for (const p of planets) {
-      const s = sunInMap[p.id];
-      p.sun.set(s[0], s[1], s[2]).applyAxisAngle(Y_AXIS, state.yaw);
-    }
-    // the two planets nearest the camera have their ground come up in detail
-    // as it nears them (planets.js); the rest needn't work it out
-    for (const n of nearest) {
+    // every planet's sun turned with the map, and how far off it is: the two
+    // nearest the camera (as last sorted) and any drawn in full every frame,
+    // the rest, a few pixels tall, a quarter of them a frame, each in turn
+    litFrames++;
+    for (let j = 0; j < nearest.length; j++) {
+      const n = nearest[j];
+      if (j >= 2 && !lightNow.first && n.p.lod !== 'full' && litFrames % 4 !== n.i % 4) continue;
+      const s = sunInMap[n.p.id];
+      n.p.sun.set(s[0], s[1], s[2]).applyAxisAngle(Y_AXIS, state.yaw);
       const at = POSITIONS[n.p.id];
       n.d = Math.hypot(camLocal.x - at[0], camLocal.y - at[1], camLocal.z - at[2]) / n.p.radius;
     }
+    // the two planets nearest the camera have their ground come up in detail
+    // as it nears them (planets.js); the rest needn't work it out
     nearest.sort((a, b) => a.d - b.d);
     nearest.forEach((n, i) => n.p.near(i < 2 ? n.d : 1e9));
     const nv = novae.nova();
@@ -4922,15 +4939,17 @@ export async function create(canvas, ctx) {
     if (armory) armory.update(dt);
     sun.update(t, camera);
     sky.setRatio(gl.ratio); // (the watchdog may have changed it)
-    // each place's own motion (a station's lights, particles, its screen)
-    // only while it's in view and more than a speck
+    // each place drawn for its size on screen (planetLod.js: in full from
+    // 24 px, its halo only under that, under 6 farPlaces' light instead),
+    // and its own motion (a station's lights, particles, its screen) only
+    // while it's in view and drawn in full
     viewFrustum.setFromProjectionMatrix(viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
     for (const p of planets) {
       p.group.getWorldPosition(placeBound.center);
       placeBound.radius = p.radius * 2.6; // (out past its moons and what orbits it)
-      const d = camera.position.distanceTo(placeBound.center);
-      const px = d > placeBound.radius ? (placeBound.radius / (d * tanHalf)) * (size.h / 2) : Infinity;
-      p.update(t, camera, px > 2 && viewFrustum.intersectsSphere(placeBound));
+      const px = pxOf(p.radius, camera.position.distanceTo(placeBound.center), camera.fov, size.h);
+      p.update(t, camera, viewFrustum.intersectsSphere(placeBound), px);
+      asLight.set(p.id, standIn(px, p.lod));
     }
     near.update(camera.position, nearBodies);
     locate();
@@ -4961,7 +4980,12 @@ export async function create(canvas, ctx) {
     // (the look follows the lights; what's come into the scene since is taken on every half second or so)
     house.follow({ adopt: houseFrames++ % 30 === 0 });
     deep.update(t, camera, camLocal, { names: !(onFoot() && foot.entry()) });
-    farPlaces.update(camera, dt, state.auto?.id ?? state.jump?.id ?? null);
+    for (const o of lit) {
+      const px = pxOf(o.r, camLocal.distanceTo(o.at), camera.fov, size.h);
+      o.lod = lodOf(px, o.lod);
+      asLight.set(o.id, standIn(px, o.lod));
+    }
+    farPlaces.update(camera, dt, state.auto?.id ?? state.jump?.id ?? null, lightFor);
     expanse.update({ ship: flying() && !state.dive ? state.ship : null, camera, t, dt });
     const lanesBusy = laneLook.update(dt, { ship: flying() && !state.crash && !state.dive ? state.ship : null, ride: state.ride, view: state.view, side: sideFor(state.kind)?.id ?? null });
     sectorPortals.update(t, camera);
