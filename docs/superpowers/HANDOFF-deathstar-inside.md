@@ -27,6 +27,8 @@ The explorable interior of both Death Stars at `/deathstar/inside`, and HD exter
   - A story’s end shows its card (`ui/End.jsx`).
   - Only the Empire’s people bark.
   - Standing and looking well round turns you on the spot.
+  - The second station’s Rebel ending plays through: Vader is held up at Luke’s side through the carry, leaning on him and limping, and Luke only walks (`plot.js`’s `holdUp`). The station shakes and panels burst off the walls in fire and smoke while it comes apart (`rules/breach.js`, the camera’s shake in `scene/index.js`, a rumble in `scene/sounds.js`). At the ramp Vader sits for the mask with Luke kneeling, and lies there after the talk.
+  - The chasm swing is drawn: Luke and Leia swing across on the grapple’s line (the `swing` act in `scene/cinematics.js`). A story that moves you (`{ to }`) brings your companions with you.
 
 ## Left
 
@@ -34,7 +36,7 @@ The explorable interior of both Death Stars at `/deathstar/inside`, and HD exter
 - Alderaan’s tractor beam and Yavin still board the `/deathstar` page (the superlaser and the trench run), as before; the page’s “Go aboard” takes you inside from there.
 - The IT-O, the dianoga and the Death Star trooper’s helmet are still built in code. `scripts/meshy-deathstar.mjs` will make them (122 credits); every Meshy account had 1 to 3 credits on 8 October.
 - Voices for Tarkin, the Emperor, Jerjerrod, Motti and Tagge. Tarkin and Jerjerrod have sources in `scripts/voices/sources/warcast.json`, but the interior has no `voicelines.js` for the voices pipeline to read.
-- The scenes’ shots were judged by eye in headless Chromium, on the duel, the tractor, the throw, the escape and the arrival. The rest (`tower`, `mask`, `emperor`, `cruiser`, `escape2`, `swing`) have shots but no look yet.
+- Every scene’s shots have been judged by eye in headless Chromium. The tower lift doesn’t move while its scene plays: the camera stays on the four of you in the car.
 
 ## Checking it
 
