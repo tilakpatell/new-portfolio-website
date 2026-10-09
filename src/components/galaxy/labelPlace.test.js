@@ -50,6 +50,32 @@ describe('labelPlace', () => {
     expect(b.x1).toBeLessThanOrEqual(346);
     expect(b.x0).toBeGreaterThanOrEqual(0);
   });
+  it('keeps a name from under a control drawn over the map', () => {
+    const lone = { id: 'a', x: 100, y: 100, w: 60, h: 18, prio: 0 };
+    const block = { x0: 105, y0: 80, x1: 200, y1: 120 };
+    expect(placeLabels([lone])).toEqual({ a: 'r' });
+    expect(placeLabels([lone], { blocks: [] })).toEqual({ a: 'r' });
+    const p = placeLabels([lone], { blocks: [block] });
+    expect(p.a).not.toBe('r');
+    expect(overlapArea([boxAt(p.a, 100, 100, 60, 18), block])).toBe(0);
+  });
+  it('takes the place no control covers, when there is one', () => {
+    const lone = { id: 'a', x: 100, y: 100, w: 60, h: 18, prio: 0 };
+    // controls over the right and the left of the dot: above or below is what's left
+    const blocks = [{ x0: 105, y0: 92, x1: 200, y1: 108 }, { x0: 0, y0: 92, x1: 95, y1: 108 }];
+    const p = placeLabels([lone], { blocks });
+    expect(['t', 'b']).toContain(p.a);
+    for (const k of blocks) expect(overlapArea([boxAt(p.a, 100, 100, 60, 18), k])).toBe(0);
+  });
+  it('counts a control as it counts a dot: a name goes under neither if there is room', () => {
+    const items = [
+      { id: 'a', x: 100, y: 100, w: 60, h: 18, prio: 0 },
+      { id: 'b', x: 200, y: 200, w: 60, h: 18, prio: 0 },
+    ];
+    const dotOver = { x0: 118, y0: 92, x1: 132, y1: 108 }; // (b's dot's size, over a's right)
+    const p = placeLabels(items, { blocks: [dotOver] });
+    expect(overlapArea([boxAt(p.a, 100, 100, 60, 18), dotOver])).toBe(0);
+  });
   it('does better than all-right on a phone-sized map', () => {
     const items = at(380);
     const right = Object.fromEntries(items.map((i) => [i.id, 'r']));

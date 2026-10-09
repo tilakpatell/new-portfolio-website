@@ -513,6 +513,7 @@
 .holomap-key-h { margin: 0.6rem 0 0.3rem; color: #7fd6ff; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; }
 @media (max-width: 760px) {
   .holomap-head { flex-wrap: wrap; }
+  .holomap-head > div:first-child { flex: 1 1 0; min-width: 0; } /* (the title gives way, its small caps wrapping, so the close button stays on its row: at 360 px the one-line title pushed it down alone) */
   .holomap-find { order: 3; width: 100%; }
   .holomap-find input { width: 100%; }
   .holomap { padding: 8px; }

@@ -308,6 +308,31 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
     }
     if (changed) setMeasured((n) => n + 1);
   }, [war, boxPx, pilots]);
+  // the controls drawn over the map that stay put (the war's board, the Layers chip, the Key chip; the layers' own switches
+  // where there's no chip), as boxes from the map's top left: a name goes clear of them as of a dot (labelPlace.js's
+  // `blocks`). Measured once drawn, and again when the map or any of them changes size (the board with the war)
+  const [blocks, setBlocks] = useState([]);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return undefined;
+    const measure = () => {
+      const m = el.getBoundingClientRect();
+      const chip = el.querySelector('.holomap-layers-toggle');
+      const parts = [el.querySelector('.holomap-strip-board'), chip, el.querySelector('.holomap-legend-toggle'), ...(chip?.getClientRects().length ? [] : el.querySelectorAll('.holomap-layers-set button'))];
+      const found = [];
+      for (const n of parts) {
+        if (!n?.getClientRects().length) continue; // (not shown)
+        const r = n.getBoundingClientRect();
+        found.push({ x0: Math.round(r.left - m.left) - 2, y0: Math.round(r.top - m.top) - 2, x1: Math.round(r.right - m.left) + 2, y1: Math.round(r.bottom - m.top) + 2 });
+      }
+      setBlocks((was) => (JSON.stringify(was) === JSON.stringify(found) ? was : found));
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measure);
+    for (const n of [el, ...el.querySelectorAll('.holomap-strip-board, .holomap-layers-toggle, .holomap-layers-set, .holomap-legend-toggle')]) ro.observe(n);
+    return () => ro.disconnect();
+  }, [view]); // (the war's board is another size with another war)
   const places = useMemo(() => {
     const { k, x, y } = mv.view;
     const items = SYSTEMS.map((s) => {
@@ -319,10 +344,10 @@ export default function HoloMap({ current, online, onJump, onClose, onLeave, oat
     });
     // (a view gone wrong must not take the map down with it: every name on the right, as it was)
     if (items.some((i) => !Number.isFinite(i.x) || !Number.isFinite(i.y))) return {};
-    return placeLabels(items, { bounds: { x0: 0, y0: 0, x1: boxPx, y1: boxPx } });
+    return placeLabels(items, { bounds: { x0: 0, y0: 0, x1: boxPx, y1: boxPx }, blocks });
     // (`measured` is what says widths.current has changed)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mv.view, boxPx, war, current, pick, pilots, measured]);
+  }, [mv.view, boxPx, war, current, pick, pilots, measured, blocks]);
 
   const lit = (s) => (film ? s.films.includes(film) : era === 'all' || erasOf(s).includes(era));
   // plot a course to a system (the war card's picks too); with an end of it

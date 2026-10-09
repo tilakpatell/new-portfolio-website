@@ -3,7 +3,8 @@
 // left, above, below and the corners; the names placed in priority order
 // (where you are, the one picked, a battle on, the major order, the rest),
 // each taking the place that overlaps least with the names already down,
-// every other dot and the box's edge. In screen pixels, at the map's zoom
+// every other dot, the `blocks` (boxes { x0, y0, x1, y1 } of the controls drawn
+// over the map: they cover a name as a dot does) and the box's edge. In screen pixels, at the map's zoom
 // (the names keep their size while the map scales, so zoomed in they part).
 
 export const PLACES = ['r', 'l', 't', 'b', 'tr', 'br', 'tl', 'bl'];
@@ -45,7 +46,7 @@ export function overlapArea(boxes) {
   return n;
 }
 
-export function placeLabels(items, { dot = DOT, bounds = null } = {}) {
+export function placeLabels(items, { dot = DOT, bounds = null, blocks = [] } = {}) {
   const order = [...items].sort((a, b) => b.prio - a.prio || (a.id < b.id ? -1 : 1));
   const dots = items.map((i) => ({ id: i.id, x0: i.x - dot, y0: i.y - dot, x1: i.x + dot, y1: i.y + dot }));
   const placed = [];
@@ -58,6 +59,7 @@ export function placeLabels(items, { dot = DOT, bounds = null } = {}) {
       let c = n * 0.5; // (a tie keeps the earlier place: right, as the map always had it)
       for (const q of placed) c += area(b, q) * 10;
       for (const d of dots) if (d.id !== it.id) c += area(b, d) * 10;
+      for (const k of blocks) c += area(b, k) * 10; // (a control that stays put over the map covers a name as a dot does)
       if (bounds) c += outside(b, bounds) * 10; // (a name cut off by the edge is as lost as one under another)
       if (c < cost) {
         cost = c;

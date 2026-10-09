@@ -2075,6 +2075,7 @@ export async function create(canvas, ctx) {
   const held = new Set(); // the flight keys down now
   const onKeyDown = (e) => {
     if (!flying() || props.frozen || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (typeof e.key !== 'string') return; // (an autofill's keydown has none)
     const el = e.target;
     const key = e.key.toLowerCase();
     if (!keyFlies(el, key)) return;
@@ -2138,6 +2139,7 @@ export async function create(canvas, ctx) {
   // (two keys to one control, Space and Shift to the boost: letting go of
   // one mustn't let go of the other's hold)
   const onKeyUp = (e) => {
+    if (typeof e.key !== 'string') return;
     const key = e.key.toLowerCase();
     held.delete(key);
     const k = KEYS[key];
