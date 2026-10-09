@@ -169,4 +169,34 @@ describe('the ship after a crash', () => {
     expect(world.ship.y).toBe(world.groundUnder() + 200);
     world.dispose();
   });
+
+  it('never crashes on a soft world: Bespin’s deck is cloud', async () => {
+    const rt = fakeRt();
+    const world = await flight.create(rt, { spec: planetSpecOf('bespin') });
+    for (let i = 0; i < 400 && !Number.isFinite(world.groundUnder()); i++) {
+      world.step(1 / 60, { axis: () => 0, stick: { x: 0, y: 0 } });
+      world.ship = { x: 10, z: 10, y: 400 };
+      await flush();
+    }
+    const h = world.groundUnder();
+    world.ship = { y: h - 30 };
+    world.step(1 / 60, { axis: () => 0, stick: { x: 0, y: 0 } });
+    expect(world.ship.y).toBeLessThan(h);
+    world.dispose();
+  });
+});
+
+describe('the clutter’s kinds', () => {
+  it('has a pool only for the kinds the planet names, a shape for each', () => {
+    const rt = fakeRt();
+    for (const [id, kinds] of [['kashyyyk', ['trunk', 'rock', 'debris']], ['geonosis', ['hive', 'rock', 'debris']], ['cybertron', ['crystal', 'debris', 'spire']], ['dot-matrix', ['block', 'spire']], ['kamino', []]]) {
+      const scene = new THREE.Scene();
+      const ground = createGround(scene, { rt, spec: planetSpecOf(id), tier: 'mid', palette: LOOK.palette });
+      const pools = [];
+      scene.traverse((o) => o.isInstancedMesh && pools.push(o.name.replace('flight-', '')));
+      expect(pools.sort(), id).toEqual([...kinds].sort());
+      scene.traverse((o) => o.isInstancedMesh && expect(o.geometry.attributes.position.count).toBeGreaterThan(0));
+      ground.dispose();
+    }
+  });
 });

@@ -9,8 +9,9 @@ import flightModule from '../components/expanse/flight/module';
 import NotFound from './NotFound';
 import '../components/expanse/flight/flight.css';
 
-// The planets to fly to from the Menu: the authored ones (lib/land/flight's PLANETS' first eight)
-const NEXT = PLANETS.slice(0, 8);
+// The planets to fly to from the Menu: a spread of the fifty (lib/land/flight's PLANETS), one of each kind of ground
+const NEXT_IDS = ['hoth', 'tatooine', 'endor', 'coruscant', 'bespin', 'mustafar', 'middle-earth', 'dot-matrix', 'gazorpazorp', 'cybertron'];
+const NEXT = NEXT_IDS.map((id) => PLANETS.find((p) => p.id === id));
 
 // A planet from low over its ground (/fly/hoth): the ship over an endless,
 // streamed land, Echo Base flat among Hoth's ridges; /fly alone is Hoth.

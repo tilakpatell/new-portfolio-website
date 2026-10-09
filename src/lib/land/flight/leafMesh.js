@@ -9,7 +9,8 @@
 // ring, so where a coarser leaf meets a finer one the gap between their
 // edges shows skirt, not sky.
 //
-// Clutter (rows [x, y, z, yaw, scale, kind], world metres) is placed on the
+// Clutter (rows [x, y, z, yaw, scale, kind], world metres; scale times the
+// kind's `size` in the planet's table) is placed on the
 // two finest depths only. A kind belongs to one depth (its `depth`, the
 // finest when left out): its placements are made for the square of that
 // depth and a finer leaf keeps those that fall inside it, so a spire stays
@@ -26,7 +27,9 @@ import { heightOn } from './sample.js';
 
 export const SKIRT = 12;
 export const CLUTTER_DEPTHS = [5, 6];
-export const CLUTTER_KINDS = ['rock', 'spire', 'debris'];
+// every kind a planet's clutter may name; a row carries the kind's index here
+// (the page builds each kind's shape: expanse/flight/ground.js)
+export const CLUTTER_KINDS = ['rock', 'spire', 'debris', 'trunk', 'hive', 'crystal', 'block'];
 export const DENSITY = { low: 0.4, mid: 0.7, high: 1, ultra: 1 };
 const STEEP = 0.7; // metres a metre: nothing stands on a slope steeper
 
@@ -114,6 +117,8 @@ function clutterFor(spec, leaf, heights, n, field, tier) {
     const f = 2 ** (leaf.d - depth);
     const owner = leafOf(depth, Math.floor(leaf.ix / f), Math.floor(leaf.iz / f));
     const kind = CLUTTER_KINDS.indexOf(c.kind);
+    // (a kind this build doesn't know isn't placed)
+    if (kind < 0) continue;
     const count = Math.round(((c.perKm2 * owner.size * owner.size) / 1e6) * (DENSITY[tier] ?? DENSITY.mid));
     const rnd = seeded(hashOf(`${spec.id}|${owner.key}|${c.kind}`));
     for (let k = 0; k < count; k++) {
@@ -124,7 +129,7 @@ function clutterFor(spec, leaf, heights, n, field, tier) {
       if (pois.some((p) => Math.hypot(x - p.at[0], z - p.at[1]) < p.r + (p.edge ?? Math.max(8, p.r * 0.6)))) continue;
       const sx = (field.heightAt(x + 1, z) - field.heightAt(x - 1, z)) / 2, sz = (field.heightAt(x, z + 1) - field.heightAt(x, z - 1)) / 2;
       if (Math.hypot(sx, sz) > STEEP) continue;
-      rows.push(x, heightOn(leaf, heights, n, x, z), z, yaw, 0.7 + 0.6 * r * r, kind);
+      rows.push(x, heightOn(leaf, heights, n, x, z), z, yaw, (0.7 + 0.6 * r * r) * (c.size ?? 1), kind);
     }
   }
   return new Float32Array(rows);

@@ -144,7 +144,8 @@ export default {
         ground.update(ship);
         // (a crash only on ground drawn: what isn't in yet can't be hit)
         const g = ground.heightUnder(ship.x, ship.z);
-        if (crashed(ship, g)) {
+        // (a soft world's ground is cloud: flown into, it's fog, not a crash)
+        if (!spec.soft && crashed(ship, g)) {
           tell('toast', { text: 'Too low: back up you go.' });
           ship = { ...ship, y: g + RESPAWN_UP, pitch: 0, roll: 0, speed: Math.max(SHIP.speedMin, 120) };
         }

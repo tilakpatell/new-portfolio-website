@@ -17,7 +17,8 @@ import { pool } from '../../../lib/three/pool';
 import { SKIRT, CLUTTER_KINDS } from '../../../lib/land/flight/leafMesh';
 import { WORKER, createGroundCore } from './groundCore';
 
-export const CAP = { rock: 4000, spire: 600, debris: 2000 };
+// slots a kind, at most (halved on low)
+export const CAP = { rock: 4000, spire: 600, debris: 2000, trunk: 3000, hive: 300, crystal: 800, block: 2000 };
 
 // heights the colours change over, from the planet's biomes: its lowest base to its highest
 function bandOf(spec) {
@@ -55,8 +56,37 @@ function groundMaterial(spec) {
   return m;
 }
 
-// the clutter's shapes, code-built, a few metres each (a row's scale is 0.7…1.3 of it)
+// the clutter's shapes, code-built (a row's scale is 0.7…1.3 of each, times
+// its planet's `size` for the kind)
 function clutterGeometry(kind) {
+  // a tree: a bare trunk and a crown, 80 m (Endor's redwoods; scaled down, an orchard's)
+  if (kind === 'trunk') {
+    const trunk = new THREE.CylinderGeometry(1.6, 2.6, 60, 6);
+    trunk.translate(0, 30, 0);
+    const crown = new THREE.ConeGeometry(9, 30, 6);
+    crown.translate(0, 64, 0);
+    return merge([trunk, crown]);
+  }
+  // a hive: a lumpy tapering tower, 60 m (Geonosis's)
+  if (kind === 'hive') {
+    const g = new THREE.CylinderGeometry(3, 9, 60, 7, 4);
+    g.translate(0, 30, 0);
+    return g;
+  }
+  // a crystal: a long octahedron, 20 m, leaning (Cybertron's Manganese forests)
+  if (kind === 'crystal') {
+    const g = new THREE.OctahedronGeometry(4, 0);
+    g.scale(0.8, 2.6, 0.8);
+    g.rotateZ(0.2);
+    g.translate(0, 9, 0);
+    return g;
+  }
+  // a block: a 6 m cube on the ground (the pixel world's)
+  if (kind === 'block') {
+    const g = new THREE.BoxGeometry(6, 6, 6);
+    g.translate(0, 3, 0);
+    return g;
+  }
   if (kind === 'rock') {
     const g = new THREE.IcosahedronGeometry(3, 0);
     g.scale(1.2, 0.6, 1);
@@ -74,13 +104,36 @@ function clutterGeometry(kind) {
   return g;
 }
 
+// several geometries as one (each non-indexed, so their attributes line up)
+function merge(parts) {
+  const flat = parts.map((g) => g.toNonIndexed());
+  const n = flat.reduce((a, g) => a + g.attributes.position.count, 0);
+  const pos = new Float32Array(n * 3);
+  const nor = new Float32Array(n * 3);
+  let o = 0;
+  for (const g of flat) {
+    pos.set(g.attributes.position.array, o * 3);
+    nor.set(g.attributes.normal.array, o * 3);
+    o += g.attributes.position.count;
+    g.dispose();
+  }
+  for (const g of parts) g.dispose();
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  return out;
+}
+
 function three(scene, spec, tier, palette) {
   const root = new THREE.Group();
   root.name = 'flight-ground';
   scene.add(root);
   const material = groundMaterial(spec);
-  const colours = { rock: spec.palette.rock, spire: spec.palette.accent, debris: palette[4] };
+  const colours = { rock: spec.palette.rock, spire: spec.palette.accent, debris: palette[4], trunk: spec.palette.high, hive: spec.palette.rock, crystal: spec.palette.accent, block: spec.palette.rock };
+  // a pool only for the kinds this planet names: one draw each
+  const named = new Set((spec.clutter ?? []).map((c) => c.kind));
   const pools = CLUTTER_KINDS.map((kind) => {
+    if (!named.has(kind)) return null;
     const cap = tier === 'low' ? CAP[kind] / 2 : CAP[kind];
     const p = pool(clutterGeometry(kind), new THREE.MeshLambertMaterial({ color: colours[kind], flatShading: true }), cap, `flight-${kind}`);
     p.mesh.castShadow = p.mesh.receiveShadow = false;
@@ -95,7 +148,7 @@ function three(scene, spec, tier, palette) {
   return {
     root,
     live: () => live,
-    materials: [material, ...pools.map((p) => p.mesh.material)],
+    materials: [material, ...pools.filter(Boolean).map((p) => p.mesh.material)],
     add(leaf, a) {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(a.positions, 3));
@@ -156,7 +209,7 @@ function three(scene, spec, tier, palette) {
     },
     dispose() {
       scene.remove(root);
-      for (const p of pools) p.dispose();
+      for (const p of pools) p?.dispose();
       material.dispose();
     },
   };

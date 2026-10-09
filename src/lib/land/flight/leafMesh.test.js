@@ -14,7 +14,7 @@ describe('makeLeaf', () => {
     expect(SKIRT).toBe(12);
     expect(CLUTTER_DEPTHS).toEqual([5, 6]);
     expect(DENSITY).toEqual({ low: 0.4, mid: 0.7, high: 1, ultra: 1 });
-    expect(CLUTTER_KINDS).toEqual(['rock', 'spire', 'debris']);
+    expect(CLUTTER_KINDS).toEqual(['rock', 'spire', 'debris', 'trunk', 'hive', 'crystal', 'block']);
   });
 
   it('lays flat ground flat, the skirt SKIRT under its edge', () => {
@@ -114,5 +114,24 @@ describe('makeLeaf', () => {
       const b = makeLeaf(hoth, near[3], { n, field });
       for (const k of ['positions', 'normals', 'indices', 'heights', 'clutter']) expect(b[k]).toEqual(a[k]);
     });
+  });
+
+  it('places a planet’s own kinds by name, sized as its table says', () => {
+    const kashyyyk = planetSpecOf('kashyyyk');
+    const f = planetField(kashyyyk);
+    let trunks = 0;
+    for (let ix = 0; ix < 6; ix++) {
+      const m = makeLeaf(kashyyyk, leafOf(5, 20 + ix, 7), { n, field: f, tier: 'high' });
+      for (let r = 0; r < m.clutter.length; r += 6) {
+        if (CLUTTER_KINDS[m.clutter[r + 5]] !== 'trunk') continue;
+        trunks++;
+        // (wroshyrs: 3.5 times a trunk's own size)
+        expect(m.clutter[r + 4]).toBeGreaterThanOrEqual(0.7 * 3.5 - 1e-5);
+        expect(m.clutter[r + 4]).toBeLessThanOrEqual(1.3 * 3.5 + 1e-5);
+      }
+    }
+    expect(trunks).toBeGreaterThan(0);
+    const unknown = { ...kashyyyk, clutter: [{ kind: 'dragon', perKm2: 900 }] };
+    expect(makeLeaf(unknown, leafOf(6, 3, 3), { n, field: f }).clutter.length).toBe(0);
   });
 });
