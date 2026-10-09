@@ -36,7 +36,7 @@ describe('Hoth, every one of them a model', () => {
 
   it('no built people stand in the props: Luke hangs in the cave as a model, and goes with the saber', () => {
     const luke = hoth.life.find((a) => a.id === 'hungluke');
-    expect(luke).toMatchObject({ kind: 'luke', still: true });
+    expect(luke).toMatchObject({ kind: 'lukehoth', still: true });
     expect(luke.hang).toBeGreaterThan(3);
     const step = hoth.quests.find((q) => q.id === 'luke').steps.find((s) => s.id === 'saber');
     expect(step.end).toContainEqual({ hide: 'hungluke' });
@@ -51,5 +51,19 @@ describe('Hoth, every one of them a model', () => {
   });
   it('everyone walks inside the world’s edge (past it an actor can’t take a step)', () => {
     for (const a of hoth.life.filter((a) => a.path && !a.zone)) for (const [x, z] of a.path) expect(Math.hypot(x, z), `${a.kind} at ${x}, ${z}`).toBeLessThan(hoth.reach - 5);
+  });
+  it('Hoth’s named people are themselves', () => {
+    const who = (name) => hoth.life.find((a) => a.name === name)?.kind;
+    expect(who('General Rieekan')).toBe('rieekan');
+    expect(who('Toryn Farr')).toBe('torynfarr');
+    expect(who('Princess Leia')).toBe('leiahoth');
+    expect(who('Han Solo')).toBe('hanhoth');
+    expect(who('Chewbacca')).toBe('chewie');
+    expect(who('General Veers')).toBe('veers');
+    expect(who('2-1B')).toBe('twoonebee');
+    expect(hoth.life.find((a) => a.id === 'hungluke').kind).toBe('lukehoth');
+    const droids = hoth.life.filter((a) => a.name === 'Astromech').map((a) => a.kind);
+    expect(droids).toEqual(expect.arrayContaining(['astromech2', 'astromech3']));
+    expect(droids).not.toContain('droid');
   });
 });

@@ -191,6 +191,16 @@ export const ASSETS = {
   rodian: { uid: 'ba7389be15774e7786b50d9ff839f51f', height: 1.7, as: 'the Rodians' },
   inquisitor: { uid: 'c3af0bd197f348c4a4819a45e78faa53', height: 1.85, as: 'the Inquisitors' },
   tiepilot: { uid: '33a466f49ff3496c8f76d3f4cb845e30', height: 1.8, as: 'the TIE pilots' },
+  // ── Hoth's own (docs/superpowers/specs/2026-10-09-hoth-design.md, section 2) ──
+  rieekan: { height: 1.83, prompt: "A grey-haired military general in his fifties with a lined, serious face, a long grey-green padded cold-weather officer's coat over a grey uniform with rank insignia plaques on the chest, dark trousers, black boots, gloves." },
+  torynfarr: { height: 1.68, prompt: 'A young woman communications officer with dark hair tied back, a slim headset with a microphone, a fitted grey-blue padded military uniform jacket with a high collar, grey trousers, black boots.' },
+  leiahoth: { soft: true, height: 1.5, prompt: 'A young woman base commander with dark brown hair pulled back in a low bun, a white padded quilted cold-weather jumpsuit with a high collar and a light grey belt, white gloves tucked in the belt, white insulated boots.' },
+  hanhoth: { height: 1.85, prompt: 'A roguish man in his thirties with tousled brown hair, a dark navy-blue padded cold-weather parka with a fur-lined hood down on his shoulders, dark trousers, black boots, grey gloves, a gun belt with a holster on the right thigh.' },
+  lukehoth: { soft: true, height: 1.72, prompt: 'A young man with short fair hair, a beige padded arctic parka with a fur-trimmed collar, round snow goggles resting on the forehead, grey-tan trousers, brown snow boots, grey gloves, a belt with a short silver cylinder hilt at the hip.' },
+  veers: { height: 1.8, prompt: "A stern military general in his forties with short hair, a fitted grey-green double-breasted officer's tunic with a rank plaque on the chest, a black peaked cap, grey trousers, tall black boots, black gloves." },
+  twoonebee: { height: 1.8, still: true, prompt: 'A slim humanoid medical robot standing upright, grey metal limbs and a narrow head with round lenses, a transparent cylindrical chest showing tubes and wires inside, thin articulated fingers.' },
+  astromech2: { height: 1.0, still: true, prompt: 'A small barrel-shaped utility robot on two side legs and a centre foot, a white body with red panels, a red flat-topped domed head with one round black lens.' },
+  astromech3: { height: 1.0, still: true, prompt: 'A small barrel-shaped utility robot on two side legs and a centre foot, a white body with orange panels, a silver rounded domed head with orange trim and a single round lens.' },
 };
 const POLY = 16000;
 // the most triangles a figure keeps (`tris` to change it)

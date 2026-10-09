@@ -70,6 +70,18 @@ export const CREW = {
   caradune: { url: '/models/galaxy/crew/caradune.glb', tall: 1.78 },
   greef: { url: '/models/galaxy/crew/greef.glb', tall: 1.85 },
   rodian: { url: '/models/galaxy/crew/rodian.glb', tall: 1.7 },
+  // Hoth's own, made with Meshy (scripts/meshy-galaxy.mjs, the Hoth rows):
+  // Echo Base's command, Han, Leia and Luke in their cold-weather kit,
+  // Veers, the medical droid and two astromechs
+  rieekan: { url: '/models/galaxy/crew/rieekan.glb', tall: 1.83 },
+  torynfarr: { url: '/models/galaxy/crew/torynfarr.glb', tall: 1.68 },
+  leiahoth: { url: '/models/galaxy/crew/leiahoth.glb', tall: 1.5 },
+  hanhoth: { url: '/models/galaxy/crew/hanhoth.glb', tall: 1.85 },
+  lukehoth: { url: '/models/galaxy/crew/lukehoth.glb', tall: 1.72 },
+  veers: { url: '/models/galaxy/crew/veers.glb', tall: 1.8 },
+  twoonebee: { url: '/models/galaxy/crew/twoonebee.glb', tall: 1.8, still: true },
+  astromech2: { url: '/models/galaxy/crew/astromech2.glb', tall: 1.0, still: true },
+  astromech3: { url: '/models/galaxy/crew/astromech3.glb', tall: 1.0, still: true },
   // the Hutts' men where the galaxy's war gives a world to the Hutts: Jabba's
   // court's faces in turn (they were built in code, figures.js's `mercenary`)
   mercenary: {

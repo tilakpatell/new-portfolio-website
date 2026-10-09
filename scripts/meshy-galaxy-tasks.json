@@ -257,5 +257,47 @@
     "image": "01a116cb-ca09-712d-88c0-3ac289be230d",
     "model": "01a116cd-57ef-7515-9ca6-c1cac31fe20b",
     "rig": "01a116d3-12ce-77e9-8980-b3c45000b94e"
+  },
+  "rieekan": {
+    "image": "01a122bb-657d-7598-bd30-20e75d8df1e8",
+    "model": "01a122d8-57ff-77e8-946e-09eaad0a9ada",
+    "rig": "01a122db-3bff-7041-8664-d1ed56db401f"
+  },
+  "torynfarr": {
+    "image": "01a122bc-371f-76e9-bdd2-746f90ef8929",
+    "model": "01a122d8-5bae-7562-a2a3-b26dc18b2035",
+    "rig": "01a122db-7294-7505-895c-56220ab9572d"
+  },
+  "hanhoth": {
+    "image": "01a122bf-02e6-773c-b30b-bc3a98253618",
+    "model": "01a122d8-630d-7322-9dfc-f86133d6fb10",
+    "rig": "01a122db-d0db-77a3-bdab-d5c03a4c6dfe"
+  },
+  "veers": {
+    "image": "01a122c2-9e3c-71bc-9465-9ea54d396616",
+    "model": "01a122d8-6a8d-717e-8bed-d2c67ca2bbe0",
+    "rig": "01a122dc-0ce8-7524-b7d9-1d52aa27073b"
+  },
+  "twoonebee": {
+    "image": "01a122c3-7bc8-73eb-87b4-cbdfe4848c14",
+    "model": "01a122d8-6d8b-73d6-82ac-15bbea3dc505"
+  },
+  "astromech2": {
+    "image": "01a122c3-fd4f-75f7-90dc-d061f9e79eeb",
+    "model": "01a122d8-715a-75d7-ab01-51162b1c2dd2"
+  },
+  "astromech3": {
+    "image": "01a122c4-821a-765a-ab18-729770e59f06",
+    "model": "01a122d8-7416-76ef-b965-36884d1f3fb4"
+  },
+  "lukehoth": {
+    "image": "01a122de-592e-7141-a0ea-8996591bf15a",
+    "model": "01a122e0-940c-7252-aca3-e26e528ec0f6",
+    "rig": "01a122e3-d06b-7380-9982-d8d676426819"
+  },
+  "leiahoth": {
+    "image": "01a122e4-0ecb-74ec-b6fa-f2cb222c45c3",
+    "model": "01a122e4-f82c-7333-9e74-db1f7db87f82",
+    "rig": "01a122e6-ab63-75cf-9c4b-9ca3d339d7e1"
   }
 }
