@@ -15,6 +15,8 @@ Read `docs/superpowers/specs/2026-10-09-middle-earth-landing-design.md` (the des
 
 Desktop is 1440 × 900, phone 390 × 844 with touch, both at a device pixel ratio of 1.
 
+From Task 4 the measure waits past the 8 s for the WebGL map to come on and for the frame guard to have drawn everything it held back (`window.__tpGuardPending() === 0`), then 1 s more: under SwiftShader the room’s new shaders put the WebGL map on after the 8 s, and the scene draws about a frame a second, so at 8 s the night was still fading in. The baseline commit measured that way gives desktop 270 calls and 363,409 triangles by day, 268 calls, 338,664 triangles and a pool of 0.27 by night (more of the models are in, and the night is all the way down). Read Task 4’s row and later ones against those.
+
 ## Baseline
 
 Taken on 2026-10-09 at `12969237`, before any scene change.
@@ -32,3 +34,4 @@ The scene moves, so the counts drift between runs. Over the ten runs taken (two 
 
 | task | calls | triangles | uiShare desktop | uiShare phone | pool dark |
 |---|---|---|---|---|---|
+| 4 · the room | 274 (263 dark) | 353,685 (340,704 dark) | 0.281 | 0.385 | 0.317 |
