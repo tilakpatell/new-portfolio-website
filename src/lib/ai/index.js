@@ -21,6 +21,8 @@ export * as influence from './influence';
 export * as squad from './squad';
 export * as body from './body';
 export * as react from './react';
+export * as mind from './mind';
+export * as states from './states';
 export * as needs from './needs';
 export * as social from './social';
 export * as talk from './talk';
