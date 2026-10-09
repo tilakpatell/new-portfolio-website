@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFactions, writeFoot, writeLooksWire, writePack, writePose, writeShot } from './protocol';
+import { DAMAGE_MAX, FLAG, FLOOD, GUARD, NAME_MAX, PACK_MAX, PUNCH_MAX, RATES, STALE_MS, aimedAt, allyStep, cleanName, createLimiter, hitCounts, hunterHitCounts, randomCallsign, readAlly, readCursor, readFoot, readHello, readHit, readHunterHit, readPack, readPose, readShot, sample, writeCursor, writeFactions, writeFoot, writeLooksWire, writePack, writePose, writeShot } from './protocol';
 import { STOCK_LOADOUT, writeOutfit } from '../outfit';
 import { STOCK_BUILD, writeBuild } from '../shipyard/build';
 import { defaultLook, readLook, readLooks, writeLook } from '../../rickmorty/wardrobe/looks';
@@ -478,6 +478,17 @@ describe('allyStep', () => {
     expect(allyStep('none', 'accept')).toEqual({ state: 'none', send: null });
     expect(allyStep('none', { in: 'bogus' })).toEqual({ state: 'none', send: null });
     expect(allyStep(undefined, 'end')).toEqual({ state: 'none', send: null });
+  });
+});
+
+describe('readAlly', () => {
+  it('reads each word of an alliance, and keeps the k of an ask from a pilot who has you saved', () => {
+    for (const t of ['ask', 'yes', 'no', 'end']) expect(readAlly({ t })).toEqual({ t, k: 0 });
+    expect(readAlly({ t: 'ask', k: 1 })).toEqual({ t: 'ask', k: 1 });
+  });
+  it('turns away what isn’t one, and a k that isn’t 1 is none', () => {
+    for (const junk of [null, undefined, 'ask', ['ask'], {}, { t: 'bogus' }, { t: 'ASK' }, { t: ['ask'] }]) expect(readAlly(junk)).toBeNull();
+    for (const k of [2, '1', true, -1, 0.5, null]) expect(readAlly({ t: 'ask', k })).toEqual({ t: 'ask', k: 0 });
   });
 });
 
