@@ -95,11 +95,12 @@ function Kitchen({ level, live, invite }) {
   if (!sim.current) sim.current = { s: newRush(level, { players: 1 }), me: 0, phase: 'lobby', keys: new Set(), work: new Set(), stick: { x: 0, y: 0 }, grabs: [], dash: false, padBefore: {}, count: 0, tickAt: 11, lines: 0, t: 0, touchWork: false, sess: null, shown: {}, joinedAt: 0 };
   // the dash's press (lib/press.js), and with ?debug its numbers on the panel
   if (!sim.current.press) sim.current.press = createCooldownPress();
+  // (only while the kitchen is on screen: a town's own panel has the corner otherwise)
   useEffect(() => {
-    if (!debugOn()) return undefined;
+    if (!live || !debugOn()) return undefined;
     const panel = debugPanel({ title: 'The rush', groups: pressGroups(sim.current.press) });
     return () => panel.dispose();
-  }, []);
+  }, [live]);
   const hudKey = useRef('');
   // the loop reads the phase from sim (set at once), the page from state
   const go = useCallback((p) => {
