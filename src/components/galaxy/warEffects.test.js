@@ -3,7 +3,7 @@ import { GCW, WAR_SYSTEMS, warTable } from './gcw';
 import { WARS, WAR_IDS } from './sides';
 import { systemById } from './systems';
 import { obstacles } from './battles';
-import { OWNERS, effectsFor, garrisonFleet, piecesShown } from './warEffects';
+import { OWNERS, effectsFor, garrisonFleet, gripOf, piecesShown } from './warEffects';
 
 const MS = GCW.start + 30 * 60e3;
 const sworn = (war, side, turncoat = false) => ({ war, side, sworn: side ? 1 : 0, turncoat });
@@ -12,7 +12,7 @@ const tableWith = (war, id, row) => {
   const t = warTable(war, MS);
   return { ...t, systems: t.systems.map((r) => (r.id === id ? { ...r, ...row } : r)) };
 };
-const KEYS = ['owner', 'yours', 'hostile', 'garrison', 'droids', 'hunt', 'escort', 'capital', 'traffic', 'fleet', 'heat', 'troops', 'deserter'];
+const KEYS = ['owner', 'yours', 'hostile', 'garrison', 'droids', 'hunt', 'escort', 'capital', 'traffic', 'fleet', 'heat', 'troops', 'deserter', 'grip', 'stance', 'tier'];
 
 describe('effectsFor', () => {
   it('every war system, in every war, sworn either way or not at all, gives the full shape', () => {
@@ -25,6 +25,9 @@ describe('effectsFor', () => {
           expect(Array.isArray(e.traffic)).toBe(true);
           if (!side) expect(e.hostile).toBe(false);
           expect(e.owner).toBe(t.systems.find((r) => r.id === id).owner);
+          expect(['friend', 'enemy', 'wary']).toContain(e.stance);
+          expect(['thin', 'held', 'fortress']).toContain(e.tier);
+          expect(Math.round(e.grip * 10) / 10, `${war} ${side} ${id}`).toBe(e.grip);
         }
     }
   });
@@ -72,6 +75,40 @@ describe('effectsFor', () => {
     expect(e.traffic).toContain('nubian');
     expect(e.traffic).toContain('freighter');
     expect(e.traffic).not.toContain('venator'); // (Naboo's own warship goes: the owner's warships fly by instead)
+  });
+  it('the holder’s fleet treats you by your oath', () => {
+    for (const war of WAR_IDS) {
+      const { liberator, raider } = WARS[war];
+      const at = (owner, side, turncoat) => effectsFor('hoth', tableWith(war, 'hoth', { owner }), sworn(war, side, turncoat));
+      expect(at(liberator, liberator).stance, war).toBe('friend');
+      expect(at(liberator, raider).stance, war).toBe('enemy');
+      expect(at(raider, liberator).stance, war).toBe('enemy');
+      expect(at(liberator, null).stance, war).toBe('wary');
+      // the Hutts warn first, whoever you are
+      for (const side of [liberator, raider, null]) expect(at('hutt', side).stance, `${war} ${side}`).toBe('wary');
+      expect(at(liberator, raider, true), war).toMatchObject({ deserter: true, stance: 'enemy' });
+    }
+  });
+  // a row held whole, in supply, quiet, neither blockade nor stronghold, with the given changes
+  const gripAt = (row) => {
+    const e = effectsFor('hoth', tableWith('gcw', 'hoth', { control: 1, cut: false, front: false, attack: null, kind: 'assault', worth: 1, ...row }), sworn('gcw', 'rebel'));
+    return { grip: e.grip, tier: e.tier };
+  };
+  it('grip reads the holder’s hold of the system', () => {
+    expect(gripAt({ control: 1, kind: 'blockade', worth: 1 })).toEqual({ grip: 1, tier: 'fortress' });
+    expect(gripAt({ control: 0.75, worth: 2 })).toEqual({ grip: 0.9, tier: 'fortress' });
+    expect(gripAt({ control: 0.7, kind: 'assault', worth: 1 })).toEqual({ grip: 0.7, tier: 'held' });
+    expect(gripAt({ control: 0.6, cut: true, front: true })).toEqual({ grip: 0.2, tier: 'thin' });
+    expect(gripAt({ control: 0.6, attack: { by: 'empire' } }).grip).toBe(0.5);
+    expect(gripAt({ control: 0.8 }).tier).toBe('held');
+    expect(gripAt({ control: 0.5 }).tier).toBe('held');
+    expect(gripAt({ control: 0.4 }).tier).toBe('thin');
+    expect(gripAt({ control: GCW.lastHold, cut: true, front: true })).toEqual({ grip: 0, tier: 'thin' });
+    expect(gripOf({}), 'a row with no control is held whole').toEqual({ grip: 1, tier: 'fortress' });
+  });
+  it('grip moves in tenths, so the effects don’t change every second', () => {
+    expect(gripAt({ control: 0.73 }).grip).toBe(0.7);
+    expect(gripAt({ control: 0.74 }).grip).toBe(0.7);
   });
   it('every side has a garrison, troops, traffic and escorts for its fleet', () => {
     for (const [id, o] of Object.entries(OWNERS)) {

@@ -22,13 +22,26 @@
 //   heat,       // added to the director's heat: a front 1, an attack 2
 //   troops,     // the trooper kind on the ground (surface/hostiles.js)
 //   deserter,   // you turned your coat from this owner this campaign
+//   stance,     // how the holder's fleet treats you: 'friend' (your side's),
+//               // 'enemy' (the other side's, or the side you deserted), 'wary'
+//               // (you're unsworn, or it's Hutt space: the Hutts warn first)
+//   grip,       // how firmly the holder holds it, 0..1 in tenths (gripOf)
+//   tier,       // the garrison that grip keeps: 'thin', 'held' or 'fortress'
 // }
+// gripOf(row) → { grip, tier }: the war table row's control, cut 40% out of
+// supply and 0.15 on a front or under attack, up 0.25 for a blockade and 0.15
+// for a stronghold, rounded to a tenth (scene.js's effectsNow rebuilds the
+// fleets whenever the effects change, and control moves every second); a
+// fortress over 0.85, held from 0.5, thin below. stanceOf({ owner, side,
+// deserter }) → stance. Stance, grip and tier are section 1 of
+// docs/superpowers/specs/2026-10-08-garrison-defence-design.md.
 // piecesShown(sys, effects) → [boolean] by sys.pieces: a fleet piece only for
 // its holder, a standing battle only while the system's fought over;
 // garrisonFleet(sys, effects) → [{ kind, size, at, yaw }]: two of the
 // holder's ships in orbit where the system has no fleet of theirs.
 
 import { SIZE, obstacles } from './battles';
+import { GCW } from './gcwRules';
 import { otherSide } from './sides';
 import { systemById } from './systems';
 
@@ -46,6 +59,21 @@ export const OWNERS = {
 // the kinds a system's own traffic list may name that are warships (the
 // owner's fly by in their place)
 const WARSHIPS = new Set(['tie', 'interceptor', 'tiebomber', 'tieadvanced', 'xwing', 'ywing', 'awing', 'bwing', 'uwing', 'arc170', 'delta7', 'vulture', 'trifighter', 'n1', 'venator', 'acclamator', 'munificent', 'providence', 'lucrehulk', 'destroyer', 'lightcruiser', 'gozanti', 'corvette', 'nebulon', 'moncal']);
+
+export function gripOf(row) {
+  let g = row.control ?? 1;
+  if (row.cut) g *= 0.6;
+  if (row.front || row.attack) g -= 0.15;
+  if (row.kind === 'blockade') g += 0.25;
+  if ((row.worth ?? 1) >= GCW.stronghold) g += 0.15;
+  const grip = Math.round(Math.min(1, Math.max(0, g)) * 10) / 10;
+  return { grip, tier: grip > 0.85 ? 'fortress' : grip >= 0.5 ? 'held' : 'thin' };
+}
+
+export function stanceOf({ owner, side, deserter }) {
+  if (side === null || owner === 'hutt') return 'wary';
+  return owner === side && !deserter ? 'friend' : 'enemy';
+}
 
 export function effectsFor(sysId, table, current) {
   const row = table?.systems?.find((r) => r.id === sysId);
@@ -74,6 +102,8 @@ export function effectsFor(sysId, table, current) {
     heat: row.attack ? 2 : row.front ? 1 : 0,
     troops: o.troops,
     deserter,
+    stance: stanceOf({ owner, side, deserter }),
+    ...gripOf(row),
   };
 }
 
