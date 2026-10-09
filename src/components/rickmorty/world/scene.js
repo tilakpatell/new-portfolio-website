@@ -21,8 +21,9 @@
 // sight(): the camera goes on it, `back` behind its start, as that file's
 // view() has it) and rickall ({ game, aim, hide }, for the house to draw),
 // talk ({ id, n, hold, x, z }: Morty's word to someone, while it plays; his
-// head turns to them, and theirs to him) and emote (lib/emote.js's readEmote
-// of his: played on him once) }.
+// head turns to them, and theirs to him), emote (lib/emote.js's readEmote
+// of his: played on him once) and bolts, boltHits (his shots in flight,
+// ./rmShots.js's, and where any ended this frame) }.
 //
 // Morty's body: his feet paced to the ground he covers, tucked up in a jump
 // (./living.js's stepMotion, locomotion.js), a glance about now and then
@@ -49,6 +50,7 @@ import { gentleRamp, kitMaterials } from './kit';
 import { ROAD_Y, STREET_LIGHT, buildStreet } from './street';
 import { ANNEX_LIGHT, ANNEX_SKY, STREET_SKY, SUN_DIR, makeSky } from './sky';
 import { createFx, portalMaterial } from './fx';
+import { createBoltMeshes } from '../../../lib/three/combat/bolts';
 import { buildArcade } from './arcade';
 import { buildGarage, buildHouse, buildSchoolRoom, buildUpstairs } from './interiors';
 import { buildBasement } from './interiors/basement';
@@ -62,6 +64,7 @@ import { createFeel, feelGroups } from '../../../lib/three/feel';
 import { wireImpacts } from '../../../lib/three/impacts';
 import { createImpacts, impactGroups } from '../../../lib/impact';
 import { createSpring, springGroups } from '../../../lib/spring';
+import { BLOOMS } from './look';
 
 export { kitMaterials };
 
@@ -158,7 +161,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   const dev = device();
   const tier = dev.tier;
   const fit = budget();
-  const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.3, far: 1000, exposure: 1.05, bloom: { strength: 0.55, radius: 0.45, threshold: 1.15 }, onLost });
+  const stage = createStage(canvas, { shadows: true, fov: 55, near: 0.3, far: 1000, exposure: 1.05, bloom: BLOOMS.street, onLost });
   // the shake (lib/three/feel: trauma², still under reduced motion) and the
   // knocks (a hard landing, the cruiser's bump) by the hit law, a thud where
   // it was, heard from the camera
@@ -183,10 +186,9 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     },
   });
   const { renderer, scene, camera } = stage;
-  // a tone map that keeps the show's flat bright colours bright (the house
-  // tone mapper: the exposure was tuned under it, so the house's own
-  // ACES-matching lift isn't taken)
-  renderer.toneMapping = THREE.NeutralToneMapping;
+  // (the house tone mapper, the stage's own, keeps the show's flat bright
+  // colours bright: the exposure was tuned under it, so the house's own
+  // ACES-matching lift isn't taken; ./look.js)
   // the house look (lib/three/house): one shadow colour on everything, from
   // each area's sky light, and fog the colour of the sky where there's fog
   const house = createHouse();
@@ -207,6 +209,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
   scene.add(hemi, sun, sun.target);
 
   const fx = createFx();
+  const bolts = createBoltMeshes(scene, { pool: 16, flashes: 6 }); // Morty's shots (./rmShots.js): state.bolts, and state.boltHits where they ended
   scene.add(fx.group);
   const mats = kitMaterials(renderer);
 
@@ -717,6 +720,9 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
     areas[area].update?.(t, dt, state, camera);
     if (fx.portal.visible) fx.portal.rotation.y = Math.atan2(camera.position.x - fx.portal.position.x, camera.position.z - fx.portal.position.z);
     fx.update(dt, t);
+    bolts.sync(state.bolts ?? []);
+    for (const at of state.boltHits ?? []) bolts.flash(at);
+    bolts.update(dt);
     floorLight?.update();
     renderer.info.reset();
     stage.render(ms);
@@ -832,6 +838,7 @@ export async function createRmWorld(canvas, { onLost, looks = null } = {}) {
       // models a builder never put in the scene
       for (const o of models.values()) if (o && !o.parent) disposeTree(o);
       fx.dispose();
+      bolts.dispose();
       ink.dispose(); // (the composer doesn't free its passes)
       glowMat.dispose();
       saucer?.traverse((o) => o.userData.glass?.dispose());

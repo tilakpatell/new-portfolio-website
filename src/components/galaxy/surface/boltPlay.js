@@ -8,14 +8,17 @@
 // that file doesn't grow.
 //
 // createBoltPlay({ blaster, ground, rng }) → { enemy(s, you) → bolt | null,
-// step(dt, ctx, on), guardOf(st, raised) → blade | null }
+// step(dt, ctx, on) }
 //   s: a shot at you, { from, to: [x, z] | null, spread, damage, color, who,
 //     side }; you: your walker state
 //   ctx: { you (your walker state, or null while nothing can hit you), mate
 //     (its, or null), allies (sides whose bolts pass you by), targets (the
-//     quests' or the battle's figures), guard (guardOf's) }
+//     quests' or the battle's figures), guard (your raised blade: saber.js's
+//     guard()) }
 //   on: { yours(e), hurt(damage, from), mate(damage, from), other(e),
-//     deflect(e), landed(e) } (e: the step's event)
+//     deflect(e), home(e) (a bolt your blade turned, into someone: e.damage
+//     is what it was fired with, so a trooper's own bolt fells him),
+//     landed(e) } (e: the step's event)
 
 import { FIRST, freshAim, missBy, shotStep } from '../../../lib/combat/accuracy';
 import { capsuleOf } from './blaster';
@@ -64,15 +67,6 @@ export function createBoltPlay({ blaster, ground = null, rng = Math.random }) {
       return blaster.enemy(s.from, to, Math.max(spread, min * 1.5), s.color ?? '#ff4a3d', s.damage ?? 8, { side: s.side ?? 'them', owner: who?.ground ? who.id : who, rng, min, tag: { atYou: true, who } });
     },
 
-    // your raised blade as the bolts see it: across your front, chest high
-    // (until the blade's own segment is on hand: lib/combat/blade.js)
-    guardOf(st, raised) {
-      if (!raised) return null;
-      const fx = Math.sin(st.yaw);
-      const fz = Math.cos(st.yaw);
-      return { id: 'you', base: [st.x + fx * 0.45, st.y + 0.4, st.z + fz * 0.45], tip: [st.x + fx * 0.45, st.y + 1.7, st.z + fz * 0.45], r: 0.6, side: 'you' };
-    },
-
     step(dt, ctx, on) {
       bodies.length = 0;
       blades.length = 0;
@@ -97,6 +91,7 @@ export function createBoltPlay({ blaster, ground = null, rng = Math.random }) {
           const from = { x: b.from[0], z: b.from[2] };
           if (e.body.id === 'you') on.hurt?.(b.damage, from);
           else if (e.body.id === 'mate') on.mate?.(b.damage, from);
+          else if (b.side === 'you' && b.deflected && on.home) on.home({ ...e, damage: b.damage });
           else if (b.side === 'you') on.yours?.(e);
           else if (!e.body.ref?.ground) on.other?.(e);
         } else if (e.type === 'solid' && b.side === 'you') on.landed?.(e);
