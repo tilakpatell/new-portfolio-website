@@ -68,7 +68,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2A | session_01HPFczeNhvDuaFuXnrzZj9H | `claude/feel-middleearth`, `claude/feel-middleearth-look` | Tier 1: #728 (Tier 2: none in the roster); the look: #732 | yes, both |
 | 2B | session_01DVpcS5r4qygJHh2VUkxKoP | `claude/feel-starwars` | Tier 1: #729 (the surface, the map, the trench); Tier 2 with the inside’s Tier 1: #747 | Tier 1 yes |
 | 2C | | | | |
-| 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: #740; Tier 3 Iacon: #745 | Tiers 1, 2 and 3 Albuquerque |
+| 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: #740; Tier 3 Iacon: #745; the look: (opening) | Tiers 1, 2, 3 |
 | 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733 | |
 | 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1); #734 (Tier 2); the look | #731, #734 yes |
 
@@ -125,4 +125,6 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **2E, for the owner:** R in Invincible took a radio call already; it still does, first, and lets go of the water only when no call waits. The compound’s fov punch was not held under reduced motion; on the feel it is.
 - **2E, for the owner:** `node scripts/autopilot-check.mjs --routes /caribbean` fails on `main` with “no canvas: the 3D never started”: without a graphics chip the tide asks for hardware acceleration and waits on “Play anyway”, so the headless check never sees a canvas there.
 - **2D, for 2B, 2E (Tier 3):** `src/lib/three/knockables.js` is made (with Albuquerque’s street props): `createKnockables({ physics, kinds, impacts, parent, count })` places `{ kind, x, y, z, yaw }` as sleeping `lib/physics/props.js` bodies, one instanced draw a kind, each hit through `impacts.onHit(force, at, kind)`; `knockablesWanted(device())` says whether to load Rapier (a high tier, not a phone, not Data Saver); with `physics` null the props stand, drawn. A world’s own kinds go in `kinds` (`{ mass, lift, colliders, shape: 'box' | 'cylinder' | 'cone', size, colour }`). `albuquerque/world/roadside.js` is the pattern: a floor, the nearby buildings as fixed boxes, the player a kinematic `addPusher` following the rules, `physics.step(dt)` then `sync()` a frame.
+- **2D, for the owner:** four scenes in the lane still draw under their own ACES, as their looks say: the office’s tour and toss (`office/stage3d.js`) and Cybertron’s planet and transformation (`cybertron/planet3d.js`, `transform3d.js`). The Cybertron backdrop’s bloom (0.92) and Roll out’s (0.9) are under white, with their why. Moving any of them changes its picture, which wants shots of each section (they are sections of `/scranton` and `/cybertron`, below the fold: the smoke check doesn’t see them).
+- **2D:** the smoke check’s shots need `--settle 60000` in the sandbox for Albuquerque and Cybertron to draw (the default catches their loading veils), and `--quality high` to load the knockables’ engine.
 
