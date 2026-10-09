@@ -83,6 +83,26 @@ describe('frameGuard', () => {
     expect(r.draws).toEqual([m]);
   });
 
+  it('keeps drawing what three drew while the frame went ungated, once the frame is gated (a step that evens the buffer out)', async () => {
+    const { r, g, scene } = setup({ linkAfter: 5 });
+    const m = new THREE.MeshStandardMaterial({ map: picture() });
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(), m));
+    // a composer's buffer at a fractional size (1470 wide at 1.75 is 2572.5
+    // to the canvas's 2572): not the canvas's, so three draws it all as it is
+    r.target = { width: 100.5, height: 100.5 };
+    await frames(r, scene, 2);
+    expect(r.draws).toEqual([m]);
+    r.initTexture(m.map); // (three sent it with that first draw)
+    // the stage's watchdog drops the ratio to 1: the buffer is the canvas's
+    // size now, so the frame is gated, and what's on screen stays on it
+    r.target = { width: 100, height: 100 };
+    for (let i = 0; i < 3; i++) {
+      await frames(r, scene);
+      expect(r.draws).toEqual([m]);
+    }
+    expect(g.pending()).toBe(0);
+  });
+
   it("holds back a material whose shader was made but isn't known to have linked", async () => {
     const { r, scene } = setup({ linkAfter: 1 });
     const m = new THREE.MeshStandardMaterial();
