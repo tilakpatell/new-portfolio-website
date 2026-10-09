@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createBolts } from '../../lib/combat/bolt';
 import { FIRST } from '../../lib/combat/accuracy';
-import { BOLT, FOOT, METRE, TROOPS, aimAt, apart, at, bearing, byTrench, facingAlong, footBodies, footSolids, inTrench, landingSpot, march, offset, person, place, rightOf, solidsOn, squad, vec, velOf, walk } from './foot';
+import { BOLT, FOOT, METRE, TROOPS, aimAt, apart, at, bearing, byTrench, createJump, facingAlong, footBodies, footSolids, inTrench, landingSpot, march, offset, person, place, rightOf, solidsOn, squad, vec, velOf, walk } from './foot';
 
 const R = 18;
 const seeded = (seed = 1) => () => {
@@ -64,6 +64,50 @@ describe('on foot', () => {
     expect(top).toBeLessThan(1.4 * METRE);
     expect(again).toBe(0);
     expect(w.h).toBe(0);
+  });
+
+  it('jumps once for a key held down, however long it’s held (a press, not a bool)', () => {
+    const jump = createJump();
+    let w = start;
+    let jumps = 0;
+    for (let t = 0; t < 3; t += 1 / 60) {
+      jump.hold(true);
+      const was = w.vh;
+      w = walk(w, { jump: jump.press }, 1 / 60, R);
+      if (w.vh > 0 && was <= 0) jumps++;
+    }
+    expect(jumps).toBe(1);
+    // let go and pressed again: another
+    jump.hold(false);
+    w = walk(w, { jump: jump.press }, 1 / 60, R);
+    jump.hold(true);
+    w = walk(w, { jump: jump.press }, 1 / 60, R);
+    expect(w.vh).toBeGreaterThan(0);
+  });
+
+  it('jumps on landing for a press a hair too early, and not for one long before', () => {
+    const early = (before) => {
+      const jump = createJump();
+      let w = walk(start, { jump: true }, 1 / 60, R);
+      let pressed = false;
+      let landed = null;
+      for (let t = 0; t < 2; t += 1 / 60) {
+        // (the time left in the air, as it falls: h / speed, near enough)
+        const left = w.vh < 0 ? w.h / -w.vh : Infinity;
+        if (!pressed && left <= before) {
+          jump.hold(true);
+          jump.hold(false);
+          pressed = true;
+        }
+        const was = w.h;
+        w = walk(w, { jump: jump.press }, 1 / 60, R);
+        if (was > 0 && w.h === 0) landed = t;
+        if (landed !== null && t - landed > 0.05) break;
+      }
+      return { pressed, up: w.h > 0 || w.vh > 0 };
+    };
+    expect(early(0.08)).toEqual({ pressed: true, up: true });
+    expect(early(0.4)).toEqual({ pressed: true, up: false });
   });
 
   it('goes round the parked ship, never through it', () => {
