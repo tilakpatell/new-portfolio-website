@@ -160,6 +160,17 @@ describe('E in free roam', () => {
   });
 });
 
+describe('what E is at', () => {
+  it('is the superlaser’s switch, not the crew station beside it that only reads out', () => {
+    const g = newGame({ station: 'ds2', side: 'imperial', mode: 'roam', seed: 5 });
+    const s = g.layout.station.spots['firing-switch'];
+    teleport(g, 'command', s.x, s.z + 1.2);
+    const yaw = Math.atan2(s.x - g.you.x, -(s.z - g.you.z));
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
+    expect(promptOf(g)).toMatchObject({ use: true, text: 'fire the superlaser' });
+  });
+});
+
 describe('a seat', () => {
   const still = (yaw, o = {}) => ({ dir: { x: 0, z: 0 }, yaw, pitch: 0, ...o });
   function beside(g, room, kind) {
@@ -175,6 +186,11 @@ describe('a seat', () => {
   it('is sat in with E, held in facing its way, and stood up from with E, in front of it', () => {
     const g = newGame({ station: 'ds2', side: 'imperial', mode: 'roam', seed: 5 });
     const { t, yaw } = beside(g, 'throne', 'throne');
+    // (Luke's saber on its armrest first, and once taken it isn't offered again)
+    expect(promptOf(g)).toMatchObject({ use: true, text: 'take the lightsaber' });
+    step(g, still(yaw, { use: true }));
+    expect(g.you.blade).toBe('green');
+    step(g, still(yaw));
     expect(promptOf(g)).toMatchObject({ use: true, text: 'sit on the throne' });
     step(g, still(yaw, { use: true }));
     expect(drain(g).some((e) => e.type === 'sit')).toBe(true);

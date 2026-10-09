@@ -110,10 +110,17 @@ export function buildThrone(kit, room, layout, { renderer = null } = {}) {
   const parts = kit.shell(room, layout, { bay: 2.4, rib: 0.3, ribDepth: 0.2, kick: 0.4, band: 0.6, tall: 2.4, lights: false, openings: hole ? [hole] : [], seed: 4 });
   parts.push(...risers(room));
   parts.push(...lips(kit, openEdges(room), { thick: 0.3 }));
-  for (const p of props) parts.push(...drawWith(HEIGHT_PROPS, p));
+  for (const p of props) if (p.tag !== 'armrest-saber') parts.push(...drawWith(HEIGHT_PROPS, p));
   // the shaft under the gap in the floor, its walls drawn down until the dark takes them
   const shaft = layout.rooms.get('reactorshaft');
   const extra = [];
+  // (Luke's saber on the armrest on its own, to be gone from it once it is taken: scene/index.js)
+  const held = props.find((p) => p.tag === 'armrest-saber');
+  if (held) {
+    const saber = kit.merge(drawWith(HEIGHT_PROPS, held));
+    saber.name = 'armrest-saber';
+    extra.push(saber);
+  }
   const owned = [];
   if (shaft) {
     const b = shaft.box;

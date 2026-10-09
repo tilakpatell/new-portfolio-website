@@ -126,11 +126,25 @@ const DOES = {
   plans: 'open the station’s plans',
 };
 
+// what E says at a console that reads out, where its kind's name wouldn't say it
+const READS_AS = {
+  intercom: 'call on the intercom',
+  'door-panel': 'read the cell door’s panel',
+  station: 'read the crew station',
+  'fire-console': 'read the fire control console',
+  'pentagon-screen': 'read the screen',
+  'button-bank': 'read the console',
+  bank: 'read the console',
+  desk: 'read the desk’s screen',
+};
+
 const storyOn = (g) => Boolean(g.plot && !g.plot.done);
 // whether E is offered at a tagged thing: what the story's step names, what is always offered, and in
 // free roam whatever has a use there
 function offered(g, t) {
   if (!t.tag) return READS.has(t.kind) || (Object.hasOwn(SEATS, t.kind) && free(g, t));
+  // (the saber off the armrest once: it is yours now)
+  if (t.tag === 'armrest-saber' && g.items.has('saber')) return false;
   if (ALWAYS.has(t.tag) || t.text) return true;
   if (!storyOn(g)) return Boolean(FREE[t.tag]);
   const step = g.plot.story.steps.find((q) => q.id === g.plot.progress.step);
@@ -225,12 +239,14 @@ export function reachable(g) {
   for (const j of g.layout.jumps ?? []) {
     if (j.from === you.room && flat(j, you) <= (j.r ?? 1.5) && lockOpen(g, j.lock)) return { kind: 'jump', jump: j };
   }
+  // (a thing with a use of its own before a console that only reads out or a seat: the superlaser's
+  // switch, not the crew station beside it)
   let near = null;
   for (const t of things(g)) {
     const d = flat(t, you);
-    if (d > USE_REACH + Math.max(t.w ?? 0, t.d ?? 0) / 2 || (near && d >= near.d)) continue;
-    if (g.broken?.has(t.tag) || !offered(g, t)) continue;
-    near = { kind: t.tag === 'compactor-hatch' ? 'keypad' : 'thing', d, thing: t };
+    if (d > USE_REACH + Math.max(t.w ?? 0, t.d ?? 0) / 2 || g.broken?.has(t.tag) || !offered(g, t)) continue;
+    const it = { kind: t.tag === 'compactor-hatch' ? 'keypad' : 'thing', d, thing: t };
+    if (!near || (Boolean(t.tag) !== Boolean(near.thing.tag) ? Boolean(t.tag) : d < near.d)) near = it;
   }
   return near;
 }
@@ -244,7 +260,7 @@ export function useText(r) {
   if (r.kind === 'keypad') return 'dial the hatch’s keypad';
   if (r.kind === 'stand') return 'stand up';
   if (!r.thing.tag && SEATS[r.thing.kind]) return SEATS[r.thing.kind];
-  if (!r.thing.tag) return r.thing.kind === 'intercom' ? 'call on the intercom' : r.thing.kind === 'door-panel' ? 'read the cell door’s panel' : `read the ${r.thing.kind.replace(/-/g, ' ')}`;
+  if (!r.thing.tag) return READS_AS[r.thing.kind] ?? `read the ${r.thing.kind.replace(/-/g, ' ')}`;
   return r.thing.text ? `read “${r.thing.text}”` : (DOES[r.thing.tag] ?? `use the ${r.thing.kind.replace(/-/g, ' ')}`);
 }
 

@@ -197,6 +197,7 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
   const still = prefersReducedMotion(); // (no squat under reduced motion)
   let inScene = false; // whether a scene had the camera last frame
   let lit = false; // whether the Emperor's lightning was drawn on you last frame
+  let armrest = null; // Luke's saber on the throne's armrest, once it is taken
   const vel = { x: 0, z: 0 };
   let shown = -1; // the last displayed time
   let frames = 0;
@@ -343,6 +344,12 @@ export function createScene(renderer, { tier = 'high', small = false, station = 
     feel.setBaseFov(camera.fov);
     feel.update(dt, camera);
     quake = Math.max(0, quake - (QUAKE_MOST / QUAKE_FOR) * dt);
+
+    // Luke's saber gone from the throne's armrest once it is taken: by you, or pulled to Luke by the Force
+    // (and back on it if a checkpoint goes back to before)
+    const taken = Boolean(g.items?.has('saber'));
+    if (taken && !armrest?.parent) armrest = scene.getObjectByName('armrest-saber') ?? null;
+    if (armrest) armrest.visible = !taken;
 
     becomes(playerKind({ side: g.side ?? you.side, hero: you.hero, armour: you.armour }));
     if (person) {
