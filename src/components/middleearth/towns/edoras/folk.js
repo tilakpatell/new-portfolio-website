@@ -3,10 +3,10 @@
 // Théoden bent under Saruman's spell and Théoden himself again; Gríma
 // Wormtongue, Éowyn, Háma the doorward, the Riders of the guard and
 // Wormtongue's men (who can be knocked down); the horses of the Rohirrim
-// with their riders, Théoden on Snowmane, and the host of Rohan as one cheap
-// mesh to be instanced by the thousand, with its banners; a tankard for the
-// feast and a bunch of simbelmynë. ./scene.js places them; nothing is
-// downloaded.
+// with their riders, Théoden on Snowmane, and the host of Rohan by the
+// thousand, with its banners (./host.js, which fetches its baked horses and
+// Riders); a tankard for the feast and a bunch of simbelmynë. ./scene.js
+// places them.
 //
 // The towns' conventions (../bree/props.js): metres; each builder's group
 // stands on y = 0 at its origin; people and beasts face +x. The people are
@@ -22,7 +22,7 @@ import { makeToyFigure } from '../../mapFigures';
 import { castFigure } from '../../cast3d';
 import { B, ball, cyl, fillColor, lathe as latheRaw, parts, rng, roundBox, tf, tube } from '../../shire/props';
 import { createWeathertopKit, gallop } from '../weathertop/props';
-import { createStride } from '../../creatures';
+import { bannerMaterial, createHost } from './host';
 
 const TAU = Math.PI * 2;
 // a lathe, its profile always run upwards so its faces face out
@@ -958,177 +958,17 @@ function seatedRider(FM, W, o) {
   return { group: g, torso: pivot, head, crest, cloak: cl, handL, handR, king };
 }
 
-// ── the host of Rohan, for instancing ──
+// ── the banners of Rohan ──
 
-// One mounted Rider, very cheap: a horse and its rider and his spear and
-// shield in a few hundred flat-shaded triangles, all one mesh, its colours
-// in its vertices. Each vertex carries aRig: x > 0.5 for a leg (x - 1 its
-// place in the stride), y, z the leg's pivot, w what paints it per rider (1
-// the coat, 2 the cloak and saddle-cloth, 3 mane, tail and points, 4 the
-// crest) so the host isn't all one horse. The material gallops the legs and
-// rocks the body by uniforms (uCyc, uReach: the host's stride, its place
-// and its length, kept by the kit's tick from uRide so a change of pace
-// never jumps a leg and the stride lengthens with the speed), each rider out
-// of step with the next (hashed from where its instance stands).
-// the host's full gallop, m/s (EdorasWorld's RIDE), and how long its stride
-// is then against an easy canter's (what the legs' swing was drawn for)
-const HOST_RIDE = 18;
-const HOST_REACH = Math.sqrt(HOST_RIDE / (3.6 * 1.9));
-const RIG_HEAD = /* glsl */ `
-uniform float uTime;
-uniform float uRide;
-uniform float uCyc;
-uniform float uReach;
-uniform float uFlut;
-uniform vec3 uCoat[6];
-uniform vec3 uMane[6];
-uniform vec3 uCloak[5];
-uniform vec3 uPlume[5];
-attribute vec4 aRig;
-float hostSeed() {
-#ifdef USE_INSTANCING
-  return fract(sin(dot(vec2(instanceMatrix[3][0], instanceMatrix[3][2]), vec2(12.9898, 78.233))) * 43758.5453);
-#else
-  return 0.37;
-#endif
-}
-vec2 hostTurn(vec2 p, vec2 c, float a) {
-  vec2 q = p - c;
-  float cs = cos(a);
-  float sn = sin(a);
-  return c + vec2(q.x * cs - q.y * sn, q.x * sn + q.y * cs);
-}
-`;
-const RIG_MOVE = /* glsl */ `
-{
-  float seed = hostSeed();
-  float cyc = uCyc + seed * 7.0;
-  float ride = smoothstep(0.0, 0.35, uRide);
-  if (aRig.x > 0.5) {
-    float off = aRig.x - 1.0;
-    transformed.xy = hostTurn(transformed.xy, aRig.yz, ride * 0.62 * uReach * sin((cyc + off) * 6.2831853));
-  }
-  transformed.xy = hostTurn(transformed.xy, vec2(0.0, 1.3), ride * 0.07 * sin((cyc + 0.2) * 6.2831853));
-  transformed.y += ride * (abs(sin((cyc + 0.1) * 3.14159265)) * 0.14 - 0.05);
-}
-`;
-const RIG_PAINT = /* glsl */ `
-{
-  float seed = hostSeed();
-  int p = int(aRig.w + 0.5);
-  int c = int(fract(seed * 7.31) * 5.999);
-  if (p == 1) vColor.xyz *= uCoat[c];
-  else if (p == 3) vColor.xyz *= uMane[c];
-  else if (p == 2) vColor.xyz *= uCloak[int(fract(seed * 3.71) * 4.999)];
-  else if (p == 4) vColor.xyz *= uPlume[int(fract(seed * 11.3) * 4.999)];
-}
-`;
-function hostMaterial(uniforms) {
-  const m = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide });
-  m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, uniforms);
-    sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\n' + RIG_HEAD)
-      .replace('#include <color_vertex>', '#include <color_vertex>\n' + RIG_PAINT)
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\n' + RIG_MOVE);
-  };
-  m.customProgramCacheKey = () => 'edoras-host';
-  return m;
-}
-// The banner's cloth waves (aRig.y how far out from the pole); with `bob`,
-// it rocks and rises with its rider, as the host does.
-function bannerMaterial(uniforms, bob) {
-  const m = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide });
-  m.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, uniforms);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + RIG_HEAD).replace(
-      '#include <begin_vertex>',
-      `#include <begin_vertex>
-{
-  float u = aRig.y;
-  float seed = hostSeed();
-  float w = 0.35 + 0.65 * smoothstep(0.0, 0.6, uRide);
-  transformed.z += sin(uFlut - u * 4.0 + seed * 6.0) * 0.16 * u * w;
-  transformed.y += sin(uTime * 2.1 - u * 3.0 + seed * 3.0) * 0.05 * u * w;
-  transformed.x += (cos(uTime * 3.0 - u * 4.0) * 0.04 - 0.03) * u * w;
-}
-${bob ? RIG_MOVE : ''}`,
-    );
-  };
-  m.customProgramCacheKey = () => (bob ? 'edoras-banner-bob' : 'edoras-banner');
-  return m;
-}
-
-// geometry for the host, a piece at a time, with its rig
-function rigged(geo, color, rig = [0, 0, 0, 0]) {
+// geometry for a banner, a piece at a time: its colours in its vertices,
+// and aCloth, how far out from the pole (nought for what doesn't wave)
+function clothed(geo, color, cloth = 0) {
   const g = geo.index ? geo.toNonIndexed() : geo;
   for (const k of Object.keys(g.attributes)) if (k !== 'position') g.deleteAttribute(k);
   g.computeVertexNormals();
   if (typeof color === 'function' || color != null) fillColor(g, color);
-  const n = g.attributes.position.count;
-  const r = new Float32Array(n * 4);
-  for (let i = 0; i < n; i++) r.set(rig, i * 4);
-  g.setAttribute('aRig', new THREE.BufferAttribute(r, 4));
+  g.setAttribute('aCloth', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(cloth), 1));
   return g;
-}
-// a cylinder from a to b (in the x-y plane), `seg` sided
-function strut(a, b, r0, r1, seg = 4) {
-  const A = V3(...a);
-  const Bv = V3(...b);
-  const D = Bv.clone().sub(A);
-  const g = new THREE.CylinderGeometry(r1, r0, D.length(), seg, 1, false);
-  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), D.normalize()));
-  return g.translate((A.x + Bv.x) / 2, (A.y + Bv.y) / 2, (A.z + Bv.z) / 2);
-}
-const HAND = V3(0.16, 2.02, 0.34);
-function hostGeo() {
-  const L = [];
-  const shade = (k) => (x, y, z, out) => out.setScalar(k * (y < 1.2 ? 0.82 : 1));
-  // the horse: barrel, neck, head and ears, mane and tail
-  L.push(rigged(new THREE.SphereGeometry(1, 8, 5).scale(0.94, 0.33, 0.27).translate(-0.02, 1.33, 0), shade(1), [0, 0, 0, 1]));
-  L.push(rigged(strut([0.6, 1.45, 0], [1.0, 2.02, 0], 0.23, 0.12, 5), 0xffffff, [0, 0, 0, 1]));
-  L.push(rigged(strut([1.0, 2.1, 0], [1.42, 1.68, 0], 0.115, 0.07, 5).scale(1, 1, 0.8), (x, y, z, out) => out.setScalar(x > 1.3 ? 0.55 : 1), [0, 0, 0, 1]));
-  for (const s of [-1, 1]) L.push(rigged(new THREE.ConeGeometry(0.035, 0.15, 3).rotateZ(0.45).translate(0.97, 2.2, s * 0.05), 0xffffff, [0, 0, 0, 1]));
-  L.push(rigged(strut([0.54, 1.66, 0], [0.99, 2.17, 0], 0.05, 0.035, 3), 0xffffff, [0, 0, 0, 3]));
-  L.push(rigged(strut([-0.93, 1.5, 0], [-1.18, 0.72, 0], 0.07, 0.12, 4), 0xffffff, [0, 0, 0, 3]));
-  // the legs, each swinging from its shoulder or hip; the hooves dark
-  for (const [x, z, off] of [[0.62, 0.13, 0.0], [0.62, -0.13, 0.1], [-0.6, 0.14, 0.45], [-0.6, -0.14, 0.55]]) {
-    const top = x > 0 ? 1.3 : 1.36;
-    L.push(rigged(strut([x, top, z], [x + 0.02, 0.6, z], x > 0 ? 0.1 : 0.13, 0.06, 4), 0xffffff, [1 + off, x, top, 1]));
-    L.push(rigged(strut([x + 0.02, 0.64, z], [x + 0.04, 0.0, z], 0.05, 0.062, 3), (px, py, pz, out) => out.setScalar(py < 0.2 ? 0.3 : 1), [1 + off, x, top, 3]));
-  }
-  // saddle-cloth and saddle
-  L.push(rigged(new THREE.BoxGeometry(0.66, 0.36, 0.62).translate(-0.1, 1.5, 0), 0xc8c0a8, [0, 0, 0, 2]));
-  L.push(rigged(new THREE.BoxGeometry(0.5, 0.08, 0.36).translate(-0.12, 1.69, 0), 0x3a2618));
-  // the rider: legs astride, his mail and jerkin, arms, head and helm and crest
-  for (const s of [-1, 1]) {
-    L.push(rigged(strut([-0.12, 1.78, s * 0.12], [0.18, 1.6, s * 0.33], 0.08, 0.07, 3), 0x3a3026));
-    L.push(rigged(strut([0.18, 1.6, s * 0.33], [0.12, 1.12, s * 0.34], 0.065, 0.055, 3), 0x24180e));
-  }
-  L.push(rigged(new THREE.CylinderGeometry(0.15, 0.19, 0.62, 6).scale(0.86, 1, 1.15).translate(-0.1, 2.08, 0), (x, y, z, out) => out.set(y > 2.3 ? MAIL : 0x5a4028)));
-  L.push(rigged(new THREE.CylinderGeometry(0.21, 0.25, 0.16, 6, 1, true).scale(0.86, 1, 1.2).translate(-0.12, 1.78, 0), MAIL));
-  L.push(rigged(strut([-0.12, 2.34, -0.18], [0.2, 2.0, -0.14], 0.05, 0.045, 3), MAIL));
-  L.push(rigged(strut([-0.12, 2.34, 0.18], [0.14, 2.04, 0.32], 0.05, 0.045, 3), MAIL));
-  L.push(rigged(new THREE.SphereGeometry(0.115, 6, 4).translate(-0.07, 2.56, 0), 0xe2b48c));
-  L.push(rigged(new THREE.ConeGeometry(0.135, 0.24, 6).translate(-0.08, 2.72, 0), STEEL));
-  L.push(rigged(strut([-0.08, 2.82, 0], [-0.42, 2.38, 0], 0.035, 0.07, 3), 0xffffff, [0, 0, 0, 4]));
-  // the cloak, behind
-  {
-    const cl = new THREE.PlaneGeometry(0.46, 0.95, 1, 2);
-    cl.rotateY(Math.PI / 2).rotateZ(-0.42).translate(-0.42, 1.95, 0);
-    const p = cl.attributes.position;
-    for (let i = 0; i < p.count; i++) p.setZ(i, p.getZ(i) * (1 + (2.3 - p.getY(i)) * 0.6));
-    L.push(rigged(cl, 0xc8c0a8, [0, 0, 0, 2]));
-  }
-  // spear, and shield on the left arm: green within a gilt rim, a gilt boss
-  L.push(rigged(strut([HAND.x + 0.02, 0.95, HAND.z], [HAND.x + 0.06, 3.9, HAND.z], 0.02, 0.02, 3), 0x4a3424));
-  L.push(rigged(new THREE.ConeGeometry(0.04, 0.32, 3).translate(HAND.x + 0.06, 4.05, HAND.z), 0xe2e6ec));
-  L.push(rigged(new THREE.RingGeometry(0.235, 0.29, 8).translate(0.12, 1.95, -0.37), GOLD));
-  L.push(rigged(new THREE.CircleGeometry(0.29, 8).translate(0.12, 1.95, -0.36), GREEN));
-  L.push(rigged(new THREE.ConeGeometry(0.06, 0.07, 4).rotateX(-Math.PI / 2).translate(0.12, 1.95, -0.39), GOLD));
-  const geo = mergeGeometries(L);
-  geo.computeBoundingSphere();
-  return geo;
 }
 // A banner of Rohan on its pole: green, a white horse running on it; the
 // pole's grip at the origin (or at `at`).
@@ -1139,9 +979,9 @@ function horseShape() {
 function bannerGeo(at = V3()) {
   const L = [];
   const H = 3.6;
-  L.push(rigged(new THREE.CylinderGeometry(0.025, 0.03, H, 5).translate(0, H / 2 - 1.0, 0), 0x4a3424));
-  L.push(rigged(new THREE.ConeGeometry(0.05, 0.22, 5).translate(0, H - 1.0 + 0.1, 0), GOLD));
-  L.push(rigged(new THREE.CylinderGeometry(0.02, 0.02, 1.25, 4).rotateZ(Math.PI / 2).translate(-0.6, H - 1.12, 0), 0x4a3424));
+  L.push(clothed(new THREE.CylinderGeometry(0.025, 0.03, H, 5).translate(0, H / 2 - 1.0, 0), 0x4a3424));
+  L.push(clothed(new THREE.ConeGeometry(0.05, 0.22, 5).translate(0, H - 1.0 + 0.1, 0), GOLD));
+  L.push(clothed(new THREE.CylinderGeometry(0.02, 0.02, 1.25, 4).rotateZ(Math.PI / 2).translate(-0.6, H - 1.12, 0), 0x4a3424));
   // the cloth: hung from the cross-bar, swallow-tailed
   const W = 1.2;
   const Hc = 1.5;
@@ -1153,7 +993,7 @@ function bannerGeo(at = V3()) {
   const rows = VS.length - 1;
   const pos = [];
   const col = [];
-  const rig = [];
+  const out = [];
   const idx = [];
   const g0 = C(0x2a5a2c);
   const g1 = C(0x1e4422);
@@ -1169,7 +1009,7 @@ function bannerGeo(at = V3()) {
       const c = g0.clone().lerp(g1, v);
       if (j === 0 || i === 0 || i === cols || j === rows) c.copy(gold);
       col.push(c.r, c.g, c.b);
-      rig.push(0, Math.min(1, u * 0.7 + v * 0.5), 0, 0);
+      out.push(Math.min(1, u * 0.7 + v * 0.5));
     }
   }
   for (let j = 0; j < rows; j++) {
@@ -1184,13 +1024,13 @@ function bannerGeo(at = V3()) {
   const cn = cloth.toNonIndexed();
   const ci = idx;
   const ccol = new Float32Array(ci.length * 3);
-  const crig = new Float32Array(ci.length * 4);
+  const ccloth = new Float32Array(ci.length);
   ci.forEach((k, i) => {
     ccol.set(col.slice(k * 3, k * 3 + 3), i * 3);
-    crig.set(rig.slice(k * 4, k * 4 + 4), i * 4);
+    ccloth[i] = out[k];
   });
   cn.setAttribute('color', new THREE.BufferAttribute(ccol, 3));
-  cn.setAttribute('aRig', new THREE.BufferAttribute(crig, 4));
+  cn.setAttribute('aCloth', new THREE.BufferAttribute(ccloth, 1));
   cn.computeVertexNormals();
   L.push(cn);
   // the white horse, on both faces, a hair proud of the cloth
@@ -1199,10 +1039,10 @@ function bannerGeo(at = V3()) {
     hg.scale(1.02, 1.02, 1);
     if (s < 0) hg.scale(1, 1, -1);
     hg.translate(-W * 0.5, H - 1.14 - Hc * 0.46, s * 0.012);
-    const g = rigged(hg, 0xf4f2ea);
+    const g = clothed(hg, 0xf4f2ea);
     const p = g.attributes.position;
-    const r = g.attributes.aRig;
-    for (let i = 0; i < p.count; i++) r.setY(i, Math.min(1, (-p.getX(i) / W) * 0.7 + ((H - 1.14 - p.getY(i)) / Hc) * 0.5));
+    const r = g.attributes.aCloth;
+    for (let i = 0; i < p.count; i++) r.setX(i, Math.min(1, (-p.getX(i) / W) * 0.7 + ((H - 1.14 - p.getY(i)) / Hc) * 0.5));
     L.push(g);
   }
   const geo = mergeGeometries(L);
@@ -1292,33 +1132,20 @@ function flowerGeo() {
 export function createEdorasFolk(renderer, { tier = 'high' } = {}) {
   const low = tier === 'low';
   const M = (o) => new THREE.MeshStandardMaterial({ roughness: 0.85, metalness: 0, ...o });
-  const uniforms = {
-    uTime: { value: 0 },
-    uRide: { value: 0 },
-    uCyc: { value: 0 },
-    uReach: { value: 0 },
-    uFlut: { value: 0 },
-    uCoat: { value: COATS.map((c) => C(c.coat)) },
-    uMane: { value: COATS.map((c) => C(c.mane)) },
-    uCloak: { value: ROH_CLOAK.map((c) => C(c).multiplyScalar(1.15)) },
-    uPlume: { value: PLUMES.map((c) => C(c)) },
-  };
-  // the host galloping: its stride from how fast it rides out (Edoras's
-  // muster, RIDE m/s at a full gallop), as Asfaloth's is (../weathertop/props.js gallop)
-  const hostStride = createStride({ stride: 3.6, hz: 1.9, longest: 2.0, stance: 0.32, cadence: [1.6, 2.6], seed: 29 });
+  // the banners' wave (and the host's ride, which stirs it)
+  const uniforms = { uTime: { value: 0 }, uRide: { value: 0 }, uFlut: { value: 0 } };
   const hostClock = { t: null };
+  let hostRiders = null;
   const mats = {
     // the people's four materials (and the riders', and the tack's)
     fig: M({ vertexColors: true, roughness: 0.8 }),
     figMetal: M({ vertexColors: true, roughness: 0.34, metalness: 0.6 }),
     figCloth: M({ vertexColors: true, roughness: 0.88, side: THREE.DoubleSide }),
     figGlow: new THREE.MeshBasicMaterial({ vertexColors: true }),
-    // the host and its banners
-    host: hostMaterial(uniforms),
+    // the host's banners, and the town's
     banner: bannerMaterial(uniforms, true),
     flag: bannerMaterial(uniforms, false),
   };
-  mats.host.userData.uniforms = uniforms;
   const FM = { matte: mats.fig, metal: mats.figMetal, cloth: mats.figCloth, glow: mats.figGlow };
 
   // the horses need Asfaloth's kit: made when the first is wanted
@@ -1728,8 +1555,6 @@ export function createEdorasFolk(renderer, { tier = 'high' } = {}) {
   };
   let flagG = null;
   const flagGeo = () => (flagG ??= bannerGeo());
-  let hostG = null;
-  let hostBannerG = null;
   let tankardG = null;
   let plateG = null;
   let flowerG = null;
@@ -1738,14 +1563,12 @@ export function createEdorasFolk(renderer, { tier = 'high' } = {}) {
     mats,
     tick(t) {
       uniforms.uTime.value = t;
-      // the host's stride and the banners' flutter, carried on from frame to
-      // frame (../../creatures.js) rather than read off the clock
+      // the host's stride (./host.js) and the banners' flutter, carried on
+      // from frame to frame rather than read off the clock
       const dt = hostClock.t == null ? 0 : Math.max(0, Math.min(0.1, t - hostClock.t));
       hostClock.t = t;
       const r = uniforms.uRide.value;
-      const st = hostStride.step(dt, r * HOST_RIDE);
-      uniforms.uCyc.value = st.cycle;
-      uniforms.uReach.value = Math.min(1.3, st.reach / HOST_REACH);
+      hostRiders?.tick(dt);
       uniforms.uFlut.value = (uniforms.uFlut.value + dt * (3.2 + 2.5 * (0.35 + 0.65 * smooth(0, 0.6, r)))) % (Math.PI * 200);
       for (const f of knocked) unknock(f);
       // a cast figure not knocked last frame gets up
@@ -1768,23 +1591,19 @@ export function createEdorasFolk(renderer, { tier = 'high' } = {}) {
     },
     // Théoden King on Snowmane
     theodenHorse: () => mount(SNOW, { tack: 'king', rider: { skin: 0xe6bc98, hair: 0xa88444, beard: 0xa8884c, tunic: GREEN, cloak: 0x24401f, plume: 0xf8f6f0, king: true, spear: false, shield: false, seed: 77 } }),
-    // The host: { geometry, material } for an InstancedMesh (a few hundred
-    // triangles a Rider), `count` a fair number of them, ride(speed) to set
-    // them galloping (0 standing, 1 a full gallop), and `banner` { geometry,
-    // material } for an InstancedMesh of banners to give the same matrices
-    // as some of the Riders (it rides and bobs with them).
-    host: () => {
-      hostG ??= hostGeo();
-      hostBannerG ??= bannerGeo(HAND);
-      return {
-        geometry: hostG,
-        material: mats.host,
-        count: low ? 600 : 1400,
-        banner: { geometry: hostBannerG, material: mats.banner },
-        ride(speed = 0) {
-          uniforms.uRide.value = Math.max(0, Number(speed) || 0);
-        },
+    // The host (./host.js): { group, count, ready, ride(speed), tick, dispose },
+    // its Riders in ranks by `layout`, as many as `many` (the tier's share)
+    // of a thousand allows; ride(speed) sets them galloping (0 standing, 1 a
+    // full gallop), and this kit's tick moves them. `load` for tests.
+    host: ({ many = 1, layout, load } = {}) => {
+      const h = createHost({ count: Math.min(low ? 600 : 1400, Math.round(1000 * many)), layout, coats: COATS.map((c) => c.coat), banner: { geometry: bannerGeo, material: mats.banner }, load });
+      hostRiders = h;
+      const ride = h.ride;
+      h.ride = (speed = 0) => {
+        ride(speed);
+        uniforms.uRide.value = Math.max(0, Number(speed) || 0);
       };
+      return h;
     },
     // a banner of Rohan on its pole, the pole's foot at the origin (for a
     // wall, a door, a hand); it waves

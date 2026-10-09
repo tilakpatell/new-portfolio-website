@@ -3,8 +3,9 @@
 // and Meduseld, the Golden Hall, on the top; the barrows of the kings
 // outside the gate, white with simbelmynë; the hall inside, dim and carved
 // and smoky; the night watch for the beacon, and the host of Rohan riding
-// out at dawn. Made in code (./props.js, ./folk.js, ../ground.js), so
-// nothing is downloaded.
+// out at dawn. Made in code (./props.js, ./folk.js, ../ground.js), but for
+// the host's horses and Riders (./host.js: two small models and their baked
+// textures) and the cast's people.
 //
 // Two places, drawn apart in one scene (the hill with all its land, and
 // the hall inside), and only the one you're in is shown. It draws what the
@@ -212,34 +213,12 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     return h;
   });
   for (const h of [snowmane, ...mounts]) movers.push({ object: h.group, size: [1.1, 2.6] });
-  // the host of Rohan, in a great block, moving out at dawn
-  const hostKit = folk.host();
-  const host = (() => {
-    const { geometry, material } = hostKit;
-    const n = Math.min(hostKit.count ?? 1000, Math.round(1000 * many));
-    const m = new THREE.InstancedMesh(geometry, material, n);
-    // a banner over every seventh rider, riding and waving with him
-    const flags = new THREE.InstancedMesh(hostKit.banner.geometry, hostKit.banner.material, Math.ceil(n / 7));
-    const o = new THREE.Object3D();
-    const rnd = makeNoise(17);
-    const cols = HOST.wing * 2;
-    for (let i = 0; i < n; i++) {
-      const row = Math.floor(i / cols);
-      const c = i % cols;
-      const side = c < HOST.wing ? -1 : 1;
-      o.position.set(-row * HOST.row + rnd(i, 1) * 1.2, 0, side * (HOST.lane + (c % HOST.wing) * HOST.col) + rnd(i, 2) * 0.9);
-      o.rotation.set(0, rnd(i, 3) * 0.08, 0);
-      o.updateMatrix();
-      m.setMatrixAt(i, o.matrix);
-      if (i % 7 === 3) flags.setMatrixAt((i - 3) / 7, o.matrix);
-    }
-    flags.count = Math.floor((n - 4) / 7) + 1;
-    m.frustumCulled = flags.frustumCulled = false;
-    m.add(flags);
-    m.visible = false;
-    scene.add(m);
-    return m;
-  })();
+  // the host of Rohan, in a great block, moving out at dawn (./host.js: its
+  // horses and Riders come a little after the town, baked)
+  const hostKit = folk.host({ many, layout: HOST });
+  const host = hostKit.group;
+  host.visible = false;
+  scene.add(host);
   const ghosts = createGhosts({ height: (x, z) => groundAt(x, z), make: () => folk.person('gimli', { axe: true }), tag: 0.42 });
   zones.hill.add(ghosts.group);
 
@@ -761,6 +740,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     },
     dispose() {
       shake.dispose();
+      hostKit.dispose();
       ground.dispose();
       ghosts.dispose();
       disposeTree(scene);

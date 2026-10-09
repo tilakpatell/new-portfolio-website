@@ -28,7 +28,8 @@ export const PACK = {
     '/models/sketchfab/orthanc.glb',
     '/models/sketchfab/minas-tirith.glb',
     '/models/sketchfab/bag-end-door.glb',
+    '/kit/farm/horse.glb',
   ], // single files
-  globs: ['/cc0/galaxy/**', '/models/middleearth/cast/*'], // folders: `*` within a folder, `**` any depth
+  globs: ['/cc0/galaxy/**', '/models/middleearth/cast/*', '/models/middleearth/host/*'], // folders: `*` within a folder, `**` any depth
   computed: ['/models/sketchfab'], // folders the source only builds paths in: the files it takes are listed above
 };

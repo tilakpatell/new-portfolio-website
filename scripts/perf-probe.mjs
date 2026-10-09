@@ -420,6 +420,7 @@ const JOURNEYS = {
   },
   avengers: worldPage('/avengers'),
   shire: worldPage('/middle-earth/shire'),
+  edoras: worldPage('/middle-earth/edoras'),
   abq: worldPage('/albuquerque'),
   c137: worldPage('/c-137'),
   cybertron: worldPage('/cybertron'),
