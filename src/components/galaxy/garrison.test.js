@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { seeded } from '../../lib/seeded';
 import { TURBO } from './battles';
-import { createGarrisonDefence } from './garrison';
+import { createGarrisonDefence, safeNow } from './garrison';
 import { postOf } from './garrisonRules';
 
 const DT = 1 / 30;
@@ -106,6 +106,63 @@ describe('the garrison in the scene', () => {
     fly(r.g, 15, ship(30));
     expect(r.hunters.pack).toHaveBeenCalled();
     expect(r.bolts.fire).toHaveBeenCalled();
+  });
+
+  it('the scene’s safe time holds it, and so do a jump’s tunnel and its way out', () => {
+    const flying = { clock: 10, safeUntil: -1e9, flown: true, jump: null };
+    expect(safeNow(flying)).toBe(false);
+    // back from a crash or out of a jump a moment, or not flown yet
+    expect(safeNow({ ...flying, safeUntil: 12 })).toBe(true);
+    expect(safeNow({ ...flying, flown: false })).toBe(true);
+    // in the tunnel and coming out of it: the next system's, and you not there yet
+    expect(safeNow({ ...flying, jump: { phase: 'tunnel' } })).toBe(true);
+    expect(safeNow({ ...flying, jump: { phase: 'exit' } })).toBe(true);
+    // but turning onto the course and spooling up are still flown in the system you're leaving
+    expect(safeNow({ ...flying, jump: { phase: 'align' } })).toBe(false);
+    expect(safeNow({ ...flying, jump: { phase: 'spool' } })).toBe(false);
+  });
+
+  it('the arrival grace is kept for when you come out of the jump, however long it was', () => {
+    // a jump as the scene plays it: the mind reset as the tunnel opens, the
+    // system entered 0.12 s in, the tunnel, its way out (1.1 s) and then the
+    // scene's safe time (3 s), with you an enemy sitting 80 units off the post
+    // the moment you're out; the seconds from the jump's end to the first
+    // thing it does (a hail, a wave or a shot)
+    const jumpIn = (tunnel) => {
+      const r = rig();
+      const scene = { clock: 0, safeUntil: -1e9, flown: true, jump: { phase: 'tunnel' } };
+      const frame = (live) => {
+        scene.clock += DT;
+        r.g.update(DT, live, { world: WORLD, effects: EFFECTS, sys: SYS, battle: false, safe: safeNow(scene), solids: SOLIDS });
+      };
+      r.g.reset('jump');
+      for (let t = 0, entered = false; t < tunnel; t += DT) {
+        if (!entered && t > 0.12) {
+          entered = true;
+          r.g.enter(SYS);
+        }
+        frame(null);
+      }
+      scene.jump = { phase: 'exit' };
+      for (let t = 0; t < 1.1; t += DT) frame(null);
+      scene.jump = null;
+      scene.safeUntil = scene.clock + 3;
+      const out = scene.clock;
+      const you = ship(80);
+      while (scene.clock - out < 30) {
+        frame(you);
+        if (said(r.emit).length || r.hunters.pack.mock.calls.length || r.bolts.fire.mock.calls.length) return scene.clock - out;
+      }
+      return Infinity;
+    };
+    // the routes' jumps run from a couple of seconds to 12
+    for (const tunnel of [2.4, 6.1, 12]) {
+      const first = jumpIn(tunnel);
+      // the scene's safe time, and the whole 8 s grace on top of it (as after a respawn)
+      expect(first).toBeGreaterThanOrEqual(3 + 8 - 2 * DT);
+      // and then it does challenge you
+      expect(first).toBeLessThan(3 + 8 + 2);
+    }
   });
 
   it('say goes out as a garrison event', () => {

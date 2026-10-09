@@ -20,11 +20,12 @@
 //   against the posts' hulls), homeFor(faction) → { x, y, z } | null,
 //   enter(sys), reset('enter' | 'jump' | 'down' | 'respawn'), busy, info,
 //   dispose() }
+// safeNow({ clock, safeUntil, flown, jump }) → whether the scene's state holds it
 // live: your ship ({ x, y, z, … }), or null (jumping, crashed, frozen).
-// safe: the scene's safe time after a jump or a crash, or not flown yet;
-// the mind is held where it is, its grace with it, so nothing hails,
-// scrambles or fires, and its grace still runs out after. pop(hit): a
-// hunter its guns downed, gone up; shake(k): the camera shaken, at least k.
+// safe: safeNow's answer; the mind is held where it is, its grace with it,
+// so nothing hails, scrambles or fires, and its grace still runs out after
+// (8 s on top of the safe time, out of a jump as after a respawn). pop(hit):
+// a hunter its guns downed, gone up; shake(k): the camera shaken, at least k.
 
 import * as THREE from 'three';
 import { TURBO } from './battles';
@@ -53,6 +54,14 @@ function meets(a, b, c, r) {
   if (t + half < 0 || t - half > 1) return null;
   return Math.max(0, t - half);
 }
+
+// the scene's state (its clock, safeUntil, flown and jump) holds the mind:
+// back from a crash or out of a jump a moment, not flown yet, or in a jump's
+// tunnel or on its way out of it. The new system's mind is reset and entered
+// in the tunnel, and its grace is kept there for when you're out, however
+// long the jump; turning onto the course and spooling up are still flown in
+// the system you're leaving, so they don't hold it.
+export const safeNow = ({ clock, safeUntil, flown, jump }) => clock < safeUntil || !flown || jump?.phase === 'tunnel' || jump?.phase === 'exit';
 
 export function createGarrisonDefence({ hunters, wingmen = null, bolts, emit, hurt, pop = () => {}, shake = () => {}, escort = () => NONE, small = false, rand = Math.random }) {
   const mind = createGarrison({ rand, small });

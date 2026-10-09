@@ -110,7 +110,7 @@ import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, 
 import { createInterdictor } from './interdictor';
 import { createWarFront } from './warfront';
 import { createGalaxyPowers } from './powers';
-import { createGarrisonDefence } from './garrison';
+import { createGarrisonDefence, safeNow } from './garrison';
 import { chargeFor } from '../universe/shipPowers';
 import { effectsFor } from './warEffects';
 import { warNow } from './warState';
@@ -1692,8 +1692,9 @@ export async function create(canvas, ctx) {
       }
       busy = w.busy || busy;
     }
-    // (safe: back from a crash or out of a jump a moment, or not flown yet)
-    busy = garrison?.update(dt, live, { world: state.world, effects: state.effects, sys: state.sys, battle: Boolean(war?.battle), safe: state.clock < state.safeUntil || !state.flown, solids: state.space?.solids ?? [] }) || busy;
+    // (safe: back from a crash or out of a jump a moment, not flown yet, or in
+    // the jump's tunnel or its way out, so the grace is kept for the new system)
+    busy = garrison?.update(dt, live, { world: state.world, effects: state.effects, sys: state.sys, battle: Boolean(war?.battle), safe: safeNow(state), solids: state.space?.solids ?? [] }) || busy;
     powers.frame(dt, live);
     if (live) {
       if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
