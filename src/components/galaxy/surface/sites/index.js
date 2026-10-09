@@ -23,6 +23,9 @@
 //   things         placed things (placer.js's specs), at world positions
 //   scatter        [{ kind, n, within: [r0, r1], scale: [a, b], solid?,
 //                  opts?, flat? (on level ground only) }]
+//   flora          { biome, tint?, density?, trees? }: the nature kit's
+//                  cover, middle layer and trees by a recipe (flora.js),
+//                  its rows added after the scatter's own
 //   life           actors.js's
 //   rides          [{ kind (rides.js's), at, yaw }]
 //   flyovers       [{ kind (a galaxy ship), n, metres, alt, speed, every }]
@@ -58,6 +61,7 @@
 
 import { SYSTEMS } from '../../systems';
 import { REACH } from '../terrain';
+import { floraRows } from '../flora';
 import { SITES as desert } from './desert';
 import { SITES as ice } from './ice';
 import { SITES as forest } from './forest';
@@ -141,12 +145,13 @@ export function siteFrom(raw, id, { name, accent } = {}) {
     reach: REACH,
     weather: [],
     things: [],
-    scatter: [],
     rides: [],
     flyovers: [],
     skyships: [],
     floors: [],
     ...raw,
+    // (the site's own rows, then its flora's: the recipe adds, never replaces)
+    scatter: [...(raw.scatter ?? []), ...floraRows(raw)],
     land,
     places,
     zones,

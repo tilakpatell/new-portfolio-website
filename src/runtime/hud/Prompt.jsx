@@ -8,10 +8,12 @@
 // `sub`: a line under it (where it's closed, why); `closed`: it can't be
 // done yet (shown, not pressable); `alt`: a second thing to do here, as a
 // node (another <Prompt>); `k`: the key, the world's own (X on Dot Matrix's
-// keyboard, E everywhere else).
+// keyboard, E everywhere else). The button's data-prompt says it whole,
+// key first even on touch, for the checks that read what E promises.
 export default function Prompt({ k = 'E', verb = '', thing = '', sub = null, closed = false, touch = false, onClick, alt = null, className = '' }) {
+  const says = `${[k, verb].filter(Boolean).join(' ')}${thing ? ` · ${thing}` : ''}`;
   const button = (
-    <button type="button" className={`hud-prompt ${alt || sub ? '' : className}`.trim()} onClick={onClick} disabled={closed} onContextMenu={(e) => e.preventDefault()}>
+    <button type="button" className={`hud-prompt ${alt || sub ? '' : className}`.trim()} data-prompt={says} onClick={onClick} disabled={closed} onContextMenu={(e) => e.preventDefault()}>
       {!touch && k && <kbd className="hud-prompt-key">{k}</kbd>}{!touch && k && ' '}
       {verb && <span className="hud-prompt-verb">{verb}</span>}
       {verb && thing && <span className="hud-prompt-dot" aria-hidden="true"> · </span>}

@@ -1,20 +1,18 @@
 // How the worlds' enemies fight, beyond standing and shooting (activity.js
 // runs these on its targets each frame; the site's spawn says which, in
 // `hostile`): bursts of fire, strafing round you, a shield that soaks hits
-// before any land, and a blade that parries yours. Pure, so it's tested in
-// Node.
+// before any land (a blade's spawn fences instead: duellists.js). Pure, so
+// it's tested in Node.
 //
 //   hostile.burst   { n, gap }: n shots, `gap` seconds apart, each time it fires
 //   hostile.strafe  { speed, every, keep }: it circles you at `speed` m/s, turning about every `every` seconds, holding about `keep` metres off
 //   hostile.shield  n: hits it soaks before it's hurt (a droideka's bubble)
-//   hostile.parry   0…1: the share of your swings its blade turns away
 //
 //   startBurst(hostile) → the shots left and the wait: { left, wait }
 //   stepBurst(burst, dt) → how many shots fall due this frame (the burst
 //     counted down; 0 once it's spent)
 //   strafeStep(b, you, hostile, dt, time) → the new { x, z, yaw } (yaw: facing you)
 //   absorb(t, damage) → { shield, hp } after a hit: the shield first, then the body
-//   parries(hostile, roll) → whether a swing is turned away, `roll` 0…1
 
 export const startBurst = (hostile) => ({ left: Math.max(1, hostile?.burst?.n ?? 1), wait: 0 });
 
@@ -53,7 +51,6 @@ export function absorb(t, damage) {
   return { shield, hp: t.hp - through };
 }
 
-export const parries = (hostile, roll) => Boolean(hostile?.parry) && roll < hostile.parry;
 
 // ── An enemy's head (lib/ai) ──
 //

@@ -153,14 +153,14 @@ describe('a kit model, by name', () => {
     resetDevice();
   };
   const quiet = () => vi.spyOn(console, 'warn').mockImplementation(() => {});
-  const setup = () => {
+  const setup = (opts = {}) => {
     const kit = fakeKit();
     const loader = vi.fn(() => kit);
     setKitLoader(loader);
     const world = fakeWorld();
     const house = { material: () => new THREE.MeshLambertMaterial() };
     const galaxy = galaxyKit();
-    const placer = createPlacer({ parent: new THREE.Group(), kit: galaxy, world, house });
+    const placer = createPlacer({ parent: new THREE.Group(), kit: galaxy, world, house, ...opts });
     return { kit, loader, world, placer, galaxy, house };
   };
   const items = (n) => Array.from({ length: n }, (_, i) => ({ at: [i * 4, 0], yaw: i, scale: 1 + i / 2 }));
@@ -191,6 +191,26 @@ describe('a kit model, by name', () => {
     const at = new THREE.Matrix4();
     meshes[1].getMatrixAt(1, at);
     expect(new THREE.Vector3().setFromMatrixPosition(at).toArray()).toEqual([4, 1.5, 0].map((v) => expect.closeTo(v, 5)));
+  });
+
+  it('casts no shadow, and makes no near stand-in, for a row that says so (ground cover)', async () => {
+    const only = vi.fn();
+    const { placer } = setup({ shadowOnly: only });
+    placer.scatter('fern', items(3), { model: 'kit:naturemega/Fern_1', shadow: false });
+    await placer.ready;
+    expect(only).not.toHaveBeenCalled();
+    expect(instanced(placer).every((m) => m.castShadow === false)).toBe(true);
+    // (a row that doesn't say casts as before, through its stand-ins)
+    placer.scatter('fern', items(3), { model: 'kit:naturemega/Fern_1' });
+    await placer.ready;
+    expect(only).toHaveBeenCalled();
+  });
+
+  it('hands the world’s tint to the kit it loads', async () => {
+    const { loader, placer } = setup({ kitTint: { Leaves_Common: '#b8a860' } });
+    placer.scatter('fern', items(1), { model: 'kit:naturemega/Fern_1' });
+    await placer.ready;
+    expect(loader.mock.calls[0][1].tint).toEqual({ Leaves_Common: '#b8a860' });
   });
 
   it('loads a pack once a placer, however many rows name it, and lets it go with the placer', async () => {

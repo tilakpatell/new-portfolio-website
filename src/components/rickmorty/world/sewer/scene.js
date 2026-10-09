@@ -14,6 +14,7 @@ import { InkPass, toon } from '../../portal/toon';
 import { createMeshyCast } from '../../portal/meshyCast';
 import { TUNING, laneX } from './rules';
 import { createFeel, feelGroups } from '../../../../lib/three/feel';
+import { BLOOMS } from '../look';
 
 const SEG = 12; // metres of drain per segment
 const SEGS = 7; // segments ahead of him
@@ -22,7 +23,7 @@ const LAMP = 0xffd080;
 const RAT_RUN = Object.freeze({ speed: TUNING.rat, side: 0, turn: 0 }); // (a rat's own run along the drain, m/s)
 
 export async function createSewerScene(canvas, { onLost } = {}) {
-  const stage = createStage(canvas, { shadows: false, fov: 55, near: 0.1, far: 160, exposure: 1.05, bloom: { strength: 0.55, radius: 0.4, threshold: 0.9 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 55, near: 0.1, far: 160, exposure: 1.05, bloom: BLOOMS.sewer, onLost });
   const { scene, camera } = stage;
   scene.background = new THREE.Color(0x0a1410);
   scene.fog = new THREE.Fog(0x0a1410, 30, 90);

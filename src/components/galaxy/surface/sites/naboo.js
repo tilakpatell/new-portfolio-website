@@ -103,7 +103,10 @@ export const SITE = {
   },
   water: { level: 0, color: '#2c3d3e', deep: '#172526', kind: 'sea', foam: 0.12 },
   // the meadow round you, yellow flowers in it here and there
-  grass: { h: [0.22, 0.5], w: 0.05, root: '#55693a', mid: '#7a903e', tip: '#a9b656', dry: '#aaa45c', cover: 0.8, scale: 120, wind: 0.5, flower: { color: '#f4e27a', share: 0.03 } },
+  grass: { h: [0.22, 0.5], w: 0.05, root: '#55693a', mid: '#7a903e', tip: '#a9b656', dry: '#aaa45c', cover: 0.8, scale: 120, wind: 0.5 },
+  // the kit's meadow over it (flora.js): clumps, clover and flowers, bushes,
+  // and groves of broad trees where the Naboo trees aren't
+  flora: { biome: 'plains', trees: true },
   weather: [{ kind: 'motes', count: 260, color: '#fffbe0' }],
   dust: '#a8b878',
   edge: 'Grass and gentle hills, all the way to the mountains. The Gungans’ swamps are that way; Theed’s behind you.',
@@ -338,9 +341,6 @@ export const SITE = {
     { kind: 'grove', at: [-60, 120], opts: { n: 8, r: 20, seed: 26 } },
   ],
   scatter: [
-    // (Quaternius's ground cover, under the built plants: catalog/quaternius.js)
-    { kind: 'qclover', n: 150, within: [4, 100], scale: [0.8, 1.6], solid: false },
-    { kind: 'qgrass', n: 200, within: [4, 120], scale: [0.8, 1.5], solid: false },
     { kind: 'nabootree', n: 80, within: [50, 600], scale: [0.7, 1.4], flat: 0.9 },
     { kind: 'rock', n: 50, within: [40, 560], scale: [0.6, 2.4], opts: { color: '#8e8a78', sharp: 0.3 } },
   ],

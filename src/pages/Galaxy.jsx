@@ -33,6 +33,11 @@ import HoloMap from '../components/galaxy/HoloMap';
 import { readFound } from '../components/galaxy/places';
 import GalaxyIntro from '../components/galaxy/GalaxyIntro';
 import '../components/galaxy/galaxy.css';
+import { thud } from '../lib/sfx';
+import { createImpacts } from '../lib/impact';
+
+// a bump's and a crash's thud, by the hit law (lib/impact.js)
+const knockLaw = createImpacts();
 
 const FOUND_KEY = 'tp-galaxy-found'; // the places found out in the open, per system (places.js; the scene writes it)
 const LAST_KEY = 'tp-galaxy-system'; // the system you were last in
@@ -187,6 +192,9 @@ export default function Galaxy() {
   // as transitions, so for a render or two after an arrival it still names
   // the system just left, and the scene would jump straight back there.
   const [wanted, setWanted] = useState(current);
+  // the course plotted on the galaxy map (a system's id, or none): the flight HUD points the way and J jumps to it
+  const [course, setCourse] = useState(null);
+  useEffect(() => setCourse(null), [current]);
   const seen = useRef(param);
   useEffect(() => {
     if (!param || param === seen.current) return;
@@ -300,6 +308,20 @@ export default function Galaxy() {
   };
   useEffect(() => letGo, []);
 
+  // a course plotted on the map, or J with one: away you go. The scene may refuse (an Interdictor's hold, a crash, a dive: it says why
+  // itself, and the map and the course stay as they are); only with no scene to ask is the system's page opened
+  const jumpTo = useCallback(
+    (id) => {
+      audioContext();
+      if (view.current.live) {
+        if (!view.current.jump(id)) return;
+      } else navigate(`/galaxy/${id}`, { replace: true });
+      setMapOpen(false);
+      setCourse(null);
+    },
+    [navigate],
+  );
+
   // what the scene says: to the comms, and to the page
   const onEvent = useCallback(
     (e) => {
@@ -324,7 +346,9 @@ export default function Galaxy() {
         return;
       }
       if (e.type === 'jumpKey') {
-        setMapOpen(true);
+        // J with the nose on no star: to the course plotted on the map, if there is one, else the map to plot it on
+        if (course && course !== current) jumpTo(course);
+        else setMapOpen(true);
         return;
       }
       if (e.type === 'jump') {
@@ -335,6 +359,7 @@ export default function Galaxy() {
           balk.current = setTimeout(() => setBalked(false), 3000);
           return;
         }
+        if (e.phase === 'align') setCourse(null); // (a jump's begun, to the course or not: the plotted course is spent)
         setJumping(e.phase === 'cancel' || e.phase === 'out' ? null : { to: e.to, phase: e.phase });
         if (e.phase === 'spool') {
           letGo();
@@ -385,9 +410,14 @@ export default function Galaxy() {
         else if (e.id === 'planet' || e.id === 'cloudcity') navigate(s.game.status === 'live' && s.game.to ? s.game.to : `/galaxy/${s.id}/mission`);
         return;
       }
+      // a knock as hard as it was (galaxy/mapFeel.js's force, the hit law's gain)
+      if ((e.type === 'bump' || e.type === 'crash') && e.force) {
+        const k = knockLaw.hit(e.force, e.type);
+        if (k) thud({ gain: k.gain, pitch: k.pitch });
+      }
       comms.current?.handle(e);
     },
-    [current, leave, navigate, land, unlock, crew, pay, notePilot, follow],
+    [current, leave, navigate, land, unlock, crew, pay, notePilot, follow, course, jumpTo],
   );
   const onArrive = useCallback(
     (id) => {
@@ -402,28 +432,17 @@ export default function Galaxy() {
   );
   const onBoard = useCallback((path) => leave(path), [leave]);
 
-  // a course plotted on the map: away you go
-  const jumpTo = (id) => {
-    setMapOpen(false);
-    audioContext();
-    if (!view.current.jump(id)) navigate(`/galaxy/${id}`, { replace: true });
-  };
-
-  // Escape: shut the map, stop coming round for a jump or flying itself
+  // Escape: stop coming round for a jump or flying itself (the map has its own
+  // Escape, HoloMap.jsx: it takes the key first, and a dialog open stands this down)
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented || leaving) return;
-      if (mapOpen) {
-        e.preventDefault();
-        setMapOpen(false);
-        return;
-      }
       if (document.querySelector('[aria-modal="true"]')) return;
       if (view.current.escape()) e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [mapOpen, leaving]);
+  }, [leaving]);
 
   // (every system's colour is light, readable on the dark page: so dark on a button)
   const accent = { '--accent': sys.accent, '--accent-text': sys.accent, '--btn-bg': sys.accent, '--btn-ink': '#03040a' };
@@ -450,6 +469,7 @@ export default function Galaxy() {
         onCrash={onCrash}
         onMap={() => setMapOpen(true)}
         oath={oath}
+        course={course}
       />
       {crew && <Comms control={comms} crew={galaxyCrew(crew)} reduced={reduced} />}
       <EarnNote note={earned} />
@@ -479,7 +499,7 @@ export default function Galaxy() {
         suggested={suggested}
         onSwear={onSwear}
       />
-      {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} oath={oath} oaths={oathKept.oaths} suggested={suggested} onSwear={onSwear} onTheatre={onTheatre} />}
+      {mapOpen && <HoloMap current={current} online={online} onJump={jumpTo} onCourse={setCourse} course={course} onClose={() => setMapOpen(false)} onLeave={() => leave('/universe/starwars', { jump: true })} oath={oath} oaths={oathKept.oaths} suggested={suggested} onSwear={onSwear} onTheatre={onTheatre} />}
       {intro && (
         <GalaxyIntro
           onDone={() => {

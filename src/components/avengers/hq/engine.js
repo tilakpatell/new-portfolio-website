@@ -14,6 +14,8 @@ import { houseOn } from '../../../lib/three/house';
 import { guard } from '../../../lib/three/frameGuard';
 import { prepareScene } from '../../../lib/three/gpuWork';
 import { stageTune } from '../../../lib/stage3d';
+import { LOOK } from './look';
+import { houseGroups } from '../../../lib/three/houseTuning';
 import { device } from '../../../lib/device';
 import { fitRatio, maxSide, precompile as compileFor, precompilePasses, quiet, releaseContext } from '../../../lib/three/renderer';
 
@@ -40,7 +42,7 @@ export function createEngine(canvas, opts = {}) {
   const {
     exposure = 1,
     toneMapping = THREE.NeutralToneMapping,
-    bloom = { strength: 0.55, radius: 0.5, threshold: 0.92 },
+    bloom = LOOK.bloom,
     fov = 60,
     near = 0.05,
     far = 600,
@@ -299,7 +301,9 @@ export function createEngine(canvas, opts = {}) {
   const tuning = stageTune({ bloomPass, title: () => tuneName || canvas.closest?.('[data-route]')?.dataset.route || (typeof document !== 'undefined' ? document.title : null) });
   const tune = (groups = [], name = null) => {
     tuneName = name ?? tuneName;
-    tuning.tune(groups);
+    // (the house look and its exposure first, then the game's own)
+    const exposure = { get: () => renderer.toneMappingExposure, set: (v) => (renderer.toneMappingExposure = v) };
+    tuning.tune([...houseGroups(house, { exposure }), ...groups]);
   };
 
   const dispose = () => {
