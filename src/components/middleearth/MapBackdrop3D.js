@@ -320,6 +320,7 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     resize,
     dispose,
     renderer,
+    info: () => ({ ...renderer.info.render }), // the lab’s counts
     // its shaders, linked in the background: the page waits for this before the first frame
     ready: precompile(renderer, scene, camera),
     get lost() {
