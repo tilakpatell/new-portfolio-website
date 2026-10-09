@@ -70,7 +70,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 2C | | | | |
 | 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | Tier 1: #730; Tier 2: #735; Tier 3 Albuquerque: #740 | Tiers 1 and 2 |
 | 2E | session_011CevsENPcXnWFfKGv4yysd | `claude/feel-games` | Tier 1: #733 | |
-| 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1); #734 (Tier 2) | #731 yes |
+| 2F | session_01TsTHGKudQZoMwwwn1n37Pu | `claude/feel-rest` | #731 (Tier 1); #734 (Tier 2); the look | #731, #734 yes |
 
 ## Findings (for the owner and the next lane)
 
