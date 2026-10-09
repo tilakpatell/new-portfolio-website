@@ -48,7 +48,6 @@ export const OWN_SHAKE = [
   { file: 'cybertron/rollout/RollOut3D.js', pattern: RANDOM },
   { file: 'middleearth/shire/scene.js', pattern: RANDOM },
   ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: RANDOM })),
-  { file: 'rickmorty/citadel/scene.js', pattern: RANDOM },
   { file: 'middleearth/Bridge3D.js', pattern: /A\.shake \* A\.shake \* 0\.7/ },
   { file: 'middleearth/Gorgoroth3D.js', pattern: /A\.shake \* A\.shake \* 0\.5/ },
 ];
@@ -78,7 +77,6 @@ const CUT_EASE = /= jump\b[^;]*\? 1 : Math\.min\(1, dt \* \(/;
 export const LINEAR_CAMERA = [
   { file: 'middleearth/shire/scene.js', pattern: CUT_EASE },
   ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: CUT_EASE })),
-  { file: 'rickmorty/citadel/scene.js', pattern: CUT_EASE },
   // (the office’s walkable world: the towns’ camera, which the audit’s list missed)
   { file: 'office/world/scene.js', pattern: CUT_EASE },
   { file: 'avengers/repulsor/scene.js', pattern: /camX \+= \(px - camX\) \* Math\.min\(1, realDt \* 30\)/ },

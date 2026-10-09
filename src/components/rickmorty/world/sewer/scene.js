@@ -146,9 +146,9 @@ export async function createSewerScene(canvas, { onLost } = {}) {
 
   let lastEvents = null;
   // a bite or a splash shakes the camera (lib/three/feel: trauma², still
-  // under reduced motion), at its old 0.5 and its decay of 1.5 a second; the
-  // offset makes its top as far off as the old sines' 0.15 at full
-  const feel = createFeel({ baseFov: 55, offset: 0.3 });
+  // under reduced motion), at its old 0.5, its decay of 1.5 a second, and
+  // the 0.15 off the old sines had at full
+  const feel = createFeel({ baseFov: 55, offset: 0.15 });
   feel.set({ decay: 1.5 });
   const render = (run, ms) => {
     if (stage.lost || stage.disposed || !run) return;
