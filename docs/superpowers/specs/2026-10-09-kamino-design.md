@@ -91,7 +91,7 @@ Lama Su, Nala Se and Taun We are the one Kaminoan file: Lama Su at ×1.08, the o
 
 ### 4. The site in its own file, and its look
 
-Kamino moves out of `sites/core.js` into `sites/kamino.js` (the pattern the Naboo lane uses for `sites/naboo.js`, PR #768), with Taun We and the quest folded in from `sites/quests.js`. The move changes no pixel (shots before and after, `scripts/autopilot-check.mjs --before`). Then it says `figures: 'models'` and gains:
+Kamino moves out of `sites/core.js` into `sites/kamino.js` (the pattern the Naboo lane uses for `sites/naboo.js`, PR #768) once #768 has merged: that PR deletes Naboo's block up to the line before Kamino's, so a move now would conflict with it. Until then Kamino is edited inside its block. Taun We and the quest fold in from `sites/quests.js` when the quests are reworked (phase 6). The move changes no pixel (shots before and after, `scripts/autopilot-check.mjs --before`). The site says `figures: 'models'` and gains:
 
 - a `look` block (`look.js`'s `lookOf`): cool shadow (`#2c3c4c`), a steel edge, fog held low over the sea; the `grade` block (contrast up, saturation down, a cyan shadow and a white high) goes in when the living-layer lane's phase 3 gives `post.js` its split-tone uniforms, and until then is left out rather than unread;
 - bridges to the two lone decks, so every floor is reachable;
@@ -145,7 +145,7 @@ Interiors are code-built rooms (they are architecture); everyone in them is a mo
 | PR | what | gate beyond the four |
 | --- | --- | --- |
 | 1 | this design and its plan | none |
-| 2 | `figurePolicy.js`, the three resolvers' `only`, the mercenary family, `sites/kamino.js` (moved, no pixel changed, then `figures: 'models'`), the shader fix, `deckGraph`, the two bridges, `kamino.test.js`, the audit's `--strict`, `kamino-check.mjs` | `kamino-check` clean but for young Boba listed hidden; shots before and after the move equal |
+| 2 | `figurePolicy.js`, the three resolvers' `only`, the mercenary family, `figures: 'models'` on Kamino, the shader fix, `sites/decks.js`, the two bridges, `kamino.test.js`, the audit's `--strict`, `kamino-check.mjs` | `kamino-check` clean but for young Boba listed hidden |
 | 3 | the cast: young Boba, the rigged Kaminoans and Phase I clones, Lama Su and Nala Se, Obi-Wan, R4-P17, the named cadets | `kamino-check` clean, nobody hidden; `anim-check.mjs` on Kamino holds feet; models under 1 MB each |
 | 4 | aiwha wings (`flap.js`), the far army, Kamino's `look` | budget at high and mid, re-baselined |
 | 5 | the three interiors | each zone's shot; budget outside unchanged |
