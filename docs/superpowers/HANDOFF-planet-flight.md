@@ -48,7 +48,7 @@ Start A, B and C together. D starts when the three are on `main`.
 |---|---|---|---|
 | A | nothing yet | the plan from Task 1 | `node scripts/autopilot-check.mjs --only smoke --skip lint,test,build --routes /fly/hoth`; `node scripts/perf-probe.mjs --routes /fly/hoth` |
 | B | the schema file `supabase/migrations/20261009000000_world_entities.sql`, `supabase/README.md`, `.env.example`, the decision entry | the plan from Task 1; the schema applied to the project | `node scripts/supabase-check.mjs` |
-| C | nothing yet | the plan from Task 1 | `npx vitest run src/components/universe/online src/lib/net`; `node scripts/online-check.mjs` |
+| C | all five tasks: `src/lib/net/cells.js`, `refresh()` in `pool.js`, `cells`, `setCell`, `setCells` and the target's cell in `nostr.js` (the goodbye is signed again when your cell changes, so those round you hear you go), `expanse/flight/flightProtocol.js`; PR open | nothing; lane D uses `joinRoom({ cells })` and `flightProtocol.js` | `npx vitest run src/components/universe/online src/lib/net`; `node scripts/online-check.mjs` |
 | D | nothing yet | after A, B, C | `node scripts/online-check.mjs --fly` |
 
 ## When something in the plan is wrong
