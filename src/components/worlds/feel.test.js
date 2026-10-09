@@ -87,7 +87,6 @@ export const UNANSWERED = [
   { file: 'albuquerque/world/AbqWorld.jsx', lacks: /\b(thud|onHit|hit)\(/ },
   { file: 'universe/Comms.jsx', lacks: /\b(thud|onHit)\(/ },
   { file: 'deathstar/inside/scene/hear.js', lacks: /case 'hurt'/ },
-  { file: 'minecraft/module.js', lacks: /from '[^']*(sfx|sounds?|audio)[^']*'/ },
 ];
 
 // The sweeps for a file that starts anew. A shake decaying by dt beside a

@@ -1716,6 +1716,77 @@ function thunkRaw(acIn, destIn, when = 0) {
   return 0.18;
 }
 
+// ── the Minecraft tribute’s blocks (minecraft/sounds.js) ──
+// A block broken: a dry crunch, a few grains of noise through a falling
+// band, the gravel in it.
+function crunchRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.08, 0.7);
+  for (let i = 0; i < 4; i++) {
+    const at = t + i * 0.035 + Math.random() * 0.015;
+    const n = noiseSource(ac, 'white', 1);
+    const f = ac.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 1400 - i * 220;
+    f.Q.value = 1.4;
+    const g = ac.createGain();
+    env(g.gain, at, [[0, 0.0001], [0.003, 0.5 - i * 0.08, 'lin'], [0.07, 0.0001]]);
+    n.connect(f).connect(g).connect(out);
+    n.start(at, Math.random() * 0.5);
+    n.stop(at + 0.09);
+  }
+  return 0.25;
+}
+
+// Into the water: a rush of noise under a lowpass opening and closing, and
+// a bubble rising.
+function splashRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.15, 0.6);
+  const n = noiseSource(ac, 'white', 1);
+  const lp = ac.createBiquadFilter();
+  lp.type = 'lowpass';
+  env(lp.frequency, t, [[0, 600], [0.08, 3200], [0.5, 400]]);
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.03, 0.5, 'lin'], [0.55, 0.0001]]);
+  n.connect(lp).connect(g).connect(out);
+  n.start(t);
+  n.stop(t + 0.6);
+  const o = ac.createOscillator();
+  o.type = 'sine';
+  env(o.frequency, t + 0.05, [[0, 320], [0.12, 760]]);
+  const og = ac.createGain();
+  env(og.gain, t + 0.05, [[0, 0.0001], [0.01, 0.12, 'lin'], [0.14, 0.0001]]);
+  o.connect(og).connect(out);
+  o.start(t + 0.05);
+  o.stop(t + 0.22);
+  return 0.6;
+}
+
+// Hurt: a short low grunt, a square falling a fifth.
+function oofRaw(acIn, destIn, when = 0) {
+  const [ac, dest] = ready(acIn, destIn);
+  if (!ac) return 0;
+  const t = ac.currentTime + when;
+  const out = bus(ac, dest, 0.05, 0.5);
+  const o = ac.createOscillator();
+  o.type = 'square';
+  env(o.frequency, t, [[0, 220], [0.16, 147]]);
+  const lp = ac.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 900;
+  const g = ac.createGain();
+  env(g.gain, t, [[0, 0.0001], [0.01, 0.35, 'lin'], [0.18, 0.0001]]);
+  o.connect(lp).connect(g).connect(out);
+  o.start(t);
+  o.stop(t + 0.2);
+  return 0.2;
+}
+
 export const boom = once('boom', boomRaw);
 export const superlaser = once('superlaser', superlaserRaw);
 export const hyperspace = once('hyperspace', hyperspaceRaw);
@@ -1928,6 +1999,9 @@ export const warn = every(300, warnRaw);
 export const shatter = once('shatter', shatterRaw);
 export const creak = once('creak', creakRaw);
 export const thunk = every(60, thunkRaw);
+export const crunch = every(50, crunchRaw);
+export const splash = once('splash', splashRaw);
+export const oof = every(200, oofRaw);
 
 // ── a sound by name, and a sound by force ──
 // play(name, { gain, pitch }) → what the sound returns (its length), 0 for
@@ -1982,6 +2056,9 @@ const SOUNDS = {
   shatter,
   creak,
   thunk,
+  crunch,
+  splash,
+  oof,
 };
 
 export function play(name, voice) {
