@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { SYSTEMS } from '../../systems';
 import { GALAXY_KINDS } from '../../fleet';
@@ -12,9 +13,14 @@ import { EXTRA } from './quests';
 import { CREW } from '../crew';
 import { talkTree } from '../talk';
 import { CLIPS } from '../../../../lib/three/clipLibrary';
+import { floraNames } from '../flora';
 
 const SHIPS = new Set([...GALAXY_KINDS, ...BUILT_KINDS]);
 const placeable = (kind) => Boolean(PROPS[kind] || SURFACE_MODELS[kind]);
+// (the nature kit's models: a scatter row that names one is drawn from the
+// kit, so a typo in its name fails here and not in a browser)
+const KIT = JSON.parse(readFileSync(new URL('../../../../../public/kit/naturemega/index.json', import.meta.url), 'utf8')).models;
+const kitName = (model) => (typeof model === 'string' && model.startsWith('kit:naturemega/') ? model.slice('kit:naturemega/'.length) : null);
 const WEATHER = ['sand', 'snow', 'rain', 'ash', 'embers', 'motes', 'spray'];
 
 describe('the worlds you can land on', () => {
@@ -56,13 +62,21 @@ describe('the worlds you can land on', () => {
 
       it('has everything it places built or brought in', () => {
         for (const t of site.things_all) expect(placeable(t.kind), `${t.kind}`).toBe(true);
-        for (const s of site.scatter) expect(Boolean(SCATTER[s.kind] || placeable(s.kind)), `scatter ${s.kind}`).toBe(true);
+        for (const s of site.scatter) {
+          const kit = kitName(s.model);
+          if (kit) expect(Boolean(KIT[kit]), `scatter ${s.model}`).toBe(true);
+          else expect(Boolean(SCATTER[s.kind] || placeable(s.kind)), `scatter ${s.kind}`).toBe(true);
+        }
         // (a person may be a crew figure, which actors.js tries first)
         for (const a of site.life) expect(Boolean(CREW[a.kind] || FIGURES.includes(a.kind) || placeable(a.kind)), `life ${a.kind}`).toBe(true);
         for (const r of site.rides) expect(RIDES[r.kind], `ride ${r.kind}`).toBeTruthy();
         for (const r of site.rides) if (!RIDES[r.kind].figure) expect(placeable(r.kind), `ride ${r.kind}`).toBe(true);
         for (const f of site.flyovers) expect(SHIPS.has(f.kind), `flyover ${f.kind}`).toBe(true);
         for (const f of site.skyships) expect(SHIPS.has(f.kind), `skyship ${f.kind}`).toBe(true);
+      });
+
+      it('names only kit models the manifest has', () => {
+        for (const name of floraNames(site.scatter)) expect(KIT[name], name).toBeTruthy();
       });
 
       it('sends its people to wants that exist, of kinds someone needs, within reach', () => {

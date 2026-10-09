@@ -18,6 +18,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { LOOK as ART } from './look';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { createLibrary } from '../../../lib/cc0';
 import { disposeTree } from '../../../lib/stage3d';
@@ -792,7 +793,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
   // (what arrives late is held back until it's ready, not waited for: lib/three/frameGuard)
   guard(renderer);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  // (the house tone mapper: houseOn, below, before the first frame)
   renderer.info.autoReset = false;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(52, 16 / 9, 2, 9000);
@@ -801,7 +802,7 @@ export async function createCybertronBackdrop(canvas, { side = 0, dark = true, c
   const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 2 });
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.6, 0.55, 0.92);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), ART.bloom.strength, ART.bloom.radius, ART.bloom.threshold);
   composer.addPass(bloom);
   const output = new OutputPass();
   composer.addPass(output);

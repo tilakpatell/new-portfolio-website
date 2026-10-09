@@ -6,7 +6,7 @@
 // kinds (rocks by the hundred, palms, huts) are drawn instanced: one draw
 // for all of them.
 //
-// createPlacer({ parent, kit, world, warm, house, models }) → { put(spec),
+// createPlacer({ parent, kit, world, warm, house, models, kitTint }) → { put(spec),
 // scatter(kind, items, opts), update(t, dt, you), signal(name, on) (to the
 // built things that move when something happens: a trapdoor, a gate),
 // setZone(inZone), ready (a promise: everything asked for so far is in),
@@ -18,7 +18,8 @@
 //   kit model (lib/three/kit: public/kit/<pack>/), in place of its kind's:
 //   each pack loaded once a placer, its leaves and bark in the world's wind
 //   (the galaxy kit's clock and way) and in the house's look (`house`, the
-//   world's lib/three/house). Scattered, it's drawn as a kind's model is,
+//   world's lib/three/house), its materials tinted by `kitTint` (the
+//   site's flora tint, flora.js: { [material name]: colour }). Scattered, it's drawn as a kind's model is,
 //   its LOD1 far off; put, its parts stand under one group. A tree is solid
 //   at its trunk (the manifest's `trunk`), anything else by its box. A
 //   rigged one (the manifest's `rig`) is refused as one that won't load is,
@@ -237,7 +238,7 @@ export async function wearModel(object, role, { wear = wearCore, load = loadScan
   return seen.size;
 }
 
-export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null, seated = false, house = null, models = SURFACE_MODELS, props: PROPS = GALAXY_PROPS, scatter: SCATTER = GALAXY_SCATTER }) {
+export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve(o), shadowOnly = null, seated = false, house = null, kitTint = null, models = SURFACE_MODELS, props: PROPS = GALAXY_PROPS, scatter: SCATTER = GALAXY_SCATTER }) {
   // the kits named so far, by pack: each in the world's wind (the galaxy
   // kit's clock, and the way its foliage leans) and the house's look
   const kits = new Map();
@@ -247,7 +248,7 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
     if (!kits.has(pack)) {
       // (a copy of the way the foliage leans: wind() clones its dir, so the two agree only while nothing turns the wind at run time, and nothing does)
       const dir = kit?.mats?.foliage?.userData.wind?.uWindDir?.value;
-      kits.set(pack, kitLoader(pack, { house, wind: { time: kit?.wind, ...(dir ? { dir } : {}) } }));
+      kits.set(pack, kitLoader(pack, { house, wind: { time: kit?.wind, ...(dir ? { dir } : {}) }, tint: kitTint }));
     }
     return kits.get(pack);
   };
@@ -482,7 +483,9 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       return Promise.resolve(build(spec, at));
     },
     // many of one kind: items [{ at: [x, z], yaw, scale, y }]; drawn instanced
-    scatter(kind, items, { opts = {}, solid = true, model = true } = {}) {
+    // (`shadow: false`: no shadow at all, for ground cover too low to throw
+    // one worth its draws)
+    scatter(kind, items, { opts = {}, solid = true, model = true, shadow = true } = {}) {
       if (!items.length) return Promise.resolve(null);
       const mats = items.map((it) => {
         const at = spot({ ...it });
@@ -493,8 +496,8 @@ export function createPlacer({ parent, kit, world, warm = (o) => Promise.resolve
       const zs = Float32Array.from(mats, (x) => x.at[2]);
       // each part an instanced mesh of every item (its matrices kept, `src`,
       // for the near shadow stand-ins and the near/far split to copy from)
-      const instanceParts = (parts) =>
-        parts.map((p) => {
+      const instanceParts = (all) =>
+        all.map((q) => (shadow ? q : { ...q, shadow: false })).map((p) => {
           const mesh = new THREE.InstancedMesh(p.geometry, p.material, mats.length);
           mats.forEach((x, i) => mesh.setMatrixAt(i, p.local ? x.m.clone().multiply(p.local) : x.m));
           mesh.castShadow = !shadowOnly && p.shadow !== false; // (else its near stand-in casts for it)

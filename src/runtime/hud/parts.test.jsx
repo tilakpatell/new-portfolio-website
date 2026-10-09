@@ -16,6 +16,11 @@ describe('the prompt', () => {
   it('shows no key on touch, where it’s the button', () => {
     expect(text(<Prompt k="E" verb="Go in" thing="Burger Mart" touch />)).toBe('Go in · Burger Mart');
   });
+  it('says what it promises in data-prompt, key first, on touch too', () => {
+    expect(renderToStaticMarkup(<Prompt k="E" verb="Talk" thing="Gandalf" />)).toMatch(/<button[^>]*data-prompt="E Talk · Gandalf"/);
+    expect(renderToStaticMarkup(<Prompt k="E" verb="Talk" thing="Gandalf" touch />)).toContain('data-prompt="E Talk · Gandalf"');
+    expect(renderToStaticMarkup(<Prompt k="X" verb="Read" />)).toContain('data-prompt="X Read"');
+  });
   it('is a real button, and can’t be pressed while closed', () => {
     const html = renderToStaticMarkup(<Prompt verb="Go in" thing="Los Pollos" sub="Opens at noon" closed />);
     expect(html).toMatch(/<button[^>]*disabled/);

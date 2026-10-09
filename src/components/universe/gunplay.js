@@ -34,8 +34,9 @@
 //   much the head turns to it (the aim, if not given).
 
 import * as THREE from 'three';
-import { frameFrom, palmFrame, reach, rotateWorld, setWorldQuaternion, spring } from '../../lib/three/ik';
-import { gripMorphs, ungrip } from './grip';
+import { frameFrom, reach, rotateWorld, setWorldQuaternion, spring } from '../../lib/three/ik';
+import { gripMorphs, ungrip } from '../../lib/three/grip';
+import { handFrame, handPoints } from '../../lib/three/held';
 
 const V = THREE.Vector3;
 const Q = THREE.Quaternion;
@@ -850,64 +851,10 @@ export function buildGun(kind, owned = []) {
 
 // ── The hand ──
 
-// Which way a hand is (a right one, or with `left` a left one), from its
-// vertices in its bone's space: `along`
-// runs out the fingers, `thumb` across the knuckles toward the thumb, and
-// `normal` out of the palm. `axes` are the bone's axes in the world
-// ({ x, y, z }), `body` the figure's forward and the way in toward its
-// middle, to settle which way is which: the fingers are on the far side of
-// the wrist, the thumb points forward or in at rest (an A-pose's palms face
-// in or back), and when the cloud can't say which of two axes the palm's
-// normal is, it's the one that faces in or out from the body. Also `mean`,
-// the palm's middle (bone space), where a grip sits.
-export function handFrame(points, axes, body, left = false) {
-  const f = palmFrame(points);
-  const world = (v) => new V().addScaledVector(axes.x, v.x).addScaledVector(axes.y, v.y).addScaledVector(axes.z, v.z);
-  let normal = f.normal;
-  let across = f.across;
-  // the two shorter axes close: the palm faces in or out, not forward or back
-  const [thin, mid] = [0, 1, 2].sort((i, j) => f.spread[i] - f.spread[j]);
-  if (f.spread[mid] < f.spread[thin] * 1.35) {
-    const lateral = (i) => Math.abs(world(new V().setComponent(i, 1)).dot(body.inward));
-    if (lateral(mid) > lateral(thin)) {
-      normal = new V().setComponent(mid, 1);
-      across = new V().setComponent(thin, 1);
-    }
-  }
-  const along = f.along.clone();
-  if (along.dot(new V(...f.mean)) < 0) along.negate(); // out past the wrist
-  const thumb = across.clone();
-  const toward = body.forward.clone().add(body.inward);
-  if (world(thumb).dot(toward) < 0) thumb.negate();
-  normal = left ? new V().crossVectors(along, thumb).normalize() : new V().crossVectors(thumb, along).normalize(); // (the palm: a left hand's is the mirror of a right's)
-  return { along, thumb, normal, mean: new V(...f.mean) };
-}
-
-// the vertices skinned to `hand`, in its space (the figure at rest)
-function handPoints(root, hand) {
-  const pts = [];
-  const v = new V();
-  root.updateMatrixWorld(true);
-  const inv = hand.matrixWorld.clone().invert();
-  root.traverse((o) => {
-    if (!o.isSkinnedMesh) return;
-    const idx = o.skeleton.bones.indexOf(hand);
-    const si = o.geometry.attributes.skinIndex;
-    const sw = o.geometry.attributes.skinWeight;
-    if (idx < 0 || !si || !sw) return;
-    o.skeleton.update();
-    const n = si.count;
-    const step = Math.max(1, Math.floor(n / 8000));
-    for (let i = 0; i < n; i += step) {
-      let w = 0;
-      for (let k = 0; k < 4; k++) if (si.getComponent(i, k) === idx) w += sw.getComponent(i, k);
-      if (w < 0.6) continue;
-      o.getVertexPosition(i, v).applyMatrix4(o.matrixWorld).applyMatrix4(inv);
-      pts.push([v.x, v.y, v.z]);
-    }
-  });
-  return pts;
-}
+// Which way a hand is, from its vertices (handFrame), and the vertices
+// skinned to a hand in its space (handPoints): the held layer's
+// (lib/three/held.js), and re-exported here as they were this file's.
+export { handFrame } from '../../lib/three/held';
 
 // fixes by who's holding: a hand whose geometry says the wrong thing, or a
 // figure built from shapes ('built': its hand groups hang straight down

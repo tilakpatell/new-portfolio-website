@@ -60,6 +60,7 @@ import { NOSE, UP, axisAngle, conj, fromAngles, mul, normalize, rotate, toAngles
 import { byId } from './universes';
 import { sunFor } from './lighting';
 import { REGIONS } from './regions';
+import { springStep } from '../../lib/spring';
 
 // (the speeds as they were till October 2026, cruise 5.5, boost 20 and the
 // pulse drive 420, got there in under a second and felt far too fast for a
@@ -123,6 +124,9 @@ export function crashLoud(speed) {
   const k = (speed - SHIP.crash) / (SHIP.boost - SHIP.crash);
   return Math.min(1, Math.max(0, 0.45 + 0.55 * k));
 }
+
+// the lean's spring (step's lean, for the eye): stiffness and damping
+export const LEAN = { k: 80, c: 11 };
 
 export const TUNE = { boost: [1, 1.6], cruise: [0.9, 1.2], accel: [1, 1.8], agility: [0.6, 1.4], level: [1, 1.8] };
 export const tuned = (tune) => Object.fromEntries(Object.entries(TUNE).map(([k, [lo, hi]]) => [k, clamp(tune?.[k] ?? 1, lo, hi)]));
@@ -362,7 +366,7 @@ export function startAt(rand = Math.random) {
 // level, and still.
 export function spawn(id, start = HOME_EDGE) {
   const at = id && PLANET[id] ? parkAt(id) : start;
-  return { ...at, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
+  return { ...at, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, leanV: 0, edge: false };
 }
 
 // The space the ship flies in: the universe map's, as this file has it
@@ -600,9 +604,11 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
   // with the inertia), more the faster it goes: for the eye, on top of
   // the roll that's really there
   const steer = clamp(-rate / (SHIP.turn * agile), -1, 1);
-  const lean = ease(s.lean || 0, steer * (0.25 + 0.45 * clamp(Math.abs(v) / SHIP.cruise, 0, 1)), 6);
+  // (on a spring, lib/spring.js: a little past and back, as a weight would;
+  // LEAN's k and c give the old ease's pace, 1/6 s, with ζ about 0.6)
+  const [lean, leanV] = springStep(s.lean || 0, s.leanV || 0, steer * (0.25 + 0.45 * clamp(Math.abs(v) / SHIP.cruise, 0, 1)), LEAN.k, LEAN.c, dt);
   const vy = f[1] * v + lift;
-  return { ship: { x, y, z, heading, pitch, bank, speed: v, vy, lift, rate, tipRate, rollRate, lean, edge }, events };
+  return { ship: { x, y, z, heading, pitch, bank, speed: v, vy, lift, rate, tipRate, rollRate, lean, leanV, edge }, events };
 }
 
 // The universe the ship is at, if any. Once at one, it stays at it until
