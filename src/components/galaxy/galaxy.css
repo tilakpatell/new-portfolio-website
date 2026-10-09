@@ -530,8 +530,6 @@
 .holomap-stats dt { color: #7fd6ff; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .holomap-stats dd { margin: 0.1rem 0 0; font-size: 0.84rem; }
 .holomap-jump { width: 100%; justify-content: center; margin-top: 0.8rem; }
-.holomap-jump kbd { margin-left: 0.5rem; }
-@media (hover: none) { .holomap-jump kbd { display: none; } }
 .holomap-more > summary { cursor: pointer; margin-top: 0.6rem; color: #7fd6ff; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; }
 .holomap-key-h { margin: 0.6rem 0 0.3rem; color: #7fd6ff; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; }
 @media (max-width: 760px) {

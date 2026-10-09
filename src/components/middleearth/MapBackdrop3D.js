@@ -12,6 +12,7 @@ import { normalCanvas } from '../../lib/texture';
 import { SHEET } from './mapData';
 import { mapFont, paintMap, paintRelief } from './mapPaint';
 import { buildDiorama } from './mapDiorama';
+import { flightAt } from './mapFlight.js';
 import { prefersReducedMotion } from '../../lib/hooks';
 import { budget, device, pixelRatio } from '../../lib/device';
 import { guard } from '../../lib/three/frameGuard';
@@ -99,6 +100,9 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   const user = { x: 0, z: 0, zoom: 1 };
   let hurry = false;
   let hub = false;
+  // the opening's flight down the road, where it has the camera now, or null
+  // when the page has it
+  let flying = null;
 
   // { at: [x, y] on the sheet or null for the whole map, zoom, mordor, dark,
   //   alive: the candle flickers (it keeps drawing), lean: [-1..1, -1..1] the
@@ -184,11 +188,16 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
       goal.z = want.z + user.z;
       goal.zoom = want.zoom * user.zoom;
     }
-    const k = 1 - Math.exp(-(hurry ? 3.5 : dragging ? 14 : 2.4) * slow * dt);
+    if (flying) {
+      // the opening leads the camera wherever the page has asked it to be
+      [goal.x, goal.z] = at(...flying.at);
+      goal.zoom = flying.zoom;
+    }
+    const k = 1 - Math.exp(-(hurry || flying ? 3.5 : dragging ? 14 : 2.4) * slow * dt);
     const kl = 1 - Math.exp(-4 * dt);
     let far = 0;
     for (const key of ['x', 'z', 'zoom', 'm', 'n', 'lx', 'lz']) far += Math.abs(goal[key] - cur[key]) * (key === 'x' || key === 'z' ? 1 : 4);
-    const moving = first || far > 0.004 || world.walking || hurry;
+    const moving = first || far > 0.004 || world.walking || hurry || flying !== null;
     // on the map itself the world is alive (smoke, the Eye, the hobbits):
     // keep drawing; behind a chapter, only while the camera moves
     if (!moving && !alive && !candleLit) return false;
@@ -240,6 +249,19 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
       hurry = ms > 0;
       first = true;
       return ms;
+    },
+    // the opening's flight (./mapFlight.js): `ms` into it, or null to hand
+    // the camera back to the page, which it eases to
+    flight(ms) {
+      const was = flying;
+      flying = ms == null ? null : flightAt(ms);
+      // a flight from the very first frame starts where it starts, low over
+      // the Shire, rather than swooping down to it from the whole map
+      if (flying && !was && t === 0) {
+        [cur.x, cur.z] = at(...flying.at);
+        cur.zoom = flying.zoom;
+      }
+      first = true;
     },
     // ── the visitor's hands on the map ──
     // drag: move the map with the pointer, by a screen delta in px
@@ -320,8 +342,16 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     resize,
     dispose,
     renderer,
-    // its shaders, linked in the background: the page waits for this before the first frame
-    ready: precompile(renderer, scene, camera),
+    info: () => ({ ...renderer.info.render }), // the lab’s counts
+    // its shaders, linked in the background, and the sheet's own pictures
+    // sent: the page waits for this before the first frame, so that frame
+    // has the sheet in it (lib/three/frameGuard leaves out a material whose
+    // pictures aren't on the chip yet) and fades in over the flat one whole
+    ready: precompile(renderer, scene, camera).then(() => {
+      if (lost) return;
+      renderer.initTexture(map);
+      renderer.initTexture(relief);
+    }),
     get lost() {
       return lost;
     },

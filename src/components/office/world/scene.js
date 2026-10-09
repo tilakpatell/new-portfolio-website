@@ -13,6 +13,7 @@ import { createStage } from '../../../lib/stage3d';
 import { houseOn } from '../../../lib/three/house';
 import { createFeel, feelGroups } from '../../../lib/three/feel';
 import { damp } from '../../../lib/ease';
+import { LOOK } from './look';
 import { device } from '../../../lib/device';
 import { createFx } from '../../middleearth/shire/fx';
 import { createGhosts } from '../../middleearth/towns/ghosts';
@@ -99,7 +100,7 @@ function clearance(from, to) {
 export async function createOfficeWorld(canvas, { onLost } = {}) {
   const tier = device().tier;
   const soft = tier === 'low';
-  const stage = createStage(canvas, { soft, shadows: tier === 'high', fov: 58, near: 0.05, far: 170, exposure: 0.94, bloom: { strength: 0.22, radius: 0.5, threshold: 1.6 }, onLost });
+  const stage = createStage(canvas, { soft, shadows: tier === 'high', fov: 58, near: 0.05, far: 170, exposure: 0.94, bloom: LOOK.bloom, onLost });
   // the show's look: fluorescent, a touch green and flat, with a little grain
   stage.grade({ contrast: 0.02, saturation: 0.92, vignette: 0.22, grain: 0.022, shadow: [0.0, 0.01, 0.006], high: [0.012, 0.012, 0.0] });
   const { scene, camera, renderer } = stage;
