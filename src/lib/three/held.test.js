@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAnimator } from './animator';
-import { HELD, gripFrame, handFrame, handPoints, holdItem } from './held';
+import { animatorCalls } from './figureCalls';
+import { HELD, gripFrame, handFrame, handPoints, handSkinCount, holdItem, skinStep } from './held';
 import { meshyRig, swingClip, withHands } from './meshyRig.fixture';
 
 const V = THREE.Vector3;
@@ -52,6 +53,31 @@ const palmAt = (hold) => {
 };
 const handDir = (hold, v) => v.clone().transformDirection(hold.hand.matrixWorld);
 const lineAngle = (a, b) => Math.acos(Math.min(1, Math.abs(a.clone().normalize().dot(b.clone().normalize()))));
+const UP = new V(0, 1, 0);
+// a rig with hands, changed before its hands are bound
+const rigged = (change = () => {}, opts = {}) => {
+  const rig = meshyRig(opts);
+  change(rig);
+  rig.model.updateMatrixWorld(true);
+  return withHands(rig);
+};
+// the hands' thumb nubs taken off their skin (on the hips instead): a hand
+// whose skin doesn't say where its thumb is
+const noNub = (rig, verts = 60) => {
+  const si = rig.hands.geometry.attributes.skinIndex;
+  const nub = Math.round(verts * 0.1);
+  for (let h = 0; h < 2; h++) for (let i = (h + 1) * verts - nub; i < (h + 1) * verts; i++) si.setX(i, 0);
+  return rig;
+};
+// a spear's second grip, ahead of the left elbow, where that arm can reach
+const grip2For = (rig, spear) => {
+  rig.model.updateMatrixWorld(true);
+  const g2 = new THREE.Object3D();
+  g2.name = 'grip2';
+  g2.position.copy(spear.worldToLocal(worldOf(rig.bones.LeftForeArm).add(new V(-0.05, -0.05, 0.25))));
+  spear.add(g2);
+  return g2;
+};
 
 describe('the grip frame, from the hand’s own skin', () => {
   it('finds the fingers, the thumb and the palm on a right hand and a mirrored left', () => {
@@ -81,6 +107,54 @@ describe('the grip frame, from the hand’s own skin', () => {
   it('a hand with too little skin gives no frame', () => {
     const { rig } = make({ verts: 20 });
     expect(gripFrame(rig.model, rig.bones.RightHand)).toBe(null);
+  });
+
+  it('a hand turned so its thumb lies across the body (palm-up, thumb-up) keeps it toward the nub', () => {
+    const r = withHands(meshyRig());
+    const plain = { R: gripFrame(r.model, r.bones.RightHand), L: gripFrame(r.model, r.bones.LeftHand, { left: true }) };
+    // each hand turned about its fingers until the nub's side points out
+    // from the body and up: forward can't say which way the thumb is, and
+    // the way in says the wrong way
+    const turnOut = (rig, name, out) => {
+      const b = rig.bones[name];
+      const a = new V().setFromMatrixColumn(b.matrixWorld, 1).normalize();
+      const n0 = new V(0, 0, 1).transformDirection(b.matrixWorld);
+      const t = new V(out, 1, 0).normalize();
+      const c = new V().crossVectors(a, n0);
+      const th = Math.atan2(c.dot(t), n0.dot(t) - a.dot(n0) * a.dot(t));
+      b.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(UP, th));
+    };
+    const rig = rigged((x) => {
+      turnOut(x, 'RightHand', -1);
+      turnOut(x, 'LeftHand', 1);
+    });
+    for (const [name, left, P, out] of [
+      ['RightHand', false, plain.R, -1],
+      ['LeftHand', true, plain.L, 1],
+    ]) {
+      const F = gripFrame(rig.model, rig.bones[name], { left });
+      const nub = new V(0, 0, 1).transformDirection(F.bind);
+      expect(Math.abs(nub.z)).toBeLessThan(0.35); // (across the body)
+      expect(nub.x * out - nub.z).toBeGreaterThan(0); // (more out from it than ahead: forward plus inward would flip it)
+      expect(F.thumb.z).toBeGreaterThan(0.95);
+      expect(F.normal.distanceTo(P.normal)).toBeLessThan(1e-6);
+    }
+  });
+
+  it('a rig facing −z: forward is the rig’s own (its head’s front, else its left and right), so the thumb still goes to the nub', () => {
+    const turn = (r) => (r.armature.rotation.y = Math.PI);
+    // with the nub, and without it (the skin saying nothing either way)
+    for (const rig of [rigged(turn), noNub(rigged()), noNub(rigged(turn)), noNub(rigged(turn, { without: ['headfront'] }))]) {
+      expect(gripFrame(rig.model, rig.bones.RightHand).thumb.z).toBeGreaterThan(0.95);
+      expect(gripFrame(rig.model, rig.bones.LeftHand, { left: true }).thumb.z).toBeGreaterThan(0.95);
+    }
+  });
+
+  it('counts the hand’s skin as it reads it: every vertex up to 16,000, then a sample', () => {
+    const { rig } = make();
+    expect(handSkinCount(rig.model, rig.bones.RightHand)).toBe(60);
+    expect(handSkinCount(rig.model, null)).toBe(0);
+    expect([1, 8000, 15999, 16000, 40000].map(skinStep)).toEqual([1, 1, 1, 2, 5]);
   });
 
   it('handPoints reads the hand’s vertices as the figure stands', () => {
@@ -216,6 +290,21 @@ describe('holdItem', () => {
     expect(meshOf(a).geometry).toBe(rig.hands.geometry);
   });
 
+  it('a curl in the right hand and then the left, on one template: each hand gets its own', () => {
+    const rig = withHands(meshyRig());
+    const a = cloneSkinned(rig.model);
+    const b = cloneSkinned(rig.model);
+    const meshOf = (m) => m.getObjectByName('hands');
+    const r = holdItem({ model: a }, staff(), 'sword', { curl: true });
+    const l = holdItem({ model: b }, staff(), 'sword', { curl: true, left: true });
+    expect(r && l).toBeTruthy();
+    const dr = meshOf(a).morphTargetDictionary;
+    const dl = meshOf(b).morphTargetDictionary;
+    expect(dr.gripR).toBeDefined();
+    expect(dl.gripL).toBeDefined();
+    expect(meshOf(b).morphTargetInfluences[dl.gripL]).toBe(1);
+  });
+
   it('caches the frame by the model’s template: a clone gets the same one', () => {
     const rig = withHands(meshyRig());
     const a = cloneSkinned(rig.model);
@@ -245,6 +334,63 @@ describe('holdItem', () => {
     step(A, 2, STILL, [h]);
     expect(A.anim.weight('arm.r')).toBe(0);
     expect(A.rig.bones.RightArm.quaternion.angleTo(restR)).toBeLessThan(1e-3);
+  });
+
+  it('an anim that isn’t an animator (figureCalls’ facade) gets no still carry, and nothing throws', () => {
+    const f = make();
+    const facade = animatorCalls(f.anim, { model: f.rig.model });
+    const play = vi.spyOn(facade, 'play');
+    const stop = vi.spyOn(facade, 'stop');
+    const h = holdItem({ model: f.rig.model, anim: facade }, staff(), 'staff');
+    expect(() => {
+      for (let i = 0; i < 30; i++) h.update(DT, { moving: true });
+      h.after();
+      h.release();
+    }).not.toThrow();
+    expect(play).not.toHaveBeenCalled();
+    expect(stop).not.toHaveBeenCalled();
+    expect(f.anim.playing('arm.r')).toBe(null);
+  });
+
+  it('in a frame’s order, update leaves the arm to the animator and after turns it upright once', () => {
+    const f = make();
+    const h = holdItem(f.fig, staff(), 'staff');
+    const hand = f.rig.bones.RightHand;
+    for (let i = 0; i < 40; i++) {
+      f.anim.locomote(WALK);
+      f.anim.update(DT);
+      const posed = hand.quaternion.clone();
+      h.update(DT, { moving: true });
+      if (i > 0) expect(hand.quaternion.equals(posed)).toBe(true); // (the wrist's for after)
+      f.anim.after(DT, WALK, FRAME);
+      f.rig.model.updateMatrixWorld(true);
+      const laid = hand.quaternion.clone();
+      const tilt = axisOf(h.item).angleTo(UP);
+      h.after();
+      f.rig.model.updateMatrixWorld(true);
+      if (i === 0) expect(hand.quaternion.equals(laid)).toBe(true); // (update did it this once: not twice)
+      else expect(axisOf(h.item).angleTo(UP)).toBeLessThanOrEqual(tilt + 1e-9);
+    }
+    expect(f.anim.weight('arm.r')).toBeGreaterThan(0.5);
+  });
+
+  it('on a figure with no animator, release turns the arm’s bones back as they were', () => {
+    const rig = withHands(meshyRig());
+    const names = ['RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand'];
+    const was = names.map((n) => rig.bones[n].quaternion.clone());
+    const moved = () => Math.max(...names.map((n, i) => rig.bones[n].quaternion.angleTo(was[i])));
+    const tankard = holdItem({ model: rig.model }, staff(), 'tankard');
+    for (let i = 0; i < 3; i++) tankard.update(DT);
+    expect(moved()).toBeGreaterThan(0.05);
+    tankard.release();
+    expect(moved()).toBeLessThan(1e-6);
+    const spear = staff();
+    const two = holdItem({ model: rig.model }, spear, 'spear');
+    grip2For(rig, spear);
+    two.update(DT);
+    expect(rig.bones.LeftArm.quaternion.angleTo(was[3])).toBeGreaterThan(0.01);
+    two.release();
+    expect(moved()).toBeLessThan(1e-6);
   });
 
   it('the upright carry turns the wrist toward the world’s up, within its clamps', () => {
