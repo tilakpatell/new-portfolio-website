@@ -31,68 +31,28 @@ function walk(at = '') {
   return out;
 }
 
-const TOWNS = ['amonhen', 'bree', 'cirithungol', 'doom', 'edoras', 'lorien', 'marshes', 'minastirith', 'moria', 'orthanc', 'rivendell', 'weathertop'];
-
-// a camera nudged by Math.random() times a shake
-const RANDOM = /Math\.random\(\) - 0\.5\) \* [\w.]*shake/;
-
 export const OWN_SHAKE = [
-  { file: 'albuquerque/world/scene.js', pattern: RANDOM },
-  { file: 'cybertron/game/scene.js', pattern: RANDOM },
   { file: 'universe/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
-  { file: 'caribbean/tide/Tide3D.js', pattern: /const s = trauma \* trauma/ },
-  { file: 'office/world/scene.js', pattern: RANDOM },
-  { file: 'cybertron/rollout/RollOut3D.js', pattern: RANDOM },
-  { file: 'middleearth/shire/scene.js', pattern: RANDOM },
-  ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: RANDOM })),
-  { file: 'rickmorty/citadel/scene.js', pattern: RANDOM },
-  { file: 'rickmorty/portal/Portal3D.js', pattern: /\(Math\.random\(\) - 0\.5\) \* sh\b/ },
-  { file: 'rickmorty/world/sewer/scene.js', pattern: /Math\.sin\(t \* 31\) \* shake/ },
-  { file: 'rickmorty/world/roy/scene.js', pattern: /const s = trauma \* trauma/ },
-  { file: 'middleearth/Bridge3D.js', pattern: /A\.shake \* A\.shake \* 0\.7/ },
-  { file: 'middleearth/Gorgoroth3D.js', pattern: /A\.shake \* A\.shake \* 0\.5/ },
 ];
 
 export const DEAD_HITSTOP = [
-  { file: 'invincible/world/scene.js', pattern: /feel\.hitstop\(/, loop: 'invincible/world/InvWorld.jsx', without: /\btimeScale\(|feel\.(step|scale)\(/ },
-  { file: 'avengers/widow/scene.js', pattern: /feel\.hitstop\(/, loop: 'avengers/widow/Infiltration.jsx', without: /\btimeScale\(|feel\.(step|scale)\(/ },
-  // (a feel whose scale already runs the snap, and no hitstop to slow it)
-  { file: 'avengers/titan/scene.js', pattern: /createFeel\(/, loop: 'avengers/titan/scene.js', without: /\.hitstop\(/ },
 ];
 
 // each without createPress or createCooldownPress in the same file
 export const NO_PRESS = [
-  { file: 'invincible/world/flight.js', pattern: /\{ \.\.\.input, jump: false \}/ },
-  { file: 'cybertron/game/rules.js', pattern: /input\.jump && p\.mode === 'robot' && p\.grounded/ },
-  { file: 'avengers/world/rules.js', pattern: /function stepGround\(h, \{[^}]*\bjump\b/ },
   { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
-  { file: 'rickmorty/world/rules.js', pattern: /vy = move\.jump \? MORTY\.jump/ },
-  { file: 'avengers/smash/rules.js', pattern: /H\.air > 0 \|\| H\.smash >= 0\) return false/ },
-  { file: 'rickmorty/world/sewer/rules.js', pattern: /input\.hop && r\.hop <= 0/ },
   { file: 'universe/foot.js', pattern: /input\.jump && h <= 1e-6/ },
-  { file: 'middleearth/rush/Rush.jsx', pattern: /sm\.dash = false/ },
-  { file: 'rickmorty/portal/rules.js', pattern: /p\.dashes < 1 \|\| p\.dashT > 0\) return false/ },
 ];
 
 // the walkers’ camera: at once on a cut, else `min(1, dt × k)` a frame
 const CUT_EASE = /= jump\b[^;]*\? 1 : Math\.min\(1, dt \* \(/;
 
 export const LINEAR_CAMERA = [
-  { file: 'middleearth/shire/scene.js', pattern: CUT_EASE },
-  ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: CUT_EASE })),
-  { file: 'rickmorty/citadel/scene.js', pattern: CUT_EASE },
-  // (the office’s walkable world: the towns’ camera, which the audit’s list missed)
-  { file: 'office/world/scene.js', pattern: CUT_EASE },
-  { file: 'avengers/repulsor/scene.js', pattern: /camX \+= \(px - camX\) \* Math\.min\(1, realDt \* 30\)/ },
-  { file: 'rickmorty/CruiserFlight.jsx', pattern: /\(goal - shown\) \* 0\.12/ },
 ];
 
 export const UNANSWERED = [
-  { file: 'cybertron/game/GameWorld.jsx', lacks: /'bump'/ },
-  { file: 'albuquerque/world/AbqWorld.jsx', lacks: /\b(thud|onHit|hit)\(/ },
   { file: 'universe/Comms.jsx', lacks: /\b(thud|onHit)\(/ },
   { file: 'deathstar/inside/scene/hear.js', lacks: /case 'hurt'/ },
-  { file: 'minecraft/module.js', lacks: /from '[^']*(sfx|sounds?|audio)[^']*'/ },
 ];
 
 // The sweeps for a file that starts anew. A shake decaying by dt beside a
@@ -152,9 +112,8 @@ describe('the feel ratchet', () => {
     });
   }
 
-  // (at most: each lane that empties a line shrinks its list, and no lane
-  // need touch these numbers to do it)
-  it('holds the audit’s counts', () => {
+  // (at most: each lane takes its own off, so the counts only fall)
+  it('holds no more than the audit’s counts', () => {
     expect(OWN_SHAKE.map((e) => e.file).filter((f) => !f.includes('/towns/')).length).toBeLessThanOrEqual(16);
     expect(DEAD_HITSTOP.length).toBeLessThanOrEqual(3);
     expect(NO_PRESS.length).toBeLessThanOrEqual(11);

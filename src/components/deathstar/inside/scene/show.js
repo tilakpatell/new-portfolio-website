@@ -91,6 +91,15 @@ export function effectsOf(e) {
       ];
     case 'blast':
       return [{ kind: 'explode', at: { x: e.at.x, y: e.at.y + 1.2, z: e.at.z }, size: 1.2 }];
+    // the station coming apart: a panel bursting off the wall, sparks raining off it, and the smoke after
+    case 'quake':
+      return e.at
+        ? [
+            { kind: 'explode', at: point(e.at), size: 0.5 + 0.7 * (e.size ?? 1) },
+            { kind: 'spark', at: point(e.at), n: 10, normal: null },
+            { kind: 'smoke', at: { x: e.at.x, y: e.at.y + 0.4, z: e.at.z }, size: 0.9 },
+          ]
+        : [];
     default:
       return [];
   }

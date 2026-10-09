@@ -63,7 +63,7 @@ describe('earth module', () => {
     rt.gfx.renderer.toneMappingExposure = 1.05;
     const world = await earth.create(rt, {});
     const groups = world.tune();
-    expect(groups.map((g) => g.name)).toEqual(['earth']);
+    expect(groups.map((g) => g.name)).toEqual(['earth', 'flight', 'look']);
     const item = (k) => groups[0].items.find((i) => i.key === k);
     expect(item('exposure').get()).toBe(1.05);
     item('exposure').set(1.4);
@@ -79,6 +79,17 @@ describe('earth module', () => {
     item('cockpit').set(true);
     expect(rt.saves.get(CAM)).toBe('cockpit');
     expect(item('cockpit').get()).toBe(true);
+    world.dispose();
+  });
+
+  it('puts the flight’s own numbers on the panel, read and written live', async () => {
+    const world = await earth.create(fakeRt(), {});
+    const cruise = world.tune()[1].items.find((i) => i.key === 'cruise');
+    const was = cruise.get();
+    expect(was).toBeGreaterThan(0);
+    cruise.set(was * 2);
+    expect(cruise.get()).toBe(was * 2);
+    cruise.set(was);
     world.dispose();
   });
 

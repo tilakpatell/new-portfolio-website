@@ -72,6 +72,7 @@ import { useLooks } from '../wardrobe/useLooks';
 import './world.css';
 import { useTravellers } from '../../middleearth/towns/useTravellers';
 import { createEmoteWheel, emotePacket, keepEmote, readEmote } from '../../../lib/emote';
+import { createPress, pressGroups } from '../../../lib/press';
 import { lineHold } from './living';
 import LoadingVeil from '../../worlds/LoadingVeil';
 import { throttled } from '../../worlds/loadingSteps';
@@ -252,6 +253,7 @@ const newSim = (at = START, portal = false) => ({
   stick: { x: 0, y: 0 },
   lift: 0,
   jump: false, // asked to jump (Space, or the jump button), till the next step takes it
+  press: createPress(), // the jump's: a moment early on landing, or a moment late off an edge, still jumps
   near: null,
   moved: false,
   fading: false,
@@ -900,6 +902,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
         if (!d) return;
         say({ kind: 'say', who: SAY[e.who]?.who ?? e.who ?? null, text: e.text ?? d.caught ?? 'Caught.' });
         sound('grab');
+        api.current?.shake?.(0.3); // (the Citadel's caught, the same grab)
         api.current?.play('scared', { hold: 0.4, layer: 'auto' });
         // a blink, and he's back at the way in
         s.fading = true;
@@ -1013,6 +1016,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
           return;
         }
         api.current = a;
+        a.tune?.(pressGroups(sim.current.press)); // (behind ?debug: the feel's numbers and the jump's)
         a.act?.('arcade', 'setBoard', readBest());
         a.setLooks?.(looksRef.current); // (a look picked while it loaded)
         if (import.meta.env.DEV) {
@@ -1196,7 +1200,10 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       if (m || f) {
         // (Space is the cruiser's climb; walking, Morty's jump)
         if (m !== 'run' && !(m === 'space' && onButton)) e.preventDefault();
-        if (m === 'space' && !onButton && !s.flying && !e.repeat) s.jump = true;
+        if (m === 'space' && !onButton && !s.flying && !e.repeat) {
+          s.jump = true;
+          s.press.press();
+        }
         audioContext();
         return;
       }
@@ -1281,6 +1288,10 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       }
       if (s.landing) throttle = steer = lift = 0;
       s.c = stepCruiser(s.c, { throttle: clamp1(throttle), steer: clamp1(steer), lift: clamp1(lift) }, dt);
+      // a bump (the edge, a roof, the ground) knocks as hard as the speed it
+      // took, by the hit law, with its shake; a set-down sinks onto its
+      // hover height on purpose and isn't one
+      if (s.c.bump > 0 && !s.landing) api.current?.hit?.(s.c.bump * 20, [s.c.x, s.c.y, s.c.z]);
       if (Math.abs(throttle) + Math.abs(steer) + Math.abs(lift) > 0.1) s.moved = true;
       // set down: it sinks to its hover height, quicker the higher it is; if
       // the ground under it isn't open after all (or it takes too long), it
@@ -1324,8 +1335,15 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
       if (s.fading) fwd = side = 0;
       const run = k.has('run') || Math.hypot(s.stick.x, s.stick.y) > 0.92 || Boolean(pad?.rb || pad?.lb);
       const mv = cameraMove(s.yaw, clamp1(fwd), clamp1(side));
-      s.m = stepMorty(s.m, { x: mv.x, z: mv.z, run, jump: s.jump && !s.fading }, dt, s.area, s.area === 'street' ? { cruiser: { x: s.c.x, z: s.c.z }, motorcade: !doneRef.current.includes('president') } : s.rickall?.game ? { crowd: crowdOf(s.rickall) } : undefined);
+      // (a press made while the screen's fading is let go: he's being put somewhere else)
+      if (s.fading) s.press.reset();
+      const around = s.area === 'street' ? { cruiser: { x: s.c.x, z: s.c.z }, motorcade: !doneRef.current.includes('president') } : s.rickall?.game ? { crowd: crowdOf(s.rickall) } : {};
+      s.m = stepMorty(s.m, { x: mv.x, z: mv.z, run }, dt, s.area, { ...around, press: s.press });
       s.jump = false;
+      // a landing harder than his own jump's (off a roof, a counter, the
+      // stoop): a knock by the hit law, and the shake it says. His own jump
+      // lands at 5.4 m/s, under the 6 that starts it, so a hop is quiet.
+      if (s.m.land > 6) api.current?.hit?.((s.m.land - 6) * 20, [s.m.x, s.m.y, s.m.z]);
       if (Math.hypot(mv.x, mv.z) > 0.1) s.moved = true;
       // in Total Rickall, stood still, he turns to face the way he's aiming
       if (s.rickall?.game && s.m.speed < 0.5) {
@@ -1579,6 +1597,7 @@ function World({ api, done, open, openPlace, complete, unlock, gl, setGl, toast,
   const onStickStart = () => audioContext();
   const onJump = () => {
     sim.current.jump = true;
+    sim.current.press.press();
     audioContext();
   };
   // up and down, held, while flying (the kit's button lets go once, on the

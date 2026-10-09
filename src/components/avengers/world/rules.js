@@ -7,6 +7,7 @@
 //
 // The world is in metres: x east, z south (the plan's y), y up.
 
+import { createPress } from '../../../lib/press';
 import { BERM, BRIDGE, CRES, CRES_FOOT, GATE, HANGAR, LAB, LAWN, PROW, RIVER, ROADS, STALLS, TRAINING, TREES, arcPt, inPoly } from '../compound/plan';
 
 // A plan unit is about four metres from the air; on foot the compound is
@@ -858,7 +859,16 @@ export const newHero = (at = START) => ({
 // world (the camera does that, cameraMove): { x, z } up to length 1, `run`,
 // `jump` (a press, not a hold), `web` (the jump button, held), `zip` and
 // `perch` (presses), and `assist` (the settings' swing assist, 1 as it comes).
-export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, web = false, zip = false, perch = false, trick = false, suit = false, assist = 1 } = {}, dt) {
+// The jump's press (lib/press.js): the handler keeps one, calls press() on
+// the button's edge and hands it to stepHero as `press` (for `jump`).
+// Pressed a moment before he lands (on the ground, a wall or a perch) it
+// goes as he lands; a moment after he walks off a roof's edge it's still a
+// jump. Roll out's numbers, rounded (the game-feel design).
+export const JUMP = { buffer: 0.12, coyote: 0.1 };
+export const jumpPress = () => createPress(JUMP);
+const FOOTED = new Set(['ground', 'wall', 'perch']);
+
+export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump: jumped = false, press = null, web = false, zip = false, perch = false, trick = false, suit = false, assist = 1 } = {}, dt) {
   const h = { ...h0, web: h0.web ? { ...h0.web } : null, ev: [] };
   h.mode ??= h.y > 0 ? 'air' : 'ground';
   h.stuck = Math.max(0, (h.stuck ?? 0) - dt);
@@ -870,6 +880,19 @@ export function stepHero(h0, { x: mx = 0, z: mz = 0, run = false, jump = false, 
   h.zips ??= SWING.zip.charges;
   const len = Math.hypot(mx, mz);
   const k = len > 1 ? 1 / len : 1;
+  let jump = jumped;
+  // (off an edge on foot: falling, with no web or wall's momentum)
+  const walkedOff = h.mode === 'air' && !h.fly && !h.web && !h.glide;
+  if (press) {
+    press.ground(FOOTED.has(h.mode), dt);
+    jump = (FOOTED.has(h.mode) || walkedOff) && press.take();
+  }
+  if (press && jump && h.mode === 'air') {
+    // the coyote jump: as from the ground, a moment late
+    h.vy = HERO.jump;
+    h.ev.push({ type: 'jump' });
+    jump = false;
+  }
   const i = { mx: mx * k, mz: mz * k, len: Math.min(1, len), run, jump, web, zip, assist };
   h.perchT = Math.max(0, (h.perchT ?? 0) - dt);
   h.trickGap = Math.max(0, (h.trickGap ?? 0) - dt);

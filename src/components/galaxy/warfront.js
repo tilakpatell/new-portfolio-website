@@ -19,7 +19,12 @@
 // one pilot takes down goes down for all of them, a pilot dropping in late
 // sees what one who's been there all along does, and the battle's won by
 // one side for everyone in it. The dogfight round you (universe/battle.js)
-// is your own: the spectacle, and your part in it.
+// is your own: the spectacle, and your part in it. You're known in that
+// tally by a tally id of your own, kept with your shares in the battle's
+// save (BATTLE_KEY, written as your word goes out), as warState.js keeps
+// the war's: a reload, or a new identity, is a new peer id telling the same
+// again, and the others count you once; and a page back in the battle picks
+// up what it had done.
 //
 // What you did counts in the war (warState.js: points for each objective
 // and fighter you take down, the battle won by the side that won it,
@@ -41,11 +46,12 @@
 // caught in a blast) goes back to the scene in what update returns.
 //
 // createWarFront(scene, { models, small, reduced, tier, emit, makeScene,
-//   now, allegiance }) → { enter(sys, world), update(dt, t, camera, live, you) → { busy, hurt,
+//   now, allegiance, saves }) → { enter(sys, world), update(dt, t, camera, live, you) → { busy, hurt,
 //   ship?, speedCap?, kill? },
 //   hit(from, to, damage), targets, solids, setNet(client), onNet(e), battle,
 //   director, info, win(team), dispose() }
-// `allegiance()` → { war, side } (allegiance.js's current). `live`: the ship ({ x, y, z }) while it's flying, or null;
+// `allegiance()` → { war, side } (allegiance.js's current). `saves`: the
+// browser's (runtime/saves.js), for the battle's save. `live`: the ship ({ x, y, z }) while it's flying, or null;
 // `you`: { shield, down } (your shields, and whether you're shot down), for the
 // fight round you's difficulty (universe/battleDifficulty.js). `solids`: the
 // capital ships' hulls, for the ship to bump into (ship.js's, like the
@@ -73,6 +79,11 @@ import { layBattle } from './battles';
 import { planOf } from './battlePlans';
 import { piecesFor } from './warpieces';
 import { addPoints, addWin, receiveWar, warMessage, warTally, warVersion } from './warState';
+import { localSaves } from '../../runtime/local';
+
+// the battle's save: its tally as you told it (its id, your shares, the totals you knew)
+const BATTLE_KEY = 'tp-gcw-battle';
+const newId = () => [...globalThis.crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join('');
 
 export const FRONT = {
   metres: 53.3, // a map unit in the galaxy
@@ -86,7 +97,7 @@ export const FRONT = {
 };
 const UNSWORN = Object.freeze({ war: DEFAULT_WAR, side: null });
 
-export function createWarFront(scene, { models, small = false, reduced = false, tier = 'high', emit = () => {}, makeScene = createBattleScene, now = () => Date.now(), onSolids = () => {}, allegiance = () => UNSWORN } = {}) {
+export function createWarFront(scene, { models, small = false, reduced = false, tier = 'high', emit = () => {}, makeScene = createBattleScene, now = () => Date.now(), onSolids = () => {}, allegiance = () => UNSWORN, saves = localSaves() } = {}) {
   const draw = makeScene(scene, { models, small, reduced, metres: FRONT.metres });
   let sys = null;
   let world = null;
@@ -117,7 +128,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   const last = { t: 0, camera: null }; // (the last frame's, for the dev hook that runs it on)
   const said = new Map(); // a set piece's line, by id: when it was last said (seconds on the battle's clock)
   const held = new Map(); // a world solid let go of (a run's way in): its r and reach
-  const fight = createTally('none', { cap: 4000 });
+  // (your tally id: this page's, or the battle's save's once you're back in the battle it was told in)
+  const fight = createTally('none', { cap: 4000, id: newId() });
   let net = null;
   let fightDirty = false;
   let fightSent = -1e9;
@@ -332,6 +344,8 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
   const start = (b, ms) => {
     laid = layBattle(sys, b, { now: ms, tier });
     fight.reset(b.id);
+    // (back in a battle this browser told of before a reload: the same id, and what was done)
+    fight.load(saves?.get(BATTLE_KEY, null));
     version += 1;
     on = b;
     director = createDirector({ plan: planOf(sys, b, laid), seed: b.id });
@@ -397,6 +411,7 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       net.fight?.(fight.message());
       fightSent = clock;
       fightDirty = false;
+      saves?.set(BATTLE_KEY, fight.save()); // (kept with the shares it told)
     }
     // (the war goes a page at a time: soon again while someone's owed the
     // rest of it; and once anyway, so the others know to tell you it)

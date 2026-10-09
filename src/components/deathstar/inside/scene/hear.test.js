@@ -19,6 +19,9 @@ describe('what the game’s events sound like', () => {
     expect(heardOf({ type: 'impact', x: 1, y: 2, z: 3 }, g)).toEqual([['hit', { x: 1, y: 2, z: 3 }]]);
     expect(heardOf({ type: 'deflect', x: 1, y: 2, z: 3 }, g)).toEqual([['clash', { x: 1, y: 2, z: 3 }]]);
     expect(heardOf({ type: 'hit', x: 1, y: 2, z: 3, by: 'blade' }, g)).toEqual([['clash', { x: 1, y: 2, z: 3 }]]);
+    // (a tremor rumbles under you, and booms where a panel bursts)
+    expect(heardOf({ type: 'quake', size: 0.6, at }, g)).toEqual([['quake', at, 0.6]]);
+    expect(heardOf({ type: 'quake', size: 0.6, at: null }, g)).toEqual([['quake', undefined, 0.6]]);
   });
 
   it('sounds the klaxon only for your own section, with the music to match', () => {

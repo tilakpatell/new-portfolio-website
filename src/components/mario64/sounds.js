@@ -252,6 +252,8 @@ export function createSounds(bus, ctx) {
   }
 
   return {
+    // the mix's levels, for the ?debug panel (module.js's tune)
+    mix: { music: musicGain.gain, sfx: sfxGain.gain },
     play(name) {
       SFX[name]?.();
     },
