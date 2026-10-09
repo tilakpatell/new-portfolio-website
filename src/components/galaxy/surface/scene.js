@@ -2943,7 +2943,6 @@ export async function create(canvas, ctx) {
           swiped(s); // (and your mate, if it's in reach of it too)
         } else {
           const b = blaster.enemy(s.from, s.to ? new V(s.to[0], me().st.y + 1.1, s.to[1]) : new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage); // (at what it believes: a guess goes wide)
-          if (b && blade) b.deflect = true; // (it'll come off the blade, not land)
           grazes(b);
           state.hitFrom = { x: s.from[0], z: s.from[2] };
         }
@@ -2954,7 +2953,7 @@ export async function create(canvas, ctx) {
       state.saberAt = state.t;
       // (each bolt turned costs a little guard)
       if (me().saber) state.guard = guardHit(state.guard, 7 * me().saber.stance.cost * perks.deflect, state.t);
-    });
+    }, me().saber ? (a, b) => me().saber.crossing(a, b) : null); // (turned only where it meets the raised blade: saber.js)
     if (hit) hurt(hit);
     if (state.health < 100 && state.t - state.hurtAt > 4) {
       state.health = Math.min(100, state.health + dt * 12 * perks.regen);

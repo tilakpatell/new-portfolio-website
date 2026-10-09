@@ -68,6 +68,8 @@ describe('createBlade', () => {
     blade.push([0, 1, 0.5], [0, 2, 0.5], 0);
     expect(blade.crosses([0, 1.5, 10], [0, 1.5, -10]).at[2]).toBeCloseTo(0.5);
     expect(blade.crosses([0.5, 1.5, 10], [0.5, 1.5, -10])).toBeNull();
+    // (wider when asked: a bolt's streak against a held block)
+    expect(blade.crosses([0.25, 1.5, 10], [0.25, 1.5, -10], 0.3)).not.toBeNull();
   });
   it('keeps the last `keep` frames, oldest first, and nothing to sweep before two', () => {
     const blade = createBlade({ keep: 3 });

@@ -24,12 +24,16 @@
 // from the same frames (lib/three/combat/trail.js). Hits go back through
 // `hit(target, damage, at, { heavy })`, `at` on the blade; sounds through
 // `sound(name)`. The block lays the block clip's arms the same way, held
-// at the blade's highest.
+// up across, and shows for the parry window however short the press; a
+// bolt whose flown segment passes through the held blade is turned
+// (`crossing`, for blaster.js), one beside it isn't.
 //
 //   createSaber(gp, { color, hilt, stance, parent, sound, fig, clips }) →
 //     { light(on), swing(now, { heavy, dir, lock, lunge, clip }), block(on), throw(now, dir),
 //       stand(dt, now, move), update(dt, now, { forward, up, me, targets, hit }),
-//       deflecting(from), lit, busy, swinging (the stroke: { name (the
+//       crossing(a, b) (a bolt's flown segment through the raised blade:
+//       { at } | null), deflecting(from) (a swipe from there meets the raised
+//       blade), lit, busy, swinging (the stroke: { name (the
 //       clip's), clip, t0, speed, contact, damage, heavy, … } or null), thrown, charge (0…1 while F is
 //       held), setCharge(k), blades (lib/combat/blade.js's, the main first),
 //       dispose() }
@@ -46,7 +50,7 @@ import { createBlade } from '../../../lib/combat/blade';
 import { loadClip } from '../../../lib/three/clipLibrary';
 import { createTrail } from '../../../lib/three/combat/trail';
 import { frameFrom, reach, rotateWorld, setWorldQuaternion } from '../../../lib/three/ik';
-import { BLOCK_CLIP, DIRS, HEAVY, STRIKE, rootScale, stanceOf, strokeFor } from './combatRules';
+import { BLOCK_CLIP, DIRS, HEAVY, PARRY, STRIKE, rootScale, stanceOf, strokeFor } from './combatRules';
 import { SABER, deflects, throwAt } from './saberRules';
 
 const V = THREE.Vector3;
@@ -79,6 +83,7 @@ const IN = 0.08; // seconds a stroke's arms take to come on over the guard
 const OUT = 0.15; // and to go at its end
 const CANCEL = 0.05; // seconds after the contact window ends that the next stroke may cut in
 const BLOCK_AT = 0.32; // of the block clip, where it's held: the blade up across
+const DEFLECT_R = 0.3; // how near the held blade a bolt turns off it (m): its streak is a hand across, and a block should read as covering
 const NO_CLIP = { duration: 0.6, contact: [0.2, 0.4] }; // (a stroke whose clip hasn't come: timed as one)
 // a body as the blade sees it: a capsule up from its feet, as round as it's wide
 export const capsuleOf = (t, out = {}) => {
@@ -194,6 +199,8 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     last: null, // the stroke before, with its endedAt
     move: 0, // how much the figure's going (stand's): moving, the legs keep walking under a stroke
     blockW: 0, // the block clip's arms, coming on and going
+    blockFrom: null, // when the block last went up (a tap still shows it for the parry window)
+    now: 0, // the last frame's time
     blocking: false,
     thrown: null, // { t0, from, dir, hits }
     me: null,
@@ -339,6 +346,8 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     }
   };
 
+  // the block up: held, or tapped within the parry window
+  const blockShown = () => st.blocking || (st.blockFrom != null && st.now - st.blockFrom < PARRY.window);
   // each blade's segment this frame, from the hilt to the tip
   const _base = new V();
   const _tip = new V();
@@ -488,8 +497,21 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       return st.swing;
     },
     block(on) {
-      if (on && !st.blocking) this.light(true);
+      if (on && !st.blocking) {
+        this.light(true);
+        st.blockFrom = st.now;
+      }
       st.blocking = on;
+    },
+    // whether a bolt that flew from a to b this frame ([x, y, z]) went
+    // through the raised blade: { at } where it did, else null
+    crossing(a, b) {
+      if (!blockShown() || st.lit <= 0.5 || st.swing || st.thrown) return null;
+      for (const seg of segs) {
+        const c = seg.crosses(a, b, DEFLECT_R);
+        if (c) return c;
+      }
+      return null;
     },
     throw(now, dir) {
       if (st.thrown || st.swing || !hand || gun.parent !== hand) return false;
@@ -516,6 +538,7 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     // after gp.set: the blade's length, the arm's pose, the throw's flight
     update(dt, now, p) {
       st.me = p.me ?? st.me;
+      st.now = now;
       const want = st.on ? 1 : 0;
       st.lit += Math.sign(want - st.lit) * Math.min(Math.abs(want - st.lit), dt * LIGHT);
       const flicker = 0.5 + 0.12 * Math.sin(now * 37) + 0.05 * Math.sin(now * 61);
@@ -538,9 +561,10 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       }
       // between strokes: the guard, the block, or the heavy one winding up
       const block = clips[BLOCK_CLIP];
-      st.blockW = Math.max(0, Math.min(1, st.blockW + (st.blocking && st.lit > 0.05 ? dt : -dt) * 8));
+      const up = blockShown() && st.lit > 0.05;
+      st.blockW = Math.max(0, Math.min(1, st.blockW + (up ? dt : -dt) * 8));
       if (st.charge > 0.05) pose(0.3, 1.3, p, Math.min(1, st.charge * 3)); // (wound up overhead while F is held)
-      else if (st.blocking && st.lit > 0.05 && !block) pose(BLOCK.yaw, BLOCK.pitch, p, Math.min(1, st.lit * 2));
+      else if (up && !block) pose(BLOCK.yaw, BLOCK.pitch, p, Math.min(1, st.lit * 2));
       else if (st.lit > 0.05) {
         const g = two ? GUARD : GUARD_DUAL;
         pose(g.yaw, g.pitch, p, Math.min(1, st.lit * 2), g.at);

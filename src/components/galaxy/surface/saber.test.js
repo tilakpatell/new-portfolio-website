@@ -109,6 +109,32 @@ describe('a stroke from a clip, a hit from the blade', () => {
     expect(got.map(([n]) => n)).toEqual([...STANCES.single.strokes.map((k) => k.clip), 'sword.heavy.a']);
     expect(got.map(([, n]) => n)).toEqual(got.map(() => 1));
   });
+  it('turns a bolt at the raised blade, not one with the blade down, and a tap of the block still shows for the parry window', () => {
+    const d = duellist();
+    d.saber.light(true);
+    for (let i = 0; i < 20; i++) d.frame([]);
+    d.saber.block(true);
+    for (let i = 0; i < 20; i++) d.frame([]);
+    const through = () => {
+      const { base, tip } = d.saber.blades[0].history().at(-1);
+      const mid = base.map((v, i) => (v + tip[i]) / 2);
+      return [mid.map((v, i) => v + [0, 0, 8][i]), mid.map((v, i) => v - [0, 0, 8][i])];
+    };
+    expect(d.saber.crossing(...through())).not.toBeNull();
+    const [a, b] = through();
+    expect(d.saber.crossing(a.map((v, i) => v + [1.2, 0, 0][i]), b.map((v, i) => v + [1.2, 0, 0][i]))).toBeNull();
+    d.saber.block(false);
+    for (let i = 0; i < 30; i++) d.frame([]);
+    expect(d.saber.crossing(...through())).toBeNull();
+    // (down and up again in a frame: still up for the parry window, then down)
+    d.saber.block(true);
+    d.frame([]);
+    d.saber.block(false);
+    for (let i = 0; i < 6; i++) d.frame([]);
+    expect(d.saber.crossing(...through())).not.toBeNull();
+    for (let i = 0; i < 20; i++) d.frame([]);
+    expect(d.saber.crossing(...through())).toBeNull();
+  });
   it('hits nothing with the blade out', () => {
     const d = duellist();
     strokeAt(d, [target(0, 1.8)]);

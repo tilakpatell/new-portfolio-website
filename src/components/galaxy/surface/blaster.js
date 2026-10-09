@@ -7,8 +7,9 @@
 // reach, muzzle) → what it'll hit ({ target, at } or null; `reach`: where
 // something solid stops it first, if not its range; `muzzle`: where the bolt
 // leaves from, if not `from`), enemy(from, to, spread), tracer(from, to,
-// color) (a bolt between others that harms nobody: a battle's), update(dt)
-// → hits on you (damage), dispose() }; `pool`: bolts in the air at once
+// color) (a bolt between others that harms nobody: a battle's), update(dt,
+// you, deflect, crosses) → hits on you (damage), dispose() }; `pool`: bolts
+// in the air at once
 // (32 unless a battle asks for more)
 
 import * as THREE from 'three';
@@ -132,14 +133,16 @@ export function createBlaster({ parent, world, pool = POOL }) {
       dir.z += (Math.random() - 0.5) * spread * 2;
       const b = shoot(f, dir.normalize(), color, true, null);
       b.damage = damage;
-      b.deflect = false;
+      b.from = f.clone();
       b.target = to.clone();
       return b;
     },
-    // on with them; returns how hard you were hit this frame
-    // (`deflect(at)`: a bolt marked `deflect` that reaches you is turned
-    // back off the blade instead, up and away, and this hears of it)
-    update(dt, you, deflect = null) {
+    // on with them; returns how hard you were hit this frame. `crosses(a,
+    // b)` → { at } | null: whether the way one of theirs flew this frame
+    // ([x, y, z] to [x, y, z]) went through your raised blade (saber.js's
+    // `crossing`); one that did is turned back along its line toward its
+    // shooter, harming no one now, and `deflect(at)` hears of it
+    update(dt, you, deflect = null, crosses = null) {
       const last = scratch[0];
       const now = scratch[1];
       const body = scratch[2];
@@ -161,23 +164,18 @@ export function createBlaster({ parent, world, pool = POOL }) {
           now[0] = p.x;
           now[1] = p.y;
           now[2] = p.z;
-          if (sweptHit(last, now, body, 0.55)) {
-            if (b.deflect) {
-              b.deflect = false;
-              b.theirs = false;
-              b.v.negate();
-              b.v.x += (Math.random() - 0.5) * SPEED * 0.5;
-              b.v.y += (0.2 + Math.random() * 0.5) * SPEED;
-              b.v.z += (Math.random() - 0.5) * SPEED * 0.5;
-              b.v.setLength(SPEED);
-              b.m.lookAt(p.clone().add(b.v));
-              b.life = 0.5;
-              flash(p);
-              deflect?.(p);
-            } else {
-              hurt += b.damage ?? 8;
-              b.life = 0;
-            }
+          const turned = crosses?.(last, now);
+          if (turned) {
+            p.fromArray(turned.at);
+            b.theirs = false;
+            b.v.negate();
+            b.m.lookAt(p.clone().add(b.v));
+            b.life = Math.min(RANGE, b.from ? p.distanceTo(b.from) : RANGE) / SPEED;
+            flash(p);
+            deflect?.(p);
+          } else if (sweptHit(last, now, body, 0.55)) {
+            hurt += b.damage ?? 8;
+            b.life = 0;
           }
         }
         if (b.life <= 0) {

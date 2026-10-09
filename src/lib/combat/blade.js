@@ -17,8 +17,8 @@
 //       nearest point on the blade, nearest first
 //     clash(other) → { at } | null: where this blade and another's (their
 //       latest) pass within both radii
-//     crosses(a, b) → { at } | null: where a bolt's flown segment passes
-//       within r of the blade
+//     crosses(a, b, within = r) → { at } | null: where a bolt's flown
+//       segment passes within `within` of the blade
 //     history() → [{ base, tip, t }], oldest first; clear()
 //   }
 //   segSeg(a, b, c, d) → { s, t, dist }: the nearest points of two
@@ -137,11 +137,11 @@ export function createBlade({ r = 0.12, keep = 8 } = {}) {
       if (m.dist > r + (other.r ?? r)) return null;
       return { at: lerp(add(a.base, sub(a.tip, a.base), m.s), add(b.base, sub(b.tip, b.base), m.t), 0.5) };
     },
-    crosses(a, b) {
+    crosses(a, b, within = r) {
       const q = latest();
       if (!q) return null;
       const m = segSeg(a, b, q.base, q.tip);
-      return m.dist <= r ? { at: add(q.base, sub(q.tip, q.base), m.t) } : null;
+      return m.dist <= within ? { at: add(q.base, sub(q.tip, q.base), m.t) } : null;
     },
     history: () => frames.map((f) => ({ base: f.base.slice(), tip: f.tip.slice(), t: f.t })),
     clear() {
