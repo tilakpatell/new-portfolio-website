@@ -21,7 +21,7 @@
 // pirates on a freighter), and it shoots at that instead until you deal with
 // it, or turns on you if you shoot at it.
 //
-// createHunters(parent, { small, fleet, factions, kinds, solids, engines }) → { pack(faction, ship, { prey, size, ace, from, ahead, interdict, heat, first }) → points,
+// createHunters(parent, { small, fleet, factions, kinds, solids, engines }) → { pack(faction, ship, { prey, size, ace, from, ahead, interdict, heat, first, tag, home }) → points,
 //   update(dt, t, ship) → events,
 //   hit(from, to, damage) → hit or null, damage(id, n) → hit or null (a hit
 //   another pilot's shot made, told to you), pull(at, r, speed, secs, daze),
@@ -30,8 +30,9 @@
 //   `magnet`), clear(), dispose(), count,
 //   active, wire() (the ones in the fight, for the other pilots to see),
 //   targets: the ones still after you (or their prey), for the guns to lock
-//   on to: [{ id, at, vel, size, kind, hp, hpMax, faction, threat }] (targeting.js;
-//   threat is 1 for one on an attack run at you) }
+//   on to: [{ id, at, vel, size, kind, hp, hpMax, faction, tag, threat }] (targeting.js;
+//   threat is 1 for one on an attack run at you), strength(faction, tag) and
+//   leave(faction, tag) (a tag: only the packs sent with it) }
 // `solids` is what they fly round: ship.js's, or a function giving them (the
 // galaxy's change from system to system).
 // A pack sent in `ahead` drops in ahead of you (an ambush on the way
@@ -40,12 +41,13 @@
 // you've made lately) brings more of them, and the ace more often; the
 // `first` pack of a visit is a small one.
 //
-// Events: { type: 'hunted', faction, kinds, prey, interdict }, { type: 'shot', faction },
+// Events: { type: 'hunted', faction, tag, kinds, prey, interdict }, { type: 'shot', faction },
 // { type: 'stage', id, kind, faction, stage, of, summon } (an ace hurt into
 // its next stage: hunterRules.js's `stage`),
 // (one fired at you), { type: 'laser', damage, from } (and hit), { type:
-// 'escaped', faction } and { type: 'cleared', faction, rescued } (rescued:
-// they were after someone else, and you saw them off).
+// 'escaped', faction, tag } and { type: 'cleared', faction, tag, rescued } (rescued:
+// they were after someone else, and you saw them off; tag: the pack's own,
+// given it as it was sent, or null).
 // Everything is in `parent`'s space (the map's).
 
 import * as THREE from 'three';
@@ -113,7 +115,7 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
   const answer = (r) => {
     if (!r) return null;
     if (r.down) give(r.hunter);
-    return { id: r.id, kind: r.kind, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z), size: r.size, down: r.down, faction: r.hunter.pack.faction, prey: Boolean(r.hunter.pack.prey && !r.hunter.pack.angry) };
+    return { id: r.id, kind: r.kind, at: new THREE.Vector3(r.at.x, r.at.y, r.at.z), size: r.size, down: r.down, faction: r.hunter.pack.faction, tag: r.hunter.pack.tag, prey: Boolean(r.hunter.pack.prey && !r.hunter.pack.angry) };
   };
   // something else they're after, as the rules read it: where it is, the
   // way it's pointing, and whether it's still there
@@ -203,8 +205,8 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
 
     // a shot of yours from `from` to `to` this frame, worth `damage` hits
     // (a fusion cannon's is worth more): the hunter it hit, if
-    // any: { id, kind, at, size, down } (down: it's destroyed; otherwise it
-    // took the hit and comes on)
+    // any: { id, kind, at, size, down, faction, tag, prey } (down: it's
+    // destroyed; otherwise it took the hit and comes on; tag: its pack's)
     hit: (from, to, damage = 1) => answer(hunt.hit(from, to, damage)),
     // the same for a hit told to you (another pilot's shot at one of yours)
     damage: (id, n = 1) => answer(hunt.damage(id, n)),
@@ -230,10 +232,11 @@ export function createHunters(parent, { small = false, fleet = createFleet(), fa
     get active() {
       return hunt.active;
     },
-    // the law's eyes and numbers (wanted.js), and one faction sent off
+    // the law's eyes and numbers (wanted.js), and one faction sent off (or
+    // one tag's packs: a garrison's wave, counted and called home)
     sees: (factions, range) => hunt.sees(factions, range),
-    strength: (faction) => hunt.strength(faction),
-    leave: (faction) => hunt.leave(faction),
+    strength: (faction, tag) => hunt.strength(faction, tag),
+    leave: (faction, tag) => hunt.leave(faction, tag),
     // for checking from a browser
     get packs() {
       return hunt.packs;

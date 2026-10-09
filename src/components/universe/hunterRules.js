@@ -50,7 +50,10 @@
 // Everything about you is read in all three dimensions (your nose and the
 // way you're really going, climbing and diving too), so their lead is right
 // when you loop. Shoot them down, or outrun them: far enough away for long
-// enough and they give up and peel away.
+// enough and they give up and peel away. A pack may be tagged (a garrison's
+// wave, so its own side can tell it from the rest and call it back alone)
+// and have a home (its hangar): giving up, or called back, it flies there
+// and is gone there.
 //
 // The crews' ship powers (shipPowers.js) reach them here: a ship handed to
 // update as a `ghost` (Han's corkscrew, Rick mid-portal) isn't hit, the
@@ -67,11 +70,12 @@
 // A hunter is { id, kind, type, pack, pos, vel, prev, hp, mode, bank, grow,
 // alive, view (the drawing's to use) }; pos, vel and prev are { x, y, z }.
 // `solids` is ship.js's ([{ at: [x, y, z], r }]) or a function giving them.
-// Events: { type: 'hunted', faction, kinds, prey, interdict }, { type:
+// Events: { type: 'hunted', faction, tag, kinds, prey, interdict }, { type:
 // 'shot', faction } (one fired at you), { type: 'laser', damage, from, bomb, by }
 // (and hit: `by` the hunter's id), { type: 'spotlit', faction, id } (a spotlight on you),
 // { type: 'flank', faction, id } (one swinging round behind you), { type: 'escaped', faction,
-// why: 'lost' | 'broke' }, { type: 'cleared', faction, rescued }.
+// tag, why: 'lost' | 'broke' }, { type: 'cleared', faction, tag, rescued } (tag: the
+// pack's, or null).
 
 import { intercept, nose, sweptHit } from './targeting';
 import { factionsOf, kindsOf, namesOf } from './sides';
@@ -134,6 +138,7 @@ export const RAM = { damage: 28, reach: 0.6 };
 export const MEDIC = { every: 2.5, reach: 20 };
 export const FLICKER = 2;
 export const LOSE = { far: 48, after: 5 }; // they give up once you're this far away for this long
+export const HOME = { dock: 6 }; // a pack with a home (its hangar) is gone once this near it
 export const SHIP_R = 0.2; // how close a laser must pass you to hit
 export const FIGHT = {
   range: 16, // map units: they fire inside this
@@ -692,8 +697,12 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
     // `skill`: the tier they fly at (SKILLS; none: as their kinds always
     // have), their ace (or a bounty hunter) a tier better and never under a
     // veteran; `kinds`: exactly who comes, in place of the faction's pick;
-    // `more`: that many more of them (packPlan)
-    pack(faction, ship, { prey = null, size, ace, from = null, ahead = false, lead = 0, at = null, interdict = false, heat = 0, first = false, skill = null, kinds: given = null, more = 0 } = {}) {
+    // `more`: that many more of them (packPlan); `tag`: whose they are (a
+    // garrison's wave: its events, its targets and a hit on one say so, and
+    // leave and strength can ask after it alone); `home` ({ x, y, z }: its
+    // hangar): where it flies when it gives up or is called off, gone once
+    // it's there (HOME)
+    pack(faction, ship, { prey = null, size, ace, from = null, ahead = false, lead = 0, at = null, interdict = false, heat = 0, first = false, skill = null, kinds: given = null, more = 0, tag = null, home = null } = {}) {
       const f = factions[faction];
       if (!f || !ship) return [];
       const kinds = packPlan(f, { size, ace, heat, first, rand, kinds: given?.filter((k) => KINDS[k]), more });
@@ -705,7 +714,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         return SKILLS[TIER_ORDER[Math.min(TIER_ORDER.length - 1, best)]];
       };
       const runs = slotsFor(n) + (tier >= 0 ? SKILLS[skill].slots : 0);
-      const pack = { faction, skill: tier >= 0 ? skill : null, members: [], lost: 0, fade: 0, prey, wasPrey: Boolean(prey), kinds, interdict, attacking: 0, slots: runs, tokens: createTokens({ pools: { run: runs, tail: 1 }, timeout: 30 }), n0: n, nerve: 'neutral', nerveAt: 0, gone: false, angry: false, said: false, provoked: false };
+      const pack = { faction, tag, home: home && { x: home.x, y: home.y, z: home.z }, skill: tier >= 0 ? skill : null, members: [], lost: 0, fade: 0, prey, wasPrey: Boolean(prey), kinds, interdict, attacking: 0, slots: runs, tokens: createTokens({ pools: { run: runs, tail: 1 }, timeout: 30 }), n0: n, nerve: 'neutral', nerveAt: 0, gone: false, angry: false, said: false, provoked: false };
       const around = allSolids();
       const fx = -Math.sin(ship.heading);
       const fz = -Math.cos(ship.heading);
@@ -755,7 +764,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
           seesYou: true,
         };
         restation(h, [fx, 0, fz]);
-        h.target = { id: h.id, at: h.pos, vel: h.vel, size: type.size, kind, hp: h.hp, hpMax: type.hp, faction, threat: 0 };
+        h.target = { id: h.id, at: h.pos, vel: h.vel, size: type.size, kind, hp: h.hp, hpMax: type.hp, faction, tag, threat: 0 };
         pack.members.push(h);
         live.push(h);
       });
@@ -808,13 +817,13 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
           nearest = Math.min(nearest, Math.sqrt(dx * dx + dy * dy + dz * dz));
         }
         if (!alive) {
-          if (!pack.gone) events.push({ type: 'cleared', faction: pack.faction, rescued: pack.wasPrey });
+          if (!pack.gone) events.push({ type: 'cleared', faction: pack.faction, tag: pack.tag, rescued: pack.wasPrey });
           packs.splice(i, 1);
           continue;
         }
         if (!pack.said && ship) {
           pack.said = true;
-          events.push({ type: 'hunted', faction: pack.faction, kinds: pack.kinds, prey: pack.wasPrey, interdict: Boolean(pack.interdict) });
+          events.push({ type: 'hunted', faction: pack.faction, tag: pack.tag, kinds: pack.kinds, prey: pack.wasPrey, interdict: Boolean(pack.interdict) });
         }
         // too far away for long enough (or lost altogether: nobody left in
         // it has any idea where you are), and they give up; and a pack
@@ -833,7 +842,7 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
           pack.gone = true;
           pack.fade = 0;
           for (const h of pack.members) release(h);
-          if (ship && !pack.wasPrey) events.push({ type: 'escaped', faction: pack.faction, why: broke ? 'broke' : 'lost' });
+          if (ship && !pack.wasPrey) events.push({ type: 'escaped', faction: pack.faction, tag: pack.tag, why: broke ? 'broke' : 'lost' });
         }
         pack.tokens.audit(dt, (id) => pack.members.some((h) => h.id === id && h.alive));
         pack.attacking = pack.tokens.count('run');
@@ -1062,6 +1071,17 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
               h.jinkDir[2] = jz;
             }
           }
+        } else if (pack.home) {
+          // going home: straight for its hangar, faster
+          speed = type.speed * 1.2;
+          want[0] = pack.home.x - pos.x;
+          want[1] = pack.home.y - pos.y;
+          want[2] = pack.home.z - pos.z;
+          const d = Math.sqrt(want[0] * want[0] + want[1] * want[1] + want[2] * want[2]);
+          const k = d > 1e-4 ? speed / d : 0;
+          want[0] *= k;
+          want[1] *= k;
+          want[2] *= k;
         } else {
           // leaving: on the way it's going, faster, climbing away
           speed = type.speed * 1.2;
@@ -1102,11 +1122,13 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
         h.bank += (clamp(yaw * 0.45, -1.1, 1.1) - h.bank) * Math.min(1, dt * 4);
         h.grow = Math.min(1, h.grow + dt * 2.2);
         if (gone) {
-          // they've flown off out of sight (or you've stopped flying)
-          const dx = pos.x - you.x;
-          const dy = pos.y - you.y;
-          const dz = pos.z - you.z;
-          if (!ship || (pack.fade > 2 && dx * dx + dy * dy + dz * dz > 110 * 110) || pack.fade > 30) remove(h);
+          // they've flown off out of sight, or home (or you've stopped flying)
+          const to = pack.home ?? you;
+          const dx = pos.x - to.x;
+          const dy = pos.y - to.y;
+          const dz = pos.z - to.z;
+          const d2 = dx * dx + dy * dy + dz * dz;
+          if (!ship || (pack.home ? d2 < HOME.dock * HOME.dock : pack.fade > 2 && d2 > 110 * 110) || pack.fade > 30) remove(h);
           continue;
         }
         // a rammer that reaches you bursts on you (the whole way each of
@@ -1259,10 +1281,11 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
       }
       return false;
     },
-    // how many of a faction's are still after you
-    strength(faction) {
+    // how many of a faction's are still after you (`tag`, given: of its
+    // packs with that tag alone)
+    strength(faction, tag = null) {
       let n = 0;
-      for (const h of live) if (h.alive && !h.pack.gone && h.pack.faction === faction) n += 1;
+      for (const h of live) if (h.alive && !h.pack.gone && h.pack.faction === faction && (tag == null || h.pack.tag === tag)) n += 1;
       return n;
     },
 
@@ -1324,11 +1347,13 @@ export function createHunt({ rand = Math.random, factions = FACTIONS, kinds: KIN
     },
 
     // every pack gives up and flies off (what they were after is gone), each
-    // one removed once it's well away from `ship` as update is given it
-    // (`faction`, given: only its packs: the law giving up on you, wanted.js)
-    leave(faction = null) {
+    // one removed once it's well away from `ship` as update is given it, or
+    // at its home if it has one (`faction`, given: only its packs: the law
+    // giving up on you, wanted.js; `tag`, given: only the packs with it: a
+    // garrison calling its wave back)
+    leave(faction = null, tag = null) {
       for (const p of packs) {
-        if (p.gone || (faction && p.faction !== faction)) continue;
+        if (p.gone || (faction && p.faction !== faction) || (tag != null && p.tag !== tag)) continue;
         p.gone = true;
         p.fade = 0;
         for (const h of p.members) release(h);

@@ -1123,3 +1123,116 @@ describe('what the crews’ ship powers do to them', () => {
     expect(hunt.lasers.map((m) => m.on)).toEqual([false, false, true, false]);
   });
 });
+
+describe('a pack with a tag and a home (a garrison’s wave)', () => {
+  it('a tagged pack’s events and targets carry its tag', () => {
+    const hunt = createHunt({ rand: seeded(3) });
+    let s = start();
+    const g = hunt.pack('empire', s, { size: 3, ace: false, tag: 'g' });
+    const [lone] = hunt.pack('empire', s, { size: 1, ace: false });
+    const seen = [];
+    seen.push(...hunt.update(DT, s));
+    const tags = new Map(hunt.targets.map((c) => [c.id, c.tag]));
+    expect(g.map((h) => tags.get(h.id))).toEqual(['g', 'g', 'g']);
+    expect(tags.get(lone.id)).toBeNull();
+    // (a hit's hunter is in its pack)
+    expect(hunt.damage(g[0].id, 99).hunter.pack.tag).toBe('g');
+    expect(hunt.damage(lone.id, 99).hunter.pack.tag).toBeNull();
+    // the lone one's pack is cleared; you outrun the rest
+    for (let t = 0; t < LOSE.after + 10; t += DT) {
+      s = move({ ...s, speed: 60 * PACE });
+      seen.push(...hunt.update(DT, s));
+    }
+    const told = (type) => seen.filter((e) => e.type === type).map((e) => e.tag);
+    expect(told('hunted')).toHaveLength(2);
+    expect(told('hunted')).toEqual(expect.arrayContaining(['g', null]));
+    expect(told('cleared')).toEqual([null]);
+    expect(told('escaped')).toEqual(['g']);
+  });
+
+  it('leave with a tag recalls only that pack', () => {
+    const hunt = createHunt({ rand: seeded(3) });
+    const you = start();
+    const g = hunt.pack('empire', you, { size: 2, ace: false, tag: 'g' });
+    const rest = hunt.pack('empire', you, { size: 2, ace: false });
+    for (let t = 0; t < 1; t += DT) hunt.update(DT, you);
+    hunt.leave('empire', 'g');
+    hunt.update(DT, you);
+    expect(g[0].pack.gone).toBe(true);
+    expect(rest[0].pack.gone).toBe(false);
+    expect(hunt.active).toBe(true);
+    expect(new Set(hunt.targets.map((c) => c.id))).toEqual(new Set(rest.map((h) => h.id)));
+    // (a tag nobody has recalls nobody)
+    hunt.leave('empire', 'x');
+    expect(rest[0].pack.gone).toBe(false);
+  });
+
+  it('a recalled pack with a home flies there and is gone there', () => {
+    const home = { x: 0, y: 0, z: 150 };
+    const hunt = createHunt({ rand: seeded(3) });
+    const you = start();
+    const members = hunt.pack('empire', you, { size: 3, ace: false, tag: 'g', home });
+    for (let t = 0; t < 3; t += DT) hunt.update(DT, you);
+    hunt.leave('empire', 'g');
+    const was = new Map(members.map((h) => [h.id, apart(h.pos, home)]));
+    const then = new Map(was);
+    let t = 0;
+    let last = Infinity;
+    for (; t < 40 && hunt.count; t += DT) {
+      const flying = members.filter((h) => h.alive);
+      hunt.update(DT, you);
+      for (const h of flying) {
+        const d = apart(h.pos, home);
+        if (t > 1.5) expect(d).toBeLessThan(then.get(h.id)); // (come round, it only closes)
+        then.set(h.id, d);
+        if (!h.alive) last = d;
+      }
+    }
+    expect(hunt.count).toBe(0);
+    expect(t).toBeLessThan(40);
+    for (const h of members) expect(apart(h.pos, home)).toBeLessThan(was.get(h.id));
+    expect(last).toBeLessThan(8);
+  });
+
+  it('a pack with a home that loses you goes home', () => {
+    const home = { x: 40, y: 0, z: 40 };
+    const hunt = createHunt({ rand: seeded(5) });
+    let s = start();
+    const members = hunt.pack('empire', s, { size: 3, ace: false, from: home, home });
+    const seen = [];
+    const docked = [];
+    let furthest = 0;
+    for (let t = 0; t < 60 && hunt.count; t += DT) {
+      s = move({ ...s, speed: 60 * PACE });
+      const flying = members.filter((h) => h.alive);
+      seen.push(...hunt.update(DT, s).map((e) => e.type));
+      for (const h of flying) {
+        furthest = Math.max(furthest, apart(h.pos, home));
+        if (!h.alive) docked.push(apart(h.pos, home));
+      }
+    }
+    expect(seen).toContain('escaped');
+    expect(apart(s, home)).toBeGreaterThan(LOSE.far * 4); // (you were long gone)
+    expect(furthest).toBeGreaterThan(30); // (they came out after you)
+    expect(hunt.count).toBe(0);
+    expect(docked).toHaveLength(3);
+    for (const d of docked) expect(d).toBeLessThan(8);
+  });
+
+  it('strength counts a tag alone', () => {
+    const hunt = createHunt({ rand: seeded(3) });
+    const you = start();
+    const g = hunt.pack('empire', you, { size: 2, ace: false, tag: 'g' });
+    hunt.pack('empire', you, { size: 3, ace: false });
+    hunt.pack('federation', you, { size: 2, tag: 'g' });
+    expect(hunt.strength('empire')).toBe(5);
+    expect(hunt.strength('empire', 'g')).toBe(2);
+    expect(hunt.strength('empire', 'x')).toBe(0);
+    hunt.damage(g[0].id, 99);
+    expect(hunt.strength('empire', 'g')).toBe(1);
+    expect(hunt.strength('empire')).toBe(4);
+    hunt.leave('empire', 'g');
+    expect(hunt.strength('empire', 'g')).toBe(0);
+    expect(hunt.strength('empire')).toBe(3);
+  });
+});

@@ -82,4 +82,14 @@ describe('the hunters, drawn', () => {
     expect(fleet.made).toHaveLength(1);
     hunters.dispose();
   });
+
+  it('a hit says which pack it was', () => {
+    const hunters = createHunters(new THREE.Group(), { fleet: fakeFleet() });
+    const [g] = hunters.pack('empire', ship, { size: 1, ace: false, tag: 'g', from: { x: 30, y: 0, z: 0 } });
+    const [other] = hunters.pack('empire', ship, { size: 1, ace: false, from: { x: -30, y: 0, z: 0 } });
+    const through = (p) => hunters.hit({ x: p.x, y: p.y + 3, z: p.z }, { x: p.x, y: p.y - 3, z: p.z }, 99);
+    expect(through(g)).toMatchObject({ down: true, faction: 'empire', tag: 'g' });
+    expect(through(other)).toMatchObject({ down: true, faction: 'empire', tag: null });
+    hunters.dispose();
+  });
 });
