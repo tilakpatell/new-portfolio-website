@@ -22,6 +22,7 @@ import { WAR_SYSTEMS } from './gcw';
 import { OWNERS, effectsFor, piecesShown } from './warEffects';
 import { ESCORTS, ROLES } from './roamRules';
 import { FACTIONS } from './hunted';
+import { interdictionFor } from './interdiction';
 import { GIDEON } from './battlePlans';
 import { WARS } from './sides';
 import { SYSTEMS } from './systems';
@@ -96,8 +97,10 @@ export function auditRoster() {
         const e = effectsFor(sys.id, { systems: [{ id: sys.id, owner, front: true }] }, { war, side: null });
         if (e?.droids) for (const k of factionKinds('separatists')) add(war, 'separatists', 'hunters:droids', k);
       }
-    // the Interdictor's pack, whatever the war
-    for (const k of factionKinds('empire')) add(war, 'empire', 'interdiction', k);
+    // the Interdictor's pack, if the war has one
+    const pack = interdictionFor(war);
+    add(war, pack ?? 'nobody', 'interdiction', pack ? 'interdictor' : 'none', true);
+    if (pack) for (const k of factionKinds(pack)) add(war, pack, 'interdiction', k);
     if (war === 'remnant') add(war, 'remnant', 'ace:remnant', GIDEON.kind);
     // the systems' scenery, for each of the war's holders
     const flyers = [...sides, 'hutt', null];

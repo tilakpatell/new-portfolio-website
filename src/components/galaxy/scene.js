@@ -109,7 +109,8 @@ import { createSky } from './sky';
 import { createSpeedLines } from './speedLines';
 import { T as JUMP_T } from '../hyperspace3d/timeline';
 import { DIVE, LAUNCH_KEY, diveAt, planDive } from './travel';
-import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, inWell, interdictorPlace } from './interdiction';
+import { INTERDICTION, createInterdiction, cutAt, dropPoint, holdLifts, interdictionFor, inWell, interdictorPlace } from './interdiction';
+import { DEFAULT_WAR } from './sides';
 import { createInterdictor } from './interdictor';
 import { createWarFront } from './warfront';
 import { createGalaxyPowers } from './powers';
@@ -1329,7 +1330,7 @@ export async function create(canvas, ctx) {
   const bite = (j) => {
     const place = interdictorPlace(state.ship, Math.random() < 0.5 ? -1 : 1);
     interdictor.arrive(place);
-    state.held = { at: place.at, hangar: place.hangar, since: state.clock, pack: 'coming', to: j.to.id, faction: state.sys?.faction === 'remnant' ? 'remnant' : 'empire' };
+    state.held = { at: place.at, hangar: place.hangar, since: state.clock, pack: 'coming', to: j.to.id, faction: interdictionFor(props.allegiance?.war ?? DEFAULT_WAR) ?? 'empire' };
     state.heldSaid = -1e9;
     state.flare = Math.max(state.flare, 2.2);
     state.shake = Math.max(state.shake, 0.9);
@@ -1361,7 +1362,8 @@ export async function create(canvas, ctx) {
         // (and off the lanes it's due sooner)
         j.counted = true;
         const verdict = interdiction.jumped(Boolean(j.route && !j.route.onLane));
-        if (verdict.interdicted && interdictor) {
+        // (whose Interdictor it is is the war's: none in the Clone Wars)
+        if (verdict.interdicted && interdictor && interdictionFor(props.allegiance?.war ?? DEFAULT_WAR)) {
           j.interdicted = true;
           j.cut = cutAt(j.dur);
         }
