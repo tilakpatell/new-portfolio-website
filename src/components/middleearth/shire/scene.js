@@ -773,7 +773,7 @@ export async function createShireWorld(canvas, { onLost } = {}) {
       camAt = tmp.set(...s.debugCam.at);
       camLook = look.set(...s.debugCam.look);
     }
-    const jump = A.mode !== s.mode;
+    const jump = A.mode !== s.mode || Boolean(s.cut);
     A.mode = s.mode;
     const ease = jump ? 1 : byFrame(s.mode === 'walk' ? 8 : 2.5, dt);
     A.cam.at.lerp(camAt, ease);

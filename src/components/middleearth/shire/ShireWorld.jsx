@@ -448,6 +448,7 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
       s.putBack = () => {
         s.h = newHobbit(at);
         s.yaw = behindYaw(s.h.face);
+        s.cut = true; // (the camera cuts to him, in the dark, rather than swing across)
       };
       setFading(true);
     };
@@ -711,10 +712,12 @@ function World({ prog, done, complete, side, winSide, gl, setGl, onLeave }) {
           talk: s.talk,
           markers,
           debugCam: s.debugCam,
+          cut: s.cut,
         },
         ms * fast,
         fast,
       );
+      s.cut = false;
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
       a.dispose();
