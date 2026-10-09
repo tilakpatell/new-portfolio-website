@@ -37,6 +37,8 @@ import { PLANK, TUMBLE } from './rules';
 import { sharpen } from '../../../../lib/three/textures';
 import { attend, castDo, fight, followDrawn, releaseCast, tickCast, upgrade } from '../../cast3d';
 import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -90,7 +92,7 @@ MOODS.dawn = MOODS.day;
 export function createMoriaWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 520, bloom: { strength: 0.85, radius: 0.6, threshold: 0.78 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 52, near: 0.1, far: 520, bloom: BLOOMS.moria, onLost });
   stage.grade({ contrast: 0.16, saturation: 0.8, vignette: 0.38, grain: 0.02, shadow: [0.0, 0.01, 0.03], high: [0.02, 0.01, 0.0] });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
@@ -493,7 +495,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, lit: 0, open: 0, ithil: 0, stir: 0, fire: 0 };
-  const shake = createShake({ title: 'Moria' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   const HITSTOP = { slam: 60, hit: 70, break: 90 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
