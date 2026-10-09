@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DUEL, createDuellist, duelStep, guarding, onGuardBroken, onHit, onParried, swung } from './duel';
+import { DUEL, createDuellist, duelStep, guarding, onGuardBroken, onHit, onParried, onStagger, swung } from './duel';
 
 // a roll that always comes up `v` (0 beats every rate, 0.99 none)
 const always = (v) => () => v;
@@ -189,6 +189,15 @@ describe('what you do to it', () => {
     const out = duelStep(d, you(0, 10), DT, always(0.99));
     expect(out.state).toBe('stagger');
     expect(out.stroke).toBe(null);
+  });
+
+  it('shoved or struck hard, it reels as long as it’s told and its stroke stops', () => {
+    const d = attacking();
+    onStagger(d, 1.4);
+    const outs = run(d, you(0, 10), always(0.99), { n: Math.round(1.4 / DT) + 2, walk: false });
+    expect(outs[0]).toMatchObject({ state: 'stagger', stroke: null });
+    expect(outs[Math.round(1.4 / DT) - 2].state).toBe('stagger');
+    expect(outs.at(-1).state).not.toBe('stagger');
   });
 
   it('dead, it stays dead', () => {

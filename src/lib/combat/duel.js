@@ -21,7 +21,8 @@
 //            dist?, dead? } or null; states approach | circle | attack | recover | block | parry | stagger | dead
 //   swung(d, secs)       how long the stroke it began takes (its clip's, at its speed)
 //   guarding(d)          'parry' | 'block' | null: what meets your stroke now
-//   onHit(d, { heavy, dead }), onParried(d) (stagger 0.6 s, then attack), onGuardBroken(d) (stagger 2 s)
+//   onHit(d, { heavy, dead }), onParried(d) (stagger 0.6 s, then attack), onGuardBroken(d) (stagger 2 s),
+//   onStagger(d, secs, next) (shoved, struck hard: reeling `secs`, then `next` or approach)
 
 export const DUEL = {
   circle: [1, 2],
@@ -201,21 +202,15 @@ export function onHit(d, { heavy = false, dead = false } = {}) {
   }
   // (a light hit doesn't stop a stroke it's in; a heavy one does)
   if (d.state === 'attack' && !heavy) return;
-  enter(d, 'stagger', heavy ? DUEL.stagger.heavy : DUEL.stagger.hit);
-  d.next = null;
+  onStagger(d, heavy ? DUEL.stagger.heavy : DUEL.stagger.hit);
+}
+
+export function onStagger(d, secs, next = null) {
+  if (d.state === 'dead') return;
+  enter(d, 'stagger', secs);
+  d.next = next;
   d.plan = null;
 }
 
-export function onParried(d) {
-  if (d.state === 'dead') return;
-  enter(d, 'stagger', DUEL.stagger.parried);
-  d.next = 'attack';
-  d.plan = null;
-}
-
-export function onGuardBroken(d) {
-  if (d.state === 'dead') return;
-  enter(d, 'stagger', DUEL.stagger.broken);
-  d.next = null;
-  d.plan = null;
-}
+export const onParried = (d) => onStagger(d, DUEL.stagger.parried, 'attack');
+export const onGuardBroken = (d) => onStagger(d, DUEL.stagger.broken);
