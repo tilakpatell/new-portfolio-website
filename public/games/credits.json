@@ -4641,5 +4641,13 @@
     ],
     "license": "CC0 1.0",
     "use": "In public/models/quaternius/nature/trees.glb, a kit of them (scripts/quaternius.mjs)"
+  },
+  "motion/ual-gen.overhead-strike": {
+    "source": "https://github.com/Tencent-Hunyuan/HY-Motion-1.0",
+    "name": "a two-handed overhead sword strike, stepping forward: a clip made for this site with HY-Motion 1.0 on the site owner's machine, baked onto Meshy's skeleton (scripts/motion)",
+    "authors": [
+      "Tilak Patel, with Tencent HY-Motion 1.0"
+    ],
+    "license": "Generated for this site; HY-Motion 1.0 is under the Tencent HY-Motion 1.0 Community License, which doesn't apply in the EU, the UK or South Korea"
   }
 }
