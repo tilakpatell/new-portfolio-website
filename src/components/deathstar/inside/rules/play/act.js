@@ -16,6 +16,9 @@
 //     wall or a hull by its spot's name, or a thing you carry), which E does the step's work at:
 //     its talk opened, or its `used` told
 //   KEYPAD                                   the numbers a hatch’s keypad offers
+//   FREE                                     what each tagged thing does where no story is under way;
+//     E is offered at a thing only where it does something: a sign, a seat, the saber and the keypad
+//     anywhere, the rest where the story's step names them, or in free roam where FREE has a use
 //
 // g.talk: talk.js’s talk & { npc } | the keypad’s { id: 'keypad', tag, choices, … } | null
 
@@ -42,6 +45,91 @@ const NOUNS = {
 export const KEYPAD = ['3263827', '1138', '2187', 'Leave it'];
 // what a tagged thing tells the eggs when used
 const READ = new Set(['exhaust-note', 'plans']);
+// what is offered to E whatever the story: a sign read, a seat sat in, a saber pulled, a keypad
+const ALWAYS = new Set(['krennic-chair', 'armrest-saber', 'compactor-hatch', ...READ]);
+const FIRE_AGAIN = 30; // seconds before the superlaser can be fired again in free roam
+
+// What a tagged thing does where no story is under way (free roam, or a story played out): a lever
+// thrown, a bridge run out, the station's plans read off a socket. Anything not here, and not
+// always offered, is the story's alone, and E isn't offered at it unless the story's step names it.
+const line = (g, who, text) => g.events.push({ type: 'say', who, name: who === 'you' ? (WHO[g.you.hero] ?? 'You') : (WHO[who] ?? who), text });
+function toggle(g, flag, on, off) {
+  const now = !g.flags.has(flag);
+  if (now) g.flags.add(flag);
+  else g.flags.delete(flag);
+  return now ? on : off;
+}
+export const FREE = {
+  'ambush-panel': (g) => line(g, 'console', 'A smuggler’s catch: the compartment opens from in here, and from nowhere else.'),
+  scomp: (g) => {
+    for (const id of g.layout.rooms.keys()) g.seen.add(id);
+    // (and to a Rebel, as to Artoo plugged in, the Empire's own doors: the way off the bay's deck in free roam)
+    const rebel = g.you.side === 'rebel' && !(g.you.armour && g.you.helmet);
+    if (rebel) for (const d of g.layout.doors.values()) if (d.lock === 'side:imperial') unlock(g.doors, g.layout, d.id, { scomp: true });
+    line(g, 'console', rebel ? 'The scomp link gives up the station’s plans, and opens the Empire’s doors to you.' : 'The scomp link gives up the station’s plans: every section is on your map now.');
+  },
+  'chute-grate': (g) => {
+    // (down the garbage chute: the grate's hatch opened, and you and those with you through it)
+    g.flags.add('grate');
+    g.teleport('chute-slide');
+    bringAlong(g);
+  },
+  'tractor-terminal': (g) => line(g, 'console', g.flags.has('tractor-off') ? 'Tractor beam: power off at both couplings.' : 'Tractor beam: holding. Power is cut at the two couplings on the levers.'),
+  'tractor-power-1': (g) => tractorLever(g, 1),
+  'tractor-power-2': (g) => tractorLever(g, 2),
+  'bridge-control': (g) => line(g, 'console', toggle(g, 'bridge', 'The bridge slides out across the chasm.', 'The bridge draws back into the wall.')),
+  grapple: (g) => {
+    g.flags.add('grapple');
+    line(g, 'you', 'The grapple’s line catches on the pipe overhead.');
+  },
+  'st321-console': (g) => {
+    const t = openTalk('st321', talkCtx(g));
+    if (t) {
+      g.talk = { ...t, npc: null };
+      g.events.push({ type: 'say', who: t.who, name: WHO[t.who] ?? t.who, text: t.say });
+    } else line(g, 'console', 'No shuttle is calling.');
+  },
+  'firing-switch': (g) => {
+    if (g.time - (g.firedAt ?? -Infinity) < FIRE_AGAIN) return line(g, 'console', 'Main reactor recharging.');
+    g.firedAt = g.time;
+    g.scene = { id: 'cruiser', t: 0 };
+  },
+};
+function tractorLever(g, n) {
+  const off = toggle(g, `tractor-power-${n}-off`, true, false);
+  const both = g.flags.has('tractor-power-1-off') && g.flags.has('tractor-power-2-off');
+  if (both) g.flags.add('tractor-off');
+  else g.flags.delete('tractor-off');
+  line(g, 'console', both ? 'Tractor beam: power off. Nothing holds the bay now.' : off ? 'One coupling down. The other still holds.' : 'Coupling restored.');
+}
+
+// what E says it will do at a thing, where saying “use the …” would tell you nothing
+const DOES = {
+  'ambush-panel': 'try the compartment’s catch',
+  scomp: 'read the station’s plans off the scomp link',
+  'chute-grate': 'drop down the garbage chute',
+  'tractor-terminal': 'read the tractor beam’s status',
+  'tractor-power-1': 'throw the power coupling',
+  'tractor-power-2': 'throw the power coupling',
+  'bridge-control': 'work the bridge controls',
+  grapple: 'throw the grapple over the pipe',
+  'st321-console': 'answer the shuttle’s call',
+  'firing-switch': 'fire the superlaser',
+  'krennic-chair': 'sit in the empty chair',
+  'armrest-saber': 'take the lightsaber',
+  plans: 'open the station’s plans',
+};
+
+const storyOn = (g) => Boolean(g.plot && !g.plot.done);
+// whether E is offered at a tagged thing: what the story's step names, what is always offered, and in
+// free roam whatever has a use there
+function offered(g, t) {
+  if (ALWAYS.has(t.tag) || t.text) return true;
+  if (!storyOn(g)) return Boolean(FREE[t.tag]);
+  const step = g.plot.story.steps.find((q) => q.id === g.plot.progress.step);
+  const tag = step?.target?.tag;
+  return Boolean(tag && (t.tag === tag || t.tag.startsWith(`${tag}-`)));
+}
 
 const flat = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 function ahead(you, at) {
@@ -130,7 +218,7 @@ export function reachable(g) {
   for (const t of things(g)) {
     const d = flat(t, you);
     if (d > USE_REACH + Math.max(t.w ?? 0, t.d ?? 0) / 2 || (near && d >= near.d)) continue;
-    if (g.broken?.has(t.tag)) continue;
+    if (g.broken?.has(t.tag) || !offered(g, t)) continue;
     near = { kind: t.tag === 'compactor-hatch' ? 'keypad' : 'thing', d, thing: t };
   }
   return near;
@@ -143,7 +231,7 @@ export function useText(r) {
   if (r.kind === 'talk') return `talk to ${r.npc.kind === 'mouse' ? 'the droid' : (WHO[r.npc.tag] ?? 'them')}`;
   if (r.kind === 'jump') return r.jump.prompt ?? 'go';
   if (r.kind === 'keypad') return 'dial the hatch’s keypad';
-  return r.thing.text ? `read “${r.thing.text}”` : `use the ${r.thing.kind.replace(/-/g, ' ')}`;
+  return r.thing.text ? `read “${r.thing.text}”` : (DOES[r.thing.tag] ?? `use the ${r.thing.kind.replace(/-/g, ' ')}`);
 }
 
 export function useHere(g) {
@@ -183,8 +271,11 @@ export function useHere(g) {
   const tag = r.thing.tag;
   tell(g, { type: 'used', tag });
   if (READ.has(tag)) g.events.push({ type: 'read', tag });
+  // (what is written on it, read out in the subtitles, however long)
+  if (r.thing.text) line(g, 'sign', r.thing.text);
   if (tag === 'krennic-chair') g.events.push({ type: 'sat', tag });
   if (tag === 'armrest-saber') does(g, 'pull-saber');
+  if (!storyOn(g)) FREE[tag]?.(g);
   return true;
 }
 

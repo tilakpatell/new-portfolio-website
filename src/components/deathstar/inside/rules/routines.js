@@ -557,7 +557,8 @@ export function rememberedWay(nav, from, to, { canPass = () => true, solidsOf = 
 export function wayBetween(nav, from, to, { canPass = () => true, solidsOf = () => [], state = '', fresh = false } = {}) {
   const known = fresh ? null : rememberedWay(nav, from, to, { canPass, solidsOf, state });
   if (known) return known;
-  const way = route(nav, from, to, { canPass, solidsOf });
+  // (the state is the floors drawn back, layout.offTags's, joined: a way is never found across them)
+  const way = route(nav, from, to, { canPass, solidsOf, off: new Set(state.split(',').filter(Boolean)) });
   // one point is no way to remember: from and to are the same place
   if (way?.length > 1) {
     const ways = waysOut(nav, from.room);

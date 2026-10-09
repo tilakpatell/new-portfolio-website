@@ -48,6 +48,9 @@ export const WHO = Object.freeze({
   controller: 'Shuttle controller',
   // Vader with his mask off, at the end
   anakin: 'Anakin Skywalker',
+  // what a console or a terminal says when it is worked
+  console: 'Console',
+  sign: 'Written there',
 });
 
 // The garrison talks to you only off duty: a person fighting, searching,

@@ -8,6 +8,7 @@
 // Pure: the game is only read; `mem` keeps what it needs between steps.
 //
 //   autoInput(g, mem = {}) → input   rules/game.js's input for this step
+//   steer(g, to, mem = {}) → input   the walk to { x, z, room } by route.js's way, riding the lifts
 //   lineTo(talkId, node, want, ctx) → i   the line to pick in a talk's node for the shortest way to
 //     `want` (a node), or to its end when want is null
 
@@ -58,7 +59,7 @@ export function lineTo(id, node, want, ctx) {
 }
 
 // the walk to a point: at the next waypoint not yet passed; in a car, the ride
-function steer(g, to, mem) {
+export function steer(g, to, mem = {}) {
   const r = routeTo(g, to);
   if (!r) return { ...STILL, yaw: g.you.yaw };
   // at the jump the way goes by (the chute's drop): E

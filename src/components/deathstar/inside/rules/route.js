@@ -15,6 +15,7 @@
 //     next: where to head now; metres: the whole way’s length; null when no way is left
 
 import { furnish } from './furnish';
+import { offTags } from './layout';
 import { route } from './nav';
 
 const AIM = 1.2; // metres over the floor a marker stands: a man’s chest
@@ -80,18 +81,20 @@ function wayTo(g, target) {
   const you = g.you;
   const from = { x: you.x, z: you.z, room: you.room };
   const to = { x: target.x, z: target.z, room: target.room };
-  const own = route(g.nav, from, to, { solidsOf: g.solidsOf, canPass: (id, door) => yours(g, id, door) });
+  // (never over a floor drawn back: the chasm's bridge while it is in)
+  const off = offTags(g.layout, g.flags ?? new Set());
+  const own = route(g.nav, from, to, { solidsOf: g.solidsOf, off, canPass: (id, door) => yours(g, id, door) });
   if (own) return { way: own };
   // by a jump that lands in the target's room, the nearest way round
   let best = null;
   for (const j of g.layout.jumps ?? []) {
     const land = g.layout.station.spots?.[j.to];
     if (!lockOpen(g, j.lock) || (land?.room ?? j.to) !== target.room) continue;
-    const way = route(g.nav, from, { x: j.x, z: j.z, room: j.from }, { solidsOf: g.solidsOf, canPass: (id, door) => yours(g, id, door) });
+    const way = route(g.nav, from, { x: j.x, z: j.z, room: j.from }, { solidsOf: g.solidsOf, off, canPass: (id, door) => yours(g, id, door) });
     if (way && (!best || length(way) < length(best.way))) best = { way, jump: j };
   }
   if (best) return best;
-  const any = route(g.nav, from, to, { solidsOf: g.solidsOf });
+  const any = route(g.nav, from, to, { solidsOf: g.solidsOf, off });
   return any ? { way: any } : null;
 }
 

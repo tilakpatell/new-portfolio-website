@@ -559,6 +559,8 @@ function refusal(g) {
     if (!s?.denied || s.want || Math.hypot(you.x - door.x, you.z - door.z) > REACH || Math.abs(you.y - door.y) > door.h) continue;
     if (s.sealed) return 'Sealed';
     const lock = door.lock ?? '';
+    // (in free roam a Rebel's way through is the station's own computer: say where it is)
+    if (lock === 'side:imperial' && !g.plot && g.layout.station.spots?.scomp) return 'Imperial personnel only: a scomp link would open it';
     return REFUSALS[lock] ?? REFUSALS[lock.split(':')[0]] ?? 'Shut fast';
   }
   return null;

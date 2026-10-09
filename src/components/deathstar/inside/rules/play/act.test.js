@@ -73,3 +73,86 @@ describe('E at what the story names', () => {
     expect(done).toBe(true);
   });
 });
+
+// Free roam: at every tagged thing aboard, in front of it and facing it, E is offered only where it
+// does something you can see or hear (a line said, a talk opened, a scene, a ride, a flag thrown, a
+// seat, the saber), and the things the story alone has a use for aren't offered at all.
+describe('E in free roam', () => {
+  const seen = (g, before, events) =>
+    Boolean(g.talk || g.scene || g.you.room !== before.room || events.some((e) => ['say', 'sat', 'pulled', 'read'].includes(e.type)) || [...g.flags].join() !== before.flags);
+  for (const [station, side] of STORIES) {
+    it(`does something wherever it is offered, on ${station} as ${side === 'rebel' ? 'a Rebel' : 'an Imperial'}`, () => {
+      const base = newGame({ station, side, mode: 'roam', seed: 5 });
+      const quiet = [];
+      for (const room of base.layout.rooms.values()) {
+        for (const t of furnish(room, base.layout.station).props.filter((p) => p.tag)) {
+          const g = newGame({ station, side, mode: 'roam', seed: 5 });
+          const r = 0.9 + Math.max(t.w ?? 0, t.d ?? 0) / 2;
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2;
+            teleport(g, room.id, t.x + Math.sin(a) * r, t.z - Math.cos(a) * r);
+            if (g.you.room !== room.id) continue;
+            const yaw = Math.atan2(t.x - g.you.x, -(t.z - g.you.z));
+            g.you.yaw = yaw;
+            step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
+            drain(g);
+            const p = promptOf(g);
+            if (!p?.use) break;
+            const before = { room: g.you.room, flags: [...g.flags].join() };
+            step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0, use: true });
+            if (!seen(g, before, drain(g))) quiet.push(`${room.id}/${t.tag}: “${p.text}”`);
+            break;
+          }
+        }
+      }
+      expect(quiet).toEqual([]);
+    }, 60000);
+  }
+
+  it('reads the station’s plans off the scomp link in Docking Control, up the bay’s stair', () => {
+    const g = newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 5 });
+    const scomp = furnish(g.layout.rooms.get('ctl327'), g.layout.station).props.find((p) => p.tag === 'scomp');
+    teleport(g, 'ctl327', scomp.x, scomp.z + 1.1);
+    const yaw = Math.atan2(scomp.x - g.you.x, -(scomp.z - g.you.z));
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
+    drain(g);
+    expect(promptOf(g)).toMatchObject({ use: true, text: 'read the station’s plans off the scomp link' });
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0, use: true });
+    drain(g);
+    expect(g.seen.size).toBe(g.layout.rooms.size);
+  });
+
+  it('opens the Empire’s own doors to a Rebel there, so free roam isn’t ended at the bay’s corridor door', () => {
+    const g = newGame({ station: 'ds1', side: 'rebel', mode: 'roam', seed: 5 });
+    expect(g.doors['bay327-corr'].locked).toBe(true);
+    const scomp = furnish(g.layout.rooms.get('ctl327'), g.layout.station).props.find((p) => p.tag === 'scomp');
+    teleport(g, 'ctl327', scomp.x, scomp.z + 1.1);
+    const yaw = Math.atan2(scomp.x - g.you.x, -(scomp.z - g.you.z));
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0, use: true });
+    expect(g.doors['bay327-corr'].locked).toBe(false);
+  });
+
+  it('runs the chasm’s bridge out and back from its controls, and the floor comes and goes with it', () => {
+    const g = newGame({ station: 'ds1', side: 'rebel', mode: 'roam', seed: 5 });
+    const was = g.flags.has('bridge');
+    const ctl = furnish(g.layout.rooms.get('chasm'), g.layout.station).props.find((p) => p.tag === 'bridge-control');
+    teleport(g, 'chasm', ctl.x + 0.9, ctl.z);
+    const yaw = Math.atan2(ctl.x - g.you.x, -(ctl.z - g.you.z));
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0, use: true });
+    expect(g.flags.has('bridge')).toBe(!was);
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0, use: true });
+    expect(g.flags.has('bridge')).toBe(was);
+  });
+
+  it('offers nothing at a thing only a story has a use for: the beacon’s mark on the Falcon’s hull', () => {
+    const g = newGame({ station: 'ds1', side: 'imperial', mode: 'roam', seed: 5 });
+    const mark = furnish(g.layout.rooms.get('bay327'), g.layout.station).props.find((p) => p.tag === 'beacon-spot');
+    teleport(g, 'bay327', mark.x + 1, mark.z);
+    const yaw = Math.atan2(mark.x - g.you.x, -(mark.z - g.you.z));
+    step(g, { dir: { x: 0, z: 0 }, yaw, pitch: 0 });
+    expect(promptOf(g)?.use ?? false).toBe(false);
+  });
+});

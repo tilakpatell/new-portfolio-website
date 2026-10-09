@@ -15,9 +15,10 @@
 //
 //   createNav(layout) → nav      the graph of a buildLayout(station), worked out once; a ride’s
 //     levels are counted in the station’s `levelHeight` (12 m, DS1’s, when it gives none)
-//   route(nav, from: { x, z, room }, to: { x, z, room }, { canPass, solidsOf }) → [point] | null
+//   route(nav, from: { x, z, room }, to: { x, z, room }, { canPass, solidsOf, off }) → [point] | null
 //     canPass(doorId, door) → bool   whether this walker may go through a door (absent: every door)
 //     solidsOf(roomId) → [{ box: { x0, x1, z0, z1 } } | { circle: { x, z, r } }]   what stands on its floor
+//     off: Set<tag>   the floors drawn back now (layout.offTags): a way never crosses where they were
 //     point: { x, z, room, door?, lift? }, from first and to last; each point’s room is the one the
 //       leg to it is walked in, so a door’s point names the room before it. A leg along a door's own
 //       wall meets it square, from a point 0.8 m out (aprons). `lift` marks the middle
@@ -76,7 +77,7 @@ export function createNav(layout) {
 
 const nearest = (stops, p) => stops.reduce((best, s) => Math.min(best, apart(p, s)), Infinity);
 
-export function route(nav, from, to, { canPass = () => true, solidsOf = () => [] } = {}) {
+export function route(nav, from, to, { canPass = () => true, solidsOf = () => [], off = null } = {}) {
   const { layout, byRoom, stops, kids } = nav;
   if (!byRoom.has(from?.room) || !byRoom.has(to?.room)) return null;
   if (from.room === to.room && apart(from, to) < SAME) return [{ x: from.x, z: from.z, room: from.room }];
@@ -110,7 +111,7 @@ export function route(nav, from, to, { canPass = () => true, solidsOf = () => []
     if (room === goal.room) there.push(goal);
     const space = layout.rooms.get(room);
     for (const m of there) {
-      const way = bend(space, solidsIn(room), n, m, groundOf(nav, space));
+      const way = bend(space, solidsIn(room), n, m, groundOf(nav, space, off));
       if (way) yield { m, room, cost: way.length, via: way.via };
     }
     for (const ride of n.rides ?? []) yield { m: ride.to, ride, cost: ride.cost };
@@ -347,13 +348,18 @@ function inRoom(room, p) {
 // A room’s floor, worked out once the first time a leg crosses it; null
 // when it is one level over the whole room, as most are, so its legs need
 // no more than its solids.
-function groundOf(nav, room) {
-  if (!nav.grounds.has(room.id)) {
-    const [f, ...more] = room.floors;
+// A floor drawn back (a tag in `off`) isn't there: a room surveyed apart for each set of its own
+// tags that is off, so the chasm with its bridge out and with it in are two grounds.
+function groundOf(nav, room, off = null) {
+  const gone = off ? room.floors.filter((f) => f.tag && off.has(f.tag)).map((f) => f.tag) : [];
+  const key = gone.length ? `${room.id}|${[...new Set(gone)].sort().join(',')}` : room.id;
+  if (!nav.grounds.has(key)) {
+    const floors = gone.length ? room.floors.filter((f) => !(f.tag && off.has(f.tag))) : room.floors;
+    const [f, ...more] = floors;
     const flat = f && !more.length && (f.circle || (f.x0 <= room.box.x0 + TINY && f.x1 >= room.box.x1 - TINY && f.z0 <= room.box.z0 + TINY && f.z1 >= room.box.z1 - TINY));
-    nav.grounds.set(room.id, flat ? null : survey(nav.layout, room));
+    nav.grounds.set(key, flat ? null : survey(nav.layout, room, gone.length ? off : null, floors));
   }
-  return nav.grounds.get(room.id);
+  return nav.grounds.get(key);
 }
 
 // An uneven floor (more than one floor box, or gaps between them; every
@@ -365,12 +371,12 @@ function groundOf(nav, room) {
 //   from the deck, the inside corner of a walkway seen from the walkway;
 // - halfway along each stretch where two floors a step apart meet: the
 //   foot of a stair or a ramp, the step from one stair tread to the next.
-function survey(layout, room) {
-  const at = (x, z) => layout.floorAt(room.id, x, z);
+function survey(layout, room, drawn = null, floors = room.floors) {
+  const at = (x, z) => layout.floorAt(room.id, x, z, drawn ?? undefined);
   // edges a hair apart (a run of treads adds up with rounding) are one line
   const lines = (lo, hi, ends) => [lo, hi, ...ends].filter((v) => v >= lo && v <= hi).sort((m, n) => m - n).filter((v, k, all) => k === 0 || v - all[k - 1] > TINY);
-  const X = lines(room.box.x0, room.box.x1, room.floors.flatMap((f) => [f.x0, f.x1]));
-  const Z = lines(room.box.z0, room.box.z1, room.floors.flatMap((f) => [f.z0, f.z1]));
+  const X = lines(room.box.x0, room.box.x1, floors.flatMap((f) => [f.x0, f.x1]));
+  const Z = lines(room.box.z0, room.box.z1, floors.flatMap((f) => [f.z0, f.z1]));
   const off = (y, from) => y === null || Math.abs(y - from) > STEP + TINY;
   const ways = [];
   for (const x of X) {
@@ -405,7 +411,7 @@ function survey(layout, room) {
     seen.add(key);
     return true;
   });
-  const ground = { room, at, X, Z, ways: turns, rects: new Map(), legs: new Map(), places: new Map() };
+  const ground = { room, floors, at, X, Z, ways: turns, rects: new Map(), legs: new Map(), places: new Map() };
   turns.forEach((w, k) => ground.places.set(`${w.x},${w.z}`, (w.place = k)));
   return ground;
 }
@@ -416,10 +422,10 @@ function survey(layout, room) {
 // the floors no more than a step below are cut out of it).
 function obstaclesAt(ground, y) {
   if (!ground.rects.has(y)) {
-    const { room } = ground;
-    const tall = room.floors.filter((f) => f.y > y + STEP + TINY);
+    const { room, floors } = ground;
+    const tall = floors.filter((f) => f.y > y + STEP + TINY);
     let low = [room.box];
-    for (const f of room.floors) if (f.y >= y - STEP - TINY) low = low.flatMap((b) => minus(b, f));
+    for (const f of floors) if (f.y >= y - STEP - TINY) low = low.flatMap((b) => minus(b, f));
     // a round room’s box reaches past its wall at the corners, and nobody falls off a wall
     if (room.round) low = low.filter((b) => toBox(b, room) < room.w / 2);
     ground.rects.set(y, [...tall, ...low]);

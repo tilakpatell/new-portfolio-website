@@ -18,9 +18,13 @@ const STORIES = [
   ['ds2', 'imperial'],
 ];
 
+// (DS_AUTOPLAY_SEEDS=1,2,3 plays each story on each seed: the patrols and the fights go differently)
+const SEEDS = (globalThis.process?.env?.DS_AUTOPLAY_SEEDS ?? '5').split(',').map(Number);
+const RUNS = STORIES.flatMap(([station, side]) => SEEDS.map((seed) => [station, side, seed]));
+
 describe.skipIf(!globalThis.process?.env?.DS_AUTOPLAY)('every story, played', () => {
-  it.each(STORIES)('%s %s is finished with the keys alone', (station, side) => {
-    const g = newGame({ station, side, mode: 'story', seed: 5 });
+  it.each(RUNS)('%s %s (seed %i) is finished with the keys alone', (station, side, seed) => {
+    const g = newGame({ station, side, mode: 'story', seed });
     const mem = {};
     let at = g.plot.progress.step;
     let since = 0;

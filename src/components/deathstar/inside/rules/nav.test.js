@@ -127,6 +127,23 @@ describe('routes through doors', () => {
     expect(doorsOf(path)).toEqual(expect.arrayContaining(['maint2-gantry', 'gantry-chasm']));
   });
 
+  // (the chasm's bridge is a tagged floor, there only while the story's flag runs it out)
+  it('takes the chasm’s bridge only while it is out, and with it drawn back goes round by the lifts', () => {
+    const near = { room: 'chasm', x: 27.2, z: -99.6 };
+    const far = { room: 'chasmway', x: 50.7, z: -99.6 };
+    const length = (w) => w.reduce((m, p, i) => (i ? m + Math.hypot(p.x - w[i - 1].x, p.z - w[i - 1].z) : 0), 0);
+    const over = route(nav, near, far);
+    expect(length(over)).toBeLessThan(30);
+    const round = route(nav, near, far, { off: new Set(['bridge']) });
+    // (never a leg out over the void where the bridge was)
+    for (let i = 1; i < (round?.length ?? 0); i++) {
+      const [p, q] = [round[i - 1], round[i]];
+      if (q.room !== 'chasm' || p.lift) continue;
+      for (let k = 0.1; k < 1; k += 0.1) expect(layout.floorAt('chasm', p.x + (q.x - p.x) * k, p.z + (q.z - p.z) * k, new Set(['bridge'])), `${JSON.stringify(p)} → ${JSON.stringify(q)}`).not.toBeNull();
+    }
+    expect(round === null || length(round) > 40).toBe(true);
+  });
+
   it('has no route to the control room when its only door is refused', () => {
     expect(route(nav, deck, desk, { canPass: (id) => id !== 'bay327-ctl' })).toBeNull();
   });
