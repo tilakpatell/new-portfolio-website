@@ -11,6 +11,8 @@ import MiniMap from './MiniMap';
 import GuideCue from '../guide/GuideCue';
 import { askBrief } from '../tour/brief';
 import LoadingVeil from '../worlds/LoadingVeil';
+import { Prompt } from '../../runtime/hud';
+import { PROMPT as LOOK_PROMPT } from '../../runtime/look';
 
 // The map: the 3D scene (scene.js and planets.js, through useScene) with the
 // planets' names as buttons over it. React renders the names once; the
@@ -50,6 +52,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
   const [flown, setFlown] = useState(false);
   // out of the ship on a planet (the controls change), and where you could land
   const [onFoot, setOnFoot] = useState(false);
+  const [looking, setLooking] = useState(null); // the look on foot: its mode, and whether the pointer's locked (scene.js's 'look')
   const [landable, setLandable] = useState(null);
   const [phoneNear, setPhoneNear] = useState(false); // at the phone out past the belt (phone.js): a touch button to pick it up
   const [footHint, setFootHint] = useState(false);
@@ -115,6 +118,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
         if (e.type === 'launch') setFlown(true);
         if (e.type === 'aim') setAim(e.id ? { id: e.id, name: e.name } : null);
         if (e.type === 'landable') setLandable(e.id);
+        if (e.type === 'look') setLooking(e);
         if (e.type === 'phone' && e.what !== 'open') setPhoneNear(e.what === 'near');
         if (e.type === 'foot' && e.id === 'arrive') setArrive({ title: e.title, sub: e.sub, at: Date.now() });
         if (e.type === 'foot' && e.id === 'out') {
@@ -404,6 +408,7 @@ export default function UniverseMap({ selected, onSelect, onOpen, handle, frozen
                   {arrive.sub && <p className="universe-arrive-sub">{arrive.sub}</p>}
                 </div>
               )}
+              {onFoot && looking?.mode === 'lock' && !looking.locked && <Prompt k="" verb={LOOK_PROMPT} className="universe-look" onClick={() => view.current?.lookLock?.()} />}
               {onFoot && footHint && (
                 <p className="universe-hint">
                   <span className="universe-hint-keys">
