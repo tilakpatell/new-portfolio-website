@@ -39,7 +39,6 @@ export const DEAD_HITSTOP = [
 
 // each without createPress or createCooldownPress in the same file
 export const NO_PRESS = [
-  { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
 ];
 
 // the walkers’ camera: at once on a cut, else `min(1, dt × k)` a frame
@@ -49,7 +48,6 @@ export const LINEAR_CAMERA = [
 ];
 
 export const UNANSWERED = [
-  { file: 'deathstar/inside/scene/hear.js', lacks: /case 'hurt'/ },
 ];
 
 // The sweeps for a file that starts anew. A shake decaying by dt beside a
