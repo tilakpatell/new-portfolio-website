@@ -14,7 +14,10 @@
 // the visitor's sensitivity: turnRate, pitchRate, rollRate and level (1 as
 // it comes: controls.js), and `tune`, what the parts fitted in the hangar
 // do (outfit.js's statsOf: boost, accel, cruise, agility and level, each 1
-// as it comes) }. Each turn has a little inertia (`rate`,
+// as it comes), and `surge`, a temporary lift to the boost and the pull-up
+// on top of those (1 to 2, 1 as it comes: the galaxy's Overcharge pickup),
+// after they're held to what a fit can do, so a ship with boosters has it
+// too }. Each turn has a little inertia (`rate`,
 // `tipRate`, `rollRate`, radians a second, easing toward what the stick
 // asks), so it rolls into and out of everything rather than snapping, and
 // all of it is slower the faster it goes. Let go of the roll and the nose
@@ -414,9 +417,10 @@ export function step(s, input, dt, solids = SOLIDS, space = SPACE) {
   const roll = clamp(input.roll || 0, -1, 1);
   // what's fitted (held to what any fit can do)
   const tune = tuned(input.tune);
-  const boost = SHIP.boost * tune.boost;
+  const surge = clamp(input.surge ?? 1, 1, 2);
+  const boost = SHIP.boost * tune.boost * surge;
   const cruise = SHIP.cruise * tune.cruise;
-  const accelK = tune.accel;
+  const accelK = tune.accel * surge;
   const agileK = tune.agility;
   const turnK = clamp(input.turnRate ?? 1, 0.25, 3) * agileK;
   const pitchK = clamp(input.pitchRate ?? 1, 0.25, 3) * agileK;

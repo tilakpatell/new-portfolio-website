@@ -20,12 +20,13 @@
 // again.
 //
 // Only the frame itself is held back: a Scene drawn to the canvas, or to a
-// buffer the canvas's size (a composer's), with no override material. The
-// size in whole pixels: a composer sizes its buffers at the canvas's size
-// times the pixel ratio, unrounded (1470 wide at 1.75 is 2572.5), and WebGL
-// truncates them to the canvas's 2572, so compared as given most windows'
-// frames went ungated, and a world's frame was gated or not by the width of
-// the window. Left
+// buffer the canvas's size (a composer's) or one its owner says is the
+// frame's (`frames`: a composer drawn softer than the canvas, its last pass
+// drawing it up), with no override material. The size in whole pixels: a
+// composer sizes its buffers at the canvas's size times the pixel ratio,
+// unrounded (1470 wide at 1.75 is 2572.5), and WebGL truncates them to the
+// canvas's 2572, so compared as given most windows' frames went ungated,
+// and a world's frame was gated or not by the width of the window. Left
 // alone: the shadow pass (no scene: its depth shaders are small and
 // shared), anything drawn outside a Scene (a post pass's quad: leaving it
 // out would leave its picture undrawn), the drawings a world makes for
@@ -53,7 +54,7 @@
 // three drew ungated is known to have linked (that draw linked it), so the
 // frames after it, gated, draw it at once.
 //
-// guard(renderer, { uploadMB, compileMs, frame, invalidate, firstWhole }) → { enabled,
+// guard(renderer, { uploadMB, compileMs, frame, invalidate, frames(target), firstWhole }) → { enabled,
 //   invalidate, adopt(scene, fn) → undo, pending(), dispose() }, one per renderer (asked again, the same).
 // In development, a frame in which three still compiled a shader mid-draw
 // says so in the console, so what's still slipping through can be found.
@@ -99,7 +100,7 @@ const inScene = (object, scene) => {
   return o === scene;
 };
 
-export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame, invalidate = null, firstWhole = false } = {}) {
+export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame, invalidate = null, frames = null, firstWhole = false } = {}) {
   if (guards.has(renderer)) return guards.get(renderer);
   const state = new WeakMap(); // material → READY | QUEUED
   const shapes = new WeakMap(); // a ready material → what its shader was made for (shapeOf)
@@ -291,10 +292,11 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
     }
   };
 
-  // the canvas, or a buffer its size in whole pixels (where a composer draws
-  // the frame: WebGL truncates a buffer's size, and the composer doesn't round it)
+  // the canvas, a buffer its size in whole pixels (where a composer draws the
+  // frame: WebGL truncates a buffer's size, and the composer doesn't round
+  // it), or one the owner names
   const frameTarget = (t) => {
-    if (!t) return true;
+    if (!t || frames?.(t)) return true;
     const c = renderer.domElement;
     if (c) {
       drawn.x = c.width;

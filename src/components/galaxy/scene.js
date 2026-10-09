@@ -95,7 +95,7 @@ import { createDust } from '../universe/belt';
 import { createTrail } from '../universe/trail';
 import { ENGINES, SHIP_MODELS, buildShip, BUILT } from '../universe/shipModels';
 import { loadModel } from '../universe/planets';
-import { lockSound, shipEngine } from '../universe/sounds';
+import { lockSound, shieldSound, shipEngine } from '../universe/sounds';
 import { AIM, aimAngles, assist, assistAmount, dirTo, edgeOf, intercept, nose, onScreen, track, trackNudge } from '../universe/targeting';
 import { DEFAULTS as CONTROL_DEFAULTS, STICK, dragSteers, keyAxes, keyFlies, stickInput } from '../universe/controls';
 import { SIZE as PILOT_SIZE, createPilots } from '../universe/online/pilots';
@@ -114,6 +114,8 @@ import { createInterdictor } from './interdictor';
 import { createWarFront } from './warfront';
 import { createGalaxyPowers } from './powers';
 import { createCluster } from './cluster';
+import { PICKUPS, createPickups, gunsUnder } from './pickups';
+import { createPickupFx } from './pickupFx';
 import { createRadar } from './radar';
 import { drawRadar } from './radarDraw';
 import { chargeFor } from '../universe/shipPowers';
@@ -167,6 +169,7 @@ const IDLE = 40000;
 const KEYS = { w: 'up', s: 'down', a: 'a', d: 'd', arrowleft: 'left', arrowright: 'right', arrowup: 'pitchUp', arrowdown: 'pitchDown', ' ': 'boost', shift: 'boost', f: 'fire' };
 const DRAG = 6;
 const NO_TARGETS = Object.freeze([]); // (when there are no hunters to lock on to, the same empty list every time)
+const NO_BUFFS = NO_TARGETS; // (and no pickups' effects to show)
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const TRACK_AFTER_SHOT = 1500; // ms: a lock the guns picked is followed this long after a shot at it
@@ -411,6 +414,10 @@ export async function create(canvas, ctx) {
   // (made before the first frame's shaders are, so its look is made with them)
   const powers = createGalaxyPowers({ parent: scene, reduced, hunters, war, bolts, flashes, crashFx, pops, post, state, emit, controls, strike: (...a) => strike(...a), scored: (...a) => scored(...a), teleport: (pose) => teleport(pose) });
   const cluster = createCluster(); // (the flight cluster's writer: placeShield)
+  // what a kill leaves behind (pickups.js: the rules, pickupFx.js: the drawing); none online, and none survive a jump, a landing or a crash
+  const pickups = createPickups();
+  const pickupFx = createPickupFx(scene, { prepare: (o) => warm(o), reduced });
+  const gun = { gap: 0, punch: 1 }; // (the guns' delay and punch with rapid fire on, as gunsUnder writes them)
 
   // ── The system you're in ──
   const followDrawn = followRatio(post, (r) => (sky.setRatio(r), state.world?.setRatio(r))); // (the ratio the points are sized by: ./drawnAt.js)
@@ -455,6 +462,7 @@ export async function create(canvas, ctx) {
     keys[1].intensity = world.sunLights[1] ? 1.1 : 0;
     if (!env) reflect(sys);
     hunters?.clear();
+    pickups.clear();
     state.auto = null;
     state.at = null;
     state.lock = null;
@@ -563,6 +571,7 @@ export async function create(canvas, ctx) {
     powers.setCrew(kind);
     if (!same) {
       state.kills = 0; // (a new ship, a new flight)
+      pickups.clear();
       dropCab();
       cabWanted = null;
       if (kind && state.seat === 'cockpit') buildCab(kind);
@@ -882,8 +891,9 @@ export async function create(canvas, ctx) {
   const fire = () => {
     const s = state.ship;
     const now = performance.now();
-    const g = state.stats; // (the guns fitted in the hangar: how fast, how hard)
-    if (!s || props.frozen || state.crash || state.jump || now - state.lastShot < Math.max(FASTEST, (CADENCE[state.kind] ?? 0.18) * g.cadence) * 1000) return;
+    const g = state.stats; // (the guns fitted in the hangar: how fast, how hard; a rapid-fire pickup quicker still, and harder where the quickest they may fire holds it back)
+    gunsUnder((CADENCE[state.kind] ?? 0.18) * g.cadence, pickups.mods().delay, FASTEST, gun);
+    if (!s || props.frozen || state.crash || state.jump || now - state.lastShot < gun.gap * 1000) return;
     state.lastShot = now;
     state.lastInput = now;
     const b = myBolts.find((m) => !m.visible) ?? myBolts[0];
@@ -904,7 +914,7 @@ export async function create(canvas, ctx) {
     b.rotation.set(pitch, heading, 0);
     b.scale.set(g.bolt, g.bolt, 1 + (g.bolt - 1) * 0.4);
     const v = AIM.bolt + Math.max(0, s.speed);
-    b.userData = { life: AIM.life, v: [dir[0] * v, dir[1] * v, dir[2] * v], punch: g.punch };
+    b.userData = { life: AIM.life, v: [dir[0] * v, dir[1] * v, dir[2] * v], punch: g.punch * gun.punch };
     b.visible = true;
     net?.shot(b.position, b.userData.v);
     emit({ type: 'fire' });
@@ -937,6 +947,11 @@ export async function create(canvas, ctx) {
     }
     return any;
   };
+  // a pickup where a kill went up (pickups.js says whether), not once the jump's committed or the ship's lost
+  const dropFor = (hit) => {
+    if (state.crash || state.dive || state.jump) return;
+    pickups.drop(hit.at, { ace: FACTIONS[hit.faction]?.ace === hit.kind, capital: Boolean(hit.capital), shield: state.shield });
+  };
   // What a hit did (hunters.hit's or damage's, or the war's: `src` says
   // which), played: where it landed, the hit mark, a kill said, counted and
   // paid for; and the big one charged by what the guns did (a power's own
@@ -958,7 +973,8 @@ export async function create(canvas, ctx) {
       state.killMark = 1;
       if (!reduced) state.shake = Math.max(state.shake, 0.2);
       if (!by) feel.hitstop(HITSTOP.kill);
-    }
+      dropFor(hit);
+    } else if (src === 'war' && hit.capital && hit.down) dropFor(hit); // (a capital ship's hull never goes down to the guns as it is: if it ever does, it always drops one)
     return hit;
   };
   // A shot (a bolt, a torpedo, the death ray) from `from` to `to` this frame,
@@ -1018,6 +1034,7 @@ export async function create(canvas, ctx) {
   // ── Shields, crashes, being shot down ──
   const startCrash = (e) => {
     powers.cancel();
+    pickups.clear();
     const s = state.ship;
     const solid = solidsNow.find((o) => o.id === e.id) ?? state.space.solids.find((o) => o.id === e.id);
     const center = new THREE.Vector3(...(solid?.at ?? [s.x, s.y, s.z]));
@@ -1047,6 +1064,7 @@ export async function create(canvas, ctx) {
   };
   const startDestroyed = (by = null, rammed = false) => {
     powers.cancel();
+    pickups.clear();
     const s = state.ship;
     const from = new THREE.Vector3(s.x, s.y, s.z);
     state.crash = { age: 0, id: 'shot', shot: true, from, normal: new THREE.Vector3(0, 1, 0), radius: 0.35, point: from.clone(), fwd: forward(s.heading), spin: [6 + Math.random() * 6, 4 + Math.random() * 5], impact: false, back: false };
@@ -1063,6 +1081,12 @@ export async function create(canvas, ctx) {
     // (a ghost, jinking or mid-portal, isn't there for the game's own ships to
     // hit; another pilot's hits still count: the powers are for the game's fights)
     if (!by && powers.mods.ghost) return;
+    // a bubble shield takes the hit first (pickups.js); what it can't is the deflectors'
+    damage = pickups.absorb(damage);
+    if (damage <= 0) {
+      if (!document.hidden) shieldSound();
+      return;
+    }
     state.shield = Math.max(0, state.shield - damage * state.stats.armor); // (less, with plating fitted)
     state.hitAt = state.clock;
     state.hurt = 1;
@@ -1324,6 +1348,7 @@ export async function create(canvas, ctx) {
       if (aligned(state.ship, j.dir) > 0.996 || j.age > JUMP.align) {
         j.phase = 'spool';
         j.age = 0;
+        pickups.clear(); // (none go into the next system; before this, a jump the pilot takes back keeps what it had)
         // (the page plays the site's jump over the scene from here, its
         // sound with it, the same as the universe map's: Galaxy.jsx)
         emit({ type: 'jump', phase: 'spool', to: j.to.id });
@@ -1443,6 +1468,7 @@ export async function create(canvas, ctx) {
         input.climb = clamp(input.climb + n.climb, -1, 1);
       }
     }
+    input.surge = pickups.mods().boost; // (Overcharge: the boost and the pull-up both, ×1.35, on top of what's fitted, whoever's flying)
     if (state.keys.fire || state.fireBtn) fire();
     // super speed: boosting well out from everything, the drive opens into the overdrive (space.js wideAlong)
     if (input.boost && input.throttle > 0 && !state.auto) {
@@ -1673,6 +1699,13 @@ export async function create(canvas, ctx) {
       } else hunters.pack(who, ship, { size: 1, ace: false, ...ambush });
     }
   };
+  // a pickup taken (pickups.js's step says what it gave): the deflectors back, the power cell's charge, the page told for its note
+  const takeOne = (k) => {
+    if (k.heal) state.shield = Math.min(100, state.shield + k.heal);
+    if (k.charge) powers.pickup();
+    emit({ type: 'pickup', kind: k.kind, name: PICKUPS[k.kind].name, line: PICKUPS[k.kind].line });
+    if (!document.hidden) lockSound();
+  };
   const adventure = (dt, t) => {
     state.clock += dt;
     const live = flying() && !state.crash && !state.jump && !props.frozen ? state.ship : null;
@@ -1701,6 +1734,11 @@ export async function create(canvas, ctx) {
       busy = w.busy || busy;
     }
     powers.frame(dt, live);
+    // the pickups: aged and drawn always, taken only while the ship's flying free (not in a jump, a crash or a dive: those clear them)
+    const taken = pickups.step(props.frozen ? 0 : dt, state.ship ?? ORIGIN, { live: Boolean(live) && !state.dive });
+    for (const k of taken) takeOne(k);
+    pickupFx.sync(pickups.list, state.clock);
+    if (pickupFx.busy) busy = true;
     if (live) {
       if (state.clock - state.hitAt > state.stats.delay && state.shield < 100) state.shield = Math.min(100, state.shield + dt * 12 * state.stats.regen);
       if (state.shield > 70) state.lowSaid = false;
@@ -1770,7 +1808,7 @@ export async function create(canvas, ctx) {
     v.shield = state.shield;
     v.low = state.shield < 35;
     v.speed = s?.speed ?? 0;
-    v.top = SHIP.boost * clamp(state.stats.boost ?? 1, TUNE.boost[0], TUNE.boost[1]);
+    v.top = SHIP.boost * clamp(state.stats.boost ?? 1, TUNE.boost[0], TUNE.boost[1]) * pickups.mods().boost;
     v.boosting = Boolean(state.keys.boost || state.boostBtn) && v.speed > SHIP.cruise;
     v.kills = state.kills;
     if (t) {
@@ -1780,6 +1818,7 @@ export async function create(canvas, ctx) {
     }
     v.lock = t ? clusterLock : null;
     cluster.place(root, v);
+    cluster.buffs(props.buffs?.current ?? null, v.on ? pickups.buffs() : NO_BUFFS);
   };
   // the radar: its contacts gathered and drawn, at most 20 times a second (radar.js keeps its records: nothing's made per tick)
   const radar = createRadar();
@@ -1803,6 +1842,7 @@ export async function create(canvas, ctx) {
     if (wingmen?.active) for (const w of wingmen.ships) if (w.alive) radar.add(w.id, 'ally', w.pos);
     const b = war?.battle;
     if (b && b.you?.team !== null && !b.over) for (const f of b.fighters) if (f.alive && f.team === b.you.team) radar.add(f.id, 'ally', f.seen ?? f.pos);
+    for (const p of pickups.list) radar.add(p.id, 'pickup', p.at); // (a number: nothing's made for it each tick; it's never the lock)
     if (state.navGoal) radar.add('nav', 'goal', state.navGoal);
     const range = radar.range;
     drawRadar(cv, radar.points(range), { range, dpr: Math.min(2, window.devicePixelRatio || 1) });
@@ -2545,6 +2585,8 @@ export async function create(canvas, ctx) {
       war: war?.info ?? null,
       effects: state.effects ?? null,
       powers: powers.info,
+      pickups: pickups.list.length,
+      buffs: pickups.buffs().map((b) => b.kind),
     });
     // the ship put at `pose` (x, y, z, heading, pitch, bank), stopped, and the camera there behind it as it would be after
     // an arrival, not still easing to it: a check then sees the same view, however many frames it took to get there
@@ -2559,7 +2601,14 @@ export async function create(canvas, ctx) {
       state.shake = 0;
       ctx.invalidate();
     };
-    window.__galaxyDebug = { THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, flyTo, net: () => net, pin, interdiction, finds, interdictor, war, wingmen, effects: () => state.effects, skyStreaks: () => skyStreaks, happen: (id) => state.ship && happen(id, state.ship), powers, power: (slot) => power(slot), charge: () => powers.fill(), ram: (gap = 6, kind = null) => {
+    // one pickup of `kind` put `gap` dead ahead of the nose, for checking from a browser
+    const dropAhead = (kind, gap = 12) => {
+      const s = state.ship;
+      if (!s) return null;
+      const [fx, fz] = forward(s.heading);
+      return pickups.drop({ x: s.x + fx * gap, y: s.y, z: s.z + fz * gap }, { ace: true, kind, shield: state.shield });
+    };
+    window.__galaxyDebug = { pickups, drop: dropAhead, THREE, scene, camera, renderer, post, state, models, hunters, pilots, startJump, goTo, flyTo, net: () => net, pin, interdiction, finds, interdictor, war, wingmen, effects: () => state.effects, skyStreaks: () => skyStreaks, happen: (id) => state.ship && happen(id, state.ship), powers, power: (slot) => power(slot), charge: () => powers.fill(), ram: (gap = 6, kind = null) => {
       // one of the system's hunters (or `kind`) put `gap` dead ahead at your height, coming at you, for checking a ram from a browser
       const s = state.ship;
       if (!s || !hunters) return null;
@@ -2645,6 +2694,7 @@ export async function create(canvas, ctx) {
       const r = state.sys?.body?.r;
       if (!s || !r || state.dive || state.crash || state.jump) return false;
       powers.cancel(); // (the ship's going down to the planet: no portal hop out of the dive)
+      pickups.clear();
       state.dive = planDive(s, r);
       aimAt(null);
       ctx.invalidate();
@@ -2719,6 +2769,7 @@ export async function create(canvas, ctx) {
       disposeTree(spares);
       state.world?.dispose();
       powers.dispose();
+      pickupFx.dispose();
       crashFx.dispose();
       pops.dispose();
       hunters?.dispose();

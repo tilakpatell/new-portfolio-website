@@ -142,7 +142,7 @@ function Quote({ quote }) {
   );
 }
 
-export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping, held = null, balked = false, oath = null, suggested = null, onSwear, found = [] }) {
+export default function GalaxyPanel({ system, at, ship, onShip, onHangar = null, onMap, onGo, onLeave, onBoard, onLand, tucked, onTuck, jumping, held = null, balked = false, oath = null, suggested = null, onSwear, found = [] }) {
   const crew = crewById(ship);
   const panel = useRef(null);
   const refocus = useRef(false);
@@ -302,6 +302,13 @@ export default function GalaxyPanel({ system, at, ship, onShip, onMap, onGo, onL
       {crew && (
         <p className="mt-5 text-xs leading-relaxed text-muted">
           Flying {crew.ship.replace(/^(The|An) /, (m) => m.toLowerCase())} with {crew.label}.{' '}
+          {onHangar && (
+            <>
+              <button type="button" className="universe-back inline galaxy-yard-link" onClick={onHangar}>
+                Open the shipyard
+              </button>{' '}
+            </>
+          )}
           <button type="button" className="universe-back inline" onClick={() => onShip(null)}>
             Change ship
           </button>

@@ -532,6 +532,22 @@ describe('deep space', () => {
     expect(fly(home, { ...held, tune: { boost: 50 } }, 3.5, []).ship.speed).toBeLessThanOrEqual(SHIP.boost * 1.6 + 0.01);
   });
 
+  it('a surge lifts the boost and the pull-up on top of the boosters, which hold to what a fit can do on their own', () => {
+    const home = { ...spawn(null), y: SHIP.ceiling - 6 };
+    const held = { throttle: 1, boost: true, interdicted: true };
+    const stock = fly(home, held, 4, []).ship.speed;
+    expect(fly(home, { ...held, surge: 1.35 }, 4, []).ship.speed).toBeCloseTo(stock * 1.35, 1);
+    // (fully boosted already: 1.6 of the stock boost, and the surge on that, not lost to the 1.6 the fit's held to)
+    const full = fly(home, { ...held, tune: { boost: 1.6 } }, 4, []).ship.speed;
+    expect(full).toBeCloseTo(SHIP.boost * 1.6, 1);
+    expect(fly(home, { ...held, tune: { boost: 1.6 }, surge: 1.35 }, 4, []).ship.speed).toBeCloseTo(full * 1.35, 1);
+    // (it gets there quicker, too, and 1 or nothing changes nothing)
+    expect(fly(home, { ...held, surge: 1.35 }, 0.5, []).ship.speed).toBeGreaterThan(fly(home, held, 0.5, []).ship.speed);
+    expect(fly(home, { ...held, surge: 1 }, 2, []).ship).toEqual(fly(home, held, 2, []).ship);
+    // (and held to twice, whatever it's asked)
+    expect(fly(home, { ...held, surge: 9 }, 6, []).ship.speed).toBeLessThanOrEqual(SHIP.boost * 2 + 0.01);
+  });
+
   it('turns quicker with thrusters fitted, and cruises faster with racing exhausts', () => {
     const s = { ...spawn(null), x: 0, z: 0, heading: 0 };
     const stock = fly(s, { throttle: 1, turn: 1 }, 1, []).ship;

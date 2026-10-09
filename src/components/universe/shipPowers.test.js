@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, aimHelp, beamOf, blastPunch, cancel, chargeFor, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readCooling, readKept, shotAt, step, turretPick, view, writeKept } from './shipPowers';
+import { CHARGE, CREW_POWERS, KEPT_KEY, POWERS, POWER_KEYS, aimHelp, beamOf, blastPunch, cancel, chargeFor, clearOfSolids, createPowers, crossesShell, finish, firstAlong, gain, hasten, isObjective, jinkStep, mods, pickTargets, portalExit, powersOf, press, pullStep, readCooling, readKept, shotAt, step, turretPick, view, writeKept } from './shipPowers';
 import { CREWS } from './crews';
 import { spawn, step as fly } from './ship';
 import { makeSpace } from '../galaxy/space';
@@ -93,6 +93,20 @@ describe('the crews’ ship powers', () => {
     expect(CHARGE.ace).toBeGreaterThan(CHARGE.kill);
     expect(CHARGE.hit).toBeGreaterThan(0);
     expect(CHARGE.hit).toBeLessThan(CHARGE.kill);
+  });
+
+  it('a pickup charges the big one a quarter, and hastens the cooldown', () => {
+    const st = createPowers('xwing');
+    gain(st, 'pickup');
+    expect(st.ultimate.charge).toBeCloseTo(0.25);
+    st.primary.phase = 'cooling';
+    st.primary.left = 4;
+    expect(hasten(st, 1)).toBe(false);
+    expect(st.primary.left).toBe(3);
+    expect(hasten(st, 5)).toBe(true);
+    expect(st.primary.phase).toBe('ready');
+    expect(hasten(st, 5)).toBe(false);
+    expect(hasten(null, 5)).toBe(false);
   });
 
   // (Every hit that downed nothing used to charge it, a battle's shield and a
