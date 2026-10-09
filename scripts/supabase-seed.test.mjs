@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { AUTHORED, ID, seedSql } from './supabase-seed.mjs';
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/planets.json', import.meta.url), 'utf8'));
@@ -36,5 +36,17 @@ describe('the planets seeded', () => {
     expect(() => seedSql({ planets: [{ ...one.planets[0], id: 'a b' }], pois: [] }, 'x')).toThrow(/refuses/);
     expect(() => seedSql({ planets: [one.planets[0], one.planets[0]], pois: [] }, 'x')).toThrow(/twice/);
     expect(() => seedSql({ ...one, pois: [{ id: 'p', planetId: 'b', name: 'P', x: 0, z: 0, r: 1 }] }, 'x')).toThrow(/not listed/);
+  });
+});
+
+describe('the migrations', () => {
+  const dir = new URL('../supabase/migrations/', import.meta.url);
+  const all = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort().map((f) => readFileSync(new URL(f, dir), 'utf8')).join('\n');
+  // the definition that stands is the last one applied
+  const last = (name) => all.split(`create or replace function public.${name}(`).at(-1).split('$$;')[0];
+
+  it('refuse a build inside a POI from x and z, since a generated column is still NULL in a BEFORE trigger', () => {
+    expect(last('check_placement')).not.toMatch(/new\.geom/);
+    expect(last('check_placement')).toMatch(/ST_MakePoint\(new\.x, new\.z\)/);
   });
 });

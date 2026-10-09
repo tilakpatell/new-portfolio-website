@@ -73,6 +73,8 @@ async function main() {
   const ox = (10 + Math.floor(Math.random() * 10)) * 2048 + 500;
   const oz = (10 + Math.floor(Math.random() * 10)) * 2048 + 500;
   const placed = [];
+  // the steps after placing act on what was placed: with nothing placed they say so, not a TypeError
+  const three = () => must(placed.length === 3, 'nothing to act on: the place step failed');
 
   const signedIn = await step('signed in anonymously', async () => {
     const id = await signIn(c);
@@ -102,12 +104,11 @@ async function main() {
 
   await step('refused inside Echo Base', async () => {
     const e = await loader.place({ type: 'turret', x: 1200, y: 12, z: -800 });
+    // let in by mistake: taken out again, so a failed run leaves nothing inside
+    if (e) await loader.remove(e.id);
     must(e === null, 'a turret was placed inside Echo Base');
     must(/point of interest/.test(errors.at(-1)?.error?.message ?? ''), errors.at(-1)?.error?.message ?? 'no error');
   });
-
-  // the last two act on what was placed: with nothing placed they say so, not a TypeError
-  const three = () => must(placed.length === 3, 'nothing to act on: the place step failed');
 
   await step('damaged one to nothing, and it is gone', async () => {
     three();
