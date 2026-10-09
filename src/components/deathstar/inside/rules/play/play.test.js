@@ -390,3 +390,15 @@ describe('AA-23’s cameras', () => {
     expect(g.plot.progress.step).not.toBe('transfer-cameras');
   });
 });
+
+describe('the Emperor on his throne', () => {
+  it('sits in it while Luke is brought before him, not stood out behind it', () => {
+    const g = newGame({ station: 'ds2', side: 'rebel', mode: 'story', seed: 5, hero: 'luke' });
+    startPlot(g, 'throne');
+    const seat = g.layout.station.spots['throne-seat'];
+    for (let k = 0; k < 60; k++) step(g, { dir: { x: 0, z: 0 }, yaw: g.you.yaw, pitch: 0 });
+    const e = g.crew.people.find((p) => p.kind === 'emperor');
+    expect(Math.hypot(e.x - seat.x, e.z - seat.z)).toBeLessThan(0.1);
+    expect(e.anim).toBe('sit');
+  });
+});

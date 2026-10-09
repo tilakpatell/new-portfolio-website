@@ -85,13 +85,16 @@ const LIFT = [
   },
 ];
 
+// the Emperor on his throne, watching (he stands for the lightning)
+const SEATED = { role: 'scripted', script: [{ anim: 'sit' }] };
+
 const THRONE = [
   {
     id: 'throne',
     type: 'talk',
     text: 'Before the throne. The Emperor speaks, and your saber lies on the armrest at his side.',
     need: { talk: 'throne' },
-    start: [...bring('emperor', 'throne-seat', 'emperor', { role: 'scripted' }), ...bring('vader', 'under-stairs', 'vader', { role: 'scripted' })],
+    start: [...bring('emperor', 'throne-seat', 'emperor', SEATED), ...bring('vader', 'under-stairs', 'vader', { role: 'scripted' })],
   },
 ];
 
@@ -104,7 +107,7 @@ const DUEL = [
     start: [
       { give: 'saber' },
       { music: 'alert' },
-      ...bring('emperor', 'throne-seat', 'emperor', { role: 'scripted' }),
+      ...bring('emperor', 'throne-seat', 'emperor', SEATED),
       { despawn: 'vader' },
       ...spawn('vader', 'throne-armrest', 'duel-vader', { role: 'scripted', hostile: true }),
       say('vader', 'Obi-Wan has taught you well.'),

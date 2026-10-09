@@ -332,7 +332,10 @@ export function stepLegs(crew, p, dt, frozen = false) {
   const run = Boolean(dir && legs.nav.run && !shuffle);
   const g = gait((run ? BODY.run : BODY.walk) * (CAST[p.kind].speed ?? 1));
   const was = { x: p.x, z: p.z };
-  stepBody(p, { dir: dir ? { x: dir.x * g.len, z: dir.z * g.len } : { x: 0, z: 0 }, run: g.run }, dt, { layout: crew.layout, open: crew.world.open, solids: crew.solidsOf(p.room) });
+  // (one sat down and going nowhere keeps the seat: its middle is in the seat's solid, which would
+  // put them out behind it, as the Emperor behind his throne)
+  const sat = p.mind.pose === 'sit' && !dir && !legs.ride;
+  if (!sat) stepBody(p, { dir: dir ? { x: dir.x * g.len, z: dir.z * g.len } : { x: 0, z: 0 }, run: g.run }, dt, { layout: crew.layout, open: crew.world.open, solids: crew.solidsOf(p.room) });
   const moved = flat(was, p);
   // (a shuffle out of someone's way keeps the way they face)
   if (dir && !shuffle && moved > 1e-3 && !legs.want.lock) legs.want.yaw = Math.atan2(dir.x, -dir.z);
