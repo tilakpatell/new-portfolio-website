@@ -679,17 +679,33 @@ describe('a body drawn for its size on screen (planetLod.js)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('a station never goes below its halo, and keeps its hull and its sign there', async () => {
-    const p = await build('home');
-    const hull = p.body.parent.children.filter((o) => o !== p.body);
-    expect(hull.length).toBeGreaterThan(0);
-    p.setLod('hidden');
-    expect(p.lod).toBe('halo');
+  it('a station is drawn in full at any size: its hull, its sign, and its own motion, its torch’s flicker too', async () => {
+    const THREE = await import('three');
+    const p = await build('projects');
+    const camera = new THREE.PerspectiveCamera(50, 1.6, 0.1, 1e6);
+    camera.position.set(300, 120, 500);
+    camera.updateMatrixWorld(true);
+    for (const lod of ['halo', 'hidden']) {
+      p.setLod(lod);
+      expect(p.lod, lod).toBe('full');
+    }
+    p.update(1, camera, true, 2);
+    expect(p.lod).toBe('full');
     expect(p.group.visible).toBe(true);
     expect(p.sign.visible).toBe(true);
+    const hull = p.body.parent.children.filter((o) => o !== p.body);
+    expect(hull.length).toBeGreaterThan(0);
     for (const o of hull) expect(drawn(o, p.group)).toBe(true);
-    p.update(1, null, true, 2);
-    expect(p.lod).toBe('halo');
+    // (the welding torch, flickering as the ticks go on: lit and not)
+    let torch = null;
+    p.group.traverse((o) => (torch ??= o.isMesh && o.geometry?.type === 'IcosahedronGeometry' && o.geometry.parameters.detail === 1 && o.geometry.parameters.radius < p.radius * 0.02 ? o : null));
+    expect(torch).not.toBeNull();
+    const seen = new Set();
+    for (let t = 0; t < 3; t += 0.05) {
+      p.update(t, camera, true, 2);
+      seen.add(torch.visible);
+    }
+    expect([...seen].sort()).toEqual([false, true]);
     vi.unstubAllGlobals();
   });
 

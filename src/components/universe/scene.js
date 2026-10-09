@@ -161,6 +161,7 @@ import { createTraffic } from './traffic';
 import { createWingmen } from './wingmen';
 import { createSkirmishes } from './skirmishes';
 import { createBelt, createDust } from './belt';
+import { dropTransmission } from '../../lib/three/glass';
 import { createTrail } from './trail';
 import { BUILT, ENGINES, LENGTH, SHIP_MODELS, buildShip } from './shipModels';
 import { HERO_ENGINES, createEngines } from './engines';
@@ -515,6 +516,7 @@ export async function create(canvas, ctx) {
   // and the rim: a ring of ice right round the edge of the map (layout.js's RIM)
   const rim = createBelt({ small: Math.min(window.innerWidth, window.innerHeight) < 600, band: RIM, seed: 2049, tones: ['#c9d8e8', '#9fb4c8', '#dfe8f2', '#8ea0b4'], scale: 14, spin: 0.0012, count: 700, tier: device().tier });
   map.add(rim.group);
+  const beltView = { fov: FOV, height: 720, dt: 0 }; // (the lens and the frame its rocks are sized for, each frame)
   const dust = createDust({ small: Math.min(window.innerWidth, window.innerHeight) < 600 });
   map.add(dust.points);
   const camLocal = new THREE.Vector3();
@@ -1979,7 +1981,12 @@ export async function create(canvas, ctx) {
     } else if (SHIP_MODELS[kind]) {
       const model = state.model;
       loadModel(SHIP_MODELS[kind])
-        .then((m) => m && warm(model.dress(m)).then(() => m)) // (in its paint before its shaders are made)
+        // (in its paint before its shaders are made; the Falcon's canopy as
+        // plain glass, lib/three/glass, as the galaxy has it: glass with
+        // transmission has three draw every solid thing in view a second
+        // time, into a buffer for it to look through, every frame it's on
+        // screen: the belt's rocks, the stations, the sun, all twice)
+        .then((m) => m && (dropTransmission(m), warm(model.dress(m)).then(() => m)))
         .then((m) => {
           if (!m) return;
           if (disposed || state.model !== model || !model.mount(m)) disposeTree(m); // (the ship it was dressed for)
@@ -5026,8 +5033,10 @@ export async function create(canvas, ctx) {
     const dustWant = !reduced && flying() && !onFoot() && state.view !== 'map' ? 0.35 + 0.65 * clamp01(Math.abs(state.ship.speed) / SHIP.cruise) : 0;
     dustAmount += (dustWant - dustAmount) * clamp01(dt * 3);
     dust.update(camLocal, dustAmount, gl.ratio);
-    belt.update(t);
-    rim.update(t);
+    // (each rock under three pixels tall in the one far shape: belt.js)
+    Object.assign(beltView, { fov: camera.fov, height: size.h, dt });
+    belt.update(t, camLocal, beltView);
+    rim.update(t, camLocal, beltView);
     rim.group.visible = Math.hypot(camLocal.x, camLocal.z) > RIM.inner * 0.6; // (from deep inside the map its rocks are under a pixel: not drawn)
     // the cockpit over the world, once the camera's in the seat
     const showCab = Boolean(cab && cab.kind === state.kind && flying() && !onFoot() && state.view === 'cockpit' && state.cabK > 0.6 && !state.crash);

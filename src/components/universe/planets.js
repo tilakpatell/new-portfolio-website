@@ -1138,10 +1138,12 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
   const rimGlow = () => p.body.material?.userData?.air;
   if (shell && rimGlow()) rimGlow().uRimStrength.value = 0;
   const centre = new THREE.Vector3();
-  // a station's big sign, over it (turned to face you even at its halo, below)
+  // a station's big sign, over it
   const sign = u.sign ? bigSign(u) : null;
-  const faceSign = sign ? facing(sign) : null;
-  if (sign) group.add(sign);
+  if (sign) {
+    group.add(sign);
+    p.tick.push(facing(sign));
+  }
   // its near maps (nearMaps.js) in place of its own (planetMaps.js)
   const swap = mapSwapper(group, T, mapsOf(u.id));
   const swapMaps = (T2) => {
@@ -1158,20 +1160,22 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
   // What it draws for its size on screen (planetLod.js): 'full'; under 24
   // px its halo, its body and its halo only (the halo in the shell's place,
   // and none of its own motion); under 6, 'hidden', nothing (farPlaces.js's
-  // light instead); a station never below its halo, where it keeps its hull
-  // and its sign. What the halo hides it keeps a list of and shows again
-  // only those, so what the pace or the foot scene hid stays theirs to show;
-  // and the air is the pace's choice (setAir) and the halo's together.
+  // light instead). A station is drawn in full whatever its size: its hull
+  // is all it has to show, its sign says where to click, and frozen at a
+  // halo it stopped turning to you, its torches stuck lit and its tiles
+  // didn't come up when it was picked. What the halo hides it keeps a list
+  // of and shows again only those, so what the pace or the foot scene hid
+  // stays theirs to show; and the air is the pace's choice (setAir) and the
+  // halo's together.
   let lod = 'full';
   let far = false; // (farPlaces': past FAR_REAL, its light instead)
   let shellWanted = Boolean(shell); // (the pace's: the real air, or the old halo)
   const dropped = [];
-  // what the halo leaves out: all that's on it but its body, its air, a
-  // station's hull (on the spinner) and sign, and what its builder says is
-  // its own look (p.keep: the gate's galaxy); its orbits' holders too, so a
-  // model mounted on one meanwhile is hidden with it
+  // what the halo leaves out: all that's on it but its body, its air and
+  // what its builder says is its own look (p.keep: the gate's galaxy); its
+  // orbits' holders too, so a model mounted on one meanwhile is hidden with it
   const extras = () => {
-    const keep = new Set([spinner, haloMesh, shell?.mesh, sign, ...(p.keep ?? [])]);
+    const keep = new Set([spinner, haloMesh, shell?.mesh, ...(p.keep ?? [])]);
     const over = (o) => p.keep?.some((k) => {
       for (let a = k.parent; a; a = a.parent) if (a === o) return true;
       return false;
@@ -1194,7 +1198,7 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
   };
   const showGroup = () => (group.visible = !(far || lod === 'hidden'));
   const setLod = (want) => {
-    const next = core && want === 'hidden' ? 'halo' : want;
+    const next = core ? 'full' : want;
     if (next === lod) return;
     const was = lod;
     lod = next;
@@ -1293,8 +1297,6 @@ export function buildPlanet(u, T = {}, { sun = null, tier = 'high', key = null }
       if (shell?.mesh.visible) shell.update(group.getWorldPosition(centre));
       // (where the clouds have turned to over the ground: on the ground, or turning on their own)
       if (ground && cloudMesh) ground.uCloudTurn.value = (cloudMesh.rotation.y - (cloudMesh.parent === body ? 0 : body.rotation.y)) / (Math.PI * 2);
-      if (lod === 'hidden') return;
-      if (live) faceSign?.(t, camera);
       if (lod !== 'full') return;
       for (const o of p.orbits) o.set(t);
       if (live) for (const fn of p.tick) fn(t, camera);

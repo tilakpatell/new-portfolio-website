@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HALO_PX, HIDDEN_PX, lodOf, pxOf, segOf, standIn } from './planetLod';
+import { HALO_PX, HIDDEN_PX, lodOf, pxDistance, pxOf, segOf, standIn } from './planetLod';
 
 describe('a body’s size on screen', () => {
   it('is its height in pixels, from its radius, how far off it is, the lens and the frame', () => {
@@ -12,6 +12,22 @@ describe('a body’s size on screen', () => {
     // (the camera at it or inside it: it fills the frame)
     expect(pxOf(50, 50, 60, 900)).toBe(Infinity);
     expect(pxOf(50, 0, 60, 900)).toBe(Infinity);
+  });
+});
+
+describe('how far off a thing is a given size on screen', () => {
+  it('is where pxOf says it is that tall', () => {
+    for (const [r, px] of [
+      [0.3, 3],
+      [50, 24],
+      [2, 6],
+    ]) {
+      const d = pxDistance(r, px, 50, 720);
+      expect(pxOf(r, d, 50, 720)).toBeCloseTo(px, 9);
+    }
+    // (twice the size, twice as far; a taller frame, further)
+    expect(pxDistance(2, 3, 50, 720)).toBeCloseTo(pxDistance(1, 3, 50, 720) * 2, 9);
+    expect(pxDistance(1, 3, 50, 1440)).toBeCloseTo(pxDistance(1, 3, 50, 720) * 2, 9);
   });
 });
 

@@ -5,14 +5,16 @@
 // pixels a body shows its sphere and its halo only (no shell, clouds, props
 // or models, and none of its own motion: planets.js's setLod), and under 6
 // it isn't drawn at all, farPlaces.js's point of light standing in for it
-// however near it is (only for what farPlaces lights: the stations never go
-// below their halo). Each step back up is taken a tenth past its threshold,
+// however near it is (only for what farPlaces lights; a station is always
+// drawn in full). Each step back up is taken a tenth past its threshold,
 // so a body on the edge doesn't flicker between the two; and the light fades
 // out over the first half again above 6 pixels, under the body drawn again.
 // Pure: no three.js, no page.
 //
 //   pxOf(radius, distance, fovYDeg, viewportH) → its height on screen, px
 //       (Infinity with the camera at it or in it)
+//   pxDistance(radius, px, fovYDeg, viewportH) → how far off it's `px` tall
+//       (pxOf turned round: belt.js's rocks take their far shape past it)
 //   lodOf(px, was = null) → 'full' | 'halo' | 'hidden'
 //   standIn(px, lod) → how much farPlaces' light stands in for it, 0 … 1
 //   segOf(level, small) → [w, h], its sphere's segments at lib/detail's level
@@ -29,6 +31,8 @@ export function pxOf(radius, distance, fovYDeg, viewportH) {
   if (!(distance > radius)) return Infinity;
   return (radius / (distance * Math.tan((fovYDeg * Math.PI) / 360))) * viewportH;
 }
+
+export const pxDistance = (radius, px, fovYDeg, viewportH) => (radius * viewportH) / (px * Math.tan((fovYDeg * Math.PI) / 360));
 
 export function lodOf(px, was = null) {
   // (the threshold up into a level above the one it was at is a tenth higher)
