@@ -40,7 +40,6 @@ export const OWN_SHAKE = [
   { file: 'albuquerque/world/scene.js', pattern: RANDOM },
   { file: 'cybertron/game/scene.js', pattern: RANDOM },
   { file: 'universe/scene.js', pattern: /Math\.sin\(now \* 0\.047/ },
-  { file: 'deathstar/Trench3D.js', pattern: /shakeV\.set\(\(Math\.random\(\) - 0\.5\) \* k/ },
   { file: 'caribbean/tide/Tide3D.js', pattern: /const s = trauma \* trauma/ },
   { file: 'office/world/scene.js', pattern: RANDOM },
   { file: 'cybertron/rollout/RollOut3D.js', pattern: RANDOM },
