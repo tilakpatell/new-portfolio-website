@@ -370,10 +370,11 @@ export const SITES = {
       // Luke, hung by his ankles from the roof of the cave, his feet at the
       // ice block 4.6 m up (the saber step takes him down)
       { kind: 'luke', id: 'hungluke', at: cave([0, -10]), still: true, hang: 4.6, face: CAVE.yaw, name: 'Luke Skywalker', named: true, says: ['(Upside down, eyes shut, reaching for the saber in the snow.)'] },
-      // more walkers, far out on the plain, coming in (their own model, walking)
-      { kind: 'atat', n: 1, path: [[-260, 900], [-260, 660]], speed: 2.2, r: 2.2, name: 'AT-AT' },
-      { kind: 'atat', n: 1, path: [[140, 1000], [140, 760]], speed: 2.2, r: 2.2, name: 'AT-AT' },
-      { kind: 'atat', n: 1, path: [[470, 880], [470, 640]], speed: 2.2, r: 2.2, name: 'AT-AT' },
+      // more walkers, out at the edge of the plain, coming in (their own
+      // model, walking; inside the world's edge, as an actor can't step past it)
+      { kind: 'atat', n: 1, path: [[20, 580], [20, 470]], speed: 2.2, r: 2.2, name: 'AT-AT' },
+      { kind: 'atat', n: 1, path: [[260, 520], [260, 420]], speed: 2.2, r: 2.2, name: 'AT-AT' },
+      { kind: 'atat', n: 1, path: [[430, 380], [430, 260]], speed: 2.2, r: 2.2, name: 'AT-AT' },
       // another probe droid, still looking
       { kind: 'probe', id: 'probe', n: 1, at: [350, -110], y: 2.2, roam: 40, speed: 1.6, r: 0.6, name: 'Probe droid', says: ['(A burst of Imperial code, crackling and urgent.)', '(It stops, turns its lenses on you, and transmits.)'] },
     ],

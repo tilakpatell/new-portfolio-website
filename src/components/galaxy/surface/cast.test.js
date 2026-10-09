@@ -19,7 +19,7 @@ describe('how a kind is drawn', () => {
     const crew = vi.fn(async (k) => (k === 'hothtrooper' ? fig('crew:hothtrooper') : null));
     const model = vi.fn(none);
     const built = vi.fn(async () => fig('built'));
-    const out = await resolveFigure('rebel', { crew, model, built, prop: built }, { only: true, standIns: { rebel: 'hothtrooper' } });
+    const out = await resolveFigure('rebel', { crew, model, built, prop: built }, { only: true, standIns: { rebel: 'hothtrooper' }, pause: async () => {} });
     expect(out.name).toBe('crew:hothtrooper');
     expect(built).not.toHaveBeenCalled();
     expect(crew.mock.calls.map((c) => c[0])).toEqual(['rebel', 'rebel', 'hothtrooper']);
@@ -28,7 +28,7 @@ describe('how a kind is drawn', () => {
   it('under the models-only cast gives nothing, and says so, when no model will do', async () => {
     const warn = vi.fn();
     const built = vi.fn(async () => fig('built'));
-    const out = await resolveFigure('wampa', { crew: none, model: none, built, prop: built }, { only: true, standIns: {}, warn });
+    const out = await resolveFigure('wampa', { crew: none, model: none, built, prop: built }, { only: true, standIns: {}, warn, pause: async () => {} });
     expect(out).toBeNull();
     expect(built).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalledWith('wampa');
@@ -38,7 +38,7 @@ describe('how a kind is drawn', () => {
     const boom = async () => {
       throw new Error('404');
     };
-    const out = await resolveFigure('rebel', { crew: boom, model: boom, built: none, prop: none }, { only: true, standIns: {} });
+    const out = await resolveFigure('rebel', { crew: boom, model: boom, built: none, prop: none }, { only: true, standIns: {}, pause: async () => {} });
     expect(out).toBeNull();
   });
 
@@ -49,5 +49,17 @@ describe('how a kind is drawn', () => {
 
   it('every stand-in is itself a model', () => {
     for (const [kind, to] of Object.entries(STAND_INS)) expect(Boolean(CREW[to] || SURFACE_MODELS[to]), `${kind} → ${to}`).toBe(true);
+  });
+  it('on a world that builds, a file that throws still fails the figure, as it always did', async () => {
+    const boom = async () => {
+      throw new Error('bad file');
+    };
+    await expect(resolveFigure('rebel', { crew: boom, model: none, built: async () => fig('built'), prop: none })).rejects.toThrow('bad file');
+  });
+
+  it('under the models-only cast, waits a moment before trying the files again', async () => {
+    const pause = vi.fn(async () => {});
+    await resolveFigure('wampa', { crew: none, model: none, built: none, prop: none }, { only: true, standIns: {}, pause });
+    expect(pause).toHaveBeenCalledTimes(1);
   });
 });

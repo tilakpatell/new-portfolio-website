@@ -104,7 +104,7 @@ import { groundPainter, mapAreaOf } from './groundPaint';
 import { floorShadow } from '../../../lib/three/grounding';
 import { PROPS as GALAXY_PROPS, SCATTER as GALAXY_SCATTER } from './props';
 import { createPlacer } from './placer';
-import { createActors, modelFigure } from './actors';
+import { anyFigure, createActors, modelFigure } from './actors';
 import { RIDES as GALAXY_RIDES } from './rides';
 import { SEATS, poseRider } from './riders';
 import { createPeers } from './peers';
@@ -421,7 +421,7 @@ export async function create(canvas, ctx) {
       else if (ev === 'cut') popSound();
     } else gadgetSound(how, ev);
   };
-  const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound });
+  const activity = createActivity({ parent: scene, world, warm, kit, color: site.accent, onShow: showSound, only: site.cast === 'models' });
   // (a battle fills the air with bolts: room for them)
   const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
   // the ground war: who holds which turf, and its soldiers, made round you as you go (ground/)
@@ -492,7 +492,7 @@ export async function create(canvas, ctx) {
         }
         // its catalogue model in place of the build once it's here (the
         // herd grazing round it is that model: the ridden one should match)
-        modelFigure(spec.figure, models)
+        (site.cast === 'models' ? anyFigure(spec.figure, {}, kit, 0, models, { only: true }) : modelFigure(spec.figure, models))
           .then((model) => {
             if (!model || !holder.parent) return;
             if (ridee.fig) holder.remove(ridee.fig.model);
@@ -805,7 +805,7 @@ export async function create(canvas, ctx) {
   let strode = 0;
 
   // ── The other pilots down here (online) ──
-  const peers = createPeers({ parent: scene, placer, rides: RIDES, models, getCast: () => (cast ??= createMeshyCast(withWardrobe())) });
+  const peers = createPeers({ parent: scene, placer, rides: RIDES, models, only: site.cast === 'models', getCast: () => (cast ??= createMeshyCast(withWardrobe())) });
 
   await breathe();
   // ── State ──
@@ -1602,7 +1602,7 @@ export async function create(canvas, ctx) {
     const ev = e?.type === 'mission' ? e.event : null;
     if ((ev?.type === 'capture' && ev.you) || ev?.type === 'won') cheer();
   };
-  const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit: battleSaid, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced }) : null;
+  const assault = mission?.kind === 'assault' ? createAssaultMission({ parent: scene, world, blaster, mission, emit: battleSaid, say, sounds, kit, warm, tier: small ? 'mid' : tier, reduced, only: site.cast === 'models' }) : null;
   const assaultOn = () => Boolean(assault?.running());
   // what your blaster can hit, and what a hit does: the battle's soldiers while it's on, the quests' targets otherwise
   const shootable = () => [...groundWar.targets, ...(assaultOn() ? assault.targets : activity.targets)];

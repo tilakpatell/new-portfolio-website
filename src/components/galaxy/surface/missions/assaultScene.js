@@ -198,7 +198,7 @@ function chevron(colour) {
   return new THREE.SpriteMaterial({ map: t, sizeAttenuation: false, depthTest: false, depthWrite: false, transparent: true, opacity: 0.85 });
 }
 
-export function createAssaultMission({ parent, world, blaster, mission, emit, say, sounds, kit = null, warm = (o) => Promise.resolve(o), tier = 'high', reduced = false }) {
+export function createAssaultMission({ parent, world, blaster, mission, emit, say, sounds, kit = null, warm = (o) => Promise.resolve(o), tier = 'high', reduced = false, only = false }) {
   const group = new THREE.Group();
   group.name = 'assault';
   parent.add(group);
@@ -235,7 +235,7 @@ export function createAssaultMission({ parent, world, blaster, mission, emit, sa
       holder.add(mark);
       const body = fresh({ holder, mark, fig: null, kind: s.kind, ready: false, rigged: false, base: null, aiming: false });
       bodies.push(body);
-      anyFigure(s.kind, {}, kit)
+      anyFigure(s.kind, {}, kit, 0, undefined, { only })
         .then((fig) => {
           if (!fig || dead) return;
           holder.add(fig.model);

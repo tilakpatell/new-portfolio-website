@@ -49,4 +49,7 @@ describe('Hoth, every one of them a model', () => {
   it('every stand-in Hoth may need is a model', () => {
     for (const kind of new Set(hoth.life.map((a) => a.kind))) if (STAND_INS[kind]) expect(filesFor(STAND_INS[kind]).length, kind).toBeGreaterThan(0);
   });
+  it('everyone walks inside the world’s edge (past it an actor can’t take a step)', () => {
+    for (const a of hoth.life.filter((a) => a.path && !a.zone)) for (const [x, z] of a.path) expect(Math.hypot(x, z), `${a.kind} at ${x}, ${z}`).toBeLessThan(hoth.reach - 5);
+  });
 });

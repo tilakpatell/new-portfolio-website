@@ -242,6 +242,8 @@ export function createGround({ parent, world, site, effects, tier = 'high', kit 
         if (figures.dying(t, dt)) figures.remove(t.id);
         continue;
       }
+      // (one a world that takes models only had no model for: never there, never firing)
+      if (t.faceless) continue;
       const d = Math.hypot(s.b.x - you.x, s.b.z - you.z);
       if (d > BRAINS) continue;
       const was = { x: s.b.x, z: s.b.z };

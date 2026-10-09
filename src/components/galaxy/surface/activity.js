@@ -56,7 +56,7 @@
 
 import * as THREE from 'three';
 import { buildFigure } from './figures';
-import { modelFigure } from './actors';
+import { anyFigure, modelFigure } from './actors';
 import { crewFigure } from './crew';
 import { PROPS } from './props';
 import { groundAt, shoreStep, turnToward } from './walker';
@@ -292,7 +292,7 @@ export function markMaterials() {
   };
 }
 
-export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null, onShow = null }) {
+export function createActivity({ parent, world, warm = (o) => Promise.resolve(o), color = '#ffd36a', kit = null, onShow = null, only = false }) {
   const group = new THREE.Group();
   group.name = 'activity';
   parent.add(group);
@@ -357,6 +357,8 @@ export function createActivity({ parent, world, warm = (o) => Promise.resolve(o)
 
   const figure = async (kind, spec) => {
     if (SPECIAL[kind]) return SPECIAL[kind]();
+    // (a world that takes models only: a model, a stand-in or nothing; cast.js)
+    if (only) return anyFigure(kind, spec, kit, 0, undefined, { only });
     if (spec.model !== false) {
       // (a walking crew figure first: a rigged one holds its gun or its blade
       // in its own hand; else the catalogue's model, which holds a blade

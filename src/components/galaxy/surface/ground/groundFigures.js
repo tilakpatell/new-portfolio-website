@@ -156,6 +156,8 @@ export function createFigures({ parent, world, warm = (o) => Promise.resolve(o),
       .take(t.soldier.kind, id)
       .then((fig) => {
         making = false;
+        // (no model, on a world that takes models only: it stays out of the fight, groundScene.js)
+        if (!fig && only && records.get(id) === t) t.faceless = true;
         if (!fig || dead) return;
         if (records.get(id) !== t) return pool.give(id);
         attach(t, fig);

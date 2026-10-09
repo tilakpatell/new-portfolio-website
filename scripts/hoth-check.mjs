@@ -89,7 +89,14 @@ report('Echo Base', await collect());
 
 // ── the Battle of Hoth ──
 await land('/galaxy/hoth/surface?mission=assault');
-await page.waitForFunction(() => window.__surface?.()?.mission?.phase === 'choose', null, { timeout: 240000 }).catch(() => {});
+const started = await page
+  .waitForFunction(() => window.__surface?.()?.mission?.phase === 'choose', null, { timeout: 240000 })
+  .then(() => true)
+  .catch(() => false);
+if (!started) {
+  console.log('\nFAIL: the Battle of Hoth never opened');
+  failed = true;
+}
 await page.evaluate(() => window.__surfaceDo('missionDo', 'side', 'defend'));
 await page.waitForTimeout(1500);
 await page.evaluate(() => window.__surfaceDo('missionDo', 'deploy', 'trenches'));
