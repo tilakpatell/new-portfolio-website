@@ -9,7 +9,7 @@
 //   seconds: 3            (the clip's length, 1 to 10; under 5 keeps the model under 26 GB)
 //   seed: 42  cfg: 5      (another take; how closely to follow the words)
 //   model: lite           (HY-Motion-1.0-Lite, 0.46B, in place of the 1B)
-//   with: sword.heavy     (the library clip on the sheet beside it: public/games/meshy/ual-NAME.glb)
+//   with: sword.heavy.a     (the library clip on the sheet beside it: public/games/meshy/ual-NAME.glb)
 //
 //   node scripts/motion/runner.mjs --issue N | --sweep | --watch [60] | --pending | --enqueue
 //
@@ -52,8 +52,8 @@ export function parseIssue({ number, title, body = '' }) {
   else if (prompt.split(/\s+/).length > 60) errors.push(`prompt: ${prompt.split(/\s+/).length} words; HY-Motion follows under 60 best`);
   const model = (f.model ?? 'standard').toLowerCase();
   if (!['standard', 'lite'].includes(model)) errors.push(`model: "${f.model}" isn't standard or lite`);
-  const other = f.with ?? 'sword.heavy';
-  if (!/^[a-z0-9][a-z0-9.-]*$/.test(other)) errors.push(`with: "${f.with}" isn't a library clip's name (sword.heavy, sword.a, …)`);
+  const other = f.with ?? 'sword.heavy.a';
+  if (!/^[a-z0-9][a-z0-9.-]*$/.test(other)) errors.push(`with: "${f.with}" isn't a library clip's name (sword.heavy.a, sword.a, …)`);
   const job = { number, name, prompt, seconds: num('seconds', 1, 10, 3), seed: num('seed', 0, 2 ** 31, 42), cfg: num('cfg', 1, 15, 5), lite: model === 'lite', with: other };
   if (errors.length) job.error = errors.join('; ');
   return job;

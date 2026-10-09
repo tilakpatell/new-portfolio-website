@@ -16,6 +16,7 @@ import { rng } from '../../lib/texture';
 import { WALK } from './walk';
 import { EMBER, FIRE, SMOKE, createParticles, lavaMaterial, makeHobbit, makeOrc, skyDome, stoneTextures } from './kit';
 import { castDo, releaseCast, tickCast, upgrade } from './cast3d';
+import { createShake } from './feel';
 
 // the drawing's x (see walk.js) to the scene's: the road runs along x
 const X = (svg) => (svg - 265) / 10;
@@ -445,6 +446,8 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
 
   // ── what is going on ──
   const S = { phase: 'ready', x: WALK.x0, spot: 265, burden: 0, patrols: [], carried: false, walking: false };
+  // one shake, the site's (./feel.js), with Gorgoroth's own numbers: trauma² × 0.5, fading 1.6 a second
+  const shake = createShake({ calm: reduced, offset: 0.5, decay: 1.6, title: 'Gorgoroth' });
   const A = { t: 0, hide: 1, sweep: 265, anger: 0, dim: 1, shake: 0, flash: 0, bolt: 5, door: 0, wide: 1, acc: { plume: 0, ash: 0, ember: 0, torch: 0 } };
   let cam = null;
   const v = new THREE.Vector3();
@@ -618,7 +621,6 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
 
     // ── the camera: behind them and to one side, the road running on to the mountain ──
     A.wide = ease(A.wide, S.phase === 'ready' ? 1 : 0, 1.2);
-    A.shake = Math.max(0, A.shake - dt * 1.6);
     const narrow = Math.max(0, 1.5 - camera.aspect) * 9;
     const wantX = hx - 6.5 - A.wide * 7 - narrow * 0.6;
     if (!cam) cam = { x: wantX };
@@ -627,10 +629,11 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
     const cy = Math.max(3.8 + A.wide * 3.2 + narrow * 0.35, height(cam.x, cz) + 2);
     camera.position.set(cam.x, cy, cz);
     if (!reduced) {
-      const q = A.shake * A.shake * 0.5;
-      camera.position.x += Math.sin(t * 0.21) * 0.3 + Math.sin(t * 57) * q;
-      camera.position.y += Math.sin(t * 0.29) * 0.15 + Math.sin(t * 43 + 1) * q;
+      camera.position.x += Math.sin(t * 0.21) * 0.3;
+      camera.position.y += Math.sin(t * 0.29) * 0.15;
     }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(cam.x + 13 + A.wide * 6, 2.2 + A.wide * 5.2, -2.2);
     glow.target.position.set(cam.x + 12, 0, 0);
     glow.position.set(cam.x + 12 + 30, 22, -16);
@@ -648,6 +651,7 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
     render,
     resize: stage.resize,
     dispose() {
+      shake.dispose();
       alive = false;
       models.dispose();
       releaseCast(scene);

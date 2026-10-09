@@ -36,6 +36,7 @@ import { CAST, CHAMBER, COMPANY, FLIGHT, FORK, GATE, GATE_ROCKS, HALL, HALL_COLL
 import { PLANK, TUMBLE } from './rules';
 import { sharpen } from '../../../../lib/three/textures';
 import { attend, castDo, fight, followDrawn, releaseCast, tickCast, upgrade } from '../../cast3d';
+import { byFrame, createShake } from '../../feel';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -492,6 +493,8 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, lit: 0, open: 0, ithil: 0, stir: 0, fire: 0 };
+  const shake = createShake({ title: 'Moria' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { slam: 60, hit: 70, break: 90 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -816,15 +819,12 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     const key = `${zone}|${s.mode}|${s.camShot?.id ?? ''}`;
     const jump = A.mode !== key;
     A.mode = key;
-    const ease = jump ? 1 : Math.min(1, dt * (s.mode === 'walk' || s.mode === 'flight' ? 7 : 2.4));
+    const ease = jump ? 1 : byFrame(s.mode === 'walk' || s.mode === 'flight' ? 7 : 2.4, dt);
     A.cam.at.lerp(camAt, ease);
     A.cam.look.lerp(camLook, ease);
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
@@ -837,6 +837,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type, at) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'slam') {
       A.shake = Math.max(A.shake, 0.18);
       if (at) fx.puff(V(at.x, gateHeight(at.x, at.z) + 0.3, at.z), V(0, 1, 0), 10);
@@ -868,6 +869,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    timeScale: shake.feel.timeScale, // how much of a frame the game runs: less for a moment in a hitstop
     screenOf,
     resize: stage.resize,
     get info() {
@@ -881,6 +883,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
       return null;
     },
     dispose() {
+      shake.dispose();
       for (const g of grounds) g.dispose();
       ghosts.dispose();
       disposeTree(scene);

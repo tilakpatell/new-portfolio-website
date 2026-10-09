@@ -31,8 +31,6 @@ function walk(at = '') {
   return out;
 }
 
-const TOWNS = ['amonhen', 'bree', 'cirithungol', 'doom', 'edoras', 'lorien', 'marshes', 'minastirith', 'moria', 'orthanc', 'rivendell', 'weathertop'];
-
 // a camera nudged by Math.random() times a shake
 const RANDOM = /Math\.random\(\) - 0\.5\) \* [\w.]*shake/;
 
@@ -46,10 +44,6 @@ export const OWN_SHAKE = [
   { file: 'caribbean/tide/Tide3D.js', pattern: /const s = trauma \* trauma/ },
   { file: 'office/world/scene.js', pattern: RANDOM },
   { file: 'cybertron/rollout/RollOut3D.js', pattern: RANDOM },
-  { file: 'middleearth/shire/scene.js', pattern: RANDOM },
-  ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: RANDOM })),
-  { file: 'middleearth/Bridge3D.js', pattern: /A\.shake \* A\.shake \* 0\.7/ },
-  { file: 'middleearth/Gorgoroth3D.js', pattern: /A\.shake \* A\.shake \* 0\.5/ },
 ];
 
 export const DEAD_HITSTOP = [
@@ -68,15 +62,12 @@ export const NO_PRESS = [
   { file: 'deathstar/inside/rules/walker.js', pattern: /input\.jump && body\.ground/ },
   { file: 'avengers/smash/rules.js', pattern: /H\.air > 0 \|\| H\.smash >= 0\) return false/ },
   { file: 'universe/foot.js', pattern: /input\.jump && h <= 1e-6/ },
-  { file: 'middleearth/rush/Rush.jsx', pattern: /sm\.dash = false/ },
 ];
 
 // the walkers’ camera: at once on a cut, else `min(1, dt × k)` a frame
 const CUT_EASE = /= jump\b[^;]*\? 1 : Math\.min\(1, dt \* \(/;
 
 export const LINEAR_CAMERA = [
-  { file: 'middleearth/shire/scene.js', pattern: CUT_EASE },
-  ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: CUT_EASE })),
   // (the office’s walkable world: the towns’ camera, which the audit’s list missed)
   { file: 'office/world/scene.js', pattern: CUT_EASE },
   { file: 'avengers/repulsor/scene.js', pattern: /camX \+= \(px - camX\) \* Math\.min\(1, realDt \* 30\)/ },
@@ -146,7 +137,7 @@ describe('the feel ratchet', () => {
     });
   }
 
-  // (at most: each lane that fixes a file takes it off, and the lists only shrink)
+  // (at most: each lane takes its own off, so the counts only fall)
   it('holds no more than the audit’s counts', () => {
     expect(OWN_SHAKE.map((e) => e.file).filter((f) => !f.includes('/towns/')).length).toBeLessThanOrEqual(16);
     expect(DEAD_HITSTOP.length).toBeLessThanOrEqual(3);
