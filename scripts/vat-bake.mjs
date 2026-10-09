@@ -36,22 +36,21 @@
 // packed with its packSkinMatrix and halved with its toHalf (rounded to
 // even; three's DataUtils truncates). A clip borrowed from a Meshy-skeleton
 // file (public/games/meshy/ual-*.glb, act-*.glb) is retargeted as the site
-// plays it: clipLibrary.js's retarget(), its turns kept and the hips'
-// position scaled by the body's hips' height over the file's (no other
-// position or scale). Those lines are copied here, not imported: the clip
-// library loads through the site's loader (./gltf, extensionless, for
-// Vite), which Node can't import. A texture over 4096 rows is refused.
+// plays it: the very retarget() the clip library re-exports, imported from
+// src/lib/three/retarget.js (which imports only three, so Node can load it):
+// its turns kept and the hips' position scaled by the body's hips' height
+// over the file's (no other position or scale). A texture over 4096 rows is
+// refused.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { RICK_HIPS, retarget } from '../src/lib/three/retarget.js';
 import { packSkinMatrix, toHalf, vatLayout, vatTexel } from '../src/lib/three/vat.js';
 
 const MAX_ROWS = 4096;
-// the hips' height clipLibrary.js assumes for a file that doesn't say (RICK_HIPS)
-const RICK_HIPS = 90.233;
 
 const fail = (msg) => {
   console.error(`vat-bake: ${msg}`);
@@ -104,21 +103,6 @@ async function loadGlb(file) {
 }
 
 const hipsOf = (scene) => scene.getObjectByName('Hips')?.position.y ?? null;
-
-// clipLibrary.js's retarget(): every turn, and the hips' position scaled from `from` to `hipsY`
-function retarget(clip, hipsY, from) {
-  const k = hipsY / from;
-  const tracks = [];
-  for (const tr of clip.tracks) {
-    if (/\.quaternion$/.test(tr.name)) tracks.push(tr.clone());
-    else if (/^Hips\.position$/.test(tr.name)) {
-      const t = tr.clone();
-      for (let i = 0; i < t.values.length; i++) t.values[i] *= k;
-      tracks.push(t);
-    }
-  }
-  return new THREE.AnimationClip(clip.name, clip.duration, tracks);
-}
 
 const body = await loadGlb(BODY);
 const scene = body.scene;

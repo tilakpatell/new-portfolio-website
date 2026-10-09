@@ -29,13 +29,11 @@
 
 import * as THREE from 'three';
 import { gltfLoader } from './gltf';
+import { RICK_HIPS, retarget } from './retarget';
 
 const BASE = '/games/meshy';
 const TROOPS = '/models/galaxy/troops';
-// how high the hips stand in the clips' rig units, as the crews out of the
-// ship have always scaled them (a clip that says, as every loaded one does,
-// is scaled from its own)
-export const RICK_HIPS = 90.233;
+export { RICK_HIPS, retarget };
 
 export const CLIPS = {
   // Rick's, for any figure without its own
@@ -407,25 +405,6 @@ export function forFigure(name, { hipsY = null, up = null, key = null, ahead = n
 // not; the same clip loadClip hands out for the ones it does
 export function borrowClips(names = ['idle', 'walk', 'run'], { loader = null } = {}) {
   return Promise.all(names.map((n) => take({ url: `${BASE}/rick-${n}.glb` }, loader))).then((got) => Object.fromEntries(names.map((n, i) => [n, got[i]])));
-}
-
-// A copy of `clip` for a figure whose hips stand `hipsY` high (in its rig's
-// units): every bone's turn, and the hips' position scaled from `from`'s;
-// anything else (a bone's position or scale) left out, as it would stretch
-// the figure to Rick's proportions.
-export function retarget(clip, hipsY, from = RICK_HIPS) {
-  if (!clip) return null;
-  const k = hipsY / from;
-  const tracks = [];
-  for (const tr of clip.tracks) {
-    if (/\.quaternion$/.test(tr.name)) tracks.push(tr.clone());
-    else if (/^Hips\.position$/.test(tr.name)) {
-      const t = tr.clone();
-      for (let i = 0; i < t.values.length; i++) t.values[i] *= k;
-      tracks.push(t);
-    }
-  }
-  return new THREE.AnimationClip(clip.name, clip.duration, tracks);
 }
 
 // Meshy's idle stands turned off to one side, like a fighter's stance: turn
