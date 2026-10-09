@@ -82,7 +82,6 @@ export const LINEAR_CAMERA = [
   // (the office’s walkable world: the towns’ camera, which the audit’s list missed)
   { file: 'office/world/scene.js', pattern: CUT_EASE },
   { file: 'avengers/repulsor/scene.js', pattern: /camX \+= \(px - camX\) \* Math\.min\(1, realDt \* 30\)/ },
-  { file: 'rickmorty/CruiserFlight.jsx', pattern: /\(goal - shown\) \* 0\.12/ },
 ];
 
 export const UNANSWERED = [
