@@ -263,20 +263,22 @@ test('a solid at 0 m (the muzzle inside a wall) ends the bolt at the muzzle with
 **Interfaces:**
 - Produces: `createDuellist({ reach = 2.2, guard = 0.6, parry = 0.35, stance = 'single', seed }) → d`; `duelStep(d, you, dt, rng) → { state, move: [dx, dz], face, stroke: clip | null, block: bool }` over states `approach | circle | attack | recover | block | parry | stagger | dead`, with `you = { pos, swinging: { contact: [t0, t1], t } | null, dist }`. `onHit(d, { heavy })`, `onParried(d)` (→ `stagger` 0.6 s then `attack`), `onGuardBroken(d)` (→ `stagger` 2 s). The block decision when `you.swinging` starts: `rng() < guard` → `block` held through your contact; the parry decision: `block` begun within `PARRY.window` before your contact and `rng() < parry` → `parry`.
 
-- [ ] **Step 1:** Tests: the states in order from 10 m (approach → circle → attack); a block when the roll beats `guard`; a parry inside the window and not outside; stagger on `onParried`; a target that dies (`you.dead`) or jumps 20 m mid-attack → `approach` with `stroke: null`; a seeded `rng` makes it deterministic. **Steps 2–5.** Commit — `"A duellist's mind: approach, circle, attack, block, parry, stagger"`.
+- [x] **Step 1:** Tests: the states in order from 10 m (approach → circle → attack); a block when the roll beats `guard`; a parry inside the window and not outside; stagger on `onParried`; a target that dies (`you.dead`) or jumps 20 m mid-attack → `approach` with `stroke: null`; a seeded `rng` makes it deterministic. **Steps 2–5.** Commit — `"A duellist's mind: approach, circle, attack, block, parry, stagger"`.
 
 ### Task D2: rigged duellists on the saber module
 
 **Files:**
 - Modify: `galaxy/surface/activity.js` (a spawn with `hostile.blade` is a `crewFigure` with a `saber` gunplay driven by `createSaber` and `duelStep`; its blade's `sweep` against the player's capsule inside its contact; the random parry deleted; `t.blade.swing` cosmetic path deleted), `heldBlade.js` (the unrigged branch deleted; `bladeInHand` passes real `targets`), `sites/dagobah.js` (the vision → the `vader` crew figure), `sites/naboo.js` (Maul), `sites/geonosis.js` (Dooku), `sites/lothal.js` (the Inquisitor), `scene.js` (your parry: the block pressed within `PARRY.window` before their contact → `onParried(d)`; the clash: `blade.clash(theirs)` → sparks, 120 ms hit-stop; your block inside their contact → the guard spends; their hit lands on `sweep`).
 
-- [ ] **Step 1:** `galaxy/surface/sites/validity.test.js` still passes with the new spawns. **Step 2:** Scenario test: a duellist's stroke at you with your block up in the window spends the guard and deals nothing; without the block deals its damage; your stroke into their held block is turned. **Step 3:** `autopilot-check --routes '/galaxy/dagobah'`: the vision with a red blade, rigged. **Step 4: Commit** — `"Duellists are rigged figures that block, parry on contact and riposte"`.
+- [x] **Step 1:** `galaxy/surface/sites/validity.test.js` still passes with the new spawns. **Step 2:** Scenario test: a duellist's stroke at you with your block up in the window spends the guard and deals nothing; without the block deals its damage; your stroke into their held block is turned. **Step 3:** `autopilot-check --routes '/galaxy/dagobah'`: the vision with a red blade, rigged. **Step 4: Commit** — `"Duellists are rigged figures that block, parry on contact and riposte"`.
 
 ### Task D3: deflected bolts go home
 
-- [ ] With Lane B in: a `deflect` event's bolt is already turned toward its shooter by B1; here the sound, the sparks and the guard's cost. Test: a stormtrooper's bolt turned by the raised blade kills the stormtrooper. Commit.
+- [x] With Lane B in: a `deflect` event's bolt is already turned toward its shooter by B1; here the sound, the sparks and the guard's cost. Test: a stormtrooper's bolt turned by the raised blade kills the stormtrooper. Commit.
 
 ### Task D4: handoff and PR.
+
+- [x] `HANDOFF-combat.md`'s Lane D section; the PR.
 
 ## Lane E: parity on foot, in Rick and Morty, and on touch
 
