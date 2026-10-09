@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CLIPS } from '../../../lib/three/clipLibrary';
-import { BLOCK_CLIP, DASH_CLIP, DIRS, DODGE, FORCE, GUARD, HEAVY, PARRY, STANCES, STANCE_IDS, STRIKE, dodgeStep, forceAt, guardHit, guardStep, hitStop, lungeTo, parried, pushVelocity, rootScale, stanceOf, strokeFor } from './combatRules';
+import { BLOCK_CLIP, DASH_CLIP, DIRS, DODGE, FORCE, GUARD, HEAVY, PARRY, STANCES, STANCE_IDS, STRIKE, dodgeStep, forceAt, guardHit, guardStep, blockOutcome, hitStop, lungeTo, pushVelocity, rootScale, stanceOf, strokeFor } from './combatRules';
 
 describe('the stances', () => {
   it('each strokes in clips the library has, with its numbers', () => {
@@ -110,11 +110,22 @@ describe('the guard and the parry', () => {
     expect(back.brokenAt).toBeNull();
     expect(back.value).toBeGreaterThan(0);
   });
-  it('parries only a swipe that lands just after the block went up', () => {
-    expect(parried(5, 5.1)).toBe(true);
-    expect(parried(5, 5 + PARRY.window + 0.01)).toBe(false);
-    expect(parried(null, 5)).toBe(false);
-    expect(parried(6, 5)).toBe(false);
+  // their blade's contact, met by yours: a parry is the block begun within
+  // the window before their contact (or between it and now); held up from
+  // earlier it's a block; not up at all, the stroke lands
+  it('parries a block begun within the window before their contact, blocks one up from before', () => {
+    const at = { contactAt: 10, now: 10.1 };
+    expect(blockOutcome({ shown: true, blockAt: 10 - PARRY.window + 0.01, ...at })).toBe('parry');
+    expect(blockOutcome({ shown: true, blockAt: 10.05, ...at })).toBe('parry');
+    expect(blockOutcome({ shown: true, blockAt: 10 - PARRY.window - 0.01, ...at })).toBe('block');
+    expect(blockOutcome({ shown: true, blockAt: null, ...at })).toBe('block');
+    expect(blockOutcome({ shown: false, blockAt: 9.95, ...at })).toBe('hit');
+    // (a perk's wider window)
+    expect(blockOutcome({ shown: true, blockAt: 9.6, ...at, window: 0.5 })).toBe('parry');
+  });
+  it('a swipe that lands as it’s decided (a brawler’s) is parried by a block just before it', () => {
+    expect(blockOutcome({ shown: true, blockAt: 4.9, contactAt: 5, now: 5 })).toBe('parry');
+    expect(blockOutcome({ shown: true, blockAt: 5 - PARRY.window - 0.05, contactAt: 5, now: 5 })).toBe('block');
   });
 });
 

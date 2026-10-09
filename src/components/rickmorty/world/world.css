@@ -457,6 +457,10 @@
   font-size: 22px;
 }
 
+/* the lock-on under it (Tab on a keyboard): a word, not a glyph; lime while it's on */
+.rm-lift .rm-lock { font: 700 0.72rem/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
+.rm-lift .rm-lock[data-on] { background: var(--rm-lime); color: var(--rm-ink); }
+
 /* the emote wheel (B held, or its button on a touch screen): five round the middle of the view */
 .rm-wheel { position: absolute; left: 50%; top: 50%; z-index: 5; width: 0; height: 0; }
 .rm-wheel-mid { position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 92px; height: 92px; padding: 0.4rem; border: 2px solid var(--rm-ink); border-radius: 50%; background: var(--rm-glass); color: rgba(255, 255, 255, 0.78); font: 600 0.7rem/1.25 var(--font-sans); text-align: center; box-shadow: 0 3px 0 rgba(27, 20, 36, 0.6); transform: translate(-50%, -50%); cursor: pointer; animation: rm-wheel-in 0.14s ease-out both; }

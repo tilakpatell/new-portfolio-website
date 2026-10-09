@@ -88,6 +88,11 @@ import { createHouse } from '../../../lib/three/house';
 import { adoptLater, exposureOf, groundPieces, lookOf } from './look';
 import { surfaceTuning, siteCode } from './tune';
 import { debugOn, debugPanel } from '../../../lib/debugPanel';
+import { createFeel, feelGroups } from '../../../lib/three/feel';
+import { createPress, pressGroups } from '../../../lib/press';
+import { rideFov } from './rides';
+import { downAt } from './respawn';
+import { createSquash } from './squash';
 import { createGrass } from '../../../lib/three/grass';
 import { amountsFor } from './amounts';
 import { createWind } from '../../../lib/three/wind';
@@ -110,7 +115,9 @@ import { applyEmote, createEmoteWheel, emotePacket, keepEmote, readEmote } from 
 import { preload } from '../../../lib/three/clipLibrary';
 import { fallTurn } from '../../../lib/three/locomotion';
 import { createSaber } from './saber';
-import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, parried, pushVelocity } from './combatRules';
+import { DODGE, FORCE, GUARD, HEAVY, PARRY, dodgeStep, forceAt, guardHit, guardStep, hitStop, pushVelocity } from './combatRules';
+import { DUEL } from '../../../lib/combat/duel';
+import { met, swingingOf } from './duellists';
 import { heatShot, heatStep, spreadAt, vent, ventSpot, withMods } from './weaponRules';
 import { heroById, heroSpec, partyFor, refitOf, writeHero } from '../heroes';
 import { perkEffects } from '../perks';
@@ -119,6 +126,7 @@ import { feed, isOffered, nextQuest, questsOf, start as startQuest, stepTarget, 
 import { buildFigure } from './figures';
 import { WALK, createSolids, groundAt, lineClear, pushOut, ride, rider, turnToward, walk, walker } from './walker';
 import { aimDir, lookFriction } from './aimShot';
+import { createSurfaceLockOn } from './surfaceLockOn';
 import { surfaceLook } from './surfaceLook';
 import { coneFor } from '../../../lib/combat/aim';
 import { rng } from './noise';
@@ -367,7 +375,13 @@ export async function create(canvas, ctx) {
   if (grass) scene.add(grass.mesh);
   // ?debug: the look, the grass and the wind on sliders, copied out as the
   // site's own blocks (lib/debugPanel, tune.js)
-  const panel = debugOn() ? debugPanel({ title: site.id, groups: surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), code: siteCode }) : null;
+  // the feel: every knock's shake (state.shake, drained into it each frame:
+  // trauma², held still under reduced motion), and the jump's press
+  const feel = createFeel({ calm: reduced, offset: 0.3 });
+  const jumpPress = createPress();
+  // your landing's squat, on a spring (squash.js)
+  const squash = createSquash({ calm: reduced });
+  const panel = debugOn() ? debugPanel({ title: site.id, groups: [...surfaceTuning({ house, skyFog, post, exposure: exposureOf(site), grass, wind }), ...feelGroups(feel), ...pressGroups(jumpPress)], code: siteCode }) : null;
   // the Meshy cast (the cruiser's two, the peers'): made here, before the
   // people, where a page's figure maker draws on it too (ctx.figures(cast)
   // → (kind, spec, i) → figure | null: the Rick and Morty planets' people);
@@ -795,7 +809,8 @@ export async function create(canvas, ctx) {
     keys: {},
     stick: { x: 0, y: 0 },
     buttons: { run: false },
-    jumpQueued: false,
+    // the jump: a moment early or a moment off an edge still lands (lib/press.js)
+    jumpPress,
     actQueued: false,
     throwQueued: false,
     dodgeQueued: false,
@@ -804,7 +819,8 @@ export async function create(canvas, ctx) {
     saberAt: -99, // when the saber last did something (it goes out after SABER_IDLE)
     // ── the fight (combatRules.js, weaponRules.js) ──
     guard: { value: guardMax, hitAt: null, brokenAt: null }, // what blocking spends
-    blockAt: null, // when C went down (a swipe just after is parried)
+    blockAt: null, // when C went down (their blade's contact just after is parried: blockOutcome)
+    reelUntil: -99, // till when you reel, your stroke parried (no stroke, no block)
     pressAt: null, // when F went down with a saber (held, it's the heavy stroke)
     dodge: null, // { t0, dx, dz }
     dodgedAt: -99,
@@ -948,7 +964,7 @@ export async function create(canvas, ctx) {
     if (down && !e.repeat) {
       sounds.start();
       if (state.phase === 'landing') skipLanding();
-      if (k === 'jump') state.jumpQueued = true;
+      if (k === 'jump') state.jumpPress.press();
       if (k === 'act') state.actQueued = true;
       if (k === 'fire') state.fireQueued = true;
       if (k === 'throw') state.throwQueued = true;
@@ -1730,7 +1746,7 @@ export async function create(canvas, ctx) {
   // a while after ──
   function swing(heavy = false) {
     const p = me();
-    if (state.guard.brokenAt != null || state.dodge) return;
+    if (state.guard.brokenAt != null || state.dodge || state.t < state.reelUntil) return;
     camera.getWorldDirection(camDir);
     // homing on the one you're facing: the stroke turns you to them over its
     // wind-up and its own step carries you in (saber.js); with no one, you
@@ -1826,6 +1842,8 @@ export async function create(canvas, ctx) {
     lockRing.material.color.set(me().spec.bolt ?? '#ffffff');
     lockTicks.material.color.copy(lockRing.material.color);
   }
+  // the lock-on (./surfaceLockOn.js): the camera kept on the lock while it's on
+  const lockOn = createSurfaceLockOn({ coarse: window.matchMedia?.('(pointer: coarse)').matches ?? false, emit });
   // the one your strokes home on: the nearest in front, within LOCK
   function pickLock() {
     const p = me().st;
@@ -2034,8 +2052,8 @@ export async function create(canvas, ctx) {
   // the blade through one of them: their blade turns it (sparks, a clash)
   // or it lands
   function saberHit(t, damage, at, { heavy = false, thrown = false } = {}) {
-    // their blade on yours: turned while their guard holds (each turned
-    // stroke drains it, a heavy one breaks it and they reel)
+    // their blade on yours: turned while it's up (each turned stroke drains
+    // their guard, a heavy one breaks it and they reel); parried, you reel
     const turn = thrown ? { parried: false, broke: false } : on(t).parry(t, { heavy });
     fx.sparks(at, UP, turn.parried ? '#ffffff' : (me().spec.bolt ?? '#ffffff'), turn.parried ? 16 : heavy ? 22 : 10);
     sounds.saber?.('clash');
@@ -2048,7 +2066,14 @@ export async function create(canvas, ctx) {
       t.flinch = 0.2;
       // your guard takes some of it
       state.guard = guardHit(state.guard, 12, state.t);
-      state.hitstop = Math.max(state.hitstop, 0.04);
+      state.hitstop = Math.max(state.hitstop, turn.perfect ? 0.12 : 0.04);
+      if (turn.perfect) {
+        // (theirs a parry: your stroke stopped, you reeling, open to their riposte)
+        me().saber.cancel();
+        state.reelUntil = state.t + DUEL.stagger.parried;
+        state.shake = Math.min(1, state.shake + 0.3);
+        sounds.combat?.('parry');
+      }
       return;
     }
     const was = t.hp;
@@ -2082,7 +2107,7 @@ export async function create(canvas, ctx) {
     const broken = state.guard.brokenAt != null;
     // (a press that went down and up inside one frame, a quick click, still raises it: saber.js holds it up for the parry window)
     const tapped = state.blockAt != null && state.t - state.blockAt <= dt;
-    const blocking = Boolean(state.keys.block || state.buttons.block || tapped) && state.phase === 'walk' && !broken && !state.dodge;
+    const blocking = Boolean(state.keys.block || state.buttons.block || tapped) && state.phase === 'walk' && !broken && !state.dodge && state.t >= state.reelUntil;
     sab.block(blocking);
     if (blocking) state.saberAt = state.t;
     // F held: the heavy stroke winding up; let go: the stroke
@@ -2179,9 +2204,10 @@ export async function create(canvas, ctx) {
           struck(hit, tag.damage, { how: tag.how, push: tag.push });
           impacts.push({ t: state.t, at: hit.at, dir: new V(...e.bolt.dir), ground: false });
         } else if (tag.mate) on(t).hit(t, 1, { push: tag.push, at: hit.at });
-        else if (e.bolt.deflected) struck(hit, 2, { how: 'deflect', push: new V(...e.bolt.dir) });
         else if (tag.friend && !t.down) on(t).hit(t, e.bolt.damage);
       },
+      // (theirs turned home by your blade: what it was fired with, theirs to take)
+      home: (e) => struck({ target: e.body.ref, at: new V(...e.at) }, e.damage, { how: 'deflect', push: new V(...e.bolt.dir) }),
       hurt: (n, from) => hurt(n, from),
       mate: (n, from) => mateHit(n, from),
       // (theirs into a friend of yours; a battle counts its own)
@@ -2265,8 +2291,11 @@ export async function create(canvas, ctx) {
     }
     const p = me().st;
     const step = state.quest && questOf(state.quest.id)?.steps[state.quest.step];
-    if (step?.respawn) putAt(p, step.respawn[0], step.respawn[1]);
-    else if (!state.zone) putAt(p, spawnAt[0], spawnAt[1]);
+    // (inside a zone too: at its door in, not where you fell; respawn.js)
+    const [dx, dz, dyaw] = downAt({ step, zone: state.zone, spawn: spawnAt });
+    putAt(p, dx, dz, dyaw ?? undefined);
+    if (dyaw != null) state.cam.yaw = dyaw;
+    camInit = false;
   }
 
   // ── Each frame ──
@@ -2341,7 +2370,7 @@ export async function create(canvas, ctx) {
     state.safe = safe;
     // (a sprint: abilityRules.js's, the walk and the run both quicker)
     const rules = state.t < state.sprint ? { ...WALK, walk: WALK.walk * ABILITIES.sprint.speed, run: WALK.run * ABILITIES.sprint.speed } : WALK;
-    const o = walk(p, state.dodge ? { x: 0, y: 0, run: false, heading: inp.heading, jump: false } : { ...inp, jump: state.jumpQueued }, dt, world, rules);
+    const o = walk(p, state.dodge ? { x: 0, y: 0, run: false, heading: inp.heading, jump: false } : { ...inp, jump: state.jumpPress }, dt, world, rules);
     stepJet(dt);
     life.shove(p, WALK.radius);
     // (and out of whatever's parked: a speeder, a tauntaun)
@@ -2417,17 +2446,18 @@ export async function create(canvas, ctx) {
       }
     }
     if (o.landed > 3) sounds.step(1.6);
+    squash.land(o.landed);
   }
 
   function stepRide(dt) {
     const x = state.riding;
     const inp = chase?.stalled() ? { x: 0, y: 0, run: false } : input();
     // (a flyer climbs while jump is held, not only on the press)
-    const o = ride(x.state, { ...inp, x: inp.x, y: inp.y, jump: state.jumpQueued || (Boolean(x.spec.fly) && Boolean(state.keys.jump)) }, dt, world, x.spec);
+    const o = ride(x.state, { ...inp, x: inp.x, y: inp.y, jump: x.spec.fly ? Boolean(state.keys.jump) : state.jumpPress }, dt, world, x.spec);
     if (o.hit > 20 && chaseOn()) chase.knocked();
     if (o.hit > 6) {
       state.shake = Math.min(1, o.hit / 20);
-      emit({ type: 'bump', hard: o.hit > 14 });
+      emit({ type: 'bump', hard: o.hit > 14, speed: o.hit });
     }
     // you, on it
     const p = me().st;
@@ -2517,6 +2547,10 @@ export async function create(canvas, ctx) {
       const mine = i === lead;
       pp.holder.position.set(st.x, st.y, st.z);
       pp.holder.rotation.y = st.yaw;
+      if (mine) {
+        squash.step(dt);
+        pp.holder.scale.set(...squash.scale());
+      }
       // sat on what you ride, or stood off it (the figure's base state:
       // a vehicle's controls, a creature's back)
       const riding = state.phase === 'ride' && mine;
@@ -2633,7 +2667,7 @@ export async function create(canvas, ctx) {
     const adsWant = state.ads && !riding && state.phase === 'walk' && !me().saber ? 1 : 0;
     state.adsK += (adsWant - state.adsK) * (1 - Math.exp(-dt * 10));
     const zoom = me().weapon?.zoom ?? 1.4;
-    const fov = baseFov / (1 + (zoom - 1) * state.adsK);
+    const fov = rideFov(baseFov, riding ? state.riding.state.speed : 0, riding ? state.riding.spec : null, { calm: reduced }) / (1 + (zoom - 1) * state.adsK);
     if (Math.abs(camera.fov - fov) > 0.01) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
@@ -2679,13 +2713,13 @@ export async function create(canvas, ctx) {
     camPos.lerp(want, 1 - Math.exp(-dt * (riding ? 9 : 12)));
     camLook.lerp(focus, 1 - Math.exp(-dt * 14));
     camera.position.copy(camPos);
-    if (state.shake > 0) {
-      camera.position.x += (r() - 0.5) * state.shake * 0.4;
-      camera.position.y += (r() - 0.5) * state.shake * 0.4;
-      state.shake = Math.max(0, state.shake - dt * 2.5);
-    }
     camera.lookAt(camLook);
     if (Math.abs(state.kick.x) > 1e-4) camera.rotateX(state.kick.x * 0.04); // your own shot's kick
+    // every knock this frame, as trauma (the k each had is its trauma)
+    if (state.shake > 0) feel.trauma(state.shake);
+    state.shake = 0;
+    feel.setBaseFov(fov);
+    feel.update(dt, camera);
   }
 
   // watching the ship come in (or go), from beside where it lands
@@ -2806,13 +2840,15 @@ export async function create(canvas, ctx) {
       dt *= 0.12;
     }
     state.t += dt;
+    // the jump's clock: whether you stood (or your ride did) as this step began
+    state.jumpPress.ground(state.phase === 'ride' ? Boolean(state.riding?.state.grounded) : state.phase === 'walk' && me().st.grounded, dt);
     const t = state.t;
     // what you're doing this frame, for your body: going somewhere, or
     // anything else (either cuts a reaction of yours, and most emotes)
     // (pressed this frame, or held: firing on, a block up, down the sights)
     const steer = input();
     const moving = Math.hypot(steer.x, steer.y) > 0.1;
-    const pressed = Boolean(state.jumpQueued || state.actQueued || state.fireQueued || state.dodgeQueued || state.powerQueued || state.secondQueued || state.throwQueued || state.swingQueued);
+    const pressed = Boolean(state.jumpPress.pending || state.actQueued || state.fireQueued || state.dodgeQueued || state.powerQueued || state.secondQueued || state.throwQueued || state.swingQueued);
     const held = Boolean(state.keys.fire || state.buttons.fire || state.keys.block || state.buttons.block || state.keys.power || state.buttons.power || state.ads);
     stepBody(moving, pressed, held);
 
@@ -2862,6 +2898,7 @@ export async function create(canvas, ctx) {
       state.lock = null;
       emit({ type: 'lock', name: null });
     }
+    lockOn.step(state, me().st, dt);
     stepLockRing(dt);
     stepHud();
     // the chase: on with it, and a shove when you ride into one
@@ -2904,7 +2941,14 @@ export async function create(canvas, ctx) {
       questEvent({ type: 'tick', dt });
       questEvent({ type: 'at', x: p.x, z: p.z, riding: state.riding?.kind ?? null });
     }
-    for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor })) questEvent(ev);
+    for (const ev of activity.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { actors: actorAt, door: doorFor, swinging: swingingOf(me().saber, state.t) })) questEvent(ev);
+    // your blade crossing a duellist's as either strokes: sparks and the clash
+    if (state.phase === 'walk')
+      for (const c of activity.clashes(me().saber, state.t)) {
+        fx.sparks(new V(...c.at), UP, '#ffffff', 18);
+        sounds.saber?.('clash');
+        state.hitstop = Math.max(state.hitstop, 0.05);
+      }
     const groundShots = groundWar.update(dt, state.phase === 'walk' || state.phase === 'ride' ? me().st : null, state.t, { mate: other().st, camera });
     for (const e of groundWar.news()) if (e.text) emit({ type: 'war', what: e.type, side: e.side, text: e.text }); // (the ground war's news, for the HUD's toast)
     if (state.phase === 'walk' || state.phase === 'ride')
@@ -2933,42 +2977,46 @@ export async function create(canvas, ctx) {
           else if (Math.random() < 0.8) on(s.victim).hit(s.victim, s.damage);
           continue;
         }
-        const blade = me().saber?.deflecting(s.from) ?? false;
         if (state.safe) continue; // (through the dodge's first moments nothing lands)
-        if (s.melee && blade && parried(state.blockAt, state.t, PARRY.window * perks.parry)) {
-          // the block went up just as their swipe came: a parry, and they reel from it
-          const p = me().st;
-          fx.sparks(new V(p.x, p.y + 1.2, p.z), UP, '#ffffff', 26);
+        // a melee contact (a duellist's blade swept you; a brawler's swipe
+        // lands as it's decided): your block shown at their contact turns it
+        // and spends your guard; begun within the window before it, a parry
+        const m = s.melee ? met(s, { saber: me().saber, blockAt: state.blockAt, now: state.t, window: PARRY.window * perks.parry, guard: state.guard, cost: me().saber?.stance.cost }) : null;
+        const how = m?.how ?? 'hit';
+        const p = me().st;
+        const spot = s.point ? new V(...s.point) : new V(p.x, p.y + 1.2, p.z);
+        if (how === 'parry') {
+          fx.sparks(spot, UP, '#ffffff', 26);
           sounds.combat?.('parry');
-          if (s.who) on(s.who).stagger(s.who, PARRY.stagger);
+          if (s.who) on(s.who).parried?.(s.who, PARRY.stagger);
           state.hitstop = Math.max(state.hitstop, 0.12);
           state.shake = Math.min(1, state.shake + 0.3);
           state.blockAt = null;
           emit({ type: 'parry' });
           continue;
         }
-        if (s.melee && blade) {
-          // their swipe on your raised blade: a clash, and nothing lands, but it costs your guard
-          const p = me().st;
-          fx.sparks(new V(p.x, p.y + 1.2, p.z), UP, '#ffffff', 14);
+        if (how === 'block') {
+          // their blade on your raised one: a clash, and nothing lands, but it costs your guard
+          fx.sparks(spot, UP, '#ffffff', 14);
           sounds.saber?.('clash');
-          state.guard = guardHit(state.guard, (s.damage ?? 20) * 1.4 * me().saber.stance.cost, state.t);
+          state.guard = m.guard;
           state.shake = Math.min(1, state.shake + 0.2);
           state.hitstop = Math.max(state.hitstop, 0.04);
           continue;
         }
         if (s.melee) {
-          // a swipe: knocked back, away from it
-          const p = me().st;
+          // a swipe: knocked back, away from it (a blade's cut less: it sparks on you)
           const away = Math.atan2(p.x - s.from[0], p.z - s.from[2]);
-          p.vx += Math.sin(away) * 6;
-          p.vz += Math.cos(away) * 6;
-          p.vy = 3;
+          const knock = s.blade ? 2.5 : 6;
+          p.vx += Math.sin(away) * knock;
+          p.vz += Math.cos(away) * knock;
+          p.vy = s.blade ? 1.5 : 3;
           p.grounded = false;
-          state.shake = 1;
-          sounds.roar?.();
+          state.shake = s.blade ? 0.6 : 1;
+          if (s.blade) fx.sparks(spot, UP, '#ff8a5a', 12);
+          else sounds.roar?.();
           hurt(s.damage, { x: s.from[0], z: s.from[2] });
-          swiped(s); // (and your mate, if it's in reach of it too)
+          if (!s.blade) swiped(s); // (and your mate, if it's in reach of it too: a blade cuts only what it swept)
         } else {
           // (at what it believes: a guess goes wide; none through a wall; a raised blade turns it: boltPlay)
           boltPlay.enemy({ ...s, side: s.who?.soldier?.side ?? 'them' }, me().st, state.t);
@@ -2994,7 +3042,6 @@ export async function create(canvas, ctx) {
       m.sprite.visible = Boolean(on);
       if (on) m.sprite.position.set(a.b.x, a.holder.position.y + (a.fig.tall ?? 1.8) * (a.spec.scale ?? 1) + 0.6 + Math.sin(state.t * 3) * 0.08, a.b.z);
     }
-    state.jumpQueued = false;
     state.actQueued = false;
     place(dt);
     shot();
@@ -3268,10 +3315,15 @@ export async function create(canvas, ctx) {
       lookLock() {
         looker.request();
       },
+      // the Lock button and L: the lock-on, on or off
+      lockOn() {
+        lockOn.toggle();
+        ctx.invalidate();
+      },
       press(name) {
         sounds.start();
         if (state.phase === 'landing') skipLanding();
-        if (name === 'jump') state.jumpQueued = true;
+        if (name === 'jump') state.jumpPress.press();
         if (name === 'act') state.actQueued = true;
         if (name === 'run') state.buttons.run = true;
         if (name === 'fire') state.buttons.fire = true;

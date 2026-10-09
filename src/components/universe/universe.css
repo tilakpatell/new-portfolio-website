@@ -621,6 +621,8 @@ body:has(.universe-panel) .guide-btn { display: none; }
 .universe-reticle::after { width: 1px; height: 7px; margin: -17px 0 0 -0.5px; }
 .universe-reticle[data-hot] { border-color: var(--hot); box-shadow: 0 0 10px rgb(255 106 82 / 0.55); }
 .universe-reticle[data-hit] { animation: universe-hit 0.25s ease-out; }
+/* the crosshair on foot (runtime/hud's Reticle), ringed in the lock's colour */
+.universe-foot-reticle { --hud-accent: var(--hot); }
 @keyframes universe-hit {
   from { scale: 1.5; border-color: #fff; box-shadow: 0 0 14px rgb(255 255 255 / 0.8); }
 }
