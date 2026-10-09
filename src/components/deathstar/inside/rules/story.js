@@ -35,7 +35,7 @@
 //   step: { id, type, text, target?, time?, need?, checkpoint, start: [effect], end: [effect], fail?: [effect] }
 //     text: the objective the HUD shows; target: { spot } | { room } | { npc } | { tag }, where to go or
 //     what to act on (a person by the tag they were spawned with, a thing by its tag); time: seconds
-//   checkpoint: { step, spot, hero, armour, helmet, companions: [kind], flags: [name], gun }
+//   checkpoint: { step, spot, hero, armour, helmet, companions: [kind], flags: [name], gun, items: [item] }
 //     step: the beat’s first step; flags: the ones the story set (the game keeps its own besides)
 //   progress: { story, step, t, n, down: { [tag]: count }, done }   t: seconds into the step; n: a use
 //     step’s count so far; down: how many have been put out of action under each tag, whenever it was
@@ -89,7 +89,7 @@ const EPS = 1e-9; // thirty steps of 1/30 s add up to a hair under a second
 
 // ── checkpoints ──
 
-const copy = (cp) => ({ ...cp, companions: [...cp.companions], flags: [...cp.flags] });
+const copy = (cp) => ({ ...cp, companions: [...cp.companions], flags: [...cp.flags], items: [...(cp.items ?? [])] });
 const plus = (list, x) => (list.includes(x) ? list : [...list, x]);
 const minus = (list, x) => list.filter((y) => y !== x);
 const either = (on, list, x) => (on ? plus(list, x) : minus(list, x));
@@ -108,6 +108,8 @@ function fold(state, effect) {
   const has = 'give' in effect;
   if (item === 'armour' || item === 'helmet') state[item] = has;
   else if (item.startsWith('gun:')) state.gun = has ? item.slice(4) : null;
+  // the rest is what you carry (the comlink, the saber, the beacon), kept for a beat begun again
+  else state.items = either(has, state.items, item);
 }
 
 export function chain(begin, beats) {

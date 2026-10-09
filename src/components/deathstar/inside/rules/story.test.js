@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { chain, checkpointOf, say, spawn, startStory, storyStep } from './story';
 
-const BEGIN = { spot: 'a', hero: 'luke', armour: false, helmet: false, companions: ['han'], flags: [], gun: 'e11' };
+const BEGIN = { spot: 'a', hero: 'luke', armour: false, helmet: false, companions: ['han'], flags: [], gun: 'e11', items: [] };
 const story = (beats, begin = BEGIN) => ({ id: 'test', station: 'ds1', side: 'rebel', hero: 'luke', title: 'A test', steps: chain(begin, beats) });
 const FINISH = { id: 'finish', type: 'timer', text: 'Wait.', time: 1, end: [{ end: true }] };
 
@@ -33,7 +33,7 @@ describe('starting a story', () => {
     const s = story([[{ id: 'go', type: 'reach', text: 'Go.', target: { spot: 'b' }, start: [{ flag: 'x' }, { music: 'calm' }] }], [FINISH]]);
     const { progress, effects } = startStory(s);
     expect(progress).toMatchObject({ story: 'test', step: 'go', t: 0, n: 0, done: false });
-    expect(effects).toEqual([{ checkpoint: { step: 'go', spot: 'a', hero: 'luke', armour: false, helmet: false, companions: ['han'], flags: [], gun: 'e11' } }, { flag: 'x' }, { music: 'calm' }]);
+    expect(effects).toEqual([{ checkpoint: { step: 'go', spot: 'a', hero: 'luke', armour: false, helmet: false, companions: ['han'], flags: [], gun: 'e11', items: [] } }, { flag: 'x' }, { music: 'calm' }]);
   });
 
   it('picks up a saved step at the start of its beat, and an unknown one from the beginning', () => {
@@ -241,7 +241,7 @@ describe('failing a step', () => {
       { say: { who: 'han', text: 'Again.' } },
       { despawn: 'g' },
       { despawn: 'h' },
-      { checkpoint: { step: 'guard', spot: 'b', hero: 'luke', armour: true, helmet: false, companions: ['han'], flags: [], gun: 'e11' } },
+      { checkpoint: { step: 'guard', spot: 'b', hero: 'luke', armour: true, helmet: false, companions: ['han'], flags: [], gun: 'e11', items: [] } },
       { spawn: { kind: 'stormtrooper', spot: 'c', role: 'post', tag: 'g' } },
     ]);
   });
@@ -308,10 +308,21 @@ describe('checkpoints', () => {
       [FINISH],
     ]);
     expect(steps.map((s) => s.checkpoint.step)).toEqual(['arm', 'arm', 'swap', 'swap', 'finish']);
-    expect(steps[2].checkpoint).toEqual({ step: 'swap', spot: 'door', hero: 'luke', armour: true, helmet: true, companions: ['chewie'], flags: ['x'], gun: 'dl44' });
-    expect(steps[4].checkpoint).toEqual({ step: 'finish', spot: 'core', hero: 'obiwan', armour: true, helmet: false, companions: ['chewie'], flags: ['bridge'], gun: null });
+    expect(steps[2].checkpoint).toEqual({ step: 'swap', spot: 'door', hero: 'luke', armour: true, helmet: true, companions: ['chewie'], flags: ['x'], gun: 'dl44', items: [] });
+    expect(steps[4].checkpoint).toEqual({ step: 'finish', spot: 'core', hero: 'obiwan', armour: true, helmet: false, companions: ['chewie'], flags: ['bridge'], gun: null, items: [] });
     expect(steps[0]).toMatchObject({ start: [{ flag: 'x' }], end: [{ give: 'armour' }, { give: 'helmet' }, { give: 'gun:dl44' }] });
     expect(steps[1]).toMatchObject({ start: [] });
+  });
+
+  it('keep what you carry: a thing given in one beat is still yours from the next one’s checkpoint, till it is taken', () => {
+    const steps = chain(BEGIN, [
+      [{ id: 'get', type: 'use', text: 'Get.', target: { tag: 'locker' }, end: [{ give: 'comlink' }, { give: 'beacon' }] }],
+      [{ id: 'call', type: 'use', text: 'Call.', target: { tag: 'comlink' }, end: [{ take: 'beacon' }] }],
+      [FINISH],
+    ]);
+    expect(steps[0].checkpoint.items).toEqual([]);
+    expect(steps[1].checkpoint.items).toEqual(['comlink', 'beacon']);
+    expect(steps[2].checkpoint.items).toEqual(['comlink']);
   });
 
   it('are read for the step under way, as a copy, and there is none once the story is over', () => {

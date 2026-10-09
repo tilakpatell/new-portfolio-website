@@ -316,9 +316,10 @@ export function createStage(canvas, { soft = false, bloom = BLOOM, exposure = LO
   };
   const render = (ms = 16) => {
     if (lost || disposed || warming) return;
+    // (before the draw: a step it takes is made with this frame's)
+    watch(ms);
     gradePass.uniforms.uTime.value += ms / 1000;
     draw();
-    watch(ms);
   };
 
   const tuning = stageTune({ bloomPass, title: () => canvas.closest?.('[data-route]')?.dataset.route || (typeof document !== 'undefined' ? document.title : null) });

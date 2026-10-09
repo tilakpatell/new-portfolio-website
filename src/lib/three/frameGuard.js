@@ -290,6 +290,15 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
 
   const realDraw = renderer.renderBufferDirect;
   renderer.renderBufferDirect = function (cam, scn, geometry, material, object, group) {
+    // (one drawn ungated has had its shader linked by that draw: known from
+    // then on, so a frame gated later, a composer's buffer at the canvas's
+    // size once the stage's watchdog evens it out, doesn't hold back the
+    // whole world on screen for two black frames)
+    if (!gating && material) {
+      const out = dev ? devDraw(this, cam, scn, geometry, material, object, group) : realDraw.call(this, cam, scn, geometry, material, object, group);
+      markLinked(props(material).currentProgram);
+      return out;
+    }
     if (gating && scn?.isScene && material) {
       const s = state.get(material);
       if (s === READY) {
@@ -314,18 +323,20 @@ export function guard(renderer, { uploadMB = 8, compileMs = 4, frame = nextFrame
         return undefined;
       }
     }
-    if (!dev) return realDraw.call(this, cam, scn, geometry, material, object, group);
-    // (development: a shader three made in the middle of this draw, named,
-    // so what still slips past the guard can be found where it comes from)
+    return dev ? devDraw(this, cam, scn, geometry, material, object, group) : realDraw.call(this, cam, scn, geometry, material, object, group);
+  };
+  // (development: a shader three made in the middle of this draw, named,
+  // so what still slips past the guard can be found where it comes from)
+  function devDraw(self, cam, scn, geometry, material, object, group) {
     const had = renderer.info?.programs?.length ?? 0;
-    const out = realDraw.call(this, cam, scn, geometry, material, object, group);
+    const out = realDraw.call(self, cam, scn, geometry, material, object, group);
     if ((renderer.info?.programs?.length ?? 0) > had && told < 40) {
       told += 1;
       const pass = !gating ? 'off-frame' : scn === null ? 'shadow' : 'frame';
       console.warn(`[frameGuard] shader compiled mid-frame (${pass}): ${material.type}${material.name ? ` "${material.name}"` : ''} on ${object?.type ?? '?'}${object?.name ? ` "${object.name}"` : ''}${object?.parent?.name ? ` in "${object.parent.name}"` : ''}`);
     }
     return out;
-  };
+  }
 
   const realRender = renderer.render;
   renderer.render = function (scn, cam) {
