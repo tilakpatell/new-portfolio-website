@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createBlaster } from './blaster';
 import { createBoltPlay } from './boltPlay';
 import { createSolids } from './walker';
+import { troops } from './sites/outerKit';
 
 // a flat world with a wall across x = 10
 const setup = () => {
@@ -56,5 +57,24 @@ describe('the surface’s bolts', () => {
     fly(play, { you: st, targets: [second], guard: held(st) }, { hurt: (n) => hurt.push(n), deflect: (e) => turned.push(e), yours: (e) => yours.push(e) });
     expect(turned).toHaveLength(1);
     expect(yours[0].body.ref).toBe(second);
+  });
+
+  // Lane D: a turned bolt is the shooter's own, and deals what it was fired with
+  it('a stormtrooper’s bolt turned by the raised blade kills the stormtrooper', () => {
+    const { play } = setup();
+    const spec = troops('t', 1, [2, 0]);
+    const trooper = { holder: { position: new THREE.Vector3(2, 0, 0) }, fig: { tall: 1.8 }, spec, hp: spec.hp };
+    const st = you(8);
+    const home = [];
+    const hurt = [];
+    play.enemy({ from: [2.6, 1.4, 0], spread: 0, who: trooper, damage: spec.hostile.damage }, st, 7);
+    fly(play, { you: st, targets: [trooper], guard: held(st) }, { hurt: (n) => hurt.push(n), home: (e) => home.push(e) });
+    expect(hurt).toEqual([]);
+    expect(home).toHaveLength(1);
+    expect(home[0].body.ref).toBe(trooper);
+    // (as the scene lands it: struck with the bolt's own damage)
+    trooper.hp -= home[0].damage;
+    expect(home[0].damage).toBe(spec.hostile.damage);
+    expect(trooper.hp).toBeLessThanOrEqual(0);
   });
 });

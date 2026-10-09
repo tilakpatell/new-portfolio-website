@@ -16,7 +16,9 @@
 //     quests' or the battle's figures), guard (your raised blade: saber.js's
 //     guard()) }
 //   on: { yours(e), hurt(damage, from), mate(damage, from), other(e),
-//     deflect(e), landed(e) } (e: the step's event)
+//     deflect(e), home(e) (a bolt your blade turned, into someone: e.damage
+//     is what it was fired with, so a trooper's own bolt fells him),
+//     landed(e) } (e: the step's event)
 
 import { FIRST, freshAim, missBy, shotStep } from '../../../lib/combat/accuracy';
 import { capsuleOf } from './blaster';
@@ -89,6 +91,7 @@ export function createBoltPlay({ blaster, ground = null, rng = Math.random }) {
           const from = { x: b.from[0], z: b.from[2] };
           if (e.body.id === 'you') on.hurt?.(b.damage, from);
           else if (e.body.id === 'mate') on.mate?.(b.damage, from);
+          else if (b.side === 'you' && b.deflected && on.home) on.home({ ...e, damage: b.damage });
           else if (b.side === 'you') on.yours?.(e);
           else if (!e.body.ref?.ground) on.other?.(e);
         } else if (e.type === 'solid' && b.side === 'you') on.landed?.(e);

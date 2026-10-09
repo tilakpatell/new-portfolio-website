@@ -2189,9 +2189,10 @@ export async function create(canvas, ctx) {
           struck(hit, tag.damage, { how: tag.how, push: tag.push });
           impacts.push({ t: state.t, at: hit.at, dir: new V(...e.bolt.dir), ground: false });
         } else if (tag.mate) on(t).hit(t, 1, { push: tag.push, at: hit.at });
-        else if (e.bolt.deflected) struck(hit, 2, { how: 'deflect', push: new V(...e.bolt.dir) });
         else if (tag.friend && !t.down) on(t).hit(t, e.bolt.damage);
       },
+      // (theirs turned home by your blade: what it was fired with, theirs to take)
+      home: (e) => struck({ target: e.body.ref, at: new V(...e.at) }, e.damage, { how: 'deflect', push: new V(...e.bolt.dir) }),
       hurt: (n, from) => hurt(n, from),
       mate: (n, from) => mateHit(n, from),
       // (theirs into a friend of yours; a battle counts its own)
