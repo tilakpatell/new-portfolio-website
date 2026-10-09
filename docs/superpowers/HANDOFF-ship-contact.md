@@ -33,7 +33,22 @@ The design is `docs/superpowers/specs/2026-10-09-ship-contact-design.md`, the pl
 
 ## The numbers after hand tuning
 
-None were tuned by hand: this container has no GPU, and software GL runs the map at a few frames a second, too slow to judge the feel. Every number is the design's (`CONTACT`); the ones the design left open are the Interdictor's `0.3` and the traffic's look-up radii (6 for bodies, 12 for solids). Tune `CONTACT` in dev on a real card.
+The cloud container had no GPU. On 2026-10-09 the feel was checked locally on an RTX 5090, with headless Edge on the card (`--use-angle=d3d11 --enable-gpu`), the map at 240 frames a second:
+
+| contact | shields | your speed | back to speed |
+| --- | --- | --- | --- |
+| a TIE, at cruise (universe) | −12.5 (it goes down) | 3.3 to 0.99 | 0.66 s |
+| a TIE, at the boost (universe) | −17.2 | 12 to 3.6 | 1.3 s |
+| a TIE Advanced, at cruise (universe and galaxy) | −12.7 to −13 | 3.3 to 0.99 | 0.65 s |
+| a TIE Advanced, at the boost (galaxy) | −19.4 | 14.7 to 4.4 | |
+| a TIE, on the pulse drive (85) | −45 (the cap) | 85 to 25.5 | |
+| the Star Destroyer, at 55 | a crash, `kind: 'ship'` | | Luke's crash line |
+
+One hit a ram; never a second off the same ship. A wing of three in formation stayed 3 or more away at cruise and in turns: no glances. The frame's bodies cost 0.6 µs with nine hunters, and frames held 4.2 ms (p50) and 4.5 ms (p99) among a pack: the arrays rebuilt every frame are not a cost worth pooling.
+
+**`CONTACT` kept as designed.** The one change: **`keptSpeed` had a step at the boost.** A ram at exactly the boost kept 0.3 of your speed, but one at 12.01 (the boost's overshoot, as the galaxy flies it, or a shipyard-tuned boost up to ×1.6) was floored at the boost and kept nearly all of it: in the galaxy a boosting ram went 12.57 to 12, no knock at all. The floor now eases in, `max(s × keep, clamp(s − boost, 0, boost))`: the rock's rule from twice the boost, plain `keep` at it, nothing sudden between.
+
+The merge with main (lane 2C's game feel) put the galaxy's crash through `feel.hitstop` and `knockForce`; the ram's bump now carries `into` and `force` too, so `Galaxy.jsx`'s knock law knocks the camera by the closing speed.
 
 ## Screenshots
 

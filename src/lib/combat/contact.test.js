@@ -69,9 +69,15 @@ describe('keptSpeed', () => {
     expect(keptSpeed(6, CONTACT.slow, 12)).toBeCloseTo(1.8, 6);
     expect(keptSpeed(-6, CONTACT.glance, 12)).toBeCloseTo(-5.1, 6);
   });
-  it('past the boost, throws you back no further than the boost (as a rock does)', () => {
-    expect(keptSpeed(20, CONTACT.slow, 12)).toBe(12);
+  it('from twice the boost, throws you back no further than the boost (as a rock does)', () => {
+    expect(keptSpeed(24, CONTACT.slow, 12)).toBe(12);
+    expect(keptSpeed(30, CONTACT.slow, 12)).toBe(12);
     expect(keptSpeed(300, CONTACT.slow, 12)).toBeCloseTo(90, 6);
+  });
+  it('just past the boost (its overshoot, a tuned boost) still knocks you back: no step at the boost', () => {
+    expect(keptSpeed(12.57, CONTACT.slow, 12)).toBeCloseTo(12.57 * CONTACT.slow, 6);
+    expect(keptSpeed(19.2, CONTACT.slow, 12)).toBeCloseTo(7.2, 6);
+    expect(keptSpeed(12.01, CONTACT.slow, 12) - keptSpeed(12, CONTACT.slow, 12)).toBeLessThan(0.01);
   });
   it('never speeds you up', () => {
     expect(keptSpeed(0, CONTACT.slow, 12)).toBe(0);
