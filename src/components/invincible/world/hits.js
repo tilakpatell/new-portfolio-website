@@ -14,7 +14,8 @@ import { createImpacts } from '../../../lib/impact';
 export const FLOOR = 0.3; // the softest landing’s gain: quieter, still heard
 // m/s: nothing he does is under the law’s threshold, and a slam from flat out
 // (260) is past full
-const LAW = { threshold: 0, full: 200, gap: 0.06 };
+const QUIET_UNDER = 0;
+const LAW = { threshold: QUIET_UNDER, full: 200, gap: 0.06 };
 // a villain’s punch has no speed: their size stands for it
 const FOES = { flaxan: 60, seismic: 90, mauler: 130 };
 

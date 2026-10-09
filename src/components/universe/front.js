@@ -26,7 +26,7 @@
 //   storage, emit, makeBattle, makeScene }) → null (the side has no war, or
 //   it isn't ready; `war` in place of the side's own, for the tests)
 //   or { update(dt, t, camera, camLocal, live) → { busy, hurt }, join(team),
-//   hit(from, to, damage), targets, inZone, holdAt(x, y, z, f), near, joined, info, where(),
+//   hit(from, to, damage), bodies (shipHits.js's), targets, inZone, holdAt(x, y, z, f), near, joined, info, where(),
 //   goal(), win(team), dispose() }
 // Points are in `map`'s space.
 
@@ -262,6 +262,17 @@ export function createFront(map, { side, war: given = null, beacons = null, mode
     },
 
     hit: (from, to, damage) => (battle && joined !== null && !battle.over ? battle.hit(from, to, damage) : null),
+    // the other side's fighters, once you're in it, as shipHits.js's bodies
+    // (a ram on one the battle's strike; the capital ships are solids)
+    get bodies() {
+      if (!battle || joined === null || battle.over) return [];
+      const out = [];
+      for (const f of battle.fighters) {
+        if (!f.alive || f.team === joined) continue;
+        out.push({ key: `f:${f.id}`, id: f.id, kind: f.kind, at: f.seen, vel: f.vel, size: f.size, side: 'foe', hit: (punch) => battle?.strike(f.id, punch) ?? null });
+      }
+      return out;
+    },
     get targets() {
       return battle && joined !== null && zone !== 'out' ? battle.targets : [];
     },

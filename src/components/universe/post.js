@@ -68,6 +68,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { LOOK } from './look';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { blueNoiseTexture } from '../../lib/three/noise';
 
@@ -75,8 +76,9 @@ export const LIGHT = new THREE.Vector3(-0.6, 0.62, 0.48).normalize(); // the key
 export const FILL = new THREE.Vector3(0.7, -0.4, -0.3).normalize();
 
 // bloom: only what's well past lit paint glows (lit surfaces top out near
-// 2 under the key light; the sun, windows and engines are drawn hotter)
-const BLOOM = { strength: 0.8, radius: 0.55, threshold: 1.7 };
+// 2 under the key light; the sun, windows and engines are drawn hotter):
+// the map's look's (./look.js), a copy the ?debug panel can set
+const BLOOM = { ...LOOK.bloom };
 const SOFTEST = 0.6; // device pixels to a CSS one, at the least, however busy
 
 // the bloom's first level: half the frame (a quarter on a small one), its
@@ -363,6 +365,29 @@ export function createPost(renderer, scene, camera, { small = false } = {}) {
       over.enabled = Boolean(s);
       over.scene = s ?? scene;
       over.camera = cam ?? camera;
+    },
+    // the bloom's three numbers, for the ?debug panel (lib/three/bloom's
+    // bloomGroups): the strength is the flare's base, so a flare scales what's set
+    bloom: {
+      get threshold() {
+        return bloom.threshold;
+      },
+      set threshold(v) {
+        bloom.threshold = v;
+      },
+      get strength() {
+        return BLOOM.strength;
+      },
+      set strength(v) {
+        BLOOM.strength = v;
+        if (glow) bloom.strength = v;
+      },
+      get radius() {
+        return bloom.radius;
+      },
+      set radius(v) {
+        bloom.radius = v;
+      },
     },
     // bloom's strength, for a moment's flare (a boost, an arrival)
     flare(k) {
