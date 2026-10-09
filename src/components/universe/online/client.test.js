@@ -374,6 +374,16 @@ describe('createClient', () => {
     expect(invites('b')).toHaveLength(2);
   });
 
+  it('your own invites go no faster than the others take them, and say whether they went', async () => {
+    const { a, seen, tick } = await pair({ three: true });
+    const SID = 'BCDFGHJKLMNP';
+    expect([a.invite('B', SID), a.invite('C', 'nope'), a.invite('Nobody', SID), a.invite('C', SID), a.invite('C', SID)]).toEqual([true, false, false, true, false]);
+    expect(seen.c.filter((e) => e.type === 'invite')).toHaveLength(1);
+    // one more each 5 s
+    tick(5000);
+    expect([a.invite('C', SID), a.invite('B', SID)]).toEqual([true, false]);
+  });
+
   it('says a line to everyone, or to those in the same place, cleaned again on the way in', async () => {
     const { a, b, c, bus, seen } = await pair({ three: true });
     const says = (who) => seen[who].filter((e) => e.type === 'say');

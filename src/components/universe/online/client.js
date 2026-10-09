@@ -34,9 +34,10 @@
 //
 // Your squadmates (setSquad: squad/squad.js's members) are allies for
 // everything the game asks: your hits aren't sent at them, theirs don't count
-// with you. An invite to a squad goes to one pilot (inv, wire2.js); theirs
-// is told to you once (the same squad again within INVITE_AGAIN_MS isn't),
-// and one you've turned down (declineInvite) holds them off as long.
+// with you. An invite to a squad goes to one pilot (inv, wire2.js), yours no
+// faster than the others take them; theirs is told to you once (the same
+// squad again within INVITE_AGAIN_MS isn't), and one you've turned down
+// (declineInvite) holds them off as long.
 //
 // Everyone's chat is said here too (say, qc: wire2.js), only while the
 // owner's switch is on (chat/text.js's CHAT.everyone), each line cleaned
@@ -65,7 +66,7 @@
 //   asked for only when it's time to send), hunterHit(peerId, hunterId,
 //   damage), helped(peerId, what) (their shot took one of yours down),
 //   ally(peerId, 'ask' | 'accept' | 'decline' | 'end'), block(peerId, on),
-//   setSquad(ids), invite(peerId, sid), declineInvite(peerId),
+//   setSquad(ids), invite(peerId, sid) → sent, declineInvite(peerId),
 //   say(text, all) → sent, quick(i) → sent, peers, takeShots(), leave() }
 // Events, to on(fn): { type: 'status' }, { type: 'roster' }, { type: 'feed',
 // text, tone }, { type: 'hit', from, damage }, { type: 'downed', id, by }
@@ -701,11 +702,14 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
       squadIds = new Set(Array.isArray(ids) ? ids : []);
       for (const p of peers.values()) p.squad = squadIds.has(p.id);
     },
-    // ask them into your squad (invite.js's sid)
+    // ask them into your squad (invite.js's sid): false if it can't go (they
+    // aren't here, or blocked, or too many too fast)
     invite(id, sid) {
       const p = peers.get(id);
       const s = cleanSid(sid);
-      if (send && p && !p.blocked && s) send.inv({ s }, id);
+      if (!send || !p || p.blocked || !s || !mine.allow('inv', now())) return false;
+      send.inv({ s }, id);
+      return true;
     },
     // their invite turned down: theirs held off for INVITE_AGAIN_MS
     declineInvite(id) {
