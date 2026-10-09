@@ -22,6 +22,9 @@ export const BATTLE = {
   ionHull: 3, // how much more a disabled ship's hull takes
   ionSubs: 2, // and its objectives
   onYou: 4, // fighters at most after you at once
+  edge: 2.4, // radii out to which the battle still comes for you (inside 1.4 it's in among it)
+  edgeOn: 2, // and between the two, the nearest this many of each side against you
+  grudge: 45, // seconds a side stays after an unsworn pilot who fired on it
   flak: 25, // how near a fighter must come to a battery for its point-defence
   step: 1 / 30, // seconds the battle moves on at a time, whatever the frame rate
   steps: 8, // and at most this many steps a frame (a longer frame's rest is dropped)

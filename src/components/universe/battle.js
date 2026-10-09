@@ -74,6 +74,12 @@
 //   damage) → hit | null, fire(team, from, dir, kind, target), targets,
 //   info, end(winner, why, ago), setDifficulty(d), tactics, fleet }
 // `you`: { x, y, z, alive } (the ship, as the scene has it), or null.
+// The battle comes for you sworn to a side (setYou) inside 1.4 radii, and
+// out to BATTLE.edge radii with the nearest BATTLE.edgeOn of each side
+// against you (pickEdge) and its batteries' point-defence. Unsworn, a hit
+// on a side's fighter or hull sets that side after you BATTLE.grudge
+// seconds (`you.angry`, a side's seconds left) and counts nothing for the
+// war: an ace, a runner, an objective or a battery is let be.
 // update(dt) steps the battle BATTLE.step at a time, whatever the frame
 // rate, so the same seed fights the same battle on any screen; `ahead` is
 // how far the frame's past the last step, and each fighter's and runner's
@@ -124,7 +130,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     over: null,
     attacker,
     defender,
-    you: { pos: v3(), prev: v3(), vel: v3(), alive: false, team: null, on: 0 },
+    you: { pos: v3(), prev: v3(), vel: v3(), alive: false, team: null, on: 0, angry: [0, 0] },
     runners: [],
     stageOpen: true, // (with a director: whether the stage's open yet, and if not, how long till it is)
     opensIn: 0,
@@ -133,7 +139,16 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // ── the battle's inner context, for its parts (battleAi, battleCapitals, battleRunners) ──
   const flagOf = (team) => b.capitals.find((c) => c.team === team && c.role === 'flagship');
   const objOf = () => b.capitals.find((c) => c.objective);
-  const youIn = () => b.you.alive && b.you.team !== null && dist2(b.you.pos, C) < (radius * 1.4) ** 2;
+  // you: in among it inside 1.4 radii, at its edge out to BATTLE.edge; and
+  // whether a side's after you (the other one, or unsworn, one you've fired on lately)
+  const hostile = (team) => (b.you.team === null ? b.you.angry[team] > 0 : team !== b.you.team);
+  const known = () => b.you.alive && (b.you.team !== null || b.you.angry[0] > 0 || b.you.angry[1] > 0); // (sworn, or a side's after you)
+  const within = (m) => dist2(b.you.pos, C) < (radius * m) ** 2;
+  const youIn = () => known() && within(1.4);
+  const youNear = () => known() && within(BATTLE.edge);
+  const edge = new Set(); // (the edge's interceptors, picked each step: pickEdge)
+  // whether you're there for `f` to go after: in among it, or at its edge for one of the edge's
+  const youFor = (f) => b.you.alive && hostile(f.team) && (within(1.4) || (edge.has(f) && within(BATTLE.edge)));
   const finish = (winner, why, out) => {
     if (b.over) return;
     b.over = { winner, why };
@@ -147,7 +162,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   // (with the galaxy's director it's the director that decides the battle:
   // the battle never ends itself, and the AI's fire sinks no capital ship)
   const decides = !(plan && director);
-  const k = { b, rand, between, C, A, S, lines, radius, avoid, planet, attacker, defender, pending, newId: () => nextId++, flagOf, objOf, youIn, finish, decides, onMine, subDown };
+  const k = { b, rand, between, C, A, S, lines, radius, avoid, planet, attacker, defender, pending, newId: () => nextId++, flagOf, objOf, youIn, youNear, youFor, hostile, edge, finish, decides, onMine, subDown };
   // (the galaxy's fighters flown with tactics, in flights: battleTactics.js, battleFlights.js)
   k.spawn = (f, first) => spawn(k, f, first);
   k.tactics = tactics ? createTactics(k) : null;
@@ -269,6 +284,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     b.you.team = team === 0 || team === 1 ? team : null;
     for (const f of b.fighters) if (f.target === b.you) f.target = null;
     b.you.on = 0;
+    b.you.angry.fill(0);
+    edge.clear();
   };
 
   // ── the bolts in flight ──
@@ -277,7 +294,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const tmp = v3();
   const way = v3();
   const moveBolts = (dt, out) => {
-    const youOk = youIn() && !b.over && !b.ghost; // (a ghost, a ship power's: battlePowers.js sets it while it steps)
+    const youOk = youNear() && !b.over && !b.ghost; // (a ghost, a ship power's: battlePowers.js sets it while it steps)
     for (const o of b.bolts) {
       if (!o.on) continue;
       o.life -= dt;
@@ -343,7 +360,7 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
         }
       }
       // you
-      if (!done && youOk && o.team !== b.you.team && sweptHit(p0, p1, b.you.prev, b.you.pos, 0.3) !== null) {
+      if (!done && youOk && hostile(o.team) && sweptHit(p0, p1, b.you.prev, b.you.pos, 0.3) !== null) {
         out.push({ type: 'hurt', damage: BATTLE.youHurt[o.kind], kind: o.kind });
         done = true;
       }
@@ -450,10 +467,44 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     return out;
   };
 
+  // the edge's interceptors: while you're past 1.4 radii and inside
+  // BATTLE.edge, the nearest BATTLE.edgeOn of each side after you that can
+  // come (no bomber, ace or wave, none going home or frozen), kept while
+  // they can and the gaps filled. (In the fighters' order, with no draw of
+  // `rand`: a battle with nobody at its edge fights as it always has.)
+  const canCome = (f) => f.alive && hostile(f.team) && f.role !== 'bomber' && f.mode !== 'rtb' && !(f.frozen > 0) && !f.ace && !f.wave;
+  const pickEdge = () => {
+    if (!b.you.alive || b.over || within(1.4) || !within(BATTLE.edge)) {
+      if (edge.size) edge.clear();
+      return;
+    }
+    for (const f of edge) if (!canCome(f)) edge.delete(f);
+    for (const team of [0, 1]) {
+      if (!hostile(team)) continue;
+      let n = 0;
+      for (const f of edge) if (f.team === team) n++;
+      for (; n < BATTLE.edgeOn; n++) {
+        let best = null;
+        let bd = Infinity;
+        for (const f of b.fighters) {
+          if (f.team !== team || edge.has(f) || !canCome(f)) continue;
+          const d = dist2(f.pos, b.you.pos);
+          if (d < bd) (bd = d), (best = f);
+        }
+        if (!best) break;
+        edge.add(best);
+      }
+    }
+  };
+
   // one step of the battle, `dt` long
   const step = (dt, out) => {
     if (!b.over) b.clock += dt;
     else b.since += dt;
+    // (an unsworn pilot's grudges wearing off, and who's at the edge for you)
+    b.you.angry[0] = Math.max(0, b.you.angry[0] - dt);
+    b.you.angry[1] = Math.max(0, b.you.angry[1] - dt);
+    pickEdge();
     for (const f of b.fighters) {
       if (f.alive) flyFighter(k, f, dt);
       else if (!k.tactics && Number.isFinite(f.respawn) && !b.over) {
@@ -494,7 +545,8 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
   const back = v3();
   const drawnBack = (o) => set(back, o.seen.x - o.vel.x * frame, o.seen.y - o.vel.y * frame, o.seen.z - o.vel.z * frame);
   b.hit = (from, to, damage = 1) => {
-    if (b.you.team === null || b.over) return null;
+    if (b.over) return null;
+    if (b.you.team === null) return hitUnsworn(from, to, damage);
     let hitF = null;
     let first = Infinity;
     for (const f of b.fighters) {
@@ -581,6 +633,36 @@ export function createBattle({ war, attacker = 0, at = [0, 0, 0], axis = [1, 0],
     }
     hullHit(h.cap, damage * BATTLE.youShare * BATTLE.youHull, pending);
     return { id: h.cap.id, kind: h.cap.kind, at: h.at, size: 0.4, down: false, capital: true };
+  };
+
+  // an unsworn pilot's shot: the first fighter or hull of either side's it
+  // meets, and that side after you for BATTLE.grudge seconds. Nothing of it
+  // counts for the war: an ace, a runner, an objective and a battery are
+  // let be, a hull's only lit up, and onMine's never told.
+  const hitUnsworn = (from, to, damage) => {
+    let hitF = null;
+    let first = Infinity;
+    for (const f of b.fighters) {
+      if (!f.alive || f.ace) continue;
+      const k = sweptHit(from, to, drawnBack(f), f.seen, Math.max(0.35, f.size * 0.9));
+      if (k !== null && k < first) {
+        first = k;
+        hitF = f;
+      }
+    }
+    const h = capitalHit(from, to, null);
+    if (hitF && (!h || first <= h.k)) {
+      b.you.angry[hitF.team] = BATTLE.grudge;
+      hitF.hp -= damage;
+      const down = hitF.hp <= 0;
+      if (down) pending.push(kill(hitF, true));
+      return { id: hitF.id, kind: hitF.kind, at: copy(v3(), hitF.seen), size: hitF.size, down };
+    }
+    if (!h) return null;
+    b.you.angry[h.cap.team] = BATTLE.grudge;
+    const shield = shielded(h.cap);
+    pending.push({ type: 'impact', at: h.at, size: 0.6, shield });
+    return shield ? { id: h.cap.id, kind: 'shield', at: h.at, size: 0.4, down: false, shield: true } : { id: h.cap.id, kind: h.cap.kind, at: h.at, size: 0.4, down: false, capital: true };
   };
 
   // what your guns can lock on to: the other side's fighters, then the

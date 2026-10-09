@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { BATTLE, WIDTH, createBattle, inSights, perSide, turnToward } from './battle';
+import { createDirector } from './battleDirector';
+import { planFor } from './battlePlan';
 import { FIGHTERS, WARS } from './wars';
 
 // a seeded random, so every run of a battle is the same
@@ -594,5 +596,126 @@ describe('a battle', () => {
     expect(done).toBeTruthy();
     // (the other side went after it)
     expect(r.hitBy).toBeGreaterThan(0);
+  });
+});
+
+// Past 1.4 radii a battle never noticed you, and an unsworn pilot's shots
+// went through it as if it weren't there. Now a couple of the other side's
+// come out to its edge for you (out to BATTLE.edge radii), and unsworn, a
+// side you fire on hunts you a while (BATTLE.grudge seconds), that side alone.
+describe('a pilot at the battle’s edge, and an unsworn one', () => {
+  // (across the lines from the middle, the radius 125: in the ring and past it)
+  const ring = { x: 0, y: 0, z: 250, alive: true };
+  const past = { x: 0, y: 0, z: 325, alive: true };
+  const middle = { x: 0, y: 0, z: 0, alive: true };
+  const onYou = (b) => b.fighters.filter((f) => f.alive && f.target === b.you);
+  // a step at a time for `seconds`, `look(events, t)` after each (`you`: where you are, or a function saying where)
+  const fly = (b, seconds, you, look = () => {}) => {
+    for (let i = 0, n = Math.round(seconds * 30); i < n && !b.over; i++) look(b.update(1 / 30, typeof you === 'function' ? you() : you), (i + 1) / 30);
+  };
+
+  it('reaches out to 2.4 radii, two a side, and holds a grudge 45 seconds', () => {
+    expect(BATTLE).toMatchObject({ edge: 2.4, edgeOn: 2, grudge: 45 });
+  });
+
+  for (const tactics of [false, true]) {
+    const how = tactics ? ' (with tactics)' : '';
+    it(`a pilot at the battle’s edge draws two interceptors at most${how}: the other side’s, on you within ten seconds, and one comes within 20`, () => {
+      const b = make({ tactics });
+      b.setYou(0);
+      let most = 0;
+      let first = Infinity;
+      let nearest = Infinity;
+      const teams = new Set();
+      fly(b, 30, ring, (events, t) => {
+        const on = onYou(b);
+        most = Math.max(most, on.length);
+        if (on.length) first = Math.min(first, t);
+        for (const f of on) {
+          teams.add(f.team);
+          nearest = Math.min(nearest, Math.hypot(f.pos.x - ring.x, f.pos.y - ring.y, f.pos.z - ring.z));
+        }
+      });
+      expect(most).toBeLessThanOrEqual(2);
+      expect(first).toBeLessThanOrEqual(10);
+      expect([...teams]).toEqual([1]);
+      expect(nearest).toBeLessThan(20);
+    });
+
+    it(`past the edge nobody comes${how}`, () => {
+      const b = make({ tactics });
+      b.setYou(0);
+      let most = 0;
+      fly(b, 20, past, () => (most = Math.max(most, onYou(b).length)));
+      expect(most).toBe(0);
+    });
+
+    it(`the edge is a fight${how}: its interceptors’ fire hurts you there`, () => {
+      const b = make({ tactics });
+      b.setYou(0);
+      let hurt = 0;
+      fly(b, 30, ring, (events) => (hurt += events.filter((e) => e.type === 'hurt').length));
+      expect(hurt).toBeGreaterThan(0);
+    });
+
+    it(`point defence reaches the edge${how}: a battery fires its flak at you 15 off it, outside 1.4 radii`, () => {
+      // (a tight battle, the radius 60, so a battery of the other side's sits near enough its edge)
+      const b = make({ tactics, radius: 60 });
+      b.setYou(0);
+      const tu = b.capitals.filter((c) => c.team === 1).flatMap((c) => c.turrets).reduce((p, q) => (Math.hypot(q.at.x, q.at.y, q.at.z) > Math.hypot(p.at.x, p.at.y, p.at.z) ? q : p));
+      // (15 further out from the middle than the battery, following it if its ship moves)
+      const off = () => {
+        const l = Math.hypot(tu.at.x, tu.at.y, tu.at.z);
+        return { x: tu.at.x * (1 + 15 / l), y: tu.at.y * (1 + 15 / l), z: tu.at.z * (1 + 15 / l), alive: true };
+      };
+      const at = off();
+      expect(Math.hypot(at.x, at.y, at.z)).toBeGreaterThan(60 * 1.4);
+      let aimed = 0;
+      const fire = b.fire;
+      b.fire = (team, from, dir, kind, target) => {
+        if (team === 1 && kind === 'flak') {
+          const you = b.you.pos;
+          const to = Math.hypot(you.x - from.x, you.y - from.y, you.z - from.z);
+          const l = Math.hypot(dir.x, dir.y, dir.z);
+          if (((you.x - from.x) * dir.x + (you.y - from.y) * dir.y + (you.z - from.z) * dir.z) / (to * l) > 0.98) aimed += 1;
+        }
+        return fire(team, from, dir, kind, target);
+      };
+      fly(b, 5, off);
+      expect(aimed).toBeGreaterThan(0);
+    });
+
+    it(`an unsworn pilot who fires on a side is hunted by that side alone${how}, and only for its grudge`, () => {
+      const b = make({ tactics });
+      b.update(1 / 30, middle);
+      const f = b.fighters.find((o) => o.alive && o.team === 1 && !o.ace);
+      expect(shotAt(b, f.seen, 0.5)?.id).toBe(f.id);
+      expect(b.you.angry[1]).toBeGreaterThan(0);
+      expect(b.you.angry[0]).toBe(0);
+      const by = [0, 0];
+      fly(b, 20, middle, () => {
+        for (const o of onYou(b)) by[o.team] += 1;
+      });
+      expect(by[0]).toBe(0);
+      expect(by[1]).toBeGreaterThan(0);
+      // (no more shots: once the grudge is out, nobody)
+      fly(b, BATTLE.grudge + 5 - 20, middle);
+      expect(b.you.angry).toEqual([0, 0]);
+      expect(onYou(b)).toHaveLength(0);
+    });
+  }
+
+  it('an unsworn pilot’s shot at an ace counts nothing: the tally’s never told', () => {
+    const plan = { ...planFor({ id: 'edge.ace', kind: 'assault', attacker: 0 }), side: [{ id: 'ace-1', type: 'ace', team: 1, at: 0, hp: 64, kind: 'tieadvanced', name: 'Darth Vader' }] };
+    const d = createDirector({ plan, seed: plan.id });
+    const told = [];
+    const b = make({ tactics: true, tickets: false, plan, director: { state: () => d.state(60, () => 0) }, ace: { 1: { kind: 'tieadvanced', name: 'Darth Vader', hp: 64 } }, onMine: (id) => told.push(id) });
+    fly(b, 0.1, middle);
+    const ace = b.fighters.find((f) => f.ace);
+    expect(ace.alive).toBe(true);
+    for (let i = 0; i < 20; i++) expect(shotAt(b, ace.seen, 5)?.id).not.toBe(ace.id);
+    fly(b, 0.1, middle);
+    expect(ace.alive).toBe(true);
+    expect(told).toEqual([]);
   });
 });

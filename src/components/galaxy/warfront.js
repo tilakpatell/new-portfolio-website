@@ -350,9 +350,9 @@ export function createWarFront(scene, { models, small = false, reduced = false, 
       ace: Object.fromEntries(aces.map((a) => [a.team, { kind: a.kind, name: a.name, hp: a.hp }])),
       // your shot on an objective (the attacker's to take), on one of the
       // other side's runners or on their ace (whoever's they are), each
-      // pilot's worth less the more of them there are
+      // pilot's worth less the more of them there are (and nobody's, unsworn)
       onMine: (id, damage) => {
-        if (attacking() || id.startsWith('r:') || id.startsWith('ace:')) addFight(id, damage / scale());
+        if (team !== null && (attacking() || id.startsWith('r:') || id.startsWith('ace:'))) addFight(id, damage / scale());
       },
     });
     team = teamFor(side(), b);

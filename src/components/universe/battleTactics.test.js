@@ -159,6 +159,25 @@ describe('a fighter’s commitment (tactics)', () => {
     expect(same.fighters.map((f) => [f.pos.x, f.pos.z])).toEqual(plain.fighters.map((f) => [f.pos.x, f.pos.z]));
   });
 
+  it('at the battle’s edge, a picked wingman breaks from its slot to come for you, and the difficulty’s pool still caps them: one at most at 0.6', () => {
+    const b = make();
+    b.setYou(0);
+    b.setDifficulty(0.6);
+    // (the other side's leaders held dead in space, as a droid control relay's fall holds them: only wingmen to pick, their leaders going nowhere)
+    for (const fl of b.tactics.flights) if (fl.team === 1) fl.members[0].frozen = 40;
+    const ring = { x: 0, y: 0, z: 250, alive: true };
+    let most = 0;
+    let came = false;
+    for (let i = 0; i < 30 * 30; i++) {
+      b.update(step, ring);
+      const on = b.fighters.filter((f) => f.alive && f.target === b.you);
+      most = Math.max(most, on.length);
+      if (on.some((f) => f.wing > 0 && Math.hypot(f.pos.x - ring.x, f.pos.y - ring.y, f.pos.z - ring.z) < 20)) came = true;
+    }
+    expect(most).toBe(1);
+    expect(came).toBe(true);
+  });
+
   it('flies 64 fighters a frame with tactics quickly enough', () => {
     const b = make({ perSide: 32 });
     const t0 = performance.now();

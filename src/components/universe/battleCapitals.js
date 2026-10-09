@@ -9,7 +9,7 @@
 //
 // Each takes the battle's inner context `k` (battle.js's createBattle makes
 // it): { b, rand, between, C, A, S, lines, attacker, defender, pending,
-// newId(), youIn(), finish(winner, why, out), decides }.
+// newId(), youNear(), hostile(team), finish(winner, why, out), decides }.
 // layCapitals(k, objectivesOn); fireBatteries(k, cap, dt); hullHit(cap,
 // damage, out, spare); ageCapitals(k, dt, out); holdCapitals(k) gives the battle
 // disable(id, s), wreck(id), moveCapital(cap, d) and turnCapital(cap, axis, a);
@@ -121,8 +121,8 @@ export function fireBatteries(k, cap, dt) {
           near = f;
         }
       }
-      // (you, within the difficulty's reach for you: battleDifficulty.js)
-      const dy = k.youIn() && b.you.team !== cap.team ? dist2(b.you.pos, tu.at) : Infinity;
+      // (you, within the difficulty's reach for you, battleDifficulty.js: at the battle's edge too)
+      const dy = k.youNear() && k.hostile(cap.team) ? dist2(b.you.pos, tu.at) : Infinity;
       const youNear = dy < nd && (!k.pressure || dy < k.pressure.flak * k.pressure.flak);
       const tp = youNear ? b.you.pos : near?.pos;
       if (tp) {

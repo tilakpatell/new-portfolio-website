@@ -310,12 +310,13 @@ export function createFlights(k) {
         return f.station ? { at: f.station, speed: near ? f.type.speed * 0.4 : f.type.speed } : null;
       }
       const lead = api.lead(f);
-      if (lead && dist > FLIGHTS.transit && dist2(lead.pos, f.pos) < 60 * 60) {
+      // (one of the battle's edge's, battle.js's pickEdge, goes straight for you: no slot, no waiting)
+      if (lead && dist > FLIGHTS.transit && dist2(lead.pos, f.pos) < 60 * 60 && !k.edge.has(f)) {
         const at = slotOf(f, lead, f.slot ?? (f.slot = v3()));
         const off = Math.sqrt(dist2(at, f.pos));
         return { at, speed: off < 3 ? lead.speed : f.type.speed * FLIGHTS.rejoin };
       }
-      if (!lead && dist > FLIGHTS.transit && f.flight && f.flight.members.some((m) => m !== f && m.alive && m.mode !== 'rtb' && m.slot && dist2(m.slot, m.pos) > 9)) return { at: null, speed: f.type.speed * FLIGHTS.ease };
+      if (!lead && dist > FLIGHTS.transit && !k.edge.has(f) && f.flight && f.flight.members.some((m) => m !== f && m.alive && m.mode !== 'rtb' && m.slot && dist2(m.slot, m.pos) > 9)) return { at: null, speed: f.type.speed * FLIGHTS.ease };
       if (f.target) return null;
       // nothing to go after: by its bombers, or circling its cover
       const bombers = api.escortOf(f);

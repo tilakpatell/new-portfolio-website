@@ -67,7 +67,8 @@ export function createTactics(k) {
   // two-always-within-seventy rule; within seventy a free token's taken)
   let you = null;
   const youFull = (f) => f.target !== b.you && (k.pressure ? you.count('you') >= k.pressure.onYou : b.you.on >= BATTLE.onYou);
-  const alive = (t) => Boolean(t) && (t === b.you ? k.youIn() : t.alive !== false);
+  // (you're there for `f` while you're in among it, or at its edge for one of the edge's: battle.js's youFor)
+  const alive = (t, f) => Boolean(t) && (t === b.you ? k.youFor(f) : t.alive !== false);
 
   // a point on one of the other side's capital ships, there while the ship is
   const hullPoint = (cap) => {
@@ -149,7 +150,7 @@ export function createTactics(k) {
     // (nothing to dogfight near: a strafing run, an escort's at what's near its bombers)
     if (closest > TACTICS.strafe * TACTICS.strafe || (bombers && !opts.length)) strafeOptions(f, opts, bombers ? keep : ship ? [ship.pos, 0] : null);
     // you: a couple always on you while you're near (Battlefront's fights come to the player), more if you're the nearest
-    if (k.youIn() && b.you.team !== f.team && (!keep || dist2(b.you.pos, keep[0]) < keep[1] * keep[1])) {
+    if (k.youIn() && k.hostile(f.team) && (!keep || dist2(b.you.pos, keep[0]) < keep[1] * keep[1])) {
       const d = dist2(b.you.pos, f.pos);
       const on = f.target === b.you;
       if (k.pressure && f.ace) {
@@ -222,9 +223,9 @@ export function createTactics(k) {
   const wingTarget = (f, lead) => {
     let t = null;
     // (a bomber keeps to its own run till its torpedo's away, and goes after no fighter)
-    if (f.role === 'bomber') return alive(f.target) && !f.rethink ? f.target : alive(lead.target) ? ((f.rethink = false), lead.target) : null;
+    if (f.role === 'bomber') return alive(f.target, f) && !f.rethink ? f.target : alive(lead.target, f) ? ((f.rethink = false), lead.target) : null;
     if (b.clock - lead.chased < 0.6 && lead.chaser?.alive && lead.chaser.team !== f.team) t = lead.chaser;
-    else if (alive(lead.target)) t = lead.target;
+    else if (alive(lead.target, f)) t = lead.target;
     if (t === b.you && youFull(f)) t = null;
     if (t?.role === 'bomber' && t !== f.target && !tokens.held('intercept', f.id, t.id) && tokens.count('intercept', t.id) >= TACTICS.intercepts) t = null;
     return t;
@@ -269,6 +270,11 @@ export function createTactics(k) {
     // what `f` goes after: weighed again when it's time, kept a while once chosen
     think(f, dt) {
       if (f.mode === 'rtb') return; // (going home: battleFlights.js has it)
+      // one of the battle's edge's (battle.js's pickEdge): out to you, as far as the pool on you lets it
+      if (k.edge.has(f) && (f.target === b.you || !youFull(f))) {
+        setTarget(f, b.you);
+        return;
+      }
       // a wingman takes its leader's
       const lead = flights.lead(f);
       const wing = lead && wingTarget(f, lead);
@@ -277,7 +283,7 @@ export function createTactics(k) {
         return;
       }
       f.retarget -= dt;
-      const there = alive(f.target) && !strayed(f);
+      const there = alive(f.target, f) && !strayed(f);
       if (there && f.retarget > 0) return;
       f.retarget = TACTICS.think;
       let t;

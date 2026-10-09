@@ -15,7 +15,7 @@
 //
 // Each takes the battle's inner context `k` (battle.js's createBattle makes
 // it): { b, rand, C, A, S, lines, radius, avoid, attacker, newId(),
-// flagOf(team), objOf(), youIn() }.
+// flagOf(team), objOf(), youIn(), youFor(f), hostile(team), edge }.
 // muster(k, perSide, ace) puts both sides' fighters up (an ace flown as its
 // own kind, named, with its own hull); spawn(k, f, first) puts one back up
 // in front of its line; addWave(k, team, n, id) puts up a bomber wave, one
@@ -149,6 +149,8 @@ function bomberTarget(k, f) {
 }
 function fighterTarget(k, f) {
   const { b } = k;
+  // (one of the battle's edge's, battle.js's pickEdge: out to you, while there's room on you)
+  if (k.edge.has(f) && (f.target === b.you || b.you.on < BATTLE.onYou)) return b.you;
   let best = null;
   let score = Infinity;
   for (const o of b.fighters) {
@@ -170,7 +172,7 @@ function fighterTarget(k, f) {
       best = r;
     }
   }
-  if (k.youIn() && b.you.team !== f.team && b.you.on < BATTLE.onYou) {
+  if (k.youIn() && k.hostile(f.team) && b.you.on < BATTLE.onYou) {
     const d = dist2(b.you.pos, f.pos);
     // always a couple on you while you're anywhere near (Battlefront's
     // fights come to the player), more if you're the nearest
@@ -178,7 +180,7 @@ function fighterTarget(k, f) {
   }
   return best;
 }
-const targetAlive = (k, t) => t && (t === k.b.you ? k.youIn() : t.alive);
+const targetAlive = (k, t, f) => t && (t === k.b.you ? k.youFor(f) : t.alive);
 
 // ── one fighter, one step ──
 const want = v3();
@@ -203,7 +205,7 @@ export function flyFighter(k, f, dt) {
   // tactics, battleTactics.js: kept a while once chosen)
   if (k.tactics) k.tactics.think(f, dt);
   else f.retarget -= dt;
-  if (!k.tactics && (!targetAlive(k, f.target) || f.retarget <= 0)) {
+  if (!k.tactics && (!targetAlive(k, f.target, f) || f.retarget <= 0)) {
     const was = f.target;
     f.target = f.role === 'bomber' ? bomberTarget(k, f) : fighterTarget(k, f);
     if (was === b.you && f.target !== b.you) b.you.on = Math.max(0, b.you.on - 1);
@@ -282,9 +284,9 @@ export function flyFighter(k, f, dt) {
       want.z += (tmp.z / (d || 1)) * push;
     }
   }
-  // back into the fight at its edge
+  // back into the fight at its edge (not one of the edge's out after you, battle.js's pickEdge)
   const out = Math.sqrt(dist2(f.pos, C)) - radius;
-  if (out > 0) {
+  if (out > 0 && !(t === b.you && k.edge.has(f))) {
     set(tmp, C.x - f.pos.x, C.y - f.pos.y, C.z - f.pos.z);
     norm(tmp);
     const pull = Math.min(3, out / 20);
