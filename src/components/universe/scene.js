@@ -115,7 +115,7 @@ import { houseOn } from '../../lib/three/house';
 import { createFeel, feelGroups } from '../../lib/three/feel';
 import { createImpacts, impactGroups } from '../../lib/impact';
 import { debugOn, debugPanel } from '../../lib/debugPanel';
-import { OPEN_SPACE, PLANETS, SHIP, SOLIDS, SPACE, autopilot, crashLoud, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
+import { LEAN, OPEN_SPACE, PLANETS, SHIP, SOLIDS, SPACE, autopilot, crashLoud, forward, headingTo, holdReach, isGoal, isPlace, noseOf, orbiting, parkAt, spawn, startAt, step } from './ship';
 import { HYPER, destinationById, driveById, hyperState, legOf, parkFor, riftExit, shortDistance } from './nav';
 import { REAIM_MS, parkBehind, pilotId, pilotSpace, reached } from './pilotGoal';
 import { FACTIONS, HUNTER_KINDS, NAMES, createHunters } from './hunters';
@@ -808,7 +808,9 @@ export async function create(canvas, ctx) {
   // ?debug: the shake and the hitstop, the bumps' law, and on foot the
   // knocks' law and the jump's press, on sliders (lib/debugPanel)
   const titled = (name) => (g) => ({ ...g, name });
-  const panel = debugOn() ? debugPanel({ title: 'The universe', id: 'universe', groups: [...feelGroups(feel), ...impactGroups(bumpLaw).map(titled('bumps')), ...foot.tune().map((g) => (g.name === 'hits' ? titled('knocks, on foot')(g) : g))] }) : null;
+  // (the ship's lean, ship.js's spring: shared with the galaxy map, set here for both)
+  const leanGroups = () => [{ name: 'lean', items: [['k', 'stiffness', 0, 300, 1], ['c', 'damping', 0, 40, 0.1]].map(([key, label, min, max, step]) => ({ key, label, type: 'range', min, max, step, get: () => LEAN[key], set: (v) => (LEAN[key] = v) })) }];
+  const panel = debugOn() ? debugPanel({ title: 'The universe', id: 'universe', groups: [...feelGroups(feel), ...leanGroups(), ...impactGroups(bumpLaw).map(titled('bumps')), ...foot.tune().map((g) => (g.name === 'hits' ? titled('knocks, on foot')(g) : g))] }) : null;
   // and what's shot down burns: a fireball, shards and (bigger than a
   // fighter) a ring, pooled (lib/three/explosions); just the pop on a weak
   // device, once the quality's been lowered, or from the pace's step 2
@@ -5624,7 +5626,7 @@ export async function create(canvas, ctx) {
     dropEclipse();
     burst.clear();
     const [x, y, z] = p.at;
-    state.ship = { ...state.ship, x, y, z, heading: p.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, edge: false };
+    state.ship = { ...state.ship, x, y, z, heading: p.heading, speed: 0, vy: 0, lift: 0, pitch: 0, bank: 0, rate: 0, tipRate: 0, rollRate: 0, lean: 0, leanV: 0, edge: false };
     // (the map turned the way the ship faces, as arriveAt does, so the
     // key light falls the same way every time, not wherever the turn's ease got to)
     state.yaw = -p.heading;

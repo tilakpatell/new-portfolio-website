@@ -21,7 +21,7 @@ import { CREW_INK, LENGTH, SHIP_MODELS, buildShip } from '../shipModels';
 import { paintById } from '../paint';
 import { writeBuild } from './build';
 import { BUILD_SLOTS } from './parts';
-import { FPS, fitDistance, glowCopy, heroOf, pulseAt, yawFromDrag } from './showroomRules';
+import { FPS, createFling, fitDistance, glowCopy, heroOf, pulseAt, yawFromDrag } from './showroomRules';
 
 const FOV = 30;
 const PULSE_COLOR = new THREE.Color('#7cc8ff');
@@ -145,9 +145,14 @@ export function createShowroom(canvas, { reduced = false } = {}) {
   let yaw = 0.6;
   const spin = reduced ? 0 : 0.3;
   let drag = null;
+  // a drag let go at speed keeps it turning, slowing (showroomRules' fling); not with reduced motion
+  const fling = createFling();
+  let movedAt = 0;
   const pointers = new Map();
   const down = (e) => {
     pointers.set(e.pointerId, e.clientX);
+    fling.grab();
+    movedAt = performance.now();
     if (pointers.size === 1) drag = { x: e.clientX, yaw };
     canvas.setPointerCapture?.(e.pointerId);
   };
@@ -162,11 +167,21 @@ export function createShowroom(canvas, { reduced = false } = {}) {
       return;
     }
     pointers.set(e.pointerId, e.clientX);
-    if (drag) yaw = drag.yaw + yawFromDrag(e.clientX - drag.x);
+    if (drag) {
+      const was = yaw;
+      yaw = drag.yaw + yawFromDrag(e.clientX - drag.x);
+      const t = performance.now();
+      fling.track(yaw - was, (t - movedAt) / 1000);
+      movedAt = t;
+    }
     dirty = true;
   };
   const up = (e) => {
     pointers.delete(e.pointerId);
+    if (drag && !pointers.size) {
+      const v = fling.release((performance.now() - movedAt) / 1000);
+      if (reduced && v) fling.grab();
+    }
     drag = null;
   };
   const setZoom = (z) => {
@@ -203,6 +218,10 @@ export function createShowroom(canvas, { reduced = false } = {}) {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     drawn = now;
+    if (fling.moving) {
+      yaw += fling.coast(dt);
+      dirty = true;
+    }
     if (spin || dirty || focused) {
       yaw += spin * dt;
       turn.rotation.y = yaw;
