@@ -42,7 +42,7 @@ import { createCarry, createPayLedger } from '../components/universe/earnRules';
 import { wornFiles } from '../components/rickmorty/wardrobe/looks';
 import { useLooks } from '../components/rickmorty/wardrobe/useLooks';
 import { toggleGuide } from '../lib/palette';
-import { Menu } from '../runtime/hud';
+import { Menu, MenuItem, Prompt, Reticle, reticleState } from '../runtime/hud';
 import { wayOut } from '../components/worlds/worlds';
 import GuideCue from '../components/guide/GuideCue';
 import { EMOTES, wheelAngle } from '../lib/emote';
@@ -187,6 +187,7 @@ export default function GalaxySurface() {
   const [aiming, setAiming] = useState(false);
   const [combat, setCombat] = useState(null); // the fight's numbers (scene.js's 'combat' event): guard or heat, abilities, the lock
   const [hitMark, setHitMark] = useState(null); // { n, kill }
+  const [looking, setLooking] = useState(null); // the look's mode and lock (scene.js's 'look' event, runtime/look.js)
   const [hurtFlash, setHurtFlash] = useState(0);
   const [parryNote, setParryNote] = useState(0);
   // the emote wheel, as the scene says it is (its 'emote' event: open, the
@@ -371,6 +372,7 @@ export default function GalaxySurface() {
         lastHealth.current = e.value;
         setHealth(e.value);
       } else if (e.type === 'combat') setCombat(e);
+      else if (e.type === 'look') setLooking(e);
       else if (e.type === 'emote') {
         wheelOpen.current = Boolean(e.open);
         setEmote(e);
@@ -645,7 +647,17 @@ export default function GalaxySurface() {
         </p>
       )}
       {hurtFlash > 0 && <div key={`hurt-${hurtFlash}`} className="surface-hurt" aria-hidden="true" />}
-      {(((aiming || quest?.shoot) && phase === 'walk') || (mission?.kind === 'chase' && chase && !chase.result && phase === 'ride') || (mission?.kind === 'assault' && chase?.phase === 'run' && chase.you?.up && phase === 'walk')) && <span className="surface-crosshair" aria-hidden="true" />}
+      {/* the reticle (the world kit's): up whenever a gun is, or the sights, or a shot's just gone */}
+      <Reticle
+        className="surface-reticle"
+        state={reticleState(null, {
+          gun: ((aiming || quest?.shoot || (combat && !combat.saber)) && phase === 'walk') || (mission?.kind === 'chase' && chase && !chase.result && phase === 'ride') || (mission?.kind === 'assault' && chase?.phase === 'run' && chase.you?.up && phase === 'walk'),
+          sights: Boolean(combat?.ads && !combat.saber && phase === 'walk'),
+          hitAt: hitMark ? 0 : null,
+          lock: combat?.lock,
+        })}
+      />
+      {looking?.prompt && phase === 'walk' && !leaving && !emote?.open && <Prompt k="" verb={looking.prompt} className="surface-look" onClick={() => view.current?.input?.('lookLock')} />}
       {/* the emote wheel (B held, or the Emote button on a phone): the five
           round the middle of the view, clockwise from the top, the one pointed
           at lit; let go over it, or click or tap it, or its number */}
@@ -706,7 +718,13 @@ export default function GalaxySurface() {
         <button type="button" className="surface-help-btn" onClick={takeOff}>
           Back to orbit
         </button>
-        <Menu className="surface-menu" todo={site.quests.length > 0 ? { onOpen: () => setList(true), done: done.length, total: site.quests.length } : null} way={wayOut(pathname)} />
+        <Menu className="surface-menu" todo={site.quests.length > 0 ? { onOpen: () => setList(true), done: done.length, total: site.quests.length } : null} way={wayOut(pathname)}>
+          {looking && looking.mode !== 'touch' && (
+            <MenuItem keep onClick={() => view.current?.input?.('lookMode', looking.mode === 'lock' ? 'drag' : 'lock')}>
+              Look: {looking.mode === 'lock' ? 'Click to lock' : 'Drag'}
+            </MenuItem>
+          )}
+        </Menu>
         <ModelCredits where="galaxy-surface" only={kinds} className="surface-credits-corner" />
       </div>
       {picking && <HeroPanel hero={hero} onChange={pickHero} onClose={() => setPicking(false)} />}
