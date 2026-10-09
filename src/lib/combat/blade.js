@@ -21,62 +21,15 @@
 //       segment passes within `within` of the blade
 //     history() → [{ base, tip, t }], oldest first; clear()
 //   }
-//   segSeg(a, b, c, d) → { s, t, dist }: the nearest points of two
-//     segments, s along ab and t along cd (0…1), and how far apart
-//   segCapsule(a, b, ca, cb, r) → { t, at } | null: where the segment ab
-//     first comes within r of the segment ca–cb (t 0…1 along ab)
+// The geometry (segSeg, segCapsule) is bolt.js's, the one copy.
+
+import { segSeg } from './bolt';
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const add = (a, b, k = 1) => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const len = (a) => Math.sqrt(dot(a, a));
-const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const lerp = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
-
-export function segSeg(a, b, c, d) {
-  const u = sub(b, a);
-  const v = sub(d, c);
-  const w = sub(a, c);
-  const A = dot(u, u);
-  const B = dot(u, v);
-  const C = dot(v, v);
-  const D = dot(u, w);
-  const E = dot(v, w);
-  const den = A * C - B * B;
-  let s;
-  let t;
-  if (A < 1e-12 && C < 1e-12) [s, t] = [0, 0];
-  else if (A < 1e-12) [s, t] = [0, clamp01(E / C)];
-  else if (C < 1e-12) [s, t] = [clamp01(-D / A), 0];
-  else {
-    // (parallel: any s will do; the start, then the nearest t to it)
-    s = den > 1e-12 ? clamp01((B * E - C * D) / den) : 0;
-    t = (B * s + E) / C;
-    if (t < 0) [s, t] = [clamp01(-D / A), 0];
-    else if (t > 1) [s, t] = [clamp01((B - D) / A), 1];
-  }
-  const p = add(a, u, s);
-  const q = add(c, v, t);
-  return { s, t, dist: len(sub(p, q)) };
-}
-
-// (bisected along ab for the first touch: a bolt hits the near side of a
-// body, not its middle)
-export function segCapsule(a, b, ca, cb, r) {
-  const m = segSeg(a, b, ca, cb);
-  if (m.dist > r) return null;
-  // (whether the first s of ab comes within r: false, then true from the touch on)
-  const near = (s) => segSeg(a, add(a, sub(b, a), s), ca, cb).dist <= r;
-  if (near(0)) return { t: 0, at: a.slice() };
-  let lo = 0;
-  let hi = m.s;
-  for (let i = 0; i < 24; i++) {
-    const mid = (lo + hi) / 2;
-    if (near(mid)) hi = mid;
-    else lo = mid;
-  }
-  return { t: hi, at: add(a, sub(b, a), hi) };
-}
 
 // a blade between two frames: the base moved straight, the blade turned
 // round (its direction slerped, its length eased), so a sweeping arc

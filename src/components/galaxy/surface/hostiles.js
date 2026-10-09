@@ -80,6 +80,8 @@ export const parries = (hostile, roll) => Boolean(hostile?.parry) && roll < host
 //     world: { you: { x, z } | null, allies: [{ x, z }], seesThrough(a, b) | null, tokens?, who?, search?, stims?, options? }
 //     (who: this one's id for the tokens and the search)
 
+import { lead } from '../../../lib/combat/accuracy';
+import { BOLT_SPEED } from '../../../lib/combat/bolt';
 import { belief, createSenses, sense } from '../../../lib/ai/perception';
 import { consider, pick, runtime } from '../../../lib/ai/utility';
 import { apart as awayFromAll, candidates, cover, nearTo, offLine, pickPlace, visible } from '../../../lib/ai/spatial';
@@ -265,7 +267,9 @@ export function hostileStep(t, world, dt, r = Math.random) {
     }
   }
   out.mode = m.mode;
-  out.aim = target && near ? { x: target.x, z: target.z } : null;
+  // (you in sight and moving: led, where you'll be when its bolt gets there)
+  const led = target && near && t.sees && you?.vel ? lead([target.x, 0, target.z], [you.vel.x ?? 0, 0, you.vel.z ?? 0], [out.x, 0, out.z], BOLT_SPEED) : null;
+  out.aim = led ? { x: led[0], z: led[2] } : target && near ? { x: target.x, z: target.z } : null;
   out.guessed = lost;
   return out;
 }

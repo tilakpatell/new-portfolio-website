@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { createBolts } from '../../../lib/combat/bolt';
 import { meshyRig } from '../../../lib/three/meshyRig.fixture';
 import { createGunplay } from '../../universe/gunplay';
 import { STANCES } from './combatRules';
@@ -109,31 +110,42 @@ describe('a stroke from a clip, a hit from the blade', () => {
     expect(got.map(([n]) => n)).toEqual([...STANCES.single.strokes.map((k) => k.clip), 'sword.heavy.a']);
     expect(got.map(([, n]) => n)).toEqual(got.map(() => 1));
   });
-  it('turns a bolt at the raised blade, not one with the blade down, and a tap of the block still shows for the parry window', () => {
+  it('turns a bolt at the chest with the block up (the bolts’ own step), lets it land with the block down, and a tap of the block still shows for the parry window', () => {
     const d = duellist();
     d.saber.light(true);
     for (let i = 0; i < 20; i++) d.frame([]);
-    d.saber.block(true);
-    for (let i = 0; i < 20; i++) d.frame([]);
-    const through = () => {
+    // a trooper 15 m ahead fires at your chest, through the middle of your blade
+    const shoot = () => {
+      const bolts = createBolts({ pool: 4 });
+      const guard = d.saber.guard();
       const { base, tip } = d.saber.blades[0].history().at(-1);
       const mid = base.map((v, i) => (v + tip[i]) / 2);
-      return [mid.map((v, i) => v + [0, 0, 8][i]), mid.map((v, i) => v - [0, 0, 8][i])];
+      const from = [mid[0], mid[1], mid[2] + 15];
+      bolts.fire({ from, dir: [0, 0, -1], side: 'them', owner: 'trooper', damage: 8, deflect: true });
+      const you = { id: 'you', a: [0, 0.4, 0], b: [0, 1.45, 0], r: 0.4, side: 'you' };
+      for (let i = 0; i < 30; i++) {
+        const [e] = bolts.step(1 / 30, { solids: () => null, bodies: [you], blades: guard ? [guard] : [] });
+        if (e && e.type !== 'gone') return e.type;
+      }
+      return null;
     };
-    expect(d.saber.crossing(...through())).not.toBeNull();
-    const [a, b] = through();
-    expect(d.saber.crossing(a.map((v, i) => v + [1.2, 0, 0][i]), b.map((v, i) => v + [1.2, 0, 0][i]))).toBeNull();
+    expect(d.saber.guard()).toBeNull();
+    expect(shoot()).toBe('hit');
+    d.saber.block(true);
+    for (let i = 0; i < 20; i++) d.frame([]);
+    expect(d.saber.guard()).toMatchObject({ id: 'you', side: 'you' });
+    expect(shoot()).toBe('deflect');
     d.saber.block(false);
     for (let i = 0; i < 30; i++) d.frame([]);
-    expect(d.saber.crossing(...through())).toBeNull();
+    expect(d.saber.guard()).toBeNull();
     // (down and up again in a frame: still up for the parry window, then down)
     d.saber.block(true);
     d.frame([]);
     d.saber.block(false);
     for (let i = 0; i < 6; i++) d.frame([]);
-    expect(d.saber.crossing(...through())).not.toBeNull();
+    expect(d.saber.guard()).not.toBeNull();
     for (let i = 0; i < 20; i++) d.frame([]);
-    expect(d.saber.crossing(...through())).toBeNull();
+    expect(d.saber.guard()).toBeNull();
   });
   it('hits nothing with the blade out', () => {
     const d = duellist();

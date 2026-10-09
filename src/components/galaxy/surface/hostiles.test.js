@@ -109,6 +109,16 @@ describe('an enemy’s head', () => {
     expect(out.guessed).toBe(false);
   });
 
+  it('leads you while it sees you moving: aims where you will be when its bolt arrives', () => {
+    const t = trooper();
+    const { out } = run(t, { you: { x: 0, z: 30, vel: { x: 2.3, z: 0 } }, allies: [], seesThrough: () => true }, 2);
+    expect(out.guessed).toBe(false);
+    expect(out.aim.z).toBeCloseTo(30, 0);
+    // (a third of a second at 90 m/s: 0.77 m ahead of you)
+    expect(out.aim.x).toBeGreaterThan(0.6);
+    expect(out.aim.x).toBeLessThan(0.95);
+  });
+
   it('a blaster trooper with no shot takes cover from your line of fire; a duellist stays in your view', () => {
     const tokens = createTokens({ pools: { shot: 0 } });
     // a pillar between: a wall on x = 10 hides anything on its far side from you at x = 0

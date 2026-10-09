@@ -26,14 +26,14 @@
 // `sound(name)`. The block lays the block clip's arms the same way, held
 // up across, and shows for the parry window however short the press; a
 // bolt whose flown segment passes through the held blade is turned
-// (`crossing`, for blaster.js), one beside it isn't.
+// (`guard`, for lib/combat/bolt.js's step), one beside it isn't.
 //
 //   createSaber(gp, { color, hilt, stance, parent, sound, fig, clips }) →
 //     { light(on), swing(now, { heavy, dir, lock, lunge, clip }), block(on), throw(now, dir),
 //       stand(dt, now, move), update(dt, now, { forward, up, me, targets, hit }),
-//       crossing(a, b) (a bolt's flown segment through the raised blade:
-//       { at } | null), deflecting(from) (a swipe from there meets the raised
-//       blade), lit, busy, swinging (the stroke: { name (the
+//       guard(id, side) (the raised blade for the bolts' step: { id, base,
+//       tip, r, side } | null), deflecting(from) (a swipe from there meets
+//       the raised blade), lit, busy, swinging (the stroke: { name (the
 //       clip's), clip, t0, speed, contact, damage, heavy, … } or null), thrown, charge (0…1 while F is
 //       held), setCharge(k), blades (lib/combat/blade.js's, the main first),
 //       dispose() }
@@ -50,6 +50,7 @@ import { createBlade } from '../../../lib/combat/blade';
 import { loadClip } from '../../../lib/three/clipLibrary';
 import { createTrail } from '../../../lib/three/combat/trail';
 import { frameFrom, reach, rotateWorld, setWorldQuaternion } from '../../../lib/three/ik';
+import { capsuleOf } from './blaster';
 import { BLOCK_CLIP, DIRS, HEAVY, PARRY, STRIKE, rootScale, stanceOf, strokeFor } from './combatRules';
 import { SABER, deflects, throwAt } from './saberRules';
 
@@ -85,17 +86,6 @@ const CANCEL = 0.05; // seconds after the contact window ends that the next stro
 const BLOCK_AT = 0.32; // of the block clip, where it's held: the blade up across
 const DEFLECT_R = 0.3; // how near the held blade a bolt turns off it (m): its streak is a hand across, and a block should read as covering
 const NO_CLIP = { duration: 0.6, contact: [0.2, 0.4] }; // (a stroke whose clip hasn't come: timed as one)
-// a body as the blade sees it: a capsule up from its feet, as round as it's wide
-export const capsuleOf = (t, out = {}) => {
-  const p = t.holder.position;
-  const tall = (t.fig?.tall ?? 1.6) * (t.spec?.scale ?? 1);
-  const r = Math.min(1.5, Math.max(0.3, tall * 0.2));
-  out.a = [p.x, p.y + r, p.z];
-  out.b = [p.x, p.y + Math.max(r, tall - r), p.z];
-  out.r = r;
-  out.ref = t;
-  return out;
-};
 const ease = (k) => k * k * (3 - 2 * k);
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // a clip's root travel at time t (metres, the figure's own +x and +z), between the baked rows
@@ -408,7 +398,7 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
     }
     pushBlades(now);
     if (inside && st.lit > 0.5) {
-      const caps = (p.targets ?? []).filter((x) => !sw.hits.has(x) && x.holder).map((x) => capsuleOf(x, {}));
+      const caps = (p.targets ?? []).filter((x) => !sw.hits.has(x) && x.holder).map((x) => ({ ...capsuleOf(x), ref: x })); // (a body as the bolts see it: blaster.js's)
       for (const seg of segs)
         for (const h of seg.sweep(caps)) {
           if (sw.hits.has(h.target.ref)) continue;
@@ -503,15 +493,13 @@ export function createSaber(gp, { color = '#4aa8ff', hilt = null, stance = 'sing
       }
       st.blocking = on;
     },
-    // whether a bolt that flew from a to b this frame ([x, y, z]) went
-    // through the raised blade: { at } where it did, else null
-    crossing(a, b) {
+    // the raised blade as the bolts see it (lib/combat/bolt.js's `blades`):
+    // the main blade's segment this frame while the block shows, a little
+    // wider than the blade, else null
+    guard(id = 'you', side = 'you') {
       if (!blockShown() || st.lit <= 0.5 || st.swing || st.thrown) return null;
-      for (const seg of segs) {
-        const c = seg.crosses(a, b, DEFLECT_R);
-        if (c) return c;
-      }
-      return null;
+      const f = segs[0]?.history().at(-1);
+      return f ? { id, base: f.base, tip: f.tip, r: DEFLECT_R, side } : null;
     },
     throw(now, dir) {
       if (st.thrown || st.swing || !hand || gun.parent !== hand) return false;

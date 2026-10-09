@@ -1,27 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createBlade, segCapsule, segSeg } from './blade';
+import { createBlade } from './blade';
+import { segCapsule } from './bolt';
 
 // a body standing at x, z: a capsule from 0.35 m up to 1.45 m, 0.35 round
 const body = (id, x, z, r = 0.35) => ({ id, a: [x, r, z], b: [x, 1.8 - r, z], r });
-
-describe('the geometry', () => {
-  it('segSeg finds the nearest points of two crossing segments', () => {
-    const m = segSeg([-1, 0, 0], [1, 0, 0], [0, -1, 0.5], [0, 1, 0.5]);
-    expect(m.s).toBeCloseTo(0.5);
-    expect(m.t).toBeCloseTo(0.5);
-    expect(m.dist).toBeCloseTo(0.5);
-  });
-  it('segSeg copes with parallel segments and points', () => {
-    expect(segSeg([0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]).dist).toBeCloseTo(1);
-    expect(segSeg([0, 0, 0], [0, 0, 0], [3, 4, 0], [3, 4, 0]).dist).toBeCloseTo(5);
-  });
-  it('segCapsule meets a capsule the segment passes through, at its first touch, and not one it passes by', () => {
-    const hit = segCapsule([-3, 1, 0], [3, 1, 0], [0, 0.4, 0], [0, 1.4, 0], 0.4);
-    expect(hit.t).toBeCloseTo(2.6 / 6, 2);
-    expect(hit.at[0]).toBeCloseTo(-0.4, 2);
-    expect(segCapsule([-3, 1, 0.5], [3, 1, 0.5], [0, 0.4, 0], [0, 1.4, 0], 0.4)).toBeNull();
-  });
-});
 
 describe('createBlade', () => {
   it('a sweep whose segment crosses a capsule hits it at the nearest point on the blade', () => {

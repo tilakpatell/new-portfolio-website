@@ -1,10 +1,11 @@
 // The ground war on a world, composed: who holds which turf (turf.js), the
 // soldiers made round you cell by cell (population.js), each stepped by the
 // fight (fight.js) on its own body (groundFigures.js); their bolts at each
-// other flown and stopped by the first wall (bolts.js), a fight past 60 m
-// settled by the same aim without them (farExchange), their bolts at you
-// handed back to the scene for blaster.enemy (so the dodge, the saber and
-// the shield are yours as ever); the director's raids, posts and hunts
+// other fired into the scene's one pool (blaster.js, lib/combat/bolt.js's
+// step) and landing where they land, a fight past 60 m settled by the same
+// aim without them (farExchange), their bolts at you handed back to the
+// scene for blaster.enemy (so the dodge, the saber and the shield are yours
+// as ever); the director's raids, posts and hunts
 // (director.js) as news for the HUD; and what you can shoot at in the same
 // shape as the quests' targets. scene.js makes one and updates it each
 // frame. The design:
@@ -16,13 +17,16 @@
 //   targets, update(dt, you, t, { mate, camera }) → shots at you ({ from,
 //   to: [x, z], spread, damage, who }), news() → the director's events
 //   since, hit(t, damage, { push, at }), near(t), passed(from, to) (your
-//   shot's line: near on each it went by), parry(t), knock(t, v),
+//   shot's line: near on each it went by), bodies() (the soldiers as the
+//   bolts see them), bolt(e) (a step's event on a soldier's bolt or at a
+//   soldier: a hit lands, a wall sparks), parry(t), knock(t, v),
 //   stagger(t, secs), ms, debug(), dispose() }
 
 import { createTokens } from '../../../../lib/ai/squad';
 import { liveCount, lodPick } from '../../../../lib/three/lodPick';
 import { pushOut } from '../walker';
-import { NEAR, createBolts, farExchange } from './bolts';
+import { scatter } from '../../../../lib/combat/accuracy';
+import { NEAR, bodyOf as boltBody, farExchange, nearBy } from './bolts';
 import { createDirector } from './director';
 import { aimError, fightStep, grudge, indexBodies, squadsOf, suppress } from './fight';
 import { createFigures } from './groundFigures';
@@ -44,14 +48,13 @@ const SHOTS = { shot: 3, melee: 1 };
 const SCALE = { ultra: 1, high: 1, mid: 0.67, low: 0.67 }; // (the difficulty: every pool at once)
 const RAGDOLLS = new Set(['high', 'ultra']);
 
-const inert = { posts: [], turfs: [], targets: [], ms: 0, landed() {}, update: () => [], news: () => [], hit() {}, near() {}, passed() {}, parry: () => ({ parried: false, broke: false }), knock() {}, stagger() {}, debug: () => [], posted: () => [], dispose() {} };
+const inert = { posts: [], turfs: [], targets: [], ms: 0, landed() {}, update: () => [], news: () => [], hit() {}, near() {}, passed() {}, bodies: () => [], bolt() {}, parry: () => ({ parried: false, broke: false }), knock() {}, stagger() {}, debug: () => [], posted: () => [], dispose() {} };
 
 export function createGround({ parent, world, site, effects, tier = 'high', kit = null, warm, blaster = null, sparks = null, standable = () => true, seesThrough = null, rand = Math.random }) {
   if (!effects?.owner || !site?.land?.at || site.noGround) return inert;
   const turfs = turfsOf(site, effects, { standable, height: world.heightAt });
   const figures = createFigures({ parent, world, warm, kit, tier });
   const tokens = createTokens({ pools: SHOTS, scale: SCALE[tier] ?? 1, timeout: 0.9 });
-  const bolts = createBolts({ speed: SPEED, life: 2 });
   const director = createDirector({ turfs, effects, tier, rand });
   let pop = null;
   let squads = null;
@@ -106,29 +109,14 @@ export function createGround({ parent, world, site, effects, tier = 'high', kit 
     }
     return standable([x, z]) ? [x, z] : [s.b.x, s.b.z];
   };
-  // where a line from a to b first meets a wall (or b)
-  const wallOn = (a, b) => {
-    if (!seesThrough || seesThrough({ x: a[0], z: a[2] }, { x: b[0], z: b[2] })) return b;
-    let lo = 0;
-    let hi = 1;
-    for (let k = 0; k < 5; k++) {
-      const m = (lo + hi) / 2;
-      if (seesThrough({ x: a[0], z: a[2] }, { x: a[0] + (b[0] - a[0]) * m, z: a[2] + (b[2] - a[2]) * m })) lo = m;
-      else hi = m;
-    }
-    return [a[0] + (b[0] - a[0]) * hi, a[1] + (b[1] - a[1]) * hi, a[2] + (b[2] - a[2]) * hi];
+  // a shot at a soldier or your mate: a bolt into the scene's pool, at the
+  // aim (fight.js leads a mover), scattered by the aim's error
+  const loose = (s, from, aim, spread, dist) => {
+    if (!blaster) return;
+    const dir = scatter([aim.x - from[0], aim.y - from[1], aim.z - from[2]], spread, rand);
+    blaster.shoot({ from, dir, speed: SPEED, side: s.side, owner: s.id, damage: damageOf(s.weapon, dist), range: weaponOf(s.weapon).range, colour: BOLT[s.side] ?? '#ff3b30', deflect: true, tag: { ground: true, near: new Set(), last: [...from] } });
   };
-  // a shot at a soldier or your mate: a bolt that flies, its tracer drawn to where it'll stop
-  const loose = (s, from, aim, spread, target, dist) => {
-    const d = [aim.x - from[0], aim.y - from[1], aim.z - from[2]];
-    const l = Math.hypot(d[0], d[1], d[2]) || 1;
-    const dir = [d[0] / l + (rand() - 0.5) * spread * 2, d[1] / l + (rand() - 0.5) * spread, d[2] / l + (rand() - 0.5) * spread * 2];
-    const range = weaponOf(s.weapon).range;
-    bolts.fire({ from, dir, side: s.side, owner: s.id, damage: damageOf(s.weapon, dist), range, target });
-    const k = Math.hypot(dir[0], dir[1], dir[2]) || 1;
-    const reach = Math.min(range, l + 30);
-    blaster?.tracer(from, wallOn(from, [from[0] + (dir[0] / k) * reach, from[1] + (dir[1] / k) * reach, from[2] + (dir[2] / k) * reach]), BOLT[s.side] ?? '#ff3b30');
-  };
+  const capsules = [];
 
   const api = {
     posts: turfs[0]?.posts ?? [],
@@ -167,6 +155,19 @@ export function createGround({ parent, world, site, effects, tier = 'high', kit 
         const k = Math.max(0, Math.min(1, ((t.soldier.b.x - from.x) * dx + (t.soldier.b.z - from.z) * dz) / l2));
         if (Math.hypot(from.x + dx * k - t.soldier.b.x, from.z + dz * k - t.soldier.b.z) < NEAR) api.near(t);
       }
+    },
+    // the soldiers as the bolts see them (the scene's step: yours, theirs, everyone's)
+    bodies() {
+      capsules.length = 0;
+      for (const t of api.targets) capsules.push(boltBody({ id: t.id, x: t.soldier.b.x, y: t.holder.position.y, z: t.soldier.b.z, r: 0.45, h: t.fig?.tall ?? 1.8, side: t.soldier.side, ref: t }));
+      return capsules;
+    },
+    // a step's event: a bolt (not yours: the scene has those) into a
+    // soldier lands; a soldier's bolt at a wall sparks
+    bolt(e) {
+      const t = e.body?.ref;
+      if (e.type === 'hit' && t?.ground === api && !t.down && e.bolt.side !== 'you') struck(t, e.bolt.damage, { x: e.bolt.dir[0], z: e.bolt.dir[2] }, { y: e.at[1] });
+      else if (e.type === 'solid' && e.bolt.tag?.ground) sparks?.(e.at, BOLT[e.bolt.side] ?? '#ffffff');
     },
     parry: () => ({ parried: false, broke: false }),
     knock(t, v) {
@@ -277,18 +278,20 @@ export function createGround({ parent, world, site, effects, tier = 'high', kit 
       else {
         const v = out.target === 'mate' ? null : figures.get(out.target);
         const y = out.target === 'mate' ? (mate?.y ?? 0) + 1.1 : (v?.holder.position.y ?? from[1] - 1.2) + 1.1;
-        loose(s, from, { x: out.aim.x, y, z: out.aim.z }, spread, out.target, dist);
+        loose(s, from, { x: out.aim.x, y, z: out.aim.z }, spread, dist);
       }
     }
-    // the bolts in flight: hits, walls and near misses
+    // the soldiers' bolts in flight going close by: heads down (the hits
+    // and the walls are the scene's step's events: bolt(e))
     struckBy.length = 0;
-    for (const t of figures.all()) if (!t.down && t.soldier.alive) struckBy.push({ id: t.id, x: t.soldier.b.x, y: t.holder.position.y, z: t.soldier.b.z, r: 0.45, h: t.fig?.tall ?? 1.8, side: t.soldier.side });
-    if (mate) struckBy.push({ id: 'mate', x: mate.x, y: mate.y ?? 0, z: mate.z, r: 0.45, h: 1.8, side: effects.side ?? null });
-    for (const e of bolts.step(dt, { bodies: struckBy, seesThrough })) {
-      const v = e.target ? figures.get(e.target) : null;
-      if (e.type === 'hit' && v && !v.down) struck(v, e.bolt.damage, { x: e.dir[0], z: e.dir[2] }, { y: e.at[1] });
-      else if (e.type === 'wall') sparks?.(e.at, BOLT[e.bolt.side] ?? '#ffffff');
-      else if (e.type === 'near' && v && !v.down) suppress(v.soldier, time);
+    for (const t of figures.all()) if (!t.down && t.soldier.alive) struckBy.push({ id: t.id, x: t.soldier.b.x, z: t.soldier.b.z });
+    for (const b of blaster?.bolts.live() ?? []) {
+      if (!b.tag?.ground) continue;
+      for (const id of nearBy(b.tag.last, b.pos, struckBy, b.tag.near, b.owner)) {
+        const v = figures.get(id);
+        if (v && !v.down) suppress(v.soldier, time);
+      }
+      b.tag.last = b.pos.slice();
     }
     // the fights past BOLTS, settled every so often by the same aim
     if (far) {

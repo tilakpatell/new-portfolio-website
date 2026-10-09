@@ -105,6 +105,7 @@ import { createActivity } from './activity';
 import { snapToTexel } from './shadow';
 import { createShadowPhase } from './near';
 import { createBlaster } from './blaster';
+import { createBoltPlay } from './boltPlay';
 import { applyEmote, createEmoteWheel, emotePacket, keepEmote, readEmote } from '../../../lib/emote';
 import { preload } from '../../../lib/three/clipLibrary';
 import { fallTurn } from '../../../lib/three/locomotion';
@@ -401,6 +402,7 @@ export async function create(canvas, ctx) {
   const blaster = createBlaster({ parent: scene, world, pool: mission?.kind === 'assault' ? 72 : undefined });
   // the ground war: who holds which turf, and its soldiers, made round you as you go (ground/)
   const groundWar = createGround({ parent: scene, world, site, effects: mission ? null : ctx.effects, tier, kit, warm, blaster, sparks: (at, c) => fx.sparks(new V(...at), UP, c, 8), standable: (p) => standable(site, p), seesThrough: (a, b) => lineClear(world.solids, a, b) });
+  const boltPlay = createBoltPlay({ blaster, ground: groundWar });
   // what a shot does round the gun and where it lands (universe/gunfx.js),
   // and a light that flares with each muzzle flash: in the scene from the
   // start and dark between shots, so the count of lights never changes and
@@ -1159,30 +1161,6 @@ export async function create(canvas, ctx) {
     mateFight.hp = MATE.hp;
     mateFight.hits.length = 0;
   }
-  // a bolt of theirs (blaster.enemy's) that passes through your mate on
-  // its way to you: it's hit as the bolt gets there (and the bolt flies on,
-  // so what comes your way is as it was)
-  function grazes(b) {
-    if (!b?.v || mateFight.down > 0 || state.phase !== 'walk') return;
-    const q = other().st;
-    const o = b.m.position;
-    const vv = b.v.lengthSq();
-    if (vv < 1e-6) return;
-    const cx = q.x - o.x;
-    const cy = q.y + 1 - o.y;
-    const cz = q.z - o.z;
-    const tc = (cx * b.v.x + cy * b.v.y + cz * b.v.z) / vv; // (seconds till it's nearest)
-    if (tc <= 0 || tc > b.life) return;
-    const mx = o.x + b.v.x * tc - q.x;
-    const mz = o.z + b.v.z * tc - q.z;
-    const my = o.y + b.v.y * tc - (q.y + 1);
-    if (mx * mx + mz * mz > MATE.girth * MATE.girth || Math.abs(my) > 0.9) return;
-    // (not one that reaches you first: that's yours, as it always was)
-    const p = me().st;
-    const tp = ((p.x - o.x) * b.v.x + (p.y + 1 - o.y) * b.v.y + (p.z - o.z) * b.v.z) / vv;
-    if (tp > 0 && tp < tc && Math.hypot(o.x + b.v.x * tp - p.x, o.z + b.v.z * tp - p.z) < 0.55) return;
-    mateFight.hits.push({ at: state.t + tc, damage: b.damage ?? 8, from: { x: o.x, z: o.z } });
-  }
   // a swipe at you (a rancor's, a blade's) that reaches your mate too
   function swiped(s) {
     const q = other().st;
@@ -1286,16 +1264,10 @@ export async function create(canvas, ctx) {
       blaster.tracer(r.muzzle.toArray(), to.toArray(), bolt);
       return;
     }
-    // (whether it lands is rolled first: one that does goes in at its
-    // weapon's scatter, one that doesn't wide past them, so what's seen is
-    // what happened)
-    const lands = Math.random() < MATE.land;
+    // (a bolt at its weapon's scatter, that lands where it lands: boltPlay's yours)
     const sp = spreadAt(w, false) * 2;
-    const aim = dir.clone().add(new V((Math.random() - 0.5) * sp, (Math.random() - 0.5) * sp, (Math.random() - 0.5) * sp));
-    if (!lands) aim.add(new V(-dir.z, 0, dir.x).multiplyScalar((Math.random() < 0.5 ? -1 : 1) * (0.06 + Math.random() * 0.06))).add(new V(0, (Math.random() - 0.3) * 0.05, 0));
-    aim.normalize();
-    const hit = blaster.fire(r.muzzle, aim, lands ? [foe] : [], bolt, w.range);
-    if (lands && hit.target) on(hit.target).hit(hit.target, 1, { push: aim, at: hit.at });
+    const aim = dir.clone().add(new V((Math.random() - 0.5) * sp, (Math.random() - 0.5) * sp, (Math.random() - 0.5) * sp)).normalize();
+    blaster.fire(r.muzzle, aim, [foe], bolt, w.range, null, { mate: true, push: aim });
   }
   // your shots and blasts (and your mate's, and the hostiles' fire), for the
   // people about to hear them: actors.js's `hear` (they startle and run from it), a blast twice
@@ -1701,7 +1673,8 @@ export async function create(canvas, ctx) {
     const right = new V(-Math.cos(p.yaw), 0, Math.sin(p.yaw));
     const from = new V(p.x, p.y + 1.35, p.z).addScaledVector(right, -0.25).addScaledVector(camDir, 0.5);
     // (what it hits is decided now, from your eyes' line; the bolt leaves the
-    // muzzle once you've turned to it this frame, place() then shot())
+    // muzzle once you've turned to it this frame, place() then shot(); what
+  // it hits is the bolt's, when it gets there: boltPlay's yours)
     const gp = me().gp;
     state.aim = 1;
     state.aimDir.copy(camDir);
@@ -1712,12 +1685,10 @@ export async function create(canvas, ctx) {
       state.shot = { from, dir: camDir.clone() };
       return;
     }
-    const hit = blaster.fire(from, scatter(camDir, w), shootable(), boltOf(me()), w.range);
+    const hit = blaster.fire(from, scatter(camDir, w), shootable(), boltOf(me()), w.range, null, { yours: true, how: w.kind, push: camDir.clone() });
     groundWar.passed(from, hit.at); // (a soldier it went close by keeps its head down, and has a grudge)
     activity.heard({ x: from.x, z: from.z }, { x: from.x + camDir.x * 40, z: from.z + camDir.z * 40 }); // (the enemies hear it, and one it's aimed near knows)
     heardBy(from, { x: from.x + camDir.x * 40, z: from.z + camDir.z * 40 }); // (and the people about: actors.js's)
-    struck(hit, undefined, { how: w.kind, push: camDir });
-    landed(hit, camDir);
     sounds.blast?.();
     emit({ type: 'fire' });
   }
@@ -2152,9 +2123,8 @@ export async function create(canvas, ctx) {
     const n = w.pellets ?? 1;
     let hit = null;
     for (let i = 0; i < n; i++) {
-      const h = blaster.fire(o.from, scatter(o.dir, w), shootable(), hot ? '#ffffff' : boltOf(p), w.range, r.muzzle);
+      const h = blaster.fire(o.from, scatter(o.dir, w), shootable(), hot ? '#ffffff' : boltOf(p), w.range, r.muzzle, { yours: true, damage: Math.max(1, Math.round((w.damage + (hot ? 1 : 0)) / (n > 1 ? 2 : 1))), how: w.kind, push: o.dir.clone() });
       groundWar.passed(o.from, h.at);
-      struck(h, Math.max(1, Math.round((w.damage + (hot ? 1 : 0)) / (n > 1 ? 2 : 1))), { how: w.kind, push: o.dir });
       hit ??= h;
     }
     activity.heard({ x: o.from.x, z: o.from.z }, { x: o.from.x + o.dir.x * 40, z: o.from.z + o.dir.z * 40 }); // (as for an unrigged shot in fire())
@@ -2164,18 +2134,54 @@ export async function create(canvas, ctx) {
     fx.flash(r.muzzle, out, spec.flash);
     if (spec.smoke) fx.smoke(r.muzzle, out, spec.smoke);
     if (spec.casing && r.eject) fx.casing(r.eject, new V(-1, 0, 0).transformDirection(r.gun.matrixWorld), UP);
-    landed(hit, out, r.muzzle);
     if (!reduced) state.kick.v += spec.kick.up * (w.kick ?? 1) * (state.ads ? 0.6 : 1);
     gunSound(p.spec.gun);
     emit({ type: 'fire' });
   }
-  // where a shot lands, when it gets there: sparks off it, and on the ground a burn
-  const impacts = [];
-  function landed(hit, dir, from = null) {
-    const d = from ? from.distanceTo(hit.at) : 30;
-    if (d >= 89) return; // (out of range: it went nowhere)
-    impacts.push({ t: state.t + d / 140, at: hit.at.clone(), dir: dir.clone(), ground: !hit.target });
+  // the bolts in flight on the one step (boltPlay): what each hit, as it
+  // gets there; your raised blade turns theirs home
+  function stepBolts(dt) {
+    const up = (state.phase === 'walk' || state.phase === 'ride') && !state.off;
+    const p = me();
+    boltPlay.step(dt, {
+      you: up && !state.safe ? p.st : null,
+      mate: state.phase === 'walk' && mateFight.down === 0 ? other().st : null,
+      allies: ctx.effects?.side ? [ctx.effects.side] : [],
+      targets: assaultOn() ? assault.targets : activity.targets,
+      guard: up && p.saber ? p.saber.guard() : null, // (the raised blade itself, while the block shows: saber.js)
+    }, {
+      yours(e) {
+        const t = e.body.ref;
+        const tag = e.bolt.tag ?? {};
+        const hit = { target: t, at: new V(...e.at) };
+        if (tag.yours) {
+          struck(hit, tag.damage, { how: tag.how, push: tag.push });
+          impacts.push({ t: state.t, at: hit.at, dir: new V(...e.bolt.dir), ground: false });
+        } else if (tag.mate) on(t).hit(t, 1, { push: tag.push, at: hit.at });
+        else if (e.bolt.deflected) struck(hit, 2, { how: 'deflect', push: new V(...e.bolt.dir) });
+        else if (tag.friend && !t.down) on(t).hit(t, e.bolt.damage);
+      },
+      hurt: (n, from) => hurt(n, from),
+      mate: (n, from) => mateHit(n, from),
+      // (theirs into a friend of yours; a battle counts its own)
+      other(e) {
+        const t = e.body.ref;
+        if (t && !t.down && !assaultOn()) on(t).hit(t, e.bolt.damage);
+      },
+      deflect(e) {
+        fx.sparks(new V(...e.at), UP, '#ffffff', 10);
+        sounds.saber?.('deflect');
+        state.saberAt = state.t;
+        // (each bolt turned costs a little guard)
+        if (me().saber) state.guard = guardHit(state.guard, 7 * me().saber.stance.cost * perks.deflect, state.t);
+      },
+      landed(e) {
+        if (e.bolt.tag?.yours) impacts.push({ t: state.t, at: new V(...e.at), dir: new V(...e.bolt.dir), ground: (e.normal?.[1] ?? 1) > 0.7 });
+      },
+    });
   }
+  // where a shot lands, as the bolt gets there (stepBolts): sparks off it, and on the ground a burn
+  const impacts = [];
   function stepImpacts() {
     for (let i = impacts.length - 1; i >= 0; i--) {
       const o = impacts[i];
@@ -2856,8 +2862,7 @@ export async function create(canvas, ctx) {
       const { atYou } = assault.update(dt, state.off ? null : me().st);
       for (const s of atYou) {
         // (and where it came from, for the way you fall; one through your mate on the way hits it)
-        grazes(blaster.enemy(s.from, new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, s.color, s.damage));
-        state.hitFrom = { x: s.from[0], z: s.from[2] };
+        boltPlay.enemy({ from: s.from, spread: s.spread, color: s.color, damage: s.damage }, me().st, state.t);
       }
       if (state.t - chaseViewAt > 0.1) {
         chaseViewAt = state.t;
@@ -2899,10 +2904,12 @@ export async function create(canvas, ctx) {
         // (a blaster's shot, heard by the people about as yours are: the
         // townsfolk scatter from it, a trooper stops and looks)
         if (!s.melee) heardBy({ x: s.from[0], z: s.from[2] });
-        // at a friend of yours (or by one, at a hostile): a bolt between them, and whoever's hit, hit
+        // at a friend of yours (or by one, at a hostile): a bolt between
+        // them that lands where it lands (boltPlay's other and yours); a swipe that mostly does
         if (s.at && s.victim) {
-          if (!s.melee) blaster.tracer(s.from, s.at, s.who?.spec?.side === 'yours' ? '#ffb070' : '#ff4a3d');
-          if (Math.random() < (s.melee ? 0.8 : 0.45)) on(s.victim).hit(s.victim, s.damage);
+          const friend = s.who?.spec?.side === 'yours';
+          if (!s.melee) blaster.shoot({ from: s.from, dir: [s.at[0] - s.from[0], s.at[1] - s.from[1], s.at[2] - s.from[2]], side: friend ? 'you' : 'them', owner: s.who ?? null, damage: s.damage, colour: friend ? '#ffb070' : '#ff4a3d', deflect: true, tag: { friend } });
+          else if (Math.random() < 0.8) on(s.victim).hit(s.victim, s.damage);
           continue;
         }
         const blade = me().saber?.deflecting(s.from) ?? false;
@@ -2942,19 +2949,11 @@ export async function create(canvas, ctx) {
           hurt(s.damage, { x: s.from[0], z: s.from[2] });
           swiped(s); // (and your mate, if it's in reach of it too)
         } else {
-          const b = blaster.enemy(s.from, s.to ? new V(s.to[0], me().st.y + 1.1, s.to[1]) : new V(me().st.x, me().st.y + 1.1, me().st.z), s.spread, '#ff4a3d', s.damage); // (at what it believes: a guess goes wide)
-          grazes(b);
-          state.hitFrom = { x: s.from[0], z: s.from[2] };
+          // (at what it believes: a guess goes wide; none through a wall; a raised blade turns it: boltPlay)
+          boltPlay.enemy({ ...s, side: s.who?.soldier?.side ?? 'them' }, me().st, state.t);
         }
       }
-    const hit = blaster.update(dt, (state.phase === 'walk' || state.phase === 'ride') && !state.off && !state.safe ? me().st : null, (at) => {
-      fx.sparks(at, UP, '#ffffff', 10);
-      sounds.saber?.('deflect');
-      state.saberAt = state.t;
-      // (each bolt turned costs a little guard)
-      if (me().saber) state.guard = guardHit(state.guard, 7 * me().saber.stance.cost * perks.deflect, state.t);
-    }, me().saber ? (a, b) => me().saber.crossing(a, b) : null); // (turned only where it meets the raised blade: saber.js)
-    if (hit) hurt(hit);
+    stepBolts(dt);
     if (state.health < 100 && state.t - state.hurtAt > 4) {
       state.health = Math.min(100, state.health + dt * 12 * perks.regen);
       if (Math.round(state.health) % 10 === 0) emit({ type: 'health', value: Math.round(state.health) });
