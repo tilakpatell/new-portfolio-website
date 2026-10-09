@@ -17,6 +17,8 @@ import { WALK } from './walk';
 import { EMBER, FIRE, SMOKE, createParticles, lavaMaterial, makeHobbit, makeOrc, skyDome, stoneTextures } from './kit';
 import { castDo, releaseCast, tickCast, upgrade } from './cast3d';
 import { createShake } from './feel';
+import { BLOOMS } from './look';
+import { houseGroups } from '../../lib/three/houseTuning';
 
 // the drawing's x (see walk.js) to the scene's: the road runs along x
 const X = (svg) => (svg - 265) / 10;
@@ -135,7 +137,7 @@ function tower() {
 }
 
 export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLost } = {}) {
-  const stage = createStage(canvas, { soft, shadows: true, fov: 48, near: 0.4, far: 900, exposure: 1.05, bloom: { strength: 0.65, radius: 0.5, threshold: 0.9 }, onLost });
+  const stage = createStage(canvas, { soft, shadows: true, fov: 48, near: 0.4, far: 900, exposure: 1.05, bloom: BLOOMS.gorgoroth, onLost });
   const { scene, camera, renderer } = stage;
   scene.fog = new THREE.FogExp2(0x2a0f08, 0.0085);
   scene.background = new THREE.Color(0x120604);
@@ -447,7 +449,7 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
   // ── what is going on ──
   const S = { phase: 'ready', x: WALK.x0, spot: 265, burden: 0, patrols: [], carried: false, walking: false };
   // one shake, the site's (./feel.js), with Gorgoroth's own numbers: trauma² × 0.5, fading 1.6 a second
-  const shake = createShake({ calm: reduced, offset: 0.5, decay: 1.6, title: 'Gorgoroth' });
+  const shake = createShake({ calm: reduced, offset: 0.5, decay: 1.6 });
   const A = { t: 0, hide: 1, sweep: 265, anger: 0, dim: 1, shake: 0, flash: 0, bolt: 5, door: 0, wide: 1, acc: { plume: 0, ash: 0, ember: 0, torch: 0 } };
   let cam = null;
   const v = new THREE.Vector3();
@@ -471,6 +473,7 @@ export function createGorgoroth3D(canvas, { soft = false, reduced = false, onLos
   // the house look (lib/three/house), as in Middle-earth's towns: the house
   // tone mapper, the shade one colour from the ash sky's light, under the mountain's glow; its own fog kept
   const house = houseOn({ renderer, scene, sun: glow, hemi, look: { fog: false } });
+  stage.tune([...houseGroups(house), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   let houseFrames = 0;
 
   const render = (ms = 16) => {

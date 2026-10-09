@@ -33,6 +33,8 @@ import { createOrthancKit, insideTop } from './props';
 import { DUEL_AT, HOST, LEAF, LECTERN, MOTH_AT, PALANTIR, PITS, PIN, PIN_IN, RING, SARUMAN_AT, STAIR, STAIR_LEN, TOWER_H, clearView, indoors, stairAngle, stairAt, stairFace } from './layout';
 import { attend, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
 import { byFrame, createShake } from '../../feel';
+import { BLOOMS } from '../look';
+import { houseGroups } from '../../../../lib/three/houseTuning';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -97,7 +99,7 @@ function isenPaint(x, z, h, out) {
 export function createOrthancWorld(canvas, { onLost } = {}) {
   const dev = device();
   const tier = dev.tier;
-  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.05, far: 3200, bloom: { strength: 0.85, radius: 0.55, threshold: 0.82 }, onLost });
+  const stage = createStage(canvas, { shadows: false, fov: 50, near: 0.05, far: 3200, bloom: BLOOMS.orthanc, onLost });
   const { scene, camera, renderer } = stage;
   // the house look (lib/three/house): one shadow colour and the sky's fog
   // on everything, under the house tone mapper; it follows the moods below
@@ -399,7 +401,8 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   for (const k of NUMBERS) cur[k] = MOODS.hall[k];
   const sunDir = V(...MOODS.hall.sun).normalize();
   const A = { t: 0, cam: { at: V(0, 3, 16), look: V(0, 2, 0) }, mode: '', shake: 0, first: true, fov: 50, mood: '', flash: 0, block: 0, push: 0, hit: 0, cast: 0, sx: DUEL_AT.saruman.x, gx: DUEL_AT.gandalf.x, down: 0, jump: 0, ring: -1, ring2: -1, eyeLook: 0, flames: 0, smoke: 0, wake: 0, eye: 0 };
-  const shake = createShake({ title: 'Orthanc' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const shake = createShake(); // one shake, the site's (../../feel.js)
+  stage.tune([...houseGroups(houseLook), ...shake.groups()]); // ?debug: the bloom, the look and the shake on one panel
   const HITSTOP = { push: 50, block: 60, hit: 80 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();

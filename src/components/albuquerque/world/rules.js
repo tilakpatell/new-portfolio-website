@@ -571,6 +571,26 @@ function slice(c, { throttle, steer, handbrake, assist }, h, out, movers) {
   out.surface = surface;
 }
 
+// ── things to knock over ──
+
+// Along Central, in the gutter by the kerb (clear of the lanes the traffic
+// drives, so only you hit them): a row of cones at each block's middle on
+// the north side, a bin and a pair of crates on the south. Data only: the
+// scene puts them through lib/three/knockables, bodies where the computer
+// can afford the engine and standing still where it can't.
+const GUTTER = 7.2;
+export const STREET_PROPS = GRID.xs.slice(0, -1).flatMap((x0, i) => {
+  const x = (x0 + GRID.xs[i + 1]) / 2;
+  return [
+    { kind: 'cone', x: x - 5, y: 0, z: GUTTER, yaw: 0 },
+    { kind: 'cone', x, y: 0, z: GUTTER, yaw: 0.6 },
+    { kind: 'cone', x: x + 5, y: 0, z: GUTTER, yaw: 1.2 },
+    { kind: 'bin', x: x + 14, y: 0, z: -GUTTER, yaw: 0 },
+    { kind: 'crate', x: x - 14, y: 0, z: -GUTTER, yaw: 0.2 },
+    { kind: 'crate', x: x - 12.9, y: 0, z: -GUTTER - 0.2, yaw: -0.3 },
+  ];
+});
+
 // ── a way out ──
 
 // The last safe spot (Dot Matrix keeps one; the reset key puts you back on
