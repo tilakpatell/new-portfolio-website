@@ -118,7 +118,7 @@ Interiors are code-built rooms (they are architecture); everyone in them is a mo
 ### 7. Robust
 
 - The shader: find the `MeshBasicMaterial` whose program lacks `mvPosition` (by name, in the page), and make `skyfog.js` patch only programs that have it (`vertexShader.includes('mvPosition')`), with a test on a stub shader; then that material is fixed or skipped. No console errors becomes a check line in the QA run.
-- Every deck reachable: a pure `deckGraph(site)` (decks and bridges as nodes and edges, from `things`) and a test that every floor is reachable from `land.at`; every `life` row, quest step and zone door stands on a floor.
+- Every deck reachable: a pure `sites/decks.js` (decks and bridges as nodes and edges, from `things`) and a test that every floor is reachable from `land.at`; every `life` row, quest step and zone door stands on a floor.
 - Every figure a model: §1's test and audit line.
 - Budgets: `scripts/galaxy-check.mjs surface kamino` with `BUDGET=1` at high and mid in every phase; a phase that adds triangles re-makes Kamino's line in `lab/baseline/surface-high.json` and `surface-mid.json` and says the numbers in its commit. Interiors cost nothing outside.
 - A QA script, `scripts/kamino-check.mjs` (kept): lands, waits for walk, lists every actor's kind, mesh count, skinned or not and geometry types, fails on any `CapsuleGeometry`, `SphereGeometry` or `BoxGeometry` body in `life`, any `missing()`, any console error; shoots each named person close up and the four wide views; runs the tour and the departure by `__surfaceDo`.
