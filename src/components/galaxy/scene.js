@@ -1594,8 +1594,14 @@ export async function create(canvas, ctx) {
     } else if (e.type === 'gone') capFight = null;
   };
   // it goes when you jump, so it can't fire on you in the next system; and
-  // without a word (capitalEvent), as it's you who left
+  // without a word (capitalEvent), as it's you who left. One going up is
+  // gone at once (setpieces.js), with no `dead`: its bridge was the kill, so
+  // it's paid now, without the show
   const capitalGoes = () => {
+    if (pieces?.capital.state === 'dying') {
+      pay('killCapital');
+      state.heat += 4;
+    }
     if (pieces?.destroyerHere) pieces.leave();
     capFight = null;
   };

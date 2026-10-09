@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { STAR_DESTROYER, destroyerSpot } from './setpieces';
+import * as THREE from 'three';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { STAR_DESTROYER, createSetPieces, destroyerSpot } from './setpieces';
+import { CAPITAL, JUMP } from './capitalRules';
 import { GOALS, SOLIDS, parkAt } from './ship';
 import { ORDER } from './layout';
 
@@ -29,5 +31,64 @@ describe('where the Star Destroyer drops in', () => {
       const p = destroyerSpot(ship, side, [planet]);
       expect(Math.hypot(p[0], p[1], p[2])).toBeGreaterThan(planet.r + STAR_DESTROYER * 0.6);
     }
+  });
+});
+
+describe('the capital ship, drawn', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  // (the glow is painted on a canvas: one that takes every call and draws nothing;
+  // and a fleet that hands out an empty group for the ship)
+  const make = () => {
+    const gradient = { addColorStop() {} };
+    const canvas = { width: 0, height: 0, getContext: () => new Proxy({}, { get: (_, k) => (k === 'canvas' ? canvas : () => gradient), set: () => true }) };
+    vi.stubGlobal('document', { createElement: () => canvas });
+    const ships = [];
+    const fleet = { want() {}, loaded: () => false, make: () => (ships.push({ group: new THREE.Group(), model: null, update() {}, dispose() {} }), ships.at(-1)) };
+    const parent = new THREE.Group();
+    const pieces = createSetPieces(parent, { small: true, fleet, solids: () => [] });
+    const camera = new THREE.PerspectiveCamera();
+    let t = 0;
+    const run = (seconds) => {
+      const got = [];
+      for (let s = 0; s < seconds; s += 1 / 60) {
+        t += 1 / 60;
+        pieces.update(1 / 60, t, camera, null);
+        got.push(...pieces.drain());
+      }
+      return got;
+    };
+    return { pieces, parent, ships, run };
+  };
+  const shoot = (pieces, at, punch) => pieces.hit(new THREE.Vector3(at[0], at[1] + 30, at[2]), new THREE.Vector3(at[0], at[1] - 30, at[2]), punch);
+  const drawn = (parent) => parent.children.filter((o) => o.visible);
+
+  it('going up when you jump from it, is gone at once: nothing more of it drawn, no blasts and no dead', () => {
+    const { pieces, parent, ships, run } = make();
+    expect(pieces.destroyer({ x: 0, y: 0, z: 0, heading: 0 })).toBeTruthy();
+    run(JUMP + 0.1);
+    for (const id of ['dome0', 'dome1', 'bridge']) shoot(pieces, pieces.capital.parts.find((p) => p.id === id).at, CAPITAL.bridgeHp);
+    expect(pieces.capital.state).toBe('dying');
+    const going = run(1);
+    expect(going.map((e) => e.type)).toContain('blast');
+    expect(drawn(parent).length).toBeGreaterThan(1); // (the ship, and its blasts)
+    pieces.leave();
+    expect(pieces.destroyerHere).toBe(false);
+    expect(ships[0].group.visible).toBe(false);
+    expect(drawn(parent)).toEqual([]);
+    const after = run(CAPITAL.die + 3);
+    expect(after.map((e) => e.type)).toEqual(['gone']);
+    expect(drawn(parent)).toEqual([]);
+  });
+
+  it('here when you jump from it, streaks away as ever', () => {
+    const { pieces, parent, ships, run } = make();
+    pieces.destroyer({ x: 0, y: 0, z: 0, heading: 0 });
+    run(JUMP + 0.1);
+    pieces.leave();
+    expect(pieces.capital.state).toBe('out');
+    expect(ships[0].group.visible).toBe(true);
+    const after = run(JUMP + 1.5);
+    expect(after.map((e) => e.type)).toEqual(['leaving', 'gone']);
+    expect(drawn(parent)).toEqual([]);
   });
 });

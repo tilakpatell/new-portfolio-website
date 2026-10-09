@@ -309,9 +309,17 @@ export function createSetPieces(parent, { small = false, fleet = createFleet(), 
       sdFlash.position.set(...cap.at);
       return { hangar: new THREE.Vector3(...d.hangar), heading };
     },
-    // and it jumps away (early: the TIEs are all down)
+    // and it jumps away (early: the TIEs are all down); going up as you jump
+    // from it, it's gone at once (capitalRules.js), and its blasts with it
     leave() {
+      const wreck = cap.state === 'dying';
       cap.leave();
+      if (wreck) {
+        if (sd) sd.group.visible = false;
+        for (const m of blasts) m.visible = false;
+        sdFlash.visible = false;
+        endFlash = -1;
+      }
       if (hover.state === 'here') hover.age = Math.max(hover.age, CHOPPER.stay);
     },
     // its fighters are all gone: another wave, or it goes (capitalRules.js)

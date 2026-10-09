@@ -276,6 +276,23 @@ describe('the capital ship', () => {
     expect(cap.arrive('destroyer', [0, 0, 0], 0)).toBeNull(); // (one at a time)
   });
 
+  it('told to leave while it goes up (you jumped from it), is gone at once: no more blasts, and no dead', () => {
+    const cap = arrive();
+    settle(cap);
+    for (const id of ['dome0', 'dome1', 'bridge']) for (let i = 0; i < CAPITAL.bridgeHp; i++) through(cap, part(cap, id).at);
+    expect(cap.state).toBe('dying');
+    expect(types(run(cap, 1))).toContain('blast');
+    cap.leave();
+    expect(cap.state).toBeNull();
+    expect(cap.here).toBe(false);
+    const events = cap.events.splice(0);
+    expect(events).toEqual([{ type: 'gone', reason: 'left' }]);
+    expect(types(run(cap, CAPITAL.die + 1))).toEqual([]);
+    expect(cap.bolts).toHaveLength(0);
+    // and the next one can drop in
+    expect(cap.arrive('destroyer', [0, 0, 0], 0)).toBeTruthy();
+  });
+
   it('is each side’s own ship, at its own length', () => {
     for (const side of Object.values(SIDES)) {
       const cap = arrive(side.capitalShip);

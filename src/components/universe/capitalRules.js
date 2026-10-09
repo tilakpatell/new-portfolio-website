@@ -21,7 +21,9 @@
 // in range: slow fat bolts, easy to see, that hurt if they land. Its
 // fighters come out of its belly a moment after it arrives; see them all
 // off while its shields still stand and it launches a second wave before it
-// gives up and goes. Nothing happens to the ship while it's a streak.
+// gives up and goes. Nothing happens to the ship while it's a streak. Told
+// to leave while it goes up (you've jumped away), it's simply gone: a
+// `gone`, and no `dead`.
 //
 // createCapital({ rand }) → {
 //   arrive(kind, at: [x, y, z], heading, { len, top }) → { hangar: [x, y, z], heading },
@@ -207,6 +209,15 @@ export function createCapital({ rand = Math.random } = {}) {
     bolts.length = 0;
     events.push({ type: 'leaving', reason });
   };
+  // a wreck going up when it's told to leave (you've jumped from it) is gone
+  // at once: no more blasts, and no `dead`
+  const end = (reason) => {
+    c.state = null;
+    c.age = 0;
+    c.reason = reason;
+    bolts.length = 0;
+    events.push({ type: 'gone', reason });
+  };
 
   // its turbolasers: from the battery nearest you, at where you'll be
   const fire = (you) => {
@@ -311,9 +322,10 @@ export function createCapital({ rand = Math.random } = {}) {
     get hangar() {
       return [c.at[0], c.at[1] - 2.2 * (c.len / LENGTH.destroyer), c.at[2]];
     },
-    // and it jumps away
+    // and it jumps away; or, going up, it's gone at once
     leave(reason = 'left') {
-      go(reason);
+      if (c.state === 'dying') end(reason);
+      else go(reason);
     },
     // its fighters are all gone (shot down, or given up): another wave while
     // its shields stand and it has one left, else it goes
