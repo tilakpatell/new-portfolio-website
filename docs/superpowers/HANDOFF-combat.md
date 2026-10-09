@@ -100,12 +100,12 @@ The design is `docs/superpowers/specs/2026-10-08-combat-revamp-design.md`, the p
 ### Left
 
 - **The melee parry** still asks `deflecting(from)` (the cone round you, `saberRules.deflects`) when a swipe lands; once Lane D's strokes land on contact through their own blade's sweep, it should be the block shown at their contact (`guard()` not null, the press within `PARRY.window` before their `contact[0]`), and `deflecting` and `deflects` can go.
-- **The left and right buttons**: Lane A wasn't merged when this went in, so F strokes and C blocks as before; A's `onButton(0)` should call `swing()` and `onButton(2, down)` set the block.
+- **The left and right buttons** are Lane A's `surfaceLook.pressLook`: left a stroke on release (held, the heavy one), right the block. A click that goes down and up inside one frame still raises the block for the parry window (`stepSaber` reads a `blockAt` from this frame).
 - **The sword's axis in the hand** is inferred, not known: UAL ships no sword mesh. The hand's +z (gunplay's grip) is the one where the clip's idle holds the blade forward and up and the block holds it up across; a blade out of the other side of the fist points it at the floor in both. If a gen3d hilt comes with its own grip point, check the strokes again in `scripts/preview/heroes.html?mode=swing&dir=up&k=0.6`.
 - **The throw** still flies its own path (`throwAt`), not through `bolt.js`'s step with the world's solids.
 - **The hit-stop on a parry** (120 ms) and the clash sound on `clash` are Lane D's, with the duellists.
 - **Trackpad, phone, a mouse by hand**: not tried by hand. Headless only.
-- **The block's three inputs**: none was pressed headless. The block was driven through `saber.block(on)` in `saber.test.js` (held, released, and a one-frame tap shown for the parry window) and the bolt turned through Lane B's step there; C goes through `stepSaber`'s `state.keys.block` as before, the right button waits on Lane A's `onButton(2)`, and the Block touch button sets `state.buttons.block` as before. The parry window inside and outside is `combatRules.test.js`'s `parried` test.
+- **The block's three inputs**: none was pressed headless. The block was driven through `saber.block(on)` in `saber.test.js` (held, released, and a one-frame tap shown for the parry window) and the bolt turned through Lane B's step there; C goes through `stepSaber`'s `state.keys.block` as before, the right button sets the same flag through Lane A's `pressLook`, and the Block touch button sets `state.buttons.block` as before. The parry window inside and outside is `combatRules.test.js`'s `parried` test.
 
 ### How to check it
 
