@@ -455,6 +455,27 @@ describe('createClient', () => {
     expect(seen.b.filter((e) => e.type === 'rammed')).toHaveLength(1);
   });
 
+  it('a ram is not sent at a squadmate, nor taken from one', async () => {
+    const { a, b, seen, tick } = await pair();
+    const rams = () => seen.b.filter((e) => e.type === 'rammed');
+    b.pose({ ...ship(0), speed: 4 });
+    a.pose({ ...ship(0.6), speed: 6 });
+    a.setSquad(['B']);
+    a.ram('B', 8);
+    expect(rams()).toHaveLength(0);
+    // one who doesn't know you're squadmates: their ram doesn't count with you
+    a.setSquad([]);
+    b.setSquad(['A']);
+    tick(400);
+    a.ram('B', 8);
+    expect(rams()).toHaveLength(0);
+    // out of the squad, it counts again
+    b.setSquad([]);
+    tick(400);
+    a.ram('B', 8);
+    expect(rams()).toHaveLength(1);
+  });
+
   it('a pilot rammed out of the sky is the rammer’s, and said as a ram', async () => {
     const { a, b, seen } = await pair();
     b.pose({ ...ship(0), speed: 4 });

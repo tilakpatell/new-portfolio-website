@@ -698,7 +698,7 @@ export function createClient({ name, kind = null, loadout = STOCK_LOADOUT, build
     // hard as they believe it: protocol.js's ramCounts)
     ram(id, into) {
       const p = peers.get(id);
-      if (!send || !p || p.blocked || p.ally === 'ally') return;
+      if (!send || !p || p.blocked || p.ally === 'ally' || p.squad) return;
       p.rammedByMeAt = now();
       send.ram({ v: Math.round(Math.max(0, into) * 100) / 100 }, id);
     },

@@ -282,14 +282,14 @@ export function readRam(data) {
   return v === null ? null : v;
 }
 
-// Should a ram from this pilot count, and how hard? They're not blocked or
-// an ally, were last seen close enough to have touched you (more room the
-// faster you both go: their pose is a moment old), and it's not sooner after
-// their last than a contact counts again (the law's `cool`). The closing
-// speed believed is theirs (`into`), but never more than both your speeds
-// together; null when it doesn't count.
+// Should a ram from this pilot count, and how hard? They're not blocked, an
+// ally or a squadmate, were last seen close enough to have touched you (more
+// room the faster you both go: their pose is a moment old), and it's not
+// sooner after their last than a contact counts again (the law's `cool`). The
+// closing speed believed is theirs (`into`), but never more than both your
+// speeds together; null when it doesn't count.
 export function ramCounts(peer, me, into, now) {
-  if (!peer || !me || peer.blocked || peer.ally === 'ally') return null;
+  if (!peer || !me || peer.blocked || peer.ally === 'ally' || peer.squad) return null;
   const p = peer.pose;
   if (!p || now - (peer.ramAt ?? -Infinity) < CONTACT.cool * 1000) return null;
   const both = Math.abs(p.speed ?? 0) + Math.abs(me.speed ?? 0);
