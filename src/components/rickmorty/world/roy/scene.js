@@ -26,6 +26,7 @@ import { makeSky } from '../sky';
 import { TUNING, ageOf, beatWindow, inBand } from './rules';
 import { sharpen } from '../../../../lib/three/textures';
 import { createFeel, feelGroups } from '../../../../lib/three/feel';
+import { BLOOMS } from '../look';
 
 const { kid: KID, football: FOOTBALL, carpet: CARPET, cancer: CANCER } = TUNING;
 const SWING = 0.62; // how far the tire swings either way at the end of its rope (radians)
@@ -890,10 +891,9 @@ function lookFor(i) {
 export async function createRoyScene(canvas, { onLost, calm = reduced() } = {}) {
   const fit = budget();
   const tier = device().tier;
-  const stage = createStage(canvas, { shadows: true, fov: 50, near: 0.1, far: 520, exposure: 1, bloom: { strength: 0.5, radius: 0.42, threshold: 1.05 }, onLost });
+  const stage = createStage(canvas, { shadows: true, fov: 50, near: 0.1, far: 520, exposure: 1, bloom: BLOOMS.roy, onLost });
   const { renderer, scene, camera } = stage;
-  // a tone map that keeps the show's flat bright colours bright
-  renderer.toneMapping = THREE.NeutralToneMapping;
+  // (the stage's Neutral keeps the show's flat bright colours bright: ../look.js)
   stage.grade({ contrast: 0.06, saturation: 1.1, vignette: 0.16, grain: 0.01, shadow: [0, 0.004, 0.012], high: [0.012, 0.008, 0] });
   renderer.info.autoReset = false; // counted over the whole frame, every pass
   const big = Math.min(window.screen?.width ?? 1280, window.screen?.height ?? 800) >= 700;
