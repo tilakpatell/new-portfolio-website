@@ -5,9 +5,10 @@
 //   OUT=/tmp/shots node scripts/galaxy-powers-check.mjs layout
 //   OUT=/tmp/shots node scripts/galaxy-powers-check.mjs portal
 //   OUT=/tmp/shots node scripts/galaxy-powers-check.mjs war xwing|falcon|rv
-// layout: at four window sizes, the power tiles meet nothing else shown over
-//   the view and a click at each tile's middle lands on it (the flight
-//   settings' button used to cover G on a short window).
+// layout: at four window sizes, the power tiles (in the flight cluster along
+//   the bottom: FlightCluster.jsx) meet nothing else shown over the view and a
+//   click at each tile's middle lands on it (the flight settings' button used
+//   to cover G on a short window).
 // portal: Rick's cruiser stopped 30 off Tatooine's ground with the nose on
 //   its middle and no lock: G comes out short of the ground with room to
 //   turn, and no crash follows; 5 off the ground it's refused, its cooldown
@@ -19,19 +20,23 @@
 //   and a magnet with nobody near is refused.
 // Under software GL a frame takes a second or so, so each takes minutes.
 import { chromium } from 'playwright-core';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
 
 const [mode = 'layout', crewArg] = process.argv.slice(2);
 const out = process.env.OUT ?? '.';
 const base = process.env.BASE ?? 'http://localhost:5188';
-const chrome = process.env.CHROME ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const mac = `${homedir()}/Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`;
+const chrome = process.env.CHROME ?? (existsSync(mac) ? mac : '/opt/pw-browsers/chromium-1194/chrome-linux/chrome');
+// (a Mac's own graphics chip through Metal; elsewhere software GL, a frame a second or so)
+const gl = process.platform === 'darwin' ? ['--use-angle=metal', '--disable-gpu-vsync', '--disable-frame-rate-limit', '--ignore-gpu-blocklist'] : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
 mkdirSync(out, { recursive: true });
 const problems = [];
 const check = (ok, what) => {
   console.log(ok ? 'ok  ' : 'FAIL', what);
   if (!ok) problems.push(what);
 };
-const browser = await chromium.launch({ executablePath: chrome, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ executablePath: chrome, args: gl });
 
 // the galaxy at a system, flown by `crew`, ready to fly
 const open = async (crew, viewport = { width: 1280, height: 720 }, system = 'tatooine') => {
@@ -88,9 +93,10 @@ if (mode === 'layout') {
         return Boolean(hit && t.contains(hit));
       });
       const g = tiles[0].getBoundingClientRect();
-      return { on: bar.hasAttribute('data-on'), meets, clicks, g: { x: g.x + g.width / 2, y: g.y + g.height / 2 } };
+      return { on: bar.hasAttribute('data-on'), inCluster: Boolean(bar.closest('.fc')), meets, clicks, g: { x: g.x + g.width / 2, y: g.y + g.height / 2 } };
     });
     check(r.on, `${size}: the bar's shown`);
+    check(r.inCluster, `${size}: the bar's in the flight cluster`);
     check(r.meets.length === 0, `${size}: the tiles meet nothing else shown${r.meets.length ? ` (${r.meets.join('; ')})` : ''}`);
     check(r.clicks.every(Boolean), `${size}: a click at each tile's middle lands on it`);
     await page.screenshot({ path: `${out}/powers-layout-${size}.png` });
