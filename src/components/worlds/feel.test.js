@@ -31,8 +31,6 @@ function walk(at = '') {
   return out;
 }
 
-const TOWNS = ['amonhen', 'bree', 'cirithungol', 'doom', 'edoras', 'lorien', 'marshes', 'minastirith', 'moria', 'orthanc', 'rivendell', 'weathertop'];
-
 // a camera nudged by Math.random() times a shake
 const RANDOM = /Math\.random\(\) - 0\.5\) \* [\w.]*shake/;
 
@@ -42,14 +40,10 @@ export const OWN_SHAKE = [
   { file: 'galaxy/surface/scene.js', pattern: /\(r\(\) - 0\.5\) \* state\.shake/ },
   { file: 'deathstar/Trench3D.js', pattern: /shakeV\.set\(\(Math\.random\(\) - 0\.5\) \* k/ },
   { file: 'caribbean/tide/Tide3D.js', pattern: /const s = trauma \* trauma/ },
-  { file: 'middleearth/shire/scene.js', pattern: RANDOM },
-  ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: RANDOM })),
   { file: 'rickmorty/citadel/scene.js', pattern: RANDOM },
   { file: 'rickmorty/portal/Portal3D.js', pattern: /\(Math\.random\(\) - 0\.5\) \* sh\b/ },
   { file: 'rickmorty/world/sewer/scene.js', pattern: /Math\.sin\(t \* 31\) \* shake/ },
   { file: 'rickmorty/world/roy/scene.js', pattern: /const s = trauma \* trauma/ },
-  { file: 'middleearth/Bridge3D.js', pattern: /A\.shake \* A\.shake \* 0\.7/ },
-  { file: 'middleearth/Gorgoroth3D.js', pattern: /A\.shake \* A\.shake \* 0\.5/ },
 ];
 
 export const DEAD_HITSTOP = [
@@ -69,7 +63,6 @@ export const NO_PRESS = [
   { file: 'avengers/smash/rules.js', pattern: /H\.air > 0 \|\| H\.smash >= 0\) return false/ },
   { file: 'rickmorty/world/sewer/rules.js', pattern: /input\.hop && r\.hop <= 0/ },
   { file: 'universe/foot.js', pattern: /input\.jump && h <= 1e-6/ },
-  { file: 'middleearth/rush/Rush.jsx', pattern: /sm\.dash = false/ },
   { file: 'rickmorty/portal/rules.js', pattern: /p\.dashes < 1 \|\| p\.dashT > 0\) return false/ },
 ];
 
@@ -77,8 +70,6 @@ export const NO_PRESS = [
 const CUT_EASE = /= jump\b[^;]*\? 1 : Math\.min\(1, dt \* \(/;
 
 export const LINEAR_CAMERA = [
-  { file: 'middleearth/shire/scene.js', pattern: CUT_EASE },
-  ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: CUT_EASE })),
   { file: 'rickmorty/citadel/scene.js', pattern: CUT_EASE },
   { file: 'avengers/repulsor/scene.js', pattern: /camX \+= \(px - camX\) \* Math\.min\(1, realDt \* 30\)/ },
   { file: 'rickmorty/CruiserFlight.jsx', pattern: /\(goal - shown\) \* 0\.12/ },
@@ -147,8 +138,7 @@ describe('the feel ratchet', () => {
     });
   }
 
-  // (no more than the audit found: the lists only shrink, and six lanes
-  // shrink them at once, so a count each would be a merge conflict each)
+  // (at most: each lane takes its own off, so the counts only fall)
   it('holds no more than the audit’s counts', () => {
     expect(OWN_SHAKE.map((e) => e.file).filter((f) => !f.includes('/towns/')).length).toBeLessThanOrEqual(16);
     expect(DEAD_HITSTOP.length).toBeLessThanOrEqual(3);

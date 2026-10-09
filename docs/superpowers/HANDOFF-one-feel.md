@@ -65,7 +65,7 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 | 1D | session_01Y9gSEa16P9tye2wPhYum7h | `claude/one-feel-panel` | #702 | yes |
 | 1E | `session_01RjXvbwnRgbChu8gMUUMi8B` | `claude/one-feel-colliders` | #698 | |
 | 1F | session_01PvQ31jMR87beSHxh7Bgt2v | `claude/feel-kit` | | |
-| 2A | | | | |
+| 2A | session_01HPFczeNhvDuaFuXnrzZj9H | `claude/feel-middleearth` | Tier 1: #728 | |
 | 2B | | | | |
 | 2C | | | | |
 | 2D | session_01WNT44qC1Ri7EdPC2HViaKn | `claude/feel-cities` | #730 (Tier 1) | |
@@ -98,7 +98,9 @@ Follow the spec over the plan, the code over both. Fix the plan’s line in your
 - **1D, for the galaxy surfaces (2B):** `galaxy/surface/scene.js` still makes its own panel from `tune.js` (it is outside 1D’s files); moving it onto `tune()` through the module makes it the one panel the runtime opens and closes. Until then it is the only panel on that route (the galaxy’s module has no `tune()`), so nothing doubles.
 - **1D, for 1A:** `lib/stage3d.js` has `stageBloomGroups(pass)` for the stage’s bloom group, since `lib/three/bloom.js` is 1A’s; once `bloomGroups(pass)` lands, `stageTune` can take it in its place (the same shape: `threshold`, `strength`, `radius`).
 - **1D, for the owner:** `stage.tune`’s title is the canvas’s nearest `[data-route]`, but no page sets one yet, so every stage game is titled by the document’s title (and keeps its values under it); a page that wants its own key sets `data-route` on the game’s box.
-- **2D, for 2A–2F:** the ratchet’s “holds the audit’s counts” pinned each list’s length, so every lane that took a file off would change the same four lines; it now holds them at no more than the audit’s counts (the lists only shrink). Take the same edit if you meet it.
+- **2A, for 2F (the Citadel):** the towns’ shake and camera are now `middleearth/feel.js`’s `createShake` (a level asked is the trauma it is raised to, so `A.shake = Math.max(A.shake, k)` every frame holds k rather than piling up; offset 1, fade 0.8 a second, as the jitter did) and `byFrame(k, dt)` (`middleearth/ease.js`: `min(1, dt·k)` as it moved at 60 Hz, by dt). The Citadel’s scene has the same four lines; middleearth has no `index.js`, so either copy them or ask the owner for an index that passes these on.
+- **2A, for the owner:** the 260 ms fade went on the Shire’s two respawns (Maggot’s gate, the Rider), as the roster names them; the twelve towns’ watchers still put you back at the door at once (a line in each town’s `*World.jsx` and a veil in its css: a Phase 2 look pass could share one through `towns/TownHud.jsx`). The towns’ blows (a troll’s hit, a stab, a bash) carry no force on their events, so their sounds stay at their own gain; the hitstop and the shake answer them.
+- **2A, for 2B–2F:** `feel.test.js`’s count check is now “no more than the audit’s counts”, so each lane takes its own entries off without editing the same count line as five others.
 - **2D, for 2A–2F:** a shake whose old k was a size in metres (Cybertron’s jolts reach 2.4, the office’s 0.18) keeps that size at its peak as `feel.trauma(√(k / kmax))` with `offset` kmax / 2; `feel.update` sets `camera.fov` to its base, so a scene that eases its own fov calls `feel.setBaseFov(camera.fov)` first.
 - **2D, for the owner:** `games/pad.js`’s `readPad` has no Back (button 8): Albuquerque’s way out is Y on a pad, B on the keys (R is its delivery). A `back: b(8)` there would let a lane use the spec’s button.
 - **2D:** Cybertron’s fuzz found Optimus 0.05 m into the crack between two of Kaon’s seat blocks once the jump forgave (a new path, an old gap): `resolve` takes six passes, not three.

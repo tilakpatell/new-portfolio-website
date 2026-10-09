@@ -34,6 +34,7 @@ import { ARWEN_AT, BED, CAST, COLLIDERS, CRAGS, DELL, FIRE_AT, GAPS, HILL, PATCH
 import { BRAND, MARK_LINES, OBSTACLES, RIDE, glowOf, roadBend, roadTurn } from './rules';
 import { sharpen } from '../../../../lib/three/textures';
 import { attend, castDo, castPlay, releaseCast, tickCast } from '../../cast3d';
+import { byFrame, createShake } from '../../feel';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const TAU = Math.PI * 2;
@@ -537,6 +538,8 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
 
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, cam: { at: V(0, 30, 60), look: V(0, 20, 0) }, mode: 'walk', climbT: 0, flash: 0, flame: 0 };
+  const shake = createShake({ title: 'Weathertop' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { hit: 70, stabbed: 90 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -973,15 +976,12 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     }
     const jump = A.mode !== s.mode;
     A.mode = s.mode;
-    const ease = jump ? 1 : Math.min(1, dt * (s.mode === 'walk' || s.mode === 'ride' ? 7 : s.mode === 'brand' ? 9 : 2.5));
+    const ease = jump ? 1 : byFrame(s.mode === 'walk' || s.mode === 'ride' ? 7 : s.mode === 'brand' ? 9 : 2.5, dt);
     A.cam.at.lerp(camAt, ease);
     A.cam.look.lerp(camLook, ease);
     camera.position.copy(A.cam.at);
-    if (A.shake > 0) {
-      camera.position.x += (Math.random() - 0.5) * A.shake;
-      camera.position.y += (Math.random() - 0.5) * A.shake;
-      A.shake = Math.max(0, A.shake - dt * 0.8);
-    }
+    shake.update(dt, camera, A.shake);
+    A.shake = 0;
     camera.lookAt(A.cam.look);
     sky.dome.position.copy(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 80);
@@ -995,6 +995,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
 
   // ── events ──
   const fxEvent = (type) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'stabbed') A.shake = 0.35;
     else if (type === 'hit') A.shake = Math.max(A.shake, 0.25);
     else if (type === 'thrust') A.shake = Math.max(A.shake, 0.04);
@@ -1044,6 +1045,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    timeScale: shake.feel.timeScale, // how much of a frame the game runs: less for a moment in a hitstop
     screenOf,
     headOf,
     aimAt,
@@ -1059,6 +1061,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
       return A.suggest ?? null;
     },
     dispose() {
+      shake.dispose();
       floorLight.dispose();
       ghosts.dispose();
       disposeTree(scene);
