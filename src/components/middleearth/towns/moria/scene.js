@@ -494,6 +494,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
   // ── state ──
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, lit: 0, open: 0, ithil: 0, stir: 0, fire: 0 };
   const shake = createShake({ title: 'Moria' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { slam: 60, hit: 70, break: 90 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -836,6 +837,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type, at) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'slam') {
       A.shake = Math.max(A.shake, 0.18);
       if (at) fx.puff(V(at.x, gateHeight(at.x, at.z) + 0.3, at.z), V(0, 1, 0), 10);
@@ -867,6 +869,7 @@ export function createMoriaWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    step: shake.step, // the dt the game runs by: slower for a moment in a hitstop
     screenOf,
     resize: stage.resize,
     get info() {

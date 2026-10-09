@@ -539,7 +539,8 @@ function World({ prog, complete, side, recordGo, gl, setGl, onLeave, again }) {
     }
     const p = progRef.current;
     const fast = import.meta.env.DEV ? (s.speedup ?? 1) : 1;
-    const dt = Math.min(0.05, ms / 1000) * fast;
+    // (a blow holds the game a moment: the scene's hitstop, ../../feel.js)
+    const dt = a.step(Math.min(0.05, ms / 1000)) * fast;
     s.t += dt;
     const k = s.keys;
     const held = (name) => k.has(name);

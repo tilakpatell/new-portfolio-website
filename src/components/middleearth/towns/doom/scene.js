@@ -294,6 +294,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   const sunDir = V(...MOODS.plain.sun).normalize();
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, first: true, mood: '', erupt: 0, fall: 0, lash: 0, hit: 0, ash: 0, sparks: 0, gollumT: 0, ringK: 0, fov: 52, sink: 0, shire: 0 };
   const shake = createShake({ title: 'Mount Doom' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { lash: 60, hit: 70 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const tmp3 = V();
@@ -815,6 +816,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'lash') {
       A.lash = 1;
       castPlay(slaver, 'cross', { layer: 'upper', fade: 0.06 });
@@ -848,6 +850,7 @@ export function createDoomWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    step: shake.step, // the dt the game runs by: slower for a moment in a hitstop
     screenOf: () => null,
     resize: stage.resize,
     get info() {

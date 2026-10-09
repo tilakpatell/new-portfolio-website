@@ -393,6 +393,7 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
   // ── state ──
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, night: 0, dawn: 0, first: true, rain: 0, mist: 0, ash: 0, open: 0, flash: 0, drawn: 0, fellAt: null };
   const shake = createShake({ title: 'The Dead Marshes' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { knock: 60, pounce: 70 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -849,6 +850,7 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'knock') A.shake = 0.3;
     else if (type === 'pounce') A.shake = 0.25;
     else if (type === 'reach') A.shake = Math.max(A.shake, 0.05);
@@ -878,6 +880,7 @@ export function createMarshesWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    step: shake.step, // the dt the game runs by: slower for a moment in a hitstop
     screenOf: () => null,
     resize: stage.resize,
     get info() {

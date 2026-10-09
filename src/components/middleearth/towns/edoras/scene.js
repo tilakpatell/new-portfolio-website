@@ -279,6 +279,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   const sunDir = V(...MOODS.day.sun).normalize();
   const A = { t: 0, cam: { at: V(260, 20, 0), look: V(0, 20, 0) }, mode: '', first: true, fov: 50, mood: '', day: 1, shake: 0, flash: 0, bashT: 0, beacon: 0, roll: 0 };
   const shake = createShake({ title: 'Edoras' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { bash: 70 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -721,6 +722,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'bash') {
       A.bashT = 1;
       // (on the cast: a dwarf's blow)
@@ -745,6 +747,7 @@ export function createEdorasWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    step: shake.step, // the dt the game runs by: slower for a moment in a hitstop
     resize: stage.resize,
     get info() {
       const i = renderer.info;

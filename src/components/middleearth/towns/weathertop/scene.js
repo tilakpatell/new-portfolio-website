@@ -539,6 +539,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, cam: { at: V(0, 30, 60), look: V(0, 20, 0) }, mode: 'walk', climbT: 0, flash: 0, flame: 0 };
   const shake = createShake({ title: 'Weathertop' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { hit: 70, stabbed: 90 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -994,6 +995,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
 
   // ── events ──
   const fxEvent = (type) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'stabbed') A.shake = 0.35;
     else if (type === 'hit') A.shake = Math.max(A.shake, 0.25);
     else if (type === 'thrust') A.shake = Math.max(A.shake, 0.04);
@@ -1043,6 +1045,7 @@ export function createWeathertopWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    step: shake.step, // the dt the game runs by: slower for a moment in a hitstop
     screenOf,
     headOf,
     aimAt,

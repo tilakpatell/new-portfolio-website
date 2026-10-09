@@ -400,6 +400,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   const sunDir = V(...MOODS.hall.sun).normalize();
   const A = { t: 0, cam: { at: V(0, 3, 16), look: V(0, 2, 0) }, mode: '', shake: 0, first: true, fov: 50, mood: '', flash: 0, block: 0, push: 0, hit: 0, cast: 0, sx: DUEL_AT.saruman.x, gx: DUEL_AT.gandalf.x, down: 0, jump: 0, ring: -1, ring2: -1, eyeLook: 0, flames: 0, smoke: 0, wake: 0, eye: 0 };
   const shake = createShake({ title: 'Orthanc' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { push: 50, block: 60, hit: 80 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -1000,6 +1001,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'flash') A.flash = 1;
     else if (type === 'boom') A.shake = Math.max(A.shake, 0.12);
     else if (type === 'found') A.shake = 0.4;
@@ -1045,6 +1047,7 @@ export function createOrthancWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    step: shake.step, // the dt the game runs by: slower for a moment in a hitstop
     resize: stage.resize,
     get info() {
       const i = renderer.info;

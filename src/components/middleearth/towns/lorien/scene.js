@@ -653,6 +653,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   // ── state ──
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, night: 0, dawn: 0, first: true, leaves: 0, tempt: 0, eye: 0, sight: V(), sightD: 20 };
   const shake = createShake({ title: 'Lothlórien' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { hit: 50 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   // where the cast's eyes go: down into the Mirror, along the range to the butts
@@ -1055,6 +1056,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type, id) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'hit') A.shake = Math.max(A.shake, 0.22);
     else if (type === 'eye') A.shake = Math.max(A.shake, 0.06);
     else if (type === 'touched') A.shake = 0.3;
@@ -1092,6 +1094,7 @@ export function createLorienWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    step: shake.step, // the dt the game runs by: slower for a moment in a hitstop
     screenOf,
     resize: stage.resize,
     get info() {

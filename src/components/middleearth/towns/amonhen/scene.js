@@ -381,6 +381,7 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
   // ── state ──
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, ring: 0, gaze: 0, motes: 0, first: true };
   const shake = createShake({ title: 'Amon Hen' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { grab: 60 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -705,6 +706,7 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type, id) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'grab') A.shake = 0.3;
     else if (type === 'eye') A.shake = 0.35;
     else if (type === 'gaze') A.shake = Math.max(A.shake, 0.12);
@@ -739,6 +741,7 @@ export function createAmonHenWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    step: shake.step, // the dt the game runs by: slower for a moment in a hitstop
     screenOf,
     resize: stage.resize,
     get info() {

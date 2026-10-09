@@ -415,6 +415,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
   // ── state ──
   const A = { t: 0, night: 0, dawn: 0, wraith: 0, shake: 0, cam: { at: V(0, 20, 50), look: V(0, 4, 0) }, mode: 'walk', leaf: 0, axe: -9, axeTimer: 0, eye: 0 };
   const shake = createShake({ title: 'Rivendell' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { axe: 60 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -737,6 +738,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
 
   // ── events ──
   const fxEvent = (type) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'axe') {
       A.axe = A.t;
       A.shake = 0.25;
@@ -773,6 +775,7 @@ export function createRivendellWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    step: shake.step, // the dt the game runs by: slower for a moment in a hitstop
     screenOf,
     headOf,
     balcony,

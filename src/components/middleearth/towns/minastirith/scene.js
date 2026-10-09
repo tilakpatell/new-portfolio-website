@@ -415,6 +415,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
   const sunDir = V(...MOODS.ride.sun).normalize();
   const A = { t: 0, cam: { at: V(260, 20, 0), look: V(0, 30, 0) }, mode: '', first: true, fov: 50, mood: '', shake: 0, knock: 0, loosed: 0, lit: 0, fires: 0, flames: 0, chain: -1, dread: 0, bloom: 0, fireT: 1, hornT: 0 };
   const shake = createShake({ title: 'Minas Tirith' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { knock: 60 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -1119,6 +1120,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'knock') {
       A.knock = 1;
       A.shake = Math.max(A.shake, 0.12);
@@ -1150,6 +1152,7 @@ export function createMinasWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    step: shake.step, // the dt the game runs by: slower for a moment in a hitstop
     resize: stage.resize,
     get info() {
       const i = renderer.info;

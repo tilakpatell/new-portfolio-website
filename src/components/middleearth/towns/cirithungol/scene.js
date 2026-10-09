@@ -369,6 +369,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   const sunDir = V(...MOODS.vale.sun).normalize();
   const A = { t: 0, cam: { at: V(0, 4, 10), look: V(0, 2, -10) }, mode: '', shake: 0, first: true, beam: 0, stab: 0, dodge: 0, hit: 0, embers: 0, dust: 0, fov: 52, mood: '', near: 0 };
   const shake = createShake({ title: 'Cirith Ungol' }); // one shake, the site's (../../feel.js); ?debug shows its numbers
+  const HITSTOP = { hit: 70, stab: 80 }; // ms the game holds on a blow
   const tmp = V();
   const tmp2 = V();
   const look = V();
@@ -853,6 +854,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
   };
 
   const fxEvent = (type, id) => {
+    shake.hitstop(HITSTOP[type] ?? 0);
     if (type === 'pause') A.shake = Math.max(A.shake, 0.12);
     else if (type === 'stood') A.shake = 0.2;
     else if (type === 'slip') A.shake = 0.35;
@@ -897,6 +899,7 @@ export function createCirithUngolWorld(canvas, { onLost } = {}) {
     scene: import.meta.env.DEV ? scene : null, // for the QA scripts
     render,
     fx: fxEvent,
+    step: shake.step, // the dt the game runs by: slower for a moment in a hitstop
     screenOf: () => null,
     cloakAt,
     resize: stage.resize,
