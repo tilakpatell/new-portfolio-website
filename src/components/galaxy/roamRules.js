@@ -40,7 +40,7 @@ export const ROAM_EVENTS = Object.freeze({ hunt: EVENTS.hunt, destroyer: EVENTS.
 
 // each faction's factions by role (the galaxy's hunted.js rows, which carry
 // the universe map's Empire and bounty hunters)
-const ROLES = {
+export const ROLES = {
   empire: { hunt: ['empire'], capital: 'navy', capitalShip: 'destroyer', bounty: ['fett', 'ig88', 'bossk', 'dengar'], pieces: ['destroyer'] },
   remnant: { hunt: ['remnant'], capital: 'navy', capitalShip: 'destroyer', bounty: ['fett'], pieces: ['destroyer'] },
   separatists: { hunt: ['separatists'], capital: null, capitalShip: null, bounty: NO_HUNT, pieces: [] },
@@ -52,7 +52,7 @@ const ROLES = {
   hutt: { hunt: NO_HUNT, capital: null, capitalShip: null, bounty: ['fett', 'ig88', 'bossk', 'dengar'], pieces: [] },
 };
 // your side's wing, where it has one of its own (else the holder's ROLES `escort`)
-const ESCORTS = { empire: ['tie', 'interceptor'], remnant: ['tie', 'interceptor'], separatists: ['vulture', 'trifighter'] };
+export const ESCORTS = { empire: ['tie', 'interceptor'], remnant: ['tie', 'interceptor'], separatists: ['vulture', 'trifighter'] };
 const LABELS = { empire: 'The Empire’s space', remnant: 'The Imperial remnant’s space', separatists: 'The Separatists’ space', none: 'Open space', rebellion: 'The Rebellion’s space', newrepublic: 'The New Republic’s space', republic: 'The Republic’s space', hutt: 'Hutt space' };
 
 // `friendly`: your side's space (no hunt, no capital ship, an escort);

@@ -66,6 +66,9 @@ export const SHIPS = {
   tieadvanced: { sides: ['empire'], wars: G, class: 'fighter', guns: ['laser', 'missile'] },
   tiestriker: { sides: ['empire'], wars: G, class: 'fighter', guns: ['laser'] },
   tiedefender: { sides: ['empire'], wars: G, class: 'interceptor', guns: ['laser', 'ion', 'missile'] },
+  gunboat: { sides: IMP, wars: GR, class: 'fighter', guns: ['laser', 'missile'] },
+  missileboat: { sides: IMP, wars: GR, class: 'fighter', guns: ['laser', 'missile'] },
+  repairshuttle: { sides: IMP, wars: GR, class: 'shuttle' },
   // the Rebellion, and the New Republic after it
   moncal: { sides: REB, wars: GR, class: 'capital' },
   nebulon: { sides: REB, wars: GR, class: 'capital' },
@@ -76,18 +79,19 @@ export const SHIPS = {
   bwing: { sides: REB, wars: GR, class: 'bomber', guns: ['laser', 'ion', 'torpedo'] },
   uwing: { sides: REB, wars: GR, class: 'fighter', guns: ['laser'] },
   ghost: { sides: REB, wars: GR, class: 'hero', guns: ['laser'] },
+  redleader: { sides: REB, wars: GR, class: 'hero', guns: ['laser', 'torpedo'] }, // (Wedge's X-wing, the hunters' ace)
   falcon: { sides: [...REB, null], wars: GR, class: 'hero', guns: ['laser'] },
   // the Hutts'
   skiff: { sides: ['hutt'], wars: ALL, class: 'fighter', guns: ['laser'] },
   // anyone's: freighters, bounty hunters, the shows' ships
   freighter: { sides: null, wars: ALL, class: 'civil' },
   slave1: { sides: null, wars: ALL, class: 'civil' },
-  ig2000: { sides: null, wars: GR, class: 'civil' },
-  houndstooth: { sides: null, wars: GR, class: 'civil' },
-  punishingone: { sides: null, wars: GR, class: 'civil' },
+  ig2000: { sides: null, wars: ALL, class: 'civil' },
+  houndstooth: { sides: null, wars: ALL, class: 'civil' },
+  punishingone: { sides: null, wars: ALL, class: 'civil' },
   cloudcar: { sides: null, wars: ALL, class: 'civil' },
   razorcrest: { sides: null, wars: R, class: 'civil' },
-  gauntlet: { sides: null, wars: ['clone', 'remnant'], class: 'civil' },
+  gauntlet: { sides: null, wars: ALL, class: 'civil' },
 };
 
 export function allowed(kind, war, side) {
