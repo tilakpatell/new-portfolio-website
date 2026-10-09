@@ -42,7 +42,6 @@ export const OWN_SHAKE = [
   { file: 'galaxy/surface/scene.js', pattern: /\(r\(\) - 0\.5\) \* state\.shake/ },
   { file: 'deathstar/Trench3D.js', pattern: /shakeV\.set\(\(Math\.random\(\) - 0\.5\) \* k/ },
   { file: 'caribbean/tide/Tide3D.js', pattern: /const s = trauma \* trauma/ },
-  { file: 'office/world/scene.js', pattern: RANDOM },
   { file: 'cybertron/rollout/RollOut3D.js', pattern: RANDOM },
   { file: 'middleearth/shire/scene.js', pattern: RANDOM },
   ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: RANDOM })),
@@ -82,8 +81,6 @@ export const LINEAR_CAMERA = [
   { file: 'middleearth/shire/scene.js', pattern: CUT_EASE },
   ...TOWNS.map((t) => ({ file: `middleearth/towns/${t}/scene.js`, pattern: CUT_EASE })),
   { file: 'rickmorty/citadel/scene.js', pattern: CUT_EASE },
-  // (the office’s walkable world: the towns’ camera, which the audit’s list missed)
-  { file: 'office/world/scene.js', pattern: CUT_EASE },
   { file: 'avengers/repulsor/scene.js', pattern: /camX \+= \(px - camX\) \* Math\.min\(1, realDt \* 30\)/ },
   { file: 'rickmorty/CruiserFlight.jsx', pattern: /\(goal - shown\) \* 0\.12/ },
 ];
