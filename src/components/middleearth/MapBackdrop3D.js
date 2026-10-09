@@ -100,7 +100,7 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
   const user = { x: 0, z: 0, zoom: 1 };
   let hurry = false;
   let hub = false;
-  // the opening's flight down the road, where it has the camera now, or null
+  // the opening’s flight down the road, where it has the camera now, or null
   // when the page has it
   let flying = null;
 
@@ -250,7 +250,7 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
       first = true;
       return ms;
     },
-    // the opening's flight (./mapFlight.js): `ms` into it, or null to hand
+    // the opening’s flight (./mapFlight.js): `ms` into it, or null to hand
     // the camera back to the page, which it eases to
     flight(ms) {
       const was = flying;
@@ -343,10 +343,10 @@ export function createMapBackdrop(canvas, { onLost } = {}) {
     dispose,
     renderer,
     info: () => ({ ...renderer.info.render }), // the lab’s counts
-    // its shaders, linked in the background, and the sheet's own pictures
+    // its shaders, linked in the background, and the sheet’s own pictures
     // sent: the page waits for this before the first frame, so that frame
     // has the sheet in it (lib/three/frameGuard leaves out a material whose
-    // pictures aren't on the chip yet) and fades in over the flat one whole
+    // pictures aren’t on the chip yet) and fades in over the flat one whole
     ready: precompile(renderer, scene, camera).then(() => {
       if (lost) return;
       renderer.initTexture(map);
