@@ -1,0 +1,110 @@
+/* global window, document */
+// The Shipyard in the galaxy, in a browser (pages/Galaxy.jsx, GalaxyView.jsx, universe/shipyard/useShipyardPage.js;
+// scripts/galaxy-hud-check.mjs runs it as `hangar`): at 1440x900 an X-wing at Tatooine, with credits earned in the wallet, and
+//   door: the Shipyard's button is in the corner beside the flight settings', and meets nothing there
+//   keys: H opens the yard (the map behind it holds still), Escape closes it; H does nothing with the galaxy map open or a jump
+//     under way; the flight settings and the yard are never open together
+//   fit: twin-linked cannons staged and applied change the ship in flight (__galaxyDebug.state.stats's cadence), are kept under
+//     the universe map's own storage keys, and say so (the page's note); the secondary line says it fires on the universe map only
+// Shots are in OUT/hangar-*.png.
+import { check, out } from '../galaxy-map-check/lib.mjs';
+import { open, settle } from './lib.mjs';
+
+const VIEW = { width: 1440, height: 900 };
+const box = (page, sel) =>
+  page.evaluate((s) => {
+    const el = document.querySelector(s);
+    if (!el || !el.checkVisibility()) return null;
+    const r = el.getBoundingClientRect();
+    return { l: r.left, t: r.top, r: r.right, b: r.bottom };
+  }, sel);
+const meet = (a, b) => a && b && a.l < b.r - 0.5 && b.l < a.r - 0.5 && a.t < b.b - 0.5 && b.t < a.b - 0.5;
+const yardOpen = (page) => page.evaluate(() => Boolean(document.querySelector('.yard-panel')));
+const press = async (page, key) => {
+  await page.evaluate(() => document.activeElement?.blur?.());
+  await page.keyboard.press(key);
+  await settle(page, 600);
+};
+
+export async function hangar() {
+  const say = (ok, what) => check(ok, `hangar: ${what}`);
+  const { ctx, page, errors } = await open(VIEW);
+  try {
+    const G = (fn, arg) => page.evaluate(fn, arg);
+    // credits to buy with (the wallet is hooked onto the scene's debug object once it's loaded)
+    await page.waitForFunction(() => Boolean(window.__galaxyDebug?.economy), null, { timeout: 60000 });
+    await G(() => window.__galaxyDebug.economy.earn('killAce', 6));
+    const before = await G(() => ({ ...window.__galaxyDebug.state.stats }));
+
+    // the door
+    const btn = await box(page, '.universe-hangar-btn');
+    const cog = await box(page, '.universe-settings-btn');
+    say(Boolean(btn) && Boolean(cog), 'the Shipyard button is in the corner, beside the flight settings’');
+    const near = await Promise.all(['.fc-radar', '.fc-ship', '.galaxy-keysbtn', '.universe-online-pill', '.galaxy-mapbtn'].map((s) => box(page, s)));
+    say(!meet(btn, cog) && near.every((b) => !meet(btn, b)), 'and meets nothing there');
+    say((await G(() => document.querySelector('.universe-hangar-btn')?.getAttribute('aria-keyshortcuts'))) === 'H', 'and says H');
+    await page.screenshot({ path: `${out}/hangar-corner.png`, clip: { x: 0, y: 700, width: 480, height: 200 } });
+
+    // H opens it, and the map behind holds still
+    await press(page, 'h');
+    say(await yardOpen(page), 'H opens the Shipyard');
+    const p0 = await G(() => ({ ...window.__galaxy().ship }));
+    await settle(page, 700);
+    const p1 = await G(() => ({ ...window.__galaxy().ship }));
+    say(Math.hypot(p1.x - p0.x, p1.y - p0.y, p1.z - p0.z) < 0.01, 'with the ship held still behind it');
+    await page.screenshot({ path: `${out}/hangar-open.png` });
+
+    // the secondary line says where it fires
+    await page.getByRole('tab', { name: 'Secondary' }).click();
+    await settle(page, 300);
+    const hint = await G(() => document.querySelector('.yard-hint')?.textContent ?? '');
+    say(/universe map/.test(hint) && /crew/.test(hint), `the secondary line says it fires on the universe map only (${hint.slice(0, 60)}…)`);
+    await page.screenshot({ path: `${out}/hangar-secondary.png` });
+    await page.getByRole('tab', { name: 'Primary' }).click();
+    await settle(page, 300);
+    say((await G(() => document.querySelector('.yard-hint')?.textContent ?? '')) === '', 'and the primary line doesn’t');
+
+    // twin-linked cannons on
+    await page.locator('.yard-row', { hasText: 'Twin-linked cannons' }).click();
+    await settle(page, 400);
+    await page.screenshot({ path: `${out}/hangar-staged.png` });
+    await page.locator('.yard-apply').click();
+    await settle(page, 900);
+    say(!(await yardOpen(page)), 'Apply fits it and closes the yard');
+    const after = await G(() => ({ ...window.__galaxyDebug.state.stats }));
+    say(after.cadence < before.cadence, `and the guns are quicker in flight (cadence ${before.cadence} → ${after.cadence})`);
+    const kept = await G(() => ({ loadout: JSON.parse(localStorage.getItem('tp-universe-loadout') ?? 'null') }));
+    say(kept.loadout?.xwing?.guns === 'twin', `and it's kept under the universe map's key (${JSON.stringify(kept.loadout?.xwing ?? null)})`);
+    const note = await G(() => document.querySelector('.universe-earn, .universe-earn-note, [data-earn]')?.textContent ?? '');
+    say(note === '' || /Fitted|Bought/.test(note), `and says so (${note || 'the note’s gone already'})`);
+    await page.screenshot({ path: `${out}/hangar-fitted.png` });
+
+    // H and Escape, and the one-at-a-time rule
+    await press(page, 'h');
+    say(await yardOpen(page), 'H opens it again');
+    await press(page, 'Escape');
+    say(!(await yardOpen(page)), 'Escape closes it');
+    await page.locator('.universe-settings-btn').click();
+    await settle(page, 400);
+    say(await G(() => Boolean(document.querySelector('.universe-settings'))), 'the flight settings open');
+    await press(page, 'h');
+    say((await yardOpen(page)) && !(await G(() => Boolean(document.querySelector('.universe-settings')))), 'H opens the yard and puts the flight settings away');
+    await press(page, 'Escape');
+
+    // H does nothing under the galaxy map, nor in a jump
+    await press(page, 'm');
+    say(await G(() => Boolean(document.querySelector('.holomap'))), 'the galaxy map opens');
+    await press(page, 'h');
+    say(!(await yardOpen(page)), 'H does nothing with the galaxy map open');
+    await press(page, 'm');
+    await page.waitForFunction(() => !document.querySelector('.holomap'), null, { timeout: 10000 });
+    await G(() => window.__galaxyDebug.startJump('endor'));
+    await settle(page, 500);
+    say((await G(() => window.__galaxy().jump?.phase)) === 'align', 'a jump is under way');
+    await press(page, 'h');
+    say(!(await yardOpen(page)), 'H does nothing mid-jump');
+    say(errors.length === 0, `no page errors${errors.length ? ` (${errors.slice(0, 3).join('; ')})` : ''}`);
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
