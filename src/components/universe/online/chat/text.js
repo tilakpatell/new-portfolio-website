@@ -15,7 +15,8 @@
 // 'www.', or a dotted name whose last part is 2 to 24 letters, ending where a
 // name can't go on: spaces round a dot count, but a dot with a space only
 // after it is a sentence ending, not a link); each word names.js calls rude
-// becomes •••; cut to max characters; nothing left, nothing.
+// becomes •••; cut to max characters (a [link] or a ••• the cut falls in
+// goes whole, so none's left half shown); nothing left, nothing.
 
 import { isRude, stripControls } from '../names';
 
@@ -37,16 +38,24 @@ const LINK = new RegExp(
   'giu',
 );
 
+// what stands in for a link or a rude word: never cut short
+const WHOLE = ['[link]', '•••'];
+
 export function cleanText(raw, max) {
   if (typeof raw !== 'string') return null;
   const bare = stripControls(raw.slice(0, max * 8))
     .replace(/\s+/g, ' ')
     .trim();
-  const said = bare
-    .replace(LINK, '[link]')
-    .split(' ')
-    .map((word) => (isRude(word) ? '•••' : word))
-    .join(' ');
-  const text = [...said].slice(0, max).join('').trim();
+  const said = [
+    ...bare
+      .replace(LINK, '[link]')
+      .split(' ')
+      .map((word) => (isRude(word) ? '•••' : word))
+      .join(' '),
+  ];
+  let end = Math.min(max, said.length);
+  // (one the cut falls in: from its start)
+  for (const w of WHOLE) for (let i = Math.max(0, end - w.length + 1); i < end; i++) if (said.slice(i, i + w.length).join('') === w) end = i;
+  const text = said.slice(0, end).join('').trim();
   return text || null;
 }

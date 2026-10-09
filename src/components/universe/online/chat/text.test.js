@@ -26,6 +26,16 @@ describe('what may be said', () => {
     expect(cleanText(`${'x'.repeat(150)} https://example.com/${'p'.repeat(400)}`, 160)).toBe(`${'x'.repeat(150)} [link]`);
   });
 
+  it('never ends on part of a [link] or a •••: the cap falling in one, all of it goes', () => {
+    for (let max = 5; max <= 9; max++) expect(cleanText('see https://bad.example now', max)).toBe('see');
+    expect(cleanText('see https://bad.example now', 10)).toBe('see [link]');
+    for (const max of [5, 6]) expect(cleanText('you sh1t, then', max)).toBe('you');
+    expect(cleanText('you sh1t, then', 7)).toBe('you •••');
+    // in any script before it, and whoever typed it
+    expect(cleanText('🚀🚀 [link] ok', 6)).toBe('🚀🚀');
+    expect(cleanText('ok ••• fine', 4)).toBe('ok');
+  });
+
   it('takes out control and direction characters', () => {
     expect(cleanText('abc‮def', 200)).toBe('abcdef'); // (a right-to-left override, which would flip what follows)
     expect(cleanText('a\u0000b​c⁦d﻿e\u0007', 200)).toBe('abcde');
